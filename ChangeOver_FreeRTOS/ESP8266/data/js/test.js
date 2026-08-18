@@ -1,0 +1,4 @@
+async function status(){const r=await fetch('/api/test/status');return r.json()}
+function render(d){document.getElementById('testStatus').textContent=d.running?'Running...':'Stopped';const b=document.getElementById('testRows');b.innerHTML='';(d.results||[]).forEach(x=>{const tr=document.createElement('tr');tr.innerHTML=`<td>${x.id}</td><td>${x.name}</td><td>${['NOT_RUN','RUNNING','PASS','FAIL','SKIPPED'][x.status]||x.status}</td><td>${x.value}</td>`;b.appendChild(tr)})}
+async function refresh(){try{render(await status())}catch(e){document.getElementById('testStatus').textContent='API error: '+e}}
+document.getElementById('start').onclick=async()=>{await fetch('/api/test/start',{method:'POST'});refresh()};document.getElementById('stop').onclick=async()=>{await fetch('/api/test/stop',{method:'POST'});refresh()};refresh();setInterval(refresh,1000);

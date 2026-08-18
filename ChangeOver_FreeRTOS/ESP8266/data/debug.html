@@ -1,0 +1,5 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ChangeOver Debugger</title><link rel="stylesheet" href="/css/app.css"></head>
+<body><header><h1>Debugger</h1><nav><a href="/">Dashboard</a><a class="active" href="/debug">Debugger</a><a href="/charts">Charts</a><a href="/test">Board Test</a><a href="/settings">Settings</a></nav></header>
+<main><section class="toolbar"><button id="refresh">Refresh</button><button class="danger" id="clear">Clear stored diagnostics</button><label>Severity <select id="severity"><option value="all">All</option><option value="1">Info</option><option value="2">Warning</option><option value="3">Error</option><option value="4">Fatal</option></select></label></section>
+<section class="panel"><div class="status" id="debugStatus">Loading...</div><div class="table-wrap"><table><thead><tr><th>Time</th><th>Code</th><th>Severity</th><th>Value</th><th>Fault Mask</th><th>State</th><th>Count</th></tr></thead><tbody id="rows"></tbody></table></div></section></main><script src="/js/debug.js"></script></body></html>

@@ -42,6 +42,11 @@ const app_config_t APP_CONFIG =
     .input_detect_active_high = true,
     .esp_chip_enable_active_high = true,
 
+    // No unapproved power or ESP control is enabled in the baseline sample.
+    .power_stage_enabled = false,
+    .esp_link_enabled = false,
+    .diagnostics_enabled = true,
+
     // External 68K/33K resistors from the block diagram are included.
     .input_24v_divider = { UINT32_C(69200), UINT32_C(6800) },
     .battery_24v_divider = { UINT32_C(69200), UINT32_C(6800) },

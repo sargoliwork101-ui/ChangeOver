@@ -51,6 +51,11 @@ typedef struct
     bool input_detect_active_high;
     bool esp_chip_enable_active_high;
 
+    /* Explicit approval gates; all are disabled in the baseline sample. */
+    bool power_stage_enabled;
+    bool esp_link_enabled;
+    bool diagnostics_enabled;
+
     voltage_divider_t input_24v_divider;
     voltage_divider_t battery_24v_divider;
     voltage_divider_t battery_12v_divider;

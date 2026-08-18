@@ -37,7 +37,7 @@ static void communication_task_entry(void * context)
         (task->faults != NULL) && (task->system != NULL) &&
         (task->esp != NULL))
     {
-        esp8266_service_enable(task->esp, false);
+        esp8266_service_enable(task->esp, APP_CONFIG.esp_link_enabled);
         last_wake = xTaskGetTickCount();
         for (;;)
         {

@@ -373,3 +373,205 @@ Stub Link: PASS
 ```text
 Diagnostics Formatter Test: PASS
 ```
+
+---
+
+## 2026-08-16 — اسکلت ESP8266 Web Debugger و نیازمندی Handshake
+
+**وضعیت:** اسکلت نمونه انجام شد؛ تست روی سخت‌افزار و تکمیل Handshake باقی است
+
+### فارسی
+
+کارهای انجام‌شده:
+
+- پوشه‌ی مستقل `ESP8266/` برای پروژه‌ی Arduino ایجاد شد.
+- فایل اصلی `ESP8266_WebDebugger.ino` ایجاد شد.
+- صفحات جداگانه‌ی Dashboard، Debugger، Charts، Board Test و Settings ایجاد شدند.
+- Parser فریم‌های `T` و `D` ایجاد شد.
+- ذخیره‌سازی Ring Buffer برای Diagnostics و Telemetry با LittleFS آماده شد.
+- Feature Flag برای فعال/غیرفعال‌کردن مرحله‌ای قابلیت‌ها ایجاد شد.
+- Web API برای Health، Status، Diagnostics، Telemetry، Features و Auto Test آماده شد.
+- Runtime Statistics شامل Heap، Frame Count، Charge Session، Runtime و آخرین Fault اضافه شد.
+- اسکلت Handshake، Sequence، ACK، CRC16 و Power-Down Prepare/Ready ایجاد شد و پیش‌فرض خاموش است.
+- قرارداد UART0 مشترک و جداکردن ماژول ESP هنگام پروگرام ثبت شد.
+- `AI_WORKFLOW.md` موظف شد History را از این به بعد دوزبانه به‌روزرسانی کند.
+
+فایل‌های اصلی:
+
+```text
+ESP8266/ESP8266_WebDebugger.ino
+ESP8266/ESP_FeatureFlags.h
+ESP8266/ESP_DiagnosticsStore.*
+ESP8266/ESP_TelemetryStore.*
+ESP8266/ESP_ProtocolParser.*
+ESP8266/ESP_Handshake.*
+ESP8266/ESP_WebServer.*
+ESP8266/ESP_AutoTest.*
+ESP8266/data/
+```
+
+### English
+
+Implemented work:
+
+- Added an isolated `ESP8266/` Arduino project directory.
+- Added the main `ESP8266_WebDebugger.ino` sketch.
+- Added separate Dashboard, Debugger, Charts, Board Test and Settings pages.
+- Added parsers for the current `T` and `D` frames.
+- Added LittleFS-backed ring-buffer stores for diagnostics and telemetry.
+- Added feature flags for staged enable/disable testing.
+- Added Web APIs for health, status, diagnostics, telemetry, features and auto-test.
+- Added runtime statistics: free heap, frame counters, charge sessions, runtime and last fault.
+- Added a disabled-by-default handshake skeleton with sequence, ACK, CRC16 and power-down prepare/ready messages.
+- Recorded the shared UART0 decision and the requirement to remove the ESP module during programming.
+- Updated `AI_WORKFLOW.md` so future history entries are bilingual.
+
+Remaining work:
+
+- Compile with the actual ESP8266 Arduino core.
+- Upload LittleFS data and test each phase on hardware.
+- Align the STM32 and ESP handshake implementation.
+- Add STM32 pending-message buffering and replay before enabling power-down.
+
+---
+
+## 2026-08-16 — اعتبارسنجی نمونه‌ی Arduino ESP8266
+
+### فارسی
+
+- Syntax کد ESP با Stubهای Arduino، WiFi، WebServer و LittleFS بررسی شد.
+- Build Syntax با Feature Flagهای پیش‌فرض موفق بود.
+- Build Syntax با تمام Feature Flagها به‌صورت موقت فعال موفق بود.
+- تست Host Parser برای فریم‌های `T` و `D` موفق بود.
+- Feature Flagهای Repository به حالت مرحله‌ای پیش‌فرض بازگردانده شدند.
+
+### English
+
+- ESP source syntax was checked with Arduino, WiFi, WebServer and LittleFS stubs.
+- The default staged feature configuration passed syntax validation.
+- A temporary all-features-on syntax build passed.
+- Host parser testing for `T` and `D` frames passed.
+- Repository feature flags were restored to the staged default configuration.
+
+### Remaining
+
+- Compile with the real ESP8266 Arduino core.
+- Upload `data/` through the LittleFS tool.
+- Test each phase on the ESP8266-01 hardware.
+
+---
+
+## 2026-08-16 — تکمیل Metrics، صفحات تست و مستندسازی نهایی ESP
+
+### فارسی
+
+- Runtime Statistics برای Heap، Frame Count، Charge Session، Charge Time، Fault و Web Request تکمیل شد.
+- Runtime Storage اختیاری برای Boot Count و Charge Metrics اضافه شد.
+- Telemetry Store حتی در حالت Storage خاموش در RAM قابل استفاده است و ذخیره‌ی دائمی آن جداگانه فعال می‌شود.
+- Parser، Web Server، Auto Test، Handshake و Storeها با Feature Flagهای پیش‌فرض تست شدند.
+- برای تمام فایل‌های ESP نیز File Header و Function Documentation اضافه شد.
+- ساختار صفحات Web جداگانه و مناسب ویرایش نگه داشته شد.
+
+### English
+
+- Runtime statistics for heap, frame counters, charge sessions, charge time, faults and Web requests were completed.
+- Optional runtime persistence for boot count and charge metrics was added.
+- Telemetry storage remains usable in RAM when persistent storage is disabled; Flash persistence is independently gated.
+- Parser, Web Server, Auto Test, Handshake and stores were syntax-checked with staged defaults and temporary all-features-on flags.
+- File headers and function documentation were added to the ESP sample sources.
+- Web pages remain separated into editable data files.
+
+### Validation
+
+```text
+STM32 strict C syntax: PASS
+STM32 stub link: PASS
+ESP default C++ syntax: PASS
+ESP all-features C++ syntax: PASS
+ESP parser host test: PASS
+```
+
+---
+
+## 2026-08-17 — ممیزی پنج‌مرحله‌ای و Budget حافظه
+
+### فارسی
+
+پروژه از پنج مسیر بررسی شد:
+
+1. ساختار و فایل‌های اضافی
+2. Compile و Link و مسیرهای وابستگی
+3. ایمنی و الگوهای MISRA/Embedded
+4. پروتکل، Web API، Storage و Handshake
+5. RAM، Flash، Stack، Heap و LittleFS
+
+اصلاحات و کنترل‌ها:
+
+- APIهای JSON برای Diagnostics و Telemetry سقف رکورد دارند.
+- Storeها داده را در RAM نگه می‌دارند و Persistent Flush جداگانه فعال می‌شود.
+- Runtime Statistics قابل ذخیره‌سازی اختیاری شد.
+- Handshake Session/Sequence/CRC16 از همتا Session را بررسی می‌کند.
+- گزارش Budget حافظه ایجاد شد.
+- Syntax پیش‌فرض و All-Features برای ESP دوباره بررسی شد.
+
+### English
+
+The project was reviewed through five passes:
+
+1. Structure and extra files
+2. Compile, link and dependency paths
+3. Safety and MISRA/embedded patterns
+4. Protocol, Web API, storage and handshake
+5. RAM, Flash, stack, heap and LittleFS
+
+Fixes and controls:
+
+- Diagnostics and telemetry JSON APIs now have record limits.
+- Stores keep data in RAM while persistent flush is independently gated.
+- Runtime statistics persistence is optional.
+- Handshake session/sequence/CRC16 handling validates the peer session.
+- A memory budget report was added.
+- ESP default and all-features syntax were rechecked.
+
+Reference:
+
+```text
+docs/memory-budget.md
+```
+
+Limitations:
+
+- No actual STM32 Map file exists until the CubeIDE project is provided.
+- No real ESP8266 Arduino core build or hardware test has been run in this sandbox.
+
+---
+
+## 2026-08-17 — اصلاح Baseline و وضعیت تأیید قابلیت‌ها
+
+### فارسی
+
+چون کاربر تأکید کرد که هیچ برنامه‌ای هنوز تأیید محصول نیست، Baseline اصلاح شد:
+
+- `APP_CONFIG.power_stage_enabled = false`
+- `APP_CONFIG.esp_link_enabled = false`
+- تمام Feature Flagهای ESP به‌صورت پیش‌فرض خاموش شدند.
+- فعال‌کردن Changeover، Charger، Relay، Battery Switch یا Command به STM32 بدون تأیید دیگر ممکن نیست.
+- جدول رسمی وضعیت تأیید در `docs/approval-status.md` اضافه شد.
+- در `README.md` و `AI_CONTEXT.md` Prototype بودن همه‌ی قابلیت‌ها ثبت شد.
+
+### English
+
+Because the user confirmed that no program feature is product-approved yet, the baseline was hardened:
+
+- `APP_CONFIG.power_stage_enabled = false`
+- `APP_CONFIG.esp_link_enabled = false`
+- All ESP feature flags are now disabled by default.
+- Changeover, charger, relay, battery switch and STM32 commands cannot run without explicit approval.
+- Added the formal approval table in `docs/approval-status.md`.
+- Recorded the prototype-only status in `README.md` and `AI_CONTEXT.md`.
+
+### Remaining
+
+- Build the real STM32 project.
+- Enable only the first approved bring-up feature.
+- Record evidence and approval before enabling the next feature.

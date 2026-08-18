@@ -10,6 +10,8 @@ Firmware اسکلت ماژولار برای مدار `ChangeOver(24V_DC)` بر �
 
 این پروژه برای کنترل یک سیستم ۲۴ ولت شامل Changeover، حفاظت باتری، دو کانال شارژر فلای‌بک، اندازه‌گیری ولتاژ و جریان، تشخیص Jitter، نشانگرها و ارتباط با ESP8266 طراحی شده است.
 
+> **وضعیت تأیید:** هیچ‌کدام از قابلیت‌های توان، Changeover، Charger PWM، Relay، Battery Switch، ESP Commands یا Handshake هنوز به‌عنوان محصول تأیید نشده‌اند. این Repository فقط Prototype/Scaffold است.
+
 > **وضعیت فعلی:** این مخزن اسکلت اولیه‌ی قابل توسعه است، نه Firmware نهایی و نه گواهی MISRA. HAL شرکت ST و هسته‌ی FreeRTOS کد ثالث هستند و باید در فایل Deviation Record مستندسازی شوند. هیچ PWM توانمندی تا زمانی که کالیبراسیون و تست سخت‌افزار انجام نشده، به‌صورت خودکار فعال نمی‌شود.
 
 ---
@@ -26,6 +28,8 @@ Firmware اسکلت ماژولار برای مدار `ChangeOver(24V_DC)` بر �
 - هیچ `malloc`، `free`، recursion، exception، RTTI یا حافظه‌ی پویا در Application استفاده نمی‌شود.
 - Taskها، Queueها، EventGroupها و Mutexهای Application به‌صورت Static ساخته می‌شوند.
 
+این تصمیم برای Firmware سمت STM32 است. نمونه‌ی Arduino ESP8266 به‌دلیل الزام `.ino` در عمل C++ کامپایل می‌شود و با قواعد Embedded Safe C++، بدون Exception و حافظه‌ی پویا در مسیر Runtime، در پوشه‌ی مستقل `ESP8266/` نگهداری می‌شود.
+
 در C، نزدیک‌ترین معادل «هر کلاس در فایل جدا» این الگو است:
 
 ```text
@@ -40,7 +44,26 @@ charger_controller_set_duty()
 
 ---
 
-## 2. ساختار پروژه
+## 2. وضعیت تأیید قابلیت‌ها
+
+جدول رسمی وضعیت تأیید در این فایل قرار دارد:
+
+```text
+docs/approval-status.md
+```
+
+Baseline عمداً ایمن و خاموش است:
+
+```text
+APP_CONFIG.power_stage_enabled = false
+APP_CONFIG.esp_link_enabled = false
+ESP_FEATURE_STM_COMMANDS = 0
+ESP_FEATURE_HANDSHAKE = 0
+```
+
+هیچ Feature توان یا Command نباید بدون Strategy، Approval و تست سخت‌افزاری فعال شود.
+
+## 3. ساختار پروژه
 
 ```text
 ChangeOver_FreeRTOS/
@@ -99,6 +122,11 @@ ChangeOver_FreeRTOS/
 │       ├── firmware_app.c
 │       └── firmware_entry.c
 │
+├── ESP8266/                    نمونه‌ی Arduino Web Debugger برای ESP8266-01
+│   ├── ESP8266_WebDebugger.ino
+│   ├── *.h / *.cpp
+│   └── data/                   صفحات Dashboard، Debugger، Charts و Test
+│
 ├── CubeMX/
 │   ├── README.md
 │   └── FreeRTOSConfig.example.h
@@ -112,12 +140,15 @@ ChangeOver_FreeRTOS/
     ├── deviation-record.md
     ├── STM32_PROJECT_PREPARATION.md
     ├── final-audit.md
+    ├── memory-budget.md
+    ├── five-pass-audit.md
+    ├── approval-status.md
     └── commissioning-checklist.md
 ```
 
 ---
 
-## 3. خلاصه‌ی سخت‌افزار
+## 4. خلاصه‌ی سخت‌افزار
 
 بر اساس PDF شماتیک:
 
@@ -136,7 +167,7 @@ ChangeOver_FreeRTOS/
 
 ---
 
-## 4. Pin Map
+## 5. Pin Map
 
 | پایه | نام منطقی | عملکرد |
 |---|---|---|
@@ -170,7 +201,7 @@ ChangeOver_FreeRTOS/
 
 ---
 
-## 5. ترتیب ADC DMA
+## 6. ترتیب ADC DMA
 
 در اسکلت فعلی ترتیب Rankهای ADC به شکل زیر فرض شده است:
 
@@ -186,7 +217,7 @@ Index 4: PA7 — Current 2
 
 ---
 
-## 6. تقسیم‌بندی FreeRTOS
+## 7. تقسیم‌بندی FreeRTOS
 
 هیچ‌کدام از Taskها PWM را نرم‌افزاری تولید نمی‌کنند. PWM فقط توسط Timer سخت‌افزاری تولید می‌شود.
 
@@ -209,7 +240,7 @@ Index 4: PA7 — Current 2
 
 ---
 
-## 7. State Machine اولیه
+## 8. State Machine اولیه
 
 ```text
 BOOT
@@ -235,7 +266,7 @@ SELF_TEST
 
 ---
 
-## 8. قواعد MISRA C
+## 9. قواعد MISRA C
 
 هدف پروژه، کدنویسی Application مطابق `MISRA C:2012` است.
 
@@ -262,7 +293,7 @@ SELF_TEST
 
 ---
 
-## 9. رابط کاربر
+## 10. رابط کاربر
 
 ماژول `user_interface` مسئول LEDها و Buzzer است و از منطق اصلی کنترل جدا نگه داشته شده است:
 
@@ -282,7 +313,7 @@ Green LED  → فعال بودن منبع بدون Fault
 Buzzer     → الگوی غیرمسدودکننده برای Fault و Low Battery
 ```
 
-## 10. دیباگ و Diagnostics
+## 11. دیباگ و Diagnostics
 
 ماژول Diagnostics برای قابل‌مشاهده‌کردن رفتار Firmware و ارسال وضعیت به ESP8266 آماده شده است:
 
@@ -302,7 +333,38 @@ D,<code>,<severity>,<value>,<fault_mask>,<state>,<occurrence_count>\r\n
 
 `AI_WORKFLOW.md` نیز الزام می‌کند هر تغییر در کد، Diagnostic یا پروتکل ESP در اسناد و History ثبت شود.
 
-## 11. راه‌اندازی در CubeMX / CubeIDE
+## 12. ESP8266 Web Debugger
+
+نمونه‌ی Arduino برای `ESP8266-01` در پوشه‌ی جدا قرار دارد:
+
+```text
+ESP8266/ESP8266_WebDebugger.ino
+ESP8266/data/index.html
+ESP8266/data/debug.html
+ESP8266/data/charts.html
+ESP8266/data/test.html
+ESP8266/data/settings.html
+```
+
+این Web Server صفحات زیر را فراهم می‌کند:
+
+```text
+/          Dashboard
+/debug     Diagnostic Debugger
+/charts    نمودار Telemetry
+/test      تست مرحله‌ای برد
+/settings  وضعیت Feature Flagها
+```
+
+ذخیره‌سازی دائمی با LittleFS و دریافت `T,...` و `D,...` در اسکلت آماده شده است. Handshake، Sequence، ACK و CRC در Feature Flag جدا هستند و قبل از فعال‌سازی باید سمت STM32 و ESP با هم تست شوند.
+
+فایل راهنمای ESP:
+
+```text
+ESP8266/README_ESP8266.md
+```
+
+## 13. راه‌اندازی در CubeMX / CubeIDE
 
 1. پروژه‌ی `STM32F103C8T6` بساز.
 2. HSE کریستال ۸ MHz را فعال کن و Clock را مطابق برد تنظیم کن؛ مقدار پیشنهادی اولیه ۷۲ MHz است.
@@ -338,9 +400,11 @@ huart1
 
 راهنمای کامل آماده‌سازی پروژه برای ارسال در `docs/STM32_PROJECT_PREPARATION.md` قرار دارد.
 
+Budget و روش بررسی RAM/Flash/Heap در `docs/memory-budget.md` ثبت شده است. قبل از فعال‌کردن Featureهای جدید، مقدار واقعی از Map و Free Heap خوانده شود.
+
 ---
 
-## 12. پارامترهای موقت و موارد نیازمند تأیید
+## 14. پارامترهای موقت و موارد نیازمند تأیید
 
 مقادیر زیر از روی شماتیک به‌صورت اولیه درج شده‌اند و برای تولید قابل اتکا نیستند:
 
@@ -361,7 +425,7 @@ huart1
 
 ---
 
-## 13. نکات سخت‌افزاری مهم
+## 15. نکات سخت‌افزاری مهم
 
 - PB4 در Full JTAG با `NJTRST` تداخل دارد؛ Serial Wire لازم است.
 - خروجی LM358 با تغذیه‌ی ۵ ولت باید از نظر محدوده‌ی ۳٫۳ ولت ADC تأیید شود.
@@ -372,7 +436,7 @@ huart1
 
 ---
 
-## 14. نقشه‌ی راه توسعه
+## 16. نقشه‌ی راه توسعه
 
 ### فاز ۱ — اسکلت و Bring-up
 
@@ -407,14 +471,15 @@ huart1
 
 ---
 
-## 15. تاریخچه و نگهداری تصمیم‌ها
+## 17. تاریخچه و نگهداری تصمیم‌ها
 
-- تاریخچه‌ی Taskها در `PROJECT_HISTORY.md` ثبت می‌شود.
+- تاریخچه‌ی Taskها در `PROJECT_HISTORY.md` ثبت می‌شود و Entryهای جدید باید فارسی و انگلیسی باشند.
 - قراردادهای قابل استفاده برای AI در `AI_CONTEXT.md` ثبت می‌شوند.
+- روند اجباری Approval و اجرای Taskها در `AI_WORKFLOW.md` ثبت شده است.
 - استاندارد کامنت‌گذاری در `docs/commenting-standard.md` است.
 - چک‌لیست ممیزی نهایی در `docs/final-audit.md` است.
 
-## 16. وضعیت انطباق
+## 18. وضعیت انطباق
 
 این مخزن **هدف MISRA C دارد، اما هنوز Claim انطباق کامل نمی‌کند**. برای Claim واقعی باید موارد زیر انجام شود:
 

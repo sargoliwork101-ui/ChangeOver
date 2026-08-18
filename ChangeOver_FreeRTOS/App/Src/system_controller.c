@@ -12,6 +12,7 @@
 
 #include <stddef.h>
 #include "system_controller.h"
+#include "app_config.h"
 
 /**
  * @brief Initializes the module state and its dependencies.
@@ -46,8 +47,8 @@ void system_controller_init(system_controller_t * controller,
  * @brief Executes one deterministic update cycle.
  * @function system_controller_update
  * @param controller Input or state associated with the operation.
- * @safety Caller shall provide initialized objects and valid handles;
- *         the implementation checks nullable boundaries where applicable.
+ * @safety The power-stage approval gate is checked before any Changeover or
+ *         Charger action; the baseline configuration therefore remains safe.
  * @misra  The return value of external HAL/RTOS calls shall be checked or
  *         explicitly documented when the API has no meaningful result.
  */
@@ -65,7 +66,13 @@ void system_controller_update(system_controller_t * controller)
         measurement = measurement_manager_get_snapshot(controller->measurements);
         faults = fault_manager_get(controller->faults);
 
-        if (measurement.sequence == UINT32_C(0))
+        if (!APP_CONFIG.power_stage_enabled)
+        {
+            charger_controller_disable(controller->charger);
+            actuator_manager_safe_off(controller->changeover->actuators);
+            controller->state = SYSTEM_STATE_SELF_TEST;
+        }
+        else if (measurement.sequence == UINT32_C(0))
         {
             charger_controller_disable(controller->charger);
             controller->state = SYSTEM_STATE_SELF_TEST;

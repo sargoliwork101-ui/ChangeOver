@@ -1,0 +1,5 @@
+async function getJson(url){const r=await fetch(url);if(!r.ok)throw new Error(r.status);return r.json()}
+function set(id,value){const e=document.getElementById(id);if(e)e.textContent=value}
+function stateName(n){return ['BOOT','SELF_TEST','INPUT_SOURCE','BATTERY_SOURCE','CHARGING','LOW_BATTERY','OVER_CURRENT','FAULT'][n]||'UNKNOWN'}
+async function refresh(){try{const s=await getJson('/api/status');const h=s.health,st=s.stats;set('stmOnline',h.stmOnline?'ONLINE':'OFFLINE');set('lastFrame',st.lastStmFrameMs+' ms');set('state',stateName(st.lastState));set('faultMask','Fault mask: '+st.lastFaultMask);set('lastCode',st.lastDiagnosticCode||'NONE');set('diagCount', 'Count: '+st.diagnosticFrames);set('chargeSessions',st.chargeSessionCount);set('chargeSeconds',st.chargeSeconds+' seconds');set('heap',h.heap);set('validFrames',st.validFrames);set('invalidFrames',st.invalidFrames);set('webRequests',st.webRequests);set('latestEvent',JSON.stringify(s.link,null,2));}catch(e){set('latestEvent','API error: '+e)}}
+refresh();setInterval(refresh,2000);

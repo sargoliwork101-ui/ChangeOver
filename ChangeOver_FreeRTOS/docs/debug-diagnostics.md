@@ -160,3 +160,50 @@ ESP8266 باید خط `D,...` را دریافت و:
 - هر تغییر در Value یا Severity باید در `PROJECT_HISTORY.md` ثبت شود.
 - پیام دیباگ نباید با `printf` تولید شود.
 - Diagnostics نباید مسیر کنترل PWM را Block کند.
+
+## Handshake و عدم از دست‌رفتن داده
+
+در حالت Legacy، ESP فقط فریم‌های `T` و `D` را دریافت می‌کند. برای حالت پایدار، Feature Handshake باید فعال شود و فریم‌های زیر استفاده شوند:
+
+```text
+H,<version>,<session_id>,<sequence>,<crc16>
+A,<version>,<session_id>,<sequence>,<crc16>
+B,<version>,<session_id>,<sequence>,<crc16>
+S,<version>,<session_id>,<sequence>,<crc16>
+P,<version>,<session_id>,<sequence>,<crc16>
+R,<version>,<session_id>,<sequence>,<crc16>
+```
+
+معنی حروف:
+
+| نوع | معنی |
+|---|---|
+| H | Hello |
+| A | Acknowledge |
+| B | Heartbeat |
+| S | Sync Request |
+| P | Power Down Prepare |
+| R | Power Down Ready |
+
+وقتی STM32 قصد خاموش‌کردن ESP را دارد:
+
+```text
+STM32 → P
+ESP    → Flush LittleFS
+ESP    → R
+STM32 → قطع تغذیه ESP
+```
+
+تا زمانی که صف Pending سمت STM32 و Sync بعد از Boot به‌طور کامل تست نشده‌اند، این Feature نباید در محصول نهایی فعال شود.
+
+## Auto Test
+
+اسکلت تست ESP در مسیرهای زیر قرار دارد:
+
+```text
+ESP8266/ESP_AutoTest.h
+ESP8266/ESP_AutoTest.cpp
+ESP8266/data/test.html
+```
+
+تست‌های قدرت و ارسال Command به STM32 پیش‌فرض خاموش هستند. تست Read-Only باید اول تأیید شود.

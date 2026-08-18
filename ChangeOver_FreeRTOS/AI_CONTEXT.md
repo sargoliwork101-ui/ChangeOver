@@ -328,7 +328,8 @@ RTOS/Src/freertos_hooks.c
 آخرین ممیزی اسکلت در 2026-08-16 انجام شد:
 
 - فایل‌های `.c/.h` بدون فایل C++ باقی مانده‌اند.
-- همه‌ی 50 فایل کدنویسی File Header دارند.
+- همه‌ی 52 فایل کدنویسی STM32 File Header دارند.
+- فایل‌های C++/INO نمونه‌ی ESP نیز File Header و توضیح مرحله‌ای دارند.
 - APIها و توابع داخلی کامنت مستند دارند.
 - رابط کاربر مستقل با LED و Buzzer وجود دارد.
 - FreeRTOS نمونه برای Static Allocation تنظیم شده است.
@@ -400,3 +401,79 @@ D,<code>,<severity>,<value>,<fault_mask>,<state>,<occurrence_count>\r\n
 فایل‌های موقت، ZIPهای قدیمی و Placeholderهای غیرضروری نباید داخل تحویل نهایی بمانند. خروجی نهایی فقط شامل Repository و یک ZIP نهایی خارج از آن است.
 
 فایل PDF شماتیک در مسیر Upload کاربر نگه داشته شده و عمداً داخل Repository کپی نشده است؛ چون فایل مرجع سخت‌افزار است و برای Git Source Code ضروری نیست.
+
+---
+
+## 21. ESP8266 Web Debugger
+
+تصمیم‌های تأییدشده در 2026-08-16:
+
+- ESP8266-01 با Arduino IDE پروگرام می‌شود.
+- فایل اصلی ESP پسوند `.ino` دارد.
+- UART0 مشترک است و ماژول هنگام پروگرام جدا می‌شود.
+- LittleFS برای ذخیره‌ی Diagnostics، Telemetry و در فاز بعد Runtime Statistics انتخاب شده است.
+- کد ESP با Embedded Safe C++ نوشته می‌شود؛ MISRA C مخصوص Firmware C سمت STM32 است.
+- صفحات Web در فایل‌های جداگانه‌ی `ESP8266/data/` قرار می‌گیرند.
+- قابلیت‌ها با Feature Flag مرحله‌ای فعال می‌شوند.
+- Web Server، Dashboard، Debugger، Charts، Board Test و Settings در Scope نمونه هستند.
+- ارتباط ESP با STM32 باید به سمت Handshake، Sequence، ACK، CRC و Power-Down Prepare/Ready تکمیل شود.
+- STM32 باید قبل از خاموشی ESP، داده‌های Pending را تعیین تکلیف کند تا رویدادها از دست نروند.
+
+مسیر نمونه:
+
+```text
+ESP8266/ESP8266_WebDebugger.ino
+ESP8266/README_ESP8266.md
+ESP8266/data/
+```
+
+تا قبل از تکمیل و تست Handshake، `ESP_FEATURE_HANDSHAKE` و `ESP_FEATURE_STM_COMMANDS` خاموش می‌مانند.
+
+---
+
+## 22. قرارداد بررسی حافظه
+
+قبل از فعال‌کردن Feature جدید، AI باید اثر آن روی SRAM، Flash، Stack، Heap و LittleFS را بررسی و در History ثبت کند.
+
+مرجع Budget:
+
+```text
+docs/memory-budget.md
+```
+
+برای STM32، Map واقعی و Stack High Water Mark لازم است. برای ESP، `ESP.getFreeHeap()`، اندازه‌ی پاسخ JSON، Storeها و LittleFS باید بررسی شوند.
+
+---
+
+## 23. گزارش پنج‌مرحله‌ای ممیزی
+
+گزارش کامل آخرین ممیزی در این فایل نگهداری می‌شود:
+
+```text
+docs/five-pass-audit.md
+```
+
+تا زمانی که Build واقعی STM32/ESP، Map، Stack High Water Mark و تست سخت‌افزار انجام نشده، ادعای «کاملاً تأییدشده» ممنوع است.
+
+---
+
+## 24. وضعیت تأیید و Baseline
+
+هیچ‌کدام از برنامه‌ها و قابلیت‌های جدید هنوز Approved محصول نیستند. همه‌ی کدها Prototype/Scaffold هستند.
+
+Baseline امن:
+
+```text
+APP_CONFIG.power_stage_enabled = false
+APP_CONFIG.esp_link_enabled = false
+ESP_FEATURE_UART = 0
+ESP_FEATURE_PROTOCOL_PARSER = 0
+ESP_FEATURE_HANDSHAKE = 0
+ESP_FEATURE_STM_COMMANDS = 0
+ESP_FEATURE_DIAGNOSTICS_STORAGE = 0
+ESP_FEATURE_TELEMETRY_STORAGE = 0
+ESP_FEATURE_RUNTIME_STORAGE = 0
+ESP_FEATURE_AUTO_TEST = 0
+```
+
+کد تأیید فقط بعد از Strategy، تأیید کاربر، Build واقعی، تست سخت‌افزار، شواهد تست و ثبت History قابل اضافه‌شدن است.

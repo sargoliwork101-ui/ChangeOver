@@ -12,7 +12,7 @@
 | معماری ماژولار FreeRTOS | انجام شد | `docs/architecture.md`، پوشه‌های `RTOS` و `App` |
 | هر ماژول در فایل جدا | انجام شد | APIهای `module.h/module.c` |
 | تغییر از کلاس C++ به MISRA C | انجام شد | `README.md`، `AI_CONTEXT.md` |
-| کامنت برای تمام کدها | انجام شد | 52 فایل C/H، File Header و Function Documentation |
+| کامنت برای تمام کدها | انجام شد | STM32: 52 فایل C/H؛ ESP: File Header و 205 Function Documentation |
 | تاریخچه‌ی Taskها | انجام شد | `PROJECT_HISTORY.md` |
 | فایل حافظه‌ی AI | انجام شد | `AI_CONTEXT.md` |
 | قرارداد اجرایی AI و Approval | انجام شد | `AI_WORKFLOW.md` |
@@ -21,6 +21,13 @@
 | راهنمای ساخت پروژه‌ی STM32 | انجام شد | `docs/STM32_PROJECT_PREPARATION.md` |
 | Static Allocation در FreeRTOS | انجام شد | `CubeMX/FreeRTOSConfig.example.h`، `RTOS/Src/freertos_hooks.c` |
 | گزارش‌دهی خطا به ESP8266 | اسکلت انجام شد | `App/Src/esp8266_service.c`، قالب `D,...` |
+| پروژه‌ی Arduino ESP8266 | اسکلت نمونه انجام شد | `ESP8266/ESP8266_WebDebugger.ino` |
+| صفحات Dashboard/Debugger/Charts/Test | اسکلت انجام شد | `ESP8266/data/` |
+| LittleFS Diagnostic/Telemetry Store | اسکلت انجام شد | `ESP8266/ESP_DiagnosticsStore.*`، `ESP8266/ESP_TelemetryStore.*` |
+| AI Approval Workflow | انجام شد | `AI_WORKFLOW.md` |
+| RAM/Flash/Heap budget | انجام شد | `docs/memory-budget.md` |
+| Five-pass audit | انجام شد | `docs/five-pass-audit.md` |
+| Approval baseline | انجام شد | `docs/approval-status.md`، Power/ESP gates OFF |
 | Deviation Record | انجام شد | `docs/deviation-record.md` |
 | Git-ready structure | انجام شد | `.gitignore` اصلاح شده و فایل‌های CubeMX به‌اشتباه ignore نمی‌شوند |
 | ZIP نهایی | انجام شد | `ChangeOver_FreeRTOS_FINAL.zip` |
@@ -28,9 +35,12 @@
 ## شمارش فایل‌های کدنویسی
 
 ```text
-C/H files: 52
-Function documentation blocks: 198
-C++ files: 0
+STM32 C/H files: 52
+STM32 Function documentation blocks: 198
+STM32 C++ files: 0
+ESP8266 sample files: 39
+ESP8266 Function documentation blocks: 208
+ESP8266 Arduino sample: 1 .ino + 12 .cpp + 14 .h
 ```
 
 ## اعتبارسنجی انجام‌شده
@@ -78,6 +88,16 @@ D,16386,3,12345,2,7,1\r\n
 
 ```text
 PASS
+```
+
+### ESP8266 Sample Syntax Tests
+
+```text
+Arduino C++ syntax with default flags: PASS
+Arduino C++ syntax with all feature flags: PASS
+Protocol parser host test: PASS
+File headers: STM32 PASS / ESP8266 PASS
+ESP feature flags restored to staged defaults: PASS
 ```
 
 ## مواردی که هنوز فقط بعد از دریافت پروژه‌ی واقعی قابل بررسی هستند

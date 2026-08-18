@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ChangeOver Dashboard</title><link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+<header><h1>ChangeOver Dashboard</h1><nav><a class="active" href="/">Dashboard</a><a href="/debug">Debugger</a><a href="/charts">Charts</a><a href="/test">Board Test</a><a href="/settings">Settings</a></nav></header>
+<main>
+<section class="grid cards">
+<article class="card"><span class="label">STM32 Link</span><strong id="stmOnline">--</strong><small id="lastFrame">--</small></article>
+<article class="card"><span class="label">System State</span><strong id="state">--</strong><small id="faultMask">Fault mask: --</small></article>
+<article class="card"><span class="label">Last Diagnostic</span><strong id="lastCode">--</strong><small id="diagCount">Count: --</small></article>
+<article class="card"><span class="label">Charge Sessions</span><strong id="chargeSessions">--</strong><small id="chargeSeconds">-- seconds</small></article>
+</section>
+<section class="grid measurements">
+<article class="panel"><h2>Voltages</h2><div class="metric"><span>Input 24V</span><b id="vin">--</b><em>mV</em></div><div class="metric"><span>Battery 24V</span><b id="vbat">--</b><em>mV</em></div><div class="metric"><span>Battery 12V</span><b id="v12">--</b><em>mV</em></div></article>
+<article class="panel"><h2>Currents</h2><div class="metric"><span>Channel 1</span><b id="i1">--</b><em>mA</em></div><div class="metric"><span>Channel 2</span><b id="i2">--</b><em>mA</em></div><div class="metric"><span>ESP Free Heap</span><b id="heap">--</b><em>bytes</em></div></article>
+<article class="panel"><h2>Runtime</h2><div class="metric"><span>Valid Frames</span><b id="validFrames">--</b></div><div class="metric"><span>Invalid Frames</span><b id="invalidFrames">--</b></div><div class="metric"><span>Web Requests</span><b id="webRequests">--</b></div></article>
+</section>
+<section class="panel"><h2>Latest Event</h2><pre id="latestEvent">Waiting for data...</pre></section>
+</main>
+<script src="/js/dashboard.js"></script>
+</body></html>

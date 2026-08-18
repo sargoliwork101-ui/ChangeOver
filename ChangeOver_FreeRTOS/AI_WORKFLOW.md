@@ -32,18 +32,19 @@ docs/deviation-record.md
 بعد از پایان هر Task:
 
 1. `PROJECT_HISTORY.md` را با تاریخ محلی پروژه به‌روزرسانی کن.
-2. در History بنویس:
-   - درخواست کاربر
-   - استراتژی اجراشده
-   - فایل‌های تغییرکرده
-   - تصمیم‌های جدید
-   - تست‌ها و نتیجه‌ی آن‌ها
-   - کارهای باقی‌مانده
-3. اگر معماری، رفتار عمومی، Pin Map یا روش Build تغییر کرد، `README.md` را به‌روزرسانی کن.
-4. اگر تصمیم، قرارداد یا سؤال جدیدی ایجاد شد، `AI_CONTEXT.md` را به‌روزرسانی کن.
-5. اگر کد تشخیصی، Error Code، Severity، قالب UART یا رفتار ESP تغییر کرد، `docs/debug-diagnostics.md` را به‌روزرسانی کن.
-6. اگر Deviation جدیدی ایجاد شد، `docs/deviation-record.md` را به‌روزرسانی کن.
-7. در تحویل‌های مهم، `docs/final-audit.md` را دوباره اجرا و اصلاح کن.
+2. هر Entry جدید را به‌صورت دوزبانه بنویس: ابتدا فارسی و بلافاصله ترجمه‌ی انگلیسی همان Entry.
+3. در History بنویس:
+   - درخواست کاربر / User request
+   - استراتژی اجراشده / Executed strategy
+   - فایل‌های تغییرکرده / Changed files
+   - تصمیم‌های جدید / New decisions
+   - تست‌ها و نتیجه‌ی آن‌ها / Tests and results
+   - کارهای باقی‌مانده / Remaining work
+4. اگر معماری، رفتار عمومی، Pin Map یا روش Build تغییر کرد، `README.md` را به‌روزرسانی کن.
+5. اگر تصمیم، قرارداد یا سؤال جدیدی ایجاد شد، `AI_CONTEXT.md` را به‌روزرسانی کن.
+6. اگر کد تشخیصی، Error Code، Severity، قالب UART یا رفتار ESP تغییر کرد، `docs/debug-diagnostics.md` را به‌روزرسانی کن.
+7. اگر Deviation جدیدی ایجاد شد، `docs/deviation-record.md` را به‌روزرسانی کن.
+8. در تحویل‌های مهم، `docs/final-audit.md` را دوباره اجرا و اصلاح کن.
 
 ### ممنوع
 
@@ -137,6 +138,8 @@ docs/deviation-record.md
 - فرکانس PWM، Duty و Threshold را Placeholder امن نگه دار تا کاربر تأیید کند.
 - حفاظت نرم‌افزاری را جایگزین حفاظت سخت‌افزاری ندان.
 - هر تغییر Power Path را با ریسک و روش تست گزارش کن.
+- قبل از فعال‌کردن Feature، اثر RAM/Flash/Stack/Heap و LittleFS را اندازه‌گیری یا برآورد و در گزارش ثبت کن.
+- از پاسخ‌های JSON بدون سقف اندازه یا Bufferهای نامحدود روی ESP پرهیز کن.
 
 ---
 
