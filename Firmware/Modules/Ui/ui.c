@@ -1,17 +1,18 @@
 /**
  * @file ui.c
- * @brief هر پروفایل = چند قدم. هر قدم: کدام LED روشن باشد و چند ms بماند.
  *
- * چرا جدول، نه if و vTaskDelay؟
- *   1) delay داخل ماژول کل همان Task را قفل می‌کند؛ عوض کردن حالت دیر می‌شود.
- *   2) اگر 10 حالت داشته باشی، if تو در تو غیرقابل‌خواندن می‌شود.
- *   3) حالت جدید = چند خط به جدول اضافه کردن.
+ * همان مثال TaskLed، ولی delay این‌جا نیست.
  *
- * مثال رویداد 2 همان سه delay مثال تو است، فقط بدون delay:
- *   قدم0: سبز+قرمز  500 ms
- *   قدم1: هر دو خاموش 500 ms
- *   قدم2: فقط قرمز     500 ms  (سبز هنوز خاموش → جمع خاموشی سبز = 1000)
- *   بعد برمی‌گردد قدم0
+ * معادل آردوینو/مثال قبلی:
+ *   green(1);  vTaskDelay(500);
+ * این‌جا یعنی:
+ *   green(1);  و 500 ms صبر کن (صبر را Task با vTaskDelay(100)
+ *   چند بار پشت‌سرهم انجام می‌دهد تا جمعش 500 شود)
+ *
+ * چرا delay را این فایل نمی‌نویسیم؟
+ *   اگر این‌جا vTaskDelay(1000) بگذاری، تا 1 ثانیه نمی‌توانی
+ *   از رویداد 1 به 2 بروی. Task هر 100 ms بیدار می‌شود و
+ *   ما فقط می‌شماریم 100، 200، ... 500.
  */
 
 #include "ui.h"
@@ -22,135 +23,144 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef struct
+static ui_profile_t s_mode;
+static uint32_t s_step;     /* کدام خط از الگوی فعلی */
+static uint32_t s_waited_ms; /* چند ms از این خط گذشته */
+
+static void green(bool on)
 {
-    bool red;
-    bool yellow;
-    bool green;
-    bool buzzer;
-    uint32_t duration_ms;
-} ui_step_t;
-
-typedef struct
-{
-    const ui_step_t *steps;
-    uint32_t count;
-    bool repeat;           /* false یعنی بعد از آخری برود EVENT1 */
-    ui_profile_t next;     /* اگر repeat نباشد */
-} ui_profile_desc_t;
-
-/* --- جدول‌ها: این‌جا الگو را عوض کن، نه در Task --- */
-
-static const ui_step_t s_steps_off[] =
-{
-    { false, false, false, false, 100u }
-};
-
-static const ui_step_t s_steps_selftest[] =
-{
-    { true,  false, false, false, 500u }, /* قرمز */
-    { false, true,  false, false, 500u }, /* زرد */
-    { false, false, true,  false, 500u }, /* سبز */
-    { false, false, false, true,  150u }  /* بوق */
-};
-
-static const ui_step_t s_steps_event1[] =
-{
-    { false, false, true,  false, 500u }, /* سبز روشن */
-    { false, false, false, false, 500u }  /* سبز خاموش */
-};
-
-static const ui_step_t s_steps_event2[] =
-{
-    { true,  false, true,  false, 500u }, /* سبز روشن، قرمز روشن */
-    { false, false, false, false, 500u }, /* هر دو خاموش */
-    { true,  false, false, false, 500u }  /* سبز خاموش، قرمز روشن */
-};
-
-static const ui_profile_desc_t s_profiles[] =
-{
-    { s_steps_off,      1u, true,  UI_PROFILE_OFF },
-    { s_steps_selftest, 4u, false, UI_PROFILE_EVENT1 },
-    { s_steps_event1,   2u, true,  UI_PROFILE_EVENT1 },
-    { s_steps_event2,   3u, true,  UI_PROFILE_EVENT2 }
-};
-
-static ui_profile_t s_profile;
-static uint32_t s_step_index;
-static uint32_t s_elapsed_ms;
-
-static const ui_profile_desc_t *ui_desc(ui_profile_t profile)
-{
-    uint32_t index;
-
-    index = (uint32_t)profile;
-    if (index >= (sizeof(s_profiles) / sizeof(s_profiles[0])))
-    {
-        index = (uint32_t)UI_PROFILE_OFF;
-    }
-
-    return &s_profiles[index];
+    BspGpio_Write(PIN_LED_G_PORT, PIN_LED_G_PIN, on);
 }
 
-static void ui_apply_step(const ui_step_t *step)
+static void red(bool on)
 {
-    BspGpio_Write(PIN_LED_R_PORT, PIN_LED_R_PIN, step->red);
-    BspGpio_Write(PIN_LED_Y_PORT, PIN_LED_Y_PIN, step->yellow);
-    BspGpio_Write(PIN_LED_G_PORT, PIN_LED_G_PIN, step->green);
-    BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, step->buzzer);
+    BspGpio_Write(PIN_LED_R_PORT, PIN_LED_R_PIN, on);
+}
+
+static void yellow(bool on)
+{
+    BspGpio_Write(PIN_LED_Y_PORT, PIN_LED_Y_PIN, on);
+}
+
+static void buzzer(bool on)
+{
+    BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, on);
+}
+
+static bool wait_ms(uint32_t duration_ms)
+{
+    uint32_t tick_ms;
+
+    tick_ms = APP_CONFIG.ui_period_ms;
+    if (tick_ms == 0u)
+    {
+        tick_ms = 100u;
+    }
+
+    s_waited_ms = s_waited_ms + tick_ms;
+
+    if (s_waited_ms >= duration_ms)
+    {
+        s_waited_ms = 0u;
+        return true; /* مدت این خط تمام شد */
+    }
+
+    return false; /* هنوز صبر کن */
 }
 
 void Ui_Init(void)
 {
-    s_profile = UI_PROFILE_OFF;
-    s_step_index = 0u;
-    s_elapsed_ms = 0u;
-    ui_apply_step(&s_steps_off[0]);
+    s_mode = UI_PROFILE_OFF;
+    s_step = 0u;
+    s_waited_ms = 0u;
+    green(false);
+    red(false);
+    yellow(false);
+    buzzer(false);
 }
 
 void Ui_SetProfile(ui_profile_t profile)
 {
-    const ui_profile_desc_t *desc;
-
-    s_profile = profile;
-    s_step_index = 0u;
-    s_elapsed_ms = 0u;
-
-    desc = ui_desc(s_profile);
-    ui_apply_step(&desc->steps[0]);
+    s_mode = profile;
+    s_step = 0u;
+    s_waited_ms = 0u;
+    green(false);
+    red(false);
+    yellow(false);
+    buzzer(false);
 }
 
 void Ui_Run(void)
 {
-    const ui_profile_desc_t *desc;
-    const ui_step_t *step;
-
-    desc = ui_desc(s_profile);
-    step = &desc->steps[s_step_index];
-
-    s_elapsed_ms = s_elapsed_ms + APP_CONFIG.ui_period_ms;
-
-    if (s_elapsed_ms < step->duration_ms)
+    /*
+     * این همان if (mode == 1) / else مثال تو است.
+     * هر بار که Task صدا می‌زند، فقط یک تکه کوچک جلو می‌رویم.
+     */
+    if (s_mode == UI_PROFILE_EVENT1)
     {
-        return;
-    }
-
-    /* مدت این قدم تمام شد → قدم بعدی */
-    s_elapsed_ms = 0u;
-    s_step_index = s_step_index + 1u;
-
-    if (s_step_index >= desc->count)
-    {
-        if (desc->repeat == true)
+        /* رویداد 1:
+         *   green(1); red(0);  vTaskDelay(500);
+         *   green(0); red(0);  vTaskDelay(500);
+         */
+        if (s_step == 0u)
         {
-            s_step_index = 0u;
+            green(true);
+            red(false);
+            if (wait_ms(500u) == true)
+            {
+                s_step = 1u;
+            }
         }
         else
         {
-            Ui_SetProfile(desc->next);
-            return;
+            green(false);
+            red(false);
+            if (wait_ms(500u) == true)
+            {
+                s_step = 0u; /* برگرد اول الگو */
+            }
         }
     }
-
-    ui_apply_step(&desc->steps[s_step_index]);
+    else if (s_mode == UI_PROFILE_EVENT2)
+    {
+        /* رویداد 2:
+         *   green(1); red(1);  vTaskDelay(500);
+         *   green(0); red(0);  vTaskDelay(500);
+         *   green(0); red(1);  vTaskDelay(500);
+         */
+        if (s_step == 0u)
+        {
+            green(true);
+            red(true);
+            if (wait_ms(500u) == true)
+            {
+                s_step = 1u;
+            }
+        }
+        else if (s_step == 1u)
+        {
+            green(false);
+            red(false);
+            if (wait_ms(500u) == true)
+            {
+                s_step = 2u;
+            }
+        }
+        else
+        {
+            green(false);
+            red(true);
+            if (wait_ms(500u) == true)
+            {
+                s_step = 0u;
+            }
+        }
+    }
+    else
+    {
+        green(false);
+        red(false);
+        yellow(false);
+        buzzer(false);
+    }
 }

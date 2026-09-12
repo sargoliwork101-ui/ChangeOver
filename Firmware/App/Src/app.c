@@ -20,7 +20,8 @@ void App_Init(void)
 {
 #if MODULE_UI
     Ui_Init();
-    Ui_SetProfile(UI_PROFILE_SELFTEST);
+    /* فعلاً رویداد 1. برای رویداد 2 بگذار: Ui_SetProfile(UI_PROFILE_EVENT2); */
+    Ui_SetProfile(UI_PROFILE_EVENT1);
 #endif
 }
 

@@ -1,9 +1,11 @@
 /**
  * @file ui.h
- * @brief LED و بازر — فقط همین ماژول الگوی چشمک را می‌داند.
  *
- * Task فقط هر 100 ms صدای Ui_Run را می‌زند.
- * vTaskDelay این‌جا نیست؛ مال فایل FreeRTOS است.
+ * حالت 1 = رویداد 1
+ * حالت 2 = رویداد 2
+ *
+ * بقیه برنامه فقط Ui_SetProfile را صدا می‌زند.
+ * الگوی روشن/خاموش این‌جا است، نه در فایل FreeRTOS.
  */
 
 #ifndef UI_H
@@ -12,9 +14,8 @@
 typedef enum
 {
     UI_PROFILE_OFF = 0,
-    UI_PROFILE_SELFTEST,  /* بعد از روشن شدن: تست هر رنگ و یک بوق */
-    UI_PROFILE_EVENT1,    /* سبز 500 روشن / 500 خاموش */
-    UI_PROFILE_EVENT2     /* سبز 500 روشن / 1000 خاموش ، قرمز هر 500 چشمک */
+    UI_PROFILE_EVENT1, /* سبز 500 روشن، 500 خاموش */
+    UI_PROFILE_EVENT2  /* سبز 500/1000 ، قرمز 500/500 */
 } ui_profile_t;
 
 void Ui_Init(void);
