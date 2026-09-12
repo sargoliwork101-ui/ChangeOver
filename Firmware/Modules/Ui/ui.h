@@ -1,39 +1,24 @@
 /**
  * @file    ui.h
- * @brief   رابط کاربر همین مرحله: سه LED و یک بازر.
+ * @brief   LED و بازر. همه الگوی چشمک همین ماژول است.
  *
- * چرا این ماژول جدا است؟
- *   در آردوینو معمولاً digitalWrite را وسط loop می‌گذاری.
- *   این‌جا UI یک کتابخانه است تا فردا که Changeover اضافه شد،
- *   چشمک و بوق با منطق قدرت قاطی نشود.
- *
- * قانون MISRA مرتبط:
- *   - رابط عمومی فقط در هدر (Rule 8.4)
- *   - Include guard تا تعریف تکراری نشود (Rule 5.x / Header hygiene)
+ * بقیه کد فقط می‌گوید کدام پروفایل؛ نمی‌گوید PB0 را High کن.
+ * دلیل: فردا الگوی قرمز را عوض کردی، یک فایل را عوض می‌کنی نه ده جا.
  */
 
 #ifndef UI_H
 #define UI_H
 
-/**
- * @brief همه خروجی‌های UI را خاموش می‌کند و تست را از صفر شروع می‌کند.
- *
- * چه زمانی صدا زده شود: یک‌بار در App_Init، قبل از Start شدن scheduler.
- *
- * Safety:
- *   بازر را خاموش می‌گذارد تا بعد از Reset سوت ممتد نکشد.
- */
-void Ui_Init(void);
+typedef enum
+{
+    UI_PROFILE_OFF = 0,     /* همه خاموش */
+    UI_PROFILE_SELFTEST,    /* قرمز، زرد، سبز، بوق — تست سیم‌کشی */
+    UI_PROFILE_HEARTBEAT,   /* سبز چشمک: RTOS زنده است */
+    UI_PROFILE_FAULT        /* قرمز چشمک — برای بعد، الان صدا زده نمی‌شود */
+} ui_profile_t;
 
-/**
- * @brief یک قدم از الگوی LED/بازر. هیچ delayی داخلش نیست.
- *
- * چه زمانی صدا زده شود: دوره‌ای از TaskUi (الان هر 100 ms).
- *
- * چرا delay این‌جا ممنوع است؟
- *   delay کل CPU را می‌گیرد. در FreeRTOS صبر کردن کار Task است
- *   با vTaskDelay، نه کار کتابخانه UI.
- */
+void Ui_Init(void);
+void Ui_SetProfile(ui_profile_t profile);
 void Ui_Run(void);
 
 #endif /* UI_H */

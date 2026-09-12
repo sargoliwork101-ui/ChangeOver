@@ -1,2 +1,0 @@
-async function refresh(){try{const r=await fetch('/api/features');const d=await r.json();const box=document.getElementById('features');box.innerHTML='';Object.keys(d).forEach(k=>{const e=document.createElement('div');e.className='feature '+(d[k]?'on':'off');e.textContent=k+': '+(d[k]?'ENABLED':'DISABLED');box.appendChild(e)})}catch(e){document.getElementById('features').textContent='API error: '+e}}
-refresh();

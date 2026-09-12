@@ -20,6 +20,7 @@ void App_Init(void)
 {
 #if MODULE_UI
     Ui_Init();
+    Ui_SetProfile(UI_PROFILE_SELFTEST);
 #endif
 }
 

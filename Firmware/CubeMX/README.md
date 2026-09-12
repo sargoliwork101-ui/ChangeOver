@@ -44,7 +44,6 @@ Firmware/App/Inc
 Firmware/Config/Inc
 Firmware/Bsp/Inc
 Firmware/Rtos/Inc
-Firmware/Modules/Actuator
 Firmware/Modules/Measurement
 Firmware/Modules/Changeover
 Firmware/Modules/Charger
