@@ -1,11 +1,7 @@
 /**
- * فایل ۲ از ۲ — همان برنامه‌ای که با هم گفتیم.
+ * فایل FreeRTOS — الگوی LED این‌جا نیست.
  *
- * این‌جا FreeRTOS است چون vTaskDelay مال FreeRTOS است.
- * الگوی چشمک هم این‌جا است تا یک فایل را از بالا به پایین بخوانی.
- *
- * mode = 1  رویداد 1
- * mode = 2  رویداد 2
+ * فقط: یک خط الگو را بزن، هر چقدر گفت بخواب.
  */
 
 #include "rtos_tasks.h"
@@ -13,41 +9,15 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include <stdint.h>
-
-static uint32_t mode = 1u;
-
 void TaskUi(void *argument)
 {
+    uint32_t sleep_ms;
+
     (void)argument;
 
     for (;;)
     {
-        if (mode == 1u)
-        {
-            /* رویداد 1: سبز هر 500 ms چشمک. قرمز خاموش. */
-            green(true);
-            red(false);
-            vTaskDelay(pdMS_TO_TICKS(500u));
-
-            green(false);
-            red(false);
-            vTaskDelay(pdMS_TO_TICKS(500u));
-        }
-        else
-        {
-            /* رویداد 2: سبز 500 روشن / 1000 خاموش ، قرمز هر 500 چشمک. */
-            green(true);
-            red(true);
-            vTaskDelay(pdMS_TO_TICKS(500u));
-
-            green(false);
-            red(false);
-            vTaskDelay(pdMS_TO_TICKS(500u));
-
-            green(false);
-            red(true);
-            vTaskDelay(pdMS_TO_TICKS(500u));
-        }
+        sleep_ms = Ui_Run();
+        vTaskDelay(pdMS_TO_TICKS(sleep_ms));
     }
 }
