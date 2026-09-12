@@ -9,7 +9,7 @@ void TaskUi(void *argument)
 
     for (;;)
     {
-        Ui_Run();
-        vTaskDelay(pdMS_TO_TICKS(500u));
+        Ui_Scenario1();
+        /* برای سناریو 2 این خط را بگذار: Ui_Scenario2(); */
     }
 }

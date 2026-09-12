@@ -1,14 +1,12 @@
 #ifndef UI_H
 #define UI_H
 
-typedef enum
-{
-    UI_PROFILE_EVENT1 = 1,
-    UI_PROFILE_EVENT2 = 2
-} ui_profile_t;
-
 void Ui_Init(void);
-void Ui_SetProfile(ui_profile_t profile);
-void Ui_Run(void);
+
+/* کد سناریو 1 */
+void Ui_Scenario1(void);
+
+/* کد سناریو 2 */
+void Ui_Scenario2(void);
 
 #endif /* UI_H */

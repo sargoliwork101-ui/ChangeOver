@@ -1,12 +1,10 @@
 #include "ui.h"
 #include "bsp_gpio.h"
 #include "board_pins.h"
+#include "FreeRTOS.h"
+#include "task.h"
 
-#include <stdint.h>
 #include <stdbool.h>
-
-static uint32_t s_mode = 1u;
-static uint32_t s_step = 0u;
 
 static void green(bool on)
 {
@@ -20,54 +18,34 @@ static void red(bool on)
 
 void Ui_Init(void)
 {
-    s_mode = 1u;
-    s_step = 0u;
     green(false);
     red(false);
 }
 
-void Ui_SetProfile(ui_profile_t profile)
+/* ========== کد ۱ ========== */
+void Ui_Scenario1(void)
 {
-    s_mode = (uint32_t)profile;
-    s_step = 0u;
+    green(true);
+    red(false);
+    vTaskDelay(pdMS_TO_TICKS(500u));
+
+    green(false);
+    red(false);
+    vTaskDelay(pdMS_TO_TICKS(500u));
 }
 
-void Ui_Run(void)
+/* ========== کد ۲ ========== */
+void Ui_Scenario2(void)
 {
-    if (s_mode == 1u)
-    {
-        if (s_step == 0u)
-        {
-            green(true);
-            red(false);
-            s_step = 1u;
-        }
-        else
-        {
-            green(false);
-            red(false);
-            s_step = 0u;
-        }
-    }
-    else
-    {
-        if (s_step == 0u)
-        {
-            green(true);
-            red(true);
-            s_step = 1u;
-        }
-        else if (s_step == 1u)
-        {
-            green(false);
-            red(false);
-            s_step = 2u;
-        }
-        else
-        {
-            green(false);
-            red(true);
-            s_step = 0u;
-        }
-    }
+    green(true);
+    red(true);
+    vTaskDelay(pdMS_TO_TICKS(500u));
+
+    green(false);
+    red(false);
+    vTaskDelay(pdMS_TO_TICKS(500u));
+
+    green(false);
+    red(true);
+    vTaskDelay(pdMS_TO_TICKS(500u));
 }
