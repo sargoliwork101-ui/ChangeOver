@@ -1,39 +1,53 @@
 /**
- * @file task_ui.c
- * @brief این فایل فقط ساعت است، نه الگوی LED.
+ * فایل ۲ از ۲ — همان برنامه‌ای که با هم گفتیم.
  *
- * هر 100 ms زنگ می‌زند: Ui_Run() را صدا کن، بعد بخواب.
- * این‌که سبز باشد یا قرمز، داخل ui.c است.
+ * این‌جا FreeRTOS است چون vTaskDelay مال FreeRTOS است.
+ * الگوی چشمک هم این‌جا است تا یک فایل را از بالا به پایین بخوانی.
+ *
+ * mode = 1  رویداد 1
+ * mode = 2  رویداد 2
  */
 
 #include "rtos_tasks.h"
-#include "modules_enable.h"
-#include "app_config.h"
+#include "ui.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
-#if MODULE_UI
-#include "ui.h"
-#endif
+#include <stdint.h>
+
+static uint32_t mode = 1u;
 
 void TaskUi(void *argument)
 {
-    uint32_t delay_ms;
-
     (void)argument;
 
     for (;;)
     {
-#if MODULE_UI
-        Ui_Run();
-#endif
-
-        delay_ms = APP_CONFIG.ui_period_ms;
-        if (delay_ms == 0u)
+        if (mode == 1u)
         {
-            delay_ms = 1u;
-        }
+            /* رویداد 1: سبز هر 500 ms چشمک. قرمز خاموش. */
+            green(true);
+            red(false);
+            vTaskDelay(pdMS_TO_TICKS(500u));
 
-        vTaskDelay(pdMS_TO_TICKS(delay_ms));
+            green(false);
+            red(false);
+            vTaskDelay(pdMS_TO_TICKS(500u));
+        }
+        else
+        {
+            /* رویداد 2: سبز 500 روشن / 1000 خاموش ، قرمز هر 500 چشمک. */
+            green(true);
+            red(true);
+            vTaskDelay(pdMS_TO_TICKS(500u));
+
+            green(false);
+            red(false);
+            vTaskDelay(pdMS_TO_TICKS(500u));
+
+            green(false);
+            red(true);
+            vTaskDelay(pdMS_TO_TICKS(500u));
+        }
     }
 }

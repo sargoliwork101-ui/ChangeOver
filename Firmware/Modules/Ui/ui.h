@@ -1,25 +1,13 @@
-/**
- * @file ui.h
- *
- * حالت 1 = رویداد 1
- * حالت 2 = رویداد 2
- *
- * بقیه برنامه فقط Ui_SetProfile را صدا می‌زند.
- * الگوی روشن/خاموش این‌جا است، نه در فایل FreeRTOS.
- */
-
 #ifndef UI_H
 #define UI_H
 
-typedef enum
-{
-    UI_PROFILE_OFF = 0,
-    UI_PROFILE_EVENT1, /* سبز 500 روشن، 500 خاموش */
-    UI_PROFILE_EVENT2  /* سبز 500/1000 ، قرمز 500/500 */
-} ui_profile_t;
+#include <stdbool.h>
 
 void Ui_Init(void);
-void Ui_SetProfile(ui_profile_t profile);
-void Ui_Run(void);
+
+void green(bool on);
+void red(bool on);
+void yellow(bool on);
+void buzzer(bool on);
 
 #endif /* UI_H */
