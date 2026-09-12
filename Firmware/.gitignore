@@ -10,4 +10,7 @@
 /Debug/
 /Release/
 /.settings/
+/.metadata/
+CubeMX/Debug/
+CubeMX/Release/
 *.launch
