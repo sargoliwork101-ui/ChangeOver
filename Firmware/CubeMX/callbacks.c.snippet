@@ -1,0 +1,28 @@
+/* Paste the bodies into the CubeMX-generated callbacks (Core/Src/stm32f1xx_it.c
+ * or stm32f1xx_hal_msp.c / a user file). Do not put product logic here. */
+
+#include "bsp_adc.h"
+#include "bsp_exti.h"
+#include "board_pins.h"
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+    (void)hadc;
+    BspAdc_OnDmaComplete();
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if (GPIO_Pin == PIN_JITTER1_PIN)
+    {
+        BspExti_OnIrq(BSP_EXTI_JITTER1);
+    }
+    else if (GPIO_Pin == PIN_JITTER2_PIN)
+    {
+        BspExti_OnIrq(BSP_EXTI_JITTER2);
+    }
+    else if (GPIO_Pin == PIN_INT_24_IN_PIN)
+    {
+        BspExti_OnIrq(BSP_EXTI_INPUT_DETECT);
+    }
+}
