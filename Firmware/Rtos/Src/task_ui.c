@@ -8,6 +8,8 @@ void TaskUi(void *argument)
 {
     (void)argument;
 
+    Ui_BoardTest();
+
     if (UI_FLAG == 1u)
     {
         Ui_Scenario1();

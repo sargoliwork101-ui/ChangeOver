@@ -16,13 +16,51 @@ static void red(bool on)
     BspGpio_Write(PIN_LED_R_PORT, PIN_LED_R_PIN, on);
 }
 
-void Ui_Init(void)
+static void yellow(bool on)
+{
+    BspGpio_Write(PIN_LED_Y_PORT, PIN_LED_Y_PIN, on);
+}
+
+static void buzzer(bool on)
+{
+    BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, on);
+}
+
+static void all_off(void)
 {
     green(false);
     red(false);
+    yellow(false);
+    buzzer(false);
 }
 
-/* ----------------- سناریو 1 — کامل ----------------- */
+void Ui_Init(void)
+{
+    all_off();
+}
+
+/* یک‌بار اجرا می‌شود و برمی‌گردد. حلقه ندارد. */
+void Ui_BoardTest(void)
+{
+    all_off();
+
+    red(true);
+    vTaskDelay(pdMS_TO_TICKS(500u));
+    red(false);
+
+    yellow(true);
+    vTaskDelay(pdMS_TO_TICKS(500u));
+    yellow(false);
+
+    green(true);
+    vTaskDelay(pdMS_TO_TICKS(500u));
+    green(false);
+
+    buzzer(true);
+    vTaskDelay(pdMS_TO_TICKS(150u));
+    buzzer(false);
+}
+
 void Ui_Scenario1(void)
 {
     for (;;)
@@ -37,7 +75,6 @@ void Ui_Scenario1(void)
     }
 }
 
-/* ----------------- سناریو 2 — کامل ----------------- */
 void Ui_Scenario2(void)
 {
     for (;;)
