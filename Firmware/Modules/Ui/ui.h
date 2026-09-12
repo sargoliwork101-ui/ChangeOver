@@ -1,9 +1,9 @@
 /**
- * @file    ui.h
- * @brief   LED و بازر. همه الگوی چشمک همین ماژول است.
+ * @file ui.h
+ * @brief LED و بازر — فقط همین ماژول الگوی چشمک را می‌داند.
  *
- * بقیه کد فقط می‌گوید کدام پروفایل؛ نمی‌گوید PB0 را High کن.
- * دلیل: فردا الگوی قرمز را عوض کردی، یک فایل را عوض می‌کنی نه ده جا.
+ * Task فقط هر 100 ms صدای Ui_Run را می‌زند.
+ * vTaskDelay این‌جا نیست؛ مال فایل FreeRTOS است.
  */
 
 #ifndef UI_H
@@ -11,10 +11,10 @@
 
 typedef enum
 {
-    UI_PROFILE_OFF = 0,     /* همه خاموش */
-    UI_PROFILE_SELFTEST,    /* قرمز، زرد، سبز، بوق — تست سیم‌کشی */
-    UI_PROFILE_HEARTBEAT,   /* سبز چشمک: RTOS زنده است */
-    UI_PROFILE_FAULT        /* قرمز چشمک — برای بعد، الان صدا زده نمی‌شود */
+    UI_PROFILE_OFF = 0,
+    UI_PROFILE_SELFTEST,  /* بعد از روشن شدن: تست هر رنگ و یک بوق */
+    UI_PROFILE_EVENT1,    /* سبز 500 روشن / 500 خاموش */
+    UI_PROFILE_EVENT2     /* سبز 500 روشن / 1000 خاموش ، قرمز هر 500 چشمک */
 } ui_profile_t;
 
 void Ui_Init(void);
