@@ -1,4 +1,4 @@
-۲۰:۱۳:۲۶ **** Incremental Build of configuration Debug for project CubeMX ****
+22:00:41 **** Incremental Build of configuration Debug for project CubeMX ****
 make -j8 all 
 arm-none-eabi-size  CubeMX.elf 
    text	   data	    bss	    dec	    hex	filename
@@ -6,5 +6,5 @@ arm-none-eabi-size  CubeMX.elf
 Finished building: default.size.stdout
  
 
-۲۰:۱۳:۲۷ Build Finished. 0 errors, 0 warnings. (took 469ms)
+22:00:42 Build Finished. 0 errors, 0 warnings. (took 526ms)
 

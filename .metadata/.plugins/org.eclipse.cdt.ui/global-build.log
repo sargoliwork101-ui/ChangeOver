@@ -1,60 +1,35 @@
-۲۰:۰۵:۴۲ **** Incremental Build of configuration Debug for project CubeMX ****
+21:38:32 **** Incremental Build of configuration Debug for project CubeMX ****
+make -j8 all 
+arm-none-eabi-gcc "C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/task_ui.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -I../../App/Inc -I../../Config/Inc -I../../Bsp/Inc -I../../Rtos/Inc -I../../Modules/Ui -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Rtos/task_ui.d" -MT"Rtos/task_ui.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Rtos/task_ui.o"
+arm-none-eabi-gcc "../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -I../../App/Inc -I../../Config/Inc -I../../Bsp/Inc -I../../Rtos/Inc -I../../Modules/Ui -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.d" -MT"Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_cortex.o"
+arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -I../../App/Inc -I../../Config/Inc -I../../Bsp/Inc -I../../Rtos/Inc -I../../Modules/Ui -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Core/Src/main.o"
+arm-none-eabi-gcc "C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Config/Src/app_config.c" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../Core/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc -I../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../Middlewares/Third_Party/FreeRTOS/Source/include -I../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -I../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../Drivers/CMSIS/Include -I../../App/Inc -I../../Config/Inc -I../../Bsp/Inc -I../../Rtos/Inc -I../../Modules/Ui -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Config/app_config.d" -MT"Config/app_config.o" --specs=nano.specs -mfloat-abi=soft -mthumb -o "Config/app_config.o"
+arm-none-eabi-gcc -o "CubeMX.elf" @"objects.list"   -mcpu=cortex-m3 -T"C:\Users\hamed\OneDrive\Documents\GitHub\ChangeOver\Firmware\CubeMX\STM32F103C8TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="CubeMX.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Finished building target: CubeMX.elf
+ 
+arm-none-eabi-size  CubeMX.elf 
+arm-none-eabi-objdump -h -S CubeMX.elf  > "CubeMX.list"
+   text	   data	    bss	    dec	    hex	filename
+  19196	     16	   8776	  27988	   6d54	CubeMX.elf
+Finished building: default.size.stdout
+ 
+Finished building: CubeMX.list
+ 
+21:38:38 **** Incremental Build of configuration Debug for project CubeMX ****
 make -j8 all 
 arm-none-eabi-size  CubeMX.elf 
    text	   data	    bss	    dec	    hex	filename
   19196	     16	   8776	  27988	   6d54	CubeMX.elf
 Finished building: default.size.stdout
  
-۲۰:۰۹:۲۵ **** Incremental Build of configuration Debug for project CubeMX ****
+22:00:21 **** Incremental Build of configuration Debug for project CubeMX ****
 make -j8 all 
 arm-none-eabi-size  CubeMX.elf 
    text	   data	    bss	    dec	    hex	filename
   19196	     16	   8776	  27988	   6d54	CubeMX.elf
 Finished building: default.size.stdout
  
-۲۰:۰۹:۲۹ **** Incremental Build of configuration Debug for project CubeMX ****
-make -j8 all 
-arm-none-eabi-size  CubeMX.elf 
-   text	   data	    bss	    dec	    hex	filename
-  19196	     16	   8776	  27988	   6d54	CubeMX.elf
-Finished building: default.size.stdout
- 
-۲۰:۰۹:۵۴ **** Incremental Build of configuration Debug for project CubeMX ****
-make -j8 all 
-arm-none-eabi-size  CubeMX.elf 
-   text	   data	    bss	    dec	    hex	filename
-  19196	     16	   8776	  27988	   6d54	CubeMX.elf
-Finished building: default.size.stdout
- 
-۲۰:۱۰:۵۱ **** Incremental Build of configuration Debug for project CubeMX ****
-make -j8 all 
-arm-none-eabi-size  CubeMX.elf 
-   text	   data	    bss	    dec	    hex	filename
-  19196	     16	   8776	  27988	   6d54	CubeMX.elf
-Finished building: default.size.stdout
- 
-۲۰:۱۱:۱۰ **** Incremental Build of configuration Debug for project CubeMX ****
-make -j8 all 
-arm-none-eabi-size  CubeMX.elf 
-   text	   data	    bss	    dec	    hex	filename
-  19196	     16	   8776	  27988	   6d54	CubeMX.elf
-Finished building: default.size.stdout
- 
-۲۰:۱۱:۲۷ **** Incremental Build of configuration Debug for project CubeMX ****
-make -j8 all 
-arm-none-eabi-size  CubeMX.elf 
-   text	   data	    bss	    dec	    hex	filename
-  19196	     16	   8776	  27988	   6d54	CubeMX.elf
-Finished building: default.size.stdout
- 
-۲۰:۱۲:۰۹ **** Incremental Build of configuration Debug for project CubeMX ****
-make -j8 all 
-arm-none-eabi-size  CubeMX.elf 
-   text	   data	    bss	    dec	    hex	filename
-  19196	     16	   8776	  27988	   6d54	CubeMX.elf
-Finished building: default.size.stdout
- 
-۲۰:۱۳:۲۶ **** Incremental Build of configuration Debug for project CubeMX ****
+22:00:41 **** Incremental Build of configuration Debug for project CubeMX ****
 make -j8 all 
 arm-none-eabi-size  CubeMX.elf 
    text	   data	    bss	    dec	    hex	filename
