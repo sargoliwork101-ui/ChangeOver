@@ -1,3 +1,11 @@
+/**
+ * @file    jitter.c
+ * @brief   [EN] LM393 jitter trip flags (placeholder).
+ *          [FA] پرچم تریپ جیتر LM393 (اسکلت).
+ *
+ * @stage   Placeholder
+ */
+
 #include "jitter.h"
 #include "bsp_exti.h"
 

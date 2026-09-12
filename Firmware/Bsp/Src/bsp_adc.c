@@ -1,3 +1,11 @@
+/**
+ * @file    bsp_adc.c
+ * @brief   [EN] ADC+DMA wrapper (placeholder).
+ *          [FA] پوشش ADC+DMA (اسکلت).
+ *
+ * @stage   Placeholder
+ */
+
 #include "bsp_adc.h"
 
 static ADC_HandleTypeDef *s_hadc = 0;
@@ -17,7 +25,7 @@ bool BspAdc_Start(void)
         return false;
     }
 
-    /* Step 3: HAL_ADC_Start_DMA(...) */
+    /* Later: HAL_ADC_Start_DMA(...) */
     return false;
 }
 
@@ -44,6 +52,6 @@ bool BspAdc_IsFrameReady(void)
 
 void BspAdc_OnDmaComplete(void)
 {
-    /* Step 3: copy DMA buffer into s_raw, set s_ready */
+    /* Later: copy DMA buffer into s_raw, set s_ready */
     (void)s_raw;
 }

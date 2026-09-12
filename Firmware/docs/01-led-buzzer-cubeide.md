@@ -1,3 +1,9 @@
+/**
+ * @file    01-led-buzzer-cubeide.md
+ * @brief   [EN] CubeIDE bring-up for LED and buzzer only.
+ *          [FA] راه‌اندازی CubeIDE فقط برای LED و بازر.
+ */
+
 # قدم ۱ — از آردوینو تا CubeIDE: فقط LED و بازر
 
 این فایل راهنمای **همین مرحله** است. ADC، PWM، رله، شارژر و ESP را فعلاً دست نزن.
@@ -12,8 +18,7 @@
 
 1. بعد از Reset، به ترتیب قرمز → زرد → سبز هر کدام حدود نیم‌ثانیه روشن می‌شوند
 2. یک بوق کوتاه از بازر
-3. بعد از آن سبز آرام چشمک می‌زند (یعنی Task زنده است)
-4. قرمز و زرد خاموش می‌مانند و بازر ساکت است
+3. بعد با `UI_FLAG` در `task_ui.c`: `1` سبز ۵۰۰/۵۰۰؛ غیر از ۱ سبز ۵۰۰/۱۰۰۰ و قرمز هر ۵۰۰ چشمک
 
 ---
 
@@ -201,10 +206,16 @@ Firmware/Bsp/Src/bsp_gpio.c
 Firmware/Modules/Ui/ui.c
 Firmware/Rtos/Src/rtos_app.c
 Firmware/Rtos/Src/task_ui.c
+Firmware/Rtos/Src/task_measurement.c
+Firmware/Rtos/Src/task_protection.c
+Firmware/Rtos/Src/task_control.c
+Firmware/Rtos/Src/task_comm.c
 Firmware/Rtos/Src/freertos_hooks.c
 ```
 
-بقیه `.c`های Measurement و Charger را **اضافه نکن**. هنوز خاموش‌اند و فقط گیج‌ات می‌کنند.
+چهار تسک اسکلت را پاک نکن. با فلگ صفر ساخته نمی‌شوند و داخل حلقه خالی می‌خوابند.
+
+ماژول‌های Measurement / Charger را **به پروژه Add نکن** مگر وقتی آن مرحله شروع شود.
 
 ### ۵.۳ Include Path
 
@@ -302,7 +313,7 @@ Apply and Close.
 | بازر بی‌صدا، LED هست | پایه PA4 یا ترانزیستور Q7 | مولتی‌متر PA4 هنگام بوق |
 | LED معکوس | active-high را اشتباه بستی | شماتیک: HIGH = روشن |
 
-دیباگ: روی `Ui_Run` یک breakpoint بگذار. اگر هر ۱۰۰ ms می‌آید، RTOS زنده است و مشکل سخت‌افزار LED است.
+دیباگ: روی `Ui_BoardTest` یک breakpoint بگذار. اگر آمد، RTOS زنده است.
 
 ---
 
@@ -317,7 +328,7 @@ MISRA C یک مجموعه قانون برای C در خودرو و صنعت اس
 1. **`uint32_t` به‌جای `int`** — اندازه `int` روی هر کامپایلر فرق می‌کند. روی ARM باید دقیق بدانی.
 2. **`static` برای متغیر داخل فایل** — مثل private در کلاس. Task دیگر نباید مستقیم به شمارنده چشمک دست بزند.
 3. **بدون `malloc`** — آردوینو `new` دارد؛ روی F103 فقط ۲۰ کیلوبایت RAM است و تکه تکه شدن حافظه یعنی Reset بی‌دلیل.
-4. **بدون `delay()` داخل ماژول** — ماژول UI فقط یک تیک برمی‌دارد. زمان را Task با `vTaskDelay` می‌دهد.
+4. **`vTaskDelay` فقط از داخل Task** — می‌تواند در `ui.c` باشد چون `TaskUi` آن را صدا می‌زند. `HAL_Delay` در `main` ممنوع است.
 5. **عدد جادویی ممنوع** — `500` وسط کد نیست؛ در `app_config.c` اسم دارد. فردا می‌خواهی چشمک سریع‌تر شود، یک جا عوض می‌کنی.
 6. **Include Guard** در `.h` — اگر دو فایل `ui.h` را include کنند، تعریف تکراری نمی‌گیری.
 7. **بررسی اشاره‌گر NULL در BSP** — اگر اشتباهاً port خالی پاس شد، میکرو به آدرس صفر ننویسد و Hang عجیب نگیری.

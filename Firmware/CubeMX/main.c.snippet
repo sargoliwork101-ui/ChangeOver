@@ -1,7 +1,12 @@
-/* الگوی main.c برای مرحله LED و بازر.
- * ADC / TIM / USART را در این مرحله صدا نزن؛ در CubeMX هم لازم نیست Enable باشند.
+/**
+ * @file    main.c.snippet
+ * @brief   [EN] Pattern for CubeMX main.c at the LED/buzzer stage.
+ *          [FA] الگوی main.c مکعب در مرحله LED و بازر.
  *
- * فقط داخل بلوک‌های USER CODE چیزی بنویس تا Generate بعدی پاکشان نکند.
+ * @note    [EN] Write only inside USER CODE blocks so Generate does not erase it.
+ *          [FA] فقط داخل USER CODE بنویس تا Generate پاک نکند.
+ *          [EN] Do not call ADC / TIM / USART in this stage.
+ *          [FA] ADC / TIM / USART را در این مرحله صدا نزن.
  */
 
 #include "app.h"

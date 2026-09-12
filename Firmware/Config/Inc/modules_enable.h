@@ -1,11 +1,10 @@
 /**
  * @file    modules_enable.h
- * @brief   کلید روشن/خاموش هر کتابخانه.
+ * @brief   [EN] Compile-time on/off switches for each module.
+ *          [FA] کلید زمان‌کامپایل روشن/خاموش هر ماژول.
  *
- * 1 یعنی App آن را Init می‌کند و در صورت نیاز Task ساخته می‌شود.
- * 0 یعنی آن قابلیت در این بیلد وجود ندارد.
- *
- * الان فقط UI=1. بقیه را تا پایان همین مرحله دست نزن.
+ * @note    [EN] 1 = init + task may run. 0 = code stays, App/Rtos will not start it.
+ *          [FA] 1 یعنی Init و Task می‌توانند اجرا شوند. الان فقط UI=1.
  */
 
 #ifndef MODULES_ENABLE_H

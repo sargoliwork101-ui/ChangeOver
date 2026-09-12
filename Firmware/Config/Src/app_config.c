@@ -1,6 +1,7 @@
 /**
  * @file    app_config.c
- * @brief   مقادیر پیش‌فرض. برای تندتر کردن چشمک فقط همین فایل را عوض کن.
+ * @brief   [EN] Default configuration values.
+ *          [FA] مقادیر پیش‌فرض پیکربندی.
  */
 
 #include "app_config.h"
@@ -11,7 +12,6 @@ const app_config_t APP_CONFIG =
     .ui_selftest_led_ms     = 500u,
     .ui_boot_beep_ms        = 150u,
     .ui_heartbeat_half_ms   = 500u,
-
     .power_stage_enabled    = false,
     .esp_link_enabled       = false,
     .control_period_ms      = 10u,

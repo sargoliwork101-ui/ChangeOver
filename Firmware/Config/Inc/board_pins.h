@@ -1,24 +1,25 @@
+/**
+ * @file    board_pins.h
+ * @brief   [EN] Pin map from schematic MICROCONTROLLER.SchDoc.
+ *          [FA] نقشه پایه‌ها از شماتیک MICROCONTROLLER.SchDoc.
+ *
+ * @note    [EN] Polarity comments are SCHEMATIC, not MEASURED, until verified on hardware.
+ *          [FA] قطبیت از روی شماتیک است، نه اندازه‌گیری شده.
+ */
+
 #ifndef BOARD_PINS_H
 #define BOARD_PINS_H
 
-/**
- * Pin map from schematic MICROCONTROLLER.SchDoc
- * Do not change without updating the board.
- *
- * Polarity comments come from schematic review, not from a powered measurement.
- * After step 2, replace "SCHEMATIC" with "MEASURED".
- */
-
 #include "stm32f1xx_hal.h"
 
-/* ---- PWM (chargers) ---- */
+/* PWM chargers / شارژر PWM */
 #define PIN_PWM1_PORT           GPIOA
 #define PIN_PWM1_PIN            GPIO_PIN_0      /* PA0 TIM2_CH1 MCU_PWM1 */
 
 #define PIN_PWM2_PORT           GPIOA
 #define PIN_PWM2_PIN            GPIO_PIN_6      /* PA6 TIM3_CH1 MCU_PWM2 */
 
-/* ---- ADC ---- */
+/* ADC */
 #define PIN_ADC_CURRENT1_PORT   GPIOA
 #define PIN_ADC_CURRENT1_PIN    GPIO_PIN_1      /* PA1 ADC1_IN1 */
 
@@ -34,22 +35,21 @@
 #define PIN_ADC_CURRENT2_PORT   GPIOA
 #define PIN_ADC_CURRENT2_PIN    GPIO_PIN_7      /* PA7 ADC1_IN7 */
 
-/* ---- Digital outputs ---- */
-/* مرحله ۱: فقط همین چهار پایه در CubeMX به‌صورت GPIO_Output تعریف شوند. */
+/* Digital outputs / خروجی دیجیتال */
 #define PIN_BUZZER_PORT         GPIOA
-#define PIN_BUZZER_PIN          GPIO_PIN_4      /* PA4  HIGH = بازر روشن از طریق Q7 */
+#define PIN_BUZZER_PIN          GPIO_PIN_4      /* PA4  HIGH = buzzer on via Q7 / بازر */
 
 #define PIN_ESP_CHPD_PORT       GPIOA
 #define PIN_ESP_CHPD_PIN        GPIO_PIN_8      /* PA8  SCHEMATIC: high = ESP on */
 
 #define PIN_LED_R_PORT          GPIOB
-#define PIN_LED_R_PIN           GPIO_PIN_0      /* PB0  HIGH = LED قرمز روشن از طریق Q4 */
+#define PIN_LED_R_PIN           GPIO_PIN_0      /* PB0  HIGH = red via Q4 / قرمز */
 
 #define PIN_LED_Y_PORT          GPIOB
-#define PIN_LED_Y_PIN           GPIO_PIN_1      /* PB1  HIGH = LED زرد روشن از طریق Q5 */
+#define PIN_LED_Y_PIN           GPIO_PIN_1      /* PB1  HIGH = yellow via Q5 / زرد */
 
 #define PIN_LED_G_PORT          GPIOB
-#define PIN_LED_G_PIN           GPIO_PIN_10     /* PB10 HIGH = LED سبز روشن از طریق Q6 */
+#define PIN_LED_G_PIN           GPIO_PIN_10     /* PB10 HIGH = green via Q6 / سبز */
 
 #define PIN_BAT_SWITCH_PORT     GPIOB
 #define PIN_BAT_SWITCH_PIN      GPIO_PIN_5      /* PB5  MCU_CONTROL_PS
@@ -62,9 +62,9 @@
 #define PIN_PROTECT_BATT_PORT   GPIOB
 #define PIN_PROTECT_BATT_PIN    GPIO_PIN_11     /* PB11 SCHEMATIC: HIGH = force battery path OFF (Q17) */
 
-/* ---- Digital inputs ---- */
+/* Digital inputs / ورودی دیجیتال */
 #define PIN_JITTER1_PORT        GPIOB
-#define PIN_JITTER1_PIN         GPIO_PIN_2      /* PB2  from LM393, 5V-tolerant pin */
+#define PIN_JITTER1_PIN         GPIO_PIN_2      /* PB2  from LM393, 5V-tolerant */
 
 #define PIN_JITTER2_PORT        GPIOB
 #define PIN_JITTER2_PIN         GPIO_PIN_6      /* PB6 */

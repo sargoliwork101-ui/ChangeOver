@@ -1,12 +1,10 @@
 /**
  * @file    freertos_hooks.c
- * @brief   حافظه Idle Task وقتی Static Allocation روشن است.
+ * @brief   [EN] Static allocation hooks required by FreeRTOS (Idle/Timer) and stack overflow trap.
+ *          [FA] هوک تخصیص استاتیک Idle/Timer و تله سرریز استک.
  *
- * FreeRTOS علاوه بر Task تو، یک Task داخلی Idle دارد.
- * اگر malloc ممنوع باشد، باید بافر Idle را هم خودت بدهی.
- *
- * اگر CubeMX همین توابع را ساخت و لینکر گفت duplicate،
- * این فایل را از Build خارج کن. توضیح در docs/01-led-buzzer-cubeide.md
+ * @note    [EN] If CubeMX already generated these symbols, exclude this file from the build.
+ *          [FA] اگر CubeMX همین توابع را ساخت، این فایل را از Build خارج کن.
  */
 
 #include "FreeRTOS.h"
@@ -15,6 +13,10 @@
 static StaticTask_t s_idle_tcb;
 static StackType_t s_idle_stack[configMINIMAL_STACK_SIZE];
 
+/**
+ * @brief  [EN] Provide RAM for the Idle task (static allocation).
+ *         [FA] RAM تسک Idle را می‌دهد (تخصیص استاتیک).
+ */
 void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer,
                                    StackType_t **ppxIdleTaskStackBuffer,
                                    uint32_t *pulIdleTaskStackSize)
@@ -28,6 +30,10 @@ void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer,
 static StaticTask_t s_timer_tcb;
 static StackType_t s_timer_stack[configTIMER_TASK_STACK_DEPTH];
 
+/**
+ * @brief  [EN] Provide RAM for the Timer service task.
+ *         [FA] RAM تسک سرویس تایمر را می‌دهد.
+ */
 void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
                                     StackType_t **ppxTimerTaskStackBuffer,
                                     uint32_t *pulTimerTaskStackSize)
@@ -38,12 +44,15 @@ void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
 }
 #endif
 
+/**
+ * @brief  [EN] Called if a task overflows its stack. Halts here.
+ *         [FA] اگر استک تسک پر شود صدا می‌شود. همین‌جا می‌ایستد.
+ */
 void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
     (void)xTask;
     (void)pcTaskName;
 
-    /* استک Task پر شده. در LED اگر این‌جا آمدی TASK_STACK_UI را زیاد کن. */
     taskDISABLE_INTERRUPTS();
     for (;;)
     {

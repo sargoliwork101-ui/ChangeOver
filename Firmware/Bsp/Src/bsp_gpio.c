@@ -1,6 +1,7 @@
 /**
  * @file    bsp_gpio.c
- * @brief   پوشش نازک روی HAL. منطق محصول این‌جا نوشته نشود.
+ * @brief   [EN] Thin HAL_GPIO_WritePin / ReadPin wrapper.
+ *          [FA] پوشش نازک نوشتن و خواندن GPIO با HAL.
  */
 
 #include "bsp_gpio.h"
@@ -10,7 +11,6 @@ void BspGpio_Write(GPIO_TypeDef *port, uint16_t pin, bool high)
 {
     GPIO_PinState level;
 
-    /* MISRA: اشاره‌گر را قبل از استفاده چک کن تا نوشتن به آدرس 0 پیش نیاید. */
     if (port == NULL)
     {
         return;

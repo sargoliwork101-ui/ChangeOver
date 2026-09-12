@@ -1,3 +1,11 @@
+/**
+ * @file    esp_link.c
+ * @brief   [EN] ESP power and UART telemetry (placeholder).
+ *          [FA] تغذیه ESP و تله‌متری UART (اسکلت).
+ *
+ * @stage   Placeholder
+ */
+
 #include "esp_link.h"
 #include "app_config.h"
 #include "bsp_gpio.h"
@@ -20,5 +28,4 @@ void EspLink_Run(const measurement_snapshot_t *snap, app_state_t state, fault_ma
     (void)state;
     (void)faults;
     (void)APP_CONFIG;
-    /* Step 9: send telemetry only. No STM commands until protocol is defined. */
 }

@@ -1,3 +1,9 @@
+/**
+ * @file    README.md
+ * @brief   [EN] Full-board CubeMX notes. For this stage use docs/01-led-buzzer-cubeide.md.
+ *          [FA] یادداشت کامل CubeMX. برای این مرحله docs/01-led-buzzer-cubeide.md را بخوان.
+ */
+
 # CubeMX / CubeIDE
 
 **مرحله فعلی LED/بازر:** به‌جای این فایل، اول این را بخوان:

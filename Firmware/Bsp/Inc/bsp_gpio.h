@@ -1,12 +1,10 @@
 /**
  * @file    bsp_gpio.h
- * @brief   تنها لایه‌ای که حق دارد HAL_GPIO را ببیند.
+ * @brief   [EN] GPIO wrapper around STM32 HAL.
+ *          [FA] پوشش GPIO روی HAL استم.
  *
- * چرا BSP جدا از UI؟
- *   UI می‌گوید «سبز روشن». نمی‌داند STM32 چیست.
- *   اگر فردا میکرو عوض شد، فقط همین فایل عوض می‌شود.
- *
- * معادل آردوینو: digitalWrite / digitalRead.
+ * @note    [EN] Product modules must not call HAL_GPIO_* directly.
+ *          [FA] ماژول محصول نباید مستقیم HAL_GPIO صدا بزند.
  */
 
 #ifndef BSP_GPIO_H
@@ -17,16 +15,22 @@
 #include "board_pins.h"
 
 /**
- * @brief یک پایه خروجی را High یا Low می‌کند.
- * @param port  پورت GPIOA/GPIOB/... ؛ اگر NULL باشد هیچ کاری نمی‌کند.
- * @param pin   ماسک پایه مثل GPIO_PIN_0
- * @param high  true = High (3.3 V) ، false = Low (0 V)
+ * @brief  [EN] Write a pin high or low.
+ *         [FA] پایه را High یا Low می‌کند.
+ * @param  port  [EN] GPIOA/GPIOB/... ; ignored if NULL
+ *               [FA] پورت؛ اگر NULL باشد کاری نمی‌کند
+ * @param  pin   [EN] Pin mask e.g. GPIO_PIN_0
+ *               [FA] ماسک پایه
+ * @param  high  [EN] true = 3.3 V, false = 0 V
+ *               [FA] true یعنی ۳٫۳ ولت
  */
 void BspGpio_Write(GPIO_TypeDef *port, uint16_t pin, bool high);
 
 /**
- * @brief خواندن سطح منطقی یک پایه.
- * @return true اگر پایه High باشد. اگر port خالی باشد false.
+ * @brief  [EN] Read pin logic level.
+ *         [FA] سطح منطقی پایه را می‌خواند.
+ * @return [EN] true if high; false if low or port is NULL
+ *         [FA] اگر High باشد true
  */
 bool BspGpio_Read(GPIO_TypeDef *port, uint16_t pin);
 

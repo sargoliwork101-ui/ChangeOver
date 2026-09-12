@@ -1,3 +1,11 @@
+/**
+ * @file    app_types.h
+ * @brief   [EN] Shared types: system state, ADC snapshot, fault bits.
+ *          [FA] نوع‌های مشترک: حالت سیستم، نمونه ADC، بیت خطا.
+ *
+ * @stage   Snapshot/fault types are for later stages; UI does not use them yet.
+ */
+
 #ifndef APP_TYPES_H
 #define APP_TYPES_H
 

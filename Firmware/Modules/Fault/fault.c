@@ -1,3 +1,11 @@
+/**
+ * @file    fault.c
+ * @brief   [EN] Latched fault bits (placeholder).
+ *          [FA] بیت‌های خطای قفل‌شده (اسکلت).
+ *
+ * @stage   Placeholder
+ */
+
 #include "fault.h"
 
 static fault_mask_t s_mask = FAULT_NONE;

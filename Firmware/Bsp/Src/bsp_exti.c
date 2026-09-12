@@ -1,3 +1,11 @@
+/**
+ * @file    bsp_exti.c
+ * @brief   [EN] External interrupt flags (placeholder).
+ *          [FA] پرچم وقفه خارجی (اسکلت).
+ *
+ * @stage   Placeholder
+ */
+
 #include "bsp_exti.h"
 
 static volatile uint8_t s_flags[3];

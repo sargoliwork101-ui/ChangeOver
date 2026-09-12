@@ -1,3 +1,11 @@
+/**
+ * @file    changeover.c
+ * @brief   [EN] Input vs battery path state machine (placeholder).
+ *          [FA] ماشین حالت مسیر ورودی یا باتری (اسکلت).
+ *
+ * @stage   Placeholder
+ */
+
 #include "changeover.h"
 
 static app_state_t s_state = APP_STATE_BOOT;

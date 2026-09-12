@@ -1,3 +1,11 @@
+/**
+ * @file    measurement.c
+ * @brief   [EN] ADC to engineering units (placeholder).
+ *          [FA] تبدیل ADC به واحد مهندسی (اسکلت).
+ *
+ * @stage   Placeholder
+ */
+
 #include "measurement.h"
 #include "bsp_adc.h"
 
@@ -25,7 +33,6 @@ void Measurement_Run(void)
     }
 
     (void)raw;
-    /* Step 3: convert raw[] with calibrated scale in app_config.h */
 }
 
 bool Measurement_GetSnapshot(measurement_snapshot_t *out)

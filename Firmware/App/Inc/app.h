@@ -1,27 +1,24 @@
 /**
  * @file    app.h
- * @brief   تنها پل بین main.c تولیدشده CubeMX و کد خودمان.
+ * @brief   [EN] Bridge from CubeMX main.c into application code.
+ *          [FA] پل بین main.c تولیدشده CubeMX و کد برنامه.
  *
- * main.c را CubeMX هر بار ممکن است از نو بسازد.
- * پس در main فقط App_Start() صدا می‌شود؛ بقیه کار اینجاست.
+ * @note    [EN] CubeMX may regenerate main.c. Keep product logic out of main.
+ *          [FA] CubeMX ممکن است main.c را از نو بسازد. منطق محصول آن‌جا نرود.
  */
 
 #ifndef APP_H
 #define APP_H
 
 /**
- * @brief ماژول‌ها را Init می‌کند و FreeRTOS را راه می‌اندازد.
- *
- * برنمی‌گردد. معادل این است که در آردوینو loop برای همیشه در FreeRTOS باشد.
- * از main.c بعد از MX_GPIO_Init صدا بزن.
+ * @brief  [EN] Init modules then start FreeRTOS. Does not return.
+ *         [FA] ماژول‌ها را Init می‌کند و FreeRTOS را شروع می‌کند. برنمی‌گردد.
  */
 void App_Start(void);
 
 /**
- * @brief فقط Init، بدون scheduler.
- *
- * اگر روزی خواستی scheduler را خود CubeMX با osKernelStart راه بیندازد،
- * این را از Default Task صدا می‌زنی. در این مرحله از App_Start استفاده کن.
+ * @brief  [EN] Module init only, without starting the scheduler.
+ *         [FA] فقط Init ماژول‌ها، بدون روشن کردن scheduler.
  */
 void App_Init(void);
 

@@ -1,3 +1,11 @@
+/**
+ * @file    charger.c
+ * @brief   [EN] Charger PWM policy (placeholder).
+ *          [FA] سیاست PWM شارژر (اسکلت).
+ *
+ * @stage   Placeholder
+ */
+
 #include "charger.h"
 #include "app_config.h"
 
