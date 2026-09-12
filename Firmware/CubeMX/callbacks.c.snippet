@@ -1,0 +1,34 @@
+/**
+ * @file    callbacks.c.snippet
+ * @brief   [EN] HAL callbacks for later ADC/EXTI stages. Not used for LED/buzzer.
+ *          [FA] کال‌بک HAL برای مرحله ADC/EXTI. در LED/بازر استفاده نمی‌شود.
+ *
+ * @note    [EN] Paste into CubeMX-generated files. No product policy here.
+ *          [FA] در فایل تولیدشده مکعب بچسبان. منطق محصول این‌جا نرود.
+ */
+
+#include "bsp_adc.h"
+#include "bsp_exti.h"
+#include "board_pins.h"
+
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
+{
+    (void)hadc;
+    BspAdc_OnDmaComplete();
+}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    if (GPIO_Pin == PIN_JITTER1_PIN)
+    {
+        BspExti_OnIrq(BSP_EXTI_JITTER1);
+    }
+    else if (GPIO_Pin == PIN_JITTER2_PIN)
+    {
+        BspExti_OnIrq(BSP_EXTI_JITTER2);
+    }
+    else if (GPIO_Pin == PIN_INT_24_IN_PIN)
+    {
+        BspExti_OnIrq(BSP_EXTI_INPUT_DETECT);
+    }
+}
