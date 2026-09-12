@@ -96,47 +96,41 @@ void Ui_BoardTest(void)
 }
 
 /**
- * @brief  [EN] Green on/off forever. Red stays off.
- *         [FA] سبز روشن/خاموش برای همیشه. قرمز خاموش می‌ماند.
+ * @brief  [EN] Green 500 ms on / 500 ms off forever. Red stays off.
+ *         [FA] سبز ۵۰۰ روشن / ۵۰۰ خاموش برای همیشه. قرمز خاموش می‌ماند.
  */
 void Ui_Scenario1(void)
 {
-    for (;;)
+    for (;;)  /* repeat forever; this task never returns */
     {
-        green(true);
-        red(false);
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_scen1_on_ms));
+        green(true);   /* PB10 HIGH: green LED on */
+        red(false);    /* PB0 LOW: red LED off */
+        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_scen1_on_ms));  /* sleep 500 ms; other tasks can run */
 
-        green(false);
-        red(false);
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_scen1_off_ms));
+        green(false);  /* PB10 LOW: green LED off */
+        red(false);    /* keep red off */
+        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_scen1_off_ms)); /* sleep 500 ms, then loop */
     }
 }
 
 /**
- * @brief  [EN] Green on then long off; red toggles every red interval.
- *         [FA] سبز روشن بعد خاموشی بلند؛ قرمز هر بازه چشمک.
- *
- * @note   [EN] Green off time is two red intervals (500+500 = 1000 ms).
- *         [FA] خاموشی سبز برابر دو بازه قرمز است (۵۰۰+۵۰۰ = ۱۰۰۰ ms).
+ * @brief  [EN] Green 500 on / 1000 off, red blinks every 500 ms.
+ *         [FA] سبز ۵۰۰ روشن / ۱۰۰۰ خاموش، قرمز هر ۵۰۰ چشمک.
  */
 void Ui_Scenario2(void)
 {
-    const uint32_t red_ms = APP_CONFIG.ui_scen2_red_ms;
-    const uint32_t green_on_ms = APP_CONFIG.ui_scen2_green_on_ms;
-
-    for (;;)
+    for (;;)  /* repeat forever; this task never returns */
     {
-        green(true);
-        red(true);
-        vTaskDelay(pdMS_TO_TICKS(green_on_ms));
+        green(true);   /* green on */
+        red(true);     /* red on */
+        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_scen2_green_on_ms)); /* 500 ms */
 
-        green(false);
-        red(false);
-        vTaskDelay(pdMS_TO_TICKS(red_ms));
+        green(false);  /* green off (stays off for the next two waits = 1000 ms) */
+        red(false);    /* red off */
+        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_scen2_red_ms)); /* 500 ms */
 
-        green(false);
-        red(true);
-        vTaskDelay(pdMS_TO_TICKS(red_ms));
+        green(false);  /* green still off */
+        red(true);     /* red on again = 500 ms blink */
+        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_scen2_red_ms)); /* 500 ms, then loop */
     }
 }
