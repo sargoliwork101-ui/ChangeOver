@@ -1,3 +1,8 @@
+/**
+ * @file    rtos_tasks.h
+ * @brief   نمونه تابع هر Task. امضا مال FreeRTOS است: void(void *).
+ */
+
 #ifndef RTOS_TASKS_H
 #define RTOS_TASKS_H
 

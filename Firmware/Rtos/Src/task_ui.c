@@ -1,33 +1,42 @@
+/**
+ * @file    task_ui.c
+ * @brief   Task چشمک. معادل loop() آردوینو، ولی فقط برای UI.
+ *
+ * FreeRTOS این تابع را برای همیشه صدا می‌زند.
+ * الگوی for(;;) به‌جای while(1): در MISRA حلقه بی‌نهایت باید واضح باشد.
+ * خروج از Task در این طراحی وجود ندارد.
+ */
+
 #include "rtos_tasks.h"
 #include "modules_enable.h"
 #include "app_config.h"
-#include "app_types.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
 #if MODULE_UI
 #include "ui.h"
 #endif
-#if MODULE_FAULT
-#include "fault.h"
-#endif
 
 void TaskUi(void *argument)
 {
+    uint32_t delay_ms;
+
+    /* پارامتر FreeRTOS را استفاده نمی‌کنیم؛ صریحاً دور می‌ریزیم. */
     (void)argument;
 
     for (;;)
     {
 #if MODULE_UI
+        Ui_Run();
+#endif
+
+        delay_ms = APP_CONFIG.ui_period_ms;
+        if (delay_ms == 0u)
         {
-            fault_mask_t faults = FAULT_NONE;
-#if MODULE_FAULT
-            faults = Fault_Get();
-#endif
-            Ui_Show(APP_STATE_IDLE, faults);
-            Ui_Run();
+            delay_ms = 1u;
         }
-#endif
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_period_ms));
+
+        /* این‌جا صبر کن. CPU را به Idle Task بده. HAL_Delay نگذار. */
+        vTaskDelay(pdMS_TO_TICKS(delay_ms));
     }
 }

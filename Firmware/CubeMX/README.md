@@ -1,5 +1,11 @@
 # CubeMX / CubeIDE
 
+**مرحله فعلی LED/بازر:** به‌جای این فایل، اول این را بخوان:
+
+`Firmware/docs/01-led-buzzer-cubeide.md`
+
+این صفحه تنظیمات کامل برد برای بعد است. الان ADC و PWM را روشن نکن.
+
 پروژه‌ی Cube را جدا بساز. این پوشه‌ی `Firmware/` را به‌عنوان کد Application به آن Add کن.
 
 ## Peripheral

@@ -3,14 +3,18 @@
 
 #include "FreeRTOS.h"
 
-/* Priorities: higher number = higher priority on FreeRTOS */
+/*
+ * در FreeRTOS عدد بزرگ‌تر = اولویت بالاتر.
+ * UI عمداً پایین است: چشمک نباید جلوی حفاظت را بگیرد.
+ * الان فقط UI وجود دارد، پس عملاً تنها Task کاربر است.
+ */
 #define TASK_PRIO_PROTECTION    (tskIDLE_PRIORITY + 4u)
 #define TASK_PRIO_MEASUREMENT   (tskIDLE_PRIORITY + 3u)
 #define TASK_PRIO_CONTROL       (tskIDLE_PRIORITY + 3u)
 #define TASK_PRIO_COMM          (tskIDLE_PRIORITY + 2u)
 #define TASK_PRIO_UI            (tskIDLE_PRIORITY + 1u)
 
-/* Stack in words. Raise after checking watermark. */
+/* واحد استک: word (روی Cortex-M3 هر word چهار بایت). 128 word = 512 بایت. */
 #define TASK_STACK_UI           128u
 #define TASK_STACK_MEASUREMENT  192u
 #define TASK_STACK_PROTECTION   192u

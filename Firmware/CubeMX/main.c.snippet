@@ -1,5 +1,8 @@
-/* فقط این الگو داخل Core/Src/main.c بعد از MX_*_Init() قرار بگیرد. */
-/* منطق محصول اینجا نوشته نشود. */
+/* الگوی main.c برای مرحله LED و بازر.
+ * ADC / TIM / USART را در این مرحله صدا نزن؛ در CubeMX هم لازم نیست Enable باشند.
+ *
+ * فقط داخل بلوک‌های USER CODE چیزی بنویس تا Generate بعدی پاکشان نکند.
+ */
 
 #include "app.h"
 
@@ -7,18 +10,13 @@ int main(void)
 {
     HAL_Init();
     SystemClock_Config();
-
     MX_GPIO_Init();
-    MX_DMA_Init();
-    MX_ADC1_Init();
-    MX_TIM2_Init();
-    MX_TIM3_Init();
-    MX_USART1_UART_Init();
 
-    App_Start();   /* هرگز برنمی‌گردد: Init + Task + scheduler */
+    /* osKernelInitialize / MX_FREERTOS_Init / osKernelStart را صدا نزن. */
+    App_Start();
 
     while (1)
     {
-        /* نباید به اینجا برسد */
+        /* App_Start برنمی‌گردد. */
     }
 }

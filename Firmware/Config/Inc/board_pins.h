@@ -35,20 +35,21 @@
 #define PIN_ADC_CURRENT2_PIN    GPIO_PIN_7      /* PA7 ADC1_IN7 */
 
 /* ---- Digital outputs ---- */
+/* مرحله ۱: فقط همین چهار پایه در CubeMX به‌صورت GPIO_Output تعریف شوند. */
 #define PIN_BUZZER_PORT         GPIOA
-#define PIN_BUZZER_PIN          GPIO_PIN_4      /* PA4  SCHEMATIC: active high via Q7 */
+#define PIN_BUZZER_PIN          GPIO_PIN_4      /* PA4  HIGH = بازر روشن از طریق Q7 */
 
 #define PIN_ESP_CHPD_PORT       GPIOA
 #define PIN_ESP_CHPD_PIN        GPIO_PIN_8      /* PA8  SCHEMATIC: high = ESP on */
 
 #define PIN_LED_R_PORT          GPIOB
-#define PIN_LED_R_PIN           GPIO_PIN_0      /* PB0  SCHEMATIC: active high via Q4 */
+#define PIN_LED_R_PIN           GPIO_PIN_0      /* PB0  HIGH = LED قرمز روشن از طریق Q4 */
 
 #define PIN_LED_Y_PORT          GPIOB
-#define PIN_LED_Y_PIN           GPIO_PIN_1      /* PB1  SCHEMATIC: active high via Q5 */
+#define PIN_LED_Y_PIN           GPIO_PIN_1      /* PB1  HIGH = LED زرد روشن از طریق Q5 */
 
 #define PIN_LED_G_PORT          GPIOB
-#define PIN_LED_G_PIN           GPIO_PIN_10     /* PB10 SCHEMATIC: active high via Q6 */
+#define PIN_LED_G_PIN           GPIO_PIN_10     /* PB10 HIGH = LED سبز روشن از طریق Q6 */
 
 #define PIN_BAT_SWITCH_PORT     GPIOB
 #define PIN_BAT_SWITCH_PIN      GPIO_PIN_5      /* PB5  MCU_CONTROL_PS
