@@ -6,6 +6,6 @@
 
 # قدم‌ها
 
-الان فقط قدم ۱: LED و بازر. جزئیات CubeIDE: `01-led-buzzer-cubeide.md`
+الان فقط قدم ۱: LED و بازر.
 
-بقیه قدم‌ها را وقتی گفتی تمام شد می‌نویسیم.
+راهنما: `Firmware/Modules/Ui/README.md`

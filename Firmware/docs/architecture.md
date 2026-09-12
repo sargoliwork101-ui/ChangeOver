@@ -17,6 +17,6 @@ App_Start
                  وگرنه     → Ui_Scenario2()
 ```
 
-الگوی LED داخل `Modules/Ui` است. فایل Task فقط FLAG را می‌خواند.
+راهنما: `Firmware/Modules/Ui/README.md`
 
 تسک‌های `task_measurement` / `protection` / `control` / `comm` اسکلت‌اند و پاک نمی‌شوند.

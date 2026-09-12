@@ -12,10 +12,12 @@
 
 typedef struct
 {
-    uint32_t ui_period_ms;
     uint32_t ui_selftest_led_ms;
     uint32_t ui_boot_beep_ms;
-    uint32_t ui_heartbeat_half_ms;
+    uint32_t ui_scen1_on_ms;
+    uint32_t ui_scen1_off_ms;
+    uint32_t ui_scen2_green_on_ms;
+    uint32_t ui_scen2_red_ms;
     bool     power_stage_enabled;
     bool     esp_link_enabled;
     uint32_t control_period_ms;

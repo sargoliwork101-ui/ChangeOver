@@ -2,8 +2,6 @@
  * @file    task_protection.c
  * @brief   [EN] FreeRTOS task for over-current / low-battery checks (placeholder).
  *          [FA] تسک حفاظت جریان و ولتاژ (اسکلت، هنوز فعال نیست).
- *
- * @stage   Placeholder — MODULE_PROTECTION is 0.
  */
 
 #include "rtos_tasks.h"

@@ -2,8 +2,6 @@
  * @file    bsp_pwm.h
  * @brief   [EN] PWM wrapper for charger channels (placeholder).
  *          [FA] پوشش PWM کانال شارژر (اسکلت).
- *
- * @stage   Placeholder
  */
 
 #ifndef BSP_PWM_H

@@ -15,6 +15,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
+#include <stddef.h>
+
 static StackType_t s_ui_stack[TASK_STACK_UI];
 static StaticTask_t s_ui_tcb;
 
@@ -47,23 +49,23 @@ static StaticTask_t s_comm_tcb;
 void Rtos_Start(void)
 {
 #if MODULE_UI
-    (void)xTaskCreateStatic(TaskUi, "ui", TASK_STACK_UI, 0,
+    (void)xTaskCreateStatic(TaskUi, "ui", TASK_STACK_UI, NULL,
                             TASK_PRIO_UI, s_ui_stack, &s_ui_tcb);
 #endif
 #if MODULE_MEASUREMENT
-    (void)xTaskCreateStatic(TaskMeasurement, "meas", TASK_STACK_MEASUREMENT, 0,
+    (void)xTaskCreateStatic(TaskMeasurement, "meas", TASK_STACK_MEASUREMENT, NULL,
                             TASK_PRIO_MEASUREMENT, s_meas_stack, &s_meas_tcb);
 #endif
 #if MODULE_PROTECTION
-    (void)xTaskCreateStatic(TaskProtection, "prot", TASK_STACK_PROTECTION, 0,
+    (void)xTaskCreateStatic(TaskProtection, "prot", TASK_STACK_PROTECTION, NULL,
                             TASK_PRIO_PROTECTION, s_prot_stack, &s_prot_tcb);
 #endif
 #if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
-    (void)xTaskCreateStatic(TaskControl, "ctrl", TASK_STACK_CONTROL, 0,
+    (void)xTaskCreateStatic(TaskControl, "ctrl", TASK_STACK_CONTROL, NULL,
                             TASK_PRIO_CONTROL, s_ctrl_stack, &s_ctrl_tcb);
 #endif
 #if MODULE_ESP
-    (void)xTaskCreateStatic(TaskComm, "comm", TASK_STACK_COMM, 0,
+    (void)xTaskCreateStatic(TaskComm, "comm", TASK_STACK_COMM, NULL,
                             TASK_PRIO_COMM, s_comm_stack, &s_comm_tcb);
 #endif
 

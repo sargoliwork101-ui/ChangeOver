@@ -2,8 +2,6 @@
  * @file    task_comm.c
  * @brief   [EN] FreeRTOS task for UART/ESP telemetry (placeholder).
  *          [FA] تسک ارتباط UART/ESP (اسکلت، هنوز فعال نیست).
- *
- * @stage   Placeholder — MODULE_ESP is 0.
  */
 
 #include "rtos_tasks.h"

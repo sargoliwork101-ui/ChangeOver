@@ -2,8 +2,6 @@
  * @file    changeover.h
  * @brief   [EN] Input vs battery path state machine (placeholder).
  *          [FA] ماشین حالت مسیر ورودی یا باتری (اسکلت).
- *
- * @stage   Placeholder
  */
 
 #ifndef CHANGEOVER_H

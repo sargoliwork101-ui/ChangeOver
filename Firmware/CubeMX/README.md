@@ -1,14 +1,14 @@
 /**
  * @file    README.md
- * @brief   [EN] Full-board CubeMX notes. For this stage use docs/01-led-buzzer-cubeide.md.
- *          [FA] یادداشت کامل CubeMX. برای این مرحله docs/01-led-buzzer-cubeide.md را بخوان.
+ * @brief   [EN] Full-board CubeMX notes. For this stage use Modules/Ui/README.md.
+ *          [FA] یادداشت کامل CubeMX. برای این مرحله Modules/Ui/README.md را بخوان.
  */
 
 # CubeMX / CubeIDE
 
 **مرحله فعلی LED/بازر:** به‌جای این فایل، اول این را بخوان:
 
-`Firmware/docs/01-led-buzzer-cubeide.md`
+`Firmware/Modules/Ui/README.md`
 
 این صفحه تنظیمات کامل برد برای بعد است. الان ADC و PWM را روشن نکن.
 

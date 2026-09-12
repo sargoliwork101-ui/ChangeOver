@@ -2,15 +2,19 @@
  * @file    measurement.c
  * @brief   [EN] ADC to engineering units (placeholder).
  *          [FA] تبدیل ADC به واحد مهندسی (اسکلت).
- *
- * @stage   Placeholder
  */
 
 #include "measurement.h"
 #include "bsp_adc.h"
 
+#include <stddef.h>
+
 static measurement_snapshot_t s_snap;
 
+/**
+ * @brief  [EN] Zero the last snapshot.
+ *         [FA] آخرین نمونه را صفر می‌کند.
+ */
 void Measurement_Init(void)
 {
     s_snap.v_in_mv = 0u;
@@ -22,6 +26,10 @@ void Measurement_Init(void)
     s_snap.valid = false;
 }
 
+/**
+ * @brief  [EN] Pull one ADC frame and convert. No-op until ADC is enabled.
+ *         [FA] یک فریم ADC می‌گیرد و تبدیل می‌کند. تا ADC روشن نشود کاری نمی‌کند.
+ */
 void Measurement_Run(void)
 {
     uint16_t raw[BSP_ADC_CHANNEL_COUNT];
@@ -35,9 +43,13 @@ void Measurement_Run(void)
     (void)raw;
 }
 
+/**
+ * @brief  [EN] Copy last snapshot. Returns false if pointer is NULL or data is invalid.
+ *         [FA] آخرین نمونه را کپی می‌کند. اگر اشاره‌گر NULL یا داده نامعتبر باشد false.
+ */
 bool Measurement_GetSnapshot(measurement_snapshot_t *out)
 {
-    if (out == 0)
+    if (out == NULL)
     {
         return false;
     }

@@ -2,8 +2,6 @@
  * @file    bsp_exti.h
  * @brief   [EN] External interrupt flags for jitter and input detect (placeholder).
  *          [FA] پرچم وقفه خارجی برای جیتر و تشخیص ورودی (اسکلت).
- *
- * @stage   Placeholder
  */
 
 #ifndef BSP_EXTI_H

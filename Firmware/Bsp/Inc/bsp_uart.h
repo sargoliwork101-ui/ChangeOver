@@ -2,8 +2,6 @@
  * @file    bsp_uart.h
  * @brief   [EN] USART1 wrapper for ESP link (placeholder).
  *          [FA] پوشش USART1 برای ارتباط ESP (اسکلت).
- *
- * @stage   Placeholder
  */
 
 #ifndef BSP_UART_H

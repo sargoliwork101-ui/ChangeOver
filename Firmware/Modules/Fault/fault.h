@@ -2,8 +2,6 @@
  * @file    fault.h
  * @brief   [EN] Bit-mask of latched faults (placeholder).
  *          [FA] بیت‌ماسک خطاهای قفل‌شده (اسکلت).
- *
- * @stage   Placeholder
  */
 
 #ifndef FAULT_H

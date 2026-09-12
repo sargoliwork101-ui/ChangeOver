@@ -2,8 +2,6 @@
  * @file    task_control.c
  * @brief   [EN] FreeRTOS task for changeover/charger policy (placeholder).
  *          [FA] تسک سیاست Changeover و شارژر (اسکلت، هنوز فعال نیست).
- *
- * @stage   Placeholder — changeover/charger flags are 0.
  */
 
 #include "rtos_tasks.h"

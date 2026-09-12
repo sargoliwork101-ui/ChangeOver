@@ -2,8 +2,6 @@
  * @file    measurement.h
  * @brief   [EN] Convert ADC counts to millivolt / milliamp (placeholder).
  *          [FA] تبدیل شمارش ADC به میلی‌ولت / میلی‌آمپر (اسکلت).
- *
- * @stage   Placeholder
  */
 
 #ifndef MEASUREMENT_H

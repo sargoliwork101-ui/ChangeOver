@@ -8,13 +8,7 @@
 
 `main.c` فقط کلاک، HAL، `MX_*_Init` و `App_Start()`.
 
-**مرحله فعلی:** LED و بازر. راهنما: `docs/01-led-buzzer-cubeide.md`
+**مرحله فعلی:** LED و بازر.
 
-قوانین دستیار: `AI_CONTEXT.md` — قبل از هر تغییر خوانده شود.
-
-```text
-main.c  →  App_Start()  →  TaskUi
-                              │
-                         Ui_BoardTest یک‌بار
-                         بعد FLAG → Ui_Scenario1 یا Ui_Scenario2
-```
+راهنمای UI و CubeMX: `Modules/Ui/README.md`  
+قوانین دستیار: `AI_CONTEXT.md`

@@ -2,8 +2,6 @@
  * @file    task_measurement.c
  * @brief   [EN] FreeRTOS task for ADC sampling (placeholder).
  *          [FA] تسک نمونه‌برداری ADC (اسکلت، هنوز فعال نیست).
- *
- * @stage   Placeholder — MODULE_MEASUREMENT is 0.
  */
 
 #include "rtos_tasks.h"

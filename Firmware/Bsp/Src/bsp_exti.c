@@ -2,14 +2,16 @@
  * @file    bsp_exti.c
  * @brief   [EN] External interrupt flags (placeholder).
  *          [FA] پرچم وقفه خارجی (اسکلت).
- *
- * @stage   Placeholder
  */
 
 #include "bsp_exti.h"
 
 static volatile uint8_t s_flags[3];
 
+/**
+ * @brief  [EN] Clear software event flags.
+ *         [FA] پرچم‌های نرم‌افزاری را صفر می‌کند.
+ */
 void BspExti_Init(void)
 {
     s_flags[0] = 0u;
@@ -17,6 +19,10 @@ void BspExti_Init(void)
     s_flags[2] = 0u;
 }
 
+/**
+ * @brief  [EN] Set flag from HAL GPIO EXTI callback.
+ *         [FA] پرچم را از کال‌بک EXTI می‌گذارد.
+ */
 void BspExti_OnIrq(bsp_exti_src_t src)
 {
     if ((uint32_t)src < 3u)
@@ -25,6 +31,10 @@ void BspExti_OnIrq(bsp_exti_src_t src)
     }
 }
 
+/**
+ * @brief  [EN] Read-and-clear one event flag.
+ *         [FA] پرچم را می‌خواند و پاک می‌کند.
+ */
 bool BspExti_TakeEvent(bsp_exti_src_t src)
 {
     bool taken = false;

@@ -2,8 +2,6 @@
  * @file    protection.h
  * @brief   [EN] Over-current and low-battery checks (placeholder).
  *          [FA] بررسی اضافه جریان و باتری ضعیف (اسکلت).
- *
- * @stage   Placeholder
  */
 
 #ifndef PROTECTION_H

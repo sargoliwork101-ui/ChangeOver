@@ -2,8 +2,6 @@
  * @file    jitter.h
  * @brief   [EN] LM393 jitter trip flags (placeholder).
  *          [FA] پرچم تریپ جیتر LM393 (اسکلت).
- *
- * @stage   Placeholder
  */
 
 #ifndef JITTER_H

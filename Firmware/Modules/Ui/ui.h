@@ -2,8 +2,6 @@
  * @file    ui.h
  * @brief   [EN] LED and buzzer API: board test and blink scenarios.
  *          [FA] API ال‌ای‌دی و بازر: تست برد و سناریوهای چشمک.
- *
- * @stage   Active
  */
 
 #ifndef UI_H
@@ -22,14 +20,14 @@ void Ui_Init(void);
 void Ui_BoardTest(void);
 
 /**
- * @brief  [EN] Scenario 1 — green 500 ms on / 500 ms off. Does not return.
- *         [FA] سناریو ۱ — سبز ۵۰۰ روشن / ۵۰۰ خاموش. برنمی‌گردد.
+ * @brief  [EN] Scenario 1 — green blink, red off. Does not return.
+ *         [FA] سناریو ۱ — چشمک سبز، قرمز خاموش. برنمی‌گردد.
  */
 void Ui_Scenario1(void);
 
 /**
- * @brief  [EN] Scenario 2 — green 500/1000, red 500 blink. Does not return.
- *         [FA] سناریو ۲ — سبز ۵۰۰/۱۰۰۰، قرمز هر ۵۰۰ چشمک. برنمی‌گردد.
+ * @brief  [EN] Scenario 2 — green long off, red blink. Does not return.
+ *         [FA] سناریو ۲ — سبز با خاموشی بلند، قرمز چشمک. برنمی‌گردد.
  */
 void Ui_Scenario2(void);
 

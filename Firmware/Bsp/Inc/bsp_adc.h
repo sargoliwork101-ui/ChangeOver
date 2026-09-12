@@ -2,8 +2,6 @@
  * @file    bsp_adc.h
  * @brief   [EN] ADC+DMA wrapper (placeholder).
  *          [FA] پوشش ADC+DMA (اسکلت، هنوز فعال نیست).
- *
- * @stage   Placeholder
  */
 
 #ifndef BSP_ADC_H

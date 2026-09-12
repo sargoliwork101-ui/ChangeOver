@@ -2,8 +2,6 @@
  * @file    esp_link.h
  * @brief   [EN] ESP power and UART telemetry (placeholder).
  *          [FA] تغذیه ESP و تله‌متری UART (اسکلت).
- *
- * @stage   Placeholder
  */
 
 #ifndef ESP_LINK_H
