@@ -1,0 +1,63 @@
+۲۰:۰۵:۴۲ **** Incremental Build of configuration Debug for project CubeMX ****
+make -j8 all 
+arm-none-eabi-size  CubeMX.elf 
+   text	   data	    bss	    dec	    hex	filename
+  19196	     16	   8776	  27988	   6d54	CubeMX.elf
+Finished building: default.size.stdout
+ 
+۲۰:۰۹:۲۵ **** Incremental Build of configuration Debug for project CubeMX ****
+make -j8 all 
+arm-none-eabi-size  CubeMX.elf 
+   text	   data	    bss	    dec	    hex	filename
+  19196	     16	   8776	  27988	   6d54	CubeMX.elf
+Finished building: default.size.stdout
+ 
+۲۰:۰۹:۲۹ **** Incremental Build of configuration Debug for project CubeMX ****
+make -j8 all 
+arm-none-eabi-size  CubeMX.elf 
+   text	   data	    bss	    dec	    hex	filename
+  19196	     16	   8776	  27988	   6d54	CubeMX.elf
+Finished building: default.size.stdout
+ 
+۲۰:۰۹:۵۴ **** Incremental Build of configuration Debug for project CubeMX ****
+make -j8 all 
+arm-none-eabi-size  CubeMX.elf 
+   text	   data	    bss	    dec	    hex	filename
+  19196	     16	   8776	  27988	   6d54	CubeMX.elf
+Finished building: default.size.stdout
+ 
+۲۰:۱۰:۵۱ **** Incremental Build of configuration Debug for project CubeMX ****
+make -j8 all 
+arm-none-eabi-size  CubeMX.elf 
+   text	   data	    bss	    dec	    hex	filename
+  19196	     16	   8776	  27988	   6d54	CubeMX.elf
+Finished building: default.size.stdout
+ 
+۲۰:۱۱:۱۰ **** Incremental Build of configuration Debug for project CubeMX ****
+make -j8 all 
+arm-none-eabi-size  CubeMX.elf 
+   text	   data	    bss	    dec	    hex	filename
+  19196	     16	   8776	  27988	   6d54	CubeMX.elf
+Finished building: default.size.stdout
+ 
+۲۰:۱۱:۲۷ **** Incremental Build of configuration Debug for project CubeMX ****
+make -j8 all 
+arm-none-eabi-size  CubeMX.elf 
+   text	   data	    bss	    dec	    hex	filename
+  19196	     16	   8776	  27988	   6d54	CubeMX.elf
+Finished building: default.size.stdout
+ 
+۲۰:۱۲:۰۹ **** Incremental Build of configuration Debug for project CubeMX ****
+make -j8 all 
+arm-none-eabi-size  CubeMX.elf 
+   text	   data	    bss	    dec	    hex	filename
+  19196	     16	   8776	  27988	   6d54	CubeMX.elf
+Finished building: default.size.stdout
+ 
+۲۰:۱۳:۲۶ **** Incremental Build of configuration Debug for project CubeMX ****
+make -j8 all 
+arm-none-eabi-size  CubeMX.elf 
+   text	   data	    bss	    dec	    hex	filename
+  19196	     16	   8776	  27988	   6d54	CubeMX.elf
+Finished building: default.size.stdout
+ 
