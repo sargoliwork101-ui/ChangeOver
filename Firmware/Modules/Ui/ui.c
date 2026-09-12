@@ -22,30 +22,36 @@ void Ui_Init(void)
     red(false);
 }
 
-/* ========== کد ۱ ========== */
+/* ----------------- سناریو 1 — کامل ----------------- */
 void Ui_Scenario1(void)
 {
-    green(true);
-    red(false);
-    vTaskDelay(pdMS_TO_TICKS(500u));
+    for (;;)
+    {
+        green(true);
+        red(false);
+        vTaskDelay(pdMS_TO_TICKS(500u));
 
-    green(false);
-    red(false);
-    vTaskDelay(pdMS_TO_TICKS(500u));
+        green(false);
+        red(false);
+        vTaskDelay(pdMS_TO_TICKS(500u));
+    }
 }
 
-/* ========== کد ۲ ========== */
+/* ----------------- سناریو 2 — کامل ----------------- */
 void Ui_Scenario2(void)
 {
-    green(true);
-    red(true);
-    vTaskDelay(pdMS_TO_TICKS(500u));
+    for (;;)
+    {
+        green(true);
+        red(true);
+        vTaskDelay(pdMS_TO_TICKS(500u));
 
-    green(false);
-    red(false);
-    vTaskDelay(pdMS_TO_TICKS(500u));
+        green(false);
+        red(false);
+        vTaskDelay(pdMS_TO_TICKS(500u));
 
-    green(false);
-    red(true);
-    vTaskDelay(pdMS_TO_TICKS(500u));
+        green(false);
+        red(true);
+        vTaskDelay(pdMS_TO_TICKS(500u));
+    }
 }
