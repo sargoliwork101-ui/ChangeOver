@@ -76,14 +76,14 @@
 
 چرا CubeIDE: HAL، CubeMX، FreeRTOS و دیباگر SWD در یک جا هستند.
 
-### ۴.۲ پروژه جدید
+### ۴.۲ پروژه جدید (CubeIDE ۲: CubeMX جدا)
 
-1. `File → New → STM32 Project`
-2. MCU: `STM32F103C8T6`
-3. Language: **C**
-4. Finish. اگر «Initialize peripherals to default?» پرسید: Yes
+CubeMX را **جدا** باز کن (داخل IDE ۲.۱ پروژه STM32 از File→New ساخته نمی‌شود).
 
-صفحهٔ Pinout همان CubeMX داخل IDE است.
+1. `File → New Project`
+2. تب **MCU/MPU Selector**
+3. `STM32F103C8T6` → Start Project
+4. ADC و PWM را Enable نکن
 
 ### ۴.۳ Debug = Serial Wire
 
@@ -160,9 +160,13 @@ FreeRTOS:
 
 ### ۴.۸ Project Manager
 
-- Toolchain: STM32CubeIDE
-- `Keep User Code when re-generating` روشن باشد
-- Generate Code (چرخ‌دنده زرد / `Alt+K`)
+- Project Name: `CubeIDE`
+- Location: پوشهٔ ریپو `ChangeOver` (نتیجه: `ChangeOver/CubeIDE/`)
+- Toolchain: **STM32CubeIDE**
+- `Keep User Code when re-generating` روشن
+- Generate Code
+
+Workspace بعداً در IDE باید `ChangeOver` باشد، نه خود `CubeIDE`.
 
 ---
 
@@ -170,8 +174,8 @@ FreeRTOS:
 
 کد محصول جدا از فایل‌های Generateشده است تا Generate بعدی منطقت را پاک نکند.
 
-1. پوشه `Firmware` را هم‌سطح `Core` داخل پروژه CubeIDE کپی کن
-2. روی پروژه راست‌کلیک → Refresh
+1. `Firmware` را کپی نکن. هم‌سطح `CubeIDE/Core` از قبل هست.
+2. در CubeIDE روی پروژه راست‌کلیک → Refresh
 3. این `.c`ها را Add کن:
 
 ```text

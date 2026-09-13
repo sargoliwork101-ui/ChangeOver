@@ -13,4 +13,6 @@
 /.metadata/
 CubeMX/Debug/
 CubeMX/Release/
+CubeMX/Debug/
+CubeMX/Release/
 *.launch
