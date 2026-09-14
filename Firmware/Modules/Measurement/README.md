@@ -1,59 +1,53 @@
 /**
  * @file    README.md
- * @brief   [EN] Measurement module: ADC counts to millivolt / milliamp.
- *          [FA] ماژول اندازه‌گیری: شمارش ADC به میلی‌ولت / میلی‌آمپر.
+ * @brief   [EN] Measurement module sheet: ADC to mV/mA.
+ *          [FA] برگه ماژول Measurement: ADC به میلی‌ولت/میلی‌آمپر.
  */
 
 # ماژول Measurement
 
-توضیح کامل **همین ماژول** همین‌جاست.
+## وضعیت
 
-الان **خاموش** است (`MODULE_MEASUREMENT 0` در `modules_enable.h`). `App_Start` آن را صدا نمی‌زند. ADC را در CubeMX Enable نکن تا مرحلهٔ UI تمام شود. فایل‌ها را پاک نکن.
+اسکلت. `MODULE_MEASUREMENT = 0`. ADC را Enable نکن. فایل را پاک نکن.
 
-## کار ماژول
+## تاریخچه
 
-ولتاژ و جریان برد را از ADC می‌خواند و به واحد مهندسی تبدیل می‌کند تا بقیهٔ ماژول‌ها با «شمارش خام ADC» کار نکنند.
-
-خروجی یک `measurement_snapshot_t` است (`app_types.h`):
-
-| فیلد | معنی |
+| تاریخ | تغییر |
 |---|---|
-| `v_in_mv` | ولتاژ ورودی ۲۴ ولت، میلی‌ولت |
-| `v_bat24_mv` | باتری ۲۴ ولت |
-| `v_bat12_mv` | باتری ۱۲ ولت |
-| `i_ch1_ma` / `i_ch2_ma` | جریان دو کانال شارژ، میلی‌آمپر |
-| `input_present` | ورودی هست یا نه |
-| `valid` | این نمونه قابل استفاده است |
-
-## پایه‌هایی که بعداً مال این ماژول‌اند
-
-از `board_pins.h` — حالا در CubeMX نزن:
-
-| پایه | ADC | نقش |
-|---|---|---|
-| PA1 | ADC1_IN1 | جریان ۱ |
-| PA2 | ADC1_IN2 | ۲۴ ولت ورودی |
-| PA3 | ADC1_IN3 | ۲۴ ولت باتری |
-| PA5 | ADC1_IN5 | ۱۲ ولت باتری |
-| PA7 | ADC1_IN7 | جریان ۲ |
-
-ترتیب کانال باید با `bsp_adc.h` یکی باشد.
+| 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
+| 2026-09 | اسکلت `Measurement_Init` / `Run` / `GetSnapshot` |
 
 ## فایل‌ها
 
 | فایل | نقش |
 |---|---|
-| `measurement.h` / `measurement.c` | تبدیل و نگه‌داشتن آخرین نمونه |
-| `../../Bsp/Src/bsp_adc.c` | خواندن HAL ADC (اسکلت) |
-| `../../Rtos/Src/task_measurement.c` | تسک؛ با فلگ صفر فقط `vTaskDelay(1000)` |
-| `../../Config/Inc/app_types.h` | نوع `measurement_snapshot_t` |
+| `measurement.h` / `measurement.c` | تبدیل و آخرین نمونه |
+| `../../Bsp/Src/bsp_adc.c` | HAL ADC (اسکلت) — به بیلد LED اضافه نکن |
+| `../../Rtos/Src/task_measurement.c` | تسک؛ فلگ صفر = delay |
+| `../../Config/Inc/app_types.h` | `measurement_snapshot_t` |
 
-این `.c` را به بیلد مرحلهٔ LED اضافه نکن: `measurement.c` ، `bsp_adc.c`. تسک `task_measurement.c` را در پروژه بگذار؛ با `#if MODULE_MEASUREMENT` خالی می‌ماند.
+## توابع
 
-## توابع همین الان در کد
+| نام | کار |
+|---|---|
+| `Measurement_Init` | `s_snap` را صفر می‌کند؛ `valid = false` |
+| `Measurement_Run` | یک فریم ADC می‌گیرد؛ تا DMA نباشد `valid` را false می‌گذارد. تبدیل mV هنوز نیست |
+| `Measurement_GetSnapshot` | کپی آخرین نمونه؛ `NULL` یا نامعتبر → false |
+| `TaskMeasurement` | تا فلگ صفر فقط `vTaskDelay(1000)` |
 
-- `Measurement_Init` — همهٔ فیلدهای `s_snap` را صفر می‌کند، `valid = false`.
-- `Measurement_Run` — `BspAdc_GetRaw` را می‌زند؛ تا DMA راه نیفتد `valid` را false می‌گذارد و برمی‌گردد. تبدیل mV/mA هنوز نوشته نشده.
-- `Measurement_GetSnapshot` — اگر `out` برابر `NULL` باشد false (MISRA: ننویس روی آدرس صفر). وگرنه کپی `s_snap`؛ موفقیت فقط وقتی `valid` باشد.
+## پایه‌ها
 
-وقتی این مرحله شروع شود، Protection و Changeover از همین snapshot می‌خوانند، نه مستقیم از ADC.
+| پایه | لیبل | نقش | HIGH یعنی |
+|---|---|---|---|
+| PA1 | `MCU_CURRENT1` (ADC1_IN1) | جریان کانال ۱ | آنالوگ |
+| PA2 | `MCU_24_IN` (ADC1_IN2) | ولتاژ ورودی ۲۴ | آنالوگ |
+| PA3 | `MCU_24_BAT` (ADC1_IN3) | ولتاژ باتری ۲۴ | آنالوگ |
+| PA5 | `MCU_12_BAT` (ADC1_IN5) | ولتاژ باتری ۱۲ | آنالوگ |
+| PA7 | `MCU_CURRENT2` (ADC1_IN7) | جریان کانال ۲ | آنالوگ |
+| PB4 | `MCU_INT_24_IN` | حضور ورودی ۲۴ (نیاز به SWD نه JTAG) | دیجیتال؛ قطبیت شماتیک، هنوز اندازه نشده |
+
+ترتیب ADC باید با `bsp_adc.h` یکی بماند.
+
+## پیش‌فرض امن
+
+بعد از Init هیچ نمونه‌ای معتبر نیست (`valid = false`). خروجی GPIO ندارد.

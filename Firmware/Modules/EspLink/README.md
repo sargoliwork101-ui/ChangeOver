@@ -1,50 +1,49 @@
 /**
  * @file    README.md
- * @brief   [EN] EspLink module: ESP power and UART telemetry.
- *          [FA] ماژول EspLink: تغذیه ESP و تله‌متری UART.
+ * @brief   [EN] EspLink module sheet: ESP power and UART.
+ *          [FA] برگه ماژول EspLink: تغذیه ESP و UART.
  */
 
 # ماژول EspLink
 
-توضیح کامل **همین ماژول** همین‌جاست.
+## وضعیت
 
-الان **خاموش** است (`MODULE_ESP 0`). UART و پایهٔ CH_PD را برای این مرحله Enable نکن. فایل‌ها را پاک نکن.
+اسکلت. `MODULE_ESP = 0`. UART را Enable نکن. فایل را پاک نکن.
 
-## کار ماژول
+## تاریخچه
 
-ESP8266 روی برد تله‌متری می‌فرستد. STM فرمان از ESP نمی‌گیرد تا پروتکل جدا نوشته شود.
-
-دو کار جدا:
-
-1. تغذیه: پایهٔ CH_PD
-2. UART: فرستادن snapshot / state / faults
-
-`EspLink_Init` باید ESP را **خاموش** بگذارد تا قبل از مرحلهٔ شبکه، ماژول بی‌جهت روشن نشود.
-
-## پایه‌هایی که بعداً مال این ماژول‌اند
-
-حالا نزن:
-
-| پایه | نقش |
+| تاریخ | تغییر |
 |---|---|
-| PA8 | CH_PD — شماتیک: High = ESP روشن |
-| PA9 | USART1_TX |
-| PA10 | USART1_RX |
+| 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
+| 2026-09 | اسکلت `EspLink_Init` / `Power` / `Run` |
 
 ## فایل‌ها
 
 | فایل | نقش |
 |---|---|
-| `esp_link.h` / `esp_link.c` | قدرت و `Run` تله‌متری |
-| `../../Bsp/Src/bsp_uart.c` | UART (اسکلت) |
-| `../../Rtos/Src/task_comm.c` | تسک؛ فلگ صفر = Idle |
+| `esp_link.h` / `esp_link.c` | تغذیه و تله‌متری |
+| `../../Bsp/Src/bsp_uart.c` | UART — به بیلد LED اضافه نکن |
+| `../../Rtos/Src/task_comm.c` | تسک |
 
-`esp_link.c` و `bsp_uart.c` را به بیلد LED اضافه نکن.
+## توابع
 
-## توابع همین الان در کد
+| نام | کار |
+|---|---|
+| `EspLink_Init` | ESP را خاموش می‌کند |
+| `EspLink_Power` | CH_PD را High/Low می‌کند |
+| `EspLink_Run` | تله‌متری؛ فعلاً بایتی نمی‌فرستد |
+| `TaskComm` | تا فلگ صفر Idle |
 
-- `EspLink_Power` — `BspGpio_Write` روی `PIN_ESP_CHPD`.
-- `EspLink_Init` — `EspLink_Power(false)`.
-- `EspLink_Run` — آرگومان‌ها را دور می‌ریزد؛ هنوز بایتی روی UART نمی‌رود.
+`MODULE_ESP` ساخت تسک است. `APP_CONFIG.esp_link_enabled` اجازهٔ زمان اجرا است.
 
-کلید `APP_CONFIG.esp_link_enabled` برای بعد است؛ با `MODULE_ESP` قاطی نشود: یکی کامپایل تسک است، یکی اجازهٔ زمان اجرا.
+## پایه‌ها
+
+| پایه | لیبل | نقش | HIGH یعنی |
+|---|---|---|---|
+| PA8 | `MCU_ESP_CHPD` | تغذیه ESP (CH_PD) | شماتیک: ESP روشن |
+| PA9 | `USART1_TX` | سریال به ESP | UART |
+| PA10 | `USART1_RX` | سریال از ESP | UART |
+
+## پیش‌فرض امن
+
+`EspLink_Init` → `EspLink_Power(false)` یعنی PA8 Low. STM از ESP فرمان نمی‌گیرد تا پروتکل جدا نوشته شود.

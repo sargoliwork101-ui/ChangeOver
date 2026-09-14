@@ -1,45 +1,47 @@
 /**
  * @file    README.md
- * @brief   [EN] Charger module: PWM duty policy.
- *          [FA] ماژول شارژر: سیاست وظیفه PWM.
+ * @brief   [EN] Charger module sheet: PWM duty policy.
+ *          [FA] برگه ماژول Charger: سیاست PWM.
  */
 
 # ماژول Charger
 
-توضیح کامل **همین ماژول** همین‌جاست.
+## وضعیت
 
-الان **خاموش** است (`MODULE_CHARGER 0`). PWM را در CubeMX Enable نکن. فایل‌ها را پاک نکن.
+اسکلت. `MODULE_CHARGER = 0`. PWM را Enable نکن. فایل را پاک نکن.
 
-## کار ماژول
+## تاریخچه
 
-از snapshot و حالت Changeover، درصد PWM دو کانال شارژ را حساب می‌کند. خودش تایمر را invert نمی‌کند؛ به BSP می‌گوید duty چند باشد.
-
-قانون ایمنی که در کامنت Init آمده: بعد از Init باید PWM **۰٪** بماند تا رله/مسیر اشتباه شارژ نکند.
-
-حد بالای duty: `APP_CONFIG.pwm_max_duty_permille` (هزارم).
-
-## پایه‌هایی که بعداً مال این ماژول‌اند
-
-حالا نزن:
-
-| پایه | تایمر | نقش |
-|---|---|---|
-| PA0 | TIM2_CH1 | `MCU_PWM1` |
-| PA6 | TIM3_CH1 | `MCU_PWM2` |
+| تاریخ | تغییر |
+|---|---|
+| 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
+| 2026-09 | اسکلت `Charger_Init` / `Charger_Evaluate` |
 
 ## فایل‌ها
 
 | فایل | نقش |
 |---|---|
-| `charger.h` / `charger.c` | سیاست |
-| `../../Bsp/Src/bsp_pwm.c` | نوشتن CCR تایمر (اسکلت) |
+| `charger.h` / `charger.c` | سیاست duty |
+| `../../Bsp/Src/bsp_pwm.c` | CCR تایمر — به بیلد LED اضافه نکن |
 | `../../Rtos/Src/task_control.c` | تسک مشترک |
 
-`charger.c` و `bsp_pwm.c` را به بیلد LED اضافه نکن.
+## توابع
 
-## توابع همین الان در کد
+| نام | کار |
+|---|---|
+| `Charger_Init` | باید PWM را ۰٪ بگذارد؛ بدنه فعلاً خالی است |
+| `Charger_Evaluate` | از snapshot و state هنوز duty حساب نمی‌کند |
+| `TaskControl` | مشترک با Changeover / Jitter |
 
-- `Charger_Init` — بدنه خالی؛ وقتی پیاده شود باید PWM را صفر بگذارد.
-- `Charger_Evaluate` — `snap` و `state` را دور می‌ریزد. هنوز duty حساب نمی‌کند.
+حد بالا: `APP_CONFIG.pwm_max_duty_permille` (الان ۰).
 
-بدون Measurement معتبر و بدون state امن Changeover، این ماژول نباید PWM را بالا ببرد.
+## پایه‌ها
+
+| پایه | لیبل | نقش | HIGH یعنی |
+|---|---|---|---|
+| PA0 | `MCU_PWM1` | TIM2_CH1 شارژر ۱ | duty تایمر، نه GPIO خام |
+| PA6 | `MCU_PWM2` | TIM3_CH1 شارژر ۲ | duty تایمر، نه GPIO خام |
+
+## پیش‌فرض امن
+
+بعد از Init باید هر دو کانال ۰٪ باشند. بدون Measurement معتبر PWM بالا نرود.

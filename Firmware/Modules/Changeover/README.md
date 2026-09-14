@@ -1,48 +1,52 @@
 /**
  * @file    README.md
- * @brief   [EN] Changeover module: input vs battery path.
- *          [FA] ماژول تغییر مسیر: ورودی یا باتری.
+ * @brief   [EN] Changeover module sheet: input vs battery path.
+ *          [FA] برگه ماژول Changeover: مسیر ورودی یا باتری.
  */
 
 # ماژول Changeover
 
-توضیح کامل **همین ماژول** همین‌جاست.
+## وضعیت
 
-الان **خاموش** است (`MODULE_CHANGEOVER 0`). GPIO رله و سوئیچ باتری را Enable نکن. فایل‌ها را پاک نکن.
+اسکلت. `MODULE_CHANGEOVER = 0`. GPIO قدرت را Enable نکن. فایل را پاک نکن.
 
-## کار ماژول
+## تاریخچه
 
-تصمیم می‌گیرد بار از ورودی ۲۴ ولت تغذیه شود یا از باتری. ورودی‌اش snapshot و ماسک خطا است؛ خروجی‌اش `app_state_t`.
-
-حالت‌ها در `app_types.h`: `BOOT`، `IDLE`، `INPUT`، `BATTERY`، `FAULT`، `SAFE`.
-
-وقتی فعال شود، از روی همین state شارژر و UI می‌فهمند سیستم کجاست.
-
-## پایه‌هایی که بعداً مال این ماژول‌اند
-
-از `board_pins.h` — قطبیت از **شماتیک** است، روی برد هنوز اندازه نشده. حالا نزن:
-
-| پایه | شماتیک |
+| تاریخ | تغییر |
 |---|---|
-| PB5 | High = باتری از تغذیهٔ کنترل جدا |
-| PB11 | High = مسیر باتری خاموش (Q17) |
-| PB7 | High = رلهٔ شارژر وصل |
-
-منطق قدرت اینجا نوشته می‌شود، نه داخل `main.c`.
+| 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
+| 2026-09 | اسکلت `Changeover_Init` / `Changeover_Evaluate` |
 
 ## فایل‌ها
 
 | فایل | نقش |
 |---|---|
 | `changeover.h` / `changeover.c` | ماشین حالت |
-| `../../Rtos/Src/task_control.c` | تسک مشترک با Charger/Jitter؛ فلگ صفر = Idle |
+| `../../Rtos/Src/task_control.c` | تسک مشترک با Charger و Jitter |
 | `../../Config/Inc/app_types.h` | `app_state_t` |
 
 `changeover.c` را به بیلد LED اضافه نکن.
 
-## توابع همین الان در کد
+## توابع
 
-- `Changeover_Init` — `s_state = APP_STATE_BOOT`.
-- `Changeover_Evaluate` — `snap` را فعلاً استفاده نمی‌کند (`(void)snap`). اگر `faults != FAULT_NONE` برود `FAULT`، وگرنه `IDLE`. مسیر INPUT/BATTERY هنوز نیست.
+| نام | کار |
+|---|---|
+| `Changeover_Init` | `s_state = APP_STATE_BOOT` |
+| `Changeover_Evaluate` | اگر خطا باشد `FAULT`، وگرنه `IDLE`. مسیر INPUT/BATTERY هنوز نیست |
+| `TaskControl` | فقط اگر Changeover یا Charger یا Jitter یک باشد ساخته می‌شود |
 
-تسک کنترل فقط وقتی یکی از `MODULE_CHANGEOVER` / `MODULE_CHARGER` / `MODULE_JITTER` یک باشد ساخته می‌شود.
+حالت‌ها: `BOOT`، `IDLE`، `INPUT`، `BATTERY`، `FAULT`، `SAFE`.
+
+## پایه‌ها
+
+قطبیت از شماتیک است، روی برد اندازه نشده.
+
+| پایه | لیبل | نقش | HIGH یعنی (شماتیک) |
+|---|---|---|---|
+| PB5 | `MCU_CONTROL_PS` | سوئیچ باتری به تغذیه کنترل | باتری از PSU کنترل جدا |
+| PB7 | `MCU_RELAY` | رله شارژر | رله وصل |
+| PB11 | `MCU_PROTECT_BATT` | قطع مسیر باتری Q17 | مسیر باتری خاموش |
+
+## پیش‌فرض امن
+
+Init فقط state را BOOT می‌کند؛ پایه را High نمی‌کند. تا اندازه‌گیری قطبیت، این خروجی‌ها را از CubeMX هم Low بگذار.

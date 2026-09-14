@@ -1,48 +1,47 @@
 /**
  * @file    README.md
- * @brief   [EN] Fault module: latched bit-mask of faults.
- *          [FA] ماژول خطا: بیت‌ماسک قفل‌شدهٔ خطاها.
+ * @brief   [EN] Fault module sheet: latched fault bits.
+ *          [FA] برگه ماژول Fault: بیت‌های خطای قفل‌شده.
  */
 
 # ماژول Fault
 
-توضیح کامل **همین ماژول** همین‌جاست.
+## وضعیت
 
-الان **تسک جدا ندارد**. `MODULE_FAULT` در `modules_enable.h` صفر است و App آن را Init نمی‌کند. فایل‌ها را پاک نکن. Protection بعداً همین API را صدا می‌زند.
+اسکلت. `MODULE_FAULT = 0`. تسک جدا ندارد. App الان `Fault_Init` را صدا نمی‌زند. فایل را پاک نکن.
 
-## کار ماژول
+## تاریخچه
 
-چند خطا هم‌زمان ممکن است. به‌جای یک enum، یک ماسک بیت است تا OR/AND روشن باشد.
-
-نوع: `fault_mask_t` در `app_types.h`.
-
-| بیت | معنی |
+| تاریخ | تغییر |
 |---|---|
-| `FAULT_NONE` | هیچ |
-| `FAULT_ADC` | نمونه نامعتبر |
-| `FAULT_OVERCURRENT_1` / `_2` | اضافه جریان |
-| `FAULT_LOW_BATTERY` | باتری ضعیف |
-| `FAULT_JITTER_1` / `_2` | تریپ جیتر |
-
-`1u << n` یعنی بیت شماره n. چند تا را با `|` جمع می‌کنند.
-
-قفل (latch): `Fault_Set` بیت را روشن می‌کند و خاموش نمی‌کند مگر `Fault_Clear` یا `Fault_Init`. یک پالس کوتاه خطا گم نمی‌شود.
+| 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
+| 2026-09 | اسکلت ماسک `Fault_Set` / `Clear` / `Get` / `Any` |
 
 ## فایل‌ها
 
 | فایل | نقش |
 |---|---|
-| `fault.h` / `fault.c` | ماسک `s_mask` |
-| `../../Config/Inc/app_types.h` | تعریف بیت‌ها |
+| `fault.h` / `fault.c` | `s_mask` |
+| `../../Config/Inc/app_types.h` | `FAULT_*` |
 
-`fault.c` را به بیلد LED لازم نیست اضافه کنی؛ هنوز کسی صدا نمی‌زند.
+به بیلد LED لازم نیست.
 
-## توابع همین الان در کد
+## توابع
 
-- `Fault_Init` — `s_mask = FAULT_NONE`.
-- `Fault_Set` — `s_mask |= bits` (بیت‌های قبلی می‌مانند).
-- `Fault_Clear` — `s_mask &= ~bits`.
-- `Fault_Get` — ماسک فعلی.
-- `Fault_Any` — true اگر غیر از `FAULT_NONE`.
+| نام | کار |
+|---|---|
+| `Fault_Init` | `s_mask = FAULT_NONE` |
+| `Fault_Set` | بیت‌ها را OR می‌کند (قفل) |
+| `Fault_Clear` | بیت‌ها را پاک می‌کند |
+| `Fault_Get` | ماسک فعلی |
+| `Fault_Any` | اگر چیزی غیر از NONE باشد true |
 
-Changeover_Evaluate همین حالا اگر `faults != FAULT_NONE` به `APP_STATE_FAULT` می‌رود. یعنی این ماژول منبع حقیقت خطا است، نه کپی در چند فایل.
+بیت‌ها: `FAULT_ADC`، `FAULT_OVERCURRENT_1`، `FAULT_OVERCURRENT_2`، `FAULT_LOW_BATTERY`، `FAULT_JITTER_1`، `FAULT_JITTER_2`.
+
+## پایه‌ها
+
+پایه ندارد. فقط RAM.
+
+## پیش‌فرض امن
+
+Init همه بیت‌ها را صفر می‌کند.

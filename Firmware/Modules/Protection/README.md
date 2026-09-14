@@ -1,42 +1,47 @@
 /**
  * @file    README.md
- * @brief   [EN] Protection module: over-current and low-battery checks.
- *          [FA] ماژول حفاظت: اضافه جریان و باتری ضعیف.
+ * @brief   [EN] Protection module sheet: over-current and low battery.
+ *          [FA] برگه ماژول Protection: اضافه جریان و باتری ضعیف.
  */
 
 # ماژول Protection
 
-توضیح کامل **همین ماژول** همین‌جاست.
+## وضعیت
 
-الان **خاموش** است (`MODULE_PROTECTION 0`). رله و قطع باتری را در CubeMX برای این مرحله نزن. فایل‌ها را پاک نکن.
+اسکلت. `MODULE_PROTECTION = 0`. رله را برای این ماژول Enable نکن. فایل را پاک نکن.
 
-## کار ماژول
+## تاریخچه
 
-نمونهٔ Measurement را با حدهای `APP_CONFIG` مقایسه می‌کند. اگر خطر بود بیت خطا را در ماژول Fault قفل می‌کند. خودش GPIO قدرت را نمی‌زند؛ تصمیم قطع مسیر با Changeover است.
-
-حدها (الان در `app_config.c` تعریف شده‌اند، هنوز استفاده نمی‌شوند):
-
-- `overcurrent1_ma` / `overcurrent2_ma`
-- `low_battery_mv` / `low_battery_recover_mv`
-
-بیت‌ها در `app_types.h`: `FAULT_ADC`، `FAULT_OVERCURRENT_1`، `FAULT_OVERCURRENT_2`، `FAULT_LOW_BATTERY`.
+| تاریخ | تغییر |
+|---|---|
+| 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
+| 2026-09 | اسکلت `Protection_Init` / `Protection_Run` |
 
 ## فایل‌ها
 
 | فایل | نقش |
 |---|---|
-| `protection.h` / `protection.c` | مقایسه و صدا زدن `Fault_Set` |
-| `../Fault/fault.c` | قفل بیت خطا |
-| `../../Rtos/Src/task_protection.c` | تسک؛ با فلگ صفر Idle است |
-| `../../Config/Src/app_config.c` | حدها |
+| `protection.h` / `protection.c` | مقایسه با حد |
+| `../Fault/fault.c` | قفل بیت |
+| `../../Rtos/Src/task_protection.c` | تسک |
+| `../../Config/Src/app_config.c` | حد جریان/ولتاژ |
 
 `protection.c` را به بیلد LED اضافه نکن.
 
-## توابع همین الان در کد
+## توابع
 
-- `Protection_Init` — خالی؛ جایی برای state بعدی.
-- `Protection_Run` — اگر `snap` برابر `NULL` یا `valid == false` باشد `Fault_Set(FAULT_ADC)` می‌زند و برمی‌گردد. مقایسه جریان/ولتاژ هنوز نیست.
+| نام | کار |
+|---|---|
+| `Protection_Init` | فعلاً خالی |
+| `Protection_Run` | اگر `snap` تهی یا نامعتبر باشد `Fault_Set(FAULT_ADC)`. مقایسه جریان هنوز نیست |
+| `TaskProtection` | تا فلگ صفر Idle |
 
-چرا `NULL` چک است: تسک نباید روی اشاره‌گر خالی بخواند.
+حدهای بعدی در `APP_CONFIG`: `overcurrent1_ma`، `overcurrent2_ma`، `low_battery_mv`، `low_battery_recover_mv`.
 
-پایهٔ بعدی مربوط به قطع مسیر باتری (از شماتیک، هنوز اندازه نشده): `PB11` در `board_pins.h`. این ماژول آن پایه را مستقیم نمی‌زند.
+## پایه‌ها
+
+پایهٔ GPIO اختصاصی ندارد. قطع مسیر باتری مال Changeover است (`PB11`).
+
+## پیش‌فرض امن
+
+Init چیزی را High نمی‌کند. بدون نمونه معتبر، بعداً باید خطا ADC قفل شود نه PWM/رله.
