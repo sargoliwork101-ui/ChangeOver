@@ -5,7 +5,8 @@ CubeIDE/Release/
 CubeIDE/.settings/
 CubeIDE/STM32CubeIDE/Debug/
 CubeIDE/STM32CubeIDE/Release/
-CubeIDE/STM32CubeIDE/.settings/
+CubeIDE/STM32CubeIDE/.settings/*
+!CubeIDE/STM32CubeIDE/.settings/org.eclipse.core.resources.prefs
 *.launch
 *.elf
 *.map
