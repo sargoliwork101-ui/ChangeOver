@@ -46,7 +46,8 @@
 
 | تاریخ | تغییر |
 |---|---|
-| 2026-09-14 | بازنویسی کامل طبق درخواست جدید: حذف سناریوی سوم (BatteryLow)، زرد در دشارژ خاموش، بوق هوشمند با تابع جدا `Ui_BuzzerBeep()` (اگر <50% هر درصد ثانیه یک بوق، 40%→40s، اگر <20% طول بوق 2 برابر)، سناریوی شارژ جدید با زرد چشمک‌زن (0% زرد ثابت روشن، 100% خاموش، ON=(100-درصد)*دوره)، ورودی از bool به ولتاژ (آستانه 20V)، باتری 0%=21V و 100%=28V با تابع `Ui_BatteryVoltageToPercent()`، پارامترها بالای هر فایل/تابع برای تغییر آسان، نام‌گذاری با پیشوند تایپ (U32_G_ گلوبال، u32_ داخلی) |
+| 2026-09-14 | تمیزکاری: همه مین/ماکس و تایم‌ها به فایل واحد `ui_config.h` منتقل شد تا تکراری در ۲-۳ فایل نباشد؛ `ui.c`، `task_ui.c`، `app_config.c` و `host_test_ui.py` فقط همین را می‌خوانند (single source) |
+| 2026-09-14 | بازنویسی کامل طبق درخواست جدید: حذف سناریوی سوم (BatteryLow)، زرد در دشارژ خاموش، بوق هوشمند با تابع جدا `Ui_BuzzerBeep()` (اگر <50% هر درصد ثانیه یک بوق، 40%→40s، اگر <20% طول بوق 2 برابر)، سناریوی شارژ جدید با زرد چشمک‌زن (0% زرد ثابت روشن، 100% خاموش، ON=(100-درصد)*دوره)، ورودی از bool به ولتاژ (آستانه 20V)، باتری 0%=21V و 100%=28V با تابع `Ui_BatteryVoltageToPercent()`، نام‌گذاری با پیشوند تایپ (U32_G_ گلوبال، u32_ داخلی) |
 | 2026-09-14 | اجرای AI: اسکریپت چک قوانین `tools/check_ai_rules.sh` + تست هاست `host_test_ui.py`؛ پاس شد |
 | 2026-09-14 | بازنویسی به سبک سناریویی خطی: هر سناریو یک سیکل اجرا و برمی‌گردد (`Ui_ScenarioInputOk/BatteryRun/BatteryLow`) |
 | 2026-09-14 | سناریوهای مبتنی بر وضعیت با `Ui_Indicate` و enum سه حالته؛ حذف `Ui_Scenario1/2` و `UI_FLAG` |
@@ -60,12 +61,13 @@
 
 | فایل | نقش |
 |---|---|
-| `ui.h` / `ui.c` | API و 3 تابع سناریو + تابع جدا بازر + تبدیل ولتاژ به درصد؛ پارامترهای قابل تنظیم بالای `ui.c` (Vmin/Vmax/آستانه/تایم‌ها) |
-| `../../Rtos/Src/task_ui.c` | تسک؛ متغیرهای تست ولتاژ `U32_G_InputVoltageMv` / `U32_G_BatteryVoltageMv` (volatile)؛ انتخاب سناریو بر اساس ولتاژ؛ نام‌گذاری U32_G_ گلوبال، u32_ داخلی |
+| `ui_config.h` | **فایل واحد مین/ماکس و تایم‌ها** — همه آستانه‌های قابل تنظیم اینجاست (Vmin=21V, Vmax=28V, Vth=20V, blink, beep) تا تکراری در ۲-۳ فایل نباشد؛ `ui.c`، `task_ui.c`، `app_config.c` و `host_test_ui.py` همین را می‌خوانند |
+| `ui.h` / `ui.c` | API و 3 تابع سناریو + تابع جدا بازر + تبدیل ولتاژ به درصد؛ دیگر ثابت تکراری ندارد، فقط `#include ui_config.h` |
+| `../../Rtos/Src/task_ui.c` | تسک؛ متغیرهای تست ولتاژ `U32_G_InputVoltageMv` / `U32_G_BatteryVoltageMv` (volatile)؛ انتخاب سناریو بر اساس ولتاژ؛ دیگر ثابت تکراری ندارد، فقط `ui_config.h` را include می‌کند |
 | `../../Bsp/Src/bsp_gpio.c` | نوشتن پایه |
 | `../../Config/Inc/board_pins.h` | شماره پایه |
-| `../../Config/Inc/app_config.h` / `Src/app_config.c` | مقادیر پیش‌فرض جدید: `ui_input_threshold_mv=20000`, `ui_bat_v_min_mv=21000`, `ui_bat_v_max_mv=28000`, `ui_charging_blink_period_ms`, `ui_beep_base_ms`, `ui_beep_double_thresh_pct`, `ui_beep_start_pct` |
-| `host_test_ui.py` | تست هاست جدید: نگاشت 21V=0% 28V=100%، سناریوهای InputOk/BatteryRun/Charging، بوق هوشمند (40%→40s, 10%→10s با طول 2 برابر) |
+| `../../Config/Inc/app_config.h` / `Src/app_config.c` | مقادیر پیش‌فرض از `ui_config.h` می‌آیند (single source) تا تکراری نباشد: `ui_input_threshold_mv`, `ui_bat_v_min/max`, `charging`, `beep` |
+| `host_test_ui.py` | تست هاست: آستانه‌ها را از `ui_config.h` می‌خواند (parse #define) تا تکراری نباشد؛ نگاشت 21V=0% 28V=100% |
 
 `host_test_ui.py` به بیلد ARM نمی‌رود، فقط روی هاست اجرا می‌شود.
 

@@ -17,27 +17,9 @@
  *          - بازر جدا: Ui_BuzzerBeep را در هر سناریو می‌توان صدا زد.
  */
 
-/* ==================== Tunable Parameters — Change Here ==================== */
-/* [EN] Change these to tune without touching logic / اینجا را عوض کن تا منطق دست نخورد */
-
-#define UI_BAT_V_MIN_MV                 21000u  /* [EN] 0% = 21V / صفر درصد = ۲۱ ولت */
-#define UI_BAT_V_MAX_MV                 28000u  /* [EN] 100% = 28V / فول = ۲۸ ولت */
-#define UI_INPUT_THRESHOLD_MV           20000u  /* [EN] <20V = no input / زیر ۲۰ ولت یعنی ورودی نداریم */
-#define UI_INPUT_OK_POLL_MS             500u    /* [EN] InputOk steady hold / مدت سبز ثابت ورودی وصل */
-#define UI_SELFTEST_LED_MS              500u    /* [EN] Board test LED step / گام LED تست برد */
-#define UI_BOOT_BEEP_MS                 150u    /* [EN] Board test beep / بوق تست برد */
-#define UI_BLINK_PERIOD_MS              1000u   /* [EN] Green blink period for BatteryRun / دوره چشمک سبز دشارژ */
-#define UI_GREEN_MIN_OFF_MS             10u     /* [EN] Min off for green full battery / حداقل خاموشی سبز فول */
-#define UI_CHARGING_BLINK_PERIOD_MS     1000u   /* [EN] Yellow blink period for Charging / دوره چشمک زرد شارژ */
-#define UI_CHARGING_YELLOW_MIN_OFF_MS   10u     /* [EN] Min off for yellow when almost full / حداقل خاموشی زرد */
-#define UI_BEEP_BASE_MS                 250u    /* [EN] Base beep length / طول بوق پایه */
-#define UI_BEEP_DOUBLE_THRESH_PCT       20u     /* [EN] Below this, beep duration x2 / زیر این درصد طول بوق ۲ برابر */
-#define UI_BEEP_START_PCT               50u     /* [EN] Below this, periodic beep starts / زیر این درصد بوق دوره‌ای شروع */
-#define UI_PERCENT_FULL                 100u    /* [EN] 100% / فول */
-#define UI_PERCENT_SCALE                100u    /* [EN] Divisor for percent math / مقسوم‌علیه درصد */
-
 /* ==================== Includes ==================== */
 #include "ui.h"
+#include "ui_config.h"  /* [EN] Single source for all thresholds/timings / تنها منبع آستانه‌ها و تایم‌ها */
 #include "bsp_gpio.h"
 #include "board_pins.h"
 #include "app_config.h"

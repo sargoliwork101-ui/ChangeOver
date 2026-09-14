@@ -14,15 +14,10 @@
  *          - پارامترها بالای همین فایل و بالای ui.c تعریف شده‌اند تا تغییرشان نیاز به عوض کردن کل برنامه نداشته باشد.
  */
 
-/* ==================== Tunable Parameters — Change Here ==================== */
-#define UI_BAT_V_MIN_MV_TASK            21000u  /* [EN] 0% = 21V / صفر درصد */
-#define UI_BAT_V_MAX_MV_TASK            28000u  /* [EN] 100% = 28V / فول */
-#define UI_INPUT_THRESHOLD_MV_TASK      20000u  /* [EN] <20V = no input / زیر ۲۰ ولت ورودی نداریم */
-#define UI_PERCENT_FULL_TASK            100u
-
 /* ==================== Includes ==================== */
 #include "rtos_tasks.h"
 #include "ui.h"
+#include "ui_config.h"  /* [EN] Single source for thresholds, no duplication / منبع واحد آستانه‌ها */
 #include "app_config.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -64,25 +59,25 @@ void TaskUi(void *argument)
         u32_batteryVoltageMv = U32_G_BatteryVoltageMv;
 
         /* [EN] Clamp battery voltage to valid range for safety / محدود کردن ولتاژ باتری */
-        if (u32_batteryVoltageMv < UI_BAT_V_MIN_MV_TASK)
+        if (u32_batteryVoltageMv < UI_BAT_V_MIN_MV)
         {
             /* [EN] Below min, keep as is for 0% handling, but not underflow / زیر حداقل */
         }
-        if (u32_batteryVoltageMv > UI_BAT_V_MAX_MV_TASK)
+        if (u32_batteryVoltageMv > UI_BAT_V_MAX_MV)
         {
-            u32_batteryVoltageMv = UI_BAT_V_MAX_MV_TASK;
+            u32_batteryVoltageMv = UI_BAT_V_MAX_MV;
         }
 
         /* [EN] Convert to percent using helper (21V=0%,28V=100%) / تبدیل به درصد */
         u8_batteryPercent = Ui_BatteryVoltageToPercent(u32_batteryVoltageMv);
 
         /* [EN] Input present if V_in >= 20V threshold / ورودی وصل اگر >=۲۰ ولت */
-        b_inputPresent = (u32_inputVoltageMv >= UI_INPUT_THRESHOLD_MV_TASK);
+        b_inputPresent = (u32_inputVoltageMv >= UI_INPUT_THRESHOLD_MV);
 
         if (b_inputPresent == true)
         {
             /* [EN] Input present: if battery not full, charging scenario, else InputOk / ورودی وصل: اگر باتری فول نیست شارژ */
-            if (u8_batteryPercent < UI_PERCENT_FULL_TASK)
+            if (u8_batteryPercent < UI_PERCENT_FULL)
             {
                 Ui_ScenarioCharging(u32_batteryVoltageMv);
             }
