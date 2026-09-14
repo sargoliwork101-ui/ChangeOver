@@ -1,0 +1,57 @@
+################################################################################
+# Automatically-generated file. Do not edit!
+# Toolchain: GNU Tools for STM32 (14.3.rel1)
+################################################################################
+
+# Add inputs and outputs from these tool invocations to the build variables 
+C_SRCS += \
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/freertos_hooks.c \
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/rtos_app.c \
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/task_comm.c \
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/task_control.c \
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/task_measurement.c \
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/task_protection.c \
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/task_ui.c 
+
+OBJS += \
+./Firmware/Rtos/Src/freertos_hooks.o \
+./Firmware/Rtos/Src/rtos_app.o \
+./Firmware/Rtos/Src/task_comm.o \
+./Firmware/Rtos/Src/task_control.o \
+./Firmware/Rtos/Src/task_measurement.o \
+./Firmware/Rtos/Src/task_protection.o \
+./Firmware/Rtos/Src/task_ui.o 
+
+C_DEPS += \
+./Firmware/Rtos/Src/freertos_hooks.d \
+./Firmware/Rtos/Src/rtos_app.d \
+./Firmware/Rtos/Src/task_comm.d \
+./Firmware/Rtos/Src/task_control.d \
+./Firmware/Rtos/Src/task_measurement.d \
+./Firmware/Rtos/Src/task_protection.d \
+./Firmware/Rtos/Src/task_ui.d 
+
+
+# Each subdirectory must supply rules for building sources it contributes
+Firmware/Rtos/Src/freertos_hooks.o: C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/freertos_hooks.c Firmware/Rtos/Src/subdir.mk
+	arm-none-eabi-gcc "$<" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../../Core/Inc -I../../Drivers/STM32F1xx_HAL_Driver/Inc -I../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../../Middlewares/Third_Party/FreeRTOS/Source/include -I../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -I../../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" --specs=nano.specs -mfloat-abi=soft -mthumb -o "$@"
+Firmware/Rtos/Src/rtos_app.o: C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/rtos_app.c Firmware/Rtos/Src/subdir.mk
+	arm-none-eabi-gcc "$<" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../../Core/Inc -I../../Drivers/STM32F1xx_HAL_Driver/Inc -I../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../../Middlewares/Third_Party/FreeRTOS/Source/include -I../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -I../../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" --specs=nano.specs -mfloat-abi=soft -mthumb -o "$@"
+Firmware/Rtos/Src/task_comm.o: C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/task_comm.c Firmware/Rtos/Src/subdir.mk
+	arm-none-eabi-gcc "$<" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../../Core/Inc -I../../Drivers/STM32F1xx_HAL_Driver/Inc -I../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../../Middlewares/Third_Party/FreeRTOS/Source/include -I../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -I../../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" --specs=nano.specs -mfloat-abi=soft -mthumb -o "$@"
+Firmware/Rtos/Src/task_control.o: C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/task_control.c Firmware/Rtos/Src/subdir.mk
+	arm-none-eabi-gcc "$<" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../../Core/Inc -I../../Drivers/STM32F1xx_HAL_Driver/Inc -I../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../../Middlewares/Third_Party/FreeRTOS/Source/include -I../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -I../../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" --specs=nano.specs -mfloat-abi=soft -mthumb -o "$@"
+Firmware/Rtos/Src/task_measurement.o: C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/task_measurement.c Firmware/Rtos/Src/subdir.mk
+	arm-none-eabi-gcc "$<" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../../Core/Inc -I../../Drivers/STM32F1xx_HAL_Driver/Inc -I../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../../Middlewares/Third_Party/FreeRTOS/Source/include -I../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -I../../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" --specs=nano.specs -mfloat-abi=soft -mthumb -o "$@"
+Firmware/Rtos/Src/task_protection.o: C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/task_protection.c Firmware/Rtos/Src/subdir.mk
+	arm-none-eabi-gcc "$<" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../../Core/Inc -I../../Drivers/STM32F1xx_HAL_Driver/Inc -I../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../../Middlewares/Third_Party/FreeRTOS/Source/include -I../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -I../../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" --specs=nano.specs -mfloat-abi=soft -mthumb -o "$@"
+Firmware/Rtos/Src/task_ui.o: C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/task_ui.c Firmware/Rtos/Src/subdir.mk
+	arm-none-eabi-gcc "$<" -mcpu=cortex-m3 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F103xB -c -I../../Core/Inc -I../../Drivers/STM32F1xx_HAL_Driver/Inc -I../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I../../Middlewares/Third_Party/FreeRTOS/Source/include -I../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 -I../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 -I../../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I../../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" --specs=nano.specs -mfloat-abi=soft -mthumb -o "$@"
+
+clean: clean-Firmware-2f-Rtos-2f-Src
+
+clean-Firmware-2f-Rtos-2f-Src:
+	-$(RM) ./Firmware/Rtos/Src/freertos_hooks.cyclo ./Firmware/Rtos/Src/freertos_hooks.d ./Firmware/Rtos/Src/freertos_hooks.o ./Firmware/Rtos/Src/freertos_hooks.su ./Firmware/Rtos/Src/rtos_app.cyclo ./Firmware/Rtos/Src/rtos_app.d ./Firmware/Rtos/Src/rtos_app.o ./Firmware/Rtos/Src/rtos_app.su ./Firmware/Rtos/Src/task_comm.cyclo ./Firmware/Rtos/Src/task_comm.d ./Firmware/Rtos/Src/task_comm.o ./Firmware/Rtos/Src/task_comm.su ./Firmware/Rtos/Src/task_control.cyclo ./Firmware/Rtos/Src/task_control.d ./Firmware/Rtos/Src/task_control.o ./Firmware/Rtos/Src/task_control.su ./Firmware/Rtos/Src/task_measurement.cyclo ./Firmware/Rtos/Src/task_measurement.d ./Firmware/Rtos/Src/task_measurement.o ./Firmware/Rtos/Src/task_measurement.su ./Firmware/Rtos/Src/task_protection.cyclo ./Firmware/Rtos/Src/task_protection.d ./Firmware/Rtos/Src/task_protection.o ./Firmware/Rtos/Src/task_protection.su ./Firmware/Rtos/Src/task_ui.cyclo ./Firmware/Rtos/Src/task_ui.d ./Firmware/Rtos/Src/task_ui.o ./Firmware/Rtos/Src/task_ui.su
+
+.PHONY: clean-Firmware-2f-Rtos-2f-Src
+
