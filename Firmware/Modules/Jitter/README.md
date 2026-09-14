@@ -14,6 +14,7 @@
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
 | 2026-09 | اسکلت `Jitter_Init` / `Run` / `ChannelTripped` |
 
@@ -48,3 +49,19 @@
 ## پیش‌فرض امن
 
 بعد از Init هر دو `s_trip` برابر false است. خروجی قدرت ندارد.
+
+## درخت اتصال
+
+صدا زده می‌شود از (وقتی فلگ ۱ شود):
+
+```text
+rtos_app.c → TaskControl → task_control.c
+  Jitter_Init / Jitter_Run / Jitter_ChannelTripped
+```
+
+این ماژول صدا می‌زند:
+
+```text
+jitter.c
+  bsp_exti.h / bsp_exti.c    BspExti_Init ، BspExti_TakeEvent
+```

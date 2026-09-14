@@ -14,6 +14,7 @@
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
 | 2026-09 | اسکلت `Protection_Init` / `Protection_Run` |
 
@@ -45,3 +46,22 @@
 ## پیش‌فرض امن
 
 Init چیزی را High نمی‌کند. بدون نمونه معتبر، بعداً باید خطا ADC قفل شود نه PWM/رله.
+
+## درخت اتصال
+
+صدا زده می‌شود از (وقتی فلگ ۱ شود):
+
+```text
+rtos_app.c → TaskProtection → task_protection.c
+  Protection_Run(&snap)
+```
+
+این ماژول صدا می‌زند:
+
+```text
+protection.c
+  measurement.h / Measurement_GetSnapshot   (از تسک)
+  fault.h / Fault_Set
+  app_config.h                              حدها
+  app_types.h                               snapshot ، FAULT_*
+```

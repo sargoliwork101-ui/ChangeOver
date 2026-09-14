@@ -1,0 +1,10 @@
+.metadata/
+RemoteSystemsTempFiles/
+CubeIDE/Debug/
+CubeIDE/Release/
+CubeIDE/.settings/
+*.launch
+*.elf
+*.map
+*.hex
+*.bin

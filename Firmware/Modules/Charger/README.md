@@ -14,6 +14,7 @@
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
 | 2026-09 | اسکلت `Charger_Init` / `Charger_Evaluate` |
 
@@ -45,3 +46,22 @@
 ## پیش‌فرض امن
 
 بعد از Init باید هر دو کانال ۰٪ باشند. بدون Measurement معتبر PWM بالا نرود.
+
+## درخت اتصال
+
+صدا زده می‌شود از (وقتی فلگ ۱ شود):
+
+```text
+rtos_app.c → TaskControl → task_control.c
+  Charger_Evaluate(&snap, state)
+```
+
+این ماژول صدا می‌زند:
+
+```text
+charger.c
+  charger.h → app_types.h
+  app_config.h / app_config.c    pwm_max_duty_permille
+```
+
+`bsp_pwm.c` هنوز از charger صدا زده نمی‌شود.

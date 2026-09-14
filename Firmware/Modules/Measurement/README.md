@@ -14,6 +14,7 @@
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
 | 2026-09 | اسکلت `Measurement_Init` / `Run` / `GetSnapshot` |
 
@@ -51,3 +52,23 @@
 ## پیش‌فرض امن
 
 بعد از Init هیچ نمونه‌ای معتبر نیست (`valid = false`). خروجی GPIO ندارد.
+
+## درخت اتصال
+
+صدا زده می‌شود از (وقتی فلگ ۱ شود):
+
+```text
+rtos_app.c → TaskMeasurement → task_measurement.c
+  Measurement_Init / Measurement_Run / Measurement_GetSnapshot
+task_protection.c → Measurement_GetSnapshot
+task_control.c    → Measurement_GetSnapshot
+task_comm.c       → Measurement_GetSnapshot
+```
+
+این ماژول صدا می‌زند:
+
+```text
+measurement.c
+  bsp_adc.h / bsp_adc.c   BspAdc_GetRaw
+  app_types.h             measurement_snapshot_t
+```

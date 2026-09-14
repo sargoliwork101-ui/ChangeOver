@@ -14,6 +14,7 @@
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
 | 2026-09 | اسکلت `Changeover_Init` / `Changeover_Evaluate` |
 
@@ -50,3 +51,21 @@
 ## پیش‌فرض امن
 
 Init فقط state را BOOT می‌کند؛ پایه را High نمی‌کند. تا اندازه‌گیری قطبیت، این خروجی‌ها را از CubeMX هم Low بگذار.
+
+## درخت اتصال
+
+صدا زده می‌شود از (وقتی فلگ ۱ شود):
+
+```text
+rtos_app.c → TaskControl → task_control.c
+  Changeover_Evaluate(&snap, faults)
+```
+
+این ماژول صدا می‌زند:
+
+```text
+changeover.c
+  app_types.h     app_state_t ، measurement_snapshot_t ، fault_mask_t
+```
+
+snapshot از Measurement می‌آید، faults از Fault؛ خود Changeover آن‌ها را include نمی‌کند، از آرگومان می‌گیرد. GPIO قدرت هنوز از اینجا زده نمی‌شود.

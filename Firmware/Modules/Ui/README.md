@@ -14,6 +14,7 @@
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه یکدست شد |
 | 2026-09 | کامنت خط‌به‌خط انگلیسی روی `Ui_Scenario1` / `Ui_Scenario2`؛ سناریو ۲ بدون متغیر اضافه |
 | 2026-09 | `Ui_BoardTest` یک‌بار، بعد `UI_FLAG` یکی از دو سناریو |
@@ -60,3 +61,26 @@
 ## پیش‌فرض امن
 
 `Ui_Init` هر چهار پایه را Low می‌کند. قبل از `App_Start` هم CubeMX Level = Low.
+
+## درخت اتصال
+
+صدا زده می‌شود از:
+
+```text
+main.c → App_Start() → app.c
+  Ui_Init()
+  Rtos_Start() → rtos_app.c → TaskUi → task_ui.c
+    Ui_BoardTest / Ui_Scenario1 / Ui_Scenario2
+```
+
+این ماژول صدا می‌زند:
+
+```text
+ui.c
+  bsp_gpio.h / bsp_gpio.c     BspGpio_Write
+  board_pins.h                PIN_LED_* ، PIN_BUZZER_*
+  app_config.h / app_config.c APP_CONFIG.ui_*
+  FreeRTOS.h / task.h         vTaskDelay
+```
+
+به ADC، PWM، UART وصل نیست.
