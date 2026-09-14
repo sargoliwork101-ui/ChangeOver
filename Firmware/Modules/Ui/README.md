@@ -6,7 +6,11 @@
 
 # ماژول UI — LED و بازر
 
-این فایل راهنمای **همین بخش** است. ADC، PWM، رله، شارژر و ESP را اینجا روشن نکن.
+توضیح کامل **همین ماژول** همین‌جاست. سند جدا در `Firmware/docs` ندارد.
+
+الان فقط همین مرحله فعال است. ADC، PWM، رله، شارژر و ESP را اینجا روشن نکن.
+
+از `main` تا اینجا: بعد از `MX_GPIO_Init()` تابع `App_Start()` صدا می‌شود → `Ui_Init()` همه را خاموش می‌کند → `Rtos_Start()` فقط `TaskUi` را می‌سازد → یک‌بار `Ui_BoardTest()` → بعد با `UI_FLAG` یکی از دو سناریو. تسک‌های دیگر فلگ صفر دارند و ساخته نمی‌شوند.
 
 ---
 
@@ -153,20 +157,18 @@ ADC، PWM، UART را در این مرحله Enable نکن.
 
 اگر هر دو SysTick را بردارند، تأخیر خراب می‌شود.
 
-FreeRTOS:
-
-- `configSUPPORT_STATIC_ALLOCATION` = **1**
-- Task پیش‌فرض Cube را بگذار بماند؛ ما `osKernelStart` را صدا نمی‌زنیم پس اجرا نمی‌شود
+تسک پیش‌فرض Cube را دست نزن. `osKernelStart` را صدا نمی‌زنیم؛ رئیس `App_Start` است.
 
 ### ۴.۸ Project Manager
 
-- Project Name: `CubeIDE`
-- Location: پوشهٔ ریپو `ChangeOver` (نتیجه: `ChangeOver/CubeIDE/`)
+- Project Name: مثلاً `ChangeOver` یا `CubeIDE` (اسم پوشهٔ Generate)
+- Location: پوشهٔ ریپو `ChangeOver` — **نه** داخل `Firmware`
+- نتیجه: پوشهٔ Cube **کنار** `Firmware` (مثلاً `ChangeOver/ChangeOver/` یا `ChangeOver/CubeIDE/`)
 - Toolchain: **STM32CubeIDE**
 - `Keep User Code when re-generating` روشن
 - Generate Code
 
-Workspace بعداً در IDE باید `ChangeOver` باشد، نه خود `CubeIDE`.
+Workspace در IDE باید ریشهٔ ریپو باشد (`...\GitHub\ChangeOver`)، نه داخل پوشهٔ `.ioc`.
 
 ---
 
