@@ -1,3 +1,0 @@
-C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/freertos_hooks.c:20:6:vApplicationGetIdleTaskMemory	1
-C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/freertos_hooks.c:37:6:vApplicationGetTimerTaskMemory	1
-C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Rtos/Src/freertos_hooks.c:51:6:vApplicationStackOverflowHook	1

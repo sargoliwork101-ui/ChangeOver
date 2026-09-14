@@ -3,6 +3,9 @@ RemoteSystemsTempFiles/
 CubeIDE/Debug/
 CubeIDE/Release/
 CubeIDE/.settings/
+CubeIDE/STM32CubeIDE/Debug/
+CubeIDE/STM32CubeIDE/Release/
+CubeIDE/STM32CubeIDE/.settings/
 *.launch
 *.elf
 *.map

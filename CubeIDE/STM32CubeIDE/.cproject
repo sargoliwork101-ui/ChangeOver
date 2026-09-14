@@ -21,7 +21,7 @@
 							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_cpuid.432565363" name="CPU" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_cpuid" value="0" valueType="string"/>
 							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_coreid.1132302245" name="Core" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_coreid" value="0" valueType="string"/>
 							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_board.1154106078" name="Board" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_board" value="genericBoard" valueType="string"/>
-							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.defaults.1575059522" name="Defaults" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.defaults" value="com.st.stm32cube.ide.common.services.build.inputs.revA.1.0.6 || Debug || true || Executable || com.st.stm32cube.ide.mcu.gnu.managedbuild.option.toolchain.value.workspace || STM32F103C8Tx || 0 || 0 || arm-none-eabi- || ${gnu_tools_for_stm32_compiler_path} || ../../Core/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy | ../../Middlewares/Third_Party/FreeRTOS/Source/include | ../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 | ../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 | ../../Drivers/CMSIS/Device/ST/STM32F1xx/Include | ../../Drivers/CMSIS/Include || ../../Core/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy | ../../Middlewares/Third_Party/FreeRTOS/Source/include | ../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 | ../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 | ../../Drivers/CMSIS/Device/ST/STM32F1xx/Include | ../../Drivers/CMSIS/Include ||  || USE_HAL_DRIVER | STM32F103xB ||  ||  ||  ||  || ${workspace_loc:/${ProjName}/STM32F103C8TX_FLASH.ld} || true || NonSecure ||  || secure_nsclib.o ||  || None ||  ||  ||  || ::" valueType="string"/>
+							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.defaults.1575059522" name="Defaults" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.defaults" value="com.st.stm32cube.ide.common.services.build.inputs.revA.1.0.6 || Debug || true || Executable || com.st.stm32cube.ide.mcu.gnu.managedbuild.option.toolchain.value.workspace || STM32F103C8Tx || 0 || 0 || arm-none-eabi- || ${gnu_tools_for_stm32_compiler_path} || ../../Core/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy | ../../Middlewares/Third_Party/FreeRTOS/Source/include | ../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 | ../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 | ../../Drivers/CMSIS/Device/ST/STM32F1xx/Include | ../../Drivers/CMSIS/Include | ../../../Firmware/App/Inc | ../../../Firmware/Bsp/Inc | ../../../Firmware/Config/Inc | ../../../Firmware/Rtos/Inc | ../../../Firmware/Modules/Ui | ../../../Firmware/Modules/Measurement | ../../../Firmware/Modules/Protection | ../../../Firmware/Modules/Changeover | ../../../Firmware/Modules/Charger | ../../../Firmware/Modules/Jitter | ../../../Firmware/Modules/Fault | ../../../Firmware/Modules/EspLink || ../../Core/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy | ../../Middlewares/Third_Party/FreeRTOS/Source/include | ../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 | ../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 | ../../Drivers/CMSIS/Device/ST/STM32F1xx/Include | ../../Drivers/CMSIS/Include | ../../../Firmware/App/Inc | ../../../Firmware/Bsp/Inc | ../../../Firmware/Config/Inc | ../../../Firmware/Rtos/Inc | ../../../Firmware/Modules/Ui | ../../../Firmware/Modules/Measurement | ../../../Firmware/Modules/Protection | ../../../Firmware/Modules/Changeover | ../../../Firmware/Modules/Charger | ../../../Firmware/Modules/Jitter | ../../../Firmware/Modules/Fault | ../../../Firmware/Modules/EspLink ||  || USE_HAL_DRIVER | STM32F103xB ||  ||  ||  ||  || ${workspace_loc:/${ProjName}/STM32F103C8TX_FLASH.ld} || true || NonSecure ||  || secure_nsclib.o ||  || None ||  ||  ||  || ::" valueType="string"/>
 							<option id="com.st.stm32cube.ide.mcu.debug.option.cpuclock.1600711805" superClass="com.st.stm32cube.ide.mcu.debug.option.cpuclock" value="72" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="com.st.stm32cube.ide.mcu.gnu.managedbuild.targetplatform.1275193172" isAbstract="false" osList="all" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.targetplatform"/>
 							<builder buildPath="${workspace_loc:/CubeIDE}/Debug" id="com.st.stm32cube.ide.mcu.gnu.managedbuild.builder.848911509" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="Gnu Make Builder" parallelBuildOn="true" parallelizationNumber="optimal" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.builder"/>
@@ -39,6 +39,18 @@
 									<listOptionValue builtIn="false" value="../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3"/>
 									<listOptionValue builtIn="false" value="../../Drivers/CMSIS/Device/ST/STM32F1xx/Include"/>
 									<listOptionValue builtIn="false" value="../../Drivers/CMSIS/Include"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/App/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Bsp/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Config/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Rtos/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Ui"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Measurement"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Protection"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Changeover"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Charger"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Jitter"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Fault"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/EspLink"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input.903822351" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input"/>
 							</tool>
@@ -59,6 +71,18 @@
 									<listOptionValue builtIn="false" value="../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3"/>
 									<listOptionValue builtIn="false" value="../../Drivers/CMSIS/Device/ST/STM32F1xx/Include"/>
 									<listOptionValue builtIn="false" value="../../Drivers/CMSIS/Include"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/App/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Bsp/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Config/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Rtos/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Ui"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Measurement"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Protection"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Changeover"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Charger"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Jitter"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Fault"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/EspLink"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.1245326357" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
@@ -84,6 +108,9 @@
 							<tool id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.objcopy.symbolsrec.1825917774" name="MCU Output Converter Motorola S-rec with symbols" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.objcopy.symbolsrec"/>
 						</toolChain>
 					</folderInfo>
+				<sourceEntries>
+					<entry excluding="Firmware/Bsp/Src/bsp_adc.c,Firmware/Bsp/Src/bsp_uart.c,Firmware/Modules/Measurement/measurement.c,Firmware/Modules/EspLink/esp_link.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+				</sourceEntries>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
@@ -108,7 +135,7 @@
 							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_cpuid.1394556848" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_cpuid" value="0" valueType="string"/>
 							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_coreid.1264177648" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_coreid" value="0" valueType="string"/>
 							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_board.1031530580" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.target_board" value="genericBoard" valueType="string"/>
-							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.defaults.1124417262" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.defaults" value="com.st.stm32cube.ide.common.services.build.inputs.revA.1.0.6 || Release || false || Executable || com.st.stm32cube.ide.mcu.gnu.managedbuild.option.toolchain.value.workspace || STM32F103C8Tx || 0 || 0 || arm-none-eabi- || ${gnu_tools_for_stm32_compiler_path} || ../../Core/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy | ../../Middlewares/Third_Party/FreeRTOS/Source/include | ../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 | ../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 | ../../Drivers/CMSIS/Device/ST/STM32F1xx/Include | ../../Drivers/CMSIS/Include || ../../Core/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy | ../../Middlewares/Third_Party/FreeRTOS/Source/include | ../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 | ../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 | ../../Drivers/CMSIS/Device/ST/STM32F1xx/Include | ../../Drivers/CMSIS/Include ||  || USE_HAL_DRIVER | STM32F103xB ||  ||  ||  ||  || ${workspace_loc:/${ProjName}/STM32F103C8TX_FLASH.ld} || true || NonSecure ||  || secure_nsclib.o ||  || None ||  ||  ||  || ::" valueType="string"/>
+							<option id="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.defaults.1124417262" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.option.defaults" value="com.st.stm32cube.ide.common.services.build.inputs.revA.1.0.6 || Release || false || Executable || com.st.stm32cube.ide.mcu.gnu.managedbuild.option.toolchain.value.workspace || STM32F103C8Tx || 0 || 0 || arm-none-eabi- || ${gnu_tools_for_stm32_compiler_path} || ../../Core/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy | ../../Middlewares/Third_Party/FreeRTOS/Source/include | ../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 | ../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 | ../../Drivers/CMSIS/Device/ST/STM32F1xx/Include | ../../Drivers/CMSIS/Include | ../../../Firmware/App/Inc | ../../../Firmware/Bsp/Inc | ../../../Firmware/Config/Inc | ../../../Firmware/Rtos/Inc | ../../../Firmware/Modules/Ui | ../../../Firmware/Modules/Measurement | ../../../Firmware/Modules/Protection | ../../../Firmware/Modules/Changeover | ../../../Firmware/Modules/Charger | ../../../Firmware/Modules/Jitter | ../../../Firmware/Modules/Fault | ../../../Firmware/Modules/EspLink || ../../Core/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc | ../../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy | ../../Middlewares/Third_Party/FreeRTOS/Source/include | ../../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2 | ../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3 | ../../Drivers/CMSIS/Device/ST/STM32F1xx/Include | ../../Drivers/CMSIS/Include | ../../../Firmware/App/Inc | ../../../Firmware/Bsp/Inc | ../../../Firmware/Config/Inc | ../../../Firmware/Rtos/Inc | ../../../Firmware/Modules/Ui | ../../../Firmware/Modules/Measurement | ../../../Firmware/Modules/Protection | ../../../Firmware/Modules/Changeover | ../../../Firmware/Modules/Charger | ../../../Firmware/Modules/Jitter | ../../../Firmware/Modules/Fault | ../../../Firmware/Modules/EspLink ||  || USE_HAL_DRIVER | STM32F103xB ||  ||  ||  ||  || ${workspace_loc:/${ProjName}/STM32F103C8TX_FLASH.ld} || true || NonSecure ||  || secure_nsclib.o ||  || None ||  ||  ||  || ::" valueType="string"/>
 							<option id="com.st.stm32cube.ide.mcu.debug.option.cpuclock.1440794346" superClass="com.st.stm32cube.ide.mcu.debug.option.cpuclock" value="72" valueType="string"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="com.st.stm32cube.ide.mcu.gnu.managedbuild.targetplatform.1482558464" isAbstract="false" osList="all" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.targetplatform"/>
 							<builder buildPath="${workspace_loc:/CubeIDE}/Release" id="com.st.stm32cube.ide.mcu.gnu.managedbuild.builder.934961429" managedBuildOn="true" name="Gnu Make Builder.Release" parallelBuildOn="true" parallelizationNumber="optimal" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.builder"/>
@@ -123,6 +150,18 @@
 									<listOptionValue builtIn="false" value="../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3"/>
 									<listOptionValue builtIn="false" value="../../Drivers/CMSIS/Device/ST/STM32F1xx/Include"/>
 									<listOptionValue builtIn="false" value="../../Drivers/CMSIS/Include"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/App/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Bsp/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Config/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Rtos/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Ui"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Measurement"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Protection"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Changeover"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Charger"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Jitter"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Fault"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/EspLink"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input.1211119378" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input"/>
 							</tool>
@@ -142,6 +181,18 @@
 									<listOptionValue builtIn="false" value="../../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM3"/>
 									<listOptionValue builtIn="false" value="../../Drivers/CMSIS/Device/ST/STM32F1xx/Include"/>
 									<listOptionValue builtIn="false" value="../../Drivers/CMSIS/Include"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/App/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Bsp/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Config/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Rtos/Inc"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Ui"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Measurement"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Protection"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Changeover"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Charger"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Jitter"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Fault"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/EspLink"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.1314143062" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
@@ -167,6 +218,9 @@
 							<tool id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.objcopy.symbolsrec.373486758" name="MCU Output Converter Motorola S-rec with symbols" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.objcopy.symbolsrec"/>
 						</toolChain>
 					</folderInfo>
+				<sourceEntries>
+					<entry excluding="Firmware/Bsp/Src/bsp_adc.c,Firmware/Bsp/Src/bsp_uart.c,Firmware/Modules/Measurement/measurement.c,Firmware/Modules/EspLink/esp_link.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+				</sourceEntries>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>

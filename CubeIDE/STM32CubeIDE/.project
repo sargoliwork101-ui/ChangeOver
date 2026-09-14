@@ -39,7 +39,7 @@
 		<link>
 			<name>Firmware</name>
 			<type>2</type>
-			<location>C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware</location>
+			<locationURI>PARENT-2-PROJECT_LOC/Firmware</locationURI>
 		</link>
 		<link>
 			<name>Drivers/CMSIS/system_stm32f1xx.c</name>
