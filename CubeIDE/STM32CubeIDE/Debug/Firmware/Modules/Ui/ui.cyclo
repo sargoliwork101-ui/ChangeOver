@@ -1,0 +1,9 @@
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Ui/ui.c:20:13:green	1
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Ui/ui.c:29:13:red	1
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Ui/ui.c:38:13:yellow	1
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Ui/ui.c:47:13:buzzer	1
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Ui/ui.c:56:13:all_off	1
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Ui/ui.c:68:6:Ui_Init	1
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Ui/ui.c:77:6:Ui_BoardTest	1
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Ui/ui.c:102:6:Ui_Scenario1	1
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Ui/ui.c:120:6:Ui_Scenario2	1

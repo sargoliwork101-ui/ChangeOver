@@ -1,0 +1,3 @@
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Jitter/jitter.c:16:6:Jitter_Init	8	static
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Jitter/jitter.c:27:6:Jitter_Run	8	static
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Jitter/jitter.c:43:6:Jitter_ChannelTripped	16	static

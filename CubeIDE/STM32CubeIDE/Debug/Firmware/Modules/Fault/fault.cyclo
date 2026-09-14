@@ -1,0 +1,5 @@
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Fault/fault.c:15:6:Fault_Init	1
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Fault/fault.c:24:6:Fault_Set	1
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Fault/fault.c:33:6:Fault_Clear	1
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Fault/fault.c:42:14:Fault_Get	1
+C:/Users/hamed/OneDrive/Documents/GitHub/ChangeOver/Firmware/Modules/Fault/fault.c:51:6:Fault_Any	1
