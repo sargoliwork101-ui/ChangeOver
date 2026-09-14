@@ -11,6 +11,21 @@
 #include <stdbool.h>
 #include "stm32f1xx_hal.h"
 
+/*
+ * ADC HAL is not enabled in CubeMX this stage, so stm32f1xx_hal_adc.h (and the
+ * full ADC_HandleTypeDef) is not generated. Declare the same struct tag as an
+ * incomplete type so the placeholder API still compiles. When CubeMX enables
+ * ADC, hal_adc.h supplies the complete definition and this block is skipped.
+ *
+ * در این مرحله HAL مربوط به ADC در CubeMX فعال نیست، پس فایل hal_adc.h و تایپ
+ * کامل ADC_HandleTypeDef تولید نمی‌شود. همان برچسب struct را به‌صورت ناقص اعلام
+ * می‌کنیم تا اسکلت کامپایل شود؛ با فعال‌شدن ADC در مکعب، تعریف کامل می‌آید و این
+ * بلوک نادیده گرفته می‌شود.
+ */
+#ifndef HAL_ADC_MODULE_ENABLED
+typedef struct __ADC_HandleTypeDef ADC_HandleTypeDef;
+#endif
+
 #define BSP_ADC_CHANNEL_COUNT  5u
 
 /* Rank order must match CubeMX:

@@ -108,9 +108,6 @@
 							<tool id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.objcopy.symbolsrec.1825917774" name="MCU Output Converter Motorola S-rec with symbols" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.objcopy.symbolsrec"/>
 						</toolChain>
 					</folderInfo>
-				<sourceEntries>
-					<entry excluding="Firmware/Bsp/Src/bsp_adc.c,Firmware/Bsp/Src/bsp_uart.c,Firmware/Modules/Measurement/measurement.c,Firmware/Modules/EspLink/esp_link.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
-				</sourceEntries>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
@@ -218,9 +215,6 @@
 							<tool id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.objcopy.symbolsrec.373486758" name="MCU Output Converter Motorola S-rec with symbols" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.objcopy.symbolsrec"/>
 						</toolChain>
 					</folderInfo>
-				<sourceEntries>
-					<entry excluding="Firmware/Bsp/Src/bsp_adc.c,Firmware/Bsp/Src/bsp_uart.c,Firmware/Modules/Measurement/measurement.c,Firmware/Modules/EspLink/esp_link.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
-				</sourceEntries>
 				</configuration>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
