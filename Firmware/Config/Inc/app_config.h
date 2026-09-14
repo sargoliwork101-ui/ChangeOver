@@ -12,7 +12,7 @@
 
 typedef struct
 {
-    uint32_t ui_task_period_ms;        /* [EN] Indication step period / دوره گام نمایش */
+    uint32_t ui_input_ok_poll_ms;      /* [EN] Re-check period while input is steady / دوره بازبینی حالت ورودی */
     uint32_t ui_selftest_led_ms;       /* board-test LED step / گام LED تست برد */
     uint32_t ui_boot_beep_ms;          /* board-test beep length / طول بوق تست برد */
     uint32_t ui_blink_period_ms;       /* [EN] Green battery-run blink period / دوره چشمک سبز */

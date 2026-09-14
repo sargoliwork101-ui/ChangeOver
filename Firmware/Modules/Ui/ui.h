@@ -1,7 +1,12 @@
 /**
  * @file    ui.h
- * @brief   [EN] LED/buzzer status indication: input normal, battery run, low battery.
- *          [FA] نمایش وضعیت با LED/بازر: ورودی عادی، دشارژ باتری، باتری ضعیف.
+ * @brief   [EN] LED/buzzer scenarios: input normal, battery run, battery low.
+ *          [FA] سناریوهای LED/بازر: ورودی عادی، دشارژ باتری، باتری ضعیف.
+ *
+ * @note    [EN] Each scenario function runs ONE cycle and returns, so the task
+ *                can re-check the test inputs and switch between scenarios.
+ *          [FA] هر تابع سناریو فقط یک سیکل اجرا می‌شود و برمی‌گردد تا تسک بتواند
+ *                ورودی‌های تست را دوباره بخواند و بین سناریوها سوییچ کند.
  */
 
 #ifndef UI_H
@@ -9,17 +14,6 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-
-/**
- * @brief [EN] Operating mode shown on the LEDs/buzzer.
- *        [FA] حالتی که روی LED/بازر نمایش داده می‌شود.
- */
-typedef enum
-{
-    UI_INPUT_OK = 0,  /**< [EN] Mains input present, batteries not on the load / ورودی وصل */
-    UI_BATTERY_RUN,   /**< [EN] Input lost, battery discharging, above low limit / دشارژ باتری */
-    UI_BATTERY_LOW    /**< [EN] Battery at or below the low limit / باتری در حد ضعیف */
-} ui_state_t;
 
 /**
  * @brief  [EN] Drive all UI outputs low (safe state).
@@ -34,11 +28,28 @@ void Ui_Init(void);
 void Ui_BoardTest(void);
 
 /**
- * @brief  [EN] Non-blocking indication step. Call periodically (ui_task_period_ms).
- *         [FA] گام نمایش غیرمسدودکننده. به صورت تناوبی (ui_task_period_ms) صدا زده شود.
- * @param  input_present   [EN] true = mains input connected / برق ورودی وصل
- * @param  battery_percent [EN] Battery charge 0..100 / درصد شارژ باتری (۰ تا ۱۰۰)
+ * @brief  [EN] Scenario "Input Normal": one cycle of steady green. Everything
+ *               else is forced off. Cycle length: ui_input_ok_poll_ms.
+ *         [FA] سناریوی «ورودی عادی»: یک سیکل سبز ثابت؛ بقیه خاموش.
  */
-void Ui_Indicate(bool input_present, uint8_t battery_percent);
+void Ui_ScenarioInputOk(void);
+
+/**
+ * @brief  [EN] Scenario "Battery Run": one 1 s blink cycle. On-time follows the
+ *               battery percent (full = 99 % on, 1 % = ~1 % on).
+ *         [FA] سناریوی «دشارژ باتری»: یک سیکل چشمک ۱ ثانیه‌ای؛ زمان روشن‌بودن
+ *               برابر درصد باتری است.
+ * @param  battery_percent [EN] 0..100 charge / درصد شارژ باتری
+ */
+void Ui_ScenarioBatteryRun(uint8_t battery_percent);
+
+/**
+ * @brief  [EN] Scenario "Battery Low": one 1 s cycle of yellow 500/500 blink;
+ *               a 250 ms beep is added on the first cycle of every 30 s window.
+ *               Keeps its own cycle counter, so call it every time while low.
+ *         [FA] سناریوی «باتری ضعیف»: یک سیکل ۱ ثانیه‌ای زرد ۵۰۰/۵۰۰؛ در ابتدای
+ *               هر پنجره ۳۰ ثانیه‌ای یک بوق ۲۵۰ms اضافه می‌شود.
+ */
+void Ui_ScenarioBatteryLow(void);
 
 #endif /* UI_H */

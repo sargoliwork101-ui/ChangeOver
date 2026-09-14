@@ -6,7 +6,7 @@
 
 # CubeMX
 
-فقط فایل تنظیمات مکعب: `ChangeOver.ioc`
+فقط فایل تنظیمات مکعب: `CubeIDE.ioc` (نام پروژه مکعب `CubeIDE` است)
 
 `Firmware` را اینجا نگذار. `Core` / `Drivers` هم اینجا نماند.
 

@@ -10,22 +10,23 @@
 
 فعال. `MODULE_UI = 1`. تنها ماژولی که الان اجرا می‌شود.
 
-نمایش وضعیت با `Ui_Indicate(input_present, battery_percent)`، تابع غیرمسدودکننده که تسک هر ۱۰ms صدا می‌زند:
+هر سناریو یک تابع مستقل و خطی است که **یک سیکل** را با گام‌های سادهٔ روشن/تاخیر/خاموش اجرا می‌کند و برمی‌گردد؛ تسک در هر نوبت بر اساس ورودی‌های تست یکی را صدا می‌زند تا بین سیکل‌ها بتوان سناریو را عوض کرد:
 
-| حالت (enum) | شرط | رفتار |
+| سناریو | شرط انتخاب در تسک | رفتار یک سیکل |
 |---|---|---|
-| `UI_INPUT_OK` | ورودی وصل (`input_present = true`) | سبز ثابت، بقیه خاموش |
-| `UI_BATTERY_RUN` | ورودی قطع، باتری بالاتر از `ui_low_battery_percent` | سبز چشمک؛ دوره `ui_blink_period_ms`=۱۰۰۰ms، سهم روشن برابر درصد باتری (فول ۹۹٪ روشن، ۲۱٪ → ۲۱٪ روشن) |
-| `UI_BATTERY_LOW` | باتری ≤ `ui_low_battery_percent` (۲۰٪) | زرد ۵۰۰ روشن/۵۰۰ خاموش + بوق `ui_warn_beep_ms`=۲۵۰ms در ابتدای هر `ui_warn_beep_period_ms`=۳۰ ثانیه |
+| `Ui_ScenarioInputOk` | ورودی وصل (`ui_test_input_present = 1`) | سبز روشن می‌ماند؛ بقیه خاموش؛ سیکل `ui_input_ok_poll_ms`=۵۰۰ms |
+| `Ui_ScenarioBatteryRun` | ورودی قطع، باتری بالاتر از `ui_low_battery_percent` | سبز یک چشمک در دورهٔ `ui_blink_period_ms`=۱۰۰۰ms؛ روشن‌بودن برابر درصد باتری (فول ۹۹۰/۱۰، ۵۰٪ → ۵۰۰/۵۰۰، ۲۱٪ → ۲۱۰/۷۹۰) |
+| `Ui_ScenarioBatteryLow` | باتری ≤ `ui_low_battery_percent` (۲۰٪) | زرد ۵۰۰ روشن/۵۰۰ خاموش؛ در سیکل اول هر ۳۰ سیکل (۳۰ ثانیه) یک بوق `ui_warn_beep_ms`=۲۵۰ms با ابتدای روشن زرد هم‌پوشانی می‌شود |
 
-حالت چهارم (زیر ۱۰٪) هنوز تصمیم‌گیری نشده و فعلاً همان `UI_BATTERY_LOW` ادامه دارد.
+سناریوی چهارم (زیر ۱۰٪، احتمالاً قرمز) هنوز تصمیم‌گیری نشده.
 
-تست بدون ADC: دو متغیر `volatile` در `task_ui.c` (`ui_test_input_present`، `ui_test_battery_percent`) که در دیباگر از Live Expressions زنده عوض می‌شوند.
+تست بدون ADC: دو متغیر `volatile` در `task_ui.c` (`ui_test_input_present`، `ui_test_battery_percent`) که در دیباگر از Live Expressions زنده عوض می‌شوند. تغییر سناریو حداکثر بعد از پایان سیکل جاری (۰٫۵ تا ۱ ثانیه) اعمال می‌شود.
 
 ## تاریخچه
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-14 | بازنویسی به سبک سناریویی خطی: هر سناریو یک سیکل اجرا و برمی‌گردد (`Ui_ScenarioInputOk/BatteryRun/BatteryLow`)؛ حذف `Ui_Indicate` و تایمرهای نرم؛ رفع Init تکراری |
 | 2026-09-14 | سناریوهای مبتنی بر وضعیت با `Ui_Indicate` و enum سه حالته؛ حذف `Ui_Scenario1/2` و `UI_FLAG`؛ متغیرهای تست دستی در تسک؛ تست زمان‌بندی روی هاست پاس شد |
 | 2026-09-14 | درخت اتصال UI کامل شد (از main تا پایه) |
 | 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
@@ -38,8 +39,8 @@
 
 | فایل | نقش |
 |---|---|
-| `ui.h` / `ui.c` | API، enum حالت‌ها و ماشین نمایش غیرمسدودکننده |
-| `../../Rtos/Src/task_ui.c` | تسک؛ متغیرهای تست دستی؛ صدا زدن تناوبی `Ui_Indicate` |
+| `ui.h` / `ui.c` | API و سه تابع سناریو (هرکدام یک سیکل) |
+| `../../Rtos/Src/task_ui.c` | تسک؛ متغیرهای تست دستی؛ انتخاب سناریو در هر نوبت |
 | `../../Bsp/Src/bsp_gpio.c` | نوشتن پایه |
 | `../../Config/Inc/board_pins.h` | شماره پایه |
 | `../../Config/Src/app_config.c` | زمان‌ها و آستانه‌ها (`ui_*`) |
@@ -48,17 +49,17 @@
 
 | نام | کار |
 |---|---|
-| `Ui_Init` | همه خروجی UI خاموش؛ حالت اولیه `UI_INPUT_OK` و تایمرهای نرم صفر |
+| `Ui_Init` | همه خروجی UI خاموش؛ **فقط یک‌بار** از `App_Init` قبل از زمان‌بند صدا زده می‌شود |
 | `Ui_BoardTest` | یک‌بار قرمز، زرد، سبز، بوق؛ برمی‌گردد (مسدودکننده، فقط شروع) |
-| `Ui_Indicate` | یک گام نمایش؛ ورودی: فلگ ورودی و درصد باتری؛ حالت را انتخاب و لبه‌های چشمک/بوق را با شمارنده می‌سازد |
-| `TaskUi` | Init، تست برد، بعد حلقه تناوبی `ui_task_period_ms`؛ برنمی‌گردد |
+| `Ui_ScenarioInputOk` | یک سیکل سبز ثابت و بقیه خاموش |
+| `Ui_ScenarioBatteryRun` | یک سیکل چشمک سبز؛ ورودی درصد باتری؛ فرمول خاموشی `(100−درصد)×۱۰ms` با کف ۱۰ms |
+| `Ui_ScenarioBatteryLow` | یک سیکل زرد؛ شمارندهٔ استاتیک سیکل برای بوق هر ۳۰ سیکل |
+| `TaskUi` | تست برد، بعد حلقهٔ انتخاب سناریو از روی متغیرهای تست؛ برنمی‌گردد |
 | `green` (static) | PB10 |
-| `red` (static) | PB0 |
+| `red` (static) | PB0 (برای سناریوی بحرانی بعدی) |
 | `yellow` (static) | PB1 |
 | `buzzer` (static) | PA4 |
 | `all_off` (static) | هر چهار تا Low |
-
-متغیرهای داخلی `static`: `s_state` (حالت فعلی)، `s_phase_ms` (زمان درون دوره چشمک)، `s_warn_ms` (زمان درون دوره بوق هشدار). با عوض‌شدن حالت هر دو صفر می‌شوند تا الگو از لبه اولش شروع شود.
 
 ## پایه‌ها
 
@@ -73,7 +74,7 @@
 
 ## پیش‌فرض امن
 
-`Ui_Init` هر چهار پایه را Low می‌کند. قبل از `App_Start` هم CubeMX Level = Low. در `Ui_Indicate` شاخهٔ `default` حالت ناشناخته را با همه خروجی خاموش مدیریت می‌کند.
+`Ui_Init` هر چهار پایه را Low می‌کند (قبل از `App_Start` هم CubeMX سطح اولیه را Low می‌گذارد). هر سناریو موقع ورود، خروجی‌های نامرتبط خودش را هم صراحتاً خاموش می‌کند تا با عوض‌شدن سناریو خروجی روشن باقی نماند.
 
 ## درخت اتصال
 
@@ -81,11 +82,13 @@
 
 ```text
 main.c → App_Start() → app.c
-  Ui_Init()
+  App_Init() → Ui_Init()        (یک‌بار، قبل از زمان‌بند)
   Rtos_Start() → rtos_app.c → TaskUi → task_ui.c
-    Ui_BoardTest()  (یک‌بار)
-    حلقه هر ui_task_period_ms:
-      Ui_Indicate(ui_test_input_present, ui_test_battery_percent)
+    Ui_BoardTest()              (یک‌بار)
+    حلقه:
+      if (ورودی وصل)            Ui_ScenarioInputOk()
+      else if (باتری ≤ ۲۰٪)     Ui_ScenarioBatteryLow()
+      else                     Ui_ScenarioBatteryRun(درصد باتری)
 ```
 
 این ماژول صدا می‌زند:
@@ -95,7 +98,7 @@ ui.c
   bsp_gpio.h / bsp_gpio.c     BspGpio_Write
   board_pins.h                PIN_LED_* ، PIN_BUZZER_*
   app_config.h / app_config.c APP_CONFIG.ui_*
-  FreeRTOS.h / task.h         vTaskDelay (فقط Ui_BoardTest)
+  FreeRTOS.h / task.h         vTaskDelay
 ```
 
 به ADC، PWM، UART وصل نیست. درصد باتری و فلگ ورودی فعلاً دستی‌اند؛ بعداً از ماژول Measurement می‌آیند.

@@ -1,7 +1,7 @@
 /**
  * @file    task_ui.c
- * @brief   [EN] FreeRTOS task for LED/buzzer status indication.
- *          [FA] تسک FreeRTOS برای نمایش وضعیت با LED و بازر.
+ * @brief   [EN] FreeRTOS task that runs one LED/buzzer scenario at a time.
+ *          [FA] تسک FreeRTOS که هر بار یک سناریوی LED/بازر را اجرا می‌کند.
  */
 
 #include "rtos_tasks.h"
@@ -12,6 +12,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+
+#define UI_PERCENT_FULL   100u  /* [EN] 100 % charge / باتری فول */
 
 /*
  * Manual test inputs until the Measurement (ADC) module exists.
@@ -26,8 +28,12 @@ volatile uint8_t ui_test_battery_percent = 100u;  /* [EN] 0..100 charge / درص
 volatile uint8_t ui_test_input_present   = 1u;    /* [EN] 1 = mains on, 0 = lost / ورودی وصل یا قطع */
 
 /**
- * @brief  [EN] UI task entry. One board test, then periodic indication steps. Never returns.
- *         [FA] ورود تسک UI. یک‌بار تست برد، بعد گام‌های تناوبی نمایش. برنمی‌گردد.
+ * @brief  [EN] UI task entry. One board test, then one scenario cycle at a time
+ *         so the manual inputs can change the scenario between cycles. Never returns.
+ *         [FA] ورود تسک UI. یک‌بار تست برد، بعد در هر نوبت یک سیکل سناریو تا ورودی
+ *         دستی بتواند بین سیکل‌ها سناریو را عوض کند. برنمی‌گردد.
+ * @note   [EN] Ui_Init() already ran once from App_Init() before the scheduler.
+ *         [FA] Ui_Init یک‌بار قبل از زمان‌بند در App_Init اجرا شده است.
  * @param  argument  [EN] Required by FreeRTOS, unused.
  *                   [FA] اجباری FreeRTOS، استفاده نمی‌شود.
  */
@@ -35,19 +41,31 @@ void TaskUi(void *argument)
 {
     (void)argument;
 
-    Ui_Init();
     Ui_BoardTest();
 
     for (;;)
     {
+        uint8_t pct;
         bool input_present;
 
+        pct = ui_test_battery_percent;
+        if (pct > UI_PERCENT_FULL)
+        {
+            pct = UI_PERCENT_FULL;
+        }
         input_present = (ui_test_input_present != 0u);
-        Ui_Indicate(input_present, ui_test_battery_percent);
 
-        /* Short fixed period keeps the blink edges accurate without blocking
-           other tasks. / دوره کوتاه ثابت تا لبه‌های چشمک دقیق بمانند و تسک‌های
-           دیگر هم آزاد باشند. */
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_task_period_ms));
+        if (input_present == true)
+        {
+            Ui_ScenarioInputOk();
+        }
+        else if (pct <= APP_CONFIG.ui_low_battery_percent)
+        {
+            Ui_ScenarioBatteryLow();
+        }
+        else
+        {
+            Ui_ScenarioBatteryRun(pct);
+        }
     }
 }

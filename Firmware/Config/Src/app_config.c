@@ -8,7 +8,7 @@
 
 const app_config_t APP_CONFIG =
 {
-    .ui_task_period_ms       = 10u,
+    .ui_input_ok_poll_ms     = 500u,
     .ui_selftest_led_ms      = 500u,
     .ui_boot_beep_ms         = 150u,
     .ui_blink_period_ms      = 1000u,

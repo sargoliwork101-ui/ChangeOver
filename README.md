@@ -36,11 +36,10 @@ CubeIDE/Core/.../main.c
     Rtos_Start()                 Firmware/Rtos/Src/rtos_app.c
       TaskUi                     Firmware/Rtos/Src/task_ui.c
         Ui_BoardTest()           یک‌بار تست سیم‌کشی
-        حلقه هر ۱۰ms:
-          Ui_Indicate(ورودی, درصد باتری)   Firmware/Modules/Ui/ui.c
-            UI_INPUT_OK   سبز ثابت
-            UI_BATTERY_RUN  سبز چشمک (روشن برابر درصد باتری)
-            UI_BATTERY_LOW  زرد چشمک + بوق هر ۳۰ ثانیه
+        در هر نوبت بر اساس متغیرهای تست دستی یک سیکل سناریو اجرا می‌شود:
+          ورودی وصل             → Ui_ScenarioInputOk()    سبز ثابت      Firmware/Modules/Ui/ui.c
+          ورودی قطع، باتری >۲۰٪ → Ui_ScenarioBatteryRun() سبز چشمک (روشن برابر درصد باتری)
+          باتری ≤۲۰٪            → Ui_ScenarioBatteryLow() زرد چشمک + بوق هر ۳۰ ثانیه
           (ورودی‌ها فعلاً متغیر تست دستی در task_ui.c)
           BspGpio_Write()        Firmware/Bsp/Src/bsp_gpio.c
           PIN_*                  Firmware/Config/Inc/board_pins.h
@@ -57,7 +56,7 @@ ChangeOver
 ├── Circuit/
 │   └── ChangeOver(24V_DC).pdf
 ├── CubeMX/
-│   └── ChangeOver.ioc                 ← تنظیمات مکعب (بعد از Generate کپی شود)
+│   └── CubeIDE.ioc                    ← کپی تنظیمات مکعب (هم‌نام پروژه، بعد از Generate کپی شود)
 ├── CubeIDE/                           ← HAL، main.c، FreeRTOS مکعب
 │   └── Core/Src/main.c ──#include──► Firmware/App/Inc/app.h
 └── Firmware/
@@ -101,6 +100,7 @@ ChangeOver
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-14 | سناریوهای UI به سبک خطی یک‌سیکلی (InputOk/BatteryRun/BatteryLow)؛ حذف تسک مرده defaultTask از main.c و هر دو .ioc؛ رفع Init تکراری؛ اصلاح نام `CubeIDE.ioc` در مستندات |
 | 2026-09-14 | اسکلت‌های Bsp ADC/UART با تایپ ناقص (opaque) بدون فعال‌کردن درایور کامپایل می‌شوند؛ همه فایل‌های Firmware در Build هستند |
 | 2026-09-14 | سناریوهای UI مبتنی بر وضعیت با `Ui_Indicate` (ورودی/درصد باتری)؛ حذف Scenario1/2 از درخت اجرا |
 | 2026-09-14 | اصلاح Build پروژه CubeIDE: لینک نسبی Firmware، مسیرهای Include، Exclude اسکلت ADC/UART |

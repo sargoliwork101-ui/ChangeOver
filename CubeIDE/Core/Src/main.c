@@ -41,13 +41,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-/* Definitions for defaultTask */
-osThreadId_t defaultTaskHandle;
-const osThreadAttr_t defaultTask_attributes = {
-  .name = "defaultTask",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
+/* FreeRTOS kernel and product tasks are created inside Firmware (App/Rtos);
+   CubeMX defaultTask is removed in the .ioc. / تسک‌ها در Firmware ساخته می‌شوند. */
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -55,7 +50,6 @@ const osThreadAttr_t defaultTask_attributes = {
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -100,8 +94,9 @@ int main(void)
 
   /* USER CODE END 2 */
 
-  /* Init scheduler */
- // osKernelInitialize();
+  /* Init scheduler: the FreeRTOS kernel is initialised and started inside
+     App_Start()/Rtos_Start() in Firmware, so the CubeMX calls are not used.
+     مقداردهی و استارت کرنل در Firmware انجام می‌شود. */
 
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
@@ -120,8 +115,8 @@ int main(void)
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
-  /* creation of defaultTask */
-  defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+  /* Product tasks are created statically in Rtos_Start() (Firmware).
+     تسک‌های محصول به‌صورت استاتیک در Rtos_Start ساخته می‌شوند. */
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -131,8 +126,8 @@ int main(void)
   /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
 
-  /* Start scheduler */
-  //osKernelStart();
+  /* Start scheduler: see note above; vTaskStartScheduler() runs in Rtos_Start().
+     استارت زمان‌بند در Rtos_Start انجام شده و این خط هرگز اجرا نمی‌شود. */
 
   /* We should never get here as control is now taken by the scheduler */
 
@@ -235,24 +230,6 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
-
-/* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
-{
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END 5 */
-}
 
 /**
   * @brief  Period elapsed callback in non blocking mode
