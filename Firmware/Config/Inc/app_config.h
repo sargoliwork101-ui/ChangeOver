@@ -12,12 +12,16 @@
 
 typedef struct
 {
-    uint32_t ui_selftest_led_ms;
-    uint32_t ui_boot_beep_ms;
-    uint32_t ui_scen1_on_ms;
-    uint32_t ui_scen1_off_ms;
-    uint32_t ui_scen2_green_on_ms;
-    uint32_t ui_scen2_red_ms;
+    uint32_t ui_task_period_ms;        /* [EN] Indication step period / دوره گام نمایش */
+    uint32_t ui_selftest_led_ms;       /* board-test LED step / گام LED تست برد */
+    uint32_t ui_boot_beep_ms;          /* board-test beep length / طول بوق تست برد */
+    uint32_t ui_blink_period_ms;       /* [EN] Green battery-run blink period / دوره چشمک سبز */
+    uint32_t ui_green_min_off_ms;      /* [EN] Minimum green off time (full battery) / حداقل خاموشی سبز */
+    uint8_t  ui_low_battery_percent;   /* [EN] At/below this, low-battery warning starts / آستانه هشدار باتری */
+    uint32_t ui_warn_period_ms;        /* [EN] Yellow warning blink period / دوره چشمک زرد هشدار */
+    uint32_t ui_warn_yellow_on_ms;     /* [EN] Yellow on-time inside the warning period / زمان روشن‌بودن زرد */
+    uint32_t ui_warn_beep_ms;          /* [EN] Warning beep length / طول بوق هشدار */
+    uint32_t ui_warn_beep_period_ms;   /* [EN] Time between warning beeps / فاصله بوق‌های هشدار */
     bool     power_stage_enabled;
     bool     esp_link_enabled;
     uint32_t control_period_ms;

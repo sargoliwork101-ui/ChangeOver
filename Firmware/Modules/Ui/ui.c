@@ -1,7 +1,7 @@
 /**
  * @file    ui.c
- * @brief   [EN] LED/buzzer pin writes and blink scenarios.
- *          [FA] نوشتن پایه‌های LED/بازر و سناریوهای چشمک.
+ * @brief   [EN] Non-blocking LED/buzzer indication driven by input flag and battery %.
+ *          [FA] نمایش غیرمسدودکننده LED/بازر با فلگ ورودی و درصد باتری.
  */
 
 #include "ui.h"
@@ -12,6 +12,13 @@
 #include "task.h"
 
 #include <stdbool.h>
+
+#define UI_PERCENT_FULL   100u  /* [EN] 100 % charge / باتری فول */
+#define UI_PERCENT_SCALE  100u  /* [EN] Divisor for percent math / مقسوم‌علیه درصد */
+
+static ui_state_t s_state = UI_INPUT_OK;  /* [EN] Current shown mode / حالت نمایش فعلی */
+static uint32_t   s_phase_ms;             /* [EN] Time inside the blink period / زمان درون دوره چشمک */
+static uint32_t   s_warn_ms;              /* [EN] Time inside the warning-beep period / زمان درون دوره بوق هشدار */
 
 /**
  * @brief  [EN] Green LED PB10, active-high via Q6.
@@ -67,6 +74,9 @@ static void all_off(void)
  */
 void Ui_Init(void)
 {
+    s_state = UI_INPUT_OK;
+    s_phase_ms = 0u;
+    s_warn_ms = 0u;
     all_off();
 }
 
@@ -96,41 +106,124 @@ void Ui_BoardTest(void)
 }
 
 /**
- * @brief  [EN] Green 500 ms on / 500 ms off forever. Red stays off.
- *         [FA] سبز ۵۰۰ روشن / ۵۰۰ خاموش برای همیشه. قرمز خاموش می‌ماند.
+ * @brief  [EN] One non-blocking indication step.
+ *         Input present          -> green steady (UI_INPUT_OK).
+ *         Input lost, > low limit-> green blink; on-time follows charge %, so a
+ *                                   full battery is 99 % on and a nearly empty
+ *                                   battery is ~1 % on (UI_BATTERY_RUN).
+ *         At/below low limit     -> yellow 500/500 blink and a short beep every
+ *                                   warning period (UI_BATTERY_LOW).
+ *         [FA] یک گام نمایش غیرمسدودکننده.
+ *         ورودی وصل              -> سبز ثابت (UI_INPUT_OK).
+ *         ورودی قطع، بالاتر از حد-> سبز چشمک؛ زمان روشن‌بودن برابر درصد شارژ است،
+ *                                   باتری فول ۹۹٪ روشن و باتری تقریباً خالی ۱٪ روشن.
+ *         در/زیر حد ضعیف         -> زرد ۵۰۰/۵۰۰ و یک بوق کوتاه در هر دوره هشدار.
+ * @param  input_present   [EN] true while mains feeds the system / برق ورودی وصل
+ * @param  battery_percent [EN] 0..100 battery charge / درصد باتری
  */
-void Ui_Scenario1(void)
+void Ui_Indicate(bool input_present, uint8_t battery_percent)
 {
-    for (;;)  /* repeat forever; this task never returns */
-    {
-        green(true);   /* PB10 HIGH: green LED on */
-        red(false);    /* PB0 LOW: red LED off */
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_scen1_on_ms));  /* sleep 500 ms; other tasks can run */
+    ui_state_t state;
+    uint8_t pct = battery_percent;
+    uint32_t phase_period_ms;
+    bool green_on = false;
+    bool yellow_on = false;
+    bool red_on = false;
+    bool buzzer_on = false;
 
-        green(false);  /* PB10 LOW: green LED off */
-        red(false);    /* keep red off */
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_scen1_off_ms)); /* sleep 500 ms, then loop */
+    if (pct > UI_PERCENT_FULL)
+    {
+        pct = UI_PERCENT_FULL;  /* clamp bad readings / مقدار اشتباه محدود شود */
     }
-}
 
-/**
- * @brief  [EN] Green 500 on / 1000 off, red blinks every 500 ms.
- *         [FA] سبز ۵۰۰ روشن / ۱۰۰۰ خاموش، قرمز هر ۵۰۰ چشمک.
- */
-void Ui_Scenario2(void)
-{
-    for (;;)  /* repeat forever; this task never returns */
+    if (input_present == true)
     {
-        green(true);   /* green on */
-        red(true);     /* red on */
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_scen2_green_on_ms)); /* 500 ms */
+        state = UI_INPUT_OK;
+    }
+    else if (pct <= APP_CONFIG.ui_low_battery_percent)
+    {
+        state = UI_BATTERY_LOW;
+    }
+    else
+    {
+        state = UI_BATTERY_RUN;
+    }
 
-        green(false);  /* green off (stays off for the next two waits = 1000 ms) */
-        red(false);    /* red off */
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_scen2_red_ms)); /* 500 ms */
+    if (state != s_state)
+    {
+        /* Mode changed: restart both software timers so every pattern begins at
+           its first edge. / حالت عوض شد: تایمرهای نرم از صفر شروع شوند. */
+        s_state = state;
+        s_phase_ms = 0u;
+        s_warn_ms = 0u;
+    }
 
-        green(false);  /* green still off */
-        red(true);     /* red on again = 500 ms blink */
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_scen2_red_ms)); /* 500 ms, then loop */
+    switch (s_state)
+    {
+        case UI_INPUT_OK:
+            /* Steady green, everything else off. / سبز ثابت، بقیه خاموش. */
+            green_on = true;
+            phase_period_ms = APP_CONFIG.ui_blink_period_ms;
+            break;
+
+        case UI_BATTERY_RUN:
+        {
+            uint32_t off_ms;
+            uint32_t on_ms;
+
+            /* Off share grows linearly as the battery drains.
+               At 100 % off is clamped to ui_green_min_off_ms (~1 %);
+               at 1 % the LED is on only ~1 % of the period.
+               سهم خاموشی با تخلیه باتری خطی زیاد می‌شود. */
+            off_ms = (uint32_t)(UI_PERCENT_FULL - pct) *
+                     (APP_CONFIG.ui_blink_period_ms / UI_PERCENT_SCALE);
+            if (off_ms < APP_CONFIG.ui_green_min_off_ms)
+            {
+                off_ms = APP_CONFIG.ui_green_min_off_ms;
+            }
+            on_ms = APP_CONFIG.ui_blink_period_ms - off_ms;
+
+            green_on = (s_phase_ms < on_ms);
+            phase_period_ms = APP_CONFIG.ui_blink_period_ms;
+            break;
+        }
+
+        case UI_BATTERY_LOW:
+            /* Yellow 500/500 blink; short beep at the start of each 30 s window.
+               زرد ۵۰۰/۵۰۰؛ یک بوق کوتاه در ابتدای هر پنجره ۳۰ ثانیه‌ای. */
+            yellow_on = (s_phase_ms < APP_CONFIG.ui_warn_yellow_on_ms);
+            buzzer_on = (s_warn_ms < APP_CONFIG.ui_warn_beep_ms);
+            phase_period_ms = APP_CONFIG.ui_warn_period_ms;
+            break;
+
+        default:
+            /* Defensive: unknown state keeps every output safely off.
+               حالت ناشناخته: همه خروجی‌ها امن خاموش بمانند. */
+            phase_period_ms = APP_CONFIG.ui_warn_period_ms;
+            break;
+    }
+
+    green(green_on);
+    red(red_on);
+    yellow(yellow_on);
+    buzzer(buzzer_on);
+
+    /* Advance the blink-phase clock and wrap at the active period.
+       ساعت فاز چشمک جلو برود و در پایان دوره صفر شود. */
+    s_phase_ms += APP_CONFIG.ui_task_period_ms;
+    if (s_phase_ms >= phase_period_ms)
+    {
+        s_phase_ms = 0u;
+    }
+
+    /* The beep timer only runs in the low-battery mode.
+       تایمر بوق فقط در حالت باتری ضعیف کار می‌کند. */
+    if (s_state == UI_BATTERY_LOW)
+    {
+        s_warn_ms += APP_CONFIG.ui_task_period_ms;
+        if (s_warn_ms >= APP_CONFIG.ui_warn_beep_period_ms)
+        {
+            s_warn_ms = 0u;
+        }
     }
 }

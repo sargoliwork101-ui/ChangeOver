@@ -8,12 +8,16 @@
 
 const app_config_t APP_CONFIG =
 {
-    .ui_selftest_led_ms     = 500u,
-    .ui_boot_beep_ms        = 150u,
-    .ui_scen1_on_ms         = 500u,
-    .ui_scen1_off_ms        = 500u,
-    .ui_scen2_green_on_ms   = 500u,
-    .ui_scen2_red_ms        = 500u,
+    .ui_task_period_ms       = 10u,
+    .ui_selftest_led_ms      = 500u,
+    .ui_boot_beep_ms         = 150u,
+    .ui_blink_period_ms      = 1000u,
+    .ui_green_min_off_ms     = 10u,
+    .ui_low_battery_percent  = 20u,
+    .ui_warn_period_ms       = 1000u,
+    .ui_warn_yellow_on_ms    = 500u,
+    .ui_warn_beep_ms         = 250u,
+    .ui_warn_beep_period_ms  = 30000u,
     .power_stage_enabled    = false,
     .esp_link_enabled       = false,
     .control_period_ms      = 10u,

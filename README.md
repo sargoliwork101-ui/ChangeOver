@@ -35,9 +35,13 @@ CubeIDE/Core/.../main.c
     Ui_Init()                    Firmware/Modules/Ui/ui.c
     Rtos_Start()                 Firmware/Rtos/Src/rtos_app.c
       TaskUi                     Firmware/Rtos/Src/task_ui.c
-        Ui_BoardTest()
-        UI_FLAG 1 → Ui_Scenario1()
-        وگرنه     → Ui_Scenario2()
+        Ui_BoardTest()           یک‌بار تست سیم‌کشی
+        حلقه هر ۱۰ms:
+          Ui_Indicate(ورودی, درصد باتری)   Firmware/Modules/Ui/ui.c
+            UI_INPUT_OK   سبز ثابت
+            UI_BATTERY_RUN  سبز چشمک (روشن برابر درصد باتری)
+            UI_BATTERY_LOW  زرد چشمک + بوق هر ۳۰ ثانیه
+          (ورودی‌ها فعلاً متغیر تست دستی در task_ui.c)
           BspGpio_Write()        Firmware/Bsp/Src/bsp_gpio.c
           PIN_*                  Firmware/Config/Inc/board_pins.h
           APP_CONFIG             Firmware/Config/Src/app_config.c
@@ -97,4 +101,6 @@ ChangeOver
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-14 | سناریوهای UI مبتنی بر وضعیت با `Ui_Indicate` (ورودی/درصد باتری)؛ حذف Scenario1/2 از درخت اجرا |
+| 2026-09-14 | اصلاح Build پروژه CubeIDE: لینک نسبی Firmware، مسیرهای Include، Exclude اسکلت ADC/UART |
 | 2026-09-14 | صفحه اول + درخت کل پروژه؛ پوشه CubeMX و CubeIDE |
