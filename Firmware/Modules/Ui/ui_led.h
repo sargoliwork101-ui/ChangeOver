@@ -54,14 +54,6 @@
 #define UI_INPUT_DISCONNECTED_THRESHOLD_MV \
     (UI_INPUT_CONNECTED_THRESHOLD_MV - UI_INPUT_HYSTERESIS_MV)
 
-/**
- * @brief  [EN] Compatibility alias for the former single input threshold.
- *         New stateful logic uses the connected and disconnected thresholds above.
- *         [FA] نام سازگار برای آستانه تک‌مقداری قبلی ورودی.
- *         منطق جدید و دارای وضعیت از دو آستانه بالا استفاده می‌کند.
- */
-#define UI_INPUT_THRESHOLD_MV           UI_INPUT_CONNECTED_THRESHOLD_MV
-
 /* ==================== Input overvoltage error constants ==================== */
 
 /**
@@ -207,10 +199,55 @@
 #define UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS 20000u
 
 /**
+ * @brief  [EN] Complete period used for the single critical ten-second beep, in milliseconds.
+ *         [FA] دوره کامل بوق بحرانی ده‌ثانیه‌ای، بر حسب میلی‌ثانیه.
+ */
+#define UI_BATTERY_RUN_BEEP_CRITICAL_PERIOD_MS 10000u
+
+/**
+ * @brief  [EN] Duty of the continuous critical BatteryRun beep, in percent.
+ *         [FA] دیوتی بوق ممتد بحرانی BatteryRun، بر حسب درصد.
+ */
+#define UI_BATTERY_RUN_BEEP_CRITICAL_DUTY_PERCENT 100u
+
+/**
+ * @brief  [EN] Pulse count of the critical BatteryRun beep.
+ *         [FA] تعداد پالس بوق بحرانی BatteryRun.
+ */
+#define UI_BATTERY_RUN_BEEP_CRITICAL_COUNT 1u
+
+/**
  * @brief  [EN] Duration of each one-beep or two-beep BatteryRun pulse, in milliseconds.
  *         [FA] مدت هر بوق در هشدار یک‌بوق یا دو‌بوق BatteryRun، بر حسب میلی‌ثانیه.
  */
 #define UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS 1000u
+
+/**
+ * @brief  [EN] Approximate duty for one standard beep, derived from duration and interval.
+ *         [FA] دیوتی تقریبی یک بوق معمول که از مدت و فاصله محاسبه می‌شود.
+ */
+#define UI_BATTERY_RUN_BEEP_STANDARD_DUTY_PERCENT \
+    ((UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS * UI_PERCENT_SCALE + UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS - 1u) / UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS)
+
+/**
+ * @brief  [EN] Approximate duty for two standard-duration beeps and their gap.
+ *         [FA] دیوتی تقریبی دو بوق معمول به‌همراه گپ بین آن‌ها.
+ */
+#define UI_BATTERY_RUN_BEEP_DOUBLE_DUTY_PERCENT \
+    ((((UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS * UI_BATTERY_RUN_BEEP_DOUBLE_COUNT) + \
+       (UI_BATTERY_RUN_BEEP_GAP_MS * (UI_BATTERY_RUN_BEEP_DOUBLE_COUNT - 1u))) * \
+      UI_PERCENT_SCALE + UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS - 1u) / \
+     UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS)
+
+/**
+ * @brief  [EN] Approximate duty for three triple-duration beeps and their gaps.
+ *         [FA] دیوتی تقریبی سه بوق مدت‌دار به‌همراه گپ‌های بین آن‌ها.
+ */
+#define UI_BATTERY_RUN_BEEP_TRIPLE_DUTY_PERCENT \
+    ((((UI_BATTERY_RUN_BEEP_TRIPLE_DURATION_MS * UI_BATTERY_RUN_BEEP_TRIPLE_COUNT) + \
+       (UI_BATTERY_RUN_BEEP_GAP_MS * (UI_BATTERY_RUN_BEEP_TRIPLE_COUNT - 1u))) * \
+      UI_PERCENT_SCALE + UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS - 1u) / \
+     UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS)
 
 /**
  * @brief  [EN] Duration of each pulse in the three-beep BatteryRun warning, in milliseconds.
@@ -317,9 +354,10 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv);
 /* ==================== Scenario BatteryRun Tick ==================== */
 
 /**
- * @brief  [EN] BatteryRun: green blink non-linear, yellow OFF, and the previous smart-beep schedule through ui_buzzer.c.
- *         RTOS simple with vTaskDelay.
- *         [FA] دشارژ: سبز چشمک غیرخطی، زرد خاموش و زمان‌بندی بوق هوشمند قبلی از ui_buzzer.c.
+ * @brief  [EN] BatteryRun: green blink from the linear 21V..28V percentage and four requested buzzer bands.
+ *         Below 1%, all LEDs turn off after one ten-second critical beep.
+ *         [FA] دشارژ: سبز بر اساس درصد خطی ۲۱ تا ۲۸ ولت و چهار بازه بوق درخواستی چشمک می‌زند.
+ *         زیر ۱٪، بعد از یک بوق بحرانی ده‌ثانیه‌ای همه LEDها خاموش می‌شوند.
  * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 28000=100% / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv);

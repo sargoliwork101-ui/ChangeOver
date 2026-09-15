@@ -76,7 +76,7 @@
  */
 #define UI_BUZZER_INVALID_RESULT        (-1)
 
-/* ==================== Scenario compatibility constants ==================== */
+/* ==================== BoardTest compatibility constant ==================== */
 
 /**
  * @brief  [EN] Default one-shot beep duration used by the BoardTest scenario.
@@ -85,32 +85,6 @@
  *         APP_CONFIG این پیش‌فرض را کپی می‌کند و سناریو آن را به پنجره دیوتی معتبر تبدیل می‌کند.
  */
 #define UI_BOOT_BEEP_MS                 150u
-
-/**
- * @brief  [EN] Base beep duration used by the BatteryRun scenario.
- *         [FA] مدت پایه بوق که در سناریوی BatteryRun استفاده می‌شود.
- */
-#define UI_BEEP_BASE_MS                 250u
-
-/**
- * @brief  [EN] Battery percentage below which the BatteryRun beep duration is doubled.
- *         [FA] درصد باتری که پایین‌تر از آن مدت بوق BatteryRun دو برابر می‌شود.
- */
-#define UI_BEEP_DOUBLE_THRESH_PCT       20u
-
-/**
- * @brief  [EN] Battery percentage below which the periodic BatteryRun beep is enabled.
- *         [FA] درصد باتری که پایین‌تر از آن بوق دوره‌ای BatteryRun فعال می‌شود.
- */
-#define UI_BEEP_START_PCT               50u
-
-/**
- * @brief  [EN] Minimum BatteryRun beep interval in completed blink cycles.
- *         It prevents a zero-percent battery from producing a zero-cycle interval.
- *         [FA] کمترین فاصله بوق BatteryRun بر حسب سیکل‌های کامل چشمک.
- *         از ایجاد فاصله صفر سیکل برای باتری صفر درصد جلوگیری می‌کند.
- */
-#define UI_BEEP_MIN_INTERVAL_CYCLES     1u
 
 /* ==================== Buzzer service ==================== */
 

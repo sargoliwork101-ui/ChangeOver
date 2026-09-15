@@ -193,6 +193,28 @@ def run_assertions():
         "example GPIO waveform",
     )
 
+    # BatteryRun warning bands use approximate integer duties accepted by the user.
+    assert_equal(
+        calculate_pattern(60000, 2, 1, 0),
+        (1200, [1200], 0, 58800),
+        "BatteryRun one-beep 60-second pattern",
+    )
+    assert_equal(
+        calculate_pattern(60000, 4, 2, 100),
+        (2400, [1150, 1150], 100, 57600),
+        "BatteryRun two-beep 60-second pattern",
+    )
+    assert_equal(
+        calculate_pattern(20000, 31, 3, 100),
+        (6200, [2000, 2000, 2000], 100, 13800),
+        "BatteryRun three-beep 20-second pattern",
+    )
+    assert_equal(
+        calculate_pattern(10000, 100, 1, 0),
+        (10000, [10000], 0, 0),
+        "BatteryRun critical ten-second pattern",
+    )
+
     # Legacy one-shot durations are represented with a safe period and stopped
     # explicitly by the scenario after the requested duration.
     assert_equal(

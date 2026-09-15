@@ -75,17 +75,18 @@ int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)
 
 اولویت از بحرانی‌ترین وضعیت به کم‌خطرترین وضعیت است:
 
-| محدوده درصد باتری | رفتار بوق | دوره تکرار | مدت هر بوق | تعداد بوق | ثابت‌های مربوط |
-|---|---|---:|---:|---:|---|
-| `Battery < 1%` | یک بوق ممتد؛ بعد از پایان بوق چراغ‌ها و بوق خاموش می‌مانند و تا وقتی زیر ۱٪ است تکرار نمی‌شود | یک‌بار | `10000ms` | ۱ | `UI_BATTERY_RUN_BEEP_CRITICAL_PERCENT`، `UI_BATTERY_RUN_BEEP_CRITICAL_DURATION_MS` |
-| `1% <= Battery < 10%` | سه بوق | `20000ms` | `2000ms` برای هر بوق | ۳ | `UI_BATTERY_RUN_BEEP_TRIPLE_PERCENT`، `UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS`، `UI_BATTERY_RUN_BEEP_TRIPLE_DURATION_MS`، `UI_BATTERY_RUN_BEEP_TRIPLE_COUNT` |
-| `10% <= Battery < 20%` | دو بوق | `60000ms` | `1000ms` برای هر بوق | ۲ | `UI_BATTERY_RUN_BEEP_DOUBLE_PERCENT`، `UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS`، `UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS`، `UI_BATTERY_RUN_BEEP_DOUBLE_COUNT` |
-| `20% <= Battery < 40%` | یک بوق | `60000ms` | `1000ms` | ۱ | `UI_BATTERY_RUN_BEEP_START_PERCENT`، `UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS`، `UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS`، `UI_BATTERY_RUN_BEEP_STANDARD_COUNT` |
-| `Battery >= 40%` | بوق خاموش | — | — | — | `UI_BATTERY_RUN_BEEP_START_PERCENT` |
+| محدوده درصد باتری | رفتار بوق | دوره تکرار | دیوتی تقریبی | مدت تقریبی هر بوق | تعداد بوق | ثابت‌های مربوط |
+|---|---|---:|---:|---:|---:|---|
+| `Battery < 1%` | یک بوق ممتد؛ بعد از پایان بوق چراغ‌ها و بوق خاموش می‌مانند و تا وقتی زیر ۱٪ است تکرار نمی‌شود | یک‌بار | `100%` | `10000ms` | ۱ | `UI_BATTERY_RUN_BEEP_CRITICAL_PERCENT`، `UI_BATTERY_RUN_BEEP_CRITICAL_PERIOD_MS`، `UI_BATTERY_RUN_BEEP_CRITICAL_DUTY_PERCENT`، `UI_BATTERY_RUN_BEEP_CRITICAL_DURATION_MS`، `UI_BATTERY_RUN_BEEP_CRITICAL_COUNT` |
+| `1% <= Battery < 10%` | سه بوق | `20000ms` | `31%` | `2000ms` | ۳ | `UI_BATTERY_RUN_BEEP_TRIPLE_PERCENT`، `UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS`، `UI_BATTERY_RUN_BEEP_TRIPLE_DUTY_PERCENT`، `UI_BATTERY_RUN_BEEP_TRIPLE_DURATION_MS`، `UI_BATTERY_RUN_BEEP_TRIPLE_COUNT` |
+| `10% <= Battery < 20%` | دو بوق | `60000ms` | `4%` | حدود `1150ms` | ۲ | `UI_BATTERY_RUN_BEEP_DOUBLE_PERCENT`، `UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS`، `UI_BATTERY_RUN_BEEP_DOUBLE_DUTY_PERCENT`، `UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS`، `UI_BATTERY_RUN_BEEP_DOUBLE_COUNT` |
+| `20% <= Battery < 40%` | یک بوق | `60000ms` | `2%` | حدود `1200ms` | ۱ | `UI_BATTERY_RUN_BEEP_START_PERCENT`، `UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS`، `UI_BATTERY_RUN_BEEP_STANDARD_DUTY_PERCENT`، `UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS`، `UI_BATTERY_RUN_BEEP_STANDARD_COUNT` |
+| `Battery >= 40%` | بوق خاموش | — | — | — | — | `UI_BATTERY_RUN_BEEP_START_PERCENT` |
 
 - گپ بین بوق‌های چندگانه `UI_BATTERY_RUN_BEEP_GAP_MS = 100u` میلی‌ثانیه است.
+- زمان بوق‌های استاندارد تقریبی است؛ دیوتی صحیح درصدی عمداً برای سادگی استفاده می‌شود.
 - در حالت زیر ۱٪، چراغ سبز، زرد و قرمز همگی خاموش می‌شوند.
-- اعداد درصدی و زمانی جدول در `Firmware/Modules/Ui/ui_led.h` تعریف شده‌اند.
+- اعداد درصدی، duty و زمانی جدول در `Firmware/Modules/Ui/ui_led.h` تعریف شده‌اند.
 
 ### سناریو ۳: Charging
 
@@ -166,7 +167,7 @@ InputOverVoltage فعال
 | `../../Rtos/Src/task_ui.c` | تسک UI؛ ولتاژ ورودی و باتری را می‌خواند و با `func__Ui_Tick` سناریوی مناسب را اجرا می‌کند. |
 | `../../Bsp/Src/bsp_gpio.c` | نوشتن سطح GPIO از طریق `func__BspGpio_Write`. |
 | `../../Config/Inc/board_pins.h` | تعریف `PIN_BUZZER_PORT` و `PIN_BUZZER_PIN`؛ PA4 طبق شماتیک. |
-| `../../Config/Inc/app_config.h` / `../../Config/Src/app_config.c` | تنظیمات عمومی پروژه؛ ثابت‌های قدیمی بوق برای سازگاری نگه داشته شده‌اند، اما سرویس جدید ورودی‌های الگوی خود را مستقیم می‌گیرد. |
+| `../../Config/Inc/app_config.h` / `../../Config/Src/app_config.c` | تنظیمات عمومی زمان‌بندی LED و نگاشت ولتاژ؛ ثابت‌های BatteryRun و بوق‌های سناریویی در هدرهای UI تعریف شده‌اند. |
 | `host_test_ui.py` | تست هاست فرمول دوره، دیوتی، تعداد پالس و گپ. |
 
 ## توابع
@@ -178,7 +179,7 @@ InputOverVoltage فعال
 | `func__Ui_BoardTest_Start` | تست یک‌باره قرمز، زرد و سبز، سپس بوق کوتاه قبلی با API جدید | `ui_led.c` |
 | `func__Ui_ScenarioInputOk` | سبز ثابت، قرمز/زرد خاموش و بوق خاموش | `ui_led.c` |
 | `func__Ui_ScenarioCharging_Tick` | سبز ثابت و زرد متناسب با درصد شارژ؛ بوق خاموش | `ui_led.c` |
-| `func__Ui_ScenarioBatteryRun_Tick` | سبز چشمک‌زن، زرد خاموش و بوق هوشمند قبلی با API جدید | `ui_led.c` |
+| `func__Ui_ScenarioBatteryRun_Tick` | سبز چشمک‌زن، زرد خاموش و بوق‌های جدید بر اساس بازه‌های زیر ۴۰٪، ۲۰٪، ۱۰٪ و ۱٪ | `ui_led.c` |
 | `func__Ui_ScenarioInputOverVoltage_Tick` | خطای ورودی: سبز ثابت، زرد خاموش، قرمز ۵۰٪ و یک بوق یک‌ثانیه‌ای هر ۱۰ ثانیه | `ui_led.c` |
 | `func__Ui_Tick` | به‌روزرسانی هیسترزیس ورودی، نمایش خطای اضافه‌ولتاژ و انتخاب سناریوی LED بر اساس ورودی و باتری | `ui_led.c` |
 
@@ -262,7 +263,7 @@ period = 10000ms
 
 ## پیش‌فرض امن
 
-بعد از Reset و `func__Ui_Init`، LEDها و بوق خاموش هستند. در شروع `func__Ui_BoardTest_Start`، رفتار قبلی تست بوق حفظ می‌شود. در BatteryRun، وقتی درصد باتری زیر `UI_BEEP_START_PCT` باشد، بعد از تعداد سیکل قبلی یک بوق اجرا می‌شود؛ اگر درصد زیر `UI_BEEP_DOUBLE_THRESH_PCT` باشد، مدت آن دو برابر می‌شود. در `InputOk` و `Charging`، سرویس بوق با ورودی خاموشی معتبر متوقف می‌شود. ورودی صفر برای `dutyPercent` یا `beepCount` نیز حالت خاموش امن است.
+بعد از Reset و `func__Ui_Init`، LEDها و بوق خاموش هستند. در شروع `func__Ui_BoardTest_Start`، رفتار تست بوق حفظ می‌شود. در BatteryRun، بوق‌ها طبق جدول سناریو اجرا می‌شوند: زیر ۴۰٪ یک بوق، زیر ۲۰٪ دو بوق، زیر ۱۰٪ سه بوق و زیر ۱٪ یک بوق ممتد ده‌ثانیه‌ای؛ بعد از بوق بحرانی زیر ۱٪، همه خروجی‌ها خاموش می‌مانند تا باتری از این محدوده خارج شود. در `InputOk` و `Charging`، سرویس بوق با ورودی خاموشی معتبر متوقف می‌شود. ورودی صفر برای `dutyPercent` یا `beepCount` نیز حالت خاموش امن است.
 
 ## درخت اتصال
 
@@ -273,7 +274,7 @@ Firmware/Rtos/Src/task_ui.c
       │   ├── red: period=1000ms, duty=50%
       │   └── func__Ui_Buzzer_Tick(10000, 10, 1, 0)  // بوق 1s هر 10s
       ├── func__Ui_ScenarioBatteryRun_Tick()
-      │   └── func__Ui_Buzzer_Tick(...)  // بوق هوشمند قبلی با API جدید
+      │   └── func__Ui_Buzzer_Tick(...)  // بوق‌های درصدی جدید BatteryRun
       ├── func__Ui_ScenarioInputOk()/Charging_Tick()
       │   └── func__Ui_Buzzer_Tick(0, 0, 0, 0)  // خاموشی امن
       └── func__Ui_BoardTest_Start()

@@ -149,13 +149,136 @@ static bool BOOL__G__UiInputOverVoltage = false;
  */
 static TickType_t TICKTYPE_T__G__UiInputOverVoltageStartTick = 0;
 
-/* ==================== BatteryRun Beep Cycle Count ==================== */
+/* ==================== BatteryRun critical beep state ==================== */
 
 /**
- * @brief  [EN] Completed BatteryRun blink cycles used by the previous periodic beep rule.
- *         [FA] تعداد سیکل‌های کامل چشمک دشارژ برای قانون قبلی بوق دوره‌ای.
+ * @brief  [EN] TRUE while the one-time critical BatteryRun beep is active.
+ *         [FA] هنگام فعال‌بودن بوق بحرانی تک‌باره BatteryRun مقدار TRUE دارد.
  */
-static uint32_t UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+static bool BOOL__G__UiBatteryCriticalBeepActive = false;
+
+/**
+ * @brief  [EN] TRUE after the one-time critical BatteryRun beep has completed.
+ *         [FA] بعد از پایان بوق بحرانی تک‌باره BatteryRun مقدار TRUE دارد.
+ */
+static bool BOOL__G__UiBatteryCriticalBeepCompleted = false;
+
+/**
+ * @brief  [EN] RTOS tick at which the critical BatteryRun beep started.
+ *         [FA] تیک RTOS در زمان شروع بوق بحرانی BatteryRun.
+ */
+static TickType_t TICKTYPE_T__G__UiBatteryCriticalBeepStartTick = 0;
+
+/* ==================== BatteryRun green blink state ==================== */
+
+/**
+ * @brief  [EN] Current green LED phase in the non-blocking BatteryRun blink.
+ *         [FA] فاز فعلی LED سبز در چشمک غیرمسدودکننده BatteryRun.
+ */
+static bool BOOL__G__UiBatteryGreenOn = false;
+
+/**
+ * @brief  [EN] TRUE after the BatteryRun green blink phase has been initialized.
+ *         [FA] بعد از مقداردهی فاز چشمک سبز BatteryRun مقدار TRUE دارد.
+ */
+static bool BOOL__G__UiBatteryGreenBlinkInitialized = false;
+
+/**
+ * @brief  [EN] RTOS tick at which the current BatteryRun green phase started.
+ *         [FA] تیک RTOS در زمان شروع فاز فعلی LED سبز BatteryRun.
+ */
+static TickType_t TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = 0;
+
+/**
+ * @brief  [EN] Stored BatteryRun green ON duration used to restart phase timing when percentage changes.
+ *         [FA] مدت ذخیره‌شده روشن‌بودن سبز BatteryRun برای شروع مجدد فاز هنگام تغییر درصد.
+ */
+static uint32_t UINT32_T__G__UiBatteryGreenOnMs = 0u;
+
+/**
+ * @brief  [EN] Stored BatteryRun green OFF duration used to restart phase timing when percentage changes.
+ *         [FA] مدت ذخیره‌شده خاموش‌بودن سبز BatteryRun برای شروع مجدد فاز هنگام تغییر درصد.
+ */
+static uint32_t UINT32_T__G__UiBatteryGreenOffMs = 0u;
+
+/* ==================== BatteryRun critical beep reset ==================== */
+
+/**
+ * @brief  [EN] Reset the one-time critical BatteryRun beep state.
+ *         [FA] وضعیت بوق بحرانی تک‌باره BatteryRun را بازنشانی می‌کند.
+ */
+static void func__Ui_ResetBatteryCriticalBeep(void)
+{
+    BOOL__G__UiBatteryCriticalBeepActive = false;
+    BOOL__G__UiBatteryCriticalBeepCompleted = false;
+    TICKTYPE_T__G__UiBatteryCriticalBeepStartTick = 0;
+}
+
+/* ==================== BatteryRun green blink reset ==================== */
+
+/**
+ * @brief  [EN] Reset non-blocking BatteryRun green blink timing.
+ *         [FA] زمان‌بندی چشمک غیرمسدودکننده سبز BatteryRun را بازنشانی می‌کند.
+ */
+static void func__Ui_ResetBatteryRunGreenBlink(void)
+{
+    BOOL__G__UiBatteryGreenOn = false;
+    BOOL__G__UiBatteryGreenBlinkInitialized = false;
+    TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = 0;
+    UINT32_T__G__UiBatteryGreenOnMs = 0u;
+    UINT32_T__G__UiBatteryGreenOffMs = 0u;
+}
+
+/* ==================== BatteryRun green blink update ==================== */
+
+/**
+ * @brief  [EN] Update the non-blocking BatteryRun green blink and service its phase timing.
+ *         [FA] چشمک غیرمسدودکننده سبز BatteryRun و زمان‌بندی فاز آن را به‌روز می‌کند.
+ * @param  uint32_t__greenOnMs [EN] Green ON duration / مدت روشن‌بودن سبز
+ * @param  uint32_t__greenOffMs [EN] Green OFF duration / مدت خاموش‌بودن سبز
+ */
+static void func__Ui_UpdateBatteryRunGreenBlink(uint32_t uint32_t__greenOnMs, uint32_t uint32_t__greenOffMs)
+{
+    TickType_t ticktype__nowTick;
+    uint32_t uint32_t__currentPhaseMs;
+
+    ticktype__nowTick = xTaskGetTickCount();
+
+    if ((BOOL__G__UiBatteryGreenBlinkInitialized == false) ||
+        (UINT32_T__G__UiBatteryGreenOnMs != uint32_t__greenOnMs) ||
+        (UINT32_T__G__UiBatteryGreenOffMs != uint32_t__greenOffMs))
+    {
+        BOOL__G__UiBatteryGreenBlinkInitialized = true;
+        BOOL__G__UiBatteryGreenOn = true;
+        TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = ticktype__nowTick;
+        UINT32_T__G__UiBatteryGreenOnMs = uint32_t__greenOnMs;
+        UINT32_T__G__UiBatteryGreenOffMs = uint32_t__greenOffMs;
+    }
+    else
+    {
+        uint32_t__currentPhaseMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__UiBatteryGreenPhaseStartTick) * portTICK_PERIOD_MS);
+
+        if ((BOOL__G__UiBatteryGreenOn == true) &&
+            (uint32_t__currentPhaseMs >= uint32_t__greenOnMs))
+        {
+            BOOL__G__UiBatteryGreenOn = false;
+            TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = ticktype__nowTick;
+        }
+        else if ((BOOL__G__UiBatteryGreenOn == false) &&
+                 (uint32_t__currentPhaseMs >= uint32_t__greenOffMs))
+        {
+            BOOL__G__UiBatteryGreenOn = true;
+            TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = ticktype__nowTick;
+        }
+        else
+        {
+            /* [EN] Keep the current LED phase until its configured duration expires.
+               [FA] فاز فعلی LED را تا پایان مدت تنظیم‌شده حفظ کن. */
+        }
+    }
+
+    func__green(BOOL__G__UiBatteryGreenOn);
+}
 
 /* ==================== Input state update ==================== */
 
@@ -224,6 +347,9 @@ static void func__Ui_ScenarioInputOverVoltage_Tick(void)
     uint64_t uint64_t__redDutyProduct;
     bool bool__redOn;
 
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
+
     ticktype__nowTick = xTaskGetTickCount();
     uint32_t__elapsedMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__UiInputOverVoltageStartTick) * portTICK_PERIOD_MS);
     uint32_t__phaseMs = uint32_t__elapsedMs % UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS;
@@ -251,7 +377,8 @@ static void func__Ui_ScenarioInputOverVoltage_Tick(void)
  */
 void func__Ui_ScenarioInputOk(void)
 {
-    UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
 
     func__green(true);
     func__red(false);
@@ -279,7 +406,8 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
     uint32_t uint32_t__yellowOnMs;
     uint32_t uint32_t__yellowOffMs;
 
-    UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
     (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 
     uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
@@ -331,10 +459,12 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 /* ==================== Scenario BatteryRun Tick ==================== */
 
 /**
- * @brief  [EN] BatteryRun scenario tick: green blink plus the previous smart-beep rule.
- *         Below the start threshold, beep every batteryPercent blink cycles; below the double threshold, duration is doubled.
- *         [FA] سناریو دشارژ: چشمک سبز به‌همراه قانون قبلی بوق هوشمند.
- *         زیر آستانه شروع، هر تعداد سیکل برابر درصد باتری بوق بزن؛ زیر آستانه دوبرابر، مدت بوق دو برابر است.
+ * @brief  [EN] BatteryRun scenario: green blink follows the linear 21V..28V battery percentage;
+ *         buzzer warnings use the four requested percentage bands.
+ *         Below 1%, all LEDs turn off and one ten-second buzzer is latched until the battery recovers.
+ *         [FA] سناریو دشارژ: سبز بر اساس درصد خطی ۲۱ تا ۲۸ ولت چشمک می‌زند؛
+ *         بوق بر اساس چهار بازه درصدی درخواستی اجرا می‌شود.
+ *         زیر ۱٪ همه LEDها خاموش و یک بوق ده‌ثانیه‌ای تا برگشت باتری فقط یک‌بار اجرا می‌شود.
  * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 28000=100% / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
@@ -344,20 +474,53 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     uint32_t uint32_t__periodPerPercent;
     uint32_t uint32_t__greenOffMs;
     uint32_t uint32_t__greenOnMs;
-    uint32_t uint32_t__beepIntervalCycles;
-    uint32_t uint32_t__beepDurationMs;
-    uint32_t uint32_t__beepPeriodMs;
-    uint32_t uint32_t__beepDutyPercent;
-    uint64_t uint64_t__beepDutyProduct;
-    int32_t int32_t__buzzerResult;
-    bool bool__shouldBeepNow;
-
-    (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+    TickType_t ticktype__nowTick;
+    uint32_t uint32_t__criticalElapsedMs;
 
     uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
 
-    /* [EN] Non-linear: green blink OFF = remaining * period/100, with min
-       [FA] فرمول غیرخطی سبز چشمک */
+    if (uint8_t__batteryPercent < UI_BATTERY_RUN_BEEP_CRITICAL_PERCENT)
+    {
+        func__Ui_ResetBatteryRunGreenBlink();
+        func__green(false);
+        func__red(false);
+        func__yellow(false);
+
+        if (BOOL__G__UiBatteryCriticalBeepCompleted == true)
+        {
+            (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+            return;
+        }
+
+        if (BOOL__G__UiBatteryCriticalBeepActive == false)
+        {
+            BOOL__G__UiBatteryCriticalBeepActive = true;
+            TICKTYPE_T__G__UiBatteryCriticalBeepStartTick = xTaskGetTickCount();
+        }
+
+        ticktype__nowTick = xTaskGetTickCount();
+        uint32_t__criticalElapsedMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__UiBatteryCriticalBeepStartTick) * portTICK_PERIOD_MS);
+
+        if (uint32_t__criticalElapsedMs >= UI_BATTERY_RUN_BEEP_CRITICAL_DURATION_MS)
+        {
+            (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+            BOOL__G__UiBatteryCriticalBeepActive = false;
+            BOOL__G__UiBatteryCriticalBeepCompleted = true;
+            return;
+        }
+
+        (void)func__Ui_Buzzer_Tick(
+            UI_BATTERY_RUN_BEEP_CRITICAL_PERIOD_MS,
+            (uint8_t)UI_BATTERY_RUN_BEEP_CRITICAL_DUTY_PERCENT,
+            (uint8_t)UI_BATTERY_RUN_BEEP_CRITICAL_COUNT,
+            UI_BATTERY_RUN_BEEP_GAP_MS);
+        return;
+    }
+
+    func__Ui_ResetBatteryCriticalBeep();
+
+    /* [EN] Non-linear: green blink OFF = remaining * period/100, with min.
+       [FA] فرمول غیرخطی سبز چشمک: خاموشی برابر مانده درصد ضربدر دوره است. */
     uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__batteryPercent;
     uint32_t__periodPerPercent = APP_CONFIG.ui_blink_period_ms / UI_PERCENT_SCALE;
     uint32_t__greenOffMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
@@ -369,93 +532,38 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 
     uint32_t__greenOnMs = APP_CONFIG.ui_blink_period_ms - uint32_t__greenOffMs;
 
+    if (uint8_t__batteryPercent >= UI_BATTERY_RUN_BEEP_START_PERCENT)
+    {
+        (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+    }
+    else if (uint8_t__batteryPercent >= UI_BATTERY_RUN_BEEP_DOUBLE_PERCENT)
+    {
+        (void)func__Ui_Buzzer_Tick(
+            UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS,
+            (uint8_t)UI_BATTERY_RUN_BEEP_STANDARD_DUTY_PERCENT,
+            (uint8_t)UI_BATTERY_RUN_BEEP_STANDARD_COUNT,
+            UI_BATTERY_RUN_BEEP_GAP_MS);
+    }
+    else if (uint8_t__batteryPercent >= UI_BATTERY_RUN_BEEP_TRIPLE_PERCENT)
+    {
+        (void)func__Ui_Buzzer_Tick(
+            UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS,
+            (uint8_t)UI_BATTERY_RUN_BEEP_DOUBLE_DUTY_PERCENT,
+            (uint8_t)UI_BATTERY_RUN_BEEP_DOUBLE_COUNT,
+            UI_BATTERY_RUN_BEEP_GAP_MS);
+    }
+    else
+    {
+        (void)func__Ui_Buzzer_Tick(
+            UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS,
+            (uint8_t)UI_BATTERY_RUN_BEEP_TRIPLE_DUTY_PERCENT,
+            (uint8_t)UI_BATTERY_RUN_BEEP_TRIPLE_COUNT,
+            UI_BATTERY_RUN_BEEP_GAP_MS);
+    }
+
     func__red(false);
     func__yellow(false);
-
-    func__green(true);
-    vTaskDelay(pdMS_TO_TICKS(uint32_t__greenOnMs));
-    func__green(false);
-    vTaskDelay(pdMS_TO_TICKS(uint32_t__greenOffMs));
-
-    if (uint8_t__batteryPercent >= APP_CONFIG.ui_beep_start_pct)
-    {
-        UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
-        return;
-    }
-
-    uint32_t__beepIntervalCycles = (uint32_t)uint8_t__batteryPercent;
-    if (uint32_t__beepIntervalCycles == 0u)
-    {
-        uint32_t__beepIntervalCycles = UI_BEEP_MIN_INTERVAL_CYCLES;
-    }
-
-    /* [EN] Count the completed blink cycle before comparing.
-       [FA] ابتدا سیکل کامل چشمک را بشمار و بعد مقایسه کن. */
-    bool__shouldBeepNow = false;
-    if (UINT32_T__G__UiBatteryRunBeepCycleCnt < uint32_t__beepIntervalCycles)
-    {
-        UINT32_T__G__UiBatteryRunBeepCycleCnt++;
-    }
-
-    if (UINT32_T__G__UiBatteryRunBeepCycleCnt >= uint32_t__beepIntervalCycles)
-    {
-        bool__shouldBeepNow = true;
-        UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
-    }
-
-    if (bool__shouldBeepNow == false)
-    {
-        return;
-    }
-
-    uint32_t__beepDurationMs = APP_CONFIG.ui_beep_base_ms;
-    if (uint8_t__batteryPercent < APP_CONFIG.ui_beep_double_thresh_pct)
-    {
-        uint32_t__beepDurationMs = uint32_t__beepDurationMs * 2u;
-    }
-
-    if (uint32_t__beepDurationMs == 0u)
-    {
-        return;
-    }
-
-    /* [EN] Represent the old one-shot duration with a valid period. For durations below 1s,
-       use the 1s safety period and convert the duration to duty percent.
-       [FA] مدت تک‌باره قدیمی را با دوره معتبر نمایش بده. برای کمتر از یک ثانیه،
-       دوره ایمن یک‌ثانیه‌ای و دیوتی متناظر را استفاده کن. */
-    uint32_t__beepPeriodMs = uint32_t__beepDurationMs;
-    if (uint32_t__beepPeriodMs < UI_BUZZER_MIN_PERIOD_MS)
-    {
-        uint32_t__beepPeriodMs = UI_BUZZER_MIN_PERIOD_MS;
-    }
-
-    uint32_t__beepDutyPercent = UI_BUZZER_DUTY_MAX_PERCENT;
-    if (uint32_t__beepDurationMs < uint32_t__beepPeriodMs)
-    {
-        uint64_t__beepDutyProduct = (uint64_t)uint32_t__beepDurationMs * UI_BUZZER_PERCENT_SCALE;
-        uint32_t__beepDutyPercent = (uint32_t)(uint64_t__beepDutyProduct / uint32_t__beepPeriodMs);
-        if ((uint64_t__beepDutyProduct % uint32_t__beepPeriodMs) != 0u)
-        {
-            uint32_t__beepDutyPercent++;
-        }
-        if (uint32_t__beepDutyPercent == 0u)
-        {
-            uint32_t__beepDutyPercent = 1u;
-        }
-    }
-
-    int32_t__buzzerResult = func__Ui_Buzzer_Tick(
-        uint32_t__beepPeriodMs,
-        (uint8_t)uint32_t__beepDutyPercent,
-        1u,
-        0u);
-
-    if (int32_t__buzzerResult != UI_BUZZER_INVALID_RESULT)
-    {
-        vTaskDelay(pdMS_TO_TICKS(uint32_t__beepDurationMs));
-    }
-
-    (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+    func__Ui_UpdateBatteryRunGreenBlink(uint32_t__greenOnMs, uint32_t__greenOffMs);
 }
 
 /* ==================== Ui Tick ==================== */
@@ -517,7 +625,8 @@ void func__Ui_Init(void)
     BOOL__G__UiInputPresent = false;
     BOOL__G__UiInputOverVoltage = false;
     TICKTYPE_T__G__UiInputOverVoltageStartTick = 0;
-    UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
 }
 
 /* ==================== Board Test Start ==================== */
@@ -536,6 +645,8 @@ void func__Ui_BoardTest_Start(void)
     int32_t int32_t__buzzerResult;
 
     func__all_off();
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
 
     func__red(true);
     vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_selftest_led_ms));
