@@ -59,22 +59,23 @@
    - `CubeIDE/Core/Src/main.c` → آیا `App_Start()` هنوز در `USER CODE BEGIN 2` هست؟
    - `STM32CubeIDE/.cproject` → آیا Include pathهای `Firmware` هنوز هستند؟
    - `CubeIDE.ioc` را کپی کن به `CubeMX/CubeIDE.ioc`
-   - اگر ADC/UART/PWM اضافه کردی، در `Firmware/App/Src/app.c` یا `main.c` USER CODE هندل را به Bsp بده:
-     ```c
-     extern ADC_HandleTypeDef hadc1;
-     BspAdc_Init(&hadc1);
-     ```
    - `modules_enable.h` را فقط وقتی فلگ را می‌خواهی 1 کنی عوض کن
 4. Build کن، اگر خطای Include دادی، Pathها را دوباره اضافه کن
 
-### الان فقط LED/بازر
+### وضعیت فعلی: LED/بازر + ADC
 
-ADC و PWM را Enable نکن مگر همان مرحله را کاربر خواسته باشد (قانون AI). الان `MODULE_UI=1` بقیه 0 است.
+- `MODULE_UI=1` و `MODULE_MEASUREMENT=1`. بقیه 0.
+- ADC1: ۵ کانال (PA1/PA2/PA3/PA5/PA7 = IN1/IN2/IN3/IN5/IN7)، scan + continuous، sampling 55.5 cycle، کلاک **9MHz** (PCLK2/8 — سقف ADC در F103 = 14MHz؛ مقدار قبلی 36MHz از سقف بیشتر بود).
+- DMA1 Channel1: circular، N=10 (دو فریم ۵ کاناله)، بدون interrupt — بافر را سخت‌افزار پر می‌کند.
+- PB4 = GPIO_Input با لیبل `MCU_INT_24_IN` (حضور ورودی ۲۴، دیجیتال).
+- هندل `hadc1` از `main.h` به `task_measurement.c` می‌رسد و در آن‌جا به `func__BspAdc_Init` داده می‌شود (`app.c` دست‌نخورده است).
+- PWM و UART را Enable نکن مگر همان مرحله را کاربر خواسته باشد (قانون AI).
 
 ## تاریخچه
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-15 | ADC1 + DMA1 چرخشی (5 کانال، 9MHz) و PB4 (MCU_INT_24_IN) به `.ioc` اضافه شد؛ کلاک ADC از 36MHz به 9MHz (سقف 14MHz)؛ درایور ADC v1.1.10 به CubeIDE/Drivers |
 | 2026-09-14 | اضافه شدن راهنمای اضافه کردن پریفرال بدون بهم ریختن برنامه + توضیح Linked Resource و USER CODE و چک‌لیست امن |
 | 2026-09-14 | فایل .ioc فقط LED/بازر، ADC/PWM خاموش |
 

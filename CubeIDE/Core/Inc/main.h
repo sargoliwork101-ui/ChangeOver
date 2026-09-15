@@ -49,6 +49,10 @@ extern "C" {
 
 /* USER CODE END EM */
 
+/* Exported variables ------------------------------------------------------------*/
+extern ADC_HandleTypeDef hadc1;
+extern DMA_HandleTypeDef hdma_adc1;
+
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
@@ -65,6 +69,8 @@ void Error_Handler(void);
 #define MCU_Y_LED_GPIO_Port GPIOB
 #define MCU_G_LED_Pin GPIO_PIN_10
 #define MCU_G_LED_GPIO_Port GPIOB
+#define MCU_INT_24_IN_Pin GPIO_PIN_4
+#define MCU_INT_24_IN_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
