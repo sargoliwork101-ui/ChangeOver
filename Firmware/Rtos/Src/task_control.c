@@ -1,7 +1,7 @@
 /**
  * @file    task_control.c
- * @brief   [EN] FreeRTOS task for changeover/charger policy (placeholder). Full type naming, func_ prefix.
- *          [FA] تسک سیاست Changeover و شارژر (اسکلت). نام تایپ کامل.
+ * @brief   [EN] FreeRTOS control task - fully RTOS non-blocking, chunked, vTaskDelayUntil.
+ *          [FA] تسک کنترل کاملاً RTOS غیربلوکه.
  */
 
 #include "rtos_tasks.h"
@@ -28,44 +28,53 @@
 #endif
 
 /**
- * @brief  [EN] Control task entry. Idle loop until a control module is enabled.
- *         [FA] ورود تسک کنترل. تا ماژول کنترل روشن نشود کار نمی‌کند.
- * @param  void_ptr_argument [EN] Required by FreeRTOS, unused / آرگومان FreeRTOS
+ * @brief  [EN] Control task - non-blocking periodic.
+ *         [FA] تسک کنترل - دوره‌ای غیربلوکه.
+ * @param  void_ptr__argument [EN] FreeRTOS arg / آرگومان
  */
-void func_TaskControl(void *void_ptr_argument)
+void func__TaskControl(void *void_ptr__argument)
 {
-    (void)void_ptr_argument;
+    TickType_t ticktype__lastWakeTick;
+    TickType_t ticktype__periodTicks;
+
+    (void)void_ptr__argument;
+
+#if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
+    ticktype__periodTicks = pdMS_TO_TICKS(APP_CONFIG.control_period_ms);
+#else
+    ticktype__periodTicks = pdMS_TO_TICKS(1000u);
+#endif
+
+    ticktype__lastWakeTick = xTaskGetTickCount();
 
     for (;;)
     {
+        vTaskDelayUntil(&ticktype__lastWakeTick, ticktype__periodTicks);
+
 #if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
         {
-            measurement_snapshot_t measurement_snapshot_t_snap;
-            fault_mask_t fault_mask_t_faults = FAULT_NONE;
-            app_state_t app_state_t_state = APP_STATE_IDLE;
+            measurement_snapshot_t measurement_snapshot_t__snap;
+            fault_mask_t fault_mask_t__faults = FAULT_NONE;
+            app_state_t app_state_t__state = APP_STATE_IDLE;
 
-            measurement_snapshot_t_snap.valid = false;
+            measurement_snapshot_t__snap.valid = false;
 #if MODULE_MEASUREMENT
-            (void)func_Measurement_GetSnapshot(&measurement_snapshot_t_snap);
+            (void)func__Measurement_GetSnapshot(&measurement_snapshot_t__snap);
 #endif
 #if MODULE_FAULT
-            fault_mask_t_faults = func_Fault_Get();
+            fault_mask_t__faults = func__Fault_Get();
 #endif
 #if MODULE_JITTER
-            func_Jitter_Run();
+            func__Jitter_Run();
 #endif
 #if MODULE_CHANGEOVER
-            app_state_t_state = func_Changeover_Evaluate(&measurement_snapshot_t_snap, fault_mask_t_faults);
+            app_state_t__state = func__Changeover_Evaluate(&measurement_snapshot_t__snap, fault_mask_t__faults);
 #endif
 #if MODULE_CHARGER
-            func_Charger_Evaluate(&measurement_snapshot_t_snap, app_state_t_state);
+            func__Charger_Evaluate(&measurement_snapshot_t__snap, app_state_t__state);
 #endif
-            (void)app_state_t_state;
+            (void)app_state_t__state;
         }
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.control_period_ms));
-#else
-        vTaskDelay(pdMS_TO_TICKS(1000u));
 #endif
     }
 }
-

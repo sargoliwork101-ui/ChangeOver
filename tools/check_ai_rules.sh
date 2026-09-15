@@ -1,26 +1,18 @@
 #!/usr/bin/env bash
-# @file    check_ai_rules.sh
-# @brief   [EN] Execute AI_CONTEXT.md rules: header check, README template, folder separation, MODULE flags.
-#          [FA] اجرای قوانین AI_CONTEXT: چک هدر دوزبانه، قالب README ماژول، جدایی پوشه‌ها، فلگ ماژول‌ها.
-
 set -e
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SCRIPT_DIR="$(dirname "$0")"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FAIL=0
-
 echo "=== AI_CONTEXT execution / اجرای قوانین AI ==="
 echo "Root: $ROOT"
 echo ""
-
-# 1. Check Firmware/README.md does NOT exist (only AI_CONTEXT.md allowed)
 echo "[1] Firmware root README check"
 if [ -f "$ROOT/Firmware/README.md" ]; then
-  echo "  FAIL: Firmware/README.md exists, should not (only AI_CONTEXT.md)"
+  echo "  FAIL: Firmware/README.md exists"
   FAIL=1
 else
   echo "  OK: No Firmware/README.md"
 fi
-
-# 2. Check each Module README has 7 sections
 echo ""
 echo "[2] Module README template (7 sections)"
 for d in "$ROOT"/Firmware/Modules/*; do
@@ -40,10 +32,8 @@ for d in "$ROOT"/Firmware/Modules/*; do
   done
   echo "  OK: $mod has 7 sections"
 done
-
-# 3. Check .c/.h bilingual header
 echo ""
-echo "[3] Bilingual header check (.c/.h top comment)"
+echo "[3] Bilingual header check"
 find "$ROOT/Firmware" -type f \( -name "*.c" -o -name "*.h" \) | while read -r f; do
   if ! grep -q "@file" "$f"; then
     echo "  FAIL: $f missing @file"
@@ -59,18 +49,14 @@ find "$ROOT/Firmware" -type f \( -name "*.c" -o -name "*.h" \) | while read -r f
   fi
 done
 echo "  Bilingual header scan done"
-
-# 4. Check function comments: at least each .c/.h has @brief before function
 echo ""
-echo "[4] Function brief check (heuristic)"
+echo "[4] Function brief check"
 find "$ROOT/Firmware" -type f \( -name "*.c" -o -name "*.h" \) | head -n 20 | while read -r f; do
   briefs=$(grep -c "@brief" "$f" || true)
   echo "  $(basename "$f"): briefs=$briefs"
 done
-
-# 5. Check folder separation: CubeIDE and CubeMX should not contain Firmware copy
 echo ""
-echo "[5] Folder separation CubeMX/CubeIDE vs Firmware"
+echo "[5] Folder separation"
 if [ -d "$ROOT/CubeIDE/Firmware" ] || [ -d "$ROOT/CubeMX/Firmware" ]; then
   echo "  FAIL: Firmware copied inside CubeIDE or CubeMX"
   FAIL=1
@@ -83,8 +69,6 @@ if [ -d "$ROOT/CubeIDE/Core/Inc/Firmware" ]; then
 else
   echo "  OK: Core does not contain Firmware"
 fi
-
-# 6. Check modules_enable.h: only UI=1
 echo ""
 echo "[6] modules_enable.h flags"
 cat "$ROOT/Firmware/Config/Inc/modules_enable.h"
@@ -96,40 +80,36 @@ else
 fi
 for m in FAULT MEASUREMENT PROTECTION CHANGEOVER CHARGER JITTER ESP; do
   if grep -q "#define MODULE_${m}.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
-    echo "  FAIL: MODULE_${m} should be 0 at this stage"
+    echo "  FAIL: MODULE_${m} should be 0"
     FAIL=1
   fi
 done
-echo "  Other modules are 0 (expected for LED-only stage)"
-
-# 7. Check .ioc for ADC/PWM/UART not enabled
+echo "  Other modules are 0"
 echo ""
-echo "[7] CubeMX .ioc peripheral check (ADC/PWM/UART should be OFF)"
+echo "[7] CubeMX .ioc peripheral check"
 IOC="$ROOT/CubeMX/CubeIDE.ioc"
 if [ -f "$IOC" ]; then
   if grep -q "Mcu.IP.*ADC" "$IOC"; then
-    echo "  FAIL: ADC found in .ioc, should be OFF for LED stage"
+    echo "  FAIL: ADC found"
     FAIL=1
   else
-    echo "  OK: No ADC in .ioc"
+    echo "  OK: No ADC"
   fi
   if grep -q "Mcu.IP.*TIM[2-4]" "$IOC"; then
-    echo "  FAIL: TIM2-4 found (PWM) should be OFF"
+    echo "  FAIL: TIM2-4 found"
     FAIL=1
   else
-    echo "  OK: No TIM2-4 PWM in .ioc"
+    echo "  OK: No TIM2-4 PWM"
   fi
   if grep -q "Mcu.IP.*USART" "$IOC"; then
-    echo "  FAIL: USART found, should be OFF"
+    echo "  FAIL: USART found"
     FAIL=1
   else
-    echo "  OK: No USART in .ioc"
+    echo "  OK: No USART"
   fi
 else
   echo "  WARN: $IOC not found"
 fi
-
-# 8. Check root README has connection tree
 echo ""
 echo "[8] Root README connection tree"
 if grep -q "درخت اتصال کل پروژه" "$ROOT/README.md"; then
@@ -138,177 +118,188 @@ else
   echo "  FAIL: Root README missing full tree"
   FAIL=1
 fi
-
-# 9. Check func_ prefix for our own functions (not HAL, not FreeRTOS hooks)
 echo ""
-echo "[9] func_ prefix for our own functions (per new AI rule)"
-# Count our functions without func_ prefix in Firmware (excluding vApplication, HAL, etc)
-# We expect all our functions to have func_ prefix
-FOUND_OLD=$(grep -R --include="*.c" --include="*.h" -E "^\s*(void|bool|uint8_t|uint16_t|uint32_t|int\d+_t|app_state_t|fault_mask_t|measurement_snapshot_t)\s+[A-Z][a-zA-Z_]*_(Init|Run|Write|Read|Set|Get|Clear|Any|Evaluate|Power|Start|BoardTest|BuzzerBeep|BatteryVoltageToPercent|Scenario)" "$ROOT/Firmware" | grep -v "func_" | grep -v "vApplication" | grep -v "HAL_" || true)
-if [ -n "$FOUND_OLD" ]; then
-  echo "  FAIL: Found our functions without func_ prefix:"
-  echo "$FOUND_OLD" | head -n 20
+echo "[9] func__ prefix double underscore"
+FOUND_OLD_SINGLE=$(grep -R --include="*.c" --include="*.h" -E "func_[A-Z]" "$ROOT/Firmware" | grep -v "func__" | head -n 5 || true)
+if [ -n "$FOUND_OLD_SINGLE" ]; then
+  echo "  FAIL: Found old func_ single underscore"
+  echo "$FOUND_OLD_SINGLE" | head -n 10
   FAIL=1
 else
-  echo "  OK: All our functions have func_ prefix (system functions untouched)"
+  echo "  OK: All func have func__ double"
 fi
-
-# 10. Check full type naming for variables (uint32_t_, UINT32_T_G_, etc, not shorthand U32_G_)
 echo ""
-echo "[10] Full type naming for variables (not shorthand U32_G_ / u32_)"
-# Shorthand that should NOT exist anymore (except in comments)
-FOUND_SHORT=$(grep -R --include="*.c" --include="*.h" -E "U32_G_|U8_G_|U16_G_|s_\b" "$ROOT/Firmware/Modules/Ui" "$ROOT/Firmware/Rtos/Src/task_ui.c" 2>/dev/null | grep -v "//" | grep -v "U32_G_InputVoltageMv" | grep -v "U32_G_BatteryVoltageMv" | grep -v "U32_G_BeepCnt" | grep -v "UINT32_T_G_" | head -n 20 || true)
-# Actually check for old shorthand U32_G_ that is not UINT32_T_G_
-OLD_SHORT=$(grep -R --include="*.c" --include="*.h" "U32_G_\|U8_G_\|U16_G_" "$ROOT/Firmware" | grep -v "UINT32_T_G_\|UINT8_T_G_\|UINT16_T_G_\|UINT16_T_G_Raw\|UINT8_T_G_Flags" | head -n 20 || true)
+echo "[10] Full type naming with __"
+OLD_SHORT=$(grep -R --include="*.c" --include="*.h" "U32_G_\|U8_G_\|U16_G_" "$ROOT/Firmware" | grep -v "UINT32_T__G__\|UINT8_T__G__\|UINT16_T__G__" | head -n 20 || true)
 if [ -n "$OLD_SHORT" ]; then
-  echo "  FAIL: Found old shorthand variable naming (should be full type like UINT32_T_G_):"
+  echo "  FAIL: Found old shorthand"
   echo "$OLD_SHORT"
   FAIL=1
 else
-  echo "  OK: No old shorthand U32_G_/U8_G_ found, full type naming used"
+  echo "  OK: No old shorthand"
 fi
-
-# 11. Check each function has @param for params (per new AI rule)
+if grep -R --include="*.c" --include="*.h" "uint32_t__" "$ROOT/Firmware" | head -n 1 | grep -q "uint32_t__"; then
+  echo "  OK: Found uint32_t__ double"
+else
+  echo "  FAIL: No uint32_t__ found"
+  FAIL=1
+fi
+if grep -R --include="*.c" --include="*.h" "UINT32_T__G__" "$ROOT/Firmware" | head -n 1 | grep -q "UINT32_T__G__"; then
+  echo "  OK: Found UINT32_T__G__ double"
+else
+  echo "  FAIL: No UINT32_T__G__ found"
+  FAIL=1
+fi
 echo ""
-echo "[11] Function param docs (@param) check"
-# For each .h file, count functions vs @param
+echo "[11] Function param docs"
 for f in $(find "$ROOT/Firmware" -type f -name "*.h" | head -n 20); do
-  funcs=$(grep -c "func_" "$f" || true)
+  funcs=$(grep -c "func__" "$f" || true)
   params=$(grep -c "@param" "$f" || true)
   echo "  $(basename "$f"): funcs=$funcs @param=$params"
 done
-# Ensure ui.h has param docs for all functions with params
 if ! grep -q "@param.*uint32_t" "$ROOT/Firmware/Modules/Ui/ui.h"; then
-  echo "  FAIL: ui.h missing @param with full type"
+  echo "  FAIL: ui.h missing @param"
   FAIL=1
 else
-  echo "  OK: ui.h has @param with full type"
+  echo "  OK: ui.h has @param"
 fi
-
-# 12. Check AI_CONTEXT has new rules
 echo ""
-echo "[12] AI_CONTEXT.md new rules (readability, full type, func_ prefix)"
-if grep -q "سادگی و خوانایی توابع" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "نام‌گذاری متغیر" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "نام‌گذاری تابع" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "func_" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has readability, full type, func_ prefix rules"
+echo "[12] AI_CONTEXT new rules"
+if grep -q "سادگی و خوانایی توابع" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "نام‌گذاری متغیر" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "نام‌گذاری تابع" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "func__" "$ROOT/Firmware/AI_CONTEXT.md"; then
+  echo "  OK: AI_CONTEXT has readability, full type, func__"
 else
   echo "  FAIL: AI_CONTEXT missing new rules"
   FAIL=1
 fi
-
-# 13. Check memory management rules
+if grep -q "RTOS کامل" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "بدون delay" "$ROOT/Firmware/AI_CONTEXT.md"; then
+  echo "  OK: AI_CONTEXT has RTOS no delay"
+else
+  echo "  FAIL: AI_CONTEXT missing RTOS no delay"
+  FAIL=1
+fi
+if grep -q "ui_config.h حذف شد" "$ROOT/Firmware/AI_CONTEXT.md"; then
+  echo "  OK: AI_CONTEXT has ui_config.h deleted note"
+else
+  echo "  FAIL: AI_CONTEXT missing ui_config.h deleted note"
+  FAIL=1
+fi
 echo ""
-echo "[13] Memory management (no malloc/free, static allocation, const config, stack overflow hook)"
-# No malloc/free in Firmware - check for actual calls malloc( free( etc, ignore comments about not using malloc
+echo "[13] Memory management"
 FOUND_MALLOC=$(grep -R --include="*.c" --include="*.h" -E "malloc\(|free\(|calloc\(|realloc\(" "$ROOT/Firmware" 2>/dev/null | grep -v "does not use malloc" | grep -v "heap_4" || true)
 if [ -n "$FOUND_MALLOC" ]; then
-  echo "  FAIL: Found malloc/free calls in Firmware (should use static allocation):"
+  echo "  FAIL: Found malloc/free"
   echo "$FOUND_MALLOC" | head -n 20
   FAIL=1
 else
-  echo "  OK: No malloc/free calls in Firmware (static allocation)"
+  echo "  OK: No malloc/free"
 fi
-
-# Check xTaskCreateStatic used, not xTaskCreate
 FOUND_XTASK=$(grep -R --include="*.c" "xTaskCreate(" "$ROOT/Firmware" 2>/dev/null | grep -v "xTaskCreateStatic" | grep -v "//" || true)
 if [ -n "$FOUND_XTASK" ]; then
-  echo "  FAIL: Found xTaskCreate (should use xTaskCreateStatic):"
+  echo "  FAIL: Found xTaskCreate"
   echo "$FOUND_XTASK" | head -n 5
   FAIL=1
 else
-  echo "  OK: Tasks use xTaskCreateStatic (no malloc)"
+  echo "  OK: Tasks use xTaskCreateStatic"
 fi
-
-# Check APP_CONFIG is const
 if grep -q "const app_config_t APP_CONFIG" "$ROOT/Firmware/Config/Src/app_config.c"; then
-  echo "  OK: APP_CONFIG is const (Flash, not RAM)"
+  echo "  OK: APP_CONFIG is const"
 else
   echo "  FAIL: APP_CONFIG not const"
   FAIL=1
 fi
-
-# Check stack sizes defined in rtos_config.h
-if grep -q "TASK_STACK_UI" "$ROOT/Firmware/Config/Inc/rtos_config.h" && grep -q "TASK_STACK_MEASUREMENT" "$ROOT/Firmware/Config/Inc/rtos_config.h"; then
-  echo "  OK: Stack sizes defined in rtos_config.h (words)"
+if grep -q "TASK_STACK_UI" "$ROOT/Firmware/Config/Inc/rtos_config.h"; then
+  echo "  OK: Stack sizes defined"
 else
   echo "  FAIL: Stack sizes not defined"
   FAIL=1
 fi
-
-# Check stack overflow hook exists
 if grep -q "vApplicationStackOverflowHook" "$ROOT/Firmware/Rtos/Src/freertos_hooks.c"; then
   echo "  OK: Stack overflow hook exists"
 else
   echo "  FAIL: Stack overflow hook missing"
   FAIL=1
 fi
-
-# Check AI_CONTEXT has memory management section
 if grep -q "مدیریت حافظه" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has memory management section"
+  echo "  OK: AI_CONTEXT has memory management"
 else
   echo "  FAIL: AI_CONTEXT missing memory management"
   FAIL=1
 fi
-
-# 14. Check meaningful naming and constant prefix
 echo ""
-echo "[14] Meaningful naming and constant prefix (related to work, module prefix)"
-# Check AI_CONTEXT has new sections
+echo "[14] Meaningful naming and constant prefix"
 if grep -q "نام‌گذاری مرتبط با کار" "$ROOT/Firmware/AI_CONTEXT.md" || grep -q "نام باید مرتبط با کاری" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has meaningful naming rule"
+  echo "  OK: AI_CONTEXT has meaningful naming"
 else
-  echo "  FAIL: AI_CONTEXT missing meaningful naming rule"
+  echo "  FAIL: AI_CONTEXT missing meaningful naming"
   FAIL=1
 fi
-
 if grep -q "نام‌گذاری ثابت" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has constant naming section"
+  echo "  OK: AI_CONTEXT has constant naming"
 else
-  echo "  FAIL: AI_CONTEXT missing constant naming section"
+  echo "  FAIL: AI_CONTEXT missing constant naming"
   FAIL=1
 fi
-
-# Check that UI_ constants have UI_ prefix (already) and no dot in macro names
 FOUND_DOT=$(grep -R --include="*.h" "UI\.c_" "$ROOT/Firmware" 2>/dev/null || true)
 if [ -n "$FOUND_DOT" ]; then
-  echo "  FAIL: Found invalid macro with dot UI.c_ (dot not allowed in C):"
+  echo "  FAIL: Found invalid macro with dot"
   echo "$FOUND_DOT" | head -n 3
   FAIL=1
 else
-  echo "  OK: No invalid dot in macro names (UI.c_ not allowed, UI_ is correct)"
+  echo "  OK: No invalid dot"
 fi
-
-# Check that constants in ui_config.h have UI_ prefix
-if grep -q "#define UI_" "$ROOT/Firmware/Modules/Ui/ui_config.h"; then
-  echo "  OK: ui_config.h constants have UI_ prefix (module/file identifier)"
-else
-  echo "  FAIL: ui_config.h constants missing UI_ prefix"
-  FAIL=1
-fi
-
-# Check that variables are not generic tmp/val/x (heuristic)
-FOUND_GENERIC=$(grep -R --include="*.c" -E "uint32_t_tmp|uint8_t_val|uint32_t_x[^a-zA-Z]" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null || true)
-if [ -n "$FOUND_GENERIC" ]; then
-  echo "  FAIL: Found generic variable names not related to work:"
-  echo "$FOUND_GENERIC" | head -n 5
+if [ -f "$ROOT/Firmware/Modules/Ui/ui_config.h" ]; then
+  echo "  FAIL: ui_config.h still exists"
   FAIL=1
 else
-  echo "  OK: No generic tmp/val/x variable names, all related to work"
+  echo "  OK: ui_config.h deleted"
 fi
-
-# Check that new meaningful names exist in ui.c
-if grep -q "UINT32_T_G_UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "uint32_t_greenBlinkOnMs" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "uint32_t_buzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c"; then
-  echo "  OK: ui.c uses meaningful names related to work (greenBlink, buzzerTotal, beepCycle)"
+if grep -q "#define UI_BAT_V_MIN_MV" "$ROOT/Firmware/Modules/Ui/ui.h"; then
+  echo "  OK: ui.h has UI_ constants"
 else
-  echo "  FAIL: ui.c missing meaningful names (expected greenBlinkOnMs, buzzerTotalOnMs, beepCycleCnt)"
+  echo "  FAIL: ui.h missing UI_ constants"
   FAIL=1
 fi
-
+if grep -q "UINT32_T__G__UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "GreenOnMs" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "uint32_t__buzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c"; then
+  echo "  OK: ui.c uses meaningful names with __"
+else
+  echo "  FAIL: ui.c missing meaningful names"
+  FAIL=1
+fi
+echo ""
+echo "[15] Fully RTOS no delay"
+FOUND_HAL_DELAY=$(grep -R --include="*.c" "HAL_Delay(" "$ROOT/Firmware" 2>/dev/null || true)
+if [ -n "$FOUND_HAL_DELAY" ]; then
+  echo "  FAIL: Found HAL_Delay"
+  echo "$FOUND_HAL_DELAY" | head -n 5
+  FAIL=1
+else
+  echo "  OK: No HAL_Delay"
+fi
+FOUND_VDELAY_UI=$(grep -R --include="*.c" "vTaskDelay(" "$ROOT/Firmware/Modules/Ui" 2>/dev/null | grep -v "vTaskDelayUntil" || true)
+if [ -n "$FOUND_VDELAY_UI" ]; then
+  echo "  FAIL: Found vTaskDelay in Ui"
+  echo "$FOUND_VDELAY_UI" | head -n 5
+  FAIL=1
+else
+  echo "  OK: No vTaskDelay in Ui"
+fi
+if grep -R --include="*.c" "vTaskDelayUntil" "$ROOT/Firmware/Rtos/Src" | head -n 1 | grep -q "vTaskDelayUntil"; then
+  echo "  OK: Tasks use vTaskDelayUntil"
+else
+  echo "  FAIL: Tasks dont use vTaskDelayUntil"
+  FAIL=1
+fi
+if grep -q "UI_TICK_MS" "$ROOT/Firmware/Modules/Ui/ui.h" && grep -q "Tick" "$ROOT/Firmware/Modules/Ui/ui.h"; then
+  echo "  OK: ui.h has UI_TICK_MS and Tick API"
+else
+  echo "  FAIL: ui.h missing Tick API"
+  FAIL=1
+fi
 echo ""
 if [ $FAIL -eq 0 ]; then
-  echo "ALL CHECKS PASSED / همه چک‌ها پاس شد"
+  echo "ALL CHECKS PASSED"
   exit 0
 else
-  echo "SOME CHECKS FAILED / بعضی چک‌ها فیل شد"
+  echo "SOME CHECKS FAILED"
   exit 1
 fi

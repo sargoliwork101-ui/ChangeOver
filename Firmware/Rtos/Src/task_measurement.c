@@ -1,7 +1,10 @@
 /**
  * @file    task_measurement.c
- * @brief   [EN] FreeRTOS task for ADC sampling (placeholder). Full type naming, func_ prefix.
- *          [FA] تسک نمونه‌برداری ADC (اسکلت). نام تایپ کامل.
+ * @brief   [EN] FreeRTOS measurement task - fully RTOS, non-blocking, chunked, vTaskDelayUntil 10ms base.
+ *          [FA] تسک اندازه‌گیری کاملاً RTOS غیربلوکه، تیکه‌ای.
+ *
+ * @note    [EN] No HAL_Delay, no long blocking. Uses vTaskDelayUntil which yields, not locks MCU.
+ *          [FA] بدون delay قفل‌کن، فقط vTaskDelayUntil.
  */
 
 #include "rtos_tasks.h"
@@ -15,22 +18,33 @@
 #endif
 
 /**
- * @brief  [EN] Measurement task entry. Idle loop until the module is enabled.
- *         [FA] ورود تسک اندازه‌گیری. تا ماژول روشن نشود کار نمی‌کند.
- * @param  void_ptr_argument [EN] Required by FreeRTOS, unused / آرگومان
+ * @brief  [EN] Measurement task - non-blocking periodic.
+ *         [FA] تسک اندازه‌گیری - دوره‌ای غیربلوکه.
+ * @param  void_ptr__argument [EN] FreeRTOS arg / آرگومان
  */
-void func_TaskMeasurement(void *void_ptr_argument)
+void func__TaskMeasurement(void *void_ptr__argument)
 {
-    (void)void_ptr_argument;
+    TickType_t ticktype__lastWakeTick;
+    TickType_t ticktype__periodTicks;
+
+    (void)void_ptr__argument;
+
+#if MODULE_MEASUREMENT
+    ticktype__periodTicks = pdMS_TO_TICKS(APP_CONFIG.control_period_ms);
+#else
+    ticktype__periodTicks = pdMS_TO_TICKS(1000u);
+#endif
+
+    ticktype__lastWakeTick = xTaskGetTickCount();
 
     for (;;)
     {
+        vTaskDelayUntil(&ticktype__lastWakeTick, ticktype__periodTicks);
+
 #if MODULE_MEASUREMENT
-        func_Measurement_Run();
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.control_period_ms));
-#else
-        vTaskDelay(pdMS_TO_TICKS(1000u));
+        /* [EN] One small chunk per tick, non-blocking
+           [FA] هر تیکه یک کار کوچک، بدون قفل */
+        func__Measurement_Run();
 #endif
     }
 }
-

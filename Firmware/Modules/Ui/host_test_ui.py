@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # @file    host_test_ui.py
-# @brief   [EN] Host simulation of UI scenarios, reads thresholds from ui_config.h single source to avoid duplication.
-#          [FA] شبیه‌سازی هاست سناریوهای UI، آستانه‌ها را از ui_config.h می‌خواند تا تکراری نباشد.
+# @brief   [EN] Host simulation of UI scenarios, reads thresholds from ui.h single source (ui_config.h deleted).
+#          [FA] شبیه‌سازی هاست سناریوهای UI، آستانه‌ها را از ui.h می‌خواند (ui_config.h حذف شد).
 
 import os, re, sys
 
-# ==================== Read ui_config.h single source ====================
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "ui_config.h")
+# ==================== Read ui.h single source (ui_config.h deleted) ====================
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), "ui.h")
 defines = {}
 try:
     with open(CONFIG_PATH, 'r', encoding='utf-8', errors='ignore') as f:
@@ -66,7 +66,7 @@ def scenario_charging(v_bat_mv):
     return pct, on_ms, off_ms
 
 def main():
-    print("=== UI Host Test (single source ui_config.h) ===")
+    print("=== UI Host Test (single source ui.h, ui_config.h deleted) ===")
     print(f"Battery 0%={UI_BAT_V_MIN_MV}mV, 100%={UI_BAT_V_MAX_MV}mV, InputThresh={UI_INPUT_THRESHOLD_MV}mV\n")
 
     print("--- Voltage to Percent ---")

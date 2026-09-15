@@ -1,6 +1,6 @@
 /**
  * @file    rtos_app.h
- * @brief   [EN] Starts application tasks and the FreeRTOS scheduler. Full type naming, func_ prefix.
+ * @brief   [EN] Starts application tasks and the FreeRTOS scheduler. Full type naming, func__ prefix.
  *          [FA] تسک‌های برنامه و زمان‌بند FreeRTOS را راه می‌اندازد. نام تایپ کامل.
  */
 
@@ -11,7 +11,7 @@
  * @brief  [EN] Create static tasks then call vTaskStartScheduler(). Does not return.
  *         [FA] تسک‌ها را استاتیک می‌سازد و scheduler را روشن می‌کند. برنمی‌گردد.
  */
-void func_Rtos_Start(void);
+void func__Rtos_Start(void);
 
 #endif /* RTOS_APP_H */
 

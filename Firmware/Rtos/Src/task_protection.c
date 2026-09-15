@@ -1,7 +1,7 @@
 /**
  * @file    task_protection.c
- * @brief   [EN] FreeRTOS task for over-current / low-battery checks (placeholder). Full type naming, func_ prefix.
- *          [FA] تسک حفاظت جریان و ولتاژ (اسکلت). نام تایپ کامل.
+ * @brief   [EN] FreeRTOS protection task - fully RTOS non-blocking, vTaskDelayUntil.
+ *          [FA] تسک حفاظت کاملاً RTOS غیربلوکه.
  */
 
 #include "rtos_tasks.h"
@@ -17,29 +17,38 @@
 #endif
 
 /**
- * @brief  [EN] Protection task entry. Idle loop until the module is enabled.
- *         [FA] ورود تسک حفاظت. تا ماژول روشن نشود کار نمی‌کند.
- * @param  void_ptr_argument [EN] Required by FreeRTOS, unused / آرگومان
+ * @brief  [EN] Protection task - non-blocking.
+ *         [FA] تسک حفاظت - غیربلوکه.
+ * @param  void_ptr__argument [EN] FreeRTOS arg / آرگومان
  */
-void func_TaskProtection(void *void_ptr_argument)
+void func__TaskProtection(void *void_ptr__argument)
 {
-    (void)void_ptr_argument;
+    TickType_t ticktype__lastWakeTick;
+    TickType_t ticktype__periodTicks;
+
+    (void)void_ptr__argument;
+
+#if MODULE_PROTECTION
+    ticktype__periodTicks = pdMS_TO_TICKS(APP_CONFIG.protection_period_ms);
+#else
+    ticktype__periodTicks = pdMS_TO_TICKS(1000u);
+#endif
+
+    ticktype__lastWakeTick = xTaskGetTickCount();
 
     for (;;)
     {
+        vTaskDelayUntil(&ticktype__lastWakeTick, ticktype__periodTicks);
+
 #if MODULE_PROTECTION
         {
-            measurement_snapshot_t measurement_snapshot_t_snap;
-            measurement_snapshot_t_snap.valid = false;
+            measurement_snapshot_t measurement_snapshot_t__snap;
+            measurement_snapshot_t__snap.valid = false;
 #if MODULE_MEASUREMENT
-            (void)func_Measurement_GetSnapshot(&measurement_snapshot_t_snap);
+            (void)func__Measurement_GetSnapshot(&measurement_snapshot_t__snap);
 #endif
-            func_Protection_Run(&measurement_snapshot_t_snap);
+            func__Protection_Run(&measurement_snapshot_t__snap);
         }
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.protection_period_ms));
-#else
-        vTaskDelay(pdMS_TO_TICKS(1000u));
 #endif
     }
 }
-

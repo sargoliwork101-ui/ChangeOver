@@ -36,42 +36,63 @@
 توابع را ساده و خوانا بنویس تا بشه بعدا اصلاحشون کرد — صرفاً خطی ننویس چون از خوانایی می‌اندازد.
 - هر تابع یک کار کند (Single Responsibility)
 - از ifهای تودرتوی عمیق پرهیز کن، ولی گام‌ها را با نام متغیر واضح و کامنت جدا کن تا خوانا بماند، نه فقط پشت‌سرهم on/delay/off
-- پارامترهای قابل تنظیم (مین/ماکس، تایم) را در فایل واحد خودش بگذار (مثل `ui_config.h`) تا تکراری در ۲-۳ فایل نباشد
 - تابع بازر جدا باشد و از هر سناریو قابل صدا زدن باشد
 - بالای هر تابع حتماً توضیح بده چیکار می‌کنه و هر پارامتر یعنی چی (واحد، محدوده)
+
+## RTOS کامل - بدون delay
+
+برنامه کاملاً به شکل RTOS نوشته شود و هیچ قسمتی از برنامه از delay استفاده نکند.
+
+- از `HAL_Delay` اصلاً استفاده نکن (میکرو را قفل می‌کند)
+- از `vTaskDelay` داخل توابع ماژول (مثل `ui.c`) استفاده نکن؛ فقط در تسک‌ها برای زمان‌بندی دوره‌ای با `vTaskDelayUntil` مجاز است و آن هم با تیکه‌های کوتاه
+- کارهای طولانی را خورد کن (chunk) تا میکرو قفل نکند: هر تسک هر بار یک کار کوچک انجام دهد و برگردد، نه اینکه ۵۰۰ms پشت‌سرهم بوق بزند یا LED را نگه دارد
+- الگوی غیربلوکه: هر ماژول یک `Run` یا `Tick` داشته باشد که با `xTaskGetTickCount()` زمان را چک کند و فقط خروجی را ست کند، بدون `delay`
+- مثال بد: `buzzer(true); vTaskDelay(1000); buzzer(false);` (تسک ۱ ثانیه قفل)
+- مثال خوب: حالت استیت‌ماشین با `lastTick`, `state`, `onMs/offMs` و هر بار چک `if (now - last >= period) { toggle; last=now; }`
+- تا آخر پروژه هیچ `delay` داخل منطق ماژول‌ها نباشد
+
+## فایل ui_config.h حذف شد
+
+فایل `ui_config.h` اضافی بود. همه ثابت‌های قابل تنظیم UI الان در همان `ui.h` هستند (single source در خود ماژول).
+
+- قبلاً `ui_config.h` جدا بود و در `ui.c`, `task_ui.c`, `app_config.c` اینکلود می‌شد
+- الان همه `#define`های UI (Vmin/Vmax, Vth, blink, beep, buzzer pattern) در `ui.h` هستند
+- `task_ui.c` و `app_config.c` هم از `ui.h` می‌خوانند، نه فایل جدا
+- اگر ثابت جدید UI اضافه شد، فقط در `ui.h` بگذار
 
 ## نام‌گذاری متغیر
 
 - اول تایپ کامل بعد نام متغیر: تایپ کامل مثل `uint8_t`, `uint16_t`, `uint32_t`, `int32_t`, `bool`, `float`
-- اگر گلوبال بود تایپ با حروف بزرگ و با `G_` برای گلوبال: مثلاً `UINT32_T_G_InputVoltageMv`, `UINT8_T_G_BatteryPercent`, `BOOL_G_InputPresent`
-- اگر داخلی (لوکال) بود تایپ با حروف کوچک: مثلاً `uint32_t_inputVoltageMv`, `uint8_t_batteryPercent`, `bool_inputPresent`
-- برای استاتیک سطح فایل هم قانون گلوبال (حروف بزرگ) اعمال می‌شود: `UINT32_T_G_BeepCnt`
-- ثابت‌های `#define` مین/ماکس در فایل واحد خودش (مثل `ui_config.h`) باشند تا تکراری نباشند
+- بعد از تایپ **دو تا `_` پشت‌سرهم `__`** برای تفکیک بهتر و قابل تعریف بودن: `__` بجای یکی
+- اگر گلوبال بود تایپ با حروف بزرگ و با `__G__` برای گلوبال: مثلاً `UINT32_T__G__InputVoltageMv`, `UINT8_T__G__BatteryPercent`, `BOOL__G__InputPresent`
+- اگر داخلی (لوکال) بود تایپ با حروف کوچک و `__`: مثلاً `uint32_t__inputVoltageMv`, `uint8_t__batteryPercent`, `bool__inputPresent`
+- برای استاتیک سطح فایل هم قانون گلوبال (حروف بزرگ) اعمال می‌شود: `UINT32_T__G__UiBatteryRunBeepCycleCnt`
 - **نام باید مرتبط با کاری باشد که برایش نوشته شده**: نام متغیر باید بگوید چه کاری می‌کند، نه نام عمومی مثل `tmp`, `data`, `val`
-  - خوب: `uint32_t_batteryVoltageMv`, `uint8_t_batteryPercent`, `bool_inputPresent`, `uint32_t_greenOnMs`, `uint32_t_buzzerOnTimeMs`
-  - بد: `uint32_t_x`, `uint32_t_temp`, `uint8_t_val`
-  - برای شمارنده بوق: `UINT32_T_G_BeepCnt` مرتبط با بوق است، نه `UINT32_T_G_Cnt`
+  - خوب: `uint32_t__batteryVoltageMv`, `uint8_t__batteryPercent`, `bool__inputPresent`, `uint32_t__greenBlinkOnMs`, `uint32_t__buzzerTotalOnMs`
+  - بد: `uint32_t__x`, `uint32_t__temp`, `uint8_t__val`
+- ثابت‌های `#define` با پیشوند ماژول (مثل `UI_`) در `ui.h` باشند (چون `ui_config.h` حذف شد)
 
 ## نام‌گذاری ثابت
 
 - هر ثابت `#define` باید با نام ماژول/فایل شروع شود تا معلوم باشد کجا تعریف شده
-- مثال: `UI_SELFTEST_LED_MS` یعنی ثابت ماژول UI، در فایل `ui_config.h` (single source برای UI) تعریف شده
+- مثال: `UI_SELFTEST_LED_MS` یعنی ثابت ماژول UI، در فایل `ui.h` (single source برای UI) تعریف شده
 - **آیا `UI.c_UI_SELFTEST_LED_MS` شدنی است؟**
   - در C نام ماکرو فقط حروف، عدد و `_` می‌تواند داشته باشد، نقطه `.` غیرمجاز است، پس `UI.c_...` کامپایل نمی‌شود
   - اگر بخواهی نام فایل را دقیق بیاوری باید با `_` بنویسی: `UI_CONFIG_SELFTEST_LED_MS` یا `UI_C_SELFTEST_LED_MS`
-  - ولی `UI_` خودش همین کار را می‌کند: `UI_` یعنی ماژول UI، و چون همه ثابت‌های UI در یک فایل واحد `ui_config.h` هستند، `UI_` عملاً نام فایل/ماژول را نشان می‌دهد
+  - ولی `UI_` خودش همین کار را می‌کند: `UI_` یعنی ماژول UI، و چون همه ثابت‌های UI در یک فایل واحد `ui.h` هستند، `UI_` عملاً نام فایل/ماژول را نشان می‌دهد
   - برای ماژول‌های دیگر: `TASK_STACK_UI`, `TASK_PRIO_UI` در `rtos_config.h` هستند (پیشوند `TASK_` + نام ماژول)، `PIN_LED_G_PORT` در `board_pins.h` (پیشوند `PIN_`)
   - پس قانون فعلی: ثابت‌ها با پیشوند ماژول شروع شوند (`UI_`, `TASK_`, `PIN_`, `MODULE_`, `APP_`) که خودش نام فایل/ماژول را می‌رساند
-  - اگر خواستی دقیق‌تر نام فایل را بیاوری: `UI_CONFIG_` برای `ui_config.h`, `RTOS_CONFIG_` برای `rtos_config.h` مجاز است ولی طولانی می‌شود؛ `UI_` کافی و خواناست
+  - `ui_config.h` حذف شد، همه ثابت‌های UI در `ui.h` هستند، پس `UI_` کافی است
 - همه ثابت‌های جدید باید همین قانون را رعایت کنند و مرتبط با کارشان نام‌گذاری شوند
 
 ## نام‌گذاری تابع
 
-- فقط توابعی که خودمان می‌نویسیم (Firmware/App, Bsp, Modules, Rtos, Config) باید اولشان کلمه `func_` اضافه شود
+- فقط توابعی که خودمان می‌نویسیم (Firmware/App, Bsp, Modules, Rtos, Config) باید اولشان کلمه `func__` با **دو آندرلاین `__`** اضافه شود (بجای یکی)
 - به توابع سیستمی (HAL, FreeRTOS, CMSIS) کاری نداشته باش
-- مثال: `func_Ui_Init`, `func_Ui_BoardTest`, `func_Ui_BuzzerBeep`, `func_BspGpio_Write`, `func_App_Start`, `func_TaskUi`
-- برای `static` داخلی هم همین قانون: `func_green`, `func_all_off`
-- در `.h` و `.c` و جاهایی که صدا زده می‌شود همه باید با `func_` بیاید
+- مثال: `func__Ui_Init`, `func__Ui_BoardTest`, `func__Ui_BuzzerPatternMs`, `func__BspGpio_Write`, `func__App_Start`, `func__TaskUi`
+- برای `static` داخلی هم همین قانون: `func__green`, `func__all_off`, `func__calc_beep_on`
+- در `.h` و `.c` و جاهایی که صدا زده می‌شود همه باید با `func__` بیاید
+- **نام فایل اولش نیاید**، فقط بعد از تایپ `__` باشد (مثلاً `uint32_t__` و `func__`)
 
 ## مدیریت حافظه
 

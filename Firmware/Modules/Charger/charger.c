@@ -1,7 +1,7 @@
 /**
  * @file    charger.c
- * @brief   [EN] Charger PWM policy (placeholder). Full type naming, func_ prefix.
- *          [FA] سیاست PWM شارژر (اسکلت). نام تایپ کامل و پیشوند func_.
+ * @brief   [EN] Charger PWM policy (placeholder). Full type naming, func__ prefix.
+ *          [FA] سیاست PWM شارژر (اسکلت). نام تایپ کامل و پیشوند func__.
  */
 
 #include "charger.h"
@@ -11,19 +11,19 @@
  * @brief  [EN] Init charger policy. Must leave PWM at 0%.
  *         [FA] سیاست شارژر را Init می‌کند. PWM باید ۰٪ بماند.
  */
-void func_Charger_Init(void)
+void func__Charger_Init(void)
 {
 }
 
 /**
  * @brief  [EN] Compute PWM from snapshot and system state. No-op for now.
  *         [FA] PWM را از نمونه و حالت حساب می‌کند. فعلاً کاری نمی‌کند.
- * @param  measurement_snapshot_t_snap [EN] Snapshot / نمونه
- * @param  app_state_t_state [EN] System state / حالت سیستم
+ * @param  measurement_snapshot_t__snap [EN] Snapshot / نمونه
+ * @param  app_state_t__state [EN] System state / حالت سیستم
  */
-void func_Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t_snap, app_state_t app_state_t_state)
+void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap, app_state_t app_state_t__state)
 {
-    (void)measurement_snapshot_t_snap;
-    (void)app_state_t_state;
+    (void)measurement_snapshot_t__snap;
+    (void)app_state_t__state;
     (void)APP_CONFIG;
 }

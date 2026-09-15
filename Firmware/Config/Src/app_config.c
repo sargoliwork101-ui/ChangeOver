@@ -1,11 +1,14 @@
 /**
  * @file    app_config.c
- * @brief   [EN] Default configuration values. Uses ui_config.h as single source for UI thresholds to avoid duplication.
- *          [FA] مقادیر پیش‌فرض پیکربندی. برای جلوگیری از تکرار، آستانه‌های UI از ui_config.h می‌آید.
+ * @brief   [EN] Default configuration values. Uses ui.h as single source for UI thresholds (ui_config.h deleted).
+ *          [FA] مقادیر پیش‌فرض پیکربندی. آستانه‌های UI از ui.h می‌آید (ui_config.h حذف شد).
+ *
+ * @note    [EN] Fully RTOS, no delay, naming with __ after type, func__ prefix.
+ *          [FA] کاملاً RTOS بدون delay، نام‌گذاری با __.
  */
 
 #include "app_config.h"
-#include "ui_config.h"  /* [EN] Single source for UI min/max/timings / منبع واحد مین/ماکس و تایم‌های UI */
+#include "ui.h"  /* [EN] Single source for UI min/max/timings now in ui.h / منبع واحد در ui.h */
 
 const app_config_t APP_CONFIG =
 {
@@ -14,11 +17,11 @@ const app_config_t APP_CONFIG =
     .ui_boot_beep_ms               = UI_BOOT_BEEP_MS,
     .ui_blink_period_ms            = UI_BLINK_PERIOD_MS,
     .ui_green_min_off_ms           = UI_GREEN_MIN_OFF_MS,
-    .ui_low_battery_percent        = 20u,  /* deprecated */
-    .ui_warn_period_ms             = 1000u, /* deprecated */
-    .ui_warn_yellow_on_ms          = 500u,  /* deprecated */
+    .ui_low_battery_percent        = 20u,
+    .ui_warn_period_ms             = 1000u,
+    .ui_warn_yellow_on_ms          = 500u,
     .ui_warn_beep_ms               = UI_BEEP_BASE_MS,
-    .ui_warn_beep_period_ms        = 30000u, /* deprecated */
+    .ui_warn_beep_period_ms        = 30000u,
     .ui_input_threshold_mv         = UI_INPUT_THRESHOLD_MV,
     .ui_bat_v_min_mv               = UI_BAT_V_MIN_MV,
     .ui_bat_v_max_mv               = UI_BAT_V_MAX_MV,

@@ -1,7 +1,7 @@
 /**
  * @file    task_comm.c
- * @brief   [EN] FreeRTOS task for UART/ESP telemetry (placeholder). Full type naming, func_ prefix.
- *          [FA] تسک ارتباط UART/ESP (اسکلت، هنوز فعال نیست). نام تایپ کامل.
+ * @brief   [EN] FreeRTOS comm task - fully RTOS non-blocking, vTaskDelayUntil.
+ *          [FA] تسک ارتباط کاملاً RTOS غیربلوکه.
  */
 
 #include "rtos_tasks.h"
@@ -22,33 +22,42 @@
 #endif
 
 /**
- * @brief  [EN] Communication task entry. Idle loop until ESP is enabled.
- *         [FA] ورود تسک ارتباط. تا ESP روشن نشود کار نمی‌کند.
- * @param  void_ptr_argument [EN] Required by FreeRTOS, unused, type void* / آرگومان FreeRTOS
+ * @brief  [EN] Comm task - non-blocking.
+ *         [FA] تسک ارتباط - غیربلوکه.
+ * @param  void_ptr__argument [EN] FreeRTOS arg / آرگومان
  */
-void func_TaskComm(void *void_ptr_argument)
+void func__TaskComm(void *void_ptr__argument)
 {
-    (void)void_ptr_argument;
+    TickType_t ticktype__lastWakeTick;
+    TickType_t ticktype__periodTicks;
+
+    (void)void_ptr__argument;
+
+#if MODULE_ESP
+    ticktype__periodTicks = pdMS_TO_TICKS(APP_CONFIG.comm_period_ms);
+#else
+    ticktype__periodTicks = pdMS_TO_TICKS(1000u);
+#endif
+
+    ticktype__lastWakeTick = xTaskGetTickCount();
 
     for (;;)
     {
+        vTaskDelayUntil(&ticktype__lastWakeTick, ticktype__periodTicks);
+
 #if MODULE_ESP
         {
-            measurement_snapshot_t measurement_snapshot_t_snap;
-            fault_mask_t fault_mask_t_faults = FAULT_NONE;
-            measurement_snapshot_t_snap.valid = false;
+            measurement_snapshot_t measurement_snapshot_t__snap;
+            fault_mask_t fault_mask_t__faults = FAULT_NONE;
+            measurement_snapshot_t__snap.valid = false;
 #if MODULE_MEASUREMENT
-            (void)func_Measurement_GetSnapshot(&measurement_snapshot_t_snap);
+            (void)func__Measurement_GetSnapshot(&measurement_snapshot_t__snap);
 #endif
 #if MODULE_FAULT
-            fault_mask_t_faults = func_Fault_Get();
+            fault_mask_t__faults = func__Fault_Get();
 #endif
-            func_EspLink_Run(&measurement_snapshot_t_snap, APP_STATE_IDLE, fault_mask_t_faults);
+            func__EspLink_Run(&measurement_snapshot_t__snap, APP_STATE_IDLE, fault_mask_t__faults);
         }
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.comm_period_ms));
-#else
-        vTaskDelay(pdMS_TO_TICKS(1000u));
 #endif
     }
 }
-
