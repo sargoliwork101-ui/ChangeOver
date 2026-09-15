@@ -66,8 +66,8 @@ void func__Ui_Init(void);
 /* ==================== Board Test Start ==================== */
 
 /**
- * @brief  [EN] One-shot wiring check: red, yellow, green, RTOS simple with vTaskDelay. Buzzer is independent.
- *         [FA] تست یک‌باره سیم‌کشی: قرمز، زرد، سبز با vTaskDelay ساده؛ بوق مستقل است.
+ * @brief  [EN] One-shot wiring check: red, yellow, green and the previous short buzzer check via the independent buzzer service.
+ *         [FA] تست یک‌باره سیم‌کشی: قرمز، زرد، سبز و بوق کوتاه قبلی با سرویس مستقل بوق.
  */
 void func__Ui_BoardTest_Start(void);
 
@@ -83,8 +83,8 @@ bool func__Ui_BoardTest_Tick(void);
 /* ==================== Scenario InputOk ==================== */
 
 /**
- * @brief  [EN] InputOk: green steady, others off. RTOS simple with vTaskDelay, MCU not locked.
- *         [FA] ورودی عادی: سبز ثابت، ساده RTOS.
+ * @brief  [EN] InputOk: green steady, red/yellow/buzzer off. RTOS simple with vTaskDelay, MCU not locked.
+ *         [FA] ورودی عادی: سبز ثابت، قرمز/زرد/بوق خاموش، ساده RTOS.
  */
 void func__Ui_ScenarioInputOk(void);
 
@@ -101,9 +101,9 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv);
 /* ==================== Scenario BatteryRun Tick ==================== */
 
 /**
- * @brief  [EN] BatteryRun: green blink non-linear (remainingPercent, periodPerPercent, greenOnMs/offMs), yellow OFF. Buzzer is independent.
+ * @brief  [EN] BatteryRun: green blink non-linear, yellow OFF, and the previous smart-beep schedule through ui_buzzer.c.
  *         RTOS simple with vTaskDelay.
- *         [FA] دشارژ: سبز چشمک غیرخطی و زرد خاموش؛ بوق مستقل است.
+ *         [FA] دشارژ: سبز چشمک غیرخطی، زرد خاموش و زمان‌بندی بوق هوشمند قبلی از ui_buzzer.c.
  * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 28000=100% / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv);

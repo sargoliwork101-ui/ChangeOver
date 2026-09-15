@@ -8,7 +8,7 @@
 
 ## وضعیت
 
-فعال. `MODULE_UI = 1`. LED و بوق در دو فایل مستقل هستند. بوق دیگر از سناریوهای LED، BatteryRun یا تست LED به‌صورت خودکار صدا زده نمی‌شود؛ هر فراخواننده باید صریحاً چهار ورودی الگوی بوق را به سرویس بوق بدهد.
+فعال. `MODULE_UI = 1`. LED و بوق در دو فایل مستقل هستند. سرویس بوق همچنان فقط یک API دارد؛ سناریوهای قبلی `BoardTest` و `BatteryRun` آن را صریحاً صدا می‌زنند و سناریوهای `InputOk` و `Charging` آن را خاموش می‌کنند.
 
 API کاربردی بوق فقط یک تابع است:
 
@@ -25,6 +25,7 @@ int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)
 | 2026-09-15 | ساده‌سازی کامل بوق: حذف APIهای Start/Tick میلی‌ثانیه‌ای و درصدی، حذف Stop و توابع داخلی اضافی؛ باقی ماندن یک تابع عمومی با ورودی‌های دوره، دیوتی، تعداد بوق و گپ. |
 | 2026-09-15 | بوق از منطق خودکار BatteryRun و تست LED جدا شد؛ LED فقط مالک LEDها است و بوق مالک پایه PA4 است. |
 | 2026-09-15 | تعریف محاسبه جدید: پنجره دیوتی برابر `period*duty/100` است، گپ‌ها داخل این پنجره قرار می‌گیرند و زمان باقی‌مانده تا دوره بعدی خاموش است. |
+| 2026-09-15 | اتصال دوباره سرویس جدید به رفتار قبلی سناریوها: بوق کوتاه BoardTest و بوق هوشمند BatteryRun؛ InputOk و Charging بوق را خاموش می‌کنند. |
 | 2026-09-15 | افزودن محدودیت‌های ایمنی با ثابت‌های حداقل دوره ۱۰۰۰ms و حداقل گپ ۱۰۰ms؛ صفر برای خاموشی معتبر و منفی یک برای خطا؛ بازگرداندن زمان مراجعه پیشنهادی ۱۰٪ برای RTOS. |
 | 2026-09-15 | اصلاح مستندات با ساختار واقعی دو بخش LED و BUZZER و استفاده از `APP_CONFIG` برای مقدارهای قابل تنظیم LED. |
 | 2026-09-14 | اجرای AI: اسکریپت چک قوانین `tools/check_ai_rules.sh` + تست هاست UI؛ پاس شد. |
@@ -33,7 +34,7 @@ int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)
 
 | فایل | نقش |
 |---|---|
-| `ui_led.h` / `ui_led.c` | منطق LED: نگاشت ولتاژ، سناریوهای InputOk/Charging/BatteryRun و تست LED. این فایل‌ها بوق را شروع نمی‌کنند. |
+| `ui_led.h` / `ui_led.c` | منطق LED: نگاشت ولتاژ، سناریوهای InputOk/Charging/BatteryRun و تست LED؛ فقط نقاط صریح سناریو برای شروع یا خاموش کردن سرویس بوق را فراخوانی می‌کند. |
 | `ui_buzzer.h` / `ui_buzzer.c` | سرویس یگانه بوق: محاسبه پنجره دیوتی، تقسیم آن بین پالس‌ها و گپ‌ها، اعتبارسنجی محدودیت‌های ایمنی، محاسبه مراجعه بعدی و نوشتن PA4. |
 | `../../Rtos/Src/task_ui.c` | تسک UI؛ محل مناسب برای فراخوانی دوره‌ای سرویس بوق، فقط وقتی یک سناریو صریحاً بوق خواسته باشد. |
 | `../../Bsp/Src/bsp_gpio.c` | نوشتن سطح GPIO از طریق `func__BspGpio_Write`. |
@@ -47,10 +48,10 @@ int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)
 |---|---:|---|
 | `func__Ui_Buzzer_Tick` | تنها API کاربردی بوق؛ یک الگوی دوره‌ای را با چهار ورودی اجرا می‌کند، GPIO را به‌روزرسانی می‌کند و زمان مراجعه بعدی یا کد وضعیت را برمی‌گرداند | `ui_buzzer.c` |
 | `func__Ui_Init` | خاموش کردن LEDها؛ بوق در مالکیت سرویس مستقل خودش است | `ui_led.c` |
-| `func__Ui_BoardTest_Start` | تست یک‌باره قرمز، زرد و سبز؛ بوق به‌صورت ضمنی اجرا نمی‌شود | `ui_led.c` |
-| `func__Ui_ScenarioInputOk` | سبز ثابت و قرمز/زرد خاموش | `ui_led.c` |
-| `func__Ui_ScenarioCharging_Tick` | سبز ثابت و زرد متناسب با درصد شارژ | `ui_led.c` |
-| `func__Ui_ScenarioBatteryRun_Tick` | سبز چشمک‌زن و زرد خاموش؛ بوق مستقل است | `ui_led.c` |
+| `func__Ui_BoardTest_Start` | تست یک‌باره قرمز، زرد و سبز، سپس بوق کوتاه قبلی با API جدید | `ui_led.c` |
+| `func__Ui_ScenarioInputOk` | سبز ثابت، قرمز/زرد خاموش و بوق خاموش | `ui_led.c` |
+| `func__Ui_ScenarioCharging_Tick` | سبز ثابت و زرد متناسب با درصد شارژ؛ بوق خاموش | `ui_led.c` |
+| `func__Ui_ScenarioBatteryRun_Tick` | سبز چشمک‌زن، زرد خاموش و بوق هوشمند قبلی با API جدید | `ui_led.c` |
 | `func__Ui_Tick` | انتخاب سناریوی LED بر اساس ولتاژ ورودی و باتری | `ui_led.c` |
 
 ## محدودیت‌های ایمنی و کد بازگشتی
@@ -133,21 +134,26 @@ period = 10000ms
 
 ## پیش‌فرض امن
 
-بعد از Reset و `func__Ui_Init`، LEDها خاموش هستند. سرویس بوق تا زمانی که با ورودی معتبر صدا زده نشود، PA4 را خاموش نگه می‌دارد. ورودی صفر برای `dutyPercent` یا `beepCount` نیز حالت خاموش امن است.
+بعد از Reset و `func__Ui_Init`، LEDها و بوق خاموش هستند. در شروع `func__Ui_BoardTest_Start`، رفتار قبلی تست بوق حفظ می‌شود. در BatteryRun، وقتی درصد باتری زیر `UI_BEEP_START_PCT` باشد، بعد از تعداد سیکل قبلی یک بوق اجرا می‌شود؛ اگر درصد زیر `UI_BEEP_DOUBLE_THRESH_PCT` باشد، مدت آن دو برابر می‌شود. در `InputOk` و `Charging`، سرویس بوق با ورودی خاموشی معتبر متوقف می‌شود. ورودی صفر برای `dutyPercent` یا `beepCount` نیز حالت خاموش امن است.
 
 ## درخت اتصال
 
 ```text
 Firmware/Rtos/Src/task_ui.c
-  └── در صورت درخواست صریح یک سناریو
-      └── func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)
-          ├── xTaskGetTickCount()       زمان نمونه فعلی RTOS
-          ├── return nextCheckMs         ۱۰٪ کوچک‌ترین بخش مثبت الگو
-          └── func__BspGpio_Write()     Firmware/Bsp/Src/bsp_gpio.c
-              └── PIN_BUZZER_PORT/PIN_BUZZER_PIN  = PA4
+  → func__TaskUi() → func__Ui_Tick()
+      ├── func__Ui_ScenarioBatteryRun_Tick()
+      │   └── func__Ui_Buzzer_Tick(...)  // بوق هوشمند قبلی با API جدید
+      ├── func__Ui_ScenarioInputOk()/Charging_Tick()
+      │   └── func__Ui_Buzzer_Tick(0, 0, 0, 0)  // خاموشی امن
+      └── func__Ui_BoardTest_Start()
+          └── func__Ui_Buzzer_Tick(...)  // بوق تست قبلی
+              ├── xTaskGetTickCount()       زمان نمونه فعلی RTOS
+              ├── return nextCheckMs         ۱۰٪ کوچک‌ترین بخش مثبت الگو
+              └── func__BspGpio_Write()     Firmware/Bsp/Src/bsp_gpio.c
+                  └── PIN_BUZZER_PORT/PIN_BUZZER_PIN  = PA4
 
-LED path (independent):
+LED and BUZZER remain separate:
 CubeIDE/Core/Src/main.c
   → func__App_Start() → func__App_Init() → func__Ui_Init()
-  → func__Rtos_Start() → func__TaskUi() → func__Ui_Tick()
+  → func__Rtos_Start() → func__TaskUi() → explicit scenario calls
 ```

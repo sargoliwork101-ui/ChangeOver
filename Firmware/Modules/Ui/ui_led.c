@@ -11,6 +11,7 @@
  */
 
 #include "ui_led.h"
+#include "ui_buzzer.h"
 #include "app_config.h"
 #include "bsp_gpio.h"
 #include "board_pins.h"
@@ -111,27 +112,39 @@ static void func__yellow(bool bool__yellowOn)
 /* ==================== All Off Safe ==================== */
 
 /**
- * @brief  [EN] Drive all LEDs off - safe LED state after Init. Buzzer is owned by ui_buzzer.c.
- *         [FA] همه ال‌ای‌دی‌ها را خاموش می‌کند؛ حالت امن LED. مالک بوق ui_buzzer.c است.
+ * @brief  [EN] Drive all LEDs off and request the buzzer service to enter its safe-off state.
+ *         [FA] همه ال‌ای‌دی‌ها را خاموش می‌کند و سرویس بوق را به حالت خاموش امن می‌برد.
  */
 static void func__all_off(void)
 {
     func__green(false);
     func__red(false);
     func__yellow(false);
+    (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 }
+
+/* ==================== BatteryRun Beep Cycle Count ==================== */
+
+/**
+ * @brief  [EN] Completed BatteryRun blink cycles used by the previous periodic beep rule.
+ *         [FA] تعداد سیکل‌های کامل چشمک دشارژ برای قانون قبلی بوق دوره‌ای.
+ */
+static uint32_t UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
 
 /* ==================== Scenario InputOk ==================== */
 
 /**
- * @brief  [EN] InputOk scenario: green steady, red/yellow off. Buzzer is independent; RTOS simple with vTaskDelay.
- *         [FA] سناریو ورودی وصل: سبز ثابت، قرمز و زرد خاموش؛ بوق مستقل است.
+ * @brief  [EN] InputOk scenario: green steady, red/yellow off, and buzzer off.
+ *         [FA] سناریو ورودی وصل: سبز ثابت، قرمز و زرد خاموش و بوق خاموش.
  */
 void func__Ui_ScenarioInputOk(void)
 {
+    UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+
     func__green(true);
     func__red(false);
     func__yellow(false);
+    (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 
     /* [EN] RTOS delay in task, not HAL_Delay - other tasks still run, MCU not locked, simple & readable
        [FA] تاخیر RTOS در تسک - میکرو قفل نمی‌شود، ساده و خوانا */
@@ -153,6 +166,9 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
     uint32_t uint32_t__periodPerPercent;
     uint32_t uint32_t__yellowOnMs;
     uint32_t uint32_t__yellowOffMs;
+
+    UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+    (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 
     uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
 
@@ -203,8 +219,10 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 /* ==================== Scenario BatteryRun Tick ==================== */
 
 /**
- * @brief  [EN] BatteryRun scenario tick: green blink non-linear (remainingPercent, periodPerPercent, greenOnMs/offMs), yellow OFF.
- *         [FA] سناریو دشارژ: سبز چشمک غیرخطی و زرد خاموش؛ بوق از این سناریو مستقل است.
+ * @brief  [EN] BatteryRun scenario tick: green blink plus the previous smart-beep rule.
+ *         Below the start threshold, beep every batteryPercent blink cycles; below the double threshold, duration is doubled.
+ *         [FA] سناریو دشارژ: چشمک سبز به‌همراه قانون قبلی بوق هوشمند.
+ *         زیر آستانه شروع، هر تعداد سیکل برابر درصد باتری بوق بزن؛ زیر آستانه دوبرابر، مدت بوق دو برابر است.
  * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 28000=100% / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
@@ -214,6 +232,15 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     uint32_t uint32_t__periodPerPercent;
     uint32_t uint32_t__greenOffMs;
     uint32_t uint32_t__greenOnMs;
+    uint32_t uint32_t__beepIntervalCycles;
+    uint32_t uint32_t__beepDurationMs;
+    uint32_t uint32_t__beepPeriodMs;
+    uint32_t uint32_t__beepDutyPercent;
+    uint64_t uint64_t__beepDutyProduct;
+    int32_t int32_t__buzzerResult;
+    bool bool__shouldBeepNow;
+
+    (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 
     uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
 
@@ -238,6 +265,85 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     func__green(false);
     vTaskDelay(pdMS_TO_TICKS(uint32_t__greenOffMs));
 
+    if (uint8_t__batteryPercent >= APP_CONFIG.ui_beep_start_pct)
+    {
+        UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+        return;
+    }
+
+    uint32_t__beepIntervalCycles = (uint32_t)uint8_t__batteryPercent;
+    if (uint32_t__beepIntervalCycles == 0u)
+    {
+        uint32_t__beepIntervalCycles = UI_BEEP_MIN_INTERVAL_CYCLES;
+    }
+
+    /* [EN] Count the completed blink cycle before comparing.
+       [FA] ابتدا سیکل کامل چشمک را بشمار و بعد مقایسه کن. */
+    bool__shouldBeepNow = false;
+    if (UINT32_T__G__UiBatteryRunBeepCycleCnt < uint32_t__beepIntervalCycles)
+    {
+        UINT32_T__G__UiBatteryRunBeepCycleCnt++;
+    }
+
+    if (UINT32_T__G__UiBatteryRunBeepCycleCnt >= uint32_t__beepIntervalCycles)
+    {
+        bool__shouldBeepNow = true;
+        UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+    }
+
+    if (bool__shouldBeepNow == false)
+    {
+        return;
+    }
+
+    uint32_t__beepDurationMs = APP_CONFIG.ui_beep_base_ms;
+    if (uint8_t__batteryPercent < APP_CONFIG.ui_beep_double_thresh_pct)
+    {
+        uint32_t__beepDurationMs = uint32_t__beepDurationMs * 2u;
+    }
+
+    if (uint32_t__beepDurationMs == 0u)
+    {
+        return;
+    }
+
+    /* [EN] Represent the old one-shot duration with a valid period. For durations below 1s,
+       use the 1s safety period and convert the duration to duty percent.
+       [FA] مدت تک‌باره قدیمی را با دوره معتبر نمایش بده. برای کمتر از یک ثانیه،
+       دوره ایمن یک‌ثانیه‌ای و دیوتی متناظر را استفاده کن. */
+    uint32_t__beepPeriodMs = uint32_t__beepDurationMs;
+    if (uint32_t__beepPeriodMs < UI_BUZZER_MIN_PERIOD_MS)
+    {
+        uint32_t__beepPeriodMs = UI_BUZZER_MIN_PERIOD_MS;
+    }
+
+    uint32_t__beepDutyPercent = UI_BUZZER_DUTY_MAX_PERCENT;
+    if (uint32_t__beepDurationMs < uint32_t__beepPeriodMs)
+    {
+        uint64_t__beepDutyProduct = (uint64_t)uint32_t__beepDurationMs * UI_BUZZER_PERCENT_SCALE;
+        uint32_t__beepDutyPercent = (uint32_t)(uint64_t__beepDutyProduct / uint32_t__beepPeriodMs);
+        if ((uint64_t__beepDutyProduct % uint32_t__beepPeriodMs) != 0u)
+        {
+            uint32_t__beepDutyPercent++;
+        }
+        if (uint32_t__beepDutyPercent == 0u)
+        {
+            uint32_t__beepDutyPercent = 1u;
+        }
+    }
+
+    int32_t__buzzerResult = func__Ui_Buzzer_Tick(
+        uint32_t__beepPeriodMs,
+        (uint8_t)uint32_t__beepDutyPercent,
+        1u,
+        0u);
+
+    if (int32_t__buzzerResult != UI_BUZZER_INVALID_RESULT)
+    {
+        vTaskDelay(pdMS_TO_TICKS(uint32_t__beepDurationMs));
+    }
+
+    (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 }
 
 /* ==================== Ui Tick ==================== */
@@ -290,16 +396,24 @@ void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__battery
 void func__Ui_Init(void)
 {
     func__all_off();
+    UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
 }
 
 /* ==================== Board Test Start ==================== */
 
 /**
- * @brief  [EN] One-shot wiring check: red, yellow, green each self-test interval, RTOS simple with vTaskDelay.
- *         [FA] تست یک‌باره سیم‌کشی: قرمز، زرد، سبز هر کدام به اندازه زمان تست، ساده RTOS.
+ * @brief  [EN] One-shot wiring check: red, yellow, green and the previous 150ms-style buzzer check.
+ *         The buzzer uses the new periodic API with a safe period and then is explicitly turned off.
+ *         [FA] تست یک‌باره سیم‌کشی: قرمز، زرد، سبز و بوق کوتاه قبلی.
+ *         بوق با API دوره‌ای جدید و دوره امن اجرا و سپس صریحاً خاموش می‌شود.
  */
 void func__Ui_BoardTest_Start(void)
 {
+    uint32_t uint32_t__beepPeriodMs;
+    uint32_t uint32_t__beepDutyPercent;
+    uint64_t uint64_t__beepDutyProduct;
+    int32_t int32_t__buzzerResult;
+
     func__all_off();
 
     func__red(true);
@@ -314,6 +428,44 @@ void func__Ui_BoardTest_Start(void)
     vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_selftest_led_ms));
     func__green(false);
 
+    if (APP_CONFIG.ui_boot_beep_ms == 0u)
+    {
+        return;
+    }
+
+    uint32_t__beepPeriodMs = APP_CONFIG.ui_boot_beep_ms;
+    if (uint32_t__beepPeriodMs < UI_BUZZER_MIN_PERIOD_MS)
+    {
+        uint32_t__beepPeriodMs = UI_BUZZER_MIN_PERIOD_MS;
+    }
+
+    uint32_t__beepDutyPercent = UI_BUZZER_DUTY_MAX_PERCENT;
+    if (APP_CONFIG.ui_boot_beep_ms < uint32_t__beepPeriodMs)
+    {
+        uint64_t__beepDutyProduct = (uint64_t)APP_CONFIG.ui_boot_beep_ms * UI_BUZZER_PERCENT_SCALE;
+        uint32_t__beepDutyPercent = (uint32_t)(uint64_t__beepDutyProduct / uint32_t__beepPeriodMs);
+        if ((uint64_t__beepDutyProduct % uint32_t__beepPeriodMs) != 0u)
+        {
+            uint32_t__beepDutyPercent++;
+        }
+        if (uint32_t__beepDutyPercent == 0u)
+        {
+            uint32_t__beepDutyPercent = 1u;
+        }
+    }
+
+    int32_t__buzzerResult = func__Ui_Buzzer_Tick(
+        uint32_t__beepPeriodMs,
+        (uint8_t)uint32_t__beepDutyPercent,
+        1u,
+        0u);
+
+    if (int32_t__buzzerResult != UI_BUZZER_INVALID_RESULT)
+    {
+        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_boot_beep_ms));
+    }
+
+    (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 }
 
 /* ==================== Board Test Tick ==================== */

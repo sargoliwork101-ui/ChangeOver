@@ -96,6 +96,27 @@ def calculate_next_check_ms(period_ms, duty_percent, beep_count, gap_ms):
     return max(next_check_ms, UI_BUZZER_MIN_CHECK_MS)
 
 
+# ==================== Scenario one-shot adapter ====================
+
+
+def calculate_scenario_one_shot(duration_ms):
+    """[EN] Convert a legacy one-shot duration to a valid periodic API pattern.
+    [FA] مدت تک‌باره قدیمی را به الگوی معتبر API دوره‌ای تبدیل می‌کند.
+    """
+    if duration_ms <= 0:
+        return None
+
+    period_ms = max(duration_ms, UI_BUZZER_MIN_PERIOD_MS)
+    if duration_ms >= period_ms:
+        duty_percent = UI_BUZZER_DUTY_MAX_PERCENT
+    else:
+        duty_product = duration_ms * UI_BUZZER_PERCENT_SCALE
+        duty_percent = (duty_product + period_ms - 1) // period_ms
+        duty_percent = max(duty_percent, 1)
+
+    return calculate_pattern(period_ms, duty_percent, 1, 0)
+
+
 # ==================== Assertions ====================
 
 
@@ -115,6 +136,24 @@ def run_assertions():
         calculate_next_check_ms(10000, 10, 2, 100),
         10,
         "example next RTOS check",
+    )
+
+    # Legacy one-shot durations are represented with a safe period and stopped
+    # explicitly by the scenario after the requested duration.
+    assert_equal(
+        calculate_scenario_one_shot(150),
+        (150, [150], 0, 850),
+        "board-test one-shot adapter",
+    )
+    assert_equal(
+        calculate_scenario_one_shot(250),
+        (250, [250], 0, 750),
+        "battery-run base one-shot adapter",
+    )
+    assert_equal(
+        calculate_scenario_one_shot(500),
+        (500, [500], 0, 500),
+        "battery-run doubled one-shot adapter",
     )
 
     # One pulse has no adjacent gap, so a gap below 100ms is ignored.

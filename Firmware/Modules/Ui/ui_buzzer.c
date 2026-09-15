@@ -3,8 +3,8 @@
  * @brief   [EN] One non-blocking periodic buzzer service. It calculates pulse timing from period, duty, count, and gap.
  *          [FA] یک سرویس غیرمسدودکننده بوق دوره‌ای؛ زمان پالس را از دوره، دیوتی، تعداد و گپ محاسبه می‌کند.
  *
- * @note    [EN] No automatic scenario owns the buzzer. A caller explicitly supplies the four inputs to func__Ui_Buzzer_Tick().
- *          [FA] هیچ سناریویی به‌صورت خودکار مالک بوق نیست؛ فراخواننده چهار ورودی را صریحاً به func__Ui_Buzzer_Tick() می‌دهد.
+ * @note    [EN] Only explicit scenarios call this service; all buzzer GPIO control remains here. The caller supplies the four inputs to func__Ui_Buzzer_Tick().
+ *          [FA] فقط سناریوهای صریح این سرویس را صدا می‌زنند؛ کنترل GPIO بوق همچنان در این فایل است و فراخواننده چهار ورودی را می‌دهد.
  */
 
 #include "ui_buzzer.h"
