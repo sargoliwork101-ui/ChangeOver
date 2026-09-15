@@ -1,15 +1,14 @@
 /**
  * @file    ui.c
- * @brief   [EN] LED/buzzer scenarios - fully RTOS, no delay, non-blocking state machines.
- *          All constants in ui.h (ui_config.h deleted). Naming with __ after type, func__ prefix.
- *          Functions separated with /* ==================== ... ==================== */ markers.
- *          Buzzer code separated from LED and moved to end of file.
- *          [FA] سناریوهای LED/بازر - کاملاً RTOS بدون delay، استیت ماشین غیربلوکه.
- *          همه ثابت‌ها در ui.h. نام‌گذاری با __ و func__. توابع با علامت جدا، بازر آخر فایل.
+ * @brief   [EN] LED/buzzer scenarios - fully RTOS non-blocking but simple & readable, fewer lines.
+ *          All constants in ui.h (ui_config.h deleted). Naming __ after type, func__ prefix.
+ *          Functions separated with /* ==================== */ markers, buzzer at end.
+ *          [FA] سناریوهای LED/بازر - کاملاً RTOS غیربلوکه ولی ساده و خوانا، خط کمتر.
  *
- * @note    [EN] No HAL_Delay, no vTaskDelay inside module. Only xTaskGetTickCount() and state machines.
- *          Task calls Tick every UI_TICK_MS (10ms) via vTaskDelayUntil.
- *          [FA] بدون هیچ delay داخل ماژول، فقط تیکه ۱۰ms از تسک.
+ * @note    [EN] No delay inside module, only xTaskGetTickCount() + small state machines, chunked.
+ *          Task calls Tick every 10ms via vTaskDelayUntil, so MCU never locks.
+ *          Readability over complexity: generic elapsed helper, one blink struct for all LEDs.
+ *          [FA] بدون delay، خوانا و کم‌خط ولی غیربلوکه.
  */
 
 #include "ui.h"
@@ -19,121 +18,105 @@
 #include "task.h"
 #include <stdbool.h>
 
-/* ==================== Includes / Battery Helpers ==================== */
+/* ==================== Battery Helper ==================== */
 
-/**
- * @brief  [EN] Battery voltage to percent 0..100.
- *         [FA] ولتاژ باتری به درصد.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV / ولتاژ باتری
- * @return uint8_t [EN] Percent 0..100 / درصد
- */
 uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
 {
-    uint32_t uint32_t__voltageRangeMv;
-    uint32_t uint32_t__voltageOffsetMv;
-    uint8_t uint8_t__batteryPercent;
+    if (uint32_t__batteryMv <= UI_BAT_V_MIN_MV) return 0u;
+    if (uint32_t__batteryMv >= UI_BAT_V_MAX_MV) return UI_PERCENT_FULL;
 
-    if (uint32_t__batteryMv <= UI_BAT_V_MIN_MV)
-    {
-        return 0u;
-    }
+    uint32_t uint32_t__rangeMv = UI_BAT_V_MAX_MV - UI_BAT_V_MIN_MV;
+    uint32_t uint32_t__offsetMv = uint32_t__batteryMv - UI_BAT_V_MIN_MV;
+    if (uint32_t__rangeMv == 0u) return 0u;
 
-    if (uint32_t__batteryMv >= UI_BAT_V_MAX_MV)
-    {
-        return UI_PERCENT_FULL;
-    }
-
-    uint32_t__voltageRangeMv = UI_BAT_V_MAX_MV - UI_BAT_V_MIN_MV;
-    uint32_t__voltageOffsetMv = uint32_t__batteryMv - UI_BAT_V_MIN_MV;
-
-    if (uint32_t__voltageRangeMv == 0u)
-    {
-        return 0u;
-    }
-
-    uint8_t__batteryPercent = (uint8_t)((uint32_t__voltageOffsetMv * 100u) / uint32_t__voltageRangeMv);
-
-    if (uint8_t__batteryPercent > UI_PERCENT_FULL)
-    {
-        uint8_t__batteryPercent = UI_PERCENT_FULL;
-    }
-
-    return uint8_t__batteryPercent;
+    uint8_t uint8_t__pct = (uint8_t)((uint32_t__offsetMv * 100u) / uint32_t__rangeMv);
+    return (uint8_t__pct > UI_PERCENT_FULL) ? UI_PERCENT_FULL : uint8_t__pct;
 }
 
 /* ==================== LED Low-Level ==================== */
 
-/**
- * @brief  [EN] Green PB10 on/off.
- *         [FA] سبز PB10.
- * @param  bool__greenOn [EN] true=green on / سبز روشن
- */
-static void func__green(bool bool__greenOn)
+static void func__green(bool bool__on)  { func__BspGpio_Write(PIN_LED_G_PORT, PIN_LED_G_PIN, bool__on); }
+static void func__red(bool bool__on)    { func__BspGpio_Write(PIN_LED_R_PORT, PIN_LED_R_PIN, bool__on); }
+static void func__yellow(bool bool__on) { func__BspGpio_Write(PIN_LED_Y_PORT, PIN_LED_Y_PIN, bool__on); }
+
+/* ==================== Generic Time Helper ==================== */
+
+static uint32_t func__elapsed_ms(TickType_t ticktype__lastTick)
 {
-    func__BspGpio_Write(PIN_LED_G_PORT, PIN_LED_G_PIN, bool__greenOn);
+    return (uint32_t)((xTaskGetTickCount() - ticktype__lastTick) * portTICK_PERIOD_MS);
 }
 
-/* ==================== Red LED ==================== */
-
-/**
- * @brief  [EN] Red PB0 on/off.
- *         [FA] قرمز PB0.
- * @param  bool__redOn [EN] true=red on / قرمز روشن
- */
-static void func__red(bool bool__redOn)
+static bool func__has_elapsed(TickType_t *ticktype__lastTick, uint32_t uint32_t__periodMs)
 {
-    func__BspGpio_Write(PIN_LED_R_PORT, PIN_LED_R_PIN, bool__redOn);
+    if (func__elapsed_ms(*ticktype__lastTick) >= uint32_t__periodMs)
+    {
+        *ticktype__lastTick = xTaskGetTickCount();
+        return true;
+    }
+    return false;
 }
 
-/* ==================== Yellow LED ==================== */
+/* ==================== Generic LED Blink ==================== */
 
-/**
- * @brief  [EN] Yellow PB1 on/off.
- *         [FA] زرد PB1.
- * @param  bool__yellowOn [EN] true=yellow on / زرد روشن
- */
-static void func__yellow(bool bool__yellowOn)
+typedef struct
 {
-    func__BspGpio_Write(PIN_LED_Y_PORT, PIN_LED_Y_PIN, bool__yellowOn);
+    TickType_t lastToggle;
+    bool isOn;
+    uint32_t onMs;
+    uint32_t offMs;
+} led_blink_t;
+
+static void func__blink_init(led_blink_t *led_blink__blink, uint32_t uint32_t__onMs, uint32_t uint32_t__offMs)
+{
+    led_blink__blink->lastToggle = xTaskGetTickCount();
+    led_blink__blink->isOn = true;
+    led_blink__blink->onMs = uint32_t__onMs;
+    led_blink__blink->offMs = uint32_t__offMs;
 }
+
+static bool func__blink_tick(led_blink_t *led_blink__blink)
+{
+    uint32_t uint32_t__elapsedMs = func__elapsed_ms(led_blink__blink->lastToggle);
+    if (led_blink__blink->isOn)
+    {
+        if (uint32_t__elapsedMs >= led_blink__blink->onMs)
+        {
+            led_blink__blink->isOn = false;
+            led_blink__blink->lastToggle = xTaskGetTickCount();
+            return true;
+        }
+    }
+    else
+    {
+        if (uint32_t__elapsedMs >= led_blink__blink->offMs)
+        {
+            led_blink__blink->isOn = true;
+            led_blink__blink->lastToggle = xTaskGetTickCount();
+            return true;
+        }
+    }
+    return false;
+}
+
+/* ==================== LED State ==================== */
+
+static led_blink_t LED_BLINK__G__Green = {0};
+static led_blink_t LED_BLINK__G__Yellow = {0};
+static TickType_t TICKTYPE_T__G__BeepLastTick = 0;
+static uint32_t UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
 
 /* ==================== All Off Safe ==================== */
 
-/**
- * @brief  [EN] All UI outputs off safe.
- *         [FA] همه خروجی‌های UI خاموش امن.
- */
 static void func__all_off(void)
 {
     func__green(false);
     func__red(false);
     func__yellow(false);
-    /* [EN] Buzzer off is in buzzer section, but call here for safe - will be defined later, so use Bsp directly
-       [FA] بازر خاموش برای امن - چون تابع بازر در انتهای فایل است، مستقیم Bsp می‌زنیم */
     func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
 }
 
-/* ==================== LED Scenarios State ==================== */
-
-static TickType_t TICKTYPE_T__G__GreenLastToggleTick = 0;
-static bool BOOL__G__GreenOn = false;
-static uint32_t UINT32_T__G__GreenOnMs = 0u;
-static uint32_t UINT32_T__G__GreenOffMs = 0u;
-
-static TickType_t TICKTYPE_T__G__YellowLastToggleTick = 0;
-static bool BOOL__G__YellowOn = false;
-static uint32_t UINT32_T__G__YellowOnMs = 0u;
-static uint32_t UINT32_T__G__YellowOffMs = 0u;
-
-static uint32_t UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
-static TickType_t TICKTYPE_T__G__BeepLastTick = 0;
-
 /* ==================== LED Scenario - InputOk ==================== */
 
-/**
- * @brief  [EN] InputOk: green steady, others off. Non-blocking.
- *         [FA] ورودی عادی: سبز ثابت، بدون delay.
- */
 void func__Ui_ScenarioInputOk(void)
 {
     func__green(true);
@@ -144,251 +127,107 @@ void func__Ui_ScenarioInputOk(void)
 
 /* ==================== LED Scenario - Charging Tick ==================== */
 
-/**
- * @brief  [EN] Charging tick - non-blocking, call every 10ms. LED part only, buzzer off.
- *         [FA] تیکه شارژ - هر ۱۰ms، بدون delay، فقط LED.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV / ولتاژ باتری
- */
 void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 {
-    uint8_t uint8_t__batteryPercent;
-    TickType_t ticktype__nowTick;
-    uint32_t uint32_t__elapsedYellowMs;
+    uint8_t uint8_t__pct = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
 
-    uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
-
-    if (uint8_t__batteryPercent >= UI_PERCENT_FULL)
+    if (uint8_t__pct >= UI_PERCENT_FULL)
     {
         func__yellow(false);
         func__green(true);
         func__red(false);
-        func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
         return;
     }
-
-    if (uint8_t__batteryPercent == 0u)
+    if (uint8_t__pct == 0u)
     {
         func__yellow(true);
         func__green(true);
         func__red(false);
-        func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
         return;
     }
 
-    if (UINT32_T__G__YellowOnMs == 0u)
-    {
-        uint32_t uint32_t__yellowOnMs;
+    uint32_t uint32_t__yellowOnMs = (uint32_t)(UI_PERCENT_FULL - uint8_t__pct) * (UI_CHARGING_BLINK_PERIOD_MS / 100u);
+    if (uint32_t__yellowOnMs < UI_CHARGING_YELLOW_MIN_OFF_MS) uint32_t__yellowOnMs = UI_CHARGING_YELLOW_MIN_OFF_MS;
+    if (uint32_t__yellowOnMs > UI_CHARGING_BLINK_PERIOD_MS)   uint32_t__yellowOnMs = UI_CHARGING_BLINK_PERIOD_MS;
+    uint32_t uint32_t__yellowOffMs = UI_CHARGING_BLINK_PERIOD_MS - uint32_t__yellowOnMs;
 
-        uint32_t__yellowOnMs = (uint32_t)(UI_PERCENT_FULL - uint8_t__batteryPercent) * (UI_CHARGING_BLINK_PERIOD_MS / 100u);
-        if (uint32_t__yellowOnMs < UI_CHARGING_YELLOW_MIN_OFF_MS)
-        {
-            uint32_t__yellowOnMs = UI_CHARGING_YELLOW_MIN_OFF_MS;
-        }
-        if (uint32_t__yellowOnMs > UI_CHARGING_BLINK_PERIOD_MS)
-        {
-            uint32_t__yellowOnMs = UI_CHARGING_BLINK_PERIOD_MS;
-        }
-        UINT32_T__G__YellowOnMs = uint32_t__yellowOnMs;
-        UINT32_T__G__YellowOffMs = UI_CHARGING_BLINK_PERIOD_MS - uint32_t__yellowOnMs;
-        TICKTYPE_T__G__YellowLastToggleTick = xTaskGetTickCount();
-        BOOL__G__YellowOn = true;
+    if (LED_BLINK__G__Yellow.onMs != uint32_t__yellowOnMs)
+    {
+        func__blink_init(&LED_BLINK__G__Yellow, uint32_t__yellowOnMs, uint32_t__yellowOffMs);
         func__yellow(true);
-        func__green(true);
-        func__red(false);
-        func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
     }
-
-    ticktype__nowTick = xTaskGetTickCount();
-    uint32_t__elapsedYellowMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__YellowLastToggleTick) * portTICK_PERIOD_MS);
-
-    if (BOOL__G__YellowOn == true)
+    else if (func__blink_tick(&LED_BLINK__G__Yellow))
     {
-        if (uint32_t__elapsedYellowMs >= UINT32_T__G__YellowOnMs)
-        {
-            func__yellow(false);
-            BOOL__G__YellowOn = false;
-            TICKTYPE_T__G__YellowLastToggleTick = ticktype__nowTick;
-        }
-    }
-    else
-    {
-        if (uint32_t__elapsedYellowMs >= UINT32_T__G__YellowOffMs)
-        {
-            uint32_t uint32_t__yellowOnMs;
-
-            uint32_t__yellowOnMs = (uint32_t)(UI_PERCENT_FULL - uint8_t__batteryPercent) * (UI_CHARGING_BLINK_PERIOD_MS / 100u);
-            if (uint32_t__yellowOnMs < UI_CHARGING_YELLOW_MIN_OFF_MS)
-            {
-                uint32_t__yellowOnMs = UI_CHARGING_YELLOW_MIN_OFF_MS;
-            }
-            if (uint32_t__yellowOnMs > UI_CHARGING_BLINK_PERIOD_MS)
-            {
-                uint32_t__yellowOnMs = UI_CHARGING_BLINK_PERIOD_MS;
-            }
-            UINT32_T__G__YellowOnMs = uint32_t__yellowOnMs;
-            UINT32_T__G__YellowOffMs = UI_CHARGING_BLINK_PERIOD_MS - uint32_t__yellowOnMs;
-
-            func__yellow(true);
-            BOOL__G__YellowOn = true;
-            TICKTYPE_T__G__YellowLastToggleTick = ticktype__nowTick;
-        }
+        func__yellow(LED_BLINK__G__Yellow.isOn);
     }
 
     func__green(true);
     func__red(false);
 }
 
-/* ==================== LED Scenario - BatteryRun Tick (LED part) ==================== */
+/* ==================== LED Scenario - BatteryRun Led Tick ==================== */
 
-/**
- * @brief  [EN] BatteryRun tick - LED part only, non-blocking, call every 10ms. Buzzer handled in buzzer section.
- *         [FA] تیکه دشارژ - فقط LED، هر ۱۰ms، بدون delay. بوق در بخش بازر.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV / ولتاژ باتری
- */
 void func__Ui_ScenarioBatteryRun_LedTick(uint32_t uint32_t__batteryMv)
 {
-    uint8_t uint8_t__batteryPercent;
-    TickType_t ticktype__nowTick;
-    uint32_t uint32_t__elapsedGreenMs;
+    uint8_t uint8_t__pct = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
+    uint32_t uint32_t__greenOffMs = (uint32_t)(UI_PERCENT_FULL - uint8_t__pct) * (UI_BLINK_PERIOD_MS / 100u);
+    if (uint32_t__greenOffMs < UI_GREEN_MIN_OFF_MS) uint32_t__greenOffMs = UI_GREEN_MIN_OFF_MS;
+    uint32_t uint32_t__greenOnMs = UI_BLINK_PERIOD_MS - uint32_t__greenOffMs;
 
-    uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
-
-    if (UINT32_T__G__GreenOnMs == 0u)
+    if (LED_BLINK__G__Green.onMs != uint32_t__greenOnMs)
     {
-        uint32_t uint32_t__greenOffMs;
-
-        uint32_t__greenOffMs = (uint32_t)(UI_PERCENT_FULL - uint8_t__batteryPercent) * (UI_BLINK_PERIOD_MS / 100u);
-        if (uint32_t__greenOffMs < UI_GREEN_MIN_OFF_MS)
-        {
-            uint32_t__greenOffMs = UI_GREEN_MIN_OFF_MS;
-        }
-        UINT32_T__G__GreenOnMs = UI_BLINK_PERIOD_MS - uint32_t__greenOffMs;
-        UINT32_T__G__GreenOffMs = uint32_t__greenOffMs;
-        TICKTYPE_T__G__GreenLastToggleTick = xTaskGetTickCount();
-        BOOL__G__GreenOn = true;
+        func__blink_init(&LED_BLINK__G__Green, uint32_t__greenOnMs, uint32_t__greenOffMs);
         func__green(true);
         func__red(false);
         func__yellow(false);
     }
-
-    ticktype__nowTick = xTaskGetTickCount();
-    uint32_t__elapsedGreenMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__GreenLastToggleTick) * portTICK_PERIOD_MS);
-
-    if (BOOL__G__GreenOn == true)
+    else if (func__blink_tick(&LED_BLINK__G__Green))
     {
-        if (uint32_t__elapsedGreenMs >= UINT32_T__G__GreenOnMs)
-        {
-            func__green(false);
-            BOOL__G__GreenOn = false;
-            TICKTYPE_T__G__GreenLastToggleTick = ticktype__nowTick;
-        }
-    }
-    else
-    {
-        if (uint32_t__elapsedGreenMs >= UINT32_T__G__GreenOffMs)
-        {
-            uint32_t uint32_t__greenOffMs;
-
-            uint32_t__greenOffMs = (uint32_t)(UI_PERCENT_FULL - uint8_t__batteryPercent) * (UI_BLINK_PERIOD_MS / 100u);
-            if (uint32_t__greenOffMs < UI_GREEN_MIN_OFF_MS)
-            {
-                uint32_t__greenOffMs = UI_GREEN_MIN_OFF_MS;
-            }
-            UINT32_T__G__GreenOnMs = UI_BLINK_PERIOD_MS - uint32_t__greenOffMs;
-            UINT32_T__G__GreenOffMs = uint32_t__greenOffMs;
-
-            func__green(true);
-            BOOL__G__GreenOn = true;
-            TICKTYPE_T__G__GreenLastToggleTick = ticktype__nowTick;
-        }
+        func__green(LED_BLINK__G__Green.isOn);
     }
 }
 
-/* ==================== LED Scenario - BatteryRun Tick (wrapper with buzzer) ==================== */
+/* ==================== LED Scenario - BatteryRun Tick (with buzzer) ==================== */
 
-/**
- * @brief  [EN] BatteryRun tick - full (LED + buzzer pattern). Non-blocking, call every 10ms.
- *         [FA] تیکه دشارژ - کامل (LED + بازر)، هر ۱۰ms، بدون delay.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV / ولتاژ باتری
- */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 {
-    uint8_t uint8_t__batteryPercent;
-    TickType_t ticktype__nowTick;
-    uint32_t uint32_t__elapsedBeepMs;
-    uint32_t uint32_t__beepIntervalMs;
-    uint32_t uint32_t__beepDurationMs;
-
-    /* [EN] LED part first
-       [FA] اول بخش LED */
+    uint8_t uint8_t__pct = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
     func__Ui_ScenarioBatteryRun_LedTick(uint32_t__batteryMv);
 
-    uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
-    ticktype__nowTick = xTaskGetTickCount();
-
-    if (uint8_t__batteryPercent >= UI_BEEP_START_PCT)
+    if (uint8_t__pct >= UI_BEEP_START_PCT)
     {
-        UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
-        TICKTYPE_T__G__BeepLastTick = ticktype__nowTick;
+        TICKTYPE_T__G__BeepLastTick = xTaskGetTickCount();
         return;
     }
 
-    uint32_t__elapsedBeepMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__BeepLastTick) * portTICK_PERIOD_MS);
-    uint32_t__beepIntervalMs = (uint32_t)uint8_t__batteryPercent * 1000u;
-    if (uint32_t__beepIntervalMs < 1000u)
-    {
-        uint32_t__beepIntervalMs = 1000u;
-    }
+    uint32_t uint32_t__intervalMs = (uint32_t)uint8_t__pct * 1000u;
+    if (uint32_t__intervalMs < 1000u) uint32_t__intervalMs = 1000u;
 
-    if (uint32_t__elapsedBeepMs >= uint32_t__beepIntervalMs)
+    if (func__elapsed_ms(TICKTYPE_T__G__BeepLastTick) >= uint32_t__intervalMs)
     {
-        uint32_t__beepDurationMs = UI_BEEP_BASE_MS;
-        if (uint8_t__batteryPercent < UI_BEEP_DOUBLE_THRESH_PCT)
-        {
-            uint32_t__beepDurationMs *= 2u;
-        }
+        uint32_t uint32_t__durMs = UI_BEEP_BASE_MS;
+        if (uint8_t__pct < UI_BEEP_DOUBLE_THRESH_PCT) uint32_t__durMs *= 2u;
 
-        func__Ui_BuzzerPatternMs_Start(0u, uint32_t__beepDurationMs, 1u, 0u);
-        TICKTYPE_T__G__BeepLastTick = ticktype__nowTick;
+        func__Ui_BuzzerPatternMs_Start(0u, uint32_t__durMs, 1u, 0u);
+        TICKTYPE_T__G__BeepLastTick = xTaskGetTickCount();
         UINT32_T__G__UiBatteryRunBeepCycleCnt++;
     }
 
-    /* [EN] Tick buzzer pattern if running - buzzer code at end of file
-       [FA] تیکه بازر اگر در حال اجرا - کد بازر انتهای فایل */
     (void)func__Ui_BuzzerPatternMs_Tick();
 }
 
 /* ==================== Ui Main Tick ==================== */
 
-/**
- * @brief  [EN] Ui main tick - decides scenario, non-blocking, call every 10ms.
- *         [FA] تیکه اصلی UI - تصمیم سناریو، بدون delay، هر ۱۰ms.
- * @param  uint32_t__inputVoltageMv [EN] Input voltage mV / ولتاژ ورودی
- * @param  uint32_t__batteryVoltageMv [EN] Battery voltage mV / ولتاژ باتری
- */
 void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__batteryVoltageMv)
 {
-    uint8_t uint8_t__batteryPercent;
-    bool bool__inputPresent;
+    if (uint32_t__batteryVoltageMv > UI_BAT_V_MAX_MV) uint32_t__batteryVoltageMv = UI_BAT_V_MAX_MV;
+    uint8_t uint8_t__pct = func__Ui_BatteryVoltageToPercent(uint32_t__batteryVoltageMv);
+    bool bool__inputPresent = (uint32_t__inputVoltageMv >= UI_INPUT_THRESHOLD_MV);
 
-    if (uint32_t__batteryVoltageMv > UI_BAT_V_MAX_MV)
+    if (bool__inputPresent)
     {
-        uint32_t__batteryVoltageMv = UI_BAT_V_MAX_MV;
-    }
-
-    uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryVoltageMv);
-    bool__inputPresent = (uint32_t__inputVoltageMv >= UI_INPUT_THRESHOLD_MV);
-
-    if (bool__inputPresent == true)
-    {
-        if (uint8_t__batteryPercent < UI_PERCENT_FULL)
-        {
-            func__Ui_ScenarioCharging_Tick(uint32_t__batteryVoltageMv);
-        }
-        else
-        {
-            func__Ui_ScenarioInputOk();
-        }
+        if (uint8_t__pct < UI_PERCENT_FULL) func__Ui_ScenarioCharging_Tick(uint32_t__batteryVoltageMv);
+        else                                func__Ui_ScenarioInputOk();
     }
     else
     {
@@ -398,190 +237,92 @@ void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__battery
 
 /* ==================== Ui Init ==================== */
 
-/**
- * @brief  [EN] Init safe: all off, reset state machines.
- *         [FA] Init امن: همه خاموش، ریست استیت ماشین‌ها.
- */
 void func__Ui_Init(void)
 {
     func__all_off();
-    TICKTYPE_T__G__GreenLastToggleTick = xTaskGetTickCount();
-    TICKTYPE_T__G__YellowLastToggleTick = xTaskGetTickCount();
+    LED_BLINK__G__Green.onMs = 0u;
+    LED_BLINK__G__Yellow.onMs = 0u;
     TICKTYPE_T__G__BeepLastTick = xTaskGetTickCount();
     UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
-    UINT32_T__G__GreenOnMs = 0u;
-    UINT32_T__G__YellowOnMs = 0u;
 }
 
-/* ==================== Board Test - Start ==================== */
+/* ==================== Board Test ==================== */
 
-/**
- * @brief  [EN] Board test start - non-blocking, LED part.
- *         [FA] شروع تست برد - غیربلوکه، بخش LED.
- */
-
-typedef enum
-{
-    BOARDTEST_STATE_IDLE = 0,
-    BOARDTEST_STATE_RED_ON,
-    BOARDTEST_STATE_YELLOW_ON,
-    BOARDTEST_STATE_GREEN_ON,
-    BOARDTEST_STATE_BEEP_ON,
-    BOARDTEST_STATE_DONE
-} boardtest_state_t;
-
-static boardtest_state_t BOARDTEST_STATE__G__State = BOARDTEST_STATE_IDLE;
+typedef enum { BOARDTEST_RED, BOARDTEST_YELLOW, BOARDTEST_GREEN, BOARDTEST_BEEP, BOARDTEST_DONE } boardtest_step_t;
+static boardtest_step_t BOARDTEST_STEP__G__Step = BOARDTEST_DONE;
 static TickType_t TICKTYPE_T__G__BoardTestLastTick = 0;
 static bool BOOL__G__BoardTestRunning = false;
 
 void func__Ui_BoardTest_Start(void)
 {
     func__all_off();
-    BOARDTEST_STATE__G__State = BOARDTEST_STATE_RED_ON;
+    BOARDTEST_STEP__G__Step = BOARDTEST_RED;
     TICKTYPE_T__G__BoardTestLastTick = xTaskGetTickCount();
     BOOL__G__BoardTestRunning = true;
     func__red(true);
 }
 
-/* ==================== Board Test - Tick ==================== */
-
-/**
- * @brief  [EN] Board test tick - call every 10ms, non-blocking. Uses buzzer pattern at end.
- *         [FA] تیکه تست برد - هر ۱۰ms، بدون delay، از الگوی بازر انتهای فایل استفاده می‌کند.
- * @return bool [EN] true=running / در حال اجرا
- */
 bool func__Ui_BoardTest_Tick(void)
 {
-    TickType_t ticktype__nowTick;
-    uint32_t uint32_t__elapsedMs;
+    if (!BOOL__G__BoardTestRunning) return false;
 
-    if (BOOL__G__BoardTestRunning == false)
+    if (!func__has_elapsed(&TICKTYPE_T__G__BoardTestLastTick, UI_SELFTEST_LED_MS))
     {
-        return false;
+        if (BOARDTEST_STEP__G__Step == BOARDTEST_BEEP) return func__Ui_BuzzerPatternMs_Tick();
+        return true;
     }
 
-    ticktype__nowTick = xTaskGetTickCount();
-    uint32_t__elapsedMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__BoardTestLastTick) * portTICK_PERIOD_MS);
-
-    switch (BOARDTEST_STATE__G__State)
+    switch (BOARDTEST_STEP__G__Step)
     {
-        case BOARDTEST_STATE_RED_ON:
-            if (uint32_t__elapsedMs >= UI_SELFTEST_LED_MS)
-            {
-                func__red(false);
-                func__yellow(true);
-                BOARDTEST_STATE__G__State = BOARDTEST_STATE_YELLOW_ON;
-                TICKTYPE_T__G__BoardTestLastTick = ticktype__nowTick;
-            }
+        case BOARDTEST_RED:
+            func__red(false);
+            func__yellow(true);
+            BOARDTEST_STEP__G__Step = BOARDTEST_YELLOW;
             break;
-
-        case BOARDTEST_STATE_YELLOW_ON:
-            if (uint32_t__elapsedMs >= UI_SELFTEST_LED_MS)
-            {
-                func__yellow(false);
-                func__green(true);
-                BOARDTEST_STATE__G__State = BOARDTEST_STATE_GREEN_ON;
-                TICKTYPE_T__G__BoardTestLastTick = ticktype__nowTick;
-            }
+        case BOARDTEST_YELLOW:
+            func__yellow(false);
+            func__green(true);
+            BOARDTEST_STEP__G__Step = BOARDTEST_GREEN;
             break;
-
-        case BOARDTEST_STATE_GREEN_ON:
-            if (uint32_t__elapsedMs >= UI_SELFTEST_LED_MS)
-            {
-                func__green(false);
-                BOARDTEST_STATE__G__State = BOARDTEST_STATE_BEEP_ON;
-                TICKTYPE_T__G__BoardTestLastTick = ticktype__nowTick;
-                func__Ui_BuzzerPatternMs_Start(0u, UI_BOOT_BEEP_MS, 1u, 0u);
-            }
+        case BOARDTEST_GREEN:
+            func__green(false);
+            BOARDTEST_STEP__G__Step = BOARDTEST_BEEP;
+            func__Ui_BuzzerPatternMs_Start(0u, UI_BOOT_BEEP_MS, 1u, 0u);
             break;
-
-        case BOARDTEST_STATE_BEEP_ON:
-            if (func__Ui_BuzzerPatternMs_Tick() == false)
+        case BOARDTEST_BEEP:
+            if (!func__Ui_BuzzerPatternMs_Tick())
             {
-                BOARDTEST_STATE__G__State = BOARDTEST_STATE_DONE;
-                TICKTYPE_T__G__BoardTestLastTick = ticktype__nowTick;
+                BOARDTEST_STEP__G__Step = BOARDTEST_DONE;
+                func__all_off();
+                BOOL__G__BoardTestRunning = false;
+                return false;
             }
-            break;
-
-        case BOARDTEST_STATE_DONE:
-            func__all_off();
-            BOOL__G__BoardTestRunning = false;
-            BOARDTEST_STATE__G__State = BOARDTEST_STATE_IDLE;
-            return false;
-
+            return true;
         default:
             BOOL__G__BoardTestRunning = false;
             return false;
     }
-
     return true;
 }
 
 /* ==================== Buzzer / Beep ==================== */
-/* [EN] All buzzer-related code moved to end of file, separated from LED per user request.
-   [FA] تمام کدهای مربوط به بازر به انتهای فایل منتقل شد، جدا از LED. */
+/* [EN] All buzzer code at end, separated from LED per AI rule.
+   [FA] تمام کد بازر انتهای فایل، جدا از LED. */
 
-/**
- * @brief  [EN] Buzzer PA4 on/off low-level.
- *         [FA] بازر PA4 سطح پایین.
- * @param  bool__buzzerOn [EN] true=sound / صدای بازر
- */
-static void func__buzzer(bool bool__buzzerOn)
+static void func__buzzer(bool bool__on) { func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, bool__on); }
+
+static uint32_t func__calc_beep_on(uint32_t uint32_t__totalOnMs, uint8_t uint8_t__repeatCount, uint32_t uint32_t__gapMs)
 {
-    func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, bool__buzzerOn);
+    if (uint8_t__repeatCount <= 1u) return uint32_t__totalOnMs;
+    uint32_t uint32_t__totalGapMs = (uint32_t)uint32_t__gapMs * (uint32_t)(uint8_t__repeatCount - 1u);
+    if (uint32_t__totalGapMs >= uint32_t__totalOnMs) return uint32_t__totalOnMs / (uint32_t)((uint8_t__repeatCount * 2u) - 1u);
+    return (uint32_t__totalOnMs - uint32_t__totalGapMs) / (uint32_t)uint8_t__repeatCount;
 }
 
-/* ==================== Buzzer / Beep - Calc ==================== */
+/* ==================== Buzzer / Beep - State ==================== */
 
-/**
- * @brief  [EN] Calculate beep ON per pulse inside total ON time.
- *         [FA] محاسبه زمان روشن هر پالس بازر.
- * @param  uint32_t__buzzerTotalOnMs [EN] Total including gaps / کل شامل گپ
- * @param  uint8_t__buzzerRepeatCount [EN] Repeat 1..10 / تکرار
- * @param  uint32_t__buzzerGapMs [EN] Gap ms / گپ
- * @return uint32_t [EN] Beep ON per pulse ms / زمان هر پالس
- */
-static uint32_t func__calc_beep_on(uint32_t uint32_t__buzzerTotalOnMs, uint8_t uint8_t__buzzerRepeatCount, uint32_t uint32_t__buzzerGapMs)
-{
-    uint32_t uint32_t__buzzerTotalGapMs;
-    uint32_t uint32_t__buzzerPulseOnMs;
-
-    if (uint8_t__buzzerRepeatCount <= 1u)
-    {
-        return uint32_t__buzzerTotalOnMs;
-    }
-
-    uint32_t__buzzerTotalGapMs = (uint32_t)uint32_t__buzzerGapMs * (uint32_t)(uint8_t__buzzerRepeatCount - 1u);
-
-    if (uint32_t__buzzerTotalGapMs >= uint32_t__buzzerTotalOnMs)
-    {
-        uint32_t__buzzerPulseOnMs = uint32_t__buzzerTotalOnMs / (uint32_t)((uint8_t__buzzerRepeatCount * 2u) - 1u);
-        if (uint32_t__buzzerPulseOnMs < 10u)
-        {
-            uint32_t__buzzerPulseOnMs = 10u;
-        }
-        return uint32_t__buzzerPulseOnMs;
-    }
-
-    uint32_t__buzzerPulseOnMs = (uint32_t__buzzerTotalOnMs - uint32_t__buzzerTotalGapMs) / (uint32_t)uint8_t__buzzerRepeatCount;
-    if (uint32_t__buzzerPulseOnMs < 10u)
-    {
-        uint32_t__buzzerPulseOnMs = 10u;
-    }
-    return uint32_t__buzzerPulseOnMs;
-}
-
-/* ==================== Buzzer / Beep - State Machine ==================== */
-
-typedef enum
-{
-    BUZZER_STATE_IDLE = 0,
-    BUZZER_STATE_PULSE_ON,
-    BUZZER_STATE_GAP_OFF,
-    BUZZER_STATE_PERIOD_OFF
-} buzzer_state_t;
-
-static buzzer_state_t BUZZER_STATE__G__State = BUZZER_STATE_IDLE;
+typedef enum { BUZZER_IDLE, BUZZER_PULSE_ON, BUZZER_GAP_OFF, BUZZER_PERIOD_OFF } buzzer_state_t;
+static buzzer_state_t BUZZER_STATE__G__State = BUZZER_IDLE;
 static uint32_t UINT32_T__G__BuzzerTotalOnMs = 0u;
 static uint32_t UINT32_T__G__BuzzerGapMs = 0u;
 static uint32_t UINT32_T__G__BuzzerPulseOnMs = 0u;
@@ -591,157 +332,81 @@ static uint8_t UINT8_T__G__BuzzerPulseIndex = 0u;
 static TickType_t TICKTYPE_T__G__BuzzerLastTick = 0;
 static bool BOOL__G__BuzzerRunning = false;
 
-/**
- * @brief  [EN] Internal buzzer pattern start - non-blocking setup.
- *         [FA] شروع داخلی الگوی بازر - ست‌آپ غیربلوکه.
- * @param  uint32_t__periodMs [EN] Period ms / دوره تناوب
- * @param  uint32_t__totalOnMs [EN] Total ON ms / کل زمان روشن
- * @param  uint8_t__repeatCount [EN] Repeat / تکرار
- * @param  uint32_t__gapMs [EN] Gap ms / گپ
- */
-static void func__buzzer_pattern_start_internal(uint32_t uint32_t__periodMs, uint32_t uint32_t__totalOnMs, uint8_t uint8_t__repeatCount, uint32_t uint32_t__gapMs)
+static void func__buzzer_start_internal(uint32_t uint32_t__periodMs, uint32_t uint32_t__totalOnMs, uint8_t uint8_t__repeatCount, uint32_t uint32_t__gapMs)
 {
-    uint32_t uint32_t__buzzerTotalOnClamped;
-    uint32_t uint32_t__buzzerGapClamped;
-    uint8_t uint8_t__buzzerRepeatClamped;
+    if (uint32_t__totalOnMs < 10u) uint32_t__totalOnMs = 10u;
+    if (uint32_t__totalOnMs > 10000u) uint32_t__totalOnMs = 10000u;
+    if (uint32_t__gapMs > 5000u) uint32_t__gapMs = 5000u;
+    if (uint8_t__repeatCount == 0u) uint8_t__repeatCount = 1u;
+    if (uint8_t__repeatCount > 10u) uint8_t__repeatCount = 10u;
 
-    if (uint32_t__totalOnMs < 10u)
+    if (uint8_t__repeatCount > 1u && uint32_t__gapMs * (uint32_t)(uint8_t__repeatCount - 1u) >= uint32_t__totalOnMs)
     {
-        uint32_t__buzzerTotalOnClamped = 10u;
-    }
-    else if (uint32_t__totalOnMs > 10000u)
-    {
-        uint32_t__buzzerTotalOnClamped = 10000u;
-    }
-    else
-    {
-        uint32_t__buzzerTotalOnClamped = uint32_t__totalOnMs;
+        uint32_t__gapMs = (uint32_t__totalOnMs * UI_BUZZER_DEFAULT_GAP_PERCENT / 100u) / (uint32_t)(uint8_t__repeatCount - 1u);
     }
 
-    if (uint32_t__gapMs > 5000u)
-    {
-        uint32_t__buzzerGapClamped = 5000u;
-    }
-    else
-    {
-        uint32_t__buzzerGapClamped = uint32_t__gapMs;
-    }
-
-    if (uint8_t__repeatCount == 0u)
-    {
-        uint8_t__buzzerRepeatClamped = 1u;
-    }
-    else if (uint8_t__repeatCount > 10u)
-    {
-        uint8_t__buzzerRepeatClamped = 10u;
-    }
-    else
-    {
-        uint8_t__buzzerRepeatClamped = uint8_t__repeatCount;
-    }
-
-    if (uint8_t__buzzerRepeatClamped > 1u)
-    {
-        if ((uint32_t__buzzerGapClamped * (uint32_t)(uint8_t__buzzerRepeatClamped - 1u)) >= uint32_t__buzzerTotalOnClamped)
-        {
-            uint32_t__buzzerGapClamped = (uint32_t__buzzerTotalOnClamped * UI_BUZZER_DEFAULT_GAP_PERCENT / 100u);
-            if (uint8_t__buzzerRepeatClamped > 1u)
-            {
-                uint32_t__buzzerGapClamped = uint32_t__buzzerGapClamped / (uint32_t)(uint8_t__buzzerRepeatClamped - 1u);
-            }
-        }
-    }
-
-    UINT32_T__G__BuzzerTotalOnMs = uint32_t__buzzerTotalOnClamped;
-    UINT32_T__G__BuzzerGapMs = uint32_t__buzzerGapClamped;
-    UINT8_T__G__BuzzerRepeatCount = uint8_t__buzzerRepeatClamped;
+    UINT32_T__G__BuzzerTotalOnMs = uint32_t__totalOnMs;
+    UINT32_T__G__BuzzerGapMs = uint32_t__gapMs;
+    UINT8_T__G__BuzzerRepeatCount = uint8_t__repeatCount;
     UINT32_T__G__BuzzerPeriodMs = uint32_t__periodMs;
     UINT8_T__G__BuzzerPulseIndex = 0u;
-    UINT32_T__G__BuzzerPulseOnMs = func__calc_beep_on(uint32_t__buzzerTotalOnClamped, uint8_t__buzzerRepeatClamped, uint32_t__buzzerGapClamped);
+    UINT32_T__G__BuzzerPulseOnMs = func__calc_beep_on(uint32_t__totalOnMs, uint8_t__repeatCount, uint32_t__gapMs);
     TICKTYPE_T__G__BuzzerLastTick = xTaskGetTickCount();
-    BUZZER_STATE__G__State = BUZZER_STATE_PULSE_ON;
+    BUZZER_STATE__G__State = BUZZER_PULSE_ON;
     BOOL__G__BuzzerRunning = true;
-
     func__buzzer(true);
 }
 
-/* ==================== Buzzer / Beep - Pattern Ms Start ==================== */
+/* ==================== Buzzer / Beep - Pattern Ms ==================== */
 
-/**
- * @brief  [EN] Buzzer pattern Ms start - non-blocking.
- *         [FA] شروع الگوی بازر Ms - غیربلوکه.
- * @param  uint32_t__periodMs [EN] Period ms / دوره تناوب
- * @param  uint32_t__onTimeMs [EN] Total ON ms / زمان روشن
- * @param  uint8_t__repeatCount [EN] Repeat / تکرار
- * @param  uint32_t__gapMs [EN] Gap ms / گپ
- */
 void func__Ui_BuzzerPatternMs_Start(uint32_t uint32_t__periodMs, uint32_t uint32_t__onTimeMs, uint8_t uint8_t__repeatCount, uint32_t uint32_t__gapMs)
 {
-    func__buzzer_pattern_start_internal(uint32_t__periodMs, uint32_t__onTimeMs, uint8_t__repeatCount, uint32_t__gapMs);
+    func__buzzer_start_internal(uint32_t__periodMs, uint32_t__onTimeMs, uint8_t__repeatCount, uint32_t__gapMs);
 }
 
-/* ==================== Buzzer / Beep - Pattern Ms Tick ==================== */
-
-/**
- * @brief  [EN] Buzzer pattern Ms tick - call every 10ms, non-blocking.
- *         [FA] تیکه الگوی بازر Ms - هر ۱۰ms.
- * @return bool [EN] true=running / در حال اجرا
- */
 bool func__Ui_BuzzerPatternMs_Tick(void)
 {
-    TickType_t ticktype__nowTick;
-    uint32_t uint32_t__elapsedMs;
+    if (!BOOL__G__BuzzerRunning) return false;
 
-    if (BOOL__G__BuzzerRunning == false)
-    {
-        return false;
-    }
-
-    ticktype__nowTick = xTaskGetTickCount();
-    uint32_t__elapsedMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__BuzzerLastTick) * portTICK_PERIOD_MS);
+    uint32_t uint32_t__elapsedMs = func__elapsed_ms(TICKTYPE_T__G__BuzzerLastTick);
 
     switch (BUZZER_STATE__G__State)
     {
-        case BUZZER_STATE_PULSE_ON:
+        case BUZZER_PULSE_ON:
             if (uint32_t__elapsedMs >= UINT32_T__G__BuzzerPulseOnMs)
             {
                 func__buzzer(false);
-                if (UINT8_T__G__BuzzerPulseIndex < (UINT8_T__G__BuzzerRepeatCount - 1u))
+                if (UINT8_T__G__BuzzerPulseIndex < UINT8_T__G__BuzzerRepeatCount - 1u)
                 {
-                    BUZZER_STATE__G__State = BUZZER_STATE_GAP_OFF;
-                    TICKTYPE_T__G__BuzzerLastTick = ticktype__nowTick;
+                    BUZZER_STATE__G__State = BUZZER_GAP_OFF;
+                    TICKTYPE_T__G__BuzzerLastTick = xTaskGetTickCount();
                 }
                 else
                 {
-                    if ((UINT32_T__G__BuzzerPeriodMs == 0u) || (UINT32_T__G__BuzzerPeriodMs <= UINT32_T__G__BuzzerTotalOnMs))
+                    if (UINT32_T__G__BuzzerPeriodMs == 0u || UINT32_T__G__BuzzerPeriodMs <= UINT32_T__G__BuzzerTotalOnMs)
                     {
-                        BUZZER_STATE__G__State = BUZZER_STATE_IDLE;
                         BOOL__G__BuzzerRunning = false;
                         return false;
                     }
-                    else
-                    {
-                        BUZZER_STATE__G__State = BUZZER_STATE_PERIOD_OFF;
-                        TICKTYPE_T__G__BuzzerLastTick = ticktype__nowTick;
-                    }
+                    BUZZER_STATE__G__State = BUZZER_PERIOD_OFF;
+                    TICKTYPE_T__G__BuzzerLastTick = xTaskGetTickCount();
                 }
             }
             break;
 
-        case BUZZER_STATE_GAP_OFF:
+        case BUZZER_GAP_OFF:
             if (uint32_t__elapsedMs >= UINT32_T__G__BuzzerGapMs)
             {
                 UINT8_T__G__BuzzerPulseIndex++;
-                BUZZER_STATE__G__State = BUZZER_STATE_PULSE_ON;
-                TICKTYPE_T__G__BuzzerLastTick = ticktype__nowTick;
+                BUZZER_STATE__G__State = BUZZER_PULSE_ON;
+                TICKTYPE_T__G__BuzzerLastTick = xTaskGetTickCount();
                 func__buzzer(true);
             }
             break;
 
-        case BUZZER_STATE_PERIOD_OFF:
-            if (uint32_t__elapsedMs >= (UINT32_T__G__BuzzerPeriodMs - UINT32_T__G__BuzzerTotalOnMs))
+        case BUZZER_PERIOD_OFF:
+            if (uint32_t__elapsedMs >= UINT32_T__G__BuzzerPeriodMs - UINT32_T__G__BuzzerTotalOnMs)
             {
-                BUZZER_STATE__G__State = BUZZER_STATE_IDLE;
                 BOOL__G__BuzzerRunning = false;
                 return false;
             }
@@ -751,66 +416,30 @@ bool func__Ui_BuzzerPatternMs_Tick(void)
             BOOL__G__BuzzerRunning = false;
             return false;
     }
-
     return true;
 }
 
-/* ==================== Buzzer / Beep - Pattern Percent Start ==================== */
+/* ==================== Buzzer / Beep - Pattern Percent ==================== */
 
-/**
- * @brief  [EN] Buzzer pattern percent start - non-blocking.
- *         [FA] شروع الگوی بازر درصدی - غیربلوکه.
- * @param  uint32_t__periodMs [EN] Period ms / دوره تناوب
- * @param  uint32_t__onTimeMs [EN] ON time ms / زمان روشن
- * @param  uint8_t__repeatCount [EN] Repeat / تکرار
- * @param  uint8_t__gapPercent [EN] Gap percent / گپ درصدی
- */
 void func__Ui_BuzzerPatternPercent_Start(uint32_t uint32_t__periodMs, uint32_t uint32_t__onTimeMs, uint8_t uint8_t__repeatCount, uint8_t uint8_t__gapPercent)
 {
-    uint32_t uint32_t__buzzerGapMs;
-    uint8_t uint8_t__buzzerGapPercentClamped;
-
-    if (uint8_t__gapPercent > 90u)
-    {
-        uint8_t__buzzerGapPercentClamped = 90u;
-    }
-    else
-    {
-        uint8_t__buzzerGapPercentClamped = uint8_t__gapPercent;
-    }
-
+    if (uint8_t__gapPercent > 90u) uint8_t__gapPercent = 90u;
     if (uint8_t__repeatCount <= 1u)
     {
-        func__buzzer_pattern_start_internal(uint32_t__periodMs, uint32_t__onTimeMs, uint8_t__repeatCount, 0u);
+        func__buzzer_start_internal(uint32_t__periodMs, uint32_t__onTimeMs, uint8_t__repeatCount, 0u);
         return;
     }
-
-    uint32_t__buzzerGapMs = (uint32_t__onTimeMs * (uint32_t)uint8_t__buzzerGapPercentClamped) / 100u;
-
-    func__buzzer_pattern_start_internal(uint32_t__periodMs, uint32_t__onTimeMs, uint8_t__repeatCount, uint32_t__buzzerGapMs);
+    uint32_t uint32_t__gapMs = (uint32_t__onTimeMs * (uint32_t)uint8_t__gapPercent) / 100u;
+    func__buzzer_start_internal(uint32_t__periodMs, uint32_t__onTimeMs, uint8_t__repeatCount, uint32_t__gapMs);
 }
 
-/* ==================== Buzzer / Beep - Pattern Percent Tick ==================== */
-
-/**
- * @brief  [EN] Buzzer pattern percent tick.
- *         [FA] تیکه الگوی بازر درصدی.
- * @return bool [EN] true=running / در حال اجرا
- */
-bool func__Ui_BuzzerPatternPercent_Tick(void)
-{
-    return func__Ui_BuzzerPatternMs_Tick();
-}
+bool func__Ui_BuzzerPatternPercent_Tick(void) { return func__Ui_BuzzerPatternMs_Tick(); }
 
 /* ==================== Buzzer / Beep - Stop ==================== */
 
-/**
- * @brief  [EN] Stop buzzer pattern immediately.
- *         [FA] توقف فوری الگوی بازر.
- */
 void func__Ui_BuzzerPattern_Stop(void)
 {
     func__buzzer(false);
-    BUZZER_STATE__G__State = BUZZER_STATE_IDLE;
+    BUZZER_STATE__G__State = BUZZER_IDLE;
     BOOL__G__BuzzerRunning = false;
 }

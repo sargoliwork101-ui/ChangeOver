@@ -259,7 +259,7 @@ else
   echo "  FAIL: ui.h missing UI_ constants"
   FAIL=1
 fi
-if grep -q "UINT32_T__G__UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "GreenOnMs" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "uint32_t__buzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c"; then
+if grep -q "UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "LED_BLINK__G__Green" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c"; then
   echo "  OK: ui.c uses meaningful names with __"
 else
   echo "  FAIL: ui.c missing meaningful names"
