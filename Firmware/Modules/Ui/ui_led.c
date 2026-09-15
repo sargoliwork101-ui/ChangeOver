@@ -1,12 +1,13 @@
 /**
  * @file    ui_led.c
  * @brief   [EN] UI LED scenarios - green/red/yellow, battery percent, InputOk/Charging/BatteryRun.
- *          Split from ui.c into LED and BUZZER per user request. RTOS simple readable, non-linear formulas.
- *          [FA] سناریوهای LED ماژول UI - جدا شده از ui.c به دو بخش LED و BUZZER.
+ *          Split from UI into LED and BUZZER per user request. Constants for LED in ui_led.h.
+ *          RTOS simple readable, non-linear formulas, markers above each function and variable in h and c.
+ *          [FA] سناریوهای LED ماژول UI - ثابت‌های LED در هدر خودش، هر تابع و متغیر با جدا کننده.
  *
  * @note    [EN] LED constants in ui_led.h per user request. Naming __ after type, func__ prefix.
- *          RTOS: vTaskDelay allowed (does not lock MCU), HAL_Delay forbidden. Formulas non-linear broken into steps.
- *          [FA] ثابت‌های LED در همین هدر. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
+ *          RTOS: vTaskDelay allowed, HAL_Delay forbidden. Formulas non-linear broken into steps.
+ *          [FA] ثابت‌های LED در همین هدر. نام‌گذاری با __، پیشوند func__.
  */
 
 #include "ui_led.h"
@@ -102,7 +103,7 @@ static void func__all_off(void)
     func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
 }
 
-/* ==================== LED State ==================== */
+/* ==================== BatteryRun Beep Cycle Count ==================== */
 
 static uint32_t UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
 

@@ -1,14 +1,15 @@
 /**
  * @file    ui_buzzer.c
- * @brief   [EN] UI buzzer patterns - separate from LED per AI rule, now in its own file ui_buzzer.c.
- *          Non-linear formulas broken into steps, RTOS simple readable, buzzer at end of its own file.
- *          [FA] الگوهای بازر ماژول UI - جدا از LED، در فایل خودش ui_buzzer.c، فرمول غیرخطی، RTOS ساده.
+ * @brief   [EN] UI buzzer patterns - separate from LED, constants for buzzer in its own header.
+ *          Non-linear formulas broken into steps, RTOS simple readable, markers above each func and variable.
+ *          [FA] الگوهای بازر ماژول UI - ثابت‌های بازر در هدر خودش، هر تابع و متغیر با جدا کننده.
  *
  * @note    [EN] Buzzer constants in ui_buzzer.h per user request. Naming __ after type, func__ prefix.
  *          RTOS: vTaskDelay allowed, HAL_Delay forbidden. Formulas non-linear broken into steps.
  *          [FA] ثابت‌های بازر در همین هدر. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
  */
 
+#include "ui_buzzer.h"
 #include "bsp_gpio.h"
 #include "board_pins.h"
 #include "FreeRTOS.h"
@@ -60,17 +61,44 @@ static uint32_t func__calc_beep_on(uint32_t uint32_t__totalOnMs, uint8_t uint8_t
     return uint32_t__pulseOnMs;
 }
 
-/* ==================== Buzzer State ==================== */
+/* ==================== Buzzer State Type ==================== */
 
 typedef enum { BUZZER_IDLE, BUZZER_PULSE_ON, BUZZER_GAP_OFF, BUZZER_PERIOD_OFF } buzzer_state_t;
+
+/* ==================== Buzzer State ==================== */
+
 static buzzer_state_t BUZZER_STATE__G__State = BUZZER_IDLE;
+
+/* ==================== Buzzer Total On Ms ==================== */
+
 static uint32_t UINT32_T__G__BuzzerTotalOnMs = 0u;
+
+/* ==================== Buzzer Gap Ms ==================== */
+
 static uint32_t UINT32_T__G__BuzzerGapMs = 0u;
+
+/* ==================== Buzzer Pulse On Ms ==================== */
+
 static uint32_t UINT32_T__G__BuzzerPulseOnMs = 0u;
+
+/* ==================== Buzzer Period Ms ==================== */
+
 static uint32_t UINT32_T__G__BuzzerPeriodMs = 0u;
+
+/* ==================== Buzzer Repeat Count ==================== */
+
 static uint8_t UINT8_T__G__BuzzerRepeatCount = 0u;
+
+/* ==================== Buzzer Pulse Index ==================== */
+
 static uint8_t UINT8_T__G__BuzzerPulseIndex = 0u;
+
+/* ==================== Buzzer Last Tick ==================== */
+
 static TickType_t TICKTYPE_T__G__BuzzerLastTick = 0;
+
+/* ==================== Buzzer Running ==================== */
+
 static bool BOOL__G__BuzzerRunning = false;
 
 /* ==================== Buzzer Start Internal ==================== */
