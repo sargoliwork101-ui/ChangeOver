@@ -69,6 +69,56 @@ def calculate_pattern(period_ms, duty_percent, beep_count, gap_ms):
     return duty_window_ms, beep_durations, effective_gap_ms, period_tail_ms
 
 
+# ==================== Buzzer waveform sampling ====================
+
+
+def buzzer_level_at(period_ms, duty_percent, beep_count, gap_ms, elapsed_ms):
+    """[EN] Return GPIO level at one millisecond in the periodic pattern.
+    [FA] سطح GPIO را در یک میلی‌ثانیه از الگوی دوره‌ای برمی‌گرداند.
+    """
+    pattern = calculate_pattern(period_ms, duty_percent, beep_count, gap_ms)
+    if pattern is None:
+        return False
+
+    duty_window_ms, beep_durations, effective_gap_ms, _ = pattern
+    cycle_elapsed_ms = elapsed_ms % period_ms
+    if cycle_elapsed_ms >= duty_window_ms:
+        return False
+
+    cursor_ms = 0
+    for beep_index, beep_duration_ms in enumerate(beep_durations):
+        if cycle_elapsed_ms < cursor_ms + beep_duration_ms:
+            return True
+
+        cursor_ms += beep_duration_ms
+        if beep_index < beep_count - 1:
+            if cycle_elapsed_ms < cursor_ms + effective_gap_ms:
+                return False
+            cursor_ms += effective_gap_ms
+
+    return False
+
+
+def sample_waveform_segments(period_ms, duty_percent, beep_count, gap_ms):
+    """[EN] Compress one millisecond waveform into level/duration segments.
+    [FA] موج یک میلی‌ثانیه‌ای را به بخش‌های سطح/مدت فشرده می‌کند.
+    """
+    segments = []
+    previous_level = buzzer_level_at(period_ms, duty_percent, beep_count, gap_ms, 0)
+    segment_length_ms = 0
+
+    for elapsed_ms in range(period_ms):
+        current_level = buzzer_level_at(period_ms, duty_percent, beep_count, gap_ms, elapsed_ms)
+        if current_level != previous_level:
+            segments.append((previous_level, segment_length_ms))
+            previous_level = current_level
+            segment_length_ms = 0
+        segment_length_ms += 1
+
+    segments.append((previous_level, segment_length_ms))
+    return segments
+
+
 # ==================== RTOS check interval ====================
 
 
@@ -136,6 +186,11 @@ def run_assertions():
         calculate_next_check_ms(10000, 10, 2, 100),
         10,
         "example next RTOS check",
+    )
+    assert_equal(
+        sample_waveform_segments(10000, 10, 2, 100),
+        [(True, 450), (False, 100), (True, 450), (False, 9000)],
+        "example GPIO waveform",
     )
 
     # Legacy one-shot durations are represented with a safe period and stopped
