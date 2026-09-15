@@ -7,7 +7,7 @@
  *          [FA] کاملاً RTOS بدون delay، نام‌گذاری با __، ثابت‌های LED و BUZZER جدا.
  */
 
-/* ==================== Includes ==================== */
+/* ==================== Includes / شامل‌ها ==================== */
 
 #include "app_config.h"
 #include "ui_led.h"     /* [EN] LED constants in own header / ثابت‌های LED در هدر خودش */

@@ -7,7 +7,7 @@ import os
 import re
 
 
-# ==================== Read buzzer constants ====================
+# ==================== Read buzzer constants / خواندن ثابت‌های بازر ====================
 
 BASE_DIR = os.path.dirname(__file__)
 HEADER_PATH = os.path.join(BASE_DIR, "ui_buzzer.h")
@@ -28,7 +28,7 @@ UI_BUZZER_OFF_RESULT = defines.get("UI_BUZZER_OFF_RESULT", 0)
 UI_BUZZER_INVALID_RESULT = defines.get("UI_BUZZER_INVALID_RESULT", -1)
 
 
-# ==================== Buzzer timing model ====================
+# ==================== Buzzer timing model / مدل زمان‌بندی بازر ====================
 
 
 def calculate_pattern(period_ms, duty_percent, beep_count, gap_ms):
@@ -69,7 +69,7 @@ def calculate_pattern(period_ms, duty_percent, beep_count, gap_ms):
     return duty_window_ms, beep_durations, effective_gap_ms, period_tail_ms
 
 
-# ==================== Buzzer waveform sampling ====================
+# ==================== Buzzer waveform sampling / نمونه‌برداری شکل موج بازر ====================
 
 
 def buzzer_level_at(period_ms, duty_percent, beep_count, gap_ms, elapsed_ms):
@@ -119,7 +119,7 @@ def sample_waveform_segments(period_ms, duty_percent, beep_count, gap_ms):
     return segments
 
 
-# ==================== RTOS check interval ====================
+# ==================== RTOS check interval / فاصله بررسی RTOS ====================
 
 
 def calculate_next_check_ms(period_ms, duty_percent, beep_count, gap_ms):
@@ -146,7 +146,7 @@ def calculate_next_check_ms(period_ms, duty_percent, beep_count, gap_ms):
     return max(next_check_ms, UI_BUZZER_MIN_CHECK_MS)
 
 
-# ==================== Scenario one-shot adapter ====================
+# ==================== Scenario one-shot adapter / تبدیل بوق تک‌باره سناریو ====================
 
 
 def calculate_scenario_one_shot(duration_ms):
@@ -167,7 +167,7 @@ def calculate_scenario_one_shot(duration_ms):
     return calculate_pattern(period_ms, duty_percent, 1, 0)
 
 
-# ==================== Assertions ====================
+# ==================== Assertions / بررسی‌های قطعی ====================
 
 
 def assert_equal(actual, expected, label):
@@ -176,7 +176,7 @@ def assert_equal(actual, expected, label):
 
 def run_assertions():
     """[EN] Run deterministic buzzer timing checks; [FA] تست‌های قطعی زمان‌بندی بوق."""
-    # User example: 10s period, 10% duty, 2 pulses, 100ms gap.
+    # User example: 10s period, 10% duty, 2 pulses, 100ms gap. / مثال کاربر: دوره ۱۰ ثانیه، دیوتی ۱۰ درصد، دو پالس و گپ ۱۰۰ میلی‌ثانیه.
     assert_equal(
         calculate_pattern(10000, 10, 2, 100),
         (1000, [450, 450], 100, 9000),
@@ -193,7 +193,7 @@ def run_assertions():
         "example GPIO waveform",
     )
 
-    # BatteryRun warning bands use approximate integer duties accepted by the user.
+    # BatteryRun warning bands use approximate integer duties accepted by the user. / بازه‌های هشدار BatteryRun از دیوتی صحیح تقریبی مورد تأیید کاربر استفاده می‌کنند.
     assert_equal(
         calculate_pattern(60000, 2, 1, 0),
         (1200, [1200], 0, 58800),
@@ -215,8 +215,8 @@ def run_assertions():
         "BatteryRun critical ten-second pattern",
     )
 
-    # Legacy one-shot durations are represented with a safe period and stopped
-    # explicitly by the scenario after the requested duration.
+    # Legacy one-shot durations are represented with a safe period and stopped / مدت‌های تک‌باره قدیمی با دوره امن نمایش داده و متوقف می‌شوند
+    # explicitly by the scenario after the requested duration. / سناریو پس از مدت درخواستی آن‌ها را صریحاً متوقف می‌کند.
     assert_equal(
         calculate_scenario_one_shot(150),
         (150, [150], 0, 850),
@@ -233,7 +233,7 @@ def run_assertions():
         "battery-run doubled one-shot adapter",
     )
 
-    # One pulse has no adjacent gap, so a gap below 100ms is ignored.
+    # One pulse has no adjacent gap, so a gap below 100ms is ignored. / یک پالس گپ مجاور ندارد و گپ کمتر از ۱۰۰ میلی‌ثانیه نادیده گرفته می‌شود.
     assert_equal(
         calculate_pattern(1000, 50, 1, 1),
         (500, [500], 0, 500),
@@ -245,27 +245,27 @@ def run_assertions():
         "single-beep next RTOS check",
     )
 
-    # Remainder milliseconds are placed on the last pulse so the duty window
-    # remains exact instead of losing integer-division time.
+    # Remainder milliseconds are placed on the last pulse so the duty window / میلی‌ثانیه‌های باقی‌مانده روی پالس آخر قرار می‌گیرند تا پنجره دیوتی
+    # remains exact instead of losing integer-division time. / دقیق بماند و زمان تقسیم صحیح از بین نرود.
     assert_equal(
         calculate_pattern(1000, 60, 3, 100),
         (600, [133, 133, 134], 100, 400),
         "three-beep safe-gap remainder timing",
     )
 
-    # Safe-off commands return zero and must not be reported as errors.
+    # Safe-off commands return zero and must not be reported as errors. / فرمان‌های خاموشی امن صفر برمی‌گردانند و نباید خطا گزارش شوند.
     assert_equal(calculate_next_check_ms(0, 10, 2, 100), UI_BUZZER_OFF_RESULT, "zero period turns off")
     assert_equal(calculate_next_check_ms(1000, 0, 2, 100), UI_BUZZER_OFF_RESULT, "zero duty turns off")
     assert_equal(calculate_next_check_ms(1000, 10, 0, 100), UI_BUZZER_OFF_RESULT, "zero count turns off")
 
-    # Non-zero unsafe configurations return -1.
+    # Non-zero unsafe configurations return -1. / تنظیمات غیرصفر و ناامن مقدار منفی یک برمی‌گردانند.
     assert_equal(calculate_next_check_ms(999, 10, 2, 100), UI_BUZZER_INVALID_RESULT, "short period rejects")
     assert_equal(calculate_next_check_ms(1000, 50, 2, 99), UI_BUZZER_INVALID_RESULT, "short gap rejects")
     assert_equal(calculate_next_check_ms(1000, 10, 3, 100), UI_BUZZER_INVALID_RESULT, "gaps without pulse time reject")
     assert_equal(calculate_next_check_ms(1000, 101, 1, 100), UI_BUZZER_INVALID_RESULT, "duty above 100 rejects")
 
 
-# ==================== Main ====================
+# ==================== Main / اجرای اصلی ====================
 
 
 def main():

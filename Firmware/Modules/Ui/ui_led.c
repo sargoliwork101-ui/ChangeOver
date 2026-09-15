@@ -19,7 +19,7 @@
 #include "task.h"
 #include <stdbool.h>
 
-/* ==================== Battery Voltage To Percent ==================== */
+/* ==================== Battery Voltage To Percent / تبدیل ولتاژ باتری به درصد ==================== */
 
 /**
  * @brief  [EN] Battery voltage to percent 0..100. Non-linear formula broken into 4 steps: range, offset, scaled, percent.
@@ -73,7 +73,7 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
     return uint8_t__batteryPercent;
 }
 
-/* ==================== Green LED ==================== */
+/* ==================== Green LED / LED سبز ==================== */
 
 /**
  * @brief  [EN] Drive green LED on/off. Low-level wrapper around BSP GPIO.
@@ -85,7 +85,7 @@ static void func__green(bool bool__greenOn)
     func__BspGpio_Write(PIN_LED_G_PORT, PIN_LED_G_PIN, bool__greenOn);
 }
 
-/* ==================== Red LED ==================== */
+/* ==================== Red LED / LED قرمز ==================== */
 
 /**
  * @brief  [EN] Drive red LED on/off. Low-level.
@@ -97,7 +97,7 @@ static void func__red(bool bool__redOn)
     func__BspGpio_Write(PIN_LED_R_PORT, PIN_LED_R_PIN, bool__redOn);
 }
 
-/* ==================== Yellow LED ==================== */
+/* ==================== Yellow LED / LED زرد ==================== */
 
 /**
  * @brief  [EN] Drive yellow LED on/off. Low-level.
@@ -109,7 +109,7 @@ static void func__yellow(bool bool__yellowOn)
     func__BspGpio_Write(PIN_LED_Y_PORT, PIN_LED_Y_PIN, bool__yellowOn);
 }
 
-/* ==================== All Off Safe ==================== */
+/* ==================== All Off Safe / خاموشی امن همه خروجی‌ها ==================== */
 
 /**
  * @brief  [EN] Drive all LEDs off and request the buzzer service to enter its safe-off state.
@@ -123,7 +123,7 @@ static void func__all_off(void)
     (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 }
 
-/* ==================== Input connection state ==================== */
+/* ==================== Input connection state / وضعیت اتصال ورودی ==================== */
 
 /**
  * @brief  [EN] Stateful input-connected result used by the 20V/21V hysteresis.
@@ -133,7 +133,7 @@ static void func__all_off(void)
  */
 static bool BOOL__G__UiInputPresent = false;
 
-/* ==================== Input overvoltage state ==================== */
+/* ==================== Input overvoltage state / وضعیت اضافه‌ولتاژ ورودی ==================== */
 
 /**
  * @brief  [EN] Stateful input overvoltage error flag.
@@ -149,7 +149,7 @@ static bool BOOL__G__UiInputOverVoltage = false;
  */
 static TickType_t TICKTYPE_T__G__UiInputOverVoltageStartTick = 0;
 
-/* ==================== BatteryRun critical beep state ==================== */
+/* ==================== BatteryRun critical beep state / وضعیت بوق بحرانی BatteryRun ==================== */
 
 /**
  * @brief  [EN] TRUE while the one-time critical BatteryRun beep is active.
@@ -169,7 +169,7 @@ static bool BOOL__G__UiBatteryCriticalBeepCompleted = false;
  */
 static TickType_t TICKTYPE_T__G__UiBatteryCriticalBeepStartTick = 0;
 
-/* ==================== BatteryRun green blink state ==================== */
+/* ==================== BatteryRun green blink state / وضعیت چشمک سبز BatteryRun ==================== */
 
 /**
  * @brief  [EN] Current green LED phase in the non-blocking BatteryRun blink.
@@ -201,7 +201,7 @@ static uint32_t UINT32_T__G__UiBatteryGreenOnMs = 0u;
  */
 static uint32_t UINT32_T__G__UiBatteryGreenOffMs = 0u;
 
-/* ==================== BatteryRun critical beep reset ==================== */
+/* ==================== BatteryRun critical beep reset / بازنشانی بوق بحرانی BatteryRun ==================== */
 
 /**
  * @brief  [EN] Reset the one-time critical BatteryRun beep state.
@@ -214,7 +214,7 @@ static void func__Ui_ResetBatteryCriticalBeep(void)
     TICKTYPE_T__G__UiBatteryCriticalBeepStartTick = 0;
 }
 
-/* ==================== BatteryRun green blink reset ==================== */
+/* ==================== BatteryRun green blink reset / بازنشانی چشمک سبز BatteryRun ==================== */
 
 /**
  * @brief  [EN] Reset non-blocking BatteryRun green blink timing.
@@ -229,7 +229,7 @@ static void func__Ui_ResetBatteryRunGreenBlink(void)
     UINT32_T__G__UiBatteryGreenOffMs = 0u;
 }
 
-/* ==================== BatteryRun green blink update ==================== */
+/* ==================== BatteryRun green blink update / به‌روزرسانی چشمک سبز BatteryRun ==================== */
 
 /**
  * @brief  [EN] Update the non-blocking BatteryRun green blink and service its phase timing.
@@ -280,7 +280,7 @@ static void func__Ui_UpdateBatteryRunGreenBlink(uint32_t uint32_t__greenOnMs, ui
     func__green(BOOL__G__UiBatteryGreenOn);
 }
 
-/* ==================== Input state update ==================== */
+/* ==================== Input state update / به‌روزرسانی وضعیت ورودی ==================== */
 
 /**
  * @brief  [EN] Update input presence and input overvoltage state with hysteresis.
@@ -330,7 +330,7 @@ static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
     }
 }
 
-/* ==================== Scenario Input Overvoltage ==================== */
+/* ==================== Scenario Input Overvoltage / سناریوی اضافه‌ولتاژ ورودی ==================== */
 
 /**
  * @brief  [EN] Display input overvoltage: green steady, yellow off, red at 50% duty,
@@ -369,7 +369,7 @@ static void func__Ui_ScenarioInputOverVoltage_Tick(void)
         UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS);
 }
 
-/* ==================== Scenario InputOk ==================== */
+/* ==================== Scenario InputOk / سناریوی ورودی عادی ==================== */
 
 /**
  * @brief  [EN] InputOk scenario: green steady, red/yellow off, and buzzer off.
@@ -390,7 +390,7 @@ void func__Ui_ScenarioInputOk(void)
     vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_input_ok_poll_ms));
 }
 
-/* ==================== Scenario Charging Tick ==================== */
+/* ==================== Scenario Charging Tick / تیک سناریوی شارژ ==================== */
 
 /**
  * @brief  [EN] Charging scenario tick: green steady, yellow shows remaining to full non-linear.
@@ -456,7 +456,7 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
     vTaskDelay(pdMS_TO_TICKS(uint32_t__yellowOffMs));
 }
 
-/* ==================== Scenario BatteryRun Tick ==================== */
+/* ==================== Scenario BatteryRun Tick / تیک سناریوی دشارژ ==================== */
 
 /**
  * @brief  [EN] BatteryRun scenario: green blink follows the linear 21V..28V battery percentage;
@@ -566,7 +566,7 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     func__Ui_UpdateBatteryRunGreenBlink(uint32_t__greenOnMs, uint32_t__greenOffMs);
 }
 
-/* ==================== Ui Tick ==================== */
+/* ==================== Ui Tick / تیک اصلی UI ==================== */
 
 /**
  * @brief  [EN] Ui main tick - decides which scenario based on input and battery, RTOS simple readable.
@@ -613,7 +613,7 @@ void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__battery
     }
 }
 
-/* ==================== Ui Init ==================== */
+/* ==================== Ui Init / مقداردهی اولیه UI ==================== */
 
 /**
  * @brief  [EN] Drive all UI outputs low (safe state).
@@ -629,7 +629,7 @@ void func__Ui_Init(void)
     func__Ui_ResetBatteryRunGreenBlink();
 }
 
-/* ==================== Board Test Start ==================== */
+/* ==================== Board Test Start / شروع تست برد ==================== */
 
 /**
  * @brief  [EN] One-shot wiring check: red, yellow, green and the previous 150ms-style buzzer check.

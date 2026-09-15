@@ -15,9 +15,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* ==================== Buzzer / Beep ==================== */
+/* ==================== Buzzer / Beep / بازر و بوق ==================== */
 
-/* ==================== Buzzer persistent state ==================== */
+/* ==================== Buzzer persistent state / وضعیت ماندگار بازر ==================== */
 
 /**
  * @brief  [EN] File-local validity flag for the stored buzzer configuration.
@@ -31,7 +31,7 @@
  */
 static bool BOOL__G__BuzzerPatternValid = false;
 
-/* ==================== Buzzer period ==================== */
+/* ==================== Buzzer period / دوره بازر ==================== */
 
 /**
  * @brief  [EN] Previously accepted complete buzzer period in milliseconds.
@@ -43,7 +43,7 @@ static bool BOOL__G__BuzzerPatternValid = false;
  */
 static uint32_t UINT32_T__G__BuzzerPeriodMs = 0u;
 
-/* ==================== Buzzer duty and count ==================== */
+/* ==================== Buzzer duty and count / دیوتی و تعداد بوق ==================== */
 
 /**
  * @brief  [EN] Previously accepted duty-window percentage.
@@ -65,7 +65,7 @@ static uint8_t UINT8_T__G__BuzzerDutyPercent = 0u;
  */
 static uint8_t UINT8_T__G__BuzzerCount = 0u;
 
-/* ==================== Buzzer gap ==================== */
+/* ==================== Buzzer gap / گپ بوق ==================== */
 
 /**
  * @brief  [EN] Previously accepted low gap between adjacent beeps in milliseconds.
@@ -77,7 +77,7 @@ static uint8_t UINT8_T__G__BuzzerCount = 0u;
  */
 static uint32_t UINT32_T__G__BuzzerGapMs = 0u;
 
-/* ==================== Buzzer cycle start ==================== */
+/* ==================== Buzzer cycle start / شروع چرخه بوق ==================== */
 
 /**
  * @brief  [EN] FreeRTOS tick at which the current buzzer cycle started.
@@ -91,7 +91,7 @@ static uint32_t UINT32_T__G__BuzzerGapMs = 0u;
  */
 static TickType_t TICKTYPE_T__G__BuzzerCycleStartTick = 0;
 
-/* ==================== Buzzer service ==================== */
+/* ==================== Buzzer service / سرویس بازر ==================== */
 
 /**
  * @brief  [EN] Service one periodic buzzer pattern without blocking the task.

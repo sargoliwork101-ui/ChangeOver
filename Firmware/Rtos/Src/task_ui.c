@@ -15,12 +15,12 @@
 
 #include <stdint.h>
 
-/* ==================== Global Test Inputs ==================== */
+/* ==================== Global Test Inputs / ورودی‌های تست سراسری ==================== */
 
 volatile uint32_t UINT32_T__G__InputVoltageMv = 24000u;
 volatile uint32_t UINT32_T__G__BatteryVoltageMv = 25000u;
 
-/* ==================== Task Ui ==================== */
+/* ==================== Task Ui / تسک UI ==================== */
 
 /**
  * @brief  [EN] Run the UI task and select the scenario from input and battery voltage.

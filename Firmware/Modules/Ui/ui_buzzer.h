@@ -10,11 +10,11 @@
 #ifndef UI_BUZZER_H
 #define UI_BUZZER_H
 
-/* ==================== Includes ==================== */
+/* ==================== Includes / شامل‌ها ==================== */
 
 #include <stdint.h>
 
-/* ==================== Buzzer timing constants ==================== */
+/* ==================== Buzzer timing constants / ثابت‌های زمانی بازر ==================== */
 
 /**
  * @brief  [EN] Percentage scale used by duty and check calculations.
@@ -60,7 +60,7 @@
  */
 #define UI_BUZZER_MIN_CHECK_MS          1u
 
-/* ==================== Buzzer result constants ==================== */
+/* ==================== Buzzer result constants / ثابت‌های نتیجه بازر ==================== */
 
 /**
  * @brief  [EN] Return value for a valid command that intentionally disables the buzzer.
@@ -76,7 +76,7 @@
  */
 #define UI_BUZZER_INVALID_RESULT        (-1)
 
-/* ==================== BoardTest compatibility constant ==================== */
+/* ==================== BoardTest compatibility constant / ثابت سازگاری تست برد ==================== */
 
 /**
  * @brief  [EN] Default one-shot beep duration used by the BoardTest scenario.
@@ -86,7 +86,7 @@
  */
 #define UI_BOOT_BEEP_MS                 150u
 
-/* ==================== Buzzer service ==================== */
+/* ==================== Buzzer service / سرویس بازر ==================== */
 
 /**
  * @brief  [EN] Service one periodic buzzer pattern without blocking the task.

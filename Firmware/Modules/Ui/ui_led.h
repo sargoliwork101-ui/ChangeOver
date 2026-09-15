@@ -13,11 +13,11 @@
 #ifndef UI_LED_H
 #define UI_LED_H
 
-/* ==================== Includes ==================== */
+/* ==================== Includes / شامل‌ها ==================== */
 
 #include <stdint.h>
 
-/* ==================== Battery voltage mapping constants ==================== */
+/* ==================== Battery voltage mapping constants / ثابت‌های نگاشت ولتاژ باتری ==================== */
 
 /**
  * @brief  [EN] Battery voltage mapped to zero percent, in millivolts.
@@ -31,7 +31,7 @@
  */
 #define UI_BAT_V_MAX_MV                 28000u
 
-/* ==================== Input voltage thresholds and hysteresis ==================== */
+/* ==================== Input voltage thresholds and hysteresis / آستانه‌ها و هیسترزیس ولتاژ ورودی ==================== */
 
 /**
  * @brief  [EN] Input voltage at or above which the input is considered connected, in millivolts.
@@ -54,7 +54,7 @@
 #define UI_INPUT_DISCONNECTED_THRESHOLD_MV \
     (UI_INPUT_CONNECTED_THRESHOLD_MV - UI_INPUT_HYSTERESIS_MV)
 
-/* ==================== Input overvoltage error constants ==================== */
+/* ==================== Input overvoltage error constants / ثابت‌های خطای اضافه‌ولتاژ ورودی ==================== */
 
 /**
  * @brief  [EN] Input voltage above which the overvoltage error is activated, in millivolts.
@@ -79,7 +79,7 @@
 #define UI_INPUT_OVERVOLTAGE_CLEAR_THRESHOLD_MV \
     (UI_INPUT_OVERVOLTAGE_THRESHOLD_MV - UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV)
 
-/* ==================== Scenario timing constants ==================== */
+/* ==================== Scenario timing constants / ثابت‌های زمانی سناریوها ==================== */
 
 /**
  * @brief  [EN] Red LED period while the input overvoltage error is displayed, in milliseconds.
@@ -160,7 +160,7 @@
  */
 #define UI_CHARGING_YELLOW_MIN_OFF_MS   10u
 
-/* ==================== BatteryRun warning constants ==================== */
+/* ==================== BatteryRun warning constants / ثابت‌های هشدار BatteryRun ==================== */
 
 /**
  * @brief  [EN] Battery percentage below which the standard BatteryRun warning beep is enabled.
@@ -285,7 +285,7 @@
  */
 #define UI_BATTERY_RUN_BEEP_GAP_MS 100u
 
-/* ==================== Percentage constants ==================== */
+/* ==================== Percentage constants / ثابت‌های درصد ==================== */
 
 /**
  * @brief  [EN] Full battery percentage and upper bound of percentage calculations.
@@ -299,7 +299,7 @@
  */
 #define UI_PERCENT_SCALE                100u
 
-/* ==================== RTOS tick ==================== */
+/* ==================== RTOS tick / تیک RTOS ==================== */
 
 /**
  * @brief  [EN] Base UI task delay in milliseconds.
@@ -307,7 +307,7 @@
  */
 #define UI_TICK_MS                      10u
 
-/* ==================== Battery Voltage To Percent ==================== */
+/* ==================== Battery Voltage To Percent / تبدیل ولتاژ باتری به درصد ==================== */
 
 /**
  * @brief  [EN] Convert battery voltage to percent 0..100. Non-linear broken into steps: range, offset, scaled, percent.
@@ -317,7 +317,7 @@
  */
 uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv);
 
-/* ==================== Ui Init ==================== */
+/* ==================== Ui Init / مقداردهی اولیه UI ==================== */
 
 /**
  * @brief  [EN] Drive all UI outputs low (safe state).
@@ -325,7 +325,7 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv);
  */
 void func__Ui_Init(void);
 
-/* ==================== Board Test Start ==================== */
+/* ==================== Board Test Start / شروع تست برد ==================== */
 
 /**
  * @brief  [EN] One-shot wiring check: red, yellow, green and the previous short buzzer check via the independent buzzer service.
@@ -333,7 +333,7 @@ void func__Ui_Init(void);
  */
 void func__Ui_BoardTest_Start(void);
 
-/* ==================== Scenario InputOk ==================== */
+/* ==================== Scenario InputOk / سناریوی ورودی عادی ==================== */
 
 /**
  * @brief  [EN] InputOk: green steady, red/yellow/buzzer off. RTOS simple with vTaskDelay, MCU not locked.
@@ -341,7 +341,7 @@ void func__Ui_BoardTest_Start(void);
  */
 void func__Ui_ScenarioInputOk(void);
 
-/* ==================== Scenario Charging Tick ==================== */
+/* ==================== Scenario Charging Tick / تیک سناریوی شارژ ==================== */
 
 /**
  * @brief  [EN] Charging: green steady, yellow remaining to full non-linear (remainingPercent, periodPerPercent, yellowOnMs/offMs).
@@ -351,7 +351,7 @@ void func__Ui_ScenarioInputOk(void);
  */
 void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv);
 
-/* ==================== Scenario BatteryRun Tick ==================== */
+/* ==================== Scenario BatteryRun Tick / تیک سناریوی دشارژ ==================== */
 
 /**
  * @brief  [EN] BatteryRun: green blink from the linear 21V..28V percentage and four requested buzzer bands.
@@ -362,7 +362,7 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv);
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv);
 
-/* ==================== Ui Tick ==================== */
+/* ==================== Ui Tick / تیک اصلی UI ==================== */
 
 /**
  * @brief  [EN] Ui main tick - decides which scenario based on input and battery, RTOS simple readable.
