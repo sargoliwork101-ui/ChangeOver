@@ -259,11 +259,10 @@ else
   echo "  FAIL: ui.h / ui_led.h missing UI_ constants"
   FAIL=1
 fi
-if (grep -q "UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null && grep -E -q "greenOnMs|greenOffMs|GreenOnMs|LED_BLINK" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null) || \
-   (grep -q "UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" 2>/dev/null && grep -E -q "greenOnMs|greenOffMs" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null); then
-  echo "  OK: ui.c / ui_led.c / ui_buzzer.c uses meaningful names with __"
+if (grep -E -q "dutyWindowMs|beepOnMs|periodTailMs" "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" 2>/dev/null && grep -E -q "greenOnMs|greenOffMs" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null); then
+  echo "  OK: ui_led.c / ui_buzzer.c uses meaningful names with __"
 else
-  echo "  FAIL: ui.c missing meaningful names"
+  echo "  FAIL: UI files missing meaningful names"
   FAIL=1
 fi
 
@@ -315,27 +314,15 @@ else
   FAIL=1
 fi
 
-# Check buzzer code at end of ui.c (buzzer functions after LED) OR split files exist
-BUZZER_LINE=$(grep -n "func__buzzer" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null | head -n 1 | cut -d: -f1)
-LED_LINE=$(grep -n "func__Ui_ScenarioInputOk" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null | head -n 1 | cut -d: -f1)
-if [ -n "$BUZZER_LINE" ] && [ -n "$LED_LINE" ]; then
-  if [ "$BUZZER_LINE" -gt "$LED_LINE" ]; then
-    echo "  OK: Buzzer code after LED (buzzer at end, LED first) in ui.c"
+# Check split files: LED in ui_led.c, one buzzer service in ui_buzzer.c.
+if [ -f "$ROOT/Firmware/Modules/Ui/ui_led.c" ] && [ -f "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" ]; then
+  if grep -q "func__Ui_ScenarioInputOk" "$ROOT/Firmware/Modules/Ui/ui_led.c" && grep -q "func__Ui_Buzzer_Tick" "$ROOT/Firmware/Modules/Ui/ui_buzzer.c"; then
+    echo "  OK: Split LED and BUZZER: LED in ui_led.c, BUZZER in ui_buzzer.c (single buzzer service)"
   else
-    echo "  FAIL: Buzzer code not at end (buzzer before LED)"
-    FAIL=1
+    echo "  WARN: Could not find buzzer/LED lines in split files"
   fi
 else
-  # Check split: LED in ui_led.c, BUZZER in ui_buzzer.c
-  if [ -f "$ROOT/Firmware/Modules/Ui/ui_led.c" ] && [ -f "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" ]; then
-    if grep -q "func__Ui_ScenarioInputOk" "$ROOT/Firmware/Modules/Ui/ui_led.c" && grep -q "func__buzzer" "$ROOT/Firmware/Modules/Ui/ui_buzzer.c"; then
-      echo "  OK: Split LED and BUZZER: LED in ui_led.c, BUZZER in ui_buzzer.c (buzzer at end of its own file, LED first)"
-    else
-      echo "  WARN: Could not find buzzer/LED lines in split files"
-    fi
-  else
-    echo "  WARN: Could not find buzzer/LED lines"
-  fi
+  echo "  WARN: Could not find buzzer/LED split files"
 fi
 
 # Check markers in other files + UI split files have markers above each function

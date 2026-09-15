@@ -11,7 +11,6 @@
  */
 
 #include "ui_led.h"
-#include "ui_buzzer.h"
 #include "app_config.h"
 #include "bsp_gpio.h"
 #include "board_pins.h"
@@ -112,39 +111,27 @@ static void func__yellow(bool bool__yellowOn)
 /* ==================== All Off Safe ==================== */
 
 /**
- * @brief  [EN] Drive all LEDs and buzzer off - safe state after Init.
- *         [FA] همه ال‌ای‌دی‌ها و بازر خاموش - حالت امن.
+ * @brief  [EN] Drive all LEDs off - safe LED state after Init. Buzzer is owned by ui_buzzer.c.
+ *         [FA] همه ال‌ای‌دی‌ها را خاموش می‌کند؛ حالت امن LED. مالک بوق ui_buzzer.c است.
  */
 static void func__all_off(void)
 {
     func__green(false);
     func__red(false);
     func__yellow(false);
-    func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
 }
-
-/* ==================== BatteryRun Beep Cycle Count ==================== */
-
-/**
- * @brief  [EN] Cycle counter for smart beep in BatteryRun, counts completed 1s blink cycles; the first beep occurs on the requested cycle, then the counter resets.
- *         [FA] شمارنده سیکل برای بوق هوشمند در دشارژ، هر سیکل ۱ ثانیه.
- */
-static uint32_t UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
 
 /* ==================== Scenario InputOk ==================== */
 
 /**
- * @brief  [EN] InputOk scenario: green steady, red/yellow/buzzer off. RTOS simple with vTaskDelay 500ms, MCU not locked.
- *         [FA] سناریو ورودی وصل: سبز ثابت، بقیه خاموش، تاخیر RTOS ساده.
+ * @brief  [EN] InputOk scenario: green steady, red/yellow off. Buzzer is independent; RTOS simple with vTaskDelay.
+ *         [FA] سناریو ورودی وصل: سبز ثابت، قرمز و زرد خاموش؛ بوق مستقل است.
  */
 void func__Ui_ScenarioInputOk(void)
 {
-    UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
-
     func__green(true);
     func__red(false);
     func__yellow(false);
-    func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
 
     /* [EN] RTOS delay in task, not HAL_Delay - other tasks still run, MCU not locked, simple & readable
        [FA] تاخیر RTOS در تسک - میکرو قفل نمی‌شود، ساده و خوانا */
@@ -161,8 +148,6 @@ void func__Ui_ScenarioInputOk(void)
  */
 void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 {
-    UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
-
     uint8_t uint8_t__batteryPercent;
     uint32_t uint32_t__remainingPercent;
     uint32_t uint32_t__periodPerPercent;
@@ -218,9 +203,8 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 /* ==================== Scenario BatteryRun Tick ==================== */
 
 /**
- * @brief  [EN] BatteryRun scenario tick: green blink non-linear (remainingPercent, periodPerPercent, greenOnMs/offMs), yellow OFF, smart beep.
- *         Beep every pct seconds, duration x2 if pct<20; first beep is on cycle pct. RTOS simple with vTaskDelay.
- *         [FA] سناریو دشارژ: سبز چشمک غیرخطی، زرد خاموش، بوق هوشمند با شمارش دقیق سیکل، ساده RTOS.
+ * @brief  [EN] BatteryRun scenario tick: green blink non-linear (remainingPercent, periodPerPercent, greenOnMs/offMs), yellow OFF.
+ *         [FA] سناریو دشارژ: سبز چشمک غیرخطی و زرد خاموش؛ بوق از این سناریو مستقل است.
  * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 28000=100% / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
@@ -230,9 +214,6 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     uint32_t uint32_t__periodPerPercent;
     uint32_t uint32_t__greenOffMs;
     uint32_t uint32_t__greenOnMs;
-    uint32_t uint32_t__beepIntervalCycles;
-    uint32_t uint32_t__beepDurationMs;
-    bool bool__shouldBeepNow;
 
     uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
 
@@ -257,51 +238,6 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     func__green(false);
     vTaskDelay(pdMS_TO_TICKS(uint32_t__greenOffMs));
 
-    if (uint8_t__batteryPercent >= APP_CONFIG.ui_beep_start_pct)
-    {
-        UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
-        return;
-    }
-
-    uint32_t__beepIntervalCycles = (uint32_t)uint8_t__batteryPercent;
-    if (uint32_t__beepIntervalCycles == 0u)
-    {
-        uint32_t__beepIntervalCycles = UI_BEEP_MIN_INTERVAL_CYCLES;
-    }
-
-    /* [EN] Count the completed one-second blink cycle before comparing.
-       This makes the first beep occur exactly after the requested number of cycles.
-       [FA] ابتدا سیکل چشمک یک‌ثانیه‌ای کامل‌شده را بشمار تا اولین بوق دقیقاً بعد از تعداد سیکل درخواستی باشد. */
-    bool__shouldBeepNow = false;
-    if (UINT32_T__G__UiBatteryRunBeepCycleCnt < uint32_t__beepIntervalCycles)
-    {
-        UINT32_T__G__UiBatteryRunBeepCycleCnt++;
-    }
-
-    if (UINT32_T__G__UiBatteryRunBeepCycleCnt >= uint32_t__beepIntervalCycles)
-    {
-        bool__shouldBeepNow = true;
-        UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
-    }
-
-    if (bool__shouldBeepNow == false)
-    {
-        return;
-    }
-
-    uint32_t__beepDurationMs = APP_CONFIG.ui_beep_base_ms;
-    if (uint8_t__batteryPercent < APP_CONFIG.ui_beep_double_thresh_pct)
-    {
-        uint32_t__beepDurationMs = uint32_t__beepDurationMs * 2u;
-    }
-
-    /* [EN] Use buzzer pattern from buzzer module - simple RTOS delay, MCU not locked
-       [FA] استفاده از تابع بازر جدا - ساده RTOS */
-    func__Ui_BuzzerPatternMs_Start(0u, uint32_t__beepDurationMs, 1u, 0u);
-    while (func__Ui_BuzzerPatternMs_Tick() == true)
-    {
-        vTaskDelay(pdMS_TO_TICKS(UI_TICK_MS));
-    }
 }
 
 /* ==================== Ui Tick ==================== */
@@ -348,20 +284,19 @@ void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__battery
 /* ==================== Ui Init ==================== */
 
 /**
- * @brief  [EN] Drive all UI outputs low (safe state) and reset beep counter.
- *         [FA] همه خروجی‌های UI خاموش و ریست شمارنده بوق.
+ * @brief  [EN] Drive all UI outputs low (safe state).
+ *         [FA] همه خروجی‌های UI خاموش (حالت امن).
  */
 void func__Ui_Init(void)
 {
     func__all_off();
-    UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
 }
 
 /* ==================== Board Test Start ==================== */
 
 /**
- * @brief  [EN] One-shot wiring check: red, yellow, green each 500ms, short beep 150ms, RTOS simple with vTaskDelay.
- *         [FA] تست یک‌باره سیم‌کشی: قرمز، زرد، سبز هر کدام ۵۰۰ms، بوق ۱۵۰ms، ساده RTOS.
+ * @brief  [EN] One-shot wiring check: red, yellow, green each self-test interval, RTOS simple with vTaskDelay.
+ *         [FA] تست یک‌باره سیم‌کشی: قرمز، زرد، سبز هر کدام به اندازه زمان تست، ساده RTOS.
  */
 void func__Ui_BoardTest_Start(void)
 {
@@ -379,11 +314,6 @@ void func__Ui_BoardTest_Start(void)
     vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_selftest_led_ms));
     func__green(false);
 
-    func__Ui_BuzzerPatternMs_Start(0u, APP_CONFIG.ui_boot_beep_ms, 1u, 0u);
-    while (func__Ui_BuzzerPatternMs_Tick() == true)
-    {
-        vTaskDelay(pdMS_TO_TICKS(UI_TICK_MS));
-    }
 }
 
 /* ==================== Board Test Tick ==================== */

@@ -81,7 +81,7 @@ static void func__green(bool bool__greenOn) { ... }
 static void func__red(bool bool__redOn) { ... }
 
 /* ==================== Buzzer / Beep ==================== */
-static void func__buzzer(bool bool__buzzerOn) { ... }
+void func__Ui_Buzzer_Tick(uint32_t periodMs, uint8_t dutyPercent, uint8_t beepCount, uint32_t gapMs);
 
 /* ==================== Ui Init ==================== */
 void func__Ui_Init(void);
@@ -94,15 +94,13 @@ void func__Ui_Init(void);
 
 بازر را از LED در کد جدا کن - الان دو فایل جدا در همین پوشه UI.
 
-- قبلاً تمام کدها و توابع مربوط به بازر انتهای `ui.c` بود (LED اول، بازر آخر)
-- الان طبق درخواست کاربر UI دو بخش شد: LED و BUZZER توی همین پوشه UI
-  - `ui_led.h` / `ui_led.c` : LED شامل `green/red/yellow/all_off`, `BatteryVoltageToPercent`, `ScenarioInputOk`, `Charging_Tick`, `BatteryRun_Tick`, `Tick`, `Init`, `BoardTest` - هر تابع با `/* ==================== */` جدا
-  - `ui_buzzer.h` / `ui_buzzer.c` : BUZZER شامل `buzzer`, `calc_beep_on`, `buzzer_start_internal`, `BuzzerPatternMs/Percent`, `Stop` - هر تابع با `/* ==================== */` جدا، `/* ==================== Buzzer / Beep ==================== */` دارد
-  - `ui.h` : فقط ثابت‌ها (single source) + `#include "ui_led.h"` و `#include "ui_buzzer.h"`
-  - `ui.c` : wrapper برای سازگاری، پیاده‌سازی‌ها در دو فایل جدید
-- برای تفکیک بهتر دو بخش بزرگ جدا: `ui_led.c` و `ui_buzzer.c` هر دو با marker بالای هر تابع
-- داخل هر بخش، توابع مربوط به همان کار باشد، نه قاطی
-- مثال ساختار جدید:
+- قبلاً تمام کدها و توابع مربوط به بازر با منطق LED قاطی بودند.
+- الان طبق درخواست کاربر UI دو بخش مستقل دارد: LED و BUZZER در همین پوشه UI.
+  - `ui_led.h` / `ui_led.c` : LED شامل `green/red/yellow/all_off`, `BatteryVoltageToPercent`, `ScenarioInputOk`, `Charging_Tick`, `BatteryRun_Tick`, `Tick`, `Init`, `BoardTest`؛ هر تابع با `/* ==================== */` جدا. این بخش بوق را شروع نمی‌کند.
+  - `ui_buzzer.h` / `ui_buzzer.c` : فقط یک API عمومی به نام `func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)`؛ الگو را بدون قفل کردن تسک اجرا می‌کند و هر `UI_TICK_MS` صدا زده می‌شود.
+  - ثابت‌های الگوی بوق در `ui_buzzer.h` هستند؛ وضعیت داخلی در `ui_buzzer.c` است و تابع داخلی جدا برای بوق وجود ندارد.
+- داخل هر بخش، توابع مربوط به همان کار باشد، نه قاطی.
+- مثال ساختار فعلی:
 
 ```c
 /* ui_led.h / ui_led.c */
@@ -113,9 +111,11 @@ void func__Ui_Init(void);
 
 /* ui_buzzer.h / ui_buzzer.c */
 /* ==================== Buzzer / Beep ==================== */
-/* ==================== Buzzer Low Level ==================== */
-/* ==================== Calc Beep On ==================== */
-/* ==================== Buzzer Pattern Ms Start ==================== */
+/* ==================== Buzzer service ==================== */
+void func__Ui_Buzzer_Tick(uint32_t periodMs,
+                          uint8_t dutyPercent,
+                          uint8_t beepCount,
+                          uint32_t gapMs);
 ```
 
 - این جداسازی (دو فایل LED و BUZZER) تا آخر پروژه رعایت شود و در AI هم ثبت است
@@ -154,16 +154,15 @@ void func__Ui_ScenarioInputOk(void) {
 
 ## فایل ui_config.h حذف شد و UI دو بخش شد
 
-فایل `ui_config.h` اضافی بود و بعداً خود `ui.h` و `ui.c` هم حذف و به دو بخش LED و BUZZER تقسیم شد per user request.
+فایل `ui_config.h` اضافی بود و فایل‌های تک‌فایلی قدیمی UI نیز حذف شدند؛ UI اکنون به دو بخش LED و BUZZER تقسیم شده است.
 
-- قبلاً `ui_config.h` جدا بود و در `ui.c`, `task_ui.c`, `app_config.c` اینکلود می‌شد
-- بعد همه `#define`های UI در `ui.h` بودند (single source)
-- الان طبق درخواست کاربر ثابت‌ها در هدر خودشون هستند:
-  - `ui_led.h` : ثابت‌های LED (BAT_V_MIN/MAX, INPUT_THRESHOLD, BLINK_PERIOD, GREEN_MIN_OFF, CHARGING_BLINK_PERIOD, PERCENT_FULL, TICK_MS)
-  - `ui_buzzer.h` : ثابت‌های BUZZER (BOOT_BEEP_MS, BEEP_BASE_MS, BEEP_DOUBLE_THRESH_PCT, BEEP_START_PCT, BUZZER_DEFAULT_GAP_PERCENT, TICK_MS)
-- `task_ui.c` و `app_config.c` الان از `ui_led.h` و `ui_buzzer.h` می‌خوانند، نه `ui.h`
-- `ui.h` و `ui.c` حذف شدند per user request (نیازی نیست)
-- اگر ثابت جدید LED اضافه شد فقط در `ui_led.h` بگذار، اگر BUZZER در `ui_buzzer.h`
+- قبلاً تنظیمات UI در یک هدر/فایل عمومی و منطق LED و بوق کنار هم بود.
+- الان طبق درخواست کاربر ثابت‌ها در هدرهای خودشان هستند:
+  - `ui_led.h` : ثابت‌های پیش‌فرض LED (BAT_V_MIN/MAX, INPUT_THRESHOLD, BLINK_PERIOD, GREEN_MIN_OFF, CHARGING_BLINK_PERIOD, PERCENT_FULL, TICK_MS)
+  - `ui_buzzer.h` : ثابت‌های سرویس بوق (BUZZER_PERCENT_SCALE, BUZZER_DUTY_MAX_PERCENT, BUZZER_TICK_MS و ثابت‌های رزرو پیکربندی)
+- `app_config.c` پیش‌فرض‌های پیکربندی را از هدرهای UI می‌گیرد.
+- `ui_buzzer.c` فقط سرویس `func__Ui_Buzzer_Tick` را پیاده می‌کند؛ بوق از سناریوهای LED خودکار صدا زده نمی‌شود.
+- اگر ثابت جدید LED اضافه شد فقط در `ui_led.h` بگذار، اگر ثابت بوق اضافه شد در `ui_buzzer.h` بگذار.
 
 ## نام‌گذاری متغیر
 
@@ -171,31 +170,30 @@ void func__Ui_ScenarioInputOk(void) {
 - بعد از تایپ **دو تا `_` پشت‌سرهم `__`** برای تفکیک بهتر و قابل تعریف بودن: `__` بجای یکی
 - اگر گلوبال بود تایپ با حروف بزرگ و با `__G__` برای گلوبال: مثلاً `UINT32_T__G__InputVoltageMv`, `UINT8_T__G__BatteryPercent`, `BOOL__G__InputPresent`
 - اگر داخلی (لوکال) بود تایپ با حروف کوچک و `__`: مثلاً `uint32_t__inputVoltageMv`, `uint8_t__batteryPercent`, `bool__inputPresent`
-- برای استاتیک سطح فایل هم قانون گلوبال (حروف بزرگ) اعمال می‌شود: `UINT32_T__G__UiBatteryRunBeepCycleCnt`
+- برای استاتیک سطح فایل هم قانون گلوبال (حروف بزرگ) اعمال می‌شود: `BOOL__G__BuzzerPatternValid`, `UINT32_T__G__BuzzerPeriodMs`
 - **نام باید مرتبط با کاری باشد که برایش نوشته شده**: نام متغیر باید بگوید چه کاری می‌کند، نه نام عمومی مثل `tmp`, `data`, `val`
-  - خوب: `uint32_t__batteryVoltageMv`, `uint8_t__batteryPercent`, `bool__inputPresent`, `uint32_t__greenBlinkOnMs`, `uint32_t__buzzerTotalOnMs`
+  - خوب: `uint32_t__batteryVoltageMv`, `uint8_t__batteryPercent`, `bool__inputPresent`, `uint32_t__greenBlinkOnMs`, `uint32_t__dutyWindowMs`
   - بد: `uint32_t__x`, `uint32_t__temp`, `uint8_t__val`
-- ثابت‌های `#define` با پیشوند ماژول (مثل `UI_`) در `ui.h` باشند (چون `ui_config.h` حذف شد)
+- ثابت‌های `#define` با پیشوند ماژول (مثل `UI_`) در هدر همان بخش (`ui_led.h` یا `ui_buzzer.h`) باشند.
 
 ## نام‌گذاری ثابت
 
 - هر ثابت `#define` باید با نام ماژول/فایل شروع شود تا معلوم باشد کجا تعریف شده
-- مثال: `UI_SELFTEST_LED_MS` یعنی ثابت ماژول UI، در فایل `ui.h` (single source برای UI) تعریف شده
+- مثال: `UI_SELFTEST_LED_MS` یعنی ثابت ماژول UI، در `ui_led.h` تعریف شده است
 - **آیا `UI.c_UI_SELFTEST_LED_MS` شدنی است؟**
   - در C نام ماکرو فقط حروف، عدد و `_` می‌تواند داشته باشد، نقطه `.` غیرمجاز است، پس `UI.c_...` کامپایل نمی‌شود
-  - اگر بخواهی نام فایل را دقیق بیاوری باید با `_` بنویسی: `UI_CONFIG_SELFTEST_LED_MS` یا `UI_C_SELFTEST_LED_MS`
-  - ولی `UI_` خودش همین کار را می‌کند: `UI_` یعنی ماژول UI، و چون همه ثابت‌های UI در یک فایل واحد `ui.h` هستند، `UI_` عملاً نام فایل/ماژول را نشان می‌دهد
+  - اگر بخواهی نام فایل را دقیق بیاوری باید با `_` بنویسی؛ اما پیشوند `UI_` برای این ماژول کافی است
+  - ثابت‌های LED در `ui_led.h` و ثابت‌های سرویس بوق در `ui_buzzer.h` قرار می‌گیرند
   - برای ماژول‌های دیگر: `TASK_STACK_UI`, `TASK_PRIO_UI` در `rtos_config.h` هستند (پیشوند `TASK_` + نام ماژول)، `PIN_LED_G_PORT` در `board_pins.h` (پیشوند `PIN_`)
   - پس قانون فعلی: ثابت‌ها با پیشوند ماژول شروع شوند (`UI_`, `TASK_`, `PIN_`, `MODULE_`, `APP_`) که خودش نام فایل/ماژول را می‌رساند
-  - `ui_config.h` حذف شد، همه ثابت‌های UI در `ui.h` هستند، پس `UI_` کافی است
 - همه ثابت‌های جدید باید همین قانون را رعایت کنند و مرتبط با کارشان نام‌گذاری شوند
 
 ## نام‌گذاری تابع
 
 - فقط توابعی که خودمان می‌نویسیم (Firmware/App, Bsp, Modules, Rtos, Config) باید اولشان کلمه `func__` با **دو آندرلاین `__`** اضافه شود (بجای یکی)
 - به توابع سیستمی (HAL, FreeRTOS, CMSIS) کاری نداشته باش
-- مثال: `func__Ui_Init`, `func__Ui_BoardTest`, `func__Ui_BuzzerPatternMs`, `func__BspGpio_Write`, `func__App_Start`, `func__TaskUi`
-- برای `static` داخلی هم همین قانون: `func__green`, `func__all_off`, `func__calc_beep_on`
+- مثال: `func__Ui_Init`, `func__Ui_BoardTest`, `func__Ui_Buzzer_Tick`, `func__BspGpio_Write`, `func__App_Start`, `func__TaskUi`
+- برای `static` داخلی هم همین قانون: `func__green`, `func__all_off` در صورت نیاز؛ سرویس بوق فعلی تابع داخلی جدا ندارد.
 - در `.h` و `.c` و جاهایی که صدا زده می‌شود همه باید با `func__` بیاید
 - **نام فایل اولش نیاید**، فقط بعد از تایپ `__` باشد (مثلاً `uint32_t__` و `func__`)
 

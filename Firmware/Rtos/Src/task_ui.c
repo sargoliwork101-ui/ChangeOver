@@ -11,7 +11,6 @@
 
 #include "rtos_tasks.h"
 #include "ui_led.h"
-#include "ui_buzzer.h"
 #include "app_config.h"
 #include "FreeRTOS.h"
 #include "task.h"
