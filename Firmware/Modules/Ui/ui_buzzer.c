@@ -17,25 +17,78 @@
 
 /* ==================== Buzzer / Beep ==================== */
 
-/* ==================== Buzzer state validity ==================== */
+/* ==================== Buzzer persistent state ==================== */
 
+/**
+ * @brief  [EN] File-local validity flag for the stored buzzer configuration.
+ *         It remains static because func__Ui_Buzzer_Tick() is called repeatedly
+ *         and must know whether the current pattern has already been initialized.
+ *         FALSE forces the next valid request to start a new buzzer cycle.
+ *         [FA] پرچم اعتبار پیکربندی ذخیره‌شده بوق در سطح همین فایل.
+ *         این متغیر static است چون func__Ui_Buzzer_Tick() به‌صورت تکراری صدا زده می‌شود
+ *         و باید بداند آیا الگوی فعلی قبلاً مقداردهی شده است یا نه.
+ *         مقدار FALSE باعث می‌شود درخواست معتبر بعدی از ابتدای یک چرخه جدید شروع شود.
+ */
 static bool BOOL__G__BuzzerPatternValid = false;
 
 /* ==================== Buzzer period ==================== */
 
+/**
+ * @brief  [EN] Previously accepted complete buzzer period in milliseconds.
+ *         It remains static so the service can compare the new period with the
+ *         previous one and restart the timing cycle when the period changes.
+ *         [FA] دوره کامل قبلی بوق بر حسب میلی‌ثانیه.
+ *         این متغیر static است تا سرویس بتواند دوره جدید را با دوره قبلی مقایسه کند
+ *         و اگر دوره تغییر کرد، زمان‌بندی چرخه را از ابتدا شروع کند.
+ */
 static uint32_t UINT32_T__G__BuzzerPeriodMs = 0u;
 
 /* ==================== Buzzer duty and count ==================== */
 
+/**
+ * @brief  [EN] Previously accepted duty-window percentage.
+ *         It remains static so a change in duty can be detected between
+ *         consecutive service calls and the pattern can be restarted safely.
+ *         [FA] درصد پنجره دیوتی پذیرفته‌شده قبلی.
+ *         این متغیر static است تا تغییر دیوتی بین دو فراخوانی متوالی تشخیص داده شود
+ *         و الگو در صورت تغییر، به‌صورت امن از ابتدا شروع شود.
+ */
 static uint8_t UINT8_T__G__BuzzerDutyPercent = 0u;
+
+/**
+ * @brief  [EN] Previously accepted number of beeps inside the duty window.
+ *         It remains static so changing the pulse count can restart the pattern
+ *         instead of continuing with the timing of the old configuration.
+ *         [FA] تعداد بوق‌های پذیرفته‌شده قبلی در پنجره دیوتی.
+ *         این متغیر static است تا تغییر تعداد پالس باعث شروع دوباره الگو شود
+ *         و زمان‌بندی پیکربندی قبلی ادامه پیدا نکند.
+ */
 static uint8_t UINT8_T__G__BuzzerCount = 0u;
 
 /* ==================== Buzzer gap ==================== */
 
+/**
+ * @brief  [EN] Previously accepted low gap between adjacent beeps in milliseconds.
+ *         It remains static so a gap change can be detected and the cycle timing
+ *         can be restarted with the new pattern.
+ *         [FA] گپ خاموش پذیرفته‌شده قبلی بین بوق‌های مجاور بر حسب میلی‌ثانیه.
+ *         این متغیر static است تا تغییر گپ تشخیص داده شود و زمان‌بندی چرخه
+ *         با الگوی جدید از ابتدا شروع شود.
+ */
 static uint32_t UINT32_T__G__BuzzerGapMs = 0u;
 
 /* ==================== Buzzer cycle start ==================== */
 
+/**
+ * @brief  [EN] FreeRTOS tick at which the current buzzer cycle started.
+ *         It remains static because the service is non-blocking and is called
+ *         in separate invocations. The stored tick is used to calculate elapsed
+ *         time and decide whether the buzzer is ON, in a gap, or in the period tail.
+ *         [FA] تیک RTOS در زمان شروع چرخه فعلی بوق.
+ *         این متغیر static است چون سرویس غیرمسدودکننده است و در فراخوانی‌های جداگانه
+ *         اجرا می‌شود. از این زمان برای محاسبه زمان سپری‌شده و تشخیص وضعیت بوق،
+ *         گپ یا خاموشی انتهای دوره استفاده می‌شود.
+ */
 static TickType_t TICKTYPE_T__G__BuzzerCycleStartTick = 0;
 
 /* ==================== Buzzer service ==================== */
