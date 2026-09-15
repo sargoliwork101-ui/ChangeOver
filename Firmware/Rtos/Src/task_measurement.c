@@ -22,6 +22,8 @@
  *         [FA] تسک اندازه‌گیری - دوره‌ای غیربلوکه.
  * @param  void_ptr__argument [EN] FreeRTOS arg / آرگومان
  */
+/* ==================== TaskMeasurement ==================== */
+
 void func__TaskMeasurement(void *void_ptr__argument)
 {
     TickType_t ticktype__lastWakeTick;

@@ -12,6 +12,8 @@ static app_state_t APP_STATE_T__G__State = APP_STATE_BOOT;
  * @brief  [EN] Start in BOOT.
  *         [FA] از حالت BOOT شروع می‌کند.
  */
+/* ==================== Changeover_Init ==================== */
+
 void func__Changeover_Init(void)
 {
     APP_STATE_T__G__State = APP_STATE_BOOT;
@@ -24,6 +26,8 @@ void func__Changeover_Init(void)
  * @param  fault_mask_t__faults [EN] Fault bits from Fault module / بیت‌های خطا
  * @return app_state_t [EN] Next system state / حالت بعدی
  */
+/* ==================== Changeover_Evaluate ==================== */
+
 app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap, fault_mask_t fault_mask_t__faults)
 {
     (void)measurement_snapshot_t__snap;

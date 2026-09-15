@@ -44,6 +44,8 @@ static StaticTask_t STATICTASK_T__G__CommTcb;
  * @brief  [EN] Create enabled tasks, then start the scheduler.
  *         [FA] تسک‌های روشن را بساز، بعد زمان‌بند را شروع کن.
  */
+/* ==================== Rtos_Start ==================== */
+
 void func__Rtos_Start(void)
 {
 #if MODULE_UI
@@ -73,4 +75,3 @@ void func__Rtos_Start(void)
     {
     }
 }
-

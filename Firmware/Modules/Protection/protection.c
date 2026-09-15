@@ -14,6 +14,8 @@
  * @brief  [EN] Init protection state.
  *         [FA] حالت حفاظت را Init می‌کند.
  */
+/* ==================== Protection_Init ==================== */
+
 void func__Protection_Init(void)
 {
 }
@@ -23,6 +25,8 @@ void func__Protection_Init(void)
  *         [FA] نمونه را با حد مقایسه می‌کند و خطا را قفل می‌کند.
  * @param  measurement_snapshot_t__snap [EN] Snapshot pointer, may be NULL, valid flag checked / اشاره‌گر نمونه
  */
+/* ==================== Protection_Run ==================== */
+
 void func__Protection_Run(const measurement_snapshot_t *measurement_snapshot_t__snap)
 {
     if ((measurement_snapshot_t__snap == NULL) || (measurement_snapshot_t__snap->valid == false))

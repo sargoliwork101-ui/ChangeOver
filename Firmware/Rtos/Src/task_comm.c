@@ -26,6 +26,8 @@
  *         [FA] تسک ارتباط - غیربلوکه.
  * @param  void_ptr__argument [EN] FreeRTOS arg / آرگومان
  */
+/* ==================== TaskComm ==================== */
+
 void func__TaskComm(void *void_ptr__argument)
 {
     TickType_t ticktype__lastWakeTick;

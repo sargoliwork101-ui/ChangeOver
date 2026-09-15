@@ -14,6 +14,8 @@
  * @brief  [EN] Keep ESP powered off until that stage is enabled.
  *         [FA] ESP را خاموش نگه می‌دارد تا آن مرحله روشن شود.
  */
+/* ==================== EspLink_Init ==================== */
+
 void func__EspLink_Init(void)
 {
     func__EspLink_Power(false);
@@ -24,6 +26,8 @@ void func__EspLink_Init(void)
  *         [FA] پایه CH_PD را می‌زند.
  * @param  bool__on [EN] true=ESP on (HIGH), false=off / روشن/خاموش
  */
+/* ==================== EspLink_Power ==================== */
+
 void func__EspLink_Power(bool bool__on)
 {
     func__BspGpio_Write(PIN_ESP_CHPD_PORT, PIN_ESP_CHPD_PIN, bool__on);
@@ -36,6 +40,8 @@ void func__EspLink_Power(bool bool__on)
  * @param  app_state_t__state [EN] System state / حالت سیستم
  * @param  fault_mask_t__faults [EN] Fault bits / بیت‌های خطا
  */
+/* ==================== EspLink_Run ==================== */
+
 void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__snap, app_state_t app_state_t__state, fault_mask_t fault_mask_t__faults)
 {
     (void)measurement_snapshot_t__snap;

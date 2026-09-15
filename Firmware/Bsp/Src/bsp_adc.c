@@ -16,6 +16,8 @@ static volatile bool BOOL__G__Ready = false;
  *         [FA] هندل ADC را نگه می‌دارد. شروع DMA مرحله بعد.
  * @param  ADC_HandleTypeDef__hadc [EN] HAL handle / هندل
  */
+/* ==================== BspAdc_Init ==================== */
+
 void func__BspAdc_Init(ADC_HandleTypeDef *ADC_HandleTypeDef__hadc)
 {
     ADC_HANDLETYPEDEF__G__Hadc = ADC_HandleTypeDef__hadc;
@@ -27,6 +29,8 @@ void func__BspAdc_Init(ADC_HandleTypeDef *ADC_HandleTypeDef__hadc)
  *         [FA] شروع DMA. تا پیاده‌سازی false.
  * @return bool [EN] false until implemented / تا پیاده‌سازی false
  */
+/* ==================== BspAdc_Start ==================== */
+
 bool func__BspAdc_Start(void)
 {
     if (ADC_HANDLETYPEDEF__G__Hadc == NULL)
@@ -42,6 +46,8 @@ bool func__BspAdc_Start(void)
  * @param  uint16_t__out [EN] Output array / آرایه خروجی
  * @return bool [EN] true if copied / اگر کپی شد true
  */
+/* ==================== BspAdc_GetRaw ==================== */
+
 bool func__BspAdc_GetRaw(uint16_t uint16_t__out[BSP_ADC_CHANNEL_COUNT])
 {
     uint32_t uint32_t__i;
@@ -63,6 +69,8 @@ bool func__BspAdc_GetRaw(uint16_t uint16_t__out[BSP_ADC_CHANNEL_COUNT])
  *         [FA] وقتی فریم DMA آماده باشد true.
  * @return bool [EN] true if ready / اگر آماده true
  */
+/* ==================== BspAdc_IsFrameReady ==================== */
+
 bool func__BspAdc_IsFrameReady(void)
 {
     return BOOL__G__Ready;
@@ -72,8 +80,9 @@ bool func__BspAdc_IsFrameReady(void)
  * @brief  [EN] Call from HAL_ADC_ConvCpltCallback.
  *         [FA] از داخل HAL_ADC_ConvCpltCallback صدا زده شود.
  */
+/* ==================== BspAdc_OnDmaComplete ==================== */
+
 void func__BspAdc_OnDmaComplete(void)
 {
     (void)UINT16_T__G__Raw;
 }
-

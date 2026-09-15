@@ -29,6 +29,8 @@ volatile uint32_t UINT32_T__G__BatteryVoltageMv = 25000u; /* [EN] Battery voltag
  *         [FA] ورود تسک UI - کاملاً RTOS غیربلوکه.
  * @param  void_ptr__argument [EN] FreeRTOS arg unused / آرگومان
  */
+/* ==================== TaskUi ==================== */
+
 void func__TaskUi(void *void_ptr__argument)
 {
     TickType_t ticktype__lastWakeTick;

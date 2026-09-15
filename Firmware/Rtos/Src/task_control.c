@@ -32,6 +32,8 @@
  *         [FA] تسک کنترل - دوره‌ای غیربلوکه.
  * @param  void_ptr__argument [EN] FreeRTOS arg / آرگومان
  */
+/* ==================== TaskControl ==================== */
+
 void func__TaskControl(void *void_ptr__argument)
 {
     TickType_t ticktype__lastWakeTick;

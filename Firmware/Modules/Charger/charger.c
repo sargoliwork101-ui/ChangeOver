@@ -11,6 +11,8 @@
  * @brief  [EN] Init charger policy. Must leave PWM at 0%.
  *         [FA] سیاست شارژر را Init می‌کند. PWM باید ۰٪ بماند.
  */
+/* ==================== Charger_Init ==================== */
+
 void func__Charger_Init(void)
 {
 }
@@ -21,6 +23,8 @@ void func__Charger_Init(void)
  * @param  measurement_snapshot_t__snap [EN] Snapshot / نمونه
  * @param  app_state_t__state [EN] System state / حالت سیستم
  */
+/* ==================== Charger_Evaluate ==================== */
+
 void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap, app_state_t app_state_t__state)
 {
     (void)measurement_snapshot_t__snap;

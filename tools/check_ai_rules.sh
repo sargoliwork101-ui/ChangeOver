@@ -295,6 +295,47 @@ else
   echo "  FAIL: ui.h missing Tick API"
   FAIL=1
 fi
+
+# 16. Check function separation markers and buzzer at end
+echo ""
+echo "[16] Function separation with markers and buzzer at end (per new AI rule)"
+if grep -q "==================== Buzzer / Beep" "$ROOT/Firmware/Modules/Ui/ui.c"; then
+  echo "  OK: ui.c has Buzzer / Beep marker"
+else
+  echo "  FAIL: ui.c missing Buzzer / Beep marker"
+  FAIL=1
+fi
+
+# Check buzzer code at end of ui.c (buzzer functions after LED)
+BUZZER_LINE=$(grep -n "func__buzzer" "$ROOT/Firmware/Modules/Ui/ui.c" | head -n 1 | cut -d: -f1)
+LED_LINE=$(grep -n "func__Ui_ScenarioInputOk" "$ROOT/Firmware/Modules/Ui/ui.c" | head -n 1 | cut -d: -f1)
+if [ -n "$BUZZER_LINE" ] && [ -n "$LED_LINE" ]; then
+  if [ "$BUZZER_LINE" -gt "$LED_LINE" ]; then
+    echo "  OK: Buzzer code after LED (buzzer at end, LED first)"
+  else
+    echo "  FAIL: Buzzer code not at end (buzzer before LED)"
+    FAIL=1
+  fi
+else
+  echo "  WARN: Could not find buzzer/LED lines"
+fi
+
+# Check markers in other files
+MARKER_COUNT=$(grep -R --include="*.c" "====================.*==================== " "$ROOT/Firmware" | wc -l)
+if [ "$MARKER_COUNT" -ge 20 ]; then
+  echo "  OK: Found $MARKER_COUNT function separation markers in Firmware"
+else
+  echo "  FAIL: Only $MARKER_COUNT markers found, expected >=20"
+  FAIL=1
+fi
+
+if grep -q "جداسازی توابع با علامت مشخص" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "جداسازی بازر از LED" "$ROOT/Firmware/AI_CONTEXT.md"; then
+  echo "  OK: AI_CONTEXT has separation rules"
+else
+  echo "  FAIL: AI_CONTEXT missing separation rules"
+  FAIL=1
+fi
+
 echo ""
 if [ $FAIL -eq 0 ]; then
   echo "ALL CHECKS PASSED"
@@ -303,3 +344,4 @@ else
   echo "SOME CHECKS FAILED"
   exit 1
 fi
+

@@ -12,6 +12,8 @@
  * @brief  [EN] Initialise the UI outputs to a safe (all off) state.
  *         [FA] خروجی‌های UI را در حالت امن (همه خاموش) می‌گذارد.
  */
+/* ==================== App_Init ==================== */
+
 void func__App_Init(void)
 {
     func__Ui_Init();
@@ -21,9 +23,10 @@ void func__App_Init(void)
  * @brief  [EN] Init then enter FreeRTOS. Called from main after MX_GPIO_Init.
  *         [FA] Init و ورود به FreeRTOS. از main بعد از MX_GPIO_Init صدا زده شود.
  */
+/* ==================== App_Start ==================== */
+
 void func__App_Start(void)
 {
     func__App_Init();
     func__Rtos_Start();
 }
-

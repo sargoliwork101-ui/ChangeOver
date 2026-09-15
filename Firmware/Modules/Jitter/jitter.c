@@ -13,6 +13,8 @@ static bool BOOL__G__Trip[2];
  * @brief  [EN] Clear trip flags and EXTI software flags.
  *         [FA] پرچم تریپ و EXTI را پاک می‌کند.
  */
+/* ==================== Jitter_Init ==================== */
+
 void func__Jitter_Init(void)
 {
     BOOL__G__Trip[0] = false;
@@ -24,6 +26,8 @@ void func__Jitter_Init(void)
  * @brief  [EN] Latch trip if an EXTI event was taken.
  *         [FA] اگر رویداد EXTI آمده باشد تریپ را قفل می‌کند.
  */
+/* ==================== Jitter_Run ==================== */
+
 void func__Jitter_Run(void)
 {
     if (func__BspExti_TakeEvent(BSP_EXTI_JITTER1) == true)
@@ -42,6 +46,8 @@ void func__Jitter_Run(void)
  * @param  uint8_t__channel [EN] Channel number 1 or 2, other values return false / شماره کانال ۱ یا ۲
  * @return bool [EN] true if tripped / اگر تریپ کرده true
  */
+/* ==================== Jitter_ChannelTripped ==================== */
+
 bool func__Jitter_ChannelTripped(uint8_t uint8_t__channel)
 {
     if (uint8_t__channel == 1u)

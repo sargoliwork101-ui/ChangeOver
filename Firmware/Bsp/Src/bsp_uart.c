@@ -14,6 +14,8 @@ static UART_HandleTypeDef *UART_HANDLETYPEDEF__G__Huart = NULL;
  *         [FA] هندل UART را نگه می‌دارد.
  * @param  UART_HandleTypeDef__huart [EN] HAL handle / هندل
  */
+/* ==================== BspUart_Init ==================== */
+
 void func__BspUart_Init(UART_HandleTypeDef *UART_HandleTypeDef__huart)
 {
     UART_HANDLETYPEDEF__G__Huart = UART_HandleTypeDef__huart;
@@ -26,6 +28,8 @@ void func__BspUart_Init(UART_HandleTypeDef *UART_HandleTypeDef__huart)
  * @param  uint16_t__length [EN] Length / طول
  * @return bool [EN] false until implemented / تا پیاده‌سازی false
  */
+/* ==================== BspUart_Write ==================== */
+
 bool func__BspUart_Write(const uint8_t *uint8_t__data, uint16_t uint16_t__length)
 {
     (void)uint8_t__data;
@@ -40,9 +44,10 @@ bool func__BspUart_Write(const uint8_t *uint8_t__data, uint16_t uint16_t__length
  * @param  uint8_t__byte [EN] Output byte pointer / اشاره‌گر خروجی
  * @return bool [EN] false until implemented / تا پیاده‌سازی false
  */
+/* ==================== BspUart_ReadByte ==================== */
+
 bool func__BspUart_ReadByte(uint8_t *uint8_t__byte)
 {
     (void)uint8_t__byte;
     return false;
 }
-

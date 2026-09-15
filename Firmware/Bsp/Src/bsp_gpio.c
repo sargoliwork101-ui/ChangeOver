@@ -14,6 +14,8 @@
  * @param  uint16_t__pin [EN] Pin mask / ماسک پایه
  * @param  bool__high [EN] true=3.3V / High یعنی ۳٫۳ ولت
  */
+/* ==================== BspGpio_Write ==================== */
+
 void func__BspGpio_Write(GPIO_TypeDef *GPIO_TypeDef__port, uint16_t uint16_t__pin, bool bool__high)
 {
     GPIO_PinState GPIO_PinState_level;
@@ -42,6 +44,8 @@ void func__BspGpio_Write(GPIO_TypeDef *GPIO_TypeDef__port, uint16_t uint16_t__pi
  * @param  uint16_t__pin [EN] Pin mask / ماسک پایه
  * @return bool [EN] true if high / اگر High باشد true
  */
+/* ==================== BspGpio_Read ==================== */
+
 bool func__BspGpio_Read(GPIO_TypeDef *GPIO_TypeDef__port, uint16_t uint16_t__pin)
 {
     bool bool__isHigh = false;
@@ -56,4 +60,3 @@ bool func__BspGpio_Read(GPIO_TypeDef *GPIO_TypeDef__port, uint16_t uint16_t__pin
 
     return bool__isHigh;
 }
-

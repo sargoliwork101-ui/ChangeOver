@@ -21,6 +21,8 @@
  *         [FA] تسک حفاظت - غیربلوکه.
  * @param  void_ptr__argument [EN] FreeRTOS arg / آرگومان
  */
+/* ==================== TaskProtection ==================== */
+
 void func__TaskProtection(void *void_ptr__argument)
 {
     TickType_t ticktype__lastWakeTick;

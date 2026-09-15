@@ -12,6 +12,8 @@ static volatile uint8_t UINT8_T__G__Flags[3];
  * @brief  [EN] Clear software event flags.
  *         [FA] پرچم‌های نرم‌افزاری را صفر می‌کند.
  */
+/* ==================== BspExti_Init ==================== */
+
 void func__BspExti_Init(void)
 {
     UINT8_T__G__Flags[0] = 0u;
@@ -24,6 +26,8 @@ void func__BspExti_Init(void)
  *         [FA] پرچم را از کال‌بک EXTI می‌گذارد.
  * @param  bsp_exti_src_t__src [EN] Source / منبع
  */
+/* ==================== BspExti_OnIrq ==================== */
+
 void func__BspExti_OnIrq(bsp_exti_src_t bsp_exti_src_t__src)
 {
     if ((uint32_t)bsp_exti_src_t__src < 3u)
@@ -38,6 +42,8 @@ void func__BspExti_OnIrq(bsp_exti_src_t bsp_exti_src_t__src)
  * @param  bsp_exti_src_t__src [EN] Source / منبع
  * @return bool [EN] true if taken / اگر گرفته شد true
  */
+/* ==================== BspExti_TakeEvent ==================== */
+
 bool func__BspExti_TakeEvent(bsp_exti_src_t bsp_exti_src_t__src)
 {
     bool bool__taken = false;
@@ -49,4 +55,3 @@ bool func__BspExti_TakeEvent(bsp_exti_src_t bsp_exti_src_t__src)
     }
     return bool__taken;
 }
-

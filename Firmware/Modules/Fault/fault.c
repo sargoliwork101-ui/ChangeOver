@@ -12,6 +12,8 @@ static fault_mask_t FAULT_MASK_T__G__Mask = FAULT_NONE;
  * @brief  [EN] Clear all fault bits.
  *         [FA] همه بیت‌های خطا را پاک می‌کند.
  */
+/* ==================== Fault_Init ==================== */
+
 void func__Fault_Init(void)
 {
     FAULT_MASK_T__G__Mask = FAULT_NONE;
@@ -22,6 +24,8 @@ void func__Fault_Init(void)
  *         [FA] بیت‌ها را قفل می‌کند (OR).
  * @param  fault_mask_t__bits [EN] Bits to set / بیت‌هایی که باید قفل شود
  */
+/* ==================== Fault_Set ==================== */
+
 void func__Fault_Set(fault_mask_t fault_mask_t__bits)
 {
     FAULT_MASK_T__G__Mask |= fault_mask_t__bits;
@@ -32,6 +36,8 @@ void func__Fault_Set(fault_mask_t fault_mask_t__bits)
  *         [FA] بیت‌ها را پاک می‌کند.
  * @param  fault_mask_t__bits [EN] Bits to clear / بیت‌هایی که باید پاک شود
  */
+/* ==================== Fault_Clear ==================== */
+
 void func__Fault_Clear(fault_mask_t fault_mask_t__bits)
 {
     FAULT_MASK_T__G__Mask &= (fault_mask_t)~fault_mask_t__bits;
@@ -42,6 +48,8 @@ void func__Fault_Clear(fault_mask_t fault_mask_t__bits)
  *         [FA] ماسک فعلی را برمی‌گرداند.
  * @return fault_mask_t [EN] Current fault mask / ماسک فعلی
  */
+/* ==================== Fault_Get ==================== */
+
 fault_mask_t func__Fault_Get(void)
 {
     return FAULT_MASK_T__G__Mask;
@@ -52,6 +60,8 @@ fault_mask_t func__Fault_Get(void)
  *         [FA] اگر هر بیتی روشن باشد true.
  * @return bool [EN] true if any fault latched / اگر خطایی قفل شده true
  */
+/* ==================== Fault_Any ==================== */
+
 bool func__Fault_Any(void)
 {
     return (FAULT_MASK_T__G__Mask != FAULT_NONE);

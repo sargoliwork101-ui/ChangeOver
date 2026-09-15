@@ -16,6 +16,8 @@ static TIM_HandleTypeDef *TIM_HANDLETYPEDEF__G__Tim2 = NULL;
  * @param  TIM_HandleTypeDef__htimCh1 [EN] Timer ch1 / تایمر کانال ۱
  * @param  TIM_HandleTypeDef__htimCh2 [EN] Timer ch2 / تایمر کانال ۲
  */
+/* ==================== BspPwm_Init ==================== */
+
 void func__BspPwm_Init(TIM_HandleTypeDef *TIM_HandleTypeDef__htimCh1, TIM_HandleTypeDef *TIM_HandleTypeDef__htimCh2)
 {
     TIM_HANDLETYPEDEF__G__Tim1 = TIM_HandleTypeDef__htimCh1;
@@ -29,6 +31,8 @@ void func__BspPwm_Init(TIM_HandleTypeDef *TIM_HandleTypeDef__htimCh1, TIM_Handle
  * @param  uint8_t__channel [EN] 1 or 2 / کانال
  * @param  uint16_t__permille [EN] 0..1000 / پرمیل
  */
+/* ==================== BspPwm_SetDutyPermille ==================== */
+
 void func__BspPwm_SetDutyPermille(uint8_t uint8_t__channel, uint16_t uint16_t__permille)
 {
     (void)uint8_t__channel;
@@ -41,7 +45,8 @@ void func__BspPwm_SetDutyPermille(uint8_t uint8_t__channel, uint16_t uint16_t__p
  * @brief  [EN] Force both PWM channels off.
  *         [FA] هر دو کانال PWM را خاموش می‌کند.
  */
+/* ==================== BspPwm_StopAll ==================== */
+
 void func__BspPwm_StopAll(void)
 {
 }
-
