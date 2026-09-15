@@ -157,7 +157,7 @@ for f in $(find "$ROOT/Firmware" -type f -name "*.h" | head -n 20); do
   params=$(grep -c "@param" "$f" || true)
   echo "  $(basename "$f"): funcs=$funcs @param=$params"
 done
-if ! grep -q "@param.*uint32_t" "$ROOT/Firmware/Modules/Ui/ui.h"; then
+if ! grep -q "@param.*uint32_t" "$ROOT/Firmware/Modules/Ui/ui.h" && ! grep -q "@param.*uint32_t" "$ROOT/Firmware/Modules/Ui/ui_led.h" && ! grep -q "@param.*uint32_t" "$ROOT/Firmware/Modules/Ui/ui_buzzer.h"; then
   echo "  FAIL: ui.h missing @param"
   FAIL=1
 else
@@ -259,11 +259,19 @@ else
   echo "  FAIL: ui.h missing UI_ constants"
   FAIL=1
 fi
-if grep -q "UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -E -q "greenOnMs|greenOffMs|GreenOnMs|LED_BLINK" "$ROOT/Firmware/Modules/Ui/ui.c"; then
-  echo "  OK: ui.c uses meaningful names with __"
+if (grep -q "UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -E -q "greenOnMs|greenOffMs|GreenOnMs|LED_BLINK" "$ROOT/Firmware/Modules/Ui/ui.c") || \
+   (grep -q "UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" 2>/dev/null && grep -E -q "greenOnMs|greenOffMs" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null); then
+  echo "  OK: ui.c / ui_led.c / ui_buzzer.c uses meaningful names with __"
 else
   echo "  FAIL: ui.c missing meaningful names"
   FAIL=1
+fi
+
+# Check for split files existence (LED and BUZZER per user request)
+if [ -f "$ROOT/Firmware/Modules/Ui/ui_led.h" ] && [ -f "$ROOT/Firmware/Modules/Ui/ui_led.c" ] && [ -f "$ROOT/Firmware/Modules/Ui/ui_buzzer.h" ] && [ -f "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" ]; then
+  echo "  OK: UI split into LED and BUZZER (ui_led.h/c, ui_buzzer.h/c) exists per user request"
+else
+  echo "  WARN: UI split files not found (ui_led.h/c, ui_buzzer.h/c) - expected after split"
 fi
 echo ""
 echo "[15] RTOS simple & readable - no HAL_Delay, vTaskDelay allowed (RTOS, MCU not locked)"
@@ -290,7 +298,7 @@ else
   FAIL=1
 fi
 
-if grep -q "UI_TICK_MS" "$ROOT/Firmware/Modules/Ui/ui.h" && grep -q "Tick" "$ROOT/Firmware/Modules/Ui/ui.h"; then
+if grep -q "UI_TICK_MS" "$ROOT/Firmware/Modules/Ui/ui.h" && (grep -q "Tick" "$ROOT/Firmware/Modules/Ui/ui.h" || grep -q "Tick" "$ROOT/Firmware/Modules/Ui/ui_led.h"); then
   echo "  OK: ui.h has UI_TICK_MS and Tick API (simple RTOS)"
 else
   echo "  FAIL: ui.h missing Tick API"
@@ -299,34 +307,55 @@ fi
 
 # 16. Check function separation markers and buzzer at end
 echo ""
-echo "[16] Function separation with markers and buzzer at end (per new AI rule)"
-if grep -q "==================== Buzzer / Beep" "$ROOT/Firmware/Modules/Ui/ui.c"; then
-  echo "  OK: ui.c has Buzzer / Beep marker"
+echo "[16] Function separation with markers and buzzer at end (per new AI rule) - now split LED/BUZZER"
+if grep -q "==================== Buzzer / Beep" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null || grep -q "==================== Buzzer / Beep" "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" 2>/dev/null; then
+  echo "  OK: ui.c or ui_buzzer.c has Buzzer / Beep marker"
 else
-  echo "  FAIL: ui.c missing Buzzer / Beep marker"
+  echo "  FAIL: ui.c / ui_buzzer.c missing Buzzer / Beep marker"
   FAIL=1
 fi
 
-# Check buzzer code at end of ui.c (buzzer functions after LED)
-BUZZER_LINE=$(grep -n "func__buzzer" "$ROOT/Firmware/Modules/Ui/ui.c" | head -n 1 | cut -d: -f1)
-LED_LINE=$(grep -n "func__Ui_ScenarioInputOk" "$ROOT/Firmware/Modules/Ui/ui.c" | head -n 1 | cut -d: -f1)
+# Check buzzer code at end of ui.c (buzzer functions after LED) OR split files exist
+BUZZER_LINE=$(grep -n "func__buzzer" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null | head -n 1 | cut -d: -f1)
+LED_LINE=$(grep -n "func__Ui_ScenarioInputOk" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null | head -n 1 | cut -d: -f1)
 if [ -n "$BUZZER_LINE" ] && [ -n "$LED_LINE" ]; then
   if [ "$BUZZER_LINE" -gt "$LED_LINE" ]; then
-    echo "  OK: Buzzer code after LED (buzzer at end, LED first)"
+    echo "  OK: Buzzer code after LED (buzzer at end, LED first) in ui.c"
   else
     echo "  FAIL: Buzzer code not at end (buzzer before LED)"
     FAIL=1
   fi
 else
-  echo "  WARN: Could not find buzzer/LED lines"
+  # Check split: LED in ui_led.c, BUZZER in ui_buzzer.c
+  if [ -f "$ROOT/Firmware/Modules/Ui/ui_led.c" ] && [ -f "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" ]; then
+    if grep -q "func__Ui_ScenarioInputOk" "$ROOT/Firmware/Modules/Ui/ui_led.c" && grep -q "func__buzzer" "$ROOT/Firmware/Modules/Ui/ui_buzzer.c"; then
+      echo "  OK: Split LED and BUZZER: LED in ui_led.c, BUZZER in ui_buzzer.c (buzzer at end of its own file, LED first)"
+    else
+      echo "  WARN: Could not find buzzer/LED lines in split files"
+    fi
+  else
+    echo "  WARN: Could not find buzzer/LED lines"
+  fi
 fi
 
-# Check markers in other files
+# Check markers in other files + UI split files have markers above each function
 MARKER_COUNT=$(grep -R --include="*.c" "====================.*==================== " "$ROOT/Firmware" | wc -l)
 if [ "$MARKER_COUNT" -ge 20 ]; then
   echo "  OK: Found $MARKER_COUNT function separation markers in Firmware"
 else
   echo "  FAIL: Only $MARKER_COUNT markers found, expected >=20"
+  FAIL=1
+fi
+
+# Check UI split files have markers above each function (per user request: بالای هر تابع این مدلی جدا بشه)
+UI_LED_MARKERS=$(grep -c "====================.*==================== " "$ROOT/Firmware/Modules/Ui/ui_led.h" 2>/dev/null || echo 0)
+UI_BUZZER_MARKERS=$(grep -c "====================.*==================== " "$ROOT/Firmware/Modules/Ui/ui_buzzer.h" 2>/dev/null || echo 0)
+UI_LED_C_MARKERS=$(grep -c "====================.*==================== " "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null || echo 0)
+UI_BUZZER_C_MARKERS=$(grep -c "====================.*==================== " "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" 2>/dev/null || echo 0)
+if [ "$UI_LED_MARKERS" -ge 5 ] && [ "$UI_BUZZER_MARKERS" -ge 3 ] && [ "$UI_LED_C_MARKERS" -ge 8 ] && [ "$UI_BUZZER_C_MARKERS" -ge 5 ]; then
+  echo "  OK: UI split files have markers above each function (ui_led.h $UI_LED_MARKERS, ui_buzzer.h $UI_BUZZER_MARKERS, ui_led.c $UI_LED_C_MARKERS, ui_buzzer.c $UI_BUZZER_C_MARKERS)"
+else
+  echo "  FAIL: UI split files missing markers above each function (led.h $UI_LED_MARKERS, buzzer.h $UI_BUZZER_MARKERS, led.c $UI_LED_C_MARKERS, buzzer.c $UI_BUZZER_C_MARKERS)"
   FAIL=1
 fi
 
@@ -346,26 +375,29 @@ else
   FAIL=1
 fi
 
-# Check ui.c has non-linear formula broken into steps (voltageRange, voltageOffset, scaledOffset)
-if grep -q "voltageRangeMv" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "voltageOffsetMv" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "scaledOffset" "$ROOT/Firmware/Modules/Ui/ui.c"; then
-  echo "  OK: ui.c has non-linear formula broken into steps (range, offset, scaled)"
+# Check ui.c or ui_led.c has non-linear formula broken into steps (voltageRange, voltageOffset, scaledOffset)
+if (grep -q "voltageRangeMv" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null && grep -q "voltageOffsetMv" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null && grep -q "scaledOffset" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null) || \
+   (grep -q "voltageRangeMv" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null && grep -q "voltageOffsetMv" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null && grep -q "scaledOffset" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null); then
+  echo "  OK: ui.c / ui_led.c has non-linear formula broken into steps (range, offset, scaled)"
 else
   echo "  FAIL: ui.c has linear formula (should break into steps)"
   FAIL=1
 fi
 
 # Check charging has non-linear steps (remainingPercent, periodPerPercent)
-if grep -q "remainingPercent" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "periodPerPercent" "$ROOT/Firmware/Modules/Ui/ui.c"; then
-  echo "  OK: ui.c charging has non-linear steps (remainingPercent, periodPerPercent)"
+if (grep -q "remainingPercent" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null && grep -q "periodPerPercent" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null) || \
+   (grep -q "remainingPercent" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null && grep -q "periodPerPercent" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null); then
+  echo "  OK: ui.c / ui_led.c charging has non-linear steps (remainingPercent, periodPerPercent)"
 else
   echo "  FAIL: ui.c charging has linear formula"
   FAIL=1
 fi
 
 # Check no single-line long formula like (offset * 100u) / range in one line without steps
-FOUND_LINEAR=$(grep -n "offset.*\*.*100u.*\/.*range" "$ROOT/Firmware/Modules/Ui/ui.c" | head -n 1 || true)
-if [ -n "$FOUND_LINEAR" ]; then
-  echo "  FAIL: Found linear formula in one line (should be broken): $FOUND_LINEAR"
+FOUND_LINEAR=$(grep -n "offset.*\*.*100u.*\/.*range" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null | head -n 1 || true)
+FOUND_LINEAR2=$(grep -n "offset.*\*.*100u.*\/.*range" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null | head -n 1 || true)
+if [ -n "$FOUND_LINEAR" ] || [ -n "$FOUND_LINEAR2" ]; then
+  echo "  FAIL: Found linear formula in one line (should be broken): $FOUND_LINEAR $FOUND_LINEAR2"
   FAIL=1
 else
   echo "  OK: No linear one-line formula (all broken into steps)"
