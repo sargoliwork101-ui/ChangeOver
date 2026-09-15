@@ -195,6 +195,61 @@ else
   FAIL=1
 fi
 
+# 13. Check memory management rules
+echo ""
+echo "[13] Memory management (no malloc/free, static allocation, const config, stack overflow hook)"
+# No malloc/free in Firmware - check for actual calls malloc( free( etc, ignore comments about not using malloc
+FOUND_MALLOC=$(grep -R --include="*.c" --include="*.h" -E "malloc\(|free\(|calloc\(|realloc\(" "$ROOT/Firmware" 2>/dev/null | grep -v "does not use malloc" | grep -v "heap_4" || true)
+if [ -n "$FOUND_MALLOC" ]; then
+  echo "  FAIL: Found malloc/free calls in Firmware (should use static allocation):"
+  echo "$FOUND_MALLOC" | head -n 20
+  FAIL=1
+else
+  echo "  OK: No malloc/free calls in Firmware (static allocation)"
+fi
+
+# Check xTaskCreateStatic used, not xTaskCreate
+FOUND_XTASK=$(grep -R --include="*.c" "xTaskCreate(" "$ROOT/Firmware" 2>/dev/null | grep -v "xTaskCreateStatic" | grep -v "//" || true)
+if [ -n "$FOUND_XTASK" ]; then
+  echo "  FAIL: Found xTaskCreate (should use xTaskCreateStatic):"
+  echo "$FOUND_XTASK" | head -n 5
+  FAIL=1
+else
+  echo "  OK: Tasks use xTaskCreateStatic (no malloc)"
+fi
+
+# Check APP_CONFIG is const
+if grep -q "const app_config_t APP_CONFIG" "$ROOT/Firmware/Config/Src/app_config.c"; then
+  echo "  OK: APP_CONFIG is const (Flash, not RAM)"
+else
+  echo "  FAIL: APP_CONFIG not const"
+  FAIL=1
+fi
+
+# Check stack sizes defined in rtos_config.h
+if grep -q "TASK_STACK_UI" "$ROOT/Firmware/Config/Inc/rtos_config.h" && grep -q "TASK_STACK_MEASUREMENT" "$ROOT/Firmware/Config/Inc/rtos_config.h"; then
+  echo "  OK: Stack sizes defined in rtos_config.h (words)"
+else
+  echo "  FAIL: Stack sizes not defined"
+  FAIL=1
+fi
+
+# Check stack overflow hook exists
+if grep -q "vApplicationStackOverflowHook" "$ROOT/Firmware/Rtos/Src/freertos_hooks.c"; then
+  echo "  OK: Stack overflow hook exists"
+else
+  echo "  FAIL: Stack overflow hook missing"
+  FAIL=1
+fi
+
+# Check AI_CONTEXT has memory management section
+if grep -q "مدیریت حافظه" "$ROOT/Firmware/AI_CONTEXT.md"; then
+  echo "  OK: AI_CONTEXT has memory management section"
+else
+  echo "  FAIL: AI_CONTEXT missing memory management"
+  FAIL=1
+fi
+
 echo ""
 if [ $FAIL -eq 0 ]; then
   echo "ALL CHECKS PASSED / همه چک‌ها پاس شد"
