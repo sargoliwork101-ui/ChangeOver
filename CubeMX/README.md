@@ -1,7 +1,7 @@
 /**
  * @file    README.md
- * @brief   [EN] CubeMX .ioc lives here. Not product firmware.
- *          [FA] فایل .ioc مکعب اینجاست. کد محصول نیست.
+ * @brief   [EN] CubeMX .ioc lives here. Not product firmware. Guide for adding peripherals safely.
+ *          [FA] فایل .ioc مکعب اینجاست. راهنمای اضافه کردن پریفرال بدون بهم ریختن برنامه.
  */
 
 # CubeMX
@@ -12,7 +12,7 @@
 
 ## Save / Generate
 
-1. STM32CubeMX را **جدا** باز کن
+1. STM32CubeMX را **جدا** باز کن (نه از داخل CubeIDE)
 2. Project Manager:
    - Name: `CubeIDE`
    - Location: یک سطح بالاتر — ریشهٔ ریپو `ChangeOver`
@@ -20,4 +20,61 @@
 3. GENERATE CODE → خروجی می‌رود به `../CubeIDE/`
 4. فایل `.ioc` را در **همین پوشه** هم بگذار (کپی از `../CubeIDE/*.ioc`) تا جای مکعب گم نشود
 
-الان فقط LED/بازر. ADC و PWM را Enable نکن.
+## آیا اضافه کردن پریفرال برنامه را بهم می‌ریزد؟ / Does adding a peripheral break the program?
+
+**خیر، اگر قوانین زیر رعایت شود — نه، برنامه بهم نمی‌ریزد.**
+
+### چرا نمی‌ریزد (ساختار پروژه)
+
+- `Firmware/` بیرون از `CubeIDE/` است و به صورت **Linked Resource** در `.project` لینک شده:
+  - `PARENT-2-PROJECT_LOC/Firmware` → یعنی ریشهٔ ریپو
+  - CubeMX فقط `CubeIDE/Core/`, `Drivers/`, `Middlewares/` را بازنویسی می‌کند، نه `Firmware/`
+- `main.c` فقط کلاک، `MX_GPIO_Init()`، و `App_Start()` را صدا می‌زند. منطق محصول در `Firmware/` است.
+- `main.c` دارای `USER CODE BEGIN/END` است. CubeMX کد داخل این بلوک‌ها را نگه می‌دارد:
+  - `#include \"app.h\"` در `Includes`
+  - `App_Start()` در `USER CODE BEGIN 2`
+- `CubeIDE.ioc` در این پروژه `defaultTask` ندارد (حذف شده). تسک‌ها در `Firmware/Rtos/Src/rtos_app.c` به صورت استاتیک ساخته می‌شوند (`xTaskCreateStatic`).
+- Include pathهای `Firmware` در `STM32CubeIDE/.cproject` هستند:
+  - `../../../Firmware/App/Inc`, `Bsp/Inc`, `Config/Inc`, `Rtos/Inc`, `Modules/Ui`, ...
+  - CubeMX معمولاً این‌ها را نگه می‌دارد، ولی بعد از Generate چک کن که پاک نشده باشند.
+
+### چه اتفاقی می‌افتد وقتی یک پریفرال اضافه می‌کنی (مثلاً ADC1)
+
+1. CubeMX یک `MX_ADC1_Init()` و `ADC_HandleTypeDef hadc1` در `main.c` / `main.h` می‌سازد و در `main()` صدا می‌زند (قبل از `App_Start()`).
+2. `stm32f1xx_hal_msp.c` را بازنویسی می‌کند تا پایه‌های PA1, PA2, PA3, PA5, PA7 را Analog کند (این پایه‌ها الان آزاد هستند، تداخلی با LEDها PB0/PB1/PB10/PA4 ندارند).
+3. درایور `stm32f1xx_hal_adc.c` را به `Drivers/` اضافه می‌کند.
+4. **Firmware بهم نمی‌ریزد** چون:
+   - `BspAdc_Init(&hadc1)` باید در `App_Init()` یا `main.c` USER CODE صدا زده شود تا هندل به Bsp برسد. اگر نزنی، `BspAdc_GetRaw()` فقط `false` برمی‌گرداند، کرش نمی‌کند.
+   - تا `MODULE_MEASUREMENT=0` باشد، تسک measurement ساخته نمی‌شود، پس ADC حتی اگر در CubeMX فعال باشد، از سمت Firmware استفاده نمی‌شود.
+
+### چک‌لیست امن برای اضافه کردن پریفرال
+
+1. **قبل از Generate** بگو کدام فایل‌ها عوض می‌شوند (قانون AI)
+2. در CubeMX پین‌ها را چک کن که با LED/بازر تداخل نداشته باشد:
+   - LED: PB0, PB1, PB10
+   - Buzzer: PA4
+   - SWD: PA13, PA14 (باید SWD بماند، نه Full JTAG)
+   - آزاد برای ADC: PA1, PA2, PA3, PA5, PA7
+3. بعد از Generate:
+   - `CubeIDE/Core/Src/main.c` → آیا `App_Start()` هنوز در `USER CODE BEGIN 2` هست؟
+   - `STM32CubeIDE/.cproject` → آیا Include pathهای `Firmware` هنوز هستند؟
+   - `CubeIDE.ioc` را کپی کن به `CubeMX/CubeIDE.ioc`
+   - اگر ADC/UART/PWM اضافه کردی، در `Firmware/App/Src/app.c` یا `main.c` USER CODE هندل را به Bsp بده:
+     ```c
+     extern ADC_HandleTypeDef hadc1;
+     BspAdc_Init(&hadc1);
+     ```
+   - `modules_enable.h` را فقط وقتی فلگ را می‌خواهی 1 کنی عوض کن
+4. Build کن، اگر خطای Include دادی، Pathها را دوباره اضافه کن
+
+### الان فقط LED/بازر
+
+ADC و PWM را Enable نکن مگر همان مرحله را کاربر خواسته باشد (قانون AI). الان `MODULE_UI=1` بقیه 0 است.
+
+## تاریخچه
+
+| تاریخ | تغییر |
+|---|---|
+| 2026-09-14 | اضافه شدن راهنمای اضافه کردن پریفرال بدون بهم ریختن برنامه + توضیح Linked Resource و USER CODE و چک‌لیست امن |
+| 2026-09-14 | فایل .ioc فقط LED/بازر، ADC/PWM خاموش |
+

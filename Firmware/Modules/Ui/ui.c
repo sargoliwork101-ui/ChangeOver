@@ -1,17 +1,17 @@
 /**
  * @file    ui.c
- * @brief   [EN] Simple, linear LED/buzzer scenarios. Easy to edit later.
- *          [FA] سناریوهای ساده و خطی LED/بازر. قابل اصلاح آسان بعداً.
+ * @brief   [EN] LED/buzzer scenarios - readable, not purely linear, easy to edit later.
+ *          [FA] سناریوهای LED/بازر - خوانا، نه صرفاً خطی، قابل اصلاح آسان.
  *
- * @note    [EN] Simplicity rule (from AI_CONTEXT.md):
- *          - One function = one job, linear on/delay/off steps, no nested logic.
+ * @note    [EN] Readability rule (AI_CONTEXT.md):
+ *          - Each function has one job, but written for readability, not just linear on/delay/off.
  *          - All thresholds in ui_config.h single file (no duplication).
- *          - Buzzer separate: Ui_BuzzerBeep() callable from any scenario.
+ *          - Buzzer separate function callable from any scenario.
  *          - Naming: U32_G_ global uppercase, u32_ local lowercase.
- *          [FA] قانون سادگی:
- *          - هر تابع یک کار، گام‌های خطی روشن/تاخیر/خاموش، بدون if تودرتو.
- *          - همه آستانه‌ها در ui_config.h یک فایل واحد.
- *          - بازر جدا.
+ *          - Every function documents what it does and each param (unit, range).
+ *          [FA] قانون خوانایی:
+ *          - هر تابع یک کار، ولی خوانا نوشته شده، نه فقط خطی.
+ *          - همه آستانه‌ها در ui_config.h.
  */
 
 #include "ui.h"
@@ -22,11 +22,12 @@
 #include "task.h"
 #include <stdbool.h>
 
-/* ===== Simple low-level LED helpers - one line each, easy to edit ===== */
+/* ===== Low-level helpers - simple, readable, one purpose ===== */
 
 /**
- * @brief  [EN] Green PB10 on/off.
- *         [FA] سبز PB10 روشن/خاموش.
+ * @brief  [EN] Control green LED PB10.
+ *         [FA] کنترل LED سبز PB10.
+ * @param  b_on [EN] true = LED on (3.3V via Q6), false = off / روشن یا خاموش
  */
 static void green(bool b_on)
 {
@@ -34,8 +35,9 @@ static void green(bool b_on)
 }
 
 /**
- * @brief  [EN] Red PB0 on/off.
- *         [FA] قرمز PB0.
+ * @brief  [EN] Control red LED PB0. Reserved for future critical scenario.
+ *         [FA] کنترل LED قرمز PB0، برای سناریوی بحرانی بعدی رزرو.
+ * @param  b_on [EN] true = on, false = off / روشن/خاموش
  */
 static void red(bool b_on)
 {
@@ -43,8 +45,9 @@ static void red(bool b_on)
 }
 
 /**
- * @brief  [EN] Yellow PB1 on/off.
- *         [FA] زرد PB1.
+ * @brief  [EN] Control yellow LED PB1. Used in charging scenario.
+ *         [FA] کنترل LED زرد PB1، در سناریوی شارژ.
+ * @param  b_on [EN] true = on (HIGH = yellow on via Q5) / روشن
  */
 static void yellow(bool b_on)
 {
@@ -52,8 +55,9 @@ static void yellow(bool b_on)
 }
 
 /**
- * @brief  [EN] Buzzer PA4 on/off.
- *         [FA] بازر PA4.
+ * @brief  [EN] Control buzzer PA4 low-level.
+ *         [FA] کنترل بازر PA4 سطح پایین.
+ * @param  b_on [EN] true = sound on (HIGH via Q7), false = off / صدا روشن/خاموش
  */
 static void buzzer(bool b_on)
 {
@@ -61,8 +65,8 @@ static void buzzer(bool b_on)
 }
 
 /**
- * @brief  [EN] All off.
- *         [FA] همه خاموش.
+ * @brief  [EN] Turn all UI outputs off (safe state).
+ *         [FA] همه خروجی‌های UI خاموش (حالت امن).
  */
 static void all_off(void)
 {
@@ -72,14 +76,14 @@ static void all_off(void)
     buzzer(false);
 }
 
-/* ===== Beep counter - file scope global (uppercase type) ===== */
+/* ===== File-scope beep tracking - global type uppercase ===== */
 static uint32_t U32_G_BeepCnt = 0u;
 
-/* ===== Public ===== */
+/* ===== Public API ===== */
 
 /**
- * @brief  [EN] Safe init: all off.
- *         [FA] Init امن: همه خاموش.
+ * @brief  [EN] Initialize UI to safe state (all off). Called once before scheduler.
+ *         [FA] مقداردهی اولیه UI به حالت امن (همه خاموش). یک‌بار قبل از زمان‌بند.
  */
 void Ui_Init(void)
 {
@@ -87,8 +91,9 @@ void Ui_Init(void)
 }
 
 /**
- * @brief  [EN] Board test: R, Y, G, beep - linear steps.
- *         [FA] تست برد: قرمز، زرد، سبز، بوق - خطی.
+ * @brief  [EN] One-shot board wiring test: R -> Y -> G -> beep.
+ *         Each step is on, delay, off - readable sequence.
+ *         [FA] تست یک‌باره سیم‌کشی: قرمز، زرد، سبز، بوق - ترتیب خوانا.
  */
 void Ui_BoardTest(void)
 {
@@ -112,12 +117,15 @@ void Ui_BoardTest(void)
 }
 
 /**
- * @brief  [EN] Simple buzzer beep - separate function.
- *         [FA] بوق ساده - تابع جدا.
+ * @brief  [EN] Separate buzzer function - beep for given duration. Callable from any scenario.
+ *         [FA] تابع جدا بازر - به مدت داده شده بوق می‌زند. از هر سناریو قابل صدا زدن.
+ * @param  u32_ms [EN] Beep duration in ms, 0 = use base (250ms). Range 0..5000ms / طول بوق میلی‌ثانیه
  */
 void Ui_BuzzerBeep(uint32_t u32_ms)
 {
-    uint32_t u32_d = u32_ms;
+    uint32_t u32_d;
+
+    u32_d = u32_ms;
 
     if (u32_d == 0u)
     {
@@ -130,8 +138,12 @@ void Ui_BuzzerBeep(uint32_t u32_ms)
 }
 
 /**
- * @brief  [EN] Battery V to percent: 21V=0% 28V=100%.
- *         [FA] ولتاژ باتری به درصد.
+ * @brief  [EN] Convert battery voltage to percent 0..100.
+ *         Mapping: 0% = UI_BAT_V_MIN_MV (21V), 100% = UI_BAT_V_MAX_MV (28V). Clamped.
+ *         Formula: pct = (V - Vmin)*100 / (Vmax - Vmin)
+ *         [FA] تبدیل ولتاژ باتری به درصد ۰..۱۰۰. نگاشت ۰٪=۲۱V و ۱۰۰٪=۲۸V.
+ * @param  u32_mv [EN] Battery voltage in mV. Range 0..40000mV, but clamped to 0..100% via Vmin/Vmax / ولتاژ باتری میلی‌ولت
+ * @return uint8_t [EN] Percent 0..100, 0=empty (21V), 100=full (28V) / درصد باتری
  */
 uint8_t Ui_BatteryVoltageToPercent(uint32_t u32_mv)
 {
@@ -168,12 +180,18 @@ uint8_t Ui_BatteryVoltageToPercent(uint32_t u32_mv)
 }
 
 /**
- * @brief  [EN] InputOk: green steady, others off. One cycle.
- *         [FA] ورودی عادی: سبز ثابت.
+ * @brief  [EN] Scenario InputOk: input voltage present, battery full.
+ *         Green steady ON, others OFF. Holds for UI_INPUT_OK_POLL_MS then returns.
+ *         [FA] سناریوی ورودی عادی: ورودی وصل و باتری فول.
+ * @note   [EN] No params - uses global voltage via task. Timing from ui_config.h.
+ *         [FA] بدون پارامتر - ولتاژ از تسک می‌آید. تایم از ui_config.h
  */
 void Ui_ScenarioInputOk(void)
 {
+    /* Green indicates input OK */
     green(true);
+
+    /* Others must be off in this scenario */
     red(false);
     yellow(false);
     buzzer(false);
@@ -182,8 +200,12 @@ void Ui_ScenarioInputOk(void)
 }
 
 /**
- * @brief  [EN] BatteryRun: green blink, yellow OFF, smart beep via separate function.
- *         [FA] دشارژ: سبز چشمک، زرد خاموش، بوق هوشمند جدا.
+ * @brief  [EN] Scenario BatteryRun: discharging, input lost (V_in <20V).
+ *         Green blinks where on-time = battery percent. Yellow OFF per new requirement.
+ *         Smart beep: if pct<50, beep every pct seconds (40%->40s). If pct<20, duration x2.
+ *         Uses separate Ui_BuzzerBeep() function.
+ *         [FA] سناریوی دشارژ: ورودی قطع، سبز چشمک با روشن‌بودن برابر درصد، زرد خاموش، بوق هوشمند جدا.
+ * @param  u32_batMv [EN] Battery voltage in mV. 21000mV=0% 28000mV=100%. Range 21000..28000mV / ولتاژ باتری
  */
 void Ui_ScenarioBatteryRun(uint32_t u32_batMv)
 {
@@ -192,12 +214,12 @@ void Ui_ScenarioBatteryRun(uint32_t u32_batMv)
     uint32_t u32_off;
     uint32_t u32_beepInt;
     uint32_t u32_beepDur;
-    bool b_beepNow = false;
+    bool b_beepNow;
 
-    /* Step 1: voltage to percent */
+    /* 1. Convert voltage to percent - readable step */
     u8_pct = Ui_BatteryVoltageToPercent(u32_batMv);
 
-    /* Step 2: calc on/off */
+    /* 2. Calculate green blink timing */
     u32_off = (uint32_t)(UI_PERCENT_FULL - u8_pct) * (UI_BLINK_PERIOD_MS / 100u);
 
     if (u32_off < UI_GREEN_MIN_OFF_MS)
@@ -207,17 +229,17 @@ void Ui_ScenarioBatteryRun(uint32_t u32_batMv)
 
     u32_on = UI_BLINK_PERIOD_MS - u32_off;
 
-    /* Step 3: yellow OFF per new req */
+    /* 3. Ensure unrelated outputs off */
     red(false);
     yellow(false);
 
-    /* Step 4: green blink - linear */
+    /* 4. Green blink */
     green(true);
     vTaskDelay(pdMS_TO_TICKS(u32_on));
     green(false);
     vTaskDelay(pdMS_TO_TICKS(u32_off));
 
-    /* Step 5: smart beep - simple linear */
+    /* 5. Smart beep handling - readable, not nested deeply */
     if (u8_pct >= UI_BEEP_START_PCT)
     {
         U32_G_BeepCnt = 0u;
@@ -230,6 +252,8 @@ void Ui_ScenarioBatteryRun(uint32_t u32_batMv)
     {
         u32_beepInt = 1u;
     }
+
+    b_beepNow = false;
 
     if (U32_G_BeepCnt >= u32_beepInt)
     {
@@ -250,15 +274,18 @@ void Ui_ScenarioBatteryRun(uint32_t u32_batMv)
 
     if (u8_pct < UI_BEEP_DOUBLE_THRESH_PCT)
     {
-        u32_beepDur = u32_beepDur * 2u;
+        u32_beepDur *= 2u;
     }
 
     Ui_BuzzerBeep(u32_beepDur);
 }
 
 /**
- * @brief  [EN] Charging: green steady, yellow shows remaining to full.
- *         [FA] شارژ: سبز ثابت، زرد مانده تا فول.
+ * @brief  [EN] Scenario Charging: input present (V_in >=20V) and battery <100%.
+ *         Green steady ON (input present). Yellow shows remaining to full:
+ *         0% (21V) = yellow steady ON, 100% (28V) = OFF, intermediate ON=(100-pct)*period.
+ *         [FA] سناریوی شارژ: ورودی وصل و باتری زیر فول. سبز ثابت، زرد مانده تا فول.
+ * @param  u32_batMv [EN] Battery voltage in mV. 21000=0% (yellow ON), 28000=100% (yellow OFF). Range 21000..28000 / ولتاژ باتری
  */
 void Ui_ScenarioCharging(uint32_t u32_batMv)
 {
@@ -268,7 +295,7 @@ void Ui_ScenarioCharging(uint32_t u32_batMv)
 
     u8_pct = Ui_BatteryVoltageToPercent(u32_batMv);
 
-    /* 100% => yellow OFF */
+    /* Full => yellow OFF */
     if (u8_pct >= UI_PERCENT_FULL)
     {
         yellow(false);
@@ -279,7 +306,7 @@ void Ui_ScenarioCharging(uint32_t u32_batMv)
         return;
     }
 
-    /* 0% => yellow steady ON */
+    /* Empty => yellow steady ON */
     if (u8_pct == 0u)
     {
         yellow(true);
@@ -290,7 +317,7 @@ void Ui_ScenarioCharging(uint32_t u32_batMv)
         return;
     }
 
-    /* Intermediate: ON = (100-pct)*period */
+    /* Intermediate: remaining to full */
     u32_on = (uint32_t)(UI_PERCENT_FULL - u8_pct) * (UI_CHARGING_BLINK_PERIOD_MS / 100u);
 
     if (u32_on < UI_CHARGING_YELLOW_MIN_OFF_MS)
