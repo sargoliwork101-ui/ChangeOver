@@ -5,13 +5,14 @@
  *          RTOS simple readable, non-linear formulas, markers above each function and variable in h and c.
  *          [FA] سناریوهای LED ماژول UI - ثابت‌های LED در هدر خودش، هر تابع و متغیر با جدا کننده و کامنت.
  *
- * @note    [EN] LED constants in ui_led.h per user request. Naming __ after type, func__ prefix.
+ * @note    [EN] ui_led.h provides defaults; runtime-tunable values are read from const APP_CONFIG. Naming __ after type, func__ prefix.
  *          RTOS: vTaskDelay allowed, HAL_Delay forbidden. Formulas non-linear broken into steps.
- *          [FA] ثابت‌های LED در همین هدر. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
+ *          [FA] ui_led.h پیش‌فرض‌ها را می‌دهد؛ مقدارهای قابل تنظیم زمان اجرا از APP_CONFIG ثابت خوانده می‌شوند. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
  */
 
 #include "ui_led.h"
 #include "ui_buzzer.h"
+#include "app_config.h"
 #include "bsp_gpio.h"
 #include "board_pins.h"
 #include "FreeRTOS.h"
@@ -33,23 +34,23 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
     uint32_t uint32_t__scaledOffset;
     uint8_t uint8_t__batteryPercent;
 
-    if (uint32_t__batteryMv <= UI_BAT_V_MIN_MV)
+    if (uint32_t__batteryMv <= APP_CONFIG.ui_bat_v_min_mv)
     {
         return 0u;
     }
 
-    if (uint32_t__batteryMv >= UI_BAT_V_MAX_MV)
+    if (uint32_t__batteryMv >= APP_CONFIG.ui_bat_v_max_mv)
     {
         return UI_PERCENT_FULL;
     }
 
     /* [EN] Step 1: range = Vmax - Vmin
        [FA] گام ۱: بازه ولتاژ */
-    uint32_t__voltageRangeMv = UI_BAT_V_MAX_MV - UI_BAT_V_MIN_MV;
+    uint32_t__voltageRangeMv = APP_CONFIG.ui_bat_v_max_mv - APP_CONFIG.ui_bat_v_min_mv;
 
     /* [EN] Step 2: offset = Vbat - Vmin
        [FA] گام ۲: فاصله از کف */
-    uint32_t__voltageOffsetMv = uint32_t__batteryMv - UI_BAT_V_MIN_MV;
+    uint32_t__voltageOffsetMv = uint32_t__batteryMv - APP_CONFIG.ui_bat_v_min_mv;
 
     if (uint32_t__voltageRangeMv == 0u)
     {
@@ -58,7 +59,7 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
 
     /* [EN] Step 3: scaled = offset * 100
        [FA] گام ۳: مقیاس به درصد */
-    uint32_t__scaledOffset = uint32_t__voltageOffsetMv * 100u;
+    uint32_t__scaledOffset = uint32_t__voltageOffsetMv * UI_PERCENT_SCALE;
 
     /* [EN] Step 4: percent = scaled / range
        [FA] گام ۴: تقسیم برای درصد */
@@ -125,7 +126,7 @@ static void func__all_off(void)
 /* ==================== BatteryRun Beep Cycle Count ==================== */
 
 /**
- * @brief  [EN] Cycle counter for smart beep in BatteryRun, counts 1s ticks, reset when beep.
+ * @brief  [EN] Cycle counter for smart beep in BatteryRun, counts completed 1s blink cycles; the first beep occurs on the requested cycle, then the counter resets.
  *         [FA] شمارنده سیکل برای بوق هوشمند در دشارژ، هر سیکل ۱ ثانیه.
  */
 static uint32_t UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
@@ -138,6 +139,8 @@ static uint32_t UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
  */
 void func__Ui_ScenarioInputOk(void)
 {
+    UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+
     func__green(true);
     func__red(false);
     func__yellow(false);
@@ -145,7 +148,7 @@ void func__Ui_ScenarioInputOk(void)
 
     /* [EN] RTOS delay in task, not HAL_Delay - other tasks still run, MCU not locked, simple & readable
        [FA] تاخیر RTOS در تسک - میکرو قفل نمی‌شود، ساده و خوانا */
-    vTaskDelay(pdMS_TO_TICKS(UI_INPUT_OK_POLL_MS));
+    vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_input_ok_poll_ms));
 }
 
 /* ==================== Scenario Charging Tick ==================== */
@@ -158,6 +161,8 @@ void func__Ui_ScenarioInputOk(void)
  */
 void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 {
+    UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+
     uint8_t uint8_t__batteryPercent;
     uint32_t uint32_t__remainingPercent;
     uint32_t uint32_t__periodPerPercent;
@@ -171,7 +176,7 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
         func__yellow(false);
         func__green(true);
         func__red(false);
-        vTaskDelay(pdMS_TO_TICKS(UI_CHARGING_BLINK_PERIOD_MS));
+        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_charging_blink_period_ms));
         return;
     }
 
@@ -180,26 +185,26 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
         func__yellow(true);
         func__green(true);
         func__red(false);
-        vTaskDelay(pdMS_TO_TICKS(UI_CHARGING_BLINK_PERIOD_MS));
+        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_charging_blink_period_ms));
         return;
     }
 
     /* [EN] Non-linear formula: break into steps for readability
        [FA] فرمول غیرخطی: گام به گام برای خوانایی */
     uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__batteryPercent;
-    uint32_t__periodPerPercent = UI_CHARGING_BLINK_PERIOD_MS / 100u;
+    uint32_t__periodPerPercent = APP_CONFIG.ui_charging_blink_period_ms / UI_PERCENT_SCALE;
     uint32_t__yellowOnMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
 
-    if (uint32_t__yellowOnMs < UI_CHARGING_YELLOW_MIN_OFF_MS)
+    if (uint32_t__yellowOnMs < APP_CONFIG.ui_charging_yellow_min_off_ms)
     {
-        uint32_t__yellowOnMs = UI_CHARGING_YELLOW_MIN_OFF_MS;
+        uint32_t__yellowOnMs = APP_CONFIG.ui_charging_yellow_min_off_ms;
     }
-    if (uint32_t__yellowOnMs > UI_CHARGING_BLINK_PERIOD_MS)
+    if (uint32_t__yellowOnMs > APP_CONFIG.ui_charging_blink_period_ms)
     {
-        uint32_t__yellowOnMs = UI_CHARGING_BLINK_PERIOD_MS;
+        uint32_t__yellowOnMs = APP_CONFIG.ui_charging_blink_period_ms;
     }
 
-    uint32_t__yellowOffMs = UI_CHARGING_BLINK_PERIOD_MS - uint32_t__yellowOnMs;
+    uint32_t__yellowOffMs = APP_CONFIG.ui_charging_blink_period_ms - uint32_t__yellowOnMs;
 
     func__green(true);
     func__red(false);
@@ -214,8 +219,8 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 
 /**
  * @brief  [EN] BatteryRun scenario tick: green blink non-linear (remainingPercent, periodPerPercent, greenOnMs/offMs), yellow OFF, smart beep.
- *         Beep every pct seconds, duration x2 if pct<20. RTOS simple with vTaskDelay.
- *         [FA] سناریو دشارژ: سبز چشمک غیرخطی، زرد خاموش، بوق هوشمند، ساده RTOS.
+ *         Beep every pct seconds, duration x2 if pct<20; first beep is on cycle pct. RTOS simple with vTaskDelay.
+ *         [FA] سناریو دشارژ: سبز چشمک غیرخطی، زرد خاموش، بوق هوشمند با شمارش دقیق سیکل، ساده RTOS.
  * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 28000=100% / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
@@ -234,15 +239,15 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     /* [EN] Non-linear: green blink OFF = remaining * period/100, with min
        [FA] فرمول غیرخطی سبز چشمک */
     uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__batteryPercent;
-    uint32_t__periodPerPercent = UI_BLINK_PERIOD_MS / 100u;
+    uint32_t__periodPerPercent = APP_CONFIG.ui_blink_period_ms / UI_PERCENT_SCALE;
     uint32_t__greenOffMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
 
-    if (uint32_t__greenOffMs < UI_GREEN_MIN_OFF_MS)
+    if (uint32_t__greenOffMs < APP_CONFIG.ui_green_min_off_ms)
     {
-        uint32_t__greenOffMs = UI_GREEN_MIN_OFF_MS;
+        uint32_t__greenOffMs = APP_CONFIG.ui_green_min_off_ms;
     }
 
-    uint32_t__greenOnMs = UI_BLINK_PERIOD_MS - uint32_t__greenOffMs;
+    uint32_t__greenOnMs = APP_CONFIG.ui_blink_period_ms - uint32_t__greenOffMs;
 
     func__red(false);
     func__yellow(false);
@@ -252,7 +257,7 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     func__green(false);
     vTaskDelay(pdMS_TO_TICKS(uint32_t__greenOffMs));
 
-    if (uint8_t__batteryPercent >= UI_BEEP_START_PCT)
+    if (uint8_t__batteryPercent >= APP_CONFIG.ui_beep_start_pct)
     {
         UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
         return;
@@ -261,18 +266,22 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     uint32_t__beepIntervalCycles = (uint32_t)uint8_t__batteryPercent;
     if (uint32_t__beepIntervalCycles == 0u)
     {
-        uint32_t__beepIntervalCycles = 1u;
+        uint32_t__beepIntervalCycles = UI_BEEP_MIN_INTERVAL_CYCLES;
     }
 
+    /* [EN] Count the completed one-second blink cycle before comparing.
+       This makes the first beep occur exactly after the requested number of cycles.
+       [FA] ابتدا سیکل چشمک یک‌ثانیه‌ای کامل‌شده را بشمار تا اولین بوق دقیقاً بعد از تعداد سیکل درخواستی باشد. */
     bool__shouldBeepNow = false;
+    if (UINT32_T__G__UiBatteryRunBeepCycleCnt < uint32_t__beepIntervalCycles)
+    {
+        UINT32_T__G__UiBatteryRunBeepCycleCnt++;
+    }
+
     if (UINT32_T__G__UiBatteryRunBeepCycleCnt >= uint32_t__beepIntervalCycles)
     {
         bool__shouldBeepNow = true;
         UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
-    }
-    else
-    {
-        UINT32_T__G__UiBatteryRunBeepCycleCnt++;
     }
 
     if (bool__shouldBeepNow == false)
@@ -280,8 +289,8 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
         return;
     }
 
-    uint32_t__beepDurationMs = UI_BEEP_BASE_MS;
-    if (uint8_t__batteryPercent < UI_BEEP_DOUBLE_THRESH_PCT)
+    uint32_t__beepDurationMs = APP_CONFIG.ui_beep_base_ms;
+    if (uint8_t__batteryPercent < APP_CONFIG.ui_beep_double_thresh_pct)
     {
         uint32_t__beepDurationMs = uint32_t__beepDurationMs * 2u;
     }
@@ -311,13 +320,13 @@ void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__battery
     bool bool__inputPresent;
 
     uint32_t__batteryClampedMv = uint32_t__batteryVoltageMv;
-    if (uint32_t__batteryClampedMv > UI_BAT_V_MAX_MV)
+    if (uint32_t__batteryClampedMv > APP_CONFIG.ui_bat_v_max_mv)
     {
-        uint32_t__batteryClampedMv = UI_BAT_V_MAX_MV;
+        uint32_t__batteryClampedMv = APP_CONFIG.ui_bat_v_max_mv;
     }
 
     uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryClampedMv);
-    bool__inputPresent = (uint32_t__inputVoltageMv >= UI_INPUT_THRESHOLD_MV);
+    bool__inputPresent = (uint32_t__inputVoltageMv >= APP_CONFIG.ui_input_threshold_mv);
 
     if (bool__inputPresent == true)
     {
@@ -359,18 +368,18 @@ void func__Ui_BoardTest_Start(void)
     func__all_off();
 
     func__red(true);
-    vTaskDelay(pdMS_TO_TICKS(UI_SELFTEST_LED_MS));
+    vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_selftest_led_ms));
     func__red(false);
 
     func__yellow(true);
-    vTaskDelay(pdMS_TO_TICKS(UI_SELFTEST_LED_MS));
+    vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_selftest_led_ms));
     func__yellow(false);
 
     func__green(true);
-    vTaskDelay(pdMS_TO_TICKS(UI_SELFTEST_LED_MS));
+    vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_selftest_led_ms));
     func__green(false);
 
-    func__Ui_BuzzerPatternMs_Start(0u, UI_BOOT_BEEP_MS, 1u, 0u);
+    func__Ui_BuzzerPatternMs_Start(0u, APP_CONFIG.ui_boot_beep_ms, 1u, 0u);
     while (func__Ui_BuzzerPatternMs_Tick() == true)
     {
         vTaskDelay(pdMS_TO_TICKS(UI_TICK_MS));

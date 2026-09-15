@@ -5,7 +5,7 @@
  *          [FA] تسک UI کاملاً RTOS ساده و خوانا با vTaskDelay.
  *
  * @note    [EN] RTOS simple: vTaskDelay yields, other tasks run, MCU not locked. No HAL_Delay.
- *          Formulas in ui.c are non-linear broken into steps.
+ *          Formulas in ui_led.c are non-linear broken into steps.
  *          [FA] RTOS ساده: vTaskDelay میکرو را قفل نمی‌کند.
  */
 

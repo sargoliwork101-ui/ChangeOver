@@ -5,9 +5,9 @@
  *          RTOS simple readable, non-linear formulas, markers above each function in h and c.
  *          [FA] سناریوهای LED ماژول UI - ثابت‌های LED در هدر خودش، فرمول غیرخطی، RTOS ساده.
  *
- * @note    [EN] LED constants in this header per user request (constants in own .h). Naming __ after type, func__ prefix.
+ * @note    [EN] LED defaults live in this header; app_config.c copies them into const APP_CONFIG, and runtime logic reads APP_CONFIG. Naming __ after type, func__ prefix.
  *          RTOS: vTaskDelay allowed, HAL_Delay forbidden. Formulas broken into steps.
- *          [FA] ثابت‌های LED در همین هدر، نام‌گذاری با __، پیشوند func__.
+ *          [FA] پیش‌فرض‌های LED در این هدر هستند؛ app_config.c آن‌ها را به APP_CONFIG ثابت منتقل می‌کند و منطق زمان اجرا از APP_CONFIG می‌خواند.
  */
 
 #ifndef UI_LED_H

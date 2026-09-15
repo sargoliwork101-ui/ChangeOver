@@ -4,9 +4,9 @@
  *          Non-linear formulas broken into steps, RTOS simple readable, markers above each function.
  *          [FA] الگوهای بازر ماژول UI - ثابت‌های بازر در هدر خودش، فرمول غیرخطی، RTOS ساده.
  *
- * @note    [EN] Buzzer constants in this header per user request (constants in own .h). Naming __ after type, func__ prefix.
+ * @note    [EN] Buzzer defaults live in this header; app_config.c copies tunable values into const APP_CONFIG. Fixed pattern-policy constants stay here. Naming __ after type, func__ prefix.
  *          RTOS: vTaskDelay allowed, HAL_Delay forbidden. Formulas broken into steps.
- *          [FA] ثابت‌های بازر در همین هدر، نام‌گذاری با __، پیشوند func__.
+ *          [FA] پیش‌فرض‌های بازر در این هدر هستند؛ app_config.c مقدارهای قابل تنظیم را به APP_CONFIG ثابت منتقل می‌کند و ثابت‌های سیاست الگو همین‌جا می‌مانند.
  */
 
 #ifndef UI_BUZZER_H
@@ -23,6 +23,7 @@
 #define UI_BEEP_BASE_MS                 250u    /* [EN] Base beep / طول بوق پایه */
 #define UI_BEEP_DOUBLE_THRESH_PCT       20u     /* [EN] Below this, duration x2 / زیر این ۲ برابر */
 #define UI_BEEP_START_PCT               50u     /* [EN] Below this, periodic beep starts / زیر این بوق دوره‌ای */
+#define UI_BEEP_MIN_INTERVAL_CYCLES     1u      /* [EN] Zero-percent beep interval floor / حداقل فاصله بوق در صفر درصد */
 
 /* ==================== Buzzer Pattern ==================== */
 

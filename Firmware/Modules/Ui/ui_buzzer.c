@@ -4,9 +4,9 @@
  *          Non-linear formulas broken into steps, RTOS simple readable, markers above each func and variable.
  *          [FA] الگوهای بازر ماژول UI - ثابت‌های بازر در هدر خودش، هر تابع و متغیر با جدا کننده و کامنت.
  *
- * @note    [EN] Buzzer constants in ui_buzzer.h per user request. Naming __ after type, func__ prefix.
+ * @note    [EN] ui_buzzer.h provides defaults and fixed pattern-policy constants. Tunable application values are owned by const APP_CONFIG. Naming __ after type, func__ prefix.
  *          RTOS: vTaskDelay allowed, HAL_Delay forbidden. Formulas non-linear broken into steps.
- *          [FA] ثابت‌های بازر در همین هدر. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
+ *          [FA] ui_buzzer.h پیش‌فرض‌ها و ثابت‌های سیاست الگو را دارد؛ مقدارهای قابل تنظیم برنامه متعلق به APP_CONFIG ثابت هستند. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
  */
 
 #include "ui_buzzer.h"

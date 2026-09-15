@@ -31,38 +31,35 @@
 
 ```text
 CubeIDE/Core/.../main.c
-  App_Start()                    Firmware/App/Src/app.c
-    Ui_Init()                    Firmware/Modules/Ui/ui.c  // پارامترها بالای همین فایل: Vmin=21V, Vmax=28V, Vth=20V
-    Rtos_Start()                 Firmware/Rtos/Src/rtos_app.c
-      TaskUi                     Firmware/Rtos/Src/task_ui.c
-        Ui_BoardTest()           یک‌بار تست سیم‌کشی
+  func__App_Start()                  Firmware/App/Src/app.c
+    func__Ui_Init()                  Firmware/Modules/Ui/ui_led.c
+    func__Rtos_Start()               Firmware/Rtos/Src/rtos_app.c
+      func__TaskUi                   Firmware/Rtos/Src/task_ui.c
+        func__Ui_BoardTest_Start()   ui_led.c + ui_buzzer.c // یک‌بار تست سیم‌کشی
         در هر نوبت بر اساس متغیرهای تست ولتاژ (volatile) یک سیکل اجرا می‌شود:
-          U32_G_InputVoltageMv   // تست دستی: ولتاژ ورودی mV، آستانه 20V
-          U32_G_BatteryVoltageMv // تست دستی: 21V=0% 28V=100%، قابل تغییر Live Expressions
-          Ui_BatteryVoltageToPercent() // نگاشت ولتاژ به درصد
+          UINT32_T__G__InputVoltageMv   // تست دستی: ولتاژ ورودی mV، آستانه از APP_CONFIG
+          UINT32_T__G__BatteryVoltageMv // تست دستی: 21V=0%، 28V=100%، قابل تغییر Live Expressions
+          func__Ui_BatteryVoltageToPercent() // نگاشت ولتاژ به درصد
           |
-          if (V_in >= 20V) {
-            if (battery <100%) → Ui_ScenarioCharging()  // سبز ثابت، زرد: 0% ثابت روشن، 100% خاموش، ON=(100-pct)*دوره
-            else               → Ui_ScenarioInputOk()   // سبز ثابت، بقیه خاموش
+          if (V_in >= APP_CONFIG.ui_input_threshold_mv) {
+            if (battery <100%) → func__Ui_ScenarioCharging_Tick() // سبز ثابت، زرد: 0% روشن، 100% خاموش
+            else               → func__Ui_ScenarioInputOk()        // سبز ثابت، بقیه خاموش
           } else {
-            → Ui_ScenarioBatteryRun()  // سبز چشمک ON=درصد*10ms، زرد خاموش، بوق هوشمند هر درصد ثانیه (40%→40s) و <20% طول 2 برابر
-              -> Ui_BuzzerBeep()       // تابع جدا بازر، در هر سناریو قابل صدا زدن
+            → func__Ui_ScenarioBatteryRun_Tick() // سبز چشمک، زرد خاموش، بوق هوشمند در سیکل دقیق درصد
+              -> func__Ui_BuzzerPatternMs_Start() // تابع جداگانه بازر
           }
-          BspGpio_Write()        Firmware/Bsp/Src/bsp_gpio.c
+          func__BspGpio_Write()  Firmware/Bsp/Src/bsp_gpio.c
           PIN_*                  Firmware/Config/Inc/board_pins.h
-          APP_CONFIG             Firmware/Config/Src/app_config.c // مقادیر پیش‌فرض جدید: ui_input_threshold_mv, ui_bat_v_min/max, beep, charging
+          APP_CONFIG             Firmware/Config/Src/app_config.c // منبع تنظیمات زمان اجرا؛ پیش‌فرض‌ها از هدرهای UI
 ```
 
 ### سناریوهای فعلی (لیست درخواستی)
 
 1. **InputOk**: `V_in >=20V` و باتری فول (28V) → سبز ثابت
-2. **BatteryRun**: `V_in <20V` → سبز چشمک (روشن=درصد باتری)، زرد خاموش، بوق هوشمند: اگر <50% هر درصد ثانیه یک بوق (40%→40s)، اگر <20% طول بوق 2 برابر (250→500ms) — تابع `Ui_BuzzerBeep()` جدا
-3. **Charging**: `V_in >=20V` و باتری <100% → سبز ثابت، زرد چشمک مانده تا فول: 0% (21V) زرد ثابت روشن، 100% (28V) خاموش، ON=(100-درصد)*دوره
+2. **BatteryRun**: `V_in <20V` → سبز چشمک (روشن متناسب با درصد باتری)، زرد خاموش، بوق هوشمند زیر ۵۰٪؛ بوق ۴۰٪ در سیکل ۴۰ و زیر ۲۰٪ طول بوق ۲ برابر (۲۵۰→۵۰۰ms)
+3. **Charging**: `V_in >=20V` و باتری <100% → سبز ثابت، زرد متناسب با مانده تا فول چشمک می‌زند: ۰٪ (21V) ثابت روشن و ۱۰۰٪ (28V) خاموش
 
-پارامترها و تایم‌ها بالای هر فایل/تابع (`ui.c` و `task_ui.c`) تعریف شده‌اند تا بدون عوض کردن کل برنامه تغییر کنند. نام متغیرها با پیشوند تایپ: `U32_G_` گلوبال (حروف بزرگ)، `u32_` داخلی (حروف کوچک).
-
-تسک‌های measurement / protection / control / comm فایل دارند؛ با فلگ صفر ساخته نمی‌شوند.
-
+مقادیر قابل تنظیم رفتار UI از `APP_CONFIG` خوانده می‌شوند. ثابت‌های `ui_led.h` و `ui_buzzer.h` فقط پیش‌فرض ساخت `APP_CONFIG` یا ثابت‌های الگوریتم هستند. متغیرهای تست با پیشوند تایپ کامل مانند `UINT32_T__G__` تعریف شده‌اند.
 
 تسک‌های measurement / protection / control / comm فایل دارند؛ با فلگ صفر ساخته نمی‌شوند.
 
@@ -83,7 +80,7 @@ ChangeOver
 └── Firmware/
     ├── AI_CONTEXT.md
     ├── App/
-    │   app.c ──► ui.h
+    │   app.c ──► ui_led.h / ui_buzzer.h
     │         ──► rtos_app.h
     ├── Config/
     │   board_pins.h
@@ -121,6 +118,7 @@ ChangeOver
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-15 | اصلاح مستندات UI برای ساختار واقعی `ui_led`/`ui_buzzer`، استفاده از `APP_CONFIG` در منطق زمان اجرا، رفع تأخیر یک‌سیکلی بوق هوشمند و افزودن تست رگرسیون زمان بوق |
 | 2026-09-14 | بازنویسی UI طبق درخواست جدید: حذف BatteryLow، زرد در دشارژ خاموش، بوق هوشمند با تابع جدا `Ui_BuzzerBeep()` (اگر <50% هر درصد ثانیه، 40%→40s، اگر <20% طول 2 برابر)، سناریوی شارژ جدید با زرد چشمک‌زن (0% زرد ثابت روشن=21V، 100% خاموش=28V، ON=(100-درصد)*دوره)، ورودی از bool به ولتاژ (آستانه 20V)، باتری 0%=21V و 100%=28V با `Ui_BatteryVoltageToPercent()`، پارامترها بالای فایل/تابع، نام‌گذاری U32_G_ گلوبال و u32_ داخلی |
 | 2026-09-14 | اجرای AI: فیکس EspLink README (اضافه شدن «درخت اتصال» اجباری)؛ اسکریپت `tools/check_ai_rules.sh` برای اجرای خودکار قوانین AI_CONTEXT (هدر دوزبانه، قالب ۷ بخشی، جدایی CubeIDE/CubeMX، فلگ ماژول‌ها، .ioc بدون ADC/PWM/UART)؛ تست هاست UI `host_test_ui.py`؛ همه چک‌ها پاس شد |
 | 2026-09-14 | سناریوهای UI به سبک خطی یک‌سیکلی (InputOk/BatteryRun/BatteryLow)؛ حذف تسک مرده defaultTask از main.c و هر دو .ioc؛ رفع Init تکراری؛ اصلاح نام `CubeIDE.ioc` در مستندات |
