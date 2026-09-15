@@ -14,29 +14,103 @@
 
 #include <stdint.h>
 
-/* ==================== Buzzer / Beep constants ==================== */
+/* ==================== Buzzer timing constants ==================== */
 
-#define UI_BUZZER_PERCENT_SCALE         100u    /* [EN] Duty percentage scale / مقیاس درصد دیوتی */
-#define UI_BUZZER_DUTY_MAX_PERCENT      100u    /* [EN] Maximum valid duty / بیشترین دیوتی مجاز */
-#define UI_BUZZER_MIN_PERIOD_MS         1000u   /* [EN] Minimum valid period / کمترین دوره مجاز */
-#define UI_BUZZER_MIN_GAP_MS            100u    /* [EN] Minimum gap when count is above one / کمترین گپ برای تعداد بیشتر از یک */
-#define UI_BUZZER_CHECK_PERCENT         10u     /* [EN] Recommended check fraction / درصد پیشنهادی مراجعه */
-#define UI_BUZZER_MIN_CHECK_MS          1u      /* [EN] Minimum valid next-call delay / کمترین تأخیر مراجعه بعدی */
-#define UI_BUZZER_OFF_RESULT            0       /* [EN] Valid disabled pattern / الگوی خاموش معتبر */
-#define UI_BUZZER_INVALID_RESULT        (-1)    /* [EN] Invalid configuration / تنظیمات نامعتبر */
+/**
+ * @brief  [EN] Percentage scale used by duty and check calculations.
+ *         100 means that a duty value is expressed as a percentage.
+ *         [FA] مقیاس درصد برای محاسبه دیوتی و زمان مراجعه.
+ *         مقدار ۱۰۰ یعنی ورودی دیوتی به‌صورت درصد بیان می‌شود.
+ */
+#define UI_BUZZER_PERCENT_SCALE         100u
 
-/* ==================== Legacy default constants kept for configuration ==================== */
+/**
+ * @brief  [EN] Maximum accepted duty-window percentage.
+ *         Values above this limit are invalid and turn the buzzer off.
+ *         [FA] بیشترین درصد مجاز پنجره دیوتی.
+ *         مقدار بیشتر از این حد نامعتبر است و بوق را خاموش می‌کند.
+ */
+#define UI_BUZZER_DUTY_MAX_PERCENT      100u
 
-#define UI_BOOT_BEEP_MS                 150u    /* [EN] Reserved boot-test default / پیش‌فرض رزرو تست راه‌اندازی */
-#define UI_BEEP_BASE_MS                 250u    /* [EN] Reserved explicit-beep default / پیش‌فرض رزرو بوق صریح */
-#define UI_BEEP_DOUBLE_THRESH_PCT       20u     /* [EN] Reserved threshold / آستانه رزرو */
-#define UI_BEEP_START_PCT               50u     /* [EN] Reserved threshold / آستانه رزرو */
-#define UI_BEEP_MIN_INTERVAL_CYCLES     1u      /* [EN] Minimum interval when a caller chooses zero percent / حداقل فاصله رزرو */
-#define UI_BUZZER_DEFAULT_GAP_PERCENT   20u     /* [EN] Reserved default for a future caller / پیش‌فرض رزرو گپ */
+/**
+ * @brief  [EN] Minimum accepted non-zero complete pattern period in milliseconds.
+ *         This prevents very fast periodic switching of the buzzer GPIO.
+ *         [FA] کمترین دوره کامل غیرصفر الگو بر حسب میلی‌ثانیه.
+ *         این حد از سوئیچ سریع پایه GPIO بوق جلوگیری می‌کند.
+ */
+#define UI_BUZZER_MIN_PERIOD_MS         1000u
 
-/* ==================== Shared UI tick ==================== */
+/**
+ * @brief  [EN] Minimum gap between adjacent pulses when beepCount is above one.
+ *         A single pulse has no adjacent gap and does not use this limit.
+ *         [FA] کمترین گپ بین پالس‌های مجاور وقتی تعداد بوق بیشتر از یک است.
+ *         یک بوق گپ مجاور ندارد و این محدودیت را استفاده نمی‌کند.
+ */
+#define UI_BUZZER_MIN_GAP_MS            100u
 
-#define UI_TICK_MS                      10u     /* [EN] Application service tick / تیک سرویس برنامه */
+/**
+ * @brief  [EN] Percentage of the smallest positive pattern segment used to recommend the next RTOS check.
+ *         [FA] درصد کوچک‌ترین بخش مثبت الگو برای پیشنهاد زمان مراجعه بعدی RTOS.
+ */
+#define UI_BUZZER_CHECK_PERCENT         10u
+
+/**
+ * @brief  [EN] Minimum positive delay returned to a caller between buzzer checks.
+ *         [FA] کمترین تأخیر مثبت که بین دو بررسی بوق به caller برگردانده می‌شود.
+ */
+#define UI_BUZZER_MIN_CHECK_MS          1u
+
+/* ==================== Buzzer result constants ==================== */
+
+/**
+ * @brief  [EN] Return value for a valid command that intentionally disables the buzzer.
+ *         [FA] مقدار بازگشتی برای فرمان معتبر خاموش‌کردن عمدی بوق.
+ */
+#define UI_BUZZER_OFF_RESULT            0
+
+/**
+ * @brief  [EN] Return value for an unsafe or invalid buzzer configuration.
+ *         The GPIO is forced LOW when this result is returned.
+ *         [FA] مقدار بازگشتی برای تنظیمات ناامن یا نامعتبر بوق.
+ *         هنگام این نتیجه، GPIO بوق روی LOW قرار می‌گیرد.
+ */
+#define UI_BUZZER_INVALID_RESULT        (-1)
+
+/* ==================== Scenario compatibility constants ==================== */
+
+/**
+ * @brief  [EN] Default one-shot beep duration used by the BoardTest scenario.
+ *         APP_CONFIG copies this default and the scenario converts it to a valid duty window.
+ *         [FA] مدت پیش‌فرض بوق تک‌باره در سناریوی تست برد.
+ *         APP_CONFIG این پیش‌فرض را کپی می‌کند و سناریو آن را به پنجره دیوتی معتبر تبدیل می‌کند.
+ */
+#define UI_BOOT_BEEP_MS                 150u
+
+/**
+ * @brief  [EN] Base beep duration used by the BatteryRun scenario.
+ *         [FA] مدت پایه بوق که در سناریوی BatteryRun استفاده می‌شود.
+ */
+#define UI_BEEP_BASE_MS                 250u
+
+/**
+ * @brief  [EN] Battery percentage below which the BatteryRun beep duration is doubled.
+ *         [FA] درصد باتری که پایین‌تر از آن مدت بوق BatteryRun دو برابر می‌شود.
+ */
+#define UI_BEEP_DOUBLE_THRESH_PCT       20u
+
+/**
+ * @brief  [EN] Battery percentage below which the periodic BatteryRun beep is enabled.
+ *         [FA] درصد باتری که پایین‌تر از آن بوق دوره‌ای BatteryRun فعال می‌شود.
+ */
+#define UI_BEEP_START_PCT               50u
+
+/**
+ * @brief  [EN] Minimum BatteryRun beep interval in completed blink cycles.
+ *         It prevents a zero-percent battery from producing a zero-cycle interval.
+ *         [FA] کمترین فاصله بوق BatteryRun بر حسب سیکل‌های کامل چشمک.
+ *         از ایجاد فاصله صفر سیکل برای باتری صفر درصد جلوگیری می‌کند.
+ */
+#define UI_BEEP_MIN_INTERVAL_CYCLES     1u
 
 /* ==================== Buzzer service ==================== */
 
