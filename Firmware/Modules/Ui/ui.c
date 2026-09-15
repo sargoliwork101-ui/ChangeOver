@@ -1,18 +1,13 @@
 /**
  * @file    ui.c
- * @brief   [EN] LED/buzzer scenarios - readable, full type names, func_ prefix for our functions.
- *          [FA] سناریوهای LED/بازر - خوانا، نام تایپ کامل، پیشوند func_ برای توابع خودمان.
+ * @brief   [EN] LED/buzzer scenarios - readable, full type names, func_ prefix.
+ *          Buzzer pattern separate scenario with period, onTime, repeat, gap.
+ *          [FA] سناریوهای LED/بازر - خوانا، نام تایپ کامل، پیشوند func_.
+ *          الگوی بازر سناریو جدا با دوره تناوب، زمان روشن، تکرار داخل روشن، گپ.
  *
- * @note    [EN] Naming per AI_CONTEXT.md:
- *          - Variables: full type first, then name. Global UPPERCASE with G_: UINT32_T_G_..., UINT8_T_G_..., BOOL_G_...
- *            Local lowercase: uint32_t_..., uint8_t_..., bool_...
- *          - Functions we write: func_ prefix, system functions (HAL, FreeRTOS) untouched.
- *          - Thresholds in ui_config.h single file.
- *          - Memory: no malloc/free, only static/stack, small locals, const config in Flash.
- *          [FA] نام‌گذاری طبق AI:
- *          - متغیر: اول تایپ کامل بعد نام. گلوبال حروف بزرگ با G_: UINT32_T_G_...
- *          - تابع خودمان: پیشوند func_، سیستمی دست نزن.
- *          - حافظه: بدون malloc، فقط استاتیک/استک.
+ * @note    [EN] Naming per AI_CONTEXT.md: full type first, global UPPERCASE with G_, local lowercase.
+ *          Memory: no malloc/free, only static/stack, small locals, const config in Flash.
+ *          [FA] نام‌گذاری طبق AI: اول تایپ کامل. حافظه بدون malloc.
  */
 
 #include "ui.h"
@@ -23,12 +18,12 @@
 #include "task.h"
 #include <stdbool.h>
 
-/* ===== Simple low-level helpers - func_ prefix, full type param ===== */
+/* ===== Low-level helpers ===== */
 
 /**
  * @brief  [EN] Green PB10 on/off.
  *         [FA] سبز PB10.
- * @param  bool_on [EN] true=on via Q6, false=off / روشن/خاموش
+ * @param  bool_on [EN] true=on / روشن
  */
 static void func_green(bool bool_on)
 {
@@ -48,7 +43,7 @@ static void func_red(bool bool_on)
 /**
  * @brief  [EN] Yellow PB1 on/off.
  *         [FA] زرد PB1.
- * @param  bool_on [EN] true=on via Q5 / روشن
+ * @param  bool_on [EN] true=on / روشن
  */
 static void func_yellow(bool bool_on)
 {
@@ -56,9 +51,9 @@ static void func_yellow(bool bool_on)
 }
 
 /**
- * @brief  [EN] Buzzer PA4 on/off low-level.
- *         [FA] بازر PA4 سطح پایین.
- * @param  bool_on [EN] true=sound via Q7 / صدا
+ * @brief  [EN] Buzzer PA4 on/off.
+ *         [FA] بازر PA4.
+ * @param  bool_on [EN] true=sound / صدا
  */
 static void func_buzzer(bool bool_on)
 {
@@ -78,37 +73,13 @@ static void func_all_off(void)
 }
 
 /**
- * @brief  [EN] Clamp uint32 to range.
- *         [FA] محدود کردن به بازه.
- * @param  uint32_t_value [EN] Value / مقدار
- * @param  uint32_t_min [EN] Min / کمینه
- * @param  uint32_t_max [EN] Max / بیشینه
- * @return uint32_t [EN] Clamped value / مقدار محدود شده
- */
-static uint32_t func_clamp_u32(uint32_t uint32_t_value, uint32_t uint32_t_min, uint32_t uint32_t_max)
-{
-    if (uint32_t_value < uint32_t_min)
-    {
-        return uint32_t_min;
-    }
-    if (uint32_t_value > uint32_t_max)
-    {
-        return uint32_t_max;
-    }
-    return uint32_t_value;
-}
-
-/**
- * @brief  [EN] Calculate beep ON duration inside onTime with repeat and gap.
- *         If repeat=1, returns onTime (gap ignored).
- *         Else beepOn = (onTime - totalGap)/repeat, totalGap=gap*(repeat-1).
- *         If totalGap>=onTime, beepOn is clamped to min.
- *         [FA] محاسبه زمان روشن هر بوق داخل زمان کل روشن با تکرار و گپ.
- *         اگر تکرار ۱ بود کل زمان روشن برمی‌گردد.
- * @param  uint32_t_onTimeMs [EN] Total time including gaps / کل زمان شامل گپ
- * @param  uint8_t_repeatCount [EN] Repeat count 1..10 / تعداد تکرار
- * @param  uint32_t_gapMs [EN] Gap ms / گپ میلی‌ثانیه
- * @return uint32_t [EN] Beep ON ms per pulse / زمان روشن هر پالس
+ * @brief  [EN] Calculate beep ON per pulse inside onTime.
+ *         If repeat=1 returns onTime (gap ignored). Else beepOn=(onTime-totalGap)/repeat.
+ *         [FA] محاسبه زمان روشن هر بوق.
+ * @param  uint32_t_onTimeMs [EN] Total including gaps / کل شامل گپ
+ * @param  uint8_t_repeatCount [EN] Repeat 1..10 / تکرار
+ * @param  uint32_t_gapMs [EN] Gap ms / گپ
+ * @return uint32_t [EN] Beep ON per pulse / زمان هر پالس
  */
 static uint32_t func_calc_beep_on(uint32_t uint32_t_onTimeMs, uint8_t uint8_t_repeatCount, uint32_t uint32_t_gapMs)
 {
@@ -124,34 +95,30 @@ static uint32_t func_calc_beep_on(uint32_t uint32_t_onTimeMs, uint8_t uint8_t_re
 
     if (uint32_t_totalGap >= uint32_t_onTimeMs)
     {
-        /* [EN] Gap too large, clamp: distribute onTime into (repeat*2-1) slots, beep gets half
-           [FA] گپ خیلی بزرگ، تقسیم می‌کنیم */
         uint32_t_beepOn = uint32_t_onTimeMs / (uint32_t)((uint8_t_repeatCount * 2u) - 1u);
-        if (uint32_t_beepOn < UI_BUZZER_MIN_ON_MS)
+        if (uint32_t_beepOn < 10u)
         {
-            uint32_t_beepOn = UI_BUZZER_MIN_ON_MS;
+            uint32_t_beepOn = 10u;
         }
         return uint32_t_beepOn;
     }
 
     uint32_t_beepOn = (uint32_t_onTimeMs - uint32_t_totalGap) / (uint32_t)uint8_t_repeatCount;
-
-    if (uint32_t_beepOn < UI_BUZZER_MIN_ON_MS)
+    if (uint32_t_beepOn < 10u)
     {
-        uint32_t_beepOn = UI_BUZZER_MIN_ON_MS;
+        uint32_t_beepOn = 10u;
     }
-
     return uint32_t_beepOn;
 }
 
-/* ===== File-scope globals - full type uppercase ===== */
+/* ===== Globals ===== */
 static uint32_t UINT32_T_G_BeepCnt = 0u;
 
-/* ===== Public - func_ prefix ===== */
+/* ===== Public ===== */
 
 /**
- * @brief  [EN] Init safe: all off. Called once before scheduler.
- *         [FA] Init امن: همه خاموش. یک‌بار قبل زمان‌بند.
+ * @brief  [EN] Init safe: all off.
+ *         [FA] Init امن: همه خاموش.
  */
 void func_Ui_Init(void)
 {
@@ -159,8 +126,8 @@ void func_Ui_Init(void)
 }
 
 /**
- * @brief  [EN] Board test: R, Y, G, beep linear readable.
- *         [FA] تست برد: قرمز، زرد، سبز، بوق.
+ * @brief  [EN] Board test: R, Y, G, beep using new buzzer pattern.
+ *         [FA] تست برد: قرمز، زرد، سبز، بوق با تابع جدید.
  */
 void func_Ui_BoardTest(void)
 {
@@ -178,63 +145,61 @@ void func_Ui_BoardTest(void)
     vTaskDelay(pdMS_TO_TICKS(UI_SELFTEST_LED_MS));
     func_green(false);
 
-    func_buzzer(true);
-    vTaskDelay(pdMS_TO_TICKS(UI_BOOT_BEEP_MS));
-    func_buzzer(false);
+    /* [EN] Use new buzzer pattern: period 0 (once), onTime BOOT_BEEP_MS, repeat 1, gap 0
+       [FA] استفاده از تابع جدید بازر: دوره ۰ یعنی یک‌بار، زمان روشن BOOT، تکرار ۱ */
+    func_Ui_BuzzerPatternMs(0u, UI_BOOT_BEEP_MS, 1u, 0u);
 }
 
-/**
- * @brief  [EN] Separate buzzer beep.
- *         [FA] بوق جدا.
- * @param  uint32_t_durationMs [EN] Duration ms, 0=base 250ms, range 0..5000 / طول بوق
- */
-void func_Ui_BuzzerBeep(uint32_t uint32_t_durationMs)
-{
-    uint32_t uint32_t_d;
-
-    uint32_t_d = uint32_t_durationMs;
-
-    if (uint32_t_d == 0u)
-    {
-        uint32_t_d = UI_BEEP_BASE_MS;
-    }
-
-    func_buzzer(true);
-    vTaskDelay(pdMS_TO_TICKS(uint32_t_d));
-    func_buzzer(false);
-}
-
-/* ===== Buzzer pattern - separate scenario ===== */
+/* ===== Buzzer pattern - 2 funcs only ===== */
 
 /**
- * @brief  [EN] Buzzer pattern once with gap in ms.
- *         If repeat=1, gap ignored, buzzer ON for onTime.
- *         Example: onTime=1000, repeat=2, gap=200 => ON 400 OFF 200 ON 400.
- *         [FA] الگوی بازر یک‌باره با گپ میلی‌ثانیه.
- *         اگر تکرار ۱ بود گپ حساب نمی‌شود.
- * @param  uint32_t_onTimeMs [EN] Total ON time including gaps, 10..10000ms / کل زمان روشن شامل گپ‌ها
- * @param  uint8_t_repeatCount [EN] Repeat inside ON, 1..10 / تکرار داخل روشن
- * @param  uint32_t_gapMs [EN] Gap ms, 0..5000, ignored if repeat=1 / گپ میلی‌ثانیه
+ * @brief  [EN] Buzzer pattern with gap ms.
+ *         Inputs: period (repeat time), onTime, repeat inside onTime, gap ms.
+ *         If repeat=1 gap ignored. Example: onTime=1000 repeat=2 gap=200 => ON400 OFF200 ON400.
+ *         If period=0 or period<=onTime, only pattern once.
+ *         [FA] الگوی بازر با گپ میلی‌ثانیه.
+ * @param  uint32_t_periodMs [EN] Period 0=once, 0..60000ms / دوره تناوب
+ * @param  uint32_t_onTimeMs [EN] Total ON including gaps, 10..10000ms / زمان روشن
+ * @param  uint8_t_repeatCount [EN] Repeat inside ON 1..10 / تکرار داخل روشن
+ * @param  uint32_t_gapMs [EN] Gap ms 0..5000, ignored if repeat=1 / گپ میلی‌ثانیه
  */
-void func_Ui_BuzzerPatternOnceMs(uint32_t uint32_t_onTimeMs, uint8_t uint8_t_repeatCount, uint32_t uint32_t_gapMs)
+void func_Ui_BuzzerPatternMs(uint32_t uint32_t_periodMs, uint32_t uint32_t_onTimeMs, uint8_t uint8_t_repeatCount, uint32_t uint32_t_gapMs)
 {
     uint32_t uint32_t_onTimeClamped;
     uint32_t uint32_t_gapClamped;
     uint8_t uint8_t_repeatClamped;
     uint32_t uint32_t_beepOnMs;
-    uint32_t uint32_t_totalGap;
     uint8_t uint8_t_i;
 
-    uint32_t_onTimeClamped = func_clamp_u32(uint32_t_onTimeMs, UI_BUZZER_MIN_ON_MS, UI_BUZZER_MAX_ON_MS);
-    uint32_t_gapClamped = func_clamp_u32(uint32_t_gapMs, 0u, UI_BUZZER_MAX_GAP_MS);
+    if (uint32_t_onTimeMs < 10u)
+    {
+        uint32_t_onTimeClamped = 10u;
+    }
+    else if (uint32_t_onTimeMs > 10000u)
+    {
+        uint32_t_onTimeClamped = 10000u;
+    }
+    else
+    {
+        uint32_t_onTimeClamped = uint32_t_onTimeMs;
+    }
+
+    if (uint32_t_gapMs > 5000u)
+    {
+        uint32_t_gapClamped = 5000u;
+    }
+    else
+    {
+        uint32_t_gapClamped = uint32_t_gapMs;
+    }
 
     if (uint8_t_repeatCount == 0u)
     {
         uint8_t_repeatClamped = 1u;
     }
-    else if (uint8_t_repeatCount > UI_BUZZER_MAX_REPEAT)
+    else if (uint8_t_repeatCount > 10u)
     {
-        uint8_t_repeatClamped = UI_BUZZER_MAX_REPEAT;
+        uint8_t_repeatClamped = 10u;
     }
     else
     {
@@ -246,50 +211,51 @@ void func_Ui_BuzzerPatternOnceMs(uint32_t uint32_t_onTimeMs, uint8_t uint8_t_rep
         func_buzzer(true);
         vTaskDelay(pdMS_TO_TICKS(uint32_t_onTimeClamped));
         func_buzzer(false);
+    }
+    else
+    {
+        if ((uint32_t_gapClamped * (uint32_t)(uint8_t_repeatClamped - 1u)) >= uint32_t_onTimeClamped)
+        {
+            uint32_t_gapClamped = (uint32_t_onTimeClamped * UI_BUZZER_DEFAULT_GAP_PERCENT / 100u);
+            if (uint8_t_repeatClamped > 1u)
+            {
+                uint32_t_gapClamped = uint32_t_gapClamped / (uint32_t)(uint8_t_repeatClamped - 1u);
+            }
+        }
+
+        uint32_t_beepOnMs = func_calc_beep_on(uint32_t_onTimeClamped, uint8_t_repeatClamped, uint32_t_gapClamped);
+
+        for (uint8_t_i = 0u; uint8_t_i < uint8_t_repeatClamped; uint8_t_i++)
+        {
+            func_buzzer(true);
+            vTaskDelay(pdMS_TO_TICKS(uint32_t_beepOnMs));
+            func_buzzer(false);
+
+            if (uint8_t_i < (uint8_t_repeatClamped - 1u))
+            {
+                vTaskDelay(pdMS_TO_TICKS(uint32_t_gapClamped));
+            }
+        }
+    }
+
+    if ((uint32_t_periodMs == 0u) || (uint32_t_periodMs <= uint32_t_onTimeClamped))
+    {
         return;
     }
 
-    uint32_t_totalGap = uint32_t_gapClamped * (uint32_t)(uint8_t_repeatClamped - 1u);
-
-    if (uint32_t_totalGap >= uint32_t_onTimeClamped)
-    {
-        /* [EN] Recalc gap to fit: gap = onTime * 20% / (repeat-1) as fallback
-           [FA] گپ بزرگ، از پیش‌فرض ۲۰٪ استفاده می‌کنیم */
-        uint32_t_gapClamped = (uint32_t_onTimeClamped * UI_BUZZER_DEFAULT_GAP_PERCENT / 100u);
-        if (uint8_t_repeatClamped > 1u)
-        {
-            uint32_t_gapClamped = uint32_t_gapClamped / (uint32_t)(uint8_t_repeatClamped - 1u);
-        }
-        if (uint32_t_gapClamped > UI_BUZZER_MAX_GAP_MS)
-        {
-            uint32_t_gapClamped = UI_BUZZER_MAX_GAP_MS;
-        }
-    }
-
-    uint32_t_beepOnMs = func_calc_beep_on(uint32_t_onTimeClamped, uint8_t_repeatClamped, uint32_t_gapClamped);
-
-    for (uint8_t_i = 0u; uint8_t_i < uint8_t_repeatClamped; uint8_t_i++)
-    {
-        func_buzzer(true);
-        vTaskDelay(pdMS_TO_TICKS(uint32_t_beepOnMs));
-        func_buzzer(false);
-
-        if (uint8_t_i < (uint8_t_repeatClamped - 1u))
-        {
-            vTaskDelay(pdMS_TO_TICKS(uint32_t_gapClamped));
-        }
-    }
+    vTaskDelay(pdMS_TO_TICKS(uint32_t_periodMs - uint32_t_onTimeClamped));
 }
 
 /**
- * @brief  [EN] Buzzer pattern once with gap percent.
+ * @brief  [EN] Buzzer pattern with gap percent.
  *         gapMs = onTime * gapPercent /100, ignored if repeat=1.
- *         [FA] الگوی بازر یک‌باره با گپ درصدی.
- * @param  uint32_t_onTimeMs [EN] Total ON time including gaps, 10..10000ms / کل زمان روشن
- * @param  uint8_t_repeatCount [EN] Repeat inside ON, 1..10 / تکرار داخل روشن
- * @param  uint8_t_gapPercent [EN] Gap percent 0..90%, ignored if repeat=1 / گپ درصدی
+ *         [FA] الگوی بازر با گپ درصدی.
+ * @param  uint32_t_periodMs [EN] Period ms 0=once / دوره تناوب
+ * @param  uint32_t_onTimeMs [EN] ON time ms / زمان روشن
+ * @param  uint8_t_repeatCount [EN] Repeat inside ON / تکرار داخل روشن
+ * @param  uint8_t_gapPercent [EN] Gap percent 0..90, ignored if repeat=1 / گپ درصدی
  */
-void func_Ui_BuzzerPatternOncePercent(uint32_t uint32_t_onTimeMs, uint8_t uint8_t_repeatCount, uint8_t uint8_t_gapPercent)
+void func_Ui_BuzzerPatternPercent(uint32_t uint32_t_periodMs, uint32_t uint32_t_onTimeMs, uint8_t uint8_t_repeatCount, uint8_t uint8_t_gapPercent)
 {
     uint32_t uint32_t_gapMs;
     uint8_t uint8_t_gapPctClamped;
@@ -305,146 +271,13 @@ void func_Ui_BuzzerPatternOncePercent(uint32_t uint32_t_onTimeMs, uint8_t uint8_
 
     if (uint8_t_repeatCount <= 1u)
     {
-        func_Ui_BuzzerPatternOnceMs(uint32_t_onTimeMs, uint8_t_repeatCount, 0u);
+        func_Ui_BuzzerPatternMs(uint32_t_periodMs, uint32_t_onTimeMs, uint8_t_repeatCount, 0u);
         return;
     }
 
     uint32_t_gapMs = (uint32_t_onTimeMs * (uint32_t)uint8_t_gapPctClamped) / 100u;
 
-    func_Ui_BuzzerPatternOnceMs(uint32_t_onTimeMs, uint8_t_repeatCount, uint32_t_gapMs);
-}
-
-/**
- * @brief  [EN] Buzzer pattern periodic: pattern + off = period-onTime.
- *         If period=0 or period<=onTime, only pattern once.
- *         [FA] الگوی بازر دوره‌ای: الگو + خاموشی تا دوره کامل.
- * @param  uint32_t_periodMs [EN] Period ms, 0=once, 0..60000 / دوره تناوب
- * @param  uint32_t_onTimeMs [EN] ON time ms, 10..10000 / زمان روشن
- * @param  uint8_t_repeatCount [EN] Repeat inside ON, 1..10 / تکرار داخل روشن
- * @param  uint32_t_gapMs [EN] Gap ms, 0..5000, ignored if repeat=1 / گپ
- */
-void func_Ui_BuzzerPatternPeriodicMs(uint32_t uint32_t_periodMs, uint32_t uint32_t_onTimeMs, uint8_t uint8_t_repeatCount, uint32_t uint32_t_gapMs)
-{
-    uint32_t uint32_t_periodClamped;
-    uint32_t uint32_t_onTimeClamped;
-
-    uint32_t_periodClamped = func_clamp_u32(uint32_t_periodMs, 0u, UI_BUZZER_MAX_PERIOD_MS);
-    uint32_t_onTimeClamped = func_clamp_u32(uint32_t_onTimeMs, UI_BUZZER_MIN_ON_MS, UI_BUZZER_MAX_ON_MS);
-
-    func_Ui_BuzzerPatternOnceMs(uint32_t_onTimeClamped, uint8_t_repeatCount, uint32_t_gapMs);
-
-    if ((uint32_t_periodClamped == 0u) || (uint32_t_periodClamped <= uint32_t_onTimeClamped))
-    {
-        return;
-    }
-
-    vTaskDelay(pdMS_TO_TICKS(uint32_t_periodClamped - uint32_t_onTimeClamped));
-}
-
-/**
- * @brief  [EN] Buzzer pattern periodic with gap percent.
- *         [FA] الگوی بازر دوره‌ای با گپ درصدی.
- * @param  uint32_t_periodMs [EN] Period ms, 0=once / دوره تناوب
- * @param  uint32_t_onTimeMs [EN] ON time ms / زمان روشن
- * @param  uint8_t_repeatCount [EN] Repeat inside ON / تکرار داخل روشن
- * @param  uint8_t_gapPercent [EN] Gap percent / گپ درصدی
- */
-void func_Ui_BuzzerPatternPeriodicPercent(uint32_t uint32_t_periodMs, uint32_t uint32_t_onTimeMs, uint8_t uint8_t_repeatCount, uint8_t uint8_t_gapPercent)
-{
-    uint32_t uint32_t_gapMs;
-    uint8_t uint8_t_gapPctClamped;
-    uint32_t uint32_t_periodClamped;
-    uint32_t uint32_t_onTimeClamped;
-
-    uint32_t_periodClamped = func_clamp_u32(uint32_t_periodMs, 0u, UI_BUZZER_MAX_PERIOD_MS);
-    uint32_t_onTimeClamped = func_clamp_u32(uint32_t_onTimeMs, UI_BUZZER_MIN_ON_MS, UI_BUZZER_MAX_ON_MS);
-
-    if (uint8_t_gapPercent > 90u)
-    {
-        uint8_t_gapPctClamped = 90u;
-    }
-    else
-    {
-        uint8_t_gapPctClamped = uint8_t_gapPercent;
-    }
-
-    if (uint8_t_repeatCount <= 1u)
-    {
-        func_Ui_BuzzerPatternPeriodicMs(uint32_t_periodClamped, uint32_t_onTimeClamped, uint8_t_repeatCount, 0u);
-        return;
-    }
-
-    uint32_t_gapMs = (uint32_t_onTimeClamped * (uint32_t)uint8_t_gapPctClamped) / 100u;
-
-    func_Ui_BuzzerPatternPeriodicMs(uint32_t_periodClamped, uint32_t_onTimeClamped, uint8_t_repeatCount, uint32_t_gapMs);
-}
-
-/**
- * @brief  [EN] Repeat pattern N times with period.
- *         [FA] تکرار الگو N بار با دوره.
- * @param  uint32_t_periodMs [EN] Period ms / دوره
- * @param  uint32_t_onTimeMs [EN] ON time ms / زمان روشن
- * @param  uint8_t_repeatCount [EN] Repeat inside ON / تکرار داخل روشن
- * @param  uint32_t_gapMs [EN] Gap ms / گپ
- * @param  uint32_t_repeatTimes [EN] How many periods, 0=1 / تعداد تکرار دوره
- */
-void func_Ui_BuzzerPatternRepeatMs(uint32_t uint32_t_periodMs, uint32_t uint32_t_onTimeMs, uint8_t uint8_t_repeatCount, uint32_t uint32_t_gapMs, uint32_t uint32_t_repeatTimes)
-{
-    uint32_t uint32_t_times;
-    uint32_t uint32_t_i;
-
-    if (uint32_t_repeatTimes == 0u)
-    {
-        uint32_t_times = 1u;
-    }
-    else
-    {
-        uint32_t_times = uint32_t_repeatTimes;
-    }
-
-    if (uint32_t_times > 1000u)
-    {
-        uint32_t_times = 1000u;
-    }
-
-    for (uint32_t_i = 0u; uint32_t_i < uint32_t_times; uint32_t_i++)
-    {
-        func_Ui_BuzzerPatternPeriodicMs(uint32_t_periodMs, uint32_t_onTimeMs, uint8_t_repeatCount, uint32_t_gapMs);
-    }
-}
-
-/**
- * @brief  [EN] Repeat with gap percent.
- *         [FA] تکرار با گپ درصدی.
- * @param  uint32_t_periodMs [EN] Period ms / دوره
- * @param  uint32_t_onTimeMs [EN] ON time ms / زمان روشن
- * @param  uint8_t_repeatCount [EN] Repeat inside ON / تکرار داخل روشن
- * @param  uint8_t_gapPercent [EN] Gap percent / گپ درصدی
- * @param  uint32_t_repeatTimes [EN] Repeat times / تعداد تکرار
- */
-void func_Ui_BuzzerPatternRepeatPercent(uint32_t uint32_t_periodMs, uint32_t uint32_t_onTimeMs, uint8_t uint8_t_repeatCount, uint8_t uint8_t_gapPercent, uint32_t uint32_t_repeatTimes)
-{
-    uint32_t uint32_t_gapMs;
-    uint8_t uint8_t_gapPctClamped;
-
-    if (uint8_t_gapPercent > 90u)
-    {
-        uint8_t_gapPctClamped = 90u;
-    }
-    else
-    {
-        uint8_t_gapPctClamped = uint8_t_gapPercent;
-    }
-
-    if (uint8_t_repeatCount <= 1u)
-    {
-        func_Ui_BuzzerPatternRepeatMs(uint32_t_periodMs, uint32_t_onTimeMs, uint8_t_repeatCount, 0u, uint32_t_repeatTimes);
-        return;
-    }
-
-    uint32_t_gapMs = (uint32_t_onTimeMs * (uint32_t)uint8_t_gapPctClamped) / 100u;
-
-    func_Ui_BuzzerPatternRepeatMs(uint32_t_periodMs, uint32_t_onTimeMs, uint8_t_repeatCount, uint32_t_gapMs, uint32_t_repeatTimes);
+    func_Ui_BuzzerPatternMs(uint32_t_periodMs, uint32_t_onTimeMs, uint8_t_repeatCount, uint32_t_gapMs);
 }
 
 /**
@@ -502,8 +335,8 @@ void func_Ui_ScenarioInputOk(void)
 }
 
 /**
- * @brief  [EN] BatteryRun: V_in<20V, green blink ON=pct*10ms, yellow OFF, smart beep.
- *         [FA] دشارژ: ورودی قطع، سبز چشمک، زرد خاموش، بوق هوشمند.
+ * @brief  [EN] BatteryRun: V_in<20V, green blink ON=pct*10ms, yellow OFF, smart beep using new buzzer pattern.
+ *         [FA] دشارژ: ورودی قطع، سبز چشمک، زرد خاموش، بوق هوشمند با تابع جدید.
  * @param  uint32_t_batteryMv [EN] Battery voltage mV, 21000=0% 28000=100%, range 21000..28000 / ولتاژ باتری
  */
 void func_Ui_ScenarioBatteryRun(uint32_t uint32_t_batteryMv)
@@ -571,7 +404,9 @@ void func_Ui_ScenarioBatteryRun(uint32_t uint32_t_batteryMv)
         uint32_beepDur *= 2u;
     }
 
-    func_Ui_BuzzerBeep(uint32_beepDur);
+    /* [EN] Use new buzzer pattern: period 0 (once), onTime beepDur, repeat 1, gap ignored
+       [FA] استفاده از تابع جدید بازر داخل سناریو LED: دوره ۰ یعنی یک‌بار، زمان روشن beepDur، تکرار ۱، گپ نادیده */
+    func_Ui_BuzzerPatternMs(0u, uint32_beepDur, 1u, 0u);
 }
 
 /**

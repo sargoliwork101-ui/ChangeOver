@@ -37,17 +37,11 @@
 #define UI_BEEP_DOUBLE_THRESH_PCT       20u     /* [EN] Below this, duration x2 / زیر این ۲ برابر */
 #define UI_BEEP_START_PCT               50u     /* [EN] Below this, periodic beep starts / زیر این بوق دوره‌ای */
 
-/* ==================== Buzzer Pattern (new) ==================== */
+/* ==================== Buzzer Pattern ==================== */
 /* [EN] Buzzer pattern: separate scenario with period, onTime, repeat inside onTime, gap.
-/   Example: onTime=1000ms, repeat=2, gap=20% => gap=200ms, each beep=400ms => ON 400 OFF 200 ON 400
-/   If repeat=1, gap ignored.
-/   [FA] الگوی بازر: سناریو جدا با دوره تناوب، زمان روشن، تکرار داخل روشن، گپ */
+/   If repeat=1, gap ignored. Example: onTime=1000ms, repeat=2, gap=20% => ON400 OFF200 ON400
+/   [FA] الگوی بازر: سناریو جدا با دوره، زمان روشن، تکرار داخل روشن، گپ */
 #define UI_BUZZER_DEFAULT_GAP_PERCENT   20u     /* [EN] Default gap 20% of onTime when repeat>1 / گپ پیش‌فرض ۲۰٪ */
-#define UI_BUZZER_MAX_REPEAT            10u     /* [EN] Max repeat inside onTime, 1..10 / حداکثر تکرار داخل روشن */
-#define UI_BUZZER_MIN_ON_MS             10u     /* [EN] Min beep on inside pattern / حداقل روشن */
-#define UI_BUZZER_MAX_ON_MS             10000u  /* [EN] Max onTime per pattern / حداکثر روشن */
-#define UI_BUZZER_MAX_PERIOD_MS         60000u  /* [EN] Max period / حداکثر دوره */
-#define UI_BUZZER_MAX_GAP_MS            5000u   /* [EN] Max gap between beeps / حداکثر گپ */
 
 /* ==================== Percent helpers ==================== */
 #define UI_PERCENT_FULL                 100u

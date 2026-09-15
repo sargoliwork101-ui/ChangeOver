@@ -12,18 +12,20 @@
 
 ### سناریوها (لیست درخواستی کاربر)
 
-| # | نام تابع | شرط انتخاب در `task_ui.c` | رفتار یک سیکل | پارامترهای قابل تنظیم (بالای `ui.c`) |
+| # | نام تابع | شرط انتخاب در `task_ui.c` | رفتار یک سیکل | پارامترهای قابل تنظیم (`ui_config.h`) |
 |---|---|---|---|---|
-| 1 | `Ui_ScenarioInputOk()` | `V_in >= 20V` (`UI_INPUT_THRESHOLD_MV=20000`) و باتری فول (100% = 28V) | سبز ثابت روشن، قرمز/زرد/بازر خاموش؛ سیکل `UI_INPUT_OK_POLL_MS=500ms` | `UI_INPUT_OK_POLL_MS`, `UI_INPUT_THRESHOLD_MV` |
-| 2 | `Ui_ScenarioBatteryRun(V_bat)` | `V_in < 20V` (ورودی قطع) | **دشارژ**: سبز چشمک با ON = درصد*10ms (100%→990/10، 50%→500/500، 0%→0/1000). **زرد خاموش** در این مرحله (طبق درخواست). بوق هوشمند از طریق تابع جدا `Ui_BuzzerBeep()` | `UI_BLINK_PERIOD_MS=1000`, `UI_GREEN_MIN_OFF_MS=10`, `UI_BAT_V_MIN_MV=21000`, `UI_BAT_V_MAX_MV=28000`, `UI_BEEP_BASE_MS=250`, `UI_BEEP_START_PCT=50`, `UI_BEEP_DOUBLE_THRESH_PCT=20` |
-| 3 | `Ui_ScenarioCharging(V_bat)` | `V_in >= 20V` و باتری <100% (در حال شارژ) | **شارژ**: سبز ثابت روشن (ورودی وصل). زرد نشانگر مانده تا فول: 0% (21V) زرد ثابت روشن، 100% (28V) زرد خاموش، بینشان ON=(100-درصد)*دوره (مثلاً 42%→580/420). | `UI_CHARGING_BLINK_PERIOD_MS=1000`, `UI_CHARGING_YELLOW_MIN_OFF_MS=10`, `UI_BAT_V_MIN_MV`, `UI_BAT_V_MAX_MV` |
+| 1 | `func_Ui_ScenarioInputOk()` | `V_in >= 20V` (`UI_INPUT_THRESHOLD_MV=20000`) و باتری فول (100% = 28V) | سبز ثابت روشن، قرمز/زرد/بازر خاموش؛ سیکل `UI_INPUT_OK_POLL_MS=500ms` | `UI_INPUT_OK_POLL_MS`, `UI_INPUT_THRESHOLD_MV` |
+| 2 | `func_Ui_ScenarioBatteryRun(V_bat)` | `V_in < 20V` (ورودی قطع) | **دشارژ**: سبز چشمک با ON = درصد*10ms (100%→990/10، 50%→500/500، 0%→0/1000). **زرد خاموش**. بوق هوشمند از طریق تابع جدید `func_Ui_BuzzerPatternMs(period=0, onTime=beepDur, repeat=1, gap=0)` | `UI_BLINK_PERIOD_MS=1000`, `UI_GREEN_MIN_OFF_MS=10`, `UI_BAT_V_MIN_MV=21000`, `UI_BAT_V_MAX_MV=28000`, `UI_BEEP_BASE_MS=250`, `UI_BEEP_START_PCT=50`, `UI_BEEP_DOUBLE_THRESH_PCT=20` |
+| 3 | `func_Ui_ScenarioCharging(V_bat)` | `V_in >= 20V` و باتری <100% (در حال شارژ) | **شارژ**: سبز ثابت روشن (ورودی وصل). زرد نشانگر مانده تا فول: 0% (21V) زرد ثابت روشن، 100% (28V) زرد خاموش، بینشان ON=(100-درصد)*دوره (مثلاً 42%→580/420). | `UI_CHARGING_BLINK_PERIOD_MS=1000`, `UI_CHARGING_YELLOW_MIN_OFF_MS=10`, `UI_BAT_V_MIN_MV`, `UI_BAT_V_MAX_MV` |
 
-#### منطق بوق هوشمند (حالت 2)
+#### منطق بوق هوشمند (حالت 2) - با تابع جدید
 
-- تابع بازر جدا: `Ui_BuzzerBeep(u32_durationMs)` — هر جا خواستیم صدا می‌زنیم.
-- اگر باتری <50%: هر `درصد` ثانیه یک بوق (40%→هر 40 ثانیه، 30%→هر 30 ثانیه، 10%→هر 10 ثانیه).
-- اگر باتری <20%: طول بوق 2 برابر (`UI_BEEP_BASE_MS=250` → 500ms).
-- پیاده‌سازی: شمارنده استاتیک `U32_G_BeepCycleCounter` هر سیکل BatteryRun (~1 ثانیه) زیاد می‌شود؛ وقتی به `درصد` رسید بوق و ریست.
+- تابع بازر جدا جدید: `func_Ui_BuzzerPatternMs(periodMs, onTimeMs, repeatCount, gapMs)` و `func_Ui_BuzzerPatternPercent(periodMs, onTimeMs, repeatCount, gapPercent)`
+- ورودی: `periodMs` دوره تناوب تکرار بوق، `onTimeMs` زمان روشن بودن بوق، `repeatCount` تکرار داخل روشن، `gapMs` یا `gapPercent` گپ روشن بودن (اگر تکرار=۱ نادیده)
+- مثال: `onTime=1000ms, repeat=2, gap=20%` => `ON400 OFF200 ON400`
+- اگر باتری <50%: هر `درصد` ثانیه یک بوق (40%→هر 40 ثانیه) با `period=0, onTime=beepDur, repeat=1, gap=0` از تابع جدید استفاده می‌شود
+- اگر باتری <20%: طول بوق 2 برابر (`UI_BEEP_BASE_MS=250` → 500ms)
+- پیاده‌سازی: شمارنده استاتیک `UINT32_T_G_BeepCnt` هر سیکل BatteryRun (~1 ثانیه) زیاد می‌شود؛ وقتی به `درصد` رسید بوق با تابع جدید و ریست
 
 #### نگاشت ولتاژ به درصد
 
@@ -33,19 +35,21 @@
 - تابع `Ui_BatteryVoltageToPercent(Vbat_mV)` همین کار را می‌کند.
 - ورودی: `V_in < 20000mV` یعنی ورودی نداریم، `>=20000` داریم.
 
-#### نام‌گذاری متغیر (درخواستی کاربر)
+#### نام‌گذاری متغیر (درخواستی کاربر - قانون جدید)
 
-- اول تایپ بعد نام: `U32_` گلوبال (حروف بزرگ)، `u32_` داخلی (حروف کوچک)
-- مثال گلوبال: `U32_G_InputVoltageMv`, `U32_G_BatteryVoltageMv` (volatile برای Live Expressions)
-- مثال داخلی: `u32_inputVoltageMv`, `u8_batteryPercent`, `u32_onMs`, `u32_offMs`, `b_inputPresent`
-- استاتیک سطح فایل: `U32_G_BeepCycleCounter` (گلوبال به فایل، تایپ بزرگ)
+- اول تایپ کامل بعد نام: `uint32_t`, `uint8_t`, `bool`
+- گلوبال: تایپ بزرگ با `G_`: `UINT32_T_G_InputVoltageMv`, `UINT32_T_G_BatteryVoltageMv`, `UINT32_T_G_BeepCnt`
+- داخلی: تایپ کوچک: `uint32_t_inputVoltageMv`, `uint8_t_batteryPercent`, `uint32_t_onMs`, `uint32_t_offMs`, `bool_inputPresent`
+- تابع خودمان: پیشوند `func_` مثل `func_Ui_Init`, `func_Ui_BuzzerPatternMs`, `func_TaskUi`
+- استاتیک سطح فایل هم گلوبال: `UINT32_T_G_BeepCnt`
 
-تست بدون ADC: دو متغیر `volatile` در `task_ui.c` (`U32_G_InputVoltageMv`، `U32_G_BatteryVoltageMv`) که در دیباگر Live Expressions زنده عوض می‌شوند. تغییر سناریو حداکثر بعد از پایان سیکل جاری (0.5 تا 1 ثانیه) اعمال می‌شود.
+تست بدون ADC: دو متغیر `volatile` در `task_ui.c` (`UINT32_T_G_InputVoltageMv`، `UINT32_T_G_BatteryVoltageMv`) که در دیباگر Live Expressions زنده عوض می‌شوند. تغییر سناریو حداکثر بعد از پایان سیکل جاری (0.5 تا 1 ثانیه) اعمال می‌شود.
 
 ## تاریخچه
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-15 | ساده‌سازی بازر: توابع اضافی حذف، فقط ۲ تابع ماند `func_Ui_BuzzerPatternMs/Percent` با ورودی دوره تناوب، زمان روشن، تکرار داخل روشن، گپ ms/درصد؛ اگر تکرار=۱ گپ نادیده؛ داخل سناریوهای LED (BatteryRun) از تابع جدید استفاده می‌شود؛ ثابت‌های اضافی MAX_* حذف، فقط DEFAULT_GAP_PERCENT ماند |
 | 2026-09-15 | بازر سناریو جدا با توابع مختلف: `func_Ui_BuzzerPatternOnceMs/Percent`, `PeriodicMs/Percent`, `RepeatMs/Percent` با ورودی دوره تناوب، زمان روشن، تکرار داخل روشن، گپ ms یا درصد؛ اگر تکرار=۱ گپ نادیده؛ مثال ۱۰۰۰ms، تکرار۲، گپ۲۰٪ => ON400 OFF200 ON400؛ مدیریت حافظه (بدون malloc) به AI اضافه شد |
 | 2026-09-14 | ساده‌سازی LED طبق قانون جدید AI: هر تابع یک کار، خطی روشن/تاخیر/خاموش؛ `green/red/yellow/buzzer/all_off` یک خط `BspGpio_Write`، `Ui_BuzzerBeep` ساده، سناریوها ۵ گام خطی؛ قانون سادگی به `AI_CONTEXT.md` اضافه شد |
 | 2026-09-14 | تمیزکاری: همه مین/ماکس و تایم‌ها به فایل واحد `ui_config.h` منتقل شد تا تکراری در ۲-۳ فایل نباشد؛ `ui.c`، `task_ui.c`، `app_config.c` و `host_test_ui.py` فقط همین را می‌خوانند (single source) |
@@ -78,25 +82,19 @@
 | نام | کار |
 |---|---|
 | `func_Ui_Init` | همه خروجی UI خاموش؛ فقط یک‌بار از `App_Init` قبل از زمان‌بند |
-| `func_Ui_BoardTest` | یک‌بار قرمز، زرد، سبز، بوق؛ برمی‌گردد |
-| `func_Ui_BuzzerBeep` | **تابع جدا بازر**؛ ورودی `uint32_t_durationMs`؛ در هر سناریو می‌توان صدا زد؛ `buzzer(true)`، `delay`، `buzzer(false)` |
-| `func_Ui_BuzzerPatternOnceMs` | **سناریو جدا بازر**: الگو یک‌باره با گپ ms؛ ورودی `uint32_t_onTimeMs` کل زمان روشن شامل گپ‌ها، `uint8_t_repeatCount` تکرار داخل روشن ۱..۱۰، `uint32_t_gapMs` گپ ms؛ اگر تکرار=۱ گپ نادیده؛ مثال ۱۰۰۰ms، تکرار۲، گپ۲۰۰ => ON400 OFF200 ON400 |
-| `func_Ui_BuzzerPatternOncePercent` | الگو یک‌باره با گپ درصدی؛ `uint32_t_onTimeMs`، `uint8_t_repeatCount`، `uint8_t_gapPercent` درصد از کل زمان روشن؛ اگر تکرار=۱ گپ بکار نمی‌رود؛ مثال ۱۰۰۰ms، تکرار۲، ۲۰٪ => گپ۲۰۰، هر بوق ۴۰۰ |
-| `func_Ui_BuzzerPatternPeriodicMs` | الگوی دوره‌ای با گپ ms؛ `uint32_t_periodMs` دوره تناوب (۰=یک‌بار)، `uint32_t_onTimeMs` زمان روشن، `uint8_t_repeatCount` تکرار داخل روشن، `uint32_t_gapMs` گپ؛ یک سیکل = الگو + خاموشی تا دوره کامل |
-| `func_Ui_BuzzerPatternPeriodicPercent` | الگوی دوره‌ای با گپ درصدی؛ `periodMs`، `onTimeMs`، `repeatCount`، `gapPercent` |
-| `func_Ui_BuzzerPatternRepeatMs` | تکرار الگو N بار با دوره و گپ ms؛ `periodMs`، `onTimeMs`، `repeatCount`، `gapMs`، `repeatTimes` تعداد دفعات تکرار دوره (۰=۱) |
-| `func_Ui_BuzzerPatternRepeatPercent` | تکرار با گپ درصدی؛ `periodMs`، `onTimeMs`، `repeatCount`، `gapPercent`، `repeatTimes` |
-| `func_Ui_BatteryVoltageToPercent` | تبدیل ولتاژ باتری (mV) به درصد 0..100 با `UI_BAT_V_MIN_MV=21000` و `UI_BAT_V_MAX_MV=28000`؛ فرمول `(V-Vmin)*100/(Vmax-Vmin)`؛ پارامترها بالای فایل |
-| `func_Ui_ScenarioInputOk` | یک سیکل سبز ثابت، بقیه خاموش؛ پارامتر `UI_INPUT_OK_POLL_MS` بالای فایل |
-| `func_Ui_ScenarioBatteryRun` | ورودی: `uint32_t_batteryMv`؛ یک سیکل چشمک سبز ON=درصد*10ms با کف 10ms؛ **زرد خاموش**؛ بوق هوشمند: اگر `uint8_t_batteryPercent < UI_BEEP_START_PCT (50)` هر درصد ثانیه یک بوق، اگر `<20` طول 2 برابر؛ از `func_Ui_BuzzerBeep` استفاده می‌کند؛ شمارنده `UINT32_T_G_BeepCnt` |
-| `func_Ui_ScenarioCharging` | ورودی: `uint32_t_batteryMv`؛ سبز ثابت روشن؛ زرد: 0% ثابت روشن، 100% خاموش، بینشان ON=(100-درصد)*دوره؛ پارامتر `UI_CHARGING_BLINK_PERIOD_MS` بالای فایل |
+| `func_Ui_BoardTest` | یک‌بار قرمز، زرد، سبز، بوق با تابع جدید `func_Ui_BuzzerPatternMs(0, BOOT_BEEP_MS, 1, 0)`؛ برمی‌گردد |
+| `func_Ui_BuzzerPatternMs` | **سناریو جدا بازر**: ورودی دوره تناوب `periodMs`، زمان روشن `onTimeMs` کل شامل گپ‌ها، تکرار داخل روشن `repeatCount` ۱..۱۰، گپ `gapMs`؛ اگر تکرار=۱ گپ نادیده؛ مثال ۱۰۰۰ms، تکرار۲، گپ۲۰۰ => ON400 OFF200 ON400؛ اگر period=0 یا <=onTime فقط یک‌بار |
+| `func_Ui_BuzzerPatternPercent` | سناریو جدا بازر با گپ درصدی: `periodMs`، `onTimeMs`، `repeatCount`، `gapPercent` درصد از کل زمان روشن؛ اگر تکرار=۱ گپ بکار نمی‌رود؛ مثال ۱۰۰۰ms، تکرار۲، ۲۰٪ => گپ۲۰۰، هر بوق ۴۰۰ |
+| `func_Ui_BatteryVoltageToPercent` | تبدیل ولتاژ باتری (mV) به درصد 0..100 با `UI_BAT_V_MIN_MV=21000` و `UI_BAT_V_MAX_MV=28000`؛ فرمول `(V-Vmin)*100/(Vmax-Vmin)` |
+| `func_Ui_ScenarioInputOk` | یک سیکل سبز ثابت، بقیه خاموش؛ پارامتر `UI_INPUT_OK_POLL_MS` |
+| `func_Ui_ScenarioBatteryRun` | ورودی: `uint32_t_batteryMv`؛ یک سیکل چشمک سبز ON=درصد*10ms؛ **زرد خاموش**؛ بوق هوشمند با تابع جدید: اگر `pct<50` هر درصد ثانیه یک بوق با `func_Ui_BuzzerPatternMs(0, beepDur, 1, 0)`، اگر `<20` طول 2 برابر؛ شمارنده `UINT32_T_G_BeepCnt` |
+| `func_Ui_ScenarioCharging` | ورودی: `uint32_t_batteryMv`؛ سبز ثابت روشن؛ زرد: 0% ثابت روشن، 100% خاموش، بینشان ON=(100-درصد)*دوره |
 | `func_TaskUi` | تست برد، بعد حلقه: `uint32_t_inputVoltageMv = UINT32_T_G_InputVoltageMv`، `uint32_t_batteryVoltageMv = UINT32_T_G_BatteryVoltageMv`، `uint8_t_batteryPercent = func_Ui_BatteryVoltageToPercent(...)`، `bool_inputPresent = (uint32_t_inputVoltageMv >= UI_INPUT_THRESHOLD_MV_TASK)`؛ اگر ورودی وصل و باتری <100% → `Charging`، اگر فول → `InputOk`، اگر قطع → `BatteryRun` |
 | `func_green` (static) | PB10، پارامتر `bool_on` (bool) |
 | `func_red` (static) | PB0 |
-| `func_yellow` (static) | PB1، در شارژ استفاده می‌شود |
+| `func_yellow` (static) | PB1 |
 | `func_buzzer` (static) | PA4، سطح پایین |
 | `func_all_off` (static) | هر چهار تا Low |
-| `func_clamp_u32` (static) | محدود کردن uint32 به بازه |
 | `func_calc_beep_on` (static) | محاسبه زمان روشن هر بوق داخل زمان کل روشن با تکرار و گپ |
 
 ## پایه‌ها
@@ -112,40 +110,41 @@
 
 ## پیش‌فرض امن
 
-`Ui_Init` هر چهار پایه را Low می‌کند. هر سناریو خروجی‌های نامرتبط را خاموش می‌کند. در BatteryRun زرد خاموش می‌ماند (طبق درخواست جدید). در Charging قرمز و بازر خاموش (بازر فقط از BatteryRun صدا زده می‌شود).
+`func_Ui_Init` هر چهار پایه را Low می‌کند. هر سناریو خروجی‌های نامرتبط را خاموش می‌کند. در BatteryRun زرد خاموش می‌ماند. در Charging قرمز و بازر خاموش (بازر فقط از BatteryRun با تابع جدید صدا زده می‌شود).
 
 ## درخت اتصال
 
 صدا زده می‌شود از:
 
 ```text
-main.c → App_Start() → app.c
-  App_Init() → Ui_Init()        (یک‌بار، قبل از زمان‌بند)
-  Rtos_Start() → rtos_app.c → TaskUi → task_ui.c
-    Ui_BoardTest()              (یک‌بار)
+main.c → func_App_Start() → app.c
+  func_App_Init() → func_Ui_Init()        (یک‌بار، قبل از زمان‌بند)
+  func_Rtos_Start() → rtos_app.c → func_TaskUi → task_ui.c
+    func_Ui_BoardTest()              (یک‌بار) -> func_Ui_BuzzerPatternMs(0, BOOT_BEEP_MS, 1, 0)
     حلقه ولتاژ-مبنا:
-      u32_inputVoltageMv = U32_G_InputVoltageMv (volatile, Live Expressions)
-      u32_batteryVoltageMv = U32_G_BatteryVoltageMv
-      u8_batteryPercent = Ui_BatteryVoltageToPercent(u32_batteryVoltageMv) // 21V=0% 28V=100%
-      b_inputPresent = (u32_inputVoltageMv >= 20000)
-      if (b_inputPresent)
-        if (u8_batteryPercent < 100)  Ui_ScenarioCharging(u32_batteryVoltageMv) // زرد: 0% ثابت روشن، 100% خاموش
-        else                          Ui_ScenarioInputOk() // سبز ثابت
+      uint32_t_inputVoltageMv = UINT32_T_G_InputVoltageMv (volatile, Live Expressions)
+      uint32_t_batteryVoltageMv = UINT32_T_G_BatteryVoltageMv
+      uint8_t_batteryPercent = func_Ui_BatteryVoltageToPercent(uint32_t_batteryVoltageMv) // 21V=0% 28V=100%
+      bool_inputPresent = (uint32_t_inputVoltageMv >= 20000)
+      if (bool_inputPresent)
+        if (uint8_t_batteryPercent < 100)  func_Ui_ScenarioCharging(uint32_t_batteryVoltageMv) // زرد: 0% ثابت روشن، 100% خاموش
+        else                               func_Ui_ScenarioInputOk() // سبز ثابت
       else
-        Ui_ScenarioBatteryRun(u32_batteryVoltageMv) // سبز چشمک + بوق هوشمند هر درصد ثانیه، <20% طول 2 برابر، زرد خاموش
-          -> Ui_BuzzerBeep(u32_durationMs) // تابع جدا
+        func_Ui_ScenarioBatteryRun(uint32_t_batteryVoltageMv) // سبز چشمک + بوق هوشمند با تابع جدید
+          -> func_Ui_BuzzerPatternMs(0, beepDur, 1, 0) // تابع جدا بازر با دوره ۰، تکرار ۱، گپ نادیده
+          -> func_Ui_BuzzerPatternPercent(periodMs, onTimeMs, repeatCount, gapPercent) // سناریو جدا با گپ درصدی
 ```
 
 این ماژول صدا می‌زند:
 
 ```text
 ui.c
-  bsp_gpio.h / bsp_gpio.c     BspGpio_Write → PIN_LED_*, PIN_BUZZER_*
+  bsp_gpio.h / bsp_gpio.c     func_BspGpio_Write → PIN_LED_*, PIN_BUZZER_*
   board_pins.h                PIN_LED_G/Y/R, PIN_BUZZER
   app_config.h / app_config.c APP_CONFIG.ui_* (همچنین پارامترهای محلی بالای ui.c)
   FreeRTOS.h / task.h         vTaskDelay
-  Ui_BatteryVoltageToPercent  تبدیل 21V=0% 28V=100%
-  Ui_BuzzerBeep               تابع جدا بازر
+  func_Ui_BatteryVoltageToPercent  تبدیل 21V=0% 28V=100%
+  func_Ui_BuzzerPatternMs/Percent  تابع جدا بازر با دوره تناوب، زمان روشن، تکرار، گپ
 ```
 
-به ADC، PWM، UART وصل نیست. ولتاژها فعلاً دستی‌اند (U32_G_... volatile)؛ بعداً از Measurement می‌آیند.
+به ADC، PWM، UART وصل نیست. ولتاژها فعلاً دستی‌اند (UINT32_T_G_... volatile)؛ بعداً از Measurement می‌آیند. مدیریت حافظه: بدون malloc، فقط استاتیک/استک.
