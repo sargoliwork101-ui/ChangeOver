@@ -12,12 +12,12 @@
  * @note    [EN] Divider/gain values come from the schematic and are constants
  *              in measurement.h (MISRA: no magic numbers in logic). The
  *              converted values are exposed as globals (UINT32_T__G__Meas*,
- *              BOOL_T__G__Meas*), written only by this task, readable from
+ *              BOOL__G__Meas*), written only by this task, readable from
  *              any module - that is how the other tasks (and the debugger
  *              via Live Expressions) use them.
  *          [FA] مقادیر تقسیم/گین از شماتیک می‌آید و ثابت measurement.h است
  *              (MISRA: عدد جادویی وسط منطق ممنوع). مقادیر تبدیل‌شده به‌صورت
- *              گلوبال (UINT32_T__G__Meas*, BOOL_T__G__Meas*) در دسترس‌اند —
+ *              گلوبال (UINT32_T__G__Meas*, BOOL__G__Meas*) در دسترس‌اند —
  *              فقط این تسک می‌نویسد و هر ماژولی می‌تواند بخواند (از جمله
  *              دیباگر با Live Expressions).
  */
@@ -50,8 +50,8 @@ uint32_t UINT32_T__G__MeasBattery24Mv = 0u;
 uint32_t UINT32_T__G__MeasBattery12Mv = 0u;
 uint32_t UINT32_T__G__MeasCurrent1Ma = 0u;
 uint32_t UINT32_T__G__MeasCurrent2Ma = 0u;
-bool BOOL_T__G__MeasInputPresent = false;
-bool BOOL_T__G__MeasDataValid = false;
+bool BOOL__G__MeasInputPresent = false;
+bool BOOL__G__MeasDataValid = false;
 
 /* ==================== Measurement Init ==================== */
 
@@ -68,8 +68,8 @@ void func__Measurement_Init(void)
     UINT32_T__G__MeasBattery12Mv = 0u;
     UINT32_T__G__MeasCurrent1Ma = 0u;
     UINT32_T__G__MeasCurrent2Ma = 0u;
-    BOOL_T__G__MeasInputPresent = false;
-    BOOL_T__G__MeasDataValid = false;
+    BOOL__G__MeasInputPresent = false;
+    BOOL__G__MeasDataValid = false;
 
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = 0u;
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 0u;
@@ -225,7 +225,7 @@ void func__Measurement_Run(void)
 
     if (bool__frameCopied == false)
     {
-        BOOL_T__G__MeasDataValid = false;
+        BOOL__G__MeasDataValid = false;
         MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
         return;
     }
@@ -253,7 +253,7 @@ void func__Measurement_Run(void)
        [FA] PB4 = MCU_INT_24_IN (شماتیک): از ورودی ۲۴ با R46 + R10 می‌آید —
        وقتی ورودی وصل است HIGH (~2.5V)، در غیر این صورت 0V.
        قطبیت از روی شماتیک است، هنوز روی برد اندازه‌گیری نشده. */
-    BOOL_T__G__MeasInputPresent =
+    BOOL__G__MeasInputPresent =
         (HAL_GPIO_ReadPin(PIN_INT_24_IN_PORT, PIN_INT_24_IN_PIN) == GPIO_PIN_SET);
 
     /* [EN] Mirror the globals into the snapshot (same data + valid flag);
@@ -265,9 +265,9 @@ void func__Measurement_Run(void)
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = UINT32_T__G__MeasBattery24Mv;
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat12_mv = UINT32_T__G__MeasBattery12Mv;
     MEASUREMENT_SNAPSHOT_T__G__Snap.i_ch2_ma = UINT32_T__G__MeasCurrent2Ma;
-    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = BOOL_T__G__MeasInputPresent;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = BOOL__G__MeasInputPresent;
 
-    BOOL_T__G__MeasDataValid = true;
+    BOOL__G__MeasDataValid = true;
     MEASUREMENT_SNAPSHOT_T__G__Snap.valid = true;
 }
 

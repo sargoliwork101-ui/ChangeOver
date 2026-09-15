@@ -111,15 +111,19 @@ static void func__yellow(bool bool__yellowOn)
 /* ==================== All Off Safe ==================== */
 
 /**
- * @brief  [EN] Drive all LEDs and buzzer off - safe state after Init.
- *         [FA] همه ال‌ای‌دی‌ها و بازر خاموش - حالت امن.
+ * @brief  [EN] Drive all LEDs and buzzer off - safe state after Init. The buzzer
+ *         is stopped through the buzzer module API (AI rule: buzzer code stays
+ *         in ui_buzzer.c, LED code must not drive the buzzer pin directly).
+ *         [FA] همه ال‌ای‌دی‌ها و بازر خاموش - حالت امن. بازر از طریق تابع ماژول
+ *         بازر خاموش می‌شود (قانون AI: کد بازر در ui_buzzer.c می‌ماند و کد LED
+ *         مستقیم پایۀ بازر را نمی‌نویسد).
  */
 static void func__all_off(void)
 {
     func__green(false);
     func__red(false);
     func__yellow(false);
-    func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
+    func__Ui_BuzzerPattern_Stop();
 }
 
 /* ==================== BatteryRun Beep Cycle Count ==================== */
@@ -141,7 +145,11 @@ void func__Ui_ScenarioInputOk(void)
     func__green(true);
     func__red(false);
     func__yellow(false);
-    func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
+    /* [EN] Buzzer off via buzzer module API - LED code does not touch the
+       buzzer pin (AI rule: buzzer/LED separation).
+       [FA] بازر خاموش از طریق تابع ماژول بازر — کد LED پایۀ بازر را
+       دست نمی‌زند (قانون AI: جداسازی بازر/LED). */
+    func__Ui_BuzzerPattern_Stop();
 
     /* [EN] RTOS delay in task, not HAL_Delay - other tasks still run, MCU not locked, simple & readable
        [FA] تاخیر RTOS در تسک - میکرو قفل نمی‌شود، ساده و خوانا */
@@ -163,6 +171,12 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
     uint32_t uint32_t__periodPerPercent;
     uint32_t uint32_t__yellowOnMs;
     uint32_t uint32_t__yellowOffMs;
+
+    /* [EN] Safe default: every scenario switches off unrelated outputs
+       (module sheet). The buzzer must be off in Charging.
+       [FA] پیش‌فرض امن: هر سناریو خروجی‌های نامرتبط را خاموش می‌کند
+       (برگهٔ ماژول). در شارژ، بازر باید خاموش باشد. */
+    func__Ui_BuzzerPattern_Stop();
 
     uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
 

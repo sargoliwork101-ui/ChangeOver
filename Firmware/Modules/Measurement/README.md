@@ -8,13 +8,13 @@
 
 ## وضعیت
 
-**فعال.** `MODULE_MEASUREMENT = 1`. ADC1 + DMA1 در `.ioc` روشن است (۵ کانال، scan، continuous، کلاک 9MHz) و تسک measurement ساخته می‌شود. مقادیر تبدیل‌شده **گلوبال**‌اند (`UINT32_T__G__Meas*` / `BOOL_T__G__Meas*`)؛ فقط تسک measurement می‌نویسد و هر ماژولی می‌تواند بخواند (اول `BOOL_T__G__MeasDataValid` را چک کنید).
+**فعال.** `MODULE_MEASUREMENT = 1`. ADC1 + DMA1 در `.ioc` روشن است (۵ کانال، scan، continuous، کلاک 9MHz) و تسک measurement ساخته می‌شود. مقادیر تبدیل‌شده **گلوبال**‌اند (`UINT32_T__G__Meas*` / `BOOL__G__Meas*`)؛ فقط تسک measurement می‌نویسد و هر ماژولی می‌تواند بخواند (اول `BOOL__G__MeasDataValid` را چک کنید).
 
 ## تاریخچه
 
 | تاریخ | تغییر |
 |---|---|
-| 2026-09-15 | مقادیر مشترک گلوبال شدند (`UINT32_T__G__MeasInputVoltageMv/Battery24Mv/Battery12Mv/Current1Ma/Current2Ma` + `BOOL_T__G__MeasInputPresent/DataValid`) — فقط تسک measurement می‌نویسد، همه می‌خوانند؛ در دیباگر با Live Expressions قابل مشاهده. پیشوند Meas* عمداً متفاوت از متغیرهای تست UI (task_ui.c) است تا لینک تداخل نکند |
+| 2026-09-15 | مقادیر مشترک گلوبال شدند (`UINT32_T__G__MeasInputVoltageMv/Battery24Mv/Battery12Mv/Current1Ma/Current2Ma` + `BOOL__G__MeasInputPresent/DataValid`) — فقط تسک measurement می‌نویسد، همه می‌خوانند؛ در دیباگر با Live Expressions قابل مشاهده. پیشوند Meas* عمداً متفاوت از متغیرهای تست UI (task_ui.c) است تا لینک تداخل نکند |
 | 2026-09-15 | فعال شد: ADC1+DMA چرخشی (بافر ۱۰ نصف‌واژه، بدون interrupt، بدون CPU)، توابع تبدیل گام‌به‌گام (CountsToMv / V24 / V12 / CurrentToMa)، دوره `MEASUREMENT_PERIOD_MS=10` بالای measurement.h، ورودی حضور ورودی از PB4 (`MCU_INT_24_IN`)، Init/Start داخل تسک (app.c دست‌نخورده ماند) |
 | 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگهٔ ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
@@ -59,8 +59,8 @@
 | `UINT32_T__G__MeasBattery12Mv` | mV | PA5 — باتری ۱۲ |
 | `UINT32_T__G__MeasCurrent1Ma` | mA | PA1 — جریان شارژ کانال ۱ (۲۴) |
 | `UINT32_T__G__MeasCurrent2Ma` | mA | PA7 — جریان شارژ کانال ۲ (۱۲) |
-| `BOOL_T__G__MeasInputPresent` | — | PB4 (شماتیک: HIGH = ورودی وصل؛ هنوز اندازه‌گیری نشده) |
-| `BOOL_T__G__MeasDataValid` | — | true از اولین فریم تبدیل‌شده |
+| `BOOL__G__MeasInputPresent` | — | PB4 (شماتیک: HIGH = ورودی وصل؛ هنوز اندازه‌گیری نشده) |
+| `BOOL__G__MeasDataValid` | — | true از اولین فریم تبدیل‌شده |
 
 `snapshot` (`func__Measurement_GetSnapshot`) هم همان داده + `valid` را یک‌جا کپی می‌دهد؛ هر دو هم‌زمان معتبرند (هر دو از یک‌جای Run نوشته می‌شوند).
 

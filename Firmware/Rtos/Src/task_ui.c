@@ -12,7 +12,6 @@
 #include "rtos_tasks.h"
 #include "ui_led.h"
 #include "ui_buzzer.h"
-#include "app_config.h"
 #include "FreeRTOS.h"
 #include "task.h"
 
@@ -21,6 +20,12 @@
 
 /* ==================== Global Test Inputs ==================== */
 
+/* [EN] Manual test inputs for the UI stage, in mV. Change them live in the
+ *      debugger (Live Expressions) without touching the board. 24000 = 24 V,
+ *      25000 = 25 V (battery, 21 V=0% .. 28 V=100%).
+ *      [FA] ورودی‌های تست دستی مرحلهٔ UI، بر حسب mV. بدون لمس برد، زنده در
+ *      دیباگر (Live Expressions) عوض می‌شوند. 24000 = 24V، 25000 = 25V
+ *      (باتری، ۲۱V=0٪ تا ۲۸V=100٪). */
 volatile uint32_t UINT32_T__G__InputVoltageMv = 24000u;
 volatile uint32_t UINT32_T__G__BatteryVoltageMv = 25000u;
 

@@ -64,10 +64,10 @@
 /* ==================== Globals (shared values) ==================== */
 /* [EN] Shared engineering values, written ONLY by the measurement task
  *      (Run). Any module/task can read them: #include "measurement.h" and
- *      use. Check BOOL_T__G__MeasDataValid before trusting the numbers.
+ *      use. Check BOOL__G__MeasDataValid before trusting the numbers.
  * [FA] مقادیر مهندسی مشترک، فقط توسط تسک measurement (Run) نوشته
  *      می‌شوند. هر ماژول/تسک می‌تواند بخواند: کافی است measurement.h را
- *      include کنید. قبل از اعتماد به اعداد، BOOL_T__G__MeasDataValid را
+ *      include کنید. قبل از اعتماد به اعداد، BOOL__G__MeasDataValid را
  *      چک کنید.
  * @note [EN] Named Meas* on purpose: the UI test globals in task_ui.c use
  *          InputVoltageMv/BatteryVoltageMv, so Meas* avoids a link
@@ -82,8 +82,8 @@ extern uint32_t UINT32_T__G__MeasBattery24Mv;      /* [EN] 24 V battery, mV (PA3
 extern uint32_t UINT32_T__G__MeasBattery12Mv;      /* [EN] 12 V battery, mV (PA5) / ولتاژ باتری ۱۲, mV */
 extern uint32_t UINT32_T__G__MeasCurrent1Ma;       /* [EN] 24 V ch.1 charge current, mA (PA1) / جریان کانال ۱, mA */
 extern uint32_t UINT32_T__G__MeasCurrent2Ma;       /* [EN] 12 V ch.2 charge current, mA (PA7) / جریان کانال ۲, mA */
-extern bool BOOL_T__G__MeasInputPresent;           /* [EN] PB4 HIGH = 24 V input present (schematic) / ورودی ۲۴ وصل است */
-extern bool BOOL_T__G__MeasDataValid;              /* [EN] true once the first frame is converted / اولین فریم تبدیل شده */
+extern bool BOOL__G__MeasInputPresent;           /* [EN] PB4 HIGH = 24 V input present (schematic) / ورودی ۲۴ وصل است */
+extern bool BOOL__G__MeasDataValid;              /* [EN] true once the first frame is converted / اولین فریم تبدیل شده */
 
 /* ==================== Measurement Init ==================== */
 
