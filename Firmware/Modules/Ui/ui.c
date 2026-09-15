@@ -17,7 +17,7 @@
 #include "task.h"
 #include <stdbool.h>
 
-/* ==================== Battery Helper ==================== */
+/* ==================== Battery Voltage To Percent ==================== */
 
 /**
  * @brief  [EN] Battery voltage to percent 0..100. Non-linear formula broken into steps.
@@ -71,17 +71,26 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
     return uint8_t__batteryPercent;
 }
 
-/* ==================== LED Low-Level ==================== */
+/* ==================== Green LED ==================== */
 
-static void func__green(bool bool__greenOn)  { func__BspGpio_Write(PIN_LED_G_PORT, PIN_LED_G_PIN, bool__greenOn); }
+static void func__green(bool bool__greenOn)
+{
+    func__BspGpio_Write(PIN_LED_G_PORT, PIN_LED_G_PIN, bool__greenOn);
+}
 
 /* ==================== Red LED ==================== */
 
-static void func__red(bool bool__redOn)      { func__BspGpio_Write(PIN_LED_R_PORT, PIN_LED_R_PIN, bool__redOn); }
+static void func__red(bool bool__redOn)
+{
+    func__BspGpio_Write(PIN_LED_R_PORT, PIN_LED_R_PIN, bool__redOn);
+}
 
 /* ==================== Yellow LED ==================== */
 
-static void func__yellow(bool bool__yellowOn){ func__BspGpio_Write(PIN_LED_Y_PORT, PIN_LED_Y_PIN, bool__yellowOn); }
+static void func__yellow(bool bool__yellowOn)
+{
+    func__BspGpio_Write(PIN_LED_Y_PORT, PIN_LED_Y_PIN, bool__yellowOn);
+}
 
 /* ==================== All Off Safe ==================== */
 
@@ -97,7 +106,7 @@ static void func__all_off(void)
 
 static uint32_t UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
 
-/* ==================== LED Scenario - InputOk ==================== */
+/* ==================== Scenario InputOk ==================== */
 
 void func__Ui_ScenarioInputOk(void)
 {
@@ -111,7 +120,7 @@ void func__Ui_ScenarioInputOk(void)
     vTaskDelay(pdMS_TO_TICKS(UI_INPUT_OK_POLL_MS));
 }
 
-/* ==================== LED Scenario - Charging ==================== */
+/* ==================== Scenario Charging Tick ==================== */
 
 void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 {
@@ -167,7 +176,7 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
     vTaskDelay(pdMS_TO_TICKS(uint32_t__yellowOffMs));
 }
 
-/* ==================== LED Scenario - BatteryRun ==================== */
+/* ==================== Scenario BatteryRun Tick ==================== */
 
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 {
@@ -248,7 +257,7 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     }
 }
 
-/* ==================== Ui Main Tick ==================== */
+/* ==================== Ui Tick ==================== */
 
 void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__batteryVoltageMv)
 {
@@ -290,7 +299,7 @@ void func__Ui_Init(void)
     UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
 }
 
-/* ==================== Board Test ==================== */
+/* ==================== Board Test Start ==================== */
 
 void func__Ui_BoardTest_Start(void)
 {
@@ -315,6 +324,8 @@ void func__Ui_BoardTest_Start(void)
     }
 }
 
+/* ==================== Board Test Tick ==================== */
+
 bool func__Ui_BoardTest_Tick(void)
 {
     /* [EN] For compatibility with non-blocking API, board test now done in Start with RTOS delays
@@ -331,7 +342,7 @@ static void func__buzzer(bool bool__buzzerOn)
     func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, bool__buzzerOn);
 }
 
-/* ==================== Buzzer / Beep - Calc ==================== */
+/* ==================== Calc Beep On ==================== */
 
 static uint32_t func__calc_beep_on(uint32_t uint32_t__totalOnMs, uint8_t uint8_t__repeatCount, uint32_t uint32_t__gapMs)
 {
@@ -367,7 +378,7 @@ static uint32_t func__calc_beep_on(uint32_t uint32_t__totalOnMs, uint8_t uint8_t
     return uint32_t__pulseOnMs;
 }
 
-/* ==================== Buzzer / Beep - State ==================== */
+/* ==================== Buzzer State ==================== */
 
 typedef enum { BUZZER_IDLE, BUZZER_PULSE_ON, BUZZER_GAP_OFF, BUZZER_PERIOD_OFF } buzzer_state_t;
 static buzzer_state_t BUZZER_STATE__G__State = BUZZER_IDLE;
@@ -379,6 +390,8 @@ static uint8_t UINT8_T__G__BuzzerRepeatCount = 0u;
 static uint8_t UINT8_T__G__BuzzerPulseIndex = 0u;
 static TickType_t TICKTYPE_T__G__BuzzerLastTick = 0;
 static bool BOOL__G__BuzzerRunning = false;
+
+/* ==================== Buzzer Start Internal ==================== */
 
 static void func__buzzer_start_internal(uint32_t uint32_t__periodMs, uint32_t uint32_t__totalOnMs, uint8_t uint8_t__repeatCount, uint32_t uint32_t__gapMs)
 {
@@ -421,12 +434,14 @@ static void func__buzzer_start_internal(uint32_t uint32_t__periodMs, uint32_t ui
     func__buzzer(true);
 }
 
-/* ==================== Buzzer / Beep - Pattern Ms ==================== */
+/* ==================== Buzzer Pattern Ms Start ==================== */
 
 void func__Ui_BuzzerPatternMs_Start(uint32_t uint32_t__periodMs, uint32_t uint32_t__onTimeMs, uint8_t uint8_t__repeatCount, uint32_t uint32_t__gapMs)
 {
     func__buzzer_start_internal(uint32_t__periodMs, uint32_t__onTimeMs, uint8_t__repeatCount, uint32_t__gapMs);
 }
+
+/* ==================== Buzzer Pattern Ms Tick ==================== */
 
 bool func__Ui_BuzzerPatternMs_Tick(void)
 {
@@ -489,7 +504,7 @@ bool func__Ui_BuzzerPatternMs_Tick(void)
     return true;
 }
 
-/* ==================== Buzzer / Beep - Pattern Percent ==================== */
+/* ==================== Buzzer Pattern Percent Start ==================== */
 
 void func__Ui_BuzzerPatternPercent_Start(uint32_t uint32_t__periodMs, uint32_t uint32_t__onTimeMs, uint8_t uint8_t__repeatCount, uint8_t uint8_t__gapPercent)
 {
@@ -513,9 +528,14 @@ void func__Ui_BuzzerPatternPercent_Start(uint32_t uint32_t__periodMs, uint32_t u
     func__buzzer_start_internal(uint32_t__periodMs, uint32_t__onTimeMs, uint8_t__repeatCount, uint32_t__gapMs);
 }
 
-bool func__Ui_BuzzerPatternPercent_Tick(void) { return func__Ui_BuzzerPatternMs_Tick(); }
+/* ==================== Buzzer Pattern Percent Tick ==================== */
 
-/* ==================== Buzzer / Beep - Stop ==================== */
+bool func__Ui_BuzzerPatternPercent_Tick(void)
+{
+    return func__Ui_BuzzerPatternMs_Tick();
+}
+
+/* ==================== Buzzer Pattern Stop ==================== */
 
 void func__Ui_BuzzerPattern_Stop(void)
 {
