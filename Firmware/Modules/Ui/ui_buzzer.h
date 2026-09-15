@@ -1,12 +1,12 @@
 /**
  * @file    ui_buzzer.h
- * @brief   [EN] UI buzzer patterns - separate from LED per AI rule, now in its own file.
- *          Non-linear formulas broken into steps, RTOS simple readable.
- *          [FA] الگوهای بازر ماژول UI - جدا از LED، در فایل خودش، فرمول غیرخطی، RTOS ساده.
+ * @brief   [EN] UI buzzer patterns - separate from LED, constants for buzzer in its own header per user request.
+ *          Non-linear formulas broken into steps, RTOS simple readable, markers above each function.
+ *          [FA] الگوهای بازر ماژول UI - ثابت‌های بازر در هدر خودش، فرمول غیرخطی، RTOS ساده.
  *
- * @note    [EN] All thresholds in ui.h (single source). Naming __ after type, func__ prefix.
+ * @note    [EN] Buzzer constants in this header per user request (constants in own .h). Naming __ after type, func__ prefix.
  *          RTOS: vTaskDelay allowed, HAL_Delay forbidden. Formulas broken into steps.
- *          [FA] همه آستانه‌ها در ui.h. نام‌گذاری با __، پیشوند func__.
+ *          [FA] ثابت‌های بازر در همین هدر، نام‌گذاری با __، پیشوند func__.
  */
 
 #ifndef UI_BUZZER_H
@@ -16,6 +16,25 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+
+/* ==================== Buzzer / Beep ==================== */
+
+#define UI_BOOT_BEEP_MS                 150u    /* [EN] Board test beep / بوق تست برد */
+#define UI_BEEP_BASE_MS                 250u    /* [EN] Base beep / طول بوق پایه */
+#define UI_BEEP_DOUBLE_THRESH_PCT       20u     /* [EN] Below this, duration x2 / زیر این ۲ برابر */
+#define UI_BEEP_START_PCT               50u     /* [EN] Below this, periodic beep starts / زیر این بوق دوره‌ای */
+
+/* ==================== Buzzer Pattern ==================== */
+
+#define UI_BUZZER_DEFAULT_GAP_PERCENT   20u     /* [EN] Default gap 20% of onTime when repeat>1 / گپ پیش‌فرض ۲۰٪ */
+
+/* ==================== RTOS tick ==================== */
+
+#define UI_TICK_MS                      10u     /* [EN] Ui task tick 10ms, simple RTOS / تیکه ۱۰ میلی‌ثانیه - common with LED */
+
+/* ==================== Percent helpers ==================== */
+
+#define UI_PERCENT_FULL                 100u
 
 /* ==================== Buzzer Pattern Ms Start ==================== */
 

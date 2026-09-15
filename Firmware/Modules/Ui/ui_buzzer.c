@@ -4,13 +4,11 @@
  *          Non-linear formulas broken into steps, RTOS simple readable, buzzer at end of its own file.
  *          [FA] الگوهای بازر ماژول UI - جدا از LED، در فایل خودش ui_buzzer.c، فرمول غیرخطی، RTOS ساده.
  *
- * @note    [EN] All thresholds in ui.h (single source). Naming __ after type, func__ prefix.
+ * @note    [EN] Buzzer constants in ui_buzzer.h per user request. Naming __ after type, func__ prefix.
  *          RTOS: vTaskDelay allowed, HAL_Delay forbidden. Formulas non-linear broken into steps.
- *          [FA] همه آستانه‌ها در ui.h. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
+ *          [FA] ثابت‌های بازر در همین هدر. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
  */
 
-#include "ui.h"
-#include "ui_buzzer.h"
 #include "bsp_gpio.h"
 #include "board_pins.h"
 #include "FreeRTOS.h"

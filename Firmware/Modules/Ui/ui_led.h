@@ -1,12 +1,13 @@
 /**
  * @file    ui_led.h
  * @brief   [EN] UI LED scenarios - green/red/yellow, battery percent, InputOk/Charging/BatteryRun.
- *          Part of UI split into LED and BUZZER per user request. RTOS simple readable, non-linear formulas.
- *          [FA] سناریوهای LED ماژول UI - سبز/قرمز/زرد، درصد باتری، سناریوهای ورودی/شارژ/دشارژ.
+ *          Split from UI into LED and BUZZER per user request. Constants for LED in its own header.
+ *          RTOS simple readable, non-linear formulas, markers above each function in h and c.
+ *          [FA] سناریوهای LED ماژول UI - ثابت‌های LED در هدر خودش، فرمول غیرخطی، RTOS ساده.
  *
- * @note    [EN] All thresholds in ui.h (single source). Naming __ after type, func__ prefix.
+ * @note    [EN] LED constants in this header per user request (constants in own .h). Naming __ after type, func__ prefix.
  *          RTOS: vTaskDelay allowed, HAL_Delay forbidden. Formulas broken into steps.
- *          [FA] همه آستانه‌ها در ui.h. نام‌گذاری با __، پیشوند func__.
+ *          [FA] ثابت‌های LED در همین هدر، نام‌گذاری با __، پیشوند func__.
  */
 
 #ifndef UI_LED_H
@@ -17,12 +18,39 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/* ==================== Battery voltage mapping ==================== */
+
+#define UI_BAT_V_MIN_MV                 21000u  /* [EN] 0% = 21V / صفر درصد = ۲۱ ولت */
+#define UI_BAT_V_MAX_MV                 28000u  /* [EN] 100% = 28V / فول = ۲۸ ولت */
+
+/* ==================== Input voltage threshold ==================== */
+
+#define UI_INPUT_THRESHOLD_MV           20000u  /* [EN] <20V = no input, >=20V = present / زیر ۲۰ ولت نداریم */
+
+/* ==================== Blink / Poll timings ==================== */
+
+#define UI_INPUT_OK_POLL_MS             500u    /* [EN] InputOk steady hold / سبز ثابت ورودی وصل */
+#define UI_SELFTEST_LED_MS              500u    /* [EN] Board test LED step / گام تست برد */
+#define UI_BLINK_PERIOD_MS              1000u   /* [EN] Green blink period BatteryRun / دوره چشمک سبز دشارژ */
+#define UI_GREEN_MIN_OFF_MS             10u     /* [EN] Min off for green full / حداقل خاموشی سبز فول */
+#define UI_CHARGING_BLINK_PERIOD_MS     1000u   /* [EN] Yellow blink period Charging / دوره چشمک زرد شارژ */
+#define UI_CHARGING_YELLOW_MIN_OFF_MS   10u     /* [EN] Min off yellow almost full / حداقل خاموشی زرد */
+
+/* ==================== Percent helpers ==================== */
+
+#define UI_PERCENT_FULL                 100u
+#define UI_PERCENT_SCALE                100u
+
+/* ==================== RTOS tick ==================== */
+
+#define UI_TICK_MS                      10u     /* [EN] Ui task tick 10ms, simple RTOS / تیکه ۱۰ میلی‌ثانیه */
+
 /* ==================== Battery Voltage To Percent ==================== */
 
 /**
  * @brief  [EN] Convert battery voltage to percent 0..100. Non-linear broken into steps: range, offset, scaled, percent.
  *         [FA] تبدیل ولتاژ باتری به درصد - غیرخطی ۴ گام.
- * @param  uint32_t__batteryMv [EN] Battery voltage in mV, range 0..40000mV, clamped / ولتاژ باتری میلی‌ولت
+ * @param  uint32_t__batteryMv [EN] Battery voltage mV, range 0..40000mV, clamped / ولتاژ باتری میلی‌ولت
  * @return uint8_t [EN] Percent 0..100 / درصد
  */
 uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv);

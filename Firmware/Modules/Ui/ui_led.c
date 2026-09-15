@@ -4,12 +4,11 @@
  *          Split from ui.c into LED and BUZZER per user request. RTOS simple readable, non-linear formulas.
  *          [FA] سناریوهای LED ماژول UI - جدا شده از ui.c به دو بخش LED و BUZZER.
  *
- * @note    [EN] All thresholds in ui.h (single source). Naming __ after type, func__ prefix.
+ * @note    [EN] LED constants in ui_led.h per user request. Naming __ after type, func__ prefix.
  *          RTOS: vTaskDelay allowed (does not lock MCU), HAL_Delay forbidden. Formulas non-linear broken into steps.
- *          [FA] همه آستانه‌ها در ui.h. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
+ *          [FA] ثابت‌های LED در همین هدر. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
  */
 
-#include "ui.h"
 #include "ui_led.h"
 #include "ui_buzzer.h"
 #include "bsp_gpio.h"

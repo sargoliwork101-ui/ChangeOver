@@ -157,11 +157,11 @@ for f in $(find "$ROOT/Firmware" -type f -name "*.h" | head -n 20); do
   params=$(grep -c "@param" "$f" || true)
   echo "  $(basename "$f"): funcs=$funcs @param=$params"
 done
-if ! grep -q "@param.*uint32_t" "$ROOT/Firmware/Modules/Ui/ui.h" && ! grep -q "@param.*uint32_t" "$ROOT/Firmware/Modules/Ui/ui_led.h" && ! grep -q "@param.*uint32_t" "$ROOT/Firmware/Modules/Ui/ui_buzzer.h"; then
+if (grep -q "@param.*uint32_t" "$ROOT/Firmware/Modules/Ui/ui.h" 2>/dev/null || grep -q "@param.*uint32_t" "$ROOT/Firmware/Modules/Ui/ui_led.h" 2>/dev/null || grep -q "@param.*uint32_t" "$ROOT/Firmware/Modules/Ui/ui_buzzer.h" 2>/dev/null); then
+  echo "  OK: ui.h / ui_led.h / ui_buzzer.h has @param"
+else
   echo "  FAIL: ui.h missing @param"
   FAIL=1
-else
-  echo "  OK: ui.h has @param"
 fi
 echo ""
 echo "[12] AI_CONTEXT new rules"
@@ -253,13 +253,13 @@ if [ -f "$ROOT/Firmware/Modules/Ui/ui_config.h" ]; then
 else
   echo "  OK: ui_config.h deleted"
 fi
-if grep -q "#define UI_BAT_V_MIN_MV" "$ROOT/Firmware/Modules/Ui/ui.h"; then
-  echo "  OK: ui.h has UI_ constants"
+if grep -q "#define UI_BAT_V_MIN_MV" "$ROOT/Firmware/Modules/Ui/ui.h" 2>/dev/null || grep -q "#define UI_BAT_V_MIN_MV" "$ROOT/Firmware/Modules/Ui/ui_led.h" 2>/dev/null; then
+  echo "  OK: ui.h / ui_led.h has UI_ constants (LED) per user request constants in own header"
 else
-  echo "  FAIL: ui.h missing UI_ constants"
+  echo "  FAIL: ui.h / ui_led.h missing UI_ constants"
   FAIL=1
 fi
-if (grep -q "UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -E -q "greenOnMs|greenOffMs|GreenOnMs|LED_BLINK" "$ROOT/Firmware/Modules/Ui/ui.c") || \
+if (grep -q "UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null && grep -E -q "greenOnMs|greenOffMs|GreenOnMs|LED_BLINK" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null) || \
    (grep -q "UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" 2>/dev/null && grep -E -q "greenOnMs|greenOffMs" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null); then
   echo "  OK: ui.c / ui_led.c / ui_buzzer.c uses meaningful names with __"
 else
@@ -298,8 +298,8 @@ else
   FAIL=1
 fi
 
-if grep -q "UI_TICK_MS" "$ROOT/Firmware/Modules/Ui/ui.h" && (grep -q "Tick" "$ROOT/Firmware/Modules/Ui/ui.h" || grep -q "Tick" "$ROOT/Firmware/Modules/Ui/ui_led.h"); then
-  echo "  OK: ui.h has UI_TICK_MS and Tick API (simple RTOS)"
+if (grep -q "UI_TICK_MS" "$ROOT/Firmware/Modules/Ui/ui.h" 2>/dev/null || grep -q "UI_TICK_MS" "$ROOT/Firmware/Modules/Ui/ui_led.h" 2>/dev/null || grep -q "UI_TICK_MS" "$ROOT/Firmware/Modules/Ui/ui_buzzer.h" 2>/dev/null) && (grep -q "Tick" "$ROOT/Firmware/Modules/Ui/ui.h" 2>/dev/null || grep -q "Tick" "$ROOT/Firmware/Modules/Ui/ui_led.h" 2>/dev/null || grep -q "Tick" "$ROOT/Firmware/Modules/Ui/ui_buzzer.h" 2>/dev/null); then
+  echo "  OK: ui.h / ui_led.h / ui_buzzer.h has UI_TICK_MS and Tick API (simple RTOS, constants in own header)"
 else
   echo "  FAIL: ui.h missing Tick API"
   FAIL=1

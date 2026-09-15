@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 # @file    host_test_ui.py
-# @brief   [EN] Host simulation of UI scenarios, reads thresholds from ui.h single source (ui_config.h deleted).
-#          [FA] شبیه‌سازی هاست سناریوهای UI، آستانه‌ها را از ui.h می‌خواند (ui_config.h حذف شد).
+# @brief   [EN] Host simulation of UI scenarios, reads thresholds from ui_led.h and ui_buzzer.h (split per user request, constants in own headers).
+#          [FA] شبیه‌سازی هاست سناریوهای UI، آستانه‌ها را از ui_led.h و ui_buzzer.h می‌خواند (ثابت‌ها در هدر خودش).
 
 import os, re, sys
 
-# ==================== Read ui.h single source (ui_config.h deleted) ====================
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "ui.h")
+# ==================== Read ui_led.h and ui_buzzer.h (split, constants in own headers) ====================
+BASE_DIR = os.path.dirname(__file__)
+CONFIG_PATHS = [os.path.join(BASE_DIR, "ui_led.h"), os.path.join(BASE_DIR, "ui_buzzer.h")]
 defines = {}
-try:
-    with open(CONFIG_PATH, 'r', encoding='utf-8', errors='ignore') as f:
-        for line in f:
-            m = re.match(r'#define\s+(\w+)\s+(\d+)u?', line)
-            if m:
-                defines[m.group(1)] = int(m.group(2))
-except FileNotFoundError:
-    print(f"WARN: {CONFIG_PATH} not found, using fallback")
-    defines = {}
+for CONFIG_PATH in CONFIG_PATHS:
+    try:
+        with open(CONFIG_PATH, 'r', encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                m = re.match(r'#define\s+(\w+)\s+(\d+)u?', line)
+                if m:
+                    defines[m.group(1)] = int(m.group(2))
+    except FileNotFoundError:
+        print(f"WARN: {CONFIG_PATH} not found")
 
 def get_def(name, fallback):
     return defines.get(name, fallback)
@@ -32,7 +33,7 @@ UI_BEEP_DOUBLE_THRESH_PCT = get_def("UI_BEEP_DOUBLE_THRESH_PCT", 20)
 UI_BEEP_START_PCT = get_def("UI_BEEP_START_PCT", 50)
 UI_PERCENT_FULL = get_def("UI_PERCENT_FULL", 100)
 
-print(f"Loaded thresholds from {CONFIG_PATH}:")
+print(f"Loaded thresholds from ui_led.h and ui_buzzer.h:")
 for k in ["UI_BAT_V_MIN_MV","UI_BAT_V_MAX_MV","UI_INPUT_THRESHOLD_MV","UI_BLINK_PERIOD_MS","UI_BEEP_BASE_MS","UI_BEEP_START_PCT","UI_BEEP_DOUBLE_THRESH_PCT"]:
     print(f"  {k}={get_def(k,0)}")
 print()
@@ -66,7 +67,7 @@ def scenario_charging(v_bat_mv):
     return pct, on_ms, off_ms
 
 def main():
-    print("=== UI Host Test (single source ui.h, ui_config.h deleted) ===")
+    print("=== UI Host Test (split ui_led.h + ui_buzzer.h, constants in own headers) ===")
     print(f"Battery 0%={UI_BAT_V_MIN_MV}mV, 100%={UI_BAT_V_MAX_MV}mV, InputThresh={UI_INPUT_THRESHOLD_MV}mV\n")
 
     print("--- Voltage to Percent ---")
@@ -100,7 +101,7 @@ def main():
         interval = pct
         dur = UI_BEEP_BASE_MS * (2 if pct < UI_BEEP_DOUBLE_THRESH_PCT else 1)
         print(f"{pct}% => every {interval}s, duration {dur}ms")
-    print("\nALL HOST TESTS PASSED (single source)")
+    print("\nALL HOST TESTS PASSED (split LED/BUZZER, constants in own headers)")
 
 if __name__ == "__main__":
     main()

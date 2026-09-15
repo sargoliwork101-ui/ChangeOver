@@ -152,14 +152,18 @@ void func__Ui_ScenarioInputOk(void) {
 - مهم: `HAL_Delay` ممنوع، `vTaskDelay` در تسک مجاز و ساده است. کد را شلوغ نکن با استیت‌ماشین‌های خیلی پیچیده اگر با یک `vTaskDelay` ساده هم میکرو قفل نمی‌شود
 - تا آخر پروژه RTOS ساده و خوانا بماند، نه شلوغ
 
-## فایل ui_config.h حذف شد
+## فایل ui_config.h حذف شد و UI دو بخش شد
 
-فایل `ui_config.h` اضافی بود. همه ثابت‌های قابل تنظیم UI الان در همان `ui.h` هستند (single source در خود ماژول).
+فایل `ui_config.h` اضافی بود و بعداً خود `ui.h` و `ui.c` هم حذف و به دو بخش LED و BUZZER تقسیم شد per user request.
 
 - قبلاً `ui_config.h` جدا بود و در `ui.c`, `task_ui.c`, `app_config.c` اینکلود می‌شد
-- الان همه `#define`های UI (Vmin/Vmax, Vth, blink, beep, buzzer pattern) در `ui.h` هستند
-- `task_ui.c` و `app_config.c` هم از `ui.h` می‌خوانند، نه فایل جدا
-- اگر ثابت جدید UI اضافه شد، فقط در `ui.h` بگذار
+- بعد همه `#define`های UI در `ui.h` بودند (single source)
+- الان طبق درخواست کاربر ثابت‌ها در هدر خودشون هستند:
+  - `ui_led.h` : ثابت‌های LED (BAT_V_MIN/MAX, INPUT_THRESHOLD, BLINK_PERIOD, GREEN_MIN_OFF, CHARGING_BLINK_PERIOD, PERCENT_FULL, TICK_MS)
+  - `ui_buzzer.h` : ثابت‌های BUZZER (BOOT_BEEP_MS, BEEP_BASE_MS, BEEP_DOUBLE_THRESH_PCT, BEEP_START_PCT, BUZZER_DEFAULT_GAP_PERCENT, TICK_MS)
+- `task_ui.c` و `app_config.c` الان از `ui_led.h` و `ui_buzzer.h` می‌خوانند، نه `ui.h`
+- `ui.h` و `ui.c` حذف شدند per user request (نیازی نیست)
+- اگر ثابت جدید LED اضافه شد فقط در `ui_led.h` بگذار، اگر BUZZER در `ui_buzzer.h`
 
 ## نام‌گذاری متغیر
 
