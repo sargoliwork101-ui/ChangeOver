@@ -168,6 +168,86 @@
  */
 #define UI_CHARGING_YELLOW_MIN_OFF_MS   10u
 
+/* ==================== BatteryRun warning constants ==================== */
+
+/**
+ * @brief  [EN] Battery percentage below which the standard BatteryRun warning beep is enabled.
+ *         [FA] درصد باتری که پایین‌تر از آن بوق هشدار معمول BatteryRun فعال می‌شود.
+ */
+#define UI_BATTERY_RUN_BEEP_START_PERCENT 40u
+
+/**
+ * @brief  [EN] Battery percentage below which the standard warning uses two beeps.
+ *         [FA] درصد باتری که پایین‌تر از آن هشدار معمول با دو بوق اجرا می‌شود.
+ */
+#define UI_BATTERY_RUN_BEEP_DOUBLE_PERCENT 20u
+
+/**
+ * @brief  [EN] Battery percentage below which the warning uses three beeps every 20 seconds.
+ *         [FA] درصد باتری که پایین‌تر از آن هشدار با سه بوق هر ۲۰ ثانیه اجرا می‌شود.
+ */
+#define UI_BATTERY_RUN_BEEP_TRIPLE_PERCENT 10u
+
+/**
+ * @brief  [EN] Battery percentage below which the critical ten-second beep is used.
+ *         [FA] درصد باتری که پایین‌تر از آن بوق بحرانی ده‌ثانیه‌ای اجرا می‌شود.
+ */
+#define UI_BATTERY_RUN_BEEP_CRITICAL_PERCENT 1u
+
+/**
+ * @brief  [EN] Interval shared by the one-beep and two-beep BatteryRun warnings, in milliseconds.
+ *         [FA] فاصله مشترک هشدار یک‌بوق و دو‌بوق BatteryRun، بر حسب میلی‌ثانیه.
+ */
+#define UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS 60000u
+
+/**
+ * @brief  [EN] Interval of the three-beep BatteryRun warning, in milliseconds.
+ *         [FA] فاصله هشدار سه‌بوق BatteryRun، بر حسب میلی‌ثانیه.
+ */
+#define UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS 20000u
+
+/**
+ * @brief  [EN] Duration of each one-beep or two-beep BatteryRun pulse, in milliseconds.
+ *         [FA] مدت هر بوق در هشدار یک‌بوق یا دو‌بوق BatteryRun، بر حسب میلی‌ثانیه.
+ */
+#define UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS 1000u
+
+/**
+ * @brief  [EN] Duration of each pulse in the three-beep BatteryRun warning, in milliseconds.
+ *         [FA] مدت هر بوق در هشدار سه‌بوق BatteryRun، بر حسب میلی‌ثانیه.
+ */
+#define UI_BATTERY_RUN_BEEP_TRIPLE_DURATION_MS 2000u
+
+/**
+ * @brief  [EN] Duration of the single critical BatteryRun beep, in milliseconds.
+ *         [FA] مدت بوق بحرانی تک‌باره BatteryRun، بر حسب میلی‌ثانیه.
+ */
+#define UI_BATTERY_RUN_BEEP_CRITICAL_DURATION_MS 10000u
+
+/**
+ * @brief  [EN] Pulse count for the standard BatteryRun warning.
+ *         [FA] تعداد پالس در هشدار معمول BatteryRun.
+ */
+#define UI_BATTERY_RUN_BEEP_STANDARD_COUNT 1u
+
+/**
+ * @brief  [EN] Pulse count for the low-battery BatteryRun warning.
+ *         [FA] تعداد پالس در هشدار باتری پایین BatteryRun.
+ */
+#define UI_BATTERY_RUN_BEEP_DOUBLE_COUNT 2u
+
+/**
+ * @brief  [EN] Pulse count for the critical BatteryRun warning above the empty threshold.
+ *         [FA] تعداد پالس در هشدار بحرانی BatteryRun بالاتر از آستانه خالی.
+ */
+#define UI_BATTERY_RUN_BEEP_TRIPLE_COUNT 3u
+
+/**
+ * @brief  [EN] Low gap between adjacent BatteryRun warning pulses, in milliseconds.
+ *         [FA] فاصله خاموش بین بوق‌های متوالی BatteryRun، بر حسب میلی‌ثانیه.
+ */
+#define UI_BATTERY_RUN_BEEP_GAP_MS 100u
+
 /* ==================== Percentage constants ==================== */
 
 /**

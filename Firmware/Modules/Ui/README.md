@@ -18,28 +18,132 @@ int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)
 
 این تابع غیرمسدودکننده است. در الگوی معتبر، مقدار بازگشتی زمان پیشنهادی مراجعه بعدی بر حسب میلی‌ثانیه است؛ این زمان برابر ۱۰٪ کوچک‌ترین بخش مثبت الگو است. مقدار `0` خاموشی معتبر و مقدار `-1` تنظیمات نامعتبر را نشان می‌دهد. فراخواننده صریح می‌تواند مقدار مثبت را به `vTaskDelay` بدهد و نیازی نیست برای دوره‌های بزرگ، تسک را با فاصله ثابت و کوتاه بیدار کند.
 
-### سناریوی InputOk
+## سناریوهای توافق‌شده UI
 
-- چراغ سبز دائم روشن است.
-- چراغ زرد و قرمز خاموش هستند.
-- شرط اجرا: ورودی ۲۴ ولت وصل باشد، ولتاژ ورودی از ۲۱ ولت بیشتر یا مساوی باشد و ولتاژ باتری به ۲۸ ولت رسیده باشد.
-- ثابت تعیین‌کننده آستانه وصل ورودی: `UI_INPUT_CONNECTED_THRESHOLD_MV = 21000u` در `Firmware/Modules/Ui/ui_led.h`.
-- ثابت تعیین‌کننده باتری کامل: `UI_BAT_V_MAX_MV = 28000u` در `Firmware/Modules/Ui/ui_led.h`.
-- اگر ورودی بالای ۲۱ ولت باشد ولی باتری هنوز به ۲۸ ولت نرسیده باشد، سناریوی Charging اجرا می‌شود.
+> این بخش مشخصات کامل سناریوها است. همه ولتاژها در منطق Firmware بر حسب میلی‌ولت هستند و نام ثابت هر عدد کنار همان سناریو آمده است.
 
-### خطای InputOverVoltage
+### قواعد مشترک تشخیص ورودی و هیسترزیس
 
-- منبع خطا: ولتاژ **ورودی**، نه ولتاژ باتری.
-- شرط فعال‌شدن: `Input > UI_INPUT_OVERVOLTAGE_THRESHOLD_MV` یعنی بیشتر از `28000mV`.
-- شرط پاک‌شدن: `Input <= UI_INPUT_OVERVOLTAGE_CLEAR_THRESHOLD_MV` یعنی `27000mV` یا کمتر.
-- بازهٔ `27000mV` تا `28000mV` وضعیت خطا را حفظ می‌کند تا نمایش خطا مرتب قطع و وصل نشود.
+- ورودی نامی سیستم ۲۴ ولت است؛ آستانه‌های نرم‌افزاری برای جلوگیری از سوئیچ اشتباه استفاده می‌شوند.
+- `Input >= UI_INPUT_CONNECTED_THRESHOLD_MV` یعنی ورودی وصل است؛ مقدار فعلی `21000u` یعنی ۲۱ ولت.
+- `Input <= UI_INPUT_DISCONNECTED_THRESHOLD_MV` یعنی ورودی قطع است؛ مقدار فعلی `20000u` یعنی ۲۰ ولت.
+- بین ۲۰ و ۲۱ ولت، وضعیت قبلی حفظ می‌شود و سیستم بین حالت‌ها سوئیچ نمی‌کند.
+- مقدار هیسترزیس تشخیص اتصال: `UI_INPUT_HYSTERESIS_MV = 1000u`.
+- ثابت‌های مربوط در `ui_led.h`:
+  - `UI_INPUT_CONNECTED_THRESHOLD_MV`
+  - `UI_INPUT_DISCONNECTED_THRESHOLD_MV`
+  - `UI_INPUT_HYSTERESIS_MV`
+
+### سناریو ۱: InputOk
+
+- شرط: ورودی وصل باشد و ولتاژ باتری به حد شارژ کامل رسیده باشد.
+- مثال توافق‌شده:
+  ```text
+  Input = 24V ، Battery = 28V
+  → سبز دائم، زرد و قرمز خاموش
+  ```
 - چراغ سبز دائم روشن است.
 - چراغ زرد خاموش است.
-- چراغ قرمز با `UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS = 1000u` و `UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT = 50u` چشمک می‌زند.
-- بوق با دورهٔ `UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS = 10000u`، مدت روشن‌بودن `UI_INPUT_OVERVOLTAGE_BEEP_DURATION_MS = 1000u` و تعداد `UI_INPUT_OVERVOLTAGE_BEEP_COUNT = 1u` اجرا می‌شود.
+- چراغ قرمز خاموش است.
+- بوق خاموش است.
+- محدودهٔ کامل‌بودن باتری از `UI_BAT_V_MAX_MV = 28000u` تعیین می‌شود.
+- آستانهٔ اتصال ورودی از `UI_INPUT_CONNECTED_THRESHOLD_MV = 21000u` تعیین می‌شود.
+- اگر ورودی وصل باشد ولی باتری هنوز به ۲۸ ولت نرسیده باشد، سناریوی Charging اجرا می‌شود.
+
+### سناریو ۲: BatteryRun
+
+- شرط: ورودی در وضعیت قطع باشد؛ یعنی ورودی به `UI_INPUT_DISCONNECTED_THRESHOLD_MV` رسیده باشد.
+- مثال توافق‌شده:
+  ```text
+  Input = 0V یا 19V
+  → BatteryRun
+  ```
+- در بازهٔ ۲۰ تا ۲۱ ولت، وضعیت قبلی ورودی حفظ می‌شود و هیسترزیس اعمال می‌شود.
+- چراغ سبز چشمک‌زن است.
+- چراغ زرد خاموش است.
+- چراغ قرمز خاموش است.
+- دیوتی روشن‌بودن چراغ سبز بر اساس درصد باتری تعیین می‌شود؛ درصد باتری از ولتاژ باتری محاسبه می‌شود.
+- محدودهٔ تبدیل درصد باتری:
+  - `UI_BAT_V_MIN_MV = 21000u` → صفر درصد
+  - `UI_BAT_V_MAX_MV = 28000u` → صد درصد
+- هرچه ولتاژ باتری از ۲۸ ولت به ۲۱ ولت نزدیک‌تر شود، درصد باتری کمتر و دیوتی روشن‌بودن سبز به صفر نزدیک‌تر می‌شود.
+- ثابت‌های زمان چشمک:
+  - `UI_BLINK_PERIOD_MS`
+  - `UI_GREEN_MIN_OFF_MS`
+
+#### جدول بوق BatteryRun
+
+اولویت از بحرانی‌ترین وضعیت به کم‌خطرترین وضعیت است:
+
+| محدوده درصد باتری | رفتار بوق | دوره تکرار | مدت هر بوق | تعداد بوق | ثابت‌های مربوط |
+|---|---|---:|---:|---:|---|
+| `Battery < 1%` | یک بوق ممتد؛ بعد از پایان بوق چراغ‌ها و بوق خاموش می‌مانند و تا وقتی زیر ۱٪ است تکرار نمی‌شود | یک‌بار | `10000ms` | ۱ | `UI_BATTERY_RUN_BEEP_CRITICAL_PERCENT`، `UI_BATTERY_RUN_BEEP_CRITICAL_DURATION_MS` |
+| `1% <= Battery < 10%` | سه بوق | `20000ms` | `2000ms` برای هر بوق | ۳ | `UI_BATTERY_RUN_BEEP_TRIPLE_PERCENT`، `UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS`، `UI_BATTERY_RUN_BEEP_TRIPLE_DURATION_MS`، `UI_BATTERY_RUN_BEEP_TRIPLE_COUNT` |
+| `10% <= Battery < 20%` | دو بوق | `60000ms` | `1000ms` برای هر بوق | ۲ | `UI_BATTERY_RUN_BEEP_DOUBLE_PERCENT`، `UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS`، `UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS`، `UI_BATTERY_RUN_BEEP_DOUBLE_COUNT` |
+| `20% <= Battery < 40%` | یک بوق | `60000ms` | `1000ms` | ۱ | `UI_BATTERY_RUN_BEEP_START_PERCENT`، `UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS`، `UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS`، `UI_BATTERY_RUN_BEEP_STANDARD_COUNT` |
+| `Battery >= 40%` | بوق خاموش | — | — | — | `UI_BATTERY_RUN_BEEP_START_PERCENT` |
+
+- گپ بین بوق‌های چندگانه `UI_BATTERY_RUN_BEEP_GAP_MS = 100u` میلی‌ثانیه است.
+- در حالت زیر ۱٪، چراغ سبز، زرد و قرمز همگی خاموش می‌شوند.
+- اعداد درصدی و زمانی جدول در `Firmware/Modules/Ui/ui_led.h` تعریف شده‌اند.
+
+### سناریو ۳: Charging
+
+- شرط: ورودی وصل باشد و باتری هنوز به ولتاژ کامل نرسیده باشد.
+- مثال توافق‌شده:
+  ```text
+  Input = 24V ، Battery = 25V
+  → سبز روشن، زرد چشمک‌زن، قرمز خاموش
+  ```
+- چراغ سبز دائم روشن است.
+- چراغ زرد چشمک‌زن است.
+- چراغ قرمز خاموش است.
+- بوق خاموش است.
+- دیوتی چشمک چراغ زرد بر اساس درصد باقی‌مانده تا شارژ کامل تعیین می‌شود.
+- هرچه باتری به ۱۰۰٪ نزدیک‌تر شود، دیوتی روشن‌بودن چراغ زرد کمتر می‌شود.
+- محدودهٔ درصد شارژ همان محدودهٔ `UI_BAT_V_MIN_MV = 21000u` تا `UI_BAT_V_MAX_MV = 28000u` است.
+- ثابت‌های زمان و محدودیت چشمک زرد:
+  - `UI_CHARGING_BLINK_PERIOD_MS`
+  - `UI_CHARGING_YELLOW_MIN_OFF_MS`
+
+### سناریو ۴: InputOverVoltage
+
+- منبع خطا فقط **ولتاژ ورودی** است، نه ولتاژ باتری.
+- شرط فعال‌شدن: `Input > UI_INPUT_OVERVOLTAGE_THRESHOLD_MV`؛ مقدار فعلی بیشتر از `28000mV` یعنی بیشتر از ۲۸ ولت.
 - هیسترزیس خطا: `UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV = 1000u`.
-- هیسترزیس وصل/قطع ورودی جداگانه است: `UI_INPUT_CONNECTED_THRESHOLD_MV = 21000u`، `UI_INPUT_DISCONNECTED_THRESHOLD_MV = 20000u` و `UI_INPUT_HYSTERESIS_MV = 1000u`.
-- انتخاب نهایی حالت‌های کاری بعد از توافق سناریوها انجام می‌شود؛ این بخش فقط قرارداد نمایش خطا را تعریف می‌کند.
+- شرط پاک‌شدن: `Input <= UI_INPUT_OVERVOLTAGE_CLEAR_THRESHOLD_MV`؛ مقدار فعلی `27000mV` یعنی ۲۷ ولت یا کمتر.
+- در بازهٔ ۲۷ تا ۲۸ ولت، وضعیت خطا حفظ می‌شود.
+- چراغ سبز دائم روشن است.
+- چراغ زرد خاموش است.
+- چراغ قرمز هر ۱ ثانیه با دیوتی ۵۰٪ چشمک می‌زند.
+- بوق هر ۱۰ ثانیه، یک بوق یک‌ثانیه‌ای می‌زند.
+- ثابت‌های نمایش خطا:
+  - `UI_INPUT_OVERVOLTAGE_THRESHOLD_MV`
+  - `UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV`
+  - `UI_INPUT_OVERVOLTAGE_CLEAR_THRESHOLD_MV`
+  - `UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS = 1000u`
+  - `UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT = 50u`
+  - `UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS = 10000u`
+  - `UI_INPUT_OVERVOLTAGE_BEEP_DURATION_MS = 1000u`
+  - `UI_INPUT_OVERVOLTAGE_BEEP_DUTY_PERCENT`
+  - `UI_INPUT_OVERVOLTAGE_BEEP_COUNT = 1u`
+  - `UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS = 0u`
+
+### خلاصه انتخاب سناریوها
+
+```text
+InputOverVoltage فعال
+    → نمایش خطای اضافه‌ولتاژ و اجرای بوق خطا
+
+در غیر این صورت، اگر ورودی قطع باشد
+    → BatteryRun
+
+در غیر این صورت، اگر ورودی وصل و باتری کمتر از 28V باشد
+    → Charging
+
+در غیر این صورت، اگر ورودی وصل و باتری حداقل 28V باشد
+    → InputOk
+```
 
 ## تاریخچه
 
