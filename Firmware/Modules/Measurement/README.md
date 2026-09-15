@@ -16,7 +16,7 @@
 |---|---|
 | 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
-| 2026-09 | اسکلت `Measurement_Init` / `Run` / `GetSnapshot` |
+| 2026-09 | اسکلت `func_Measurement_Init` / `Run` / `GetSnapshot` |
 
 ## فایل‌ها
 
@@ -31,9 +31,9 @@
 
 | نام | کار |
 |---|---|
-| `Measurement_Init` | `s_snap` را صفر می‌کند؛ `valid = false` |
-| `Measurement_Run` | یک فریم ADC می‌گیرد؛ تا DMA نباشد `valid` را false می‌گذارد. تبدیل mV هنوز نیست |
-| `Measurement_GetSnapshot` | کپی آخرین نمونه؛ `NULL` یا نامعتبر → false |
+| `func_Measurement_Init` | `s_snap` را صفر می‌کند؛ `valid = false` |
+| `func_Measurement_Run` | یک فریم ADC می‌گیرد؛ تا DMA نباشد `valid` را false می‌گذارد. تبدیل mV هنوز نیست |
+| `func_Measurement_GetSnapshot` | کپی آخرین نمونه؛ `NULL` یا نامعتبر → false |
 | `TaskMeasurement` | تا فلگ صفر فقط `vTaskDelay(1000)` |
 
 ## پایه‌ها
@@ -59,10 +59,10 @@
 
 ```text
 rtos_app.c → TaskMeasurement → task_measurement.c
-  Measurement_Init / Measurement_Run / Measurement_GetSnapshot
-task_protection.c → Measurement_GetSnapshot
-task_control.c    → Measurement_GetSnapshot
-task_comm.c       → Measurement_GetSnapshot
+  func_Measurement_Init / func_Measurement_Run / func_Measurement_GetSnapshot
+task_protection.c → func_Measurement_GetSnapshot
+task_control.c    → func_Measurement_GetSnapshot
+task_comm.c       → func_Measurement_GetSnapshot
 ```
 
 این ماژول صدا می‌زند:

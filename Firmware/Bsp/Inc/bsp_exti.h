@@ -1,7 +1,7 @@
 /**
  * @file    bsp_exti.h
- * @brief   [EN] External interrupt flags for jitter and input detect (placeholder).
- *          [FA] پرچم وقفه خارجی برای جیتر و تشخیص ورودی (اسکلت).
+ * @brief   [EN] External interrupt flags for jitter and input detect (placeholder). Full type naming, func_ prefix.
+ *          [FA] پرچم وقفه خارجی برای جیتر و تشخیص ورودی (اسکلت). نام تایپ کامل.
  */
 
 #ifndef BSP_EXTI_H
@@ -21,18 +21,22 @@ typedef enum
  * @brief  [EN] Clear software event flags.
  *         [FA] پرچم‌های نرم‌افزاری را صفر می‌کند.
  */
-void BspExti_Init(void);
+void func_BspExti_Init(void);
 
 /**
  * @brief  [EN] Set flag from HAL GPIO EXTI callback.
  *         [FA] پرچم را از کال‌بک EXTI می‌گذارد.
+ * @param  bsp_exti_src_t_src [EN] Source / منبع
  */
-void BspExti_OnIrq(bsp_exti_src_t src);
+void func_BspExti_OnIrq(bsp_exti_src_t bsp_exti_src_t_src);
 
 /**
  * @brief  [EN] Read-and-clear one event flag.
  *         [FA] پرچم را می‌خواند و پاک می‌کند.
+ * @param  bsp_exti_src_t_src [EN] Source / منبع
+ * @return bool [EN] true if event was taken / اگر رویداد گرفته شد true
  */
-bool BspExti_TakeEvent(bsp_exti_src_t src);
+bool func_BspExti_TakeEvent(bsp_exti_src_t bsp_exti_src_t_src);
 
 #endif /* BSP_EXTI_H */
+

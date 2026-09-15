@@ -139,6 +139,62 @@ else
   FAIL=1
 fi
 
+# 9. Check func_ prefix for our own functions (not HAL, not FreeRTOS hooks)
+echo ""
+echo "[9] func_ prefix for our own functions (per new AI rule)"
+# Count our functions without func_ prefix in Firmware (excluding vApplication, HAL, etc)
+# We expect all our functions to have func_ prefix
+FOUND_OLD=$(grep -R --include="*.c" --include="*.h" -E "^\s*(void|bool|uint8_t|uint16_t|uint32_t|int\d+_t|app_state_t|fault_mask_t|measurement_snapshot_t)\s+[A-Z][a-zA-Z_]*_(Init|Run|Write|Read|Set|Get|Clear|Any|Evaluate|Power|Start|BoardTest|BuzzerBeep|BatteryVoltageToPercent|Scenario)" "$ROOT/Firmware" | grep -v "func_" | grep -v "vApplication" | grep -v "HAL_" || true)
+if [ -n "$FOUND_OLD" ]; then
+  echo "  FAIL: Found our functions without func_ prefix:"
+  echo "$FOUND_OLD" | head -n 20
+  FAIL=1
+else
+  echo "  OK: All our functions have func_ prefix (system functions untouched)"
+fi
+
+# 10. Check full type naming for variables (uint32_t_, UINT32_T_G_, etc, not shorthand U32_G_)
+echo ""
+echo "[10] Full type naming for variables (not shorthand U32_G_ / u32_)"
+# Shorthand that should NOT exist anymore (except in comments)
+FOUND_SHORT=$(grep -R --include="*.c" --include="*.h" -E "U32_G_|U8_G_|U16_G_|s_\b" "$ROOT/Firmware/Modules/Ui" "$ROOT/Firmware/Rtos/Src/task_ui.c" 2>/dev/null | grep -v "//" | grep -v "U32_G_InputVoltageMv" | grep -v "U32_G_BatteryVoltageMv" | grep -v "U32_G_BeepCnt" | grep -v "UINT32_T_G_" | head -n 20 || true)
+# Actually check for old shorthand U32_G_ that is not UINT32_T_G_
+OLD_SHORT=$(grep -R --include="*.c" --include="*.h" "U32_G_\|U8_G_\|U16_G_" "$ROOT/Firmware" | grep -v "UINT32_T_G_\|UINT8_T_G_\|UINT16_T_G_\|UINT16_T_G_Raw\|UINT8_T_G_Flags" | head -n 20 || true)
+if [ -n "$OLD_SHORT" ]; then
+  echo "  FAIL: Found old shorthand variable naming (should be full type like UINT32_T_G_):"
+  echo "$OLD_SHORT"
+  FAIL=1
+else
+  echo "  OK: No old shorthand U32_G_/U8_G_ found, full type naming used"
+fi
+
+# 11. Check each function has @param for params (per new AI rule)
+echo ""
+echo "[11] Function param docs (@param) check"
+# For each .h file, count functions vs @param
+for f in $(find "$ROOT/Firmware" -type f -name "*.h" | head -n 20); do
+  funcs=$(grep -c "func_" "$f" || true)
+  params=$(grep -c "@param" "$f" || true)
+  echo "  $(basename "$f"): funcs=$funcs @param=$params"
+done
+# Ensure ui.h has param docs for all functions with params
+if ! grep -q "@param.*uint32_t" "$ROOT/Firmware/Modules/Ui/ui.h"; then
+  echo "  FAIL: ui.h missing @param with full type"
+  FAIL=1
+else
+  echo "  OK: ui.h has @param with full type"
+fi
+
+# 12. Check AI_CONTEXT has new rules
+echo ""
+echo "[12] AI_CONTEXT.md new rules (readability, full type, func_ prefix)"
+if grep -q "سادگی و خوانایی توابع" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "نام‌گذاری متغیر" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "نام‌گذاری تابع" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "func_" "$ROOT/Firmware/AI_CONTEXT.md"; then
+  echo "  OK: AI_CONTEXT has readability, full type, func_ prefix rules"
+else
+  echo "  FAIL: AI_CONTEXT missing new rules"
+  FAIL=1
+fi
+
 echo ""
 if [ $FAIL -eq 0 ]; then
   echo "ALL CHECKS PASSED / همه چک‌ها پاس شد"

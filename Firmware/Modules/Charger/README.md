@@ -16,7 +16,7 @@
 |---|---|
 | 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
-| 2026-09 | اسکلت `Charger_Init` / `Charger_Evaluate` |
+| 2026-09 | اسکلت `func_Charger_Init` / `func_Charger_Evaluate` |
 
 ## فایل‌ها
 
@@ -30,8 +30,8 @@
 
 | نام | کار |
 |---|---|
-| `Charger_Init` | باید PWM را ۰٪ بگذارد؛ بدنه فعلاً خالی است |
-| `Charger_Evaluate` | از snapshot و state هنوز duty حساب نمی‌کند |
+| `func_Charger_Init` | باید PWM را ۰٪ بگذارد؛ بدنه فعلاً خالی است |
+| `func_Charger_Evaluate` | از snapshot و state هنوز duty حساب نمی‌کند |
 | `TaskControl` | مشترک با Changeover / Jitter |
 
 حد بالا: `APP_CONFIG.pwm_max_duty_permille` (الان ۰).
@@ -53,7 +53,7 @@
 
 ```text
 rtos_app.c → TaskControl → task_control.c
-  Charger_Evaluate(&snap, state)
+  func_Charger_Evaluate(&snap, state)
 ```
 
 این ماژول صدا می‌زند:

@@ -90,12 +90,12 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
-  App_Start();
+  func_App_Start();
 
   /* USER CODE END 2 */
 
   /* Init scheduler: the FreeRTOS kernel is initialised and started inside
-     App_Start()/Rtos_Start() in Firmware, so the CubeMX calls are not used.
+     func_App_Start()/Rtos_Start() in Firmware, so the CubeMX calls are not used.
      مقداردهی و استارت کرنل در Firmware انجام می‌شود. */
 
   /* USER CODE BEGIN RTOS_MUTEX */

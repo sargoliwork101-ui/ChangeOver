@@ -1,75 +1,79 @@
 /**
  * @file    bsp_adc.c
- * @brief   [EN] ADC+DMA wrapper (placeholder).
- *          [FA] پوشش ADC+DMA (اسکلت).
+ * @brief   [EN] ADC+DMA wrapper (placeholder). Full type naming, func_ prefix.
+ *          [FA] پوشش ADC+DMA (اسکلت). نام تایپ کامل.
  */
 
 #include "bsp_adc.h"
-
 #include <stddef.h>
 
-static ADC_HandleTypeDef *s_hadc = NULL;
-static volatile uint16_t s_raw[BSP_ADC_CHANNEL_COUNT];
-static volatile bool s_ready = false;
+static ADC_HandleTypeDef *ADC_HANDLETYPEDEF_G_Hadc = NULL;
+static volatile uint16_t UINT16_T_G_Raw[BSP_ADC_CHANNEL_COUNT];
+static volatile bool BOOL_G_Ready = false;
 
 /**
- * @brief  [EN] Store ADC handle. DMA start is a later stage.
- *         [FA] هندل ADC را نگه می‌دارد. شروع DMA مرحله بعد است.
+ * @brief  [EN] Store ADC handle. DMA start later.
+ *         [FA] هندل ADC را نگه می‌دارد. شروع DMA مرحله بعد.
+ * @param  ADC_HandleTypeDef_hadc [EN] HAL handle / هندل
  */
-void BspAdc_Init(ADC_HandleTypeDef *hadc)
+void func_BspAdc_Init(ADC_HandleTypeDef *ADC_HandleTypeDef_hadc)
 {
-    s_hadc = hadc;
-    s_ready = false;
+    ADC_HANDLETYPEDEF_G_Hadc = ADC_HandleTypeDef_hadc;
+    BOOL_G_Ready = false;
 }
 
 /**
- * @brief  [EN] Start DMA conversions. Returns false until implemented.
- *         [FA] شروع تبدیل DMA. تا پیاده‌سازی false برمی‌گرداند.
+ * @brief  [EN] Start DMA. Returns false until implemented.
+ *         [FA] شروع DMA. تا پیاده‌سازی false.
+ * @return bool [EN] false until implemented / تا پیاده‌سازی false
  */
-bool BspAdc_Start(void)
+bool func_BspAdc_Start(void)
 {
-    if (s_hadc == NULL)
+    if (ADC_HANDLETYPEDEF_G_Hadc == NULL)
     {
         return false;
     }
-
     return false;
 }
 
 /**
  * @brief  [EN] Copy last raw frame. Returns false if not ready.
- *         [FA] آخرین فریم خام را کپی می‌کند. اگر آماده نباشد false.
+ *         [FA] آخرین فریم خام را کپی می‌کند.
+ * @param  uint16_t_out [EN] Output array / آرایه خروجی
+ * @return bool [EN] true if copied / اگر کپی شد true
  */
-bool BspAdc_GetRaw(uint16_t out[BSP_ADC_CHANNEL_COUNT])
+bool func_BspAdc_GetRaw(uint16_t uint16_t_out[BSP_ADC_CHANNEL_COUNT])
 {
-    uint32_t i;
+    uint32_t uint32_t_i;
 
-    if (s_ready == false)
+    if (BOOL_G_Ready == false)
     {
         return false;
     }
 
-    for (i = 0u; i < BSP_ADC_CHANNEL_COUNT; i++)
+    for (uint32_t_i = 0u; uint32_t_i < BSP_ADC_CHANNEL_COUNT; uint32_t_i++)
     {
-        out[i] = s_raw[i];
+        uint16_t_out[uint32_t_i] = UINT16_T_G_Raw[uint32_t_i];
     }
     return true;
 }
 
 /**
- * @brief  [EN] True when a DMA frame is available.
- *         [FA] وقتی یک فریم DMA آماده باشد true است.
+ * @brief  [EN] True when DMA frame available.
+ *         [FA] وقتی فریم DMA آماده باشد true.
+ * @return bool [EN] true if ready / اگر آماده true
  */
-bool BspAdc_IsFrameReady(void)
+bool func_BspAdc_IsFrameReady(void)
 {
-    return s_ready;
+    return BOOL_G_Ready;
 }
 
 /**
  * @brief  [EN] Call from HAL_ADC_ConvCpltCallback.
  *         [FA] از داخل HAL_ADC_ConvCpltCallback صدا زده شود.
  */
-void BspAdc_OnDmaComplete(void)
+void func_BspAdc_OnDmaComplete(void)
 {
-    (void)s_raw;
+    (void)UINT16_T_G_Raw;
 }
+

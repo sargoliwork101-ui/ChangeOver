@@ -8,7 +8,7 @@
 
 ## وضعیت
 
-اسکلت. `MODULE_FAULT = 0`. تسک جدا ندارد. App الان `Fault_Init` را صدا نمی‌زند. فایل را پاک نکن.
+اسکلت. `MODULE_FAULT = 0`. تسک جدا ندارد. App الان `func_Fault_Init` را صدا نمی‌زند. فایل را پاک نکن.
 
 ## تاریخچه
 
@@ -16,7 +16,7 @@
 |---|---|
 | 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
-| 2026-09 | اسکلت ماسک `Fault_Set` / `Clear` / `Get` / `Any` |
+| 2026-09 | اسکلت ماسک `func_Fault_Set` / `Clear` / `Get` / `Any` |
 
 ## فایل‌ها
 
@@ -31,11 +31,11 @@
 
 | نام | کار |
 |---|---|
-| `Fault_Init` | `s_mask = FAULT_NONE` |
-| `Fault_Set` | بیت‌ها را OR می‌کند (قفل) |
-| `Fault_Clear` | بیت‌ها را پاک می‌کند |
-| `Fault_Get` | ماسک فعلی |
-| `Fault_Any` | اگر چیزی غیر از NONE باشد true |
+| `func_Fault_Init` | `s_mask = FAULT_NONE` |
+| `func_Fault_Set` | بیت‌ها را OR می‌کند (قفل) |
+| `func_Fault_Clear` | بیت‌ها را پاک می‌کند |
+| `func_Fault_Get` | ماسک فعلی |
+| `func_Fault_Any` | اگر چیزی غیر از NONE باشد true |
 
 بیت‌ها: `FAULT_ADC`، `FAULT_OVERCURRENT_1`، `FAULT_OVERCURRENT_2`، `FAULT_LOW_BATTERY`، `FAULT_JITTER_1`، `FAULT_JITTER_2`.
 
@@ -52,10 +52,10 @@ Init همه بیت‌ها را صفر می‌کند.
 صدا زده می‌شود از (وقتی فلگ‌ها ۱ شوند):
 
 ```text
-protection.c      Fault_Set
-task_control.c    Fault_Get
-task_comm.c       Fault_Get
-changeover.c      مقدار faults را از آرگومان می‌گیرد (خودش Fault_Get نمی‌زند)
+protection.c      func_Fault_Set
+task_control.c    func_Fault_Get
+task_comm.c       func_Fault_Get
+changeover.c      مقدار faults را از آرگومان می‌گیرد (خودش func_Fault_Get نمی‌زند)
 ```
 
 این ماژول صدا می‌زند:

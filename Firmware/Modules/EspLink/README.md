@@ -17,7 +17,7 @@
 | 2026-09-14 | اجرای AI: تکمیل بخش اجباری «درخت اتصال» طبق قالب ۷ بخشی AI_CONTEXT؛ چک قوانین پاس شد |
 | 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
-| 2026-09 | اسکلت `EspLink_Init` / `Power` / `Run` |
+| 2026-09 | اسکلت `func_EspLink_Init` / `Power` / `Run` |
 
 ## فایل‌ها
 
@@ -31,9 +31,9 @@
 
 | نام | کار |
 |---|---|
-| `EspLink_Init` | ESP را خاموش می‌کند |
-| `EspLink_Power` | CH_PD را High/Low می‌کند |
-| `EspLink_Run` | تله‌متری؛ فعلاً بایتی نمی‌فرستد |
+| `func_EspLink_Init` | ESP را خاموش می‌کند |
+| `func_EspLink_Power` | CH_PD را High/Low می‌کند |
+| `func_EspLink_Run` | تله‌متری؛ فعلاً بایتی نمی‌فرستد |
 | `TaskComm` | تا فلگ صفر Idle |
 
 `MODULE_ESP` ساخت تسک است. `APP_CONFIG.esp_link_enabled` اجازهٔ زمان اجرا است.
@@ -48,7 +48,7 @@
 
 ## پیش‌فرض امن
 
-`EspLink_Init` → `EspLink_Power(false)` یعنی PA8 Low. STM از ESP فرمان نمی‌گیرد تا پروتکل جدا نوشته شود.
+`func_EspLink_Init` → `func_EspLink_Power(false)` یعنی PA8 Low. STM از ESP فرمان نمی‌گیرد تا پروتکل جدا نوشته شود.
 
 ## درخت اتصال
 
@@ -56,9 +56,9 @@
 
 ```text
 rtos_app.c → TaskComm → task_comm.c
-  EspLink_Init (از App_Init در آینده)
-  EspLink_Run(&snap, state, faults)
-  EspLink_Power(on/off)
+  func_EspLink_Init (از App_Init در آینده)
+  func_EspLink_Run(&snap, state, faults)
+  func_EspLink_Power(on/off)
 ```
 
 این ماژول صدا می‌زند:

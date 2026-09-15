@@ -1,7 +1,7 @@
 /**
  * @file    task_comm.c
- * @brief   [EN] FreeRTOS task for UART/ESP telemetry (placeholder).
- *          [FA] تسک ارتباط UART/ESP (اسکلت، هنوز فعال نیست).
+ * @brief   [EN] FreeRTOS task for UART/ESP telemetry (placeholder). Full type naming, func_ prefix.
+ *          [FA] تسک ارتباط UART/ESP (اسکلت، هنوز فعال نیست). نام تایپ کامل.
  */
 
 #include "rtos_tasks.h"
@@ -24,27 +24,26 @@
 /**
  * @brief  [EN] Communication task entry. Idle loop until ESP is enabled.
  *         [FA] ورود تسک ارتباط. تا ESP روشن نشود کار نمی‌کند.
- * @param  argument  [EN] Required by FreeRTOS, unused.
- *                   [FA] اجباری FreeRTOS، استفاده نمی‌شود.
+ * @param  void_ptr_argument [EN] Required by FreeRTOS, unused, type void* / آرگومان FreeRTOS
  */
-void TaskComm(void *argument)
+void func_TaskComm(void *void_ptr_argument)
 {
-    (void)argument;
+    (void)void_ptr_argument;
 
     for (;;)
     {
 #if MODULE_ESP
         {
-            measurement_snapshot_t snap;
-            fault_mask_t faults = FAULT_NONE;
-            snap.valid = false;
+            measurement_snapshot_t measurement_snapshot_t_snap;
+            fault_mask_t fault_mask_t_faults = FAULT_NONE;
+            measurement_snapshot_t_snap.valid = false;
 #if MODULE_MEASUREMENT
-            (void)Measurement_GetSnapshot(&snap);
+            (void)func_Measurement_GetSnapshot(&measurement_snapshot_t_snap);
 #endif
 #if MODULE_FAULT
-            faults = Fault_Get();
+            fault_mask_t_faults = func_Fault_Get();
 #endif
-            EspLink_Run(&snap, APP_STATE_IDLE, faults);
+            func_EspLink_Run(&measurement_snapshot_t_snap, APP_STATE_IDLE, fault_mask_t_faults);
         }
         vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.comm_period_ms));
 #else
@@ -52,3 +51,4 @@ void TaskComm(void *argument)
 #endif
     }
 }
+

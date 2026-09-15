@@ -16,7 +16,7 @@
 |---|---|
 | 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
-| 2026-09 | اسکلت `Protection_Init` / `Protection_Run` |
+| 2026-09 | اسکلت `func_Protection_Init` / `func_Protection_Run` |
 
 ## فایل‌ها
 
@@ -33,8 +33,8 @@
 
 | نام | کار |
 |---|---|
-| `Protection_Init` | فعلاً خالی |
-| `Protection_Run` | اگر `snap` تهی یا نامعتبر باشد `Fault_Set(FAULT_ADC)`. مقایسه جریان هنوز نیست |
+| `func_Protection_Init` | فعلاً خالی |
+| `func_Protection_Run` | اگر `snap` تهی یا نامعتبر باشد `func_Fault_Set(FAULT_ADC)`. مقایسه جریان هنوز نیست |
 | `TaskProtection` | تا فلگ صفر Idle |
 
 حدهای بعدی در `APP_CONFIG`: `overcurrent1_ma`، `overcurrent2_ma`، `low_battery_mv`، `low_battery_recover_mv`.
@@ -53,7 +53,7 @@ Init چیزی را High نمی‌کند. بدون نمونه معتبر، بعد
 
 ```text
 rtos_app.c → TaskProtection → task_protection.c
-  Protection_Run(&snap)
+  func_Protection_Run(&snap)
 ```
 
 این ماژول صدا می‌زند:
@@ -61,7 +61,7 @@ rtos_app.c → TaskProtection → task_protection.c
 ```text
 protection.c
   measurement.h / Measurement_GetSnapshot   (از تسک)
-  fault.h / Fault_Set
+  fault.h / func_Fault_Set
   app_config.h                              حدها
   app_types.h                               snapshot ، FAULT_*
 ```
