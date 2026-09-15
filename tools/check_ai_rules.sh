@@ -250,6 +250,60 @@ else
   FAIL=1
 fi
 
+# 14. Check meaningful naming and constant prefix
+echo ""
+echo "[14] Meaningful naming and constant prefix (related to work, module prefix)"
+# Check AI_CONTEXT has new sections
+if grep -q "نام‌گذاری مرتبط با کار" "$ROOT/Firmware/AI_CONTEXT.md" || grep -q "نام باید مرتبط با کاری" "$ROOT/Firmware/AI_CONTEXT.md"; then
+  echo "  OK: AI_CONTEXT has meaningful naming rule"
+else
+  echo "  FAIL: AI_CONTEXT missing meaningful naming rule"
+  FAIL=1
+fi
+
+if grep -q "نام‌گذاری ثابت" "$ROOT/Firmware/AI_CONTEXT.md"; then
+  echo "  OK: AI_CONTEXT has constant naming section"
+else
+  echo "  FAIL: AI_CONTEXT missing constant naming section"
+  FAIL=1
+fi
+
+# Check that UI_ constants have UI_ prefix (already) and no dot in macro names
+FOUND_DOT=$(grep -R --include="*.h" "UI\.c_" "$ROOT/Firmware" 2>/dev/null || true)
+if [ -n "$FOUND_DOT" ]; then
+  echo "  FAIL: Found invalid macro with dot UI.c_ (dot not allowed in C):"
+  echo "$FOUND_DOT" | head -n 3
+  FAIL=1
+else
+  echo "  OK: No invalid dot in macro names (UI.c_ not allowed, UI_ is correct)"
+fi
+
+# Check that constants in ui_config.h have UI_ prefix
+if grep -q "#define UI_" "$ROOT/Firmware/Modules/Ui/ui_config.h"; then
+  echo "  OK: ui_config.h constants have UI_ prefix (module/file identifier)"
+else
+  echo "  FAIL: ui_config.h constants missing UI_ prefix"
+  FAIL=1
+fi
+
+# Check that variables are not generic tmp/val/x (heuristic)
+FOUND_GENERIC=$(grep -R --include="*.c" -E "uint32_t_tmp|uint8_t_val|uint32_t_x[^a-zA-Z]" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null || true)
+if [ -n "$FOUND_GENERIC" ]; then
+  echo "  FAIL: Found generic variable names not related to work:"
+  echo "$FOUND_GENERIC" | head -n 5
+  FAIL=1
+else
+  echo "  OK: No generic tmp/val/x variable names, all related to work"
+fi
+
+# Check that new meaningful names exist in ui.c
+if grep -q "UINT32_T_G_UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "uint32_t_greenBlinkOnMs" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "uint32_t_buzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c"; then
+  echo "  OK: ui.c uses meaningful names related to work (greenBlink, buzzerTotal, beepCycle)"
+else
+  echo "  FAIL: ui.c missing meaningful names (expected greenBlinkOnMs, buzzerTotalOnMs, beepCycleCnt)"
+  FAIL=1
+fi
+
 echo ""
 if [ $FAIL -eq 0 ]; then
   echo "ALL CHECKS PASSED / همه چک‌ها پاس شد"

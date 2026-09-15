@@ -5,9 +5,12 @@
  *          [FA] سناریوهای LED/بازر - خوانا، نام تایپ کامل، پیشوند func_.
  *          الگوی بازر سناریو جدا با دوره تناوب، زمان روشن، تکرار داخل روشن، گپ.
  *
- * @note    [EN] Naming per AI_CONTEXT.md: full type first, global UPPERCASE with G_, local lowercase.
- *          Memory: no malloc/free, only static/stack, small locals, const config in Flash.
- *          [FA] نام‌گذاری طبق AI: اول تایپ کامل. حافظه بدون malloc.
+ * @note    [EN] Naming per AI_CONTEXT.md:
+ *          - Variables: full type first, global UPPERCASE with G_, local lowercase.
+ *          - Names must be related to their work/purpose, not generic tmp/val.
+ *          - Constants: module prefix (UI_) shows file/module, dot not valid in C, UI_ already means ui_config.h single source.
+ *          - Memory: no malloc/free, only static/stack, small locals, const config in Flash.
+ *          [FA] نام‌گذاری طبق AI: اول تایپ کامل، نام مرتبط با کار، ثابت با پیشوند ماژول.
  */
 
 #include "ui.h"
@@ -23,46 +26,46 @@
 /**
  * @brief  [EN] Green PB10 on/off.
  *         [FA] سبز PB10.
- * @param  bool_on [EN] true=on / روشن
+ * @param  bool_greenOn [EN] true=green on / سبز روشن
  */
-static void func_green(bool bool_on)
+static void func_green(bool bool_greenOn)
 {
-    func_BspGpio_Write(PIN_LED_G_PORT, PIN_LED_G_PIN, bool_on);
+    func_BspGpio_Write(PIN_LED_G_PORT, PIN_LED_G_PIN, bool_greenOn);
 }
 
 /**
  * @brief  [EN] Red PB0 on/off.
  *         [FA] قرمز PB0.
- * @param  bool_on [EN] true=on / روشن
+ * @param  bool_redOn [EN] true=red on / قرمز روشن
  */
-static void func_red(bool bool_on)
+static void func_red(bool bool_redOn)
 {
-    func_BspGpio_Write(PIN_LED_R_PORT, PIN_LED_R_PIN, bool_on);
+    func_BspGpio_Write(PIN_LED_R_PORT, PIN_LED_R_PIN, bool_redOn);
 }
 
 /**
  * @brief  [EN] Yellow PB1 on/off.
  *         [FA] زرد PB1.
- * @param  bool_on [EN] true=on / روشن
+ * @param  bool_yellowOn [EN] true=yellow on / زرد روشن
  */
-static void func_yellow(bool bool_on)
+static void func_yellow(bool bool_yellowOn)
 {
-    func_BspGpio_Write(PIN_LED_Y_PORT, PIN_LED_Y_PIN, bool_on);
+    func_BspGpio_Write(PIN_LED_Y_PORT, PIN_LED_Y_PIN, bool_yellowOn);
 }
 
 /**
  * @brief  [EN] Buzzer PA4 on/off.
  *         [FA] بازر PA4.
- * @param  bool_on [EN] true=sound / صدا
+ * @param  bool_buzzerOn [EN] true=buzzer sound / صدای بازر
  */
-static void func_buzzer(bool bool_on)
+static void func_buzzer(bool bool_buzzerOn)
 {
-    func_BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, bool_on);
+    func_BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, bool_buzzerOn);
 }
 
 /**
- * @brief  [EN] All off safe.
- *         [FA] همه خاموش امن.
+ * @brief  [EN] All UI outputs off safe.
+ *         [FA] همه خروجی‌های UI خاموش امن.
  */
 static void func_all_off(void)
 {
@@ -73,46 +76,46 @@ static void func_all_off(void)
 }
 
 /**
- * @brief  [EN] Calculate beep ON per pulse inside onTime.
- *         If repeat=1 returns onTime (gap ignored). Else beepOn=(onTime-totalGap)/repeat.
- *         [FA] محاسبه زمان روشن هر بوق.
- * @param  uint32_t_onTimeMs [EN] Total including gaps / کل شامل گپ
- * @param  uint8_t_repeatCount [EN] Repeat 1..10 / تکرار
- * @param  uint32_t_gapMs [EN] Gap ms / گپ
- * @return uint32_t [EN] Beep ON per pulse / زمان هر پالس
+ * @brief  [EN] Calculate beep ON per pulse inside total ON time.
+ *         If repeat=1 returns total ON (gap ignored). Else beepOn=(totalON-totalGap)/repeat.
+ *         [FA] محاسبه زمان روشن هر پالس بوق داخل زمان کل روشن.
+ * @param  uint32_t_buzzerTotalOnMs [EN] Total including gaps, battery buzzer pattern / کل زمان روشن بازر شامل گپ
+ * @param  uint8_t_buzzerRepeatCount [EN] Repeat 1..10, how many beeps inside total / تعداد بوق داخل کل
+ * @param  uint32_t_buzzerGapMs [EN] Gap ms between beeps / گپ بین بوق‌ها
+ * @return uint32_t [EN] Beep ON per pulse ms / زمان روشن هر پالس
  */
-static uint32_t func_calc_beep_on(uint32_t uint32_t_onTimeMs, uint8_t uint8_t_repeatCount, uint32_t uint32_t_gapMs)
+static uint32_t func_calc_beep_on(uint32_t uint32_t_buzzerTotalOnMs, uint8_t uint8_t_buzzerRepeatCount, uint32_t uint32_t_buzzerGapMs)
 {
-    uint32_t uint32_t_totalGap;
-    uint32_t uint32_t_beepOn;
+    uint32_t uint32_t_buzzerTotalGapMs;
+    uint32_t uint32_t_buzzerPulseOnMs;
 
-    if (uint8_t_repeatCount <= 1u)
+    if (uint8_t_buzzerRepeatCount <= 1u)
     {
-        return uint32_t_onTimeMs;
+        return uint32_t_buzzerTotalOnMs;
     }
 
-    uint32_t_totalGap = (uint32_t)uint32_t_gapMs * (uint32_t)(uint8_t_repeatCount - 1u);
+    uint32_t_buzzerTotalGapMs = (uint32_t)uint32_t_buzzerGapMs * (uint32_t)(uint8_t_buzzerRepeatCount - 1u);
 
-    if (uint32_t_totalGap >= uint32_t_onTimeMs)
+    if (uint32_t_buzzerTotalGapMs >= uint32_t_buzzerTotalOnMs)
     {
-        uint32_t_beepOn = uint32_t_onTimeMs / (uint32_t)((uint8_t_repeatCount * 2u) - 1u);
-        if (uint32_t_beepOn < 10u)
+        uint32_t_buzzerPulseOnMs = uint32_t_buzzerTotalOnMs / (uint32_t)((uint8_t_buzzerRepeatCount * 2u) - 1u);
+        if (uint32_t_buzzerPulseOnMs < 10u)
         {
-            uint32_t_beepOn = 10u;
+            uint32_t_buzzerPulseOnMs = 10u;
         }
-        return uint32_t_beepOn;
+        return uint32_t_buzzerPulseOnMs;
     }
 
-    uint32_t_beepOn = (uint32_t_onTimeMs - uint32_t_totalGap) / (uint32_t)uint8_t_repeatCount;
-    if (uint32_t_beepOn < 10u)
+    uint32_t_buzzerPulseOnMs = (uint32_t_buzzerTotalOnMs - uint32_t_buzzerTotalGapMs) / (uint32_t)uint8_t_buzzerRepeatCount;
+    if (uint32_t_buzzerPulseOnMs < 10u)
     {
-        uint32_t_beepOn = 10u;
+        uint32_t_buzzerPulseOnMs = 10u;
     }
-    return uint32_t_beepOn;
+    return uint32_t_buzzerPulseOnMs;
 }
 
-/* ===== Globals ===== */
-static uint32_t UINT32_T_G_BeepCnt = 0u;
+/* ===== Globals - meaningful name related to work ===== */
+static uint32_t UINT32_T_G_UiBatteryRunBeepCycleCnt = 0u;
 
 /* ===== Public ===== */
 
@@ -150,7 +153,7 @@ void func_Ui_BoardTest(void)
     func_Ui_BuzzerPatternMs(0u, UI_BOOT_BEEP_MS, 1u, 0u);
 }
 
-/* ===== Buzzer pattern - 2 funcs only ===== */
+/* ===== Buzzer pattern - 2 funcs only, meaningful names ===== */
 
 /**
  * @brief  [EN] Buzzer pattern with gap ms.
@@ -158,92 +161,92 @@ void func_Ui_BoardTest(void)
  *         If repeat=1 gap ignored. Example: onTime=1000 repeat=2 gap=200 => ON400 OFF200 ON400.
  *         If period=0 or period<=onTime, only pattern once.
  *         [FA] الگوی بازر با گپ میلی‌ثانیه.
- * @param  uint32_t_periodMs [EN] Period 0=once, 0..60000ms / دوره تناوب
- * @param  uint32_t_onTimeMs [EN] Total ON including gaps, 10..10000ms / زمان روشن
- * @param  uint8_t_repeatCount [EN] Repeat inside ON 1..10 / تکرار داخل روشن
- * @param  uint32_t_gapMs [EN] Gap ms 0..5000, ignored if repeat=1 / گپ میلی‌ثانیه
+ * @param  uint32_t_periodMs [EN] Period 0=once, 0..60000ms / دوره تناوب تکرار بوق
+ * @param  uint32_t_onTimeMs [EN] Total ON including gaps, 10..10000ms / زمان روشن بودن بوق
+ * @param  uint8_t_repeatCount [EN] Repeat inside ON 1..10 / تکرار زمان روشن بودن
+ * @param  uint32_t_gapMs [EN] Gap ms 0..5000, ignored if repeat=1 / گپ روشن بودن میلی‌ثانیه، اگر تکرار ۱ بود نادیده
  */
 void func_Ui_BuzzerPatternMs(uint32_t uint32_t_periodMs, uint32_t uint32_t_onTimeMs, uint8_t uint8_t_repeatCount, uint32_t uint32_t_gapMs)
 {
-    uint32_t uint32_t_onTimeClamped;
-    uint32_t uint32_t_gapClamped;
-    uint8_t uint8_t_repeatClamped;
-    uint32_t uint32_t_beepOnMs;
-    uint8_t uint8_t_i;
+    uint32_t uint32_t_buzzerTotalOnMs;
+    uint32_t uint32_t_buzzerGapMs;
+    uint8_t uint8_t_buzzerRepeatCount;
+    uint32_t uint32_t_buzzerPulseOnMs;
+    uint8_t uint8_t_buzzerPulseIndex;
 
     if (uint32_t_onTimeMs < 10u)
     {
-        uint32_t_onTimeClamped = 10u;
+        uint32_t_buzzerTotalOnMs = 10u;
     }
     else if (uint32_t_onTimeMs > 10000u)
     {
-        uint32_t_onTimeClamped = 10000u;
+        uint32_t_buzzerTotalOnMs = 10000u;
     }
     else
     {
-        uint32_t_onTimeClamped = uint32_t_onTimeMs;
+        uint32_t_buzzerTotalOnMs = uint32_t_onTimeMs;
     }
 
     if (uint32_t_gapMs > 5000u)
     {
-        uint32_t_gapClamped = 5000u;
+        uint32_t_buzzerGapMs = 5000u;
     }
     else
     {
-        uint32_t_gapClamped = uint32_t_gapMs;
+        uint32_t_buzzerGapMs = uint32_t_gapMs;
     }
 
     if (uint8_t_repeatCount == 0u)
     {
-        uint8_t_repeatClamped = 1u;
+        uint8_t_buzzerRepeatCount = 1u;
     }
     else if (uint8_t_repeatCount > 10u)
     {
-        uint8_t_repeatClamped = 10u;
+        uint8_t_buzzerRepeatCount = 10u;
     }
     else
     {
-        uint8_t_repeatClamped = uint8_t_repeatCount;
+        uint8_t_buzzerRepeatCount = uint8_t_repeatCount;
     }
 
-    if (uint8_t_repeatClamped <= 1u)
+    if (uint8_t_buzzerRepeatCount <= 1u)
     {
         func_buzzer(true);
-        vTaskDelay(pdMS_TO_TICKS(uint32_t_onTimeClamped));
+        vTaskDelay(pdMS_TO_TICKS(uint32_t_buzzerTotalOnMs));
         func_buzzer(false);
     }
     else
     {
-        if ((uint32_t_gapClamped * (uint32_t)(uint8_t_repeatClamped - 1u)) >= uint32_t_onTimeClamped)
+        if ((uint32_t_buzzerGapMs * (uint32_t)(uint8_t_buzzerRepeatCount - 1u)) >= uint32_t_buzzerTotalOnMs)
         {
-            uint32_t_gapClamped = (uint32_t_onTimeClamped * UI_BUZZER_DEFAULT_GAP_PERCENT / 100u);
-            if (uint8_t_repeatClamped > 1u)
+            uint32_t_buzzerGapMs = (uint32_t_buzzerTotalOnMs * UI_BUZZER_DEFAULT_GAP_PERCENT / 100u);
+            if (uint8_t_buzzerRepeatCount > 1u)
             {
-                uint32_t_gapClamped = uint32_t_gapClamped / (uint32_t)(uint8_t_repeatClamped - 1u);
+                uint32_t_buzzerGapMs = uint32_t_buzzerGapMs / (uint32_t)(uint8_t_buzzerRepeatCount - 1u);
             }
         }
 
-        uint32_t_beepOnMs = func_calc_beep_on(uint32_t_onTimeClamped, uint8_t_repeatClamped, uint32_t_gapClamped);
+        uint32_t_buzzerPulseOnMs = func_calc_beep_on(uint32_t_buzzerTotalOnMs, uint8_t_buzzerRepeatCount, uint32_t_buzzerGapMs);
 
-        for (uint8_t_i = 0u; uint8_t_i < uint8_t_repeatClamped; uint8_t_i++)
+        for (uint8_t_buzzerPulseIndex = 0u; uint8_t_buzzerPulseIndex < uint8_t_buzzerRepeatCount; uint8_t_buzzerPulseIndex++)
         {
             func_buzzer(true);
-            vTaskDelay(pdMS_TO_TICKS(uint32_t_beepOnMs));
+            vTaskDelay(pdMS_TO_TICKS(uint32_t_buzzerPulseOnMs));
             func_buzzer(false);
 
-            if (uint8_t_i < (uint8_t_repeatClamped - 1u))
+            if (uint8_t_buzzerPulseIndex < (uint8_t_buzzerRepeatCount - 1u))
             {
-                vTaskDelay(pdMS_TO_TICKS(uint32_t_gapClamped));
+                vTaskDelay(pdMS_TO_TICKS(uint32_t_buzzerGapMs));
             }
         }
     }
 
-    if ((uint32_t_periodMs == 0u) || (uint32_t_periodMs <= uint32_t_onTimeClamped))
+    if ((uint32_t_periodMs == 0u) || (uint32_t_periodMs <= uint32_t_buzzerTotalOnMs))
     {
         return;
     }
 
-    vTaskDelay(pdMS_TO_TICKS(uint32_t_periodMs - uint32_t_onTimeClamped));
+    vTaskDelay(pdMS_TO_TICKS(uint32_t_periodMs - uint32_t_buzzerTotalOnMs));
 }
 
 /**
@@ -257,16 +260,16 @@ void func_Ui_BuzzerPatternMs(uint32_t uint32_t_periodMs, uint32_t uint32_t_onTim
  */
 void func_Ui_BuzzerPatternPercent(uint32_t uint32_t_periodMs, uint32_t uint32_t_onTimeMs, uint8_t uint8_t_repeatCount, uint8_t uint8_t_gapPercent)
 {
-    uint32_t uint32_t_gapMs;
-    uint8_t uint8_t_gapPctClamped;
+    uint32_t uint32_t_buzzerGapMs;
+    uint8_t uint8_t_buzzerGapPercentClamped;
 
     if (uint8_t_gapPercent > 90u)
     {
-        uint8_t_gapPctClamped = 90u;
+        uint8_t_buzzerGapPercentClamped = 90u;
     }
     else
     {
-        uint8_t_gapPctClamped = uint8_t_gapPercent;
+        uint8_t_buzzerGapPercentClamped = uint8_t_gapPercent;
     }
 
     if (uint8_t_repeatCount <= 1u)
@@ -275,9 +278,9 @@ void func_Ui_BuzzerPatternPercent(uint32_t uint32_t_periodMs, uint32_t uint32_t_
         return;
     }
 
-    uint32_t_gapMs = (uint32_t_onTimeMs * (uint32_t)uint8_t_gapPctClamped) / 100u;
+    uint32_t_buzzerGapMs = (uint32_t_onTimeMs * (uint32_t)uint8_t_buzzerGapPercentClamped) / 100u;
 
-    func_Ui_BuzzerPatternMs(uint32_t_periodMs, uint32_t_onTimeMs, uint8_t_repeatCount, uint32_t_gapMs);
+    func_Ui_BuzzerPatternMs(uint32_t_periodMs, uint32_t_onTimeMs, uint8_t_repeatCount, uint32_t_buzzerGapMs);
 }
 
 /**
@@ -288,9 +291,9 @@ void func_Ui_BuzzerPatternPercent(uint32_t uint32_t_periodMs, uint32_t uint32_t_
  */
 uint8_t func_Ui_BatteryVoltageToPercent(uint32_t uint32_t_batteryMv)
 {
-    uint32_t uint32_t_range;
-    uint32_t uint32_t_off;
-    uint8_t uint8_t_pct;
+    uint32_t uint32_t_voltageRangeMv;
+    uint32_t uint32_t_voltageOffsetMv;
+    uint8_t uint8_t_batteryPercent;
 
     if (uint32_t_batteryMv <= UI_BAT_V_MIN_MV)
     {
@@ -302,22 +305,22 @@ uint8_t func_Ui_BatteryVoltageToPercent(uint32_t uint32_t_batteryMv)
         return UI_PERCENT_FULL;
     }
 
-    uint32_t_range = UI_BAT_V_MAX_MV - UI_BAT_V_MIN_MV;
-    uint32_t_off = uint32_t_batteryMv - UI_BAT_V_MIN_MV;
+    uint32_t_voltageRangeMv = UI_BAT_V_MAX_MV - UI_BAT_V_MIN_MV;
+    uint32_t_voltageOffsetMv = uint32_t_batteryMv - UI_BAT_V_MIN_MV;
 
-    if (uint32_range == 0u)
+    if (uint32_voltageRangeMv == 0u)
     {
         return 0u;
     }
 
-    uint8_t_pct = (uint8_t)((uint32_t_off * 100u) / uint32_range);
+    uint8_t_batteryPercent = (uint8_t)((uint32_t_voltageOffsetMv * 100u) / uint32_voltageRangeMv);
 
-    if (uint8_t_pct > UI_PERCENT_FULL)
+    if (uint8_t_batteryPercent > UI_PERCENT_FULL)
     {
-        uint8_t_pct = UI_PERCENT_FULL;
+        uint8_t_batteryPercent = UI_PERCENT_FULL;
     }
 
-    return uint8_t_pct;
+    return uint8_t_batteryPercent;
 }
 
 /**
@@ -341,72 +344,72 @@ void func_Ui_ScenarioInputOk(void)
  */
 void func_Ui_ScenarioBatteryRun(uint32_t uint32_t_batteryMv)
 {
-    uint8_t uint8_t_pct;
-    uint32_t uint32_t_on;
-    uint32_t uint32_t_off;
-    uint32_t uint32_t_beepInt;
-    uint32_t uint32_t_beepDur;
-    bool bool_beepNow;
+    uint8_t uint8_t_batteryPercent;
+    uint32_t uint32_t_greenBlinkOnMs;
+    uint32_t uint32_t_greenBlinkOffMs;
+    uint32_t uint32_t_beepIntervalCycles;
+    uint32_t uint32_t_beepDurationMs;
+    bool bool_shouldBeepNow;
 
-    uint8_t_pct = func_Ui_BatteryVoltageToPercent(uint32_t_batteryMv);
+    uint8_t_batteryPercent = func_Ui_BatteryVoltageToPercent(uint32_t_batteryMv);
 
-    uint32_t_off = (uint32_t)(UI_PERCENT_FULL - uint8_pct) * (UI_BLINK_PERIOD_MS / 100u);
+    uint32_t_greenBlinkOffMs = (uint32_t)(UI_PERCENT_FULL - uint8_batteryPercent) * (UI_BLINK_PERIOD_MS / 100u);
 
-    if (uint32_off < UI_GREEN_MIN_OFF_MS)
+    if (uint32_greenBlinkOffMs < UI_GREEN_MIN_OFF_MS)
     {
-        uint32_off = UI_GREEN_MIN_OFF_MS;
+        uint32_greenBlinkOffMs = UI_GREEN_MIN_OFF_MS;
     }
 
-    uint32_on = UI_BLINK_PERIOD_MS - uint32_off;
+    uint32_t_greenBlinkOnMs = UI_BLINK_PERIOD_MS - uint32_greenBlinkOffMs;
 
     func_red(false);
     func_yellow(false);
 
     func_green(true);
-    vTaskDelay(pdMS_TO_TICKS(uint32_on));
+    vTaskDelay(pdMS_TO_TICKS(uint32_t_greenBlinkOnMs));
     func_green(false);
-    vTaskDelay(pdMS_TO_TICKS(uint32_off));
+    vTaskDelay(pdMS_TO_TICKS(uint32_t_greenBlinkOffMs));
 
-    if (uint8_pct >= UI_BEEP_START_PCT)
+    if (uint8_batteryPercent >= UI_BEEP_START_PCT)
     {
-        UINT32_T_G_BeepCnt = 0u;
+        UINT32_T_G_UiBatteryRunBeepCycleCnt = 0u;
         return;
     }
 
-    uint32_beepInt = (uint32_t)uint8_pct;
+    uint32_t_beepIntervalCycles = (uint32_t)uint8_batteryPercent;
 
-    if (uint32_beepInt == 0u)
+    if (uint32_beepIntervalCycles == 0u)
     {
-        uint32_beepInt = 1u;
+        uint32_beepIntervalCycles = 1u;
     }
 
-    bool_beepNow = false;
+    bool_shouldBeepNow = false;
 
-    if (UINT32_T_G_BeepCnt >= uint32_beepInt)
+    if (UINT32_T_G_UiBatteryRunBeepCycleCnt >= uint32_beepIntervalCycles)
     {
-        bool_beepNow = true;
-        UINT32_T_G_BeepCnt = 0u;
+        bool_shouldBeepNow = true;
+        UINT32_T_G_UiBatteryRunBeepCycleCnt = 0u;
     }
     else
     {
-        UINT32_T_G_BeepCnt++;
+        UINT32_T_G_UiBatteryRunBeepCycleCnt++;
     }
 
-    if (bool_beepNow == false)
+    if (bool_shouldBeepNow == false)
     {
         return;
     }
 
-    uint32_beepDur = UI_BEEP_BASE_MS;
+    uint32_t_beepDurationMs = UI_BEEP_BASE_MS;
 
-    if (uint8_pct < UI_BEEP_DOUBLE_THRESH_PCT)
+    if (uint8_batteryPercent < UI_BEEP_DOUBLE_THRESH_PCT)
     {
-        uint32_beepDur *= 2u;
+        uint32_t_beepDurationMs *= 2u;
     }
 
-    /* [EN] Use new buzzer pattern: period 0 (once), onTime beepDur, repeat 1, gap ignored
+    /* [EN] Use new buzzer pattern inside LED scenario: period 0 (once), onTime beepDuration, repeat 1, gap ignored
        [FA] استفاده از تابع جدید بازر داخل سناریو LED: دوره ۰ یعنی یک‌بار، زمان روشن beepDur، تکرار ۱، گپ نادیده */
-    func_Ui_BuzzerPatternMs(0u, uint32_beepDur, 1u, 0u);
+    func_Ui_BuzzerPatternMs(0u, uint32_t_beepDurationMs, 1u, 0u);
 }
 
 /**
@@ -417,13 +420,13 @@ void func_Ui_ScenarioBatteryRun(uint32_t uint32_t_batteryMv)
  */
 void func_Ui_ScenarioCharging(uint32_t uint32_t_batteryMv)
 {
-    uint8_t uint8_t_pct;
-    uint32_t uint32_t_on;
-    uint32_t uint32_t_off;
+    uint8_t uint8_t_batteryPercent;
+    uint32_t uint32_t_yellowOnMs;
+    uint32_t uint32_t_yellowOffMs;
 
-    uint8_t_pct = func_Ui_BatteryVoltageToPercent(uint32_t_batteryMv);
+    uint8_t_batteryPercent = func_Ui_BatteryVoltageToPercent(uint32_t_batteryMv);
 
-    if (uint8_pct >= UI_PERCENT_FULL)
+    if (uint8_batteryPercent >= UI_PERCENT_FULL)
     {
         func_yellow(false);
         func_green(true);
@@ -433,7 +436,7 @@ void func_Ui_ScenarioCharging(uint32_t uint32_t_batteryMv)
         return;
     }
 
-    if (uint8_pct == 0u)
+    if (uint8_batteryPercent == 0u)
     {
         func_yellow(true);
         func_green(true);
@@ -443,26 +446,26 @@ void func_Ui_ScenarioCharging(uint32_t uint32_t_batteryMv)
         return;
     }
 
-    uint32_on = (uint32_t)(UI_PERCENT_FULL - uint8_pct) * (UI_CHARGING_BLINK_PERIOD_MS / 100u);
+    uint32_t_yellowOnMs = (uint32_t)(UI_PERCENT_FULL - uint8_batteryPercent) * (UI_CHARGING_BLINK_PERIOD_MS / 100u);
 
-    if (uint32_on < UI_CHARGING_YELLOW_MIN_OFF_MS)
+    if (uint32_t_yellowOnMs < UI_CHARGING_YELLOW_MIN_OFF_MS)
     {
-        uint32_on = UI_CHARGING_YELLOW_MIN_OFF_MS;
+        uint32_t_yellowOnMs = UI_CHARGING_YELLOW_MIN_OFF_MS;
     }
 
-    if (uint32_on > UI_CHARGING_BLINK_PERIOD_MS)
+    if (uint32_t_yellowOnMs > UI_CHARGING_BLINK_PERIOD_MS)
     {
-        uint32_on = UI_CHARGING_BLINK_PERIOD_MS;
+        uint32_t_yellowOnMs = UI_CHARGING_BLINK_PERIOD_MS;
     }
 
-    uint32_off = UI_CHARGING_BLINK_PERIOD_MS - uint32_on;
+    uint32_t_yellowOffMs = UI_CHARGING_BLINK_PERIOD_MS - uint32_t_yellowOnMs;
 
     func_green(true);
     func_red(false);
     func_buzzer(false);
 
     func_yellow(true);
-    vTaskDelay(pdMS_TO_TICKS(uint32_on));
+    vTaskDelay(pdMS_TO_TICKS(uint32_t_yellowOnMs));
     func_yellow(false);
-    vTaskDelay(pdMS_TO_TICKS(uint32_off));
+    vTaskDelay(pdMS_TO_TICKS(uint32_t_yellowOffMs));
 }
