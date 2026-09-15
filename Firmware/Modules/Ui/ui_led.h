@@ -39,7 +39,7 @@
  *         [FA] کمترین ولتاژ ورودی که متصل در نظر گرفته می‌شود، بر حسب میلی‌ولت.
  *         مقدار کمتر از این آستانه سناریوی BatteryRun را انتخاب می‌کند.
  */
-#define UI_INPUT_THRESHOLD_MV           20000u
+#define UI_INPUT_THRESHOLD_MV           21000u
 
 /* ==================== Scenario timing constants ==================== */
 
