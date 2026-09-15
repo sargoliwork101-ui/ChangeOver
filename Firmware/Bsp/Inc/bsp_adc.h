@@ -12,6 +12,10 @@
 #include <stdbool.h>
 #include "stm32f1xx_hal.h"
 
+#ifndef HAL_ADC_MODULE_ENABLED
+typedef struct __ADC_HandleTypeDef ADC_HandleTypeDef;
+#endif
+
 /* ==================== Defines ==================== */
 #define BSP_ADC_CHANNEL_COUNT 5u
 
