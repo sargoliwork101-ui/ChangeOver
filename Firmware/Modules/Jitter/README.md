@@ -16,7 +16,7 @@
 |---|---|
 | 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
-| 2026-09 | اسکلت `func_Jitter_Init` / `Run` / `ChannelTripped` |
+| 2026-09 | اسکلت `func__Jitter_Init` / `Run` / `ChannelTripped` |
 
 ## فایل‌ها
 
@@ -30,9 +30,9 @@
 
 | نام | کار |
 |---|---|
-| `func_Jitter_Init` | هر دو تریپ false؛ `BspExti_Init` |
-| `func_Jitter_Run` | اگر رویداد EXTI آمده باشد همان کانال را true قفل می‌کند |
-| `func_Jitter_ChannelTripped` | کانال `1` یا `2`؛ عدد دیگر false |
+| `func__Jitter_Init` | هر دو تریپ false؛ `BspExti_Init` |
+| `func__Jitter_Run` | اگر رویداد EXTI آمده باشد همان کانال را true قفل می‌کند |
+| `func__Jitter_ChannelTripped` | کانال `1` یا `2`؛ عدد دیگر false |
 | `TaskControl` | مشترک با Changeover / Charger |
 
 تریپ latch است؛ با یک پالس true می‌ماند تا Init/Clear بعدی.
@@ -56,7 +56,7 @@
 
 ```text
 rtos_app.c → TaskControl → task_control.c
-  func_Jitter_Init / func_Jitter_Run / func_Jitter_ChannelTripped
+  func__Jitter_Init / func__Jitter_Run / func__Jitter_ChannelTripped
 ```
 
 این ماژول صدا می‌زند:

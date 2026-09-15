@@ -7,6 +7,7 @@
 #ifndef BSP_PWM_H
 #define BSP_PWM_H
 
+/* ==================== Includes ==================== */
 #include <stdint.h>
 #include <stdbool.h>
 #include "stm32f1xx_hal.h"
@@ -17,6 +18,7 @@
  * @param  TIM_HandleTypeDef__htimCh1 [EN] Timer for channel 1 / تایمر کانال ۱
  * @param  TIM_HandleTypeDef__htimCh2 [EN] Timer for channel 2 / تایمر کانال ۲
  */
+/* ==================== Functions ==================== */
 void func__BspPwm_Init(TIM_HandleTypeDef *TIM_HandleTypeDef__htimCh1, TIM_HandleTypeDef *TIM_HandleTypeDef__htimCh2);
 
 /**

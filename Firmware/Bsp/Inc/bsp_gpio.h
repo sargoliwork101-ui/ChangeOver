@@ -10,6 +10,7 @@
 #ifndef BSP_GPIO_H
 #define BSP_GPIO_H
 
+/* ==================== Includes ==================== */
 #include <stdbool.h>
 #include <stdint.h>
 #include "board_pins.h"
@@ -21,6 +22,7 @@
  * @param  uint16_t__pin [EN] Pin mask e.g. GPIO_PIN_0 / ماسک پایه
  * @param  bool__high [EN] true=3.3V, false=0V / High یعنی ۳٫۳ ولت
  */
+/* ==================== Functions ==================== */
 void func__BspGpio_Write(GPIO_TypeDef *GPIO_TypeDef__port, uint16_t uint16_t__pin, bool bool__high);
 
 /**

@@ -7,12 +7,14 @@
 #ifndef CHANGEOVER_H
 #define CHANGEOVER_H
 
+/* ==================== Includes ==================== */
 #include "app_types.h"
 
 /**
  * @brief  [EN] Start in BOOT.
  *         [FA] از حالت BOOT شروع می‌کند.
  */
+/* ==================== Functions ==================== */
 void func__Changeover_Init(void);
 
 /**

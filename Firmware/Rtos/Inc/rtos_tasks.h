@@ -12,6 +12,7 @@
  *         [FA] تسک LED و بازر. در این مرحله فعال است.
  * @param  void_ptr__argument [EN] Required by FreeRTOS, unused, type void* / آرگومان
  */
+/* ==================== Functions ==================== */
 void func__TaskUi(void *void_ptr__argument);
 
 /**

@@ -11,6 +11,7 @@
  * @brief  [EN] Create static tasks then call vTaskStartScheduler(). Does not return.
  *         [FA] تسک‌ها را استاتیک می‌سازد و scheduler را روشن می‌کند. برنمی‌گردد.
  */
+/* ==================== Functions ==================== */
 void func__Rtos_Start(void);
 
 #endif /* RTOS_APP_H */

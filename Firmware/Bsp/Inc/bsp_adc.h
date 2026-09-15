@@ -7,10 +7,12 @@
 #ifndef BSP_ADC_H
 #define BSP_ADC_H
 
+/* ==================== Includes ==================== */
 #include <stdint.h>
 #include <stdbool.h>
 #include "stm32f1xx_hal.h"
 
+/* ==================== Defines ==================== */
 #define BSP_ADC_CHANNEL_COUNT 5u
 
 /**
@@ -18,6 +20,7 @@
  *         [FA] هندل ADC را نگه می‌دارد. شروع DMA مرحله بعد.
  * @param  ADC_HandleTypeDef__hadc [EN] HAL ADC handle / هندل ADC
  */
+/* ==================== Functions ==================== */
 void func__BspAdc_Init(ADC_HandleTypeDef *ADC_HandleTypeDef__hadc);
 
 /**

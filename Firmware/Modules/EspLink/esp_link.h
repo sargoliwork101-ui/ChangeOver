@@ -7,12 +7,14 @@
 #ifndef ESP_LINK_H
 #define ESP_LINK_H
 
+/* ==================== Includes ==================== */
 #include "app_types.h"
 
 /**
  * @brief  [EN] Keep ESP powered off until that stage is enabled.
  *         [FA] ESP را خاموش نگه می‌دارد تا آن مرحله روشن شود.
  */
+/* ==================== Functions ==================== */
 void func__EspLink_Init(void);
 
 /**

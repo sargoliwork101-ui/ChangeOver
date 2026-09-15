@@ -7,12 +7,14 @@
 #ifndef PROTECTION_H
 #define PROTECTION_H
 
+/* ==================== Includes ==================== */
 #include "app_types.h"
 
 /**
  * @brief  [EN] Init protection state.
  *         [FA] حالت حفاظت را Init می‌کند.
  */
+/* ==================== Functions ==================== */
 void func__Protection_Init(void);
 
 /**

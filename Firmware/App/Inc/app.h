@@ -14,6 +14,7 @@
  * @brief  [EN] Init modules then start FreeRTOS. Does not return.
  *         [FA] ماژول‌ها را Init می‌کند و FreeRTOS را شروع می‌کند. برنمی‌گردد.
  */
+/* ==================== Functions ==================== */
 void func__App_Start(void);
 
 /**

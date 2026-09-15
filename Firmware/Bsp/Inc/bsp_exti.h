@@ -7,6 +7,7 @@
 #ifndef BSP_EXTI_H
 #define BSP_EXTI_H
 
+/* ==================== Includes ==================== */
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -21,6 +22,7 @@ typedef enum
  * @brief  [EN] Clear software event flags.
  *         [FA] پرچم‌های نرم‌افزاری را صفر می‌کند.
  */
+/* ==================== Functions ==================== */
 void func__BspExti_Init(void);
 
 /**

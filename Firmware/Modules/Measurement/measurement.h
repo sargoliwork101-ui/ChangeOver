@@ -7,12 +7,14 @@
 #ifndef MEASUREMENT_H
 #define MEASUREMENT_H
 
+/* ==================== Includes ==================== */
 #include "app_types.h"
 
 /**
  * @brief  [EN] Zero the last snapshot.
  *         [FA] آخرین نمونه را صفر می‌کند.
  */
+/* ==================== Functions ==================== */
 void func__Measurement_Init(void);
 
 /**

@@ -7,12 +7,14 @@
 #ifndef CHARGER_H
 #define CHARGER_H
 
+/* ==================== Includes ==================== */
 #include "app_types.h"
 
 /**
  * @brief  [EN] Init charger policy. Must leave PWM at 0 %.
  *         [FA] سیاست شارژر را Init می‌کند. PWM باید ۰٪ بماند.
  */
+/* ==================== Functions ==================== */
 void func__Charger_Init(void);
 
 /**

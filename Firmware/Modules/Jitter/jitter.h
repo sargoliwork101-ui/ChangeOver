@@ -7,6 +7,7 @@
 #ifndef JITTER_H
 #define JITTER_H
 
+/* ==================== Includes ==================== */
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -14,6 +15,7 @@
  * @brief  [EN] Clear trip flags and EXTI software flags.
  *         [FA] پرچم تریپ و EXTI را پاک می‌کند.
  */
+/* ==================== Functions ==================== */
 void func__Jitter_Init(void);
 
 /**

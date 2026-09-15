@@ -7,6 +7,7 @@
 #ifndef BSP_UART_H
 #define BSP_UART_H
 
+/* ==================== Includes ==================== */
 #include <stdint.h>
 #include <stdbool.h>
 #include "stm32f1xx_hal.h"
@@ -20,6 +21,7 @@ typedef struct __UART_HandleTypeDef UART_HandleTypeDef;
  *         [FA] هندل UART را نگه می‌دارد.
  * @param  UART_HandleTypeDef__huart [EN] HAL UART handle / هندل UART
  */
+/* ==================== Functions ==================== */
 void func__BspUart_Init(UART_HandleTypeDef *UART_HandleTypeDef__huart);
 
 /**

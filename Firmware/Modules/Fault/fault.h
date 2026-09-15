@@ -7,12 +7,14 @@
 #ifndef FAULT_H
 #define FAULT_H
 
+/* ==================== Includes ==================== */
 #include "app_types.h"
 
 /**
  * @brief  [EN] Clear all fault bits.
  *         [FA] همه بیت‌های خطا را پاک می‌کند.
  */
+/* ==================== Functions ==================== */
 void func__Fault_Init(void);
 
 /**
