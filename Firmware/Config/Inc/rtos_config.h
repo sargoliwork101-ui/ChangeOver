@@ -10,8 +10,10 @@
 #ifndef RTOS_CONFIG_H
 #define RTOS_CONFIG_H
 
+/* ==================== Includes ==================== */
 #include "FreeRTOS.h"
 
+/* ==================== Defines ==================== */
 #define TASK_PRIO_PROTECTION    (tskIDLE_PRIORITY + 4u)
 #define TASK_PRIO_MEASUREMENT   (tskIDLE_PRIORITY + 3u)
 #define TASK_PRIO_CONTROL       (tskIDLE_PRIORITY + 3u)

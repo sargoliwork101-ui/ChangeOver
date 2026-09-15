@@ -1,7 +1,7 @@
 /**
  * @file    task_control.c
- * @brief   [EN] FreeRTOS task for changeover/charger policy (placeholder).
- *          [FA] تسک سیاست Changeover و شارژر (اسکلت، هنوز فعال نیست).
+ * @brief   [EN] FreeRTOS control task - simple RTOS with vTaskDelay, readable.
+ *          [FA] تسک کنترل ساده RTOS.
  */
 
 #include "rtos_tasks.h"
@@ -27,41 +27,37 @@
 #include "jitter.h"
 #endif
 
-/**
- * @brief  [EN] Control task entry. Idle loop until a control module is enabled.
- *         [FA] ورود تسک کنترل. تا ماژول کنترل روشن نشود کار نمی‌کند.
- * @param  argument  [EN] Required by FreeRTOS, unused.
- *                   [FA] اجباری FreeRTOS، استفاده نمی‌شود.
- */
-void TaskControl(void *argument)
+/* ==================== Task Control ==================== */
+
+void func__TaskControl(void *void_ptr__argument)
 {
-    (void)argument;
+    (void)void_ptr__argument;
 
     for (;;)
     {
 #if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
         {
-            measurement_snapshot_t snap;
-            fault_mask_t faults = FAULT_NONE;
-            app_state_t state = APP_STATE_IDLE;
+            measurement_snapshot_t measurement_snapshot_t__snap;
+            fault_mask_t fault_mask_t__faults = FAULT_NONE;
+            app_state_t app_state_t__state = APP_STATE_IDLE;
 
-            snap.valid = false;
+            measurement_snapshot_t__snap.valid = false;
 #if MODULE_MEASUREMENT
-            (void)Measurement_GetSnapshot(&snap);
+            (void)func__Measurement_GetSnapshot(&measurement_snapshot_t__snap);
 #endif
 #if MODULE_FAULT
-            faults = Fault_Get();
+            fault_mask_t__faults = func__Fault_Get();
 #endif
 #if MODULE_JITTER
-            Jitter_Run();
+            func__Jitter_Run();
 #endif
 #if MODULE_CHANGEOVER
-            state = Changeover_Evaluate(&snap, faults);
+            app_state_t__state = func__Changeover_Evaluate(&measurement_snapshot_t__snap, fault_mask_t__faults);
 #endif
 #if MODULE_CHARGER
-            Charger_Evaluate(&snap, state);
+            func__Charger_Evaluate(&measurement_snapshot_t__snap, app_state_t__state);
 #endif
-            (void)state;
+            (void)app_state_t__state;
         }
         vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.control_period_ms));
 #else

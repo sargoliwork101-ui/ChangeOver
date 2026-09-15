@@ -10,6 +10,7 @@
 #ifndef MODULES_ENABLE_H
 #define MODULES_ENABLE_H
 
+/* ==================== Defines ==================== */
 #define MODULE_UI             1
 #define MODULE_FAULT          0
 #define MODULE_MEASUREMENT    0

@@ -48,6 +48,8 @@
 #define PIN_LED_Y_PORT          GPIOB
 #define PIN_LED_Y_PIN           GPIO_PIN_1      /* PB1  HIGH = yellow via Q5 / زرد */
 
+/* ==================== LED ==================== */
+
 #define PIN_LED_G_PORT          GPIOB
 #define PIN_LED_G_PIN           GPIO_PIN_10     /* PB10 HIGH = green via Q6 / سبز */
 

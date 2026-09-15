@@ -7,6 +7,7 @@
 #ifndef APP_TYPES_H
 #define APP_TYPES_H
 
+/* ==================== Includes ==================== */
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -33,6 +34,7 @@ typedef struct
 
 typedef uint32_t fault_mask_t;
 
+/* ==================== Defines ==================== */
 #define FAULT_NONE              0u
 #define FAULT_ADC               (1u << 0)
 #define FAULT_OVERCURRENT_1     (1u << 1)

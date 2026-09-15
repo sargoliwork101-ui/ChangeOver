@@ -1,48 +1,57 @@
 /**
  * @file    bsp_exti.c
- * @brief   [EN] External interrupt flags (placeholder).
- *          [FA] پرچم وقفه خارجی (اسکلت).
+ * @brief   [EN] External interrupt flags (placeholder). Full type naming, func__ prefix.
+ *          [FA] پرچم وقفه خارجی (اسکلت). نام تایپ کامل.
  */
 
 #include "bsp_exti.h"
 
-static volatile uint8_t s_flags[3];
+static volatile uint8_t UINT8_T__G__Flags[3];
 
 /**
  * @brief  [EN] Clear software event flags.
  *         [FA] پرچم‌های نرم‌افزاری را صفر می‌کند.
  */
-void BspExti_Init(void)
+/* ==================== BspExti_Init ==================== */
+
+void func__BspExti_Init(void)
 {
-    s_flags[0] = 0u;
-    s_flags[1] = 0u;
-    s_flags[2] = 0u;
+    UINT8_T__G__Flags[0] = 0u;
+    UINT8_T__G__Flags[1] = 0u;
+    UINT8_T__G__Flags[2] = 0u;
 }
 
 /**
  * @brief  [EN] Set flag from HAL GPIO EXTI callback.
  *         [FA] پرچم را از کال‌بک EXTI می‌گذارد.
+ * @param  bsp_exti_src_t__src [EN] Source / منبع
  */
-void BspExti_OnIrq(bsp_exti_src_t src)
+/* ==================== BspExti_OnIrq ==================== */
+
+void func__BspExti_OnIrq(bsp_exti_src_t bsp_exti_src_t__src)
 {
-    if ((uint32_t)src < 3u)
+    if ((uint32_t)bsp_exti_src_t__src < 3u)
     {
-        s_flags[src] = 1u;
+        UINT8_T__G__Flags[bsp_exti_src_t__src] = 1u;
     }
 }
 
 /**
  * @brief  [EN] Read-and-clear one event flag.
  *         [FA] پرچم را می‌خواند و پاک می‌کند.
+ * @param  bsp_exti_src_t__src [EN] Source / منبع
+ * @return bool [EN] true if taken / اگر گرفته شد true
  */
-bool BspExti_TakeEvent(bsp_exti_src_t src)
-{
-    bool taken = false;
+/* ==================== BspExti_TakeEvent ==================== */
 
-    if ((uint32_t)src < 3u)
+bool func__BspExti_TakeEvent(bsp_exti_src_t bsp_exti_src_t__src)
+{
+    bool bool__taken = false;
+
+    if ((uint32_t)bsp_exti_src_t__src < 3u)
     {
-        taken = (s_flags[src] != 0u);
-        s_flags[src] = 0u;
+        bool__taken = (UINT8_T__G__Flags[bsp_exti_src_t__src] != 0u);
+        UINT8_T__G__Flags[bsp_exti_src_t__src] = 0u;
     }
-    return taken;
+    return bool__taken;
 }

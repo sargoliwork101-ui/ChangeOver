@@ -1,11 +1,17 @@
 /**
  * @file    task_ui.c
- * @brief   [EN] FreeRTOS task that runs one LED/buzzer scenario at a time.
- *          [FA] تسک FreeRTOS که هر بار یک سناریوی LED/بازر را اجرا می‌کند.
+ * @brief   [EN] FreeRTOS UI task - fully RTOS simple & readable, vTaskDelay (does not lock MCU).
+ *          Uses new Ui API with __ after type and func__ prefix, ui_config.h deleted.
+ *          [FA] تسک UI کاملاً RTOS ساده و خوانا با vTaskDelay.
+ *
+ * @note    [EN] RTOS simple: vTaskDelay yields, other tasks run, MCU not locked. No HAL_Delay.
+ *          Formulas in ui.c are non-linear broken into steps.
+ *          [FA] RTOS ساده: vTaskDelay میکرو را قفل نمی‌کند.
  */
 
 #include "rtos_tasks.h"
-#include "ui.h"
+#include "ui_led.h"
+#include "ui_buzzer.h"
 #include "app_config.h"
 #include "FreeRTOS.h"
 #include "task.h"
@@ -13,59 +19,32 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#define UI_PERCENT_FULL   100u  /* [EN] 100 % charge / باتری فول */
+/* ==================== Global Test Inputs ==================== */
 
-/*
- * Manual test inputs until the Measurement (ADC) module exists.
- * Change them live in the debugger "Live Expressions" window — no rebuild or
- * re-flash is needed. Later the task will feed real measurement values here.
- *
- * ورودی‌های دستی تست تا قبل از راه‌اندازی ماژول Measurement (ADC).
- * در دیباگر از پنجره Live Expressions زنده عوض شوند؛ بدون Build/فلش دوباره.
- * بعداً همین‌جا با مقادیر واقعی اندازه‌گیری پر می‌شود.
- */
-volatile uint8_t ui_test_battery_percent = 100u;  /* [EN] 0..100 charge / درصد شارژ */
-volatile uint8_t ui_test_input_present   = 1u;    /* [EN] 1 = mains on, 0 = lost / ورودی وصل یا قطع */
+volatile uint32_t UINT32_T__G__InputVoltageMv = 24000u;
+volatile uint32_t UINT32_T__G__BatteryVoltageMv = 25000u;
 
-/**
- * @brief  [EN] UI task entry. One board test, then one scenario cycle at a time
- *         so the manual inputs can change the scenario between cycles. Never returns.
- *         [FA] ورود تسک UI. یک‌بار تست برد، بعد در هر نوبت یک سیکل سناریو تا ورودی
- *         دستی بتواند بین سیکل‌ها سناریو را عوض کند. برنمی‌گردد.
- * @note   [EN] Ui_Init() already ran once from App_Init() before the scheduler.
- *         [FA] Ui_Init یک‌بار قبل از زمان‌بند در App_Init اجرا شده است.
- * @param  argument  [EN] Required by FreeRTOS, unused.
- *                   [FA] اجباری FreeRTOS، استفاده نمی‌شود.
- */
-void TaskUi(void *argument)
+/* ==================== Task Ui ==================== */
+
+void func__TaskUi(void *void_ptr__argument)
 {
-    (void)argument;
+    (void)void_ptr__argument;
 
-    Ui_BoardTest();
+    func__Ui_Init();
+    func__Ui_BoardTest_Start();
 
     for (;;)
     {
-        uint8_t pct;
-        bool input_present;
+        uint32_t uint32_t__inputVoltageMv;
+        uint32_t uint32_t__batteryVoltageMv;
 
-        pct = ui_test_battery_percent;
-        if (pct > UI_PERCENT_FULL)
-        {
-            pct = UI_PERCENT_FULL;
-        }
-        input_present = (ui_test_input_present != 0u);
+        uint32_t__inputVoltageMv = UINT32_T__G__InputVoltageMv;
+        uint32_t__batteryVoltageMv = UINT32_T__G__BatteryVoltageMv;
 
-        if (input_present == true)
-        {
-            Ui_ScenarioInputOk();
-        }
-        else if (pct <= APP_CONFIG.ui_low_battery_percent)
-        {
-            Ui_ScenarioBatteryLow();
-        }
-        else
-        {
-            Ui_ScenarioBatteryRun(pct);
-        }
+        /* [EN] Simple RTOS tick - readable, 10ms base, MCU not locked
+           [FA] تیکه ساده RTOS - خوانا */
+        func__Ui_Tick(uint32_t__inputVoltageMv, uint32_t__batteryVoltageMv);
+
+        vTaskDelay(pdMS_TO_TICKS(UI_TICK_MS));
     }
 }

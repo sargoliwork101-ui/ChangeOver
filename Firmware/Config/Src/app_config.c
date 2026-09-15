@@ -1,31 +1,46 @@
 /**
  * @file    app_config.c
- * @brief   [EN] Default configuration values.
- *          [FA] مقادیر پیش‌فرض پیکربندی.
+ * @brief   [EN] Default configuration values. Uses ui_led.h and ui_buzzer.h split per user request, constants in own headers.
+ *          [FA] مقادیر پیش‌فرض پیکربندی. آستانه‌ها از ui_led.h و ui_buzzer.h می‌آید (ثابت‌ها در هدر خودش).
+ *
+ * @note    [EN] Fully RTOS, no delay, naming with __ after type, func__ prefix. LED constants in ui_led.h, buzzer in ui_buzzer.h.
+ *          [FA] کاملاً RTOS بدون delay، نام‌گذاری با __، ثابت‌های LED و BUZZER جدا.
  */
 
+/* ==================== Includes ==================== */
+
 #include "app_config.h"
+#include "ui_led.h"     /* [EN] LED constants in own header / ثابت‌های LED در هدر خودش */
+#include "ui_buzzer.h"  /* [EN] Buzzer constants in own header / ثابت‌های بازر در هدر خودش */
 
 const app_config_t APP_CONFIG =
 {
-    .ui_input_ok_poll_ms     = 500u,
-    .ui_selftest_led_ms      = 500u,
-    .ui_boot_beep_ms         = 150u,
-    .ui_blink_period_ms      = 1000u,
-    .ui_green_min_off_ms     = 10u,
-    .ui_low_battery_percent  = 20u,
-    .ui_warn_period_ms       = 1000u,
-    .ui_warn_yellow_on_ms    = 500u,
-    .ui_warn_beep_ms         = 250u,
-    .ui_warn_beep_period_ms  = 30000u,
-    .power_stage_enabled    = false,
-    .esp_link_enabled       = false,
-    .control_period_ms      = 10u,
-    .protection_period_ms   = 5u,
-    .comm_period_ms         = 100u,
-    .low_battery_mv         = 20000u,
-    .low_battery_recover_mv = 21000u,
-    .overcurrent1_ma        = 3500u,
-    .overcurrent2_ma        = 3500u,
-    .pwm_max_duty_permille  = 0u
+    .ui_input_ok_poll_ms           = UI_INPUT_OK_POLL_MS,
+    .ui_selftest_led_ms            = UI_SELFTEST_LED_MS,
+    .ui_boot_beep_ms               = UI_BOOT_BEEP_MS,
+    .ui_blink_period_ms            = UI_BLINK_PERIOD_MS,
+    .ui_green_min_off_ms           = UI_GREEN_MIN_OFF_MS,
+    .ui_low_battery_percent        = 20u,
+    .ui_warn_period_ms             = 1000u,
+    .ui_warn_yellow_on_ms          = 500u,
+    .ui_warn_beep_ms               = UI_BEEP_BASE_MS,
+    .ui_warn_beep_period_ms        = 30000u,
+    .ui_input_threshold_mv         = UI_INPUT_THRESHOLD_MV,
+    .ui_bat_v_min_mv               = UI_BAT_V_MIN_MV,
+    .ui_bat_v_max_mv               = UI_BAT_V_MAX_MV,
+    .ui_charging_blink_period_ms   = UI_CHARGING_BLINK_PERIOD_MS,
+    .ui_charging_yellow_min_off_ms = UI_CHARGING_YELLOW_MIN_OFF_MS,
+    .ui_beep_base_ms               = UI_BEEP_BASE_MS,
+    .ui_beep_double_thresh_pct     = UI_BEEP_DOUBLE_THRESH_PCT,
+    .ui_beep_start_pct             = UI_BEEP_START_PCT,
+    .power_stage_enabled           = false,
+    .esp_link_enabled              = false,
+    .control_period_ms             = 10u,
+    .protection_period_ms          = 5u,
+    .comm_period_ms                = 100u,
+    .low_battery_mv                = 20000u,
+    .low_battery_recover_mv        = 21000u,
+    .overcurrent1_ma               = 3500u,
+    .overcurrent2_ma               = 3500u,
+    .pwm_max_duty_permille         = 0u
 };

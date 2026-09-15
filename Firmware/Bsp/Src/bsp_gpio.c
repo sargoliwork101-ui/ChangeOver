@@ -1,7 +1,7 @@
 /**
  * @file    bsp_gpio.c
- * @brief   [EN] Thin HAL_GPIO_WritePin / ReadPin wrapper.
- *          [FA] پوشش نازک نوشتن و خواندن GPIO با HAL.
+ * @brief   [EN] Thin HAL_GPIO wrapper. Full type naming, func__ prefix.
+ *          [FA] پوشش نازک GPIO با HAL. نام تایپ کامل.
  */
 
 #include "bsp_gpio.h"
@@ -10,43 +10,53 @@
 /**
  * @brief  [EN] Write a pin high or low. Ignores NULL port.
  *         [FA] پایه را High یا Low می‌کند. پورت NULL را نادیده می‌گیرد.
+ * @param  GPIO_TypeDef__port [EN] Port / پورت
+ * @param  uint16_t__pin [EN] Pin mask / ماسک پایه
+ * @param  bool__high [EN] true=3.3V / High یعنی ۳٫۳ ولت
  */
-void BspGpio_Write(GPIO_TypeDef *port, uint16_t pin, bool high)
-{
-    GPIO_PinState level;
+/* ==================== BspGpio_Write ==================== */
 
-    if (port == NULL)
+void func__BspGpio_Write(GPIO_TypeDef *GPIO_TypeDef__port, uint16_t uint16_t__pin, bool bool__high)
+{
+    GPIO_PinState GPIO_PinState_level;
+
+    if (GPIO_TypeDef__port == NULL)
     {
         return;
     }
 
-    if (high == true)
+    if (bool__high == true)
     {
-        level = GPIO_PIN_SET;
+        GPIO_PinState_level = GPIO_PIN_SET;
     }
     else
     {
-        level = GPIO_PIN_RESET;
+        GPIO_PinState_level = GPIO_PIN_RESET;
     }
 
-    HAL_GPIO_WritePin(port, pin, level);
+    HAL_GPIO_WritePin(GPIO_TypeDef__port, uint16_t__pin, GPIO_PinState_level);
 }
 
 /**
  * @brief  [EN] Read pin logic level. NULL port returns false.
  *         [FA] سطح منطقی پایه را می‌خواند. پورت NULL یعنی false.
+ * @param  GPIO_TypeDef__port [EN] Port / پورت
+ * @param  uint16_t__pin [EN] Pin mask / ماسک پایه
+ * @return bool [EN] true if high / اگر High باشد true
  */
-bool BspGpio_Read(GPIO_TypeDef *port, uint16_t pin)
-{
-    bool is_high = false;
+/* ==================== BspGpio_Read ==================== */
 
-    if (port != NULL)
+bool func__BspGpio_Read(GPIO_TypeDef *GPIO_TypeDef__port, uint16_t uint16_t__pin)
+{
+    bool bool__isHigh = false;
+
+    if (GPIO_TypeDef__port != NULL)
     {
-        if (HAL_GPIO_ReadPin(port, pin) == GPIO_PIN_SET)
+        if (HAL_GPIO_ReadPin(GPIO_TypeDef__port, uint16_t__pin) == GPIO_PIN_SET)
         {
-            is_high = true;
+            bool__isHigh = true;
         }
     }
 
-    return is_high;
+    return bool__isHigh;
 }

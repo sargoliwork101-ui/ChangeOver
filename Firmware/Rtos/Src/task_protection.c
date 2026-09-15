@@ -1,7 +1,7 @@
 /**
  * @file    task_protection.c
- * @brief   [EN] FreeRTOS task for over-current / low-battery checks (placeholder).
- *          [FA] تسک حفاظت جریان و ولتاژ (اسکلت، هنوز فعال نیست).
+ * @brief   [EN] FreeRTOS protection task - simple RTOS with vTaskDelay.
+ *          [FA] تسک حفاظت ساده RTOS.
  */
 
 #include "rtos_tasks.h"
@@ -16,26 +16,22 @@
 #include "measurement.h"
 #endif
 
-/**
- * @brief  [EN] Protection task entry. Idle loop until the module is enabled.
- *         [FA] ورود تسک حفاظت. تا ماژول روشن نشود کار نمی‌کند.
- * @param  argument  [EN] Required by FreeRTOS, unused.
- *                   [FA] اجباری FreeRTOS، استفاده نمی‌شود.
- */
-void TaskProtection(void *argument)
+/* ==================== Task Protection ==================== */
+
+void func__TaskProtection(void *void_ptr__argument)
 {
-    (void)argument;
+    (void)void_ptr__argument;
 
     for (;;)
     {
 #if MODULE_PROTECTION
         {
-            measurement_snapshot_t snap;
-            snap.valid = false;
+            measurement_snapshot_t measurement_snapshot_t__snap;
+            measurement_snapshot_t__snap.valid = false;
 #if MODULE_MEASUREMENT
-            (void)Measurement_GetSnapshot(&snap);
+            (void)func__Measurement_GetSnapshot(&measurement_snapshot_t__snap);
 #endif
-            Protection_Run(&snap);
+            func__Protection_Run(&measurement_snapshot_t__snap);
         }
         vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.protection_period_ms));
 #else

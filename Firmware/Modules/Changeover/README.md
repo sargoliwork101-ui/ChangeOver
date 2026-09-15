@@ -16,7 +16,7 @@
 |---|---|
 | 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
-| 2026-09 | اسکلت `Changeover_Init` / `Changeover_Evaluate` |
+| 2026-09 | اسکلت `func__Changeover_Init` / `func__Changeover_Evaluate` |
 
 ## فایل‌ها
 
@@ -32,8 +32,8 @@
 
 | نام | کار |
 |---|---|
-| `Changeover_Init` | `s_state = APP_STATE_BOOT` |
-| `Changeover_Evaluate` | اگر خطا باشد `FAULT`، وگرنه `IDLE`. مسیر INPUT/BATTERY هنوز نیست |
+| `func__Changeover_Init` | `s_state = APP_STATE_BOOT` |
+| `func__Changeover_Evaluate` | اگر خطا باشد `FAULT`، وگرنه `IDLE`. مسیر INPUT/BATTERY هنوز نیست |
 | `TaskControl` | فقط اگر Changeover یا Charger یا Jitter یک باشد ساخته می‌شود |
 
 حالت‌ها: `BOOT`، `IDLE`، `INPUT`، `BATTERY`، `FAULT`، `SAFE`.
@@ -58,7 +58,7 @@ Init فقط state را BOOT می‌کند؛ پایه را High نمی‌کند. 
 
 ```text
 rtos_app.c → TaskControl → task_control.c
-  Changeover_Evaluate(&snap, faults)
+  func__Changeover_Evaluate(&snap, faults)
 ```
 
 این ماژول صدا می‌زند:

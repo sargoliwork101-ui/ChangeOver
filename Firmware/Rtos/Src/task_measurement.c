@@ -1,7 +1,7 @@
 /**
  * @file    task_measurement.c
- * @brief   [EN] FreeRTOS task for ADC sampling (placeholder).
- *          [FA] تسک نمونه‌برداری ADC (اسکلت، هنوز فعال نیست).
+ * @brief   [EN] FreeRTOS measurement task - simple RTOS with vTaskDelay, readable, no HAL_Delay.
+ *          [FA] تسک اندازه‌گیری ساده RTOS با vTaskDelay.
  */
 
 #include "rtos_tasks.h"
@@ -14,20 +14,16 @@
 #include "measurement.h"
 #endif
 
-/**
- * @brief  [EN] Measurement task entry. Idle loop until the module is enabled.
- *         [FA] ورود تسک اندازه‌گیری. تا ماژول روشن نشود کار نمی‌کند.
- * @param  argument  [EN] Required by FreeRTOS, unused.
- *                   [FA] اجباری FreeRTOS، استفاده نمی‌شود.
- */
-void TaskMeasurement(void *argument)
+/* ==================== Task Measurement ==================== */
+
+void func__TaskMeasurement(void *void_ptr__argument)
 {
-    (void)argument;
+    (void)void_ptr__argument;
 
     for (;;)
     {
 #if MODULE_MEASUREMENT
-        Measurement_Run();
+        func__Measurement_Run();
         vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.control_period_ms));
 #else
         vTaskDelay(pdMS_TO_TICKS(1000u));

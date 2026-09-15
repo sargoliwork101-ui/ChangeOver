@@ -1,38 +1,45 @@
 /**
  * @file    changeover.c
- * @brief   [EN] Input vs battery path state machine (placeholder).
- *          [FA] ماشین حالت مسیر ورودی یا باتری (اسکلت).
+ * @brief   [EN] Input vs battery path state machine (placeholder). Func_ prefix, full type naming.
+ *          [FA] ماشین حالت مسیر ورودی یا باتری (اسکلت). پیشوند func__ و نام تایپ کامل.
  */
 
 #include "changeover.h"
 
-static app_state_t s_state = APP_STATE_BOOT;
+static app_state_t APP_STATE_T__G__State = APP_STATE_BOOT;
 
 /**
  * @brief  [EN] Start in BOOT.
  *         [FA] از حالت BOOT شروع می‌کند.
  */
-void Changeover_Init(void)
+/* ==================== Changeover_Init ==================== */
+
+void func__Changeover_Init(void)
 {
-    s_state = APP_STATE_BOOT;
+    APP_STATE_T__G__State = APP_STATE_BOOT;
 }
 
 /**
  * @brief  [EN] Evaluate next system state from snapshot and faults.
  *         [FA] حالت بعدی سیستم را از نمونه و خطا حساب می‌کند.
+ * @param  measurement_snapshot_t__snap [EN] Snapshot from measurement, may be NULL / نمونه اندازه‌گیری
+ * @param  fault_mask_t__faults [EN] Fault bits from Fault module / بیت‌های خطا
+ * @return app_state_t [EN] Next system state / حالت بعدی
  */
-app_state_t Changeover_Evaluate(const measurement_snapshot_t *snap, fault_mask_t faults)
-{
-    (void)snap;
+/* ==================== Changeover_Evaluate ==================== */
 
-    if (faults != FAULT_NONE)
+app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap, fault_mask_t fault_mask_t__faults)
+{
+    (void)measurement_snapshot_t__snap;
+
+    if (fault_mask_t__faults != FAULT_NONE)
     {
-        s_state = APP_STATE_FAULT;
+        APP_STATE_T__G__State = APP_STATE_FAULT;
     }
     else
     {
-        s_state = APP_STATE_IDLE;
+        APP_STATE_T__G__State = APP_STATE_IDLE;
     }
 
-    return s_state;
+    return APP_STATE_T__G__State;
 }
