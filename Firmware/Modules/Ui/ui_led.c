@@ -3,11 +3,11 @@
  * @brief   [EN] UI LED scenarios - green/red/yellow, battery percent, InputOk/Charging/BatteryRun.
  *          Split from UI into LED and BUZZER per user request. Constants for LED in ui_led.h.
  *          RTOS simple readable, non-linear formulas, markers above each function and variable in h and c.
- *          [FA] سناریوهای LED ماژول UI - ثابت‌های LED در هدر خودش، هر تابع و متغیر با جدا کننده.
+ *          [FA] سناریوهای LED ماژول UI - ثابت‌های LED در هدر خودش، هر تابع و متغیر با جدا کننده و کامنت.
  *
  * @note    [EN] LED constants in ui_led.h per user request. Naming __ after type, func__ prefix.
  *          RTOS: vTaskDelay allowed, HAL_Delay forbidden. Formulas non-linear broken into steps.
- *          [FA] ثابت‌های LED در همین هدر. نام‌گذاری با __، پیشوند func__.
+ *          [FA] ثابت‌های LED در همین هدر. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
  */
 
 #include "ui_led.h"
@@ -21,9 +21,9 @@
 /* ==================== Battery Voltage To Percent ==================== */
 
 /**
- * @brief  [EN] Battery voltage to percent 0..100. Non-linear formula broken into steps.
- *         [FA] ولتاژ باتری به درصد - فرمول غیرخطی.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV / ولتاژ باتری
+ * @brief  [EN] Battery voltage to percent 0..100. Non-linear formula broken into 4 steps: range, offset, scaled, percent.
+ *         [FA] ولتاژ باتری به درصد - فرمول غیرخطی ۴ گام: بازه، فاصله، مقیاس، درصد.
+ * @param  uint32_t__batteryMv [EN] Battery voltage in mV, 0..40000mV, 21000=0% 28000=100% / ولتاژ باتری میلی‌ولت
  * @return uint8_t [EN] Percent 0..100 / درصد
  */
 uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
@@ -74,6 +74,11 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
 
 /* ==================== Green LED ==================== */
 
+/**
+ * @brief  [EN] Drive green LED on/off. Low-level wrapper around BSP GPIO.
+ *         [FA] ال‌ای‌دی سبز را روشن/خاموش می‌کند - سطح پایین.
+ * @param  bool__greenOn [EN] true=on, false=off / روشن یا خاموش
+ */
 static void func__green(bool bool__greenOn)
 {
     func__BspGpio_Write(PIN_LED_G_PORT, PIN_LED_G_PIN, bool__greenOn);
@@ -81,6 +86,11 @@ static void func__green(bool bool__greenOn)
 
 /* ==================== Red LED ==================== */
 
+/**
+ * @brief  [EN] Drive red LED on/off. Low-level.
+ *         [FA] ال‌ای‌دی قرمز را روشن/خاموش می‌کند.
+ * @param  bool__redOn [EN] true=on, false=off / روشن یا خاموش
+ */
 static void func__red(bool bool__redOn)
 {
     func__BspGpio_Write(PIN_LED_R_PORT, PIN_LED_R_PIN, bool__redOn);
@@ -88,6 +98,11 @@ static void func__red(bool bool__redOn)
 
 /* ==================== Yellow LED ==================== */
 
+/**
+ * @brief  [EN] Drive yellow LED on/off. Low-level.
+ *         [FA] ال‌ای‌دی زرد را روشن/خاموش می‌کند.
+ * @param  bool__yellowOn [EN] true=on, false=off / روشن یا خاموش
+ */
 static void func__yellow(bool bool__yellowOn)
 {
     func__BspGpio_Write(PIN_LED_Y_PORT, PIN_LED_Y_PIN, bool__yellowOn);
@@ -95,6 +110,10 @@ static void func__yellow(bool bool__yellowOn)
 
 /* ==================== All Off Safe ==================== */
 
+/**
+ * @brief  [EN] Drive all LEDs and buzzer off - safe state after Init.
+ *         [FA] همه ال‌ای‌دی‌ها و بازر خاموش - حالت امن.
+ */
 static void func__all_off(void)
 {
     func__green(false);
@@ -105,10 +124,18 @@ static void func__all_off(void)
 
 /* ==================== BatteryRun Beep Cycle Count ==================== */
 
+/**
+ * @brief  [EN] Cycle counter for smart beep in BatteryRun, counts 1s ticks, reset when beep.
+ *         [FA] شمارنده سیکل برای بوق هوشمند در دشارژ، هر سیکل ۱ ثانیه.
+ */
 static uint32_t UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
 
 /* ==================== Scenario InputOk ==================== */
 
+/**
+ * @brief  [EN] InputOk scenario: green steady, red/yellow/buzzer off. RTOS simple with vTaskDelay 500ms, MCU not locked.
+ *         [FA] سناریو ورودی وصل: سبز ثابت، بقیه خاموش، تاخیر RTOS ساده.
+ */
 void func__Ui_ScenarioInputOk(void)
 {
     func__green(true);
@@ -123,6 +150,12 @@ void func__Ui_ScenarioInputOk(void)
 
 /* ==================== Scenario Charging Tick ==================== */
 
+/**
+ * @brief  [EN] Charging scenario tick: green steady, yellow shows remaining to full non-linear.
+ *         Formula: remainingPercent = 100-pct, periodPerPercent = period/100, yellowOnMs = remaining*periodPer, yellowOffMs = period-yellowOn.
+ *         [FA] سناریو شارژ: سبز ثابت، زرد مانده تا فول غیرخطی.
+ * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 28000=100% / ولتاژ باتری
+ */
 void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 {
     uint8_t uint8_t__batteryPercent;
@@ -179,6 +212,12 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 
 /* ==================== Scenario BatteryRun Tick ==================== */
 
+/**
+ * @brief  [EN] BatteryRun scenario tick: green blink non-linear (remainingPercent, periodPerPercent, greenOnMs/offMs), yellow OFF, smart beep.
+ *         Beep every pct seconds, duration x2 if pct<20. RTOS simple with vTaskDelay.
+ *         [FA] سناریو دشارژ: سبز چشمک غیرخطی، زرد خاموش، بوق هوشمند، ساده RTOS.
+ * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 28000=100% / ولتاژ باتری
+ */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 {
     uint8_t uint8_t__batteryPercent;
@@ -258,6 +297,13 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 
 /* ==================== Ui Tick ==================== */
 
+/**
+ * @brief  [EN] Ui main tick - decides which scenario based on input and battery, RTOS simple readable.
+ *         Call every UI_TICK_MS from task.
+ *         [FA] تیکه اصلی UI - تصمیم سناریو بر اساس ورودی و باتری، ساده خوانا.
+ * @param  uint32_t__inputVoltageMv [EN] Input voltage mV, 0..40000mV / ولتاژ ورودی
+ * @param  uint32_t__batteryVoltageMv [EN] Battery voltage mV, 0..40000mV / ولتاژ باتری
+ */
 void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__batteryVoltageMv)
 {
     uint32_t uint32_t__batteryClampedMv;
@@ -292,6 +338,10 @@ void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__battery
 
 /* ==================== Ui Init ==================== */
 
+/**
+ * @brief  [EN] Drive all UI outputs low (safe state) and reset beep counter.
+ *         [FA] همه خروجی‌های UI خاموش و ریست شمارنده بوق.
+ */
 void func__Ui_Init(void)
 {
     func__all_off();
@@ -300,6 +350,10 @@ void func__Ui_Init(void)
 
 /* ==================== Board Test Start ==================== */
 
+/**
+ * @brief  [EN] One-shot wiring check: red, yellow, green each 500ms, short beep 150ms, RTOS simple with vTaskDelay.
+ *         [FA] تست یک‌باره سیم‌کشی: قرمز، زرد، سبز هر کدام ۵۰۰ms، بوق ۱۵۰ms، ساده RTOS.
+ */
 void func__Ui_BoardTest_Start(void)
 {
     func__all_off();
@@ -325,6 +379,11 @@ void func__Ui_BoardTest_Start(void)
 
 /* ==================== Board Test Tick ==================== */
 
+/**
+ * @brief  [EN] Board test tick - for compatibility, returns false (test done in Start).
+ *         [FA] تیکه تست برد - برای سازگاری false برمی‌گرداند.
+ * @return bool [EN] true=still running, false=finished / در حال اجرا یا تمام
+ */
 bool func__Ui_BoardTest_Tick(void)
 {
     /* [EN] For compatibility with non-blocking API, board test now done in Start with RTOS delays
