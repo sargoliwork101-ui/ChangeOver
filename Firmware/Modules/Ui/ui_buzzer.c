@@ -47,38 +47,65 @@ static TickType_t TICKTYPE_T__G__BuzzerCycleStartTick = 0;
  *         [FA] یک الگوی دوره‌ای بوق را بدون قفل کردن تسک اجرا می‌کند.
  *         پنجره دیوتی period*duty/100 است؛ بوق‌ها و گپ‌ها این پنجره را پر می‌کنند
  *         و زمان باقی‌مانده تا دوره بعدی خاموش است.
- * @param  uint32_t__periodMs [EN] Pattern period in ms, non-zero / دوره الگو بر حسب ms، غیرصفر
+ * @param  uint32_t__periodMs [EN] Pattern period in ms / دوره الگو بر حسب ms
  * @param  uint8_t__dutyPercent [EN] Duty window 0..100 percent / پنجره دیوتی از صفر تا صد درصد
- * @param  uint8_t__beepCount [EN] Number of pulses in duty window; zero disables / تعداد پالس در پنجره دیوتی؛ صفر یعنی خاموش
+ * @param  uint8_t__beepCount [EN] Number of pulses; zero disables / تعداد پالس؛ صفر یعنی خاموش
  * @param  uint32_t__gapMs [EN] Low gap between adjacent pulses in ms / گپ خاموش بین پالس‌های مجاور بر حسب ms
+ * @return int32_t [EN] Recommended next-call delay, zero for valid off, or -1 for invalid input.
+ *         [FA] زمان پیشنهادی مراجعه بعدی، صفر برای خاموشی معتبر، یا منفی یک برای ورودی نامعتبر.
  */
-void func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyPercent, uint8_t uint8_t__beepCount, uint32_t uint32_t__gapMs)
+int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyPercent, uint8_t uint8_t__beepCount, uint32_t uint32_t__gapMs)
 {
     TickType_t ticktype__nowTick;
     uint32_t uint32_t__dutyWindowMs;
     uint32_t uint32_t__gapCount;
+    uint32_t uint32_t__effectiveGapMs;
     uint32_t uint32_t__totalGapMs;
     uint32_t uint32_t__availableOnMs;
     uint32_t uint32_t__beepOnMs;
     uint32_t uint32_t__lastBeepOnMs;
     uint32_t uint32_t__onRemainderMs;
+    uint32_t uint32_t__periodTailMs;
+    uint32_t uint32_t__smallestTimingMs;
+    uint32_t uint32_t__nextCheckMs;
     uint32_t uint32_t__elapsedMs;
     uint32_t uint32_t__cursorMs;
     uint32_t uint32_t__currentBeepOnMs;
     uint8_t uint8_t__beepIndex;
     uint64_t uint64_t__dutyProduct;
     uint64_t uint64_t__gapProduct;
+    uint64_t uint64_t__checkProduct;
     bool bool__configurationChanged;
     bool bool__buzzerOn;
 
+    /* [EN] Zero is an intentional safe-off command, not an invalid configuration.
+       [FA] صفر یک فرمان خاموشی امن و عمدی است، نه تنظیمات نامعتبر. */
     if ((uint32_t__periodMs == 0u) ||
         (uint8_t__dutyPercent == 0u) ||
-        (uint8_t__beepCount == 0u) ||
-        (uint8_t__dutyPercent > UI_BUZZER_DUTY_MAX_PERCENT))
+        (uint8_t__beepCount == 0u))
     {
         func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
         BOOL__G__BuzzerPatternValid = false;
-        return;
+        return UI_BUZZER_OFF_RESULT;
+    }
+
+    /* [EN] Reject unsafe non-zero configurations and keep the buzzer LOW.
+       [FA] تنظیمات غیرصفر ناامن را رد کن و بوق را LOW نگه دار. */
+    if ((uint32_t__periodMs < UI_BUZZER_MIN_PERIOD_MS) ||
+        (uint8_t__dutyPercent > UI_BUZZER_DUTY_MAX_PERCENT) ||
+        ((uint8_t__beepCount > 1u) && (uint32_t__gapMs < UI_BUZZER_MIN_GAP_MS)))
+    {
+        func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
+        BOOL__G__BuzzerPatternValid = false;
+        return UI_BUZZER_INVALID_RESULT;
+    }
+
+    /* [EN] A gap has meaning only between adjacent pulses.
+       [FA] گپ فقط بین پالس‌های مجاور معنا دارد. */
+    uint32_t__effectiveGapMs = 0u;
+    if (uint8_t__beepCount > 1u)
+    {
+        uint32_t__effectiveGapMs = uint32_t__gapMs;
     }
 
     /* [EN] Calculate the duty window without overflowing a 32-bit period.
@@ -87,7 +114,7 @@ void func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyPerc
     uint32_t__dutyWindowMs = (uint32_t)(uint64_t__dutyProduct / UI_BUZZER_PERCENT_SCALE);
 
     uint32_t__gapCount = (uint32_t)uint8_t__beepCount - 1u;
-    uint64_t__gapProduct = (uint64_t)uint32_t__gapMs * (uint64_t)uint32_t__gapCount;
+    uint64_t__gapProduct = (uint64_t)uint32_t__effectiveGapMs * (uint64_t)uint32_t__gapCount;
 
     /* [EN] Reject a pattern when gaps leave no positive time for every pulse.
        [FA] اگر گپ‌ها زمان مثبت برای همه پالس‌ها باقی نگذارند، الگو را رد کن. */
@@ -97,7 +124,7 @@ void func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyPerc
     {
         func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
         BOOL__G__BuzzerPatternValid = false;
-        return;
+        return UI_BUZZER_INVALID_RESULT;
     }
 
     uint32_t__totalGapMs = (uint32_t)uint64_t__gapProduct;
@@ -105,6 +132,32 @@ void func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyPerc
     uint32_t__beepOnMs = uint32_t__availableOnMs / (uint32_t)uint8_t__beepCount;
     uint32_t__onRemainderMs = uint32_t__availableOnMs % (uint32_t)uint8_t__beepCount;
     uint32_t__lastBeepOnMs = uint32_t__beepOnMs + uint32_t__onRemainderMs;
+    uint32_t__periodTailMs = uint32_t__periodMs - uint32_t__dutyWindowMs;
+
+    /* [EN] The smallest positive segment controls the next RTOS check.
+       [FA] کوچک‌ترین بخش مثبت، زمان مراجعه بعدی RTOS را تعیین می‌کند. */
+    uint32_t__smallestTimingMs = uint32_t__beepOnMs;
+    if (uint32_t__lastBeepOnMs < uint32_t__smallestTimingMs)
+    {
+        uint32_t__smallestTimingMs = uint32_t__lastBeepOnMs;
+    }
+    if ((uint32_t__effectiveGapMs > 0u) &&
+        (uint32_t__effectiveGapMs < uint32_t__smallestTimingMs))
+    {
+        uint32_t__smallestTimingMs = uint32_t__effectiveGapMs;
+    }
+    if ((uint32_t__periodTailMs > 0u) &&
+        (uint32_t__periodTailMs < uint32_t__smallestTimingMs))
+    {
+        uint32_t__smallestTimingMs = uint32_t__periodTailMs;
+    }
+
+    uint64_t__checkProduct = (uint64_t)uint32_t__smallestTimingMs * UI_BUZZER_CHECK_PERCENT;
+    uint32_t__nextCheckMs = (uint32_t)(uint64_t__checkProduct / UI_BUZZER_PERCENT_SCALE);
+    if (uint32_t__nextCheckMs < UI_BUZZER_MIN_CHECK_MS)
+    {
+        uint32_t__nextCheckMs = UI_BUZZER_MIN_CHECK_MS;
+    }
 
     bool__configurationChanged = (BOOL__G__BuzzerPatternValid == false);
     if (UINT32_T__G__BuzzerPeriodMs != uint32_t__periodMs)
@@ -119,7 +172,7 @@ void func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyPerc
     {
         bool__configurationChanged = true;
     }
-    if (UINT32_T__G__BuzzerGapMs != uint32_t__gapMs)
+    if (UINT32_T__G__BuzzerGapMs != uint32_t__effectiveGapMs)
     {
         bool__configurationChanged = true;
     }
@@ -130,7 +183,7 @@ void func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyPerc
         UINT32_T__G__BuzzerPeriodMs = uint32_t__periodMs;
         UINT8_T__G__BuzzerDutyPercent = uint8_t__dutyPercent;
         UINT8_T__G__BuzzerCount = uint8_t__beepCount;
-        UINT32_T__G__BuzzerGapMs = uint32_t__gapMs;
+        UINT32_T__G__BuzzerGapMs = uint32_t__effectiveGapMs;
         TICKTYPE_T__G__BuzzerCycleStartTick = ticktype__nowTick;
         BOOL__G__BuzzerPatternValid = true;
     }
@@ -164,14 +217,15 @@ void func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyPerc
             uint32_t__cursorMs += uint32_t__currentBeepOnMs;
             if (uint8_t__beepIndex < (uint8_t__beepCount - 1u))
             {
-                if (uint32_t__elapsedMs < (uint32_t__cursorMs + uint32_t__gapMs))
+                if (uint32_t__elapsedMs < (uint32_t__cursorMs + uint32_t__effectiveGapMs))
                 {
                     break;
                 }
-                uint32_t__cursorMs += uint32_t__gapMs;
+                uint32_t__cursorMs += uint32_t__effectiveGapMs;
             }
         }
     }
 
     func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, bool__buzzerOn);
+    return (int32_t)uint32_t__nextCheckMs;
 }

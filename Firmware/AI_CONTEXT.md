@@ -81,7 +81,7 @@ static void func__green(bool bool__greenOn) { ... }
 static void func__red(bool bool__redOn) { ... }
 
 /* ==================== Buzzer / Beep ==================== */
-void func__Ui_Buzzer_Tick(uint32_t periodMs, uint8_t dutyPercent, uint8_t beepCount, uint32_t gapMs);
+int32_t func__Ui_Buzzer_Tick(uint32_t periodMs, uint8_t dutyPercent, uint8_t beepCount, uint32_t gapMs);
 
 /* ==================== Ui Init ==================== */
 void func__Ui_Init(void);
@@ -97,7 +97,7 @@ void func__Ui_Init(void);
 - قبلاً تمام کدها و توابع مربوط به بازر با منطق LED قاطی بودند.
 - الان طبق درخواست کاربر UI دو بخش مستقل دارد: LED و BUZZER در همین پوشه UI.
   - `ui_led.h` / `ui_led.c` : LED شامل `green/red/yellow/all_off`, `BatteryVoltageToPercent`, `ScenarioInputOk`, `Charging_Tick`, `BatteryRun_Tick`, `Tick`, `Init`, `BoardTest`؛ هر تابع با `/* ==================== */` جدا. این بخش بوق را شروع نمی‌کند.
-  - `ui_buzzer.h` / `ui_buzzer.c` : فقط یک API عمومی به نام `func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)`؛ الگو را بدون قفل کردن تسک اجرا می‌کند و هر `UI_TICK_MS` صدا زده می‌شود.
+  - `ui_buzzer.h` / `ui_buzzer.c` : فقط یک API عمومی به نام `func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)`؛ الگو را بدون قفل کردن تسک اجرا می‌کند و در حالت معتبر زمان مراجعه بعدی RTOS را برمی‌گرداند؛ صفر خاموشی معتبر و منفی یک خطا است.
   - ثابت‌های الگوی بوق در `ui_buzzer.h` هستند؛ وضعیت داخلی در `ui_buzzer.c` است و تابع داخلی جدا برای بوق وجود ندارد.
 - داخل هر بخش، توابع مربوط به همان کار باشد، نه قاطی.
 - مثال ساختار فعلی:
@@ -112,10 +112,10 @@ void func__Ui_Init(void);
 /* ui_buzzer.h / ui_buzzer.c */
 /* ==================== Buzzer / Beep ==================== */
 /* ==================== Buzzer service ==================== */
-void func__Ui_Buzzer_Tick(uint32_t periodMs,
-                          uint8_t dutyPercent,
-                          uint8_t beepCount,
-                          uint32_t gapMs);
+int32_t func__Ui_Buzzer_Tick(uint32_t periodMs,
+                             uint8_t dutyPercent,
+                             uint8_t beepCount,
+                             uint32_t gapMs);
 ```
 
 - این جداسازی (دو فایل LED و BUZZER) تا آخر پروژه رعایت شود و در AI هم ثبت است
@@ -159,7 +159,7 @@ void func__Ui_ScenarioInputOk(void) {
 - قبلاً تنظیمات UI در یک هدر/فایل عمومی و منطق LED و بوق کنار هم بود.
 - الان طبق درخواست کاربر ثابت‌ها در هدرهای خودشان هستند:
   - `ui_led.h` : ثابت‌های پیش‌فرض LED (BAT_V_MIN/MAX, INPUT_THRESHOLD, BLINK_PERIOD, GREEN_MIN_OFF, CHARGING_BLINK_PERIOD, PERCENT_FULL, TICK_MS)
-  - `ui_buzzer.h` : ثابت‌های سرویس بوق (BUZZER_PERCENT_SCALE, BUZZER_DUTY_MAX_PERCENT, BUZZER_TICK_MS و ثابت‌های رزرو پیکربندی)
+  - `ui_buzzer.h` : ثابت‌های سرویس بوق (BUZZER_PERCENT_SCALE, BUZZER_DUTY_MAX_PERCENT, MIN_PERIOD_MS, MIN_GAP_MS, CHECK_PERCENT و کدهای بازگشتی)
 - `app_config.c` پیش‌فرض‌های پیکربندی را از هدرهای UI می‌گیرد.
 - `ui_buzzer.c` فقط سرویس `func__Ui_Buzzer_Tick` را پیاده می‌کند؛ بوق از سناریوهای LED خودکار صدا زده نمی‌شود.
 - اگر ثابت جدید LED اضافه شد فقط در `ui_led.h` بگذار، اگر ثابت بوق اضافه شد در `ui_buzzer.h` بگذار.
