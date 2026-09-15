@@ -171,7 +171,7 @@ else
   echo "  FAIL: AI_CONTEXT missing new rules"
   FAIL=1
 fi
-if grep -q "RTOS کامل" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "بدون delay" "$ROOT/Firmware/AI_CONTEXT.md"; then
+if grep -q "RTOS ساده" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "بدون قفل" "$ROOT/Firmware/AI_CONTEXT.md"; then
   echo "  OK: AI_CONTEXT has RTOS no delay"
 else
   echo "  FAIL: AI_CONTEXT missing RTOS no delay"
@@ -259,38 +259,39 @@ else
   echo "  FAIL: ui.h missing UI_ constants"
   FAIL=1
 fi
-if grep -q "UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "LED_BLINK__G__Green" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c"; then
+if grep -q "UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -E -q "greenOnMs|greenOffMs|GreenOnMs|LED_BLINK" "$ROOT/Firmware/Modules/Ui/ui.c"; then
   echo "  OK: ui.c uses meaningful names with __"
 else
   echo "  FAIL: ui.c missing meaningful names"
   FAIL=1
 fi
 echo ""
-echo "[15] Fully RTOS no delay"
+echo "[15] RTOS simple & readable - no HAL_Delay, vTaskDelay allowed (RTOS, MCU not locked)"
 FOUND_HAL_DELAY=$(grep -R --include="*.c" "HAL_Delay(" "$ROOT/Firmware" 2>/dev/null || true)
 if [ -n "$FOUND_HAL_DELAY" ]; then
-  echo "  FAIL: Found HAL_Delay"
+  echo "  FAIL: Found HAL_Delay (locks MCU, forbidden)"
   echo "$FOUND_HAL_DELAY" | head -n 5
   FAIL=1
 else
-  echo "  OK: No HAL_Delay"
+  echo "  OK: No HAL_Delay (RTOS vTaskDelay allowed, does not lock MCU)"
 fi
-FOUND_VDELAY_UI=$(grep -R --include="*.c" "vTaskDelay(" "$ROOT/Firmware/Modules/Ui" 2>/dev/null | grep -v "vTaskDelayUntil" || true)
+
+FOUND_VDELAY_UI=$(grep -R --include="*.c" "vTaskDelay(" "$ROOT/Firmware/Modules/Ui" 2>/dev/null || true)
 if [ -n "$FOUND_VDELAY_UI" ]; then
-  echo "  FAIL: Found vTaskDelay in Ui"
-  echo "$FOUND_VDELAY_UI" | head -n 5
-  FAIL=1
+  echo "  OK: Found vTaskDelay in Ui (RTOS simple, readable, MCU not locked, other tasks run)"
 else
-  echo "  OK: No vTaskDelay in Ui"
+  echo "  OK: No vTaskDelay in Ui (also OK, non-blocking tick)"
 fi
-if grep -R --include="*.c" "vTaskDelayUntil" "$ROOT/Firmware/Rtos/Src" | head -n 1 | grep -q "vTaskDelayUntil"; then
-  echo "  OK: Tasks use vTaskDelayUntil"
+
+if grep -R --include="*.c" "vTaskDelay" "$ROOT/Firmware/Rtos/Src" 2>/dev/null | head -n 1 | grep -q "vTaskDelay"; then
+  echo "  OK: Tasks use vTaskDelay/vTaskDelayUntil (RTOS simple, not blocking MCU)"
 else
-  echo "  FAIL: Tasks dont use vTaskDelayUntil"
+  echo "  FAIL: Tasks dont use vTaskDelay"
   FAIL=1
 fi
+
 if grep -q "UI_TICK_MS" "$ROOT/Firmware/Modules/Ui/ui.h" && grep -q "Tick" "$ROOT/Firmware/Modules/Ui/ui.h"; then
-  echo "  OK: ui.h has UI_TICK_MS and Tick API"
+  echo "  OK: ui.h has UI_TICK_MS and Tick API (simple RTOS)"
 else
   echo "  FAIL: ui.h missing Tick API"
   FAIL=1
@@ -334,6 +335,40 @@ if grep -q "جداسازی توابع با علامت مشخص" "$ROOT/Firmware/
 else
   echo "  FAIL: AI_CONTEXT missing separation rules"
   FAIL=1
+fi
+
+echo ""
+echo "[17] Formulas not linear (broken into steps, readable)"
+if grep -q "فرمول‌ها خطی نباشد" "$ROOT/Firmware/AI_CONTEXT.md" || grep -q "فرمول‌ها را خطی ننویس" "$ROOT/Firmware/AI_CONTEXT.md"; then
+  echo "  OK: AI_CONTEXT has non-linear formula rule"
+else
+  echo "  FAIL: AI_CONTEXT missing non-linear formula rule"
+  FAIL=1
+fi
+
+# Check ui.c has non-linear formula broken into steps (voltageRange, voltageOffset, scaledOffset)
+if grep -q "voltageRangeMv" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "voltageOffsetMv" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "scaledOffset" "$ROOT/Firmware/Modules/Ui/ui.c"; then
+  echo "  OK: ui.c has non-linear formula broken into steps (range, offset, scaled)"
+else
+  echo "  FAIL: ui.c has linear formula (should break into steps)"
+  FAIL=1
+fi
+
+# Check charging has non-linear steps (remainingPercent, periodPerPercent)
+if grep -q "remainingPercent" "$ROOT/Firmware/Modules/Ui/ui.c" && grep -q "periodPerPercent" "$ROOT/Firmware/Modules/Ui/ui.c"; then
+  echo "  OK: ui.c charging has non-linear steps (remainingPercent, periodPerPercent)"
+else
+  echo "  FAIL: ui.c charging has linear formula"
+  FAIL=1
+fi
+
+# Check no single-line long formula like (offset * 100u) / range in one line without steps
+FOUND_LINEAR=$(grep -n "offset.*\*.*100u.*\/.*range" "$ROOT/Firmware/Modules/Ui/ui.c" | head -n 1 || true)
+if [ -n "$FOUND_LINEAR" ]; then
+  echo "  FAIL: Found linear formula in one line (should be broken): $FOUND_LINEAR"
+  FAIL=1
+else
+  echo "  OK: No linear one-line formula (all broken into steps)"
 fi
 
 echo ""

@@ -1,7 +1,7 @@
 /**
  * @file    task_protection.c
- * @brief   [EN] FreeRTOS protection task - fully RTOS non-blocking, vTaskDelayUntil.
- *          [FA] تسک حفاظت کاملاً RTOS غیربلوکه.
+ * @brief   [EN] FreeRTOS protection task - simple RTOS with vTaskDelay.
+ *          [FA] تسک حفاظت ساده RTOS.
  */
 
 #include "rtos_tasks.h"
@@ -16,32 +16,14 @@
 #include "measurement.h"
 #endif
 
-/**
- * @brief  [EN] Protection task - non-blocking.
- *         [FA] تسک حفاظت - غیربلوکه.
- * @param  void_ptr__argument [EN] FreeRTOS arg / آرگومان
- */
-/* ==================== TaskProtection ==================== */
+/* ==================== Task Protection ==================== */
 
 void func__TaskProtection(void *void_ptr__argument)
 {
-    TickType_t ticktype__lastWakeTick;
-    TickType_t ticktype__periodTicks;
-
     (void)void_ptr__argument;
-
-#if MODULE_PROTECTION
-    ticktype__periodTicks = pdMS_TO_TICKS(APP_CONFIG.protection_period_ms);
-#else
-    ticktype__periodTicks = pdMS_TO_TICKS(1000u);
-#endif
-
-    ticktype__lastWakeTick = xTaskGetTickCount();
 
     for (;;)
     {
-        vTaskDelayUntil(&ticktype__lastWakeTick, ticktype__periodTicks);
-
 #if MODULE_PROTECTION
         {
             measurement_snapshot_t measurement_snapshot_t__snap;
@@ -51,6 +33,9 @@ void func__TaskProtection(void *void_ptr__argument)
 #endif
             func__Protection_Run(&measurement_snapshot_t__snap);
         }
+        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.protection_period_ms));
+#else
+        vTaskDelay(pdMS_TO_TICKS(1000u));
 #endif
     }
 }

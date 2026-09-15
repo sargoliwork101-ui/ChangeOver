@@ -39,6 +39,29 @@
 - تابع بازر جدا باشد و از هر سناریو قابل صدا زدن باشد
 - بالای هر تابع حتماً توضیح بده چیکار می‌کنه و هر پارامتر یعنی چی (واحد، محدوده)
 
+## فرمول‌ها خطی نباشد
+
+فرمول‌ها را خطی ننویس — فرمول خطی خوانایی را از بین می‌برد.
+
+- هر فرمول را به گام‌های کوچک با متغیرهای معنادار خورد کن، نه یک خط طولانی
+- مثال بد (خطی):
+
+```c
+uint8_t__pct = (uint8_t)((offset * 100u) / range);
+```
+
+- مثال خوب (غیرخطی، خوانا):
+
+```c
+uint32_t uint32_t__voltageRangeMv = UI_BAT_V_MAX_MV - UI_BAT_V_MIN_MV;
+uint32_t uint32_t__voltageOffsetMv = batteryMv - UI_BAT_V_MIN_MV;
+uint32_t uint32_t__scaledOffset = uint32_t__voltageOffsetMv * 100u;
+uint8_t uint8_t__batteryPercent = (uint8_t)(uint32_t__scaledOffset / uint32_t__voltageRangeMv);
+```
+
+- برای چشمک: اول درصد باقی‌مانده، بعد دوره تقسیم بر ۱۰۰، بعد ضرب، بعد کف، بعد محاسبه on/off — هر گام یک متغیر با نام مرتبط
+- این قانون برای همه فرمول‌ها (باتری به درصد، چشمک زرد، سبز، محاسبه بوق) اجباری است
+
 ## جداسازی توابع با علامت مشخص
 
 کل توابع را با علامت مشخص از هم جدا کن که اول و آخرشان مشخص باشد.
@@ -72,23 +95,43 @@ static void func__buzzer(bool bool__buzzerOn) { ... }
 ```c
 /* ==================== Includes ==================== */
 /* ==================== LED Low-Level ==================== */  // green, red, yellow, all_off
-/* ==================== LED Scenarios ==================== */ // InputOk, BatteryRun_Tick (LED part), Charging_Tick (LED part), Tick
-/* ==================== Buzzer / Beep ==================== */ // buzzer low-level, calc_beep_on, pattern state machine, PatternMs_Start/Tick, PatternPercent_Start/Tick, Stop, BoardTest uses buzzer at end
+/* ==================== LED Scenarios ==================== */ // InputOk, BatteryRun, Charging, Tick
+/* ==================== Buzzer / Beep ==================== */ // buzzer low-level, calc_beep_on, pattern
 ```
 
 - این جداسازی تا آخر پروژه رعایت شود و در AI هم ثبت است
 
-## RTOS کامل - بدون delay
+## RTOS ساده و خوانا - بدون قفل میکرو
 
-برنامه کاملاً به شکل RTOS نوشته شود و هیچ قسمتی از برنامه از delay استفاده نکند.
+برنامه کاملاً به شکل RTOS نوشته شود ولی ساده و خوانا بماند، نه شلوغ.
 
-- از `HAL_Delay` اصلاً استفاده نکن (میکرو را قفل می‌کند)
-- از `vTaskDelay` داخل توابع ماژول (مثل `ui.c`) استفاده نکن؛ فقط در تسک‌ها برای زمان‌بندی دوره‌ای با `vTaskDelayUntil` مجاز است و آن هم با تیکه‌های کوتاه
-- کارهای طولانی را خورد کن (chunk) تا میکرو قفل نکند: هر تسک هر بار یک کار کوچک انجام دهد و برگردد، نه اینکه ۵۰۰ms پشت‌سرهم بوق بزند یا LED را نگه دارد
-- الگوی غیربلوکه: هر ماژول یک `Run` یا `Tick` داشته باشد که با `xTaskGetTickCount()` زمان را چک کند و فقط خروجی را ست کند، بدون `delay`
-- مثال بد: `buzzer(true); vTaskDelay(1000); buzzer(false);` (تسک ۱ ثانیه قفل)
-- مثال خوب: حالت استیت‌ماشین با `lastTick`, `state`, `onMs/offMs` و هر بار چک `if (now - last >= period) { toggle; last=now; }`
-- تا آخر پروژه هیچ `delay` داخل منطق ماژول‌ها نباشد
+- از `HAL_Delay` اصلاً استفاده نکن (میکرو را قفل می‌کند، همه تسک‌ها می‌ایستند)
+- در RTOS از `vTaskDelay` یا `vTaskDelayUntil` استفاده کن — این‌ها میکرو را قفل نمی‌کنند، فقط همان تسک می‌خوابد و بقیه تسک‌ها (measurement, protection, control) اجرا می‌شوند
+- پس `vTaskDelay` داخل تسک‌ها مجاز است و ساده و خواناست، ولی داخل توابع ماژول که منطق طولانی دارند، بهتر است خورد شود یا با `vTaskDelayUntil` دوره‌ای شود
+- کارهای طولانی را خورد کن تا میکرو قفل نکند: هر تسک هر بار یک کار کوچک انجام دهد و با `vTaskDelay(10ms)` یا `vTaskDelayUntil` برگردد
+- الگوی ساده RTOS و خوانا:
+
+```c
+void func__TaskUi(void *arg) {
+  TickType_t lastWake = xTaskGetTickCount();
+  for (;;) {
+    vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(10));
+    func__Ui_Tick(inputMv, batteryMv); // یک تیکه کوچک، بدون delay داخلش
+  }
+}
+```
+
+یا اگر خواستی داخل سناریو delay داشته باشی، چون RTOS است و فقط همین تسک می‌خوابد، مجاز و خواناست:
+
+```c
+void func__Ui_ScenarioInputOk(void) {
+  green(true); red(false); yellow(false);
+  vTaskDelay(pdMS_TO_TICKS(500)); // فقط Ui می‌خوابد، بقیه تسک‌ها کار می‌کنند
+}
+```
+
+- مهم: `HAL_Delay` ممنوع، `vTaskDelay` در تسک مجاز و ساده است. کد را شلوغ نکن با استیت‌ماشین‌های خیلی پیچیده اگر با یک `vTaskDelay` ساده هم میکرو قفل نمی‌شود
+- تا آخر پروژه RTOS ساده و خوانا بماند، نه شلوغ
 
 ## فایل ui_config.h حذف شد
 

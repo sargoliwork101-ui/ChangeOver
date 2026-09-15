@@ -1,7 +1,7 @@
 /**
  * @file    task_control.c
- * @brief   [EN] FreeRTOS control task - fully RTOS non-blocking, chunked, vTaskDelayUntil.
- *          [FA] تسک کنترل کاملاً RTOS غیربلوکه.
+ * @brief   [EN] FreeRTOS control task - simple RTOS with vTaskDelay, readable.
+ *          [FA] تسک کنترل ساده RTOS.
  */
 
 #include "rtos_tasks.h"
@@ -27,32 +27,14 @@
 #include "jitter.h"
 #endif
 
-/**
- * @brief  [EN] Control task - non-blocking periodic.
- *         [FA] تسک کنترل - دوره‌ای غیربلوکه.
- * @param  void_ptr__argument [EN] FreeRTOS arg / آرگومان
- */
-/* ==================== TaskControl ==================== */
+/* ==================== Task Control ==================== */
 
 void func__TaskControl(void *void_ptr__argument)
 {
-    TickType_t ticktype__lastWakeTick;
-    TickType_t ticktype__periodTicks;
-
     (void)void_ptr__argument;
-
-#if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
-    ticktype__periodTicks = pdMS_TO_TICKS(APP_CONFIG.control_period_ms);
-#else
-    ticktype__periodTicks = pdMS_TO_TICKS(1000u);
-#endif
-
-    ticktype__lastWakeTick = xTaskGetTickCount();
 
     for (;;)
     {
-        vTaskDelayUntil(&ticktype__lastWakeTick, ticktype__periodTicks);
-
 #if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
         {
             measurement_snapshot_t measurement_snapshot_t__snap;
@@ -77,6 +59,9 @@ void func__TaskControl(void *void_ptr__argument)
 #endif
             (void)app_state_t__state;
         }
+        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.control_period_ms));
+#else
+        vTaskDelay(pdMS_TO_TICKS(1000u));
 #endif
     }
 }

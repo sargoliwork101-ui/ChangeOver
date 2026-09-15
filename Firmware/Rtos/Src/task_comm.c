@@ -1,7 +1,7 @@
 /**
  * @file    task_comm.c
- * @brief   [EN] FreeRTOS comm task - fully RTOS non-blocking, vTaskDelayUntil.
- *          [FA] تسک ارتباط کاملاً RTOS غیربلوکه.
+ * @brief   [EN] FreeRTOS comm task - simple RTOS with vTaskDelay.
+ *          [FA] تسک ارتباط ساده RTOS.
  */
 
 #include "rtos_tasks.h"
@@ -21,32 +21,14 @@
 #include "fault.h"
 #endif
 
-/**
- * @brief  [EN] Comm task - non-blocking.
- *         [FA] تسک ارتباط - غیربلوکه.
- * @param  void_ptr__argument [EN] FreeRTOS arg / آرگومان
- */
-/* ==================== TaskComm ==================== */
+/* ==================== Task Comm ==================== */
 
 void func__TaskComm(void *void_ptr__argument)
 {
-    TickType_t ticktype__lastWakeTick;
-    TickType_t ticktype__periodTicks;
-
     (void)void_ptr__argument;
-
-#if MODULE_ESP
-    ticktype__periodTicks = pdMS_TO_TICKS(APP_CONFIG.comm_period_ms);
-#else
-    ticktype__periodTicks = pdMS_TO_TICKS(1000u);
-#endif
-
-    ticktype__lastWakeTick = xTaskGetTickCount();
 
     for (;;)
     {
-        vTaskDelayUntil(&ticktype__lastWakeTick, ticktype__periodTicks);
-
 #if MODULE_ESP
         {
             measurement_snapshot_t measurement_snapshot_t__snap;
@@ -60,6 +42,9 @@ void func__TaskComm(void *void_ptr__argument)
 #endif
             func__EspLink_Run(&measurement_snapshot_t__snap, APP_STATE_IDLE, fault_mask_t__faults);
         }
+        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.comm_period_ms));
+#else
+        vTaskDelay(pdMS_TO_TICKS(1000u));
 #endif
     }
 }
