@@ -123,6 +123,32 @@ static void func__all_off(void)
     (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 }
 
+/* ==================== Input connection state ==================== */
+
+/**
+ * @brief  [EN] Stateful input-connected result used by the 20V/21V hysteresis.
+ *         It starts disconnected as the safe default.
+ *         [FA] نتیجه دارای وضعیت تشخیص اتصال ورودی با هیسترزیس ۲۰/۲۱ ولت.
+ *         مقدار اولیه برای حالت امن، قطع است.
+ */
+static bool BOOL__G__UiInputPresent = false;
+
+/* ==================== Input overvoltage state ==================== */
+
+/**
+ * @brief  [EN] Stateful input overvoltage error flag.
+ *         The flag remains active between 27V and 28V after an overvoltage event.
+ *         [FA] پرچم دارای وضعیت خطای اضافه‌ولتاژ ورودی.
+ *         بعد از رخداد خطا، بین ۲۷ و ۲۸ ولت فعال باقی می‌ماند.
+ */
+static bool BOOL__G__UiInputOverVoltage = false;
+
+/**
+ * @brief  [EN] FreeRTOS tick at which the current input overvoltage display started.
+ *         [FA] تیک RTOS در زمان شروع نمایش خطای اضافه‌ولتاژ ورودی.
+ */
+static TickType_t TICKTYPE_T__G__UiInputOverVoltageStartTick = 0;
+
 /* ==================== BatteryRun Beep Cycle Count ==================== */
 
 /**
@@ -130,6 +156,92 @@ static void func__all_off(void)
  *         [FA] تعداد سیکل‌های کامل چشمک دشارژ برای قانون قبلی بوق دوره‌ای.
  */
 static uint32_t UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+
+/* ==================== Input state update ==================== */
+
+/**
+ * @brief  [EN] Update input presence and input overvoltage state with hysteresis.
+ *         Connected: input >= 21V. Disconnected: input <= 20V.
+ *         Overvoltage enters above 28V and clears at or below 27V.
+ *         [FA] وضعیت اتصال و خطای اضافه‌ولتاژ ورودی را با هیسترزیس به‌روز می‌کند.
+ *         وصل: ورودی حداقل ۲۱ ولت. قطع: ورودی حداکثر ۲۰ ولت.
+ *         خطا: بالاتر از ۲۸ ولت فعال و در ۲۷ ولت یا پایین‌تر پاک می‌شود.
+ * @param  uint32_t__inputVoltageMv [EN] Input voltage in mV / ولتاژ ورودی بر حسب میلی‌ولت
+ */
+static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
+{
+    if (BOOL__G__UiInputOverVoltage == false)
+    {
+        if (uint32_t__inputVoltageMv > UI_INPUT_OVERVOLTAGE_THRESHOLD_MV)
+        {
+            BOOL__G__UiInputOverVoltage = true;
+            TICKTYPE_T__G__UiInputOverVoltageStartTick = xTaskGetTickCount();
+        }
+    }
+    else if (uint32_t__inputVoltageMv <= UI_INPUT_OVERVOLTAGE_CLEAR_THRESHOLD_MV)
+    {
+        BOOL__G__UiInputOverVoltage = false;
+        (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+    }
+    else
+    {
+        /* [EN] Keep the overvoltage error in the 27V..28V hysteresis band.
+           [FA] خطای اضافه‌ولتاژ را در بازه هیسترزیس ۲۷ تا ۲۸ ولت حفظ کن. */
+    }
+
+    if (BOOL__G__UiInputPresent == false)
+    {
+        if (uint32_t__inputVoltageMv >= UI_INPUT_CONNECTED_THRESHOLD_MV)
+        {
+            BOOL__G__UiInputPresent = true;
+        }
+    }
+    else if (uint32_t__inputVoltageMv <= UI_INPUT_DISCONNECTED_THRESHOLD_MV)
+    {
+        BOOL__G__UiInputPresent = false;
+    }
+    else
+    {
+        /* [EN] Keep the previous connected state in the 20V..21V band.
+           [FA] وضعیت قبلی اتصال را در بازه ۲۰ تا ۲۱ ولت حفظ کن. */
+    }
+}
+
+/* ==================== Scenario Input Overvoltage ==================== */
+
+/**
+ * @brief  [EN] Display input overvoltage: green steady, yellow off, red at 50% duty,
+ *         and one 1-second buzzer pulse every 10 seconds. This tick is non-blocking.
+ *         [FA] نمایش اضافه‌ولتاژ ورودی: سبز ثابت، زرد خاموش، قرمز با دیوتی ۵۰ درصد،
+ *         و یک بوق یک‌ثانیه‌ای هر ۱۰ ثانیه. این تیک غیرمسدودکننده است.
+ */
+static void func__Ui_ScenarioInputOverVoltage_Tick(void)
+{
+    TickType_t ticktype__nowTick;
+    uint32_t uint32_t__elapsedMs;
+    uint32_t uint32_t__phaseMs;
+    uint32_t uint32_t__redOnMs;
+    uint64_t uint64_t__redDutyProduct;
+    bool bool__redOn;
+
+    ticktype__nowTick = xTaskGetTickCount();
+    uint32_t__elapsedMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__UiInputOverVoltageStartTick) * portTICK_PERIOD_MS);
+    uint32_t__phaseMs = uint32_t__elapsedMs % UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS;
+
+    uint64_t__redDutyProduct = (uint64_t)UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS * UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT;
+    uint32_t__redOnMs = (uint32_t)(uint64_t__redDutyProduct / UI_PERCENT_SCALE);
+    bool__redOn = (uint32_t__phaseMs < uint32_t__redOnMs);
+
+    func__green(true);
+    func__yellow(false);
+    func__red(bool__redOn);
+
+    (void)func__Ui_Buzzer_Tick(
+        UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS,
+        (uint8_t)UI_INPUT_OVERVOLTAGE_BEEP_DUTY_PERCENT,
+        (uint8_t)UI_INPUT_OVERVOLTAGE_BEEP_COUNT,
+        UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS);
+}
 
 /* ==================== Scenario InputOk ==================== */
 
@@ -359,7 +471,14 @@ void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__battery
 {
     uint32_t uint32_t__batteryClampedMv;
     uint8_t uint8_t__batteryPercent;
-    bool bool__inputPresent;
+
+    func__Ui_UpdateInputState(uint32_t__inputVoltageMv);
+
+    if (BOOL__G__UiInputOverVoltage == true)
+    {
+        func__Ui_ScenarioInputOverVoltage_Tick();
+        return;
+    }
 
     uint32_t__batteryClampedMv = uint32_t__batteryVoltageMv;
     if (uint32_t__batteryClampedMv > APP_CONFIG.ui_bat_v_max_mv)
@@ -368,9 +487,8 @@ void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__battery
     }
 
     uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryClampedMv);
-    bool__inputPresent = (uint32_t__inputVoltageMv >= APP_CONFIG.ui_input_threshold_mv);
 
-    if (bool__inputPresent == true)
+    if (BOOL__G__UiInputPresent == true)
     {
         if (uint8_t__batteryPercent < UI_PERCENT_FULL)
         {
@@ -396,6 +514,9 @@ void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__battery
 void func__Ui_Init(void)
 {
     func__all_off();
+    BOOL__G__UiInputPresent = false;
+    BOOL__G__UiInputOverVoltage = false;
+    TICKTYPE_T__G__UiInputOverVoltageStartTick = 0;
     UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
 }
 

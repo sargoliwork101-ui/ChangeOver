@@ -8,7 +8,7 @@
 
 ## وضعیت
 
-فعال. `MODULE_UI = 1`. LED و بوق در دو فایل مستقل هستند. سرویس بوق همچنان فقط یک API دارد؛ سناریوهای قبلی `BoardTest` و `BatteryRun` آن را صریحاً صدا می‌زنند و سناریوهای `InputOk` و `Charging` آن را خاموش می‌کنند.
+فعال. `MODULE_UI = 1`. LED و بوق در دو فایل مستقل هستند. سرویس بوق همچنان فقط یک API دارد؛ سناریوهای `BoardTest`، `BatteryRun` و خطای `InputOverVoltage` آن را صریحاً صدا می‌زنند و سناریوهای `InputOk` و `Charging` آن را خاموش می‌کنند.
 
 API کاربردی بوق فقط یک تابع است:
 
@@ -23,9 +23,23 @@ int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)
 - چراغ سبز دائم روشن است.
 - چراغ زرد و قرمز خاموش هستند.
 - شرط اجرا: ورودی ۲۴ ولت وصل باشد، ولتاژ ورودی از ۲۱ ولت بیشتر یا مساوی باشد و ولتاژ باتری به ۲۸ ولت رسیده باشد.
-- ثابت تعیین‌کننده آستانه ورودی: `UI_INPUT_THRESHOLD_MV = 21000u` در `Firmware/Modules/Ui/ui_led.h`.
+- ثابت تعیین‌کننده آستانه وصل ورودی: `UI_INPUT_CONNECTED_THRESHOLD_MV = 21000u` در `Firmware/Modules/Ui/ui_led.h`.
 - ثابت تعیین‌کننده باتری کامل: `UI_BAT_V_MAX_MV = 28000u` در `Firmware/Modules/Ui/ui_led.h`.
 - اگر ورودی بالای ۲۱ ولت باشد ولی باتری هنوز به ۲۸ ولت نرسیده باشد، سناریوی Charging اجرا می‌شود.
+
+### خطای InputOverVoltage
+
+- منبع خطا: ولتاژ **ورودی**، نه ولتاژ باتری.
+- شرط فعال‌شدن: `Input > UI_INPUT_OVERVOLTAGE_THRESHOLD_MV` یعنی بیشتر از `28000mV`.
+- شرط پاک‌شدن: `Input <= UI_INPUT_OVERVOLTAGE_CLEAR_THRESHOLD_MV` یعنی `27000mV` یا کمتر.
+- بازهٔ `27000mV` تا `28000mV` وضعیت خطا را حفظ می‌کند تا نمایش خطا مرتب قطع و وصل نشود.
+- چراغ سبز دائم روشن است.
+- چراغ زرد خاموش است.
+- چراغ قرمز با `UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS = 1000u` و `UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT = 50u` چشمک می‌زند.
+- بوق با دورهٔ `UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS = 10000u`، مدت روشن‌بودن `UI_INPUT_OVERVOLTAGE_BEEP_DURATION_MS = 1000u` و تعداد `UI_INPUT_OVERVOLTAGE_BEEP_COUNT = 1u` اجرا می‌شود.
+- هیسترزیس خطا: `UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV = 1000u`.
+- هیسترزیس وصل/قطع ورودی جداگانه است: `UI_INPUT_CONNECTED_THRESHOLD_MV = 21000u`، `UI_INPUT_DISCONNECTED_THRESHOLD_MV = 20000u` و `UI_INPUT_HYSTERESIS_MV = 1000u`.
+- انتخاب نهایی حالت‌های کاری بعد از توافق سناریوها انجام می‌شود؛ این بخش فقط قرارداد نمایش خطا را تعریف می‌کند.
 
 ## تاریخچه
 
@@ -43,7 +57,7 @@ int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)
 
 | فایل | نقش |
 |---|---|
-| `ui_led.h` / `ui_led.c` | منطق LED: نگاشت ولتاژ، سناریوهای InputOk/Charging/BatteryRun و تست LED؛ فقط نقاط صریح سناریو برای شروع یا خاموش کردن سرویس بوق را فراخوانی می‌کند. |
+| `ui_led.h` / `ui_led.c` | منطق LED: نگاشت ولتاژ، هیسترزیس ورودی، خطای InputOverVoltage، سناریوهای InputOk/Charging/BatteryRun و تست LED؛ فقط نقاط صریح سناریو برای شروع یا خاموش کردن سرویس بوق را فراخوانی می‌کند. |
 | `ui_buzzer.h` / `ui_buzzer.c` | سرویس یگانه بوق: محاسبه پنجره دیوتی، تقسیم آن بین پالس‌ها و گپ‌ها، اعتبارسنجی محدودیت‌های ایمنی، محاسبه مراجعه بعدی و نوشتن PA4. |
 | `../../Rtos/Src/task_ui.c` | تسک UI؛ ولتاژ ورودی و باتری را می‌خواند و با `func__Ui_Tick` سناریوی مناسب را اجرا می‌کند. |
 | `../../Bsp/Src/bsp_gpio.c` | نوشتن سطح GPIO از طریق `func__BspGpio_Write`. |
@@ -61,7 +75,8 @@ int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)
 | `func__Ui_ScenarioInputOk` | سبز ثابت، قرمز/زرد خاموش و بوق خاموش | `ui_led.c` |
 | `func__Ui_ScenarioCharging_Tick` | سبز ثابت و زرد متناسب با درصد شارژ؛ بوق خاموش | `ui_led.c` |
 | `func__Ui_ScenarioBatteryRun_Tick` | سبز چشمک‌زن، زرد خاموش و بوق هوشمند قبلی با API جدید | `ui_led.c` |
-| `func__Ui_Tick` | انتخاب سناریوی LED بر اساس ولتاژ ورودی و باتری | `ui_led.c` |
+| `func__Ui_ScenarioInputOverVoltage_Tick` | خطای ورودی: سبز ثابت، زرد خاموش، قرمز ۵۰٪ و یک بوق یک‌ثانیه‌ای هر ۱۰ ثانیه | `ui_led.c` |
+| `func__Ui_Tick` | به‌روزرسانی هیسترزیس ورودی، نمایش خطای اضافه‌ولتاژ و انتخاب سناریوی LED بر اساس ورودی و باتری | `ui_led.c` |
 
 ## محدودیت‌های ایمنی و کد بازگشتی
 
@@ -150,6 +165,9 @@ period = 10000ms
 ```text
 Firmware/Rtos/Src/task_ui.c
   → func__TaskUi() → func__Ui_Tick()
+      ├── InputOverVoltage (ورودی >28V، پاک‌سازی <=27V)
+      │   ├── red: period=1000ms, duty=50%
+      │   └── func__Ui_Buzzer_Tick(10000, 10, 1, 0)  // بوق 1s هر 10s
       ├── func__Ui_ScenarioBatteryRun_Tick()
       │   └── func__Ui_Buzzer_Tick(...)  // بوق هوشمند قبلی با API جدید
       ├── func__Ui_ScenarioInputOk()/Charging_Tick()

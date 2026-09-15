@@ -37,11 +37,13 @@ CubeIDE/Core/.../main.c
       func__TaskUi                   Firmware/Rtos/Src/task_ui.c
         func__Ui_BoardTest_Start()   ui_led.c + ui_buzzer.c // تست LED و بوق کوتاه قبلی
         در هر نوبت بر اساس متغیرهای تست ولتاژ (volatile) یک سیکل اجرا می‌شود:
-          UINT32_T__G__InputVoltageMv   // تست دستی: ولتاژ ورودی mV، آستانه از APP_CONFIG
+          UINT32_T__G__InputVoltageMv   // تست دستی: ولتاژ ورودی mV، آستانه و هیسترزیس از ui_led.h
           UINT32_T__G__BatteryVoltageMv // تست دستی: 21V=0%، 28V=100%، قابل تغییر Live Expressions
           func__Ui_BatteryVoltageToPercent() // نگاشت ولتاژ به درصد
           |
-          if (V_in >= APP_CONFIG.ui_input_threshold_mv) {
+          if (Input > UI_INPUT_OVERVOLTAGE_THRESHOLD_MV) {
+            → InputOverVoltage // سبز ثابت، زرد خاموش، قرمز 50%، بوق 1s هر 10s
+          } else if (input state: connected/disconnected with hysteresis) {
             if (battery <100%) → func__Ui_ScenarioCharging_Tick() // سبز ثابت، زرد: 0% روشن، 100% خاموش
             else               → func__Ui_ScenarioInputOk()        // سبز ثابت، بقیه خاموش
           } else {
@@ -54,13 +56,14 @@ CubeIDE/Core/.../main.c
 
 ### سناریوهای فعلی (لیست درخواستی)
 
-1. **InputOk**: ورودی ۲۴ ولت وصل، `V_in >=21V` و باتری `>=28V` → سبز ثابت، زرد و قرمز خاموش. ثابت‌ها: `UI_INPUT_THRESHOLD_MV = 21000u` و `UI_BAT_V_MAX_MV = 28000u` در `Firmware/Modules/Ui/ui_led.h`.
-2. **BatteryRun**: `V_in <21V` → سبز چشمک (روشن متناسب با درصد باتری)، زرد خاموش و بوق هوشمند قبلی.
-3. **Charging**: `V_in >=21V` و باتری `<28V` → سبز ثابت، زرد متناسب با مانده تا فول چشمک می‌زند: ۰٪ (21V) بیشترین روشنایی و ۱۰۰٪ (28V) خاموش
+1. **InputOk**: ورودی ۲۴ ولت وصل، `V_in >=21V` و باتری `>=28V` → سبز ثابت، زرد و قرمز خاموش. ثابت‌ها: `UI_INPUT_CONNECTED_THRESHOLD_MV = 21000u` و `UI_BAT_V_MAX_MV = 28000u` در `Firmware/Modules/Ui/ui_led.h`.
+2. **BatteryRun**: ورودی قطع با هیسترزیس (`V_in <=20V` قطع، `V_in >=21V` وصل) → سبز چشمک (روشن متناسب با درصد باتری)، زرد خاموش و بوق هوشمند قبلی.
+3. **Charging**: ورودی وصل و باتری `<28V` → سبز ثابت، زرد متناسب با مانده تا فول چشمک می‌زند: ۰٪ (21V) بیشترین روشنایی و ۱۰۰٪ (28V) خاموش.
+4. **InputOverVoltage**: `V_in >28V` → سبز دائم، زرد خاموش، قرمز با دوره `1000ms` و دیوتی `50%` چشمک می‌زند و بوق یک‌ثانیه‌ای هر `10s` اجرا می‌شود. خطا در `V_in <=27V` پاک می‌شود و بازهٔ 27V تا 28V وضعیت خطا را حفظ می‌کند.
 
-مقادیر قابل تنظیم رفتار UI از `APP_CONFIG` خوانده می‌شوند. ثابت‌های `ui_led.h` و `ui_buzzer.h` فقط پیش‌فرض ساخت `APP_CONFIG` یا ثابت‌های الگوریتم هستند. متغیرهای تست با پیشوند تایپ کامل مانند `UINT32_T__G__` تعریف شده‌اند.
+ثابت‌های هیسترزیس و نمایش خطا در `Firmware/Modules/Ui/ui_led.h` هستند: `UI_INPUT_CONNECTED_THRESHOLD_MV`، `UI_INPUT_DISCONNECTED_THRESHOLD_MV`، `UI_INPUT_HYSTERESIS_MV`، `UI_INPUT_OVERVOLTAGE_THRESHOLD_MV`، `UI_INPUT_OVERVOLTAGE_CLEAR_THRESHOLD_MV` و `UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV`. مقادیر قابل تنظیم رفتار UI از ثابت‌های هدر و `APP_CONFIG` خوانده می‌شوند. متغیرهای تست با پیشوند تایپ کامل مانند `UINT32_T__G__` تعریف شده‌اند.
 
-سرویس مستقل بوق فقط یک API دارد: `int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)`. سناریوهای `BoardTest` و `BatteryRun` این API را برای حفظ رفتار قبلی صدا می‌زنند؛ `InputOk` و `Charging` آن را خاموش می‌کنند.
+سرویس مستقل بوق فقط یک API دارد: `int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)`. سناریوهای `BoardTest`، `BatteryRun` و خطای `InputOverVoltage` این API را صدا می‌زنند؛ `InputOk` و `Charging` آن را خاموش می‌کنند.
 
 محدودیت‌های ایمنی با ثابت‌های `ui_buzzer.h` تعیین می‌شوند: دوره غیرصفر کمتر از `UI_BUZZER_MIN_PERIOD_MS=1000ms` و گپ کمتر از `UI_BUZZER_MIN_GAP_MS=100ms` برای بیش از یک بوق نامعتبر است و بوق روی LOW می‌ماند. `beepCount=0`، مانند `dutyPercent=0`، خاموشی معتبر است. نتیجه `0` خاموشی معتبر، نتیجه `-1` خطای تنظیمات و نتیجه مثبت زمان مراجعه بعدی RTOS است؛ این زمان ۱۰٪ کوچک‌ترین بخش مثبت الگو است.
 

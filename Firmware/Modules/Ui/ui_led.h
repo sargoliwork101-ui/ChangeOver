@@ -31,17 +31,106 @@
  */
 #define UI_BAT_V_MAX_MV                 28000u
 
-/* ==================== Input voltage threshold ==================== */
+/* ==================== Input voltage thresholds and hysteresis ==================== */
 
 /**
- * @brief  [EN] Minimum input voltage considered present, in millivolts.
- *         Values below this threshold select the BatteryRun scenario.
- *         [FA] کمترین ولتاژ ورودی که متصل در نظر گرفته می‌شود، بر حسب میلی‌ولت.
- *         مقدار کمتر از این آستانه سناریوی BatteryRun را انتخاب می‌کند.
+ * @brief  [EN] Input voltage at or above which the input is considered connected, in millivolts.
+ *         [FA] ولتاژ ورودی که از آن به بعد ورودی متصل در نظر گرفته می‌شود، بر حسب میلی‌ولت.
  */
-#define UI_INPUT_THRESHOLD_MV           21000u
+#define UI_INPUT_CONNECTED_THRESHOLD_MV 21000u
+
+/**
+ * @brief  [EN] Hysteresis band for input connected/disconnected detection, in millivolts.
+ *         [FA] پهنای هیسترزیس تشخیص وصل/قطع ورودی، بر حسب میلی‌ولت.
+ */
+#define UI_INPUT_HYSTERESIS_MV          1000u
+
+/**
+ * @brief  [EN] Input voltage at or below which the input is considered disconnected, in millivolts.
+ *         Derived from the connected threshold minus the hysteresis band.
+ *         [FA] ولتاژ ورودی که از آن به پایین ورودی قطع در نظر گرفته می‌شود، بر حسب میلی‌ولت.
+ *         از کم‌کردن هیسترزیس از آستانه وصل به دست می‌آید.
+ */
+#define UI_INPUT_DISCONNECTED_THRESHOLD_MV \
+    (UI_INPUT_CONNECTED_THRESHOLD_MV - UI_INPUT_HYSTERESIS_MV)
+
+/**
+ * @brief  [EN] Compatibility alias for the former single input threshold.
+ *         New stateful logic uses the connected and disconnected thresholds above.
+ *         [FA] نام سازگار برای آستانه تک‌مقداری قبلی ورودی.
+ *         منطق جدید و دارای وضعیت از دو آستانه بالا استفاده می‌کند.
+ */
+#define UI_INPUT_THRESHOLD_MV           UI_INPUT_CONNECTED_THRESHOLD_MV
+
+/* ==================== Input overvoltage error constants ==================== */
+
+/**
+ * @brief  [EN] Input voltage above which the overvoltage error is activated, in millivolts.
+ *         The comparison is strict: values greater than this threshold activate the error.
+ *         [FA] ولتاژ ورودی که بیشتر از آن خطای اضافه‌ولتاژ فعال می‌شود، بر حسب میلی‌ولت.
+ *         مقایسه strict است؛ مقدار بزرگ‌تر از این آستانه خطا را فعال می‌کند.
+ */
+#define UI_INPUT_OVERVOLTAGE_THRESHOLD_MV 28000u
+
+/**
+ * @brief  [EN] Hysteresis band used to clear the input overvoltage error, in millivolts.
+ *         [FA] پهنای هیسترزیس پاک‌کردن خطای اضافه‌ولتاژ ورودی، بر حسب میلی‌ولت.
+ */
+#define UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV 1000u
+
+/**
+ * @brief  [EN] Input voltage at or below which the overvoltage error is cleared, in millivolts.
+ *         Derived from the overvoltage threshold minus its hysteresis band.
+ *         [FA] ولتاژ ورودی که از آن به پایین خطای اضافه‌ولتاژ پاک می‌شود، بر حسب میلی‌ولت.
+ *         از کم‌کردن هیسترزیس خطا از آستانه اضافه‌ولتاژ به دست می‌آید.
+ */
+#define UI_INPUT_OVERVOLTAGE_CLEAR_THRESHOLD_MV \
+    (UI_INPUT_OVERVOLTAGE_THRESHOLD_MV - UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV)
 
 /* ==================== Scenario timing constants ==================== */
+
+/**
+ * @brief  [EN] Red LED period while the input overvoltage error is displayed, in milliseconds.
+ *         [FA] دوره چشمک LED قرمز هنگام نمایش خطای اضافه‌ولتاژ ورودی، بر حسب میلی‌ثانیه.
+ */
+#define UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS 1000u
+
+/**
+ * @brief  [EN] Red LED duty while the input overvoltage error is displayed, in percent.
+ *         [FA] دیوتی چشمک LED قرمز هنگام نمایش خطای اضافه‌ولتاژ ورودی، بر حسب درصد.
+ */
+#define UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT 50u
+
+/**
+ * @brief  [EN] Buzzer pattern period for the input overvoltage error, in milliseconds.
+ *         [FA] دوره الگوی بوق خطای اضافه‌ولتاژ ورودی، بر حسب میلی‌ثانیه.
+ */
+#define UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS 10000u
+
+/**
+ * @brief  [EN] Buzzer ON duration for one input overvoltage warning, in milliseconds.
+ *         [FA] مدت روشن‌بودن بوق در هر هشدار اضافه‌ولتاژ ورودی، بر حسب میلی‌ثانیه.
+ */
+#define UI_INPUT_OVERVOLTAGE_BEEP_DURATION_MS 1000u
+
+/**
+ * @brief  [EN] Buzzer duty derived from the overvoltage warning ON duration and period.
+ *         [FA] دیوتی بوق که از مدت روشن‌بودن و دوره هشدار اضافه‌ولتاژ به دست می‌آید.
+ */
+#define UI_INPUT_OVERVOLTAGE_BEEP_DUTY_PERCENT \
+    ((UI_INPUT_OVERVOLTAGE_BEEP_DURATION_MS * UI_PERCENT_SCALE) / UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS)
+
+/**
+ * @brief  [EN] Number of buzzer pulses in one input overvoltage warning pattern.
+ *         [FA] تعداد پالس بوق در الگوی هشدار اضافه‌ولتاژ ورودی.
+ */
+#define UI_INPUT_OVERVOLTAGE_BEEP_COUNT 1u
+
+/**
+ * @brief  [EN] Gap between adjacent overvoltage pulses; one pulse does not use a gap.
+ *         [FA] گپ بین پالس‌های اضافه‌ولتاژ؛ یک پالس گپ ندارد.
+ */
+#define UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS 0u
 
 /**
  * @brief  [EN] Delay used while InputOk holds the green LED steady.
