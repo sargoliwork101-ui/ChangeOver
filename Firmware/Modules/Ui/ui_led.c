@@ -467,17 +467,3 @@ void func__Ui_BoardTest_Start(void)
 
     (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 }
-
-/* ==================== Board Test Tick ==================== */
-
-/**
- * @brief  [EN] Board test tick - for compatibility, returns false (test done in Start).
- *         [FA] تیکه تست برد - برای سازگاری false برمی‌گرداند.
- * @return bool [EN] true=still running, false=finished / در حال اجرا یا تمام
- */
-bool func__Ui_BoardTest_Tick(void)
-{
-    /* [EN] For compatibility with non-blocking API, board test now done in Start with RTOS delays
-       [FA] برای سازگاری، تست برد در Start با تاخیر RTOS انجام می‌شود */
-    return false;
-}

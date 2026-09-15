@@ -36,7 +36,7 @@ int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)
 |---|---|
 | `ui_led.h` / `ui_led.c` | منطق LED: نگاشت ولتاژ، سناریوهای InputOk/Charging/BatteryRun و تست LED؛ فقط نقاط صریح سناریو برای شروع یا خاموش کردن سرویس بوق را فراخوانی می‌کند. |
 | `ui_buzzer.h` / `ui_buzzer.c` | سرویس یگانه بوق: محاسبه پنجره دیوتی، تقسیم آن بین پالس‌ها و گپ‌ها، اعتبارسنجی محدودیت‌های ایمنی، محاسبه مراجعه بعدی و نوشتن PA4. |
-| `../../Rtos/Src/task_ui.c` | تسک UI؛ محل مناسب برای فراخوانی دوره‌ای سرویس بوق، فقط وقتی یک سناریو صریحاً بوق خواسته باشد. |
+| `../../Rtos/Src/task_ui.c` | تسک UI؛ ولتاژ ورودی و باتری را می‌خواند و با `func__Ui_Tick` سناریوی مناسب را اجرا می‌کند. |
 | `../../Bsp/Src/bsp_gpio.c` | نوشتن سطح GPIO از طریق `func__BspGpio_Write`. |
 | `../../Config/Inc/board_pins.h` | تعریف `PIN_BUZZER_PORT` و `PIN_BUZZER_PIN`؛ PA4 طبق شماتیک. |
 | `../../Config/Inc/app_config.h` / `../../Config/Src/app_config.c` | تنظیمات عمومی پروژه؛ ثابت‌های قدیمی بوق برای سازگاری نگه داشته شده‌اند، اما سرویس جدید ورودی‌های الگوی خود را مستقیم می‌گیرد. |

@@ -16,34 +16,90 @@
 /* ==================== Includes ==================== */
 
 #include <stdint.h>
-#include <stdbool.h>
 
-/* ==================== Battery voltage mapping ==================== */
+/* ==================== Battery voltage mapping constants ==================== */
 
-#define UI_BAT_V_MIN_MV                 21000u  /* [EN] 0% = 21V / صفر درصد = ۲۱ ولت */
-#define UI_BAT_V_MAX_MV                 28000u  /* [EN] 100% = 28V / فول = ۲۸ ولت */
+/**
+ * @brief  [EN] Battery voltage mapped to zero percent, in millivolts.
+ *         [FA] ولتاژ باتری متناظر با صفر درصد، بر حسب میلی‌ولت.
+ */
+#define UI_BAT_V_MIN_MV                 21000u
+
+/**
+ * @brief  [EN] Battery voltage mapped to one hundred percent, in millivolts.
+ *         [FA] ولتاژ باتری متناظر با صد درصد، بر حسب میلی‌ولت.
+ */
+#define UI_BAT_V_MAX_MV                 28000u
 
 /* ==================== Input voltage threshold ==================== */
 
-#define UI_INPUT_THRESHOLD_MV           20000u  /* [EN] <20V = no input, >=20V = present / زیر ۲۰ ولت نداریم */
+/**
+ * @brief  [EN] Minimum input voltage considered present, in millivolts.
+ *         Values below this threshold select the BatteryRun scenario.
+ *         [FA] کمترین ولتاژ ورودی که متصل در نظر گرفته می‌شود، بر حسب میلی‌ولت.
+ *         مقدار کمتر از این آستانه سناریوی BatteryRun را انتخاب می‌کند.
+ */
+#define UI_INPUT_THRESHOLD_MV           20000u
 
-/* ==================== Blink / Poll timings ==================== */
+/* ==================== Scenario timing constants ==================== */
 
-#define UI_INPUT_OK_POLL_MS             500u    /* [EN] InputOk steady hold / سبز ثابت ورودی وصل */
-#define UI_SELFTEST_LED_MS              500u    /* [EN] Board test LED step / گام تست برد */
-#define UI_BLINK_PERIOD_MS              1000u   /* [EN] Green blink period BatteryRun / دوره چشمک سبز دشارژ */
-#define UI_GREEN_MIN_OFF_MS             10u     /* [EN] Min off for green full / حداقل خاموشی سبز فول */
-#define UI_CHARGING_BLINK_PERIOD_MS     1000u   /* [EN] Yellow blink period Charging / دوره چشمک زرد شارژ */
-#define UI_CHARGING_YELLOW_MIN_OFF_MS   10u     /* [EN] Min off yellow almost full / حداقل خاموشی زرد */
+/**
+ * @brief  [EN] Delay used while InputOk holds the green LED steady.
+ *         [FA] تأخیر سناریوی InputOk هنگام ثابت نگه‌داشتن LED سبز.
+ */
+#define UI_INPUT_OK_POLL_MS             500u
 
-/* ==================== Percent helpers ==================== */
+/**
+ * @brief  [EN] Duration of each LED step in the one-shot BoardTest.
+ *         [FA] مدت هر مرحله LED در تست یک‌باره برد.
+ */
+#define UI_SELFTEST_LED_MS              500u
 
+/**
+ * @brief  [EN] Complete green blink period used by BatteryRun, in milliseconds.
+ *         [FA] دوره کامل چشمک سبز در BatteryRun، بر حسب میلی‌ثانیه.
+ */
+#define UI_BLINK_PERIOD_MS              1000u
+
+/**
+ * @brief  [EN] Minimum green LED OFF time used to keep the full-battery blink visible.
+ *         [FA] کمترین زمان خاموشی LED سبز برای قابل‌مشاهده ماندن چشمک باتری فول.
+ */
+#define UI_GREEN_MIN_OFF_MS             10u
+
+/**
+ * @brief  [EN] Complete yellow blink period used by Charging, in milliseconds.
+ *         [FA] دوره کامل چشمک زرد در Charging، بر حسب میلی‌ثانیه.
+ */
+#define UI_CHARGING_BLINK_PERIOD_MS     1000u
+
+/**
+ * @brief  [EN] Minimum yellow LED OFF time near full charge, in milliseconds.
+ *         [FA] کمترین زمان خاموشی LED زرد نزدیک شارژ کامل، بر حسب میلی‌ثانیه.
+ */
+#define UI_CHARGING_YELLOW_MIN_OFF_MS   10u
+
+/* ==================== Percentage constants ==================== */
+
+/**
+ * @brief  [EN] Full battery percentage and upper bound of percentage calculations.
+ *         [FA] درصد شارژ کامل و حد بالای محاسبات درصد.
+ */
 #define UI_PERCENT_FULL                 100u
+
+/**
+ * @brief  [EN] Scale used to convert a ratio into a percentage.
+ *         [FA] مقیاس تبدیل نسبت به درصد.
+ */
 #define UI_PERCENT_SCALE                100u
 
 /* ==================== RTOS tick ==================== */
 
-#define UI_TICK_MS                      10u     /* [EN] Ui task tick 10ms, simple RTOS / تیکه ۱۰ میلی‌ثانیه */
+/**
+ * @brief  [EN] Base UI task delay in milliseconds.
+ *         [FA] تأخیر پایه تسک UI بر حسب میلی‌ثانیه.
+ */
+#define UI_TICK_MS                      10u
 
 /* ==================== Battery Voltage To Percent ==================== */
 
@@ -70,15 +126,6 @@ void func__Ui_Init(void);
  *         [FA] تست یک‌باره سیم‌کشی: قرمز، زرد، سبز و بوق کوتاه قبلی با سرویس مستقل بوق.
  */
 void func__Ui_BoardTest_Start(void);
-
-/* ==================== Board Test Tick ==================== */
-
-/**
- * @brief  [EN] Board test tick - for compatibility, returns false (test done in Start).
- *         [FA] تیکه تست برد - برای سازگاری false برمی‌گرداند.
- * @return bool [EN] true=still running, false=finished / در حال اجرا یا تمام
- */
-bool func__Ui_BoardTest_Tick(void);
 
 /* ==================== Scenario InputOk ==================== */
 
