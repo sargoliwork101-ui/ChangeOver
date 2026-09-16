@@ -1,7 +1,7 @@
 /**
  * @file    bsp_exti.h
- * @brief   [EN] External interrupt flags for jitter and input detect (placeholder). Full type naming, func__ prefix.
- *          [FA] پرچم وقفه خارجی برای جیتر و تشخیص ورودی (اسکلت). نام تایپ کامل.
+ * @brief   [EN] Logical external-event flags for jitter and input detect.
+ *          [FA] پرچم‌های منطقی رویداد خارجی برای جیتر و تشخیص ورودی.
  */
 
 #ifndef BSP_EXTI_H
@@ -15,7 +15,8 @@ typedef enum
 {
     BSP_EXTI_JITTER1 = 0,
     BSP_EXTI_JITTER2,
-    BSP_EXTI_INPUT_DETECT
+    BSP_EXTI_INPUT_DETECT,
+    BSP_EXTI_SOURCE_COUNT
 } bsp_exti_src_t;
 
 /**
@@ -26,8 +27,8 @@ typedef enum
 void func__BspExti_Init(void);
 
 /**
- * @brief  [EN] Set flag from HAL GPIO EXTI callback.
- *         [FA] پرچم را از کال‌بک EXTI می‌گذارد.
+ * @brief  [EN] Set a logical event from the board interrupt adapter.
+ *         [FA] رویداد منطقی را از adapter وقفهٔ برد ثبت می‌کند.
  * @param  bsp_exti_src_t__src [EN] Source / منبع
  */
 void func__BspExti_OnIrq(bsp_exti_src_t bsp_exti_src_t__src);

@@ -1,45 +1,44 @@
 /**
  * @file    bsp_uart.h
- * @brief   [EN] USART1 wrapper for ESP link (placeholder). Full type naming, func__ prefix.
- *          [FA] پوشش USART1 برای ارتباط ESP (اسکلت). نام تایپ کامل.
+ * @brief   [EN] Logical byte-stream interface for the ESP link.
+ *          [FA] رابط منطقی جریان بایت برای ارتباط ESP.
+ *
+ * @note    [EN] UART instances, pins, DMA and HAL handles are private to the
+ *              board implementation. The current board port is a placeholder
+ *              because USART is not enabled in the active CubeMX stage.
+ *          [FA] نمونهٔ UART، پایه‌ها، DMA و هندل‌های HAL در پیاده‌سازی برد
+ *              خصوصی هستند. پورت فعلی اسکلت است چون USART در مرحلهٔ فعال
+ *              CubeMX روشن نیست.
  */
 
 #ifndef BSP_UART_H
 #define BSP_UART_H
 
-/* ==================== Includes ==================== */
 #include <stdint.h>
 #include <stdbool.h>
-#include "stm32f1xx_hal.h"
-
-#ifndef HAL_UART_MODULE_ENABLED
-typedef struct __UART_HandleTypeDef UART_HandleTypeDef;
-#endif
 
 /**
- * @brief  [EN] Store UART handle.
- *         [FA] هندل UART را نگه می‌دارد.
- * @param  UART_HandleTypeDef__huart [EN] HAL UART handle / هندل UART
+ * @brief  [EN] Initialize the board UART backend.
+ *         [FA] Backend UART برد را مقداردهی می‌کند.
  */
 /* ==================== Functions ==================== */
-void func__BspUart_Init(UART_HandleTypeDef *UART_HandleTypeDef__huart);
+void func__BspUart_Init(void);
 
 /**
- * @brief  [EN] Transmit bytes. Returns false until implemented.
- *         [FA] ارسال بایت. تا پیاده‌سازی false برمی‌گرداند.
+ * @brief  [EN] Transmit bytes through the logical board UART.
+ *         [FA] بایت‌ها را از طریق UART منطقی برد ارسال می‌کند.
  * @param  uint8_t__data [EN] Data pointer / اشاره‌گر داده
  * @param  uint16_t__length [EN] Length / طول
- * @return bool [EN] false until implemented / تا پیاده‌سازی false
+ * @return bool [EN] true if accepted, false if unavailable / پذیرش داده
  */
 bool func__BspUart_Write(const uint8_t *uint8_t__data, uint16_t uint16_t__length);
 
 /**
- * @brief  [EN] Read one byte if available.
- *         [FA] اگر بایتی باشد می‌خواند.
+ * @brief  [EN] Read one byte from the logical board UART if available.
+ *         [FA] اگر بایتی در UART منطقی برد موجود باشد آن را می‌خواند.
  * @param  uint8_t__byte [EN] Output byte pointer / اشاره‌گر بایت خروجی
- * @return bool [EN] true if byte read / اگر بایتی خوانده شد true
+ * @return bool [EN] true if a byte was read / اگر بایت خوانده شد true
  */
 bool func__BspUart_ReadByte(uint8_t *uint8_t__byte);
 
 #endif /* BSP_UART_H */
-

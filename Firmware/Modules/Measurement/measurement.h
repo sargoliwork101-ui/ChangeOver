@@ -19,20 +19,12 @@
 /* ==================== Defines ==================== */
 
 /* [EN] MEASUREMENT TASK PERIOD. CHANGE HERE to change the sample rate.
- *      10 ms = 100 readings/s - far below the hardware frame rate (~35 kHz
- *      with a 12 MHz ADC clock), so the snapshot is always a fresh frame.
+ *      The BSP returns only completed normalized frames, so this task period
+ *      remains independent of the MCU ADC clock.
  * [FA] دورهٔ تسک اندازه‌گیری. برای تغییر نرخ نمونه‌برداری همین‌جا عوض شود.
- *      ۱۰ms = ۱۰۰ نمونه/ثانیه — بسیار کمتر از نرخ فریم سخت‌افزاری
- *      (حدود ۳۵kHz با کلاک ADC برابر ۱۲MHz)، پس snapshot تازه است. */
+ *      BSP فقط فریم‌های استانداردشدهٔ کامل را برمی‌گرداند، پس این دوره
+ *      مستقل از کلاک ADC میکروکنترلر است. */
 #define MEASUREMENT_PERIOD_MS      10u
-
-/* [EN] Delay after BspAdc_Start before the first GetRaw. The full two-frame
- *      DMA buffer (10 conversions) is ready in about 57 us after Start at
- *      12 MHz; 1 ms is a conservative margin.
- * [FA] تأخیر بعد از BspAdc_Start تا اولین GetRaw. بافر کامل دو فریمی DMA
- *      (۱۰ تبدیل) در 12MHz حدود 57us بعد از Start آماده می‌شود؛ ۱ms حاشیهٔ
- *      محافظه‌کارانه است. */
-#define MEASUREMENT_SETTLE_MS      1u
 
 /* ==================== Globals (shared values) ==================== */
 /* [EN] Shared engineering values, written ONLY by the measurement task
@@ -50,12 +42,12 @@
  *          InputVoltageMv/BatteryVoltageMv استفاده می‌کنند و Meas* از
  *          تداخل لینک جلوگیری می‌کند. وقتی UI به مقدار واقعی وصل شد،
  *          متغیرهای تست دستی در همان مرحله حذف می‌شوند. */
-extern volatile uint32_t UINT32_T__G__MeasInputVoltageMv;   /* [EN] 24 V main input, mV (PA2) / ولتاژ ورودی ۲۴, mV */
-extern volatile uint32_t UINT32_T__G__MeasBattery24Mv;      /* [EN] 24 V battery, mV (PA3) / ولتاژ باتری ۲۴, mV */
-extern volatile uint32_t UINT32_T__G__MeasBattery12Mv;      /* [EN] 12 V battery, mV (PA5) / ولتاژ باتری ۱۲, mV */
-extern volatile uint32_t UINT32_T__G__MeasCurrent1Ma;       /* [EN] 24 V ch.1 charge current, mA (PA1) / جریان کانال ۱, mA */
-extern volatile uint32_t UINT32_T__G__MeasCurrent2Ma;       /* [EN] 12 V ch.2 charge current, mA (PA7) / جریان کانال ۲, mA */
-extern volatile bool BOOL__G__MeasInputPresent;           /* [EN] PB4 HIGH = 24 V input present (schematic) / ورودی ۲۴ وصل است */
+extern volatile uint32_t UINT32_T__G__MeasInputVoltageMv;   /* [EN] Logical 24 V input, mV / ورودی منطقی ۲۴ ولت، mV */
+extern volatile uint32_t UINT32_T__G__MeasBattery24Mv;      /* [EN] Logical 24 V battery, mV / باتری منطقی ۲۴ ولت، mV */
+extern volatile uint32_t UINT32_T__G__MeasBattery12Mv;      /* [EN] Logical 12 V battery, mV / باتری منطقی ۱۲ ولت، mV */
+extern volatile uint32_t UINT32_T__G__MeasCurrent1Ma;       /* [EN] Logical charge current 1, mA / جریان منطقی شارژ ۱، mA */
+extern volatile uint32_t UINT32_T__G__MeasCurrent2Ma;       /* [EN] Logical charge current 2, mA / جریان منطقی شارژ ۲، mA */
+extern volatile bool BOOL__G__MeasInputPresent;           /* [EN] Logical 24 V input present / حضور منطقی ورودی ۲۴ ولت */
 extern volatile bool BOOL__G__MeasDataValid;              /* [EN] true once the first frame is converted / اولین فریم تبدیل شده */
 
 /* ==================== Measurement Init ==================== */

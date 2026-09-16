@@ -1,52 +1,47 @@
 /**
  * @file    bsp_pwm.c
- * @brief   [EN] PWM wrapper for charger channels (placeholder). Full type naming, func__ prefix.
- *          [FA] پوشش PWM کانال شارژر (اسکلت). نام تایپ کامل.
+ * @brief   [EN] Board PWM port placeholder.
+ *          [FA] اسکلت پورت PWM برد.
+ *
+ * @note    [EN] The active CubeMX configuration does not enable charger PWM.
+ *              A future board implementation may include its HAL timer headers
+ *              here, without changing the public interface or Charger module.
+ *          [FA] پیکربندی فعال CubeMX، PWM شارژر را روشن نکرده است. در پورت
+ *              برد آینده می‌توان headerهای HAL تایمر را فقط اینجا آورد، بدون
+ *              تغییر رابط عمومی یا ماژول Charger.
  */
 
 #include "bsp_pwm.h"
-#include <stddef.h>
-
-static TIM_HandleTypeDef *TIM_HANDLETYPEDEF__G__Tim1 = NULL;
-static TIM_HandleTypeDef *TIM_HANDLETYPEDEF__G__Tim2 = NULL;
 
 /**
- * @brief  [EN] Store timer handles. No PWM output until later stage.
- *         [FA] هندل تایمر را نگه می‌دارد. خروجی PWM هنوز نیست.
- * @param  TIM_HandleTypeDef__htimCh1 [EN] Timer ch1 / تایمر کانال ۱
- * @param  TIM_HandleTypeDef__htimCh2 [EN] Timer ch2 / تایمر کانال ۲
+ * @brief  [EN] Initialize the board PWM backend and force outputs off.
+ *         [FA] Backend PWM برد را مقداردهی و خروجی‌ها را خاموش می‌کند.
  */
 /* ==================== BspPwm_Init ==================== */
-
-void func__BspPwm_Init(TIM_HandleTypeDef *TIM_HandleTypeDef__htimCh1, TIM_HandleTypeDef *TIM_HandleTypeDef__htimCh2)
+void func__BspPwm_Init(void)
 {
-    TIM_HANDLETYPEDEF__G__Tim1 = TIM_HandleTypeDef__htimCh1;
-    TIM_HANDLETYPEDEF__G__Tim2 = TIM_HandleTypeDef__htimCh2;
     func__BspPwm_StopAll();
 }
 
 /**
- * @brief  [EN] Set duty in permille (0..1000). No-op until implemented.
- *         [FA] وظیفه را به پرمیل می‌گذارد.
- * @param  uint8_t__channel [EN] 1 or 2 / کانال
- * @param  uint16_t__permille [EN] 0..1000 / پرمیل
+ * @brief  [EN] Set logical charger duty. This stage is intentionally a no-op.
+ *         [FA] وظیفهٔ منطقی شارژر را تنظیم می‌کند؛ این مرحله عمداً بدون عمل است.
+ * @param  bsp_pwm_channel_t__channel [EN] Logical channel / کانال منطقی
+ * @param  uint16_t__permille [EN] Duty in permille / وظیفه بر حسب پرمیل
  */
 /* ==================== BspPwm_SetDutyPermille ==================== */
-
-void func__BspPwm_SetDutyPermille(uint8_t uint8_t__channel, uint16_t uint16_t__permille)
+void func__BspPwm_SetDutyPermille(bsp_pwm_channel_t bsp_pwm_channel_t__channel,
+                                   uint16_t uint16_t__permille)
 {
-    (void)uint8_t__channel;
+    (void)bsp_pwm_channel_t__channel;
     (void)uint16_t__permille;
-    (void)TIM_HANDLETYPEDEF__G__Tim1;
-    (void)TIM_HANDLETYPEDEF__G__Tim2;
 }
 
 /**
- * @brief  [EN] Force both PWM channels off.
- *         [FA] هر دو کانال PWM را خاموش می‌کند.
+ * @brief  [EN] Force every board PWM output off.
+ *         [FA] همهٔ خروجی‌های PWM برد را خاموش می‌کند.
  */
 /* ==================== BspPwm_StopAll ==================== */
-
 void func__BspPwm_StopAll(void)
 {
 }

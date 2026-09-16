@@ -37,6 +37,17 @@
 - Agent باید تغییرات، commit، تست‌ها و هر conflict را به Agent ارشد گزارش کند.
 - تغییر خارج از محدودهٔ ماژول یا conflict نباید خودسرانه حل شود.
 
+## قرارداد تثبیت‌شدهٔ BSP پیش از واگذاری کار به Agentها
+
+- Agent مسئول هر ماژول باید پیش از هر تغییر، همین فایل و README همان ماژول را بخواند؛ این مرحلهٔ مرزبندی BSP قرارداد پایهٔ پروژه است.
+- Headerهای عمومی `Firmware/Bsp/Inc` باید مستقل از HAL باشند؛ هیچ `stm32*_hal.h`، `GPIO_TypeDef`، `ADC_HandleTypeDef`، `TIM_HandleTypeDef` یا `UART_HandleTypeDef` در رابط عمومی مجاز نیست.
+- جزئیات میکرو، هندل‌ها، رجیسترها، `main.h` و `board_pins.h` فقط در پیاده‌سازی پورت برد زیر `Firmware/Bsp/Src` یا فایل‌های تولیدشده/خصوصی همان پلتفرم قرار می‌گیرند.
+- GPIO، ADC، کالیبراسیون Measurement، EXTI، PWM و UART از طریق API منطقی BSP مصرف می‌شوند؛ ماژول‌ها نباید نام پایه یا نام peripheral فعلی را وارد کنند.
+- ترتیب ADC در `bsp_adc.h` یک قرارداد normalized است و کالیبراسیون مدار در `bsp_measurement` متعلق به BSP است؛ با تغییر MCU یا برد، منطق Measurement کپی یا بازنویسی نمی‌شود.
+- API فعلی PWM و UART با `Init(void)` کار می‌کند؛ هندل HAL نباید به آن‌ها برگردانده شود. اگر peripheral فعال شد، فقط پورت برد پیاده‌سازی می‌شود.
+- قبل از شروع هر Agent، تست‌های پایه (`bash tools/check_ai_rules.sh`، `bash tools/check_firmware_syntax.sh`، تست Host موجود و بررسی preprocess) باید سبز باشند. تست Host/syntax جایگزین تست واقعی برد نیست.
+- Agentها حق تغییر `AI_AGENT_RULES.md`، گزارش مرکزی، مرز BSP یا فایل‌های CubeMX را برای کار محلی خود ندارند؛ تغییر سراسری فقط با دستور Agent ارشد انجام می‌شود.
+
 ## مالکیت اسناد
 
 - `AI_AGENT_RULES.md` تنها منبع قوانین AI و Agentها است.

@@ -1,16 +1,15 @@
 /**
  * @file    bsp_adc.h
- * @brief   [EN] Board ADC+DMA interface. The current board implementation
- *              supplies five normalized analog values in a two-frame buffer;
- *              the reader copies only a completed frame.
- *          [FA] رابط ADC+DMA برد. پیاده‌سازی برد فعلی پنج مقدار آنالوگ
- *              استانداردشده را در بافر دو فریمی می‌دهد و خواننده فقط فریم کامل
- *              را کپی می‌کند.
+ * @brief   [EN] Logical board ADC+DMA interface. The port supplies five
+ *              normalized analog values in a two-frame buffer; the reader
+ *              copies only a completed frame.
+ *          [FA] رابط منطقی ADC+DMA برد. پورت پنج مقدار آنالوگ استانداردشده
+ *              را در بافر دو فریمی می‌دهد و خواننده فقط فریم کامل را کپی می‌کند.
  *
  * @note    [EN] The public channel order is a normalized data contract. Each
- *              board-specific BSP maps its own ADC channels to this order.
+ *              board-specific BSP maps its own ADC hardware to this order.
  *          [FA] ترتیب عمومی کانال‌ها قرارداد دادهٔ استاندارد است. BSP مخصوص
- *              هر برد کانال‌های ADC همان برد را به این ترتیب نگاشت می‌کند.
+ *              هر برد سخت‌افزار ADC همان برد را به این ترتیب نگاشت می‌کند.
  */
 
 #ifndef BSP_ADC_H
@@ -21,10 +20,10 @@
 #include <stdbool.h>
 
 /* ==================== ADC channel map ==================== */
-/* [EN] These are normalized frame positions. The current board maps them to
- *      PA1/PA2/PA3/PA5/PA7; another BSP may use different pins.
- * [FA] این‌ها موقعیت‌های استاندارد فریم هستند. برد فعلی آن‌ها را به
- *      PA1/PA2/PA3/PA5/PA7 نگاشت می‌کند؛ BSP برد دیگر می‌تواند پایه‌های دیگری داشته باشد. */
+/* [EN] These are normalized frame positions; physical channels and pins
+ *      are selected only by the board-specific BSP implementation.
+ * [FA] این‌ها موقعیت‌های استاندارد فریم هستند؛ کانال‌ها و پایه‌های فیزیکی
+ *      فقط در پیاده‌سازی BSP مخصوص برد انتخاب می‌شوند. */
 #define BSP_ADC_CHANNEL_COUNT        5u
 #define BSP_ADC_CHANNEL_CURRENT1     0u   /* normalized charge current 1 / جریان شارژ استاندارد ۱ */
 #define BSP_ADC_CHANNEL_24V_IN       1u   /* normalized 24V input / ورودی ۲۴ ولت استاندارد */
@@ -42,7 +41,6 @@
 #define BSP_ADC_DMA_FRAME_COUNT      2u
 #define BSP_ADC_DMA_SAMPLE_COUNT     (BSP_ADC_CHANNEL_COUNT * BSP_ADC_DMA_FRAME_COUNT)
 #define BSP_ADC_DMA_RETRY_COUNT      3u
-#define BSP_ADC_START_TIMEOUT_MS     2u
 
 /* ==================== BspAdc_Init ==================== */
 
@@ -61,8 +59,8 @@ void func__BspAdc_Init(void);
  *         [FA] ADC مخصوص برد را کالیبره و اسکن و DMA آن را شروع می‌کند.
  *              منابع وقفهٔ DMA در پورت برد خصوصی هستند و خوانندهٔ عمومی فقط
  *              فریم‌های استانداردشدهٔ کامل را برمی‌گرداند.
- * @return bool [EN] true when calibration and HAL start succeed /
- *                   اگر کالیبراسیون و شروع HAL موفق باشد true
+ * @return bool [EN] true when the board ADC backend starts successfully /
+ *                   اگر backend ADC برد با موفقیت شروع شود true
  */
 bool func__BspAdc_Start(void);
 

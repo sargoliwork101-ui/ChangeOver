@@ -70,6 +70,8 @@
 - PB4 = GPIO_Input با لیبل `MCU_INT_24_IN` (حضور ورودی ۲۴، دیجیتال).
 - `task_measurement.c` فقط `func__BspAdc_Init()` را صدا می‌زند؛ هندل `hadc1` و جزئیات ADC در `Firmware/Bsp/Src/bsp_adc.c` به‌عنوان Port برد فعلی باقی می‌ماند.
 - PWM و UART را Enable نکن مگر همان مرحله را کاربر خواسته باشد (قانون AI).
+- Headerهای عمومی BSP (`bsp_gpio.h`, `bsp_adc.h`, `bsp_measurement.h`, `bsp_exti.h`, `bsp_pwm.h`, `bsp_uart.h`) HAL-free هستند؛ هندل‌های HAL و `board_pins.h` فقط در پیاده‌سازی پورت برد می‌مانند.
+- برای تغییر MCU یا برد، API منطقی Moduleها ثابت می‌ماند و فقط پورت‌های `Firmware/Bsp/Src` و فایل‌های platform-specific تغییر می‌کنند.
 
 ## تاریخچه
 

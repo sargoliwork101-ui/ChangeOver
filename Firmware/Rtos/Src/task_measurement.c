@@ -1,15 +1,12 @@
 /**
  * @file    task_measurement.c
- * @brief   [EN] CMSIS-RTOS2 measurement thread. ADC+DMA run autonomously (the
- *              hardware fills the buffer without CPU involvement); this task
- *              only converts the newest completed frame into the shared snapshot.
- *              ADC clock is 12 MHz, the highest legal F1 value for 72 MHz PCLK2.
- *              Simple RTOS pattern: osDelayUntil, no HAL_Delay.
- *          [FA] تسک اندازه‌گیری FreeRTOS. ADC+DMA به‌طور مستقل کار می‌کنند
- *              (سخت‌افزار بافر را بدون درگیری CPU پر می‌کند)؛ این تسک فقط
- *              آخرین فریم کامل را در snapshot مشترک تبدیل می‌کند. کلاک ADC
- *              برابر ۱۲MHz و بیشترین مقدار مجاز F1 با PCLK2 برابر ۷۲MHz است.
- *              الگوی RTOS ساده: osDelayUntil، بدون HAL_Delay.
+ * @brief   [EN] CMSIS-RTOS2 measurement thread. The board ADC backend supplies
+ *              completed normalized frames; this task only converts the newest
+ *              frame into the shared snapshot. Simple RTOS pattern: osDelayUntil,
+ *              no HAL_Delay.
+ *          [FA] تسک اندازه‌گیری CMSIS-RTOS2. backend ADC برد فریم‌های کامل
+ *              استانداردشده را می‌دهد؛ این تسک فقط جدیدترین فریم را در snapshot
+ *              مشترک تبدیل می‌کند. الگوی RTOS ساده: osDelayUntil، بدون HAL_Delay.
  *
  * @note    [EN] Period is MEASUREMENT_PERIOD_MS (top of measurement.h) -
  *              one line to change the sample rate. Stack: TASK_STACK_MEASUREMENT
@@ -34,13 +31,12 @@
 /* ==================== Task Measurement ==================== */
 
 /**
- * @brief  [EN] Entry of the measurement task: one-time bring-up (give the
- *              CubeMX handle to the BSP, start the autonomous ADC+DMA, zero
- *              the snapshot, wait for the first frame), then a fixed 10 ms
- *              loop that converts one frame per tick.
- *         [FA] ورودی تسک اندازه‌گیری: راه‌اندازی یک‌بار (دادن هندل مکعب به
- *              BSP، شروع ADC+DMA مستقل، صفر کردن snapshot، انتظار فریم اول)،
- *              بعد یک حلقهٔ ثابت ۱۰ms که در هر تیک یک فریم تبدیل می‌کند.
+ * @brief  [EN] Entry of the measurement task: initialize the board ADC port,
+ *              start its autonomous acquisition, zero the snapshot, then run a
+ *              fixed-period loop that converts one completed frame per cycle.
+ *         [FA] ورودی تسک اندازه‌گیری: پورت ADC برد را مقداردهی و دریافت مستقل
+ *              آن را شروع می‌کند، snapshot را صفر می‌کند و سپس در یک حلقهٔ
+ *              دوره‌ای ثابت هر بار یک فریم کامل را تبدیل می‌کند.
  * @param  void_ptr__argument [EN] Unused task argument / آرگومان تسک، استفاده
  *                                 نمی‌شود
  */
@@ -69,12 +65,6 @@ void func__TaskMeasurement(void *void_ptr__argument)
             func__Rtos_DelayMilliseconds(1000u);
         }
     }
-
-    /* [EN] The two-frame DMA buffer is full in about 57 us at 12 MHz; the
-       1 ms settle delay is a conservative margin (MEASUREMENT_SETTLE_MS).
-       [FA] بافر دو فریمی DMA در 12MHz حدود 57us پر می‌شود؛ تأخیر استقراری
-       1ms حاشیهٔ محافظه‌کارانه است (MEASUREMENT_SETTLE_MS). */
-    func__Rtos_DelayMilliseconds(MEASUREMENT_SETTLE_MS);
 
     /* [EN] Fixed-period loop (MEASUREMENT_PERIOD_MS, top of measurement.h).
        Only this task sleeps here; the MCU keeps running the other tasks.

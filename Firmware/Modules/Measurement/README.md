@@ -44,9 +44,9 @@
 | `func__Measurement_V24CountsToMv` | خام استاندارد → mV منبع ۲۴، با تقسیم برد در BSP |
 | `func__Measurement_V12CountsToMv` | خام استاندارد → mV منبع ۱۲، با تقسیم برد در BSP |
 | `func__Measurement_CurrentCountsToMa` | خام استاندارد → mA شارژ، با گین و شانت برد در BSP |
-| `func__TaskMeasurement` | Init+Start یک‌بار، 1ms انتظار فریم اول، بعد هر 10ms یک `Run` (`osDelayUntil` با تبدیل قابل‌حمل میلی‌ثانیه/تیک) |
+| `func__TaskMeasurement` | Init+Start یک‌بار، سپس هر 10ms یک `Run` (`osDelayUntil` با تبدیل قابل‌حمل میلی‌ثانیه/تیک) |
 | `func__BspAdc_Init` (Bsp) | آماده‌سازی Backend ADC برد و صفر کردن بافر DMA؛ هندل و پایه‌ها در BSP پنهان هستند |
-| `func__BspAdc_Start` (Bsp) | کالیبراسیون ADC1 + `HAL_ADC_Start_DMA` (continuous + circular)، با خاموش‌کردن منابع وقفهٔ DMA |
+| `func__BspAdc_Start` (Bsp) | شروع backend ADC+DMA برد؛ جزئیات peripheral و منابع وقفه در پورت برد خصوصی است |
 | `func__BspAdc_IsFrameReady` (Bsp) | true بعد از کالیبراسیون و Start موفق |
 | `func__BspAdc_GetRaw` (Bsp) | انتخاب نیمهٔ کامل با CNDTR و کپی پایدار ۵ کانال با بررسی قبل/بعد شمارنده |
 
@@ -56,29 +56,30 @@
 
 | گلوبال | واحد | منبع |
 |---|---|---|
-| `UINT32_T__G__MeasInputVoltageMv` | mV | PA2 — ولتاژ ورودی ۲۴ (نمونه: 24000 = 24V) |
-| `UINT32_T__G__MeasBattery24Mv` | mV | PA3 — باتری ۲۴ |
-| `UINT32_T__G__MeasBattery12Mv` | mV | PA5 — باتری ۱۲ |
-| `UINT32_T__G__MeasCurrent1Ma` | mA | PA1 — جریان شارژ کانال ۱ (۲۴) |
-| `UINT32_T__G__MeasCurrent2Ma` | mA | PA7 — جریان شارژ کانال ۲ (۱۲) |
-| `BOOL__G__MeasInputPresent` | — | PB4 (شماتیک: HIGH = ورودی وصل؛ هنوز اندازه‌گیری نشده) |
+| `UINT32_T__G__MeasInputVoltageMv` | mV | ورودی منطقی ۲۴ ولت (نمونه: 24000 = 24V) |
+| `UINT32_T__G__MeasBattery24Mv` | mV | باتری منطقی ۲۴ ولت |
+| `UINT32_T__G__MeasBattery12Mv` | mV | باتری منطقی ۱۲ ولت |
+| `UINT32_T__G__MeasCurrent1Ma` | mA | جریان شارژ منطقی کانال ۱ |
+| `UINT32_T__G__MeasCurrent2Ma` | mA | جریان شارژ منطقی کانال ۲ |
+| `BOOL__G__MeasInputPresent` | — | سیگنال منطقی حضور ورودی ۲۴ ولت |
 | `BOOL__G__MeasDataValid` | — | true از اولین فریم تبدیل‌شده |
 
 `snapshot` (`func__Measurement_GetSnapshot`) هم همان داده + `valid` را یک‌جا کپی می‌دهد؛ هر دو هم‌زمان معتبرند (هر دو از یک‌جای Run نوشته می‌شوند).
 
 ## پایه‌ها
 
-| پایه | لیبل | نقش | HIGH یعنی |
-|---|---|---|---|
-| PA1 | `ADC_CURRENT1` (ADC1_IN1) | جریان شارژ کانال ۱ (شانت R64 + LM358) | آنالوگ (0..3.3V) |
-| PA2 | `MCU_ADC_24_IN` (ADC1_IN2) | ولتاژ ورودی ۲۴ (R46+R11/R12) | آنالوگ (0..3.3V) |
-| PA3 | `MCU_ADC_24_BAT` (ADC1_IN3) | ولتاژ باتری ۲۴ (R47+R13/R14) | آنالوگ (0..3.3V) |
-| PA5 | `MCU_ADC_12_BAT` (ADC1_IN5) | ولتاژ باتری ۱۲ (R48+R15/R16) | آنالوگ (0..3.3V) |
-| PA7 | `ADC_CURRENT2` (ADC1_IN7) | جریان شارژ کانال ۲ (شانت R68 + LM358) | آنالوگ (0..3.3V) |
-| PB4 | `MCU_INT_24_IN` | حضور ورودی ۲۴ (دیجیتال، از R46+R10) | دیجیتال؛ شماتیک = ورودی وصل (~2.5V)؛ هنوز روی برد اندازه‌گیری نشده |
+این ماژول فقط قرارداد منطقی زیر را می‌بیند. ترتیب فیزیکی ADC، پایه‌ها، قطبیت و کالیبراسیون در BSP برد تعریف می‌شوند و در این ماژول تکرار نمی‌شوند.
 
-ترتیب کانال‌ها (`BSP_ADC_CHANNEL_*` در `bsp_adc.h`) با ترتیب رنک‌های `.ioc` یکی است.
-سیگنال‌های آنالوگ قبل از پایه توسط باتری‌های فلتر C20..C22 و کلنگ‌های BAT54S (جریان‌ها) محافظت می‌شوند (شماتیک).
+| شناسهٔ منطقی | واحد | نقش |
+|---|---|---|
+| `BSP_ADC_CHANNEL_CURRENT1` | mA | جریان شارژ منطقی کانال ۱ |
+| `BSP_ADC_CHANNEL_24V_IN` | mV | ورودی منطقی ۲۴ ولت |
+| `BSP_ADC_CHANNEL_24V_BAT` | mV | باتری منطقی ۲۴ ولت |
+| `BSP_ADC_CHANNEL_12V_BAT` | mV | باتری منطقی ۱۲ ولت |
+| `BSP_ADC_CHANNEL_CURRENT2` | mA | جریان شارژ منطقی کانال ۲ |
+| `BSP_GPIO_INPUT_24V_PRESENT` | bool | حضور منطقی ورودی ۲۴ ولت |
+
+جزئیات اتصال فیزیکی برد فعلی در `CubeMX/README.md` و پیاده‌سازی BSP قرار دارد؛ تغییر MCU یا برد نباید این ماژول را مجبور به تغییر کند.
 
 ## پیش‌فرض امن
 

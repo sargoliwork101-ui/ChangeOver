@@ -9,14 +9,15 @@
  *              می‌شود (RTOS): فقط چند تبدیل + یک خواندن GPIO و بعد yield —
  *              هیچ‌جا HAL_Delay ندارد.
  *
- * @note    [EN] Divider/gain values come from the schematic and are constants
- *              in measurement.h (MISRA: no magic numbers in logic). The
+ * @note    [EN] Divider/gain values come from the schematic and are private
+ *              board calibration constants in bsp_measurement.c. The
  *              converted values are exposed as globals (UINT32_T__G__Meas*,
  *              BOOL__G__Meas*), written only by this task, readable from
  *              any module - that is how the other tasks (and the debugger
  *              via Live Expressions) use them.
- *          [FA] مقادیر تقسیم/گین از شماتیک می‌آید و ثابت measurement.h است
- *              (MISRA: عدد جادویی وسط منطق ممنوع). مقادیر تبدیل‌شده به‌صورت
+ *          [FA] مقادیر تقسیم/گین از شماتیک می‌آید و ثابت خصوصی
+ *              bsp_measurement.c است (MISRA: عدد جادویی وسط منطق ممنوع).
+ *              مقادیر تبدیل‌شده به‌صورت
  *              گلوبال (UINT32_T__G__Meas*, BOOL__G__Meas*) در دسترس‌اند —
  *              فقط این تسک می‌نویسد و هر ماژولی می‌تواند بخواند (از جمله
  *              دیباگر با Live Expressions).
@@ -27,6 +28,7 @@
 #include "bsp_adc.h"
 #include "bsp_measurement.h"
 #include "bsp_gpio.h"
+#include "cmsis_os2.h"
 #include <stddef.h>
 
 /* ==================== Static State ==================== */
@@ -84,10 +86,10 @@ void func__Measurement_Init(void)
 /* ==================== Counts To Mv ==================== */
 
 /**
- * @brief  [EN] Convert raw 12-bit ADC counts to millivolts at the ADC pin.
- *         [FA] شمارش خام ۱۲ بیتی ADC را به میلی‌ولت در پایهٔ ADC تبدیل می‌کند.
- * @param  uint16_t__counts [EN] Raw ADC count, 0..4095 / شمارش خام ADC
- * @return uint32_t [EN] Voltage in mV, 0..3300 / ولتاژ بر حسب mV
+ * @brief  [EN] Convert normalized ADC counts through the board calibration port.
+ *         [FA] شمارش استاندارد ADC را از طریق پورت کالیبراسیون برد تبدیل می‌کند.
+ * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
+ * @return uint32_t [EN] Voltage in mV / ولتاژ بر حسب mV
  */
 uint32_t func__Measurement_CountsToMv(uint16_t uint16_t__counts)
 {
@@ -97,10 +99,10 @@ uint32_t func__Measurement_CountsToMv(uint16_t uint16_t__counts)
 /* ==================== V24 Counts To Mv ==================== */
 
 /**
- * @brief  [EN] Raw counts of the 24 V channels to source voltage (mV).
- *         [FA] شمارش خام کانال‌های ۲۴ ولت به ولتاژ منبع (mV).
- * @param  uint16_t__counts [EN] Raw ADC count, 0..4095 / شمارش خام ADC
- * @return uint32_t [EN] Source voltage in mV, 0..~37000 / ولتاژ منبع mV
+ * @brief  [EN] Convert a normalized 24 V channel through board calibration.
+ *         [FA] کانال استاندارد ۲۴ ولت را از طریق کالیبراسیون برد تبدیل می‌کند.
+ * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
+ * @return uint32_t [EN] Source voltage in mV / ولتاژ منبع mV
  */
 uint32_t func__Measurement_V24CountsToMv(uint16_t uint16_t__counts)
 {
@@ -110,10 +112,10 @@ uint32_t func__Measurement_V24CountsToMv(uint16_t uint16_t__counts)
 /* ==================== V12 Counts To Mv ==================== */
 
 /**
- * @brief  [EN] Raw counts of the 12 V battery channel to source voltage (mV).
- *         [FA] شمارش خام کانال باتری ۱۲ ولت به ولتاژ منبع (mV).
- * @param  uint16_t__counts [EN] Raw ADC count, 0..4095 / شمارش خام ADC
- * @return uint32_t [EN] Source voltage in mV, 0..~20000 / ولتاژ منبع mV
+ * @brief  [EN] Convert the normalized 12 V channel through board calibration.
+ *         [FA] کانال استاندارد ۱۲ ولت را از طریق کالیبراسیون برد تبدیل می‌کند.
+ * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
+ * @return uint32_t [EN] Source voltage in mV / ولتاژ منبع mV
  */
 uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
 {
@@ -123,15 +125,10 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
 /* ==================== Current Counts To Ma ==================== */
 
 /**
- * @brief  [EN] Convert raw ADC counts to charge current in milliamps. The
- *              calculation keeps the ADC, amplifier-gain and shunt factors
- *              in one 64-bit numerator/denominator path to avoid the coarse
- *              100 mA quantization caused by early integer division.
- *         [FA] شمارش خام ADC را به جریان شارژ بر حسب میلی‌آمپر تبدیل می‌کند.
- *              عوامل ADC، گین تقویت‌کننده و شانت در مسیر صورت/مخرج ۶۴ بیتی
- *              نگه داشته می‌شوند تا تقسیم زودهنگام و پلهٔ خشن ۱۰۰mA ایجاد نشود.
- * @param  uint16_t__counts [EN] Raw ADC count, 0..4095 / شمارش خام ADC
- * @return uint32_t [EN] Current in mA, approximately 0..3300 / جریان mA
+ * @brief  [EN] Convert a normalized current channel through board calibration.
+ *         [FA] کانال استاندارد جریان را از طریق کالیبراسیون برد تبدیل می‌کند.
+ * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
+ * @return uint32_t [EN] Current in mA / جریان بر حسب mA
  */
 uint32_t func__Measurement_CurrentCountsToMa(uint16_t uint16_t__counts)
 {
@@ -156,7 +153,7 @@ void func__Measurement_Run(void)
     uint32_t uint32_t__current2Ma;
     bool bool__frameCopied;
     bool bool__inputPresent;
-    uint32_t uint32_t__savedPrimask;
+    int32_t int32_t__savedKernelLock;
 
     /* [EN] GetRaw copies only a completed DMA half-frame; no ADC register
        polling is performed here.
@@ -166,11 +163,18 @@ void func__Measurement_Run(void)
 
     if (bool__frameCopied == false)
     {
-        uint32_t__savedPrimask = __get_PRIMASK();
-        __disable_irq();
-        BOOL__G__MeasDataValid = false;
-        MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
-        __set_PRIMASK(uint32_t__savedPrimask);
+        int32_t__savedKernelLock = osKernelLock();
+        if (int32_t__savedKernelLock >= 0)
+        {
+            BOOL__G__MeasDataValid = false;
+            MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
+            (void)osKernelRestoreLock(int32_t__savedKernelLock);
+        }
+        else
+        {
+            BOOL__G__MeasDataValid = false;
+            MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
+        }
         return;
     }
 
@@ -189,19 +193,26 @@ void func__Measurement_Run(void)
     uint32_t__current2Ma =
         func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
 
-    /* [EN] PB4 = MCU_INT_24_IN (schematic): HIGH means input present. This
-       polarity is from the schematic and still needs board measurement.
-       [FA] PB4 = MCU_INT_24_IN (شماتیک): HIGH یعنی ورودی حاضر است. این
-       قطبیت از شماتیک است و هنوز باید روی برد اندازه‌گیری شود. */
+    /* [EN] The BSP exposes the board input-detect signal as a logical GPIO;
+       polarity and physical pin mapping remain inside the board port.
+       [FA] BSP سیگنال تشخیص ورودی برد را به‌صورت GPIO منطقی ارائه می‌کند؛
+       قطبیت و نگاشت پایهٔ فیزیکی داخل پورت برد می‌ماند. */
     bool__inputPresent =
         func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT);
 
-    /* [EN] Publish globals and snapshot as one short critical section. The
-       snapshot valid bit is written last.
-       [FA] گلوبال‌ها و snapshot را در یک critical section کوتاه منتشر می‌کند.
-       بیت معتبر بودن snapshot در آخر نوشته می‌شود. */
-    uint32_t__savedPrimask = __get_PRIMASK();
-    __disable_irq();
+    /* [EN] Publish globals and snapshot while the RTOS scheduler is locked.
+       The snapshot valid bit is written last; this uses CMSIS-RTOS2 rather
+       than an MCU-specific interrupt instruction.
+       [FA] گلوبال‌ها و snapshot را هنگام قفل بودن scheduler منتشر می‌کند.
+       بیت معتبر بودن snapshot در آخر نوشته می‌شود؛ این کار به‌جای دستور
+       وابسته به MCU از CMSIS-RTOS2 استفاده می‌کند. */
+    int32_t__savedKernelLock = osKernelLock();
+    if (int32_t__savedKernelLock < 0)
+    {
+        BOOL__G__MeasDataValid = false;
+        MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
+        return;
+    }
 
     UINT32_T__G__MeasCurrent1Ma = uint32_t__current1Ma;
     UINT32_T__G__MeasInputVoltageMv = uint32_t__inputVoltageMv;
@@ -220,7 +231,7 @@ void func__Measurement_Run(void)
     BOOL__G__MeasDataValid = true;
     MEASUREMENT_SNAPSHOT_T__G__Snap.valid = true;
 
-    __set_PRIMASK(uint32_t__savedPrimask);
+    (void)osKernelRestoreLock(int32_t__savedKernelLock);
 }
 
 /* ==================== Measurement Get Snapshot ==================== */
@@ -237,7 +248,7 @@ void func__Measurement_Run(void)
  */
 bool func__Measurement_GetSnapshot(measurement_snapshot_t *measurement_snapshot_t__out)
 {
-    uint32_t uint32_t__savedPrimask;
+    int32_t int32_t__savedKernelLock;
     bool bool__snapshotValid;
 
     if (measurement_snapshot_t__out == NULL)
@@ -246,12 +257,18 @@ bool func__Measurement_GetSnapshot(measurement_snapshot_t *measurement_snapshot_
     }
 
     /* [EN] Prevent a task switch while copying the multi-field snapshot.
-       [FA] هنگام کپی snapshot چندفیلدی، تعویض تسک را متوقف می‌کند. */
-    uint32_t__savedPrimask = __get_PRIMASK();
-    __disable_irq();
+       CMSIS-RTOS2 keeps this independent of the MCU core instructions.
+       [FA] هنگام کپی snapshot چندفیلدی، تعویض تسک را متوقف می‌کند.
+       CMSIS-RTOS2 این بخش را از دستورهای هستهٔ MCU مستقل نگه می‌دارد. */
+    int32_t__savedKernelLock = osKernelLock();
+    if (int32_t__savedKernelLock < 0)
+    {
+        return false;
+    }
+
     *measurement_snapshot_t__out = MEASUREMENT_SNAPSHOT_T__G__Snap;
     bool__snapshotValid = MEASUREMENT_SNAPSHOT_T__G__Snap.valid;
-    __set_PRIMASK(uint32_t__savedPrimask);
+    (void)osKernelRestoreLock(int32_t__savedKernelLock);
 
     return bool__snapshotValid;
 }

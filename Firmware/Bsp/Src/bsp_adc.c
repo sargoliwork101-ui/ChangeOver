@@ -22,6 +22,10 @@
 
 #include <stddef.h>
 
+/* [EN] Board-port timeout for the first completed DMA half-frame.
+ *      [FA] timeout مخصوص پورت برد برای نخستین نیم‌فریم کامل DMA. */
+#define BSP_ADC_START_TIMEOUT_MS 2u
+
 /* ==================== Static State ==================== */
 
 /* [EN] Board ADC handle is private to this STM32 BSP implementation.
