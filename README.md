@@ -8,7 +8,7 @@
 
 تغییر مسیر تغذیه ۲۴ ولت DC: ورودی یا باتری. MCU: `STM32F103C8T6`.
 
-**مرحله فعلی:** فقط LED و بازر. ADC، PWM، UART، رله خاموش.
+**مرحله فعلی:** LED و بازر و اندازه‌گیری (ADC+DMA، ۵ کانال، خودمختار). PWM، UART، رله خاموش.
 
 شماتیک: `Circuit/ChangeOver(24V_DC).pdf`
 
@@ -25,7 +25,7 @@
 
 `main.c` فقط کلاک، HAL، `MX_*_Init`، بعد `App_Start()`. منطق محصول در `Firmware/`.
 
-کلید ماژول‌ها: `Firmware/Config/Inc/modules_enable.h` — الان فقط `MODULE_UI = 1`.
+کلید ماژول‌ها: `Firmware/Config/Inc/modules_enable.h` — الان `MODULE_UI = 1` و `MODULE_MEASUREMENT = 1`.
 
 ## اجرا الان (منطق جدید ولتاژ-مبنا)
 
@@ -51,6 +51,15 @@ CubeIDE/Core/.../main.c
           BspGpio_Write()        Firmware/Bsp/Src/bsp_gpio.c
           PIN_*                  Firmware/Config/Inc/board_pins.h
           APP_CONFIG             Firmware/Config/Src/app_config.c // مقادیر پیش‌فرض جدید: ui_input_threshold_mv, ui_bat_v_min/max, beep, charging
+
+  ADC1 + DMA1 (سخت‌افزار، بدون CPU)   CubeMX/CubeIDE.ioc: 5 کانال (PA1/2/3/5/7)، scan+continuous، 9MHz
+    بافر چرخشی 10 نصف‌واژه            Firmware/Bsp/Src/bsp_adc.c — سخت‌افزار مدام پر می‌کند
+      TaskMeasurement                  Firmware/Rtos/Src/task_measurement.c
+        هر MEASUREMENT_PERIOD_MS (10ms، بالای measurement.h):
+          func__Measurement_Run()     Firmware/Modules/Measurement/measurement.c
+            خام → mV / mA (توابع تبدیل گام‌به‌گام) + input_present از PB4
+            → گلوبال‌های مشترک UINT32_T__G__Meas* / BOOL__G__Meas* (هر تسک می‌خواند؛ در Live Expressions دیده می‌شود)
+            → measurement_snapshot_t (کپی یکجا با GetSnapshot)
 ```
 
 ### سناریوهای فعلی (لیست درخواستی)
@@ -59,12 +68,9 @@ CubeIDE/Core/.../main.c
 2. **BatteryRun**: `V_in <20V` → سبز چشمک (روشن=درصد باتری)، زرد خاموش، بوق هوشمند: اگر <50% هر درصد ثانیه یک بوق (40%→40s)، اگر <20% طول بوق 2 برابر (250→500ms) — تابع `Ui_BuzzerBeep()` جدا
 3. **Charging**: `V_in >=20V` و باتری <100% → سبز ثابت، زرد چشمک مانده تا فول: 0% (21V) زرد ثابت روشن، 100% (28V) خاموش، ON=(100-درصد)*دوره
 
-پارامترها و تایم‌ها بالای هر فایل/تابع (`ui.c` و `task_ui.c`) تعریف شده‌اند تا بدون عوض کردن کل برنامه تغییر کنند. نام متغیرها با پیشوند تایپ: `U32_G_` گلوبال (حروف بزرگ)، `u32_` داخلی (حروف کوچک).
+پارامترها و تایم‌ها بالای هر فایل/تابع (`ui_led.h`، `ui_buzzer.h` و `task_ui.c`) تعریف شده‌اند تا بدون عوض کردن کل برنامه تغییر کنند. نام متغیرها با پیشوند تایپ: `U32_G_` گلوبال (حروف بزرگ)، `u32_` داخلی (حروف کوچک).
 
-تسک‌های measurement / protection / control / comm فایل دارند؛ با فلگ صفر ساخته نمی‌شوند.
-
-
-تسک‌های measurement / protection / control / comm فایل دارند؛ با فلگ صفر ساخته نمی‌شوند.
+تسک‌های protection / control / comm فایل دارند؛ با فلگ صفر ساخته نمی‌شوند (measurement فعال است، ببینید بالا).
 
 ## درخت اتصال کل پروژه
 
@@ -93,20 +99,20 @@ ChangeOver
     │   rtos_config.h
     ├── Bsp/
     │   bsp_gpio.c ◄── Ui ، EspLink
-    │   bsp_adc.c  ◄── Measurement (اسکلت)
+    │   bsp_adc.c  ◄── Measurement (فعال: ADC1+DMA چرخشی، بدون CPU)
     │   bsp_pwm.c  ◄── Charger (اسکلت)
     │   bsp_uart.c ◄── EspLink (اسکلت)
     │   bsp_exti.c ◄── Jitter (اسکلت)
     ├── Rtos/
     │   rtos_app.c ──► task_ui.c          (MODULE_UI)
-    │              ──► task_measurement.c (فلگ ۰)
+    │              ──► task_measurement.c (MODULE_MEASUREMENT، فعال)
     │              ──► task_protection.c  (فلگ ۰)
     │              ──► task_control.c     (فلگ ۰)
     │              ──► task_comm.c        (فلگ ۰)
     │   freertos_hooks.c
     └── Modules/
         Ui          ◄── فعال (+ host_test_ui.py)
-        Measurement     اسکلت
+        Measurement     فعال (تبدیل ADC → mV/mA + snapshot)
         Protection      اسکلت
         Changeover      اسکلت
         Charger         اسکلت
@@ -121,6 +127,9 @@ ChangeOver
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-15 | چک کامل UI با `AI_CONTEXT.md` و اصلاحات: braces MISRA در `ui_buzzer.c`، بازر در `ui_led.c` فقط از طریق API ماژول بازر (جداسازی کامل)، شارژ بازر را صریح خاموش می‌کند، نام `BUZZER_STATE_T__G__State`، پاک‌سازی `task_ui.c`؛ مقادیر measurement به سبک قانون `BOOL__G__` اصلاح شد؛ مستندات قدیمی `ui.h`/`ui.c` (حذف‌شده) از برگه‌ها حذف شد |
+| 2026-09-15 | مقادیر اندازه‌گیری گلوبال شدند (`UINT32_T__G__Meas*` / `BOOL__G__Meas*` در measurement) — هر تسک می‌تواند بخواند و در دیباگر با Live Expressions دیده می‌شود |
+| 2026-09-15 | فعال‌شدن اندازه‌گیری: ADC1+DMA1 در `.ioc` (۵ کانال، scan+continuous، کلاک 9MHz به‌جای 36MHz که از سقف 14MHz F103 بالاتر بود)، درایور ADC ST (v1.1.10) به Drivers، bsp_adc واقعی (بافر چرخشی پرشدهٔ سخت‌افزار، بدون interrupt/CPU)، توابع تبدیل measurement (گام‌به‌گام، بدون فرمول خطی)، دوره `MEASUREMENT_PERIOD_MS=10` بالای measurement.h، PB4 (`MCU_INT_24_IN`) به‌عنوان ورودی دیجیتال حضور ورودی، `MODULE_MEASUREMENT=1`؛ Init/Start داخل تسک Measurement تا app.c دست‌نخورده بماند |
 | 2026-09-14 | بازنویسی UI طبق درخواست جدید: حذف BatteryLow، زرد در دشارژ خاموش، بوق هوشمند با تابع جدا `Ui_BuzzerBeep()` (اگر <50% هر درصد ثانیه، 40%→40s، اگر <20% طول 2 برابر)، سناریوی شارژ جدید با زرد چشمک‌زن (0% زرد ثابت روشن=21V، 100% خاموش=28V، ON=(100-درصد)*دوره)، ورودی از bool به ولتاژ (آستانه 20V)، باتری 0%=21V و 100%=28V با `Ui_BatteryVoltageToPercent()`، پارامترها بالای فایل/تابع، نام‌گذاری U32_G_ گلوبال و u32_ داخلی |
 | 2026-09-14 | اجرای AI: فیکس EspLink README (اضافه شدن «درخت اتصال» اجباری)؛ اسکریپت `tools/check_ai_rules.sh` برای اجرای خودکار قوانین AI_CONTEXT (هدر دوزبانه، قالب ۷ بخشی، جدایی CubeIDE/CubeMX، فلگ ماژول‌ها، .ioc بدون ADC/PWM/UART)؛ تست هاست UI `host_test_ui.py`؛ همه چک‌ها پاس شد |
 | 2026-09-14 | سناریوهای UI به سبک خطی یک‌سیکلی (InputOk/BatteryRun/BatteryLow)؛ حذف تسک مرده defaultTask از main.c و هر دو .ioc؛ رفع Init تکراری؛ اصلاح نام `CubeIDE.ioc` در مستندات |

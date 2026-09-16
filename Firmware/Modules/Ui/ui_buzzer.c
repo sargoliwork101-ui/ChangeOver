@@ -89,7 +89,7 @@ typedef enum { BUZZER_IDLE, BUZZER_PULSE_ON, BUZZER_GAP_OFF, BUZZER_PERIOD_OFF }
  * @brief  [EN] Current buzzer state, IDLE at start.
  *         [FA] حالت فعلی بازر، اول بیکار.
  */
-static buzzer_state_t BUZZER_STATE__G__State = BUZZER_IDLE;
+static buzzer_state_t BUZZER_STATE_T__G__State = BUZZER_IDLE;
 
 /* ==================== Buzzer Total On Ms ==================== */
 
@@ -173,16 +173,44 @@ static void func__buzzer_start_internal(uint32_t uint32_t__periodMs, uint32_t ui
     uint8_t uint8_t__repeatClamped;
     uint32_t uint32_t__gapTimesRepeat;
 
-    if (uint32_t__totalOnMs < 10u) uint32_t__totalOnClamped = 10u;
-    else if (uint32_t__totalOnMs > 10000u) uint32_t__totalOnClamped = 10000u;
-    else uint32_t__totalOnClamped = uint32_t__totalOnMs;
+    /* [EN] Clamp inputs (MISRA: braces on every if/else). Limits: ON 10..10000ms,
+       gap 0..5000ms, repeat 1..10.
+       [FA] محدود کردن ورودی‌ها (MISRA: همه if/else با براکت {}). حد: روشن
+       10..10000ms، گپ 0..5000ms، تکرار 1..10. */
+    if (uint32_t__totalOnMs < 10u)
+    {
+        uint32_t__totalOnClamped = 10u;
+    }
+    else if (uint32_t__totalOnMs > 10000u)
+    {
+        uint32_t__totalOnClamped = 10000u;
+    }
+    else
+    {
+        uint32_t__totalOnClamped = uint32_t__totalOnMs;
+    }
 
-    if (uint32_t__gapMs > 5000u) uint32_t__gapClamped = 5000u;
-    else uint32_t__gapClamped = uint32_t__gapMs;
+    if (uint32_t__gapMs > 5000u)
+    {
+        uint32_t__gapClamped = 5000u;
+    }
+    else
+    {
+        uint32_t__gapClamped = uint32_t__gapMs;
+    }
 
-    if (uint8_t__repeatCount == 0u) uint8_t__repeatClamped = 1u;
-    else if (uint8_t__repeatCount > 10u) uint8_t__repeatClamped = 10u;
-    else uint8_t__repeatClamped = uint8_t__repeatCount;
+    if (uint8_t__repeatCount == 0u)
+    {
+        uint8_t__repeatClamped = 1u;
+    }
+    else if (uint8_t__repeatCount > 10u)
+    {
+        uint8_t__repeatClamped = 10u;
+    }
+    else
+    {
+        uint8_t__repeatClamped = uint8_t__repeatCount;
+    }
 
     if (uint8_t__repeatClamped > 1u)
     {
@@ -202,7 +230,7 @@ static void func__buzzer_start_internal(uint32_t uint32_t__periodMs, uint32_t ui
     UINT8_T__G__BuzzerPulseIndex = 0u;
     UINT32_T__G__BuzzerPulseOnMs = func__calc_beep_on(uint32_t__totalOnClamped, uint8_t__repeatClamped, uint32_t__gapClamped);
     TICKTYPE_T__G__BuzzerLastTick = xTaskGetTickCount();
-    BUZZER_STATE__G__State = BUZZER_PULSE_ON;
+    BUZZER_STATE_T__G__State = BUZZER_PULSE_ON;
     BOOL__G__BuzzerRunning = true;
     func__buzzer(true);
 }
@@ -236,12 +264,15 @@ bool func__Ui_BuzzerPatternMs_Tick(void)
     uint32_t uint32_t__elapsedMs;
     uint32_t uint32_t__periodOffMs;
 
-    if (BOOL__G__BuzzerRunning == false) return false;
+    if (BOOL__G__BuzzerRunning == false)
+    {
+        return false;
+    }
 
     ticktype__nowTick = xTaskGetTickCount();
     uint32_t__elapsedMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__BuzzerLastTick) * portTICK_PERIOD_MS);
 
-    switch (BUZZER_STATE__G__State)
+    switch (BUZZER_STATE_T__G__State)
     {
         case BUZZER_PULSE_ON:
             if (uint32_t__elapsedMs >= UINT32_T__G__BuzzerPulseOnMs)
@@ -249,7 +280,7 @@ bool func__Ui_BuzzerPatternMs_Tick(void)
                 func__buzzer(false);
                 if (UINT8_T__G__BuzzerPulseIndex < UINT8_T__G__BuzzerRepeatCount - 1u)
                 {
-                    BUZZER_STATE__G__State = BUZZER_GAP_OFF;
+                    BUZZER_STATE_T__G__State = BUZZER_GAP_OFF;
                     TICKTYPE_T__G__BuzzerLastTick = ticktype__nowTick;
                 }
                 else
@@ -259,7 +290,7 @@ bool func__Ui_BuzzerPatternMs_Tick(void)
                         BOOL__G__BuzzerRunning = false;
                         return false;
                     }
-                    BUZZER_STATE__G__State = BUZZER_PERIOD_OFF;
+                    BUZZER_STATE_T__G__State = BUZZER_PERIOD_OFF;
                     TICKTYPE_T__G__BuzzerLastTick = ticktype__nowTick;
                 }
             }
@@ -269,7 +300,7 @@ bool func__Ui_BuzzerPatternMs_Tick(void)
             if (uint32_t__elapsedMs >= UINT32_T__G__BuzzerGapMs)
             {
                 UINT8_T__G__BuzzerPulseIndex++;
-                BUZZER_STATE__G__State = BUZZER_PULSE_ON;
+                BUZZER_STATE_T__G__State = BUZZER_PULSE_ON;
                 TICKTYPE_T__G__BuzzerLastTick = ticktype__nowTick;
                 func__buzzer(true);
             }
@@ -306,8 +337,14 @@ void func__Ui_BuzzerPatternPercent_Start(uint32_t uint32_t__periodMs, uint32_t u
     uint8_t uint8_t__gapPctClamped;
     uint32_t uint32_t__gapMs;
 
-    if (uint8_t__gapPercent > 90u) uint8_t__gapPctClamped = 90u;
-    else uint8_t__gapPctClamped = uint8_t__gapPercent;
+    if (uint8_t__gapPercent > 90u)
+    {
+        uint8_t__gapPctClamped = 90u;
+    }
+    else
+    {
+        uint8_t__gapPctClamped = uint8_t__gapPercent;
+    }
 
     if (uint8_t__repeatCount <= 1u)
     {
@@ -344,6 +381,6 @@ bool func__Ui_BuzzerPatternPercent_Tick(void)
 void func__Ui_BuzzerPattern_Stop(void)
 {
     func__buzzer(false);
-    BUZZER_STATE__G__State = BUZZER_IDLE;
+    BUZZER_STATE_T__G__State = BUZZER_IDLE;
     BOOL__G__BuzzerRunning = false;
 }

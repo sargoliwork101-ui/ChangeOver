@@ -70,7 +70,7 @@ else
   echo "  OK: Core does not contain Firmware"
 fi
 echo ""
-echo "[6] modules_enable.h flags"
+echo "[6] modules_enable.h flags (stage: UI + MEASUREMENT)"
 cat "$ROOT/Firmware/Config/Inc/modules_enable.h"
 if grep -q "#define MODULE_UI.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
   echo "  OK: MODULE_UI=1"
@@ -78,7 +78,13 @@ else
   echo "  FAIL: MODULE_UI not 1"
   FAIL=1
 fi
-for m in FAULT MEASUREMENT PROTECTION CHANGEOVER CHARGER JITTER ESP; do
+if grep -q "#define MODULE_MEASUREMENT.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
+  echo "  OK: MODULE_MEASUREMENT=1 (ADC stage)"
+else
+  echo "  FAIL: MODULE_MEASUREMENT not 1"
+  FAIL=1
+fi
+for m in FAULT PROTECTION CHANGEOVER CHARGER JITTER ESP; do
   if grep -q "#define MODULE_${m}.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
     echo "  FAIL: MODULE_${m} should be 0"
     FAIL=1
@@ -86,14 +92,20 @@ for m in FAULT MEASUREMENT PROTECTION CHANGEOVER CHARGER JITTER ESP; do
 done
 echo "  Other modules are 0"
 echo ""
-echo "[7] CubeMX .ioc peripheral check"
+echo "[7] CubeMX .ioc peripheral check (stage: UI + MEASUREMENT)"
 IOC="$ROOT/CubeMX/CubeIDE.ioc"
 if [ -f "$IOC" ]; then
   if grep -q "Mcu.IP.*ADC" "$IOC"; then
-    echo "  FAIL: ADC found"
-    FAIL=1
+    echo "  OK: ADC1 enabled (measurement stage)"
   else
-    echo "  OK: No ADC"
+    echo "  FAIL: ADC1 missing in .ioc"
+    FAIL=1
+  fi
+  if grep -q "ADC1.NbrOfConversion=5" "$IOC" && grep -q "DMA1.Request1=ADC1" "$IOC"; then
+    echo "  OK: ADC1 has 5 channels + DMA"
+  else
+    echo "  FAIL: ADC1 channels/DMA not configured"
+    FAIL=1
   fi
   if grep -q "Mcu.IP.*TIM[2-4]" "$IOC"; then
     echo "  FAIL: TIM2-4 found"
