@@ -84,13 +84,29 @@ else
   echo "  FAIL: MODULE_MEASUREMENT not 1"
   FAIL=1
 fi
-for m in FAULT PROTECTION CHANGEOVER CHARGER JITTER ESP; do
+for m in PROTECTION CHARGER JITTER ESP; do
   if grep -q "#define MODULE_${m}.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
     echo "  FAIL: MODULE_${m} should be 0"
     FAIL=1
   fi
 done
-echo "  Other modules are 0"
+if grep -q "#define MODULE_FAULT.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
+  echo "  OK: MODULE_FAULT=1 (fault-mask validation build)"
+elif grep -q "#define MODULE_FAULT.*0" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
+  echo "  OK: MODULE_FAULT=0 (fault module disabled)"
+else
+  echo "  FAIL: MODULE_FAULT must be explicitly 0 or 1"
+  FAIL=1
+fi
+if grep -q "#define MODULE_CHANGEOVER.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
+  echo "  OK: MODULE_CHANGEOVER=1 (real board validation build)"
+elif grep -q "#define MODULE_CHANGEOVER.*0" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
+  echo "  OK: MODULE_CHANGEOVER=0 (module disabled)"
+else
+  echo "  FAIL: MODULE_CHANGEOVER must be explicitly 0 or 1"
+  FAIL=1
+fi
+echo "  Other non-validation modules are 0"
 echo ""
 echo "[7] CubeMX .ioc peripheral check (full schematic BSP contract)"
 IOC="$ROOT/CubeMX/CubeIDE.ioc"

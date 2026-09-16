@@ -42,6 +42,14 @@ void func__TaskControl(void *void_ptr__argument)
 {
     (void)void_ptr__argument;
 
+#if MODULE_CHANGEOVER
+    /* [EN] Initialize Changeover once before the first evaluation so BOOT,
+       timers and the logical protect state are explicit, not only C defaults.
+       [FA] Changeover را پیش از اولین ارزیابی یک‌بار مقداردهی کن تا BOOT،
+       تایمرها و وضعیت منطقی حفاظت صریح باشند، نه فقط مقدار پیش‌فرض C. */
+    func__Changeover_Init();
+#endif
+
     for (;;)
     {
 #if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
