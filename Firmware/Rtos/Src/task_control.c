@@ -21,6 +21,9 @@
 #if MODULE_CHANGEOVER
 #include "changeover.h"
 #endif
+#if MODULE_UI
+#include "ui_led.h"
+#endif
 #if MODULE_CHARGER
 #include "charger.h"
 #endif
@@ -53,7 +56,14 @@ void func__TaskControl(void *void_ptr__argument)
             func__Jitter_Run();
 #endif
 #if MODULE_CHANGEOVER
-            app_state_t__state = func__Changeover_Evaluate(&measurement_snapshot_t__snap, fault_mask_t__faults);
+            app_state_t__state = func__Changeover_Evaluate(
+                &measurement_snapshot_t__snap,
+                fault_mask_t__faults,
+#if MODULE_UI
+                BOOL__G__UiBatteryAlarmIssued);
+#else
+                false);
+#endif
 #endif
 #if MODULE_CHARGER
             func__Charger_Evaluate(&measurement_snapshot_t__snap, app_state_t__state);

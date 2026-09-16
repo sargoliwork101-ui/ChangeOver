@@ -29,10 +29,8 @@ int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)
 - `Input <= UI_INPUT_DISCONNECTED_THRESHOLD_MV` یعنی ورودی قطع است؛ مقدار فعلی `20000u` یعنی ۲۰ ولت.
 - بین ۲۰ و ۲۱ ولت، وضعیت قبلی حفظ می‌شود و سیستم بین حالت‌ها سوئیچ نمی‌کند.
 - مقدار هیسترزیس تشخیص اتصال: `UI_INPUT_HYSTERESIS_MV = 1000u`.
-- ثابت‌های مربوط در `ui_led.h`:
-  - `UI_INPUT_CONNECTED_THRESHOLD_MV`
-  - `UI_INPUT_DISCONNECTED_THRESHOLD_MV`
-  - `UI_INPUT_HYSTERESIS_MV`
+- در مسیر production، سیگنال منطقی `snapshot.input_present` مرجع اتصال ورودی است؛ ولتاژ `snapshot.v_in_mv` برای خطای اضافه‌ولتاژ استفاده می‌شود.
+- ثابت‌های قدیمی اتصال و هیسترزیس در `ui_led.h` برای مرجع سناریو نگه داشته شده‌اند؛ تصمیم runtime از snapshot معتبر می‌آید.
 
 ### سناریو ۱: InputOk
 
@@ -166,7 +164,7 @@ InputOverVoltage فعال
 |---|---|
 | `ui_led.h` / `ui_led.c` | منطق LED: نگاشت ولتاژ، هیسترزیس ورودی، خطای InputOverVoltage، سناریوهای InputOk/Charging/BatteryRun و تست LED؛ فقط نقاط صریح سناریو برای شروع یا خاموش کردن سرویس بوق را فراخوانی می‌کند. |
 | `ui_buzzer.h` / `ui_buzzer.c` | سرویس یگانه بوق: محاسبه پنجره دیوتی، تقسیم آن بین پالس‌ها و گپ‌ها، اعتبارسنجی محدودیت‌های ایمنی، محاسبه مراجعه بعدی و نوشتن سیگنال منطقی `BSP_GPIO_BUZZER`. |
-| `../../Rtos/Src/task_ui.c` | تسک UI؛ ولتاژ ورودی و باتری را می‌خواند و با `func__Ui_Tick` سناریوی مناسب را اجرا می‌کند. |
+| `../../Rtos/Src/task_ui.c` | تسک UI؛ یک snapshot از Measurement را می‌خواند و فقط در صورت `valid=true` با `func__Ui_Tick` سناریوی مناسب را اجرا می‌کند. |
 | `../../Bsp/Src/bsp_gpio.c` | نوشتن سطح GPIO از طریق `func__BspGpio_Write`. |
 | `../../Bsp/Inc/bsp_gpio.h` | سیگنال‌های منطقی `BSP_GPIO_LED_GREEN/RED/YELLOW` و `BSP_GPIO_BUZZER`؛ نگاشت پایه در BSP پنهان است. |
 | `../../Config/Inc/app_config.h` / `../../Config/Src/app_config.c` | تنظیمات عمومی زمان‌بندی LED و نگاشت ولتاژ؛ ثابت‌های BatteryRun و بوق‌های سناریویی در هدرهای UI تعریف شده‌اند. |
@@ -178,8 +176,9 @@ InputOverVoltage فعال
 فایل `UI_Board_Validation.xlsx` برای ولیدیشن عملی همین رفتار فعلی UI روی برد است. این فایل پنج برگهٔ کاری دارد: راهنما، برنامهٔ تست، مراجع سناریو، ثبت ایراد و تأیید نهایی؛ برگهٔ فهرست‌های داخلی Excel برای dropdownها مخفی است.
 
 - دامنهٔ این فرم فقط رفتار LED و BUZZER است؛ ADC/Measurement فعال است، اما نتیجهٔ ADC در این فرم ثبت نمی‌شود.
-- ولتاژ ورودی UI اکنون از `UINT32_T__G__MeasInputVoltageMv` بر حسب mV و پس از معتبرشدن فریم ADC می‌آید؛ تا قبل از آن صفر امن است.
-- ولتاژ باتری فعلاً از `UINT32_T__G__BatteryVoltageMv` بر حسب mV و با Live Expressions تنظیم می‌شود.
+- UI یک snapshot منسجم را با `func__Measurement_GetSnapshot` می‌گیرد و فقط وقتی `snapshot.valid=true` باشد تصمیم می‌گیرد.
+- ولتاژ ورودی و باتری به‌ترتیب از `snapshot.v_in_mv` و `snapshot.v_bat24_mv` بر حسب mV می‌آیند؛ مقدار دستی باتری در مسیر production وجود ندارد.
+- `BOOL__G__UiBatteryAlarmIssued` فقط توسط UI نوشته می‌شود؛ در snapshot نامعتبر false و هنگام آلارم معتبر باتری کم true است.
 - برای هر ردیف، مقدار واقعی مشاهده‌شده، وضعیت، نام تست‌کننده و تاریخ را ثبت کن. تفاوت با انتظار را با شناسهٔ `BUG-xxx` در برگهٔ «ثبت ایراد» هم بنویس.
 - دوره و مدت بوق‌ها برای سریع‌شدن تست تغییر نکند؛ بوق‌های ۲۰ و ۶۰ ثانیه‌ای با دورهٔ واقعی سناریو تست شوند.
 - قطبیت پایه‌های `PA4`، `PB0`، `PB1` و `PB10` تا زمان اندازه‌گیری روی برد شماتیکی است؛ مقدار واقعی باید در تست پایه‌ها ثبت شود.
@@ -196,7 +195,7 @@ InputOverVoltage فعال
 | `func__Ui_ScenarioCharging_Tick` | سبز ثابت و زرد متناسب با درصد شارژ؛ بوق خاموش | `ui_led.c` |
 | `func__Ui_ScenarioBatteryRun_Tick` | سبز چشمک‌زن، زرد خاموش و بوق‌های جدید بر اساس بازه‌های زیر ۴۰٪، ۲۰٪، ۱۰٪ و ۱٪ | `ui_led.c` |
 | `func__Ui_ScenarioInputOverVoltage_Tick` | خطای ورودی: سبز ثابت، زرد خاموش، قرمز ۵۰٪ و یک بوق یک‌ثانیه‌ای هر ۱۰ ثانیه | `ui_led.c` |
-| `func__Ui_Tick` | به‌روزرسانی هیسترزیس ورودی، نمایش خطای اضافه‌ولتاژ و انتخاب سناریوی LED بر اساس ورودی و باتری | `ui_led.c` |
+| `func__Ui_Tick` | بررسی اعتبار snapshot، به‌روزرسانی وضعیت ورودی/اضافه‌ولتاژ و انتخاب سناریوی LED بر اساس ورودی و باتری | `ui_led.c` |
 
 ## محدودیت‌های ایمنی و کد بازگشتی
 

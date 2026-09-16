@@ -238,7 +238,7 @@ void func__TaskUi(void *void_ptr__argument)
   {
     UINT32_T__lastWakeTime += func__Rtos_MillisecondsToTicks(UI_TICK_MS);
     (void)osDelayUntil(UINT32_T__lastWakeTime);
-    func__Ui_Tick(inputMv, batteryMv);
+    func__Ui_Tick(inputMv, batteryMv, inputPresent, snapshotValid);
   }
 }
 ```

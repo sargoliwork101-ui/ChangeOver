@@ -15,7 +15,16 @@
 
 /* ==================== Includes / شامل‌ها ==================== */
 
+#include <stdbool.h>
 #include <stdint.h>
+
+/* ==================== Public UI status / وضعیت عمومی UI ==================== */
+
+/**
+ * @brief  [EN] True while a valid low-battery alarm is active; written only by UI.
+ *         [FA] هنگام فعال‌بودن آلارم معتبر باتری کم true است؛ فقط UI آن را می‌نویسد.
+ */
+extern volatile bool BOOL__G__UiBatteryAlarmIssued;
 
 /* ==================== Battery voltage mapping constants / ثابت‌های نگاشت ولتاژ باتری ==================== */
 
@@ -365,12 +374,18 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv);
 /* ==================== Ui Tick / تیک اصلی UI ==================== */
 
 /**
- * @brief  [EN] Ui main tick - decides which scenario based on input and battery, RTOS simple readable.
- *         Call every UI_TICK_MS from task.
- *         [FA] تیکه اصلی UI - تصمیم سناریو بر اساس ورودی و باتری، ساده خوانا.
+ * @brief  [EN] Ui main tick - decides a scenario from a valid Measurement frame.
+ *         Invalid input keeps outputs safely off and clears the battery alarm.
+ *         [FA] تیک اصلی UI - سناریو را از فریم معتبر Measurement انتخاب می‌کند.
+ *         ورودی نامعتبر خروجی‌ها را امن خاموش و آلارم باتری را پاک می‌کند.
  * @param  uint32_t__inputVoltageMv [EN] Input voltage mV / ولتاژ ورودی
  * @param  uint32_t__batteryVoltageMv [EN] Battery voltage mV / ولتاژ باتری
+ * @param  bool__inputPresent [EN] Logical input-present signal / سیگنال منطقی حضور ورودی
+ * @param  bool__snapshotValid [EN] Measurement snapshot validity / اعتبار snapshot اندازه‌گیری
  */
-void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__batteryVoltageMv);
+void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv,
+                   uint32_t uint32_t__batteryVoltageMv,
+                   bool bool__inputPresent,
+                   bool bool__snapshotValid);
 
 #endif /* UI_LED_H */

@@ -1,73 +1,89 @@
 /**
  * @file    README.md
- * @brief   [EN] Changeover module sheet: input vs battery path.
- *          [FA] برگه ماژول Changeover: مسیر ورودی یا باتری.
+ * @brief   [EN] Changeover module sheet: valid-snapshot battery protection and logical path control.
+ *          [FA] برگه ماژول Changeover: حفاظت باتری بر پایهٔ snapshot معتبر و کنترل مسیر منطقی.
  */
 
 # ماژول Changeover
 
 ## وضعیت
 
-اسکلت. `MODULE_CHANGEOVER = 0`. GPIO قدرت را Enable نکن. فایل را پاک نکن.
+پیاده‌سازی شده اما `MODULE_CHANGEOVER = 0` باقی می‌ماند. فعال‌سازی محصول فقط بعد از تست سخت‌افزاری و تصمیم نهایی انجام می‌شود. این ماژول فقط سیگنال منطقی `BSP_GPIO_PROTECT_BATTERY` را مصرف می‌کند.
 
 ## تاریخچه
 
 | تاریخ | تغییر |
 |---|---|
-| 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
-| 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
-| 2026-09 | اسکلت `func__Changeover_Init` / `func__Changeover_Evaluate` |
+| 2026-09-16 | پیاده‌سازی حفاظت باتری با snapshot معتبر، آستانه‌های ۲۱/۲۰.۸/۲۱.۲ ولت، پایداری ۳۰۰۰ms و مصرف فلگ آلارم UI. |
+| 2026-09-14 | درخت اتصال و قرارداد اولیهٔ state machine اضافه شد. |
 
 ## فایل‌ها
 
 | فایل | نقش |
 |---|---|
-| `changeover.h` / `changeover.c` | ماشین حالت |
-| `../../Rtos/Src/task_control.c` | تسک مشترک با Charger و Jitter |
-| `../../Config/Inc/app_types.h` | `app_state_t` |
-
-`changeover.c` را به بیلد LED اضافه نکن.
+| `changeover.h` / `changeover.c` | ماشین حالت، زمان‌سنجی قطع/وصل و کنترل منطقی حفاظت باتری |
+| `../../Rtos/Src/task_control.c` | انتقال snapshot، fault mask و فلگ UI به Changeover |
+| `../../Config/Inc/app_types.h` | `app_state_t`، `measurement_snapshot_t` و `fault_mask_t` |
+| `../../Bsp/Inc/bsp_gpio.h` | API منطقی حفاظت باتری؛ mapping فیزیکی خارج از Module است |
+| `Changeover_Board_Validation.xlsx` | برنامهٔ تست سناریوهای قطع، وصل، fault و snapshot نامعتبر |
 
 ## توابع
 
 | نام | کار |
 |---|---|
-| `func__Changeover_Init` | `s_state = APP_STATE_BOOT` |
-| `func__Changeover_Evaluate` | اگر خطا باشد `FAULT`، وگرنه `IDLE`. مسیر INPUT/BATTERY هنوز نیست |
-| `TaskControl` | فقط اگر Changeover یا Charger یا Jitter یک باشد ساخته می‌شود |
+| `func__Changeover_Init` | state را روی `APP_STATE_BOOT` می‌گذارد و پایهٔ BSP را تحریک نمی‌کند |
+| `func__Changeover_Evaluate` | snapshot معتبر، fault، فلگ UI و شرایط سه‌ثانیه‌ای را ارزیابی می‌کند |
+| `TaskControl` | فقط در صورت فعال‌شدن Module، ورودی‌های واقعی را به Changeover می‌دهد |
 
-حالت‌ها: `BOOT`، `IDLE`، `INPUT`، `BATTERY`، `FAULT`، `SAFE`.
+## قرارداد عملکرد
+
+- `snapshot == NULL` یا `snapshot.valid == false` هیچ تصمیمی ایجاد نمی‌کند؛ state و پایه حفظ می‌شوند و زمان در انتظار پاک می‌شود.
+- `fault_mask != FAULT_NONE` state را `APP_STATE_FAULT` می‌کند و پایه را تغییر نمی‌دهد.
+- قطع با `v_bat24_mv < 21000mV` و `BOOL__G__UiBatteryAlarmIssued == true` پس از ۳۰۰۰ms پیوسته انجام می‌شود.
+- قطع مستقل با `v_bat24_mv < 20800mV` پس از ۳۰۰۰ms پیوسته انجام می‌شود.
+- وصل مجدد فقط با `input_present == true` و `v_bat24_mv >= 21200mV` پس از ۳۰۰۰ms پیوسته انجام می‌شود.
+- نبود ورودی همراه باتری معتبر و فول، حالت عادی `APP_STATE_BATTERY` است و خطای ADC یا قطع حفاظتی ایجاد نمی‌کند.
+- زمان از `rtos_time.h` تبدیل می‌شود و فرض tick برابر ۱ms وجود ندارد.
 
 ## پایه‌ها
 
-جدول زیر فقط مرجع فیزیکی برد فعلی است؛ Changeover باید از سیگنال‌ها و API منطقی BSP استفاده کند و پایهٔ فیزیکی را در منطق خود وارد نکند.
+Changeover پایهٔ فیزیکی را نمی‌شناسد و فقط این سیگنال منطقی را مصرف می‌کند:
 
-قطبیت از شماتیک است، روی برد اندازه نشده.
+```text
+BSP_GPIO_PROTECT_BATTERY
+```
 
-| پایه | لیبل | نقش | HIGH یعنی (شماتیک) |
-|---|---|---|---|
-| PB5 | `MCU_BAT_SWITCH` | سوئیچ باتری به تغذیه کنترل | High امن و مسیر غیرفعال |
-| PB7 | `MCU_PROTECT_CHARGER` / Relay_MICRO | رله/حفاظت شارژر | Low امن و رله غیرفعال |
-| PB11 | `MCU_LOW_BAT` / `MCU_PROTECT_BATT` | قطع مسیر باتری Q17 | High امن و مسیر غیرفعال |
+`PB11` فقط در BSP به این شناسه نگاشت می‌شود. `PB5` و `PB7` در Changeover ممنوع هستند. مقدار منطقی `true` یعنی asserted/protect و مقدار منطقی `false` یعنی deasserted/reconnect؛ قطبیت فیزیکی داخل BSP پنهان است.
 
 ## پیش‌فرض امن
 
-Init فقط state را BOOT می‌کند؛ پایه را High نمی‌کند. تا اندازه‌گیری قطبیت، این خروجی‌ها را از CubeMX هم Low بگذار.
+`func__Changeover_Init` هیچ پایه‌ای را تغییر نمی‌دهد و safe startup بر عهدهٔ BSP است. تا وقتی `MODULE_CHANGEOVER` صفر است، TaskControl و این state machine در محصول اجرا نمی‌شوند.
 
 ## درخت اتصال
 
-صدا زده می‌شود از (وقتی فلگ ۱ شود):
-
 ```text
-rtos_app.c → TaskControl → task_control.c
-  func__Changeover_Evaluate(&snap, faults)
+Measurement
+  → measurement_snapshot_t.valid / v_bat24_mv / input_present
+Fault
+  → fault_mask_t
+UI
+  → BOOL__G__UiBatteryAlarmIssued
+
+rtos_app.c → TaskControl → func__Changeover_Evaluate(...)
+                         → BSP_GPIO_PROTECT_BATTERY
 ```
 
-این ماژول صدا می‌زند:
+## برگهٔ اعتبارسنجی
 
-```text
-changeover.c
-  app_types.h     app_state_t ، measurement_snapshot_t ، fault_mask_t
-```
+`Changeover_Board_Validation.xlsx` هم‌زمان با منطق نرم‌افزار ایجاد می‌شود و موارد زیر را ثبت می‌کند:
 
-snapshot از Measurement می‌آید، faults از Fault؛ خود Changeover آن‌ها را include نمی‌کند، از آرگومان می‌گیرد. GPIO قدرت هنوز از اینجا زده نمی‌شود.
+- snapshot نامعتبر و حفظ state/pin
+- ورودی قطع و باتری فول
+- قطع UI-assisted در ۲۱.۰V
+- قطع مستقل در ۲۰.۸V
+- افت کوتاه‌تر از ۳۰۰۰ms
+- افت پیوستهٔ ۳۰۰۰ms
+- reconnect در ۲۱.۲V با input_present
+- قطع‌شدن شرط reconnect قبل از ۳۰۰۰ms
+- fault mask غیرصفر بدون تغییر pin
+- عدم تغییر PB5 و PB7

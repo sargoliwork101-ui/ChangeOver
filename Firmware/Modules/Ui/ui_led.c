@@ -19,6 +19,14 @@
 
 #include <stdbool.h>
 
+/* ==================== Public UI status / وضعیت عمومی UI ==================== */
+
+/**
+ * @brief  [EN] True while a valid low-battery alarm is active; UI is the sole writer.
+ *         [FA] هنگام فعال‌بودن آلارم معتبر باتری کم true است؛ فقط UI آن را می‌نویسد.
+ */
+volatile bool BOOL__G__UiBatteryAlarmIssued = false;
+
 /* ==================== Battery Voltage To Percent / تبدیل ولتاژ باتری به درصد ==================== */
 
 /**
@@ -283,15 +291,15 @@ static void func__Ui_UpdateBatteryRunGreenBlink(uint32_t uint32_t__greenOnMs, ui
 /* ==================== Input state update / به‌روزرسانی وضعیت ورودی ==================== */
 
 /**
- * @brief  [EN] Update input presence and input overvoltage state with hysteresis.
- *         Connected: input >= 21V. Disconnected: input <= 20V.
+ * @brief  [EN] Update logical input presence from Measurement and input overvoltage from voltage.
  *         Overvoltage enters above 28V and clears at or below 27V.
- *         [FA] وضعیت اتصال و خطای اضافه‌ولتاژ ورودی را با هیسترزیس به‌روز می‌کند.
- *         وصل: ورودی حداقل ۲۱ ولت. قطع: ورودی حداکثر ۲۰ ولت.
- *         خطا: بالاتر از ۲۸ ولت فعال و در ۲۷ ولت یا پایین‌تر پاک می‌شود.
+ *         [FA] حضور منطقی ورودی را از Measurement و اضافه‌ولتاژ را از ولتاژ به‌روز می‌کند.
+ *         اضافه‌ولتاژ بالاتر از ۲۸ ولت فعال و در ۲۷ ولت یا پایین‌تر پاک می‌شود.
  * @param  uint32_t__inputVoltageMv [EN] Input voltage in mV / ولتاژ ورودی بر حسب میلی‌ولت
+ * @param  bool__inputPresent [EN] Logical input-present signal / سیگنال منطقی حضور ورودی
  */
-static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
+static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv,
+                                      bool bool__inputPresent)
 {
     if (BOOL__G__UiInputOverVoltage == false)
     {
@@ -312,22 +320,11 @@ static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
            [FA] خطای اضافه‌ولتاژ را در بازه هیسترزیس ۲۷ تا ۲۸ ولت حفظ کن. */
     }
 
-    if (BOOL__G__UiInputPresent == false)
-    {
-        if (uint32_t__inputVoltageMv >= UI_INPUT_CONNECTED_THRESHOLD_MV)
-        {
-            BOOL__G__UiInputPresent = true;
-        }
-    }
-    else if (uint32_t__inputVoltageMv <= UI_INPUT_DISCONNECTED_THRESHOLD_MV)
-    {
-        BOOL__G__UiInputPresent = false;
-    }
-    else
-    {
-        /* [EN] Keep the previous connected state in the 20V..21V band.
-           [FA] وضعیت قبلی اتصال را در بازه ۲۰ تا ۲۱ ولت حفظ کن. */
-    }
+    /* [EN] The logical detector from Measurement is authoritative for
+       connection state; voltage remains the source for overvoltage only.
+       [FA] آشکارساز منطقی Measurement مرجع وضعیت اتصال است؛ ولتاژ فقط
+       برای اضافه‌ولتاژ مصرف می‌شود. */
+    BOOL__G__UiInputPresent = bool__inputPresent;
 }
 
 /* ==================== Scenario Input Overvoltage / سناریوی اضافه‌ولتاژ ورودی ==================== */
@@ -481,6 +478,11 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 
     if (uint8_t__batteryPercent < UI_BATTERY_RUN_BEEP_CRITICAL_PERCENT)
     {
+        /* [EN] Keep the alarm asserted for the complete valid low-battery
+           condition, including after the one-shot beep has completed.
+           [FA] فلگ در تمام وضعیت معتبر باتری کم، حتی پس از پایان بوق تک‌باره،
+           فعال باقی می‌ماند. */
+        BOOL__G__UiBatteryAlarmIssued = true;
         func__Ui_ResetBatteryRunGreenBlink();
         func__green(false);
         func__red(false);
@@ -518,6 +520,7 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     }
 
     func__Ui_ResetBatteryCriticalBeep();
+    BOOL__G__UiBatteryAlarmIssued = false;
 
     /* [EN] Non-linear: green blink OFF = remaining * period/100, with min.
        [FA] فرمول غیرخطی سبز چشمک: خاموشی برابر مانده درصد ضربدر دوره است. */
@@ -569,18 +572,36 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 /* ==================== Ui Tick / تیک اصلی UI ==================== */
 
 /**
- * @brief  [EN] Ui main tick - decides which scenario based on input and battery, CMSIS-RTOS2 simple readable.
- *         Call every UI_TICK_MS from task.
- *         [FA] تیکه اصلی UI - تصمیم سناریو بر اساس ورودی و باتری، ساده خوانا.
- * @param  uint32_t__inputVoltageMv [EN] Input voltage mV, 0..40000mV / ولتاژ ورودی
- * @param  uint32_t__batteryVoltageMv [EN] Battery voltage mV, 0..40000mV / ولتاژ باتری
+ * @brief  [EN] Ui main tick - decides a scenario from one valid Measurement frame.
+ *         Invalid data keeps UI outputs safely off and clears the battery alarm.
+ *         [FA] تیک اصلی UI - سناریو را از یک فریم معتبر Measurement انتخاب می‌کند.
+ *         داده نامعتبر خروجی‌ها را امن خاموش و آلارم باتری را پاک می‌کند.
+ * @param  uint32_t__inputVoltageMv [EN] Input voltage mV / ولتاژ ورودی
+ * @param  uint32_t__batteryVoltageMv [EN] Battery voltage mV / ولتاژ باتری
+ * @param  bool__inputPresent [EN] Logical input-present signal / سیگنال منطقی حضور ورودی
+ * @param  bool__snapshotValid [EN] Measurement snapshot validity / اعتبار snapshot
  */
-void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__batteryVoltageMv)
+void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv,
+                   uint32_t uint32_t__batteryVoltageMv,
+                   bool bool__inputPresent,
+                   bool bool__snapshotValid)
 {
     uint32_t uint32_t__batteryClampedMv;
     uint8_t uint8_t__batteryPercent;
 
-    func__Ui_UpdateInputState(uint32_t__inputVoltageMv);
+    if (bool__snapshotValid == false)
+    {
+        BOOL__G__UiBatteryAlarmIssued = false;
+        BOOL__G__UiInputPresent = false;
+        BOOL__G__UiInputOverVoltage = false;
+        func__Ui_ResetBatteryCriticalBeep();
+        func__Ui_ResetBatteryRunGreenBlink();
+        func__all_off();
+        return;
+    }
+
+    BOOL__G__UiBatteryAlarmIssued = false;
+    func__Ui_UpdateInputState(uint32_t__inputVoltageMv, bool__inputPresent);
 
     if (BOOL__G__UiInputOverVoltage == true)
     {
@@ -622,6 +643,7 @@ void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__battery
 void func__Ui_Init(void)
 {
     func__all_off();
+    BOOL__G__UiBatteryAlarmIssued = false;
     BOOL__G__UiInputPresent = false;
     BOOL__G__UiInputOverVoltage = false;
     TICKTYPE_T__G__UiInputOverVoltageStartTick = 0;
