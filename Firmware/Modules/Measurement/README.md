@@ -25,10 +25,11 @@
 
 | فایل | نقش |
 |---|---|
-| `measurement.h` / `measurement.c` | ثابت‌های تبدیل + توابع تبدیل و آخرین snapshot |
-| `../../Bsp/Src/bsp_adc.c` / `bsp_adc.h` | لایهٔ برد: استارت ADC+DMA، بافر چرخشی پرشدهٔ سخت‌افزار، `GetRaw` |
+| `measurement.h` / `measurement.c` | قرارداد عمومی، توابع نما و آخرین snapshot؛ بدون جزئیات برد |
+| `../../Bsp/Src/bsp_adc.c` / `bsp_adc.h` | لایهٔ برد: استارت ADC+DMA و ارائهٔ فریم خام استاندارد؛ هندل و کانال فیزیکی خصوصی است |
 | `../../Rtos/Src/task_measurement.c` | تسک: Init+Start یک‌بار، بعد هر `MEASUREMENT_PERIOD_MS` یک `Run` |
-| `../../Config/Inc/app_types.h` | `measurement_snapshot_t` (تأیید نشده تغییر نکند — تسک‌های بعدی از آن می‌خوانند) |
+| `../../Bsp/Src/bsp_measurement.c` / `bsp_measurement.h` | کالیبراسیون مخصوص مدار برد؛ مرجع ADC، تقسیم مقاومتی، گین و شانت در این Port هستند |
+| `../../Config/Inc/app_types.h` | `measurement_snapshot_t` مشترک بین ماژول‌ها |
 | `../../Config/Inc/modules_enable.h` | کلید `MODULE_MEASUREMENT` |
 | `../../../CubeMX/CubeIDE.ioc` | ADC1 (CH1/2/3/5/7) + DMA1_Ch1 circular N=10 + کلاک ADC 12MHz |
 
@@ -39,10 +40,10 @@
 | `func__Measurement_Init` | snapshot را صفر می‌کند؛ `valid = false` |
 | `func__Measurement_Run` | ۵ عدد خام را از بافر DMA کپی و به mV/mA تبدیل می‌کند؛ `input_present` را از PB4 می‌خواند؛ `valid = true` |
 | `func__Measurement_GetSnapshot` | کپی آخرین snapshot؛ `NULL` یا نامعتبر → `false` |
-| `func__Measurement_CountsToMv` | خام (0..4095) → mV در پایهٔ ADC (0..3300) |
-| `func__Measurement_V24CountsToMv` | خام → mV منبع ۲۴ (ورودی/باتری)؛ برگردان تقسیم 69.2K/6.8K؛ سقف ~37V |
-| `func__Measurement_V12CountsToMv` | خام → mV منبع ۱۲ (باتری)؛ برگردان تقسیم 34.2K/6.8K؛ سقف ~20V |
-| `func__Measurement_CurrentCountsToMa` | خام → mA شارژ؛ ÷ گین 101 → ÷ شانت 10mΩ؛ 1A ≈ 1010mV |
+| `func__Measurement_CountsToMv` | خام استاندارد → mV پایه، با کالیبراسیون BSP برد |
+| `func__Measurement_V24CountsToMv` | خام استاندارد → mV منبع ۲۴، با تقسیم برد در BSP |
+| `func__Measurement_V12CountsToMv` | خام استاندارد → mV منبع ۱۲، با تقسیم برد در BSP |
+| `func__Measurement_CurrentCountsToMa` | خام استاندارد → mA شارژ، با گین و شانت برد در BSP |
 | `func__TaskMeasurement` | Init+Start یک‌بار، 1ms انتظار فریم اول، بعد هر 10ms یک `Run` (`osDelayUntil` با تبدیل قابل‌حمل میلی‌ثانیه/تیک) |
 | `func__BspAdc_Init` (Bsp) | آماده‌سازی Backend ADC برد و صفر کردن بافر DMA؛ هندل و پایه‌ها در BSP پنهان هستند |
 | `func__BspAdc_Start` (Bsp) | کالیبراسیون ADC1 + `HAL_ADC_Start_DMA` (continuous + circular)، با خاموش‌کردن منابع وقفهٔ DMA |

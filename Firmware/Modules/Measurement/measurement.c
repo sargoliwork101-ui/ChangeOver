@@ -25,6 +25,7 @@
 /* ==================== Includes ==================== */
 #include "measurement.h"
 #include "bsp_adc.h"
+#include "bsp_measurement.h"
 #include "bsp_gpio.h"
 #include <stddef.h>
 
@@ -90,18 +91,7 @@ void func__Measurement_Init(void)
  */
 uint32_t func__Measurement_CountsToMv(uint16_t uint16_t__counts)
 {
-    uint32_t uint32_t__countsScaled;
-    uint32_t uint32_t__voltageMv;
-
-    /* [EN] Step 1: scale the count to the 3.3 V reference. Multiply before
-       the division to keep the integer precision (max 4095 * 3300 fits in
-       uint32_t).
-       [FA] گام ۱: مقیاس‌بندی شمارش به مرجع 3.3V. اول ضرب و بعد تقسیم تا
-       دقت صحیح حفظ شود (حداکثر 4095 * 3300 در uint32_t جا می‌شود). */
-    uint32_t__countsScaled = (uint32_t)uint16_t__counts * MEASUREMENT_VREF_MV;
-    uint32_t__voltageMv = uint32_t__countsScaled / MEASUREMENT_ADC_FULL_SCALE;
-
-    return uint32_t__voltageMv;
+    return func__BspMeasurement_CountsToMv(uint16_t__counts);
 }
 
 /* ==================== V24 Counts To Mv ==================== */
@@ -114,28 +104,7 @@ uint32_t func__Measurement_CountsToMv(uint16_t uint16_t__counts)
  */
 uint32_t func__Measurement_V24CountsToMv(uint16_t uint16_t__counts)
 {
-    uint32_t uint32_t__adcPinMv;
-    uint32_t uint32_t__dividerTotalOhms;
-    uint32_t uint32_t__scaledMv;
-    uint32_t uint32_t__sourceMv;
-
-    /* [EN] Step 1: voltage at the ADC pin (mV).
-       [FA] گام ۱: ولتاژ روی پایهٔ ADC (mV). */
-    uint32_t__adcPinMv = func__Measurement_CountsToMv(uint16_t__counts);
-
-    /* [EN] Step 2: total divider resistance (top + bottom, ohms).
-       [FA] گام ۲: مقاومت کل تقسیم‌کننده (بالا + پایین، اهم). */
-    uint32_t__dividerTotalOhms =
-        MEASUREMENT_DIV24_TOP_OHMS + MEASUREMENT_DIV24_BOTTOM_OHMS;
-
-    /* [EN] Step 3: undo the divider: V_source = V_pin * R_total / R_bottom.
-       Multiply before the division (max 3300 * 69200 fits in uint32_t).
-       [FA] گام ۳: برگردان تقسیم: V_source = V_pin * R_total / R_bottom.
-       اول ضرب و بعد تقسیم (حداکثر 3300 * 69200 در uint32_t جا می‌شود). */
-    uint32_t__scaledMv = uint32_t__adcPinMv * uint32_t__dividerTotalOhms;
-    uint32_t__sourceMv = uint32_t__scaledMv / MEASUREMENT_DIV24_BOTTOM_OHMS;
-
-    return uint32_t__sourceMv;
+    return func__BspMeasurement_V24CountsToMv(uint16_t__counts);
 }
 
 /* ==================== V12 Counts To Mv ==================== */
@@ -148,26 +117,7 @@ uint32_t func__Measurement_V24CountsToMv(uint16_t uint16_t__counts)
  */
 uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
 {
-    uint32_t uint32_t__adcPinMv;
-    uint32_t uint32_t__dividerTotalOhms;
-    uint32_t uint32_t__scaledMv;
-    uint32_t uint32_t__sourceMv;
-
-    /* [EN] Step 1: voltage at the ADC pin (mV).
-       [FA] گام ۱: ولتاژ روی پایهٔ ADC (mV). */
-    uint32_t__adcPinMv = func__Measurement_CountsToMv(uint16_t__counts);
-
-    /* [EN] Step 2: total divider resistance (top + bottom, ohms).
-       [FA] گام ۲: مقاومت کل تقسیم‌کننده (بالا + پایین، اهم). */
-    uint32_t__dividerTotalOhms =
-        MEASUREMENT_DIV12_TOP_OHMS + MEASUREMENT_DIV12_BOTTOM_OHMS;
-
-    /* [EN] Step 3: undo the divider: V_source = V_pin * R_total / R_bottom.
-       [FA] گام ۳: برگردان تقسیم: V_source = V_pin * R_total / R_bottom. */
-    uint32_t__scaledMv = uint32_t__adcPinMv * uint32_t__dividerTotalOhms;
-    uint32_t__sourceMv = uint32_t__scaledMv / MEASUREMENT_DIV12_BOTTOM_OHMS;
-
-    return uint32_t__sourceMv;
+    return func__BspMeasurement_V12CountsToMv(uint16_t__counts);
 }
 
 /* ==================== Current Counts To Ma ==================== */
@@ -185,34 +135,7 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
  */
 uint32_t func__Measurement_CurrentCountsToMa(uint16_t uint16_t__counts)
 {
-    uint64_t uint64_t__adcVoltageNumerator;
-    uint64_t uint64_t__currentNumerator;
-    uint64_t uint64_t__currentDenominator;
-    uint32_t uint32_t__currentMa;
-
-    /* [EN] Step 1: keep the ADC scale in the numerator before division.
-       [FA] گام ۱: مقیاس ADC پیش از تقسیم در صورت نگه داشته می‌شود. */
-    uint64_t__adcVoltageNumerator =
-        (uint64_t)uint16_t__counts * MEASUREMENT_VREF_MV;
-
-    /* [EN] Step 2: convert the shunt-voltage ratio to milliamps.
-       [FA] گام ۲: نسبت افت شانت را به میلی‌آمپر تبدیل می‌کند. */
-    uint64_t__currentNumerator =
-        uint64_t__adcVoltageNumerator * MEASUREMENT_CURRENT_MA_SCALE;
-
-    /* [EN] Step 3: amplifier gain and shunt resistance form the denominator:
-       counts * Vref * 1000 / (4095 * gain * shunt_mOhm).
-       [FA] گام ۳: گین تقویت‌کننده و مقاومت شانت مخرج را می‌سازند:
-       counts * Vref * 1000 / (4095 * gain * shunt_mOhm). */
-    uint64_t__currentDenominator =
-        (uint64_t)MEASUREMENT_ADC_FULL_SCALE *
-        MEASUREMENT_AMP_GAIN *
-        MEASUREMENT_SHUNT_MOHMS;
-
-    uint32_t__currentMa =
-        (uint32_t)(uint64_t__currentNumerator / uint64_t__currentDenominator);
-
-    return uint32_t__currentMa;
+    return func__BspMeasurement_CurrentCountsToMa(uint16_t__counts);
 }
 
 /* ==================== Measurement Run ==================== */
