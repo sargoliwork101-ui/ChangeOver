@@ -8,11 +8,11 @@
 
 تغییر مسیر تغذیه ۲۴ ولت DC: ورودی یا باتری. MCU: `STM32F103C8T6`.
 
-**مرحله فعلی:** LED و بازر و اندازه‌گیری (ADC+DMA، ۵ کانال، خودمختار). PWM، UART، رله خاموش.
+**مرحله فعلی:** LED و بازر فعال هستند؛ ADC+DMA و Measurement فعال است و فقط ولتاژ ورودی به UI وصل شده است. ولتاژ باتری فعلاً از ورودی تست دستی Live Expressions می‌آید. PWM، UART و رله خاموش هستند.
 
 شماتیک: `Circuit/ChangeOver(24V_DC).pdf`
 
-قوانین دستیار: `Firmware/AI_CONTEXT.md`
+قوانین دستیار: `AI_AGENT_RULES.md`
 
 ## پوشه‌ها
 
@@ -25,52 +25,43 @@
 
 `main.c` فقط کلاک، HAL، `MX_*_Init`، بعد `App_Start()`. منطق محصول در `Firmware/`.
 
-کلید ماژول‌ها: `Firmware/Config/Inc/modules_enable.h` — الان `MODULE_UI = 1` و `MODULE_MEASUREMENT = 1`.
+کلید ماژول‌ها: `Firmware/Config/Inc/modules_enable.h` — اکنون `MODULE_UI = 1` و `MODULE_MEASUREMENT = 1` هستند؛ سایر ماژول‌ها خاموش‌اند.
 
-## اجرا الان (منطق جدید ولتاژ-مبنا)
+## اجرا الان (اتصال مرحله‌ای Measurement به UI)
 
 ```text
-CubeIDE/Core/.../main.c
-  App_Start()                    Firmware/App/Src/app.c
-    Ui_Init()                    Firmware/Modules/Ui/ui.c  // پارامترها بالای همین فایل: Vmin=21V, Vmax=28V, Vth=20V
-    Rtos_Start()                 Firmware/Rtos/Src/rtos_app.c
-      TaskUi                     Firmware/Rtos/Src/task_ui.c
-        Ui_BoardTest()           یک‌بار تست سیم‌کشی
-        در هر نوبت بر اساس متغیرهای تست ولتاژ (volatile) یک سیکل اجرا می‌شود:
-          U32_G_InputVoltageMv   // تست دستی: ولتاژ ورودی mV، آستانه 20V
-          U32_G_BatteryVoltageMv // تست دستی: 21V=0% 28V=100%، قابل تغییر Live Expressions
-          Ui_BatteryVoltageToPercent() // نگاشت ولتاژ به درصد
-          |
-          if (V_in >= 20V) {
-            if (battery <100%) → Ui_ScenarioCharging()  // سبز ثابت، زرد: 0% ثابت روشن، 100% خاموش، ON=(100-pct)*دوره
-            else               → Ui_ScenarioInputOk()   // سبز ثابت، بقیه خاموش
-          } else {
-            → Ui_ScenarioBatteryRun()  // سبز چشمک ON=درصد*10ms، زرد خاموش، بوق هوشمند هر درصد ثانیه (40%→40s) و <20% طول 2 برابر
-              -> Ui_BuzzerBeep()       // تابع جدا بازر، در هر سناریو قابل صدا زدن
-          }
-          BspGpio_Write()        Firmware/Bsp/Src/bsp_gpio.c
-          PIN_*                  Firmware/Config/Inc/board_pins.h
-          APP_CONFIG             Firmware/Config/Src/app_config.c // مقادیر پیش‌فرض جدید: ui_input_threshold_mv, ui_bat_v_min/max, beep, charging
-
-  ADC1 + DMA1 (سخت‌افزار، بدون CPU)   CubeMX/CubeIDE.ioc: 5 کانال (PA1/2/3/5/7)، scan+continuous، 12MHz (بیشترین مقدار قانونی با PCLK2=72MHz)
-    بافر چرخشی 10 نصف‌واژه            Firmware/Bsp/Src/bsp_adc.c — سخت‌افزار مدام پر می‌کند
-      TaskMeasurement                  Firmware/Rtos/Src/task_measurement.c
-        هر MEASUREMENT_PERIOD_MS (10ms، بالای measurement.h):
-          func__Measurement_Run()     Firmware/Modules/Measurement/measurement.c
-            خام → mV / mA (توابع تبدیل گام‌به‌گام) + input_present از PB4
-            → گلوبال‌های مشترک UINT32_T__G__Meas* / BOOL__G__Meas* (هر تسک می‌خواند؛ در Live Expressions دیده می‌شود)
-            → measurement_snapshot_t (کپی یکجا با GetSnapshot)
+CubeIDE/Core/Src/main.c
+  App_Start()                         Firmware/App/Src/app.c
+    Ui_Init()                         Firmware/Modules/Ui/ui_led.c
+    Rtos_Start()                      Firmware/Rtos/Src/rtos_app.c
+      TaskMeasurement                 Firmware/Rtos/Src/task_measurement.c
+        ADC1 + DMA1                   سخت‌افزار، بافر چرخشی ۵ کاناله
+          Measurement_Run()           تبدیل ADC خام به mV/mA و انتشار snapshot
+      TaskUi                          Firmware/Rtos/Src/task_ui.c
+        ورودی معتبر ADC               UINT32_T__G__MeasInputVoltageMv، بر حسب mV
+        ورودی نامعتبر ADC              صفر امن، یعنی ورودی قطع
+        باتری در مرحله فعلی            UINT32_T__G__BatteryVoltageMv، تست دستی mV
+        Ui_Tick(inputMv, batteryMv)    انتخاب InputOk / Charging / BatteryRun / InputOverVoltage
 ```
 
-### سناریوهای فعلی (لیست درخواستی)
+در این مرحله فقط مسیر ولتاژ ورودی به UI وصل شده است:
 
-1. **InputOk**: `V_in >=20V` و باتری فول (28V) → سبز ثابت
-2. **BatteryRun**: `V_in <20V` → سبز چشمک (روشن=درصد باتری)، زرد خاموش، بوق هوشمند: اگر <50% هر درصد ثانیه یک بوق (40%→40s)، اگر <20% طول بوق 2 برابر (250→500ms) — تابع `Ui_BuzzerBeep()` جدا
-3. **Charging**: `V_in >=20V` و باتری <100% → سبز ثابت، زرد چشمک مانده تا فول: 0% (21V) زرد ثابت روشن، 100% (28V) خاموش، ON=(100-درصد)*دوره
+- ورودی واقعی از کانال `PA2 / ADC1_IN2` اندازه‌گیری و به mV تبدیل می‌شود.
+- تا معتبرشدن اولین فریم ADC، ورودی UI برابر صفر و قطع در نظر گرفته می‌شود.
+- ولتاژ باتری هنوز از `UINT32_T__G__BatteryVoltageMv` خوانده می‌شود و با Live Expressions قابل تغییر است.
+- اتصال ورودی باعث کندشدن یا هنگ‌کردن نمی‌شود؛ ADC و DMA توسط سخت‌افزار کار می‌کنند و Task Measurement هر ۱۰ms فقط یک فریم کوتاه را تبدیل می‌کند.
+- مقدار `BOOL__G__MeasDataValid` معتبرشدن اولین فریم را مشخص می‌کند.
 
-پارامترها و تایم‌ها بالای هر فایل/تابع (`ui_led.h`، `ui_buzzer.h` و `task_ui.c`) تعریف شده‌اند تا بدون عوض کردن کل برنامه تغییر کنند. نام متغیرها با پیشوند تایپ: `U32_G_` گلوبال (حروف بزرگ)، `u32_` داخلی (حروف کوچک).
+### سناریوهای فعلی
 
-تسک‌های protection / control / comm فایل دارند؛ با فلگ صفر ساخته نمی‌شوند (measurement فعال است، ببینید بالا).
+1. **InputOverVoltage**: ورودی بیشتر از `28V` خطا را فعال می‌کند؛ در `27V` یا کمتر پاک می‌شود.
+2. **InputOk**: ورودی وصل (`>=21V`) و باتری کامل (`>=28V`) → سبز ثابت، زرد/قرمز/بوق خاموش.
+3. **Charging**: ورودی وصل و باتری کمتر از `28V` → سبز ثابت، زرد متناسب با مانده شارژ چشمک‌زن، قرمز/بوق خاموش.
+4. **BatteryRun**: ورودی قطع (`<=20V`) → سبز متناسب با درصد باتری چشمک‌زن، زرد و قرمز خاموش و بوق طبق چهار بازه BatteryRun.
+
+بین `20V` و `21V` وضعیت قبلی اتصال ورودی حفظ می‌شود. محدودهٔ درصد باتری در منطق UI برابر `21V = 0%` تا `28V = 100%` است، اما در مرحلهٔ فعلی مقدار باتری هنوز از ورودی تست دستی خوانده می‌شود.
+
+ثابت‌های سیاست UI در `Firmware/Modules/Ui/ui_led.h` و محدودیت‌های سرویس بوق در `ui_buzzer.h` هستند. همه Taskها با تخصیص استاتیک ساخته می‌شوند و Dynamic allocation در تنظیمات FreeRTOS خاموش است.
 
 ## درخت اتصال کل پروژه
 
@@ -84,12 +75,12 @@ ChangeOver
 ├── CubeIDE/                           ← HAL، main.c، FreeRTOS مکعب
 │   └── Core/Src/main.c ──#include──► Firmware/App/Inc/app.h
 ├── tools/
-│   ├── check_ai_rules.sh              ← اجرای خودکار قوانین AI_CONTEXT.md (چک هدر، README، فلگ‌ها، .ioc)
+│   ├── check_ai_rules.sh              ← اجرای خودکار قوانین AI_AGENT_RULES.md (چک هدر، README، فلگ‌ها، .ioc)
 │   └── (host tests در Modules/Ui)
 └── Firmware/
-    ├── AI_CONTEXT.md
+    ├── AI_AGENT_RULES.md
     ├── App/
-    │   app.c ──► ui.h
+    │   app.c ──► ui_led.h
     │         ──► rtos_app.h
     ├── Config/
     │   board_pins.h
@@ -128,11 +119,11 @@ ChangeOver
 | تاریخ | تغییر |
 |---|---|
 | 2026-09-16 | اصلاح محدود ADC/Measurement: کلاک ADC روی 12MHz (PCLK2/6، بیشترین مقدار قانونی F103 با PCLK2=72MHz)، همسان‌سازی `.ioc`ها، افزودن HAL ADC/ADCEx به Build، کالیبراسیون، فریم پایدار DMA، ضرایب صحیح تقسیم ولتاژ و snapshot اتمیک؛ ماژول‌های دیگر تغییر نکردند |
-| 2026-09-15 | چک کامل UI با `AI_CONTEXT.md` و اصلاحات: braces MISRA در `ui_buzzer.c`، بازر در `ui_led.c` فقط از طریق API ماژول بازر (جداسازی کامل)، شارژ بازر را صریح خاموش می‌کند، نام `BUZZER_STATE_T__G__State`، پاک‌سازی `task_ui.c`؛ مقادیر measurement به سبک قانون `BOOL__G__` اصلاح شد؛ مستندات قدیمی `ui.h`/`ui.c` (حذف‌شده) از برگه‌ها حذف شد |
+| 2026-09-15 | چک کامل UI با `AI_AGENT_RULES.md` و اصلاحات: braces MISRA در `ui_buzzer.c`، بازر در `ui_led.c` فقط از طریق API ماژول بازر (جداسازی کامل)، شارژ بازر را صریح خاموش می‌کند، نام `BUZZER_STATE_T__G__State`، پاک‌سازی `task_ui.c`؛ مقادیر measurement به سبک قانون `BOOL__G__` اصلاح شد؛ مستندات قدیمی `ui.h`/`ui.c` (حذف‌شده) از برگه‌ها حذف شد |
 | 2026-09-15 | مقادیر اندازه‌گیری گلوبال شدند (`UINT32_T__G__Meas*` / `BOOL__G__Meas*` در measurement) — هر تسک می‌تواند بخواند و در دیباگر با Live Expressions دیده می‌شود |
 | 2026-09-15 | فعال‌شدن اندازه‌گیری: ADC1+DMA1 در `.ioc` (۵ کانال، scan+continuous، کلاک 9MHz به‌جای 36MHz که از سقف 14MHz F103 بالاتر بود)، درایور ADC ST (v1.1.10) به Drivers، bsp_adc واقعی (بافر چرخشی پرشدهٔ سخت‌افزار، بدون interrupt/CPU)، توابع تبدیل measurement (گام‌به‌گام، بدون فرمول خطی)، دوره `MEASUREMENT_PERIOD_MS=10` بالای measurement.h، PB4 (`MCU_INT_24_IN`) به‌عنوان ورودی دیجیتال حضور ورودی، `MODULE_MEASUREMENT=1`؛ Init/Start داخل تسک Measurement تا app.c دست‌نخورده بماند |
 | 2026-09-14 | بازنویسی UI طبق درخواست جدید: حذف BatteryLow، زرد در دشارژ خاموش، بوق هوشمند با تابع جدا `Ui_BuzzerBeep()` (اگر <50% هر درصد ثانیه، 40%→40s، اگر <20% طول 2 برابر)، سناریوی شارژ جدید با زرد چشمک‌زن (0% زرد ثابت روشن=21V، 100% خاموش=28V، ON=(100-درصد)*دوره)، ورودی از bool به ولتاژ (آستانه 20V)، باتری 0%=21V و 100%=28V با `Ui_BatteryVoltageToPercent()`، پارامترها بالای فایل/تابع، نام‌گذاری U32_G_ گلوبال و u32_ داخلی |
-| 2026-09-14 | اجرای AI: فیکس EspLink README (اضافه شدن «درخت اتصال» اجباری)؛ اسکریپت `tools/check_ai_rules.sh` برای اجرای خودکار قوانین AI_CONTEXT (هدر دوزبانه، قالب ۷ بخشی، جدایی CubeIDE/CubeMX، فلگ ماژول‌ها، .ioc بدون ADC/PWM/UART)؛ تست هاست UI `host_test_ui.py`؛ همه چک‌ها پاس شد |
+| 2026-09-14 | اجرای AI: فیکس EspLink README (اضافه شدن «درخت اتصال» اجباری)؛ اسکریپت `tools/check_ai_rules.sh` برای اجرای خودکار قوانین AI_AGENT_RULES (هدر دوزبانه، قالب ۷ بخشی، جدایی CubeIDE/CubeMX، فلگ ماژول‌ها، .ioc بدون ADC/PWM/UART)؛ تست هاست UI `host_test_ui.py`؛ همه چک‌ها پاس شد |
 | 2026-09-14 | سناریوهای UI به سبک خطی یک‌سیکلی (InputOk/BatteryRun/BatteryLow)؛ حذف تسک مرده defaultTask از main.c و هر دو .ioc؛ رفع Init تکراری؛ اصلاح نام `CubeIDE.ioc` در مستندات |
 | 2026-09-14 | اسکلت‌های Bsp ADC/UART با تایپ ناقص (opaque) بدون فعال‌کردن درایور کامپایل می‌شوند؛ همه فایل‌های Firmware در Build هستند |
 | 2026-09-14 | سناریوهای UI مبتنی بر وضعیت با `Ui_Indicate` (ورودی/درصد باتری)؛ حذف Scenario1/2 از درخت اجرا |

@@ -3,7 +3,7 @@ set -e
 SCRIPT_DIR="$(dirname "$0")"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FAIL=0
-echo "=== AI_CONTEXT execution / اجرای قوانین AI ==="
+echo "=== AI_AGENT_RULES execution / اجرای قوانین AI ==="
 echo "Root: $ROOT"
 echo ""
 echo "[1] Firmware root README check"
@@ -176,23 +176,23 @@ else
   FAIL=1
 fi
 echo ""
-echo "[12] AI_CONTEXT new rules"
-if grep -q "سادگی و خوانایی توابع" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "نام‌گذاری متغیر" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "نام‌گذاری تابع" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "func__" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has readability, full type, func__"
+echo "[12] AI_AGENT_RULES new rules"
+if grep -q "سادگی و خوانایی توابع" "$ROOT/AI_AGENT_RULES.md" && grep -q "نام‌گذاری متغیر" "$ROOT/AI_AGENT_RULES.md" && grep -q "نام‌گذاری تابع" "$ROOT/AI_AGENT_RULES.md" && grep -q "func__" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has readability, full type, func__"
 else
-  echo "  FAIL: AI_CONTEXT missing new rules"
+  echo "  FAIL: AI_AGENT_RULES missing new rules"
   FAIL=1
 fi
-if grep -q "RTOS ساده" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "بدون قفل" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has RTOS no delay"
+if grep -q "RTOS ساده" "$ROOT/AI_AGENT_RULES.md" && grep -q "بدون قفل" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has RTOS no delay"
 else
-  echo "  FAIL: AI_CONTEXT missing RTOS no delay"
+  echo "  FAIL: AI_AGENT_RULES missing RTOS no delay"
   FAIL=1
 fi
-if grep -q "ui_config.h حذف شد" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has ui_config.h deleted note"
+if grep -q "ui_config.h حذف شد" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has ui_config.h deleted note"
 else
-  echo "  FAIL: AI_CONTEXT missing ui_config.h deleted note"
+  echo "  FAIL: AI_AGENT_RULES missing ui_config.h deleted note"
   FAIL=1
 fi
 echo ""
@@ -231,24 +231,24 @@ else
   echo "  FAIL: Stack overflow hook missing"
   FAIL=1
 fi
-if grep -q "مدیریت حافظه" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has memory management"
+if grep -q "مدیریت حافظه" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has memory management"
 else
-  echo "  FAIL: AI_CONTEXT missing memory management"
+  echo "  FAIL: AI_AGENT_RULES missing memory management"
   FAIL=1
 fi
 echo ""
 echo "[14] Meaningful naming and constant prefix"
-if grep -q "نام‌گذاری مرتبط با کار" "$ROOT/Firmware/AI_CONTEXT.md" || grep -q "نام باید مرتبط با کاری" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has meaningful naming"
+if grep -q "نام‌گذاری مرتبط با کار" "$ROOT/AI_AGENT_RULES.md" || grep -q "نام باید مرتبط با کاری" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has meaningful naming"
 else
-  echo "  FAIL: AI_CONTEXT missing meaningful naming"
+  echo "  FAIL: AI_AGENT_RULES missing meaningful naming"
   FAIL=1
 fi
-if grep -q "نام‌گذاری ثابت" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has constant naming"
+if grep -q "نام‌گذاری ثابت" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has constant naming"
 else
-  echo "  FAIL: AI_CONTEXT missing constant naming"
+  echo "  FAIL: AI_AGENT_RULES missing constant naming"
   FAIL=1
 fi
 FOUND_DOT=$(grep -R --include="*.h" "UI\.c_" "$ROOT/Firmware" 2>/dev/null || true)
@@ -271,11 +271,10 @@ else
   echo "  FAIL: ui.h / ui_led.h missing UI_ constants"
   FAIL=1
 fi
-if (grep -q "UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null && grep -E -q "greenOnMs|greenOffMs|GreenOnMs|LED_BLINK" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null) || \
-   (grep -q "UiBatteryRunBeepCycleCnt" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null && grep -q "BuzzerTotalOnMs" "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" 2>/dev/null && grep -E -q "greenOnMs|greenOffMs" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null); then
-  echo "  OK: ui.c / ui_led.c / ui_buzzer.c uses meaningful names with __"
+if (grep -E -q "dutyWindowMs|beepOnMs|periodTailMs" "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" 2>/dev/null && grep -E -q "greenOnMs|greenOffMs" "$ROOT/Firmware/Modules/Ui/ui_led.c" 2>/dev/null); then
+  echo "  OK: ui_led.c / ui_buzzer.c uses meaningful names with __"
 else
-  echo "  FAIL: ui.c missing meaningful names"
+  echo "  FAIL: UI files missing meaningful names"
   FAIL=1
 fi
 
@@ -327,27 +326,15 @@ else
   FAIL=1
 fi
 
-# Check buzzer code at end of ui.c (buzzer functions after LED) OR split files exist
-BUZZER_LINE=$(grep -n "func__buzzer" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null | head -n 1 | cut -d: -f1)
-LED_LINE=$(grep -n "func__Ui_ScenarioInputOk" "$ROOT/Firmware/Modules/Ui/ui.c" 2>/dev/null | head -n 1 | cut -d: -f1)
-if [ -n "$BUZZER_LINE" ] && [ -n "$LED_LINE" ]; then
-  if [ "$BUZZER_LINE" -gt "$LED_LINE" ]; then
-    echo "  OK: Buzzer code after LED (buzzer at end, LED first) in ui.c"
+# Check split files: LED in ui_led.c, one buzzer service in ui_buzzer.c.
+if [ -f "$ROOT/Firmware/Modules/Ui/ui_led.c" ] && [ -f "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" ]; then
+  if grep -q "func__Ui_ScenarioInputOk" "$ROOT/Firmware/Modules/Ui/ui_led.c" && grep -q "func__Ui_Buzzer_Tick" "$ROOT/Firmware/Modules/Ui/ui_buzzer.c"; then
+    echo "  OK: Split LED and BUZZER: LED in ui_led.c, BUZZER in ui_buzzer.c (single buzzer service)"
   else
-    echo "  FAIL: Buzzer code not at end (buzzer before LED)"
-    FAIL=1
+    echo "  WARN: Could not find buzzer/LED lines in split files"
   fi
 else
-  # Check split: LED in ui_led.c, BUZZER in ui_buzzer.c
-  if [ -f "$ROOT/Firmware/Modules/Ui/ui_led.c" ] && [ -f "$ROOT/Firmware/Modules/Ui/ui_buzzer.c" ]; then
-    if grep -q "func__Ui_ScenarioInputOk" "$ROOT/Firmware/Modules/Ui/ui_led.c" && grep -q "func__buzzer" "$ROOT/Firmware/Modules/Ui/ui_buzzer.c"; then
-      echo "  OK: Split LED and BUZZER: LED in ui_led.c, BUZZER in ui_buzzer.c (buzzer at end of its own file, LED first)"
-    else
-      echo "  WARN: Could not find buzzer/LED lines in split files"
-    fi
-  else
-    echo "  WARN: Could not find buzzer/LED lines"
-  fi
+  echo "  WARN: Could not find buzzer/LED split files"
 fi
 
 # Check markers in other files + UI split files have markers above each function
@@ -371,19 +358,19 @@ else
   FAIL=1
 fi
 
-if grep -q "جداسازی توابع با علامت مشخص" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "جداسازی بازر از LED" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has separation rules"
+if grep -q "جداسازی توابع با علامت مشخص" "$ROOT/AI_AGENT_RULES.md" && grep -q "جداسازی بازر از LED" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has separation rules"
 else
-  echo "  FAIL: AI_CONTEXT missing separation rules"
+  echo "  FAIL: AI_AGENT_RULES missing separation rules"
   FAIL=1
 fi
 
 echo ""
 echo "[17] Formulas not linear (broken into steps, readable)"
-if grep -q "فرمول‌ها خطی نباشد" "$ROOT/Firmware/AI_CONTEXT.md" || grep -q "فرمول‌ها را خطی ننویس" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has non-linear formula rule"
+if grep -q "فرمول‌ها خطی نباشد" "$ROOT/AI_AGENT_RULES.md" || grep -q "فرمول‌ها را خطی ننویس" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has non-linear formula rule"
 else
-  echo "  FAIL: AI_CONTEXT missing non-linear formula rule"
+  echo "  FAIL: AI_AGENT_RULES missing non-linear formula rule"
   FAIL=1
 fi
 

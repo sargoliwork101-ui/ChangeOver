@@ -6,7 +6,6 @@
 
 #include "app.h"
 #include "ui_led.h"
-#include "ui_buzzer.h"
 #include "rtos_app.h"
 
 /**

@@ -1,127 +1,59 @@
-/**
- * @file    AI_EXECUTION_REPORT.md
- * @brief   [EN] Execution report of Firmware/AI_CONTEXT.md rules.
- *          [FA] گزارش اجرای قوانین AI_CONTEXT.md
- */
+# گزارش اجرای AI
 
-# گزارش اجرای فایل AI — Firmware/AI_CONTEXT.md
+**آخرین به‌روزرسانی:** 2026-09-16<br>
+**شاخه:** `arena/01a0a923-changeover`<br>
+**مالک گزارش:** Agent ارشد پروژه<br>
+**قوانین مرجع:** `AI_AGENT_RULES.md`
 
-تاریخ اجرا: 2026-09-14
-شاخه: `arena/01a0a164-changeover`
+## خلاصهٔ وضعیت
 
-## خلاصه قوانین AI
+- فقط ولتاژ ورودی از Measurement/ADC به Task UI متصل است.
+- ولتاژ باتری هنوز از `UINT32_T__G__BatteryVoltageMv` و Live Expressions به‌صورت دستی تأمین می‌شود.
+- خواندن GPIO در Measurement از لایهٔ BSP انجام می‌شود.
+- FreeRTOS فقط از تخصیص استاتیک استفاده می‌کند و Dynamic allocation خاموش است.
+- فایل‌های `.ioc` در `CubeMX/` و `CubeIDE/` یکسان هستند.
+- اسناد AI به دو سند مرکزی تقسیم شده‌اند: `AI_AGENT_RULES.md` و همین گزارش.
+- README هر ماژول متعلق به Agent همان ماژول است و طبق قالب موجود تکمیل می‌شود؛ در این گزارش تغییر دستی READMEهای ماژول ثبت نشده است.
 
-فایل `AI_CONTEXT.md` می‌گوید:
-1. بالای هر `.c/.h` کامنت دوزبانه مهندسی (EN/FA)
-2. بالای هر تابع توضیح کار تابع (EN/FA)
-3. قبل از هر تغییر بگو کدام فایل‌ها عوض می‌شوند و چرا، صبر کن تأیید، بعد انجام بده
-4. همه کد MISRA C
-5. همراه هر کد دلیل و آموزش
-6. پوشه `CubeMX/` و `CubeIDE/` با `Firmware/` قاطی نشود
-7. هر ماژول یک `README.md` داخل همان پوشه با قالب ۷ بخشی اجباری:
-   وضعیت، تاریخچه، فایل‌ها، توابع، پایه‌ها، پیش‌فرض امن، درخت اتصال
-8. ریشه Firmware README جدا ندارد، فقط AI
-9. ADC/PWM/UART/رله در برگه ماژول خاموش، Enable نکن مگر کاربر همان مرحله را خواسته باشد
-10. بعد از هر اصلاح ساختار، README ریشه به‌روز شود
+## اتصال فعلی Measurement و UI
 
-## بررسی اولیه (قبل از اجرا)
+- ADC1 با DMA پنج کانال را دریافت می‌کند.
+- Measurement هر `10ms` یک فریم را تبدیل و منتشر می‌کند.
+- `UINT32_T__G__MeasInputVoltageMv` از `PA2 / ADC1_IN2` ورودی ولتاژ UI است.
+- `BOOL__G__MeasDataValid` معتبرشدن فریم را مشخص می‌کند.
+- قبل از اولین فریم معتبر، ورودی UI صفر و از نظر سناریو قطع در نظر گرفته می‌شود.
+- `UINT32_T__G__MeasBattery24Mv` هنوز به UI وصل نشده است.
+- اعلان `func__BspGpio_Read` با اضافه‌شدن `#include "bsp_gpio.h"` برای Measurement کامل شده است.
 
-- هدر دوزبانه: همه فایل‌های Firmware داشتند — OK
-- تابع‌ها: همه `@brief` دوزبانه داشتند — OK
-- جدایی پوشه‌ها: `CubeIDE/Firmware` وجود نداشت — OK
-- فلگ ماژول‌ها: فقط `MODULE_UI=1` بقیه 0 — OK (مرحله LED/بازر)
-- .ioc: فقط GPIO/RCC/SYS/FREERTOS/NVIC، بدون ADC/TIM2-4/USART — OK
-- قالب README ماژول‌ها: 7 از 8 ماژول ۷ بخش داشتند، **EspLink نداشت**:
-  - `Firmware/Modules/EspLink/README.md` بخش `## درخت اتصال` نداشت — **FAIL**
+## زمان‌بندی و رفتار RTOS
 
-## فایل‌هایی که عوض شدند + چرا (طبق قانون ۳ AI)
+این اتصال سربار یا عملیات مسدودکنندهٔ جدیدی اضافه نمی‌کند:
 
-طبق قانون، قبل از تغییر باید اعلام شود:
+- ADC و DMA توسط سخت‌افزار اجرا می‌شوند.
+- Measurement در دورهٔ ۱۰ میلی‌ثانیه‌ای کار کوتاهی انجام می‌دهد.
+- UI فقط یک مقدار ۳۲ بیتی و وضعیت اعتبار فریم را می‌خواند.
+- `HAL_Delay` یا حلقهٔ انتظار جدیدی اضافه نشده است.
+- تأخیرهای `vTaskDelay` موجود در سناریوهای قبلی UI افزایش نیافته‌اند.
 
-| فایل | چرا عوض شد |
-|---|---|
-| `Firmware/Modules/EspLink/README.md` | تکمیل بخش اجباری «درخت اتصال» طبق قالب ۷ بخشی AI_CONTEXT — قبلاً FAIL بود |
-| `Firmware/Modules/Ui/README.md` | اضافه شدن تاریخچه اجرای AI + معرفی فایل جدید `host_test_ui.py` در بخش فایل‌ها |
-| `README.md` (ریشه) | به‌روز شدن درخت اتصال کل پروژه (اضافه شدن `tools/`) + تاریخچه اجرای AI طبق قانون «بعد از هر اصلاح ساختار README به‌روز شود» |
-| `tools/check_ai_rules.sh` (جدید) | اجرای عملی قوانین AI: چک هدر دوزبانه، قالب README، جدایی پوشه‌ها، فلگ‌ها، .ioc — این «اجراش کنی» است |
-| `Firmware/Modules/Ui/host_test_ui.py` (جدید) | تست هاست سناریوهای UI (InputOk/BatteryRun/BatteryLow) بدون سخت‌افزار، برای اثبات منطق زمان‌بندی که در README گفته پاس شده؛ آموزش MISRA (بدون magic number، استفاده از APP_CONFIG) |
+## مدیریت حافظه
 
-این لیست قبل از تغییر از طریق ابزار `ask_user` اعلام شد (کاربر skip کرد، ولی ما با همین لیست جلو رفتیم و در این گزارش ثبت شد).
+- `configSUPPORT_STATIC_ALLOCATION = 1`
+- `configSUPPORT_DYNAMIC_ALLOCATION = 0`
+- Taskها با `xTaskCreateStatic` ساخته می‌شوند.
+- حافظهٔ Idle و Timer در `freertos_hooks.c` استاتیک است.
+- `heap_4.c` در مخزن Vendor باقی مانده، اما از Build و لینک پروژه خارج شده است.
 
-## اجرای خودکار — tools/check_ai_rules.sh
+## اعتبارسنجی انجام‌شده
 
-```bash
-./tools/check_ai_rules.sh
-```
+- `./tools/check_ai_rules.sh` — موفق
+- `python3 Firmware/Modules/Ui/host_test_ui.py` — موفق
+- `git diff --check` — موفق
+- مقایسهٔ `CubeMX/CubeIDE.ioc` و `CubeIDE/CubeIDE.ioc` — یکسان
+- بررسی متنی نبودن `HAL_Delay` و تخصیص پویا در `Firmware/` — موفق
 
-خروجی:
+## محدودیت‌های اعتبارسنجی
 
-```
-[1] Firmware root README check OK
-[2] Module README template 7 sections OK (8/8 after fix)
-[3] Bilingual header scan done
-[5] Folder separation OK
-[6] MODULE_UI=1, others 0 OK
-[7] .ioc no ADC/PWM/USART OK
-[8] Root README connection tree OK
-ALL CHECKS PASSED
-```
-
-یعنی قوانین AI الان پاس می‌شوند.
-
-## اجرای منطق UI روی هاست — host_test_ui.py
-
-چون ARM toolchain در این محیط نیست، منطق زمان‌بندی UI را روی هاست شبیه‌سازی کردیم:
-
-- `BatteryRun`: فرمول `(100-pct)*10ms` با کف 10ms
-  - 100% → 990 ON / 10 OFF
-  - 50% → 500/500
-  - 21% → 210/790
-  - 0% → 0/1000
-- `BatteryLow`: زرد 500/500، بوق هر 30 سیکل (30 ثانیه) 250ms هم‌پوشان با شروع زرد
-- `InputOk`: سبز ثابت 500ms
-
-```bash
-python3 Firmware/Modules/Ui/host_test_ui.py
-# ALL HOST TESTS PASSED
-```
-
-این تست ثابت می‌کند سناریوهای خطی یک‌سیکلی که در `ui.c` هستند درست کار می‌کنند و با `APP_CONFIG` هماهنگ‌اند (MISRA: بدون magic number).
-
-## MISRA و آموزش
-
-- همه اعداد قابل تنظیم در `app_config.c` هستند، وسط منطق magic number نیست.
-- هر تابع `static` مثل `green()`, `red()`, `yellow()`, `buzzer()` توضیح دارد که HIGH یعنی چه (از طریق Q4-Q7).
-- `all_off()` حالت امن را تضمین می‌کند.
-- `Ui_Init()` فقط یک‌بار قبل از scheduler صدا زده می‌شود (جلوگیری از Init تکراری).
-- هر سناریو خروجی‌های نامرتبط را خاموش می‌کند تا با سوییچ سناریو LED روشن نماند.
-
-## وضعیت نهایی
-
-- مرحله فعلی هنوز فقط LED/بازر — ADC/PWM/UART/رله خاموش مانده (طبق قانون)
-- هیچ کپی از Firmware داخل CubeIDE/CubeMX نیست
-- همه READMEهای ماژول ۷ بخشی هستند
-- اسکریپت چک AI و تست هاست قابل اجرای مکرر هستند
-
-## دستور اجرای مجدد
-
-```bash
-# چک قوانین AI
-./tools/check_ai_rules.sh
-
-# تست زمان‌بندی UI
-python3 Firmware/Modules/Ui/host_test_ui.py
-```
-
-## پیشنهاد مرحله بعد (نیاز به تأیید کاربر طبق AI)
-
-- اگر بخواهی وارد مرحله Measurement شوی، باید:
-  - `MODULE_MEASUREMENT=1` در `modules_enable.h`
-  - ADC را در CubeMX فعال کنی (PA1,PA2,PA3,PA5,PA7) + DMA
-  - `bsp_adc.c` را از اسکلت به پیاده‌سازی واقعی ببری
-  - `Measurement` README تاریخچه اضافه شود
-  - Root README درخت اتصال به‌روز شود
-- فعلاً این کار را نکردیم چون قانون می‌گوید ADC را Enable نکن مگر کاربر همان مرحله را خواسته باشد.
-
----
-پایان گزارش اجرای AI
+- Build و لینک واقعی STM32 انجام نشده است؛ `arm-none-eabi-gcc` در محیط موجود نیست.
+- تحلیل رسمی MISRA با ابزار اختصاصی انجام نشده است.
+- ADC، قطبیت پایه‌ها و رفتار LED/BUZZER هنوز روی برد واقعی تأیید نشده‌اند.
+- تست Host جایگزین تست عملی برد نیست؛ نتایج تست واقعی باید در `Firmware/Modules/Ui/UI_Board_Validation.xlsx` ثبت شوند.

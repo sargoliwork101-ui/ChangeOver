@@ -5,20 +5,21 @@
  *          RTOS simple readable, non-linear formulas, markers above each function and variable in h and c.
  *          [FA] سناریوهای LED ماژول UI - ثابت‌های LED در هدر خودش، هر تابع و متغیر با جدا کننده و کامنت.
  *
- * @note    [EN] LED constants in ui_led.h per user request. Naming __ after type, func__ prefix.
+ * @note    [EN] ui_led.h provides defaults; runtime-tunable values are read from const APP_CONFIG. Naming __ after type, func__ prefix.
  *          RTOS: vTaskDelay allowed, HAL_Delay forbidden. Formulas non-linear broken into steps.
- *          [FA] ثابت‌های LED در همین هدر. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
+ *          [FA] ui_led.h پیش‌فرض‌ها را می‌دهد؛ مقدارهای قابل تنظیم زمان اجرا از APP_CONFIG ثابت خوانده می‌شوند. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
  */
 
 #include "ui_led.h"
 #include "ui_buzzer.h"
+#include "app_config.h"
 #include "bsp_gpio.h"
 #include "board_pins.h"
 #include "FreeRTOS.h"
 #include "task.h"
 #include <stdbool.h>
 
-/* ==================== Battery Voltage To Percent ==================== */
+/* ==================== Battery Voltage To Percent / تبدیل ولتاژ باتری به درصد ==================== */
 
 /**
  * @brief  [EN] Battery voltage to percent 0..100. Non-linear formula broken into 4 steps: range, offset, scaled, percent.
@@ -33,23 +34,23 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
     uint32_t uint32_t__scaledOffset;
     uint8_t uint8_t__batteryPercent;
 
-    if (uint32_t__batteryMv <= UI_BAT_V_MIN_MV)
+    if (uint32_t__batteryMv <= APP_CONFIG.ui_bat_v_min_mv)
     {
         return 0u;
     }
 
-    if (uint32_t__batteryMv >= UI_BAT_V_MAX_MV)
+    if (uint32_t__batteryMv >= APP_CONFIG.ui_bat_v_max_mv)
     {
         return UI_PERCENT_FULL;
     }
 
     /* [EN] Step 1: range = Vmax - Vmin
        [FA] گام ۱: بازه ولتاژ */
-    uint32_t__voltageRangeMv = UI_BAT_V_MAX_MV - UI_BAT_V_MIN_MV;
+    uint32_t__voltageRangeMv = APP_CONFIG.ui_bat_v_max_mv - APP_CONFIG.ui_bat_v_min_mv;
 
     /* [EN] Step 2: offset = Vbat - Vmin
        [FA] گام ۲: فاصله از کف */
-    uint32_t__voltageOffsetMv = uint32_t__batteryMv - UI_BAT_V_MIN_MV;
+    uint32_t__voltageOffsetMv = uint32_t__batteryMv - APP_CONFIG.ui_bat_v_min_mv;
 
     if (uint32_t__voltageRangeMv == 0u)
     {
@@ -58,7 +59,7 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
 
     /* [EN] Step 3: scaled = offset * 100
        [FA] گام ۳: مقیاس به درصد */
-    uint32_t__scaledOffset = uint32_t__voltageOffsetMv * 100u;
+    uint32_t__scaledOffset = uint32_t__voltageOffsetMv * UI_PERCENT_SCALE;
 
     /* [EN] Step 4: percent = scaled / range
        [FA] گام ۴: تقسیم برای درصد */
@@ -72,7 +73,7 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
     return uint8_t__batteryPercent;
 }
 
-/* ==================== Green LED ==================== */
+/* ==================== Green LED / LED سبز ==================== */
 
 /**
  * @brief  [EN] Drive green LED on/off. Low-level wrapper around BSP GPIO.
@@ -84,7 +85,7 @@ static void func__green(bool bool__greenOn)
     func__BspGpio_Write(PIN_LED_G_PORT, PIN_LED_G_PIN, bool__greenOn);
 }
 
-/* ==================== Red LED ==================== */
+/* ==================== Red LED / LED قرمز ==================== */
 
 /**
  * @brief  [EN] Drive red LED on/off. Low-level.
@@ -96,7 +97,7 @@ static void func__red(bool bool__redOn)
     func__BspGpio_Write(PIN_LED_R_PORT, PIN_LED_R_PIN, bool__redOn);
 }
 
-/* ==================== Yellow LED ==================== */
+/* ==================== Yellow LED / LED زرد ==================== */
 
 /**
  * @brief  [EN] Drive yellow LED on/off. Low-level.
@@ -108,55 +109,288 @@ static void func__yellow(bool bool__yellowOn)
     func__BspGpio_Write(PIN_LED_Y_PORT, PIN_LED_Y_PIN, bool__yellowOn);
 }
 
-/* ==================== All Off Safe ==================== */
+/* ==================== All Off Safe / خاموشی امن همه خروجی‌ها ==================== */
 
 /**
- * @brief  [EN] Drive all LEDs and buzzer off - safe state after Init. The buzzer
- *         is stopped through the buzzer module API (AI rule: buzzer code stays
- *         in ui_buzzer.c, LED code must not drive the buzzer pin directly).
- *         [FA] همه ال‌ای‌دی‌ها و بازر خاموش - حالت امن. بازر از طریق تابع ماژول
- *         بازر خاموش می‌شود (قانون AI: کد بازر در ui_buzzer.c می‌ماند و کد LED
- *         مستقیم پایۀ بازر را نمی‌نویسد).
+ * @brief  [EN] Drive all LEDs off and request the buzzer service to enter its safe-off state.
+ *         [FA] همه ال‌ای‌دی‌ها را خاموش می‌کند و سرویس بوق را به حالت خاموش امن می‌برد.
  */
 static void func__all_off(void)
 {
     func__green(false);
     func__red(false);
     func__yellow(false);
-    func__Ui_BuzzerPattern_Stop();
+    (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 }
 
-/* ==================== BatteryRun Beep Cycle Count ==================== */
+/* ==================== Input connection state / وضعیت اتصال ورودی ==================== */
 
 /**
- * @brief  [EN] Cycle counter for smart beep in BatteryRun, counts 1s ticks, reset when beep.
- *         [FA] شمارنده سیکل برای بوق هوشمند در دشارژ، هر سیکل ۱ ثانیه.
+ * @brief  [EN] Stateful input-connected result used by the 20V/21V hysteresis.
+ *         It starts disconnected as the safe default.
+ *         [FA] نتیجه دارای وضعیت تشخیص اتصال ورودی با هیسترزیس ۲۰/۲۱ ولت.
+ *         مقدار اولیه برای حالت امن، قطع است.
  */
-static uint32_t UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+static bool BOOL__G__UiInputPresent = false;
 
-/* ==================== Scenario InputOk ==================== */
+/* ==================== Input overvoltage state / وضعیت اضافه‌ولتاژ ورودی ==================== */
 
 /**
- * @brief  [EN] InputOk scenario: green steady, red/yellow/buzzer off. RTOS simple with vTaskDelay 500ms, MCU not locked.
- *         [FA] سناریو ورودی وصل: سبز ثابت، بقیه خاموش، تاخیر RTOS ساده.
+ * @brief  [EN] Stateful input overvoltage error flag.
+ *         The flag remains active between 27V and 28V after an overvoltage event.
+ *         [FA] پرچم دارای وضعیت خطای اضافه‌ولتاژ ورودی.
+ *         بعد از رخداد خطا، بین ۲۷ و ۲۸ ولت فعال باقی می‌ماند.
+ */
+static bool BOOL__G__UiInputOverVoltage = false;
+
+/**
+ * @brief  [EN] FreeRTOS tick at which the current input overvoltage display started.
+ *         [FA] تیک RTOS در زمان شروع نمایش خطای اضافه‌ولتاژ ورودی.
+ */
+static TickType_t TICKTYPE_T__G__UiInputOverVoltageStartTick = 0;
+
+/* ==================== BatteryRun critical beep state / وضعیت بوق بحرانی BatteryRun ==================== */
+
+/**
+ * @brief  [EN] TRUE while the one-time critical BatteryRun beep is active.
+ *         [FA] هنگام فعال‌بودن بوق بحرانی تک‌باره BatteryRun مقدار TRUE دارد.
+ */
+static bool BOOL__G__UiBatteryCriticalBeepActive = false;
+
+/**
+ * @brief  [EN] TRUE after the one-time critical BatteryRun beep has completed.
+ *         [FA] بعد از پایان بوق بحرانی تک‌باره BatteryRun مقدار TRUE دارد.
+ */
+static bool BOOL__G__UiBatteryCriticalBeepCompleted = false;
+
+/**
+ * @brief  [EN] RTOS tick at which the critical BatteryRun beep started.
+ *         [FA] تیک RTOS در زمان شروع بوق بحرانی BatteryRun.
+ */
+static TickType_t TICKTYPE_T__G__UiBatteryCriticalBeepStartTick = 0;
+
+/* ==================== BatteryRun green blink state / وضعیت چشمک سبز BatteryRun ==================== */
+
+/**
+ * @brief  [EN] Current green LED phase in the non-blocking BatteryRun blink.
+ *         [FA] فاز فعلی LED سبز در چشمک غیرمسدودکننده BatteryRun.
+ */
+static bool BOOL__G__UiBatteryGreenOn = false;
+
+/**
+ * @brief  [EN] TRUE after the BatteryRun green blink phase has been initialized.
+ *         [FA] بعد از مقداردهی فاز چشمک سبز BatteryRun مقدار TRUE دارد.
+ */
+static bool BOOL__G__UiBatteryGreenBlinkInitialized = false;
+
+/**
+ * @brief  [EN] RTOS tick at which the current BatteryRun green phase started.
+ *         [FA] تیک RTOS در زمان شروع فاز فعلی LED سبز BatteryRun.
+ */
+static TickType_t TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = 0;
+
+/**
+ * @brief  [EN] Stored BatteryRun green ON duration used to restart phase timing when percentage changes.
+ *         [FA] مدت ذخیره‌شده روشن‌بودن سبز BatteryRun برای شروع مجدد فاز هنگام تغییر درصد.
+ */
+static uint32_t UINT32_T__G__UiBatteryGreenOnMs = 0u;
+
+/**
+ * @brief  [EN] Stored BatteryRun green OFF duration used to restart phase timing when percentage changes.
+ *         [FA] مدت ذخیره‌شده خاموش‌بودن سبز BatteryRun برای شروع مجدد فاز هنگام تغییر درصد.
+ */
+static uint32_t UINT32_T__G__UiBatteryGreenOffMs = 0u;
+
+/* ==================== BatteryRun critical beep reset / بازنشانی بوق بحرانی BatteryRun ==================== */
+
+/**
+ * @brief  [EN] Reset the one-time critical BatteryRun beep state.
+ *         [FA] وضعیت بوق بحرانی تک‌باره BatteryRun را بازنشانی می‌کند.
+ */
+static void func__Ui_ResetBatteryCriticalBeep(void)
+{
+    BOOL__G__UiBatteryCriticalBeepActive = false;
+    BOOL__G__UiBatteryCriticalBeepCompleted = false;
+    TICKTYPE_T__G__UiBatteryCriticalBeepStartTick = 0;
+}
+
+/* ==================== BatteryRun green blink reset / بازنشانی چشمک سبز BatteryRun ==================== */
+
+/**
+ * @brief  [EN] Reset non-blocking BatteryRun green blink timing.
+ *         [FA] زمان‌بندی چشمک غیرمسدودکننده سبز BatteryRun را بازنشانی می‌کند.
+ */
+static void func__Ui_ResetBatteryRunGreenBlink(void)
+{
+    BOOL__G__UiBatteryGreenOn = false;
+    BOOL__G__UiBatteryGreenBlinkInitialized = false;
+    TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = 0;
+    UINT32_T__G__UiBatteryGreenOnMs = 0u;
+    UINT32_T__G__UiBatteryGreenOffMs = 0u;
+}
+
+/* ==================== BatteryRun green blink update / به‌روزرسانی چشمک سبز BatteryRun ==================== */
+
+/**
+ * @brief  [EN] Update the non-blocking BatteryRun green blink and service its phase timing.
+ *         [FA] چشمک غیرمسدودکننده سبز BatteryRun و زمان‌بندی فاز آن را به‌روز می‌کند.
+ * @param  uint32_t__greenOnMs [EN] Green ON duration / مدت روشن‌بودن سبز
+ * @param  uint32_t__greenOffMs [EN] Green OFF duration / مدت خاموش‌بودن سبز
+ */
+static void func__Ui_UpdateBatteryRunGreenBlink(uint32_t uint32_t__greenOnMs, uint32_t uint32_t__greenOffMs)
+{
+    TickType_t ticktype__nowTick;
+    uint32_t uint32_t__currentPhaseMs;
+
+    ticktype__nowTick = xTaskGetTickCount();
+
+    if ((BOOL__G__UiBatteryGreenBlinkInitialized == false) ||
+        (UINT32_T__G__UiBatteryGreenOnMs != uint32_t__greenOnMs) ||
+        (UINT32_T__G__UiBatteryGreenOffMs != uint32_t__greenOffMs))
+    {
+        BOOL__G__UiBatteryGreenBlinkInitialized = true;
+        BOOL__G__UiBatteryGreenOn = true;
+        TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = ticktype__nowTick;
+        UINT32_T__G__UiBatteryGreenOnMs = uint32_t__greenOnMs;
+        UINT32_T__G__UiBatteryGreenOffMs = uint32_t__greenOffMs;
+    }
+    else
+    {
+        uint32_t__currentPhaseMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__UiBatteryGreenPhaseStartTick) * portTICK_PERIOD_MS);
+
+        if ((BOOL__G__UiBatteryGreenOn == true) &&
+            (uint32_t__currentPhaseMs >= uint32_t__greenOnMs))
+        {
+            BOOL__G__UiBatteryGreenOn = false;
+            TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = ticktype__nowTick;
+        }
+        else if ((BOOL__G__UiBatteryGreenOn == false) &&
+                 (uint32_t__currentPhaseMs >= uint32_t__greenOffMs))
+        {
+            BOOL__G__UiBatteryGreenOn = true;
+            TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = ticktype__nowTick;
+        }
+        else
+        {
+            /* [EN] Keep the current LED phase until its configured duration expires.
+               [FA] فاز فعلی LED را تا پایان مدت تنظیم‌شده حفظ کن. */
+        }
+    }
+
+    func__green(BOOL__G__UiBatteryGreenOn);
+}
+
+/* ==================== Input state update / به‌روزرسانی وضعیت ورودی ==================== */
+
+/**
+ * @brief  [EN] Update input presence and input overvoltage state with hysteresis.
+ *         Connected: input >= 21V. Disconnected: input <= 20V.
+ *         Overvoltage enters above 28V and clears at or below 27V.
+ *         [FA] وضعیت اتصال و خطای اضافه‌ولتاژ ورودی را با هیسترزیس به‌روز می‌کند.
+ *         وصل: ورودی حداقل ۲۱ ولت. قطع: ورودی حداکثر ۲۰ ولت.
+ *         خطا: بالاتر از ۲۸ ولت فعال و در ۲۷ ولت یا پایین‌تر پاک می‌شود.
+ * @param  uint32_t__inputVoltageMv [EN] Input voltage in mV / ولتاژ ورودی بر حسب میلی‌ولت
+ */
+static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
+{
+    if (BOOL__G__UiInputOverVoltage == false)
+    {
+        if (uint32_t__inputVoltageMv > UI_INPUT_OVERVOLTAGE_THRESHOLD_MV)
+        {
+            BOOL__G__UiInputOverVoltage = true;
+            TICKTYPE_T__G__UiInputOverVoltageStartTick = xTaskGetTickCount();
+        }
+    }
+    else if (uint32_t__inputVoltageMv <= UI_INPUT_OVERVOLTAGE_CLEAR_THRESHOLD_MV)
+    {
+        BOOL__G__UiInputOverVoltage = false;
+        (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+    }
+    else
+    {
+        /* [EN] Keep the overvoltage error in the 27V..28V hysteresis band.
+           [FA] خطای اضافه‌ولتاژ را در بازه هیسترزیس ۲۷ تا ۲۸ ولت حفظ کن. */
+    }
+
+    if (BOOL__G__UiInputPresent == false)
+    {
+        if (uint32_t__inputVoltageMv >= UI_INPUT_CONNECTED_THRESHOLD_MV)
+        {
+            BOOL__G__UiInputPresent = true;
+        }
+    }
+    else if (uint32_t__inputVoltageMv <= UI_INPUT_DISCONNECTED_THRESHOLD_MV)
+    {
+        BOOL__G__UiInputPresent = false;
+    }
+    else
+    {
+        /* [EN] Keep the previous connected state in the 20V..21V band.
+           [FA] وضعیت قبلی اتصال را در بازه ۲۰ تا ۲۱ ولت حفظ کن. */
+    }
+}
+
+/* ==================== Scenario Input Overvoltage / سناریوی اضافه‌ولتاژ ورودی ==================== */
+
+/**
+ * @brief  [EN] Display input overvoltage: green steady, yellow off, red at 50% duty,
+ *         and one 1-second buzzer pulse every 10 seconds. This tick is non-blocking.
+ *         [FA] نمایش اضافه‌ولتاژ ورودی: سبز ثابت، زرد خاموش، قرمز با دیوتی ۵۰ درصد،
+ *         و یک بوق یک‌ثانیه‌ای هر ۱۰ ثانیه. این تیک غیرمسدودکننده است.
+ */
+static void func__Ui_ScenarioInputOverVoltage_Tick(void)
+{
+    TickType_t ticktype__nowTick;
+    uint32_t uint32_t__elapsedMs;
+    uint32_t uint32_t__phaseMs;
+    uint32_t uint32_t__redOnMs;
+    uint64_t uint64_t__redDutyProduct;
+    bool bool__redOn;
+
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
+
+    ticktype__nowTick = xTaskGetTickCount();
+    uint32_t__elapsedMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__UiInputOverVoltageStartTick) * portTICK_PERIOD_MS);
+    uint32_t__phaseMs = uint32_t__elapsedMs % UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS;
+
+    uint64_t__redDutyProduct = (uint64_t)UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS * UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT;
+    uint32_t__redOnMs = (uint32_t)(uint64_t__redDutyProduct / UI_PERCENT_SCALE);
+    bool__redOn = (uint32_t__phaseMs < uint32_t__redOnMs);
+
+    func__green(true);
+    func__yellow(false);
+    func__red(bool__redOn);
+
+    (void)func__Ui_Buzzer_Tick(
+        UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS,
+        (uint8_t)UI_INPUT_OVERVOLTAGE_BEEP_DUTY_PERCENT,
+        (uint8_t)UI_INPUT_OVERVOLTAGE_BEEP_COUNT,
+        UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS);
+}
+
+/* ==================== Scenario InputOk / سناریوی ورودی عادی ==================== */
+
+/**
+ * @brief  [EN] InputOk scenario: green steady, red/yellow off, and buzzer off.
+ *         [FA] سناریو ورودی وصل: سبز ثابت، قرمز و زرد خاموش و بوق خاموش.
  */
 void func__Ui_ScenarioInputOk(void)
 {
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
+
     func__green(true);
     func__red(false);
     func__yellow(false);
-    /* [EN] Buzzer off via buzzer module API - LED code does not touch the
-       buzzer pin (AI rule: buzzer/LED separation).
-       [FA] بازر خاموش از طریق تابع ماژول بازر — کد LED پایۀ بازر را
-       دست نمی‌زند (قانون AI: جداسازی بازر/LED). */
-    func__Ui_BuzzerPattern_Stop();
+    (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 
     /* [EN] RTOS delay in task, not HAL_Delay - other tasks still run, MCU not locked, simple & readable
        [FA] تاخیر RTOS در تسک - میکرو قفل نمی‌شود، ساده و خوانا */
-    vTaskDelay(pdMS_TO_TICKS(UI_INPUT_OK_POLL_MS));
+    vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_input_ok_poll_ms));
 }
 
-/* ==================== Scenario Charging Tick ==================== */
+/* ==================== Scenario Charging Tick / تیک سناریوی شارژ ==================== */
 
 /**
  * @brief  [EN] Charging scenario tick: green steady, yellow shows remaining to full non-linear.
@@ -172,11 +406,9 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
     uint32_t uint32_t__yellowOnMs;
     uint32_t uint32_t__yellowOffMs;
 
-    /* [EN] Safe default: every scenario switches off unrelated outputs
-       (module sheet). The buzzer must be off in Charging.
-       [FA] پیش‌فرض امن: هر سناریو خروجی‌های نامرتبط را خاموش می‌کند
-       (برگهٔ ماژول). در شارژ، بازر باید خاموش باشد. */
-    func__Ui_BuzzerPattern_Stop();
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
+    (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 
     uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
 
@@ -185,7 +417,7 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
         func__yellow(false);
         func__green(true);
         func__red(false);
-        vTaskDelay(pdMS_TO_TICKS(UI_CHARGING_BLINK_PERIOD_MS));
+        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_charging_blink_period_ms));
         return;
     }
 
@@ -194,26 +426,26 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
         func__yellow(true);
         func__green(true);
         func__red(false);
-        vTaskDelay(pdMS_TO_TICKS(UI_CHARGING_BLINK_PERIOD_MS));
+        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_charging_blink_period_ms));
         return;
     }
 
     /* [EN] Non-linear formula: break into steps for readability
        [FA] فرمول غیرخطی: گام به گام برای خوانایی */
     uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__batteryPercent;
-    uint32_t__periodPerPercent = UI_CHARGING_BLINK_PERIOD_MS / 100u;
+    uint32_t__periodPerPercent = APP_CONFIG.ui_charging_blink_period_ms / UI_PERCENT_SCALE;
     uint32_t__yellowOnMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
 
-    if (uint32_t__yellowOnMs < UI_CHARGING_YELLOW_MIN_OFF_MS)
+    if (uint32_t__yellowOnMs < APP_CONFIG.ui_charging_yellow_min_off_ms)
     {
-        uint32_t__yellowOnMs = UI_CHARGING_YELLOW_MIN_OFF_MS;
+        uint32_t__yellowOnMs = APP_CONFIG.ui_charging_yellow_min_off_ms;
     }
-    if (uint32_t__yellowOnMs > UI_CHARGING_BLINK_PERIOD_MS)
+    if (uint32_t__yellowOnMs > APP_CONFIG.ui_charging_blink_period_ms)
     {
-        uint32_t__yellowOnMs = UI_CHARGING_BLINK_PERIOD_MS;
+        uint32_t__yellowOnMs = APP_CONFIG.ui_charging_blink_period_ms;
     }
 
-    uint32_t__yellowOffMs = UI_CHARGING_BLINK_PERIOD_MS - uint32_t__yellowOnMs;
+    uint32_t__yellowOffMs = APP_CONFIG.ui_charging_blink_period_ms - uint32_t__yellowOnMs;
 
     func__green(true);
     func__red(false);
@@ -224,12 +456,15 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
     vTaskDelay(pdMS_TO_TICKS(uint32_t__yellowOffMs));
 }
 
-/* ==================== Scenario BatteryRun Tick ==================== */
+/* ==================== Scenario BatteryRun Tick / تیک سناریوی دشارژ ==================== */
 
 /**
- * @brief  [EN] BatteryRun scenario tick: green blink non-linear (remainingPercent, periodPerPercent, greenOnMs/offMs), yellow OFF, smart beep.
- *         Beep every pct seconds, duration x2 if pct<20. RTOS simple with vTaskDelay.
- *         [FA] سناریو دشارژ: سبز چشمک غیرخطی، زرد خاموش، بوق هوشمند، ساده RTOS.
+ * @brief  [EN] BatteryRun scenario: green blink follows the linear 21V..28V battery percentage;
+ *         buzzer warnings use the four requested percentage bands.
+ *         Below 1%, all LEDs turn off and one ten-second buzzer is latched until the battery recovers.
+ *         [FA] سناریو دشارژ: سبز بر اساس درصد خطی ۲۱ تا ۲۸ ولت چشمک می‌زند؛
+ *         بوق بر اساس چهار بازه درصدی درخواستی اجرا می‌شود.
+ *         زیر ۱٪ همه LEDها خاموش و یک بوق ده‌ثانیه‌ای تا برگشت باتری فقط یک‌بار اجرا می‌شود.
  * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 28000=100% / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
@@ -239,77 +474,99 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     uint32_t uint32_t__periodPerPercent;
     uint32_t uint32_t__greenOffMs;
     uint32_t uint32_t__greenOnMs;
-    uint32_t uint32_t__beepIntervalCycles;
-    uint32_t uint32_t__beepDurationMs;
-    bool bool__shouldBeepNow;
+    TickType_t ticktype__nowTick;
+    uint32_t uint32_t__criticalElapsedMs;
 
     uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
 
-    /* [EN] Non-linear: green blink OFF = remaining * period/100, with min
-       [FA] فرمول غیرخطی سبز چشمک */
-    uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__batteryPercent;
-    uint32_t__periodPerPercent = UI_BLINK_PERIOD_MS / 100u;
-    uint32_t__greenOffMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
-
-    if (uint32_t__greenOffMs < UI_GREEN_MIN_OFF_MS)
+    if (uint8_t__batteryPercent < UI_BATTERY_RUN_BEEP_CRITICAL_PERCENT)
     {
-        uint32_t__greenOffMs = UI_GREEN_MIN_OFF_MS;
-    }
+        func__Ui_ResetBatteryRunGreenBlink();
+        func__green(false);
+        func__red(false);
+        func__yellow(false);
 
-    uint32_t__greenOnMs = UI_BLINK_PERIOD_MS - uint32_t__greenOffMs;
+        if (BOOL__G__UiBatteryCriticalBeepCompleted == true)
+        {
+            (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+            return;
+        }
 
-    func__red(false);
-    func__yellow(false);
+        if (BOOL__G__UiBatteryCriticalBeepActive == false)
+        {
+            BOOL__G__UiBatteryCriticalBeepActive = true;
+            TICKTYPE_T__G__UiBatteryCriticalBeepStartTick = xTaskGetTickCount();
+        }
 
-    func__green(true);
-    vTaskDelay(pdMS_TO_TICKS(uint32_t__greenOnMs));
-    func__green(false);
-    vTaskDelay(pdMS_TO_TICKS(uint32_t__greenOffMs));
+        ticktype__nowTick = xTaskGetTickCount();
+        uint32_t__criticalElapsedMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__UiBatteryCriticalBeepStartTick) * portTICK_PERIOD_MS);
 
-    if (uint8_t__batteryPercent >= UI_BEEP_START_PCT)
-    {
-        UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+        if (uint32_t__criticalElapsedMs >= UI_BATTERY_RUN_BEEP_CRITICAL_DURATION_MS)
+        {
+            (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+            BOOL__G__UiBatteryCriticalBeepActive = false;
+            BOOL__G__UiBatteryCriticalBeepCompleted = true;
+            return;
+        }
+
+        (void)func__Ui_Buzzer_Tick(
+            UI_BATTERY_RUN_BEEP_CRITICAL_PERIOD_MS,
+            (uint8_t)UI_BATTERY_RUN_BEEP_CRITICAL_DUTY_PERCENT,
+            (uint8_t)UI_BATTERY_RUN_BEEP_CRITICAL_COUNT,
+            UI_BATTERY_RUN_BEEP_GAP_MS);
         return;
     }
 
-    uint32_t__beepIntervalCycles = (uint32_t)uint8_t__batteryPercent;
-    if (uint32_t__beepIntervalCycles == 0u)
+    func__Ui_ResetBatteryCriticalBeep();
+
+    /* [EN] Non-linear: green blink OFF = remaining * period/100, with min.
+       [FA] فرمول غیرخطی سبز چشمک: خاموشی برابر مانده درصد ضربدر دوره است. */
+    uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__batteryPercent;
+    uint32_t__periodPerPercent = APP_CONFIG.ui_blink_period_ms / UI_PERCENT_SCALE;
+    uint32_t__greenOffMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
+
+    if (uint32_t__greenOffMs < APP_CONFIG.ui_green_min_off_ms)
     {
-        uint32_t__beepIntervalCycles = 1u;
+        uint32_t__greenOffMs = APP_CONFIG.ui_green_min_off_ms;
     }
 
-    bool__shouldBeepNow = false;
-    if (UINT32_T__G__UiBatteryRunBeepCycleCnt >= uint32_t__beepIntervalCycles)
+    uint32_t__greenOnMs = APP_CONFIG.ui_blink_period_ms - uint32_t__greenOffMs;
+
+    if (uint8_t__batteryPercent >= UI_BATTERY_RUN_BEEP_START_PERCENT)
     {
-        bool__shouldBeepNow = true;
-        UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+        (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+    }
+    else if (uint8_t__batteryPercent >= UI_BATTERY_RUN_BEEP_DOUBLE_PERCENT)
+    {
+        (void)func__Ui_Buzzer_Tick(
+            UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS,
+            (uint8_t)UI_BATTERY_RUN_BEEP_STANDARD_DUTY_PERCENT,
+            (uint8_t)UI_BATTERY_RUN_BEEP_STANDARD_COUNT,
+            UI_BATTERY_RUN_BEEP_GAP_MS);
+    }
+    else if (uint8_t__batteryPercent >= UI_BATTERY_RUN_BEEP_TRIPLE_PERCENT)
+    {
+        (void)func__Ui_Buzzer_Tick(
+            UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS,
+            (uint8_t)UI_BATTERY_RUN_BEEP_DOUBLE_DUTY_PERCENT,
+            (uint8_t)UI_BATTERY_RUN_BEEP_DOUBLE_COUNT,
+            UI_BATTERY_RUN_BEEP_GAP_MS);
     }
     else
     {
-        UINT32_T__G__UiBatteryRunBeepCycleCnt++;
+        (void)func__Ui_Buzzer_Tick(
+            UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS,
+            (uint8_t)UI_BATTERY_RUN_BEEP_TRIPLE_DUTY_PERCENT,
+            (uint8_t)UI_BATTERY_RUN_BEEP_TRIPLE_COUNT,
+            UI_BATTERY_RUN_BEEP_GAP_MS);
     }
 
-    if (bool__shouldBeepNow == false)
-    {
-        return;
-    }
-
-    uint32_t__beepDurationMs = UI_BEEP_BASE_MS;
-    if (uint8_t__batteryPercent < UI_BEEP_DOUBLE_THRESH_PCT)
-    {
-        uint32_t__beepDurationMs = uint32_t__beepDurationMs * 2u;
-    }
-
-    /* [EN] Use buzzer pattern from buzzer module - simple RTOS delay, MCU not locked
-       [FA] استفاده از تابع بازر جدا - ساده RTOS */
-    func__Ui_BuzzerPatternMs_Start(0u, uint32_t__beepDurationMs, 1u, 0u);
-    while (func__Ui_BuzzerPatternMs_Tick() == true)
-    {
-        vTaskDelay(pdMS_TO_TICKS(UI_TICK_MS));
-    }
+    func__red(false);
+    func__yellow(false);
+    func__Ui_UpdateBatteryRunGreenBlink(uint32_t__greenOnMs, uint32_t__greenOffMs);
 }
 
-/* ==================== Ui Tick ==================== */
+/* ==================== Ui Tick / تیک اصلی UI ==================== */
 
 /**
  * @brief  [EN] Ui main tick - decides which scenario based on input and battery, RTOS simple readable.
@@ -322,18 +579,24 @@ void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__battery
 {
     uint32_t uint32_t__batteryClampedMv;
     uint8_t uint8_t__batteryPercent;
-    bool bool__inputPresent;
+
+    func__Ui_UpdateInputState(uint32_t__inputVoltageMv);
+
+    if (BOOL__G__UiInputOverVoltage == true)
+    {
+        func__Ui_ScenarioInputOverVoltage_Tick();
+        return;
+    }
 
     uint32_t__batteryClampedMv = uint32_t__batteryVoltageMv;
-    if (uint32_t__batteryClampedMv > UI_BAT_V_MAX_MV)
+    if (uint32_t__batteryClampedMv > APP_CONFIG.ui_bat_v_max_mv)
     {
-        uint32_t__batteryClampedMv = UI_BAT_V_MAX_MV;
+        uint32_t__batteryClampedMv = APP_CONFIG.ui_bat_v_max_mv;
     }
 
     uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryClampedMv);
-    bool__inputPresent = (uint32_t__inputVoltageMv >= UI_INPUT_THRESHOLD_MV);
 
-    if (bool__inputPresent == true)
+    if (BOOL__G__UiInputPresent == true)
     {
         if (uint8_t__batteryPercent < UI_PERCENT_FULL)
         {
@@ -350,57 +613,89 @@ void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__battery
     }
 }
 
-/* ==================== Ui Init ==================== */
+/* ==================== Ui Init / مقداردهی اولیه UI ==================== */
 
 /**
- * @brief  [EN] Drive all UI outputs low (safe state) and reset beep counter.
- *         [FA] همه خروجی‌های UI خاموش و ریست شمارنده بوق.
+ * @brief  [EN] Drive all UI outputs low (safe state).
+ *         [FA] همه خروجی‌های UI خاموش (حالت امن).
  */
 void func__Ui_Init(void)
 {
     func__all_off();
-    UINT32_T__G__UiBatteryRunBeepCycleCnt = 0u;
+    BOOL__G__UiInputPresent = false;
+    BOOL__G__UiInputOverVoltage = false;
+    TICKTYPE_T__G__UiInputOverVoltageStartTick = 0;
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
 }
 
-/* ==================== Board Test Start ==================== */
+/* ==================== Board Test Start / شروع تست برد ==================== */
 
 /**
- * @brief  [EN] One-shot wiring check: red, yellow, green each 500ms, short beep 150ms, RTOS simple with vTaskDelay.
- *         [FA] تست یک‌باره سیم‌کشی: قرمز، زرد، سبز هر کدام ۵۰۰ms، بوق ۱۵۰ms، ساده RTOS.
+ * @brief  [EN] One-shot wiring check: red, yellow, green and the previous 150ms-style buzzer check.
+ *         The buzzer uses the new periodic API with a safe period and then is explicitly turned off.
+ *         [FA] تست یک‌باره سیم‌کشی: قرمز، زرد، سبز و بوق کوتاه قبلی.
+ *         بوق با API دوره‌ای جدید و دوره امن اجرا و سپس صریحاً خاموش می‌شود.
  */
 void func__Ui_BoardTest_Start(void)
 {
+    uint32_t uint32_t__beepPeriodMs;
+    uint32_t uint32_t__beepDutyPercent;
+    uint64_t uint64_t__beepDutyProduct;
+    int32_t int32_t__buzzerResult;
+
     func__all_off();
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
 
     func__red(true);
-    vTaskDelay(pdMS_TO_TICKS(UI_SELFTEST_LED_MS));
+    vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_selftest_led_ms));
     func__red(false);
 
     func__yellow(true);
-    vTaskDelay(pdMS_TO_TICKS(UI_SELFTEST_LED_MS));
+    vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_selftest_led_ms));
     func__yellow(false);
 
     func__green(true);
-    vTaskDelay(pdMS_TO_TICKS(UI_SELFTEST_LED_MS));
+    vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_selftest_led_ms));
     func__green(false);
 
-    func__Ui_BuzzerPatternMs_Start(0u, UI_BOOT_BEEP_MS, 1u, 0u);
-    while (func__Ui_BuzzerPatternMs_Tick() == true)
+    if (APP_CONFIG.ui_boot_beep_ms == 0u)
     {
-        vTaskDelay(pdMS_TO_TICKS(UI_TICK_MS));
+        return;
     }
-}
 
-/* ==================== Board Test Tick ==================== */
+    uint32_t__beepPeriodMs = APP_CONFIG.ui_boot_beep_ms;
+    if (uint32_t__beepPeriodMs < UI_BUZZER_MIN_PERIOD_MS)
+    {
+        uint32_t__beepPeriodMs = UI_BUZZER_MIN_PERIOD_MS;
+    }
 
-/**
- * @brief  [EN] Board test tick - for compatibility, returns false (test done in Start).
- *         [FA] تیکه تست برد - برای سازگاری false برمی‌گرداند.
- * @return bool [EN] true=still running, false=finished / در حال اجرا یا تمام
- */
-bool func__Ui_BoardTest_Tick(void)
-{
-    /* [EN] For compatibility with non-blocking API, board test now done in Start with RTOS delays
-       [FA] برای سازگاری، تست برد در Start با تاخیر RTOS انجام می‌شود */
-    return false;
+    uint32_t__beepDutyPercent = UI_BUZZER_DUTY_MAX_PERCENT;
+    if (APP_CONFIG.ui_boot_beep_ms < uint32_t__beepPeriodMs)
+    {
+        uint64_t__beepDutyProduct = (uint64_t)APP_CONFIG.ui_boot_beep_ms * UI_BUZZER_PERCENT_SCALE;
+        uint32_t__beepDutyPercent = (uint32_t)(uint64_t__beepDutyProduct / uint32_t__beepPeriodMs);
+        if ((uint64_t__beepDutyProduct % uint32_t__beepPeriodMs) != 0u)
+        {
+            uint32_t__beepDutyPercent++;
+        }
+        if (uint32_t__beepDutyPercent == 0u)
+        {
+            uint32_t__beepDutyPercent = 1u;
+        }
+    }
+
+    int32_t__buzzerResult = func__Ui_Buzzer_Tick(
+        uint32_t__beepPeriodMs,
+        (uint8_t)uint32_t__beepDutyPercent,
+        1u,
+        0u);
+
+    if (int32_t__buzzerResult != UI_BUZZER_INVALID_RESULT)
+    {
+        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.ui_boot_beep_ms));
+    }
+
+    (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 }

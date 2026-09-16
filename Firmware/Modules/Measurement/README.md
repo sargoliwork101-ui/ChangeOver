@@ -90,6 +90,7 @@
 ```text
 rtos_app.c → TaskMeasurement → task_measurement.c   (MODULE_MEASUREMENT = 1)
   func__Measurement_Init / func__Measurement_Run
+task_ui.c  (اکنون فقط UINT32_T__G__MeasInputVoltageMv را برای UI می‌خواند)
 task_protection.c / task_control.c / task_comm.c  (بعداً: func__Measurement_GetSnapshot)
 ```
 
