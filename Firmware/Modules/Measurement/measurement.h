@@ -48,7 +48,7 @@ extern volatile uint32_t UINT32_T__G__MeasBattery12Mv;      /* [EN] Logical 12 V
 extern volatile uint32_t UINT32_T__G__MeasCurrent1Ma;       /* [EN] Logical charge current 1, mA / جریان منطقی شارژ ۱، mA */
 extern volatile uint32_t UINT32_T__G__MeasCurrent2Ma;       /* [EN] Logical charge current 2, mA / جریان منطقی شارژ ۲، mA */
 extern volatile bool BOOL__G__MeasInputPresent;           /* [EN] Logical 24 V input present / حضور منطقی ورودی ۲۴ ولت */
-extern volatile bool BOOL__G__MeasDataValid;              /* [EN] true once the first frame is converted / اولین فریم تبدیل شده */
+extern volatile bool BOOL__G__MeasDataValid;              /* [EN] true after ADC warm-up frames / پس از فریم‌های warm-up ADC true */
 
 /* ==================== Measurement Init ==================== */
 
@@ -61,11 +61,18 @@ void func__Measurement_Init(void);
 /* ==================== Measurement Run ==================== */
 
 /**
- * @brief  [EN] Pull one raw frame from the bsp and convert every channel into
+ * @brief  [EN] Pull one raw frame from the BSP and convert every channel into
  *              the shared snapshot (mV / mA + input_present + valid).
- *         [FA] یک فریم خام از bsp می‌گیرد و همهٔ کانال‌ها را در snapshot
+ *         [FA] یک فریم خام از BSP می‌گیرد و همهٔ کانال‌ها را در snapshot
  *              مشترک تبدیل می‌کند (mV / mA + input_present + valid).
+ * @note   [EN] Three completed stable ADC frames are required before this
+ *              function publishes valid data. Unit: completed ADC frame.
+ *         [FA] پیش از انتشار دادهٔ معتبر توسط این تابع، سه فریم کامل و پایدار
+ *              ADC لازم است. واحد: فریم کامل ADC.
+ *         [EN] Input voltage and input presence do not affect ADC validity.
+ *         [FA] ولتاژ ورودی و حضور ورودی روی اعتبار ADC اثر ندارند.
  */
+#define MEASUREMENT_WARMUP_FRAME_COUNT 3u
 void func__Measurement_Run(void);
 
 /* ==================== Measurement Get Snapshot ==================== */

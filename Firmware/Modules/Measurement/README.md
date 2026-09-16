@@ -8,7 +8,7 @@
 
 ## وضعیت
 
-**فعال.** `MODULE_MEASUREMENT = 1`. پورت فعلی برد در `.ioc` از ADC+DMA استفاده می‌کند (۵ کانال، scan، continuous، کلاک 12MHz؛ بیشترین مقدار قانونی با PCLK2=72MHz) و تسک Measurement ساخته می‌شود. کد ماژول فقط فریم normalized و API منطقی BSP را مصرف می‌کند. مقادیر تبدیل‌شده **گلوبال**‌اند (`UINT32_T__G__Meas*` / `BOOL__G__Meas*`)؛ فقط تسک Measurement می‌نویسد و هر ماژولی می‌تواند بخواند (اول `BOOL__G__MeasDataValid` را چک کنید).
+**فعال.** `MODULE_MEASUREMENT = 1`. پورت فعلی برد فریم‌های normalized را از BSP ارائه می‌کند و تسک Measurement ساخته می‌شود. کد ماژول فقط فریم normalized و API منطقی BSP را مصرف می‌کند. مقادیر تبدیل‌شده **گلوبال**‌اند (`UINT32_T__G__Meas*` / `BOOL__G__Meas*`)؛ فقط تسک Measurement می‌نویسد و هر ماژولی می‌تواند بخواند (ابتدا `BOOL__G__MeasDataValid` را چک کنید؛ این پرچم پس از سه فریم کامل و پایدار ADC معتبر می‌شود).
 
 ## تاریخچه
 
@@ -38,7 +38,7 @@
 | نام | کار |
 |---|---|
 | `func__Measurement_Init` | snapshot را صفر می‌کند؛ `valid = false` |
-| `func__Measurement_Run` | یک فریم normalized را از BSP می‌گیرد و به mV/mA تبدیل می‌کند؛ `input_present` را از سیگنال منطقی BSP می‌خواند؛ `valid = true` |
+| `func__Measurement_Run` | یک فریم normalized را از BSP می‌گیرد و به mV/mA تبدیل می‌کند؛ `input_present` را از سیگنال منطقی BSP می‌خواند؛ پس از سه فریم کامل و پایدار `valid = true` می‌شود |
 | `func__Measurement_GetSnapshot` | کپی آخرین snapshot؛ `NULL` یا نامعتبر → `false` |
 | `func__Measurement_CountsToMv` | خام استاندارد → mV پایه، با کالیبراسیون BSP برد |
 | `func__Measurement_V24CountsToMv` | خام استاندارد → mV منبع ۲۴، با تقسیم برد در BSP |
@@ -62,7 +62,7 @@
 | `UINT32_T__G__MeasCurrent1Ma` | mA | جریان شارژ منطقی کانال ۱ |
 | `UINT32_T__G__MeasCurrent2Ma` | mA | جریان شارژ منطقی کانال ۲ |
 | `BOOL__G__MeasInputPresent` | — | سیگنال منطقی حضور ورودی ۲۴ ولت |
-| `BOOL__G__MeasDataValid` | — | true از اولین فریم تبدیل‌شده |
+| `BOOL__G__MeasDataValid` | — | true پس از سه فریم کامل و پایدار ADC؛ مستقل از وجود ورودی ۲۴ ولت |
 
 `snapshot` (`func__Measurement_GetSnapshot`) هم همان داده + `valid` را یک‌جا کپی می‌دهد؛ هر دو هم‌زمان معتبرند (هر دو از یک‌جای Run نوشته می‌شوند).
 
@@ -83,7 +83,7 @@
 
 ## پیش‌فرض امن
 
-بعد از Init، `valid = false` است و هیچ snapshot معتبری وجود ندارد؛ تا `Start` موفق، `GetRaw` فقط `false` می‌دهد. خروجی GPIO ندارد (فقط ورودی).
+بعد از Init، `valid = false` است و هیچ snapshot معتبری وجود ندارد. پس از Start موفق، سه فریم کامل و پایدار برای warm-up لازم است؛ تا آن زمان `GetSnapshot` همچنان داده را نامعتبر گزارش می‌کند. نبودن ورودی ۲۴ ولت خطای ADC نیست و می‌تواند همراه با `valid = true` و ولتاژ ورودی تقریباً صفر باشد. خروجی GPIO ندارد (فقط ورودی).
 
 ## درخت اتصال
 
