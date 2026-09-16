@@ -26,7 +26,6 @@
 #include "measurement.h"
 #include "bsp_adc.h"
 #include "bsp_gpio.h"
-#include "board_pins.h"
 #include <stddef.h>
 
 /* ==================== Static State ==================== */
@@ -272,7 +271,7 @@ void func__Measurement_Run(void)
        [FA] PB4 = MCU_INT_24_IN (شماتیک): HIGH یعنی ورودی حاضر است. این
        قطبیت از شماتیک است و هنوز باید روی برد اندازه‌گیری شود. */
     bool__inputPresent =
-        func__BspGpio_Read(PIN_INT_24_IN_PORT, PIN_INT_24_IN_PIN);
+        func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT);
 
     /* [EN] Publish globals and snapshot as one short critical section. The
        snapshot valid bit is written last.

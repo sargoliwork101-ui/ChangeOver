@@ -44,7 +44,7 @@
 2. `stm32f1xx_hal_msp.c` را بازنویسی می‌کند تا پایه‌های PA1, PA2, PA3, PA5, PA7 را Analog کند (این پایه‌ها الان آزاد هستند، تداخلی با LEDها PB0/PB1/PB10/PA4 ندارند).
 3. درایور `stm32f1xx_hal_adc.c` را به `Drivers/` اضافه می‌کند.
 4. **Firmware بهم نمی‌ریزد** چون:
-   - `BspAdc_Init(&hadc1)` باید در `App_Init()` یا `main.c` USER CODE صدا زده شود تا هندل به Bsp برسد. اگر نزنی، `BspAdc_GetRaw()` فقط `false` برمی‌گرداند، کرش نمی‌کند.
+   - `func__BspAdc_Init()` داخل Thread Measurement، Backend برد فعلی را آماده می‌کند. Task و منطق Measurement دیگر هندل `hadc1` یا نام ADC این میکرو را نمی‌شناسند.
    - تا `MODULE_MEASUREMENT=0` باشد، تسک measurement ساخته نمی‌شود، پس ADC حتی اگر در CubeMX فعال باشد، از سمت Firmware استفاده نمی‌شود.
 
 ### چک‌لیست امن برای اضافه کردن پریفرال
@@ -68,7 +68,7 @@
 - ADC1: ۵ کانال (PA1/PA2/PA3/PA5/PA7 = IN1/IN2/IN3/IN5/IN7)، scan + continuous، sampling 55.5 cycle، کلاک **12MHz** (PCLK2/6 — بیشترین prescaler مجاز با PCLK2 برابر 72MHz؛ سقف ADC در F103 = 14MHz).
 - DMA1 Channel1: circular، N=10 (دو فریم ۵ کاناله)، بدون interrupt — بافر را سخت‌افزار پر می‌کند.
 - PB4 = GPIO_Input با لیبل `MCU_INT_24_IN` (حضور ورودی ۲۴، دیجیتال).
-- هندل `hadc1` از `main.h` به `task_measurement.c` می‌رسد و در آن‌جا به `func__BspAdc_Init` داده می‌شود (`app.c` دست‌نخورده است).
+- `task_measurement.c` فقط `func__BspAdc_Init()` را صدا می‌زند؛ هندل `hadc1` و جزئیات ADC در `Firmware/Bsp/Src/bsp_adc.c` به‌عنوان Port برد فعلی باقی می‌ماند.
 - PWM و UART را Enable نکن مگر همان مرحله را کاربر خواسته باشد (قانون AI).
 
 ## تاریخچه

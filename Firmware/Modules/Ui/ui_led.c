@@ -14,7 +14,6 @@
 #include "ui_buzzer.h"
 #include "app_config.h"
 #include "bsp_gpio.h"
-#include "board_pins.h"
 #include "cmsis_os2.h"
 #include "rtos_time.h"
 
@@ -83,7 +82,7 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
  */
 static void func__green(bool bool__greenOn)
 {
-    func__BspGpio_Write(PIN_LED_G_PORT, PIN_LED_G_PIN, bool__greenOn);
+    func__BspGpio_Write(BSP_GPIO_LED_GREEN, bool__greenOn);
 }
 
 /* ==================== Red LED / LED قرمز ==================== */
@@ -95,7 +94,7 @@ static void func__green(bool bool__greenOn)
  */
 static void func__red(bool bool__redOn)
 {
-    func__BspGpio_Write(PIN_LED_R_PORT, PIN_LED_R_PIN, bool__redOn);
+    func__BspGpio_Write(BSP_GPIO_LED_RED, bool__redOn);
 }
 
 /* ==================== Yellow LED / LED زرد ==================== */
@@ -107,7 +106,7 @@ static void func__red(bool bool__redOn)
  */
 static void func__yellow(bool bool__yellowOn)
 {
-    func__BspGpio_Write(PIN_LED_Y_PORT, PIN_LED_Y_PIN, bool__yellowOn);
+    func__BspGpio_Write(BSP_GPIO_LED_YELLOW, bool__yellowOn);
 }
 
 /* ==================== All Off Safe / خاموشی امن همه خروجی‌ها ==================== */

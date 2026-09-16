@@ -65,9 +65,9 @@ rtos_app.c → TaskComm → task_comm.c
 
 ```text
 esp_link.c
-  bsp_gpio.h / bsp_gpio.c     BspGpio_Write  → PIN_ESP_CHPD
+  bsp_gpio.h / bsp_gpio.c     BspGpio_Write(BSP_GPIO_ESP_CHPD)
   bsp_uart.h / bsp_uart.c     BspUart_Write (فعلاً false) / BspUart_Init
-  board_pins.h                PIN_ESP_CHPD_* ، PIN_TX/RX
+  board-specific BSP          نگاشت CH_PD و TX/RX در لایهٔ برد
   app_config.h / app_config.c APP_CONFIG.esp_link_enabled ، comm_period_ms
   app_types.h                 measurement_snapshot_t ، app_state_t ، fault_mask_t
 ```

@@ -1,38 +1,49 @@
 /**
  * @file    bsp_gpio.h
- * @brief   [EN] GPIO wrapper around STM32 HAL. Full type naming, func__ prefix.
- *          [FA] پوشش GPIO روی HAL استم. نام تایپ کامل و پیشوند func__.
+ * @brief   [EN] Board-independent logical GPIO interface.
+ *          [FA] رابط منطقی و مستقل از برد برای GPIO.
  *
- * @note    [EN] Product modules must not call HAL_GPIO_* directly.
- *          [FA] ماژول محصول نباید مستقیم HAL_GPIO صدا بزند.
+ * @note    [EN] Product modules use logical signals; port/pin mapping stays in
+ *          the board-specific BSP implementation.
+ *          [FA] ماژول‌های محصول از سیگنال منطقی استفاده می‌کنند؛ نگاشت پورت و
+ *          پایه فقط در پیاده‌سازی BSP مخصوص برد می‌ماند.
  */
 
 #ifndef BSP_GPIO_H
 #define BSP_GPIO_H
 
-/* ==================== Includes ==================== */
 #include <stdbool.h>
-#include <stdint.h>
-#include "board_pins.h"
+
+typedef enum
+{
+    BSP_GPIO_BUZZER = 0,
+    BSP_GPIO_LED_GREEN,
+    BSP_GPIO_LED_RED,
+    BSP_GPIO_LED_YELLOW,
+    BSP_GPIO_ESP_CHPD,
+    BSP_GPIO_INPUT_24V_PRESENT,
+    BSP_GPIO_BATTERY_SWITCH,
+    BSP_GPIO_RELAY,
+    BSP_GPIO_PROTECT_BATTERY,
+    BSP_GPIO_JITTER1,
+    BSP_GPIO_JITTER2
+} bsp_gpio_id_t;
 
 /**
- * @brief  [EN] Write a pin high or low.
- *         [FA] پایه را High یا Low می‌کند.
- * @param  GPIO_TypeDef__port [EN] GPIOA/GPIOB/... ; ignored if NULL / پورت
- * @param  uint16_t__pin [EN] Pin mask e.g. GPIO_PIN_0 / ماسک پایه
- * @param  bool__high [EN] true=3.3V, false=0V / High یعنی ۳٫۳ ولت
+ * @brief  [EN] Write a logical board signal high or low.
+ *         [FA] یک سیگنال منطقی برد را High یا Low می‌کند.
+ * @param  bsp_gpio_id_t__id [EN] Logical signal identifier / شناسهٔ سیگنال منطقی
+ * @param  bool__high [EN] true=high, false=low / مقدار High یا Low
  */
 /* ==================== Functions ==================== */
-void func__BspGpio_Write(GPIO_TypeDef *GPIO_TypeDef__port, uint16_t uint16_t__pin, bool bool__high);
+void func__BspGpio_Write(bsp_gpio_id_t bsp_gpio_id_t__id, bool bool__high);
 
 /**
- * @brief  [EN] Read pin logic level.
- *         [FA] سطح منطقی پایه را می‌خواند.
- * @param  GPIO_TypeDef__port [EN] Port / پورت
- * @param  uint16_t__pin [EN] Pin mask / ماسک پایه
- * @return bool [EN] true if high; false if low or port NULL / اگر High باشد true
+ * @brief  [EN] Read a logical board input signal.
+ *         [FA] یک سیگنال ورودی منطقی برد را می‌خواند.
+ * @param  bsp_gpio_id_t__id [EN] Logical signal identifier / شناسهٔ سیگنال منطقی
+ * @return bool [EN] true if the physical signal is high / اگر سیگنال فیزیکی High باشد true
  */
-bool func__BspGpio_Read(GPIO_TypeDef *GPIO_TypeDef__port, uint16_t uint16_t__pin);
+bool func__BspGpio_Read(bsp_gpio_id_t bsp_gpio_id_t__id);
 
 #endif /* BSP_GPIO_H */
-

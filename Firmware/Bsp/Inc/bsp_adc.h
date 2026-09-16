@@ -1,18 +1,16 @@
 /**
  * @file    bsp_adc.h
- * @brief   [EN] ADC+DMA board layer. ADC1 scans five analog channels and DMA
- *              fills a two-frame circular RAM buffer autonomously. The reader
- *              polls the DMA counter and copies only a completed frame; no
- *              DMA interrupt is required.
- *          [FA] لایهٔ برد ADC+DMA. ADC1 پنج کانال آنالوگ را اسکن می‌کند و DMA
- *              به‌طور مستقل بافر چرخشی دو فریمی RAM را پر می‌کند. خواننده
- *              شمارندهٔ DMA را می‌خواند و فقط یک فریم کامل را کپی می‌کند؛
- *              نیازی به وقفهٔ DMA نیست.
+ * @brief   [EN] Board ADC+DMA interface. The current board implementation
+ *              supplies five normalized analog values in a two-frame buffer;
+ *              the reader copies only a completed frame.
+ *          [FA] رابط ADC+DMA برد. پیاده‌سازی برد فعلی پنج مقدار آنالوگ
+ *              استانداردشده را در بافر دو فریمی می‌دهد و خواننده فقط فریم کامل
+ *              را کپی می‌کند.
  *
- * @note    [EN] Channel order is fixed by the .ioc rank order (see Defines).
- *              Keep it in sync with CubeMX/CubeIDE.ioc.
- *          [FA] ترتیب کانال‌ها با ترتیب رنک‌های .ioc ثابت است (بخوانید
- *              Defines). با CubeMX/CubeIDE.ioc یکی نگه‌اش دارید.
+ * @note    [EN] The public channel order is a normalized data contract. Each
+ *              board-specific BSP maps its own ADC channels to this order.
+ *          [FA] ترتیب عمومی کانال‌ها قرارداد دادهٔ استاندارد است. BSP مخصوص
+ *              هر برد کانال‌های ADC همان برد را به این ترتیب نگاشت می‌کند.
  */
 
 #ifndef BSP_ADC_H
@@ -21,25 +19,18 @@
 /* ==================== Includes ==================== */
 #include <stdint.h>
 #include <stdbool.h>
-#include "stm32f1xx_hal.h"
-
-#ifndef HAL_ADC_MODULE_ENABLED
-typedef struct __ADC_HandleTypeDef ADC_HandleTypeDef;
-#endif
 
 /* ==================== ADC channel map ==================== */
-/* [EN] ADC channel order == .ioc rank order. PA1/PA2/PA3/PA5/PA7 =
- *      ADC1_IN1/IN2/IN3/IN5/IN7 (schematic MICROCONTROLLER.SchDoc,
- *      Analog Input block).
- * [FA] ترتیب کانال‌های ADC == ترتیب رنک‌های .ioc.
- *      PA1/PA2/PA3/PA5/PA7 = ADC1_IN1/IN2/IN3/IN5/IN7 (شماتیک، بلوک
- *      Analog Input). */
+/* [EN] These are normalized frame positions. The current board maps them to
+ *      PA1/PA2/PA3/PA5/PA7; another BSP may use different pins.
+ * [FA] این‌ها موقعیت‌های استاندارد فریم هستند. برد فعلی آن‌ها را به
+ *      PA1/PA2/PA3/PA5/PA7 نگاشت می‌کند؛ BSP برد دیگر می‌تواند پایه‌های دیگری داشته باشد. */
 #define BSP_ADC_CHANNEL_COUNT        5u
-#define BSP_ADC_CHANNEL_CURRENT1     0u   /* PA1  ADC1_IN1  charge current 24V ch. 1 / جریان شارژ ۲۴ ولت کانال ۱ */
-#define BSP_ADC_CHANNEL_24V_IN       1u   /* PA2  ADC1_IN2  24V main input   / ولتاژ ورودی ۲۴ */
-#define BSP_ADC_CHANNEL_24V_BAT      2u   /* PA3  ADC1_IN3  24V battery      / ولتاژ باتری ۲۴ */
-#define BSP_ADC_CHANNEL_12V_BAT      3u   /* PA5  ADC1_IN5  12V battery      / ولتاژ باتری ۱۲ */
-#define BSP_ADC_CHANNEL_CURRENT2     4u   /* PA7  ADC1_IN7  charge current 12V ch. 2 / جریان شارژ ۱۲ ولت کانال ۲ */
+#define BSP_ADC_CHANNEL_CURRENT1     0u   /* normalized charge current 1 / جریان شارژ استاندارد ۱ */
+#define BSP_ADC_CHANNEL_24V_IN       1u   /* normalized 24V input / ورودی ۲۴ ولت استاندارد */
+#define BSP_ADC_CHANNEL_24V_BAT      2u   /* normalized 24V battery / باتری ۲۴ ولت استاندارد */
+#define BSP_ADC_CHANNEL_12V_BAT      3u   /* normalized 12V battery / باتری ۱۲ ولت استاندارد */
+#define BSP_ADC_CHANNEL_CURRENT2     4u   /* normalized charge current 2 / جریان شارژ استاندارد ۲ */
 
 /* ==================== DMA buffer ==================== */
 /* [EN] The DMA buffer holds two full frames. When DMA writes one half, the
@@ -56,26 +47,20 @@ typedef struct __ADC_HandleTypeDef ADC_HandleTypeDef;
 /* ==================== BspAdc_Init ==================== */
 
 /**
- * @brief  [EN] Store the CubeMX HAL handle and clear the DMA buffer.
- *         [FA] هندل HAL مکعب را نگه می‌دارد و بافر DMA را صفر می‌کند.
- * @param  ADC_HandleTypeDef__hadc [EN] ADC handle from CubeMX; NULL disables
- *                                     the BSP / هندل ADC مکعب؛ NULL یعنی خاموش
+ * @brief  [EN] Select the board ADC backend and clear its DMA buffer.
+ *         [FA] Backend ADC برد را انتخاب و بافر DMA آن را صفر می‌کند.
  */
-void func__BspAdc_Init(ADC_HandleTypeDef *ADC_HandleTypeDef__hadc);
+void func__BspAdc_Init(void);
 
 /* ==================== BspAdc_Start ==================== */
 
 /**
- * @brief  [EN] Calibrate ADC1, then start continuous scan and circular DMA.
- *              The F1 ADC prescaler is configured by CubeMX at the highest
- *              legal value for PCLK2 = 72 MHz: 12 MHz (PCLK2 / 6).
- *              DMA interrupt sources are disabled because the reader polls
- *              the DMA counter instead of using an ISR.
- *         [FA] ADC1 را کالیبره می‌کند و سپس اسکن مداوم و DMA چرخشی را شروع
- *              می‌کند. پیش‌تقسیم‌کنندهٔ ADC در CubeMX برای بیشترین مقدار
- *              مجاز با PCLK2 برابر ۷۲MHz روی ۱۲MHz (تقسیم بر ۶) است.
- *              چون خواننده شمارندهٔ DMA را پالت می‌کند، منابع وقفهٔ DMA
- *              خاموش می‌شوند و ISR لازم نیست.
+ * @brief  [EN] Calibrate the board ADC backend, then start its scan and DMA.
+ *              DMA interrupt sources remain private to the board port; the
+ *              public reader only returns completed normalized frames.
+ *         [FA] ADC مخصوص برد را کالیبره و اسکن و DMA آن را شروع می‌کند.
+ *              منابع وقفهٔ DMA در پورت برد خصوصی هستند و خوانندهٔ عمومی فقط
+ *              فریم‌های استانداردشدهٔ کامل را برمی‌گرداند.
  * @return bool [EN] true when calibration and HAL start succeed /
  *                   اگر کالیبراسیون و شروع HAL موفق باشد true
  */

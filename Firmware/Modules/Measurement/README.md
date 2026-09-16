@@ -44,7 +44,7 @@
 | `func__Measurement_V12CountsToMv` | خام → mV منبع ۱۲ (باتری)؛ برگردان تقسیم 34.2K/6.8K؛ سقف ~20V |
 | `func__Measurement_CurrentCountsToMa` | خام → mA شارژ؛ ÷ گین 101 → ÷ شانت 10mΩ؛ 1A ≈ 1010mV |
 | `func__TaskMeasurement` | Init+Start یک‌بار، 1ms انتظار فریم اول، بعد هر 10ms یک `Run` (`osDelayUntil` با تبدیل قابل‌حمل میلی‌ثانیه/تیک) |
-| `func__BspAdc_Init` (Bsp) | نگه‌داشتن هندل `hadc1` + صفر کردن بافر DMA |
+| `func__BspAdc_Init` (Bsp) | آماده‌سازی Backend ADC برد و صفر کردن بافر DMA؛ هندل و پایه‌ها در BSP پنهان هستند |
 | `func__BspAdc_Start` (Bsp) | کالیبراسیون ADC1 + `HAL_ADC_Start_DMA` (continuous + circular)، با خاموش‌کردن منابع وقفهٔ DMA |
 | `func__BspAdc_IsFrameReady` (Bsp) | true بعد از کالیبراسیون و Start موفق |
 | `func__BspAdc_GetRaw` (Bsp) | انتخاب نیمهٔ کامل با CNDTR و کپی پایدار ۵ کانال با بررسی قبل/بعد شمارنده |
@@ -99,11 +99,11 @@ task_protection.c / task_control.c / task_comm.c  (بعداً: func__Measurement
 ```text
 measurement.c
   bsp_adc.h / bsp_adc.c   func__BspAdc_GetRaw
-  board_pins.h            PIN_INT_24_IN (PB4)
+  bsp_gpio.h              BSP_GPIO_INPUT_24V_PRESENT (سیگنال منطقی حضور ورودی)
   app_types.h             measurement_snapshot_t
 task_measurement.c
-  main.h                  hadc1 (هندل ساخت‌شده CubeMX)
   bsp_adc.h               func__BspAdc_Init / func__BspAdc_Start
+  bsp_adc.c               Port برد فعلی و هندل ADC خصوصی آن
   measurement.h           ثابت‌های دوره + توابع تبدیل
 ```
 

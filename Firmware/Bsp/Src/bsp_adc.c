@@ -18,11 +18,14 @@
 
 /* ==================== Includes ==================== */
 #include "bsp_adc.h"
+#include "main.h"
+
 #include <stddef.h>
 
 /* ==================== Static State ==================== */
 
-/* [EN] CubeMX handle (hadc1), stored once at init / هندل مکعب، یک‌بار در Init */
+/* [EN] Board ADC handle is private to this STM32 BSP implementation.
+ *      [FA] هندل ADC برد فقط در پیاده‌سازی BSP مخصوص STM32 خصوصی است. */
 static ADC_HandleTypeDef *ADC_HANDLETYPEDEF__G__Hadc = NULL;
 
 /* [EN] Hardware-filled circular DMA buffer: 2 frames x 5 channels.
@@ -36,16 +39,14 @@ static bool BOOL__G__Running = false;
 /* ==================== BspAdc_Init ==================== */
 
 /**
- * @brief  [EN] Store the CubeMX HAL handle and clear the DMA buffer.
- *         [FA] هندل HAL مکعب را نگه می‌دارد و بافر DMA را صفر می‌کند.
- * @param  ADC_HandleTypeDef__hadc [EN] ADC handle from CubeMX; NULL clears the
- *                                     handle / هندل ADC مکعب؛ NULL یعنی پاک‌کردن
+ * @brief  [EN] Select the current board ADC handle and clear the DMA buffer.
+ *         [FA] هندل ADC برد فعلی را انتخاب و بافر DMA را صفر می‌کند.
  */
-void func__BspAdc_Init(ADC_HandleTypeDef *ADC_HandleTypeDef__hadc)
+void func__BspAdc_Init(void)
 {
     uint32_t uint32_t__i;
 
-    ADC_HANDLETYPEDEF__G__Hadc = ADC_HandleTypeDef__hadc;
+    ADC_HANDLETYPEDEF__G__Hadc = &hadc1;
     BOOL__G__Running = false;
 
     for (uint32_t__i = 0u; uint32_t__i < BSP_ADC_DMA_SAMPLE_COUNT; uint32_t__i++)

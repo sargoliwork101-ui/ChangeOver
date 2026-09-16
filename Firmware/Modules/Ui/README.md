@@ -168,7 +168,7 @@ InputOverVoltage فعال
 | `ui_buzzer.h` / `ui_buzzer.c` | سرویس یگانه بوق: محاسبه پنجره دیوتی، تقسیم آن بین پالس‌ها و گپ‌ها، اعتبارسنجی محدودیت‌های ایمنی، محاسبه مراجعه بعدی و نوشتن PA4. |
 | `../../Rtos/Src/task_ui.c` | تسک UI؛ ولتاژ ورودی و باتری را می‌خواند و با `func__Ui_Tick` سناریوی مناسب را اجرا می‌کند. |
 | `../../Bsp/Src/bsp_gpio.c` | نوشتن سطح GPIO از طریق `func__BspGpio_Write`. |
-| `../../Config/Inc/board_pins.h` | تعریف `PIN_BUZZER_PORT` و `PIN_BUZZER_PIN`؛ PA4 طبق شماتیک. |
+| `../../Bsp/Inc/bsp_gpio.h` | سیگنال‌های منطقی `BSP_GPIO_LED_GREEN/RED/YELLOW` و `BSP_GPIO_BUZZER`؛ نگاشت پایه در BSP پنهان است. |
 | `../../Config/Inc/app_config.h` / `../../Config/Src/app_config.c` | تنظیمات عمومی زمان‌بندی LED و نگاشت ولتاژ؛ ثابت‌های BatteryRun و بوق‌های سناریویی در هدرهای UI تعریف شده‌اند. |
 | `host_test_ui.py` | تست هاست فرمول دوره، دیوتی، تعداد پالس و گپ. |
 | `UI_Board_Validation.xlsx` | برگهٔ ثبت تست عملی روی برد: برنامهٔ تست، مرجع سناریوها، ثبت ایراد و تأیید نهایی. |
@@ -297,7 +297,7 @@ Firmware/Rtos/Src/task_ui.c
               ├── osKernelGetTickCount()   زمان نمونه فعلی CMSIS-RTOS2
               ├── return nextCheckMs         ۱۰٪ کوچک‌ترین بخش مثبت الگو
               └── func__BspGpio_Write()     Firmware/Bsp/Src/bsp_gpio.c
-                  └── PIN_BUZZER_PORT/PIN_BUZZER_PIN  = PA4
+                  └── BSP_GPIO_BUZZER              = نگاشت پایه در bsp_gpio.c
 
 LED and BUZZER remain separate:
 CubeIDE/Core/Src/main.c

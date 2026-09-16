@@ -9,7 +9,6 @@
 
 #include "ui_buzzer.h"
 #include "bsp_gpio.h"
-#include "board_pins.h"
 #include "cmsis_os2.h"
 #include "rtos_time.h"
 
@@ -138,7 +137,7 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         (uint8_t__dutyPercent == 0u) ||
         (uint8_t__beepCount == 0u))
     {
-        func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
+        func__BspGpio_Write(BSP_GPIO_BUZZER, false);
         BOOL__G__BuzzerPatternValid = false;
         return UI_BUZZER_OFF_RESULT;
     }
@@ -149,7 +148,7 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         (uint8_t__dutyPercent > UI_BUZZER_DUTY_MAX_PERCENT) ||
         ((uint8_t__beepCount > 1u) && (uint32_t__gapMs < UI_BUZZER_MIN_GAP_MS)))
     {
-        func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
+        func__BspGpio_Write(BSP_GPIO_BUZZER, false);
         BOOL__G__BuzzerPatternValid = false;
         return UI_BUZZER_INVALID_RESULT;
     }
@@ -176,7 +175,7 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         (uint64_t__gapProduct >= (uint64_t)uint32_t__dutyWindowMs) ||
         ((uint32_t__dutyWindowMs - (uint32_t)uint64_t__gapProduct) < (uint32_t)uint8_t__beepCount))
     {
-        func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
+        func__BspGpio_Write(BSP_GPIO_BUZZER, false);
         BOOL__G__BuzzerPatternValid = false;
         return UI_BUZZER_INVALID_RESULT;
     }
@@ -280,6 +279,6 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         }
     }
 
-    func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, bool__buzzerOn);
+    func__BspGpio_Write(BSP_GPIO_BUZZER, bool__buzzerOn);
     return (int32_t)uint32_t__nextCheckMs;
 }

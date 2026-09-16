@@ -22,7 +22,6 @@
 /* ==================== Includes ==================== */
 #include "rtos_tasks.h"
 #include "modules_enable.h"
-#include "main.h"
 #include "cmsis_os2.h"
 #include "rtos_time.h"
 
@@ -52,13 +51,11 @@ void func__TaskMeasurement(void *void_ptr__argument)
 #if MODULE_MEASUREMENT
     uint32_t UINT32_T__lastWakeTime;
 
-    /* [EN] One-time bring-up: the CubeMX handle (hadc1, generated in main.c)
-       is handed to the BSP, then the hardware takes over - ADC converts
-       continuously and DMA wraps the buffer, no CPU, no interrupt.
-       [FA] راه‌اندازی یک‌بار: هندل مکعب (hadc1، ساخته‌شده در main.c) به BSP
-       داده می‌شود، بعد سخت‌افزار دست‌کار می‌شود — ADC مدام تبدیل و DMA بافر
-       را دور می‌زند؛ بدون CPU و بدون قطع‌کننده. */
-    func__BspAdc_Init(&hadc1);
+    /* [EN] One-time bring-up is delegated to the board BSP. The task does not
+       know the MCU ADC handle or its peripheral name.
+       [FA] راه‌اندازی یک‌بار به BSP برد سپرده می‌شود. این تسک هندل ADC
+       یا نام پریفرال میکرو را نمی‌شناسد. */
+    func__BspAdc_Init();
     func__Measurement_Init();
 
     if (func__BspAdc_Start() == false)

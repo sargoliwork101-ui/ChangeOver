@@ -8,7 +8,6 @@
 #include "app_config.h"
 #include "bsp_gpio.h"
 #include "bsp_uart.h"
-#include "board_pins.h"
 
 /**
  * @brief  [EN] Keep ESP powered off until that stage is enabled.
@@ -30,7 +29,7 @@ void func__EspLink_Init(void)
 
 void func__EspLink_Power(bool bool__on)
 {
-    func__BspGpio_Write(PIN_ESP_CHPD_PORT, PIN_ESP_CHPD_PIN, bool__on);
+    func__BspGpio_Write(BSP_GPIO_ESP_CHPD, bool__on);
 }
 
 /**
