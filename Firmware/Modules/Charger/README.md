@@ -8,7 +8,7 @@
 
 ## وضعیت
 
-اسکلت. `MODULE_CHARGER = 0`. PWM را Enable نکن. فایل را پاک نکن.
+اسکلت. `MODULE_CHARGER = 0`. backend PWM عمداً در `.ioc` و Build فعال است، اما خروجی‌ها در startup صفر و متوقف هستند. فایل ماژول را پاک نکن.
 
 ## تاریخچه
 
@@ -66,4 +66,4 @@ charger.c
   app_config.h / app_config.c    pwm_max_duty_permille
 ```
 
-`bsp_pwm.c` هنوز از charger صدا زده نمی‌شود.
+`bsp_pwm.c` در startup از مسیر BSP به‌صورت safe مقداردهی می‌شود؛ Charger پس از فعال‌سازی باید فقط `func__BspPwm_SetDutyPermille` و `func__BspPwm_StopAll` را صدا بزند.

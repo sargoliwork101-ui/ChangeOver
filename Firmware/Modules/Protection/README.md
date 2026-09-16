@@ -8,7 +8,7 @@
 
 ## وضعیت
 
-اسکلت. `MODULE_PROTECTION = 0`. رله را برای این ماژول Enable نکن. فایل را پاک نکن.
+اسکلت. `MODULE_PROTECTION = 0`. backend رله و حفاظت شارژر در BSP موجود است، اما مالکیت policy خروجی با Changeover/Charger تعیین می‌شود. فایل را پاک نکن.
 
 ## تاریخچه
 

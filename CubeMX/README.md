@@ -29,7 +29,7 @@
 - `Firmware/` بیرون از `CubeIDE/` است و به صورت **Linked Resource** در `.project` لینک شده:
   - `PARENT-2-PROJECT_LOC/Firmware` → یعنی ریشهٔ ریپو
   - CubeMX فقط `CubeIDE/Core/`, `Drivers/`, `Middlewares/` را بازنویسی می‌کند، نه `Firmware/`
-- `main.c` فقط کلاک، `MX_GPIO_Init()`، و `App_Start()` را صدا می‌زند. منطق محصول در `Firmware/` است.
+- `main.c` کلاک، `MX_*_Init()`، safe-state و init backendهای BSP را انجام می‌دهد و سپس `App_Start()` را صدا می‌زند. منطق محصول در `Firmware/` و mapping فیزیکی در پورت BSP است.
 - `main.c` دارای `USER CODE BEGIN/END` است. CubeMX کد داخل این بلوک‌ها را نگه می‌دارد:
   - `#include \"app.h\"` در `Includes`
   - `App_Start()` در `USER CODE BEGIN 2`
@@ -62,22 +62,23 @@
    - `modules_enable.h` را فقط وقتی فلگ را می‌خواهی 1 کنی عوض کن
 4. Build کن، اگر خطای Include دادی، Pathها را دوباره اضافه کن
 
-### وضعیت فعلی: LED/بازر + ADC
+### وضعیت فعلی: قرارداد کامل BSP شماتیک
 
-- `MODULE_UI=1` و `MODULE_MEASUREMENT=1`. بقیه 0.
-- ADC1: ۵ کانال (PA1/PA2/PA3/PA5/PA7 = IN1/IN2/IN3/IN5/IN7)، scan + continuous، sampling 55.5 cycle، کلاک **12MHz** (PCLK2/6 — بیشترین prescaler مجاز با PCLK2 برابر 72MHz؛ سقف ADC در F103 = 14MHz).
-- DMA1 Channel1: circular، N=10 (دو فریم ۵ کاناله)، بدون interrupt — بافر را سخت‌افزار پر می‌کند.
-- PB4 = GPIO_Input با لیبل `MCU_INT_24_IN` (حضور ورودی ۲۴، دیجیتال).
-- `task_measurement.c` فقط APIهای منطقی `func__BspAdc_Init()` و `func__BspAdc_Start()` را صدا می‌زند؛ هندل `hadc1` و جزئیات ADC در `Firmware/Bsp/Src/bsp_adc.c` به‌عنوان Port برد فعلی باقی می‌ماند.
-- PWM و UART را Enable نکن مگر همان مرحله را کاربر خواسته باشد (قانون AI).
-- Headerهای عمومی BSP (`bsp_gpio.h`, `bsp_adc.h`, `bsp_measurement.h`, `bsp_exti.h`, `bsp_pwm.h`, `bsp_uart.h`) HAL-free هستند؛ هندل‌های HAL و `board_pins.h` فقط در پیاده‌سازی پورت برد می‌مانند.
-- برای تغییر MCU یا برد، API منطقی Moduleها ثابت می‌ماند و فقط پورت‌های `Firmware/Bsp/Src` و فایل‌های platform-specific تغییر می‌کنند.
+- `MODULE_UI=1` و `MODULE_MEASUREMENT=1`. `MODULE_CHARGER`، `MODULE_ESP`، `MODULE_JITTER`، `MODULE_PROTECTION` و `MODULE_CHANGEOVER` صفر هستند؛ صفر بودن ماژول باعث حذف backend نمی‌شود.
+- ADC1: پنج کانال (PA1/PA2/PA3/PA5/PA7 = IN1/IN2/IN3/IN5/IN7)، scan + continuous، sampling 55.5 cycle، کلاک **12MHz** (PCLK2/6؛ سقف ADC در F103 برابر 14MHz).
+- DMA1 Channel1: circular، N=10 (دو فریم ۵ کاناله)، بدون interrupt؛ `bsp_adc.c` فقط نیمهٔ کامل DMA را می‌خواند.
+- PWMهای شارژر: TIM2_CH1 روی PA0 و TIM3_CH1 روی PA6، prescaler=71 و period=999 (حدود 1kHz)، compare صفر و stop در startup.
+- ESP-Link: USART1 روی PA9/PA10 با 115200، 8-N-1؛ `HAL_UART_MODULE_ENABLED` و درایور HAL UART در Build هستند، ولی `MODULE_ESP=0` است.
+- EXTI واقعی: PB2=`JITTER1`، PB4=`MCU_INT_24_IN` و PB6=`JITTER2` با هر دو لبه؛ IRQهای `EXTI2`، `EXTI4` و `EXTI9_5` فعال هستند.
+- خروجی‌های امن: PA4/PA8/PB0/PB1/PB7/PB10 Low و PB5/PB11 High. جزئیات قطبیت در `Firmware/Bsp/README.md` است.
+- `task_measurement.c` فقط APIهای منطقی `func__BspAdc_Init()` و `func__BspAdc_Start()` را صدا می‌زند؛ هندل‌ها و پایه‌های فیزیکی در پورت BSP باقی می‌مانند.
+- Headerهای عمومی BSP HAL-free هستند؛ برای تغییر MCU یا برد، API منطقی ماژول‌ها ثابت می‌ماند و فقط پورت BSP و فایل‌های platform-specific تغییر می‌کنند.
 
 ## تاریخچه
 
 | تاریخ | تغییر |
 |---|---|
-| 2026-09-16 | اصلاح مرحلهٔ ADC: کلاک از 9MHz به 12MHz با PCLK2/6 (بیشترین مقدار قانونی F103 با PCLK2=72MHz)، همسان‌سازی `.ioc`های CubeMX و CubeIDE و افزودن درایورهای HAL ADC/ADCEx به پروژه |
+| 2026-09-16 | تثبیت قرارداد کامل BSP: دو PWM شارژر، USART1/ESP-Link، EXTIهای JITTER/حضور ۲۴V، MSP/IRQ، safe startup و درایور HAL UART؛ ADC روی 12MHz با PCLK2/6 باقی ماند و دو `.ioc` همسان شدند |
 | 2026-09-15 | لیبل (User Label) برای همه پایه‌های ADC در `.ioc`: PA1=`ADC_CURRENT1`، PA2=`MCU_ADC_24_IN`، PA3=`MCU_ADC_24_BAT`، PA5=`MCU_ADC_12_BAT`، PA7=`ADC_CURRENT2`، PB4=`MCU_INT_24_IN` (یکی با نام‌های شماتیک و برگه‌ی Measurement) |
 | 2026-09-15 | ADC1 + DMA1 چرخشی (5 کانال، 9MHz) و PB4 (MCU_INT_24_IN) به `.ioc` اضافه شد؛ کلاک ADC از 36MHz به 9MHz (سقف 14MHz)؛ درایور ADC v1.1.10 به CubeIDE/Drivers |
 | 2026-09-14 | اضافه شدن راهنمای اضافه کردن پریفرال بدون بهم ریختن برنامه + توضیح Linked Resource و USER CODE و چک‌لیست امن |

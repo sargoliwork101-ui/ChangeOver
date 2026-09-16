@@ -3,10 +3,10 @@
  * @brief   [EN] Board-independent logical GPIO interface.
  *          [FA] رابط منطقی و مستقل از برد برای GPIO.
  *
- * @note    [EN] Product modules use logical signals; port/pin mapping stays in
- *          the board-specific BSP implementation.
- *          [FA] ماژول‌های محصول از سیگنال منطقی استفاده می‌کنند؛ نگاشت پورت و
- *          پایه فقط در پیاده‌سازی BSP مخصوص برد می‌ماند.
+ * @note    [EN] Product modules use logical signals; physical ports, pins and
+ *              active levels remain private to the board-specific port.
+ *          [FA] ماژول‌های محصول از سیگنال‌های منطقی استفاده می‌کنند؛ پورت،
+ *              پایه و سطح فعال فیزیکی در پورت مخصوص برد خصوصی می‌ماند.
  */
 
 #ifndef BSP_GPIO_H
@@ -29,20 +29,36 @@ typedef enum
     BSP_GPIO_JITTER2
 } bsp_gpio_id_t;
 
+/* ==================== BspGpio_Init ==================== */
 /**
- * @brief  [EN] Write a logical board signal high or low.
- *         [FA] یک سیگنال منطقی برد را High یا Low می‌کند.
- * @param  bsp_gpio_id_t__id [EN] Logical signal identifier / شناسهٔ سیگنال منطقی
- * @param  bool__high [EN] true=high, false=low / مقدار High یا Low
+ * @brief  [EN] Apply the board safe state to every controllable output.
+ *         [FA] وضعیت امن برد را روی همهٔ خروجی‌های قابل‌کنترل اعمال می‌کند.
  */
-/* ==================== Functions ==================== */
-void func__BspGpio_Write(bsp_gpio_id_t bsp_gpio_id_t__id, bool bool__high);
+void func__BspGpio_Init(void);
 
+/* ==================== BspGpio_Write ==================== */
 /**
- * @brief  [EN] Read a logical board input signal.
- *         [FA] یک سیگنال ورودی منطقی برد را می‌خواند.
- * @param  bsp_gpio_id_t__id [EN] Logical signal identifier / شناسهٔ سیگنال منطقی
- * @return bool [EN] true if the physical signal is high / اگر سیگنال فیزیکی High باشد true
+ * @brief  [EN] Assert or deassert a logical output. Board-specific active
+ *              polarity is applied privately; input-only identifiers are ignored.
+ *         [FA] یک خروجی منطقی را فعال یا غیرفعال می‌کند. قطبیت فعال مخصوص برد
+ *              در پورت اعمال می‌شود و شناسه‌های فقط‌ورودی نادیده گرفته می‌شوند.
+ * @param  bsp_gpio_id_t__id [EN] Logical signal identifier /
+ *                               شناسهٔ سیگنال منطقی
+ * @param  bool__asserted [EN] true=asserted/on, false=deasserted/off /
+ *                             فعال/روشن یا غیرفعال/خاموش
+ */
+void func__BspGpio_Write(bsp_gpio_id_t bsp_gpio_id_t__id, bool bool__asserted);
+
+/* ==================== BspGpio_Read ==================== */
+/**
+ * @brief  [EN] Read a logical signal. Board-specific active polarity is
+ *              applied privately for outputs and active-level inputs.
+ *         [FA] یک سیگنال منطقی را می‌خواند. قطبیت فعال مخصوص برد برای
+ *              خروجی‌ها و ورودی‌های دارای سطح فعال در پورت اعمال می‌شود.
+ * @param  bsp_gpio_id_t__id [EN] Logical signal identifier /
+ *                               شناسهٔ سیگنال منطقی
+ * @return bool [EN] true when the logical signal is asserted /
+ *                   اگر سیگنال منطقی فعال باشد true
  */
 bool func__BspGpio_Read(bsp_gpio_id_t bsp_gpio_id_t__id);
 

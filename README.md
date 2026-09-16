@@ -8,7 +8,7 @@
 
 تغییر مسیر تغذیه ۲۴ ولت DC: ورودی یا باتری. MCU: `STM32F103C8T6`.
 
-**مرحله فعلی:** LED و بازر فعال هستند؛ ADC+DMA و Measurement فعال است و فقط ولتاژ ورودی به UI وصل شده است. ولتاژ باتری فعلاً از ورودی تست دستی Live Expressions می‌آید. PWM، UART و رله خاموش هستند.
+**مرحله فعلی:** قرارداد BSP برای کل شماتیک تثبیت شده است: GPIOهای خروجی/ورودی، ADC+DMA و کالیبراسیون، دو PWM شارژر، USART1/ESP-Link و سه منبع EXTI در پورت برد وجود دارند. `MODULE_UI=1` و `MODULE_MEASUREMENT=1` هستند؛ Charger، ESP، Jitter، Protection و Changeover هنوز خاموش‌اند، اما backendهایشان حذف یا از Build خارج نشده‌اند.
 
 شماتیک: `Circuit/ChangeOver(24V_DC).pdf`
 
@@ -23,7 +23,7 @@
 | `CubeMX/` | فایل `.ioc` |
 | `CubeIDE/` | پروژه STM32CubeIDE بعد از Generate |
 
-`main.c` فقط کلاک، HAL، `MX_*_Init`، بعد `App_Start()`. منطق محصول در `Firmware/`.
+`main.c` فقط کلاک، HAL، `MX_*_Init`، وضعیت امن BSP و بعد `App_Start()` را مدیریت می‌کند. منطق محصول در `Firmware/` و نگاشت فیزیکی فقط در پورت BSP برد است.
 
 کلید ماژول‌ها: `Firmware/Config/Inc/modules_enable.h` — اکنون `MODULE_UI = 1` و `MODULE_MEASUREMENT = 1` هستند؛ سایر ماژول‌ها خاموش‌اند.
 
@@ -43,6 +43,21 @@ CubeIDE/Core/Src/main.c
         باتری در مرحله فعلی            UINT32_T__G__BatteryVoltageMv، تست دستی mV
         Ui_Tick(inputMv, batteryMv)    انتخاب InputOk / Charging / BatteryRun / InputOverVoltage
 ```
+
+## قرارداد تثبیت‌شدهٔ BSP
+
+جزئیات کامل در `Firmware/Bsp/README.md` ثبت شده است. APIهای عمومی HAL-free عبارت‌اند از:
+
+| حوزه | API منطقی | backend فیزیکی فعلی |
+|---|---|---|
+| GPIO | `func__BspGpio_Init/Write/Read` | PA4، PA8، PB0/PB1/PB10، PB5/PB7/PB11 و PB2/PB4/PB6 |
+| ADC | `func__BspAdc_Init/Start/GetRaw` | ADC1 + DMA1 Channel1، پنج کانال PA1/PA2/PA3/PA5/PA7 |
+| Calibration | `func__BspMeasurement_*` | تقسیم‌های ۲۴V/۱۲V، شانت و gain در پورت برد |
+| PWM | `func__BspPwm_Init/SetDutyPermille/StopAll` | TIM2_CH1 روی PA0 و TIM3_CH1 روی PA6 |
+| UART | `func__BspUart_Init/Write/ReadByte` | USART1 روی PA9/PA10، 115200 8-N-1 |
+| EXTI | `func__BspExti_Init/OnIrq/TakeEvent` | PB2، PB4 و PB6، هر دو لبه |
+
+وضعیت امن startup: بازر، ESP و LEDها Low؛ رله Low؛ کنترل‌های active-low باتری روی High؛ compare هر دو PWM صفر و event flagها پاک هستند. تغییر پایه یا قطبیت فقط در `board_pins.h` و پورت BSP مجاز است.
 
 در این مرحله فقط مسیر ولتاژ ورودی به UI وصل شده است:
 
@@ -118,7 +133,7 @@ ChangeOver
 
 | تاریخ | تغییر |
 |---|---|
-| 2026-09-16 | اصلاح محدود ADC/Measurement: کلاک ADC روی 12MHz (PCLK2/6، بیشترین مقدار قانونی F103 با PCLK2=72MHz)، همسان‌سازی `.ioc`ها، افزودن HAL ADC/ADCEx به Build، کالیبراسیون، فریم پایدار DMA، ضرایب صحیح تقسیم ولتاژ و snapshot اتمیک؛ ماژول‌های دیگر تغییر نکردند |
+| 2026-09-16 | تثبیت BSP کامل از روی شماتیک: GPIO و safe-state، ADC+DMA و کالیبراسیون، TIM2/TIM3 PWM، USART1/ESP-Link، EXTI و IRQ/MSP؛ همسان‌سازی `.ioc`ها، افزودن HAL UART به Build و ثبت قرارداد Agentهای بعدی |
 | 2026-09-15 | چک کامل UI با `AI_AGENT_RULES.md` و اصلاحات: braces MISRA در `ui_buzzer.c`، بازر در `ui_led.c` فقط از طریق API ماژول بازر (جداسازی کامل)، شارژ بازر را صریح خاموش می‌کند، نام `BUZZER_STATE_T__G__State`، پاک‌سازی `task_ui.c`؛ مقادیر measurement به سبک قانون `BOOL__G__` اصلاح شد؛ مستندات قدیمی `ui.h`/`ui.c` (حذف‌شده) از برگه‌ها حذف شد |
 | 2026-09-15 | مقادیر اندازه‌گیری گلوبال شدند (`UINT32_T__G__Meas*` / `BOOL__G__Meas*` در measurement) — هر تسک می‌تواند بخواند و در دیباگر با Live Expressions دیده می‌شود |
 | 2026-09-15 | فعال‌شدن اندازه‌گیری: ADC1+DMA1 در `.ioc` (۵ کانال، scan+continuous، کلاک 9MHz به‌جای 36MHz که از سقف 14MHz F103 بالاتر بود)، درایور ADC ST (v1.1.10) به Drivers، bsp_adc واقعی (بافر چرخشی پرشدهٔ سخت‌افزار، بدون interrupt/CPU)، توابع تبدیل measurement (گام‌به‌گام، بدون فرمول خطی)، دوره `MEASUREMENT_PERIOD_MS=10` بالای measurement.h، PB4 (`MCU_INT_24_IN`) به‌عنوان ورودی دیجیتال حضور ورودی، `MODULE_MEASUREMENT=1`؛ Init/Start داخل تسک Measurement تا app.c دست‌نخورده بماند |

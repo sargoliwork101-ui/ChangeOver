@@ -8,7 +8,7 @@
 
 ## وضعیت
 
-اسکلت. `MODULE_ESP = 0`. UART را Enable نکن. فایل را پاک نکن.
+اسکلت. `MODULE_ESP = 0`. backend USART1 و CH_PD عمداً در `.ioc` و Build فعال هستند، اما CH_PD در startup Low است و ماژول اجرا نمی‌شود. فایل را پاک نکن.
 
 ## تاریخچه
 
@@ -68,7 +68,7 @@ rtos_app.c → TaskComm → task_comm.c
 ```text
 esp_link.c
   bsp_gpio.h / bsp_gpio.c     BspGpio_Write(BSP_GPIO_ESP_CHPD)
-  bsp_uart.h / bsp_uart.c     BspUart_Write (فعلاً false) / BspUart_Init
+  bsp_uart.h / bsp_uart.c     BspUart_Write / BspUart_ReadByte / BspUart_Init (USART1 پورت برد)
   board-specific BSP          نگاشت CH_PD و TX/RX در لایهٔ برد
   app_config.h / app_config.c APP_CONFIG.esp_link_enabled ، comm_period_ms
   app_types.h                 measurement_snapshot_t ، app_state_t ، fault_mask_t
