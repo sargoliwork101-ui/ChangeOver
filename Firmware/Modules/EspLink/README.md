@@ -32,13 +32,15 @@
 | نام | کار |
 |---|---|
 | `func__EspLink_Init` | ESP را خاموش می‌کند |
-| `func__EspLink_Power` | CH_PD را High/Low می‌کند |
+| `func__EspLink_Power` | سیگنال منطقی `BSP_GPIO_ESP_CHPD` را High/Low می‌کند |
 | `func__EspLink_Run` | تله‌متری؛ فعلاً بایتی نمی‌فرستد |
 | `TaskComm` | تا فلگ صفر Idle |
 
 `MODULE_ESP` ساخت تسک است. `APP_CONFIG.esp_link_enabled` اجازهٔ زمان اجرا است.
 
 ## پایه‌ها
+
+جدول زیر فقط مرجع فیزیکی برد فعلی است؛ کد EspLink پایه را نمی‌شناسد و از `BSP_GPIO_ESP_CHPD` و رابط منطقی UART استفاده می‌کند.
 
 | پایه | لیبل | نقش | HIGH یعنی |
 |---|---|---|---|
@@ -48,7 +50,7 @@
 
 ## پیش‌فرض امن
 
-`func__EspLink_Init` → `func__EspLink_Power(false)` یعنی PA8 Low. STM از ESP فرمان نمی‌گیرد تا پروتکل جدا نوشته شود.
+`func__EspLink_Init` → `func__EspLink_Power(false)` یعنی سیگنال منطقی `BSP_GPIO_ESP_CHPD` Low. STM از ESP فرمان نمی‌گیرد تا پروتکل جدا نوشته شود.
 
 ## درخت اتصال
 

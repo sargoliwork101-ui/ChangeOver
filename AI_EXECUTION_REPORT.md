@@ -13,6 +13,7 @@
 - Headerهای عمومی BSP (`bsp_gpio.h`, `bsp_adc.h`, `bsp_measurement.h`, `bsp_exti.h`, `bsp_pwm.h`, `bsp_uart.h`) HAL-free هستند.
 - جزئیات HAL، هندل ADC، نگاشت پایه‌ها و کالیبراسیون مدار فقط در پورت برد/فایل‌های platform-specific باقی می‌مانند.
 - Agentهای ماژول باید پیش از شروع `AI_AGENT_RULES.md` و README ماژول خود را بخوانند؛ مرز BSP قرارداد پایه است و تغییر سراسری فقط با دستور Agent ارشد انجام می‌شود.
+- بازبینی کامل کد و READMEها انجام شد؛ مسیرهای قدیمی Agent، APIهای قدیمی BSP و توضیحات مستقیم پایه در مستندات اصلاح شدند.
 
 ## اتصال فعلی Measurement و UI
 
@@ -53,6 +54,7 @@
 - `git diff --check` — موفق
 - preprocessing مسیرهای فعال — موفق
 - جست‌وجوی وابستگی HAL/STM32 در App/Modules/Rtos و Headerهای عمومی BSP — بدون وابستگی مستقیم
+- ممیزی سازگاری READMEها با APIهای فعلی و درخت اتصال — اصلاح و تأیید شد
 
 ## محدودیت‌های اعتبارسنجی
 

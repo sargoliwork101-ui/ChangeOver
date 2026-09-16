@@ -46,7 +46,7 @@ CubeIDE/Core/Src/main.c
 
 در این مرحله فقط مسیر ولتاژ ورودی به UI وصل شده است:
 
-- ورودی واقعی از کانال `PA2 / ADC1_IN2` اندازه‌گیری و به mV تبدیل می‌شود.
+- پورت فعلی برد، سیگنال منطقی ورودی ۲۴ ولت را از کانال فیزیکی `PA2 / ADC1_IN2` می‌گیرد و به mV تبدیل می‌کند؛ Measurement فقط قرارداد منطقی را می‌بیند.
 - تا معتبرشدن اولین فریم ADC، ورودی UI برابر صفر و قطع در نظر گرفته می‌شود.
 - ولتاژ باتری هنوز از `UINT32_T__G__BatteryVoltageMv` خوانده می‌شود و با Live Expressions قابل تغییر است.
 - اتصال ورودی باعث کندشدن یا هنگ‌کردن نمی‌شود؛ ADC و DMA توسط سخت‌افزار کار می‌کنند و Task Measurement هر ۱۰ms فقط یک فریم کوتاه را تبدیل می‌کند.
@@ -75,25 +75,25 @@ ChangeOver
 ├── CubeIDE/                           ← HAL، main.c، CMSIS-RTOS2 با Backend فعلی FreeRTOS
 │   └── Core/Src/main.c ──#include──► Firmware/App/Inc/app.h
 ├── tools/
-│   ├── check_ai_rules.sh              ← اجرای خودکار قوانین AI_AGENT_RULES.md (چک هدر، README، فلگ‌ها، .ioc)
+│   ├── check_ai_rules.sh              ← اجرای قوانین AI_AGENT_RULES.md
+│   ├── check_firmware_syntax.sh       ← syntax check سمت Host برای Core و Firmware
 │   └── (host tests در Modules/Ui)
 └── Firmware/
-    ├── AI_AGENT_RULES.md
     ├── App/
-    │   app.c ──► ui_led.h
-    │         ──► rtos_app.h
+    │   app.c ──► rtos_app.h
     ├── Config/
-    │   board_pins.h
+    │   board_pins.h                  ← فقط برای پورت BSP برد فعلی
     │   app_config.c / app_config.h
     │   app_types.h
     │   modules_enable.h
     │   rtos_config.h
     ├── Bsp/
-    │   bsp_gpio.c ◄── Ui ، EspLink
-    │   bsp_adc.c  ◄── Measurement (فعال: ADC1+DMA چرخشی، بدون CPU)
-    │   bsp_pwm.c  ◄── Charger (اسکلت)
-    │   bsp_uart.c ◄── EspLink (اسکلت)
-    │   bsp_exti.c ◄── Jitter (اسکلت)
+    │   bsp_gpio.c ◄── Ui ، EspLink (سیگنال‌های منطقی)
+    │   bsp_adc.c  ◄── Measurement (فریم ADC normalized)
+    │   bsp_measurement.c ◄── کالیبراسیون مدار برد
+    │   bsp_pwm.c  ◄── Charger (اسکلت، رابط منطقی)
+    │   bsp_uart.c ◄── EspLink (اسکلت، رابط منطقی)
+    │   bsp_exti.c ◄── Jitter (اسکلت، رویداد منطقی)
     ├── Rtos/
     │   rtos_app.c ──► task_ui.c          (MODULE_UI)
     │              ──► task_measurement.c (MODULE_MEASUREMENT، فعال)

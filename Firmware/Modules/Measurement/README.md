@@ -8,7 +8,7 @@
 
 ## وضعیت
 
-**فعال.** `MODULE_MEASUREMENT = 1`. ADC1 + DMA1 در `.ioc` روشن است (۵ کانال، scan، continuous، کلاک 12MHz؛ بیشترین مقدار قانونی با PCLK2=72MHz) و تسک measurement ساخته می‌شود. مقادیر تبدیل‌شده **گلوبال**‌اند (`UINT32_T__G__Meas*` / `BOOL__G__Meas*`)؛ فقط تسک measurement می‌نویسد و هر ماژولی می‌تواند بخواند (اول `BOOL__G__MeasDataValid` را چک کنید).
+**فعال.** `MODULE_MEASUREMENT = 1`. پورت فعلی برد در `.ioc` از ADC+DMA استفاده می‌کند (۵ کانال، scan، continuous، کلاک 12MHz؛ بیشترین مقدار قانونی با PCLK2=72MHz) و تسک Measurement ساخته می‌شود. کد ماژول فقط فریم normalized و API منطقی BSP را مصرف می‌کند. مقادیر تبدیل‌شده **گلوبال**‌اند (`UINT32_T__G__Meas*` / `BOOL__G__Meas*`)؛ فقط تسک Measurement می‌نویسد و هر ماژولی می‌تواند بخواند (اول `BOOL__G__MeasDataValid` را چک کنید).
 
 ## تاریخچه
 
@@ -38,7 +38,7 @@
 | نام | کار |
 |---|---|
 | `func__Measurement_Init` | snapshot را صفر می‌کند؛ `valid = false` |
-| `func__Measurement_Run` | ۵ عدد خام را از بافر DMA کپی و به mV/mA تبدیل می‌کند؛ `input_present` را از PB4 می‌خواند؛ `valid = true` |
+| `func__Measurement_Run` | یک فریم normalized را از BSP می‌گیرد و به mV/mA تبدیل می‌کند؛ `input_present` را از سیگنال منطقی BSP می‌خواند؛ `valid = true` |
 | `func__Measurement_GetSnapshot` | کپی آخرین snapshot؛ `NULL` یا نامعتبر → `false` |
 | `func__Measurement_CountsToMv` | خام استاندارد → mV پایه، با کالیبراسیون BSP برد |
 | `func__Measurement_V24CountsToMv` | خام استاندارد → mV منبع ۲۴، با تقسیم برد در BSP |
@@ -106,7 +106,8 @@ measurement.c
 task_measurement.c
   bsp_adc.h               func__BspAdc_Init / func__BspAdc_Start
   bsp_adc.c               Port برد فعلی و هندل ADC خصوصی آن
-  measurement.h           ثابت‌های دوره + توابع تبدیل
+  measurement.h           قرارداد عمومی، ثابت دوره + توابع نمای تبدیل
+  bsp_measurement.h/c      کالیبراسیون مخصوص مدار برد
 ```
 
 حافظه: بافر DMA = 2×5×2 = 20 بایت استاتیک؛ استک تسک `TASK_STACK_MEASUREMENT` = 192 word (768 بایت) — بعد از Build، مصرف کل RAM/Flash را از Map file چک کنید (قانون مدیریت حافظه).

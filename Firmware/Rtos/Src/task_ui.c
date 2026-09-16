@@ -1,7 +1,7 @@
 /**
  * @file    task_ui.c
  * @brief   [EN] CMSIS-RTOS2 UI thread - selects LED scenarios from measured input voltage and a manual battery test voltage.
- *          [FA] تسک FreeRTOS رابط کاربر - سناریوهای LED را از ولتاژ ورودی اندازه‌گیری‌شده و ولتاژ تست دستی باتری انتخاب می‌کند.
+ *          [FA] تسک CMSIS-RTOS2 رابط کاربر - سناریوهای LED را از ولتاژ ورودی اندازه‌گیری‌شده و ولتاژ تست دستی باتری انتخاب می‌کند.
  *
  * @note    [EN] Input voltage comes from the Measurement module when its first frame is valid. Battery voltage remains a Live Expressions test input until its measurement stage is approved.
  *          CMSIS-RTOS2 simple: osDelay yields, other tasks run, MCU not locked. No HAL_Delay.
