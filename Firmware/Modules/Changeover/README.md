@@ -8,7 +8,7 @@
 
 ## وضعیت
 
-پیاده‌سازی کامل منطق قطع/وصل با فیلتر 3000ms، اما `MODULE_CHANGEOVER = 0` باقی است (فعال‌سازی در مرحله بعد). فقط از داده‌های مجاز استفاده می‌کند: `snapshot.valid`, `snapshot.v_bat24_mv`, `snapshot.input_present`, `fault_mask`, `BOOL__G__UiBatteryAlarmIssued`. تبدیل زمان فقط با `rtos_time.h` و بدون فرض `tick=1ms`. فقط `BSP_GPIO_PROTECT_BATTERY` (PB11 منطقی) استفاده می‌شود؛ `PB5` و `PB7` ممنوع و به هیچ‌وجه تغییر نمی‌کنند. `board_pins.h`، HAL و پایه فیزیکی در ماژول ممنوع است.
+پیاده‌سازی کامل منطق قطع/وصل با فیلتر 3000ms، `MODULE_CHANGEOVER = 1` است تا منطق واقعی روی تسک کنترل اجرا و روی برد تست شود. فقط از داده‌های مجاز استفاده می‌کند: `snapshot.valid`, `snapshot.v_bat24_mv`, `snapshot.input_present`, `fault_mask`, `BOOL__G__UiBatteryAlarmIssued`. تبدیل زمان فقط با `rtos_time.h` و بدون فرض `tick=1ms`. فقط `BSP_GPIO_PROTECT_BATTERY` (PB11 منطقی) استفاده می‌شود؛ `PB5` و `PB7` ممنوع و به هیچ‌وجه تغییر نمی‌کنند. `board_pins.h`، HAL و پایه فیزیکی در ماژول ممنوع است.
 
 منطق (snapshot-first):
 - اگر `snapshot==NULL` یا `snapshot.valid==false` → هیچ تصمیمی، `state` حفظ، `PB11` حفظ، تایمرهای pending reset، `fault` هم در این حالت `state` را تغییر نمی‌دهد، زمان نامعتبر جزو 3000ms حساب نمی‌شود.
@@ -46,7 +46,7 @@
 | `func__Changeover_Evaluate(snap, faults)` | اگر `snap==NULL`/`!valid` → حفظ state/PB11 و reset تایمر (fault هم FAULT نمی‌شود)؛ وگرنه اگر `fault!=0` → `FAULT` بدون pin؛ وگرنه ارزیابی قطع (`v<20800` مستقل و `v<21000&&flag` گیت) و وصل (`input&&v>=21200`) هر کدام پیوسته 3000ms فقط روی `BSP_GPIO_PROTECT_BATTERY`؛ زمان با `func__Rtos_MillisecondsToTicks` و بدون فرض `tick=1ms` |
 | `TaskControl` | فقط اگر Changeover یا Charger یا Jitter یک باشد ساخته می‌شود |
 
-حالت‌ها: `BOOT`، `INPUT`، `BATTERY`، `FAULT`، `SAFE` — `IDLE` برای حالت معتبر استفاده نمی‌شود؛ پس از `BOOT` و با `snapshot` معتبر بدون cut → `BATTERY` (input false) یا `INPUT` (input true)، پس از cut → `SAFE`، پس از reconnect → `INPUT`؛ `MODULE_CHANGEOVER` هنوز 0 است.
+حالت‌ها: `BOOT`، `INPUT`، `BATTERY`، `FAULT`، `SAFE` — `IDLE` برای حالت معتبر استفاده نمی‌شود؛ پس از `BOOT` و با `snapshot` معتبر بدون cut → `BATTERY` (input false) یا `INPUT` (input true)، پس از cut → `SAFE`، پس از reconnect → `INPUT`؛ `MODULE_CHANGEOVER` در build تست برد 1 است.
 
 ## پایه‌ها
 
