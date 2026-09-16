@@ -75,7 +75,6 @@
 
 | تاریخ | تغییر |
 |---|---|
-| 2026-09-15 | لیبل (User Label) برای همه پایه‌های ADC در `.ioc`: PA1=`ADC_CURRENT1`، PA2=`MCU_ADC_24_IN`، PA3=`MCU_ADC_24_BAT`، PA5=`MCU_ADC_12_BAT`، PA7=`ADC_CURRENT2`، PB4=`MCU_INT_24_IN` (یکی با نام‌های شماتیک و برگه‌ی Measurement) |
 | 2026-09-15 | ADC1 + DMA1 چرخشی (5 کانال، 9MHz) و PB4 (MCU_INT_24_IN) به `.ioc` اضافه شد؛ کلاک ADC از 36MHz به 9MHz (سقف 14MHz)؛ درایور ADC v1.1.10 به CubeIDE/Drivers |
 | 2026-09-14 | اضافه شدن راهنمای اضافه کردن پریفرال بدون بهم ریختن برنامه + توضیح Linked Resource و USER CODE و چک‌لیست امن |
 | 2026-09-14 | فایل .ioc فقط LED/بازر، ADC/PWM خاموش |
