@@ -8,12 +8,13 @@
 
 ## وضعیت
 
-**فعال.** `MODULE_MEASUREMENT = 1`. ADC1 + DMA1 در `.ioc` روشن است (۵ کانال، scan، continuous، کلاک 9MHz) و تسک measurement ساخته می‌شود. مقادیر تبدیل‌شده **گلوبال**‌اند (`UINT32_T__G__Meas*` / `BOOL__G__Meas*`)؛ فقط تسک measurement می‌نویسد و هر ماژولی می‌تواند بخواند (اول `BOOL__G__MeasDataValid` را چک کنید).
+**فعال.** `MODULE_MEASUREMENT = 1`. ADC1 + DMA1 در `.ioc` روشن است (۵ کانال، scan، continuous، کلاک 12MHz؛ بیشترین مقدار قانونی با PCLK2=72MHz) و تسک measurement ساخته می‌شود. مقادیر تبدیل‌شده **گلوبال**‌اند (`UINT32_T__G__Meas*` / `BOOL__G__Meas*`)؛ فقط تسک measurement می‌نویسد و هر ماژولی می‌تواند بخواند (اول `BOOL__G__MeasDataValid` را چک کنید).
 
 ## تاریخچه
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-16 | اصلاح ADC/Measurement: کلاک ADC روی 12MHz (PCLK2/6)، کالیبراسیون F1، خواندن نیمهٔ کامل DMA با CNDTR، ضرایب صحیح تقسیم ولتاژ، محاسبهٔ دقیق‌تر جریان و snapshot اتمیک شد |
 | 2026-09-15 | مقادیر مشترک گلوبال شدند (`UINT32_T__G__MeasInputVoltageMv/Battery24Mv/Battery12Mv/Current1Ma/Current2Ma` + `BOOL__G__MeasInputPresent/DataValid`) — فقط تسک measurement می‌نویسد، همه می‌خوانند؛ در دیباگر با Live Expressions قابل مشاهده. پیشوند Meas* عمداً متفاوت از متغیرهای تست UI (task_ui.c) است تا لینک تداخل نکند |
 | 2026-09-15 | فعال شد: ADC1+DMA چرخشی (بافر ۱۰ نصف‌واژه، بدون interrupt، بدون CPU)، توابع تبدیل گام‌به‌گام (CountsToMv / V24 / V12 / CurrentToMa)، دوره `MEASUREMENT_PERIOD_MS=10` بالای measurement.h، ورودی حضور ورودی از PB4 (`MCU_INT_24_IN`)، Init/Start داخل تسک (app.c دست‌نخورده ماند) |
 | 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
@@ -29,7 +30,7 @@
 | `../../Rtos/Src/task_measurement.c` | تسک: Init+Start یک‌بار، بعد هر `MEASUREMENT_PERIOD_MS` یک `Run` |
 | `../../Config/Inc/app_types.h` | `measurement_snapshot_t` (تأیید نشده تغییر نکند — تسک‌های بعدی از آن می‌خوانند) |
 | `../../Config/Inc/modules_enable.h` | کلید `MODULE_MEASUREMENT` |
-| `../../../CubeMX/CubeIDE.ioc` | ADC1 (CH1/2/3/5/7) + DMA1_Ch1 circular N=10 + کلاک ADC 9MHz |
+| `../../../CubeMX/CubeIDE.ioc` | ADC1 (CH1/2/3/5/7) + DMA1_Ch1 circular N=10 + کلاک ADC 12MHz |
 
 ## توابع
 
@@ -39,14 +40,14 @@
 | `func__Measurement_Run` | ۵ عدد خام را از بافر DMA کپی و به mV/mA تبدیل می‌کند؛ `input_present` را از PB4 می‌خواند؛ `valid = true` |
 | `func__Measurement_GetSnapshot` | کپی آخرین snapshot؛ `NULL` یا نامعتبر → `false` |
 | `func__Measurement_CountsToMv` | خام (0..4095) → mV در پایهٔ ADC (0..3300) |
-| `func__Measurement_V24CountsToMv` | خام → mV منبع ۲۴ (ورودی/باتری)؛ برگردان تقسیم 76K/6.8K؛ سقف ~37V |
-| `func__Measurement_V12CountsToMv` | خام → mV منبع ۱۲ (باتری)؛ برگردان تقسیم 41K/6.8K؛ سقف ~20V |
+| `func__Measurement_V24CountsToMv` | خام → mV منبع ۲۴ (ورودی/باتری)؛ برگردان تقسیم 69.2K/6.8K؛ سقف ~37V |
+| `func__Measurement_V12CountsToMv` | خام → mV منبع ۱۲ (باتری)؛ برگردان تقسیم 34.2K/6.8K؛ سقف ~20V |
 | `func__Measurement_CurrentCountsToMa` | خام → mA شارژ؛ ÷ گین 101 → ÷ شانت 10mΩ؛ 1A ≈ 1010mV |
 | `func__TaskMeasurement` | Init+Start یک‌بار، 1ms انتظار فریم اول، بعد هر 10ms یک `Run` (`vTaskDelayUntil`) |
 | `func__BspAdc_Init` (Bsp) | نگه‌داشتن هندل `hadc1` + صفر کردن بافر DMA |
-| `func__BspAdc_Start` (Bsp) | `HAL_ADC_Start_DMA` (continuous + circular) — بعد از این، سخت‌افزار مستقل است |
-| `func__BspAdc_IsFrameReady` (Bsp) | true بعد از Start موفق |
-| `func__BspAdc_GetRaw` (Bsp) | کپی ۵ عدد اسلات دوم بافر DMA در critical section کوتاه (چند سیکل) |
+| `func__BspAdc_Start` (Bsp) | کالیبراسیون ADC1 + `HAL_ADC_Start_DMA` (continuous + circular)، با خاموش‌کردن منابع وقفهٔ DMA |
+| `func__BspAdc_IsFrameReady` (Bsp) | true بعد از کالیبراسیون و Start موفق |
+| `func__BspAdc_GetRaw` (Bsp) | انتخاب نیمهٔ کامل با CNDTR و کپی پایدار ۵ کانال با بررسی قبل/بعد شمارنده |
 
 ## مقدارهای گلوبال (مشترک)
 

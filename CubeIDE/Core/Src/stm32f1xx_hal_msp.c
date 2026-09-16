@@ -100,11 +100,11 @@ void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
 
     /* ADC1 External Clock Config */
     RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
-    /** ADC1 clock: PCLK2 (72 MHz) / 8 = 9 MHz.
-      * STM32F1 ADC clock max is 14 MHz (datasheet); the .ioc
-      * RCC.ADCFreqValue=9000000 selects this divider. */
+    /** ADC1 clock: PCLK2 (72 MHz) / 6 = 12 MHz.
+      * STM32F1 ADC clock max is 14 MHz (datasheet); DIV6 is the
+      * highest legal prescaler at a 72 MHz PCLK2. */
     PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
-    PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV8;
+    PeriphClkInit.AdcClockSelection = RCC_ADCPCLK2_DIV6;
     if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
     {
       Error_Handler();
