@@ -129,6 +129,16 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         return APP_STATE_T__G__State;
     }
 
+    /* [EN] Guard: if Rtos tick conversion yields zero ticks (e.g., tick freq 0),
+          do not perform immediate cut/reconnect; preserve state and PB11, reset timers.
+       [FA] نگهبان: اگر تبدیل میلی‌ثانیه به تیک صفر شد، هیچ قطع/وصلی فوری انجام نشود. */
+    if (uint32_t__durationTicks == 0u)
+    {
+        BOOL__G__CutTimerActive = false;
+        BOOL__G__ReconnectTimerActive = false;
+        return APP_STATE_T__G__State;
+    }
+
     /* [EN] Evaluate cut conditions (require continuous 3000ms):
           - gated cut: v <21000 AND UI alarm true
           - independent cut: v <20800 independent of UI flag
