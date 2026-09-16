@@ -19,6 +19,16 @@
 
 #include <stdbool.h>
 
+/* ==================== UI Global Battery Alarm Flag / فلگ سراسری آلارم باتری UI ==================== */
+
+/**
+ * @brief  [EN] Global flag owned by the UI: true while a valid low-battery alarm is active.
+ *         It is continuous (level), not a pulse. Set in Init to false, cleared on invalid
+ *         snapshot, set when v_bat24_mv < 21000 and cleared when >=21200.
+ *         [FA] فلگ سراسری در مالکیت UI: هنگام آلارم معتبر باتری کم true است.
+ */
+volatile bool BOOL__G__UiBatteryAlarmIssued = false;
+
 /* ==================== Battery Voltage To Percent / تبدیل ولتاژ باتری به درصد ==================== */
 
 /**
@@ -569,16 +579,66 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 /* ==================== Ui Tick / تیک اصلی UI ==================== */
 
 /**
- * @brief  [EN] Ui main tick - decides which scenario based on input and battery, CMSIS-RTOS2 simple readable.
- *         Call every UI_TICK_MS from task.
- *         [FA] تیکه اصلی UI - تصمیم سناریو بر اساس ورودی و باتری، ساده خوانا.
- * @param  uint32_t__inputVoltageMv [EN] Input voltage mV, 0..40000mV / ولتاژ ورودی
- * @param  uint32_t__batteryVoltageMv [EN] Battery voltage mV, 0..40000mV / ولتاژ باتری
+ * @brief  [EN] Ui main tick - decides which scenario from the real Measurement snapshot.
+ *         The snapshot is obtained via func__Measurement_GetSnapshot(); valid is checked
+ *         before any decision. If invalid, UI enters safe-off, alarm flag is cleared and
+ *         no stale/manual values are used. Battery production source is snapshot.v_bat24_mv only.
+ *         [FA] تیک اصلی UI - تصمیم سناریو را از snapshot واقعی Measurement می‌گیرد.
+ * @param  measurement_snapshot_t__snap [EN] Snapshot pointer, may be NULL / اشاره‌گر snapshot
  */
-void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__batteryVoltageMv)
+void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
 {
+    uint32_t uint32_t__inputVoltageMv;
+    uint32_t uint32_t__batteryVoltageMv;
     uint32_t uint32_t__batteryClampedMv;
     uint8_t uint8_t__batteryPercent;
+    bool bool__snapshotValid;
+
+    if (measurement_snapshot_t__snap == NULL)
+    {
+        func__all_off();
+        BOOL__G__UiBatteryAlarmIssued = false;
+        BOOL__G__UiInputPresent = false;
+        BOOL__G__UiInputOverVoltage = false;
+        TICKTYPE_T__G__UiInputOverVoltageStartTick = 0u;
+        func__Ui_ResetBatteryCriticalBeep();
+        func__Ui_ResetBatteryRunGreenBlink();
+        return;
+    }
+
+    bool__snapshotValid = measurement_snapshot_t__snap->valid;
+
+    if (bool__snapshotValid == false)
+    {
+        func__all_off();
+        BOOL__G__UiBatteryAlarmIssued = false;
+        BOOL__G__UiInputPresent = false;
+        BOOL__G__UiInputOverVoltage = false;
+        TICKTYPE_T__G__UiInputOverVoltageStartTick = 0u;
+        func__Ui_ResetBatteryCriticalBeep();
+        func__Ui_ResetBatteryRunGreenBlink();
+        return;
+    }
+
+    uint32_t__inputVoltageMv = measurement_snapshot_t__snap->v_in_mv;
+    uint32_t__batteryVoltageMv = measurement_snapshot_t__snap->v_bat24_mv;
+
+    /* [EN] Update global low-battery alarm flag continuously with hysteresis.
+       Threshold <21000 sets true, >=21200 clears false, otherwise hold.
+       [FA] فلگ سراسری آلارم باتری کم را به‌صورت پیوسته با هیسترزیس به‌روز کن. */
+    if (uint32_t__batteryVoltageMv < UI_LOW_BATTERY_ALARM_THRESHOLD_MV)
+    {
+        BOOL__G__UiBatteryAlarmIssued = true;
+    }
+    else if (uint32_t__batteryVoltageMv >= UI_LOW_BATTERY_ALARM_CLEAR_MV)
+    {
+        BOOL__G__UiBatteryAlarmIssued = false;
+    }
+    else
+    {
+        /* [EN] Keep previous flag in hysteresis band 21000..21200.
+           [FA] فلگ قبلی را در بازه هیسترزیس حفظ کن. */
+    }
 
     func__Ui_UpdateInputState(uint32_t__inputVoltageMv);
 
@@ -622,9 +682,10 @@ void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__battery
 void func__Ui_Init(void)
 {
     func__all_off();
+    BOOL__G__UiBatteryAlarmIssued = false;
     BOOL__G__UiInputPresent = false;
     BOOL__G__UiInputOverVoltage = false;
-    TICKTYPE_T__G__UiInputOverVoltageStartTick = 0;
+    TICKTYPE_T__G__UiInputOverVoltageStartTick = 0u;
     func__Ui_ResetBatteryCriticalBeep();
     func__Ui_ResetBatteryRunGreenBlink();
 }

@@ -16,6 +16,8 @@
 /* ==================== Includes / شامل‌ها ==================== */
 
 #include <stdint.h>
+#include <stdbool.h>
+#include "app_types.h"
 
 /* ==================== Battery voltage mapping constants / ثابت‌های نگاشت ولتاژ باتری ==================== */
 
@@ -285,6 +287,34 @@
  */
 #define UI_BATTERY_RUN_BEEP_GAP_MS 100u
 
+/* ==================== Low Battery Alarm / آلارم باتری کم ==================== */
+
+/**
+ * @brief  [EN] Battery voltage below which the UI low-battery alarm becomes active, in millivolts.
+ *         When snapshot is valid and v_bat24_mv is below this threshold the UI asserts
+ *         BOOL__G__UiBatteryAlarmIssued continuously until the clear threshold is reached.
+ *         [FA] ولتاژی که پایین‌تر از آن آلارم کم‌بود باتری UI فعال می‌شود، بر حسب میلی‌ولت.
+ * @note   [EN] Production battery voltage is taken ONLY from snapshot.v_bat24_mv.
+ *         [FA] ولتاژ باتری تولید فقط از snapshot.v_bat24_mv خوانده می‌شود.
+ */
+#define UI_LOW_BATTERY_ALARM_THRESHOLD_MV 21000u
+
+/**
+ * @brief  [EN] Battery voltage at or above which the UI low-battery alarm is cleared, in millivolts.
+ *         Provides hysteresis with the threshold (21000 -> 21200) to keep the flag continuous.
+ *         [FA] ولتاژی که در آن یا بالاتر از آن آلارم کم‌بود باتری پاک می‌شود، بر حسب میلی‌ولت.
+ */
+#define UI_LOW_BATTERY_ALARM_CLEAR_MV   21200u
+
+/* ==================== UI Global Battery Alarm Flag / فلگ سراسری آلارم باتری UI ==================== */
+
+/**
+ * @brief  [EN] Global flag owned by the UI: true while a valid low-battery alarm is active.
+ *         Changeover reads it only; UI owns and updates it. Continuous level, not a pulse.
+ *         [FA] فلگ سراسری در مالکیت UI: هنگام آلارم معتبر باتری کم مقدار true دارد.
+ */
+extern volatile bool BOOL__G__UiBatteryAlarmIssued;
+
 /* ==================== Percentage constants / ثابت‌های درصد ==================== */
 
 /**
@@ -365,12 +395,13 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv);
 /* ==================== Ui Tick / تیک اصلی UI ==================== */
 
 /**
- * @brief  [EN] Ui main tick - decides which scenario based on input and battery, RTOS simple readable.
- *         Call every UI_TICK_MS from task.
- *         [FA] تیکه اصلی UI - تصمیم سناریو بر اساس ورودی و باتری، ساده خوانا.
- * @param  uint32_t__inputVoltageMv [EN] Input voltage mV / ولتاژ ورودی
- * @param  uint32_t__batteryVoltageMv [EN] Battery voltage mV / ولتاژ باتری
+ * @brief  [EN] Ui main tick - decides which scenario from the real Measurement snapshot.
+ *         The snapshot is obtained via func__Measurement_GetSnapshot(); valid is checked
+ *         before any decision. If invalid, UI enters safe-off, alarm flag is cleared and
+ *         no stale/manual values are used. Battery production source is snapshot.v_bat24_mv only.
+ *         [FA] تیک اصلی UI - تصمیم سناریو را از snapshot واقعی Measurement می‌گیرد.
+ * @param  measurement_snapshot_t__snap [EN] Pointer to snapshot, may be NULL / اشاره‌گر snapshot
  */
-void func__Ui_Tick(uint32_t uint32_t__inputVoltageMv, uint32_t uint32_t__batteryVoltageMv);
+void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
 
 #endif /* UI_LED_H */

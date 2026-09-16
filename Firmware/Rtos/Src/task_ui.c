@@ -1,12 +1,15 @@
 /**
  * @file    task_ui.c
- * @brief   [EN] CMSIS-RTOS2 UI thread - selects LED scenarios from measured input voltage and a manual battery test voltage.
- *          [FA] تسک CMSIS-RTOS2 رابط کاربر - سناریوهای LED را از ولتاژ ورودی اندازه‌گیری‌شده و ولتاژ تست دستی باتری انتخاب می‌کند.
+ * @brief   [EN] CMSIS-RTOS2 UI thread - selects LED scenarios from the real Measurement snapshot.
+ *          [FA] تسک CMSIS-RTOS2 رابط کاربر - سناریوهای LED را از snapshot واقعی Measurement انتخاب می‌کند.
  *
- * @note    [EN] Input voltage comes from the Measurement module when its first frame is valid. Battery voltage remains a Live Expressions test input until its measurement stage is approved.
- *          CMSIS-RTOS2 simple: osDelay yields, other tasks run, MCU not locked. No HAL_Delay.
- *          [FA] ولتاژ ورودی پس از معتبرشدن اولین فریم از ماژول Measurement می‌آید. ولتاژ باتری تا تأیید مرحله خودش ورودی تست Live Expressions باقی می‌ماند.
- *          RTOS ساده است؛ osDelay اجازه اجرای تسک‌های دیگر را می‌دهد و HAL_Delay ممنوع است.
+ * @note    [EN] Production battery voltage comes ONLY from snapshot.v_bat24_mv via
+ *              func__Measurement_GetSnapshot(). The snapshot.valid flag is checked
+ *              before any UI decision; invalid snapshot forces safe-off, clears the
+ *              UI battery alarm flag and no stale/manual values are used.
+ *              CMSIS-RTOS2 simple: osDelay yields, other tasks run, MCU not locked. No HAL_Delay.
+ *          [FA] ولتاژ باتری تولید فقط از snapshot.v_bat24_mv می‌آید و قبل از هر تصمیم
+ *          UI مقدار snapshot.valid بررسی می‌شود.
  */
 
 #include "rtos_tasks.h"
@@ -16,24 +19,19 @@
 #include "cmsis_os2.h"
 #include "rtos_time.h"
 
-
 #if MODULE_MEASUREMENT
 #include "measurement.h"
 #endif
 
 #include <stdint.h>
-
-/* ==================== Global Test Inputs / ورودی‌های تست سراسری ==================== */
-
-/* [EN] Battery voltage remains a manual Live Expressions test input until the battery measurement stage is approved.
- *      [FA] ولتاژ باتری تا زمان تأیید مرحله اندازه‌گیری باتری، ورودی تست دستی Live Expressions باقی می‌ماند. */
-volatile uint32_t UINT32_T__G__BatteryVoltageMv = 25000u;
+#include "app_types.h"
 
 /* ==================== Task Ui / تسک UI ==================== */
 
 /**
- * @brief  [EN] Run the UI task and select the scenario from measured input voltage and manual battery test voltage.
- *         [FA] تسک UI را اجرا می‌کند و سناریو را از ولتاژ ورودی اندازه‌گیری‌شده و ولتاژ تست دستی باتری انتخاب می‌کند.
+ * @brief  [EN] Run the UI task and select the scenario from the real Measurement snapshot.
+ *         [FA] تسک UI را اجرا می‌کند و سناریو را از snapshot واقعی Measurement انتخاب می‌کند.
+ * @param  void_ptr__argument [EN] CMSIS-RTOS2 thread argument, unused / آرگومان استفاده‌نشده
  */
 void func__TaskUi(void *void_ptr__argument)
 {
@@ -44,31 +42,26 @@ void func__TaskUi(void *void_ptr__argument)
 
     for (;;)
     {
-        uint32_t uint32_t__inputVoltageMv;
-        uint32_t uint32_t__batteryVoltageMv;
+        measurement_snapshot_t measurement_snapshot_t__snap;
+
+        measurement_snapshot_t__snap.valid = false;
+        measurement_snapshot_t__snap.v_in_mv = 0u;
+        measurement_snapshot_t__snap.v_bat24_mv = 0u;
+        measurement_snapshot_t__snap.v_bat12_mv = 0u;
+        measurement_snapshot_t__snap.i_ch1_ma = 0u;
+        measurement_snapshot_t__snap.i_ch2_ma = 0u;
+        measurement_snapshot_t__snap.input_present = false;
 
 #if MODULE_MEASUREMENT
-        if (BOOL__G__MeasDataValid == true)
-        {
-            uint32_t__inputVoltageMv = UINT32_T__G__MeasInputVoltageMv;
-        }
-        else
-        {
-            /* [EN] No valid ADC frame is a safe disconnected-input result.
-               [FA] نبود فریم معتبر ADC، ورودی قطع را به‌عنوان حالت امن نشان می‌دهد. */
-            uint32_t__inputVoltageMv = 0u;
-        }
+        (void)func__Measurement_GetSnapshot(&measurement_snapshot_t__snap);
 #else
-        /* [EN] Measurement is disabled, so the input is treated as disconnected safely.
-           [FA] اگر Measurement خاموش باشد، ورودی برای ایمنی قطع در نظر گرفته می‌شود. */
-        uint32_t__inputVoltageMv = 0u;
+        measurement_snapshot_t__snap.valid = false;
 #endif
 
-        uint32_t__batteryVoltageMv = UINT32_T__G__BatteryVoltageMv;
-
-        /* [EN] The UI uses the measured input and the manual battery test value.
-           [FA] UI از ورودی اندازه‌گیری‌شده و مقدار تست دستی باتری استفاده می‌کند. */
-        func__Ui_Tick(uint32_t__inputVoltageMv, uint32_t__batteryVoltageMv);
+        /* [EN] UI owns BOOL__G__UiBatteryAlarmIssued and decides it from snapshot.valid + v_bat24_mv only.
+           Changeover reads the flag only.
+           [FA] UI مالک BOOL__G__UiBatteryAlarmIssued است و آن را فقط از valid و v_bat24_mv می‌سازد. */
+        func__Ui_Tick(&measurement_snapshot_t__snap);
 
         func__Rtos_DelayMilliseconds(UI_TICK_MS);
     }
