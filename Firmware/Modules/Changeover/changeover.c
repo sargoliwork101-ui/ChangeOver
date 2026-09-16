@@ -6,7 +6,7 @@
  * @note    [EN] This module uses ONLY: snapshot.valid, snapshot.v_bat24_mv,
  *              snapshot.input_present, fault_mask, BOOL__G__UiBatteryAlarmIssued.
  *              No board_pins.h, no HAL, no PB5/PB7, no float/queue/task.
- *              Time conversion ONLY via rtos_time.h; tick=1ms assumption is forbidden.
+ *              Time conversion ONLY via rtos_time.h (MillisecondsToTicks); tick=1ms assumption is forbidden.
  *              PB11 (BSP_GPIO_PROTECT_BATTERY) is the ONLY logical pin used.
  *          [FA] فقط از داده‌های مجاز بالا استفاده می‌کند و فقط PB11 منطقی را می‌زند.
  */
@@ -93,15 +93,34 @@ void func__Changeover_Init(void)
 app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap, fault_mask_t fault_mask_t__faults)
 {
     uint32_t uint32_t__nowTick;
-    uint32_t uint32_t__elapsedMs;
-    bool bool__snapshotValid;
+    uint32_t uint32_t__durationTicks;
     bool bool__cutCondition;
     bool bool__reconnectCondition;
 
     uint32_t__nowTick = osKernelGetTickCount();
+    uint32_t__durationTicks = func__Rtos_MillisecondsToTicks(CHANGEOVER_DURATION_MS);
 
-    /* [EN] Fault has highest priority: go to FAULT, no pin change, timers reset.
-       [FA] خطا بالاترین اولویت: به FAULT برو، پایه تغییر نکند. */
+    /* [EN] Snapshot check FIRST before any decision: if NULL or invalid,
+          preserve state and PB11, reset pending timers, fault does NOT change state,
+          and invalid time is not counted.
+       [FA] بررسی snapshot قبل از هر تصمیم: اگر نامعتبر، هیچ تصمیمی نگیر و state و PB11 حفظ شود. */
+    if (measurement_snapshot_t__snap == NULL)
+    {
+        BOOL__G__CutTimerActive = false;
+        BOOL__G__ReconnectTimerActive = false;
+        return APP_STATE_T__G__State;
+    }
+
+    if (measurement_snapshot_t__snap->valid == false)
+    {
+        BOOL__G__CutTimerActive = false;
+        BOOL__G__ReconnectTimerActive = false;
+        return APP_STATE_T__G__State;
+    }
+
+    /* [EN] Snapshot is valid from here - use ONLY allowed fields.
+          Now handle fault: fault -> FAULT, no pin change.
+       [FA] از اینجا snapshot معتبر است - فقط فیلدهای مجاز؛ اگر fault غیرصفر بود FAULT. */
     if (fault_mask_t__faults != FAULT_NONE)
     {
         APP_STATE_T__G__State = APP_STATE_FAULT;
@@ -110,29 +129,9 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         return APP_STATE_T__G__State;
     }
 
-    /* [EN] Snapshot invalid: no decision, preserve state and PB11, timers reset so invalid time not counted.
-       [FA] snapshot نامعتبر: هیچ تصمیمی نگیر، state و PB11 حفظ شود، زمان نامعتبر محاسبه نشود. */
-    if (measurement_snapshot_t__snap == NULL)
-    {
-        BOOL__G__CutTimerActive = false;
-        BOOL__G__ReconnectTimerActive = false;
-        return APP_STATE_T__G__State;
-    }
-
-    bool__snapshotValid = measurement_snapshot_t__snap->valid;
-    if (bool__snapshotValid == false)
-    {
-        BOOL__G__CutTimerActive = false;
-        BOOL__G__ReconnectTimerActive = false;
-        return APP_STATE_T__G__State;
-    }
-
-    /* [EN] Snapshot is valid from here - use ONLY allowed fields.
-       [FA] از اینجا snapshot معتبر است - فقط فیلدهای مجاز استفاده می‌شوند. */
-
-    /* [EN] Evaluate cut conditions:
-          - gated cut: v <21000 AND UI alarm true for 3000ms
-          - independent cut: v <20800 for 3000ms (no UI flag needed)
+    /* [EN] Evaluate cut conditions (require continuous 3000ms):
+          - gated cut: v <21000 AND UI alarm true
+          - independent cut: v <20800 independent of UI flag
        [FA] شرایط قطع ارزیابی می‌شوند. */
     bool__cutCondition = false;
     if (measurement_snapshot_t__snap->v_bat24_mv < CHANGEOVER_BAT_CRITICAL_CUT_MV)
@@ -158,8 +157,10 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         }
         else
         {
-            uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(uint32_t__nowTick - TICK_T__G__CutStartTick);
-            if (uint32_t__elapsedMs >= CHANGEOVER_DURATION_MS)
+            uint32_t uint32_t__elapsedTicks;
+
+            uint32_t__elapsedTicks = uint32_t__nowTick - TICK_T__G__CutStartTick;
+            if (uint32_t__elapsedTicks >= uint32_t__durationTicks)
             {
                 if (BOOL__G__ChangeoverProtectAsserted == false)
                 {
@@ -168,10 +169,72 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
                 }
                 APP_STATE_T__G__State = APP_STATE_SAFE;
             }
+            else
+            {
+                /* [EN] Cut pending but not yet elapsed: keep current state
+                      as before cut (BATTERY/INPUT will be set below if not SAFE).
+                   [FA] قطع در انتظار: حالت هنوز SAFE نشده. */
+                if (BOOL__G__ChangeoverProtectAsserted == false)
+                {
+                    if (measurement_snapshot_t__snap->input_present == true)
+                    {
+                        APP_STATE_T__G__State = APP_STATE_INPUT;
+                    }
+                    else
+                    {
+                        APP_STATE_T__G__State = APP_STATE_BATTERY;
+                    }
+                }
+                else
+                {
+                    APP_STATE_T__G__State = APP_STATE_SAFE;
+                }
+            }
         }
         /* [EN] While cut condition holds, reconnect timer must not run.
            [FA] هنگام شرط قطع، تایمر وصل مجدد نباید فعال باشد. */
         BOOL__G__ReconnectTimerActive = false;
+
+        /* [EN] If cut timer just started (first tick), report current valid state
+              (BATTERY/INPUT) until duration completes.
+           [FA] در شروع تایمر قطع، حالت معتبر فعلی گزارش شود. */
+        if (BOOL__G__ChangeoverProtectAsserted == false)
+        {
+            if (APP_STATE_T__G__State == APP_STATE_BOOT)
+            {
+                if (measurement_snapshot_t__snap->input_present == true)
+                {
+                    APP_STATE_T__G__State = APP_STATE_INPUT;
+                }
+                else
+                {
+                    APP_STATE_T__G__State = APP_STATE_BATTERY;
+                }
+            }
+            else if (APP_STATE_T__G__State == APP_STATE_SAFE)
+            {
+                /* [EN] Keep SAFE if already cut.
+                   [FA] اگر قبلاً SAFE شده، حفظ شود. */
+            }
+            else
+            {
+                if (measurement_snapshot_t__snap->input_present == true)
+                {
+                    APP_STATE_T__G__State = APP_STATE_INPUT;
+                }
+                else
+                {
+                    APP_STATE_T__G__State = APP_STATE_BATTERY;
+                }
+            }
+            /* [EN] If protect already asserted, stay SAFE (already handled above).
+               [FA] اگر قبلاً قطع شده، SAFE بماند. */
+            if (BOOL__G__ChangeoverProtectAsserted == true)
+            {
+                APP_STATE_T__G__State = APP_STATE_SAFE;
+            }
+        }
+
         return APP_STATE_T__G__State;
     }
     else
@@ -179,7 +242,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         BOOL__G__CutTimerActive = false;
     }
 
-    /* [EN] Evaluate reconnect: input_present true AND v >=21200 for 3000ms.
+    /* [EN] Evaluate reconnect: input_present true AND v >=21200 for 3000ms continuous.
        [FA] وصل مجدد فقط وقتی ورودی حاضر و ولتاژ باتری >=21200 به مدت 3 ثانیه. */
     bool__reconnectCondition = false;
     if ((measurement_snapshot_t__snap->input_present == true) &&
@@ -198,32 +261,68 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         {
             BOOL__G__ReconnectTimerActive = true;
             TICK_T__G__ReconnectStartTick = uint32_t__nowTick;
+            /* [EN] While waiting for reconnect duration, keep SAFE if already cut,
+                  otherwise report INPUT.
+               [FA] در انتظار reconnect، اگر قبلاً قطع شده SAFE بماند. */
+            if (BOOL__G__ChangeoverProtectAsserted == true)
+            {
+                APP_STATE_T__G__State = APP_STATE_SAFE;
+            }
+            else
+            {
+                APP_STATE_T__G__State = APP_STATE_INPUT;
+            }
         }
         else
         {
-            uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(uint32_t__nowTick - TICK_T__G__ReconnectStartTick);
-            if (uint32_t__elapsedMs >= CHANGEOVER_DURATION_MS)
+            uint32_t uint32_t__elapsedTicks;
+
+            uint32_t__elapsedTicks = uint32_t__nowTick - TICK_T__G__ReconnectStartTick;
+            if (uint32_t__elapsedTicks >= uint32_t__durationTicks)
             {
                 if (BOOL__G__ChangeoverProtectAsserted == true)
                 {
                     func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, false);
                     BOOL__G__ChangeoverProtectAsserted = false;
                 }
-                APP_STATE_T__G__State = APP_STATE_IDLE;
+                APP_STATE_T__G__State = APP_STATE_INPUT;
+            }
+            else
+            {
+                if (BOOL__G__ChangeoverProtectAsserted == true)
+                {
+                    APP_STATE_T__G__State = APP_STATE_SAFE;
+                }
+                else
+                {
+                    APP_STATE_T__G__State = APP_STATE_INPUT;
+                }
             }
         }
+        return APP_STATE_T__G__State;
     }
     else
     {
         BOOL__G__ReconnectTimerActive = false;
     }
 
-    /* [EN] No fault, snapshot valid, no cut/reconnect triggered: keep current state
-          or default to IDLE if still in BOOT. This preserves BOOT->IDLE transition.
-       [FA] بدون خطا و با snapshot معتبر و بدون تریگر قطع/وصل: حالت حفظ شود. */
-    if (APP_STATE_T__G__State == APP_STATE_BOOT)
+    /* [EN] No fault, snapshot valid, no pending cut/reconnect:
+          Map state directly from input_present, but preserve SAFE until reconnect.
+       [FA] بدون fault و با snapshot معتبر و بدون قطع/وصل در انتظار: از input_present نگاشت شود. */
+    if (BOOL__G__ChangeoverProtectAsserted == true)
     {
-        APP_STATE_T__G__State = APP_STATE_IDLE;
+        APP_STATE_T__G__State = APP_STATE_SAFE;
+    }
+    else
+    {
+        if (measurement_snapshot_t__snap->input_present == true)
+        {
+            APP_STATE_T__G__State = APP_STATE_INPUT;
+        }
+        else
+        {
+            APP_STATE_T__G__State = APP_STATE_BATTERY;
+        }
     }
 
     return APP_STATE_T__G__State;
