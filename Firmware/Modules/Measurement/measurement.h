@@ -5,9 +5,9 @@
  *              ADC+DMA hardware fills the raw buffer autonomously (bsp_adc),
  *              this module only converts.
  *          [FA] شمارش ADC را به واحد مهندسی (mV / mA) تبدیل می‌کند و آخرین
- *              نمونه را برای تسک‌های دیگر نگه می‌دارد. کاملاً نرم‌افزاری:
- *              سخت‌افزار ADC+DMA بافر خام را به‌طور مستقل پر می‌کند
- *              (bsp_adc) و این ماژول فقط تبدیل می‌کند.
+ *              نمونه را برای تسک‌های دیگر نگه می‌دارد. منطق این ماژول
+ *              مستقل از برد است؛ ADC خام از BSP می‌آید و کالیبراسیون برد
+ *              در `bsp_measurement` انجام می‌شود.
  */
 
 #ifndef MEASUREMENT_H
@@ -19,50 +19,12 @@
 /* ==================== Defines ==================== */
 
 /* [EN] MEASUREMENT TASK PERIOD. CHANGE HERE to change the sample rate.
- *      10 ms = 100 readings/s - far below the hardware frame rate (~35 kHz
- *      with a 12 MHz ADC clock), so the snapshot is always a fresh frame.
+ *      The BSP returns only completed normalized frames, so this task period
+ *      remains independent of the MCU ADC clock.
  * [FA] دورهٔ تسک اندازه‌گیری. برای تغییر نرخ نمونه‌برداری همین‌جا عوض شود.
- *      ۱۰ms = ۱۰۰ نمونه/ثانیه — بسیار کمتر از نرخ فریم سخت‌افزاری
- *      (حدود ۳۵kHz با کلاک ADC برابر ۱۲MHz)، پس snapshot تازه است. */
+ *      BSP فقط فریم‌های استانداردشدهٔ کامل را برمی‌گرداند، پس این دوره
+ *      مستقل از کلاک ADC میکروکنترلر است. */
 #define MEASUREMENT_PERIOD_MS      10u
-
-/* [EN] Delay after BspAdc_Start before the first GetRaw. The full two-frame
- *      DMA buffer (10 conversions) is ready in about 57 us after Start at
- *      12 MHz; 1 ms is a conservative margin.
- * [FA] تأخیر بعد از BspAdc_Start تا اولین GetRaw. بافر کامل دو فریمی DMA
- *      (۱۰ تبدیل) در 12MHz حدود 57us بعد از Start آماده می‌شود؛ ۱ms حاشیهٔ
- *      محافظه‌کارانه است. */
-#define MEASUREMENT_SETTLE_MS      1u
-
-/* [EN] ADC scale (STM32F103C8T6: 12-bit, Vref = VDDA = 3.3 V).
- * [FA] مقیاس ADC (STM32F103C8T6: ۱۲ بیتی، Vref = VDDA = 3.3V). */
-#define MEASUREMENT_VREF_MV        3300u
-#define MEASUREMENT_ADC_FULL_SCALE 4095u
-
-/* [EN] Voltage divider chains from the schematic (1% resistors).
- *      24V input: R46 68K + R11 1.2K on top, R12 6.8K to GND -> PA2
- *      24V batt : R47 68K + R13 1.2K on top, R14 6.8K to GND -> PA3
- *      12V batt : R48 33K + R15 1.2K on top, R16 6.8K to GND -> PA5
- * [FA] زنجیره‌های تقسیم ولتاژ از شماتیک (مقاومت ۱٪).
- *      ورودی ۲۴: R46 68K + R11 1.2K بالا، R12 6.8K به GND -> PA2
- *      باتری ۲۴ : R47 68K + R13 1.2K بالا، R14 6.8K به GND -> PA3
- *      باتری ۱۲ : R48 33K + R15 1.2K بالا، R16 6.8K به GND -> PA5 */
-#define MEASUREMENT_DIV24_TOP_OHMS    69200u  /* 68K + 1.2K / 68K + 1.2K */
-#define MEASUREMENT_DIV24_BOTTOM_OHMS 6800u   /* 6.8K / 6.8K */
-#define MEASUREMENT_DIV12_TOP_OHMS    34200u  /* 33K + 1.2K / 33K + 1.2K */
-#define MEASUREMENT_DIV12_BOTTOM_OHMS 6800u   /* 6.8K / 6.8K */
-
-/* [EN] Current sense (Charger_12VX2.SchDoc, Current Sense block):
- *      10 mOhm shunt (R64/R68, 0.01 ohm) + LM358 non-inverting amplifier,
- *      gain = 1 + R74/R73 = 1 + 100K/1K = 101. So 1 A -> 10 mV drop on the
- *      shunt -> 1.01 V at the ADC input.
- * [FA] اندازه‌گیری جریان (Charger_12VX2.SchDoc، بلوک Current Sense):
- *      شانت ۱۰mΩ (R64/R68، 0.01Ω) + تقویت‌کنندهٔ غیرمعاکس‌کنندهٔ LM358 با
- *      گین = ۱ + R74/R73 = ۱ + 100K/1K = 101. پس ۱A -> افت 10mV روی شانت
- *      -> 1.01V در ورودی ADC. */
-#define MEASUREMENT_SHUNT_MOHMS       10u
-#define MEASUREMENT_AMP_GAIN          101u
-#define MEASUREMENT_CURRENT_MA_SCALE  1000u
 
 /* ==================== Globals (shared values) ==================== */
 /* [EN] Shared engineering values, written ONLY by the measurement task
@@ -80,12 +42,12 @@
  *          InputVoltageMv/BatteryVoltageMv استفاده می‌کنند و Meas* از
  *          تداخل لینک جلوگیری می‌کند. وقتی UI به مقدار واقعی وصل شد،
  *          متغیرهای تست دستی در همان مرحله حذف می‌شوند. */
-extern volatile uint32_t UINT32_T__G__MeasInputVoltageMv;   /* [EN] 24 V main input, mV (PA2) / ولتاژ ورودی ۲۴, mV */
-extern volatile uint32_t UINT32_T__G__MeasBattery24Mv;      /* [EN] 24 V battery, mV (PA3) / ولتاژ باتری ۲۴, mV */
-extern volatile uint32_t UINT32_T__G__MeasBattery12Mv;      /* [EN] 12 V battery, mV (PA5) / ولتاژ باتری ۱۲, mV */
-extern volatile uint32_t UINT32_T__G__MeasCurrent1Ma;       /* [EN] 24 V ch.1 charge current, mA (PA1) / جریان کانال ۱, mA */
-extern volatile uint32_t UINT32_T__G__MeasCurrent2Ma;       /* [EN] 12 V ch.2 charge current, mA (PA7) / جریان کانال ۲, mA */
-extern volatile bool BOOL__G__MeasInputPresent;           /* [EN] PB4 HIGH = 24 V input present (schematic) / ورودی ۲۴ وصل است */
+extern volatile uint32_t UINT32_T__G__MeasInputVoltageMv;   /* [EN] Logical 24 V input, mV / ورودی منطقی ۲۴ ولت، mV */
+extern volatile uint32_t UINT32_T__G__MeasBattery24Mv;      /* [EN] Logical 24 V battery, mV / باتری منطقی ۲۴ ولت، mV */
+extern volatile uint32_t UINT32_T__G__MeasBattery12Mv;      /* [EN] Logical 12 V battery, mV / باتری منطقی ۱۲ ولت، mV */
+extern volatile uint32_t UINT32_T__G__MeasCurrent1Ma;       /* [EN] Logical charge current 1, mA / جریان منطقی شارژ ۱، mA */
+extern volatile uint32_t UINT32_T__G__MeasCurrent2Ma;       /* [EN] Logical charge current 2, mA / جریان منطقی شارژ ۲، mA */
+extern volatile bool BOOL__G__MeasInputPresent;           /* [EN] Logical 24 V input present / حضور منطقی ورودی ۲۴ ولت */
 extern volatile bool BOOL__G__MeasDataValid;              /* [EN] true once the first frame is converted / اولین فریم تبدیل شده */
 
 /* ==================== Measurement Init ==================== */
@@ -121,10 +83,10 @@ bool func__Measurement_GetSnapshot(measurement_snapshot_t *measurement_snapshot_
 /* ==================== Counts To Mv ==================== */
 
 /**
- * @brief  [EN] Convert raw 12-bit ADC counts to millivolts at the ADC pin:
- *              mV = counts * 3300 / 4095.
- *         [FA] شمارش خام ۱۲ بیتی ADC را به میلی‌ولت در پایهٔ ADC تبدیل
- *              می‌کند: mV = counts * 3300 / 4095.
+ * @brief  [EN] Convert normalized ADC counts to millivolts using the board
+ *              calibration port.
+ *         [FA] شمارش استاندارد ADC را با استفاده از پورت کالیبراسیون برد
+ *              به میلی‌ولت تبدیل می‌کند.
  * @param  uint16_t__counts [EN] Raw ADC count, 0..4095 / شمارش خام ADC
  * @return uint32_t [EN] Voltage in mV, 0..3300 / ولتاژ بر حسب mV
  */
@@ -133,12 +95,10 @@ uint32_t func__Measurement_CountsToMv(uint16_t uint16_t__counts);
 /* ==================== V24 Counts To Mv ==================== */
 
 /**
- * @brief  [EN] Convert raw counts of the 24 V channels (24V input, 24V battery)
- *              to source volts-mV, undoing the R46/R47 + R11..R14 dividers.
- *              At 24 V the ADC pin sees ~2.15 V (full range ~37 V).
- *         [FA] شمارش خام کانال‌های ۲۴ ولت (ورودی، باتری) را به میلی‌ولت
- *              منبع تبدیل می‌کند (برگردان تقسیم R46/R47 + R11..R14).
- *              در ۲۴V، پایهٔ ADC حدود 2.15V می‌بیند (سقف ~37V).
+ * @brief  [EN] Convert normalized 24 V channels to source mV through the
+ *              board calibration port.
+ *         [FA] کانال‌های استاندارد ۲۴ ولت را از طریق پورت کالیبراسیون برد
+ *              به میلی‌ولت منبع تبدیل می‌کند.
  * @param  uint16_t__counts [EN] Raw ADC count, 0..4095 / شمارش خام ADC
  * @return uint32_t [EN] Source voltage in mV, 0..~37000 / ولتاژ منبع mV
  */
@@ -147,12 +107,10 @@ uint32_t func__Measurement_V24CountsToMv(uint16_t uint16_t__counts);
 /* ==================== V12 Counts To Mv ==================== */
 
 /**
- * @brief  [EN] Convert raw counts of the 12 V battery channel to source
- *              volts-mV, undoing the R48 + R15/R16 divider.
- *              At 12 V the ADC pin sees ~2.0 V (full range ~20 V).
- *         [FA] شمارش خام کانال باتری ۱۲ ولت را به میلی‌ولت منبع تبدیل
- *              می‌کند (برگردان تقسیم R48 + R15/R16).
- *              در ۱۲V، پایهٔ ADC حدود 2.0V می‌بیند (سقف ~20V).
+ * @brief  [EN] Convert the normalized 12 V battery channel to source mV
+ *              through the board calibration port.
+ *         [FA] کانال استاندارد باتری ۱۲ ولت را از طریق پورت کالیبراسیون برد
+ *              به میلی‌ولت منبع تبدیل می‌کند.
  * @param  uint16_t__counts [EN] Raw ADC count, 0..4095 / شمارش خام ADC
  * @return uint32_t [EN] Source voltage in mV, 0..~20000 / ولتاژ منبع mV
  */
@@ -161,12 +119,10 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts);
 /* ==================== Current Counts To Ma ==================== */
 
 /**
- * @brief  [EN] Convert raw counts of a current channel (Current1/Current2) to
- *              milliamps: divide by the LM358 gain (101) to get the shunt
- *              drop, then divide by the 10 mOhm shunt. 1 A -> ~1010 mV out.
- *         [FA] شمارش خام کانال جریان (Current1/Current2) را به میلی‌آمپر
- *              تبدیل می‌کند: ابتدا تقسیم بر گین LM358 (101) برای افت شانت،
- *              سپس تقسیم بر شانت ۱۰mΩ. ۱A -> خروجی ~1010mV.
+ * @brief  [EN] Convert a normalized current channel to milliamps through the
+ *              board calibration port.
+ *         [FA] کانال استاندارد جریان را از طریق پورت کالیبراسیون برد به
+ *              میلی‌آمپر تبدیل می‌کند.
  * @param  uint16_t__counts [EN] Raw ADC count, 0..4095 / شمارش خام ADC
  * @return uint32_t [EN] Current in mA, 0..~3300 / جریان بر حسب mA
  */

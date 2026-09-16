@@ -70,7 +70,7 @@ else
   echo "  OK: Core does not contain Firmware"
 fi
 echo ""
-echo "[6] modules_enable.h flags (stage: UI + MEASUREMENT)"
+echo "[6] modules_enable.h flags (module stage: UI + MEASUREMENT; BSP peripherals may be enabled)"
 cat "$ROOT/Firmware/Config/Inc/modules_enable.h"
 if grep -q "#define MODULE_UI.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
   echo "  OK: MODULE_UI=1"
@@ -92,32 +92,49 @@ for m in FAULT PROTECTION CHANGEOVER CHARGER JITTER ESP; do
 done
 echo "  Other modules are 0"
 echo ""
-echo "[7] CubeMX .ioc peripheral check (stage: UI + MEASUREMENT)"
+echo "[7] CubeMX .ioc peripheral check (full schematic BSP contract)"
 IOC="$ROOT/CubeMX/CubeIDE.ioc"
 if [ -f "$IOC" ]; then
   if grep -q "Mcu.IP.*ADC" "$IOC"; then
-    echo "  OK: ADC1 enabled (measurement stage)"
+    echo "  OK: ADC1 enabled (5-channel measurement backend)"
   else
     echo "  FAIL: ADC1 missing in .ioc"
     FAIL=1
   fi
   if grep -q "ADC1.NbrOfConversion=5" "$IOC" && grep -q "DMA1.Request1=ADC1" "$IOC"; then
-    echo "  OK: ADC1 has 5 channels + DMA"
+    echo "  OK: ADC1 has 5 channels + circular DMA"
   else
     echo "  FAIL: ADC1 channels/DMA not configured"
     FAIL=1
   fi
-  if grep -q "Mcu.IP.*TIM[2-4]" "$IOC"; then
-    echo "  FAIL: TIM2-4 found"
-    FAIL=1
+  if grep -q "Mcu.IP.*TIM2" "$IOC" && grep -q "Mcu.IP.*TIM3" "$IOC" && \
+     grep -q "TIM2.Channel-Output compare CH1=TIM_CHANNEL_1" "$IOC" && \
+     grep -q "TIM3.Channel-Output compare CH1=TIM_CHANNEL_1" "$IOC"; then
+    echo "  OK: TIM2_CH1 and TIM3_CH1 PWM backends are retained"
   else
-    echo "  OK: No TIM2-4 PWM"
+    echo "  FAIL: Charger PWM timers/channels missing"
+    FAIL=1
   fi
-  if grep -q "Mcu.IP.*USART" "$IOC"; then
-    echo "  FAIL: USART found"
-    FAIL=1
+  if grep -q "Mcu.IP.*USART1" "$IOC" && grep -q "USART1.BaudRate=115200" "$IOC" && \
+     grep -q "PA9.Signal=USART1_TX" "$IOC" && grep -q "PA10.Signal=USART1_RX" "$IOC"; then
+    echo "  OK: USART1 ESP-Link UART backend is retained"
   else
-    echo "  OK: No USART"
+    echo "  FAIL: USART1 UART backend missing"
+    FAIL=1
+  fi
+  if grep -q "PB2.Mode=External_Interrupt_Mode_with_Rising_Falling_edge_trigger_detection" "$IOC" && \
+     grep -q "PB4.Mode=External_Interrupt_Mode_with_Rising_Falling_edge_trigger_detection" "$IOC" && \
+     grep -q "PB6.Mode=External_Interrupt_Mode_with_Rising_Falling_edge_trigger_detection" "$IOC"; then
+    echo "  OK: JITTER1, 24V detect and JITTER2 EXTI lines are retained"
+  else
+    echo "  FAIL: Schematic EXTI lines missing"
+    FAIL=1
+  fi
+  if grep -q "Mcu.PinsNb=26" "$IOC" && ! grep -q "PB9" "$IOC"; then
+    echo "  OK: Pin inventory has 26 pins and no unsupported PB9 mapping"
+  else
+    echo "  FAIL: Pin inventory/PB9 cleanup is incorrect"
+    FAIL=1
   fi
 else
   echo "  WARN: $IOC not found"
@@ -183,8 +200,8 @@ else
   echo "  FAIL: AI_AGENT_RULES missing new rules"
   FAIL=1
 fi
-if grep -q "RTOS ساده" "$ROOT/AI_AGENT_RULES.md" && grep -q "بدون قفل" "$ROOT/AI_AGENT_RULES.md"; then
-  echo "  OK: AI_AGENT_RULES has RTOS no delay"
+if grep -q "CMSIS-RTOS2 ساده" "$ROOT/AI_AGENT_RULES.md" && grep -q "بدون قفل" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has CMSIS-RTOS2 no delay"
 else
   echo "  FAIL: AI_AGENT_RULES missing RTOS no delay"
   FAIL=1
@@ -205,13 +222,16 @@ if [ -n "$FOUND_MALLOC" ]; then
 else
   echo "  OK: No malloc/free"
 fi
-FOUND_XTASK=$(grep -R --include="*.c" "xTaskCreate(" "$ROOT/Firmware" 2>/dev/null | grep -v "xTaskCreateStatic" | grep -v "//" || true)
-if [ -n "$FOUND_XTASK" ]; then
-  echo "  FAIL: Found xTaskCreate"
-  echo "$FOUND_XTASK" | head -n 5
+FOUND_DYNAMIC_THREAD=$(grep -R --include="*.c" --include="*.h" -E "\bxTaskCreate\(|\bosThreadNew\([^;]*NULL[[:space:]]*\)" "$ROOT/Firmware" 2>/dev/null | grep -v "rtos_app.c" | grep -v "//" || true)
+if [ -n "$FOUND_DYNAMIC_THREAD" ]; then
+  echo "  FAIL: Found a thread creation path without the static CMSIS attributes"
+  echo "$FOUND_DYNAMIC_THREAD" | head -n 5
   FAIL=1
+elif grep -q "osThreadNew" "$ROOT/Firmware/Rtos/Src/rtos_app.c" && grep -q "cb_mem" "$ROOT/Firmware/Rtos/Src/rtos_app.c" && grep -q "stack_mem" "$ROOT/Firmware/Rtos/Src/rtos_app.c"; then
+  echo "  OK: CMSIS-RTOS2 threads provide static control blocks and stacks"
 else
-  echo "  OK: Tasks use xTaskCreateStatic"
+  echo "  FAIL: CMSIS-RTOS2 static thread attributes not found"
+  FAIL=1
 fi
 if grep -q "const app_config_t APP_CONFIG" "$ROOT/Firmware/Config/Src/app_config.c"; then
   echo "  OK: APP_CONFIG is const"
@@ -285,27 +305,27 @@ else
   echo "  WARN: UI split files not found (ui_led.h/c, ui_buzzer.h/c) - expected after split"
 fi
 echo ""
-echo "[15] RTOS simple & readable - no HAL_Delay, vTaskDelay allowed (RTOS, MCU not locked)"
+echo "[15] CMSIS-RTOS2 simple & readable - no HAL_Delay (RTOS, MCU not locked)"
 FOUND_HAL_DELAY=$(grep -R --include="*.c" "HAL_Delay(" "$ROOT/Firmware" 2>/dev/null || true)
 if [ -n "$FOUND_HAL_DELAY" ]; then
   echo "  FAIL: Found HAL_Delay (locks MCU, forbidden)"
   echo "$FOUND_HAL_DELAY" | head -n 5
   FAIL=1
 else
-  echo "  OK: No HAL_Delay (RTOS vTaskDelay allowed, does not lock MCU)"
+  echo "  OK: No HAL_Delay (CMSIS-RTOS2 delay lets other threads run)"
 fi
 
-FOUND_VDELAY_UI=$(grep -R --include="*.c" "vTaskDelay(" "$ROOT/Firmware/Modules/Ui" 2>/dev/null || true)
-if [ -n "$FOUND_VDELAY_UI" ]; then
-  echo "  OK: Found vTaskDelay in Ui (RTOS simple, readable, MCU not locked, other tasks run)"
+FOUND_OS_DELAY_UI=$(grep -R --include="*.c" -E "osDelay\(|func__Rtos_DelayMilliseconds\(" "$ROOT/Firmware/Modules/Ui" 2>/dev/null || true)
+if [ -n "$FOUND_OS_DELAY_UI" ]; then
+  echo "  OK: UI uses CMSIS-RTOS2-compatible delays"
 else
-  echo "  OK: No vTaskDelay in Ui (also OK, non-blocking tick)"
+  echo "  OK: UI is non-blocking and has no delay call"
 fi
 
-if grep -R --include="*.c" "vTaskDelay" "$ROOT/Firmware/Rtos/Src" 2>/dev/null | head -n 1 | grep -q "vTaskDelay"; then
-  echo "  OK: Tasks use vTaskDelay/vTaskDelayUntil (RTOS simple, not blocking MCU)"
+if grep -R --include="*.c" -E "osDelayUntil\(|func__Rtos_DelayMilliseconds\(" "$ROOT/Firmware/Rtos/Src" 2>/dev/null | head -n 1 | grep -Eq "osDelayUntil|func__Rtos_DelayMilliseconds"; then
+  echo "  OK: Threads use CMSIS-RTOS2 delay APIs (other threads continue)"
 else
-  echo "  FAIL: Tasks dont use vTaskDelay"
+  echo "  FAIL: CMSIS-RTOS2 delay API not found in threads"
   FAIL=1
 fi
 

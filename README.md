@@ -8,7 +8,7 @@
 
 تغییر مسیر تغذیه ۲۴ ولت DC: ورودی یا باتری. MCU: `STM32F103C8T6`.
 
-**مرحله فعلی:** LED و بازر فعال هستند؛ ADC+DMA و Measurement فعال است و فقط ولتاژ ورودی به UI وصل شده است. ولتاژ باتری فعلاً از ورودی تست دستی Live Expressions می‌آید. PWM، UART و رله خاموش هستند.
+**مرحله فعلی:** قرارداد BSP برای کل شماتیک تثبیت شده است: GPIOهای خروجی/ورودی، ADC+DMA و کالیبراسیون، دو PWM شارژر، USART1/ESP-Link و سه منبع EXTI در پورت برد وجود دارند. `MODULE_UI=1` و `MODULE_MEASUREMENT=1` هستند؛ Charger، ESP، Jitter، Protection و Changeover هنوز خاموش‌اند، اما backendهایشان حذف یا از Build خارج نشده‌اند.
 
 شماتیک: `Circuit/ChangeOver(24V_DC).pdf`
 
@@ -23,7 +23,7 @@
 | `CubeMX/` | فایل `.ioc` |
 | `CubeIDE/` | پروژه STM32CubeIDE بعد از Generate |
 
-`main.c` فقط کلاک، HAL، `MX_*_Init`، بعد `App_Start()`. منطق محصول در `Firmware/`.
+`main.c` فقط کلاک، HAL، `MX_*_Init`، وضعیت امن BSP و بعد `App_Start()` را مدیریت می‌کند. منطق محصول در `Firmware/` و نگاشت فیزیکی فقط در پورت BSP برد است.
 
 کلید ماژول‌ها: `Firmware/Config/Inc/modules_enable.h` — اکنون `MODULE_UI = 1` و `MODULE_MEASUREMENT = 1` هستند؛ سایر ماژول‌ها خاموش‌اند.
 
@@ -32,7 +32,7 @@
 ```text
 CubeIDE/Core/Src/main.c
   App_Start()                         Firmware/App/Src/app.c
-    Ui_Init()                         Firmware/Modules/Ui/ui_led.c
+    App_Init()                        نقطهٔ آماده‌سازی عمومی برنامه
     Rtos_Start()                      Firmware/Rtos/Src/rtos_app.c
       TaskMeasurement                 Firmware/Rtos/Src/task_measurement.c
         ADC1 + DMA1                   سخت‌افزار، بافر چرخشی ۵ کاناله
@@ -44,9 +44,24 @@ CubeIDE/Core/Src/main.c
         Ui_Tick(inputMv, batteryMv)    انتخاب InputOk / Charging / BatteryRun / InputOverVoltage
 ```
 
+## قرارداد تثبیت‌شدهٔ BSP
+
+جزئیات کامل در `Firmware/Bsp/README.md` ثبت شده است. APIهای عمومی HAL-free عبارت‌اند از:
+
+| حوزه | API منطقی | backend فیزیکی فعلی |
+|---|---|---|
+| GPIO | `func__BspGpio_Init/Write/Read` | PA4، PA8، PB0/PB1/PB10، PB5/PB7/PB11 و PB2/PB4/PB6 |
+| ADC | `func__BspAdc_Init/Start/GetRaw` | ADC1 + DMA1 Channel1، پنج کانال PA1/PA2/PA3/PA5/PA7 |
+| Calibration | `func__BspMeasurement_*` | تقسیم‌های ۲۴V/۱۲V، شانت و gain در پورت برد |
+| PWM | `func__BspPwm_Init/SetDutyPermille/StopAll` | TIM2_CH1 روی PA0 و TIM3_CH1 روی PA6 |
+| UART | `func__BspUart_Init/Write/ReadByte` | USART1 روی PA9/PA10، 115200 8-N-1 |
+| EXTI | `func__BspExti_Init/OnIrq/TakeEvent` | PB2، PB4 و PB6، هر دو لبه |
+
+وضعیت امن startup: بازر، ESP و LEDها Low؛ رله Low؛ کنترل‌های active-low باتری روی High؛ compare هر دو PWM صفر و event flagها پاک هستند. تغییر پایه یا قطبیت فقط در `board_pins.h` و پورت BSP مجاز است.
+
 در این مرحله فقط مسیر ولتاژ ورودی به UI وصل شده است:
 
-- ورودی واقعی از کانال `PA2 / ADC1_IN2` اندازه‌گیری و به mV تبدیل می‌شود.
+- پورت فعلی برد، سیگنال منطقی ورودی ۲۴ ولت را از کانال فیزیکی `PA2 / ADC1_IN2` می‌گیرد و به mV تبدیل می‌کند؛ Measurement فقط قرارداد منطقی را می‌بیند.
 - تا معتبرشدن اولین فریم ADC، ورودی UI برابر صفر و قطع در نظر گرفته می‌شود.
 - ولتاژ باتری هنوز از `UINT32_T__G__BatteryVoltageMv` خوانده می‌شود و با Live Expressions قابل تغییر است.
 - اتصال ورودی باعث کندشدن یا هنگ‌کردن نمی‌شود؛ ADC و DMA توسط سخت‌افزار کار می‌کنند و Task Measurement هر ۱۰ms فقط یک فریم کوتاه را تبدیل می‌کند.
@@ -61,7 +76,7 @@ CubeIDE/Core/Src/main.c
 
 بین `20V` و `21V` وضعیت قبلی اتصال ورودی حفظ می‌شود. محدودهٔ درصد باتری در منطق UI برابر `21V = 0%` تا `28V = 100%` است، اما در مرحلهٔ فعلی مقدار باتری هنوز از ورودی تست دستی خوانده می‌شود.
 
-ثابت‌های سیاست UI در `Firmware/Modules/Ui/ui_led.h` و محدودیت‌های سرویس بوق در `ui_buzzer.h` هستند. همه Taskها با تخصیص استاتیک ساخته می‌شوند و Dynamic allocation در تنظیمات FreeRTOS خاموش است.
+ثابت‌های سیاست UI در `Firmware/Modules/Ui/ui_led.h` و محدودیت‌های سرویس بوق در `ui_buzzer.h` هستند. همهٔ Threadها با CMSIS-RTOS2 و حافظهٔ ثابت ساخته می‌شوند؛ FreeRTOS فقط Backend فعلی CMSIS-RTOS2 است و تخصیص پویا خاموش است.
 
 ## درخت اتصال کل پروژه
 
@@ -72,28 +87,28 @@ ChangeOver
 │   └── ChangeOver(24V_DC).pdf
 ├── CubeMX/
 │   └── CubeIDE.ioc                    ← کپی تنظیمات مکعب (هم‌نام پروژه، بعد از Generate کپی شود)
-├── CubeIDE/                           ← HAL، main.c، FreeRTOS مکعب
+├── CubeIDE/                           ← HAL، main.c، CMSIS-RTOS2 با Backend فعلی FreeRTOS
 │   └── Core/Src/main.c ──#include──► Firmware/App/Inc/app.h
 ├── tools/
-│   ├── check_ai_rules.sh              ← اجرای خودکار قوانین AI_AGENT_RULES.md (چک هدر، README، فلگ‌ها، .ioc)
+│   ├── check_ai_rules.sh              ← اجرای قوانین AI_AGENT_RULES.md
+│   ├── check_firmware_syntax.sh       ← syntax check سمت Host برای Core و Firmware
 │   └── (host tests در Modules/Ui)
 └── Firmware/
-    ├── AI_AGENT_RULES.md
     ├── App/
-    │   app.c ──► ui_led.h
-    │         ──► rtos_app.h
+    │   app.c ──► rtos_app.h
     ├── Config/
-    │   board_pins.h
+    │   board_pins.h                  ← فقط برای پورت BSP برد فعلی
     │   app_config.c / app_config.h
     │   app_types.h
     │   modules_enable.h
     │   rtos_config.h
     ├── Bsp/
-    │   bsp_gpio.c ◄── Ui ، EspLink
-    │   bsp_adc.c  ◄── Measurement (فعال: ADC1+DMA چرخشی، بدون CPU)
-    │   bsp_pwm.c  ◄── Charger (اسکلت)
-    │   bsp_uart.c ◄── EspLink (اسکلت)
-    │   bsp_exti.c ◄── Jitter (اسکلت)
+    │   bsp_gpio.c ◄── Ui ، EspLink (سیگنال‌های منطقی)
+    │   bsp_adc.c  ◄── Measurement (فریم ADC normalized)
+    │   bsp_measurement.c ◄── کالیبراسیون مدار برد
+    │   bsp_pwm.c  ◄── Charger (اسکلت، رابط منطقی)
+    │   bsp_uart.c ◄── EspLink (اسکلت، رابط منطقی)
+    │   bsp_exti.c ◄── Jitter (اسکلت، رویداد منطقی)
     ├── Rtos/
     │   rtos_app.c ──► task_ui.c          (MODULE_UI)
     │              ──► task_measurement.c (MODULE_MEASUREMENT، فعال)
@@ -118,7 +133,7 @@ ChangeOver
 
 | تاریخ | تغییر |
 |---|---|
-| 2026-09-16 | اصلاح محدود ADC/Measurement: کلاک ADC روی 12MHz (PCLK2/6، بیشترین مقدار قانونی F103 با PCLK2=72MHz)، همسان‌سازی `.ioc`ها، افزودن HAL ADC/ADCEx به Build، کالیبراسیون، فریم پایدار DMA، ضرایب صحیح تقسیم ولتاژ و snapshot اتمیک؛ ماژول‌های دیگر تغییر نکردند |
+| 2026-09-16 | تثبیت BSP کامل از روی شماتیک: GPIO و safe-state، ADC+DMA و کالیبراسیون، TIM2/TIM3 PWM، USART1/ESP-Link، EXTI و IRQ/MSP؛ همسان‌سازی `.ioc`ها، افزودن HAL UART به Build و ثبت قرارداد Agentهای بعدی |
 | 2026-09-15 | چک کامل UI با `AI_AGENT_RULES.md` و اصلاحات: braces MISRA در `ui_buzzer.c`، بازر در `ui_led.c` فقط از طریق API ماژول بازر (جداسازی کامل)، شارژ بازر را صریح خاموش می‌کند، نام `BUZZER_STATE_T__G__State`، پاک‌سازی `task_ui.c`؛ مقادیر measurement به سبک قانون `BOOL__G__` اصلاح شد؛ مستندات قدیمی `ui.h`/`ui.c` (حذف‌شده) از برگه‌ها حذف شد |
 | 2026-09-15 | مقادیر اندازه‌گیری گلوبال شدند (`UINT32_T__G__Meas*` / `BOOL__G__Meas*` در measurement) — هر تسک می‌تواند بخواند و در دیباگر با Live Expressions دیده می‌شود |
 | 2026-09-15 | فعال‌شدن اندازه‌گیری: ADC1+DMA1 در `.ioc` (۵ کانال، scan+continuous، کلاک 9MHz به‌جای 36MHz که از سقف 14MHz F103 بالاتر بود)، درایور ADC ST (v1.1.10) به Drivers، bsp_adc واقعی (بافر چرخشی پرشدهٔ سخت‌افزار، بدون interrupt/CPU)، توابع تبدیل measurement (گام‌به‌گام، بدون فرمول خطی)، دوره `MEASUREMENT_PERIOD_MS=10` بالای measurement.h، PB4 (`MCU_INT_24_IN`) به‌عنوان ورودی دیجیتال حضور ورودی، `MODULE_MEASUREMENT=1`؛ Init/Start داخل تسک Measurement تا app.c دست‌نخورده بماند |

@@ -99,8 +99,11 @@ to exclude the API function. */
 #define INCLUDE_xTaskGetCurrentTaskHandle   1
 #define INCLUDE_eTaskGetState               1
 
-/* [EN] CMSIS-RTOS V2 is retained for the generated FreeRTOS package, but this application uses only static allocation.
- * [FA] CMSIS-RTOS V2 برای بستهٔ تولیدشده باقی مانده است، اما این برنامه فقط از تخصیص استاتیک استفاده می‌کند. */
+/* CMSIS-RTOS2 application policy: all created objects must provide static memory.
+ * سیاست برنامه در CMSIS-RTOS2: هر شیء ساخته‌شده باید حافظهٔ ثابت خودش را ارائه کند. */
+#define configUSE_OS2_THREAD_ENUMERATE         0
+#define configUSE_OS2_TIMER                    0
+
 
 /* Cortex-M specific definitions. */
 #ifdef __NVIC_PRIO_BITS

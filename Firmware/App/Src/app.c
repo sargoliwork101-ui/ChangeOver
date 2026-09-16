@@ -1,30 +1,26 @@
 /**
  * @file    app.c
- * @brief   [EN] Wires modules for the current stage (UI only). Full type naming, func__ prefix.
- *          [FA] سیم‌کشی ماژول‌ها برای مرحله فعلی (فقط UI). نام تایپ کامل.
+ * @brief   [EN] Starts the application through the CMSIS-RTOS2 boundary.
+ *          [FA] برنامه را از مرز CMSIS-RTOS2 راه‌اندازی می‌کند.
  */
 
 #include "app.h"
-#include "ui_led.h"
 #include "rtos_app.h"
 
 /**
- * @brief  [EN] Initialise the UI outputs to a safe (all off) state.
- *         [FA] خروجی‌های UI را در حالت امن (همه خاموش) می‌گذارد.
+ * @brief  [EN] Application initialization hook; thread-owned module init runs in its thread.
+ *         [FA] نقطهٔ مقداردهی اولیهٔ برنامه؛ Init ماژول صاحب تسک داخل همان تسک انجام می‌شود.
  */
-/* ==================== App_Init ==================== */
-
 void func__App_Init(void)
 {
-    func__Ui_Init();
+    /* [EN] Keep startup free of UI state initialization; the UI thread owns it.
+       [FA] مقداردهی وضعیت UI در شروع برنامه انجام نمی‌شود؛ مالک آن تسک UI است. */
 }
 
 /**
- * @brief  [EN] Init then enter FreeRTOS. Called from main after MX_GPIO_Init.
- *         [FA] Init و ورود به FreeRTOS. از main بعد از MX_GPIO_Init صدا زده شود.
+ * @brief  [EN] Initialize the CMSIS-RTOS2 application and start its threads.
+ *         [FA] برنامهٔ CMSIS-RTOS2 را مقداردهی و تسک‌های آن را شروع می‌کند.
  */
-/* ==================== App_Start ==================== */
-
 void func__App_Start(void)
 {
     func__App_Init();

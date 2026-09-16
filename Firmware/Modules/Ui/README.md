@@ -16,7 +16,7 @@ API کاربردی بوق فقط یک تابع است:
 int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)
 ```
 
-این تابع غیرمسدودکننده است. در الگوی معتبر، مقدار بازگشتی زمان پیشنهادی مراجعه بعدی بر حسب میلی‌ثانیه است؛ این زمان برابر ۱۰٪ کوچک‌ترین بخش مثبت الگو است. مقدار `0` خاموشی معتبر و مقدار `-1` تنظیمات نامعتبر را نشان می‌دهد. فراخواننده صریح می‌تواند مقدار مثبت را به `vTaskDelay` بدهد و نیازی نیست برای دوره‌های بزرگ، تسک را با فاصله ثابت و کوتاه بیدار کند.
+این تابع غیرمسدودکننده است. در الگوی معتبر، مقدار بازگشتی زمان پیشنهادی مراجعه بعدی بر حسب میلی‌ثانیه است؛ این زمان برابر ۱۰٪ کوچک‌ترین بخش مثبت الگو است. مقدار `0` خاموشی معتبر و مقدار `-1` تنظیمات نامعتبر را نشان می‌دهد. فراخوانندهٔ صریح می‌تواند مقدار مثبت را به `func__Rtos_DelayMilliseconds` بدهد و نیازی نیست برای دوره‌های بزرگ، تسک را با فاصلهٔ ثابت و کوتاه بیدار کند.
 
 ## سناریوهای توافق‌شده UI
 
@@ -153,7 +153,7 @@ InputOverVoltage فعال
 | 2026-09-16 | افزودن `UI_Board_Validation.xlsx` برای تست عملی روی برد، ثبت نتیجه و ایراد و تأیید نهایی سناریوهای LED/BUZZER. |
 | 2026-09-15 | اولین ساخت کامل سناریوهای UI: InputOk، Charging، BatteryRun با چهار بازه بوق، InputOverVoltage، هیسترزیس ورودی و مستندات کامل ثابت‌ها. |
 | 2026-09-15 | ساده‌سازی کامل بوق: حذف APIهای Start/Tick میلی‌ثانیه‌ای و درصدی، حذف Stop و توابع داخلی اضافی؛ باقی ماندن یک تابع عمومی با ورودی‌های دوره، دیوتی، تعداد بوق و گپ. |
-| 2026-09-15 | بوق از منطق خودکار BatteryRun و تست LED جدا شد؛ LED فقط مالک LEDها است و بوق مالک پایه PA4 است. |
+| 2026-09-15 | بوق از منطق خودکار BatteryRun و تست LED جدا شد؛ LED فقط مالک LEDها است و بوق فقط سیگنال منطقی `BSP_GPIO_BUZZER` را مصرف می‌کند. |
 | 2026-09-15 | تعریف محاسبه جدید: پنجره دیوتی برابر `period*duty/100` است، گپ‌ها داخل این پنجره قرار می‌گیرند و زمان باقی‌مانده تا دوره بعدی خاموش است. |
 | 2026-09-15 | اتصال دوباره سرویس جدید به رفتار قبلی سناریوها: بوق کوتاه BoardTest و بوق هوشمند BatteryRun؛ InputOk و Charging بوق را خاموش می‌کنند. |
 | 2026-09-15 | افزودن محدودیت‌های ایمنی با ثابت‌های حداقل دوره ۱۰۰۰ms و حداقل گپ ۱۰۰ms؛ صفر برای خاموشی معتبر و منفی یک برای خطا؛ بازگرداندن زمان مراجعه پیشنهادی ۱۰٪ برای RTOS. |
@@ -165,10 +165,10 @@ InputOverVoltage فعال
 | فایل | نقش |
 |---|---|
 | `ui_led.h` / `ui_led.c` | منطق LED: نگاشت ولتاژ، هیسترزیس ورودی، خطای InputOverVoltage، سناریوهای InputOk/Charging/BatteryRun و تست LED؛ فقط نقاط صریح سناریو برای شروع یا خاموش کردن سرویس بوق را فراخوانی می‌کند. |
-| `ui_buzzer.h` / `ui_buzzer.c` | سرویس یگانه بوق: محاسبه پنجره دیوتی، تقسیم آن بین پالس‌ها و گپ‌ها، اعتبارسنجی محدودیت‌های ایمنی، محاسبه مراجعه بعدی و نوشتن PA4. |
+| `ui_buzzer.h` / `ui_buzzer.c` | سرویس یگانه بوق: محاسبه پنجره دیوتی، تقسیم آن بین پالس‌ها و گپ‌ها، اعتبارسنجی محدودیت‌های ایمنی، محاسبه مراجعه بعدی و نوشتن سیگنال منطقی `BSP_GPIO_BUZZER`. |
 | `../../Rtos/Src/task_ui.c` | تسک UI؛ ولتاژ ورودی و باتری را می‌خواند و با `func__Ui_Tick` سناریوی مناسب را اجرا می‌کند. |
 | `../../Bsp/Src/bsp_gpio.c` | نوشتن سطح GPIO از طریق `func__BspGpio_Write`. |
-| `../../Config/Inc/board_pins.h` | تعریف `PIN_BUZZER_PORT` و `PIN_BUZZER_PIN`؛ PA4 طبق شماتیک. |
+| `../../Bsp/Inc/bsp_gpio.h` | سیگنال‌های منطقی `BSP_GPIO_LED_GREEN/RED/YELLOW` و `BSP_GPIO_BUZZER`؛ نگاشت پایه در BSP پنهان است. |
 | `../../Config/Inc/app_config.h` / `../../Config/Src/app_config.c` | تنظیمات عمومی زمان‌بندی LED و نگاشت ولتاژ؛ ثابت‌های BatteryRun و بوق‌های سناریویی در هدرهای UI تعریف شده‌اند. |
 | `host_test_ui.py` | تست هاست فرمول دوره، دیوتی، تعداد پالس و گپ. |
 | `UI_Board_Validation.xlsx` | برگهٔ ثبت تست عملی روی برد: برنامهٔ تست، مرجع سناریوها، ثبت ایراد و تأیید نهایی. |
@@ -225,7 +225,7 @@ int32_t int32_t__nextCheckMs;
 int32_t__nextCheckMs = func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs);
 if (int32_t__nextCheckMs > 0)
 {
-    vTaskDelay(pdMS_TO_TICKS((uint32_t)int32_t__nextCheckMs));
+    func__Rtos_DelayMilliseconds((uint32_t)int32_t__nextCheckMs);
 }
 else if (int32_t__nextCheckMs == UI_BUZZER_INVALID_RESULT)
 {
@@ -274,7 +274,7 @@ period = 10000ms
 | PB10 | `MCU_G_LED` | LED سبز | روشن |
 | PA4 | `MCU_BUZZER` | بازر | فعال شدن بوق طبق شماتیک |
 
-قطبیت تا اندازه‌گیری روی برد، شماتیکی است. سرویس بوق فقط PA4 را HIGH/LOW می‌کند و فرکانس صوتی PWM تولید نمی‌کند؛ بنابراین این منطق برای Active Buzzer مناسب است.
+جدول بالا مرجع فیزیکی برد فعلی است؛ منطق UI پایهٔ فیزیکی را نمی‌شناسد و فقط سیگنال‌های `BSP_GPIO_*` را مصرف می‌کند. قطبیت تا اندازه‌گیری روی برد، شماتیکی است. سرویس بوق سیگنال منطقی `BSP_GPIO_BUZZER` را HIGH/LOW می‌کند و فرکانس صوتی PWM تولید نمی‌کند؛ بنابراین این منطق برای Active Buzzer مناسب است.
 
 ## پیش‌فرض امن
 
@@ -294,13 +294,13 @@ Firmware/Rtos/Src/task_ui.c
       │   └── func__Ui_Buzzer_Tick(0, 0, 0, 0)  // خاموشی امن
       └── func__Ui_BoardTest_Start()
           └── func__Ui_Buzzer_Tick(...)  // بوق تست قبلی
-              ├── xTaskGetTickCount()       زمان نمونه فعلی RTOS
+              ├── osKernelGetTickCount()   زمان نمونه فعلی CMSIS-RTOS2
               ├── return nextCheckMs         ۱۰٪ کوچک‌ترین بخش مثبت الگو
               └── func__BspGpio_Write()     Firmware/Bsp/Src/bsp_gpio.c
-                  └── PIN_BUZZER_PORT/PIN_BUZZER_PIN  = PA4
+                  └── BSP_GPIO_BUZZER              = نگاشت پایه در bsp_gpio.c
 
 LED and BUZZER remain separate:
 CubeIDE/Core/Src/main.c
-  → func__App_Start() → func__App_Init() → func__Ui_Init()
-  → func__Rtos_Start() → func__TaskUi() → explicit scenario calls
+  → func__App_Start() → func__App_Init()
+  → func__Rtos_Start() → func__TaskUi() → func__Ui_Init() → explicit scenario calls
 ```

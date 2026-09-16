@@ -174,6 +174,36 @@ void TIM1_UP_IRQHandler(void)
   /* USER CODE END TIM1_UP_IRQn 1 */
 }
 
+/* ==================== EXTI2 IRQ ==================== */
+/**
+  * @brief [EN] Handle PB2 JITTER1 external interrupts.
+  *        [FA] وقفهٔ خارجی PB2 مربوط به JITTER1 را مدیریت می‌کند.
+  */
+void EXTI2_IRQHandler(void)
+{
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
+}
+
+/* ==================== EXTI4 IRQ ==================== */
+/**
+  * @brief [EN] Handle PB4 24V input-presence external interrupts.
+  *        [FA] وقفهٔ خارجی PB4 مربوط به حضور ورودی ۲۴ ولت را مدیریت می‌کند.
+  */
+void EXTI4_IRQHandler(void)
+{
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
+}
+
+/* ==================== EXTI9_5 IRQ ==================== */
+/**
+  * @brief [EN] Handle PB6 JITTER2 external interrupts on the shared 5..9 IRQ.
+  *        [FA] وقفهٔ خارجی PB6 مربوط به JITTER2 را در IRQ مشترک ۵ تا ۹ مدیریت می‌کند.
+  */
+void EXTI9_5_IRQHandler(void)
+{
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_6);
+}
+
 /* USER CODE BEGIN 1 */
 
 /* USER CODE END 1 */

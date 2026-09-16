@@ -1,6 +1,6 @@
 /**
  * @file    task_comm.c
- * @brief   [EN] FreeRTOS comm task - simple RTOS with vTaskDelay.
+ * @brief   [EN] CMSIS-RTOS2 communication thread - simple RTOS with osDelay.
  *          [FA] تسک ارتباط ساده RTOS.
  */
 
@@ -8,8 +8,9 @@
 #include "modules_enable.h"
 #include "app_config.h"
 #include "app_types.h"
-#include "FreeRTOS.h"
-#include "task.h"
+#include "cmsis_os2.h"
+#include "rtos_time.h"
+
 
 #if MODULE_ESP
 #include "esp_link.h"
@@ -42,9 +43,9 @@ void func__TaskComm(void *void_ptr__argument)
 #endif
             func__EspLink_Run(&measurement_snapshot_t__snap, APP_STATE_IDLE, fault_mask_t__faults);
         }
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.comm_period_ms));
+        func__Rtos_DelayMilliseconds(APP_CONFIG.comm_period_ms);
 #else
-        vTaskDelay(pdMS_TO_TICKS(1000u));
+        func__Rtos_DelayMilliseconds(1000u);
 #endif
     }
 }
