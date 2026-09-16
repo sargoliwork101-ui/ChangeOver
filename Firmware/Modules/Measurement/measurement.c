@@ -39,6 +39,12 @@
  *      فقط توسط تسک measurement نوشته و با GetSnapshot خوانده می‌شود. */
 static volatile measurement_snapshot_t MEASUREMENT_SNAPSHOT_T__G__Snap;
 
+/* [EN] Number of completed stable normalized ADC frames collected during
+ *      startup warm-up. Unit: completed ADC frame.
+ * [FA] تعداد فریم‌های کامل و پایدار ADC استانداردشده در warm-up شروع.
+ *      واحد: فریم کامل ADC. */
+static uint8_t UINT8_T__G__MeasurementWarmupFrameCount;
+
 /* ==================== Global Shared Values ==================== */
 /* [EN] The engineering values of the newest frame, shared to all tasks.
  *      Written ONLY by the measurement task (Run/Init); any module reads
@@ -64,8 +70,12 @@ volatile bool BOOL__G__MeasDataValid = false;
  */
 void func__Measurement_Init(void)
 {
-    /* [EN] Zero the shared globals and the snapshot; nothing is valid yet.
-       [FA] گلوبال‌های مشترک و snapshot را صفر می‌کند؛ هنوز چیزی معتبر نیست. */
+    /* [EN] Zero the warm-up counter, shared globals and snapshot; nothing is
+       valid until the required number of stable frames is collected.
+       [FA] شمارندهٔ warm-up، گلوبال‌های مشترک و snapshot را صفر می‌کند؛
+       تا جمع‌شدن تعداد لازم فریم‌های پایدار چیزی معتبر نیست. */
+    UINT8_T__G__MeasurementWarmupFrameCount = 0u;
+
     UINT32_T__G__MeasInputVoltageMv = 0u;
     UINT32_T__G__MeasBattery24Mv = 0u;
     UINT32_T__G__MeasBattery12Mv = 0u;
@@ -163,6 +173,12 @@ void func__Measurement_Run(void)
 
     if (bool__frameCopied == false)
     {
+        /* [EN] A missing stable frame restarts warm-up and invalidates the
+           ADC result; input presence is not evaluated in this path.
+           [FA] نبود فریم پایدار warm-up را از نو شروع و نتیجهٔ ADC را
+           نامعتبر می‌کند؛ در این مسیر حضور ورودی ارزیابی نمی‌شود. */
+        UINT8_T__G__MeasurementWarmupFrameCount = 0u;
+
         int32_t__savedKernelLock = osKernelLock();
         if (int32_t__savedKernelLock >= 0)
         {
@@ -176,6 +192,15 @@ void func__Measurement_Run(void)
             MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
         }
         return;
+    }
+
+    /* [EN] Count only completed stable frames; saturation keeps the small
+       warm-up counter from wrapping after validity is reached.
+       [FA] فقط فریم‌های کامل و پایدار شمرده می‌شوند؛ اشباع شمارندهٔ کوچک
+       از سرریز پس از معتبرشدن داده جلوگیری می‌کند. */
+    if (UINT8_T__G__MeasurementWarmupFrameCount < MEASUREMENT_WARMUP_FRAME_COUNT)
+    {
+        UINT8_T__G__MeasurementWarmupFrameCount++;
     }
 
     /* [EN] Convert into locals first so other tasks never observe a partly
@@ -228,8 +253,20 @@ void func__Measurement_Run(void)
     MEASUREMENT_SNAPSHOT_T__G__Snap.i_ch2_ma = uint32_t__current2Ma;
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = bool__inputPresent;
 
-    BOOL__G__MeasDataValid = true;
-    MEASUREMENT_SNAPSHOT_T__G__Snap.valid = true;
+    /* [EN] ADC validity depends only on the warm-up count, never on input
+       voltage or input presence. Write the public flag before snapshot.valid.
+       [FA] اعتبار ADC فقط به شمارندهٔ warm-up وابسته است، نه ولتاژ یا حضور
+       ورودی. پرچم عمومی پیش از snapshot.valid نوشته می‌شود. */
+    if (UINT8_T__G__MeasurementWarmupFrameCount >= MEASUREMENT_WARMUP_FRAME_COUNT)
+    {
+        BOOL__G__MeasDataValid = true;
+    }
+    else
+    {
+        BOOL__G__MeasDataValid = false;
+    }
+
+    MEASUREMENT_SNAPSHOT_T__G__Snap.valid = BOOL__G__MeasDataValid;
 
     (void)osKernelRestoreLock(int32_t__savedKernelLock);
 }
