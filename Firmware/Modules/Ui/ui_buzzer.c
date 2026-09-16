@@ -1,12 +1,10 @@
 /**
  * @file    ui_buzzer.c
- * @brief   [EN] UI buzzer patterns - separate from LED, constants for buzzer in its own header.
- *          Non-linear formulas broken into steps, RTOS simple readable, markers above each func and variable.
- *          [FA] الگوهای بازر ماژول UI - ثابت‌های بازر در هدر خودش، هر تابع و متغیر با جدا کننده و کامنت.
+ * @brief   [EN] One non-blocking periodic buzzer service. It calculates pulse timing from period, duty, count, and gap.
+ *          [FA] یک سرویس غیرمسدودکننده بوق دوره‌ای؛ زمان پالس را از دوره، دیوتی، تعداد و گپ محاسبه می‌کند.
  *
- * @note    [EN] Buzzer constants in ui_buzzer.h per user request. Naming __ after type, func__ prefix.
- *          RTOS: vTaskDelay allowed, HAL_Delay forbidden. Formulas non-linear broken into steps.
- *          [FA] ثابت‌های بازر در همین هدر. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
+ * @note    [EN] Only explicit scenarios call this service; all buzzer GPIO control remains here. The caller supplies the four inputs to func__Ui_Buzzer_Tick().
+ *          [FA] فقط سناریوهای صریح این سرویس را صدا می‌زنند؛ کنترل GPIO بوق همچنان در این فایل است و فراخواننده چهار ورودی را می‌دهد.
  */
 
 #include "ui_buzzer.h"
@@ -15,372 +13,272 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include <stdbool.h>
+#include <stdint.h>
 
-/* ==================== Buzzer / Beep ==================== */
+/* ==================== Buzzer / Beep / بازر و بوق ==================== */
 
-/* ==================== Buzzer Low Level ==================== */
+/* ==================== Buzzer persistent state / وضعیت ماندگار بازر ==================== */
 
 /**
- * @brief  [EN] Drive buzzer on/off. Low-level wrapper around BSP GPIO.
- *         [FA] بازر را روشن/خاموش می‌کند - سطح پایین.
- * @param  bool__buzzerOn [EN] true=on, false=off / روشن یا خاموش
+ * @brief  [EN] File-local validity flag for the stored buzzer configuration.
+ *         It remains static because func__Ui_Buzzer_Tick() is called repeatedly
+ *         and must know whether the current pattern has already been initialized.
+ *         FALSE forces the next valid request to start a new buzzer cycle.
+ *         [FA] پرچم اعتبار پیکربندی ذخیره‌شده بوق در سطح همین فایل.
+ *         این متغیر static است چون func__Ui_Buzzer_Tick() به‌صورت تکراری صدا زده می‌شود
+ *         و باید بداند آیا الگوی فعلی قبلاً مقداردهی شده است یا نه.
+ *         مقدار FALSE باعث می‌شود درخواست معتبر بعدی از ابتدای یک چرخه جدید شروع شود.
  */
-static void func__buzzer(bool bool__buzzerOn)
-{
-    func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, bool__buzzerOn);
-}
+static bool BOOL__G__BuzzerPatternValid = false;
 
-/* ==================== Calc Beep On ==================== */
+/* ==================== Buzzer period / دوره بازر ==================== */
 
 /**
- * @brief  [EN] Calculate single pulse ON time from total ON, repeat count, gap. Non-linear broken into steps.
- *         Formula: repeatMinusOne = repeat-1, totalGap = gap*repeatMinusOne, if totalGap>=totalOn => denominator=repeat*2-1, pulseOn=totalOn/denominator else pulseOn=(totalOn-totalGap)/repeat.
- *         [FA] محاسبه زمان روشن هر بوق از کل روشن، تکرار، گپ - غیرخطی گام به گام.
- * @param  uint32_t__totalOnMs [EN] Total ON ms including gaps, 10..10000ms / کل زمان روشن شامل گپ
- * @param  uint8_t__repeatCount [EN] Repeat inside ON 1..10 / تکرار داخل روشن
- * @param  uint32_t__gapMs [EN] Gap ms 0..5000 / گپ میلی‌ثانیه
- * @return uint32_t [EN] Single pulse ON ms / زمان روشن هر بوق
- */
-static uint32_t func__calc_beep_on(uint32_t uint32_t__totalOnMs, uint8_t uint8_t__repeatCount, uint32_t uint32_t__gapMs)
-{
-    uint32_t uint32_t__totalGapMs;
-    uint32_t uint32_t__pulseOnMs;
-    uint32_t uint32_t__repeatMinusOne;
-    uint32_t uint32_t__denominator;
-
-    if (uint8_t__repeatCount <= 1u)
-    {
-        return uint32_t__totalOnMs;
-    }
-
-    uint32_t__repeatMinusOne = (uint32_t)uint8_t__repeatCount - 1u;
-    uint32_t__totalGapMs = uint32_t__gapMs * uint32_t__repeatMinusOne;
-
-    if (uint32_t__totalGapMs >= uint32_t__totalOnMs)
-    {
-        uint32_t__denominator = (uint32_t)uint8_t__repeatCount * 2u - 1u;
-        uint32_t__pulseOnMs = uint32_t__totalOnMs / uint32_t__denominator;
-        if (uint32_t__pulseOnMs < 10u)
-        {
-            uint32_t__pulseOnMs = 10u;
-        }
-        return uint32_t__pulseOnMs;
-    }
-
-    uint32_t__pulseOnMs = (uint32_t__totalOnMs - uint32_t__totalGapMs) / (uint32_t)uint8_t__repeatCount;
-    if (uint32_t__pulseOnMs < 10u)
-    {
-        uint32_t__pulseOnMs = 10u;
-    }
-    return uint32_t__pulseOnMs;
-}
-
-/* ==================== Buzzer State Type ==================== */
-
-/**
- * @brief  [EN] Buzzer state machine type: IDLE, PULSE_ON, GAP_OFF, PERIOD_OFF.
- *         [FA] نوع حالت بازر: بیکار، روشن، گپ، خاموش دوره‌ای.
- */
-typedef enum { BUZZER_IDLE, BUZZER_PULSE_ON, BUZZER_GAP_OFF, BUZZER_PERIOD_OFF } buzzer_state_t;
-
-/* ==================== Buzzer State ==================== */
-
-/**
- * @brief  [EN] Current buzzer state, IDLE at start.
- *         [FA] حالت فعلی بازر، اول بیکار.
- */
-static buzzer_state_t BUZZER_STATE_T__G__State = BUZZER_IDLE;
-
-/* ==================== Buzzer Total On Ms ==================== */
-
-/**
- * @brief  [EN] Total ON time ms including gaps, clamped 10..10000ms.
- *         [FA] کل زمان روشن شامل گپ، محدود ۱۰..۱۰۰۰۰ms.
- */
-static uint32_t UINT32_T__G__BuzzerTotalOnMs = 0u;
-
-/* ==================== Buzzer Gap Ms ==================== */
-
-/**
- * @brief  [EN] Gap between pulses ms, clamped 0..5000ms, ignored if repeat=1.
- *         [FA] گپ بین بوق‌ها میلی‌ثانیه، اگر تکرار=۱ نادیده.
- */
-static uint32_t UINT32_T__G__BuzzerGapMs = 0u;
-
-/* ==================== Buzzer Pulse On Ms ==================== */
-
-/**
- * @brief  [EN] Single pulse ON ms calculated by func__calc_beep_on.
- *         [FA] زمان روشن هر بوق محاسبه شده.
- */
-static uint32_t UINT32_T__G__BuzzerPulseOnMs = 0u;
-
-/* ==================== Buzzer Period Ms ==================== */
-
-/**
- * @brief  [EN] Period between pattern starts ms, 0=once, 0..60000ms.
- *         [FA] دوره تناوب بین شروع الگوها، ۰=یک بار.
+ * @brief  [EN] Previously accepted complete buzzer period in milliseconds.
+ *         It remains static so the service can compare the new period with the
+ *         previous one and restart the timing cycle when the period changes.
+ *         [FA] دوره کامل قبلی بوق بر حسب میلی‌ثانیه.
+ *         این متغیر static است تا سرویس بتواند دوره جدید را با دوره قبلی مقایسه کند
+ *         و اگر دوره تغییر کرد، زمان‌بندی چرخه را از ابتدا شروع کند.
  */
 static uint32_t UINT32_T__G__BuzzerPeriodMs = 0u;
 
-/* ==================== Buzzer Repeat Count ==================== */
+/* ==================== Buzzer duty and count / دیوتی و تعداد بوق ==================== */
 
 /**
- * @brief  [EN] Repeat count inside ON 1..10, clamped.
- *         [FA] تعداد تکرار داخل روشن ۱..۱۰.
+ * @brief  [EN] Previously accepted duty-window percentage.
+ *         It remains static so a change in duty can be detected between
+ *         consecutive service calls and the pattern can be restarted safely.
+ *         [FA] درصد پنجره دیوتی پذیرفته‌شده قبلی.
+ *         این متغیر static است تا تغییر دیوتی بین دو فراخوانی متوالی تشخیص داده شود
+ *         و الگو در صورت تغییر، به‌صورت امن از ابتدا شروع شود.
  */
-static uint8_t UINT8_T__G__BuzzerRepeatCount = 0u;
-
-/* ==================== Buzzer Pulse Index ==================== */
+static uint8_t UINT8_T__G__BuzzerDutyPercent = 0u;
 
 /**
- * @brief  [EN] Current pulse index 0..repeat-1.
- *         [FA] اندیس بوق فعلی.
+ * @brief  [EN] Previously accepted number of beeps inside the duty window.
+ *         It remains static so changing the pulse count can restart the pattern
+ *         instead of continuing with the timing of the old configuration.
+ *         [FA] تعداد بوق‌های پذیرفته‌شده قبلی در پنجره دیوتی.
+ *         این متغیر static است تا تغییر تعداد پالس باعث شروع دوباره الگو شود
+ *         و زمان‌بندی پیکربندی قبلی ادامه پیدا نکند.
  */
-static uint8_t UINT8_T__G__BuzzerPulseIndex = 0u;
+static uint8_t UINT8_T__G__BuzzerCount = 0u;
 
-/* ==================== Buzzer Last Tick ==================== */
+/* ==================== Buzzer gap / گپ بوق ==================== */
 
 /**
- * @brief  [EN] Last tick for elapsed calculation, from xTaskGetTickCount().
- *         [FA] آخرین تیکه برای محاسبه زمان سپری شده.
+ * @brief  [EN] Previously accepted low gap between adjacent beeps in milliseconds.
+ *         It remains static so a gap change can be detected and the cycle timing
+ *         can be restarted with the new pattern.
+ *         [FA] گپ خاموش پذیرفته‌شده قبلی بین بوق‌های مجاور بر حسب میلی‌ثانیه.
+ *         این متغیر static است تا تغییر گپ تشخیص داده شود و زمان‌بندی چرخه
+ *         با الگوی جدید از ابتدا شروع شود.
  */
-static TickType_t TICKTYPE_T__G__BuzzerLastTick = 0;
+static uint32_t UINT32_T__G__BuzzerGapMs = 0u;
 
-/* ==================== Buzzer Running ==================== */
+/* ==================== Buzzer cycle start / شروع چرخه بوق ==================== */
 
 /**
- * @brief  [EN] True if buzzer pattern running.
- *         [FA] اگر الگوی بازر در حال اجراست true.
+ * @brief  [EN] FreeRTOS tick at which the current buzzer cycle started.
+ *         It remains static because the service is non-blocking and is called
+ *         in separate invocations. The stored tick is used to calculate elapsed
+ *         time and decide whether the buzzer is ON, in a gap, or in the period tail.
+ *         [FA] تیک RTOS در زمان شروع چرخه فعلی بوق.
+ *         این متغیر static است چون سرویس غیرمسدودکننده است و در فراخوانی‌های جداگانه
+ *         اجرا می‌شود. از این زمان برای محاسبه زمان سپری‌شده و تشخیص وضعیت بوق،
+ *         گپ یا خاموشی انتهای دوره استفاده می‌شود.
  */
-static bool BOOL__G__BuzzerRunning = false;
+static TickType_t TICKTYPE_T__G__BuzzerCycleStartTick = 0;
 
-/* ==================== Buzzer Start Internal ==================== */
+/* ==================== Buzzer service / سرویس بازر ==================== */
 
 /**
- * @brief  [EN] Start buzzer pattern internal, clamps inputs, calculates pulse ON via calc_beep_on.
- *         Non-linear: gapTimesRepeat = gap*(repeat-1), if gapTimesRepeat>=totalOn => defaultGapTotal = totalOn*20%/100, gap = defaultGapTotal/(repeat-1).
- *         [FA] شروع الگوی بازر داخلی، ورودی‌ها را محدود می‌کند، فرمول غیرخطی.
- * @param  uint32_t__periodMs [EN] Period ms, 0..60000ms / دوره تناوب
- * @param  uint32_t__totalOnMs [EN] Total ON ms 10..10000ms / کل روشن
- * @param  uint8_t__repeatCount [EN] Repeat 1..10 / تکرار
- * @param  uint32_t__gapMs [EN] Gap ms 0..5000ms / گپ
+ * @brief  [EN] Service one periodic buzzer pattern without blocking the task.
+ *         The duty window is period*duty/100. Pulses and gaps fill that window;
+ *         the remaining time is low until the next period starts.
+ *         [FA] یک الگوی دوره‌ای بوق را بدون قفل کردن تسک اجرا می‌کند.
+ *         پنجره دیوتی period*duty/100 است؛ بوق‌ها و گپ‌ها این پنجره را پر می‌کنند
+ *         و زمان باقی‌مانده تا دوره بعدی خاموش است.
+ * @param  uint32_t__periodMs [EN] Pattern period in ms / دوره الگو بر حسب ms
+ * @param  uint8_t__dutyPercent [EN] Duty window 0..100 percent / پنجره دیوتی از صفر تا صد درصد
+ * @param  uint8_t__beepCount [EN] Number of pulses; zero disables / تعداد پالس؛ صفر یعنی خاموش
+ * @param  uint32_t__gapMs [EN] Low gap between adjacent pulses in ms / گپ خاموش بین پالس‌های مجاور بر حسب ms
+ * @return int32_t [EN] Recommended next-call delay, zero for valid off, or -1 for invalid input.
+ *         [FA] زمان پیشنهادی مراجعه بعدی، صفر برای خاموشی معتبر، یا منفی یک برای ورودی نامعتبر.
  */
-static void func__buzzer_start_internal(uint32_t uint32_t__periodMs, uint32_t uint32_t__totalOnMs, uint8_t uint8_t__repeatCount, uint32_t uint32_t__gapMs)
-{
-    uint32_t uint32_t__totalOnClamped;
-    uint32_t uint32_t__gapClamped;
-    uint8_t uint8_t__repeatClamped;
-    uint32_t uint32_t__gapTimesRepeat;
-
-    /* [EN] Clamp inputs (MISRA: braces on every if/else). Limits: ON 10..10000ms,
-       gap 0..5000ms, repeat 1..10.
-       [FA] محدود کردن ورودی‌ها (MISRA: همه if/else با براکت {}). حد: روشن
-       10..10000ms، گپ 0..5000ms، تکرار 1..10. */
-    if (uint32_t__totalOnMs < 10u)
-    {
-        uint32_t__totalOnClamped = 10u;
-    }
-    else if (uint32_t__totalOnMs > 10000u)
-    {
-        uint32_t__totalOnClamped = 10000u;
-    }
-    else
-    {
-        uint32_t__totalOnClamped = uint32_t__totalOnMs;
-    }
-
-    if (uint32_t__gapMs > 5000u)
-    {
-        uint32_t__gapClamped = 5000u;
-    }
-    else
-    {
-        uint32_t__gapClamped = uint32_t__gapMs;
-    }
-
-    if (uint8_t__repeatCount == 0u)
-    {
-        uint8_t__repeatClamped = 1u;
-    }
-    else if (uint8_t__repeatCount > 10u)
-    {
-        uint8_t__repeatClamped = 10u;
-    }
-    else
-    {
-        uint8_t__repeatClamped = uint8_t__repeatCount;
-    }
-
-    if (uint8_t__repeatClamped > 1u)
-    {
-        uint32_t__gapTimesRepeat = uint32_t__gapClamped * (uint32_t)(uint8_t__repeatClamped - 1u);
-        if (uint32_t__gapTimesRepeat >= uint32_t__totalOnClamped)
-        {
-            uint32_t uint32_t__defaultGapTotal;
-            uint32_t__defaultGapTotal = (uint32_t__totalOnClamped * UI_BUZZER_DEFAULT_GAP_PERCENT) / 100u;
-            uint32_t__gapClamped = uint32_t__defaultGapTotal / (uint32_t)(uint8_t__repeatClamped - 1u);
-        }
-    }
-
-    UINT32_T__G__BuzzerTotalOnMs = uint32_t__totalOnClamped;
-    UINT32_T__G__BuzzerGapMs = uint32_t__gapClamped;
-    UINT8_T__G__BuzzerRepeatCount = uint8_t__repeatClamped;
-    UINT32_T__G__BuzzerPeriodMs = uint32_t__periodMs;
-    UINT8_T__G__BuzzerPulseIndex = 0u;
-    UINT32_T__G__BuzzerPulseOnMs = func__calc_beep_on(uint32_t__totalOnClamped, uint8_t__repeatClamped, uint32_t__gapClamped);
-    TICKTYPE_T__G__BuzzerLastTick = xTaskGetTickCount();
-    BUZZER_STATE_T__G__State = BUZZER_PULSE_ON;
-    BOOL__G__BuzzerRunning = true;
-    func__buzzer(true);
-}
-
-/* ==================== Buzzer Pattern Ms Start ==================== */
-
-/**
- * @brief  [EN] Buzzer pattern with gap ms - start pattern. Calls internal start.
- *         [FA] الگوی بازر با گپ میلی‌ثانیه - شروع.
- * @param  uint32_t__periodMs [EN] Period ms 0..60000ms / دوره تناوب
- * @param  uint32_t__onTimeMs [EN] Total ON ms 10..10000ms / کل روشن
- * @param  uint8_t__repeatCount [EN] Repeat 1..10 / تکرار
- * @param  uint32_t__gapMs [EN] Gap ms 0..5000ms / گپ
- */
-void func__Ui_BuzzerPatternMs_Start(uint32_t uint32_t__periodMs, uint32_t uint32_t__onTimeMs, uint8_t uint8_t__repeatCount, uint32_t uint32_t__gapMs)
-{
-    func__buzzer_start_internal(uint32_t__periodMs, uint32_t__onTimeMs, uint8_t__repeatCount, uint32_t__gapMs);
-}
-
-/* ==================== Buzzer Pattern Ms Tick ==================== */
-
-/**
- * @brief  [EN] Buzzer pattern tick - call every UI_TICK_MS, calculates elapsed ms = (now-last)*portTICK_PERIOD_MS.
- *         Non-linear state machine: PULSE_ON -> GAP_OFF -> PULSE_ON -> PERIOD_OFF.
- *         [FA] تیکه الگوی بازر - هر ۱۰ms، محاسبه زمان سپری شده، ماشین حالت.
- * @return bool [EN] true=still running, false=finished / در حال اجرا یا تمام
- */
-bool func__Ui_BuzzerPatternMs_Tick(void)
+int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyPercent, uint8_t uint8_t__beepCount, uint32_t uint32_t__gapMs)
 {
     TickType_t ticktype__nowTick;
+    uint32_t uint32_t__dutyWindowMs;
+    uint32_t uint32_t__gapCount;
+    uint32_t uint32_t__effectiveGapMs;
+    uint32_t uint32_t__totalGapMs;
+    uint32_t uint32_t__availableOnMs;
+    uint32_t uint32_t__beepOnMs;
+    uint32_t uint32_t__lastBeepOnMs;
+    uint32_t uint32_t__onRemainderMs;
+    uint32_t uint32_t__periodTailMs;
+    uint32_t uint32_t__smallestTimingMs;
+    uint32_t uint32_t__nextCheckMs;
     uint32_t uint32_t__elapsedMs;
-    uint32_t uint32_t__periodOffMs;
+    uint32_t uint32_t__cursorMs;
+    uint32_t uint32_t__currentBeepOnMs;
+    uint8_t uint8_t__beepIndex;
+    uint64_t uint64_t__dutyProduct;
+    uint64_t uint64_t__gapProduct;
+    uint64_t uint64_t__checkProduct;
+    bool bool__configurationChanged;
+    bool bool__buzzerOn;
 
-    if (BOOL__G__BuzzerRunning == false)
+    /* [EN] Zero is an intentional safe-off command, not an invalid configuration.
+       [FA] صفر یک فرمان خاموشی امن و عمدی است، نه تنظیمات نامعتبر. */
+    if ((uint32_t__periodMs == 0u) ||
+        (uint8_t__dutyPercent == 0u) ||
+        (uint8_t__beepCount == 0u))
     {
-        return false;
+        func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
+        BOOL__G__BuzzerPatternValid = false;
+        return UI_BUZZER_OFF_RESULT;
+    }
+
+    /* [EN] Reject unsafe non-zero configurations and keep the buzzer LOW.
+       [FA] تنظیمات غیرصفر ناامن را رد کن و بوق را LOW نگه دار. */
+    if ((uint32_t__periodMs < UI_BUZZER_MIN_PERIOD_MS) ||
+        (uint8_t__dutyPercent > UI_BUZZER_DUTY_MAX_PERCENT) ||
+        ((uint8_t__beepCount > 1u) && (uint32_t__gapMs < UI_BUZZER_MIN_GAP_MS)))
+    {
+        func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
+        BOOL__G__BuzzerPatternValid = false;
+        return UI_BUZZER_INVALID_RESULT;
+    }
+
+    /* [EN] A gap has meaning only between adjacent pulses.
+       [FA] گپ فقط بین پالس‌های مجاور معنا دارد. */
+    uint32_t__effectiveGapMs = 0u;
+    if (uint8_t__beepCount > 1u)
+    {
+        uint32_t__effectiveGapMs = uint32_t__gapMs;
+    }
+
+    /* [EN] Calculate the duty window without overflowing a 32-bit period.
+       [FA] پنجره دیوتی را بدون سرریز دوره ۳۲ بیتی محاسبه کن. */
+    uint64_t__dutyProduct = (uint64_t)uint32_t__periodMs * (uint64_t)uint8_t__dutyPercent;
+    uint32_t__dutyWindowMs = (uint32_t)(uint64_t__dutyProduct / UI_BUZZER_PERCENT_SCALE);
+
+    uint32_t__gapCount = (uint32_t)uint8_t__beepCount - 1u;
+    uint64_t__gapProduct = (uint64_t)uint32_t__effectiveGapMs * (uint64_t)uint32_t__gapCount;
+
+    /* [EN] Reject a pattern when gaps leave no positive time for every pulse.
+       [FA] اگر گپ‌ها زمان مثبت برای همه پالس‌ها باقی نگذارند، الگو را رد کن. */
+    if ((uint32_t__dutyWindowMs == 0u) ||
+        (uint64_t__gapProduct >= (uint64_t)uint32_t__dutyWindowMs) ||
+        ((uint32_t__dutyWindowMs - (uint32_t)uint64_t__gapProduct) < (uint32_t)uint8_t__beepCount))
+    {
+        func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
+        BOOL__G__BuzzerPatternValid = false;
+        return UI_BUZZER_INVALID_RESULT;
+    }
+
+    uint32_t__totalGapMs = (uint32_t)uint64_t__gapProduct;
+    uint32_t__availableOnMs = uint32_t__dutyWindowMs - uint32_t__totalGapMs;
+    uint32_t__beepOnMs = uint32_t__availableOnMs / (uint32_t)uint8_t__beepCount;
+    uint32_t__onRemainderMs = uint32_t__availableOnMs % (uint32_t)uint8_t__beepCount;
+    uint32_t__lastBeepOnMs = uint32_t__beepOnMs + uint32_t__onRemainderMs;
+    uint32_t__periodTailMs = uint32_t__periodMs - uint32_t__dutyWindowMs;
+
+    /* [EN] The smallest positive segment controls the next RTOS check.
+       [FA] کوچک‌ترین بخش مثبت، زمان مراجعه بعدی RTOS را تعیین می‌کند. */
+    uint32_t__smallestTimingMs = uint32_t__beepOnMs;
+    if (uint32_t__lastBeepOnMs < uint32_t__smallestTimingMs)
+    {
+        uint32_t__smallestTimingMs = uint32_t__lastBeepOnMs;
+    }
+    if ((uint32_t__effectiveGapMs > 0u) &&
+        (uint32_t__effectiveGapMs < uint32_t__smallestTimingMs))
+    {
+        uint32_t__smallestTimingMs = uint32_t__effectiveGapMs;
+    }
+    if ((uint32_t__periodTailMs > 0u) &&
+        (uint32_t__periodTailMs < uint32_t__smallestTimingMs))
+    {
+        uint32_t__smallestTimingMs = uint32_t__periodTailMs;
+    }
+
+    uint64_t__checkProduct = (uint64_t)uint32_t__smallestTimingMs * UI_BUZZER_CHECK_PERCENT;
+    uint32_t__nextCheckMs = (uint32_t)(uint64_t__checkProduct / UI_BUZZER_PERCENT_SCALE);
+    if (uint32_t__nextCheckMs < UI_BUZZER_MIN_CHECK_MS)
+    {
+        uint32_t__nextCheckMs = UI_BUZZER_MIN_CHECK_MS;
+    }
+
+    bool__configurationChanged = (BOOL__G__BuzzerPatternValid == false);
+    if (UINT32_T__G__BuzzerPeriodMs != uint32_t__periodMs)
+    {
+        bool__configurationChanged = true;
+    }
+    if (UINT8_T__G__BuzzerDutyPercent != uint8_t__dutyPercent)
+    {
+        bool__configurationChanged = true;
+    }
+    if (UINT8_T__G__BuzzerCount != uint8_t__beepCount)
+    {
+        bool__configurationChanged = true;
+    }
+    if (UINT32_T__G__BuzzerGapMs != uint32_t__effectiveGapMs)
+    {
+        bool__configurationChanged = true;
     }
 
     ticktype__nowTick = xTaskGetTickCount();
-    uint32_t__elapsedMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__BuzzerLastTick) * portTICK_PERIOD_MS);
-
-    switch (BUZZER_STATE_T__G__State)
+    if (bool__configurationChanged == true)
     {
-        case BUZZER_PULSE_ON:
-            if (uint32_t__elapsedMs >= UINT32_T__G__BuzzerPulseOnMs)
+        UINT32_T__G__BuzzerPeriodMs = uint32_t__periodMs;
+        UINT8_T__G__BuzzerDutyPercent = uint8_t__dutyPercent;
+        UINT8_T__G__BuzzerCount = uint8_t__beepCount;
+        UINT32_T__G__BuzzerGapMs = uint32_t__effectiveGapMs;
+        TICKTYPE_T__G__BuzzerCycleStartTick = ticktype__nowTick;
+        BOOL__G__BuzzerPatternValid = true;
+    }
+
+    uint32_t__elapsedMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__BuzzerCycleStartTick) * portTICK_PERIOD_MS);
+    if (uint32_t__elapsedMs >= uint32_t__periodMs)
+    {
+        TICKTYPE_T__G__BuzzerCycleStartTick = ticktype__nowTick;
+        uint32_t__elapsedMs = 0u;
+    }
+
+    bool__buzzerOn = false;
+    if (uint32_t__elapsedMs < uint32_t__dutyWindowMs)
+    {
+        uint32_t__cursorMs = 0u;
+
+        for (uint8_t__beepIndex = 0u; uint8_t__beepIndex < uint8_t__beepCount; uint8_t__beepIndex++)
+        {
+            uint32_t__currentBeepOnMs = uint32_t__beepOnMs;
+            if (uint8_t__beepIndex == (uint8_t__beepCount - 1u))
             {
-                func__buzzer(false);
-                if (UINT8_T__G__BuzzerPulseIndex < UINT8_T__G__BuzzerRepeatCount - 1u)
+                uint32_t__currentBeepOnMs = uint32_t__lastBeepOnMs;
+            }
+
+            if (uint32_t__elapsedMs < (uint32_t__cursorMs + uint32_t__currentBeepOnMs))
+            {
+                bool__buzzerOn = true;
+                break;
+            }
+
+            uint32_t__cursorMs += uint32_t__currentBeepOnMs;
+            if (uint8_t__beepIndex < (uint8_t__beepCount - 1u))
+            {
+                if (uint32_t__elapsedMs < (uint32_t__cursorMs + uint32_t__effectiveGapMs))
                 {
-                    BUZZER_STATE_T__G__State = BUZZER_GAP_OFF;
-                    TICKTYPE_T__G__BuzzerLastTick = ticktype__nowTick;
+                    break;
                 }
-                else
-                {
-                    if (UINT32_T__G__BuzzerPeriodMs == 0u || UINT32_T__G__BuzzerPeriodMs <= UINT32_T__G__BuzzerTotalOnMs)
-                    {
-                        BOOL__G__BuzzerRunning = false;
-                        return false;
-                    }
-                    BUZZER_STATE_T__G__State = BUZZER_PERIOD_OFF;
-                    TICKTYPE_T__G__BuzzerLastTick = ticktype__nowTick;
-                }
+                uint32_t__cursorMs += uint32_t__effectiveGapMs;
             }
-            break;
-
-        case BUZZER_GAP_OFF:
-            if (uint32_t__elapsedMs >= UINT32_T__G__BuzzerGapMs)
-            {
-                UINT8_T__G__BuzzerPulseIndex++;
-                BUZZER_STATE_T__G__State = BUZZER_PULSE_ON;
-                TICKTYPE_T__G__BuzzerLastTick = ticktype__nowTick;
-                func__buzzer(true);
-            }
-            break;
-
-        case BUZZER_PERIOD_OFF:
-            uint32_t__periodOffMs = UINT32_T__G__BuzzerPeriodMs - UINT32_T__G__BuzzerTotalOnMs;
-            if (uint32_t__elapsedMs >= uint32_t__periodOffMs)
-            {
-                BOOL__G__BuzzerRunning = false;
-                return false;
-            }
-            break;
-
-        default:
-            BOOL__G__BuzzerRunning = false;
-            return false;
-    }
-    return true;
-}
-
-/* ==================== Buzzer Pattern Percent Start ==================== */
-
-/**
- * @brief  [EN] Buzzer pattern with gap percent - start. Non-linear: onTimeTimesPercent = onTime*percent, gap = onTimeTimesPercent/100 broken into steps.
- *         [FA] الگوی بازر با گپ درصدی - شروع، فرمول غیرخطی گام به گام.
- * @param  uint32_t__periodMs [EN] Period ms / دوره تناوب
- * @param  uint32_t__onTimeMs [EN] ON time ms / زمان روشن
- * @param  uint8_t__repeatCount [EN] Repeat inside ON / تکرار داخل روشن
- * @param  uint8_t__gapPercent [EN] Gap percent 0..90, ignored if repeat=1 / گپ درصدی
- */
-void func__Ui_BuzzerPatternPercent_Start(uint32_t uint32_t__periodMs, uint32_t uint32_t__onTimeMs, uint8_t uint8_t__repeatCount, uint8_t uint8_t__gapPercent)
-{
-    uint8_t uint8_t__gapPctClamped;
-    uint32_t uint32_t__gapMs;
-
-    if (uint8_t__gapPercent > 90u)
-    {
-        uint8_t__gapPctClamped = 90u;
-    }
-    else
-    {
-        uint8_t__gapPctClamped = uint8_t__gapPercent;
+        }
     }
 
-    if (uint8_t__repeatCount <= 1u)
-    {
-        func__buzzer_start_internal(uint32_t__periodMs, uint32_t__onTimeMs, uint8_t__repeatCount, 0u);
-        return;
-    }
-
-    /* [EN] Non-linear: gap = onTime * percent / 100, broken into steps
-       [FA] فرمول غیرخطی گپ درصدی */
-    uint32_t uint32_t__onTimeTimesPercent = uint32_t__onTimeMs * (uint32_t)uint8_t__gapPctClamped;
-    uint32_t__gapMs = uint32_t__onTimeTimesPercent / 100u;
-
-    func__buzzer_start_internal(uint32_t__periodMs, uint32_t__onTimeMs, uint8_t__repeatCount, uint32_t__gapMs);
-}
-
-/* ==================== Buzzer Pattern Percent Tick ==================== */
-
-/**
- * @brief  [EN] Buzzer pattern percent tick - calls Ms Tick.
- *         [FA] تیکه الگوی بازر درصدی - صدا زدن تیکه میلی‌ثانیه.
- * @return bool [EN] true=running / در حال اجرا
- */
-bool func__Ui_BuzzerPatternPercent_Tick(void)
-{
-    return func__Ui_BuzzerPatternMs_Tick();
-}
-
-/* ==================== Buzzer Pattern Stop ==================== */
-
-/**
- * @brief  [EN] Stop buzzer pattern immediately, drive low, set IDLE.
- *         [FA] توقف فوری الگوی بازر، خاموش، بیکار.
- */
-void func__Ui_BuzzerPattern_Stop(void)
-{
-    func__buzzer(false);
-    BUZZER_STATE_T__G__State = BUZZER_IDLE;
-    BOOL__G__BuzzerRunning = false;
+    func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, bool__buzzerOn);
+    return (int32_t)uint32_t__nextCheckMs;
 }

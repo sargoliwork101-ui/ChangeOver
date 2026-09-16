@@ -1,91 +1,119 @@
 /**
  * @file    ui_buzzer.h
- * @brief   [EN] UI buzzer patterns - separate from LED, constants for buzzer in its own header per user request.
- *          Non-linear formulas broken into steps, RTOS simple readable, markers above each function.
- *          [FA] الگوهای بازر ماژول UI - ثابت‌های بازر در هدر خودش، فرمول غیرخطی، RTOS ساده.
+ * @brief   [EN] One public UI buzzer service: periodic pattern from period, duty, count, and gap.
+ *          [FA] یک سرویس عمومی بوق UI: الگوی دوره‌ای بر اساس دوره، دیوتی، تعداد و گپ.
  *
- * @note    [EN] Buzzer constants in this header per user request (constants in own .h). Naming __ after type, func__ prefix.
- *          RTOS: vTaskDelay allowed, HAL_Delay forbidden. Formulas broken into steps.
- *          [FA] ثابت‌های بازر در همین هدر، نام‌گذاری با __، پیشوند func__.
+ * @note    [EN] The return value is the recommended next-call delay in milliseconds.
+ *          [FA] مقدار بازگشتی، زمان پیشنهادی مراجعه بعدی بر حسب میلی‌ثانیه است.
  */
 
 #ifndef UI_BUZZER_H
 #define UI_BUZZER_H
 
-/* ==================== Includes ==================== */
+/* ==================== Includes / شامل‌ها ==================== */
 
 #include <stdint.h>
-#include <stdbool.h>
 
-/* ==================== Buzzer / Beep ==================== */
-
-#define UI_BOOT_BEEP_MS                 150u    /* [EN] Board test beep / بوق تست برد */
-#define UI_BEEP_BASE_MS                 250u    /* [EN] Base beep / طول بوق پایه */
-#define UI_BEEP_DOUBLE_THRESH_PCT       20u     /* [EN] Below this, duration x2 / زیر این ۲ برابر */
-#define UI_BEEP_START_PCT               50u     /* [EN] Below this, periodic beep starts / زیر این بوق دوره‌ای */
-
-/* ==================== Buzzer Pattern ==================== */
-
-#define UI_BUZZER_DEFAULT_GAP_PERCENT   20u     /* [EN] Default gap 20% of onTime when repeat>1 / گپ پیش‌فرض ۲۰٪ */
-
-/* ==================== RTOS tick ==================== */
-
-#define UI_TICK_MS                      10u     /* [EN] Ui task tick 10ms, simple RTOS / تیکه ۱۰ میلی‌ثانیه - common with LED */
-
-/* ==================== Percent helpers ==================== */
-
-#define UI_PERCENT_FULL                 100u
-
-/* ==================== Buzzer Pattern Ms Start ==================== */
+/* ==================== Buzzer timing constants / ثابت‌های زمانی بازر ==================== */
 
 /**
- * @brief  [EN] Buzzer pattern with gap ms - start pattern. Non-linear gap handling.
- *         Inputs: period (repeat time), onTime, repeat inside onTime, gap ms. If repeat=1 gap ignored.
- *         Example: onTime=1000ms repeat=2 gap=200ms => ON400 OFF200 ON400. RTOS simple.
- *         [FA] الگوی بازر با گپ میلی‌ثانیه - شروع الگو، غیرخطی.
- * @param  uint32_t__periodMs [EN] Period between pattern starts, 0=once, 0..60000ms / دوره تناوب
- * @param  uint32_t__onTimeMs [EN] Total ON including gaps, 10..10000ms / زمان روشن بودن بوق
- * @param  uint8_t__repeatCount [EN] Repeat inside ON 1..10 / تکرار زمان روشن بودن
- * @param  uint32_t__gapMs [EN] Gap ms 0..5000, ignored if repeat=1 / گپ میلی‌ثانیه
+ * @brief  [EN] Percentage scale used by duty and check calculations.
+ *         100 means that a duty value is expressed as a percentage.
+ *         [FA] مقیاس درصد برای محاسبه دیوتی و زمان مراجعه.
+ *         مقدار ۱۰۰ یعنی ورودی دیوتی به‌صورت درصد بیان می‌شود.
  */
-void func__Ui_BuzzerPatternMs_Start(uint32_t uint32_t__periodMs, uint32_t uint32_t__onTimeMs, uint8_t uint8_t__repeatCount, uint32_t uint32_t__gapMs);
-
-/* ==================== Buzzer Pattern Ms Tick ==================== */
+#define UI_BUZZER_PERCENT_SCALE         100u
 
 /**
- * @brief  [EN] Buzzer pattern tick - call every UI_TICK_MS, non-blocking.
- *         [FA] تیکه الگوی بازر - هر ۱۰ms صدا بزن.
- * @return bool [EN] true=still running, false=finished / در حال اجرا یا تمام
+ * @brief  [EN] Maximum accepted duty-window percentage.
+ *         Values above this limit are invalid and turn the buzzer off.
+ *         [FA] بیشترین درصد مجاز پنجره دیوتی.
+ *         مقدار بیشتر از این حد نامعتبر است و بوق را خاموش می‌کند.
  */
-bool func__Ui_BuzzerPatternMs_Tick(void);
-
-/* ==================== Buzzer Pattern Percent Start ==================== */
+#define UI_BUZZER_DUTY_MAX_PERCENT      100u
 
 /**
- * @brief  [EN] Buzzer pattern with gap percent - start. Non-linear: gap = onTime*percent/100 broken into steps.
- *         [FA] الگوی بازر با گپ درصدی - شروع، غیرخطی.
- * @param  uint32_t__periodMs [EN] Period ms / دوره تناوب
- * @param  uint32_t__onTimeMs [EN] ON time ms / زمان روشن
- * @param  uint8_t__repeatCount [EN] Repeat inside ON / تکرار داخل روشن
- * @param  uint8_t__gapPercent [EN] Gap percent 0..90, ignored if repeat=1 / گپ درصدی
+ * @brief  [EN] Minimum accepted non-zero complete pattern period in milliseconds.
+ *         This prevents very fast periodic switching of the buzzer GPIO.
+ *         [FA] کمترین دوره کامل غیرصفر الگو بر حسب میلی‌ثانیه.
+ *         این حد از سوئیچ سریع پایه GPIO بوق جلوگیری می‌کند.
  */
-void func__Ui_BuzzerPatternPercent_Start(uint32_t uint32_t__periodMs, uint32_t uint32_t__onTimeMs, uint8_t uint8_t__repeatCount, uint8_t uint8_t__gapPercent);
-
-/* ==================== Buzzer Pattern Percent Tick ==================== */
+#define UI_BUZZER_MIN_PERIOD_MS         1000u
 
 /**
- * @brief  [EN] Buzzer pattern percent tick.
- *         [FA] تیکه الگوی بازر درصدی.
- * @return bool [EN] true=running / در حال اجرا
+ * @brief  [EN] Minimum gap between adjacent pulses when beepCount is above one.
+ *         A single pulse has no adjacent gap and does not use this limit.
+ *         [FA] کمترین گپ بین پالس‌های مجاور وقتی تعداد بوق بیشتر از یک است.
+ *         یک بوق گپ مجاور ندارد و این محدودیت را استفاده نمی‌کند.
  */
-bool func__Ui_BuzzerPatternPercent_Tick(void);
-
-/* ==================== Buzzer Pattern Stop ==================== */
+#define UI_BUZZER_MIN_GAP_MS            100u
 
 /**
- * @brief  [EN] Stop buzzer pattern immediately.
- *         [FA] توقف فوری الگوی بازر.
+ * @brief  [EN] Percentage of the smallest positive pattern segment used to recommend the next RTOS check.
+ *         [FA] درصد کوچک‌ترین بخش مثبت الگو برای پیشنهاد زمان مراجعه بعدی RTOS.
  */
-void func__Ui_BuzzerPattern_Stop(void);
+#define UI_BUZZER_CHECK_PERCENT         10u
+
+/**
+ * @brief  [EN] Minimum positive delay returned to a caller between buzzer checks.
+ *         [FA] کمترین تأخیر مثبت که بین دو بررسی بوق به caller برگردانده می‌شود.
+ */
+#define UI_BUZZER_MIN_CHECK_MS          1u
+
+/* ==================== Buzzer result constants / ثابت‌های نتیجه بازر ==================== */
+
+/**
+ * @brief  [EN] Return value for a valid command that intentionally disables the buzzer.
+ *         [FA] مقدار بازگشتی برای فرمان معتبر خاموش‌کردن عمدی بوق.
+ */
+#define UI_BUZZER_OFF_RESULT            0
+
+/**
+ * @brief  [EN] Return value for an unsafe or invalid buzzer configuration.
+ *         The GPIO is forced LOW when this result is returned.
+ *         [FA] مقدار بازگشتی برای تنظیمات ناامن یا نامعتبر بوق.
+ *         هنگام این نتیجه، GPIO بوق روی LOW قرار می‌گیرد.
+ */
+#define UI_BUZZER_INVALID_RESULT        (-1)
+
+/* ==================== BoardTest compatibility constant / ثابت سازگاری تست برد ==================== */
+
+/**
+ * @brief  [EN] Default one-shot beep duration used by the BoardTest scenario.
+ *         APP_CONFIG copies this default and the scenario converts it to a valid duty window.
+ *         [FA] مدت پیش‌فرض بوق تک‌باره در سناریوی تست برد.
+ *         APP_CONFIG این پیش‌فرض را کپی می‌کند و سناریو آن را به پنجره دیوتی معتبر تبدیل می‌کند.
+ */
+#define UI_BOOT_BEEP_MS                 150u
+
+/* ==================== Buzzer service / سرویس بازر ==================== */
+
+/**
+ * @brief  [EN] Service one periodic buzzer pattern without blocking the task.
+ *         The pattern repeats every periodMs. The duty window is periodMs*dutyPercent/100.
+ *         beepCount pulses share that duty window; gapMs is inserted between adjacent pulses.
+ *         A zero period, zero duty, or zero count turns the buzzer off and returns
+ *         UI_BUZZER_OFF_RESULT. A non-zero period below UI_BUZZER_MIN_PERIOD_MS,
+ *         an out-of-range duty, a too-small gap for multiple pulses, or a pattern
+ *         without positive time for every pulse turns the buzzer off and returns
+ *         UI_BUZZER_INVALID_RESULT. Valid patterns return the recommended next-call
+ *         delay: UI_BUZZER_CHECK_PERCENT of the smallest positive pattern segment.
+ *         [FA] یک الگوی دوره‌ای بوق را بدون قفل کردن تسک اجرا می‌کند.
+ *         الگو هر periodMs تکرار می‌شود و پنجره دیوتی برابر periodMs*dutyPercent/100 است.
+ *         تعداد beepCount بوق این پنجره را تقسیم می‌کنند و gapMs بین بوق‌های مجاور قرار می‌گیرد.
+ *         دوره صفر، دیوتی صفر یا تعداد صفر، بوق را خاموش و UI_BUZZER_OFF_RESULT را برمی‌گرداند.
+ *         دوره غیرصفر کمتر از UI_BUZZER_MIN_PERIOD_MS، دیوتی خارج از محدوده،
+ *         گپ کمتر از حد مجاز برای چند بوق، یا نبود زمان مثبت برای همه بوق‌ها،
+ *         بوق را خاموش و UI_BUZZER_INVALID_RESULT را برمی‌گرداند.
+ *         در الگوی معتبر، زمان مراجعه بعدی برابر UI_BUZZER_CHECK_PERCENT درصد
+ *         کوچک‌ترین بخش مثبت الگو است.
+ * @param  uint32_t__periodMs [EN] Pattern period in ms / دوره الگو بر حسب ms
+ * @param  uint8_t__dutyPercent [EN] Duty window 0..100 percent / پنجره دیوتی از صفر تا صد درصد
+ * @param  uint8_t__beepCount [EN] Number of pulses; zero disables / تعداد پالس؛ صفر یعنی خاموش
+ * @param  uint32_t__gapMs [EN] Low gap between adjacent pulses in ms / گپ خاموش بین پالس‌های مجاور بر حسب ms
+ * @return int32_t [EN] Next-call delay, zero for valid off, or -1 for invalid configuration.
+ *         [FA] زمان مراجعه بعدی، صفر برای خاموشی معتبر، یا منفی یک برای تنظیم نامعتبر.
+ */
+int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyPercent, uint8_t uint8_t__beepCount, uint32_t uint32_t__gapMs);
 
 #endif /* UI_BUZZER_H */

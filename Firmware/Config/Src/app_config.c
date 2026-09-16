@@ -7,7 +7,7 @@
  *          [FA] کاملاً RTOS بدون delay، نام‌گذاری با __، ثابت‌های LED و BUZZER جدا.
  */
 
-/* ==================== Includes ==================== */
+/* ==================== Includes / شامل‌ها ==================== */
 
 #include "app_config.h"
 #include "ui_led.h"     /* [EN] LED constants in own header / ثابت‌های LED در هدر خودش */
@@ -20,19 +20,10 @@ const app_config_t APP_CONFIG =
     .ui_boot_beep_ms               = UI_BOOT_BEEP_MS,
     .ui_blink_period_ms            = UI_BLINK_PERIOD_MS,
     .ui_green_min_off_ms           = UI_GREEN_MIN_OFF_MS,
-    .ui_low_battery_percent        = 20u,
-    .ui_warn_period_ms             = 1000u,
-    .ui_warn_yellow_on_ms          = 500u,
-    .ui_warn_beep_ms               = UI_BEEP_BASE_MS,
-    .ui_warn_beep_period_ms        = 30000u,
-    .ui_input_threshold_mv         = UI_INPUT_THRESHOLD_MV,
     .ui_bat_v_min_mv               = UI_BAT_V_MIN_MV,
     .ui_bat_v_max_mv               = UI_BAT_V_MAX_MV,
     .ui_charging_blink_period_ms   = UI_CHARGING_BLINK_PERIOD_MS,
     .ui_charging_yellow_min_off_ms = UI_CHARGING_YELLOW_MIN_OFF_MS,
-    .ui_beep_base_ms               = UI_BEEP_BASE_MS,
-    .ui_beep_double_thresh_pct     = UI_BEEP_DOUBLE_THRESH_PCT,
-    .ui_beep_start_pct             = UI_BEEP_START_PCT,
     .power_stage_enabled           = false,
     .esp_link_enabled              = false,
     .control_period_ms             = 10u,
