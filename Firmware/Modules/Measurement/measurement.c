@@ -34,7 +34,7 @@
  *      Written only by the measurement task, read by GetSnapshot.
  *      [FA] snapshot مشترک برای تسک‌های دیگر (UI / protection / comm).
  *      فقط توسط تسک measurement نوشته و با GetSnapshot خوانده می‌شود. */
-static measurement_snapshot_t MEASUREMENT_SNAPSHOT_T__G__Snap;
+static volatile measurement_snapshot_t MEASUREMENT_SNAPSHOT_T__G__Snap;
 
 /* ==================== Global Shared Values ==================== */
 /* [EN] The engineering values of the newest frame, shared to all tasks.
@@ -45,13 +45,13 @@ static measurement_snapshot_t MEASUREMENT_SNAPSHOT_T__G__Snap;
  *      measurement (Run/Init) می‌نویسد؛ هر ماژول بعد از include کردن
  *      measurement.h می‌خواند. پیشوند Meas* از تداخل لینک با متغیرهای
  *      تست دستی UI (task_ui.c) جلوگیری می‌کند. */
-uint32_t UINT32_T__G__MeasInputVoltageMv = 0u;
-uint32_t UINT32_T__G__MeasBattery24Mv = 0u;
-uint32_t UINT32_T__G__MeasBattery12Mv = 0u;
-uint32_t UINT32_T__G__MeasCurrent1Ma = 0u;
-uint32_t UINT32_T__G__MeasCurrent2Ma = 0u;
-bool BOOL__G__MeasInputPresent = false;
-bool BOOL__G__MeasDataValid = false;
+volatile uint32_t UINT32_T__G__MeasInputVoltageMv = 0u;
+volatile uint32_t UINT32_T__G__MeasBattery24Mv = 0u;
+volatile uint32_t UINT32_T__G__MeasBattery12Mv = 0u;
+volatile uint32_t UINT32_T__G__MeasCurrent1Ma = 0u;
+volatile uint32_t UINT32_T__G__MeasCurrent2Ma = 0u;
+volatile bool BOOL__G__MeasInputPresent = false;
+volatile bool BOOL__G__MeasDataValid = false;
 
 /* ==================== Measurement Init ==================== */
 
@@ -129,9 +129,9 @@ uint32_t func__Measurement_V24CountsToMv(uint16_t uint16_t__counts)
         MEASUREMENT_DIV24_TOP_OHMS + MEASUREMENT_DIV24_BOTTOM_OHMS;
 
     /* [EN] Step 3: undo the divider: V_source = V_pin * R_total / R_bottom.
-       Multiply before the division (max 3300 * 82800 fits in uint32_t).
+       Multiply before the division (max 3300 * 69200 fits in uint32_t).
        [FA] گام ۳: برگردان تقسیم: V_source = V_pin * R_total / R_bottom.
-       اول ضرب و بعد تقسیم (حداکثر 3300 * 82800 در uint32_t جا می‌شود). */
+       اول ضرب و بعد تقسیم (حداکثر 3300 * 69200 در uint32_t جا می‌شود). */
     uint32_t__scaledMv = uint32_t__adcPinMv * uint32_t__dividerTotalOhms;
     uint32_t__sourceMv = uint32_t__scaledMv / MEASUREMENT_DIV24_BOTTOM_OHMS;
 
@@ -173,33 +173,44 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
 /* ==================== Current Counts To Ma ==================== */
 
 /**
- * @brief  [EN] Raw counts of a current channel to charge current (mA).
- *         [FA] شمارش خام کانال جریان به جریان شارژ (mA).
+ * @brief  [EN] Convert raw ADC counts to charge current in milliamps. The
+ *              calculation keeps the ADC, amplifier-gain and shunt factors
+ *              in one 64-bit numerator/denominator path to avoid the coarse
+ *              100 mA quantization caused by early integer division.
+ *         [FA] شمارش خام ADC را به جریان شارژ بر حسب میلی‌آمپر تبدیل می‌کند.
+ *              عوامل ADC، گین تقویت‌کننده و شانت در مسیر صورت/مخرج ۶۴ بیتی
+ *              نگه داشته می‌شوند تا تقسیم زودهنگام و پلهٔ خشن ۱۰۰mA ایجاد نشود.
  * @param  uint16_t__counts [EN] Raw ADC count, 0..4095 / شمارش خام ADC
- * @return uint32_t [EN] Current in mA, 0..~3300 / جریان بر حسب mA
+ * @return uint32_t [EN] Current in mA, approximately 0..3300 / جریان mA
  */
 uint32_t func__Measurement_CurrentCountsToMa(uint16_t uint16_t__counts)
 {
-    uint32_t uint32_t__ampOutMv;
-    uint32_t uint32_t__shuntDropMv;
-    uint32_t uint32_t__shuntDropScaled;
+    uint64_t uint64_t__adcVoltageNumerator;
+    uint64_t uint64_t__currentNumerator;
+    uint64_t uint64_t__currentDenominator;
     uint32_t uint32_t__currentMa;
 
-    /* [EN] Step 1: voltage at the ADC pin = amplifier output (mV).
-       [FA] گام ۱: ولتاژ روی پایهٔ ADC = خروجی تقویت‌کننده (mV). */
-    uint32_t__ampOutMv = func__Measurement_CountsToMv(uint16_t__counts);
+    /* [EN] Step 1: keep the ADC scale in the numerator before division.
+       [FA] گام ۱: مقیاس ADC پیش از تقسیم در صورت نگه داشته می‌شود. */
+    uint64_t__adcVoltageNumerator =
+        (uint64_t)uint16_t__counts * MEASUREMENT_VREF_MV;
 
-    /* [EN] Step 2: divide by the LM358 gain (101) -> drop across the shunt
-       (mV).
-       [FA] گام ۲: تقسیم بر گین LM358 (101) -> افت ولتاژ روی شانت (mV). */
-    uint32_t__shuntDropMv = uint32_t__ampOutMv / MEASUREMENT_AMP_GAIN;
+    /* [EN] Step 2: convert the shunt-voltage ratio to milliamps.
+       [FA] گام ۲: نسبت افت شانت را به میلی‌آمپر تبدیل می‌کند. */
+    uint64_t__currentNumerator =
+        uint64_t__adcVoltageNumerator * MEASUREMENT_CURRENT_MA_SCALE;
 
-    /* [EN] Step 3: drop (mV) over the shunt (mOhm) -> current (mA).
-       mV / mOhm = 1000 * mA, so multiply by 1000 before dividing.
-       [FA] گام ۳: افت (mV) تقسیم بر شانت (mΩ) -> جریان (mA).
-       چون mV / mΩ = ۱۰۰۰ * mA، اول در ۱۰۰۰ ضرب و بعد تقسیم می‌شود. */
-    uint32_t__shuntDropScaled = uint32_t__shuntDropMv * 1000u;
-    uint32_t__currentMa = uint32_t__shuntDropScaled / MEASUREMENT_SHUNT_MOHMS;
+    /* [EN] Step 3: amplifier gain and shunt resistance form the denominator:
+       counts * Vref * 1000 / (4095 * gain * shunt_mOhm).
+       [FA] گام ۳: گین تقویت‌کننده و مقاومت شانت مخرج را می‌سازند:
+       counts * Vref * 1000 / (4095 * gain * shunt_mOhm). */
+    uint64_t__currentDenominator =
+        (uint64_t)MEASUREMENT_ADC_FULL_SCALE *
+        MEASUREMENT_AMP_GAIN *
+        MEASUREMENT_SHUNT_MOHMS;
+
+    uint32_t__currentMa =
+        (uint32_t)(uint64_t__currentNumerator / uint64_t__currentDenominator);
 
     return uint32_t__currentMa;
 }
@@ -207,68 +218,86 @@ uint32_t func__Measurement_CurrentCountsToMa(uint16_t uint16_t__counts)
 /* ==================== Measurement Run ==================== */
 
 /**
- * @brief  [EN] Pull one raw frame from the bsp and convert every channel into
- *              the shared snapshot.
- *         [FA] یک فریم خام از bsp می‌گیرد و همهٔ کانال‌ها را در snapshot
- *              مشترک تبدیل می‌کند.
+ * @brief  [EN] Pull one stable raw frame from the BSP, convert all ADC
+ *              channels and publish one coherent shared snapshot.
+ *         [FA] یک فریم خام پایدار را از BSP می‌گیرد، همهٔ کانال‌های ADC را
+ *              تبدیل می‌کند و یک snapshot مشترک منسجم منتشر می‌کند.
  */
 void func__Measurement_Run(void)
 {
     uint16_t uint16_t__raw[BSP_ADC_CHANNEL_COUNT];
+    uint32_t uint32_t__current1Ma;
+    uint32_t uint32_t__inputVoltageMv;
+    uint32_t uint32_t__battery24Mv;
+    uint32_t uint32_t__battery12Mv;
+    uint32_t uint32_t__current2Ma;
     bool bool__frameCopied;
+    bool bool__inputPresent;
+    uint32_t uint32_t__savedPrimask;
 
-    /* [EN] The raw frame is already in RAM (hardware-filled DMA buffer);
-       GetRaw only copies 5 halfwords.
-       [FA] فریم خام از قبل در RAM است (بفر پرشدهٔ سخت‌افزاری DMA)؛
-       GetRaw فقط ۵ نصف‌واژه کپی می‌کند. */
+    /* [EN] GetRaw copies only a completed DMA half-frame; no ADC register
+       polling is performed here.
+       [FA] GetRaw فقط یک نیم‌فریم کامل DMA را کپی می‌کند؛ اینجا رجیستر ADC
+       پالت نمی‌شود. */
     bool__frameCopied = func__BspAdc_GetRaw(uint16_t__raw);
 
     if (bool__frameCopied == false)
     {
+        uint32_t__savedPrimask = __get_PRIMASK();
+        __disable_irq();
         BOOL__G__MeasDataValid = false;
         MEASUREMENT_SNAPSHOT_T__G__Snap.valid = false;
+        __set_PRIMASK(uint32_t__savedPrimask);
         return;
     }
 
-    /* [EN] Convert every channel into the shared globals (single write pass;
-       index order = bsp_adc.h channel table). The globals are the values the
-       other tasks read.
-       [FA] تبدیل همهٔ کانال‌ها در گلوبال‌های مشترک (یک بار نوشتن؛ ترتیب
-       اندیس = جدول کانال bsp_adc.h). همین گلوبال‌هایی هستند که تسک‌های
-       دیگر می‌خوانند. */
-    UINT32_T__G__MeasCurrent1Ma =
+    /* [EN] Convert into locals first so other tasks never observe a partly
+       updated measurement set.
+       [FA] ابتدا در متغیرهای محلی تبدیل می‌کند تا تسک‌های دیگر مجموعهٔ
+       اندازه‌گیری نیمه‌به‌روزشده نبینند. */
+    uint32_t__current1Ma =
         func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1]);
-    UINT32_T__G__MeasInputVoltageMv =
+    uint32_t__inputVoltageMv =
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_IN]);
-    UINT32_T__G__MeasBattery24Mv =
+    uint32_t__battery24Mv =
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);
-    UINT32_T__G__MeasBattery12Mv =
+    uint32_t__battery12Mv =
         func__Measurement_V12CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_12V_BAT]);
-    UINT32_T__G__MeasCurrent2Ma =
+    uint32_t__current2Ma =
         func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
 
-    /* [EN] PB4 = MCU_INT_24_IN (schematic): driven by the 24 V input through
-       R46 + R10 - HIGH (~2.5 V) when the input is present, 0 V otherwise.
-       Polarity is SCHEMATIC, not measured on the board yet.
-       [FA] PB4 = MCU_INT_24_IN (شماتیک): از ورودی ۲۴ با R46 + R10 می‌آید —
-       وقتی ورودی وصل است HIGH (~2.5V)، در غیر این صورت 0V.
-       قطبیت از روی شماتیک است، هنوز روی برد اندازه‌گیری نشده. */
-    BOOL__G__MeasInputPresent =
+    /* [EN] PB4 = MCU_INT_24_IN (schematic): HIGH means input present. This
+       polarity is from the schematic and still needs board measurement.
+       [FA] PB4 = MCU_INT_24_IN (شماتیک): HIGH یعنی ورودی حاضر است. این
+       قطبیت از شماتیک است و هنوز باید روی برد اندازه‌گیری شود. */
+    bool__inputPresent =
         (HAL_GPIO_ReadPin(PIN_INT_24_IN_PORT, PIN_INT_24_IN_PIN) == GPIO_PIN_SET);
 
-    /* [EN] Mirror the globals into the snapshot (same data + valid flag);
-       GetSnapshot keeps working for modules that prefer a one-copy read.
-       [FA] آینه‌سازی گلوبال‌ها در snapshot (همان داده + فلگ valid)؛
-       GetSnapshot برای ماژولهایی که ترجیح می‌دهند یک‌بار کپی کنند سالم می‌ماند. */
-    MEASUREMENT_SNAPSHOT_T__G__Snap.i_ch1_ma = UINT32_T__G__MeasCurrent1Ma;
-    MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = UINT32_T__G__MeasInputVoltageMv;
-    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = UINT32_T__G__MeasBattery24Mv;
-    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat12_mv = UINT32_T__G__MeasBattery12Mv;
-    MEASUREMENT_SNAPSHOT_T__G__Snap.i_ch2_ma = UINT32_T__G__MeasCurrent2Ma;
-    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = BOOL__G__MeasInputPresent;
+    /* [EN] Publish globals and snapshot as one short critical section. The
+       snapshot valid bit is written last.
+       [FA] گلوبال‌ها و snapshot را در یک critical section کوتاه منتشر می‌کند.
+       بیت معتبر بودن snapshot در آخر نوشته می‌شود. */
+    uint32_t__savedPrimask = __get_PRIMASK();
+    __disable_irq();
+
+    UINT32_T__G__MeasCurrent1Ma = uint32_t__current1Ma;
+    UINT32_T__G__MeasInputVoltageMv = uint32_t__inputVoltageMv;
+    UINT32_T__G__MeasBattery24Mv = uint32_t__battery24Mv;
+    UINT32_T__G__MeasBattery12Mv = uint32_t__battery12Mv;
+    UINT32_T__G__MeasCurrent2Ma = uint32_t__current2Ma;
+    BOOL__G__MeasInputPresent = bool__inputPresent;
+
+    MEASUREMENT_SNAPSHOT_T__G__Snap.i_ch1_ma = uint32_t__current1Ma;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = uint32_t__inputVoltageMv;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = uint32_t__battery24Mv;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat12_mv = uint32_t__battery12Mv;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.i_ch2_ma = uint32_t__current2Ma;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = bool__inputPresent;
 
     BOOL__G__MeasDataValid = true;
     MEASUREMENT_SNAPSHOT_T__G__Snap.valid = true;
+
+    __set_PRIMASK(uint32_t__savedPrimask);
 }
 
 /* ==================== Measurement Get Snapshot ==================== */
@@ -285,11 +314,21 @@ void func__Measurement_Run(void)
  */
 bool func__Measurement_GetSnapshot(measurement_snapshot_t *measurement_snapshot_t__out)
 {
+    uint32_t uint32_t__savedPrimask;
+    bool bool__snapshotValid;
+
     if (measurement_snapshot_t__out == NULL)
     {
         return false;
     }
 
+    /* [EN] Prevent a task switch while copying the multi-field snapshot.
+       [FA] هنگام کپی snapshot چندفیلدی، تعویض تسک را متوقف می‌کند. */
+    uint32_t__savedPrimask = __get_PRIMASK();
+    __disable_irq();
     *measurement_snapshot_t__out = MEASUREMENT_SNAPSHOT_T__G__Snap;
-    return MEASUREMENT_SNAPSHOT_T__G__Snap.valid;
+    bool__snapshotValid = MEASUREMENT_SNAPSHOT_T__G__Snap.valid;
+    __set_PRIMASK(uint32_t__savedPrimask);
+
+    return bool__snapshotValid;
 }

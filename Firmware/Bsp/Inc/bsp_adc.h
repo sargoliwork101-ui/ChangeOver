@@ -1,13 +1,13 @@
 /**
  * @file    bsp_adc.h
- * @brief   [EN] ADC+DMA board layer. The hardware (ADC1 + DMA1, continuous scan,
- *              circular buffer) fills a RAM buffer autonomously; the CPU never
- *              polls the ADC and no interrupt is used. The consumer copies the
- *              newest 5-sample frame on demand.
- *          [FA] لایهٔ برد ADC+DMA. سخت‌افزار (ADC1 + DMA1، اسکن مداوم، بافر
- *              چرخشی) به‌طور مستقل بافر RAM را پر می‌کند؛ CPU هرگز ADC را
- *              پالس نمی‌زند و قطع‌کننده‌ای استفاده نمی‌شود. مصرف‌کننده آخرین
- *              فریم ۵ نمونه‌ای را به‌درخواست کپی می‌کند.
+ * @brief   [EN] ADC+DMA board layer. ADC1 scans five analog channels and DMA
+ *              fills a two-frame circular RAM buffer autonomously. The reader
+ *              polls the DMA counter and copies only a completed frame; no
+ *              DMA interrupt is required.
+ *          [FA] لایهٔ برد ADC+DMA. ADC1 پنج کانال آنالوگ را اسکن می‌کند و DMA
+ *              به‌طور مستقل بافر چرخشی دو فریمی RAM را پر می‌کند. خواننده
+ *              شمارندهٔ DMA را می‌خواند و فقط یک فریم کامل را کپی می‌کند؛
+ *              نیازی به وقفهٔ DMA نیست.
  *
  * @note    [EN] Channel order is fixed by the .ioc rank order (see Defines).
  *              Keep it in sync with CubeMX/CubeIDE.ioc.
@@ -27,7 +27,7 @@
 typedef struct __ADC_HandleTypeDef ADC_HandleTypeDef;
 #endif
 
-/* ==================== Defines ==================== */
+/* ==================== ADC channel map ==================== */
 /* [EN] ADC channel order == .ioc rank order. PA1/PA2/PA3/PA5/PA7 =
  *      ADC1_IN1/IN2/IN3/IN5/IN7 (schematic MICROCONTROLLER.SchDoc,
  *      Analog Input block).
@@ -41,68 +41,71 @@ typedef struct __ADC_HandleTypeDef ADC_HandleTypeDef;
 #define BSP_ADC_CHANNEL_12V_BAT      3u   /* PA5  ADC1_IN5  12V battery      / ولتاژ باتری ۱۲ */
 #define BSP_ADC_CHANNEL_CURRENT2     4u   /* PA7  ADC1_IN7  charge current 12V ch. 2 / جریان شارژ ۱۲ ولت کانال ۲ */
 
-/* [EN] The DMA buffer holds two full frames (10 halfwords). The reader
- *      always copies the second slot. Two slots give the hardware a full
- *      frame of write margin, so a torn copy can mix at most one adjacent
- *      frame (one rotation ~= 40 us at 9 MHz) - far below the 10 ms
- *      measurement period.
- * [FA] بافر DMA دو فریم کامل (۱۰ نصف‌واژه) نگه می‌دارد. خواننده همیشه
- *      اسلات دوم را کپی می‌کند. دو اسلات به سخت‌افزار یک فریم فضای
- *      نوشتن می‌دهد؛ بدترین کپیِ پاره‌شده حداکثر یک فریم مجاور را قاطی
- *      می‌کند (یک دور ~= 40us در 9MHz) که بسیار کمتر از دوره ۱۰ms است. */
+/* ==================== DMA buffer ==================== */
+/* [EN] The DMA buffer holds two full frames. When DMA writes one half, the
+ *      other half is stable and can be copied. BSP_ADC_DMA_RETRY_COUNT
+ *      protects the short copy from crossing a half-buffer boundary.
+ * [FA] بافر DMA دو فریم کامل نگه می‌دارد. وقتی DMA در یک نیمه می‌نویسد،
+ *      نیمهٔ دیگر پایدار است و می‌توان آن را کپی کرد. شمارندهٔ تلاش، کپی
+ *      کوتاه را از عبور هم‌زمان از مرز نیمه محافظت می‌کند. */
 #define BSP_ADC_DMA_FRAME_COUNT      2u
 #define BSP_ADC_DMA_SAMPLE_COUNT     (BSP_ADC_CHANNEL_COUNT * BSP_ADC_DMA_FRAME_COUNT)
+#define BSP_ADC_DMA_RETRY_COUNT      3u
+#define BSP_ADC_START_TIMEOUT_MS     2u
 
 /* ==================== BspAdc_Init ==================== */
 
 /**
- * @brief  [EN] Store the CubeMX HAL handle and zero the DMA buffer.
+ * @brief  [EN] Store the CubeMX HAL handle and clear the DMA buffer.
  *         [FA] هندل HAL مکعب را نگه می‌دارد و بافر DMA را صفر می‌کند.
- * @param  ADC_HandleTypeDef__hadc [EN] HAL ADC handle from CubeMX (hadc1);
- *                                     must not be NULL / هندل ADC مکعب (hadc1)
+ * @param  ADC_HandleTypeDef__hadc [EN] ADC handle from CubeMX; NULL disables
+ *                                     the BSP / هندل ADC مکعب؛ NULL یعنی خاموش
  */
 void func__BspAdc_Init(ADC_HandleTypeDef *ADC_HandleTypeDef__hadc);
 
 /* ==================== BspAdc_Start ==================== */
 
 /**
- * @brief  [EN] Start continuous scan + circular DMA. After this call the
- *              hardware converts forever without CPU help; the first full
- *              frame is ready ~0.1 ms later (10 conversions at 9 MHz).
- *         [FA] شروع اسکن مداوم + DMA چرخشی. بعد از این صدا، سخت‌افزار بدون
- *              کمک CPU مدام تبدیل می‌کند؛ اولین فریم کامل ~0.1ms بعد آماده
- *              است (۱۰ تبدیل در 9MHz).
- * @return bool [EN] true when HAL started the DMA, false if no handle /
- *                   اگر HAL شروع کرد true، بدون هندل false
+ * @brief  [EN] Calibrate ADC1, then start continuous scan and circular DMA.
+ *              The F1 ADC prescaler is configured by CubeMX at the highest
+ *              legal value for PCLK2 = 72 MHz: 12 MHz (PCLK2 / 6).
+ *              DMA interrupt sources are disabled because the reader polls
+ *              the DMA counter instead of using an ISR.
+ *         [FA] ADC1 را کالیبره می‌کند و سپس اسکن مداوم و DMA چرخشی را شروع
+ *              می‌کند. پیش‌تقسیم‌کنندهٔ ADC در CubeMX برای بیشترین مقدار
+ *              مجاز با PCLK2 برابر ۷۲MHz روی ۱۲MHz (تقسیم بر ۶) است.
+ *              چون خواننده شمارندهٔ DMA را پالت می‌کند، منابع وقفهٔ DMA
+ *              خاموش می‌شوند و ISR لازم نیست.
+ * @return bool [EN] true when calibration and HAL start succeed /
+ *                   اگر کالیبراسیون و شروع HAL موفق باشد true
  */
 bool func__BspAdc_Start(void);
 
 /* ==================== BspAdc_IsFrameReady ==================== */
 
 /**
- * @brief  [EN] True once Start succeeded. The first full frame is available
- *              ~0.1 ms after Start; callers should delay at least
- *              MEASUREMENT_SETTLE_MS (1 ms) before the first GetRaw.
- *         [FA] وقتی Start موفق بود true. اولین فریم کامل ~0.1ms بعد از Start
- *              موجود است؛ صداکننده قبل از اولین GetRaw حداقل
- *              MEASUREMENT_SETTLE_MS (1ms) صبر کند.
- * @return bool [EN] true when a frame can be read / وقتی فریم قابل‌خواندن است
+ * @brief  [EN] Report whether ADC+DMA was started successfully. GetRaw still
+ *              verifies that a complete half-frame is available before copy.
+ *         [FA] اعلام می‌کند ADC+DMA با موفقیت شروع شده است. GetRaw پیش از
+ *              کپی، کامل بودن نیم‌فریم را دوباره بررسی می‌کند.
+ * @return bool [EN] true after successful start / بعد از شروع موفق true
  */
 bool func__BspAdc_IsFrameReady(void);
 
 /* ==================== BspAdc_GetRaw ==================== */
 
 /**
- * @brief  [EN] Copy the newest 5-sample frame (DMA slot 1) into out[].
- *              Copies under a short critical section so the 5 halfwords come
- *              from one consistent window.
- *         [FA] آخرین فریم ۵ نمونه‌ای (اسلات ۱ DMA) را در out[] کپی می‌کند.
- *              کپی داخل یک critical section کوتاه انجام می‌شود تا ۵ نصف‌واژه
- *              از یک پنجرهٔ یکسان باشند.
- * @param  uint16_t__out [EN] Output array, must have BSP_ADC_CHANNEL_COUNT
- *                            elements; index order = BSP_ADC_CHANNEL_* /
- *                            آرایهٔ خروجی به ترتیب BSP_ADC_CHANNEL_*
- * @return bool [EN] true when copied, false if not started / اگر کپی شد true
+ * @brief  [EN] Copy the newest completed five-sample frame into out[]. The
+ *              DMA counter selects the half that DMA is not currently writing;
+ *              a before/after counter check rejects a boundary-crossing copy.
+ *         [FA] جدیدترین فریم کامل پنج‌نمونه‌ای را در out[] کپی می‌کند.
+ *              شمارندهٔ DMA نیمه‌ای را انتخاب می‌کند که DMA در آن نمی‌نویسد؛
+ *              بررسی شمارنده قبل و بعد، کپی عبوری از مرز را رد می‌کند.
+ * @param  uint16_t__out [EN] Output array with BSP_ADC_CHANNEL_COUNT elements;
+ *                            index order = BSP_ADC_CHANNEL_* /
+ *                            آرایهٔ خروجی با ترتیب BSP_ADC_CHANNEL_*
+ * @return bool [EN] true when a stable frame was copied, false otherwise /
+ *                   اگر فریم پایدار کپی شد true وگرنه false
  */
 bool func__BspAdc_GetRaw(uint16_t uint16_t__out[BSP_ADC_CHANNEL_COUNT]);
 
