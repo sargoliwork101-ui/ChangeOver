@@ -25,6 +25,7 @@
 /* ==================== Includes ==================== */
 #include "measurement.h"
 #include "bsp_adc.h"
+#include "bsp_gpio.h"
 #include "board_pins.h"
 #include <stddef.h>
 
