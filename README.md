@@ -52,7 +52,7 @@ CubeIDE/Core/.../main.c
           PIN_*                  Firmware/Config/Inc/board_pins.h
           APP_CONFIG             Firmware/Config/Src/app_config.c // مقادیر پیش‌فرض جدید: ui_input_threshold_mv, ui_bat_v_min/max, beep, charging
 
-  ADC1 + DMA1 (سخت‌افزار، بدون CPU)   CubeMX/CubeIDE.ioc: 5 کانال (PA1/2/3/5/7)، scan+continuous، 9MHz
+  ADC1 + DMA1 (سخت‌افزار، بدون CPU)   CubeMX/CubeIDE.ioc: 5 کانال (PA1/2/3/5/7)، scan+continuous، 12MHz (بیشترین مقدار قانونی با PCLK2=72MHz)
     بافر چرخشی 10 نصف‌واژه            Firmware/Bsp/Src/bsp_adc.c — سخت‌افزار مدام پر می‌کند
       TaskMeasurement                  Firmware/Rtos/Src/task_measurement.c
         هر MEASUREMENT_PERIOD_MS (10ms، بالای measurement.h):
@@ -127,6 +127,7 @@ ChangeOver
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-16 | اصلاح محدود ADC/Measurement: کلاک ADC روی 12MHz (PCLK2/6، بیشترین مقدار قانونی F103 با PCLK2=72MHz)، همسان‌سازی `.ioc`ها، افزودن HAL ADC/ADCEx به Build، کالیبراسیون، فریم پایدار DMA، ضرایب صحیح تقسیم ولتاژ و snapshot اتمیک؛ ماژول‌های دیگر تغییر نکردند |
 | 2026-09-15 | چک کامل UI با `AI_CONTEXT.md` و اصلاحات: braces MISRA در `ui_buzzer.c`، بازر در `ui_led.c` فقط از طریق API ماژول بازر (جداسازی کامل)، شارژ بازر را صریح خاموش می‌کند، نام `BUZZER_STATE_T__G__State`، پاک‌سازی `task_ui.c`؛ مقادیر measurement به سبک قانون `BOOL__G__` اصلاح شد؛ مستندات قدیمی `ui.h`/`ui.c` (حذف‌شده) از برگه‌ها حذف شد |
 | 2026-09-15 | مقادیر اندازه‌گیری گلوبال شدند (`UINT32_T__G__Meas*` / `BOOL__G__Meas*` در measurement) — هر تسک می‌تواند بخواند و در دیباگر با Live Expressions دیده می‌شود |
 | 2026-09-15 | فعال‌شدن اندازه‌گیری: ADC1+DMA1 در `.ioc` (۵ کانال، scan+continuous، کلاک 9MHz به‌جای 36MHz که از سقف 14MHz F103 بالاتر بود)، درایور ADC ST (v1.1.10) به Drivers، bsp_adc واقعی (بافر چرخشی پرشدهٔ سخت‌افزار، بدون interrupt/CPU)، توابع تبدیل measurement (گام‌به‌گام، بدون فرمول خطی)، دوره `MEASUREMENT_PERIOD_MS=10` بالای measurement.h، PB4 (`MCU_INT_24_IN`) به‌عنوان ورودی دیجیتال حضور ورودی، `MODULE_MEASUREMENT=1`؛ Init/Start داخل تسک Measurement تا app.c دست‌نخورده بماند |

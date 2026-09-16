@@ -1,23 +1,19 @@
 /**
  * @file    bsp_adc.c
- * @brief   [EN] ADC+DMA board layer. HAL start only; afterwards the ADC+DMA
- *              hardware fills the circular buffer in RAM without any CPU
- *              involvement (no polling, no interrupt). Static RAM only,
- *              no malloc (MISRA / project memory rule).
- *          [FA] لایهٔ برد ADC+DMA. فقط استارت HAL؛ بعد از آن سخت‌افزار
- *              ADC+DMA بافر چرخشی را در RAM بدون هیچ درگیری CPU پر می‌کند
- *              (بدون پالتینگ و بدون قطع‌کننده). فقط RAM استاتیک، بدون
- *              malloc (MISRA / قانون حافظهٔ پروژه).
+ * @brief   [EN] ADC+DMA board layer. ADC1 is calibrated once, then hardware
+ *              continuously fills a circular two-frame buffer. The CPU only
+ *              polls DMA progress when a measurement snapshot is requested.
+ *              Static RAM only; no malloc (MISRA / project memory rule).
+ *          [FA] لایهٔ برد ADC+DMA. ADC1 یک‌بار کالیبره می‌شود و سپس سخت‌افزار
+ *              بافر چرخشی دو فریمی را پیوسته پر می‌کند. CPU فقط هنگام درخواست
+ *              snapshot پیشرفت DMA را می‌خواند. فقط RAM استاتیک؛ بدون malloc.
  *
- * @note    [EN] The DMA buffer is intentionally NOT volatile: the F1 HAL DMA
- *              API requires a plain pointer, and GetRaw() reads it under a
- *              short PRIMASK critical section, which makes the 5-halfword
- *              copy atomic with respect to the CPU (the DMA keeps writing in
- *              hardware either way).
- *          [FA] بافر DMA عمداً volatile نیست: API درایور DMA در F1 اشاره‌گر
- *              معمولی می‌خواهد و GetRaw() آن را داخل critical section کوتاه
- *              PRIMASK می‌خواند که کپی ۵ نصف‌واژه را از دید CPU اتمی
- *              می‌کند (DMA در هر حال در سخت‌افزار می‌نویسد).
+ * @note    [EN] The raw buffer is volatile because DMA changes it outside the
+ *              C execution flow. HAL receives its address as an integer-shaped
+ *              pointer only; transfers are configured as halfwords in the MSP.
+ *          [FA] بافر خام volatile است چون DMA خارج از جریان اجرای C آن را
+ *              تغییر می‌دهد. HAL فقط آدرس آن را به‌شکل اشاره‌گر عددی می‌گیرد؛
+ *              انتقال‌ها در MSP به‌صورت نصف‌واژه تنظیم شده‌اند.
  */
 
 /* ==================== Includes ==================== */
@@ -30,22 +26,20 @@
 static ADC_HandleTypeDef *ADC_HANDLETYPEDEF__G__Hadc = NULL;
 
 /* [EN] Hardware-filled circular DMA buffer: 2 frames x 5 channels.
- *      This is the "variable the micro fills without the CPU".
- *      [FA] بافر چرخشی پرشده‌ی سخت‌افزاری: ۲ فریم x ۵ کانال.
- *      همین «متغیری» است که میکرو بدون CPU پر می‌کند. */
-static uint16_t UINT16_T__G__DmaBuffer[BSP_ADC_DMA_SAMPLE_COUNT];
+ *      [FA] بافر چرخشی پرشدهٔ سخت‌افزاری: ۲ فریم x ۵ کانال. */
+static volatile uint16_t UINT16_T__G__DmaBuffer[BSP_ADC_DMA_SAMPLE_COUNT];
 
-/* [EN] Set when Start succeeded; gates IsFrameReady/GetRaw.
- *      [FA] وقتی Start موفق بود true می‌شود؛ دروازهٔ IsFrameReady/GetRaw. */
+/* [EN] Set when calibration and DMA start succeed.
+ *      [FA] وقتی کالیبراسیون و شروع DMA موفق باشد true می‌شود. */
 static bool BOOL__G__Running = false;
 
 /* ==================== BspAdc_Init ==================== */
 
 /**
- * @brief  [EN] Store the CubeMX HAL handle and zero the DMA buffer.
+ * @brief  [EN] Store the CubeMX HAL handle and clear the DMA buffer.
  *         [FA] هندل HAL مکعب را نگه می‌دارد و بافر DMA را صفر می‌کند.
- * @param  ADC_HandleTypeDef__hadc [EN] HAL ADC handle from CubeMX (hadc1);
- *                                     NULL clears the handle / هندل ADC مکعب
+ * @param  ADC_HandleTypeDef__hadc [EN] ADC handle from CubeMX; NULL clears the
+ *                                     handle / هندل ADC مکعب؛ NULL یعنی پاک‌کردن
  */
 void func__BspAdc_Init(ADC_HandleTypeDef *ADC_HandleTypeDef__hadc)
 {
@@ -63,26 +57,68 @@ void func__BspAdc_Init(ADC_HandleTypeDef *ADC_HandleTypeDef__hadc)
 /* ==================== BspAdc_Start ==================== */
 
 /**
- * @brief  [EN] Start continuous scan + circular DMA.
- *         [FA] شروع اسکن مداوم + DMA چرخشی.
- * @return bool [EN] true when HAL started the DMA / اگر شروع شد true
+ * @brief  [EN] Calibrate ADC1 and start continuous scan with circular DMA.
+ *         [FA] ADC1 را کالیبره و اسکن مداوم با DMA چرخشی را شروع می‌کند.
+ * @return bool [EN] true when calibration and HAL start succeed / اگر هر دو
+ *                   کالیبراسیون و شروع HAL موفق باشند true
  */
 bool func__BspAdc_Start(void)
 {
-    if (ADC_HANDLETYPEDEF__G__Hadc == NULL)
+    uint32_t uint32_t__dmaStartTick;
+    uint32_t uint32_t__dmaCounter;
+
+    BOOL__G__Running = false;
+
+    if ((ADC_HANDLETYPEDEF__G__Hadc == NULL) ||
+        (ADC_HANDLETYPEDEF__G__Hadc->DMA_Handle == NULL))
     {
         return false;
     }
 
-    /* [EN] F1 HAL signature takes uint32_t*, the DMA itself moves halfwords
-       (halfword/halfword in the MSP). The cast is the standard HAL usage.
-       [FA] امضای HAL در F1، uint32_t* می‌خواهد ولی خود DMA نصف‌واژه جابه‌جا
-       می‌کند (نیم‌واژه/نیم‌واژه در MSP). این cast همان استفادهٔ استاندارد HAL است. */
+    /* [EN] F1 calibration must run while the ADC is not converting.
+       [FA] کالیبراسیون F1 باید زمانی اجرا شود که ADC در حال تبدیل نیست. */
+    if (HAL_ADCEx_Calibration_Start(ADC_HANDLETYPEDEF__G__Hadc) != HAL_OK)
+    {
+        return false;
+    }
+
+    /* [EN] F1 HAL accepts uint32_t* but the MSP configures halfword DMA. The
+       integer-shaped cast passes the buffer address; DMA writes uint16_t items.
+       [FA] HAL در F1 پارامتر uint32_t* می‌گیرد، اما MSP DMA را نصف‌واژه تنظیم
+       کرده است. cast فقط آدرس بافر را می‌دهد و DMA آیتم‌های uint16_t می‌نویسد. */
     if (HAL_ADC_Start_DMA(ADC_HANDLETYPEDEF__G__Hadc,
-                          (uint32_t *)UINT16_T__G__DmaBuffer,
+                          (uint32_t *)(uintptr_t)&UINT16_T__G__DmaBuffer[0],
                           BSP_ADC_DMA_SAMPLE_COUNT) != HAL_OK)
     {
-        BOOL__G__Running = false;
+        return false;
+    }
+
+    /* [EN] HAL_ADC_Start_DMA internally uses HAL_DMA_Start_IT(). Polling is
+       intentional here, so suppress the DMA interrupt sources after start.
+       [FA] HAL_ADC_Start_DMA در داخل از HAL_DMA_Start_IT استفاده می‌کند.
+       اینجا عمداً polling داریم، پس منابع وقفهٔ DMA بعد از start خاموش می‌شوند. */
+    __HAL_DMA_DISABLE_IT(ADC_HANDLETYPEDEF__G__Hadc->DMA_Handle,
+                         DMA_IT_TC | DMA_IT_HT | DMA_IT_TE);
+
+    /* [EN] Do not expose a running reader until the first half has completed.
+       This bounded startup wait prevents the initial zero-filled second half
+       from being reported as a valid frame. Normal wait is about 28 us at
+       12 MHz; the timeout only handles a stalled peripheral.
+       [FA] تا کامل‌شدن نیمهٔ اول، خواننده را فعال اعلام نمی‌کند. این انتظار
+       محدود مانع می‌شود نیمهٔ دومِ اولیه و صفرشده فریم معتبر گزارش شود.
+       زمان عادی در 12MHz حدود 28us است و timeout فقط خرابی peripheral را
+       پوشش می‌دهد. */
+    uint32_t__dmaStartTick = HAL_GetTick();
+    do
+    {
+        uint32_t__dmaCounter = __HAL_DMA_GET_COUNTER(ADC_HANDLETYPEDEF__G__Hadc->DMA_Handle);
+    }
+    while ((uint32_t__dmaCounter > BSP_ADC_CHANNEL_COUNT) &&
+           ((HAL_GetTick() - uint32_t__dmaStartTick) < BSP_ADC_START_TIMEOUT_MS));
+
+    if (uint32_t__dmaCounter > BSP_ADC_CHANNEL_COUNT)
+    {
+        (void)HAL_ADC_Stop_DMA(ADC_HANDLETYPEDEF__G__Hadc);
         return false;
     }
 
@@ -93,13 +129,9 @@ bool func__BspAdc_Start(void)
 /* ==================== BspAdc_IsFrameReady ==================== */
 
 /**
- * @brief  [EN] True once Start succeeded. The first full frame is available
- *              ~0.1 ms after Start (10 conversions at 9 MHz); the measurement
- *              task delays MEASUREMENT_SETTLE_MS (1 ms) before the first read.
- *         [FA] وقتی Start موفق بود true. اولین فریم کامل ~0.1ms بعد از Start
- *              (۱۰ تبدیل در 9MHz)؛ تسک اندازه‌گیری قبل از اولین خواندن 1ms
- *              صبر می‌کند.
- * @return bool [EN] true when a frame can be read / وقتی فریم قابل‌خواندن است
+ * @brief  [EN] Report whether calibration and DMA start completed successfully.
+ *         [FA] اعلام می‌کند کالیبراسیون و شروع DMA با موفقیت کامل شده است.
+ * @return bool [EN] true after successful start / بعد از شروع موفق true
  */
 bool func__BspAdc_IsFrameReady(void)
 {
@@ -109,42 +141,87 @@ bool func__BspAdc_IsFrameReady(void)
 /* ==================== BspAdc_GetRaw ==================== */
 
 /**
- * @brief  [EN] Copy the newest 5-sample frame (DMA slot 1) into out[] under
- *              a short critical section.
- *         [FA] آخرین فریم ۵ نمونه‌ای (اسلات ۱ DMA) را در out[] داخل یک
- *              critical section کوتاه کپی می‌کند.
- * @param  uint16_t__out [EN] Output array, BSP_ADC_CHANNEL_COUNT elements /
- *                            آرایهٔ خروجی
- * @return bool [EN] true when copied, false if not started / اگر کپی شد true
+ * @brief  [EN] Copy the newest completed five-sample frame. DMA CNDTR selects
+ *              the half not being written; the counter is checked before and
+ *              after the copy so a moving half-buffer boundary is rejected.
+ *         [FA] جدیدترین فریم کامل پنج‌نمونه‌ای را کپی می‌کند. CNDTR DMA نیمه‌ای
+ *              را که در حال نوشتن نیست انتخاب می‌کند؛ شمارنده قبل و بعد بررسی
+ *              می‌شود تا مرز متحرک نیمه باعث کپی ناپایدار نشود.
+ * @param  uint16_t__out [EN] Output array with BSP_ADC_CHANNEL_COUNT elements /
+ *                            آرایهٔ خروجی با تعداد کانال‌ها
+ * @return bool [EN] true when a stable frame was copied / اگر فریم پایدار کپی شد
  */
 bool func__BspAdc_GetRaw(uint16_t uint16_t__out[BSP_ADC_CHANNEL_COUNT])
 {
+    DMA_HandleTypeDef *DMA_HANDLETYPEDEF__dmaHandle;
+    uint32_t uint32_t__attempt;
     uint32_t uint32_t__i;
+    uint32_t uint32_t__dmaCounterBefore;
+    uint32_t uint32_t__dmaCounterAfter;
+    uint32_t uint32_t__sourceOffset;
     uint32_t uint32_t__savedPrimask;
+    bool bool__stableWindow;
 
-    if (BOOL__G__Running == false)
+    if ((BOOL__G__Running == false) ||
+        (uint16_t__out == NULL) ||
+        (ADC_HANDLETYPEDEF__G__Hadc == NULL) ||
+        (ADC_HANDLETYPEDEF__G__Hadc->DMA_Handle == NULL))
     {
         return false;
     }
 
-    /* [EN] Critical section is a few CPU cycles (5 halfword copies). It makes
-       the copy atomic with respect to other CPU code; the DMA still writes in
-       hardware, so a torn frame can mix at most one adjacent rotation
-       (~40 us) - acceptable for the 10 ms measurement period.
-       [FA] critical section چند سیکل CPU است (کپی ۵ نصف‌واژه) و کپی را از
-       دید بقیهٔ کد CPU اتمی می‌کند؛ DMA در حال نوشتن سخت‌افزاری است، پس
-       بدترین فریمِ پاره‌شده حداکثر یک دور مجاور (~40us) را قاطی می‌کند —
-       برای دورهٔ ۱۰ms اندازه‌گیری قابل‌قبول است. */
-    uint32_t__savedPrimask = __get_PRIMASK();
-    __disable_irq();
+    DMA_HANDLETYPEDEF__dmaHandle = ADC_HANDLETYPEDEF__G__Hadc->DMA_Handle;
 
-    for (uint32_t__i = 0u; uint32_t__i < BSP_ADC_CHANNEL_COUNT; uint32_t__i++)
+    for (uint32_t__attempt = 0u;
+         uint32_t__attempt < BSP_ADC_DMA_RETRY_COUNT;
+         uint32_t__attempt++)
     {
-        uint16_t__out[uint32_t__i] =
-            UINT16_T__G__DmaBuffer[BSP_ADC_CHANNEL_COUNT + uint32_t__i];
+        uint32_t__dmaCounterBefore = __HAL_DMA_GET_COUNTER(DMA_HANDLETYPEDEF__dmaHandle);
+
+        if ((uint32_t__dmaCounterBefore == 0u) ||
+            (uint32_t__dmaCounterBefore > BSP_ADC_DMA_SAMPLE_COUNT))
+        {
+            continue;
+        }
+
+        /* [EN] CNDTR > 5 means DMA writes the first half, so the second half
+           is complete. CNDTR <= 5 means the first half is complete.
+           [FA] اگر CNDTR بزرگ‌تر از ۵ باشد DMA در نیمهٔ اول می‌نویسد، پس
+           نیمهٔ دوم کامل است. اگر CNDTR <= ۵ باشد نیمهٔ اول کامل است. */
+        if (uint32_t__dmaCounterBefore > BSP_ADC_CHANNEL_COUNT)
+        {
+            uint32_t__sourceOffset = BSP_ADC_CHANNEL_COUNT;
+        }
+        else
+        {
+            uint32_t__sourceOffset = 0u;
+        }
+
+        uint32_t__savedPrimask = __get_PRIMASK();
+        __disable_irq();
+
+        for (uint32_t__i = 0u;
+             uint32_t__i < BSP_ADC_CHANNEL_COUNT;
+             uint32_t__i++)
+        {
+            uint16_t__out[uint32_t__i] =
+                UINT16_T__G__DmaBuffer[uint32_t__sourceOffset + uint32_t__i];
+        }
+
+        uint32_t__dmaCounterAfter = __HAL_DMA_GET_COUNTER(DMA_HANDLETYPEDEF__dmaHandle);
+        __set_PRIMASK(uint32_t__savedPrimask);
+
+        bool__stableWindow =
+            ((uint32_t__dmaCounterBefore > BSP_ADC_CHANNEL_COUNT) ==
+             (uint32_t__dmaCounterAfter > BSP_ADC_CHANNEL_COUNT));
+
+        if (bool__stableWindow &&
+            (uint32_t__dmaCounterAfter != 0u) &&
+            (uint32_t__dmaCounterAfter <= BSP_ADC_DMA_SAMPLE_COUNT))
+        {
+            return true;
+        }
     }
 
-    __set_PRIMASK(uint32_t__savedPrimask);
-
-    return true;
+    return false;
 }

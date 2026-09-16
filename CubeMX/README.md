@@ -65,7 +65,7 @@
 ### وضعیت فعلی: LED/بازر + ADC
 
 - `MODULE_UI=1` و `MODULE_MEASUREMENT=1`. بقیه 0.
-- ADC1: ۵ کانال (PA1/PA2/PA3/PA5/PA7 = IN1/IN2/IN3/IN5/IN7)، scan + continuous، sampling 55.5 cycle، کلاک **9MHz** (PCLK2/8 — سقف ADC در F103 = 14MHz؛ مقدار قبلی 36MHz از سقف بیشتر بود).
+- ADC1: ۵ کانال (PA1/PA2/PA3/PA5/PA7 = IN1/IN2/IN3/IN5/IN7)، scan + continuous، sampling 55.5 cycle، کلاک **12MHz** (PCLK2/6 — بیشترین prescaler مجاز با PCLK2 برابر 72MHz؛ سقف ADC در F103 = 14MHz).
 - DMA1 Channel1: circular، N=10 (دو فریم ۵ کاناله)، بدون interrupt — بافر را سخت‌افزار پر می‌کند.
 - PB4 = GPIO_Input با لیبل `MCU_INT_24_IN` (حضور ورودی ۲۴، دیجیتال).
 - هندل `hadc1` از `main.h` به `task_measurement.c` می‌رسد و در آن‌جا به `func__BspAdc_Init` داده می‌شود (`app.c` دست‌نخورده است).
@@ -75,6 +75,7 @@
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-16 | اصلاح مرحلهٔ ADC: کلاک از 9MHz به 12MHz با PCLK2/6 (بیشترین مقدار قانونی F103 با PCLK2=72MHz)، همسان‌سازی `.ioc`های CubeMX و CubeIDE و افزودن درایورهای HAL ADC/ADCEx به پروژه |
 | 2026-09-15 | لیبل (User Label) برای همه پایه‌های ADC در `.ioc`: PA1=`ADC_CURRENT1`، PA2=`MCU_ADC_24_IN`، PA3=`MCU_ADC_24_BAT`، PA5=`MCU_ADC_12_BAT`، PA7=`ADC_CURRENT2`، PB4=`MCU_INT_24_IN` (یکی با نام‌های شماتیک و برگه‌ی Measurement) |
 | 2026-09-15 | ADC1 + DMA1 چرخشی (5 کانال، 9MHz) و PB4 (MCU_INT_24_IN) به `.ioc` اضافه شد؛ کلاک ADC از 36MHz به 9MHz (سقف 14MHz)؛ درایور ADC v1.1.10 به CubeIDE/Drivers |
 | 2026-09-14 | اضافه شدن راهنمای اضافه کردن پریفرال بدون بهم ریختن برنامه + توضیح Linked Resource و USER CODE و چک‌لیست امن |
