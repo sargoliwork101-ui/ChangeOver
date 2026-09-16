@@ -1,47 +1,45 @@
 /**
  * @file    rtos_tasks.h
- * @brief   [EN] Prototypes of application FreeRTOS tasks. Full type naming, func__ prefix.
- *          [FA] اعلان تسک‌های FreeRTOS لایه کاربرد. نام تایپ کامل و پیشوند func__.
+ * @brief   [EN] Prototypes of application CMSIS-RTOS2 thread entry functions.
+ *          [FA] اعلان توابع ورود تسک‌های CMSIS-RTOS2 لایهٔ کاربرد.
  */
 
 #ifndef RTOS_TASKS_H
 #define RTOS_TASKS_H
 
 /**
- * @brief  [EN] LED/buzzer task. Active this stage.
+ * @brief  [EN] LED/buzzer thread. Active this stage.
  *         [FA] تسک LED و بازر. در این مرحله فعال است.
- * @param  void_ptr__argument [EN] Required by FreeRTOS, unused, type void* / آرگومان
+ * @param  void_ptr__argument [EN] CMSIS-RTOS2 thread argument, unused / آرگومان استفاده‌نشده
  */
-/* ==================== Functions ==================== */
 void func__TaskUi(void *void_ptr__argument);
 
 /**
- * @brief  [EN] ADC sampling task. Placeholder.
- *         [FA] تسک نمونه‌برداری ADC. اسکلت.
- * @param  void_ptr__argument [EN] Required by FreeRTOS, unused / آرگومان
+ * @brief  [EN] ADC sampling thread.
+ *         [FA] تسک نمونه‌برداری ADC.
+ * @param  void_ptr__argument [EN] CMSIS-RTOS2 thread argument, unused / آرگومان استفاده‌نشده
  */
 void func__TaskMeasurement(void *void_ptr__argument);
 
 /**
- * @brief  [EN] Protection task. Placeholder.
- *         [FA] تسک حفاظت. اسکلت.
- * @param  void_ptr__argument [EN] Required by FreeRTOS, unused / آرگومان
+ * @brief  [EN] Protection thread.
+ *         [FA] تسک حفاظت.
+ * @param  void_ptr__argument [EN] CMSIS-RTOS2 thread argument, unused / آرگومان استفاده‌نشده
  */
 void func__TaskProtection(void *void_ptr__argument);
 
 /**
- * @brief  [EN] Changeover/charger task. Placeholder.
- *         [FA] تسک Changeover و شارژر. اسکلت.
- * @param  void_ptr__argument [EN] Required by FreeRTOS, unused / آرگومان
+ * @brief  [EN] Changeover/charger thread.
+ *         [FA] تسک Changeover و شارژر.
+ * @param  void_ptr__argument [EN] CMSIS-RTOS2 thread argument, unused / آرگومان استفاده‌نشده
  */
 void func__TaskControl(void *void_ptr__argument);
 
 /**
- * @brief  [EN] UART/ESP task. Placeholder.
- *         [FA] تسک UART/ESP. اسکلت.
- * @param  void_ptr__argument [EN] Required by FreeRTOS, unused / آرگومان
+ * @brief  [EN] UART/ESP thread.
+ *         [FA] تسک UART/ESP.
+ * @param  void_ptr__argument [EN] CMSIS-RTOS2 thread argument, unused / آرگومان استفاده‌نشده
  */
 void func__TaskComm(void *void_ptr__argument);
 
 #endif /* RTOS_TASKS_H */
-

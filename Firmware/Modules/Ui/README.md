@@ -16,7 +16,7 @@ API کاربردی بوق فقط یک تابع است:
 int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)
 ```
 
-این تابع غیرمسدودکننده است. در الگوی معتبر، مقدار بازگشتی زمان پیشنهادی مراجعه بعدی بر حسب میلی‌ثانیه است؛ این زمان برابر ۱۰٪ کوچک‌ترین بخش مثبت الگو است. مقدار `0` خاموشی معتبر و مقدار `-1` تنظیمات نامعتبر را نشان می‌دهد. فراخواننده صریح می‌تواند مقدار مثبت را به `vTaskDelay` بدهد و نیازی نیست برای دوره‌های بزرگ، تسک را با فاصله ثابت و کوتاه بیدار کند.
+این تابع غیرمسدودکننده است. در الگوی معتبر، مقدار بازگشتی زمان پیشنهادی مراجعه بعدی بر حسب میلی‌ثانیه است؛ این زمان برابر ۱۰٪ کوچک‌ترین بخش مثبت الگو است. مقدار `0` خاموشی معتبر و مقدار `-1` تنظیمات نامعتبر را نشان می‌دهد. فراخوانندهٔ صریح می‌تواند مقدار مثبت را به `func__Rtos_DelayMilliseconds` بدهد و نیازی نیست برای دوره‌های بزرگ، تسک را با فاصلهٔ ثابت و کوتاه بیدار کند.
 
 ## سناریوهای توافق‌شده UI
 
@@ -225,7 +225,7 @@ int32_t int32_t__nextCheckMs;
 int32_t__nextCheckMs = func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs);
 if (int32_t__nextCheckMs > 0)
 {
-    vTaskDelay(pdMS_TO_TICKS((uint32_t)int32_t__nextCheckMs));
+    func__Rtos_DelayMilliseconds((uint32_t)int32_t__nextCheckMs);
 }
 else if (int32_t__nextCheckMs == UI_BUZZER_INVALID_RESULT)
 {
@@ -294,13 +294,13 @@ Firmware/Rtos/Src/task_ui.c
       │   └── func__Ui_Buzzer_Tick(0, 0, 0, 0)  // خاموشی امن
       └── func__Ui_BoardTest_Start()
           └── func__Ui_Buzzer_Tick(...)  // بوق تست قبلی
-              ├── xTaskGetTickCount()       زمان نمونه فعلی RTOS
+              ├── osKernelGetTickCount()   زمان نمونه فعلی CMSIS-RTOS2
               ├── return nextCheckMs         ۱۰٪ کوچک‌ترین بخش مثبت الگو
               └── func__BspGpio_Write()     Firmware/Bsp/Src/bsp_gpio.c
                   └── PIN_BUZZER_PORT/PIN_BUZZER_PIN  = PA4
 
 LED and BUZZER remain separate:
 CubeIDE/Core/Src/main.c
-  → func__App_Start() → func__App_Init() → func__Ui_Init()
-  → func__Rtos_Start() → func__TaskUi() → explicit scenario calls
+  → func__App_Start() → func__App_Init()
+  → func__Rtos_Start() → func__TaskUi() → func__Ui_Init() → explicit scenario calls
 ```

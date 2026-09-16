@@ -43,7 +43,7 @@
 | `func__Measurement_V24CountsToMv` | خام → mV منبع ۲۴ (ورودی/باتری)؛ برگردان تقسیم 69.2K/6.8K؛ سقف ~37V |
 | `func__Measurement_V12CountsToMv` | خام → mV منبع ۱۲ (باتری)؛ برگردان تقسیم 34.2K/6.8K؛ سقف ~20V |
 | `func__Measurement_CurrentCountsToMa` | خام → mA شارژ؛ ÷ گین 101 → ÷ شانت 10mΩ؛ 1A ≈ 1010mV |
-| `func__TaskMeasurement` | Init+Start یک‌بار، 1ms انتظار فریم اول، بعد هر 10ms یک `Run` (`vTaskDelayUntil`) |
+| `func__TaskMeasurement` | Init+Start یک‌بار، 1ms انتظار فریم اول، بعد هر 10ms یک `Run` (`osDelayUntil` با تبدیل قابل‌حمل میلی‌ثانیه/تیک) |
 | `func__BspAdc_Init` (Bsp) | نگه‌داشتن هندل `hadc1` + صفر کردن بافر DMA |
 | `func__BspAdc_Start` (Bsp) | کالیبراسیون ADC1 + `HAL_ADC_Start_DMA` (continuous + circular)، با خاموش‌کردن منابع وقفهٔ DMA |
 | `func__BspAdc_IsFrameReady` (Bsp) | true بعد از کالیبراسیون و Start موفق |

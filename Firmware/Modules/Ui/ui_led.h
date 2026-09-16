@@ -6,7 +6,7 @@
  *          [FA] سناریوهای LED ماژول UI - ثابت‌های LED در هدر خودش، فرمول غیرخطی، RTOS ساده.
  *
  * @note    [EN] LED defaults live in this header; app_config.c copies them into const APP_CONFIG, and runtime logic reads APP_CONFIG. Naming __ after type, func__ prefix.
- *          RTOS: vTaskDelay allowed, HAL_Delay forbidden. Formulas broken into steps.
+ *          CMSIS-RTOS2: osDelay allowed, HAL_Delay forbidden. Formulas broken into steps.
  *          [FA] پیش‌فرض‌های LED در این هدر هستند؛ app_config.c آن‌ها را به APP_CONFIG ثابت منتقل می‌کند و منطق زمان اجرا از APP_CONFIG می‌خواند.
  */
 
@@ -336,7 +336,7 @@ void func__Ui_BoardTest_Start(void);
 /* ==================== Scenario InputOk / سناریوی ورودی عادی ==================== */
 
 /**
- * @brief  [EN] InputOk: green steady, red/yellow/buzzer off. RTOS simple with vTaskDelay, MCU not locked.
+ * @brief  [EN] InputOk: green steady, red/yellow/buzzer off. CMSIS-RTOS2 delay, MCU not locked.
  *         [FA] ورودی عادی: سبز ثابت، قرمز/زرد/بوق خاموش، ساده RTOS.
  */
 void func__Ui_ScenarioInputOk(void);
@@ -345,7 +345,7 @@ void func__Ui_ScenarioInputOk(void);
 
 /**
  * @brief  [EN] Charging: green steady, yellow remaining to full non-linear (remainingPercent, periodPerPercent, yellowOnMs/offMs).
- *         RTOS simple with vTaskDelay.
+ *         CMSIS-RTOS2 delay.
  *         [FA] شارژ: سبز ثابت، زرد مانده تا فول غیرخطی، ساده RTOS.
  * @param  uint32_t__batteryMv [EN] Battery voltage mV / ولتاژ باتری
  */

@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -99,7 +98,7 @@ int main(void)
 
   /* USER CODE END 2 */
 
-  /* Init scheduler: the FreeRTOS kernel is initialised and started inside
+  /* Init scheduler: the CMSIS-RTOS2 kernel is initialised and started inside
      func__App_Start()/Rtos_Start() in Firmware, so the CubeMX calls are not used.
      مقداردهی و استارت کرنل در Firmware انجام می‌شود. */
 
@@ -131,7 +130,7 @@ int main(void)
   /* add events, ... */
   /* USER CODE END RTOS_EVENTS */
 
-  /* Start scheduler: see note above; vTaskStartScheduler() runs in Rtos_Start().
+  /* Start scheduler: see note above; osKernelStart() runs in Rtos_Start().
      استارت زمان‌بند در Rtos_Start انجام شده و این خط هرگز اجرا نمی‌شود. */
 
   /* We should never get here as control is now taken by the scheduler */

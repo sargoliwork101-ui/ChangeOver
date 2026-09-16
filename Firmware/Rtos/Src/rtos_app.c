@@ -1,10 +1,12 @@
 /**
  * @file    rtos_app.c
- * @brief   [EN] Creates FreeRTOS tasks with static allocation and starts the scheduler. Full type naming, func__ prefix.
- *          [FA] تسک‌های FreeRTOS را با تخصیص استاتیک می‌سازد و scheduler را شروع می‌کند. نام تایپ کامل.
+ * @brief   [EN] Creates statically allocated CMSIS-RTOS2 threads and starts the kernel.
+ *          [FA] تسک‌های CMSIS-RTOS2 را با تخصیص استاتیک می‌سازد و کرنل را شروع می‌کند.
  *
- * @note    [EN] xTaskCreateStatic does not use malloc. Idle task RAM is in freertos_hooks.c.
- *          [FA] از malloc استفاده نمی‌شود. RAM تسک Idle در freertos_hooks.c است.
+ * @note    [EN] FreeRTOS remains the current CMSIS-RTOS2 backend, but application
+ *          code uses the CMSIS-RTOS2 interface and supplies all thread memory.
+ *          [FA] FreeRTOS در این مرحله Backend داخلی CMSIS-RTOS2 است، اما کد برنامه
+ *          از رابط CMSIS-RTOS2 استفاده می‌کند و حافظهٔ همهٔ تسک‌ها را خودش می‌دهد.
  */
 
 #include "rtos_app.h"
@@ -12,64 +14,149 @@
 #include "rtos_config.h"
 #include "modules_enable.h"
 
-#include "FreeRTOS.h"
-#include "task.h"
+#include "cmsis_os2.h"
+#include "rtos_backend_memory.h"
 
-#include <stddef.h>
-
-static StackType_t STACKTYPE_T__G__UiStack[TASK_STACK_UI];
-static StaticTask_t STATICTASK_T__G__UiTcb;
+static rtos_stack_word_t STACKTYPE_T__G__UiStack[TASK_STACK_UI];
+static rtos_thread_control_block_t STATICTASK_T__G__UiTcb;
+static const osThreadAttr_t OS_THREAD_ATTR_T__G__Ui =
+{
+    .name = "ui",
+    .attr_bits = 0u,
+    .cb_mem = &STATICTASK_T__G__UiTcb,
+    .cb_size = sizeof(STATICTASK_T__G__UiTcb),
+    .stack_mem = STACKTYPE_T__G__UiStack,
+    .stack_size = sizeof(STACKTYPE_T__G__UiStack),
+    .priority = TASK_PRIO_UI,
+    .tz_module = 0u,
+    .reserved = 0u
+};
 
 #if MODULE_MEASUREMENT
-static StackType_t STACKTYPE_T__G__MeasStack[TASK_STACK_MEASUREMENT];
-static StaticTask_t STATICTASK_T__G__MeasTcb;
+static rtos_stack_word_t STACKTYPE_T__G__MeasStack[TASK_STACK_MEASUREMENT];
+static rtos_thread_control_block_t STATICTASK_T__G__MeasTcb;
+static const osThreadAttr_t OS_THREAD_ATTR_T__G__Measurement =
+{
+    .name = "meas",
+    .attr_bits = 0u,
+    .cb_mem = &STATICTASK_T__G__MeasTcb,
+    .cb_size = sizeof(STATICTASK_T__G__MeasTcb),
+    .stack_mem = STACKTYPE_T__G__MeasStack,
+    .stack_size = sizeof(STACKTYPE_T__G__MeasStack),
+    .priority = TASK_PRIO_MEASUREMENT,
+    .tz_module = 0u,
+    .reserved = 0u
+};
 #endif
 
 #if MODULE_PROTECTION
-static StackType_t STACKTYPE_T__G__ProtStack[TASK_STACK_PROTECTION];
-static StaticTask_t STATICTASK_T__G__ProtTcb;
+static rtos_stack_word_t STACKTYPE_T__G__ProtStack[TASK_STACK_PROTECTION];
+static rtos_thread_control_block_t STATICTASK_T__G__ProtTcb;
+static const osThreadAttr_t OS_THREAD_ATTR_T__G__Protection =
+{
+    .name = "prot",
+    .attr_bits = 0u,
+    .cb_mem = &STATICTASK_T__G__ProtTcb,
+    .cb_size = sizeof(STATICTASK_T__G__ProtTcb),
+    .stack_mem = STACKTYPE_T__G__ProtStack,
+    .stack_size = sizeof(STACKTYPE_T__G__ProtStack),
+    .priority = TASK_PRIO_PROTECTION,
+    .tz_module = 0u,
+    .reserved = 0u
+};
 #endif
 
 #if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
-static StackType_t STACKTYPE_T__G__CtrlStack[TASK_STACK_CONTROL];
-static StaticTask_t STATICTASK_T__G__CtrlTcb;
+static rtos_stack_word_t STACKTYPE_T__G__CtrlStack[TASK_STACK_CONTROL];
+static rtos_thread_control_block_t STATICTASK_T__G__CtrlTcb;
+static const osThreadAttr_t OS_THREAD_ATTR_T__G__Control =
+{
+    .name = "ctrl",
+    .attr_bits = 0u,
+    .cb_mem = &STATICTASK_T__G__CtrlTcb,
+    .cb_size = sizeof(STATICTASK_T__G__CtrlTcb),
+    .stack_mem = STACKTYPE_T__G__CtrlStack,
+    .stack_size = sizeof(STACKTYPE_T__G__CtrlStack),
+    .priority = TASK_PRIO_CONTROL,
+    .tz_module = 0u,
+    .reserved = 0u
+};
 #endif
 
 #if MODULE_ESP
-static StackType_t STACKTYPE_T__G__CommStack[TASK_STACK_COMM];
-static StaticTask_t STATICTASK_T__G__CommTcb;
+static rtos_stack_word_t STACKTYPE_T__G__CommStack[TASK_STACK_COMM];
+static rtos_thread_control_block_t STATICTASK_T__G__CommTcb;
+static const osThreadAttr_t OS_THREAD_ATTR_T__G__Comm =
+{
+    .name = "comm",
+    .attr_bits = 0u,
+    .cb_mem = &STATICTASK_T__G__CommTcb,
+    .cb_size = sizeof(STATICTASK_T__G__CommTcb),
+    .stack_mem = STACKTYPE_T__G__CommStack,
+    .stack_size = sizeof(STACKTYPE_T__G__CommStack),
+    .priority = TASK_PRIO_COMM,
+    .tz_module = 0u,
+    .reserved = 0u
+};
 #endif
 
 /**
- * @brief  [EN] Create enabled tasks, then start the scheduler.
- *         [FA] تسک‌های روشن را بساز، بعد زمان‌بند را شروع کن.
+ * @brief  [EN] Stop in a deterministic state if the kernel or a required thread cannot start.
+ *         [FA] اگر کرنل یا یکی از تسک‌های لازم شروع نشد، در وضعیت مشخص متوقف می‌شود.
  */
-/* ==================== Rtos_Start ==================== */
+static void func__Rtos_Fatal(void)
+{
+    for (;;)
+    {
+    }
+}
 
+/**
+ * @brief  [EN] Create enabled CMSIS-RTOS2 threads with static memory, then start the kernel.
+ *         [FA] تسک‌های روشن CMSIS-RTOS2 را با حافظهٔ ثابت می‌سازد و سپس کرنل را شروع می‌کند.
+ */
 void func__Rtos_Start(void)
 {
+    if (osKernelInitialize() != osOK)
+    {
+        func__Rtos_Fatal();
+    }
+
 #if MODULE_UI
-    (void)xTaskCreateStatic(func__TaskUi, "ui", TASK_STACK_UI, NULL,
-                            TASK_PRIO_UI, STACKTYPE_T__G__UiStack, &STATICTASK_T__G__UiTcb);
+    if (osThreadNew(func__TaskUi, NULL, &OS_THREAD_ATTR_T__G__Ui) == NULL)
+    {
+        func__Rtos_Fatal();
+    }
 #endif
 #if MODULE_MEASUREMENT
-    (void)xTaskCreateStatic(func__TaskMeasurement, "meas", TASK_STACK_MEASUREMENT, NULL,
-                            TASK_PRIO_MEASUREMENT, STACKTYPE_T__G__MeasStack, &STATICTASK_T__G__MeasTcb);
+    if (osThreadNew(func__TaskMeasurement, NULL, &OS_THREAD_ATTR_T__G__Measurement) == NULL)
+    {
+        func__Rtos_Fatal();
+    }
 #endif
 #if MODULE_PROTECTION
-    (void)xTaskCreateStatic(func__TaskProtection, "prot", TASK_STACK_PROTECTION, NULL,
-                            TASK_PRIO_PROTECTION, STACKTYPE_T__G__ProtStack, &STATICTASK_T__G__ProtTcb);
+    if (osThreadNew(func__TaskProtection, NULL, &OS_THREAD_ATTR_T__G__Protection) == NULL)
+    {
+        func__Rtos_Fatal();
+    }
 #endif
 #if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
-    (void)xTaskCreateStatic(func__TaskControl, "ctrl", TASK_STACK_CONTROL, NULL,
-                            TASK_PRIO_CONTROL, STACKTYPE_T__G__CtrlStack, &STATICTASK_T__G__CtrlTcb);
+    if (osThreadNew(func__TaskControl, NULL, &OS_THREAD_ATTR_T__G__Control) == NULL)
+    {
+        func__Rtos_Fatal();
+    }
 #endif
 #if MODULE_ESP
-    (void)xTaskCreateStatic(func__TaskComm, "comm", TASK_STACK_COMM, NULL,
-                            TASK_PRIO_COMM, STACKTYPE_T__G__CommStack, &STATICTASK_T__G__CommTcb);
+    if (osThreadNew(func__TaskComm, NULL, &OS_THREAD_ATTR_T__G__Comm) == NULL)
+    {
+        func__Rtos_Fatal();
+    }
 #endif
 
-    vTaskStartScheduler();
+    if (osKernelStart() != osOK)
+    {
+        func__Rtos_Fatal();
+    }
 
     for (;;)
     {

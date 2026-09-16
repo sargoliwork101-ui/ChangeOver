@@ -33,7 +33,7 @@
 - `main.c` دارای `USER CODE BEGIN/END` است. CubeMX کد داخل این بلوک‌ها را نگه می‌دارد:
   - `#include \"app.h\"` در `Includes`
   - `App_Start()` در `USER CODE BEGIN 2`
-- `CubeIDE.ioc` در این پروژه `defaultTask` ندارد (حذف شده). تسک‌ها در `Firmware/Rtos/Src/rtos_app.c` به صورت استاتیک ساخته می‌شوند (`xTaskCreateStatic`).
+- `CubeIDE.ioc` در این پروژه `defaultTask` ندارد (حذف شده). Threadها در `Firmware/Rtos/Src/rtos_app.c` با CMSIS-RTOS2 و حافظهٔ ثابت ساخته می‌شوند (`osThreadNew` با `cb_mem` و `stack_mem`).
 - Include pathهای `Firmware` در `STM32CubeIDE/.cproject` هستند:
   - `../../../Firmware/App/Inc`, `Bsp/Inc`, `Config/Inc`, `Rtos/Inc`, `Modules/Ui`, ...
   - CubeMX معمولاً این‌ها را نگه می‌دارد، ولی بعد از Generate چک کن که پاک نشده باشند.

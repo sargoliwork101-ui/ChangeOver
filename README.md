@@ -32,7 +32,7 @@
 ```text
 CubeIDE/Core/Src/main.c
   App_Start()                         Firmware/App/Src/app.c
-    Ui_Init()                         Firmware/Modules/Ui/ui_led.c
+    App_Init()                        نقطهٔ آماده‌سازی عمومی برنامه
     Rtos_Start()                      Firmware/Rtos/Src/rtos_app.c
       TaskMeasurement                 Firmware/Rtos/Src/task_measurement.c
         ADC1 + DMA1                   سخت‌افزار، بافر چرخشی ۵ کاناله
@@ -61,7 +61,7 @@ CubeIDE/Core/Src/main.c
 
 بین `20V` و `21V` وضعیت قبلی اتصال ورودی حفظ می‌شود. محدودهٔ درصد باتری در منطق UI برابر `21V = 0%` تا `28V = 100%` است، اما در مرحلهٔ فعلی مقدار باتری هنوز از ورودی تست دستی خوانده می‌شود.
 
-ثابت‌های سیاست UI در `Firmware/Modules/Ui/ui_led.h` و محدودیت‌های سرویس بوق در `ui_buzzer.h` هستند. همه Taskها با تخصیص استاتیک ساخته می‌شوند و Dynamic allocation در تنظیمات FreeRTOS خاموش است.
+ثابت‌های سیاست UI در `Firmware/Modules/Ui/ui_led.h` و محدودیت‌های سرویس بوق در `ui_buzzer.h` هستند. همهٔ Threadها با CMSIS-RTOS2 و حافظهٔ ثابت ساخته می‌شوند؛ FreeRTOS فقط Backend فعلی CMSIS-RTOS2 است و تخصیص پویا خاموش است.
 
 ## درخت اتصال کل پروژه
 
@@ -72,7 +72,7 @@ ChangeOver
 │   └── ChangeOver(24V_DC).pdf
 ├── CubeMX/
 │   └── CubeIDE.ioc                    ← کپی تنظیمات مکعب (هم‌نام پروژه، بعد از Generate کپی شود)
-├── CubeIDE/                           ← HAL، main.c، FreeRTOS مکعب
+├── CubeIDE/                           ← HAL، main.c، CMSIS-RTOS2 با Backend فعلی FreeRTOS
 │   └── Core/Src/main.c ──#include──► Firmware/App/Inc/app.h
 ├── tools/
 │   ├── check_ai_rules.sh              ← اجرای خودکار قوانین AI_AGENT_RULES.md (چک هدر، README، فلگ‌ها، .ioc)

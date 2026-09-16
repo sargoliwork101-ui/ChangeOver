@@ -1,6 +1,6 @@
 /**
  * @file    task_control.c
- * @brief   [EN] FreeRTOS control task - simple RTOS with vTaskDelay, readable.
+ * @brief   [EN] CMSIS-RTOS2 control thread - simple RTOS with osDelay, readable.
  *          [FA] تسک کنترل ساده RTOS.
  */
 
@@ -8,8 +8,9 @@
 #include "modules_enable.h"
 #include "app_config.h"
 #include "app_types.h"
-#include "FreeRTOS.h"
-#include "task.h"
+#include "cmsis_os2.h"
+#include "rtos_time.h"
+
 
 #if MODULE_MEASUREMENT
 #include "measurement.h"
@@ -59,9 +60,9 @@ void func__TaskControl(void *void_ptr__argument)
 #endif
             (void)app_state_t__state;
         }
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.control_period_ms));
+        func__Rtos_DelayMilliseconds(APP_CONFIG.control_period_ms);
 #else
-        vTaskDelay(pdMS_TO_TICKS(1000u));
+        func__Rtos_DelayMilliseconds(1000u);
 #endif
     }
 }

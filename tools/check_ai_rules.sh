@@ -183,8 +183,8 @@ else
   echo "  FAIL: AI_AGENT_RULES missing new rules"
   FAIL=1
 fi
-if grep -q "RTOS ساده" "$ROOT/AI_AGENT_RULES.md" && grep -q "بدون قفل" "$ROOT/AI_AGENT_RULES.md"; then
-  echo "  OK: AI_AGENT_RULES has RTOS no delay"
+if grep -q "CMSIS-RTOS2 ساده" "$ROOT/AI_AGENT_RULES.md" && grep -q "بدون قفل" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has CMSIS-RTOS2 no delay"
 else
   echo "  FAIL: AI_AGENT_RULES missing RTOS no delay"
   FAIL=1
@@ -205,13 +205,16 @@ if [ -n "$FOUND_MALLOC" ]; then
 else
   echo "  OK: No malloc/free"
 fi
-FOUND_XTASK=$(grep -R --include="*.c" "xTaskCreate(" "$ROOT/Firmware" 2>/dev/null | grep -v "xTaskCreateStatic" | grep -v "//" || true)
-if [ -n "$FOUND_XTASK" ]; then
-  echo "  FAIL: Found xTaskCreate"
-  echo "$FOUND_XTASK" | head -n 5
+FOUND_DYNAMIC_THREAD=$(grep -R --include="*.c" --include="*.h" -E "\bxTaskCreate\(|\bosThreadNew\([^;]*NULL[[:space:]]*\)" "$ROOT/Firmware" 2>/dev/null | grep -v "rtos_app.c" | grep -v "//" || true)
+if [ -n "$FOUND_DYNAMIC_THREAD" ]; then
+  echo "  FAIL: Found a thread creation path without the static CMSIS attributes"
+  echo "$FOUND_DYNAMIC_THREAD" | head -n 5
   FAIL=1
+elif grep -q "osThreadNew" "$ROOT/Firmware/Rtos/Src/rtos_app.c" && grep -q "cb_mem" "$ROOT/Firmware/Rtos/Src/rtos_app.c" && grep -q "stack_mem" "$ROOT/Firmware/Rtos/Src/rtos_app.c"; then
+  echo "  OK: CMSIS-RTOS2 threads provide static control blocks and stacks"
 else
-  echo "  OK: Tasks use xTaskCreateStatic"
+  echo "  FAIL: CMSIS-RTOS2 static thread attributes not found"
+  FAIL=1
 fi
 if grep -q "const app_config_t APP_CONFIG" "$ROOT/Firmware/Config/Src/app_config.c"; then
   echo "  OK: APP_CONFIG is const"
@@ -285,27 +288,27 @@ else
   echo "  WARN: UI split files not found (ui_led.h/c, ui_buzzer.h/c) - expected after split"
 fi
 echo ""
-echo "[15] RTOS simple & readable - no HAL_Delay, vTaskDelay allowed (RTOS, MCU not locked)"
+echo "[15] CMSIS-RTOS2 simple & readable - no HAL_Delay (RTOS, MCU not locked)"
 FOUND_HAL_DELAY=$(grep -R --include="*.c" "HAL_Delay(" "$ROOT/Firmware" 2>/dev/null || true)
 if [ -n "$FOUND_HAL_DELAY" ]; then
   echo "  FAIL: Found HAL_Delay (locks MCU, forbidden)"
   echo "$FOUND_HAL_DELAY" | head -n 5
   FAIL=1
 else
-  echo "  OK: No HAL_Delay (RTOS vTaskDelay allowed, does not lock MCU)"
+  echo "  OK: No HAL_Delay (CMSIS-RTOS2 delay lets other threads run)"
 fi
 
-FOUND_VDELAY_UI=$(grep -R --include="*.c" "vTaskDelay(" "$ROOT/Firmware/Modules/Ui" 2>/dev/null || true)
-if [ -n "$FOUND_VDELAY_UI" ]; then
-  echo "  OK: Found vTaskDelay in Ui (RTOS simple, readable, MCU not locked, other tasks run)"
+FOUND_OS_DELAY_UI=$(grep -R --include="*.c" -E "osDelay\(|func__Rtos_DelayMilliseconds\(" "$ROOT/Firmware/Modules/Ui" 2>/dev/null || true)
+if [ -n "$FOUND_OS_DELAY_UI" ]; then
+  echo "  OK: UI uses CMSIS-RTOS2-compatible delays"
 else
-  echo "  OK: No vTaskDelay in Ui (also OK, non-blocking tick)"
+  echo "  OK: UI is non-blocking and has no delay call"
 fi
 
-if grep -R --include="*.c" "vTaskDelay" "$ROOT/Firmware/Rtos/Src" 2>/dev/null | head -n 1 | grep -q "vTaskDelay"; then
-  echo "  OK: Tasks use vTaskDelay/vTaskDelayUntil (RTOS simple, not blocking MCU)"
+if grep -R --include="*.c" -E "osDelayUntil\(|func__Rtos_DelayMilliseconds\(" "$ROOT/Firmware/Rtos/Src" 2>/dev/null | head -n 1 | grep -Eq "osDelayUntil|func__Rtos_DelayMilliseconds"; then
+  echo "  OK: Threads use CMSIS-RTOS2 delay APIs (other threads continue)"
 else
-  echo "  FAIL: Tasks dont use vTaskDelay"
+  echo "  FAIL: CMSIS-RTOS2 delay API not found in threads"
   FAIL=1
 fi
 

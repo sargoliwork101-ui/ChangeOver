@@ -2007,7 +2007,11 @@ osMemoryPoolId_t osMemoryPoolNew (uint32_t block_count, uint32_t block_size, con
     }
 
     if (mem_cb == 0) {
-      mp = pvPortMalloc (sizeof(MemPool_t));
+      #if (configSUPPORT_DYNAMIC_ALLOCATION == 1)
+        mp = pvPortMalloc (sizeof(MemPool_t));
+      #else
+        mp = NULL;
+      #endif
     } else {
       mp = attr->cb_mem;
     }
@@ -2019,13 +2023,17 @@ osMemoryPoolId_t osMemoryPoolNew (uint32_t block_count, uint32_t block_size, con
       #elif (configSUPPORT_DYNAMIC_ALLOCATION == 1)
         mp->sem = xSemaphoreCreateCounting (block_count, block_count);
       #else
-        mp->sem == NULL;
+        mp->sem = NULL;
       #endif
 
       if (mp->sem != NULL) {
         /* Setup memory array */
         if (mem_mp == 0) {
-          mp->mem_arr = pvPortMalloc (sz);
+          #if (configSUPPORT_DYNAMIC_ALLOCATION == 1)
+            mp->mem_arr = pvPortMalloc (sz);
+          #else
+            mp->mem_arr = NULL;
+          #endif
         } else {
           mp->mem_arr = attr->mp_mem;
         }
@@ -2055,10 +2063,12 @@ osMemoryPoolId_t osMemoryPoolNew (uint32_t block_count, uint32_t block_size, con
     }
     else {
       /* Memory pool cannot be created, release allocated resources */
-      if ((mem_cb == 0) && (mp != NULL)) {
-        /* Free control block memory */
-        vPortFree (mp);
-      }
+      #if (configSUPPORT_DYNAMIC_ALLOCATION == 1)
+        if ((mem_cb == 0) && (mp != NULL)) {
+          /* Free control block memory */
+          vPortFree (mp);
+        }
+      #endif
       mp = NULL;
     }
   }
@@ -2334,14 +2344,16 @@ osStatus_t osMemoryPoolDelete (osMemoryPoolId_t mp_id) {
     mp->bl_sz   = 0U;
     mp->bl_cnt  = 0U;
 
-    if ((mp->status & 2U) != 0U) {
-      /* Memory pool array allocated on heap */
-      vPortFree (mp->mem_arr);
-    }
-    if ((mp->status & 1U) != 0U) {
-      /* Memory pool control block allocated on heap */
-      vPortFree (mp);
-    }
+    #if (configSUPPORT_DYNAMIC_ALLOCATION == 1)
+      if ((mp->status & 2U) != 0U) {
+        /* Memory pool array allocated on heap */
+        vPortFree (mp->mem_arr);
+      }
+      if ((mp->status & 1U) != 0U) {
+        /* Memory pool control block allocated on heap */
+        vPortFree (mp);
+      }
+    #endif
 
     taskEXIT_CRITICAL();
 

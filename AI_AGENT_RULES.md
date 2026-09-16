@@ -195,37 +195,45 @@ Firmware/Modules/<ModuleName>/<ModuleName>_Validation.xlsx
 - قطبیت پایه‌ها تا اندازه‌گیری روی برد، شماتیکی محسوب می‌شود و نتیجهٔ واقعی باید ثبت شود.
 - تأیید نهایی فقط با قبول‌شدن تست‌های لازم و بسته‌بودن ایرادها مجاز است.
 
-## RTOS ساده و خوانا - بدون قفل میکرو
+## قابل‌حمل بودن بین میکروکنترلرها و ماژول‌ها
 
-برنامه کاملاً به شکل RTOS نوشته شود ولی ساده و خوانا بماند، نه شلوغ.
+هدف پروژه فقط اجرای فعلی روی STM32F1 نیست؛ منطق برنامه باید بتواند با کمترین تغییر روی میکروکنترلر یا برد دیگر اجرا شود.
 
-- از `HAL_Delay` اصلاً استفاده نکن (میکرو را قفل می‌کند، همه تسک‌ها می‌ایستند)
-- در RTOS از `vTaskDelay` یا `vTaskDelayUntil` استفاده کن — این‌ها میکرو را قفل نمی‌کنند، فقط همان تسک می‌خوابد و بقیه تسک‌ها (measurement, protection, control) اجرا می‌شوند
-- پس `vTaskDelay` داخل تسک‌ها مجاز است و ساده و خواناست، ولی داخل توابع ماژول که منطق طولانی دارند، بهتر است خورد شود یا با `vTaskDelayUntil` دوره‌ای شود
-- کارهای طولانی را خورد کن تا میکرو قفل نکند: هر تسک هر بار یک کار کوچک انجام دهد و با `vTaskDelay(10ms)` یا `vTaskDelayUntil` برگردد
-- الگوی ساده RTOS و خوانا:
+- UI، Measurement و منطق App نباید به نام میکرو، رجیستر، HAL یک سازنده یا پایهٔ ثابت وابسته باشند.
+- ADC، GPIO، PWM، UART و EXTI فقط از طریق رابط‌های BSP استفاده شوند؛ جزئیات هر میکرو در پورت همان میکرو بماند.
+- تغییر یک ماژول نباید کد ماژول‌های دیگر را مجبور به تغییر کند؛ ارتباط فقط از طریق Header و Snapshot/Interface مشخص انجام شود.
+- تغییر میکرو باید عمدتاً به Startup، تنظیمات برد، BSP و فایل‌های مخصوص همان میکرو محدود شود؛ منطق UI و Measurement نباید دوباره نوشته شود.
+- تست Host باید منطق مستقل از سخت‌افزار را پوشش دهد و تست واقعی برد باید در Excel همان ماژول جداگانه ثبت شود.
+- برای هر میکرو یا برد جدید، فقط یک Port/BSP جدید ساخته می‌شود؛ کپی‌کردن منطق برنامه در پوشهٔ مخصوص هر میکرو ممنوع است.
+
+## CMSIS-RTOS2 ساده و قابل‌حمل - بدون قفل میکرو
+
+برنامه کاملاً به شکل CMSIS-RTOS2 نوشته شود ولی ساده و خوانا بماند، نه شلوغ.
+
+- از `HAL_Delay` اصلاً استفاده نکن (میکرو را قفل می‌کند و همکاری RTOS را از بین می‌برد)
+- برای خواباندن همان Thread از `func__Rtos_DelayMilliseconds` یا برای دورهٔ دقیق از `osDelayUntil` استفاده کن؛ این‌ها فقط همان Thread را متوقف می‌کنند و Threadهای دیگر ادامه می‌دهند.
+- در کد محصول از API مستقیم FreeRTOS مثل `vTaskDelay`، `xTaskGetTickCount` و `xTaskCreateStatic` استفاده نکن. کد محصول از CMSIS-RTOS2 استفاده کند.
+- تبدیل میلی‌ثانیه و تیک فقط از `rtos_time.h` انجام شود؛ هیچ ماژولی نرخ تیک را ۱۰۰۰ فرض نکند.
+- کد مخصوص Backend فعلی FreeRTOS فقط در مرز `rtos_backend_memory.h` و `freertos_hooks.c` مجاز است.
+- الگوی دوره‌ای قابل‌حمل:
 
 ```c
-void func__TaskUi(void *arg) {
-  TickType_t lastWake = xTaskGetTickCount();
-  for (;;) {
-    vTaskDelayUntil(&lastWake, pdMS_TO_TICKS(10));
-    func__Ui_Tick(inputMv, batteryMv); // یک تیکه کوچک، بدون delay داخلش
+void func__TaskUi(void *void_ptr__argument)
+{
+  uint32_t UINT32_T__lastWakeTime = osKernelGetTickCount();
+  (void)void_ptr__argument;
+
+  for (;;)
+  {
+    UINT32_T__lastWakeTime += func__Rtos_MillisecondsToTicks(UI_TICK_MS);
+    (void)osDelayUntil(UINT32_T__lastWakeTime);
+    func__Ui_Tick(inputMv, batteryMv);
   }
 }
 ```
 
-یا اگر خواستی داخل سناریو delay داشته باشی، چون RTOS است و فقط همین تسک می‌خوابد، مجاز و خواناست:
-
-```c
-void func__Ui_ScenarioInputOk(void) {
-  green(true); red(false); yellow(false);
-  vTaskDelay(pdMS_TO_TICKS(500)); // فقط Ui می‌خوابد، بقیه تسک‌ها کار می‌کنند
-}
-```
-
-- مهم: `HAL_Delay` ممنوع، `vTaskDelay` در تسک مجاز و ساده است. کد را شلوغ نکن با استیت‌ماشین‌های خیلی پیچیده اگر با یک `vTaskDelay` ساده هم میکرو قفل نمی‌شود
-- تا آخر پروژه RTOS ساده و خوانا بماند، نه شلوغ
+- اگر سناریو به تأخیر نیاز دارد، از `func__Rtos_DelayMilliseconds` استفاده کن؛ این تأخیر فقط Thread همان سناریو را می‌خواباند.
+- تا آخر پروژه CMSIS-RTOS2 ساده، خوانا و قابل‌حمل بماند؛ از وابستگی دوباره به FreeRTOS یا قفل‌کردن میکرو جلوگیری کن.
 
 ## فایل ui_config.h حذف شد و UI دو بخش شد
 
@@ -277,7 +285,9 @@ void func__Ui_ScenarioInputOk(void) {
 مدیریت حافظه را در تمام کارها در نظر داشته باش تا آخر پروژه هم این کار را باید انجام بدی.
 
 - در این پروژه فقط تخصیص استاتیک استفاده شود؛ Dynamic allocation در `FreeRTOSConfig.h` خاموش بماند.
-  - تسک‌ها با `xTaskCreateStatic` ساخته شوند (نه `xTaskCreate` که تخصیص پویا می‌کند)
+  - Threadها با `osThreadNew` و `osThreadAttr_t` ساخته شوند و برای هر Thread، `cb_mem` و `stack_mem` ثابت داده شود؛ ساخت Thread بدون این حافظه‌ها ممنوع است.
+  - برای هر Mutex، Queue، Semaphore، Timer و Memory Pool در CMSIS-RTOS2 نیز حافظهٔ ثابت و Attribute مناسب تعریف شود؛ هیچ `osXxxNew` بدون حافظهٔ ثابت استفاده نشود.
+  - جزئیات نوع حافظهٔ Backend فعلی فقط در `rtos_backend_memory.h` بماند؛ ماژول‌های محصول نباید `FreeRTOS.h` یا `task.h` را include کنند.
   - بافرهای Idle/Timer در `freertos_hooks.c` استاتیک باشند (`s_idle_tcb`, `s_idle_stack`)
   - `heap_4.c` ممکن است به‌عنوان فایل Vendor در مخزن باقی بماند، اما نباید در Build لینک شود یا استفاده شود.
 - اندازه استک تسک‌ها در `rtos_config.h` با واحد **word** (نه بایت) تعریف شود و در `README` هر ماژول ذکر شود

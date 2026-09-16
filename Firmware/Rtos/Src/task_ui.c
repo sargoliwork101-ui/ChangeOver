@@ -1,20 +1,21 @@
 /**
  * @file    task_ui.c
- * @brief   [EN] FreeRTOS UI task - selects LED scenarios from measured input voltage and a manual battery test voltage.
+ * @brief   [EN] CMSIS-RTOS2 UI thread - selects LED scenarios from measured input voltage and a manual battery test voltage.
  *          [FA] تسک FreeRTOS رابط کاربر - سناریوهای LED را از ولتاژ ورودی اندازه‌گیری‌شده و ولتاژ تست دستی باتری انتخاب می‌کند.
  *
  * @note    [EN] Input voltage comes from the Measurement module when its first frame is valid. Battery voltage remains a Live Expressions test input until its measurement stage is approved.
- *          RTOS simple: vTaskDelay yields, other tasks run, MCU not locked. No HAL_Delay.
+ *          CMSIS-RTOS2 simple: osDelay yields, other tasks run, MCU not locked. No HAL_Delay.
  *          [FA] ولتاژ ورودی پس از معتبرشدن اولین فریم از ماژول Measurement می‌آید. ولتاژ باتری تا تأیید مرحله خودش ورودی تست Live Expressions باقی می‌ماند.
- *          RTOS ساده است؛ vTaskDelay اجازه اجرای تسک‌های دیگر را می‌دهد و HAL_Delay ممنوع است.
+ *          RTOS ساده است؛ osDelay اجازه اجرای تسک‌های دیگر را می‌دهد و HAL_Delay ممنوع است.
  */
 
 #include "rtos_tasks.h"
 #include "ui_led.h"
 #include "app_config.h"
 #include "modules_enable.h"
-#include "FreeRTOS.h"
-#include "task.h"
+#include "cmsis_os2.h"
+#include "rtos_time.h"
+
 
 #if MODULE_MEASUREMENT
 #include "measurement.h"
@@ -69,6 +70,6 @@ void func__TaskUi(void *void_ptr__argument)
            [FA] UI از ورودی اندازه‌گیری‌شده و مقدار تست دستی باتری استفاده می‌کند. */
         func__Ui_Tick(uint32_t__inputVoltageMv, uint32_t__batteryVoltageMv);
 
-        vTaskDelay(pdMS_TO_TICKS(UI_TICK_MS));
+        func__Rtos_DelayMilliseconds(UI_TICK_MS);
     }
 }

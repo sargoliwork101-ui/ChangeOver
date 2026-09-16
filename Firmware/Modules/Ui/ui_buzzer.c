@@ -10,8 +10,9 @@
 #include "ui_buzzer.h"
 #include "bsp_gpio.h"
 #include "board_pins.h"
-#include "FreeRTOS.h"
-#include "task.h"
+#include "cmsis_os2.h"
+#include "rtos_time.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -80,7 +81,7 @@ static uint32_t UINT32_T__G__BuzzerGapMs = 0u;
 /* ==================== Buzzer cycle start / شروع چرخه بوق ==================== */
 
 /**
- * @brief  [EN] FreeRTOS tick at which the current buzzer cycle started.
+ * @brief  [EN] CMSIS-RTOS2 tick at which the current buzzer cycle started.
  *         It remains static because the service is non-blocking and is called
  *         in separate invocations. The stored tick is used to calculate elapsed
  *         time and decide whether the buzzer is ON, in a gap, or in the period tail.
@@ -89,7 +90,7 @@ static uint32_t UINT32_T__G__BuzzerGapMs = 0u;
  *         اجرا می‌شود. از این زمان برای محاسبه زمان سپری‌شده و تشخیص وضعیت بوق،
  *         گپ یا خاموشی انتهای دوره استفاده می‌شود.
  */
-static TickType_t TICKTYPE_T__G__BuzzerCycleStartTick = 0;
+static uint32_t TICKTYPE_T__G__BuzzerCycleStartTick = 0;
 
 /* ==================== Buzzer service / سرویس بازر ==================== */
 
@@ -109,7 +110,7 @@ static TickType_t TICKTYPE_T__G__BuzzerCycleStartTick = 0;
  */
 int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyPercent, uint8_t uint8_t__beepCount, uint32_t uint32_t__gapMs)
 {
-    TickType_t ticktype__nowTick;
+    uint32_t ticktype__nowTick;
     uint32_t uint32_t__dutyWindowMs;
     uint32_t uint32_t__gapCount;
     uint32_t uint32_t__effectiveGapMs;
@@ -230,7 +231,7 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         bool__configurationChanged = true;
     }
 
-    ticktype__nowTick = xTaskGetTickCount();
+    ticktype__nowTick = osKernelGetTickCount();
     if (bool__configurationChanged == true)
     {
         UINT32_T__G__BuzzerPeriodMs = uint32_t__periodMs;
@@ -241,7 +242,7 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         BOOL__G__BuzzerPatternValid = true;
     }
 
-    uint32_t__elapsedMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__BuzzerCycleStartTick) * portTICK_PERIOD_MS);
+    uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(ticktype__nowTick - TICKTYPE_T__G__BuzzerCycleStartTick);
     if (uint32_t__elapsedMs >= uint32_t__periodMs)
     {
         TICKTYPE_T__G__BuzzerCycleStartTick = ticktype__nowTick;

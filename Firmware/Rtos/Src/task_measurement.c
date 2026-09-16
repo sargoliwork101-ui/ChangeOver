@@ -1,15 +1,15 @@
 /**
  * @file    task_measurement.c
- * @brief   [EN] FreeRTOS measurement task. ADC+DMA run autonomously (the
+ * @brief   [EN] CMSIS-RTOS2 measurement thread. ADC+DMA run autonomously (the
  *              hardware fills the buffer without CPU involvement); this task
  *              only converts the newest completed frame into the shared snapshot.
  *              ADC clock is 12 MHz, the highest legal F1 value for 72 MHz PCLK2.
- *              Simple RTOS pattern: vTaskDelayUntil, no HAL_Delay.
+ *              Simple RTOS pattern: osDelayUntil, no HAL_Delay.
  *          [FA] تسک اندازه‌گیری FreeRTOS. ADC+DMA به‌طور مستقل کار می‌کنند
  *              (سخت‌افزار بافر را بدون درگیری CPU پر می‌کند)؛ این تسک فقط
  *              آخرین فریم کامل را در snapshot مشترک تبدیل می‌کند. کلاک ADC
  *              برابر ۱۲MHz و بیشترین مقدار مجاز F1 با PCLK2 برابر ۷۲MHz است.
- *              الگوی RTOS ساده: vTaskDelayUntil، بدون HAL_Delay.
+ *              الگوی RTOS ساده: osDelayUntil، بدون HAL_Delay.
  *
  * @note    [EN] Period is MEASUREMENT_PERIOD_MS (top of measurement.h) -
  *              one line to change the sample rate. Stack: TASK_STACK_MEASUREMENT
@@ -23,8 +23,9 @@
 #include "rtos_tasks.h"
 #include "modules_enable.h"
 #include "main.h"
-#include "FreeRTOS.h"
-#include "task.h"
+#include "cmsis_os2.h"
+#include "rtos_time.h"
+
 
 #if MODULE_MEASUREMENT
 #include "bsp_adc.h"
@@ -49,7 +50,7 @@ void func__TaskMeasurement(void *void_ptr__argument)
     (void)void_ptr__argument;
 
 #if MODULE_MEASUREMENT
-    TickType_t TickType_t__lastWakeTime;
+    uint32_t UINT32_T__lastWakeTime;
 
     /* [EN] One-time bring-up: the CubeMX handle (hadc1, generated in main.c)
        is handed to the BSP, then the hardware takes over - ADC converts
@@ -68,7 +69,7 @@ void func__TaskMeasurement(void *void_ptr__argument)
            و فقط همین تسک می‌خوابد؛ بقیهٔ تسک‌های RTOS ادامه می‌دهند. */
         for (;;)
         {
-            vTaskDelay(pdMS_TO_TICKS(1000u));
+            func__Rtos_DelayMilliseconds(1000u);
         }
     }
 
@@ -76,18 +77,18 @@ void func__TaskMeasurement(void *void_ptr__argument)
        1 ms settle delay is a conservative margin (MEASUREMENT_SETTLE_MS).
        [FA] بافر دو فریمی DMA در 12MHz حدود 57us پر می‌شود؛ تأخیر استقراری
        1ms حاشیهٔ محافظه‌کارانه است (MEASUREMENT_SETTLE_MS). */
-    vTaskDelay(pdMS_TO_TICKS(MEASUREMENT_SETTLE_MS));
+    func__Rtos_DelayMilliseconds(MEASUREMENT_SETTLE_MS);
 
     /* [EN] Fixed-period loop (MEASUREMENT_PERIOD_MS, top of measurement.h).
        Only this task sleeps here; the MCU keeps running the other tasks.
        [FA] حلقهٔ دوره‌ی ثابت (MEASUREMENT_PERIOD_MS، بالای measurement.h).
        اینجا فقط همین تسک می‌خوابد؛ میکرو بقیهٔ تسک‌ها را اجرا می‌کند. */
-    TickType_t__lastWakeTime = xTaskGetTickCount();
+    UINT32_T__lastWakeTime = osKernelGetTickCount();
 
     for (;;)
     {
-        vTaskDelayUntil(&TickType_t__lastWakeTime,
-                        pdMS_TO_TICKS(MEASUREMENT_PERIOD_MS));
+        UINT32_T__lastWakeTime += func__Rtos_MillisecondsToTicks(MEASUREMENT_PERIOD_MS);
+        (void)osDelayUntil(UINT32_T__lastWakeTime);
         func__Measurement_Run();
     }
 #else
@@ -95,7 +96,7 @@ void func__TaskMeasurement(void *void_ptr__argument)
        [FA] فلگ خاموش: بدنهٔ تسک فقط ۱ ثانیه خواب است. */
     for (;;)
     {
-        vTaskDelay(pdMS_TO_TICKS(1000u));
+        func__Rtos_DelayMilliseconds(1000u);
     }
 #endif
 }
