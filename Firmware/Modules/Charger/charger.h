@@ -87,6 +87,33 @@
    [FA] زمان قفل بعد از JIT، قابل تنظیم. */
 #define CHG_JIT_LOCKOUT_MS               3000u
 
+/* ==================== One-transformer test mode ==================== */
+/* [EN] Only one transformer is assembled. Bit0=CH1 (GND-MID), Bit1=CH2 (MID-V24).
+   Current test: 0x01 = only CH1 active, CH2 PWM always 0. After second transfo, change to 0x03.
+   If JIT in any channel, both PWM zero even if only one installed.
+   [FA] حالت تست تک‌ترانس: فقط کانال نصب‌شده فعال. */
+#define CHG_INSTALLED_CHANNEL_MASK       0x01u
+#define CHG_CHANNEL_1_MASK               0x01u
+#define CHG_CHANNEL_2_MASK               0x02u
+#define CHG_CHANNEL_BOTH_MASK            0x03u
+
+/* ==================== Relay NC polarity ==================== */
+/* [EN] Relay is NC: coil OFF → NC closed → transformer input connected.
+   coil ON → NC open → input disconnected. Logical API hides this:
+   OpenTransformerInput = PWM0 then coil ON (open NC).
+   CloseTransformerInput = coil OFF (close NC), settle, then allow PWM.
+   BspGpio_Read shows coil only, not actual NC contact — continuity must be verified on board.
+   [FA] رله NC: coil خاموش بسته, coil روشن باز. */
+#define CHG_RELAY_SETTLE_MS              100u
+
+/* ==================== Battery topology (2x12V series, 3-pin) ==================== */
+/* [EN] GND / MID(+12V) / +24V connector. Two independent 12V chargers, not one 24V charger.
+   V_BAT_LOW = MID - GND, V_BAT_HIGH = V24 - MID. Each channel regulated at 14400/13500 per 12V, not 28800 as single.
+   Final voltages provisional — ZICO 12AP-4.5 datasheet not available. No equalization.
+   [FA] دو شارژر 12V مستقل، هر باتری 14400/13500 provisional. */
+#define CHG_12V_ABSORB_PER_CHANNEL_MV    14400u
+#define CHG_12V_FLOAT_PER_CHANNEL_MV     13500u
+
 /* ==================== Balance ==================== */
 /* [EN] Balance requires both PWM zero, settle time, separate V_BAT_LOW (mid) and V_BAT_HIGH (V24-mid).
    If no independent charge path, only monitor (BALANCE_REQUIRED) not active balance.
@@ -218,6 +245,19 @@ uint32_t func__Charger_EstimateIoutDcm(uint32_t uint32_t__vin_mv, uint32_t uint3
  * @return uint32_t [EN] mA
  */
 uint32_t func__Charger_RawToIpriMa(uint16_t uint16_t__raw);
+
+/**
+ * @brief  [EN] Open transformer input: PWM0 then relay coil ON → NC open → disconnect.
+ *         Confirm PWM0 before relay. Coil read shows coil only, not NC contact.
+ *         [FA] قطع ورودی ترانس: PWM صفر سپس رله فعال.
+ */
+void func__Charger_OpenTransformerInput(void);
+
+/**
+ * @brief  [EN] Close transformer input: relay coil OFF → NC closed → connect, settle, then allow PWM.
+ *         [FA] وصل ورودی ترانس: رله غیرفعال سپس settle.
+ */
+void func__Charger_CloseTransformerInput(void);
 
 /**
  * @brief  [EN] Trip handler for JIT (LM393) — latch fault, PWM 0 fast.

@@ -10,9 +10,12 @@ HEADER = os.path.join(BASE_DIR, "charger.h")
 defines={}
 with open(HEADER, "r", encoding="utf-8", errors="ignore") as f:
     for line in f:
-        m=re.match(r"#define\s+(\w+)\s+\(?([0-9]+)\)?u?", line)
+        m=re.match(r"#define\s+(\w+)\s+\(?((?:0x[0-9a-fA-F]+|[0-9]+))\)?u?", line)
         if m:
-            defines[m.group(1)]=int(m.group(2))
+            try:
+                defines[m.group(1)]=int(m.group(2),0)
+            except:
+                pass
 
 def d(name, default):
     return defines.get(name, default)
@@ -225,7 +228,7 @@ class ChargerSim:
     def get_duty(self): return self.duty
 
 def run_tests():
-    print("=== Charger Host Test (40 scenarios) ===")
+    print("=== Charger Host Test (43 scenarios) ===")
     # 1 startup PWM 0
     sim=ChargerSim()
     sim.transformer_known=False  # default invalid -> safe-off, but startup should be 0 anyway
@@ -592,13 +595,34 @@ def run_tests():
     assert_true("CHG_NO_TEMP_COMPENSATION" in h_content or "thermal" in h_content.lower() or "NTC" in h_content, "40 thermal fallback")
     print("40 thermal PASS")
 
+    # 41 installed channel mask 0x01 single transfo
+    assert_equal(d("CHG_INSTALLED_CHANNEL_MASK",0x01),0x01,"41 mask 0x01")
+    assert_equal(d("CHG_CHANNEL_1_MASK",0x01),0x01,"41 ch1")
+    assert_equal(d("CHG_CHANNEL_2_MASK",0x02),0x02,"41 ch2")
+    # SetPwmBoth should keep ch2 zero when mask 0x01
+    assert_true((d("CHG_INSTALLED_CHANNEL_MASK",0x01) & 0x02)==0, "41 ch2 disabled")
+    print("41 installed mask PASS")
+
+    # 42 relay NC polarity
+    assert_true("func__Charger_OpenTransformerInput" in h_content, "42 Open API")
+    assert_true("func__Charger_CloseTransformerInput" in h_content, "42 Close API")
+    # Check board_pins: relay active high 1 = NC open
+    assert_true("PIN_RELAY_ACTIVE_HIGH" in open(os.path.join(BASE_DIR,"..","..","..","Firmware","Config","Inc","board_pins.h")).read(), "42 relay active high")
+    print("42 relay NC PASS")
+
+    # 43 per-channel 14400 provisional, 24V not single
+    assert_equal(d("CHG_12V_ABSORB_PER_CHANNEL_MV",14400),14400,"43 per ch 14400")
+    assert_equal(d("CHG_12V_FLOAT_PER_CHANNEL_MV",13500),13500,"43 per ch float")
+    assert_true(d("CHG_24V_ABSORB_MV",28800)==28800, "43 24V still 28800 but not used as single")
+    print("43 per-channel voltage PASS")
+
     # Additional: 2800mV vs 28000mV check (spec says 2800mV not 24V)
     assert_equal(bulk_max_ma(4500,150),675,"bulk calc 0.15C uint64")
     # overflow test with uint64
     big = (9000000 * 1000)//1000 # large capacity
     assert_equal(big,9000000,"overflow not")
 
-    print("\nALL 40 CHARGER TESTS PASSED")
+    print("\nALL 43 CHARGER TESTS PASSED")
     print("Note: physical board tests not performed — see report for required board tests.")
 
 if __name__=="__main__":

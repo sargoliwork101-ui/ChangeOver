@@ -1,16 +1,14 @@
-# گزارش نهایی Charger — فلای‌بک دوکاناله 50kHz DCM
-<!-- Final report per 14 mandatory items -->
+# گزارش نهایی Charger — فلای‌بک دوکاناله 50kHz DCM (اصلاحات قطعی شماتیک)
 
-**واقعیت شاخه/کامیت (بدون force-push):**
+**واقعیت شاخه/کامیت (push عادی بدون force):**
 - `git rev-parse --abbrev-ref HEAD` → `arena/01a0aaca-changeover` (درخواست `arena/01a0a923-changeover` ولی checkout واقعی `arena/01a0aaca-changeover` — بدون switch/merge)
-- `git rev-parse HEAD` → `819bb62080378a4b949b10ab282b5d89cf35abf9`
-- `git log -1 --oneline --decorate` → `819bb62 (HEAD -> arena/01a0aaca-changeover) Charger: safe flyback 2ch 50kHz DCM JIT single-edge retry balance`
-- شاخه `arena/01a0aaca-changeover` از `e461147` grafted؛ کامیت فعلی `819bb62` قبلی با force پوش شده بود، اکنون روی همان شاخه commit عادی جدید انجام و با push معمولی (بدون force) ارسال می‌شود — طبق بند 13.
-- `git status --short --branch` :
+- `git rev-parse HEAD` → `dcfb43a33e33042439662ad31bee014e0156aa5c`
+- `git log -1 --oneline --decorate` → `dcfb43a (HEAD -> arena/01a0aaca-changeover) Charger: ISR-safe OnJitTrip, single Trip, no McuPowerPath/PB5, real Bulk/Absorb/Float loops`
+- آخرین push عادی `819bb62..dcfb43a` (force قبلی به‌دلیل grafted)؛ این کامیت جدید با push معمولی ارسال می‌شود.
+- `git status --short --branch`:
 ```
 ## arena/01a0aaca-changeover
  M CubeIDE/STM32CubeIDE/.cproject
- M Firmware/Bsp/Src/bsp_exti.c
  M Firmware/Config/Inc/board_pins.h
  M Firmware/Config/Inc/modules_enable.h
  M Firmware/Modules/Changeover/README.md
@@ -37,18 +35,16 @@
 ?? Firmware/Modules/Ui/RTOS_Mapping_Report.md
 ?? McuPowerPath_Implementation_Report_2026-09-17.md
 ```
-- `git diff --check` → `Firmware/Bsp/Src/bsp_exti.c:18: trailing whitespace.
-+#include "charger.h" 
-exit:2`
+- `git diff --check` → `exit:0`
 
 ---
 
 ## 1) تست host — Host Test (اجراشده در همین branch)
 
-اجرا: `python3 Firmware/Modules/Charger/host_test_charger.py` در `arena/01a0aaca-changeover`:
+`python3 Firmware/Modules/Charger/host_test_charger.py`:
 
 ```
-=== Charger Host Test (40 scenarios) ===
+=== Charger Host Test (43 scenarios) ===
 1 startup PWM0 PASS
 2 measurement invalid PASS
 3 input absent PASS
@@ -89,79 +85,68 @@ exit:2`
 38 24V never 14400 PASS
 39 EXTI single edge PASS
 40 thermal PASS
+41 installed mask PASS
+42 relay NC PASS
+43 per-channel voltage PASS
 
-ALL 40 CHARGER TESTS PASSED
+ALL 43 CHARGER TESTS PASSED
 Note: physical board tests not performed — see report for required board tests.
 ```
 
-- تعداد تست‌های اعلام‌شده = 40، خروجی واقعی = 40 PASS (هر دو 40) — بند 12 رعایت شد.
-- پوشش: duty 0/1/10/50/80/100/>1000 rounding 0.0694% (1/1440), 50kHz=72M/0/1439, invalid/input/battery, bulk 675, cap changed, soft 1% ramp 0.5%/s, 12V 14400/13500/12800 + 24V 28800/27000/25200 provisional (نه 14400 برای 24V), tail 200 + min/max/stable, overcurrent via Iout_est (نه مستقیم 675 روی primary), JIT rising latch/mask/PWM0→relay, retry نصف→10%→lockout 3000, low ≤10% final, balance 1V≠fault vs >1V 10min, settle 1s, independent path monitor, div0, eta, PB5/PB11 isolation, offset/gain.
+- اعلام 43 = خروجی 43 PASS — بند 12.
+- پوشش: duty 0/1/10/50/80/100/>1000 0.0694% (1/1440), 50kHz, invalid/input/battery, bulk 675, cap changed, soft 1% ramp 0.5%/s, 12V 14400/13500/12800 + 24V 28800/27000/25200 provisional, tail/min/max/stable, overcurrent via Iout_est (η 850 provisional), JIT RISING mask PWM0→NC open, retry نصف→10%→final ≤10%, balance 1V≠fault vs >1V 10m settle, independent monitor, div0, eta, PB5/PB11 isolation, offset/gain, installed mask 0x01, relay NC polarity, per-channel 14400.
 
 ---
 
 ## 2) تست syntax — Syntax Test
 
-اجرا: `bash tools/check_firmware_syntax.sh`:
+`bash tools/check_firmware_syntax.sh`:
 
 ```
 HOST SYNTAX CHECK PASSED / بررسی syntax سمت Host موفق بود
 ```
 
-- `tools/check_ai_rules.sh` → `OK: ui.c / ui_led.c has non-linear formula broken into steps (range, offset, scaled)
+`bash tools/check_ai_rules.sh` → `OK: ui.c / ui_led.c has non-linear formula broken into steps (range, offset, scaled)
   OK: ui.c / ui_led.c charging has non-linear steps (remainingPercent, periodPerPercent)
   OK: No linear one-line formula (all broken into steps)
 
-ALL CHECKS PASSED` (ALL CHECKS PASSED)
+ALL CHECKS PASSED` — ALL CHECKS PASSED
 
 ---
 
-## 3) تست‌های انجام‌نشدهٔ برد — Board Tests NOT Done
+## 3) تست‌های انجام‌نشدهٔ برد — Board Tests NOT Done (نیاز سخت‌افزار)
 
-هیچ تست سخت‌افزاری انجام نشده — موارد زیر فقط با برد اسکوپ/لود/دما قابل تأیید:
-
-- اسکوپ 50kHz واقعی و duty 0/1/10/50/80/100% شکل موج گیت TIM2/PA0 و TIM3/PA6، rise/fall/ringing
-- پلاریته واقعی JIT (LM393): فعلاً RISING موقت برای PB2/PB6؛ اگر اسکوپ falling نشان داد هر دو باید به FALLING تغییر کنند (PB4 مستقل RISING_FALLING)
-- تأخیر JIT→PWM0 (µs) با اسکوپ، تأیید PWM=0 قبل از رله PB7، تحمل رله
-- طوفان EXTI در 50kHz بدون mask، رفتار NVIC Disable/Enable
-- جریان فیلترشده LM358 متوسط vs Ipeak واقعی، کالیبره offset/gain با شانت 0.01Ω + Vshunt + LM358 + ADC
-- تخمین Iout_est = η*Vin*Ipri_avg/Vout vs جریان خروجی واقعی، η واقعی 85% provisional، دمای MOSFET/ترانس/دیود/شانت، اشباع Lp/NpNs
-- دو باتری سری 4.5Ah مستقل: net/continuity هر کانال مستقل است؟ بدون تأیید فقط monitor/BALANCE_REQUIRED، active balance فقط پس از تأیید net و continuity
-- ولتاژ CV Absorb/Float تحت بار، اختلاف 1V دقیق ≠fault vs >1V 10min→BALANCE، settle 1s
-- ورودی قطع/وصل، اتصال معکوس/کوتاه، NTC/thermal fallback (بدون سنسور، 30/5 محافظه‌کارانه)
-- offset/gain واقعی ADC جریان (raw صفر و جریان شناخته‌شده)
+- فقط یک ترانس مونتاژ (CHG_INSTALLED_CHANNEL_MASK 0x01) — کانال 2 PWM همیشه 0، پس از مونتاژ دوم mask به 0x03
+- باتری 2×12V 4.5Ah/20HR مدل 12AP-4.5 سری, ولتاژ فعلی ~12.4V هر کدام, دیتاشیت ZICO معتبر در دسترس نیست → ولتاژها 14400/13500 provisional, بدون equalization
+- سه‌پین: GND / MID(+12V) / +24V — V_BAT_LOW=MID-GND, V_BAT_HIGH=V24-MID, هر کانال 14400/13500 جدا
+- اولین تست: بدون باتری, منبع آزمایشگاهی محدودکننده, بار 150Ω 10W (≈100mA), PWM 1%→5%→10% با اسکوپ
+- اسکوپ: PWM freq 50kHz, gate waveform, primary shunt (0.01Ω) current, LM393 polarity (فعلاً RISING, اگر falling هر دو به FALLING), JIT→PWM0 latency, رله NC opening (coil Read فقط coil, تماس واقعی با continuity)
+- خروجی: Vout/Iout, دمای MOSFET/ترانس/شانت, حلقه Bulk/Absorb/Float هر کانال مستقل, tail per-channel, اختلاف >1V 10min, settle relay 100ms + balance settle 1000ms
+- تست host مجوز اتصال باتری نیست
 
 ---
 
-## 4) configurationهای هنوز safe-off به‌دلیل unknown — Safe-Off Configs
+## 4) configurationهای هنوز safe-off — Safe-Off Configs
 
-- `CHG_TRANSFORMER_KNOWN=0` (Lp, Np/Ns, Ipeak_max, Duty_max, η واقعی ناشناخته) → `func__Charger_IsConfigValid()==false` → PWM صفر. **Charger هنوز قابل‌فعال‌سازی نیست؛ گزارش ادعای «پیاده‌سازی کامل» نمی‌کند — بند 10.**
-- `CHG_BAT_CAPACITY_MAH==0` یا `CHG_ABSORB_MIN/MAX/STABLE==0` یا `MAX<MIN` یا `bulk calc != CHG_BULK_MAX_MA` → invalid → safe-off
-- `snapshot.valid==false` (ADC/DMA نامعتبر) → `CHG_FAULT_MEASUREMENT_INVALID` → safe-off IDLE
-- `!input_present` (PB4) → `CHG_FAULT_INPUT_MISSING` → safe-off
-- `v_bat12<2V && v_bat24<4V` → `CHG_FAULT_BATTERY_MISSING` → safe-off
-- `CHG_CURRENT_SCALE_DEN==0` → invalid → safe-off
-- `CHG_BALANCE_INDEPENDENT_PATH_CONFIRMED==0` → فقط monitor، active balance غیرفعال تا تأیید net
-- بدون NTC → `CHG_NO_TEMP_COMPENSATION=1`، بدون ادعای جبران دما
+- `CHG_TRANSFORMER_KNOWN=0` (Lp/NpNs/Ipeak/Duty/η ناشناخته) → `IsConfigValid false` → PWM صفر — **هنوز قابل فعال‌سازی نیست, پیاده‌سازی کامل اعلام نمی‌شود** (software skeleton/pre-commissioning)
+- `MODULE_CHARGER=0` و `MODULE_JITTER=0` تا safe path و تست برد کامل نشده
+- `CHG_INSTALLED_CHANNEL_MASK=0x01` → کانال 2 خاموش, `SetPwmBoth` فقط کانال نصب‌شده
+- `CHG_BALANCE_INDEPENDENT_PATH_CONFIRMED=0` → فقط monitor, active balance فقط پس از net/continuity
+- `CHG_ABSORB_*`, `CHG_CURRENT_SCALE_*`, `CHG_NO_TEMP_COMPENSATION=1` provisional
+- `snapshot.valid==false`, `!input_present`, `v_bat<2V/4V`, `SCALE_DEN==0` → safe-off
+- `MODULE_CHANGEOVER` و `PB11/Q17` بدون تغییر, `PB5/Q1` هرگز در Charger/JIT
 
 ---
 
-## جزئیات اصلاحات 14 بند
+## جزئیات اصلاحات 14 بند + شماتیک قطعی
 
-1. ISR بدون RTOS/delay/queue/mutex: `func__Charger_OnJitTrip` فقط latch، بدون `osKernelGetTickCount`; `func__BspPwm_TripOffFromIsr` کوتاه بدون RTOS.
-2. `OnJitTrip` فقط: latch fault/channel, ثبت `DUTY_PERMILLE__G__BeforeJit` volatile, ثبت `JIT_MASKED` volatile, `JIT_PENDING` — زمان در TaskControl (Evaluate) گرفته می‌شود.
-3. `TripOffFromIsr` فقط یک‌بار از `HAL_GPIO_EXTI_Callback` (PB2/PB6) صدا زده می‌شود، داخل `OnJitTrip` حذف شد.
-4. حذف `mcu_power_path.h` و `func__McuPowerPath_OnInputIrq()` و PB5/Q1 از مسیر JIT/Charger؛ فقط PB4 مستقل `BSP_EXTI_INPUT_DETECT`.
-5. PB2/PB6 فقط `GPIO_MODE_IT_RISING` (موقت) — PB4 `RISING_FALLING` مستقل؛ اگر اسکوپ falling بود هر دو به `FALLING` تغییر می‌کنند (یادداشت در main.c/.ioc).
-6. بعد JIT: PWM فوراً صفر (Trip), EXTI mask, رله فقط بعد PWM=0 (SafeOff), lockout 3000ms, retry1 نصف, retry2 10%, تریپ در ≤10% → final fault بدون retry خودکار.
-7. قبل retry: رله `BSP_GPIO_RELAY` به charging (true) و `Read` تأیید، سپس PWM؛ اگر رله آماده نه → PWM صفر بماند.
-8. جریان فیلترشده LM358 متوسط via `filtered_primary_current_ma`؛ مقایسه با `Iout_est=η*Vin*Ipri/Vout` (CHG_EFFICIENCY 850) نه مستقیم 675 روی primary؛ آستانه primary جداگانه قابل کالیبره.
-9. حلقه واقعی: Bulk کنترل جریان (Iout_est→675), Absorb CV 28800/14400, Float CV 27000/13500 — دیگر فقط نگه‌داشتن duty قبلی نه.
-10. `CHG_TRANSFORMER_KNOWN=0` → safe-off صحیح و گزارش صراحتاً می‌نویسد هنوز قابل فعال‌سازی نیست.
-11. Balance: هر دو PWM صفر → settle 1000ms → خوانش جداگانه `V_BAT_LOW=mid` و `V_BAT_HIGH=V24-mid` → اگر مسیر مستقل نه فقط monitor/fault → active balance فقط پس از net/continuity.
-12. تست‌ها واقعاً در همین branch اجرا و 40 اعلام = 40 خروجی.
-13. بدون force-push — این کامیت با push معمولی ارسال می‌شود.
-14. این چهار بخش جداگانه بالا مطابق خواسته.
+- BATTERY: 2×12V 4.5Ah سری, GND/MID/+24V, هر کانال 14400/13500 provisional
+- ONE-TRANS: mask 0x01 تک‌ترانس, JIT هر کانال هر دو PWM0, SetPwmBoth mask-respect
+- RELAY NC: coil OFF→NC بسته→وصل, coil ON→NC باز→قطع; `OpenTransformerInput: PWM0→coil ON`, `Close: coil OFF→settle 100ms→PWM`, Read فقط coil, continuity باید تست برد
+- JIT: PB2/PB6 RISING فقط (PB4 RISING_FALLING مستقل), اگر falling هر دو به FALLING
+- CURRENT: Current1/2 = فیلترشده LM358 متوسط هر مسیر, Bulk 675mA per channel, Iout_est=eta*Vin*Ipri/Vout (eta 850 provisional), حفاظت پیک فقط JIT
+- STATES per channel مستقل: هر کانال Bulk/Absorb/Float/Tail جدا, اختلاف MID مانیتور
+- SAFE: `CHG_TRANSFORMER_KNOWN 0` safe-off, skeleton
+- DELIVERY: فقط یک ترانس, کانال2 خاموش, 12AP-4.5 بدون دیتاشیت, 14400/13500 provisional, تست باتری بدون ثبت ولتاژ/جریان/دما/شکل‌موج نه, NC continuity باید جدا تأیید
 
-**PWM:** 72M/0/1439=50kHz, 1440 counts, 0.0694%/step, 1%≈14-15 counts — هر دو .ioc و main.c هماهنگ.
-
-**ادعا:** پیاده‌سازی کامل نیست — تا تأیید ترانس/باتری/datasheet و تست برد، PWM safe-off می‌ماند.
+**PWM:** 72M/0/1439=50kHz, 1440 counts, 0.0694%/step — هر دو .ioc و main.c هماهنگ, `TripOffFromIsr` کوتاه بدون RTOS, `OnJitTrip` فقط latch/volatile duty/JIT, زمان در TaskControl.

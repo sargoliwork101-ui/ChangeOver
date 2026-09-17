@@ -45,6 +45,7 @@ static volatile bool JIT_MASKED__G__Jit1 = false;
 static volatile bool JIT_MASKED__G__Jit2 = false;
 static uint32_t TICK__G__SettleStartMs = 0u;
 static volatile bool JIT_PENDING__G__Flag = false;
+static uint32_t TICK__G__RelayCloseMs = 0u;
 
 /* ==================== Helpers ==================== */
 
@@ -259,8 +260,8 @@ bool func__Charger_IsConfigValid(void)
 }
 
 /**
- * @brief  [EN] Set both PWM channels to duty, via BSP.
- *         [FA] تنظیم هر دو کانال PWM.
+ * @brief  [EN] Set PWM per installed mask. Non-installed channel always 0.
+ *         [FA] تنظیم PWM فقط کانال نصب‌شده.
  * @param  uint16_t__permille [EN] Duty
  */
 static void func__Charger_SetPwmBoth(uint16_t uint16_t__permille)
@@ -271,21 +272,91 @@ static void func__Charger_SetPwmBoth(uint16_t uint16_t__permille)
     }
 
     DUTY_PERMILLE__G__Current = uint16_t__permille;
-    func__BspPwm_SetDutyPermille(BSP_PWM_CHARGER_1, uint16_t__permille);
-    func__BspPwm_SetDutyPermille(BSP_PWM_CHARGER_2, uint16_t__permille);
+
+    if ((CHG_INSTALLED_CHANNEL_MASK & CHG_CHANNEL_1_MASK) != 0u)
+    {
+        func__BspPwm_SetDutyPermille(BSP_PWM_CHARGER_1, uint16_t__permille);
+    }
+    else
+    {
+        func__BspPwm_SetDutyPermille(BSP_PWM_CHARGER_1, 0u);
+    }
+
+    if ((CHG_INSTALLED_CHANNEL_MASK & CHG_CHANNEL_2_MASK) != 0u)
+    {
+        func__BspPwm_SetDutyPermille(BSP_PWM_CHARGER_2, uint16_t__permille);
+    }
+    else
+    {
+        func__BspPwm_SetDutyPermille(BSP_PWM_CHARGER_2, 0u);
+    }
 }
 
 /**
- * @brief  [EN] Force PWM 0 and open relay PB7 after zero (relay not fast protection).
- *         [FA] صفر PWM سپس باز کردن رله.
+ * @brief  [EN] Set PWM per channel individually (respects installed mask).
+ *         [FA] تنظیم هر کانال جدا.
+ * @param  uint8_t__channelMask [EN] CHG_CHANNEL_1/2 mask
+ * @param  uint16_t__permille [EN] Duty
+ */
+static void func__Charger_SetPwmChannel(uint8_t uint8_t__channelMask, uint16_t uint16_t__permille)
+{
+    if (uint16_t__permille > 1000u) { uint16_t__permille = 1000u; }
+    if ((CHG_INSTALLED_CHANNEL_MASK & uint8_t__channelMask) == 0u)
+    {
+        /* [EN] Channel not installed → keep 0.
+           [FA] کانال نصب‌نشده صفر بماند. */
+        if ((uint8_t__channelMask & CHG_CHANNEL_1_MASK) != 0u) { func__BspPwm_SetDutyPermille(BSP_PWM_CHARGER_1, 0u); }
+        if ((uint8_t__channelMask & CHG_CHANNEL_2_MASK) != 0u) { func__BspPwm_SetDutyPermille(BSP_PWM_CHARGER_2, 0u); }
+        return;
+    }
+    if ((uint8_t__channelMask & CHG_CHANNEL_1_MASK) != 0u) { func__BspPwm_SetDutyPermille(BSP_PWM_CHARGER_1, uint16_t__permille); }
+    if ((uint8_t__channelMask & CHG_CHANNEL_2_MASK) != 0u) { func__BspPwm_SetDutyPermille(BSP_PWM_CHARGER_2, uint16_t__permille); }
+    /* [EN] Keep global duty as max for retry logic.
+       [FA] دیوتی سراسری برای retry. */
+    if (uint16_t__permille > DUTY_PERMILLE__G__Current) { DUTY_PERMILLE__G__Current = uint16_t__permille; }
+}
+
+/**
+ * @brief  [EN] Force PWM 0 and keep relay NC closed (coil OFF) — safe idle with input connected.
+ *         For JIT disconnect, use OpenTransformerInput.
+ *         [FA] صفر PWM و رله بسته (coil خاموش).
  */
 static void func__Charger_SafeOff(void)
 {
     func__BspPwm_StopAll();
     DUTY_PERMILLE__G__Current = 0u;
-    /* [EN] Relay PB7 is secondary protection: open only after PWM zero.
-       [FA] رله فقط پس از صفر PWM باز شود. */
+    /* [EN] Safe idle: PWM0 confirmed, relay NC closed (coil OFF) — input connected but no switching.
+       For fault disconnect, use OpenTransformerInput (coil ON).
+       [FA] safe idle: رله بسته. */
     func__BspGpio_Write(BSP_GPIO_RELAY, false);
+}
+
+/**
+ * @brief  [EN] Open transformer input: PWM0 confirmed then relay coil ON → NC open → disconnect.
+ *         BspGpio_Read shows coil only, not NC contact (need continuity test).
+ *         [FA] قطع ورودی ترانس: PWM صفر سپس رله فعال.
+ */
+void func__Charger_OpenTransformerInput(void)
+{
+    func__BspPwm_StopAll();
+    DUTY_PERMILLE__G__Current = 0u;
+    /* [EN] Confirm PWM0 before relay: check global duty 0.
+       [FA] تأیید PWM صفر قبل رله. */
+    if (DUTY_PERMILLE__G__Current == 0u)
+    {
+        func__BspGpio_Write(BSP_GPIO_RELAY, true);
+    }
+}
+
+/**
+ * @brief  [EN] Close transformer input: relay coil OFF → NC closed → connect, then settle.
+ *         [FA] وصل ورودی: رله غیرفعال سپس settle.
+ */
+void func__Charger_CloseTransformerInput(void)
+{
+    func__BspGpio_Write(BSP_GPIO_RELAY, false);
+    /* [EN] Caller must wait CHG_RELAY_SETTLE_MS before PWM.
+       [FA] settle رله. */
 }
 
 /**
@@ -361,6 +432,7 @@ void func__Charger_Init(void)
     JIT_MASKED__G__Jit1 = false;
     JIT_MASKED__G__Jit2 = false;
     TICK__G__SettleStartMs = 0u;
+    TICK__G__RelayCloseMs = 0u;
     func__Charger_SafeOff();
 }
 
@@ -446,11 +518,12 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         return;
     }
 
-    /* [EN] JIT fault latched → stay FAULT until manual reset. No auto-retry for critical JIT.
-       [FA] JIT بحرانی بدون cooldown retry نشود. */
+    /* [EN] JIT fault latched → stay FAULT until manual reset. Open transformer input (NC open) after PWM0.
+       If JIT in any channel, both PWM zero even if only one transfo installed (mask 0x01).
+       [FA] JIT بحرانی — هر دو PWM صفر و رله باز. */
     if ((FAULT_MASK__G__Fault & (CHG_FAULT_JIT1 | CHG_FAULT_JIT2)) != 0u)
     {
-        func__Charger_SafeOff();
+        func__Charger_OpenTransformerInput();
         CHARGER_STATE__G__State = CHG_STATE_FAULT;
         return;
     }
@@ -880,12 +953,20 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         case CHG_STATE_FAULT:
         {
             /* [EN] Latch fault. For JIT: lockout CHG_JIT_LOCKOUT_MS, retry 50% then 10% then final fault. Overcurrent no auto-retry for critical.
-               Need manual/ESP reset after final.
+               Need manual/ESP reset after final. For JIT, use Open (NC open) after PWM0.
                [FA] fault بحرانی بدون reset معتبر پاک نشود. */
-            func__Charger_SafeOff();
+            if ((FAULT_MASK__G__Fault & (CHG_FAULT_JIT1 | CHG_FAULT_JIT2)) != 0u)
+            {
+                func__Charger_OpenTransformerInput();
+            }
+            else
+            {
+                func__Charger_SafeOff();
+            }
 
-            /* [EN] Confirm PWM=0 before relay (SafeOff already does). Relay is secondary.
-               [FA] رله فقط بعد از PWM0. */
+            /* [EN] Confirm PWM=0 before relay (Open/SafeOff already does). Relay is secondary but NC contact must be verified via continuity on board.
+               BspGpio_Read shows coil only.
+               [FA] رله فقط بعد از PWM0، تماس واقعی با continuity. */
 
             if ((FAULT_MASK__G__Fault & (CHG_FAULT_JIT1 | CHG_FAULT_JIT2)) != 0u)
             {
@@ -913,17 +994,26 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                     {
                         uint16_t__retryDuty = 10u;
                     }
-                    /* [EN] Before retry: relay back to charging, verify, then PWM.
+                    /* [EN] Before retry: relay NC closed (coil OFF) → connect, settle, verify coil, then PWM.
+                       BspGpio_Read shows coil only, real NC must be verified via continuity on board.
                        If relay not ready, keep PWM zero.
-                       [FA] قبل retry رله به حالت شارژ و تأیید، سپس PWM. */
-                    func__BspGpio_Write(BSP_GPIO_RELAY, true);
-                    if (func__BspGpio_Read(BSP_GPIO_RELAY) != true)
+                       [FA] قبل retry رله بسته و settle. */
+                    func__Charger_CloseTransformerInput();
+                    if (TICK__G__RelayCloseMs == 0u)
+                    {
+                        TICK__G__RelayCloseMs = uint32_t__nowMs;
+                    }
+                    if ((uint32_t__nowMs - TICK__G__RelayCloseMs) < CHG_RELAY_SETTLE_MS)
+                    {
+                        break;
+                    }
+                    if (func__BspGpio_Read(BSP_GPIO_RELAY) != false)
                     {
                         break;
                     }
                     if (DUTY_PERMILLE__G__Current != 0u)
                     {
-                        func__Charger_SafeOff();
+                        func__Charger_OpenTransformerInput();
                         break;
                     }
                     FAULT_MASK__G__Fault &= (uint32_t)(~(CHG_FAULT_JIT1 | CHG_FAULT_JIT2));
@@ -935,6 +1025,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                     TICK__G__StateEnterMs = uint32_t__nowMs;
                     TICK__G__JitTripMs = 0u;
                     JIT_PENDING__G__Flag = false;
+                    TICK__G__RelayCloseMs = 0u;
                     CHARGER_STATE__G__State = CHG_STATE_PRECHECK;
                     func__Charger_SetPwmBoth(uint16_t__retryDuty);
                     break;
@@ -946,14 +1037,22 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                     {
                         uint16_t__retryDuty = DUTY_PERMILLE__G__BeforeJit;
                     }
-                    func__BspGpio_Write(BSP_GPIO_RELAY, true);
-                    if (func__BspGpio_Read(BSP_GPIO_RELAY) != true)
+                    func__Charger_CloseTransformerInput();
+                    if (TICK__G__RelayCloseMs == 0u)
+                    {
+                        TICK__G__RelayCloseMs = uint32_t__nowMs;
+                    }
+                    if ((uint32_t__nowMs - TICK__G__RelayCloseMs) < CHG_RELAY_SETTLE_MS)
+                    {
+                        break;
+                    }
+                    if (func__BspGpio_Read(BSP_GPIO_RELAY) != false)
                     {
                         break;
                     }
                     if (DUTY_PERMILLE__G__Current != 0u)
                     {
-                        func__Charger_SafeOff();
+                        func__Charger_OpenTransformerInput();
                         break;
                     }
                     FAULT_MASK__G__Fault &= (uint32_t)(~(CHG_FAULT_JIT1 | CHG_FAULT_JIT2));
@@ -965,6 +1064,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                     TICK__G__StateEnterMs = uint32_t__nowMs;
                     TICK__G__JitTripMs = 0u;
                     JIT_PENDING__G__Flag = false;
+                    TICK__G__RelayCloseMs = 0u;
                     CHARGER_STATE__G__State = CHG_STATE_PRECHECK;
                     func__Charger_SetPwmBoth(uint16_t__retryDuty);
                     break;
