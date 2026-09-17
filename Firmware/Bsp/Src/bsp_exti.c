@@ -14,12 +14,8 @@
 
 #include "bsp_exti.h"
 #include "board_pins.h"
-#include "modules_enable.h"
 #include "bsp_pwm.h"
-#include "charger.h"
-#if MODULE_MCU_POWER_PATH
-#include "mcu_power_path.h"
-#endif
+#include "charger.h" 
 
 static volatile uint8_t UINT8_T__G__Flags[BSP_EXTI_SOURCE_COUNT];
 
@@ -103,12 +99,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t uint16_t__GPIO_Pin)
     }
     else if (uint16_t__GPIO_Pin == PIN_INT_24_IN_PIN)
     {
-#if MODULE_MCU_POWER_PATH
-        /* [EN] Emergency MCU battery reconnect has priority: drive PB5 Low immediately in ISR,
-         *      cancel pending disconnect timer, then latch the input-detect event for other modules.
-         * [FA] اتصال اضطراری باتری MCU اولویت دارد: فوراً PB5 Low، لغو تایمر، سپس ثبت رویداد. */
-        func__McuPowerPath_OnInputIrq();
-#endif
+        /* [EN] Input detect (PB4) independent from PB5/Q1 and PB2/PB6 JIT. Only latch event, no PB5/Q1.
+           [FA] ورودی 24ولت مستقل از PB5/Q1 و JIT. */
         func__BspExti_OnIrq(BSP_EXTI_INPUT_DETECT);
     }
     else

@@ -108,8 +108,11 @@
 
 /* ==================== Transformer params (unknown → report as open) ==================== */
 /* [EN] Lp, Np/Ns, Ipeak_max, Duty_max, η must be provided and validated. Until then safe-off.
-   [FA] پارامترهای ترانس تا تأیید باز هستند. */
+   Charger is NOT yet enableable when CHG_TRANSFORMER_KNOWN=0; report must not claim full implementation.
+   [FA] پارامترهای ترانس تا تأیید باز، شارژر هنوز قابل فعال‌سازی نیست. */
 #define CHG_TRANSFORMER_KNOWN            0u  /* 0=unknown → IsConfigValid false, 1=validated */
+#define CHG_EFFICIENCY_PERMILLE          850u /* provisional η 85% for Iout_est, calibrate on board */
+#define CHG_NO_TEMP_COMPENSATION         1u   /* no NTC, thermal fallback 30/5, no claim of compensation */
 
 /* ==================== Config struct (for ESP runtime, not #define override) ==================== */
 typedef struct

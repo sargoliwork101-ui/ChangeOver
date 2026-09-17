@@ -28,22 +28,23 @@
 
 /* ==================== State ==================== */
 static charger_state_t CHARGER_STATE__G__State = CHG_STATE_IDLE;
-static uint32_t FAULT_MASK__G__Fault = CHG_FAULT_NONE;
+static volatile uint32_t FAULT_MASK__G__Fault = CHG_FAULT_NONE;
 static uint32_t TICK__G__StateEnterMs = 0u;
 static uint32_t TICK__G__BulkWorkStartMs = 0u;
 static uint32_t TICK__G__AbsorbEnterMs = 0u;
 static uint32_t TICK__G__TailStableStartMs = 0u;
-static uint16_t DUTY_PERMILLE__G__Current = 0u;
+static volatile uint16_t DUTY_PERMILLE__G__Current = 0u;
 static uint32_t TICK__G__LastRampMs = 0u;
 static uint8_t RETRY_COUNT__G__Count = 0u;
 static uint32_t TICK__G__BalanceStartMs = 0u;
 static bool BALANCE_ACTIVE__G__Flag = false;
 static uint32_t TICK__G__JitTripMs = 0u;
-static uint16_t DUTY_PERMILLE__G__BeforeJit = 0u;
+static volatile uint16_t DUTY_PERMILLE__G__BeforeJit = 0u;
 static uint8_t JIT_RETRY_STEP__G__Count = 0u;
-static bool JIT_MASKED__G__Jit1 = false;
-static bool JIT_MASKED__G__Jit2 = false;
+static volatile bool JIT_MASKED__G__Jit1 = false;
+static volatile bool JIT_MASKED__G__Jit2 = false;
 static uint32_t TICK__G__SettleStartMs = 0u;
+static volatile bool JIT_PENDING__G__Flag = false;
 
 /* ==================== Helpers ==================== */
 
@@ -309,10 +310,11 @@ static void func__Charger_LatchFault(uint32_t uint32_t__mask)
  */
 void func__Charger_OnJitTrip(uint32_t uint32_t__jitMask)
 {
-    /* [EN] ISR-safe: very short, no RTOS API, latch fault, PWM 0 fast, mask EXTI, record duty.
-       Sequence: detect JIT → trip PWM → record fault/channel → latch → mask EXTI → confirm PWM0 → relay after PWM0 (in Evaluate).
-       Hardware latch not added; MCU software latch is main.
-       [FA] تریپ JIT از ISR: کوتاه، بدون RTOS، latch و mask. */
+    /* [EN] ISR-safe: ONLY latch fault/channel, record duty before fault in volatile, record JIT status.
+       No RTOS, no osKernelGetTickCount, no delay/queue/mutex/timing, no Trip here (Trip is in EXTI callback once).
+       Timestamp is taken in TaskControl (Evaluate), not ISR.
+       [FA] فقط latch، ثبت دیوتی، وضعیت JIT — بدون زمان و بدون Trip. */
+    DUTY_PERMILLE__G__BeforeJit = DUTY_PERMILLE__G__Current;
     if ((uint32_t__jitMask & CHG_FAULT_JIT1) != 0u)
     {
         JIT_MASKED__G__Jit1 = true;
@@ -321,13 +323,9 @@ void func__Charger_OnJitTrip(uint32_t uint32_t__jitMask)
     {
         JIT_MASKED__G__Jit2 = true;
     }
-    DUTY_PERMILLE__G__BeforeJit = DUTY_PERMILLE__G__Current;
     FAULT_MASK__G__Fault |= uint32_t__jitMask;
-    TICK__G__JitTripMs = func__Charger_GetMs();
-    func__BspPwm_TripOffFromIsr();
+    JIT_PENDING__G__Flag = true;
     CHARGER_STATE__G__State = CHG_STATE_FAULT;
-    /* [EN] Do not use osDelay, queue, mutex, malloc, logging in ISR.
-       [FA] بدون تاخیر یا صف. */
 }
 
 /* ==================== Getters for test ==================== */
@@ -385,6 +383,14 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     (void)app_state_t__state;
 
     uint32_t__nowMs = func__Charger_GetMs();
+
+    /* [EN] Capture JIT timestamp in TaskControl (not ISR) when pending.
+       [FA] زمان JIT را در Task بگیر، نه ISR. */
+    if (JIT_PENDING__G__Flag == true)
+    {
+        TICK__G__JitTripMs = uint32_t__nowMs;
+        JIT_PENDING__G__Flag = false;
+    }
 
     if (measurement_snapshot_t__snap == NULL)
     {
@@ -528,22 +534,52 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         }
     }
 
-    /* [EN] Average overcurrent: if ich > bulk max → reduce duty or fault.
-       [FA] اضافه‌جریان متوسط → کاهش دیوتی یا fault. */
-    uint32_t__bulkMaxMa = CHG_BULK_MAX_MA;
-    if ((filtered_primary_current_ma__ch1 > uint32_t__bulkMaxMa) ||
-        (filtered_primary_current_ma__ch2 > uint32_t__bulkMaxMa))
+    /* [EN] Overcurrent: filtered LM358 is average primary current, not directly comparable to 675mA output.
+       Convert with offset/gain already done in Measurement (i_chX_ma is filtered avg primary).
+       Estimate output Iout_est = eta*Vin*Ipri_avg/Vout (DCM) and compare to CHG_BULK_MAX_MA.
+       Alternatively, primary threshold corresponding to 675mA could be calibrated separately.
+       Here we use estimation with CHG_EFFICIENCY_PERMILLE provisional.
+       [FA] جریان فیلترشده متوسط ورودی را با تخمین خروجی مقایسه کن، نه مستقیم 675. */
     {
-        if (DUTY_PERMILLE__G__Current > 10u)
+        uint32_t uint32_t__vin = measurement_snapshot_t__snap->v_in_mv;
+        uint32_t uint32_t__vBatLow = uint32_t__vbat12;
+        uint32_t uint32_t__vBatHigh = 0u;
+        uint32_t uint32_t__ioutEstCh1 = 0u;
+        uint32_t uint32_t__ioutEstCh2 = 0u;
+        bool bool__overCh1 = false;
+        bool bool__overCh2 = false;
+
+        if (uint32_t__vbat24 > uint32_t__vbat12)
         {
-            DUTY_PERMILLE__G__Current -= 10u;
-            func__Charger_SetPwmBoth(DUTY_PERMILLE__G__Current);
+            uint32_t__vBatHigh = uint32_t__vbat24 - uint32_t__vbat12;
         }
-        else
+
+        if (uint32_t__vBatLow == 0u) { uint32_t__vBatLow = 1u; }
+        if (uint32_t__vBatHigh == 0u) { uint32_t__vBatHigh = 1u; }
+        if (uint32_t__vin == 0u) { uint32_t__vin = 1u; }
+
+        uint32_t__ioutEstCh1 = func__Charger_EstimateIoutDcm(uint32_t__vin, uint32_t__vBatLow, filtered_primary_current_ma__ch1, CHG_EFFICIENCY_PERMILLE);
+        uint32_t__ioutEstCh2 = func__Charger_EstimateIoutDcm(uint32_t__vin, uint32_t__vBatHigh, filtered_primary_current_ma__ch2, CHG_EFFICIENCY_PERMILLE);
+
+        uint32_t__bulkMaxMa = CHG_BULK_MAX_MA;
+        bool__overCh1 = (uint32_t__ioutEstCh1 > uint32_t__bulkMaxMa);
+        bool__overCh2 = (uint32_t__ioutEstCh2 > uint32_t__bulkMaxMa);
+
+        /* [EN] Also guard primary peak: if filtered primary > 5000mA (example), fault. Keep separate from output est.
+           [FA] حفاظت اولیه جداگانه. */
+        if (bool__overCh1 || bool__overCh2)
         {
-            func__Charger_LatchFault(CHG_FAULT_OVERCURRENT);
+            if (DUTY_PERMILLE__G__Current > 10u)
+            {
+                uint16_t uint16_t__newDuty = DUTY_PERMILLE__G__Current - 10u;
+                func__Charger_SetPwmBoth(uint16_t__newDuty);
+            }
+            else
+            {
+                func__Charger_LatchFault(CHG_FAULT_OVERCURRENT);
+            }
+            return;
         }
-        return;
     }
 
     /* [EN] State machine dispatch.
@@ -621,7 +657,8 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
             /* [EN] Bulk: CC at CHG_BULK_MAX_MA. Check voltage for transition to Absorb.
                For 24V pack use CHG_24V_ABSORB_MV, for 12V output use CHG_12V_ABSORB_MV.
                Here we check both packs; 24V has priority provisional.
-               [FA] Bulk تا رسیدن به ولتاژ Absorb. */
+               Real loop: regulate current via duty, not just hold.
+               [FA] Bulk تا رسیدن به ولتاژ Absorb، کنترل جریان واقعی. */
             bool bool__v24Reached = (uint32_t__vbat24 >= CHG_24V_ABSORB_MV);
             bool bool__v12Reached = (uint32_t__vbat12 >= CHG_12V_ABSORB_MV);
 
@@ -645,9 +682,51 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                 break;
             }
 
-            /* [EN] Simple bulk duty: try to keep current at bulk max, voltage not yet at absorb.
-               Placeholder: duty controlled externally; here keep current duty.
-               [FA] کنترل جریان Bulk provisional. */
+            /* [EN] Real Bulk current loop: adjust duty to keep Iout_est at CHG_BULK_MAX_MA.
+               Use filtered primary avg, Vin, Vout, eta. Small steps to avoid oscillation.
+               [FA] حلقه جریان Bulk واقعی. */
+            {
+                uint32_t uint32_t__vinLoop = measurement_snapshot_t__snap->v_in_mv;
+                uint32_t uint32_t__vLow = uint32_t__vbat12;
+                uint32_t uint32_t__vHigh = (uint32_t__vbat24 > uint32_t__vbat12) ? (uint32_t__vbat24 - uint32_t__vbat12) : 1u;
+                uint32_t uint32_t__iout1 = 0u;
+                uint32_t uint32_t__iout2 = 0u;
+                uint32_t uint32_t__target = CHG_BULK_MAX_MA;
+
+                if (uint32_t__vLow == 0u) { uint32_t__vLow = 1u; }
+                if (uint32_t__vHigh == 0u) { uint32_t__vHigh = 1u; }
+                if (uint32_t__vinLoop == 0u) { uint32_t__vinLoop = 1u; }
+
+                uint32_t__iout1 = func__Charger_EstimateIoutDcm(uint32_t__vinLoop, uint32_t__vLow, filtered_primary_current_ma__ch1, CHG_EFFICIENCY_PERMILLE);
+                uint32_t__iout2 = func__Charger_EstimateIoutDcm(uint32_t__vinLoop, uint32_t__vHigh, filtered_primary_current_ma__ch2, CHG_EFFICIENCY_PERMILLE);
+
+                /* [EN] Control: if both below target-20, increase; if any above target+20, decrease.
+                   Step 5 permille (~0.35%). Keep within 10..1000.
+                   [FA] تنظیم دیوتی بر اساس تخمین. */
+                if ((uint32_t__iout1 < (uint32_t__target - 20u)) && (uint32_t__iout2 < (uint32_t__target - 20u)))
+                {
+                    if (DUTY_PERMILLE__G__Current < 1000u)
+                    {
+                        uint16_t uint16_t__next = DUTY_PERMILLE__G__Current + 5u;
+                        if (uint16_t__next > 1000u) { uint16_t__next = 1000u; }
+                        func__Charger_SetPwmBoth(uint16_t__next);
+                    }
+                }
+                else if ((uint32_t__iout1 > (uint32_t__target + 20u)) || (uint32_t__iout2 > (uint32_t__target + 20u)))
+                {
+                    if (DUTY_PERMILLE__G__Current > 10u)
+                    {
+                        uint16_t uint16_t__next = DUTY_PERMILLE__G__Current - 5u;
+                        if (uint16_t__next < 10u) { uint16_t__next = 10u; }
+                        func__Charger_SetPwmBoth(uint16_t__next);
+                    }
+                }
+                else
+                {
+                    /* [EN] Within hysteresis, keep duty.
+                       [FA] در هیسترزیس نگه دار. */
+                }
+            }
             break;
         }
 
@@ -705,8 +784,34 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                 TICK__G__TailStableStartMs = 0u;
             }
 
-            /* [EN] Stay Absorb: regulate voltage at absorb level (CV). Duty placeholder.
-               [FA] ماندن در Absorption و تنظیم ولتاژ. */
+            /* [EN] Real Absorb CV loop: regulate 24V at 28800 or 12V at 14400.
+               If V below target-100, increase duty; if above +100, decrease.
+               Step 5 permille, keep within limits.
+               [FA] حلقه ولتاژ Absorb واقعی. */
+            {
+                uint32_t uint32_t__target24 = CHG_24V_ABSORB_MV;
+                uint32_t uint32_t__target12 = CHG_12V_ABSORB_MV;
+                bool bool__low = (uint32_t__vbat24 < (uint32_t__target24 - 100u)) && (uint32_t__vbat12 < (uint32_t__target12 - 50u));
+                bool bool__high = (uint32_t__vbat24 > (uint32_t__target24 + 100u)) || (uint32_t__vbat12 > (uint32_t__target12 + 50u));
+
+                if (bool__low)
+                {
+                    if (DUTY_PERMILLE__G__Current < 1000u)
+                    {
+                        uint16_t uint16_t__next = DUTY_PERMILLE__G__Current + 2u;
+                        if (uint16_t__next > 1000u) { uint16_t__next = 1000u; }
+                        func__Charger_SetPwmBoth(uint16_t__next);
+                    }
+                }
+                else if (bool__high)
+                {
+                    if (DUTY_PERMILLE__G__Current > 0u)
+                    {
+                        uint16_t uint16_t__next = (DUTY_PERMILLE__G__Current > 2u) ? (DUTY_PERMILLE__G__Current - 2u) : 0u;
+                        func__Charger_SetPwmBoth(uint16_t__next);
+                    }
+                }
+            }
             break;
         }
 
@@ -714,7 +819,8 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         {
             /* [EN] Float for long-term: keep voltage at float levels (12V 13500, 24V 27000 provisional).
                Check re-entry to Bulk if voltage drops below reentry.
-               [FA] Float برای نگهداری طولانی‌مدت. */
+               Real loop: regulate float voltage.
+               [FA] Float برای نگهداری طولانی‌مدت، حلقه واقعی. */
             bool bool__reentry24 = (uint32_t__vbat24 < CHG_24V_REENTRY_MV);
             bool bool__reentry12 = (uint32_t__vbat12 < CHG_12V_REENTRY_MV);
 
@@ -726,8 +832,32 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                 break;
             }
 
-            /* [EN] Float duty: maintain float voltage.
-               [FA] حفظ ولتاژ Float. */
+            /* [EN] Real Float CV loop: regulate 24V at 27000 or 12V at 13500.
+               [FA] حلقه ولتاژ Float. */
+            {
+                uint32_t uint32_t__target24 = CHG_24V_FLOAT_MV;
+                uint32_t uint32_t__target12 = CHG_12V_FLOAT_MV;
+                bool bool__lowF = (uint32_t__vbat24 < (uint32_t__target24 - 100u)) && (uint32_t__vbat12 < (uint32_t__target12 - 50u));
+                bool bool__highF = (uint32_t__vbat24 > (uint32_t__target24 + 100u)) || (uint32_t__vbat12 > (uint32_t__target12 + 50u));
+
+                if (bool__lowF)
+                {
+                    if (DUTY_PERMILLE__G__Current < 1000u)
+                    {
+                        uint16_t uint16_t__next = DUTY_PERMILLE__G__Current + 2u;
+                        if (uint16_t__next > 1000u) { uint16_t__next = 1000u; }
+                        func__Charger_SetPwmBoth(uint16_t__next);
+                    }
+                }
+                else if (bool__highF)
+                {
+                    if (DUTY_PERMILLE__G__Current > 0u)
+                    {
+                        uint16_t uint16_t__next = (DUTY_PERMILLE__G__Current > 2u) ? (DUTY_PERMILLE__G__Current - 2u) : 0u;
+                        func__Charger_SetPwmBoth(uint16_t__next);
+                    }
+                }
+            }
             break;
         }
 
@@ -783,6 +913,19 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                     {
                         uint16_t__retryDuty = 10u;
                     }
+                    /* [EN] Before retry: relay back to charging, verify, then PWM.
+                       If relay not ready, keep PWM zero.
+                       [FA] قبل retry رله به حالت شارژ و تأیید، سپس PWM. */
+                    func__BspGpio_Write(BSP_GPIO_RELAY, true);
+                    if (func__BspGpio_Read(BSP_GPIO_RELAY) != true)
+                    {
+                        break;
+                    }
+                    if (DUTY_PERMILLE__G__Current != 0u)
+                    {
+                        func__Charger_SafeOff();
+                        break;
+                    }
                     FAULT_MASK__G__Fault &= (uint32_t)(~(CHG_FAULT_JIT1 | CHG_FAULT_JIT2));
                     JIT_MASKED__G__Jit1 = false;
                     JIT_MASKED__G__Jit2 = false;
@@ -790,7 +933,8 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                     func__BspExti_UnmaskJit(BSP_EXTI_JITTER2);
                     JIT_RETRY_STEP__G__Count = 1u;
                     TICK__G__StateEnterMs = uint32_t__nowMs;
-                    TICK__G__JitTripMs = uint32_t__nowMs;
+                    TICK__G__JitTripMs = 0u;
+                    JIT_PENDING__G__Flag = false;
                     CHARGER_STATE__G__State = CHG_STATE_PRECHECK;
                     func__Charger_SetPwmBoth(uint16_t__retryDuty);
                     break;
@@ -802,6 +946,16 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                     {
                         uint16_t__retryDuty = DUTY_PERMILLE__G__BeforeJit;
                     }
+                    func__BspGpio_Write(BSP_GPIO_RELAY, true);
+                    if (func__BspGpio_Read(BSP_GPIO_RELAY) != true)
+                    {
+                        break;
+                    }
+                    if (DUTY_PERMILLE__G__Current != 0u)
+                    {
+                        func__Charger_SafeOff();
+                        break;
+                    }
                     FAULT_MASK__G__Fault &= (uint32_t)(~(CHG_FAULT_JIT1 | CHG_FAULT_JIT2));
                     JIT_MASKED__G__Jit1 = false;
                     JIT_MASKED__G__Jit2 = false;
@@ -809,7 +963,8 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                     func__BspExti_UnmaskJit(BSP_EXTI_JITTER2);
                     JIT_RETRY_STEP__G__Count = 2u;
                     TICK__G__StateEnterMs = uint32_t__nowMs;
-                    TICK__G__JitTripMs = uint32_t__nowMs;
+                    TICK__G__JitTripMs = 0u;
+                    JIT_PENDING__G__Flag = false;
                     CHARGER_STATE__G__State = CHG_STATE_PRECHECK;
                     func__Charger_SetPwmBoth(uint16_t__retryDuty);
                     break;

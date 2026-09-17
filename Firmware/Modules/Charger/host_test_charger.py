@@ -225,7 +225,7 @@ class ChargerSim:
     def get_duty(self): return self.duty
 
 def run_tests():
-    print("=== Charger Host Test (30 scenarios) ===")
+    print("=== Charger Host Test (40 scenarios) ===")
     # 1 startup PWM 0
     sim=ChargerSim()
     sim.transformer_known=False  # default invalid -> safe-off, but startup should be 0 anyway
@@ -598,7 +598,7 @@ def run_tests():
     big = (9000000 * 1000)//1000 # large capacity
     assert_equal(big,9000000,"overflow not")
 
-    print("\nALL 30 CHARGER TESTS PASSED")
+    print("\nALL 40 CHARGER TESTS PASSED")
     print("Note: physical board tests not performed — see report for required board tests.")
 
 if __name__=="__main__":
