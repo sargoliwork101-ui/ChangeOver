@@ -295,9 +295,24 @@
  *         Jitter 56↔57 or 57↔58 does not change blink timing; 57→55 or 57→59 does.
  *         This hysteresis applies only to BatteryRun green blink and buzzer timing, not to input, overvoltage or Low Battery Alarm.
  *         [FA] هیسترزیس درصد نمایش/زمان‌بندی BatteryRun، بر حسب واحد درصد.
- *         درصد پایدار فقط khi اختلاف درصد خام و پایدار حداقل 2 باشد تغییر می‌کند.
+ *         درصد پایدار فقط وقتی اختلاف درصد خام و پایدار حداقل 2 باشد تغییر می‌کند.
  */
-#define UI_BATTERY_PERCENT_HYSTERESIS_PERCENT 2u
+#define UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT 2u
+
+/**
+ * @brief  [EN] Legacy alias kept for compatibility. Use UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT.
+ *         [FA] نام قدیمی برای سازگاری؛ از UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT استفاده کن.
+ */
+#define UI_BATTERY_PERCENT_HYSTERESIS_PERCENT UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT
+
+/**
+ * @brief  [EN] Hysteresis for Charging yellow blink timing, in percent points.
+ *         Charging stable percent changes only when raw differs by at least 5.
+ *         Example: stable 57, raw 53..61 keeps 57; outside range moves to new raw.
+ *         [FA] هیسترزیس زمان چشمک زرد شارژ، بر حسب واحد درصد.
+ *         مثال: پایدار 57، خام 53 تا 61 همان 57 می‌ماند؛ خارج از محدوده به مقدار جدید می‌رود.
+ */
+#define UI_CHARGING_PERCENT_HYSTERESIS_PERCENT 5u
 
 /**
  * @brief  [EN] Raw percent threshold to exit the critical 0% state.
@@ -314,6 +329,22 @@
  *         وقتی پایدار 1 است: raw 0 → 0، حداقل 3 → 2، otherwise 1 حفظ شود.
  */
 #define UI_BATTERY_ONE_EXIT_THRESHOLD         3u
+
+/**
+ * @brief  [EN] Raw battery percent at which Charging may enter InputOk (full) state.
+ *         InputOk is entered only when raw reaches 100%.
+ *         [FA] درصد خام باتری که در آن Charging می‌تواند وارد حالت InputOk (فول) شود.
+ *         ورود به InputOk فقط وقتی خام به 100٪ برسد مجاز است.
+ */
+#define UI_CHARGING_FULL_ENTER_PERCENT        100u
+
+/**
+ * @brief  [EN] Raw battery percent below which InputOk exits back to Charging.
+ *         While InputOk is active it stays until raw falls below 95%.
+ *         [FA] درصد خام باتری که پایین‌تر از آن InputOk به Charging برمی‌گردد.
+ *         تا وقتی InputOk فعال است تا کمتر از 95٪ در همان حالت می‌ماند.
+ */
+#define UI_CHARGING_FULL_EXIT_PERCENT         95u
 
 /* ==================== Low Battery Alarm / آلارم باتری کم ==================== */
 

@@ -226,6 +226,38 @@ static uint8_t UINT8_T__G__UiBatteryStablePercent = 0u;
  */
 static bool BOOL__G__UiBatteryStableInitialized = false;
 
+/* ==================== BatteryRun stable percent detailed / درصد پایدار BatteryRun ==================== */
+
+/**
+ * @brief  [EN] Alias stable percent for BatteryRun (raw/hysteresis 2% + 0/1).
+ *         [FA] درصد پایدار BatteryRun (هیسترزیس 2٪ + ۰/۱).
+ */
+#define UINT8_T__G__UiBatteryRunStablePercent UINT8_T__G__UiBatteryStablePercent
+#define BOOL__G__UiBatteryRunStableInitialized BOOL__G__UiBatteryStableInitialized
+
+/* ==================== Charging stable percent / درصد پایدار شارژ ==================== */
+
+/**
+ * @brief  [EN] Stable battery percent for Charging yellow timing (hysteresis 5%).
+ *         Raw only updates this when |raw-stable|>=5.
+ *         [FA] درصد پایدار برای زمان‌بندی زرد شارژ (هیسترزیس ۵٪).
+ */
+static uint8_t UINT8_T__G__UiChargingStablePercent = 0u;
+
+/**
+ * @brief  [EN] TRUE after Charging stable percent initialized.
+ *         [FA] بعد از مقداردهی اولیه درصد پایدار شارژ.
+ */
+static bool BOOL__G__UiChargingStableInitialized = false;
+
+/* ==================== Charging full hysteresis state / وضعیت هیسترزیس فول شارژ ==================== */
+
+/**
+ * @brief  [EN] TRUE while Charging has entered full (InputOk) and stays until raw<95.
+ *         [FA] وقتی Charging وارد فول (InputOk) شده تا raw کمتر از ۹۵ شود TRUE می‌ماند.
+ */
+static bool BOOL__G__UiChargingFullActive = false;
+
 /* ==================== Charging yellow blink state / وضعیت چشمک زرد شارژ ==================== */
 
 /**
@@ -358,19 +390,117 @@ static uint8_t func__Ui_UpdateBatteryStablePercent(uint8_t uint8_t__rawPercent)
             uint8_t__diffPercent = uint8_t__stablePercent - uint8_t__rawPercent;
         }
 
-        if (uint8_t__diffPercent >= UI_BATTERY_PERCENT_HYSTERESIS_PERCENT)
+        if (uint8_t__diffPercent >= UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT)
         {
             uint8_t__stablePercent = uint8_t__rawPercent;
         }
         else
         {
-            /* [EN] Jitter <2% keeps stable, e.g., 56↔57, 57↔58 preserves 57.
-               [FA] نوسان کمتر از ۲٪، پایدار را نگه می‌دارد. */
+            /* [EN] Jitter <2% keeps BatteryRun stable, e.g., 56↔57, 57↔58 preserves 57.
+               [FA] نوسان کمتر از ۲٪، پایدار BatteryRun را نگه می‌دارد. */
         }
     }
 
     UINT8_T__G__UiBatteryStablePercent = uint8_t__stablePercent;
     return uint8_t__stablePercent;
+}
+
+/**
+ * @brief  [EN] Reset Charging stable percent (5% hysteresis).
+ *         [FA] درصد پایدار شارژ را بازنشانی می‌کند.
+ */
+static void func__Ui_ResetChargingStablePercent(void)
+{
+    UINT8_T__G__UiChargingStablePercent = 0u;
+    BOOL__G__UiChargingStableInitialized = false;
+}
+
+/**
+ * @brief  [EN] Update Charging stable percent with 5% hysteresis. |raw-stable| <5 keeps stable, >=5 updates.
+ *         [FA] درصد پایدار شارژ را با هیسترزیس ۵٪ به‌روز می‌کند.
+ * @param  uint8_t__rawPercent [EN] Raw percent 0..100
+ * @return uint8_t stable
+ */
+static uint8_t func__Ui_UpdateChargingStablePercent(uint8_t uint8_t__rawPercent)
+{
+    uint8_t uint8_t__stablePercent;
+    uint8_t uint8_t__diffPercent;
+
+    if (BOOL__G__UiChargingStableInitialized == false)
+    {
+        UINT8_T__G__UiChargingStablePercent = uint8_t__rawPercent;
+        BOOL__G__UiChargingStableInitialized = true;
+        return UINT8_T__G__UiChargingStablePercent;
+    }
+
+    uint8_t__stablePercent = UINT8_T__G__UiChargingStablePercent;
+
+    if (uint8_t__rawPercent > uint8_t__stablePercent)
+    {
+        uint8_t__diffPercent = uint8_t__rawPercent - uint8_t__stablePercent;
+    }
+    else
+    {
+        uint8_t__diffPercent = uint8_t__stablePercent - uint8_t__rawPercent;
+    }
+
+    if (uint8_t__diffPercent >= UI_CHARGING_PERCENT_HYSTERESIS_PERCENT)
+    {
+        uint8_t__stablePercent = uint8_t__rawPercent;
+    }
+    else
+    {
+        /* [EN] Jitter <5% keeps charging stable, e.g., 57 with 53..61 stays 57.
+           [FA] نوسان کمتر از ۵٪ پایدار شارژ را نگه می‌دارد. */
+    }
+
+    UINT8_T__G__UiChargingStablePercent = uint8_t__stablePercent;
+    return uint8_t__stablePercent;
+}
+
+/**
+ * @brief  [EN] Reset Charging full (InputOk) hysteresis state.
+ *         [FA] وضعیت هیسترزیس فول شارژ را بازنشانی می‌کند.
+ */
+static void func__Ui_ResetChargingFullHysteresis(void)
+{
+    BOOL__G__UiChargingFullActive = false;
+}
+
+/**
+ * @brief  [EN] Update Charging full hysteresis. Enter InputOk only at raw 100, stay until raw<95.
+ *         [FA] هیسترزیس ورود/خروج InputOk را به‌روز می‌کند.
+ * @param  uint8_t__rawPercent [EN] Raw percent
+ * @return bool true = InputOk (full), false = Charging
+ */
+static bool func__Ui_UpdateChargingFullHysteresis(uint8_t uint8_t__rawPercent)
+{
+    if (BOOL__G__UiChargingFullActive == true)
+    {
+        if (uint8_t__rawPercent < UI_CHARGING_FULL_EXIT_PERCENT)
+        {
+            BOOL__G__UiChargingFullActive = false;
+        }
+        else
+        {
+            /* [EN] Keep InputOk until <95.
+               [FA] تا کمتر از ۹۵ در InputOk بمان. */
+        }
+    }
+    else
+    {
+        if (uint8_t__rawPercent >= UI_CHARGING_FULL_ENTER_PERCENT)
+        {
+            BOOL__G__UiChargingFullActive = true;
+        }
+        else
+        {
+            /* [EN] Stay Charging until 100.
+               [FA] تا ۱۰۰ در Charging بمان. */
+        }
+    }
+
+    return BOOL__G__UiChargingFullActive;
 }
 
 /* ==================== Charging yellow blink helpers / کمک‌های چشمک زرد شارژ ==================== */
@@ -624,7 +754,8 @@ void func__Ui_ScenarioInputOk(void)
  */
 void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 {
-    uint8_t uint8_t__batteryPercent;
+    uint8_t uint8_t__rawPercent;
+    uint8_t uint8_t__stablePercent;
     uint32_t uint32_t__remainingPercent;
     uint32_t uint32_t__periodPerPercent;
     uint32_t uint32_t__yellowOnMs;
@@ -634,30 +765,31 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
     func__Ui_ResetBatteryRunGreenBlink();
     (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 
-    /* [EN] Charging uses raw percent for yellow timing (hysteresis is BatteryRun-only). v_bat is from PA3 / v_bat24_mv.
-       [FA] شارژ از درصد خام برای زمان‌بندی زرد استفاده می‌کند (هیسترزیس فقط BatteryRun). */
-    uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
+    /* [EN] Charging yellow timing uses hysteresis 5%: stable only moves when |raw-stable|>=5. v_bat is PA3 / v_bat24_mv.
+       [FA] زمان‌بندی زرد شارژ با هیسترزیس ۵٪: پایدار فقط وقتی اختلاف حداقل ۵ باشد به‌روز می‌شود. */
+    uint8_t__rawPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
+    uint8_t__stablePercent = func__Ui_UpdateChargingStablePercent(uint8_t__rawPercent);
 
     func__green(true);
     func__red(false);
 
-    if (uint8_t__batteryPercent >= UI_PERCENT_FULL)
+    if (uint8_t__stablePercent >= UI_PERCENT_FULL)
     {
         func__Ui_ResetChargingYellowBlink();
         func__yellow(false);
         return;
     }
 
-    if (uint8_t__batteryPercent == 0u)
+    if (uint8_t__stablePercent == 0u)
     {
         func__Ui_ResetChargingYellowBlink();
         func__yellow(true);
         return;
     }
 
-    /* [EN] Non-linear formula: break into steps for readability. Remaining to full drives yellow ON time.
-       [FA] فرمول غیرخطی: مانده تا فول، زمان روشن‌بودن زرد را می‌دهد. */
-    uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__batteryPercent;
+    /* [EN] Non-linear formula with chargingStablePercent: remaining drives yellow ON time.
+       [FA] فرمول غیرخطی با درصد پایدار شارژ: مانده تا فول، زمان روشن‌بودن زرد را می‌دهد. */
+    uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__stablePercent;
     uint32_t__periodPerPercent = APP_CONFIG.ui_charging_blink_period_ms / UI_PERCENT_SCALE;
     uint32_t__yellowOnMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
 
@@ -813,8 +945,9 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
     uint32_t uint32_t__inputVoltageMv;
     uint32_t uint32_t__batteryVoltageMv;
     uint32_t uint32_t__batteryClampedMv;
-    uint8_t uint8_t__batteryPercent;
+    uint8_t uint8_t__rawPercent;
     bool bool__snapshotValid;
+    bool bool__isFull;
 
     if (measurement_snapshot_t__snap == NULL)
     {
@@ -827,6 +960,8 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
         func__Ui_ResetBatteryRunGreenBlink();
         func__Ui_ResetChargingYellowBlink();
         func__Ui_ResetBatteryStablePercent();
+        func__Ui_ResetChargingStablePercent();
+        func__Ui_ResetChargingFullHysteresis();
         return;
     }
 
@@ -842,9 +977,9 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
         func__Ui_ResetBatteryCriticalBeep();
         func__Ui_ResetBatteryRunGreenBlink();
         func__Ui_ResetChargingYellowBlink();
-        /* [EN] Stable percent keeps previous value but green phase reset is allowed on invalid per spec.
+        /* [EN] BatteryRun and Charging stable percents keep previous values on invalid but phases reset; full hysteresis keeps state to avoid flicker on noisy valid->invalid.
            Battery voltage source is PA3 / v_bat24_mv only; do not use v_in here.
-           [FA] درصد پایدار مقدار قبلی را نگه می‌دارد اما ریست فاز مجاز است. */
+           [FA] درصدهای پایدار مقدار قبلی را نگه می‌دارند اما فازها ریست می‌شوند. */
         return;
     }
 
@@ -882,21 +1017,26 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
         uint32_t__batteryClampedMv = APP_CONFIG.ui_bat_v_max_mv;
     }
 
-    uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryClampedMv);
+    uint8_t__rawPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryClampedMv);
+    bool__isFull = func__Ui_UpdateChargingFullHysteresis(uint8_t__rawPercent);
 
     if (BOOL__G__UiInputPresent == true)
     {
-        if (uint8_t__batteryPercent < UI_PERCENT_FULL)
+        if (bool__isFull == true)
         {
-            func__Ui_ScenarioCharging_Tick(uint32_t__batteryClampedMv);
+            /* [EN] Full hysteresis: entered at 100, stays InputOk until <95.
+               [FA] هیسترزیس فول: ورود در ۱۰۰، ماندن تا کمتر از ۹۵. */
+            func__Ui_ScenarioInputOk();
         }
         else
         {
-            func__Ui_ScenarioInputOk();
+            func__Ui_ScenarioCharging_Tick(uint32_t__batteryClampedMv);
         }
     }
     else
     {
+        /* [EN] Input disconnected → BatteryRun uses 2% hysteresis + 0/1.
+           [FA] ورودی قطع → BatteryRun با هیسترزیس ۲٪ + ۰/۱. */
         func__Ui_ScenarioBatteryRun_Tick(uint32_t__batteryClampedMv);
     }
 }
@@ -918,6 +1058,8 @@ void func__Ui_Init(void)
     func__Ui_ResetBatteryRunGreenBlink();
     func__Ui_ResetChargingYellowBlink();
     func__Ui_ResetBatteryStablePercent();
+    func__Ui_ResetChargingStablePercent();
+    func__Ui_ResetChargingFullHysteresis();
 }
 
 /* ==================== Board Test Start / شروع تست برد ==================== */
@@ -938,6 +1080,10 @@ void func__Ui_BoardTest_Start(void)
     func__all_off();
     func__Ui_ResetBatteryCriticalBeep();
     func__Ui_ResetBatteryRunGreenBlink();
+    func__Ui_ResetChargingYellowBlink();
+    func__Ui_ResetBatteryStablePercent();
+    func__Ui_ResetChargingStablePercent();
+    func__Ui_ResetChargingFullHysteresis();
 
     func__red(true);
     func__Rtos_DelayMilliseconds(APP_CONFIG.ui_selftest_led_ms);
