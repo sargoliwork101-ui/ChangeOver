@@ -49,4 +49,19 @@ void func__BspExti_OnIrq(bsp_exti_src_t bsp_exti_src_t__src);
  */
 bool func__BspExti_TakeEvent(bsp_exti_src_t bsp_exti_src_t__src);
 
+/* ==================== BspExti Mask/Unmask JIT ==================== */
+/**
+ * @brief  [EN] Mask JIT EXTI channel after trip to prevent storm at 50kHz.
+ *         [FA] پس از تریپ، EXTI همان کانال mask شود.
+ * @param  bsp_exti_src_t__src [EN] JIT1 or JIT2
+ */
+void func__BspExti_MaskJit(bsp_exti_src_t bsp_exti_src_t__src);
+
+/**
+ * @brief  [EN] Unmask JIT EXTI after lockout/clear.
+ *         [FA] پس از پاک‌شدن، EXTI را unmask کن.
+ * @param  bsp_exti_src_t__src [EN] JIT1 or JIT2
+ */
+void func__BspExti_UnmaskJit(bsp_exti_src_t bsp_exti_src_t__src);
+
 #endif /* BSP_EXTI_H */
