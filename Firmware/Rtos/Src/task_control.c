@@ -35,6 +35,9 @@
 #if MODULE_JITTER
 #include "jitter.h"
 #endif
+#if MODULE_MCU_POWER_PATH
+#include "mcu_power_path.h"
+#endif
 
 /* ==================== Task Control ==================== */
 
@@ -42,9 +45,22 @@ void func__TaskControl(void *void_ptr__argument)
 {
     (void)void_ptr__argument;
 
+#if MODULE_CHANGEOVER
+    /* [EN] Initialize Changeover once before the first evaluation so BOOT,
+       timers and the logical protect state are explicit, not only C defaults.
+       [FA] Changeover را پیش از اولین ارزیابی یک‌بار مقداردهی کن تا BOOT،
+       تایمرها و وضعیت منطقی حفاظت صریح باشند، نه فقط مقدار پیش‌فرض C. */
+    func__Changeover_Init();
+#endif
+#if MODULE_MCU_POWER_PATH
+    /* [EN] Initialize MCU battery path Q1 (PB5) so the MCU stays supplied from battery at boot.
+     * [FA] مسیر باتری MCU با Q1 را مقداردهی می‌کند تا در بوت از باتری تغذیه شود. */
+    func__McuPowerPath_Init();
+#endif
+
     for (;;)
     {
-#if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
+#if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER || MODULE_MCU_POWER_PATH)
         {
             measurement_snapshot_t measurement_snapshot_t__snap;
             fault_mask_t fault_mask_t__faults = FAULT_NONE;
@@ -59,6 +75,12 @@ void func__TaskControl(void *void_ptr__argument)
 #endif
 #if MODULE_JITTER
             func__Jitter_Run();
+#endif
+#if MODULE_MCU_POWER_PATH
+            /* [EN] MCU battery path qualification: stable v_in >= 22V for 5s then disconnect Q1 (PB5 High);
+             *      input loss reconnects immediately in ISR, battery voltage ignored while input valid.
+             * [FA] احراز مسیر باتری MCU: ورودی پایدار 22V برای 5 ثانیه سپس قطع Q1؛ قطع ورودی در وقفه وصل می‌شود. */
+            func__McuPowerPath_Run();
 #endif
 #if MODULE_CHANGEOVER
             /* [EN] UI owns BOOL__G__UiBatteryAlarmIssued and updates it in func__Ui_Tick()

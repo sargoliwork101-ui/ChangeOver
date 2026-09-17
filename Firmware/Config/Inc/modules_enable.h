@@ -4,7 +4,7 @@
  *          [FA] کلید زمان‌کامپایل روشن/خاموش هر ماژول.
  *
  * @note    [EN] 1 = init + task may run. 0 = code stays, App/Rtos will not start it.
- *          [FA] 1 یعنی Init و Task می‌توانند اجرا شوند. UI، MEASUREMENT و CHANGEOVER برای تست برد می‌توانند روشن باشند.
+ *          [FA] 1 یعنی Init و Task می‌توانند اجرا شوند. UI، MEASUREMENT، CHANGEOVER و FAULT برای تست برد روشن هستند.
  */
 
 #ifndef MODULES_ENABLE_H
@@ -12,12 +12,13 @@
 
 /* ==================== Defines ==================== */
 #define MODULE_UI             1
-#define MODULE_FAULT          0
+#define MODULE_FAULT          1
 #define MODULE_MEASUREMENT    1
 #define MODULE_PROTECTION     0
 #define MODULE_CHANGEOVER     1
 #define MODULE_CHARGER        0
 #define MODULE_JITTER         0
 #define MODULE_ESP            0
+#define MODULE_MCU_POWER_PATH 1
 
 #endif /* MODULES_ENABLE_H */

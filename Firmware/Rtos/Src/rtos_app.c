@@ -17,6 +17,10 @@
 #include "cmsis_os2.h"
 #include "rtos_backend_memory.h"
 
+#if MODULE_FAULT
+#include "fault.h"
+#endif
+
 static rtos_stack_word_t STACKTYPE_T__G__UiStack[TASK_STACK_UI];
 static rtos_thread_control_block_t STATICTASK_T__G__UiTcb;
 static const osThreadAttr_t OS_THREAD_ATTR_T__G__Ui =
@@ -66,7 +70,7 @@ static const osThreadAttr_t OS_THREAD_ATTR_T__G__Protection =
 };
 #endif
 
-#if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
+#if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER || MODULE_MCU_POWER_PATH)
 static rtos_stack_word_t STACKTYPE_T__G__CtrlStack[TASK_STACK_CONTROL];
 static rtos_thread_control_block_t STATICTASK_T__G__CtrlTcb;
 static const osThreadAttr_t OS_THREAD_ATTR_T__G__Control =
@@ -122,6 +126,12 @@ void func__Rtos_Start(void)
         func__Rtos_Fatal();
     }
 
+#if MODULE_FAULT
+    /* [EN] Initialize the enabled fault mask before any task can report or read it.
+       [FA] ماسک خطای فعال را قبل از شروع تسک‌ها مقداردهی می‌کند. */
+    func__Fault_Init();
+#endif
+
 #if MODULE_UI
     if (osThreadNew(func__TaskUi, NULL, &OS_THREAD_ATTR_T__G__Ui) == NULL)
     {
@@ -140,7 +150,7 @@ void func__Rtos_Start(void)
         func__Rtos_Fatal();
     }
 #endif
-#if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
+#if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER || MODULE_MCU_POWER_PATH)
     if (osThreadNew(func__TaskControl, NULL, &OS_THREAD_ATTR_T__G__Control) == NULL)
     {
         func__Rtos_Fatal();
