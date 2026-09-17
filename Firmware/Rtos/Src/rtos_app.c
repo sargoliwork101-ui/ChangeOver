@@ -70,7 +70,7 @@ static const osThreadAttr_t OS_THREAD_ATTR_T__G__Protection =
 };
 #endif
 
-#if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
+#if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER || MODULE_MCU_POWER_PATH)
 static rtos_stack_word_t STACKTYPE_T__G__CtrlStack[TASK_STACK_CONTROL];
 static rtos_thread_control_block_t STATICTASK_T__G__CtrlTcb;
 static const osThreadAttr_t OS_THREAD_ATTR_T__G__Control =
@@ -150,7 +150,7 @@ void func__Rtos_Start(void)
         func__Rtos_Fatal();
     }
 #endif
-#if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
+#if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER || MODULE_MCU_POWER_PATH)
     if (osThreadNew(func__TaskControl, NULL, &OS_THREAD_ATTR_T__G__Control) == NULL)
     {
         func__Rtos_Fatal();
