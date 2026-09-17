@@ -211,6 +211,53 @@ static uint32_t UINT32_T__G__UiBatteryGreenOnMs = 0u;
  */
 static uint32_t UINT32_T__G__UiBatteryGreenOffMs = 0u;
 
+/* ==================== Battery percent hysteresis state / وضعیت هیسترزیس درصد باتری ==================== */
+
+/**
+ * @brief  [EN] Stable battery percent after hysteresis (0..100). Used for BatteryRun blink timing and buzzer bands.
+ *         Raw percent is from func__Ui_BatteryVoltageToPercent; stable changes only with 2% hysteresis and special 0/1 handling.
+ *         [FA] درصد پایدار باتری پس از هیسترزیس (۰..۱۰۰). برای زمان‌بندی چشمک و بازه‌های بوق BatteryRun استفاده می‌شود.
+ */
+static uint8_t UINT8_T__G__UiBatteryStablePercent = 0u;
+
+/**
+ * @brief  [EN] TRUE after stable percent has been initialized from the first valid raw percent.
+ *         [FA] بعد از مقداردهی اولیه درصد پایدار از اولین درصد خام معتبر، TRUE می‌شود.
+ */
+static bool BOOL__G__UiBatteryStableInitialized = false;
+
+/* ==================== Charging yellow blink state / وضعیت چشمک زرد شارژ ==================== */
+
+/**
+ * @brief  [EN] Current yellow LED phase in the non-blocking Charging blink.
+ *         [FA] فاز فعلی LED زرد در چشمک غیرمسدودکننده شارژ.
+ */
+static bool BOOL__G__UiChargingYellowOn = false;
+
+/**
+ * @brief  [EN] TRUE after the Charging yellow blink phase has been initialized.
+ *         [FA] بعد از مقداردهی فاز چشمک زرد شارژ، TRUE می‌شود.
+ */
+static bool BOOL__G__UiChargingYellowBlinkInitialized = false;
+
+/**
+ * @brief  [EN] RTOS tick at which the current Charging yellow phase started.
+ *         [FA] تیک RTOS در زمان شروع فاز فعلی LED زرد شارژ.
+ */
+static uint32_t TICK_T__G__UiChargingYellowPhaseStartTick = 0u;
+
+/**
+ * @brief  [EN] Stored Charging yellow ON duration.
+ *         [FA] مدت ذخیره‌شده روشن‌بودن زرد شارژ.
+ */
+static uint32_t UINT32_T__G__UiChargingYellowOnMs = 0u;
+
+/**
+ * @brief  [EN] Stored Charging yellow OFF duration.
+ *         [FA] مدت ذخیره‌شده خاموش‌بودن زرد شارژ.
+ */
+static uint32_t UINT32_T__G__UiChargingYellowOffMs = 0u;
+
 /* ==================== BatteryRun critical beep reset / بازنشانی بوق بحرانی BatteryRun ==================== */
 
 /**
@@ -239,6 +286,164 @@ static void func__Ui_ResetBatteryRunGreenBlink(void)
     UINT32_T__G__UiBatteryGreenOffMs = 0u;
 }
 
+/* ==================== Battery stable percent helpers / کمک‌های درصد پایدار باتری ==================== */
+
+/**
+ * @brief  [EN] Reset the BatteryRun stable percent hysteresis state. Called on UI init, invalid snapshot, or explicit reset.
+ *         [FA] وضعیت هیسترزیس درصد پایدار را بازنشانی می‌کند.
+ */
+static void func__Ui_ResetBatteryStablePercent(void)
+{
+    UINT8_T__G__UiBatteryStablePercent = 0u;
+    BOOL__G__UiBatteryStableInitialized = false;
+}
+
+/**
+ * @brief  [EN] Update stable battery percent from raw percent with 2% hysteresis and special 0/1 handling.
+ *         General: |raw-stable| <2 → keep stable; >=2 → stable = raw. Special: stable 0 stays 0 until raw>=2 then →1; stable 1: raw==0→0, raw>=3→2, else keep 1.
+ *         [FA] درصد پایدار را از درصد خام با هیسترزیس ۲٪ و رفتار خاص ۰/۱ به‌روز می‌کند.
+ * @param  uint8_t__rawPercent [EN] Raw percent 0..100 / درصد خام
+ * @return uint8_t [EN] Stable percent after hysteresis / درصد پایدار
+ */
+static uint8_t func__Ui_UpdateBatteryStablePercent(uint8_t uint8_t__rawPercent)
+{
+    uint8_t uint8_t__stablePercent;
+    uint8_t uint8_t__diffPercent;
+
+    if (BOOL__G__UiBatteryStableInitialized == false)
+    {
+        UINT8_T__G__UiBatteryStablePercent = uint8_t__rawPercent;
+        BOOL__G__UiBatteryStableInitialized = true;
+        return UINT8_T__G__UiBatteryStablePercent;
+    }
+
+    uint8_t__stablePercent = UINT8_T__G__UiBatteryStablePercent;
+
+    if (uint8_t__stablePercent == 0u)
+    {
+        if (uint8_t__rawPercent >= UI_BATTERY_ZERO_EXIT_THRESHOLD)
+        {
+            uint8_t__stablePercent = 1u;
+        }
+        else
+        {
+            /* [EN] Keep 0 until raw reaches 2.
+               [FA] تا raw به ۲ نرسیده روی ۰ بماند. */
+        }
+    }
+    else if (uint8_t__stablePercent == 1u)
+    {
+        if (uint8_t__rawPercent == 0u)
+        {
+            uint8_t__stablePercent = 0u;
+        }
+        else if (uint8_t__rawPercent >= UI_BATTERY_ONE_EXIT_THRESHOLD)
+        {
+            uint8_t__stablePercent = 2u;
+        }
+        else
+        {
+            /* [EN] Keep 1 for raw 1..2.
+               [FA] برای raw ۱ تا ۲ روی ۱ بماند. */
+        }
+    }
+    else
+    {
+        if (uint8_t__rawPercent > uint8_t__stablePercent)
+        {
+            uint8_t__diffPercent = uint8_t__rawPercent - uint8_t__stablePercent;
+        }
+        else
+        {
+            uint8_t__diffPercent = uint8_t__stablePercent - uint8_t__rawPercent;
+        }
+
+        if (uint8_t__diffPercent >= UI_BATTERY_PERCENT_HYSTERESIS_PERCENT)
+        {
+            uint8_t__stablePercent = uint8_t__rawPercent;
+        }
+        else
+        {
+            /* [EN] Jitter <2% keeps stable, e.g., 56↔57, 57↔58 preserves 57.
+               [FA] نوسان کمتر از ۲٪، پایدار را نگه می‌دارد. */
+        }
+    }
+
+    UINT8_T__G__UiBatteryStablePercent = uint8_t__stablePercent;
+    return uint8_t__stablePercent;
+}
+
+/* ==================== Charging yellow blink helpers / کمک‌های چشمک زرد شارژ ==================== */
+
+/**
+ * @brief  [EN] Reset Charging yellow blink phase.
+ *         [FA] فاز چشمک زرد شارژ را بازنشانی می‌کند.
+ */
+static void func__Ui_ResetChargingYellowBlink(void)
+{
+    BOOL__G__UiChargingYellowOn = false;
+    BOOL__G__UiChargingYellowBlinkInitialized = false;
+    TICK_T__G__UiChargingYellowPhaseStartTick = 0u;
+    UINT32_T__G__UiChargingYellowOnMs = 0u;
+    UINT32_T__G__UiChargingYellowOffMs = 0u;
+}
+
+/**
+ * @brief  [EN] Update non-blocking Charging yellow blink. Preserves phase on duration change.
+ *         [FA] چشمک غیرمسدودکننده زرد شارژ را به‌روز می‌کند و فاز را حفظ می‌کند.
+ * @param  uint32_t__yellowOnMs [EN] Yellow ON duration / مدت روشن‌بودن
+ * @param  uint32_t__yellowOffMs [EN] Yellow OFF duration / مدت خاموش‌بودن
+ */
+static void func__Ui_UpdateChargingYellowBlink(uint32_t uint32_t__yellowOnMs, uint32_t uint32_t__yellowOffMs)
+{
+    uint32_t ticktype__nowTick;
+    uint32_t uint32_t__currentPhaseMs;
+
+    ticktype__nowTick = osKernelGetTickCount();
+
+    if (BOOL__G__UiChargingYellowBlinkInitialized == false)
+    {
+        BOOL__G__UiChargingYellowBlinkInitialized = true;
+        BOOL__G__UiChargingYellowOn = true;
+        TICK_T__G__UiChargingYellowPhaseStartTick = ticktype__nowTick;
+        UINT32_T__G__UiChargingYellowOnMs = uint32_t__yellowOnMs;
+        UINT32_T__G__UiChargingYellowOffMs = uint32_t__yellowOffMs;
+    }
+    else if ((UINT32_T__G__UiChargingYellowOnMs != uint32_t__yellowOnMs) ||
+             (UINT32_T__G__UiChargingYellowOffMs != uint32_t__yellowOffMs))
+    {
+        /* [EN] Duration changed: keep current phase and start tick, only update stored durations.
+             New timing takes effect from next phase boundary.
+           [FA] مدت تغییر کرد: فاز فعلی و تیک شروع حفظ شود، فقط مدت ذخیره به‌روز شود. */
+        UINT32_T__G__UiChargingYellowOnMs = uint32_t__yellowOnMs;
+        UINT32_T__G__UiChargingYellowOffMs = uint32_t__yellowOffMs;
+    }
+    else
+    {
+        uint32_t__currentPhaseMs = func__Rtos_TicksToMilliseconds(ticktype__nowTick - TICK_T__G__UiChargingYellowPhaseStartTick);
+
+        if ((BOOL__G__UiChargingYellowOn == true) &&
+            (uint32_t__currentPhaseMs >= uint32_t__yellowOnMs))
+        {
+            BOOL__G__UiChargingYellowOn = false;
+            TICK_T__G__UiChargingYellowPhaseStartTick = ticktype__nowTick;
+        }
+        else if ((BOOL__G__UiChargingYellowOn == false) &&
+                 (uint32_t__currentPhaseMs >= uint32_t__yellowOffMs))
+        {
+            BOOL__G__UiChargingYellowOn = true;
+            TICK_T__G__UiChargingYellowPhaseStartTick = ticktype__nowTick;
+        }
+        else
+        {
+            /* [EN] Keep current yellow phase until duration expires.
+               [FA] فاز فعلی زرد را تا پایان مدت حفظ کن. */
+        }
+    }
+
+    func__yellow(BOOL__G__UiChargingYellowOn);
+}
+
 /* ==================== BatteryRun green blink update / به‌روزرسانی چشمک سبز BatteryRun ==================== */
 
 /**
@@ -254,13 +459,20 @@ static void func__Ui_UpdateBatteryRunGreenBlink(uint32_t uint32_t__greenOnMs, ui
 
     ticktype__nowTick = osKernelGetTickCount();
 
-    if ((BOOL__G__UiBatteryGreenBlinkInitialized == false) ||
-        (UINT32_T__G__UiBatteryGreenOnMs != uint32_t__greenOnMs) ||
-        (UINT32_T__G__UiBatteryGreenOffMs != uint32_t__greenOffMs))
+    if (BOOL__G__UiBatteryGreenBlinkInitialized == false)
     {
         BOOL__G__UiBatteryGreenBlinkInitialized = true;
         BOOL__G__UiBatteryGreenOn = true;
         TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = ticktype__nowTick;
+        UINT32_T__G__UiBatteryGreenOnMs = uint32_t__greenOnMs;
+        UINT32_T__G__UiBatteryGreenOffMs = uint32_t__greenOffMs;
+    }
+    else if ((UINT32_T__G__UiBatteryGreenOnMs != uint32_t__greenOnMs) ||
+             (UINT32_T__G__UiBatteryGreenOffMs != uint32_t__greenOffMs))
+    {
+        /* [EN] Duration changed due to stable percent jitter: keep current phase and start tick, only update stored durations.
+             New timing applies from next phase boundary, so a 10ms jitter does not restart the green ON.
+           [FA] مدت به خاطر نوسان درصد پایدار تغییر کرد: فاز و تیک شروع حفظ شود، فقط مدت ذخیره به‌روز شود. */
         UINT32_T__G__UiBatteryGreenOnMs = uint32_t__greenOnMs;
         UINT32_T__G__UiBatteryGreenOffMs = uint32_t__greenOffMs;
     }
@@ -359,6 +571,7 @@ static void func__Ui_ScenarioInputOverVoltage_Tick(void)
 
     func__Ui_ResetBatteryCriticalBeep();
     func__Ui_ResetBatteryRunGreenBlink();
+    func__Ui_ResetChargingYellowBlink();
 
     ticktype__nowTick = osKernelGetTickCount();
     uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(ticktype__nowTick - TICKTYPE_T__G__UiInputOverVoltageStartTick);
@@ -389,15 +602,16 @@ void func__Ui_ScenarioInputOk(void)
 {
     func__Ui_ResetBatteryCriticalBeep();
     func__Ui_ResetBatteryRunGreenBlink();
+    func__Ui_ResetChargingYellowBlink();
 
     func__green(true);
     func__red(false);
     func__yellow(false);
     (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 
-    /* [EN] RTOS delay in task, not HAL_Delay - other tasks still run, MCU not locked, simple & readable
-       [FA] تاخیر CMSIS-RTOS2 در تسک - میکرو قفل نمی‌شود، ساده و خوانا */
-    func__Rtos_DelayMilliseconds(APP_CONFIG.ui_input_ok_poll_ms);
+    /* [EN] InputOk is steady green, no blink — return immediately. The UI task's 10ms loop provides the poll period,
+         so a 500ms blocking delay inside the scenario is not needed and would slow UI reaction.
+       [FA] InputOk سبز ثابت است؛ بدون چشمک و بدون تاخیر مسدودکننده. حلقه ۱۰ms تسک، دوره polling را می‌دهد. */
 }
 
 /* ==================== Scenario Charging Tick / تیک سناریوی شارژ ==================== */
@@ -420,28 +634,29 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
     func__Ui_ResetBatteryRunGreenBlink();
     (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
 
+    /* [EN] Charging uses raw percent for yellow timing (hysteresis is BatteryRun-only). v_bat is from PA3 / v_bat24_mv.
+       [FA] شارژ از درصد خام برای زمان‌بندی زرد استفاده می‌کند (هیسترزیس فقط BatteryRun). */
     uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
+
+    func__green(true);
+    func__red(false);
 
     if (uint8_t__batteryPercent >= UI_PERCENT_FULL)
     {
+        func__Ui_ResetChargingYellowBlink();
         func__yellow(false);
-        func__green(true);
-        func__red(false);
-        func__Rtos_DelayMilliseconds(APP_CONFIG.ui_charging_blink_period_ms);
         return;
     }
 
     if (uint8_t__batteryPercent == 0u)
     {
+        func__Ui_ResetChargingYellowBlink();
         func__yellow(true);
-        func__green(true);
-        func__red(false);
-        func__Rtos_DelayMilliseconds(APP_CONFIG.ui_charging_blink_period_ms);
         return;
     }
 
-    /* [EN] Non-linear formula: break into steps for readability
-       [FA] فرمول غیرخطی: گام به گام برای خوانایی */
+    /* [EN] Non-linear formula: break into steps for readability. Remaining to full drives yellow ON time.
+       [FA] فرمول غیرخطی: مانده تا فول، زمان روشن‌بودن زرد را می‌دهد. */
     uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__batteryPercent;
     uint32_t__periodPerPercent = APP_CONFIG.ui_charging_blink_period_ms / UI_PERCENT_SCALE;
     uint32_t__yellowOnMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
@@ -457,13 +672,7 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 
     uint32_t__yellowOffMs = APP_CONFIG.ui_charging_blink_period_ms - uint32_t__yellowOnMs;
 
-    func__green(true);
-    func__red(false);
-
-    func__yellow(true);
-    func__Rtos_DelayMilliseconds(uint32_t__yellowOnMs);
-    func__yellow(false);
-    func__Rtos_DelayMilliseconds(uint32_t__yellowOffMs);
+    func__Ui_UpdateChargingYellowBlink(uint32_t__yellowOnMs, uint32_t__yellowOffMs);
 }
 
 /* ==================== Scenario BatteryRun Tick / تیک سناریوی دشارژ ==================== */
@@ -479,7 +688,8 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 {
-    uint8_t uint8_t__batteryPercent;
+    uint8_t uint8_t__rawPercent;
+    uint8_t uint8_t__stablePercent;
     uint32_t uint32_t__remainingPercent;
     uint32_t uint32_t__periodPerPercent;
     uint32_t uint32_t__greenOffMs;
@@ -487,9 +697,21 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     uint32_t ticktype__nowTick;
     uint32_t uint32_t__criticalElapsedMs;
 
-    uint8_t__batteryPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
+    func__Ui_ResetChargingYellowBlink();
 
-    if (uint8_t__batteryPercent < UI_BATTERY_RUN_BEEP_CRITICAL_PERCENT)
+    /* [EN] Step 1: raw percent from PA3 / ADC1_IN3 / v_bat24_mv.
+       [FA] گام ۱: درصد خام از PA3. */
+    uint8_t__rawPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
+
+    /* [EN] Step 2: stable percent with 2% hysteresis and special 0/1 handling.
+       This hysteresis is only for BatteryRun display/timing, not for input/overvoltage/Low Alarm.
+       [FA] گام ۲: درصد پایدار با هیسترزیس ۲٪ و رفتار خاص ۰/۱ (فقط BatteryRun). */
+    uint8_t__stablePercent = func__Ui_UpdateBatteryStablePercent(uint8_t__rawPercent);
+
+    /* [EN] Critical 0% uses stable percent: one 10s beep, then LEDs off until battery exits critical area.
+       Noise 0<->1 does not restart the beep because stable 0 stays 0 until raw>=2.
+       [FA] ۰٪ بحرانی با درصد پایدار: یک بوق ۱۰ ثانیه‌ای فقط یک بار، سپس LED خاموش تا خروج از ناحیه بحرانی. */
+    if (uint8_t__stablePercent < UI_BATTERY_RUN_BEEP_CRITICAL_PERCENT)
     {
         func__Ui_ResetBatteryRunGreenBlink();
         func__green(false);
@@ -529,9 +751,9 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 
     func__Ui_ResetBatteryCriticalBeep();
 
-    /* [EN] Non-linear: green blink OFF = remaining * period/100, with min.
-       [FA] فرمول غیرخطی سبز چشمک: خاموشی برابر مانده درصد ضربدر دوره است. */
-    uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__batteryPercent;
+    /* [EN] Non-linear: green blink OFF = remaining * period/100, with min. Input is stablePercent.
+       [FA] فرمول غیرخطی سبز چشمک: خاموشی برابر مانده درصد پایدار ضربدر دوره است. */
+    uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__stablePercent;
     uint32_t__periodPerPercent = APP_CONFIG.ui_blink_period_ms / UI_PERCENT_SCALE;
     uint32_t__greenOffMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
 
@@ -542,11 +764,11 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 
     uint32_t__greenOnMs = APP_CONFIG.ui_blink_period_ms - uint32_t__greenOffMs;
 
-    if (uint8_t__batteryPercent >= UI_BATTERY_RUN_BEEP_START_PERCENT)
+    if (uint8_t__stablePercent >= UI_BATTERY_RUN_BEEP_START_PERCENT)
     {
         (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
     }
-    else if (uint8_t__batteryPercent >= UI_BATTERY_RUN_BEEP_DOUBLE_PERCENT)
+    else if (uint8_t__stablePercent >= UI_BATTERY_RUN_BEEP_DOUBLE_PERCENT)
     {
         (void)func__Ui_Buzzer_Tick(
             UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS,
@@ -554,7 +776,7 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
             (uint8_t)UI_BATTERY_RUN_BEEP_STANDARD_COUNT,
             UI_BATTERY_RUN_BEEP_GAP_MS);
     }
-    else if (uint8_t__batteryPercent >= UI_BATTERY_RUN_BEEP_TRIPLE_PERCENT)
+    else if (uint8_t__stablePercent >= UI_BATTERY_RUN_BEEP_TRIPLE_PERCENT)
     {
         (void)func__Ui_Buzzer_Tick(
             UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS,
@@ -603,6 +825,8 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
         TICKTYPE_T__G__UiInputOverVoltageStartTick = 0u;
         func__Ui_ResetBatteryCriticalBeep();
         func__Ui_ResetBatteryRunGreenBlink();
+        func__Ui_ResetChargingYellowBlink();
+        func__Ui_ResetBatteryStablePercent();
         return;
     }
 
@@ -617,6 +841,10 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
         TICKTYPE_T__G__UiInputOverVoltageStartTick = 0u;
         func__Ui_ResetBatteryCriticalBeep();
         func__Ui_ResetBatteryRunGreenBlink();
+        func__Ui_ResetChargingYellowBlink();
+        /* [EN] Stable percent keeps previous value but green phase reset is allowed on invalid per spec.
+           Battery voltage source is PA3 / v_bat24_mv only; do not use v_in here.
+           [FA] درصد پایدار مقدار قبلی را نگه می‌دارد اما ریست فاز مجاز است. */
         return;
     }
 
@@ -688,6 +916,8 @@ void func__Ui_Init(void)
     TICKTYPE_T__G__UiInputOverVoltageStartTick = 0u;
     func__Ui_ResetBatteryCriticalBeep();
     func__Ui_ResetBatteryRunGreenBlink();
+    func__Ui_ResetChargingYellowBlink();
+    func__Ui_ResetBatteryStablePercent();
 }
 
 /* ==================== Board Test Start / شروع تست برد ==================== */

@@ -1,314 +1,207 @@
 /**
  * @file    README.md
- * @brief   [EN] UI module sheet: LED scenarios remain separate from the single periodic buzzer service.
- *          [FA] برگه ماژول UI: سناریوهای LED از سرویس یگانه بوق دوره‌ای جدا هستند.
+ * @brief   [EN] UI module sheet: LED scenarios with battery hysteresis (2% + 0/1 special) and phase-preserving blink.
+ *          [FA] برگه ماژول UI: سناریوهای LED با هیسترزیس باتری (۲٪ + رفتار خاص ۰/۱) و چشمک فاز-حفاظ.
  */
 
 # ماژول UI
 
 ## وضعیت
 
-فعال. `MODULE_UI = 1`. UI به **snapshot واقعی Measurement** وصل است: `func__Measurement_GetSnapshot(&snap)` و قبل از هر تصمیم `snapshot.valid` بررسی می‌شود. در `valid==false` یا `NULL`، UI در **safe-off** (همه LED و بوق خاموش)، **Low Battery Alarm فعال نمی‌شود** و `BOOL__G__UiBatteryAlarmIssued = false` و هیچ مقدار دستی/stale استفاده نمی‌شود. باتری تولید فقط از `snapshot.v_bat24_mv` می‌آید و مسیر manual (`UINT32_T__G__BatteryVoltageMv`) از production حذف شده است. LED و بوق در دو فایل مستقل هستند و فلگ `BOOL__G__UiBatteryAlarmIssued` در مالکیت UI است (Init false، در invalid false، هنگام آلارم معتبر true، پس از رفع false، پیوسته نه پالسی).
+فعال. `MODULE_UI = 1`. UI به **snapshot واقعی Measurement** وصل است: `func__Measurement_GetSnapshot(&snap)` و قبل از هر تصمیم `snapshot.valid` بررسی می‌شود. در `valid==false` یا `NULL`، UI در **safe-off** (همه LED و بوق خاموش)، **Low Battery Alarm فعال نمی‌شود** و `BOOL__G__UiBatteryAlarmIssued = false` و هیچ مقدار دستی/stale استفاده نمی‌شود.
 
-API کاربردی بوق فقط یک تابع است:
+**منبع باتری:** تولید فقط از `snapshot.v_bat24_mv` (PA3 / ADC1_IN3 / `BSP_ADC_CHANNEL_24V_BAT` / `raw[2]`). `v_in` از PA2/ADC1_IN2/raw[1] فقط برای تشخیص ورودی و McuPowerPath است و UI BatteryRun هرگز از آن استفاده نمی‌کند.
 
+**هیسترزیس درصد باتری (BatteryRun-only, 2% + 0/1):**
+- `UI_BATTERY_PERCENT_HYSTERESIS_PERCENT = 2u`: درصد پایدار `stablePercent` فقط وقتی تغییر می‌کند که `|raw-stable| >=2`. نوسان `56↔57` یا `57↔58` در باتری ~25V زمان چشمک را تغییر نمی‌دهد؛ `57→55` یا `57→59` تغییر می‌دهد.
+- `stable 57, raw 56 → keep 57`, `58 → keep 57`, `55 → 55`, `59 → 59` (تست اجباری).
+- **0% بحرانی:** `raw 0 → 0%`, بوق 10 ثانیه فقط یک بار، سپس همه LED خاموش تا خروج از ناحیه بحرانی؛ `stable 0` تا `raw>=2` روی 0 می‌ماند سپس ابتدا به 1 می‌رود، نه مستقیم 2.
+- **1% مستقل:** `stable 1` با `raw 0 → 0`, `raw>=3 → 2`, غیره حفظ 1؛ سه‌بوق 1% از 0% جدا است و نویز 0↔1 باعث restart بوق بحرانی نمی‌شود.
+- این هیسترزیس فقط برای نمایش/زمان‌بندی BatteryRun است؛ هیسترزیس‌های ورودی `20/21V`, اضافه‌ولتاژ `27/28V` و `Low Battery Alarm 21000/21200` بدون تغییر می‌مانند.
+
+**پایداری فاز چشمک:** `func__Ui_UpdateBatteryRunGreenBlink` هنگام تغییر `stablePercent` فاز فعلی (`BOOL__G__UiBatteryGreenOn`) و `phaseStartTick` را **reset نمی‌کند**؛ فقط `OnMs/OffMs` ذخیره به‌روز و زمان جدید از مرز فاز بعدی اعمال می‌شود. شروع فاز فقط در ورود/خروج واقعی BatteryRun، `snapshot invalid/NULL` یا `Ui_Init` مجاز است.
+
+API بوق فقط یک تابع است:
 ```c
 int32_t func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs)
 ```
+غیرمسدودکننده؛ `0` خاموشی معتبر، `-1` نامعتبر، مثبت زمان مراجعه پیشنهادی (10% کوچک‌ترین بخش).
 
-این تابع غیرمسدودکننده است. در الگوی معتبر، مقدار بازگشتی زمان پیشنهادی مراجعه بعدی بر حسب میلی‌ثانیه است؛ این زمان برابر ۱۰٪ کوچک‌ترین بخش مثبت الگو است. مقدار `0` خاموشی معتبر و مقدار `-1` تنظیمات نامعتبر را نشان می‌دهد.
+**Non-blocking:** `InputOk` (سبز ثابت) و `Charging` (زرد چشمک) اکنون فاز-محور و **بدون `Rtos_Delay` مسدودکننده** هستند؛ `func__Ui_Tick()` سریع برمی‌گردد و حلقه 10ms تسک UI واکنش را کند نمی‌کند. ظاهر سناریوها بدون تغییر، فقط زمان‌بندی پایدار و non-blocking.
 
 ## سناریوهای توافق‌شده UI
 
-> این بخش مشخصات کامل سناریوها است. همه ولتاژها در منطق Firmware بر حسب میلی‌ولت هستند و نام ثابت هر عدد کنار همان سناریو آمده است.
+> همه ولتاژها بر حسب میلی‌ولت؛ نام ثابت کنار سناریو.
 
 ### قواعد مشترک تشخیص ورودی و هیسترزیس
 
-- ورودی نامی سیستم ۲۴ ولت است؛ آستانه‌های نرم‌افزاری برای جلوگیری از سوئیچ اشتباه استفاده می‌شوند.
-- `Input >= UI_INPUT_CONNECTED_THRESHOLD_MV` یعنی ورودی وصل است؛ مقدار فعلی `21000u` یعنی ۲۱ ولت.
-- `Input <= UI_INPUT_DISCONNECTED_THRESHOLD_MV` یعنی ورودی قطع است؛ مقدار فعلی `20000u` یعنی ۲۰ ولت.
-- بین ۲۰ و ۲۱ ولت، وضعیت قبلی حفظ می‌شود و سیستم بین حالت‌ها سوئیچ نمی‌کند.
-- مقدار هیسترزیس تشخیص اتصال: `UI_INPUT_HYSTERESIS_MV = 1000u`.
-- ثابت‌های مربوط در `ui_led.h`:
-  - `UI_INPUT_CONNECTED_THRESHOLD_MV`
-  - `UI_INPUT_DISCONNECTED_THRESHOLD_MV`
-  - `UI_INPUT_HYSTERESIS_MV`
+- `Input >= 21000` وصل، `Input <=20000` قطع، بین 20-21V حفظ حالت قبلی. `UI_INPUT_HYSTERESIS_MV=1000`.
+- ثابت‌ها: `UI_INPUT_CONNECTED_THRESHOLD_MV`, `DISCONNECTED`, `HYSTERESIS`.
 
-### سناریو ۱: InputOk
+### سناریو ۱: InputOk (non-blocking)
 
-- شرط: ورودی وصل باشد و ولتاژ باتری به حد شارژ کامل رسیده باشد.
-- مثال توافق‌شده:
-  ```text
-  Input = 24V ، Battery = 28V
-  → سبز دائم، زرد و قرمز خاموش
+- شرط: ورودی وصل و باتری `>=28V`.
+- `Input 24V, Battery 28V → سبز دائم، زرد/قرمز خاموش`
+- **اجرای جدید:** سبز ثابت، بوق خاموش، **بدون delay 500ms** داخل سناریو؛ تسک UI هر 10ms صدا می‌زند، واکنش سریع.
+
+### سناریو ۲: BatteryRun (با هیسترزیس 2% و فاز-حفاظ)
+
+- شرط: ورودی قطع (`<=20000`).
+- `Input 0V/19V → BatteryRun`, هیسترزیس 20/21V.
+- سبز چشمک‌زن، زرد/قرمز خاموش. دیوتی سبز از **درصد پایدار** `stablePercent` (نه خام) محاسبه می‌شود:
   ```
-- چراغ سبز دائم روشن است.
-- چراغ زرد خاموش است.
-- چراغ قرمز خاموش است.
-- بوق خاموش است.
-- محدودهٔ کامل‌بودن باتری از `UI_BAT_V_MAX_MV = 28000u` تعیین می‌شود.
-- آستانهٔ اتصال ورودی از `UI_INPUT_CONNECTED_THRESHOLD_MV = 21000u` تعیین می‌شود.
-- اگر ورودی وصل باشد ولی باتری هنوز به ۲۸ ولت نرسیده باشد، سناریوی Charging اجرا می‌شود.
-
-### سناریو ۲: BatteryRun
-
-- شرط: ورودی در وضعیت قطع باشد؛ یعنی ورودی به `UI_INPUT_DISCONNECTED_THRESHOLD_MV` رسیده باشد.
-- مثال توافق‌شده:
-  ```text
-  Input = 0V یا 19V
-  → BatteryRun
+  remaining = 100 - stablePercent
+  periodPerPercent = 1000/100 =10ms
+  greenOffMs = remaining*periodPerPercent (min 10ms)
+  greenOnMs = 1000 - greenOffMs
   ```
-- در بازهٔ ۲۰ تا ۲۱ ولت، وضعیت قبلی ورودی حفظ می‌شود و هیسترزیس اعمال می‌شود.
-- چراغ سبز چشمک‌زن است.
-- چراغ زرد خاموش است.
-- چراغ قرمز خاموش است.
-- دیوتی روشن‌بودن چراغ سبز بر اساس درصد باتری تعیین می‌شود؛ درصد باتری از ولتاژ باتری محاسبه می‌شود.
-- محدودهٔ تبدیل درصد باتری:
-  - `UI_BAT_V_MIN_MV = 21000u` → صفر درصد
-  - `UI_BAT_V_MAX_MV = 28000u` → صد درصد
-- هرچه ولتاژ باتری از ۲۸ ولت به ۲۱ ولت نزدیک‌تر شود، درصد باتری کمتر و دیوتی روشن‌بودن سبز به صفر نزدیک‌تر می‌شود.
-- ثابت‌های زمان چشمک:
-  - `UI_BLINK_PERIOD_MS`
-  - `UI_GREEN_MIN_OFF_MS`
+  مثال 25V: `raw 56/57/58 → stable 57 → Off 430ms On 570ms` ثابت (جلوگیری از jitter طولانی).
+- هیسترزیس درصد:
+  - `stable 0`: تا `raw>=2` روی 0، سپس →1.
+  - `stable 1`: `raw 0→0`, `>=3→2`, else 1.
+  - `stable >=2`: `|raw-stable|>=2` → به‌روز، else حفظ. مثال اجباری بالا.
+- 0% و 1% جدا: 0% → 10s بوق یک بار سپس خاموش تا خروج؛ 1% → سه‌بوق هر 20s با چشمک سبز مربوطه؛ نویز 0↔1 باعث restart بحرانی نمی‌شود.
+- ثابت‌ها: `UI_BATTERY_PERCENT_HYSTERESIS_PERCENT=2`, `ZERO_EXIT=2`, `ONE_EXIT=3`, `BLINK_PERIOD=1000`, `GREEN_MIN_OFF=10`.
 
-#### جدول بوق BatteryRun
+#### جدول بوق BatteryRun (با درصد پایدار)
 
-اولویت از بحرانی‌ترین وضعیت به کم‌خطرترین وضعیت است:
-
-| محدوده درصد باتری | رفتار بوق | دوره تکرار | دیوتی تقریبی | مدت تقریبی هر بوق | تعداد بوق | ثابت‌های مربوط |
+| محدوده پایدار | رفتار بوق | دوره | دیوتی | هر بوق | تعداد | ثابت‌ها |
 |---|---|---:|---:|---:|---:|---|
-| `Battery < 1%` | یک بوق ممتد؛ بعد از پایان بوق چراغ‌ها و بوق خاموش می‌مانند و تا وقتی زیر ۱٪ است تکرار نمی‌شود | یک‌بار | `100%` | `10000ms` | ۱ | `UI_BATTERY_RUN_BEEP_CRITICAL_PERCENT`، `UI_BATTERY_RUN_BEEP_CRITICAL_PERIOD_MS`، `UI_BATTERY_RUN_BEEP_CRITICAL_DUTY_PERCENT`، `UI_BATTERY_RUN_BEEP_CRITICAL_DURATION_MS`، `UI_BATTERY_RUN_BEEP_CRITICAL_COUNT` |
-| `1% <= Battery < 10%` | سه بوق | `20000ms` | `31%` | `2000ms` | ۳ | `UI_BATTERY_RUN_BEEP_TRIPLE_PERCENT`، `UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS`، `UI_BATTERY_RUN_BEEP_TRIPLE_DUTY_PERCENT`، `UI_BATTERY_RUN_BEEP_TRIPLE_DURATION_MS`، `UI_BATTERY_RUN_BEEP_TRIPLE_COUNT` |
-| `10% <= Battery < 20%` | دو بوق | `60000ms` | `4%` | حدود `1150ms` | ۲ | `UI_BATTERY_RUN_BEEP_DOUBLE_PERCENT`، `UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS`، `UI_BATTERY_RUN_BEEP_DOUBLE_DUTY_PERCENT`، `UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS`، `UI_BATTERY_RUN_BEEP_DOUBLE_COUNT` |
-| `20% <= Battery < 40%` | یک بوق | `60000ms` | `2%` | حدود `1200ms` | ۱ | `UI_BATTERY_RUN_BEEP_START_PERCENT`، `UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS`، `UI_BATTERY_RUN_BEEP_STANDARD_DUTY_PERCENT`، `UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS`، `UI_BATTERY_RUN_BEEP_STANDARD_COUNT` |
-| `Battery >= 40%` | بوق خاموش | — | — | — | — | `UI_BATTERY_RUN_BEEP_START_PERCENT` |
+| `stable <1%` (0%) | یک بوق ممتد سپس خاموش تا خروج از 0% | یک‌بار | 100% | 10000ms | 1 | `CRITICAL_PERCENT` 1, `CRITICAL_PERIOD` 10000 |
+| `1%<=stable<10%` | سه بوق | 20000ms | 31% | 2000ms | 3 | `TRIPLE_PERCENT` 10 |
+| `10%<=stable<20%` | دو بوق | 60000ms | 4% | 1150ms | 2 | `DOUBLE_PERCENT` 20 |
+| `20%<=stable<40%` | یک بوق | 60000ms | 2% | 1200ms | 1 | `START_PERCENT` 40 |
+| `stable>=40%` | خاموش | — | — | — | — | — |
 
-- گپ بین بوق‌های چندگانه `UI_BATTERY_RUN_BEEP_GAP_MS = 100u` میلی‌ثانیه است.
-- زمان بوق‌های استاندارد تقریبی است؛ دیوتی صحیح درصدی عمداً برای سادگی استفاده می‌شود.
-- در حالت زیر ۱٪، چراغ سبز، زرد و قرمز همگی خاموش می‌شوند.
-- اعداد درصدی، duty و زمانی جدول در `Firmware/Modules/Ui/ui_led.h` تعریف شده‌اند.
+گپ `100ms`, دیوتی‌های تقریبی از integer.
 
-### سناریو ۳: Charging
+### سناریو ۳: Charging (non-blocking)
 
-- شرط: ورودی وصل باشد و باتری هنوز به ولتاژ کامل نرسیده باشد.
-- مثال توافق‌شده:
-  ```text
-  Input = 24V ، Battery = 25V
-  → سبز روشن، زرد چشمک‌زن، قرمز خاموش
-  ```
-- چراغ سبز دائم روشن است.
-- چراغ زرد چشمک‌زن است.
-- چراغ قرمز خاموش است.
-- بوق خاموش است.
-- دیوتی چشمک چراغ زرد بر اساس درصد باقی‌مانده تا شارژ کامل تعیین می‌شود.
-- هرچه باتری به ۱۰۰٪ نزدیک‌تر شود، دیوتی روشن‌بودن چراغ زرد کمتر می‌شود.
-- محدودهٔ درصد شارژ همان محدودهٔ `UI_BAT_V_MIN_MV = 21000u` تا `UI_BAT_V_MAX_MV = 28000u` است.
-- ثابت‌های زمان و محدودیت چشمک زرد:
-  - `UI_CHARGING_BLINK_PERIOD_MS`
-  - `UI_CHARGING_YELLOW_MIN_OFF_MS`
+- شرط: ورودی وصل و باتری `<28V` (`Input 24V, Battery 25V → سبز روشن، زرد چشمک، قرمز خاموش`).
+- سبز دائم روشن، زرد مانده تا فول غیرخطی: `remaining=100-raw(PA3)`, `periodPer=10ms`, `yellowOn=remaining*periodPer (min 10ms)`, `yellowOff=1000-yellowOn`. هرچه به 100% نزدیک‌تر دیوتی زرد کمتر.
+- **اجرای جدید:** زرد چشمک اکنون **غیرمسدودکننده فاز-محور** (حالت `YellowOn/Off`, `phaseStartTick`, `OnMs/OffMs` ذخیره و حفظ فاز روی تغییر درصد). بدون `Rtos_Delay`؛ `Ui_Tick` هر 10ms سریع برمی‌گردد. ثابت‌ها: `CHARGING_BLINK_PERIOD 1000`, `YELLOW_MIN_OFF 10`.
 
 ### سناریو ۴: InputOverVoltage
 
-- منبع خطا فقط **ولتاژ ورودی** است، نه ولتاژ باتری.
-- شرط فعال‌شدن: `Input > UI_INPUT_OVERVOLTAGE_THRESHOLD_MV`؛ مقدار فعلی بیشتر از `28000mV` یعنی بیشتر از ۲۸ ولت.
-- هیسترزیس خطا: `UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV = 1000u`.
-- شرط پاک‌شدن: `Input <= UI_INPUT_OVERVOLTAGE_CLEAR_THRESHOLD_MV`؛ مقدار فعلی `27000mV` یعنی ۲۷ ولت یا کمتر.
-- در بازهٔ ۲۷ تا ۲۸ ولت، وضعیت خطا حفظ می‌شود.
-- چراغ سبز دائم روشن است.
-- چراغ زرد خاموش است.
-- چراغ قرمز هر ۱ ثانیه با دیوتی ۵۰٪ چشمک می‌زند.
-- بوق هر ۱۰ ثانیه، یک بوق یک‌ثانیه‌ای می‌زند.
-- ثابت‌های نمایش خطا:
-  - `UI_INPUT_OVERVOLTAGE_THRESHOLD_MV`
-  - `UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV`
-  - `UI_INPUT_OVERVOLTAGE_CLEAR_THRESHOLD_MV`
-  - `UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS = 1000u`
-  - `UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT = 50u`
-  - `UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS = 10000u`
-  - `UI_INPUT_OVERVOLTAGE_BEEP_DURATION_MS = 1000u`
-  - `UI_INPUT_OVERVOLTAGE_BEEP_DUTY_PERCENT`
-  - `UI_INPUT_OVERVOLTAGE_BEEP_COUNT = 1u`
-  - `UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS = 0u`
+- `Input>28000` فعال، `<=27000` پاک، بین 27-28V حفظ. سبز ثابت، زرد خاموش، قرمز 50% هر 1s، بوق 1s هر 10s. ثابت‌ها `OVERVOLTAGE_THRESHOLD 28000`, `HYSTERESIS 1000`, `LED_PERIOD 1000`, `DUTY 50`.
 
 ### خلاصه انتخاب سناریوها
 
-```text
-InputOverVoltage فعال
-    → نمایش خطای اضافه‌ولتاژ و اجرای بوق خطا
-
-در غیر این صورت، اگر ورودی قطع باشد
-    → BatteryRun
-
-در غیر این صورت، اگر ورودی وصل و باتری کمتر از 28V باشد
-    → Charging
-
-در غیر این صورت، اگر ورودی وصل و باتری حداقل 28V باشد
-    → InputOk
+```
+InputOverVoltage → خطای اضافه‌ولتاژ
+else if InputDisconnected (<=20000) → BatteryRun
+else if InputConnected && Battery<28V → Charging
+else InputOk
+snapshot invalid/NULL → safe-off (همه خاموش, flag false)
+BoardTest → یک‌بار قرمز/زرد/سبز + بوق کوتاه
 ```
 
 ## تاریخچه
 
 | تاریخ | تغییر |
 |---|---|
-| 2026-09-16 | اتصال UI به snapshot واقعی `func__Measurement_GetSnapshot()`، بررسی `valid` قبل از هر تصمیم، safe-off در invalid، افزودن فلگ `BOOL__G__UiBatteryAlarmIssued` (حالت پیوسته) و حذف مسیر manual battery؛ به‌روزرسانی `UI_Board_Validation.xlsx` به نسخه 2.0. |
-| 2026-09-16 | افزودن `UI_Board_Validation.xlsx` برای تست عملی روی برد، ثبت نتیجه و ایراد و تأیید نهایی سناریوهای LED/BUZZER. |
-| 2026-09-15 | اولین ساخت کامل سناریوهای UI: InputOk، Charging، BatteryRun با چهار بازه بوق، InputOverVoltage، هیسترزیس ورودی و مستندات کامل ثابت‌ها. |
-| 2026-09-15 | ساده‌سازی کامل بوق: حذف APIهای Start/Tick میلی‌ثانیه‌ای و درصدی، حذف Stop و توابع داخلی اضافی؛ باقی ماندن یک تابع عمومی با ورودی‌های دوره، دیوتی، تعداد بوق و گپ. |
-| 2026-09-15 | بوق از منطق خودکار BatteryRun و تست LED جدا شد؛ LED فقط مالک LEDها است و بوق فقط سیگنال منطقی `BSP_GPIO_BUZZER` را مصرف می‌کند. |
-| 2026-09-15 | تعریف محاسبه جدید: پنجره دیوتی برابر `period*duty/100` است، گپ‌ها داخل این پنجره قرار می‌گیرند و زمان باقی‌مانده تا دوره بعدی خاموش است. |
-| 2026-09-15 | اتصال دوباره سرویس جدید به رفتار قبلی سناریوها: بوق کوتاه BoardTest و بوق هوشمند BatteryRun؛ InputOk و Charging بوق را خاموش می‌کنند. |
-| 2026-09-15 | افزودن محدودیت‌های ایمنی با ثابت‌های حداقل دوره ۱۰۰۰ms و حداقل گپ ۱۰۰ms؛ صفر برای خاموشی معتبر و منفی یک برای خطا؛ بازگرداندن زمان مراجعه پیشنهادی ۱۰٪ برای RTOS. |
-| 2026-09-15 | اصلاح مستندات با ساختار واقعی دو بخش LED و BUZZER و استفاده از `APP_CONFIG` برای مقدارهای قابل تنظیم LED. |
-| 2026-09-14 | اجرای AI: اسکریپت چک قوانین `tools/check_ai_rules.sh` + تست هاست UI؛ پاس شد. |
+| 2026-09-17 | هیسترزیس درصد باتری 2% + رفتار خاص 0/1، حفظ فاز چشمک سبز (عدم reset روی jitter 56/57/58)، InputOk/Charging non-blocking فاز-محور، به‌روزرسانی README/Excel/host_test، بررسی RTOS/stack، تست 25V. |
+| 2026-09-16 | اتصال UI به snapshot واقعی، safe-off در invalid، فلگ پیوسته Low Battery Alarm، حذف manual battery؛ UI_Board_Validation 2.0. |
+| 2026-09-16 | افزودن UI_Board_Validation.xlsx. |
+| 2026-09-15 | ساخت کامل InputOk/Charging/BatteryRun/InputOverVoltage، هیسترزیس ورودی. |
+| 2026-09-15 | ساده‌سازی بوق به یک API دوره‌ای. |
+| 2026-09-15 | جداسازی LED و BUZZER، فرمول دوره‌ای جدید. |
+| 2026-09-15 | محدودیت‌های ایمنی 1000ms/100ms و زمان مراجعه 10%. |
+| 2026-09-15 | مستندات دو بخش LED/BUZZER و APP_CONFIG. |
+| 2026-09-14 | اجرای AI: check_ai_rules + host_test. |
 
 ## فایل‌ها
 
 | فایل | نقش |
 |---|---|
-| `ui_led.h` / `ui_led.c` | منطق LED: نگاشت ولتاژ، هیسترزیس ورودی، خطای InputOverVoltage، سناریوهای InputOk/Charging/BatteryRun و تست LED؛ مالک فلگ `BOOL__G__UiBatteryAlarmIssued` و تصمیم از `snapshot.v_bat24_mv` و `snapshot.valid`؛ فقط نقاط صریح سناریو برای شروع یا خاموش کردن سرویس بوق را فراخوانی می‌کند. |
-| `ui_buzzer.h` / `ui_buzzer.c` | سرویس یگانه بوق: محاسبه پنجره دیوتی، تقسیم آن بین پالس‌ها و گپ‌ها، اعتبارسنجی محدودیت‌های ایمنی، محاسبه مراجعه بعدی و نوشتن سیگنال منطقی `BSP_GPIO_BUZZER`. |
-| `../../Rtos/Src/task_ui.c` | تسک UI؛ snapshot واقعی را با `func__Measurement_GetSnapshot()` می‌گیرد، `valid` را چک و با `func__Ui_Tick(&snap)` سناریوی مناسب را اجرا می‌کند؛ باتری manual حذف شده. |
-| `../../Bsp/Src/bsp_gpio.c` | نوشتن سطح GPIO از طریق `func__BspGpio_Write`. |
-| `../../Bsp/Inc/bsp_gpio.h` | سیگنال‌های منطقی `BSP_GPIO_LED_GREEN/RED/YELLOW` و `BSP_GPIO_BUZZER`؛ نگاشت پایه در BSP پنهان است. |
-| `../../Config/Inc/app_config.h` / `../../Config/Src/app_config.c` | تنظیمات عمومی زمان‌بندی LED و نگاشت ولتاژ؛ ثابت‌های BatteryRun و بوق‌های سناریویی در هدرهای UI تعریف شده‌اند. |
-| `host_test_ui.py` | تست هاست فرمول دوره، دیوتی، تعداد پالس و گپ. |
-| `UI_Board_Validation.xlsx` | برگهٔ ثبت تست عملی روی برد: برنامهٔ تست، مرجع سناریوها، ثبت ایراد و تأیید نهایی. |
+| `ui_led.h` / `ui_led.c` | منطق LED: نگاشت PA3/v_bat24, هیسترزیس 2% + 0/1, حفظ فاز چشمک سبز, InputOk/Charging non-blocking (زرد فاز-محور), هیسترزیس ورودی, InputOverVoltage, Low Battery Alarm Flag از `snapshot.v_bat24_mv` (21000/21200). مالک `BOOL__G__UiBatteryAlarmIssued`. |
+| `ui_buzzer.h` / `ui_buzzer.c` | سرویس بوق: دوره/دیوتی/گپ/مراجعه بعدی, BSP_GPIO_BUZZER. |
+| `../../Rtos/Src/task_ui.c` | تسک UI هر 10ms: `GetSnapshot` → `Ui_Tick`; non-blocking, سایر تسک‌ها starvation ندارند. |
+| `../../Bsp/Src/bsp_gpio.c` | `BspGpio_Write` برای LED/BUZZER. |
+| `../../Bsp/Inc/bsp_gpio.h` | سیگنال‌های منطقی LED. |
+| `../../Config/Inc/app_config.h` | زمان‌بندی LED و نگاشت ولتاژ. |
+| `host_test_ui.py` | تست هاست بوق + هیسترزیس 56/57/58, 57→55/59, 0% critical 10s, 0↔1, 1→2 و فاز چشمک. |
+| `UI_Board_Validation.xlsx` | برگه تست برد (6 شیت) با سناریوهای جدید 25V و هیسترزیس و Stack/RTOS. |
 
 ## برگه تست و اعتبارسنجی روی برد
 
-فایل `UI_Board_Validation.xlsx` نسخه 2.0 برای ولیدیشن عملی UI با **snapshot واقعی** است. این فایل پنج برگهٔ کاری دارد: راهنما، برنامهٔ تست، مراجع سناریو، ثبت ایراد و تأیید نهایی؛ برگهٔ فهرست‌های داخلی Excel برای dropdownها مخفی است.
+فایل `UI_Board_Validation.xlsx` نسخه 2.1 برای ولیدیشن با **snapshot واقعی** است (6 شیت: راهنما/برنامه تست/مراجع سناریو/ثبت ایراد/تأیید نهایی/فهرست‌ها).
 
-- دامنهٔ این فرم فقط رفتار LED و BUZZER است؛ ADC/Measurement فعال است و snapshot از `func__Measurement_GetSnapshot()` می‌آید.
-- قبل از هر تصمیم، `snapshot.valid` بررسی می‌شود؛ در `valid==false` UI در **safe-off**، فلگ `BOOL__G__UiBatteryAlarmIssued=false` و Low Battery Alarm فعال نمی‌شود.
-- ولتاژ باتری تولید فقط از `snapshot.v_bat24_mv` بر حسب mV خوانده می‌شود؛ مسیر manual (`UINT32_T__G__BatteryVoltageMv`) حذف شده و مقدار stale استفاده نمی‌شود.
-- ولتاژ ورودی از `snapshot.v_in_mv` و هیسترزیس 20/21V همان قبل حفظ شده است.
-- فلگ `BOOL__G__UiBatteryAlarmIssued` پیوسته است (نه پالسی) و Changeover فقط آن را می‌خواند.
-- برای هر ردیف، مقدار واقعی مشاهده‌شده، وضعیت، نام تست‌کننده و تاریخ را ثبت کن.
-- دوره و مدت بوق‌ها برای سریع‌شدن تست تغییر نکند؛ بوق‌های 20 و 60 ثانیه‌ای با دورهٔ واقعی سناریو تست شوند.
-- برگهٔ «تأیید نهایی» فقط پس از قبول تست‌ها و بسته‌شدن ایرادهای باز تکمیل شود.
+- دامنه: فقط LED/BUZZER؛ `snapshot.v_bat24_mv` از PA3/ADC1_IN3/raw[2] و `v_in` از PA2/ADC1_IN2/raw[1]؛ PB4 فقط EXTI، PB5 فقط McuPowerPath، PB11 فقط Changeover.
+- `snapshot.valid` قبل از هر تصمیم؛ invalid → safe-off, flag false.
+- **تست جدید 25V:** باتری 25V (`~57%`) با نویز 56/57/58 → `stable 57` حفظ و فاز چشمک reset نشود (Off 430ms On 570ms ثابت). `raw 57→55/59` → stable تغییر کند و فاز از مرز بعدی با زمان جدید ادامه یابد.
+- انتهای بازه: `raw 0 → 0%` بوق 10s یک بار سپس LED خاموش؛ `0↔1` نوسان → بوق بحرانی restart نشود؛ `raw1 →1%` سه‌بوق؛ `1% raw2` حفظ 1، `>=3` →2.
+- سناریوها: InputOk (سبز ثابت non-blocking)، Charging (زرد فاز-محور)، BatteryRun (سبز فاز-حفاظ + بوق 4 بازه با stable)، InputOverVoltage، invalid/NULL، Low Alarm، سوئیچ ورودی وصل/قطع.
+- RTOS/Stack: حافظه static، `SUPPORT_DYNAMIC_ALLOCATION=0`, `cb_mem/stack_mem` معتبر، stack high-water، بدون queue/timer/mutex جدید.
+- برای هر ردیف مقدار واقعی، وضعیت، نام و تاریخ ثبت شود؛ برگه تأیید نهایی پس از بستن ایرادها.
 
 ## توابع
 
 | نام | کار | فایل |
 |---|---:|---|
-| `func__Ui_Buzzer_Tick` | تنها API کاربردی بوق؛ یک الگوی دوره‌ای را با چهار ورودی اجرا می‌کند، GPIO را به‌روزرسانی می‌کند و زمان مراجعه بعدی یا کد وضعیت را برمی‌گرداند | `ui_buzzer.c` |
-| `func__Ui_Init` | خاموش کردن LEDها؛ بوق در مالکیت سرویس مستقل خودش است | `ui_led.c` |
-| `func__Ui_BoardTest_Start` | تست یک‌باره قرمز، زرد و سبز، سپس بوق کوتاه قبلی با API جدید | `ui_led.c` |
-| `func__Ui_ScenarioInputOk` | سبز ثابت، قرمز/زرد خاموش و بوق خاموش | `ui_led.c` |
-| `func__Ui_ScenarioCharging_Tick` | سبز ثابت و زرد متناسب با درصد شارژ؛ بوق خاموش | `ui_led.c` |
-| `func__Ui_ScenarioBatteryRun_Tick` | سبز چشمک‌زن، زرد خاموش و بوق‌های جدید بر اساس بازه‌های زیر ۴۰٪، ۲۰٪، ۱۰٪ و ۱٪ | `ui_led.c` |
-| `func__Ui_ScenarioInputOverVoltage_Tick` | خطای ورودی: سبز ثابت، زرد خاموش، قرمز ۵۰٪ و یک بوق یک‌ثانیه‌ای هر ۱۰ ثانیه | `ui_led.c` |
-| `func__Ui_Tick` | بررسی `snapshot.valid` و safe-off در نامعتبر، به‌روزرسانی فلگ `BOOL__G__UiBatteryAlarmIssued` از `v_bat24_mv` (هیسترزیس 21000/21200)، به‌روزرسانی هیسترزیس ورودی و انتخاب سناریوی LED | `ui_led.c` |
+| `func__Ui_BatteryVoltageToPercent` | ولتاژ 21-28V به 0-100% (4 گام) | `ui_led.c` |
+| `func__Ui_UpdateBatteryStablePercent` | هیسترزیس 2% + 0/1 (56/57/58 حفظ, 0→1→2) | `ui_led.c` |
+| `func__Ui_UpdateBatteryRunGreenBlink` | چشمک سبز BatteryRun فاز-حفاظ (عدم reset روی jitter) | `ui_led.c` |
+| `func__Ui_UpdateChargingYellowBlink` | چشمک زرد Charging فاز-محور non-blocking | `ui_led.c` |
+| `func__Ui_Buzzer_Tick` | API بوق دوره‌ای | `ui_buzzer.c` |
+| `func__Ui_Init` | خاموش + flag false + reset فازها و stable | `ui_led.c` |
+| `func__Ui_BoardTest_Start` | تست قرمز/زرد/سبز + بوق | `ui_led.c` |
+| `func__Ui_ScenarioInputOk` | **non-blocking** سبز ثابت | `ui_led.c` |
+| `func__Ui_ScenarioCharging_Tick` | **non-blocking** سبز ثابت + زرد فاز-محور | `ui_led.c` |
+| `func__Ui_ScenarioBatteryRun_Tick` | سبز چشمک با stable + بوق 4 بازه (0% یک 10s) | `ui_led.c` |
+| `func__Ui_ScenarioInputOverVoltage_Tick` | قرمز 50% + بوق 10s | `ui_led.c` |
+| `func__Ui_Tick` | valid/safe-off, flag hysteresis 21000/21200, هیسترزیس ورودی, انتخاب سناریو | `ui_led.c` |
 
 ## محدودیت‌های ایمنی و کد بازگشتی
 
-محدودیت‌ها در `ui_buzzer.h` با ثابت تعریف شده‌اند:
-
 | ثابت | مقدار | رفتار |
 |---|---:|---|
-| `UI_BUZZER_MIN_PERIOD_MS` | `1000ms` | دوره غیرصفر کمتر از این مقدار نامعتبر است و بوق خاموش می‌شود. |
-| `UI_BUZZER_MIN_GAP_MS` | `100ms` | برای `beepCount > 1`، گپ کمتر از این مقدار نامعتبر است و بوق خاموش می‌شود. |
-| `UI_BUZZER_CHECK_PERCENT` | `10%` | درصد کوچک‌ترین بخش مثبت الگو برای زمان مراجعه بعدی RTOS. |
-| `UI_BUZZER_MIN_CHECK_MS` | `1ms` | حداقل زمان بازگشتی برای جلوگیری از مراجعه صفرمیلی‌ثانیه‌ای. |
+| `UI_BUZZER_MIN_PERIOD_MS` | 1000ms | دوره کمتر نامعتبر |
+| `UI_BUZZER_MIN_GAP_MS` | 100ms | گپ چندبوق کمتر نامعتبر |
+| `UI_BUZZER_CHECK_PERCENT` | 10% | 10% کوچک‌ترین بخش |
+| `UI_BUZZER_MIN_CHECK_MS` | 1ms | حداقل مراجعه |
+| `UI_BATTERY_PERCENT_HYSTERESIS_PERCENT` | 2% | هیسترزیس BatteryRun |
+| `UI_BATTERY_ZERO_EXIT_THRESHOLD` | 2% | خروج 0→1 |
+| `UI_BATTERY_ONE_EXIT_THRESHOLD` | 3% | خروج 1→2 |
 
-کدهای بازگشتی:
+کدهای `0` خاموشی، `-1` نامعتبر، مثبت زمان مراجعه.
 
-- `UI_BUZZER_OFF_RESULT` برابر صفر: خاموشی معتبر، مانند `dutyPercent == 0` یا `beepCount == 0`؛ این خطا نیست.
-- `UI_BUZZER_INVALID_RESULT` برابر منفی یک: تنظیمات نامعتبر؛ GPIO روی `LOW` قرار می‌گیرد.
-- مقدار مثبت: زمان پیشنهادی مراجعه بعدی بر حسب میلی‌ثانیه.
-
-برای یک بوق، گپ بین بوق‌های مجاور وجود ندارد؛ بنابراین مقدار `gapMs` نادیده گرفته می‌شود و محدودیت ۱۰۰ms فقط از `beepCount > 1` اعمال می‌شود.
-
-نمونه استفاده در یک caller صریح RTOS:
-
-```c
-int32_t int32_t__nextCheckMs;
-
-int32_t__nextCheckMs = func__Ui_Buzzer_Tick(periodMs, dutyPercent, beepCount, gapMs);
-if (int32_t__nextCheckMs > 0)
-{
-    func__Rtos_DelayMilliseconds((uint32_t)int32_t__nextCheckMs);
-}
-else if (int32_t__nextCheckMs == UI_BUZZER_INVALID_RESULT)
-{
-    /* [EN] Keep the buzzer disabled and handle the invalid request.
-       [FA] بوق خاموش است؛ درخواست نامعتبر را مدیریت کن. */
-}
+فرمول بوق همان قبل:
 ```
-
-فرمول سرویس بوق:
-
-```text
-dutyWindowMs = periodMs × dutyPercent / 100
-effectiveGapMs = (beepCount > 1) ? gapMs : 0
-totalGapMs   = effectiveGapMs × (beepCount - 1)
-availableOnMs = dutyWindowMs - totalGapMs
-beepOnMs     = availableOnMs / beepCount
-periodTailMs = periodMs - dutyWindowMs
-nextCheckMs  = max(1ms, 10% × smallest_positive(beepOnMs, effectiveGapMs, periodTailMs))
+dutyWindow=period*duty/100, gap*(count-1), availableOn, beepOn, tail, nextCheck=max(1,10%*min)
 ```
-
-مثال:
-
-```text
-period = 10000ms
-نسبت دیوتی = 10٪
-تعداد بوق = 2
-گپ = 100ms
-
-پنجره دیوتی = 1000ms
-هر بوق = 450ms
-
-450ms روشن
-100ms خاموش
-450ms روشن
-9000ms خاموش
-```
-
-اگر `periodMs` صفر، `dutyPercent` صفر یا `beepCount` صفر باشد، بوق خاموش می‌شود و نتیجه صفر است. اگر دوره غیرصفر کمتر از ۱۰۰۰ms باشد، برای چند بوق گپ کمتر از ۱۰۰ms باشد، دیوتی خارج از محدوده باشد، یا گپ‌ها تمام پنجره دیوتی را مصرف کنند، الگو نامعتبر است؛ بوق خاموش می‌ماند و نتیجه منفی یک است.
 
 ## پایه‌ها
 
-| پایه | لیبل | نقش | HIGH یعنی |
-|---|---|---|---|
-| PB0 | `MCU_R_LED` | LED قرمز | روشن |
-| PB1 | `MCU_Y_LED` | LED زرد | روشن |
-| PB10 | `MCU_G_LED` | LED سبز | روشن |
-| PA4 | `MCU_BUZZER` | بازر | فعال شدن بوق طبق شماتیک |
+| پایه | لیبل | نقش | HIGH یعنی | منبع |
+|---|---|---|---:|---|
+| PB0 | `MCU_R_LED` | LED قرمز | روشن | — |
+| PB1 | `MCU_Y_LED` | LED زرد | چشمک شارژ | — |
+| PB10 | `MCU_G_LED` | LED سبز | InputOk ثابت / BatteryRun چشمک (stable) | — |
+| PA4 | `MCU_BUZZER` | بازر | بوق | Active Buzzer |
+| PA3 | `MCU_ADC_24_BAT` (پایه13) | ADC1_IN3 → raw[2] → `snapshot.v_bat24_mv` → **BatteryRun** | — | فقط PA3/v_bat |
+| PA2 | `MCU_ADC_24_IN` (پایه12) | ADC1_IN2 → raw[1] → `snapshot.v_in_mv` → ورودی/McuPowerPath | — | فقط PA2/v_in |
+| PB4 | `MCU_INT_24_IN` | EXTI وصل/قطع | High وصل | فقط ورودی |
+| PB5 | `MCU_BAT_SWITCH` Q1 | فقط McuPowerPath | Low وصل | — |
+| PB11 | `MCU_PROTECT_BATT` Q17 | فقط Changeover | — | — |
 
-جدول بالا مرجع فیزیکی برد فعلی است؛ منطق UI پایهٔ فیزیکی را نمی‌شناسد و فقط سیگنال‌های `BSP_GPIO_*` را مصرف می‌کند. قطبیت تا اندازه‌گیری روی برد، شماتیکی است. سرویس بوق سیگنال منطقی `BSP_GPIO_BUZZER` را HIGH/LOW می‌کند و فرکانس صوتی PWM تولید نمی‌کند؛ بنابراین این منطق برای Active Buzzer مناسب است.
+قطبیت شماتیکی؛ UI فقط `BSP_GPIO_*`.
 
 ## پیش‌فرض امن
 
-بعد از Reset و `func__Ui_Init`، LEDها و بوق خاموش و `BOOL__G__UiBatteryAlarmIssued=false` است. در `snapshot.valid==false` یا `NULL` نیز safe-off و فلگ false حفظ می‌شود و هیچ مقدار manual/stale استفاده نمی‌شود. در شروع `func__Ui_BoardTest_Start`، رفتار تست بوق حفظ می‌شود. در BatteryRun، بوق‌ها طبق جدول سناریو اجرا می‌شوند: زیر ۴۰٪ یک بوق، زیر ۲۰٪ دو بوق، زیر ۱۰٪ سه بوق و زیر ۱٪ یک بوق ممتد ده‌ثانیه‌ای؛ بعد از بوق بحرانی زیر ۱٪، همه خروجی‌ها خاموش می‌مانند تا باتری از این محدوده خارج شود. در `InputOk` و `Charging`، سرویس بوق با ورودی خاموشی معتبر متوقف می‌شود.
+بعد از Reset/`Init`، LED/بوق خاموش و `flag false`, `stable 0 uninit`, فازها reset. `snapshot invalid/NULL` → safe-off، flag false، فازها reset (stable برای 0/1 حفظ می‌ماند تا نویز باعث restart نشود). در BatteryRun زیر 1% بوق 10s یک بار سپس خاموش تا خروج از 0% (stable 0→1 با raw>=2). 1% سه‌بوق مستقل. در InputOk/Charging بوق خاموش. BoardTest رفتار تست حفظ.
 
 ## درخت اتصال
 
-```text
-Firmware/Rtos/Src/task_ui.c
-  → func__TaskUi() → func__Measurement_GetSnapshot(&snap) → func__Ui_Tick(&snap)
-      ├── if !snap.valid → safe-off, BOOL__G__UiBatteryAlarmIssued=false, all LEDs/buzzer off
-      ├── else: update BOOL__G__UiBatteryAlarmIssued from snap.v_bat24_mv (21000/21200 hysteresis, continuous)
-      ├── InputOverVoltage (ورودی >28V، پاک‌سازی <=27V)
-      │   ├── red: period=1000ms, duty=50%
-      │   └── func__Ui_Buzzer_Tick(10000, 10, 1, 0)  // بوق 1s هر 10s
-      ├── func__Ui_ScenarioBatteryRun_Tick(v_bat24_mv)
-      │   └── func__Ui_Buzzer_Tick(...)  // بوق‌های درصدی جدید BatteryRun
-      ├── func__Ui_ScenarioInputOk()/Charging_Tick()
-      │   └── func__Ui_Buzzer_Tick(0, 0, 0, 0)  // خاموشی امن
-      └── func__Ui_BoardTest_Start()
-          └── func__Ui_Buzzer_Tick(...)  // بوق تست قبلی
-              ├── osKernelGetTickCount()   زمان نمونه فعلی CMSIS-RTOS2
-              ├── rtos_time: TicksToMilliseconds
-              └── func__BspGpio_Write()     Firmware/Bsp/Src/bsp_gpio.c
-                  └── BSP_GPIO_BUZZER / LED_*  = نگاشت پایه در bsp_gpio.c
-
-UI owns BOOL__G__UiBatteryAlarmIssued → Changeover reads only:
-  ui_led.c: BOOL__G__UiBatteryAlarmIssued (true when valid & v<21000, false when ≥21200 or invalid)
-  changeover.c: extern BOOL__G__UiBatteryAlarmIssued
-
-LED and BUZZER remain separate:
-CubeIDE/Core/Src/main.c
-  → func__App_Start() → func__App_Init()
-  → func__Rtos_Start() → func__TaskUi() → func__Ui_Init() → explicit snapshot calls
 ```
+task_ui.c (10ms) → GetSnapshot(&snap) → Ui_Tick(&snap)
+  ├─ !valid → safe-off + resets (green/ yellow/ stable)
+  ├─ update flag v_bat 21000/21200
+  ├─ update input 20/21V + overvoltage 27/28V
+  ├─ InputOverVoltage → red 50% + buzzer 10s
+  ├─ BatteryRun(v_bat stable) → green phase-preserved (stable) + buzzer 4 bands (0% 10s once)
+  ├─ Charging(v_bat raw) → green steady + yellow phase-preserved
+  └─ InputOk → green steady (non-blocking)
+     └── Buzzer_Tick → BspGpio_Write → BSP_GPIO_*
+```
+

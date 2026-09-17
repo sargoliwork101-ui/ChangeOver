@@ -287,6 +287,34 @@
  */
 #define UI_BATTERY_RUN_BEEP_GAP_MS 100u
 
+/* ==================== Battery percent hysteresis / هیسترزیس درصد باتری ==================== */
+
+/**
+ * @brief  [EN] Hysteresis for BatteryRun display/timing percent, in percent points.
+ *         Stable percent changes only when raw percent differs by at least 2.
+ *         Jitter 56↔57 or 57↔58 does not change blink timing; 57→55 or 57→59 does.
+ *         This hysteresis applies only to BatteryRun green blink and buzzer timing, not to input, overvoltage or Low Battery Alarm.
+ *         [FA] هیسترزیس درصد نمایش/زمان‌بندی BatteryRun، بر حسب واحد درصد.
+ *         درصد پایدار فقط khi اختلاف درصد خام و پایدار حداقل 2 باشد تغییر می‌کند.
+ */
+#define UI_BATTERY_PERCENT_HYSTERESIS_PERCENT 2u
+
+/**
+ * @brief  [EN] Raw percent threshold to exit the critical 0% state.
+ *         While stable is 0, it stays 0 until raw reaches at least 2; then it moves to 1 first, not directly to 2.
+ *         [FA] آستانه درصد خام برای خروج از حالت بحرانی 0 درصد.
+ *         تا وقتی پایدار 0 است، تا raw حداقل 2 نشده روی 0 می‌ماند؛ پس از خروج ابتدا به 1 می‌رود.
+ */
+#define UI_BATTERY_ZERO_EXIT_THRESHOLD        2u
+
+/**
+ * @brief  [EN] Raw percent threshold to exit the 1% state upward.
+ *         While stable is 1: raw==0 → 0, raw>=3 → 2, otherwise keep 1. Prevents chatter between 0 and 1.
+ *         [FA] آستانه خروج از حالت 1 درصد به سمت بالا.
+ *         وقتی پایدار 1 است: raw 0 → 0، حداقل 3 → 2، otherwise 1 حفظ شود.
+ */
+#define UI_BATTERY_ONE_EXIT_THRESHOLD         3u
+
 /* ==================== Low Battery Alarm / آلارم باتری کم ==================== */
 
 /**
