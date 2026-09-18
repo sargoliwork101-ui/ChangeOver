@@ -33,7 +33,7 @@ Firmware/Bsp/Src/*.c       ← پورت برد فعلی، HAL و main.h خصوص
 | `BSP_ADC_CHANNEL_12V_BAT` | PA5 / ADC1_IN5 | باتری ۱۲V، mV |
 | `BSP_ADC_CHANNEL_CURRENT2` | PA7 / ADC1_IN7 | جریان شارژ ۲، mA |
 
-`bsp_adc.c` از ADC1 با scan پنج‌کاناله، DMA1 Channel1، circular buffer دو فریمی و خواندن نیمهٔ کامل استفاده می‌کند. `bsp_measurement.c` مرجع ۳۳۰۰mV، ADC دوازده‌بیتی، تقسیم‌های مقاومتی ۲۴V/۱۲V، شانت ۱۰mΩ و gain برابر ۱۰۱ را نگه می‌دارد.
+`bsp_adc.c` از ADC1 با scan پنج‌کاناله، DMA1 Channel1، circular buffer دو فریمی و خواندن نیمهٔ کامل استفاده می‌کند. `bsp_measurement.c` مرجع ۳۳۰۰mV، ADC دوازده‌بیتی، تقسیم‌های مقاومتی ۲۴V/۱۲V و زنجیر جریان را نگه می‌دارد: شانت ۱۰mΩ (R64/R68)، گین تفاضلی LM358 برابر ۱۰۰ (R77/R73 = 100K/1K) و تقسیم ورودی سمت MCU برابر 1K سری روی 10K به زمین (R39/R41 و R40/R42) که در تبدیل جریان جبران می‌شود. تست عددی این زنجیر در `tools/host_test_bsp_measurement.c` است و با `bash tools/check_firmware_syntax.sh` روی Host اجرا می‌شود.
 
 ## نگاشت GPIO و EXTI
 
@@ -46,8 +46,8 @@ Firmware/Bsp/Src/*.c       ← پورت برد فعلی، HAL و main.h خصوص
 | `BSP_GPIO_LED_GREEN` | PB10 | خروجی | active-high، Low |
 | `BSP_GPIO_BATTERY_SWITCH` | PB5 | خروجی | active-low، High |
 | `BSP_GPIO_RELAY` | PB7 | خروجی | active-high، Low |
-| `BSP_GPIO_PROTECT_BATTERY` | PB11 | خروجی | active-low، High |
-| `BSP_GPIO_INPUT_24V_PRESENT` | PB4 | ورودی + EXTI | تشخیص منطقی سطح High |
+| `BSP_GPIO_PROTECT_BATTERY` | PB11 | خروجی | active-high، High در شروع یعنی قطع باتری (Q17 روشن و GATE_ON_OFF پایین) |
+| `BSP_GPIO_INPUT_24V_PRESENT` | PB4 | ورودی + EXTI | سطح الخام پشت تقسیم 68K/6.8K است و بین حدود 9V تا 23V ورودی در بازهٔ تعریف‌نشدهٔ GPIO می‌ماند؛ بنابراین فقط به‌عنوان رویداد لبهٔ EXTI معتبر است و پرچم حضور ورودی snapshot از ولتاژ ADC با هیسترزیس ساخته می‌شود |
 | `BSP_GPIO_JITTER1` | PB2 | ورودی + EXTI | خروجی LM393 active-low، فقط falling معتبر است |
 | `BSP_GPIO_JITTER2` | PB6 | ورودی + EXTI | خروجی LM393 active-low، فقط falling معتبر است |
 

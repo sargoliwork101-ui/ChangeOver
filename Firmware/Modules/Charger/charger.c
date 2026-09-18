@@ -60,7 +60,6 @@ typedef struct
 static charger_channel_state_t CHARGER_CHANNEL_T__G__State[2];
 static bool BOOL__G__ChargerInitialized;
 static bool BOOL__G__RelayOpen;
-static uint32_t UINT32_T__G__RelaySettleDeadline;
 
 #define CHG_NO_CHANNEL 0xFFu
 static uint8_t UINT8_T__G__RetryChannel;
@@ -154,7 +153,6 @@ static void func__Charger_SafeIdle(void)
     func__BspPwm_StopAll();
     func__BspGpio_Write(BSP_GPIO_RELAY, false);
     BOOL__G__RelayOpen = false;
-    UINT32_T__G__RelaySettleDeadline = 0u;
     UINT8_T__G__RetryChannel = CHG_NO_CHANNEL;
 
     for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
@@ -189,7 +187,6 @@ static void func__Charger_FinalDisconnect(void)
     func__BspPwm_StopAll();
     func__BspGpio_Write(BSP_GPIO_RELAY, true);
     BOOL__G__RelayOpen = true;
-    UINT32_T__G__RelaySettleDeadline = 0u;
 
     for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
     {
@@ -340,14 +337,16 @@ static void func__Charger_StopAllPwm(void)
 }
 
 /* ==================== Relay helpers ==================== */
-
-static void func__Charger_CloseTransformerInput(uint32_t uint32_t__nowTick)
-{
-    func__BspGpio_Write(BSP_GPIO_RELAY, false);
-    BOOL__G__RelayOpen = false;
-    UINT32_T__G__RelaySettleDeadline =
-        uint32_t__nowTick + func__Rtos_MillisecondsToTicks(CHG_RELAY_SETTLE_MS);
-}
+/* [EN] The board relay is a form-NC protect relay: coil off (logical false)
+ *      keeps the transformer input connected through the NC contact, coil on
+ *      (logical true) disconnects it. SafeIdle therefore de-energizes the coil
+ *      and FinalDisconnect energizes it; no separate "close" step exists and
+ *      the former dead close helper and settle deadline were removed.
+ * [FA] رله برد از نوع حفاظتی با کنتاکت NC است: کویل خاموش (منطقی false) ورودی
+ *      ترانس را از طریق کنتاکت NC وصل نگه می‌دارد و کویل روشن (منطقی true) آن را
+ *      قطع می‌کند. بنابراین SafeIdle کویل را بی‌انرژی و FinalDisconnect آن را
+ *      انرژی‌دار می‌کند؛ گام جداگانه «وصل» وجود ندارد و تابع بدون استفادهٔ
+ *      قبلی و مهلت settle حذف شدند. */
 
 /* ==================== Time helpers ==================== */
 
@@ -749,7 +748,6 @@ void func__Charger_Init(void)
 
     BOOL__G__ChargerInitialized = true;
     BOOL__G__RelayOpen = false;
-    UINT32_T__G__RelaySettleDeadline = 0u;
     UINT8_T__G__RetryChannel = CHG_NO_CHANNEL;
     BOOL__G__InputReady = false;
     BOOL__G__BringupInputLockout = false;

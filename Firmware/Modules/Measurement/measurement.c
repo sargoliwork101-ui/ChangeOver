@@ -2,12 +2,12 @@
  * @file    measurement.c
  * @brief   [EN] ADC counts to engineering units (mV / mA), step by step, with
  *              the latest snapshot shared to the other tasks. Runs inside the
- *              measurement task (RTOS): only a few conversions + one GPIO read,
- *              then it yields - no HAL_Delay anywhere.
+ *              measurement task (RTOS): only a few conversions plus one
+ *              hysteresis update, then it yields - no HAL_Delay anywhere.
  *          [FA] شمارش ADC به واحد مهندسی (mV / mA)، گام‌به‌گام، با آخرین
  *              snapshot مشترک برای تسک‌های دیگر. داخل تسک اندازه‌گیری اجرا
- *              می‌شود (RTOS): فقط چند تبدیل + یک خواندن GPIO و بعد yield —
- *              هیچ‌جا HAL_Delay ندارد.
+ *              می‌شود (RTOS): فقط چند تبدیل و یک به‌روزرسانی هیسترزیس و بعد
+ *              yield — هیچ‌جا HAL_Delay ندارد.
  *
  * @note    [EN] Divider/gain values come from the schematic and are private
  *              board calibration constants in bsp_measurement.c. The
@@ -27,7 +27,6 @@
 #include "measurement.h"
 #include "bsp_adc.h"
 #include "bsp_measurement.h"
-#include "bsp_gpio.h"
 #include "cmsis_os2.h"
 #include <stddef.h>
 
@@ -46,6 +45,14 @@ static volatile measurement_snapshot_t MEASUREMENT_SNAPSHOT_T__G__Snap;
 static uint8_t UINT8_T__G__MeasurementWarmupFrameCount;
 static uint32_t UINT32_T__G__Current1FilteredMa;
 static uint32_t UINT32_T__G__Current2FilteredMa;
+
+/* [EN] Latched input-presence state built from the measured input voltage with
+ *      hysteresis (MEASUREMENT_INPUT_PRESENT_ON_MV / _OFF_MV). Written only by
+ *      the measurement task inside Run.
+ * [FA] وضعیت قفل‌شدهٔ حضور ورودی که از ولتاژ اندازه‌گیری‌شدهٔ ورودی با هیسترزیس
+ *      (MEASUREMENT_INPUT_PRESENT_ON_MV / _OFF_MV) ساخته می‌شود. فقط توسط تسک
+ *      measurement داخل Run نوشته می‌شود. */
+static bool BOOL__G__InputPresentDerived;
 
 /* ==================== Measurement_FilterCurrent / فیلتر جریان ==================== */
 
@@ -94,6 +101,45 @@ volatile uint32_t UINT32_T__G__MeasCurrent2Ma = 0u;
 volatile bool BOOL__G__MeasInputPresent = false;
 volatile bool BOOL__G__MeasDataValid = false;
 
+/* ==================== Measurement Update Input Presence ==================== */
+
+/**
+ * @brief  [EN] Latch input presence from the converted input voltage with a
+ *              21 V / 20 V hysteresis band and return the latched state. The
+ *              board PB4 level is intentionally not used: behind the 68K/6.8K
+ *              divider it sits in the STM32 undefined input band for roughly
+ *              9 V..23 V of input, so it chatters exactly where the changeover
+ *              and UI decisions are made.
+ *         [FA] حضور ورودی را از ولتاژ تبدیل‌شدهٔ ورودی با هیسترزیس 21V/20V قفل
+ *              می‌کند و وضعیت قفل‌شده را برمی‌گرداند. عمداً از سطح PB4 استفاده
+ *              نمی‌شود: پشت تقسیم 68K/6.8K، برای ورودی حدود 9V تا 23V داخل
+ *              بازهٔ تعریف‌نشدهٔ ورودی STM32 می‌افتد و دقیقاً جایی پرپر می‌زند
+ *              که تصمیم‌های changeover و UI گرفته می‌شود.
+ * @param  uint32_t__inputVoltageMv [EN] Converted input voltage in mV,
+ *                                    0..40000 / ولتاژ تبدیل‌شدهٔ ورودی بر حسب mV
+ * @return bool [EN] Latched input presence / حضور قفل‌شدهٔ ورودی
+ */
+static bool func__Measurement_UpdateInputPresence(uint32_t uint32_t__inputVoltageMv)
+{
+    if ((BOOL__G__InputPresentDerived == false) &&
+        (uint32_t__inputVoltageMv >= MEASUREMENT_INPUT_PRESENT_ON_MV))
+    {
+        BOOL__G__InputPresentDerived = true;
+    }
+    else if ((BOOL__G__InputPresentDerived == true) &&
+             (uint32_t__inputVoltageMv <= MEASUREMENT_INPUT_PRESENT_OFF_MV))
+    {
+        BOOL__G__InputPresentDerived = false;
+    }
+    else
+    {
+        /* [EN] Inside the hysteresis band the previous state is kept.
+           [FA] داخل بازهٔ هیسترزیس وضعیت قبلی حفظ می‌شود. */
+    }
+
+    return BOOL__G__InputPresentDerived;
+}
+
 /* ==================== Measurement Init ==================== */
 
 /**
@@ -109,6 +155,7 @@ void func__Measurement_Init(void)
     UINT8_T__G__MeasurementWarmupFrameCount = 0u;
     UINT32_T__G__Current1FilteredMa = 0u;
     UINT32_T__G__Current2FilteredMa = 0u;
+    BOOL__G__InputPresentDerived = false;
 
     UINT32_T__G__MeasInputVoltageMv = 0u;
     UINT32_T__G__MeasBattery24Mv = 0u;
@@ -273,12 +320,19 @@ void func__Measurement_Run(void)
             func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]));
     uint32_t__current2Ma = UINT32_T__G__Current2FilteredMa;
 
-    /* [EN] The BSP exposes the board input-detect signal as a logical GPIO;
-       polarity and physical pin mapping remain inside the board port.
-       [FA] BSP سیگنال تشخیص ورودی برد را به‌صورت GPIO منطقی ارائه می‌کند؛
-       قطبیت و نگاشت پایهٔ فیزیکی داخل پورت برد می‌ماند. */
+    /* [EN] Input presence is latched from the converted input voltage with the
+       documented hysteresis band, not from the PB4 level: on this board PB4
+       sits behind the 68K/6.8K divider and enters the STM32 undefined input
+       band while the input is between about 9 V and 23 V, which is exactly the
+       sag region the changeover and UI decisions care about. PB4 remains
+       available as an EXTI edge event through the BSP.
+       [FA] حضور ورودی از ولتاژ تبدیل‌شدهٔ ورودی با بازهٔ هیسترزیس مستند قفل
+       می‌شود، نه از سطح PB4: روی این برد PB4 پشت تقسیم 68K/6.8K است و وقتی
+       ورودی بین حدود 9V تا 23V است داخل بازهٔ تعریف‌نشدهٔ ورودی STM32
+       می‌افتد؛ دقیقاً همان ناحیهٔ افتی که تصمیم‌های changeover و UI به آن
+       وابسته‌اند. PB4 به‌عنوان رویداد لبهٔ EXTI از طریق BSP در دسترس می‌ماند. */
     bool__inputPresent =
-        func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT);
+        func__Measurement_UpdateInputPresence(uint32_t__inputVoltageMv);
 
     /* [EN] Publish globals and snapshot while the RTOS scheduler is locked.
        The snapshot valid bit is written last; this uses CMSIS-RTOS2 rather

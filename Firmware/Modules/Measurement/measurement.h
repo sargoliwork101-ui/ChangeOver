@@ -75,6 +75,41 @@ void func__Measurement_Init(void);
  *         [FA] ولتاژ ورودی و حضور ورودی روی اعتبار ADC اثر ندارند.
  */
 #define MEASUREMENT_WARMUP_FRAME_COUNT 3u
+
+/* ==================== Input presence thresholds / آستانه‌های حضور ورودی ==================== */
+
+/**
+ * @brief  [EN] Input voltage at or above which the shared snapshot reports the
+ *              24 V input as present, in millivolts. Range 0..40000 mV; effect:
+ *              snapshot.input_present and BOOL__G__MeasInputPresent latch true.
+ *              The presence flag is derived from the measured input voltage,
+ *              not from the PB4 level: on the current schematic PB4 sits behind
+ *              the 68K/6.8K divider, so between about 9 V and 23 V of input it
+ *              lies inside the STM32 undefined input band and cannot be trusted.
+ *         [FA] ولتاژ ورودی که در آن یا بالاتر، snapshot حضور ورودی ۲۴ ولت را
+ *              true گزارش می‌کند، بر حسب میلی‌ولت. بازه 0..40000 mV؛ اثر:
+ *              snapshot.input_present و BOOL__G__MeasInputPresent روی true قفل
+ *              می‌شوند. پرچم حضور از ولتاژ اندازه‌گیری‌شده ورودی ساخته می‌شود،
+ *              نه از سطح PB4: در شماتیک فعلی PB4 پشت تقسیم 68K/6.8K است و بین
+ *              حدود 9V تا 23V ورودی داخل بازهٔ تعریف‌نشدهٔ ورودی STM32 می‌افتد
+ *              و قابل اعتماد نیست.
+ */
+#define MEASUREMENT_INPUT_PRESENT_ON_MV   21000u
+
+/**
+ * @brief  [EN] Input voltage at or below which the shared snapshot reports the
+ *              24 V input as absent, in millivolts. Range 0..40000 mV; effect:
+ *              snapshot.input_present and BOOL__G__MeasInputPresent latch false.
+ *              The 1 V gap to MEASUREMENT_INPUT_PRESENT_ON_MV is the hysteresis
+ *              band that keeps a sagging input from chattering the flag.
+ *         [FA] ولتاژ ورودی که در آن یا پایین‌تر، snapshot حضور ورودی ۲۴ ولت را
+ *              false گزارش می‌کند، بر حسب میلی‌ولت. بازه 0..40000 mV؛ اثر:
+ *              snapshot.input_present و BOOL__G__MeasInputPresent روی false قفل
+ *              می‌شوند. فاصلهٔ ۱ ولتی با MEASUREMENT_INPUT_PRESENT_ON_MV بازهٔ
+ *              هیسترزیس است و از پرپرزدن پرچم هنگام افت ورودی جلوگیری می‌کند.
+ */
+#define MEASUREMENT_INPUT_PRESENT_OFF_MV  20000u
+
 void func__Measurement_Run(void);
 
 /* ==================== Measurement Get Snapshot ==================== */

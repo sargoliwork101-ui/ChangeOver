@@ -27,10 +27,22 @@
 #define BSP_MEASUREMENT_DIV12_TOP_OHMS   34200u
 #define BSP_MEASUREMENT_DIV12_BOTTOM_OHMS 6800u
 
-/* [EN] Current sense: 10mOhm shunt and LM358 gain 101.
- *      [FA] سنجش جریان: شانت ۱۰mΩ و گین LM358 برابر ۱۰۱. */
+/* [EN] Current sense chain of the current schematic, in signal order:
+ *      1) R64/R68 = 10 mOhm shunt in the flyback primary return (RES_SHUNT).
+ *      2) U5 LM358 difference amplifier, gain = R77/R73 = 100K/1K = 100.
+ *      3) MCU-side input divider R39/R41 = 1K series and R40/R42 = 10K to GND,
+ *         so the ADC pin sees only bottom/(top+bottom) = 10/11 of the amplifier
+ *         output; this divider MUST be undone here or every current reads low.
+ *      [FA] زنجیر سنجش جریان شماتیک فعلی به ترتیب سیگنال:
+ *      ۱) شانت R64/R68 برابر ۱۰mΩ در مسیر برگشت اولیه فلای‌بک (RES_SHUNT).
+ *      ۲) تقویت‌کننده تفاضلی U5 LM358 با گین R77/R73 = 100K/1K = ۱۰۰.
+ *      ۳) تقسیم ورودی سمت MCU با R39/R41 سری 1K و R40/R42 برابر 10K به GND؛
+ *         پس پایه ADC فقط 10/11 خروجی تقویت‌کننده را می‌بیند و این تقسیم باید
+ *         اینجا جبران شود وگرنه همه جریان‌ها کمتر خوانده می‌شوند. */
 #define BSP_MEASUREMENT_SHUNT_MOHMS          10u
-#define BSP_MEASUREMENT_AMP_GAIN            101u
+#define BSP_MEASUREMENT_AMP_GAIN            100u
+#define BSP_MEASUREMENT_CURRENT_DIV_TOP_OHMS   1000u
+#define BSP_MEASUREMENT_CURRENT_DIV_BOTTOM_OHMS 10000u
 #define BSP_MEASUREMENT_CURRENT_MA_SCALE  1000u
 /* [EN] Provisional calibration until a zero-current and known-current board
  *      measurement is recorded. Do not treat these defaults as final. */
@@ -107,10 +119,12 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
 /* ==================== BspMeasurement_CurrentCountsToMa ==================== */
 uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts)
 {
-    uint64_t uint64_t__adcVoltageNumerator;
+    uint64_t uint64_t__adcPinMvNumerator;
+    uint64_t uint64_t__ampOutputMvNumerator;
     uint64_t uint64_t__currentNumerator;
     uint64_t uint64_t__currentDenominator;
     uint32_t uint32_t__calibratedCounts;
+    uint32_t uint32_t__adcPinMv;
     uint32_t uint32_t__currentMa;
 
     if ((uint32_t)uint16_t__counts > BSP_MEASUREMENT_CURRENT_OFFSET_COUNTS)
@@ -123,14 +137,31 @@ uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts)
         uint32_t__calibratedCounts = 0u;
     }
 
-    uint64_t__adcVoltageNumerator =
+    /* [EN] Step 1: voltage at the ADC pin, before any board scaling.
+       [FA] گام ۱: ولتاژ روی پایهٔ ADC، پیش از هر مقیاس برد. */
+    uint64_t__adcPinMvNumerator =
         (uint64_t)uint32_t__calibratedCounts * BSP_MEASUREMENT_VREF_MV;
-    uint64_t__currentNumerator =
-        uint64_t__adcVoltageNumerator * BSP_MEASUREMENT_CURRENT_MA_SCALE;
+    uint32_t__adcPinMv =
+        (uint32_t)(uint64_t__adcPinMvNumerator / BSP_MEASUREMENT_ADC_FULL_SCALE);
+
+    /* [EN] Step 2: undo the 1K/10K MCU input divider to recover the amplifier
+       output. Step 3: undo the LM358 gain to recover the shunt voltage.
+       Step 4: shunt voltage over shunt resistance gives the current.
+       All steps are kept in one 64-bit fraction to avoid truncation loss.
+       [FA] گام ۲: تقسیم ورودی 1K/10K سمت MCU برگردانده می‌شود تا خروجی
+       تقویت‌کننده به دست آید. گام ۳: گین LM358 برگردانده می‌شود تا ولتاژ شانت
+       به دست آید. گام ۴: ولتاژ شانت تقسیم بر مقاومت شانت جریان را می‌دهد.
+       همه گام‌ها در یک کسر ۶۴ بیتی نگه داشته می‌شوند تا خطای برش نداشته باشیم. */
+    uint64_t__ampOutputMvNumerator =
+        (uint64_t)uint32_t__adcPinMv *
+        ((uint64_t)BSP_MEASUREMENT_CURRENT_DIV_TOP_OHMS +
+         (uint64_t)BSP_MEASUREMENT_CURRENT_DIV_BOTTOM_OHMS) *
+        BSP_MEASUREMENT_CURRENT_MA_SCALE;
+    uint64_t__currentNumerator = uint64_t__ampOutputMvNumerator;
     uint64_t__currentDenominator =
-        (uint64_t)BSP_MEASUREMENT_ADC_FULL_SCALE *
-        BSP_MEASUREMENT_AMP_GAIN *
-        BSP_MEASUREMENT_SHUNT_MOHMS;
+        (uint64_t)BSP_MEASUREMENT_CURRENT_DIV_BOTTOM_OHMS *
+        (uint64_t)BSP_MEASUREMENT_AMP_GAIN *
+        (uint64_t)BSP_MEASUREMENT_SHUNT_MOHMS;
 
     uint32_t__currentMa = (uint32_t)(uint64_t__currentNumerator /
                                      uint64_t__currentDenominator);

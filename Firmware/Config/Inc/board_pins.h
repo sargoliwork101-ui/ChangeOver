@@ -52,10 +52,20 @@
 #define PIN_PROTECT_BATT_PORT   GPIOB
 #define PIN_PROTECT_BATT_PIN    GPIO_PIN_11     /* PB11 MCU_LOW_BAT / MCU_PROTECT_BATT */
 
-/* [EN] Logical output polarity is board data, not module data. BAT_SWITCH and
- *      PROTECT_BATT are active-low on the confirmed schematic.
- * [FA] قطبیت خروجی منطقی دادهٔ برد است، نه دادهٔ ماژول. BAT_SWITCH و
- *      PROTECT_BATT در شماتیک تأییدشده active-low هستند. */
+/* [EN] Logical output polarity is board data, not module data.
+ *      BAT_SWITCH (MCU_CONTROL_PS) is active-low: MCU pin Low turns Q1/Q2/Q3 on
+ *      and connects the battery to the power stage, pin High switches it off.
+ *      PROTECT_BATT (LOW_BAT_MICRO) is active-high: MCU pin High turns Q17 on,
+ *      pulls GATE_ON_OFF low and disables the battery pass FETs Q15/Q16, exactly
+ *      like the input-present transistor Q11 does; pin Low releases the cut.
+ *      The startup safe level of PROTECT_BATT is High, i.e. battery cut.
+ * [FA] قطبیت خروجی منطقی دادهٔ برد است، نه دادهٔ ماژول.
+ *      BAT_SWITCH (MCU_CONTROL_PS) active-low است: پایهٔ MCU_LOW ترانزیستورهای
+ *      Q1/Q2/Q3 را روشن و باتری را به مرحله توان وصل می‌کند و پایهٔ High آن را
+ *      قطع می‌کند. PROTECT_BATT (LOW_BAT_MICRO) active-high است: پایهٔ MCU_High
+ *      Q17 را روشن می‌کند، GATE_ON_OFF را پایین می‌آورد و FETهای مسیر باتری
+ *      Q15/Q16 را خاموش می‌کند، دقیقاً مانند Q11 حضور ورودی؛ پایهٔ Low قطع را
+ *      آزاد می‌کند. سطح امن شروع PROTECT_BATT برابر High یعنی قطع باتری. */
 #define PIN_BUZZER_ACTIVE_HIGH       1u
 #define PIN_ESP_CHPD_ACTIVE_HIGH     1u
 #define PIN_LED_R_ACTIVE_HIGH        1u
@@ -63,7 +73,7 @@
 #define PIN_LED_G_ACTIVE_HIGH        1u
 #define PIN_BAT_SWITCH_ACTIVE_HIGH   0u
 #define PIN_RELAY_ACTIVE_HIGH        1u
-#define PIN_PROTECT_BATT_ACTIVE_HIGH 0u
+#define PIN_PROTECT_BATT_ACTIVE_HIGH 1u
 
 /* ==================== Digital inputs / ورودی‌های دیجیتال ==================== */
 /* [EN] Schematic LM393 outputs are open-collector active-low: high is the
@@ -84,10 +94,14 @@
 #define PIN_RX_PIN              GPIO_PIN_10     /* PA10 MCU_RX <- ESP_TX */
 
 /* ==================== Safe startup levels / سطوح امن شروع ==================== */
-/* [EN] Active-high loads are kept low; active-low battery controls are kept
- *      high. The battery path is therefore forced off before product tasks.
- * [FA] بارهای active-high پایین و کنترل‌های active-low باتری بالا نگه داشته
- *      می‌شوند؛ بنابراین مسیر باتری پیش از اجرای تسک‌های محصول خاموش است. */
+/* [EN] Active-high loads are kept low; both battery path controls start in
+ *      their disconnect level: BAT_SWITCH High (switch off) and PROTECT_BATT
+ *      High (battery cut asserted). The battery path is therefore forced off
+ *      before product tasks run.
+ * [FA] بارهای active-high پایین نگه داشته می‌شوند و هر دو کنترل مسیر باتری از
+ *      سطح قطع شروع می‌کنند: BAT_SWITCH برابر High (کلید خاموش) و PROTECT_BATT
+ *      برابر High (قطع باتری فعال)؛ بنابراین مسیر باتری پیش از اجرای تسک‌های
+ *      محصول خاموش است. */
 #define PIN_SAFE_BUZZER_HIGH        0u
 #define PIN_SAFE_ESP_CHPD_HIGH      0u
 #define PIN_SAFE_LED_R_HIGH         0u

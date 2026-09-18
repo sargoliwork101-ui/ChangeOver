@@ -38,7 +38,7 @@
 | نام | کار |
 |---|---|
 | `func__Measurement_Init` | snapshot را صفر می‌کند؛ `valid = false` |
-| `func__Measurement_Run` | یک فریم normalized را از BSP می‌گیرد و به mV/mA تبدیل می‌کند؛ `input_present` را از سیگنال منطقی BSP می‌خواند؛ پس از سه فریم کامل و پایدار `valid = true` می‌شود |
+| `func__Measurement_Run` | یک فریم normalized را از BSP می‌گیرد و به mV/mA تبدیل می‌کند؛ `input_present` را با هیسترزیس `MEASUREMENT_INPUT_PRESENT_ON_MV`/`_OFF_MV` (21000/20000) از ولتاژ تبدیل‌شدهٔ ورودی قفل می‌کند، نه از سطح PB4؛ پس از سه فریم کامل و پایدار `valid = true` می‌شود |
 | `func__Measurement_GetSnapshot` | کپی آخرین snapshot؛ `NULL` یا نامعتبر → `false` |
 | `func__Measurement_CountsToMv` | خام استاندارد → mV پایه، با کالیبراسیون BSP برد |
 | `func__Measurement_V24CountsToMv` | خام استاندارد → mV منبع ۲۴، با تقسیم برد در BSP |
@@ -63,7 +63,7 @@
 | `UINT32_T__G__MeasBatteryHighMv` | mV | `VHIGH = V24-MID` برای Trans1 |
 | `UINT32_T__G__MeasCurrent1Ma` | mA | جریان شارژ منطقی کانال ۱ |
 | `UINT32_T__G__MeasCurrent2Ma` | mA | جریان شارژ منطقی کانال ۲ |
-| `BOOL__G__MeasInputPresent` | — | سیگنال منطقی حضور ورودی ۲۴ ولت |
+| `BOOL__G__MeasInputPresent` | — | حضور قفل‌شدهٔ ورودی ۲۴ ولت از ولتاژ ADC با هیسترزیس 21000/20000 |
 | `BOOL__G__MeasDataValid` | — | true پس از سه فریم کامل و پایدار ADC؛ مستقل از وجود ورودی ۲۴ ولت |
 
 `snapshot` (`func__Measurement_GetSnapshot`) هم همان داده + `valid` را یک‌جا کپی می‌دهد؛ فیلدهای `v_bat_low_mv` و `v_bat_high_mv` برای دو شارژر مستقل هستند و `v_bat24_mv` فقط مانیتور پک است.
@@ -79,7 +79,7 @@
 | `BSP_ADC_CHANNEL_24V_BAT` | mV | باتری منطقی ۲۴ ولت |
 | `BSP_ADC_CHANNEL_12V_BAT` | mV | باتری منطقی ۱۲ ولت |
 | `BSP_ADC_CHANNEL_CURRENT2` | mA | جریان شارژ منطقی کانال ۲ |
-| `BSP_GPIO_INPUT_24V_PRESENT` | bool | حضور منطقی ورودی ۲۴ ولت |
+| (سطح خام PB4) | — | دیگر مصرف نمی‌شود؛ پشت تقسیم 68K/6.8K بین حدود 9V تا 23V ورودی در بازهٔ تعریف‌نشدهٔ GPIO است و فقط به‌عنوان رویداد EXTI در BSP می‌ماند |
 
 جزئیات اتصال فیزیکی برد فعلی در `CubeMX/README.md` و پیاده‌سازی BSP قرار دارد؛ تغییر MCU یا برد نباید این ماژول را مجبور به تغییر کند.
 
@@ -103,7 +103,7 @@ task_protection.c / task_control.c / task_comm.c  (بعداً: func__Measurement
 ```text
 measurement.c
   bsp_adc.h / bsp_adc.c   func__BspAdc_GetRaw
-  bsp_gpio.h              BSP_GPIO_INPUT_24V_PRESENT (سیگنال منطقی حضور ورودی)
+  (حضور ورودی از خود ولتاژ ورودی با هیسترزیس ساخته می‌شود؛ PB4 فقط رویداد EXTI در BSP است)
   app_types.h             measurement_snapshot_t
 task_measurement.c
   bsp_adc.h               func__BspAdc_Init / func__BspAdc_Start

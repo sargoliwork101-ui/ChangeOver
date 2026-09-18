@@ -6,8 +6,14 @@
  * @note    [EN] This module uses ONLY: snapshot.valid, snapshot.v_bat24_mv,
  *              snapshot.input_present, fault_mask, BOOL__G__UiBatteryAlarmIssued.
  *              Time conversion uses rtos_time.h only, tick=1ms assumption is forbidden.
- *              Only BSP_GPIO_PROTECT_BATTERY is allowed; PB5/PB7 are forbidden.
+ *              This module owns the two logical power-path outputs of the board:
+ *              BSP_GPIO_PROTECT_BATTERY (battery cut) and BSP_GPIO_BATTERY_SWITCH
+ *              (MCU control PSU feed); no physical pin names enter this module.
  *          [FA] این ماژول فقط از valid، v_bat24_mv، input_present، fault_mask و فلگ UI استفاده می‌کند.
+ *              تبدیل زمان فقط با rtos_time.h و بدون فرض tick=1ms. این ماژول مالک
+ *              دو خروجی منطقی مسیر توان برد است: BSP_GPIO_PROTECT_BATTERY (قطع
+ *              باتری) و BSP_GPIO_BATTERY_SWITCH (تغذیه PSU کنترل MCU)؛ هیچ نام
+ *              پایهٔ فیزیکی وارد این ماژول نمی‌شود.
  */
 
 #ifndef CHANGEOVER_H
@@ -19,8 +25,12 @@
 /* ==================== Functions ==================== */
 
 /**
- * @brief  [EN] Start in BOOT, timers inactive, protect deasserted (safe).
- *         [FA] از حالت BOOT شروع می‌کند.
+ * @brief  [EN] Start in BOOT with timers inactive, mirror the BSP safe state on
+ *              both power-path outputs (protect asserted = battery cut, battery
+ *              switch off) and keep the software flags equal to those levels.
+ *         [FA] از حالت BOOT با تایمرهای غیرفعال شروع می‌کند، وضعیت امن BSP را روی
+ *              هر دو خروجی مسیر توان آینه می‌کند (حفاظت فعال = قطع باتری، کلید
+ *              باتری خاموش) و پرچم‌های نرم‌افزار را برابر همان سطح‌ها نگه می‌دارد.
  */
 void func__Changeover_Init(void);
 
@@ -57,9 +67,12 @@ void func__Changeover_Init(void);
 /* ==================== Changeover_Evaluate / ارزیابی Changeover ==================== */
 
 /**
- * @brief  [EN] Evaluate next system state from snapshot and faults and drive
- *              BSP_GPIO_PROTECT_BATTERY only. Uses rtos_time for 3000ms.
- *         [FA] حالت بعدی سیستم را از نمونه و خطا حساب و فقط پایه منطقی باتری را می‌زند.
+ * @brief  [EN] Evaluate next system state from snapshot and faults, drive the
+ *              protect output and apply the battery power switch policy for the
+ *              evaluated state. Uses rtos_time for 3000ms.
+ *         [FA] حالت بعدی سیستم را از نمونه و خطا حساب می‌کند، خروجی حفاظت را
+ *              می‌راند و سیاست کلید توان باتری را برای حالت ارزیابی‌شده اعمال
+ *              می‌کند. برای 3000ms از rtos_time استفاده می‌کند.
  * @param  measurement_snapshot_t__snap [EN] Snapshot from Measurement, may be NULL / نمونه اندازه‌گیری
  * @param  fault_mask_t__faults [EN] Fault bits from Fault module / بیت‌های خطا
  * @return app_state_t [EN] Next system state / حالت بعدی

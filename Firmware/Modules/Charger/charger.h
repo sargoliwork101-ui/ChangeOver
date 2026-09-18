@@ -150,7 +150,6 @@
 #define CHG_DUTY_MAX_PERMILLE         1000u
 #define CHG_ABSORB_HOLD_MS          600000u
 #define CHG_JIT_LOCKOUT_MS            3000u
-#define CHG_RELAY_SETTLE_MS            100u
 /* [EN] 2000 mV is battery-sense validity for the same channel, NOT a charge
  * setpoint. For Trans2 it is VLOW = MID - GND. A free resistor alone is not
  * a valid battery simulator; only an electronic load with voltage clamp or a

@@ -44,7 +44,7 @@
 
 | نام | کار |
 |---|---|
-| `func__Charger_Init` | صفرکردن هر دو PWM، بازکردن NC و صفرکردن stateهای مستقل |
+| `func__Charger_Init` | صفرکردن هر دو PWM، بی‌انرژی‌کردن کویل (کنتاکت NC وصل می‌ماند) و صفرکردن stateهای مستقل |
 | `func__Charger_Evaluate` | اجرای یک policy عمومی برای هر کانال نصب‌شده با duty جدا |
 | `func__Charger_RegulateChannel` | Bulk/Absorb/Float، current limit و افزایش duty در جریان کم برای یک کانال |
 | `func__Charger_HandleJitTrip` | PWM صفر، relay باز، lockout و برنامه‌ریزی retry کانال تریپ‌کرده |
