@@ -135,8 +135,6 @@
 #define CHG_BULK_CURRENT_MAX_MA       675u
 #define CHG_CURRENT_LIMIT_MA           675u
 #define CHG_INPUT_VALID_MV           22000u
-/* External current-limited source setting for the first board test only. */
-#define CHG_FIRST_BOARD_TEST_MAX_MA    100u
 #define CHG_DUTY_START_PERMILLE        10u
 #define CHG_DUTY_STEP_PERMILLE          5u
 #define CHG_DUTY_RETRY_SECOND_MAX       100u

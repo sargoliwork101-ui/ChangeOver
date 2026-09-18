@@ -114,6 +114,8 @@ def test_transformer_known_not_bypassable_bringup_only_when_zero():
           "bring-up first stage max duty must be documented (20 permille = 2%)")
     check("CHG_BRINGUP_TEST_SOURCE_LIMIT_MA" in text_h and re.search(r"50u\s", text_h),
           "bring-up first stage source limit must be 50 mA external")
+    check("CHG_FIRST_BOARD_TEST_MAX_MA" not in text_h,
+          "the retired 100 mA first-test setting must not remain as an executable-looking constant")
     # controlAllowed path must require either KNOWN=1 or bring-up enabled
     check("bool__controlAllowed" in text_c and "CHG_TRANSFORMER_KNOWN != 0u" in text_c,
           "normal control must require CHG_TRANSFORMER_KNOWN=1")
