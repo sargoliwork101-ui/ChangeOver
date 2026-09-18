@@ -22,10 +22,12 @@
 /*
  * [EN] Single master switch for Charger control.
  *   0 = safe-off skeleton only. All PWM outputs are kept stopped and the
- *       transformer input relay keeps its NC contact closed (safe-idle).
- *       This is the only overall activation gate. Runtime flags such as
- *       power_stage_enabled/pwm_max_duty are NOT hidden hard gates for
- *       Charger; numeric protections are still not bypassed.
+ *       transformer input relay keeps its NC contact closed (coil off,
+ *       safe-idle). JIT and relay disconnect policy stay inactive: no retry
+ *       sequencing and no coil energization. This is the only overall
+ *       activation gate. Runtime flags such as power_stage_enabled/pwm_max_duty
+ *       are NOT hidden hard gates for Charger; numeric protections are still
+ *       not bypassed.
  *   1 = Charger is allowed to enter the per-channel control loop only when
  *       all explicit hardware conditions (valid snapshot, installed channel,
  *       Vin ADC >= 22000 mV, valid battery sense, current limits, JIT policy)
@@ -73,9 +75,54 @@
      ((CHG_CHANNEL_2_INSTALLED != 0u) ? CHG_CHANNEL_2_MASK : 0u))
 
 /* ==================== Conservative bring-up gate / دروازه امن راه‌اندازی ==================== */
-/* [EN] Remains 0 until transformer data and calibration are measured. */
-/* [FA] تا اندازه‌گیری داده ترانس و کالیبراسیون صفر می‌ماند. */
+/* [EN] CHG_TRANSFORMER_KNOWN must stay 0 until transformer data and current
+ * calibration are measured. It is NOT bypassable; it is a separate
+ * compile-time safety gate from CHG_MASTER_ENABLE. When this is 0 the only
+ * allowed control path is the explicit bring-up test mode below.
+ * [FA] CHG_TRANSFORMER_KNOWN باید تا اندازه‌گیری داده ترانس و کالیبراسیون جریان
+ * صفر بماند. bypass نمی‌شود و دروازه امن زمان کامپایل جدا از CHG_MASTER_ENABLE است.
+ * وقتی این ۰ است، تنها مسیر مجاز کنترل حالت تست صریح bring-up زیر است. */
 #define CHG_TRANSFORMER_KNOWN         0u
+
+/* ==================== Explicit limited bring-up test mode / حالت صریح تست bring-up ==================== */
+/*
+ * [EN] Explicit bring-up-only mode: only Trans2 (CH2), NO real battery,
+ * external source current-limited, waveform-validation only. This is the
+ * ONLY way to run switching when CHG_TRANSFORMER_KNOWN=0. Normal Bulk/Absorb/
+ * Float setpoint control does NOT run here. Limits:
+ *   CHG_BRINGUP_TEST_ENABLE = 0 for now (safe).
+ *   Only installed CH2 is allowed; CH1 remains forced 0.
+ *   Start duty = 1% (CHG_DUTY_START_PERMILLE).
+ *   Duty step is still CHG_DUTY_STEP_PERMILLE but max duty is clamped to
+ *   CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE.
+ *     First bring-up stage: max 1%..2% duty (20 permille), source current
+ *       limit 50 mA external.
+ *     Only after scope confirms gate/shunt/relay polarity and latency, stage
+ *       may be raised up to 10% and source limit up to 100 mA.
+ *   Bring-up test never enters Absorb/Float, never uses a 24 V pack setpoint,
+ *   and is still gated by CHG_MASTER_ENABLE=1 and Vin >= 22000 mV and all
+ *   numeric protections (current, JIT, missing-battery sense).
+ * [FA] حالت صریح تست فقط-bring-up: فقط Trans2 (CH2)، بدون باتری واقعی،
+ * منبع خارجی محدودکننده جریان، فقط اعتبارسنجی شکل‌موج. این تنها راه
+ * سوئیچینگ وقتی CHG_TRANSFORMER_KNOWN=0 است. کنترل عادی Bulk/Absorb/Float
+ * در این حالت اجرا نمی‌شود. حدود:
+ *   CHG_BRINGUP_TEST_ENABLE = 0 فعلاً (امن).
+ *   فقط CH2 نصب‌شده مجاز است؛ CH1 همیشه صفر.
+ *   duty شروع = ۱٪ (CHG_DUTY_START_PERMILLE).
+ *   گام duty همان CHG_DUTY_STEP_PERMILLE ولی حداکثر duty به
+ *   CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE محدود می‌شود.
+ *     مرحله اول bring-up: حداکثر ۱٪ تا ۲٪ duty (۲۰ پرمیل)، حد جریان منبع
+ *       خارجی ۵۰ میلی‌آمپر.
+ *     فقط پس از تأیید اسکوپ gate/shunt/relay polarity/latency، مرحله را می‌توان
+ *       تا ۱۰٪ و حد منبع را تا ۱۰۰ میلی‌آمپر بالا برد.
+ *   تست bring-up هرگز وارد Absorb/Float نمی‌شود، از setpoint پک ۲۴ ولت
+ *   استفاده نمی‌کند، و همچنان با CHG_MASTER_ENABLE=1، Vin >= ۲۲۰۰۰mV و همه
+ *   حفاظت‌های عددی (جریان، JIT، sense باتری) گیت می‌شود. */
+#define CHG_BRINGUP_TEST_ENABLE                0u
+#define CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE     20u  /* [EN] 2% max for the first bring-up stage / حداکثر ۲٪ مرحله اول */
+#define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA       50u  /* [EN] external source limit 50 mA first stage / حد منبع خارجی ۵۰mA مرحله اول */
+#define CHG_BRINGUP_TEST_FULL_STAGE_MAX_DUTY  100u  /* [EN] 10% after waveform confirmation / ۱۰٪ بعد از تأیید شکل‌موج */
+#define CHG_BRINGUP_TEST_FULL_STAGE_LIMIT_MA  100u  /* [EN] 100 mA after waveform confirmation / ۱۰۰mA بعد از تأیید شکل‌موج */
 
 /* ==================== Electrical policy / سیاست الکتریکی ==================== */
 #define CHG_PWM_FREQUENCY_HZ          50000u

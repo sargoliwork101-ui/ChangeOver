@@ -59,6 +59,17 @@ def jit_sequence(channel, trip_count):
         channel["final"] = True
 
 
+def test_modules_enabled_build():
+    mods = (ROOT / "Firmware/Config/Inc/modules_enable.h").read_text()
+    ch = CHARGER_H.read_text()
+    check(re.search(r"#define MODULE_CHARGER\s+1", mods),
+          "MODULE_CHARGER must be 1 for build/compile coverage")
+    check(re.search(r"#define MODULE_JITTER\s+1", mods),
+          "MODULE_JITTER must be 1 for build/compile coverage")
+    check(re.search(r"#define CHG_MASTER_ENABLE\s+0u", ch),
+          "even with MODULE_CHARGER=1 the runtime master switch must stay 0 (safe-idle) until bring-up")
+
+
 def test_master_enable_constant_is_single_gate():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
@@ -67,11 +78,48 @@ def test_master_enable_constant_is_single_gate():
     check("CHG_MASTER_ENABLE == 0u" in text_c and "func__Charger_SafeIdle();" in text_c,
           "CHG_MASTER_ENABLE=0 must force whole-charger safe-idle")
     check("CHG_MASTER_ENABLE == 1u" in text_c or "CHG_MASTER_ENABLE" in text_c,
-          "CHG_MASTER_ENABLE must be present in control policy")
+          "CHG_MASTER_ENABLE must guard entry into control")
     check("APP_CONFIG.power_stage_enabled == false" not in text_c,
           "power_stage_enabled must not remain a hidden Charger gate")
     check("APP_CONFIG.pwm_max_duty_permille == 0u" not in text_c,
           "pwm_max_duty=0 must not remain a hidden Charger gate")
+    check(("JIT" in text_h and "relay" in text_h and "inactive" in text_h) or
+          "سیاست JIT/رله غیرفعال" in text_h,
+          "with CHG_MASTER_ENABLE=0 JIT/relay disconnect policy must be documented inactive")
+
+
+def test_master_enable_zero_safeidle_stops_both_pwm_and_relay_off():
+    text_c = CHARGER_C.read_text()
+    # Master=0 path must call SafeIdle, and SafeIdle must StopAll + relay false
+    idx = text_c.find("if (CHG_MASTER_ENABLE == 0u)")
+    check(idx >= 0, "master-zero gate must exist")
+    snippet = text_c[idx:idx+600]
+    check("func__Charger_SafeIdle();" in snippet, "master-zero must SafeIdle")
+    check("func__BspPwm_StopAll();" in text_c and "func__BspGpio_Write(BSP_GPIO_RELAY, false);" in text_c,
+          "SafeIdle must StopAll PWM and de-energize relay coil (NC closed)")
+    check("return;" in snippet, "master-zero must return before any control/JIT/relay policy")
+
+
+def test_transformer_known_not_bypassable_bringup_only_when_zero():
+    text_h = CHARGER_H.read_text()
+    text_c = CHARGER_C.read_text()
+    check(re.search(r"#define CHG_TRANSFORMER_KNOWN\s+0u", text_h),
+          "CHG_TRANSFORMER_KNOWN must remain 0 for now")
+    check("NOT bypassable" in text_h or "bypass نمی" in text_h,
+          "CHG_TRANSFORMER_KNOWN=0 must be documented as not bypassable")
+    check(re.search(r"#define CHG_BRINGUP_TEST_ENABLE\s+0u", text_h),
+          "bring-up test mode must be 0 (off) for the delivered safe state")
+    check("CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE" in text_h and re.search(r"20u\s", text_h),
+          "bring-up first stage max duty must be documented (20 permille = 2%)")
+    check("CHG_BRINGUP_TEST_SOURCE_LIMIT_MA" in text_h and re.search(r"50u\s", text_h),
+          "bring-up first stage source limit must be 50 mA external")
+    # controlAllowed path must require either KNOWN=1 or bring-up enabled
+    check("bool__controlAllowed" in text_c and "CHG_TRANSFORMER_KNOWN != 0u" in text_c,
+          "normal control must require CHG_TRANSFORMER_KNOWN=1")
+    check("CHG_BRINGUP_TEST_ENABLE != 0u" in text_c and "func__Charger_BringupRegulateChannel" in text_c,
+          "only explicit bring-up mode is allowed when transformer is unknown")
+    check("if (bool__controlAllowed == false)" in text_c and "func__Charger_SafeIdle();" in text_c,
+          "when neither KNOWN nor bring-up enabled, SafeIdle must be forced")
 
 
 def test_master_enable_does_not_bypass_numeric_protections():
@@ -141,16 +189,23 @@ def test_input_voltage_is_real_adc_22000mv():
           "input must be checked from real ADC v_in_mv every cycle")
     check("input_present == false" not in text_c,
           "PB4 digital input alone must not be the charge gate")
-    check("func__Charger_SafeIdle();" in text_c,
-          "when Vin is below threshold both PWM must stop and relay must stay off/idle")
+    # Vin<22000 path: SafeIdle (both PWM 0 + relay coil false/NC closed), no retry/PWM
+    idx = text_c.find("bool__inputAdcValid == false")
+    check(idx >= 0, "low-Vin gate must exist")
+    snippet = text_c[idx:idx+900]
+    check("func__Charger_SafeIdle();" in snippet, "low Vin must SafeIdle (PWM1=PWM2=0, relay off/NC closed)")
+    check("CHG_STATE_INPUT_WAIT" in snippet, "low Vin must put channels into INPUT_WAIT (no retry/PWM until recovery)")
 
 
 def test_input_recovery_restarts_with_safe_duty():
     text_c = CHARGER_C.read_text()
+    text_h = CHARGER_H.read_text()
     check("CHG_STATE_INPUT_WAIT" in text_c,
           "low-input wait state must exist")
-    check("CHG_DUTY_START_PERMILLE" in text_c and re.search(r"#define CHG_DUTY_START_PERMILLE\s+10u", CHARGER_H.read_text()),
+    check("CHG_DUTY_START_PERMILLE" in text_c and re.search(r"#define CHG_DUTY_START_PERMILLE\s+10u", text_h),
           "safe restart duty must be 10 permille = 1%")
+    check("CHG_STATE_OFF" in text_c,
+          "on Vin recovery channels must transition back to OFF/start duty")
 
 
 def test_jit_per_channel_sequence():
@@ -237,7 +292,10 @@ def test_electronic_load_policy_documented():
 
 def main():
     tests = [
+        test_modules_enabled_build,
         test_master_enable_constant_is_single_gate,
+        test_master_enable_zero_safeidle_stops_both_pwm_and_relay_off,
+        test_transformer_known_not_bypassable_bringup_only_when_zero,
         test_master_enable_does_not_bypass_numeric_protections,
         test_channel_selection_constants,
         test_channel_one_is_always_zero_stopped,
