@@ -134,7 +134,7 @@
 #define CHG_ABSORB_MV                 14400u
 #define CHG_FLOAT_MV                  13500u
 #define CHG_REENTRY_MV               12800u
-#define CHG_BULK_CURRENT_MAX_MA       675u
+#define CHG_BULK_CURRENT_MAX_MA       650u
 /* [EN] TEMPORARY bench diagnostic (2026-09-18): fixed duty, NO ramp and NO
  *      band regulation. Set to 0 to return to normal charge control. When 1,
  *      after all the usual gates (valid snapshot, Vin >= 22000 mV, battery
@@ -155,11 +155,13 @@
 /* [EN] Output-current regulation band: below CHG_REGULATE_LOW_MA the duty
  *      steps up, above CHG_BULK_CURRENT_MAX_MA it steps down, inside the band
  *      it holds. Only a hard fault (> CHG_CURRENT_HARD_FAULT_MA) resets the
- *      channel. This band is what keeps the normal path from oscillating
- *      ramp/cut/restart around a single 675 mA threshold.
- * [FA] باند تنظیم جریان خروجی: زیر ۶۲۰ افزایش دیوتی، بالای ۶۷۵ کاهش دیوتی،
- *      داخل باند نگه‌داشت. فقط خطای سخت (بالاتر از ۹۵۰) کانال را ریست می‌کند. */
-#define CHG_REGULATE_LOW_MA            620u
+ *      channel. Band narrowed 620..675 -> 630..650 mA (~20 mA tolerance) on
+ *      user bench directive 2026-09-18: the measurement and estimate filters
+ *      are now strong enough for a tight band without hunting.
+ * [FA] باند تنظیم جریان خروجی: زیر ۶۳۰ افزایش دیوتی، بالای ۶۵۰ کاهش دیوتی،
+ *      داخل باند نگه‌داشت (~۲۰mA تلورانس طبق دستور). فقط خطای سخت (بالاتر
+ *      از ۹۵۰) کانال را ریست می‌کند. */
+#define CHG_REGULATE_LOW_MA            630u
 #define CHG_CURRENT_HARD_FAULT_MA      950u
 /* [EN] First-order low-pass (EMA) on the estimated output current before the
  *      regulation band: ema += (sample - ema) >> SHIFT on every 10 ms pass,

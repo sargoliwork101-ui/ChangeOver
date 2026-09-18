@@ -657,7 +657,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     }
 
     /* [EN] EMA low-pass on the estimated output current (tau ~0.64 s, one
-       update per 10 ms pass). The 620..675 band decides on this smooth value
+       update per 10 ms pass). The 630..650 band decides on this smooth value
        so the duty does not hunt from sample noise; seeded with the first
        sample after any restart.
        [FA] فیلتر نمایی روی جریان تخمینی (ثابت زمانی ~۰٫۶۴ ثانیه)؛ باند تنظیم
@@ -759,13 +759,13 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
 
     if (uint32_t__batteryMv < uint32_t__targetMv)
     {
-        /* [EN] Current regulation band with rate-limited steps: above 675 mA
-           step duty DOWN (one 0.5% step per 100 ms), below 620 mA step duty
-           UP (one 0.5% step per 1000 ms), inside 620..675 hold. Gradual
+        /* [EN] Current regulation band with rate-limited steps: above 650 mA
+           step duty DOWN (one 0.5% step per 500 ms), below 630 mA step duty
+           UP (one 0.5% step per 1000 ms), inside 630..650 hold. Gradual
            down-steps let the loop sit near the band with hysteresis instead
            of cutting and restarting from zero.
-           [FA] باند تنظیم جریان با پله‌های محدودشدهٔ زمانی: بالای ۶۷۵ کاهش
-           تدریجی (هر ۱۰۰ms)، زیر ۶۲۰ افزایش تدریجی (هر ۱ ثانیه)، داخل باند
+           [FA] باند تنظیم جریان با پله‌های محدودشدهٔ زمانی: بالای ۶۵۰ کاهش
+           تدریجی (هر ۵۰۰ms)، زیر ۶۳۰ افزایش تدریجی (هر ۱ ثانیه)، داخل باند
            نگه‌داشت — بدون قطع و شروع از صفر، مثل یه هیسترزیس. */
         if (uint32_t__currentMa > CHG_BULK_CURRENT_MAX_MA)
         {
@@ -805,7 +805,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         }
         else
         {
-            /* [EN] Inside the 620..675 band: hold duty. / داخل باند: نگه‌داشت دیوتی */
+            /* [EN] Inside the 630..650 band: hold duty. / داخل باند: نگه‌داشت دیوتی */
         }
     }
     else if (uint32_t__batteryMv > uint32_t__targetMv)

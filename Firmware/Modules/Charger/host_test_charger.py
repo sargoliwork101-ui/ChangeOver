@@ -19,8 +19,8 @@ BSP_EXTI_C = ROOT / "Firmware/Bsp/Src/bsp_exti.c"
 ABSORB_MV = 14400
 FLOAT_MV = 13500
 REENTRY_MV = 12800
-CURRENT_LIMIT_MA = 675
-REGULATE_LOW_MA = 620
+CURRENT_LIMIT_MA = 650
+REGULATE_LOW_MA = 630
 HARD_FAULT_MA = 950
 DUTY_MAX = 500
 RAMP_UP_MS = 1000
@@ -38,8 +38,8 @@ def check(condition, message):
 def regulate_one(channel, voltage_mv, current_ma, now_ms=0):
     """Small host model of the bulk branch, with a duty per channel and
     rate-limited steps: one 0.5% up-step per 1000 ms, one 0.5% down-step
-    per 100 ms. >950 hard fault -> reset; >675 -> down; <620 -> up;
-    620..675 -> hold; too soon to step -> hold."""
+    per 100 ms. >950 hard fault -> reset; >650 -> down; <630 -> up;
+    630..650 -> hold; too soon to step -> hold."""
     if current_ma > HARD_FAULT_MA:
         channel["fault"] = True
         channel["duty"] = 0
@@ -55,7 +55,7 @@ def regulate_one(channel, voltage_mv, current_ma, now_ms=0):
             if channel["duty"] > DUTY_MAX:
                 channel["duty"] = DUTY_MAX
             channel["last_step_ms"] = now_ms
-    # inside the 620..675 band or inside the step window: hold duty
+    # inside the 630..650 band or inside the step window: hold duty
 
 
 def jit_sequence(channel, trip_count):
@@ -328,19 +328,19 @@ def test_duty_max_dcm_ceiling():
     check(channel["duty"] == 500, "duty must clamp at 500 permille = 50% (higher risks burning the MOSFET)")
 
 
-def test_only_above_675ma_protects():
+def test_current_band_regulates_and_protects():
     channel_low = {"duty": 100, "fault": False}
     regulate_one(channel_low, voltage_mv=12400, current_ma=600)
-    check(not channel_low["fault"], "current below 675 mA must not enter overcurrent protection")
-    check(channel_low["duty"] == 105, "600 mA is below the 620 band edge and must raise duty")
+    check(not channel_low["fault"], "current below 650 mA must not enter overcurrent protection")
+    check(channel_low["duty"] == 105, "600 mA is below the 630 band edge and must raise duty")
     channel_ok = {"duty": 100, "fault": False}
-    regulate_one(channel_ok, voltage_mv=12400, current_ma=675)
-    check(not channel_ok["fault"], "675 mA must not enter overcurrent protection")
-    check(channel_ok["duty"] == 100, "exactly 675 mA sits inside the band and must hold duty")
+    regulate_one(channel_ok, voltage_mv=12400, current_ma=650)
+    check(not channel_ok["fault"], "650 mA must not enter overcurrent protection")
+    check(channel_ok["duty"] == 100, "exactly 650 mA sits inside the band and must hold duty")
     channel_high = {"duty": 100, "fault": False}
-    regulate_one(channel_high, voltage_mv=12400, current_ma=676)
+    regulate_one(channel_high, voltage_mv=12400, current_ma=651)
     check(not channel_high["fault"] and channel_high["duty"] == 95,
-          "676 mA must only step duty down (regulation), never cut the channel")
+          "651 mA must only step duty down (regulation), never cut the channel")
     channel_bad = {"duty": 100, "fault": False}
     regulate_one(channel_bad, voltage_mv=12400, current_ma=951)
     check(channel_bad["fault"] and channel_bad["duty"] == 0,
@@ -353,8 +353,8 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_FLOAT_MV\s+13500u", text_h), "float must be 13500 mV")
     check(re.search(r"#define CHG_REENTRY_MV\s+12800u", text_h), "reentry must be 12800 mV")
     check(re.search(r"#define CHG_ABSORB_HOLD_MS\s+600000u", text_h), "absorb hold must be 600000 ms = 10 min")
-    check(re.search(r"#define CHG_BULK_CURRENT_MAX_MA\s+675u", text_h), "bulk regulation current must be 675 mA")
-    check(re.search(r"#define CHG_REGULATE_LOW_MA\s+620u", text_h), "regulation band lower edge must be 620 mA")
+    check(re.search(r"#define CHG_BULK_CURRENT_MAX_MA\s+650u", text_h), "bulk regulation current must be 650 mA (tight band per user)")
+    check(re.search(r"#define CHG_REGULATE_LOW_MA\s+630u", text_h), "regulation band lower edge must be 630 mA (~20 mA tolerance)")
     check(re.search(r"#define CHG_CURRENT_HARD_FAULT_MA\s+950u", text_h), "hard over-current fault must be 950 mA")
     check(re.search(r"#define CHG_DUTY_MAX_PERMILLE\s+500u", text_h), "duty cap must be 500 permille = 50% (DCM ceiling, board requirement)")
     check(re.search(r"#define CHG_DUTY_RAMP_UP_INTERVAL_MS\s+1000u", text_h), "up-steps must be limited to one per 1000 ms")
@@ -409,7 +409,7 @@ def main():
         test_low_current_is_not_fault,
         test_duty_steps_are_time_limited,
         test_duty_max_dcm_ceiling,
-        test_only_above_675ma_protects,
+        test_current_band_regulates_and_protects,
         test_setpoints_and_timing,
         test_pwm_contract,
         test_electronic_load_policy_documented,
