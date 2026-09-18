@@ -54,6 +54,8 @@ typedef struct
     uint32_t uint32_t__absorbStartTick;
     uint32_t uint32_t__retryDeadlineTick;
     uint32_t uint32_t__lastDutyStepTick;
+    uint32_t uint32_t__currentEmaMa;
+    bool bool__currentEmaSeeded;
 } charger_channel_state_t;
 
 /* ==================== Static state / وضعیت داخلی ==================== */
@@ -220,10 +222,11 @@ static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *mea
 
     uint64_t__numerator = (uint64_t)uint32_t__primaryMa *
                           (uint64_t)measurement_snapshot_t__snap->v_in_mv *
-                          (uint64_t)CHG_FLYBACK_EFFICIENCY_PERMILLE;
+                          (uint64_t)CHG_FLYBACK_EFFICIENCY_PERMILLE *
+                          (uint64_t)CHG_CURRENT_CAL_PERMILLE;
 
     return (uint32_t)(uint64_t__numerator /
-                      ((uint64_t)uint32_t__vbatMv * 1000u));
+                      ((uint64_t)uint32_t__vbatMv * 1000u * 1000u));
 }
 
 static uint16_t func__Charger_MaxDutyPermille(void)
@@ -341,6 +344,8 @@ static void func__Charger_ResetChannelToOff(uint8_t uint8_t__channelIndex)
     charger_channel_state_t__channel->uint32_t__absorbStartTick = 0u;
     charger_channel_state_t__channel->uint32_t__retryDeadlineTick = 0u;
     charger_channel_state_t__channel->uint32_t__lastDutyStepTick = 0u;
+    charger_channel_state_t__channel->uint32_t__currentEmaMa = 0u;
+    charger_channel_state_t__channel->bool__currentEmaSeeded = false;
     charger_channel_state_t__channel->uint16_t__dutyBeforeTripPermille =
         charger_channel_state_t__channel->uint16_t__dutyPermille;
 }
@@ -565,6 +570,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     uint32_t uint32_t__increasedDuty;
     uint32_t uint32_t__upIntervalTicks;
     uint32_t uint32_t__downIntervalTicks;
+    int32_t int32_t__currentDelta;
 
     charger_channel_state_t__channel = &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
 
@@ -614,12 +620,35 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     {
         /* [EN] Only a hard over-current fault resets the channel; normal
            over-target is handled by the duty band below (no cut/restart).
-           [FA] فقط خطای سخت اضافه‌جریان کانال را ریست می‌کند؛ بالای هدفِ عادی با
-           باند دیوتی پایین مدیریت می‌شود. */
+           Uses the raw sample so protection speed is unchanged by the filter.
+           [FA] فقط خطای سخت اضافه‌جریان کانال را ریست می‌کند (روی نمونهٔ خام،
+           بدون تأخیر فیلتر). */
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
         func__Charger_StopOneChannel(uint8_t__channelIndex);
         return;
     }
+
+    /* [EN] EMA low-pass on the estimated output current (tau ~0.64 s, one
+       update per 10 ms pass). The 620..675 band decides on this smooth value
+       so the duty does not hunt from sample noise; seeded with the first
+       sample after any restart.
+       [FA] فیلتر نمایی روی جریان تخمینی (ثابت زمانی ~۰٫۶۴ ثانیه)؛ باند تنظیم
+       با مقدار صاف تصمیم می‌گیرد تا دیوتی تندتند عوض نشود. */
+    if (charger_channel_state_t__channel->bool__currentEmaSeeded == false)
+    {
+        charger_channel_state_t__channel->uint32_t__currentEmaMa = uint32_t__currentMa;
+        charger_channel_state_t__channel->bool__currentEmaSeeded = true;
+    }
+    else
+    {
+        int32_t__currentDelta =
+            (int32_t)uint32_t__currentMa -
+            (int32_t)charger_channel_state_t__channel->uint32_t__currentEmaMa;
+        charger_channel_state_t__channel->uint32_t__currentEmaMa =
+            (uint32_t)((int32_t)charger_channel_state_t__channel->uint32_t__currentEmaMa +
+                       (int32_t__currentDelta >> CHG_CURRENT_EMA_SHIFT));
+    }
+    uint32_t__currentMa = charger_channel_state_t__channel->uint32_t__currentEmaMa;
 
     if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_OFF)
     {
@@ -767,6 +796,8 @@ void func__Charger_Init(void)
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbStartTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__retryDeadlineTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__lastDutyStepTick = 0u;
+        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__currentEmaMa = 0u;
+        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__currentEmaSeeded = false;
     }
 
     BOOL__G__ChargerInitialized = true;

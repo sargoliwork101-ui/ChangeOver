@@ -24,7 +24,7 @@ REGULATE_LOW_MA = 620
 HARD_FAULT_MA = 950
 DUTY_MAX = 500
 RAMP_UP_MS = 1000
-RAMP_DOWN_MS = 100
+RAMP_DOWN_MS = 500
 DUTY_START = 10
 DUTY_STEP = 5
 INPUT_VALID_MV = 22000
@@ -314,9 +314,9 @@ def test_duty_steps_are_time_limited():
     check(channel["duty"] == 105, "up-step inside the 1000 ms window must be blocked (no 50%/s runaway)")
     regulate_one(channel, voltage_mv=12400, current_ma=400, now_ms=1000)
     check(channel["duty"] == 110, "rate is one 0.5% up-step per second")
-    regulate_one(channel, voltage_mv=12400, current_ma=700, now_ms=1030)
-    check(channel["duty"] == 110, "down-step needs its own 100 ms window after the last step")
-    regulate_one(channel, voltage_mv=12400, current_ma=700, now_ms=1100)
+    regulate_one(channel, voltage_mv=12400, current_ma=700, now_ms=1400)
+    check(channel["duty"] == 110, "down-step needs its own 500 ms window after the last step")
+    regulate_one(channel, voltage_mv=12400, current_ma=700, now_ms=1500)
     check(channel["duty"] == 105, "over-band gradually steps duty down instead of cutting to zero")
 
 
@@ -358,7 +358,9 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_CURRENT_HARD_FAULT_MA\s+950u", text_h), "hard over-current fault must be 950 mA")
     check(re.search(r"#define CHG_DUTY_MAX_PERMILLE\s+500u", text_h), "duty cap must be 500 permille = 50% (DCM ceiling, board requirement)")
     check(re.search(r"#define CHG_DUTY_RAMP_UP_INTERVAL_MS\s+1000u", text_h), "up-steps must be limited to one per 1000 ms")
-    check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS\s+100u", text_h), "down-steps must be limited to one per 100 ms")
+    check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS\s+500u", text_h), "down-steps must be limited to one per 500 ms")
+    check(re.search(r"#define CHG_CURRENT_CAL_PERMILLE\s+1250u", text_h), "current estimate calibration must be 1250 permille (bench 505 mA real vs 405 mA read)")
+    check(re.search(r"#define CHG_CURRENT_EMA_SHIFT\s+6u", text_h), "current estimate must pass through an EMA filter (shift 6, tau ~0.64 s)")
     check(re.search(r"#define CHG_DUTY_START_PERMILLE\s+10u", text_h), "start duty must be 10 permille = 1%")
     check(re.search(r"#define CHG_DUTY_STEP_PERMILLE\s+5u", text_h), "increase step must be 5 permille = 0.5%")
 

@@ -145,6 +145,26 @@
  *      داخل باند نگه‌داشت. فقط خطای سخت (بالاتر از ۹۵۰) کانال را ریست می‌کند. */
 #define CHG_REGULATE_LOW_MA            620u
 #define CHG_CURRENT_HARD_FAULT_MA      950u
+/* [EN] Bench calibration of the output-current estimate (2026-09): real
+ *      battery current 505 mA while the estimate read 400..410 mA (430 mV RMS
+ *      at the LM358 output - note RMS of a 50 kHz pulse train is NOT the
+ *      average; use scope MEAN to recheck). Ratio 505/405 = 1247, rounded to
+ *      1250 permille. Re-measure if the analog chain changes (shunt, LM358
+ *      gain resistors, R41/R42).
+ * [FA] کالیبراسیون روی برد: جریان واقعی باتری ۵۰۵mA ولی تخمین ۴۰۰–۴۱۰
+ *      می‌خواند؛ نسبت ۱۲۴۷، گرد به ۱۲۵۰ پرمیل. RMS اسکوپ روی موج پالسی
+ *      متوسط نیست — برای بازبینی از MEAN استفاده کن. */
+#define CHG_CURRENT_CAL_PERMILLE      1250u
+/* [EN] First-order low-pass (EMA) on the estimated output current before the
+ *      regulation band: ema += (sample - ema) >> SHIFT on every 10 ms pass,
+ *      so tau = 2^SHIFT * 10 ms = ~0.64 s at SHIFT=6. Stops noise-driven duty
+ *      hunting ("switching too fast"). The >950 mA hard fault and the JIT
+ *      still act on the raw sample, so protection speed is unchanged.
+ *      Seeded with the first sample whenever the channel restarts.
+ * [FA] فیلتر نمایی مرتبه اول روی جریان تخمینی قبل از باند تنظیم؛ ثابت زمانی
+ *      حدود ۰٫۶۴ ثانیه تا تصمیم‌های دیوتی آرام شوند. حفاظت سخت و JIT روی
+ *      نمونهٔ خام باقی می‌مانند. */
+#define CHG_CURRENT_EMA_SHIFT            6u
 
 /* [EN] Primary->output current estimate for the charge decisions: the shunt
  *      sits in the MOSFET source leg (primary side), while Bulk/Absorb/Float
@@ -169,16 +189,17 @@
  *      intended 0.5%/s - overshoot the current band and trip the ~15.5 A JIT.
  *      Steps are therefore rate-limited per channel:
  *      one 0.5% up-step per CHG_DUTY_RAMP_UP_INTERVAL_MS (slow soft-start ramp)
- *      and one 0.5% down-step per CHG_DUTY_RAMP_DOWN_INTERVAL_MS (10x faster
- *      response to over-current/over-voltage, still gradual - reduces duty
- *      instead of cutting, so the current can be held near the band).
+ *      and one 0.5% down-step per CHG_DUTY_RAMP_DOWN_INTERVAL_MS (twice as
+ *      fast so over-current/over-voltage recovers gradually instead of
+ *      cutting, but slow enough to follow the ~0.64 s current filter without
+ *      hunting).
  * [FA] تسک کنترل شارژر را هر ۱۰ms اجرا می‌کند؛ بدون محدودیت زمانی، پلهٔ
  *      ۵ پرمیل ۱۰۰ بار در ثانیه اعمال می‌شد (۵۰٪/s) و JIT تریپ می‌کرد. حالا
  *      به‌ازای هر کانال: افزایش هر ۱ ثانیه یک پلهٔ ۰٫۵٪ (رمپ نرم)، کاهش هر
- *      ۱۰۰ms یک پلهٔ ۰٫۵٪ (کاهش تدریجی به‌جای قطع، برای نگه‌داشتن جریان
+ *      ۵۰۰ms یک پلهٔ ۰٫۵٪ (کاهش تدریجی به‌جای قطع، برای نگه‌داشتن جریان
  *      نزدیک باند با هیسترزیس). */
 #define CHG_DUTY_RAMP_UP_INTERVAL_MS   1000u
-#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS  100u
+#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS  500u
 #define CHG_DUTY_RETRY_SECOND_MAX       100u
 /* [EN] DCM ceiling: 50% max - anything higher risks core/MOSFET overlap and
  *      burns the MOSFET (board requirement). The regulation band settles near
