@@ -14,6 +14,7 @@ CHARGER_H = ROOT / "Firmware/Modules/Charger/charger.h"
 CHARGER_C = ROOT / "Firmware/Modules/Charger/charger.c"
 MAIN_C = ROOT / "CubeIDE/Core/Src/main.c"
 IOC = ROOT / "CubeMX/CubeIDE.ioc"
+BSP_EXTI_C = ROOT / "Firmware/Bsp/Src/bsp_exti.c"
 
 ABSORB_MV = 14400
 FLOAT_MV = 13500
@@ -180,6 +181,39 @@ def test_min_valid_battery_is_sense_not_setpoint():
           "free resistor alone must be documented as not a valid battery simulator")
 
 
+def test_battery_voltage_upper_cutoff_applies_before_any_control():
+    text_h = CHARGER_H.read_text()
+    text_c = CHARGER_C.read_text()
+    check(re.search(r"#define CHG_MAX_VALID_BATTERY_MV\s+15000u", text_h),
+          "battery over-voltage cutoff must be 15000 mV")
+    check("func__Charger_BatteryVoltageIsValid" in text_c,
+          "all battery control paths must use one validity helper")
+    bringup = text_c[text_c.find("static void func__Charger_BringupRegulateChannel"):text_c.find("/* ==================== Regulation", text_c.find("static void func__Charger_BringupRegulateChannel"))]
+    normal = text_c[text_c.find("static void func__Charger_RegulateChannel"):text_c.find("/* ==================== Charger_Init", text_c.find("static void func__Charger_RegulateChannel"))]
+    check("func__Charger_BatteryVoltageIsValid" in bringup and "func__Charger_BatteryVoltageIsValid" in normal,
+          "both bring-up and normal charging must stop on low or high battery sense")
+    check("CHG_MAX_VALID_BATTERY_MV" in text_h and "not a substitute" in text_h,
+          "firmware cutoff must be documented as an additional protection, not hardware protection")
+
+
+def test_jit_is_active_low_and_retry_captures_duty_before_stop():
+    text_c = CHARGER_C.read_text()
+    text_exti = BSP_EXTI_C.read_text()
+    main = MAIN_C.read_text()
+    ioc = IOC.read_text()
+    jit = text_c[text_c.find("static void func__Charger_HandleJitTrip"):text_c.find("static uint16_t func__Charger_RetryDuty")]
+    check(jit.find("uint16_t__dutyBeforeTripPermille =") < jit.find("func__Charger_StopOneChannel"),
+          "JIT retry must capture live duty before StopOneChannel clears it")
+    check("HAL_GPIO_ReadPin(PIN_JITTER1_PORT, PIN_JITTER1_PIN) == GPIO_PIN_RESET" in text_exti and
+          "HAL_GPIO_ReadPin(PIN_JITTER2_PORT, PIN_JITTER2_PIN) == GPIO_PIN_RESET" in text_exti,
+          "software JIT callback guard must accept only the active-low state")
+    check("GPIO_MODE_IT_FALLING" in main,
+          "generated MCU GPIO setup must use falling-edge EXTI for LM393 JIT")
+    check("PB2.Mode=External_Interrupt_Mode_with_Falling_edge_trigger_detection" in ioc and
+          "PB6.Mode=External_Interrupt_Mode_with_Falling_edge_trigger_detection" in ioc,
+          "CubeMX JIT pins must use falling-edge EXTI")
+
+
 def test_input_voltage_is_real_adc_22000mv():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
@@ -314,6 +348,8 @@ def main():
         test_channel_one_is_always_zero_stopped,
         test_trans2_uses_only_vlow_not_24v_pack,
         test_min_valid_battery_is_sense_not_setpoint,
+        test_battery_voltage_upper_cutoff_applies_before_any_control,
+        test_jit_is_active_low_and_retry_captures_duty_before_stop,
         test_input_voltage_is_real_adc_22000mv,
         test_input_recovery_restarts_with_safe_duty,
         test_no_shadowing_in_duty_adjustments,

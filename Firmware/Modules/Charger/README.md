@@ -9,7 +9,8 @@
 ## وضعیت
 
 کد کنترل برای دو شارژر مستقل ۱۲ ولت با یک implementation عمومی آماده شده است؛
-اما `MODULE_CHARGER = 0` و `CHG_TRANSFORMER_KNOWN = 0` عمداً safe-off هستند تا
+`MODULE_CHARGER = 1` و `MODULE_JITTER = 1` برای پوشش build فعال‌اند، اما
+`CHG_MASTER_ENABLE = 0` و `CHG_TRANSFORMER_KNOWN = 0` عمداً safe-off هستند تا
 پارامتر ترانس، LM393/JIT، offset/gain جریان و کنتاکت NC روی برد تأیید شوند.
 تست فعلی فقط Trans2/باتری پایین است و با `CHG_CHANNEL_1_INSTALLED = 0` و
 `CHG_CHANNEL_2_INSTALLED = 1` انتخاب می‌شود. برای تغییر مونتاژ فقط همین دو ثابت
@@ -24,6 +25,7 @@
 | تاریخ | تغییر |
 |---|---|
 | 2026-09-18 | دو ثابت انتخاب کانال، state/duty/protection مستقل و رفتار افزایش duty در جریان کم اضافه شد |
+| 2026-09-18 | active-low بودن JIT از اتصال LM393 و cutoff باتری ۱۵٫۰V به هر دو مسیر کنترل اضافه شد؛ ترتیب capture duty قبل از Stop اصلاح شد |
 | 2026-09-18 | تست تک‌باتری بدون بررسی پک ۲۴ ولت، توالی relay/JIT و PWM پنجاه کیلوهرتز ثبت شد |
 | 2026-09-14 | اسکلت اولیهٔ Charger اضافه شد |
 
@@ -50,10 +52,12 @@
 | `func__Jitter_ClearChannel` | arm مجدد ورودی JIT همان کانال بعد از safe sequence |
 
 ثابت‌های اولیهٔ هر کانال: `14400mV` جذب، `13500mV` شناور، `12800mV` reentry و
-حداکثر جریان bulk برابر `675mA` (`0.15C` برای 4.5Ah) است؛ منبع current-limited
-در اولین تست برد باید بیرونی روی حدود `50–100mA` محدود شود (`CHG_FIRST_BOARD_TEST_MAX_MA`).
-این مقادیر بدون دیتاشیت
-قطعی ZICO provisional هستند و Equalization اجرا نمی‌شود.
+حداکثر جریان bulk برابر `675mA` (`0.15C` برای 4.5Ah) است. cutoff سخت sense باتری
+`2000..15000mV` است؛ حد بالای ۱۵٫۰V پیش از هر مسیر bring-up یا شارژ اعمال می‌شود.
+این مقادیر بدون دیتاشیت قطعی ZICO provisional هستند و Equalization اجرا نمی‌شود.
+برای اولین تست کوتاه و تحت‌نظارت، منبع ورودی باید بیرونی روی `50mA` محدود باشد و
+حداکثر duty همان `2%` بماند؛ این محدودکنندهٔ ورودی معادل current-limit خروجی
+firmware نیست. افزایش به `100mA` یا `10%` تا تأیید شکل‌موج مجاز نیست.
 
 ## پایه‌ها
 
@@ -63,21 +67,27 @@
 | Trans2 / کانال ۲ | PA6 / TIM3_CH1 | PA7 / ADC_CURRENT2 | PB6 / JITTER2 | `VLOW = MID-GND` |
 
 هر دو تایمر با clock `72MHz` و `PSC=0`, `ARR=1439` برای `50kHz` تنظیم شده‌اند.
-رلهٔ NC با coil خاموش وصل و با coil روشن باز است؛ عملکرد واقعی کنتاکت باید با
-continuity روی برد تأیید شود. polarity لبهٔ LM393 هنوز با اسیلوسکوپ تأیید نشده
-و rising/falling نباید صرفاً از نام سیگنال انتخاب شود.
+طبق اتصال شماتیک، ورودی‌های `IN-` LM393 از `Shunt1_Filtered`/`Shunt2_Filtered`
+می‌آیند و ورودی‌های `IN+` آستانهٔ مشترک دارند؛ بنابراین خروجی open-collector
+`JITT1/JITT2` وقتی جریان از آستانه بالاتر می‌رود low می‌شود. PB2/PB6 در firmware
+و CubeMX روی falling edge تنظیم شده‌اند و callback نیز low بودن پایه را دوباره
+چک می‌کند. رلهٔ NC با coil خاموش وصل و با coil روشن باز است؛ عملکرد واقعی
+کنتاکت باید با continuity روی برد تأیید شود.
 
 ## پیش‌فرض امن
 
 - کانال غیرنصب‌شده همیشه PWM صفر و stopped است.
-- نبود snapshot معتبر، حالت FAULT/SAFE، نبود ورودی، ناشناخته‌بودن ترانس یا
-  `power_stage_enabled = false` خروجی را safe-off می‌کند.
+- نبود snapshot معتبر، حالت FAULT/SAFE، نبود ورودی ADC حداقل `22000mV`، ناشناخته‌بودن
+  ترانس یا نبود کانال نصب‌شده خروجی را safe-off می‌کند؛ پرچم runtime پنهان جای این
+  حفاظت‌ها نیست.
+- sense باتری هر کانال باید در بازهٔ `2000..15000mV` باشد؛ زیر حد یعنی battery-missing
+  و بالای حد یعنی over-voltage، و هر دو PWM همان کانال صفر می‌شوند.
 - جریان کم fault نیست: وقتی ولتاژ زیر target است، duty همان کانال مرحله‌ای زیاد
   می‌شود؛ فقط جریان بیش از `675mA` وارد حفاظت جریان می‌شود.
-- JIT: duty فعلی ثبت، هر دو PWM صفر، coil روشن برای بازکردن NC، lockout، retry
-  با نصف duty، retry بعدی با ۱۰٪ یا کمتر و تریپ بعدی fault نهایی.
-- پیش از retry، coil خاموش می‌شود، NC بسته و settle می‌شود و سپس فقط PWM کانال
-  مجاز اعمال می‌شود.
+- JIT active-low است: duty همان کانال قبل از Stop ثبت، فقط PWM همان کانال صفر،
+  coil در retryهای اول خاموش/NC بسته می‌ماند، lockout و retry با نصف duty انجام
+  می‌شود؛ retry دوم حداکثر ۱۰٪ است و تریپ سوم fault نهایی با هر دو PWM صفر و relay باز است.
+- پیش از retry، comparator همان کانال clear می‌شود و سپس فقط PWM کانال مجاز اعمال می‌شود.
 
 ## درخت اتصال
 
@@ -93,6 +103,10 @@ rtos_app.c → TaskControl → task_control.c
 ```
 
 `host_test_charger.py` فقط policy و source contract را بررسی می‌کند. PASS شدن
-host یا syntax به‌تنهایی مجوز اتصال باتری نیست. تست برد باید ابتدا با منبع
-current-limited، electronic load یا battery simulator دارای voltage clamp،
-اسیلوسکوپ و پایش continuity رله انجام شود؛ باتری واقعی فعلاً ممنوع است.
+host یا syntax به‌تنهایی مجوز اتصال باتری، اثبات waveform واقعی MCU یا تأیید
+LM393/رله نیست. با تنظیمات تحویلی (`CHG_MASTER_ENABLE=0` و bring-up خاموش) هیچ
+سوئیچینگ مجاز نیست. اگر بعداً پس از بازبینی firmware و build، تست سخت‌افزاری
+صریحاً فعال شد، فقط یک تست کوتاه و تحت‌نظارت با همان باتری `12V/4.5Ah`، منبع
+ورودی محدودشده به `50mA`، حداکثر duty `2%`، اسیلوسکوپ و پایش continuity رله
+قابل بررسی است؛ این تست شارژ کامل یا unattended نیست و current-limit ورودی
+جای current-limit خروجی firmware را نمی‌گیرد.

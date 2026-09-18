@@ -160,10 +160,10 @@ if [ -f "$IOC" ]; then
     echo "  FAIL: USART1 UART backend missing"
     FAIL=1
   fi
-  if grep -q "PB2.Mode=External_Interrupt_Mode_with_Rising_Falling_edge_trigger_detection" "$IOC" && \
+  if grep -q "PB2.Mode=External_Interrupt_Mode_with_Falling_edge_trigger_detection" "$IOC" && \
      grep -q "PB4.Mode=External_Interrupt_Mode_with_Rising_Falling_edge_trigger_detection" "$IOC" && \
-     grep -q "PB6.Mode=External_Interrupt_Mode_with_Rising_Falling_edge_trigger_detection" "$IOC"; then
-    echo "  OK: JITTER1, 24V detect and JITTER2 EXTI lines are retained"
+     grep -q "PB6.Mode=External_Interrupt_Mode_with_Falling_edge_trigger_detection" "$IOC"; then
+    echo "  OK: active-low JITTER1/JITTER2 falling EXTI and 24V detect EXTI are retained"
   else
     echo "  FAIL: Schematic EXTI lines missing"
     FAIL=1

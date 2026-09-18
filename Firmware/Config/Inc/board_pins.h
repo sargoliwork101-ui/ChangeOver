@@ -66,10 +66,14 @@
 #define PIN_PROTECT_BATT_ACTIVE_HIGH 0u
 
 /* ==================== Digital inputs / ورودی‌های دیجیتال ==================== */
+/* [EN] Schematic LM393 outputs are open-collector active-low: high is the
+ *      released/no-trip state and low is the over-current/JIT trip state.
+ * [FA] خروجی‌های LM393 در شماتیک open-collector و active-low هستند: high حالت
+ *      آزاد/بدون تریپ و low حالت تریپ اضافه‌جریان/JIT است. */
 #define PIN_JITTER1_PORT        GPIOB
-#define PIN_JITTER1_PIN         GPIO_PIN_2      /* PB2 MCU_JITTER1 / JITT1 */
+#define PIN_JITTER1_PIN         GPIO_PIN_2      /* PB2 MCU_JITTER1 / JITT1, falling trip */
 #define PIN_JITTER2_PORT        GPIOB
-#define PIN_JITTER2_PIN         GPIO_PIN_6      /* PB6 MCU_JITTER2 / JITT2 */
+#define PIN_JITTER2_PIN         GPIO_PIN_6      /* PB6 MCU_JITTER2 / JITT2, falling trip */
 #define PIN_INT_24_IN_PORT      GPIOB
 #define PIN_INT_24_IN_PIN       GPIO_PIN_4      /* PB4 MCU_INT_24_IN */
 

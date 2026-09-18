@@ -202,6 +202,12 @@ static uint32_t func__Charger_ActiveCurrentLimitMa(void)
     return CHG_CURRENT_LIMIT_MA;
 }
 
+static bool func__Charger_BatteryVoltageIsValid(uint32_t uint32_t__batteryMv)
+{
+    return ((uint32_t__batteryMv >= CHG_MIN_VALID_BATTERY_MV) &&
+            (uint32_t__batteryMv <= CHG_MAX_VALID_BATTERY_MV));
+}
+
 static void func__Charger_ApplyDuty(uint8_t uint8_t__channelIndex,
                                     uint16_t uint16_t__dutyPermille)
 {
@@ -336,6 +342,7 @@ static void func__Charger_HandleJitTrip(uint8_t uint8_t__channelIndex,
                                         uint32_t uint32_t__nowTick)
 {
     charger_channel_state_t *charger_channel_state_t__channel;
+    uint16_t uint16_t__dutyBeforeTripPermille;
 
     if (uint8_t__channelIndex >= 2u)
     {
@@ -357,9 +364,12 @@ static void func__Charger_HandleJitTrip(uint8_t uint8_t__channelIndex,
         return;
     }
 
+    /* Capture before StopOneChannel(), which deliberately clears the live duty. */
+    uint16_t__dutyBeforeTripPermille =
+        charger_channel_state_t__channel->uint16_t__dutyPermille;
     func__Charger_StopOneChannel(uint8_t__channelIndex);
     charger_channel_state_t__channel->uint16_t__dutyBeforeTripPermille =
-        charger_channel_state_t__channel->uint16_t__dutyPermille;
+        uint16_t__dutyBeforeTripPermille;
     charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_JIT_RETRY_WAIT;
     charger_channel_state_t__channel->uint32_t__retryDeadlineTick =
         uint32_t__nowTick + func__Charger_DurationTicks(CHG_JIT_LOCKOUT_MS);
@@ -473,7 +483,7 @@ static void func__Charger_BringupRegulateChannel(uint8_t uint8_t__channelIndex,
     uint32_t__currentMa =
         func__Charger_ChannelCurrentMa(measurement_snapshot_t__snap, uint8_t__channelIndex);
 
-    if (uint32_t__batteryMv < CHG_MIN_VALID_BATTERY_MV)
+    if (func__Charger_BatteryVoltageIsValid(uint32_t__batteryMv) == false)
     {
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
         func__Charger_StopOneChannel(uint8_t__channelIndex);
@@ -555,7 +565,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     uint32_t__currentMa =
         func__Charger_ChannelCurrentMa(measurement_snapshot_t__snap, uint8_t__channelIndex);
 
-    if (uint32_t__batteryMv < CHG_MIN_VALID_BATTERY_MV)
+    if (func__Charger_BatteryVoltageIsValid(uint32_t__batteryMv) == false)
     {
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
         func__Charger_StopOneChannel(uint8_t__channelIndex);

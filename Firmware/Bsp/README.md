@@ -48,17 +48,17 @@ Firmware/Bsp/Src/*.c       ← پورت برد فعلی، HAL و main.h خصوص
 | `BSP_GPIO_RELAY` | PB7 | خروجی | active-high، Low |
 | `BSP_GPIO_PROTECT_BATTERY` | PB11 | خروجی | active-low، High |
 | `BSP_GPIO_INPUT_24V_PRESENT` | PB4 | ورودی + EXTI | تشخیص منطقی سطح High |
-| `BSP_GPIO_JITTER1` | PB2 | ورودی + EXTI | تشخیص لبه، قطبیت در ماژول تعیین می‌شود |
-| `BSP_GPIO_JITTER2` | PB6 | ورودی + EXTI | تشخیص لبه، قطبیت در ماژول تعیین می‌شود |
+| `BSP_GPIO_JITTER1` | PB2 | ورودی + EXTI | خروجی LM393 active-low، فقط falling معتبر است |
+| `BSP_GPIO_JITTER2` | PB6 | ورودی + EXTI | خروجی LM393 active-low، فقط falling معتبر است |
 
-`bsp_exti.c` callback HAL را به eventهای `BSP_EXTI_JITTER1`، `BSP_EXTI_JITTER2` و `BSP_EXTI_INPUT_DETECT` تبدیل می‌کند. خطوط PB2، PB4 و PB6 روی هر دو لبه فعال هستند؛ IRQهای واقعی در `stm32f1xx_it.c` پاک‌سازی و به callback تحویل می‌شوند.
+`bsp_exti.c` callback HAL را به eventهای `BSP_EXTI_JITTER1`، `BSP_EXTI_JITTER2` و `BSP_EXTI_INPUT_DETECT` تبدیل می‌کند. PB2/PB6 روی falling و PB4 روی هر دو لبه فعال هستند؛ callback برای JIT پایین‌بودن پایه را نیز چک می‌کند. IRQهای واقعی در `stm32f1xx_it.c` پاک‌سازی و به callback تحویل می‌شوند.
 
 ## نگاشت PWM و UART
 
 | قرارداد منطقی | پریفرال/پایه فعلی | وضعیت ماژول |
 |---|---|---|
-| `BSP_PWM_CHARGER_1` | TIM2_CH1 / PA0، حدود 1kHz | `MODULE_CHARGER=0`، backend موجود و خاموش در startup |
-| `BSP_PWM_CHARGER_2` | TIM3_CH1 / PA6، حدود 1kHz | `MODULE_CHARGER=0`، backend موجود و خاموش در startup |
+| `BSP_PWM_CHARGER_1` | TIM2_CH1 / PA0، 50kHz | `MODULE_CHARGER=1`، با `CHG_MASTER_ENABLE=0` safe-off |
+| `BSP_PWM_CHARGER_2` | TIM3_CH1 / PA6، 50kHz | `MODULE_CHARGER=1`، با `CHG_MASTER_ENABLE=0` safe-off |
 | `BspUart` byte stream | USART1 TX/RX / PA9/PA10، 115200 8-N-1 | `MODULE_ESP=0`، backend موجود |
 
 `func__BspPwm_SetDutyPermille` دامنهٔ ۰ تا ۱۰۰۰ را اعمال می‌کند و صفر خروجی را متوقف می‌کند. `func__BspUart_Write` ارسال کامل با timeout محدود ۱۰۰ms دارد و `func__BspUart_ReadByte` non-blocking است.

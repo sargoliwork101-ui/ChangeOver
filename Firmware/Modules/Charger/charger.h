@@ -153,6 +153,14 @@
  * به‌تنهایی شبیه‌ساز باتری نیست؛ برای تست بدون باتری فقط electronic load با
  * voltage clamp یا battery simulator مجاز است. */
 #define CHG_MIN_VALID_BATTERY_MV      2000u
+/* [EN] Hard upper battery-sense cutoff for every control path. A 12 V VRLA
+ *      battery must not be connected to a charger that is already above this
+ *      conservative 15.0 V limit. This is a firmware cutoff, not a substitute
+ *      for a fuse, current-limited source, or a battery manufacturer's limits.
+ * [FA] قطع سخت بالای سنجش باتری برای همهٔ مسیرهای کنترل. باتری VRLA دوازده
+ *      ولت نباید به شارژری که از حد محافظه‌کارانهٔ ۱۵٫۰V بالاتر است وصل شود.
+ *      این قطع firmware جای فیوز، منبع محدودشده یا حدود سازندهٔ باتری نیست. */
+#define CHG_MAX_VALID_BATTERY_MV     15000u
 
 /* ==================== Charger_Init / مقداردهی اولیه ==================== */
 /**
