@@ -6,7 +6,9 @@
  * @note    [EN] This module uses ONLY: snapshot.valid, snapshot.v_bat24_mv,
  *              snapshot.input_present, fault_mask, BOOL__G__UiBatteryAlarmIssued.
  *              Time conversion uses rtos_time.h only, tick=1ms assumption is forbidden.
- *              Only BSP_GPIO_PROTECT_BATTERY is allowed; PB5/PB7 are forbidden.
+ *              Drives BSP_GPIO_PROTECT_BATTERY (PB11 cut) and
+ *              BSP_GPIO_BATTERY_SWITCH (PB5 battery path on input loss); PB7
+ *              stays forbidden.
  *          [FA] این ماژول فقط از valid، v_bat24_mv، input_present، fault_mask و فلگ UI استفاده می‌کند.
  */
 

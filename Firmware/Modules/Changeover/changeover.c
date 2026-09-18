@@ -5,10 +5,12 @@
  *
  * @note    [EN] This module uses ONLY: snapshot.valid, snapshot.v_bat24_mv,
  *              snapshot.input_present, fault_mask, BOOL__G__UiBatteryAlarmIssued.
- *              No board_pins.h, no HAL, no PB5/PB7, no float/queue/task.
+ *              No board_pins.h, no HAL, no PB7, no float/queue/task.
  *              Time conversion ONLY via rtos_time.h (MillisecondsToTicks); tick=1ms assumption is forbidden.
- *              PB11 (BSP_GPIO_PROTECT_BATTERY) is the ONLY logical pin used.
- *          [FA] فقط از داده‌های مجاز بالا استفاده می‌کند و فقط PB11 منطقی را می‌زند.
+ *              Two logical pins are driven: PB11 (BSP_GPIO_PROTECT_BATTERY, battery
+ *              cut on over-discharge) and PB5 (BSP_GPIO_BATTERY_SWITCH, battery
+ *              path connect when the 24 V input is lost).
+ *          [FA] فقط از داده‌های مجاز بالا استفاده می‌کند و دو پایه منطقی PB11 و PB5 را می‌زند.
  */
 
 #include "changeover.h"
@@ -65,6 +67,41 @@ static uint32_t TICK_T__G__ReconnectStartTick = 0u;
  */
 static bool BOOL__G__ReconnectTimerActive = false;
 
+/**
+ * @brief  [EN] Last logical level written to PB5 battery switch
+ *              (true = battery connected to the OR-ed bus).
+ *         [FA] آخرین سطح منطقی نوشته‌شده روی سوییچ باتری PB5.
+ */
+static bool BOOL__G__BatterySwitchConnected = false;
+
+/* ==================== Changeover_SyncBatterySwitch / سنک سوییچ باتری ==================== */
+
+/**
+ * @brief  [EN] Drive the PB5 battery power-path switch (Q1/Q2/Q3 chain on the
+ *              power-supply sheet): connect the battery to the OR-ed bus only
+ *              when the 24 V input is gone AND the protect cut is not
+ *              asserted. Without this drive the MCU dies with the input.
+ *              Logical level only; the active-low physical polarity and the
+ *              pin live in the BSP. Writes happen only on a level change.
+ *         [FA] درایو سوییچ مسیر باتری PB5 (زنجیره Q1/Q2/Q3): باتری فقط وقتی به
+ *              باس OR وصل شود که ورودی ۲۴ ولت رفته و قطع protect فعال نباشد.
+ *              بدون این درایو میکرو با ورودی می‌میرد. فقط سطح منطقی؛ قطبیت
+ *              active-low در BSP پنهان است. نوشتن فقط هنگام تغییر سطح.
+ */
+static void func__Changeover_SyncBatterySwitch(const measurement_snapshot_t *measurement_snapshot_t__snap)
+{
+    bool bool__connect;
+
+    bool__connect = ((measurement_snapshot_t__snap->input_present == false) &&
+                     (BOOL__G__ChangeoverProtectAsserted == false));
+
+    if (bool__connect != BOOL__G__BatterySwitchConnected)
+    {
+        func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, bool__connect);
+        BOOL__G__BatterySwitchConnected = bool__connect;
+    }
+}
+
 /* ==================== Changeover_Init / مقداردهی اولیه ==================== */
 
 /**
@@ -79,6 +116,9 @@ void func__Changeover_Init(void)
     BOOL__G__CutTimerActive = false;
     TICK_T__G__ReconnectStartTick = 0u;
     BOOL__G__ReconnectTimerActive = false;
+    /* [EN] Match the BSP safe state: PB5 physical HIGH = battery path cut.
+       [FA] هماهنگ با وضعیت امن BSP: باتری قطع. */
+    BOOL__G__BatterySwitchConnected = false;
 }
 
 /* ==================== Changeover_Evaluate / ارزیابی ==================== */
@@ -245,6 +285,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
             }
         }
 
+        func__Changeover_SyncBatterySwitch(measurement_snapshot_t__snap);
         return APP_STATE_T__G__State;
     }
     else
@@ -309,6 +350,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
                 }
             }
         }
+        func__Changeover_SyncBatterySwitch(measurement_snapshot_t__snap);
         return APP_STATE_T__G__State;
     }
     else
@@ -335,5 +377,6 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         }
     }
 
+    func__Changeover_SyncBatterySwitch(measurement_snapshot_t__snap);
     return APP_STATE_T__G__State;
 }
