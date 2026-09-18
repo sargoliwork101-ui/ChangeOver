@@ -53,6 +53,7 @@ typedef struct
     charger_state_t charger_state_t__state;
     uint32_t uint32_t__absorbStartTick;
     uint32_t uint32_t__retryDeadlineTick;
+    uint32_t uint32_t__lastDutyStepTick;
 } charger_channel_state_t;
 
 /* ==================== Static state / وضعیت داخلی ==================== */
@@ -339,6 +340,7 @@ static void func__Charger_ResetChannelToOff(uint8_t uint8_t__channelIndex)
     charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_OFF;
     charger_channel_state_t__channel->uint32_t__absorbStartTick = 0u;
     charger_channel_state_t__channel->uint32_t__retryDeadlineTick = 0u;
+    charger_channel_state_t__channel->uint32_t__lastDutyStepTick = 0u;
     charger_channel_state_t__channel->uint16_t__dutyBeforeTripPermille =
         charger_channel_state_t__channel->uint16_t__dutyPermille;
 }
@@ -474,6 +476,10 @@ static void func__Charger_ServiceRetry(uint32_t uint32_t__nowTick)
 #endif
 
     func__Charger_ApplyDuty(uint8_t__retryChannel, uint16_t__retryDuty);
+    /* [EN] Stamp the step timer so the resumed ramp waits a full up-interval
+       before growing again (soft resume after a JIT trip).
+       [FA] بعد از ری‌استارت JIT هم رمپ باید یک بازهٔ کامل صبر کند. */
+    charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
     UINT8_T__G__RetryChannel = CHG_NO_CHANNEL;
 }
 
@@ -557,6 +563,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     uint32_t uint32_t__absorbTicks;
     uint16_t uint16_t__nextDuty;
     uint32_t uint32_t__increasedDuty;
+    uint32_t uint32_t__upIntervalTicks;
+    uint32_t uint32_t__downIntervalTicks;
 
     charger_channel_state_t__channel = &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
 
@@ -618,6 +626,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
         charger_channel_state_t__channel->uint32_t__absorbStartTick = 0u;
         func__Charger_ApplyDuty(uint8_t__channelIndex, CHG_DUTY_START_PERMILLE);
+        charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
         return;
     }
 
@@ -666,36 +675,53 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     }
 
     uint16_t__nextDuty = charger_channel_state_t__channel->uint16_t__dutyPermille;
+    uint32_t__upIntervalTicks = func__Charger_DurationTicks(CHG_DUTY_RAMP_UP_INTERVAL_MS);
+    uint32_t__downIntervalTicks = func__Charger_DurationTicks(CHG_DUTY_RAMP_DOWN_INTERVAL_MS);
 
     if (uint32_t__batteryMv < uint32_t__targetMv)
     {
-        /* [EN] Current regulation band: above 675 mA step duty DOWN, below
-           620 mA step duty UP, inside 620..675 hold. This holds the charge
-           current instead of the old ramp/cut/restart limit cycle,
-           [FA] باند تنظیم جریان: بالای ۶۷۵ کاهش دیوتی، زیر ۶۲۰ افزایش، داخل باند
-           نگه‌داشت — دیگر چرخه رمپ/قطع/شروع‌مجدد وجود ندارد. */
+        /* [EN] Current regulation band with rate-limited steps: above 675 mA
+           step duty DOWN (one 0.5% step per 100 ms), below 620 mA step duty
+           UP (one 0.5% step per 1000 ms), inside 620..675 hold. Gradual
+           down-steps let the loop sit near the band with hysteresis instead
+           of cutting and restarting from zero.
+           [FA] باند تنظیم جریان با پله‌های محدودشدهٔ زمانی: بالای ۶۷۵ کاهش
+           تدریجی (هر ۱۰۰ms)، زیر ۶۲۰ افزایش تدریجی (هر ۱ ثانیه)، داخل باند
+           نگه‌داشت — بدون قطع و شروع از صفر، مثل یه هیسترزیس. */
         if (uint32_t__currentMa > CHG_BULK_CURRENT_MAX_MA)
         {
-            if (uint16_t__nextDuty > CHG_DUTY_STEP_PERMILLE)
+            if ((uint32_t)(uint32_t__nowTick -
+                           charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
+                uint32_t__downIntervalTicks)
             {
-                uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_PERMILLE);
-            }
-            else
-            {
-                uint16_t__nextDuty = 0u;
+                if (uint16_t__nextDuty > CHG_DUTY_STEP_PERMILLE)
+                {
+                    uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_PERMILLE);
+                }
+                else
+                {
+                    uint16_t__nextDuty = 0u;
+                }
+                charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
             }
         }
         else if (uint32_t__currentMa < CHG_REGULATE_LOW_MA)
         {
-            uint32_t__increasedDuty =
-                (uint32_t)uint16_t__nextDuty + CHG_DUTY_STEP_PERMILLE;
-            if (uint32_t__increasedDuty > CHG_DUTY_MAX_PERMILLE)
+            if ((uint32_t)(uint32_t__nowTick -
+                           charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
+                uint32_t__upIntervalTicks)
             {
-                uint16_t__nextDuty = CHG_DUTY_MAX_PERMILLE;
-            }
-            else
-            {
-                uint16_t__nextDuty = (uint16_t)uint32_t__increasedDuty;
+                uint32_t__increasedDuty =
+                    (uint32_t)uint16_t__nextDuty + CHG_DUTY_STEP_PERMILLE;
+                if (uint32_t__increasedDuty > CHG_DUTY_MAX_PERMILLE)
+                {
+                    uint16_t__nextDuty = CHG_DUTY_MAX_PERMILLE;
+                }
+                else
+                {
+                    uint16_t__nextDuty = (uint16_t)uint32_t__increasedDuty;
+                }
+                charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
             }
         }
         else
@@ -705,13 +731,19 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     }
     else if (uint32_t__batteryMv > uint32_t__targetMv)
     {
-        if (uint16_t__nextDuty > CHG_DUTY_STEP_PERMILLE)
+        if ((uint32_t)(uint32_t__nowTick -
+                       charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
+            uint32_t__downIntervalTicks)
         {
-            uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_PERMILLE);
-        }
-        else
-        {
-            uint16_t__nextDuty = 0u;
+            if (uint16_t__nextDuty > CHG_DUTY_STEP_PERMILLE)
+            {
+                uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_PERMILLE);
+            }
+            else
+            {
+                uint16_t__nextDuty = 0u;
+            }
+            charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
         }
     }
 
@@ -734,6 +766,7 @@ void func__Charger_Init(void)
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state = CHG_STATE_OFF;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbStartTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__retryDeadlineTick = 0u;
+        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__lastDutyStepTick = 0u;
     }
 
     BOOL__G__ChargerInitialized = true;

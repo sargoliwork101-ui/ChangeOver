@@ -164,8 +164,28 @@
 #define CHG_INPUT_VALID_MV           22000u
 #define CHG_DUTY_START_PERMILLE        10u
 #define CHG_DUTY_STEP_PERMILLE          5u
+/* [EN] The control task evaluates the charger every 10 ms (control_period_ms),
+ *      so a plain "+5 permille per pass" would ramp 50%/s - far above the
+ *      intended 0.5%/s - overshoot the current band and trip the ~15.5 A JIT.
+ *      Steps are therefore rate-limited per channel:
+ *      one 0.5% up-step per CHG_DUTY_RAMP_UP_INTERVAL_MS (slow soft-start ramp)
+ *      and one 0.5% down-step per CHG_DUTY_RAMP_DOWN_INTERVAL_MS (10x faster
+ *      response to over-current/over-voltage, still gradual - reduces duty
+ *      instead of cutting, so the current can be held near the band).
+ * [FA] تسک کنترل شارژر را هر ۱۰ms اجرا می‌کند؛ بدون محدودیت زمانی، پلهٔ
+ *      ۵ پرمیل ۱۰۰ بار در ثانیه اعمال می‌شد (۵۰٪/s) و JIT تریپ می‌کرد. حالا
+ *      به‌ازای هر کانال: افزایش هر ۱ ثانیه یک پلهٔ ۰٫۵٪ (رمپ نرم)، کاهش هر
+ *      ۱۰۰ms یک پلهٔ ۰٫۵٪ (کاهش تدریجی به‌جای قطع، برای نگه‌داشتن جریان
+ *      نزدیک باند با هیسترزیس). */
+#define CHG_DUTY_RAMP_UP_INTERVAL_MS   1000u
+#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS  100u
 #define CHG_DUTY_RETRY_SECOND_MAX       100u
-#define CHG_DUTY_MAX_PERMILLE          300u  /* [EN] 30% cap: keeps primary peak below the ~15.5 A JIT trip even at the cap; regulation band settles near ~19% / سقف ۳۰٪: پیک اولیه زیر تریپ JIT می‌ماند */
+/* [EN] DCM ceiling: 50% max - anything higher risks core/MOSFET overlap and
+ *      burns the MOSFET (board requirement). The regulation band settles near
+ *      ~19%, so this cap is only an upper bound.
+ * [FA] سقف DCM: حداکثر ۵۰٪ — بالاتر از آن ماسفت می‌سوزد (شرط برد). نقطه کار
+ *      تنظیم نزدیک ~۱۹٪ است؛ این فقط کران بالاست. */
+#define CHG_DUTY_MAX_PERMILLE          500u
 #define CHG_ABSORB_HOLD_MS          600000u
 #define CHG_JIT_LOCKOUT_MS            3000u
 #define CHG_RELAY_SETTLE_MS            100u
