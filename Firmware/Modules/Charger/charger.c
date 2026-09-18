@@ -602,8 +602,12 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         return;
     }
 
-    if (uint32_t__currentMa > CHG_CURRENT_LIMIT_MA)
+    if (uint32_t__currentMa > CHG_CURRENT_HARD_FAULT_MA)
     {
+        /* [EN] Only a hard over-current fault resets the channel; normal
+           over-target is handled by the duty band below (no cut/restart).
+           [FA] فقط خطای سخت اضافه‌جریان کانال را ریست می‌کند؛ بالای هدفِ عادی با
+           باند دیوتی پایین مدیریت می‌شود. */
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
         func__Charger_StopOneChannel(uint8_t__channelIndex);
         return;
@@ -665,7 +669,23 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
 
     if (uint32_t__batteryMv < uint32_t__targetMv)
     {
-        if (uint32_t__currentMa < CHG_BULK_CURRENT_MAX_MA)
+        /* [EN] Current regulation band: above 675 mA step duty DOWN, below
+           620 mA step duty UP, inside 620..675 hold. This holds the charge
+           current instead of the old ramp/cut/restart limit cycle,
+           [FA] باند تنظیم جریان: بالای ۶۷۵ کاهش دیوتی، زیر ۶۲۰ افزایش، داخل باند
+           نگه‌داشت — دیگر چرخه رمپ/قطع/شروع‌مجدد وجود ندارد. */
+        if (uint32_t__currentMa > CHG_BULK_CURRENT_MAX_MA)
+        {
+            if (uint16_t__nextDuty > CHG_DUTY_STEP_PERMILLE)
+            {
+                uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_PERMILLE);
+            }
+            else
+            {
+                uint16_t__nextDuty = 0u;
+            }
+        }
+        else if (uint32_t__currentMa < CHG_REGULATE_LOW_MA)
         {
             uint32_t__increasedDuty =
                 (uint32_t)uint16_t__nextDuty + CHG_DUTY_STEP_PERMILLE;
@@ -677,6 +697,10 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
             {
                 uint16_t__nextDuty = (uint16_t)uint32_t__increasedDuty;
             }
+        }
+        else
+        {
+            /* [EN] Inside the 620..675 band: hold duty. / داخل باند: نگه‌داشت دیوتی */
         }
     }
     else if (uint32_t__batteryMv > uint32_t__targetMv)

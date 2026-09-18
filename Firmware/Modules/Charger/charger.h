@@ -136,6 +136,15 @@
 #define CHG_REENTRY_MV               12800u
 #define CHG_BULK_CURRENT_MAX_MA       675u
 #define CHG_CURRENT_LIMIT_MA           675u
+/* [EN] Output-current regulation band: below CHG_REGULATE_LOW_MA the duty
+ *      steps up, above CHG_BULK_CURRENT_MAX_MA it steps down, inside the band
+ *      it holds. Only a hard fault (> CHG_CURRENT_HARD_FAULT_MA) resets the
+ *      channel. This band is what keeps the normal path from oscillating
+ *      ramp/cut/restart around a single 675 mA threshold.
+ * [FA] باند تنظیم جریان خروجی: زیر ۶۲۰ افزایش دیوتی، بالای ۶۷۵ کاهش دیوتی،
+ *      داخل باند نگه‌داشت. فقط خطای سخت (بالاتر از ۹۵۰) کانال را ریست می‌کند. */
+#define CHG_REGULATE_LOW_MA            620u
+#define CHG_CURRENT_HARD_FAULT_MA      950u
 
 /* [EN] Primary->output current estimate for the charge decisions: the shunt
  *      sits in the MOSFET source leg (primary side), while Bulk/Absorb/Float
@@ -156,7 +165,7 @@
 #define CHG_DUTY_START_PERMILLE        10u
 #define CHG_DUTY_STEP_PERMILLE          5u
 #define CHG_DUTY_RETRY_SECOND_MAX       100u
-#define CHG_DUTY_MAX_PERMILLE         1000u
+#define CHG_DUTY_MAX_PERMILLE          300u  /* [EN] 30% cap: keeps primary peak below the ~15.5 A JIT trip even at the cap; regulation band settles near ~19% / سقف ۳۰٪: پیک اولیه زیر تریپ JIT می‌ماند */
 #define CHG_ABSORB_HOLD_MS          600000u
 #define CHG_JIT_LOCKOUT_MS            3000u
 #define CHG_RELAY_SETTLE_MS            100u
