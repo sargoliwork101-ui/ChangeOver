@@ -64,9 +64,72 @@ static uint32_t UINT32_T__G__RelaySettleDeadline;
 
 #define CHG_NO_CHANNEL 0xFFu
 static uint8_t UINT8_T__G__RetryChannel;
+static bool BOOL__G__InputReady;
+static bool BOOL__G__BringupInputLockout;
+
+volatile uint32_t CHG_DEBUG__G__EvaluateCount;
+volatile uint32_t CHG_DEBUG__G__InputMv;
+volatile uint32_t CHG_DEBUG__G__BatteryMv;
+volatile uint32_t CHG_DEBUG__G__CurrentMa;
+volatile uint16_t CHG_DEBUG__G__AppliedDutyPermille;
+volatile uint16_t CHG_DEBUG__G__LastRequestedDutyPermille;
+volatile uint8_t CHG_DEBUG__G__AppliedChannel;
+volatile uint8_t CHG_DEBUG__G__Channel2State;
+volatile uint8_t CHG_DEBUG__G__Channel2JitTrips;
+volatile uint8_t CHG_DEBUG__G__InputReady;
+volatile uint8_t CHG_DEBUG__G__InputLockout;
+volatile uint8_t CHG_DEBUG__G__StopReason;
 
 /* ==================== Forward declarations / اعلان پیش‌موضع ==================== */
 static bsp_pwm_channel_t func__Charger_PwmChannel(uint8_t uint8_t__channelIndex);
+
+static void func__Charger_DebugSetReason(uint8_t uint8_t__reason)
+{
+    CHG_DEBUG__G__StopReason = uint8_t__reason;
+}
+
+static void func__Charger_DebugCapture(const measurement_snapshot_t *measurement_snapshot_t__snap)
+{
+    uint8_t uint8_t__activeChannel;
+    uint16_t uint16_t__activeDuty;
+
+    if (measurement_snapshot_t__snap == NULL)
+    {
+        CHG_DEBUG__G__InputMv = 0u;
+        CHG_DEBUG__G__BatteryMv = 0u;
+        CHG_DEBUG__G__CurrentMa = 0u;
+    }
+    else
+    {
+        CHG_DEBUG__G__InputMv = measurement_snapshot_t__snap->v_in_mv;
+        CHG_DEBUG__G__BatteryMv = measurement_snapshot_t__snap->v_bat_low_mv;
+        CHG_DEBUG__G__CurrentMa = measurement_snapshot_t__snap->i_ch2_ma;
+    }
+
+    uint8_t__activeChannel = 0u;
+    uint16_t__activeDuty = 0u;
+    if (CHARGER_CHANNEL_T__G__State[1u].uint16_t__dutyPermille > 0u)
+    {
+        uint8_t__activeChannel = 2u;
+        uint16_t__activeDuty =
+            CHARGER_CHANNEL_T__G__State[1u].uint16_t__dutyPermille;
+    }
+    else if (CHARGER_CHANNEL_T__G__State[0u].uint16_t__dutyPermille > 0u)
+    {
+        uint8_t__activeChannel = 1u;
+        uint16_t__activeDuty =
+            CHARGER_CHANNEL_T__G__State[0u].uint16_t__dutyPermille;
+    }
+
+    CHG_DEBUG__G__AppliedChannel = uint8_t__activeChannel;
+    CHG_DEBUG__G__AppliedDutyPermille = uint16_t__activeDuty;
+    CHG_DEBUG__G__Channel2State =
+        (uint8_t)CHARGER_CHANNEL_T__G__State[1u].charger_state_t__state;
+    CHG_DEBUG__G__Channel2JitTrips =
+        CHARGER_CHANNEL_T__G__State[1u].uint8_t__jitTripCount;
+    CHG_DEBUG__G__InputReady = (BOOL__G__InputReady == true) ? 1u : 0u;
+    CHG_DEBUG__G__InputLockout = (BOOL__G__BringupInputLockout == true) ? 1u : 0u;
+}
 
 /* ==================== Safe hardware policy / سیاست سخت‌افزاری امن ==================== */
 
@@ -196,7 +259,7 @@ static uint32_t func__Charger_ActiveCurrentLimitMa(void)
 {
     if ((CHG_TRANSFORMER_KNOWN == 0u) && (CHG_BRINGUP_TEST_ENABLE != 0u))
     {
-        return CHG_BRINGUP_TEST_SOURCE_LIMIT_MA;
+        return CHG_BRINGUP_TEST_OUTPUT_LIMIT_MA;
     }
 
     return CHG_CURRENT_LIMIT_MA;
@@ -238,6 +301,9 @@ static void func__Charger_ApplyDuty(uint8_t uint8_t__channelIndex,
     }
 
     charger_channel_state_t__channel->uint16_t__dutyPermille = uint16_t__clampedDuty;
+    CHG_DEBUG__G__AppliedChannel = (uint8_t)(uint8_t__channelIndex + 1u);
+    CHG_DEBUG__G__LastRequestedDutyPermille = uint16_t__dutyPermille;
+    CHG_DEBUG__G__AppliedDutyPermille = uint16_t__clampedDuty;
     func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex),
                                   uint16_t__clampedDuty);
 
@@ -485,6 +551,7 @@ static void func__Charger_BringupRegulateChannel(uint8_t uint8_t__channelIndex,
 
     if (func__Charger_BatteryVoltageIsValid(uint32_t__batteryMv) == false)
     {
+        func__Charger_DebugSetReason(CHG_DEBUG_REASON_BATTERY_INVALID);
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
         func__Charger_StopOneChannel(uint8_t__channelIndex);
         return;
@@ -492,8 +559,10 @@ static void func__Charger_BringupRegulateChannel(uint8_t uint8_t__channelIndex,
 
     if (uint32_t__currentMa > func__Charger_ActiveCurrentLimitMa())
     {
-        func__Charger_ResetChannelToOff(uint8_t__channelIndex);
-        func__Charger_StopOneChannel(uint8_t__channelIndex);
+        /* Do not repeatedly restart a bring-up over-current into a source
+         * that may also be powering the MCU. Latch the safe final fault. */
+        func__Charger_DebugSetReason(CHG_DEBUG_REASON_CURRENT_LIMIT);
+        func__Charger_LatchFinalFault(uint8_t__channelIndex);
         return;
     }
 
@@ -512,14 +581,8 @@ static void func__Charger_BringupRegulateChannel(uint8_t uint8_t__channelIndex,
             uint16_t__nextDuty = (uint16_t)uint32_t__increased;
         }
     }
-    else if (uint16_t__nextDuty > CHG_DUTY_STEP_PERMILLE)
-    {
-        uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_PERMILLE);
-    }
-    else
-    {
-        uint16_t__nextDuty = 0u;
-    }
+    /* At exactly the bring-up current limit, hold duty instead of creating a
+     * one-step sawtooth that repeatedly starts and stops the power stage. */
 
     func__Charger_ApplyDuty(uint8_t__channelIndex, uint16_t__nextDuty);
 }
@@ -567,6 +630,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
 
     if (func__Charger_BatteryVoltageIsValid(uint32_t__batteryMv) == false)
     {
+        func__Charger_DebugSetReason(CHG_DEBUG_REASON_BATTERY_INVALID);
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
         func__Charger_StopOneChannel(uint8_t__channelIndex);
         return;
@@ -574,6 +638,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
 
     if (uint32_t__currentMa > CHG_CURRENT_LIMIT_MA)
     {
+        func__Charger_DebugSetReason(CHG_DEBUG_REASON_CURRENT_LIMIT);
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
         func__Charger_StopOneChannel(uint8_t__channelIndex);
         return;
@@ -686,6 +751,13 @@ void func__Charger_Init(void)
     BOOL__G__RelayOpen = false;
     UINT32_T__G__RelaySettleDeadline = 0u;
     UINT8_T__G__RetryChannel = CHG_NO_CHANNEL;
+    BOOL__G__InputReady = false;
+    BOOL__G__BringupInputLockout = false;
+    CHG_DEBUG__G__EvaluateCount = 0u;
+    CHG_DEBUG__G__AppliedDutyPermille = 0u;
+    CHG_DEBUG__G__LastRequestedDutyPermille = 0u;
+    CHG_DEBUG__G__AppliedChannel = 0u;
+    CHG_DEBUG__G__StopReason = CHG_DEBUG_REASON_NONE;
 
     func__Charger_SafeIdle();
 }
@@ -709,10 +781,15 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     }
 
     uint32_t__nowTick = osKernelGetTickCount();
+    CHG_DEBUG__G__EvaluateCount++;
+    func__Charger_DebugSetReason(CHG_DEBUG_REASON_NONE);
+    func__Charger_DebugCapture(measurement_snapshot_t__snap);
 
     if (CHG_MASTER_ENABLE == 0u)
     {
+        func__Charger_DebugSetReason(CHG_DEBUG_REASON_MASTER_OFF);
         func__Charger_SafeIdle();
+        func__Charger_DebugCapture(measurement_snapshot_t__snap);
         return;
     }
 
@@ -722,7 +799,22 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         (app_state_t__state == APP_STATE_FAULT) ||
         (app_state_t__state == APP_STATE_SAFE))
     {
+        if ((measurement_snapshot_t__snap == NULL) ||
+            (measurement_snapshot_t__snap->valid == false))
+        {
+            func__Charger_DebugSetReason(CHG_DEBUG_REASON_SNAPSHOT_INVALID);
+        }
+        else if ((app_state_t__state == APP_STATE_FAULT) ||
+                 (app_state_t__state == APP_STATE_SAFE))
+        {
+            func__Charger_DebugSetReason(CHG_DEBUG_REASON_APP_SAFE_OR_FAULT);
+        }
+        else
+        {
+            func__Charger_DebugSetReason(CHG_DEBUG_REASON_TRANSFORMER_GATE);
+        }
         func__Charger_SafeIdle();
+        func__Charger_DebugCapture(measurement_snapshot_t__snap);
         return;
     }
 
@@ -738,7 +830,9 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
     if (bool__controlAllowed == false)
     {
+        func__Charger_DebugSetReason(CHG_DEBUG_REASON_TRANSFORMER_GATE);
         func__Charger_SafeIdle();
+        func__Charger_DebugCapture(measurement_snapshot_t__snap);
         return;
     }
 
@@ -754,13 +848,43 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
     if (bool__anyFinalFault == true)
     {
+        func__Charger_DebugSetReason(CHG_DEBUG_REASON_FINAL_FAULT);
         func__Charger_FinalDisconnect();
+        func__Charger_DebugCapture(measurement_snapshot_t__snap);
         return;
     }
 
-    bool__inputAdcValid = (measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_VALID_MV);
+    if (BOOL__G__BringupInputLockout == true)
+    {
+        func__Charger_DebugSetReason(CHG_DEBUG_REASON_INPUT_LOW);
+        func__Charger_SafeIdle();
+        func__Charger_DebugCapture(measurement_snapshot_t__snap);
+        return;
+    }
+
+    if (BOOL__G__InputReady == false)
+    {
+        if (measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_RECOVER_MV)
+        {
+            BOOL__G__InputReady = true;
+        }
+    }
+    else if (measurement_snapshot_t__snap->v_in_mv < CHG_INPUT_VALID_MV)
+    {
+        if ((CHG_TRANSFORMER_KNOWN == 0u) && (CHG_BRINGUP_TEST_ENABLE != 0u))
+        {
+            /* A running bring-up that sags below 22 V must not auto-restart
+             * into a source that may also be supplying the MCU. Power-cycle
+             * to clear this lockout after fixing the source/current limit. */
+            BOOL__G__BringupInputLockout = true;
+        }
+        BOOL__G__InputReady = false;
+    }
+
+    bool__inputAdcValid = BOOL__G__InputReady;
     if (bool__inputAdcValid == false)
     {
+        func__Charger_DebugSetReason(CHG_DEBUG_REASON_INPUT_LOW);
         for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
         {
             if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
@@ -771,6 +895,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
             }
         }
         func__Charger_SafeIdle();
+        func__Charger_DebugCapture(measurement_snapshot_t__snap);
         return;
     }
 
@@ -785,6 +910,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
             (func__Jitter_ChannelTripped((uint8_t)(uint8_t__channelIndex + 1u)) == true) &&
             (UINT8_T__G__RetryChannel == CHG_NO_CHANNEL))
         {
+            func__Charger_DebugSetReason(CHG_DEBUG_REASON_JIT_TRIP);
             func__Charger_HandleJitTrip(uint8_t__channelIndex, uint32_t__nowTick);
         }
     }
@@ -795,6 +921,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     if (BOOL__G__RelayOpen == true)
     {
         func__Charger_FinalDisconnect();
+        func__Charger_DebugCapture(measurement_snapshot_t__snap);
         return;
     }
 
@@ -836,4 +963,6 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
             func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
         }
     }
+
+    func__Charger_DebugCapture(measurement_snapshot_t__snap);
 }

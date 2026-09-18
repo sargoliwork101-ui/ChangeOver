@@ -57,7 +57,39 @@
 این مقادیر بدون دیتاشیت قطعی ZICO provisional هستند و Equalization اجرا نمی‌شود.
 برای اولین تست کوتاه و تحت‌نظارت، منبع ورودی باید بیرونی روی `50mA` محدود باشد و
 حداکثر duty همان `2%` بماند؛ این محدودکنندهٔ ورودی معادل current-limit خروجی
-firmware نیست. افزایش به `100mA` یا `10%` تا تأیید شکل‌موج مجاز نیست.
+firmware نیست. firmware در bring-up فعلاً جریان اندازه‌گیری‌شدهٔ خروجی را نیز
+روی `50mA` محدود و در عبور از آن latch می‌کند. افزایش به `100mA` یا `10%` تا
+تأیید شکل‌موج مجاز نیست.
+
+## Debug / Watch — متغیرهای قابل مشاهده
+
+این متغیرها فقط برای مشاهده هستند و از Live Expressions/Watch خوانده می‌شوند؛
+نوشتن آن‌ها از debugger مجاز نیست. مقادیر `InputMv`، `BatteryMv` و `CurrentMa`
+از همان snapshotی می‌آیند که Charger مصرف می‌کند. بازهٔ ADC-engineering برد با
+کالیبراسیون فعلی تقریباً `Vin=0..36882mV`، `VLOW=0..19897mV` و
+`Current2=0..3267mA` است؛ این بازه‌ها جای کالیبراسیون واقعی روی برد را نمی‌گیرند.
+
+| متغیر | واحد/کد | مقدار مورد انتظار در bring-up | بازهٔ مجاز/تفسیر |
+|---|---|---|---|
+| `CHG_DEBUG__G__EvaluateCount` | count | در هر Evaluate یک واحد زیاد می‌شود | `0..UINT32_MAX`؛ بعد از reset از صفر |
+| `CHG_DEBUG__G__InputMv` | mV | snapshot معتبر و هنگام start حداقل `23000` | `0..36882` برای ADC فعلی؛ زیر `22000` باید safe-off شود |
+| `CHG_DEBUG__G__BatteryMv` | mV | برای CH2 بین `2000..15000` | `0..19897`؛ بیرون بازهٔ اعتبار → PWM صفر |
+| `CHG_DEBUG__G__CurrentMa` | mA | در مرحلهٔ اول `0..50`؛ نزدیک limit باید duty hold شود | `0..3267` از ADC فعلی؛ بالای `50` در bring-up → final fault |
+| `CHG_DEBUG__G__AppliedDutyPermille` | ‰ | فقط `0..20`؛ duty مشاهده‌شدهٔ `15` یعنی `1.5%` | `0..20` در bring-up؛ با master خاموش باید `0` |
+| `CHG_DEBUG__G__LastRequestedDutyPermille` | ‰ | همان درخواست قبل از clamp | `0..20` در bring-up؛ در حالت عادی `0..1000` |
+| `CHG_DEBUG__G__AppliedChannel` | کد کانال | `2` هنگام PWM2؛ `0` در سکون | فقط `0`, `1`, `2` |
+| `CHG_DEBUG__G__Channel2State` | کد state | `4=BRINGUP` در حال تست، `6=INPUT_WAIT` در افت Vin، `7=FINAL_FAULT` در latch | فقط `0..7`: OFF, BULK, ABSORB, FLOAT, BRINGUP, JIT_RETRY_WAIT, INPUT_WAIT, FINAL_FAULT |
+| `CHG_DEBUG__G__Channel2JitTrips` | count | صفر در تست سالم | `0..3`؛ تریپ سوم باید fault نهایی کند |
+| `CHG_DEBUG__G__InputReady` | bool | `1` فقط بعد از Vin حداقل `23000` | فقط `0` یا `1`; زیر `22000` باید `0` شود |
+| `CHG_DEBUG__G__InputLockout` | bool | `0` در شروع؛ پس از sag bring-up برابر `1` و باقی می‌ماند | فقط `0` یا `1`؛ با reset پاک می‌شود |
+| `CHG_DEBUG__G__StopReason` | کد | صفر در کنترل عادی؛ `5` برای Vin پایین | `0..9`: NONE, MASTER_OFF, SNAPSHOT_INVALID, APP_SAFE_OR_FAULT, TRANSFORMER_GATE, INPUT_LOW, BATTERY_INVALID, CURRENT_LIMIT, JIT_TRIP, FINAL_FAULT |
+| `CHG_DEBUG__G__ResetFlags` | RCC CSR bits | پس از reset علت را نگه می‌دارد و بعد از boot پاک می‌شود | raw `RCC->CSR`; صفر یا ترکیب بیت‌های reset؛ برای brownout/POR/WDT ثبت شود |
+
+نکتهٔ تشخیصی: با `ARR=1439`، `AppliedDutyPermille=15` به حدود `21/1440` شمارش
+compare و تقریباً `1.46%` duty تبدیل می‌شود. بنابراین ثابت‌ماندن نزدیک `1.5%`
+به‌تنهایی خرابی تایمر نیست؛ باید هم‌زمان `InputMv`, `CurrentMa`, `Channel2State`,
+`InputLockout` و `StopReason` ثبت شوند تا مشخص شود PWM واقعاً با `SafeIdle` قطع‌و‌وصل
+می‌شود یا فقط در limit نگه داشته شده است.
 
 ## پایه‌ها
 
@@ -109,4 +141,7 @@ LM393/رله نیست. با تنظیمات تحویلی (`CHG_MASTER_ENABLE=0` �
 صریحاً فعال شد، فقط یک تست کوتاه و تحت‌نظارت با همان باتری `12V/4.5Ah`، منبع
 ورودی محدودشده به `50mA`، حداکثر duty `2%`، اسیلوسکوپ و پایش continuity رله
 قابل بررسی است؛ این تست شارژ کامل یا unattended نیست و current-limit ورودی
-جای current-limit خروجی firmware را نمی‌گیرد.
+جای current-limit خروجی firmware را نمی‌گیرد. اگر همین منبع ۵۰mA هم‌زمان تغذیهٔ
+MCU و power stage را تأمین کند، افت تغذیه و reset شدن MCU با firmware قابل
+تضمین‌کردن نیست؛ bring-up در افت Vin latch می‌شود و علت reset از
+`CHG_DEBUG__G__ResetFlags` بررسی می‌شود.

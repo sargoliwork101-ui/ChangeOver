@@ -49,6 +49,9 @@
 /* USER CODE BEGIN PV */
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
+/* [EN] Preserve reset cause for debugger inspection before HAL clears context.
+   [FA] علت ریست را پیش از پاک‌شدن context توسط HAL برای debugger نگه می‌دارد. */
+volatile uint32_t CHG_DEBUG__G__ResetFlags;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 UART_HandleTypeDef huart1;
@@ -78,6 +81,10 @@ static void MX_USART1_UART_Init(void);
   */
 int main(void)
 {
+
+  /* Preserve reset flags before HAL_Init() and the clock setup touch them. */
+  CHG_DEBUG__G__ResetFlags = RCC->CSR;
+  __HAL_RCC_CLEAR_RESET_FLAGS();
 
   /* USER CODE BEGIN 1 */
 

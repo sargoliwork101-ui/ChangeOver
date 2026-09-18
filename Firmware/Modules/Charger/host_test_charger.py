@@ -114,6 +114,9 @@ def test_transformer_known_not_bypassable_bringup_only_when_zero():
           "bring-up first stage max duty must be documented (20 permille = 2%)")
     check("CHG_BRINGUP_TEST_SOURCE_LIMIT_MA" in text_h and re.search(r"50u\s", text_h),
           "bring-up first stage source limit must be 50 mA external")
+    check(re.search(r"#define CHG_BRINGUP_TEST_OUTPUT_LIMIT_MA\s+50u", text_h) and
+          "CHG_BRINGUP_TEST_OUTPUT_LIMIT_MA" in text_c,
+          "firmware output-current limit must be explicit and separate from the external source limit")
     check("CHG_FIRST_BOARD_TEST_MAX_MA" not in text_h,
           "the retired 100 mA first-test setting must not remain as an executable-looking constant")
     # controlAllowed path must require either KNOWN=1 or bring-up enabled
@@ -216,13 +219,46 @@ def test_jit_is_active_low_and_retry_captures_duty_before_stop():
           "CubeMX JIT pins must use falling-edge EXTI")
 
 
+def test_debug_telemetry_and_bringup_overcurrent_is_latched():
+    text_h = CHARGER_H.read_text()
+    text_c = CHARGER_C.read_text()
+    main = MAIN_C.read_text()
+    for symbol in (
+        "CHG_DEBUG__G__InputMv",
+        "CHG_DEBUG__G__BatteryMv",
+        "CHG_DEBUG__G__CurrentMa",
+        "CHG_DEBUG__G__AppliedDutyPermille",
+        "CHG_DEBUG__G__Channel2State",
+        "CHG_DEBUG__G__InputLockout",
+        "CHG_DEBUG__G__StopReason",
+    ):
+        check(symbol in text_h and symbol in text_c,
+              f"debug watch variable {symbol} must be exported and updated")
+    check("CHG_DEBUG__G__ResetFlags" in main,
+          "reset flags must be preserved before HAL startup for brownout diagnosis")
+    bringup = text_c[text_c.find("static void func__Charger_BringupRegulateChannel"):text_c.find("/* ==================== Regulation", text_c.find("static void func__Charger_BringupRegulateChannel"))]
+    check("func__Charger_LatchFinalFault" in bringup and
+          "CHG_DEBUG_REASON_CURRENT_LIMIT" in bringup,
+          "bring-up over-current must latch instead of repeatedly restarting PWM")
+    check("BOOL__G__BringupInputLockout = true" in text_c and
+          "CHG_DEBUG_REASON_INPUT_LOW" in text_c,
+          "bring-up input sag must lock out auto-restart instead of chopping the MCU supply")
+    check("uint32_t__currentMa < func__Charger_ActiveCurrentLimitMa()" in bringup and
+          "At exactly the bring-up current limit, hold duty" in bringup,
+          "exact bring-up current limit must hold duty rather than sawtooth")
+
+
 def test_input_voltage_is_real_adc_22000mv():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
     check(re.search(r"#define CHG_INPUT_VALID_MV\s+22000u", text_h),
           "input validity threshold must be 22000 mV")
-    check("measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_VALID_MV" in text_c,
+    check("CHG_INPUT_VALID_MV" in text_c and
+          ("measurement_snapshot_t__snap->v_in_mv < CHG_INPUT_VALID_MV" in text_c or
+           "measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_RECOVER_MV" in text_c),
           "input must be checked from real ADC v_in_mv every cycle")
+    check(re.search(r"#define CHG_INPUT_RECOVER_MV\s+23000u", text_h),
+          "input recovery must require 23000 mV to prevent source-sag PWM chatter")
     check("input_present == false" not in text_c,
           "PB4 digital input alone must not be the charge gate")
     # Vin<22000 path: SafeIdle (both PWM 0 + relay coil false/NC closed), no retry/PWM
@@ -352,6 +388,7 @@ def main():
         test_min_valid_battery_is_sense_not_setpoint,
         test_battery_voltage_upper_cutoff_applies_before_any_control,
         test_jit_is_active_low_and_retry_captures_duty_before_stop,
+        test_debug_telemetry_and_bringup_overcurrent_is_latched,
         test_input_voltage_is_real_adc_22000mv,
         test_input_recovery_restarts_with_safe_duty,
         test_no_shadowing_in_duty_adjustments,

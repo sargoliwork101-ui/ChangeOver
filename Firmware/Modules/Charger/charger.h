@@ -96,7 +96,8 @@
  *   Duty step is still CHG_DUTY_STEP_PERMILLE but max duty is clamped to
  *   CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE.
  *     First bring-up stage: max 1%..2% duty (20 permille), source current
- *       limit 50 mA external.
+ *       limit 50 mA external. If Vin falls below 22000 mV after start, PWM is
+ *       stopped and bring-up latches off until reset; it must not auto-chop.
  *     Only after scope confirms gate/shunt/relay polarity and latency, stage
  *       may be raised up to 10% and source limit up to 100 mA.
  *   Bring-up test never enters Absorb/Float, never uses a 24 V pack setpoint,
@@ -120,7 +121,8 @@
  *   حفاظت‌های عددی (جریان، JIT، sense باتری) گیت می‌شود. */
 #define CHG_BRINGUP_TEST_ENABLE                0u
 #define CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE     20u  /* [EN] 2% max for the first bring-up stage / حداکثر ۲٪ مرحله اول */
-#define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA       50u  /* [EN] external source limit 50 mA first stage / حد منبع خارجی ۵۰mA مرحله اول */
+#define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA       50u  /* [EN] external total-source limit only; not measured by MCU / فقط حد خارجی کل منبع */
+#define CHG_BRINGUP_TEST_OUTPUT_LIMIT_MA       50u  /* [EN] conservative measured channel-current limit / حد محافظه‌کارانه خروجی */
 #define CHG_BRINGUP_TEST_FULL_STAGE_MAX_DUTY  100u  /* [EN] 10% after waveform confirmation / ۱۰٪ بعد از تأیید شکل‌موج */
 #define CHG_BRINGUP_TEST_FULL_STAGE_LIMIT_MA  100u  /* [EN] 100 mA after waveform confirmation / ۱۰۰mA بعد از تأیید شکل‌موج */
 
@@ -135,6 +137,13 @@
 #define CHG_BULK_CURRENT_MAX_MA       675u
 #define CHG_CURRENT_LIMIT_MA           675u
 #define CHG_INPUT_VALID_MV           22000u
+/* [EN] Recovery threshold prevents PWM chatter when the current-limited
+ *      source sags around the 22 V cutoff. A fresh/recovered input must reach
+ *      23 V; an already-ready input is stopped below 22 V.
+ * [FA] آستانهٔ برگشت برای جلوگیری از قطع‌و‌وصل PWM هنگام افت منبع محدودشده
+ *      اطراف ۲۲V است. ورودی تازه/برگشته باید به ۲۳V برسد و ورودی آماده زیر
+ *      ۲۲V متوقف می‌شود. */
+#define CHG_INPUT_RECOVER_MV         23000u
 #define CHG_DUTY_START_PERMILLE        10u
 #define CHG_DUTY_STEP_PERMILLE          5u
 #define CHG_DUTY_RETRY_SECOND_MAX       100u
@@ -186,5 +195,34 @@ void func__Charger_Init(void);
  */
 void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap,
                             app_state_t app_state_t__state);
+
+/* ==================== Debug watch variables / متغیرهای قابل مشاهده در دیباگ ==================== */
+/* [EN] Volatile telemetry is intentionally small and read-only from the
+ *      debugger. It explains why PWM was stopped without changing policy.
+ * [FA] این telemetry کوچک volatile است و فقط برای مشاهده در debugger است؛
+ *      سیاست کنترل را تغییر نمی‌دهد و علت توقف PWM را نشان می‌دهد. */
+#define CHG_DEBUG_REASON_NONE                 0u
+#define CHG_DEBUG_REASON_MASTER_OFF           1u
+#define CHG_DEBUG_REASON_SNAPSHOT_INVALID     2u
+#define CHG_DEBUG_REASON_APP_SAFE_OR_FAULT    3u
+#define CHG_DEBUG_REASON_TRANSFORMER_GATE     4u
+#define CHG_DEBUG_REASON_INPUT_LOW            5u
+#define CHG_DEBUG_REASON_BATTERY_INVALID      6u
+#define CHG_DEBUG_REASON_CURRENT_LIMIT        7u
+#define CHG_DEBUG_REASON_JIT_TRIP             8u
+#define CHG_DEBUG_REASON_FINAL_FAULT          9u
+
+extern volatile uint32_t CHG_DEBUG__G__EvaluateCount;
+extern volatile uint32_t CHG_DEBUG__G__InputMv;
+extern volatile uint32_t CHG_DEBUG__G__BatteryMv;
+extern volatile uint32_t CHG_DEBUG__G__CurrentMa;
+extern volatile uint16_t CHG_DEBUG__G__AppliedDutyPermille;
+extern volatile uint16_t CHG_DEBUG__G__LastRequestedDutyPermille;
+extern volatile uint8_t CHG_DEBUG__G__AppliedChannel;
+extern volatile uint8_t CHG_DEBUG__G__Channel2State;
+extern volatile uint8_t CHG_DEBUG__G__Channel2JitTrips;
+extern volatile uint8_t CHG_DEBUG__G__InputReady;
+extern volatile uint8_t CHG_DEBUG__G__InputLockout;
+extern volatile uint8_t CHG_DEBUG__G__StopReason;
 
 #endif /* CHARGER_H */
