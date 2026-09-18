@@ -120,7 +120,7 @@
  *   حفاظت‌های عددی (جریان، JIT، sense باتری) گیت می‌شود. */
 #define CHG_BRINGUP_TEST_ENABLE                1u
 #define CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE    100u  /* [EN] 10% stage verified on board (clean waveforms) / مرحله ۱۰٪ روی برد تأیید شده */
-#define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA      100u  /* [EN] 100 mA full-stage source limit / حد منبع ۱۰۰mA مرحله کامل */
+#define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA      150u  /* [EN] 150 mA: 100 mA kept restarting the stage on real draw / ۱۵۰mA: ۱۰۰mA مدام ری‌استارت می‌کرد */
 #define CHG_BRINGUP_TEST_FULL_STAGE_MAX_DUTY  100u  /* [EN] 10% after waveform confirmation / ۱۰٪ بعد از تأیید شکل‌موج */
 #define CHG_BRINGUP_TEST_FULL_STAGE_LIMIT_MA  100u  /* [EN] 100 mA after waveform confirmation / ۱۰۰mA بعد از تأیید شکل‌موج */
 
