@@ -359,7 +359,7 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_DUTY_MAX_PERMILLE\s+500u", text_h), "duty cap must be 500 permille = 50% (DCM ceiling, board requirement)")
     check(re.search(r"#define CHG_DUTY_RAMP_UP_INTERVAL_MS\s+1000u", text_h), "up-steps must be limited to one per 1000 ms")
     check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS\s+500u", text_h), "down-steps must be limited to one per 500 ms")
-    check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_PERMILLE\s+650u", text_h), "efficiency must be 650 permille at the regulation point (bench: 432 mA x 13.5 V out / 390 mA x 23.1 V in = 647 permille)")
+    check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_PERMILLE\s+705u", text_h), "efficiency must be 705 permille (bench 15%-duty point: real out 441 mA x 13.0 V, true primary 358 mA x 22.9 V)")
     check(re.search(r"#define CHG_CURRENT_EMA_SHIFT\s+6u", text_h), "current estimate must pass through an EMA filter (shift 6, tau ~0.64 s)")
     check(re.search(r"#define CHG_FIXED_DUTY_TEST_ENABLE\s+1u", text_h), "fixed 15% duty bench diagnostic is ACTIVE (TEMPORARY, set 0 for normal charge)")
     check(re.search(r"#define CHG_FIXED_DUTY_TEST_DUTY_PERMILLE\s+150u", text_h), "diagnostic duty must be fixed at 150 permille = 15%")

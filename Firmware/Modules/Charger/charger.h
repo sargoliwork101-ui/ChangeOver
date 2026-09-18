@@ -175,23 +175,20 @@
 /* [EN] Primary->output current estimate for the charge decisions: the shunt
  *      sits in the MOSFET source leg (primary side), while Bulk/Absorb/Float
  *      limits are output (battery) currents. Estimate Iout =
- *      Ipri_avg * Vin * eta / Vbat. eta is load dependent: 946-956 permille
- *      at the light bench point (110 mA in / 195 mA out), but only ~647
- *      permille at the regulation point (bench 2026-09-18: in 390 mA x
- *      23.1 V = 9009 mW; out 432 mA x 13.5 V = 5832 mW; both measured at the
- *      bench, not by firmware). The 620..675 mA band lives at that heavy
- *      point, so 650 permille is used - then the band holds the REAL output
- *      current. Scope cross-check: use MEAN, not RMS - the LM358 output is a
- *      50 kHz pulse train, so Ipri_avg = Vmean_mV / 1.01 and
- *      Iout = Ipri_avg x Vin x 0.650 / Vbat. Vbat is clamped to
+ *      Ipri_avg * Vin * eta / Vbat.
+ *      Fixed at the user's bench diagnostic point with fixed 15% duty
+ *      (2026-09-18): MEAN at the LM358 output 362 mV -> Ipri_true =
+ *      362/1.01 = 358 mA; real output 441 mA x 13.0 V. So that the estimate
+ *      equals the real output current: eta = Iout x Vbat / (Ipri x Vin) =
+ *      441 x 13100 / (358 x 22900) = 705 permille. eta is load dependent
+ *      (~950 at the light 110 mA point, ~705 at 440 mA out); the band lives
+ *      near this heavy point. Vbat is clamped to
  *      CHG_OUTPUT_EST_MIN_VBAT_MV so a momentary bad reading cannot divide
  *      by ~0; the estimate is only used inside the normal charge path, never
  *      in the bring-up source-limit path.
- * [FA] ضریب اتا به بار بستگی دارد: ~۹۵۰ در نقطه سبک ولی ~۶۴۷ در نقطه تنظیم
- *      (ورودی ۳۹۰mA×۲۳٫۱V = ۹۰۰۹mW، خروجی ۴۳۲mA×۱۳٫۵V = ۵۸۳۲mW). با ۶۵۰ پرمیل،
- *      باند ۶۲۰–۶۷۵ جریانِ واقعی را نگه می‌دارد. خوانش نرم‌افزار با MEAN اسکوپ
- *      (نه RMS) تطبیق داده می‌شود: Ipri = Vmean/1.01. */
-#define CHG_FLYBACK_EFFICIENCY_PERMILLE 650u
+ * [FA] از نقطهٔ تست دیوتی ثابت ۱۵٪: جریان واقعی اولیه ۳۵۸mA (MEAN اسکوپ
+ *      تقسیم بر ۱٫۰۱)، خروجی واقعی ۴۴۱mA؛ با ۷۰۵ پرمیل تخمین = واقعیت. */
+#define CHG_FLYBACK_EFFICIENCY_PERMILLE 705u
 #define CHG_OUTPUT_EST_MIN_VBAT_MV     1000u
 #define CHG_INPUT_VALID_MV           22000u
 #define CHG_DUTY_START_PERMILLE        10u

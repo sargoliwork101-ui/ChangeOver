@@ -47,7 +47,14 @@
 /* [FA] تا زمان ثبت اندازه‌گیری برد در جریان صفر و جریان معلوم، این کالیبراسیون
  *      موقت است و نباید نهایی فرض شود. */
 #define BSP_MEASUREMENT_CURRENT_OFFSET_COUNTS 8u
-#define BSP_MEASUREMENT_CURRENT_GAIN_PERMILLE 1000u
+/* [EN] Bench gain calibration (2026-09-18, fixed 15% duty): the firmware read
+ *      330 mA while the scope MEAN at the LM358 output gave 362/1.01 =
+ *      358 mA true primary current; 358/330 = 1085 permille. After this, the
+ *      mA readout equals the physical primary current; the efficiency target
+ *      lives in CHG_FLYBACK_EFFICIENCY_PERMILLE.
+ * [FA] کالیبراسیون گین روی برد: نرم‌افزار ۳۳۰ می‌خواند، اسکوپ ۳۵۸ واقعی؛
+ *      ضریب ۱۰۸۵ پرمیل تا خوانش = جریان فیزیکی اولیه. */
+#define BSP_MEASUREMENT_CURRENT_GAIN_PERMILLE 1085u
 
 /**
  * @brief  [EN] Convert raw ADC counts to millivolts at the ADC pin.
