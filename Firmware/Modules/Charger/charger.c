@@ -138,6 +138,35 @@ static void func__Charger_FinalDisconnect(void)
     }
 }
 
+/**
+ * @brief  [EN] Final-fault standby while the input is cut: keep the fault
+ *              latched (BOOL__G__RelayOpen stays true) but release the relay
+ *              coil. With the transformer input physically absent, energizing
+ *              the NC relay disconnects nothing and only drains the battery
+ *              (coil ~40 mA, plus ~7 mA board base = the observed ~50 mA).
+ *              The coil re-energizes automatically through FinalDisconnect()
+ *              the moment the input returns and the latch is still set.
+ *         [FA] standby خطای نهایی وقتی ورودی قطع است: قفل خطا باقی می‌ماند
+ *              ولی کویل رله رها می‌شود تا باتری را خالی نکند (~۵۰mA). با
+ *              برگشت ورودی، کویل دوباره به‌صورت خودکار وصل می‌شود.
+ */
+static void func__Charger_FinalDisconnectIdle(void)
+{
+    uint8_t uint8_t__channelIndex;
+
+    func__BspPwm_StopAll();
+    func__BspGpio_Write(BSP_GPIO_RELAY, false);
+    UINT32_T__G__RelaySettleDeadline = 0u;
+    /* [EN] BOOL__G__RelayOpen intentionally NOT cleared: the final fault
+       stays latched. / [FA] قفل خطا دست‌نخورده می‌ماند. */
+
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    {
+        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
+        func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
+    }
+}
+
 /* ==================== Channel helpers / توابع کمکی کانال ==================== */
 
 static bool func__Charger_IsChannelInstalled(uint8_t uint8_t__channelIndex)
@@ -222,11 +251,10 @@ static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *mea
 
     uint64_t__numerator = (uint64_t)uint32_t__primaryMa *
                           (uint64_t)measurement_snapshot_t__snap->v_in_mv *
-                          (uint64_t)CHG_FLYBACK_EFFICIENCY_PERMILLE *
-                          (uint64_t)CHG_CURRENT_CAL_PERMILLE;
+                          (uint64_t)CHG_FLYBACK_EFFICIENCY_PERMILLE;
 
     return (uint32_t)(uint64_t__numerator /
-                      ((uint64_t)uint32_t__vbatMv * 1000u * 1000u));
+                      ((uint64_t)uint32_t__vbatMv * 1000u));
 }
 
 static uint16_t func__Charger_MaxDutyPermille(void)
@@ -860,6 +888,8 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         return;
     }
 
+    bool__inputAdcValid = (measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_VALID_MV);
+
     bool__anyFinalFault = false;
     for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
     {
@@ -872,11 +902,20 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
     if (bool__anyFinalFault == true)
     {
-        func__Charger_FinalDisconnect();
+        /* [EN] With the input cut, keep the latch but release the coil so it
+           cannot drain the battery; FinalDisconnect resumes when input returns.
+           [FA] با ورودی قطع، قفل خطا بماند ولی کویل رها شود تا باتری خالی نشود. */
+        if (bool__inputAdcValid == true)
+        {
+            func__Charger_FinalDisconnect();
+        }
+        else
+        {
+            func__Charger_FinalDisconnectIdle();
+        }
         return;
     }
 
-    bool__inputAdcValid = (measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_VALID_MV);
     if (bool__inputAdcValid == false)
     {
         for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
@@ -912,7 +951,14 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
     if (BOOL__G__RelayOpen == true)
     {
-        func__Charger_FinalDisconnect();
+        if (bool__inputAdcValid == true)
+        {
+            func__Charger_FinalDisconnect();
+        }
+        else
+        {
+            func__Charger_FinalDisconnectIdle();
+        }
         return;
     }
 

@@ -359,7 +359,7 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_DUTY_MAX_PERMILLE\s+500u", text_h), "duty cap must be 500 permille = 50% (DCM ceiling, board requirement)")
     check(re.search(r"#define CHG_DUTY_RAMP_UP_INTERVAL_MS\s+1000u", text_h), "up-steps must be limited to one per 1000 ms")
     check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS\s+500u", text_h), "down-steps must be limited to one per 500 ms")
-    check(re.search(r"#define CHG_CURRENT_CAL_PERMILLE\s+1250u", text_h), "current estimate calibration must be 1250 permille (bench 505 mA real vs 405 mA read)")
+    check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_PERMILLE\s+650u", text_h), "efficiency must be 650 permille at the regulation point (bench: 432 mA x 13.5 V out / 390 mA x 23.1 V in = 647 permille)")
     check(re.search(r"#define CHG_CURRENT_EMA_SHIFT\s+6u", text_h), "current estimate must pass through an EMA filter (shift 6, tau ~0.64 s)")
     check(re.search(r"#define CHG_DUTY_START_PERMILLE\s+10u", text_h), "start duty must be 10 permille = 1%")
     check(re.search(r"#define CHG_DUTY_STEP_PERMILLE\s+5u", text_h), "increase step must be 5 permille = 0.5%")

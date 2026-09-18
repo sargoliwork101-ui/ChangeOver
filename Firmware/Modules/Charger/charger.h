@@ -145,16 +145,6 @@
  *      داخل باند نگه‌داشت. فقط خطای سخت (بالاتر از ۹۵۰) کانال را ریست می‌کند. */
 #define CHG_REGULATE_LOW_MA            620u
 #define CHG_CURRENT_HARD_FAULT_MA      950u
-/* [EN] Bench calibration of the output-current estimate (2026-09): real
- *      battery current 505 mA while the estimate read 400..410 mA (430 mV RMS
- *      at the LM358 output - note RMS of a 50 kHz pulse train is NOT the
- *      average; use scope MEAN to recheck). Ratio 505/405 = 1247, rounded to
- *      1250 permille. Re-measure if the analog chain changes (shunt, LM358
- *      gain resistors, R41/R42).
- * [FA] کالیبراسیون روی برد: جریان واقعی باتری ۵۰۵mA ولی تخمین ۴۰۰–۴۱۰
- *      می‌خواند؛ نسبت ۱۲۴۷، گرد به ۱۲۵۰ پرمیل. RMS اسکوپ روی موج پالسی
- *      متوسط نیست — برای بازبینی از MEAN استفاده کن. */
-#define CHG_CURRENT_CAL_PERMILLE      1250u
 /* [EN] First-order low-pass (EMA) on the estimated output current before the
  *      regulation band: ema += (sample - ema) >> SHIFT on every 10 ms pass,
  *      so tau = 2^SHIFT * 10 ms = ~0.64 s at SHIFT=6. Stops noise-driven duty
@@ -169,17 +159,23 @@
 /* [EN] Primary->output current estimate for the charge decisions: the shunt
  *      sits in the MOSFET source leg (primary side), while Bulk/Absorb/Float
  *      limits are output (battery) currents. Estimate Iout =
- *      Ipri_avg * Vin * eta / Vbat. eta measured on the bench at
- *      Vin 23.5 V, Vbat 12.55 V, ~110 mA primary (output 195 mA): about
- *      946-956 per mille, rounded to 950. Re-measure if the operating point
- *      moves far. Vbat is clamped to CHG_OUTPUT_EST_MIN_VBAT_MV so a momentary
- *      bad reading cannot divide by ~0; the estimate is only used inside the
- *      normal charge path, never in the bring-up source-limit path.
- * [FA] تخمین جریان خروجی از اندازه‌گیری اولیه: شنت در پایه سورس ماسفت (سمت
- *      اولیه) است ولی حدهای شارژ جریان خروجی‌اند. Iout = Ipri*Vin*eta/Vbat
- *      با eta برابر 950 پرمیل (اندازه‌گیری روی برد). فقط در مسیر شارژ نرمال
- *      مصرف می‌شود، نه در مسیر برینگ‌آپ. */
-#define CHG_FLYBACK_EFFICIENCY_PERMILLE 950u
+ *      Ipri_avg * Vin * eta / Vbat. eta is load dependent: 946-956 permille
+ *      at the light bench point (110 mA in / 195 mA out), but only ~647
+ *      permille at the regulation point (bench 2026-09-18: in 390 mA x
+ *      23.1 V = 9009 mW; out 432 mA x 13.5 V = 5832 mW; both measured at the
+ *      bench, not by firmware). The 620..675 mA band lives at that heavy
+ *      point, so 650 permille is used - then the band holds the REAL output
+ *      current. Scope cross-check: use MEAN, not RMS - the LM358 output is a
+ *      50 kHz pulse train, so Ipri_avg = Vmean_mV / 1.01 and
+ *      Iout = Ipri_avg x Vin x 0.650 / Vbat. Vbat is clamped to
+ *      CHG_OUTPUT_EST_MIN_VBAT_MV so a momentary bad reading cannot divide
+ *      by ~0; the estimate is only used inside the normal charge path, never
+ *      in the bring-up source-limit path.
+ * [FA] ضریب اتا به بار بستگی دارد: ~۹۵۰ در نقطه سبک ولی ~۶۴۷ در نقطه تنظیم
+ *      (ورودی ۳۹۰mA×۲۳٫۱V = ۹۰۰۹mW، خروجی ۴۳۲mA×۱۳٫۵V = ۵۸۳۲mW). با ۶۵۰ پرمیل،
+ *      باند ۶۲۰–۶۷۵ جریانِ واقعی را نگه می‌دارد. خوانش نرم‌افزار با MEAN اسکوپ
+ *      (نه RMS) تطبیق داده می‌شود: Ipri = Vmean/1.01. */
+#define CHG_FLYBACK_EFFICIENCY_PERMILLE 650u
 #define CHG_OUTPUT_EST_MIN_VBAT_MV     1000u
 #define CHG_INPUT_VALID_MV           22000u
 #define CHG_DUTY_START_PERMILLE        10u
