@@ -149,7 +149,7 @@
  *      برای کالیبره‌کردن ضرایب اندازه‌گیری روی یک نقطهٔ پایدار. همهٔ
  *      حفاظت‌ها فعال می‌مانند و روی ۱۴٫۴V سوئیچینگ می‌ایستد. برای برگشت به
  *      شارژ نرمال، مقدار را ۰ کن. */
-#define CHG_FIXED_DUTY_TEST_ENABLE              1u
+#define CHG_FIXED_DUTY_TEST_ENABLE              0u  /* [EN] 1=fixed 15% duty diagnostic (DONE, coefficients locked); 0=normal charge / تست تمام شد، شارژ نرمال فعال */
 #define CHG_FIXED_DUTY_TEST_DUTY_PERMILLE     150u
 #define CHG_CURRENT_LIMIT_MA           675u
 /* [EN] Output-current regulation band: below CHG_REGULATE_LOW_MA the duty

@@ -65,19 +65,20 @@ static uint32_t func__Measurement_FilterCurrent(uint32_t uint32_t__previousMa,
 {
     uint32_t uint32_t__differenceMa;
 
-    /* [EN] First-order low-pass per 10 ms frame: prev +/- (diff+7)/8, so a
-       step reaches ~63% in ~80 ms (alpha 1/8). Strengthened from 1/4 on user
-       bench feedback - the published current was visibly oscillating.
-       [FA] فیلتر مرتبه اول روی هر فریم ۱۰ms با آلفای ۱/۸ (ثابت زمانی ~۸۰ms)؛
-       قبلاً ۱/۴ بود و خوانش جریان نوسان محسوس داشت. */
+    /* [EN] First-order low-pass per 10 ms frame: prev +/- (diff+15)/16, so a
+       step reaches ~63% in ~160 ms (alpha 1/16). Strengthened twice on user
+       bench feedback (1/4 -> 1/8 -> 1/16) - the published current showed
+       visible oscillation.
+       [FA] فیلتر مرتبه اول روی هر فریم ۱۰ms با آلفای ۱/۱۶ (ثابت زمانی
+       ~۱۶۰ms)؛ دو مرحله تقویت شد تا نوسان خوانش جریان از بین برود. */
     if (uint32_t__sampleMa >= uint32_t__previousMa)
     {
         uint32_t__differenceMa = uint32_t__sampleMa - uint32_t__previousMa;
-        return uint32_t__previousMa + ((uint32_t__differenceMa + 7u) / 8u);
+        return uint32_t__previousMa + ((uint32_t__differenceMa + 15u) / 16u);
     }
 
     uint32_t__differenceMa = uint32_t__previousMa - uint32_t__sampleMa;
-    return uint32_t__previousMa - ((uint32_t__differenceMa + 7u) / 8u);
+    return uint32_t__previousMa - ((uint32_t__differenceMa + 15u) / 16u);
 }
 
 /* ==================== Global Shared Values ==================== */
