@@ -47,6 +47,52 @@ static uint8_t UINT8_T__G__MeasurementWarmupFrameCount;
 static uint32_t UINT32_T__G__Current1FilteredMa;
 static uint32_t UINT32_T__G__Current2FilteredMa;
 
+/* ==================== Median prefilter / پیش‌فیلتر مدین ==================== */
+
+/* [EN] Median-of-3 history per current channel (0=Current1, 1=Current2):
+ *      kills single-frame ADC spikes with ZERO added lag, so the EMA below
+ *      does not need to be strengthened further (user bench directive).
+ * [FA] تاریخچه مدین-۳ برای هر کانال جریان: spikeهای تکی را بدون تأخیر
+ *      اضافه حذف می‌کند تا نیازی به قوی‌ترکردن فیلتر میانگین نباشد. */
+static uint32_t UINT32_T__G__CurrentMedianHistoryMa[2][3];
+
+static uint32_t func__Measurement_Median3(uint32_t uint32_t__aMa,
+                                          uint32_t uint32_t__bMa,
+                                          uint32_t uint32_t__cMa)
+{
+    if (((uint32_t__aMa >= uint32_t__bMa) && (uint32_t__aMa <= uint32_t__cMa)) ||
+        ((uint32_t__aMa >= uint32_t__cMa) && (uint32_t__aMa <= uint32_t__bMa)))
+    {
+        return uint32_t__aMa;
+    }
+    if (((uint32_t__bMa >= uint32_t__aMa) && (uint32_t__bMa <= uint32_t__cMa)) ||
+        ((uint32_t__bMa >= uint32_t__cMa) && (uint32_t__bMa <= uint32_t__aMa)))
+    {
+        return uint32_t__bMa;
+    }
+    return uint32_t__cMa;
+}
+
+static uint32_t func__Measurement_MedianFilterSample(uint8_t uint8_t__channelIndex,
+                                                     uint32_t uint32_t__sampleMa)
+{
+    uint32_t *uint32_t__historyMa;
+
+    if (uint8_t__channelIndex >= 2u)
+    {
+        return uint32_t__sampleMa;
+    }
+
+    uint32_t__historyMa = UINT32_T__G__CurrentMedianHistoryMa[uint8_t__channelIndex];
+    uint32_t__historyMa[0] = uint32_t__historyMa[1];
+    uint32_t__historyMa[1] = uint32_t__historyMa[2];
+    uint32_t__historyMa[2] = uint32_t__sampleMa;
+
+    return func__Measurement_Median3(uint32_t__historyMa[0],
+                                     uint32_t__historyMa[1],
+                                     uint32_t__historyMa[2]);
+}
+
 /* ==================== Measurement_FilterCurrent / فیلتر جریان ==================== */
 
 /**
@@ -256,7 +302,9 @@ void func__Measurement_Run(void)
     UINT32_T__G__Current1FilteredMa =
         func__Measurement_FilterCurrent(
             UINT32_T__G__Current1FilteredMa,
-            func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1]));
+            func__Measurement_MedianFilterSample(
+                0u,
+                func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1])));
     uint32_t__current1Ma = UINT32_T__G__Current1FilteredMa;
     uint32_t__inputVoltageMv =
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_IN]);
@@ -276,7 +324,9 @@ void func__Measurement_Run(void)
     UINT32_T__G__Current2FilteredMa =
         func__Measurement_FilterCurrent(
             UINT32_T__G__Current2FilteredMa,
-            func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]));
+            func__Measurement_MedianFilterSample(
+                1u,
+                func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2])));
     uint32_t__current2Ma = UINT32_T__G__Current2FilteredMa;
 
     /* [EN] The BSP exposes the board input-detect signal as a logical GPIO;
