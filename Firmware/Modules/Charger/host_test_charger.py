@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[3]
+APP_TYPES_H = Path(__file__).resolve().parents[2] / "Config" / "Inc" / "app_types.h"
 CHARGER_H = ROOT / "Firmware/Modules/Charger/charger.h"
 CHARGER_C = ROOT / "Firmware/Modules/Charger/charger.c"
 MAIN_C = ROOT / "CubeIDE/Core/Src/main.c"
@@ -349,6 +350,7 @@ def test_current_band_regulates_and_protects():
 
 def test_setpoints_and_timing():
     text_h = CHARGER_H.read_text()
+    text_c = CHARGER_C.read_text()
     check(re.search(r"#define CHG_ABSORB_MV\s+14400u", text_h), "absorb must be 14400 mV")
     check(re.search(r"#define CHG_FLOAT_MV\s+13500u", text_h), "float must be 13500 mV")
     check(re.search(r"#define CHG_REENTRY_MV\s+12800u", text_h), "reentry must be 12800 mV")
@@ -361,6 +363,13 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS\s+500u", text_h), "down-steps must be limited to one per 500 ms")
     check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_PERMILLE\s+705u", text_h), "efficiency must be 705 permille (bench 15%-duty point: real out 441 mA x 13.0 V, true primary 358 mA x 22.9 V)")
     check(re.search(r"#define CHG_CURRENT_EMA_SHIFT\s+6u", text_h), "current estimate must pass through an EMA filter (shift 6, tau ~0.64 s)")
+    check(re.search(r"#define CHG_BAT_DISCONNECT_MV\s+14800u", text_h), "battery-disconnect threshold must be 14.8 V (user choice)")
+    check(re.search(r"#define CHG_BAT_DISCONNECT_DEBOUNCE_MS\s+300u", text_h), "battery-disconnect debounce must be 300 ms")
+    check(re.search(r"#define CHG_BAT_RECOVER_MS\s+1000u", text_h), "battery-back settle time must be 1000 ms for auto recovery")
+    check("CHG_STATE_BAT_LOST" in text_c, "charger must have a battery-lost state")
+    check("func__Fault_Set(FAULT_CHARGER_BAT_LOST)" in text_c, "battery-lost must latch the central fault flag")
+    check("func__Fault_Clear(FAULT_CHARGER_BAT_LOST)" in text_c, "auto recovery must clear the central fault flag")
+    check(re.search(r"FAULT_CHARGER_BAT_LOST\s+\(1u << 6\)", APP_TYPES_H.read_text()), "fault bit must live centrally in app_types.h")
     check(re.search(r"#define CHG_FIXED_DUTY_TEST_ENABLE\s+0u", text_h), "fixed duty diagnostic must be OFF for normal charge (1u only during bench calibration)")
     check(re.search(r"#define CHG_FIXED_DUTY_TEST_DUTY_PERMILLE\s+150u", text_h), "diagnostic duty must be fixed at 150 permille = 15%")
     check(re.search(r"#define CHG_DUTY_START_PERMILLE\s+10u", text_h), "start duty must be 10 permille = 1%")
