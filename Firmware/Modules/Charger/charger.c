@@ -182,6 +182,49 @@ static uint32_t func__Charger_ChannelCurrentMa(const measurement_snapshot_t *mea
     return measurement_snapshot_t__snap->i_ch2_ma;
 }
 
+/* ==================== Charger_OutputEstimateMa / تخمین جریان خروجی ==================== */
+
+/**
+ * @brief  [EN] Convert the primary-side shunt current to the estimated output
+ *              (battery) current used by the charge decisions:
+ *              Iout = Ipri_avg * Vin * eta / Vbat. Vbat is clamped so a bad
+ *              momentary reading cannot divide by ~0. Used ONLY on the normal
+ *              charge path; the bring-up source-limit path keeps primary mA.
+ *         [FA] تبدیل جریان شنتِ اولیه به جریان خروجی تخمینی برای تصمیم‌های
+ *              شارژ. فقط مسیر نرمال، نه مسیر برینگ‌آپ.
+ * @param  measurement_snapshot_t__snap [EN] Snapshot / نمونه
+ * @param  uint8_t__channelIndex [EN] Channel / کانال
+ * @param  uint32_t__primaryMa [EN] Measured primary current / جریان اولیه
+ * @return uint32_t [EN] Estimated output current in mA / جریان خروجی تخمینی mA
+ */
+static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *measurement_snapshot_t__snap,
+                                               uint8_t uint8_t__channelIndex,
+                                               uint32_t uint32_t__primaryMa)
+{
+    uint32_t uint32_t__vbatMv;
+    uint64_t uint64_t__numerator;
+
+    if ((uint32_t__primaryMa == 0u) ||
+        (measurement_snapshot_t__snap->v_in_mv == 0u))
+    {
+        return 0u;
+    }
+
+    uint32_t__vbatMv =
+        func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap, uint8_t__channelIndex);
+    if (uint32_t__vbatMv < CHG_OUTPUT_EST_MIN_VBAT_MV)
+    {
+        uint32_t__vbatMv = CHG_OUTPUT_EST_MIN_VBAT_MV;
+    }
+
+    uint64_t__numerator = (uint64_t)uint32_t__primaryMa *
+                          (uint64_t)measurement_snapshot_t__snap->v_in_mv *
+                          (uint64_t)CHG_FLYBACK_EFFICIENCY_PERMILLE;
+
+    return (uint32_t)(uint64_t__numerator /
+                      ((uint64_t)uint32_t__vbatMv * 1000u));
+}
+
 static uint16_t func__Charger_MaxDutyPermille(void)
 {
     if ((CHG_TRANSFORMER_KNOWN == 0u) && (CHG_BRINGUP_TEST_ENABLE != 0u))
@@ -564,6 +607,16 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap, uint8_t__channelIndex);
     uint32_t__currentMa =
         func__Charger_ChannelCurrentMa(measurement_snapshot_t__snap, uint8_t__channelIndex);
+
+    /* [EN] The snapshot current is primary-side; Bulk/Absorb/Float limits are
+       output (battery) currents, so this normal-charge path decides with the
+       converted value. The bring-up regulator above keeps primary mA.
+       [FA] جریان snapshot سمت اولیه است؛ حدهای شارژ خروجی‌اند، پس مسیر نرمال با
+       مقدار تبدیل‌شده تصمیم می‌گیرد. */
+    uint32_t__currentMa =
+        func__Charger_OutputEstimateMa(measurement_snapshot_t__snap,
+                                       uint8_t__channelIndex,
+                                       uint32_t__currentMa);
 
     if (func__Charger_BatteryVoltageIsValid(uint32_t__batteryMv) == false)
     {

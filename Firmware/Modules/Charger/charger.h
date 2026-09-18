@@ -75,14 +75,16 @@
      ((CHG_CHANNEL_2_INSTALLED != 0u) ? CHG_CHANNEL_2_MASK : 0u))
 
 /* ==================== Conservative bring-up gate / دروازه امن راه‌اندازی ==================== */
-/* [EN] CHG_TRANSFORMER_KNOWN must stay 0 until transformer data and current
- * calibration are measured. It is NOT bypassable; it is a separate
- * compile-time safety gate from CHG_MASTER_ENABLE. When this is 0 the only
- * allowed control path is the explicit bring-up test mode below.
- * [FA] CHG_TRANSFORMER_KNOWN باید تا اندازه‌گیری داده ترانس و کالیبراسیون جریان
- * صفر بماند. bypass نمی‌شود و دروازه امن زمان کامپایل جدا از CHG_MASTER_ENABLE است.
- * وقتی این ۰ است، تنها مسیر مجاز کنترل حالت تست صریح bring-up زیر است. */
-#define CHG_TRANSFORMER_KNOWN         0u
+/* [EN] CHG_TRANSFORMER_KNOWN = 1: transformer data and the current-sense
+ * chain are board-verified (gate/shunt waveforms at the 10% stage, R41/R42
+ * divider compensated in the BSP, zero offset 8 counts, R77 confirmed 100k,
+ * shunt reading physically consistent with a 23.5 V / 12.55 V energy audit).
+ * Normal Bulk/Absorb/Float control below now runs. It is still a separate
+ * compile-time safety gate from CHG_MASTER_ENABLE.
+ * [FA] CHG_TRANSFORMER_KNOWN = 1: داده ترانس و زنجیره سنجش جریان روی برد
+ * تأیید شده‌اند. کنترل عادی Bulk/Absorb/Float حالا اجرا می‌شود. این دروازه
+ * همچنان جدا از CHG_MASTER_ENABLE است. */
+#define CHG_TRANSFORMER_KNOWN         1u
 
 /* ==================== Explicit limited bring-up test mode / حالت صریح تست bring-up ==================== */
 /*
@@ -118,9 +120,9 @@
  *   تست bring-up هرگز وارد Absorb/Float نمی‌شود، از setpoint پک ۲۴ ولت
  *   استفاده نمی‌کند، و همچنان با CHG_MASTER_ENABLE=1، Vin >= ۲۲۰۰۰mV و همه
  *   حفاظت‌های عددی (جریان، JIT، sense باتری) گیت می‌شود. */
-#define CHG_BRINGUP_TEST_ENABLE                1u
-#define CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE    100u  /* [EN] 10% stage verified on board (clean waveforms) / مرحله ۱۰٪ روی برد تأیید شده */
-#define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA      150u  /* [EN] 150 mA: 100 mA kept restarting the stage on real draw / ۱۵۰mA: ۱۰۰mA مدام ری‌استارت می‌کرد */
+#define CHG_BRINGUP_TEST_ENABLE                0u   /* [EN] bring-up finished; normal charge active / bring-up تمام شد، شارژ نرمال فعال است */
+#define CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE    100u  /* [EN] dormant: 10% stage verified on board / غیرفعال: مرحله ۱۰٪ روی برد تأیید شده */
+#define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA      150u  /* [EN] dormant: 150 mA source limit / غیرفعال: حد منبع ۱۵۰mA */
 #define CHG_BRINGUP_TEST_FULL_STAGE_MAX_DUTY  100u  /* [EN] 10% after waveform confirmation / ۱۰٪ بعد از تأیید شکل‌موج */
 #define CHG_BRINGUP_TEST_FULL_STAGE_LIMIT_MA  100u  /* [EN] 100 mA after waveform confirmation / ۱۰۰mA بعد از تأیید شکل‌موج */
 
@@ -134,6 +136,22 @@
 #define CHG_REENTRY_MV               12800u
 #define CHG_BULK_CURRENT_MAX_MA       675u
 #define CHG_CURRENT_LIMIT_MA           675u
+
+/* [EN] Primary->output current estimate for the charge decisions: the shunt
+ *      sits in the MOSFET source leg (primary side), while Bulk/Absorb/Float
+ *      limits are output (battery) currents. Estimate Iout =
+ *      Ipri_avg * Vin * eta / Vbat. eta measured on the bench at
+ *      Vin 23.5 V, Vbat 12.55 V, ~110 mA primary (output 195 mA): about
+ *      946-956 per mille, rounded to 950. Re-measure if the operating point
+ *      moves far. Vbat is clamped to CHG_OUTPUT_EST_MIN_VBAT_MV so a momentary
+ *      bad reading cannot divide by ~0; the estimate is only used inside the
+ *      normal charge path, never in the bring-up source-limit path.
+ * [FA] تخمین جریان خروجی از اندازه‌گیری اولیه: شنت در پایه سورس ماسفت (سمت
+ *      اولیه) است ولی حدهای شارژ جریان خروجی‌اند. Iout = Ipri*Vin*eta/Vbat
+ *      با eta برابر 950 پرمیل (اندازه‌گیری روی برد). فقط در مسیر شارژ نرمال
+ *      مصرف می‌شود، نه در مسیر برینگ‌آپ. */
+#define CHG_FLYBACK_EFFICIENCY_PERMILLE 950u
+#define CHG_OUTPUT_EST_MIN_VBAT_MV     1000u
 #define CHG_INPUT_VALID_MV           22000u
 #define CHG_DUTY_START_PERMILLE        10u
 #define CHG_DUTY_STEP_PERMILLE          5u

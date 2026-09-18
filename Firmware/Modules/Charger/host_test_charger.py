@@ -68,7 +68,7 @@ def test_modules_enabled_build():
     check(re.search(r"#define MODULE_JITTER\s+1", mods),
           "MODULE_JITTER must be 1 for build/compile coverage")
     check(re.search(r"#define CHG_MASTER_ENABLE\s+1u", ch),
-          "master switch must be 1 for the active board bring-up (still gated by CHG_TRANSFORMER_KNOWN=0 + bring-up stage)")
+          "master switch must be 1 for the active charge scenario (normal Bulk/Absorb/Float)")
 
 
 def test_master_enable_constant_is_single_gate():
@@ -104,12 +104,12 @@ def test_master_enable_zero_safeidle_stops_both_pwm_and_relay_off():
 def test_transformer_known_not_bypassable_bringup_only_when_zero():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
-    check(re.search(r"#define CHG_TRANSFORMER_KNOWN\s+0u", text_h),
-          "CHG_TRANSFORMER_KNOWN must remain 0 for now")
-    check("NOT bypassable" in text_h or "bypass نمی" in text_h,
-          "CHG_TRANSFORMER_KNOWN=0 must be documented as not bypassable")
-    check(re.search(r"#define CHG_BRINGUP_TEST_ENABLE\s+1u", text_h),
-          "bring-up test mode must be 1 (active board bring-up)")
+    check(re.search(r"#define CHG_TRANSFORMER_KNOWN\s+1u", text_h),
+          "CHG_TRANSFORMER_KNOWN is 1: transformer data and current chain are board-verified")
+    check("board-verified" in text_h or "برد تأیید" in text_h,
+          "CHG_TRANSFORMER_KNOWN=1 must carry the board-verified rationale in docs")
+    check(re.search(r"#define CHG_BRINGUP_TEST_ENABLE\s+0u", text_h),
+          "bring-up test mode must be 0 (bring-up finished, normal charge active)")
     check("CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE" in text_h and re.search(r"100u\s", text_h),
           "bring-up stage max duty must be documented (100 permille = 10%, board-verified)")
     check(re.search(r"#define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA\s+150u", text_h),
