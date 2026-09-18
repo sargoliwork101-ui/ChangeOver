@@ -1,11 +1,14 @@
 /**
  * @file    charger.h
- * @brief   [EN] Two independent 12 V flyback charger channels. One generic
- *          policy is applied to a per-channel state record; the channels are
- *          never driven as a shared 24 V charger.
- *          [FA] دو کانال مستقل شارژر فلای‌بک ۱۲ ولت. یک سیاست عمومی روی
- *          state هر کانال اجرا می‌شود و کانال‌ها هرگز به‌صورت شارژر ۲۴ ولت
- *          مشترک کنترل نمی‌شوند.
+ * @brief   [EN] Two independent 12 V flyback charger channels. CHG_MASTER_ENABLE
+ *          is the single overall activation gate; when it is 0 the whole
+ *          Charger must remain safe-off regardless of runtime flags. All
+ *          numerical protections (voltage, current, JIT and missing-battery
+ *          thresholds) remain enforced whenever control is allowed.
+ *          [FA] دو کانال مستقل شارژر فلای‌بک ۱۲ ولت. CHG_MASTER_ENABLE تنها
+ *          کلید فعال‌سازی کلی است؛ با مقدار ۰ کل Charger صرف‌نظر از پرچم‌های
+ *          زمان اجرا safe-off می‌ماند. با فعال‌بودن کنترل، همه حفاظت‌های عددی
+ *          (ولتاژ، جریان، JIT و آستانه باتری) همچنان اجرا می‌شوند.
  */
 
 #ifndef CHARGER_H
@@ -15,15 +18,50 @@
 #include "app_types.h"
 #include <stdint.h>
 
+/* ==================== Master enable / فعال‌سازی کلی ==================== */
+/*
+ * [EN] Single master switch for Charger control.
+ *   0 = safe-off skeleton only. All PWM outputs are kept stopped and the
+ *       transformer input relay keeps its NC contact closed (safe-idle).
+ *       This is the only overall activation gate. Runtime flags such as
+ *       power_stage_enabled/pwm_max_duty are NOT hidden hard gates for
+ *       Charger; numeric protections are still not bypassed.
+ *   1 = Charger is allowed to enter the per-channel control loop only when
+ *       all explicit hardware conditions (valid snapshot, installed channel,
+ *       Vin ADC >= 22000 mV, valid battery sense, current limits, JIT policy)
+ *       are also satisfied.
+ * [FA] تنها کلید فعال‌سازی کلی Charger.
+ *   ۰ = فقط اسکلت safe-off. همه خروجی‌های PWM متوقف می‌مانند و رله ورودی
+ *       ترانس NC را بسته نگه می‌دارد (safe-idle). این تنها دروازه کلی است.
+ *       پرچم‌های زمان اجرا مثل power_stage_enabled/pwm_max_duty دروازه پنهان
+ *       برای Charger نیستند؛ حفاظت‌های عددی هیچ‌گاه bypass نمی‌شوند.
+ *   ۱ = Charger فقط در صورت برقرار بودن همه شرایط صریح سخت‌افزاری
+ *       (snapshot معتبر، کانال نصب‌شده، Vin ADC >= 22000mV، sense باتری معتبر،
+ *       حدهای جریان، سیاست JIT) اجازه ورود به حلقه کنترل هر کانال را دارد.
+ */
+#define CHG_MASTER_ENABLE             0u
+
 /* ==================== Board/test selection constants / ثابت‌های انتخاب برد و تست ==================== */
 /*
  * [EN] These are the only two assembly-selection constants to change when the
- * installed transformer changes. Current hardware has Trans2 only. Set both
- * to 1 only after the second transformer, its current path, and its JIT input
- * have been verified on the board.
- * [FA] برای عوض‌کردن ترانس مونتاژشده فقط همین دو ثابت تغییر می‌کنند. اکنون
- * فقط Trans2 نصب است. هر دو را فقط بعد از تأیید سخت‌افزاری ترانس دوم، مسیر
- * جریان و ورودی JIT آن ۱ کنید.
+ * installed transformer changes. Current board has Trans2 only. Set CH1 to 1
+ * only after the second transformer, its current path and its JIT input have
+ * been verified on the board.
+ *   Channel 1 (logical ch1) = 0 now → PWM1 compare must stay 0/PWM1 stopped,
+ *                             no nonzero duty for CH1 in any path.
+ *   Channel 2 (logical ch2) = 1 now → PWM2 PA6 / Current2 PA7 / JIT2 PB6.
+ * Trans2 is connected to one independent 12 V battery on VLOW = MID - GND;
+ * the 24 V pack measurement is monitor-only and is never a charge setpoint or
+ * missing-battery condition for CH2.
+ * [FA] برای عوض‌کردن ترانس مونتاژشده فقط همین دو ثابت تغییر می‌کنند. برد فعلی
+ * فقط Trans2 دارد. CH1 را فقط پس از تأیید سخت‌افزاری ترانس دوم، مسیر جریان
+ * و ورودی JIT آن ۱ کنید.
+ *   کانال ۱ = ۰ اکنون → PWM1 compare همیشه صفر، PWM1 متوقف، هیچ duty غیرصفری
+ *             برای CH1 اعمال نشود.
+ *   کانال ۲ = ۱ اکنون → PWM2 PA6 / Current2 PA7 / JIT2 PB6.
+ * Trans2 به یک باتری ۱۲ ولت مستقل روی VLOW = MID - GND وصل است؛ مقدار پک
+ * ۲۴ ولت فقط مانیتور است و هیچ‌گاه setpoint شارژ یا شرط battery-missing برای
+ * CH2 نیست.
  */
 #define CHG_CHANNEL_1_INSTALLED       0u
 #define CHG_CHANNEL_2_INSTALLED       1u
@@ -49,32 +87,47 @@
 #define CHG_REENTRY_MV               12800u
 #define CHG_BULK_CURRENT_MAX_MA       675u
 #define CHG_CURRENT_LIMIT_MA           675u
+#define CHG_INPUT_VALID_MV           22000u
 /* External current-limited source setting for the first board test only. */
 #define CHG_FIRST_BOARD_TEST_MAX_MA    100u
 #define CHG_DUTY_START_PERMILLE        10u
 #define CHG_DUTY_STEP_PERMILLE          5u
 #define CHG_DUTY_RETRY_SECOND_MAX       100u
+#define CHG_DUTY_MAX_PERMILLE         1000u
 #define CHG_ABSORB_HOLD_MS          600000u
 #define CHG_JIT_LOCKOUT_MS            3000u
 #define CHG_RELAY_SETTLE_MS            100u
+/* [EN] 2000 mV is battery-sense validity for the same channel, NOT a charge
+ * setpoint. For Trans2 it is VLOW = MID - GND. A free resistor alone is not
+ * a valid battery simulator; only an electronic load with voltage clamp or a
+ * battery simulator is allowed for no-battery tests.
+ * [FA] ۲۰۰۰ میلی‌ولت آستانه اعتبار sense باتری همان کانال است، نه setpoint
+ * شارژ. برای Trans2 این مقدار روی VLOW = MID-GND بررسی می‌شود. مقاومت آزاد
+ * به‌تنهایی شبیه‌ساز باتری نیست؛ برای تست بدون باتری فقط electronic load با
+ * voltage clamp یا battery simulator مجاز است. */
 #define CHG_MIN_VALID_BATTERY_MV      2000u
 
 /* ==================== Charger_Init / مقداردهی اولیه ==================== */
 /**
- * @brief  [EN] Initialize policy state, stop both PWM channels and open the
- *              NC transformer-input relay. No nonzero PWM is allowed here.
- *         [FA] state سیاست را مقداردهی، هر دو PWM را متوقف و رله ورودی NC را
- *              برای قطع ورودی باز می‌کند. اینجا PWM غیرصفر مجاز نیست.
+ * @brief  [EN] Initialize policy state, stop every PWM channel and force a
+ *              deterministic safe-idle state. With CHG_MASTER_ENABLE=0 this
+ *              remains the only active behavior.
+ *         [FA] state سیاست را مقداردهی اولیه می‌کند، همه PWMها را متوقف و
+ *              وضعیت safe-idle قطعی را اعمال می‌کند. با CHG_MASTER_ENABLE=0
+ *              این تنها رفتار فعال باقی می‌ماند.
  */
 void func__Charger_Init(void);
 
 /* ==================== Charger_Evaluate / ارزیابی شارژر ==================== */
 /**
  * @brief  [EN] Run the same control/protection algorithm independently for
- *              every installed 12 V channel. A low current is a regulation
- *              request to increase duty, not a fault.
+ *              every installed 12 V channel. Input voltage is checked from
+ *              real ADC mV, not only the PB4 digital signal. A low current is
+ *              a regulation request to increase duty, not a fault.
  *         [FA] الگوریتم یکسان کنترل و حفاظت را برای هر کانال نصب‌شدهٔ ۱۲ ولت
- *              مستقل اجرا می‌کند. جریان کم درخواست افزایش duty است، نه fault.
+ *              مستقل اجرا می‌کند. ولتاژ ورودی از مقدار واقعی ADC mV بررسی
+ *              می‌شود، نه فقط سیگنال دیجیتال PB4. جریان کم درخواست افزایش
+ *              duty است، نه fault.
  * @param  measurement_snapshot_t__snap [EN] Independent low/high battery snapshot / نمونه مستقل دو باتری
  * @param  app_state_t__state [EN] System state / حالت سیستم
  */
