@@ -41,7 +41,7 @@
  *       (snapshot معتبر، کانال نصب‌شده، Vin ADC >= 22000mV، sense باتری معتبر،
  *       حدهای جریان، سیاست JIT) اجازه ورود به حلقه کنترل هر کانال را دارد.
  */
-#define CHG_MASTER_ENABLE             1u
+#define CHG_MASTER_ENABLE             0u
 
 /* ==================== Board/test selection constants / ثابت‌های انتخاب برد و تست ==================== */
 /*
@@ -75,16 +75,14 @@
      ((CHG_CHANNEL_2_INSTALLED != 0u) ? CHG_CHANNEL_2_MASK : 0u))
 
 /* ==================== Conservative bring-up gate / دروازه امن راه‌اندازی ==================== */
-/* [EN] CHG_TRANSFORMER_KNOWN = 1: transformer data and the current-sense
- * chain are board-verified (gate/shunt waveforms at the 10% stage, R41/R42
- * divider compensated in the BSP, zero offset 8 counts, R77 confirmed 100k,
- * shunt reading physically consistent with a 23.5 V / 12.55 V energy audit).
- * Normal Bulk/Absorb/Float control below now runs. It is still a separate
- * compile-time safety gate from CHG_MASTER_ENABLE.
- * [FA] CHG_TRANSFORMER_KNOWN = 1: داده ترانس و زنجیره سنجش جریان روی برد
- * تأیید شده‌اند. کنترل عادی Bulk/Absorb/Float حالا اجرا می‌شود. این دروازه
- * همچنان جدا از CHG_MASTER_ENABLE است. */
-#define CHG_TRANSFORMER_KNOWN         1u
+/* [EN] CHG_TRANSFORMER_KNOWN must stay 0 until transformer data and current
+ * calibration are measured. It is NOT bypassable; it is a separate
+ * compile-time safety gate from CHG_MASTER_ENABLE. When this is 0 the only
+ * allowed control path is the explicit bring-up test mode below.
+ * [FA] CHG_TRANSFORMER_KNOWN باید تا اندازه‌گیری داده ترانس و کالیبراسیون جریان
+ * صفر بماند. bypass نمی‌شود و دروازه امن زمان کامپایل جدا از CHG_MASTER_ENABLE است.
+ * وقتی این ۰ است، تنها مسیر مجاز کنترل حالت تست صریح bring-up زیر است. */
+#define CHG_TRANSFORMER_KNOWN         0u
 
 /* ==================== Explicit limited bring-up test mode / حالت صریح تست bring-up ==================== */
 /*
@@ -92,15 +90,15 @@
  * external source current-limited, waveform-validation only. This is the
  * ONLY way to run switching when CHG_TRANSFORMER_KNOWN=0. Normal Bulk/Absorb/
  * Float setpoint control does NOT run here. Limits:
- *   CHG_BRINGUP_TEST_ENABLE = 1: active board bring-up (gate/shunt waveforms
- *     already scope-verified at the 10% stage with a calibrated current path).
+ *   CHG_BRINGUP_TEST_ENABLE = 0 for now (safe).
  *   Only installed CH2 is allowed; CH1 remains forced 0.
  *   Start duty = 1% (CHG_DUTY_START_PERMILLE).
  *   Duty step is still CHG_DUTY_STEP_PERMILLE but max duty is clamped to
  *   CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE.
- *     Current stage: max 10% duty (100 permille), source current
- *       limit 100 mA external. Do not raise above this until the transformer
- *       data is measured and CHG_TRANSFORMER_KNOWN flips to 1.
+ *     First bring-up stage: max 1%..2% duty (20 permille), source current
+ *       limit 50 mA external.
+ *     Only after scope confirms gate/shunt/relay polarity and latency, stage
+ *       may be raised up to 10% and source limit up to 100 mA.
  *   Bring-up test never enters Absorb/Float, never uses a 24 V pack setpoint,
  *   and is still gated by CHG_MASTER_ENABLE=1 and Vin >= 22000 mV and all
  *   numeric protections (current, JIT, missing-battery sense).
@@ -108,21 +106,21 @@
  * منبع خارجی محدودکننده جریان، فقط اعتبارسنجی شکل‌موج. این تنها راه
  * سوئیچینگ وقتی CHG_TRANSFORMER_KNOWN=0 است. کنترل عادی Bulk/Absorb/Float
  * در این حالت اجرا نمی‌شود. حدود:
- *   CHG_BRINGUP_TEST_ENABLE = 1 فعال: bring-up برد (شکل‌موج‌های gate/shunt
- *     روی مرحله ۱۰٪ با اسکوپ تأیید شده و مسیر جریان کالیبره است).
+ *   CHG_BRINGUP_TEST_ENABLE = 0 فعلاً (امن).
  *   فقط CH2 نصب‌شده مجاز است؛ CH1 همیشه صفر.
  *   duty شروع = ۱٪ (CHG_DUTY_START_PERMILLE).
  *   گام duty همان CHG_DUTY_STEP_PERMILLE ولی حداکثر duty به
  *   CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE محدود می‌شود.
- *     مرحله فعلی: حداکثر ۱۰٪ duty (۱۰۰ پرمیل)، حد جریان منبع خارجی
- *       ۱۰۰ میلی‌آمپر. تا اندازه‌گیری داده ترانس و یک‌شدن
- *       CHG_TRANSFORMER_KNOWN بالاتر از این نرو.
+ *     مرحله اول bring-up: حداکثر ۱٪ تا ۲٪ duty (۲۰ پرمیل)، حد جریان منبع
+ *       خارجی ۵۰ میلی‌آمپر.
+ *     فقط پس از تأیید اسکوپ gate/shunt/relay polarity/latency، مرحله را می‌توان
+ *       تا ۱۰٪ و حد منبع را تا ۱۰۰ میلی‌آمپر بالا برد.
  *   تست bring-up هرگز وارد Absorb/Float نمی‌شود، از setpoint پک ۲۴ ولت
  *   استفاده نمی‌کند، و همچنان با CHG_MASTER_ENABLE=1، Vin >= ۲۲۰۰۰mV و همه
  *   حفاظت‌های عددی (جریان، JIT، sense باتری) گیت می‌شود. */
-#define CHG_BRINGUP_TEST_ENABLE                0u   /* [EN] bring-up finished; normal charge active / bring-up تمام شد، شارژ نرمال فعال است */
-#define CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE    100u  /* [EN] dormant: 10% stage verified on board / غیرفعال: مرحله ۱۰٪ روی برد تأیید شده */
-#define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA      150u  /* [EN] dormant: 150 mA source limit / غیرفعال: حد منبع ۱۵۰mA */
+#define CHG_BRINGUP_TEST_ENABLE                0u
+#define CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE     20u  /* [EN] 2% max for the first bring-up stage / حداکثر ۲٪ مرحله اول */
+#define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA       50u  /* [EN] external source limit 50 mA first stage / حد منبع خارجی ۵۰mA مرحله اول */
 #define CHG_BRINGUP_TEST_FULL_STAGE_MAX_DUTY  100u  /* [EN] 10% after waveform confirmation / ۱۰٪ بعد از تأیید شکل‌موج */
 #define CHG_BRINGUP_TEST_FULL_STAGE_LIMIT_MA  100u  /* [EN] 100 mA after waveform confirmation / ۱۰۰mA بعد از تأیید شکل‌موج */
 
@@ -136,73 +134,11 @@
 #define CHG_REENTRY_MV               12800u
 #define CHG_BULK_CURRENT_MAX_MA       675u
 #define CHG_CURRENT_LIMIT_MA           675u
-/* [EN] Output-current regulation band: below CHG_REGULATE_LOW_MA the duty
- *      steps up, above CHG_BULK_CURRENT_MAX_MA it steps down, inside the band
- *      it holds. Only a hard fault (> CHG_CURRENT_HARD_FAULT_MA) resets the
- *      channel. This band is what keeps the normal path from oscillating
- *      ramp/cut/restart around a single 675 mA threshold.
- * [FA] باند تنظیم جریان خروجی: زیر ۶۲۰ افزایش دیوتی، بالای ۶۷۵ کاهش دیوتی،
- *      داخل باند نگه‌داشت. فقط خطای سخت (بالاتر از ۹۵۰) کانال را ریست می‌کند. */
-#define CHG_REGULATE_LOW_MA            620u
-#define CHG_CURRENT_HARD_FAULT_MA      950u
-/* [EN] First-order low-pass (EMA) on the estimated output current before the
- *      regulation band: ema += (sample - ema) >> SHIFT on every 10 ms pass,
- *      so tau = 2^SHIFT * 10 ms = ~0.64 s at SHIFT=6. Stops noise-driven duty
- *      hunting ("switching too fast"). The >950 mA hard fault and the JIT
- *      still act on the raw sample, so protection speed is unchanged.
- *      Seeded with the first sample whenever the channel restarts.
- * [FA] فیلتر نمایی مرتبه اول روی جریان تخمینی قبل از باند تنظیم؛ ثابت زمانی
- *      حدود ۰٫۶۴ ثانیه تا تصمیم‌های دیوتی آرام شوند. حفاظت سخت و JIT روی
- *      نمونهٔ خام باقی می‌مانند. */
-#define CHG_CURRENT_EMA_SHIFT            6u
-
-/* [EN] Primary->output current estimate for the charge decisions: the shunt
- *      sits in the MOSFET source leg (primary side), while Bulk/Absorb/Float
- *      limits are output (battery) currents. Estimate Iout =
- *      Ipri_avg * Vin * eta / Vbat. eta is load dependent: 946-956 permille
- *      at the light bench point (110 mA in / 195 mA out), but only ~647
- *      permille at the regulation point (bench 2026-09-18: in 390 mA x
- *      23.1 V = 9009 mW; out 432 mA x 13.5 V = 5832 mW; both measured at the
- *      bench, not by firmware). The 620..675 mA band lives at that heavy
- *      point, so 650 permille is used - then the band holds the REAL output
- *      current. Scope cross-check: use MEAN, not RMS - the LM358 output is a
- *      50 kHz pulse train, so Ipri_avg = Vmean_mV / 1.01 and
- *      Iout = Ipri_avg x Vin x 0.650 / Vbat. Vbat is clamped to
- *      CHG_OUTPUT_EST_MIN_VBAT_MV so a momentary bad reading cannot divide
- *      by ~0; the estimate is only used inside the normal charge path, never
- *      in the bring-up source-limit path.
- * [FA] ضریب اتا به بار بستگی دارد: ~۹۵۰ در نقطه سبک ولی ~۶۴۷ در نقطه تنظیم
- *      (ورودی ۳۹۰mA×۲۳٫۱V = ۹۰۰۹mW، خروجی ۴۳۲mA×۱۳٫۵V = ۵۸۳۲mW). با ۶۵۰ پرمیل،
- *      باند ۶۲۰–۶۷۵ جریانِ واقعی را نگه می‌دارد. خوانش نرم‌افزار با MEAN اسکوپ
- *      (نه RMS) تطبیق داده می‌شود: Ipri = Vmean/1.01. */
-#define CHG_FLYBACK_EFFICIENCY_PERMILLE 650u
-#define CHG_OUTPUT_EST_MIN_VBAT_MV     1000u
 #define CHG_INPUT_VALID_MV           22000u
 #define CHG_DUTY_START_PERMILLE        10u
 #define CHG_DUTY_STEP_PERMILLE          5u
-/* [EN] The control task evaluates the charger every 10 ms (control_period_ms),
- *      so a plain "+5 permille per pass" would ramp 50%/s - far above the
- *      intended 0.5%/s - overshoot the current band and trip the ~15.5 A JIT.
- *      Steps are therefore rate-limited per channel:
- *      one 0.5% up-step per CHG_DUTY_RAMP_UP_INTERVAL_MS (slow soft-start ramp)
- *      and one 0.5% down-step per CHG_DUTY_RAMP_DOWN_INTERVAL_MS (twice as
- *      fast so over-current/over-voltage recovers gradually instead of
- *      cutting, but slow enough to follow the ~0.64 s current filter without
- *      hunting).
- * [FA] تسک کنترل شارژر را هر ۱۰ms اجرا می‌کند؛ بدون محدودیت زمانی، پلهٔ
- *      ۵ پرمیل ۱۰۰ بار در ثانیه اعمال می‌شد (۵۰٪/s) و JIT تریپ می‌کرد. حالا
- *      به‌ازای هر کانال: افزایش هر ۱ ثانیه یک پلهٔ ۰٫۵٪ (رمپ نرم)، کاهش هر
- *      ۵۰۰ms یک پلهٔ ۰٫۵٪ (کاهش تدریجی به‌جای قطع، برای نگه‌داشتن جریان
- *      نزدیک باند با هیسترزیس). */
-#define CHG_DUTY_RAMP_UP_INTERVAL_MS   1000u
-#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS  500u
 #define CHG_DUTY_RETRY_SECOND_MAX       100u
-/* [EN] DCM ceiling: 50% max - anything higher risks core/MOSFET overlap and
- *      burns the MOSFET (board requirement). The regulation band settles near
- *      ~19%, so this cap is only an upper bound.
- * [FA] سقف DCM: حداکثر ۵۰٪ — بالاتر از آن ماسفت می‌سوزد (شرط برد). نقطه کار
- *      تنظیم نزدیک ~۱۹٪ است؛ این فقط کران بالاست. */
-#define CHG_DUTY_MAX_PERMILLE          500u
+#define CHG_DUTY_MAX_PERMILLE         1000u
 #define CHG_ABSORB_HOLD_MS          600000u
 #define CHG_JIT_LOCKOUT_MS            3000u
 #define CHG_RELAY_SETTLE_MS            100u

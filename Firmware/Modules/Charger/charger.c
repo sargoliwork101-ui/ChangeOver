@@ -53,9 +53,6 @@ typedef struct
     charger_state_t charger_state_t__state;
     uint32_t uint32_t__absorbStartTick;
     uint32_t uint32_t__retryDeadlineTick;
-    uint32_t uint32_t__lastDutyStepTick;
-    uint32_t uint32_t__currentEmaMa;
-    bool bool__currentEmaSeeded;
 } charger_channel_state_t;
 
 /* ==================== Static state / وضعیت داخلی ==================== */
@@ -138,35 +135,6 @@ static void func__Charger_FinalDisconnect(void)
     }
 }
 
-/**
- * @brief  [EN] Final-fault standby while the input is cut: keep the fault
- *              latched (BOOL__G__RelayOpen stays true) but release the relay
- *              coil. With the transformer input physically absent, energizing
- *              the NC relay disconnects nothing and only drains the battery
- *              (coil ~40 mA, plus ~7 mA board base = the observed ~50 mA).
- *              The coil re-energizes automatically through FinalDisconnect()
- *              the moment the input returns and the latch is still set.
- *         [FA] standby خطای نهایی وقتی ورودی قطع است: قفل خطا باقی می‌ماند
- *              ولی کویل رله رها می‌شود تا باتری را خالی نکند (~۵۰mA). با
- *              برگشت ورودی، کویل دوباره به‌صورت خودکار وصل می‌شود.
- */
-static void func__Charger_FinalDisconnectIdle(void)
-{
-    uint8_t uint8_t__channelIndex;
-
-    func__BspPwm_StopAll();
-    func__BspGpio_Write(BSP_GPIO_RELAY, false);
-    UINT32_T__G__RelaySettleDeadline = 0u;
-    /* [EN] BOOL__G__RelayOpen intentionally NOT cleared: the final fault
-       stays latched. / [FA] قفل خطا دست‌نخورده می‌ماند. */
-
-    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
-    {
-        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
-        func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
-    }
-}
-
 /* ==================== Channel helpers / توابع کمکی کانال ==================== */
 
 static bool func__Charger_IsChannelInstalled(uint8_t uint8_t__channelIndex)
@@ -212,49 +180,6 @@ static uint32_t func__Charger_ChannelCurrentMa(const measurement_snapshot_t *mea
     }
 
     return measurement_snapshot_t__snap->i_ch2_ma;
-}
-
-/* ==================== Charger_OutputEstimateMa / تخمین جریان خروجی ==================== */
-
-/**
- * @brief  [EN] Convert the primary-side shunt current to the estimated output
- *              (battery) current used by the charge decisions:
- *              Iout = Ipri_avg * Vin * eta / Vbat. Vbat is clamped so a bad
- *              momentary reading cannot divide by ~0. Used ONLY on the normal
- *              charge path; the bring-up source-limit path keeps primary mA.
- *         [FA] تبدیل جریان شنتِ اولیه به جریان خروجی تخمینی برای تصمیم‌های
- *              شارژ. فقط مسیر نرمال، نه مسیر برینگ‌آپ.
- * @param  measurement_snapshot_t__snap [EN] Snapshot / نمونه
- * @param  uint8_t__channelIndex [EN] Channel / کانال
- * @param  uint32_t__primaryMa [EN] Measured primary current / جریان اولیه
- * @return uint32_t [EN] Estimated output current in mA / جریان خروجی تخمینی mA
- */
-static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *measurement_snapshot_t__snap,
-                                               uint8_t uint8_t__channelIndex,
-                                               uint32_t uint32_t__primaryMa)
-{
-    uint32_t uint32_t__vbatMv;
-    uint64_t uint64_t__numerator;
-
-    if ((uint32_t__primaryMa == 0u) ||
-        (measurement_snapshot_t__snap->v_in_mv == 0u))
-    {
-        return 0u;
-    }
-
-    uint32_t__vbatMv =
-        func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap, uint8_t__channelIndex);
-    if (uint32_t__vbatMv < CHG_OUTPUT_EST_MIN_VBAT_MV)
-    {
-        uint32_t__vbatMv = CHG_OUTPUT_EST_MIN_VBAT_MV;
-    }
-
-    uint64_t__numerator = (uint64_t)uint32_t__primaryMa *
-                          (uint64_t)measurement_snapshot_t__snap->v_in_mv *
-                          (uint64_t)CHG_FLYBACK_EFFICIENCY_PERMILLE;
-
-    return (uint32_t)(uint64_t__numerator /
-                      ((uint64_t)uint32_t__vbatMv * 1000u));
 }
 
 static uint16_t func__Charger_MaxDutyPermille(void)
@@ -335,6 +260,29 @@ static void func__Charger_StopOneChannel(uint8_t uint8_t__channelIndex)
     func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
 }
 
+static void func__Charger_StopAllPwm(void)
+{
+    uint8_t uint8_t__channelIndex;
+
+    func__BspPwm_StopAll();
+
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    {
+        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
+        func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
+    }
+}
+
+/* ==================== Relay helpers ==================== */
+
+static void func__Charger_CloseTransformerInput(uint32_t uint32_t__nowTick)
+{
+    func__BspGpio_Write(BSP_GPIO_RELAY, false);
+    BOOL__G__RelayOpen = false;
+    UINT32_T__G__RelaySettleDeadline =
+        uint32_t__nowTick + func__Rtos_MillisecondsToTicks(CHG_RELAY_SETTLE_MS);
+}
+
 /* ==================== Time helpers ==================== */
 
 static uint32_t func__Charger_DurationTicks(uint32_t uint32_t__milliseconds)
@@ -371,9 +319,6 @@ static void func__Charger_ResetChannelToOff(uint8_t uint8_t__channelIndex)
     charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_OFF;
     charger_channel_state_t__channel->uint32_t__absorbStartTick = 0u;
     charger_channel_state_t__channel->uint32_t__retryDeadlineTick = 0u;
-    charger_channel_state_t__channel->uint32_t__lastDutyStepTick = 0u;
-    charger_channel_state_t__channel->uint32_t__currentEmaMa = 0u;
-    charger_channel_state_t__channel->bool__currentEmaSeeded = false;
     charger_channel_state_t__channel->uint16_t__dutyBeforeTripPermille =
         charger_channel_state_t__channel->uint16_t__dutyPermille;
 }
@@ -509,10 +454,6 @@ static void func__Charger_ServiceRetry(uint32_t uint32_t__nowTick)
 #endif
 
     func__Charger_ApplyDuty(uint8_t__retryChannel, uint16_t__retryDuty);
-    /* [EN] Stamp the step timer so the resumed ramp waits a full up-interval
-       before growing again (soft resume after a JIT trip).
-       [FA] بعد از ری‌استارت JIT هم رمپ باید یک بازهٔ کامل صبر کند. */
-    charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
     UINT8_T__G__RetryChannel = CHG_NO_CHANNEL;
 }
 
@@ -596,9 +537,6 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     uint32_t uint32_t__absorbTicks;
     uint16_t uint16_t__nextDuty;
     uint32_t uint32_t__increasedDuty;
-    uint32_t uint32_t__upIntervalTicks;
-    uint32_t uint32_t__downIntervalTicks;
-    int32_t int32_t__currentDelta;
 
     charger_channel_state_t__channel = &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
 
@@ -627,16 +565,6 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     uint32_t__currentMa =
         func__Charger_ChannelCurrentMa(measurement_snapshot_t__snap, uint8_t__channelIndex);
 
-    /* [EN] The snapshot current is primary-side; Bulk/Absorb/Float limits are
-       output (battery) currents, so this normal-charge path decides with the
-       converted value. The bring-up regulator above keeps primary mA.
-       [FA] جریان snapshot سمت اولیه است؛ حدهای شارژ خروجی‌اند، پس مسیر نرمال با
-       مقدار تبدیل‌شده تصمیم می‌گیرد. */
-    uint32_t__currentMa =
-        func__Charger_OutputEstimateMa(measurement_snapshot_t__snap,
-                                       uint8_t__channelIndex,
-                                       uint32_t__currentMa);
-
     if (func__Charger_BatteryVoltageIsValid(uint32_t__batteryMv) == false)
     {
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
@@ -644,46 +572,18 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         return;
     }
 
-    if (uint32_t__currentMa > CHG_CURRENT_HARD_FAULT_MA)
+    if (uint32_t__currentMa > CHG_CURRENT_LIMIT_MA)
     {
-        /* [EN] Only a hard over-current fault resets the channel; normal
-           over-target is handled by the duty band below (no cut/restart).
-           Uses the raw sample so protection speed is unchanged by the filter.
-           [FA] فقط خطای سخت اضافه‌جریان کانال را ریست می‌کند (روی نمونهٔ خام،
-           بدون تأخیر فیلتر). */
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
         func__Charger_StopOneChannel(uint8_t__channelIndex);
         return;
     }
-
-    /* [EN] EMA low-pass on the estimated output current (tau ~0.64 s, one
-       update per 10 ms pass). The 620..675 band decides on this smooth value
-       so the duty does not hunt from sample noise; seeded with the first
-       sample after any restart.
-       [FA] فیلتر نمایی روی جریان تخمینی (ثابت زمانی ~۰٫۶۴ ثانیه)؛ باند تنظیم
-       با مقدار صاف تصمیم می‌گیرد تا دیوتی تندتند عوض نشود. */
-    if (charger_channel_state_t__channel->bool__currentEmaSeeded == false)
-    {
-        charger_channel_state_t__channel->uint32_t__currentEmaMa = uint32_t__currentMa;
-        charger_channel_state_t__channel->bool__currentEmaSeeded = true;
-    }
-    else
-    {
-        int32_t__currentDelta =
-            (int32_t)uint32_t__currentMa -
-            (int32_t)charger_channel_state_t__channel->uint32_t__currentEmaMa;
-        charger_channel_state_t__channel->uint32_t__currentEmaMa =
-            (uint32_t)((int32_t)charger_channel_state_t__channel->uint32_t__currentEmaMa +
-                       (int32_t__currentDelta >> CHG_CURRENT_EMA_SHIFT));
-    }
-    uint32_t__currentMa = charger_channel_state_t__channel->uint32_t__currentEmaMa;
 
     if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_OFF)
     {
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
         charger_channel_state_t__channel->uint32_t__absorbStartTick = 0u;
         func__Charger_ApplyDuty(uint8_t__channelIndex, CHG_DUTY_START_PERMILLE);
-        charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
         return;
     }
 
@@ -732,75 +632,32 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     }
 
     uint16_t__nextDuty = charger_channel_state_t__channel->uint16_t__dutyPermille;
-    uint32_t__upIntervalTicks = func__Charger_DurationTicks(CHG_DUTY_RAMP_UP_INTERVAL_MS);
-    uint32_t__downIntervalTicks = func__Charger_DurationTicks(CHG_DUTY_RAMP_DOWN_INTERVAL_MS);
 
     if (uint32_t__batteryMv < uint32_t__targetMv)
     {
-        /* [EN] Current regulation band with rate-limited steps: above 675 mA
-           step duty DOWN (one 0.5% step per 100 ms), below 620 mA step duty
-           UP (one 0.5% step per 1000 ms), inside 620..675 hold. Gradual
-           down-steps let the loop sit near the band with hysteresis instead
-           of cutting and restarting from zero.
-           [FA] باند تنظیم جریان با پله‌های محدودشدهٔ زمانی: بالای ۶۷۵ کاهش
-           تدریجی (هر ۱۰۰ms)، زیر ۶۲۰ افزایش تدریجی (هر ۱ ثانیه)، داخل باند
-           نگه‌داشت — بدون قطع و شروع از صفر، مثل یه هیسترزیس. */
-        if (uint32_t__currentMa > CHG_BULK_CURRENT_MAX_MA)
+        if (uint32_t__currentMa < CHG_BULK_CURRENT_MAX_MA)
         {
-            if ((uint32_t)(uint32_t__nowTick -
-                           charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
-                uint32_t__downIntervalTicks)
+            uint32_t__increasedDuty =
+                (uint32_t)uint16_t__nextDuty + CHG_DUTY_STEP_PERMILLE;
+            if (uint32_t__increasedDuty > CHG_DUTY_MAX_PERMILLE)
             {
-                if (uint16_t__nextDuty > CHG_DUTY_STEP_PERMILLE)
-                {
-                    uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_PERMILLE);
-                }
-                else
-                {
-                    uint16_t__nextDuty = 0u;
-                }
-                charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
+                uint16_t__nextDuty = CHG_DUTY_MAX_PERMILLE;
             }
-        }
-        else if (uint32_t__currentMa < CHG_REGULATE_LOW_MA)
-        {
-            if ((uint32_t)(uint32_t__nowTick -
-                           charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
-                uint32_t__upIntervalTicks)
+            else
             {
-                uint32_t__increasedDuty =
-                    (uint32_t)uint16_t__nextDuty + CHG_DUTY_STEP_PERMILLE;
-                if (uint32_t__increasedDuty > CHG_DUTY_MAX_PERMILLE)
-                {
-                    uint16_t__nextDuty = CHG_DUTY_MAX_PERMILLE;
-                }
-                else
-                {
-                    uint16_t__nextDuty = (uint16_t)uint32_t__increasedDuty;
-                }
-                charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
+                uint16_t__nextDuty = (uint16_t)uint32_t__increasedDuty;
             }
-        }
-        else
-        {
-            /* [EN] Inside the 620..675 band: hold duty. / داخل باند: نگه‌داشت دیوتی */
         }
     }
     else if (uint32_t__batteryMv > uint32_t__targetMv)
     {
-        if ((uint32_t)(uint32_t__nowTick -
-                       charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
-            uint32_t__downIntervalTicks)
+        if (uint16_t__nextDuty > CHG_DUTY_STEP_PERMILLE)
         {
-            if (uint16_t__nextDuty > CHG_DUTY_STEP_PERMILLE)
-            {
-                uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_PERMILLE);
-            }
-            else
-            {
-                uint16_t__nextDuty = 0u;
-            }
-            charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
+            uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_PERMILLE);
+        }
+        else
+        {
+            uint16_t__nextDuty = 0u;
         }
     }
 
@@ -823,9 +680,6 @@ void func__Charger_Init(void)
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state = CHG_STATE_OFF;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbStartTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__retryDeadlineTick = 0u;
-        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__lastDutyStepTick = 0u;
-        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__currentEmaMa = 0u;
-        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__currentEmaSeeded = false;
     }
 
     BOOL__G__ChargerInitialized = true;
@@ -888,8 +742,6 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         return;
     }
 
-    bool__inputAdcValid = (measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_VALID_MV);
-
     bool__anyFinalFault = false;
     for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
     {
@@ -902,20 +754,11 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
     if (bool__anyFinalFault == true)
     {
-        /* [EN] With the input cut, keep the latch but release the coil so it
-           cannot drain the battery; FinalDisconnect resumes when input returns.
-           [FA] با ورودی قطع، قفل خطا بماند ولی کویل رها شود تا باتری خالی نشود. */
-        if (bool__inputAdcValid == true)
-        {
-            func__Charger_FinalDisconnect();
-        }
-        else
-        {
-            func__Charger_FinalDisconnectIdle();
-        }
+        func__Charger_FinalDisconnect();
         return;
     }
 
+    bool__inputAdcValid = (measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_VALID_MV);
     if (bool__inputAdcValid == false)
     {
         for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
@@ -951,14 +794,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
     if (BOOL__G__RelayOpen == true)
     {
-        if (bool__inputAdcValid == true)
-        {
-            func__Charger_FinalDisconnect();
-        }
-        else
-        {
-            func__Charger_FinalDisconnectIdle();
-        }
+        func__Charger_FinalDisconnect();
         return;
     }
 

@@ -48,14 +48,6 @@
  *      موقت است و نباید نهایی فرض شود. */
 #define BSP_MEASUREMENT_CURRENT_OFFSET_COUNTS 8u
 #define BSP_MEASUREMENT_CURRENT_GAIN_PERMILLE 1000u
-/* [EN] Bench offset of this board's 24 V INPUT net (2026-09-18): the ADC
- *      reading sits 0.2 V above the bench meter across the charge range
- *      (fixed divider/reference offset), so subtract a constant 200 mV with
- *      a zero clamp. Applies ONLY to the 24 V_IN net, not to the battery
- *      24 V net. Re-measure if the divider or reference changes.
- * [FA] آفست بنچی نت ورودی ۲۴V این برد: خوانش ۰٫۲V بالاتر از مولتی‌متر است؛
- *      ۲۰۰mV ثابت با کلمپ صفر کم می‌شود. فقط نت ورودی، نه باتری ۲۴V. */
-#define BSP_MEASUREMENT_VIN_OFFSET_MV 200u
 
 /**
  * @brief  [EN] Convert raw ADC counts to millivolts at the ADC pin.
@@ -114,28 +106,6 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
     uint32_t__scaledMv = uint32_t__adcPinMv * uint32_t__dividerTotalOhms;
 
     return uint32_t__scaledMv / BSP_MEASUREMENT_DIV12_BOTTOM_OHMS;
-}
-
-/* ==================== BspMeasurement_VinCountsToMv ==================== */
-
-/**
- * @brief  [EN] Convert the 24 V INPUT net through the 24 V calibration, then
- *              subtract this board's fixed +0.2 V bench offset (zero clamp).
- *         [FA] نت ورودی ۲۴V را تبدیل و سپس آفست ثابت ۰٫۲V برد را کم می‌کند.
- * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Input voltage in mV / ولتاژ ورودی بر حسب mV
- */
-uint32_t func__BspMeasurement_VinCountsToMv(uint16_t uint16_t__counts)
-{
-    uint32_t uint32_t__mv;
-
-    uint32_t__mv = func__BspMeasurement_V24CountsToMv(uint16_t__counts);
-    if (uint32_t__mv > BSP_MEASUREMENT_VIN_OFFSET_MV)
-    {
-        return uint32_t__mv - BSP_MEASUREMENT_VIN_OFFSET_MV;
-    }
-
-    return 0u;
 }
 
 /**

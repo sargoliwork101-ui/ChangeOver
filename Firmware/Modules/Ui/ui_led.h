@@ -287,65 +287,6 @@
  */
 #define UI_BATTERY_RUN_BEEP_GAP_MS 100u
 
-/* ==================== Battery percent hysteresis / هیسترزیس درصد باتری ==================== */
-
-/**
- * @brief  [EN] Hysteresis for BatteryRun display/timing percent, in percent points.
- *         Stable percent changes only when raw percent differs by at least 2.
- *         Jitter 56↔57 or 57↔58 does not change blink timing; 57→55 or 57→59 does.
- *         This hysteresis applies only to BatteryRun green blink and buzzer timing, not to input, overvoltage or Low Battery Alarm.
- *         [FA] هیسترزیس درصد نمایش/زمان‌بندی BatteryRun، بر حسب واحد درصد.
- *         درصد پایدار فقط وقتی اختلاف درصد خام و پایدار حداقل 2 باشد تغییر می‌کند.
- */
-#define UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT 2u
-
-/**
- * @brief  [EN] Legacy alias kept for compatibility. Use UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT.
- *         [FA] نام قدیمی برای سازگاری؛ از UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT استفاده کن.
- */
-#define UI_BATTERY_PERCENT_HYSTERESIS_PERCENT UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT
-
-/**
- * @brief  [EN] Hysteresis for Charging yellow blink timing, in percent points.
- *         Charging stable percent changes only when raw differs by at least 5.
- *         Example: stable 57, raw 53..61 keeps 57; outside range moves to new raw.
- *         [FA] هیسترزیس زمان چشمک زرد شارژ، بر حسب واحد درصد.
- *         مثال: پایدار 57، خام 53 تا 61 همان 57 می‌ماند؛ خارج از محدوده به مقدار جدید می‌رود.
- */
-#define UI_CHARGING_PERCENT_HYSTERESIS_PERCENT 5u
-
-/**
- * @brief  [EN] Raw percent threshold to exit the critical 0% state.
- *         While stable is 0, it stays 0 until raw reaches at least 2; then it moves to 1 first, not directly to 2.
- *         [FA] آستانه درصد خام برای خروج از حالت بحرانی 0 درصد.
- *         تا وقتی پایدار 0 است، تا raw حداقل 2 نشده روی 0 می‌ماند؛ پس از خروج ابتدا به 1 می‌رود.
- */
-#define UI_BATTERY_ZERO_EXIT_THRESHOLD        2u
-
-/**
- * @brief  [EN] Raw percent threshold to exit the 1% state upward.
- *         While stable is 1: raw==0 → 0, raw>=3 → 2, otherwise keep 1. Prevents chatter between 0 and 1.
- *         [FA] آستانه خروج از حالت 1 درصد به سمت بالا.
- *         وقتی پایدار 1 است: raw 0 → 0، حداقل 3 → 2، otherwise 1 حفظ شود.
- */
-#define UI_BATTERY_ONE_EXIT_THRESHOLD         3u
-
-/**
- * @brief  [EN] Raw battery percent at which Charging may enter InputOk (full) state.
- *         InputOk is entered only when raw reaches 100%.
- *         [FA] درصد خام باتری که در آن Charging می‌تواند وارد حالت InputOk (فول) شود.
- *         ورود به InputOk فقط وقتی خام به 100٪ برسد مجاز است.
- */
-#define UI_CHARGING_FULL_ENTER_PERCENT        100u
-
-/**
- * @brief  [EN] Raw battery percent below which InputOk exits back to Charging.
- *         While InputOk is active it stays until raw falls below 95%.
- *         [FA] درصد خام باتری که پایین‌تر از آن InputOk به Charging برمی‌گردد.
- *         تا وقتی InputOk فعال است تا کمتر از 95٪ در همان حالت می‌ماند.
- */
-#define UI_CHARGING_FULL_EXIT_PERCENT         95u
-
 /* ==================== Low Battery Alarm / آلارم باتری کم ==================== */
 
 /**

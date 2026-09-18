@@ -20,11 +20,6 @@ ABSORB_MV = 14400
 FLOAT_MV = 13500
 REENTRY_MV = 12800
 CURRENT_LIMIT_MA = 675
-REGULATE_LOW_MA = 620
-HARD_FAULT_MA = 950
-DUTY_MAX = 500
-RAMP_UP_MS = 1000
-RAMP_DOWN_MS = 500
 DUTY_START = 10
 DUTY_STEP = 5
 INPUT_VALID_MV = 22000
@@ -35,27 +30,19 @@ def check(condition, message):
         raise AssertionError(message)
 
 
-def regulate_one(channel, voltage_mv, current_ma, now_ms=0):
-    """Small host model of the bulk branch, with a duty per channel and
-    rate-limited steps: one 0.5% up-step per 1000 ms, one 0.5% down-step
-    per 100 ms. >950 hard fault -> reset; >675 -> down; <620 -> up;
-    620..675 -> hold; too soon to step -> hold."""
-    if current_ma > HARD_FAULT_MA:
+def regulate_one(channel, voltage_mv, current_ma):
+    """Small host model of the bulk branch, with a duty per channel."""
+    if current_ma > CURRENT_LIMIT_MA:
         channel["fault"] = True
         channel["duty"] = 0
         return
-    last_step_ms = channel.get("last_step_ms", -10**9)
-    if voltage_mv < ABSORB_MV and current_ma > CURRENT_LIMIT_MA:
-        if now_ms - last_step_ms >= RAMP_DOWN_MS:
-            channel["duty"] = max(0, channel["duty"] - DUTY_STEP)
-            channel["last_step_ms"] = now_ms
-    elif voltage_mv < ABSORB_MV and current_ma < REGULATE_LOW_MA:
-        if now_ms - last_step_ms >= RAMP_UP_MS:
-            channel["duty"] += DUTY_STEP
-            if channel["duty"] > DUTY_MAX:
-                channel["duty"] = DUTY_MAX
-            channel["last_step_ms"] = now_ms
-    # inside the 620..675 band or inside the step window: hold duty
+    if voltage_mv < ABSORB_MV and current_ma < CURRENT_LIMIT_MA:
+        channel["duty"] += DUTY_STEP
+        if channel["duty"] > 1000:
+            channel["duty"] = 1000
+    elif voltage_mv < ABSORB_MV and current_ma == CURRENT_LIMIT_MA:
+        # At exact current target, hold duty; host test models saturation.
+        pass
 
 
 def jit_sequence(channel, trip_count):
@@ -80,15 +67,15 @@ def test_modules_enabled_build():
           "MODULE_CHARGER must be 1 for build/compile coverage")
     check(re.search(r"#define MODULE_JITTER\s+1", mods),
           "MODULE_JITTER must be 1 for build/compile coverage")
-    check(re.search(r"#define CHG_MASTER_ENABLE\s+1u", ch),
-          "master switch must be 1 for the active charge scenario (normal Bulk/Absorb/Float)")
+    check(re.search(r"#define CHG_MASTER_ENABLE\s+0u", ch),
+          "even with MODULE_CHARGER=1 the runtime master switch must stay 0 (safe-idle) until bring-up")
 
 
 def test_master_enable_constant_is_single_gate():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
-    check(re.search(r"#define CHG_MASTER_ENABLE\s+1u", text_h),
-          "CHG_MASTER_ENABLE is 1 for the active board bring-up")
+    check(re.search(r"#define CHG_MASTER_ENABLE\s+0u", text_h),
+          "CHG_MASTER_ENABLE must be 0 for current safe-off delivery")
     check("CHG_MASTER_ENABLE == 0u" in text_c and "func__Charger_SafeIdle();" in text_c,
           "CHG_MASTER_ENABLE=0 must force whole-charger safe-idle")
     check("CHG_MASTER_ENABLE == 1u" in text_c or "CHG_MASTER_ENABLE" in text_c,
@@ -117,16 +104,16 @@ def test_master_enable_zero_safeidle_stops_both_pwm_and_relay_off():
 def test_transformer_known_not_bypassable_bringup_only_when_zero():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
-    check(re.search(r"#define CHG_TRANSFORMER_KNOWN\s+1u", text_h),
-          "CHG_TRANSFORMER_KNOWN is 1: transformer data and current chain are board-verified")
-    check("board-verified" in text_h or "برد تأیید" in text_h,
-          "CHG_TRANSFORMER_KNOWN=1 must carry the board-verified rationale in docs")
+    check(re.search(r"#define CHG_TRANSFORMER_KNOWN\s+0u", text_h),
+          "CHG_TRANSFORMER_KNOWN must remain 0 for now")
+    check("NOT bypassable" in text_h or "bypass نمی" in text_h,
+          "CHG_TRANSFORMER_KNOWN=0 must be documented as not bypassable")
     check(re.search(r"#define CHG_BRINGUP_TEST_ENABLE\s+0u", text_h),
-          "bring-up test mode must be 0 (bring-up finished, normal charge active)")
-    check("CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE" in text_h and re.search(r"100u\s", text_h),
-          "bring-up stage max duty must be documented (100 permille = 10%, board-verified)")
-    check(re.search(r"#define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA\s+150u", text_h),
-          "bring-up full-stage source limit must be 150 mA external (100 mA kept restarting on real draw)")
+          "bring-up test mode must be 0 (off) for the delivered safe state")
+    check("CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE" in text_h and re.search(r"20u\s", text_h),
+          "bring-up first stage max duty must be documented (20 permille = 2%)")
+    check("CHG_BRINGUP_TEST_SOURCE_LIMIT_MA" in text_h and re.search(r"50u\s", text_h),
+          "bring-up first stage source limit must be 50 mA external")
     check("CHG_FIRST_BOARD_TEST_MAX_MA" not in text_h,
           "the retired 100 mA first-test setting must not remain as an executable-looking constant")
     # controlAllowed path must require either KNOWN=1 or bring-up enabled
@@ -306,45 +293,17 @@ def test_low_current_is_not_fault():
     check(not channel["fault"], "low current must not be a fault")
 
 
-def test_duty_steps_are_time_limited():
-    channel = {"duty": 100, "fault": False}
-    regulate_one(channel, voltage_mv=12400, current_ma=400, now_ms=0)
-    check(channel["duty"] == 105, "first up-step allowed -> 0.5% step")
-    regulate_one(channel, voltage_mv=12400, current_ma=400, now_ms=500)
-    check(channel["duty"] == 105, "up-step inside the 1000 ms window must be blocked (no 50%/s runaway)")
-    regulate_one(channel, voltage_mv=12400, current_ma=400, now_ms=1000)
-    check(channel["duty"] == 110, "rate is one 0.5% up-step per second")
-    regulate_one(channel, voltage_mv=12400, current_ma=700, now_ms=1400)
-    check(channel["duty"] == 110, "down-step needs its own 500 ms window after the last step")
-    regulate_one(channel, voltage_mv=12400, current_ma=700, now_ms=1500)
-    check(channel["duty"] == 105, "over-band gradually steps duty down instead of cutting to zero")
-
-
-def test_duty_max_dcm_ceiling():
-    channel = {"duty": 495, "fault": False}
-    regulate_one(channel, voltage_mv=12400, current_ma=400, now_ms=0)
-    check(channel["duty"] == 500, "step up allowed up to the 50% DCM ceiling")
-    regulate_one(channel, voltage_mv=12400, current_ma=400, now_ms=1000)
-    check(channel["duty"] == 500, "duty must clamp at 500 permille = 50% (higher risks burning the MOSFET)")
-
-
 def test_only_above_675ma_protects():
     channel_low = {"duty": 100, "fault": False}
     regulate_one(channel_low, voltage_mv=12400, current_ma=600)
     check(not channel_low["fault"], "current below 675 mA must not enter overcurrent protection")
-    check(channel_low["duty"] == 105, "600 mA is below the 620 band edge and must raise duty")
+    check(channel_low["duty"] == 105, "low current below voltage target must increase duty")
     channel_ok = {"duty": 100, "fault": False}
     regulate_one(channel_ok, voltage_mv=12400, current_ma=675)
     check(not channel_ok["fault"], "675 mA must not enter overcurrent protection")
-    check(channel_ok["duty"] == 100, "exactly 675 mA sits inside the band and must hold duty")
-    channel_high = {"duty": 100, "fault": False}
-    regulate_one(channel_high, voltage_mv=12400, current_ma=676)
-    check(not channel_high["fault"] and channel_high["duty"] == 95,
-          "676 mA must only step duty down (regulation), never cut the channel")
     channel_bad = {"duty": 100, "fault": False}
-    regulate_one(channel_bad, voltage_mv=12400, current_ma=951)
-    check(channel_bad["fault"] and channel_bad["duty"] == 0,
-          "only current above the 950 mA hard fault must reset the channel")
+    regulate_one(channel_bad, voltage_mv=12400, current_ma=676)
+    check(channel_bad["fault"] and channel_bad["duty"] == 0, "only current above 675 mA must enter current protection")
 
 
 def test_setpoints_and_timing():
@@ -354,13 +313,6 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_REENTRY_MV\s+12800u", text_h), "reentry must be 12800 mV")
     check(re.search(r"#define CHG_ABSORB_HOLD_MS\s+600000u", text_h), "absorb hold must be 600000 ms = 10 min")
     check(re.search(r"#define CHG_BULK_CURRENT_MAX_MA\s+675u", text_h), "bulk regulation current must be 675 mA")
-    check(re.search(r"#define CHG_REGULATE_LOW_MA\s+620u", text_h), "regulation band lower edge must be 620 mA")
-    check(re.search(r"#define CHG_CURRENT_HARD_FAULT_MA\s+950u", text_h), "hard over-current fault must be 950 mA")
-    check(re.search(r"#define CHG_DUTY_MAX_PERMILLE\s+500u", text_h), "duty cap must be 500 permille = 50% (DCM ceiling, board requirement)")
-    check(re.search(r"#define CHG_DUTY_RAMP_UP_INTERVAL_MS\s+1000u", text_h), "up-steps must be limited to one per 1000 ms")
-    check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS\s+500u", text_h), "down-steps must be limited to one per 500 ms")
-    check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_PERMILLE\s+650u", text_h), "efficiency must be 650 permille at the regulation point (bench: 432 mA x 13.5 V out / 390 mA x 23.1 V in = 647 permille)")
-    check(re.search(r"#define CHG_CURRENT_EMA_SHIFT\s+6u", text_h), "current estimate must pass through an EMA filter (shift 6, tau ~0.64 s)")
     check(re.search(r"#define CHG_DUTY_START_PERMILLE\s+10u", text_h), "start duty must be 10 permille = 1%")
     check(re.search(r"#define CHG_DUTY_STEP_PERMILLE\s+5u", text_h), "increase step must be 5 permille = 0.5%")
 
@@ -405,8 +357,6 @@ def main():
         test_no_shadowing_in_duty_adjustments,
         test_jit_per_channel_sequence,
         test_low_current_is_not_fault,
-        test_duty_steps_are_time_limited,
-        test_duty_max_dcm_ceiling,
         test_only_above_675ma_protects,
         test_setpoints_and_timing,
         test_pwm_contract,

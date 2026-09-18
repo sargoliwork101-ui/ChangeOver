@@ -252,11 +252,8 @@ void func__Measurement_Run(void)
             UINT32_T__G__Current1FilteredMa,
             func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1]));
     uint32_t__current1Ma = UINT32_T__G__Current1FilteredMa;
-    /* [EN] The 24 V input net additionally carries this board's fixed
-       +0.2 V bench offset; the battery 24 V net keeps the plain conversion.
-       [FA] نت ورودی ۲۴V آفست برد را هم دارد؛ باتری ۲۴V با تبدیل ساده. */
     uint32_t__inputVoltageMv =
-        func__BspMeasurement_VinCountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_IN]);
+        func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_IN]);
     uint32_t__battery24Mv =
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);
     uint32_t__battery12Mv =
