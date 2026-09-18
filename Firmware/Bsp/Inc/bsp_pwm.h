@@ -50,4 +50,20 @@ void func__BspPwm_SetDutyPermille(bsp_pwm_channel_t bsp_pwm_channel_t__channel,
  */
 void func__BspPwm_StopAll(void);
 
+/* ==================== BspPwm_TripOffFromIsr ==================== */
+/**
+ * @brief  [EN] ISR-safe trip: zero compare, disable outputs, latch fault.
+ *         Must not use HAL_TIM_PWM_Stop, osDelay, queue, mutex, malloc, logging.
+ *         [FA] تریپ ISR-safe: صفر CCR، قطع خروجی، بدون HAL یا RTOS.
+ */
+void func__BspPwm_TripOffFromIsr(void);
+
+/* ==================== BspPwm_GetFrequency ==================== */
+/**
+ * @brief  [EN] Return actual PWM frequency for test: TIMCLK/(PSC+1)/(ARR+1).
+ *         [FA] فرکانس واقعی PWM برای تست.
+ * @return uint32_t [EN] Hz
+ */
+uint32_t func__BspPwm_GetFrequencyHz(void);
+
 #endif /* BSP_PWM_H */

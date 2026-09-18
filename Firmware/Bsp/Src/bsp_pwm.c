@@ -11,6 +11,10 @@
 
 #include "bsp_pwm.h"
 #include "main.h"
+#ifndef CHG_PWM_FREQ_HZ
+#define CHG_PWM_FREQ_HZ 50000u
+#define CHG_TIMER_CLOCK_HZ 72000000u
+#endif
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -148,4 +152,51 @@ void func__BspPwm_StopAll(void)
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0u);
     (void)HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_1);
     (void)HAL_TIM_PWM_Stop(&htim3, TIM_CHANNEL_1);
+}
+
+/* ==================== BspPwm_TripOffFromIsr ==================== */
+/**
+ * @brief  [EN] ISR-safe trip: zero CCR, disable CCxE, no HAL, no RTOS.
+ *         [FA] تریپ ISR-safe: صفر CCR، قطع خروجی.
+ */
+void func__BspPwm_TripOffFromIsr(void)
+{
+    /* [EN] Very short, no RTOS API, no blocking, latch already in Charger.
+       Direct register writes are ISR-safe; HAL_TIM_PWM_Stop is NOT assumed safe.
+       [FA] بسیار کوتاه، بدون RTOS. */
+    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0u);
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0u);
+
+    /* [EN] Clear CC1E to disable output quickly.
+       [FA] قطع خروجی. */
+    htim2.Instance->CCER &= (uint32_t)(~TIM_CCER_CC1E);
+    htim3.Instance->CCER &= (uint32_t)(~TIM_CCER_CC1E);
+
+    /* [EN] For advanced timers BDTR MOE would be cleared, but TIM2/3 are general purpose.
+       [FA] برای TIM2/3 نیازی به MOE نیست. */
+}
+
+/* ==================== BspPwm_GetFrequency ==================== */
+uint32_t func__BspPwm_GetFrequencyHz(void)
+{
+    uint32_t uint32_t__psc;
+    uint32_t uint32_t__arr;
+
+    /* [EN] Read actual timer registers; after fix PSC=0 ARR=1439 → 50kHz.
+       [FA] خواندن رجیستر واقعی. */
+    uint32_t__psc = (uint32_t)htim2.Instance->PSC;
+    uint32_t__arr = (uint32_t)htim2.Instance->ARR;
+
+    if ((uint32_t__psc == 0u) && (uint32_t__arr == 0u))
+    {
+        /* [EN] Not yet initialized (host), return spec value.
+           [FA] اگر هنوز Init نشده، مقدار spec. */
+        return CHG_PWM_FREQ_HZ;
+    }
+
+    /* [EN] TIM clock 72MHz, but APB1 timers x2 when APB1 prescaler 2.
+       SystemClock sets APB1 div2, TIM2/3 on APB1 → timer clock 72MHz.
+       Formula: 72M/(PSC+1)/(ARR+1).
+       [FA] فرمول فرکانس. */
+    return CHG_TIMER_CLOCK_HZ / (uint32_t__psc + 1u) / (uint32_t__arr + 1u);
 }
