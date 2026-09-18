@@ -8,7 +8,7 @@
 
 ## وضعیت
 
-پیاده‌سازی کامل منطق قطع/وصل با فیلتر 3000ms، `MODULE_CHANGEOVER = 1` است تا منطق واقعی روی تسک کنترل اجرا و روی برد تست شود. فقط از داده‌های مجاز استفاده می‌کند: `snapshot.valid`, `snapshot.v_bat24_mv`, `snapshot.input_present`, `fault_mask`, `BOOL__G__UiBatteryAlarmIssued`. تبدیل زمان فقط با `rtos_time.h` و بدون فرض `tick=1ms`. `BSP_GPIO_PROTECT_BATTERY` (PB11) و `BSP_GPIO_BATTERY_SWITCH` (PB5) درایو می‌شوند؛ `PB7` همچنان ممنوع است. `board_pins.h`، HAL و پایه فیزیکی در ماژول ممنوع است.
+پیاده‌سازی کامل منطق قطع/وصل با فیلتر 3000ms، `MODULE_CHANGEOVER = 1` است تا منطق واقعی روی تسک کنترل اجرا و روی برد تست شود. فقط از داده‌های مجاز استفاده می‌کند: `snapshot.valid`, `snapshot.v_bat24_mv`, `snapshot.input_present`, `fault_mask`, `BOOL__G__UiBatteryAlarmIssued`. تبدیل زمان فقط با `rtos_time.h` و بدون فرض `tick=1ms`. فقط `BSP_GPIO_PROTECT_BATTERY` (PB11 منطقی) استفاده می‌شود؛ `PB5` و `PB7` ممنوع و به هیچ‌وجه تغییر نمی‌کنند. `board_pins.h`، HAL و پایه فیزیکی در ماژول ممنوع است.
 
 منطق (snapshot-first):
 - اگر `snapshot==NULL` یا `snapshot.valid==false` → هیچ تصمیمی، `state` حفظ، `PB11` حفظ، تایمرهای pending reset، `fault` هم در این حالت `state` را تغییر نمی‌دهد، زمان نامعتبر جزو 3000ms حساب نمی‌شود.
@@ -16,7 +16,6 @@
 - قطع با گیت: `v_bat24_mv<21000` و `BOOL__G__UiBatteryAlarmIssued==true` به‌مدت پیوسته 3000ms → قطع باتری (PB11 Low-Active).
 - قطع مستقل: `v_bat24_mv<20800` مستقل از فلگ، به‌مدت پیوسته 3000ms → قطع باتری.
 - وصل مجدد: `input_present==true` و `v_bat24_mv≥21200` به‌مدت پیوسته 3000ms → وصل باتری (PB11 High-Safe).
-- سوییچ مسیر باتری PB5: با هر ارزیابی معتبرِ بدون fault، اگر `input_present==false` و protect فعال نباشد → باتری وصل (LOGICAL true)؛ در غیر این صورت قطع. در حالت snapshot نامعتبر یا fault پایه دست‌نخورده می‌ماند. هدف: ماندگاری تغذیه MCU بعد از قطع ورودی.
 
 ## تاریخچه
 
@@ -58,7 +57,7 @@ Changeover **فقط** از سیگنال منطقی `BSP_GPIO_PROTECT_BATTERY` (P
 | پایه منطقی | پایه فیزیکی | لیبل | نقش | HIGH یعنی (شماتیک) |
 |---|---|---|---|---|
 | `BSP_GPIO_PROTECT_BATTERY` | PB11 | `MCU_LOW_BAT` / `MCU_PROTECT_BATT` | قطع مسیر باتری Q17 | High امن و مسیر غیرفعال (فعال Low) |
-| `BSP_GPIO_BATTERY_SWITCH` (PB5) | PB5 | `MCU_BAT_SWITCH` | وصل مسیر باتری (Q3) هنگام قطع ورودی | LOGICAL true = وصل (فیزیکی Low)، فقط هنگام تغییر نوشته می‌شود |
+| `BSP_GPIO_BATTERY_SWITCH` (PB5) | PB5 | `MCU_BAT_SWITCH` | — | **ممنوع: تغییر نمی‌کند** |
 | `BSP_GPIO_RELAY` (PB7) | PB7 | `MCU_PROTECT_CHARGER` | — | **ممنوع: تغییر نمی‌کند** |
 
 قطبیت از شماتیک است، روی برد اندازه نشده.
