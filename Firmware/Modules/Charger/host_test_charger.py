@@ -67,15 +67,15 @@ def test_modules_enabled_build():
           "MODULE_CHARGER must be 1 for build/compile coverage")
     check(re.search(r"#define MODULE_JITTER\s+1", mods),
           "MODULE_JITTER must be 1 for build/compile coverage")
-    check(re.search(r"#define CHG_MASTER_ENABLE\s+0u", ch),
-          "even with MODULE_CHARGER=1 the runtime master switch must stay 0 (safe-idle) until bring-up")
+    check(re.search(r"#define CHG_MASTER_ENABLE\s+1u", ch),
+          "master switch must be 1 for the active board bring-up (still gated by CHG_TRANSFORMER_KNOWN=0 + bring-up stage)")
 
 
 def test_master_enable_constant_is_single_gate():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
-    check(re.search(r"#define CHG_MASTER_ENABLE\s+0u", text_h),
-          "CHG_MASTER_ENABLE must be 0 for current safe-off delivery")
+    check(re.search(r"#define CHG_MASTER_ENABLE\s+1u", text_h),
+          "CHG_MASTER_ENABLE is 1 for the active board bring-up")
     check("CHG_MASTER_ENABLE == 0u" in text_c and "func__Charger_SafeIdle();" in text_c,
           "CHG_MASTER_ENABLE=0 must force whole-charger safe-idle")
     check("CHG_MASTER_ENABLE == 1u" in text_c or "CHG_MASTER_ENABLE" in text_c,
@@ -108,12 +108,12 @@ def test_transformer_known_not_bypassable_bringup_only_when_zero():
           "CHG_TRANSFORMER_KNOWN must remain 0 for now")
     check("NOT bypassable" in text_h or "bypass نمی" in text_h,
           "CHG_TRANSFORMER_KNOWN=0 must be documented as not bypassable")
-    check(re.search(r"#define CHG_BRINGUP_TEST_ENABLE\s+0u", text_h),
-          "bring-up test mode must be 0 (off) for the delivered safe state")
-    check("CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE" in text_h and re.search(r"20u\s", text_h),
-          "bring-up first stage max duty must be documented (20 permille = 2%)")
-    check("CHG_BRINGUP_TEST_SOURCE_LIMIT_MA" in text_h and re.search(r"50u\s", text_h),
-          "bring-up first stage source limit must be 50 mA external")
+    check(re.search(r"#define CHG_BRINGUP_TEST_ENABLE\s+1u", text_h),
+          "bring-up test mode must be 1 (active board bring-up)")
+    check("CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE" in text_h and re.search(r"100u\s", text_h),
+          "bring-up stage max duty must be documented (100 permille = 10%, board-verified)")
+    check("CHG_BRINGUP_TEST_SOURCE_LIMIT_MA" in text_h and re.search(r"100u\s", text_h),
+          "bring-up full-stage source limit must be 100 mA external")
     check("CHG_FIRST_BOARD_TEST_MAX_MA" not in text_h,
           "the retired 100 mA first-test setting must not remain as an executable-looking constant")
     # controlAllowed path must require either KNOWN=1 or bring-up enabled

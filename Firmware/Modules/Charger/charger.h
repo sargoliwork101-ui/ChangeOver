@@ -41,7 +41,7 @@
  *       (snapshot معتبر، کانال نصب‌شده، Vin ADC >= 22000mV، sense باتری معتبر،
  *       حدهای جریان، سیاست JIT) اجازه ورود به حلقه کنترل هر کانال را دارد.
  */
-#define CHG_MASTER_ENABLE             0u
+#define CHG_MASTER_ENABLE             1u
 
 /* ==================== Board/test selection constants / ثابت‌های انتخاب برد و تست ==================== */
 /*
@@ -90,15 +90,15 @@
  * external source current-limited, waveform-validation only. This is the
  * ONLY way to run switching when CHG_TRANSFORMER_KNOWN=0. Normal Bulk/Absorb/
  * Float setpoint control does NOT run here. Limits:
- *   CHG_BRINGUP_TEST_ENABLE = 0 for now (safe).
+ *   CHG_BRINGUP_TEST_ENABLE = 1: active board bring-up (gate/shunt waveforms
+ *     already scope-verified at the 10% stage with a calibrated current path).
  *   Only installed CH2 is allowed; CH1 remains forced 0.
  *   Start duty = 1% (CHG_DUTY_START_PERMILLE).
  *   Duty step is still CHG_DUTY_STEP_PERMILLE but max duty is clamped to
  *   CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE.
- *     First bring-up stage: max 1%..2% duty (20 permille), source current
- *       limit 50 mA external.
- *     Only after scope confirms gate/shunt/relay polarity and latency, stage
- *       may be raised up to 10% and source limit up to 100 mA.
+ *     Current stage: max 10% duty (100 permille), source current
+ *       limit 100 mA external. Do not raise above this until the transformer
+ *       data is measured and CHG_TRANSFORMER_KNOWN flips to 1.
  *   Bring-up test never enters Absorb/Float, never uses a 24 V pack setpoint,
  *   and is still gated by CHG_MASTER_ENABLE=1 and Vin >= 22000 mV and all
  *   numeric protections (current, JIT, missing-battery sense).
@@ -106,21 +106,21 @@
  * منبع خارجی محدودکننده جریان، فقط اعتبارسنجی شکل‌موج. این تنها راه
  * سوئیچینگ وقتی CHG_TRANSFORMER_KNOWN=0 است. کنترل عادی Bulk/Absorb/Float
  * در این حالت اجرا نمی‌شود. حدود:
- *   CHG_BRINGUP_TEST_ENABLE = 0 فعلاً (امن).
+ *   CHG_BRINGUP_TEST_ENABLE = 1 فعال: bring-up برد (شکل‌موج‌های gate/shunt
+ *     روی مرحله ۱۰٪ با اسکوپ تأیید شده و مسیر جریان کالیبره است).
  *   فقط CH2 نصب‌شده مجاز است؛ CH1 همیشه صفر.
  *   duty شروع = ۱٪ (CHG_DUTY_START_PERMILLE).
  *   گام duty همان CHG_DUTY_STEP_PERMILLE ولی حداکثر duty به
  *   CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE محدود می‌شود.
- *     مرحله اول bring-up: حداکثر ۱٪ تا ۲٪ duty (۲۰ پرمیل)، حد جریان منبع
- *       خارجی ۵۰ میلی‌آمپر.
- *     فقط پس از تأیید اسکوپ gate/shunt/relay polarity/latency، مرحله را می‌توان
- *       تا ۱۰٪ و حد منبع را تا ۱۰۰ میلی‌آمپر بالا برد.
+ *     مرحله فعلی: حداکثر ۱۰٪ duty (۱۰۰ پرمیل)، حد جریان منبع خارجی
+ *       ۱۰۰ میلی‌آمپر. تا اندازه‌گیری داده ترانس و یک‌شدن
+ *       CHG_TRANSFORMER_KNOWN بالاتر از این نرو.
  *   تست bring-up هرگز وارد Absorb/Float نمی‌شود، از setpoint پک ۲۴ ولت
  *   استفاده نمی‌کند، و همچنان با CHG_MASTER_ENABLE=1، Vin >= ۲۲۰۰۰mV و همه
  *   حفاظت‌های عددی (جریان، JIT، sense باتری) گیت می‌شود. */
-#define CHG_BRINGUP_TEST_ENABLE                0u
-#define CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE     20u  /* [EN] 2% max for the first bring-up stage / حداکثر ۲٪ مرحله اول */
-#define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA       50u  /* [EN] external source limit 50 mA first stage / حد منبع خارجی ۵۰mA مرحله اول */
+#define CHG_BRINGUP_TEST_ENABLE                1u
+#define CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE    100u  /* [EN] 10% stage verified on board (clean waveforms) / مرحله ۱۰٪ روی برد تأیید شده */
+#define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA      100u  /* [EN] 100 mA full-stage source limit / حد منبع ۱۰۰mA مرحله کامل */
 #define CHG_BRINGUP_TEST_FULL_STAGE_MAX_DUTY  100u  /* [EN] 10% after waveform confirmation / ۱۰٪ بعد از تأیید شکل‌موج */
 #define CHG_BRINGUP_TEST_FULL_STAGE_LIMIT_MA  100u  /* [EN] 100 mA after waveform confirmation / ۱۰۰mA بعد از تأیید شکل‌موج */
 
