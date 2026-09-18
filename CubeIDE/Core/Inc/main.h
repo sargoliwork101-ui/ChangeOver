@@ -52,9 +52,13 @@ extern "C" {
 /* Exported variables ------------------------------------------------------------*/
 extern ADC_HandleTypeDef hadc1;
 extern DMA_HandleTypeDef hdma_adc1;
+extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim3;
+extern UART_HandleTypeDef huart1;
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *timHandle);
 
 /* USER CODE BEGIN EFP */
 
@@ -69,8 +73,28 @@ void Error_Handler(void);
 #define MCU_Y_LED_GPIO_Port GPIOB
 #define MCU_G_LED_Pin GPIO_PIN_10
 #define MCU_G_LED_GPIO_Port GPIOB
+#define MCU_ESP_CHPD_Pin GPIO_PIN_8
+#define MCU_ESP_CHPD_GPIO_Port GPIOA
+#define MCU_BAT_SWITCH_Pin GPIO_PIN_5
+#define MCU_BAT_SWITCH_GPIO_Port GPIOB
+#define MCU_PROTECT_CHARGER_Pin GPIO_PIN_7
+#define MCU_PROTECT_CHARGER_GPIO_Port GPIOB
+#define MCU_PROTECT_BATT_Pin GPIO_PIN_11
+#define MCU_PROTECT_BATT_GPIO_Port GPIOB
+#define MCU_JITTER1_Pin GPIO_PIN_2
+#define MCU_JITTER1_GPIO_Port GPIOB
+#define MCU_JITTER2_Pin GPIO_PIN_6
+#define MCU_JITTER2_GPIO_Port GPIOB
 #define MCU_INT_24_IN_Pin GPIO_PIN_4
 #define MCU_INT_24_IN_GPIO_Port GPIOB
+#define MCU_PWM1_Pin GPIO_PIN_0
+#define MCU_PWM1_GPIO_Port GPIOA
+#define MCU_PWM2_Pin GPIO_PIN_6
+#define MCU_PWM2_GPIO_Port GPIOA
+#define MCU_TX_Pin GPIO_PIN_9
+#define MCU_TX_GPIO_Port GPIOA
+#define MCU_RX_Pin GPIO_PIN_10
+#define MCU_RX_GPIO_Port GPIOA
 
 /* USER CODE BEGIN Private defines */
 

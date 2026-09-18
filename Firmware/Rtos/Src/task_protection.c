@@ -1,6 +1,6 @@
 /**
  * @file    task_protection.c
- * @brief   [EN] FreeRTOS protection task - simple RTOS with vTaskDelay.
+ * @brief   [EN] CMSIS-RTOS2 protection thread - simple RTOS with osDelay.
  *          [FA] تسک حفاظت ساده RTOS.
  */
 
@@ -8,8 +8,9 @@
 #include "modules_enable.h"
 #include "app_config.h"
 #include "app_types.h"
-#include "FreeRTOS.h"
-#include "task.h"
+#include "cmsis_os2.h"
+#include "rtos_time.h"
+
 
 #if MODULE_PROTECTION
 #include "protection.h"
@@ -33,9 +34,9 @@ void func__TaskProtection(void *void_ptr__argument)
 #endif
             func__Protection_Run(&measurement_snapshot_t__snap);
         }
-        vTaskDelay(pdMS_TO_TICKS(APP_CONFIG.protection_period_ms));
+        func__Rtos_DelayMilliseconds(APP_CONFIG.protection_period_ms);
 #else
-        vTaskDelay(pdMS_TO_TICKS(1000u));
+        func__Rtos_DelayMilliseconds(1000u);
 #endif
     }
 }

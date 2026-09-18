@@ -181,4 +181,91 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
   }
 }
 
+
+/* ==================== TIM PWM MSP ==================== */
+/**
+  * @brief [EN] Enable clocks for the two schematic PWM timers.
+  *        [FA] کلاک دو تایمر PWM شماتیک را فعال می‌کند.
+  * @param tim_pwmHandle [EN] HAL timer handle / هندل تایمر HAL
+  */
+void HAL_TIM_PWM_MspInit(TIM_HandleTypeDef* tim_pwmHandle)
+{
+  if ((tim_pwmHandle->Instance == TIM2) ||
+      (tim_pwmHandle->Instance == TIM3))
+  {
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+  }
+
+  if (tim_pwmHandle->Instance == TIM2)
+  {
+    __HAL_RCC_TIM2_CLK_ENABLE();
+  }
+  else if (tim_pwmHandle->Instance == TIM3)
+  {
+    __HAL_RCC_TIM3_CLK_ENABLE();
+  }
+  else
+  {
+    /* [EN] No other timer is owned by this PWM port.
+       [FA] این پورت مالک تایمر دیگری نیست. */
+  }
+}
+
+/* ==================== TIM PWM GPIO post-init ==================== */
+/**
+  * @brief [EN] Configure PA0 and PA6 as timer alternate-function outputs.
+  *        [FA] پایه‌های PA0 و PA6 را به‌عنوان خروجی alternate تایمر تنظیم می‌کند.
+  * @param timHandle [EN] HAL timer handle / هندل تایمر HAL
+  */
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef* timHandle)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  if (timHandle->Instance == TIM2)
+  {
+    GPIO_InitStruct.Pin = GPIO_PIN_0;
+  }
+  else if (timHandle->Instance == TIM3)
+  {
+    GPIO_InitStruct.Pin = GPIO_PIN_6;
+  }
+  else
+  {
+    return;
+  }
+
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+}
+
+/* ==================== USART1 MSP ==================== */
+/**
+  * @brief [EN] Configure PA9/PA10 and the USART1 clock for ESP-Link.
+  *        [FA] پایه‌های PA9/PA10 و کلاک USART1 را برای ESP-Link تنظیم می‌کند.
+  * @param uartHandle [EN] HAL UART handle / هندل UART HAL
+  */
+void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+  if (uartHandle->Instance == USART1)
+  {
+    __HAL_RCC_USART1_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    GPIO_InitStruct.Pin = GPIO_PIN_9;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    GPIO_InitStruct.Pin = GPIO_PIN_10;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  }
+}
+
 /* USER CODE END 1 */

@@ -3,7 +3,7 @@ set -e
 SCRIPT_DIR="$(dirname "$0")"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FAIL=0
-echo "=== AI_CONTEXT execution / اجرای قوانین AI ==="
+echo "=== AI_AGENT_RULES execution / اجرای قوانین AI ==="
 echo "Root: $ROOT"
 echo ""
 echo "[1] Firmware root README check"
@@ -70,7 +70,7 @@ else
   echo "  OK: Core does not contain Firmware"
 fi
 echo ""
-echo "[6] modules_enable.h flags (stage: UI + MEASUREMENT)"
+echo "[6] modules_enable.h flags (module stage: UI + MEASUREMENT; BSP peripherals may be enabled)"
 cat "$ROOT/Firmware/Config/Inc/modules_enable.h"
 if grep -q "#define MODULE_UI.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
   echo "  OK: MODULE_UI=1"
@@ -84,40 +84,73 @@ else
   echo "  FAIL: MODULE_MEASUREMENT not 1"
   FAIL=1
 fi
-for m in FAULT PROTECTION CHANGEOVER CHARGER JITTER ESP; do
+for m in PROTECTION CHARGER JITTER ESP; do
   if grep -q "#define MODULE_${m}.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
     echo "  FAIL: MODULE_${m} should be 0"
     FAIL=1
   fi
 done
-echo "  Other modules are 0"
+if grep -q "#define MODULE_FAULT.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
+  echo "  OK: MODULE_FAULT=1 (fault-mask validation build)"
+elif grep -q "#define MODULE_FAULT.*0" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
+  echo "  OK: MODULE_FAULT=0 (fault module disabled)"
+else
+  echo "  FAIL: MODULE_FAULT must be explicitly 0 or 1"
+  FAIL=1
+fi
+if grep -q "#define MODULE_CHANGEOVER.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
+  echo "  OK: MODULE_CHANGEOVER=1 (real board validation build)"
+elif grep -q "#define MODULE_CHANGEOVER.*0" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
+  echo "  OK: MODULE_CHANGEOVER=0 (module disabled)"
+else
+  echo "  FAIL: MODULE_CHANGEOVER must be explicitly 0 or 1"
+  FAIL=1
+fi
+echo "  Other non-validation modules are 0"
 echo ""
-echo "[7] CubeMX .ioc peripheral check (stage: UI + MEASUREMENT)"
+echo "[7] CubeMX .ioc peripheral check (full schematic BSP contract)"
 IOC="$ROOT/CubeMX/CubeIDE.ioc"
 if [ -f "$IOC" ]; then
   if grep -q "Mcu.IP.*ADC" "$IOC"; then
-    echo "  OK: ADC1 enabled (measurement stage)"
+    echo "  OK: ADC1 enabled (5-channel measurement backend)"
   else
     echo "  FAIL: ADC1 missing in .ioc"
     FAIL=1
   fi
   if grep -q "ADC1.NbrOfConversion=5" "$IOC" && grep -q "DMA1.Request1=ADC1" "$IOC"; then
-    echo "  OK: ADC1 has 5 channels + DMA"
+    echo "  OK: ADC1 has 5 channels + circular DMA"
   else
     echo "  FAIL: ADC1 channels/DMA not configured"
     FAIL=1
   fi
-  if grep -q "Mcu.IP.*TIM[2-4]" "$IOC"; then
-    echo "  FAIL: TIM2-4 found"
-    FAIL=1
+  if grep -q "Mcu.IP.*TIM2" "$IOC" && grep -q "Mcu.IP.*TIM3" "$IOC" && \
+     grep -q "TIM2.Channel-Output compare CH1=TIM_CHANNEL_1" "$IOC" && \
+     grep -q "TIM3.Channel-Output compare CH1=TIM_CHANNEL_1" "$IOC"; then
+    echo "  OK: TIM2_CH1 and TIM3_CH1 PWM backends are retained"
   else
-    echo "  OK: No TIM2-4 PWM"
+    echo "  FAIL: Charger PWM timers/channels missing"
+    FAIL=1
   fi
-  if grep -q "Mcu.IP.*USART" "$IOC"; then
-    echo "  FAIL: USART found"
-    FAIL=1
+  if grep -q "Mcu.IP.*USART1" "$IOC" && grep -q "USART1.BaudRate=115200" "$IOC" && \
+     grep -q "PA9.Signal=USART1_TX" "$IOC" && grep -q "PA10.Signal=USART1_RX" "$IOC"; then
+    echo "  OK: USART1 ESP-Link UART backend is retained"
   else
-    echo "  OK: No USART"
+    echo "  FAIL: USART1 UART backend missing"
+    FAIL=1
+  fi
+  if grep -q "PB2.Mode=External_Interrupt_Mode_with_Rising_Falling_edge_trigger_detection" "$IOC" && \
+     grep -q "PB4.Mode=External_Interrupt_Mode_with_Rising_Falling_edge_trigger_detection" "$IOC" && \
+     grep -q "PB6.Mode=External_Interrupt_Mode_with_Rising_Falling_edge_trigger_detection" "$IOC"; then
+    echo "  OK: JITTER1, 24V detect and JITTER2 EXTI lines are retained"
+  else
+    echo "  FAIL: Schematic EXTI lines missing"
+    FAIL=1
+  fi
+  if grep -q "Mcu.PinsNb=26" "$IOC" && ! grep -q "PB9" "$IOC"; then
+    echo "  OK: Pin inventory has 26 pins and no unsupported PB9 mapping"
+  else
+    echo "  FAIL: Pin inventory/PB9 cleanup is incorrect"
+    FAIL=1
   fi
 else
   echo "  WARN: $IOC not found"
@@ -176,23 +209,23 @@ else
   FAIL=1
 fi
 echo ""
-echo "[12] AI_CONTEXT new rules"
-if grep -q "سادگی و خوانایی توابع" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "نام‌گذاری متغیر" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "نام‌گذاری تابع" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "func__" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has readability, full type, func__"
+echo "[12] AI_AGENT_RULES new rules"
+if grep -q "سادگی و خوانایی توابع" "$ROOT/AI_AGENT_RULES.md" && grep -q "نام‌گذاری متغیر" "$ROOT/AI_AGENT_RULES.md" && grep -q "نام‌گذاری تابع" "$ROOT/AI_AGENT_RULES.md" && grep -q "func__" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has readability, full type, func__"
 else
-  echo "  FAIL: AI_CONTEXT missing new rules"
+  echo "  FAIL: AI_AGENT_RULES missing new rules"
   FAIL=1
 fi
-if grep -q "RTOS ساده" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "بدون قفل" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has RTOS no delay"
+if grep -q "CMSIS-RTOS2 ساده" "$ROOT/AI_AGENT_RULES.md" && grep -q "بدون قفل" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has CMSIS-RTOS2 no delay"
 else
-  echo "  FAIL: AI_CONTEXT missing RTOS no delay"
+  echo "  FAIL: AI_AGENT_RULES missing RTOS no delay"
   FAIL=1
 fi
-if grep -q "ui_config.h حذف شد" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has ui_config.h deleted note"
+if grep -q "ui_config.h حذف شد" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has ui_config.h deleted note"
 else
-  echo "  FAIL: AI_CONTEXT missing ui_config.h deleted note"
+  echo "  FAIL: AI_AGENT_RULES missing ui_config.h deleted note"
   FAIL=1
 fi
 echo ""
@@ -205,13 +238,16 @@ if [ -n "$FOUND_MALLOC" ]; then
 else
   echo "  OK: No malloc/free"
 fi
-FOUND_XTASK=$(grep -R --include="*.c" "xTaskCreate(" "$ROOT/Firmware" 2>/dev/null | grep -v "xTaskCreateStatic" | grep -v "//" || true)
-if [ -n "$FOUND_XTASK" ]; then
-  echo "  FAIL: Found xTaskCreate"
-  echo "$FOUND_XTASK" | head -n 5
+FOUND_DYNAMIC_THREAD=$(grep -R --include="*.c" --include="*.h" -E "\bxTaskCreate\(|\bosThreadNew\([^;]*NULL[[:space:]]*\)" "$ROOT/Firmware" 2>/dev/null | grep -v "rtos_app.c" | grep -v "//" || true)
+if [ -n "$FOUND_DYNAMIC_THREAD" ]; then
+  echo "  FAIL: Found a thread creation path without the static CMSIS attributes"
+  echo "$FOUND_DYNAMIC_THREAD" | head -n 5
   FAIL=1
+elif grep -q "osThreadNew" "$ROOT/Firmware/Rtos/Src/rtos_app.c" && grep -q "cb_mem" "$ROOT/Firmware/Rtos/Src/rtos_app.c" && grep -q "stack_mem" "$ROOT/Firmware/Rtos/Src/rtos_app.c"; then
+  echo "  OK: CMSIS-RTOS2 threads provide static control blocks and stacks"
 else
-  echo "  OK: Tasks use xTaskCreateStatic"
+  echo "  FAIL: CMSIS-RTOS2 static thread attributes not found"
+  FAIL=1
 fi
 if grep -q "const app_config_t APP_CONFIG" "$ROOT/Firmware/Config/Src/app_config.c"; then
   echo "  OK: APP_CONFIG is const"
@@ -231,24 +267,24 @@ else
   echo "  FAIL: Stack overflow hook missing"
   FAIL=1
 fi
-if grep -q "مدیریت حافظه" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has memory management"
+if grep -q "مدیریت حافظه" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has memory management"
 else
-  echo "  FAIL: AI_CONTEXT missing memory management"
+  echo "  FAIL: AI_AGENT_RULES missing memory management"
   FAIL=1
 fi
 echo ""
 echo "[14] Meaningful naming and constant prefix"
-if grep -q "نام‌گذاری مرتبط با کار" "$ROOT/Firmware/AI_CONTEXT.md" || grep -q "نام باید مرتبط با کاری" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has meaningful naming"
+if grep -q "نام‌گذاری مرتبط با کار" "$ROOT/AI_AGENT_RULES.md" || grep -q "نام باید مرتبط با کاری" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has meaningful naming"
 else
-  echo "  FAIL: AI_CONTEXT missing meaningful naming"
+  echo "  FAIL: AI_AGENT_RULES missing meaningful naming"
   FAIL=1
 fi
-if grep -q "نام‌گذاری ثابت" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has constant naming"
+if grep -q "نام‌گذاری ثابت" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has constant naming"
 else
-  echo "  FAIL: AI_CONTEXT missing constant naming"
+  echo "  FAIL: AI_AGENT_RULES missing constant naming"
   FAIL=1
 fi
 FOUND_DOT=$(grep -R --include="*.h" "UI\.c_" "$ROOT/Firmware" 2>/dev/null || true)
@@ -285,27 +321,27 @@ else
   echo "  WARN: UI split files not found (ui_led.h/c, ui_buzzer.h/c) - expected after split"
 fi
 echo ""
-echo "[15] RTOS simple & readable - no HAL_Delay, vTaskDelay allowed (RTOS, MCU not locked)"
+echo "[15] CMSIS-RTOS2 simple & readable - no HAL_Delay (RTOS, MCU not locked)"
 FOUND_HAL_DELAY=$(grep -R --include="*.c" "HAL_Delay(" "$ROOT/Firmware" 2>/dev/null || true)
 if [ -n "$FOUND_HAL_DELAY" ]; then
   echo "  FAIL: Found HAL_Delay (locks MCU, forbidden)"
   echo "$FOUND_HAL_DELAY" | head -n 5
   FAIL=1
 else
-  echo "  OK: No HAL_Delay (RTOS vTaskDelay allowed, does not lock MCU)"
+  echo "  OK: No HAL_Delay (CMSIS-RTOS2 delay lets other threads run)"
 fi
 
-FOUND_VDELAY_UI=$(grep -R --include="*.c" "vTaskDelay(" "$ROOT/Firmware/Modules/Ui" 2>/dev/null || true)
-if [ -n "$FOUND_VDELAY_UI" ]; then
-  echo "  OK: Found vTaskDelay in Ui (RTOS simple, readable, MCU not locked, other tasks run)"
+FOUND_OS_DELAY_UI=$(grep -R --include="*.c" -E "osDelay\(|func__Rtos_DelayMilliseconds\(" "$ROOT/Firmware/Modules/Ui" 2>/dev/null || true)
+if [ -n "$FOUND_OS_DELAY_UI" ]; then
+  echo "  OK: UI uses CMSIS-RTOS2-compatible delays"
 else
-  echo "  OK: No vTaskDelay in Ui (also OK, non-blocking tick)"
+  echo "  OK: UI is non-blocking and has no delay call"
 fi
 
-if grep -R --include="*.c" "vTaskDelay" "$ROOT/Firmware/Rtos/Src" 2>/dev/null | head -n 1 | grep -q "vTaskDelay"; then
-  echo "  OK: Tasks use vTaskDelay/vTaskDelayUntil (RTOS simple, not blocking MCU)"
+if grep -R --include="*.c" -E "osDelayUntil\(|func__Rtos_DelayMilliseconds\(" "$ROOT/Firmware/Rtos/Src" 2>/dev/null | head -n 1 | grep -Eq "osDelayUntil|func__Rtos_DelayMilliseconds"; then
+  echo "  OK: Threads use CMSIS-RTOS2 delay APIs (other threads continue)"
 else
-  echo "  FAIL: Tasks dont use vTaskDelay"
+  echo "  FAIL: CMSIS-RTOS2 delay API not found in threads"
   FAIL=1
 fi
 
@@ -358,19 +394,19 @@ else
   FAIL=1
 fi
 
-if grep -q "جداسازی توابع با علامت مشخص" "$ROOT/Firmware/AI_CONTEXT.md" && grep -q "جداسازی بازر از LED" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has separation rules"
+if grep -q "جداسازی توابع با علامت مشخص" "$ROOT/AI_AGENT_RULES.md" && grep -q "جداسازی بازر از LED" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has separation rules"
 else
-  echo "  FAIL: AI_CONTEXT missing separation rules"
+  echo "  FAIL: AI_AGENT_RULES missing separation rules"
   FAIL=1
 fi
 
 echo ""
 echo "[17] Formulas not linear (broken into steps, readable)"
-if grep -q "فرمول‌ها خطی نباشد" "$ROOT/Firmware/AI_CONTEXT.md" || grep -q "فرمول‌ها را خطی ننویس" "$ROOT/Firmware/AI_CONTEXT.md"; then
-  echo "  OK: AI_CONTEXT has non-linear formula rule"
+if grep -q "فرمول‌ها خطی نباشد" "$ROOT/AI_AGENT_RULES.md" || grep -q "فرمول‌ها را خطی ننویس" "$ROOT/AI_AGENT_RULES.md"; then
+  echo "  OK: AI_AGENT_RULES has non-linear formula rule"
 else
-  echo "  FAIL: AI_CONTEXT missing non-linear formula rule"
+  echo "  FAIL: AI_AGENT_RULES missing non-linear formula rule"
   FAIL=1
 fi
 

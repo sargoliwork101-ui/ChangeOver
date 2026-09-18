@@ -1,45 +1,48 @@
 /**
  * @file    bsp_uart.h
- * @brief   [EN] USART1 wrapper for ESP link (placeholder). Full type naming, func__ prefix.
- *          [FA] پوشش USART1 برای ارتباط ESP (اسکلت). نام تایپ کامل.
+ * @brief   [EN] Logical byte-stream interface for the schematic ESP-Link UART.
+ *          [FA] رابط منطقی جریان بایت برای UART ارتباط ESP-Link شماتیک.
+ *
+ * @note    [EN] USART instance, pins, baud configuration and HAL handle are
+ *              private to the board port. The interface remains available
+ *              while MODULE_ESP is disabled.
+ *          [FA] نمونه USART، پایه‌ها، تنظیم baud و هندل HAL در پورت برد
+ *              خصوصی هستند. رابط حتی با خاموش‌بودن MODULE_ESP باقی می‌ماند.
  */
 
 #ifndef BSP_UART_H
 #define BSP_UART_H
 
-/* ==================== Includes ==================== */
 #include <stdint.h>
 #include <stdbool.h>
-#include "stm32f1xx_hal.h"
 
-#ifndef HAL_UART_MODULE_ENABLED
-typedef struct __UART_HandleTypeDef UART_HandleTypeDef;
-#endif
-
+/* ==================== BspUart_Init ==================== */
 /**
- * @brief  [EN] Store UART handle.
- *         [FA] هندل UART را نگه می‌دارد.
- * @param  UART_HandleTypeDef__huart [EN] HAL UART handle / هندل UART
+ * @brief  [EN] Select the initialized board UART backend for ESP-Link.
+ *         [FA] backend UART مقداردهی‌شدهٔ برد را برای ESP-Link انتخاب می‌کند.
  */
-/* ==================== Functions ==================== */
-void func__BspUart_Init(UART_HandleTypeDef *UART_HandleTypeDef__huart);
+void func__BspUart_Init(void);
 
+/* ==================== BspUart_Write ==================== */
 /**
- * @brief  [EN] Transmit bytes. Returns false until implemented.
- *         [FA] ارسال بایت. تا پیاده‌سازی false برمی‌گرداند.
- * @param  uint8_t__data [EN] Data pointer / اشاره‌گر داده
- * @param  uint16_t__length [EN] Length / طول
- * @return bool [EN] false until implemented / تا پیاده‌سازی false
+ * @brief  [EN] Transmit a byte buffer through the logical ESP-Link UART.
+ *         [FA] یک بافر بایت را از UART منطقی ESP-Link ارسال می‌کند.
+ * @param  uint8_t__data [EN] Data buffer, not null when length is non-zero /
+ *                            بافر داده، در طول غیرصفر نباید NULL باشد
+ * @param  uint16_t__length [EN] Number of bytes, 0..65535 /
+ *                               تعداد بایت‌ها
+ * @return bool [EN] true when HAL accepts the complete buffer /
+ *                   اگر HAL کل بافر را پذیرفت true
  */
 bool func__BspUart_Write(const uint8_t *uint8_t__data, uint16_t uint16_t__length);
 
+/* ==================== BspUart_ReadByte ==================== */
 /**
- * @brief  [EN] Read one byte if available.
- *         [FA] اگر بایتی باشد می‌خواند.
+ * @brief  [EN] Poll one received ESP-Link byte without blocking.
+ *         [FA] یک بایت دریافتی ESP-Link را بدون بلوکه‌کردن poll می‌کند.
  * @param  uint8_t__byte [EN] Output byte pointer / اشاره‌گر بایت خروجی
- * @return bool [EN] true if byte read / اگر بایتی خوانده شد true
+ * @return bool [EN] true when one byte was available / اگر بایت موجود بود true
  */
 bool func__BspUart_ReadByte(uint8_t *uint8_t__byte);
 
 #endif /* BSP_UART_H */
-

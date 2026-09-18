@@ -9,9 +9,9 @@
 
 #include "ui_buzzer.h"
 #include "bsp_gpio.h"
-#include "board_pins.h"
-#include "FreeRTOS.h"
-#include "task.h"
+#include "cmsis_os2.h"
+#include "rtos_time.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -80,7 +80,7 @@ static uint32_t UINT32_T__G__BuzzerGapMs = 0u;
 /* ==================== Buzzer cycle start / شروع چرخه بوق ==================== */
 
 /**
- * @brief  [EN] FreeRTOS tick at which the current buzzer cycle started.
+ * @brief  [EN] CMSIS-RTOS2 tick at which the current buzzer cycle started.
  *         It remains static because the service is non-blocking and is called
  *         in separate invocations. The stored tick is used to calculate elapsed
  *         time and decide whether the buzzer is ON, in a gap, or in the period tail.
@@ -89,7 +89,7 @@ static uint32_t UINT32_T__G__BuzzerGapMs = 0u;
  *         اجرا می‌شود. از این زمان برای محاسبه زمان سپری‌شده و تشخیص وضعیت بوق،
  *         گپ یا خاموشی انتهای دوره استفاده می‌شود.
  */
-static TickType_t TICKTYPE_T__G__BuzzerCycleStartTick = 0;
+static uint32_t TICKTYPE_T__G__BuzzerCycleStartTick = 0;
 
 /* ==================== Buzzer service / سرویس بازر ==================== */
 
@@ -109,7 +109,7 @@ static TickType_t TICKTYPE_T__G__BuzzerCycleStartTick = 0;
  */
 int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyPercent, uint8_t uint8_t__beepCount, uint32_t uint32_t__gapMs)
 {
-    TickType_t ticktype__nowTick;
+    uint32_t ticktype__nowTick;
     uint32_t uint32_t__dutyWindowMs;
     uint32_t uint32_t__gapCount;
     uint32_t uint32_t__effectiveGapMs;
@@ -137,7 +137,7 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         (uint8_t__dutyPercent == 0u) ||
         (uint8_t__beepCount == 0u))
     {
-        func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
+        func__BspGpio_Write(BSP_GPIO_BUZZER, false);
         BOOL__G__BuzzerPatternValid = false;
         return UI_BUZZER_OFF_RESULT;
     }
@@ -148,7 +148,7 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         (uint8_t__dutyPercent > UI_BUZZER_DUTY_MAX_PERCENT) ||
         ((uint8_t__beepCount > 1u) && (uint32_t__gapMs < UI_BUZZER_MIN_GAP_MS)))
     {
-        func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
+        func__BspGpio_Write(BSP_GPIO_BUZZER, false);
         BOOL__G__BuzzerPatternValid = false;
         return UI_BUZZER_INVALID_RESULT;
     }
@@ -175,7 +175,7 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         (uint64_t__gapProduct >= (uint64_t)uint32_t__dutyWindowMs) ||
         ((uint32_t__dutyWindowMs - (uint32_t)uint64_t__gapProduct) < (uint32_t)uint8_t__beepCount))
     {
-        func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, false);
+        func__BspGpio_Write(BSP_GPIO_BUZZER, false);
         BOOL__G__BuzzerPatternValid = false;
         return UI_BUZZER_INVALID_RESULT;
     }
@@ -230,7 +230,7 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         bool__configurationChanged = true;
     }
 
-    ticktype__nowTick = xTaskGetTickCount();
+    ticktype__nowTick = osKernelGetTickCount();
     if (bool__configurationChanged == true)
     {
         UINT32_T__G__BuzzerPeriodMs = uint32_t__periodMs;
@@ -241,7 +241,7 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         BOOL__G__BuzzerPatternValid = true;
     }
 
-    uint32_t__elapsedMs = (uint32_t)((ticktype__nowTick - TICKTYPE_T__G__BuzzerCycleStartTick) * portTICK_PERIOD_MS);
+    uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(ticktype__nowTick - TICKTYPE_T__G__BuzzerCycleStartTick);
     if (uint32_t__elapsedMs >= uint32_t__periodMs)
     {
         TICKTYPE_T__G__BuzzerCycleStartTick = ticktype__nowTick;
@@ -279,6 +279,6 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         }
     }
 
-    func__BspGpio_Write(PIN_BUZZER_PORT, PIN_BUZZER_PIN, bool__buzzerOn);
+    func__BspGpio_Write(BSP_GPIO_BUZZER, bool__buzzerOn);
     return (int32_t)uint32_t__nextCheckMs;
 }
