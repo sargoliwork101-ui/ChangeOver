@@ -57,11 +57,17 @@ void func__BspExti_OnIrq(bsp_exti_src_t bsp_exti_src_t__src)
 bool func__BspExti_TakeEvent(bsp_exti_src_t bsp_exti_src_t__src)
 {
     bool bool__taken = false;
+    uint32_t uint32_t__primask;
 
     if ((uint32_t)bsp_exti_src_t__src < (uint32_t)BSP_EXTI_SOURCE_COUNT)
     {
+        /* [EN] Protect read-clear against ISR race: disable IRQ briefly.
+           [FA] خواندن و پاک‌کردن را در برابر مسابقه ISR محافظت کن: IRQ را کوتاه خاموش کن. */
+        uint32_t__primask = __get_PRIMASK();
+        __disable_irq();
         bool__taken = (UINT8_T__G__Flags[bsp_exti_src_t__src] != 0u);
         UINT8_T__G__Flags[bsp_exti_src_t__src] = 0u;
+        __set_PRIMASK(uint32_t__primask);
     }
 
     return bool__taken;

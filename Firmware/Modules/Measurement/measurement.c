@@ -258,6 +258,11 @@ void func__Measurement_Run(void)
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);
     uint32_t__battery12Mv =
         func__Measurement_V12CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_12V_BAT]);
+    /* [EN] VLOW = MID-GND, VHIGH = V24-MID. If V24 < V12 the divider wiring
+          or ADC is inconsistent; treat as invalid high side and keep low as measured,
+          but do not underflow. Protection will handle low/high validity separately.
+       [FA] VLOW برابر MID-GND و VHIGH برابر V24-MID است. اگر V24 کوچک‌تر از V12 باشد
+          سیم‌کشی یا ADC ناسازگار است؛ سمت high نامعتبر و صفر، low همان اندازه‌گیری می‌ماند. */
     uint32_t__batteryLowMv = uint32_t__battery12Mv;
     if (uint32_t__battery24Mv >= uint32_t__battery12Mv)
     {
@@ -266,6 +271,9 @@ void func__Measurement_Run(void)
     else
     {
         uint32_t__batteryHighMv = 0u;
+        /* [EN] Inconsistent pack vs mid - keep low as is, high zero, validity still depends on warm-up.
+           A future fault bit for inconsistent pack could be added.
+           [FA] ناسازگاری پک و MID - low همان می‌ماند، high صفر، اعتبار همچنان warm-up است. */
     }
     UINT32_T__G__Current2FilteredMa =
         func__Measurement_FilterCurrent(

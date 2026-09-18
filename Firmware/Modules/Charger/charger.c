@@ -554,6 +554,10 @@ static void func__Charger_BringupRegulateChannel(uint8_t uint8_t__channelIndex,
         func__Charger_DebugSetReason(CHG_DEBUG_REASON_BATTERY_INVALID);
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
         func__Charger_StopOneChannel(uint8_t__channelIndex);
+        if (UINT8_T__G__RetryChannel == uint8_t__channelIndex)
+        {
+            UINT8_T__G__RetryChannel = CHG_NO_CHANNEL;
+        }
         return;
     }
 
@@ -633,6 +637,10 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         func__Charger_DebugSetReason(CHG_DEBUG_REASON_BATTERY_INVALID);
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
         func__Charger_StopOneChannel(uint8_t__channelIndex);
+        if (UINT8_T__G__RetryChannel == uint8_t__channelIndex)
+        {
+            UINT8_T__G__RetryChannel = CHG_NO_CHANNEL;
+        }
         return;
     }
 
@@ -641,6 +649,10 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         func__Charger_DebugSetReason(CHG_DEBUG_REASON_CURRENT_LIMIT);
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
         func__Charger_StopOneChannel(uint8_t__channelIndex);
+        if (UINT8_T__G__RetryChannel == uint8_t__channelIndex)
+        {
+            UINT8_T__G__RetryChannel = CHG_NO_CHANNEL;
+        }
         return;
     }
 

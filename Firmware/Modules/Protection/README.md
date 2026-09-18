@@ -8,7 +8,7 @@
 
 ## وضعیت
 
-اسکلت. `MODULE_PROTECTION = 0`. backend رله و حفاظت شارژر در BSP موجود است، اما مالکیت policy خروجی با Changeover/Charger تعیین می‌شود. فایل را پاک نکن.
+پیاده‌سازی اولیه حفاظت: `MODULE_PROTECTION = 0` در build فعلی (غیرفعال)، اما منطق آن کامل شد تا با فعال‌سازی فلگ قابل تست باشد. `snapshot==NULL` یا `!valid` → `FAULT_ADC` ست، در غیر این صورت `FAULT_ADC` پاک و جریان‌ها و ولتاژ باتری با `APP_CONFIG` مقایسه و `FAULT_OVERCURRENT_1/2` و `FAULT_LOW_BATTERY` ست می‌شوند (latched). قطع مسیر باتری همچنان در اختیار Changeover است؛ این ماژول فقط بیت خطا را قفل می‌کند.
 
 ## تاریخچه
 
@@ -33,11 +33,11 @@
 
 | نام | کار |
 |---|---|
-| `func__Protection_Init` | فعلاً خالی |
-| `func__Protection_Run` | اگر `snap` تهی یا نامعتبر باشد `func__Fault_Set(FAULT_ADC)`. مقایسه جریان هنوز نیست |
-| `TaskProtection` | تا فلگ صفر Idle |
+| `func__Protection_Init` | خالی؛ latch در Fault است |
+| `func__Protection_Run` | اگر `snap==NULL` یا `!valid` → `FAULT_ADC` ست؛ وگرنه `FAULT_ADC` پاک و اگر `i_ch1_ma>overcurrent1` → `FAULT_OVERCURRENT_1`، اگر `i_ch2_ma>overcurrent2` → `FAULT_OVERCURRENT_2`، اگر `v_bat24<low_battery` → `FAULT_LOW_BATTERY`؛ همه latched |
+| `TaskProtection` | تا فلگ صفر Idle، با فلگ 1 هر `protection_period_ms` یک Run |
 
-حدهای بعدی در `APP_CONFIG`: `overcurrent1_ma`، `overcurrent2_ma`، `low_battery_mv`، `low_battery_recover_mv`.
+حدها در `APP_CONFIG`: `overcurrent1_ma=3500`, `overcurrent2_ma=3500`, `low_battery_mv=20000`, `low_battery_recover_mv=21000`.
 
 ## پایه‌ها
 

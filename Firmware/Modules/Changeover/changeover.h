@@ -6,8 +6,11 @@
  * @note    [EN] This module uses ONLY: snapshot.valid, snapshot.v_bat24_mv,
  *              snapshot.input_present, fault_mask, BOOL__G__UiBatteryAlarmIssued.
  *              Time conversion uses rtos_time.h only, tick=1ms assumption is forbidden.
- *              Only BSP_GPIO_PROTECT_BATTERY is allowed; PB5/PB7 are forbidden.
+ *              BSP_GPIO_PROTECT_BATTERY (PB11) and BSP_GPIO_BATTERY_SWITCH (PB5)
+ *              are the two battery-path controls; PB7 (relay) remains forbidden
+ *              for this module and is owned by Charger.
  *          [FA] این ماژول فقط از valid، v_bat24_mv، input_present، fault_mask و فلگ UI استفاده می‌کند.
+ *              کنترل مسیر باتری با PB11 و PB5 است؛ PB7 در اختیار Charger است.
  */
 
 #ifndef CHANGEOVER_H

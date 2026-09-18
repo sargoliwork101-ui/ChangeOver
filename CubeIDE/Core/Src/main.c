@@ -412,16 +412,21 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /* LM393 JIT outputs are open-collector active-low; only their falling edge
-     is a trip. PB4 is a separate 24 V presence signal and keeps both edges. */
+  /* [EN] LM393 JIT outputs are open-collector active-low; they need pull-up.
+          PB2/PB6 use internal pull-up as safety if external pull-up is missing;
+          only falling edge is a valid trip. PB4 24V presence uses pull-down so
+          absent input reads low (safe).
+     [FA] خروجی LM393 open-collector و active-low است؛ نیاز به pull-up دارد.
+          PB2/PB6 با pull-up داخلی امن می‌شوند؛ فقط لبه پایین‌رونده تریپ معتبر است.
+          PB4 حضور 24V با pull-down است تا ورودی قطع low خوانده شود. */
   GPIO_InitStruct.Pin = GPIO_PIN_2 | GPIO_PIN_6;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   GPIO_InitStruct.Pin = GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   HAL_NVIC_SetPriority(EXTI2_IRQn, 5, 0);

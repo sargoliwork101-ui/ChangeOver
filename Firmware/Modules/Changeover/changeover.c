@@ -5,10 +5,11 @@
  *
  * @note    [EN] This module uses ONLY: snapshot.valid, snapshot.v_bat24_mv,
  *              snapshot.input_present, fault_mask, BOOL__G__UiBatteryAlarmIssued.
- *              No board_pins.h, no HAL, no PB5/PB7, no float/queue/task.
+ *              No board_pins.h, no HAL, no PB7, no float/queue/task.
  *              Time conversion ONLY via rtos_time.h (MillisecondsToTicks); tick=1ms assumption is forbidden.
- *              PB11 (BSP_GPIO_PROTECT_BATTERY) is the ONLY logical pin used.
- *          [FA] فقط از داده‌های مجاز بالا استفاده می‌کند و فقط PB11 منطقی را می‌زند.
+ *              PB11 (BSP_GPIO_PROTECT_BATTERY) and PB5 (BSP_GPIO_BATTERY_SWITCH)
+ *              are the two battery-path controls. PB7 relay remains Charger-owned.
+ *          [FA] فقط از داده‌های مجاز بالا استفاده می‌کند و PB11 و PB5 را برای مسیر باتری می‌زند؛ PB7 در اختیار Charger است.
  */
 
 #include "changeover.h"
@@ -40,6 +41,51 @@ static app_state_t APP_STATE_T__G__State = APP_STATE_BOOT;
  *         [FA] وضعیت منطقی PB11: true یعنی مسیر باتری قطع شده است.
  */
 static bool BOOL__G__ChangeoverProtectAsserted = false;
+
+/**
+ * @brief  [EN] Logical PB5 battery-switch state: true = switch ON (battery connected).
+ *         [FA] وضعیت منطقی PB5: true یعنی سوئیچ باتری روشن و مسیر باتری وصل است.
+ */
+static bool BOOL__G__ChangeoverBatterySwitchOn = false;
+
+/* ==================== Battery path helper / کمک مسیر باتری ==================== */
+
+/**
+ * @brief  [EN] Apply the two-pin battery path: ON = PB5 ON + PB11 deasserted,
+ *              OFF = PB5 OFF + PB11 asserted. Keeps internal shadow state in sync.
+ *         [FA] مسیر دوپایه باتری را اعمال می‌کند: روشن = PB5 روشن + PB11 آزاد،
+ *              خاموش = PB5 خاموش + PB11 فعال. وضعیت سایه داخلی را همگام نگه می‌دارد.
+ * @param  bool__batteryOn [EN] true = battery path ON / مسیر باتری روشن
+ */
+static void func__Changeover_ApplyBatteryPath(bool bool__batteryOn)
+{
+    if (bool__batteryOn == true)
+    {
+        if (BOOL__G__ChangeoverBatterySwitchOn == false)
+        {
+            func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, true);
+            BOOL__G__ChangeoverBatterySwitchOn = true;
+        }
+        if (BOOL__G__ChangeoverProtectAsserted == true)
+        {
+            func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, false);
+            BOOL__G__ChangeoverProtectAsserted = false;
+        }
+    }
+    else
+    {
+        if (BOOL__G__ChangeoverBatterySwitchOn == true)
+        {
+            func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, false);
+            BOOL__G__ChangeoverBatterySwitchOn = false;
+        }
+        if (BOOL__G__ChangeoverProtectAsserted == false)
+        {
+            func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, true);
+            BOOL__G__ChangeoverProtectAsserted = true;
+        }
+    }
+}
 
 /**
  * @brief  [EN] Tick at which the current cut condition became continuously true.
@@ -75,10 +121,16 @@ void func__Changeover_Init(void)
 {
     APP_STATE_T__G__State = APP_STATE_BOOT;
     BOOL__G__ChangeoverProtectAsserted = false;
+    BOOL__G__ChangeoverBatterySwitchOn = false;
     TICK_T__G__CutStartTick = 0u;
     BOOL__G__CutTimerActive = false;
     TICK_T__G__ReconnectStartTick = 0u;
     BOOL__G__ReconnectTimerActive = false;
+    /* [EN] Force safe battery-off at boot: PB5 OFF + PB11 deasserted (path off via PB5).
+       BSP already set PB5 High (off) and PB11 High (deasserted), but keep shadow in sync.
+       [FA] در BOOT مسیر باتری خاموش: PB5 خاموش + PB11 آزاد (قطع از طریق PB5). */
+    func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, false);
+    func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, false);
 }
 
 /* ==================== Changeover_Evaluate / ارزیابی ==================== */
@@ -172,11 +224,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
             uint32_t__elapsedTicks = uint32_t__nowTick - TICK_T__G__CutStartTick;
             if (uint32_t__elapsedTicks >= uint32_t__durationTicks)
             {
-                if (BOOL__G__ChangeoverProtectAsserted == false)
-                {
-                    func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, true);
-                    BOOL__G__ChangeoverProtectAsserted = true;
-                }
+                func__Changeover_ApplyBatteryPath(false);
                 APP_STATE_T__G__State = APP_STATE_SAFE;
             }
             else
@@ -243,6 +291,16 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
             {
                 APP_STATE_T__G__State = APP_STATE_SAFE;
             }
+            else
+            {
+                /* [EN] While cut is pending, keep battery ON until SAFE is reached.
+                   [FA] تا زمان رسیدن به SAFE، مسیر باتری روشن بماند. */
+                func__Changeover_ApplyBatteryPath(true);
+            }
+        }
+        else
+        {
+            func__Changeover_ApplyBatteryPath(false);
         }
 
         return APP_STATE_T__G__State;
@@ -277,10 +335,12 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
             if (BOOL__G__ChangeoverProtectAsserted == true)
             {
                 APP_STATE_T__G__State = APP_STATE_SAFE;
+                func__Changeover_ApplyBatteryPath(false);
             }
             else
             {
                 APP_STATE_T__G__State = APP_STATE_INPUT;
+                func__Changeover_ApplyBatteryPath(true);
             }
         }
         else
@@ -290,11 +350,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
             uint32_t__elapsedTicks = uint32_t__nowTick - TICK_T__G__ReconnectStartTick;
             if (uint32_t__elapsedTicks >= uint32_t__durationTicks)
             {
-                if (BOOL__G__ChangeoverProtectAsserted == true)
-                {
-                    func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, false);
-                    BOOL__G__ChangeoverProtectAsserted = false;
-                }
+                func__Changeover_ApplyBatteryPath(true);
                 APP_STATE_T__G__State = APP_STATE_INPUT;
             }
             else
@@ -302,10 +358,12 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
                 if (BOOL__G__ChangeoverProtectAsserted == true)
                 {
                     APP_STATE_T__G__State = APP_STATE_SAFE;
+                    func__Changeover_ApplyBatteryPath(false);
                 }
                 else
                 {
                     APP_STATE_T__G__State = APP_STATE_INPUT;
+                    func__Changeover_ApplyBatteryPath(true);
                 }
             }
         }
@@ -322,6 +380,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     if (BOOL__G__ChangeoverProtectAsserted == true)
     {
         APP_STATE_T__G__State = APP_STATE_SAFE;
+        func__Changeover_ApplyBatteryPath(false);
     }
     else
     {
@@ -333,6 +392,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         {
             APP_STATE_T__G__State = APP_STATE_BATTERY;
         }
+        func__Changeover_ApplyBatteryPath(true);
     }
 
     return APP_STATE_T__G__State;
