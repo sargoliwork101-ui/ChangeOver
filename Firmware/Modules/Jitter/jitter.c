@@ -60,3 +60,29 @@ bool func__Jitter_ChannelTripped(uint8_t uint8_t__channel)
     }
     return false;
 }
+
+/* ==================== Jitter_ClearChannel ==================== */
+
+/**
+ * @brief  [EN] Clear one latched channel so the next retry can observe a new
+ *              comparator edge rather than the old event.
+ *         [FA] تریپ قفل‌شدهٔ یک کانال را پاک می‌کند تا retry بعدی لبهٔ جدید
+ *              comparator را ببیند، نه رویداد قبلی را.
+ * @param  uint8_t__channel [EN] Channel number 1 or 2 / شماره کانال ۱ یا ۲
+ */
+void func__Jitter_ClearChannel(uint8_t uint8_t__channel)
+{
+    if (uint8_t__channel == 1u)
+    {
+        BOOL__G__Trip[0] = false;
+    }
+    else if (uint8_t__channel == 2u)
+    {
+        BOOL__G__Trip[1] = false;
+    }
+    else
+    {
+        /* [EN] Invalid channel is intentionally ignored. */
+        /* [FA] کانال نامعتبر عمداً نادیده گرفته می‌شود. */
+    }
+}

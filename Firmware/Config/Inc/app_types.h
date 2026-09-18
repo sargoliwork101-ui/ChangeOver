@@ -26,6 +26,8 @@ typedef struct
     uint32_t v_in_mv;
     uint32_t v_bat24_mv;
     uint32_t v_bat12_mv;
+    uint32_t v_bat_low_mv;
+    uint32_t v_bat_high_mv;
     uint32_t i_ch1_ma;
     uint32_t i_ch2_ma;
     bool     input_present;
