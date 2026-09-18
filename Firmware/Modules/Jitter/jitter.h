@@ -32,4 +32,13 @@ void func__Jitter_Run(void);
  */
 bool func__Jitter_ChannelTripped(uint8_t uint8_t__channel);
 
+/**
+ * @brief  [EN] Clear one channel after the relay has opened and the retry
+ *              sequence is ready to re-arm the comparator.
+ *         [FA] پس از بازشدن رله و آماده‌شدن retry، تریپ یک کانال را پاک می‌کند
+ *              تا comparator دوباره arm شود.
+ * @param  uint8_t__channel [EN] Channel number 1 or 2 / شماره کانال ۱ یا ۲
+ */
+void func__Jitter_ClearChannel(uint8_t uint8_t__channel);
+
 #endif /* JITTER_H */

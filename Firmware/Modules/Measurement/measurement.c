@@ -44,6 +44,42 @@ static volatile measurement_snapshot_t MEASUREMENT_SNAPSHOT_T__G__Snap;
  * [FA] تعداد فریم‌های کامل و پایدار ADC استانداردشده در warm-up شروع.
  *      واحد: فریم کامل ADC. */
 static uint8_t UINT8_T__G__MeasurementWarmupFrameCount;
+static uint32_t UINT32_T__G__Current1FilteredMa;
+static uint32_t UINT32_T__G__Current2FilteredMa;
+
+/* ==================== Measurement_FilterCurrent / فیلتر جریان ==================== */
+
+/**
+ * @brief  [EN] Apply a small integer low-pass filter to one LM358 current
+ *              channel. This is software filtering of ADC/DMA frames, not a
+ *              substitute for offset/gain calibration.
+ *         [FA] روی یک کانال جریان LM358 فیلتر پایین‌گذر صحیح اعمال می‌کند.
+ *              این فیلتر نرم‌افزاری فریم‌های ADC/DMA است و جای کالیبراسیون
+ *              offset/gain را نمی‌گیرد.
+ * @param  uint32_t__previousMa [EN] Previous filtered current / جریان فیلترشده قبلی
+ * @param  uint32_t__sampleMa [EN] New calibrated sample / نمونه کالیبره جدید
+ * @return uint32_t [EN] Filtered current / جریان فیلترشده
+ */
+static uint32_t func__Measurement_FilterCurrent(uint32_t uint32_t__previousMa,
+                                                uint32_t uint32_t__sampleMa)
+{
+    uint32_t uint32_t__differenceMa;
+
+    /* [EN] First-order low-pass per 10 ms frame: prev +/- (diff+15)/16, so a
+       step reaches ~63% in ~160 ms (alpha 1/16). Strengthened twice on user
+       bench feedback (1/4 -> 1/8 -> 1/16) - the published current showed
+       visible oscillation.
+       [FA] فیلتر مرتبه اول روی هر فریم ۱۰ms با آلفای ۱/۱۶ (ثابت زمانی
+       ~۱۶۰ms)؛ دو مرحله تقویت شد تا نوسان خوانش جریان از بین برود. */
+    if (uint32_t__sampleMa >= uint32_t__previousMa)
+    {
+        uint32_t__differenceMa = uint32_t__sampleMa - uint32_t__previousMa;
+        return uint32_t__previousMa + ((uint32_t__differenceMa + 15u) / 16u);
+    }
+
+    uint32_t__differenceMa = uint32_t__previousMa - uint32_t__sampleMa;
+    return uint32_t__previousMa - ((uint32_t__differenceMa + 15u) / 16u);
+}
 
 /* ==================== Global Shared Values ==================== */
 /* [EN] The engineering values of the newest frame, shared to all tasks.
@@ -57,6 +93,8 @@ static uint8_t UINT8_T__G__MeasurementWarmupFrameCount;
 volatile uint32_t UINT32_T__G__MeasInputVoltageMv = 0u;
 volatile uint32_t UINT32_T__G__MeasBattery24Mv = 0u;
 volatile uint32_t UINT32_T__G__MeasBattery12Mv = 0u;
+volatile uint32_t UINT32_T__G__MeasBatteryLowMv = 0u;
+volatile uint32_t UINT32_T__G__MeasBatteryHighMv = 0u;
 volatile uint32_t UINT32_T__G__MeasCurrent1Ma = 0u;
 volatile uint32_t UINT32_T__G__MeasCurrent2Ma = 0u;
 volatile bool BOOL__G__MeasInputPresent = false;
@@ -75,10 +113,14 @@ void func__Measurement_Init(void)
        [FA] شمارندهٔ warm-up، گلوبال‌های مشترک و snapshot را صفر می‌کند؛
        تا جمع‌شدن تعداد لازم فریم‌های پایدار چیزی معتبر نیست. */
     UINT8_T__G__MeasurementWarmupFrameCount = 0u;
+    UINT32_T__G__Current1FilteredMa = 0u;
+    UINT32_T__G__Current2FilteredMa = 0u;
 
     UINT32_T__G__MeasInputVoltageMv = 0u;
     UINT32_T__G__MeasBattery24Mv = 0u;
     UINT32_T__G__MeasBattery12Mv = 0u;
+    UINT32_T__G__MeasBatteryLowMv = 0u;
+    UINT32_T__G__MeasBatteryHighMv = 0u;
     UINT32_T__G__MeasCurrent1Ma = 0u;
     UINT32_T__G__MeasCurrent2Ma = 0u;
     BOOL__G__MeasInputPresent = false;
@@ -87,6 +129,8 @@ void func__Measurement_Init(void)
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = 0u;
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 0u;
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat12_mv = 0u;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat_low_mv = 0u;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat_high_mv = 0u;
     MEASUREMENT_SNAPSHOT_T__G__Snap.i_ch1_ma = 0u;
     MEASUREMENT_SNAPSHOT_T__G__Snap.i_ch2_ma = 0u;
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
@@ -160,6 +204,8 @@ void func__Measurement_Run(void)
     uint32_t uint32_t__inputVoltageMv;
     uint32_t uint32_t__battery24Mv;
     uint32_t uint32_t__battery12Mv;
+    uint32_t uint32_t__batteryLowMv;
+    uint32_t uint32_t__batteryHighMv;
     uint32_t uint32_t__current2Ma;
     bool bool__frameCopied;
     bool bool__inputPresent;
@@ -207,16 +253,31 @@ void func__Measurement_Run(void)
        updated measurement set.
        [FA] ابتدا در متغیرهای محلی تبدیل می‌کند تا تسک‌های دیگر مجموعهٔ
        اندازه‌گیری نیمه‌به‌روزشده نبینند. */
-    uint32_t__current1Ma =
-        func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1]);
+    UINT32_T__G__Current1FilteredMa =
+        func__Measurement_FilterCurrent(
+            UINT32_T__G__Current1FilteredMa,
+            func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1]));
+    uint32_t__current1Ma = UINT32_T__G__Current1FilteredMa;
     uint32_t__inputVoltageMv =
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_IN]);
     uint32_t__battery24Mv =
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);
     uint32_t__battery12Mv =
         func__Measurement_V12CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_12V_BAT]);
-    uint32_t__current2Ma =
-        func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
+    uint32_t__batteryLowMv = uint32_t__battery12Mv;
+    if (uint32_t__battery24Mv >= uint32_t__battery12Mv)
+    {
+        uint32_t__batteryHighMv = uint32_t__battery24Mv - uint32_t__battery12Mv;
+    }
+    else
+    {
+        uint32_t__batteryHighMv = 0u;
+    }
+    UINT32_T__G__Current2FilteredMa =
+        func__Measurement_FilterCurrent(
+            UINT32_T__G__Current2FilteredMa,
+            func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]));
+    uint32_t__current2Ma = UINT32_T__G__Current2FilteredMa;
 
     /* [EN] The BSP exposes the board input-detect signal as a logical GPIO;
        polarity and physical pin mapping remain inside the board port.
@@ -243,6 +304,8 @@ void func__Measurement_Run(void)
     UINT32_T__G__MeasInputVoltageMv = uint32_t__inputVoltageMv;
     UINT32_T__G__MeasBattery24Mv = uint32_t__battery24Mv;
     UINT32_T__G__MeasBattery12Mv = uint32_t__battery12Mv;
+    UINT32_T__G__MeasBatteryLowMv = uint32_t__batteryLowMv;
+    UINT32_T__G__MeasBatteryHighMv = uint32_t__batteryHighMv;
     UINT32_T__G__MeasCurrent2Ma = uint32_t__current2Ma;
     BOOL__G__MeasInputPresent = bool__inputPresent;
 
@@ -250,6 +313,8 @@ void func__Measurement_Run(void)
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_in_mv = uint32_t__inputVoltageMv;
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = uint32_t__battery24Mv;
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat12_mv = uint32_t__battery12Mv;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat_low_mv = uint32_t__batteryLowMv;
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat_high_mv = uint32_t__batteryHighMv;
     MEASUREMENT_SNAPSHOT_T__G__Snap.i_ch2_ma = uint32_t__current2Ma;
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = bool__inputPresent;
 

@@ -48,6 +48,8 @@ void func__TaskUi(void *void_ptr__argument)
         measurement_snapshot_t__snap.v_in_mv = 0u;
         measurement_snapshot_t__snap.v_bat24_mv = 0u;
         measurement_snapshot_t__snap.v_bat12_mv = 0u;
+        measurement_snapshot_t__snap.v_bat_low_mv = 0u;
+        measurement_snapshot_t__snap.v_bat_high_mv = 0u;
         measurement_snapshot_t__snap.i_ch1_ma = 0u;
         measurement_snapshot_t__snap.i_ch2_ma = 0u;
         measurement_snapshot_t__snap.input_present = false;

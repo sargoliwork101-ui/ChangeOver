@@ -15,7 +15,7 @@
 | تاریخ | تغییر |
 |---|---|
 | 2026-09-16 | اصلاح ADC/Measurement: کلاک ADC روی 12MHz (PCLK2/6)، کالیبراسیون F1، خواندن نیمهٔ کامل DMA با CNDTR، ضرایب صحیح تقسیم ولتاژ، محاسبهٔ دقیق‌تر جریان و snapshot اتمیک شد |
-| 2026-09-15 | مقادیر مشترک گلوبال شدند (`UINT32_T__G__MeasInputVoltageMv/Battery24Mv/Battery12Mv/Current1Ma/Current2Ma` + `BOOL__G__MeasInputPresent/DataValid`) — فقط تسک measurement می‌نویسد، همه می‌خوانند؛ در دیباگر با Live Expressions قابل مشاهده. پیشوند Meas* عمداً متفاوت از متغیرهای تست UI (task_ui.c) است تا لینک تداخل نکند |
+| 2026-09-15 | مقادیر مشترک گلوبال شدند (`UINT32_T__G__MeasInputVoltageMv/Battery24Mv/Battery12Mv/BatteryLowMv/BatteryHighMv/Current1Ma/Current2Ma` + `BOOL__G__MeasInputPresent/DataValid`) — فقط تسک measurement می‌نویسد، همه می‌خوانند؛ در دیباگر با Live Expressions قابل مشاهده. پیشوند Meas* عمداً متفاوت از متغیرهای تست UI (task_ui.c) است تا لینک تداخل نکند |
 | 2026-09-15 | فعال شد: ADC1+DMA چرخشی (بافر ۱۰ نصف‌واژه، بدون interrupt، بدون CPU)، توابع تبدیل گام‌به‌گام (CountsToMv / V24 / V12 / CurrentToMa)، دوره `MEASUREMENT_PERIOD_MS=10` بالای measurement.h، ورودی حضور ورودی از PB4 (`MCU_INT_24_IN`)، Init/Start داخل تسک (app.c دست‌نخورده ماند) |
 | 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
 | 2026-09-14 | برگهٔ ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
@@ -57,14 +57,16 @@
 | گلوبال | واحد | منبع |
 |---|---|---|
 | `UINT32_T__G__MeasInputVoltageMv` | mV | ورودی منطقی ۲۴ ولت (نمونه: 24000 = 24V) |
-| `UINT32_T__G__MeasBattery24Mv` | mV | باتری منطقی ۲۴ ولت |
-| `UINT32_T__G__MeasBattery12Mv` | mV | باتری منطقی ۱۲ ولت |
+| `UINT32_T__G__MeasBattery24Mv` | mV | فقط مانیتور پک ۲۴ ولت |
+| `UINT32_T__G__MeasBattery12Mv` | mV | نود MID / باتری پایین |
+| `UINT32_T__G__MeasBatteryLowMv` | mV | `VLOW = MID-GND` برای Trans2 |
+| `UINT32_T__G__MeasBatteryHighMv` | mV | `VHIGH = V24-MID` برای Trans1 |
 | `UINT32_T__G__MeasCurrent1Ma` | mA | جریان شارژ منطقی کانال ۱ |
 | `UINT32_T__G__MeasCurrent2Ma` | mA | جریان شارژ منطقی کانال ۲ |
 | `BOOL__G__MeasInputPresent` | — | سیگنال منطقی حضور ورودی ۲۴ ولت |
 | `BOOL__G__MeasDataValid` | — | true پس از سه فریم کامل و پایدار ADC؛ مستقل از وجود ورودی ۲۴ ولت |
 
-`snapshot` (`func__Measurement_GetSnapshot`) هم همان داده + `valid` را یک‌جا کپی می‌دهد؛ هر دو هم‌زمان معتبرند (هر دو از یک‌جای Run نوشته می‌شوند).
+`snapshot` (`func__Measurement_GetSnapshot`) هم همان داده + `valid` را یک‌جا کپی می‌دهد؛ فیلدهای `v_bat_low_mv` و `v_bat_high_mv` برای دو شارژر مستقل هستند و `v_bat24_mv` فقط مانیتور پک است.
 
 ## پایه‌ها
 

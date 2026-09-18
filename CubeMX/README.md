@@ -64,12 +64,12 @@
 
 ### وضعیت فعلی: قرارداد کامل BSP شماتیک
 
-- `MODULE_UI=1` و `MODULE_MEASUREMENT=1`. `MODULE_CHARGER`، `MODULE_ESP`، `MODULE_JITTER`، `MODULE_PROTECTION` و `MODULE_CHANGEOVER` صفر هستند؛ صفر بودن ماژول باعث حذف backend نمی‌شود.
+- `MODULE_UI=1`، `MODULE_MEASUREMENT=1`، `MODULE_CHANGEOVER=1`، `MODULE_FAULT=1`، `MODULE_CHARGER=1` و `MODULE_JITTER=1` هستند؛ `CHG_MASTER_ENABLE=0` کل Charger را runtime safe-off نگه می‌دارد. `MODULE_ESP=0` و `MODULE_PROTECTION=0` باقی می‌مانند؛ صفر بودن ماژول باعث حذف backend نمی‌شود.
 - ADC1: پنج کانال (PA1/PA2/PA3/PA5/PA7 = IN1/IN2/IN3/IN5/IN7)، scan + continuous، sampling 55.5 cycle، کلاک **12MHz** (PCLK2/6؛ سقف ADC در F103 برابر 14MHz).
 - DMA1 Channel1: circular، N=10 (دو فریم ۵ کاناله)، بدون interrupt؛ `bsp_adc.c` فقط نیمهٔ کامل DMA را می‌خواند.
-- PWMهای شارژر: TIM2_CH1 روی PA0 و TIM3_CH1 روی PA6، prescaler=71 و period=999 (حدود 1kHz)، compare صفر و stop در startup.
+- PWMهای شارژر: TIM2_CH1 روی PA0 و TIM3_CH1 روی PA6، prescaler=0 و period=1439 در clock 72MHz (50kHz)، compare صفر و stop در startup؛ با `CHG_MASTER_ENABLE=0` runtime safe-off هستند.
 - ESP-Link: USART1 روی PA9/PA10 با 115200، 8-N-1؛ `HAL_UART_MODULE_ENABLED` و درایور HAL UART در Build هستند، ولی `MODULE_ESP=0` است.
-- EXTI واقعی: PB2=`JITTER1`، PB4=`MCU_INT_24_IN` و PB6=`JITTER2` با هر دو لبه؛ IRQهای `EXTI2`، `EXTI4` و `EXTI9_5` فعال هستند.
+- EXTI واقعی: PB2=`JITTER1` و PB6=`JITTER2` خروجی active-low LM393 با falling edge؛ PB4=`MCU_INT_24_IN` با هر دو لبه؛ IRQهای `EXTI2`، `EXTI4` و `EXTI9_5` فعال هستند.
 - خروجی‌های امن: PA4/PA8/PB0/PB1/PB7/PB10 Low و PB5/PB11 High. جزئیات قطبیت در `Firmware/Bsp/README.md` است.
 - `task_measurement.c` فقط APIهای منطقی `func__BspAdc_Init()` و `func__BspAdc_Start()` را صدا می‌زند؛ هندل‌ها و پایه‌های فیزیکی در پورت BSP باقی می‌مانند.
 - Headerهای عمومی BSP HAL-free هستند؛ برای تغییر MCU یا برد، API منطقی ماژول‌ها ثابت می‌ماند و فقط پورت BSP و فایل‌های platform-specific تغییر می‌کنند.

@@ -8,7 +8,7 @@
 
 ## وضعیت
 
-اسکلت. `MODULE_JITTER = 0`. سه خط EXTI شماتیک عمداً در `.ioc` و IRQها فعال هستند؛ ماژول هنوز رویدادها را مصرف نمی‌کند. فایل را پاک نکن.
+ماژول event-latch فعال است: `MODULE_JITTER = 1` و همراه Charger در build می‌آید. PB2/PB6 خروجی‌های open-collector active-low LM393 هستند؛ `.ioc` فقط falling edge را برای JIT فعال می‌کند و callback سطح low را دوباره تأیید می‌کند.
 
 ## تاریخچه
 
@@ -45,8 +45,8 @@
 
 | پایه | لیبل | نقش | HIGH یعنی |
 |---|---|---|---|
-| PB2 | `MCU_JITTER1` | LM393 کانال ۱ | لبه/سطح تریپ؛ قطبیت شماتیک، اندازه نشده |
-| PB6 | `MCU_JITTER2` | LM393 کانال ۲ | همان |
+| PB2 | `MCU_JITTER1` | LM393 کانال ۱ | high=آزاد، low=تریپ؛ falling معتبر |
+| PB6 | `MCU_JITTER2` | LM393 کانال ۲ | high=آزاد، low=تریپ؛ falling معتبر |
 
 ## پیش‌فرض امن
 

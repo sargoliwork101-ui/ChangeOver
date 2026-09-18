@@ -3,11 +3,12 @@
  * @brief   [EN] STM32F103C8T6 EXTI adapter for JITTER1, JITTER2 and 24V input.
  *          [FA] adapter خطوط EXTI برای JITTER1، JITTER2 و ورودی ۲۴ ولت.
  *
- * @note    [EN] PB2, PB6 and PB4 are configured as rising/falling EXTI inputs
- *              in CubeMX. This port translates HAL pin callbacks into logical
- *              flags and keeps HAL details out of modules.
- *          [FA] پایه‌های PB2، PB6 و PB4 در CubeMX به‌صورت EXTI دو لبه تنظیم
- *              شده‌اند. این پورت callback HAL را به پرچم منطقی تبدیل می‌کند.
+ * @note    [EN] PB2/PB6 are active-low LM393 outputs: the CubeMX/MCU EXTI
+ *              trigger is falling-edge and the callback also checks the pin is
+ *              low before latching. PB4 remains a rising/falling presence input.
+ *          [FA] PB2/PB6 خروجی active-low از LM393 هستند: تریگر EXTI در CubeMX/MCU
+ *              لبهٔ پایین‌رونده است و callback نیز پیش از latch پایین‌بودن پایه
+ *              را چک می‌کند. PB4 همچنان ورودی حضور با هر دو لبه است.
  */
 
 #include "bsp_exti.h"
@@ -80,11 +81,20 @@ void HAL_GPIO_EXTI_Callback(uint16_t uint16_t__GPIO_Pin)
 {
     if (uint16_t__GPIO_Pin == PIN_JITTER1_PIN)
     {
-        func__BspExti_OnIrq(BSP_EXTI_JITTER1);
+        /* LM393 output is open-collector active-low: only a falling/low event
+         * is a current trip. The level check remains a second guard if a
+         * generated EXTI configuration is accidentally changed to both edges. */
+        if (HAL_GPIO_ReadPin(PIN_JITTER1_PORT, PIN_JITTER1_PIN) == GPIO_PIN_RESET)
+        {
+            func__BspExti_OnIrq(BSP_EXTI_JITTER1);
+        }
     }
     else if (uint16_t__GPIO_Pin == PIN_JITTER2_PIN)
     {
-        func__BspExti_OnIrq(BSP_EXTI_JITTER2);
+        if (HAL_GPIO_ReadPin(PIN_JITTER2_PORT, PIN_JITTER2_PIN) == GPIO_PIN_RESET)
+        {
+            func__BspExti_OnIrq(BSP_EXTI_JITTER2);
+        }
     }
     else if (uint16_t__GPIO_Pin == PIN_INT_24_IN_PIN)
     {
@@ -95,6 +105,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t uint16_t__GPIO_Pin)
         func__McuPowerPath_OnInputIrq();
 #endif
         func__BspExti_OnIrq(BSP_EXTI_INPUT_DETECT);
+#if MODULE_MCU_POWER_PATH
+        /* [EN] PB4 both-edge presence IRQ: on input loss the battery path
+         *      must reconnect immediately (Q1 released), not after the next
+         *      task tick. OnInputIrq reads the level itself.
+         * [FA] وقفه دو لبه حضور ورودی: با قطع ورودی مسیر باتری باید بلافاصله
+         *      وصل شود، نه در تیک بعدی تسک. */
+        func__McuPowerPath_OnInputIrq();
+#endif
     }
     else
     {

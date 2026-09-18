@@ -43,8 +43,10 @@
  *          تداخل لینک جلوگیری می‌کند. وقتی UI به مقدار واقعی وصل شد،
  *          متغیرهای تست دستی در همان مرحله حذف می‌شوند. */
 extern volatile uint32_t UINT32_T__G__MeasInputVoltageMv;   /* [EN] Logical 24 V input, mV / ورودی منطقی ۲۴ ولت، mV */
-extern volatile uint32_t UINT32_T__G__MeasBattery24Mv;      /* [EN] Logical 24 V battery, mV / باتری منطقی ۲۴ ولت، mV */
-extern volatile uint32_t UINT32_T__G__MeasBattery12Mv;      /* [EN] Logical 12 V battery, mV / باتری منطقی ۱۲ ولت، mV */
+extern volatile uint32_t UINT32_T__G__MeasBattery24Mv;      /* [EN] Logical pack monitor only, mV / فقط مانیتور پک، mV */
+extern volatile uint32_t UINT32_T__G__MeasBattery12Mv;      /* [EN] Middle-node/low-battery monitor, mV / مانیتور MID/باتری پایین، mV */
+extern volatile uint32_t UINT32_T__G__MeasBatteryLowMv;     /* [EN] VLOW = MID-GND, mV / باتری پایین، mV */
+extern volatile uint32_t UINT32_T__G__MeasBatteryHighMv;    /* [EN] VHIGH = V24-MID, mV / باتری بالا، mV */
 extern volatile uint32_t UINT32_T__G__MeasCurrent1Ma;       /* [EN] Logical charge current 1, mA / جریان منطقی شارژ ۱، mA */
 extern volatile uint32_t UINT32_T__G__MeasCurrent2Ma;       /* [EN] Logical charge current 2, mA / جریان منطقی شارژ ۲، mA */
 extern volatile bool BOOL__G__MeasInputPresent;           /* [EN] Logical 24 V input present / حضور منطقی ورودی ۲۴ ولت */

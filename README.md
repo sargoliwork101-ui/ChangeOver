@@ -55,7 +55,7 @@ CubeIDE/Core/Src/main.c
 | Calibration | `func__BspMeasurement_*` | تقسیم‌های ۲۴V/۱۲V، شانت و gain در پورت برد |
 | PWM | `func__BspPwm_Init/SetDutyPermille/StopAll` | TIM2_CH1 روی PA0 و TIM3_CH1 روی PA6 |
 | UART | `func__BspUart_Init/Write/ReadByte` | USART1 روی PA9/PA10، 115200 8-N-1 |
-| EXTI | `func__BspExti_Init/OnIrq/TakeEvent` | PB2، PB4 و PB6، هر دو لبه |
+| EXTI | `func__BspExti_Init/OnIrq/TakeEvent` | PB2/PB6 falling برای JIT active-low؛ PB4 هر دو لبه |
 
 وضعیت امن startup: بازر، ESP و LEDها Low؛ رله Low؛ کنترل‌های active-low باتری روی High؛ compare هر دو PWM صفر و event flagها پاک هستند. تغییر پایه یا قطبیت فقط در `board_pins.h` و پورت BSP مجاز است.
 

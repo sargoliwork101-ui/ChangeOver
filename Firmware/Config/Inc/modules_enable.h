@@ -16,8 +16,9 @@
 #define MODULE_MEASUREMENT    1
 #define MODULE_PROTECTION     0
 #define MODULE_CHANGEOVER     1
-#define MODULE_CHARGER        0
-#define MODULE_JITTER         0
+#define MODULE_MCU_POWER_PATH 1
+#define MODULE_CHARGER        1
+#define MODULE_JITTER         1
 #define MODULE_ESP            0
 #define MODULE_MCU_POWER_PATH 1
 

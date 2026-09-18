@@ -3,12 +3,14 @@
  * @brief   [EN] Logical external-event flags for schematic jitter and input.
  *          [FA] پرچم رویدادهای خارجی منطقی برای جیتر و ورودی شماتیک.
  *
- * @note    [EN] The board port configures the real EXTI lines. Both edges are
- *              captured so comparator polarity and connected/disconnected
- *              transitions are not lost; product code consumes logical events.
- *          [FA] پورت برد خطوط واقعی EXTI را تنظیم می‌کند. هر دو لبه ثبت می‌شود
- *              تا قطبیت comparator و تغییرات وصل/قطع از دست نرود؛ کد محصول
- *              فقط رویداد منطقی را مصرف می‌کند.
+ * @note    [EN] The board port configures LM393 JITTER1/JITTER2 as falling-edge
+ *              EXTI inputs because the schematic outputs are open-collector
+ *              active-low. PB4 input presence remains rising/falling; product
+ *              code consumes logical events.
+ *          [FA] پورت برد JITTER1/JITTER2 مربوط به LM393 را چون خروجی شماتیک
+ *              open-collector و active-low است روی لبهٔ پایین‌رونده تنظیم می‌کند.
+ *              PB4 حضور ورودی همچنان هر دو لبه را ثبت می‌کند؛ کد محصول فقط
+ *              رویداد منطقی را مصرف می‌کند.
  */
 
 #ifndef BSP_EXTI_H

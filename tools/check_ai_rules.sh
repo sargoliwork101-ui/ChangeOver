@@ -84,12 +84,34 @@ else
   echo "  FAIL: MODULE_MEASUREMENT not 1"
   FAIL=1
 fi
-for m in PROTECTION CHARGER JITTER ESP; do
-  if grep -q "#define MODULE_${m}.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
-    echo "  FAIL: MODULE_${m} should be 0"
+if grep -q "#define MODULE_PROTECTION.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
+  echo "  FAIL: MODULE_PROTECTION should be 0"
+  FAIL=1
+fi
+if grep -q "#define MODULE_ESP.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
+  echo "  FAIL: MODULE_ESP should be 0"
+  FAIL=1
+fi
+# Charger/Jitter may be built (MODULE_* = 1) for board validation, but the
+# runtime master switch CHG_MASTER_ENABLE must stay 0 so the module boots into
+# safe-idle until explicitly enabled after board bring-up tests.
+if grep -q "#define MODULE_CHARGER.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
+  if grep -q "#define CHG_MASTER_ENABLE\s*1" "$ROOT/Firmware/Modules/Charger/charger.h"; then
+    echo "  FAIL: MODULE_CHARGER=1 requires CHG_MASTER_ENABLE=0 (safe-idle) until bring-up is complete"
     FAIL=1
+  else
+    echo "  OK: MODULE_CHARGER=1 build enabled with CHG_MASTER_ENABLE=0 runtime safe-idle"
   fi
-done
+else
+  echo "  FAIL: MODULE_CHARGER expected 1 for build/compile coverage"
+  FAIL=1
+fi
+if grep -q "#define MODULE_JITTER.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
+  echo "  OK: MODULE_JITTER=1 (JIT EXTI/policy built with Charger)"
+else
+  echo "  FAIL: MODULE_JITTER expected 1 to build with MODULE_CHARGER=1"
+  FAIL=1
+fi
 if grep -q "#define MODULE_FAULT.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
   echo "  OK: MODULE_FAULT=1 (fault-mask validation build)"
 elif grep -q "#define MODULE_FAULT.*0" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
@@ -138,10 +160,10 @@ if [ -f "$IOC" ]; then
     echo "  FAIL: USART1 UART backend missing"
     FAIL=1
   fi
-  if grep -q "PB2.Mode=External_Interrupt_Mode_with_Rising_Falling_edge_trigger_detection" "$IOC" && \
+  if grep -q "PB2.Mode=External_Interrupt_Mode_with_Falling_edge_trigger_detection" "$IOC" && \
      grep -q "PB4.Mode=External_Interrupt_Mode_with_Rising_Falling_edge_trigger_detection" "$IOC" && \
-     grep -q "PB6.Mode=External_Interrupt_Mode_with_Rising_Falling_edge_trigger_detection" "$IOC"; then
-    echo "  OK: JITTER1, 24V detect and JITTER2 EXTI lines are retained"
+     grep -q "PB6.Mode=External_Interrupt_Mode_with_Falling_edge_trigger_detection" "$IOC"; then
+    echo "  OK: active-low JITTER1/JITTER2 falling EXTI and 24V detect EXTI are retained"
   else
     echo "  FAIL: Schematic EXTI lines missing"
     FAIL=1
