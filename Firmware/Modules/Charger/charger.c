@@ -303,29 +303,6 @@ static void func__Charger_StopOneChannel(uint8_t uint8_t__channelIndex)
     func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
 }
 
-static void func__Charger_StopAllPwm(void)
-{
-    uint8_t uint8_t__channelIndex;
-
-    func__BspPwm_StopAll();
-
-    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
-    {
-        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
-        func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
-    }
-}
-
-/* ==================== Relay helpers ==================== */
-
-static void func__Charger_CloseTransformerInput(uint32_t uint32_t__nowTick)
-{
-    func__BspGpio_Write(BSP_GPIO_RELAY, false);
-    BOOL__G__RelayOpen = false;
-    UINT32_T__G__RelaySettleDeadline =
-        uint32_t__nowTick + func__Rtos_MillisecondsToTicks(CHG_RELAY_SETTLE_MS);
-}
-
 /* ==================== Time helpers ==================== */
 
 static uint32_t func__Charger_DurationTicks(uint32_t uint32_t__milliseconds)
