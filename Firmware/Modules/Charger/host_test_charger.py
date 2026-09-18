@@ -208,6 +208,19 @@ def test_input_recovery_restarts_with_safe_duty():
           "on Vin recovery channels must transition back to OFF/start duty")
 
 
+def test_no_shadowing_in_duty_adjustments():
+    import re as _re
+    text_c = CHARGER_C.read_text()
+    # After OFF->BULK start, RegulateChannel must return before falling through to
+    # the duty-calculation block (otherwise first cycle double-steps duty).
+    off_block = text_c[text_c.find("charger_state_t__state == CHG_STATE_OFF"):text_c.find("charger_state_t__state == CHG_STATE_FLOAT")]
+    check("return;" in off_block, "OFF->BULK start must return before duty calculation to avoid first-cycle double step")
+    # Duty clamps in ApplyDuty / Bringup / Regulate must write back to an outer variable
+    # rather than only declaring a shadowed local. Verify ApplyDuty clamps via a dedicated
+    # local that is then passed to BspPwm and stored into the channel.
+    check("uint16_t__clampedDuty" in text_c, "ApplyDuty must clamp through a local that feeds BspPwm write (no shadow drop)")
+
+
 def test_jit_per_channel_sequence():
     text_c = CHARGER_C.read_text()
     check("uint8_t__jitTripCount" in text_c,
@@ -303,6 +316,7 @@ def main():
         test_min_valid_battery_is_sense_not_setpoint,
         test_input_voltage_is_real_adc_22000mv,
         test_input_recovery_restarts_with_safe_duty,
+        test_no_shadowing_in_duty_adjustments,
         test_jit_per_channel_sequence,
         test_low_current_is_not_fault,
         test_only_above_675ma_protects,
