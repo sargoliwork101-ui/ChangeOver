@@ -31,12 +31,22 @@
  *      [FA] سنجش جریان: شانت ۱۰mΩ و گین LM358 برابر ۱۰۱. */
 #define BSP_MEASUREMENT_SHUNT_MOHMS          10u
 #define BSP_MEASUREMENT_AMP_GAIN            101u
-#define BSP_MEASUREMENT_CURRENT_MA_SCALE  1000u
+/* [EN] MCU input divider on the CURRENTx nets (MCU sheet): R41 = 1k series
+ *      and R42 = 10k to GND. The ADC pin therefore sees only
+ *      10k/(1k+10k) of the LM358 output; the conversion below undoes this
+ *      permanent hardware divider separately from the user calibration.
+ *      [FA] تقسیم ورودی MCU روی نت‌های CURRENTx (شیت MCU): R41 برابر 1k سری
+ *      و R42 برابر 10k به زمین. پایه ADC فقط 10k/(1k+10k) خروجی LM358 را
+ *      می‌بیند؛ تبدیل پایین این تقسیم دائمی سخت‌افزاری را جدا از کالیبراسیون
+ *      کاربر خنثی می‌کند. */
+#define BSP_MEASUREMENT_CURRENT_DIV_TOP_OHMS     1000u
+#define BSP_MEASUREMENT_CURRENT_DIV_BOTTOM_OHMS 10000u
+#define BSP_MEASUREMENT_CURRENT_MA_SCALE         1000u
 /* [EN] Provisional calibration until a zero-current and known-current board
  *      measurement is recorded. Do not treat these defaults as final. */
 /* [FA] تا زمان ثبت اندازه‌گیری برد در جریان صفر و جریان معلوم، این کالیبراسیون
  *      موقت است و نباید نهایی فرض شود. */
-#define BSP_MEASUREMENT_CURRENT_OFFSET_COUNTS 0u
+#define BSP_MEASUREMENT_CURRENT_OFFSET_COUNTS 8u
 #define BSP_MEASUREMENT_CURRENT_GAIN_PERMILLE 1000u
 
 /**
@@ -126,11 +136,14 @@ uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts)
     uint64_t__adcVoltageNumerator =
         (uint64_t)uint32_t__calibratedCounts * BSP_MEASUREMENT_VREF_MV;
     uint64_t__currentNumerator =
-        uint64_t__adcVoltageNumerator * BSP_MEASUREMENT_CURRENT_MA_SCALE;
+        uint64_t__adcVoltageNumerator * BSP_MEASUREMENT_CURRENT_MA_SCALE *
+        (uint64_t)(BSP_MEASUREMENT_CURRENT_DIV_TOP_OHMS +
+                   BSP_MEASUREMENT_CURRENT_DIV_BOTTOM_OHMS);
     uint64_t__currentDenominator =
         (uint64_t)BSP_MEASUREMENT_ADC_FULL_SCALE *
         BSP_MEASUREMENT_AMP_GAIN *
-        BSP_MEASUREMENT_SHUNT_MOHMS;
+        BSP_MEASUREMENT_SHUNT_MOHMS *
+        BSP_MEASUREMENT_CURRENT_DIV_BOTTOM_OHMS;
 
     uint32_t__currentMa = (uint32_t)(uint64_t__currentNumerator /
                                      uint64_t__currentDenominator);
