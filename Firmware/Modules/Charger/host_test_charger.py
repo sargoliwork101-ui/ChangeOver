@@ -387,6 +387,7 @@ def test_setpoints_and_timing():
     check(re.search(r"#define FAULT_BAT_DISCONNECT_MV\s+14800u", text_fault_h), "battery-disconnect threshold must be 14.8 V in the central Fault module (user choice)")
     check(re.search(r"#define FAULT_BAT_DISCONNECT_DEBOUNCE_MS\s+150u", text_fault_h), "pump debounce must be 150 ms = 15 control passes (armed-absorb false trips still happened at 50 ms; real pump floats ~0.5 s so 150 ms still catches it)")
     check("func__Measurement_Median5" in (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text(), "battery channel voltages must pass the median-5 prefilter (2-frame spike bursts beat median-3 during absorb)")
+    check("bool__batteryTrulyPresent" in (ROOT / "Firmware/Modules/Fault/fault.c").read_text(), "bat-lost clear must require BOTH halves >= 6 V - one lead cut keeps its half <6 V so the alarm repeats until reconnect (one-burst bug)")
     check(re.search(r"#define FAULT_BAT_DISCONNECT_MV\s+14800u", text_fault_h), "threshold stays 14.8 V, NOT 15.0 V: 15.0 would collide with the validity cut (~0.1 s float vs ~0.5 s at 14.8)")
     check(re.search(r"#define FAULT_BAT_ABSENT_MV\s+6000u", text_fault_h), "battery-absent threshold must be 6 V in Fault (user choice)")
     check(re.search(r"#define FAULT_BAT_ABSENT_DEBOUNCE_MS\s+1000u", text_fault_h), "battery-absent debounce must be 1000 ms in Fault")

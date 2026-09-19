@@ -41,8 +41,13 @@
  *            FAULT_BAT_ABSENT_MV (6 V, user choice - every real 12 V battery
  *            sits far above) for FAULT_BAT_ABSENT_DEBOUNCE_MS proves it.
  *
- *         Recovery (shared): every half back inside
- *         [FAULT_BAT_ABSENT_MV, FAULT_BAT_DISCONNECT_MV] for
+ *         Recovery (shared): EVERY half back inside
+ *         [FAULT_BAT_ABSENT_MV, FAULT_BAT_DISCONNECT_MV] (>= 6 V on BOTH
+ *         halves - 2026-09-19: with one lead cut the other half still sits
+ *         at ~13 V; the old "not all absent" test then cleared after ~1 s,
+ *         the alarm died after a single burst, and the charger's 15 s
+ *         connection-settle no longer re-pumps to re-latch it, so the cut
+ *         cable went silent forever) for
  *         FAULT_BAT_RECOVER_MS => clear the bit; the charger then mirrors it
  *         back to OFF and the first pass soft-restarts BULK at 1% duty.
  *

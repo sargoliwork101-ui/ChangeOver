@@ -137,6 +137,7 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
     bool     bool__inputOk;
     bool     bool__anyOver;
     bool     bool__allAbsent;
+    bool     bool__batteryTrulyPresent;
     bool     bool__healthy;
 
     uint32_t__nowTick = osKernelGetTickCount();
@@ -209,9 +210,27 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
         /* [EN] Debounce still running. [FA] دبانس در جریان است. */
     }
 
-    /* ---------- Shared recovery: healthy window held 1 s => release ---------- */
+    /* ---------- Shared recovery: healthy window held 1 s => release ----------
+       [EN] 2026-09-19 bench finding: with ONE lead cut, the still-attached
+       half sits around 13 V, so the old health test ("just not ALL absent")
+       passed, the flag cleared after ~1 s and the alarm died after a single
+       burst - and nothing re-arms it anymore, because the charger now waits
+       15 s of connection-settle before it can re-bulk and re-pump. Healthy
+       now means: no half pumped AND a REAL battery on BOTH halves (at least
+       FAULT_BAT_ABSENT_MV measured on each): a lead still cut leaves its
+       half below 6 V, the flag stays latched, and the red/triple-beep
+       reminder repeats until the battery is genuinely back (user expectation:
+       "the alarm must keep reminding me until I reconnect").
+       [FA] بازبینی شرط سلامت: با یک سیمِ قطع، نیمِ سالم ~۱۳V می‌ماند و تست
+       قدیمی («فقط هردو نباشند») آلارم را پس از یک بوق پاک می‌کرد و چون
+       شارژر دیگر برای بازمسلح‌کردن بالا نمی‌آید، سکوت می‌ماند. حالا سالم
+       یعنی: نه پمپ روی هیچ نیم و نه هیچ نیمِ زیر ۶V؛ تا باتری واقعاً برنگشته
+       آلارم قفل است و یادآوری تکرار می‌شود. */
+    bool__batteryTrulyPresent = ((uint32_t__lowMv  >= FAULT_BAT_ABSENT_MV) &&
+                                 (uint32_t__highMv >= FAULT_BAT_ABSENT_MV));
+
     bool__healthy = ((bool__anyOver == false) &&
-                     ((bool__inputOk == false) || (bool__allAbsent == false)));
+                     (bool__batteryTrulyPresent == true));
 
     if (bool__healthy == false)
     {
@@ -221,10 +240,13 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
                                       uint32_t__nowTick,
                                       FAULT_BAT_RECOVER_MS) == true)
     {
-        /* [EN] Battery back inside the valid window for the settle time. The
-           charger mirrors the cleared bit to channel OFF and soft-restarts.
-           [FA] باتری ۱ ثانیه در پنجره سالم پایدار؛ با پاک‌شدن بیت، شارژر
-           کانال را آزاد و با رمپ نرم شروع می‌کند. */
+        /* [EN] Both halves back inside the valid window for the settle time:
+           the battery is really connected again. The charger mirrors the
+           cleared bit to channel OFF, and its own 15 s connection-settle
+           still gates the actual bulk start.
+           [FA] هر دو نیم‌باتری ۱ ثانیه در پنجره سالم پایدار - یعنی باتری
+           واقعاً برگشته؛ با پاک‌شدن بیت، شارژر کانال را آزاد می‌کند و گیت
+           ۱۵ ثانیه‌ای ثبات اتصالِ خودش شروع بالک را کنترل می‌کند. */
         func__Fault_Clear(FAULT_CHARGER_BAT_LOST);
         UINT32_T__G__BatHealthySinceTick = 0u;
     }
