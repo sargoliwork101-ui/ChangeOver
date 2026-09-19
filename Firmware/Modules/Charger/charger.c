@@ -819,15 +819,33 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     }
     else
     {
-        /* [EN] Below the 14.3 V window bottom: back to current-regulated BULK
-           and the soak is RESET (user directive until the offset case is
-           solved), so a deep dip starts a fresh 10-minute soak.
-           [FA] زیر کف پنجره ۱۴٫۳V: برگشت به بالک جریان‌رگوله و ریست کامل
-           شستشو (دستور کاربر). */
-        charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
-        uint32_t__targetMv = CHG_ABSORB_MV;
-        charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
-        charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
+        if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT)
+        {
+            /* [EN] FLOAT descending through and below the absorb window is
+               the whole point of floating: hold 13.5 V, do NOT touch the
+               soak bookkeeping and do NOT fall back to BULK (2026-09-19 bug
+               caught on bench: the unguarded else->BULK restarted a fresh
+               10-minute soak right after every soak completed, because the
+               float descent crossed the window bottom).
+               [FA] نزول فلوت به زیر پنجره جذب تعریف خود فلوت است: نگه‌داشت
+               ۱۳٫۵V؛ نه شستشو دست می‌خورد نه به بالک برمی‌گردیم - باگ بنچ:
+               else بی‌قید قبلی بلافاصله پس از اتمام شستشو به بالک پس می‌زد
+               و شستشو را از صفر راه می‌انداخت. */
+            uint32_t__targetMv = CHG_FLOAT_MV;
+        }
+        else
+        {
+            /* [EN] Only while in ABSORB does a dip below the 14.3 V window
+               bottom mean "the voltage hold failed": back to
+               current-regulated BULK and RESET the soak (user directive).
+               An already-BULK channel just stays BULK with a zeroed soak.
+               [FA] فقط در حالت ابزورب افت زیر ۱۴٫۳V یعنی تثبیت شکست خورد:
+               برگشت به بالک و ریست شستشو (دستور کاربر). */
+            charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
+            uint32_t__targetMv = CHG_ABSORB_MV;
+            charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+            charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
+        }
     }
 
     uint16_t__nextDuty = charger_channel_state_t__channel->uint16_t__dutyPermille;
