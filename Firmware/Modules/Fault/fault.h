@@ -24,13 +24,15 @@
  *            470 uF output cap above any real 12 V battery, so a half-battery
  *            voltage (v_bat_low / v_bat_high) above FAULT_BAT_DISCONNECT_MV
  *            for FAULT_BAT_DISCONNECT_DEBOUNCE_MS proves "battery gone".
- *            Why only 30 ms (= 3 control passes, user bench catch 2026-09-19):
+ *            Why only 50 ms (= 5 control passes, user directives 2026-09-19):
  *            at peak current the node crosses 14.8 V -> 15.0 V within
  *            milliseconds and the charger's 15.0 V validity cut then kills
  *            the pump, so the over-band can NEVER stay 300 ms - a 300 ms
- *            debounce silently swallowed every peak-current disconnect. 3
- *            consecutive passes is both fast enough and noise-immune, since
- *            no real 12 V half rides 400+ mV above its absorb point.
+ *            debounce silently swallowed every peak-current disconnect. 5
+ *            consecutive passes is still fast enough to survive the cut
+ *            (the pumped node decays above 14.8 V for ~0.5 s) but thick
+ *            enough to ignore one-off measurement blips, after the bench
+ *            showed spontaneous over-band hops at 30 ms.
  *         2) Input present and in range but no battery wired: the divider
  *            pulls the node to ~0 V, so ALL half voltages below
  *            FAULT_BAT_ABSENT_MV (6 V, user choice - every real 12 V battery
@@ -47,9 +49,10 @@
  *         keeps the single-battery bench test fault-free.
  *
  *         [FA] تشخیص قطع باتری به‌صورت متمرکز همین‌جاست (دستور کاربر): دو
- *         حالت با یک پرچم خطا پوشش داده می‌شوند - بالای ۱۴٫۸V به‌مدت ۳۰ms
- *         (۳ پاس پشت‌سر؛ امضای پمپ حین شارژ - چون قطع‌سخت ۱۵٫۰V پمپ را در
- *         حد میلی‌ثانیه می‌خواباند، دبانس ۳۰۰ms قدیمی هیچ‌وقت پر نمی‌شد)
+ *         حالت با یک پرچم خطا پوشش داده می‌شوند - بالای ۱۴٫۸V به‌مدت ۵۰ms
+ *         (۵ پاس پشت‌سر؛ امضای پمپ حین شارژ - چون قطع‌سخت ۱۵٫۰V پمپ را در
+ *         حد میلی‌ثانیه می‌خواباند، دبانس ۳۰۰ms قدیمی هیچ‌وقت پر نمی‌شد،
+ *         و ۳۰ms بر اساس مشاهده بنچ گاهی خودبه‌خود می‌پرید)
  *         یا پایین‌بودن هر دو نیم‌باتری از ۶V به‌مدت
  *         یک ثانیه (با ورودی سالم). بازیابی مشترک: برگشت به پنجره سالم و
  *         پایدارماندن یک ثانیه → پاک‌شدن پرچم و رمپ نرم شارژ از ۱٪.
@@ -58,7 +61,7 @@
  *         input there is nothing to report (system runs on battery or off).
  */
 #define FAULT_BAT_DISCONNECT_MV           14800u
-#define FAULT_BAT_DISCONNECT_DEBOUNCE_MS     30u
+#define FAULT_BAT_DISCONNECT_DEBOUNCE_MS     50u
 #define FAULT_BAT_ABSENT_MV                6000u
 #define FAULT_BAT_ABSENT_DEBOUNCE_MS      1000u
 #define FAULT_BAT_RECOVER_MS              1000u

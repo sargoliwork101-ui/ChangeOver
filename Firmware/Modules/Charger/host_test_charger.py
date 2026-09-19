@@ -375,7 +375,7 @@ def test_setpoints_and_timing():
     text_fault_h = FAULT_H.read_text()
     text_fault_c = FAULT_C.read_text()
     check(re.search(r"#define FAULT_BAT_DISCONNECT_MV\s+14800u", text_fault_h), "battery-disconnect threshold must be 14.8 V in the central Fault module (user choice)")
-    check(re.search(r"#define FAULT_BAT_DISCONNECT_DEBOUNCE_MS\s+30u", text_fault_h), "pump debounce must be 30 ms = 3 control passes (300 ms could never fire at peak current: the 15.0 V cut kills the pump within ms)")
+    check(re.search(r"#define FAULT_BAT_DISCONNECT_DEBOUNCE_MS\s+50u", text_fault_h), "pump debounce must be 50 ms = 5 control passes (300 ms never fired at peak current; 30 ms hopped on bench blips - user directive)")
     check(re.search(r"#define FAULT_BAT_ABSENT_MV\s+6000u", text_fault_h), "battery-absent threshold must be 6 V in Fault (user choice)")
     check(re.search(r"#define FAULT_BAT_ABSENT_DEBOUNCE_MS\s+1000u", text_fault_h), "battery-absent debounce must be 1000 ms in Fault")
     check(re.search(r"#define FAULT_BAT_RECOVER_MS\s+1000u", text_fault_h), "battery-back settle must be 1000 ms in Fault")
