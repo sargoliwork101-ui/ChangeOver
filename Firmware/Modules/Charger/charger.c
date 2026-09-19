@@ -61,8 +61,6 @@ typedef struct
     uint32_t uint32_t__lastDutyStepTick;
     uint32_t uint32_t__currentEmaMa;
     bool bool__currentEmaSeeded;
-    uint32_t uint32_t__batOverStartTick;
-    uint32_t uint32_t__batBackStartTick;
 } charger_channel_state_t;
 
 /* ==================== Static state / وضعیت داخلی ==================== */
@@ -386,8 +384,6 @@ static void func__Charger_ResetChannelToOff(uint8_t uint8_t__channelIndex)
     charger_channel_state_t__channel->uint32_t__lastDutyStepTick = 0u;
     charger_channel_state_t__channel->uint32_t__currentEmaMa = 0u;
     charger_channel_state_t__channel->bool__currentEmaSeeded = false;
-    charger_channel_state_t__channel->uint32_t__batOverStartTick = 0u;
-    charger_channel_state_t__channel->uint32_t__batBackStartTick = 0u;
     charger_channel_state_t__channel->uint16_t__dutyBeforeTripPermille =
         charger_channel_state_t__channel->uint16_t__dutyPermille;
 }
@@ -636,9 +632,11 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         return;
     }
 
-    /* [EN] Battery-lost is handled by the recovery check in Charger_Evaluate
-       (works even while the fault bit forces app_state FAULT); never regulate.
-       [FA] در حالت قطع باتری فقط منتظر بازیابی در Evaluate می‌مانیم. */
+    /* [EN] Battery-lost: the central Fault module owns detection and clear
+       timing; Charger_Evaluate mirrors the bit into this state and back to
+       OFF. As long as the state is BAT_LOST, never regulate.
+       [FA] مالکیت تشخیص و پاک‌سازی قطع باتری با ماژول Fault است؛ تا وقتی
+       وضعیت BAT_LOST است هیچ تنظیمی انجام نشود. */
     if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_BAT_LOST)
     {
         return;
@@ -659,39 +657,10 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                                        uint8_t__channelIndex,
                                        uint32_t__currentMa);
 
-    /* [EN] Battery-disconnect detection, BEFORE the battery-validity reset so
-       the 15.0 V cutoff cannot silently swallow the event: with the battery
-       wire cut during switching the flyback pulses pump the output cap above
-       any real 12 V battery. Sensed voltage > 14.8 V for 300 ms => stop PWM,
-       enter CHG_STATE_BAT_LOST and latch FAULT_CHARGER_BAT_LOST.
-       [FA] قطع باتری حین شارژ: پالس‌ها خازن خروجی را بالای ۱۴٫۸V می‌برند؛
-       ۳۰۰ms پایدار یعنی باتری قطع است → توقف PWM + BAT_LOST + پرچم خطا.
-       این بررسی حتماً قبل از ریست validity باشد. */
-    if (uint32_t__batteryMv > CHG_BAT_DISCONNECT_MV)
-    {
-        if (charger_channel_state_t__channel->uint32_t__batOverStartTick == 0u)
-        {
-            charger_channel_state_t__channel->uint32_t__batOverStartTick = uint32_t__nowTick;
-        }
-        else if ((uint32_t)(uint32_t__nowTick -
-                            charger_channel_state_t__channel->uint32_t__batOverStartTick) >=
-                 func__Charger_DurationTicks(CHG_BAT_DISCONNECT_DEBOUNCE_MS))
-        {
-            func__Charger_StopOneChannel(uint8_t__channelIndex);
-            charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BAT_LOST;
-            charger_channel_state_t__channel->uint32_t__batOverStartTick = 0u;
-            charger_channel_state_t__channel->uint32_t__batBackStartTick = 0u;
-#if MODULE_FAULT
-            func__Fault_Set(FAULT_CHARGER_BAT_LOST);
-#endif
-            return;
-        }
-    }
-    else
-    {
-        charger_channel_state_t__channel->uint32_t__batOverStartTick = 0u;
-    }
-
+    /* [EN] Battery-disconnect detection used to live here; it moved to the
+       central Fault module (fault.c, FAULT_BAT_*), which latches
+       FAULT_CHARGER_BAT_LOST - see the mirror block in Charger_Evaluate.
+       [FA] تشخیص قطع باتری به ماژول Fault منتقل شد؛ بلوک آینه در Evaluate. */
     if (func__Charger_BatteryVoltageIsValid(uint32_t__batteryMv) == false)
     {
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
@@ -903,8 +872,6 @@ void func__Charger_Init(void)
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__lastDutyStepTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__currentEmaMa = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__currentEmaSeeded = false;
-        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__batOverStartTick = 0u;
-        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__batBackStartTick = 0u;
     }
 
     BOOL__G__ChargerInitialized = true;
@@ -922,9 +889,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 {
     uint32_t uint32_t__nowTick;
     uint8_t uint8_t__channelIndex;
-    uint32_t uint32_t__batteryMv;
     bool bool__anyFinalFault;
-    bool bool__anyBatLost;
     bool bool__inputAdcValid;
     bool bool__controlAllowed;
 
@@ -938,63 +903,42 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     uint32_t__nowTick = osKernelGetTickCount();
 
 #if MODULE_FAULT
-    /* [EN] Battery-lost auto recovery, evaluated even when the latched fault
-       bit forces app_state FAULT (control then idles via SafeIdle): once the
-       battery voltage sits back inside the valid window for
-       CHG_BAT_RECOVER_MS, clear the bit and release the channel to OFF; the
-       first normal pass afterwards soft-restarts BULK at 1% duty, and the
-       Changeover leaves APP_STATE_FAULT by itself once the mask is clear.
-       [FA] بازیابی خودکار قطع باتری حتی هنگام APP_STATE_FAULT: با برگشت و
-       پایدارماندن ولتاژ ۱ ثانیه، پرچم پاک و کانال آزاد می‌شود و رمپ نرم از
-       ۱٪ شروع می‌گردد. */
-    if ((measurement_snapshot_t__snap != NULL) &&
-        (measurement_snapshot_t__snap->valid == true))
+    /* [EN] Battery-lost mirror (detection and clear timing live in the Fault
+       module). While the bit is latched, stop PWM once per channel and hold
+       the state at BAT_LOST; when Fault clears the bit, release the channel
+       to OFF so the first normal pass soft-restarts BULK at 1% duty. Running
+       here BEFORE the FAULT/SAFE gate keeps the mirror working while the bit
+       forces app_state FAULT; SafeIdle preserves BAT_LOST states meanwhile.
+       [FA] آینهٔ پرچم قطع باتری: وقتی بیت قفل است یک‌بار PWM را قطع و کانال
+       را BAT_LOST نگه می‌داریم؛ با پاک‌شدن بیت کانال به OFF آزاد می‌شود تا
+       رمپ نرم از ۱٪ شروع شود. این بلوک قبل از گِیت FAULT اجرا می‌شود. */
     {
-        bool__anyBatLost = false;
+        bool bool__batLostLatched;
+
+        bool__batLostLatched =
+            ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE);
 
         for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
         {
-            if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
-                CHG_STATE_BAT_LOST)
+            if ((bool__batLostLatched == true) &&
+                (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
+                 CHG_STATE_BAT_LOST))
             {
-                uint32_t__batteryMv =
-                    func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,
-                                                   uint8_t__channelIndex);
-
-                if ((uint32_t__batteryMv >= CHG_MIN_VALID_BATTERY_MV) &&
-                    (uint32_t__batteryMv < CHG_BAT_DISCONNECT_MV))
-                {
-                    if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__batBackStartTick == 0u)
-                    {
-                        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__batBackStartTick =
-                            uint32_t__nowTick;
-                        bool__anyBatLost = true;
-                    }
-                    else if ((uint32_t)(uint32_t__nowTick -
-                                        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__batBackStartTick) >=
-                             func__Charger_DurationTicks(CHG_BAT_RECOVER_MS))
-                    {
-                        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
-                            CHG_STATE_OFF;
-                        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__batBackStartTick = 0u;
-                        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__batOverStartTick = 0u;
-                    }
-                    else
-                    {
-                        bool__anyBatLost = true;
-                    }
-                }
-                else
-                {
-                    CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__batBackStartTick = 0u;
-                    bool__anyBatLost = true;
-                }
+                func__Charger_StopOneChannel(uint8_t__channelIndex);
+                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
+                    CHG_STATE_BAT_LOST;
             }
-        }
-
-        if (bool__anyBatLost == false)
-        {
-            func__Fault_Clear(FAULT_CHARGER_BAT_LOST);
+            else if ((bool__batLostLatched == false) &&
+                     (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
+                      CHG_STATE_BAT_LOST))
+            {
+                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
+                    CHG_STATE_OFF;
+            }
+            else
+            {
+                /* [EN] Already mirrored. [FA] هم‌اکنون هماهنگ است. */
+            }
         }
     }
 #endif

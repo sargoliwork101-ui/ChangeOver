@@ -13,6 +13,9 @@ ROOT = Path(__file__).resolve().parents[3]
 APP_TYPES_H = Path(__file__).resolve().parents[2] / "Config" / "Inc" / "app_types.h"
 CHARGER_H = ROOT / "Firmware/Modules/Charger/charger.h"
 CHARGER_C = ROOT / "Firmware/Modules/Charger/charger.c"
+FAULT_H = ROOT / "Firmware/Modules/Fault/fault.h"
+FAULT_C = ROOT / "Firmware/Modules/Fault/fault.c"
+TASK_CONTROL_C = ROOT / "Firmware/Rtos/Src/task_control.c"
 MAIN_C = ROOT / "CubeIDE/Core/Src/main.c"
 IOC = ROOT / "CubeMX/CubeIDE.ioc"
 BSP_EXTI_C = ROOT / "Firmware/Bsp/Src/bsp_exti.c"
@@ -363,12 +366,23 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS\s+500u", text_h), "down-steps must be limited to one per 500 ms")
     check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_PERMILLE\s+705u", text_h), "efficiency must be 705 permille (bench 15%-duty point: real out 441 mA x 13.0 V, true primary 358 mA x 22.9 V)")
     check(re.search(r"#define CHG_CURRENT_EMA_SHIFT\s+6u", text_h), "current estimate must pass through an EMA filter (shift 6, tau ~0.64 s)")
-    check(re.search(r"#define CHG_BAT_DISCONNECT_MV\s+14800u", text_h), "battery-disconnect threshold must be 14.8 V (user choice)")
-    check(re.search(r"#define CHG_BAT_DISCONNECT_DEBOUNCE_MS\s+300u", text_h), "battery-disconnect debounce must be 300 ms")
-    check(re.search(r"#define CHG_BAT_RECOVER_MS\s+1000u", text_h), "battery-back settle time must be 1000 ms for auto recovery")
-    check("CHG_STATE_BAT_LOST" in text_c, "charger must have a battery-lost state")
-    check("func__Fault_Set(FAULT_CHARGER_BAT_LOST)" in text_c, "battery-lost must latch the central fault flag")
-    check("func__Fault_Clear(FAULT_CHARGER_BAT_LOST)" in text_c, "auto recovery must clear the central fault flag")
+    text_fault_h = FAULT_H.read_text()
+    text_fault_c = FAULT_C.read_text()
+    check(re.search(r"#define FAULT_BAT_DISCONNECT_MV\s+14800u", text_fault_h), "battery-disconnect threshold must be 14.8 V in the central Fault module (user choice)")
+    check(re.search(r"#define FAULT_BAT_DISCONNECT_DEBOUNCE_MS\s+300u", text_fault_h), "pump debounce must be 300 ms in Fault")
+    check(re.search(r"#define FAULT_BAT_ABSENT_MV\s+6000u", text_fault_h), "battery-absent threshold must be 6 V in Fault (user choice)")
+    check(re.search(r"#define FAULT_BAT_ABSENT_DEBOUNCE_MS\s+1000u", text_fault_h), "battery-absent debounce must be 1000 ms in Fault")
+    check(re.search(r"#define FAULT_BAT_RECOVER_MS\s+1000u", text_fault_h), "battery-back settle must be 1000 ms in Fault")
+    check(re.search(r"#define FAULT_INPUT_PRESENT_MIN_MV\s+21000u", text_fault_h), "absent rule must be gated by input present >= 21 V")
+    check(re.search(r"#define FAULT_INPUT_PRESENT_MAX_MV\s+28000u", text_fault_h), "absent rule must be gated by input <= 28 V")
+    check("func__Fault_Evaluate" in text_fault_h and "func__Fault_Evaluate" in text_fault_c, "Fault must own the central battery-lost evaluation")
+    check("func__Fault_Set(FAULT_CHARGER_BAT_LOST)" in text_fault_c, "Fault must latch the bit, not the charger")
+    check("func__Fault_Clear(FAULT_CHARGER_BAT_LOST)" in text_fault_c, "Fault must clear the bit after the settle time")
+    check("CHG_STATE_BAT_LOST" in text_c, "charger must keep a battery-lost state as the flag mirror")
+    check("(func__Fault_Get() & FAULT_CHARGER_BAT_LOST)" in text_c, "charger must ONLY mirror the central flag")
+    check("CHG_BAT_DISCONNECT_MV" not in text_h, "charger header must not own battery-lost thresholds anymore")
+    check("batOverStartTick" not in text_c and "batBackStartTick" not in text_c, "charger must not own battery-lost timers anymore")
+    check("func__Fault_Evaluate(&measurement_snapshot_t__snap)" in TASK_CONTROL_C.read_text(), "task_control must run the central detection before func__Fault_Get")
     check(re.search(r"FAULT_CHARGER_BAT_LOST\s+\(1u << 6\)", APP_TYPES_H.read_text()), "fault bit must live centrally in app_types.h")
     check(re.search(r"#define CHG_FIXED_DUTY_TEST_ENABLE\s+0u", text_h), "fixed duty diagnostic must be OFF for normal charge (1u only during bench calibration)")
     check(re.search(r"#define CHG_FIXED_DUTY_TEST_DUTY_PERMILLE\s+150u", text_h), "diagnostic duty must be fixed at 150 permille = 15%")

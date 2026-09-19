@@ -219,24 +219,15 @@
  *      تنظیم نزدیک ~۱۹٪ است؛ این فقط کران بالاست. */
 #define CHG_DUTY_MAX_PERMILLE          500u
 #define CHG_ABSORB_HOLD_MS          600000u
-/* [EN] Battery-disconnect detection while charging (2026-09-18, user
- *      directive, threshold 14.8 V per user choice): with the battery wire
- *      cut during switching, the flyback pulses pump the output cap above any
- *      real 12 V battery (~1.4 V/ms at 650 mA into 470 uF, so even low
- *      tail currents cross the threshold). v_bat_low above
- *      CHG_BAT_DISCONNECT_MV sustained CHG_BAT_DISCONNECT_DEBOUNCE_MS =>
- *      PWM off, CHG_STATE_BAT_LOST, FAULT_CHARGER_BAT_LOST latched via the
- *      Fault module (central fault flags, so all modules report in one
- *      place). Auto recovery: voltage back inside the valid window for
- *      CHG_BAT_RECOVER_MS => clear the bit, channel OFF, soft BULK restart
- *      at 1% duty.
- * [FA] تشخیص قطع باتری حین شارژ: سیم باتری که قطع شود پالس‌ها خازن خروجی را
- *      بالای ولتاژ هر باتری واقعی می‌برند؛ ۱۴٫۸V به‌مدت ۳۰۰ms یعنی باتری
- *      قطع است → توقف PWM + حالت BAT_LOST + پرچم خطای متمرکز. با برگشت
- *      باتری (۱ ثانیه پایدار) خودکار رمپ نرم از ۱٪. */
-#define CHG_BAT_DISCONNECT_MV           14800u
-#define CHG_BAT_DISCONNECT_DEBOUNCE_MS   300u
-#define CHG_BAT_RECOVER_MS              1000u
+/* [EN] Battery-lost (both cases: pumped >14.8 V while charging, and battery
+ *      absent with valid input) is OWNED BY THE FAULT MODULE since 2026-09-19
+ *      per user directive: fault.c evaluates the snapshot centrally and
+ *      latches/clears FAULT_CHARGER_BAT_LOST. The charger only MIRRORS the
+ *      bit into CHG_STATE_BAT_LOST (stop PWM now) and releases the channel
+ *      to OFF when the bit clears, so a soft BULK restart at 1% duty follows.
+ *      Thresholds/timers: FAULT_BAT_* in fault.h, not here.
+ * [FA] تشخیص قطع باتری از ۲۰۲۶-۰۹-۱۹ به مالکیت ماژول Fault منتقل شد؛ شارژر
+ *      فقط آینهٔ پرچم است و آستانه/تایمری اینجا ندارد (fault.h ببین). */
 #define CHG_JIT_LOCKOUT_MS            3000u
 #define CHG_RELAY_SETTLE_MS            100u
 /* [EN] 2000 mV is battery-sense validity for the same channel, NOT a charge
