@@ -136,7 +136,7 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
     uint32_t uint32_t__highMv;
     bool     bool__inputOk;
     bool     bool__anyOver;
-    bool     bool__allAbsent;
+    bool     bool__anyHalfLow;
     bool     bool__batteryTrulyPresent;
     bool     bool__healthy;
 
@@ -169,12 +169,20 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
     bool__anyOver = ((uint32_t__lowMv  > FAULT_BAT_DISCONNECT_MV) ||
                      (uint32_t__highMv > FAULT_BAT_DISCONNECT_MV));
 
-    /* [EN] Case 2: ALL halves near zero while the input is fine. "ALL" keeps
-       the bench single-battery setup (uninstalled half floats at ~0) silent.
-       [FA] حالت دوم: هر دو نیم‌باتری نزدیک صفر با ورودی سالم؛ «هر دو» تا تست
-       تک‌باتری رومیزی خطای کاذب نگیرد. */
-    bool__allAbsent = ((uint32_t__lowMv  < FAULT_BAT_ABSENT_MV) &&
-                       (uint32_t__highMv < FAULT_BAT_ABSENT_MV));
+    /* [EN] Case 2, user rewrite 2026-09-19: EITHER half below
+       FAULT_BATTERY_BACK_MV (7 V) while the input is fine = battery
+       disconnected. "ALL halves" could never fire during his real failure
+       (one lead cut, the other half stays at ~13 V) and with the charger
+       parked there is no pump signature either - the result was total
+       silence on a cut battery. 7 V matches the recovery threshold so the
+       set/clear pair is symmetric; a real 12 V battery always sits far
+       above, charge-time included.
+       [FA] حالت دوم (بازنویسی دستور کاربر): هرکدام از نیم‌باتری‌ها زیر ۷V با
+       ورودی سالم یعنی قطع باتری؛ «هر دو غایب» در خرابی واقعی (یک سیم قطع،
+       نیمِ دیگر ~۱۳V) هرگز فایر نمی‌شد و با شارژر پارک‌شده امضای پمپ هم
+       نیست - نتیجه سکوت کامل بود. با ۷V جفت Set/Clear متقارن است. */
+    bool__anyHalfLow = ((uint32_t__lowMv  < FAULT_BATTERY_BACK_MV) ||
+                        (uint32_t__highMv < FAULT_BATTERY_BACK_MV));
 
     /* ---------- Rule 1: pumped overvoltage => latch ---------- */
     if ((bool__anyOver == true) &&
@@ -193,15 +201,15 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
         /* [EN] Debounce still running. [FA] دبانس در جریان است. */
     }
 
-    /* ---------- Rule 2: no battery at all with valid input => latch ---------- */
-    if ((bool__inputOk == true) && (bool__allAbsent == true) &&
+    /* ---------- Rule 2: EITHER half below 7 V with valid input => latch ---------- */
+    if ((bool__inputOk == true) && (bool__anyHalfLow == true) &&
         (func__Fault_DebounceDone(&UINT32_T__G__BatAbsentSinceTick,
                                   uint32_t__nowTick,
                                   FAULT_BAT_ABSENT_DEBOUNCE_MS) == true))
     {
         func__Fault_Set(FAULT_CHARGER_BAT_LOST);
     }
-    else if ((bool__inputOk == false) || (bool__allAbsent == false))
+    else if ((bool__inputOk == false) || (bool__anyHalfLow == false))
     {
         UINT32_T__G__BatAbsentSinceTick = 0u;
     }
