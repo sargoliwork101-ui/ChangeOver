@@ -226,6 +226,16 @@
  *      نزدیک باند با هیسترزیس). */
 #define CHG_DUTY_RAMP_UP_INTERVAL_MS   1000u
 #define CHG_DUTY_RAMP_DOWN_INTERVAL_MS  500u
+/* [EN] ABSORB pacing (user directive 2026-09-19): inside the 14.3-14.6 V
+ *      voltage hold the fine 0.1% steps run at HALF the bulk rate, so the
+ *      setpoint creeps instead of twitching (one up-step per 2000 ms, one
+ *      down-step per 1000 ms). The >14.6 V overshoot escape keeps the fast
+ *      500 ms coarse cadence - it is protection, not regulation.
+ * [FA] کِرن‌دنِ پله در ابزورب (دستور کاربر): پله‌های ۰٫۱٪ با نصف سرعت بالک،
+ *      یعنی صعود هر ۲۰۰۰ms و نزول هر ۱۰۰۰ms تا ست‌پوینت آهسته بخزد؛ فرار از
+ *      اورشوت بالای ۱۴٫۶V همان سرعت ۵۰۰ms امنیتی را حفظ می‌کند. */
+#define CHG_DUTY_RAMP_UP_INTERVAL_ABSORB_MS   2000u
+#define CHG_DUTY_RAMP_DOWN_INTERVAL_ABSORB_MS 1000u
 #define CHG_DUTY_RETRY_SECOND_MAX       100u
 /* [EN] DCM ceiling: 50% max - anything higher risks core/MOSFET overlap and
  *      burns the MOSFET (board requirement). The regulation band settles near
@@ -289,5 +299,17 @@ void func__Charger_Init(void);
  */
 void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap,
                             app_state_t app_state_t__state);
+
+/**
+ * @brief  [EN] True while at least one installed channel is actually
+ *         charging - its state machine sits in BULK, ABSORB or FLOAT
+ *         (2026-09-19, for the UI: the charging yellow blink is shown only
+ *         while this returns true, for channel 1, channel 2 or both).
+ *         [FA] true وقتی دست‌کم یک کانال نصب‌شده واقعاً در حال شارژ است
+ *         (بالک/ابزورب/فلوت)؛ برای چشمک زرد شارژ در UI: با فعال‌بودن کانال
+ *         ۱ یا ۲ یا هر دو.
+ * @return bool [EN] true if any channel is charging / اگر هر کانالی شارژ کند true
+ */
+bool func__Charger_IsAnyChannelActive(void);
 
 #endif /* CHARGER_H */

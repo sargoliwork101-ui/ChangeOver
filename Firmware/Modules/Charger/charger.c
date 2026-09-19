@@ -836,13 +836,20 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
 
     if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_ABSORB)
     {
-        /* [EN] Voltage hold at 14.4 V with fine 0.1% duty steps (user
-           directive): no current band here - the voltage setpoint rules.
-           Above 14.6 V the step grows back to 0.5% so an overshoot (e.g.
-           load dropped) returns fast. Below 14.3 V the state machine above
-           already left ABSORB, so the fine-up branch covers 14.3..14.4 V.
-           [FA] تثبیت ولتاژ روی ۱۴٫۴V با پلهٔ ریز ۰٫۱٪ (دستور کاربر): بدون
-           باند جریان؛ بالای ۱۴٫۶V کاهش سریع با پلهٔ ۰٫۵٪ تا سریع برگردد. */
+        uint32_t uint32_t__absorbUpIntervalTicks;
+        uint32_t uint32_t__absorbDownIntervalTicks;
+
+        /* [EN] Voltage hold at 14.4 V with fine 0.1% duty steps at HALF the
+           bulk rate (user directive 2026-09-19: no back-to-back duty moves):
+           up every 2000 ms, down every 1000 ms. Above 14.6 V the step grows
+           to 0.5% at the normal 500 ms cadence - that path is protection.
+           [FA] تثبیت ۱۴٫۴V با پلهٔ ۰٫۱٪ و نصف سرعت بالک (دستور کاربر): صعود
+           هر ۲۰۰۰ms، نزول هر ۱۰۰۰ms؛ بالای ۱۴٫۶V کاهش ۰٫۵٪ با فرکانس ۵۰۰ms. */
+        uint32_t__absorbUpIntervalTicks =
+            func__Charger_DurationTicks(CHG_DUTY_RAMP_UP_INTERVAL_ABSORB_MS);
+        uint32_t__absorbDownIntervalTicks =
+            func__Charger_DurationTicks(CHG_DUTY_RAMP_DOWN_INTERVAL_ABSORB_MS);
+
         if (uint32_t__batteryMv > CHG_ABSORB_OVER_MV)
         {
             if ((uint32_t)(uint32_t__nowTick -
@@ -864,7 +871,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         {
             if ((uint32_t)(uint32_t__nowTick -
                            charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
-                uint32_t__downIntervalTicks)
+                uint32_t__absorbDownIntervalTicks)
             {
                 if (uint16_t__nextDuty > CHG_DUTY_STEP_FINE_PERMILLE)
                 {
@@ -881,7 +888,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         {
             if ((uint32_t)(uint32_t__nowTick -
                            charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
-                uint32_t__upIntervalTicks)
+                uint32_t__absorbUpIntervalTicks)
             {
                 uint32_t__increasedDuty =
                     (uint32_t)uint16_t__nextDuty + CHG_DUTY_STEP_FINE_PERMILLE;
@@ -1210,4 +1217,38 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
             func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
         }
     }
+}
+
+/* ==================== Charger_IsAnyChannelActive ==================== */
+
+/**
+ * @brief  [EN] Report whether any installed channel is currently charging
+ *         (BULK / ABSORB / FLOAT). A channel idling in OFF, JIT_RETRY_WAIT,
+ *         INPUT_WAIT, FINAL_FAULT or BAT_LOST does NOT count as active.
+ *         Used by the UI so the charging yellow blink only appears while a
+ *         charger really works.
+ *         [FA] آیا دست‌کم یک کانال نصب‌شده واقعاً در حال شارژ است؟ کانال در
+ *         OFF/JIT_RETRY/INPUT_WAIT/FINAL_FAULT/BAT_LOST فعال حساب نمی‌شود؛
+ *         برای چشمک زرد UI فقط وقتی شارژر واقعاً کار می‌کند.
+ * @return bool [EN] true if any installed channel is charging / true اگر هر کانال نصب‌شده شارژ کند
+ */
+bool func__Charger_IsAnyChannelActive(void)
+{
+    uint8_t uint8_t__channelIndex;
+
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    {
+        if ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed == true) &&
+            ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
+              CHG_STATE_BULK) ||
+             (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
+              CHG_STATE_ABSORB) ||
+             (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
+              CHG_STATE_FLOAT)))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }

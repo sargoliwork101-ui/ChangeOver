@@ -60,7 +60,7 @@ API بوق: `func__Ui_Buzzer_Tick(period,duty,beepCount,gap)` غیرمسدودک
 گپ 100ms.
 
 ### سناریو ۳: Charging (5% + فاز-حفاظ non-blocking)
-- شرط: ورودی وصل و `!ChargingFullActive` (خام <100 ورود، خام 95-100 حفظ InputOk). `Input 24V Battery 25V → سبز ثابت زرد چشمک`
+- شرط: ورودی وصل و `!ChargingFullActive` **و وجودِ کانالِ شارژِ فعال** (`func__Charger_IsAnyChannelActive()` از ۲۰۲۶-۰۹-۱۹: چشمک زرد فقط وقتی شارژر واقعاً کار می‌کند - کانال ۱، ۲ یا هر دو؛ کانال در OFF/JIT-retry/انتظار-ورودی/خطای-نهایی/قطع-باتری یعنی فعال نیست ⇒ سبز ثابت). `Input 24V Battery 25V → سبز ثابت زرد چشمک`
 - سبز ثابت، زرد «مانده تا فول» با `chargingStable 5%`: `remaining=100-chargingStable`, `yellowOn=remaining*10ms(min10)`, `yellowOff=1000-yellowOn` — از ۲۰۲۶-۰۹-۱۹ دوباره برگشته به همین معنا با دستور نهایی کاربر: **هرچه پرتر، زرد کوتاه‌تر** (۹۵٪ شارژ ⇒ ۵۰ms از ۱۰۰۰ms روشن؛ باتری خالی ≈ دائم‌روشن). `stable57` با `53..61` حفظ (25V jitter بی‌اثر)، `52/62`→ تغییر.
 - زرد فاز-محور: `YellowOn/Off`, `phaseStartTick`, `OnMs/OffMs` حفظ فاز روی تغییر stable، بدون delay 1s. `CHARGING_BLINK_PERIOD 1000`, `YELLOW_MIN_OFF 10`.
 
@@ -90,6 +90,8 @@ BoardTest → یک‌بار قرمز/زرد/سبز + بوق
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-19 | چشمک زرد Charging فقط وقتی `func__Charger_IsAnyChannelActive()` (دستور کاربر؛ هرکدام از دو کانال یا هر دو فعال)؛ در غیر این‌صورت در شاخه ورودی-وصل، به‌جای چشمک، سبز ثابت |
+| 2026-09-19 | معنای زرد «مانده تا فول» بازگردانده شد (دستور نهایی کاربر): هرچه پرتر روشن کوتاه‌تر |
 | 2026-09-19 | سناریو ۵ BatLost از پرچم `FAULT_CHARGER_BAT_LOST` (قرمز چشمک‌تند ۵۰/۵۰ + سبز ثابت + ۳ بیپ/مکث) با اولویت بعد از OverVoltage و قبل از نرمال‌ها؛ جدایی کامل از بوق بحرانی دشارژ. |
 | 2026-09-17 | هیسترزیس BatteryRun 2%+0/1، **Charging 5%** (`chargingStable 53..61 حفظ`)، **فول 100/95** (ورود 100 ماندن تا <95)، حفظ فاز سبز/زرد، Charging/InputOk non-blocking، README/Excel/host_test به‌روز، RTOS/stack 2.2. |
 | 2026-09-17 | هیسترزیس 2% + فاز سبز + InputOk/Charging non-blocking (قبلی 2.1). |

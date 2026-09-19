@@ -404,6 +404,8 @@ def run_batlost_tests():
     # [FA] ماشه: فقط پرچم متمرکز، بعد از اضافه‌ولتاژ، با return.
     assert_true("func__Ui_ScenarioBatLost_Tick" in ui_led_c, "batlost scenario implemented")
     assert_true("func__Fault_Get() & FAULT_CHARGER_BAT_LOST" in ui_led_c, "batlost trigger reads the central fault bit")
+    assert_true("func__Charger_IsAnyChannelActive()" in ui_led_c, "charging yellow must be gated by the charger being active (user directive)")
+    assert_true('#include "charger.h"' in ui_led_c, "ui must include charger.h for the activity query")
     ov_idx = ui_led_c.find("func__Ui_ScenarioInputOverVoltage_Tick();\n        return;")
     bl_idx = ui_led_c.find("func__Ui_ScenarioBatLost_Tick();")
     assert_true(ov_idx != -1 and bl_idx != -1 and ov_idx < bl_idx, "batlost has priority right after overvoltage")

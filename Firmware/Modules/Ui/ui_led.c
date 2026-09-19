@@ -22,6 +22,10 @@
 #include "fault.h"
 #endif
 
+#if MODULE_CHARGER
+#include "charger.h"
+#endif
+
 #include <stdbool.h>
 
 /* ==================== UI Global Battery Alarm Flag / فلگ سراسری آلارم باتری UI ==================== */
@@ -1110,6 +1114,20 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
                [FA] هیسترزیس فول: ورود در ۱۰۰، ماندن تا کمتر از ۹۵. */
             func__Ui_ScenarioInputOk();
         }
+#if MODULE_CHARGER
+        else if (func__Charger_IsAnyChannelActive() == false)
+        {
+            /* [EN] Not full and NO channel charging (OFF / JIT retry /
+               input wait / final fault / battery-lost): the yellow charge
+               blink must NOT run - the user wants it only while the charger
+               module really works (channel 1, channel 2 or both). Green
+               steady stays as the honest "input ok" face instead.
+               [FA] نه فول و نه هیچ کانالِ شارژِ فعال: چشمک زرد نشان داده
+               نمی‌شود - کاربر خواسته چشمک فقط وقتی شارژر واقعاً کار کند؛
+               سبز ثابت به‌جای آن. */
+            func__Ui_ScenarioInputOk();
+        }
+#endif
         else
         {
             func__Ui_ScenarioCharging_Tick(uint32_t__batteryClampedMv);
