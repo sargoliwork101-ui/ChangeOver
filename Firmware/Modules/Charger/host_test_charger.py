@@ -22,7 +22,7 @@ BSP_EXTI_C = ROOT / "Firmware/Bsp/Src/bsp_exti.c"
 
 ABSORB_MV = 14400
 FLOAT_MV = 13500
-REENTRY_MV = 13000
+REENTRY_MV = 12800
 CURRENT_LIMIT_MA = 650
 REGULATE_LOW_MA = 630
 HARD_FAULT_MA = 950
@@ -355,11 +355,11 @@ def test_setpoints_and_timing():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
     check(re.search(r"#define CHG_ABSORB_MV\s+14400u", text_h), "absorb must be 14400 mV")
-    check(re.search(r"#define CHG_REENTRY_MV\s+13000u", text_h), "reentry must be 13.0 V (user directive 2026-09-19, up from 12.8 V)")
+    check(re.search(r"#define CHG_REENTRY_MV\s+12800u", text_h), "reentry stays 12.8 V (13.0 caused repeat charge cycles as the battery rested at ~13.0 V)")
     iso_active = text_c.split("bool func__Charger_IsAnyChannelActive(void)")[-1]
     check("CHG_STATE_FLOAT" not in iso_active and "CHG_STATE_BULK" in iso_active and "CHG_STATE_ABSORB" in iso_active, "IsAnyChannelActive must count only BULK/ABSORB - parked FLOAT is DONE, not pumping (kills done-phase false buzzers and stops the yellow blink)")
     check(re.search(r"#define CHG_FLOAT_MV\s+13500u", text_h), "float must be 13500 mV")
-    check(re.search(r"#define CHG_REENTRY_MV\s+13000u", text_h), "reentry must be 13000 mV")
+    check(re.search(r"#define CHG_REENTRY_MV\s+12800u", text_h), "reentry must be 12800 mV")
     check(re.search(r"#define CHG_ABSORB_HOLD_MS\s+600000u", text_h), "absorb soak must be 600000 ms = 10 min inside the timed window")
     check(re.search(r"#define CHG_ABSORB_ENTER_MV\s+14300u", text_h), "absorb voltage-hold window must start at 14.3 V (user directive)")
     check("CHG_ABSORB_TIMED_MAX_MV" not in text_h, "soak has no sub-window anymore: it counts during the whole ABSORB stay")
@@ -383,8 +383,8 @@ def test_setpoints_and_timing():
     text_fault_h = FAULT_H.read_text()
     text_fault_c = FAULT_C.read_text()
     check(re.search(r"#define FAULT_BAT_DISCONNECT_MV\s+14800u", text_fault_h), "battery-disconnect threshold must be 14.8 V in the central Fault module (user choice)")
-    check(re.search(r"#define FAULT_BAT_DISCONNECT_DEBOUNCE_MS\s+50u", text_fault_h), "pump debounce must be 50 ms = 5 control passes (user directive; the fake buzzer root cause is killed by the voltage median-3, so fast detection is back)")
-    check("func__Measurement_MedianFilterVoltageSample" in (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text(), "battery channel voltages must pass the median-3 prefilter (fake >14.8 V spikes)")
+    check(re.search(r"#define FAULT_BAT_DISCONNECT_DEBOUNCE_MS\s+150u", text_fault_h), "pump debounce must be 150 ms = 15 control passes (armed-absorb false trips still happened at 50 ms; real pump floats ~0.5 s so 150 ms still catches it)")
+    check("func__Measurement_Median5" in (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text(), "battery channel voltages must pass the median-5 prefilter (2-frame spike bursts beat median-3 during absorb)")
     check(re.search(r"#define FAULT_BAT_DISCONNECT_MV\s+14800u", text_fault_h), "threshold stays 14.8 V, NOT 15.0 V: 15.0 would collide with the validity cut (~0.1 s float vs ~0.5 s at 14.8)")
     check(re.search(r"#define FAULT_BAT_ABSENT_MV\s+6000u", text_fault_h), "battery-absent threshold must be 6 V in Fault (user choice)")
     check(re.search(r"#define FAULT_BAT_ABSENT_DEBOUNCE_MS\s+1000u", text_fault_h), "battery-absent debounce must be 1000 ms in Fault")

@@ -858,12 +858,12 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
            directive 2026-09-19: "why is the charger not off, why is duty
            still 4-5%"): step duty down to 0 on the coarse cadence and keep
            it parked. The battery rests at its natural voltage; only the
-           <13.0 V reentry (handled above) wakes BULK again. Previously the
+           <12.8 V reentry (handled above) wakes BULK again. Previously the
            low-current neutral band could freeze a few-% standby duty and
            trickle forever.
            [FA] اتمام سیکل شارژ یعنی پارک پمپ روی صفر (دستور کاربر): دیوتی
            با ضرب‌آهنگ زبری تا صفر پایین می‌آید و پارک می‌شود؛ باتری روی
-           ولتاژ طبیعی خودش استراحت می‌کند و فقط reentry زیر ۱۳٫۰V به بالک
+           ولتاژ طبیعی خودش استراحت می‌کند و فقط reentry زیر ۱۲٫۸V به بالک
            برمی‌گرداند. قبلاً باند خنثیِ جریان کم، چند درصد دیوتی آماده‌باش
            را تا ابد فریز می‌کرد و شارژ خاموش نمی‌شد. */
         if ((uint16_t__nextDuty != 0u) &&
