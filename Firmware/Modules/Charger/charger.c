@@ -62,6 +62,7 @@ typedef struct
     uint32_t uint32_t__lastDutyStepTick;
     uint32_t uint32_t__currentEmaMa;
     bool bool__currentEmaSeeded;
+    uint32_t uint32_t__stableFromTick; /* [EN] tick when installed+input+battery first looked valid; 0 = not present, gates bulk start (CHG_CONNECT_SETTLE_MS) / تیک اولین‌لحظه‌ای که اتصال معتبر دیده شد؛ صفر = باتری حاضر نیست؛ گیت شروع بالک */
 } charger_channel_state_t;
 
 /* ==================== Static state / وضعیت داخلی ==================== */
@@ -599,6 +600,35 @@ static void func__Charger_BringupRegulateChannel(uint8_t uint8_t__channelIndex,
 
 /* ==================== Regulation ==================== */
 
+/**
+ * @brief  [EN] True when the channel has seen installed + valid input +
+ *         valid battery voltage continuously for at least
+ *         CHG_CONNECT_SETTLE_MS (user directive 2026-09-19: let the
+ *         connection settle 10..20 s, THEN start the charge). Used as the
+ *         mandatory gate for every OFF -> BULK cold start; JIT resume and
+ *         the 12.8 V reentry keep their already-live stamps so mid-cycle
+ *         paths are not delayed.
+ *         [FA] فقط وقتی اتصال به‌طور پیوسته حداقل ۱۵ ثانیه معتبر دیده شده
+ *         اجازهٔ شروع بالک می‌دهد (دستور کاربر: اول ثبات، بعد شارژ).
+ * @param  uint8_t__channelIndex [EN] channel 0 or 1 / کانال ۰ یا ۱
+ * @param  uint32_t__nowTick     [EN] current kernel tick / تیک فعلی کرنل
+ * @return bool [EN] true = settled, bulk may start / true = ثابت شده، بالک مجاز
+ */
+static bool func__Charger_BulkStartSettled(uint8_t uint8_t__channelIndex,
+                                           uint32_t uint32_t__nowTick)
+{
+    uint32_t uint32_t__stableFromTick;
+
+    uint32_t__stableFromTick =
+        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__stableFromTick;
+    if (uint32_t__stableFromTick == 0u)
+    {
+        return false;
+    }
+    return ((uint32_t)(uint32_t__nowTick - uint32_t__stableFromTick) >=
+            func__Charger_DurationTicks(CHG_CONNECT_SETTLE_MS));
+}
+
 static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                                           const measurement_snapshot_t *measurement_snapshot_t__snap,
                                           uint32_t uint32_t__nowTick)
@@ -731,6 +761,23 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
 
     if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_OFF)
     {
+        if (func__Charger_BulkStartSettled(uint8_t__channelIndex,
+                                           uint32_t__nowTick) == false)
+        {
+            /* [EN] Connection not stable long enough yet (user directive
+               2026-09-19: 10..20 s of "the battery is really connected"
+               before any charge - 15 s): stay OFF at zero duty. This is also
+               the flap-killer for battery-lost: after the fault bit clears
+               (30 s), a still-missing cable keeps the voltage invalid, the
+               stamp stays 0 and BULK never re-arms - no more re-pump /
+               re-alarm ping-pong and no more yellow blink flashing inside
+               the battery-lost buzzer window.
+               [FA] اتصال هنوز ۱۵ ثانیه پایدار نیست (دستور کاربر: اول ثبات،
+               بعد شارژ): OFF با دیوتی صفر می‌ماند. همین گیت چرخهٔ پینگ‌پنگ
+               آلارم/بازتهیج آلارم و چشمک زرد وسط بوق قطع باتری را می‌کشد. */
+            func__Charger_ApplyDuty(uint8_t__channelIndex, 0u);
+            return;
+        }
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
         charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
         charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
@@ -1048,6 +1095,7 @@ void func__Charger_Init(void)
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__retryDeadlineTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__lastDutyStepTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__currentEmaMa = 0u;
+        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__stableFromTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__currentEmaSeeded = false;
     }
 
@@ -1153,6 +1201,40 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     }
 
     bool__inputAdcValid = (measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_VALID_MV);
+
+    /* [EN] Connection-settle bookkeeping for every installed channel: the
+       stamp ticks up only while the snapshot is live, the input is valid and
+       this channel's battery voltage is in range; anything else resets it to
+       0. CHG_CONNECT_SETTLE_MS of unbroken readiness unlocks OFF -> BULK.
+       [FA] دفترچهٔ ثبات اتصال: فقط با snapshot معتبر + ورودی معتبر + ولتاژ
+       باتری در محدوده ساعتش جلو می‌رود، وگرنه صفر می‌شود؛ ۱۵ ثانیه پایداری
+       کلید شروع بالک است. */
+    {
+        for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+        {
+            bool bool__readyNow;
+
+            bool__readyNow =
+                (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed == true) &&
+                (bool__inputAdcValid == true) &&
+                (func__Charger_BatteryVoltageIsValid(
+                    func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,
+                                                   uint8_t__channelIndex)) == true);
+
+            if (bool__readyNow == true)
+            {
+                if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__stableFromTick == 0u)
+                {
+                    CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__stableFromTick =
+                        uint32_t__nowTick;
+                }
+            }
+            else
+            {
+                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__stableFromTick = 0u;
+            }
+        }
+    }
 
     bool__anyFinalFault = false;
     for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
