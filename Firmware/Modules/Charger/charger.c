@@ -852,7 +852,37 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     uint32_t__upIntervalTicks = func__Charger_DurationTicks(CHG_DUTY_RAMP_UP_INTERVAL_MS);
     uint32_t__downIntervalTicks = func__Charger_DurationTicks(CHG_DUTY_RAMP_DOWN_INTERVAL_MS);
 
-    if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_ABSORB)
+    if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT)
+    {
+        /* [EN] End of the charge cycle = PARK THE PUMP AT ZERO (user
+           directive 2026-09-19: "why is the charger not off, why is duty
+           still 4-5%"): step duty down to 0 on the coarse cadence and keep
+           it parked. The battery rests at its natural voltage; only the
+           <12.8 V reentry (handled above) wakes BULK again. Previously the
+           low-current neutral band could freeze a few-% standby duty and
+           trickle forever.
+           [FA] اتمام سیکل شارژ یعنی پارک پمپ روی صفر (دستور کاربر): دیوتی
+           با ضرب‌آهنگ زبری تا صفر پایین می‌آید و پارک می‌شود؛ باتری روی
+           ولتاژ طبیعی خودش استراحت می‌کند و فقط reentry زیر ۱۲٫۸V به بالک
+           برمی‌گرداند. قبلاً باند خنثیِ جریان کم، چند درصد دیوتی آماده‌باش
+           را تا ابد فریز می‌کرد و شارژ خاموش نمی‌شد. */
+        if ((uint16_t__nextDuty != 0u) &&
+            ((uint32_t)(uint32_t__nowTick -
+                        charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
+             uint32_t__downIntervalTicks))
+        {
+            if (uint16_t__nextDuty > CHG_DUTY_STEP_PERMILLE)
+            {
+                uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_PERMILLE);
+            }
+            else
+            {
+                uint16_t__nextDuty = 0u;
+            }
+            charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
+        }
+    }
+    else if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_ABSORB)
     {
         uint32_t uint32_t__absorbUpIntervalTicks;
         uint32_t uint32_t__absorbDownIntervalTicks;
