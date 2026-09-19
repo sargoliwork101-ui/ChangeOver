@@ -148,7 +148,7 @@
 #define CHG_ABSORB_OVER_MV            14600u
 #define CHG_DUTY_STEP_FINE_PERMILLE       1u
 #define CHG_FLOAT_MV                  13500u
-#define CHG_REENTRY_MV               12800u
+#define CHG_REENTRY_MV               13000u
 #define CHG_BULK_CURRENT_MAX_MA       650u
 /* [EN] TEMPORARY bench diagnostic (2026-09-18): fixed duty, NO ramp and NO
  *      band regulation. Set to 0 to return to normal charge control. When 1,

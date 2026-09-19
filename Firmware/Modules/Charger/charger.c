@@ -858,12 +858,12 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
            directive 2026-09-19: "why is the charger not off, why is duty
            still 4-5%"): step duty down to 0 on the coarse cadence and keep
            it parked. The battery rests at its natural voltage; only the
-           <12.8 V reentry (handled above) wakes BULK again. Previously the
+           <13.0 V reentry (handled above) wakes BULK again. Previously the
            low-current neutral band could freeze a few-% standby duty and
            trickle forever.
            [FA] اتمام سیکل شارژ یعنی پارک پمپ روی صفر (دستور کاربر): دیوتی
            با ضرب‌آهنگ زبری تا صفر پایین می‌آید و پارک می‌شود؛ باتری روی
-           ولتاژ طبیعی خودش استراحت می‌کند و فقط reentry زیر ۱۲٫۸V به بالک
+           ولتاژ طبیعی خودش استراحت می‌کند و فقط reentry زیر ۱۳٫۰V به بالک
            برمی‌گرداند. قبلاً باند خنثیِ جریان کم، چند درصد دیوتی آماده‌باش
            را تا ابد فریز می‌کرد و شارژ خاموش نمی‌شد. */
         if ((uint16_t__nextDuty != 0u) &&
@@ -1270,15 +1270,20 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 /* ==================== Charger_IsAnyChannelActive ==================== */
 
 /**
- * @brief  [EN] Report whether any installed channel is currently charging
- *         (BULK / ABSORB / FLOAT). A channel idling in OFF, JIT_RETRY_WAIT,
- *         INPUT_WAIT, FINAL_FAULT or BAT_LOST does NOT count as active.
- *         Used by the UI so the charging yellow blink only appears while a
- *         charger really works.
- *         [FA] آیا دست‌کم یک کانال نصب‌شده واقعاً در حال شارژ است؟ کانال در
- *         OFF/JIT_RETRY/INPUT_WAIT/FINAL_FAULT/BAT_LOST فعال حساب نمی‌شود؛
- *         برای چشمک زرد UI فقط وقتی شارژر واقعاً کار می‌کند.
- * @return bool [EN] true if any installed channel is charging / true اگر هر کانال نصب‌شده شارژ کند
+ * @brief  [EN] Report whether any installed channel is currently PUMPING
+ *         charge into a battery (BULK / ABSORB only). A channel idling in
+ *         OFF, JIT_RETRY_WAIT, INPUT_WAIT, FINAL_FAULT or BAT_LOST does NOT
+ *         count; since 2026-09-19 a FLOAT channel does not count either -
+ *         the pump is parked at zero duty there, so the charge is DONE, not
+ *         active. Used by (a) the UI so the charging yellow blink stops as
+ *         soon as the charger shuts off, and (b) the fault pump-window, so
+ *         a transient above 14.8 V in the parked/done phase can no longer
+ *         catch the battery-lost buzzer (nothing is pumping then).
+ *         [FA] آیا دست‌کم یک کانال نصب‌شده واقعاً در حال پمپ‌کردن شارژ است؟
+ *         فقط BULK/ABSORB؛ FLOAT پارک‌شده (دیوتی صفر) یعنی کار تمام شده و
+ *         فعال حساب نمی‌شود - نه زرد باید بچشمکد نه آشکارساز قطع باتری
+ *         مسلح است.
+ * @return bool [EN] true if any installed channel is pumping / true اگر هر کانال نصب‌شده پمپ کند
  */
 bool func__Charger_IsAnyChannelActive(void)
 {
@@ -1290,9 +1295,7 @@ bool func__Charger_IsAnyChannelActive(void)
             ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
               CHG_STATE_BULK) ||
              (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
-              CHG_STATE_ABSORB) ||
-             (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
-              CHG_STATE_FLOAT)))
+              CHG_STATE_ABSORB)))
         {
             return true;
         }

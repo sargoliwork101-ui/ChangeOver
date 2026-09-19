@@ -22,7 +22,7 @@ BSP_EXTI_C = ROOT / "Firmware/Bsp/Src/bsp_exti.c"
 
 ABSORB_MV = 14400
 FLOAT_MV = 13500
-REENTRY_MV = 12800
+REENTRY_MV = 13000
 CURRENT_LIMIT_MA = 650
 REGULATE_LOW_MA = 630
 HARD_FAULT_MA = 950
@@ -355,8 +355,11 @@ def test_setpoints_and_timing():
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
     check(re.search(r"#define CHG_ABSORB_MV\s+14400u", text_h), "absorb must be 14400 mV")
+    check(re.search(r"#define CHG_REENTRY_MV\s+13000u", text_h), "reentry must be 13.0 V (user directive 2026-09-19, up from 12.8 V)")
+    iso_active = text_c.split("bool func__Charger_IsAnyChannelActive(void)")[-1]
+    check("CHG_STATE_FLOAT" not in iso_active and "CHG_STATE_BULK" in iso_active and "CHG_STATE_ABSORB" in iso_active, "IsAnyChannelActive must count only BULK/ABSORB - parked FLOAT is DONE, not pumping (kills done-phase false buzzers and stops the yellow blink)")
     check(re.search(r"#define CHG_FLOAT_MV\s+13500u", text_h), "float must be 13500 mV")
-    check(re.search(r"#define CHG_REENTRY_MV\s+12800u", text_h), "reentry must be 12800 mV")
+    check(re.search(r"#define CHG_REENTRY_MV\s+13000u", text_h), "reentry must be 13000 mV")
     check(re.search(r"#define CHG_ABSORB_HOLD_MS\s+600000u", text_h), "absorb soak must be 600000 ms = 10 min inside the timed window")
     check(re.search(r"#define CHG_ABSORB_ENTER_MV\s+14300u", text_h), "absorb voltage-hold window must start at 14.3 V (user directive)")
     check("CHG_ABSORB_TIMED_MAX_MV" not in text_h, "soak has no sub-window anymore: it counts during the whole ABSORB stay")
