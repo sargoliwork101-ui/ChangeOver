@@ -61,7 +61,7 @@ API بوق: `func__Ui_Buzzer_Tick(period,duty,beepCount,gap)` غیرمسدودک
 
 ### سناریو ۳: Charging (5% + فاز-حفاظ non-blocking)
 - شرط: ورودی وصل و `!ChargingFullActive` (خام <100 ورود، خام 95-100 حفظ InputOk). `Input 24V Battery 25V → سبز ثابت زرد چشمک`
-- سبز ثابت، زرد مانده تا فول با `chargingStable 5%`: `remaining=100-chargingStable`, `yellowOn=remaining*10ms(min10)`, `yellowOff=1000-yellowOn`. `stable57` با `53..61` حفظ (25V jitter بی‌اثر)، `52/62`→ تغییر.
+- سبز ثابت، زردِ پرشونده با درصد شارژ (`chargingStable 5%`): از ۲۰۲۶-۰۹-۱۹ `yellowOn=chargingStable*10ms(min10)`، `yellowOff=1000-yellowOn` ← در ۵٪ دقیقاً ۵۰ms از ۱۰۰۰ms روشن (دستور کاربر) و با پرشدن، زرد می‌ماند تا InputOk. `stable57` با `53..61` حفظ (25V jitter بی‌اثر)، `52/62`→ تغییر.
 - زرد فاز-محور: `YellowOn/Off`, `phaseStartTick`, `OnMs/OffMs` حفظ فاز روی تغییر stable، بدون delay 1s. `CHARGING_BLINK_PERIOD 1000`, `YELLOW_MIN_OFF 10`.
 
 ### سناریو ۴: InputOverVoltage

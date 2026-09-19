@@ -813,7 +813,6 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 {
     uint8_t uint8_t__rawPercent;
     uint8_t uint8_t__stablePercent;
-    uint32_t uint32_t__remainingPercent;
     uint32_t uint32_t__periodPerPercent;
     uint32_t uint32_t__yellowOnMs;
     uint32_t uint32_t__yellowOffMs;
@@ -844,11 +843,15 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
         return;
     }
 
-    /* [EN] Non-linear formula with chargingStablePercent: remaining drives yellow ON time.
-       [FA] فرمول غیرخطی با درصد پایدار شارژ: مانده تا فول، زمان روشن‌بودن زرد را می‌دهد. */
-    uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__stablePercent;
+    /* [EN] Non-linear formula with chargingStablePercent: the charged percent
+       drives yellow ON time, so the yellow "fills up" as the battery charges
+       (user directive 2026-09-19): 5% -> 50 ms ON per 1000 ms, 95% -> 950 ms
+       ON, full switches to the steady-green InputOk scenario.
+       [FA] فرمول غیرخطی با درصد پایدار شارژ: درصد شارژشده زمان روشن‌بودن زرد
+       را می‌دهد تا با شارژ باتری زرد «پر» شود: ۵٪ ⇒ ۵۰ms از ۱۰۰۰ms روشن،
+       ۹۵٪ ⇒ ۹۵۰ms، و فول به سناریوی سبز ثابت می‌رود. */
     uint32_t__periodPerPercent = APP_CONFIG.ui_charging_blink_period_ms / UI_PERCENT_SCALE;
-    uint32_t__yellowOnMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
+    uint32_t__yellowOnMs = (uint32_t)uint8_t__stablePercent * uint32_t__periodPerPercent;
 
     if (uint32_t__yellowOnMs < APP_CONFIG.ui_charging_yellow_min_off_ms)
     {
