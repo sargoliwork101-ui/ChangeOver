@@ -175,10 +175,12 @@ def green_timing(stable, period=UI_BLINK_PERIOD_MS, min_off=UI_GREEN_MIN_OFF_MS)
     return on, off
 
 def yellow_timing(stable, period=UI_CHARGING_BLINK_PERIOD_MS, min_off=UI_CHARGING_YELLOW_MIN_OFF_MS):
-    # [EN] charged percent drives the ON time (user directive 2026-09-19): 5% -> 50 ms per 1000 ms
-    # [FA] درصد شارژشده زمان روشن بودن را می‌دهد: ۵٪ ⇒ ۵۰ms در ۱۰۰۰ms
+    # [EN] REMAINING to full drives the ON time (final user directive 2026-09-19):
+    # more charged -> shorter ON; 95% charged (5 remaining) -> 50 ms per 1000 ms.
+    # [FA] «مانده تا فول» زمان روشن بودن را می‌دهد: پرتر کوتاه‌تر؛ ۹۵٪ شارژ ⇒ ۵۰ms.
+    remaining=UI_PERCENT_FULL-stable
     per=period//UI_PERCENT_SCALE
-    on=stable*per
+    on=remaining*per
     if on<min_off: on=min_off
     if on>period: on=period
     off=period-on
@@ -300,12 +302,13 @@ def run_charging_hysteresis_tests():
     c.stable=57; c.init=True
     assert_equal(c.update(62),62,"57->62 change")
     print("53..61 keep PASS, outside 5 change PASS")
-    # [EN] Yellow ON must follow the CHARGED percent (user directive 2026-09-19):
-    # 5% -> 50 ms ON per 1000 ms, 95% -> 950 ms ON; clamped at min/period.
-    # [FA] روشن‌بودن زرد بر اساس درصد شارژشده: ۵٪ ⇒ ۵۰ms و ۹۵٪ ⇒ ۹۵۰ms در ۱۰۰۰ms.
-    assert_equal(yellow_timing(5), (50, 950), "yellow 5% -> 50ms on")
-    assert_equal(yellow_timing(95), (950, 50), "yellow 95% -> 950ms on")
-    assert_equal(yellow_timing(1), (10, 990), "yellow 1% -> min 10ms on")
+    # [EN] Yellow ON must follow the REMAINING percent (final user directive
+    # 2026-09-19): more charged -> shorter ON; 95% charged (5 remaining) ->
+    # 50 ms ON per 1000 ms; 5% charged -> 950 ms ON.
+    # [FA] زرد بر اساس «مانده»: ۹۵٪ شارژ ⇒ ۵۰ms روشن؛ ۵٪ شارژ ⇒ ۹۵۰ms روشن.
+    assert_equal(yellow_timing(95), (50, 950), "yellow 95% charged -> 50ms on")
+    assert_equal(yellow_timing(5), (950, 50), "yellow 5% charged -> 950ms on")
+    assert_equal(yellow_timing(99), (10, 990), "yellow 99% charged -> min 10ms on")
     # yellow timing stable
     on57,off57=yellow_timing(57)
     on53,off53=yellow_timing(53) # diff but should not be used if stable 57

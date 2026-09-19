@@ -784,30 +784,28 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
 
             uint32_t__absorbTicks = func__Charger_DurationTicks(CHG_ABSORB_HOLD_MS);
 
-            /* [EN] Accumulate the soak only while the sensed voltage sits
-               inside the timed window [14.4, 14.5] V; outside it the clock
-               pauses (14.3..14.4 ramp-in or >14.5 recovery), and below 14.3 V
-               the else-branch resets it to zero.
-               [FA] شستشو فقط داخل پنجره ۱۴٫۴..۱۴٫۵V جمع می‌شود؛ بیرون آن مکث،
-               و زیر ۱۴٫۳V ریست در شاخه پایین. */
+            /* [EN] The soak counts during the WHOLE ABSORB stay (user
+               directive 2026-09-19), from the 14.3 V entry through every
+               overshoot episode - no sub-window. It resets only when the
+               voltage falls below 14.3 V (else-branch), so the offset-affected
+               equilibrium right under 14.4 V can no longer stall the soak.
+               [FA] شستشو کل مدتِ حالت ابزورب جمع می‌شود (دستور کاربر)، بدون
+               پنجره‌باریک؛ فقط زیر ۱۴٫۳V ریست می‌شود تا آفست تعادلِ مرز،
+               شستشو را گیر نیندازد. */
             uint32_t__absorbDeltaTicks =
                 (uint32_t)(uint32_t__nowTick -
                            charger_channel_state_t__channel->uint32_t__absorbLastTick);
             charger_channel_state_t__channel->uint32_t__absorbLastTick = uint32_t__nowTick;
 
-            if ((uint32_t__batteryMv >= CHG_ABSORB_MV) &&
-                (uint32_t__batteryMv <= CHG_ABSORB_TIMED_MAX_MV))
+            charger_channel_state_t__channel->uint32_t__absorbAccumTicks +=
+                uint32_t__absorbDeltaTicks;
+            if ((uint32_t__absorbTicks != 0u) &&
+                (charger_channel_state_t__channel->uint32_t__absorbAccumTicks >
+                 uint32_t__absorbTicks))
             {
-                charger_channel_state_t__channel->uint32_t__absorbAccumTicks +=
-                    uint32_t__absorbDeltaTicks;
-                if ((uint32_t__absorbTicks != 0u) &&
-                    (charger_channel_state_t__channel->uint32_t__absorbAccumTicks >
-                     uint32_t__absorbTicks))
-                {
-                    /* [EN] Clamp against long-soak overflow. / سقف برای اضافه‌سرریز. */
-                    charger_channel_state_t__channel->uint32_t__absorbAccumTicks =
-                        uint32_t__absorbTicks;
-                }
+                /* [EN] Clamp against long-soak overflow. / سقف برای اضافه‌سرریز. */
+                charger_channel_state_t__channel->uint32_t__absorbAccumTicks =
+                    uint32_t__absorbTicks;
             }
 
             if ((uint32_t__absorbTicks != 0u) &&
