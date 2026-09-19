@@ -83,8 +83,9 @@
  */
 #define FAULT_BAT_DISCONNECT_MV           14800u
 #define FAULT_BAT_DISCONNECT_DEBOUNCE_MS    150u
-#define FAULT_BAT_ABSENT_MV                6000u
-/* [EN] Battery-TRULY-back threshold for the recovery window (user directive
+/* [EN] FAULT_BAT_ABSENT_MV (6 V) was REMOVED 2026-09-19: rule 2 and the
+ *      recovery window both use FAULT_BATTERY_BACK_MV now (one concept, one
+ *      constant). Battery-TRULY-back threshold for the recovery window (user directive
  *      2026-09-19): >= 7 V on BOTH halves, NOT 6 V, because a half can sit
  *      near 6 V while CHARGING; 7 V keeps the boundary safely above any
  *      charge-time dip so the flag clears only on a genuinely reconnected

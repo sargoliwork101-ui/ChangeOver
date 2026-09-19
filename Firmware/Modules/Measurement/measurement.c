@@ -70,6 +70,8 @@ static uint32_t UINT32_T__G__CurrentMedianHistoryMa[2][3];
    فریم تأخیر عبور می‌کند. */
 static uint32_t UINT32_T__G__BatVoltageMedianHistoryMv[2][5];
 
+/* ==================== Measurement_Median3 / مدین سه‌تایی ==================== */
+
 static uint32_t func__Measurement_Median3(uint32_t uint32_t__aMa,
                                           uint32_t uint32_t__bMa,
                                           uint32_t uint32_t__cMa)
@@ -86,6 +88,8 @@ static uint32_t func__Measurement_Median3(uint32_t uint32_t__aMa,
     }
     return uint32_t__cMa;
 }
+
+/* ==================== Measurement_Median5 / مدین پنج‌تایی ==================== */
 
 /* [EN] Median-of-5 for the battery voltage channel prefilter: plain
    insertion sort of a LOCAL copy keeps the live history untouched; the
@@ -119,6 +123,8 @@ static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
     return uint32_t__sorted[2u];
 }
 
+/* ==================== Measurement_MedianFilterSample (جریان) ==================== */
+
 static uint32_t func__Measurement_MedianFilterSample(uint8_t uint8_t__channelIndex,
                                                      uint32_t uint32_t__sampleMa)
 {
@@ -139,19 +145,23 @@ static uint32_t func__Measurement_MedianFilterSample(uint8_t uint8_t__channelInd
                                      uint32_t__historyMa[2]);
 }
 
+/* ==================== Measurement_MedianFilterVoltageSample (ولتاژ باتری) ==================== */
+
 /**
  * @brief  [EN] Shift one new battery-channel voltage (mV) into the median-5
  *         history and return the filtered value. Voltage-burst-safe version
- *         of the current median stage: filters the DERIVED low/high voltages that
- *         feed the charger state machine and the central battery-lost
- *         detector, so a single-frame spike cannot fake "battery gone".
- *         [FA] نمونهٔ جدید ولتاژ نیم‌باتری (mV) را در تاریخچهٔ مدین-۳
+ *         of the current median stage: filters the DERIVED low/high voltages
+ *         that feed the charger state machine and the central battery-lost
+ *         detector, so spike bursts shorter than 3 frames cannot fake
+ *         "battery gone".
+ *         [FA] نمونهٔ جدید ولتاژ نیم‌باتری (mV) را در تاریخچهٔ مدین-۵
  *         جابه‌جا و مقدار فیلترشده را برمی‌گرداند؛ روی مقادیر مشتق‌شدهٔ
  *         low/high که خوراک شارژر و آشکارساز مرکزی قطع باتری هستند اعمال
- *         می‌شود تا اسپایک تک‌فریمی نتواند «باتری رفت» را جعل کند.
- * @param  uint8_t__channelIndex [EN] Battery channel 0 or 1 / کانال باتری
- * @param  uint32_t__sampleMv    [EN] New derived voltage sample in mV / ولتاژ جدید
- * @return uint32_t [EN] Median-of-3 filtered voltage in mV / ولتاژ مدین‌شده
+ *         می‌شود تا برست اسپایکی کوتاه‌تر از سه فریم نتواند «باتری رفت» را
+ *         جعل کند.
+ * @param  uint8_t__channelIndex [EN] Battery channel 0 or 1 / کانال باتری ۰ یا ۱
+ * @param  uint32_t__sampleMv    [EN] New derived voltage sample in mV, full 12 V range / ولتاژ جدید به mV
+ * @return uint32_t [EN] Median-of-5 filtered voltage in mV / ولتاژ مدین-۵‌شده به mV
  */
 static uint32_t func__Measurement_MedianFilterVoltageSample(uint8_t uint8_t__channelIndex,
                                                             uint32_t uint32_t__sampleMv)

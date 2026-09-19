@@ -22,6 +22,7 @@ INCLUDE_FLAGS=(
     -I Firmware/Rtos/Inc
     -I Firmware/Modules/Ui
     -I Firmware/Modules/Measurement
+    -I Firmware/Modules/McuPowerPath
     -I Firmware/Modules/Protection
     -I Firmware/Modules/Changeover
     -I Firmware/Modules/Charger

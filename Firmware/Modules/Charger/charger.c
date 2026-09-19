@@ -56,7 +56,7 @@ typedef struct
     uint16_t uint16_t__dutyBeforeTripPermille;
     uint8_t uint8_t__jitTripCount;
     charger_state_t charger_state_t__state;
-    uint32_t uint32_t__absorbAccumTicks; /* [EN] accumulated time inside the 14.4..14.5 V window, ticks / زمان جمع‌شده داخل پنجره ۱۴٫۴ تا ۱۴٫۵ ولت */
+    uint32_t uint32_t__absorbAccumTicks; /* [EN] accumulated soak time across the WHOLE absorb state, ticks / زمان جمع‌شدهٔ شستشو در کل حالت ابزورب */
     uint32_t uint32_t__absorbLastTick;   /* [EN] previous-pass tick while in ABSORB, for the accumulation delta / تیک پاس قبلی در ابزورب برای دلتای جمع */
     uint32_t uint32_t__retryDeadlineTick;
     uint32_t uint32_t__lastDutyStepTick;
@@ -598,18 +598,19 @@ static void func__Charger_BringupRegulateChannel(uint8_t uint8_t__channelIndex,
     func__Charger_ApplyDuty(uint8_t__channelIndex, uint16_t__nextDuty);
 }
 
-/* ==================== Regulation ==================== */
+/* ==================== Charger_BulkStartSettled / گیت ثبات اتصال ==================== */
 
 /**
- * @brief  [EN] True when the channel has seen installed + valid input +
- *         valid battery voltage continuously for at least
- *         CHG_CONNECT_SETTLE_MS (user directive 2026-09-19: let the
- *         connection settle 10..20 s, THEN start the charge). Used as the
- *         mandatory gate for every OFF -> BULK cold start; JIT resume and
- *         the 12.8 V reentry keep their already-live stamps so mid-cycle
- *         paths are not delayed.
- *         [FA] فقط وقتی اتصال به‌طور پیوسته حداقل ۱۵ ثانیه معتبر دیده شده
- *         اجازهٔ شروع بالک می‌دهد (دستور کاربر: اول ثبات، بعد شارژ).
+ * @brief  [EN] True when the channel has CONTINUOUSLY SEEN valid battery
+ *         voltage for at least CHG_CONNECT_SETTLE_MS (user directives
+ *         2026-09-19: the 15-second count starts the moment battery voltage
+ *         is seen - input validity is a separate upstream gate, not part of
+ *         this stamp). Mandatory gate for every OFF -> BULK cold start; JIT
+ *         resume and the 12.8 V reentry keep their already-live stamps so
+ *         mid-cycle paths are not delayed.
+ *         [FA] فقط وقتی ولتاژ باتری به‌طور پیوسته حداقل ۱۵ ثانیه دیده شده
+ *         اجازهٔ شروع بالک می‌دهد (دستور کاربر: شمارش از لحظهٔ دیدن ولتاژ
+ *         باتری؛ معتبر‌بودن ورودی گیت جداگانه‌ای بالادست است).
  * @param  uint8_t__channelIndex [EN] channel 0 or 1 / کانال ۰ یا ۱
  * @param  uint32_t__nowTick     [EN] current kernel tick / تیک فعلی کرنل
  * @return bool [EN] true = settled, bulk may start / true = ثابت شده، بالک مجاز
@@ -797,16 +798,20 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         uint32_t__targetMv = CHG_ABSORB_MV;
     }
 
-    /* [EN] Absorb is a VOLTAGE-HOLD window now (user directive 2026-09-19):
-       entered at 14.3 V, duty steps shrink to 0.1% so the 14.4 V setpoint
-       holds steady without the old boundary hunting, the 10-minute soak
-       counts only while 14.4..14.5 V, dipping below 14.3 V returns to BULK
-       and RESETS the soak (his requirement until the offset case is solved),
-       overshoot above 14.6 V gets coarse 0.5% down-steps to come back fast.
-       [FA] ابزورب = پنجره تثبیت ولتاژ: ورود ۱۴٫۳V، پله ۰٫۱٪ برای نگه‌داشت
-       ۱۴٫۴V بدون تلاطم مرز؛ شستشوی ۱۰ دقیقه فقط در ۱۴٫۴..۱۴٫۵V جمع می‌شود؛
-       افت زیر ۱۴٫۳V برگشت به بالک + ریست شستشو؛ عبور از ۱۴٫۶V کاهش سریع
-       ۰٫۵٪. */
+    /* [EN] Absorb is a VOLTAGE-HOLD state (user directives 2026-09-19):
+       entered at 14.3 V, fine 0.1% duty steps at HALF rate (up 2000 ms, down
+       1000 ms) creep the 14.4 V setpoint instead of hunting; the 10-minute
+       soak counts during the WHOLE absorb stay (the old 14.4..14.5 sub-
+       window stalled on the bench ~14 mV under its floor); dipping below
+       14.3 V while still in ABSORB means the hold failed -> back to BULK with
+       the soak RESET, overshoot above 14.6 V still escapes fast with coarse
+       0.5% down-steps. The soak only counts in ABSORB: FLOAT never passes
+       here (its <14.3 V descent rides the else-branch below).
+       [FA] ابزورب = حالت تثبیت ولتاژ (دستورهای کاربر): ورود ۱۴٫۳V، پلهٔ ریز
+       ۰٫۱٪ با نصف‌سرعت (صعود ۲۰۰۰ms، نزول ۱۰۰۰ms) تا ست‌پوینت ۱۴٫۴V بخزد نه
+       تندتند؛ شستشوی ۱۰ دقیقه‌ای کل مدتِ ابزورب جمع می‌شود (زیرپنجرهٔ قدیمی
+       ۱۴٫۴..۱۴٫۵ روی بنچ استال می‌کرد)؛ افت زیر ۱۴٫۳V در حین ابزورب یعنی
+       تثبیت شکست خورد → بالک + ریست شستشو؛ عبور از ۱۴٫۶V کاهش سریع ۰٫۵٪. */
     if (uint32_t__batteryMv >= CHG_ABSORB_ENTER_MV)
     {
         if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_BULK)
