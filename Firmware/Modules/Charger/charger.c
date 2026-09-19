@@ -56,7 +56,8 @@ typedef struct
     uint16_t uint16_t__dutyBeforeTripPermille;
     uint8_t uint8_t__jitTripCount;
     charger_state_t charger_state_t__state;
-    uint32_t uint32_t__absorbStartTick;
+    uint32_t uint32_t__absorbAccumTicks; /* [EN] accumulated time inside the 14.4..14.5 V window, ticks / زمان جمع‌شده داخل پنجره ۱۴٫۴ تا ۱۴٫۵ ولت */
+    uint32_t uint32_t__absorbLastTick;   /* [EN] previous-pass tick while in ABSORB, for the accumulation delta / تیک پاس قبلی در ابزورب برای دلتای جمع */
     uint32_t uint32_t__retryDeadlineTick;
     uint32_t uint32_t__lastDutyStepTick;
     uint32_t uint32_t__currentEmaMa;
@@ -118,7 +119,8 @@ static void func__Charger_SafeIdle(void)
             CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
                 CHG_STATE_OFF;
             CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint8_t__jitTripCount = 0u;
-            CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbStartTick = 0u;
+            CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbAccumTicks = 0u;
+            CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbLastTick = 0u;
         }
         func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
     }
@@ -379,7 +381,8 @@ static void func__Charger_ResetChannelToOff(uint8_t uint8_t__channelIndex)
 
     charger_channel_state_t__channel = &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
     charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_OFF;
-    charger_channel_state_t__channel->uint32_t__absorbStartTick = 0u;
+    charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+    charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
     charger_channel_state_t__channel->uint32_t__retryDeadlineTick = 0u;
     charger_channel_state_t__channel->uint32_t__lastDutyStepTick = 0u;
     charger_channel_state_t__channel->uint32_t__currentEmaMa = 0u;
@@ -511,7 +514,8 @@ static void func__Charger_ServiceRetry(uint32_t uint32_t__nowTick)
 
     uint16_t__retryDuty = func__Charger_RetryDuty(uint8_t__retryChannel);
     charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
-    charger_channel_state_t__channel->uint32_t__absorbStartTick = 0u;
+    charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+    charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
     charger_channel_state_t__channel->uint32_t__retryDeadlineTick = 0u;
 
 #if MODULE_JITTER
@@ -717,7 +721,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_OFF)
     {
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
-        charger_channel_state_t__channel->uint32_t__absorbStartTick = 0u;
+        charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+        charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
     }
     charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
     func__Charger_ApplyDuty(uint8_t__channelIndex, CHG_FIXED_DUTY_TEST_DUTY_PERMILLE);
@@ -727,7 +732,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_OFF)
     {
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
-        charger_channel_state_t__channel->uint32_t__absorbStartTick = 0u;
+        charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+        charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
         func__Charger_ApplyDuty(uint8_t__channelIndex, CHG_DUTY_START_PERMILLE);
         charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
         return;
@@ -739,16 +745,28 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         (uint32_t__batteryMv < CHG_REENTRY_MV))
     {
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
-        charger_channel_state_t__channel->uint32_t__absorbStartTick = 0u;
+        charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+        charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
         uint32_t__targetMv = CHG_ABSORB_MV;
     }
 
-    if (uint32_t__batteryMv >= CHG_ABSORB_MV)
+    /* [EN] Absorb is a VOLTAGE-HOLD window now (user directive 2026-09-19):
+       entered at 14.3 V, duty steps shrink to 0.1% so the 14.4 V setpoint
+       holds steady without the old boundary hunting, the 10-minute soak
+       counts only while 14.4..14.5 V, dipping below 14.3 V returns to BULK
+       and RESETS the soak (his requirement until the offset case is solved),
+       overshoot above 14.6 V gets coarse 0.5% down-steps to come back fast.
+       [FA] ابزورب = پنجره تثبیت ولتاژ: ورود ۱۴٫۳V، پله ۰٫۱٪ برای نگه‌داشت
+       ۱۴٫۴V بدون تلاطم مرز؛ شستشوی ۱۰ دقیقه فقط در ۱۴٫۴..۱۴٫۵V جمع می‌شود؛
+       افت زیر ۱۴٫۳V برگشت به بالک + ریست شستشو؛ عبور از ۱۴٫۶V کاهش سریع
+       ۰٫۵٪. */
+    if (uint32_t__batteryMv >= CHG_ABSORB_ENTER_MV)
     {
         if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_BULK)
         {
             charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_ABSORB;
-            charger_channel_state_t__channel->uint32_t__absorbStartTick = uint32_t__nowTick;
+            charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+            charger_channel_state_t__channel->uint32_t__absorbLastTick = uint32_t__nowTick;
         }
 
         if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT)
@@ -762,9 +780,39 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
 
         if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_ABSORB)
         {
+            uint32_t uint32_t__absorbDeltaTicks;
+
             uint32_t__absorbTicks = func__Charger_DurationTicks(CHG_ABSORB_HOLD_MS);
-            if ((uint32_t__nowTick - charger_channel_state_t__channel->uint32_t__absorbStartTick) >=
-                uint32_t__absorbTicks)
+
+            /* [EN] Accumulate the soak only while the sensed voltage sits
+               inside the timed window [14.4, 14.5] V; outside it the clock
+               pauses (14.3..14.4 ramp-in or >14.5 recovery), and below 14.3 V
+               the else-branch resets it to zero.
+               [FA] شستشو فقط داخل پنجره ۱۴٫۴..۱۴٫۵V جمع می‌شود؛ بیرون آن مکث،
+               و زیر ۱۴٫۳V ریست در شاخه پایین. */
+            uint32_t__absorbDeltaTicks =
+                (uint32_t)(uint32_t__nowTick -
+                           charger_channel_state_t__channel->uint32_t__absorbLastTick);
+            charger_channel_state_t__channel->uint32_t__absorbLastTick = uint32_t__nowTick;
+
+            if ((uint32_t__batteryMv >= CHG_ABSORB_MV) &&
+                (uint32_t__batteryMv <= CHG_ABSORB_TIMED_MAX_MV))
+            {
+                charger_channel_state_t__channel->uint32_t__absorbAccumTicks +=
+                    uint32_t__absorbDeltaTicks;
+                if ((uint32_t__absorbTicks != 0u) &&
+                    (charger_channel_state_t__channel->uint32_t__absorbAccumTicks >
+                     uint32_t__absorbTicks))
+                {
+                    /* [EN] Clamp against long-soak overflow. / سقف برای اضافه‌سرریز. */
+                    charger_channel_state_t__channel->uint32_t__absorbAccumTicks =
+                        uint32_t__absorbTicks;
+                }
+            }
+
+            if ((uint32_t__absorbTicks != 0u) &&
+                (charger_channel_state_t__channel->uint32_t__absorbAccumTicks >=
+                 uint32_t__absorbTicks))
             {
                 charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_FLOAT;
                 uint32_t__targetMv = CHG_FLOAT_MV;
@@ -773,15 +821,90 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     }
     else
     {
+        /* [EN] Below the 14.3 V window bottom: back to current-regulated BULK
+           and the soak is RESET (user directive until the offset case is
+           solved), so a deep dip starts a fresh 10-minute soak.
+           [FA] زیر کف پنجره ۱۴٫۳V: برگشت به بالک جریان‌رگوله و ریست کامل
+           شستشو (دستور کاربر). */
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
         uint32_t__targetMv = CHG_ABSORB_MV;
+        charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+        charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
     }
 
     uint16_t__nextDuty = charger_channel_state_t__channel->uint16_t__dutyPermille;
     uint32_t__upIntervalTicks = func__Charger_DurationTicks(CHG_DUTY_RAMP_UP_INTERVAL_MS);
     uint32_t__downIntervalTicks = func__Charger_DurationTicks(CHG_DUTY_RAMP_DOWN_INTERVAL_MS);
 
-    if (uint32_t__batteryMv < uint32_t__targetMv)
+    if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_ABSORB)
+    {
+        /* [EN] Voltage hold at 14.4 V with fine 0.1% duty steps (user
+           directive): no current band here - the voltage setpoint rules.
+           Above 14.6 V the step grows back to 0.5% so an overshoot (e.g.
+           load dropped) returns fast. Below 14.3 V the state machine above
+           already left ABSORB, so the fine-up branch covers 14.3..14.4 V.
+           [FA] تثبیت ولتاژ روی ۱۴٫۴V با پلهٔ ریز ۰٫۱٪ (دستور کاربر): بدون
+           باند جریان؛ بالای ۱۴٫۶V کاهش سریع با پلهٔ ۰٫۵٪ تا سریع برگردد. */
+        if (uint32_t__batteryMv > CHG_ABSORB_OVER_MV)
+        {
+            if ((uint32_t)(uint32_t__nowTick -
+                           charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
+                uint32_t__downIntervalTicks)
+            {
+                if (uint16_t__nextDuty > CHG_DUTY_STEP_PERMILLE)
+                {
+                    uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_PERMILLE);
+                }
+                else
+                {
+                    uint16_t__nextDuty = 0u;
+                }
+                charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
+            }
+        }
+        else if (uint32_t__batteryMv > uint32_t__targetMv)
+        {
+            if ((uint32_t)(uint32_t__nowTick -
+                           charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
+                uint32_t__downIntervalTicks)
+            {
+                if (uint16_t__nextDuty > CHG_DUTY_STEP_FINE_PERMILLE)
+                {
+                    uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_FINE_PERMILLE);
+                }
+                else
+                {
+                    uint16_t__nextDuty = 0u;
+                }
+                charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
+            }
+        }
+        else if (uint32_t__batteryMv < uint32_t__targetMv)
+        {
+            if ((uint32_t)(uint32_t__nowTick -
+                           charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
+                uint32_t__upIntervalTicks)
+            {
+                uint32_t__increasedDuty =
+                    (uint32_t)uint16_t__nextDuty + CHG_DUTY_STEP_FINE_PERMILLE;
+                if (uint32_t__increasedDuty > CHG_DUTY_MAX_PERMILLE)
+                {
+                    uint16_t__nextDuty = CHG_DUTY_MAX_PERMILLE;
+                }
+                else
+                {
+                    uint16_t__nextDuty = (uint16_t)uint32_t__increasedDuty;
+                }
+                charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
+            }
+        }
+        else
+        {
+            /* [EN] Exactly on the 14.4 V setpoint: hold.
+               / دقیقاً روی ۱۴٫۴V: نگه‌داشت. */
+        }
+    }
+    else if (uint32_t__batteryMv < uint32_t__targetMv)
     {
         /* [EN] Current regulation band with rate-limited steps: above 650 mA
            step duty DOWN (one 0.5% step per 500 ms), below 630 mA step duty
@@ -867,7 +990,8 @@ void func__Charger_Init(void)
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyBeforeTripPermille = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint8_t__jitTripCount = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state = CHG_STATE_OFF;
-        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbStartTick = 0u;
+        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbAccumTicks = 0u;
+        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbLastTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__retryDeadlineTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__lastDutyStepTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__currentEmaMa = 0u;
@@ -1058,7 +1182,8 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
             {
                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
                     CHG_STATE_OFF;
-                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbStartTick = 0u;
+                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbAccumTicks = 0u;
+                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbLastTick = 0u;
                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint8_t__jitTripCount = 0u;
             }

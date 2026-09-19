@@ -132,6 +132,22 @@
 #define CHG_PWM_PRESCALER             0u
 #define CHG_PWM_AUTO_RELOAD           1439u
 #define CHG_ABSORB_MV                 14400u
+/* [EN] Absorb as a voltage-hold window (user directive 2026-09-19): enter the
+ *      window at CHG_ABSORB_ENTER_MV, hold the 14.4 V setpoint with fine
+ *      0.1% duty steps (CHG_DUTY_STEP_FINE_PERMILLE) instead of the coarse
+ *      0.5% steps so the voltage stays put and the soak can actually finish;
+ *      the 10-minute soak counts only inside [14.4, 14.5] V, a dip below
+ *      14.3 V returns to BULK and RESETS the soak, and overshoot above
+ *      CHG_ABSORB_OVER_MV (14.6 V) gets coarse 0.5% down-steps to come back
+ *      fast. Still safely below FAULT_BAT_DISCONNECT_MV (14.8 V).
+ * [FA] ابزورب به‌صورت پنجره تثبیت ولتاژ: ورود ۱۴٫۳V، تثبیت ۱۴٫۴V با پلهٔ
+ *      ریز ۰٫۱٪ به‌جای ۰٫۵٪ تا ولتاژ ثابت بماند و شستشو تمام شود؛ جمع‌شدن
+ *      زمان فقط در ۱۴٫۴..۱۴٫۵V، زیر ۱۴٫۳V برگشت به بالک + ریست، بالای
+ *      ۱۴٫۶V کاهش سریع ۰٫۵٪. */
+#define CHG_ABSORB_ENTER_MV           14300u
+#define CHG_ABSORB_TIMED_MAX_MV       14500u
+#define CHG_ABSORB_OVER_MV            14600u
+#define CHG_DUTY_STEP_FINE_PERMILLE       1u
 #define CHG_FLOAT_MV                  13500u
 #define CHG_REENTRY_MV               12800u
 #define CHG_BULK_CURRENT_MAX_MA       650u
