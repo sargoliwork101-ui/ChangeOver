@@ -56,6 +56,18 @@ static uint32_t UINT32_T__G__Current2FilteredMa;
  *      اضافه حذف می‌کند تا نیازی به قوی‌ترکردن فیلتر میانگین نباشد. */
 static uint32_t UINT32_T__G__CurrentMedianHistoryMa[2][3];
 
+/* [EN] Median-of-3 history per battery channel voltage (0=v_bat_low,
+   1=v_bat_high), added 2026-09-19 after the user approved the proposal:
+   one-frame ADC spikes on the switching node crossed 14.8 V and made the
+   central battery-lost detection fire false buzzers with every debounce
+   (30..200 ms). The same median trick already proven on the current
+   channels kills a single-frame spike with ZERO added lag on real voltage
+   steps, so the debounce walks back to the fast 50 ms.
+   [FA] تاریخچهٔ مدین-۳ ولتاژ دو نیم‌باتری (دستور کاربر): اسپایک
+   تک‌فریمی ADC روی گره سوئیچینگ، آلارم قطع باتری را الکی صدا می‌زد؛ همان
+   مدین اثبات‌شدهٔ کانال‌های جریان آن را بدون تأخیر نابود می‌کند. */
+static uint32_t UINT32_T__G__BatVoltageMedianHistoryMv[2][3];
+
 static uint32_t func__Measurement_Median3(uint32_t uint32_t__aMa,
                                           uint32_t uint32_t__bMa,
                                           uint32_t uint32_t__cMa)
@@ -91,6 +103,40 @@ static uint32_t func__Measurement_MedianFilterSample(uint8_t uint8_t__channelInd
     return func__Measurement_Median3(uint32_t__historyMa[0],
                                      uint32_t__historyMa[1],
                                      uint32_t__historyMa[2]);
+}
+
+/**
+ * @brief  [EN] Shift one new battery-channel voltage (mV) into the median-3
+ *         history and return the filtered value. Identical pattern to the
+ *         current median stage; filters the DERIVED low/high voltages that
+ *         feed the charger state machine and the central battery-lost
+ *         detector, so a single-frame spike cannot fake "battery gone".
+ *         [FA] نمونهٔ جدید ولتاژ نیم‌باتری (mV) را در تاریخچهٔ مدین-۳
+ *         جابه‌جا و مقدار فیلترشده را برمی‌گرداند؛ روی مقادیر مشتق‌شدهٔ
+ *         low/high که خوراک شارژر و آشکارساز مرکزی قطع باتری هستند اعمال
+ *         می‌شود تا اسپایک تک‌فریمی نتواند «باتری رفت» را جعل کند.
+ * @param  uint8_t__channelIndex [EN] Battery channel 0 or 1 / کانال باتری
+ * @param  uint32_t__sampleMv    [EN] New derived voltage sample in mV / ولتاژ جدید
+ * @return uint32_t [EN] Median-of-3 filtered voltage in mV / ولتاژ مدین‌شده
+ */
+static uint32_t func__Measurement_MedianFilterVoltageSample(uint8_t uint8_t__channelIndex,
+                                                            uint32_t uint32_t__sampleMv)
+{
+    uint32_t *uint32_t__historyMv;
+
+    if (uint8_t__channelIndex >= 2u)
+    {
+        return uint32_t__sampleMv;
+    }
+
+    uint32_t__historyMv = UINT32_T__G__BatVoltageMedianHistoryMv[uint8_t__channelIndex];
+    uint32_t__historyMv[0] = uint32_t__historyMv[1];
+    uint32_t__historyMv[1] = uint32_t__historyMv[2];
+    uint32_t__historyMv[2] = uint32_t__sampleMv;
+
+    return func__Measurement_Median3(uint32_t__historyMv[0],
+                                     uint32_t__historyMv[1],
+                                     uint32_t__historyMv[2]);
 }
 
 /* ==================== Measurement_FilterCurrent / فیلتر جریان ==================== */
@@ -321,6 +367,18 @@ void func__Measurement_Run(void)
     {
         uint32_t__batteryHighMv = 0u;
     }
+
+    /* [EN] Median-3 on both derived battery channel voltages, right where the
+       charger and the battery-lost detector consume them: a single-frame ADC
+       spike on the switching node can no longer fake a >14.8 V jump; real
+       steps pass with at most one extra frame of history, no moving average.
+       [FA] مدین-۳ روی ولتاژ مشتق‌شدهٔ هر دو نیم‌باتری دقیقاً همان‌جایی که
+       شارژر و آشکارساز قطع باتری مصرفش می‌کنند؛ اسپایک تک‌فریمی دیگر پرش
+       بالای ۱۴٫۸V را جعل نمی‌کند و پله واقعی بدون تأخیر عبور می‌کند. */
+    uint32_t__batteryLowMv =
+        func__Measurement_MedianFilterVoltageSample(0u, uint32_t__batteryLowMv);
+    uint32_t__batteryHighMv =
+        func__Measurement_MedianFilterVoltageSample(1u, uint32_t__batteryHighMv);
     UINT32_T__G__Current2FilteredMa =
         func__Measurement_FilterCurrent(
             UINT32_T__G__Current2FilteredMa,
