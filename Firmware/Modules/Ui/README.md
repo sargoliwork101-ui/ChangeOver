@@ -60,16 +60,23 @@ API بوق: `func__Ui_Buzzer_Tick(period,duty,beepCount,gap)` غیرمسدودک
 گپ 100ms.
 
 ### سناریو ۳: Charging (5% + فاز-حفاظ non-blocking)
-- شرط: ورودی وصل و `!ChargingFullActive` (خام <100 ورود، خام 95-100 حفظ InputOk). `Input 24V Battery 25V → سبز ثابت زرد چشمک`
-- سبز ثابت، زرد مانده تا فول با `chargingStable 5%`: `remaining=100-chargingStable`, `yellowOn=remaining*10ms(min10)`, `yellowOff=1000-yellowOn`. `stable57` با `53..61` حفظ (25V jitter بی‌اثر)، `52/62`→ تغییر.
+- شرط: ورودی وصل و `!ChargingFullActive` **و وجودِ کانالِ شارژِ فعال** (`func__Charger_IsAnyChannelActive()` از ۲۰۲۶-۰۹-۱۹: چشمک زرد فقط وقتی شارژر واقعاً **پمپ** می‌کند - کانال ۱، ۲ یا هر دو در بالک/ابزورب؛ FLOAT پارک‌شده‌با-دیوتی-صفر یعنی سیکل تمام شده، فعال حساب نمی‌شود؛ OFF/JIT-retry/انتظار-ورودی/خطای-نهایی/قطع-باتری هم فعال نیست ⇒ سبز ثابت). `Input 24V Battery 25V → سبز ثابت زرد چشمک`
+- سبز ثابت، زرد «مانده تا فول» با `chargingStable 5%`: `remaining=100-chargingStable`, `yellowOn=remaining*10ms(min10)`, `yellowOff=1000-yellowOn` — از ۲۰۲۶-۰۹-۱۹ دوباره برگشته به همین معنا با دستور نهایی کاربر: **هرچه پرتر، زرد کوتاه‌تر** (۹۵٪ شارژ ⇒ ۵۰ms از ۱۰۰۰ms روشن؛ باتری خالی ≈ دائم‌روشن). `stable57` با `53..61` حفظ (25V jitter بی‌اثر)، `52/62`→ تغییر.
 - زرد فاز-محور: `YellowOn/Off`, `phaseStartTick`, `OnMs/OffMs` حفظ فاز روی تغییر stable، بدون delay 1s. `CHARGING_BLINK_PERIOD 1000`, `YELLOW_MIN_OFF 10`.
 
 ### سناریو ۴: InputOverVoltage
 - `>28000` ورود، `<=27000` پاک، 27-28V حفظ. سبز ثابت زرد خاموش قرمز 50% 1s بوق 1s هر 10s. `THRESHOLD 28000 HYSTERESIS 1000`.
 
+### سناریو ۵: BatLost (قطع باتری - از پرچم متمرکز Fault)
+- **شرط:** فقط قفل‌بودن `FAULT_CHARGER_BAT_LOST` (مالکیت Set/Clear با ماژول Fault؛ UI فقط می‌خواند و هیچ لچی ندارد). هر دو حالت شناسایی Fault اینجا نمایش داده می‌شوند: پمپ >14.8V حین شارژ یا نبود باتری با ورودی سالم (هر دو نیم <6V به‌مدت ۱s).
+- **الگو (توافق ۲۰۲۶-۰۹-۱۹):** سبز ثابت (ورودی حاضر است)، زرد خاموش، **قرمز چشمک‌تند ۵۰/۵۰ در دوره ۱s** (متمایز از پالس باریک اضافه‌ولتاژ) و **بوق: ۳ بیپ کوتاه + مکث**، دوره تکرار ۳s (پنجره بیپ ۹۰۰ms، گپ ۱۰۰ms بین بیپ‌ها). `UI_BAT_LOST_*` در `ui_led.h`.
+- **جدایی از بوق بحرانی BatteryRun:** آن فقط با ورودی قطع اجرا می‌شود و این پرچم فقط در دنیای ورودی-حاضر ست می‌شود؛ به‌علاوه در `Ui_Tick` این سناریو **بعد از OverVoltage و قبل از همه سناریوهای نرمال** چک و return می‌شود، پس قاطی شدن محال است.
+- **خروج:** با پاک‌شدن پرچم توسط Fault (باتری برگشت + ۱s پایدار)، سناریوی قبلی خودبه‌خود برمی‌گردد؛ پاک‌سازی بوق را همان سناریو بعدی با tick صفر انجام می‌دهد.
+
 ### خلاصه انتخاب
 ```
 OverVoltage → خطا
+else if Fault&FAULT_CHARGER_BAT_LOST → BatLost
 else if !InputPresent → BatteryRun (2%+0/1 stable)
 else if InputPresent:
   Update Full hysteresis (raw100→InputOk, <95→Charging)
@@ -80,8 +87,12 @@ BoardTest → یک‌بار قرمز/زرد/سبز + بوق
 ```
 
 ## تاریخچه
+
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-19 | چشمک زرد Charging فقط وقتی `func__Charger_IsAnyChannelActive()` (دستور کاربر؛ هرکدام از دو کانال یا هر دو فعال)؛ در غیر این‌صورت در شاخه ورودی-وصل، به‌جای چشمک، سبز ثابت |
+| 2026-09-19 | معنای زرد «مانده تا فول» بازگردانده شد (دستور نهایی کاربر): هرچه پرتر روشن کوتاه‌تر |
+| 2026-09-19 | سناریو ۵ BatLost از پرچم `FAULT_CHARGER_BAT_LOST` (قرمز چشمک‌تند ۵۰/۵۰ + سبز ثابت + ۳ بیپ/مکث) با اولویت بعد از OverVoltage و قبل از نرمال‌ها؛ جدایی کامل از بوق بحرانی دشارژ. |
 | 2026-09-17 | هیسترزیس BatteryRun 2%+0/1، **Charging 5%** (`chargingStable 53..61 حفظ`)، **فول 100/95** (ورود 100 ماندن تا <95)، حفظ فاز سبز/زرد، Charging/InputOk non-blocking، README/Excel/host_test به‌روز، RTOS/stack 2.2. |
 | 2026-09-17 | هیسترزیس 2% + فاز سبز + InputOk/Charging non-blocking (قبلی 2.1). |
 | 2026-09-16 | snapshot واقعی + safe-off + flag پیوسته 21000/21200؛ Validation 2.0 |

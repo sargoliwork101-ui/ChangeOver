@@ -175,6 +175,9 @@ def green_timing(stable, period=UI_BLINK_PERIOD_MS, min_off=UI_GREEN_MIN_OFF_MS)
     return on, off
 
 def yellow_timing(stable, period=UI_CHARGING_BLINK_PERIOD_MS, min_off=UI_CHARGING_YELLOW_MIN_OFF_MS):
+    # [EN] REMAINING to full drives the ON time (final user directive 2026-09-19):
+    # more charged -> shorter ON; 95% charged (5 remaining) -> 50 ms per 1000 ms.
+    # [FA] «مانده تا فول» زمان روشن بودن را می‌دهد: پرتر کوتاه‌تر؛ ۹۵٪ شارژ ⇒ ۵۰ms.
     remaining=UI_PERCENT_FULL-stable
     per=period//UI_PERCENT_SCALE
     on=remaining*per
@@ -299,6 +302,13 @@ def run_charging_hysteresis_tests():
     c.stable=57; c.init=True
     assert_equal(c.update(62),62,"57->62 change")
     print("53..61 keep PASS, outside 5 change PASS")
+    # [EN] Yellow ON must follow the REMAINING percent (final user directive
+    # 2026-09-19): more charged -> shorter ON; 95% charged (5 remaining) ->
+    # 50 ms ON per 1000 ms; 5% charged -> 950 ms ON.
+    # [FA] زرد بر اساس «مانده»: ۹۵٪ شارژ ⇒ ۵۰ms روشن؛ ۵٪ شارژ ⇒ ۹۵۰ms روشن.
+    assert_equal(yellow_timing(95), (50, 950), "yellow 95% charged -> 50ms on")
+    assert_equal(yellow_timing(5), (950, 50), "yellow 5% charged -> 950ms on")
+    assert_equal(yellow_timing(99), (10, 990), "yellow 99% charged -> min 10ms on")
     # yellow timing stable
     on57,off57=yellow_timing(57)
     on53,off53=yellow_timing(53) # diff but should not be used if stable 57
@@ -358,10 +368,54 @@ def run_full_hysteresis_tests():
     assert_equal(f.update(98),True,"stay InputOk at 98")
     print("Full decision PASS")
 
+def run_batlost_tests():
+    """[EN] Battery-lost scenario: LED/buzzer pattern math + source contracts.
+       [FA] سناریوی قطع باتری: ریاضی الگو + قراردادهای سورس."""
+    print("\n=== BatLost scenario (central fault flag) ===")
+    ui_led_h = open(LED_HEADER, "r", encoding="utf-8", errors="ignore").read()
+    ui_led_c = open(os.path.join(BASE_DIR, "ui_led.c"), "r", encoding="utf-8", errors="ignore").read()
+
+    # [EN] Header must own the BatLost constants and prototype.
+    # [FA] هدر باید ثابت‌ها و پروتوتایپ سناریو را داشته باشد.
+    assert_true(re.search(r"#define UI_BAT_LOST_LED_PERIOD_MS\s+1000u", ui_led_h), "batlost LED period 1000 ms")
+    assert_true(re.search(r"#define UI_BAT_LOST_LED_DUTY_PERCENT\s+50u", ui_led_h), "batlost LED duty 50%")
+    assert_true(re.search(r"#define UI_BAT_LOST_BEEP_PERIOD_MS\s+3000u", ui_led_h), "batlost beep period 3000 ms")
+    assert_true(re.search(r"#define UI_BAT_LOST_BEEP_DURATION_MS\s+900u", ui_led_h), "batlost beep window 900 ms")
+    assert_true(re.search(r"#define UI_BAT_LOST_BEEP_COUNT\s+3u", ui_led_h), "batlost beep count 3")
+    assert_true(re.search(r"#define UI_BAT_LOST_BEEP_GAP_MS\s+100u", ui_led_h), "batlost beep gap 100 ms")
+    assert_true("void func__Ui_ScenarioBatLost_Tick(void);" in ui_led_h, "batlost prototype in header")
+
+    # [EN] Pattern math must match the shared buzzer engine's expectations:
+    #      duty = 900*100/3000 = 30 -> window 900, three 233/233/234 ms beeps,
+    #      100 ms gaps, 2100 ms silence. Valid per min-period/min-gap rules.
+    # [FA] ریاضی الگو باید با موتور بوق سازگار باشد.
+    period = defines.get("UI_BAT_LOST_BEEP_PERIOD_MS", 3000)
+    duration = defines.get("UI_BAT_LOST_BEEP_DURATION_MS", 900)
+    count = defines.get("UI_BAT_LOST_BEEP_COUNT", 3)
+    gap = defines.get("UI_BAT_LOST_BEEP_GAP_MS", 100)
+    duty = (duration * UI_PERCENT_SCALE) // period
+    assert_equal(duty, 30, "batlost beep duty percent")
+    assert_equal(calculate_pattern(period, duty, count, gap), (900, [233, 233, 234], 100, 2100), "batlost 3-beep pattern")
+    assert_true(period >= UI_BUZZER_MIN_PERIOD_MS, "batlost period >= min")
+    assert_true(gap >= UI_BUZZER_MIN_GAP_MS, "batlost gap >= min")
+    assert_true(calculate_next_check_ms(period, duty, count, gap) != UI_BUZZER_INVALID_RESULT, "batlost buzzer pattern valid")
+
+    # [EN] Trigger: only the central fault bit, AFTER overvoltage, with return.
+    # [FA] ماشه: فقط پرچم متمرکز، بعد از اضافه‌ولتاژ، با return.
+    assert_true("func__Ui_ScenarioBatLost_Tick" in ui_led_c, "batlost scenario implemented")
+    assert_true("func__Fault_Get() & FAULT_CHARGER_BAT_LOST" in ui_led_c, "batlost trigger reads the central fault bit")
+    assert_true("func__Charger_IsAnyChannelActive()" in ui_led_c, "charging yellow must be gated by the charger being active (user directive)")
+    assert_true('#include "charger.h"' in ui_led_c, "ui must include charger.h for the activity query")
+    ov_idx = ui_led_c.find("func__Ui_ScenarioInputOverVoltage_Tick();\n        return;")
+    bl_idx = ui_led_c.find("func__Ui_ScenarioBatLost_Tick();")
+    assert_true(ov_idx != -1 and bl_idx != -1 and ov_idx < bl_idx, "batlost has priority right after overvoltage")
+    print("BatLost scenario PASS")
+
 def main():
     print("=== UI Host Test (buzzer + BatteryRun 2%+0/1 + Charging 5% + Full 100/95 + phase) ===")
     run_assertions()
     print("ALL BUZZER TESTS PASSED")
+    run_batlost_tests()
     run_battery_hysteresis_tests()
     run_charging_hysteresis_tests()
     run_full_hysteresis_tests()

@@ -132,9 +132,42 @@
 #define CHG_PWM_PRESCALER             0u
 #define CHG_PWM_AUTO_RELOAD           1439u
 #define CHG_ABSORB_MV                 14400u
+/* [EN] Absorb as a voltage-hold window (user directive 2026-09-19): enter the
+ *      window at CHG_ABSORB_ENTER_MV, hold the 14.4 V setpoint with fine
+ *      0.1% duty steps (CHG_DUTY_STEP_FINE_PERMILLE) instead of the coarse
+ *      0.5% steps so the voltage stays put; the 10-minute soak counts while
+ *      the WHOLE ABSORB state lasts (his final directive), a dip below 14.3 V
+ *      returns to BULK and RESETS the soak, and overshoot above
+ *      CHG_ABSORB_OVER_MV (14.6 V) gets coarse 0.5% down-steps to come back
+ *      fast. Still safely below FAULT_BAT_DISCONNECT_MV (14.8 V).
+ * [FA] ابزورب به‌صورت پنجره تثبیت ولتاژ: ورود ۱۴٫۳V، تثبیت ۱۴٫۴V با پلهٔ
+ *      ریز ۰٫۱٪ به‌جای ۰٫۵٪؛ شستشوی ۱۰ دقیقه‌ای کل مدتِ حالت ابزورب
+ *      جمع می‌شود (دستور نهایی)، زیر ۱۴٫۳V برگشت به بالک + ریست، بالای
+ *      ۱۴٫۶V کاهش سریع ۰٫۵٪. */
+#define CHG_ABSORB_ENTER_MV           14300u
+#define CHG_ABSORB_OVER_MV            14600u
+#define CHG_DUTY_STEP_FINE_PERMILLE       1u
 #define CHG_FLOAT_MV                  13500u
 #define CHG_REENTRY_MV               12800u
-#define CHG_BULK_CURRENT_MAX_MA       675u
+/* [EN] How long a channel must CONTINUOUSLY SEE battery voltage before any
+ *      bulk charge start is allowed (user refinement 2026-09-19: the count
+ *      starts the moment battery voltage is seen - input validity is NOT
+ *      part of it; original directive the same day: "give it 10..20 s to
+ *      settle the battery is connected, then start"). 15 s = middle of his
+ *      window. Mid-cycle paths (JIT resume, 12.8 V reentry) stay exempt
+ *      because their presence stamp is already live by definition. This gate
+ *      also kills the bat-lost FLAP: flag clear -> BULK -> re-pump -> flag
+ *      set again every 30 s (and the yellow blink inside the buzzer that
+ *      came with it) - with the cable out the voltage is invalid, the stamp
+ *      stays 0, and BULK never re-arms.
+ * [FA] چند ثانیه «دیده‌شدن ولتاژ باتری» پیوسته لازم است تا شروعِ بالک
+ *      اجازه بگیرد (اصلاحیهٔ کاربر: شمارش از لحظهٔ دیدن ولتاژ باتری؛ دستورِ
+ *      اصلی همان روز: ۱۰ تا ۲۰ ثانیه ثبات، بعد شارژ؛ ۱۵ ثانیه انتخاب شد).
+ *      مسیرهای میان‌چرخه معاف‌اند. همین گیت چرخهٔ پینگ‌پنگِ
+ *      قطع‌باتری (آلارم پاک → بالک → پمپ → آلارم دوباره، و چشمک زرد وسط
+ *      بوق) را کاملاً می‌کشد. */
+#define CHG_CONNECT_SETTLE_MS        15000u
+#define CHG_BULK_CURRENT_MAX_MA       650u
 /* [EN] TEMPORARY bench diagnostic (2026-09-18): fixed duty, NO ramp and NO
  *      band regulation. Set to 0 to return to normal charge control. When 1,
  *      after all the usual gates (valid snapshot, Vin >= 22000 mV, battery
@@ -155,11 +188,13 @@
 /* [EN] Output-current regulation band: below CHG_REGULATE_LOW_MA the duty
  *      steps up, above CHG_BULK_CURRENT_MAX_MA it steps down, inside the band
  *      it holds. Only a hard fault (> CHG_CURRENT_HARD_FAULT_MA) resets the
- *      channel. This band is what keeps the normal path from oscillating
- *      ramp/cut/restart around a single 675 mA threshold.
- * [FA] باند تنظیم جریان خروجی: زیر ۶۲۰ افزایش دیوتی، بالای ۶۷۵ کاهش دیوتی،
- *      داخل باند نگه‌داشت. فقط خطای سخت (بالاتر از ۹۵۰) کانال را ریست می‌کند. */
-#define CHG_REGULATE_LOW_MA            620u
+ *      channel. Band narrowed 620..675 -> 630..650 mA (~20 mA tolerance) on
+ *      user bench directive 2026-09-18: the measurement and estimate filters
+ *      are now strong enough for a tight band without hunting.
+ * [FA] باند تنظیم جریان خروجی: زیر ۶۳۰ افزایش دیوتی، بالای ۶۵۰ کاهش دیوتی،
+ *      داخل باند نگه‌داشت (~۲۰mA تلورانس طبق دستور). فقط خطای سخت (بالاتر
+ *      از ۹۵۰) کانال را ریست می‌کند. */
+#define CHG_REGULATE_LOW_MA            630u
 #define CHG_CURRENT_HARD_FAULT_MA      950u
 /* [EN] First-order low-pass (EMA) on the estimated output current before the
  *      regulation band: ema += (sample - ema) >> SHIFT on every 10 ms pass,
@@ -209,6 +244,16 @@
  *      نزدیک باند با هیسترزیس). */
 #define CHG_DUTY_RAMP_UP_INTERVAL_MS   1000u
 #define CHG_DUTY_RAMP_DOWN_INTERVAL_MS  500u
+/* [EN] ABSORB pacing (user directive 2026-09-19): inside the 14.3-14.6 V
+ *      voltage hold the fine 0.1% steps run at HALF the bulk rate, so the
+ *      setpoint creeps instead of twitching (one up-step per 2000 ms, one
+ *      down-step per 1000 ms). The >14.6 V overshoot escape keeps the fast
+ *      500 ms coarse cadence - it is protection, not regulation.
+ * [FA] کِرن‌دنِ پله در ابزورب (دستور کاربر): پله‌های ۰٫۱٪ با نصف سرعت بالک،
+ *      یعنی صعود هر ۲۰۰۰ms و نزول هر ۱۰۰۰ms تا ست‌پوینت آهسته بخزد؛ فرار از
+ *      اورشوت بالای ۱۴٫۶V همان سرعت ۵۰۰ms امنیتی را حفظ می‌کند. */
+#define CHG_DUTY_RAMP_UP_INTERVAL_ABSORB_MS   2000u
+#define CHG_DUTY_RAMP_DOWN_INTERVAL_ABSORB_MS 1000u
 #define CHG_DUTY_RETRY_SECOND_MAX       100u
 /* [EN] DCM ceiling: 50% max - anything higher risks core/MOSFET overlap and
  *      burns the MOSFET (board requirement). The regulation band settles near
@@ -217,6 +262,15 @@
  *      تنظیم نزدیک ~۱۹٪ است؛ این فقط کران بالاست. */
 #define CHG_DUTY_MAX_PERMILLE          500u
 #define CHG_ABSORB_HOLD_MS          600000u
+/* [EN] Battery-lost (both cases: pumped >14.8 V while charging, and battery
+ *      absent with valid input) is OWNED BY THE FAULT MODULE since 2026-09-19
+ *      per user directive: fault.c evaluates the snapshot centrally and
+ *      latches/clears FAULT_CHARGER_BAT_LOST. The charger only MIRRORS the
+ *      bit into CHG_STATE_BAT_LOST (stop PWM now) and releases the channel
+ *      to OFF when the bit clears, so a soft BULK restart at 1% duty follows.
+ *      Thresholds/timers: FAULT_BAT_* in fault.h, not here.
+ * [FA] تشخیص قطع باتری از ۲۰۲۶-۰۹-۱۹ به مالکیت ماژول Fault منتقل شد؛ شارژر
+ *      فقط آینهٔ پرچم است و آستانه/تایمری اینجا ندارد (fault.h ببین). */
 #define CHG_JIT_LOCKOUT_MS            3000u
 #define CHG_RELAY_SETTLE_MS            100u
 /* [EN] 2000 mV is battery-sense validity for the same channel, NOT a charge
@@ -263,5 +317,17 @@ void func__Charger_Init(void);
  */
 void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap,
                             app_state_t app_state_t__state);
+
+/**
+ * @brief  [EN] True while at least one installed channel is actually
+ *         charging - its state machine sits in BULK, ABSORB or FLOAT
+ *         (2026-09-19, for the UI: the charging yellow blink is shown only
+ *         while this returns true, for channel 1, channel 2 or both).
+ *         [FA] true وقتی دست‌کم یک کانال نصب‌شده واقعاً در حال شارژ است
+ *         (بالک/ابزورب/فلوت)؛ برای چشمک زرد شارژ در UI: با فعال‌بودن کانال
+ *         ۱ یا ۲ یا هر دو.
+ * @return bool [EN] true if any channel is charging / اگر هر کانالی شارژ کند true
+ */
+bool func__Charger_IsAnyChannelActive(void);
 
 #endif /* CHARGER_H */

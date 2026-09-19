@@ -16,6 +16,15 @@
 #include "bsp_gpio.h"
 #include "cmsis_os2.h"
 #include "rtos_time.h"
+#include "modules_enable.h"
+
+#if MODULE_FAULT
+#include "fault.h"
+#endif
+
+#if MODULE_CHARGER
+#include "charger.h"
+#endif
 
 #include <stdbool.h>
 
@@ -722,6 +731,58 @@ static void func__Ui_ScenarioInputOverVoltage_Tick(void)
         UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS);
 }
 
+/* ==================== Scenario BatLost Tick / تیک سناریوی قطع باتری ==================== */
+
+/**
+ * @brief  [EN] Battery-lost announcement: red fast blink (50% of a 1 s period,
+ *         distinctly unlike the slow overvoltage pulse), green steady since
+ *         the input is present in both detection cases, and the periodic
+ *         three-short-beeps-plus-pause buzzer pattern. The pattern phase uses
+ *         the absolute kernel tick so no state needs remembering here; the
+ *         fault bit itself is owned (set and cleared) only by the Fault
+ *         module. Must be called every Ui pass while active so the buzzer
+ *         pattern advances.
+ *         [FA] اعلان قطع باتری: قرمز چشمک‌تند ۵۰٪ در دوره یک‌ثانیه، سبز
+ *         ثابت (ورودی حاضر است) و الگوی سه بیپ کوتاه + مکث. فاز از تیک مطلق
+ *         گرفته می‌شود تا وضعیتی لازم نباشد؛ خود پرچم فقط در Fault مدیریت
+ *         می‌شود. تا وقتی فعال است هر پاس صدا زده شود.
+ */
+void func__Ui_ScenarioBatLost_Tick(void)
+{
+    uint32_t uint32_t__nowTick;
+    uint32_t uint32_t__elapsedMs;
+    uint32_t uint32_t__phaseMs;
+    bool     bool__redOn;
+
+    /* [EN] Foreign blink/beep states belong to other scenarios; stop them so
+       nothing from BatteryRun/Charging bleeds into this pattern.
+       [FA] وضعیت‌های چشمک/بوق سناریوهای دیگر ریست شود تا اثری از آن‌ها در
+       این الگو نیفتد. */
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
+    func__Ui_ResetChargingYellowBlink();
+
+    uint32_t__nowTick   = osKernelGetTickCount();
+    uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(uint32_t__nowTick);
+    uint32_t__phaseMs   = uint32_t__elapsedMs % UI_BAT_LOST_LED_PERIOD_MS;
+
+    /* [EN] 0..50% of the period = ON, 50..100% = OFF -> 500/500 ms fast blink.
+       [FA] نیمه اول دوره روشن، نیمه دوم خاموش ⇒ چشمک تند ۵۰۰/۵۰۰. */
+    bool__redOn = (uint32_t__phaseMs <
+                   ((UI_BAT_LOST_LED_PERIOD_MS * UI_BAT_LOST_LED_DUTY_PERCENT) /
+                    UI_PERCENT_SCALE));
+
+    func__green(true);
+    func__yellow(false);
+    func__red(bool__redOn);
+
+    (void)func__Ui_Buzzer_Tick(
+        UI_BAT_LOST_BEEP_PERIOD_MS,
+        (uint8_t)UI_BAT_LOST_BEEP_DUTY_PERCENT,
+        (uint8_t)UI_BAT_LOST_BEEP_COUNT,
+        UI_BAT_LOST_BEEP_GAP_MS);
+}
+
 /* ==================== Scenario InputOk / سناریوی ورودی عادی ==================== */
 
 /**
@@ -787,8 +848,15 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
         return;
     }
 
-    /* [EN] Non-linear formula with chargingStablePercent: remaining drives yellow ON time.
-       [FA] فرمول غیرخطی با درصد پایدار شارژ: مانده تا فول، زمان روشن‌بودن زرد را می‌دهد. */
+    /* [EN] Non-linear formula with chargingStablePercent: the REMAINING to
+       full drives yellow ON time (final user directive 2026-09-19): the more
+       charged the battery, the SHORTER the yellow ON, so with 5% remaining
+       it blinks 50 ms per 1000 ms and a nearly empty battery keeps yellow
+       almost fully ON.
+       [FA] فرمول غیرخطی با درصد پایدار شارژ: «مانده تا فول» زمان روشن‌بودن
+       زرد را می‌دهد (دستور نهایی کاربر): هرچه باتری پرتر، روشن‌بودن زرد
+       کوتاه‌تر؛ با ۵٪ مانده، ۵۰ms از ۱۰۰۰ms چشمک می‌زند و باتری خالی زرد را
+       تقریباً دائم روشن نگه می‌دارد. */
     uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__stablePercent;
     uint32_t__periodPerPercent = APP_CONFIG.ui_charging_blink_period_ms / UI_PERCENT_SCALE;
     uint32_t__yellowOnMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
@@ -1011,6 +1079,24 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
         return;
     }
 
+#if MODULE_FAULT
+    /* [EN] Battery-lost, priority 2 (overvoltage first, this second, normal
+       scenarios after). The Fault module latches and clears the bit; while it
+       is set we a) show this scenario and b) return, so the BatteryRun
+       critical beep (input-absent world) can never overlap with this pattern
+       (input-present world). When the battery is back and the settle time
+       passed, the bit clears and the previous scenario resumes by itself.
+       [FA] قطع باتری با اولویت دوم (بعد از اضافه‌ولتاژ، قبل از سناریوهای
+       نرمال). فقط تا وقتی پرچم متمرکز قفل است نشان می‌دهیم و return می‌کنیم
+       تا هرگز با بوق بحرانی دشارژ قاطی نشود؛ با پاک‌شدن پرچم، سناریوی قبلی
+       خودبه‌خود برمی‌گردد. */
+    if ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)
+    {
+        func__Ui_ScenarioBatLost_Tick();
+        return;
+    }
+#endif
+
     uint32_t__batteryClampedMv = uint32_t__batteryVoltageMv;
     if (uint32_t__batteryClampedMv > APP_CONFIG.ui_bat_v_max_mv)
     {
@@ -1028,6 +1114,20 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
                [FA] هیسترزیس فول: ورود در ۱۰۰، ماندن تا کمتر از ۹۵. */
             func__Ui_ScenarioInputOk();
         }
+#if MODULE_CHARGER
+        else if (func__Charger_IsAnyChannelActive() == false)
+        {
+            /* [EN] Not full and NO channel charging (OFF / JIT retry /
+               input wait / final fault / battery-lost): the yellow charge
+               blink must NOT run - the user wants it only while the charger
+               module really works (channel 1, channel 2 or both). Green
+               steady stays as the honest "input ok" face instead.
+               [FA] نه فول و نه هیچ کانالِ شارژِ فعال: چشمک زرد نشان داده
+               نمی‌شود - کاربر خواسته چشمک فقط وقتی شارژر واقعاً کار کند؛
+               سبز ثابت به‌جای آن. */
+            func__Ui_ScenarioInputOk();
+        }
+#endif
         else
         {
             func__Ui_ScenarioCharging_Tick(uint32_t__batteryClampedMv);

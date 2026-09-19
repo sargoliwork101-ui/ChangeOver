@@ -83,6 +83,11 @@ void func__TaskControl(void *void_ptr__argument)
             (void)func__Measurement_GetSnapshot(&measurement_snapshot_t__snap);
 #endif
 #if MODULE_FAULT
+            /* [EN] Central battery-lost detection runs first, so the fresh bit
+               is already latched/cleared in the mask this pass consumes.
+               [FA] تشخیص متمرکز قطع باتری اول اجرا شود تا بیت تازه در همین
+               پاس داخل ماسک دیده شود. */
+            func__Fault_Evaluate(&measurement_snapshot_t__snap);
             fault_mask_t__faults = func__Fault_Get();
 #endif
 #if MODULE_JITTER

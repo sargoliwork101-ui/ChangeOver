@@ -10,8 +10,12 @@ from pathlib import Path
 import re
 
 ROOT = Path(__file__).resolve().parents[3]
+APP_TYPES_H = Path(__file__).resolve().parents[2] / "Config" / "Inc" / "app_types.h"
 CHARGER_H = ROOT / "Firmware/Modules/Charger/charger.h"
 CHARGER_C = ROOT / "Firmware/Modules/Charger/charger.c"
+FAULT_H = ROOT / "Firmware/Modules/Fault/fault.h"
+FAULT_C = ROOT / "Firmware/Modules/Fault/fault.c"
+TASK_CONTROL_C = ROOT / "Firmware/Rtos/Src/task_control.c"
 MAIN_C = ROOT / "CubeIDE/Core/Src/main.c"
 IOC = ROOT / "CubeMX/CubeIDE.ioc"
 BSP_EXTI_C = ROOT / "Firmware/Bsp/Src/bsp_exti.c"
@@ -19,8 +23,8 @@ BSP_EXTI_C = ROOT / "Firmware/Bsp/Src/bsp_exti.c"
 ABSORB_MV = 14400
 FLOAT_MV = 13500
 REENTRY_MV = 12800
-CURRENT_LIMIT_MA = 675
-REGULATE_LOW_MA = 620
+CURRENT_LIMIT_MA = 650
+REGULATE_LOW_MA = 630
 HARD_FAULT_MA = 950
 DUTY_MAX = 500
 RAMP_UP_MS = 1000
@@ -38,8 +42,8 @@ def check(condition, message):
 def regulate_one(channel, voltage_mv, current_ma, now_ms=0):
     """Small host model of the bulk branch, with a duty per channel and
     rate-limited steps: one 0.5% up-step per 1000 ms, one 0.5% down-step
-    per 100 ms. >950 hard fault -> reset; >675 -> down; <620 -> up;
-    620..675 -> hold; too soon to step -> hold."""
+    per 100 ms. >950 hard fault -> reset; >650 -> down; <630 -> up;
+    630..650 -> hold; too soon to step -> hold."""
     if current_ma > HARD_FAULT_MA:
         channel["fault"] = True
         channel["duty"] = 0
@@ -55,7 +59,7 @@ def regulate_one(channel, voltage_mv, current_ma, now_ms=0):
             if channel["duty"] > DUTY_MAX:
                 channel["duty"] = DUTY_MAX
             channel["last_step_ms"] = now_ms
-    # inside the 620..675 band or inside the step window: hold duty
+    # inside the 630..650 band or inside the step window: hold duty
 
 
 def jit_sequence(channel, trip_count):
@@ -328,19 +332,19 @@ def test_duty_max_dcm_ceiling():
     check(channel["duty"] == 500, "duty must clamp at 500 permille = 50% (higher risks burning the MOSFET)")
 
 
-def test_only_above_675ma_protects():
+def test_current_band_regulates_and_protects():
     channel_low = {"duty": 100, "fault": False}
     regulate_one(channel_low, voltage_mv=12400, current_ma=600)
-    check(not channel_low["fault"], "current below 675 mA must not enter overcurrent protection")
-    check(channel_low["duty"] == 105, "600 mA is below the 620 band edge and must raise duty")
+    check(not channel_low["fault"], "current below 650 mA must not enter overcurrent protection")
+    check(channel_low["duty"] == 105, "600 mA is below the 630 band edge and must raise duty")
     channel_ok = {"duty": 100, "fault": False}
-    regulate_one(channel_ok, voltage_mv=12400, current_ma=675)
-    check(not channel_ok["fault"], "675 mA must not enter overcurrent protection")
-    check(channel_ok["duty"] == 100, "exactly 675 mA sits inside the band and must hold duty")
+    regulate_one(channel_ok, voltage_mv=12400, current_ma=650)
+    check(not channel_ok["fault"], "650 mA must not enter overcurrent protection")
+    check(channel_ok["duty"] == 100, "exactly 650 mA sits inside the band and must hold duty")
     channel_high = {"duty": 100, "fault": False}
-    regulate_one(channel_high, voltage_mv=12400, current_ma=676)
+    regulate_one(channel_high, voltage_mv=12400, current_ma=651)
     check(not channel_high["fault"] and channel_high["duty"] == 95,
-          "676 mA must only step duty down (regulation), never cut the channel")
+          "651 mA must only step duty down (regulation), never cut the channel")
     channel_bad = {"duty": 100, "fault": False}
     regulate_one(channel_bad, voltage_mv=12400, current_ma=951)
     check(channel_bad["fault"] and channel_bad["duty"] == 0,
@@ -349,18 +353,60 @@ def test_only_above_675ma_protects():
 
 def test_setpoints_and_timing():
     text_h = CHARGER_H.read_text()
+    text_c = CHARGER_C.read_text()
     check(re.search(r"#define CHG_ABSORB_MV\s+14400u", text_h), "absorb must be 14400 mV")
+    check(re.search(r"#define FAULT_BATTERY_BACK_MV\s+7000u", FAULT_H.read_text()), "battery-truly-back must be 7 V on both halves (user: 6 V can still mean charging)")
+    check(re.search(r"#define CHG_REENTRY_MV\s+12800u", text_h), "reentry stays 12.8 V (13.0 caused repeat charge cycles as the battery rested at ~13.0 V)")
+    check(re.search(r"#define CHG_CONNECT_SETTLE_MS\s+15000u", text_h), "connection-settle must be 15 s (user: 10..20 s before charge start)")
+    check("func__Charger_BulkStartSettled" in text_c and "uint32_t__stableFromTick" in text_c, "OFF->BULK must be gated on the connection-settle stamp (kills bat-lost flap + yellow blink inside the buzzer)")
+    iso_active = text_c.split("bool func__Charger_IsAnyChannelActive(void)")[-1]
+    check("CHG_STATE_FLOAT" not in iso_active and "CHG_STATE_BULK" in iso_active and "CHG_STATE_ABSORB" in iso_active, "IsAnyChannelActive must count only BULK/ABSORB - parked FLOAT is DONE, not pumping (kills done-phase false buzzers and stops the yellow blink)")
     check(re.search(r"#define CHG_FLOAT_MV\s+13500u", text_h), "float must be 13500 mV")
     check(re.search(r"#define CHG_REENTRY_MV\s+12800u", text_h), "reentry must be 12800 mV")
-    check(re.search(r"#define CHG_ABSORB_HOLD_MS\s+600000u", text_h), "absorb hold must be 600000 ms = 10 min")
-    check(re.search(r"#define CHG_BULK_CURRENT_MAX_MA\s+675u", text_h), "bulk regulation current must be 675 mA")
-    check(re.search(r"#define CHG_REGULATE_LOW_MA\s+620u", text_h), "regulation band lower edge must be 620 mA")
+    check(re.search(r"#define CHG_ABSORB_HOLD_MS\s+600000u", text_h), "absorb soak must be 600000 ms = 10 min inside the timed window")
+    check(re.search(r"#define CHG_ABSORB_ENTER_MV\s+14300u", text_h), "absorb voltage-hold window must start at 14.3 V (user directive)")
+    check("CHG_ABSORB_TIMED_MAX_MV" not in text_h, "soak has no sub-window anymore: it counts during the whole ABSORB stay")
+    check(re.search(r"#define CHG_ABSORB_OVER_MV\s+14600u", text_h), "overshoot fast-down threshold must be 14.6 V (user directive)")
+    check(re.search(r"#define CHG_DUTY_STEP_FINE_PERMILLE\s+1u", text_h), "voltage-hold duty steps must be 0.1% (user directive)")
+    check("uint32_t__absorbAccumTicks" in text_c, "soak must accumulate with pause outside the window")
+    check("do NOT fall back to BULK" in text_c, "FLOAT must survive descending below the 14.3 V window (bench bug: fresh soak restarted right after every soak completed)")
+    check("PARK THE PUMP AT ZERO" in text_c, "FLOAT must ramp the duty to 0 and park it (user: 'why is the charger not off? duty stuck 4-5%')")
+    check("CHG_STATE_ABSORB" in text_c, "absorb voltage-hold state must exist in the state machine")
+    check(re.search(r"#define CHG_BULK_CURRENT_MAX_MA\s+650u", text_h), "bulk regulation current must be 650 mA (tight band per user)")
+    check(re.search(r"#define CHG_REGULATE_LOW_MA\s+630u", text_h), "regulation band lower edge must be 630 mA (~20 mA tolerance)")
     check(re.search(r"#define CHG_CURRENT_HARD_FAULT_MA\s+950u", text_h), "hard over-current fault must be 950 mA")
     check(re.search(r"#define CHG_DUTY_MAX_PERMILLE\s+500u", text_h), "duty cap must be 500 permille = 50% (DCM ceiling, board requirement)")
     check(re.search(r"#define CHG_DUTY_RAMP_UP_INTERVAL_MS\s+1000u", text_h), "up-steps must be limited to one per 1000 ms")
+    check(re.search(r"#define CHG_DUTY_RAMP_UP_INTERVAL_ABSORB_MS\s+2000u", text_h), "absorb fine up-steps must be half-rate: one per 2000 ms (user directive)")
+    check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_ABSORB_MS\s+1000u", text_h), "absorb fine down-steps must be half-rate: one per 1000 ms (user directive)")
+    check("absorbUpIntervalTicks" in text_c and "absorbDownIntervalTicks" in text_c, "absorb branch must use its own half-rate intervals")
     check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS\s+500u", text_h), "down-steps must be limited to one per 500 ms")
     check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_PERMILLE\s+705u", text_h), "efficiency must be 705 permille (bench 15%-duty point: real out 441 mA x 13.0 V, true primary 358 mA x 22.9 V)")
     check(re.search(r"#define CHG_CURRENT_EMA_SHIFT\s+6u", text_h), "current estimate must pass through an EMA filter (shift 6, tau ~0.64 s)")
+    text_fault_h = FAULT_H.read_text()
+    text_fault_c = FAULT_C.read_text()
+    check(re.search(r"#define FAULT_BAT_DISCONNECT_MV\s+14800u", text_fault_h), "battery-disconnect threshold must be 14.8 V in the central Fault module (user choice)")
+    check(re.search(r"#define FAULT_BAT_DISCONNECT_DEBOUNCE_MS\s+150u", text_fault_h), "pump debounce must be 150 ms = 15 control passes (armed-absorb false trips still happened at 50 ms; real pump floats ~0.5 s so 150 ms still catches it)")
+    check("func__Measurement_Median5" in (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text(), "battery channel voltages must pass the median-5 prefilter (2-frame spike bursts beat median-3 during absorb)")
+    check("bool__anyHalfLow" in (ROOT / "Firmware/Modules/Fault/fault.c").read_text(), "rule 2 must be EITHER half below 7 V (was ALL six-V: silent on a single cut lead)")
+    check("bool__batteryTrulyPresent" in (ROOT / "Firmware/Modules/Fault/fault.c").read_text(), "bat-lost clear must require BOTH halves >= FAULT_BATTERY_BACK_MV (7 V) - one lead cut keeps its half below 7 V so the alarm repeats until reconnect (one-burst bug)")
+    check(re.search(r"#define FAULT_BAT_DISCONNECT_MV\s+14800u", text_fault_h), "threshold stays 14.8 V, NOT 15.0 V: 15.0 would collide with the validity cut (~0.1 s float vs ~0.5 s at 14.8)")
+    check(re.search(r"#define FAULT_BAT_ABSENT_MV\s+6000u", text_fault_h), "battery-absent threshold must be 6 V in Fault (user choice)")
+    check(re.search(r"#define FAULT_BAT_ABSENT_DEBOUNCE_MS\s+1000u", text_fault_h), "battery-absent debounce must be 1000 ms in Fault")
+    check(re.search(r"#define FAULT_BAT_RECOVER_MS\s+1000u", text_fault_h), "battery-back settle must be 1000 ms in Fault")
+    check(re.search(r"#define FAULT_INPUT_PRESENT_MIN_MV\s+21000u", text_fault_h), "absent rule must be gated by input present >= 21 V")
+    check(re.search(r"#define FAULT_INPUT_PRESENT_MAX_MV\s+28000u", text_fault_h), "absent rule must be gated by input <= 28 V")
+    check("func__Fault_Evaluate" in text_fault_h and "func__Fault_Evaluate" in text_fault_c, "Fault must own the central battery-lost evaluation")
+    check("func__Fault_Set(FAULT_CHARGER_BAT_LOST)" in text_fault_c, "Fault must latch the bit, not the charger")
+    check("func__Fault_Clear(FAULT_CHARGER_BAT_LOST)" in text_fault_c, "Fault must clear the bit after the settle time")
+    check("CHG_STATE_BAT_LOST" in text_c, "charger must keep a battery-lost state as the flag mirror")
+    check("func__Charger_IsAnyChannelActive" in text_c and "func__Charger_IsAnyChannelActive" in text_h, "charger must expose whether any channel is charging (UI yellow gate)")
+    check("CHG_STATE_BULK" in text_c and "CHG_STATE_ABSORB" in text_c and "CHG_STATE_FLOAT" in text_c, "active query must count BULK/ABSORB/FLOAT as charging")
+    check("(func__Fault_Get() & FAULT_CHARGER_BAT_LOST)" in text_c, "charger must ONLY mirror the central flag")
+    check("CHG_BAT_DISCONNECT_MV" not in text_h, "charger header must not own battery-lost thresholds anymore")
+    check("batOverStartTick" not in text_c and "batBackStartTick" not in text_c, "charger must not own battery-lost timers anymore")
+    check("func__Fault_Evaluate(&measurement_snapshot_t__snap)" in TASK_CONTROL_C.read_text(), "task_control must run the central detection before func__Fault_Get")
+    check(re.search(r"FAULT_CHARGER_BAT_LOST\s+\(1u << 6\)", APP_TYPES_H.read_text()), "fault bit must live centrally in app_types.h")
     check(re.search(r"#define CHG_FIXED_DUTY_TEST_ENABLE\s+0u", text_h), "fixed duty diagnostic must be OFF for normal charge (1u only during bench calibration)")
     check(re.search(r"#define CHG_FIXED_DUTY_TEST_DUTY_PERMILLE\s+150u", text_h), "diagnostic duty must be fixed at 150 permille = 15%")
     check(re.search(r"#define CHG_DUTY_START_PERMILLE\s+10u", text_h), "start duty must be 10 permille = 1%")
@@ -409,7 +455,7 @@ def main():
         test_low_current_is_not_fault,
         test_duty_steps_are_time_limited,
         test_duty_max_dcm_ceiling,
-        test_only_above_675ma_protects,
+        test_current_band_regulates_and_protects,
         test_setpoints_and_timing,
         test_pwm_contract,
         test_electronic_load_policy_documented,
