@@ -149,19 +149,21 @@
 #define CHG_DUTY_STEP_FINE_PERMILLE       1u
 #define CHG_FLOAT_MV                  13500u
 #define CHG_REENTRY_MV               12800u
-/* [EN] How long a channel must see battery+valid-input continuously before
- *      ANY bulk charge start is allowed (cold power-on, bat-lost recovery,
- *      post-input-return - user directive 2026-09-19: "give it 10..20 s to
- *      settle the battery is connected, then start"); 15 s = middle of his
+/* [EN] How long a channel must CONTINUOUSLY SEE battery voltage before any
+ *      bulk charge start is allowed (user refinement 2026-09-19: the count
+ *      starts the moment battery voltage is seen - input validity is NOT
+ *      part of it; original directive the same day: "give it 10..20 s to
+ *      settle the battery is connected, then start"). 15 s = middle of his
  *      window. Mid-cycle paths (JIT resume, 12.8 V reentry) stay exempt
  *      because their presence stamp is already live by definition. This gate
  *      also kills the bat-lost FLAP: flag clear -> BULK -> re-pump -> flag
  *      set again every 30 s (and the yellow blink inside the buzzer that
  *      came with it) - with the cable out the voltage is invalid, the stamp
  *      stays 0, and BULK never re-arms.
- * [FA] چند ثانیه اتصالِ باتری+ورودی معتبرِ پیوسته لازم است تا شروعِ بالک
- *      اجازه بگیرد (دستور کاربر: ۱۰ تا ۲۰ ثانیه ثبات، بعد شارژ؛ ۱۵ ثانیه
- *      انتخاب شد). مسیرهای میان‌چرخه معاف‌اند. همین گیت چرخهٔ پینگ‌پنگِ
+ * [FA] چند ثانیه «دیده‌شدن ولتاژ باتری» پیوسته لازم است تا شروعِ بالک
+ *      اجازه بگیرد (اصلاحیهٔ کاربر: شمارش از لحظهٔ دیدن ولتاژ باتری؛ دستورِ
+ *      اصلی همان روز: ۱۰ تا ۲۰ ثانیه ثبات، بعد شارژ؛ ۱۵ ثانیه انتخاب شد).
+ *      مسیرهای میان‌چرخه معاف‌اند. همین گیت چرخهٔ پینگ‌پنگِ
  *      قطع‌باتری (آلارم پاک → بالک → پمپ → آلارم دوباره، و چشمک زرد وسط
  *      بوق) را کاملاً می‌کشد. */
 #define CHG_CONNECT_SETTLE_MS        15000u

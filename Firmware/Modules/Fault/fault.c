@@ -217,17 +217,17 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
        burst - and nothing re-arms it anymore, because the charger now waits
        15 s of connection-settle before it can re-bulk and re-pump. Healthy
        now means: no half pumped AND a REAL battery on BOTH halves (at least
-       FAULT_BAT_ABSENT_MV measured on each): a lead still cut leaves its
-       half below 6 V, the flag stays latched, and the red/triple-beep
+       FAULT_BATTERY_BACK_MV = 7 V measured on each): a lead still cut leaves its
+       half below 7 V, the flag stays latched, and the red/triple-beep
        reminder repeats until the battery is genuinely back (user expectation:
        "the alarm must keep reminding me until I reconnect").
        [FA] بازبینی شرط سلامت: با یک سیمِ قطع، نیمِ سالم ~۱۳V می‌ماند و تست
        قدیمی («فقط هردو نباشند») آلارم را پس از یک بوق پاک می‌کرد و چون
        شارژر دیگر برای بازمسلح‌کردن بالا نمی‌آید، سکوت می‌ماند. حالا سالم
-       یعنی: نه پمپ روی هیچ نیم و نه هیچ نیمِ زیر ۶V؛ تا باتری واقعاً برنگشته
+       یعنی: نه پمپ روی هیچ نیم و نه هیچ نیمِ زیر ۷V (۶V ممکن است حین شارژ باشد)؛ تا باتری واقعاً برنگشته
        آلارم قفل است و یادآوری تکرار می‌شود. */
-    bool__batteryTrulyPresent = ((uint32_t__lowMv  >= FAULT_BAT_ABSENT_MV) &&
-                                 (uint32_t__highMv >= FAULT_BAT_ABSENT_MV));
+    bool__batteryTrulyPresent = ((uint32_t__lowMv  >= FAULT_BATTERY_BACK_MV) &&
+                                 (uint32_t__highMv >= FAULT_BATTERY_BACK_MV));
 
     bool__healthy = ((bool__anyOver == false) &&
                      (bool__batteryTrulyPresent == true));

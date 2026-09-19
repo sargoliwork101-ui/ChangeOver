@@ -1202,13 +1202,19 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
     bool__inputAdcValid = (measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_VALID_MV);
 
-    /* [EN] Connection-settle bookkeeping for every installed channel: the
-       stamp ticks up only while the snapshot is live, the input is valid and
-       this channel's battery voltage is in range; anything else resets it to
-       0. CHG_CONNECT_SETTLE_MS of unbroken readiness unlocks OFF -> BULK.
-       [FA] دفترچهٔ ثبات اتصال: فقط با snapshot معتبر + ورودی معتبر + ولتاژ
-       باتری در محدوده ساعتش جلو می‌رود، وگرنه صفر می‌شود؛ ۱۵ ثانیه پایداری
-       کلید شروع بالک است. */
+    /* [EN] Connection-settle bookkeeping for every installed channel
+       (user refinement 2026-09-19): the 15-second count must START FROM THE
+       MOMENT BATTERY VOLTAGE IS SEEN - the stamp ticks up while the
+       snapshot is live and this channel's battery voltage is in range, any
+       lapse resets it to 0. The input is deliberately NOT part of the
+       predicate (input validity gates the bulk start separately upstream),
+       so a battery that sat connected for minutes charges ~instantly when
+       the mains comes back.
+       [FA] دفترچهٔ ثبات اتصال (اصلاحیهٔ کاربر): شمارش ۱۵ ثانیه از لحظهٔ
+       دیده‌شدن ولتاژ باتری شروع می‌شود - فقط snapshot سالم + ولتاژ باتری در
+       محدوده؛ ورودی عمداً در این شرط نیست چون گیت جداگانه‌اش بالادست است؛
+       پس باتری‌ای که از قبل وصل است با برگشت برق تقریباً بلافاصله شارژ
+       می‌شود. */
     {
         for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
         {
@@ -1216,7 +1222,6 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
             bool__readyNow =
                 (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed == true) &&
-                (bool__inputAdcValid == true) &&
                 (func__Charger_BatteryVoltageIsValid(
                     func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,
                                                    uint8_t__channelIndex)) == true);

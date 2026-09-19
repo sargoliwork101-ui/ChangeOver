@@ -42,8 +42,9 @@
  *            sits far above) for FAULT_BAT_ABSENT_DEBOUNCE_MS proves it.
  *
  *         Recovery (shared): EVERY half back inside
- *         [FAULT_BAT_ABSENT_MV, FAULT_BAT_DISCONNECT_MV] (>= 6 V on BOTH
- *         halves - 2026-09-19: with one lead cut the other half still sits
+ *         [FAULT_BATTERY_BACK_MV, FAULT_BAT_DISCONNECT_MV] (>= 7 V on BOTH
+ *         halves per user directive - 6 V could still mean "charging";
+ *         2026-09-19: with one lead cut the other half still sits
  *         at ~13 V; the old "not all absent" test then cleared after ~1 s,
  *         the alarm died after a single burst, and the charger's 15 s
  *         connection-settle no longer re-pumps to re-latch it, so the cut
@@ -74,6 +75,15 @@
 #define FAULT_BAT_DISCONNECT_MV           14800u
 #define FAULT_BAT_DISCONNECT_DEBOUNCE_MS    150u
 #define FAULT_BAT_ABSENT_MV                6000u
+/* [EN] Battery-TRULY-back threshold for the recovery window (user directive
+ *      2026-09-19): >= 7 V on BOTH halves, NOT 6 V, because a half can sit
+ *      near 6 V while CHARGING; 7 V keeps the boundary safely above any
+ *      charge-time dip so the flag clears only on a genuinely reconnected
+ *      battery.
+ * [FA] آستانهٔ «باتری واقعاً برگشته» برای پاکسازی: روی هر دو نیم‌باتری
+ *      >= ۷V باشد نه ۶V، چون نیم‌باتری حین شارژ ممکن است نزدیک ۶V بنشیند؛
+ *      با ۷V مرز بالاتر از هر افتِ حین شارژ امن است. */
+#define FAULT_BATTERY_BACK_MV              7000u
 #define FAULT_BAT_ABSENT_DEBOUNCE_MS      1000u
 #define FAULT_BAT_RECOVER_MS              1000u
 #define FAULT_INPUT_PRESENT_MIN_MV        21000u
