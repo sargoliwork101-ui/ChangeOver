@@ -28,6 +28,7 @@ INCLUDE_FLAGS=(
     -I Firmware/Modules/Jitter
     -I Firmware/Modules/Fault
     -I Firmware/Modules/EspLink
+    -I Firmware/Modules/McuPowerPath
 )
 
 SOURCE_FILES=(

@@ -1,283 +1,436 @@
 #!/usr/bin/env python3
 # @file    host_test_ui.py
-# @brief   [EN] Host tests for the single periodic buzzer API and its safety limits.
-#          [FA] تست هاست API یگانه بوق دوره‌ای و محدودیت‌های ایمنی آن.
+# @brief   [EN] Host tests for UI buzzer, BatteryRun 2%+0/1, Charging 5%, InputOk 100/95 and phase preserve.
+#          [FA] تست هاست بوق، هیسترزیس ۲٪ BatteryRun + ۵٪ Charging و ۱۰۰/۹۵ فول.
 
-import os
-import re
-
-
-# ==================== Read buzzer constants / خواندن ثابت‌های بازر ====================
+import os, re
 
 BASE_DIR = os.path.dirname(__file__)
-HEADER_PATH = os.path.join(BASE_DIR, "ui_buzzer.h")
-defines = {}
-with open(HEADER_PATH, "r", encoding="utf-8", errors="ignore") as header_file:
-    for line in header_file:
-        match = re.match(r"#define\s+(\w+)\s+\(?(-?\d+)\)?u?", line)
-        if match:
-            defines[match.group(1)] = int(match.group(2))
+BUZZER_HEADER = os.path.join(BASE_DIR, "ui_buzzer.h")
+LED_HEADER = os.path.join(BASE_DIR, "ui_led.h")
+defines={}
+for hdr in [BUZZER_HEADER, LED_HEADER]:
+    try:
+        with open(hdr, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                m=re.match(r"#define\s+(\w+)\s+\(?(-?\d+)\)?u?", line)
+                if m:
+                    defines[m.group(1)] = int(m.group(2))
+    except: pass
 
-UI_BUZZER_PERCENT_SCALE = defines.get("UI_BUZZER_PERCENT_SCALE", 100)
-UI_BUZZER_DUTY_MAX_PERCENT = defines.get("UI_BUZZER_DUTY_MAX_PERCENT", 100)
-UI_BUZZER_MIN_PERIOD_MS = defines.get("UI_BUZZER_MIN_PERIOD_MS", 1000)
-UI_BUZZER_MIN_GAP_MS = defines.get("UI_BUZZER_MIN_GAP_MS", 100)
-UI_BUZZER_CHECK_PERCENT = defines.get("UI_BUZZER_CHECK_PERCENT", 10)
-UI_BUZZER_MIN_CHECK_MS = defines.get("UI_BUZZER_MIN_CHECK_MS", 1)
-UI_BUZZER_OFF_RESULT = defines.get("UI_BUZZER_OFF_RESULT", 0)
-UI_BUZZER_INVALID_RESULT = defines.get("UI_BUZZER_INVALID_RESULT", -1)
+UI_BUZZER_PERCENT_SCALE = defines.get("UI_BUZZER_PERCENT_SCALE",100)
+UI_BUZZER_DUTY_MAX_PERCENT = defines.get("UI_BUZZER_DUTY_MAX_PERCENT",100)
+UI_BUZZER_MIN_PERIOD_MS = defines.get("UI_BUZZER_MIN_PERIOD_MS",1000)
+UI_BUZZER_MIN_GAP_MS = defines.get("UI_BUZZER_MIN_GAP_MS",100)
+UI_BUZZER_CHECK_PERCENT = defines.get("UI_BUZZER_CHECK_PERCENT",10)
+UI_BUZZER_MIN_CHECK_MS = defines.get("UI_BUZZER_MIN_CHECK_MS",1)
+UI_BUZZER_OFF_RESULT = defines.get("UI_BUZZER_OFF_RESULT",0)
+UI_BUZZER_INVALID_RESULT = defines.get("UI_BUZZER_INVALID_RESULT",-1)
 
-
-# ==================== Buzzer timing model / مدل زمان‌بندی بازر ====================
-
+UI_BAT_V_MIN_MV = defines.get("UI_BAT_V_MIN_MV",21000)
+UI_BAT_V_MAX_MV = defines.get("UI_BAT_V_MAX_MV",28000)
+UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT = defines.get("UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT", defines.get("UI_BATTERY_PERCENT_HYSTERESIS_PERCENT",2))
+UI_BATTERY_PERCENT_HYSTERESIS_PERCENT = UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT
+UI_BATTERY_ZERO_EXIT_THRESHOLD = defines.get("UI_BATTERY_ZERO_EXIT_THRESHOLD",2)
+UI_BATTERY_ONE_EXIT_THRESHOLD = defines.get("UI_BATTERY_ONE_EXIT_THRESHOLD",3)
+UI_CHARGING_PERCENT_HYSTERESIS_PERCENT = defines.get("UI_CHARGING_PERCENT_HYSTERESIS_PERCENT",5)
+UI_CHARGING_FULL_ENTER_PERCENT = defines.get("UI_CHARGING_FULL_ENTER_PERCENT",100)
+UI_CHARGING_FULL_EXIT_PERCENT = defines.get("UI_CHARGING_FULL_EXIT_PERCENT",95)
+UI_PERCENT_FULL = defines.get("UI_PERCENT_FULL",100)
+UI_PERCENT_SCALE = defines.get("UI_PERCENT_SCALE",100)
+UI_BLINK_PERIOD_MS = defines.get("UI_BLINK_PERIOD_MS",1000)
+UI_GREEN_MIN_OFF_MS = defines.get("UI_GREEN_MIN_OFF_MS",10)
+UI_CHARGING_BLINK_PERIOD_MS = defines.get("UI_CHARGING_BLINK_PERIOD_MS",1000)
+UI_CHARGING_YELLOW_MIN_OFF_MS = defines.get("UI_CHARGING_YELLOW_MIN_OFF_MS",10)
 
 def calculate_pattern(period_ms, duty_percent, beep_count, gap_ms):
-    """[EN] Calculate pulse durations and the low tail for one period.
-    [FA] زمان پالس‌ها و خاموشی انتهای یک دوره را محاسبه می‌کند.
+    if period_ms <=0 or duty_percent<=0 or beep_count<=0: return None
+    if period_ms < UI_BUZZER_MIN_PERIOD_MS: return None
+    if duty_percent > UI_BUZZER_DUTY_MAX_PERCENT: return None
+    if beep_count>1 and gap_ms < UI_BUZZER_MIN_GAP_MS: return None
+    effective_gap= gap_ms if beep_count>1 else 0
+    duty_window = (period_ms * duty_percent)//UI_BUZZER_PERCENT_SCALE
+    total_gap = effective_gap*(beep_count-1)
+    if duty_window <= total_gap: return None
+    available = duty_window - total_gap
+    if available < beep_count: return None
+    beep_on = available//beep_count
+    rem = available % beep_count
+    durs=[beep_on]*beep_count
+    durs[-1]+=rem
+    tail = period_ms - duty_window
+    return duty_window, durs, effective_gap, tail
 
-    The duty window includes the gaps between pulses. This is the rule used by
-    func__Ui_Buzzer_Tick(). A non-zero period below the safety minimum and a
-    too-small gap for multiple pulses are rejected.
-    """
-    if period_ms <= 0 or duty_percent <= 0 or beep_count <= 0:
-        return None
-    if period_ms < UI_BUZZER_MIN_PERIOD_MS:
-        return None
-    if duty_percent > UI_BUZZER_DUTY_MAX_PERCENT:
-        return None
-    if beep_count > 1 and gap_ms < UI_BUZZER_MIN_GAP_MS:
-        return None
-
-    effective_gap_ms = gap_ms if beep_count > 1 else 0
-    duty_window_ms = (period_ms * duty_percent) // UI_BUZZER_PERCENT_SCALE
-    gap_count = beep_count - 1
-    total_gap_ms = effective_gap_ms * gap_count
-
-    if duty_window_ms <= total_gap_ms:
-        return None
-
-    available_on_ms = duty_window_ms - total_gap_ms
-    if available_on_ms < beep_count:
-        return None
-
-    beep_on_ms = available_on_ms // beep_count
-    on_remainder_ms = available_on_ms % beep_count
-    beep_durations = [beep_on_ms] * beep_count
-    beep_durations[-1] += on_remainder_ms
-    period_tail_ms = period_ms - duty_window_ms
-
-    return duty_window_ms, beep_durations, effective_gap_ms, period_tail_ms
-
-
-# ==================== Buzzer waveform sampling / نمونه‌برداری شکل موج بازر ====================
-
-
-def buzzer_level_at(period_ms, duty_percent, beep_count, gap_ms, elapsed_ms):
-    """[EN] Return GPIO level at one millisecond in the periodic pattern.
-    [FA] سطح GPIO را در یک میلی‌ثانیه از الگوی دوره‌ای برمی‌گرداند.
-    """
-    pattern = calculate_pattern(period_ms, duty_percent, beep_count, gap_ms)
-    if pattern is None:
-        return False
-
-    duty_window_ms, beep_durations, effective_gap_ms, _ = pattern
-    cycle_elapsed_ms = elapsed_ms % period_ms
-    if cycle_elapsed_ms >= duty_window_ms:
-        return False
-
-    cursor_ms = 0
-    for beep_index, beep_duration_ms in enumerate(beep_durations):
-        if cycle_elapsed_ms < cursor_ms + beep_duration_ms:
-            return True
-
-        cursor_ms += beep_duration_ms
-        if beep_index < beep_count - 1:
-            if cycle_elapsed_ms < cursor_ms + effective_gap_ms:
-                return False
-            cursor_ms += effective_gap_ms
-
+def buzzer_level_at(period_ms,duty_percent,beep_count,gap_ms,elapsed_ms):
+    p=calculate_pattern(period_ms,duty_percent,beep_count,gap_ms)
+    if p is None: return False
+    duty_window, beep_durs, eff_gap, _ = p
+    ce= elapsed_ms % period_ms
+    if ce >= duty_window: return False
+    cursor=0
+    for i,d in enumerate(beep_durs):
+        if ce < cursor+d: return True
+        cursor+=d
+        if i< beep_count-1:
+            if ce < cursor+eff_gap: return False
+            cursor+=eff_gap
     return False
 
+def sample_waveform_segments(period_ms,duty_percent,beep_count,gap_ms):
+    segs=[]
+    prev=buzzer_level_at(period_ms,duty_percent,beep_count,gap_ms,0)
+    l=0
+    for e in range(period_ms):
+        cur=buzzer_level_at(period_ms,duty_percent,beep_count,gap_ms,e)
+        if cur!=prev:
+            segs.append((prev,l))
+            prev=cur
+            l=0
+        l+=1
+    segs.append((prev,l))
+    return segs
 
-def sample_waveform_segments(period_ms, duty_percent, beep_count, gap_ms):
-    """[EN] Compress one millisecond waveform into level/duration segments.
-    [FA] موج یک میلی‌ثانیه‌ای را به بخش‌های سطح/مدت فشرده می‌کند.
-    """
-    segments = []
-    previous_level = buzzer_level_at(period_ms, duty_percent, beep_count, gap_ms, 0)
-    segment_length_ms = 0
-
-    for elapsed_ms in range(period_ms):
-        current_level = buzzer_level_at(period_ms, duty_percent, beep_count, gap_ms, elapsed_ms)
-        if current_level != previous_level:
-            segments.append((previous_level, segment_length_ms))
-            previous_level = current_level
-            segment_length_ms = 0
-        segment_length_ms += 1
-
-    segments.append((previous_level, segment_length_ms))
-    return segments
-
-
-# ==================== RTOS check interval / فاصله بررسی RTOS ====================
-
-
-def calculate_next_check_ms(period_ms, duty_percent, beep_count, gap_ms):
-    """[EN] Return 0 for valid off, -1 for invalid, or the next check delay.
-    [FA] برای خاموشی معتبر صفر، برای نامعتبر منفی یک، وگرنه تأخیر مراجعه بعدی را برمی‌گرداند.
-    """
-    if period_ms <= 0 or duty_percent <= 0 or beep_count <= 0:
-        return UI_BUZZER_OFF_RESULT
-
-    pattern = calculate_pattern(period_ms, duty_percent, beep_count, gap_ms)
-    if pattern is None:
-        return UI_BUZZER_INVALID_RESULT
-
-    duty_window_ms, beep_durations, effective_gap_ms, period_tail_ms = pattern
-    del duty_window_ms
-    positive_segments = list(beep_durations)
-    if effective_gap_ms > 0:
-        positive_segments.append(effective_gap_ms)
-    if period_tail_ms > 0:
-        positive_segments.append(period_tail_ms)
-
-    smallest_timing_ms = min(positive_segments)
-    next_check_ms = (smallest_timing_ms * UI_BUZZER_CHECK_PERCENT) // UI_BUZZER_PERCENT_SCALE
-    return max(next_check_ms, UI_BUZZER_MIN_CHECK_MS)
-
-
-# ==================== Scenario one-shot adapter / تبدیل بوق تک‌باره سناریو ====================
-
+def calculate_next_check_ms(period_ms,duty_percent,beep_count,gap_ms):
+    if period_ms<=0 or duty_percent<=0 or beep_count<=0: return UI_BUZZER_OFF_RESULT
+    p=calculate_pattern(period_ms,duty_percent,beep_count,gap_ms)
+    if p is None: return UI_BUZZER_INVALID_RESULT
+    _, beep_durs, eff_gap, tail = p
+    segs=list(beep_durs)
+    if eff_gap>0: segs.append(eff_gap)
+    if tail>0: segs.append(tail)
+    smallest=min(segs)
+    nxt=(smallest*UI_BUZZER_CHECK_PERCENT)//UI_BUZZER_PERCENT_SCALE
+    return max(nxt, UI_BUZZER_MIN_CHECK_MS)
 
 def calculate_scenario_one_shot(duration_ms):
-    """[EN] Convert a legacy one-shot duration to a valid periodic API pattern.
-    [FA] مدت تک‌باره قدیمی را به الگوی معتبر API دوره‌ای تبدیل می‌کند.
-    """
-    if duration_ms <= 0:
-        return None
-
-    period_ms = max(duration_ms, UI_BUZZER_MIN_PERIOD_MS)
-    if duration_ms >= period_ms:
-        duty_percent = UI_BUZZER_DUTY_MAX_PERCENT
+    if duration_ms<=0: return None
+    period_ms=max(duration_ms, UI_BUZZER_MIN_PERIOD_MS)
+    if duration_ms >= period_ms: duty=UI_BUZZER_DUTY_MAX_PERCENT
     else:
-        duty_product = duration_ms * UI_BUZZER_PERCENT_SCALE
-        duty_percent = (duty_product + period_ms - 1) // period_ms
-        duty_percent = max(duty_percent, 1)
+        duty=(duration_ms*UI_BUZZER_PERCENT_SCALE + period_ms-1)//period_ms
+        duty=max(duty,1)
+    return calculate_pattern(period_ms,duty,1,0)
 
-    return calculate_pattern(period_ms, duty_percent, 1, 0)
+def battery_voltage_to_percent(vbat_mv):
+    if vbat_mv <= UI_BAT_V_MIN_MV: return 0
+    if vbat_mv >= UI_BAT_V_MAX_MV: return UI_PERCENT_FULL
+    rng=UI_BAT_V_MAX_MV-UI_BAT_V_MIN_MV
+    off=vbat_mv-UI_BAT_V_MIN_MV
+    if rng==0: return 0
+    scaled=off*UI_PERCENT_SCALE
+    pct=scaled//rng
+    if pct>UI_PERCENT_FULL: pct=UI_PERCENT_FULL
+    return int(pct)
 
+class BatteryRunStable:
+    def __init__(self):
+        self.stable=0
+        self.init=False
+    def reset(self): self.stable=0; self.init=False
+    def update(self, raw):
+        if not self.init:
+            self.stable=raw; self.init=True; return self.stable
+        s=self.stable
+        if s==0:
+            if raw >= UI_BATTERY_ZERO_EXIT_THRESHOLD: s=1
+        elif s==1:
+            if raw==0: s=0
+            elif raw >= UI_BATTERY_ONE_EXIT_THRESHOLD: s=2
+        else:
+            diff=abs(int(raw)-int(s))
+            if diff >= UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT: s=raw
+        self.stable=s; return s
 
-# ==================== Assertions / بررسی‌های قطعی ====================
+class ChargingStable:
+    def __init__(self):
+        self.stable=0
+        self.init=False
+    def reset(self): self.stable=0; self.init=False
+    def update(self, raw):
+        if not self.init:
+            self.stable=raw; self.init=True; return self.stable
+        diff=abs(int(raw)-int(self.stable))
+        if diff >= UI_CHARGING_PERCENT_HYSTERESIS_PERCENT:
+            self.stable=raw
+        return self.stable
 
+class ChargingFull:
+    def __init__(self):
+        self.active=False
+    def reset(self): self.active=False
+    def update(self, raw):
+        if self.active:
+            if raw < UI_CHARGING_FULL_EXIT_PERCENT: self.active=False
+        else:
+            if raw >= UI_CHARGING_FULL_ENTER_PERCENT: self.active=True
+        return self.active
+
+def green_timing(stable, period=UI_BLINK_PERIOD_MS, min_off=UI_GREEN_MIN_OFF_MS):
+    remaining=UI_PERCENT_FULL-stable
+    per=period//UI_PERCENT_SCALE
+    off=remaining*per
+    if off<min_off: off=min_off
+    if off>period: off=period
+    on=period-off
+    return on, off
+
+def yellow_timing(stable, period=UI_CHARGING_BLINK_PERIOD_MS, min_off=UI_CHARGING_YELLOW_MIN_OFF_MS):
+    # [EN] REMAINING to full drives the ON time (final user directive 2026-09-19):
+    # more charged -> shorter ON; 95% charged (5 remaining) -> 50 ms per 1000 ms.
+    # [FA] «مانده تا فول» زمان روشن بودن را می‌دهد: پرتر کوتاه‌تر؛ ۹۵٪ شارژ ⇒ ۵۰ms.
+    remaining=UI_PERCENT_FULL-stable
+    per=period//UI_PERCENT_SCALE
+    on=remaining*per
+    if on<min_off: on=min_off
+    if on>period: on=period
+    off=period-on
+    return on, off
+
+class BlinkPhase:
+    def __init__(self):
+        self.on=False; self.init=False; self.start=0; self.on_ms=0; self.off_ms=0
+    def reset(self):
+        self.on=False; self.init=False; self.start=0; self.on_ms=0; self.off_ms=0
+    def update(self, on_ms, off_ms, now):
+        if not self.init:
+            self.init=True; self.on=True; self.start=now; self.on_ms=on_ms; self.off_ms=off_ms; return self.on
+        if self.on_ms!=on_ms or self.off_ms!=off_ms:
+            self.on_ms=on_ms; self.off_ms=off_ms; return self.on
+        elapsed=now-self.start
+        if self.on and elapsed>=self.on_ms:
+            self.on=False; self.start=now
+        elif not self.on and elapsed>=self.off_ms:
+            self.on=True; self.start=now
+        return self.on
 
 def assert_equal(actual, expected, label):
-    assert actual == expected, f"{label}: expected {expected}, got {actual}"
-
+    assert actual==expected, f"{label}: expected {expected}, got {actual}"
+def assert_true(cond,label):
+    assert cond, f"{label}: expected True"
 
 def run_assertions():
-    """[EN] Run deterministic buzzer timing checks; [FA] تست‌های قطعی زمان‌بندی بوق."""
-    # User example: 10s period, 10% duty, 2 pulses, 100ms gap. / مثال کاربر: دوره ۱۰ ثانیه، دیوتی ۱۰ درصد، دو پالس و گپ ۱۰۰ میلی‌ثانیه.
-    assert_equal(
-        calculate_pattern(10000, 10, 2, 100),
-        (1000, [450, 450], 100, 9000),
-        "ten-second two-beep pattern",
-    )
-    assert_equal(
-        calculate_next_check_ms(10000, 10, 2, 100),
-        10,
-        "example next RTOS check",
-    )
-    assert_equal(
-        sample_waveform_segments(10000, 10, 2, 100),
-        [(True, 450), (False, 100), (True, 450), (False, 9000)],
-        "example GPIO waveform",
-    )
+    assert_equal(calculate_pattern(10000,10,2,100),(1000,[450,450],100,9000),"ten-second two-beep")
+    assert_equal(calculate_next_check_ms(10000,10,2,100),10,"next check")
+    assert_equal(sample_waveform_segments(10000,10,2,100),[(True,450),(False,100),(True,450),(False,9000)],"waveform")
+    assert_equal(calculate_pattern(60000,2,1,0),(1200,[1200],0,58800),"one-beep 60s")
+    assert_equal(calculate_pattern(60000,4,2,100),(2400,[1150,1150],100,57600),"two-beep 60s")
+    assert_equal(calculate_pattern(20000,31,3,100),(6200,[2000,2000,2000],100,13800),"three-beep 20s")
+    assert_equal(calculate_pattern(10000,100,1,0),(10000,[10000],0,0),"critical 10s")
+    assert_equal(calculate_scenario_one_shot(150),(150,[150],0,850),"one-shot 150")
+    assert_equal(calculate_scenario_one_shot(250),(250,[250],0,750),"one-shot 250")
+    assert_equal(calculate_scenario_one_shot(500),(500,[500],0,500),"one-shot 500")
+    assert_equal(calculate_pattern(1000,50,1,1),(500,[500],0,500),"single-beep ignore gap")
+    assert_equal(calculate_next_check_ms(1000,50,1,1),50,"single-beep next")
+    assert_equal(calculate_pattern(1000,60,3,100),(600,[133,133,134],100,400),"remainder")
+    assert_equal(calculate_next_check_ms(0,10,2,100),UI_BUZZER_OFF_RESULT,"zero period")
+    assert_equal(calculate_next_check_ms(1000,0,2,100),UI_BUZZER_OFF_RESULT,"zero duty")
+    assert_equal(calculate_next_check_ms(1000,10,0,100),UI_BUZZER_OFF_RESULT,"zero count")
+    assert_equal(calculate_next_check_ms(999,10,2,100),UI_BUZZER_INVALID_RESULT,"short period")
+    assert_equal(calculate_next_check_ms(1000,50,2,99),UI_BUZZER_INVALID_RESULT,"short gap")
+    assert_equal(calculate_next_check_ms(1000,10,3,100),UI_BUZZER_INVALID_RESULT,"gaps without pulse")
+    assert_equal(calculate_next_check_ms(1000,101,1,100),UI_BUZZER_INVALID_RESULT,"duty >100")
 
-    # BatteryRun warning bands use approximate integer duties accepted by the user. / بازه‌های هشدار BatteryRun از دیوتی صحیح تقریبی مورد تأیید کاربر استفاده می‌کنند.
-    assert_equal(
-        calculate_pattern(60000, 2, 1, 0),
-        (1200, [1200], 0, 58800),
-        "BatteryRun one-beep 60-second pattern",
-    )
-    assert_equal(
-        calculate_pattern(60000, 4, 2, 100),
-        (2400, [1150, 1150], 100, 57600),
-        "BatteryRun two-beep 60-second pattern",
-    )
-    assert_equal(
-        calculate_pattern(20000, 31, 3, 100),
-        (6200, [2000, 2000, 2000], 100, 13800),
-        "BatteryRun three-beep 20-second pattern",
-    )
-    assert_equal(
-        calculate_pattern(10000, 100, 1, 0),
-        (10000, [10000], 0, 0),
-        "BatteryRun critical ten-second pattern",
-    )
+def run_battery_hysteresis_tests():
+    print("\n=== BatteryRun 2% hysteresis ===")
+    s=BatteryRunStable()
+    v25=battery_voltage_to_percent(25000)
+    print(f"25V -> raw {v25} (expected ~57)")
+    assert_true(56 <= v25 <=58, "25V 56-58")
+    s.stable=57; s.init=True
+    assert_equal(s.update(56),57,"57+56 keep")
+    assert_equal(s.update(58),57,"57+58 keep")
+    assert_equal(s.update(55),55,"57->55 change")
+    s.stable=57; s.init=True
+    assert_equal(s.update(59),59,"57->59 change")
+    print("56/57/58 jitter preserved PASS")
+    s.reset(); s.update(0)
+    assert_equal(s.stable,0,"raw0 ->0")
+    assert_equal(s.update(1),0,"stable0 raw1 keep0")
+    assert_equal(s.update(2),1,"stable0 raw2->1")
+    s.stable=1; s.init=True
+    assert_equal(s.update(0),0,"stable1 raw0->0")
+    s.stable=1; s.init=True
+    assert_equal(s.update(2),1,"stable1 raw2 keep1")
+    assert_equal(s.update(3),2,"stable1 raw3->2")
+    s.stable=1; s.init=True
+    assert_equal(s.update(1),1,"stable1 raw1 keep1")
+    print("0/1 special PASS")
+    s.reset(); s.update(v25)
+    stable=s.stable
+    on,off=green_timing(stable)
+    print(f"Stable {stable} -> green on {on} off {off}")
+    blink=BlinkPhase()
+    blink.update(on,off,0)
+    assert_true(blink.on==True,"green start ON")
+    s.update(56); stable2=s.stable; on2,off2=green_timing(stable2)
+    prev_on=blink.on; prev_start=blink.start
+    blink.update(on2,off2,100)
+    assert_equal(blink.on, prev_on,"phase preserved jitter 56")
+    assert_equal(blink.start, prev_start,"start preserved jitter")
+    s.update(55); stable3=s.stable; on3,off3=green_timing(stable3)
+    prev_on=blink.on; prev_start=blink.start
+    blink.update(on3,off3,200)
+    assert_equal(blink.on, prev_on,"phase preserved 55")
+    print("Green phase preserved PASS")
+    s.reset(); s.update(0)
+    assert_equal(s.stable,0,"critical 0")
+    assert_equal(s.update(1),0,"0/1 noise keep0")
+    assert_equal(s.update(0),0,"keep0")
+    print("0/1 noise no restart PASS")
+    s.stable=1; s.init=True
+    assert_equal(s.update(1),1,"1% keep1")
+    assert_equal(s.update(2),1,"1% raw2 keep1")
+    assert_equal(s.update(3),2,"1% raw3->2")
+    print("1% independent PASS")
+    # 0% critical: ensure BatteryRun uses stable not raw for buzzer
+    # If raw flickers 0->1, stable stays 0, so still critical
+    s.reset(); s.update(0)
+    assert_true(s.stable<1,"stable critical")
+    s.update(1)
+    assert_true(s.stable<1,"still critical after 0->1")
+    print("Critical stable 0 persists on 1 jitter PASS")
 
-    # Legacy one-shot durations are represented with a safe period and stopped / مدت‌های تک‌باره قدیمی با دوره امن نمایش داده و متوقف می‌شوند
-    # explicitly by the scenario after the requested duration. / سناریو پس از مدت درخواستی آن‌ها را صریحاً متوقف می‌کند.
-    assert_equal(
-        calculate_scenario_one_shot(150),
-        (150, [150], 0, 850),
-        "board-test one-shot adapter",
-    )
-    assert_equal(
-        calculate_scenario_one_shot(250),
-        (250, [250], 0, 750),
-        "battery-run base one-shot adapter",
-    )
-    assert_equal(
-        calculate_scenario_one_shot(500),
-        (500, [500], 0, 500),
-        "battery-run doubled one-shot adapter",
-    )
+def run_charging_hysteresis_tests():
+    print("\n=== Charging 5% hysteresis ===")
+    c=ChargingStable()
+    c.stable=57; c.init=True
+    assert_equal(c.update(53),57,"57+53 keep (diff4)")
+    assert_equal(c.update(61),57,"57+61 keep (diff4)")
+    assert_equal(c.update(56),57,"57+56 keep")
+    assert_equal(c.update(58),57,"57+58 keep")
+    assert_equal(c.update(52),52,"57->52 change diff5")
+    c.stable=57; c.init=True
+    assert_equal(c.update(62),62,"57->62 change")
+    print("53..61 keep PASS, outside 5 change PASS")
+    # [EN] Yellow ON must follow the REMAINING percent (final user directive
+    # 2026-09-19): more charged -> shorter ON; 95% charged (5 remaining) ->
+    # 50 ms ON per 1000 ms; 5% charged -> 950 ms ON.
+    # [FA] زرد بر اساس «مانده»: ۹۵٪ شارژ ⇒ ۵۰ms روشن؛ ۵٪ شارژ ⇒ ۹۵۰ms روشن.
+    assert_equal(yellow_timing(95), (50, 950), "yellow 95% charged -> 50ms on")
+    assert_equal(yellow_timing(5), (950, 50), "yellow 5% charged -> 950ms on")
+    assert_equal(yellow_timing(99), (10, 990), "yellow 99% charged -> min 10ms on")
+    # yellow timing stable
+    on57,off57=yellow_timing(57)
+    on53,off53=yellow_timing(53) # diff but should not be used if stable 57
+    # ensure timing would differ but is not applied due to hysteresis
+    assert_true(on57!=on53,"timing diff would exist but hysteresis prevents")
+    # verify after hysteresis change timing updates but phase preserved
+    blink=BlinkPhase()
+    on,off=yellow_timing(57)
+    blink.update(on,off,0)
+    # jitter 56 keeps stable 57, phase preserved
+    c.stable=57; c.init=True
+    c.update(56)
+    assert_equal(c.stable,57,"charging 57+56 keep")
+    on2,off2=yellow_timing(c.stable)
+    prev_on=blink.on; prev_start=blink.start
+    blink.update(on2,off2,100)
+    assert_equal(blink.on, prev_on,"yellow phase preserved jitter")
+    assert_equal(blink.start, prev_start,"yellow start preserved")
+    # change to 62 -> stable 62, new timing from next boundary, phase still preserved at change moment
+    c.update(62)
+    on3,off3=yellow_timing(c.stable)
+    prev_on=blink.on; prev_start=blink.start
+    blink.update(on3,off3,200)
+    assert_equal(blink.on, prev_on,"yellow phase preserved on real change")
+    print("Charging yellow phase preserved PASS")
+    # 25V jitter charging
+    v25=battery_voltage_to_percent(25000)
+    c.reset(); c.update(v25)
+    assert_true(abs(c.stable - v25) <1, "charging init 25V")
+    # small jitter should not change
+    c.update(v25+1)
+    assert_equal(c.stable, v25, "charging 25V jitter +1 keep")
+    print("Charging 25V jitter PASS")
 
-    # One pulse has no adjacent gap, so a gap below 100ms is ignored. / یک پالس گپ مجاور ندارد و گپ کمتر از ۱۰۰ میلی‌ثانیه نادیده گرفته می‌شود.
-    assert_equal(
-        calculate_pattern(1000, 50, 1, 1),
-        (500, [500], 0, 500),
-        "single-beep pattern ignores gap",
-    )
-    assert_equal(
-        calculate_next_check_ms(1000, 50, 1, 1),
-        50,
-        "single-beep next RTOS check",
-    )
+def run_full_hysteresis_tests():
+    print("\n=== Charging Full hysteresis 100/95 ===")
+    f=ChargingFull()
+    # enter only at 100
+    assert_equal(f.update(99),False,"99 -> Charging")
+    assert_equal(f.update(100),True,"100 -> InputOk")
+    assert_equal(f.update(99),True,"InputOk stays at 99")
+    assert_equal(f.update(96),True,"stays at 96")
+    assert_equal(f.update(95),True,"stays at 95")
+    assert_equal(f.update(94),False,"94 -> Charging")
+    # again
+    assert_equal(f.update(100),True,"100 again -> InputOk")
+    assert_equal(f.update(94),False,"94 -> Charging via hysteresis")
+    print("Full 100/95 hysteresis PASS")
+    # ensure charging vs InputOk decision respects input_present
+    # Simulate Ui_Tick decision: InputPresent true + raw 99 + fullActive false -> Charging
+    f.reset()
+    f.update(99)
+    assert_true(f.active==False,"full not active at 99 init")
+    # After 100, active stays
+    f.update(100)
+    # now raw 98 while InputPresent should stay InputOk
+    assert_equal(f.update(98),True,"stay InputOk at 98")
+    print("Full decision PASS")
 
-    # Remainder milliseconds are placed on the last pulse so the duty window / میلی‌ثانیه‌های باقی‌مانده روی پالس آخر قرار می‌گیرند تا پنجره دیوتی
-    # remains exact instead of losing integer-division time. / دقیق بماند و زمان تقسیم صحیح از بین نرود.
-    assert_equal(
-        calculate_pattern(1000, 60, 3, 100),
-        (600, [133, 133, 134], 100, 400),
-        "three-beep safe-gap remainder timing",
-    )
+def run_batlost_tests():
+    """[EN] Battery-lost scenario: LED/buzzer pattern math + source contracts.
+       [FA] سناریوی قطع باتری: ریاضی الگو + قراردادهای سورس."""
+    print("\n=== BatLost scenario (central fault flag) ===")
+    ui_led_h = open(LED_HEADER, "r", encoding="utf-8", errors="ignore").read()
+    ui_led_c = open(os.path.join(BASE_DIR, "ui_led.c"), "r", encoding="utf-8", errors="ignore").read()
 
-    # Safe-off commands return zero and must not be reported as errors. / فرمان‌های خاموشی امن صفر برمی‌گردانند و نباید خطا گزارش شوند.
-    assert_equal(calculate_next_check_ms(0, 10, 2, 100), UI_BUZZER_OFF_RESULT, "zero period turns off")
-    assert_equal(calculate_next_check_ms(1000, 0, 2, 100), UI_BUZZER_OFF_RESULT, "zero duty turns off")
-    assert_equal(calculate_next_check_ms(1000, 10, 0, 100), UI_BUZZER_OFF_RESULT, "zero count turns off")
+    # [EN] Header must own the BatLost constants and prototype.
+    # [FA] هدر باید ثابت‌ها و پروتوتایپ سناریو را داشته باشد.
+    assert_true(re.search(r"#define UI_BAT_LOST_LED_PERIOD_MS\s+1000u", ui_led_h), "batlost LED period 1000 ms")
+    assert_true(re.search(r"#define UI_BAT_LOST_LED_DUTY_PERCENT\s+50u", ui_led_h), "batlost LED duty 50%")
+    assert_true(re.search(r"#define UI_BAT_LOST_BEEP_PERIOD_MS\s+3000u", ui_led_h), "batlost beep period 3000 ms")
+    assert_true(re.search(r"#define UI_BAT_LOST_BEEP_DURATION_MS\s+900u", ui_led_h), "batlost beep window 900 ms")
+    assert_true(re.search(r"#define UI_BAT_LOST_BEEP_COUNT\s+3u", ui_led_h), "batlost beep count 3")
+    assert_true(re.search(r"#define UI_BAT_LOST_BEEP_GAP_MS\s+100u", ui_led_h), "batlost beep gap 100 ms")
+    assert_true("void func__Ui_ScenarioBatLost_Tick(void);" in ui_led_h, "batlost prototype in header")
 
-    # Non-zero unsafe configurations return -1. / تنظیمات غیرصفر و ناامن مقدار منفی یک برمی‌گردانند.
-    assert_equal(calculate_next_check_ms(999, 10, 2, 100), UI_BUZZER_INVALID_RESULT, "short period rejects")
-    assert_equal(calculate_next_check_ms(1000, 50, 2, 99), UI_BUZZER_INVALID_RESULT, "short gap rejects")
-    assert_equal(calculate_next_check_ms(1000, 10, 3, 100), UI_BUZZER_INVALID_RESULT, "gaps without pulse time reject")
-    assert_equal(calculate_next_check_ms(1000, 101, 1, 100), UI_BUZZER_INVALID_RESULT, "duty above 100 rejects")
+    # [EN] Pattern math must match the shared buzzer engine's expectations:
+    #      duty = 900*100/3000 = 30 -> window 900, three 233/233/234 ms beeps,
+    #      100 ms gaps, 2100 ms silence. Valid per min-period/min-gap rules.
+    # [FA] ریاضی الگو باید با موتور بوق سازگار باشد.
+    period = defines.get("UI_BAT_LOST_BEEP_PERIOD_MS", 3000)
+    duration = defines.get("UI_BAT_LOST_BEEP_DURATION_MS", 900)
+    count = defines.get("UI_BAT_LOST_BEEP_COUNT", 3)
+    gap = defines.get("UI_BAT_LOST_BEEP_GAP_MS", 100)
+    duty = (duration * UI_PERCENT_SCALE) // period
+    assert_equal(duty, 30, "batlost beep duty percent")
+    assert_equal(calculate_pattern(period, duty, count, gap), (900, [233, 233, 234], 100, 2100), "batlost 3-beep pattern")
+    assert_true(period >= UI_BUZZER_MIN_PERIOD_MS, "batlost period >= min")
+    assert_true(gap >= UI_BUZZER_MIN_GAP_MS, "batlost gap >= min")
+    assert_true(calculate_next_check_ms(period, duty, count, gap) != UI_BUZZER_INVALID_RESULT, "batlost buzzer pattern valid")
 
-
-# ==================== Main / اجرای اصلی ====================
-
+    # [EN] Trigger: only the central fault bit, AFTER overvoltage, with return.
+    # [FA] ماشه: فقط پرچم متمرکز، بعد از اضافه‌ولتاژ، با return.
+    assert_true("func__Ui_ScenarioBatLost_Tick" in ui_led_c, "batlost scenario implemented")
+    assert_true("func__Fault_Get() & FAULT_CHARGER_BAT_LOST" in ui_led_c, "batlost trigger reads the central fault bit")
+    assert_true("func__Charger_IsAnyChannelActive()" in ui_led_c, "charging yellow must be gated by the charger being active (user directive)")
+    assert_true('#include "charger.h"' in ui_led_c, "ui must include charger.h for the activity query")
+    ov_idx = ui_led_c.find("func__Ui_ScenarioInputOverVoltage_Tick();\n        return;")
+    bl_idx = ui_led_c.find("func__Ui_ScenarioBatLost_Tick();")
+    assert_true(ov_idx != -1 and bl_idx != -1 and ov_idx < bl_idx, "batlost has priority right after overvoltage")
+    print("BatLost scenario PASS")
 
 def main():
-    print("=== UI Buzzer Host Test (limits + adaptive RTOS check) ===")
-    print("Example: period=10000ms, duty=10%, count=2, gap=100ms")
-    print("Output: 450ms ON, 100ms OFF, 450ms ON, 9000ms OFF")
-    print()
-
+    print("=== UI Host Test (buzzer + BatteryRun 2%+0/1 + Charging 5% + Full 100/95 + phase) ===")
     run_assertions()
-
-    print("ALL HOST TESTS PASSED (single periodic buzzer API)")
-
-
-if __name__ == "__main__":
+    print("ALL BUZZER TESTS PASSED")
+    run_batlost_tests()
+    run_battery_hysteresis_tests()
+    run_charging_hysteresis_tests()
+    run_full_hysteresis_tests()
+    print("\n=== Additional checks ===")
+    assert_equal(battery_voltage_to_percent(21000),0,"21000->0%")
+    assert_equal(battery_voltage_to_percent(28000),100,"28000->100%")
+    assert_equal(battery_voltage_to_percent(24500),50,"24500->50%")
+    print("Voltage mapping PASS")
+    on,off=green_timing(57)
+    assert_true(on+off==UI_BLINK_PERIOD_MS,"green on+off period")
+    assert_true(off>=UI_GREEN_MIN_OFF_MS,"green off min")
+    print(f"57% green on {on} off {off} PASS")
+    onY,offY=yellow_timing(57)
+    assert_true(onY+offY==UI_CHARGING_BLINK_PERIOD_MS,"yellow on+off period")
+    print(f"57% yellow on {onY} off {offY} PASS")
+    print("\nALL HOST TESTS PASSED (buzzer + BatteryRun 2%+0/1 + Charging 5% + Full 100/95 + phase)")
+if __name__=="__main__":
     main()

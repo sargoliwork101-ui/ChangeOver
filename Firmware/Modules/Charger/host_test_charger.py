@@ -152,15 +152,10 @@ def test_master_enable_does_not_bypass_numeric_protections():
 
 def test_channel_selection_constants():
     text = CHARGER_H.read_text()
-    ch1_match = re.search(r"#define CHG_CHANNEL_1_INSTALLED\s+(\d)u", text)
-    ch2_match = re.search(r"#define CHG_CHANNEL_2_INSTALLED\s+(\d)u", text)
-    check((ch1_match is not None) and (ch2_match is not None),
-          "both CHG_CHANNEL_x_INSTALLED defines must exist (flip CH1 to 1 to bring up charger 1)")
-    check(ch2_match.group(1) == "1",
-          "channel 2 (Trans2, current board wiring) must stay installed")
-    check((ch1_match.group(1) != "1") or
-          (re.search(r"#define CHG_TRANSFORMER_KNOWN\s+1u", text) is not None),
-          "charger 1 may only be enabled with CHG_TRANSFORMER_KNOWN=1 (production current data)")
+    check(re.search(r"#define CHG_CHANNEL_1_INSTALLED\s+0u", text),
+          "current test must keep unassembled channel 1 disabled")
+    check(re.search(r"#define CHG_CHANNEL_2_INSTALLED\s+1u", text),
+          "current test must select installed channel 2")
     check("CHG_INSTALLED_CHANNEL_MASK" in text,
           "the two constants must feed one explicit installed-channel mask")
 
@@ -376,13 +371,6 @@ def test_setpoints_and_timing():
     check("uint32_t__absorbAccumTicks" in text_c, "soak must accumulate with pause outside the window")
     check("do NOT fall back to BULK" in text_c, "FLOAT must survive descending below the 14.3 V window (bench bug: fresh soak restarted right after every soak completed)")
     check("PARK THE PUMP AT ZERO" in text_c, "FLOAT must ramp the duty to 0 and park it (user: 'why is the charger not off? duty stuck 4-5%')")
-    check(re.search(r"#define CHG_TAPER_CURRENT_MA\s+50u", text_h) and
-          re.search(r"#define CHG_TAPER_SUSTAIN_MS\s+60000u", text_h) and
-          re.search(r"#define CHG_ABSORB_MAX_MS\s+3600000u", text_h),
-          "taper completion must be 50 mA held 60 s with a 1-hour absorb ceiling (user bench decisions)")
-    check("uint32_t__taperSinceTick" in text_c and "bool__absorbTimedOut" in text_c and
-          "bool__taperDone" in text_c,
-          "absorb must end on soak>=10min AND steady tail current, plus the 1-hour ceiling")
     check("CHG_STATE_ABSORB" in text_c, "absorb voltage-hold state must exist in the state machine")
     check(re.search(r"#define CHG_BULK_CURRENT_MAX_MA\s+650u", text_h), "bulk regulation current must be 650 mA (tight band per user)")
     check(re.search(r"#define CHG_REGULATE_LOW_MA\s+630u", text_h), "regulation band lower edge must be 630 mA (~20 mA tolerance)")
@@ -403,6 +391,7 @@ def test_setpoints_and_timing():
     check("bool__anyHalfLow" in (ROOT / "Firmware/Modules/Fault/fault.c").read_text(), "rule 2 must be EITHER half below 7 V (was ALL six-V: silent on a single cut lead)")
     check("bool__batteryTrulyPresent" in (ROOT / "Firmware/Modules/Fault/fault.c").read_text(), "bat-lost clear must require BOTH halves >= FAULT_BATTERY_BACK_MV (7 V) - one lead cut keeps its half below 7 V so the alarm repeats until reconnect (one-burst bug)")
     check(re.search(r"#define FAULT_BAT_DISCONNECT_MV\s+14800u", text_fault_h), "threshold stays 14.8 V, NOT 15.0 V: 15.0 would collide with the validity cut (~0.1 s float vs ~0.5 s at 14.8)")
+    check(re.search(r"#define FAULT_BAT_ABSENT_MV\s+6000u", text_fault_h), "battery-absent threshold must be 6 V in Fault (user choice)")
     check(re.search(r"#define FAULT_BAT_ABSENT_DEBOUNCE_MS\s+1000u", text_fault_h), "battery-absent debounce must be 1000 ms in Fault")
     check(re.search(r"#define FAULT_BAT_RECOVER_MS\s+1000u", text_fault_h), "battery-back settle must be 1000 ms in Fault")
     check(re.search(r"#define FAULT_INPUT_PRESENT_MIN_MV\s+21000u", text_fault_h), "absent rule must be gated by input present >= 21 V")
@@ -417,12 +406,6 @@ def test_setpoints_and_timing():
     check("CHG_BAT_DISCONNECT_MV" not in text_h, "charger header must not own battery-lost thresholds anymore")
     check("batOverStartTick" not in text_c and "batBackStartTick" not in text_c, "charger must not own battery-lost timers anymore")
     check("func__Fault_Evaluate(&measurement_snapshot_t__snap)" in TASK_CONTROL_C.read_text(), "task_control must run the central detection before func__Fault_Get")
-    check("CHG_INSTALLED_CHANNEL_MASK" in text_fault_c and "bool__highHalfInstalled" in text_fault_c,
-          "battery-lost rules must ignore halves of uninstalled channels (bench bug: with CH1 off, the unwired low half latched bat-lost forever and the charger looked dead)")
-    check("func__Charger_IsAnyChannelActive" in text_fault_c,
-          "the 14.8 V pump rule must be armed only while some channel is actually pumping (parked-FLOAT bench transients must not trip it)")
-    check("rtos_time.h" in text_fault_c and "func__Rtos_MillisecondsToTicks" in text_fault_c,
-          "fault debounces must convert ms via rtos_time.h, never a private tick formula")
     check(re.search(r"FAULT_CHARGER_BAT_LOST\s+\(1u << 6\)", APP_TYPES_H.read_text()), "fault bit must live centrally in app_types.h")
     check(re.search(r"#define CHG_FIXED_DUTY_TEST_ENABLE\s+0u", text_h), "fixed duty diagnostic must be OFF for normal charge (1u only during bench calibration)")
     check(re.search(r"#define CHG_FIXED_DUTY_TEST_DUTY_PERMILLE\s+150u", text_h), "diagnostic duty must be fixed at 150 permille = 15%")

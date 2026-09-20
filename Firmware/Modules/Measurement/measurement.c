@@ -47,19 +47,131 @@ static uint8_t UINT8_T__G__MeasurementWarmupFrameCount;
 static uint32_t UINT32_T__G__Current1FilteredMa;
 static uint32_t UINT32_T__G__Current2FilteredMa;
 
-/* [EN] Median-5 prefilter windows for the two BATTERY ADC channels
-   (12V_BAT and 24V_BAT): absorb-phase 2-frame spike bursts beat a median-3,
-   so the battery path uses 5 samples. Window arrays are self-seeding on the
-   first sample so start-up needs no special case.
-   [FA] پنجره‌های پیش‌فیلتر میانهٔ ۵ برای دو کانال باتری: ترک‌های اسپایک
-   دوفریمیِ ابزورب، میانهٔ ۳ را می‌شکنند؛ پنجره با اولین نمونه خودبذر می‌شود. */
-#define MEASUREMENT_MEDIAN5_WINDOW 5u
-static uint32_t UINT32_T__G__Bat12WindowMv[MEASUREMENT_MEDIAN5_WINDOW];
-static uint32_t UINT32_T__G__Bat24WindowMv[MEASUREMENT_MEDIAN5_WINDOW];
-static uint8_t UINT8_T__G__Bat12WindowIndex;
-static uint8_t UINT8_T__G__Bat24WindowIndex;
-static bool BOOL__G__Bat12WindowSeeded;
-static bool BOOL__G__Bat24WindowSeeded;
+/* ==================== Median prefilter / پیش‌فیلتر مدین ==================== */
+
+/* [EN] Median-of-3 history per current channel (0=Current1, 1=Current2):
+ *      kills single-frame ADC spikes with ZERO added lag, so the EMA below
+ *      does not need to be strengthened further (user bench directive).
+ * [FA] تاریخچه مدین-۳ برای هر کانال جریان: spikeهای تکی را بدون تأخیر
+ *      اضافه حذف می‌کند تا نیازی به قوی‌ترکردن فیلتر میانگین نباشد. */
+static uint32_t UINT32_T__G__CurrentMedianHistoryMa[2][3];
+
+/* [EN] Median-of-5 history per battery channel voltage (0=v_bat_low,
+   1=v_bat_high): raised 2026-09-19 from median-3 because a false buzzer
+   still fired WHILE the charger genuinely pumped (absorb mode) - that
+   means glitch bursts of two consecutive frames also cross 14.8 V, and
+   median-3 passes a 2-frame burst straight through. Median-of-5 only
+   outputs the middle sample, so any burst shorter than 3 frames is dead
+   while real voltage steps pass with ~20 ms of lag at the 10 ms frame
+   cadence - nothing the control loop can notice.
+   [FA] تاریخچهٔ مدین-۵ ولتاژ دو نیم‌باتری: چون بوق فیک حین ابزوربِ
+   واقعی هم زده شد، پرش‌های دو-فریمی پشت‌سر از مدین-۳ رد می‌شدند؛ مدین-۵
+   هر ترکیدگی کوتاه‌تر از ۳ فریم را نابود می‌کند و پلهٔ واقعی با حدود دو
+   فریم تأخیر عبور می‌کند. */
+static uint32_t UINT32_T__G__BatVoltageMedianHistoryMv[2][5];
+
+static uint32_t func__Measurement_Median3(uint32_t uint32_t__aMa,
+                                          uint32_t uint32_t__bMa,
+                                          uint32_t uint32_t__cMa)
+{
+    if (((uint32_t__aMa >= uint32_t__bMa) && (uint32_t__aMa <= uint32_t__cMa)) ||
+        ((uint32_t__aMa >= uint32_t__cMa) && (uint32_t__aMa <= uint32_t__bMa)))
+    {
+        return uint32_t__aMa;
+    }
+    if (((uint32_t__bMa >= uint32_t__aMa) && (uint32_t__bMa <= uint32_t__cMa)) ||
+        ((uint32_t__bMa >= uint32_t__cMa) && (uint32_t__bMa <= uint32_t__aMa)))
+    {
+        return uint32_t__bMa;
+    }
+    return uint32_t__cMa;
+}
+
+/* [EN] Median-of-5 for the battery voltage channel prefilter: plain
+   insertion sort of a LOCAL copy keeps the live history untouched; the
+   middle element is the spike-immune sample. Five-element sorting network
+   avoided on purpose - clarity beats cycle-pinching at a 10 ms cadence.
+   [FA] مدین-۵ برای پیش‌فیلتر ولتاژ: مرتب‌سازی درجی روی کپی محلی است تا
+   تاریخچهٔ زنده دست‌نخورده بماند و عنصر میانی برگردد. */
+static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
+{
+    uint32_t uint32_t__sorted[5u];
+    uint8_t  uint8_t__index;
+    uint8_t  uint8_t__pass;
+
+    for (uint8_t__index = 0u; uint8_t__index < 5u; uint8_t__index++)
+    {
+        uint32_t__sorted[uint8_t__index] = uint32_t__samples[uint8_t__index];
+    }
+    for (uint8_t__pass = 1u; uint8_t__pass < 5u; uint8_t__pass++)
+    {
+        uint32_t uint32_t__key = uint32_t__sorted[uint8_t__pass];
+        int32_t  int32_t__slot = (int32_t)uint8_t__pass - 1;
+
+        while ((int32_t__slot >= 0) &&
+               (uint32_t__sorted[int32_t__slot] > uint32_t__key))
+        {
+            uint32_t__sorted[int32_t__slot + 1] = uint32_t__sorted[int32_t__slot];
+            int32_t__slot--;
+        }
+        uint32_t__sorted[int32_t__slot + 1] = uint32_t__key;
+    }
+    return uint32_t__sorted[2u];
+}
+
+static uint32_t func__Measurement_MedianFilterSample(uint8_t uint8_t__channelIndex,
+                                                     uint32_t uint32_t__sampleMa)
+{
+    uint32_t *uint32_t__historyMa;
+
+    if (uint8_t__channelIndex >= 2u)
+    {
+        return uint32_t__sampleMa;
+    }
+
+    uint32_t__historyMa = UINT32_T__G__CurrentMedianHistoryMa[uint8_t__channelIndex];
+    uint32_t__historyMa[0] = uint32_t__historyMa[1];
+    uint32_t__historyMa[1] = uint32_t__historyMa[2];
+    uint32_t__historyMa[2] = uint32_t__sampleMa;
+
+    return func__Measurement_Median3(uint32_t__historyMa[0],
+                                     uint32_t__historyMa[1],
+                                     uint32_t__historyMa[2]);
+}
+
+/**
+ * @brief  [EN] Shift one new battery-channel voltage (mV) into the median-5
+ *         history and return the filtered value. Voltage-burst-safe version
+ *         of the current median stage: filters the DERIVED low/high voltages that
+ *         feed the charger state machine and the central battery-lost
+ *         detector, so a single-frame spike cannot fake "battery gone".
+ *         [FA] نمونهٔ جدید ولتاژ نیم‌باتری (mV) را در تاریخچهٔ مدین-۳
+ *         جابه‌جا و مقدار فیلترشده را برمی‌گرداند؛ روی مقادیر مشتق‌شدهٔ
+ *         low/high که خوراک شارژر و آشکارساز مرکزی قطع باتری هستند اعمال
+ *         می‌شود تا اسپایک تک‌فریمی نتواند «باتری رفت» را جعل کند.
+ * @param  uint8_t__channelIndex [EN] Battery channel 0 or 1 / کانال باتری
+ * @param  uint32_t__sampleMv    [EN] New derived voltage sample in mV / ولتاژ جدید
+ * @return uint32_t [EN] Median-of-3 filtered voltage in mV / ولتاژ مدین‌شده
+ */
+static uint32_t func__Measurement_MedianFilterVoltageSample(uint8_t uint8_t__channelIndex,
+                                                            uint32_t uint32_t__sampleMv)
+{
+    uint32_t *uint32_t__historyMv;
+
+    if (uint8_t__channelIndex >= 2u)
+    {
+        return uint32_t__sampleMv;
+    }
+
+    uint32_t__historyMv = UINT32_T__G__BatVoltageMedianHistoryMv[uint8_t__channelIndex];
+    uint32_t__historyMv[0] = uint32_t__historyMv[1];
+    uint32_t__historyMv[1] = uint32_t__historyMv[2];
+    uint32_t__historyMv[2] = uint32_t__historyMv[3];
+    uint32_t__historyMv[3] = uint32_t__historyMv[4];
+    uint32_t__historyMv[4] = uint32_t__sampleMv;
+
+    return func__Measurement_Median5(uint32_t__historyMv);
+}
 
 /* ==================== Measurement_FilterCurrent / فیلتر جریان ==================== */
 
@@ -74,51 +186,25 @@ static bool BOOL__G__Bat24WindowSeeded;
  * @param  uint32_t__sampleMa [EN] New calibrated sample / نمونه کالیبره جدید
  * @return uint32_t [EN] Filtered current / جریان فیلترشده
  */
-/**
- * @brief  [EN] Median of five values (insertion sort on a copy; the caller's
- *              array stays untouched).
- *         [FA] میانهٔ پنج مقدار (مرتب‌سازی درجی روی کپی؛ آرایهٔ صدا کننده
- *              دست‌نخورده می‌ماند).
- * @param  uint32_t__values [EN] Five input values / پنج مقدار ورودی
- * @return uint32_t [EN] Median value / مقدار میانه
- */
-static uint32_t func__Measurement_Median5(const uint32_t *uint32_t__values)
-{
-    uint32_t uint32_t__sorted[MEASUREMENT_MEDIAN5_WINDOW];
-    uint8_t uint8_t__i;
-    uint8_t uint8_t__j;
-
-    for (uint8_t__i = 0u; uint8_t__i < (uint8_t)MEASUREMENT_MEDIAN5_WINDOW; uint8_t__i++)
-    {
-        uint32_t__sorted[uint8_t__i] = uint32_t__values[uint8_t__i];
-    }
-    for (uint8_t__i = 1u; uint8_t__i < (uint8_t)MEASUREMENT_MEDIAN5_WINDOW; uint8_t__i++)
-    {
-        uint32_t uint32_t__key = uint32_t__sorted[uint8_t__i];
-        uint8_t__j = uint8_t__i;
-        while ((uint8_t__j > 0u) && (uint32_t__sorted[uint8_t__j - 1u] > uint32_t__key))
-        {
-            uint32_t__sorted[uint8_t__j] = uint32_t__sorted[uint8_t__j - 1u];
-            uint8_t__j--;
-        }
-        uint32_t__sorted[uint8_t__j] = uint32_t__key;
-    }
-    return uint32_t__sorted[MEASUREMENT_MEDIAN5_WINDOW / 2u];
-}
-
 static uint32_t func__Measurement_FilterCurrent(uint32_t uint32_t__previousMa,
                                                 uint32_t uint32_t__sampleMa)
 {
     uint32_t uint32_t__differenceMa;
 
+    /* [EN] First-order low-pass per 10 ms frame: prev +/- (diff+15)/16, so a
+       step reaches ~63% in ~160 ms (alpha 1/16). Strengthened twice on user
+       bench feedback (1/4 -> 1/8 -> 1/16) - the published current showed
+       visible oscillation.
+       [FA] فیلتر مرتبه اول روی هر فریم ۱۰ms با آلفای ۱/۱۶ (ثابت زمانی
+       ~۱۶۰ms)؛ دو مرحله تقویت شد تا نوسان خوانش جریان از بین برود. */
     if (uint32_t__sampleMa >= uint32_t__previousMa)
     {
         uint32_t__differenceMa = uint32_t__sampleMa - uint32_t__previousMa;
-        return uint32_t__previousMa + ((uint32_t__differenceMa + 3u) / 4u);
+        return uint32_t__previousMa + ((uint32_t__differenceMa + 15u) / 16u);
     }
 
     uint32_t__differenceMa = uint32_t__previousMa - uint32_t__sampleMa;
-    return uint32_t__previousMa - ((uint32_t__differenceMa + 3u) / 4u);
+    return uint32_t__previousMa - ((uint32_t__differenceMa + 15u) / 16u);
 }
 
 /* ==================== Global Shared Values ==================== */
@@ -155,10 +241,6 @@ void func__Measurement_Init(void)
     UINT8_T__G__MeasurementWarmupFrameCount = 0u;
     UINT32_T__G__Current1FilteredMa = 0u;
     UINT32_T__G__Current2FilteredMa = 0u;
-    UINT8_T__G__Bat12WindowIndex = 0u;
-    UINT8_T__G__Bat24WindowIndex = 0u;
-    BOOL__G__Bat12WindowSeeded = false;
-    BOOL__G__Bat24WindowSeeded = false;
 
     UINT32_T__G__MeasInputVoltageMv = 0u;
     UINT32_T__G__MeasBattery24Mv = 0u;
@@ -300,46 +382,16 @@ void func__Measurement_Run(void)
     UINT32_T__G__Current1FilteredMa =
         func__Measurement_FilterCurrent(
             UINT32_T__G__Current1FilteredMa,
-            func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1]));
+            func__Measurement_MedianFilterSample(
+                0u,
+                func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1])));
     uint32_t__current1Ma = UINT32_T__G__Current1FilteredMa;
     uint32_t__inputVoltageMv =
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_IN]);
-    /* [EN] Battery channels pass the median-5 prefilter first (2-frame spike
-       bursts during absorb beat median-3). The rings seed themselves with
-       the first sample, so validity ramps without a special case.
-       [FA] کانال‌های باتری ابتدا از پیش‌فیلتر میانهٔ ۵ می‌گذرند؛ حلقه‌ها با
-       اولین نمونه خودبذر می‌شوند. */
-    UINT32_T__G__Bat24WindowMv[UINT8_T__G__Bat24WindowIndex] =
+    uint32_t__battery24Mv =
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);
-    if (BOOL__G__Bat24WindowSeeded == false)
-    {
-        uint8_t uint8_t__seed;
-        for (uint8_t__seed = 0u; uint8_t__seed < (uint8_t)MEASUREMENT_MEDIAN5_WINDOW; uint8_t__seed++)
-        {
-            UINT32_T__G__Bat24WindowMv[uint8_t__seed] =
-                UINT32_T__G__Bat24WindowMv[UINT8_T__G__Bat24WindowIndex];
-        }
-        BOOL__G__Bat24WindowSeeded = true;
-    }
-    UINT8_T__G__Bat24WindowIndex =
-        (uint8_t)((UINT8_T__G__Bat24WindowIndex + 1u) % MEASUREMENT_MEDIAN5_WINDOW);
-    uint32_t__battery24Mv = func__Measurement_Median5(UINT32_T__G__Bat24WindowMv);
-
-    UINT32_T__G__Bat12WindowMv[UINT8_T__G__Bat12WindowIndex] =
+    uint32_t__battery12Mv =
         func__Measurement_V12CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_12V_BAT]);
-    if (BOOL__G__Bat12WindowSeeded == false)
-    {
-        uint8_t uint8_t__seed;
-        for (uint8_t__seed = 0u; uint8_t__seed < (uint8_t)MEASUREMENT_MEDIAN5_WINDOW; uint8_t__seed++)
-        {
-            UINT32_T__G__Bat12WindowMv[uint8_t__seed] =
-                UINT32_T__G__Bat12WindowMv[UINT8_T__G__Bat12WindowIndex];
-        }
-        BOOL__G__Bat12WindowSeeded = true;
-    }
-    UINT8_T__G__Bat12WindowIndex =
-        (uint8_t)((UINT8_T__G__Bat12WindowIndex + 1u) % MEASUREMENT_MEDIAN5_WINDOW);
-    uint32_t__battery12Mv = func__Measurement_Median5(UINT32_T__G__Bat12WindowMv);
     uint32_t__batteryLowMv = uint32_t__battery12Mv;
     if (uint32_t__battery24Mv >= uint32_t__battery12Mv)
     {
@@ -349,10 +401,24 @@ void func__Measurement_Run(void)
     {
         uint32_t__batteryHighMv = 0u;
     }
+
+    /* [EN] Median-3 on both derived battery channel voltages, right where the
+       charger and the battery-lost detector consume them: a single-frame ADC
+       spike on the switching node can no longer fake a >14.8 V jump; real
+       steps pass with at most one extra frame of history, no moving average.
+       [FA] مدین-۳ روی ولتاژ مشتق‌شدهٔ هر دو نیم‌باتری دقیقاً همان‌جایی که
+       شارژر و آشکارساز قطع باتری مصرفش می‌کنند؛ اسپایک تک‌فریمی دیگر پرش
+       بالای ۱۴٫۸V را جعل نمی‌کند و پله واقعی بدون تأخیر عبور می‌کند. */
+    uint32_t__batteryLowMv =
+        func__Measurement_MedianFilterVoltageSample(0u, uint32_t__batteryLowMv);
+    uint32_t__batteryHighMv =
+        func__Measurement_MedianFilterVoltageSample(1u, uint32_t__batteryHighMv);
     UINT32_T__G__Current2FilteredMa =
         func__Measurement_FilterCurrent(
             UINT32_T__G__Current2FilteredMa,
-            func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]));
+            func__Measurement_MedianFilterSample(
+                1u,
+                func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2])));
     uint32_t__current2Ma = UINT32_T__G__Current2FilteredMa;
 
     /* [EN] The BSP exposes the board input-detect signal as a logical GPIO;

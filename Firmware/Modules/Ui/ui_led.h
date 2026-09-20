@@ -126,6 +126,64 @@
  */
 #define UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS 0u
 
+/* ==================== Battery-lost error constants / ثابت‌های خطای قطع باتری ==================== */
+
+/**
+ * @brief  [EN] Battery-lost scenario (2026-09-19): shown only while the
+ *         central fault bit FAULT_CHARGER_BAT_LOST is latched by the Fault
+ *         module. Design chosen with the user: red fast blink (500 ms ON /
+ *         500 ms OFF - clearly different from the 1 s input-overvoltage pulse),
+ *         green steady (input is present in both detection cases), and a
+ *         repeating buzzer pattern of THREE short beeps then a silence. It can
+ *         never mix with the BatteryRun critical beep: that one runs only with
+ *         the input ABSENT, and in func__Ui_Tick this scenario is checked
+ *         (after overvoltage) before every normal scenario and returns.
+ *         [FA] سناریوی قطع باتری: فقط تا وقتی پرچم متمرکز قفل است؛ قرمز
+ *         چشمک‌تند (نیم‌ثانیه/نیم‌ثانیه)، سبز ثابت و سه بیپ کوتاه + مکثِ
+ *         تکرارشونده. با بوق بحرانی دشارژ هرگز قاطی نمی‌شود - آن فقط بی‌ورودی
+ *         است و این سناریو قبل از همه سناریوهای نرمال چک و return می‌شود.
+ */
+#define UI_BAT_LOST_LED_PERIOD_MS 1000u
+
+/**
+ * @brief  [EN] Red LED duty while the battery-lost error is displayed, percent.
+ *         [FA] دیوتی LED قرمز هنگام نمایش خطای قطع باتری، درصد.
+ */
+#define UI_BAT_LOST_LED_DUTY_PERCENT 50u
+
+/**
+ * @brief  [EN] Battery-lost buzzer pattern: one full cycle (beeps + silence),
+ *         in milliseconds.
+ *         [FA] دوره کامل الگوی بوق قطع باتری (بیپ‌ها + سکوت)، میلی‌ثانیه.
+ */
+#define UI_BAT_LOST_BEEP_PERIOD_MS 3000u
+
+/**
+ * @brief  [EN] Total beep window inside one battery-lost cycle (the three
+ *         beeps share it), remainder is silence, in milliseconds.
+ *         [FA] پنجره بیپ‌ها در یک دوره (سه بیپ در این پنجره تقسیم می‌شوند).
+ */
+#define UI_BAT_LOST_BEEP_DURATION_MS 900u
+
+/**
+ * @brief  [EN] Buzzer duty derived from the beep window and the full period.
+ *         [FA] دیوتی بوق برگرفته از پنجره بیپ و دوره کامل.
+ */
+#define UI_BAT_LOST_BEEP_DUTY_PERCENT \
+    ((UI_BAT_LOST_BEEP_DURATION_MS * UI_PERCENT_SCALE) / UI_BAT_LOST_BEEP_PERIOD_MS)
+
+/**
+ * @brief  [EN] Number of buzzer pulses per battery-lost cycle (three beeps).
+ *         [FA] تعداد پالس بوق در هر دوره (سه بیپ).
+ */
+#define UI_BAT_LOST_BEEP_COUNT 3u
+
+/**
+ * @brief  [EN] Silence between adjacent battery-lost beeps, in milliseconds.
+ *         [FA] سکوت بین بیپ‌های مجاور، میلی‌ثانیه.
+ */
+#define UI_BAT_LOST_BEEP_GAP_MS 100u
+
 /**
  * @brief  [EN] Delay used while InputOk holds the green LED steady.
  *         [FA] تأخیر سناریوی InputOk هنگام ثابت نگه‌داشتن LED سبز.
@@ -287,6 +345,65 @@
  */
 #define UI_BATTERY_RUN_BEEP_GAP_MS 100u
 
+/* ==================== Battery percent hysteresis / هیسترزیس درصد باتری ==================== */
+
+/**
+ * @brief  [EN] Hysteresis for BatteryRun display/timing percent, in percent points.
+ *         Stable percent changes only when raw percent differs by at least 2.
+ *         Jitter 56↔57 or 57↔58 does not change blink timing; 57→55 or 57→59 does.
+ *         This hysteresis applies only to BatteryRun green blink and buzzer timing, not to input, overvoltage or Low Battery Alarm.
+ *         [FA] هیسترزیس درصد نمایش/زمان‌بندی BatteryRun، بر حسب واحد درصد.
+ *         درصد پایدار فقط وقتی اختلاف درصد خام و پایدار حداقل 2 باشد تغییر می‌کند.
+ */
+#define UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT 2u
+
+/**
+ * @brief  [EN] Legacy alias kept for compatibility. Use UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT.
+ *         [FA] نام قدیمی برای سازگاری؛ از UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT استفاده کن.
+ */
+#define UI_BATTERY_PERCENT_HYSTERESIS_PERCENT UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT
+
+/**
+ * @brief  [EN] Hysteresis for Charging yellow blink timing, in percent points.
+ *         Charging stable percent changes only when raw differs by at least 5.
+ *         Example: stable 57, raw 53..61 keeps 57; outside range moves to new raw.
+ *         [FA] هیسترزیس زمان چشمک زرد شارژ، بر حسب واحد درصد.
+ *         مثال: پایدار 57، خام 53 تا 61 همان 57 می‌ماند؛ خارج از محدوده به مقدار جدید می‌رود.
+ */
+#define UI_CHARGING_PERCENT_HYSTERESIS_PERCENT 5u
+
+/**
+ * @brief  [EN] Raw percent threshold to exit the critical 0% state.
+ *         While stable is 0, it stays 0 until raw reaches at least 2; then it moves to 1 first, not directly to 2.
+ *         [FA] آستانه درصد خام برای خروج از حالت بحرانی 0 درصد.
+ *         تا وقتی پایدار 0 است، تا raw حداقل 2 نشده روی 0 می‌ماند؛ پس از خروج ابتدا به 1 می‌رود.
+ */
+#define UI_BATTERY_ZERO_EXIT_THRESHOLD        2u
+
+/**
+ * @brief  [EN] Raw percent threshold to exit the 1% state upward.
+ *         While stable is 1: raw==0 → 0, raw>=3 → 2, otherwise keep 1. Prevents chatter between 0 and 1.
+ *         [FA] آستانه خروج از حالت 1 درصد به سمت بالا.
+ *         وقتی پایدار 1 است: raw 0 → 0، حداقل 3 → 2، otherwise 1 حفظ شود.
+ */
+#define UI_BATTERY_ONE_EXIT_THRESHOLD         3u
+
+/**
+ * @brief  [EN] Raw battery percent at which Charging may enter InputOk (full) state.
+ *         InputOk is entered only when raw reaches 100%.
+ *         [FA] درصد خام باتری که در آن Charging می‌تواند وارد حالت InputOk (فول) شود.
+ *         ورود به InputOk فقط وقتی خام به 100٪ برسد مجاز است.
+ */
+#define UI_CHARGING_FULL_ENTER_PERCENT        100u
+
+/**
+ * @brief  [EN] Raw battery percent below which InputOk exits back to Charging.
+ *         While InputOk is active it stays until raw falls below 95%.
+ *         [FA] درصد خام باتری که پایین‌تر از آن InputOk به Charging برمی‌گردد.
+ *         تا وقتی InputOk فعال است تا کمتر از 95٪ در همان حالت می‌ماند.
+ */
+#define UI_CHARGING_FULL_EXIT_PERCENT         95u
+
 /* ==================== Low Battery Alarm / آلارم باتری کم ==================== */
 
 /**
@@ -380,6 +497,17 @@ void func__Ui_ScenarioInputOk(void);
  * @param  uint32_t__batteryMv [EN] Battery voltage mV / ولتاژ باتری
  */
 void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv);
+
+/* ==================== Scenario BatLost Tick / تیک سناریوی قطع باتری ==================== */
+
+/**
+ * @brief  [EN] BatLost: red fast blink + green steady + three short beeps and
+ *         a pause (see UI_BAT_LOST_* above). Called every Ui pass while
+ *         FAULT_CHARGER_BAT_LOST is latched; no latch lives in the UI.
+ *         [FA] قطع باتری: قرمز چشمک‌تند + سبز ثابت + سه بیپ کوتاه و مکث؛ تا
+ *         وقتی پرچم متمرکز قفل است هر پاس صدا زده می‌شود؛ UI چیزی لچ نمی‌کند.
+ */
+void func__Ui_ScenarioBatLost_Tick(void);
 
 /* ==================== Scenario BatteryRun Tick / تیک سناریوی دشارژ ==================== */
 

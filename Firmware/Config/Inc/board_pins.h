@@ -84,16 +84,19 @@
 #define PIN_RX_PIN              GPIO_PIN_10     /* PA10 MCU_RX <- ESP_TX */
 
 /* ==================== Safe startup levels / سطوح امن شروع ==================== */
-/* [EN] Active-high loads are kept low; active-low battery controls are kept
- *      high. The battery path is therefore forced off before product tasks.
- * [FA] بارهای active-high پایین و کنترل‌های active-low باتری بالا نگه داشته
- *      می‌شوند؛ بنابراین مسیر باتری پیش از اجرای تسک‌های محصول خاموش است. */
+/* [EN] Active-high loads are kept low; PB5 (MCU battery path Q1, active-low)
+ *      is kept low to keep the MCU supplied from the battery at boot.
+ *      PB11 (Changeover Q17, active-low) is kept high (safe disconnected)
+ *      and remains independent from PB5.
+ * [FA] بارهای active-high پایین نگه داشته می‌شوند؛ PB5 (مسیر باتری MCU با Q1،
+ *      active-low) پایین نگه داشته می‌شود تا تغذیهٔ MCU از باتری در boot وصل بماند.
+ *      PB11 (Changeover Q17، active-low) بالا و در وضعیت امن و مستقل از PB5 می‌ماند. */
 #define PIN_SAFE_BUZZER_HIGH        0u
 #define PIN_SAFE_ESP_CHPD_HIGH      0u
 #define PIN_SAFE_LED_R_HIGH         0u
 #define PIN_SAFE_LED_Y_HIGH         0u
 #define PIN_SAFE_LED_G_HIGH         0u
-#define PIN_SAFE_BAT_SWITCH_HIGH    1u
+#define PIN_SAFE_BAT_SWITCH_HIGH    0u
 #define PIN_SAFE_RELAY_HIGH         0u
 #define PIN_SAFE_PROTECT_BATT_HIGH  1u
 
