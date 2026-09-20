@@ -457,6 +457,21 @@ def test_pwm_contract():
               "generated PWM prescaler must still be zero")
 
 
+def test_pwm_interleave_phase_lock():
+    bsp_pwm_c = (ROOT / "Firmware/Bsp/Src/bsp_pwm.c").read_text()
+    check("func__BspPwm_AlignPhaseToOther" in bsp_pwm_c,
+          "the 180deg interleave helper must exist (user order 2026-09-20: 10 us shift between the two charger PWMs to test the cross-channel current-sense inflation)")
+    check("__HAL_TIM_GET_COUNTER" in bsp_pwm_c and "__HAL_TIM_SET_COUNTER" in bsp_pwm_c,
+          "the phase lock must read the running timer's CNT and offset the starter by half a period")
+    check("uint32_t__periodCounts / 2u" in bsp_pwm_c,
+          "the shift must be half a period (= 10 us at 50 kHz) derived from the live ARR, never a hardcoded 720")
+    check("BOOL__G__PwmRunning" in bsp_pwm_c,
+          "start transitions must be tracked so the align only fires on stopped->running (rewriting CNT of a running timer every 10 ms pass would glitch its pulses)")
+    check("if (BOOL__G__PwmRunning[bsp_pwm_channel_t__channel] == false)" in bsp_pwm_c and
+          "if (BOOL__G__PwmRunning[bsp_pwm_channel_t__other] == false)" in bsp_pwm_c,
+          "align requires: this channel transitioning to run AND the other channel actually running (first starter defines the phase)")
+
+
 def test_electronic_load_policy_documented():
     text_h = CHARGER_H.read_text()
     check("free resistor" in text_h or "resistor alone" in text_h or "مقاومت آزاد" in text_h,
@@ -488,6 +503,7 @@ def main():
         test_current_band_regulates_and_protects,
         test_setpoints_and_timing,
         test_pwm_contract,
+        test_pwm_interleave_phase_lock,
         test_electronic_load_policy_documented,
     ]
     for test in tests:

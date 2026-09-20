@@ -61,7 +61,7 @@ Firmware/Bsp/Src/*.c       ← پورت برد فعلی، HAL و main.h خصوص
 | `BSP_PWM_CHARGER_2` | TIM3_CH1 / PA6، 50kHz | `MODULE_CHARGER=1`، با `CHG_MASTER_ENABLE=0` safe-off |
 | `BspUart` byte stream | USART1 TX/RX / PA9/PA10، 115200 8-N-1 | `MODULE_ESP=0`، backend موجود |
 
-`func__BspPwm_SetDutyPermille` دامنهٔ ۰ تا ۱۰۰۰ را اعمال می‌کند و صفر خروجی را متوقف می‌کند. `func__BspUart_Write` ارسال کامل با timeout محدود ۱۰۰ms دارد و `func__BspUart_ReadByte` non-blocking است.
+`func__BspPwm_SetDutyPermille` دامنهٔ ۰ تا ۱۰۰۰ را اعمال می‌کند و صفر خروجی را متوقف می‌کند. دو کانال PWM با **درهم‌گذاری فاز ۱۸۰ درجه** (نیم‌دوره = ۱۰µs در ۵۰kHz، دستور کاربر ۲۰۲۶-۰۹-۲۰ برای تست بادکردنِ خوانش جریان در حالت دوکانال) کار می‌کنند: در هر گذر توقف→چرخش، `func__BspPwm_AlignPhaseToOther` شمارندهٔ تایمر شروع‌کننده را نیم‌دوره (از روی ARR واقعی، نه عدد ثابت) از تایمر درحال‌چرخش فاصله می‌دهد؛ تایمر درحال‌کار هرگز بازنویسی نمی‌شود و چون هر دو تایمر روی یک کلاک ۷۲MHz و ARR یکسان‌اند آفست رانش ندارد. `func__BspUart_Write` ارسال کامل با timeout محدود ۱۰۰ms دارد و `func__BspUart_ReadByte` non-blocking است.
 
 ## توابع و وضعیت startup
 
