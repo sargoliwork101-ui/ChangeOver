@@ -12,7 +12,15 @@
 
 #include "fault.h"
 
+/* [EN] Install map + active query come from the charger header (one concept,
+   one constant: which half is wired/used lives ONLY there). No HAL inside.
+   [FA] نقشهٔ نصب کانال‌ها و پرسش «در حال پمپ» از هدر شارژر می‌آید تا مفهوم
+   تکثیر نشود. */
+#include "charger.h"
 #include "cmsis_os2.h"
+#include "rtos_time.h"
+
+#include <stddef.h>
 
 static fault_mask_t FAULT_MASK_T__G__Mask = FAULT_NONE;
 
@@ -23,17 +31,27 @@ static uint32_t UINT32_T__G__PumpSinceTick;
 static uint32_t UINT32_T__G__AbsentSinceTick;
 static uint32_t UINT32_T__G__RecoverSinceTick;
 
+/* ==================== Duration ticks ==================== */
+
 /**
- * @brief  [EN] Convert milliseconds to kernel ticks, rounding up so a short
- *              debounce never becomes zero on slow tick kernels.
- *         [FA] تبدیل ms به tick کرنل با گرد به بالا.
- * @param  uint32_t__durationMs [EN] Duration in ms / مدت بر حسب ms
- * @return uint32_t [EN] Kernel ticks / تعداد tick کرنل
+ * @brief  [EN] Milliseconds to kernel ticks via rtos_time.h (the only allowed
+ *              converter per project rules), with a zero-guard so a short
+ *              debounce never degenerates to 0 ticks on a slow tick kernel.
+ *         [FA] تبدیل ms به تیک فقط از rtos_time.h (قانون پروژه) + نگهبان صفر.
+ * @param  uint32_t__durationMs [EN] Duration in ms (10..3600000) / مدت بر حسب ms
+ * @return uint32_t [EN] Kernel ticks, at least 1 / تعداد tick کرنل، حداقل ۱
  */
 static uint32_t func__Fault_DurationTicks(uint32_t uint32_t__durationMs)
 {
-    uint32_t uint32_t__freq = osKernelGetTickFreq();
-    return (uint32_t)(((uint64_t)uint32_t__durationMs * uint32_t__freq + 999u) / 1000u);
+    uint32_t uint32_t__ticks;
+
+    uint32_t__ticks = func__Rtos_MillisecondsToTicks(uint32_t__durationMs);
+    if (uint32_t__ticks == 0u)
+    {
+        uint32_t__ticks = 1u;
+    }
+
+    return uint32_t__ticks;
 }
 
 /**
@@ -125,15 +143,42 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
         (measurement_snapshot_t__snap->v_in_mv >= FAULT_INPUT_PRESENT_MIN_MV) &&
         (measurement_snapshot_t__snap->v_in_mv <= FAULT_INPUT_PRESENT_MAX_MV);
 
+    /* [EN] Per-half participation follows the CHANNEL INSTALL MAP (bench
+       bug 2026-09-20: with CHG_CHANNEL_1_INSTALLED=0 the low half sits
+       unwired below 7 V, rule 2 latched FAULT_CHARGER_BAT_LOST forever and
+       the charger looked dead while the UI yellow kept blinking). Mapping
+       (charger.c): channel 0 = v_bat_high, channel 1 = v_bat_low - an
+       uninstalled channel's half can never be "disconnected", it is simply
+       not wired.
+       [FA] مشارکت هر نیم‌سل تابع نقشهٔ نصب کانال است (باگ بنچ: با کانال ۱
+       غیرفعال، نیم‌سل پایین بی‌سیم زیر ۷V می‌ماند و باتری-لاست ابدی قفل
+       می‌شد): کانال ۰ = نیم‌سل بالا، کانال ۱ = نیم‌سل پایین؛ نیم‌سل کانال
+       غیرفعال اصلاً «قطع» محسوب نمی‌شود. */
+    {
+        bool bool__highHalfInstalled;
+        bool bool__lowHalfInstalled;
+
+        bool__highHalfInstalled =
+            ((CHG_INSTALLED_CHANNEL_MASK & (1u << 0u)) != 0u);
+        bool__lowHalfInstalled =
+            ((CHG_INSTALLED_CHANNEL_MASK & (1u << 1u)) != 0u);
+
     /* [EN] Rule 1 (pump): a charging half above 14.8 V means the battery
        side is open - a healthy regulated half never exceeds ~14.6 V (the
        overshoot fast-down kicks in there), 150 ms of this is a definite cut.
+       Armed ONLY while some channel is actually pumping (a parked
+       FLOAT/done phase cannot spike the line, so bench transients there
+       must not trip the detector).
        [FA] قاعدهٔ ۱ (پمپ): نیم‌سل بالای ۱۴٫۸V یعنی سمت باتری باز است؛ نیم‌سل
-       سالمِ تنظیم‌شده هرگز از ~۱۴٫۶V بالاتر نمی‌رود. */
+       سالم هرگز از ~۱۴٫۶V بالاتر نمی‌رود. فقط وقتی مسلح که واقعاً پمپی در
+       کار باشد - فلوت پارک‌شده غیرفعالش می‌کند. */
     bool__pumpHigh =
         (bool__inputOk == true) &&
-        ((measurement_snapshot_t__snap->v_bat_low_mv > FAULT_BAT_DISCONNECT_MV) ||
-         (measurement_snapshot_t__snap->v_bat_high_mv > FAULT_BAT_DISCONNECT_MV));
+        (func__Charger_IsAnyChannelActive() == true) &&
+        (((bool__highHalfInstalled == true) &&
+          (measurement_snapshot_t__snap->v_bat_high_mv > FAULT_BAT_DISCONNECT_MV)) ||
+         ((bool__lowHalfInstalled == true) &&
+          (measurement_snapshot_t__snap->v_bat_low_mv > FAULT_BAT_DISCONNECT_MV)));
 
     if (bool__pumpHigh == false)
     {
@@ -164,8 +209,10 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
        می‌کرد. */
     bool__anyHalfLow =
         (bool__inputOk == true) &&
-        ((measurement_snapshot_t__snap->v_bat_low_mv < FAULT_BATTERY_BACK_MV) ||
-         (measurement_snapshot_t__snap->v_bat_high_mv < FAULT_BATTERY_BACK_MV));
+        (((bool__highHalfInstalled == true) &&
+          (measurement_snapshot_t__snap->v_bat_high_mv < FAULT_BATTERY_BACK_MV)) ||
+         ((bool__lowHalfInstalled == true) &&
+          (measurement_snapshot_t__snap->v_bat_low_mv < FAULT_BATTERY_BACK_MV)));
 
     if (bool__anyHalfLow == false)
     {
@@ -197,8 +244,11 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
        هنوز نیم‌سلش را پایین نگه داشته. */
     bool__batteryTrulyPresent =
         (bool__pumpHigh == false) &&
-        (measurement_snapshot_t__snap->v_bat_low_mv >= FAULT_BATTERY_BACK_MV) &&
-        (measurement_snapshot_t__snap->v_bat_high_mv >= FAULT_BATTERY_BACK_MV);
+        ((bool__highHalfInstalled == false) ||
+         (measurement_snapshot_t__snap->v_bat_high_mv >= FAULT_BATTERY_BACK_MV)) &&
+        ((bool__lowHalfInstalled == false) ||
+         (measurement_snapshot_t__snap->v_bat_low_mv >= FAULT_BATTERY_BACK_MV));
+    }
 
     if (bool__batteryTrulyPresent == false)
     {

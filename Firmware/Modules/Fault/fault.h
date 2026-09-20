@@ -91,15 +91,20 @@ bool func__Fault_Any(void);
 /**
  * @brief  [EN] Central battery-lost evaluation, run once per control pass by
  *              task_control BEFORE func__Fault_Get()/func__Charger_Evaluate:
- *              EITHER rule (pump >14.8 V sustained 150 ms, or either half
- *              <7 V sustained 1000 ms with valid 21..28 V input) latches
- *              FAULT_CHARGER_BAT_LOST; the bit clears only after BOTH halves
- *              hold >=7 V for 1000 ms straight. NULL / invalid snapshots are
- *              ignored.
+ *              EITHER rule latches FAULT_CHARGER_BAT_LOST - pump rule (an
+ *              installed half >14.8 V sustained 150 ms, armed only while
+ *              some channel is actually pumping) or absent rule (an
+ *              INSTALLED half <7 V sustained 1000 ms with valid 21..28 V
+ *              input); the bit clears only after every installed half holds
+ *              >=7 V for 1000 ms straight (pump condition absent). Halves of
+ *              uninstalled channels never participate. NULL / invalid
+ *              snapshots are ignored.
  *         [FA] ارزیابی مرکزی قطع باتری؛ هر پاس کنترلی توسط task_control
  *              پیش از خواندن ماسک اجرا می‌شود: «هرکدام» از دو قاعده بیت را
- *              قفل می‌کند و پاک‌شدن فقط با ۱۰۰۰ms پایداریِ «هر دو» نیم‌سل
- *              ≥۷V انجام می‌شود. snapshot نامعتبر/NULL نادیده گرفته می‌شود.
+ *              قفل می‌کند (پمپ فقط وقتی مسلح که واقعاً پمپی کار کند؛ قاعدهٔ
+ *              غیبت فقط روی نیم‌سلِ کانال‌های نصب‌شده) و پاک‌شدن فقط با
+ *              ۱۰۰۰ms پایداریِ همهٔ نیم‌سل‌های نصب‌شدهٔ ≥۷V انجام می‌شود.
+ *              snapshot نامعتبر/NULL نادیده گرفته می‌شود.
  * @param  measurement_snapshot_t__snap [EN] Latest shared snapshot /
  *                                      آخرین snapshot مشترک
  */
