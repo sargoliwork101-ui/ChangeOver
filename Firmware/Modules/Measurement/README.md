@@ -45,7 +45,8 @@
 | `func__Measurement_CountsToMv` | خام استاندارد → mV پایه، با کالیبراسیون BSP برد |
 | `func__Measurement_V24CountsToMv` | خام استاندارد → mV منبع ۲۴، با تقسیم برد در BSP |
 | `func__Measurement_V12CountsToMv` | خام استاندارد → mV منبع ۱۲، با تقسیم برد در BSP |
-| `func__Measurement_CurrentCountsToMa` | خام استاندارد → mA شارژ، با گین و شانت برد در BSP |
+| `func__Measurement_Current1CountsToMa` / `Current2CountsToMa` | خام استاندارد هر کانال → mA شارژ با کالیبراسیون مستقل پر-کانال در BSP (افست/گین `CURRENT1_*` موقت = کپی کانال ۲ تا ثبت نقطهٔ بنچ Trans1) |
+| `func__Measurement_CurrentCountsToMa` | قدیمی/سازگاری = کانال ۲؛ کد جدید wrapper پر-کانال |
 | `func__TaskMeasurement` | Init+Start یک‌بار، سپس هر 10ms یک `Run` (`osDelayUntil` با تبدیل قابل‌حمل میلی‌ثانیه/تیک) |
 | `func__BspAdc_Init` (Bsp) | آماده‌سازی Backend ADC برد و صفر کردن بافر DMA؛ هندل و پایه‌ها در BSP پنهان هستند |
 | `func__BspAdc_Start` (Bsp) | شروع backend ADC+DMA برد؛ جزئیات peripheral و منابع وقفه در پورت برد خصوصی است |

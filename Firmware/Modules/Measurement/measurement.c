@@ -310,9 +310,39 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
  * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
  * @return uint32_t [EN] Current in mA / جریان بر حسب mA
  */
+/* ==================== Measurement Current1 Counts To Ma ==================== */
+
+/**
+ * @brief  [EN] Channel-1 raw counts to mA via the BSP per-channel
+ *              calibration (Shunt1 / Trans1 chain).
+ *         [FA] تبدیل شمارش کانال ۱ به mA با کالیبراسیون مستقل BSP.
+ * @param  uint16_t__counts [EN] ADC count / شمارش ADC
+ * @return uint32_t [EN] Current in mA / جریان mA
+ */
+uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
+{
+    return func__BspMeasurement_Current1CountsToMa(uint16_t__counts);
+}
+
+/* ==================== Measurement Current2 Counts To Ma ==================== */
+
+/**
+ * @brief  [EN] Channel-2 raw counts to mA via the BSP per-channel
+ *              calibration (Shunt2 / Trans2 chain).
+ *         [FA] تبدیل شمارش کانال ۲ به mA با کالیبراسیون مستقل BSP.
+ * @param  uint16_t__counts [EN] ADC count / شمارش ADC
+ * @return uint32_t [EN] Current in mA / جریان mA
+ */
+uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
+{
+    return func__BspMeasurement_Current2CountsToMa(uint16_t__counts);
+}
+
+/* ==================== Measurement Current Counts To Ma (legacy) ==================== */
+
 uint32_t func__Measurement_CurrentCountsToMa(uint16_t uint16_t__counts)
 {
-    return func__BspMeasurement_CurrentCountsToMa(uint16_t__counts);
+    return func__Measurement_Current2CountsToMa(uint16_t__counts);
 }
 
 /* ==================== Measurement Run ==================== */
@@ -384,7 +414,7 @@ void func__Measurement_Run(void)
             UINT32_T__G__Current1FilteredMa,
             func__Measurement_MedianFilterSample(
                 0u,
-                func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1])));
+                func__Measurement_Current1CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1])));
     uint32_t__current1Ma = UINT32_T__G__Current1FilteredMa;
     uint32_t__inputVoltageMv =
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_IN]);
@@ -418,7 +448,7 @@ void func__Measurement_Run(void)
             UINT32_T__G__Current2FilteredMa,
             func__Measurement_MedianFilterSample(
                 1u,
-                func__Measurement_CurrentCountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2])));
+                func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2])));
     uint32_t__current2Ma = UINT32_T__G__Current2FilteredMa;
 
     /* [EN] The BSP exposes the board input-detect signal as a logical GPIO;

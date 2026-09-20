@@ -135,6 +135,11 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts);
  * @param  uint16_t__counts [EN] Raw ADC count, 0..4095 / شمارش خام ADC
  * @return uint32_t [EN] Current in mA, 0..~3300 / جریان بر حسب mA
  */
+uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts);
+uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts);
+/* [EN] Legacy generic wrapper = channel-2 calibration (kept for old callers;
+ *      new code must pick the per-channel wrapper above).
+ * [FA] wrapper عمومی قدیمی = کانال ۲؛ کد جدید wrapper پر-کانال. */
 uint32_t func__Measurement_CurrentCountsToMa(uint16_t uint16_t__counts);
 
 #endif /* MEASUREMENT_H */

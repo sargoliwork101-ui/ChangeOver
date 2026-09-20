@@ -38,12 +38,31 @@ uint32_t func__BspMeasurement_V24CountsToMv(uint16_t uint16_t__counts);
  */
 uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts);
 
+/* ==================== BspMeasurement Current1 Counts To Ma ==================== */
+
 /**
- * @brief  [EN] Convert a normalized current channel to milliamps.
- *         [FA] کانال استاندارد جریان را به میلی‌آمپر تبدیل می‌کند.
+ * @brief  [EN] Convert the channel-1 normalized current counts to mA with
+ *              the channel-1 (Trans1/Shunt1) calibration pair.
+ *         [FA] کانال جریان ۱ را با کالیبراسیون مستقل به mA تبدیل می‌کند.
  * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
  * @return uint32_t [EN] Current in mA / جریان بر حسب mA
  */
+uint32_t func__BspMeasurement_Current1CountsToMa(uint16_t uint16_t__counts);
+
+/* ==================== BspMeasurement Current2 Counts To Ma ==================== */
+
+/**
+ * @brief  [EN] Convert the channel-2 normalized current counts to mA with
+ *              the channel-2 (Trans2/Shunt2) bench-verified calibration pair.
+ *         [FA] کانال جریان ۲ را با کالیبراسیون بنچ تأییدشده به mA تبدیل می‌کند.
+ * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
+ * @return uint32_t [EN] Current in mA / جریان بر حسب mA
+ */
+uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts);
+/* [EN] Legacy generic converter = channel-2 calibration; new code must pick
+ *      the per-channel function above (user order 2026-09-20: charger 1 no
+ *      longer rides on charger 2's calibration).
+ * [FA] مبدل عمومی قدیمی = کالیبراسیون کاnal ۲؛ کد جدید از تابع پر-کانال. */
 uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts);
 
 #endif /* BSP_MEASUREMENT_H */
