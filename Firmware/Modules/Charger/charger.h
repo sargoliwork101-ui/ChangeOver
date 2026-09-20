@@ -48,7 +48,10 @@
  * [EN] These are the only two assembly-selection constants to change when the
  * installed transformer changes. Current board has Trans2 only. Set CH1 to 1
  * only after the second transformer, its current path and its JIT input have
- * been verified on the board.
+ * been verified on the board. Both flags may be 1 - the whole run-time
+ * (15 s connection-settle, bulk/absorb soak, float park, battery-lost rules,
+ * yellow-blink gate) is fully PER-CHANNEL, so no scenario check or other
+ * constant changes when a second channel comes online.
  *   Channel 1 (logical ch1) = 0 now → PWM1 compare must stay 0/PWM1 stopped,
  *                             no nonzero duty for CH1 in any path.
  *   Channel 2 (logical ch2) = 1 now → PWM2 PA6 / Current2 PA7 / JIT2 PB6.

@@ -152,10 +152,15 @@ def test_master_enable_does_not_bypass_numeric_protections():
 
 def test_channel_selection_constants():
     text = CHARGER_H.read_text()
-    check(re.search(r"#define CHG_CHANNEL_1_INSTALLED\s+0u", text),
-          "current test must keep unassembled channel 1 disabled")
-    check(re.search(r"#define CHG_CHANNEL_2_INSTALLED\s+1u", text),
-          "current test must select installed channel 2")
+    ch1_match = re.search(r"#define CHG_CHANNEL_1_INSTALLED\s+(\d)u", text)
+    ch2_match = re.search(r"#define CHG_CHANNEL_2_INSTALLED\s+(\d)u", text)
+    check((ch1_match is not None) and (ch2_match is not None),
+          "both CHG_CHANNEL_x_INSTALLED defines must exist (flip CH1 to 1 to bring up charger 1)")
+    check(ch2_match.group(1) == "1",
+          "channel 2 (Trans2, current board wiring) must stay installed")
+    check((ch1_match.group(1) != "1") or
+          (re.search(r"#define CHG_TRANSFORMER_KNOWN\s+1u", text) is not None),
+          "charger 1 may only be enabled with CHG_TRANSFORMER_KNOWN=1 (production current data)")
     check("CHG_INSTALLED_CHANNEL_MASK" in text,
           "the two constants must feed one explicit installed-channel mask")
 
