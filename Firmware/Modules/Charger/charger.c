@@ -63,6 +63,8 @@ typedef struct
     uint32_t uint32_t__currentEmaMa;
     bool bool__currentEmaSeeded;
     uint32_t uint32_t__stableFromTick; /* [EN] tick when installed+input+battery first looked valid; 0 = not present, gates bulk start (CHG_CONNECT_SETTLE_MS) / تیک اولین‌لحظه‌ای که اتصال معتبر دیده شد؛ صفر = باتری حاضر نیست؛ گیت شروع بالک */
+    uint32_t uint32_t__taperSinceTick; /* [EN] first tick in this ABSORB episode that the tail current looked below CHG_TAPER_CURRENT_MA; 0 = not tapering / تیک اولین زیرجریان در ابزورب؛ صفر یعنی زیرجریان نیست */
+    uint32_t uint32_t__absorbEnterTick; /* [EN] tick this ABSORB episode started; 0 = not in absorb; feeds the CHG_ABSORB_MAX_MS ceiling / تیک ورود به این ابزورب؛ صفر یعنی خارج؛ برای سقف یک‌ساعت */
 } charger_channel_state_t;
 
 /* ==================== Static state / وضعیت داخلی ==================== */
@@ -121,6 +123,8 @@ static void func__Charger_SafeIdle(void)
                 CHG_STATE_OFF;
             CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint8_t__jitTripCount = 0u;
             CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbAccumTicks = 0u;
+            CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__taperSinceTick = 0u;
+            CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbEnterTick = 0u;
             CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbLastTick = 0u;
         }
         func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
@@ -383,6 +387,8 @@ static void func__Charger_ResetChannelToOff(uint8_t uint8_t__channelIndex)
     charger_channel_state_t__channel = &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
     charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_OFF;
     charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+    charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+    charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
     charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
     charger_channel_state_t__channel->uint32_t__retryDeadlineTick = 0u;
     charger_channel_state_t__channel->uint32_t__lastDutyStepTick = 0u;
@@ -516,6 +522,8 @@ static void func__Charger_ServiceRetry(uint32_t uint32_t__nowTick)
     uint16_t__retryDuty = func__Charger_RetryDuty(uint8_t__retryChannel);
     charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
     charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+    charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+    charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
     charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
     charger_channel_state_t__channel->uint32_t__retryDeadlineTick = 0u;
 
@@ -752,6 +760,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     {
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
         charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+        charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+        charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
         charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
     }
     charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
@@ -780,6 +790,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         }
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
         charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+        charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+        charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
         charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
         func__Charger_ApplyDuty(uint8_t__channelIndex, CHG_DUTY_START_PERMILLE);
         charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
@@ -793,6 +805,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     {
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
         charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+        charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+        charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
         charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
         uint32_t__targetMv = CHG_ABSORB_MV;
     }
@@ -813,6 +827,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         {
             charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_ABSORB;
             charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+            charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+            charger_channel_state_t__channel->uint32_t__absorbEnterTick = uint32_t__nowTick;
             charger_channel_state_t__channel->uint32_t__absorbLastTick = uint32_t__nowTick;
         }
 
@@ -855,10 +871,66 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                     uint32_t__absorbTicks;
             }
 
-            if ((uint32_t__absorbTicks != 0u) &&
-                (charger_channel_state_t__channel->uint32_t__absorbAccumTicks >=
-                 uint32_t__absorbTicks))
+            bool bool__taperNow;
+            bool bool__taperDone;
+            bool bool__soakDone;
+            bool bool__absorbTimedOut;
+            uint32_t uint32_t__taperSustainTicks;
+            uint32_t uint32_t__absorbMaxTicks;
+
+            /* [EN] Absorb completion (user formula 2026-09-20, bench pack
+               4.5 Ah): FLOAT begins when the minimum soak has passed AND the
+               tail current stays below CHG_TAPER_CURRENT_MA (50 mA ~ C/90)
+               steadily for CHG_TAPER_SUSTAIN_MS (60 s; the sense chain
+               wobbles +/-10..20 mA so single dipping frames must not complete
+               the charge). The CHG_ABSORB_MAX_MS = 1 hour ceiling ends
+               absorb into FLOAT anyway, so a battery that never tapers
+               cannot keep the pump awake forever.
+               [FA] پایان ابزورب (فرمول کاربر، پک ۴٫۵ آمپرساعت): وقتی حداقل
+               شستشو گذشته باشد **و** زیرجریان <۵۰mA به‌مدت پایدار ۶۰s مانده
+               باشد FLOAT آغاز می‌شود؛ سقف امن یک‌ساعت در هرحال به FLOAT
+               می‌فرستد تا باتریِ هرگز-تیپر‌نشده پمپ را بیدار نگه ندارد. */
+            uint32_t__taperSustainTicks = func__Charger_DurationTicks(CHG_TAPER_SUSTAIN_MS);
+            uint32_t__absorbMaxTicks = func__Charger_DurationTicks(CHG_ABSORB_MAX_MS);
+
+            bool__taperNow = (uint32_t__currentMa < CHG_TAPER_CURRENT_MA);
+            if (bool__taperNow == false)
             {
+                charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+            }
+            else if (charger_channel_state_t__channel->uint32_t__taperSinceTick == 0u)
+            {
+                charger_channel_state_t__channel->uint32_t__taperSinceTick = uint32_t__nowTick;
+            }
+            else
+            {
+                /* [EN] Taper already running. / زیرجریان قبلاً شروع شده. */
+            }
+
+            bool__taperDone =
+                ((charger_channel_state_t__channel->uint32_t__taperSinceTick != 0u) &&
+                 ((uint32_t)(uint32_t__nowTick -
+                             charger_channel_state_t__channel->uint32_t__taperSinceTick) >=
+                  uint32_t__taperSustainTicks));
+            bool__soakDone =
+                ((uint32_t__absorbTicks != 0u) &&
+                 (charger_channel_state_t__channel->uint32_t__absorbAccumTicks >=
+                  uint32_t__absorbTicks));
+            bool__absorbTimedOut =
+                ((charger_channel_state_t__channel->uint32_t__absorbEnterTick != 0u) &&
+                 ((uint32_t)(uint32_t__nowTick -
+                             charger_channel_state_t__channel->uint32_t__absorbEnterTick) >=
+                  uint32_t__absorbMaxTicks));
+
+            if (((bool__soakDone == true) && (bool__taperDone == true)) ||
+                (bool__absorbTimedOut == true))
+            {
+                /* [EN] Episode over: drop the episode timers so the next
+                   absorb starts from a clean sheet.
+                   [FA] این سفرقسمت تمام شد؛ تایمرهای اپیزود صفر تا ابزورب بعدی
+                   از صفحهٔ تمیز آغاز شود. */
+                charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+                charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
                 charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_FLOAT;
                 uint32_t__targetMv = CHG_FLOAT_MV;
             }
@@ -891,6 +963,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
             charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
             uint32_t__targetMv = CHG_ABSORB_MV;
             charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+            charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+            charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
             charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
         }
     }
@@ -1091,6 +1165,8 @@ void func__Charger_Init(void)
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint8_t__jitTripCount = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state = CHG_STATE_OFF;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbAccumTicks = 0u;
+        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__taperSinceTick = 0u;
+        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbEnterTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbLastTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__retryDeadlineTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__lastDutyStepTick = 0u;
@@ -1323,6 +1399,8 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
                     CHG_STATE_OFF;
                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbAccumTicks = 0u;
+                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__taperSinceTick = 0u;
+                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbEnterTick = 0u;
                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbLastTick = 0u;
                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint8_t__jitTripCount = 0u;

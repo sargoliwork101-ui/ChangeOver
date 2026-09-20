@@ -371,6 +371,13 @@ def test_setpoints_and_timing():
     check("uint32_t__absorbAccumTicks" in text_c, "soak must accumulate with pause outside the window")
     check("do NOT fall back to BULK" in text_c, "FLOAT must survive descending below the 14.3 V window (bench bug: fresh soak restarted right after every soak completed)")
     check("PARK THE PUMP AT ZERO" in text_c, "FLOAT must ramp the duty to 0 and park it (user: 'why is the charger not off? duty stuck 4-5%')")
+    check(re.search(r"#define CHG_TAPER_CURRENT_MA\s+50u", text_h) and
+          re.search(r"#define CHG_TAPER_SUSTAIN_MS\s+60000u", text_h) and
+          re.search(r"#define CHG_ABSORB_MAX_MS\s+3600000u", text_h),
+          "taper completion must be 50 mA held 60 s with a 1-hour absorb ceiling (user bench decisions)")
+    check("uint32_t__taperSinceTick" in text_c and "bool__absorbTimedOut" in text_c and
+          "bool__taperDone" in text_c,
+          "absorb must end on soak>=10min AND steady tail current, plus the 1-hour ceiling")
     check("CHG_STATE_ABSORB" in text_c, "absorb voltage-hold state must exist in the state machine")
     check(re.search(r"#define CHG_BULK_CURRENT_MAX_MA\s+650u", text_h), "bulk regulation current must be 650 mA (tight band per user)")
     check(re.search(r"#define CHG_REGULATE_LOW_MA\s+630u", text_h), "regulation band lower edge must be 630 mA (~20 mA tolerance)")
@@ -396,6 +403,10 @@ def test_setpoints_and_timing():
     check(re.search(r"#define FAULT_BAT_RECOVER_MS\s+1000u", text_fault_h), "battery-back settle must be 1000 ms in Fault")
     check(re.search(r"#define FAULT_INPUT_PRESENT_MIN_MV\s+21000u", text_fault_h), "absent rule must be gated by input present >= 21 V")
     check(re.search(r"#define FAULT_INPUT_PRESENT_MAX_MV\s+28000u", text_fault_h), "absent rule must be gated by input <= 28 V")
+    check("CHG_INSTALLED_CHANNEL_MASK" in text_fault_c and "bool__highHalfInstalled" in text_fault_c,
+          "battery-lost rules must ignore halves of uninstalled channels (bench bug: with CH1 off, the unwired low half latched bat-lost forever and the charger looked dead)")
+    check("func__Charger_IsAnyChannelActive" in text_fault_c,
+          "the 14.8 V pump rule must be armed only while some channel is actually pumping (parked-FLOAT bench transients must not trip it)")
     check("func__Fault_Evaluate" in text_fault_h and "func__Fault_Evaluate" in text_fault_c, "Fault must own the central battery-lost evaluation")
     check("func__Fault_Set(FAULT_CHARGER_BAT_LOST)" in text_fault_c, "Fault must latch the bit, not the charger")
     check("func__Fault_Clear(FAULT_CHARGER_BAT_LOST)" in text_fault_c, "Fault must clear the bit after the settle time")

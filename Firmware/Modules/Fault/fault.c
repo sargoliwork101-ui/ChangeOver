@@ -6,6 +6,11 @@
 
 #include "fault.h"
 
+/* [EN] Install map + active query come from the charger header (one concept,
+   one constant: which half is wired/used lives ONLY there). No HAL inside.
+   [FA] نقشهٔ نصب کانال‌ها و پرسش «در حال پمپ» از هدر شارژر می‌آید تا مفهوم
+   تکثیر نشود. */
+#include "charger.h"
 #include "cmsis_os2.h"
 #include "rtos_time.h"
 
@@ -139,6 +144,8 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
     bool     bool__anyHalfLow;
     bool     bool__batteryTrulyPresent;
     bool     bool__healthy;
+    bool     bool__highHalfInstalled;
+    bool     bool__lowHalfInstalled;
 
     uint32_t__nowTick = osKernelGetTickCount();
 
@@ -157,6 +164,20 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
     uint32_t__lowMv  = measurement_snapshot_t__snap->v_bat_low_mv;
     uint32_t__highMv = measurement_snapshot_t__snap->v_bat_high_mv;
 
+    /* [EN] Per-half participation follows the CHANNEL INSTALL MAP (bench bug
+       2026-09-20: with CHG_CHANNEL_1_INSTALLED=0 the low half sits unwired
+       below 7 V, rule 2 latched FAULT_CHARGER_BAT_LOST forever and the
+       charger looked dead while the UI yellow kept blinking). Mapping
+       (charger.c): channel 0 = v_bat_high, channel 1 = v_bat_low - an
+       uninstalled channel's half can never be "disconnected", it is simply
+       not wired.
+       [FA] مشارکت هر نیم‌سل تابع نقشهٔ نصب کانال است (باگ بنچ: با کانال ۱
+       غیرفعال، نیم‌سل پایین بی‌سیم زیر ۷V می‌ماند و باتری-لاست ابدی قفل
+       می‌شد): کانال ۰ = نیم‌سل بالا، کانال ۱ = نیم‌سل پایین؛ نیم‌سل کانال
+       غیرفعال اصلاً «قطع» محسوب نمی‌شود. */
+    bool__highHalfInstalled = ((CHG_INSTALLED_CHANNEL_MASK & (1u << 0u)) != 0u);
+    bool__lowHalfInstalled  = ((CHG_INSTALLED_CHANNEL_MASK & (1u << 1u)) != 0u);
+
     /* [EN] Case-2 gate: input present and in range (21..28 V).
        [FA] گِیت حالت دوم: ورودی حاضر و در بازه سالم ۲۱ تا ۲۸ ولت. */
     bool__inputOk = ((measurement_snapshot_t__snap->v_in_mv >= FAULT_INPUT_PRESENT_MIN_MV) &&
@@ -166,8 +187,18 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
        charging with the battery wire cut). No input gate needed - only
        switching can push a battery node that high.
        [FA] حالت اول: هر نیم‌باتری بالای ۱۴٫۸V (امضای پمپ حین شارژ). */
-    bool__anyOver = ((uint32_t__lowMv  > FAULT_BAT_DISCONNECT_MV) ||
-                     (uint32_t__highMv > FAULT_BAT_DISCONNECT_MV));
+    /* [EN] Armed ONLY while some channel is actually pumping (bench
+       2026-09-20: a parked FLOAT/done phase cannot spike the line, so bench
+       transients there must not trip the detector); halves of uninstalled
+       channels never participate.
+       [FA] فقط وقتی مسلح که واقعاً پمپی در کار باشد؛ نیم‌سل کانال غیرفعال
+       مشارکت ندارد. */
+    bool__anyOver =
+        (func__Charger_IsAnyChannelActive() == true) &&
+        (((bool__lowHalfInstalled  == true) &&
+          (uint32_t__lowMv  > FAULT_BAT_DISCONNECT_MV)) ||
+         ((bool__highHalfInstalled == true) &&
+          (uint32_t__highMv > FAULT_BAT_DISCONNECT_MV)));
 
     /* [EN] Case 2, user rewrite 2026-09-19: EITHER half below
        FAULT_BATTERY_BACK_MV (7 V) while the input is fine = battery
@@ -181,8 +212,11 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
        ورودی سالم یعنی قطع باتری؛ «هر دو غایب» در خرابی واقعی (یک سیم قطع،
        نیمِ دیگر ~۱۳V) هرگز فایر نمی‌شد و با شارژر پارک‌شده امضای پمپ هم
        نیست - نتیجه سکوت کامل بود. با ۷V جفت Set/Clear متقارن است. */
-    bool__anyHalfLow = ((uint32_t__lowMv  < FAULT_BATTERY_BACK_MV) ||
-                        (uint32_t__highMv < FAULT_BATTERY_BACK_MV));
+    bool__anyHalfLow =
+        (((bool__lowHalfInstalled  == true) &&
+          (uint32_t__lowMv  < FAULT_BATTERY_BACK_MV)) ||
+         ((bool__highHalfInstalled == true) &&
+          (uint32_t__highMv < FAULT_BATTERY_BACK_MV)));
 
     /* ---------- Rule 1: pumped overvoltage => latch ---------- */
     if ((bool__anyOver == true) &&
@@ -234,8 +268,11 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
        شارژر دیگر برای بازمسلح‌کردن بالا نمی‌آید، سکوت می‌ماند. حالا سالم
        یعنی: نه پمپ روی هیچ نیم و نه هیچ نیمِ زیر ۷V (۶V ممکن است حین شارژ باشد)؛ تا باتری واقعاً برنگشته
        آلارم قفل است و یادآوری تکرار می‌شود. */
-    bool__batteryTrulyPresent = ((uint32_t__lowMv  >= FAULT_BATTERY_BACK_MV) &&
-                                 (uint32_t__highMv >= FAULT_BATTERY_BACK_MV));
+    bool__batteryTrulyPresent =
+        (((bool__lowHalfInstalled  == false) ||
+          (uint32_t__lowMv  >= FAULT_BATTERY_BACK_MV)) &&
+         ((bool__highHalfInstalled == false) ||
+          (uint32_t__highMv >= FAULT_BATTERY_BACK_MV)));
 
     bool__healthy = ((bool__anyOver == false) &&
                      (bool__batteryTrulyPresent == true));

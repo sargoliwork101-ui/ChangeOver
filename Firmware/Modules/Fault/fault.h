@@ -138,6 +138,9 @@ bool func__Fault_Any(void);
  *         snapshot. Called once per control pass from task_control, BEFORE
  *         func__Fault_Get(), so the pass consumes the fresh mask. Sets and
  *         clears FAULT_CHARGER_BAT_LOST; all other bits stay untouched.
+ *         Since 2026-09-20 only halves of INSTALLED channels participate
+ *         (bench bug: unwired low half latched the bit forever) and the
+ *         14.8 V pump rule is armed only while a channel is really pumping.
  *         [FA] تشخیص قطع باتری را از آخرین snapshot ارزیابی می‌کند؛ هر پاس
  *         کنترل قبل از Get صدا زده می‌شود تا ماسک تازه مصرف شود.
  * @param  measurement_snapshot_t__snap [EN] Snapshot pointer, may be NULL / اشاره‌گر snapshot
