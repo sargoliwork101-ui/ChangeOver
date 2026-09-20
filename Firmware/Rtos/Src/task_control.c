@@ -73,6 +73,11 @@ void func__TaskControl(void *void_ptr__argument)
             (void)func__Measurement_GetSnapshot(&measurement_snapshot_t__snap);
 #endif
 #if MODULE_FAULT
+            /* [EN] Central battery-lost detection runs BEFORE the mask is
+               read, so charger/changeover see this pass's verdict.
+               [FA] تشخیص مرکزی قطع باتری پیش از خواندن ماسک اجرا می‌شود تا
+               رأی این پاس دیده شود. */
+            func__Fault_Evaluate(&measurement_snapshot_t__snap);
             fault_mask_t__faults = func__Fault_Get();
 #endif
 #if MODULE_JITTER

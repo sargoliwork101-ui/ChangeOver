@@ -44,5 +44,10 @@ typedef uint32_t fault_mask_t;
 #define FAULT_LOW_BATTERY       (1u << 3)
 #define FAULT_JITTER_1          (1u << 4)
 #define FAULT_JITTER_2          (1u << 5)
+/* [EN] Bit 6 is owned centrally by the Fault module: EITHER charging half
+ *      looks disconnected (pumped >14.8 V, or either half <7 V with valid
+ *      input) -> the charger only MIRRORS this bit into CHG_STATE_BAT_LOST.
+ * [FA] بیت ۶ در مالکیت ماژول مرکزی Fault است؛ شارژر فقط آینه‌اش می‌کند. */
+#define FAULT_CHARGER_BAT_LOST  (1u << 6)
 
 #endif /* APP_TYPES_H */

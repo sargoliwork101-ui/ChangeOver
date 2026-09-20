@@ -47,6 +47,20 @@ static uint8_t UINT8_T__G__MeasurementWarmupFrameCount;
 static uint32_t UINT32_T__G__Current1FilteredMa;
 static uint32_t UINT32_T__G__Current2FilteredMa;
 
+/* [EN] Median-5 prefilter windows for the two BATTERY ADC channels
+   (12V_BAT and 24V_BAT): absorb-phase 2-frame spike bursts beat a median-3,
+   so the battery path uses 5 samples. Window arrays are self-seeding on the
+   first sample so start-up needs no special case.
+   [FA] پنجره‌های پیش‌فیلتر میانهٔ ۵ برای دو کانال باتری: ترک‌های اسپایک
+   دوفریمیِ ابزورب، میانهٔ ۳ را می‌شکنند؛ پنجره با اولین نمونه خودبذر می‌شود. */
+#define MEASUREMENT_MEDIAN5_WINDOW 5u
+static uint32_t UINT32_T__G__Bat12WindowMv[MEASUREMENT_MEDIAN5_WINDOW];
+static uint32_t UINT32_T__G__Bat24WindowMv[MEASUREMENT_MEDIAN5_WINDOW];
+static uint8_t UINT8_T__G__Bat12WindowIndex;
+static uint8_t UINT8_T__G__Bat24WindowIndex;
+static bool BOOL__G__Bat12WindowSeeded;
+static bool BOOL__G__Bat24WindowSeeded;
+
 /* ==================== Measurement_FilterCurrent / فیلتر جریان ==================== */
 
 /**
@@ -60,6 +74,38 @@ static uint32_t UINT32_T__G__Current2FilteredMa;
  * @param  uint32_t__sampleMa [EN] New calibrated sample / نمونه کالیبره جدید
  * @return uint32_t [EN] Filtered current / جریان فیلترشده
  */
+/**
+ * @brief  [EN] Median of five values (insertion sort on a copy; the caller's
+ *              array stays untouched).
+ *         [FA] میانهٔ پنج مقدار (مرتب‌سازی درجی روی کپی؛ آرایهٔ صدا کننده
+ *              دست‌نخورده می‌ماند).
+ * @param  uint32_t__values [EN] Five input values / پنج مقدار ورودی
+ * @return uint32_t [EN] Median value / مقدار میانه
+ */
+static uint32_t func__Measurement_Median5(const uint32_t *uint32_t__values)
+{
+    uint32_t uint32_t__sorted[MEASUREMENT_MEDIAN5_WINDOW];
+    uint8_t uint8_t__i;
+    uint8_t uint8_t__j;
+
+    for (uint8_t__i = 0u; uint8_t__i < (uint8_t)MEASUREMENT_MEDIAN5_WINDOW; uint8_t__i++)
+    {
+        uint32_t__sorted[uint8_t__i] = uint32_t__values[uint8_t__i];
+    }
+    for (uint8_t__i = 1u; uint8_t__i < (uint8_t)MEASUREMENT_MEDIAN5_WINDOW; uint8_t__i++)
+    {
+        uint32_t uint32_t__key = uint32_t__sorted[uint8_t__i];
+        uint8_t__j = uint8_t__i;
+        while ((uint8_t__j > 0u) && (uint32_t__sorted[uint8_t__j - 1u] > uint32_t__key))
+        {
+            uint32_t__sorted[uint8_t__j] = uint32_t__sorted[uint8_t__j - 1u];
+            uint8_t__j--;
+        }
+        uint32_t__sorted[uint8_t__j] = uint32_t__key;
+    }
+    return uint32_t__sorted[MEASUREMENT_MEDIAN5_WINDOW / 2u];
+}
+
 static uint32_t func__Measurement_FilterCurrent(uint32_t uint32_t__previousMa,
                                                 uint32_t uint32_t__sampleMa)
 {
@@ -109,6 +155,10 @@ void func__Measurement_Init(void)
     UINT8_T__G__MeasurementWarmupFrameCount = 0u;
     UINT32_T__G__Current1FilteredMa = 0u;
     UINT32_T__G__Current2FilteredMa = 0u;
+    UINT8_T__G__Bat12WindowIndex = 0u;
+    UINT8_T__G__Bat24WindowIndex = 0u;
+    BOOL__G__Bat12WindowSeeded = false;
+    BOOL__G__Bat24WindowSeeded = false;
 
     UINT32_T__G__MeasInputVoltageMv = 0u;
     UINT32_T__G__MeasBattery24Mv = 0u;
@@ -254,10 +304,42 @@ void func__Measurement_Run(void)
     uint32_t__current1Ma = UINT32_T__G__Current1FilteredMa;
     uint32_t__inputVoltageMv =
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_IN]);
-    uint32_t__battery24Mv =
+    /* [EN] Battery channels pass the median-5 prefilter first (2-frame spike
+       bursts during absorb beat median-3). The rings seed themselves with
+       the first sample, so validity ramps without a special case.
+       [FA] کانال‌های باتری ابتدا از پیش‌فیلتر میانهٔ ۵ می‌گذرند؛ حلقه‌ها با
+       اولین نمونه خودبذر می‌شوند. */
+    UINT32_T__G__Bat24WindowMv[UINT8_T__G__Bat24WindowIndex] =
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);
-    uint32_t__battery12Mv =
+    if (BOOL__G__Bat24WindowSeeded == false)
+    {
+        uint8_t uint8_t__seed;
+        for (uint8_t__seed = 0u; uint8_t__seed < (uint8_t)MEASUREMENT_MEDIAN5_WINDOW; uint8_t__seed++)
+        {
+            UINT32_T__G__Bat24WindowMv[uint8_t__seed] =
+                UINT32_T__G__Bat24WindowMv[UINT8_T__G__Bat24WindowIndex];
+        }
+        BOOL__G__Bat24WindowSeeded = true;
+    }
+    UINT8_T__G__Bat24WindowIndex =
+        (uint8_t)((UINT8_T__G__Bat24WindowIndex + 1u) % MEASUREMENT_MEDIAN5_WINDOW);
+    uint32_t__battery24Mv = func__Measurement_Median5(UINT32_T__G__Bat24WindowMv);
+
+    UINT32_T__G__Bat12WindowMv[UINT8_T__G__Bat12WindowIndex] =
         func__Measurement_V12CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_12V_BAT]);
+    if (BOOL__G__Bat12WindowSeeded == false)
+    {
+        uint8_t uint8_t__seed;
+        for (uint8_t__seed = 0u; uint8_t__seed < (uint8_t)MEASUREMENT_MEDIAN5_WINDOW; uint8_t__seed++)
+        {
+            UINT32_T__G__Bat12WindowMv[uint8_t__seed] =
+                UINT32_T__G__Bat12WindowMv[UINT8_T__G__Bat12WindowIndex];
+        }
+        BOOL__G__Bat12WindowSeeded = true;
+    }
+    UINT8_T__G__Bat12WindowIndex =
+        (uint8_t)((UINT8_T__G__Bat12WindowIndex + 1u) % MEASUREMENT_MEDIAN5_WINDOW);
+    uint32_t__battery12Mv = func__Measurement_Median5(UINT32_T__G__Bat12WindowMv);
     uint32_t__batteryLowMv = uint32_t__battery12Mv;
     if (uint32_t__battery24Mv >= uint32_t__battery12Mv)
     {
