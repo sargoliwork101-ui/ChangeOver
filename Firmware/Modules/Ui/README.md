@@ -23,7 +23,7 @@
 
 **هیسترزیس فول InputOk/Charging:**
 - `UI_CHARGING_FULL_ENTER_PERCENT 100u` ورود به InputOk فقط وقتی خام به 100٪ برسد.
-- `UI_CHARGING_FULL_EXIT_PERCENT 95u` ماندن در InputOk تا خام <95٪، سپس Charging. جلوگیری پرش اطراف 28V.
+- `UI_CHARGING_FULL_EXIT_PERCENT 95u` ماندن در InputOk تا خام <95٪، سپس Charging. جلوگیری پرش اطراف 29V (سقف فول ۲۰۲۶-۰۹-۲۰ از ۲۸ به ۲۹V رفت).
 
 **پایداری فاز:** سبز BatteryRun و زرد Charging هرکدام phase/OnMs/OffMs/startTick مستقل. تغییر stable **فاز reset نمی‌کند**؛ زمان جدید از مرز بعدی. فقط ورود/خروج واقعی سناریو، `invalid/NULL` یا `Init` ریست کامل.
 
@@ -38,7 +38,7 @@ API بوق: `func__Ui_Buzzer_Tick(period,duty,beepCount,gap)` غیرمسدودک
 - ثابت‌ها: `CONNECTED_THRESHOLD 21000`, `DISCONNECTED 20000`.
 
 ### سناریو ۱: InputOk (non-blocking + فول هیسترزیس)
-- شرط: ورودی وصل **و** `ChargingFullActive` (خام 100 وارد، تا <95 حفظ). `Input 24V Battery 28V → سبز ثابت`
+- شرط: ورودی وصل **و** `ChargingFullActive` (خام 100 وارد، تا <95 حفظ). `Input 24V Battery 29V → سبز ثابت`
 - سبز ثابت، زرد/قرمز خاموش، بوق خاموش. بدون delay 500ms؛ 10ms loop.
 - خروج به Charging فقط وقتی خام <95.
 
@@ -126,7 +126,7 @@ BoardTest → یک‌بار قرمز/زرد/سبز + بوق
 ## توابع
 | نام | کار |
 |---|---|
-| `BatteryVoltageToPercent` | 21-28V→0-100% 4 گام |
+| `BatteryVoltageToPercent` | 21-29V→0-100% 4 گام |
 | `UpdateBatteryStablePercent` | 2%+0/1 56/57/58 حفظ |
 | `UpdateChargingStablePercent` | 5% 53..61 حفظ |
 | `UpdateChargingFullHysteresis` | 100 ورود <95 خروج |
