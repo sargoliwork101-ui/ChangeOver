@@ -152,10 +152,13 @@ def test_master_enable_does_not_bypass_numeric_protections():
 
 def test_channel_selection_constants():
     text = CHARGER_H.read_text()
-    check(re.search(r"#define CHG_CHANNEL_1_INSTALLED\s+0u", text),
-          "current test must keep unassembled channel 1 disabled")
+    match_ch1 = re.search(r"#define CHG_CHANNEL_1_INSTALLED\s+([01])u", text)
+    check(match_ch1 is not None, "channel 1 install flag must be an explicit 0u/1u")
     check(re.search(r"#define CHG_CHANNEL_2_INSTALLED\s+1u", text),
-          "current test must select installed channel 2")
+          "channel 2 stays installed")
+    if match_ch1.group(1) == "1":
+        check(re.search(r"#define CHG_TRANSFORMER_KNOWN\s+1u", text),
+              "with channel 1 installed the transformer data must be marked known (bring-up gate, user order 2026-09-20)")
     check("CHG_INSTALLED_CHANNEL_MASK" in text,
           "the two constants must feed one explicit installed-channel mask")
 
@@ -411,6 +414,12 @@ def test_setpoints_and_timing():
     check("func__Fault_Set(FAULT_CHARGER_BAT_LOST)" in text_fault_c, "Fault must latch the bit, not the charger")
     check("func__Fault_Clear(FAULT_CHARGER_BAT_LOST)" in text_fault_c, "Fault must clear the bit after the settle time")
     check("CHG_STATE_BAT_LOST" in text_c, "charger must keep a battery-lost state as the flag mirror")
+    check("uint8_t__waitIndex" in text_c and "Two-channel retry queue" in text_c,
+          "ServiceRetry must adopt any channel waiting in JIT_RETRY_WAIT when the pointer frees (two-channel starvation fix)")
+    check("(UINT8_T__G__RetryChannel == CHG_NO_CHANNEL))" not in text_c,
+          "a tripped channel must park at zero duty immediately - the old no-retry-running gate left the second channel pumping up to 3 s against an asserted comparator")
+    check("if (UINT8_T__G__RetryChannel == CHG_NO_CHANNEL)" in text_c,
+          "HandleJitTrip may take the revive pointer only when it is free (no pointer stomping; queued rival adopted by the scan)")
     check("func__Charger_IsAnyChannelActive" in text_c and "func__Charger_IsAnyChannelActive" in text_h, "charger must expose whether any channel is charging (UI yellow gate)")
     check("CHG_STATE_BULK" in text_c and "CHG_STATE_ABSORB" in text_c and "CHG_STATE_FLOAT" in text_c, "active query must count BULK/ABSORB/FLOAT as charging")
     check("(func__Fault_Get() & FAULT_CHARGER_BAT_LOST)" in text_c, "charger must ONLY mirror the central flag")

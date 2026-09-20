@@ -46,26 +46,27 @@
 /* ==================== Board/test selection constants / ثابت‌های انتخاب برد و تست ==================== */
 /*
  * [EN] These are the only two assembly-selection constants to change when the
- * installed transformer changes. Current board has Trans2 only. Set CH1 to 1
+ * installed transformer changes. Both transformers are installed now. Set CH1 to 1
  * only after the second transformer, its current path and its JIT input have
  * been verified on the board.
- *   Channel 1 (logical ch1) = 0 now → PWM1 compare must stay 0/PWM1 stopped,
- *                             no nonzero duty for CH1 in any path.
+ *   Channel 1 (logical ch1) = 1 now (user bring-up order 2026-09-20) →
+ *                             PWM1 PA0 / Current1 / JIT1 active; bench
+ *                             verification of Trans1/JIT1 stays on the board
+ *                             checklist below.
  *   Channel 2 (logical ch2) = 1 now → PWM2 PA6 / Current2 PA7 / JIT2 PB6.
  * Trans2 is connected to one independent 12 V battery on VLOW = MID - GND;
  * the 24 V pack measurement is monitor-only and is never a charge setpoint or
  * missing-battery condition for CH2.
- * [FA] برای عوض‌کردن ترانس مونتاژشده فقط همین دو ثابت تغییر می‌کنند. برد فعلی
- * فقط Trans2 دارد. CH1 را فقط پس از تأیید سخت‌افزاری ترانس دوم، مسیر جریان
- * و ورودی JIT آن ۱ کنید.
- *   کانال ۱ = ۰ اکنون → PWM1 compare همیشه صفر، PWM1 متوقف، هیچ duty غیرصفری
- *             برای CH1 اعمال نشود.
+ * [FA] برای عوض‌کردن ترانس مونتاژشده فقط همین دو ثابت تغییر می‌کنند.
+ *   کانال ۱ = ۱ اکنون (دستور راه‌اندازی کاربر ۲۰۲۶-۰۹-۲۰) → PWM1 PA0 /
+ *             Current1 / JIT1 فعال؛ تأیید بنجی Trans1/مسیر جریان/JIT1 در
+ *             چک‌لیست برد می‌ماند.
  *   کانال ۲ = ۱ اکنون → PWM2 PA6 / Current2 PA7 / JIT2 PB6.
  * Trans2 به یک باتری ۱۲ ولت مستقل روی VLOW = MID - GND وصل است؛ مقدار پک
  * ۲۴ ولت فقط مانیتور است و هیچ‌گاه setpoint شارژ یا شرط battery-missing برای
  * CH2 نیست.
  */
-#define CHG_CHANNEL_1_INSTALLED       0u
+#define CHG_CHANNEL_1_INSTALLED       1u
 #define CHG_CHANNEL_2_INSTALLED       1u
 
 #define CHG_CHANNEL_1_MASK            (1u << 0)

@@ -448,7 +448,16 @@ static void func__Charger_HandleJitTrip(uint8_t uint8_t__channelIndex,
     charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_JIT_RETRY_WAIT;
     charger_channel_state_t__channel->uint32_t__retryDeadlineTick =
         uint32_t__nowTick + func__Charger_DurationTicks(CHG_JIT_LOCKOUT_MS);
-    UINT8_T__G__RetryChannel = uint8_t__channelIndex;
+    /* [EN] Take the revive pointer only if it is free; while the rival is
+       retrying this channel simply queues in JIT_RETRY_WAIT and the adopt-
+       scan in ServiceRetry picks it up next - no pointer stomping, strict
+       first-tripped-first-revived order.
+       [FA] اشاره‌گر احیا فقط اگر آزاد است گرفته می‌شود؛ وگرنه کانال در صف
+       می‌ماند تا اسکن ServiceRetry بردارد - ترتیب احیا حفظ می‌شود. */
+    if (UINT8_T__G__RetryChannel == CHG_NO_CHANNEL)
+    {
+        UINT8_T__G__RetryChannel = uint8_t__channelIndex;
+    }
 }
 
 #endif
@@ -491,6 +500,30 @@ static void func__Charger_ServiceRetry(uint32_t uint32_t__nowTick)
     uint8_t uint8_t__retryChannel;
 
     uint8_t__retryChannel = UINT8_T__G__RetryChannel;
+
+    /* [EN] Two-channel retry queue (audit 2026-09-20): a channel tripped
+       while the rival was retrying is parked in JIT_RETRY_WAIT with its OWN
+       per-channel deadline; when the global pointer frees up, adopt the
+       first waiting channel so nothing starves. Revivals stay one-at-a-time
+       (the pointer), preserving main's single-resume sequencing.
+       [FA] صف ریتری دوکاناله (ممیزی): کانال تریپ‌شده در پنجرهٔ حریف با
+       ددلاین خودش پارک می‌شود و با آزادشدن اشاره‌گر، اولین منتظر اخذ
+       می‌شود تا قحطی نباشد؛ احیا همچنان تک‌تک. */
+    if (uint8_t__retryChannel == CHG_NO_CHANNEL)
+    {
+        uint8_t uint8_t__waitIndex;
+
+        for (uint8_t__waitIndex = 0u; uint8_t__waitIndex < 2u; uint8_t__waitIndex++)
+        {
+            if (CHARGER_CHANNEL_T__G__State[uint8_t__waitIndex].charger_state_t__state ==
+                CHG_STATE_JIT_RETRY_WAIT)
+            {
+                uint8_t__retryChannel = uint8_t__waitIndex;
+                UINT8_T__G__RetryChannel = uint8_t__retryChannel;
+                break;
+            }
+        }
+    }
 
     if (uint8_t__retryChannel == CHG_NO_CHANNEL)
     {
@@ -1366,9 +1399,18 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
              CHG_STATE_FINAL_FAULT) &&
             (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
              CHG_STATE_JIT_RETRY_WAIT) &&
-            (func__Jitter_ChannelTripped((uint8_t)(uint8_t__channelIndex + 1u)) == true) &&
-            (UINT8_T__G__RetryChannel == CHG_NO_CHANNEL))
+            (func__Jitter_ChannelTripped((uint8_t)(uint8_t__channelIndex + 1u)) == true))
         {
+            /* [EN] Park EVERY tripped channel at zero duty immediately (two-
+               channel audit 2026-09-20: the old "only while no retry is
+               running" gate left the second channel pumping for up to one
+               full 3 s lockout against an asserted comparator). Waiting in
+               JIT_RETRY_WAIT is queued per channel; func__Charger_ServiceRetry
+               revives them one at a time, so simultaneous restarts still
+               cannot happen.
+               [FA] کانال تریپ‌شده بلافاصله با دیوتی صفر پارک می‌شود (ممیزی
+               دوکاناله: گیت قدیمی کانال دوم را تا ۳ ثانیه با کمپریتور مسلط
+               در حال پمپ نگه می‌داشت)؛ احیای صف تک‌تک با ServiceRetry. */
             func__Charger_HandleJitTrip(uint8_t__channelIndex, uint32_t__nowTick);
         }
     }
