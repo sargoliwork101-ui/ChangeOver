@@ -35,9 +35,6 @@
 #if MODULE_JITTER
 #include "jitter.h"
 #endif
-#if MODULE_MCU_POWER_PATH
-#include "mcu_power_path.h"
-#endif
 
 /* ==================== Task Control ==================== */
 
@@ -51,13 +48,6 @@ void func__TaskControl(void *void_ptr__argument)
        [FA] Changeover را پیش از اولین ارزیابی یک‌بار مقداردهی کن تا BOOT،
        تایمرها و وضعیت منطقی حفاظت صریح باشند، نه فقط مقدار پیش‌فرض C. */
     func__Changeover_Init();
-#endif
-#if MODULE_MCU_POWER_PATH
-    /* [EN] Initialize MCU battery path Q1 (PB5) so the MCU stays supplied from
-       battery at boot. Keeps PB11 independent (Changeover-owned).
-       [FA] مسیر باتری MCU با Q1 (PB5) را مقداردهی می‌کند تا در بوت از باتری
-       تغذیه شود. PB11 مستقل می‌ماند. */
-    func__McuPowerPath_Init();
 #endif
 #if MODULE_CHARGER
     /* [EN] Charger owns its safe PWM/relay init before the first evaluation.
@@ -83,18 +73,10 @@ void func__TaskControl(void *void_ptr__argument)
             (void)func__Measurement_GetSnapshot(&measurement_snapshot_t__snap);
 #endif
 #if MODULE_FAULT
-            /* [EN] Central battery-lost detection runs first, so the fresh bit
-               is already latched/cleared in the mask this pass consumes.
-               [FA] تشخیص متمرکز قطع باتری اول اجرا شود تا بیت تازه در همین
-               پاس داخل ماسک دیده شود. */
-            func__Fault_Evaluate(&measurement_snapshot_t__snap);
             fault_mask_t__faults = func__Fault_Get();
 #endif
 #if MODULE_JITTER
             func__Jitter_Run();
-#endif
-#if MODULE_MCU_POWER_PATH
-            func__McuPowerPath_Run();
 #endif
 #if MODULE_CHANGEOVER
             /* [EN] UI owns BOOL__G__UiBatteryAlarmIssued and updates it in func__Ui_Tick()

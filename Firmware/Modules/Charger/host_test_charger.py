@@ -376,6 +376,13 @@ def test_setpoints_and_timing():
     check("uint32_t__absorbAccumTicks" in text_c, "soak must accumulate with pause outside the window")
     check("do NOT fall back to BULK" in text_c, "FLOAT must survive descending below the 14.3 V window (bench bug: fresh soak restarted right after every soak completed)")
     check("PARK THE PUMP AT ZERO" in text_c, "FLOAT must ramp the duty to 0 and park it (user: 'why is the charger not off? duty stuck 4-5%')")
+    check(re.search(r"#define CHG_TAPER_CURRENT_MA\s+50u", text_h) and
+          re.search(r"#define CHG_TAPER_SUSTAIN_MS\s+60000u", text_h) and
+          re.search(r"#define CHG_ABSORB_MAX_MS\s+3600000u", text_h),
+          "taper completion must be 50 mA held 60 s with a 1-hour absorb ceiling (user bench decisions)")
+    check("uint32_t__taperSinceTick" in text_c and "bool__absorbTimedOut" in text_c and
+          "bool__taperDone" in text_c,
+          "absorb must end on soak>=10min AND steady tail current, plus the 1-hour ceiling")
     check("CHG_STATE_ABSORB" in text_c, "absorb voltage-hold state must exist in the state machine")
     check(re.search(r"#define CHG_BULK_CURRENT_MAX_MA\s+650u", text_h), "bulk regulation current must be 650 mA (tight band per user)")
     check(re.search(r"#define CHG_REGULATE_LOW_MA\s+630u", text_h), "regulation band lower edge must be 630 mA (~20 mA tolerance)")

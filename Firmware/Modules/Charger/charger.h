@@ -265,6 +265,23 @@
  *      تنظیم نزدیک ~۱۹٪ است؛ این فقط کران بالاست. */
 #define CHG_DUTY_MAX_PERMILLE          500u
 #define CHG_ABSORB_HOLD_MS          600000u
+/* [EN] Tail-current ("taper") absorb completion - the classic lead-acid
+ *      criterion, user bench decisions 2026-09-20 (bench pack = 4.5 Ah, so
+ *      CHG_TAPER_CURRENT_MA 50 is ~C/90): absorb ends into FLOAT only when
+ *      the minimum soak (CHG_ABSORB_HOLD_MS) has passed AND the tail current
+ *      stays below CHG_TAPER_CURRENT_MA steadily for CHG_TAPER_SUSTAIN_MS
+ *      (60 s; the sense chain wobbles +/-10..20 mA, so a single dipping frame
+ *      must not complete the charge). A never-tapering battery still leaves
+ *      absorb at the CHG_ABSORB_MAX_MS = 1 hour ceiling (forced FLOAT), so
+ *      the pump cannot stay awake forever.
+ * [FA] پایان‌دهی ابزورب به روش زیرجریان (تیپر) - معیار کلاسیک سرب-اسیدی و
+ *      دستور بنچ کاربر (پک ۴٫۵Ah روچنار ~C/90 =۵۰mA): ابزورب فقط وقتی FLOAT
+ *      می‌شود که حداقل ۱۰ دقیقه شستشو گذشته باشد **و** زیرجریان <۵۰mA
+ *      به‌مدت پایدار ۶۰ ثانیه بماند؛ سقف امن ۱ ساعت در هرحال FLOAT اجباری
+ *      می‌کند تا باتری هرگز-تیپر‌نشده پمپ را بیدار نگه ندارد. */
+#define CHG_TAPER_CURRENT_MA           50u
+#define CHG_TAPER_SUSTAIN_MS        60000u
+#define CHG_ABSORB_MAX_MS         3600000u
 /* [EN] Battery-lost (both cases: pumped >14.8 V while charging, and battery
  *      absent with valid input) is OWNED BY THE FAULT MODULE since 2026-09-19
  *      per user directive: fault.c evaluates the snapshot centrally and
