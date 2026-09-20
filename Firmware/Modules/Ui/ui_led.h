@@ -29,9 +29,12 @@
 
 /**
  * @brief  [EN] Battery voltage mapped to one hundred percent, in millivolts.
- *         [FA] ولتاژ باتری متناظر با صد درصد، بر حسب میلی‌ولت.
+ *              Raised 28000 -> 29000 by user order 2026-09-20: the Charging
+ *              yellow blink keeps pacing until the battery truly reaches 29 V.
+ *         [FA] ولتاژ باتری متناظر با صد درصد. ۲۸۰۰۰ → ۲۹۰۰۰ به دستور کاربر:
+ *              چشمک زرد شارژ تا رسیدن واقعی به ۲۹V ادامه دارد.
  */
-#define UI_BAT_V_MAX_MV                 28000u
+#define UI_BAT_V_MAX_MV                 29000u
 
 /* ==================== Input voltage thresholds and hysteresis / آستانه‌ها و هیسترزیس ولتاژ ورودی ==================== */
 
@@ -512,11 +515,11 @@ void func__Ui_ScenarioBatLost_Tick(void);
 /* ==================== Scenario BatteryRun Tick / تیک سناریوی دشارژ ==================== */
 
 /**
- * @brief  [EN] BatteryRun: green blink from the linear 21V..28V percentage and four requested buzzer bands.
+ * @brief  [EN] BatteryRun: green blink from the linear 21V..29V percentage and four requested buzzer bands.
  *         Below 1%, all LEDs turn off after one ten-second critical beep.
  *         [FA] دشارژ: سبز بر اساس درصد خطی ۲۱ تا ۲۸ ولت و چهار بازه بوق درخواستی چشمک می‌زند.
  *         زیر ۱٪، بعد از یک بوق بحرانی ده‌ثانیه‌ای همه LEDها خاموش می‌شوند.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 28000=100% / ولتاژ باتری
+ * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 29000=100% / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv);
 

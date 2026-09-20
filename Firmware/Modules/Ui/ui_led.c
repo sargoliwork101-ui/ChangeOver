@@ -43,7 +43,7 @@ volatile bool BOOL__G__UiBatteryAlarmIssued = false;
 /**
  * @brief  [EN] Battery voltage to percent 0..100. Non-linear formula broken into 4 steps: range, offset, scaled, percent.
  *         [FA] ولتاژ باتری به درصد - فرمول غیرخطی ۴ گام: بازه، فاصله، مقیاس، درصد.
- * @param  uint32_t__batteryMv [EN] Battery voltage in mV, 0..40000mV, 21000=0% 28000=100% / ولتاژ باتری میلی‌ولت
+ * @param  uint32_t__batteryMv [EN] Battery voltage in mV, 0..40000mV, 21000=0% 29000=100% / ولتاژ باتری میلی‌ولت
  * @return uint8_t [EN] Percent 0..100 / درصد
  */
 uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
@@ -811,7 +811,7 @@ void func__Ui_ScenarioInputOk(void)
  * @brief  [EN] Charging scenario tick: green steady, yellow shows remaining to full non-linear.
  *         Formula: remainingPercent = 100-pct, periodPerPercent = period/100, yellowOnMs = remaining*periodPer, yellowOffMs = period-yellowOn.
  *         [FA] سناریو شارژ: سبز ثابت، زرد مانده تا فول غیرخطی.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 28000=100% / ولتاژ باتری
+ * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 29000=100% / ولتاژ باتری
  */
 void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 {
@@ -884,7 +884,7 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
  *         [FA] سناریو دشارژ: سبز بر اساس درصد خطی ۲۱ تا ۲۸ ولت چشمک می‌زند؛
  *         بوق بر اساس چهار بازه درصدی درخواستی اجرا می‌شود.
  *         زیر ۱٪ همه LEDها خاموش و یک بوق ده‌ثانیه‌ای تا برگشت باتری فقط یک‌بار اجرا می‌شود.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 28000=100% / ولتاژ باتری
+ * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 29000=100% / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 {
