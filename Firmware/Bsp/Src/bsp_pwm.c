@@ -117,24 +117,29 @@ static void func__BspPwm_SetOneDuty(TIM_HandleTypeDef *TIM_HandleTypeDef__timer,
 
 /* ==================== BspPwm_Init ==================== */
 /**
- * @brief  [EN] Force both gates low, then start both timers ONCE with a
- *              frozen half-period (10 us at 50 kHz) phase offset: TIM3 is
- *              started at CNT = period/2 while TIM2 starts at CNT = 0, so
- *              the channel-2 gate pulse always rises exactly half a period
- *              after the channel-1 gate pulse (user order 2026-09-21). The
- *              offset is derived from the live ARR, not a hardcoded 720, so
- *              it follows any future period change. Both timers share one
- *              72 MHz clock and identical ARR, hence the frozen offset
- *              cannot drift. From this point on the counters are never
- *              stopped again; off = compare 0.
- *         [FA] ابتدا هر دو گیت پایین می‌آیند، سپس هر دو تایمر فقط یک‌بار با
- *              آفست فاز ثابتِ نیم‌دوره (۱۰µs در ۵۰kHz) استارت می‌شوند: TIM3
- *              از نیم‌دوره و TIM2 از صفر، تا پالس گیت کانال دو دقیقاً
- *              نیم‌دوره بعد از پالس گیت کانال یک بالا بیاید (دستور کاربر
- *              ۲۰۲۶-۰۹-۲۱). آفست از ARR واقعی محاسبه می‌شود نه عدد ثابت ۷۲۰
- *              تا با تغییر دوره همراه شود. هر دو تایمر روی یک کلاک ۷۲MHz و
- *              ARR یکسان‌اند پس آفست رانش ندارد. از این‌به‌بعد شمارنده‌ها
- *              دیگر متوقف نمی‌شوند؛ خاموش یعنی compare صفر.
+ * @brief  [EN] Force both gates low, preset the frozen half-period phase,
+ *              then start BOTH counters with two adjacent raw register
+ *              writes. HAL_TIM_PWM_Start is deliberately NOT used: its
+ *              per-call latency (several microseconds of HAL boilerplate
+ *              between the two calls) would slip the interleave by a
+ *              nondeterministic amount (bench finding 2026-09-21). The
+ *              register pair htim2->CR1|=CEN / htim3->CR1|=CEN executes a
+ *              few bus cycles apart (~tens of ns at 72 MHz), so TIM3 gates
+ *              rise deterministically 10 us (period/2, derived from the
+ *              live ARR) after TIM2 gates. Output stages were enabled
+ *              beforehand while both counters were still halted, so no
+ *              glitch reaches the pins. After this, counters never stop:
+ *              off = compare 0.
+ *         [FA] ابتدا هر دو گیت پایین می‌آیند و فازِ ثابتَ نیم‌دوره تنظیم
+ *              می‌شود، سپس هر دو شمارنده با دو نوشتن رجیستریِ پشت‌سرهم
+ *              استارت می‌شوند. عمداً از HAL_TIM_PWM_Start استفاده نمی‌کنیم:
+ *              تأخیر هر فراخوانی HAL (چند میکروثانیه) فاز را غیرقطعی جابه‌جا
+ *              می‌کرد (یافتهٔ بنچ ۲۰۲۶-۰۹-۲۱). جفت رجیستر CEN چند سیکل باس
+ *              کنار هم اجرا می‌شوند (~چند ده نانوثانیه در ۷۲MHz)، پس پالس
+ *              گیت TIM3 دقیقاً ۱۰µs (نیم‌دوره، از ARR واقعی) بعد از پالس گیت
+ *              TIM2 می‌آید. خروجی‌ها قبل‌تر و وقتی شمارنده‌ها متوقف بودند
+ *              فعال شدند تا کلک به پایه‌ها نرسد. پس‌ازاین شمارنده‌ها هرگز
+ *              متوقف نمی‌شوند؛ خاموش یعنی compare صفر.
  */
 void func__BspPwm_Init(void)
 {
@@ -143,12 +148,19 @@ void func__BspPwm_Init(void)
     __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0u);
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0u);
 
+    /* [EN] Enable the output stages while both counters are still halted
+       [FA] مراحل خروجی را در حالت توقفِ شمارنده فعال می‌کنیم */
+    TIM_CCxChannelCmd(htim2.Instance, TIM_CHANNEL_1, TIM_CCx_ENABLE);
+    TIM_CCxChannelCmd(htim3.Instance, TIM_CHANNEL_1, TIM_CCx_ENABLE);
+
     uint32_t__periodCounts = __HAL_TIM_GET_AUTORELOAD(&htim3) + 1u;
     __HAL_TIM_SET_COUNTER(&htim2, 0u);
     __HAL_TIM_SET_COUNTER(&htim3, uint32_t__periodCounts / 2u);
 
-    (void)HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
-    (void)HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+    /* [EN] Deterministic simultaneous start pair (~tens of ns skew).
+       [FA] جفت استارت همزمان قطعی (لغزش چند ده نانوثانیه). */
+    htim2.Instance->CR1 |= TIM_CR1_CEN;
+    htim3.Instance->CR1 |= TIM_CR1_CEN;
 }
 
 /* ==================== BspPwm_SetDutyPermille ==================== */

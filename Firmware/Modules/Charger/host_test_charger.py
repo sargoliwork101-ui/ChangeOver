@@ -466,8 +466,11 @@ def test_pwm_interleave_phase_lock():
           "the offset must be half a period derived from the live ARR, not a hardcoded 720")
     check("HAL_TIM_PWM_Stop" not in bsp_pwm_c,
           "counters must run continuously: only compare=0 turns a channel off, because any later HAL_TIM_PWM_Stop/Start cycle could slip the frozen 10 us interleave")
-    check(bsp_pwm_c.count("HAL_TIM_PWM_Start") == 2,
-          "both timers must be started exactly once, inside func__BspPwm_Init")
+    check("HAL_TIM_PWM_Start(" not in bsp_pwm_c,
+          "HAL_TIM_PWM_Start must NOT be called: its per-call latency of several microseconds made the interleave nondeterministic (bench finding 2026-09-21)")
+    check("htim2.Instance->CR1 |= TIM_CR1_CEN" in bsp_pwm_c and
+          "htim3.Instance->CR1 |= TIM_CR1_CEN" in bsp_pwm_c,
+          "both counters must start via two adjacent raw CEN register writes (~tens of ns skew) so the 10 us offset is deterministic")
 
 
 def test_electronic_load_policy_documented():
