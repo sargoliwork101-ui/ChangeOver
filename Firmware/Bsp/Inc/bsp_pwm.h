@@ -24,8 +24,12 @@ typedef enum
 
 /* ==================== BspPwm_Init ==================== */
 /**
- * @brief  [EN] Initialize the logical PWM backend and force both channels off.
- *         [FA] backend منطقی PWM را مقداردهی و هر دو کانال را خاموش می‌کند.
+ * @brief  [EN] Start both timer backend channels once with a frozen
+ *              half-period (10 us at 50 kHz) interleave, gates initially
+ *              low. The counters then run forever; "off" is compare=0.
+ *         [FA] هر دو کانال تایمر را یک‌بار با درهم‌گذاری ثابتِ نیم‌دوره
+ *              (۱۰µs در ۵۰kHz) شروع می‌کند و گیت‌ها پایین می‌مانند. شمارنده‌ها
+ *              دیگر همیشه می‌چرخند و «خاموش» یعنی compare=0.
  */
 void func__BspPwm_Init(void);
 
@@ -45,8 +49,10 @@ void func__BspPwm_SetDutyPermille(bsp_pwm_channel_t bsp_pwm_channel_t__channel,
 
 /* ==================== BspPwm_StopAll ==================== */
 /**
- * @brief  [EN] Set compare values to zero and stop every board PWM channel.
- *         [FA] مقدار compare همهٔ کانال‌ها را صفر و PWM برد را متوقف می‌کند.
+ * @brief  [EN] Force both gates low (compare 0); the counters keep running
+ *              so the frozen interleave offset is preserved.
+ *         [FA] هر دو گیت را پایین می‌آورد (compare صفر)؛ شمارنده‌ها به چرخش
+ *              می‌مانند تا آفست درهم‌گذاری حفظ شود.
  */
 void func__BspPwm_StopAll(void);
 
