@@ -397,6 +397,21 @@ extern volatile uint32_t UINT32_T__G__ChargerDiag[CHG_DIAG_COUNT];
 
 extern volatile uint32_t UINT32_T__G__ChargerCalib[CHG_CALIB_COUNT];
 
+/* ==================== Charger live estimate currents / جریان‌های تخمینی زنده ==================== */
+/* [EN] The two OUTPUT-current estimates the charger actually decides with
+ *      (user order 2026-09-22: watch them directly in Live Expressions).
+ *      ch1 = VHIGH half (upper battery), ch2 = VLOW half (lower battery);
+ *      refreshed every control pass together with the diag/calib arrays.
+ *      The regulation band holds duty when the value sits inside
+ *      CHG_REGULATE_LOW_MA..CHG_BULK_CURRENT_MAX_MA (630..650 mA).
+ * [FA] همان دو جریان خروجی تخمینی که شارژر واقعاً با آن‌ها تصمیم می‌گیرد
+ *      (دستور کاربر ۲۰۲۶-۰۹-۲۲: مستقیم در Live Expressions دیده شوند).
+ *      کانال ۱ = نیم VHIGH (باتری بالا)، کانال ۲ = نیم VLOW (باتری پایین)؛
+ *      هر پاس کنترل همراه آرایه‌های دیاگ/کالیبراسیون به‌روز می‌شوند.
+ *      وقتی مقدار داخل باند ۶۳۰..۶۵۰ باشد دیوتی نگه داشته می‌شود. */
+extern volatile uint32_t UINT32_T__G__ChargerIest1Ma;
+extern volatile uint32_t UINT32_T__G__ChargerIest2Ma;
+
 /* ==================== Charger_Init / مقداردهی اولیه ==================== */
 /**
  * @brief  [EN] Initialize policy state, stop every PWM channel and force a

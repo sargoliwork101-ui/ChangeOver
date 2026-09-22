@@ -82,6 +82,13 @@ volatile uint32_t UINT32_T__G__ChargerDiag[CHG_DIAG_COUNT] = {0u};
  *      ۲۰۲۶-۰۹-۲۲: یک ورودی Live Expressions برای کالیبراسیون بنچ). */
 volatile uint32_t UINT32_T__G__ChargerCalib[CHG_CALIB_COUNT] = {0u};
 
+/* [EN] Live per-channel output-current estimates (the decision values) -
+ *      see charger.h. ch1 = upper/VHIGH, ch2 = lower/VLOW.
+ * [FA] جریان‌های خروجی تخمینی زنده per channel (مقادیر تصمیم) - توضیح در
+ *      charger.h. کانال ۱ = بالا/VHIGH، کانال ۲ = پایین/VLOW. */
+volatile uint32_t UINT32_T__G__ChargerIest1Ma = 0u;
+volatile uint32_t UINT32_T__G__ChargerIest2Ma = 0u;
+
 static bool BOOL__G__ChargerInitialized;
 static bool BOOL__G__RelayOpen;
 static uint32_t UINT32_T__G__RelaySettleDeadline;
@@ -1298,6 +1305,16 @@ static void func__Charger_CaptureDiag(const measurement_snapshot_t *measurement_
                 uint32_t__primaryMa;
             UINT32_T__G__ChargerCalib[uint32_t__calibBase + CHG_CALIB_OFF_IEST] =
                 UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_IEST];
+            if (uint8_t__channelIndex == 0u)
+            {
+                UINT32_T__G__ChargerIest1Ma =
+                    UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_IEST];
+            }
+            else
+            {
+                UINT32_T__G__ChargerIest2Ma =
+                    UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_IEST];
+            }
         }
         else
         {
@@ -1307,6 +1324,14 @@ static void func__Charger_CaptureDiag(const measurement_snapshot_t *measurement_
             UINT32_T__G__ChargerCalib[uint32_t__calibBase + CHG_CALIB_OFF_VBAT] = 0u;
             UINT32_T__G__ChargerCalib[uint32_t__calibBase + CHG_CALIB_OFF_IPRI] = 0u;
             UINT32_T__G__ChargerCalib[uint32_t__calibBase + CHG_CALIB_OFF_IEST] = 0u;
+            if (uint8_t__channelIndex == 0u)
+            {
+                UINT32_T__G__ChargerIest1Ma = 0u;
+            }
+            else
+            {
+                UINT32_T__G__ChargerIest2Ma = 0u;
+            }
         }
     }
 
