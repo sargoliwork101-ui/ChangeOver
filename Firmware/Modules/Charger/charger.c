@@ -68,6 +68,14 @@ typedef struct
 /* ==================== Static state / وضعیت داخلی ==================== */
 
 static charger_channel_state_t CHARGER_CHANNEL_T__G__State[2];
+
+/* [EN] Live diag array - see the layout map in charger.h (user order
+ *      2026-09-22: all charge-decision values visible in one Live
+ *      Expressions entry).
+ * [FA] آرایهٔ دیاگ زنده - نقشهٔ چیدمان در charger.h (دستور کاربر
+ *      ۲۰۲۶-۰۹-۲۲: همهٔ مقادیر تصمیم شارژ در یک ورودی Live Expressions). */
+volatile uint32_t UINT32_T__G__ChargerDiag[CHG_DIAG_COUNT] = {0u};
+
 static bool BOOL__G__ChargerInitialized;
 static bool BOOL__G__RelayOpen;
 static uint32_t UINT32_T__G__RelaySettleDeadline;
@@ -1210,6 +1218,85 @@ void func__Charger_Init(void)
 }
 
 /* ==================== Charger_Evaluate ==================== */
+/**
+ * @brief  [EN] Refresh the live diag array with every decision value.
+ *         [FA] آرایهٔ دیاگ زنده را با همهٔ مقادیر تصمیم به‌روز می‌کند.
+ * @param  measurement_snapshot_t__snap [EN] Current snapshot (may be NULL) /
+ *         snapshot فعلی (می‌تواند NULL باشد)
+ */
+static void func__Charger_CaptureDiag(const measurement_snapshot_t *measurement_snapshot_t__snap)
+{
+    uint8_t uint8_t__channelIndex;
+    uint32_t uint32_t__base;
+    uint32_t uint32_t__primaryMa;
+    bool bool__snapValid;
+
+    bool__snapValid =
+        ((measurement_snapshot_t__snap != NULL) &&
+         (measurement_snapshot_t__snap->valid == true));
+
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    {
+        uint32_t__base =
+            (uint32_t)uint8_t__channelIndex * CHG_DIAG_CHANNEL_STRIDE;
+
+        UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_STATE] =
+            (uint32_t)CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state;
+        UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_DUTY] =
+            (uint32_t)CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille;
+
+        if (bool__snapValid == true)
+        {
+            UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_VBAT] =
+                func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,
+                                               uint8_t__channelIndex);
+            uint32_t__primaryMa =
+                func__Charger_ChannelCurrentMa(measurement_snapshot_t__snap,
+                                               uint8_t__channelIndex);
+            UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_IPRI] =
+                uint32_t__primaryMa;
+            UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_IEST] =
+                func__Charger_OutputEstimateMa(measurement_snapshot_t__snap,
+                                               uint8_t__channelIndex,
+                                               uint32_t__primaryMa);
+        }
+        else
+        {
+            UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_VBAT] = 0u;
+            UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_IPRI] = 0u;
+            UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_IEST] = 0u;
+        }
+    }
+
+    if (bool__snapValid == true)
+    {
+        UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_VIN] =
+            measurement_snapshot_t__snap->v_in_mv;
+        UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_V24] =
+            measurement_snapshot_t__snap->v_bat24_mv;
+        UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_V12] =
+            measurement_snapshot_t__snap->v_bat12_mv;
+        UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_VHIGH] =
+            measurement_snapshot_t__snap->v_bat_high_mv;
+    }
+    else
+    {
+        UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_VIN] = 0u;
+        UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_V24] = 0u;
+        UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_V12] = 0u;
+        UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_VHIGH] = 0u;
+    }
+
+#if MODULE_FAULT
+    UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_FAULT] = (uint32_t)func__Fault_Get();
+#else
+    UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_FAULT] = 0u;
+#endif
+
+    UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_VALID] =
+        ((bool__snapValid == true) ? 1u : 0u);
+}
+
 
 void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap,
                             app_state_t app_state_t__state)
@@ -1269,6 +1356,15 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         }
     }
 #endif
+
+    /* [EN] Refresh the diag array before any gate so it stays live in every
+       path (safe-idle, fault, normal charge). Duty/state are the values the
+       previous pass applied; the current/estimate slots are exactly what the
+       regulation below will decide on this pass.
+       [FA] آرایهٔ دیاگ قبل از هر گِیت به‌روز می‌شود تا در همهٔ مسیرها زنده
+       بماند؛ duty/state مقدار اعمال‌شدهٔ پاس قبل است و جریان/تخمین دقیقاً
+       همان چیزی است که تنظیم پایین‌تر در همین پاس رویش تصمیم می‌گیرد. */
+    func__Charger_CaptureDiag(measurement_snapshot_t__snap);
 
     if (CHG_MASTER_ENABLE == 0u)
     {

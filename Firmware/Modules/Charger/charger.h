@@ -298,6 +298,47 @@
  *      این قطع firmware جای فیوز، منبع محدودشده یا حدود سازندهٔ باتری نیست. */
 #define CHG_MAX_VALID_BATTERY_MV     15000u
 
+/* ==================== Charger diag array / آرایه دیاگ شارژر ==================== */
+/* [EN] Live-diagnostics array (user order 2026-09-22): every value the charge
+ *      decisions run on, refreshed at the top of EVERY Charger_Evaluate pass
+ *      (control period), so it can be watched in one Live Expressions entry.
+ *      Layout (5 slots per channel, then shared):
+ *        [0..4]  ch0 = VHIGH half: state, duty permille, vbat mV,
+ *                primary mA, output-estimate mA (the regulated value)
+ *        [5..9]  ch1 = VLOW half: same five
+ *        [10] v_in_mv, [11] v_bat24_mv, [12] v_bat12_mv,
+ *        [13] v_bat_high_mv (derived = V24 - V12), [14] fault mask,
+ *        [15] snapshot valid flag (0/1; 0 => current/voltage slots are 0)
+ *      State codes: 0=OFF 1=BULK 2=ABSORB 3=FLOAT 4=BRINGUP
+ *                   5=JIT_RETRY_WAIT 6=INPUT_WAIT 7=FINAL_FAULT 8=BAT_LOST
+ * [FA] آرایهٔ دیاگ زنده (دستور کاربر ۲۰۲۶-۰۹-۲۲): همهٔ مقادیری که تصمیم‌های
+ *      شارژ روی آن‌ها گرفته می‌شود، ابتدای هر پاس Evaluate (دورهٔ کنترل)
+ *      به‌روز می‌شود تا در Live Expressions با یک ورودی دیده شود.
+ *      چیدمان (۵ خانه per channel + مشترک‌ها):
+ *        [0..4]  کانال ۰ = نیم VHIGH: state، duty پرمیل، vbat mV،
+ *                جریان اولیه mA، تخمین خروجی mA (مقدار تنظیم‌شونده)
+ *        [5..9]  کانال ۱ = نیم VLOW: همان پنج‌تا
+ *        [10] v_in_mv، [11] v_bat24_mv، [12] v_bat12_mv،
+ *        [13] v_bat_high_mv (مشتق = V24 - V12)، [14] ماسک خطا،
+ *        [15] بیت اعتبار snapshot (۰/۱؛ صفر یعنی خانه‌های جریان/ولتاژ صفرند)
+ *      کدهای state: 0=OFF 1=BULK 2=ABSORB 3=FLOAT 4=BRINGUP
+ *                   5=JIT_RETRY_WAIT 6=INPUT_WAIT 7=FINAL_FAULT 8=BAT_LOST */
+#define CHG_DIAG_COUNT                 16u
+#define CHG_DIAG_CHANNEL_STRIDE         5u
+#define CHG_DIAG_IDX_STATE              0u
+#define CHG_DIAG_IDX_DUTY               1u
+#define CHG_DIAG_IDX_VBAT               2u
+#define CHG_DIAG_IDX_IPRI               3u
+#define CHG_DIAG_IDX_IEST               4u
+#define CHG_DIAG_IDX_VIN               10u
+#define CHG_DIAG_IDX_V24               11u
+#define CHG_DIAG_IDX_V12               12u
+#define CHG_DIAG_IDX_VHIGH             13u
+#define CHG_DIAG_IDX_FAULT             14u
+#define CHG_DIAG_IDX_VALID             15u
+
+extern volatile uint32_t UINT32_T__G__ChargerDiag[CHG_DIAG_COUNT];
+
 /* ==================== Charger_Init / مقداردهی اولیه ==================== */
 /**
  * @brief  [EN] Initialize policy state, stop every PWM channel and force a

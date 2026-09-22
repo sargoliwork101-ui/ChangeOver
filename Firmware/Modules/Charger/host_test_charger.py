@@ -180,8 +180,16 @@ def test_trans2_uses_only_vlow_not_24v_pack():
     # Channel 2 returns v_bat_low_mv = VLOW = MID-GND.
     check("return measurement_snapshot_t__snap->v_bat_low_mv;" in text,
           "Trans2 channel voltage must read v_bat_low_mv (VLOW = MID-GND)")
+    # Policy code must not touch the pack value; the ONLY allowed user is the
+    # diag capture function (user order 2026-09-22: decision values visible
+    # in Live Expressions), which must not feed any setpoint decision.
+    diag_start = text.find("static void func__Charger_CaptureDiag")
+    check(diag_start != -1, "diag capture function must exist")
+    diag_end = text.find("void func__Charger_Evaluate(", diag_start)
+    if (diag_start != -1) and (diag_end != -1):
+        text = text[:diag_start] + text[diag_end:]
     check("v_bat24_mv" not in text,
-          "charger policy must not use 24 V pack value for CH2 setpoint or missing battery")
+          "charger policy must not use 24 V pack value for CH2 setpoint or missing battery (outside the diag-only capture function)")
     check("v_bat_low_mv" in text,
           "Trans2 control must use independent low battery sense")
 
