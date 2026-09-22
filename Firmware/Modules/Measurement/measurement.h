@@ -84,6 +84,18 @@ extern volatile uint32_t UINT32_T__G__MeasBatteryLowMv;     /* [EN] VLOW = MID-G
 extern volatile uint32_t UINT32_T__G__MeasBatteryHighMv;    /* [EN] VHIGH = V24-MID, mV / باتری بالا، mV */
 extern volatile uint32_t UINT32_T__G__MeasCurrent1Ma;       /* [EN] Logical charge current 1, mA / جریان منطقی شارژ ۱، mA */
 extern volatile uint32_t UINT32_T__G__MeasCurrent2Ma;       /* [EN] Logical charge current 2, mA / جریان منطقی شارژ ۲، mA */
+/* [EN] Unfiltered single-frame current-chain diagnostics (user order
+ *      2026-09-22): raw ADC counts, pure-hardware shunt voltage (no offset,
+ *      no trim) and pre-filter mA of the last frame, per channel.
+ * [FA] دیاگ تک‌فریمیِ فیلترنشدهٔ زنجیرهٔ جریان (دستور کاربر ۲۰۲۶-۰۹-۲۲):
+ *      شمارش خام ADC، ولتاژ شانت فقط-سخت‌افزاری (بدون آفست و اصلاح) و
+ *      mA قبل از فیلترِ آخرین فریم، برای هر کانال. */
+extern volatile uint32_t UINT32_T__G__MeasCurrent1RawCounts;  /* [EN] Raw ADC counts ch1 / شمارش خام کانال ۱ */
+extern volatile uint32_t UINT32_T__G__MeasCurrent1ShuntUv;    /* [EN] Shunt voltage ch1, uV / ولتاژ شانت کانال ۱ */
+extern volatile uint32_t UINT32_T__G__MeasCurrent1MaUnfiltered; /* [EN] Pre-filter mA ch1 / mA قبل از فیلتر کانال ۱ */
+extern volatile uint32_t UINT32_T__G__MeasCurrent2RawCounts;  /* [EN] Raw ADC counts ch2 / شمارش خام کانال ۲ */
+extern volatile uint32_t UINT32_T__G__MeasCurrent2ShuntUv;    /* [EN] Shunt voltage ch2, uV / ولتاژ شانت کانال ۲ */
+extern volatile uint32_t UINT32_T__G__MeasCurrent2MaUnfiltered; /* [EN] Pre-filter mA ch2 / mA قبل از فیلتر کانال ۲ */
 extern volatile bool BOOL__G__MeasInputPresent;           /* [EN] Logical 24 V input present / حضور منطقی ورودی ۲۴ ولت */
 extern volatile bool BOOL__G__MeasDataValid;              /* [EN] true after ADC warm-up frames / پس از فریم‌های warm-up ADC true */
 
@@ -176,5 +188,17 @@ uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts);
  *      new code must pick the per-channel wrapper above).
  * [FA] wrapper عمومی قدیمی = کانال ۲؛ کد جدید wrapper پر-کانال. */
 uint32_t func__Measurement_CurrentCountsToMa(uint16_t uint16_t__counts);
+
+/**
+ * @brief  [EN] Raw current counts to the pure-hardware shunt voltage in uV
+ *              (no offset, no trim) - live diagnostic for the current-chain
+ *              review (user order 2026-09-22).
+ *         [FA] شمارش خام جریان به ولتاژ شانتِ فقط-سخت‌افزاری بر حسب uV
+ *              (بدون آفست و اصلاح) - دیاگ زندهٔ بررسی زنجیرهٔ جریان
+ *              (دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ * @param  uint16_t__counts [EN] ADC count / شمارش ADC
+ * @return uint32_t [EN] Shunt voltage in uV / ولتاژ شانت بر حسب uV
+ */
+uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts);
 
 #endif /* MEASUREMENT_H */

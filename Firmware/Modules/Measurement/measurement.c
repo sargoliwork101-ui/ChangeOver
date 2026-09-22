@@ -338,6 +338,19 @@ volatile uint32_t UINT32_T__G__MeasBatteryLowMv = 0u;
 volatile uint32_t UINT32_T__G__MeasBatteryHighMv = 0u;
 volatile uint32_t UINT32_T__G__MeasCurrent1Ma = 0u;
 volatile uint32_t UINT32_T__G__MeasCurrent2Ma = 0u;
+/* [EN] Live current-chain diagnostics, unfiltered single-frame values of
+ *      the last frame (user order 2026-09-22: raw counts -> shunt uV ->
+ *      mA before any filter, so the chain can be checked against a scope
+ *      and an ammeter step by step).
+ * [FA] دیاگ زندهٔ زنجیرهٔ جریان، مقادیر تک‌فریمیِ فیلترنشدهٔ آخرین فریم
+ *      (دستور کاربر ۲۰۲۶-۰۹-۲۲: شمارش خام -> ولتاژ شانت uV -> mA قبل از
+ *      هر فیلتر، تا زنجیره گام‌به‌گام با اسکوپ و آمپرمتر چک شود). */
+volatile uint32_t UINT32_T__G__MeasCurrent1RawCounts = 0u;
+volatile uint32_t UINT32_T__G__MeasCurrent1ShuntUv = 0u;
+volatile uint32_t UINT32_T__G__MeasCurrent1MaUnfiltered = 0u;
+volatile uint32_t UINT32_T__G__MeasCurrent2RawCounts = 0u;
+volatile uint32_t UINT32_T__G__MeasCurrent2ShuntUv = 0u;
+volatile uint32_t UINT32_T__G__MeasCurrent2MaUnfiltered = 0u;
 volatile bool BOOL__G__MeasInputPresent = false;
 volatile bool BOOL__G__MeasDataValid = false;
 
@@ -398,6 +411,12 @@ void func__Measurement_Init(void)
     UINT32_T__G__MeasBatteryHighMv = 0u;
     UINT32_T__G__MeasCurrent1Ma = 0u;
     UINT32_T__G__MeasCurrent2Ma = 0u;
+    UINT32_T__G__MeasCurrent1RawCounts = 0u;
+    UINT32_T__G__MeasCurrent1ShuntUv = 0u;
+    UINT32_T__G__MeasCurrent1MaUnfiltered = 0u;
+    UINT32_T__G__MeasCurrent2RawCounts = 0u;
+    UINT32_T__G__MeasCurrent2ShuntUv = 0u;
+    UINT32_T__G__MeasCurrent2MaUnfiltered = 0u;
     BOOL__G__MeasInputPresent = false;
     BOOL__G__MeasDataValid = false;
 
@@ -486,6 +505,24 @@ uint32_t func__Measurement_CurrentCountsToMa(uint16_t uint16_t__counts)
     return func__Measurement_Current2CountsToMa(uint16_t__counts);
 }
 
+/* ==================== Measurement Current Counts To Shunt Uv ==================== */
+
+/**
+ * @brief  [EN] Raw current counts to the pure-hardware shunt voltage in uV
+ *              via the BSP (no zero offset, no bench trim) - live
+ *              diagnostic for the current-chain review (user order
+ *              2026-09-22).
+ *         [FA] شمارش خام جریان به ولتاژ شانتِ فقط-سخت‌افزاری بر حسب uV از
+ *              طریق BSP (بدون آفست صفر، بدون اصلاح بنچ) - دیاگ زندهٔ
+ *              بررسی زنجیرهٔ جریان (دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ * @param  uint16_t__counts [EN] ADC count / شمارش ADC
+ * @return uint32_t [EN] Shunt voltage in uV / ولتاژ شانت بر حسب uV
+ */
+uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
+{
+    return func__BspMeasurement_CurrentCountsToShuntUv(uint16_t__counts);
+}
+
 /* ==================== Measurement Run ==================== */
 
 /**
@@ -499,6 +536,7 @@ void func__Measurement_Run(void)
     uint16_t uint16_t__raw[BSP_ADC_CHANNEL_COUNT];
     uint32_t uint32_t__current1SampleMa;
     uint32_t uint32_t__current1Ma;
+    uint32_t uint32_t__current1ShuntUv;
     uint32_t uint32_t__inputVoltageMv;
     uint32_t uint32_t__battery24Mv;
     uint32_t uint32_t__battery12Mv;
@@ -506,6 +544,7 @@ void func__Measurement_Run(void)
     uint32_t uint32_t__batteryHighMv;
     uint32_t uint32_t__current2SampleMa;
     uint32_t uint32_t__current2Ma;
+    uint32_t uint32_t__current2ShuntUv;
     bool bool__frameCopied;
     bool bool__inputPresent;
     int32_t int32_t__savedKernelLock;
@@ -566,6 +605,8 @@ void func__Measurement_Run(void)
        نگه می‌دارند. */
     uint32_t__current1SampleMa =
         func__Measurement_Current1CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1]);
+    uint32_t__current1ShuntUv =
+        func__Measurement_CurrentCountsToShuntUv(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1]);
     uint32_t__current1Ma =
         func__Measurement_ApplyCurrentFilters(0u, uint32_t__current1SampleMa);
     uint32_t__inputVoltageMv =
@@ -597,6 +638,8 @@ void func__Measurement_Run(void)
         func__Measurement_MedianFilterVoltageSample(1u, uint32_t__batteryHighMv);
     uint32_t__current2SampleMa =
         func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
+    uint32_t__current2ShuntUv =
+        func__Measurement_CurrentCountsToShuntUv(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
     uint32_t__current2Ma =
         func__Measurement_ApplyCurrentFilters(1u, uint32_t__current2SampleMa);
 
@@ -622,12 +665,24 @@ void func__Measurement_Run(void)
     }
 
     UINT32_T__G__MeasCurrent1Ma = uint32_t__current1Ma;
+    /* [EN] Unfiltered current-chain diagnostics of this frame: raw counts,
+       pure-hardware shunt uV and pre-filter mA (user order 2026-09-22).
+       [FA] دیاگ فیلترنشدهٔ زنجیرهٔ جریان همین فریم: شمارش خام، ولتاژ شانت
+       فقط-سخت‌افزاری و mA قبل از فیلتر (دستور کاربر ۲۰۲۶-۰۹-۲۲). */
+    UINT32_T__G__MeasCurrent1RawCounts =
+        (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1];
+    UINT32_T__G__MeasCurrent1ShuntUv = uint32_t__current1ShuntUv;
+    UINT32_T__G__MeasCurrent1MaUnfiltered = uint32_t__current1SampleMa;
     UINT32_T__G__MeasInputVoltageMv = uint32_t__inputVoltageMv;
     UINT32_T__G__MeasBattery24Mv = uint32_t__battery24Mv;
     UINT32_T__G__MeasBattery12Mv = uint32_t__battery12Mv;
     UINT32_T__G__MeasBatteryLowMv = uint32_t__batteryLowMv;
     UINT32_T__G__MeasBatteryHighMv = uint32_t__batteryHighMv;
     UINT32_T__G__MeasCurrent2Ma = uint32_t__current2Ma;
+    UINT32_T__G__MeasCurrent2RawCounts =
+        (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2];
+    UINT32_T__G__MeasCurrent2ShuntUv = uint32_t__current2ShuntUv;
+    UINT32_T__G__MeasCurrent2MaUnfiltered = uint32_t__current2SampleMa;
     BOOL__G__MeasInputPresent = bool__inputPresent;
 
     MEASUREMENT_SNAPSHOT_T__G__Snap.i_ch1_ma = uint32_t__current1Ma;

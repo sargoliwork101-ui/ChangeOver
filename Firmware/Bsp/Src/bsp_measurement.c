@@ -49,6 +49,12 @@
  *      اصلاح گین بنچ. */
 #define BSP_MEASUREMENT_MA_PER_A              1000u
 #define BSP_MEASUREMENT_PERMILLE_SCALE        1000u
+
+/* [EN] Microvolts per millivolt - scale factor of the pure-hardware
+   shunt-voltage diagnostic converter (user order 2026-09-22).
+   [FA] میکروولت بر میلی‌ولت - ضریب مقیاس مبدل تشخیصیِ فقط-سخت‌افزاریِ
+   ولتاژ شانت (دستور کاربر ۲۰۲۶-۰۹-۲۲). */
+#define BSP_MEASUREMENT_UV_PER_MV             1000u
 /* [EN] Per-CHANNEL calibration since 2026-09-20 (user order: charger 1 must
  *      not ride on charger 2's calibration). Both chains share the same
  *      schematic topology above (10 mOhm shunt, LM358 gain 101, R41/R42), so
@@ -282,4 +288,59 @@ uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts)
 uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts)
 {
     return func__BspMeasurement_Current2CountsToMa(uint16_t__counts);
+}
+
+/* ==================== BspMeasurement Current Counts To Shunt Uv ==================== */
+
+/**
+ * @brief  [EN] Pure hardware chain only: raw current counts of either
+ *              channel to the voltage across the sense shunt, in
+ *              microvolts. Applies exactly the three hardware stages -
+ *              ADC reference, R41(1k)/R42(10k) input divider, amplifier
+ *              gain - and deliberately NO zero offset and NO bench trim,
+ *              so the value can be checked directly against a scope probe
+ *              on the LM358 output (mV = uV x 101 / 1000). Live
+ *              diagnostic for the current-chain review, user order
+ *              2026-09-22.
+ *         [FA] فقط زنجیرهٔ سخت‌افزاری: شمارش خام جریان هر کانال به ولتاژ
+ *              دو سر شانت بر حسب میکروولت. دقیقاً سه مرحلهٔ سخت‌افزاری را
+ *              اعمال می‌کند - مرجع ADC، مقسم ورودی R41(1k)/R42(10k)، گین
+ *              تقویت‌کننده - و عمداً نه آفست صفر و نه اصلاح بنچ، تا مقدار
+ *              مستقیم با پروب اسکوپ روی خروجی LM358 قابل مقایسه باشد
+ *              (mV = uV x 101 / 1000). دیاگ زندهٔ بررسی زنجیرهٔ جریان،
+ *              دستور کاربر ۲۰۲۶-۰۹-۲۲.
+ * @param  uint16_t__counts [EN] Raw ADC count of a current channel /
+ *                              شمارش خام ADC یک کانال جریان
+ * @return uint32_t [EN] Shunt voltage in uV / ولتاژ شانت بر حسب uV
+ */
+uint32_t func__BspMeasurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
+{
+    uint64_t uint64_t__numerator;
+    uint64_t uint64_t__denominator;
+
+    uint64_t__numerator = (uint64_t)uint16_t__counts;
+    uint64_t__denominator = 1u;
+
+    /* [EN] Stage 1 - counts to ADC-pin voltage in mV (12-bit, 3300 mV).
+       [FA] مرحلهٔ ۱ - شمارش به ولتاژ پایهٔ ADC بر حسب mV (۱۲ بیتی، ۳۳۰۰mV). */
+    uint64_t__numerator *= BSP_MEASUREMENT_VREF_MV;
+    uint64_t__denominator *= BSP_MEASUREMENT_ADC_FULL_SCALE;
+
+    /* [EN] Stage 2 - ADC pin to LM358 output: undo the permanent R41(1k)/
+       R42(10k) MCU-input divider (multiply by 11/10), still in mV.
+       [FA] مرحلهٔ ۲ - پایهٔ ADC به خروجی LM358: خنثی‌کردن مقسم دائمی
+       R41(1k)/R42(10k) ورودی MCU (ضرب در ۱۱/۱۰)، هنوز بر حسب mV. */
+    uint64_t__numerator *=
+        (uint64_t)(BSP_MEASUREMENT_CURRENT_DIV_TOP_OHMS +
+                   BSP_MEASUREMENT_CURRENT_DIV_BOTTOM_OHMS);
+    uint64_t__denominator *= BSP_MEASUREMENT_CURRENT_DIV_BOTTOM_OHMS;
+
+    /* [EN] Stage 3 - LM358 output to shunt voltage: undo the non-inverting
+       gain of 101 and scale mV up to uV (one division at the end).
+       [FA] مرحلهٔ ۳ - خروجی LM358 به ولتاژ شانت: خنثی‌کردن گین غیروارونگر
+       ۱۰۱ و بزرگ‌کردن mV به uV (یک تقسیم در انتها). */
+    uint64_t__numerator *= BSP_MEASUREMENT_UV_PER_MV;
+    uint64_t__denominator *= BSP_MEASUREMENT_AMP_GAIN;
+
+    return (uint32_t)(uint64_t__numerator / uint64_t__denominator);
 }

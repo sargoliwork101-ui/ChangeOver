@@ -65,4 +65,20 @@ uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts);
  * [FA] مبدل عمومی قدیمی = کالیبراسیون کاnal ۲؛ کد جدید از تابع پر-کانال. */
 uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts);
 
+/* ==================== BspMeasurement Current Counts To Shunt Uv ==================== */
+
+/**
+ * @brief  [EN] Pure hardware chain (reference + R41/R42 divider + amplifier
+ *              gain, no offset, no trim) from raw current counts to the
+ *              sense-shunt voltage in uV - live diagnostic for the
+ *              current-chain review, user order 2026-09-22.
+ *         [FA] زنجیرهٔ فقط-سخت‌افزاری (مرجع + مقسم R41/R42 + گین تقویت‌کننده،
+ *              بدون آفست و اصلاح) از شمارش خام جریان به ولتاژ شانت بر حسب
+ *              uV - دیاگ زندهٔ بررسی زنجیرهٔ جریان، دستور کاربر ۲۰۲۶-۰۹-۲۲.
+ * @param  uint16_t__counts [EN] Raw ADC count of a current channel /
+ *                              شمارش خام ADC یک کانال جریان
+ * @return uint32_t [EN] Shunt voltage in uV / ولتاژ شانت بر حسب uV
+ */
+uint32_t func__BspMeasurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts);
+
 #endif /* BSP_MEASUREMENT_H */
