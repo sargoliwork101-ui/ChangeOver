@@ -40,8 +40,15 @@
  *      می‌بیند؛ تبدیل پایین این تقسیم دائمی سخت‌افزاری را جدا از کالیبراسیون
  *      کاربر خنثی می‌کند. */
 #define BSP_MEASUREMENT_CURRENT_DIV_TOP_OHMS     1000u
-#define BSP_MEASUREMENT_CURRENT_DIV_BOTTOM_OHMS 10000u
-#define BSP_MEASUREMENT_CURRENT_MA_SCALE         1000u
+#define BSP_MEASUREMENT_CURRENT_DIV_BOTTOM_OHMS  10000u
+/* [EN] Unit scales of the current formula, each ONE concept (no shared
+ *      magic 1000): milliamps per ampere for the shunt stage, and permille
+ *      for the bench gain trim stage.
+ *      [FA] مقیاس‌های واحد فرمول جریان، هر کدام یک مفهوم (بدون ۱۰۰۰ جادویی
+ *      مشترک): میلی‌آمپر بر آمپر برای مرحلهٔ شانت، و پرمیل برای مرحلهٔ
+ *      اصلاح گین بنچ. */
+#define BSP_MEASUREMENT_MA_PER_A              1000u
+#define BSP_MEASUREMENT_PERMILLE_SCALE        1000u
 /* [EN] Per-CHANNEL calibration since 2026-09-20 (user order: charger 1 must
  *      not ride on charger 2's calibration). Both chains share the same
  *      schematic topology above (10 mOhm shunt, LM358 gain 101, R41/R42), so
@@ -136,10 +143,22 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
 /* ==================== BspMeasurement_ConvertCurrent (internal) ==================== */
 
 /**
- * @brief  [EN] Shared current-formula shape for both channels: undo the
- *              permanent R41/R42 MCU-input divider, subtract the per-channel
+ * @brief  [EN] Shared current-formula shape for both channels, one stage per
+ *              schematic element (user order 2026-09-22: coefficients from
+ *              the actual resistor values): counts -> ADC pin mV ->
+ *              undo the R41/R42 MCU divider -> undo the LM358 gain ->
+ *              undo the shunt mOhms -> mA, then subtract the per-channel
  *              zero offset and apply the per-channel bench gain permille.
- *         [FA] قالب فرمول مشترک هر دو کانال؛ فقط آفست و گین ورودی پر-کانال.
+ *              Every multiply carries its own numerator/denominator stage
+ *              and only ONE division runs at the very end, so no
+ *              intermediate truncation accumulates.
+ *         [FA] قالب فرمول مشترک هر دو کانال، یک مرحله برای هر المان شماتیک
+ *              (دستور کاربر ۲۰۲۶-۰۹-۲۲: ضرایب از مقدار واقعی مقاومت‌ها):
+ *              شمارش -> mV پایه ADC -> خنثی‌کردن تقسیم R41/R42 -> خنثی‌کردن
+ *              گین LM358 -> خنثی‌کردن mΩ شانت -> mA، سپس کم‌کردن آفست صفر
+ *              پر-کانال و اعمال گین پرمیل بنچ. هر ضرب مرحلهٔ صورت/مخرج خودش
+ *              را جابه‌جا می‌کند و فقط یک تقسیم در انتها اجرا می‌شود تا
+ *              خطای گردشدن میانی جمع نشود.
  * @param  uint16_t__counts           [EN] ADC count / شمارش ADC
  * @param  uint32_t__offsetCounts     [EN] zero-current offset, counts / آفست صفر
  * @param  uint32_t__gainPermille     [EN] bench gain permille / ضریب گین بنچ
@@ -149,12 +168,13 @@ static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
                                                     uint32_t uint32_t__offsetCounts,
                                                     uint32_t uint32_t__gainPermille)
 {
-    uint64_t uint64_t__adcVoltageNumerator;
-    uint64_t uint64_t__currentNumerator;
-    uint64_t uint64_t__currentDenominator;
+    uint64_t uint64_t__chainNumerator;
+    uint64_t uint64_t__chainDenominator;
     uint32_t uint32_t__calibratedCounts;
-    uint32_t uint32_t__currentMa;
+    uint32_t uint32_t__chainCurrentMa;
 
+    /* [EN] Stage 0 - per-channel zero offset, in raw counts (bench value).
+       [FA] مرحلهٔ ۰ - آفست صفر پر-کانال، بر حسب شمارش خام (مقدار بنچ). */
     if ((uint32_t)uint16_t__counts > uint32_t__offsetCounts)
     {
         uint32_t__calibratedCounts =
@@ -165,26 +185,53 @@ static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
         uint32_t__calibratedCounts = 0u;
     }
 
-    uint64_t__adcVoltageNumerator =
-        (uint64_t)uint32_t__calibratedCounts * BSP_MEASUREMENT_VREF_MV;
-    uint64_t__currentNumerator =
-        uint64_t__adcVoltageNumerator * BSP_MEASUREMENT_CURRENT_MA_SCALE *
+    uint64_t__chainNumerator = (uint64_t)uint32_t__calibratedCounts;
+    uint64_t__chainDenominator = 1u;
+
+    /* [EN] Stage 1 - counts to ADC-pin voltage: 12-bit ADC with the 3300 mV
+       reference (the ADC pin is the CURRENTx net behind R42).
+       [FA] مرحلهٔ ۱ - شمارش به ولتاژ پایه ADC: ADC دوازده‌بیتی با مرجع
+       ۳۳۰۰mV (پایه ADC = نت CURRENTx پشت R42). */
+    uint64_t__chainNumerator *= BSP_MEASUREMENT_VREF_MV;
+    uint64_t__chainDenominator *= BSP_MEASUREMENT_ADC_FULL_SCALE;
+
+    /* [EN] Stage 2 - ADC-pin voltage to LM358 output: undo the permanent
+       R41(1k)/R42(10k) MCU-input divider (multiply by 11/10).
+       [FA] مرحلهٔ ۲ - ولتاژ پایه ADC به خروجی LM358: خنثی‌کردن تقسیم
+       دائمی R41(1k)/R42(10k) ورودی MCU (ضرب در ۱۱/۱۰). */
+    uint64_t__chainNumerator *=
         (uint64_t)(BSP_MEASUREMENT_CURRENT_DIV_TOP_OHMS +
                    BSP_MEASUREMENT_CURRENT_DIV_BOTTOM_OHMS);
-    uint64_t__currentDenominator =
-        (uint64_t)BSP_MEASUREMENT_ADC_FULL_SCALE *
-        BSP_MEASUREMENT_AMP_GAIN *
-        BSP_MEASUREMENT_SHUNT_MOHMS *
-        BSP_MEASUREMENT_CURRENT_DIV_BOTTOM_OHMS;
+    uint64_t__chainDenominator *= BSP_MEASUREMENT_CURRENT_DIV_BOTTOM_OHMS;
 
-    uint32_t__currentMa = (uint32_t)(uint64_t__currentNumerator /
-                                     uint64_t__currentDenominator);
-    uint32_t__currentMa =
-        (uint32_t)(((uint64_t)uint32_t__currentMa *
-                    uint32_t__gainPermille) /
-                   BSP_MEASUREMENT_CURRENT_MA_SCALE);
+    /* [EN] Stage 3 - LM358 output to shunt voltage: undo the non-inverting
+       gain of 101 (Rf/Rg of the current-sense amplifier).
+       [FA] مرحلهٔ ۳ - خروجی LM358 به ولتاژ شانت: خنثی‌کردن گین
+       غیروارونگر ۱۰۱ (Rf/Rg تقویت‌کنندهٔ سنجش جریان). */
+    uint64_t__chainDenominator *= BSP_MEASUREMENT_AMP_GAIN;
 
-    return uint32_t__currentMa;
+    /* [EN] Stage 4 - shunt voltage in mV to primary current in mA:
+       V[mV] = I[A] x R[mOhm] x 1000, therefore mA = mV x 1000 / mOhm.
+       [FA] مرحلهٔ ۴ - ولتاژ شانت بر حسب mV به جریان اولیه بر حسب mA:
+       V[mV] = I[A] x R[mΩ] x 1000، پس mA = mV x 1000 / mΩ. */
+    uint64_t__chainNumerator *= BSP_MEASUREMENT_MA_PER_A;
+    uint64_t__chainDenominator *= BSP_MEASUREMENT_SHUNT_MOHMS;
+
+    uint32_t__chainCurrentMa =
+        (uint32_t)(uint64_t__chainNumerator / uint64_t__chainDenominator);
+
+    /* [EN] Stage 5 - per-channel bench gain trim in permille (1085 = the
+       measured 1.085x of the Trans2 bench point; provisional copy on
+       Trans1 until its own bench point is recorded).
+       [FA] مرحلهٔ ۵ - اصلاح گین بنچ پر-کانال بر حسب پرمیل (۱۰۸۵ یعنی
+       ۱٫۰۸۵ برابر نقطهٔ بنچ Trans2؛ کپی موقت برای Trans1 تا ثبت نقطهٔ بنچ
+       خودش). */
+    uint32_t__chainCurrentMa =
+        (uint32_t)(((uint64_t)uint32_t__chainCurrentMa *
+                    (uint64_t)uint32_t__gainPermille) /
+                   BSP_MEASUREMENT_PERMILLE_SCALE);
+
+    return uint32_t__chainCurrentMa;
 }
 
 /* ==================== BspMeasurement_Current1CountsToMa ==================== */

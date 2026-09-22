@@ -32,6 +32,35 @@
  *      تازه‌تر می‌شوند. */
 #define MEASUREMENT_PERIOD_MS      1u
 
+/* ==================== Current filter switches / کلیدهای فیلتر جریان ==================== */
+
+/* [EN] Median-of-3 prefilter on each charge-current channel (user order
+ *      2026-09-22): kills single-sample jumps of the synchronized mid-ON
+ *      reading with zero added lag. Set to 1u to enable, 0u to compile it
+ *      out completely; the sample then passes through unchanged.
+ * [FA] پیش‌فیلتر مدین-۳ روی هر کانال جریان شارژ (دستور کاربر
+ *      ۲۰۲۶-۰۹-۲۲): پرش‌های تک‌نمونه‌ای خوانش سنکرون وسط ON را بدون هیچ
+ *      تأخیری حذف می‌کند. ۱u فعال و ۰u کامپایل‌نشده؛ در حالت خاموش نمونه
+ *      بدون تغییر عبور می‌کند. */
+#define MEASUREMENT_CURRENT_MEDIAN3_ENABLE   1u
+
+/* [EN] Moving average over the last MEASUREMENT_CURRENT_AVERAGE_WINDOW
+ *      current samples (user order 2026-09-22: window of 10). At the 1 ms
+ *      measurement cadence this smooths ~10 ms of history and reacts to a
+ *      real current step within one window. Set to 1u to enable, 0u to
+ *      compile it out completely.
+ * [FA] میانگین متحرک روی آخرین MEASUREMENT_CURRENT_AVERAGE_WINDOW نمونهٔ
+ *      جریان (دستور کاربر ۲۰۲۶-۰۹-۲۲: پنجرهٔ ۱۰تایی). با دورهٔ ۱ms اندازه‌گیری
+ *      حدود ۱۰ms تاریخچه را صاف می‌کند و به پلهٔ واقعی جریان در حد یک پنجره
+ *      واکنش می‌دهد. ۱u فعال و ۰u کامپایل‌نشده. */
+#define MEASUREMENT_CURRENT_AVERAGE_ENABLE   1u
+
+/* [EN] Number of current samples in the moving-average window, per channel.
+ *      Range: 1..255 samples; the two channels keep separate windows.
+ * [FA] تعداد نمونه‌های جریان در پنجرهٔ میانگین متحرک، به ازای هر کانال.
+ *      بازهٔ ۱ تا ۲۵۵ نمونه؛ دو کانال پنجرهٔ جدا دارند. */
+#define MEASUREMENT_CURRENT_AVERAGE_WINDOW   10u
+
 /* ==================== Globals (shared values) ==================== */
 /* [EN] Shared engineering values, written ONLY by the measurement task
  *      (Run). Any module/task can read them: #include "measurement.h" and

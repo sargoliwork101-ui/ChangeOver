@@ -25,13 +25,13 @@
  *      Since 2026-09-22 (user order) the CURRENT1/CURRENT2 positions are
  *      filled with PWM-synchronized samples taken at the exact middle of
  *      each gate's ON window by the board port (hardware timer trigger,
- *      no software filter); the asynchronous scan values remain only as
+ *      raw counts); the asynchronous scan values remain only as
  *      fallback when a synchronized capture is impossible.
  * [FA] این‌ها موقعیت‌های استاندارد فریم هستند؛ کانال‌ها و پایه‌های فیزیکی
  *      فقط در پیاده‌سازی BSP مخصوص برد انتخاب می‌شوند. از ۲۰۲۶-۰۹-۲۲
  *      (دستور کاربر) جایگاه‌های CURRENT1/CURRENT2 با نمونه‌های سنکرون با
  *      PWM پر می‌شوند که پورت برد دقیقاً وسط پنجرهٔ ON هر گیت می‌گیرد
- *      (تریگر سخت‌افزاری تایمر، بدون فیلتر نرم‌افزاری)؛ مقادیر اسکن
+ *      (تریگر سخت‌افزاری تایمر، نمونهٔ خام بدون فیلتر)؛ مقادیر اسکن
  *      غیرهمزمان فقط جایگزینِ زمانی‌اند که گرفتن نمونهٔ سنکرون ممکن
  *      نباشد. */
 #define BSP_ADC_CHANNEL_COUNT        5u

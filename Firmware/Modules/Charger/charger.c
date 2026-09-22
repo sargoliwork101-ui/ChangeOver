@@ -752,19 +752,21 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         return;
     }
 
-    /* [EN] No software filter on the current anymore (user order
-       2026-09-22): the snapshot current is already a clean PWM mid-ON
-       synchronized primary sample, converted straight to the output
-       estimate above. The regulation band and the >950 mA hard fault both
-       decide on this raw converted value; duty rate limits (one step per
-       500/1000 ms) prevent hunting and the hardware JIT comparator remains
-       the fast over-current protection.
-       [FA] دیگر فیلتر نرم‌افزاری روی جریان نیست (دستور کاربر ۲۰۲۶-۰۹-۲۲):
-       جریان snapshot از قبل نمونهٔ سنکرونِ تمیزِ وسط ON پالس PWM است که
-       بالا به جریان خروجی تخمینی تبدیل شد. باند تنظیم و خطای سخت بالای
-       ۹۵۰mA هر دو با همین مقدار خام تبدیل‌شده تصمیم می‌گیرند؛ محدودیت
-       نرخ پله‌های duty (هر ۵۰۰/۱۰۰۰ms) جلوی hunting را می‌گیرد و JIT
-       سخت‌افزاری حفاظت سریع اضافه‌جریان باقی می‌ماند. */
+    /* [EN] Charger adds no filter of its own on the current (user order
+       2026-09-22): the snapshot current is a clean PWM mid-ON synchronized
+       primary sample, already passed through Measurement's switchable
+       median-3 / moving-average-10 chain, and converted straight to the
+       output estimate above. The regulation band and the >950 mA hard fault
+       both decide on that value; duty rate limits (one step per 500/1000 ms)
+       prevent hunting and the hardware JIT comparator remains the fast
+       over-current protection.
+       [FA] شارژر خودش هیچ فیلتری روی جریان اضافه نمی‌کند (دستور کاربر
+       ۲۰۲۶-۰۹-۲۲): جریان snapshot نمونهٔ سنکرونِ تمیزِ وسط ON پالس PWM است
+       که از زنجیرهٔ کلیددار مدین-۳ / میانگین-۱۰ Measurement عبور کرده و بالا
+       به جریان خروجی تخمینی تبدیل شده. باند تنظیم و خطای سخت بالای ۹۵۰mA
+       هر دو با همین مقدار تصمیم می‌گیرند؛ محدودیت نرخ پله‌های duty (هر
+       ۵۰۰/۱۰۰۰ms) جلوی hunting را می‌گیرد و JIT سخت‌افزاری حفاظت سریع
+       اضافه‌جریان باقی می‌ماند. */
 
 #if (CHG_FIXED_DUTY_TEST_ENABLE != 0u)
     /* [EN] Bench diagnostic: fixed duty, no ramp/band/voltage regulation.

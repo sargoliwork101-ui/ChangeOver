@@ -393,14 +393,27 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS\s+500u", text_h), "down-steps must be limited to one per 500 ms")
     check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_PERMILLE\s+705u", text_h), "efficiency must be 705 permille (bench 15%-duty point: real out 441 mA x 13.0 V, true primary 358 mA x 22.9 V)")
     check("CHG_CURRENT_EMA_SHIFT" not in text_h and "currentEma" not in text_c,
-          "charger must NOT filter the current estimate anymore (user order 2026-09-22: raw converted sample straight into the band)")
+          "charger must NOT filter the current estimate itself (user order 2026-09-22: Measurement's switchable median-3/moving-average chain feeds it; charger decides on that value)")
     check(re.search(r"#define MEASUREMENT_PERIOD_MS\s+1u", (ROOT / "Firmware/Modules/Measurement/measurement.h").read_text()),
           "measurement period must be 1 ms so the synchronized current samples are at most 1 ms old (user order 2026-09-22)")
     bsp_adc_c = (ROOT / "Firmware/Bsp/Src/bsp_adc.c").read_text()
     bsp_pwm_c_sync = (ROOT / "Firmware/Bsp/Src/bsp_pwm.c").read_text()
+    bsp_meas_c = (ROOT / "Firmware/Bsp/Src/bsp_measurement.c").read_text()
+    meas_h_txt = (ROOT / "Firmware/Modules/Measurement/measurement.h").read_text()
     meas_c_raw = (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text()
-    check("func__Measurement_FilterCurrent" not in meas_c_raw and "MedianFilterSample" not in meas_c_raw,
-          "current channels must have NO software filter in Measurement (user order 2026-09-22: convert and publish raw)")
+    check("func__Measurement_FilterCurrent" not in meas_c_raw,
+          "the old EMA current filter must stay removed; only the switchable median-3/moving-average chain is allowed (user order 2026-09-22)")
+    check(re.search(r"#define MEASUREMENT_CURRENT_MEDIAN3_ENABLE\s+1u", meas_h_txt) and
+          re.search(r"#define MEASUREMENT_CURRENT_AVERAGE_ENABLE\s+1u", meas_h_txt) and
+          re.search(r"#define MEASUREMENT_CURRENT_AVERAGE_WINDOW\s+10u", meas_h_txt),
+          "current filters must exist as compile-time switches: median-3 + moving-average over the last 10 samples, both ON by default (user order 2026-09-22)")
+    check("func__Measurement_CurrentMedian3" in meas_c_raw and
+          "func__Measurement_CurrentMovingAverage" in meas_c_raw and
+          "func__Measurement_ApplyCurrentFilters" in meas_c_raw,
+          "Measurement must run the switchable median-3 then moving-average-10 chain on each current channel")
+    check("BSP_MEASUREMENT_MA_PER_A" in bsp_meas_c and "BSP_MEASUREMENT_PERMILLE_SCALE" in bsp_meas_c and
+          "BSP_MEASUREMENT_CURRENT_MA_SCALE" not in bsp_meas_c,
+          "the ADC-to-current formula must be built stage-by-stage from the schematic resistor values (shunt mOhm, LM358 gain, R41/R42 divider), no shared magic scale (user order 2026-09-22)")
     check("ADC_EXTERNALTRIGCONV_T2_CC2" in bsp_adc_c and "ADC_EXTERNALTRIGCONV_T3_TRGO" in bsp_adc_c,
           "synchronized current sampling must use the hardware timer triggers TIM2_CC2 (charger 1) and TIM3_TRGO (charger 2)")
     check("func__BspAdc_SampleCurrentSync" in bsp_adc_c and "func__BspPwm_IsGatePulsing" in bsp_adc_c,
