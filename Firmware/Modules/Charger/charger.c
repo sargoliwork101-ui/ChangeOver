@@ -76,6 +76,12 @@ static charger_channel_state_t CHARGER_CHANNEL_T__G__State[2];
  *      ۲۰۲۶-۰۹-۲۲: همهٔ مقادیر تصمیم شارژ در یک ورودی Live Expressions). */
 volatile uint32_t UINT32_T__G__ChargerDiag[CHG_DIAG_COUNT] = {0u};
 
+/* [EN] Calibration worksheet array - see the layout map in charger.h (user
+ *      order 2026-09-22: one Live Expressions entry for bench calibration).
+ * [FA] آرایهٔ برگهٔ کالیبراسیون - نقشهٔ چیدمان در charger.h (دستور کاربر
+ *      ۲۰۲۶-۰۹-۲۲: یک ورودی Live Expressions برای کالیبراسیون بنچ). */
+volatile uint32_t UINT32_T__G__ChargerCalib[CHG_CALIB_COUNT] = {0u};
+
 static bool BOOL__G__ChargerInitialized;
 static bool BOOL__G__RelayOpen;
 static uint32_t UINT32_T__G__RelaySettleDeadline;
@@ -1219,8 +1225,10 @@ void func__Charger_Init(void)
 
 /* ==================== Charger_Evaluate ==================== */
 /**
- * @brief  [EN] Refresh the live diag array with every decision value.
- *         [FA] آرایهٔ دیاگ زنده را با همهٔ مقادیر تصمیم به‌روز می‌کند.
+ * @brief  [EN] Refresh the live diag array and the calibration worksheet
+ *         array with every decision value.
+ *         [FA] آرایهٔ دیاگ زنده و آرایهٔ برگهٔ کالیبراسیون را با همهٔ
+ *         مقادیر تصمیم به‌روز می‌کند.
  * @param  measurement_snapshot_t__snap [EN] Current snapshot (may be NULL) /
  *         snapshot فعلی (می‌تواند NULL باشد)
  */
@@ -1228,6 +1236,7 @@ static void func__Charger_CaptureDiag(const measurement_snapshot_t *measurement_
 {
     uint8_t uint8_t__channelIndex;
     uint32_t uint32_t__base;
+    uint32_t uint32_t__calibBase;
     uint32_t uint32_t__primaryMa;
     bool bool__snapValid;
 
@@ -1239,10 +1248,17 @@ static void func__Charger_CaptureDiag(const measurement_snapshot_t *measurement_
     {
         uint32_t__base =
             (uint32_t)uint8_t__channelIndex * CHG_DIAG_CHANNEL_STRIDE;
+        uint32_t__calibBase =
+            CHG_CALIB_CH_UP_BASE +
+            ((uint32_t)uint8_t__channelIndex * CHG_CALIB_CH_STRIDE);
 
         UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_STATE] =
             (uint32_t)CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state;
         UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_DUTY] =
+            (uint32_t)CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille;
+        UINT32_T__G__ChargerCalib[uint32_t__calibBase + CHG_CALIB_OFF_STATE] =
+            (uint32_t)CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state;
+        UINT32_T__G__ChargerCalib[uint32_t__calibBase + CHG_CALIB_OFF_DUTY] =
             (uint32_t)CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille;
 
         if (bool__snapValid == true)
@@ -1259,12 +1275,21 @@ static void func__Charger_CaptureDiag(const measurement_snapshot_t *measurement_
                 func__Charger_OutputEstimateMa(measurement_snapshot_t__snap,
                                                uint8_t__channelIndex,
                                                uint32_t__primaryMa);
+            UINT32_T__G__ChargerCalib[uint32_t__calibBase + CHG_CALIB_OFF_VBAT] =
+                UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_VBAT];
+            UINT32_T__G__ChargerCalib[uint32_t__calibBase + CHG_CALIB_OFF_IPRI] =
+                uint32_t__primaryMa;
+            UINT32_T__G__ChargerCalib[uint32_t__calibBase + CHG_CALIB_OFF_IEST] =
+                UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_IEST];
         }
         else
         {
             UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_VBAT] = 0u;
             UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_IPRI] = 0u;
             UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_IEST] = 0u;
+            UINT32_T__G__ChargerCalib[uint32_t__calibBase + CHG_CALIB_OFF_VBAT] = 0u;
+            UINT32_T__G__ChargerCalib[uint32_t__calibBase + CHG_CALIB_OFF_IPRI] = 0u;
+            UINT32_T__G__ChargerCalib[uint32_t__calibBase + CHG_CALIB_OFF_IEST] = 0u;
         }
     }
 
@@ -1278,6 +1303,14 @@ static void func__Charger_CaptureDiag(const measurement_snapshot_t *measurement_
             measurement_snapshot_t__snap->v_bat12_mv;
         UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_VHIGH] =
             measurement_snapshot_t__snap->v_bat_high_mv;
+        UINT32_T__G__ChargerCalib[CHG_CALIB_IDX_VIN] =
+            measurement_snapshot_t__snap->v_in_mv;
+        UINT32_T__G__ChargerCalib[CHG_CALIB_IDX_V24] =
+            measurement_snapshot_t__snap->v_bat24_mv;
+        UINT32_T__G__ChargerCalib[CHG_CALIB_IDX_V12] =
+            measurement_snapshot_t__snap->v_bat12_mv;
+        UINT32_T__G__ChargerCalib[CHG_CALIB_IDX_VHIGH] =
+            measurement_snapshot_t__snap->v_bat_high_mv;
     }
     else
     {
@@ -1285,6 +1318,10 @@ static void func__Charger_CaptureDiag(const measurement_snapshot_t *measurement_
         UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_V24] = 0u;
         UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_V12] = 0u;
         UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_VHIGH] = 0u;
+        UINT32_T__G__ChargerCalib[CHG_CALIB_IDX_VIN] = 0u;
+        UINT32_T__G__ChargerCalib[CHG_CALIB_IDX_V24] = 0u;
+        UINT32_T__G__ChargerCalib[CHG_CALIB_IDX_V12] = 0u;
+        UINT32_T__G__ChargerCalib[CHG_CALIB_IDX_VHIGH] = 0u;
     }
 
 #if MODULE_FAULT
@@ -1294,6 +1331,8 @@ static void func__Charger_CaptureDiag(const measurement_snapshot_t *measurement_
 #endif
 
     UINT32_T__G__ChargerDiag[CHG_DIAG_IDX_VALID] =
+        ((bool__snapValid == true) ? 1u : 0u);
+    UINT32_T__G__ChargerCalib[CHG_CALIB_IDX_VALID] =
         ((bool__snapValid == true) ? 1u : 0u);
 }
 

@@ -339,6 +339,45 @@
 
 extern volatile uint32_t UINT32_T__G__ChargerDiag[CHG_DIAG_COUNT];
 
+/* ==================== Charger calib capture / آرایهٔ کالیبراسیون ==================== */
+/* [EN] Calibration worksheet array (user order 2026-09-22): ONE variable to
+ *      read during bench calibration, ordered exactly as the calibration
+ *      math consumes it; the user records the real-world counterpart values
+ *      (multimeter) at the same moment, with duty held steady.
+ *        [0]  snapshot valid (0/1)
+ *        [1]  v_in_mv (fw)      [2]  v_bat24_mv (fw)
+ *        [3]  v_bat12_mv (fw)   [4]  v_bat_high_mv (fw, derived)
+ *        [5..9]   channel UP   (upper battery): duty, state, vbat mV,
+ *                                     Ipri mA, Iout_est mA
+ *        [10..14] channel DOWN (lower battery): same five
+ *      State codes as CHG_DIAG above.
+ * [FA] آرایهٔ برگهٔ کالیبراسیون (دستور کاربر ۲۰۲۶-۰۹-۲۲): یک متغیر برای
+ *      خواندن حین کالیبراسیون بنچ، به همان ترتیب مصرف محاسبات؛ مقادیر واقعی
+ *      (مولتی‌متر) هم همان لحظه و با duty پایدار ثبت می‌شود.
+ *        [0] اعتبار snapshot (۰/۱)
+ *        [1] v_in_mv (فریمور)  [2] v_bat24_mv (فریمور)
+ *        [3] v_bat12_mv (فریمور) [4] v_bat_high_mv (فریمور، مشتق)
+ *        [5..9]   کانال بالا (باتری بالا): duty، state، vbat mV،
+ *                                     Ipri mA، Iout_est mA
+ *        [10..14] کانال پایین (باتری پایین): همان پنج‌تا
+ *      کدهای state مثل CHG_DIAG بالا. */
+#define CHG_CALIB_COUNT                    15u
+#define CHG_CALIB_IDX_VALID                 0u
+#define CHG_CALIB_IDX_VIN                   1u
+#define CHG_CALIB_IDX_V24                   2u
+#define CHG_CALIB_IDX_V12                   3u
+#define CHG_CALIB_IDX_VHIGH                 4u
+#define CHG_CALIB_CH_UP_BASE                5u
+#define CHG_CALIB_CH_DN_BASE               10u
+#define CHG_CALIB_CH_STRIDE                 5u
+#define CHG_CALIB_OFF_DUTY                  0u
+#define CHG_CALIB_OFF_STATE                 1u
+#define CHG_CALIB_OFF_VBAT                  2u
+#define CHG_CALIB_OFF_IPRI                  3u
+#define CHG_CALIB_OFF_IEST                  4u
+
+extern volatile uint32_t UINT32_T__G__ChargerCalib[CHG_CALIB_COUNT];
+
 /* ==================== Charger_Init / مقداردهی اولیه ==================== */
 /**
  * @brief  [EN] Initialize policy state, stop every PWM channel and force a
