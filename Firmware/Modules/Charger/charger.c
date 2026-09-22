@@ -60,8 +60,6 @@ typedef struct
     uint32_t uint32_t__absorbLastTick;   /* [EN] previous-pass tick while in ABSORB, for the accumulation delta / تیک پاس قبلی در ابزورب برای دلتای جمع */
     uint32_t uint32_t__retryDeadlineTick;
     uint32_t uint32_t__lastDutyStepTick;
-    uint32_t uint32_t__currentEmaMa;
-    bool bool__currentEmaSeeded;
     uint32_t uint32_t__stableFromTick; /* [EN] tick when installed+input+battery first looked valid; 0 = not present, gates bulk start (CHG_CONNECT_SETTLE_MS) / تیک اولین‌لحظه‌ای که اتصال معتبر دیده شد؛ صفر = باتری حاضر نیست؛ گیت شروع بالک */
     uint32_t uint32_t__taperSinceTick; /* [EN] first tick in this ABSORB episode that the tail current looked below CHG_TAPER_CURRENT_MA; 0 = not tapering / تیک اولین زیرجریان در ابزورب؛ صفر یعنی زیرجریان نیست */
     uint32_t uint32_t__absorbEnterTick; /* [EN] tick this ABSORB episode started; 0 = not in absorb; feeds the CHG_ABSORB_MAX_MS ceiling / تیک ورود به این ابزورب؛ صفر یعنی خارج؛ برای سقف یک‌ساعت */
@@ -392,8 +390,6 @@ static void func__Charger_ResetChannelToOff(uint8_t uint8_t__channelIndex)
     charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
     charger_channel_state_t__channel->uint32_t__retryDeadlineTick = 0u;
     charger_channel_state_t__channel->uint32_t__lastDutyStepTick = 0u;
-    charger_channel_state_t__channel->uint32_t__currentEmaMa = 0u;
-    charger_channel_state_t__channel->bool__currentEmaSeeded = false;
     charger_channel_state_t__channel->uint16_t__dutyBeforeTripPermille =
         charger_channel_state_t__channel->uint16_t__dutyPermille;
 }
@@ -683,7 +679,6 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     uint32_t uint32_t__increasedDuty;
     uint32_t uint32_t__upIntervalTicks;
     uint32_t uint32_t__downIntervalTicks;
-    int32_t int32_t__currentDelta;
 
     charger_channel_state_t__channel = &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
 
@@ -747,35 +742,29 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     {
         /* [EN] Only a hard over-current fault resets the channel; normal
            over-target is handled by the duty band below (no cut/restart).
-           Uses the raw sample so protection speed is unchanged by the filter.
-           [FA] فقط خطای سخت اضافه‌جریان کانال را ریست می‌کند (روی نمونهٔ خام،
-           بدون تأخیر فیلتر). */
+           The current is an unfiltered mid-ON synchronized sample, so this
+           protection reacts with zero added delay.
+           [FA] فقط خطای سخت اضافه‌جریان کانال را ریست می‌کند؛ اضافهٔ عادی در
+           باند دیوتی پایین‌تر مدیریت می‌شود. جریان نمونهٔ سنکرونِ بی‌فیلتر
+           وسط ON است پس این حفاظت بدون هیچ تأخیری واکنش می‌دهد. */
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
         func__Charger_StopOneChannel(uint8_t__channelIndex);
         return;
     }
 
-    /* [EN] EMA low-pass on the estimated output current (tau ~0.64 s, one
-       update per 10 ms pass). The 630..650 band decides on this smooth value
-       so the duty does not hunt from sample noise; seeded with the first
-       sample after any restart.
-       [FA] فیلتر نمایی روی جریان تخمینی (ثابت زمانی ~۰٫۶۴ ثانیه)؛ باند تنظیم
-       با مقدار صاف تصمیم می‌گیرد تا دیوتی تندتند عوض نشود. */
-    if (charger_channel_state_t__channel->bool__currentEmaSeeded == false)
-    {
-        charger_channel_state_t__channel->uint32_t__currentEmaMa = uint32_t__currentMa;
-        charger_channel_state_t__channel->bool__currentEmaSeeded = true;
-    }
-    else
-    {
-        int32_t__currentDelta =
-            (int32_t)uint32_t__currentMa -
-            (int32_t)charger_channel_state_t__channel->uint32_t__currentEmaMa;
-        charger_channel_state_t__channel->uint32_t__currentEmaMa =
-            (uint32_t)((int32_t)charger_channel_state_t__channel->uint32_t__currentEmaMa +
-                       (int32_t__currentDelta >> CHG_CURRENT_EMA_SHIFT));
-    }
-    uint32_t__currentMa = charger_channel_state_t__channel->uint32_t__currentEmaMa;
+    /* [EN] No software filter on the current anymore (user order
+       2026-09-22): the snapshot current is already a clean PWM mid-ON
+       synchronized primary sample, converted straight to the output
+       estimate above. The regulation band and the >950 mA hard fault both
+       decide on this raw converted value; duty rate limits (one step per
+       500/1000 ms) prevent hunting and the hardware JIT comparator remains
+       the fast over-current protection.
+       [FA] دیگر فیلتر نرم‌افزاری روی جریان نیست (دستور کاربر ۲۰۲۶-۰۹-۲۲):
+       جریان snapshot از قبل نمونهٔ سنکرونِ تمیزِ وسط ON پالس PWM است که
+       بالا به جریان خروجی تخمینی تبدیل شد. باند تنظیم و خطای سخت بالای
+       ۹۵۰mA هر دو با همین مقدار خام تبدیل‌شده تصمیم می‌گیرند؛ محدودیت
+       نرخ پله‌های duty (هر ۵۰۰/۱۰۰۰ms) جلوی hunting را می‌گیرد و JIT
+       سخت‌افزاری حفاظت سریع اضافه‌جریان باقی می‌ماند. */
 
 #if (CHG_FIXED_DUTY_TEST_ENABLE != 0u)
     /* [EN] Bench diagnostic: fixed duty, no ramp/band/voltage regulation.
@@ -1203,9 +1192,7 @@ void func__Charger_Init(void)
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbLastTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__retryDeadlineTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__lastDutyStepTick = 0u;
-        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__currentEmaMa = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__stableFromTick = 0u;
-        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__currentEmaSeeded = false;
     }
 
     BOOL__G__ChargerInitialized = true;

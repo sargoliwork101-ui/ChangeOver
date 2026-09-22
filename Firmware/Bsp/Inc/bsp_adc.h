@@ -22,14 +22,24 @@
 /* ==================== ADC channel map ==================== */
 /* [EN] These are normalized frame positions; physical channels and pins
  *      are selected only by the board-specific BSP implementation.
+ *      Since 2026-09-22 (user order) the CURRENT1/CURRENT2 positions are
+ *      filled with PWM-synchronized samples taken at the exact middle of
+ *      each gate's ON window by the board port (hardware timer trigger,
+ *      no software filter); the asynchronous scan values remain only as
+ *      fallback when a synchronized capture is impossible.
  * [FA] این‌ها موقعیت‌های استاندارد فریم هستند؛ کانال‌ها و پایه‌های فیزیکی
- *      فقط در پیاده‌سازی BSP مخصوص برد انتخاب می‌شوند. */
+ *      فقط در پیاده‌سازی BSP مخصوص برد انتخاب می‌شوند. از ۲۰۲۶-۰۹-۲۲
+ *      (دستور کاربر) جایگاه‌های CURRENT1/CURRENT2 با نمونه‌های سنکرون با
+ *      PWM پر می‌شوند که پورت برد دقیقاً وسط پنجرهٔ ON هر گیت می‌گیرد
+ *      (تریگر سخت‌افزاری تایمر، بدون فیلتر نرم‌افزاری)؛ مقادیر اسکن
+ *      غیرهمزمان فقط جایگزینِ زمانی‌اند که گرفتن نمونهٔ سنکرون ممکن
+ *      نباشد. */
 #define BSP_ADC_CHANNEL_COUNT        5u
-#define BSP_ADC_CHANNEL_CURRENT1     0u   /* normalized charge current 1 / جریان شارژ استاندارد ۱ */
+#define BSP_ADC_CHANNEL_CURRENT1     0u   /* normalized charge current 1, PWM mid-ON synchronized / جریان شارژ استاندارد ۱، سنکرون وسط ON پالس */
 #define BSP_ADC_CHANNEL_24V_IN       1u   /* normalized 24V input / ورودی ۲۴ ولت استاندارد */
 #define BSP_ADC_CHANNEL_24V_BAT      2u   /* normalized 24V battery / باتری ۲۴ ولت استاندارد */
 #define BSP_ADC_CHANNEL_12V_BAT      3u   /* normalized 12V battery / باتری ۱۲ ولت استاندارد */
-#define BSP_ADC_CHANNEL_CURRENT2     4u   /* normalized charge current 2 / جریان شارژ استاندارد ۲ */
+#define BSP_ADC_CHANNEL_CURRENT2     4u   /* normalized charge current 2, PWM mid-ON synchronized / جریان شارژ استاندارد ۲، سنکرون وسط ON پالس */
 
 /* ==================== DMA buffer ==================== */
 /* [EN] The DMA buffer holds two full frames. When DMA writes one half, the
@@ -81,9 +91,14 @@ bool func__BspAdc_IsFrameReady(void);
  * @brief  [EN] Copy the newest completed five-sample frame into out[]. The
  *              DMA counter selects the half that DMA is not currently writing;
  *              a before/after counter check rejects a boundary-crossing copy.
+ *              The current positions carry PWM mid-ON synchronized samples
+ *              (see the channel map note above); voltages come from the
+ *              continuous scan.
  *         [FA] جدیدترین فریم کامل پنج‌نمونه‌ای را در out[] کپی می‌کند.
  *              شمارندهٔ DMA نیمه‌ای را انتخاب می‌کند که DMA در آن نمی‌نویسد؛
  *              بررسی شمارنده قبل و بعد، کپی عبوری از مرز را رد می‌کند.
+ *              جایگاه‌های جریان نمونه‌های سنکرون وسط ON پالس PWM را دارند
+ *              (نکتهٔ بالای نقشهٔ کانال‌ها)؛ ولتاژها از اسکن مداوم می‌آیند.
  * @param  uint16_t__out [EN] Output array with BSP_ADC_CHANNEL_COUNT elements;
  *                            index order = BSP_ADC_CHANNEL_* /
  *                            آرایهٔ خروجی با ترتیب BSP_ADC_CHANNEL_*

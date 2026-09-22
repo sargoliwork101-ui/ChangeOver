@@ -10,6 +10,11 @@
 
 **فعال.** `MODULE_MEASUREMENT = 1`. پورت فعلی برد فریم‌های normalized را از BSP ارائه می‌کند و تسک Measurement ساخته می‌شود. کد ماژول فقط فریم normalized و API منطقی BSP را مصرف می‌کند. مقادیر تبدیل‌شده **گلوبال**‌اند (`UINT32_T__G__Meas*` / `BOOL__G__Meas*`)؛ فقط تسک Measurement می‌نویسد و هر ماژولی می‌تواند بخواند (ابتدا `BOOL__G__MeasDataValid` را چک کنید؛ این پرچم پس از سه فریم کامل و پایدار ADC معتبر می‌شود).
 
+از ۲۰۲۶-۰۹-۲۲ (دستور کاربر):
+- دورهٔ تسک `MEASUREMENT_PERIOD_MS = 1` است تا نمونه‌های سنکرون جریان حداکثر ۱ms عمر داشته باشند.
+- **جریان شارژ بدون هیچ فیلتر نرم‌افزاری منتشر می‌شود**: پورت برد دو جایگاه CURRENT1/CURRENT2 فریم را با نمونهٔ خامِ سنکرون با PWM پر می‌کند (تبدیل سخت‌افزاری ADC2 با تریگر لبهٔ وسط پنجرهٔ ON گیت — `TIM2_CC2` و `TIM3_TRGO`) و این ماژول فقط همان را به mA تبدیل و منتشر می‌کند. اگر نمونهٔ سنکرون ممکن نشود (گیت پارک/timeout)، مقدار اسکن غیرهمزمان همان جایگاه می‌ماند.
+- فیلتر نرم‌افزاری فقط روی ولتاژها باقی است (مدین-۵ ضد spike).
+
 ## تاریخچه
 
 | تاریخ | تغییر |
@@ -40,18 +45,18 @@
 | نام | کار |
 |---|---|
 | `func__Measurement_Init` | snapshot را صفر می‌کند؛ `valid = false` |
-| `func__Measurement_Run` | یک فریم normalized را از BSP می‌گیرد و به mV/mA تبدیل می‌کند؛ `input_present` را از سیگنال منطقی BSP می‌خواند؛ پس از سه فریم کامل و پایدار `valid = true` می‌شود |
+| `func__Measurement_Run` | یک فریم normalized را از BSP می‌گیرد (جریان‌ها = نمونهٔ سنکرون وسط ON از پورت برد) و مستقیم به mV/mA تبدیل و منتشر می‌کند؛ `input_present` را از سیگنال منطقی BSP می‌خواند؛ پس از سه فریم کامل و پایدار `valid = true` می‌شود |
 | `func__Measurement_GetSnapshot` | کپی آخرین snapshot؛ `NULL` یا نامعتبر → `false` |
 | `func__Measurement_CountsToMv` | خام استاندارد → mV پایه، با کالیبراسیون BSP برد |
 | `func__Measurement_V24CountsToMv` | خام استاندارد → mV منبع ۲۴، با تقسیم برد در BSP |
 | `func__Measurement_V12CountsToMv` | خام استاندارد → mV منبع ۱۲، با تقسیم برد در BSP |
 | `func__Measurement_Current1CountsToMa` / `Current2CountsToMa` | خام استاندارد هر کانال → mA شارژ با کالیبراسیون مستقل پر-کانال در BSP (افست/گین `CURRENT1_*` موقت = کپی کانال ۲ تا ثبت نقطهٔ بنچ Trans1) |
 | `func__Measurement_CurrentCountsToMa` | قدیمی/سازگاری = کانال ۲؛ کد جدید wrapper پر-کانال |
-| `func__TaskMeasurement` | Init+Start یک‌بار، سپس هر 10ms یک `Run` (`osDelayUntil` با تبدیل قابل‌حمل میلی‌ثانیه/تیک) |
+| `func__TaskMeasurement` | Init+Start یک‌بار، سپس هر `MEASUREMENT_PERIOD_MS` (۱ms) یک `Run` (`osDelayUntil` با تبدیل قابل‌حمل میلی‌ثانیه/تیک) |
 | `func__BspAdc_Init` (Bsp) | آماده‌سازی Backend ADC برد و صفر کردن بافر DMA؛ هندل و پایه‌ها در BSP پنهان هستند |
 | `func__BspAdc_Start` (Bsp) | شروع backend ADC+DMA برد؛ جزئیات peripheral و منابع وقفه در پورت برد خصوصی است |
 | `func__BspAdc_IsFrameReady` (Bsp) | true بعد از کالیبراسیون و Start موفق |
-| `func__BspAdc_GetRaw` (Bsp) | انتخاب نیمهٔ کامل با CNDTR و کپی پایدار ۵ کانال با بررسی قبل/بعد شمارنده |
+| `func__BspAdc_GetRaw` (Bsp) | انتخاب نیمهٔ کامل با CNDTR و کپی پایدار ۵ کانال با بررسی قبل/بعد شمارنده؛ سپس جایگذاری نمونهٔ سنکرون وسط ON در جایگاه‌های CURRENT1/CURRENT2 (فقط پورت برد) |
 
 ## مقدارهای گلوبال (مشترک)
 
@@ -115,4 +120,4 @@ task_measurement.c
   bsp_measurement.h/c      کالیبراسیون مخصوص مدار برد
 ```
 
-حافظه: بافر DMA = 2×5×2 = 20 بایت استاتیک؛ استک تسک `TASK_STACK_MEASUREMENT` = 192 word (768 بایت) — بعد از Build، مصرف کل RAM/Flash را از Map file چک کنید (قانون مدیریت حافظه).
+حافظه: بافر DMA = 2×5×2 = 20 بایت استاتیک؛ استک تسک `TASK_STACK_MEASUREMENT` = 192 word (768 بایت) — بعد از Build، مصرف کل RAM/Flash را از Map file چک کنید (قانون مدیریت حافظه). بک‌اند سنکرون ADC2 در پورت برد حدود ۵۰ بایت RAM استاتیک اضافه می‌کند (هندل خصوصی `ADC_HANDLETYPEDEF__G__HadcSync` در `bsp_adc.c`)؛ مصرف دقیق بعد از Build واقعی CubeIDE از Map file ثبت شود.

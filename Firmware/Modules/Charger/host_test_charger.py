@@ -392,7 +392,22 @@ def test_setpoints_and_timing():
     check("absorbUpIntervalTicks" in text_c and "absorbDownIntervalTicks" in text_c, "absorb branch must use its own half-rate intervals")
     check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS\s+500u", text_h), "down-steps must be limited to one per 500 ms")
     check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_PERMILLE\s+705u", text_h), "efficiency must be 705 permille (bench 15%-duty point: real out 441 mA x 13.0 V, true primary 358 mA x 22.9 V)")
-    check(re.search(r"#define CHG_CURRENT_EMA_SHIFT\s+6u", text_h), "current estimate must pass through an EMA filter (shift 6, tau ~0.64 s)")
+    check("CHG_CURRENT_EMA_SHIFT" not in text_h and "currentEma" not in text_c,
+          "charger must NOT filter the current estimate anymore (user order 2026-09-22: raw converted sample straight into the band)")
+    check(re.search(r"#define MEASUREMENT_PERIOD_MS\s+1u", (ROOT / "Firmware/Modules/Measurement/measurement.h").read_text()),
+          "measurement period must be 1 ms so the synchronized current samples are at most 1 ms old (user order 2026-09-22)")
+    bsp_adc_c = (ROOT / "Firmware/Bsp/Src/bsp_adc.c").read_text()
+    bsp_pwm_c_sync = (ROOT / "Firmware/Bsp/Src/bsp_pwm.c").read_text()
+    meas_c_raw = (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text()
+    check("func__Measurement_FilterCurrent" not in meas_c_raw and "MedianFilterSample" not in meas_c_raw,
+          "current channels must have NO software filter in Measurement (user order 2026-09-22: convert and publish raw)")
+    check("ADC_EXTERNALTRIGCONV_T2_CC2" in bsp_adc_c and "ADC_EXTERNALTRIGCONV_T3_TRGO" in bsp_adc_c,
+          "synchronized current sampling must use the hardware timer triggers TIM2_CC2 (charger 1) and TIM3_TRGO (charger 2)")
+    check("func__BspAdc_SampleCurrentSync" in bsp_adc_c and "func__BspPwm_IsGatePulsing" in bsp_adc_c,
+          "the board ADC port must take one hardware-triggered mid-ON sample per channel and skip parked gates")
+    check("uint32_t__compareCounts / 2u" in bsp_pwm_c_sync and "TIM_TRGO_OC2REF" in bsp_pwm_c_sync,
+          "the PWM port must keep the internal CH2 sampling trigger at CCR1/2 (mid-ON) and route TIM3 OC2REF to TRGO")
+    check("func__Measurement_Median5" in meas_c_raw, "battery channel voltages must pass the median-5 prefilter (2-frame spike bursts beat median-3 during absorb)")
     text_fault_h = FAULT_H.read_text()
     text_fault_c = FAULT_C.read_text()
     check(re.search(r"#define FAULT_BAT_DISCONNECT_MV\s+14800u", text_fault_h), "battery-disconnect threshold must be 14.8 V in the central Fault module (user choice)")

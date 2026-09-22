@@ -20,11 +20,17 @@
 
 /* [EN] MEASUREMENT TASK PERIOD. CHANGE HERE to change the sample rate.
  *      The BSP returns only completed normalized frames, so this task period
- *      remains independent of the MCU ADC clock.
+ *      remains independent of the MCU ADC clock. Since 2026-09-22 (user
+ *      order) the period is 1 ms so the synchronized charge-current samples
+ *      in the snapshot are at most 1 ms old when the control task reads
+ *      them; the voltage channels only get fresher.
  * [FA] دورهٔ تسک اندازه‌گیری. برای تغییر نرخ نمونه‌برداری همین‌جا عوض شود.
  *      BSP فقط فریم‌های استانداردشدهٔ کامل را برمی‌گرداند، پس این دوره
- *      مستقل از کلاک ADC میکروکنترلر است. */
-#define MEASUREMENT_PERIOD_MS      10u
+ *      مستقل از کلاک ADC میکروکنترلر است. از ۲۰۲۶-۰۹-۲۲ (دستور کاربر)
+ *      دوره ۱ms است تا نمونه‌های سنکرون جریان شارژ داخل snapshot حداکثر
+ *      ۱ms عمر داشته باشند وقتی تسک کنترل می‌خواندشان؛ ولتاژها هم فقط
+ *      تازه‌تر می‌شوند. */
+#define MEASUREMENT_PERIOD_MS      1u
 
 /* ==================== Globals (shared values) ==================== */
 /* [EN] Shared engineering values, written ONLY by the measurement task

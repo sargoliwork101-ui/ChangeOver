@@ -14,6 +14,7 @@
 #define BSP_PWM_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef enum
 {
@@ -50,10 +51,27 @@ void func__BspPwm_SetDutyPermille(bsp_pwm_channel_t bsp_pwm_channel_t__channel,
 /* ==================== BspPwm_StopAll ==================== */
 /**
  * @brief  [EN] Force both gates low (compare 0); the counters keep running
- *              so the frozen interleave offset is preserved.
+ *              so the frozen interleave offset is preserved. The internal
+ *              CH2 sampling triggers are parked too (no mid-ON edges).
  *         [FA] هر دو گیت را پایین می‌آورد (compare صفر)؛ شمارنده‌ها به چرخش
- *              می‌مانند تا آفست درهم‌گذاری حفظ شود.
+ *              می‌مانند تا آفست درهم‌گذاری حفظ شود. تریگرهای داخلی CH2 هم
+ *              پارک می‌شوند (بدون لبهٔ وسط ON).
  */
 void func__BspPwm_StopAll(void);
+
+/* ==================== BspPwm_IsGatePulsing ==================== */
+/**
+ * @brief  [EN] True while the logical charger gate is pulsing (compare > 0).
+ *              Used by the board ADC port to know whether a synchronized
+ *              mid-ON current trigger edge will arrive; a parked gate means
+ *              the primary current is zero.
+ *         [FA] وقتی گیت شارژر منطقی پالس می‌زند true است (compare > 0).
+ *              پورت ADC برد با آن می‌داند لبهٔ تریگر سنکرونِ وسط ON می‌آید
+ *              یا نه؛ گیت پارک‌شده یعنی جریان اولیه صفر است.
+ * @param  bsp_pwm_channel_t__channel [EN] Logical charger channel /
+ *                                     کانال منطقی شارژر
+ * @return bool [EN] true while that gate pulses / وقتی گیت پالس می‌زند true
+ */
+bool func__BspPwm_IsGatePulsing(bsp_pwm_channel_t bsp_pwm_channel_t__channel);
 
 #endif /* BSP_PWM_H */

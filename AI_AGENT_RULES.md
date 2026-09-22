@@ -154,7 +154,7 @@ int32_t func__Ui_Buzzer_Tick(uint32_t periodMs,
 
 ## وضعیت فعلی اتصال Measurement به UI
 
-- ADC1 و DMA فعال هستند و Measurement فریم‌های ADC را هر `10ms` تبدیل می‌کند.
+- ADC1 و DMA فعال هستند و Measurement فریم‌های ADC را هر `1ms` تبدیل می‌کند.
 - در مرحلهٔ فعلی فقط `UINT32_T__G__MeasInputVoltageMv` به Task UI وصل است.
 - تا زمان تأیید مرحلهٔ اندازه‌گیری باتری، `UINT32_T__G__BatteryVoltageMv` در `task_ui.c` ورودی تست دستی Live Expressions باقی می‌ماند.
 - اگر اولین فریم ADC معتبر نباشد، ورودی برای UI برابر صفر و از نظر سناریو قطع در نظر گرفته می‌شود؛ این حالت امن است.

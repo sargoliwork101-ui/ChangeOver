@@ -197,17 +197,6 @@
  *      از ۹۵۰) کانال را ریست می‌کند. */
 #define CHG_REGULATE_LOW_MA            630u
 #define CHG_CURRENT_HARD_FAULT_MA      950u
-/* [EN] First-order low-pass (EMA) on the estimated output current before the
- *      regulation band: ema += (sample - ema) >> SHIFT on every 10 ms pass,
- *      so tau = 2^SHIFT * 10 ms = ~0.64 s at SHIFT=6. Stops noise-driven duty
- *      hunting ("switching too fast"). The >950 mA hard fault and the JIT
- *      still act on the raw sample, so protection speed is unchanged.
- *      Seeded with the first sample whenever the channel restarts.
- * [FA] فیلتر نمایی مرتبه اول روی جریان تخمینی قبل از باند تنظیم؛ ثابت زمانی
- *      حدود ۰٫۶۴ ثانیه تا تصمیم‌های دیوتی آرام شوند. حفاظت سخت و JIT روی
- *      نمونهٔ خام باقی می‌مانند. */
-#define CHG_CURRENT_EMA_SHIFT            6u
-
 /* [EN] Primary->output current estimate for the charge decisions: the shunt
  *      sits in the MOSFET source leg (primary side), while Bulk/Absorb/Float
  *      limits are output (battery) currents. Estimate Iout =
