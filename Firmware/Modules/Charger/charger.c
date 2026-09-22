@@ -248,11 +248,18 @@ static uint32_t func__Charger_ChannelCurrentMa(const measurement_snapshot_t *mea
 /**
  * @brief  [EN] Convert the primary-side shunt current to the estimated output
  *              (battery) current used by the charge decisions:
- *              Iout = Ipri_avg * Vin * eta / Vbat. Vbat is clamped so a bad
- *              momentary reading cannot divide by ~0. Used ONLY on the normal
- *              charge path; the bring-up source-limit path keeps primary mA.
+ *              Iout = Ipri_fw * Vin_fw * eta / Vbat_fw with the PER-CHANNEL
+ *              eta from the 2026-09-22 bench calibration (758 up / 242 down -
+ *              see charger.h; the down value also absorbs the ch2 sense
+ *              over-read until that chain is fixed on the bench). Vbat is
+ *              clamped so a bad momentary reading cannot divide by ~0. Used
+ *              ONLY on the normal charge path; the bring-up source-limit path
+ *              keeps primary mA.
  *         [FA] تبدیل جریان شنتِ اولیه به جریان خروجی تخمینی برای تصمیم‌های
- *              شارژ. فقط مسیر نرمال، نه مسیر برینگ‌آپ.
+ *              شارژ: Iout = Ipri×Vin×eta/Vbat با eta جدا per channel از
+ *              کالیبراسیون بنچ ۲۰۲۶-۰۹-۲۲ (بالای ۷۵۸ / پایین ۲۴۲ — مقدار
+ *              پایین خطای over-read زنجیرهٔ sense کانال ۲ را هم جذب می‌کند
+ *              تا اصلاح سخت‌افزاری آن). فقط مسیر نرمال، نه برینگ‌آپ.
  * @param  measurement_snapshot_t__snap [EN] Snapshot / نمونه
  * @param  uint8_t__channelIndex [EN] Channel / کانال
  * @param  uint32_t__primaryMa [EN] Measured primary current / جریان اولیه
@@ -263,12 +270,22 @@ static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *mea
                                                uint32_t uint32_t__primaryMa)
 {
     uint32_t uint32_t__vbatMv;
+    uint32_t uint32_t__etaPermille;
     uint64_t uint64_t__numerator;
 
     if ((uint32_t__primaryMa == 0u) ||
         (measurement_snapshot_t__snap->v_in_mv == 0u))
     {
         return 0u;
+    }
+
+    if (uint8_t__channelIndex == 0u)
+    {
+        uint32_t__etaPermille = CHG_FLYBACK_EFFICIENCY_UP_PERMILLE;
+    }
+    else
+    {
+        uint32_t__etaPermille = CHG_FLYBACK_EFFICIENCY_DN_PERMILLE;
     }
 
     uint32_t__vbatMv =
@@ -280,7 +297,7 @@ static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *mea
 
     uint64_t__numerator = (uint64_t)uint32_t__primaryMa *
                           (uint64_t)measurement_snapshot_t__snap->v_in_mv *
-                          (uint64_t)CHG_FLYBACK_EFFICIENCY_PERMILLE;
+                          (uint64_t)uint32_t__etaPermille;
 
     return (uint32_t)(uint64_t__numerator /
                       ((uint64_t)uint32_t__vbatMv * 1000u));

@@ -200,20 +200,39 @@
 /* [EN] Primary->output current estimate for the charge decisions: the shunt
  *      sits in the MOSFET source leg (primary side), while Bulk/Absorb/Float
  *      limits are output (battery) currents. Estimate Iout =
- *      Ipri_avg * Vin * eta / Vbat.
- *      Fixed at the user's bench diagnostic point with fixed 15% duty
- *      (2026-09-18): MEAN at the LM358 output 362 mV -> Ipri_true =
- *      362/1.01 = 358 mA; real output 441 mA x 13.0 V. So that the estimate
- *      equals the real output current: eta = Iout x Vbat / (Ipri x Vin) =
- *      441 x 13100 / (358 x 22900) = 705 permille. eta is load dependent
- *      (~950 at the light 110 mA point, ~705 at 440 mA out); the band lives
- *      near this heavy point. Vbat is clamped to
- *      CHG_OUTPUT_EST_MIN_VBAT_MV so a momentary bad reading cannot divide
+ *      Ipri_fw * Vin_fw * eta / Vbat_fw, per channel.
+ *      PER-CHANNEL bench calibration 2026-09-22 (user calibration session,
+ *      ChargerCalib array + real multimeter, duty steady):
+ *        ch1/VHIGH: real out 520 mA @ 13.4 V, fw [Ipri=407, Vbat=14363,
+ *        Vin=24197] -> eta = 520*14363/(407*24197) = 758 permille.
+ *        ch2/VLOW: real out 220 mA @ 12.45 V, fw [Ipri=479, Vbat=12728,
+ *        Vin=24197] -> eta = 220*12728/(479*24197) = 242 permille.
+ *      ch2's 242 is NOT a physical efficiency: the ch2 sense chain currently
+ *      over-reads the primary current ~2.9x (power balance: fw 407+479=886 mA
+ *      vs only 680 mA real input; ch1 is the consistent one), so this value
+ *      absorbs that error until the ch2 chain is investigated on the bench
+ *      (zero-current check + scope). Do not reuse it as a physical constant.
+ *      History: single 705 permille from the 2026-09-18 fixed-15%-duty point
+ *      (441 mA out x 13.0 V, true primary 358 mA x 22.9 V). Vbat is clamped
+ *      to CHG_OUTPUT_EST_MIN_VBAT_MV so a momentary bad reading cannot divide
  *      by ~0; the estimate is only used inside the normal charge path, never
  *      in the bring-up source-limit path.
- * [FA] از نقطهٔ تست دیوتی ثابت ۱۵٪: جریان واقعی اولیه ۳۵۸mA (MEAN اسکوپ
- *      تقسیم بر ۱٫۰۱)، خروجی واقعی ۴۴۱mA؛ با ۷۰۵ پرمیل تخمین = واقعیت. */
-#define CHG_FLYBACK_EFFICIENCY_PERMILLE 705u
+ * [FA] تخمین جریان اولیه->خروجی برای تصمیم‌های شارژ: شانت سمت اولیه است ولی
+ *      حدهای Bulk/Absorb/Float خروجی‌اند؛ Iout = Ipri×Vin×eta/Vbat،
+ *      پرمیلِ جدا per channel. کالیبراسیون بنچ ۲۰۲۶-۰۹-۲۲ (جلسهٔ کالیبراسیون
+ *      کاربر، آرایهٔ ChargerCalib + مولتی‌متر، با duty پایدار):
+ *        کانال بالا: خروجی واقعی 520mA در 13.4V، فریمور
+ *        [Ipri=407، Vbat=14363، Vin=24197] → eta = 758 پرمیل.
+ *        کانال پایین: خروجی واقعی 220mA در 12.45V، فریمور
+ *        [Ipri=479، Vbat=12728، Vin=24197] → eta = 242 پرمیل.
+ *      ۲۴۲ کانال پایین بازده فیزیکی نیست: زنجیرهٔ sense کانال ۲ الان ~۲٫۹
+ *      برابر جریان اولیه را زیاد می‌خواند (بیلان توان: 407+479=886mA فریمور
+ *      در برابر فقط 680mA ورودی واقعی؛ کانال ۱ سازگار است) پس این مقدار
+ *      خطای sense را جذب می‌کند تا بررسی سخت‌افزاری کانال ۲ (تست جریان‌صفر و
+ *      اسکوپ). به‌عنوان ثابت فیزیکی استفاده نشود. سابقه: ۷۰۵ واحدی از
+ *      نقطهٔ دیوتی-ثابت ۱۵٪ ۲۰۲۶-۰۹-۱۸. */
+#define CHG_FLYBACK_EFFICIENCY_UP_PERMILLE   758u
+#define CHG_FLYBACK_EFFICIENCY_DN_PERMILLE   242u
 #define CHG_OUTPUT_EST_MIN_VBAT_MV     1000u
 #define CHG_INPUT_VALID_MV           22000u
 #define CHG_DUTY_START_PERMILLE        10u
