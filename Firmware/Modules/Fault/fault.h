@@ -37,14 +37,17 @@
  *            prefilter went median-3 -> median-5 (2-frame bursts die too),
  *            and with real spikes mostly dead the debounce sits at 150 ms.
  *         2) Input present and in range but EITHER half below
- *            FAULT_BATTERY_BACK_MV (7 V - user rewrite 2026-09-19: "ALL
- *            halves absent" could never fire with a single lead cut since
- *            the other half stays ~13 V, and a parked/idle charger makes no
+ *            FAULT_BAT_ABSENT_MV (6 V) for FAULT_BAT_ABSENT_DEBOUNCE_MS
+ *            proves the wire is gone (user rewrite 2026-09-19: "ALL halves
+ *            absent" could never fire with a single lead cut since the
+ *            other half stays ~13 V, and a parked/idle charger makes no
  *            pump signature either, so a cut battery went completely
- *            silent) for FAULT_BAT_ABSENT_DEBOUNCE_MS proves the wire is
- *            gone. 7 V is far above any real charge-time dip, so a deeply
- *            discharged-but-connected battery never trips it.
- *            symmetric with the recovery threshold on purpose.
+ *            silent; user threshold split 2026-09-22: detection at 6 V
+ *            while recovery keeps FAULT_BATTERY_BACK_MV = 7 V, so the
+ *            set/clear pair carries a clean 1 V hysteresis - a real 12 V
+ *            battery always sits far above both, charge-time included,
+ *            and a deeply discharged-but-connected battery dips near 6 V
+ *            without tripping).
  *
  *         Recovery (shared): EVERY half back inside
  *         [FAULT_BATTERY_BACK_MV, FAULT_BAT_DISCONNECT_MV] (>= 7 V on BOTH
@@ -70,10 +73,12 @@
  *         ناشی از برست اسپایک ADC بودند: مدین ولتاژ در measurement.c
  *         سه‌تایی → پنج‌تایی شد و آستانه ۱۴٫۸V عمداً ماند چون ۱۵٫۰V با قطع
  *         اعتبار تداخل دارد)
- *         یا پایین‌بودن «هرکدام» از نیم‌باتری‌ها زیر ۷V
- *         (`FAULT_BATTERY_BACK_MV`؛ بازنویسی دستور کاربر: «هر دو غایب» با یک
+ *         یا پایین‌بودن «هرکدام» از نیم‌باتری‌ها زیر ۶V
+ *         (`FAULT_BAT_ABSENT_MV`؛ بازنویسی دستور کاربر: «هر دو غایب» با یک
  *         سیمِ قطع هرگز فایر نمی‌شد چون نیمِ دیگر ~۱۳V است و شارژر پارک‌شده
- *         هم امضای پمپ ندارد - سکوت کامل!) به‌مدت یک ثانیه (با ورودی سالم).
+ *         هم امضای پمپ ندارد - سکوت کامل!) به‌مدت یک ثانیه (با ورودی سالم)؛
+ *         جداسازی آستانه (کاربر ۲۰۲۶-۰۹-۲۲): تشخیص ۶V و بازیابی همچنان ۷V
+ *         تا جفت Set/Clear هیسترزیس تمیز ۱V بگیرد.
  *         بازیابی مشترک: برگشت هردو نیم به بالای ۷V بدون پمپ، به‌مدت یک
  *         ثانیه → پاک‌شدن پرچم و رمپ نرم شارژ از ۱٪ (پس از گیت ۱۵ ثانیه‌ای
  *         ثبات اتصال).
@@ -83,6 +88,15 @@
  */
 #define FAULT_BAT_DISCONNECT_MV           14800u
 #define FAULT_BAT_DISCONNECT_DEBOUNCE_MS    150u
+/* [EN] Battery-ABSENT detection threshold, case 2 (user threshold split
+ *      2026-09-22): EITHER installed half below this with a valid input
+ *      latches FAULT_CHARGER_BAT_LOST. Recovery keeps the higher
+ *      FAULT_BATTERY_BACK_MV = 7 V below, so set and clear are deliberately
+ *      NOT symmetric - the 1 V gap is the hysteresis.
+ * [FA] آستانهٔ تشخیص غیبت باتری، حالت دوم (جداسازی آستانه به دستور کاربر
+ *      ۲۰۲۶-۰۹-۲۲): زیرِ این مقدار روی هر نیمِ نصب‌شده با ورودی سالم، بیت
+ *      قطع باتری قفل می‌شود. بازیابی روی ۷V بالاتر می‌ماند؛ فاصلهٔ ۱V عمداً
+ *      هیسترزیس جفت Set/Clear است. */
 #define FAULT_BAT_ABSENT_MV                6000u
 /* [EN] Battery-TRULY-back threshold for the recovery window (user directive
  *      2026-09-19): >= 7 V on BOTH halves, NOT 6 V, because a half can sit

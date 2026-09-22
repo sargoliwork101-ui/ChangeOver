@@ -34,7 +34,7 @@
 | نام | کار |
 |---|---|
 | `func__Protection_Init` | فعلاً خالی |
-| `func__Protection_Run` | اگر `snap` تهی یا نامعتبر باشد `func__Fault_Set(FAULT_ADC)`. مقایسه جریان هنوز نیست |
+| `func__Protection_Run` | `FAULT_ADC` را به‌صورت **وضعیت لحظه‌ای** می‌نویسد: snap تهی/نامعتبر → Set، snap معتبر → Clear (ممیزی کل برنامه ۲۰۲۶-۰۹-۲۲؛ قبلاً فقط Set بود و چون هیچ‌جا پاک نمی‌شد، با روشن‌شدن آیندهٔ این ماژول بیت در بوت قفل و شارژر برای همیشه safe-idle می‌شد). مقایسه جریان هنوز نیست |
 | `TaskProtection` | تا فلگ صفر Idle |
 
 حدهای بعدی در `APP_CONFIG`: `overcurrent1_ma`، `overcurrent2_ma`، `low_battery_mv`، `low_battery_recover_mv`.

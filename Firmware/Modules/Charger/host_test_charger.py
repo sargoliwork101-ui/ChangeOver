@@ -436,7 +436,9 @@ def test_setpoints_and_timing():
     check("func__Measurement_Current1CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1])" in meas_c_txt and
           "func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2])" in meas_c_txt,
           "each normalised current channel must convert through its OWN per-channel function")
-    check("bool__anyHalfLow" in (ROOT / "Firmware/Modules/Fault/fault.c").read_text(), "rule 2 must be EITHER half below 7 V (was ALL six-V: silent on a single cut lead)")
+    check("bool__anyHalfLow" in (ROOT / "Firmware/Modules/Fault/fault.c").read_text() and
+          "uint32_t__lowMv  < FAULT_BAT_ABSENT_MV" in (ROOT / "Firmware/Modules/Fault/fault.c").read_text(),
+          "rule 2 must be EITHER half below FAULT_BAT_ABSENT_MV = 6 V with recovery kept at 7 V (user threshold split 2026-09-22; was ALL six-V: silent on a single cut lead)")
     check("bool__batteryTrulyPresent" in (ROOT / "Firmware/Modules/Fault/fault.c").read_text(), "bat-lost clear must require BOTH halves >= FAULT_BATTERY_BACK_MV (7 V) - one lead cut keeps its half below 7 V so the alarm repeats until reconnect (one-burst bug)")
     check(re.search(r"#define FAULT_BAT_DISCONNECT_MV\s+14800u", text_fault_h), "threshold stays 14.8 V, NOT 15.0 V: 15.0 would collide with the validity cut (~0.1 s float vs ~0.5 s at 14.8)")
     check(re.search(r"#define FAULT_BAT_ABSENT_MV\s+6000u", text_fault_h), "battery-absent threshold must be 6 V in Fault (user choice)")

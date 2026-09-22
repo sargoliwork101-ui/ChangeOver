@@ -327,12 +327,14 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
 /**
  * @brief  [EN] True while at least one installed channel is actually
- *         charging - its state machine sits in BULK, ABSORB or FLOAT
- *         (2026-09-19, for the UI: the charging yellow blink is shown only
- *         while this returns true, for channel 1, channel 2 or both).
+ *         charging - its state machine sits in BULK or ABSORB (user
+ *         directive 2026-09-19: a FLOAT channel is parked at zero duty, the
+ *         charge is DONE, not active - for the UI the charging yellow blink
+ *         stops as soon as the pump parks, and the fault pump-window is not
+ *         armed there either).
  *         [FA] true وقتی دست‌کم یک کانال نصب‌شده واقعاً در حال شارژ است
- *         (بالک/ابزورب/فلوت)؛ برای چشمک زرد شارژ در UI: با فعال‌بودن کانال
- *         ۱ یا ۲ یا هر دو.
+ *         (بالک/ابزورب؛ فلوت پارک‌شده یعنی کار تمام شده و فعال حساب
+ *         نمی‌شود - نه زرد چشمک می‌زند نه آشکارساز قطع باتری مسلح است).
  * @return bool [EN] true if any channel is charging / اگر هر کانالی شارژ کند true
  */
 bool func__Charger_IsAnyChannelActive(void);

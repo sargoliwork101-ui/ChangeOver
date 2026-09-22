@@ -20,6 +20,5 @@
 #define MODULE_CHARGER        1
 #define MODULE_JITTER         1
 #define MODULE_ESP            0
-#define MODULE_MCU_POWER_PATH 1
 
 #endif /* MODULES_ENABLE_H */

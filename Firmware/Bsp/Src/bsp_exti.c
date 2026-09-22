@@ -53,19 +53,37 @@ void func__BspExti_OnIrq(bsp_exti_src_t bsp_exti_src_t__src)
 
 /* ==================== BspExti_TakeEvent ==================== */
 /**
- * @brief  [EN] Read and clear one logical event flag.
- *         [FA] پرچم یک رویداد منطقی را می‌خواند و پاک می‌کند.
+ * @brief  [EN] Read and clear one logical event flag. The read-clear pair
+ *         runs inside a short PRIMASK critical section (full-program audit
+ *         2026-09-22): an EXTI event arriving exactly between the read and
+ *         the clear would otherwise be lost - and a lost jitter event never
+ *         re-fires, because the LM393 output stays low without a new edge,
+ *         so one lost flag could swallow a real JIT trip. The critical
+ *         section is only a few cycles long.
+ *         [FA] پرچم یک رویداد منطقی را می‌خواند و پاک می‌کند. جفت
+ *         خواندن-پاک‌کردن داخل یک بخش بحرانی کوتاه PRIMASK اجرا می‌شود
+ *         (ممیزی کل برنامه ۲۰۲۶-۰۹-۲۲): رویدادی که دقیقاً بین خواندن و
+ *         پاک‌کردن برسد گم می‌شد - و رویداد jitter گم‌شده دیگر تکرار
+ *         نمی‌شود چون خروجی LM393 بدون لبهٔ جدید پایین می‌ماند، پس یک
+ *         پرچم گم‌شده می‌توانست یک تریپ واقعی JIT را قورت بدهد. بخش
+ *         بحرانی فقط چند سیکل است.
  * @param  bsp_exti_src_t__src [EN] Logical source / منبع منطقی
  * @return bool [EN] true when an event was pending / اگر رویداد pending باشد true
  */
 bool func__BspExti_TakeEvent(bsp_exti_src_t bsp_exti_src_t__src)
 {
     bool bool__taken = false;
+    uint32_t uint32_t__savedPrimask;
 
     if ((uint32_t)bsp_exti_src_t__src < (uint32_t)BSP_EXTI_SOURCE_COUNT)
     {
+        uint32_t__savedPrimask = __get_PRIMASK();
+        __disable_irq();
+
         bool__taken = (UINT8_T__G__Flags[bsp_exti_src_t__src] != 0u);
         UINT8_T__G__Flags[bsp_exti_src_t__src] = 0u;
+
+        __set_PRIMASK(uint32_t__savedPrimask);
     }
 
     return bool__taken;
@@ -101,18 +119,14 @@ void HAL_GPIO_EXTI_Callback(uint16_t uint16_t__GPIO_Pin)
 #if MODULE_MCU_POWER_PATH
         /* [EN] Emergency MCU battery reconnect has priority: drive PB5 Low immediately in ISR,
          *      cancel pending disconnect timer, then latch the input-detect event for other modules.
-         * [FA] اتصال اضطراری باتری MCU اولویت دارد: فوراً PB5 Low، لغو تایمر، سپس ثبت رویداد. */
+         *      (Full-program audit 2026-09-22: this hook is called exactly ONCE - a second,
+         *      redundant call after the event latch was removed.)
+         * [FA] اتصال اضطراری باتری MCU اولویت دارد: فوراً PB5 Low، لغو تایمر، سپس ثبت رویداد.
+         *      (ممیزی کل برنامه ۲۰۲۶-۰۹-۲۲: این هوک دقیقاً یک‌بار صدا زده می‌شود - فراخوانی
+         *      تکراری بعد از ثبت رویداد حذف شد.) */
         func__McuPowerPath_OnInputIrq();
 #endif
         func__BspExti_OnIrq(BSP_EXTI_INPUT_DETECT);
-#if MODULE_MCU_POWER_PATH
-        /* [EN] PB4 both-edge presence IRQ: on input loss the battery path
-         *      must reconnect immediately (Q1 released), not after the next
-         *      task tick. OnInputIrq reads the level itself.
-         * [FA] وقفه دو لبه حضور ورودی: با قطع ورودی مسیر باتری باید بلافاصله
-         *      وصل شود، نه در تیک بعدی تسک. */
-        func__McuPowerPath_OnInputIrq();
-#endif
     }
     else
     {

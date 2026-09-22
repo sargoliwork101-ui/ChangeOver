@@ -451,14 +451,6 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
     return func__BspMeasurement_V12CountsToMv(uint16_t__counts);
 }
 
-/* ==================== Current Counts To Ma ==================== */
-
-/**
- * @brief  [EN] Convert a normalized current channel through board calibration.
- *         [FA] کانال استاندارد جریان را از طریق کالیبراسیون برد تبدیل می‌کند.
- * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
- * @return uint32_t [EN] Current in mA / جریان بر حسب mA
- */
 /* ==================== Measurement Current1 Counts To Ma ==================== */
 
 /**

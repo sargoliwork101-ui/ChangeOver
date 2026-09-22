@@ -1,7 +1,7 @@
 # گزارش اجرای AI
 
-**آخرین به‌روزرسانی:** 2026-09-16<br>
-**شاخه:** `arena/01a0a923-changeover`<br>
+**آخرین به‌روزرسانی:** 2026-09-22<br>
+**شاخه:** `arena/01a0c744-changeover`<br>
 **مالک گزارش:** Agent ارشد پروژه<br>
 **قوانین مرجع:** `AI_AGENT_RULES.md`
 
@@ -13,26 +13,35 @@
 - Headerهای عمومی BSP (`bsp_gpio.h`, `bsp_adc.h`, `bsp_measurement.h`, `bsp_exti.h`, `bsp_pwm.h`, `bsp_uart.h`) HAL-free هستند.
 - جزئیات HAL، هندل ADC، نگاشت پایه‌ها و کالیبراسیون مدار فقط در پورت برد/فایل‌های platform-specific باقی می‌مانند.
 - Agentهای ماژول باید پیش از شروع `AI_AGENT_RULES.md` و README ماژول خود را بخوانند؛ مرز BSP قرارداد پایه است و تغییر سراسری فقط با دستور Agent ارشد انجام می‌شود.
-- بازبینی کامل کد و READMEها انجام شد؛ مسیرهای قدیمی Agent، APIهای قدیمی BSP و توضیحات مستقیم پایه در مستندات اصلاح شدند.
-- لایهٔ کامل شماتیک تثبیت شد: GPIO و polarity/safe-state، ADC+DMA و calibration، TIM2/TIM3 PWM، USART1، EXTIهای PB2/PB4/PB6، MSP/IRQ و درایور HAL UART.
+- **ممیزی کامل برنامه ۲۰۲۶-۰۹-۲۲ انجام شد** (تک‌تک ۲۵ فایل سورس Firmware/CubeIDE + رفتار HAL چک شد): رفع race در `BspExti_TakeEvent` (بخش بحرانی PRIMASK — رویداد jitter گم‌شده دیگر تریپ JIT را قورت نمی‌داد)، حذف فراخوانی تکراری `McuPowerPath_OnInputIrq` در callback PB4، تبدیل `FAULT_ADC` در Protection به وضعیت لحظه‌ای (قبلاً latch ابدی بود و با روشن‌شدن آیندهٔ ماژول، شارژر از بوت safe-idle می‌ماند)، و اصلاح مستندات ناسازگار (docblock شارژر FLOAT/ABSORB، کامنت unfiltered قدیمی، define تکراری `MODULE_MCU_POWER_PATH`).
+- جداسازی آستانهٔ قطع باتری به دستور کاربر ۲۰۲۶-۰۹-۲۲: تشخیص غیبت `FAULT_BAT_ABSENT_MV` = 6V، بازیابی همچنان `FAULT_BATTERY_BACK_MV` = 7V (هیسترزیس ۱V).
 
-## اتصال فعلی Measurement و UI
+## وضعیت جریان جریان/نمونه‌برداری Measurement (2026-09-22)
 
-- پورت فعلی ADC پنج مقدار آنالوگ را با ترتیب normalized در `bsp_adc.h` ارائه می‌کند.
-- `bsp_measurement.c` تبدیل ADC به mV/mA، تقسیم مقاومتی، گین و شانت برد فعلی را نگه می‌دارد.
-- Measurement هر `10ms` یک فریم کامل را از BSP می‌گیرد و منتشر می‌کند.
-- فقط سیگنال منطقی `BSP_GPIO_INPUT_24V_PRESENT` در Measurement مصرف می‌شود؛ پایه و قطبیت فیزیکی در BSP است.
-- فقط ولتاژ منطقی ورودی به Task UI متصل است.
-- ولتاژ باتری هنوز از `UINT32_T__G__BatteryVoltageMv` و Live Expressions به‌صورت دستی تأمین می‌شود.
-- قبل از اولین فریم معتبر، ورودی UI صفر و از نظر سناریو قطع در نظر گرفته می‌شود.
+- دورهٔ تسک Measurement `MEASUREMENT_PERIOD_MS = 1` است (دستور کاربر ۲۰۲۶-۰۹-۲۲): نمونه‌های سنکرون حداکثر ۱ms قدیمی‌اند.
+- دو جایگاه جریان فریم (CURRENT1/CURRENT2) با نمونهٔ سنکرون وسط پنجرهٔ ON پالس PWM پر می‌شوند: بک‌اند خصوصی ADC2 برای هر کانال یک تبدیل regular با تریگر سخت‌افزاری انجام می‌دهد — کانال ۱ با `TIM2_CC2` و کانال ۲ با `TIM3_TRGO` (منبع OC2REF؛ CH2 داخلی هر تایمر با PWM mode 2 و `CCR2 = CCR1/2` لبه را دقیقاً وسط ON می‌گذارد). گیت پارک (compare صفر) = بدون لبه = بدون نمونه؛ fallback مقدار اسکن غیرهمزمان همان جایگاه است.
+- فیلترهای جریان (دستور کاربر ۲۰۲۶-۰۹-۲۲، کلید کامپایل در `measurement.h`، پیش‌فرض روشن): **مدین-۳** (`MEASUREMENT_CURRENT_MEDIAN3_ENABLE`) و بعد **میانگین متحرک ۱۰ نمونه** (`MEASUREMENT_CURRENT_AVERAGE_ENABLE` + `MEASUREMENT_CURRENT_AVERAGE_WINDOW`، پنجرهٔ جدا per channel، شیب شروع فقط روی خانه‌های پر). EMA حذف است؛ شارژر هیچ فیلتر خودش را اضافه نمی‌کند. ولتاژها مدین-۵ دارند.
+- فرمول ADC→mA در `bsp_measurement.c` مرحله‌به‌مرحله از مدار ساخته شده: آفست پر-کانال → counts به mV پایه (×3300/4095) → خنثی‌سازی تقسیم R41(1k)/R42(10k) → خنثی‌سازی گین ۱۰۱ → شانت 10mΩ به mA → گین پرمیل بنچ (۱۰۸۵). یک تقسیم نهایی روی numerator/denominator در uint64؛ نتیجه با فرمول قبلی هم‌ارز (~۰٫۸۸mA/count پیش از گین).
+
+## وضعیت فعلی ماژول‌ها
+
+- **Measurement**: فعال (۱ms). مسیر: ADC2 سنکرون → splice در GetRaw → تبدیل → زنجیرهٔ فیلتر → snapshot اتمیک با `osKernelLock`.
+- **Charger**: فعال با `CHG_MASTER_ENABLE=1` و `CHG_TRANSFORMER_KNOWN=1`؛ دو کانال مستقل ۱۲V (Ch1→VHIGH، Ch2→VLOW). OFF→(گیت ۱۵s ثبات اتصال)→BULK(رمپ ۱٪، باند ۶۳۰..۶۵۰mA خروجی تخمینی)→ABSORB(تثبیت ۱۴٫۴V، پلهٔ ۰٫۱٪، شستشوی کل مدت + تیپر <۵۰mA/۶۰s، سقف ۱h)→FLOAT(پارک روی صفر؛ <۱۲٫۸V→BULK). JIT: نصف duty→حداکثر ۱۰٪→سومی FINAL_FAULT (رلهٔ NC باز). خطای سخت >۹۵۰mA ریست کانال (با فیلترها حداکثر ~۱۰ms تأخیر؛ JIT سخت‌افزاری حفاظت سریع است).
+- **Fault**: مالک تشخیص قطع باتری — قاعدهٔ ۱: پمپ بالای ۱۴٫۸V حین شارژ فعال (۱۵۰ms)؛ قاعدهٔ ۲: هر نیم <۶V با ورودی سالم (۱s)؛ بازیابی: هر دو نیم ≥۷V بدون پمپ (۱s).
+- **Jitter**: فعال؛ رویداد EXTI LM393 → صف retry شارژر (احیای تک‌تک).
+- **McuPowerPath**: فعال؛ Q1/PB5 مستقل از Changeover (قطع ۵s بعد از ورودی ≥۲۲V، اتصال فوری در ISR با قطع ورودی؛ هیسترزیس ۲۲/۲۱٫۵V).
+- **Changeover**: فعال؛ cut در v<20800 (یا <21000 با فلگ UI) بعد از ۳s → PB11، reconnect با ورودی + ≥21200 بعد از ۳s.
+- **UI**: فعال؛ سناریوها از snapshot واقعی (اولویت: اضافه‌ولتاژ ورودی، قطع باتری، فول، شارژ فعال، InputOk، BatteryRun).
+- **Protection**: خاموش (`MODULE_PROTECTION=0`)؛ `FAULT_ADC` وضعیت لحظه‌ای است (Set در نامعتبر، Clear در معتبر).
+- **EspLink/Comm**: خاموش (`MODULE_ESP=0`)، backend آماده.
 
 ## قرارداد BSP
 
 - GPIO از شناسه‌های منطقی `BSP_GPIO_*` استفاده می‌کند و قطبیت active-high/active-low در پورت خصوصی اعمال می‌شود؛ PB5 و PB11 در وضعیت امن physical High هستند.
-- ADC از موقعیت‌های normalized مانند `BSP_ADC_CHANNEL_24V_IN` استفاده می‌کند؛ map فیزیکی فعلی PA1/PA2/PA3/PA5/PA7 است.
-- Measurement منطق تبدیل را نگه نمی‌دارد و از `bsp_measurement` استفاده می‌کند؛ تقسیم‌های ۲۴V/۱۲V و شانت/gain در port هستند.
-- EXTI رویدادهای منطقی `JITTER1`، `JITTER2` و `INPUT_DETECT` را با `bsp_exti_src_t` ارائه می‌کند؛ IRQهای واقعی در Core متصل هستند.
-- PWM با `func__BspPwm_Init(void)` و کانال منطقی کار می‌کند؛ TIM2_CH1/PA0 و TIM3_CH1/PA6 در public API دیده نمی‌شوند و startup صفر/stop است.
+- ADC از موقعیت‌های normalized استفاده می‌کند؛ map فیزیکی فعلی PA1/PA2/PA3/PA5/PA7 + بک‌اند سنکرون ADC2 (خصوصی پورت، بدون CubeMX).
+- Measurement منطق تبدیل را نگه نمی‌دارد و از `bsp_measurement` استفاده می‌کند؛ تقسیم‌های ۲۴V/۱۲V، R41/R42، گین و شانت در port هستند.
+- EXTI رویدادهای منطقی `JITTER1`، `JITTER2` و `INPUT_DETECT` را با `bsp_exti_src_t` ارائه می‌کند؛ `TakeEvent` اتمیک (PRIMASK) است؛ هوک اضطراری McuPowerPath فقط یک‌بار قبل از ثبت رویداد.
+- PWM: هر دو تایمر از Init پیوسته می‌چرخند با درهم‌گذاری ثابت نیم‌دوره (۱۰µs در ۵۰kHz) و استارت با دو نوشتن رجیستری پشت‌سرهم؛ خاموش = compare صفر؛ CH2 داخلی تریگر نمونه‌برداری وسط ON.
 - UART با `func__BspUart_Init(void)` و جریان بایت کار می‌کند؛ USART1/PA9/PA10 و baud در public API دیده نمی‌شوند.
 - در صورت تغییر MCU یا برد، فقط پورت BSP و فایل‌های platform-specific تغییر می‌کنند؛ منطق Module/App کپی نمی‌شود.
 
@@ -49,28 +58,34 @@
 
 ## زمان‌بندی و رفتار RTOS
 
-- CMSIS-RTOS2 رابط عمومی برنامه است و FreeRTOS فقط backend داخلی است.
-- Threadها با `osThreadNew` و `cb_mem`/`stack_mem` استاتیک ساخته می‌شوند.
+- CMSIS-RTOS2 رابط عمومی برنامه است و FreeRTOS فقط backend داخلی است (tick = ۱kHz).
+- Threadها با `osThreadNew` و `cb_mem`/`stack_mem` استاتیک ساخته می‌شوند (UI=128w، Measurement=192w، Control=256w؛ اولویت‌ها در `rtos_config.h`).
 - تبدیل میلی‌ثانیه به tick از `osKernelGetTickFreq()` در `rtos_time` انجام می‌شود.
 - از `HAL_Delay`، API مستقیم FreeRTOS در منطق محصول و تخصیص پویا استفاده نمی‌شود.
 - snapshot Measurement هنگام انتشار/کپی با `osKernelLock` و `osKernelRestoreLock` محافظت می‌شود و به دستور مخصوص هستهٔ MCU وابسته نیست.
-- ADC و DMA توسط backend برد اجرا می‌شوند؛ Task Measurement فقط فریم کامل را مصرف می‌کند.
+- ADC و DMA توسط backend برد اجرا می‌شوند؛ Task Measurement فقط فریم کامل را مصرف می‌کند. انتظار bounded تبدیل سنکرون (~۲۰µs به‌ازای هر کانال، وقفه‌ها فعال) بدترین حالت ~۵٪ CPU تسک اندازه‌گیری در دورهٔ ۱ms مصرف می‌کند.
 
-## اعتبارسنجی انجام‌شده
+## اعتبارسنجی انجام‌شده (2026-09-22)
 
-- `bash tools/check_ai_rules.sh` — موفق
-- `bash tools/check_firmware_syntax.sh` — موفق؛ syntax سورس‌های CubeIDE/Core و Firmware با GCC سمت Host
-- syntax درایور `stm32f1xx_hal_uart.c` با includeهای STM32 و warningهای مخصوص host-width — موفق
-- `python3 Firmware/Modules/Ui/host_test_ui.py` — موفق
-- `git diff --check` — موفق
-- بررسی دو `.ioc`: byte-identical، بدون PB9 اضافی، بدون key تکراری و با TIM2/TIM3/USART1/EXTI کامل — موفق
-- preprocessing مسیرهای فعال — موفق
-- جست‌وجوی وابستگی HAL/STM32 در App/Modules/Rtos و Headerهای عمومی BSP — بدون وابستگی مستقیم
-- ممیزی سازگاری READMEها با APIهای فعلی و درخت اتصال — اصلاح و تأیید شد
+- `bash tools/check_firmware_syntax.sh` — موفق؛ syntax سورس‌های CubeIDE/Core و Firmware با GCC سمت Host.
+- `python3 Firmware/Modules/Charger/host_test_charger.py` — **۲۳/۲۳ موفق** (قرارداد فیلترهای کلیددار، فرمول مرحله‌ای، تریگرهای سخت‌افزاری، آستانهٔ ۶V/۷V قطع باتری و...).
+- `python3 Firmware/Modules/Ui/host_test_ui.py` — موفق.
+- `bash tools/check_ai_rules.sh` — فقط **یک FAIL شناخته‌شده**: چک [17] انتظار `CHG_MASTER_ENABLE=0` دارد تا «تکمیل bring-up»؛ bring-up کامل شده و کاربر روشن‌بودن شارژر را انتخاب کرده است (تصمیم کاربر ۲۰۲۶-۰۹-۲۲: دست نزنیم).
+- کامپایل جداگانهٔ هر ۴ ترکیب کلیدهای فیلتر جریان (هر دو روشن/خاموش و تک‌کلید) — موفق.
+- راستی‌آزمایی رفتار فیلترها روی host (هارنس): پرش تک‌نمونه‌ای حذف، پلهٔ واقعی با تأخیر یک نمونه، میانگین فقط روی خانه‌های پر.
+- بازبینی رفتار HAL: `HAL_ADCEx_Calibration_Start` روی F1 ADC را روشن (ADON) جا می‌گذارد — تریگر خارجی ADC2 بعد از کالیبراسیون کار می‌کند.
+- `git diff --check` — موفق.
 
 ## محدودیت‌های اعتبارسنجی
 
-- Build و لینک واقعی STM32، symbol/map و اندازه‌گیری RAM/Flash هنوز اجرا نشده است؛ `arm-none-eabi-gcc` و STM32CubeIDE در محیط موجود نیستند.
+- Build و لینک واقعی STM32، symbol/map و اندازه‌گیری RAM/Flash هنوز اجرا نشده است؛ `arm-none-eabi-gcc` و STM32CubeIDE در محیط موجود نیستند. مصرف RAM فیلترهای جریان با هر دو کلید روشن ~۱۰۸ بایت استاتیک است (از Map file نهایی تأیید شود).
 - تحلیل رسمی MISRA با ابزار اختصاصی انجام نشده است.
-- ADC، قطبیت پایه‌ها و رفتار LED/BUZZER هنوز روی برد واقعی تأیید نشده‌اند.
-- تست Host/syntax جایگزین تست عملی برد نیست؛ نتایج تست واقعی باید در `Firmware/Modules/Ui/UI_Board_Validation.xlsx` و برگه‌های اعتبارسنجی مربوط ثبت شوند.
+- نمونه‌برداری سنکرون، فیلترهای جریان و مسیر شارژ کامل هنوز روی برد واقعی با اسکوپ تأیید نشده‌اند؛ نقطهٔ بنچ کانال ۱ (آفست/گین Trans1) هم هنوز ثبت نشده (فعلاً کپی موقت کانال ۲).
+- تست Host/syntax جایگزین تست عملی برد نیست؛ نتایج تست واقعی باید در Workbookهای اعتبارسنجی مربوط ثبت شوند.
+
+## مستندات مرجع
+
+- ماژول‌ها: `Firmware/Modules/*/README.md` (Measurement، Charger، Fault، Jitter، McuPowerPath، Changeover، UI، Protection، EspLink).
+- برد و پورت‌ها: `Firmware/Bsp/README.md` و `CubeMX/README.md`.
+- مرجع State/سناریو: `Documentation/System_State_Scenarios.xlsx` و `Documentation/System_State_Machine.md/.drawio` (منطق Changeover از ۲۰۲۶-۰۹-۱۶ دست‌نخورده است و با کد فعلی سازگار است).
+- ورودی‌های اصلی محصول: `DOC/State.xlsx` (جدول ورودی/خروجی و UI — سند مرجع اولیه).

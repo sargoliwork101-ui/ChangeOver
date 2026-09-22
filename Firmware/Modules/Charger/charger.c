@@ -742,11 +742,15 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     {
         /* [EN] Only a hard over-current fault resets the channel; normal
            over-target is handled by the duty band below (no cut/restart).
-           The current is an unfiltered mid-ON synchronized sample, so this
-           protection reacts with zero added delay.
+           The value already passed Measurement's median-3 + moving-average
+           chain (user order 2026-09-22), so this software cut reacts within
+           one average window (~10 ms) - the hardware JIT comparator remains
+           the fast over-current protection.
            [FA] فقط خطای سخت اضافه‌جریان کانال را ریست می‌کند؛ اضافهٔ عادی در
-           باند دیوتی پایین‌تر مدیریت می‌شود. جریان نمونهٔ سنکرونِ بی‌فیلتر
-           وسط ON است پس این حفاظت بدون هیچ تأخیری واکنش می‌دهد. */
+           باند دیوتی پایین‌تر مدیریت می‌شود. مقدار از زنجیرهٔ مدین-۳ +
+           میانگین متحرک Measurement گذشته (دستور کاربر ۲۰۲۶-۰۹-۲۲) پس این
+           قطع نرم‌افزاری حداکثر در حد یک پنجرهٔ میانگین (~۱۰ms) واکنش می‌دهد -
+           حفاظت سریع اضافه‌جریان همچنان JIT سخت‌افزاری است. */
         func__Charger_ResetChannelToOff(uint8_t__channelIndex);
         func__Charger_StopOneChannel(uint8_t__channelIndex);
         return;

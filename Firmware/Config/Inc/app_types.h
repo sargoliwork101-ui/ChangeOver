@@ -44,11 +44,13 @@ typedef uint32_t fault_mask_t;
 #define FAULT_LOW_BATTERY       (1u << 3)
 #define FAULT_JITTER_1          (1u << 4)
 #define FAULT_JITTER_2          (1u << 5)
-/* [EN] Charger CH2 battery wire cut during charge: output voltage pumped
- *      above 14.8 V (no real 12 V battery reaches that). Recoverable: the
- *      Charger clears the bit itself after the battery is back and settled.
- * [FA] قطع سیم باتری کانال ۲ حین شارژ؛ پرچم قابل‌بازیابی، Charger خودش پاک
- *      می‌کند وقتی باتری برگشت. */
+/* [EN] Battery-lost during charge, detected and cleared centrally by the
+ *      Fault module (since 2026-09-19): output voltage pumped above 14.8 V
+ *      (no real 12 V battery reaches that), or battery absent with a valid
+ *      input. Charger only mirrors the bit into CHG_STATE_BAT_LOST.
+ * [FA] قطع باتری حین شارژ؛ تشخیص و پاک‌سازی متمرکز در ماژول Fault (از
+ *      ۲۰۲۶-۰۹-۱۹): پمپ ولتاژ بالای ۱۴٫۸V یا نبود باتری با ورودی سالم.
+ *      شارژر فقط بیت را به CHG_STATE_BAT_LOST آینه می‌کند. */
 #define FAULT_CHARGER_BAT_LOST  (1u << 6)
 
 #endif /* APP_TYPES_H */

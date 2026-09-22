@@ -200,23 +200,30 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
          ((bool__highHalfInstalled == true) &&
           (uint32_t__highMv > FAULT_BAT_DISCONNECT_MV)));
 
-    /* [EN] Case 2, user rewrite 2026-09-19: EITHER half below
-       FAULT_BATTERY_BACK_MV (7 V) while the input is fine = battery
-       disconnected. "ALL halves" could never fire during his real failure
-       (one lead cut, the other half stays at ~13 V) and with the charger
-       parked there is no pump signature either - the result was total
-       silence on a cut battery. 7 V matches the recovery threshold so the
-       set/clear pair is symmetric; a real 12 V battery always sits far
-       above, charge-time included.
-       [FA] حالت دوم (بازنویسی دستور کاربر): هرکدام از نیم‌باتری‌ها زیر ۷V با
-       ورودی سالم یعنی قطع باتری؛ «هر دو غایب» در خرابی واقعی (یک سیم قطع،
-       نیمِ دیگر ~۱۳V) هرگز فایر نمی‌شد و با شارژر پارک‌شده امضای پمپ هم
-       نیست - نتیجه سکوت کامل بود. با ۷V جفت Set/Clear متقارن است. */
+    /* [EN] Case 2, user rewrite 2026-09-19 + threshold split 2026-09-22:
+       EITHER half below FAULT_BAT_ABSENT_MV (6 V) while the input is fine =
+       battery disconnected. "ALL halves" could never fire during his real
+       failure (one lead cut, the other half stays at ~13 V) and with the
+       charger parked there is no pump signature either - the result was
+       total silence on a cut battery. Detection sits at 6 V while recovery
+       keeps FAULT_BATTERY_BACK_MV = 7 V: a real 12 V battery always sits
+       far above both, a deeply discharged-but-connected battery dips near
+       6 V during charge without tripping, and the set/clear pair gets a
+       clean 1 V hysteresis instead of a symmetric boundary that could
+       chatter.
+       [FA] حالت دوم (بازنویسی کاربر ۲۰۲۶-۰۹-۱۹ + جداسازی آستانه
+       ۲۰۲۶-۰۹-۲۲): هرکدام از نیم‌باتری‌ها زیر ۶V با ورودی سالم یعنی قطع
+       باتری؛ «هر دو غایب» در خرابی واقعی (یک سیم قطع، نیمِ دیگر ~۱۳V)
+       هرگز فایر نمی‌شد و با شارژر پارک‌شده امضای پمپ هم نیست - نتیجه سکوت
+       کامل بود. تشخیص روی ۶V و بازیابی روی ۷V (FAULT_BATTERY_BACK_MV):
+       باتری واقعی ۱۲V از هر دو بالاتر است، باتری عمیق‌دشارژ حین شارژ تا
+       نزدیک ۶V می‌افتد بدون تریپ، و جفت Set/Clear به‌جای مرز متقارنِ
+       امکان-لرزش، یک هیسترزیس تمیز ۱V می‌گیرد. */
     bool__anyHalfLow =
         (((bool__lowHalfInstalled  == true) &&
-          (uint32_t__lowMv  < FAULT_BATTERY_BACK_MV)) ||
+          (uint32_t__lowMv  < FAULT_BAT_ABSENT_MV)) ||
          ((bool__highHalfInstalled == true) &&
-          (uint32_t__highMv < FAULT_BATTERY_BACK_MV)));
+          (uint32_t__highMv < FAULT_BAT_ABSENT_MV)));
 
     /* ---------- Rule 1: pumped overvoltage => latch ---------- */
     if ((bool__anyOver == true) &&
@@ -235,7 +242,7 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
         /* [EN] Debounce still running. [FA] دبانس در جریان است. */
     }
 
-    /* ---------- Rule 2: EITHER half below 7 V with valid input => latch ---------- */
+    /* ---------- Rule 2: EITHER half below 6 V with valid input => latch ---------- */
     if ((bool__inputOk == true) && (bool__anyHalfLow == true) &&
         (func__Fault_DebounceDone(&UINT32_T__G__BatAbsentSinceTick,
                                   uint32_t__nowTick,
