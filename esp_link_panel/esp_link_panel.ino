@@ -5,26 +5,28 @@
  *               dark RTL web panel (Vazirmatn) with three tabs: status, calibration, manual test;
  *               the section 5.3 conversion formulas are shown with live values, plus calibration
  *               helpers (zero from raw, gain from an ammeter, voltage offset from a multimeter),
- *               a live 36 s filter chart and a JIT re-arm button in manual mode.
+ *               a live 36 s filter chart and a per-channel re-apply (JIT re-arm) button in manual mode.
  *          [FA] پل ESP-Link سمت ESP: تبادل فریم باینری با STM32 روی UART
  *               (921600 8N1، مطابق ESP_AGENT_SPEC.md نسخه ۱.۲) و یک پنل وب دارک ساده
  *               راست‌به‌چپ با فونت وزیرمتن و سه تب: وضعیت، کالیبراسیون، تست دستی؛
  *               فرمول‌های تبدیل بخش 5.3 با مقادیر زنده، دستیار کالیبراسیون (صفر از raw، گین از
  *               آمپرمتر، آفست ولتاژ از مولتی‌متر)، نمودار زندهٔ ۳۶ ثانیه‌ای فیلتر و دکمهٔ مسلح‌سازی
- *               مجدد JIT در مود دستی.
+ *               مجدد (مسلح‌سازی JIT) برای هر کانال در مود دستی.
  *
  * @note    [EN] Wiring: STM32 PA9 (TX) -> ESP RX, STM32 PA10 (RX) <- ESP TX, common GND.
  *               STM32 PA8 drives ESP CH_PD/EN; this sketch never touches that line.
  *               Wi-Fi AP "ChangeOver-ESP", password "123456789", panel at http://192.168.4.1
  *               No flash storage, no cloud: only MCU <-> ESP data exchange.
- *               Manual test mode (ID 19): the GET_PARAMS keepalive runs only while a browser
- *               is actually polling, so a closed/crashed panel lets the STM32 3 s dead-man trip.
+ *               Manual test mode (ID 19): a GET_PARAMS keepalive is sent every 1 s while manual
+ *               mode is active (TLM flag b5 or param 19), independent of any browser (spec 5.2).
+ *               The STM32 3 s dead-man still trips if the ESP itself hangs or the link breaks.
  *          [FA] سیم‌بندی: PA9 به RX ماژول، PA10 به TX ماژول، زمین مشترک.
  *               پایه CH_PD/EN را STM32 (PA8) کنترل می‌کند؛ این برنامه به آن دست نمی‌زند.
  *               وای‌فای "ChangeOver-ESP" با رمز "123456789"، پنل در http://192.168.4.1
  *               بدون حافظه فلش و بدون اینترنت: فقط تبادل داده بین MCU و ESP.
- *               مود تست دستی (شناسه ۱۹): keepalive فقط وقتی مرورگری واقعاً در حال خواندن است ارسال
- *               می‌شود تا با بسته‌شدن پنل، dead-man سه‌ثانیه‌ای STM32 عمل کند.
+ *               مود تست دستی (شناسه ۱۹): تا وقتی مود دستی فعال است (پرچم b5 یا پارامتر ۱۹) هر ۱ ثانیه
+ *               یک GET_PARAMS فرستاده می‌شود، مستقل از مرورگر (بخش 5.2 سند). اگر خود ESP هنگ کند یا
+ *               لینک قطع شود، dead-man سه‌ثانیه‌ای STM32 همچنان عمل می‌کند.
  */
 
 /* ==================== Board Includes ==================== */
@@ -57,7 +59,6 @@
 #define ESP_LINK_TIMEOUT_MS         1000u
 #define ESP_LINK_TX_INTERVAL_MS     120u
 #define ESP_LINK_KEEPALIVE_MS       1000u
-#define ESP_LINK_BROWSER_FRESH_MS   1500u
 
 /* ==================== Message Types ==================== */
 #define ESP_MSG_SET_PARAM           0x01u
@@ -128,8 +129,6 @@ static bool     BOOL__G__ParamUserSet[ESP_PARAM_COUNT];
 static bool     BOOL__G__TxGetPending = false;
 static uint32_t UINT32_T__G__LastTxMs = 0u;
 static uint32_t UINT32_T__G__LastKeepaliveMs = 0u;
-static uint32_t UINT32_T__G__LastBrowserPollMs = 0u;
-static bool     BOOL__G__BrowserSeen = false;
 
 /* [EN] Send priority: charger cut, manual mode, manual duties, then the rest.
    [FA] اولویت ارسال: قطع شارژر، مود دستی، duty دستی، سپس بقیه. */
@@ -188,7 +187,7 @@ input[type=range]{width:100%;accent-color:var(--wa);margin:10px 0 2px;direction:
 .fx{direction:ltr;text-align:right;unicode-bidi:isolate;font-size:11px;color:#6f7a93;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fb{background:#0c1018;border-radius:10px;padding:8px 10px;margin-bottom:6px}.fb .fx{font-size:12px;color:#9aa6c0;line-height:1.9;white-space:normal}.fb .lb{font-size:11px}
 .as{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:9px 0;border-top:1px solid var(--ln)}.as .nm{flex:1 1 180px}.as .lv{font-weight:600;margin-left:4px}
-.sb2{background:#243052;color:#cfe0ff}.rm{background:#b8323f;width:100%;margin-top:8px}
+.sb2{background:#243052;color:#cfe0ff}.rm{background:#243052;color:#cfe0ff;width:100%;margin-top:8px}.rm.j{background:#b8323f;color:#fff}.rm:disabled{opacity:.4;cursor:default}
 canvas{width:100%;height:140px;display:block;background:#0c1018;border-radius:10px;margin-top:10px;direction:ltr}
 .lg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mu);margin-top:6px}.lg i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-left:5px;vertical-align:middle}
 .ti2{display:flex;justify-content:space-between;align-items:center}
@@ -286,7 +285,7 @@ function chart(){const c=$('cv');if(tab!=1)return;const w=c.clientWidth,h=c.clie
 $('mc').innerHTML=[1,2].map(n=>{const id=14+2*n;return `<div class="cd"><div class="hd"><b>کانال ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="ms${n}">—</span></div>
 <div class="mx"><span class="lb">duty فرمان <span class="ap n" id="a${id}m">—</span></span><div class="ct"><input type="number" id="m${n}" min="0" max="500"><button class="sb" id="mk${n}">اعمال</button></div></div>
 <input type="range" id="r${n}" min="0" max="500" step="1" value="0">
-<div class="ms"><div><span class="lb">duty</span><b class="n" id="md${n}">—</b></div><div><span class="lb">جریان اولیه</span><b class="n" id="mi${n}">—</b></div><div><span class="lb">تخمین باتری</span><b class="n" id="me${n}">—</b></div><div><span class="lb">ولتاژ کانال</span><b class="n" id="mv${n}">—</b></div><div><span class="lb">سقف</span><b class="n" id="mc${n}">—</b></div></div><button class="bt rm gb" id="rm${n}">مسلح‌سازی مجدد (ارسال دوبارهٔ duty)</button></div>`;}).join('');
+<div class="ms"><div><span class="lb">duty</span><b class="n" id="md${n}">—</b></div><div><span class="lb">جریان اولیه</span><b class="n" id="mi${n}">—</b></div><div><span class="lb">تخمین باتری</span><b class="n" id="me${n}">—</b></div><div><span class="lb">ولتاژ کانال</span><b class="n" id="mv${n}">—</b></div><div><span class="lb">سقف</span><b class="n" id="mc${n}">—</b></div></div><button class="bt rm" id="rm${n}">اعمال مجدد duty</button></div>`;}).join('');
 [1,2].forEach(n=>{const id=14+2*n,r=$('r'+n),m=$('m'+n);
  r.oninput=()=>m.value=r.value;r.onchange=()=>send(id,r.value);
  $('mk'+n).onclick=()=>{const v=Math.round(+m.value);if(m.value===''||isNaN(v))return;send(id,Math.max(0,Math.min(+r.max,v)));m.blur();};
@@ -295,8 +294,9 @@ $('s19').onclick=()=>{if(!D)return;const on=(D.fl&32)||D.p[19]===1;
  if(!on&&!confirm('شارژر خودکار و همهٔ محافظت‌های باتری متوقف می‌شوند و duty را خودتان تعیین می‌کنید. ادامه؟'))return;send(19,on?0:1);};
 $('ao').onclick=()=>{send(16,0);send(18,0);};
 /* مسلح‌سازی مجدد بعد از تریپ JIT: همان duty اعمال‌شده دوباره فرستاده می‌شود (بخش 5.2) */
+/* اعمال مجدد: مقدار فعلی پارامتر ۱۶/۱۸ دوباره فرستاده می‌شود؛ بعد از تریپ JIT (وضعیت ۵) همین کار کانال را مسلح می‌کند */
 [1,2].forEach(n=>$('rm'+n).onclick=()=>{const id=14+2*n,v=D&&D.p[id];if(v==null)return;
- if(!confirm('کانال '+n+' با duty '+v+'‰ دوباره مسلح شود؟\nسومین تریپ JIT = خطای نهایی (فقط با ری‌استارت برد پاک می‌شود).'))return;send(id,v);});
+ if(D.t[(n-1)*7+6]===5&&!confirm('کانال '+n+' با duty '+v+'‰ دوباره مسلح شود؟\nسومین تریپ JIT = خطای نهایی (فقط با ری‌استارت برد پاک می‌شود).'))return;send(id,v);});
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=+b.dataset.t;document.querySelectorAll('nav button,section').forEach(x=>x.classList.remove('a'));b.classList.add('a');$('t'+tab).classList.add('a');chart();});
 
 /* ---------- به‌روزرسانی ---------- */
@@ -336,7 +336,7 @@ function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;
   const lim=Math.min(500,ce==null?500:ce),r=$('r'+n),m=$('m'+n),dv=p[14+2*n];r.max=lim;m.max=lim;
   if(dv!=null&&document.activeElement!==r&&document.activeElement!==m&&!(d.q&(1<<(14+2*n)))){r.value=dv;}
   let tag=ST[s]||'#'+s,cl=SC[s]||'';if(cv>=15000&&man){tag='قطع ۱۵V';cl='r';}const jit=man&&s===5&&en!==0;if(jit){tag='تریپ JIT — مسلح‌سازی لازم است';cl='r';}if(s===7){tag='خطای نهایی — فقط ری‌استارت برد';cl='r';}if(en===0){tag='کانال قطع';cl='r';}
-  $('rm'+n).classList.toggle('v',jit);
+  const rb=$('rm'+n);rb.classList.toggle('j',jit);rb.disabled=!man||dv==null;rb.innerHTML=(jit?'مسلح‌سازی · ':'')+'اعمال مجدد duty'+(dv==null?'':' <span class="n">'+dv+'‰</span>');
   $('ms'+n).textContent=tag;$('ms'+n).className='tg '+cl;
   $('md'+n).textContent=pc(t[b+5]);$('mi'+n).textContent=t[b+3]+' mA';$('me'+n).textContent=t[b+4]+' mA';
   $('mv'+n).textContent=v2(cv)+' V';$('mc'+n).textContent=pc(lim);
@@ -875,16 +875,16 @@ static void func__Esp_PumpTx(void)
         }
     }
 
-    /* [EN] Manual-mode keepalive: only while a browser is polling (dead-man stays meaningful).
-       [FA] keepalive مود دستی: فقط وقتی مرورگر در حال خواندن است (dead-man معنادار می‌ماند). */
+    /* [EN] Manual-mode keepalive: every ESP_LINK_KEEPALIVE_MS while manual is active (b5 or param 19),
+            whether or not a browser is polling (spec 5.2: from every tab and in the background).
+       [FA] keepalive مود دستی: هر ESP_LINK_KEEPALIVE_MS تا وقتی مود دستی فعال است (b5 یا پارامتر ۱۹)،
+            چه مرورگری poll کند چه نه (بخش 5.2 سند: از هر تب و در پس‌زمینه). */
     bool bool__flagManual = ((UINT8_T__G__TlmFlags & ESP_TLM_FLAG_MANUAL_MODE) != 0u);
     bool bool__paramManual = BOOL__G__ParamKnown[ESP_PARAM_MANUAL_TEST_MODE] &&
                              (UINT32_T__G__ParamApplied[ESP_PARAM_MANUAL_TEST_MODE] != 0u);
     bool bool__manualActive = bool__flagManual || bool__paramManual;
-    uint32_t uint32_t__browserAgeMs = uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs;
-    bool bool__browserFresh = BOOL__G__BrowserSeen && (uint32_t__browserAgeMs <= ESP_LINK_BROWSER_FRESH_MS);
     uint32_t uint32_t__keepaliveAgeMs = uint32_t__nowMs - UINT32_T__G__LastKeepaliveMs;
-    if (bool__manualActive && bool__browserFresh && (uint32_t__keepaliveAgeMs >= ESP_LINK_KEEPALIVE_MS))
+    if (bool__manualActive && (uint32_t__keepaliveAgeMs >= ESP_LINK_KEEPALIVE_MS))
     {
         BOOL__G__TxGetPending = true;
     }
@@ -1108,9 +1108,6 @@ static void func__Esp_HttpTelemetry(void)
     uint32_t uint32_t__keepaliveAgeMs = uint32_t__nowMs - UINT32_T__G__LastKeepaliveMs;
     uint8_t uint8_t__index;
     size_t size_t__used;
-
-    UINT32_T__G__LastBrowserPollMs = uint32_t__nowMs;
-    BOOL__G__BrowserSeen = true;
 
     for (uint8_t__index = 0u; uint8_t__index < ESP_PARAM_COUNT; uint8_t__index++)
     {
