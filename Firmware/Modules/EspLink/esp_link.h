@@ -33,7 +33,11 @@
 #define ESPLINK_SOF_BYTE1             0x55u
 #define ESPLINK_FRAME_HEADER_SIZE     4u   /* SOF0 + SOF1 + type + len / بدون payload و xor */
 #define ESPLINK_FRAME_CHECKSUM_SIZE   1u
-#define ESPLINK_FRAME_MAX_PAYLOAD     96u
+/* [EN] 112 since protocol v1.2 (user order 2026-09-23): the 20th parameter
+ *      grew PARAMS_BULK to 1 + 20 x 5 = 101 payload bytes. / [FA] از
+ *      پروتکل v1.2 (دستور کاربر): پارامتر بیستم PARAMS_BULK را به
+ *      1 + 20 × 5 = ۱۰۱ بایت payload رساند. */
+#define ESPLINK_FRAME_MAX_PAYLOAD     112u
 
 /* [EN] Message types. ESP -> STM: SET_PARAM / GET_PARAMS. STM -> ESP:
  *      TLM_LIVE (periodic), PARAM_REPORT (after each SET), PARAMS_BULK
@@ -82,7 +86,17 @@
 #define ESPLINK_PARAM_CHG1_DUTY_FIXED_VAL  16u  /* u32, permille, def 0,    0..500    */
 #define ESPLINK_PARAM_CHG2_DUTY_FIXED_ON   17u  /* u32, 0/1,      def 0                */
 #define ESPLINK_PARAM_CHG2_DUTY_FIXED_VAL  18u  /* u32, permille, def 0,    0..500    */
-#define ESPLINK_PARAM_COUNT                19u
+/* [EN] v1.2 global manual test mode (user order 2026-09-23): 1 = the
+ *      automatic charger is suspended, every battery condition bypassed
+ *      and each channel driven directly at param 16/18; see
+ *      ESP_AGENT_SPEC.md section 5.2 for the full contract (hardware
+ *      floor, JIT re-arm, 3 s link dead-man). / [FA] مود تست دستی سراسری
+ *      v1.2 (دستور کاربر): ۱ = شارژر خودکار تعلیق، شرط‌های باتری رد و
+ *      درایو مستقیم هر کانال با پارامتر ۱۶/۱۸؛ قرارداد کامل در
+ *      ESP_AGENT_SPEC.md بخش 5.2 (کف سخت‌افزاری، re-arm ی JIT، ددمن ۳
+ *      ثانیه‌ای لینک). */
+#define ESPLINK_PARAM_MANUAL_TEST_MODE     19u  /* u32, 0/1,      def 0                */
+#define ESPLINK_PARAM_COUNT                20u
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 
@@ -90,7 +104,8 @@
  *        0  u16 sequence (wraps)
  *        2  u8  flags: b0 snapshot valid, b1 input present, b2 meas data
  *                      valid, b3 charger-1 ESP enable, b4 charger-2 ESP
- *                      enable, b5..b7 reserved 0
+ *                      enable, b5 manual test mode active (v1.2),
+ *                      b6..b7 reserved 0
  *        3  u8  reserved 0
  *        4  u32 raw1_counts        8 u32 shunt1_uv        12 u32 ma1_unfiltered
  *       16  u32 i1_filtered_ma    20 u32 iest1_ma         24 u32 duty1_permille
@@ -101,7 +116,8 @@
  *       76  u32 v_bat_high_mv     80 u32 fault_mask
  *      Channel 1 = Trans1 / upper battery, channel 2 = Trans2 / lower
  *      battery. Charger states: 0 OFF, 1 BULK, 2 ABSORB, 3 FLOAT, 4 BRINGUP,
- *      5 JIT_RETRY_WAIT, 6 INPUT_WAIT, 7 FINAL_FAULT, 8 BAT_LOST.
+ *      5 JIT_RETRY_WAIT, 6 INPUT_WAIT, 7 FINAL_FAULT, 8 BAT_LOST,
+ *      9 MANUAL (v1.2).
  * [FA] payload ی TLM_LIVE (۸۴ بایت، اندیان کوچک): ترتیب فیلدها مثل جدول
  *      بالا؛ کانال ۱ = Trans1 / باتری بالا و کانال ۲ = Trans2 / باتری
  *      پایین. وضعیت شارژر: 0 OFF تا 8 BAT_LOST. */

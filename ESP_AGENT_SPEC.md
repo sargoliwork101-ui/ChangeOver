@@ -4,9 +4,9 @@
 > سمت STM32 کامل و push شده است؛ فقط فعال‌سازی نهایی `MODULE_ESP` مانده (پایین را ببینید).
 > متن فنی عمداً انگلیسی است تا هیچ ابهامی در پروتکل نماند.
 >
-> v1.2 (2026-09-23): manual test mode specified (ID 19, section 5.2) — the
-> firmware side is the next STM32 task and NOT in the pushed build yet
-> (see section 9). The panel can be built against this spec already.
+> v1.2 (2026-09-23): manual test mode (ID 19, section 5.2) — the STM32
+> side is IMPLEMENTED and pushed (param 19, state 9, flags b5, dead-man,
+> payload 112). Only the final `MODULE_ESP = 1` flip is left (section 9).
 
 ---
 
@@ -15,11 +15,10 @@
 - Binary command protocol + periodic telemetry over **USART1, 921600 8N1**.
 - DMA transport in both directions on the STM32 (circular 256-byte RX ring,
   zero CPU per byte; DMA-drained TX ring) - user order 2026-09-23.
-- 19 runtime parameters in the pushed build (current-chain calibration,
-  voltage offsets, current-filter sizes, per-channel flyback efficiency,
-  per-channel charger enable/cut, per-channel PWM duty ceiling and
-  fixed-duty mode). v1.2 appends ID 19 (manual test mode, section 5.2)
-  as the 20th parameter.
+- 20 runtime parameters (current-chain calibration, voltage offsets,
+  current-filter sizes, per-channel flyback efficiency, per-channel
+  charger enable/cut, per-channel PWM duty ceiling, fixed-duty mode, and
+  the v1.2 global manual test mode - ID 19, section 5.2).
 - Charger module cut/reconnect commands (param IDs 11/12).
 - All parameter values are **clamped** by the STM32; the reply always returns
   the **actually applied** value.
@@ -395,14 +394,14 @@ repo rule-check (`tools/check_ai_rules.sh`) currently requires it. Flipping
 it to `1` (one line) activates TaskComm → EspLink_Init → ESP power +
 protocol. That flip is intentionally left to the project owner.
 
-**v1.2 firmware status (2026-09-23):** manual test mode (ID 19, section
-5.2), the state-9/flags-b5 telemetry additions, the 3 s dead-man and the
-payload limit 112 are SPECIFIED but NOT yet in the pushed firmware - they
-are the next STM32 task. Until that lands: ID 19 is silently ignored,
-PARAMS_BULK still carries 19 params at payload 96, and the parser still
-rejects len > 96. The ESP side can be built and tested against v1.1 now;
-the v1.2 additions are additive and will light up with the firmware
-update.
+**v1.2 firmware status (2026-09-23): IMPLEMENTED and pushed.** Manual
+test mode (ID 19, section 5.2), charger state 9 = MANUAL, TLM flags bit
+5, the 3 s link dead-man with manual JIT re-arm, the 15.0 V manual
+overvoltage cutoff, the frozen battery-lost detection during manual, and
+the payload limit 112 (PARAMS_BULK = 20 params / 101 payload bytes) are
+all in the firmware. The ESP-side constraints that come with it are
+documented in `Firmware/Modules/EspLink/README.md` - most importantly the
+1 s keepalive while ID 19 = 1.
 
 ## 10. Protocol version
 
@@ -416,7 +415,7 @@ tab requirement. Also (same day, second order): the conversion formulas
 (current chain, Iest, voltage chain - section 5.3) must be displayed in
 the panel UI, and the section 5.1 rows now carry them. Max payload
 96 -> 112 bytes (PARAMS_BULK = 101 payload bytes with 20 params). The
-STM32 side of v1.2 is specified but not yet implemented - see section 9.
+STM32 side of v1.2 is implemented and pushed the same day - see section 9.
 
 v1.1 (2026-09-22, same day as v1 and BEFORE any ESP-side implementation
 existed — the v1.1 IDs are the final ones). Changes vs v1: filter switches

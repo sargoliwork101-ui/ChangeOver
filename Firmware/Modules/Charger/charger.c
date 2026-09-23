@@ -46,7 +46,8 @@ typedef enum
     CHG_STATE_JIT_RETRY_WAIT,
     CHG_STATE_INPUT_WAIT,
     CHG_STATE_FINAL_FAULT,
-    CHG_STATE_BAT_LOST   /* [EN] battery wire cut during charge (fault bit latched) / باتری حین شارژ قطع شده */
+    CHG_STATE_BAT_LOST,  /* [EN] battery wire cut during charge (fault bit latched) / باتری حین شارژ قطع شده */
+    CHG_STATE_MANUAL     /* [EN] manual test mode owns this channel: duty driven from the panel, battery gates bypassed / مود تست دستی مالک کانال: duty از پنل، گیت‌های باتری رد شده‌اند */
 } charger_state_t;
 
 typedef struct
@@ -145,6 +146,27 @@ static volatile uint32_t UINT32_T__G__ChargerDutyCeilingPermille[2] =
 static volatile bool BOOL__G__ChargerDutyFixedEnable[2] = {false, false};
 static volatile uint32_t UINT32_T__G__ChargerDutyFixedPermille[2] = {0u, 0u};
 
+/* [EN] Manual test mode state (user order 2026-09-23, protocol v1.2
+ *      param 19). Requested is written by the ESP link task; Active is
+ *      owned by the charger task and flips in func__Charger_Evaluate,
+ *      where every enter/exit action runs in the charger context. The
+ *      link stamp feeds the CHG_MANUAL_WATCHDOG_MS dead-man and is
+ *      refreshed by every valid ESP frame. RearmRequest is the manual
+ *      JIT re-arm signal: a fresh duty write while parked re-arms the
+ *      channel (the write itself happens in the ESP task, the charger
+ *      task consumes the request).
+ * [FA] وضعیت مود تست دستی (دستور کاربر ۲۰۲۶-۰۹-۲۳، پارامتر ۱۹ v1.2).
+ *      Requested را تسک ESP می‌نویسد؛ Active مالکش تسک شارژر است و در
+ *      Evaluate برمی‌گردد جایی که همهٔ عملیات ورود/خروج در زمینهٔ شارژر
+ *      اجرا می‌شود. مهرِ لینک ددمنِ CHG_MANUAL_WATCHDOG_MS را غذا می‌دهد و
+ *      هر فریم معتبر ESP آن را تازه می‌کند. RearmRequest سیگنال re-arm ی
+ *      JIT دستی است: نوشتنِ دوبارهٔ duty در حالت پارک کانال را مسلح
+ *      می‌کند (نوشتن در تسک ESP، مصرف درخواست در تسک شارژر). */
+static volatile bool BOOL__G__ChargerManualModeRequested = false;
+static volatile bool BOOL__G__ChargerManualModeActive = false;
+static volatile uint32_t UINT32_T__G__ManualLastLinkTick = 0u;
+static volatile bool BOOL__G__ChargerManualRearmRequest[2] = {false, false};
+
 static bool BOOL__G__ChargerInitialized;
 static bool BOOL__G__RelayOpen;
 static uint32_t UINT32_T__G__RelaySettleDeadline;
@@ -156,6 +178,10 @@ static uint8_t UINT8_T__G__RetryChannel;
 static bsp_pwm_channel_t func__Charger_PwmChannel(uint8_t uint8_t__channelIndex);
 static void func__Charger_ClearAbsorbWindow(
     charger_channel_state_t *charger_channel_state_t__channel);
+static void func__Charger_EnterManualTestMode(uint32_t uint32_t__nowTick);
+static void func__Charger_ExitManualTestMode(void);
+static void func__Charger_ManualDriveChannel(uint8_t uint8_t__channelIndex,
+                                             const measurement_snapshot_t *measurement_snapshot_t__snap);
 
 /* ==================== Safe hardware policy / سیاست سخت‌افزاری امن ==================== */
 
@@ -567,17 +593,33 @@ static void func__Charger_HandleJitTrip(uint8_t uint8_t__channelIndex,
     charger_channel_state_t__channel->uint16_t__dutyBeforeTripPermille =
         uint16_t__dutyBeforeTripPermille;
     charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_JIT_RETRY_WAIT;
-    charger_channel_state_t__channel->uint32_t__retryDeadlineTick =
-        uint32_t__nowTick + func__Charger_DurationTicks(CHG_JIT_LOCKOUT_MS);
-    /* [EN] Take the revive pointer only if it is free; while the rival is
-       retrying this channel simply queues in JIT_RETRY_WAIT and the adopt-
-       scan in ServiceRetry picks it up next - no pointer stomping, strict
-       first-tripped-first-revived order.
-       [FA] اشاره‌گر احیا فقط اگر آزاد است گرفته می‌شود؛ وگرنه کانال در صف
-       می‌ماند تا اسکن ServiceRetry بردارد - ترتیب احیا حفظ می‌شود. */
-    if (UINT8_T__G__RetryChannel == CHG_NO_CHANNEL)
+    if (BOOL__G__ChargerManualModeActive != false)
     {
-        UINT8_T__G__RetryChannel = uint8_t__channelIndex;
+        /* [EN] Manual test mode: the hardware cut stands, but there is NO
+           auto-retry and no revive queue - the human re-sends the duty
+           value (param 16/18) to re-arm the channel. The trip count still
+           accumulates, so the 3rd trip latches FINAL_FAULT exactly like in
+           the automatic mode.
+           [FA] مود تست دستی: قطع سخت‌افزاری می‌ماند اما هیچ ریتری خودکار و
+           صف احیایی نیست - کاربر برای مسلح‌کردن دوباره، مقدار duty
+           (پارامتر ۱۶/۱۸) را دوباره می‌فرستد. شمارش تریپ جمع می‌شود، پس
+           سومین تریپ دقیقاً مثل مود خودکار FINAL_FAULT را قفل می‌کند. */
+        charger_channel_state_t__channel->uint32_t__retryDeadlineTick = 0u;
+    }
+    else
+    {
+        charger_channel_state_t__channel->uint32_t__retryDeadlineTick =
+            uint32_t__nowTick + func__Charger_DurationTicks(CHG_JIT_LOCKOUT_MS);
+        /* [EN] Take the revive pointer only if it is free; while the rival is
+           retrying this channel simply queues in JIT_RETRY_WAIT and the adopt-
+           scan in ServiceRetry picks it up next - no pointer stomping, strict
+           first-tripped-first-revived order.
+           [FA] اشاره‌گر احیا فقط اگر آزاد است گرفته می‌شود؛ وگرنه کانال در صف
+           می‌ماند تا اسکن ServiceRetry بردارد - ترتیب احیا حفظ می‌شود. */
+        if (UINT8_T__G__RetryChannel == CHG_NO_CHANNEL)
+        {
+            UINT8_T__G__RetryChannel = uint8_t__channelIndex;
+        }
     }
 }
 
@@ -1379,6 +1421,137 @@ void func__Charger_Init(void)
     func__Charger_SafeIdle();
 }
 
+/* ==================== Manual test mode helpers / هلپرهای مود تست دستی ==================== */
+
+/**
+ * @brief  [EN] Adopt the manual test mode: stamp the link dead-man and
+ *              clear the battery-lost fault bit so its alarm cannot fire
+ *              while bench testing (fault.c freezes the detection while
+ *              the mode is active). The channel drive happens in the same
+ *              Evaluate pass below.
+ *         [FA] مود تست دستی را برمی‌دارد: مهر ددمنِ لینک و پاک‌کردن بیت
+ *              خطای قطع باتری تا آلارمش حین تست بنچ نیفتد (fault.c تا
+ *              وقتی مود فعال است تشخیص را فریز می‌کند). درایو کانال در
+ *              همان پاس Evaluate پایین‌تر انجام می‌شود.
+ * @param  uint32_t__nowTick [EN] Current kernel tick / تیک فعلی هسته
+ */
+static void func__Charger_EnterManualTestMode(uint32_t uint32_t__nowTick)
+{
+    BOOL__G__ChargerManualModeActive = true;
+    UINT32_T__G__ManualLastLinkTick = uint32_t__nowTick;
+
+#if MODULE_FAULT
+    func__Fault_Clear(FAULT_CHARGER_BAT_LOST);
+#endif
+}
+
+/**
+ * @brief  [EN] Leave the manual test mode (panel off-switch or link
+ *              dead-man): both duties drop to 0 and every channel
+ *              restarts the AUTONOMOUS charger from OFF with fresh
+ *              bookkeeping (the 15 s connection settle applies again).
+ *              A latched FINAL_FAULT is never released here; the JIT trip
+ *              latches of parked channels are cleared so the comparator
+ *              can fire again.
+ *         [FA] خروج از مود تست دستی (کلید خاموش پنل یا ددمن لینک): هر
+ *              دو duty صفر و هر کانال شارژر خودکار را از OFF با دفترچهٔ
+ *              تمیز ری‌استارت می‌کند (ثبات ۱۵ ثانیه‌ای دوباره اعمال
+ *              می‌شود). قفل FINAL_FAULT هرگز اینجا آزاد نمی‌شود؛ لچ‌های
+ *              تریپ JIT کانال‌های پارک‌شده پاک می‌شوند تا کمپریتور
+ *              دوباره بتواند شلیک کند.
+ */
+static void func__Charger_ExitManualTestMode(void)
+{
+    uint8_t uint8_t__channelIndex;
+    charger_channel_state_t *charger_channel_state_t__channel;
+
+    BOOL__G__ChargerManualModeRequested = false;
+    BOOL__G__ChargerManualModeActive = false;
+
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    {
+        charger_channel_state_t__channel =
+            &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
+
+#if MODULE_JITTER
+        if (charger_channel_state_t__channel->charger_state_t__state ==
+            CHG_STATE_JIT_RETRY_WAIT)
+        {
+            func__Jitter_ClearChannel((uint8_t)(uint8_t__channelIndex + 1u));
+        }
+#endif
+
+        if (charger_channel_state_t__channel->charger_state_t__state !=
+            CHG_STATE_FINAL_FAULT)
+        {
+            charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_OFF;
+        }
+
+        func__Charger_StopOneChannel(uint8_t__channelIndex);
+        func__Charger_ClearAbsorbWindow(charger_channel_state_t__channel);
+        charger_channel_state_t__channel->uint32_t__retryDeadlineTick = 0u;
+        charger_channel_state_t__channel->uint32_t__lastDutyStepTick = 0u;
+        charger_channel_state_t__channel->uint32_t__stableFromTick = 0u;
+        charger_channel_state_t__channel->uint8_t__jitTripCount = 0u;
+        charger_channel_state_t__channel->uint16_t__dutyBeforeTripPermille = 0u;
+        BOOL__G__ChargerManualRearmRequest[uint8_t__channelIndex] = false;
+    }
+
+    UINT8_T__G__RetryChannel = CHG_NO_CHANNEL;
+}
+
+/**
+ * @brief  [EN] Drive one channel in manual test mode: the commanded duty
+ *              (the stored fixed-duty value, param 16/18) is applied
+ *              directly - no ramp, no regulation loop, no battery gates.
+ *              The hardware floor stays: the ESP channel cut forces 0,
+ *              the 15.0 V hard overvoltage cutoff (CHG_MAX_VALID_BATTERY_MV)
+ *              forces 0 until the voltage falls back, and ApplyDuty clamps
+ *              to min(compile max, runtime ceiling). State shows MANUAL.
+ *         [FA] درایو یک کانال در مود تست دستی: duty فرمان‌شده (مقدار فیکس
+ *              ذخیره‌شده، پارامتر ۱۶/۱۸) مستقیم اعمال می‌شود - بدون رمپ،
+ *              بدون حلقهٔ تنظیم، بدون گیت باتری. کف سخت‌افزاری می‌ماند:
+ *              قطع ESP کانال → صفر، قطع سخت ۱۵٫۰V (CHG_MAX_VALID_BATTERY_MV)
+ *              → صفر تا افت ولتاژ، و ApplyDuty به کمینهٔ سقف کامپایل و سقف
+ *              زمان اجرا گیره می‌زند. وضعیت MANUAL نشان داده می‌شود.
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @param  measurement_snapshot_t__snap [EN] Snapshot / نمونه
+ */
+static void func__Charger_ManualDriveChannel(uint8_t uint8_t__channelIndex,
+                                             const measurement_snapshot_t *measurement_snapshot_t__snap)
+{
+    charger_channel_state_t *charger_channel_state_t__channel;
+
+    charger_channel_state_t__channel =
+        &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
+    charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_MANUAL;
+
+    /* [EN] ESP channel cut (param 11/12): duty 0, the state stays MANUAL.
+       [FA] قطع ESP کانال (پارامتر ۱۱/۱۲): duty صفر، وضعیت MANUAL می‌ماند. */
+    if (BOOL__G__ChargerEspEnableCh[uint8_t__channelIndex] == false)
+    {
+        func__Charger_ApplyDuty(uint8_t__channelIndex, 0u);
+        return;
+    }
+
+    /* [EN] Hard overvoltage floor: with regulation off and no battery
+       clamping the output, stop switching at 15.0 V and resume by itself
+       once the voltage is back below it (protocol v1.2, section 5.2).
+       [FA] کف سخت اضافه‌ولتاژ: با تنظیمِ خاموش و باتری‌ای که ولتاژ را
+       نگه ندارد، سوئیچینگ در ۱۵٫۰V متوقف و با افت زیرش خودکار ادامه
+       می‌یابد (پروتکل v1.2، بخش 5.2). */
+    if (func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,
+                                       uint8_t__channelIndex) >= CHG_MAX_VALID_BATTERY_MV)
+    {
+        func__Charger_ApplyDuty(uint8_t__channelIndex, 0u);
+        return;
+    }
+
+    func__Charger_ApplyDuty(
+        uint8_t__channelIndex,
+        (uint16_t)UINT32_T__G__ChargerDutyFixedPermille[uint8_t__channelIndex]);
+}
+
 /* ==================== Charger_Evaluate ==================== */
 /**
  * @brief  [EN] Refresh the live diag array and the calibration worksheet
@@ -1528,6 +1701,46 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     }
 
     uint32_t__nowTick = osKernelGetTickCount();
+
+    /* [EN] Manual test mode transitions (user order 2026-09-23, protocol
+       v1.2 param 19): the ESP link task only writes the REQUEST; every
+       enter/exit action runs here in the charger context, so no PWM or
+       state write ever races between tasks. Entering also clears the
+       battery-lost bit BEFORE the mirror below so a pre-latched alarm
+       cannot hold the channels hostage during a bench session (fault.c
+       freezes the detection while the mode is active).
+       [FA] گذارهای مود تست دستی (دستور کاربر ۲۰۲۶-۰۹-۲۳، پارامتر ۱۹
+       v1.2): تسک ESP فقط «درخواست» را می‌نویسد؛ همهٔ عملیات ورود/خروج
+       اینجا در زمینهٔ شارژر اجرا می‌شود تا هیچ نوشتنِ PWM یا وضعیتی بین
+       تسک‌ها مسابقه نکند. ورود، بیت قطع باتری را قبل از آینهٔ پایین پاک
+       می‌کند تا آلارمِ از قبل قفل‌شده کانال‌ها را گروگان نگیرد (fault.c
+       تا وقتی مود فعال است تشخیص را فریز می‌کند). */
+    if (BOOL__G__ChargerManualModeRequested != BOOL__G__ChargerManualModeActive)
+    {
+        if (BOOL__G__ChargerManualModeRequested != false)
+        {
+            func__Charger_EnterManualTestMode(uint32_t__nowTick);
+        }
+        else
+        {
+            func__Charger_ExitManualTestMode();
+        }
+    }
+
+    /* [EN] Link dead-man: while the mode is active the panel must keep the
+       link alive; 3 s of silence (CHG_MANUAL_WATCHDOG_MS) drops both duties
+       to 0 and returns the charger to autonomous operation.
+       [FA] ددمنِ لینک: تا وقتی مود فعال است پنل باید لینک را زنده نگه
+       دارد؛ ۳ ثانیه سکوت (CHG_MANUAL_WATCHDOG_MS) هر دو duty را صفر و
+       شارژر را به حالت خودکار برمی‌گرداند. */
+    if ((BOOL__G__ChargerManualModeActive != false) &&
+        (func__Charger_DeadlineElapsed(
+             uint32_t__nowTick,
+             UINT32_T__G__ManualLastLinkTick +
+                 func__Charger_DurationTicks(CHG_MANUAL_WATCHDOG_MS)) != false))
+    {
+        func__Charger_ExitManualTestMode();
+    }
 
 #if MODULE_FAULT
     /* [EN] Battery-lost mirror (detection and clear timing live in the Fault
@@ -1718,7 +1931,14 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     }
 #endif
 
-    func__Charger_ServiceRetry(uint32_t__nowTick);
+    /* [EN] No automatic JIT revival in manual test mode: a parked channel
+       waits for the human to re-send its duty value.
+       [FA] در مود تست دستی احیای خودکار JIT نیست: کانال پارک‌شده منتظر
+       فرستادن دوبارهٔ duty توسط کاربر می‌ماند. */
+    if (BOOL__G__ChargerManualModeActive == false)
+    {
+        func__Charger_ServiceRetry(uint32_t__nowTick);
+    }
 
     if (BOOL__G__RelayOpen == true)
     {
@@ -1751,10 +1971,47 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
             if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
                 CHG_STATE_JIT_RETRY_WAIT)
             {
-                continue;
+                if ((BOOL__G__ChargerManualModeActive != false) &&
+                    (BOOL__G__ChargerManualRearmRequest[uint8_t__channelIndex] != false))
+                {
+                    /* [EN] Manual JIT re-arm (protocol v1.2 section 5.2): a
+                       fresh duty write is the re-arm gesture - clear the park
+                       and the trip latch, then the manual drive below applies
+                       the commanded duty in this same pass. The trip COUNT is
+                       untouched, so the 3rd trip still latches FINAL_FAULT.
+                       [FA] مسلح‌کردن دوبارهٔ JIT در مود دستی (بخش 5.2 ی
+                       v1.2): نوشتن دوبارهٔ duty یعنی re-arm - پارک و لچ
+                       تریپ پاک می‌شوند و درایو دستی پایین همان پاس duty
+                       فرمان‌شده را اعمال می‌کند. شمارش تریپ دست نمی‌خورد،
+                       پس سومین تریپ همچنان FINAL_FAULT را قفل می‌کند. */
+                    BOOL__G__ChargerManualRearmRequest[uint8_t__channelIndex] = false;
+                    CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__retryDeadlineTick = 0u;
+                    if (UINT8_T__G__RetryChannel == uint8_t__channelIndex)
+                    {
+                        UINT8_T__G__RetryChannel = CHG_NO_CHANNEL;
+                    }
+#if MODULE_JITTER
+                    func__Jitter_ClearChannel((uint8_t)(uint8_t__channelIndex + 1u));
+#endif
+                    CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
+                        CHG_STATE_MANUAL;
+                }
+                else
+                {
+                    continue;
+                }
             }
 
-            if ((CHG_TRANSFORMER_KNOWN == 0u) && (CHG_BRINGUP_TEST_ENABLE != 0u))
+            if (BOOL__G__ChargerManualModeActive != false)
+            {
+                /* [EN] Manual test mode owns the channel: commanded duty,
+                   battery gates bypassed, hardware floor only.
+                   [FA] مود تست دستی مالک کانال است: duty فرمان‌شده، گیت‌های
+                   باتری رد شده، فقط کف سخت‌افزاری. */
+                func__Charger_ManualDriveChannel(uint8_t__channelIndex,
+                                                 measurement_snapshot_t__snap);
+            }
+            else if ((CHG_TRANSFORMER_KNOWN == 0u) && (CHG_BRINGUP_TEST_ENABLE != 0u))
             {
                 func__Charger_BringupRegulateChannel(uint8_t__channelIndex,
                                                      measurement_snapshot_t__snap);
@@ -1911,6 +2168,28 @@ bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex)
     return true;
 }
 
+/* ==================== Manual test mode API / API مود تست دستی ==================== */
+
+void func__Charger_SetManualTestMode(bool bool__enable)
+{
+    BOOL__G__ChargerManualModeRequested = (bool__enable != false);
+}
+
+bool func__Charger_GetManualTestMode(void)
+{
+    return BOOL__G__ChargerManualModeRequested;
+}
+
+bool func__Charger_IsManualTestModeActive(void)
+{
+    return BOOL__G__ChargerManualModeActive;
+}
+
+void func__Charger_NotifyEspLinkActivity(void)
+{
+    UINT32_T__G__ManualLastLinkTick = osKernelGetTickCount();
+}
+
 /**
  * @brief  [EN] Set the runtime PWM duty ceiling of one channel, clamped to
  *              0..CHG_DUTY_MAX_PERMILLE. Every applied duty (ramp,
@@ -2026,6 +2305,16 @@ uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
     {
         UINT32_T__G__ChargerDutyFixedPermille[uint8_t__channelIndex] =
             uint32_t__dutyPermille;
+        if (BOOL__G__ChargerManualModeActive != false)
+        {
+            /* [EN] Manual test mode: a fresh duty write is the re-arm
+               gesture for a JIT-parked channel (protocol v1.2, section
+               5.2); the charger task consumes the request.
+               [FA] مود تست دستی: نوشتن دوبارهٔ duty حرکتِ مسلح‌کردنِ
+               کانالِ پارک‌شده در JIT است (پروتکل v1.2 بخش 5.2)؛ تسک
+               شارژر درخواست را مصرف می‌کند. */
+            BOOL__G__ChargerManualRearmRequest[uint8_t__channelIndex] = true;
+        }
     }
 
     return uint32_t__dutyPermille;
