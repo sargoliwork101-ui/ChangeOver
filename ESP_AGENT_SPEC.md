@@ -221,10 +221,14 @@ The panel MUST send a keepalive (e.g. GET_PARAMS) every **1 s** while
 manual mode is on, from every tab and in the background. On watchdog
 expiry the STM32 sets both duties to 0, exits manual mode and returns to
 the autonomous charger. Rationale: a crashed browser or a closed tab must
-never leave a battery connected to an unregulated fixed duty. Note: a
-throttled background browser tab stops the keepalive and the STM exits
-manual mode within 3 s - that is by design; if nobody is watching the
-bench, the drive stops.
+never leave a battery connected to an unregulated fixed duty. Panel
+behavior as shipped (2026-09-23): a throttled desktop background tab
+still polls about once per second, so the keepalive continues; a fully
+closed or frozen panel (e.g. phone screen off) actively sends ID 19 = 0
+after its own 10 s no-browser guard, so an absent operator never leaves
+an unregulated duty running. A periodic GET_PARAMS refresh (e.g. every
+30 s) is allowed and expected so the parameter table stays truthful even
+across an undetected STM32 reboot near the sequence wrap window.
 
 **State reporting while manual:** priority FINAL_FAULT (7) > JIT_RETRY_WAIT
 (5) > INPUT_WAIT (6) > MANUAL (9); with none of those active the state
@@ -377,9 +381,10 @@ raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
   - The keepalive (any frame, e.g. GET_PARAMS every 1 s) MUST keep running
     from every tab while ID 19 = 1 - the STM32 dead-man exits manual mode
     and zeroes both duties after 3 s of silence.
-  - Enabling ID 19 requires a confirmation dialog; leaving the manual tab
-    or closing the panel must NOT silently keep the mode on without the
-    keepalive (the STM32 dead-man covers the crash case).
+  - Enabling ID 19 requires a confirmation dialog. A background tab keeps
+    the keepalive running; a closed/frozen panel must end the mode itself
+    (as shipped: ID 19 = 0 after 10 s without a poll) - the STM32 dead-man
+    covers the crash case.
   - Show JIT trips, the 15 V cutoff and INPUT_WAIT prominently on the
     manual tab; a re-send of the duty re-arms after a JIT trip; FINAL_FAULT
     needs an STM32 reboot.

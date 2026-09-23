@@ -65,6 +65,7 @@
 #define ESP_LINK_TX_INTERVAL_MS     120u
 #define ESP_LINK_KEEPALIVE_MS       1000u
 #define ESP_LINK_BROWSER_LOST_MS    10000u
+#define ESP_LINK_PARAM_REFRESH_MS   30000u
 
 /* ==================== Message Types ==================== */
 #define ESP_MSG_SET_PARAM           0x01u
@@ -137,6 +138,7 @@ static uint32_t UINT32_T__G__LastTxMs = 0u;
 static uint32_t UINT32_T__G__LastKeepaliveMs = 0u;
 static uint32_t UINT32_T__G__LastBrowserPollMs = 0u;
 static bool     BOOL__G__BrowserSeen = false;
+static uint32_t UINT32_T__G__LastParamRefreshMs = 0u;
 
 /* [EN] Send priority: charger cut, manual mode, manual duties, then the rest.
    [FA] اولویت ارسال: قطع شارژر، مود دستی، duty دستی، سپس بقیه. */
@@ -148,7 +150,7 @@ static char CHAR__G__JsonBuffer[ESP_JSON_BUFFER_SIZE];
 
 /* ==================== Web Panel (PROGMEM) ==================== */
 static const char ESP_PANEL_HTML[] PROGMEM = R"HTML(<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>ChangeOver</title><link rel="stylesheet" href="/f.css"><style>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>ChangeOver</title><link rel="stylesheet" href="/f.css?v=2"><style>
 :root{--bg:#0b0e14;--cd:#121722;--ln:#1e2533;--tx:#e7eaf0;--mu:#8089a0;--ac:#4f8cff;--ok:#2ecc8f;--wa:#f5b942;--er:#ff5c6c}
 *{box-sizing:border-box;margin:0}
 body{background:var(--bg);color:var(--tx);font:14px/1.6 Vazirmatn,Tahoma,sans-serif;max-width:980px;margin:auto;padding:0 12px 24px}
@@ -277,9 +279,9 @@ document.querySelectorAll('#cs button').forEach(b=>b.onclick=()=>{CS=+b.dataset.
 function zero(n){const r=H[n-1].r.slice(-10);if(r.length<3)return alert('دادهٔ کافی نیست؛ چند ثانیه صبر کنید.');
  const avg=Math.round(r.reduce((a,b)=>a+b,0)/r.length),du=D.t[(n-1)*7+5];
  if(!confirm((du>0?'هشدار: duty کانال '+n+' صفر نیست و جریان جاری است!\n':'')+'آفست صفر کانال '+n+': '+nz(D.p[n-1])+' ← '+avg+' (میانگین '+r.length+' نمونهٔ raw)؟'))return;send(n-1,Math.min(255,Math.max(0,avg)));}
-function gain(n){const m=+$('ga'+n).value,cur=D&&D.t[(n-1)*7+3],g=D&&D.p[n+1];if(!(m>0))return;if(!(cur>0)||g==null)return alert('جریان فیلترشدهٔ کانال باید بیشتر از صفر باشد.');
+function gain(n){const m=+$('ga'+n).value,cur=D&&D.t[(n-1)*7+3],g=D&&D.p[n+1];if(!(m>0))return alert('جریان آمپرمتر را به mA وارد کنید (مثلاً 460).');if(!(cur>0)||g==null)return alert('جریان فیلترشدهٔ کانال باید بیشتر از صفر باشد.');
  const ng=Math.min(3000,Math.max(100,Math.round(g*m/cur)));if(confirm('گین کانال '+n+': '+g+' ← '+ng+' ‰\n(جریان اولیهٔ فیلترشده '+cur+' mA، آمپرمتر شنت اولیه '+m+' mA)')){send(n+1,ng);$('ga'+n).value='';}}
-function vcal(k){const R=VR[k],m=Math.round(+$('vm'+k).value*1000),shown=D&&D.t[R[1]],off=D&&D.p[R[2]];if(!(m>0)||off==null)return;
+function vcal(k){const R=VR[k],m=Math.round(+$('vm'+k).value*1000),shown=D&&D.t[R[1]],off=D&&D.p[R[2]];if(!(m>0))return alert('عدد مولتی‌متر را به ولت وارد کنید (مثلاً 13.05).');if(off==null)return;
  const no=Math.min(2000,Math.max(-2000,off+m-shown));if(confirm(R[0]+': آفست '+off+' ← '+no+' mV\n(نمایش '+v2(shown)+' V، مولتی‌متر '+v2(m)+' V)')){send(R[2],no);$('vm'+k).value='';}}
 /* نمودار زندهٔ فیلتر */
 function chart(){const c=$('cv');if(tab!=1)return;const w=c.clientWidth,h=c.clientHeight,dp=devicePixelRatio||1;if(!w)return;
@@ -919,6 +921,24 @@ static void func__Esp_PumpTx(void)
         return;
     }
 
+    /* [EN] Periodic parameter refresh: the seq-restart detector is blind while the
+            sequence counter sits in its wrap window (0xFF00..0xFFFF), so a board reboot
+            inside that ~26 s window (once per ~109 min) would leave the applied-value
+            table stale forever. One GET_PARAMS every ESP_LINK_PARAM_REFRESH_MS keeps the
+            display truthful; it does NOT re-apply user parameters (that only happens on
+            a detected restart, so a JIT-parked channel can never be re-armed by this).
+       [FA] نوسازی دوره‌ای پارامترها: تشخیص‌گر ری‌استارت در پنجرهٔ wrap شمارندهٔ seq
+            (0xFF00..0xFFFF) کور است؛ ریبوت برد در همین پنجرهٔ ~۲۶ ثانیه‌ای (یک‌بار در
+            هر ~۱۰۹ دقیقه) جدول مقادیر اعمال‌شده را برای همیشه کهنه می‌گذارد. یک
+            GET_PARAMS هر ESP_LINK_PARAM_REFRESH_MS نمایش را راست‌نگه می‌دارد؛
+            پارامترهای کاربر را دوباره اعمال نمی‌کند (فقط بعد از ری‌استارتِ
+            تشخیص‌شده؛ پس هیچ‌وقت کانال پارک‌شدهٔ JIT را مسلح نمی‌کند). */
+    if ((uint32_t__nowMs - UINT32_T__G__LastParamRefreshMs) >= ESP_LINK_PARAM_REFRESH_MS)
+    {
+        UINT32_T__G__LastParamRefreshMs = uint32_t__nowMs;
+        BOOL__G__TxGetPending = true;
+    }
+
     if (bool__keepaliveDue)
     {
         BOOL__G__TxGetPending = true;
@@ -1145,12 +1165,15 @@ static bool func__Esp_ParseInt(const char *char__ptr_text, int32_t *int32_t__ptr
 }
 
 /**
- * @brief  [EN] GET / : serve the web panel from flash.
- *         [FA] مسیر GET / : ارسال پنل وب از حافظه فلش.
+ * @brief  [EN] GET / : serve the web panel from flash (never cached, so panel
+ *              updates reach every browser immediately).
+ *         [FA] مسیر GET / : ارسال پنل وب از حافظه فلش (بدون کش تا هر آپدیت پنل
+ *              بلافاصله به همهٔ مرورگرها برسد).
  * @return [EN] None / [FA] ندارد
  */
 static void func__Esp_HttpRoot(void)
 {
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     ESP_WEB_SERVER_T__G__Server.send_P(200, "text/html", ESP_PANEL_HTML);
 }
 
