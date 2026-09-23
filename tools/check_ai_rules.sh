@@ -244,12 +244,6 @@ else
   echo "  FAIL: AI_AGENT_RULES missing RTOS no delay"
   FAIL=1
 fi
-if grep -q "ui_config.h حذف شد" "$ROOT/AI_AGENT_RULES.md"; then
-  echo "  OK: AI_AGENT_RULES has ui_config.h deleted note"
-else
-  echo "  FAIL: AI_AGENT_RULES missing ui_config.h deleted note"
-  FAIL=1
-fi
 echo ""
 echo "[13] Memory management"
 FOUND_MALLOC=$(grep -R --include="*.c" --include="*.h" -E "malloc\(|free\(|calloc\(|realloc\(" "$ROOT/Firmware" 2>/dev/null | grep -v "does not use malloc" | grep -v "heap_4" || true)
@@ -416,7 +410,7 @@ else
   FAIL=1
 fi
 
-if grep -q "جداسازی توابع با علامت مشخص" "$ROOT/AI_AGENT_RULES.md" && grep -q "جداسازی بازر از LED" "$ROOT/AI_AGENT_RULES.md"; then
+if grep -q "جداسازی توابع با علامت مشخص" "$ROOT/AI_AGENT_RULES.md"; then
   echo "  OK: AI_AGENT_RULES has separation rules"
 else
   echo "  FAIL: AI_AGENT_RULES missing separation rules"

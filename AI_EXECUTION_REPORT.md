@@ -1,6 +1,6 @@
 # گزارش اجرای AI
 
-**آخرین به‌روزرسانی:** 2026-09-22<br>
+**آخرین به‌روزرسانی:** 2026-09-23<br>
 **شاخه:** `arena/01a0c744-changeover`<br>
 **مالک گزارش:** Agent ارشد پروژه<br>
 **قوانین مرجع:** `AI_AGENT_RULES.md`
@@ -15,6 +15,9 @@
 - Agentهای ماژول باید پیش از شروع `AI_AGENT_RULES.md` و README ماژول خود را بخوانند؛ مرز BSP قرارداد پایه است و تغییر سراسری فقط با دستور Agent ارشد انجام می‌شود.
 - **ممیزی کامل برنامه ۲۰۲۶-۰۹-۲۲ انجام شد** (تک‌تک ۲۵ فایل سورس Firmware/CubeIDE + رفتار HAL چک شد): رفع race در `BspExti_TakeEvent` (بخش بحرانی PRIMASK — رویداد jitter گم‌شده دیگر تریپ JIT را قورت نمی‌داد)، حذف فراخوانی تکراری `McuPowerPath_OnInputIrq` در callback PB4، تبدیل `FAULT_ADC` در Protection به وضعیت لحظه‌ای (قبلاً latch ابدی بود و با روشن‌شدن آیندهٔ ماژول، شارژر از بوت safe-idle می‌ماند)، و اصلاح مستندات ناسازگار (docblock شارژر FLOAT/ABSORB، کامنت unfiltered قدیمی، define تکراری `MODULE_MCU_POWER_PATH`).
 - جداسازی آستانهٔ قطع باتری به دستور کاربر ۲۰۲۶-۰۹-۲۲: تشخیص غیبت `FAULT_BAT_ABSENT_MV` = 6V، بازیابی همچنان `FAULT_BATTERY_BACK_MV` = 7V (هیسترزیس ۱V).
+- **پروتکل ESP-Link کامل و سه‌مرحله‌ای (۲۰۲۶-۰۹-۲۲/۲۳):** UART بازنویسی‌شده با ۹۲۱۶۰۰ و DMA دوطرفه؛ فریم‌های SET_PARAM/GET_PARAMS/TLM_LIVE/PARAM_REPORT/PARAMS_BULK با payload تا ۱۱۲ بایت؛ ۲۰ پارامتر زندهٔ فقط-RAM (کالیبراسیون جریان/ولتاژ، فیلترها، بازدهی، قطع کانال، سقف و duty فیکس). قرارداد کامل در `ESP_AGENT_SPEC.md` v1.2.
+- **مود تست دستی سراسری v1.2 سمت برد (۲۰۲۶-۰۹-۲۳، کامیت 03f5b8d):** پارامتر ۱۹ → تعلیق شارژر خودکار و درایو مستقیم هر کانال با ۱۶/۱۸؛ state 9 و فلگ b5؛ ددمن ۳s لینک؛ re-arm با ارسال مجدد duty؛ کف سخت‌افزاری (ورودی، JIT، ۱۵٫۰V، سقف، قطع کانال)؛ فریز `Fault_Evaluate` حین مود؛ تست Host ۲۴/۲۴.
+- **پنل وب ESP ممیزی خط‌به‌خط و اصلاح شد (۲۰۲۶-۰۹-۲۳، کامیت 32098b4):** فایل `esp_link_panel/esp_link_panel.ino` در این شاخه مرجع است (چهار اصلاح: نوسازی دوره‌ای ۳۰s جدول پارامترها، کش فونت نسخه‌دار، no-store صفحهٔ اصلی، پیام خطای ورودی نامعتبر).
 
 ## وضعیت جریان جریان/نمونه‌برداری Measurement (2026-09-22)
 
@@ -26,14 +29,14 @@
 ## وضعیت فعلی ماژول‌ها
 
 - **Measurement**: فعال (۱ms). مسیر: ADC2 سنکرون → splice در GetRaw → تبدیل → زنجیرهٔ فیلتر → snapshot اتمیک با `osKernelLock`.
-- **Charger**: فعال با `CHG_MASTER_ENABLE=1` و `CHG_TRANSFORMER_KNOWN=1`؛ دو کانال مستقل ۱۲V (Ch1→VHIGH، Ch2→VLOW). OFF→(گیت ۱۵s ثبات اتصال)→BULK(رمپ ۱٪، باند ۶۳۰..۶۵۰mA خروجی تخمینی)→ABSORB(تثبیت ۱۴٫۴V، پلهٔ ۰٫۱٪، شستشوی کل مدت + تیپر <۵۰mA/۶۰s، سقف ۱h)→FLOAT(پارک روی صفر؛ <۱۲٫۸V→BULK). JIT: نصف duty→حداکثر ۱۰٪→سومی FINAL_FAULT (رلهٔ NC باز). خطای سخت >۹۵۰mA ریست کانال (با فیلترها حداکثر ~۱۰ms تأخیر؛ JIT سخت‌افزاری حفاظت سریع است).
+- **Charger**: فعال با `CHG_MASTER_ENABLE=1` و `CHG_TRANSFORMER_KNOWN=1`؛ دو کانال مستقل ۱۲V (Ch1→VHIGH، Ch2→VLOW) + مود تست دستی v1.2 (پارامتر ESP ۱۹، state 9). OFF→(گیت ۱۵s ثبات اتصال)→BULK(رمپ ۱٪، باند ۶۳۰..۶۵۰mA خروجی تخمینی)→ABSORB(تثبیت ۱۴٫۴V، پلهٔ ۰٫۱٪، شستشوی کل مدت + تیپر <۵۰mA/۶۰s، سقف ۱h)→FLOAT(پارک روی صفر؛ <۱۲٫۸V→BULK). JIT: نصف duty→حداکثر ۱۰٪→سومی FINAL_FAULT (رلهٔ NC باز). خطای سخت >۹۵۰mA ریست کانال (با فیلترها حداکثر ~۱۰ms تأخیر؛ JIT سخت‌افزاری حفاظت سریع است).
 - **Fault**: مالک تشخیص قطع باتری — قاعدهٔ ۱: پمپ بالای ۱۴٫۸V حین شارژ فعال (۱۵۰ms)؛ قاعدهٔ ۲: هر نیم <۶V با ورودی سالم (۱s)؛ بازیابی: هر دو نیم ≥۷V بدون پمپ (۱s).
 - **Jitter**: فعال؛ رویداد EXTI LM393 → صف retry شارژر (احیای تک‌تک).
 - **McuPowerPath**: فعال؛ Q1/PB5 مستقل از Changeover (قطع ۵s بعد از ورودی ≥۲۲V، اتصال فوری در ISR با قطع ورودی؛ هیسترزیس ۲۲/۲۱٫۵V).
 - **Changeover**: فعال؛ cut در v<20800 (یا <21000 با فلگ UI) بعد از ۳s → PB11، reconnect با ورودی + ≥21200 بعد از ۳s.
 - **UI**: فعال؛ سناریوها از snapshot واقعی (اولویت: اضافه‌ولتاژ ورودی، قطع باتری، فول، شارژ فعال، InputOk، BatteryRun).
 - **Protection**: خاموش (`MODULE_PROTECTION=0`)؛ `FAULT_ADC` وضعیت لحظه‌ای است (Set در نامعتبر، Clear در معتبر).
-- **EspLink/Comm**: خاموش (`MODULE_ESP=0`)، backend آماده.
+- **EspLink/Comm**: پروتکل کامل v1.2 پیاده و ممیزی‌شده (فریم‌ها، ۲۰ پارامتر، مود دستی، ددمن)؛ در build خاموش (`MODULE_ESP=0`) — فعال‌سازی فقط با همان یک خط. پنل وب سمت ESP در `esp_link_panel/` (نسخهٔ ممیزی 32098b4)؛ جزئیات در بخش «اتصال و برنامهٔ ESP».
 
 ## قرارداد BSP
 
@@ -44,6 +47,13 @@
 - PWM: هر دو تایمر از Init پیوسته می‌چرخند با درهم‌گذاری ثابت نیم‌دوره (۱۰µs در ۵۰kHz) و استارت با دو نوشتن رجیستری پشت‌سرهم؛ خاموش = compare صفر؛ CH2 داخلی تریگر نمونه‌برداری وسط ON.
 - UART با `func__BspUart_Init(void)` و جریان بایت کار می‌کند؛ USART1/PA9/PA10 و baud در public API دیده نمی‌شوند.
 - در صورت تغییر MCU یا برد، فقط پورت BSP و فایل‌های platform-specific تغییر می‌کنند؛ منطق Module/App کپی نمی‌شود.
+
+## اتصال و برنامهٔ ESP (2026-09-23)
+
+- **لینک:** USART1 روی PA9/PA10 با ۹۲۱۶۰۰ 8N1 و DMA دوطرفه (بازنویسی `bsp_uart`، بدون بار CPU؛ audit round 2 رفع TX-stall و RX-abort). CH_PD از PA8 توسط برد کنترل می‌شود؛ برنامهٔ ESP هرگز آن را لمس نمی‌کند.
+- **پروتکل v1.2:** فریم `AA 55 type len payload XOR` با payload تا ۱۱۲ بایت؛ SET_PARAM (id+u32 LE) / GET_PARAMS / TLM_LIVE (84B هر ~100ms، ۲۰ فیلد) / PARAM_REPORT / PARAMS_BULK (۲۰ پارامتر = 101B). پارامترها فقط-RAM با کلمپ در مرز تسک. مود تست دستی: پارامتر ۱۹ + ددمن ۳s + re-arm با ارسال مجدد duty + قطع ۱۵V. قرارداد کامل: `ESP_AGENT_SPEC.md` v1.2 و بخش «محدودیت‌ها و الزامات سمت ESP» در `Firmware/Modules/EspLink/README.md`.
+- **پنل وب ESP:** `esp_link_panel/esp_link_panel.ino` (ESP8266/ESP32، AP «ChangeOver-ESP») — سه تب وضعیت/کالیبراسیون/تست دستی، فرمول‌های §5.3 با مقادیر زنده، دستیارهای کالیبراسیون، چارت ۳۶ ثانیه‌ای فیلتر، keepalive مستقل از مرورگر + محافظ پنل بسته (۱۰s → ID19=0). این فایل در این شاخه **ممیزی خط‌به‌خط** شده (کامیت 32098b4): سینتکس C++ هر دو مسیر ESP8266/ESP32 پاس (gcc -Wall -Wextra)، JS پاس (node --check)، فونت woff2 معتبر. عامل ESP باید همین نسخه را مبنا قرار دهد (دستور جاری در README ماژول EspLink).
+- **فعال‌سازی روی برد:** فقط `MODULE_ESP=1` در `modules_enable.h` — هیچ تغییر دیگری لازم نیست.
 
 ## دستور واگذاری به Agentهای فرعی
 
@@ -68,7 +78,8 @@
 ## اعتبارسنجی انجام‌شده (2026-09-22)
 
 - `bash tools/check_firmware_syntax.sh` — موفق؛ syntax سورس‌های CubeIDE/Core و Firmware با GCC سمت Host.
-- `python3 Firmware/Modules/Charger/host_test_charger.py` — **۲۳/۲۳ موفق** (قرارداد فیلترهای کلیددار، فرمول مرحله‌ای، تریگرهای سخت‌افزاری، آستانهٔ ۶V/۷V قطع باتری و...).
+- `python3 Firmware/Modules/Charger/host_test_charger.py` — **۲۴/۲۴ موفق** (از v1.2: شامل قرارداد مود دستی — تست `test_manual_test_mode_v12`)
+- ممیزی خط‌به‌خط پنل ESP (2026-09-23) — سینتکس C++ هر دو ESP8266/ESP32 پاس، JS پاس، فونت معتبر، نگاشت‌های پروتکل تطبیق کامل (قرارداد فیلترهای کلیددار، فرمول مرحله‌ای، تریگرهای سخت‌افزاری، آستانهٔ ۶V/۷V قطع باتری و...).
 - `python3 Firmware/Modules/Ui/host_test_ui.py` — موفق.
 - `bash tools/check_ai_rules.sh` — فقط **یک FAIL شناخته‌شده**: چک [17] انتظار `CHG_MASTER_ENABLE=0` دارد تا «تکمیل bring-up»؛ bring-up کامل شده و کاربر روشن‌بودن شارژر را انتخاب کرده است (تصمیم کاربر ۲۰۲۶-۰۹-۲۲: دست نزنیم).
 - کامپایل جداگانهٔ هر ۴ ترکیب کلیدهای فیلتر جریان (هر دو روشن/خاموش و تک‌کلید) — موفق.
@@ -85,6 +96,7 @@
 
 ## مستندات مرجع
 
+- قرارداد ESP: `ESP_AGENT_SPEC.md` (v1.2) و برنامهٔ پنل `esp_link_panel/esp_link_panel.ino`
 - ماژول‌ها: `Firmware/Modules/*/README.md` (Measurement، Charger، Fault، Jitter، McuPowerPath، Changeover، UI، Protection، EspLink).
 - برد و پورت‌ها: `Firmware/Bsp/README.md` و `CubeMX/README.md`.
 - مرجع State/سناریو: `Documentation/System_State_Scenarios.xlsx` و `Documentation/System_State_Machine.md/.drawio` (منطق Changeover از ۲۰۲۶-۰۹-۱۶ دست‌نخورده است و با کد فعلی سازگار است).
