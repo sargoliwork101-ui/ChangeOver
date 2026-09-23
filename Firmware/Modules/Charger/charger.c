@@ -115,8 +115,7 @@ static volatile uint32_t UINT32_T__G__ChargerEtaDnPermille =
  *      پیش‌فرض true = رفتار فعلی. تا وقتی false است PWM آن کانال قطع و
  *      وضعیت روی OFF نگه داشته می‌شود؛ کانال FINAL_FAULT هرگز با این
  *      گیت آزاد نمی‌شود. فقط RAM. */
-static volatile bool BOOL__G__ChargerEspEnableCh1 = true;
-static volatile bool BOOL__G__ChargerEspEnableCh2 = true;
+static volatile bool BOOL__G__ChargerEspEnableCh[2] = {true, true};
 
 /* [EN] Runtime per-channel PWM duty ceiling (user order 2026-09-22: the
  *      ESP panel sets the cap). Default CHG_DUTY_MAX_PERMILLE = today's
@@ -155,6 +154,8 @@ static uint8_t UINT8_T__G__RetryChannel;
 
 /* ==================== Forward declarations / اعلان پیش‌موضع ==================== */
 static bsp_pwm_channel_t func__Charger_PwmChannel(uint8_t uint8_t__channelIndex);
+static void func__Charger_ClearAbsorbWindow(
+    charger_channel_state_t *charger_channel_state_t__channel);
 
 /* ==================== Safe hardware policy / سیاست سخت‌افزاری امن ==================== */
 
@@ -172,6 +173,27 @@ static bsp_pwm_channel_t func__Charger_PwmChannel(uint8_t uint8_t__channelIndex)
  *              JIT/رله قطع‌کننده غیرفعال است، بنابراین کنتاکت NC بسته و کویل
  *              بدون انرژی است.
  */
+/**
+ * @brief  [EN] Clear the absorb-window bookkeeping of one channel (soak
+ *              counter, taper stamp and both window stamps). Every restart
+ *              or re-entry path calls this so the 10-minute soak always
+ *              starts from zero. The entry-into-ABSORB path stamps
+ *              absorbEnter/Last with "now" instead and stays inline.
+ *         [FA] پاک‌کردن دفترچهٔ پنجرهٔ ابزورب یک کانال (شمارندهٔ شستشو، مهر
+ *              تیپر و دو مهر پنجره). هر مسیر ری‌استارت/ورود مجدد این را
+ *              صدا می‌زند تا شستشوی ۱۰ دقیقه همیشه از صفر شروع شود؛ مسیر
+ *              ورود به ABSORB به‌جای صفر، مهر «اکنون» می‌زند و جدا می‌ماند.
+ * @param  charger_channel_state_t__channel [EN] channel to clear / کانال هدف
+ */
+static void func__Charger_ClearAbsorbWindow(
+    charger_channel_state_t *charger_channel_state_t__channel)
+{
+    charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+    charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+    charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
+    charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
+}
+
 static void func__Charger_SafeIdle(void)
 {
     uint8_t uint8_t__channelIndex;
@@ -198,10 +220,8 @@ static void func__Charger_SafeIdle(void)
             CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
                 CHG_STATE_OFF;
             CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint8_t__jitTripCount = 0u;
-            CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbAccumTicks = 0u;
-            CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__taperSinceTick = 0u;
-            CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbEnterTick = 0u;
-            CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbLastTick = 0u;
+            func__Charger_ClearAbsorbWindow(
+                &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex]);
         }
         func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
     }
@@ -491,10 +511,8 @@ static void func__Charger_ResetChannelToOff(uint8_t uint8_t__channelIndex)
 
     charger_channel_state_t__channel = &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
     charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_OFF;
-    charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
-    charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
-    charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
-    charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
+    func__Charger_ClearAbsorbWindow(
+        charger_channel_state_t__channel);
     charger_channel_state_t__channel->uint32_t__retryDeadlineTick = 0u;
     charger_channel_state_t__channel->uint32_t__lastDutyStepTick = 0u;
     charger_channel_state_t__channel->uint16_t__dutyBeforeTripPermille =
@@ -657,10 +675,8 @@ static void func__Charger_ServiceRetry(uint32_t uint32_t__nowTick)
 
     uint16_t__retryDuty = func__Charger_RetryDuty(uint8_t__retryChannel);
     charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
-    charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
-    charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
-    charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
-    charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
+    func__Charger_ClearAbsorbWindow(
+        charger_channel_state_t__channel);
     charger_channel_state_t__channel->uint32_t__retryDeadlineTick = 0u;
 
 #if MODULE_JITTER
@@ -829,8 +845,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
        قرار گرفته تا قفل FINAL_FAULT هرگز با این گیت آزاد نشود؛ تا زمان
        غیرفعالی PWM قطع و وضعیت روی OFF نگه داشته می‌شود و با وصل دوباره
        BULK از duty ۱٪ نرم شروع می‌شود. */
-    if (((uint8_t__channelIndex == 0u) && (BOOL__G__ChargerEspEnableCh1 == false)) ||
-        ((uint8_t__channelIndex != 0u) && (BOOL__G__ChargerEspEnableCh2 == false)))
+    if (BOOL__G__ChargerEspEnableCh[uint8_t__channelIndex] == false)
     {
         func__Charger_StopOneChannel(uint8_t__channelIndex);
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_OFF;
@@ -868,10 +883,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_OFF)
         {
             charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
-            charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
-            charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
-            charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
-            charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
+            func__Charger_ClearAbsorbWindow(
+                charger_channel_state_t__channel);
         }
         charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
         func__Charger_ApplyDuty(uint8_t__channelIndex,
@@ -954,10 +967,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_OFF)
     {
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
-        charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
-        charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
-        charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
-        charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
+        func__Charger_ClearAbsorbWindow(
+            charger_channel_state_t__channel);
     }
     charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
     func__Charger_ApplyDuty(uint8_t__channelIndex, CHG_FIXED_DUTY_TEST_DUTY_PERMILLE);
@@ -984,10 +995,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
             return;
         }
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
-        charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
-        charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
-        charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
-        charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
+        func__Charger_ClearAbsorbWindow(
+            charger_channel_state_t__channel);
         func__Charger_ApplyDuty(uint8_t__channelIndex, CHG_DUTY_START_PERMILLE);
         charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
         return;
@@ -999,10 +1008,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         (uint32_t__batteryMv < CHG_REENTRY_MV))
     {
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
-        charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
-        charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
-        charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
-        charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
+        func__Charger_ClearAbsorbWindow(
+            charger_channel_state_t__channel);
         uint32_t__targetMv = CHG_ABSORB_MV;
     }
 
@@ -1157,10 +1164,8 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                برگشت به بالک و ریست شستشو (دستور کاربر). */
             charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
             uint32_t__targetMv = CHG_ABSORB_MV;
-            charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
-            charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
-            charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
-            charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
+            func__Charger_ClearAbsorbWindow(
+                charger_channel_state_t__channel);
         }
     }
 
@@ -1359,10 +1364,8 @@ void func__Charger_Init(void)
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyBeforeTripPermille = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint8_t__jitTripCount = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state = CHG_STATE_OFF;
-        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbAccumTicks = 0u;
-        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__taperSinceTick = 0u;
-        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbEnterTick = 0u;
-        CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbLastTick = 0u;
+        func__Charger_ClearAbsorbWindow(
+            &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex]);
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__retryDeadlineTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__lastDutyStepTick = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__stableFromTick = 0u;
@@ -1739,10 +1742,8 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
             {
                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
                     CHG_STATE_OFF;
-                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbAccumTicks = 0u;
-                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__taperSinceTick = 0u;
-                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbEnterTick = 0u;
-                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__absorbLastTick = 0u;
+                func__Charger_ClearAbsorbWindow(
+                    &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex]);
                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint8_t__jitTripCount = 0u;
             }
@@ -1888,13 +1889,9 @@ uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex)
  */
 void func__Charger_SetChannelEspEnable(uint8_t uint8_t__channelIndex, bool bool__enable)
 {
-    if (uint8_t__channelIndex == 0u)
+    if (uint8_t__channelIndex < 2u)
     {
-        BOOL__G__ChargerEspEnableCh1 = bool__enable;
-    }
-    else
-    {
-        BOOL__G__ChargerEspEnableCh2 = bool__enable;
+        BOOL__G__ChargerEspEnableCh[uint8_t__channelIndex] = bool__enable;
     }
 }
 
@@ -1906,12 +1903,12 @@ void func__Charger_SetChannelEspEnable(uint8_t uint8_t__channelIndex, bool bool_
  */
 bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex)
 {
-    if (uint8_t__channelIndex == 0u)
+    if (uint8_t__channelIndex < 2u)
     {
-        return BOOL__G__ChargerEspEnableCh1;
+        return BOOL__G__ChargerEspEnableCh[uint8_t__channelIndex];
     }
 
-    return BOOL__G__ChargerEspEnableCh2;
+    return true;
 }
 
 /**

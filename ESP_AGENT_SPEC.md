@@ -8,7 +8,7 @@
 
 ## 1. What exists already (STM32 side — DONE)
 
-- Binary command protocol + periodic telemetry over **USART1, 115200 8N1**.
+- Binary command protocol + periodic telemetry over **USART1, 921600 8N1**.
 - Interrupt-driven RX on the STM32 with a 128-byte ring (the STM32 never loses
   bytes at this baud).
 - 19 runtime parameters the ESP can read and write (current-chain
@@ -32,10 +32,20 @@
 | — | GND | GND | Common ground required |
 | — | 3V3 | ESP supply | Per board schematic |
 
-UART settings: **115200 baud, 8 data bits, no parity, 1 stop bit**.
+UART settings: **921600 baud, 8 data bits, no parity, 1 stop bit** (the
+STM32 retunes its 115200 Cube default to 921600 at link init - user order
+2026-09-23). 921600 runs reliably on both ESP8266 and ESP32 UARTs.
+
+High-speed / zero-CPU transport on the STM32 side (user order
+2026-09-23): reception is a 256-byte **circular DMA** ring (zero CPU per
+byte, no UART interrupt) and transmission is **DMA from a 256-byte
+software ring** (non-blocking writes; one DMA-complete interrupt per
+frame, ~10-20 IRQ/s). A full 96-byte frame is ~1 ms of wire time. The
+ESP side needs nothing special - it just sees a normal 921600 UART.
 
 Timing: the STM32 sends one telemetry frame every **100 ms**
-(`APP_CONFIG.comm_period_ms`). Replies to commands are sent immediately.
+(`APP_CONFIG.comm_period_ms`). Replies to commands are queued
+immediately and drain within ~1 ms.
 
 ## 3. Frame format (both directions)
 
@@ -116,6 +126,33 @@ Notes:
 - A latched FINAL_FAULT charger state is **never** released by CHGx_ENABLE;
   only a reboot clears it.
 
+### 5.1 UI descriptions (show under each control - user order 2026-09-23)
+
+Render the Persian line under (or beside) each control in the panel; the
+English line is for the agent/maintainers.
+
+| ID | English (label + hint) | توضیح فارسی برای نمایش زیر کنترل |
+|---|---|---|
+| 0 | Ch1 zero offset (ADC counts) - reading at zero current; subtracts from raw counts before conversion | آفست جریان صفر کانال ۱ (شمارش ADC)؛ مقداری که در جریان صفر خوانده می‌شود و قبل از تبدیل از counts کم می‌شود |
+| 1 | Ch2 zero offset (ADC counts) - same for channel 2 | آفست جریان صفر کانال ۲؛ مانند کانال ۱ برای زنجیرهٔ دوم |
+| 2 | Ch1 gain trim (permille) - final scale of the mA conversion; 1085 = bench value | ضریب گین تبدیل جریان کانال ۱ (پرمیل)؛ مقیاس نهایی تبدیل به mA، مقدار بنچ ۱۰۸۵ |
+| 3 | Ch2 gain trim (permille) - final scale of the mA conversion | ضریب گین تبدیل جریان کانال ۲ (پرمیل) |
+| 4 | VIN offset (mV, signed) - adder on the 24 V input reading after the divider | آفست کالیبراسیون ولتاژ ورودی ۲۴V بر حسب mV (علامت‌دار)؛ بعد از تبدیل مقسم جمع می‌شود |
+| 5 | V24 offset (mV, signed) - adder on the 24 V battery pack reading | آفست کالیبراسیون ولتاژ پک ۲۴V بر حسب mV (علامت‌دار) |
+| 6 | V12 offset (mV, signed) - adder on the 12 V battery reading (middle node) | آفست کالیبراسیون ولتاژ باتری ۱۲V (نود میانی) بر حسب mV (علامت‌دار) |
+| 7 | Median window (1/3/5) - median-of-N on the raw current samples; 1 = off, 3 = default, 5 also kills double-spikes | اندازهٔ پنجرهٔ مدین روی نمونه‌های خام جریان؛ ۱ = خاموش، ۳ = پیش‌فرض، ۵ پالس‌های دوتایی را هم حذف می‌کند |
+| 8 | Average window (1..10) - moving average over the last N current samples; 1 = off, 10 = default | پنجرهٔ میانگین متحرک روی آخرین N نمونهٔ جریان؛ ۱ = خاموش، ۱۰ = پیش‌فرض |
+| 9 | Ch1 efficiency (permille) - only scales the current ESTIMATE, not the real charge | بازدهی کانال ۱ (پرمیل)؛ فقط روی تخمین جریان اثر دارد، نه شارژ واقعی |
+| 10 | Ch2 efficiency (permille) - estimate scaling; 242 absorbs the ch2 sense over-read (do not set to ~700) | بازدهی کانال ۲ (پرمیل)؛ مقدار ۲۴۲ خطای over-read سنس کانال ۲ را جبران می‌کند (به ~۷۰۰ تغییرش ندهید) |
+| 11 | Charger 1 on/off - 0 cuts the PWM immediately (battery keeps its charge), 1 resumes with a soft ramp | کلید قطع/وصل شارژر ۱؛ صفر فوراً PWM را قطع می‌کند و یک شارژ را با رمپ نرم ادامه می‌دهد |
+| 12 | Charger 2 on/off - same for charger 2 | کلید قطع/وصل شارژر ۲ |
+| 13 | Ch1 duty ceiling (permille) - hard cap on the PWM of charger 1 (ramp, regulation and fixed mode all respect it) | سقف duty ی PWM شارژر ۱ (پرمیل)؛ رمپ، تنظیم و مود فیکس همه به آن احترام می‌گذارند |
+| 14 | Ch2 duty ceiling (permille) - hard cap on the PWM of charger 2 | سقف duty ی PWM شارژر ۲ (پرمیل) |
+| 15 | Ch1 fixed-duty mode - hold the PWM at ID 16 instead of the regulation loop (switching still stops at the absorb voltage) | مود duty فیکس شارژر ۱؛ PWM روی مقدار شناسهٔ ۱۶ قفل می‌شود به‌جای حلقهٔ تنظیم (سوئیچینگ بالای ولتاژ ابزورب همچنان متوقف می‌شود) |
+| 16 | Ch1 fixed duty value (permille) - the number to hold while ID 15 is on | مقدار duty فیکس شارژر ۱ (پرمیل)؛ عددی که در مود فیکس نگه داشته می‌شود |
+| 17 | Ch2 fixed-duty mode - hold the PWM at ID 18 | مود duty فیکس شارژر ۲ |
+| 18 | Ch2 fixed duty value (permille) | مقدار duty فیکس شارژر ۲ (پرمیل) |
+
 ## 6. TLM_LIVE payload layout (84 bytes, little-endian)
 
 | Offset | Size | Field | Meaning |
@@ -156,7 +193,7 @@ raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
 
 ## 7. Recommended ESP behavior
 
-1. Boot, open UART at 115200 8N1, start a 100 ms RX pump.
+1. Boot, open UART at 921600 8N1, start a 100 ms RX pump.
 2. Wait for the first TLM_LIVE (proves the link; the STM32 powers the ESP
    enable line only when its comm task runs).
 3. Send `GET_PARAMS`, parse `PARAMS_BULK`, show a live dashboard of all 19
@@ -179,8 +216,9 @@ raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
 
 ## 8. Safety rules for the ESP implementation
 
-- Never spam the link: at most a few SET_PARAM frames per second is plenty;
-  the STM RX ring is 128 bytes.
+- Never spam the link: a few SET_PARAM frames per second is plenty; the
+  STM RX ring is 256 bytes (DMA-filled) and frames are checksummed, but
+  there is no reason to flood.
 - Always respect clamping (the STM32 enforces it anyway).
 - Do not try to change charge voltages/setpoints — they are not in the
   protocol; requesting an unknown ID is silently ignored.
@@ -204,6 +242,8 @@ v1.1 (2026-09-22, same day as v1 and BEFORE any ESP-side implementation
 existed — the v1.1 IDs are the final ones). Changes vs v1: filter switches
 merged into ONE size parameter per filter (median 1/3/5, average window
 1..10; size 1 = bypass, no separate on/off), and six new duty params
-(ceiling + fixed-mode enable/value per channel). Parameter IDs and the TLM
-layout are frozen from here on; future additions append new IDs / new
+(ceiling + fixed-mode enable/value per channel). 2026-09-23: link speed
+raised to 921600 with DMA in both directions (no protocol change), and the
+per-parameter UI descriptions (section 5.1) added. Parameter IDs and the
+TLM layout are frozen from here on; future additions append new IDs / new
 message types only, never renumber.
