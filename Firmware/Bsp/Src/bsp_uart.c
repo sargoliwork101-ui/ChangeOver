@@ -20,10 +20,15 @@
  *                DMA counter (classic STM32 circular-DMA ring).
  *              - TX runs on DMA1_Channel4 from a 256-byte software ring:
  *                writes are non-blocking, the pump copies one contiguous
- *                chunk into a linear buffer per DMA transfer, and the only
- *                interrupt is ONE DMA-complete event per frame (about
- *                10-20 IRQs/s) which dequeues the next chunk. One 96-byte
- *                frame takes ~1 ms of wire time at 921600 and ~0 CPU.
+ *                chunk into a linear buffer per DMA transfer. In this HAL
+ *                a NORMAL-mode DMA completion does NOT call the UART
+ *                callback directly: it clears DMAT and arms the UART
+ *                transmit-complete interrupt (TCIE), and the callback that
+ *                dequeues the next chunk fires from USART1_IRQHandler when
+ *                the last bit has left the shifter. Net cost: a couple of
+ *                lightweight interrupts per frame (~20-40 IRQs/s at the
+ *                100 ms telemetry cadence), still ~0 CPU per byte. One
+ *                96-byte frame takes ~1 ms of wire time at 921600.
  *          [FA] انتقال پرسرعت بدون بار CPU (دستور کاربر ۲۰۲۶-۰۹-۲۳:
  *              سرعت لینک تا جای ممکن بالا، بدون درگیر شدن CPU):
  *              - baud در زمان اجرا به ۹۲۱۶۰۰ تغییر می‌کند (مقداردهی
@@ -34,12 +39,16 @@
  *                وقفهٔ USART. مصرف‌کننده اندیس نوشتن را از شمارندهٔ DMA
  *                می‌گیرد (الگوی معروف حلقهٔ DMA حلقوی STM32).
  *              - TX روی DMA1_Channel4 از یک حلقهٔ نرم‌افزاری ۲۵۶ بایتی:
- *                نوشتن بدون بلوکه شدن است، پمپ برای هر انتقال DMA یک
- *                قطعهٔ پیوسته را داخل بافر خطی کپی می‌کند و تنها وقفه،
- *                یک رویداد کامل‌شدن DMA به‌ازای هر فریم است (حدود ۱۰ تا
- *                ۲۰ وقفه در ثانیه) که قطعهٔ بعدی را برمی‌دارد. یک فریم
- *                ۹۶ بایتی روی ۹۲۱۶۰۰ حدود ۱ms زمانِ سیم می‌خورد و تقریباً
- *                صفر CPU.
+ *                نوشتن بدون بلوکه شدن است و پمپ برای هر انتقال DMA یک
+ *                قطعهٔ پیوسته را داخل بافر خطی کپی می‌کند. در این HAL،
+ *                کامل‌شدن DMA ی مود NORMAL مستقیم callback ی UART را صدا
+ *                نمی‌زند: DMAT را پاک و وقفهٔ transmit-complete ی UART
+ *                (TCIE) را مسلح می‌کند و callback ی قطعهٔ بعدی از
+ *                USART1_IRQHandler می‌آید وقتی آخرین بیت از شیفت‌رجیستر
+ *                خارج شده است. هزینهٔ خالص: چند وقفهٔ سبک به‌ازای هر فریم
+ *                (حدود ۲۰ تا ۴۰ وقفه در ثانیه با cadence ی ۱۰۰ms)، باز هم
+ *                تقریباً صفر CPU به‌ازای هر بایت. یک فریم ۹۶ بایتی روی
+ *                ۹۲۱۶۰۰ حدود ۱ms زمانِ سیم می‌خورد.
  */
 
 #include "bsp_uart.h"
@@ -70,11 +79,13 @@
 #define BSP_UART_TX_RING_SIZE     256u
 #define BSP_UART_TX_CHUNK_SIZE    128u
 
-/* [EN] Lowest NVIC priority for the single TX-DMA interrupt; the handler
- *      calls no RTOS API.
- * [FA] کمترین اولویت NVIC برای تنها وقفهٔ DMA ی TX؛ هندلر هیچ API
- *      سیستمعاملی صدا نمی‌زند. */
-#define BSP_UART_DMA_IRQ_PRIORITY 15u
+/* [EN] Lowest NVIC priority for both interrupt vectors of this port (the
+ *      TX-DMA complete and the UART transmit-complete that this HAL arms
+ *      afterwards); neither handler calls any RTOS API.
+ * [FA] کمترین اولویت NVIC برای هر دو بردار وقفهٔ این پورت (کامل‌شدن DMA ی
+ *      TX و transmit-complete ی UART که این HAL بعدش مسلح می‌کند)؛ هیچ‌کدام
+ *      از هندلرها API سیستمعاملی صدا نمی‌زنند. */
+#define BSP_UART_IRQ_PRIORITY 15u
 
 static UART_HandleTypeDef * volatile UART_HANDLETYPEDEF__G__EspLink = NULL;
 static bool BOOL__G__Initialized = false;
@@ -170,8 +181,21 @@ void func__BspUart_Init(void)
     __HAL_LINKDMA(UART_HANDLETYPEDEF__G__EspLink, hdmarx,
                   DMA_HANDLETYPEDEF__G__RxDma);
 
-    HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, BSP_UART_DMA_IRQ_PRIORITY, 0u);
+    HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, BSP_UART_IRQ_PRIORITY, 0u);
     HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+
+    /* [EN] In this HAL the NORMAL-mode DMA-complete does not call the UART
+       callback directly: it arms the UART transmit-complete interrupt
+       (TCIE) and the callback fires from USART1_IRQHandler. Without this
+       NVIC enable the TX would stall forever after the very first frame
+       (the in-flight guard would never be released).
+       [FA] در این HAL، کامل‌شدن DMA ی مود NORMAL مستقیم callback ی UART
+       را صدا نمی‌زند: وقفهٔ transmit-complete ی UART (TCIE) را مسلح
+       می‌کند و callback از USART1_IRQHandler می‌آید. بدون فعال‌کردن این
+       NVIC، TX بعد از همان اولین فریم برای همیشه می‌ایستاد (گارد
+       در-پرواز هرگز آزاد نمی‌شد). */
+    HAL_NVIC_SetPriority(USART1_IRQn, BSP_UART_IRQ_PRIORITY, 0u);
+    HAL_NVIC_EnableIRQ(USART1_IRQn);
 
     UINT16_T__G__RxTailIndex = 0u;
     UINT16_T__G__TxHeadIndex = 0u;
@@ -181,6 +205,25 @@ void func__BspUart_Init(void)
     (void)HAL_UART_Receive_DMA(UART_HANDLETYPEDEF__G__EspLink,
                                UINT8_T__G__RxDmaBuffer,
                                BSP_UART_RX_RING_SIZE);
+
+    /* [EN] Disarm the error interrupt that HAL armed for DMA RX. With it
+       enabled, the very first framing/noise/overrun flag on the line
+       (guaranteed real-world case: an ESP8266 reboot prints boot garbage
+       at 74880 baud onto this wire) would make USART1_IRQHandler run the
+       HAL error path, which ABORTS the circular DMA and silently kills
+       reception forever. With the error interrupt disarmed the flags are
+       harmless: DMAR keeps draining DR, a corrupted byte still lands in
+       the ring, and the frame parser drops bad frames via the XOR
+       checksum - the RX ring becomes immortal.
+       [FA] وقفهٔ خطایی را که HAL برای DMA ی RX مسلح کرده غیرمسلح می‌کنیم.
+       با فعال‌بودنش، اولین پرچم framing/noise/overrun روی خط (مورد صددرصد
+       واقعی: ریبوت ESP8266 که garbage بوت را با 74880 baud روی همین سیم
+       می‌ریزد) باعث می‌شود USART1_IRQHandler مسیر خطای HAL را برود که DMA
+       حلقوی را abort می‌کند و دریافت برای همیشه بی‌صدا می‌میرد. با غیرمسلح
+       شدنش پرچم‌ها بی‌ضررند: DMAR به تخلیهٔ DR ادامه می‌دهد، بایت خراب
+       باز هم داخل حلقه می‌نشیند و پارسر فریم خراب را با XOR رها می‌کند -
+       حلقهٔ RX جاودانه می‌شود. */
+    __HAL_UART_DISABLE_IT(UART_HANDLETYPEDEF__G__EspLink, UART_IT_ERR);
 
     BOOL__G__Initialized = true;
 }
@@ -419,13 +462,17 @@ bool func__BspUart_ReadByte(uint8_t *uint8_t__byte)
 /* ==================== DMA TX complete / کامل‌شدن TX ==================== */
 
 /**
- * @brief  [EN] DMA1_Channel4 interrupt entry (the only interrupt of this
- *              port): forward to the HAL DMA handler, which finalizes the
- *              UART transmission and calls HAL_UART_TxCpltCallback below.
- *              No RTOS API is used here.
- *         [FA] ورودی وقفهٔ DMA1_Channel4 (تنها وقفهٔ این پورت): به
- *              هندلر DMA ی HAL فرستاده می‌شود که ارسال UART را نهایی و
- *              HAL_UART_TxCpltCallback زیر را صدا می‌زند. هیچ API
+ * @brief  [EN] DMA1_Channel4 interrupt entry: forward to the HAL DMA
+ *              handler. In this HAL the NORMAL-mode completion does NOT
+ *              call the UART callback from here - it clears DMAT and arms
+ *              the UART transmit-complete interrupt, so the actual
+ *              "frame finished" callback arrives from USART1_IRQHandler
+ *              below. No RTOS API is used here.
+ *         [FA] ورودی وقفهٔ DMA1_Channel4: به هندلر DMA ی HAL فرستاده
+ *              می‌شود. در این HAL، کامل‌شدن مود NORMAL callback ی UART را
+ *              از همین‌جا صدا نمی‌زند - DMAT را پاک و وقفهٔ
+ *              transmit-complete ی UART را مسلح می‌کند، پس callback واقعی
+ *              «فریم تمام شد» از USART1_IRQHandler پایین می‌آید. هیچ API
  *              سیستمعاملی اینجا استفاده نمی‌شود.
  */
 void DMA1_Channel4_IRQHandler(void)
@@ -434,12 +481,38 @@ void DMA1_Channel4_IRQHandler(void)
 }
 
 /**
- * @brief  [EN] One DMA chunk finished: release the in-flight guard and
- *              immediately pump the next chunk, so back-to-back frames
- *              (telemetry + replies) drain without any task involvement.
- *         [FA] یک قطعهٔ DMA تمام شد: گارد در-پرواز آزاد و بلافاصله
- *              قطعهٔ بعدی پمپ می‌شود تا فریم‌های پشت‌سرهم (تله‌متری +
- *              پاسخ‌ها) بدون دخالت تسک خالی شوند.
+ * @brief  [EN] USART1 interrupt entry: the second and final stage of a
+ *              frame transmission. When the last bit has left the shift
+ *              register, HAL's UART_IRQHandler finalizes the transfer and
+ *              calls HAL_UART_TxCpltCallback below, which pumps the next
+ *              chunk. With the HAL error interrupt disarmed at init, this
+ *              vector only ever sees the transmit-complete event - the
+ *              reception itself stays fully silent on DMA.
+ *         [FA] ورودی وقفهٔ USART1: مرحلهٔ دوم و نهاییِ ارسال یک فریم.
+ *              وقتی آخرین بیت از شیفت‌رجیستر خارج شد، UART_IRQHandler ی
+ *              HAL ارسال را نهایی می‌کند و HAL_UART_TxCpltCallback زیر را
+ *              صدا می‌زند که قطعهٔ بعدی را پمپ می‌کند. با غیرمسلح‌بودن
+ *              وقفهٔ خطای HAL در init، این بردار فقط transmit-complete
+ *              را می‌بیند - خود دریافت کاملاً بی‌صدا روی DMA می‌ماند.
+ */
+void USART1_IRQHandler(void)
+{
+    if (UART_HANDLETYPEDEF__G__EspLink != NULL)
+    {
+        HAL_UART_IRQHandler(UART_HANDLETYPEDEF__G__EspLink);
+    }
+}
+
+/**
+ * @brief  [EN] One frame chunk fully shifted out (called by HAL from the
+ *              UART transmit-complete interrupt): release the in-flight
+ *              guard and immediately pump the next chunk, so back-to-back
+ *              frames (telemetry + replies) drain without any task
+ *              involvement.
+ *         [FA] یک قطعهٔ فریم کاملاً روی سیم رفت (HAL از وقفهٔ
+ *              transmit-complete ی UART صدا می‌زند): گارد در-پرواز آزاد و
+ *              بلافاصله قطعهٔ بعدی پمپ می‌شود تا فریم‌های پشت‌سرهم
+ *              (تله‌متری + پاسخ‌ها) بدون دخالت تسک خالی شوند.
  * @param  uart_handle_t__huart [EN] Handle of the UART that completed /
  *                                  هندل UART ای که کامل شد
  */

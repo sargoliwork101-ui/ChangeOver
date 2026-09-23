@@ -38,10 +38,17 @@ STM32 retunes its 115200 Cube default to 921600 at link init - user order
 
 High-speed / zero-CPU transport on the STM32 side (user order
 2026-09-23): reception is a 256-byte **circular DMA** ring (zero CPU per
-byte, no UART interrupt) and transmission is **DMA from a 256-byte
-software ring** (non-blocking writes; one DMA-complete interrupt per
-frame, ~10-20 IRQ/s). A full 96-byte frame is ~1 ms of wire time. The
-ESP side needs nothing special - it just sees a normal 921600 UART.
+byte, no reception interrupt at all) and transmission is **DMA from a
+256-byte software ring** (non-blocking, whole-frame writes; a couple of
+lightweight completion interrupts per frame, together ~20-40 IRQ/s at
+the 100 ms telemetry cadence). A full 96-byte frame is ~1 ms of wire
+time. The ESP side needs nothing special - it just sees a normal 921600
+UART.
+
+ESP -> STM burst budget: the STM drains its RX ring once per 100 ms
+comm tick, so keep each burst under ~250 bytes (a handful of frames);
+anything more can overflow the ring. Normal panel traffic is far below
+this.
 
 Timing: the STM32 sends one telemetry frame every **100 ms**
 (`APP_CONFIG.comm_period_ms`). Replies to commands are queued
