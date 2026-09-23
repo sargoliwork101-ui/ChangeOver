@@ -6,14 +6,18 @@
  * @note    [EN] USART instance, pins and HAL handle are private to the board
  *              port; the port re-tunes the Cube default to 921600 baud and
  *              drives both directions with DMA (RX: circular 256-byte ring,
- *              zero CPU per byte; TX: 256-byte software ring drained by DMA,
- *              one completion interrupt per frame). The interface remains
- *              available while MODULE_ESP is disabled.
+ *              zero CPU per byte, no reception interrupt at all; TX:
+ *              256-byte software ring drained by DMA - per frame only a
+ *              couple of lightweight completion interrupts: DMA-complete
+ *              plus the UART transmit-complete this HAL arms afterwards).
+ *              The interface remains available while MODULE_ESP is disabled.
  *          [FA] نمونه USART، پایه‌ها و هندل HAL در پورت برد خصوصی هستند؛
  *              پورت baud پیش‌فرض Cube را به 921600 بازتنظیم می‌کند و هر دو
  *              جهت را با DMA می‌راند (RX: بافر حلقوی ۲۵۶ بایتی، صفر CPU به
- *              ازای هر بایت؛ TX: حلقه نرم‌افزاری ۲۵۶ بایتی که DMA تخلیه‌اش
- *              می‌کند، یک وقفهٔ کامل‌شدن به ازای هر فریم). رابط حتی با
+ *              ازای هر بایت، بدون هیچ وقفهٔ دریافت؛ TX: حلقهٔ نرم‌افزاری
+ *              ۲۵۶ بایتی که DMA تخلیه‌اش می‌کند - به‌ازای هر فریم فقط چند
+ *              وقفهٔ سبک کامل‌شدن: کامل‌شدن DMA به‌علاوهٔ transmit-complete
+ *              ی UART که این HAL بعدش مسلح می‌کند). رابط حتی با
  *              خاموش‌بودن MODULE_ESP باقی می‌ماند.
  */
 
