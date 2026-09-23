@@ -8,7 +8,7 @@
 
 تغییر مسیر تغذیه ۲۴ ولت DC: ورودی یا باتری. MCU: `STM32F103C8T6`.
 
-**مرحله فعلی:** قرارداد BSP برای کل شماتیک تثبیت شده است: GPIOهای خروجی/ورودی، ADC+DMA و کالیبراسیون، دو PWM شارژر، USART1/ESP-Link و سه منبع EXTI در پورت برد وجود دارند. `MODULE_UI=1` و `MODULE_MEASUREMENT=1` هستند؛ Charger، ESP، Jitter، Protection و Changeover هنوز خاموش‌اند، اما backendهایشان حذف یا از Build خارج نشده‌اند.
+**مرحله فعلی:** قرارداد BSP برای کل شماتیک تثبیت شده است: GPIOهای خروجی/ورودی، ADC+DMA و کالیبراسیون، دو PWM شارژر، USART1/ESP-Link و سه منبع EXTI در پورت برد وجود دارند. `MODULE_UI=1`، `MODULE_FAULT=1`، `MODULE_MEASUREMENT=1`، `MODULE_CHANGEOVER=1`، `MODULE_MCU_POWER_PATH=1`، `MODULE_CHARGER=1` و `MODULE_JITTER=1` فعال‌اند (شارژر با `CHG_MASTER_ENABLE=1`، تصمیم کاربر ۲۰۲۶-۰۹-۲۲)؛ فقط `MODULE_PROTECTION=0` و `MODULE_ESP=0` خاموش‌اند اما backendهایشان حذف یا از Build خارج نشده‌اند — فعال‌سازی ESP-Link فقط با همان یک خط `MODULE_ESP=1`.
 
 شماتیک: `Circuit/ChangeOver(24V_DC).pdf`
 

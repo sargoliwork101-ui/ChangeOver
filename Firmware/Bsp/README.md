@@ -59,9 +59,9 @@ Firmware/Bsp/Src/*.c       ← پورت برد فعلی، HAL و main.h خصوص
 
 | قرارداد منطقی | پریفرال/پایه فعلی | وضعیت ماژول |
 |---|---|---|
-| `BSP_PWM_CHARGER_1` | TIM2_CH1 / PA0، 50kHz | `MODULE_CHARGER=1`، با `CHG_MASTER_ENABLE=0` safe-off |
-| `BSP_PWM_CHARGER_2` | TIM3_CH1 / PA6، 50kHz | `MODULE_CHARGER=1`، با `CHG_MASTER_ENABLE=0` safe-off |
-| `BspUart` byte stream | USART1 TX/RX / PA9/PA10، 115200 8-N-1 | `MODULE_ESP=0`، backend موجود |
+| `BSP_PWM_CHARGER_1` | TIM2_CH1 / PA0، 50kHz | `MODULE_CHARGER=1`، `CHG_MASTER_ENABLE=1` (فعال، تصمیم کاربر ۲۰۲۶-۰۹-۲۲) |
+| `BSP_PWM_CHARGER_2` | TIM3_CH1 / PA6، 50kHz | `MODULE_CHARGER=1`، `CHG_MASTER_ENABLE=1` (فعال، تصمیم کاربر ۲۰۲۶-۰۹-۲۲) |
+| `BspUart` byte stream | USART1 TX/RX / PA9/PA10، **921600 8-N-1** با DMA دوطرفه | `MODULE_ESP=0`، backend کامل (پروتکل ESP-Link v1.2؛ فعال‌سازی فقط با همان یک خط `MODULE_ESP=1`) |
 
 `func__BspPwm_SetDutyPermille` دامنهٔ ۰ تا ۱۰۰۰ را اعمال می‌کند و صفر یعنی گیت پایین (compare=0). دو کانال PWM با **درهم‌گذاری فاز ۱۸۰ درجهٔ فریزشده** (نیم‌دوره = ۱۰µs در ۵۰kHz، دستور کاربر ۲۰۲۶-۰۹-۲۱: پالس کانال دو دقیقاً نیم‌دوره بعد از **استارت** پالس کانال یک) کار می‌کنند: در `func__BspPwm_Init` خروجی‌ها بدون شمارنده فعال می‌شوند، فازها نوشته می‌شوند (TIM2 از CNT=0 و TIM3 از CNT=ARR/2، محاسبه از ARR واقعی) و آنگاه **هر دو CEN با دو نوشتن رجیستری پشت‌سرهم** روشن می‌شوند — لغزش چند ده نانوثانیه (یافتهٔ بنچ: تأخیر چندمیکروثانیه‌ای HAL_TIM_PWM_Start فاز را غیرقطعی می‌کرد). پس‌ازاین شمارنده‌ها هرگز متوقف یا بازنویسی نمی‌شوند؛ خاموش‌کردن کانال فقط با compare=0 است. چون هر دو روی یک کلاک ۷۲MHz و ARR یکسان‌اند رانش صفر است. از ۲۰۲۶-۰۹-۲۲ هر تایمر یک **کانال داخلی CH2 تریگر نمونه‌برداری** هم دارد (حالت PWM 2 با `CCR2 = CCR1/2` که `SetOneDuty` آن را دنبال می‌کند): لبهٔ بالارونده‌اش دقیقاً وسط پنجرهٔ ON است و `TIM2_CC2` مستقیم و `TIM3_TRGO` (با MMS=OC2REF) به ADC2 جریان سنکرون وصل می‌شوند؛ پایه‌های فیزیکی CH2 (PA1/PA7) آنالوگ می‌مانند. `func__BspPwm_IsGatePulsing` اعلام می‌کند گیت پالس می‌زند (compare>0). `func__BspUart_Write` ارسال کامل با timeout محدود ۱۰۰ms دارد و `func__BspUart_ReadByte` non-blocking است.
 
