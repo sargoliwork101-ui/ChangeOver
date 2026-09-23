@@ -1,11 +1,11 @@
 /**
  * @file    esp_link_panel.ino
  * @brief   [EN] ESP-side ESP-Link bridge: exchanges binary frames with the STM32
- *               over UART (115200 8N1, ESP_AGENT_SPEC.md v1) and exposes a small
- *               dark web panel for live telemetry and the 14 runtime parameters.
+ *               over UART (921600 8N1, ESP_AGENT_SPEC.md v1.1) and exposes a small
+ *               dark web panel for live telemetry and the 19 runtime parameters.
  *          [FA] پل ESP-Link سمت ESP: تبادل فریم باینری با STM32 روی UART
- *               (115200 8N1، مطابق ESP_AGENT_SPEC.md نسخه ۱) و یک پنل وب دارک ساده
- *               برای تله‌متری زنده و ۱۴ پارامتر زمان اجرا.
+ *               (921600 8N1، مطابق ESP_AGENT_SPEC.md نسخه ۱.۱) و یک پنل وب دارک ساده
+ *               برای تله‌متری زنده و ۱۹ پارامتر زمان اجرا.
  *
  * @note    [EN] Wiring: STM32 PA9 (TX) -> ESP RX, STM32 PA10 (RX) <- ESP TX, common GND.
  *               STM32 PA8 drives ESP CH_PD/EN; this sketch never touches that line.
@@ -34,8 +34,8 @@
 #include <stdbool.h>
 
 /* ==================== Link Constants ==================== */
-#define ESP_LINK_BAUD_RATE          115200u
-#define ESP_LINK_RX_BUFFER_SIZE     512u
+#define ESP_LINK_BAUD_RATE          921600u
+#define ESP_LINK_RX_BUFFER_SIZE     1024u
 #define ESP_LINK_SOF_BYTE0          0xAAu
 #define ESP_LINK_SOF_BYTE1          0x55u
 #define ESP_LINK_HEADER_SIZE        4u
@@ -55,11 +55,10 @@
 #define ESP_MSG_PARAMS_BULK         0x12u
 
 /* ==================== Parameter Constants ==================== */
-#define ESP_PARAM_COUNT             14u
-#define ESP_PARAM_CHG1_ENABLE       12u
-#define ESP_PARAM_CHG2_ENABLE       13u
-#define ESP_PARAM_SIGNED_FIRST      4u
-#define ESP_PARAM_SIGNED_LAST       6u
+#define ESP_PARAM_COUNT             19u
+#define ESP_PARAM_CHG1_ENABLE       11u
+#define ESP_PARAM_CHG2_ENABLE       12u
+#define ESP_PARAM_MEDIAN_SIZE       7u
 
 /* ==================== Wi-Fi / HTTP Constants ==================== */
 #define ESP_WIFI_AP_SSID            "ChangeOver-ESP"
@@ -79,8 +78,12 @@ typedef enum
 } esp_rx_state_t;
 
 /* ==================== Parameter Ranges (STM32 clamps too) ==================== */
-static const int32_t INT32_T__G__ParamMin[ESP_PARAM_COUNT] = {   0,    0,  100,  100, -2000, -2000, -2000, 0, 0,  1, 100, 100, 0, 0 };
-static const int32_t INT32_T__G__ParamMax[ESP_PARAM_COUNT] = { 255,  255, 3000, 3000,  2000,  2000,  2000, 1, 1, 10, 999, 999, 1, 1 };
+/* [EN] ID: 0..1 offset, 2..3 gain, 4..6 mV offset (signed), 7 median 1/3/5, 8 avg window, 9..10 eff,
+        11..12 charger enable, 13..14 duty ceiling, 15/17 fixed-duty on, 16/18 fixed-duty value.
+   [FA] شناسه: ۰..۱ آفست، ۲..۳ گین، ۴..۶ آفست mV علامت‌دار، ۷ مدین ۱/۳/۵، ۸ پنجره میانگین، ۹..۱۰ بازدهی،
+        ۱۱..۱۲ قطع/وصل شارژر، ۱۳..۱۴ سقف duty، ۱۵/۱۷ مود duty فیکس، ۱۶/۱۸ مقدار duty فیکس. */
+static const int32_t INT32_T__G__ParamMin[ESP_PARAM_COUNT] = {   0,   0,  100,  100, -2000, -2000, -2000, 1,  1, 100, 100, 0, 0,   0,   0, 0,   0, 0,   0 };
+static const int32_t INT32_T__G__ParamMax[ESP_PARAM_COUNT] = { 255, 255, 3000, 3000,  2000,  2000,  2000, 5, 10, 999, 999, 1, 1, 500, 500, 1, 500, 1, 500 };
 
 /* ==================== RX State ==================== */
 static esp_rx_state_t ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
@@ -116,57 +119,89 @@ static char CHAR__G__JsonBuffer[ESP_JSON_BUFFER_SIZE];
 static const char ESP_PANEL_HTML[] PROGMEM = R"HTML(<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>ChangeOver</title><style>
 :root{--bg:#0b0e14;--card:#131824;--line:#1f2636;--tx:#e6e9f0;--mu:#7d8699;--ac:#4f8cff;--ok:#2ecc8f;--wa:#f5b942;--er:#ff5c6c}
-*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--tx);font:14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:16px;max-width:1100px;margin:auto}
+*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Tahoma,sans-serif;padding:16px;max-width:1100px;margin:auto}
 header{display:flex;align-items:center;gap:12px;margin-bottom:16px}h1{font-size:18px;font-weight:600;flex:1}
 .pill{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:99px;padding:6px 12px;font-size:12px;color:var(--mu)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--er)}.on .dot{background:var(--ok);box-shadow:0 0 8px var(--ok)}
 .grid{display:grid;gap:12px}.g5{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}.g2{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}.card.test{border-color:#5a4214}
 .lbl{color:var(--mu);font-size:12px}.val{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}.val small{font-size:12px;color:var(--mu);margin-left:4px}
 .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}h2{font-size:15px;font-weight:600}
 .tag{font-size:11px;padding:3px 8px;border-radius:6px;background:#1c2334;color:var(--mu)}.tag.g{color:var(--ok);background:#12301f}.tag.r{color:var(--er);background:#3a1820}.tag.y{color:var(--wa);background:#382b12}
-.bar{height:6px;background:#0d111a;border-radius:9px;overflow:hidden;margin:10px 0 4px}.bar i{display:block;height:100%;width:0;background:var(--ac);transition:width .3s}
+.bar{height:6px;background:#0d111a;border-radius:9px;overflow:hidden;margin:10px 0 4px;position:relative}.bar i{display:block;height:100%;width:0;background:var(--ac);transition:width .3s}
+.bar b{position:absolute;top:0;bottom:0;width:2px;background:var(--wa)}
 .chain{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:12px 0}.chain div{background:#0f131d;border-radius:8px;padding:8px;text-align:center}
 .chain b{display:block;font-variant-numeric:tabular-nums}.chain small{color:var(--mu);font-size:10px}
-button{font:inherit;border:0;border-radius:9px;padding:9px 14px;cursor:pointer;color:#fff;background:var(--ac)}button:active{transform:scale(.97)}
+button{font:inherit;border:0;border-radius:9px;padding:8px 14px;cursor:pointer;color:#fff;background:var(--ac)}button:active{transform:scale(.97)}
 .tg{width:100%;font-weight:600}.tg.cut{background:var(--er)}.tg.run{background:var(--ok)}
-table{width:100%;border-collapse:collapse}td{padding:8px 6px;border-top:1px solid var(--line)}td:first-child{font-family:ui-monospace,monospace;font-size:12px}
-input{width:90px;background:#0d111a;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:7px;font:inherit}
-.ap{font-variant-numeric:tabular-nums;font-weight:600}.sec{margin:18px 0 8px;color:var(--mu);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+.sw{min-width:64px;background:#263049}.sw.on{background:var(--ok)}.sw.on.w{background:var(--wa);color:#111}
+.row{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}.row:first-child{border-top:0}
+.nm{font-weight:500}.nm .lbl{margin-left:6px}.ap{font-variant-numeric:tabular-nums;font-weight:600;color:var(--ac);margin-left:8px}
+.fa{grid-column:1/-1;direction:rtl;text-align:right;color:var(--mu);font-size:12px}
+.ct{display:flex;gap:6px;align-items:center}
+input,select{background:#0d111a;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:7px;font:inherit}input[type=number]{width:90px}
+input[type=range]{width:160px;padding:0;accent-color:var(--wa)}.rv{min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
+.sec{margin:18px 0 8px;color:var(--mu);font-size:12px;text-transform:uppercase;letter-spacing:.08em}.sec.w{color:var(--wa)}
 .warn{display:none;background:#3a1820;color:var(--er);border-radius:10px;padding:10px;margin-bottom:12px}
+.note{direction:rtl;text-align:right;background:#2a2111;color:var(--wa);border-radius:10px;padding:8px 10px;font-size:12px;margin-bottom:6px}
 body.off main{opacity:.4;filter:grayscale(1)}
 </style></head><body><header><h1>ChangeOver · ESP Link</h1><div class="pill" id="lk"><span class="dot"></span><span id="lt">Connecting…</span></div></header>
 <div class="warn" id="bl">Battery lost fault active (fault bit 6)</div><main>
 <div class="grid g5" id="vg"></div><div class="sec">Chargers</div><div class="grid g2" id="cg"></div>
-<div class="sec">Parameters</div><div class="card"><table id="pt"></table></div></main>
+<div class="sec">Calibration</div><div class="card" id="g0"></div>
+<div class="sec">Current filters &amp; estimate</div><div class="card" id="g1"></div>
+<div class="sec w">Manual / test</div><div class="card test"><div class="note">بخش تست دستی: در مود duty فیکس حلقهٔ تنظیم خاموش است؛ فقط سقف duty و توقف در ولتاژ ابزورب محافظت می‌کنند.</div><div id="g2"></div></div></main>
 <script>
 const $=i=>document.getElementById(i);
 const ST=['OFF','BULK','ABSORB','FLOAT','BRINGUP','JIT WAIT','INPUT WAIT','FINAL FAULT','BAT LOST'];
-const P=[['CUR1_OFFSET_COUNTS','cnt',0,255],['CUR2_OFFSET_COUNTS','cnt',0,255],['CUR1_GAIN_PERMILLE','‰',100,3000],['CUR2_GAIN_PERMILLE','‰',100,3000],
-['VIN_OFFSET_MV','mV',-2000,2000],['V24_OFFSET_MV','mV',-2000,2000],['V12_OFFSET_MV','mV',-2000,2000],['FILTER_MEDIAN3','',0,1],['FILTER_AVERAGE','',0,1],
-['FILTER_WINDOW','smp',1,10],['CHG_EFF_UP_PERMILLE','‰',100,999],['CHG_EFF_DN_PERMILLE','‰',100,999],['CHG1_ENABLE','',0,1],['CHG2_ENABLE','',0,1]];
+/* [name,unit,min,max,group,kind(n=number,b=switch,m=median,r=range),fa] */
+const P=[
+['Ch1 zero offset','cnt',0,255,0,'n','آفست جریان صفر کانال ۱ (شمارش ADC)؛ مقداری که در جریان صفر خوانده می‌شود و قبل از تبدیل از counts کم می‌شود'],
+['Ch2 zero offset','cnt',0,255,0,'n','آفست جریان صفر کانال ۲؛ مانند کانال ۱ برای زنجیرهٔ دوم'],
+['Ch1 gain trim','‰',100,3000,0,'n','ضریب گین تبدیل جریان کانال ۱ (پرمیل)؛ مقیاس نهایی تبدیل به mA، مقدار بنچ ۱۰۸۵'],
+['Ch2 gain trim','‰',100,3000,0,'n','ضریب گین تبدیل جریان کانال ۲ (پرمیل)'],
+['VIN offset','mV',-2000,2000,0,'n','آفست کالیبراسیون ولتاژ ورودی ۲۴V بر حسب mV (علامت‌دار)؛ بعد از تبدیل مقسم جمع می‌شود'],
+['V24 offset','mV',-2000,2000,0,'n','آفست کالیبراسیون ولتاژ پک ۲۴V بر حسب mV (علامت‌دار)'],
+['V12 offset','mV',-2000,2000,0,'n','آفست کالیبراسیون ولتاژ باتری ۱۲V (نود میانی) بر حسب mV (علامت‌دار)'],
+['Median window','smp',1,5,1,'m','اندازهٔ پنجرهٔ مدین روی نمونه‌های خام جریان؛ ۱ = خاموش، ۳ = پیش‌فرض، ۵ پالس‌های دوتایی را هم حذف می‌کند'],
+['Average window','smp',1,10,1,'n','پنجرهٔ میانگین متحرک روی آخرین N نمونهٔ جریان؛ ۱ = خاموش، ۱۰ = پیش‌فرض'],
+['Ch1 efficiency','‰',100,999,1,'n','بازدهی کانال ۱ (پرمیل)؛ فقط روی تخمین جریان اثر دارد، نه شارژ واقعی'],
+['Ch2 efficiency','‰',100,999,1,'n','بازدهی کانال ۲ (پرمیل)؛ مقدار ۲۴۲ خطای over-read سنس کانال ۲ را جبران می‌کند (به ~۷۰۰ تغییرش ندهید)'],
+['Charger 1 on/off','',0,1,9,'b','کلید قطع/وصل شارژر ۱؛ صفر فوراً PWM را قطع می‌کند و یک شارژ را با رمپ نرم ادامه می‌دهد'],
+['Charger 2 on/off','',0,1,9,'b','کلید قطع/وصل شارژر ۲'],
+['Ch1 duty ceiling','‰',0,500,2,'r','سقف duty ی PWM شارژر ۱ (پرمیل)؛ رمپ، تنظیم و مود فیکس همه به آن احترام می‌گذارند'],
+['Ch2 duty ceiling','‰',0,500,2,'r','سقف duty ی PWM شارژر ۲ (پرمیل)'],
+['Ch1 fixed-duty mode','',0,1,2,'b','مود duty فیکس شارژر ۱؛ PWM روی مقدار شناسهٔ ۱۶ قفل می‌شود به‌جای حلقهٔ تنظیم (سوئیچینگ بالای ولتاژ ابزورب همچنان متوقف می‌شود)'],
+['Ch1 fixed duty value','‰',0,500,2,'r','مقدار duty فیکس شارژر ۱ (پرمیل)؛ عددی که در مود فیکس نگه داشته می‌شود'],
+['Ch2 fixed-duty mode','',0,1,2,'b','مود duty فیکس شارژر ۲'],
+['Ch2 fixed duty value','‰',0,500,2,'r','مقدار duty فیکس شارژر ۲ (پرمیل)']];
 const V=[['Input 24V',14],['Pack 24V',15],['Mid node 12V',16],['Upper batt',18],['Lower batt',17]];
 let D=null;
 $('vg').innerHTML=V.map((v,i)=>`<div class="card"><div class="lbl">${v[0]}</div><div class="val"><span id="v${i}">—</span><small>V</small></div></div>`).join('');
 $('cg').innerHTML=[1,2].map(n=>`<div class="card"><div class="hd"><h2>Charger ${n} <span class="lbl">${n==1?'upper':'lower'}</span></h2><span class="tag" id="st${n}">—</span></div>
-<div class="val"><span id="ie${n}">—</span><small>mA est. battery</small></div><div class="bar"><i id="db${n}"></i></div><div class="lbl">Duty <b id="du${n}">—</b></div>
+<div class="val"><span id="ie${n}">—</span><small>mA est. battery</small></div><div class="bar"><i id="db${n}"></i><b id="cl${n}"></b></div><div class="lbl">Duty <b id="du${n}">—</b> <span id="fx${n}"></span></div>
 <div class="chain">${['Raw|cnt','Shunt|µV','Unfilt|mA','Filt|mA'].map((s,k)=>`<div><small>${s.split('|')[0]}</small><b id="c${n}${k}">—</b><small>${s.split('|')[1]}</small></div>`).join('')}</div>
-<button class="tg" id="tg${n}" onclick="tog(${n})">—</button></div>`).join('');
-$('pt').innerHTML=P.map((p,i)=>`<tr><td>${i} · ${p[0]}</td><td class="lbl">${p[2]}…${p[3]} ${p[1]}</td><td class="ap" id="a${i}">—</td><td>${p[3]==1&&p[2]==0
-?`<button id="b${i}" onclick="flip(${i})">Toggle</button>`:`<input type="number" id="i${i}" min="${p[2]}" max="${p[3]}" onkeydown="if(event.key=='Enter')setp(${i})"> <button onclick="setp(${i})">Set</button>`}</td></tr>`).join('');
-function send(id,v){fetch('/s?id='+id+'&v='+v,{method:'POST'});$('a'+id).textContent='…';}
+<button class="tg" id="tg${n}" onclick="tog(${10+n})">—</button><div class="fa" style="margin-top:8px">${P[10+n][6]}</div></div>`).join('');
+function ctl(i){const p=P[i];if(p[5]=='b')return `<button class="sw${i>=15?' w':''}" id="b${i}" onclick="tog(${i})">—</button>`;
+if(p[5]=='m')return `<select id="i${i}" onchange="send(${i},this.value)"><option value="1">1 · off</option><option value="3">3</option><option value="5">5</option></select>`;
+if(p[5]=='r')return `<input type="range" id="i${i}" min="${p[2]}" max="${p[3]}" step="5" oninput="$('r${i}').textContent=this.value" onchange="send(${i},this.value)"><span class="rv" id="r${i}">—</span>`;
+return `<input type="number" id="i${i}" min="${p[2]}" max="${p[3]}" onkeydown="if(event.key=='Enter')setp(${i})"><button onclick="setp(${i})">Set</button>`;}
+[0,1,2].forEach(g=>$('g'+g).innerHTML=P.map((p,i)=>p[4]!=g?'':`<div class="row"><div class="nm">${i} · ${p[0]}<span class="lbl">${p[2]}…${p[3]} ${p[1]}</span><span class="ap" id="a${i}">—</span></div><div class="ct">${ctl(i)}</div><div class="fa">${p[6]}</div></div>`).join(''));
+function send(id,v){fetch('/s?id='+id+'&v='+v,{method:'POST'});const a=$('a'+id);if(a)a.textContent='…';}
 function setp(i){const e=$('i'+i),v=Math.round(+e.value);if(e.value===''||isNaN(v))return;send(i,Math.min(P[i][3],Math.max(P[i][2],v)));e.value='';e.blur();}
-function flip(i){const c=D&&D.p[i];send(i,c===1?0:1);}
-function tog(n){const c=D&&D.p[11+n];send(11+n,c===0?1:0);}
+function tog(i){const c=D&&D.p[i],nv=(c===1)?0:1;if((i==15||i==17)&&nv==1&&!confirm('Fixed-duty mode: regulation loop OFF for this charger. Continue?'))return;send(i,nv);}
 function f2(mv){return (mv/1000).toFixed(2);}
-function draw(d){D=d;const t=d.t,on=d.on==1;document.body.classList.toggle('off',!on);$('lk').classList.toggle('on',on);
+function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1;document.body.classList.toggle('off',!on);$('lk').classList.toggle('on',on);
 $('lt').textContent=on?`Online · seq ${d.seq} · ${d.age} ms`:(d.n?'Link down · last data greyed':'Waiting for STM32…');
 V.forEach((v,i)=>$('v'+i).textContent=f2(t[v[1]]));$('bl').style.display=(t[19]&64)?'block':'none';
-[1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=d.p[11+n];const st=$('st'+n);st.textContent=ST[s]||('#'+s);
+[1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=p[10+n],ce=p[12+n],fx=p[13+2*n];const st=$('st'+n);st.textContent=ST[s]||('#'+s);
 st.className='tag '+(s>=7?'r':s==0?'':s>=4?'y':'g');$('ie'+n).textContent=t[b+4];$('du'+n).textContent=(t[b+5]/10).toFixed(1)+' %';
-$('db'+n).style.width=Math.min(100,t[b+5]/10)+'%';[0,1,2,3].forEach(k=>$('c'+n+k).textContent=t[b+k]);
+$('db'+n).style.width=Math.min(100,t[b+5]/10)+'%';$('cl'+n).style.left=(ce===null?100:Math.min(99.5,ce/10))+'%';
+$('fx'+n).innerHTML=fx===1?'<span class="tag y">FIXED</span>':'';[0,1,2,3].forEach(k=>$('c'+n+k).textContent=t[b+k]);
 const g=$('tg'+n);g.textContent=en===0?'Reconnect charger '+n:'Cut charger '+n;g.className='tg '+(en===0?'run':'cut');});
-P.forEach((p,i)=>{if(d.q&(1<<i))return;const a=$('a'+i),v=d.p[i];a.textContent=v===null?'—':v;const b=$('b'+i);if(b)b.textContent=v===1?'ON':v===0?'OFF':'Toggle';});}
+P.forEach((q,i)=>{if(d.q&(1<<i))return;const v=p[i],a=$('a'+i);if(a)a.textContent=v===null?'—':v;
+const b=$('b'+i);if(b){b.textContent=v===1?'ON':v===0?'OFF':'—';b.classList.toggle('on',v===1);}
+const e=$('i'+i);if(e&&v!==null&&document.activeElement!==e&&q[5]!='n'){e.value=v;const r=$('r'+i);if(r)r.textContent=v;}});}
 async function poll(){try{const r=await fetch('/t',{cache:'no-store'});draw(await r.json());}catch(e){document.body.classList.add('off');$('lk').classList.remove('on');$('lt').textContent='ESP not reachable';}
 setTimeout(poll,300);}
 poll();
@@ -269,7 +304,7 @@ static void func__Esp_PumpTx(void)
         return;
     }
 
-    /* [EN] Order: 12, 13, then 0..11 / [FA] ترتیب: ۱۲، ۱۳، سپس ۰ تا ۱۱ */
+    /* [EN] Order: 11, 12 (charger cut/reconnect) first, then 13..18, 0..10 / [FA] ترتیب: اول ۱۱ و ۱۲ (قطع/وصل شارژر)، سپس ۱۳..۱۸ و ۰..۱۰ */
     for (uint8_t__step = 0u; uint8_t__step < ESP_PARAM_COUNT; uint8_t__step++)
     {
         uint8_t uint8_t__shifted = (uint8_t)(uint8_t__step + ESP_PARAM_CHG1_ENABLE);
@@ -471,9 +506,9 @@ static void func__Esp_HttpRoot(void)
 }
 
 /**
- * @brief  [EN] GET /t : compact JSON snapshot {on,age,seq,fl,n,q,t[20],p[14]}.
+ * @brief  [EN] GET /t : compact JSON snapshot {on,age,seq,fl,n,q,t[20],p[19]}.
  *              t = TLM u32 fields in spec order (offset 4..80); p = applied params or null.
- *         [FA] مسیر GET /t : خلاصه JSON فشرده {on,age,seq,fl,n,q,t[20],p[14]}.
+ *         [FA] مسیر GET /t : خلاصه JSON فشرده {on,age,seq,fl,n,q,t[20],p[19]}.
  *              t فیلدهای u32 تله‌متری به ترتیب سند (آفست ۴ تا ۸۰)؛ p مقدار اعمال‌شده یا null.
  * @return [EN] None / [FA] ندارد
  */
@@ -558,6 +593,13 @@ static void func__Esp_HttpSetParam(void)
     int32_t int32_t__max = INT32_T__G__ParamMax[uint8_t__id];
     int32_t int32_t__clamped = (int32_t__value < int32_t__min) ? int32_t__min : int32_t__value;
     int32_t__clamped = (int32_t__clamped > int32_t__max) ? int32_t__max : int32_t__clamped;
+
+    /* [EN] Median size is 1/3/5: round an even value DOWN like the STM32 does.
+       [FA] اندازهٔ مدین ۱/۳/۵ است: مقدار زوج مثل STM32 به پایین گرد می‌شود. */
+    if ((uint8_t__id == ESP_PARAM_MEDIAN_SIZE) && ((int32_t__clamped % 2) == 0))
+    {
+        int32_t__clamped = int32_t__clamped - 1;
+    }
 
     UINT32_T__G__TxParamValue[uint8_t__id] = (uint32_t)int32_t__clamped;
     BOOL__G__TxParamPending[uint8_t__id] = true;
