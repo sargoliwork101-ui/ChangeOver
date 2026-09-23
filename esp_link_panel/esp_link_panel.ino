@@ -10,8 +10,8 @@
  *               (921600 8N1، مطابق ESP_AGENT_SPEC.md نسخه ۱.۲) و یک پنل وب دارک ساده
  *               راست‌به‌چپ با فونت وزیرمتن و سه تب: وضعیت، کالیبراسیون، تست دستی؛
  *               فرمول‌های تبدیل بخش 5.3 با مقادیر زنده، دستیار کالیبراسیون (صفر از raw، گین از
- *               آمپرمتر، آفست ولتاژ از مولتی‌متر)، نمودار زندهٔ ۳۶ ثانیه‌ای فیلتر و دکمهٔ مسلح‌سازی
- *               مجدد (مسلح‌سازی JIT) برای هر کانال در مود دستی.
+ *               آمپرمتر، آفست ولتاژ از مولتی‌متر)، نمودار زندهٔ ۳۶ ثانیه‌ای فیلتر و دکمهٔ «اعمال مجدد
+ *               duty» (مسلح‌سازی بعد از JIT) برای هر کانال در مود دستی.
  *
  * @note    [EN] Wiring: STM32 PA9 (TX) -> ESP RX, STM32 PA10 (RX) <- ESP TX, common GND.
  *               STM32 PA8 drives ESP CH_PD/EN; this sketch never touches that line.
@@ -19,17 +19,19 @@
  *               No flash storage, no cloud: only MCU <-> ESP data exchange.
  *               Manual test mode (ID 19): a GET_PARAMS keepalive is sent every 1 s while manual
  *               mode is active (TLM flag b5 or param 19), also with a background tab (spec 5.2).
- *               Safety: if no browser has polled /t for 10 s, the ESP sends ID 19 = 0 once, so a
- *               closed panel never leaves a channel on an unregulated duty; the STM32 3 s dead-man
- *               still covers an ESP hang or a broken link.
+ *               Safety: if no browser has polled /t for 10 s (or none since the ESP booted), the ESP
+ *               sends ID 19 = 0 every 1 s until the STM32 reports manual off, so a closed panel never
+ *               leaves a channel on an unregulated duty; the STM32 3 s dead-man still covers an ESP
+ *               hang or a broken link.
  *          [FA] سیم‌بندی: PA9 به RX ماژول، PA10 به TX ماژول، زمین مشترک.
  *               پایه CH_PD/EN را STM32 (PA8) کنترل می‌کند؛ این برنامه به آن دست نمی‌زند.
  *               وای‌فای "ChangeOver-ESP" با رمز "123456789"، پنل در http://192.168.4.1
  *               بدون حافظه فلش و بدون اینترنت: فقط تبادل داده بین MCU و ESP.
  *               مود تست دستی (شناسه ۱۹): تا وقتی مود دستی فعال است (پرچم b5 یا پارامتر ۱۹) هر ۱ ثانیه
  *               یک GET_PARAMS فرستاده می‌شود، حتی با تب پس‌زمینه (بخش 5.2 سند). ایمنی: اگر ۱۰ ثانیه
- *               هیچ مرورگری /t را نخواند، ESP یک بار شناسهٔ ۱۹ = 0 می‌فرستد تا پنل بسته هرگز کانال را
- *               روی duty بدون تنظیم رها نکند؛ هنگ ESP یا قطع لینک را dead-man سه‌ثانیه‌ای STM32 پوشش می‌دهد.
+ *               هیچ مرورگری /t را نخواند (یا از بوت ESP هنوز نخوانده باشد)، ESP هر ۱ ثانیه شناسهٔ ۱۹ = 0 را
+ *               می‌فرستد تا STM32 خاموشی مود دستی را گزارش کند؛ پس پنل بسته هرگز کانال را روی duty بدون
+ *               تنظیم رها نمی‌کند. هنگ ESP یا قطع لینک را dead-man سه‌ثانیه‌ای STM32 پوشش می‌دهد.
  */
 
 /* ==================== Board Includes ==================== */
@@ -134,6 +136,7 @@ static bool     BOOL__G__TxGetPending = false;
 static uint32_t UINT32_T__G__LastTxMs = 0u;
 static uint32_t UINT32_T__G__LastKeepaliveMs = 0u;
 static uint32_t UINT32_T__G__LastBrowserPollMs = 0u;
+static bool     BOOL__G__BrowserSeen = false;
 
 /* [EN] Send priority: charger cut, manual mode, manual duties, then the rest.
    [FA] اولویت ارسال: قطع شارژر، مود دستی، duty دستی، سپس بقیه. */
@@ -218,7 +221,7 @@ body.dn section:not(#t2){opacity:.45;filter:grayscale(1)}
 </section>
 
 <script>
-const $=i=>document.getElementById(i),E=(h)=>{const d=document.createElement('div');d.innerHTML=h;return d.firstElementChild;};
+const $=i=>document.getElementById(i);
 const ST=['خاموش','Bulk','Absorb','Float','راه‌اندازی','انتظار JIT','انتظار ورودی','خطای نهایی','باتری قطع','دستی'];
 const SC=['','g','g','g','y','r','y','r','r','y'];
 /* شناسه: [عنوان, واحد, کمینه, بیشینه, نوع(n عدد، b کلید، m مدین), توضیح] */
@@ -273,7 +276,7 @@ let CS=0,LS=-1;const HN=120,H=[{u:[],f:[],r:[]},{u:[],f:[],r:[]}];
 document.querySelectorAll('#cs button').forEach(b=>b.onclick=()=>{CS=+b.dataset.c;document.querySelectorAll('#cs button').forEach(x=>x.classList.toggle('on',x===b));chart();});
 function zero(n){const r=H[n-1].r.slice(-10);if(r.length<3)return alert('دادهٔ کافی نیست؛ چند ثانیه صبر کنید.');
  const avg=Math.round(r.reduce((a,b)=>a+b,0)/r.length),du=D.t[(n-1)*7+5];
- if(!confirm((du>0?'هشدار: duty کانال '+n+' صفر نیست و جریان جاری است!\n':'')+'آفست صفر کانال '+n+': '+D.p[n-1]+' ← '+avg+' (میانگین '+r.length+' نمونهٔ raw)؟'))return;send(n-1,Math.min(255,Math.max(0,avg)));}
+ if(!confirm((du>0?'هشدار: duty کانال '+n+' صفر نیست و جریان جاری است!\n':'')+'آفست صفر کانال '+n+': '+nz(D.p[n-1])+' ← '+avg+' (میانگین '+r.length+' نمونهٔ raw)؟'))return;send(n-1,Math.min(255,Math.max(0,avg)));}
 function gain(n){const m=+$('ga'+n).value,cur=D&&D.t[(n-1)*7+3],g=D&&D.p[n+1];if(!(m>0))return;if(!(cur>0)||g==null)return alert('جریان فیلترشدهٔ کانال باید بیشتر از صفر باشد.');
  const ng=Math.min(3000,Math.max(100,Math.round(g*m/cur)));if(confirm('گین کانال '+n+': '+g+' ← '+ng+' ‰\n(جریان اولیهٔ فیلترشده '+cur+' mA، آمپرمتر شنت اولیه '+m+' mA)')){send(n+1,ng);$('ga'+n).value='';}}
 function vcal(k){const R=VR[k],m=Math.round(+$('vm'+k).value*1000),shown=D&&D.t[R[1]],off=D&&D.p[R[2]];if(!(m>0)||off==null)return;
@@ -297,8 +300,7 @@ $('mc').innerHTML=[1,2].map(n=>{const id=14+2*n;return `<div class="cd"><div cla
  m.onkeydown=e=>{if(e.key=='Enter')$('mk'+n).click();};});
 $('s19').onclick=()=>{if(!D)return;const on=(D.fl&32)||D.p[19]===1;
  if(!on&&!confirm('شارژر خودکار و همهٔ محافظت‌های باتری متوقف می‌شوند و duty را خودتان تعیین می‌کنید. ادامه؟'))return;send(19,on?0:1);};
-$('ao').onclick=()=>{send(16,0);send(18,0);};
-/* مسلح‌سازی مجدد بعد از تریپ JIT: همان duty اعمال‌شده دوباره فرستاده می‌شود (بخش 5.2) */
+$('ao').onclick=()=>{send(16,0);send(18,0);[1,2].forEach(n=>{$('r'+n).value=0;$('m'+n).value='';});};
 /* اعمال مجدد: مقدار فعلی پارامتر ۱۶/۱۸ دوباره فرستاده می‌شود؛ بعد از تریپ JIT (وضعیت ۵) همین کار کانال را مسلح می‌کند */
 [1,2].forEach(n=>$('rm'+n).onclick=()=>{const id=14+2*n,v=D&&D.p[id];if(v==null)return;
  if(D.t[(n-1)*7+6]===5&&!confirm('کانال '+n+' با duty '+v+'‰ دوباره مسلح شود؟\nسومین تریپ JIT = خطای نهایی (فقط با ری‌استارت برد پاک می‌شود).'))return;send(id,v);});
@@ -857,9 +859,11 @@ static void func__Esp_SendSetParam(uint8_t uint8_t__id, uint32_t uint32_t__value
 
 /**
  * @brief  [EN] Send at most one queued command per ESP_LINK_TX_INTERVAL_MS
- *              (priority order UINT8_T__G__TxOrder), plus the manual-mode keepalive. Never blocks.
+ *              (priority order UINT8_T__G__TxOrder), plus the manual-mode keepalive or, with no
+ *              browser, the manual-exit request (ID 19 = 0). Never blocks.
  *         [FA] ارسال حداکثر یک فرمان صف‌شده در هر ESP_LINK_TX_INTERVAL_MS
- *              (به ترتیب اولویت UINT8_T__G__TxOrder) و keepalive مود دستی. هیچ‌وقت مسدود نمی‌کند.
+ *              (به ترتیب اولویت UINT8_T__G__TxOrder) و keepalive مود دستی یا، بدون مرورگر، درخواست
+ *              خروج از مود دستی (ID 19 = 0). هیچ‌وقت مسدود نمی‌کند.
  * @return [EN] None / [FA] ندارد
  */
 static void func__Esp_PumpTx(void)
@@ -900,8 +904,12 @@ static void func__Esp_PumpTx(void)
        [FA] محافظ پنل بسته: اگر ESP_LINK_BROWSER_LOST_MS هیچ /t خوانده نشود، به‌جای keepalive فرمان
             ID 19 = 0 هر ESP_LINK_KEEPALIVE_MS تکرار می‌شود تا STM32 خاموشی مود دستی را گزارش کند
             (فریم گم‌شده دوباره فرستاده می‌شود). تب پس‌زمینه با throttle هنوز حدود هر ثانیه می‌خواند. */
+    /* [EN] No browser since boot counts as lost: an ESP reset while the STM32 is in manual mode
+            must not keep the mode alive for 10 s without anyone watching.
+       [FA] نبودن مرورگر از بوت هم «ازدست‌رفته» حساب می‌شود: ری‌استارت ESP وسط مود دستی نباید
+            مود را ۱۰ ثانیه بدون ناظر زنده نگه دارد. */
     uint32_t uint32_t__browserAgeMs = uint32_t__nowMs - UINT32_T__G__LastBrowserPollMs;
-    bool bool__browserLost = (uint32_t__browserAgeMs >= ESP_LINK_BROWSER_LOST_MS);
+    bool bool__browserLost = (!BOOL__G__BrowserSeen) || (uint32_t__browserAgeMs >= ESP_LINK_BROWSER_LOST_MS);
     uint32_t uint32_t__keepaliveAgeMs = uint32_t__nowMs - UINT32_T__G__LastKeepaliveMs;
     bool bool__keepaliveDue = bool__manualActive && (uint32_t__keepaliveAgeMs >= ESP_LINK_KEEPALIVE_MS);
 
@@ -1098,6 +1106,45 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
 /* ==================== HTTP Handlers ==================== */
 
 /**
+ * @brief  [EN] Strict decimal parse of an HTTP argument: optional '-', 1..7 digits, nothing else.
+ *              (String::toInt() returns 0 for garbage, which would silently target ID 0 / value 0.)
+ *         [FA] تبدیل سخت‌گیرانهٔ آرگومان HTTP به عدد: '-' اختیاری و ۱ تا ۷ رقم، بدون هیچ چیز دیگر.
+ *              (toInt() برای ورودی خراب صفر می‌دهد و بی‌صدا شناسه/مقدار صفر را هدف می‌گیرد.)
+ * @param  char__ptr_text      [EN] NUL-terminated text / [FA] متن پایان‌یافته با NUL
+ * @param  int32_t__ptr_value  [EN] Output, -9999999..9999999 / [FA] خروجی، -۹۹۹۹۹۹۹ تا ۹۹۹۹۹۹۹
+ * @return [EN] true when the text is a valid integer / [FA] true اگر متن عدد صحیح معتبر باشد
+ */
+static bool func__Esp_ParseInt(const char *char__ptr_text, int32_t *int32_t__ptr_value)
+{
+    bool bool__negative = (char__ptr_text[0] == '-');
+    uint8_t uint8_t__index = bool__negative ? 1u : 0u;
+    uint8_t uint8_t__digits = 0u;
+    int32_t int32_t__value = 0;
+
+    while (char__ptr_text[uint8_t__index] != '\0')
+    {
+        char char__digit = char__ptr_text[uint8_t__index];
+        if ((char__digit < '0') || (char__digit > '9') || (uint8_t__digits >= 7u))
+        {
+            return false;
+        }
+        int32_t int32_t__digitValue = (int32_t)(char__digit - '0');
+        int32_t int32_t__shifted = int32_t__value * 10;
+        int32_t__value = int32_t__shifted + int32_t__digitValue;
+        uint8_t__digits++;
+        uint8_t__index++;
+    }
+
+    if (uint8_t__digits == 0u)
+    {
+        return false;
+    }
+
+    *int32_t__ptr_value = bool__negative ? -int32_t__value : int32_t__value;
+    return true;
+}
+
+/**
  * @brief  [EN] GET / : serve the web panel from flash.
  *         [FA] مسیر GET / : ارسال پنل وب از حافظه فلش.
  * @return [EN] None / [FA] ندارد
@@ -1136,6 +1183,7 @@ static void func__Esp_HttpTelemetry(void)
     size_t size_t__used;
 
     UINT32_T__G__LastBrowserPollMs = uint32_t__nowMs;
+    BOOL__G__BrowserSeen = true;
 
     for (uint8_t__index = 0u; uint8_t__index < ESP_PARAM_COUNT; uint8_t__index++)
     {
@@ -1195,10 +1243,12 @@ static void func__Esp_HttpSetParam(void)
         return;
     }
 
-    int32_t int32_t__id = (int32_t)ESP_WEB_SERVER_T__G__Server.arg("id").toInt();
-    int32_t int32_t__value = (int32_t)ESP_WEB_SERVER_T__G__Server.arg("v").toInt();
+    int32_t int32_t__id = -1;
+    int32_t int32_t__value = 0;
+    bool bool__idOk = func__Esp_ParseInt(ESP_WEB_SERVER_T__G__Server.arg("id").c_str(), &int32_t__id);
+    bool bool__valueOk = func__Esp_ParseInt(ESP_WEB_SERVER_T__G__Server.arg("v").c_str(), &int32_t__value);
 
-    if ((int32_t__id < 0) || (int32_t__id >= (int32_t)ESP_PARAM_COUNT))
+    if ((!bool__idOk) || (!bool__valueOk) || (int32_t__id < 0) || (int32_t__id >= (int32_t)ESP_PARAM_COUNT))
     {
         ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
         return;
