@@ -465,6 +465,75 @@ void func__Charger_SetChannelEspEnable(uint8_t uint8_t__channelIndex, bool bool_
  */
 bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex);
 
+/**
+ * @brief  [EN] Set the runtime PWM duty ceiling of one channel, clamped to
+ *              0..CHG_DUTY_MAX_PERMILLE; every applied duty respects it.
+ *              RAM only, ESP panel (user order 2026-09-22).
+ *         [FA] سقف duty ی PWM یک کانال در زمان اجرا، گیرهٔ
+ *              ۰..CHG_DUTY_MAX_PERMILLE؛ هر duty اعمالی آن را رعایت
+ *              می‌کند. فقط RAM، پنل ESP (دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @param  uint32_t__ceilingPermille [EN] Requested ceiling / سقف درخواستی
+ * @return uint32_t [EN] Applied ceiling / سقف اعمال‌شده
+ */
+uint32_t func__Charger_SetDutyCeilingPermille(uint8_t uint8_t__channelIndex,
+                                              uint32_t uint32_t__ceilingPermille);
+
+/**
+ * @brief  [EN] Read the live PWM duty ceiling of one channel.
+ *         [FA] سقف زندهٔ duty یک کانال.
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @return uint32_t [EN] Ceiling permille / سقف پرمیل
+ */
+uint32_t func__Charger_GetDutyCeilingPermille(uint8_t uint8_t__channelIndex);
+
+/**
+ * @brief  [EN] Set the runtime fixed-duty mode of one channel: hold the PWM
+ *              at one chosen number instead of the regulation loop, with
+ *              the bench-test safety wrapper (switching stops above
+ *              CHG_ABSORB_MV; JIT/input/battery/ESP cuts stay active). RAM
+ *              only (user order 2026-09-22).
+ *         [FA] مود duty فیکس یک کانال در زمان اجرا: نگه‌داشتن PWM روی
+ *              یک عدد به‌جای حلقهٔ تنظیم، با پوشش امنیتی تست بنچ (توقف
+ *              سوئیچینگ بالای CHG_ABSORB_MV؛ حفاظت‌های JIT/ورودی/باتری/
+ *              ESP فعال). فقط RAM (دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @param  bool__enable [EN] true = fixed mode on / مود فیکس روشن
+ */
+void func__Charger_SetDutyFixedEnable(uint8_t uint8_t__channelIndex, bool bool__enable);
+
+/**
+ * @brief  [EN] Read the runtime fixed-duty switch of one channel.
+ *         [FA] کلید مود duty فیکس یک کانال.
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @return bool [EN] true = fixed mode on / مود فیکس روشن
+ */
+bool func__Charger_GetDutyFixedEnable(uint8_t uint8_t__channelIndex);
+
+/**
+ * @brief  [EN] Set the fixed duty value of one channel, clamped to
+ *              0..CHG_DUTY_MAX_PERMILLE; effective only while fixed mode is
+ *              enabled, and additionally clamped to the runtime ceiling on
+ *              apply. RAM only (user order 2026-09-22).
+ *         [FA] مقدار duty فیکس یک کانال، گیرهٔ ۰..CHG_DUTY_MAX_PERMILLE؛
+ *              فقط با روشن‌بودن مود فیکس مؤثر و موقع اعمال به‌علاوه به
+ *              سقف زمان اجرا گیره می‌خورد. فقط RAM (دستور کاربر
+ *              ۲۰۲۶-۰۹-۲۲).
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @param  uint32_t__dutyPermille [EN] Requested duty / duty درخواستی
+ * @return uint32_t [EN] Applied stored value / مقدار ذخیره‌شده
+ */
+uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
+                                            uint32_t uint32_t__dutyPermille);
+
+/**
+ * @brief  [EN] Read the stored fixed duty value of one channel.
+ *         [FA] مقدار ذخیره‌شدهٔ duty فیکس یک کانال.
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @return uint32_t [EN] Duty permille / duty پرمیل
+ */
+uint32_t func__Charger_GetDutyFixedPermille(uint8_t uint8_t__channelIndex);
+
 /* ==================== Charger_Init / مقداردهی اولیه ==================== */
 /**
  * @brief  [EN] Initialize policy state, stop every PWM channel and force a

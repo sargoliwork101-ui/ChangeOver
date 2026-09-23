@@ -69,14 +69,17 @@ static uint8_t UINT8_T__G__MeasurementWarmupFrameCount;
 static uint32_t UINT32_T__G__BatVoltageMedianHistoryMv[2][5];
 
 #if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
-/* [EN] Median-of-3 history per current channel (0=Current1, 1=Current2):
+/* [EN] Median history per current channel (0=Current1, 1=Current2), window
+ *      = runtime median size 1/3/5 with default 3 (user order 2026-09-22):
  *      kills single-sample jumps of the synchronized mid-ON reading with
- *      zero added lag (user order 2026-09-22). Exists only when the filter
- *      switch is on.
- * [FA] تاریخچهٔ مدین-۳ برای هر کانال جریان: پرش‌های تک‌نمونه‌ای خوانش
- *      سنکرون وسط ON را بدون تأخیر اضافه حذف می‌کند (دستور کاربر
- *      ۲۰۲۶-۰۹-۲۲). فقط وقتی کلید فیلتر روشن است وجود دارد. */
-static uint32_t UINT32_T__G__CurrentMedianHistoryMa[2][3];
+ *      zero added lag. Exists only when the compile-time filter switch is
+ *      on.
+ * [FA] تاریخچهٔ مدین برای هر کانال جریان (۰=جریان ۱، ۱=جریان ۲)، پنجره
+ *      = اندازهٔ مدین زمان اجرا ۱/۳/۵ با پیش‌فرض ۳ (دستور کاربر
+ *      ۲۰۲۶-۰۹-۲۲): پرش‌های تک‌نمونه‌ای خوانش سنکرون وسط ON را بدون
+ *      تأخیر اضافه حذف می‌کند. فقط وقتی کلید فیلتر کامپایل روشن است
+ *      وجود دارد. */
+static uint32_t UINT32_T__G__CurrentMedianHistoryMa[2][MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX];
 #endif
 
 #if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
@@ -93,24 +96,26 @@ static uint32_t UINT32_T__G__CurrentAverageWindowMa[2][MEASUREMENT_CURRENT_AVERA
 /* ==================== Runtime filter config / voltage offsets (ESP panel) ==================== */
 
 /* [EN] Runtime copies of the current-filter configuration (user order
- *      2026-09-22: the ESP command panel can switch the filters and resize
- *      the moving-average window live). The compile-time switches above
- *      remain the capability gates: a filter compiled out can never be
- *      switched on at runtime, and the runtime window can never exceed the
- *      compiled ring size. The measurement task detects a change and resets
- *      the filter state in its own context, so no cross-task locking is
- *      needed (written by the EspLink task, volatile).
+ *      2026-09-22: the ESP command panel can resize the median window and
+ *      the moving-average window live; ONE size parameter per filter -
+ *      size 1 means bypass, so a separate on/off switch is unnecessary).
+ *      The compile-time switches above remain the capability gates: a
+ *      filter compiled out can never be switched on at runtime, the median
+ *      window can never exceed MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX and the
+ *      average window never exceeds the compiled ring size. The measurement
+ *      task detects a change and resets the filter state in its own
+ *      context, so no cross-task locking is needed (written by the EspLink
+ *      task, volatile).
  * [FA] نسخهٔ زمان اجرای پیکربندی فیلتر جریان (دستور کاربر ۲۰۲۶-۰۹-۲۲:
- *      پنل ESP می‌تواند فیلترها را زنده قطع/وصل و پنجرهٔ میانگین را تغییر
- *      دهد). کلیدهای کامپایل بالا ظرفیت را تعیین می‌کنند: فیلتری که
- *      کامپایل نشده هرگز روشن نمی‌شود و پنجرهٔ زمان اجرا هرچه باشد از
- *      اندازهٔ حلقهٔ کامپایل بزرگ‌تر نمی‌شود. تسک اندازه‌گیری تغییر را
- *      می‌بیند و وضعیت فیلتر را در زمینهٔ خودش ریست می‌کند؛ پس قفل بین
- *      تسکی لازم نیست (نوشته از تسک EspLink، volatile). */
-static volatile uint8_t UINT8_T__G__FilterMedian3Enable =
-    (uint8_t)MEASUREMENT_CURRENT_MEDIAN3_ENABLE;
-static volatile uint8_t UINT8_T__G__FilterAverageEnable =
-    (uint8_t)MEASUREMENT_CURRENT_AVERAGE_ENABLE;
+ *      پنل ESP می‌تواند پنجرهٔ مدین و پنجرهٔ میانگین متحرک را زنده تغییر
+ *      دهد؛ برای هر فیلتر یک پارامتر اندازه - اندازهٔ ۱ یعنی عبور
+ *      مستقیم، پس کلید روشن/خاموش جدا لازم نیست). کلیدهای کامپایل بالا
+ *      ظرفیت را تعیین می‌کنند: فیلتری که کامپایل نشده هرگز روشن نمی‌شود،
+ *      پنجرهٔ مدین هرچه باشد از MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX و
+ *      پنجرهٔ میانگین از اندازهٔ حلقهٔ کامپایل بزرگ‌تر نمی‌شود. تسک
+ *      اندازه‌گیری تغییر را می‌بیند و وضعیت فیلتر را در زمینهٔ خودش ریست
+ *      می‌کند؛ پس قفل بین‌تسکی لازم نیست (نوشته از تسک EspLink، volatile). */
+static volatile uint8_t UINT8_T__G__FilterMedianSize = 3u;
 static volatile uint8_t UINT8_T__G__FilterAverageWindow =
     (uint8_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW;
 
@@ -118,10 +123,7 @@ static volatile uint8_t UINT8_T__G__FilterAverageWindow =
  *      measurement task only (change detection).
  * [FA] آخرین پیکربندی اعمال‌شده توسط تسک اندازه‌گیری؛ فقط مالکش همین
  *      تسک است (تشخیص تغییر). */
-static uint8_t UINT8_T__G__FilterMedian3Applied =
-    (uint8_t)MEASUREMENT_CURRENT_MEDIAN3_ENABLE;
-static uint8_t UINT8_T__G__FilterAverageApplied =
-    (uint8_t)MEASUREMENT_CURRENT_AVERAGE_ENABLE;
+static uint8_t UINT8_T__G__FilterMedianSizeApplied = 3u;
 static uint8_t UINT8_T__G__FilterAverageWindowApplied =
     (uint8_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW;
 
@@ -175,54 +177,76 @@ static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
 
 /**
  * @brief  [EN] Shift one new converted current sample (mA) of one channel
- *              into its median-3 history and return the middle value: a
+ *              into its median history and return the middle value. The
+ *              window size is the runtime median size (1/3/5, user order
+ *              2026-09-22: the ESP panel can change it live); a
  *              single-sample jump of the synchronized mid-ON reading is
- *              discarded with zero added lag (user order 2026-09-22).
+ *              discarded with zero added lag. Insertion sort of a LOCAL
+ *              copy keeps the live history untouched, same pattern as the
+ *              voltage median-5.
  *         [FA] یک نمونهٔ تبدیل‌شدهٔ جریان (mA) از یک کانال را در
- *              تاریخچهٔ مدین-۳ همان کانال جابه‌جا و مقدار میانی را
- *              برمی‌گرداند: پرش تک‌نمونه‌ای خوانش سنکرون وسط ON بدون
- *              تأخیر اضافه دور انداخته می‌شود (دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ *              تاریخچهٔ مدین همان کانال جابه‌جا و مقدار میانی را
+ *              برمی‌گرداند. اندازهٔ پنجره همان اندازهٔ مدین زمان اجرا
+ *              است (۱/۳/۵، دستور کاربر ۲۰۲۶-۰۹-۲۲: پنل ESP زنده عوضش
+ *              می‌کند)؛ پرش تک‌نمونه‌ای خوانش سنکرون وسط ON بدون تأخیر
+ *              اضافه دور انداخته می‌شود. مرتب‌سازی درجی روی کپی محلی،
+ *              همان الگوی مدین-۵ ولتاژ.
  * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
  * @param  uint32_t__sampleMa [EN] New converted sample in mA / نمونهٔ جدید mA
- * @return uint32_t [EN] Median-of-3 filtered current in mA / جریان مدین‌شده mA
+ * @param  uint8_t__medianSize [EN] Active median window (1..5) / پنجرهٔ فعال
+ * @return uint32_t [EN] Median-filtered current in mA / جریان مدین‌شده mA
  */
-static uint32_t func__Measurement_CurrentMedian3(uint8_t uint8_t__channelIndex,
-                                                 uint32_t uint32_t__sampleMa)
+static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
+                                                uint32_t uint32_t__sampleMa,
+                                                uint8_t uint8_t__medianSize)
 {
+    uint32_t UINT32_T__A__Sorted[MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX];
     uint32_t *uint32_t__historyMa;
-    uint32_t uint32_t__oldestMa;
-    uint32_t uint32_t__middleMa;
-    uint32_t uint32_t__newestMa;
+    uint8_t uint8_t__index;
+    uint8_t uint8_t__pass;
 
-    if (uint8_t__channelIndex >= 2u)
+    if ((uint8_t__channelIndex >= 2u) ||
+        (uint8_t__medianSize < 1u) ||
+        (uint8_t__medianSize > (uint8_t)MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX))
     {
         return uint32_t__sampleMa;
     }
 
+    if (uint8_t__medianSize == 1u)
+    {
+        /* [EN] Window of one = bypass. [FA] پنجرهٔ یک‌تایی = عبور مستقیم. */
+        return uint32_t__sampleMa;
+    }
+
     uint32_t__historyMa = UINT32_T__G__CurrentMedianHistoryMa[uint8_t__channelIndex];
-    uint32_t__historyMa[0] = uint32_t__historyMa[1];
-    uint32_t__historyMa[1] = uint32_t__historyMa[2];
-    uint32_t__historyMa[2] = uint32_t__sampleMa;
-
-    uint32_t__oldestMa = uint32_t__historyMa[0];
-    uint32_t__middleMa = uint32_t__historyMa[1];
-    uint32_t__newestMa = uint32_t__historyMa[2];
-
-    /* [EN] Median of three = the value that is neither the minimum nor the
-       maximum of the three history slots.
-       [FA] مدین سه‌تایی = مقداری که از سه خانهٔ تاریخچه نه کمینه است و
-       نه بیشینه. */
-    if (((uint32_t__oldestMa >= uint32_t__middleMa) && (uint32_t__oldestMa <= uint32_t__newestMa)) ||
-        ((uint32_t__oldestMa >= uint32_t__newestMa) && (uint32_t__oldestMa <= uint32_t__middleMa)))
+    for (uint8_t__index = (uint8_t)(uint8_t__medianSize - 1u);
+         uint8_t__index > 0u;
+         uint8_t__index--)
     {
-        return uint32_t__oldestMa;
+        uint32_t__historyMa[uint8_t__index] =
+            uint32_t__historyMa[uint8_t__index - 1u];
     }
-    if (((uint32_t__middleMa >= uint32_t__oldestMa) && (uint32_t__middleMa <= uint32_t__newestMa)) ||
-        ((uint32_t__middleMa >= uint32_t__newestMa) && (uint32_t__middleMa <= uint32_t__oldestMa)))
+    uint32_t__historyMa[0] = uint32_t__sampleMa;
+
+    for (uint8_t__index = 0u; uint8_t__index < uint8_t__medianSize; uint8_t__index++)
     {
-        return uint32_t__middleMa;
+        UINT32_T__A__Sorted[uint8_t__index] = uint32_t__historyMa[uint8_t__index];
     }
-    return uint32_t__newestMa;
+    for (uint8_t__pass = 1u; uint8_t__pass < uint8_t__medianSize; uint8_t__pass++)
+    {
+        uint32_t uint32_t__key = UINT32_T__A__Sorted[uint8_t__pass];
+        int32_t int32_t__slot = (int32_t)uint8_t__pass - 1;
+
+        while ((int32_t__slot >= 0) &&
+               (UINT32_T__A__Sorted[int32_t__slot] > uint32_t__key))
+        {
+            UINT32_T__A__Sorted[int32_t__slot + 1] = UINT32_T__A__Sorted[int32_t__slot];
+            int32_t__slot--;
+        }
+        UINT32_T__A__Sorted[int32_t__slot + 1] = uint32_t__key;
+    }
+
+    return UINT32_T__A__Sorted[uint8_t__medianSize / 2u];
 }
 #endif
 
@@ -320,21 +344,23 @@ static uint32_t func__Measurement_ApplyCurrentFilters(uint8_t uint8_t__channelIn
     (void)uint8_t__channelIndex;
 
 #if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
-    /* [EN] Runtime switch (ESP panel): the compiled switch is the
-       capability, this flag is the live setting.
-       [FA] کلید زمان اجرا (پنل ESP): کلید کامپایل ظرفیت است و این پرچم
-       تنظیم زنده. */
-    if (UINT8_T__G__FilterMedian3Enable != 0u)
+    /* [EN] Runtime window (ESP panel): the compiled switch is the
+       capability, the size is the live setting (1 = bypass, 3/5 = active).
+       [FA] پنجرهٔ زمان اجرا (پنل ESP): کلید کامپایل ظرفیت است و اندازه
+       تنظیم زنده (۱ = عبور مستقیم، ۳/۵ = فعال). */
+    if (UINT8_T__G__FilterMedianSize >= 3u)
     {
         uint32_t__sampleMa =
-            func__Measurement_CurrentMedian3(uint8_t__channelIndex, uint32_t__sampleMa);
+            func__Measurement_CurrentMedian(uint8_t__channelIndex,
+                                            uint32_t__sampleMa,
+                                            UINT8_T__G__FilterMedianSize);
     }
 #endif
 
 #if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
-    /* [EN] Runtime switch (ESP panel), same rule as the median above.
-       [FA] کلید زمان اجرا (پنل ESP) با همان قاعدهٔ مدین بالا. */
-    if (UINT8_T__G__FilterAverageEnable != 0u)
+    /* [EN] Runtime window (ESP panel): window 1 = bypass, >= 2 = active.
+       [FA] پنجرهٔ زمان اجرا (پنل ESP): پنجرهٔ ۱ = عبور مستقیم، ≥۲ = فعال. */
+    if (UINT8_T__G__FilterAverageWindow >= 2u)
     {
         uint32_t__sampleMa =
             func__Measurement_CurrentMovingAverage(uint8_t__channelIndex, uint32_t__sampleMa);
@@ -363,9 +389,12 @@ static void func__Measurement_ResetCurrentFilters(void)
 #if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
     for (uint32_t uint32_t__i = 0u; uint32_t__i < 2u; uint32_t__i++)
     {
-        UINT32_T__G__CurrentMedianHistoryMa[uint32_t__i][0] = 0u;
-        UINT32_T__G__CurrentMedianHistoryMa[uint32_t__i][1] = 0u;
-        UINT32_T__G__CurrentMedianHistoryMa[uint32_t__i][2] = 0u;
+        for (uint32_t uint32_t__j = 0u;
+             uint32_t__j < (uint32_t)MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX;
+             uint32_t__j++)
+        {
+            UINT32_T__G__CurrentMedianHistoryMa[uint32_t__i][uint32_t__j] = 0u;
+        }
     }
 #endif
 
@@ -471,8 +500,7 @@ void func__Measurement_Init(void)
        زمان اجرا (پیکربندی‌ای که قبل از Init رسیده باشد به اولین فریم
        نمی‌رسد). */
     func__Measurement_ResetCurrentFilters();
-    UINT8_T__G__FilterMedian3Applied = UINT8_T__G__FilterMedian3Enable;
-    UINT8_T__G__FilterAverageApplied = UINT8_T__G__FilterAverageEnable;
+    UINT8_T__G__FilterMedianSizeApplied = UINT8_T__G__FilterMedianSize;
     UINT8_T__G__FilterAverageWindowApplied = UINT8_T__G__FilterAverageWindow;
 
     UINT32_T__G__MeasInputVoltageMv = 0u;
@@ -688,22 +716,20 @@ void func__Measurement_Run(void)
     }
 
     /* [EN] Runtime filter-config change detection (ESP panel, user order
- *          2026-09-22): when any of the three live settings moved, reset
- *          the filter state in this task's own context and take over the
- *          new configuration - a resize never mixes stale ring slots into
- *          the average and no cross-task lock is needed.
+ *          2026-09-22): when the median size or the average window moved,
+ *          reset the filter state in this task's own context and take over
+ *          the new configuration - a resize never mixes stale slots into
+ *          the filters and no cross-task lock is needed.
  * [FA] تشخیص تغییر پیکربندی زندهٔ فیلتر (پنل ESP، دستور کاربر
- *      ۲۰۲۶-۰۹-۲۲): با جابه‌جاشدن هر یک از سه تنظیم، وضعیت فیلتر در
- *      زمینهٔ همین تسک ریست و پیکربندی جدید تحویل گرفته می‌شود - تغییر
- *      اندازه هرگز خانه‌های قدیمی حلقه را داخل میانگین نمی‌آمیزد و قفل
- *      بین‌تسکی لازم نیست. */
-    if ((UINT8_T__G__FilterMedian3Applied != UINT8_T__G__FilterMedian3Enable) ||
-        (UINT8_T__G__FilterAverageApplied != UINT8_T__G__FilterAverageEnable) ||
+ *      ۲۰۲۶-۰۹-۲۲): با جابه‌جاشدن اندازهٔ مدین یا پنجرهٔ میانگین، وضعیت
+ *      فیلتر در زمینهٔ همین تسک ریست و پیکربندی جدید تحویل گرفته
+ *      می‌شود - تغییر اندازه هرگز خانه‌های قدیمی را داخل فیلترها
+ *      نمی‌آمیزد و قفل بین‌تسکی لازم نیست. */
+    if ((UINT8_T__G__FilterMedianSizeApplied != UINT8_T__G__FilterMedianSize) ||
         (UINT8_T__G__FilterAverageWindowApplied != UINT8_T__G__FilterAverageWindow))
     {
         func__Measurement_ResetCurrentFilters();
-        UINT8_T__G__FilterMedian3Applied = UINT8_T__G__FilterMedian3Enable;
-        UINT8_T__G__FilterAverageApplied = UINT8_T__G__FilterAverageEnable;
+        UINT8_T__G__FilterMedianSizeApplied = UINT8_T__G__FilterMedianSize;
         UINT8_T__G__FilterAverageWindowApplied = UINT8_T__G__FilterAverageWindow;
     }
 
@@ -891,49 +917,48 @@ bool func__Measurement_GetSnapshot(measurement_snapshot_t *measurement_snapshot_
 /* ==================== Measurement runtime config API (ESP panel) ==================== */
 
 /**
- * @brief  [EN] Set the runtime median-3 switch of the current filters. The
- *              compiled switch MEASUREMENT_CURRENT_MEDIAN3_ENABLE remains
- *              the capability gate: when it is 0 the request is clamped to
- *              off. RAM only - a reboot restores the compiled default
- *              (ESP panel, user order 2026-09-22).
- *         [FA] کلید مدین-۳ فیلترهای جریان در زمان اجرا. کلید کامپایل
+ * @brief  [EN] Set the runtime median window size of the current filter
+ *              (user order 2026-09-22: ONE size parameter per filter -
+ *              size 1 means bypass, so no separate on/off switch exists).
+ *              Valid sizes are the odd values 1, 3 and 5; any other request
+ *              is rounded DOWN to the next valid size (0/1/2 -> 1 = bypass,
+ *              3/4 -> 3, >=5 -> 5). The compiled switch
+ *              MEASUREMENT_CURRENT_MEDIAN3_ENABLE remains the capability
+ *              gate: when it is 0 the request is clamped to 1 (bypass).
+ *              RAM only - a reboot restores the default of 3.
+ *         [FA] اندازهٔ پنجرهٔ مدین فیلتر جریان در زمان اجرا (دستور کاربر
+ *              ۲۰۲۶-۰۹-۲۲: برای هر فیلتر یک پارامتر اندازه - اندازهٔ ۱
+ *              یعنی عبور مستقیم، پس کلید جدا لازم نیست). اندازه‌های معتبر
+ *              ۱ و ۳ و ۵ هستند؛ هر درخواست دیگر به پایین‌ترین اندازهٔ
+ *              معتبر گرد می‌شود (۰/۱/۲ → ۱، ۳/۴ → ۳، ≥۵ → ۵). کلید کامپایل
  *              MEASUREMENT_CURRENT_MEDIAN3_ENABLE ظرفیت را تعیین می‌کند:
- *              اگر ۰ باشد درخواست به خاموش گیره می‌شود. فقط RAM -
- *              ری‌استارت پیش‌فرض کامپایل را برمی‌گرداند (پنل ESP، دستور
- *              کاربر ۲۰۲۶-۰۹-۲۲).
- * @param  bool__enable [EN] true = median-3 active / فعال
- * @return bool [EN] Actually applied state / وضعیت اعمال‌شده
+ *              اگر ۰ باشد درخواست به ۱ گیره می‌شود. فقط RAM - ری‌استارت
+ *              پیش‌فرض ۳ را برمی‌گرداند.
+ * @param  uint8_t__medianSize [EN] Requested size / اندازهٔ درخواستی
+ * @return uint8_t [EN] Applied size / اندازهٔ اعمال‌شده
  */
-bool func__Measurement_SetFilterMedian3Enable(bool bool__enable)
+uint8_t func__Measurement_SetFilterMedianSize(uint8_t uint8_t__medianSize)
 {
 #if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
-    UINT8_T__G__FilterMedian3Enable = (bool__enable ? 1u : 0u);
-    return bool__enable;
+    if (uint8_t__medianSize >= (uint8_t)MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX)
+    {
+        uint8_t__medianSize = (uint8_t)MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX;
+    }
+    else if (uint8_t__medianSize >= 3u)
+    {
+        uint8_t__medianSize = 3u;
+    }
+    else
+    {
+        uint8_t__medianSize = 1u;
+    }
 #else
-    (void)bool__enable;
-    UINT8_T__G__FilterMedian3Enable = 0u;
-    return false;
+    (void)uint8_t__medianSize;
+    uint8_t__medianSize = 1u;
 #endif
-}
 
-/**
- * @brief  [EN] Set the runtime moving-average switch of the current
- *              filters; same capability rule as the median-3 switch.
- *         [FA] کلید میانگین متحرک فیلترهای جریان در زمان اجرا؛ همان
- *              قاعدهٔ ظرفیت مدین-۳.
- * @param  bool__enable [EN] true = moving average active / فعال
- * @return bool [EN] Actually applied state / وضعیت اعمال‌شده
- */
-bool func__Measurement_SetFilterAverageEnable(bool bool__enable)
-{
-#if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
-    UINT8_T__G__FilterAverageEnable = (bool__enable ? 1u : 0u);
-    return bool__enable;
-#else
-    (void)bool__enable;
-    UINT8_T__G__FilterAverageEnable = 0u;
-    return false;
-#endif
+    UINT8_T__G__FilterMedianSize = uint8_t__medianSize;
+    return uint8_t__medianSize;
 }
 
 /**
@@ -968,23 +993,13 @@ uint8_t func__Measurement_SetFilterAverageWindow(uint8_t uint8_t__windowSamples)
 }
 
 /**
- * @brief  [EN] Read the live median-3 switch of the current filters.
- *         [FA] کلید زندهٔ مدین-۳ فیلترهای جریان.
- * @return bool [EN] true when active / فعال
+ * @brief  [EN] Read the live median window size of the current filter.
+ *         [FA] اندازهٔ زندهٔ پنجرهٔ مدین فیلتر جریان.
+ * @return uint8_t [EN] 1, 3 or 5 / اندازهٔ فعال
  */
-bool func__Measurement_GetFilterMedian3Enable(void)
+uint8_t func__Measurement_GetFilterMedianSize(void)
 {
-    return (UINT8_T__G__FilterMedian3Enable != 0u);
-}
-
-/**
- * @brief  [EN] Read the live moving-average switch of the current filters.
- *         [FA] کلید زندهٔ میانگین متحرک فیلترهای جریان.
- * @return bool [EN] true when active / فعال
- */
-bool func__Measurement_GetFilterAverageEnable(void)
-{
-    return (UINT8_T__G__FilterAverageEnable != 0u);
+    return UINT8_T__G__FilterMedianSize;
 }
 
 /**

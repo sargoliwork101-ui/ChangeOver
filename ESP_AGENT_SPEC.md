@@ -11,10 +11,11 @@
 - Binary command protocol + periodic telemetry over **USART1, 115200 8N1**.
 - Interrupt-driven RX on the STM32 with a 128-byte ring (the STM32 never loses
   bytes at this baud).
-- 14 runtime parameters the ESP can read and write (current-chain calibration,
-  voltage offsets, current-filter switches/window, per-channel flyback
-  efficiency, per-channel charger enable/cut).
-- Charger module cut/reconnect commands (param IDs 12/13).
+- 19 runtime parameters the ESP can read and write (current-chain
+  calibration, voltage offsets, current-filter sizes, per-channel flyback
+  efficiency, per-channel charger enable/cut, per-channel PWM duty ceiling
+  and fixed-duty mode).
+- Charger module cut/reconnect commands (param IDs 11/12).
 - All parameter values are **clamped** by the STM32; the reply always returns
   the **actually applied** value.
 - Parameters are **RAM-only on the STM32**: after an STM32 reset everything
@@ -75,7 +76,7 @@ PARAM_REPORT reply for id=2, applied=1200:
 AA 55 11 05 02 B0 04 00 00 A2
 ```
 
-## 5. Parameter table (protocol v1 — IDs are stable)
+## 5. Parameter table (protocol v1.1 — IDs renumbered BEFORE any ESP-side implementation existed; treat these IDs as final)
 
 | ID | Name | Type | Unit | Default | Range | What it changes |
 |---|---|---|---|---|---|---|
@@ -86,19 +87,30 @@ AA 55 11 05 02 B0 04 00 00 A2
 | 4 | VIN_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 24 V input voltage calibration |
 | 5 | V24_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 24 V battery pack voltage calibration |
 | 6 | V12_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 12 V (middle node) battery calibration |
-| 7 | FILTER_MEDIAN3 | u32 | 0/1 | 1 | 0..1 | Median-of-3 prefilter on charge currents |
-| 8 | FILTER_AVERAGE | u32 | 0/1 | 1 | 0..1 | Moving-average filter on charge currents |
-| 9 | FILTER_WINDOW | u32 | samples | 10 | 1..10 | Moving-average window (max 10; filter state resets on change) |
-| 10 | CHG_EFF_UP_PERMILLE | u32 | permille | 758 | 100..999 | Charger 1 flyback efficiency for the current estimate |
-| 11 | CHG_EFF_DN_PERMILLE | u32 | permille | 242 | 100..999 | Charger 2 efficiency (242 is NOT physical — it absorbs the ch2 sense over-read; do not "fix" it to ~700) |
-| 12 | CHG1_ENABLE | u32 | 0/1 | 1 | 0..1 | 0 = cut charger module 1 (PWM off, state OFF); 1 = reconnect (soft BULK restart from 1% duty) |
-| 13 | CHG2_ENABLE | u32 | 0/1 | 1 | 0..1 | Same for charger module 2 |
+| 7 | FILTER_MEDIAN_SIZE | u32 | samples | 3 | 1/3/5 | Median window on charge currents. Valid sizes 1, 3, 5; other values round DOWN to the next odd size. **1 = bypass** (no separate on/off switch exists). Filter state resets on change. |
+| 8 | FILTER_AVERAGE_WINDOW | u32 | samples | 10 | 1..10 | Moving-average window on charge currents. **1 = bypass.** Filter state resets on change. |
+| 9 | CHG_EFF_UP_PERMILLE | u32 | permille | 758 | 100..999 | Charger 1 flyback efficiency for the current estimate |
+| 10 | CHG_EFF_DN_PERMILLE | u32 | permille | 242 | 100..999 | Charger 2 efficiency (242 is NOT physical — it absorbs the ch2 sense over-read; do not "fix" it to ~700) |
+| 11 | CHG1_ENABLE | u32 | 0/1 | 1 | 0..1 | 0 = cut charger module 1 (PWM off, state OFF); 1 = reconnect (soft BULK restart from 1% duty) |
+| 12 | CHG2_ENABLE | u32 | 0/1 | 1 | 0..1 | Same for charger module 2 |
+| 13 | CHG1_DUTY_CEILING | u32 | permille | 500 | 0..500 | PWM duty cap, charger 1. EVERY applied duty (ramp, regulation, fixed mode) is clamped to min(compile max, this ceiling). |
+| 14 | CHG2_DUTY_CEILING | u32 | permille | 500 | 0..500 | Same, charger 2 |
+| 15 | CHG1_DUTY_FIXED_ON | u32 | 0/1 | 0 | 0..1 | Fixed-duty mode, charger 1: hold the PWM at ID 16's value instead of the regulation loop |
+| 16 | CHG1_DUTY_FIXED_VAL | u32 | permille | 0 | 0..500 | Fixed duty value for charger 1 (effective only while ID 15 = 1; also respects the ID 13 ceiling on apply) |
+| 17 | CHG2_DUTY_FIXED_ON | u32 | 0/1 | 0 | 0..1 | Fixed-duty mode, charger 2 |
+| 18 | CHG2_DUTY_FIXED_VAL | u32 | permille | 0 | 0..500 | Fixed duty value for charger 2 (respects the ID 14 ceiling) |
 
 Notes:
 - Signed values (4..6) travel as two's-complement u32 on the wire.
 - `Iest = Ipri × Vin × eta / Vbat` — the ETA parameters only change the
   **estimate**, never the actual charging behavior. The OFFSET/GAIN/FILTER
   parameters change the measured current that the charger regulates on.
+- **Fixed-duty mode safety wrapper** (identical to the proven compile-time
+  bench-test mode): switching STOPS when the battery reaches the absorb
+  voltage (no overcharge with regulation off), the hardware JIT
+  over-current comparator stays armed, and the input/battery/ESP-cut gates
+  remain active. State shows BULK while held. The state machine is NOT
+  bypassed — fixed mode sits inside the normal regulation path.
 - **No setpoints are exposed.** Charge scenario (14.4/14.3/14.6 V, float band,
   12.8 V reentry) is intentionally not adjustable from the ESP.
 - A latched FINAL_FAULT charger state is **never** released by CHGx_ENABLE;
@@ -147,7 +159,7 @@ raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
 1. Boot, open UART at 115200 8N1, start a 100 ms RX pump.
 2. Wait for the first TLM_LIVE (proves the link; the STM32 powers the ESP
    enable line only when its comm task runs).
-3. Send `GET_PARAMS`, parse `PARAMS_BULK`, show a live dashboard of all 14
+3. Send `GET_PARAMS`, parse `PARAMS_BULK`, show a live dashboard of all 19
    parameters.
 4. UI controls (sliders/toggles) send `SET_PARAM` per change and wait for the
    matching `PARAM_REPORT`; display the **applied** value (it may differ from
@@ -156,7 +168,11 @@ raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
    an STM32 reboot (detect: PARAMS_BULK returns defaults, or telemetry seq
    restarts at 0).
 6. Provide two prominent buttons: charger 1 ON/OFF and charger 2 ON/OFF
-   (IDs 12/13). OFF is the safe direction: PWM stops immediately.
+   (IDs 11/12). OFF is the safe direction: PWM stops immediately. Offer
+   the duty ceiling sliders (IDs 13/14) and the fixed-duty toggles+fields
+   (IDs 15..18) in a clearly marked "manual/test" section: fixed mode
+   holds the PWM at one number with the regulation loop off (bounded by
+   the ceiling and the absorb-voltage stop).
 7. Display telemetry continuously; the current-chain numbers (raw → shunt →
    unfiltered → filtered) exist exactly so the panel can show the chain
    step-by-step and help find the correct calibration numbers.
@@ -184,5 +200,10 @@ That flip is intentionally left to the project owner.
 
 ## 10. Protocol version
 
-v1 (2026-09-22). Parameter IDs and the TLM layout are frozen for v1; future
-additions append new IDs / new message types only, never renumber.
+v1.1 (2026-09-22, same day as v1 and BEFORE any ESP-side implementation
+existed — the v1.1 IDs are the final ones). Changes vs v1: filter switches
+merged into ONE size parameter per filter (median 1/3/5, average window
+1..10; size 1 = bypass, no separate on/off), and six new duty params
+(ceiling + fixed-mode enable/value per channel). Parameter IDs and the TLM
+layout are frozen from here on; future additions append new IDs / new
+message types only, never renumber.

@@ -61,6 +61,16 @@
  *      بازهٔ ۱ تا ۲۵۵ نمونه؛ دو کانال پنجرهٔ جدا دارند. */
 #define MEASUREMENT_CURRENT_AVERAGE_WINDOW   10u
 
+/* [EN] Hard ceiling of the ESP-adjustable runtime median window (user
+ *      order 2026-09-22: the panel can set the current median to 1
+ *      (bypass), 3 or 5; valid sizes are odd only, anything else rounds
+ *      down). The history arrays are sized by this constant.
+ * [FA] سقف قطعی پنجرهٔ مدینِ قابل‌تنظیم از ESP (دستور کاربر
+ *      ۲۰۲۶-۰۹-۲۲: پنل می‌تواند مدین جریان را روی ۱ (عبور مستقیم)، ۳
+ *      یا ۵ بگذارد؛ فقط اندازه‌های فرد معتبرند و بقیه به پایین گرد
+ *      می‌شوند). آرایه‌های تاریخچه با همین ثابت اندازه می‌گیرند. */
+#define MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX  5u
+
 /* [EN] Clamp limit of the ESP-adjustable runtime voltage calibration
  *      offsets in mV (user order 2026-09-22): the panel can trim each
  *      voltage channel by at most +/-2 V; default 0 keeps today's behavior.
@@ -212,25 +222,18 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts);
 /* ==================== Runtime config API (ESP panel) / API پیکربندی زمان اجرا ==================== */
 
 /**
- * @brief  [EN] Set the runtime median-3 switch of the current filters
- *              (capability-gated by the compiled switch; RAM only, ESP
- *              panel, user order 2026-09-22).
- *         [FA] کلید مدین-۳ فیلتر جریان در زمان اجرا (ظرفیت با کلید
- *              کامپایل؛ فقط RAM، پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @param  bool__enable [EN] true = active / فعال
- * @return bool [EN] Applied state / وضعیت اعمال‌شده
+ * @brief  [EN] Set the runtime median window size of the current filter:
+ *              valid sizes 1 (bypass), 3 and 5, other requests round DOWN
+ *              to the next odd size; capability-gated by the compiled
+ *              switch; RAM only, ESP panel (user order 2026-09-22).
+ *         [FA] اندازهٔ پنجرهٔ مدین فیلتر جریان در زمان اجرا: اندازه‌های
+ *              معتبر ۱ (عبور مستقیم)، ۳ و ۵ و بقیه به پایین‌ترین فرد گرد
+ *              می‌شوند؛ ظرفیت با کلید کامپایل؛ فقط RAM، پنل ESP (دستور
+ *              کاربر ۲۰۲۶-۰۹-۲۲).
+ * @param  uint8_t__medianSize [EN] Requested size / اندازهٔ درخواستی
+ * @return uint8_t [EN] Applied size / اندازهٔ اعمال‌شده
  */
-bool func__Measurement_SetFilterMedian3Enable(bool bool__enable);
-
-/**
- * @brief  [EN] Set the runtime moving-average switch of the current filters
- *              (same capability rule; RAM only, ESP panel).
- *         [FA] کلید میانگین متحرک فیلتر جریان در زمان اجرا (همان قاعدهٔ
- *              ظرفیت؛ فقط RAM، پنل ESP).
- * @param  bool__enable [EN] true = active / فعال
- * @return bool [EN] Applied state / وضعیت اعمال‌شده
- */
-bool func__Measurement_SetFilterAverageEnable(bool bool__enable);
+uint8_t func__Measurement_SetFilterMedianSize(uint8_t uint8_t__medianSize);
 
 /**
  * @brief  [EN] Set the runtime moving-average window, clamped to
@@ -245,18 +248,11 @@ bool func__Measurement_SetFilterAverageEnable(bool bool__enable);
 uint8_t func__Measurement_SetFilterAverageWindow(uint8_t uint8_t__windowSamples);
 
 /**
- * @brief  [EN] Read the live median-3 switch of the current filters.
- *         [FA] کلید زندهٔ مدین-۳.
- * @return bool [EN] true when active / فعال
+ * @brief  [EN] Read the live median window size of the current filter.
+ *         [FA] اندازهٔ زندهٔ پنجرهٔ مدین.
+ * @return uint8_t [EN] 1, 3 or 5 / اندازهٔ فعال
  */
-bool func__Measurement_GetFilterMedian3Enable(void);
-
-/**
- * @brief  [EN] Read the live moving-average switch of the current filters.
- *         [FA] کلید زندهٔ میانگین متحرک.
- * @return bool [EN] true when active / فعال
- */
-bool func__Measurement_GetFilterAverageEnable(void);
+uint8_t func__Measurement_GetFilterMedianSize(void);
 
 /**
  * @brief  [EN] Read the live moving-average window size.

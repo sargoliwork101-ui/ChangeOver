@@ -168,21 +168,12 @@ static bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                 2u, (int32_t)uint32_t__value);
             return true;
 
-        case ESPLINK_PARAM_FILTER_MEDIAN3:
-            *uint32_t__appliedValue =
-                (func__Measurement_SetFilterMedian3Enable(uint32_t__value != 0u) != false)
-                    ? 1u
-                    : 0u;
+        case ESPLINK_PARAM_FILTER_MEDIAN_SIZE:
+            *uint32_t__appliedValue = (uint32_t)func__Measurement_SetFilterMedianSize(
+                (uint8_t)(uint32_t__value & 0xFFu));
             return true;
 
-        case ESPLINK_PARAM_FILTER_AVERAGE:
-            *uint32_t__appliedValue =
-                (func__Measurement_SetFilterAverageEnable(uint32_t__value != 0u) != false)
-                    ? 1u
-                    : 0u;
-            return true;
-
-        case ESPLINK_PARAM_FILTER_WINDOW:
+        case ESPLINK_PARAM_FILTER_AVERAGE_WINDOW:
             *uint32_t__appliedValue = (uint32_t)func__Measurement_SetFilterAverageWindow(
                 (uint8_t)(uint32_t__value & 0xFFu));
             return true;
@@ -209,6 +200,38 @@ static bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
             func__Charger_SetChannelEspEnable(1u, uint32_t__value != 0u);
             *uint32_t__appliedValue =
                 (func__Charger_GetChannelEspEnable(1u) != false) ? 1u : 0u;
+            return true;
+
+        case ESPLINK_PARAM_CHG1_DUTY_CEILING:
+            *uint32_t__appliedValue =
+                func__Charger_SetDutyCeilingPermille(0u, uint32_t__value);
+            return true;
+
+        case ESPLINK_PARAM_CHG2_DUTY_CEILING:
+            *uint32_t__appliedValue =
+                func__Charger_SetDutyCeilingPermille(1u, uint32_t__value);
+            return true;
+
+        case ESPLINK_PARAM_CHG1_DUTY_FIXED_ON:
+            func__Charger_SetDutyFixedEnable(0u, uint32_t__value != 0u);
+            *uint32_t__appliedValue =
+                (func__Charger_GetDutyFixedEnable(0u) != false) ? 1u : 0u;
+            return true;
+
+        case ESPLINK_PARAM_CHG1_DUTY_FIXED_VAL:
+            *uint32_t__appliedValue =
+                func__Charger_SetDutyFixedPermille(0u, uint32_t__value);
+            return true;
+
+        case ESPLINK_PARAM_CHG2_DUTY_FIXED_ON:
+            func__Charger_SetDutyFixedEnable(1u, uint32_t__value != 0u);
+            *uint32_t__appliedValue =
+                (func__Charger_GetDutyFixedEnable(1u) != false) ? 1u : 0u;
+            return true;
+
+        case ESPLINK_PARAM_CHG2_DUTY_FIXED_VAL:
+            *uint32_t__appliedValue =
+                func__Charger_SetDutyFixedPermille(1u, uint32_t__value);
             return true;
 #endif
 
@@ -261,17 +284,11 @@ static bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
                 (uint32_t)func__Measurement_GetVoltageOffsetMv(2u);
             return true;
 
-        case ESPLINK_PARAM_FILTER_MEDIAN3:
-            *uint32_t__value =
-                (func__Measurement_GetFilterMedian3Enable() != false) ? 1u : 0u;
+        case ESPLINK_PARAM_FILTER_MEDIAN_SIZE:
+            *uint32_t__value = (uint32_t)func__Measurement_GetFilterMedianSize();
             return true;
 
-        case ESPLINK_PARAM_FILTER_AVERAGE:
-            *uint32_t__value =
-                (func__Measurement_GetFilterAverageEnable() != false) ? 1u : 0u;
-            return true;
-
-        case ESPLINK_PARAM_FILTER_WINDOW:
+        case ESPLINK_PARAM_FILTER_AVERAGE_WINDOW:
             *uint32_t__value = (uint32_t)func__Measurement_GetFilterAverageWindow();
             return true;
 #endif
@@ -293,6 +310,32 @@ static bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
         case ESPLINK_PARAM_CHG2_ENABLE:
             *uint32_t__value =
                 (func__Charger_GetChannelEspEnable(1u) != false) ? 1u : 0u;
+            return true;
+
+        case ESPLINK_PARAM_CHG1_DUTY_CEILING:
+            *uint32_t__value = func__Charger_GetDutyCeilingPermille(0u);
+            return true;
+
+        case ESPLINK_PARAM_CHG2_DUTY_CEILING:
+            *uint32_t__value = func__Charger_GetDutyCeilingPermille(1u);
+            return true;
+
+        case ESPLINK_PARAM_CHG1_DUTY_FIXED_ON:
+            *uint32_t__value =
+                (func__Charger_GetDutyFixedEnable(0u) != false) ? 1u : 0u;
+            return true;
+
+        case ESPLINK_PARAM_CHG1_DUTY_FIXED_VAL:
+            *uint32_t__value = func__Charger_GetDutyFixedPermille(0u);
+            return true;
+
+        case ESPLINK_PARAM_CHG2_DUTY_FIXED_ON:
+            *uint32_t__value =
+                (func__Charger_GetDutyFixedEnable(1u) != false) ? 1u : 0u;
+            return true;
+
+        case ESPLINK_PARAM_CHG2_DUTY_FIXED_VAL:
+            *uint32_t__value = func__Charger_GetDutyFixedPermille(1u);
             return true;
 #endif
 

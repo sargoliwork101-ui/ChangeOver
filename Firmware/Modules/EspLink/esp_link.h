@@ -53,12 +53,16 @@
  *      the owning module; PARAM_REPORT returns the APPLIED value. Voltage
  *      offsets are signed (two's complement in the u32 wire field).
  *      RAM only - a reboot restores the compiled defaults, the ESP re-applies
- *      its tuned set after boot.
+ *      its tuned set after boot. Filters carry ONE size parameter each
+ *      (user order 2026-09-22: median 1/3/5 and average window 1..10;
+ *      size 1 = bypass, there is no separate on/off switch).
  * [FA] payload ی SET_PARAM = [id:u8][value:u32 LE]. هر مقدار در ماژول مالکش
  *      گیره می‌شود و PARAM_REPORT مقدارِ اعمال‌شده را برمی‌گرداند. آفست‌های
  *      ولتاژ علامتدارند (متمم دو در فیلد u32 خط). فقط RAM - ری‌استارت
  *      پیش‌فرض‌های کامپایل را برمی‌گرداند و ESP بعد از بوت مجموعهٔ تنظیم‌شده
- *      خود را دوباره اعمال می‌کند. */
+ *      خود را دوباره اعمال می‌کند. هر فیلتر یک پارامتر اندازه دارد (دستور
+ *      کاربر ۲۰۲۶-۰۹-۲۲: مدین ۱/۳/۵ و پنجرهٔ میانگین ۱..۱۰؛ اندازهٔ ۱ یعنی
+ *      عبور مستقیم و کلید جدا وجود ندارد). */
 #define ESPLINK_PARAM_CUR1_OFFSET_COUNTS   0u   /* u32, counts,   def 8,    0..255    */
 #define ESPLINK_PARAM_CUR2_OFFSET_COUNTS   1u   /* u32, counts,   def 8,    0..255    */
 #define ESPLINK_PARAM_CUR1_GAIN_PERMILLE   2u   /* u32, permille, def 1085, 100..3000 */
@@ -66,14 +70,19 @@
 #define ESPLINK_PARAM_VIN_OFFSET_MV        4u   /* i32, mV,       def 0,    -2000..2000 */
 #define ESPLINK_PARAM_V24_OFFSET_MV        5u   /* i32, mV,       def 0,    -2000..2000 */
 #define ESPLINK_PARAM_V12_OFFSET_MV        6u   /* i32, mV,       def 0,    -2000..2000 */
-#define ESPLINK_PARAM_FILTER_MEDIAN3       7u   /* u32, 0/1,      def 1                */
-#define ESPLINK_PARAM_FILTER_AVERAGE       8u   /* u32, 0/1,      def 1                */
-#define ESPLINK_PARAM_FILTER_WINDOW        9u   /* u32, samples,  def 10,   1..10      */
-#define ESPLINK_PARAM_CHG_EFF_UP_PERMILLE  10u  /* u32, permille, def 758,  100..999   */
-#define ESPLINK_PARAM_CHG_EFF_DN_PERMILLE  11u  /* u32, permille, def 242,  100..999   */
-#define ESPLINK_PARAM_CHG1_ENABLE          12u  /* u32, 0/1,      def 1                */
-#define ESPLINK_PARAM_CHG2_ENABLE          13u  /* u32, 0/1,      def 1                */
-#define ESPLINK_PARAM_COUNT                14u
+#define ESPLINK_PARAM_FILTER_MEDIAN_SIZE   7u   /* u32, samples,  def 3,    1/3/5, 1=bypass */
+#define ESPLINK_PARAM_FILTER_AVERAGE_WINDOW 8u  /* u32, samples,  def 10,   1..10, 1=bypass */
+#define ESPLINK_PARAM_CHG_EFF_UP_PERMILLE  9u   /* u32, permille, def 758,  100..999   */
+#define ESPLINK_PARAM_CHG_EFF_DN_PERMILLE  10u  /* u32, permille, def 242,  100..999   */
+#define ESPLINK_PARAM_CHG1_ENABLE          11u  /* u32, 0/1,      def 1                */
+#define ESPLINK_PARAM_CHG2_ENABLE          12u  /* u32, 0/1,      def 1                */
+#define ESPLINK_PARAM_CHG1_DUTY_CEILING    13u  /* u32, permille, def 500,  0..500    */
+#define ESPLINK_PARAM_CHG2_DUTY_CEILING    14u  /* u32, permille, def 500,  0..500    */
+#define ESPLINK_PARAM_CHG1_DUTY_FIXED_ON   15u  /* u32, 0/1,      def 0                */
+#define ESPLINK_PARAM_CHG1_DUTY_FIXED_VAL  16u  /* u32, permille, def 0,    0..500    */
+#define ESPLINK_PARAM_CHG2_DUTY_FIXED_ON   17u  /* u32, 0/1,      def 0                */
+#define ESPLINK_PARAM_CHG2_DUTY_FIXED_VAL  18u  /* u32, permille, def 0,    0..500    */
+#define ESPLINK_PARAM_COUNT                19u
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 
