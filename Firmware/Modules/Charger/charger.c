@@ -89,6 +89,35 @@ volatile uint32_t UINT32_T__G__ChargerCalib[CHG_CALIB_COUNT] = {0u};
 volatile uint32_t UINT32_T__G__ChargerIest1Ma = 0u;
 volatile uint32_t UINT32_T__G__ChargerIest2Ma = 0u;
 
+/* [EN] Runtime copies of the per-channel flyback efficiency (user order
+ *      2026-09-22: the ESP command panel can retune the coefficients live
+ *      to reach the true number). Initialized from the compiled bench
+ *      defaults; RAM only - a reboot restores them. Written by the EspLink
+ *      task, read in the control task; aligned 32-bit values are atomic on
+ *      Cortex-M3.
+ * [FA] نسخهٔ زمان اجرای بازدهی flyback هر کانال (دستور کاربر ۲۰۲۶-۰۹-۲۲:
+ *      پنل ESP می‌تواند ضریب‌ها را زنده تنظیم کند تا به عدد واقعی برسیم).
+ *      مقدار اولیه از پیش‌فرض‌های بنچ کامپایل؛ فقط RAM - ری‌استارت
+ *      بازشان می‌گرداند. نوشتن از تسک EspLink و خواندن در تسک کنترل؛
+ *      مقادیر ۳۲ بیتی تراز روی Cortex-M3 اتمیک‌اند. */
+static volatile uint32_t UINT32_T__G__ChargerEtaUpPermille =
+    CHG_FLYBACK_EFFICIENCY_UP_PERMILLE;
+static volatile uint32_t UINT32_T__G__ChargerEtaDnPermille =
+    CHG_FLYBACK_EFFICIENCY_DN_PERMILLE;
+
+/* [EN] Runtime per-channel enable gates for the ESP command panel (user
+ *      order 2026-09-22: the ESP must be able to cut and reconnect each
+ *      charger module). Default true = today's behavior. While false the
+ *      channel's PWM is forced off and the state is held at OFF; a faulted
+ *      channel (FINAL_FAULT) is never released by this gate. RAM only.
+ * [FA] گیت‌های فعال‌سازی هر کانال برای پنل فرمان ESP (دستور کاربر
+ *      ۲۰۲۶-۰۹-۲۲: ESP باید بتواند هر ماژول شارژر را قطع/وصل کند).
+ *      پیش‌فرض true = رفتار فعلی. تا وقتی false است PWM آن کانال قطع و
+ *      وضعیت روی OFF نگه داشته می‌شود؛ کانال FINAL_FAULT هرگز با این
+ *      گیت آزاد نمی‌شود. فقط RAM. */
+static volatile bool BOOL__G__ChargerEspEnableCh1 = true;
+static volatile bool BOOL__G__ChargerEspEnableCh2 = true;
+
 static bool BOOL__G__ChargerInitialized;
 static bool BOOL__G__RelayOpen;
 static uint32_t UINT32_T__G__RelaySettleDeadline;
@@ -288,11 +317,11 @@ static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *mea
 
     if (uint8_t__channelIndex == 0u)
     {
-        uint32_t__etaPermille = CHG_FLYBACK_EFFICIENCY_UP_PERMILLE;
+        uint32_t__etaPermille = UINT32_T__G__ChargerEtaUpPermille;
     }
     else
     {
-        uint32_t__etaPermille = CHG_FLYBACK_EFFICIENCY_DN_PERMILLE;
+        uint32_t__etaPermille = UINT32_T__G__ChargerEtaDnPermille;
     }
 
     uint32_t__vbatMv =
@@ -747,6 +776,24 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
        وضعیت BAT_LOST است هیچ تنظیمی انجام نشود. */
     if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_BAT_LOST)
     {
+        return;
+    }
+
+    /* [EN] ESP enable gate (user order 2026-09-22: the ESP command panel
+       must be able to cut and reconnect each charger module). Placed AFTER
+       the fault/special states so a FINAL_FAULT latch is never released by
+       this gate; while disabled the PWM is forced off and the state is held
+       at OFF, so re-enabling soft-restarts BULK from 1% duty.
+       [FA] گیت فعال‌سازی ESP (دستور کاربر ۲۰۲۶-۰۹-۲۲: پنل فرمان ESP باید
+       بتواند هر ماژول شارژر را قطع/وصل کند). بعد از حالت‌های خطا/ویژه
+       قرار گرفته تا قفل FINAL_FAULT هرگز با این گیت آزاد نشود؛ تا زمان
+       غیرفعالی PWM قطع و وضعیت روی OFF نگه داشته می‌شود و با وصل دوباره
+       BULK از duty ۱٪ نرم شروع می‌شود. */
+    if (((uint8_t__channelIndex == 0u) && (BOOL__G__ChargerEspEnableCh1 == false)) ||
+        ((uint8_t__channelIndex != 0u) && (BOOL__G__ChargerEspEnableCh2 == false)))
+    {
+        func__Charger_StopOneChannel(uint8_t__channelIndex);
+        charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_OFF;
         return;
     }
 
@@ -1679,4 +1726,108 @@ bool func__Charger_IsAnyChannelActive(void)
     }
 
     return false;
+}
+
+/* ==================== Charger runtime config API (ESP panel) ==================== */
+
+/**
+ * @brief  [EN] Set the runtime flyback efficiency of one channel, clamped
+ *              to 100..999 permille. Channel 0 = charger 1 (upper battery,
+ *              UP path), channel 1 = charger 2 (lower battery, DOWN path).
+ *              Initialized from the compiled bench constants; RAM only - a
+ *              reboot restores them (ESP panel, user order 2026-09-22).
+ *         [FA] بازدهی flyback یک کانال در زمان اجرا، گیرهٔ ۱۰۰..۹۹۹ پرمیل.
+ *              کانال ۰ = شارژر ۱ (باتری بالا، مسیر UP) و کانال ۱ = شارژر ۲
+ *              (باتری پایین، مسیر DN). مقدار اولیه از ثابت‌های بنچ کامپایل؛
+ *              فقط RAM - ری‌استارت بازمی‌گرداند (پنل ESP، دستور کاربر
+ *              ۲۰۲۶-۰۹-۲۲).
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @param  uint32_t__etaPermille [EN] Requested efficiency / بازدهی درخواستی
+ * @return uint32_t [EN] Applied efficiency permille / بازدهی اعمال‌شده
+ */
+uint32_t func__Charger_SetEfficiencyPermille(uint8_t uint8_t__channelIndex,
+                                             uint32_t uint32_t__etaPermille)
+{
+    if (uint32_t__etaPermille < CHG_ETA_MIN_PERMILLE)
+    {
+        uint32_t__etaPermille = CHG_ETA_MIN_PERMILLE;
+    }
+    else if (uint32_t__etaPermille > CHG_ETA_MAX_PERMILLE)
+    {
+        uint32_t__etaPermille = CHG_ETA_MAX_PERMILLE;
+    }
+    else
+    {
+        /* [EN] Value already inside the window. [FA] مقدار داخل پنجره است. */
+    }
+
+    if (uint8_t__channelIndex == 0u)
+    {
+        UINT32_T__G__ChargerEtaUpPermille = uint32_t__etaPermille;
+    }
+    else
+    {
+        UINT32_T__G__ChargerEtaDnPermille = uint32_t__etaPermille;
+    }
+
+    return uint32_t__etaPermille;
+}
+
+/**
+ * @brief  [EN] Read the live flyback efficiency of one channel.
+ *         [FA] بازدهی flyback زندهٔ یک کانال را می‌خواند.
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @return uint32_t [EN] Live efficiency permille / بازدهی زندهٔ پرمیل
+ */
+uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex)
+{
+    if (uint8_t__channelIndex == 0u)
+    {
+        return UINT32_T__G__ChargerEtaUpPermille;
+    }
+
+    return UINT32_T__G__ChargerEtaDnPermille;
+}
+
+/**
+ * @brief  [EN] Set the ESP enable gate of one charger channel. false = cut:
+ *              PWM forced off and the state held at OFF (a latched
+ *              FINAL_FAULT is never released by this gate); true = reconnect
+ *              with the normal soft BULK restart from 1% duty. RAM only -
+ *              a reboot restores both channels enabled (ESP panel, user
+ *              order 2026-09-22).
+ *         [FA] گیت فعال‌سازی ESP یک کانال شارژر. false = قطع: PWM قطع و
+ *              وضعیت روی OFF نگه داشته می‌شود (قفل FINAL_FAULT هرگز با این
+ *              گیت آزاد نمی‌شود)؛ true = وصل با ری‌استارت نرم BULK از duty
+ *              ۱٪. فقط RAM - ری‌استارت هر دو کانال را فعال برمی‌گرداند
+ *              (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @param  bool__enable [EN] true = channel allowed / کانال آزاد
+ */
+void func__Charger_SetChannelEspEnable(uint8_t uint8_t__channelIndex, bool bool__enable)
+{
+    if (uint8_t__channelIndex == 0u)
+    {
+        BOOL__G__ChargerEspEnableCh1 = bool__enable;
+    }
+    else
+    {
+        BOOL__G__ChargerEspEnableCh2 = bool__enable;
+    }
+}
+
+/**
+ * @brief  [EN] Read the ESP enable gate of one charger channel.
+ *         [FA] گیت فعال‌سازی ESP یک کانال شارژر را می‌خواند.
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @return bool [EN] true = channel allowed / کانال آزاد
+ */
+bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex)
+{
+    if (uint8_t__channelIndex == 0u)
+    {
+        return BOOL__G__ChargerEspEnableCh1;
+    }
+
+    return BOOL__G__ChargerEspEnableCh2;
 }

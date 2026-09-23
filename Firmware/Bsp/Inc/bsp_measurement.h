@@ -49,6 +49,50 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts);
  */
 uint32_t func__BspMeasurement_Current1CountsToMa(uint16_t uint16_t__counts);
 
+/* ==================== BspMeasurement Current Calibration Runtime ==================== */
+
+/**
+ * @brief  [EN] Set the zero-current offset (counts) of one current channel
+ *              at runtime, clamped to 0..255; RAM only, ESP panel (user
+ *              order 2026-09-22).
+ *         [FA] آفست جریان صفر یک کانال در زمان اجرا، گیرهٔ ۰..۲۵۵؛ فقط
+ *              RAM، پنل ESP (دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @param  uint32_t__offsetCounts [EN] Requested offset / آفست درخواستی
+ * @return uint32_t [EN] Applied offset / آفست اعمال‌شده
+ */
+uint32_t func__BspMeasurement_SetCurrentOffsetCounts(uint8_t uint8_t__channelIndex,
+                                                     uint32_t uint32_t__offsetCounts);
+
+/**
+ * @brief  [EN] Set the bench gain trim (permille) of one current channel at
+ *              runtime, clamped to 100..3000; RAM only, ESP panel (user
+ *              order 2026-09-22).
+ *         [FA] ضریب گین بنچ یک کانال در زمان اجرا، گیرهٔ ۱۰۰..۳۰۰۰؛ فقط
+ *              RAM، پنل ESP (دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @param  uint32_t__gainPermille [EN] Requested gain permille / گین درخواستی
+ * @return uint32_t [EN] Applied gain permille / گین اعمال‌شده
+ */
+uint32_t func__BspMeasurement_SetCurrentGainPermille(uint8_t uint8_t__channelIndex,
+                                                     uint32_t uint32_t__gainPermille);
+
+/**
+ * @brief  [EN] Read the live zero-current offset (counts) of one channel.
+ *         [FA] آفست جریان صفر زندهٔ یک کانال.
+ * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @return uint32_t [EN] Offset in counts / آفست بر حسب شمارش
+ */
+uint32_t func__BspMeasurement_GetCurrentOffsetCounts(uint8_t uint8_t__channelIndex);
+
+/**
+ * @brief  [EN] Read the live bench gain trim (permille) of one channel.
+ *         [FA] ضریب گین بنچ زندهٔ یک کانال.
+ * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @return uint32_t [EN] Gain permille / گین پرمیل
+ */
+uint32_t func__BspMeasurement_GetCurrentGainPermille(uint8_t uint8_t__channelIndex);
+
 /* ==================== BspMeasurement Current2 Counts To Ma ==================== */
 
 /**

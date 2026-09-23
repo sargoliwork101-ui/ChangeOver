@@ -233,6 +233,15 @@
  *      نقطهٔ دیوتی-ثابت ۱۵٪ ۲۰۲۶-۰۹-۱۸. */
 #define CHG_FLYBACK_EFFICIENCY_UP_PERMILLE   758u
 #define CHG_FLYBACK_EFFICIENCY_DN_PERMILLE   242u
+
+/* [EN] Clamp limits of the ESP-adjustable runtime efficiency (user order
+ *      2026-09-22): the panel may retune each channel between 100 and 999
+ *      permille, never to zero or above unity.
+ * [FA] حدود گیرهٔ بازدهی زمان اجرای قابل‌تنظیم از ESP (دستور کاربر
+ *      ۲۰۲۶-۰۹-۲۲): پنل هر کانال را بین ۱۰۰ تا ۹۹۹ پرمیل تنظیم می‌کند،
+ *      هرگز صفر یا بالای یک نه. */
+#define CHG_ETA_MIN_PERMILLE                  100u
+#define CHG_ETA_MAX_PERMILLE                  999u
 #define CHG_OUTPUT_EST_MIN_VBAT_MV     1000u
 #define CHG_INPUT_VALID_MV           22000u
 #define CHG_DUTY_START_PERMILLE        10u
@@ -411,6 +420,50 @@ extern volatile uint32_t UINT32_T__G__ChargerCalib[CHG_CALIB_COUNT];
  *      وقتی مقدار داخل باند ۶۳۰..۶۵۰ باشد دیوتی نگه داشته می‌شود. */
 extern volatile uint32_t UINT32_T__G__ChargerIest1Ma;
 extern volatile uint32_t UINT32_T__G__ChargerIest2Ma;
+
+/* ==================== Runtime config API (ESP panel) / API پیکربندی زمان اجرا ==================== */
+
+/**
+ * @brief  [EN] Set the runtime flyback efficiency of one channel, clamped
+ *              to CHG_ETA_MIN_PERMILLE..CHG_ETA_MAX_PERMILLE; RAM only,
+ *              ESP panel (user order 2026-09-22).
+ *         [FA] بازدهی flyback یک کانال در زمان اجرا، گیرهٔ
+ *              CHG_ETA_MIN_PERMILLE..CHG_ETA_MAX_PERMILLE؛ فقط RAM، پنل
+ *              ESP (دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @param  uint32_t__etaPermille [EN] Requested efficiency / بازدهی درخواستی
+ * @return uint32_t [EN] Applied efficiency permille / بازدهی اعمال‌شده
+ */
+uint32_t func__Charger_SetEfficiencyPermille(uint8_t uint8_t__channelIndex,
+                                             uint32_t uint32_t__etaPermille);
+
+/**
+ * @brief  [EN] Read the live flyback efficiency of one channel.
+ *         [FA] بازدهی flyback زندهٔ یک کانال.
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @return uint32_t [EN] Live efficiency permille / بازدهی زندهٔ پرمیل
+ */
+uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex);
+
+/**
+ * @brief  [EN] Set the ESP enable gate of one charger channel: false = PWM
+ *              off + state OFF (FINAL_FAULT never released by this gate),
+ *              true = soft BULK restart; RAM only (user order 2026-09-22).
+ *         [FA] گیت فعال‌سازی ESP یک کانال شارژر: false = PWM قطع + وضعیت
+ *              OFF (قفل FINAL_FAULT با این گیت آزاد نمی‌شود)، true =
+ *              ری‌استارت نرم BULK؛ فقط RAM (دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @param  bool__enable [EN] true = channel allowed / کانال آزاد
+ */
+void func__Charger_SetChannelEspEnable(uint8_t uint8_t__channelIndex, bool bool__enable);
+
+/**
+ * @brief  [EN] Read the ESP enable gate of one charger channel.
+ *         [FA] خواندن گیت فعال‌سازی ESP یک کانال شارژر.
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @return bool [EN] true = channel allowed / کانال آزاد
+ */
+bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex);
 
 /* ==================== Charger_Init / مقداردهی اولیه ==================== */
 /**

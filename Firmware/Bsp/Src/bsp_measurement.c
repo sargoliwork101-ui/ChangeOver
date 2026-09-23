@@ -81,6 +81,35 @@
 #define BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS 8u
 #define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE 1085u
 
+/* [EN] Runtime clamp limits for the ESP-adjustable current calibration
+ *      (user order 2026-09-22: the ESP command panel must never be able to
+ *      push a calibration value into a nonsense region).
+ * [FA] حدود گیرهٔ زمان اجرا برای کالیبراسیون قابل‌تنظیم از ESP (دستور
+ *      کاربر ۲۰۲۶-۰۹-۲۲): پنل ESP هرگز نباید مقدار کالیبراسیون را به
+ *      ناحیهٔ بی‌معنا ببرد. */
+#define BSP_MEASUREMENT_CURRENT_OFFSET_MAX_COUNTS 255u
+#define BSP_MEASUREMENT_CURRENT_GAIN_MIN_PERMILLE 100u
+#define BSP_MEASUREMENT_CURRENT_GAIN_MAX_PERMILLE 3000u
+
+/* [EN] Runtime copies of the per-channel current calibration, initialized
+ *      from the compiled bench defaults above and writable at runtime by
+ *      the ESP link (RAM only - a reboot returns to the compiled defaults).
+ *      Written from the EspLink task, read in the measurement task; both
+ *      are aligned 32-bit values, atomic on Cortex-M3.
+ * [FA] نسخهٔ زمان اجرای کالیبراسیون جریان هر کانال: مقدار اولیه از
+ *      پیش‌فرض‌های بنچ بالا و نوشتن در زمان اجرا توسط لینک ESP (فقط RAM -
+ *      ری‌استارت به پیش‌فرض کامپایل برمی‌گردد). نوشتن از تسک EspLink و
+ *      خواندن در تسک اندازه‌گیری؛ هر دو ۳۲ بیتی تراز شده‌اند و روی
+ *      Cortex-M3 اتمیک‌اند. */
+static volatile uint32_t UINT32_T__G__Current1OffsetCounts =
+    BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS;
+static volatile uint32_t UINT32_T__G__Current1GainPermille =
+    BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE;
+static volatile uint32_t UINT32_T__G__Current2OffsetCounts =
+    BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS;
+static volatile uint32_t UINT32_T__G__Current2GainPermille =
+    BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE;
+
 /**
  * @brief  [EN] Convert raw ADC counts to millivolts at the ADC pin.
  *         [FA] شمارش خام ADC را به میلی‌ولت روی پایهٔ ADC تبدیل می‌کند.
@@ -253,8 +282,8 @@ static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
 uint32_t func__BspMeasurement_Current1CountsToMa(uint16_t uint16_t__counts)
 {
     return func__BspMeasurement_ConvertCurrent(uint16_t__counts,
-                                               BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS,
-                                               BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE);
+                                               UINT32_T__G__Current1OffsetCounts,
+                                               UINT32_T__G__Current1GainPermille);
 }
 
 /* ==================== BspMeasurement_Current2CountsToMa ==================== */
@@ -270,8 +299,115 @@ uint32_t func__BspMeasurement_Current1CountsToMa(uint16_t uint16_t__counts)
 uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts)
 {
     return func__BspMeasurement_ConvertCurrent(uint16_t__counts,
-                                               BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS,
-                                               BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE);
+                                               UINT32_T__G__Current2OffsetCounts,
+                                               UINT32_T__G__Current2GainPermille);
+}
+
+/* ==================== BspMeasurement current calibration setters/getters ==================== */
+
+/**
+ * @brief  [EN] Set the zero-current offset (raw counts) of one current
+ *              channel at runtime, clamped to 0..255. Channel 0 = the
+ *              Trans1/Shunt1 chain, channel 1 = Trans2/Shunt2. The value
+ *              lives in RAM only; a reboot restores the compiled bench
+ *              default (ESP panel, user order 2026-09-22).
+ *         [FA] آفست جریان صفر (شمارش خام) یک کانال را در زمان اجرا تنظیم
+ *              می‌کند، گیره در ۰..۲۵۵. کانال ۰ = زنجیرهٔ Trans1/Shunt1 و
+ *              کانال ۱ = Trans2/Shunt2. مقدار فقط در RAM است؛ ری‌استارت
+ *              پیش‌فرض بنچ کامپایل را برمی‌گرداند (پنل ESP، دستور کاربر
+ *              ۲۰۲۶-۰۹-۲۲).
+ * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @param  uint32_t__offsetCounts [EN] Requested offset in counts / آفست
+ * @return uint32_t [EN] Actually applied offset / آفست اعمال‌شده
+ */
+uint32_t func__BspMeasurement_SetCurrentOffsetCounts(uint8_t uint8_t__channelIndex,
+                                                     uint32_t uint32_t__offsetCounts)
+{
+    if (uint32_t__offsetCounts > BSP_MEASUREMENT_CURRENT_OFFSET_MAX_COUNTS)
+    {
+        uint32_t__offsetCounts = BSP_MEASUREMENT_CURRENT_OFFSET_MAX_COUNTS;
+    }
+
+    if (uint8_t__channelIndex == 0u)
+    {
+        UINT32_T__G__Current1OffsetCounts = uint32_t__offsetCounts;
+    }
+    else
+    {
+        UINT32_T__G__Current2OffsetCounts = uint32_t__offsetCounts;
+    }
+
+    return uint32_t__offsetCounts;
+}
+
+/**
+ * @brief  [EN] Set the bench gain trim (permille) of one current channel at
+ *              runtime, clamped to 100..3000 (ESP panel, user order
+ *              2026-09-22; RAM only).
+ *         [FA] ضریب گین بنچ (پرمیل) یک کانال را در زمان اجرا تنظیم می‌کند،
+ *              گیره در ۱۰۰..۳۰۰۰ (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲؛ فقط RAM).
+ * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @param  uint32_t__gainPermille [EN] Requested gain permille / گین پرمیل
+ * @return uint32_t [EN] Actually applied gain permille / گین اعمال‌شده
+ */
+uint32_t func__BspMeasurement_SetCurrentGainPermille(uint8_t uint8_t__channelIndex,
+                                                     uint32_t uint32_t__gainPermille)
+{
+    if (uint32_t__gainPermille < BSP_MEASUREMENT_CURRENT_GAIN_MIN_PERMILLE)
+    {
+        uint32_t__gainPermille = BSP_MEASUREMENT_CURRENT_GAIN_MIN_PERMILLE;
+    }
+    else if (uint32_t__gainPermille > BSP_MEASUREMENT_CURRENT_GAIN_MAX_PERMILLE)
+    {
+        uint32_t__gainPermille = BSP_MEASUREMENT_CURRENT_GAIN_MAX_PERMILLE;
+    }
+    else
+    {
+        /* [EN] Value already inside the window. [FA] مقدار داخل پنجره است. */
+    }
+
+    if (uint8_t__channelIndex == 0u)
+    {
+        UINT32_T__G__Current1GainPermille = uint32_t__gainPermille;
+    }
+    else
+    {
+        UINT32_T__G__Current2GainPermille = uint32_t__gainPermille;
+    }
+
+    return uint32_t__gainPermille;
+}
+
+/**
+ * @brief  [EN] Read the live zero-current offset of one current channel.
+ *         [FA] آفست جریان صفرِ زندهٔ یک کانال را می‌خواند.
+ * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @return uint32_t [EN] Offset in counts / آفست بر حسب شمارش
+ */
+uint32_t func__BspMeasurement_GetCurrentOffsetCounts(uint8_t uint8_t__channelIndex)
+{
+    if (uint8_t__channelIndex == 0u)
+    {
+        return UINT32_T__G__Current1OffsetCounts;
+    }
+
+    return UINT32_T__G__Current2OffsetCounts;
+}
+
+/**
+ * @brief  [EN] Read the live bench gain trim of one current channel.
+ *         [FA] ضریب گین بنچِ زندهٔ یک کانال را می‌خواند.
+ * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @return uint32_t [EN] Gain permille / گین پرمیل
+ */
+uint32_t func__BspMeasurement_GetCurrentGainPermille(uint8_t uint8_t__channelIndex)
+{
+    if (uint8_t__channelIndex == 0u)
+    {
+        return UINT32_T__G__Current1GainPermille;
+    }
+
+    return UINT32_T__G__Current2GainPermille;
 }
 
 /* ==================== BspMeasurement_CurrentCountsToMa (legacy) ==================== */

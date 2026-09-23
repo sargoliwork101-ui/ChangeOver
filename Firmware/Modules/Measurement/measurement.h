@@ -61,6 +61,14 @@
  *      بازهٔ ۱ تا ۲۵۵ نمونه؛ دو کانال پنجرهٔ جدا دارند. */
 #define MEASUREMENT_CURRENT_AVERAGE_WINDOW   10u
 
+/* [EN] Clamp limit of the ESP-adjustable runtime voltage calibration
+ *      offsets in mV (user order 2026-09-22): the panel can trim each
+ *      voltage channel by at most +/-2 V; default 0 keeps today's behavior.
+ * [FA] حد گیرهٔ آفست‌های کالیبراسیون ولتاژِ قابل‌تنظیم از ESP بر حسب mV
+ *      (دستور کاربر ۲۰۲۶-۰۹-۲۲): پنل حداکثر ±۲ ولت هر کانال ولتاژ را
+ *      جابه‌جا می‌کند؛ پیش‌فرض ۰ همان رفتار فعلی است. */
+#define MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV  2000u
+
 /* ==================== Globals (shared values) ==================== */
 /* [EN] Shared engineering values, written ONLY by the measurement task
  *      (Run). Any module/task can read them: #include "measurement.h" and
@@ -200,5 +208,85 @@ uint32_t func__Measurement_CurrentCountsToMa(uint16_t uint16_t__counts);
  * @return uint32_t [EN] Shunt voltage in uV / ولتاژ شانت بر حسب uV
  */
 uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts);
+
+/* ==================== Runtime config API (ESP panel) / API پیکربندی زمان اجرا ==================== */
+
+/**
+ * @brief  [EN] Set the runtime median-3 switch of the current filters
+ *              (capability-gated by the compiled switch; RAM only, ESP
+ *              panel, user order 2026-09-22).
+ *         [FA] کلید مدین-۳ فیلتر جریان در زمان اجرا (ظرفیت با کلید
+ *              کامپایل؛ فقط RAM، پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ * @param  bool__enable [EN] true = active / فعال
+ * @return bool [EN] Applied state / وضعیت اعمال‌شده
+ */
+bool func__Measurement_SetFilterMedian3Enable(bool bool__enable);
+
+/**
+ * @brief  [EN] Set the runtime moving-average switch of the current filters
+ *              (same capability rule; RAM only, ESP panel).
+ *         [FA] کلید میانگین متحرک فیلتر جریان در زمان اجرا (همان قاعدهٔ
+ *              ظرفیت؛ فقط RAM، پنل ESP).
+ * @param  bool__enable [EN] true = active / فعال
+ * @return bool [EN] Applied state / وضعیت اعمال‌شده
+ */
+bool func__Measurement_SetFilterAverageEnable(bool bool__enable);
+
+/**
+ * @brief  [EN] Set the runtime moving-average window, clamped to
+ *              1..MEASUREMENT_CURRENT_AVERAGE_WINDOW; the measurement task
+ *              resets the filter state after a change.
+ *         [FA] پنجرهٔ میانگین متحرک در زمان اجرا، گیرهٔ
+ *              ۱..MEASUREMENT_CURRENT_AVERAGE_WINDOW؛ تسک اندازه‌گیری بعد
+ *              از تغییر وضعیت فیلتر را ریست می‌کند.
+ * @param  uint8_t__windowSamples [EN] Requested window / پنجرهٔ درخواستی
+ * @return uint8_t [EN] Applied window / پنجرهٔ اعمال‌شده
+ */
+uint8_t func__Measurement_SetFilterAverageWindow(uint8_t uint8_t__windowSamples);
+
+/**
+ * @brief  [EN] Read the live median-3 switch of the current filters.
+ *         [FA] کلید زندهٔ مدین-۳.
+ * @return bool [EN] true when active / فعال
+ */
+bool func__Measurement_GetFilterMedian3Enable(void);
+
+/**
+ * @brief  [EN] Read the live moving-average switch of the current filters.
+ *         [FA] کلید زندهٔ میانگین متحرک.
+ * @return bool [EN] true when active / فعال
+ */
+bool func__Measurement_GetFilterAverageEnable(void);
+
+/**
+ * @brief  [EN] Read the live moving-average window size.
+ *         [FA] اندازهٔ زندهٔ پنجرهٔ میانگین.
+ * @return uint8_t [EN] Window in samples / پنجره بر حسب نمونه
+ */
+uint8_t func__Measurement_GetFilterAverageWindow(void);
+
+/**
+ * @brief  [EN] Set one runtime voltage calibration offset, clamped to
+ *              +/-MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV. Index 0 = 24 V
+ *              input, 1 = 24 V battery pack, 2 = 12 V battery (middle
+ *              node). Default 0 = today's behavior; RAM only.
+ *         [FA] یک آفست کالیبراسیون ولتاژ زمان اجرا، گیرهٔ
+ *              ±MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV. اندیس ۰ = ورودی ۲۴V،
+ *              ۱ = باتری ۲۴V، ۲ = باتری ۱۲V. پیش‌فرض ۰ همان رفتار فعلی؛
+ *              فقط RAM.
+ * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12 / اندیس
+ * @param  int32_t__offsetMv [EN] Requested offset, mV / آفست درخواستی
+ * @return int32_t [EN] Applied offset, mV / آفست اعمال‌شده
+ */
+int32_t func__Measurement_SetVoltageOffsetMv(uint8_t uint8_t__channelIndex,
+                                             int32_t int32_t__offsetMv);
+
+/**
+ * @brief  [EN] Read one runtime voltage calibration offset.
+ *         [FA] خواندن یک آفست کالیبراسیون ولتاژ زمان اجرا.
+ * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12 / اندیس
+ * @return int32_t [EN] Live offset, mV / آفست زنده
+ */
+int32_t func__Measurement_GetVoltageOffsetMv(uint8_t uint8_t__channelIndex);
 
 #endif /* MEASUREMENT_H */

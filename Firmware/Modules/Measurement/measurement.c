@@ -89,6 +89,51 @@ static uint32_t UINT32_T__G__CurrentMedianHistoryMa[2][3];
  *      به mA، شمارندهٔ پرشدن برای شیب شروع و اندیس خانهٔ بعدی. فقط وقتی
  *      کلید فیلتر روشن است وجود دارد. */
 static uint32_t UINT32_T__G__CurrentAverageWindowMa[2][MEASUREMENT_CURRENT_AVERAGE_WINDOW];
+
+/* ==================== Runtime filter config / voltage offsets (ESP panel) ==================== */
+
+/* [EN] Runtime copies of the current-filter configuration (user order
+ *      2026-09-22: the ESP command panel can switch the filters and resize
+ *      the moving-average window live). The compile-time switches above
+ *      remain the capability gates: a filter compiled out can never be
+ *      switched on at runtime, and the runtime window can never exceed the
+ *      compiled ring size. The measurement task detects a change and resets
+ *      the filter state in its own context, so no cross-task locking is
+ *      needed (written by the EspLink task, volatile).
+ * [FA] نسخهٔ زمان اجرای پیکربندی فیلتر جریان (دستور کاربر ۲۰۲۶-۰۹-۲۲:
+ *      پنل ESP می‌تواند فیلترها را زنده قطع/وصل و پنجرهٔ میانگین را تغییر
+ *      دهد). کلیدهای کامپایل بالا ظرفیت را تعیین می‌کنند: فیلتری که
+ *      کامپایل نشده هرگز روشن نمی‌شود و پنجرهٔ زمان اجرا هرچه باشد از
+ *      اندازهٔ حلقهٔ کامپایل بزرگ‌تر نمی‌شود. تسک اندازه‌گیری تغییر را
+ *      می‌بیند و وضعیت فیلتر را در زمینهٔ خودش ریست می‌کند؛ پس قفل بین
+ *      تسکی لازم نیست (نوشته از تسک EspLink، volatile). */
+static volatile uint8_t UINT8_T__G__FilterMedian3Enable =
+    (uint8_t)MEASUREMENT_CURRENT_MEDIAN3_ENABLE;
+static volatile uint8_t UINT8_T__G__FilterAverageEnable =
+    (uint8_t)MEASUREMENT_CURRENT_AVERAGE_ENABLE;
+static volatile uint8_t UINT8_T__G__FilterAverageWindow =
+    (uint8_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW;
+
+/* [EN] Last configuration the measurement task applied; owned by the
+ *      measurement task only (change detection).
+ * [FA] آخرین پیکربندی اعمال‌شده توسط تسک اندازه‌گیری؛ فقط مالکش همین
+ *      تسک است (تشخیص تغییر). */
+static uint8_t UINT8_T__G__FilterMedian3Applied =
+    (uint8_t)MEASUREMENT_CURRENT_MEDIAN3_ENABLE;
+static uint8_t UINT8_T__G__FilterAverageApplied =
+    (uint8_t)MEASUREMENT_CURRENT_AVERAGE_ENABLE;
+static uint8_t UINT8_T__G__FilterAverageWindowApplied =
+    (uint8_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW;
+
+/* [EN] Runtime voltage calibration offsets in mV, default 0 = today's
+ *      behavior; applied AFTER the divider conversion, before the
+ *      low/high derivation. RAM only - a reboot returns to 0.
+ * [FA] آفست‌های کالیبراسیون ولتاژ بر حسب mV در زمان اجرا؛ پیش‌فرض ۰ یعنی
+ *      رفتار فعلی؛ بعد از تبدیل مقسم و قبل از محاسبهٔ پایین/بالا اعمال
+ *      می‌شوند. فقط RAM - ری‌استارت صفر برمی‌گردد. */
+static volatile int32_t INT32_T__G__VoltageInOffsetMv = 0;
+static volatile int32_t INT32_T__G__Voltage24OffsetMv = 0;
+static volatile int32_t INT32_T__G__Voltage12OffsetMv = 0;
 static uint8_t UINT8_T__G__CurrentAverageFillCount[2];
 static uint8_t UINT8_T__G__CurrentAverageNextIndex[2];
 #endif
@@ -222,13 +267,13 @@ static uint32_t func__Measurement_CurrentMovingAverage(uint8_t uint8_t__channelI
 
     UINT8_T__G__CurrentAverageNextIndex[uint8_t__channelIndex]++;
     if (UINT8_T__G__CurrentAverageNextIndex[uint8_t__channelIndex] >=
-        MEASUREMENT_CURRENT_AVERAGE_WINDOW)
+        UINT8_T__G__FilterAverageWindow)
     {
         UINT8_T__G__CurrentAverageNextIndex[uint8_t__channelIndex] = 0u;
     }
 
     if (UINT8_T__G__CurrentAverageFillCount[uint8_t__channelIndex] <
-        MEASUREMENT_CURRENT_AVERAGE_WINDOW)
+        UINT8_T__G__FilterAverageWindow)
     {
         UINT8_T__G__CurrentAverageFillCount[uint8_t__channelIndex]++;
     }
@@ -275,16 +320,66 @@ static uint32_t func__Measurement_ApplyCurrentFilters(uint8_t uint8_t__channelIn
     (void)uint8_t__channelIndex;
 
 #if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
-    uint32_t__sampleMa =
-        func__Measurement_CurrentMedian3(uint8_t__channelIndex, uint32_t__sampleMa);
+    /* [EN] Runtime switch (ESP panel): the compiled switch is the
+       capability, this flag is the live setting.
+       [FA] کلید زمان اجرا (پنل ESP): کلید کامپایل ظرفیت است و این پرچم
+       تنظیم زنده. */
+    if (UINT8_T__G__FilterMedian3Enable != 0u)
+    {
+        uint32_t__sampleMa =
+            func__Measurement_CurrentMedian3(uint8_t__channelIndex, uint32_t__sampleMa);
+    }
 #endif
 
 #if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
-    uint32_t__sampleMa =
-        func__Measurement_CurrentMovingAverage(uint8_t__channelIndex, uint32_t__sampleMa);
+    /* [EN] Runtime switch (ESP panel), same rule as the median above.
+       [FA] کلید زمان اجرا (پنل ESP) با همان قاعدهٔ مدین بالا. */
+    if (UINT8_T__G__FilterAverageEnable != 0u)
+    {
+        uint32_t__sampleMa =
+            func__Measurement_CurrentMovingAverage(uint8_t__channelIndex, uint32_t__sampleMa);
+    }
 #endif
 
     return uint32_t__sampleMa;
+}
+
+/* ==================== Measurement ResetCurrentFilters ==================== */
+
+/**
+ * @brief  [EN] Zero both current-filter histories and restart both average
+ *              ramps. Called from Init and whenever the measurement task
+ *              sees that the runtime filter configuration changed, so a
+ *              window resize never mixes stale slots into the average.
+ *              Only the measurement task may call this.
+ *         [FA] تاریخچهٔ هر دو فیلتر جریان را صفر و شیب هر دو میانگین را
+ *              از نو شروع می‌کند؛ از Init و هر بار که تسک اندازه‌گیری تغییر
+ *              پیکربندی زمان اجرا را ببیند صدا زده می‌شود تا تغییر پنجره
+ *              هرگز خانه‌های قدیمی را داخل میانگین نیامیزد. فقط تسک
+ *              اندازه‌گیری اجازهٔ صدا زدن دارد.
+ */
+static void func__Measurement_ResetCurrentFilters(void)
+{
+#if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
+    for (uint32_t uint32_t__i = 0u; uint32_t__i < 2u; uint32_t__i++)
+    {
+        UINT32_T__G__CurrentMedianHistoryMa[uint32_t__i][0] = 0u;
+        UINT32_T__G__CurrentMedianHistoryMa[uint32_t__i][1] = 0u;
+        UINT32_T__G__CurrentMedianHistoryMa[uint32_t__i][2] = 0u;
+    }
+#endif
+
+#if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
+    for (uint32_t uint32_t__i = 0u; uint32_t__i < 2u; uint32_t__i++)
+    {
+        for (uint32_t uint32_t__j = 0u; uint32_t__j < MEASUREMENT_CURRENT_AVERAGE_WINDOW; uint32_t__j++)
+        {
+            UINT32_T__G__CurrentAverageWindowMa[uint32_t__i][uint32_t__j] = 0u;
+        }
+        UINT8_T__G__CurrentAverageFillCount[uint32_t__i] = 0u;
+        UINT8_T__G__CurrentAverageNextIndex[uint32_t__i] = 0u;
+    }
+#endif
 }
 
 /**
@@ -366,43 +461,19 @@ void func__Measurement_Init(void)
        valid until the required number of stable frames is collected.
        [FA] شمارندهٔ warm-up، گلوبال‌های مشترک و snapshot را صفر می‌کند؛
        تا جمع‌شدن تعداد لازم فریم‌های پایدار چیزی معتبر نیست. */
-#if ((MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u) || (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u))
-    uint32_t uint32_t__i;
-#endif
-#if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
-    uint32_t uint32_t__j;
-#endif
 
     UINT8_T__G__MeasurementWarmupFrameCount = 0u;
 
-#if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
-    /* [EN] Clear both median-3 current histories so a restart begins from a
-       clean filter state.
-       [FA] تاریخچهٔ مدین-۳ هر دو کانال صفر می‌شود تا ری‌استارت از وضعیت
-       فیلتر تمیز شروع شود. */
-    for (uint32_t__i = 0u; uint32_t__i < 2u; uint32_t__i++)
-    {
-        UINT32_T__G__CurrentMedianHistoryMa[uint32_t__i][0] = 0u;
-        UINT32_T__G__CurrentMedianHistoryMa[uint32_t__i][1] = 0u;
-        UINT32_T__G__CurrentMedianHistoryMa[uint32_t__i][2] = 0u;
-    }
-#endif
-
-#if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
-    /* [EN] Clear both moving-average windows; the fill counter restarts the
-       startup ramp from the first sample.
-       [FA] پنجرهٔ میانگین هر دو کانال صفر می‌شود؛ شمارندهٔ پرشدن شیب شروع
-       را از اولین نمونه از نو می‌راند. */
-    for (uint32_t__i = 0u; uint32_t__i < 2u; uint32_t__i++)
-    {
-        for (uint32_t__j = 0u; uint32_t__j < MEASUREMENT_CURRENT_AVERAGE_WINDOW; uint32_t__j++)
-        {
-            UINT32_T__G__CurrentAverageWindowMa[uint32_t__i][uint32_t__j] = 0u;
-        }
-        UINT8_T__G__CurrentAverageFillCount[uint32_t__i] = 0u;
-        UINT8_T__G__CurrentAverageNextIndex[uint32_t__i] = 0u;
-    }
-#endif
+    /* [EN] Clean filter state and re-sync the applied-copy of the runtime
+       filter configuration (a config that arrived before Init cannot
+       survive into the first frame).
+       [FA] وضعیت فیلتر تمیز و همگام‌سازی دوبارهٔ کپیِ اعمال‌شدهٔ پیکربندی
+       زمان اجرا (پیکربندی‌ای که قبل از Init رسیده باشد به اولین فریم
+       نمی‌رسد). */
+    func__Measurement_ResetCurrentFilters();
+    UINT8_T__G__FilterMedian3Applied = UINT8_T__G__FilterMedian3Enable;
+    UINT8_T__G__FilterAverageApplied = UINT8_T__G__FilterAverageEnable;
+    UINT8_T__G__FilterAverageWindowApplied = UINT8_T__G__FilterAverageWindow;
 
     UINT32_T__G__MeasInputVoltageMv = 0u;
     UINT32_T__G__MeasBattery24Mv = 0u;
@@ -523,6 +594,35 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
     return func__BspMeasurement_CurrentCountsToShuntUv(uint16_t__counts);
 }
 
+/* ==================== Measurement ApplyVoltageOffsetMv ==================== */
+
+/**
+ * @brief  [EN] Saturating signed add of one runtime calibration offset to a
+ *              voltage in mV; the result is never below 0 mV. The offset is
+ *              clamped to +/-MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV by its
+ *              setter, so the sum cannot overflow int32_t.
+ *         [FA] جمع علامتدارِ اشباع‌شوندهٔ یک آفست کالیبراسیون زمان اجرا
+ *              به ولتاژ بر حسب mV؛ نتیجه هرگز زیر ۰mV نمی‌رود. آفست در
+ *              setter خودش به ±MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV گیره
+ *              می‌شود، پس جمع در int32_t سرریز نمی‌کند.
+ * @param  uint32_t__voltageMv [EN] Converted voltage, mV / ولتاژ تبدیل‌شده
+ * @param  int32_t__offsetMv [EN] Runtime offset, mV / آفست زمان اجرا
+ * @return uint32_t [EN] Offset voltage, mV / ولتاژ آفست‌خورده
+ */
+static uint32_t func__Measurement_ApplyVoltageOffsetMv(uint32_t uint32_t__voltageMv,
+                                                       int32_t int32_t__offsetMv)
+{
+    int32_t int32_t__resultMv;
+
+    int32_t__resultMv = (int32_t)uint32_t__voltageMv + int32_t__offsetMv;
+    if (int32_t__resultMv < 0)
+    {
+        return 0u;
+    }
+
+    return (uint32_t)int32_t__resultMv;
+}
+
 /* ==================== Measurement Run ==================== */
 
 /**
@@ -587,6 +687,26 @@ void func__Measurement_Run(void)
         UINT8_T__G__MeasurementWarmupFrameCount++;
     }
 
+    /* [EN] Runtime filter-config change detection (ESP panel, user order
+ *          2026-09-22): when any of the three live settings moved, reset
+ *          the filter state in this task's own context and take over the
+ *          new configuration - a resize never mixes stale ring slots into
+ *          the average and no cross-task lock is needed.
+ * [FA] تشخیص تغییر پیکربندی زندهٔ فیلتر (پنل ESP، دستور کاربر
+ *      ۲۰۲۶-۰۹-۲۲): با جابه‌جاشدن هر یک از سه تنظیم، وضعیت فیلتر در
+ *      زمینهٔ همین تسک ریست و پیکربندی جدید تحویل گرفته می‌شود - تغییر
+ *      اندازه هرگز خانه‌های قدیمی حلقه را داخل میانگین نمی‌آمیزد و قفل
+ *      بین‌تسکی لازم نیست. */
+    if ((UINT8_T__G__FilterMedian3Applied != UINT8_T__G__FilterMedian3Enable) ||
+        (UINT8_T__G__FilterAverageApplied != UINT8_T__G__FilterAverageEnable) ||
+        (UINT8_T__G__FilterAverageWindowApplied != UINT8_T__G__FilterAverageWindow))
+    {
+        func__Measurement_ResetCurrentFilters();
+        UINT8_T__G__FilterMedian3Applied = UINT8_T__G__FilterMedian3Enable;
+        UINT8_T__G__FilterAverageApplied = UINT8_T__G__FilterAverageEnable;
+        UINT8_T__G__FilterAverageWindowApplied = UINT8_T__G__FilterAverageWindow;
+    }
+
     /* [EN] Convert into locals first so other tasks never observe a partly
        updated measurement set.
        [FA] ابتدا در متغیرهای محلی تبدیل می‌کند تا تسک‌های دیگر مجموعهٔ
@@ -615,6 +735,23 @@ void func__Measurement_Run(void)
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);
     uint32_t__battery12Mv =
         func__Measurement_V12CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_12V_BAT]);
+
+    /* [EN] Runtime voltage calibration offsets (ESP panel, user order
+ *          2026-09-22): applied after the divider conversion and before the
+ *          low/high derivation, each clamped by the setter to
+ *          +/-MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV; default 0 keeps today's
+ *          behavior. Saturating signed add, result never below 0 mV.
+ * [FA] آفست‌های کالیبراسیون ولتاژ زمان اجرا (پنل ESP، دستور کاربر
+ *      ۲۰۲۶-۰۹-۲۲): بعد از تبدیل مقسم و قبل از محاسبهٔ پایین/بالا اعمال
+ *      می‌شوند؛ هر یک در setter به ±MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV
+ *      گیره می‌شود و پیش‌فرض ۰ همان رفتار فعلی است. جمع علامتدارِ
+ *      اشباع‌شونده؛ نتیجه هرگز زیر ۰mV نمی‌رود. */
+    uint32_t__inputVoltageMv = func__Measurement_ApplyVoltageOffsetMv(
+        uint32_t__inputVoltageMv, INT32_T__G__VoltageInOffsetMv);
+    uint32_t__battery24Mv = func__Measurement_ApplyVoltageOffsetMv(
+        uint32_t__battery24Mv, INT32_T__G__Voltage24OffsetMv);
+    uint32_t__battery12Mv = func__Measurement_ApplyVoltageOffsetMv(
+        uint32_t__battery12Mv, INT32_T__G__Voltage12OffsetMv);
     uint32_t__batteryLowMv = uint32_t__battery12Mv;
     if (uint32_t__battery24Mv >= uint32_t__battery12Mv)
     {
@@ -749,4 +886,178 @@ bool func__Measurement_GetSnapshot(measurement_snapshot_t *measurement_snapshot_
     (void)osKernelRestoreLock(int32_t__savedKernelLock);
 
     return bool__snapshotValid;
+}
+
+/* ==================== Measurement runtime config API (ESP panel) ==================== */
+
+/**
+ * @brief  [EN] Set the runtime median-3 switch of the current filters. The
+ *              compiled switch MEASUREMENT_CURRENT_MEDIAN3_ENABLE remains
+ *              the capability gate: when it is 0 the request is clamped to
+ *              off. RAM only - a reboot restores the compiled default
+ *              (ESP panel, user order 2026-09-22).
+ *         [FA] کلید مدین-۳ فیلترهای جریان در زمان اجرا. کلید کامپایل
+ *              MEASUREMENT_CURRENT_MEDIAN3_ENABLE ظرفیت را تعیین می‌کند:
+ *              اگر ۰ باشد درخواست به خاموش گیره می‌شود. فقط RAM -
+ *              ری‌استارت پیش‌فرض کامپایل را برمی‌گرداند (پنل ESP، دستور
+ *              کاربر ۲۰۲۶-۰۹-۲۲).
+ * @param  bool__enable [EN] true = median-3 active / فعال
+ * @return bool [EN] Actually applied state / وضعیت اعمال‌شده
+ */
+bool func__Measurement_SetFilterMedian3Enable(bool bool__enable)
+{
+#if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
+    UINT8_T__G__FilterMedian3Enable = (bool__enable ? 1u : 0u);
+    return bool__enable;
+#else
+    (void)bool__enable;
+    UINT8_T__G__FilterMedian3Enable = 0u;
+    return false;
+#endif
+}
+
+/**
+ * @brief  [EN] Set the runtime moving-average switch of the current
+ *              filters; same capability rule as the median-3 switch.
+ *         [FA] کلید میانگین متحرک فیلترهای جریان در زمان اجرا؛ همان
+ *              قاعدهٔ ظرفیت مدین-۳.
+ * @param  bool__enable [EN] true = moving average active / فعال
+ * @return bool [EN] Actually applied state / وضعیت اعمال‌شده
+ */
+bool func__Measurement_SetFilterAverageEnable(bool bool__enable)
+{
+#if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
+    UINT8_T__G__FilterAverageEnable = (bool__enable ? 1u : 0u);
+    return bool__enable;
+#else
+    (void)bool__enable;
+    UINT8_T__G__FilterAverageEnable = 0u;
+    return false;
+#endif
+}
+
+/**
+ * @brief  [EN] Set the runtime moving-average window size, clamped to
+ *              1..MEASUREMENT_CURRENT_AVERAGE_WINDOW (the compiled ring
+ *              size is the hard ceiling). The measurement task resets the
+ *              filter state on the next frame after a change.
+ *         [FA] اندازهٔ پنجرهٔ میانگین متحرک در زمان اجرا، گیره در
+ *              ۱..MEASUREMENT_CURRENT_AVERAGE_WINDOW (اندازهٔ حلقهٔ کامپایل
+ *              سقف قطعی است). تسک اندازه‌گیری پس از تغییر در فریم بعدی
+ *              وضعیت فیلتر را ریست می‌کند.
+ * @param  uint8_t__windowSamples [EN] Requested window / پنجرهٔ درخواستی
+ * @return uint8_t [EN] Applied window / پنجرهٔ اعمال‌شده
+ */
+uint8_t func__Measurement_SetFilterAverageWindow(uint8_t uint8_t__windowSamples)
+{
+    if (uint8_t__windowSamples < 1u)
+    {
+        uint8_t__windowSamples = 1u;
+    }
+    else if (uint8_t__windowSamples > (uint8_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW)
+    {
+        uint8_t__windowSamples = (uint8_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW;
+    }
+    else
+    {
+        /* [EN] Value already inside the window. [FA] مقدار داخل بازه است. */
+    }
+
+    UINT8_T__G__FilterAverageWindow = uint8_t__windowSamples;
+    return uint8_t__windowSamples;
+}
+
+/**
+ * @brief  [EN] Read the live median-3 switch of the current filters.
+ *         [FA] کلید زندهٔ مدین-۳ فیلترهای جریان.
+ * @return bool [EN] true when active / فعال
+ */
+bool func__Measurement_GetFilterMedian3Enable(void)
+{
+    return (UINT8_T__G__FilterMedian3Enable != 0u);
+}
+
+/**
+ * @brief  [EN] Read the live moving-average switch of the current filters.
+ *         [FA] کلید زندهٔ میانگین متحرک فیلترهای جریان.
+ * @return bool [EN] true when active / فعال
+ */
+bool func__Measurement_GetFilterAverageEnable(void)
+{
+    return (UINT8_T__G__FilterAverageEnable != 0u);
+}
+
+/**
+ * @brief  [EN] Read the live moving-average window size.
+ *         [FA] اندازهٔ زندهٔ پنجرهٔ میانگین متحرک.
+ * @return uint8_t [EN] Window in samples / پنجره بر حسب نمونه
+ */
+uint8_t func__Measurement_GetFilterAverageWindow(void)
+{
+    return UINT8_T__G__FilterAverageWindow;
+}
+
+/**
+ * @brief  [EN] Set one runtime voltage calibration offset, clamped to
+ *              +/-MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV. Index 0 = 24 V
+ *              input, 1 = 24 V battery pack, 2 = 12 V (middle node)
+ *              battery. Default 0 = today's behavior; RAM only.
+ *         [FA] یک آفست کالیبراسیون ولتاژ زمان اجرا، گیره در
+ *              ±MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV. اندیس ۰ = ورودی ۲۴V،
+ *              ۱ = باتری ۲۴V، ۲ = باتری ۱۲V (نود میانی). پیش‌فرض ۰ همان
+ *              رفتار فعلی؛ فقط RAM.
+ * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12 / اندیس
+ * @param  int32_t__offsetMv [EN] Requested offset, mV / آفست درخواستی
+ * @return int32_t [EN] Applied offset, mV / آفست اعمال‌شده
+ */
+int32_t func__Measurement_SetVoltageOffsetMv(uint8_t uint8_t__channelIndex,
+                                             int32_t int32_t__offsetMv)
+{
+    if (int32_t__offsetMv > (int32_t)MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV)
+    {
+        int32_t__offsetMv = (int32_t)MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV;
+    }
+    else if (int32_t__offsetMv < -(int32_t)MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV)
+    {
+        int32_t__offsetMv = -(int32_t)MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV;
+    }
+    else
+    {
+        /* [EN] Value already inside the window. [FA] مقدار داخل بازه است. */
+    }
+
+    if (uint8_t__channelIndex == 0u)
+    {
+        INT32_T__G__VoltageInOffsetMv = int32_t__offsetMv;
+    }
+    else if (uint8_t__channelIndex == 1u)
+    {
+        INT32_T__G__Voltage24OffsetMv = int32_t__offsetMv;
+    }
+    else
+    {
+        INT32_T__G__Voltage12OffsetMv = int32_t__offsetMv;
+    }
+
+    return int32_t__offsetMv;
+}
+
+/**
+ * @brief  [EN] Read one runtime voltage calibration offset.
+ *         [FA] یک آفست کالیبراسیون ولتاژ زمان اجرا را می‌خواند.
+ * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12 / اندیس
+ * @return int32_t [EN] Live offset, mV / آفست زنده
+ */
+int32_t func__Measurement_GetVoltageOffsetMv(uint8_t uint8_t__channelIndex)
+{
+    if (uint8_t__channelIndex == 0u)
+    {
+        return INT32_T__G__VoltageInOffsetMv;
+    }
+    if (uint8_t__channelIndex == 1u)
+    {
+        return INT32_T__G__Voltage24OffsetMv;
+    }
+
+    return INT32_T__G__Voltage12OffsetMv;
 }

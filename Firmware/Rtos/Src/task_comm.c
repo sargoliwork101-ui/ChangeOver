@@ -28,6 +28,16 @@ void func__TaskComm(void *void_ptr__argument)
 {
     (void)void_ptr__argument;
 
+#if MODULE_ESP
+    /* [EN] The comm thread owns the link lifecycle: bring the UART backend,
+       parser and ESP power up once before the periodic loop (ESP panel,
+       user order 2026-09-22).
+       [FA] تسک ارتباط مالک چرخهٔ حیات لینک است: قبل از حلقهٔ دوره‌ای،
+       backend ی UART و پارسر و تغذیهٔ ESP را یک‌بار بالا می‌آورد (پنل
+       ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲). */
+    func__EspLink_Init();
+#endif
+
     for (;;)
     {
 #if MODULE_ESP
