@@ -149,6 +149,23 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
 
     uint32_t__nowTick = osKernelGetTickCount();
 
+    /* [EN] Manual test mode (user order 2026-09-23): battery conditions are
+       suspended - freeze every debounce so nothing new latches and nothing
+       clears while bench testing without a battery. The charger clears the
+       BAT_LOST bit on entering the mode (its alarm goes silent), and the
+       detectors restart fresh when the mode exits.
+       [FA] مود تست دستی (دستور کاربر ۲۰۲۶-۰۹-۲۳): شرط‌های باتری تعلیق
+       می‌شوند - همهٔ دبانس‌ها فریز تا حین تستِ بدون باتری چیزی جدید قفل
+       یا پاک نشود. شارژر هنگام ورود به مود بیت BAT_LOST را پاک می‌کند
+       (آلارم ساکت) و آشکارسازها بعد از خروج از صفر شروع می‌کنند. */
+    if (func__Charger_IsManualTestModeActive() != false)
+    {
+        UINT32_T__G__BatOverSinceTick = 0u;
+        UINT32_T__G__BatAbsentSinceTick = 0u;
+        UINT32_T__G__BatHealthySinceTick = 0u;
+        return;
+    }
+
     /* [EN] No trustworthy snapshot: freeze every progress (no set, no clear,
        and debounce restarts from zero next valid pass).
        [FA] بدون snapshot معتبر: هیچ تغییری نده و دبانس‌ها را صفر کن. */

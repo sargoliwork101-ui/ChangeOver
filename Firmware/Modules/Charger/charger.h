@@ -308,6 +308,16 @@
  *      فقط آینهٔ پرچم است و آستانه/تایمری اینجا ندارد (fault.h ببین). */
 #define CHG_JIT_LOCKOUT_MS            3000u
 #define CHG_RELAY_SETTLE_MS            100u
+/* [EN] Manual test mode link dead-man (user order 2026-09-23): while the
+ *      mode is on, the STM expects at least one valid ESP frame every
+ *      3 s; on expiry both duties drop to 0 and the autonomous charger
+ *      resumes. A crashed browser must never leave a battery on an
+ *      unregulated fixed duty.
+ * [FA] ددمنِ لینک مود تست دستی (دستور کاربر ۲۰۲۶-۰۹-۲۳): تا وقتی مود
+ *      روشن است، برد هر ۳ ثانیه دست‌کم یک فریم معتبر از ESP می‌خواهد؛
+ *      با انقضا هر دو duty صفر و شارژر خودکار ادامه می‌دهد. کرش مرورگر
+ *      هرگز نباید باتری را روی duty ثابتِ بدون تنظیم رها کند. */
+#define CHG_MANUAL_WATCHDOG_MS        3000u
 /* [EN] 2000 mV is battery-sense validity for the same channel, NOT a charge
  * setpoint. For Trans2 it is VLOW = MID - GND. A free resistor alone is not
  * a valid battery simulator; only an electronic load with voltage clamp or a
@@ -533,6 +543,62 @@ uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
  * @return uint32_t [EN] Duty permille / duty پرمیل
  */
 uint32_t func__Charger_GetDutyFixedPermille(uint8_t uint8_t__channelIndex);
+
+/* ==================== Manual test mode / مود تست دستی ==================== */
+/* [EN] Global bench/test switch (user order 2026-09-23, protocol v1.2
+ *      param ID 19). While active the automatic charger is suspended and
+ *      each channel is driven directly at its stored fixed-duty value
+ *      (SetDutyFixedPermille) with every battery condition bypassed; the
+ *      hardware floor stays: input presence, the JIT trip, the 15.0 V
+ *      overvoltage cutoff, the duty ceilings and the FINAL_FAULT latch.
+ *      See ESP_AGENT_SPEC.md section 5.2 for the full contract.
+ * [FA] کلید سراسری تست/بنچ (دستور کاربر ۲۰۲۶-۰۹-۲۳، پارامتر ۱۹ پروتکل
+ *      v1.2). تا وقتی فعال است شارژر خودکار تعلیق و هر کانال مستقیم روی
+ *      مقدار duty فیکس خودشران می‌شود با حذف همهٔ شرط‌های باتری؛ کفِ
+ *      سخت‌افزاری می‌ماند: حضور ورودی، تریپ JIT، قطع ۱۵٫۰V، سقف‌های duty
+ *      و قفل FINAL_FAULT. قرارداد کامل: ESP_AGENT_SPEC.md بخش 5.2. */
+
+/**
+ * @brief  [EN] Request manual test mode on/off (called by the ESP link
+ *              task; the charger task adopts the request on its next pass
+ *              and performs the enter/exit actions in its own context).
+ *         [FA] درخواست روشن/خاموش مود تست دستی (از تسک ESP صدا زده می‌شود؛
+ *              تسک شارژر در پاس بعدی درخواست را برمی‌دارد و عملیات
+ *              ورود/خروج را در زمینهٔ خودش انجام می‌دهد).
+ * @param  bool__enable [EN] true = manual on / روشن
+ */
+void func__Charger_SetManualTestMode(bool bool__enable);
+
+/**
+ * @brief  [EN] Read the REQUESTED manual mode flag (the parameter value
+ *              the panel wrote; equals IsManualTestModeActive within one
+ *              control period).
+ *         [FA] پرچم «درخواست‌شدهٔ» مود دستی (مقدار پارامتری که پنل
+ *              نوشته؛ حداکثر یک دورهٔ کنترل با وضعیت فعال اختلاف دارد).
+ * @return bool [EN] true = requested on / درخواست روشن
+ */
+bool func__Charger_GetManualTestMode(void);
+
+/**
+ * @brief  [EN] Read the ACTIVE manual mode flag (owned by the charger
+ *              task; used by telemetry flag b5 and by the Fault module to
+ *              freeze battery-lost detection).
+ *         [FA] پرچم «فعالِ» مود دستی (مالکش تسک شارژر؛ تله‌متری b5 و
+ *              ماژول Fault برای فریز کردن تشخیص قطع باتری استفاده‌اش
+ *              می‌کنند).
+ * @return bool [EN] true = manual active / مود دستی فعال است
+ */
+bool func__Charger_IsManualTestModeActive(void);
+
+/**
+ * @brief  [EN] Feed the manual-mode link dead-man: every VALID frame from
+ *              the ESP (SET_PARAM / GET_PARAMS) refreshes the stamp; 3 s
+ *              of silence exits manual mode and drops both duties.
+ *         [FA] غذای ددمنِ لینک مود دستی: هر فریم معتبر از ESP مهر را
+ *              تازه می‌کند؛ ۳ ثانیه سکوت = خروج از مود دستی و صفرشدن
+ *              هر دو duty.
+ */
+void func__Charger_NotifyEspLinkActivity(void);
 
 /* ==================== Charger_Init / مقداردهی اولیه ==================== */
 /**

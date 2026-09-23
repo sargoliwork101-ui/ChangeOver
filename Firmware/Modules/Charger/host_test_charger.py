@@ -19,6 +19,8 @@ TASK_CONTROL_C = ROOT / "Firmware/Rtos/Src/task_control.c"
 MAIN_C = ROOT / "CubeIDE/Core/Src/main.c"
 IOC = ROOT / "CubeMX/CubeIDE.ioc"
 BSP_EXTI_C = ROOT / "Firmware/Bsp/Src/bsp_exti.c"
+ESP_LINK_H = ROOT / "Firmware/Modules/EspLink/esp_link.h"
+ESP_LINK_C = ROOT / "Firmware/Modules/EspLink/esp_link.c"
 
 ABSORB_MV = 14400
 FLOAT_MV = 13500
@@ -521,6 +523,44 @@ def test_electronic_load_policy_documented():
           "valid no-battery load must be documented as clamped/simulator only")
 
 
+def test_manual_test_mode_v12():
+    text_c = CHARGER_C.read_text()
+    text_h = CHARGER_H.read_text()
+    text_fault = FAULT_C.read_text()
+    text_esph = ESP_LINK_H.read_text()
+    text_esp = ESP_LINK_C.read_text()
+
+    check("CHG_STATE_MANUAL" in text_c, "manual test mode needs its own charger state (9)")
+    check(re.search(r"#define CHG_MANUAL_WATCHDOG_MS\s+3000u", text_h),
+          "manual link dead-man must be 3 s")
+    check(re.search(r"#define ESPLINK_FRAME_MAX_PAYLOAD\s+112u", text_esph),
+          "payload limit must be 112 for the 20-param bulk")
+    check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
+          and re.search(r"#define ESPLINK_PARAM_COUNT\s+20u", text_esph),
+          "param 19 = manual test mode, 20 params total")
+
+    manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
+                    text_c.find("/* ==================== Charger_Evaluate")]
+    check("func__Charger_ManualDriveChannel" in text_c,
+          "manual mode must drive the duty directly")
+    check("CHG_MAX_VALID_BATTERY_MV" in manual,
+          "manual mode keeps the 15 V hard overvoltage cutoff")
+    check("func__Charger_ApplyDuty" in manual,
+          "manual duty must go through the ApplyDuty clamp choke point")
+
+    jit = text_c[text_c.find("static void func__Charger_HandleJitTrip"):
+                 text_c.find("static uint16_t func__Charger_RetryDuty")]
+    check("BOOL__G__ChargerManualModeActive" in jit,
+          "JIT in manual mode must not arm the auto-retry/queue")
+
+    check("func__Charger_IsManualTestModeActive" in text_fault,
+          "battery-lost detection must freeze while manual mode is active")
+    check("func__Charger_NotifyEspLinkActivity" in text_esp,
+          "every valid ESP frame must feed the manual dead-man")
+    check("ESPLINK_TLM_FLAG_MANUAL_MODE" in text_esp and "0x20u" in text_esp,
+          "telemetry must expose the manual flag on b5")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -546,6 +586,7 @@ def main():
         test_pwm_contract,
         test_pwm_interleave_phase_lock,
         test_electronic_load_policy_documented,
+        test_manual_test_mode_v12,
     ]
     for test in tests:
         test()

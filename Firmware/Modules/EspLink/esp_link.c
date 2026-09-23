@@ -57,6 +57,9 @@ static uint16_t UINT16_T__G__TelemetrySeq = 0u;
 #define ESPLINK_TLM_FLAG_MEAS_VALID     0x04u
 #define ESPLINK_TLM_FLAG_CHG1_ENABLE    0x08u
 #define ESPLINK_TLM_FLAG_CHG2_ENABLE    0x10u
+/* [EN] v1.2 (user order 2026-09-23): manual test mode active on the STM.
+ * [FA] v1.2 (دستور کاربر): مود تست دستی روی برد فعال است. */
+#define ESPLINK_TLM_FLAG_MANUAL_MODE    0x20u
 
 /* ==================== Byte packing / بسته‌بندی بایت ==================== */
 
@@ -233,6 +236,12 @@ static bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
             *uint32_t__appliedValue =
                 func__Charger_SetDutyFixedPermille(1u, uint32_t__value);
             return true;
+
+        case ESPLINK_PARAM_MANUAL_TEST_MODE:
+            func__Charger_SetManualTestMode(uint32_t__value != 0u);
+            *uint32_t__appliedValue =
+                (func__Charger_GetManualTestMode() != false) ? 1u : 0u;
+            return true;
 #endif
 
         default:
@@ -336,6 +345,11 @@ static bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
 
         case ESPLINK_PARAM_CHG2_DUTY_FIXED_VAL:
             *uint32_t__value = func__Charger_GetDutyFixedPermille(1u);
+            return true;
+
+        case ESPLINK_PARAM_MANUAL_TEST_MODE:
+            *uint32_t__value =
+                (func__Charger_GetManualTestMode() != false) ? 1u : 0u;
             return true;
 #endif
 
@@ -494,6 +508,10 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
     {
         uint8_t__flags = (uint8_t)(uint8_t__flags | ESPLINK_TLM_FLAG_CHG2_ENABLE);
     }
+    if (func__Charger_IsManualTestModeActive() != false)
+    {
+        uint8_t__flags = (uint8_t)(uint8_t__flags | ESPLINK_TLM_FLAG_MANUAL_MODE);
+    }
 #endif
 
     func__EspLink_PutU16(UINT8_T__A__Payload, &uint16_t__cursor,
@@ -627,6 +645,13 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
     {
         if (uint8_t__payloadLength == 5u)
         {
+            /* [EN] Valid frame: refresh the manual-mode link dead-man
+               (protocol v1.2 - while manual is on, 3 s of silence makes
+               the charger drop both duties and resume autonomous mode).
+               [FA] فریم معتبر: مهر ددمنِ لینک مود دستی تازه می‌شود (v1.2 -
+               در مود دستی، ۳ ثانیه سکوت یعنی صفرشدن هر دو duty و بازگشت
+               به حالت خودکار). */
+            func__Charger_NotifyEspLinkActivity();
             uint32_t__value = func__EspLink_GetU32(uint8_t__payload, 1u);
             if (func__EspLink_ApplyParam(uint8_t__payload[0], uint32_t__value,
                                          &uint32_t__appliedValue) != false)
@@ -640,6 +665,7 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
     {
         if (uint8_t__payloadLength == 0u)
         {
+            func__Charger_NotifyEspLinkActivity();
             func__EspLink_SendParamsBulk();
         }
     }
