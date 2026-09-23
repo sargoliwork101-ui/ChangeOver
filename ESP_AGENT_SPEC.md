@@ -155,17 +155,17 @@ English line is for the agent/maintainers.
 
 | ID | English (label + hint) | توضیح فارسی برای نمایش زیر کنترل |
 |---|---|---|
-| 0 | Ch1 zero offset (ADC counts) - reading at zero current; subtracts from raw counts before conversion | آفست جریان صفر کانال ۱ (شمارش ADC)؛ مقداری که در جریان صفر خوانده می‌شود و قبل از تبدیل از counts کم می‌شود |
-| 1 | Ch2 zero offset (ADC counts) - same for channel 2 | آفست جریان صفر کانال ۲؛ مانند کانال ۱ برای زنجیرهٔ دوم |
-| 2 | Ch1 gain trim (permille) - final scale of the mA conversion; 1085 = bench value | ضریب گین تبدیل جریان کانال ۱ (پرمیل)؛ مقیاس نهایی تبدیل به mA، مقدار بنچ ۱۰۸۵ |
-| 3 | Ch2 gain trim (permille) - final scale of the mA conversion | ضریب گین تبدیل جریان کانال ۲ (پرمیل) |
-| 4 | VIN offset (mV, signed) - adder on the 24 V input reading after the divider | آفست کالیبراسیون ولتاژ ورودی ۲۴V بر حسب mV (علامت‌دار)؛ بعد از تبدیل مقسم جمع می‌شود |
-| 5 | V24 offset (mV, signed) - adder on the 24 V battery pack reading | آفست کالیبراسیون ولتاژ پک ۲۴V بر حسب mV (علامت‌دار) |
-| 6 | V12 offset (mV, signed) - adder on the 12 V battery reading (middle node) | آفست کالیبراسیون ولتاژ باتری ۱۲V (نود میانی) بر حسب mV (علامت‌دار) |
-| 7 | Median window (1/3/5) - median-of-N on the raw current samples; 1 = off, 3 = default, 5 also kills double-spikes | اندازهٔ پنجرهٔ مدین روی نمونه‌های خام جریان؛ ۱ = خاموش، ۳ = پیش‌فرض، ۵ پالس‌های دوتایی را هم حذف می‌کند |
-| 8 | Average window (1..10) - moving average over the last N current samples; 1 = off, 10 = default | پنجرهٔ میانگین متحرک روی آخرین N نمونهٔ جریان؛ ۱ = خاموش، ۱۰ = پیش‌فرض |
-| 9 | Ch1 efficiency (permille) - only scales the current ESTIMATE, not the real charge | بازدهی کانال ۱ (پرمیل)؛ فقط روی تخمین جریان اثر دارد، نه شارژ واقعی |
-| 10 | Ch2 efficiency (permille) - estimate scaling; 242 absorbs the ch2 sense over-read (do not set to ~700) | بازدهی کانال ۲ (پرمیل)؛ مقدار ۲۴۲ خطای over-read سنس کانال ۲ را جبران می‌کند (به ~۷۰۰ تغییرش ندهید) |
+| 0 | Ch1 zero offset (ADC counts) - subtracted inside the mA formula: mA ≈ (raw − offset) × 0.8776 × gain/1000 | آفست جریان صفر کانال ۱ (شمارش ADC)؛ داخل فرمول mA کم می‌شود: mA ≈ (raw − آفست) × 0.8776 × گین/1000 |
+| 1 | Ch2 zero offset (ADC counts) - same formula as channel 1 | آفست جریان صفر کانال ۲؛ همان فرمول کانال ۱ برای زنجیرهٔ دوم: mA ≈ (raw − آفست) × 0.8776 × گین/1000 |
+| 2 | Ch1 gain trim (permille) - final scale of the mA conversion: mA ≈ (raw − offset) × 0.8776 × gain/1000; 1085 = bench value | ضریب گین تبدیل جریان کانال ۱ (پرمیل)؛ فرمول: mA ≈ (raw − آفست) × 0.8776 × گین/۱۰۰۰ — مقدار بنچ ۱۰۸۵ (پیش‌فرض ≈ ×۰٫۹۵۲۳ به‌ازای هر count) |
+| 3 | Ch2 gain trim (permille) - same formula as channel 1 | ضریب گین تبدیل جریان کانال ۲ (پرمیل)؛ فرمول: mA ≈ (raw − آفست) × 0.8776 × گین/۱۰۰۰ |
+| 4 | VIN offset (mV, signed) - adder in: Vin_mV ≈ counts × 9.007 + offset (divider 69.2k/6.8k) | آفست کالیبراسیون ولتاژ ورودی ۲۴V بر حسب mV (علامت‌دار)؛ فرمول: Vin ≈ counts × 9.007 + آفست (مقسم 69.2k/6.8k) |
+| 5 | V24 offset (mV, signed) - adder in: V24_mV ≈ counts × 9.007 + offset | آفست کالیبراسیون ولتاژ پک ۲۴V بر حسب mV (علامت‌دار)؛ فرمول: V24 ≈ counts × 9.007 + آفست |
+| 6 | V12 offset (mV, signed) - adder in: V12_mV ≈ counts × 4.859 + offset; Vhigh = V24 − V12 | آفست کالیبراسیون ولتاژ باتری ۱۲V (نود میانی) بر حسب mV (علامت‌دار)؛ فرمول: V12 ≈ counts × 4.859 + آفست و Vhigh = V24 − V12 |
+| 7 | Median window (1/3/5) - first stage of the filter pipeline: average_W( median_N( mA_raw ) ); 1 = off, 3 = default, 5 also kills double-spikes | پنجرهٔ مدین (۱/۳/۵) - مرحلهٔ اول فیلتر: اول median(N) بعد average(W) روی mA خام؛ ۱ = خاموش، ۳ = پیش‌فرض، ۵ پالس‌های دوتایی را هم حذف می‌کند |
+| 8 | Average window (1..10) - second stage of the filter pipeline: average_W( median_N( mA_raw ) ); 1 = off, 10 = default | پنجرهٔ میانگین (۱..۱۰) - مرحلهٔ دوم فیلتر: میانگین آخرین W نمونهٔ خروجی مدین؛ ۱ = خاموش، ۱۰ = پیش‌فرض |
+| 9 | Ch1 efficiency (permille) - only inside the estimate formula: Iest = I × Vin × η / Vbat (ch1: Vbat = Vhigh); never changes the real charge | بازدهی کانال ۱ (پرمیل)؛ فقط داخل فرمول تخمین: Iest = I × Vin × η / Vbat (کانال ۱: Vbat = Vhigh) — روی شارژ واقعی اثر ندارد |
+| 10 | Ch2 efficiency (permille) - same estimate formula (ch2: Vbat = V12); 242 absorbs the ch2 sense over-read (do not set to ~700) | بازدهی کانال ۲ (پرمیل)؛ همان فرمول Iest = I × Vin × η / Vbat (کانال ۲: Vbat = V12)؛ مقدار ۲۴۲ خطای over-read سنس کانال ۲ را جبران می‌کند (به ~۷۰۰ تغییرش ندهید) |
 | 11 | Charger 1 on/off - 0 cuts the PWM immediately (battery keeps its charge), 1 resumes with a soft ramp | کلید قطع/وصل شارژر ۱؛ صفر فوراً PWM را قطع می‌کند و یک شارژ را با رمپ نرم ادامه می‌دهد |
 | 12 | Charger 2 on/off - same for charger 2 | کلید قطع/وصل شارژر ۲ |
 | 13 | Ch1 duty ceiling (permille) - hard cap on the PWM of charger 1 (ramp, regulation and fixed mode all respect it) | سقف duty ی PWM شارژر ۱ (پرمیل)؛ رمپ، تنظیم و مود فیکس همه به آن احترام می‌گذارند |
@@ -232,6 +232,56 @@ bench, the drive stops.
 field shows the new value **9 = MANUAL**. TLM flags bit 5 = manual mode
 active. On exiting manual mode both channels restart the autonomous
 charger from OFF (the normal 15 s settle applies again).
+
+### 5.3 Conversion formulas - display them in the panel (user order 2026-09-23)
+
+The panel must SHOW these formulas in its UI - under the calibration
+controls on the Settings tab and next to each step of the live current
+chain - with the live parameter values substituted. They are copied
+verbatim from the firmware (one stage per schematic element); the TLM
+fields of section 6 are exactly these formulas' outputs.
+
+Current chain (per channel; offset = ID 0/1, gain = ID 2/3):
+
+```text
+shunt_uV = raw_counts x 3300/4095 x 11/10 x 1000/101   (= raw x 8.7756 uV)
+           |_counts->pin mV_| |_R41/R42_| |_LM358 gain_|
+           pure hardware value - BEFORE any offset/trim (TLM: shuntX_uv)
+
+mA_unfiltered = max(raw_counts - offset, 0)
+                x 3300/4095 x 11/10 x 1000/(101 x 10) x gain/1000
+                (= (raw - offset) x 0.8776 x gain/1000 mA;
+                   defaults offset=8, gain=1085 -> x 0.9523 mA per count)
+                (TLM: maX_unfiltered)
+
+i_filtered_ma = average_W( median_N( mA_unfiltered ) )
+                first median (N = ID 7, 1/3/5), then moving average
+                (W = ID 8, 1..10) - this is what the charger decides on
+                (TLM: iX_filtered_ma)
+```
+
+Output-current estimate (eta = ID 9 ch1 / ID 10 ch2; TLM: iestX_ma):
+
+```text
+iest_ma = 0                                            if i_filtered = 0 or Vin = 0
+iest_ma = i_filtered_ma x Vin_mv x eta / max(Vbat_mv, 1000) / 1000
+          Vbat: ch1 = Vhigh (V24 - V12), ch2 = Vlow (V12)
+          eta in permille; the Vbat clamp only guards against a bad reading
+```
+
+Voltage chain (offsets = IDs 4/5/6, saturating add, never below 0 mV):
+
+```text
+Vin_mV = raw x 3300/4095 x 76000/6800 + VIN_OFFSET   (divider 69.2k/6.8k; = raw x 9.007)
+V24_mV = raw x 3300/4095 x 76000/6800 + V24_OFFSET   (same 69.2k/6.8k divider)
+V12_mV = raw x 3300/4095 x 41000/6800 + V12_OFFSET   (divider 34.2k/6.8k; = raw x 4.859)
+Vlow_mV = V12_mV        Vhigh_mV = V24_mV - V12_mV (clamped at 0)
+```
+
+Fixed hardware constants (NOT parameters - never editable): 12-bit ADC,
+3300 mV reference, full scale 4095; R41/R42 = 1 k / 10 k MCU-input divider
+on the current nets; LM358 non-inverting gain 101; shunt 10 mOhm; voltage
+dividers 69.2 k / 6.8 k (both 24 V nets) and 34.2 k / 6.8 k (12 V net).
 
 ## 6. TLM_LIVE payload layout (84 bytes, little-endian)
 
@@ -306,7 +356,10 @@ raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
 8. Display telemetry continuously; the current-chain numbers (raw → shunt →
    unfiltered → filtered) exist exactly so the panel can show the chain
    step-by-step and help find the correct calibration numbers - this is
-   exactly what the manual test tab is for.
+   exactly what the manual test tab is for. Render the section 5.3 formulas
+   in the UI next to each chain step with the live parameter values
+   substituted (user order 2026-09-23: the formulas must be visible in the
+   panel appearance).
 
 ## 8. Safety rules for the ESP implementation
 
@@ -359,9 +412,11 @@ final), charger state 9 = MANUAL, TLM flags bit 5, the 3 s link-loss
 dead-man with the 1 s panel keepalive, the manual-mode hardware floor
 (input presence, JIT trip with manual re-arm, 15.0 V hard overvoltage
 cutoff, duty ceilings, FINAL_FAULT latch), and the separate Manual Test
-tab requirement. Max payload 96 -> 112 bytes (PARAMS_BULK = 101 payload
-bytes with 20 params). The STM32 side of v1.2 is specified but not yet
-implemented - see section 9.
+tab requirement. Also (same day, second order): the conversion formulas
+(current chain, Iest, voltage chain - section 5.3) must be displayed in
+the panel UI, and the section 5.1 rows now carry them. Max payload
+96 -> 112 bytes (PARAMS_BULK = 101 payload bytes with 20 params). The
+STM32 side of v1.2 is specified but not yet implemented - see section 9.
 
 v1.1 (2026-09-22, same day as v1 and BEFORE any ESP-side implementation
 existed — the v1.1 IDs are the final ones). Changes vs v1: filter switches
