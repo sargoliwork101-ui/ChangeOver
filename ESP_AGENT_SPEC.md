@@ -358,6 +358,69 @@ running above 50 mA (e.g. manual duty 15%):
 2. Optional, physical shunt-current gain: DMM in series with the channel
    input → target 0 (or 1) → then repeat step 1 (mandatory after a GAIN).
 
+### 5.5 Panel-driven bench tests (v1.3 tooling — user order 2026-09-24)
+
+The panel is the bench instrument: it drives the charger through the
+EXISTING protocol (no new firmware messages needed), logs the telemetry,
+and shows every result as a COPYABLE plain-text block so the numbers can
+be handed to the firmware engineer. The user supplies the multimeter
+readings; the panel does everything else. The panel must NOT auto-apply
+any calibration from these tests - the numbers go to the firmware
+engineer first (single gain / two-point / lookup-table is his verdict).
+
+Common rules:
+- Keep the v1.2 manual-mode keepalive running during every test (3 s of
+  silence drops both duties to zero).
+- Cut the neighbor channel (ID 11/12 = 0) unless the test IS the
+  cross-talk test.
+- TLM fields used: rawX_counts (offset 4 / 32), iX_filtered_ma (16 / 44),
+  iestX_ma (20 / 48), dutyX_permille (24 / 52), v_in_mv (60),
+  v_bat_low_mv (72), v_bat_high_mv (76).
+- Every result block: one header line (test name, channel, date-time),
+  then one line per sample/step.
+
+Test A - Current linearity (the calibration data collector):
+  1. UI preconditions: "neighbor channel cut; DMM in series with the 24 V
+     INPUT of the tested channel" + optional second DMM in series with
+     the battery.
+  2. For each duty in {5, 10, 15, 20}% (editable list):
+     a. ID 19 = 1 (manual), tested channel duty = duty x 10 (ID 16/18),
+        neighbor duty = 0.
+     b. Wait 3 s (settle), then sample TLM for 3 s.
+     c. Record raw avg/min/max, i_filtered avg, Vin, Vbat of the tested
+        channel.
+     d. Open an input field for the INPUT-side DMM mA (mandatory) and the
+        BATTERY-side DMM mA (optional); store both with the row.
+  3. Result table (one per channel):
+     duty% | raw avg (min..max) | panel mA | DMM_in | ratio panel/DMM_in |
+     DMM_bat | Vin | Vbat
+     Show the ratio column but do not judge it - linear / affine / curved
+     is read from it by the firmware engineer.
+
+Test B - Zero + cross-talk:
+  1. Both duties 0 (manual on): 5 s raw average per channel = the true
+     zero (compare against ID 0/1 offsets).
+  2. CH1 running at 10/15/20% with CH2 parked: record CH2 raw average per
+     step; then swap roles (the documented coupling is one-way).
+  3. Result: neighbor_duty% | parked_raw | parked mA equivalent.
+
+Test C - Stability / drift:
+  Hold the tested channel at one duty (default 15%) for 60 s; log raw +
+  i_filtered every 1 s. Result: first, last, min, max, trend of
+  i_filtered (a steady rise = thermal drift, not curvature).
+
+Test D - Performance / regulation:
+  1. Leave manual mode (ID 19 = 0, both enables 1) and log iest1/iest2,
+     duty1/duty2, Vhigh/Vlow, Vin every 1 s for 60 s.
+  2. Result: settled iest per channel, settling time, peak-to-peak
+     oscillation, PASS/FAIL against the 630-650 band.
+  3. Optional sweep: manual duty 5 -> 20% in 10 s steps, logging
+     i_filtered vs duty; with Test A's DMM columns this doubles as the
+     converter performance curve.
+
+Test E - the v1.3 CAL card (section 5.4) stays the one-button path once
+the verdict from A-C says a single gain (or a gain + eta) is enough.
+
 ## 6. TLM_LIVE payload layout (84 bytes, little-endian)
 
 | Offset | Size | Field | Meaning |

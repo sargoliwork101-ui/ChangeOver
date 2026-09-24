@@ -12,3 +12,4 @@ CubeIDE/STM32CubeIDE/.settings/*
 *.map
 *.hex
 *.bin
+__pycache__/
