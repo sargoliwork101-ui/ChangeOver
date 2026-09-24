@@ -213,9 +213,9 @@
  *      absorbs that error until the ch2 chain is investigated on the bench
  *      (zero-current check + scope). Do not reuse it as a physical constant.
  *      History: single 705 permille from the 2026-09-18 fixed-15%-duty point
- *      (441 mA out x 13.0 V, true primary 358 mA x 22.9 V). Vbat is clamped
- *      to CHG_OUTPUT_EST_MIN_VBAT_MV so a momentary bad reading cannot divide
- *      by ~0; the estimate is only used inside the normal charge path, never
+ *      (441 mA out x 13.0 V, true primary 358 mA x 22.9 V). Vbat was clamped
+ *      to a minimum floor (old define, dropped in v1.3) so a momentary bad
+ *      reading could not divide by ~0; the estimate is only used inside the normal charge path, never
  *      in the bring-up source-limit path.
  *      FINAL UPDATE 2026-09-24 (same day, user-established bench fact): the
  *      sense chain is BATTERY-side - the measured voltage is approximately
@@ -292,7 +292,6 @@
  *      CAL_REFERENCE ‌ی ESP هم از همین‌ها استفاده می‌کند. */
 #define CHG_ETA_MIN_VIN_MV                10000u
 #define CHG_ETA_MIN_VBAT_MV                5000u
-#define CHG_OUTPUT_EST_MIN_VBAT_MV     1000u
 #define CHG_INPUT_VALID_MV           22000u
 #define CHG_DUTY_START_PERMILLE        10u
 #define CHG_DUTY_STEP_PERMILLE          5u

@@ -420,6 +420,13 @@ def test_setpoints_and_timing():
     check("uint32_t__gain = (uint32_t__gain * uint32_t__refMa) / uint32_t__liveMa;" in esp_link_c_txt and
           "(((uint32_t__refMa * uint32_t__vbatMv) / uint32_t__vinMv) * 1000u)" in esp_link_c_txt,
           "CAL math must be: gain *= ref/live and eta = ref*Vbat*1000/(live*Vin) on the live snapshot")
+    import re as _re
+    check(_re.search(r"#define ESPLINK_CAL_MAX_REF_MA\s+5000u", esp_link_h_txt) is not None,
+          "CAL_REFERENCE must sanity-cap the typed reference (50..5000 mA) so wire garbage cannot overflow the 32-bit math")
+    check("func__Charger_SetEfficiencyPermille(uint8_t__channelIndex, 0u);" in esp_link_c_txt,
+          "CAL GAIN must reset that channel's ETA to 0 - the old ETA absorbed the old gain's error")
+    check("#if MODULE_CHARGER\n    else if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_CAL_REFERENCE)" in esp_link_c_txt,
+          "the CAL_REFERENCE frame branch must be compiled out when the charger module is disabled")
     check("CHG_CURRENT_EMA_SHIFT" not in text_h and "currentEma" not in text_c,
           "charger must NOT filter the current estimate itself (user order 2026-09-22: Measurement's switchable median-3/moving-average chain feeds it; charger decides on that value)")
     check(re.search(r"#define MEASUREMENT_PERIOD_MS\s+1u", (ROOT / "Firmware/Modules/Measurement/measurement.h").read_text()),
