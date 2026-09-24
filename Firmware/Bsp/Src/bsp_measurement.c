@@ -66,18 +66,22 @@
  *      the LM358 output gave 362/1.01 = 358 mA true primary; 358/330 = 1085
  *      permille). After this the mA readout equals the physical primary
  *      current; the efficiency target lives in CHG_FLYBACK_EFFICIENCY_PERMILLE.
- *      2026-09-24 post-fix bench (DMM in series, both channels running) left
- *      ch2 unstable and self-contradictory (D=10%: 185/200/208 vs 185 true;
- *      D=15%: 320/354 vs 425 true) - no single permille fits both, so 1085
- *      stays until a stable SOLO ch2 point (ch1 parked) is recorded.
+ *      2026-09-24 (user order: calibrate from the given bench numbers, no
+ *      further tests): gain re-set at the D=15% point - displayed 354 vs
+ *      425 mA DMM true (latest of 320/354, readings drift upward through
+ *      the session) -> 1085 * 425/354 = 1303 permille. The chain stays
+ *      non-linear (D=10%: 185/200/208 vs 185 true, reads ~222-250 after
+ *      this trim) - a solo hardware re-check remains on the bench list.
  * [FA] کانال ۲ (Trans2/Shunt2): زوج تأییدشدهٔ بنچ؛ نرم‌افزار ۳۳۰ می‌خواند،
  *      اسکوپ ۳۵۸ واقعی؛ ضریب ۱۰۸۵ پرمیل تا خوانش = جریان فیزیکی اولیه.
- *      بنچ ۲۰۲۶-۰۹-۲۴ پس از فیکس: ch2 ناپایدار و متناقض ماند (D=10%:
- *      185/200/208 در برابر 185 واقعی؛ D=15%: 320/354 در برابر 425) — یک
- *      پرمیل هر دو را پوشش نمی‌دهد؛ ۱۰۸۵ می‌ماند تا نقطهٔ تکیِ پایدار ch2
- *      (با پارک ch1) ثبت شود. */
+ *      ۲۰۲۶-۰۹-۲۴ (دستور کاربر: کالیبره از همین اعداد بنچ، بدون تست بیشتر):
+ *      گین در نقطهٔ D=15% تنظیم شد — نمایش 354 در برابر 425 واقعی (آخرین
+ *      خوانش از 320/354؛ خوانش‌ها در طول جلسه رو به بالا می‌روند) ←
+ *      1085×425÷354 = ۱۳۰۳ پرمیل. زنجیره هنوز غیرخطی است (D=10%:
+ *      185/200/208 در برابر 185 واقعی؛ پس از این اصلاح ~222-250 می‌خواند) —
+ *      تست تکیِ سخت‌افزاری در فهرست بنچ می‌ماند. */
 #define BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS 8u
-#define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE 1085u
+#define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE 1303u
 /* [EN] Channel 1 (Trans1 / Shunt1 -> PA1): bench-calibrated 2026-09-24,
  *      after the dual-channel drop cleared (user order: bake it and push).
  *      DMM in series with the 24 V input, true vs displayed: D=15% 423 vs
@@ -266,12 +270,10 @@ static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
     uint32_t__chainCurrentMa =
         (uint32_t)(uint64_t__chainNumerator / uint64_t__chainDenominator);
 
-    /* [EN] Stage 5 - per-channel bench gain trim in permille (ch1 1046 =
-       the DMM-calibrated 2026-09-24 point; ch2 1085 = the measured 1.085x
-       of the Trans2 bench point, kept pending a stable solo re-check).
-       [FA] مرحلهٔ ۵ - اصلاح گین بنچ پر-کانال بر حسب پرمیل (کانال ۱: ۱۰۴۶ =
-       کالیبرهٔ مولتی‌متری ۲۰۲۶-۰۹-۲۴؛ کانال ۲: ۱۰۸۵ یعنی ۱٫۰۸۵ برابر نقطهٔ
-       بنچ Trans2 — تا تست تکیِ مجدد همان می‌ماند). */
+    /* [EN] Stage 5 - per-channel bench gain trim in permille (ch1 1046,
+       ch2 1303 = the DMM-calibrated 2026-09-24 points at D=15%).
+       [FA] مرحلهٔ ۵ - اصلاح گین بنچ پر-کانال بر حسب پرمیل (کانال ۱: ۱۰۴۶،
+       کانال ۲: ۱۳۰۳ = نقاط کالیبرهٔ مولتی‌متری ۲۰۲۶-۰۹-۲۴ در D=15%). */
     uint32_t__chainCurrentMa =
         (uint32_t)(((uint64_t)uint32_t__chainCurrentMa *
                     (uint64_t)uint32_t__gainPermille) /

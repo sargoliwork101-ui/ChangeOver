@@ -107,7 +107,7 @@ AA 55 11 05 02 B0 04 00 00 A2
 | 0 | CUR1_OFFSET_COUNTS | u32 | ADC counts | 8 | 0..255 | Zero-current offset, current channel 1 (Trans1, upper battery) |
 | 1 | CUR2_OFFSET_COUNTS | u32 | ADC counts | 8 | 0..255 | Same, channel 2 (Trans2, lower battery) |
 | 2 | CUR1_GAIN_PERMILLE | u32 | permille | 1046 | 100..3000 | Bench gain trim, channel 1 |
-| 3 | CUR2_GAIN_PERMILLE | u32 | permille | 1085 | 100..3000 | Same, channel 2 |
+| 3 | CUR2_GAIN_PERMILLE | u32 | permille | 1303 | 100..3000 | Same, channel 2 |
 | 4 | VIN_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 24 V input voltage calibration |
 | 5 | V24_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 24 V battery pack voltage calibration |
 | 6 | V12_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 12 V (middle node) battery calibration |
@@ -254,7 +254,7 @@ shunt_uV = raw_counts x 3300/4095 x 11/10 x 1000/101   (= raw x 8.7756 uV)
 mA_unfiltered = max(raw_counts - offset, 0)
                 x 3300/4095 x 11/10 x 1000/(101 x 10) x gain/1000
                 (= (raw - offset) x 0.8776 x gain/1000 mA;
-                   defaults offset=8; gain ch1=1046 -> x 0.9180, ch2=1085 -> x 0.9523 mA per count)
+                   defaults offset=8; gain ch1=1046 -> x 0.9180, ch2=1303 -> x 1.1436 mA per count)
                 (TLM: maX_unfiltered)
 
 i_filtered_ma = average_W( median_N( mA_unfiltered ) )

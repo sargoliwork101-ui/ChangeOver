@@ -440,10 +440,10 @@ def test_setpoints_and_timing():
     check("func__Measurement_Median5" in (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text(), "battery channel voltages must pass the median-5 prefilter (2-frame spike bursts beat median-3 during absorb)")
     bsp_meas_c = (ROOT / "Firmware/Bsp/Src/bsp_measurement.c").read_text()
     check(re.search(r"#define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE\s+1046u", bsp_meas_c) and
-          re.search(r"#define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE\s+1085u", bsp_meas_c) and
+          re.search(r"#define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE\s+1303u", bsp_meas_c) and
           re.search(r"#define BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS\s+8u", bsp_meas_c) and
           re.search(r"#define BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS\s+8u", bsp_meas_c),
-          "current calibration must be split per channel (user: charger 1 must not ride on charger 2's calibration); ch1 baked 2026-09-24 to 1046 permille (DMM 423 mA true vs 436/438/442 displayed at D=15%), ch2 keeps its 1085 bench value until a stable solo point exists")
+          "current calibration must be split per channel (user: charger 1 must not ride on charger 2's calibration); ch1 baked 2026-09-24 to 1046 permille (DMM 423 mA true vs 436/438/442 displayed at D=15%), ch2 baked to 1303 permille from its D=15% point (DMM 425 true vs 354 displayed, latest of 320/354; the D=10% chain stays non-linear: 185/200/208 vs 185)")
     meas_c_txt = (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text()
     check("func__Measurement_Current1CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1])" in meas_c_txt and
           "func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2])" in meas_c_txt,

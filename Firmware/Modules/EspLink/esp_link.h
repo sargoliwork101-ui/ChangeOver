@@ -70,7 +70,7 @@
 #define ESPLINK_PARAM_CUR1_OFFSET_COUNTS   0u   /* u32, counts,   def 8,    0..255    */
 #define ESPLINK_PARAM_CUR2_OFFSET_COUNTS   1u   /* u32, counts,   def 8,    0..255    */
 #define ESPLINK_PARAM_CUR1_GAIN_PERMILLE   2u   /* u32, permille, def 1046, 100..3000 */
-#define ESPLINK_PARAM_CUR2_GAIN_PERMILLE   3u   /* u32, permille, def 1085, 100..3000 */
+#define ESPLINK_PARAM_CUR2_GAIN_PERMILLE   3u   /* u32, permille, def 1303, 100..3000 */
 #define ESPLINK_PARAM_VIN_OFFSET_MV        4u   /* i32, mV,       def 0,    -2000..2000 */
 #define ESPLINK_PARAM_V24_OFFSET_MV        5u   /* i32, mV,       def 0,    -2000..2000 */
 #define ESPLINK_PARAM_V12_OFFSET_MV        6u   /* i32, mV,       def 0,    -2000..2000 */
