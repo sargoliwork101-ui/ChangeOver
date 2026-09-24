@@ -506,6 +506,8 @@ def test_pwm_interleave_phase_lock():
           "Init must start the two bridge timers with a frozen phase offset (user order 2026-09-21: channel-2 gate exactly half a period = 10 us after the channel-1 gate's START, not after its stop)")
     check("uint32_t__periodCounts / 2u" in bsp_pwm_c,
           "the offset must be half a period derived from the live ARR, not a hardcoded 720")
+    check("#define BSP_PWM_TIM3_PHASE_OFFSET_IN_PHASE 1u" in bsp_pwm_c,
+          "gate-phase experiment toggle (user order 2026-09-24) must stay explicit: 1u = in-phase bench experiment, 0u = restore the production 10 us interleave")
     check("HAL_TIM_PWM_Stop" not in bsp_pwm_c,
           "counters must run continuously: only compare=0 turns a channel off, because any later HAL_TIM_PWM_Stop/Start cycle could slip the frozen 10 us interleave")
     check("HAL_TIM_PWM_Start(" not in bsp_pwm_c,

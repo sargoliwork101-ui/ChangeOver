@@ -25,9 +25,12 @@ typedef enum
 
 /* ==================== BspPwm_Init ==================== */
 /**
- * @brief  [EN] Start both timer backend channels once with a frozen
- *              half-period (10 us at 50 kHz) interleave, gates initially
+ * @brief  [EN] Start both timer backend channels once, gates initially
  *              low. The counters then run forever; "off" is compare=0.
+ *              Phase is a compile switch (BSP_PWM_TIM3_PHASE_OFFSET_IN_PHASE):
+ *              1u = both gates in phase (bench experiment since 2026-09-24,
+ *              user order), 0u = the frozen half-period (10 us at 50 kHz)
+ *              interleave of the production design.
  *         [FA] هر دو کانال تایمر را یک‌بار با درهم‌گذاری ثابتِ نیم‌دوره
  *              (۱۰µs در ۵۰kHz) شروع می‌کند و گیت‌ها پایین می‌مانند. شمارنده‌ها
  *              دیگر همیشه می‌چرخند و «خاموش» یعنی compare=0.
