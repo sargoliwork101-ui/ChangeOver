@@ -217,14 +217,13 @@
  *      to CHG_OUTPUT_EST_MIN_VBAT_MV so a momentary bad reading cannot divide
  *      by ~0; the estimate is only used inside the normal charge path, never
  *      in the bring-up source-limit path.
- *      UPDATE 2026-09-24 (chain fixed + fully recalibrated): ch2 now reads
- *      the true primary current (DMM-verified, baked gain 1303) and ch1 is
- *      re-trimmed (baked gain 1046), so the 242 error-absorber above is
- *      RETIRED - with it, iest2 read ~0.5x Ipri (user bench report) and the
- *      AUTO band (630-650 sits on iest) would overdrive the channel. Both
- *      channels now carry ch1's physical point re-referenced to the new
- *      gain: 758*1085/1046 = 786; ch2 = 786 (identical converter design).
- *      Fine-trim live via ESP params 9/10 against a battery-side DMM.
+ *      FINAL UPDATE 2026-09-24 (same day, user-established bench fact): the
+ *      sense chain is BATTERY-side - the measured voltage is approximately
+ *      the battery current itself, so there is no primary->output conversion
+ *      at all. func__Charger_OutputEstimateMa is the identity now and these
+ *      permille values feed no calculation (kept only as inert defaults for
+ *      the ESP eta params 9/10 read-back). The 758/242/786 history above is
+ *      the record of the wrong "shunt in the MOSFET source" assumption.
  * [FA] تخمین جریان اولیه->خروجی برای تصمیم‌های شارژ: شانت سمت اولیه است ولی
  *      حدهای Bulk/Absorb/Float خروجی‌اند؛ Iout = Ipri×Vin×eta/Vbat،
  *      پرمیلِ جدا per channel. کالیبراسیون بنچ ۲۰۲۶-۰۹-۲۲ (جلسهٔ کالیبراسیون
@@ -238,13 +237,12 @@
  *      در برابر فقط 680mA ورودی واقعی؛ کانال ۱ سازگار است) پس این مقدار
  *      خطای sense را جذب می‌کند تا بررسی سخت‌افزاری کانال ۲ (تست جریان‌صفر و
  *      اسکوپ). به‌عنوان ثابت فیزیکی استفاده نشود. سابقه: ۷۰۵ واحدی از
- *      نقطهٔ دیوتی-ثابت ۱۵٪ ۲۰۲۶-۰۹-۱۸. *      به‌روزرسانی ۲۰۲۶-۰۹-۲۴ (فیکس + کالیبراسیون کامل زنجیره): ch2 الان
- *      جریان اولیهٔ واقعی را می‌خواند (تأیید مولتی‌متری، گین پخته‌شدهٔ ۱۳۰۳)
- *      و ch1 هم بازتنظیم شد (گین ۱۰۴۶)؛ پس عدد ۲۴۲ بالا بازنشسته شد — با آن،
- *      iest2 حدود نصف Ipri خوانده می‌شد (گزارش بنچ کاربر) و باند AUTO (۶۳۰-۶۵۰
- *      روی iest است) کانال را بیش از حد واقعی می‌راند. هر دو کانال حالا نقطهٔ
- *      فیزیکی ch1 با ارجاع به گین جدید: 758×1085÷1046 = ۷۸۶؛ ch2 = ۷۸۶ (طرح
- *      مبدل یکسان). ریزتنظیم زنده با پارامتر ۹/۱۰ ESP و مولتی‌متر سمت باتری.
+ *      نقطهٔ دیوتی-ثابت ۱۵٪ ۲۰۲۶-۰۹-۱۸. *      به‌روزرسانی نهایی ۲۰۲۶-۰۹-۲۴ (همان روز، روایت کاربر از بنچ): زنجیرهٔ
+ *      سنس سمت باتری است — ولتاژ اندازه‌گیری‌شده تقریبا خودِ جریان باتری است؛
+ *      پس اصلاً تبدیل اولیه→خروجی وجود ندارد. func__Charger_OutputEstimateMa
+ *      حالا همانی است و این مقادیر پرمیل در هیچ محاسبه‌ای نمی‌نشینند (فقط
+ *      پیش‌فرض بی‌اثر برای خوانده‌شدن پارامتر eta ‌ی ۹/۱۰ ESP). تاریخچهٔ
+ *      758/242/786 بالا سندِ فرض اشتباه «شانت در سورس ماسفت» است.
  */
 #define CHG_FLYBACK_EFFICIENCY_UP_PERMILLE   786u
 #define CHG_FLYBACK_EFFICIENCY_DN_PERMILLE   786u

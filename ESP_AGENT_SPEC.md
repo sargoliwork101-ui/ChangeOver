@@ -113,8 +113,8 @@ AA 55 11 05 02 B0 04 00 00 A2
 | 6 | V12_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 12 V (middle node) battery calibration |
 | 7 | FILTER_MEDIAN_SIZE | u32 | samples | 3 | 1/3/5 | Median window on charge currents. Valid sizes 1, 3, 5; other values round DOWN to the next odd size. **1 = bypass** (no separate on/off switch exists). Filter state resets on change. |
 | 8 | FILTER_AVERAGE_WINDOW | u32 | samples | 10 | 1..10 | Moving-average window on charge currents. **1 = bypass.** Filter state resets on change. |
-| 9 | CHG_EFF_UP_PERMILLE | u32 | permille | 786 | 100..999 | Charger 1 flyback efficiency for the current estimate |
-| 10 | CHG_EFF_DN_PERMILLE | u32 | permille | 786 | 100..999 | Charger 2 efficiency (physical since 2026-09-24: chain fixed + recalibrated, old 242 error-absorber retired) |
+| 9 | CHG_EFF_UP_PERMILLE | u32 | permille | 786 | 100..999 | Charger 1 eta - INERT since 2026-09-24 (estimate = identity; kept for protocol compatibility) |
+| 10 | CHG_EFF_DN_PERMILLE | u32 | permille | 786 | 100..999 | Charger 2 eta - INERT since 2026-09-24 (estimate = identity; kept for protocol compatibility) |
 | 11 | CHG1_ENABLE | u32 | 0/1 | 1 | 0..1 | 0 = cut charger module 1 (PWM off, state OFF); 1 = reconnect (soft BULK restart from 1% duty) |
 | 12 | CHG2_ENABLE | u32 | 0/1 | 1 | 0..1 | Same for charger module 2 |
 | 13 | CHG1_DUTY_CEILING | u32 | permille | 500 | 0..500 | PWM duty cap, charger 1. EVERY applied duty (ramp, regulation, fixed mode) is clamped to min(compile max, this ceiling). |
@@ -127,9 +127,11 @@ AA 55 11 05 02 B0 04 00 00 A2
 
 Notes:
 - Signed values (4..6) travel as two's-complement u32 on the wire.
-- `Iest = Ipri × Vin × eta / Vbat` — the ETA parameters only change the
-  **estimate**, never the actual charging behavior. The OFFSET/GAIN/FILTER
-  parameters change the measured current that the charger regulates on.
+- `Iest = I_filtered` (identity since 2026-09-24: the sense chain is
+  battery-side per the user - the measured voltage IS the battery current;
+  the old `Ipri × Vin × eta / Vbat` conversion is retired). ETA parameters
+  are inert now; the OFFSET/GAIN/FILTER parameters change the measured
+  current that the charger regulates on.
 - **Fixed-duty mode safety wrapper** (identical to the proven compile-time
   bench-test mode): switching STOPS when the battery reaches the absorb
   voltage (no overcharge with regulation off), the hardware JIT
@@ -163,8 +165,8 @@ English line is for the agent/maintainers.
 | 6 | V12 offset (mV, signed) - adder in: V12_mV ≈ counts × 4.859 + offset; Vhigh = V24 − V12 | آفست کالیبراسیون ولتاژ باتری ۱۲V (نود میانی) بر حسب mV (علامت‌دار)؛ فرمول: V12 ≈ counts × 4.859 + آفست و Vhigh = V24 − V12 |
 | 7 | Median window (1/3/5) - first stage of the filter pipeline: average_W( median_N( mA_raw ) ); 1 = off, 3 = default, 5 also kills double-spikes | پنجرهٔ مدین (۱/۳/۵) - مرحلهٔ اول فیلتر: اول median(N) بعد average(W) روی mA خام؛ ۱ = خاموش، ۳ = پیش‌فرض، ۵ پالس‌های دوتایی را هم حذف می‌کند |
 | 8 | Average window (1..10) - second stage of the filter pipeline: average_W( median_N( mA_raw ) ); 1 = off, 10 = default | پنجرهٔ میانگین (۱..۱۰) - مرحلهٔ دوم فیلتر: میانگین آخرین W نمونهٔ خروجی مدین؛ ۱ = خاموش، ۱۰ = پیش‌فرض |
-| 9 | Ch1 efficiency (permille) - only inside the estimate formula: Iest = I × Vin × η / Vbat (ch1: Vbat = Vhigh); never changes the real charge | بازدهی کانال ۱ (پرمیل)؛ فقط داخل فرمول تخمین: Iest = I × Vin × η / Vbat (کانال ۱: Vbat = Vhigh) — روی شارژ واقعی اثر ندارد |
-| 10 | Ch2 efficiency (permille) - same estimate formula (ch2: Vbat = V12); 786 = physical value since 2026-09-24 (chain fixed + recalibrated; the old 242 absorbed the pre-fix sense over-read) | بازدهی کانال ۲ (پرمیل)؛ همان فرمول Iest = I × Vin × η / Vbat (کانال ۲: Vbat = V12)؛ از ۲۰۲۶-۰۹-۲۴ مقدار فیزیکی ۷۸۶ (زنجیره تعمیر و کالیبره شد؛ ۲۴۲ قدیمی خطای پیش از فیکس را جذب می‌کرد) |
+| 9 | Ch1 eta (permille) - RETIRED 2026-09-24: no effect (estimate = identity; the sense chain is battery-side); accepted for protocol compatibility | بازدهی کانال ۱ (پرمیل) — از ۲۰۲۶-۰۹-۲۴ بی‌اثر (تخمین همانی است؛ زنجیرهٔ سنس سمت باتری است)؛ برای سازگاری پروتکل پذیرفته می‌شود |
+| 10 | Ch2 eta (permille) - RETIRED 2026-09-24: no effect (estimate = identity; the sense chain is battery-side); accepted for protocol compatibility | بازدهی کانال ۲ (پرمیل) — از ۲۰۲۶-۰۹-۲۴ بی‌اثر (تخمین همانی است؛ زنجیرهٔ سنس سمت باتری است)؛ برای سازگاری پروتکل پذیرفته می‌شود |
 | 11 | Charger 1 on/off - 0 cuts the PWM immediately (battery keeps its charge), 1 resumes with a soft ramp | کلید قطع/وصل شارژر ۱؛ صفر فوراً PWM را قطع می‌کند و یک شارژ را با رمپ نرم ادامه می‌دهد |
 | 12 | Charger 2 on/off - same for charger 2 | کلید قطع/وصل شارژر ۲ |
 | 13 | Ch1 duty ceiling (permille) - hard cap on the PWM of charger 1 (ramp, regulation and fixed mode all respect it) | سقف duty ی PWM شارژر ۱ (پرمیل)؛ رمپ، تنظیم و مود فیکس همه به آن احترام می‌گذارند |
@@ -263,13 +265,13 @@ i_filtered_ma = average_W( median_N( mA_unfiltered ) )
                 (TLM: iX_filtered_ma)
 ```
 
-Output-current estimate (eta = ID 9 ch1 / ID 10 ch2; TLM: iestX_ma):
+Output-current estimate (TLM: iestX_ma) - identity since 2026-09-24:
 
 ```text
-iest_ma = 0                                            if i_filtered = 0 or Vin = 0
-iest_ma = i_filtered_ma x Vin_mv x eta / max(Vbat_mv, 1000) / 1000
-          Vbat: ch1 = Vhigh (V24 - V12), ch2 = Vlow (V12)
-          eta in permille; the Vbat clamp only guards against a bad reading
+iest_ma = i_filtered_ma
+          (identity since 2026-09-24: the sense chain is battery-side per the
+          user - the measured voltage IS the battery current; the old
+          Vin_mv x eta / Vbat conversion is retired)
 ```
 
 Voltage chain (offsets = IDs 4/5/6, saturating add, never below 0 mV):
@@ -321,7 +323,7 @@ Channel mapping: **channel 1 = Trans1 = upper battery (Vhigh)**,
 **channel 2 = Trans2 = lower battery (Vlow)**.
 
 Reference values from the 2026-09-22 bench point (use as sanity check for the
-panel): raw1 ≈ 310 ↔ shunt1 ≈ 2720 µV ↔ ma1_unfiltered ≈ 287 ↔ iest1 ≈ 364;
+panel): raw1 ≈ 310 ↔ shunt1 ≈ 2720 µV ↔ ma1_unfiltered ≈ 287 ↔ iest1 ≈ 287 (identity since 2026-09-24; ≈364 was the retired conversion);
 raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
 
 ## 7. Recommended ESP behavior

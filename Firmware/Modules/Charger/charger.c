@@ -356,61 +356,42 @@ static uint32_t func__Charger_ChannelCurrentMa(const measurement_snapshot_t *mea
 /* ==================== Charger_OutputEstimateMa / تخمین جریان خروجی ==================== */
 
 /**
- * @brief  [EN] Convert the primary-side shunt current to the estimated output
- *              (battery) current used by the charge decisions:
- *              Iout = Ipri_fw * Vin_fw * eta / Vbat_fw with the PER-CHANNEL
- *              eta from the 2026-09-22 bench calibration (758 up / 242 down -
- *              see charger.h; the down value also absorbs the ch2 sense
- *              over-read until that chain is fixed on the bench). Vbat is
- *              clamped so a bad momentary reading cannot divide by ~0. Used
- *              ONLY on the normal charge path; the bring-up source-limit path
- *              keeps primary mA.
- *         [FA] تبدیل جریان شنتِ اولیه به جریان خروجی تخمینی برای تصمیم‌های
- *              شارژ: Iout = Ipri×Vin×eta/Vbat با eta جدا per channel از
- *              کالیبراسیون بنچ ۲۰۲۶-۰۹-۲۲ (بالای ۷۵۸ / پایین ۲۴۲ — مقدار
- *              پایین خطای over-read زنجیرهٔ sense کانال ۲ را هم جذب می‌کند
- *              تا اصلاح سخت‌افزاری آن). فقط مسیر نرمال، نه برینگ‌آپ.
- * @param  measurement_snapshot_t__snap [EN] Snapshot / نمونه
- * @param  uint8_t__channelIndex [EN] Channel / کانال
- * @param  uint32_t__primaryMa [EN] Measured primary current / جریان اولیه
- * @return uint32_t [EN] Estimated output current in mA / جریان خروجی تخمینی mA
+ * @brief  [EN] Output (battery-side) current estimate - identity since
+ *              2026-09-24 (user-established bench fact): the sense-chain
+ *              voltage is approximately the battery current itself, so the
+ *              filtered current reading already IS the battery current (the
+ *              per-channel gain is calibrated against a battery-side DMM).
+ *              The old Iout = Ipri*Vin*eta/Vbat conversion rested on the
+ *              wrong "shunt in the MOSFET source" assumption: with eta 242
+ *              iest read ~0.5x, with eta 786 ~1.4x of the true battery
+ *              current. ESP eta params 9/10 stay accepted for protocol
+ *              compatibility but no longer affect anything; the normal
+ *              charge band (630-650) now regulates the measured battery-side
+ *              current directly. The dormant bring-up path keeps raw
+ *              primary-labeled mA as before.
+ *         [FA] تخمین جریان خروجی (سمت باتری) - از ۲۰۲۶-۰۹-۲۴ همانی (واقعیت
+ *              بنچ به روایت کاربر): ولتاژ زنجیرهٔ سنس تقریبا خودِ جریان
+ *              باتری است؛ پس عدد جریان فیلترشده خودش جریان باتری است (گین
+ *              پر-کانال با مولتی‌متر سمت باتری کالیبره می‌شود). تبدیل قدیمی
+ *              Iout = Ipri×Vin×eta/Vbat بر فرض اشتباه «شانت در سورس ماسفت»
+ *              بود: با eta=242 عدد ~نصف و با eta=786 عدد ~۱٫۴ برابر جریان
+ *              واقعی باتری می‌شد. پارامترهای eta ‌ی ۹/۱۰ ESP برای سازگاری
+ *              پروتکل پذیرفته می‌شوند ولی دیگر اثری ندارند؛ باند شارژ نرمال
+ *              (۶۳۰-۶۵۰) حالا مستقیماً جریان اندازه‌گیری‌شدهٔ سمت باتری را
+ *              تنظیم می‌کند. مسیر خفتهٔ برینگ‌آپ مثل قبل mA خام را نگه می‌دارد.
+ * @param  measurement_snapshot_t__snap [EN] Unused / استفاده نمی‌شود
+ * @param  uint8_t__channelIndex [EN] Unused channel / کانال (استفاده نمی‌شود)
+ * @param  uint32_t__primaryMa [EN] Measured battery-side current, mA / جریان اندازه‌گیری‌شدهٔ سمت باتری، mA
+ * @return uint32_t [EN] The same current (identity) / همان جریان (همانی)
  */
 static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *measurement_snapshot_t__snap,
                                                uint8_t uint8_t__channelIndex,
                                                uint32_t uint32_t__primaryMa)
 {
-    uint32_t uint32_t__vbatMv;
-    uint32_t uint32_t__etaPermille;
-    uint64_t uint64_t__numerator;
+    (void)measurement_snapshot_t__snap;
+    (void)uint8_t__channelIndex;
 
-    if ((uint32_t__primaryMa == 0u) ||
-        (measurement_snapshot_t__snap->v_in_mv == 0u))
-    {
-        return 0u;
-    }
-
-    if (uint8_t__channelIndex == 0u)
-    {
-        uint32_t__etaPermille = UINT32_T__G__ChargerEtaUpPermille;
-    }
-    else
-    {
-        uint32_t__etaPermille = UINT32_T__G__ChargerEtaDnPermille;
-    }
-
-    uint32_t__vbatMv =
-        func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap, uint8_t__channelIndex);
-    if (uint32_t__vbatMv < CHG_OUTPUT_EST_MIN_VBAT_MV)
-    {
-        uint32_t__vbatMv = CHG_OUTPUT_EST_MIN_VBAT_MV;
-    }
-
-    uint64_t__numerator = (uint64_t)uint32_t__primaryMa *
-                          (uint64_t)measurement_snapshot_t__snap->v_in_mv *
-                          (uint64_t)uint32_t__etaPermille;
-
-    return (uint32_t)(uint64_t__numerator /
-                      ((uint64_t)uint32_t__vbatMv * 1000u));
+    return uint32_t__primaryMa;
 }
 
 static uint16_t func__Charger_MaxDutyPermille(void)
