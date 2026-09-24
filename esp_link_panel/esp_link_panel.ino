@@ -6,14 +6,18 @@
  *               the section 5.3 conversion formulas are shown with live values, plus calibration
  *               helpers (zero from raw, voltage offset from a multimeter, and the v1.3 CAL_REFERENCE card:
  *               the typed DMM mA goes to the STM32, which computes gain or ETA from its live snapshot),
- *               a live 36 s filter chart and a per-channel re-apply (JIT re-arm) button in manual mode.
+ *               a live 36 s filter chart, a per-channel re-apply (JIT re-arm) button in manual mode, and a
+ *               bench tab (spec 5.5) that runs tests A-D itself, reads every TLM frame through the /m
+ *               statistics window and prints copyable result blocks (never auto-applies a calibration).
  *          [FA] پل ESP-Link سمت ESP: تبادل فریم باینری با STM32 روی UART
  *               (921600 8N1، مطابق ESP_AGENT_SPEC.md نسخه ۱.۳) و یک پنل وب دارک ساده
  *               راست‌به‌چپ با فونت وزیرمتن و سه تب: وضعیت، کالیبراسیون، تست دستی؛
  *               فرمول‌های تبدیل بخش 5.3 با مقادیر زنده، دستیار کالیبراسیون (صفر از raw، آفست ولتاژ از
  *               مولتی‌متر، و کارت CAL_REFERENCE نسخه ۱.۳: عدد مولتی‌متر به STM32 می‌رود و خودش گین یا
  *               ضریب تبدیل را از داده‌های زنده حساب می‌کند)، نمودار زندهٔ ۳۶ ثانیه‌ای فیلتر و دکمهٔ «اعمال مجدد
- *               duty» (مسلح‌سازی بعد از JIT) برای هر کانال در مود دستی.
+ *               duty» (مسلح‌سازی بعد از JIT) برای هر کانال در مود دستی، و تب «تست بنچ» (بخش 5.5) که تست‌های
+ *               A تا D را خودش اجرا می‌کند، تک‌تک فریم‌های TLM را از پنجرهٔ آمار /m می‌خواند و بلوک متن
+ *               کپی‌شدنی می‌دهد (هیچ کالیبراسیونی را خودکار اعمال نمی‌کند).
  *
  * @note    [EN] Wiring: STM32 PA9 (TX) -> ESP RX, STM32 PA10 (RX) <- ESP TX, common GND.
  *               STM32 PA8 drives ESP CH_PD/EN; this sketch never touches that line.
@@ -98,6 +102,18 @@
 #define ESP_CAL_REPLY_TIMEOUT_MS    1500u
 #define ESP_CAL_PAYLOAD_SIZE        5u
 
+/* ==================== Bench Statistics Window (spec 5.5) ==================== */
+/* [EN] The browser polls /t only every 300 ms, so the bench tests read min/max/sum of EVERY TLM
+        frame (10 Hz) from this window: POST /m restarts it, GET /m reads it. Fields (t[] index):
+        raw1 0, unfiltered1 2, filtered1 3, iest1 4, duty1 5, same for ch2 at 7..12, Vin 14,
+        Vlow 17, Vhigh 18. The count stops at 60000 frames (100 min) so the u32 sums never wrap.
+   [FA] مرورگر فقط هر ۳۰۰ms /t را می‌خواند؛ پس تست‌های بنچ کمینه/بیشینه/مجموعِ تک‌تک فریم‌های TLM
+        (۱۰ هرتز) را از این پنجره می‌گیرند: POST /m آن را از نو شروع و GET /m آن را می‌خواند. فیلدها
+        (اندیس t[]): raw1 0، بدون فیلتر ۱ 2، فیلترشده ۱ 3، iest1 4، duty1 5، همین‌ها برای کانال ۲ در
+        7..12، Vin 14، Vlow 17، Vhigh 18. شمارش در ۶۰۰۰۰ فریم (۱۰۰ دقیقه) می‌ایستد تا مجموع u32 سرریز نشود. */
+#define ESP_STAT_FIELD_COUNT        13u
+#define ESP_STAT_MAX_FRAMES         60000u
+
 /* ==================== Wi-Fi / HTTP Constants ==================== */
 #define ESP_WIFI_AP_SSID            "ChangeOver-ESP"
 #define ESP_WIFI_AP_PASS            "123456789"
@@ -175,6 +191,13 @@ static uint32_t        UINT32_T__G__CalSentMs = 0u;
 static uint32_t        UINT32_T__G__CalValue = 0u;
 static uint32_t        UINT32_T__G__CalRun = 0u;
 
+/* [EN] Bench statistics window (see ESP_STAT_FIELD_COUNT) / [FA] پنجرهٔ آمار بنچ */
+static const uint8_t UINT8_T__G__StatField[ESP_STAT_FIELD_COUNT] = { 0, 2, 3, 4, 5, 7, 9, 10, 11, 12, 14, 17, 18 };
+static uint32_t UINT32_T__G__StatSum[ESP_STAT_FIELD_COUNT];
+static uint32_t UINT32_T__G__StatMin[ESP_STAT_FIELD_COUNT];
+static uint32_t UINT32_T__G__StatMax[ESP_STAT_FIELD_COUNT];
+static uint32_t UINT32_T__G__StatCount = 0u;
+
 /* [EN] Send priority: charger cut, manual mode, manual duties, then the rest.
    [FA] اولویت ارسال: قطع شارژر، مود دستی، duty دستی، سپس بقیه. */
 static const uint8_t UINT8_T__G__TxOrder[ESP_PARAM_COUNT] = { 11, 12, 19, 16, 18, 15, 17, 13, 14, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
@@ -242,10 +265,17 @@ canvas{width:100%;height:140px;display:block;background:#0c1018;border-radius:10
 .cb.lo{background:#1c2130;color:var(--mu)}.cb:disabled{opacity:.45;cursor:default}
 .cm{margin-top:10px;min-height:1.6em}.cm.g{color:var(--ok)}.cm.r{color:var(--er)}.wr{color:var(--wa)}
 body.dn section:not(#t2){opacity:.45;filter:grayscale(1)}
+.bsb{position:sticky;top:52px;z-index:4;border-color:var(--wa)}.stp{background:var(--er)}
+.bctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}.bctl .sg button{width:auto;padding:3px 10px}.bctl input{width:120px}input.dl{background:#0c1018;border:1px solid var(--ln);border-radius:8px;padding:5px 7px;direction:ltr}
+.bqr2{display:flex;gap:8px;margin-top:10px}body.br .brun{opacity:.4;pointer-events:none}
+.bq{background:#0c1018;border:1px solid var(--wa);border-radius:10px;padding:10px;margin-top:10px}.bqr{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:8px}.bqr label{display:flex;flex-direction:column;gap:3px}
+.tw{overflow:auto;max-height:280px;margin:6px 0 10px}.bt2 th{position:sticky;top:0;background:var(--cd)}body:not(.br) .stp{display:none}.bt2{font-size:12px;direction:ltr;white-space:nowrap}.bt2 th{color:var(--mu);font-weight:500;text-align:left;padding:4px 6px}.bt2 td{padding:4px 6px;text-align:left!important}
+.bsum{font-size:12px;direction:ltr;text-align:left;line-height:1.9;margin-bottom:8px}.okc{color:var(--ok)}.erc{color:var(--er)}
+.bxw textarea{width:100%;height:150px;background:#0c1018;color:#9aa6c0;border:1px solid var(--ln);border-radius:10px;padding:8px;font:11px/1.5 monospace;direction:ltr;margin-top:6px}
 @media(max-width:640px){.cb{font-size:12px;padding:8px 7px}.cb span{white-space:nowrap}.vs{grid-template-columns:repeat(3,1fr)}.ch{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}}
 </style></head><body>
 <header><h1>پنل ChangeOver</h1><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
-<nav><button class="a" data-t="0">وضعیت</button><button data-t="1">کالیبراسیون</button><button class="m" data-t="2">تست دستی</button></nav>
+<nav><button class="a" data-t="0">وضعیت</button><button data-t="1">کالیبراسیون</button><button class="m" data-t="2">تست دستی</button><button data-t="3">تست بنچ</button></nav>
 <div class="wn gb" id="mb"><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div>
 
 <section class="a" id="t0">
@@ -261,6 +291,8 @@ body.dn section:not(#t2){opacity:.45;filter:grayscale(1)}
 <div class="ch" id="mc"></div>
 <button class="bt off" id="ao">خاموش کردن هر دو کانال (duty = 0)</button>
 </section>
+
+<section id="t3"></section>
 
 <script>
 const $=i=>document.getElementById(i);
@@ -421,6 +453,112 @@ function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;
  $('mb').classList.toggle('v',man);$('ka').innerHTML=man?(d.ka<1500?`پایش لینک فعال · <span class="n">keepalive ${d.ka} ms</span>`:'<b>keepalive متوقف است</b>'):'';}
 async function poll(){const c=new AbortController(),k=setTimeout(()=>c.abort(),2000);try{const r=await fetch('/t',{cache:'no-store',signal:c.signal});const d=await r.json();clearTimeout(k);if(document.hidden){D=d;hist(d);}else draw(d);}catch(e){clearTimeout(k);document.body.classList.add('dn');$('lk').classList.remove('on');$('lt').textContent='ESP در دسترس نیست';}
  setTimeout(poll,300);}
+/* ---------- تست بنچ (بخش 5.5): پنل خودش تست را اجرا می‌کند، از TLM آمار می‌گیرد و بلوک متن کپی‌شدنی می‌سازد؛ هیچ کالیبراسیونی خودکار اعمال نمی‌شود ---------- */
+const FN=['r1','u1','f1','e1','d1','r2','u2','f2','e2','d2','vin','vlo','vhi'];
+let BT={run:false};
+const sl=ms=>new Promise(r=>setTimeout(r,ms)),fa=n=>'۱۲'[n-1];
+const bst=m=>{$('bs').textContent=m;},f0=x=>Math.round(x),f1b=x=>x.toFixed(1),vv=mv=>(mv/1000).toFixed(2);
+async function req(u,m){const r=await fetch(u,{method:m||'GET',cache:'no-store'});if(!r.ok)throw 'پاسخ ESP: '+r.status;return r.json();}
+/* ایمنی حین تست: لینک، خروج ناخواستهٔ مود دستی، JIT، خطای نهایی، قطع ۱۵V */
+function chk(){if(BT.abort)throw 'توقف توسط کاربر';const d=D;if(!d||d.on!=1)throw 'لینک STM32 قطع شد';
+ BT.ch.forEach(n=>{const s=d.t[(n-1)*7+6];if(s==7)throw 'خطای نهایی کانال '+fa(n);
+  if(BT.man){if(s==5)throw 'تریپ JIT کانال '+fa(n);if(d.t[n==1?18:17]>=15000)throw 'قطع ۱۵V کانال '+fa(n);}});
+ if(BT.man&&!(d.fl&32))throw 'مود دستی قطع شد (ددمن یا محافظ پنل)';}
+async function wt(ms){const e=Date.now()+ms;while(Date.now()<e){chk();await sl(Math.min(100,Math.max(1,e-Date.now())));}chk();}
+async function until(f,ms,err){const e=Date.now()+ms;while(!f()){if(BT.abort)throw 'توقف توسط کاربر';if(Date.now()>e)throw err;await sl(100);}}
+/* نوشتن پارامتر و صبر تا گزارش همان مقدار از STM32 */
+async function setv(id,v){for(let k=0;k<3;k++){await req('/s?id='+id+'&v='+v,'POST');const e=Date.now()+2500;while(Date.now()<e){await sl(150);if(D&&D.p[id]===v)return;}}throw 'برد مقدار شناسهٔ '+id+' = '+v+' را گزارش نکرد';}
+/* پنجرهٔ آمار ESP روی تک‌تک فریم‌های TLM */
+async function stat(ms){await req('/m','POST');await wt(ms);const j=await req('/m');if(!j.n)throw 'در این بازه TLM نرسید';
+ const o={n:j.n};FN.forEach((k,i)=>o[k]={a:j.s[i]/j.n,lo:j.lo[i],hi:j.hi[i]});return o;}
+const vb=(m,n)=>m[n==1?'vhi':'vlo'].a,cf=(m,n,k)=>m[k+n];
+/* حالت تک‌کانال: همسایه قطع (11/12=0)، هر دو duty صفر، بعد مود دستی */
+async function solo(n,man){const nb=3-n;bst('آماده‌سازی: duty صفر، قطع کانال '+fa(nb));BT.man=false;BT.ch=[];
+ await setv(16,0);await setv(18,0);await setv(10+nb,0);await setv(10+n,1);
+ if(man){await setv(19,1);await until(()=>D.fl&32,3000,'مود دستی روشن نشد');BT.man=true;}}
+async function restore(o){bst('بازگردانی تنظیمات قبل از تست…');const L=[[16,0],[18,0],[19,o[19]],[11,o[11]],[12,o[12]]];if(o[19]===0)L.push([16,o[16]],[18,o[18]]);
+ for(const [i,v] of L){try{await setv(i,v);}catch(e){}}}
+function dls(id){const a=$(id).value.split(/[,، ]+/).filter(x=>x!=='').map(Number);if(!a.length||a.some(x=>!(x>=0.5&&x<=50)))throw 'فهرست duty نامعتبر است (درصد، ۰٫۵ تا ۵۰، با کاما جدا)';return a.map(x=>Math.round(x*10));}
+const chs=k=>{const v=+$('bc'+k).dataset.v;return v==3?[1,2]:[v];};
+function ceil(n,pm){const c=D.p[12+n];if(c!=null&&pm>c)throw 'duty '+pm/10+'% بیشتر از سقف کانال '+fa(n)+' ('+c/10+'%) است؛ اول سقف را بالا ببرید';}
+const ts=()=>{const d=new Date(),z=x=>String(x).padStart(2,'0');return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate())+' '+z(d.getHours())+':'+z(d.getMinutes())+':'+z(d.getSeconds());};
+const pline=()=>{const p=D.p;return `params: off=${p[0]}/${p[1]} gain=${p[2]}/${p[3]} median=${p[7]} avg=${p[8]} eta=${p[9]}/${p[10]} ceil=${p[13]}/${p[14]} Voff=${p[4]}/${p[5]}/${p[6]}`;};
+/* خروجی: جدول روی صفحه + بلوک متن */
+function out(k,O){const tb=O.T.map(t=>`<div class="lb">${t.cap}</div><div class="tw"><table class="bt2"><tr>${t.h.map(x=>`<th>${x}</th>`).join('')}</tr>${t.r.map(r=>`<tr>${r.map(x=>`<td>${x}</td>`).join('')}</tr>`).join('')}</table></div>`).join('');
+ $('br'+k).innerHTML=tb+(O.sum.length?`<div class="bsum">${O.sum.map(x=>`<div>${x}</div>`).join('')}</div>`:'');
+ const tx=[O.head,pline()];O.T.forEach(t=>{tx.push('# '+t.cap,t.h.join(' | '));t.r.forEach(r=>tx.push(r.join(' | ')));});O.sum.forEach(x=>tx.push(x.replace(/<[^>]+>/g,'')));if(O.err)tx.push('ABORTED: '+O.err);
+ const a=$('bx'+k);a.value=tx.join('\n');a.parentNode.classList.add('v');}
+function copy(k){const a=$('bx'+k);a.focus();a.select();let ok=false;try{ok=document.execCommand('copy');}catch(e){}
+ if(!ok&&navigator.clipboard)navigator.clipboard.writeText(a.value).then(()=>{},()=>{});$('bk'+k).textContent=ok?'کپی شد':'انتخاب شد — کپی کنید';setTimeout(()=>$('bk'+k).textContent='کپی',2000);}
+/* ورود عدد مولتی‌متر: نقطه نگه داشته می‌شود تا کاربر دکمهٔ ثبت و بعدی را بزند */
+async function dmm(k,txt,req_){const q=$('bq'+k);q.innerHTML=`<div class="lb">${txt}</div><div class="bqr"><label>مولتی‌متر ورودی ۲۴V <span class="lb">mA${req_?' (اجباری)':''}</span><input type="number" id="dq1"></label><label>مولتی‌متر باتری <span class="lb">mA (اختیاری)</span><input type="number" id="dq2"></label><button class="sb" id="dqk">ثبت و بعدی</button></div>`;
+ q.classList.add('v');BT.go=false;$('dqk').onclick=()=>{const a=$('dq1').value;if(req_&&!(+a>0))return alert('عدد مولتی‌متر ورودی ۲۴V اجباری است.');BT.go=true;};$('dq1').focus();
+ try{while(!BT.go){chk();await sl(100);}return [$('dq1').value===''?null:+$('dq1').value,$('dq2').value===''?null:+$('dq2').value];}finally{q.classList.remove('v');q.innerHTML='';}}
+async function run(k,name,fn){if(BT.run)return;if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');
+ const o={};[11,12,16,18,19].forEach(i=>o[i]=D.p[i]);if(Object.values(o).some(v=>v==null))return alert('پارامترها هنوز از STM32 خوانده نشده‌اند.');
+ if(D.p[15]===1||D.p[17]===1)return alert('مود duty فیکس (۱۵/۱۷) روشن است؛ اول خاموشش کنید.');
+ const O={head:`[ChangeOver bench] ${name} | ${ts()}`,T:[],sum:[],err:null};
+ BT={run:true,abort:false,man:false,ch:[],go:false};document.body.classList.add('br');$('bs').closest('.cd').classList.add('v');
+ try{await fn(O);}catch(e){O.err=typeof e=='string'?e:'خطای داخلی: '+e;}
+ BT.man=false;BT.ch=[];out(k,O);await restore(o);BT.run=false;document.body.classList.remove('br');bst(O.err?'متوقف شد: '+O.err:'تمام شد — بلوک متن پایین کارت آمادهٔ کپی است');}
+/* تست A: خطی‌سازی جریان */
+async function tA(O){const L=dls('bd1'),C=chs(1);C.forEach(n=>ceil(n,Math.max(...L)));
+ for(const n of C){await solo(n,1);const T={cap:'Test A - linearity CH'+n,h:['duty%','raw avg (min..max)','panel mA','DMM_in','ratio panel/DMM_in','DMM_bat','Vin V','Vbat V'],r:[]};O.T.push(T);
+  for(const pm of L){bst(`کانال ${fa(n)} · duty ${pm/10}% · صبر ۳ث`);await setv(14+2*n,pm);BT.ch=[n];await wt(3000);bst(`کانال ${fa(n)} · duty ${pm/10}% · نمونه‌برداری ۳ث`);const m=await stat(3000);
+   const r=cf(m,n,'r'),ma=cf(m,n,'f').a;bst(`کانال ${fa(n)} · duty ${pm/10}% · منتظر عدد مولتی‌متر`);
+   const [di,db]=await dmm(1,`کانال ${fa(n)} · duty <b class="n">${pm/10}%</b> · raw <b class="n">${f1b(r.a)}</b> · پنل <b class="n">${f0(ma)} mA</b> — عدد مولتی‌متر را وارد کنید (duty نگه داشته شده است)`,1);
+   T.r.push([pm/10,`${f1b(r.a)} (${r.lo}..${r.hi})`,f0(ma),di,(ma/di).toFixed(3),db==null?'-':db,vv(m.vin.a),vv(vb(m,n))]);out(1,O);}
+  await setv(14+2*n,0);BT.ch=[];}}
+/* تست B: صفر و کراس‌تاک (هر دو کانال وصل، کانال پارک duty صفر) */
+async function tB(O){const L=dls('bd2');[1,2].forEach(n=>ceil(n,Math.max(...L)));BT.man=false;BT.ch=[];
+ bst('آماده‌سازی: هر دو duty صفر، هر دو کانال وصل');await setv(16,0);await setv(18,0);await setv(11,1);await setv(12,1);await setv(19,1);await until(()=>D.fl&32,3000,'مود دستی روشن نشد');BT.man=true;
+ await wt(1000);bst('صفر واقعی: هر دو کانال خاموش، ۵ث');const z=await stat(5000);
+ O.T.push({cap:'Test B - zero (both duties 0, 5 s)',h:['ch','raw avg (min..max)','offset param','mA filtered avg'],r:[1,2].map(n=>{const r=cf(z,n,'r');return ['CH'+n,`${f1b(r.a)} (${r.lo}..${r.hi})`,D.p[n-1],f0(cf(z,n,'f').a)];})});
+ const T={cap:'Test B - cross-talk (neighbor running, parked duty 0)',h:['driver','duty%','driver mA','parked','parked raw avg (min..max)','delta raw vs zero','parked mA'],r:[]};O.T.push(T);out(2,O);
+ for(const n of [1,2]){const pk=3-n;for(const pm of L){bst(`کانال ${fa(n)} روی ${pm/10}% · کانال ${fa(pk)} پارک · ۳ث صبر + ۳ث نمونه`);await setv(14+2*n,pm);BT.ch=[n];await wt(3000);const m=await stat(3000);
+   const r=cf(m,pk,'r');T.r.push(['CH'+n,pm/10,f0(cf(m,n,'f').a),'CH'+pk,`${f1b(r.a)} (${r.lo}..${r.hi})`,f1b(r.a-cf(z,pk,'r').a),f0(cf(m,pk,'f').a)]);out(2,O);}
+  await setv(14+2*n,0);BT.ch=[];await wt(1500);}}
+/* رگرسیون خطی: شیب بر دقیقه و R2 */
+function lr(y){const n=y.length,xs=y.map((_,i)=>i),mx=(n-1)/2,my=y.reduce((a,b)=>a+b,0)/n;let sxy=0,sxx=0,syy=0;xs.forEach((x,i)=>{sxy+=(x-mx)*(y[i]-my);sxx+=(x-mx)**2;syy+=(y[i]-my)**2;});const b=sxx?sxy/sxx:0;return {m:b*60,r2:syy?sxy*sxy/(sxx*syy):0};}
+/* تست C: پایداری/دریفت */
+async function tC(O){const pm=dls('bd3')[0],S=Math.max(10,Math.min(600,Math.round(+$('bt3').value)||60)),C=chs(3);C.forEach(n=>ceil(n,pm));
+ for(const n of C){await solo(n,1);await setv(14+2*n,pm);BT.ch=[n];bst(`کانال ${fa(n)} · duty ${pm/10}% · صبر ۳ث`);await wt(3000);const T={cap:`Test C - stability CH${n} duty ${pm/10}% ${S} s (1 s averages, after 3 s settle)`,h:['t s','raw avg','mA filtered avg','mA min..max'],r:[]};O.T.push(T);const y=[],rw=[];
+  for(let i=1;i<=S;i++){bst(`کانال ${fa(n)} · پایداری ${i}/${S} ث`);const m=await stat(1000),f=cf(m,n,'f');y.push(f.a);rw.push(cf(m,n,'r').a);T.r.push([i,f1b(rw[i-1]),f1b(f.a),f.lo+'..'+f.hi]);if(i%5==0)out(3,O);}
+  const g=lr(y);O.sum.push(`CH${n}: mA first ${f1b(y[0])} · last ${f1b(y[S-1])} · min ${f1b(Math.min(...y))} · max ${f1b(Math.max(...y))} · raw first ${f1b(rw[0])} last ${f1b(rw[S-1])} · trend ${g.m>=0?'+':''}${g.m.toFixed(2)} mA/min (R2 ${g.r2.toFixed(2)})`);out(3,O);
+  await setv(14+2*n,0);BT.ch=[];}}
+/* تست D: عملکرد شارژر خودکار روی iest (بند 630..650) */
+async function tD(O){const S=60,C=chs(4);
+ for(const n of C){await solo(n,0);bst('خروج از مود دستی');await setv(19,0);BT.ch=[n];const T={cap:`Test D - regulation CH${n} (auto charger, neighbor cut, 1 s averages)`,h:['t s','iest avg (min..max)','duty%','Vbat V','Vin V','state'],r:[]};O.T.push(T);const R=[];
+  for(let i=1;i<=S;i++){bst(`کانال ${fa(n)} · عملکرد ${i}/${S} ث`);const m=await stat(1000),e=cf(m,n,'e');R.push(e);T.r.push([i,`${f0(e.a)} (${e.lo}..${e.hi})`,(cf(m,n,'d').a/10).toFixed(1),vv(vb(m,n)),vv(m.vin.a),ST[D.t[(n-1)*7+6]]||D.t[(n-1)*7+6]]);if(i%5==0)out(4,O);}
+  const st=R.slice(-10).reduce((a,b)=>a+b.a,0)/10;let tset=null;for(let i=0;i<S;i++){if(R.slice(i).every(e=>Math.abs(e.a-st)<=10)){tset=i+1;break;}}
+  const w=R.slice(-20),pp=Math.max(...w.map(e=>e.hi))-Math.min(...w.map(e=>e.lo)),ok=st>=630&&st<=650;
+  O.sum.push(`CH${n}: settled iest ${f0(st)} mA (last 10 s) · settling ${tset==null?'not settled':tset+' s'} (within +-10 mA) · p2p ${pp} mA (last 20 s, 10 Hz) · band 630-650: <b class="${ok?'okc':'erc'}">${ok?'PASS':'FAIL'}</b>`);out(4,O);BT.ch=[];}}
+/* تست D اختیاری: پیمایش duty با ستون مولتی‌متر = منحنی عملکرد مبدل */
+async function tS(O){const L=dls('bd4'),C=chs(4);C.forEach(n=>ceil(n,Math.max(...L)));
+ for(const n of C){await solo(n,1);const T={cap:'Test D sweep - converter curve CH'+n+' (3 s settle + 10 s window per step)',h:['duty%','mA filtered avg (min..max)','iest avg','DMM_in','ratio mA/DMM_in','DMM_bat','Vin V','Vbat V'],r:[]};O.T.push(T);
+  for(const pm of L){await setv(14+2*n,pm);BT.ch=[n];bst(`کانال ${fa(n)} · پیمایش duty ${pm/10}% · ۳ث صبر + ۱۰ث نمونه`);await wt(3000);const m=await stat(10000),f=cf(m,n,'f');
+   const [di,db]=await dmm(5,`کانال ${fa(n)} · duty <b class="n">${pm/10}%</b> · پنل <b class="n">${f0(f.a)} mA</b> — عدد مولتی‌متر (اختیاری)`,0);
+   T.r.push([pm/10,`${f0(f.a)} (${f.lo}..${f.hi})`,f0(cf(m,n,'e').a),di==null?'-':di,di?(f.a/di).toFixed(3):'-',db==null?'-':db,vv(m.vin.a),vv(vb(m,n))]);out(5,O);}
+  await setv(14+2*n,0);BT.ch=[];}}
+const BK=[null,
+ ['A · خطی‌سازی جریان','کانال همسایه قطع می‌شود. مولتی‌متر را سری با ورودی ۲۴V کانال تست ببندید (مولتی‌متر دوم سری با باتری اختیاری است). هر نقطه: ۳ث صبر، ۳ث نمونه‌برداری، بعد duty نگه داشته می‌شود تا عدد را ثبت کنید.','5,10,15,20',1],
+ ['B · صفر و کراس‌تاک','هر دو کانال وصل‌اند. اول هر دو duty صفر (۵ث، صفر واقعی)؛ بعد کانال ۱ روی هر duty و کانال ۲ پارک، و برعکس. بدون ورود عدد.','10,15,20',0],
+ ['C · پایداری و دریفت','کانال همسایه قطع. یک duty ثابت، لاگ هر ۱ث؛ شیب خط صاف رو به بالا یعنی دریفت حرارتی، نه خمیدگی.','15',1],
+ ['D · عملکرد شارژر خودکار','کانال همسایه قطع، خروج از مود دستی، ۶۰ث لاگ iest / duty / Vbat؛ عدد نشست، زمان نشست، نوسان و پاس/رد باند 630 تا 650 mA روی iest. پیمایش اختیاری: هر duty با ۳ث صبر و ۱۰ث نمونه، با ستون مولتی‌متر (منحنی عملکرد مبدل).','5,10,15,20',1]];
+$('t3').innerHTML=`<div class="cd bsb gb"><div class="mx"><span id="bs">—</span><button class="sb stp" onclick="BT.abort=true">توقف تست</button></div></div>
+<div class="wn">پنل هیچ ضریبی را از این تست‌ها خودکار اعمال نمی‌کند؛ بلوک متن هر تست را کپی کنید و بفرستید. keepalive مود دستی در تمام تست‌ها فعال است. در پایان یا توقف، duty صفر و پارامترهای ۱۱، ۱۲ و ۱۹ به مقدار قبل از تست برمی‌گردند.</div>`+
+BK.map((b,k)=>!b?'':`<div class="cd" style="margin-top:12px"><div class="ti">${b[0]}</div><div class="lb">${b[1]}</div>
+<div class="bctl">${b[3]?`<span class="sg" id="bc${k}" data-v="1">${[[1,'کانال ۱'],[2,'کانال ۲'],[3,'هر دو پشت‌سرهم']].map(c=>`<button data-v="${c[0]}" class="${c[0]==1?'on':''}">${c[1]}</button>`).join('')}</span>`:''}
+<label class="lb">duty % <input type="text" id="bd${k}" value="${b[2]}" class="dl"></label>${k==3?'<label class="lb">مدت ث <input type="number" id="bt3" value="60" min="10" max="600"></label>':''}</div>
+<div class="bqr2"><button class="sb brun" onclick="${['','bA()','bB()','bC()','bD()'][k]}">شروع تست</button>${k==4?'<button class="sb sb2 brun" onclick="bS()">پیمایش duty</button>':''}</div>
+${(k==4?[4,5]:[k]).map(i=>`<div class="bq gb" id="bq${i}"></div><div id="br${i}"></div><div class="gb bxw"><textarea id="bx${i}" readonly></textarea><button class="sb sb2" id="bk${i}" onclick="copy(${i})">کپی</button></div>`).join('')}</div>`).join('');
+document.querySelectorAll('#t3 .sg').forEach(g=>g.querySelectorAll('button').forEach(b=>b.onclick=()=>{g.dataset.v=b.dataset.v;g.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));}));
+const cfm=m=>confirm(m+'\nدر پایان یا با دکمهٔ توقف تست تنظیمات قبلی برمی‌گردد. ادامه؟');
+function bA(){if(cfm('تست خطی‌سازی: مود دستی روشن و کانال همسایه قطع می‌شود.'))run(1,'Test A - current linearity',tA);}
+function bB(){if(cfm('تست صفر و کراس‌تاک: مود دستی روشن، هر کانال به نوبت روی duty فهرست.'))run(2,'Test B - zero + cross-talk',tB);}
+function bC(){if(cfm('تست پایداری: مود دستی روشن و کانال همسایه قطع می‌شود.'))run(3,'Test C - stability / drift',tC);}
+function bD(){if(cfm('تست عملکرد: کانال همسایه قطع و مود دستی خاموش می‌شود؛ شارژر خودکار کانال تست کار می‌کند.'))run(4,'Test D - regulation (band 630-650 on iest)',tD);}
+function bS(){if(cfm('پیمایش duty: مود دستی روشن و کانال همسایه قطع می‌شود.'))run(5,'Test D sweep - converter curve',tS);}
 poll();
 </script></body></html>)HTML";
 
@@ -1109,6 +1247,38 @@ static void func__Esp_CalOnReport(uint8_t uint8_t__id)
 }
 
 /**
+ * @brief  [EN] Add the just-stored TLM frame to the bench statistics window.
+ *         [FA] افزودن فریم TLM تازه ذخیره‌شده به پنجرهٔ آمار بنچ.
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__Esp_StatAccumulate(void)
+{
+    uint8_t uint8_t__index;
+
+    if (UINT32_T__G__StatCount >= ESP_STAT_MAX_FRAMES)
+    {
+        return;
+    }
+
+    for (uint8_t__index = 0u; uint8_t__index < ESP_STAT_FIELD_COUNT; uint8_t__index++)
+    {
+        uint32_t uint32_t__value = UINT32_T__G__TlmField[UINT8_T__G__StatField[uint8_t__index]];
+        bool bool__first = (UINT32_T__G__StatCount == 0u);
+        UINT32_T__G__StatSum[uint8_t__index] += uint32_t__value;
+        if (bool__first || (uint32_t__value < UINT32_T__G__StatMin[uint8_t__index]))
+        {
+            UINT32_T__G__StatMin[uint8_t__index] = uint32_t__value;
+        }
+        if (bool__first || (uint32_t__value > UINT32_T__G__StatMax[uint8_t__index]))
+        {
+            UINT32_T__G__StatMax[uint8_t__index] = uint32_t__value;
+        }
+    }
+
+    UINT32_T__G__StatCount++;
+}
+
+/**
  * @brief  [EN] Dispatch one checksum-valid frame from the STM32.
  *         [FA] پردازش یک فریم معتبر (checksum درست) دریافتی از STM32.
  * @return [EN] None / [FA] ندارد
@@ -1160,6 +1330,7 @@ static void func__Esp_HandleFrame(void)
         UINT32_T__G__LastTlmMs = (uint32_t)millis();
         UINT32_T__G__TlmFrameCount++;
         BOOL__G__TlmSeen = true;
+        func__Esp_StatAccumulate();
     }
     else if ((UINT8_T__G__RxType == ESP_MSG_PARAM_REPORT) && (UINT8_T__G__RxLen == ESP_LINK_PARAM_ITEM_SIZE))
     {
@@ -1485,6 +1656,61 @@ static void func__Esp_HttpCalReference(void)
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
 
+/**
+ * @brief  [EN] POST /m : restart the bench statistics window (spec 5.5).
+ *         [FA] مسیر POST /m : شروع دوبارهٔ پنجرهٔ آمار بنچ (بخش 5.5).
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__Esp_HttpStatReset(void)
+{
+    uint8_t uint8_t__index;
+
+    for (uint8_t__index = 0u; uint8_t__index < ESP_STAT_FIELD_COUNT; uint8_t__index++)
+    {
+        UINT32_T__G__StatSum[uint8_t__index] = 0u;
+        UINT32_T__G__StatMin[uint8_t__index] = 0u;
+        UINT32_T__G__StatMax[uint8_t__index] = 0u;
+    }
+
+    UINT32_T__G__StatCount = 0u;
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
+}
+
+/**
+ * @brief  [EN] GET /m : bench window as {n, s[13] sums, lo[13], hi[13]} (browser divides s by n).
+ *         [FA] مسیر GET /m : پنجرهٔ بنچ به شکل {n، s[13] مجموع، lo[13]، hi[13]} (مرورگر s را بر n تقسیم می‌کند).
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__Esp_HttpStatRead(void)
+{
+    const uint32_t *UINT32_T__A__Table[3] = { UINT32_T__G__StatSum, UINT32_T__G__StatMin, UINT32_T__G__StatMax };
+    const char *CHAR__A__Key[3] = { "s", "lo", "hi" };
+    uint8_t uint8_t__table;
+    uint8_t uint8_t__index;
+    size_t size_t__used;
+
+    size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"n\":%lu",
+                                    (unsigned long)UINT32_T__G__StatCount);
+
+    for (uint8_t__table = 0u; uint8_t__table < 3u; uint8_t__table++)
+    {
+        size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used,
+                                         ",\"%s\":[", CHAR__A__Key[uint8_t__table]);
+        for (uint8_t__index = 0u; uint8_t__index < ESP_STAT_FIELD_COUNT; uint8_t__index++)
+        {
+            const char *char__ptr_sep = (uint8_t__index == 0u) ? "" : ",";
+            size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used,
+                                             "%s%lu", char__ptr_sep,
+                                             (unsigned long)UINT32_T__A__Table[uint8_t__table][uint8_t__index]);
+        }
+        size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used, "]");
+    }
+
+    (void)snprintf(&CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used, "}");
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+}
+
 /* ==================== Arduino Entry Points ==================== */
 
 /**
@@ -1510,6 +1736,8 @@ void setup(void)
     ESP_WEB_SERVER_T__G__Server.on("/t", HTTP_GET, func__Esp_HttpTelemetry);
     ESP_WEB_SERVER_T__G__Server.on("/s", HTTP_POST, func__Esp_HttpSetParam);
     ESP_WEB_SERVER_T__G__Server.on("/c", HTTP_POST, func__Esp_HttpCalReference);
+    ESP_WEB_SERVER_T__G__Server.on("/m", HTTP_POST, func__Esp_HttpStatReset);
+    ESP_WEB_SERVER_T__G__Server.on("/m", HTTP_GET, func__Esp_HttpStatRead);
     ESP_WEB_SERVER_T__G__Server.begin();
 }
 
