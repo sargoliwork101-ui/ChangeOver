@@ -66,20 +66,31 @@
  *      the LM358 output gave 362/1.01 = 358 mA true primary; 358/330 = 1085
  *      permille). After this the mA readout equals the physical primary
  *      current; the efficiency target lives in CHG_FLYBACK_EFFICIENCY_PERMILLE.
+ *      2026-09-24 post-fix bench (DMM in series, both channels running) left
+ *      ch2 unstable and self-contradictory (D=10%: 185/200/208 vs 185 true;
+ *      D=15%: 320/354 vs 425 true) - no single permille fits both, so 1085
+ *      stays until a stable SOLO ch2 point (ch1 parked) is recorded.
  * [FA] کانال ۲ (Trans2/Shunt2): زوج تأییدشدهٔ بنچ؛ نرم‌افزار ۳۳۰ می‌خواند،
- *      اسکوپ ۳۵۸ واقعی؛ ضریب ۱۰۸۵ پرمیل تا خوانش = جریان فیزیکی اولیه. */
+ *      اسکوپ ۳۵۸ واقعی؛ ضریب ۱۰۸۵ پرمیل تا خوانش = جریان فیزیکی اولیه.
+ *      بنچ ۲۰۲۶-۰۹-۲۴ پس از فیکس: ch2 ناپایدار و متناقض ماند (D=10%:
+ *      185/200/208 در برابر 185 واقعی؛ D=15%: 320/354 در برابر 425) — یک
+ *      پرمیل هر دو را پوشش نمی‌دهد؛ ۱۰۸۵ می‌ماند تا نقطهٔ تکیِ پایدار ch2
+ *      (با پارک ch1) ثبت شود. */
 #define BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS 8u
 #define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE 1085u
-/* [EN] Channel 1 (Trans1 / Shunt1 -> PA1): provisional copies of the
- *      channel-2 bench values - this chain was never calibrated on the
- *      board (bring-up started 2026-09-20). Replace after recording the
- *      zero-current count and one known-current point on Trans1; the values
- *      are intentional duplicates, NOT a shared concept.
- * [FA] کانال ۱ (Trans1/Shunt1): کپی موقت از مقادیر کانال ۲ - این زنجیره هنوز
- *      روی برد کالیبره نشده؛ بعد از ثبت صفر و نقطهٔ جریان معلوم روی Trans1
- *      به‌روزرسانی می‌شود (کپی عمدی است، مفهوم مشترک نیست). */
+/* [EN] Channel 1 (Trans1 / Shunt1 -> PA1): bench-calibrated 2026-09-24,
+ *      after the dual-channel drop cleared (user order: bake it and push).
+ *      DMM in series with the 24 V input, true vs displayed: D=15% 423 vs
+ *      436/438/442 mA, D=10% 185 vs 185/189 mA. Gain = 1085 * 423/438.7 =
+ *      1046 permille, set at D=15% (closest to the ~650 mA AUTO point).
+ *      Offset stays 8 counts - off-state display reads 0 mA.
+ * [FA] کانال ۱ (Trans1/Shunt1): کالیبرهٔ بنچ ۲۰۲۶-۰۹-۲۴ پس از رفع افت
+ *      دوکاناله (دستور کاربر: بپز و پوش کن). مولتی‌متر سری با ورودی ۲۴V؛
+ *      واقعی در برابر نمایش: D=15% → 423 در برابر 436/438/442؛ D=10% → 185
+ *      در برابر 185/189. گین = 1085×423÷438.7 = ۱۰۴۶ پرمیل، تنظیم در D=15%
+ *      (نزدیک‌ترین به نقطهٔ کار ~650mA در AUTO). آفست 8 ماند (خاموش = 0mA). */
 #define BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS 8u
-#define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE 1085u
+#define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE 1046u
 
 /* [EN] Runtime clamp limits for the ESP-adjustable current calibration
  *      (user order 2026-09-22: the ESP command panel must never be able to
@@ -255,12 +266,12 @@ static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
     uint32_t__chainCurrentMa =
         (uint32_t)(uint64_t__chainNumerator / uint64_t__chainDenominator);
 
-    /* [EN] Stage 5 - per-channel bench gain trim in permille (1085 = the
-       measured 1.085x of the Trans2 bench point; provisional copy on
-       Trans1 until its own bench point is recorded).
-       [FA] مرحلهٔ ۵ - اصلاح گین بنچ پر-کانال بر حسب پرمیل (۱۰۸۵ یعنی
-       ۱٫۰۸۵ برابر نقطهٔ بنچ Trans2؛ کپی موقت برای Trans1 تا ثبت نقطهٔ بنچ
-       خودش). */
+    /* [EN] Stage 5 - per-channel bench gain trim in permille (ch1 1046 =
+       the DMM-calibrated 2026-09-24 point; ch2 1085 = the measured 1.085x
+       of the Trans2 bench point, kept pending a stable solo re-check).
+       [FA] مرحلهٔ ۵ - اصلاح گین بنچ پر-کانال بر حسب پرمیل (کانال ۱: ۱۰۴۶ =
+       کالیبرهٔ مولتی‌متری ۲۰۲۶-۰۹-۲۴؛ کانال ۲: ۱۰۸۵ یعنی ۱٫۰۸۵ برابر نقطهٔ
+       بنچ Trans2 — تا تست تکیِ مجدد همان می‌ماند). */
     uint32_t__chainCurrentMa =
         (uint32_t)(((uint64_t)uint32_t__chainCurrentMa *
                     (uint64_t)uint32_t__gainPermille) /

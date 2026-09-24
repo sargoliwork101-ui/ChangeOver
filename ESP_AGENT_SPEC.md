@@ -106,7 +106,7 @@ AA 55 11 05 02 B0 04 00 00 A2
 |---|---|---|---|---|---|---|
 | 0 | CUR1_OFFSET_COUNTS | u32 | ADC counts | 8 | 0..255 | Zero-current offset, current channel 1 (Trans1, upper battery) |
 | 1 | CUR2_OFFSET_COUNTS | u32 | ADC counts | 8 | 0..255 | Same, channel 2 (Trans2, lower battery) |
-| 2 | CUR1_GAIN_PERMILLE | u32 | permille | 1085 | 100..3000 | Bench gain trim, channel 1 |
+| 2 | CUR1_GAIN_PERMILLE | u32 | permille | 1046 | 100..3000 | Bench gain trim, channel 1 |
 | 3 | CUR2_GAIN_PERMILLE | u32 | permille | 1085 | 100..3000 | Same, channel 2 |
 | 4 | VIN_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 24 V input voltage calibration |
 | 5 | V24_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 24 V battery pack voltage calibration |
@@ -156,7 +156,7 @@ English line is for the agent/maintainers.
 |---|---|---|
 | 0 | Ch1 zero offset (ADC counts) - subtracted inside the mA formula: mA ≈ (raw − offset) × 0.8776 × gain/1000 | آفست جریان صفر کانال ۱ (شمارش ADC)؛ داخل فرمول mA کم می‌شود: mA ≈ (raw − آفست) × 0.8776 × گین/1000 |
 | 1 | Ch2 zero offset (ADC counts) - same formula as channel 1 | آفست جریان صفر کانال ۲؛ همان فرمول کانال ۱ برای زنجیرهٔ دوم: mA ≈ (raw − آفست) × 0.8776 × گین/1000 |
-| 2 | Ch1 gain trim (permille) - final scale of the mA conversion: mA ≈ (raw − offset) × 0.8776 × gain/1000; 1085 = bench value | ضریب گین تبدیل جریان کانال ۱ (پرمیل)؛ فرمول: mA ≈ (raw − آفست) × 0.8776 × گین/۱۰۰۰ — مقدار بنچ ۱۰۸۵ (پیش‌فرض ≈ ×۰٫۹۵۲۳ به‌ازای هر count) |
+| 2 | Ch1 gain trim (permille) - final scale of the mA conversion: mA ≈ (raw − offset) × 0.8776 × gain/1000; 1046 = bench value (bench 2026-09-24) | ضریب گین تبدیل جریان کانال ۱ (پرمیل)؛ فرمول: mA ≈ (raw − آفست) × 0.8776 × گین/۱۰۰۰ — مقدار بنچ ۱۰۴۶ (۲۰۲۶-۰۹-۲۴؛ پیش‌فرض ≈ ×۰٫۹۱۸۰ به‌ازای هر count) |
 | 3 | Ch2 gain trim (permille) - same formula as channel 1 | ضریب گین تبدیل جریان کانال ۲ (پرمیل)؛ فرمول: mA ≈ (raw − آفست) × 0.8776 × گین/۱۰۰۰ |
 | 4 | VIN offset (mV, signed) - adder in: Vin_mV ≈ counts × 9.007 + offset (divider 69.2k/6.8k) | آفست کالیبراسیون ولتاژ ورودی ۲۴V بر حسب mV (علامت‌دار)؛ فرمول: Vin ≈ counts × 9.007 + آفست (مقسم 69.2k/6.8k) |
 | 5 | V24 offset (mV, signed) - adder in: V24_mV ≈ counts × 9.007 + offset | آفست کالیبراسیون ولتاژ پک ۲۴V بر حسب mV (علامت‌دار)؛ فرمول: V24 ≈ counts × 9.007 + آفست |
@@ -254,7 +254,7 @@ shunt_uV = raw_counts x 3300/4095 x 11/10 x 1000/101   (= raw x 8.7756 uV)
 mA_unfiltered = max(raw_counts - offset, 0)
                 x 3300/4095 x 11/10 x 1000/(101 x 10) x gain/1000
                 (= (raw - offset) x 0.8776 x gain/1000 mA;
-                   defaults offset=8, gain=1085 -> x 0.9523 mA per count)
+                   defaults offset=8; gain ch1=1046 -> x 0.9180, ch2=1085 -> x 0.9523 mA per count)
                 (TLM: maX_unfiltered)
 
 i_filtered_ma = average_W( median_N( mA_unfiltered ) )
