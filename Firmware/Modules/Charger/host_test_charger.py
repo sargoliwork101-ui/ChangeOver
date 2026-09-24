@@ -401,8 +401,8 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_ABSORB_MS\s+1000u", text_h), "absorb fine down-steps must be half-rate: one per 1000 ms (user directive)")
     check("absorbUpIntervalTicks" in text_c and "absorbDownIntervalTicks" in text_c, "absorb branch must use its own half-rate intervals")
     check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS\s+500u", text_h), "down-steps must be limited to one per 500 ms")
-    check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_UP_PERMILLE\s+758u", text_h), "per-channel efficiency UP must stay 758 permille (bench 2026-09-22: real out 520 mA x fw [407,14363,24197])")
-    check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_DN_PERMILLE\s+242u", text_h), "per-channel efficiency DOWN must stay 242 permille (bench 2026-09-22: real out 220 mA x fw [479,12728,24197]; absorbs the ch2 sense over-read until the chain is fixed)")
+    check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_UP_PERMILLE\s+786u", text_h), "per-channel efficiency UP = 786 permille (ch1 physical point 758 re-referenced to the baked 1046 gain, 2026-09-24)")
+    check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_DN_PERMILLE\s+786u", text_h), "per-channel efficiency DOWN = 786 permille (2026-09-24: ch2 chain fixed + DMM-recalibrated to gain 1303, old 242 error-absorber retired; identical design as ch1)")
     check("CHG_CURRENT_EMA_SHIFT" not in text_h and "currentEma" not in text_c,
           "charger must NOT filter the current estimate itself (user order 2026-09-22: Measurement's switchable median-3/moving-average chain feeds it; charger decides on that value)")
     check(re.search(r"#define MEASUREMENT_PERIOD_MS\s+1u", (ROOT / "Firmware/Modules/Measurement/measurement.h").read_text()),

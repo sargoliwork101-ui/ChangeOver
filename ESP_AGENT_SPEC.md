@@ -113,8 +113,8 @@ AA 55 11 05 02 B0 04 00 00 A2
 | 6 | V12_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 12 V (middle node) battery calibration |
 | 7 | FILTER_MEDIAN_SIZE | u32 | samples | 3 | 1/3/5 | Median window on charge currents. Valid sizes 1, 3, 5; other values round DOWN to the next odd size. **1 = bypass** (no separate on/off switch exists). Filter state resets on change. |
 | 8 | FILTER_AVERAGE_WINDOW | u32 | samples | 10 | 1..10 | Moving-average window on charge currents. **1 = bypass.** Filter state resets on change. |
-| 9 | CHG_EFF_UP_PERMILLE | u32 | permille | 758 | 100..999 | Charger 1 flyback efficiency for the current estimate |
-| 10 | CHG_EFF_DN_PERMILLE | u32 | permille | 242 | 100..999 | Charger 2 efficiency (242 is NOT physical — it absorbs the ch2 sense over-read; do not "fix" it to ~700) |
+| 9 | CHG_EFF_UP_PERMILLE | u32 | permille | 786 | 100..999 | Charger 1 flyback efficiency for the current estimate |
+| 10 | CHG_EFF_DN_PERMILLE | u32 | permille | 786 | 100..999 | Charger 2 efficiency (physical since 2026-09-24: chain fixed + recalibrated, old 242 error-absorber retired) |
 | 11 | CHG1_ENABLE | u32 | 0/1 | 1 | 0..1 | 0 = cut charger module 1 (PWM off, state OFF); 1 = reconnect (soft BULK restart from 1% duty) |
 | 12 | CHG2_ENABLE | u32 | 0/1 | 1 | 0..1 | Same for charger module 2 |
 | 13 | CHG1_DUTY_CEILING | u32 | permille | 500 | 0..500 | PWM duty cap, charger 1. EVERY applied duty (ramp, regulation, fixed mode) is clamped to min(compile max, this ceiling). |
@@ -164,7 +164,7 @@ English line is for the agent/maintainers.
 | 7 | Median window (1/3/5) - first stage of the filter pipeline: average_W( median_N( mA_raw ) ); 1 = off, 3 = default, 5 also kills double-spikes | پنجرهٔ مدین (۱/۳/۵) - مرحلهٔ اول فیلتر: اول median(N) بعد average(W) روی mA خام؛ ۱ = خاموش، ۳ = پیش‌فرض، ۵ پالس‌های دوتایی را هم حذف می‌کند |
 | 8 | Average window (1..10) - second stage of the filter pipeline: average_W( median_N( mA_raw ) ); 1 = off, 10 = default | پنجرهٔ میانگین (۱..۱۰) - مرحلهٔ دوم فیلتر: میانگین آخرین W نمونهٔ خروجی مدین؛ ۱ = خاموش، ۱۰ = پیش‌فرض |
 | 9 | Ch1 efficiency (permille) - only inside the estimate formula: Iest = I × Vin × η / Vbat (ch1: Vbat = Vhigh); never changes the real charge | بازدهی کانال ۱ (پرمیل)؛ فقط داخل فرمول تخمین: Iest = I × Vin × η / Vbat (کانال ۱: Vbat = Vhigh) — روی شارژ واقعی اثر ندارد |
-| 10 | Ch2 efficiency (permille) - same estimate formula (ch2: Vbat = V12); 242 absorbs the ch2 sense over-read (do not set to ~700) | بازدهی کانال ۲ (پرمیل)؛ همان فرمول Iest = I × Vin × η / Vbat (کانال ۲: Vbat = V12)؛ مقدار ۲۴۲ خطای over-read سنس کانال ۲ را جبران می‌کند (به ~۷۰۰ تغییرش ندهید) |
+| 10 | Ch2 efficiency (permille) - same estimate formula (ch2: Vbat = V12); 786 = physical value since 2026-09-24 (chain fixed + recalibrated; the old 242 absorbed the pre-fix sense over-read) | بازدهی کانال ۲ (پرمیل)؛ همان فرمول Iest = I × Vin × η / Vbat (کانال ۲: Vbat = V12)؛ از ۲۰۲۶-۰۹-۲۴ مقدار فیزیکی ۷۸۶ (زنجیره تعمیر و کالیبره شد؛ ۲۴۲ قدیمی خطای پیش از فیکس را جذب می‌کرد) |
 | 11 | Charger 1 on/off - 0 cuts the PWM immediately (battery keeps its charge), 1 resumes with a soft ramp | کلید قطع/وصل شارژر ۱؛ صفر فوراً PWM را قطع می‌کند و یک شارژ را با رمپ نرم ادامه می‌دهد |
 | 12 | Charger 2 on/off - same for charger 2 | کلید قطع/وصل شارژر ۲ |
 | 13 | Ch1 duty ceiling (permille) - hard cap on the PWM of charger 1 (ramp, regulation and fixed mode all respect it) | سقف duty ی PWM شارژر ۱ (پرمیل)؛ رمپ، تنظیم و مود فیکس همه به آن احترام می‌گذارند |
