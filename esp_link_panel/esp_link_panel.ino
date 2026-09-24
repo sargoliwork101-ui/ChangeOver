@@ -1,16 +1,18 @@
 /**
  * @file    esp_link_panel.ino
  * @brief   [EN] ESP-side ESP-Link bridge: exchanges binary frames with the STM32
- *               over UART (921600 8N1, ESP_AGENT_SPEC.md v1.2 incl. section 5.3 formulas) and exposes a small
+ *               over UART (921600 8N1, ESP_AGENT_SPEC.md v1.3 incl. 5.3 formulas and 5.4 CAL_REFERENCE) and exposes a small
  *               dark RTL web panel (Vazirmatn) with three tabs: status, calibration, manual test;
  *               the section 5.3 conversion formulas are shown with live values, plus calibration
- *               helpers (zero from raw, gain from an ammeter, voltage offset from a multimeter),
+ *               helpers (zero from raw, voltage offset from a multimeter, and the v1.3 CAL_REFERENCE card:
+ *               the typed DMM mA goes to the STM32, which computes gain or ETA from its live snapshot),
  *               a live 36 s filter chart and a per-channel re-apply (JIT re-arm) button in manual mode.
  *          [FA] پل ESP-Link سمت ESP: تبادل فریم باینری با STM32 روی UART
- *               (921600 8N1، مطابق ESP_AGENT_SPEC.md نسخه ۱.۲) و یک پنل وب دارک ساده
+ *               (921600 8N1، مطابق ESP_AGENT_SPEC.md نسخه ۱.۳) و یک پنل وب دارک ساده
  *               راست‌به‌چپ با فونت وزیرمتن و سه تب: وضعیت، کالیبراسیون، تست دستی؛
- *               فرمول‌های تبدیل بخش 5.3 با مقادیر زنده، دستیار کالیبراسیون (صفر از raw، گین از
- *               آمپرمتر، آفست ولتاژ از مولتی‌متر)، نمودار زندهٔ ۳۶ ثانیه‌ای فیلتر و دکمهٔ «اعمال مجدد
+ *               فرمول‌های تبدیل بخش 5.3 با مقادیر زنده، دستیار کالیبراسیون (صفر از raw، آفست ولتاژ از
+ *               مولتی‌متر، و کارت CAL_REFERENCE نسخه ۱.۳: عدد مولتی‌متر به STM32 می‌رود و خودش گین یا
+ *               ضریب تبدیل را از داده‌های زنده حساب می‌کند)، نمودار زندهٔ ۳۶ ثانیه‌ای فیلتر و دکمهٔ «اعمال مجدد
  *               duty» (مسلح‌سازی بعد از JIT) برای هر کانال در مود دستی.
  *
  * @note    [EN] Wiring: STM32 PA9 (TX) -> ESP RX, STM32 PA10 (RX) <- ESP TX, common GND.
@@ -70,6 +72,7 @@
 /* ==================== Message Types ==================== */
 #define ESP_MSG_SET_PARAM           0x01u
 #define ESP_MSG_GET_PARAMS          0x02u
+#define ESP_MSG_CAL_REFERENCE       0x03u
 #define ESP_MSG_TLM_LIVE            0x10u
 #define ESP_MSG_PARAM_REPORT        0x11u
 #define ESP_MSG_PARAMS_BULK         0x12u
@@ -81,6 +84,19 @@
 #define ESP_PARAM_MEDIAN_SIZE       7u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
 #define ESP_TLM_FLAG_MANUAL_MODE    0x20u
+#define ESP_PARAM_CUR1_GAIN         2u
+#define ESP_PARAM_CHG_ETA1          9u
+
+/* ==================== CAL_REFERENCE (v1.3, spec 5.4) ==================== */
+/* [EN] Targets 0/1 = GAIN ch1/ch2, 2/3 = ETA ch1/ch2. The STM32 replies with PARAM_REPORT
+        (gain path: gain id, then eta id = 0) or stays silent on rejection.
+   [FA] هدف ۰/۱ = گین کانال ۱/۲، ۲/۳ = η کانال ۱/۲. STM32 با PARAM_REPORT پاسخ می‌دهد
+        (مسیر گین: id گین، بعد id η = ۰) یا در صورت رد هیچ پاسخی نمی‌دهد. */
+#define ESP_CAL_TARGET_COUNT        4u
+#define ESP_CAL_MIN_REF_MA          50
+#define ESP_CAL_MAX_REF_MA          5000
+#define ESP_CAL_REPLY_TIMEOUT_MS    1500u
+#define ESP_CAL_PAYLOAD_SIZE        5u
 
 /* ==================== Wi-Fi / HTTP Constants ==================== */
 #define ESP_WIFI_AP_SSID            "ChangeOver-ESP"
@@ -100,14 +116,23 @@ typedef enum
     ESP_RX_WAIT_XOR
 } esp_rx_state_t;
 
+/* ==================== CAL_REFERENCE States ==================== */
+typedef enum
+{
+    ESP_CAL_IDLE = 0,      /* [EN] Nothing run yet / [FA] هنوز اجرا نشده */
+    ESP_CAL_WAITING,       /* [EN] Queued or sent, reply awaited / [FA] صف یا ارسال‌شده، منتظر پاسخ */
+    ESP_CAL_APPLIED,       /* [EN] PARAM_REPORT received / [FA] PARAM_REPORT رسید */
+    ESP_CAL_REJECTED       /* [EN] No reply within the timeout / [FA] در مهلت پاسخی نیامد */
+} esp_cal_state_t;
+
 /* ==================== Parameter Ranges (STM32 clamps too) ==================== */
-/* [EN] ID: 0..1 offset, 2..3 gain, 4..6 mV offset (signed), 7 median 1/3/5, 8 avg window, 9..10 eff,
+/* [EN] ID: 0..1 offset, 2..3 gain, 4..6 mV offset (signed), 7 median 1/3/5, 8 avg window, 9..10 ETA conversion (v1.3, 0 = identity),
         11..12 charger enable, 13..14 duty ceiling, 15/17 fixed-duty on, 16/18 fixed/manual duty,
         19 manual test mode (v1.2).
-   [FA] شناسه: ۰..۱ آفست، ۲..۳ گین، ۴..۶ آفست mV علامت‌دار، ۷ مدین ۱/۳/۵، ۸ پنجره میانگین، ۹..۱۰ بازدهی،
+   [FA] شناسه: ۰..۱ آفست، ۲..۳ گین، ۴..۶ آفست mV علامت‌دار، ۷ مدین ۱/۳/۵، ۸ پنجره میانگین، ۹..۱۰ ضریب تبدیل η (v1.3، صفر = همانی)،
         ۱۱..۱۲ قطع/وصل شارژر، ۱۳..۱۴ سقف duty، ۱۵/۱۷ مود duty فیکس، ۱۶/۱۸ duty فیکس/دستی،
         ۱۹ مود تست دستی (نسخه ۱.۲). */
-static const int32_t INT32_T__G__ParamMin[ESP_PARAM_COUNT] = {   0,   0,  100,  100, -2000, -2000, -2000, 1,  1, 100, 100, 0, 0,   0,   0, 0,   0, 0,   0, 0 };
+static const int32_t INT32_T__G__ParamMin[ESP_PARAM_COUNT] = {   0,   0,  100,  100, -2000, -2000, -2000, 1,  1,   0,   0, 0, 0,   0,   0, 0,   0, 0,   0, 0 };
 static const int32_t INT32_T__G__ParamMax[ESP_PARAM_COUNT] = { 255, 255, 3000, 3000,  2000,  2000,  2000, 5, 10, 999, 999, 1, 1, 500, 500, 1, 500, 1, 500, 1 };
 
 /* ==================== RX State ==================== */
@@ -139,6 +164,16 @@ static uint32_t UINT32_T__G__LastKeepaliveMs = 0u;
 static uint32_t UINT32_T__G__LastBrowserPollMs = 0u;
 static bool     BOOL__G__BrowserSeen = false;
 static uint32_t UINT32_T__G__LastParamRefreshMs = 0u;
+
+/* [EN] One CAL_REFERENCE at a time: target, typed mA, state, send time, applied value, run counter.
+   [FA] هر بار فقط یک CAL_REFERENCE: هدف، عدد mA، وضعیت، زمان ارسال، مقدار اعمال‌شده، شمارندهٔ اجرا. */
+static uint8_t         UINT8_T__G__CalTarget = 0u;
+static uint32_t        UINT32_T__G__CalRefMa = 0u;
+static esp_cal_state_t ESP_CAL_STATE_T__G__CalState = ESP_CAL_IDLE;
+static bool            BOOL__G__CalTxPending = false;
+static uint32_t        UINT32_T__G__CalSentMs = 0u;
+static uint32_t        UINT32_T__G__CalValue = 0u;
+static uint32_t        UINT32_T__G__CalRun = 0u;
 
 /* [EN] Send priority: charger cut, manual mode, manual duties, then the rest.
    [FA] اولویت ارسال: قطع شارژر، مود دستی، duty دستی، سپس بقیه. */
@@ -201,8 +236,13 @@ input[type=range]{width:100%;accent-color:var(--wa);margin:10px 0 2px;direction:
 canvas{width:100%;height:140px;display:block;background:#0c1018;border-radius:10px;margin-top:10px;direction:ltr}
 .lg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mu);margin-top:6px}.lg i{display:inline-block;width:12px;height:3px;border-radius:2px;margin-left:5px;vertical-align:middle}
 .ti2{display:flex;justify-content:space-between;align-items:center}
+.ca{border-top:1px solid var(--ln);margin-top:4px;padding-top:12px}.ca .ti{margin-bottom:4px;color:var(--tx)}
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.cb{border:0;border-radius:10px;padding:8px 10px;background:#243052;color:#cfe0ff;cursor:pointer;display:flex;justify-content:space-between;align-items:center}.cb b{font-weight:500;color:#8fb3ff}
+.cb.lo{background:#1c2130;color:var(--mu)}.cb:disabled{opacity:.45;cursor:default}
+.cm{margin-top:10px;min-height:1.6em}.cm.g{color:var(--ok)}.cm.r{color:var(--er)}.wr{color:var(--wa)}
 body.dn section:not(#t2){opacity:.45;filter:grayscale(1)}
-@media(max-width:640px){.vs{grid-template-columns:repeat(3,1fr)}.ch{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.cb{font-size:12px;padding:8px 7px}.cb span{white-space:nowrap}.vs{grid-template-columns:repeat(3,1fr)}.ch{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}}
 </style></head><body>
 <header><h1>پنل ChangeOver</h1><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">وضعیت</button><button data-t="1">کالیبراسیون</button><button class="m" data-t="2">تست دستی</button></nav>
@@ -229,22 +269,22 @@ const SC=['','g','g','g','y','r','y','r','r','y'];
 /* شناسه: [عنوان, واحد, کمینه, بیشینه, نوع(n عدد، b کلید، m مدین), توضیح] */
 const P={0:['آفست صفر کانال ۱','count',0,255,'n','شمارش ADC در جریان صفر؛ داخل فرمول mA از raw کم می‌شود'],
 1:['آفست صفر کانال ۲','count',0,255,'n','مانند کانال ۱ برای زنجیرهٔ دوم'],
-2:['گین کانال ۱','‰',100,3000,'n','مقیاس نهایی تبدیل به mA؛ مقدار بنچ ۱۰۸۵ (پیش‌فرض ≈ ×۰٫۹۵۲۳ به‌ازای هر count)'],
-3:['گین کانال ۲','‰',100,3000,'n','مقیاس نهایی تبدیل به mA کانال ۲'],
+2:['گین کانال ۱','‰',100,3000,'n','mA ≈ (raw − آفست) × 0.8776 × گین/۱۰۰۰؛ مقدار بنچ ۱۰۴۶. با دکمهٔ گین در کارت کالیبراسیون از عدد مولتی‌متر کالیبره می‌شود'],
+3:['گین کانال ۲','‰',100,3000,'n','همان فرمول کانال ۱ برای زنجیرهٔ دوم؛ مقدار بنچ ۱۳۰۳'],
 4:['آفست ولتاژ ورودی','mV',-2000,2000,'n','بعد از تبدیل مقسم 69.2k/6.8k جمع می‌شود (علامت‌دار)'],
 5:['آفست ولتاژ پک ۲۴V','mV',-2000,2000,'n','کالیبراسیون ولتاژ پک ۲۴V (علامت‌دار)'],
 6:['آفست ولتاژ ۱۲V','mV',-2000,2000,'n','مقسم 34.2k/6.8k؛ روی باتری پایین و بالا (V24 − V12) هر دو اثر دارد'],
 7:['پنجرهٔ مدین','',1,5,'m','مرحلهٔ اول فیلتر؛ ۱ = خاموش، ۳ = پیش‌فرض، ۵ پالس‌های دوتایی را هم حذف می‌کند'],
 8:['پنجرهٔ میانگین','نمونه',1,10,'n','مرحلهٔ دوم فیلتر: میانگین آخرین W خروجی مدین؛ ۱ = خاموش، ۱۰ = پیش‌فرض'],
-9:['بازدهی کانال ۱','‰',100,999,'n','فقط داخل فرمول تخمین (کانال ۱: Vbat = باتری بالا)؛ روی شارژ واقعی اثر ندارد'],
-10:['بازدهی کانال ۲','‰',100,999,'n','کانال ۲: Vbat = باتری پایین؛ ۲۴۲ خطای over-read سنس کانال ۲ را جبران می‌کند، به ~۷۰۰ تغییرش ندهید'],
+9:['ضریب تبدیل کانال ۱','‰',0,999,'n','صفر = همانی (عدد فیلترشده خودش جریان باتری است)؛ غیرصفر: iest = I × Vin × eta / (1000 × Vbat) با ولتاژهای زنده. با دکمهٔ ضریب تبدیل در کارت کالیبراسیون جریان تنظیم کنید، نه دستی'],
+10:['ضریب تبدیل کانال ۲','‰',0,999,'n','مانند شناسهٔ ۹ برای کانال ۲ (Vbat = باتری پایین)'],
 13:['سقف duty کانال ۱','‰',0,500,'n','رمپ، تنظیم و مود فیکس همه به این سقف محدودند'],
 14:['سقف duty کانال ۲','‰',0,500,'n','سقف PWM شارژر ۲'],
 15:['نگه‌داشت duty فیکس ۱','',0,1,'b','PWM روی مقدار شناسهٔ ۱۶ می‌ماند؛ توقف در ولتاژ ابزورب همچنان فعال است'],
 16:['مقدار duty فیکس ۱','‰',0,500,'n','در مود تست دستی همین مقدار duty کانال ۱ است'],
 17:['نگه‌داشت duty فیکس ۲','',0,1,'b','PWM روی مقدار شناسهٔ ۱۸ می‌ماند'],
 18:['مقدار duty فیکس ۲','‰',0,500,'n','در مود تست دستی همین مقدار duty کانال ۲ است']};
-const G=[['کالیبراسیون جریان',[0,1,2,3]],['کالیبراسیون ولتاژ',[4,5,6]],['فیلتر جریان',[7,8]],['تخمین جریان باتری',[9,10]],['محدودیت duty',[13,14]],['نگه‌داشت duty فیکس (با محافظت خودکار)',[15,16,17,18]]];
+const G=[['کالیبراسیون جریان',[0,1,2,3]],['کالیبراسیون ولتاژ',[4,5,6]],['فیلتر جریان',[7,8]],['ضریب تبدیل جریان باتری',[9,10]],['محدودیت duty',[13,14]],['نگه‌داشت duty فیکس (با محافظت خودکار)',[15,16,17,18]]];
 const V=[['ورودی',14],['پک ۲۴V',15],['نود ۱۲V',16],['باتری بالا',18],['باتری پایین',17]];
 let D=null,tab=0;
 const v2=mv=>(mv/1000).toFixed(2),pc=pm=>(pm/10).toFixed(1)+'%';
@@ -269,8 +309,12 @@ $('t1').innerHTML=G.map((g,gi)=>`<div class="cd"><div class="ti">${g[0]}</div>${
 const VR=[['ولتاژ ورودی',14,4],['پک ۲۴V',15,5],['نود ۱۲V',16,6]];
 const aIn=(id,ph,fn,bt)=>`<input type="number" step="any" id="${id}" placeholder="${ph}"><button class="sb sb2" onclick="${fn}">${bt}</button>`;
 const g0=$('fb0').parentNode,g1=$('fb1').parentNode,g2=$('fb2').parentNode;
-g0.insertAdjacentHTML('beforeend','<div class="as"><div class=\"lb\">صفر: کانال را بی‌جریان کنید (duty = 0)؛ میانگین ۱۰ نمونهٔ اخیر raw آفست می‌شود. گین: آمپرمتر را سری با شنت اولیه (سمت ترانس) ببندید، نه سر باتری، و عددش را به mA وارد کنید.</div></div>'+[1,2].map(n=>`<div class="as"><div class="nm">کانال ${n} <span class="lb">raw → فیلترشده</span> <b class="n lv" id="lc${n}">—</b></div>
-<button class="sb sb2" onclick="zero(${n})">صفر = raw فعلی</button><div class="ct">${aIn('ga'+n,'mA','gain('+n+')','گین')}</div></div>`).join(''));
+g0.insertAdjacentHTML('beforeend','<div class="as"><div class="lb">صفر: کانال را بی‌جریان کنید (duty = 0)؛ میانگین ۱۰ نمونهٔ اخیر raw آفست می‌شود.</div></div>'+[1,2].map(n=>`<div class="as"><div class="nm">کانال ${n} <span class="lb">raw → فیلترشده</span> <b class="n lv" id="lc${n}">—</b></div>
+<button class="sb sb2" onclick="zero(${n})">صفر = raw فعلی</button></div>`).join('')+
+`<div class="ca"><div class="ti">کالیبراسیون با مولتی‌متر</div><div class="lb">جریان کانال را بالای ۵۰ mA ببرید (مثلاً مود دستی با duty حدود ۱۵۰‰)، عدد مولتی‌متر را وارد و هدف را انتخاب کنید؛ STM32 ضریب را از دادهٔ زنده حساب و اعمال می‌کند. ضریب تبدیل: مولتی‌متر سری با باتری همان کانال. گین (اختیاری، اول): سری با جریانی که عدد نمایش باید برابرش باشد — بعد از گین، ضریب تبدیل همان کانال صفر می‌شود و باید دوباره آن را بزنید.</div>
+<div class="mx" style="margin-top:10px"><span>عدد مولتی‌متر <span class="lb">mA</span></span><input type="number" id="cr" min="50" max="5000" placeholder="50…5000"></div>
+<div class="cg">${[0,1,2,3].map(k=>{const n='۱۲'[k&1];return `<button class="cb" id="cb${k}" onclick="cal(${k})"><span>${k<2?'گین':'ضریب تبدیل'} کانال ${n}</span><b class="n" id="cv${k}">—</b></button>`;}).join('')}</div>
+<div class="cm lb" id="cm"></div><div class="lb" id="cl"></div></div>`);
 g1.insertAdjacentHTML('beforeend',VR.map((v,k)=>`<div class="as"><div class="nm">${v[0]} <b class="n lv" id="vl${k}">—</b><div class="lb">عدد مولتی‌متر (V) را وارد کنید؛ آفست جدید = آفست + (واقعی − نمایش)</div></div><div class="ct">${aIn('vm'+k,'V','vcal('+k+')','اعمال')}</div></div>`).join(''));
 g2.firstElementChild.outerHTML='<div class="ti ti2"><span>فیلتر جریان</span><span class="sg" id="cs"><button data-c="0" class="on" style="width:auto;padding:3px 10px">کانال ۱</button><button data-c="1" style="width:auto;padding:3px 10px">کانال ۲</button></span></div>';
 g2.insertAdjacentHTML('beforeend','<canvas id="cv"></canvas><div class="lg"><span><i style="background:#5b6784"></i>بدون فیلتر · نوسان <b class="n" id="pu">—</b> mA</span><span><i style="background:#4f8cff"></i>فیلترشده · نوسان <b class="n" id="pf">—</b> mA</span><span>۳۶ ثانیهٔ اخیر</span></div>');
@@ -279,8 +323,20 @@ document.querySelectorAll('#cs button').forEach(b=>b.onclick=()=>{CS=+b.dataset.
 function zero(n){const r=H[n-1].r.slice(-10);if(r.length<3)return alert('دادهٔ کافی نیست؛ چند ثانیه صبر کنید.');
  const avg=Math.round(r.reduce((a,b)=>a+b,0)/r.length),du=D.t[(n-1)*7+5];
  if(!confirm((du>0?'هشدار: duty کانال '+n+' صفر نیست و جریان جاری است!\n':'')+'آفست صفر کانال '+n+': '+nz(D.p[n-1])+' ← '+avg+' (میانگین '+r.length+' نمونهٔ raw)؟'))return;send(n-1,Math.min(255,Math.max(0,avg)));}
-function gain(n){const m=+$('ga'+n).value,cur=D&&D.t[(n-1)*7+3],g=D&&D.p[n+1];if(!(m>0))return alert('جریان آمپرمتر را به mA وارد کنید (مثلاً 460).');if(!(cur>0)||g==null)return alert('جریان فیلترشدهٔ کانال باید بیشتر از صفر باشد.');
- const ng=Math.min(3000,Math.max(100,Math.round(g*m/cur)));if(confirm('گین کانال '+n+': '+g+' ← '+ng+' ‰\n(جریان اولیهٔ فیلترشده '+cur+' mA، آمپرمتر شنت اولیه '+m+' mA)')){send(n+1,ng);$('ga'+n).value='';}}
+/* CAL_REFERENCE (بخش 5.4): فقط عدد مولتی‌متر و هدف فرستاده می‌شود؛ محاسبه با STM32 است. رد شدن = هیچ پاسخی */
+const CN=['گین کانال ۱','گین کانال ۲','ضریب تبدیل کانال ۱','ضریب تبدیل کانال ۲'];let CR=-1;
+function cal(k){const e=$('cr'),r=Math.round(+e.value),n='۱۲'[k&1];if(e.value===''||!(r>=50&&r<=5000))return alert('عدد مولتی‌متر را بین 50 و 5000 mA وارد کنید.');
+ if(k<2&&!confirm(CN[k]+' از '+r+' mA کالیبره شود؟\nضریب تبدیل کانال '+n+' صفر می‌شود و باید بعدش دوباره آن را کالیبره کنید.'))return;
+ const m=$('cm');m.className='cm lb';m.textContent='در حال ارسال '+CN[k]+'…';
+ fetch('/c?t='+k+'&r='+r,{method:'POST'}).then(x=>{if(x.status==409)throw 'کالیبراسیون قبلی هنوز منتظر پاسخ است.';if(x.status==503)throw 'لینک STM32 قطع است.';if(!x.ok)throw 'ورودی نامعتبر.';e.value='';}).catch(t=>{m.className='cm r';m.textContent=typeof t=='string'?t:'ESP در دسترس نیست.';});}
+function calView(d){const c=d.c,t=d.t,p=d.p,on=d.on==1;if(!c)return;const w=c[1]==1;
+ [0,1,2,3].forEach(k=>{const b=$('cb'+k),n=k&1,lo=t[n*7+3]<50;b.disabled=!on||w;b.classList.toggle('lo',lo);$('cv'+k).textContent=nz(p[k<2?2+n:9+n])+'‰';});
+ $('cl').innerHTML=[1,2].map(n=>{const i=t[(n-1)*7+3];return `کانال ${'۱۲'[n-1]}: <b class="n ${i<50?'wr':''}">${i} mA</b>`;}).join(' · ')+(t[3]<50||t[10]<50?' — زیر ۵۰ mA رد می‌شود':'');
+ if(w)$('cm').textContent='منتظر پاسخ STM32 ('+CN[c[2]]+')…';
+ if(CR<0)CR=c[0];else if(c[0]!==CR&&c[1]>=2){const m=$('cm'),k=c[2],n='۱۲'[k&1];
+  if(c[1]==2){m.className='cm g';m.textContent=CN[k]+' = '+c[3]+'‰ اعمال شد'+(k<2?' — ضریب تبدیل کانال '+n+' صفر شد؛ حالا ضریب تبدیل کانال '+n+' را کالیبره کنید.':'.');}
+  else{m.className='cm r';m.textContent='رد شد: جریان/شرایط ناکافی ('+CN[k]+'). جریان کانال باید بالای ۵۰ mA باشد'+(k>=2?' و ورودی حداقل 10V و باتری حداقل 5V':'')+'.';}
+  CR=c[0];}}
 function vcal(k){const R=VR[k],m=Math.round(+$('vm'+k).value*1000),shown=D&&D.t[R[1]],off=D&&D.p[R[2]];if(!(m>0))return alert('عدد مولتی‌متر را به ولت وارد کنید (مثلاً 13.05).');if(off==null)return;
  const no=Math.min(2000,Math.max(-2000,off+m-shown));if(confirm(R[0]+': آفست '+off+' ← '+no+' mV\n(نمایش '+v2(shown)+' V، مولتی‌متر '+v2(m)+' V)')){send(R[2],no);$('vm'+k).value='';}}
 /* نمودار زندهٔ فیلتر */
@@ -312,20 +368,22 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=+b.dataset
 /* فرمول‌های بخش 5.3 سند با مقادیر زنده */
 const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*76000/6800,K12=3300/4095*41000/6800;
 const f1=x=>x.toFixed(1),V_=mv=>(mv/1000).toFixed(2)+'V',nz=v=>v==null?'?':v;
+/* iest مثل STM32 (charger.c): زیر Vin 10V یا Vbat 5V برگشت به همانی */
+const ie=(fl,vin,eta,vb)=>vin<10000||vb<5000?fl+' (همانی: ولتاژ زیر حد)':Math.floor(Math.floor(fl*eta/1000)*vin/vb);
 function formulas(t,p,tb){
  if(tb==0){[1,2].forEach(n=>{const b=n==1?0:7,raw=t[b],off=p[n-1],g=p[n+1],eta=p[8+n],vb=n==1?t[18]:t[17],vin=t[14],fl=t[b+3];
   $('f'+n+'0').textContent='12-bit ADC · Vref 3300 mV';
   $('f'+n+'1').textContent=`${raw} × 8.7756 ≈ ${Math.round(raw*K_UV)}`;
   $('f'+n+'2').textContent=off==null||g==null?'':`(${raw} − ${off}) × 0.8776 × ${g}/1000 ≈ ${f1(Math.max(raw-off,0)*K_MA*g/1000)}`;
   $('f'+n+'3').textContent=`average[${nz(p[8])}]( median[${nz(p[7])}]( mA ) )`;
-  $('f'+n+'4').textContent=eta==null?'':(fl==0||vin==0)?'I = 0 → 0':`${fl} × ${V_(vin)} × ${eta}‰ / ${V_(Math.max(vb,1000))} ≈ ${Math.round(fl*vin*eta/Math.max(vb,1000)/1000)}`;});return;}
+  $('f'+n+'4').textContent=eta==null?'':eta==0?`eta = 0 → Iest = I = ${fl}`:`${fl} × ${V_(vin)} × ${eta}‰ / ${V_(vb)} ≈ ${ie(fl,vin,eta,vb)}`;});return;}
  const L=(a,b)=>`<div class="fx">${a}</div>`+(b?`<div class="lb">${b}</div>`:'');
  $('fb0').innerHTML=[1,2].map(n=>{const raw=t[n==1?0:7],off=p[n-1],g=p[n+1];return L(`Ch${n}: mA = (${raw} − ${nz(off)}) × 0.8776 × ${nz(g)}/1000 ≈ ${off==null||g==null?'?':f1(Math.max(raw-off,0)*K_MA*g/1000)}`);}).join('')+
   L('shunt µV = raw × 3300/4095 × 11/10 × 1000/101 = raw × 8.7756','ثابت‌ها: ADC دوازده‌بیتی، ۳۳۰۰mV، R41/R42 = 1k/10k، LM358 × 101، شنت 10 mOhm');
  const vc=(nm,mv,k,off)=>{const o=off==null?0:off,c=Math.round((mv-o)/k);return L(`${nm} = ${c} × ${k.toFixed(3)} ${o<0?'−':'+'} ${Math.abs(o)} ≈ ${V_(mv)}`);};
  $('fb1').innerHTML=vc('Vin',t[14],K24,p[4])+vc('V24',t[15],K24,p[5])+vc('V12',t[16],K12,p[6])+L(`Vhigh = V24 − V12 = ${V_(t[18])}   ·   Vlow = V12 = ${V_(t[17])}`);
  $('fb2').innerHTML=L(`I_filtered = average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( mA_unfiltered ) )`)+[1,2].map(n=>{const b=n==1?0:7;return L(`Ch${n}: ${t[b+2]} mA → ${t[b+3]} mA`);}).join('');
- $('fb3').innerHTML=L('Iest = I_filtered × Vin × eff / max(Vbat, 1 V)')+[1,2].map(n=>{const b=n==1?0:7,vb=n==1?t[18]:t[17],eta=p[8+n];return L(`Ch${n}: ${t[b+3]} × ${V_(t[14])} × ${nz(eta)}‰ / ${V_(Math.max(vb,1000))} ≈ ${eta==null?'?':(t[b+3]==0||t[14]==0?0:Math.round(t[b+3]*t[14]*eta/Math.max(vb,1000)/1000))} mA`);}).join('');}
+ $('fb3').innerHTML=L('eta = 0: Iest = I_filtered   ·   eta > 0: Iest = I_filtered × Vin × eta / (1000 × Vbat)','Vbat کانال ۱ = باتری بالا، کانال ۲ = باتری پایین؛ ضریب را با دکمهٔ ضریب تبدیل در کارت کالیبراسیون جریان بگیرید')+[1,2].map(n=>{const b=n==1?0:7,vb=n==1?t[18]:t[17],eta=p[8+n],fl=t[b+3];return L(eta==null?`Ch${n}: ?`:eta==0?`Ch${n}: eta = 0 → Iest = ${fl} mA`:`Ch${n}: ${fl} × ${V_(t[14])} × ${eta}‰ / ${V_(vb)} ≈ ${ie(fl,t[14],eta,vb)} mA`);}).join('');}
 function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);s.r.push(t[b]);if(s.u.length>HN){s.u.shift();s.f.shift();s.r.shift();}});}}
 function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;
  document.body.classList.toggle('dn',!on);$('lk').classList.toggle('on',on);
@@ -359,7 +417,7 @@ function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;
  s19.textContent=!sup?'پشتیبانی نمی‌شود':man?'روشن':'خاموش';s19.classList.toggle('on',man);
  $('a19').textContent=d.q&(1<<19)?'…':'';
  $('mh').textContent=sup?'duty هر کانال مستقیم از شناسه‌های ۱۶ و ۱۸ اعمال می‌شود.':'فرمور فعلی STM32 شناسهٔ ۱۹ را گزارش نکرده است (پروتکل v1.2 لازم است).';
- if(tab<2)formulas(t,p,tab);chart();
+ if(tab<2)formulas(t,p,tab);calView(d);chart();
  $('mb').classList.toggle('v',man);$('ka').innerHTML=man?(d.ka<1500?`پایش لینک فعال · <span class="n">keepalive ${d.ka} ms</span>`:'<b>keepalive متوقف است</b>'):'';}
 async function poll(){const c=new AbortController(),k=setTimeout(()=>c.abort(),2000);try{const r=await fetch('/t',{cache:'no-store',signal:c.signal});const d=await r.json();clearTimeout(k);if(document.hidden){D=d;hist(d);}else draw(d);}catch(e){clearTimeout(k);document.body.classList.add('dn');$('lk').classList.remove('on');$('lt').textContent='ESP در دسترس نیست';}
  setTimeout(poll,300);}
@@ -860,6 +918,38 @@ static void func__Esp_SendSetParam(uint8_t uint8_t__id, uint32_t uint32_t__value
 }
 
 /**
+ * @brief  [EN] Send CAL_REFERENCE [target:u8][ref_mA:u32 LE] (type 0x03, spec 5.4) once and
+ *              start the reply timer. Never repeated: a lost or rejected frame shows as "rejected".
+ *         [FA] ارسال یک‌بارهٔ CAL_REFERENCE با قالب [target:u8][ref_mA:u32 LE] (نوع 0x03، بخش 5.4)
+ *              و شروع زمان‌سنج پاسخ. تکرار نمی‌شود: فریم گم‌شده یا ردشده «رد شد» نمایش داده می‌شود.
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__Esp_SendCalReference(void)
+{
+    uint8_t UINT8_T__A__Payload[ESP_CAL_PAYLOAD_SIZE];
+    UINT8_T__A__Payload[0] = UINT8_T__G__CalTarget;
+    UINT8_T__A__Payload[1] = (uint8_t)(UINT32_T__G__CalRefMa & 0xFFu);
+    UINT8_T__A__Payload[2] = (uint8_t)((UINT32_T__G__CalRefMa >> 8) & 0xFFu);
+    UINT8_T__A__Payload[3] = (uint8_t)((UINT32_T__G__CalRefMa >> 16) & 0xFFu);
+    UINT8_T__A__Payload[4] = (uint8_t)((UINT32_T__G__CalRefMa >> 24) & 0xFFu);
+    func__Esp_WriteFrame(ESP_MSG_CAL_REFERENCE, UINT8_T__A__Payload, ESP_CAL_PAYLOAD_SIZE);
+    UINT32_T__G__CalSentMs = UINT32_T__G__LastTxMs;
+}
+
+/**
+ * @brief  [EN] Parameter ID the STM32 reports first for a CAL target (2/3 gain, 9/10 ETA).
+ *         [FA] شناسهٔ پارامتری که STM32 اول برای هر هدف CAL گزارش می‌کند (۲/۳ گین، ۹/۱۰ η).
+ * @param  uint8_t__target [EN] CAL target, 0..3 / [FA] هدف CAL، ۰ تا ۳
+ * @return [EN] Parameter ID / [FA] شناسهٔ پارامتر
+ */
+static uint8_t func__Esp_CalReplyId(uint8_t uint8_t__target)
+{
+    uint8_t uint8_t__channel = (uint8_t)(uint8_t__target & 1u);
+    uint8_t uint8_t__base = (uint8_t__target < 2u) ? ESP_PARAM_CUR1_GAIN : ESP_PARAM_CHG_ETA1;
+    return (uint8_t)(uint8_t__base + uint8_t__channel);
+}
+
+/**
  * @brief  [EN] Send at most one queued command per ESP_LINK_TX_INTERVAL_MS
  *              (priority order UINT8_T__G__TxOrder), plus the manual-mode keepalive or, with no
  *              browser, the manual-exit request (ID 19 = 0). Never blocks.
@@ -873,6 +963,14 @@ static void func__Esp_PumpTx(void)
     uint32_t uint32_t__nowMs = (uint32_t)millis();
     uint32_t uint32_t__elapsedMs = uint32_t__nowMs - UINT32_T__G__LastTxMs;
     uint8_t uint8_t__step;
+
+    /* [EN] CAL_REFERENCE rejection = silence: no PARAM_REPORT within ESP_CAL_REPLY_TIMEOUT_MS.
+       [FA] رد CAL_REFERENCE یعنی سکوت: در ESP_CAL_REPLY_TIMEOUT_MS هیچ PARAM_REPORT نیامد. */
+    bool bool__calSent = (ESP_CAL_STATE_T__G__CalState == ESP_CAL_WAITING) && (!BOOL__G__CalTxPending);
+    if (bool__calSent && ((uint32_t__nowMs - UINT32_T__G__CalSentMs) >= ESP_CAL_REPLY_TIMEOUT_MS))
+    {
+        ESP_CAL_STATE_T__G__CalState = ESP_CAL_REJECTED;
+    }
 
     if (uint32_t__elapsedMs < ESP_LINK_TX_INTERVAL_MS)
     {
@@ -888,6 +986,15 @@ static void func__Esp_PumpTx(void)
             func__Esp_SendSetParam(uint8_t__id, UINT32_T__G__TxParamValue[uint8_t__id]);
             return;
         }
+    }
+
+    /* [EN] CAL goes after queued SETs, so a gain the user typed just before is applied first.
+       [FA] CAL بعد از SETهای صف‌شده می‌رود تا گینی که کاربر همین الان زده اول اعمال شود. */
+    if (BOOL__G__CalTxPending)
+    {
+        BOOL__G__CalTxPending = false;
+        func__Esp_SendCalReference();
+        return;
     }
 
     /* [EN] Manual-mode keepalive: every ESP_LINK_KEEPALIVE_MS while manual is active (b5 or param 19),
@@ -970,6 +1077,38 @@ static void func__Esp_StoreParamItem(const uint8_t *uint8_t__ptr_item)
 }
 
 /**
+ * @brief  [EN] Match a PARAM_REPORT against the CAL run in flight. The expected ID marks the run
+ *              applied and joins the session cache (re-sent after an STM32 reset, spec 5.4); a
+ *              gain calibration also caches ETA = 0, because the firmware resets that channel's ETA.
+ *         [FA] تطبیق PARAM_REPORT با CAL در جریان. شناسهٔ مورد انتظار اجرا را «اعمال شد» می‌کند و
+ *              در کش نشست می‌رود (بعد از ری‌استارت STM32 دوباره فرستاده می‌شود، بخش 5.4)؛ کالیبراسیون
+ *              گین η صفر را هم کش می‌کند، چون فریم‌ور η همان کانال را صفر می‌کند.
+ * @param  uint8_t__id [EN] Reported parameter ID / [FA] شناسهٔ پارامتر گزارش‌شده
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__Esp_CalOnReport(uint8_t uint8_t__id)
+{
+    bool bool__calSent = (ESP_CAL_STATE_T__G__CalState == ESP_CAL_WAITING) && (!BOOL__G__CalTxPending);
+    if ((!bool__calSent) || (uint8_t__id != func__Esp_CalReplyId(UINT8_T__G__CalTarget)))
+    {
+        return;
+    }
+
+    UINT32_T__G__CalValue = UINT32_T__G__ParamApplied[uint8_t__id];
+    UINT32_T__G__TxParamValue[uint8_t__id] = UINT32_T__G__CalValue;
+    BOOL__G__ParamUserSet[uint8_t__id] = true;
+
+    if (UINT8_T__G__CalTarget < 2u)
+    {
+        uint8_t uint8_t__etaId = func__Esp_CalReplyId((uint8_t)(UINT8_T__G__CalTarget + 2u));
+        UINT32_T__G__TxParamValue[uint8_t__etaId] = 0u;
+        BOOL__G__ParamUserSet[uint8_t__etaId] = true;
+    }
+
+    ESP_CAL_STATE_T__G__CalState = ESP_CAL_APPLIED;
+}
+
+/**
  * @brief  [EN] Dispatch one checksum-valid frame from the STM32.
  *         [FA] پردازش یک فریم معتبر (checksum درست) دریافتی از STM32.
  * @return [EN] None / [FA] ندارد
@@ -1025,6 +1164,7 @@ static void func__Esp_HandleFrame(void)
     else if ((UINT8_T__G__RxType == ESP_MSG_PARAM_REPORT) && (UINT8_T__G__RxLen == ESP_LINK_PARAM_ITEM_SIZE))
     {
         func__Esp_StoreParamItem(uint8_t__ptr_payload);
+        func__Esp_CalOnReport(uint8_t__ptr_payload[0]);
     }
     else if ((UINT8_T__G__RxType == ESP_MSG_PARAMS_BULK) && (UINT8_T__G__RxLen >= 1u))
     {
@@ -1189,10 +1329,12 @@ static void func__Esp_HttpFont(void)
 }
 
 /**
- * @brief  [EN] GET /t : compact JSON snapshot {on,age,seq,fl,n,q,ka,t[20],p[20]}.
- *              t = TLM u32 fields in spec order (offset 4..80); p = applied params or null.
- *         [FA] مسیر GET /t : خلاصه JSON فشرده {on,age,seq,fl,n,q,ka,t[20],p[20]}.
- *              t فیلدهای u32 تله‌متری به ترتیب سند (آفست ۴ تا ۸۰)؛ p مقدار اعمال‌شده یا null.
+ * @brief  [EN] GET /t : compact JSON snapshot {on,age,seq,fl,n,q,ka,t[20],p[20],c[4]}.
+ *              t = TLM u32 fields in spec order (offset 4..80); p = applied params or null;
+ *              c = CAL_REFERENCE [run, state 0..3, target, applied value].
+ *         [FA] مسیر GET /t : خلاصه JSON فشرده {on,age,seq,fl,n,q,ka,t[20],p[20],c[4]}.
+ *              t فیلدهای u32 تله‌متری به ترتیب سند (آفست ۴ تا ۸۰)؛ p مقدار اعمال‌شده یا null؛
+ *              c = CAL_REFERENCE [شمارهٔ اجرا، وضعیت ۰..۳، هدف، مقدار اعمال‌شده].
  * @return [EN] None / [FA] ندارد
  */
 static void func__Esp_HttpTelemetry(void)
@@ -1248,7 +1390,10 @@ static void func__Esp_HttpTelemetry(void)
         }
     }
 
-    (void)snprintf(&CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used, "]}");
+    size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used,
+        "],\"c\":[%lu,%u,%u,%lu]}", (unsigned long)UINT32_T__G__CalRun, (unsigned int)ESP_CAL_STATE_T__G__CalState,
+        (unsigned int)UINT8_T__G__CalTarget, (unsigned long)UINT32_T__G__CalValue);
+    (void)size_t__used;
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
@@ -1296,6 +1441,50 @@ static void func__Esp_HttpSetParam(void)
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
 
+/**
+ * @brief  [EN] POST /c?t=&r= : queue one CAL_REFERENCE (target 0..3, typed DMM reading 50..5000 mA).
+ *              400 = bad arguments, 409 = a run is still waiting, 503 = no live link to the STM32.
+ *         [FA] مسیر POST /c?t=&r= : صف کردن یک CAL_REFERENCE (هدف ۰..۳، عدد مولتی‌متر ۵۰..۵۰۰۰ mA).
+ *              400 = آرگومان نادرست، 409 = اجرای قبلی هنوز منتظر است، 503 = لینک زنده با STM32 نیست.
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__Esp_HttpCalReference(void)
+{
+    int32_t int32_t__target = -1;
+    int32_t int32_t__refMa = 0;
+    bool bool__targetOk = func__Esp_ParseInt(ESP_WEB_SERVER_T__G__Server.arg("t").c_str(), &int32_t__target);
+    bool bool__refOk = func__Esp_ParseInt(ESP_WEB_SERVER_T__G__Server.arg("r").c_str(), &int32_t__refMa);
+    bool bool__targetRange = (int32_t__target >= 0) && (int32_t__target < (int32_t)ESP_CAL_TARGET_COUNT);
+    bool bool__refRange = (int32_t__refMa >= ESP_CAL_MIN_REF_MA) && (int32_t__refMa <= ESP_CAL_MAX_REF_MA);
+
+    if ((!bool__targetOk) || (!bool__refOk) || (!bool__targetRange) || (!bool__refRange))
+    {
+        ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
+        return;
+    }
+
+    if (ESP_CAL_STATE_T__G__CalState == ESP_CAL_WAITING)
+    {
+        ESP_WEB_SERVER_T__G__Server.send(409, "application/json", "{\"ok\":0}");
+        return;
+    }
+
+    uint32_t uint32_t__ageMs = (uint32_t)millis() - UINT32_T__G__LastTlmMs;
+    if ((!BOOL__G__TlmSeen) || (uint32_t__ageMs > ESP_LINK_TIMEOUT_MS))
+    {
+        ESP_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0}");
+        return;
+    }
+
+    UINT8_T__G__CalTarget = (uint8_t)int32_t__target;
+    UINT32_T__G__CalRefMa = (uint32_t)int32_t__refMa;
+    UINT32_T__G__CalValue = 0u;
+    UINT32_T__G__CalRun++;
+    ESP_CAL_STATE_T__G__CalState = ESP_CAL_WAITING;
+    BOOL__G__CalTxPending = true;
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
+}
+
 /* ==================== Arduino Entry Points ==================== */
 
 /**
@@ -1320,6 +1509,7 @@ void setup(void)
     ESP_WEB_SERVER_T__G__Server.on("/f.css", HTTP_GET, func__Esp_HttpFont);
     ESP_WEB_SERVER_T__G__Server.on("/t", HTTP_GET, func__Esp_HttpTelemetry);
     ESP_WEB_SERVER_T__G__Server.on("/s", HTTP_POST, func__Esp_HttpSetParam);
+    ESP_WEB_SERVER_T__G__Server.on("/c", HTTP_POST, func__Esp_HttpCalReference);
     ESP_WEB_SERVER_T__G__Server.begin();
 }
 
