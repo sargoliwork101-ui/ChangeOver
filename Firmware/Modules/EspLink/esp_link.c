@@ -183,12 +183,12 @@ static bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
 #endif
 
 #if MODULE_CHARGER
-        case ESPLINK_PARAM_CHG_EFF_UP_PERMILLE:
+        case ESPLINK_PARAM_CHG_ETA1_PERMILLE:
             *uint32_t__appliedValue =
                 func__Charger_SetEfficiencyPermille(0u, uint32_t__value);
             return true;
 
-        case ESPLINK_PARAM_CHG_EFF_DN_PERMILLE:
+        case ESPLINK_PARAM_CHG_ETA2_PERMILLE:
             *uint32_t__appliedValue =
                 func__Charger_SetEfficiencyPermille(1u, uint32_t__value);
             return true;
@@ -303,11 +303,11 @@ static bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
 #endif
 
 #if MODULE_CHARGER
-        case ESPLINK_PARAM_CHG_EFF_UP_PERMILLE:
+        case ESPLINK_PARAM_CHG_ETA1_PERMILLE:
             *uint32_t__value = func__Charger_GetEfficiencyPermille(0u);
             return true;
 
-        case ESPLINK_PARAM_CHG_EFF_DN_PERMILLE:
+        case ESPLINK_PARAM_CHG_ETA2_PERMILLE:
             *uint32_t__value = func__Charger_GetEfficiencyPermille(1u);
             return true;
 
@@ -619,17 +619,156 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
                             (uint8_t)ESPLINK_TLM_PAYLOAD_SIZE);
 }
 
+/* ==================== CAL_REFERENCE (v1.3) / کالیبراسیون از پنل ==================== */
+
+/* [EN] Snapshot published by func__EspLink_Run while the RX parse loop runs
+ *      (synchronously inside that call; NULL outside it, so no dangling
+ *      pointer survives the task period). Only the CAL_REFERENCE handler
+ *      below reads it.
+ * [FA] snapshot منتشرشده از func__EspLink_Run در زمان اجرای حلقهٔ پارس RX
+ *      (همزمان داخل همان فراخوانی؛ بیرون آن تهی است تا اشاره‌گر آویزان از
+ *      دورهٔ تسک باقی نماند). فقط هندلر CAL_REFERENCE پایین آن را می‌خواند. */
+static const measurement_snapshot_t *MEASUREMENT_SNAPSHOT_T__G__CalSnap = NULL;
+
+#if MODULE_CHARGER
+/**
+ * @brief  [EN] Apply one CAL_REFERENCE (protocol v1.3, user order
+ *              2026-09-24): calibrate a gain or an ETA factor from a typed
+ *              multimeter reading - the firmware does the math on its own
+ *              live snapshot, the panel never needs it.
+ *              target 0/1 = GAIN ch1/ch2: new gain = gain x ref / i_live
+ *              (the setter clamps 100..3000); that channel's ETA is reset
+ *              to 0 because the old ETA absorbed the old gain - rerun
+ *              target 2/3 afterwards.
+ *              target 2/3 = ETA ch1/ch2: eta = ref x Vbat x 1000 /
+ *              (i_live x Vin) from the live snapshot (ch1 battery =
+ *              v_bat_high_mv, ch2 = v_bat_low_mv).
+ *              Returns false (caller sends nothing) when the snapshot is
+ *              missing/invalid, ref is outside 50..5000 mA, the live
+ *              filtered current is below 50 mA, or (ETA only) Vin/Vbat are
+ *              below the charger minimums.
+ *         [FA] اعمال یک CAL_REFERENCE (پروتکل v1.3، دستور کاربر
+ *              ۲۰۲۶-۰۹-۲۴): کالیبره‌کردن گین یا ضریب η از عدد مولتی‌متر -
+ *              محاسبه را خود فریم‌ور روی snapshot زنده‌اش انجام می‌دهد و
+ *              پنل به ریاضی نیاز ندارد.
+ *              target 0/1 = گین کانال۱/۲: گین جدید = گین × ref ÷ جریان زنده
+ *              (setter بین ۱۰۰..۳۰۰۰ گیره می‌زند)؛ η همان کانال صفر می‌شود
+ *              چون η قدیمی خطای گین قدیمی را جذب کرده بود - بعدش دوباره
+ *              target 2/3 بدهید.
+ *              target 2/3 = η کانال۱/۲: η = ref × Vbat × ۱۰۰۰ ÷ (جریان زنده
+ *              × Vin) از snapshot زنده (باتری ch1 = v_bat_high_mv و
+ *              ch2 = v_bat_low_mv).
+ *              false برمی‌گرداند (فراخواننده چیزی نمی‌فرستد) وقتی snapshot
+ *              نیست/نامعتبر است، ref بیرون ۵۰..۵۰۰۰ mA است، جریان فیلترشدهٔ
+ *              زنده زیر ۵۰ mA است، یا (فقط η) Vin/Vbat زیر حد شارژرند.
+ * @param  uint8_t__target [EN] 0..3 / هدف، ۰..۳
+ * @param  uint32_t__refMa [EN] Typed DMM reading, mA / عدد مولتی‌متر، mA
+ * @param  uint8_t *uint8_t__paramIdOut [EN] Param id for the report / id پارامتر برای گزارش
+ * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
+ * @return bool [EN] true = applied, report it / اعمال شد، گزارش بده
+ */
+static bool func__EspLink_ApplyCalReference(uint8_t uint8_t__target,
+                                            uint32_t uint32_t__refMa,
+                                            uint8_t *uint8_t__paramIdOut,
+                                            uint32_t *uint32_t__appliedValue)
+{
+    const measurement_snapshot_t *measurement_snapshot_t__snap =
+        MEASUREMENT_SNAPSHOT_T__G__CalSnap;
+    uint8_t uint8_t__channelIndex;
+    uint32_t uint32_t__liveMa;
+
+    if ((measurement_snapshot_t__snap == NULL) ||
+        (measurement_snapshot_t__snap->valid == false) ||
+        (uint32_t__refMa < (uint32_t)ESPLINK_CAL_MIN_REF_MA) ||
+        (uint32_t__refMa > (uint32_t)ESPLINK_CAL_MAX_REF_MA) ||
+        (uint8_t__target > 3u))
+    {
+        return false;
+    }
+
+    uint8_t__channelIndex = (uint8_t)(uint8_t__target & 1u);
+    uint32_t__liveMa = (uint8_t__channelIndex == 0u)
+                           ? measurement_snapshot_t__snap->i_ch1_ma
+                           : measurement_snapshot_t__snap->i_ch2_ma;
+
+    if (uint32_t__liveMa < (uint32_t)ESPLINK_CAL_MIN_REF_MA)
+    {
+        return false;
+    }
+
+    if (uint8_t__target <= 1u)
+    {
+        /* [EN] GAIN: scale the live gain by ref/live; the setter clamps.
+           Overflow-safe: gain <= 3000, ref <= 5000 -> product <= 1.5e7.
+           [FA] گین: گین زنده به نسبت ref÷زنده؛ setter گیره می‌زند.
+           امن برای سرریز: گین ≤ ۳۰۰۰ و ref ≤ ۵۰۰۰ ← حاصل‌ضرب ≤ ۱٫۵e7. */
+        uint32_t uint32_t__gain =
+            func__BspMeasurement_GetCurrentGainPermille(uint8_t__channelIndex);
+
+        uint32_t__gain = (uint32_t__gain * uint32_t__refMa) / uint32_t__liveMa;
+
+        *uint32_t__appliedValue =
+            func__BspMeasurement_SetCurrentGainPermille(uint8_t__channelIndex,
+                                                        uint32_t__gain);
+        *uint8_t__paramIdOut = (uint8_t__channelIndex == 0u)
+                                   ? ESPLINK_PARAM_CUR1_GAIN_PERMILLE
+                                   : ESPLINK_PARAM_CUR2_GAIN_PERMILLE;
+
+        /* [EN] The old ETA absorbed the old gain: reset it to identity.
+           [FA] η قدیمی خطای گین قدیمی را جذب کرده بود: به همانی برگردان. */
+        func__Charger_SetEfficiencyPermille(uint8_t__channelIndex, 0u);
+        return true;
+    }
+
+    /* [EN] ETA: eta = ref x Vbat x 1000 / (live x Vin) on live voltages.
+       Overflow-safe: ref <= 5000, Vbat <= ~15000 -> <= 7.5e7; / Vin (>=
+       10000) -> <= 7500; x 1000 -> <= 7.5e6; / live (>= 50) -> clamped 999.
+       [FA] η: η = ref × Vbat × ۱۰۰۰ ÷ (زنده × Vin) با ولتاژهای زنده.
+       امن برای سرریز: ref ≤ ۵۰۰۰ و Vbat ≤ ~۱۵۰۰۰ ← ≤ ۷٫۵e7؛ ÷ Vin (≥۱۰۰۰۰)
+       ← ≤ ۷۵۰۰؛ ×۱۰۰۰ ← ≤ ۷٫۵e6؛ ÷ زنده (≥۵۰) ← گیره در ۹۹۹. */
+    {
+        uint32_t uint32_t__vinMv = measurement_snapshot_t__snap->v_in_mv;
+        uint32_t uint32_t__vbatMv = (uint8_t__channelIndex == 0u)
+                           ? measurement_snapshot_t__snap->v_bat_high_mv
+                           : measurement_snapshot_t__snap->v_bat_low_mv;
+        uint32_t uint32_t__etaPermille;
+
+        if ((uint32_t__vinMv < (uint32_t)CHG_ETA_MIN_VIN_MV) ||
+            (uint32_t__vbatMv < (uint32_t)CHG_ETA_MIN_VBAT_MV))
+        {
+            return false;
+        }
+
+        uint32_t__etaPermille =
+            (((uint32_t__refMa * uint32_t__vbatMv) / uint32_t__vinMv) * 1000u) /
+            uint32_t__liveMa;
+
+        *uint32_t__appliedValue =
+            func__Charger_SetEfficiencyPermille(uint8_t__channelIndex,
+                                                uint32_t__etaPermille);
+        *uint8_t__paramIdOut = (uint8_t__channelIndex == 0u)
+                                   ? ESPLINK_PARAM_CHG_ETA1_PERMILLE
+                                   : ESPLINK_PARAM_CHG_ETA2_PERMILLE;
+    }
+
+    return true;
+}
+#endif /* MODULE_CHARGER */
+
 /* ==================== Frame handling / رسیدگی به فریم ==================== */
 
 /**
  * @brief  [EN] Handle one complete, checksum-verified frame: apply a
- *              SET_PARAM (with a PARAM_REPORT reply of the applied value)
- *              or answer GET_PARAMS with PARAMS_BULK. Unknown types and
- *              wrong payload lengths are dropped silently.
- *         [FA] رسیدگی به یک فریم کامل و تأییدشدهٔ checksum: اعمال
- *              SET_PARAM (با پاسخ PARAM_REPORT حاوی مقدار اعمال‌شده) یا
- *              پاسخ GET_PARAMS با PARAMS_BULK. نوع ناشناخته و طول payload
- *              غلط بی‌صدا کنار گذاشته می‌شود.
+ *              SET_PARAM (with a PARAM_REPORT reply of the applied value),
+ *              answer GET_PARAMS with PARAMS_BULK, or apply a
+ *              CAL_REFERENCE (v1.3 - PARAM_REPORT replies, see
+ *              func__EspLink_ApplyCalReference). Unknown types and wrong
+ *              payload lengths are dropped silently.
+ *         [FA] رسیدگی به یک فریم کامل و تأییدشدهٔ checksum: اعمال SET_PARAM
+ *              (با پاسخ PARAM_REPORT حاوی مقدار اعمال‌شده)، پاسخ GET_PARAMS
+ *              با PARAMS_BULK، یا اعمال CAL_REFERENCE (v1.3 - پاسخ‌های
+ *              PARAM_REPORT، پایین را ببین). نوع ناشناخته و طول payload غلط
+ *              بی‌صدا کنار گذاشته می‌شود.
  * @param  uint8_t__messageType [EN] Message type / نوع پیام
  * @param  uint8_t__payloadLength [EN] Payload length / طول payload
  * @param  const uint8_t *uint8_t__payload [EN] Payload / payload
@@ -669,6 +808,50 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
             func__EspLink_SendParamsBulk();
         }
     }
+#if MODULE_CHARGER
+    else if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_CAL_REFERENCE)
+    {
+        if (uint8_t__payloadLength == 5u)
+        {
+            /* [EN] Valid frame: refresh the manual-mode link dead-man (see
+               SET_PARAM above), then calibrate from the typed DMM value.
+               GAIN targets answer with TWO PARAM_REPORT frames (the new
+               gain, then the reset ETA); ETA targets with one. A rejected
+               command (unstable current, bad voltages) gets NO reply.
+               [FA] فریم معتبر: مهر ددمنِ لینک مود دستی (بالا را ببین) تازه
+               می‌شود و بعد از عدد مولتی‌متر کالیبره می‌کنیم. target های گین
+               با دو فریم PARAM_REPORT جواب می‌دهند (گین جدید و بعد η
+               صفرشده)؛ target های η با یک فریم. فرمان ردشده (جریان ناپایدار،
+               ولتاژ بد) هیچ پاسخی نمی‌گیرد. */
+            uint8_t uint8_t__calParamId = 0u;
+            uint32_t uint32_t__calApplied = 0u;
+
+            func__Charger_NotifyEspLinkActivity();
+            if (func__EspLink_ApplyCalReference(uint8_t__payload[0],
+                                                func__EspLink_GetU32(uint8_t__payload, 1u),
+                                                &uint8_t__calParamId,
+                                                &uint32_t__calApplied) != false)
+            {
+                func__EspLink_SendParamReport(uint8_t__calParamId,
+                                              uint32_t__calApplied);
+
+                if (uint8_t__payload[0] <= 1u)
+                {
+                    /* [EN] GAIN path: also report the reset ETA (param 9/10)
+                       so the panel UI returns to identity immediately.
+                       [FA] مسیر گین: η صفرشده (پارامتر ۹/۱۰) هم گزارش شود
+                       تا UI پنل فوراً به حالت همانی برگردد. */
+                    func__EspLink_SendParamReport(
+                        (uint8_t__payload[0] == 0u)
+                            ? ESPLINK_PARAM_CHG_ETA1_PERMILLE
+                            : ESPLINK_PARAM_CHG_ETA2_PERMILLE,
+                        func__Charger_GetEfficiencyPermille(
+                            (uint8_t)(uint8_t__payload[0] & 1u)));
+                }
+            }
+        }
+    }
+#endif /* MODULE_CHARGER */
     else
     {
         /* [EN] Unknown message type: ignore and resync on the next frame.
@@ -818,10 +1001,20 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
     (void)app_state_t__state;
     (void)APP_CONFIG;
 
+    /* [EN] Publish the snapshot for the CAL_REFERENCE handler (the parse
+       loop runs synchronously inside this call; cleared on exit so no
+       dangling pointer survives the task period).
+       [FA] snapshot برای هندلر CAL_REFERENCE منتشر می‌شود (حلقهٔ پارس
+       همزمان داخل همین فراخوانی اجرا می‌شود؛ در خروج پاک می‌شود تا
+       اشاره‌گر آویزان از دورهٔ تسک باقی نماند). */
+    MEASUREMENT_SNAPSHOT_T__G__CalSnap = measurement_snapshot_t__snap;
+
     while (func__BspUart_ReadByte(&uint8_t__byte) != false)
     {
         func__EspLink_ParseByte(uint8_t__byte);
     }
+
+    MEASUREMENT_SNAPSHOT_T__G__CalSnap = NULL;
 
     func__EspLink_SendTelemetry(measurement_snapshot_t__snap,
                                 fault_mask_t__faults);

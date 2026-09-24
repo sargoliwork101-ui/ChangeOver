@@ -9,6 +9,11 @@
  *              gate pulses rise exactly one half period apart, can never
  *              switch simultaneously, and the interleave can never slip
  *              because the counters are never stopped or rewritten again.
+ *              Since 2026-09-24 the phase offset is a compile switch
+ *              (BSP_PWM_TIM3_PHASE_OFFSET_IN_PHASE): the 2026-09-24
+ *              in-phase bench experiment showed no measurable crosstalk
+ *              change, so 0u (the frozen 10 us interleave) is active
+ *              again; 1u re-runs the in-phase experiment.
  *              A channel is switched off by compare=0 alone.
  *              Since 2026-09-22 each timer also carries an INTERNAL CH2
  *              sampling trigger for the synchronized current ADC (user
@@ -39,6 +44,25 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+
+/* ==================== Gate phase switch / کلید فاز گیت‌ها ==================== */
+/* [EN] Gate phase compile switch. The 2026-09-24 bench experiment
+   (user order) ran both gates IN PHASE (1u) to test whether the 10 us
+   interleave contributed to the residual channel-to-channel analog
+   crosstalk; the bench data showed NO measurable effect, so the
+   production interleave is restored. 0u (current) = production design
+   of 2026-09-21: TIM3 preset to half a period (10 us at 50 kHz,
+   ARR=1439), the two gates never switch simultaneously and the input
+   ripple stays staggered. 1u = both gates rise together (only for
+   repeat experiments).
+   [FA] کلید کامپایل فاز گیت‌ها. آزمایش بنچ ۲۰۲۶-۰۹-۲۴ (دستور کاربر)
+   گیت‌ها را هم‌فاز (1u) اجرا کرد تا سهم درهم‌گذاری ۱۰µs در کراس‌تاک
+   آنالوگ باقی‌ماندهٔ کانال‌ها سنجیده شود؛ دادهٔ بنچ اثر محسوسی
+   نشان نداد پس درهم‌گذاری تولید برگشت. 0u (فعلی) = طراحی تولیدِ
+   ۲۰۲۶-۰۹-۲۱: TIM3 روی نیم‌دوره (۱۰µs در ۵۰kHz با ARR=1439)
+   پیش‌تنظیم، دو گیت هرگز همزمان سوییچ نمی‌کنند و ریپل ورودی پخش
+   می‌ماند. 1u = هر دو گیت با هم (فقط برای تکرار آزمایش). */
+#define BSP_PWM_TIM3_PHASE_OFFSET_IN_PHASE 0u
 
 /* ==================== BspPwm_GetTimer ==================== */
 /**
@@ -238,8 +262,19 @@ void func__BspPwm_Init(void)
     MODIFY_REG(htim3.Instance->CR2, TIM_CR2_MMS, TIM_TRGO_OC2REF);
 
     uint32_t__periodCounts = __HAL_TIM_GET_AUTORELOAD(&htim3) + 1u;
+#if (BSP_PWM_TIM3_PHASE_OFFSET_IN_PHASE != 0u)
+    /* [EN] Bench experiment (user order 2026-09-24): TIM3 also starts at
+       0, so both gates rise together every period.
+       [FA] آزمایش بنچ (دستور کاربر ۲۰۲۶-۰۹-۲۴): TIM3 هم از صفر شروع
+       می‌شود تا هر دو گیت هر دوره با هم بالا بیایند. */
+    uint32_t uint32_t__tim3StartCounts = 0u;
+#else
+    /* [EN] Production: the frozen half-period interleave.
+       [FA] تولید: درهم‌گذاری ثابت نیم‌دوره. */
+    uint32_t uint32_t__tim3StartCounts = uint32_t__periodCounts / 2u;
+#endif
     __HAL_TIM_SET_COUNTER(&htim2, 0u);
-    __HAL_TIM_SET_COUNTER(&htim3, uint32_t__periodCounts / 2u);
+    __HAL_TIM_SET_COUNTER(&htim3, uint32_t__tim3StartCounts);
 
     /* [EN] Deterministic simultaneous start pair (~tens of ns skew).
        [FA] جفت استارت همزمان قطعی (لغزش چند ده نانوثانیه). */

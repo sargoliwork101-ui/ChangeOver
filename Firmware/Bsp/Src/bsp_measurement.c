@@ -65,21 +65,36 @@
  *      (2026-09-18, fixed 15% duty: firmware read 330 mA while scope MEAN at
  *      the LM358 output gave 362/1.01 = 358 mA true primary; 358/330 = 1085
  *      permille). After this the mA readout equals the physical primary
- *      current; the efficiency target lives in CHG_FLYBACK_EFFICIENCY_PERMILLE.
+ *      current; the ETA conversion factors live in CHG_FLYBACK_ETA1/ETA2_PERMILLE (charger.h, v1.3).
+ *      2026-09-24 (user order: calibrate from the given bench numbers, no
+ *      further tests): gain re-set at the D=15% point - displayed 354 vs
+ *      425 mA DMM true (latest of 320/354, readings drift upward through
+ *      the session) -> 1085 * 425/354 = 1303 permille. The chain stays
+ *      non-linear (D=10%: 185/200/208 vs 185 true, reads ~222-250 after
+ *      this trim) - a solo hardware re-check remains on the bench list.
  * [FA] کانال ۲ (Trans2/Shunt2): زوج تأییدشدهٔ بنچ؛ نرم‌افزار ۳۳۰ می‌خواند،
- *      اسکوپ ۳۵۸ واقعی؛ ضریب ۱۰۸۵ پرمیل تا خوانش = جریان فیزیکی اولیه. */
+ *      اسکوپ ۳۵۸ واقعی؛ ضریب ۱۰۸۵ پرمیل تا خوانش = جریان فیزیکی اولیه.
+ *      ۲۰۲۶-۰۹-۲۴ (دستور کاربر: کالیبره از همین اعداد بنچ، بدون تست بیشتر):
+ *      گین در نقطهٔ D=15% تنظیم شد — نمایش 354 در برابر 425 واقعی (آخرین
+ *      خوانش از 320/354؛ خوانش‌ها در طول جلسه رو به بالا می‌روند) ←
+ *      1085×425÷354 = ۱۳۰۳ پرمیل. زنجیره هنوز غیرخطی است (D=10%:
+ *      185/200/208 در برابر 185 واقعی؛ پس از این اصلاح ~222-250 می‌خواند) —
+ *      تست تکیِ سخت‌افزاری در فهرست بنچ می‌ماند. */
 #define BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS 8u
-#define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE 1085u
-/* [EN] Channel 1 (Trans1 / Shunt1 -> PA1): provisional copies of the
- *      channel-2 bench values - this chain was never calibrated on the
- *      board (bring-up started 2026-09-20). Replace after recording the
- *      zero-current count and one known-current point on Trans1; the values
- *      are intentional duplicates, NOT a shared concept.
- * [FA] کانال ۱ (Trans1/Shunt1): کپی موقت از مقادیر کانال ۲ - این زنجیره هنوز
- *      روی برد کالیبره نشده؛ بعد از ثبت صفر و نقطهٔ جریان معلوم روی Trans1
- *      به‌روزرسانی می‌شود (کپی عمدی است، مفهوم مشترک نیست). */
+#define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE 1303u
+/* [EN] Channel 1 (Trans1 / Shunt1 -> PA1): bench-calibrated 2026-09-24,
+ *      after the dual-channel drop cleared (user order: bake it and push).
+ *      DMM in series with the 24 V input, true vs displayed: D=15% 423 vs
+ *      436/438/442 mA, D=10% 185 vs 185/189 mA. Gain = 1085 * 423/438.7 =
+ *      1046 permille, set at D=15% (closest to the ~650 mA AUTO point).
+ *      Offset stays 8 counts - off-state display reads 0 mA.
+ * [FA] کانال ۱ (Trans1/Shunt1): کالیبرهٔ بنچ ۲۰۲۶-۰۹-۲۴ پس از رفع افت
+ *      دوکاناله (دستور کاربر: بپز و پوش کن). مولتی‌متر سری با ورودی ۲۴V؛
+ *      واقعی در برابر نمایش: D=15% → 423 در برابر 436/438/442؛ D=10% → 185
+ *      در برابر 185/189. گین = 1085×423÷438.7 = ۱۰۴۶ پرمیل، تنظیم در D=15%
+ *      (نزدیک‌ترین به نقطهٔ کار ~650mA در AUTO). آفست 8 ماند (خاموش = 0mA). */
 #define BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS 8u
-#define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE 1085u
+#define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE 1046u
 
 /* [EN] Runtime clamp limits for the ESP-adjustable current calibration
  *      (user order 2026-09-22: the ESP command panel must never be able to
@@ -255,12 +270,10 @@ static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
     uint32_t__chainCurrentMa =
         (uint32_t)(uint64_t__chainNumerator / uint64_t__chainDenominator);
 
-    /* [EN] Stage 5 - per-channel bench gain trim in permille (1085 = the
-       measured 1.085x of the Trans2 bench point; provisional copy on
-       Trans1 until its own bench point is recorded).
-       [FA] مرحلهٔ ۵ - اصلاح گین بنچ پر-کانال بر حسب پرمیل (۱۰۸۵ یعنی
-       ۱٫۰۸۵ برابر نقطهٔ بنچ Trans2؛ کپی موقت برای Trans1 تا ثبت نقطهٔ بنچ
-       خودش). */
+    /* [EN] Stage 5 - per-channel bench gain trim in permille (ch1 1046,
+       ch2 1303 = the DMM-calibrated 2026-09-24 points at D=15%).
+       [FA] مرحلهٔ ۵ - اصلاح گین بنچ پر-کانال بر حسب پرمیل (کانال ۱: ۱۰۴۶،
+       کانال ۲: ۱۳۰۳ = نقاط کالیبرهٔ مولتی‌متری ۲۰۲۶-۰۹-۲۴ در D=15%). */
     uint32_t__chainCurrentMa =
         (uint32_t)(((uint64_t)uint32_t__chainCurrentMa *
                     (uint64_t)uint32_t__gainPermille) /

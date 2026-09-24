@@ -401,8 +401,25 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_ABSORB_MS\s+1000u", text_h), "absorb fine down-steps must be half-rate: one per 1000 ms (user directive)")
     check("absorbUpIntervalTicks" in text_c and "absorbDownIntervalTicks" in text_c, "absorb branch must use its own half-rate intervals")
     check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS\s+500u", text_h), "down-steps must be limited to one per 500 ms")
-    check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_UP_PERMILLE\s+758u", text_h), "per-channel efficiency UP must stay 758 permille (bench 2026-09-22: real out 520 mA x fw [407,14363,24197])")
-    check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_DN_PERMILLE\s+242u", text_h), "per-channel efficiency DOWN must stay 242 permille (bench 2026-09-22: real out 220 mA x fw [479,12728,24197]; absorbs the ch2 sense over-read until the chain is fixed)")
+    check(re.search(r"#define CHG_FLYBACK_ETA1_PERMILLE\s+0u", text_h), "per-channel ETA1 default = 0 permille = identity (v1.3: a reflash changes no number until the user calibrates from the panel)")
+    check(re.search(r"#define CHG_FLYBACK_ETA2_PERMILLE\s+0u", text_h), "per-channel ETA2 default = 0 permille = identity (v1.3: a reflash changes no number until the user calibrates from the panel)")
+    check(re.search(r"#define CHG_ETA_MIN_PERMILLE\s+0u", text_h), "ETA clamp floor must be 0 (0 = identity bypass, v1.3)")
+    charger_c_txt = CHARGER_C.read_text()
+    check("if (uint32_t__etaPermille == 0u)" in charger_c_txt and "return uint32_t__primaryMa;" in charger_c_txt,
+          "output estimate must fall back to the identity when ETA = 0 (default; user 2026-09-24: with the battery-calibrated gains the filtered reading IS the battery current)")
+    check("((((uint32_t__primaryMa * uint32_t__etaPermille) / 1000u) * uint32_t__vinMv)" in charger_c_txt,
+          "non-zero ETA must convert with LIVE voltages: iest = I x Vin x eta / (1000 x Vbat) - the v1.3 calibration architecture (user order 2026-09-24)")
+    check("CHG_ETA_MIN_VIN_MV" in charger_c_txt and "CHG_ETA_MIN_VBAT_MV" in charger_c_txt,
+          "live-voltage sanity guards must exist for the ETA conversion")
+    esp_link_h_txt = (ROOT / "Firmware/Modules/EspLink/esp_link.h").read_text()
+    esp_link_c_txt = (ROOT / "Firmware/Modules/EspLink/esp_link.c").read_text()
+    check("#define ESPLINK_MSG_CAL_REFERENCE     0x03u" in esp_link_h_txt,
+          "protocol v1.3 must define the CAL_REFERENCE command 0x03 (user order 2026-09-24: send/receive every calibration number via the ESP)")
+    check("func__EspLink_ApplyCalReference" in esp_link_c_txt and "ESPLINK_MSG_CAL_REFERENCE" in esp_link_c_txt,
+          "esp_link must handle CAL_REFERENCE (GAIN targets 0/1, ETA targets 2/3, PARAM_REPORT replies, silent rejection)")
+    check("uint32_t__gain = (uint32_t__gain * uint32_t__refMa) / uint32_t__liveMa;" in esp_link_c_txt and
+          "(((uint32_t__refMa * uint32_t__vbatMv) / uint32_t__vinMv) * 1000u)" in esp_link_c_txt,
+          "CAL math must be: gain *= ref/live and eta = ref*Vbat*1000/(live*Vin) on the live snapshot")
     check("CHG_CURRENT_EMA_SHIFT" not in text_h and "currentEma" not in text_c,
           "charger must NOT filter the current estimate itself (user order 2026-09-22: Measurement's switchable median-3/moving-average chain feeds it; charger decides on that value)")
     check(re.search(r"#define MEASUREMENT_PERIOD_MS\s+1u", (ROOT / "Firmware/Modules/Measurement/measurement.h").read_text()),
@@ -439,11 +456,11 @@ def test_setpoints_and_timing():
     check(re.search(r"#define FAULT_BAT_DISCONNECT_DEBOUNCE_MS\s+150u", text_fault_h), "pump debounce must be 150 ms = 15 control passes (armed-absorb false trips still happened at 50 ms; real pump floats ~0.5 s so 150 ms still catches it)")
     check("func__Measurement_Median5" in (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text(), "battery channel voltages must pass the median-5 prefilter (2-frame spike bursts beat median-3 during absorb)")
     bsp_meas_c = (ROOT / "Firmware/Bsp/Src/bsp_measurement.c").read_text()
-    check(re.search(r"#define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE\s+1085u", bsp_meas_c) and
-          re.search(r"#define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE\s+1085u", bsp_meas_c) and
+    check(re.search(r"#define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE\s+1046u", bsp_meas_c) and
+          re.search(r"#define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE\s+1303u", bsp_meas_c) and
           re.search(r"#define BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS\s+8u", bsp_meas_c) and
           re.search(r"#define BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS\s+8u", bsp_meas_c),
-          "current calibration must be split per channel (user: charger 1 must not ride on charger 2's calibration); ch1 values start as provisional copies pending its own bench point")
+          "current calibration must be split per channel (user: charger 1 must not ride on charger 2's calibration); ch1 baked 2026-09-24 to 1046 permille (DMM 423 mA true vs 436/438/442 displayed at D=15%), ch2 baked to 1303 permille from its D=15% point (DMM 425 true vs 354 displayed, latest of 320/354; the D=10% chain stays non-linear: 185/200/208 vs 185)")
     meas_c_txt = (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text()
     check("func__Measurement_Current1CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1])" in meas_c_txt and
           "func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2])" in meas_c_txt,
@@ -506,6 +523,8 @@ def test_pwm_interleave_phase_lock():
           "Init must start the two bridge timers with a frozen phase offset (user order 2026-09-21: channel-2 gate exactly half a period = 10 us after the channel-1 gate's START, not after its stop)")
     check("uint32_t__periodCounts / 2u" in bsp_pwm_c,
           "the offset must be half a period derived from the live ARR, not a hardcoded 720")
+    check("#define BSP_PWM_TIM3_PHASE_OFFSET_IN_PHASE 0u" in bsp_pwm_c,
+          "gate-phase toggle must stay explicit: 0u = production 10 us interleave (the 2026-09-24 in-phase bench experiment showed no measurable crosstalk change), 1u = in-phase experiment")
     check("HAL_TIM_PWM_Stop" not in bsp_pwm_c,
           "counters must run continuously: only compare=0 turns a channel off, because any later HAL_TIM_PWM_Stop/Start cycle could slip the frozen 10 us interleave")
     check("HAL_TIM_PWM_Start(" not in bsp_pwm_c,
