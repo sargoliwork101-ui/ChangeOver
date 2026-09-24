@@ -65,7 +65,7 @@
  *      (2026-09-18, fixed 15% duty: firmware read 330 mA while scope MEAN at
  *      the LM358 output gave 362/1.01 = 358 mA true primary; 358/330 = 1085
  *      permille). After this the mA readout equals the physical primary
- *      current; the efficiency target lives in CHG_FLYBACK_EFFICIENCY_PERMILLE.
+ *      current; the ETA conversion factors live in CHG_FLYBACK_ETA1/ETA2_PERMILLE (charger.h, v1.3).
  *      2026-09-24 (user order: calibrate from the given bench numbers, no
  *      further tests): gain re-set at the D=15% point - displayed 354 vs
  *      425 mA DMM true (latest of 320/354, readings drift upward through

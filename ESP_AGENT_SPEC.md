@@ -4,6 +4,11 @@
 > سمت STM32 کامل و push شده است؛ فقط فعال‌سازی نهایی `MODULE_ESP` مانده (پایین را ببینید).
 > متن فنی عمداً انگلیسی است تا هیچ ابهامی در پروتکل نماند.
 >
+> v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
+> conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
+> identity; live `i_filtered x Vin x eta / (1000 x Vbat)` when set) — the
+> STM32 side is IMPLEMENTED and pushed. With ETA = 0 nothing changes vs v1.2.
+>
 > v1.2 (2026-09-23): manual test mode (ID 19, section 5.2) — the STM32
 > side is IMPLEMENTED and pushed (param 19, state 9, flags b5, dead-man,
 > payload 112). Only the final `MODULE_ESP = 1` flip is left (section 9).
@@ -16,7 +21,8 @@
 - DMA transport in both directions on the STM32 (circular 256-byte RX ring,
   zero CPU per byte; DMA-drained TX ring) - user order 2026-09-23.
 - 20 runtime parameters (current-chain calibration, voltage offsets,
-  current-filter sizes, per-channel flyback efficiency, per-channel
+  current-filter sizes, per-channel ETA conversion factors (v1.3,
+  CAL_REFERENCE-calibratable), per-channel
   charger enable/cut, per-channel PWM duty ceiling, fixed-duty mode, and
   the v1.2 global manual test mode - ID 19, section 5.2).
 - Charger module cut/reconnect commands (param IDs 11/12).
@@ -79,6 +85,7 @@ immediately and drain within ~1 ms.
 |---|---|---|---|
 | 0x01 | ESP→STM | SET_PARAM | `[id:u8][value:u32 LE]` (5 bytes) |
 | 0x02 | ESP→STM | GET_PARAMS | empty (len = 0) |
+| 0x03 | ESP→STM | CAL_REFERENCE | `[target:u8][ref_mA:u32 LE]` (5 bytes) — one-shot calibration from a typed DMM reading; targets 0/1 = GAIN ch1/2, 2/3 = ETA ch1/2 (v1.3, section 5.4) |
 | 0x10 | STM→ESP | TLM_LIVE | 84 bytes, layout below |
 | 0x11 | STM→ESP | PARAM_REPORT | `[id:u8][value:u32 LE]` — the **applied** value (sent after every accepted SET_PARAM) |
 | 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS; 20 params in v1.2 = 101 payload bytes) |
@@ -113,8 +120,8 @@ AA 55 11 05 02 B0 04 00 00 A2
 | 6 | V12_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 12 V (middle node) battery calibration |
 | 7 | FILTER_MEDIAN_SIZE | u32 | samples | 3 | 1/3/5 | Median window on charge currents. Valid sizes 1, 3, 5; other values round DOWN to the next odd size. **1 = bypass** (no separate on/off switch exists). Filter state resets on change. |
 | 8 | FILTER_AVERAGE_WINDOW | u32 | samples | 10 | 1..10 | Moving-average window on charge currents. **1 = bypass.** Filter state resets on change. |
-| 9 | CHG_EFF_UP_PERMILLE | u32 | permille | 786 | 100..999 | Charger 1 eta - INERT since 2026-09-24 (estimate = identity; kept for protocol compatibility) |
-| 10 | CHG_EFF_DN_PERMILLE | u32 | permille | 786 | 100..999 | Charger 2 eta - INERT since 2026-09-24 (estimate = identity; kept for protocol compatibility) |
+| 9 | CHG_ETA1_PERMILLE | u32 | permille | 0 | 0..999 | **v1.3**: charger 1 conversion factor. 0 = identity (default - `iest = i_filtered`; with the battery-calibrated gains the reading already is the battery current). Non-zero: `iest = i_filtered x Vin x eta / (1000 x Vbat)` with LIVE voltages, so the battery-current reading stays true while the battery charges. Set with CAL_REFERENCE (section 5.4), not by hand |
+| 10 | CHG_ETA2_PERMILLE | u32 | permille | 0 | 0..999 | Same, charger 2 |
 | 11 | CHG1_ENABLE | u32 | 0/1 | 1 | 0..1 | 0 = cut charger module 1 (PWM off, state OFF); 1 = reconnect (soft BULK restart from 1% duty) |
 | 12 | CHG2_ENABLE | u32 | 0/1 | 1 | 0..1 | Same for charger module 2 |
 | 13 | CHG1_DUTY_CEILING | u32 | permille | 500 | 0..500 | PWM duty cap, charger 1. EVERY applied duty (ramp, regulation, fixed mode) is clamped to min(compile max, this ceiling). |
@@ -127,11 +134,14 @@ AA 55 11 05 02 B0 04 00 00 A2
 
 Notes:
 - Signed values (4..6) travel as two's-complement u32 on the wire.
-- `Iest = I_filtered` (identity since 2026-09-24: the sense chain is
-  battery-side per the user - the measured voltage IS the battery current;
-  the old `Ipri × Vin × eta / Vbat` conversion is retired). ETA parameters
-  are inert now; the OFFSET/GAIN/FILTER parameters change the measured
-  current that the charger regulates on.
+- `Iest = I_filtered` by default (identity since 2026-09-24: the sense
+  chain is battery-side per the user - the measured voltage IS the battery
+  current). v1.3 makes the conversion EXPLICIT and optional: with ETA
+  (ID 9/10) = 0 (compile default) the estimate stays the identity; a
+  CAL_REFERENCE command (section 5.4) - or a manual ID 9/10 write - turns
+  on the live `i_filtered x Vin x eta / (1000 x Vbat)` conversion so the
+  reading tracks the battery voltage during a charge. The OFFSET/GAIN/
+  FILTER parameters change the measured current the charger regulates on.
 - **Fixed-duty mode safety wrapper** (identical to the proven compile-time
   bench-test mode): switching STOPS when the battery reaches the absorb
   voltage (no overcharge with regulation off), the hardware JIT
@@ -165,8 +175,8 @@ English line is for the agent/maintainers.
 | 6 | V12 offset (mV, signed) - adder in: V12_mV ≈ counts × 4.859 + offset; Vhigh = V24 − V12 | آفست کالیبراسیون ولتاژ باتری ۱۲V (نود میانی) بر حسب mV (علامت‌دار)؛ فرمول: V12 ≈ counts × 4.859 + آفست و Vhigh = V24 − V12 |
 | 7 | Median window (1/3/5) - first stage of the filter pipeline: average_W( median_N( mA_raw ) ); 1 = off, 3 = default, 5 also kills double-spikes | پنجرهٔ مدین (۱/۳/۵) - مرحلهٔ اول فیلتر: اول median(N) بعد average(W) روی mA خام؛ ۱ = خاموش، ۳ = پیش‌فرض، ۵ پالس‌های دوتایی را هم حذف می‌کند |
 | 8 | Average window (1..10) - second stage of the filter pipeline: average_W( median_N( mA_raw ) ); 1 = off, 10 = default | پنجرهٔ میانگین (۱..۱۰) - مرحلهٔ دوم فیلتر: میانگین آخرین W نمونهٔ خروجی مدین؛ ۱ = خاموش، ۱۰ = پیش‌فرض |
-| 9 | Ch1 eta (permille) - RETIRED 2026-09-24: no effect (estimate = identity; the sense chain is battery-side); accepted for protocol compatibility | بازدهی کانال ۱ (پرمیل) — از ۲۰۲۶-۰۹-۲۴ بی‌اثر (تخمین همانی است؛ زنجیرهٔ سنس سمت باتری است)؛ برای سازگاری پروتکل پذیرفته می‌شود |
-| 10 | Ch2 eta (permille) - RETIRED 2026-09-24: no effect (estimate = identity; the sense chain is battery-side); accepted for protocol compatibility | بازدهی کانال ۲ (پرمیل) — از ۲۰۲۶-۰۹-۲۴ بی‌اثر (تخمین همانی است؛ زنجیرهٔ سنس سمت باتری است)؛ برای سازگاری پروتکل پذیرفته می‌شود |
+| 9 | Ch1 conversion factor ETA1 (permille, v1.3) - 0 = identity (default: the reading already is the battery current); non-zero = `iest = i_filtered x Vin x eta / (1000 x Vbat)` with live voltages. Calibrate with the CAL_REFERENCE button (type the battery-side DMM mA), never by hand | ضریب تبدیل کانال ۱ (پرمیل، v1.3) — صفر = همانی (پیش‌فرض: عدد خودش جریان باتری است)؛ غیرصفر = iest = i_فیلترشده × Vin × η ÷ (۱۰۰۰ × Vbat) با ولتاژهای زنده. با دکمهٔ CAL_REFERENCE کالیبره کنید (عدد مولتی‌متر سمت باتری را بدهید)، نه دستی |
+| 10 | Ch2 conversion factor ETA2 (permille, v1.3) - same as ID 9, charger 2 | ضریب تبدیل کانال ۲ (پرمیل، v1.3) — مانند ID 9، برای کانال ۲ |
 | 11 | Charger 1 on/off - 0 cuts the PWM immediately (battery keeps its charge), 1 resumes with a soft ramp | کلید قطع/وصل شارژر ۱؛ صفر فوراً PWM را قطع می‌کند و یک شارژ را با رمپ نرم ادامه می‌دهد |
 | 12 | Charger 2 on/off - same for charger 2 | کلید قطع/وصل شارژر ۲ |
 | 13 | Ch1 duty ceiling (permille) - hard cap on the PWM of charger 1 (ramp, regulation and fixed mode all respect it) | سقف duty ی PWM شارژر ۱ (پرمیل)؛ رمپ، تنظیم و مود فیکس همه به آن احترام می‌گذارند |
@@ -265,13 +275,19 @@ i_filtered_ma = average_W( median_N( mA_unfiltered ) )
                 (TLM: iX_filtered_ma)
 ```
 
-Output-current estimate (TLM: iestX_ma) - identity since 2026-09-24:
+Output-current estimate (TLM: iestX_ma) - v1.3, two modes (ETA = ID 9/10):
 
 ```text
-iest_ma = i_filtered_ma
-          (identity since 2026-09-24: the sense chain is battery-side per the
-          user - the measured voltage IS the battery current; the old
-          Vin_mv x eta / Vbat conversion is retired)
+ETA = 0 (default):  iest_ma = i_filtered_ma
+          (identity: with the battery-calibrated gains the filtered reading
+           already is the battery current - user bench fact 2026-09-24)
+
+ETA > 0:    iest_ma = i_filtered_ma x Vin_mv x eta / (1000 x Vbat_mv)
+          with the LIVE Vin (TLM offset 60) and the channel battery voltage
+          (ch1 = Vhigh = offset 76, ch2 = Vlow = offset 72), so the reading
+          stays true while the battery voltage moves during a charge. eta
+          comes from the CAL_REFERENCE command (section 5.4) - the panel
+          must not hand-compute it.
 ```
 
 Voltage chain (offsets = IDs 4/5/6, saturating add, never below 0 mV):
@@ -287,6 +303,60 @@ Fixed hardware constants (NOT parameters - never editable): 12-bit ADC,
 3300 mV reference, full scale 4095; R41/R42 = 1 k / 10 k MCU-input divider
 on the current nets; LM358 non-inverting gain 101; shunt 10 mOhm; voltage
 dividers 69.2 k / 6.8 k (both 24 V nets) and 34.2 k / 6.8 k (12 V net).
+
+### 5.4 Panel calibration command CAL_REFERENCE (v1.3 — user order 2026-09-24)
+
+One command calibrates the whole current chain from the panel: the user
+types the multimeter reading, the STM32 computes and applies the parameter
+on its own live snapshot - the panel never needs the raw math. This is the
+"send and receive every calibration number via the ESP" workflow.
+
+Frame (ESP→STM, type 0x03, payload 5 bytes):
+
+```text
+AA 55 03 05 [target:u8] [ref_mA:u32 LE] [xor checksum]
+```
+
+| target | meaning | DMM placement | firmware computes | replies |
+|---|---|---|---|---|
+| 0 | GAIN ch1 | in series with whatever current the displayed reading should equal (battery side for a battery-reading gain; the channel 24 V input for a physical shunt-current gain) | `gain = gain x ref / i_filtered` (setter clamps 100..3000) | PARAM_REPORT ID 2, then PARAM_REPORT ID 9 = 0 |
+| 1 | GAIN ch2 | same, charger 2 | same | PARAM_REPORT ID 3, then PARAM_REPORT ID 10 = 0 |
+| 2 | ETA ch1 | in series with the BATTERY of charger 1 | `eta = ref x Vbat x 1000 / (i_filtered x Vin)` from the live snapshot (setter clamps 0..999) | PARAM_REPORT ID 9 |
+| 3 | ETA ch2 | in series with the BATTERY of charger 2 | same | PARAM_REPORT ID 10 |
+
+Why GAIN resets ETA: the old ETA absorbed the old gain's error, so after a
+gain calibration it is stale by definition - the second report (ID 9/10 =
+0) tells the panel to show identity again until the user reruns target
+2/3. The recommended order is therefore: GAIN first (if at all), ETA last.
+
+Rejection (NO reply frame at all - show a "رد شد: جریان/شرایط ناکافی"
+message in the UI): snapshot invalid, ref outside 50..5000 mA, live
+filtered current below 50 mA, or (ETA only) Vin < 10 V / Vbat < 5 V. Tell
+the user to raise the channel current above 50 mA first (e.g. manual mode
+at a small duty).
+
+Verified example frames (hex):
+
+```text
+CAL ETA ch1, ref 425 mA:   AA 55 03 05 02 A9 01 00 00 AC
+CAL GAIN ch1, ref 300 mA:  AA 55 03 05 00 2C 01 00 00 2B
+```
+
+Recommended UI: a "کالیبراسیون جریان" card with one mA number input and
+four buttons (گین کانال۱ / گین کانال۲ / η کانال۱ / η کانال۲). After a
+successful ETA calibration show the applied eta next to the button (it
+arrives in the PARAM_REPORT). Include IDs 9 and 10 in the session cache
+that is re-sent after a detected STM32 reset (all parameters are RAM-only
+on the STM32).
+
+Bench procedure (also in ESP_BENCH_MANUAL.md, گام ۵ب): with the channel
+running above 50 mA (e.g. manual duty 15%):
+1. DMM in series with the battery → type its mA → target 2 (or 3). iest now
+   equals the DMM at this operating point AND keeps tracking the battery
+   voltage as it rises during the charge (identity mode would drift by
+   Vbat_cal/Vbat, about 10% across a full charge).
+2. Optional, physical shunt-current gain: DMM in series with the channel
+   input → target 0 (or 1) → then repeat step 1 (mandatory after a GAIN).
 
 ## 6. TLM_LIVE payload layout (84 bytes, little-endian)
 
@@ -411,6 +481,17 @@ documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 1 s keepalive while ID 19 = 1.
 
 ## 10. Protocol version
+
+v1.3 (2026-09-24, user order of the same day): added the CAL_REFERENCE
+command (type 0x03 - one-shot panel calibration of the current-chain GAIN
+and the ETA factors from a typed multimeter reading; section 5.4) and
+re-purposed parameters 9/10 as per-channel ETA conversion factors
+(CHG_ETA1/ETA2_PERMILLE, default 0 = identity, range 0..999; renamed from
+CHG_EFF_UP/DN_PERMILLE). With ETA = 0 (compile default) iest stays the
+identity (2026-09-24 bench fact: the sense chain is battery-side); with
+ETA > 0, iest = i_filtered x Vin x eta / (1000 x Vbat) with live voltages.
+No TLM change, no ID renumbering; SET_PARAM/GET_PARAMS unchanged. The
+STM32 side of v1.3 is implemented and pushed the same day.
 
 v1.2 (2026-09-23, user order of the same day): added the global manual test
 mode - new parameter ID 19 (append-only, IDs 0..18 unchanged and still

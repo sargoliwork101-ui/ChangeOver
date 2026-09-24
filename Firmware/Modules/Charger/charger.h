@@ -243,18 +243,55 @@
  *      حالا همانی است و این مقادیر پرمیل در هیچ محاسبه‌ای نمی‌نشینند (فقط
  *      پیش‌فرض بی‌اثر برای خوانده‌شدن پارامتر eta ‌ی ۹/۱۰ ESP). تاریخچهٔ
  *      758/242/786 بالا سندِ فرض اشتباه «شانت در سورس ماسفت» است.
+ *      CALIBRATION ARCHITECTURE v1.3 (user order 2026-09-24, same day):
+ *      instead of staying deleted, the conversion is back as an EXPLICIT,
+ *      panel-calibratable stage. ETA1/ETA2 (ESP params 9/10, renamed from
+ *      the old UP/DN) are per-channel conversion factors with DEFAULT 0 =
+ *      identity - a reflash changes no number until the user calibrates.
+ *      When non-zero: iest = I_filtered x Vin x eta / (1000 x Vbat) with
+ *      the LIVE input and channel-battery voltages, so the battery-current
+ *      reading stays true while the battery voltage moves during a charge
+ *      (the identity mode drifts by Vbat_cal/Vbat). Calibration is ONE ESP
+ *      command (CAL_REFERENCE, protocol v1.3): the user types the
+ *      battery-side DMM mA on the panel and the firmware computes eta from
+ *      its own live snapshot. With the 2026-09-24 battery-calibrated gains
+ *      the computed eta lands near 1000 x Vbat / Vin (~537) and absorbs
+ *      both the true converter efficiency and the gain calibration point.
+ * [FA] معماری کالیبراسیون v1.3 (دستور کاربر ۲۰۲۶-۰۹-۲۴، همان روز): تبدیل
+ *      به‌جای حذفِ کامل، به یک مرحلهٔ صریح و قابل‌کالیبره از پنل برگشت.
+ *      ETA1/ETA2 (پارامتر ۹/۱۰ ESP، تغییرنام از UP/DN قدیمی) ضریب تبدیل
+ *      هر کانال‌اند با پیش‌فرض ۰ = همانی — ریفلش هیچ عددی را عوض نمی‌کند
+ *      تا وقتی کاربر کالیبره کند. وقتی غیرصفر است: iest = I_filtered ×
+ *      Vin × η ÷ (۱۰۰۰ × Vbat) با ولتاژهای زندهٔ ورودی و باتری کانال، پس
+ *      خوانش جریان باتری با بالا رفتن ولتاژ باتری در طول شارژ درست می‌ماند
+ *      (حالت همانی به‌اندازهٔ Vbat_کالیبراسیون÷Vbat منحرف می‌شود). کالیبراسیون
+ *      یک فرمان ESP است (CAL_REFERENCE، پروتکل v1.3): کاربر عدد مولتی‌متر
+ *      سمت باتری را در پنل وارد می‌کند و فریم‌ور خودش η را از snapshot
+ *      زنده محاسبه می‌کند. با گین‌های کالیبره-باتریِ ۲۰۲۶-۰۹-۲۴، η
+ *      محاسبه‌شده نزدیک ۱۰۰۰×Vbat÷Vin (~۵۳۷) می‌افتد و هم بازده واقعی
+ *      مبدل و هم نقطهٔ کالیبراسیون گین را جذب می‌کند.
  */
-#define CHG_FLYBACK_EFFICIENCY_UP_PERMILLE   786u
-#define CHG_FLYBACK_EFFICIENCY_DN_PERMILLE   786u
+#define CHG_FLYBACK_ETA1_PERMILLE            0u
+#define CHG_FLYBACK_ETA2_PERMILLE            0u
 
-/* [EN] Clamp limits of the ESP-adjustable runtime efficiency (user order
- *      2026-09-22): the panel may retune each channel between 100 and 999
- *      permille, never to zero or above unity.
- * [FA] حدود گیرهٔ بازدهی زمان اجرای قابل‌تنظیم از ESP (دستور کاربر
- *      ۲۰۲۶-۰۹-۲۲): پنل هر کانال را بین ۱۰۰ تا ۹۹۹ پرمیل تنظیم می‌کند،
- *      هرگز صفر یا بالای یک نه. */
-#define CHG_ETA_MIN_PERMILLE                  100u
+/* [EN] Clamp limits of the ESP-adjustable runtime conversion factor
+ *      (v1.3): 0 = identity bypass (compiled default), 1..999 = the live
+ *      Vin/Vbat conversion. The panel may zero it to return to the raw
+ *      filtered reading at any time.
+ * [FA] حدود گیرهٔ ضریب تبدیل زمان اجرای قابل‌تنظیم از ESP (v1.3): صفر =
+ *      همانی/گذر (پیش‌فرض کامپایل)، ۱..۹۹۹ = تبدیل زندهٔ Vin/Vbat. پنل
+ *      می‌تواند هر وقت خواست صفرش کند تا به خوانش فیلترشدهٔ خام برگردد. */
+#define CHG_ETA_MIN_PERMILLE                  0u
 #define CHG_ETA_MAX_PERMILLE                  999u
+
+/* [EN] Live-voltage sanity floors for the conversion (v1.3): below these
+ *      the estimate falls back to the identity instead of dividing a
+ *      garbage snapshot. Also used by the ESP CAL_REFERENCE handler.
+ * [FA] کف‌های سلامت ولتاژ زنده برای تبدیل (v1.3): زیر این مقادیر تخمین
+ *      به‌جای تقسیم snapshot بی‌معنی به همانی برمی‌گردد. هندلر
+ *      CAL_REFERENCE ‌ی ESP هم از همین‌ها استفاده می‌کند. */
+#define CHG_ETA_MIN_VIN_MV                10000u
+#define CHG_ETA_MIN_VBAT_MV                5000u
 #define CHG_OUTPUT_EST_MIN_VBAT_MV     1000u
 #define CHG_INPUT_VALID_MV           22000u
 #define CHG_DUTY_START_PERMILLE        10u

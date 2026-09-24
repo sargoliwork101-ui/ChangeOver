@@ -39,14 +39,61 @@
  *      1 + 20 × 5 = ۱۰۱ بایت payload رساند. */
 #define ESPLINK_FRAME_MAX_PAYLOAD     112u
 
-/* [EN] Message types. ESP -> STM: SET_PARAM / GET_PARAMS. STM -> ESP:
- *      TLM_LIVE (periodic), PARAM_REPORT (after each SET), PARAMS_BULK
- *      (answer to GET). Unknown types are dropped silently.
- * [FA] انواع پیام. ESP به STM: SET_PARAM / GET_PARAMS. STM به ESP:
- *      TLM_LIVE (دوره‌ای)، PARAM_REPORT (بعد از هر SET)، PARAMS_BULK
- *      (پاسخ GET). نوع ناشناخته بی‌صدا کنار گذاشته می‌شود. */
+/* [EN] Message types. ESP -> STM: SET_PARAM / GET_PARAMS / CAL_REFERENCE
+ *      (v1.3). STM -> ESP: TLM_LIVE (periodic), PARAM_REPORT (after each
+ *      SET and as the CAL_REFERENCE reply), PARAMS_BULK (answer to GET).
+ *      Unknown types are dropped silently.
+ * [FA] انواع پیام. ESP به STM: SET_PARAM / GET_PARAMS / CAL_REFERENCE
+ *      (v1.3). STM به ESP: TLM_LIVE (دوره‌ای)، PARAM_REPORT (بعد از هر SET
+ *      و به‌عنوان پاسخ CAL_REFERENCE)، PARAMS_BULK (پاسخ GET). نوع
+ *      ناشناخته و طول payload غلط بی‌صدا کنار گذاشته می‌شود. */
 #define ESPLINK_MSG_SET_PARAM         0x01u
 #define ESPLINK_MSG_GET_PARAMS        0x02u
+#define ESPLINK_MSG_CAL_REFERENCE     0x03u
+
+/* [EN] CAL_REFERENCE (protocol v1.3, user order 2026-09-24): one-shot bench
+ *      calibration - "send and receive every calibration number via the
+ *      ESP". Payload = [target:u8][ref_mA:u32 LE] where ref_mA is the
+ *      multimeter reading the user types on the panel:
+ *        target 0 = GAIN ch1   1 = GAIN ch2   2 = ETA ch1   3 = ETA ch2
+ *      GAIN: new gain = gain x ref / i_filtered(live), clamped 100..3000 by
+ *            the setter; that channel's ETA is reset to 0 because the old
+ *            ETA absorbed the old gain - rerun target 2/3 afterwards.
+ *            Replies with TWO PARAM_REPORT frames: the new gain (param
+ *            2/3) and then the reset ETA (param 9/10 = 0).
+ *      ETA:  eta = ref x Vbat x 1000 / (i_filtered x Vin) computed from the
+ *            LIVE snapshot (channel battery = v_bat_high for ch1,
+ *            v_bat_low for ch2); from then on iest = i_filtered x Vin x
+ *            eta / (1000 x Vbat) tracks the input and battery voltages
+ *            automatically as the battery charges. Replies with ONE
+ *            PARAM_REPORT (param 9/10).
+ *      Rejection (NO reply frame at all): snapshot missing/invalid, ref
+ *      outside ESPLINK_CAL_MIN_REF_MA..ESPLINK_CAL_MAX_REF_MA, live
+ *      filtered current below ESPLINK_CAL_MIN_REF_MA, or (ETA only)
+ *      Vin/Vbat below the charger minimums (CHG_ETA_MIN_VIN_MV /
+ *      CHG_ETA_MIN_VBAT_MV).
+ * [FA] CAL_REFERENCE (پروتکل v1.3، دستور کاربر ۲۰۲۶-۰۹-۲۴): کالیبراسیون
+ *      یک‌مرحله‌ای بنچ — «همهٔ اعداد کالیبراسیون از ESP فرستاده/دریافت
+ *      شود». payload = [target:u8][ref_mA:u32 LE] که ref_mA همان عدد
+ *      مولتی‌متری است که کاربر در پنل وارد می‌کند:
+ *        target 0 = گین کانال۱   1 = گین کانال۲   2 = η کانال۱   3 = η کانال۲
+ *      گین: گین جدید = گین × ref ÷ جریان فیلترشدهٔ زنده؛ setter بین
+ *            ۱۰۰..۳۰۰۰ گیره می‌زند؛ η همان کانال صفر می‌شود چون η قدیمی
+ *            خطای گین قدیمی را جذب کرده بود — بعدش دوباره target 2/3
+ *            بدهید. پاسخ: دو فریم PARAM_REPORT — گین جدید (پارامتر ۲/۳)
+ *            و بعد η صفرشده (پارامتر ۹/۱۰).
+ *      η:   η = ref × Vbat × ۱۰۰۰ ÷ (جریان فیلترشده × Vin) از snapshot
+ *            زنده (باتری کانال = v_bat_high برای ch1 و v_bat_low برای
+ *            ch2)؛ از آن به بعد iest = جریان فیلترشده × Vin × η ÷ (۱۰۰۰ ×
+ *            Vbat) خودش تغییر ولتاژ ورودی و باتری را در طول شارژ دنبال
+ *            می‌کند. پاسخ: یک PARAM_REPORT (پارامتر ۹/۱۰).
+ *      رد (هیچ فریم پاسخی نمی‌آید): snapshot نبودن/نامعتبر بودن، ref
+ *      بیرون از ESPLINK_CAL_MIN_REF_MA..ESPLINK_CAL_MAX_REF_MA، جریان
+ *      فیلترشدهٔ زنده کمتر از ESPLINK_CAL_MIN_REF_MA، یا (فقط η) ولتاژهای
+ *      کمتر از حد شارژر (CHG_ETA_MIN_VIN_MV / CHG_ETA_MIN_VBAT_MV).
+ */
+#define ESPLINK_CAL_MIN_REF_MA               50u
+#define ESPLINK_CAL_MAX_REF_MA             5000u
 #define ESPLINK_MSG_TLM_LIVE          0x10u
 #define ESPLINK_MSG_PARAM_REPORT      0x11u
 #define ESPLINK_MSG_PARAMS_BULK       0x12u
@@ -76,8 +123,8 @@
 #define ESPLINK_PARAM_V12_OFFSET_MV        6u   /* i32, mV,       def 0,    -2000..2000 */
 #define ESPLINK_PARAM_FILTER_MEDIAN_SIZE   7u   /* u32, samples,  def 3,    1/3/5, 1=bypass */
 #define ESPLINK_PARAM_FILTER_AVERAGE_WINDOW 8u  /* u32, samples,  def 10,   1..10, 1=bypass */
-#define ESPLINK_PARAM_CHG_EFF_UP_PERMILLE  9u   /* u32, permille, def 758,  100..999   */
-#define ESPLINK_PARAM_CHG_EFF_DN_PERMILLE  10u  /* u32, permille, def 242,  100..999   */
+#define ESPLINK_PARAM_CHG_ETA1_PERMILLE    9u   /* u32, permille, def 0,    0..999, 0=identity (v1.3) */
+#define ESPLINK_PARAM_CHG_ETA2_PERMILLE   10u   /* u32, permille, def 0,    0..999, 0=identity (v1.3) */
 #define ESPLINK_PARAM_CHG1_ENABLE          11u  /* u32, 0/1,      def 1                */
 #define ESPLINK_PARAM_CHG2_ENABLE          12u  /* u32, 0/1,      def 1                */
 #define ESPLINK_PARAM_CHG1_DUTY_CEILING    13u  /* u32, permille, def 500,  0..500    */

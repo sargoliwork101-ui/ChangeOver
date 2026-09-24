@@ -401,11 +401,25 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_ABSORB_MS\s+1000u", text_h), "absorb fine down-steps must be half-rate: one per 1000 ms (user directive)")
     check("absorbUpIntervalTicks" in text_c and "absorbDownIntervalTicks" in text_c, "absorb branch must use its own half-rate intervals")
     check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS\s+500u", text_h), "down-steps must be limited to one per 500 ms")
-    check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_UP_PERMILLE\s+786u", text_h), "per-channel efficiency UP = 786 permille (INERT since 2026-09-24: estimate = identity, chain is battery-side; kept only for ESP param 9 read-back)")
-    check(re.search(r"#define CHG_FLYBACK_EFFICIENCY_DN_PERMILLE\s+786u", text_h), "per-channel efficiency DOWN = 786 permille (INERT since 2026-09-24: estimate = identity, chain is battery-side; kept only for ESP param 10 read-back)")
+    check(re.search(r"#define CHG_FLYBACK_ETA1_PERMILLE\s+0u", text_h), "per-channel ETA1 default = 0 permille = identity (v1.3: a reflash changes no number until the user calibrates from the panel)")
+    check(re.search(r"#define CHG_FLYBACK_ETA2_PERMILLE\s+0u", text_h), "per-channel ETA2 default = 0 permille = identity (v1.3: a reflash changes no number until the user calibrates from the panel)")
+    check(re.search(r"#define CHG_ETA_MIN_PERMILLE\s+0u", text_h), "ETA clamp floor must be 0 (0 = identity bypass, v1.3)")
     charger_c_txt = CHARGER_C.read_text()
-    check("return uint32_t__primaryMa;" in charger_c_txt and "(void)measurement_snapshot_t__snap;" in charger_c_txt,
-          "output estimate must be the identity (user 2026-09-24: the sense chain is battery-side - the measured voltage IS the battery current; the Vin*eta/Vbat conversion is retired)")
+    check("if (uint32_t__etaPermille == 0u)" in charger_c_txt and "return uint32_t__primaryMa;" in charger_c_txt,
+          "output estimate must fall back to the identity when ETA = 0 (default; user 2026-09-24: with the battery-calibrated gains the filtered reading IS the battery current)")
+    check("((((uint32_t__primaryMa * uint32_t__etaPermille) / 1000u) * uint32_t__vinMv)" in charger_c_txt,
+          "non-zero ETA must convert with LIVE voltages: iest = I x Vin x eta / (1000 x Vbat) - the v1.3 calibration architecture (user order 2026-09-24)")
+    check("CHG_ETA_MIN_VIN_MV" in charger_c_txt and "CHG_ETA_MIN_VBAT_MV" in charger_c_txt,
+          "live-voltage sanity guards must exist for the ETA conversion")
+    esp_link_h_txt = (ROOT / "Firmware/Modules/EspLink/esp_link.h").read_text()
+    esp_link_c_txt = (ROOT / "Firmware/Modules/EspLink/esp_link.c").read_text()
+    check("#define ESPLINK_MSG_CAL_REFERENCE     0x03u" in esp_link_h_txt,
+          "protocol v1.3 must define the CAL_REFERENCE command 0x03 (user order 2026-09-24: send/receive every calibration number via the ESP)")
+    check("func__EspLink_ApplyCalReference" in esp_link_c_txt and "ESPLINK_MSG_CAL_REFERENCE" in esp_link_c_txt,
+          "esp_link must handle CAL_REFERENCE (GAIN targets 0/1, ETA targets 2/3, PARAM_REPORT replies, silent rejection)")
+    check("uint32_t__gain = (uint32_t__gain * uint32_t__refMa) / uint32_t__liveMa;" in esp_link_c_txt and
+          "(((uint32_t__refMa * uint32_t__vbatMv) / uint32_t__vinMv) * 1000u)" in esp_link_c_txt,
+          "CAL math must be: gain *= ref/live and eta = ref*Vbat*1000/(live*Vin) on the live snapshot")
     check("CHG_CURRENT_EMA_SHIFT" not in text_h and "currentEma" not in text_c,
           "charger must NOT filter the current estimate itself (user order 2026-09-22: Measurement's switchable median-3/moving-average chain feeds it; charger decides on that value)")
     check(re.search(r"#define MEASUREMENT_PERIOD_MS\s+1u", (ROOT / "Firmware/Modules/Measurement/measurement.h").read_text()),
