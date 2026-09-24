@@ -9,6 +9,8 @@
  *               a live 36 s filter chart, a per-channel re-apply (JIT re-arm) button in manual mode, and a
  *               bench tab (spec 5.5) that runs tests A-D itself, reads every TLM frame through the /m
  *               statistics window and prints copyable result blocks (never auto-applies a calibration).
+ *               Engineer mode switch (default off, remembered per device): off = status (read-only) and
+ *               the CAL card only; on = manual/bench tabs, the parameter table, helpers and formulas.
  *          [FA] پل ESP-Link سمت ESP: تبادل فریم باینری با STM32 روی UART
  *               (921600 8N1، مطابق ESP_AGENT_SPEC.md نسخه ۱.۳) و یک پنل وب دارک ساده
  *               راست‌به‌چپ با فونت وزیرمتن و سه تب: وضعیت، کالیبراسیون، تست دستی؛
@@ -18,6 +20,8 @@
  *               duty» (مسلح‌سازی بعد از JIT) برای هر کانال در مود دستی، و تب «تست بنچ» (بخش 5.5) که تست‌های
  *               A تا D را خودش اجرا می‌کند، تک‌تک فریم‌های TLM را از پنجرهٔ آمار /m می‌خواند و بلوک متن
  *               کپی‌شدنی می‌دهد (هیچ کالیبراسیونی را خودکار اعمال نمی‌کند).
+ *               کلید «حالت مهندس» (پیش‌فرض خاموش، روی هر دستگاه به یاد می‌ماند): خاموش = وضعیت (فقط خواندنی) و
+ *               فقط کارت CAL؛ روشن = تب‌های تست دستی و بنچ، جدول پارامترها، دستیارها و فرمول‌ها.
  *
  * @note    [EN] Wiring: STM32 PA9 (TX) -> ESP RX, STM32 PA10 (RX) <- ESP TX, common GND.
  *               STM32 PA8 drives ESP CH_PD/EN; this sketch never touches that line.
@@ -272,11 +276,18 @@ body.dn section:not(#t2){opacity:.45;filter:grayscale(1)}
 .tw{overflow:auto;max-height:280px;margin:6px 0 10px}.bt2 th{position:sticky;top:0;background:var(--cd)}body:not(.br) .stp{display:none}.bt2{font-size:12px;direction:ltr;white-space:nowrap}.bt2 th{color:var(--mu);font-weight:500;text-align:left;padding:4px 6px}.bt2 td{padding:4px 6px;text-align:left!important}
 .bsum{font-size:12px;direction:ltr;text-align:left;line-height:1.9;margin-bottom:8px}.okc{color:var(--ok)}.erc{color:var(--er)}
 .bxw textarea{width:100%;height:150px;background:#0c1018;color:#9aa6c0;border:1px solid var(--ln);border-radius:10px;padding:8px;font:11px/1.5 monospace;direction:ltr;margin-top:6px}
+/* حالت مهندس: پیش‌فرض خاموش؛ ابزارها فقط پنهان‌اند */
+.hr{display:flex;align-items:center;gap:12px}
+.eg{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu);border:1px solid var(--ln);background:none;border-radius:8px;padding:3px 8px;cursor:pointer}
+.eg i{width:26px;height:14px;border-radius:7px;background:#252e42;position:relative}.eg i:after{content:'';position:absolute;top:2px;right:2px;width:10px;height:10px;border-radius:50%;background:var(--mu);transition:right .2s}
+body.eng .eg{color:var(--wa);border-color:#5a4418}body.eng .eg i{background:var(--wa)}body.eng .eg i:after{right:14px;background:#fff}
+body:not(.eng) .en,body:not(.eng) #ch .fx,body:not(.eng) #ch .bt{display:none}
+.cc .ca{border-top:0;margin-top:0;padding-top:0}.stp2{background:var(--er);white-space:nowrap}
 @media(max-width:640px){.cb{font-size:12px;padding:8px 7px}.cb span{white-space:nowrap}.vs{grid-template-columns:repeat(3,1fr)}.ch{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}}
 </style></head><body>
-<header><h1>پنل ChangeOver</h1><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
-<nav><button class="a" data-t="0">وضعیت</button><button data-t="1">کالیبراسیون</button><button class="m" data-t="2">تست دستی</button><button data-t="3">تست بنچ</button></nav>
-<div class="wn gb" id="mb"><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div>
+<header><h1>پنل ChangeOver</h1><div class="hr"><button class="eg" id="eg" title="نمایش ابزارهای مهندسی"><i></i>حالت مهندس</button><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></div></header>
+<nav><button class="a" data-t="0">وضعیت</button><button data-t="1">کالیبراسیون</button><button class="m en" data-t="2">تست دستی</button><button class="en" data-t="3">تست بنچ</button></nav>
+<div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 
 <section class="a" id="t0">
 <div class="cd"><div class="vs" id="vs"></div><div class="fl" id="fl"></div></div>
@@ -343,7 +354,7 @@ const aIn=(id,ph,fn,bt)=>`<input type="number" step="any" id="${id}" placeholder
 const g0=$('fb0').parentNode,g1=$('fb1').parentNode,g2=$('fb2').parentNode;
 g0.insertAdjacentHTML('beforeend','<div class="as"><div class="lb">صفر: کانال را بی‌جریان کنید (duty = 0)؛ میانگین ۱۰ نمونهٔ اخیر raw آفست می‌شود.</div></div>'+[1,2].map(n=>`<div class="as"><div class="nm">کانال ${n} <span class="lb">raw → فیلترشده</span> <b class="n lv" id="lc${n}">—</b></div>
 <button class="sb sb2" onclick="zero(${n})">صفر = raw فعلی</button></div>`).join('')+
-`<div class="ca"><div class="ti">کالیبراسیون با مولتی‌متر</div><div class="lb">جریان کانال را بالای ۵۰ mA ببرید (مثلاً مود دستی با duty حدود ۱۵۰‰)، عدد مولتی‌متر را وارد و هدف را انتخاب کنید؛ STM32 ضریب را از دادهٔ زنده حساب و اعمال می‌کند. ضریب تبدیل: مولتی‌متر سری با باتری همان کانال. گین (اختیاری، اول): سری با جریانی که عدد نمایش باید برابرش باشد — بعد از گین، ضریب تبدیل همان کانال صفر می‌شود و باید دوباره آن را بزنید.</div>
+`<div class="ca"><div class="ti">کالیبراسیون جریان با مولتی‌متر</div><div class="lb">جریان کانال را بالای ۵۰ mA ببرید (مثلاً در حالت مهندس: مود دستی با duty حدود ۱۵۰‰)، عدد مولتی‌متر را وارد و هدف را انتخاب کنید؛ STM32 ضریب را از دادهٔ زنده حساب و اعمال می‌کند. ضریب تبدیل: مولتی‌متر سری با باتری همان کانال. گین (اختیاری، اول): سری با جریانی که عدد نمایش باید برابرش باشد — بعد از گین، ضریب تبدیل همان کانال صفر می‌شود و باید دوباره آن را بزنید.</div>
 <div class="mx" style="margin-top:10px"><span>عدد مولتی‌متر <span class="lb">mA</span></span><input type="number" id="cr" min="50" max="5000" placeholder="50…5000"></div>
 <div class="cg">${[0,1,2,3].map(k=>{const n='۱۲'[k&1];return `<button class="cb" id="cb${k}" onclick="cal(${k})"><span>${k<2?'گین':'ضریب تبدیل'} کانال ${n}</span><b class="n" id="cv${k}">—</b></button>`;}).join('')}</div>
 <div class="cm lb" id="cm"></div><div class="lb" id="cl"></div></div>`);
@@ -355,6 +366,9 @@ document.querySelectorAll('#cs button').forEach(b=>b.onclick=()=>{CS=+b.dataset.
 function zero(n){const r=H[n-1].r.slice(-10);if(r.length<3)return alert('دادهٔ کافی نیست؛ چند ثانیه صبر کنید.');
  const avg=Math.round(r.reduce((a,b)=>a+b,0)/r.length),du=D.t[(n-1)*7+5];
  if(!confirm((du>0?'هشدار: duty کانال '+n+' صفر نیست و جریان جاری است!\n':'')+'آفست صفر کانال '+n+': '+nz(D.p[n-1])+' ← '+avg+' (میانگین '+r.length+' نمونهٔ raw)؟'))return;send(n-1,Math.min(255,Math.max(0,avg)));}
+/* کارت CAL جدا و بالای تب کالیبراسیون (همیشه دیده می‌شود)؛ بقیهٔ کارت‌ها فقط در حالت مهندس */
+{const cc=document.createElement('div');cc.className='cd cc';cc.appendChild(document.querySelector('#t1 .ca'));
+ document.querySelectorAll('#t1>.cd').forEach(c=>c.classList.add('en'));$('t1').prepend(cc);}
 /* CAL_REFERENCE (بخش 5.4): فقط عدد مولتی‌متر و هدف فرستاده می‌شود؛ محاسبه با STM32 است. رد شدن = هیچ پاسخی */
 const CN=['گین کانال ۱','گین کانال ۲','ضریب تبدیل کانال ۱','ضریب تبدیل کانال ۲'];let CR=-1;
 function cal(k){const e=$('cr'),r=Math.round(+e.value),n='۱۲'[k&1];if(e.value===''||!(r>=50&&r<=5000))return alert('عدد مولتی‌متر را بین 50 و 5000 mA وارد کنید.');
@@ -395,6 +409,11 @@ $('ao').onclick=()=>{send(16,0);send(18,0);[1,2].forEach(n=>{$('r'+n).value=0;$(
 [1,2].forEach(n=>$('rm'+n).onclick=()=>{const id=14+2*n,v=D&&D.p[id];if(v==null)return;
  if(D.t[(n-1)*7+6]===5&&!confirm('کانال '+n+' با duty '+v+'‰ دوباره مسلح شود؟\nسومین تریپ JIT = خطای نهایی (فقط با ری‌استارت برد پاک می‌شود).'))return;send(id,v);});
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=+b.dataset.t;document.querySelectorAll('nav button,section').forEach(x=>x.classList.remove('a'));b.classList.add('a');$('t'+tab).classList.add('a');if(D)draw(D);});
+/* کلید حالت مهندس: روی همین دستگاه به یاد می‌ماند؛ حین تست بنچ خاموش نمی‌شود */
+function eng(on){document.body.classList.toggle('eng',on);try{localStorage.setItem('eng',on?'1':'0');}catch(e){}
+ if(!on&&tab>=2)document.querySelector('nav button[data-t="0"]').click();}
+$('eg').onclick=()=>{const on=!document.body.classList.contains('eng');if(!on&&BT.run)return alert('تست بنچ در حال اجراست؛ اول آن را متوقف کنید.');eng(on);};
+$('mx').onclick=()=>send(19,0);
 
 /* ---------- به‌روزرسانی ---------- */
 /* فرمول‌های بخش 5.3 سند با مقادیر زنده */
@@ -559,6 +578,7 @@ function bB(){if(cfm('تست صفر و کراس‌تاک: مود دستی روش
 function bC(){if(cfm('تست پایداری: مود دستی روشن و کانال همسایه قطع می‌شود.'))run(3,'Test C - stability / drift',tC);}
 function bD(){if(cfm('تست عملکرد: کانال همسایه قطع و مود دستی خاموش می‌شود؛ شارژر خودکار کانال تست کار می‌کند.'))run(4,'Test D - regulation (band 630-650 on iest)',tD);}
 function bS(){if(cfm('پیمایش duty: مود دستی روشن و کانال همسایه قطع می‌شود.'))run(5,'Test D sweep - converter curve',tS);}
+try{eng(localStorage.getItem('eng')==='1');}catch(e){eng(false);}
 poll();
 </script></body></html>)HTML";
 
