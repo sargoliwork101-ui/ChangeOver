@@ -629,15 +629,18 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
         (بهترین تک‌گین: خطای +۱۰۱٪/−۷٪) و مدل فیزیکی مبتنی بر duty هم ۳۷٪
         پراکندگی دارد - پس جدول خطی-تکه‌ای روی خروجی زنجیرهٔ خطی قدیم،
         اصلاح درست است. علت فیزیکی: نمونهٔ سنکرون وسط-ON از رمپ اولیه در
-        برابر انتقال انرژی ~duty²، با شکست DCM→CCM نزدیک دیوتی ۱۲٪.
-        لنگرها = اجرای قفل‌در-لحظهٔ ثبت 2026-09-T16:31 (ویزارد 1.7: پنجرهٔ /m
-        همان لحظهٔ ثبت خوانده می‌شود، پس اعداد میکرو و مولتی‌متر هم‌لحظه‌اند):
-        mA زنجیره → mA باتری: (0,0) (65,33) (139,90) (237,208) (278,300)
-        (393,455) (487,545)؛ با off2=8 / gain2=1303 گرفته شده‌اند (همان که در
-        هر ردیف ثبت شده - اگر این پارامترها عوض شوند جدول باید دوباره ساخته
-        شود). بالای آخرین لنگر شیب آخرین بازه ادامه می‌یابد؛ ورودی صفر صفر.
-        شمارش خام و uV شانت دست نمی‌خورند. کانال ۱ تا رسیدن دادهٔ SOLO1 خودش
-        خطی می‌ماند. */
+        برابر انتقال انرژی ~duty²، با شکست DCM→CCM نزدیک دیوتی ۱۰..۱۴٪.
+        لنگرها = اجرای متراکم 2026-09-25T18:14 (۱۰ نقطهٔ DMM، دیوتی ۲..۲۰٪،
+        باتری در حال پرشدن 12.0→13.65V): محور جدول «جریان زنجیره از ADC»
+        است، هرگز دیوتی (دستور کاربر ۲۰۲۶-۰۹-۲۵: با پرشدن باتری، همان دیوتی
+        جریان متفاوتی می‌دهد و جدول باید روی جریان بماند). mA زنجیره ← mA
+        باتری: (0,0)(5,0)(37,9)(106,62)(189,130)(236,215)(283,310)(353,422)
+        (441,541)(557,660)(707,764)؛ با off2=8 / gain2=1303 (اگر عوض شوند
+        جدول دوباره ساخته شود). بالای آخرین لنگر شیب آخرین بازه (0.69) ادامه
+        می‌یابد. نقطهٔ دیوتی ۲٪ جریان واقعی باتری 13− میلی‌آمپر بود (تخلیه از
+        مسیر زنر) - زنجیره بدون علامت است و همان‌جا 0 می‌گیرد (خطای ≤13mA
+        فقط در کف). شمارش خام و uV شانت دست نمی‌خورند. کانال ۱ تا رسیدن دادهٔ
+        SOLO1 خودش خطی می‌ماند. */
 #if (MEASUREMENT_CURRENT2_LUT_ENABLE != 0u)
 /* [EN] The anchor tables take their size from the initializers and the point
         count is DERIVED from them (user order 2026-09-25: the next bench run
@@ -650,9 +653,9 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
         فقط ویرایش مقداردهی است و هیچ چیز دیگری عوض نمی‌شود. طول دو جدول
         باید برابر بماند (تست هاست همین را قفل می‌کند). */
 static const uint32_t UINT32_T__G__Current2LutChainMa[] =
-    { 0u, 65u, 139u, 237u, 278u, 393u, 487u };
+    { 0u, 5u, 37u, 106u, 189u, 236u, 283u, 353u, 441u, 557u, 707u };
 static const uint32_t UINT32_T__G__Current2LutBatteryMa[] =
-    { 0u, 33u, 90u, 208u, 300u, 455u, 545u };
+    { 0u, 0u, 9u, 62u, 130u, 215u, 310u, 422u, 541u, 660u, 764u };
 #define MEASUREMENT_CURRENT2_LUT_POINTS \
     ((uint32_t)(sizeof(UINT32_T__G__Current2LutChainMa) / \
                sizeof(UINT32_T__G__Current2LutChainMa[0u])))
@@ -765,11 +768,11 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
 /* ==================== Measurement Battery12 Bench Compensation (user order 2026-09-25) ==================== */
 
 #if (MEASUREMENT_BATTERY12_BENCH_COMP_ENABLE != 0u)
-/* [EN] The latched 2026-09-25 SOLO2 run (wizard v1.7: the /m window is read at
+/* [EN] The latched 2026-09-25 SOLO2 runs (wizard: the /m window is read at
         the submit press) measured the V12 channel against a DMM on the battery
-        terminals: the board read +140 mV at zero current (static divider error)
-        growing to +374 mV at 545 mA. Least squares over the seven points:
-        error = 143 mV + 0.47 ohm x I2, i.e. a static channel offset plus the
+        terminals: a static divider error plus a current-proportional charge-path
+        wire drop. Dense-run refit (10 DMM points, 0..764 mA):
+        error = 150 mV + 0.47 ohm x I2, i.e. a static channel offset plus the
         charge-path wire drop (board sense point sits above the battery terminal
         while charging). This compensation subtracts both so the panel - and the
         charger's own decisions on Vlow - work on the TRUE battery-2 terminal
@@ -788,7 +791,13 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
         می‌رود که جهت فیزیکی درستی است (V12ِ زیادخوان، Vhigh را کم‌خوان می‌کرد).
         ثابت‌ها مال سیم‌بندی بنچ ۲۰۲۶-۰۹-۲۵ هستند؛ با تغییر سیم‌بندی دوباره
         ساخته شوند. ورودی I2 همان جریان اصلاح‌شدهٔ بعد از جدول است. */
-#define MEASUREMENT_BATTERY12_BENCH_STATIC_MV 140u
+/* [EN] Refit from the dense 2026-09-25T18:14 run (10 DMM points,
+        0..764 mA): LSQ static 149.8 mV + 472.5 mOhm - rounded to 150/470.
+        Residual vs DMM within +/-28 mV (0.23 percent) across the range.
+   [FA] برازش دوباره از اجرای متراکم ۲۰۲۶-۰۹-۲۵T18:14 (۱۰ نقطهٔ DMM،
+        0..764mA): کمینهٔ مربعات 149.8mV + 472.5mOhm - گرد به 150/470.
+        خطای باقی‌مانده در کل بازه ±۲۸mV (۰٫۲۳٪). */
+#define MEASUREMENT_BATTERY12_BENCH_STATIC_MV 150u
 #define MEASUREMENT_BATTERY12_BENCH_PATH_MOHM 470u
 
 /**

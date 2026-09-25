@@ -458,19 +458,19 @@ def test_setpoints_and_timing():
           "static const uint32_t UINT32_T__G__Current2LutBatteryMa[] =" in meas_c_raw and
           "#define MEASUREMENT_CURRENT2_LUT_POINTS \\" in meas_c_raw.replace("\\\\", "\\") and
           "sizeof(UINT32_T__G__Current2LutChainMa) /" in meas_c_raw and
-          "{ 0u, 65u, 139u, 237u, 278u, 393u, 487u }" in meas_c_raw and
-          "{ 0u, 33u, 90u, 208u, 300u, 455u, 545u }" in meas_c_raw and
-          lut_chain_n == lut_batt_n and lut_chain_n == 7,
-          f"channel-2 bench LUT must be ON with the 2026-09-25 SOLO2 latched anchors (user order 2026-09-25: the chain read ~2x high at 5% duty and 0.85x low at 15..17% - no single gain can cover it); the tables size themselves from the initializers and the point count is sizeof-derived so the next DENSER run only edits the two lists, and both lists must stay the same length (got chain={lut_chain_n} battery={lut_batt_n})")
+          "{ 0u, 5u, 37u, 106u, 189u, 236u, 283u, 353u, 441u, 557u, 707u }" in meas_c_raw and
+          "{ 0u, 0u, 9u, 62u, 130u, 215u, 310u, 422u, 541u, 660u, 764u }" in meas_c_raw and
+          lut_chain_n == lut_batt_n and lut_chain_n == 11,
+          f"channel-2 bench LUT must be ON with the 2026-09-25T18:14 DENSE SOLO2 anchors - 10 DMM points, duty 2..20%, battery filling 12.0->13.65V, interpolation error <=0.7 mA on every point; the table is keyed on the ADC chain current (raw-off2)*K*gain, NEVER on duty (user order 2026-09-25: the same duty gives a different current as the battery fills); the tables size themselves from the initializers and the point count is sizeof-derived so the next DENSER run only edits the two lists, and both lists must stay the same length (got chain={lut_chain_n} battery={lut_batt_n})")
     check("return func__Measurement_Current2BenchLut(\n        func__BspMeasurement_Current2CountsToMa(uint16_t__counts));" in meas_c_raw,
           "the ch2 LUT must wrap the BSP conversion inside func__Measurement_Current2CountsToMa so unfiltered, filtered and iest all become true battery mA while raw counts and shunt uV stay untouched")
     check(re.search(r"func__Measurement_Current2CountsToMa\(uint16_t uint16_t__counts\)\n\{\n#if \(MEASUREMENT_CURRENT2_LUT_ENABLE != 0u\)", meas_c_raw) and
           re.search(r"#else\n    return func__BspMeasurement_Current2CountsToMa\(uint16_t__counts\);\n#endif", meas_c_raw),
           "the ch2 LUT must be compile-switchable: MEASUREMENT_CURRENT2_LUT_ENABLE=0 restores the old linear behaviour exactly")
     check(re.search(r"#define MEASUREMENT_BATTERY12_BENCH_COMP_ENABLE\s+1u", meas_h_txt) and
-          re.search(r"#define MEASUREMENT_BATTERY12_BENCH_STATIC_MV 140u", meas_c_raw) and
+          re.search(r"#define MEASUREMENT_BATTERY12_BENCH_STATIC_MV 150u", meas_c_raw) and
           re.search(r"#define MEASUREMENT_BATTERY12_BENCH_PATH_MOHM 470u", meas_c_raw),
-          "V12 bench compensation must be ON with the latched 2026-09-25 SOLO2 fit: static 140 mV + 470 mOhm x I2 (MCU read +140 mV at 0 mA growing to +374 mV at 545 mA vs DMM on the battery-2 terminals)")
+          "V12 bench compensation must be ON with the dense 2026-09-25T18:14 refit: static 150 mV + 470 mOhm x I2 (LSQ over 10 DMM points 0..764 mA = 149.8 mV + 472.5 mOhm; residual within +/-28 mV vs DMM on the battery-2 terminals)")
     check("func__Measurement_Battery12BenchCompensate(\n        uint32_t__battery12Mv, uint32_t__current2SampleMa);" in meas_c_raw and
           meas_c_raw.find("func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2])") <
           meas_c_raw.find("uint32_t__battery12Mv = func__Measurement_ApplyVoltageOffsetMv(") and

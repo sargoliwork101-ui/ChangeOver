@@ -29,6 +29,15 @@
 > user-settable (default 100); the wizard settle step REMOVED (capture is
 > user-latched - the wait added nothing); pack-24V divider corrected with
 > the user's exact factor and voltage offsets widened to +/-5000 mV.
+> v1.11 (same day, fifth order): both calibrations refit from the DENSE
+> 10-point SOLO2 run (2026-09-25T18:14, duty 2..20%, battery filling
+> 12.0->13.65 V): the channel-2 LUT is now 11 anchors - interpolation
+> error <= 0.7 mA on every point (the old 7-point table drifted to
+> -48 mA at mid currents as the battery filled), and the V12 bench
+> compensation static term is 150 mV (LSQ 149.8 mV + 472.5 mOhm over
+> 0..764 mA; residual within +/-28 mV). The LUT stays keyed on the ADC
+> chain current, NEVER on duty (user order: the same duty gives a
+> different current as the battery fills).
 >
 > v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
 > conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
@@ -316,16 +325,24 @@ ETA > 0:    iest_ma = i_filtered_ma x Vin_mv x eta / (1000 x Vbat_mv)
           must not hand-compute it.
 ```
 
-Channel-2 bench LUT (user order 2026-09-25, firmware v1.5): the SOLO2 bench
-runs proved the channel-2 chain non-linear vs the true battery current (about
-2x too high at 5% duty, 0.85x too low at 15..17%; best single gain still leaves
-+101%/-7%). Channel 2 therefore converts as
-`I_bat = LUT((raw - off2) * 0.8776 * gain2/1000)` with a 7-point piecewise-linear
-table on the OLD chain output - anchors from the latched 2026-09-25T16:31 run
-(chain mA -> battery mA): (0,0) (65,33) (139,90) (237,208) (278,300) (393,455)
-(487,545), captured with off2=8 / gain2=1303. Above the last anchor the last
-slope extends. Unfiltered, filtered and iest all become true battery mA; raw
-counts and shunt uV are untouched. `MEASUREMENT_CURRENT2_LUT_ENABLE = 0`
+Channel-2 bench LUT (user order 2026-09-25, firmware v1.5; refit v1.11): the
+SOLO2 bench runs proved the channel-2 chain non-linear vs the true battery
+current (about 2x too high at 5% duty, 0.85x too low at 15..17%; best single
+gain still leaves +101%/-7%). Channel 2 therefore converts as
+`I_bat = LUT((raw - off2) * 0.8776 * gain2/1000)` with an 11-point
+piecewise-linear table - the table input is the ADC CHAIN CURRENT, never the
+duty (user order 2026-09-25: the same duty yields a different chain current as
+the battery fills, so keying on current keeps the table valid across battery
+states). Anchors from the DENSE 2026-09-25T18:14 run (10 DMM points, duty
+2..20% step 2, battery filling 12.0->13.65 V, off2=8 / gain2=1303;
+chain mA -> battery mA): (0,0) (5,0) (37,9) (106,62) (189,130) (236,215)
+(283,310) (353,422) (441,541) (557,660) (707,764); interpolation error
+<= 0.7 mA on every measured point. Above the last anchor the last slope
+(0.69 mA/mA) extends. The 2%-duty point measured a true battery current of
+-13 mA (discharge through the zener path) - the chain axis is unsigned, so
+the table floors it to 0 (error <= 13 mA only at the very bottom). Unfiltered,
+filtered and iest all become true battery mA; raw counts and shunt uV are
+untouched. `MEASUREMENT_CURRENT2_LUT_ENABLE = 0`
 restores the old linear behaviour. Channel 1 stays linear until its own SOLO1
 data arrives. The wire protocol is unchanged. v1.9 (same day): the anchor
 tables size themselves from their initializers and the point count is
@@ -339,7 +356,7 @@ Voltage chain (offsets = IDs 4/5/6, saturating add, never below 0 mV):
 Vin_mV  = raw x 3300/4095 x 76000/6800 + VIN_OFFSET  (input net: 69.2k/6.8k, total 76k; = raw x 9.007)
 V24_mV  = raw x 3300/4095 x 69200/6800 + V24_OFFSET  (PACK net: total 69.2k; = raw x 8.203 - v1.10)
 V12_mV  = raw x 3300/4095 x 41000/6800 + V12_OFFSET  (divider 34.2k/6.8k; = raw x 4.859)
-V12_mV -= 140 mV + 0.47 ohm x I2_bat_mA              (bench compensation, clamp at 0)
+V12_mV -= 150 mV + 0.47 ohm x I2_bat_mA              (bench compensation, clamp at 0 - v1.11 refit)
 Vlow_mV = V12_mV        Vhigh_mV = V24_mV - V12_mV (clamped at 0)
 ```
 
@@ -354,12 +371,15 @@ pack read wrong and the offset could not fix it). The INPUT net keeps
 76 k: bench-verified within +1.2 percent (23889 vs 23600 mV). The runtime
 voltage offsets (IDs 4..6) are now clamped to +/-5000 mV (was 2000).
 
-V12 bench compensation (user order 2026-09-25, firmware v1.6): the same
-latched SOLO2 run compared the V12 channel against a DMM on the battery-2
-terminals - the board read +140 mV at zero current, growing to +374 mV at
-545 mA (least squares 143 mV + 0.47 ohm x I2: a static divider error plus
-the charge-path wire drop; the board sense point sits above the battery
-terminal while charging). The firmware subtracts `140 mV + 0.47 ohm x I2`
+V12 bench compensation (user order 2026-09-25, firmware v1.6; refit v1.11):
+the SOLO2 runs compare the V12 channel against a DMM on the battery-2
+terminals - a static divider error plus the charge-path wire drop (the board
+sense point sits above the battery terminal while charging). The dense
+2026-09-25T18:14 run (10 DMM points, 0..764 mA) gives the LSQ fit
+`150 mV + 0.47 ohm x I2` (149.8 mV + 472.5 mOhm, rounded; residual within
++/-28 mV = 0.23 percent; the 20%-duty point rides a fast-rising battery, so
+its window average lags the submit-time DMM reading). The firmware subtracts
+`150 mV + 0.47 ohm x I2`
 from V12 AFTER the runtime V12_OFFSET, using the post-LUT channel-2
 current, BEFORE Vlow/Vhigh are derived - so the panel, the charger's own
 decisions and the bench log all describe the TRUE battery-2 terminal
