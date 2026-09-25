@@ -276,7 +276,7 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .bsum{font-size:12px;direction:ltr;text-align:left;line-height:1.9;margin-bottom:8px}.okc{color:var(--ok)}.erc{color:var(--er)}
 .bxw textarea{width:100%;height:150px;background:#0c1018;color:#9aa6c0;border:1px solid var(--ln);border-radius:10px;padding:8px;font:11px/1.5 monospace;direction:ltr;margin-top:6px}
 .ds{font-size:13px;line-height:2;color:#c3cad8;background:#0c1018;border-radius:10px;padding:10px 14px}.ds ul{padding-right:18px}.ds b{color:var(--tx)}
-.qs{display:grid;grid-template-columns:1fr 1fr;gap:12px}.q{background:#0c1018;border-radius:10px;padding:10px}.q input[type=number]{width:90px}
+.qs{display:grid;grid-template-columns:1fr 1fr;gap:12px}.q{background:#0c1018;border-radius:10px;padding:10px}.q input[type=number]{width:90px}.q .cut{background:var(--er)}.q .run{background:var(--ok);color:#06140d}
 select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);border-radius:8px;padding:5px 7px}
 .eg3{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:6px}.eg3 label{display:flex;flex-direction:column;gap:3px;font-size:13px}
 .pgx{display:none}.pgx.a{display:block}nav{margin-bottom:12px}
@@ -485,7 +485,7 @@ function sv(id,v){$(id).value=v;}
 /* میانگین n نمونهٔ اخیر (هر نمونه حدود ۰٫۳ ثانیه) */
 function av(c,k,n){const A=H[c][k].slice(-n);return A.length?mean(A):null;}
 function live(n){if(!D||D.on!=1){alert('لینک STM32 برقرار نیست.');return false;}if(H[0].r.length<n){alert('دادهٔ کافی نیست؛ چند ثانیه صبر کنید.');return false;}return true;}
-const I=(id,ph,w)=>`<input type="number" step="any" id="${id}" data-s placeholder="${ph||''}"${w?` style="width:${w}px"`:''}>`;
+const I=(id,ph,w)=>`<input type="number" step="any" id="${id}" data-s placeholder="${ph??''}"${w?` style="width:${w}px"`:''}>`;
 const SEL=id=>`<select id="${id}" data-s><option value="1">کانال ۱ (باتری بالا)</option><option value="2">کانال ۲ (باتری پایین)</option></select>`;
 const ch=id=>+$(id).value;
 const iestN=(fl,vin,eta,vb)=>!eta||vin<10000||vb<5000?fl:Math.floor(Math.floor(fl*eta/1000)*vin/vb);
