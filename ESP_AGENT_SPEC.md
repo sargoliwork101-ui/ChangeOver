@@ -7,7 +7,8 @@
 > v1.4 (2026-09-25): free filter sizes (ID 7 any 1..15, ID 8 any 1..100,
 > boot defaults unchanged) + section 5.6 bench data capture to a text file
 > on the ESP (three scenario tables, user-defined duty steps, user-gated
-> advance, download endpoint) — the STM32 side is IMPLEMENTED and pushed.
+> advance, download endpoint; CSV v2 = every row self-contained with all
+> 20 params + the full TLM state) — the STM32 side is IMPLEMENTED and pushed.
 >
 > v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
 > conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
@@ -442,25 +443,45 @@ Endpoints:
 - `POST /benchlog/clear` -> truncate it
 - Cap at ~100 KB: stop appending when full and warn in the UI.
 
-CSV format - one header row at file creation, one `# run` meta line at
-the start of EVERY capture run, then one row per recorded step. `-` means
-"not entered".
+CSV format (v2, user order 2026-09-25: EVERY row is SELF-CONTAINED - the
+full parameter set AND the full TLM state of the sample window are inside
+every row, so no decision can ever be disrupted by a missing context).
+One header row at file creation, one `# run` line per capture run, then
+one row per recorded step. `-` means "not entered".
 
 ```text
-# cols: scenario,step,duty_permille,settle_ms,sample_ms,
-#  raw1,raw1_min,raw1_max,unf1_ma,filt1_ma,filt1_min,filt1_max,iest1_ma,
-#  raw2,raw2_min,raw2_max,unf2_ma,filt2_ma,filt2_min,filt2_max,iest2_ma,
-#  vin_mv,vhigh_mv,vlow_mv,
-#  dmm_i1_ma,dmm_i2_ma,dmm_vin_mv,dmm_vhigh_mv,dmm_vlow_mv,note
-# run <n> date=<YYYY-MM-DD HH:MM:SS> scenario=<SOLO1|SOLO2|BOTH>
-#  duty_list=<...> off1=<p0> gain1=<p2> off2=<p1> gain2=<p3>
-#  eta1=<p9> eta2=<p10> med=<p7> avg=<p8> seq=<last TLM seq>
+# cols:
+#  [id]     scenario,step,duty_permille,settle_ms,sample_ms,browser_ts
+#  [params] off1,off2,gain1,gain2,voff_in,voff_24,voff_12,med,avg,
+#           eta1,eta2,en1,en2,ceil1,ceil2,fixon1,fix1,fixon2,fix2,manual
+#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,
+#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1
+#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,
+#           filt2,filt2_min,filt2_max,iest2,iest2_min,iest2_max,duty2,state2
+#  [glob]   seq,flags,vin_mv,v24_mv,v12_mv,vlow_mv,vhigh_mv,faults_or
+#  [dmm]    dmm_i1_ma,dmm_i2_ma,dmm_vin_mv,dmm_vhigh_mv,dmm_vlow_mv,note
+# run <n> browser_ts=<ISO from the panel page> scenario=<SOLO1|SOLO2|BOTH>
+#  duty_list=<...>
 ```
 
-Field sources (TLM offsets): raw 4/32, unfiltered 12/40, filtered 16/44,
-iest 20/48, Vin 60, Vlow 72, Vhigh 76. `raw` is the pre-offset ADC count
-(the unfiltered truth); `unf` is post offset+gain; `filt` is what the
-charger regulates on; `iest` is the battery estimate.
+70 columns. Window semantics: every numeric TLM field is averaged over
+the sample window; the current-chain signals (raw/unf/filt/iest, both
+channels) additionally carry min and max; `duty`/`state`/`seq`/`flags`
+are the LAST frame's value; `faults_or` is the bitwise OR of the fault
+mask across the whole window; `browser_ts` is the browser's wall clock
+(the ESP has none) attached to the step registration.
+
+Field sources - TLM offsets: seq 0, flags 2, raw 4/32, shunt_uv 8/36,
+unfiltered 12/40, filtered 16/44, iest 20/48, duty 24/52, state 28/56,
+Vin 60, V24 64, V12 68, Vlow 72, Vhigh 76, faults 80. `raw` is the
+pre-offset ADC count (the unfiltered truth); `unf` is post offset+gain;
+`filt` is what the charger regulates on; `iest` is the battery estimate.
+
+Panel duties per step: refresh GET_PARAMS once right before the sample
+window (the [params] columns must be the values that were actually live
+during the window) and extend the /m stats window to EVERY TLM field
+(21 tracked fields x avg/min/max instead of today's 13 - `seq`/`flags`
+track last, `faults` tracks OR).
 
 Capture wizard (this REPLACES the old copy-block Test A; tests B/C/D
 stay as they are):
@@ -623,8 +644,10 @@ changes no behavior. Plus the panel-side bench data capture to a text
 file (section 5.6): three scenario tables (SOLO1 / SOLO2 / BOTH),
 user-defined duty steps, step advance only after the ammeter value is
 entered, raw-ADC columns included, LittleFS storage with a download
-endpoint. No wire-format change, no ID renumbering. The STM32 side of
-v1.4 is implemented and pushed the same day.
+endpoint. Second order the same day: CSV v2 - every row carries ALL 20
+parameters and the full TLM state (70 columns) so each row is
+self-contained. No wire-format change, no ID renumbering. The STM32 side
+of v1.4 is implemented and pushed the same day.
 
 v1.3 (2026-09-24, user order of the same day): added the CAL_REFERENCE
 command (type 0x03 - one-shot panel calibration of the current-chain GAIN
