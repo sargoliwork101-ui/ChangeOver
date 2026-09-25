@@ -200,6 +200,30 @@
 void func__EspLink_Init(void);
 
 /**
+ * @brief  [EN] Apply one parameter id/value through the clamped setters and
+ *              report the applied value. Public since v1.14: the boot-time
+ *              flash load (esp_link_nvm.c) replays the persisted record
+ *              through this SAME path, so a stored value can only land
+ *              inside the compiled safety windows.
+ *         [FA] اعمال یک شناسه/مقدار پارامتر از setterهای گیره‌دار با گزارش
+ *              مقدار اعمال‌شده. عمومی از v1.14: بارگذاری فلش هنگام بوت
+ *              (esp_link_nvm.c) رکورد ذخیره‌شده را از همین مسیر بازپخش
+ *              می‌کند تا مقدار ذخیره‌شده فقط داخل پنجره‌های ایمنی کامپایل
+ *              بنشیند.
+ */
+bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
+                              uint32_t uint32_t__value,
+                              uint32_t *uint32_t__appliedValue);
+
+/**
+ * @brief  [EN] Read the live value of one parameter id. Public since v1.14:
+ *              the flash save snapshot (esp_link_nvm.c) uses it.
+ *         [FA] خواندن مقدار زندهٔ یک شناسهٔ پارامتر. عمومی از v1.14: عکس
+ *              ذخیرهٔ فلش (esp_link_nvm.c) از آن استفاده می‌کند.
+ */
+bool func__EspLink_GetParam(uint8_t uint8_t__paramId, uint32_t *uint32_t__value);
+
+/**
  * @brief  [EN] Send one telemetry frame and consume every received command
  *              frame. No STM command protocol yet -> replaced by the full
  *              engine (user order 2026-09-22).

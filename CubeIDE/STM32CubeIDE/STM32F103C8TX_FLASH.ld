@@ -42,10 +42,19 @@ _Min_Heap_Size = 0x200; /* required amount of heap */
 _Min_Stack_Size = 0x400; /* required amount of stack */
 
 /* Memories definition */
+/* [EN] v1.14 (user order 2026-09-25): the TOP two 1 KiB pages (0x0800F800,
+   0x0800FC00) are reserved for the ping-pong parameter-persistence records
+   (esp_link_nvm.c), so application FLASH shrinks 64K -> 62K and the linker
+   itself errors if the image ever tries to collide with the records.
+   [FA] v1.14 (دستور کاربر ۲۰۲۶-۰۹-۲۵): دو صفحهٔ ۱KB بالایی (0x0800F800 و
+   0x0800FC00) برای رکوردهای پینگ‌پنگ ماندگاری پارامترها (esp_link_nvm.c)
+   رزرو شده‌اند؛ فلش برنامه از 64K به 62K کوچک شد تا خود لینکر اگر روزی
+   تصویر برنامه با رکوردها تصادم کند خطا بدهد. */
 MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 20K
-  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 64K
+  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 62K
+  NVM      (r)     : ORIGIN = 0x800F800,   LENGTH = 2K
 }
 
 /* Sections */

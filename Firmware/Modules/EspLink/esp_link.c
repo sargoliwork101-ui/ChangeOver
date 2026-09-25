@@ -16,6 +16,7 @@
 #include "bsp_gpio.h"
 #include "bsp_uart.h"
 #include "bsp_measurement.h"
+#include "esp_link_nvm.h"
 
 #include <stddef.h>
 
@@ -129,7 +130,7 @@ static uint32_t func__EspLink_GetU32(const uint8_t *uint8_t__payload,
  * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out / اعمال‌شده
  * @return bool [EN] true when the id is known / id شناخته شد
  */
-static bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
+bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                                      uint32_t uint32_t__value,
                                      uint32_t *uint32_t__appliedValue)
 {
@@ -275,7 +276,7 @@ static bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
  * @param  uint32_t *uint32_t__value [EN] Live value out / مقدار زنده
  * @return bool [EN] true when the id is known / id شناخته شد
  */
-static bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
+bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
                                    uint32_t *uint32_t__value)
 {
     switch (uint8_t__paramId)
@@ -828,6 +829,15 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
             {
                 func__EspLink_SendParamReport(uint8_t__payload[0],
                                               uint32_t__appliedValue);
+                /* [EN] v1.14 (user order 2026-09-25: values must survive
+                   power loss): a successfully applied PERSISTED parameter
+                   arms the debounced flash save (transient test ids are
+                   filtered inside MarkDirty).
+                   [FA] v1.14 (دستور کاربر: مقادیر با قطع برق باید بمانند):
+                   اعمال موفق یک پارامتر «ذخیره‌شونده»، ذخیرهٔ دیبانس‌شدهٔ
+                   فلش را مسلح می‌کند (شناسه‌های تست گذرا داخل MarkDirty
+                   فیلتر می‌شوند). */
+                func__EspLink_NvmMarkDirty(uint8_t__payload[0]);
             }
         }
     }
@@ -1049,4 +1059,12 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
 
     func__EspLink_SendTelemetry(measurement_snapshot_t__snap,
                                 fault_mask_t__faults);
+
+    /* [EN] v1.14: debounced flash save of the persisted parameters (a page
+       erase stalls flash-fetching code ~20..40 ms once per save; this is the
+       comm task, so only this task's own period stretches).
+       [FA] v1.14: ذخیرهٔ دیبانس‌شدهٔ فلش پارامترهای ذخیره‌شونده (پاک‌کردن
+       صفحه یک‌بار ~۲۰..۴۰ms کدِ خوانده‌شده از فلش را نگه می‌دارد؛ اینجا
+       تسک ارتباط است، پس فقط دورهٔ همین تسک کش می‌آید). */
+    func__EspLink_NvmTick();
 }

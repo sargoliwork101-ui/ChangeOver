@@ -1,8 +1,14 @@
 /**
  * @file    esp_link_panel.ino
  * @brief   [EN] ESP-side ESP-Link bridge: exchanges binary frames with the STM32 over UART
- *               (921600 8N1, ESP_AGENT_SPEC.md v1.4: 5.3 formulas, 5.6 bench log) and serves a dark
- *               RTL web panel (Vazirmatn) with TWO tabs (v1.7 simplification; filter avg window 1..300 since v1.9):
+ *               (921600 8N1, ESP_AGENT_SPEC.md) and serves a dark RTL web panel (Vazirmatn).
+ *               v1.14 (user order 2026-09-25): the charge tab gains a live SVG STAGE GRAPH
+ *               (threshold bands, BULK->ABSORB->FLOAT curve with the reentry cycle, current
+ *               annotations, live battery markers and charger states, dashed preview of typed
+ *               values) and the persistence texts - every applied parameter is stored on the
+ *               STM32's own flash ~1.5 s after the change and survives power loss there
+ *               (wire protocol unchanged; see ESP_AGENT_SPEC.md 5.8).
+ *               Tabs (v1.7 simplification; filter avg window 1..300 since v1.9):
  *               1) Panel: shared voltages (with DMM offset helpers), the current filter (median 1..15,
  *                  average 1..300) and one column per charger: live status, the measurement chain with
  *                  live formulas, the live filter chart and a charger cut button.
@@ -341,7 +347,12 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <div class="pgx" id="p1"></div>
 <div class="pgx" id="p2">
 <div class="cd">
-<div class="hd"><b>پروفایل شارژ</b><span class="lb">· مشترک هر دو کانال · با ریست برد به پیش‌فرض برمی‌گردد (مثل بقیهٔ پارامترها)</span></div>
+<div class="hd"><b>نمودار مراحل شارژ</b><span class="lb">· مشترک هر دو کانال · زنده از مقادیر اعمال‌شدهٔ برد · با تایپ در فیلدهای پایین، خط‌چین پیش‌نمایش می‌شود</span></div>
+<div id="qg" style="direction:ltr;overflow-x:auto"></div>
+<div class="lb" id="qgl">در انتظار دادهٔ برد…</div>
+</div>
+<div class="cd">
+<div class="hd"><b>پروفایل شارژ</b><span class="lb">· مشترک هر دو کانال · روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
 <div class="sec">ولتاژها <span class="lb">(mV)</span></div>
 <div class="bqr">
 <label>حداکثر ولتاژ باتری (ابزورب)<input type="number" id="q20" step="50" min="11000" max="14600"><span class="lb" id="a20">—</span></label>
@@ -362,7 +373,8 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 ولتاژ بازگشت: افت باتری در شناور زیر این مقدار، بالک را دوباره آغاز می‌کند (۱۲۸۰۰).
 جریان حداکثر: سقف باند تنظیم جریان بالک؛ کف باند به‌طور خودکار ۲۰mA کمتر است (۶۵۰).
 جریان تیپر: ابزورب پایان می‌یابد وقتی جریان دنباله ۶۰ ثانیه پایدار زیر این مقدار بماند (۵۰ ~ C/90).
-پس از هر تغییر، مقدار «اعمال‌شدهٔ» برد کنار همان فیلد نشان داده می‌شود — اگر با درخواست شما فرق دارد یعنی گیره خورده تا مجموعه سازنده بماند (مثلاً ورود ≤ ابزورب−۵۰). حد سخت ایمنی (خطای ۹۵۰mA و قطع ۱۵V) از پنل قابل تغییر نیست.</div>
+پس از هر تغییر، مقدار «اعمال‌شدهٔ» برد کنار همان فیلد نشان داده می‌شود — اگر با درخواست شما فرق دارد یعنی گیره خورده تا مجموعه سازنده بماند (مثلاً ورود ≤ ابزورب−۵۰). حد سخت ایمنی (خطای ۹۵۰mA و قطع ۱۵V) از پنل قابل تغییر نیست.
+ماندگاری: هر پارامتری که از پنل ثبت کنید (~۱٫۵ ثانیه بعد) در فلش خودِ برد ذخیره می‌شود و خاموش/روشن کردن برد آن را از بین نمی‌برد؛ دکمهٔ «بازگردانی پیش‌فرض کارخانه» پیش‌فرض‌ها را می‌فرستد و همان‌ها ذخیره می‌شوند. مودهای تست (دیوتی فیکس/دستی) هرگز ذخیره نمی‌شوند — بعد از هر ریست، شارژر خودکار است.</div>
 <div class="bqr"><button class="sb sb2" onclick="qdef()">بازگردانی پیش‌فرض کارخانه</button></div>
 </div>
 </div>
@@ -382,7 +394,7 @@ const P={
 14:['سقف دیوتی ۲','‰',0,500,'n','سقف duty کانال ۲ به هزارم درصد (۵۰۰ = ۵۰٪)؛ مثل کانال ۱']};
 /* ولتاژها: [عنوان, اندیس t, شناسهٔ آفست, ضریب مقسم] */
 const V=[['ورودی',14,4,K24],['پک ۲۴V',15,5,K24B],['نود ۱۲V',16,6,K12],['باتری بالا',18],['باتری پایین',17]];
-let D=null;
+var D=null;/* var (نه let) تا در تست هاست هم قابل‌نوشتن باشد */
 const v2=mv=>(mv/1000).toFixed(2),pc=pm=>(pm/10).toFixed(1)+'%';
 function send(id,v){const a=$('a'+id);if(a)a.textContent='…';fetch('/s?id='+id+'&v='+v,{method:'POST'}).then(r=>{if(!r.ok)throw 0;}).catch(()=>{if(a)a.textContent='خطا';});}
 function num(id){const e=$('i'+id),p=P[id],v=Math.round(+e.value);if(e.value===''||isNaN(v))return;send(id,Math.min(p[3],Math.max(p[2],v)));e.value='';e.blur();}
@@ -447,10 +459,67 @@ function formulas(t,p){
  $('ff').textContent=`I_filtered = average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( mA_unfiltered ) )`;}
 function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>hn()){s.u.shift();s.f.shift();}});}}
 function qfill(){if(!D||!D.p)return;for(let id=20;id<27;id++){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!(D.q&(1<<id)))a.textContent=D.p[id]==null?'—':D.p[id];}}
-function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{$('q'+x[0]).value=x[1];send(x[0],x[1]);});}
+function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{$('q'+x[0]).value=x[1];send(x[0],x[1]);});qgraph();}
+/* ===== v1.14: نمودار مراحل شارژ — مقدار هر خط از فیلد تایپ‌نشده/متفاوت با مقدار اعمال‌شده می‌آید (پیش‌نمایش خط‌چین) ===== */
+const QDEF=[14400,14300,14600,13500,12800,650,50];
+function qv(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:QDEF[id-20];
+ if(e&&e.value!==''){const v=parseInt(e.value,10);if(!isNaN(v))return{v,p:v!==d?1:0};}
+ return{v:d,p:0};}
+function qgraph(){const g=$('qg');if(!g)return;
+ const q={a:qv(20),e:qv(21),o:qv(22),f:qv(23),r:qv(24)},im=qv(25).v,tp=qv(26).v;
+ const lo=Math.max(7600,Math.min(q.r.v,12000)-500),hi=15060,W=760,H=330,X0=54,X1=738;
+ const Y=mv=>Math.round(H-34-270*(mv-lo)/(hi-lo));
+ const V=mv=>(mv/1000).toFixed(2);
+ const ln=(mv,c,txt,dash,sub)=>{const y=Y(mv),pv=(dash?dash.p:0);
+  return`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="${c}" stroke-width="2.5" ${pv?'stroke-dasharray="8 5"':''}/>`+
+  `<text x="${X1-4}" y="${y-5}" text-anchor="end" font-size="12" font-weight="700" fill="${c}">${txt}${sub?` <tspan font-size="10" font-weight="400" fill="${c}">(${sub})</tspan>`:''}${pv?' · پیش‌نمایش':''}</text>`;};
+ const zone=(mv1,mv2,fill,txt,c)=>{const y1=Y(Math.max(mv1,mv2)),y2=Y(Math.min(mv1,mv2));
+  return`<rect x="${X0}" y="${y1}" width="${X1-X0}" height="${Math.max(3,y2-y1)}" fill="${fill}"/>`+
+  `<text x="${X0+8}" y="${y1+15}" font-size="11.5" font-weight="700" fill="${c}">${txt}</text>`;};
+ const xb=X0+16,xa=250,xf=430,xr=620;
+ let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:640px;font-family:inherit">`;
+ s+=`<rect x="${X0}" y="18" width="${X1-X0}" height="${H-52}" fill="#f6f8fb" stroke="#d7dce6"/>`;
+ for(let mv=Math.ceil(lo/500)*500;mv<=hi;mv+=500){const y=Y(mv);
+  s+=`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="#e3e8f0" stroke-width="1"/>`+
+     `<text x="${X0-4}" y="${y+4}" text-anchor="end" font-size="10" fill="#8895aa">${(mv/1000).toFixed(1)}</text>`;}
+ s+=zone(hi,15000,'#fbeaea','','#c0392b');
+ s+=zone(15000,q.o.v,'#fdeee0','ناحیهٔ تجاوز — کاهش سریع duty','#b3541e');
+ s+=zone(q.o.v,q.e.v,'#fdf3d8','','#8a6d1a');
+ s+=zone(q.e.v,q.f.v,'#eef2f8','','#5a6a80');
+ s+=zone(q.f.v,q.r.v,'#e8f6ec','ناحیهٔ شناور','#20632f');
+ s+=zone(q.r.v,lo,'#e9f0fa','زیر بازگشت — شارژ دوباره از بالک','#2a4d7a');
+ s+=ln(15000,'#c0392b','قطع سخت ۱۵V','').replace(' stroke-width="2.5"',' stroke-width="1.5" stroke-dasharray="3 4"');
+ s+=ln(q.o.v,'#e67e22','سقف تجاوز',q.o);
+ s+=ln(q.a.v,'#c9a227','ابزورب',q.a);
+ s+=ln(q.e.v,'#e8a13c','ورود به ابزورب',q.e);
+ s+=ln(q.f.v,'#2e9e4f','شناور',q.f);
+ s+=ln(q.r.v,'#3f7fd1','بازگشت به بالک',q.r);
+ /* منحنی ولتاژ باتری طی مراحل */
+ const yp=Y(Math.min(q.r.v+700,hi-200));
+ s+=`<path d="M${xb} ${yp} L${xa-30} ${Y(q.e.v)} L${xa} ${Y(q.a.v)} L${xf} ${Y(q.a.v)} L${xf+22} ${Y(q.f.v)} L${xr} ${Y(q.r.v+150)}" fill="none" stroke="#39424e" stroke-width="2.2"/>`;
+ s+=`<path d="M${xr} ${Y(q.r.v+150)} C ${xr+60} ${Y(q.r.v-250)}, ${xb+130} ${Y(q.r.v+700)}, ${xb+6} ${yp}" fill="none" stroke="#3f7fd1" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#qa)"/>`;
+ s+=`<defs><marker id="qa" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#3f7fd1"/></marker></defs>`;
+ /* برچسب مراحل روی منحنی */
+ const stg=(x,y,ttl,sub,c)=>`<text x="${x}" y="${y}" text-anchor="middle" font-size="12" font-weight="700" fill="${c}">${ttl}</text><text x="${x}" y="${y+14}" text-anchor="middle" font-size="10" fill="#5a6a80">${sub}</text>`;
+ s+=stg((xb+xa-30)/2,yp-16,'بالک','جریان ثابت ≤ '+im+'mA','#39424e');
+ s+=stg((xa+xf)/2,Y(q.a.v)-30,'ابزورب','تثبیت '+V(q.a.v)+'V · شستشو ۱۰دقیقه · تیپر <'+tp+'mA×۶۰s','#8a6d1a');
+ s+=stg((xf+xr)/2,Y(q.f.v)-24,'شناور','نگه‌داشت '+V(q.f.v)+'V · جریان ~۰','#20632f');
+ s+=stg(X0+70,H-40,'خاموش','۱۵ ثانیه ثبات اتصال','#7a4a4a');
+ s+=`<text x="${X1-6}" y="${H-40}" text-anchor="end" font-size="10" fill="#3f7fd1">افت زیر ${V(q.r.v)}V → بازگشت به بالک (خط‌چین آبی)</text>`;
+ /* نشانگرهای زندهٔ ولتاژ باتری + وضعیت کانال‌ها */
+ let lg='';
+ if(D&&D.t){const tt=D.t;
+  [[tt[17],'باتری پایین','#7a1fa2'],[tt[18],'باتری بالا','#8e6c00']].forEach(m=>{
+   if(m[0]>lo&&m[0]<hi){const y=Y(m[0]);
+    s+=`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="${m[2]}" stroke-width="1.6" stroke-dasharray="2 3"/>`+
+       `<text x="${X0+10}" y="${y-4}" font-size="10.5" font-weight="700" fill="${m[2]}">${m[1]}: ${V(m[0])}V</text>`;}});
+  lg=`زنده: باتری پایین <b>${V(tt[17])}V</b> · باتری بالا <b>${V(tt[18])}V</b> · کانال ۱: <b>${ST[tt[6]]||('‌'+tt[6])}</b> · کانال ۲: <b>${ST[tt[13]]||tt[13]}</b> · پس از هر تغییر، ~۱٫۵ ثانیه بعد روی فلش برد ذخیره می‌شود.`;
+ }else lg='در انتظار دادهٔ برد…';
+ s+=`<text x="${X0}" y="12" font-size="10" fill="#8895aa">ولتاژ باتری (V)</text></svg>`;
+ g.innerHTML=s;const e=$('qgl');if(e)e.innerHTML=lg;}
 /* [EN] bind the profile inputs: on change, POST /s (fire-and-forget; the ack span next to the field shows the APPLIED value reported by the STM32). / اتصال ورودی‌های پروفایل: با تغییر، POST /s؛ نشانگر کنار فیلد مقدار «اعمال‌شده» را از STM32 نشان می‌دهد. */
-for(let id=20;id<27;id++){const e=$('q'+id);if(e)e.onchange=()=>{const v=parseInt(e.value,10);if(!isNaN(v))send(id,v);};}
-function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;qfill();
+for(let id=20;id<27;id++){const e=$('q'+id);if(e){e.onchange=()=>{const v=parseInt(e.value,10);if(!isNaN(v))send(id,v);};e.oninput=qgraph;}}
+function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;qfill();if(TAB==2)qgraph();
  document.body.classList.toggle('dn',!on);$('lk').classList.toggle('on',on);
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');
  hist(d);

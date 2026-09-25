@@ -661,8 +661,8 @@ def test_charge_profile_v112():
           "the absorb setpoint must be read from the profile at every decision site")
 
     # --- esp_link.c wires ids 20..26 to the charger profile API ---
-    apply_block = text_espc.split("static bool func__EspLink_ApplyParam")[1][:8000]
-    get_block = text_espc.split("static bool func__EspLink_GetParam")[1][:8000]
+    apply_block = text_espc.split("bool func__EspLink_ApplyParam")[1][:8000]
+    get_block = text_espc.split("bool func__EspLink_GetParam")[1][:8000]
     check("func__Charger_SetProfileParam" in apply_block and apply_block.count("ESPLINK_PARAM_CHG_PROFILE_") >= 7,
           "ApplyParam must route all 7 profile ids to Charger_SetProfileParam")
     check("func__Charger_GetProfileParam" in get_block and get_block.count("ESPLINK_PARAM_CHG_PROFILE_") >= 7,
@@ -798,6 +798,278 @@ def test_ch2_power_lut_v113():
           "the division must run in u64 with the cached clamped voltage (boot default 12.0 V)")
 
 
+def test_charger_persistence_v114():
+    """[EN] v1.14 (user order 2026-09-25, "values must survive power loss"):
+    the whole persisted-parameter stack - flash driver, ping-pong record,
+    clamped boot replay, debounced save, panel graph + texts - plus a REAL
+    compiled run of the exact flash-state code against a RAM-emulated flash
+    with power-cut fault injection.
+    [FA] v1.14 (دستور کاربر: «با قطع برق از بین نره»): کل پشتهٔ پارامترهای
+    ذخیره‌شونده + اجرای کامپایل‌شدهٔ همان کد ماشین حالت فلش روی شبیه‌سازی
+    RAM با تزریق قطع برق."""
+    import subprocess
+    import tempfile
+    import shutil
+
+    nvm_h = (ROOT / "Firmware/Modules/EspLink/esp_link_nvm.h").read_text(encoding="utf-8")
+    nvm_c = (ROOT / "Firmware/Modules/EspLink/esp_link_nvm.c").read_text(encoding="utf-8")
+    flash_c = (ROOT / "Firmware/Bsp/Src/bsp_flash.c").read_text(encoding="utf-8")
+    flash_h = (ROOT / "Firmware/Bsp/Inc/bsp_flash.h").read_text(encoding="utf-8")
+    app_c = (ROOT / "Firmware/App/Src/app.c").read_text(encoding="utf-8")
+    ld = (ROOT / "CubeIDE/STM32CubeIDE/STM32F103C8TX_FLASH.ld").read_text(encoding="utf-8")
+    ino = (ROOT / "esp_link_panel/esp_link_panel.ino").read_text(encoding="utf-8")
+
+    check((ROOT / "Firmware/Bsp/Src/bsp_flash.c").exists() and
+          (ROOT / "Firmware/Bsp/Inc/bsp_flash.h").exists() and
+          (ROOT / "Firmware/Modules/EspLink/esp_link_nvm.c").exists() and
+          (ROOT / "Firmware/Modules/EspLink/esp_link_nvm.h").exists(),
+          "v1.14 needs the BSP flash driver (bsp_flash.c/.h) and the persistence module (esp_link_nvm.c/.h)")
+
+    check("FLASH->KEYR" in flash_c and "FLASH_CR_PER" in flash_c and
+          "FLASH_CR_STRT" in flash_c and "FLASH_CR_PG" in flash_c and
+          "FLASH_CR_LOCK" in flash_c and "0x45670123" in flash_c,
+          "bsp_flash.c must use the direct RM0008 FPEC sequences (KEYR unlock, PER+AR+STRT page erase, PG halfword program, LOCK) with no HAL flash dependency")
+
+    check("func__EspLink_NvmMarkDirty(uint8_t__payload[0]);" in ESP_LINK_C.read_text(encoding="utf-8") and
+          "func__EspLink_NvmTick();" in ESP_LINK_C.read_text(encoding="utf-8"),
+          "a successful SET_PARAM of a persisted id must arm the debounced save, and EspLink_Run must tick it every comm period")
+    check("#if MODULE_ESP" in app_c and "func__EspLink_NvmInit();" in app_c,
+          "the boot replay must run in func__App_Init pre-scheduler under MODULE_ESP (module Inits reset channel state, never the settable statics)")
+    esph_txt = ESP_LINK_H.read_text(encoding="utf-8")
+    check("bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId," in esph_txt and
+          "bool func__EspLink_GetParam(uint8_t uint8_t__paramId, uint32_t *uint32_t__value);" in esph_txt,
+          "ApplyParam/GetParam must be public since v1.14 - the flash load/save replays through the SAME clamped setters as the panel")
+
+    check(re.search(r"FLASH\s+\(rx\)\s*: ORIGIN = 0x8000000,\s*LENGTH = 62K", ld) and
+          re.search(r"NVM\s+\(r\)\s*: ORIGIN = 0x800F800,\s*LENGTH = 2K", ld),
+          "the linker must shrink application FLASH to 62K and reserve the 2K NVM region at 0x0800F800 (build-time collision guard)")
+    check("0x0800F800u" in nvm_h and "0x0800FC00u" in nvm_h,
+          "the persistence pages must be the last two 1 KiB pages of the 64 KiB bank")
+    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+27u", nvm_h) and
+          "ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u" in nvm_h and
+          "ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u" in nvm_h and
+          "ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    26u" in nvm_h,
+          "persisted set = 0..14 + 20..26 (22 ids, 27 slots) - the transient test modes 15..19 must NEVER survive a reboot")
+
+    # the persisted-id predicate in C, replicated and cross-checked
+    persisted = {i for i in range(27) if i <= 14 or 20 <= i <= 26}
+    check(persisted == set(range(15)) | set(range(20, 27)) and 19 not in persisted and 15 not in persisted,
+          f"persisted id set must exclude 15..19 (got {len(persisted)} ids)")
+
+    check("روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند" in ino and
+          "ماندگاری:" in ino and "function qgraph()" in ino and "e.oninput=qgraph" in ino and
+          "if(TAB==2)qgraph();" in ino and "نمودار مراحل شارژ" in ino,
+          "the panel must carry the stage graph (qgraph + live preview + redraw hook) and the persistence texts")
+
+    # ---------- compiled fault-injection run of the EXACT flash-state code ----------
+    gcc = shutil.which("gcc")
+    if gcc is None:
+        print("  SKIP: gcc not found - the compiled NVM fault-injection run was not executed (static checks above still ran)")
+        return
+    tmp = tempfile.mkdtemp(prefix="nvm_harness_")
+    try:
+        (Path(tmp) / "stub_esp_link.h").write_text(
+            "#include <stdint.h>\n#include <stdbool.h>\n"
+            "#define ESPLINK_PARAM_COUNT 27u\n"
+            "bool func__EspLink_ApplyParam(uint8_t id, uint32_t value, uint32_t *applied);\n"
+            "bool func__EspLink_GetParam(uint8_t id, uint32_t *value);\n", encoding="utf-8")
+        (Path(tmp) / "stub_bsp_flash.h").write_text(
+            "#include <stdint.h>\n#include <stdbool.h>\n"
+            "bool func__BspFlash_ErasePage(uint32_t pageAddress);\n"
+            "bool func__BspFlash_ProgramHalfWords(uint32_t address, const uint16_t *data, uint32_t count);\n", encoding="utf-8")
+        harness = r"""
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <sys/mman.h>
+#define EMU_FLASH_BASE 0x10000000u
+uint8_t *EMU_FLASH;
+#define ESP_LINK_NVM_PAGE_A_ADDR (EMU_FLASH_BASE)
+#define ESP_LINK_NVM_PAGE_B_ADDR (EMU_FLASH_BASE + 1024u)
+#include "esp_link_nvm.h"
+#include "stub_esp_link.h"
+#include "stub_bsp_flash.h"
+
+int g_cut_after = -1, g_erase_cut = 0, g_apply_calls = 0;
+uint32_t g_params[27];
+static uint32_t clampf(uint32_t v, uint32_t lo, uint32_t hi){ return v < lo ? lo : (v > hi ? hi : v); }
+bool func__EspLink_ApplyParam(uint8_t id, uint32_t value, uint32_t *applied){
+    g_apply_calls++;
+    if (id >= 27u) return false;
+    switch (id) {
+        case 20: value = clampf(value, 11000, 14600); break;
+        case 21: value = clampf(value, 13800, 14550); break;
+        case 22: value = clampf(value, 14500, 14750); break;
+        case 23: value = clampf(value, 9000, 14300); break;
+        case 24: value = clampf(value, 8000, 13200); break;
+        case 25: value = clampf(value, 100, 900); break;
+        case 26: value = clampf(value, 10, 300); break;
+        default: break;
+    }
+    g_params[id] = value;
+    if (applied) *applied = value;
+    return true;
+}
+bool func__EspLink_GetParam(uint8_t id, uint32_t *value){ if (id >= 27u) return false; *value = g_params[id]; return true; }
+bool func__BspFlash_ErasePage(uint32_t p){
+    if (p != EMU_FLASH_BASE && p != EMU_FLASH_BASE + 1024u) return false;
+    memset((void *)(uintptr_t)p, 0xFF, 1024);
+    return g_erase_cut ? false : true;
+}
+bool func__BspFlash_ProgramHalfWords(uint32_t a, const uint16_t *d, uint32_t c){
+    volatile uint16_t *dst = (volatile uint16_t *)(uintptr_t)a;
+    for (uint32_t i = 0; i < c; i++) {
+        if (g_cut_after >= 0 && (int)i >= g_cut_after) return false;
+        if (dst[i] != 0xFFFFu && dst[i] != d[i]) return false;
+        dst[i] = d[i];
+    }
+    return true;
+}
+#include "esp_link_nvm_body.c"
+
+static void set_profile(uint32_t a, uint32_t f, uint32_t r, uint32_t im){
+    uint32_t ap; (void)ap;
+    func__EspLink_ApplyParam(20, a, &ap); func__EspLink_ApplyParam(23, f, &ap);
+    func__EspLink_ApplyParam(24, r, &ap); func__EspLink_ApplyParam(25, im, &ap);
+}
+static void reboot(void){ memset(g_params, 0, sizeof g_params); g_apply_calls = 0; func__EspLink_NvmInit(); }
+static void run_ticks(int n){ for (int i = 0; i < n; i++) func__EspLink_NvmTick(); }
+
+int main(void){
+    uint32_t ap;
+    EMU_FLASH = mmap((void *)EMU_FLASH_BASE, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    assert(EMU_FLASH == (uint8_t *)EMU_FLASH_BASE);
+
+    /* T1 fresh board: nothing applied, defaults stay */
+    memset(EMU_FLASH, 0xFF, 2048); reboot();
+    assert(g_apply_calls == 0);
+
+    /* T2 debounce + save + reboot round-trip; burst resets the wait */
+    set_profile(14400, 13500, 12800, 650);
+    func__EspLink_NvmMarkDirty(23); run_ticks(14);
+    const esp_link_nvm_record_t *pb = (const esp_link_nvm_record_t *)(void *)(uintptr_t)ESP_LINK_NVM_PAGE_B_ADDR;
+    assert(func__EspLink_NvmSeqCompare(pb->uint16_t__seq, 0) == 1); /* first save on page B */
+    reboot();
+    assert(g_params[20] == 14400 && g_params[23] == 13500 && g_params[24] == 12800 && g_params[25] == 650);
+
+    /* T3 alternation to page A, seq 2 */
+    set_profile(14200, 13400, 12700, 700);
+    func__EspLink_NvmMarkDirty(20); run_ticks(20);
+    reboot();
+    assert(g_params[20] == 14200 && g_params[23] == 13400 && g_params[24] == 12700 && g_params[25] == 700);
+
+    /* T4 power cut DURING programming -> previous good record survives */
+    set_profile(14100, 13300, 12600, 750);
+    func__EspLink_NvmMarkDirty(20); g_cut_after = 10; run_ticks(20); g_cut_after = -1;
+    reboot();
+    assert(g_params[20] == 14200);
+
+    /* T5 power cut DURING erase -> previous good record survives */
+    set_profile(14000, 13200, 12500, 800);
+    func__EspLink_NvmMarkDirty(20); g_erase_cut = 1; run_ticks(20); g_erase_cut = 0;
+    reboot();
+    assert(g_params[20] == 14200);
+
+    /* T6 both pages damaged (flow-independent) -> nothing applied, defaults */
+    EMU_FLASH[8] ^= 0x40;
+    EMU_FLASH[1024 + 8] ^= 0x40;
+    reboot();
+    assert(g_apply_calls == 0 && g_params[20] == 0u);
+
+    /* T6b clean pair: single corruption falls back to the older page */
+    memset(EMU_FLASH, 0xFF, 2048); reboot();
+    {
+        esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[1];
+        e[0].uint16_t__id = 20; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 14400;
+        func__EspLink_NvmRecordBuild(&rec, 3, e, 1);
+        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_A_ADDR));
+        assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_A_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
+        e[0].uint32_t__value = 14200;
+        func__EspLink_NvmRecordBuild(&rec, 4, e, 1);
+        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_B_ADDR));
+        assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_B_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
+        reboot();
+        assert(g_params[20] == 14200);
+        EMU_FLASH[1024 + 60] ^= 0x08;
+        reboot();
+        assert(g_params[20] == 14400);
+    }
+
+    /* T7 a record carrying a transient test id (19) is rejected WHOLE */
+    {
+        esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[3];
+        e[0].uint16_t__id = 20; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 14500;
+        e[1].uint16_t__id = 19; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 1;
+        e[2].uint16_t__id = 23; e[2].uint16_t__pad = 0; e[2].uint32_t__value = 13600;
+        func__EspLink_NvmRecordBuild(&rec, 9, e, 3);
+        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_B_ADDR));
+        assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_B_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
+        reboot();
+        assert(g_params[20] == 14400);
+    }
+
+    /* T8 hostile out-of-window value lands CLAMPED */
+    {
+        esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[1];
+        e[0].uint16_t__id = 20; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 99999;
+        func__EspLink_NvmRecordBuild(&rec, 10, e, 1);
+        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_B_ADDR));
+        assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_B_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
+        reboot();
+        assert(g_params[20] == 14600);
+    }
+
+    /* T9 sequence wrap 65534/65535 -> 0 stays monotonic */
+    {
+        esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[1];
+        e[0].uint16_t__id = 25; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 590;
+        func__EspLink_NvmRecordBuild(&rec, 65534u, e, 1);
+        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_B_ADDR));
+        assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_B_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
+        e[0].uint32_t__value = 600;
+        func__EspLink_NvmRecordBuild(&rec, 65535u, e, 1);
+        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_A_ADDR));
+        assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_A_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
+        reboot();
+        assert(g_params[25] == 600);
+        assert(func__EspLink_NvmSeqCompare(0, 65535) == 1);
+        func__EspLink_ApplyParam(23, 13600, &ap);
+        func__EspLink_NvmMarkDirty(23); run_ticks(20);
+        reboot();
+        assert(g_params[25] == 600 && g_params[23] == 13600);
+    }
+
+    /* T10 a transient MarkDirty never arms a save */
+    memset(EMU_FLASH, 0xFF, 2048); reboot();
+    func__EspLink_ApplyParam(19, 1, &ap); func__EspLink_NvmMarkDirty(19);
+    run_ticks(30);
+    assert(EMU_FLASH[0] == 0xFF && EMU_FLASH[1024] == 0xFF);
+
+    printf("ALL NVM HARNESS TESTS PASSED\n");
+    return 0;
+}
+"""
+        (Path(tmp) / "harness.c").write_text(harness, encoding="utf-8")
+        marker = "EspLink Nvm pure record logic"
+        i = nvm_c.find(marker)
+        assert i > 0
+        body = nvm_c[nvm_c.find("*/", i) + 2:]
+        (Path(tmp) / "esp_link_nvm_body.c").write_text(body, encoding="utf-8")
+        cc = subprocess.run([gcc, "-O2", "-I", str(tmp), "-I", str(ROOT / "Firmware/Modules/EspLink"),
+                             "-o", str(Path(tmp) / "nvmtest"), str(Path(tmp) / "harness.c")],
+                            capture_output=True, text=True, timeout=120)
+        check(cc.returncode == 0, f"the NVM harness must compile clean (stderr: {cc.stderr[:300]})")
+        if cc.returncode == 0:
+            rr = subprocess.run([str(Path(tmp) / "nvmtest")], capture_output=True, text=True, timeout=60)
+            check("ALL NVM HARNESS TESTS PASSED" in rr.stdout,
+                  f"the EXACT v1.14 flash-state code must survive the fault-injection suite "
+                  f"(cut during erase, cut during program, bit-flip, hostile record, clamp, wrap) - output: {rr.stdout!r} rc={rr.returncode}")
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def test_electronic_load_policy_documented():
     text_h = CHARGER_H.read_text()
     check("free resistor" in text_h or "resistor alone" in text_h or "مقاومت آزاد" in text_h,
@@ -872,6 +1144,7 @@ def main():
         test_manual_test_mode_v12,
         test_charge_profile_v112,
         test_ch2_power_lut_v113,
+        test_charger_persistence_v114,
     ]
     for test in tests:
         test()

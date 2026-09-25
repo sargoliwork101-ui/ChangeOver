@@ -6,6 +6,8 @@
 
 #include "app.h"
 #include "rtos_app.h"
+#include "modules_enable.h"
+#include "esp_link_nvm.h"
 
 /**
  * @brief  [EN] Application initialization hook; thread-owned module init runs in its thread.
@@ -13,8 +15,23 @@
  */
 void func__App_Init(void)
 {
-    /* [EN] Keep startup free of UI state initialization; the UI thread owns it.
-       [FA] مقداردهی وضعیت UI در شروع برنامه انجام نمی‌شود؛ مالک آن تسک UI است. */
+#if MODULE_ESP
+    /* [EN] v1.14 (user order 2026-09-25: panel values must survive power
+       loss): replay the newest CRC-valid flash record through the clamped
+       parameter setters BEFORE the scheduler starts. The module Init
+       functions that run later inside their own threads only reset channel
+       state and measurement outputs - never the settable statics - so the
+       loaded values survive them. A missing or corrupt record changes
+       nothing (compiled defaults stay).
+       [FA] v1.14 (دستور کاربر: مقادیر پنل با قطع برق باید بمانند):
+       بازپخش تازه‌ترین رکورد سالمِ CRC فلش از setterهای گیره‌دار «قبل از
+       راه‌افتادن زمان‌بند». Initهای ماژول که بعداً داخل تسک خودشان اجرا
+       می‌شوند فقط وضعیت کانال و خروجی‌های اندازه‌گیری را ریست می‌کنند -
+       هرگز staticهای قابل‌تنظیم را نه - پس مقادیر بارگذاری‌شده از آنها
+       جان سالم به در می‌برند. رکورد گم یا خراب هیچ چیزی را عوض نمی‌کند
+       (پیش‌فرض کامپایل می‌ماند). */
+    func__EspLink_NvmInit();
+#endif
 }
 
 /**

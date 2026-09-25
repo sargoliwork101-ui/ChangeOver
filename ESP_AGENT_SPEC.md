@@ -47,7 +47,15 @@
 > limit 112 -> 144), the bench CSV carries the 7 profile params too
 > (78 columns), and the wizard now CARRIES the input-voltage DMM
 > reading into the next step (user order: Vin is quasi-static, one
-> reading per run is enough). v1.13 (same day, seventh order - "the
+> reading per run is enough). v1.14 (same day, eighth order - "the
+> charger constants must be sent from the panel and survive power
+> loss"): (1) every settable parameter except the transient test modes
+> (15..19) now persists in the last two STM32 flash pages with
+> CRC + sequence ping-pong (power-cut safe, ~1.5 s debounce, clamped
+> replay at boot - section 5.8); application FLASH shrinks 64K -> 62K.
+> (2) The charge tab gains a live SVG stage graph (threshold bands,
+> BULK->ABSORB->FLOAT curve, reentry cycle, live battery markers,
+> typed-value preview). No wire-format change. v1.13 (same day, seventh order - "the
 > voltages are fixed but the currents you read are wrong"): audit of
 > the whole current path confirmed the chain formula, the parse and the
 > v1.11 anchors all matched the DMM to <= 0.7 mA on the calibration
@@ -712,11 +720,20 @@ params 20..26 (shared by BOTH channels - one profile for both batteries).
 Each field carries a Persian description in the tab; the applied value
 reported back by the STM32 is shown next to the field, so a clamped write
 is visible immediately. A "بازگردانی پیش‌فرض کارخانه" button restores all
-seven defaults.
+seven defaults. v1.14 adds a live SVG STAGE GRAPH at the top of the tab:
+voltage threshold bands (hard 15 V cutoff, absorb-over, absorb,
+absorb-enter, float, reentry), the battery-voltage curve through
+OFF -> BULK (constant current) -> ABSORB (voltage hold + taper) -> FLOAT
+with the reentry cycle arrow, the current annotations (imax / taper), LIVE
+battery-low/high markers and both charger states from TLM, and a dashed
+PREVIEW of any typed-but-not-yet-applied value.
 
 - Boot defaults equal the old compile-time setpoints (14400 / 14300 /
   14600 / 13500 / 12800 / 650 / 50) - a reflash changes no behavior.
-- RAM-only like every other parameter: a reset restores the defaults.
+- v1.14 (user order 2026-09-25, "must survive power loss"): every applied
+  value is persisted to STM32 flash ~1.5 s after the last change (section
+  5.8) - power cycles keep the profile; the factory button re-sends AND
+  re-persists the defaults.
 - Every write re-clamps the WHOLE set (Charger_ClampProfile): enter in
   [absorb−500, absorb−50], over in [absorb+100, min(absorb+400, 14750)],
   float in [9000, absorb−300], reentry in [8000, float−300], imax in
@@ -727,6 +744,53 @@ seven defaults.
   bounds, the JIT trip.
 - Manual test mode (5.2) ignores the profile - manual duty is the user's
   own responsibility, only the hardware floor applies.
+
+### 5.8 Parameter persistence in STM32 flash (v1.14 — user order 2026-09-25)
+
+User order: "I want to send the constants from the panel to the board and,
+once sent, they must stay there and survive power loss." Scope: EVERY
+settable parameter EXCEPT the transient test modes - that is ids 0..14
+(offsets, gains, filters, eta, charger enables, duty ceilings) and 20..26
+(charge profile). The fixed-duty ids 15..18 and manual test id 19 are
+NEVER persisted: after any reboot the charger is guaranteed to be in its
+automatic mode.
+
+- Layout: the last two 1 KiB flash pages of the STM32F103C8 (0x0800F800 /
+  0x0800FC00); the linker script shrinks application FLASH 64K -> 62K and
+  adds an NVM region, so an oversized image fails AT BUILD, not by
+  overwriting records. Driver: `Firmware/Bsp/Src/bsp_flash.c` (direct
+  RM0008 FPEC register sequences - no HAL flash sources needed).
+- Record (esp_link_nvm.c): magic "CHO1" + version + wrap-around u16
+  sequence + up to 27 {id, value} slots + CRC32 over everything before it.
+  A record containing any non-persisted id is rejected WHOLE.
+- Power-cut safety (ping-pong): each save erases the page that does NOT
+  hold the newest record, then programs the new record there and verifies
+  by read-back. A cut during erase or program can never destroy the
+  previous good record; boot picks the CRC-valid record with the newest
+  sequence (int16 difference, wrap-safe).
+- Boot: `func__App_Init` (pre-scheduler, under MODULE_ESP) replays the
+  record through the SAME `func__EspLink_ApplyParam` clamped setters the
+  panel path uses - a stale or hostile record can only land inside the
+  compiled safety windows; module Init functions reset channel state,
+  never the settable statics, so the loaded values survive them. Both
+  records invalid (fresh board / corruption) = compiled defaults, nothing
+  applied.
+- Save path: a successful SET_PARAM of a persisted id arms a dirty flag;
+  `func__EspLink_Run` calls `func__EspLink_NvmTick` every comm period and
+  saves ~1.5 s (15 runs) after the LAST change - one page erase + program
+  per burst, not per keystroke. A failed verify retries up to 3 times,
+  then gives up until the next change (no erase loop on a worn page).
+- Cost note: an F1 page erase stalls ALL flash instruction fetches for
+  typ. 20..40 ms - the measurement/charger loops hiccup once per save
+  (rare event); one UART frame may be lost around a save (the parser
+  resyncs, the panel polls).
+- Wire protocol: UNCHANGED. The panel reads the persisted values back
+  through the existing GET_PARAMS / PARAMS_BULK path after a reboot.
+- Host verification: the exact flash-state code is compiled against a
+  RAM-emulated flash with fault injection (cut during erase, cut during
+  program, bit-flip corruption, hostile record, out-of-window value,
+  sequence wrap, transient-id rejection) - see host_test_charger.py
+  v1.14 (test_charger_persistence_v114).
 
 ## 6. TLM_LIVE payload layout (84 bytes, little-endian)
 
@@ -851,6 +915,10 @@ documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 1 s keepalive while ID 19 = 1.
 
 ## 10. Protocol version
+
+v1.14 (2026-09-25, user order of the same day): parameter persistence in
+STM32 flash + the panel stage graph (section 5.8) - firmware + panel
+only, NO wire-format change. Both boards reflash together as usual.
 
 v1.13 (2026-09-25, user order of the same day): the ch2 LUT changed from
 chain->current to chain->POWER with a live /Vlow division (section 5.3) -
