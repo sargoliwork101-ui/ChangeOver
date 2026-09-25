@@ -86,7 +86,10 @@
 #define ESP_LINK_SOF_BYTE0          0xAAu
 #define ESP_LINK_SOF_BYTE1          0x55u
 #define ESP_LINK_HEADER_SIZE        4u
-#define ESP_LINK_MAX_PAYLOAD        112u
+/* [EN] 144 since v1.12: PARAMS_BULK with 27 parameters = 1 + 27 x 5 = 136
+         payload bytes (was 112 for 20). / [FA] از v1.12: PARAMS_BULK با
+         ۲۷ پارامتر = ۱ + ۲۷ × ۵ = ۱۳۶ بایت payload (قبلاً ۱۱۲ برای ۲۰). */
+#define ESP_LINK_MAX_PAYLOAD        144u
 #define ESP_LINK_TLM_SIZE           84u
 #define ESP_LINK_TLM_FIELD_OFFSET   4u
 #define ESP_LINK_TLM_FIELD_COUNT    20u
@@ -105,7 +108,10 @@
 #define ESP_MSG_PARAMS_BULK         0x12u
 
 /* ==================== Parameter Constants ==================== */
-#define ESP_PARAM_COUNT             20u
+/* [EN] 27 since v1.12 (user order 2026-09-25): ids 20..26 = the shared
+         charge profile (section 5.7). / [FA] از v1.12: شناسه‌های ۲۰..۲۶ =
+         پروفایل شارژ مشترک (بخش 5.7). */
+#define ESP_PARAM_COUNT             27u
 #define ESP_PARAM_CHG1_ENABLE       11u
 #define ESP_PARAM_CHG2_ENABLE       12u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
@@ -135,11 +141,11 @@
 /* [EN] One append-only CSV on LittleFS. The panel builds each row from the /m window (every TLM frame,
         raw included) plus the typed DMM readings and POSTs it to /benchlog/add; the ESP only validates
         (printable ASCII, newline-terminated, bounded length) and appends. The column header (the comment block
-        of spec 5.6, 71 columns) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
+        of spec 5.6, 78 columns - v1.12: +7 charge-profile params) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
         Arduino IDE: pick a flash layout WITH a file system (ESP8266 e.g. "4MB (FS:1MB)"; ESP32 default is fine).
    [FA] یک فایل CSV فقط-افزودنی روی LittleFS. پنل هر ردیف را از پنجرهٔ /m (تک‌تک فریم‌های TLM با raw)
         و عددهای مولتی‌متر می‌سازد و به /benchlog/add می‌فرستد؛ ESP فقط بررسی (ASCII قابل چاپ، پایان با
-        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 5.6، ۷۱ ستون) را ESP هنگام ساخت فایل می‌نویسد. در سقف
+        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 5.6، ۷۸ ستون - v1.12: +۷ پارامتر پروفایل شارژ) را ESP هنگام ساخت فایل می‌نویسد. در سقف
         اندازه افزودن متوقف می‌شود (HTTP 507) و پنل هشدار می‌دهد.
         در Arduino IDE چیدمان فلشِ دارای فایل‌سیستم را انتخاب کنید (ESP8266 مثلاً "4MB (FS:1MB)"؛ ESP32 پیش‌فرض کافی است). */
 #define ESP_BENCHLOG_PATH           "/benchlog.csv"
@@ -150,6 +156,8 @@
     "#  [id]     scenario,step,duty_permille,settle_ms,sample_ms,browser_ts\n" \
     "#  [params] off1,off2,gain1,gain2,voff_in,voff_24,voff_12,med,avg,\n" \
     "#           eta1,eta2,en1,en2,ceil1,ceil2,fixon1,fix1,fixon2,fix2,manual\n" \
+    "#  [profile] chg_absorb_mv,chg_absorb_enter_mv,chg_absorb_over_mv,\n" \
+    "#            chg_float_mv,chg_reentry_mv,chg_bulk_imax_ma,chg_taper_ma\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \
@@ -181,12 +189,13 @@ typedef enum
 /* ==================== Parameter Ranges (STM32 clamps too) ==================== */
 /* [EN] ID: 0..1 offset, 2..3 gain, 4..6 mV offset (signed), 7 median 1..15, 8 avg window 1..300 (v1.4, raised in v1.9), 9..10 ETA conversion (v1.3, 0 = identity),
         11..12 charger enable, 13..14 duty ceiling, 15/17 fixed-duty on, 16/18 fixed/manual duty,
-        19 manual test mode (v1.2).
+        19 manual test mode (v1.2), 20..26 charge profile (v1.12: outer envelope only - the STM32
+        re-clamps the interdependencies, e.g. enter <= absorb-50).
    [FA] شناسه: ۰..۱ آفست، ۲..۳ گین، ۴..۶ آفست mV علامت‌دار، ۷ مدین ۱..۱۵، ۸ پنجره میانگین ۱..۳۰۰ (نسخه ۱.۴؛ بالا رفتن در ۱.۹)، ۹..۱۰ ضریب تبدیل η (v1.3، صفر = همانی)،
         ۱۱..۱۲ قطع/وصل شارژر، ۱۳..۱۴ سقف duty، ۱۵/۱۷ مود duty فیکس، ۱۶/۱۸ duty فیکس/دستی،
         ۱۹ مود تست دستی (نسخه ۱.۲). */
-static const int32_t INT32_T__G__ParamMin[ESP_PARAM_COUNT] = {   0,   0,  100,  100, -5000, -5000, -5000, 1,  1,   0,   0, 0, 0,   0,   0, 0,   0, 0,   0, 0 };
-static const int32_t INT32_T__G__ParamMax[ESP_PARAM_COUNT] = { 255, 255, 3000, 3000,  5000,  5000,  5000, 15, 300, 999, 999, 1, 1, 500, 500, 1, 500, 1, 500, 1 };
+static const int32_t INT32_T__G__ParamMin[ESP_PARAM_COUNT] = {   0,   0,  100,  100, -5000, -5000, -5000, 1,  1,   0,   0, 0, 0,   0,   0, 0,   0, 0,   0, 0, 11000, 10500, 11100, 9000, 8000, 100,  10 };
+static const int32_t INT32_T__G__ParamMax[ESP_PARAM_COUNT] = { 255, 255, 3000, 3000,  5000,  5000,  5000, 15, 300, 999, 999, 1, 1, 500, 500, 1, 500, 1, 500, 1, 14600, 14550, 14750, 14300, 13200, 900, 300 };
 
 /* ==================== RX State ==================== */
 static esp_rx_state_t ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
@@ -231,7 +240,7 @@ static uint32_t UINT32_T__G__StatCount = 0u;
 
 /* [EN] Send priority: charger cut, manual mode, manual duties, then the rest.
    [FA] اولویت ارسال: قطع شارژر، مود دستی، duty دستی، سپس بقیه. */
-static const uint8_t UINT8_T__G__TxOrder[ESP_PARAM_COUNT] = { 11, 12, 19, 16, 18, 15, 17, 13, 14, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+static const uint8_t UINT8_T__G__TxOrder[ESP_PARAM_COUNT] = { 11, 12, 19, 16, 18, 15, 17, 13, 14, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 21, 22, 23, 24, 25, 26 };
 
 /* ==================== HTTP ==================== */
 static esp_web_server_t ESP_WEB_SERVER_T__G__Server(ESP_HTTP_PORT);
@@ -320,7 +329,7 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 @media(max-width:640px){.cb{font-size:12px;padding:8px 7px}.cb span{white-space:nowrap}.vs{grid-template-columns:repeat(3,1fr)}.ch{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}}
 </style></head><body>
 <header><h1>پنل ChangeOver</h1><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
-<nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button></nav>
+<nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات شارژ</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
 <div class="pgx a" id="p0">
@@ -330,6 +339,33 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <div id="mc"></div>
 </div>
 <div class="pgx" id="p1"></div>
+<div class="pgx" id="p2">
+<div class="cd">
+<div class="hd"><b>پروفایل شارژ</b><span class="lb">· مشترک هر دو کانال · با ریست برد به پیش‌فرض برمی‌گردد (مثل بقیهٔ پارامترها)</span></div>
+<div class="sec">ولتاژها <span class="lb">(mV)</span></div>
+<div class="bqr">
+<label>حداکثر ولتاژ باتری (ابزورب)<input type="number" id="q20" step="50" min="11000" max="14600"><span class="lb" id="a20">—</span></label>
+<label>آستانهٔ ورود به ابزورب<input type="number" id="q21" step="10" min="10500" max="14550"><span class="lb" id="a21">—</span></label>
+<label>سقف تجاوز ابزورب<input type="number" id="q22" step="10" min="11100" max="14750"><span class="lb" id="a22">—</span></label>
+<label>ولتاژ شناور<input type="number" id="q23" step="50" min="9000" max="14300"><span class="lb" id="a23">—</span></label>
+<label>ولتاژ بازگشت به بالک<input type="number" id="q24" step="50" min="8000" max="13200"><span class="lb" id="a24">—</span></label>
+</div>
+<div class="sec">جریان‌ها <span class="lb">(mA)</span></div>
+<div class="bqr">
+<label>جریان حداکثر شارژ (بالک)<input type="number" id="q25" step="10" min="100" max="900"><span class="lb" id="a25">—</span></label>
+<label>جریان تیپر (ورود به شناور)<input type="number" id="q26" step="5" min="10" max="300"><span class="lb" id="a26">—</span></label>
+</div>
+<div class="lb">حداکثر ولتاژ باتری: ولتاژ تثبیت فاز ابزورب — بالای آن سوئیچینگ متوقف می‌شود (پیش‌فرض ۱۴۴۰۰).
+آستانهٔ ورود: با رسیدن باتری به این ولتاژ فاز ابزورب با پلهٔ ریز ۰٫۱٪ آغاز می‌شود (۱۴۳۰۰).
+سقف تجاوز: بالای این ولتاژ کاهش سریع duty (پلهٔ ۰٫۵٪)؛ همیشه ۵۰mV زیر خطای قطع باتری ۱۴٫۸V نگه داشته می‌شود (۱۴۶۰۰).
+ولتاژ شناور: نگه‌داشت باتری پس از پایان شارژ (۱۳۵۰۰).
+ولتاژ بازگشت: افت باتری در شناور زیر این مقدار، بالک را دوباره آغاز می‌کند (۱۲۸۰۰).
+جریان حداکثر: سقف باند تنظیم جریان بالک؛ کف باند به‌طور خودکار ۲۰mA کمتر است (۶۵۰).
+جریان تیپر: ابزورب پایان می‌یابد وقتی جریان دنباله ۶۰ ثانیه پایدار زیر این مقدار بماند (۵۰ ~ C/90).
+پس از هر تغییر، مقدار «اعمال‌شدهٔ» برد کنار همان فیلد نشان داده می‌شود — اگر با درخواست شما فرق دارد یعنی گیره خورده تا مجموعه سازنده بماند (مثلاً ورود ≤ ابزورب−۵۰). حد سخت ایمنی (خطای ۹۵۰mA و قطع ۱۵V) از پنل قابل تغییر نیست.</div>
+<div class="bqr"><button class="sb sb2" onclick="qdef()">بازگردانی پیش‌فرض کارخانه</button></div>
+</div>
+</div>
 </main>
 
 <script>
@@ -410,7 +446,11 @@ function formulas(t,p){
   else e.textContent=i==3?'V24 − V12':'= V12';});
  $('ff').textContent=`I_filtered = average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( mA_unfiltered ) )`;}
 function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>hn()){s.u.shift();s.f.shift();}});}}
-function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;
+function qfill(){if(!D||!D.p)return;for(let id=20;id<27;id++){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!(D.q&(1<<id)))a.textContent=D.p[id]==null?'—':D.p[id];}}
+function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{$('q'+x[0]).value=x[1];send(x[0],x[1]);});}
+/* [EN] bind the profile inputs: on change, POST /s (fire-and-forget; the ack span next to the field shows the APPLIED value reported by the STM32). / اتصال ورودی‌های پروفایل: با تغییر، POST /s؛ نشانگر کنار فیلد مقدار «اعمال‌شده» را از STM32 نشان می‌دهد. */
+for(let id=20;id<27;id++){const e=$('q'+id);if(e)e.onchange=()=>{const v=parseInt(e.value,10);if(!isNaN(v))send(id,v);};}
+function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;qfill();
  document.body.classList.toggle('dn',!on);$('lk').classList.toggle('on',on);
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');
  hist(d);
@@ -468,7 +508,7 @@ async function wlatch(){const j=await req('/m');if(!j.n||!j.s||j.s.length<20)thr
 /* خانه‌های زندهٔ ردیف فعال از آخرین /t — فقط نمایش؛ ردیف فایل از /m لحظهٔ ثبت ساخته می‌شود */
 function wlive(act){if(!D||D.on!=1)return['-','-','-',undefined,'-','-','-',undefined,undefined];const M=(n,b)=>act.includes(n)?[D.t[b],D.t[b+3],D.t[b+4]]:['قطع','-','-'];const a=M(1,0),b=M(2,7);return[a[0],a[1],a[2],undefined,b[0],b[1],b[2],undefined,undefined];}
 /* ردیف CSV (۷۱ ستون، ترتیب دقیق بخش 5.6، مولتی‌متر نسخه ۴) / CSV row, exact 5.6 column order (DMM v4) */
-function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x,P=[];for(let k=0;k<20;k++)P.push(q(D.p[k]));
+function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x,P=[];for(let k=0;k<27;k++)P.push(q(D.p[k]));
  const C=b=>[m.a(b).toFixed(1),m.lo[b],m.hi[b],r0(m.a(b+1)),r0(m.a(b+2)),m.lo[b+2],m.hi[b+2],r0(m.a(b+3)),m.lo[b+3],m.hi[b+3],r0(m.a(b+4)),m.lo[b+4],m.hi[b+4],m.la[b+5],m.la[b+6]];
  return [sc,i+1,pm,se,sa,iso,...P,...C(0),...C(7),m.seq,m.fl,...[14,15,16,17,18].map(k=>r0(m.a(k))),m.or,q(v.ii),q(v.vi),q(v.b1),q(v.v1),q(v.b2),q(v.v2),v.note||'-'].join(',')+'\n';}
 /* جدول واحد: هر مرحلهٔ هر سناریو یک ردیف؛ ردیف فعال ورودی‌ها و دکمه‌ها را دارد */
@@ -481,8 +521,9 @@ function wmeas(m,act){const M=(n,b)=>act.includes(n)?[m.a(b).toFixed(1),r0(m.a(b
  * Active row (DMM v4): battery currents + total input current inline; voltages, note and the three buttons in the row below */
 function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const N=id=>`<input type="number" step="any" id="${id}" class="wi">`,F=n=>act.includes(n)?N('wB'+n):'-';
  wcell(x,wlive(act).map((v,i)=>i==3?F(1):i==7?F(2):i==8?N('wIi'):v),'منتظر عدد شما','wr');
- const L=(id,t)=>`<label class="lb">${t} <input type="number" step="any" id="${id}" class="wi"></label>`;
- const e=document.createElement('tr');e.id='wX';e.innerHTML=`<td colspan="13"><div class="bctl">${L('wVi','ولتاژ ورودی V')}${L('wV1','ولتاژ باتری ۱ V')}${L('wV2','ولتاژ باتری ۲ V')}<label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label>
+ const L=(id,t,pre)=>`<label class="lb">${t} <input type="number" step="any" id="${id}" class="wi"${pre!=null?' value="'+pre+'"':''}></label>`;
+ let WVI=window.WVI||'';/* [EN] input voltage is quasi-static: carry the last submitted DMM reading into the next step (user order 2026-09-25: no need to retype it every step) / ولتاژ ورودی تقریباً ثابت است: آخرین عدد ثبت‌شده در مرحلهٔ بعد پیش‌پر می‌شود */
+ const e=document.createElement('tr');e.id='wX';e.innerHTML=`<td colspan="13"><div class="bctl">${L('wVi','ولتاژ ورودی V',WVI)}${L('wV1','ولتاژ باتری ۱ V')}${L('wV2','ولتاژ باتری ۲ V')}<label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label>
 <button class="sb" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2" id="wRe">تکرار همین مرحله</button><button class="sb stp2" id="wEn">پایان</button></div>
 <div class="lb">اجباری: جریان ورودی کل + جریان هر باتری روشن (<b>منفی هم مجاز</b> — تخلیهٔ باتری با شارژر خاموش، مثل بار زنر). جریان باتری باید نزدیک عدد پنل باشد؛ ورودی کل ~۰٫۷ برابر مجموع پنل طبیعی است. ولتاژها (V) و یادداشت اختیاری.</div></td>`;r.after(e);
  const f=$('wB'+act[0]);if(f)f.focus();
@@ -490,7 +531,7 @@ function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const N=id=>`<inpu
  return new Promise(res=>{$('wGo').onclick=()=>{const v={},ok=id=>gv(id);/* v1.9 (user order 2026-09-25): negative currents are VALID - with the charger off the battery itself discharges into other loads (e.g. the zener), the DMM then reads minus */
    v.ii=ok('wIi');if(v.ii==null)return alert('جریان ورودی کل اجباری است.');
    for(const n of act){v['b'+n]=ok('wB'+n);if(v['b'+n]==null)return alert('جریان باتری '+n+' اجباری است (کانال '+n+' روشن است).');}
-   [['vi','wVi'],['v1','wV1'],['v2','wV2']].forEach(k=>{const y=gv(k[1]);v[k[0]]=y==null?null:r0(y*1000);});v.note=asc($('wN').value);res({a:'next',v,iso:new Date().toISOString()});};
+   [['vi','wVi'],['v1','wV1'],['v2','wV2']].forEach(k=>{const y=gv(k[1]);v[k[0]]=y==null?null:r0(y*1000);});WVI=window.WVI=(v.vi==null)?'':(v.vi/1000);v.note=asc($('wN').value);res({a:'next',v,iso:new Date().toISOString()});};
   $('wRe').onclick=()=>res({a:'repeat'});$('wEn').onclick=()=>res({a:'end'});
   r.onkeydown=e.onkeydown=ev=>{if(ev.key=='Enter'&&ev.target.tagName=='INPUT')$('wGo').click();};
   W.ft=setInterval(()=>{try{wchk();}catch(er){clearInterval(W.ft);res({a:'err',e:er});}},200);}).finally(()=>{clearInterval(W.ft);clearInterval(lv);e.remove();r.classList.remove('wa');r.onkeydown=null;});}

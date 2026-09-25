@@ -70,6 +70,31 @@ typedef struct
 
 static charger_channel_state_t CHARGER_CHANNEL_T__G__State[2];
 
+/* [EN] Runtime charge profile, shared by both channels (user order
+ *      2026-09-25: settable from the ESP panel tab, wire ids 20..26). Boot
+ *      defaults = the old compile-time setpoints; RAM-only like every other
+ *      parameter. func__Charger_ClampProfile() keeps the set consistent.
+ * [FA] پروفایل شارژ زمان اجرا، مشترک بین هر دو کانال (دستور کاربر
+ *      ۲۰۲۶-۰۹-۲۵: تنظیم از تب پنل، شناسه‌های سیمی ۲۰..۲۶). پیش‌فرض بوت =
+ *      ست‌پوینت‌های کامپایل‌تایم قبلی؛ مثل بقیهٔ پارامترها فقط در RAM.
+ *      func__Charger_ClampProfile() مجموعه را سازنده نگه می‌دارد. */
+typedef struct
+{
+    uint32_t uint32_t__absorbMv;        /* [EN] absorb hold setpoint / تثبیت ابزورب */
+    uint32_t uint32_t__absorbEnterMv;   /* [EN] absorb entry threshold / آستانهٔ ورود ابزورب */
+    uint32_t uint32_t__absorbOverMv;    /* [EN] coarse down-step ceiling / سقف کاهش سریع */
+    uint32_t uint32_t__floatMv;         /* [EN] float hold setpoint / تثبیت شناور */
+    uint32_t uint32_t__reentryMv;       /* [EN] float->bulk reentry / بازگشت شناور به بالک */
+    uint32_t uint32_t__bulkCurrentMaxMa;/* [EN] current-regulation top of band / سقف باند جریان */
+    uint32_t uint32_t__taperCurrentMa;  /* [EN] float-entry tail current / زیرجریان ورود به شناور */
+} charger_profile_t;
+
+static charger_profile_t CHARGER_PROFILE_T__G__Profile =
+{
+    CHG_ABSORB_MV, CHG_ABSORB_ENTER_MV, CHG_ABSORB_OVER_MV,
+    CHG_FLOAT_MV, CHG_REENTRY_MV, CHG_BULK_CURRENT_MAX_MA, CHG_TAPER_CURRENT_MA
+};
+
 /* [EN] Live diag array - see the layout map in charger.h (user order
  *      2026-09-22: all charge-decision values visible in one Live
  *      Expressions entry).
@@ -455,7 +480,9 @@ static uint32_t func__Charger_ActiveCurrentLimitMa(void)
         return CHG_BRINGUP_TEST_SOURCE_LIMIT_MA;
     }
 
-    return CHG_CURRENT_LIMIT_MA;
+    /* [EN] Derived from the profile band: limit = band + 25 mA (was the
+       compile-time 675 over the 650 band). / سقف از باند پروفایل: حد = باند + ۲۵mA. */
+    return (CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa + 25u);
 }
 
 static bool func__Charger_BatteryVoltageIsValid(uint32_t uint32_t__batteryMv)
@@ -941,7 +968,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
            [FA] همان محافظ بیش‌شارژ مود تست بنچ: با خاموش‌بودن حلقهٔ
            تنظیم، سوئیچینگ در ولتاژ ابزورب متوقف می‌شود. */
 
-        if (uint32_t__batteryMv >= CHG_ABSORB_MV)
+        if (uint32_t__batteryMv >= CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv)
         {
             func__Charger_ApplyDuty(uint8_t__channelIndex, 0u);
             return;
@@ -1025,7 +1052,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
        overcharged with regulation off; all protection cuts above stay active.
        [FA] حالت تست بنچ: دیوتی ثابت ۱۵٪؛ بالای ۱۴٫۴V سوئیچینگ متوقف؛ همهٔ
        حفاظت‌ها فعال‌اند. */
-    if (uint32_t__batteryMv >= CHG_ABSORB_MV)
+    if (uint32_t__batteryMv >= CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv)
     {
         func__Charger_ApplyDuty(uint8_t__channelIndex, 0u);
         return;
@@ -1069,15 +1096,15 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         return;
     }
 
-    uint32_t__targetMv = CHG_ABSORB_MV;
+    uint32_t__targetMv = CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv;
 
     if ((charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT) &&
-        (uint32_t__batteryMv < CHG_REENTRY_MV))
+        (uint32_t__batteryMv < CHARGER_PROFILE_T__G__Profile.uint32_t__reentryMv))
     {
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
         func__Charger_ClearAbsorbWindow(
             charger_channel_state_t__channel);
-        uint32_t__targetMv = CHG_ABSORB_MV;
+        uint32_t__targetMv = CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv;
     }
 
     /* [EN] Absorb is a VOLTAGE-HOLD window now (user directive 2026-09-19):
@@ -1090,7 +1117,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
        ۱۴٫۴V بدون تلاطم مرز؛ شستشوی ۱۰ دقیقه فقط در ۱۴٫۴..۱۴٫۵V جمع می‌شود؛
        افت زیر ۱۴٫۳V برگشت به بالک + ریست شستشو؛ عبور از ۱۴٫۶V کاهش سریع
        ۰٫۵٪. */
-    if (uint32_t__batteryMv >= CHG_ABSORB_ENTER_MV)
+    if (uint32_t__batteryMv >= CHARGER_PROFILE_T__G__Profile.uint32_t__absorbEnterMv)
     {
         if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_BULK)
         {
@@ -1103,11 +1130,11 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
 
         if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT)
         {
-            uint32_t__targetMv = CHG_FLOAT_MV;
+            uint32_t__targetMv = CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv;
         }
         else
         {
-            uint32_t__targetMv = CHG_ABSORB_MV;
+            uint32_t__targetMv = CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv;
         }
 
         if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_ABSORB)
@@ -1162,7 +1189,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
             uint32_t__taperSustainTicks = func__Charger_DurationTicks(CHG_TAPER_SUSTAIN_MS);
             uint32_t__absorbMaxTicks = func__Charger_DurationTicks(CHG_ABSORB_MAX_MS);
 
-            bool__taperNow = (uint32_t__currentMa < CHG_TAPER_CURRENT_MA);
+            bool__taperNow = (uint32_t__currentMa < CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa);
             if (bool__taperNow == false)
             {
                 charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
@@ -1201,7 +1228,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                 charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
                 charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
                 charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_FLOAT;
-                uint32_t__targetMv = CHG_FLOAT_MV;
+                uint32_t__targetMv = CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv;
             }
         }
     }
@@ -1219,7 +1246,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                ۱۳٫۵V؛ نه شستشو دست می‌خورد نه به بالک برمی‌گردیم - باگ بنچ:
                else بی‌قید قبلی بلافاصله پس از اتمام شستشو به بالک پس می‌زد
                و شستشو را از صفر راه می‌انداخت. */
-            uint32_t__targetMv = CHG_FLOAT_MV;
+            uint32_t__targetMv = CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv;
         }
         else
         {
@@ -1230,7 +1257,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                [FA] فقط در حالت ابزورب افت زیر ۱۴٫۳V یعنی تثبیت شکست خورد:
                برگشت به بالک و ریست شستشو (دستور کاربر). */
             charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
-            uint32_t__targetMv = CHG_ABSORB_MV;
+            uint32_t__targetMv = CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv;
             func__Charger_ClearAbsorbWindow(
                 charger_channel_state_t__channel);
         }
@@ -1286,7 +1313,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         uint32_t__absorbDownIntervalTicks =
             func__Charger_DurationTicks(CHG_DUTY_RAMP_DOWN_INTERVAL_ABSORB_MS);
 
-        if (uint32_t__batteryMv > CHG_ABSORB_OVER_MV)
+        if (uint32_t__batteryMv > CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv)
         {
             if ((uint32_t)(uint32_t__nowTick -
                            charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
@@ -1355,7 +1382,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
            [FA] باند تنظیم جریان با پله‌های محدودشدهٔ زمانی: بالای ۶۵۰ کاهش
            تدریجی (هر ۵۰۰ms)، زیر ۶۳۰ افزایش تدریجی (هر ۱ ثانیه)، داخل باند
            نگه‌داشت — بدون قطع و شروع از صفر، مثل یه هیسترزیس. */
-        if (uint32_t__currentMa > CHG_BULK_CURRENT_MAX_MA)
+        if (uint32_t__currentMa > CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa)
         {
             if ((uint32_t)(uint32_t__nowTick -
                            charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
@@ -1372,7 +1399,10 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                 charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
             }
         }
-        else if (uint32_t__currentMa < CHG_REGULATE_LOW_MA)
+        else if (uint32_t__currentMa <
+                 ((CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa > 70u)
+                      ? (CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa - 20u)
+                      : 50u)) /* [EN] derived band bottom = top - 20 / کف باند = سقف − ۲۰ */
         {
             if ((uint32_t)(uint32_t__nowTick -
                            charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
@@ -2198,6 +2228,179 @@ bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex)
 }
 
 /* ==================== Manual test mode API / API مود تست دستی ==================== */
+
+/* ==================== Charge Profile (user order 2026-09-25) ==================== */
+
+/* [EN] Interdependency clamps: after ANY profile write the whole set is
+ *      re-clamped so it stays physically consistent. The hard safety stack
+ *      (CHG_CURRENT_HARD_FAULT_MA 950, CHG_MAX_VALID_BATTERY_MV 15000, the
+ *      15.0 V hardware cutoff) stays compile-time and can NOT be raised
+ *      from the panel - ABSORB tops out at 14.6 V and the current band at
+ *      900 mA (limit = band + 25 < 950).
+ * [FA] گیره‌های وابستگی: بعد از هر نوشتن، کل مجموعه دوباره گیره می‌خورد تا
+ *      فیزیکیِ سازنده بماند. پشتهٔ ایمنی سخت (۹۵۰mA خطای سخت، ۱۵٫۰V سقف
+ *      اعتبار باتری، قطع سخت‌افزاری ۱۵V) کامپایل‌تایم می‌ماند و از پنل
+ *      بالا بردنی نیست - ابزورب حداکثر ۱۴٫۶V و باند جریان حداکثر ۹۰۰mA
+ *      (سقف = باند + ۲۵ < ۹۵۰). */
+static void func__Charger_ClampProfile(void)
+{
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv < 11000u)
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv = 11000u;
+    }
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv > 14600u)
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv = 14600u;
+    }
+
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbEnterMv <
+        (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv - 500u))
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__absorbEnterMv =
+            CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv - 500u;
+    }
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbEnterMv >
+        (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv - 50u))
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__absorbEnterMv =
+            CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv - 50u;
+    }
+
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv <
+        (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv + 100u))
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv =
+            CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv + 100u;
+    }
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv >
+        (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv + 400u))
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv =
+            CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv + 400u;
+    }
+    /* [EN] Keep the coarse-step ceiling 50 mV under the 14.8 V
+            battery-disconnect fault so regulation always acts before the
+            fault does (absorb <= 14600 keeps this range non-empty).
+       [FA] سقف کاهش سریع را ۵۰mV زیر خطای قطع باتری ۱۴٫۸V نگه می‌داریم
+            تا تنظیم همیشه قبل از خطا عمل کند (ابزورب ≤ ۱۴۶۰۰ این بازه را
+            تهی نمی‌کند). */
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv > 14750u)
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv = 14750u;
+    }
+
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv < 9000u)
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv = 9000u;
+    }
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv >
+        (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv - 300u))
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv =
+            CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv - 300u;
+    }
+
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__reentryMv < 8000u)
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__reentryMv = 8000u;
+    }
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__reentryMv >
+        (CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv - 300u))
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__reentryMv =
+            CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv - 300u;
+    }
+
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa < 100u)
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa = 100u;
+    }
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa > 900u)
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa = 900u;
+    }
+
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa < 10u)
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa = 10u;
+    }
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa > 300u)
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa = 300u;
+    }
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa >
+        CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa)
+    {
+        CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa =
+            CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa;
+    }
+}
+
+bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
+                                   uint32_t uint32_t__value,
+                                   uint32_t *uint32_t__appliedValue)
+{
+    switch (uint8_t__paramId)
+    {
+        case CHG_PROFILE_PARAM_ABSORB_MV:
+            CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv = uint32_t__value;
+            break;
+        case CHG_PROFILE_PARAM_ABSORB_ENTER_MV:
+            CHARGER_PROFILE_T__G__Profile.uint32_t__absorbEnterMv = uint32_t__value;
+            break;
+        case CHG_PROFILE_PARAM_ABSORB_OVER_MV:
+            CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv = uint32_t__value;
+            break;
+        case CHG_PROFILE_PARAM_FLOAT_MV:
+            CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv = uint32_t__value;
+            break;
+        case CHG_PROFILE_PARAM_REENTRY_MV:
+            CHARGER_PROFILE_T__G__Profile.uint32_t__reentryMv = uint32_t__value;
+            break;
+        case CHG_PROFILE_PARAM_BULK_CURRENT_MAX_MA:
+            CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa = uint32_t__value;
+            break;
+        case CHG_PROFILE_PARAM_TAPER_CURRENT_MA:
+            CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa = uint32_t__value;
+            break;
+        default:
+            return false;
+    }
+
+    func__Charger_ClampProfile();
+    return func__Charger_GetProfileParam(uint8_t__paramId, uint32_t__appliedValue);
+}
+
+bool func__Charger_GetProfileParam(uint8_t uint8_t__paramId,
+                                   uint32_t *uint32_t__value)
+{
+    switch (uint8_t__paramId)
+    {
+        case CHG_PROFILE_PARAM_ABSORB_MV:
+            *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv;
+            return true;
+        case CHG_PROFILE_PARAM_ABSORB_ENTER_MV:
+            *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__absorbEnterMv;
+            return true;
+        case CHG_PROFILE_PARAM_ABSORB_OVER_MV:
+            *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv;
+            return true;
+        case CHG_PROFILE_PARAM_FLOAT_MV:
+            *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv;
+            return true;
+        case CHG_PROFILE_PARAM_REENTRY_MV:
+            *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__reentryMv;
+            return true;
+        case CHG_PROFILE_PARAM_BULK_CURRENT_MAX_MA:
+            *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa;
+            return true;
+        case CHG_PROFILE_PARAM_TAPER_CURRENT_MA:
+            *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa;
+            return true;
+        default:
+            return false;
+    }
+}
 
 void func__Charger_SetManualTestMode(bool bool__enable)
 {

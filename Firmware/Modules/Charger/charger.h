@@ -690,4 +690,67 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
  */
 bool func__Charger_IsAnyChannelActive(void);
 
+/* [EN] Charge-profile wire ids (MUST equal ESPLINK_PARAM_CHG_PROFILE_* in
+ *      esp_link.h; the host test enforces the match).
+ * [FA] شناسه‌های سیمی پروفایل شارژ (باید برابر ESPLINK_PARAM_CHG_PROFILE_*
+ *      در esp_link.h باشند؛ تست هاست همین را قفل می‌کند). */
+#define CHG_PROFILE_PARAM_ABSORB_MV           20u  /* [EN] mV, 11000..14600 / mV */
+#define CHG_PROFILE_PARAM_ABSORB_ENTER_MV     21u  /* [EN] mV, absorb-500..absorb-50 / mV */
+#define CHG_PROFILE_PARAM_ABSORB_OVER_MV      22u  /* [EN] mV, absorb+100..min(absorb+400,14750) / mV */
+#define CHG_PROFILE_PARAM_FLOAT_MV            23u  /* [EN] mV, 9000..absorb-300 / mV */
+#define CHG_PROFILE_PARAM_REENTRY_MV          24u  /* [EN] mV, 8000..float-300 / mV */
+#define CHG_PROFILE_PARAM_BULK_CURRENT_MAX_MA 25u  /* [EN] mA, 100..900 / mA */
+#define CHG_PROFILE_PARAM_TAPER_CURRENT_MA    26u  /* [EN] mA, 10..min(300,imax) / mA */
+
+/* ==================== Charge Profile (user order 2026-09-25) ====================
+ * [EN] Runtime-settable charge profile, shared by BOTH channels, written from
+ *      the ESP panel tab "تنظیمات شارژ" (wire params 20..26, section 5.7 of
+ *      ESP_AGENT_SPEC.md). Boot defaults equal the old compile-time setpoints
+ *      (CHG_*_MV / CHG_*_MA below); values live in RAM and reset at boot,
+ *      like every other parameter. The hard safety stack stays compile-time:
+ *      CHG_CURRENT_HARD_FAULT_MA, CHG_MAX_VALID_BATTERY_MV and the 15.0 V
+ *      overvoltage cutoff can NOT be raised from the panel.
+ * [FA] پروفایل شارژِ قابل‌تنظیم در زمان اجرا، مشترک بین هر دو کانال، از تب
+ *      «تنظیمات شارژ» پنل نوشته می‌شود (پارامترهای سیمی ۲۰..۲۶، بخش 5.7
+ *      سند). پیش‌فرض بوت همان ست‌پوینت‌های کامپایل‌تایم قبلی است (ماکروهای
+ *      CHG_*_MV / CHG_*_MA پایین)؛ مقادیر در RAM می‌مانند و با ریست به
+ *      پیش‌فرض برمی‌گردند، مثل بقیهٔ پارامترها. پشتهٔ ایمنی سخت همان
+ *      کامپایل‌تایم می‌ماند: CHG_CURRENT_HARD_FAULT_MA و
+ *      CHG_MAX_VALID_BATTERY_MV و قطع ۱۵٫۰V از پنل قابل بالا بردن نیستند. */
+
+/**
+ * @brief  [EN] Write one charge-profile parameter (ESP link, ids 20..26:
+ *              20=ABSORB_MV, 21=ABSORB_ENTER_MV, 22=ABSORB_OVER_MV,
+ *              23=FLOAT_MV, 24=REENTRY_MV, 25=BULK_CURRENT_MAX_MA,
+ *              26=TAPER_CURRENT_MA). The value is clamped and every
+ *              dependent is re-clamped so the set stays consistent
+ *              (ENTER in [ABSORB-500, ABSORB-50], OVER in
+ *              [ABSORB+100, ABSORB+400], FLOAT <= ABSORB-300, REENTRY <=
+ *              FLOAT-300, TAPER <= BULK_CURRENT_MAX). Returns the APPLIED
+ *              value (SET_PARAM reports it back).
+ *         [FA] نوشتن یک پارامتر پروفایل شارژ (لینک ESP، شناسه‌های ۲۰..۲۶:
+ *              ۲۰=ولتاژ ابزورب، ۲۱=آستانهٔ ورود، ۲۲=سقف تجاوز، ۲۳=ولتاژ
+ *              شناور، ۲۴=ولتاژ بازگشت، ۲۵=جریان حداکثر بالک، ۲۶=جریان
+ *              تیپر/شناوری). مقدار گیره می‌خورد و همهٔ وابسته‌ها دوباره
+ *              گیره می‌شوند تا مجموعه سازنده بماند. مقدار «اعمال‌شده» را
+ *              برمی‌گرداند (SET_PARAM همان را پاس می‌دهد).
+ * @param  uint8_t__paramId [EN] 20..26 / شناسهٔ پارامتر
+ * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
+ * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
+ * @return bool [EN] true = id known / شناسه شناخته شده
+ */
+bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
+                                   uint32_t uint32_t__value,
+                                   uint32_t *uint32_t__appliedValue);
+
+/**
+ * @brief  [EN] Read one charge-profile parameter (ESP link GET/PARAMS_BULK).
+ *         [FA] خواندن یک پارامتر پروفایل شارژ (لینک ESP).
+ * @param  uint8_t__paramId [EN] 20..26 / شناسهٔ پارامتر
+ * @param  uint32_t *uint32_t__value [EN] Live value out / مقدار زنده
+ * @return bool [EN] true = id known / شناسه شناخته شده
+ */
+bool func__Charger_GetProfileParam(uint8_t uint8_t__paramId,
+                                   uint32_t *uint32_t__value);
+
 #endif /* CHARGER_H */

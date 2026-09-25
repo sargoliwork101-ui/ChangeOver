@@ -55,31 +55,16 @@
  *      واکنش می‌دهد. ۱u فعال و ۰u کامپایل‌نشده. */
 #define MEASUREMENT_CURRENT_AVERAGE_ENABLE   1u
 
-/* [EN] Channel-2 bench LUT (user order 2026-09-25): the SOLO2 bench data proved
-        the channel-2 chain non-linear vs the true battery current (about 2x too
-        high at 5% duty, 0.85x too low at 15..17%); a piecewise-linear table
-        replaces the single gain for channel 2. Channel 1 stays linear until its
-        own SOLO1 data arrives. 0 = old linear behaviour.
-   [FA] جدول بنچ کانال ۲ (دستور کاربر ۲۰۲۶-۰۹-۲۵): دادهٔ بنچ SOLO2 غیرخطی
-        بودن زنجیرهٔ کانال ۲ را ثابت کرد (حدود ۲ برابر زیاد در دیوتی ۵٪ و
-        ۰٫۸۵ برابر کم در ۱۵..۱۷٪)؛ جدول خطی-تکه‌ای جای گین واحد کانال ۲ را
-        می‌گیرد. کانال ۱ تا رسیدن دادهٔ SOLO1 خودش خطی می‌ماند. 0 = رفتار
-        خطی قدیم. */
-#define MEASUREMENT_CURRENT2_LUT_ENABLE    1u
+/* [EN] The bench calibration tables (channel LUTs + battery-voltage
+        compensation) moved to calibration.h (user order 2026-09-25: one
+        separate file next to this one, easy to amend; three tables live
+        there and missing points get appended later). calibration.h is
+        included ONLY by measurement.c - the tables are static.
+   [FA] جدول‌های کالیبراسیون بنچ (LUT کانال‌ها + جبران ولتاژ باتری) به
+        calibration.h منتقل شدند (دستور کاربر ۲۰۲۶-۰۹-۲۵: یک فایل جدا کنار
+        همین فایل برای اصلاح راحت؛ سه جدول آنجاست و نقاط ناقص بعداً اضافه
+        می‌شوند). calibration.h فقط توسط measurement.c اینکلود می‌شود. */
 
-/* [EN] V12 (battery-low) bench compensation (user order 2026-09-25): the
-        latched SOLO2 run measured this channel against a DMM on the battery
-        terminals - +140 mV at zero current (static divider error) growing to
-        +374 mV at 545 mA (charge-path wire drop). The compensation subtracts
-        static + I2 x R so every consumer of V12/Vlow reads the TRUE battery-2
-        terminal voltage. 0 = uncompensated.
-   [FA] جبران بنچ V12 (باتری پایین، دستور کاربر ۲۰۲۶-۰۹-۲۵): اجرای
-        قفل‌در-لحظهٔ SOLO2 این کانال را با مولتی‌متر روی ترمینال باتری سنجید
-        - ‎+۱۴۰mV در جریان صفر (خطای ثابت مقسم) که تا ‎+۳۷۴mV در ۵45mA رشد
-        می‌کند (افت مسیر شارژ). جبران، مقدار ثابت + I2×R را کم می‌کند تا
-        هر مصرف‌کنندهٔ V12/Vlow ولتاژ واقعی ترمینال باتری ۲ را بخواند.
-        0 = بدون جبران. */
-#define MEASUREMENT_BATTERY12_BENCH_COMP_ENABLE 1u
 
 /* [EN] Compiled ring size and hard ceiling of the ESP-adjustable runtime
  *      moving-average window, per channel (v1.4, user order 2026-09-25:

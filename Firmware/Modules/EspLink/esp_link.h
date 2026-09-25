@@ -33,11 +33,12 @@
 #define ESPLINK_SOF_BYTE1             0x55u
 #define ESPLINK_FRAME_HEADER_SIZE     4u   /* SOF0 + SOF1 + type + len / بدون payload و xor */
 #define ESPLINK_FRAME_CHECKSUM_SIZE   1u
-/* [EN] 112 since protocol v1.2 (user order 2026-09-23): the 20th parameter
- *      grew PARAMS_BULK to 1 + 20 x 5 = 101 payload bytes. / [FA] از
- *      پروتکل v1.2 (دستور کاربر): پارامتر بیستم PARAMS_BULK را به
- *      1 + 20 × 5 = ۱۰۱ بایت payload رساند. */
-#define ESPLINK_FRAME_MAX_PAYLOAD     112u
+/* [EN] 144 since v1.12 (user order 2026-09-25): 27 parameters grow
+ *      PARAMS_BULK to 1 + 27 x 5 = 136 payload bytes (was 112 for 20
+ *      parameters since protocol v1.2). / [FA] از v1.12 (دستور کاربر
+ *      ۲۰۲۶-۰۹-۲۵): ۲۷ پارامتر PARAMS_BULK را به 1 + 27 × 5 = ۱۳۶ بایت
+ *      payload می‌رساند (قبلاً ۱۱۲ برای ۲۰ پارامتر از پروتکل v1.2). */
+#define ESPLINK_FRAME_MAX_PAYLOAD     144u
 
 /* [EN] Message types. ESP -> STM: SET_PARAM / GET_PARAMS / CAL_REFERENCE
  *      (v1.3). STM -> ESP: TLM_LIVE (periodic), PARAM_REPORT (after each
@@ -143,7 +144,23 @@
  *      ESP_AGENT_SPEC.md بخش 5.2 (کف سخت‌افزاری، re-arm ی JIT، ددمن ۳
  *      ثانیه‌ای لینک). */
 #define ESPLINK_PARAM_MANUAL_TEST_MODE     19u  /* u32, 0/1,      def 0                */
-#define ESPLINK_PARAM_COUNT                20u
+/* [EN] Charge profile (v1.12, user order 2026-09-25): shared by BOTH
+        channels, RAM-only like every other parameter (defaults at boot =
+        the old compile-time setpoints). Ids MUST equal
+        CHG_PROFILE_PARAM_* in charger.h. All values re-clamped as a set
+        on every write (see Charger_ClampProfile).
+   [FA] پروفایل شارژ (v1.12، دستور کاربر ۲۰۲۶-۰۹-۲۵): مشترک بین هر دو
+        کانال، فقط RAM مثل بقیهٔ پارامترها (پیش‌فرض بوت = ست‌پوینت‌های
+        کامپایل‌تایم قبلی). شناسه‌ها باید برابر CHG_PROFILE_PARAM_* در
+        charger.h باشند. هر نوشتن، کل مجموعه را دوباره گیره می‌زند. */
+#define ESPLINK_PARAM_CHG_PROFILE_ABSORB_MV          20u  /* u32, mV, def 14400, 11000..14600 */
+#define ESPLINK_PARAM_CHG_PROFILE_ABSORB_ENTER_MV    21u  /* u32, mV, def 14300, absorb-500..absorb-50 */
+#define ESPLINK_PARAM_CHG_PROFILE_ABSORB_OVER_MV     22u  /* u32, mV, def 14600, absorb+100..min(absorb+400,14750) */
+#define ESPLINK_PARAM_CHG_PROFILE_FLOAT_MV           23u  /* u32, mV, def 13500, 9000..absorb-300 */
+#define ESPLINK_PARAM_CHG_PROFILE_REENTRY_MV         24u  /* u32, mV, def 12800, 8000..float-300 */
+#define ESPLINK_PARAM_CHG_PROFILE_BULK_CURRENT_MAX_MA 25u /* u32, mA, def 650,   100..900 */
+#define ESPLINK_PARAM_CHG_PROFILE_TAPER_CURRENT_MA   26u  /* u32, mA, def 50,    10..min(300,imax) */
+#define ESPLINK_PARAM_COUNT                27u  /* [EN] 20..26 = charge profile (v1.12) / پروفایل شارژ */
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

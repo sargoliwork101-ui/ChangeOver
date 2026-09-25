@@ -146,7 +146,9 @@ def test_transformer_known_not_bypassable_bringup_only_when_zero():
 
 def test_master_enable_does_not_bypass_numeric_protections():
     text_c = CHARGER_C.read_text()
-    check("CHG_CURRENT_LIMIT_MA" in text_c, "current limit must still exist")
+    check(re.search(r"CHG_CURRENT_LIMIT_MA", CHARGER_H.read_text()) is not None and
+          "uint32_t__bulkCurrentMaxMa + 25u" in text_c,
+          "current limit must still exist (v1.12: the compile-time constant stays as documentation in charger.h and the active limit is derived from the profile band: profile bulk max + 25 mA, user order 2026-09-25)")
     check("CHG_MIN_VALID_BATTERY_MV" in text_c, "battery validity threshold must still exist")
     check("CHG_INPUT_VALID_MV" in text_c, "real ADC input threshold must still exist")
     check("func__Charger_FinalDisconnect" in text_c, "final disconnect protection must still exist")
@@ -436,6 +438,7 @@ def test_setpoints_and_timing():
     bsp_meas_c = (ROOT / "Firmware/Bsp/Src/bsp_measurement.c").read_text()
     meas_h_txt = (ROOT / "Firmware/Modules/Measurement/measurement.h").read_text()
     meas_c_raw = (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text()
+    cal_h = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
     check("func__Measurement_FilterCurrent" not in meas_c_raw,
           "the old EMA current filter must stay removed; only the switchable median-3/moving-average chain is allowed (user order 2026-09-22)")
     check(re.search(r"#define MEASUREMENT_CURRENT_MEDIAN3_ENABLE\s+1u", meas_h_txt) and
@@ -449,27 +452,29 @@ def test_setpoints_and_timing():
           "func__Measurement_ApplyCurrentFilters" in meas_c_raw and
           "MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX" in meas_h_txt,
           "Measurement must run the median chain (v1.4: runtime size ANY 1..15, default 3) then the moving-average chain (v1.4: runtime window ANY 1..100, default 10) on each current channel (user order 2026-09-25)")
-    lut_chain = re.search(r"UINT32_T__G__Current2LutChainMa\[\] =\s*\{([^}]*)\}", meas_c_raw)
-    lut_batt = re.search(r"UINT32_T__G__Current2LutBatteryMa\[\] =\s*\{([^}]*)\}", meas_c_raw)
+    lut_chain = re.search(r"CAL_Current2LutChainMa\[\] =\s*\{([^}]*)\}", cal_h)
+    lut_batt = re.search(r"CAL_Current2LutBatteryMa\[\] =\s*\{([^}]*)\}", cal_h)
     lut_chain_n = len(lut_chain.group(1).split(",")) if lut_chain else 0
     lut_batt_n = len(lut_batt.group(1).split(",")) if lut_batt else 0
-    check(re.search(r"#define MEASUREMENT_CURRENT2_LUT_ENABLE\s+1u", meas_h_txt) and
-          "static const uint32_t UINT32_T__G__Current2LutChainMa[] =" in meas_c_raw and
-          "static const uint32_t UINT32_T__G__Current2LutBatteryMa[] =" in meas_c_raw and
-          "#define MEASUREMENT_CURRENT2_LUT_POINTS \\" in meas_c_raw.replace("\\\\", "\\") and
-          "sizeof(UINT32_T__G__Current2LutChainMa) /" in meas_c_raw and
-          "{ 0u, 5u, 37u, 106u, 189u, 236u, 283u, 353u, 441u, 557u, 707u }" in meas_c_raw and
-          "{ 0u, 0u, 9u, 62u, 130u, 215u, 310u, 422u, 541u, 660u, 764u }" in meas_c_raw and
-          lut_chain_n == lut_batt_n and lut_chain_n == 11,
+    check('#include "calibration.h"' in meas_c_raw and
+          re.search(r"#define CAL_CURRENT2_LUT_ENABLE\s+1u", cal_h) and
+          "static const uint32_t CAL_Current2LutChainMa[] =" in cal_h and
+          "static const uint32_t CAL_Current2LutBatteryMa[] =" in cal_h and
+          "sizeof(CAL_Current2LutChainMa) /" in cal_h and
+          "{ 0u, 5u, 37u, 106u, 189u, 236u, 283u, 353u, 441u, 557u, 707u }" in cal_h and
+          "{ 0u, 0u, 9u, 62u, 130u, 215u, 310u, 422u, 541u, 660u, 764u }" in cal_h and
+          lut_chain_n == lut_batt_n and lut_chain_n == 11 and
+          re.search(r"#define CAL_CURRENT1_LUT_ENABLE\s+0u", cal_h) and
+          "CAL_Current1LutChainMa" in cal_h,
           f"channel-2 bench LUT must be ON with the 2026-09-25T18:14 DENSE SOLO2 anchors - 10 DMM points, duty 2..20%, battery filling 12.0->13.65V, interpolation error <=0.7 mA on every point; the table is keyed on the ADC chain current (raw-off2)*K*gain, NEVER on duty (user order 2026-09-25: the same duty gives a different current as the battery fills); the tables size themselves from the initializers and the point count is sizeof-derived so the next DENSER run only edits the two lists, and both lists must stay the same length (got chain={lut_chain_n} battery={lut_batt_n})")
     check("return func__Measurement_Current2BenchLut(\n        func__BspMeasurement_Current2CountsToMa(uint16_t__counts));" in meas_c_raw,
           "the ch2 LUT must wrap the BSP conversion inside func__Measurement_Current2CountsToMa so unfiltered, filtered and iest all become true battery mA while raw counts and shunt uV stay untouched")
-    check(re.search(r"func__Measurement_Current2CountsToMa\(uint16_t uint16_t__counts\)\n\{\n#if \(MEASUREMENT_CURRENT2_LUT_ENABLE != 0u\)", meas_c_raw) and
+    check(re.search(r"func__Measurement_Current2CountsToMa\(uint16_t uint16_t__counts\)\n\{\n#if \(CAL_CURRENT2_LUT_ENABLE != 0u\)", meas_c_raw) and
           re.search(r"#else\n    return func__BspMeasurement_Current2CountsToMa\(uint16_t__counts\);\n#endif", meas_c_raw),
           "the ch2 LUT must be compile-switchable: MEASUREMENT_CURRENT2_LUT_ENABLE=0 restores the old linear behaviour exactly")
-    check(re.search(r"#define MEASUREMENT_BATTERY12_BENCH_COMP_ENABLE\s+1u", meas_h_txt) and
-          re.search(r"#define MEASUREMENT_BATTERY12_BENCH_STATIC_MV 150u", meas_c_raw) and
-          re.search(r"#define MEASUREMENT_BATTERY12_BENCH_PATH_MOHM 470u", meas_c_raw),
+    check(re.search(r"#define CAL_BATTERY12_BENCH_COMP_ENABLE\s+1u", cal_h) and
+          re.search(r"#define CAL_BATTERY12_BENCH_STATIC_MV\s+150u", cal_h) and
+          re.search(r"#define CAL_BATTERY12_BENCH_PATH_MOHM\s+470u", cal_h),
           "V12 bench compensation must be ON with the dense 2026-09-25T18:14 refit: static 150 mV + 470 mOhm x I2 (LSQ over 10 DMM points 0..764 mA = 149.8 mV + 472.5 mOhm; residual within +/-28 mV vs DMM on the battery-2 terminals)")
     check("func__Measurement_Battery12BenchCompensate(\n        uint32_t__battery12Mv, uint32_t__current2SampleMa);" in meas_c_raw and
           meas_c_raw.find("func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2])") <
@@ -477,8 +482,8 @@ def test_setpoints_and_timing():
           meas_c_raw.find("func__Measurement_Battery12BenchCompensate(\n        uint32_t__battery12Mv, uint32_t__current2SampleMa);") <
           meas_c_raw.find("uint32_t__batteryLowMv = uint32_t__battery12Mv;"),
           "the V12 compensation must consume the post-LUT channel-2 current (sample moved ahead of the voltage chain) and must land on battery12Mv after the runtime voff, before the low/high derivation and the median - so Vlow, published V12 and derived Vhigh all describe the true battery-2 terminals")
-    check(len(re.findall(r"#if \(MEASUREMENT_BATTERY12_BENCH_COMP_ENABLE != 0u\)", meas_c_raw)) == 2 and
-          "uint32_t__dropMv = MEASUREMENT_BATTERY12_BENCH_STATIC_MV +" in meas_c_raw and
+    check(len(re.findall(r"#if \(CAL_BATTERY12_BENCH_COMP_ENABLE != 0u\)", meas_c_raw)) == 2 and
+          "uint32_t__dropMv = CAL_BATTERY12_BENCH_STATIC_MV +" in meas_c_raw and
           "return 0u;" in meas_c_raw.split("func__Measurement_Battery12BenchCompensate")[1].split("\n}\n")[0],
           "the V12 bench compensation must be compile-switchable (enable=0 restores today's behaviour), use saturating subtraction (static + I2 x mOhm / 1000, never below 0 mV)")
     check(re.search(r"#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS\s+62400u", bsp_meas_c) and
@@ -582,6 +587,141 @@ def test_pwm_interleave_phase_lock():
           "both counters must start via two adjacent raw CEN register writes (~tens of ns skew) so the 10 us offset is deterministic")
 
 
+def test_charge_profile_v112():
+    """[EN] v1.12 (user order 2026-09-25): runtime charge profile settable from the
+    ESP panel tab, shared by both channels, ids 20..26; calibration tables in ONE
+    separate file; input-voltage DMM reading carried across wizard steps.
+    [FA] تست‌های v1.12: پروفایل شارژ زمان اجرا از تب پنل، مشترک دو کانال، شناسه‌های
+    ۲۰..۲۶؛ جدول‌های کالیبراسیون در یک فایل جدا؛ پیش‌پر شدن ولتاژ ورودی DMM."""
+    text_c = CHARGER_C.read_text()
+    text_h = CHARGER_H.read_text()
+    text_esph = ESP_LINK_H.read_text()
+    text_espc = ESP_LINK_C.read_text()
+    ino = (ROOT / "esp_link_panel/esp_link_panel.ino").read_text()
+    cal_h = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
+
+    # --- charger.h declares the profile API + ids matching esp_link.h ---
+    for decl in ["func__Charger_SetProfileParam(uint8_t uint8_t__paramId",
+                 "func__Charger_GetProfileParam(uint8_t uint8_t__paramId"]:
+        check(decl in text_h, f"charger.h must declare {decl.split('(')[0]}")
+    pairs = [("CHG_PROFILE_PARAM_ABSORB_MV", "ESPLINK_PARAM_CHG_PROFILE_ABSORB_MV", 20),
+             ("CHG_PROFILE_PARAM_ABSORB_ENTER_MV", "ESPLINK_PARAM_CHG_PROFILE_ABSORB_ENTER_MV", 21),
+             ("CHG_PROFILE_PARAM_ABSORB_OVER_MV", "ESPLINK_PARAM_CHG_PROFILE_ABSORB_OVER_MV", 22),
+             ("CHG_PROFILE_PARAM_FLOAT_MV", "ESPLINK_PARAM_CHG_PROFILE_FLOAT_MV", 23),
+             ("CHG_PROFILE_PARAM_REENTRY_MV", "ESPLINK_PARAM_CHG_PROFILE_REENTRY_MV", 24),
+             ("CHG_PROFILE_PARAM_BULK_CURRENT_MAX_MA", "ESPLINK_PARAM_CHG_PROFILE_BULK_CURRENT_MAX_MA", 25),
+             ("CHG_PROFILE_PARAM_TAPER_CURRENT_MA", "ESPLINK_PARAM_CHG_PROFILE_TAPER_CURRENT_MA", 26)]
+    for chg_name, esp_name, num in pairs:
+        m_h = re.search(rf"#define {chg_name}\s+(\d+)u", text_h)
+        m_e = re.search(rf"#define {esp_name}\s+(\d+)u", text_esph)
+        check(m_h is not None and m_e is not None and int(m_h.group(1)) == num and int(m_e.group(1)) == num,
+              f"profile id {num} must be identical in charger.h ({chg_name}) and esp_link.h ({esp_name})")
+
+    # --- charger.c: profile struct, defaults from the compile-time setpoints, clamp rules ---
+    check("charger_profile_t" in text_c and "CHARGER_PROFILE_T__G__Profile" in text_c,
+          "charger.c must hold the runtime profile struct")
+    init = re.search(r"CHARGER_PROFILE_T__G__Profile\s*=\s*\{([^}]*)\}", text_c)
+    check(init is not None and
+          init.group(1).replace("\n", " ").split() == ["CHG_ABSORB_MV,", "CHG_ABSORB_ENTER_MV,",
+              "CHG_ABSORB_OVER_MV,", "CHG_FLOAT_MV,", "CHG_REENTRY_MV,", "CHG_BULK_CURRENT_MAX_MA,",
+              "CHG_TAPER_CURRENT_MA"],
+          "profile boot defaults must equal the old compile-time setpoints (14400/14300/14600/13500/12800/650/50)")
+    check("func__Charger_ClampProfile" in text_c and "func__Charger_SetProfileParam" in text_c
+          and "func__Charger_GetProfileParam" in text_c,
+          "charger.c must implement clamp + set/get profile API")
+    for needle, why in [
+            (".uint32_t__absorbMv > 14600u", "absorb capped at 14.6 V (over-threshold must stay under the 14.8 V battery-disconnect fault)"),
+            (".uint32_t__absorbOverMv > 14750u", "over-threshold capped 50 mV under the 14.8 V fault"),
+            (".uint32_t__absorbMv - 50u", "enter threshold <= absorb - 50"),
+            (".uint32_t__absorbMv - 500u", "enter threshold >= absorb - 500"),
+            (".uint32_t__bulkCurrentMaxMa > 900u", "current band capped at 900 mA (limit = band + 25 < 950 hard fault)"),
+            (".uint32_t__taperCurrentMa >", "taper clamped against the band")]:
+        check(needle in text_c, f"clamp rule present: {why}")
+
+    # --- every automatic-charge decision site reads the profile, not the macro ---
+    body = re.sub(r"/\*.*?\*/", "", text_c, flags=re.S)
+    body = re.sub(r"CHARGER_PROFILE_T__G__Profile\s*=\s*\{[^}]*\}", "", body)
+    for macro in ["CHG_ABSORB_MV", "CHG_ABSORB_ENTER_MV", "CHG_ABSORB_OVER_MV", "CHG_FLOAT_MV",
+                  "CHG_REENTRY_MV", "CHG_BULK_CURRENT_MAX_MA", "CHG_TAPER_CURRENT_MA", "CHG_REGULATE_LOW_MA"]:
+        leftover = [ln for ln in body.split("\n")
+                    if macro in ln and "CHARGER_PROFILE_T__G__Profile" not in ln
+                    and not ln.strip().startswith(("*", "/*", "//"))]
+        check(not leftover,
+              f"no bare {macro} use outside the profile initializer/comments (got {leftover[:2]})")
+    check(text_c.count("CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv") >= 5,
+          "the absorb setpoint must be read from the profile at every decision site")
+
+    # --- esp_link.c wires ids 20..26 to the charger profile API ---
+    apply_block = text_espc.split("static bool func__EspLink_ApplyParam")[1][:8000]
+    get_block = text_espc.split("static bool func__EspLink_GetParam")[1][:8000]
+    check("func__Charger_SetProfileParam" in apply_block and apply_block.count("ESPLINK_PARAM_CHG_PROFILE_") >= 7,
+          "ApplyParam must route all 7 profile ids to Charger_SetProfileParam")
+    check("func__Charger_GetProfileParam" in get_block and get_block.count("ESPLINK_PARAM_CHG_PROFILE_") >= 7,
+          "GetParam must route all 7 profile ids to Charger_GetProfileParam")
+
+    # --- ESP panel: 27 params, third tab with 7 fields + descriptions, 78-col CSV, vin carry ---
+    check(re.search(r"#define ESP_PARAM_COUNT\s+27u", ino), "panel ESP_PARAM_COUNT must be 27")
+    mn = re.search(r"INT32_T__G__ParamMin\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
+    mx = re.search(r"INT32_T__G__ParamMax\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
+    check(mn and mx and len(mn.group(1).split(",")) == 27 and len(mx.group(1).split(",")) == 27,
+          "panel min/max tables must carry 27 entries (outer envelope for ids 20..26)")
+    check('<button data-t="2">تنظیمات شارژ</button>' in ino, "third nav tab must exist")
+    check('id="p2"' in ino and all(f'id="q{i}"' in ino for i in range(20, 27)),
+          "tab p2 must hold the seven profile inputs q20..q26")
+    check("qfill" in ino and "qdef" in ino and "e.onchange=()=>{const v=parseInt(e.value,10);" in ino,
+          "profile inputs must auto-fill from /t, POST on change, and offer factory defaults")
+    check("حداکثر ولتاژ باتری (ابزورب)" in ino and "جریان تیپر" in ino and "ولتاژ شناور" in ino,
+          "the tab must label/describe every field (user order: with descriptions)")
+    check("for(let k=0;k<27;k++)P.push(q(D.p[k]));" in ino and "[profile]" in ino,
+          "wrow must log all 27 params (78 columns) with the [profile] header block")
+    check("window.WVI=" in ino and "L('wVi','ولتاژ ورودی V',WVI)" in ino,
+          "the input-voltage DMM reading must carry into the next wizard step (user order 2026-09-25: quasi-static, type once)")
+
+    # --- python model of ClampProfile: interdependencies hold for arbitrary writes ---
+    def clamp(p):
+        p = dict(p)
+        p[20] = min(max(p[20], 11000), 14600)
+        p[21] = min(max(p[21], p[20] - 500), p[20] - 50)
+        p[22] = min(max(p[22], p[20] + 100), min(p[20] + 400, 14750))
+        p[23] = min(max(p[23], 9000), p[20] - 300)
+        p[24] = min(max(p[24], 8000), p[23] - 300)
+        p[25] = min(max(p[25], 100), 900)
+        p[26] = min(max(p[26], 10), min(300, p[25]))
+        return p
+    d = {20: 14400, 21: 14300, 22: 14600, 23: 13500, 24: 12800, 25: 650, 26: 50}
+    check(clamp(d) == d, "defaults must be a fixed point of the clamp (no drift at boot)")
+    lo = clamp({20: 20000, 21: 0, 22: 0, 23: 20000, 24: 0, 25: 0, 26: 0})
+    check(lo == {20: 14600, 21: 14100, 22: 14700, 23: 14300, 24: 8000, 25: 100, 26: 10},
+          f"absurd writes must collapse into a consistent set (got {lo})")
+    mid = clamp({20: 13000, 21: 14300, 22: 14600, 23: 13500, 24: 12800, 25: 650, 26: 50})
+    check(mid[21] == 12950 and mid[22] == 13400 and mid[23] == 12700 and mid[24] == 12400,
+          f"lowering absorb must drag enter/over/float/reentry with it (got {mid})")
+    cur = clamp({20: 14400, 21: 14300, 22: 14600, 23: 13500, 24: 12800, 25: 40, 26: 900})
+    check(cur[25] == 100 and cur[26] == 100, "current writes must clamp band floor 100 and taper <= band")
+    import random
+    rng = random.Random(20260925)
+    ok = True
+    for _ in range(2000):
+        w = {k: rng.randint(0, 20000) for k in range(20, 27)}
+        w[25] = rng.randint(0, 2000); w[26] = rng.randint(0, 2000)
+        c = clamp(w)
+        if not (11000 <= c[20] <= 14600 and c[20] - 500 <= c[21] <= c[20] - 50
+                and c[20] + 100 <= c[22] <= 14750 and 9000 <= c[23] <= c[20] - 300
+                and 8000 <= c[24] <= c[23] - 300 and 100 <= c[25] <= 900
+                and 10 <= c[26] <= min(300, c[25])):
+            ok = False
+            break
+    check(ok, "2000 random writes must all land inside the invariant ranges")
+
+    # --- calibration.h: one file, three tables (user order 2026-09-25) ---
+    check("TABLE 1" in cal_h and "TABLE 2" in cal_h and "TABLE 3" in cal_h,
+          "calibration.h must host all THREE tables (ch1 LUT placeholder, ch2 LUT, voltage comp)")
+    check(cal_h.count("CAL_Current1LutChainMa") >= 2 and re.search(r"#define CAL_CURRENT1_LUT_ENABLE\s+0u", cal_h),
+          "table 1 (ch1) stays EMPTY until SOLO1 data arrives (enable 0, placeholder anchors)")
+    check("can grow into a full anchor table" in cal_h,
+          "table 3 must document its growth path to an anchor table")
+
+
 def test_electronic_load_policy_documented():
     text_h = CHARGER_H.read_text()
     check("free resistor" in text_h or "resistor alone" in text_h or "مقاومت آزاد" in text_h,
@@ -600,11 +740,11 @@ def test_manual_test_mode_v12():
     check("CHG_STATE_MANUAL" in text_c, "manual test mode needs its own charger state (9)")
     check(re.search(r"#define CHG_MANUAL_WATCHDOG_MS\s+3000u", text_h),
           "manual link dead-man must be 3 s")
-    check(re.search(r"#define ESPLINK_FRAME_MAX_PAYLOAD\s+112u", text_esph),
-          "payload limit must be 112 for the 20-param bulk")
+    check(re.search(r"#define ESPLINK_FRAME_MAX_PAYLOAD\s+144u", text_esph),
+          "payload limit must be 144: PARAMS_BULK with 27 params = 1 + 27 x 5 = 136 bytes (v1.12 charge-profile params; was 112 for 20)")
     check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
-          and re.search(r"#define ESPLINK_PARAM_COUNT\s+20u", text_esph),
-          "param 19 = manual test mode, 20 params total")
+          and re.search(r"#define ESPLINK_PARAM_COUNT\s+27u", text_esph),
+          "param 19 = manual test mode; 27 params total since v1.12 (20..26 = charge profile)")
 
     manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
                     text_c.find("/* ==================== Charger_Evaluate")]
@@ -654,6 +794,7 @@ def main():
         test_pwm_interleave_phase_lock,
         test_electronic_load_policy_documented,
         test_manual_test_mode_v12,
+        test_charge_profile_v112,
     ]
     for test in tests:
         test()

@@ -37,7 +37,17 @@
 > compensation static term is 150 mV (LSQ 149.8 mV + 472.5 mOhm over
 > 0..764 mA; residual within +/-28 mV). The LUT stays keyed on the ADC
 > chain current, NEVER on duty (user order: the same duty gives a
-> different current as the battery fills).
+> different current as the battery fills). v1.12 (same day, sixth
+> order): the charge profile became runtime-settable from a NEW third
+> panel tab "تنظیمات شارژ" (params 20..26, shared by both channels,
+> section 5.7), all three calibration tables moved into ONE separate
+> file Firmware/Modules/Measurement/calibration.h (table 1 = ch1 LUT
+> placeholder until SOLO1 data, table 2 = ch2 LUT, table 3 = the V12
+> battery-voltage compensation), PARAMS_BULK grew to 27 params (payload
+> limit 112 -> 144), the bench CSV carries the 7 profile params too
+> (78 columns), and the wizard now CARRIES the input-voltage DMM
+> reading into the next step (user order: Vin is quasi-static, one
+> reading per run is enough).
 >
 > v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
 > conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
@@ -107,9 +117,10 @@ immediately and drain within ~1 ms.
 
 - `xor` = XOR of `type`, `len`, and every payload byte (starting value 0x00).
 - All multi-byte payload fields are **little-endian**.
-- Max payload length = **112 bytes** (v1.2; was 96 - PARAMS_BULK grew with
-  the 20th parameter; a 20-param bulk is 101 payload bytes). Longer `len` =
-  invalid frame. The ESP parser must accept up to 112 regardless of STM
+- Max payload length = **144 bytes** (v1.12; was 112 in v1.2 - PARAMS_BULK
+  grew with the charge-profile parameters; a 27-param bulk is 1 + 27 x 5 =
+  136 payload bytes). Longer `len` = invalid frame. The ESP parser must
+  accept up to 144 regardless of STM
   firmware version.
 - On checksum error or unknown type: the STM32 silently drops the frame and
   resynchronizes on the next `AA 55`. The ESP should do the same.
@@ -123,7 +134,7 @@ immediately and drain within ~1 ms.
 | 0x03 | ESP→STM | CAL_REFERENCE | `[target:u8][ref_mA:u32 LE]` (5 bytes) — one-shot calibration from a typed DMM reading; targets 0/1 = GAIN ch1/2, 2/3 = ETA ch1/2 (v1.3, section 5.4) |
 | 0x10 | STM→ESP | TLM_LIVE | 84 bytes, layout below |
 | 0x11 | STM→ESP | PARAM_REPORT | `[id:u8][value:u32 LE]` — the **applied** value (sent after every accepted SET_PARAM) |
-| 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS; 20 params in v1.2 = 101 payload bytes) |
+| 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS; 27 params since v1.12 = 136 payload bytes) |
 
 Verified example frames (hex):
 
@@ -142,7 +153,7 @@ PARAM_REPORT reply for id=2, applied=1200:
 AA 55 11 05 02 B0 04 00 00 A2
 ```
 
-## 5. Parameter table (IDs 0..18 = protocol v1.1, ID 19 = v1.2 append — IDs are final, never renumbered)
+## 5. Parameter table (IDs 0..18 = protocol v1.1, ID 19 = v1.2, IDs 20..26 = v1.12 append — IDs are final, never renumbered)
 
 | ID | Name | Type | Unit | Default | Range | What it changes |
 |---|---|---|---|---|---|---|
@@ -166,6 +177,13 @@ AA 55 11 05 02 B0 04 00 00 A2
 | 17 | CHG2_DUTY_FIXED_ON | u32 | 0/1 | 0 | 0..1 | Fixed-duty mode, charger 2 |
 | 18 | CHG2_DUTY_FIXED_VAL | u32 | permille | 0 | 0..500 | Fixed duty value for charger 2 (respects the ID 14 ceiling) |
 | 19 | MANUAL_TEST_MODE | u32 | 0/1 | 0 | 0..1 | **v1.2, global manual test mode**: 1 = suspend the automatic charger completely and drive each channel directly at the ID 16/18 duty with every battery condition bypassed (only the hardware floor stays - see section 5.2) |
+| 20 | CHG_PROFILE_ABSORB_MV | u32 | mV | 14400 | 11000..14600 | **v1.12 charge profile** (shared by both channels, section 5.7): absorb hold setpoint - the maximum battery voltage; switching stops above it |
+| 21 | CHG_PROFILE_ABSORB_ENTER_MV | u32 | mV | 14300 | absorb−500..absorb−50 | Absorb entry threshold (fine 0.1% steps begin) |
+| 22 | CHG_PROFILE_ABSORB_OVER_MV | u32 | mV | 14600 | absorb+100..min(absorb+400, 14750) | Overshoot ceiling - coarse 0.5% down-steps above it; capped 50 mV under the 14.8 V battery-disconnect fault |
+| 23 | CHG_PROFILE_FLOAT_MV | u32 | mV | 13500 | 9000..absorb−300 | Float hold voltage after the charge completes |
+| 24 | CHG_PROFILE_REENTRY_MV | u32 | mV | 12800 | 8000..float−300 | Float→bulk reentry voltage (battery sagged below this = recharge) |
+| 25 | CHG_PROFILE_BULK_CURRENT_MAX_MA | u32 | mA | 650 | 100..900 | Maximum charge current - top of the regulation band (bottom = this − 20, hard limit = this + 25 < the 950 mA fault) |
+| 26 | CHG_PROFILE_TAPER_CURRENT_MA | u32 | mA | 50 | 10..min(300, imax) | Float-entry taper current - absorb ends when the tail current stays below it for 60 s |
 
 Notes:
 - Signed values (4..6) travel as two's-complement u32 on the wire.
@@ -185,8 +203,11 @@ Notes:
   bypassed — fixed mode sits inside the normal regulation path.
   Do NOT confuse it with manual test mode (section 5.2): fixed-duty is the
   auto-gated hold, manual mode is the gate-free bench mode.
-- **No setpoints are exposed.** Charge scenario (14.4/14.3/14.6 V, float band,
-  12.8 V reentry) is intentionally not adjustable from the ESP.
+- **v1.12: the charge setpoints ARE exposed now** (params 20..26, section
+  5.7) - the compile-time macros remain as BOOT DEFAULTS only. The hard
+  safety stack stays compile-time and is NOT reachable from the ESP: the
+  950 mA hard current fault, the 15.0 V overvoltage cutoff,
+  CHG_MAX_VALID_BATTERY_MV and the JIT trip.
 - **v1.2 dual use of IDs 16/18:** while ID 19 = 1 the ID 16/18 values act as
   the MANUAL duty command (applied immediately, no ramp); IDs 15/17 are
   ignored in that state. With ID 19 = 0 the v1.1 fixed-duty semantics of
@@ -344,7 +365,14 @@ the table floors it to 0 (error <= 13 mA only at the very bottom). Unfiltered,
 filtered and iest all become true battery mA; raw counts and shunt uV are
 untouched. `MEASUREMENT_CURRENT2_LUT_ENABLE = 0`
 restores the old linear behaviour. Channel 1 stays linear until its own SOLO1
-data arrives. The wire protocol is unchanged. v1.9 (same day): the anchor
+data arrives. The wire protocol is unchanged. v1.12 (same day): all three
+calibration tables moved to ONE separate file,
+`Firmware/Modules/Measurement/calibration.h` (user order: one file named
+after the calibration, next to the module files, easy to amend) - table 1 =
+the channel-1 LUT (EMPTY placeholder until SOLO1 data arrives), table 2 =
+the channel-2 LUT above, table 3 = the V12 battery-voltage compensation;
+missing points get appended later for higher accuracy, and every edit is a
+pure initializer change. v1.9 (same day): the anchor
 tables size themselves from their initializers and the point count is
 sizeof-derived, so the next DENSER run (more duty points for higher accuracy)
 is a pure initializer edit - both lists must keep the same length (host test
@@ -552,6 +580,8 @@ one row per recorded step. `-` means "not entered".
 #  [id]     scenario,step,duty_permille,settle_ms,sample_ms,browser_ts
 #  [params] off1,off2,gain1,gain2,voff_in,voff_24,voff_12,med,avg,
 #           eta1,eta2,en1,en2,ceil1,ceil2,fixon1,fix1,fixon2,fix2,manual
+#  [profile] chg_absorb_mv,chg_absorb_enter_mv,chg_absorb_over_mv,
+#            chg_float_mv,chg_reentry_mv,chg_bulk_imax_ma,chg_taper_ma
 #  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,
 #           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1
 #  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,
@@ -563,13 +593,18 @@ one row per recorded step. `-` means "not entered".
 #  duty_list=<...>
 ```
 
-71 columns. Window semantics: every numeric TLM field is averaged over
+78 columns (v1.12: +7 charge-profile params). Window semantics: every numeric TLM field is averaged over
 the statistics window (= the time the DMM form was open, v1.7); the
 current-chain signals (raw/unf/filt/iest, both channels) additionally
 carry min and max; `duty`/`state`/`seq`/`flags` are the LAST frame's
 value; `faults_or` is the bitwise OR of the fault mask across the whole
 window; `browser_ts` is the browser's wall clock (the ESP has none)
 taken at the submit press; `sample_ms` is the actual window duration.
+v1.12 (user order 2026-09-25): the wizard CARRIES the input-voltage DMM
+reading into the next step's form (Vin is quasi-static - one reading per
+run is enough; the panel's own Vin channel tracks the load sag
+continuously, the DMM value only anchors the absolute calibration).
+Overwrite it any time the supply is adjusted; clear it to submit `-`.
 
 Field sources - TLM offsets: seq 0, flags 2, raw 4/32, shunt_uv 8/36,
 unfiltered 12/40, filtered 16/44, iest 20/48, duty 24/52, state 28/56,
@@ -646,6 +681,29 @@ checks "not empty", never the sign. (b) The wizard's default duty list
 is denser (2% steps: 2,4,6,8,10,12,14,16,18,20) because the next bench
 run takes a denser LUT point set for higher accuracy. (c) The panel-side
 ID 8 clamp follows the new 1..300 ceiling.
+
+### 5.7 Charge profile tab (v1.12 — user order 2026-09-25)
+
+A THIRD panel tab "تنظیمات شارژ" exposes the automatic-charge profile:
+params 20..26 (shared by BOTH channels - one profile for both batteries).
+Each field carries a Persian description in the tab; the applied value
+reported back by the STM32 is shown next to the field, so a clamped write
+is visible immediately. A "بازگردانی پیش‌فرض کارخانه" button restores all
+seven defaults.
+
+- Boot defaults equal the old compile-time setpoints (14400 / 14300 /
+  14600 / 13500 / 12800 / 650 / 50) - a reflash changes no behavior.
+- RAM-only like every other parameter: a reset restores the defaults.
+- Every write re-clamps the WHOLE set (Charger_ClampProfile): enter in
+  [absorb−500, absorb−50], over in [absorb+100, min(absorb+400, 14750)],
+  float in [9000, absorb−300], reentry in [8000, float−300], imax in
+  [100, 900], taper in [10, min(300, imax)]; derived: regulation band
+  bottom = imax−20, active current limit = imax+25.
+- NOT reachable from the panel (compile-time safety stack): the 950 mA
+  hard current fault, the 15.0 V overvoltage cutoff, battery-validity
+  bounds, the JIT trip.
+- Manual test mode (5.2) ignores the profile - manual duty is the user's
+  own responsibility, only the hardware floor applies.
 
 ## 6. TLM_LIVE payload layout (84 bytes, little-endian)
 
@@ -764,12 +822,20 @@ protocol. That flip is intentionally left to the project owner.
 test mode (ID 19, section 5.2), charger state 9 = MANUAL, TLM flags bit
 5, the 3 s link dead-man with manual JIT re-arm, the 15.0 V manual
 overvoltage cutoff, the frozen battery-lost detection during manual, and
-the payload limit 112 (PARAMS_BULK = 20 params / 101 payload bytes) are
+the payload limit 144 (PARAMS_BULK = 27 params / 136 payload bytes since v1.12) are
 all in the firmware. The ESP-side constraints that come with it are
 documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 1 s keepalive while ID 19 = 1.
 
 ## 10. Protocol version
+
+v1.12 (2026-09-25, user order of the same day): charge-profile parameters
+20..26 (section 5.7) - PARAMS_BULK grows to 27 items = 136 payload bytes,
+so the frame payload limit rises 112 -> 144 (the ESP parser must accept
+144). No existing ID renumbered, no TLM_LIVE change. The calibration
+tables moved to Firmware/Modules/Measurement/calibration.h (three tables,
+header-only, included solely by measurement.c); the bench CSV gains the
+[profile] block (78 columns).
 
 v1.4 (2026-09-25, user order of the same day): free filter sizes - ID 7
 median now accepts ANY value 1..15 (even sizes, no odd rounding; 1..2 =

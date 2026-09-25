@@ -34,6 +34,7 @@
 
 /* ==================== Includes ==================== */
 #include "measurement.h"
+#include "calibration.h"
 #include "bsp_adc.h"
 #include "bsp_measurement.h"
 #include "bsp_gpio.h"
@@ -641,29 +642,18 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
         مسیر زنر) - زنجیره بدون علامت است و همان‌جا 0 می‌گیرد (خطای ≤13mA
         فقط در کف). شمارش خام و uV شانت دست نمی‌خورند. کانال ۱ تا رسیدن دادهٔ
         SOLO1 خودش خطی می‌ماند. */
-#if (MEASUREMENT_CURRENT2_LUT_ENABLE != 0u)
-/* [EN] The anchor tables take their size from the initializers and the point
-        count is DERIVED from them (user order 2026-09-25: the next bench run
-        takes a DENSER point set for higher accuracy) - growing the table is a
-        pure initializer edit, nothing else changes. Both tables MUST keep the
-        same length (host test enforces it).
-   [FA] جداول لنگر اندازه‌شان را از مقداردهی می‌گیرند و تعداد نقاط از
-        خودشان استخراج می‌شود (دستور کاربر ۲۰۲۶-۰۹-۲۵: اجرای بعدی بنچ
-        برای دقت بیشتر با نقاط متراکم‌تر گرفته می‌شود) - بزرگ‌کردن جدول
-        فقط ویرایش مقداردهی است و هیچ چیز دیگری عوض نمی‌شود. طول دو جدول
-        باید برابر بماند (تست هاست همین را قفل می‌کند). */
-static const uint32_t UINT32_T__G__Current2LutChainMa[] =
-    { 0u, 5u, 37u, 106u, 189u, 236u, 283u, 353u, 441u, 557u, 707u };
-static const uint32_t UINT32_T__G__Current2LutBatteryMa[] =
-    { 0u, 0u, 9u, 62u, 130u, 215u, 310u, 422u, 541u, 660u, 764u };
-#define MEASUREMENT_CURRENT2_LUT_POINTS \
-    ((uint32_t)(sizeof(UINT32_T__G__Current2LutChainMa) / \
-               sizeof(UINT32_T__G__Current2LutChainMa[0u])))
-#endif
+/* [EN] The anchor tables and the enable macro moved to calibration.h (user
+        order 2026-09-25: one separate calibration file, three tables, easy
+        to amend; the count still derives from the initializers there and the
+        host test enforces equal lengths).
+   [FA] جدول‌های لنگر و ماکروی انیبل به calibration.h منتقل شدند (دستور
+        کاربر ۲۰۲۶-۰۹-۲۵: فایل جدا کالیبراسیون، سه جدول، اصلاح راحت)؛
+        تعداد نقاط همان‌جا از مقداردهی استخراج می‌شود و تست هاست برابری
+        طول دو آرایه را قفل می‌کند. */
 
 /* ==================== Measurement Current2 Counts To Ma ==================== */
 
-#if (MEASUREMENT_CURRENT2_LUT_ENABLE != 0u)
+#if (CAL_CURRENT2_LUT_ENABLE != 0u)
 /**
  * @brief  [EN] Piecewise-linear bench correction: OLD linear chain mA of
  *              channel 2 -> true battery mA. Inside the anchor range the
@@ -682,19 +672,19 @@ static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
     uint32_t uint32_t__index;
 
     for (uint32_t__index = 1u;
-         uint32_t__index < MEASUREMENT_CURRENT2_LUT_POINTS;
+         uint32_t__index < CAL_CURRENT2_LUT_POINTS;
          uint32_t__index++)
     {
         uint32_t uint32_t__xHigh =
-            UINT32_T__G__Current2LutChainMa[uint32_t__index];
+            CAL_Current2LutChainMa[uint32_t__index];
         if (uint32_t__chainMa <= uint32_t__xHigh)
         {
             uint32_t uint32_t__xLow =
-                UINT32_T__G__Current2LutChainMa[uint32_t__index - 1u];
+                CAL_Current2LutChainMa[uint32_t__index - 1u];
             uint32_t uint32_t__yLow =
-                UINT32_T__G__Current2LutBatteryMa[uint32_t__index - 1u];
+                CAL_Current2LutBatteryMa[uint32_t__index - 1u];
             uint32_t uint32_t__yHigh =
-                UINT32_T__G__Current2LutBatteryMa[uint32_t__index];
+                CAL_Current2LutBatteryMa[uint32_t__index];
             return uint32_t__yLow +
                    (((uint32_t__chainMa - uint32_t__xLow) *
                      (uint32_t__yHigh - uint32_t__yLow)) /
@@ -704,13 +694,13 @@ static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
 
     /* [EN] Above the last anchor: extend the last segment's slope.
        [FA] بالای آخرین لنگر: شیب آخرین بازه ادامه می‌یابد. */
-    return UINT32_T__G__Current2LutBatteryMa[MEASUREMENT_CURRENT2_LUT_POINTS - 1u] +
+    return CAL_Current2LutBatteryMa[CAL_CURRENT2_LUT_POINTS - 1u] +
            (((uint32_t__chainMa -
-              UINT32_T__G__Current2LutChainMa[MEASUREMENT_CURRENT2_LUT_POINTS - 1u]) *
-             (UINT32_T__G__Current2LutBatteryMa[MEASUREMENT_CURRENT2_LUT_POINTS - 1u] -
-              UINT32_T__G__Current2LutBatteryMa[MEASUREMENT_CURRENT2_LUT_POINTS - 2u])) /
-            (UINT32_T__G__Current2LutChainMa[MEASUREMENT_CURRENT2_LUT_POINTS - 1u] -
-             UINT32_T__G__Current2LutChainMa[MEASUREMENT_CURRENT2_LUT_POINTS - 2u]));
+              CAL_Current2LutChainMa[CAL_CURRENT2_LUT_POINTS - 1u]) *
+             (CAL_Current2LutBatteryMa[CAL_CURRENT2_LUT_POINTS - 1u] -
+              CAL_Current2LutBatteryMa[CAL_CURRENT2_LUT_POINTS - 2u])) /
+            (CAL_Current2LutChainMa[CAL_CURRENT2_LUT_POINTS - 1u] -
+             CAL_Current2LutChainMa[CAL_CURRENT2_LUT_POINTS - 2u]));
 }
 #endif
 
@@ -732,7 +722,7 @@ static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
  */
 uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
 {
-#if (MEASUREMENT_CURRENT2_LUT_ENABLE != 0u)
+#if (CAL_CURRENT2_LUT_ENABLE != 0u)
     return func__Measurement_Current2BenchLut(
         func__BspMeasurement_Current2CountsToMa(uint16_t__counts));
 #else
@@ -767,7 +757,7 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
 
 /* ==================== Measurement Battery12 Bench Compensation (user order 2026-09-25) ==================== */
 
-#if (MEASUREMENT_BATTERY12_BENCH_COMP_ENABLE != 0u)
+#if (CAL_BATTERY12_BENCH_COMP_ENABLE != 0u)
 /* [EN] The latched 2026-09-25 SOLO2 runs (wizard: the /m window is read at
         the submit press) measured the V12 channel against a DMM on the battery
         terminals: a static divider error plus a current-proportional charge-path
@@ -797,8 +787,8 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
    [FA] برازش دوباره از اجرای متراکم ۲۰۲۶-۰۹-۲۵T18:14 (۱۰ نقطهٔ DMM،
         0..764mA): کمینهٔ مربعات 149.8mV + 472.5mOhm - گرد به 150/470.
         خطای باقی‌مانده در کل بازه ±۲۸mV (۰٫۲۳٪). */
-#define MEASUREMENT_BATTERY12_BENCH_STATIC_MV 150u
-#define MEASUREMENT_BATTERY12_BENCH_PATH_MOHM 470u
+#define CAL_BATTERY12_BENCH_STATIC_MV 150u
+#define CAL_BATTERY12_BENCH_PATH_MOHM 470u
 
 /**
  * @brief  [EN] V12 true-battery compensation: subtract the static channel
@@ -812,8 +802,8 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
 static uint32_t func__Measurement_Battery12BenchCompensate(uint32_t uint32_t__v12Mv,
                                                            uint32_t uint32_t__current2Ma)
 {
-    uint32_t uint32_t__dropMv = MEASUREMENT_BATTERY12_BENCH_STATIC_MV +
-        ((uint32_t__current2Ma * MEASUREMENT_BATTERY12_BENCH_PATH_MOHM) / 1000u);
+    uint32_t uint32_t__dropMv = CAL_BATTERY12_BENCH_STATIC_MV +
+        ((uint32_t__current2Ma * CAL_BATTERY12_BENCH_PATH_MOHM) / 1000u);
 
     if (uint32_t__v12Mv > uint32_t__dropMv)
     {
@@ -992,7 +982,7 @@ void func__Measurement_Run(void)
         uint32_t__battery24Mv, INT32_T__G__Voltage24OffsetMv);
     uint32_t__battery12Mv = func__Measurement_ApplyVoltageOffsetMv(
         uint32_t__battery12Mv, INT32_T__G__Voltage12OffsetMv);
-#if (MEASUREMENT_BATTERY12_BENCH_COMP_ENABLE != 0u)
+#if (CAL_BATTERY12_BENCH_COMP_ENABLE != 0u)
     /* [EN] Bench compensation of the battery-low channel (user order
             2026-09-25): static error + I2 wire drop, so Vlow and the derived
             Vhigh describe the true battery terminals.

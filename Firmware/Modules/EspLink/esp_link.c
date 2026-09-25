@@ -242,6 +242,25 @@ static bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
             *uint32_t__appliedValue =
                 (func__Charger_GetManualTestMode() != false) ? 1u : 0u;
             return true;
+
+        /* [EN] Charge profile, ids 20..26 (v1.12, user order 2026-09-25):
+                one shared profile for both channels; the charger clamps
+                the value and re-clamps every dependent, the APPLIED value
+                is reported back.
+           [FA] پروفایل شارژ، شناسه‌های ۲۰..۲۶ (v1.12، دستور کاربر
+                ۲۰۲۶-۰۹-۲۵): یک پروفایل مشترک برای هر دو کانال؛ شارژر مقدار
+                را گیره می‌زند و همهٔ وابسته‌ها را دوباره گیره می‌زند و
+                مقدار «اعمال‌شده» پاس داده می‌شود. */
+        case ESPLINK_PARAM_CHG_PROFILE_ABSORB_MV:
+        case ESPLINK_PARAM_CHG_PROFILE_ABSORB_ENTER_MV:
+        case ESPLINK_PARAM_CHG_PROFILE_ABSORB_OVER_MV:
+        case ESPLINK_PARAM_CHG_PROFILE_FLOAT_MV:
+        case ESPLINK_PARAM_CHG_PROFILE_REENTRY_MV:
+        case ESPLINK_PARAM_CHG_PROFILE_BULK_CURRENT_MAX_MA:
+        case ESPLINK_PARAM_CHG_PROFILE_TAPER_CURRENT_MA:
+            return func__Charger_SetProfileParam(uint8_t__paramId,
+                                                 uint32_t__value,
+                                                 uint32_t__appliedValue);
 #endif
 
         default:
@@ -351,6 +370,18 @@ static bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
             *uint32_t__value =
                 (func__Charger_GetManualTestMode() != false) ? 1u : 0u;
             return true;
+
+        /* [EN] Charge profile live read, ids 20..26 (v1.12).
+           [FA] خواندن زندهٔ پروفایل شارژ، شناسه‌های ۲۰..۲۶. */
+        case ESPLINK_PARAM_CHG_PROFILE_ABSORB_MV:
+        case ESPLINK_PARAM_CHG_PROFILE_ABSORB_ENTER_MV:
+        case ESPLINK_PARAM_CHG_PROFILE_ABSORB_OVER_MV:
+        case ESPLINK_PARAM_CHG_PROFILE_FLOAT_MV:
+        case ESPLINK_PARAM_CHG_PROFILE_REENTRY_MV:
+        case ESPLINK_PARAM_CHG_PROFILE_BULK_CURRENT_MAX_MA:
+        case ESPLINK_PARAM_CHG_PROFILE_TAPER_CURRENT_MA:
+            return func__Charger_GetProfileParam(uint8_t__paramId,
+                                                 uint32_t__value);
 #endif
 
         default:
