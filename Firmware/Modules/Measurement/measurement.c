@@ -559,6 +559,23 @@ uint32_t func__Measurement_V24CountsToMv(uint16_t uint16_t__counts)
     return func__BspMeasurement_V24CountsToMv(uint16_t__counts);
 }
 
+/* ==================== Battery24 Counts To Mv ==================== */
+
+/**
+ * @brief  [EN] Convert the battery-PACK 24 V channel through the USER divider
+ *              factor (2026-09-25): the pack sense path attenuates
+ *              6.8k/69.2k to the pin, NOT the input net's 6.8k/76k.
+ *         [FA] کانال باتری‌پک ۲۴ ولت را با ضریب مقسم «کاربر» تبدیل می‌کند
+ *              (۲۰۲۶-۰۹-۲۵): مسیر سنس پک تا پایه 6.8k/69.2k تضعیف دارد،
+ *              نه 6.8k/76k مثل نت ورودی.
+ * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
+ * @return uint32_t [EN] Pack voltage in mV / ولتاژ پک mV
+ */
+uint32_t func__Measurement_Battery24CountsToMv(uint16_t uint16_t__counts)
+{
+    return func__BspMeasurement_Battery24CountsToMv(uint16_t__counts);
+}
+
 /* ==================== V12 Counts To Mv ==================== */
 
 /**
@@ -933,7 +950,7 @@ void func__Measurement_Run(void)
     uint32_t__inputVoltageMv =
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_IN]);
     uint32_t__battery24Mv =
-        func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);
+        func__Measurement_Battery24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);
     uint32_t__battery12Mv =
         func__Measurement_V12CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_12V_BAT]);
 

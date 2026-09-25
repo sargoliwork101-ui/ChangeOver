@@ -125,7 +125,16 @@
  * [FA] حد گیرهٔ آفست‌های کالیبراسیون ولتاژِ قابل‌تنظیم از ESP بر حسب mV
  *      (دستور کاربر ۲۰۲۶-۰۹-۲۲): پنل حداکثر ±۲ ولت هر کانال ولتاژ را
  *      جابه‌جا می‌کند؛ پیش‌فرض ۰ همان رفتار فعلی است. */
-#define MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV  2000u
+/* [EN] v1.10 (user order 2026-09-25): raised 2000 -> 5000 mV. The pack
+        divider error alone was ~2.3 V at 24 V, beyond the old range, so the
+        runtime offset could not even express it. The divider itself is now
+        corrected at the source (BSP battery-24 factor); the wider range
+        keeps future divider/resistor drift correctable from the panel.
+   [FA] نسخه ۱٫۱۰ (دستور کاربر ۲۰۲۶-۰۹-۲۵): از ۲۰۰۰ به ۵۰۰۰mV بالا رفت.
+        خطای مقسم پک به‌تنهایی ~2.3V در ۲۴V بود و از بازهٔ قدیمی بیرون؛
+        یعنی آفست زمان اجرا اصلاً نمی‌توانست آن را بنویسد. خود مقسم حالا
+        در BSP اصلاح شده؛ بازهٔ پهن‌تر برای جبران رانش‌های آینده از پنل است. */
+#define MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV  5000u
 
 /* ==================== Globals (shared values) ==================== */
 /* [EN] Shared engineering values, written ONLY by the measurement task
@@ -225,6 +234,17 @@ uint32_t func__Measurement_CountsToMv(uint16_t uint16_t__counts);
  * @return uint32_t [EN] Source voltage in mV, 0..~37000 / ولتاژ منبع mV
  */
 uint32_t func__Measurement_V24CountsToMv(uint16_t uint16_t__counts);
+
+/**
+ * @brief  [EN] Convert the battery-PACK 24 V channel with the USER divider
+ *              factor (attenuation 6.8k/69.2k, 2026-09-25) - the input net
+ *              keeps func__Measurement_V24CountsToMv.
+ *         [FA] کانال باتری‌پک ۲۴ ولت با ضریب مقسم «کاربر» (تضعیف
+ *              6.8k/69.2k، ۲۰۲۶-۰۹-۲۵) - نت ورودی روی V24CountsToMv می‌ماند.
+ * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
+ * @return uint32_t [EN] Pack voltage in mV / ولتاژ پک mV
+ */
+uint32_t func__Measurement_Battery24CountsToMv(uint16_t uint16_t__counts);
 
 /* ==================== V12 Counts To Mv ==================== */
 

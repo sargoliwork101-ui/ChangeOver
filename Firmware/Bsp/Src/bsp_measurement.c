@@ -24,6 +24,27 @@
  *      33K+1.2K / 6.8K. */
 #define BSP_MEASUREMENT_DIV24_TOP_OHMS   69200u
 #define BSP_MEASUREMENT_DIV24_BOTTOM_OHMS 6800u
+/* [EN] Battery-PACK 24 V net (user order 2026-09-25): its sense path does
+        NOT match the input net above - the user measured/knows the net
+        attenuation to the MCU pin as exactly 0.09826589595375722543352601156069
+        (= 6.8 k / 69.2 k), i.e. an effective total of 69.2 k over the same
+        6.8 k bottom (besides the 68 k there are a 1.2 k and a 6.8 k in the
+        path). The old shared 76 k assumption made the panel overread the
+        PACK voltage by 9.8 percent (~2.3 V at 24 V - beyond the old
+        +/-2 V offset range, which is why the pack read wrong). The INPUT
+        24 V net keeps the 76 k divider: bench-verified within +1.2 percent
+        (23889 vs 23600 mV, 2026-09-25 run).
+   [FA] نت باتری‌پک ۲۴V (دستور کاربر ۲۰۲۶-۰۹-۲۵): مسیر سنس آن با نت ورودی
+        بالا یکی نیست - کاربر تضعیف دقیق نت تا پایهٔ میکرو را
+        0.09826589595375722543352601156069 (= 6.8k/69.2k) داده؛ یعنی مجموع
+        مؤثر 69.2k روی همان پایین 6.8k (علاوه بر 68k، یک 1.2k و یک 6.8k
+        هم در مسیرش هست). فرض اشتراکی قدیمی 76k باعث می‌شد پنل ولتاژ پک را
+        ۹٫۸٪ (~2.3V در ۲۴V) زیاد بخواند - از بازهٔ آفست قدیمی ±2V بیرون؛
+        برای همین ولتاژ باتری کل اشتباه خوانده می‌شد. نت ورودی ۲۴V روی همان
+        مقسم 76k می‌ماند: در بنچ فقط +1٫۲٪ خطا داشت (23889 در برابر 23600mV،
+        اجرای ۲۰۲۶-۰۹-۲۵). */
+#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS 62400u
+#define BSP_MEASUREMENT_DIV24BAT_BOTTOM_OHMS 6800u
 #define BSP_MEASUREMENT_DIV12_TOP_OHMS   34200u
 #define BSP_MEASUREMENT_DIV12_BOTTOM_OHMS 6800u
 
@@ -169,6 +190,28 @@ uint32_t func__BspMeasurement_V24CountsToMv(uint16_t uint16_t__counts)
  * @param  uint16_t__counts [EN] ADC count / شمارش ADC
  * @return uint32_t [EN] Source voltage in mV / ولتاژ منبع بر حسب mV
  */
+/* ==================== BspMeasurement_Battery24CountsToMv ==================== */
+
+/**
+ * @brief  [EN] Undo the battery-PACK 24 V divider (user factor, 2026-09-25).
+ *         [FA] خنثی‌کردن مقسم نت باتری‌پک ۲۴V (ضریب کاربر، ۲۰۲۶-۰۹-۲۵).
+ * @param  uint16_t__counts [EN] ADC count / شمارش ADC
+ * @return uint32_t [EN] Pack voltage in mV / ولتاژ پک بر حسب mV
+ */
+uint32_t func__BspMeasurement_Battery24CountsToMv(uint16_t uint16_t__counts)
+{
+    uint32_t uint32_t__adcPinMv;
+    uint32_t uint32_t__dividerTotalOhms;
+    uint32_t uint32_t__scaledMv;
+
+    uint32_t__adcPinMv = func__BspMeasurement_CountsToMv(uint16_t__counts);
+    uint32_t__dividerTotalOhms =
+        BSP_MEASUREMENT_DIV24BAT_TOP_OHMS + BSP_MEASUREMENT_DIV24BAT_BOTTOM_OHMS;
+    uint32_t__scaledMv = uint32_t__adcPinMv * uint32_t__dividerTotalOhms;
+
+    return uint32_t__scaledMv / BSP_MEASUREMENT_DIV24BAT_BOTTOM_OHMS;
+}
+
 /* ==================== BspMeasurement_V12CountsToMv ==================== */
 uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
 {

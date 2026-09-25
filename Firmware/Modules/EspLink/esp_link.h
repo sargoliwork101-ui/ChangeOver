@@ -118,9 +118,9 @@
 #define ESPLINK_PARAM_CUR2_OFFSET_COUNTS   1u   /* u32, counts,   def 8,    0..255    */
 #define ESPLINK_PARAM_CUR1_GAIN_PERMILLE   2u   /* u32, permille, def 1046, 100..3000 */
 #define ESPLINK_PARAM_CUR2_GAIN_PERMILLE   3u   /* u32, permille, def 1303, 100..3000 */
-#define ESPLINK_PARAM_VIN_OFFSET_MV        4u   /* i32, mV,       def 0,    -2000..2000 */
-#define ESPLINK_PARAM_V24_OFFSET_MV        5u   /* i32, mV,       def 0,    -2000..2000 */
-#define ESPLINK_PARAM_V12_OFFSET_MV        6u   /* i32, mV,       def 0,    -2000..2000 */
+#define ESPLINK_PARAM_VIN_OFFSET_MV        4u   /* i32, mV,       def 0,    -5000..5000 (v1.10) */
+#define ESPLINK_PARAM_V24_OFFSET_MV        5u   /* i32, mV,       def 0,    -5000..5000 (v1.10) */
+#define ESPLINK_PARAM_V12_OFFSET_MV        6u   /* i32, mV,       def 0,    -5000..5000 (v1.10) */
 #define ESPLINK_PARAM_FILTER_MEDIAN_SIZE   7u   /* u32, samples,  def 3,    1..15 any, 1..2=bypass (v1.4) */
 #define ESPLINK_PARAM_FILTER_AVERAGE_WINDOW 8u  /* u32, samples,  def 10,   1..100, 1=bypass (v1.4) */
 #define ESPLINK_PARAM_CHG_ETA1_PERMILLE    9u   /* u32, permille, def 0,    0..999, 0=identity (v1.3) */

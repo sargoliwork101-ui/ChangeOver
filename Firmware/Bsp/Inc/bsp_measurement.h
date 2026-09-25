@@ -31,6 +31,16 @@ uint32_t func__BspMeasurement_CountsToMv(uint16_t uint16_t__counts);
 uint32_t func__BspMeasurement_V24CountsToMv(uint16_t uint16_t__counts);
 
 /**
+ * @brief  [EN] Convert the battery-PACK 24 V channel (user divider factor,
+ *              2026-09-25: attenuation 6.8k/69.2k to the pin).
+ *         [FA] کانال باتری‌پک ۲۴ ولت را تبدیل می‌کند (ضریب مقسم کاربر،
+ *              ۲۰۲۶-۰۹-۲۵: تضعیف 6.8k/69.2k تا پایه).
+ * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
+ * @return uint32_t [EN] Pack voltage in mV / ولتاژ پک mV
+ */
+uint32_t func__BspMeasurement_Battery24CountsToMv(uint16_t uint16_t__counts);
+
+/**
  * @brief  [EN] Convert the normalized 12 V channel to source voltage.
  *         [FA] کانال استاندارد ۱۲ ولت را به ولتاژ منبع تبدیل می‌کند.
  * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC

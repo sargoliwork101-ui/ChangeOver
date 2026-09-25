@@ -481,6 +481,13 @@ def test_setpoints_and_timing():
           "uint32_t__dropMv = MEASUREMENT_BATTERY12_BENCH_STATIC_MV +" in meas_c_raw and
           "return 0u;" in meas_c_raw.split("func__Measurement_Battery12BenchCompensate")[1].split("\n}\n")[0],
           "the V12 bench compensation must be compile-switchable (enable=0 restores today's behaviour), use saturating subtraction (static + I2 x mOhm / 1000, never below 0 mV)")
+    check(re.search(r"#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS\s+62400u", bsp_meas_c) and
+          "func__BspMeasurement_Battery24CountsToMv" in bsp_meas_c and
+          "func__Measurement_Battery24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);" in meas_c_raw and
+          "func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_IN]);" in meas_c_raw,
+          "the battery-PACK 24 V channel must use its OWN divider (user order 2026-09-25: net attenuation to the pin is exactly 0.09826589595375722543352601156069 = 6.8k/69.2k, i.e. total 69.2k over the 6.8k bottom - besides the 68k there are a 1.2k and a 6.8k in the path) while the INPUT 24 V net keeps the 76k conversion (bench-verified +1.2 percent)")
+    check(re.search(r"#define MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV\s+5000u", meas_h_txt),
+          "runtime voltage offset range must be +/-5000 mV (v1.10, user order 2026-09-25: the pack divider error alone was ~2.3 V at 24 V, beyond the old +/-2000, so the offset could not even express it)")
     check("BSP_MEASUREMENT_MA_PER_A" in bsp_meas_c and "BSP_MEASUREMENT_PERMILLE_SCALE" in bsp_meas_c and
           "BSP_MEASUREMENT_CURRENT_MA_SCALE" not in bsp_meas_c,
           "the ADC-to-current formula must be built stage-by-stage from the schematic resistor values (shunt mOhm, LM358 gain, R41/R42 divider), no shared magic scale (user order 2026-09-22)")

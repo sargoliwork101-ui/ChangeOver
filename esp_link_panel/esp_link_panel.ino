@@ -19,13 +19,18 @@
  *                  same day): DMM currents accept NEGATIVE values (battery discharge path), the
  *                  moving-average ceiling is 300 samples (visible smoothing at the 10 Hz TLM), the
  *                  filter card shows the live effective span, and the wizard's default duty list is
- *                  denser (2% steps) for the next, denser LUT run.
+ *                  denser (2% steps) for the next, denser LUT run. v1.10 (same day): the manual-duty
+ *                  card moved into the PANEL tab; per-channel duty-ceiling inputs (0..500 permille);
+ *                  chart sample count user-settable (default 100); the wizard settle step REMOVED
+ *                  (capture is user-latched, the wait added nothing); the pack-24V divider corrected
+ *                  (user factor 0.09827 = 6.8k/69.2k; scale 69200/6800) and voltage offsets now
+ *                  +/-5000 mV; DMM form hints compacted.
  *               The v1.6 extras (CAL card, manual tests B/C/D, correction/analysis tab, engineer mode)
  *               were removed except the manual-duty card above; nothing was ever calibrated
  *               automatically and the wire protocol (SET_PARAM / GET_PARAMS / TLM) is unchanged.
  *          [FA] پل ESP-Link سمت ESP: تبادل فریم باینری با STM32 روی UART (921600 8N1، مطابق
  *               ESP_AGENT_SPEC.md نسخهٔ ۱.۴) و یک پنل وب دارک راست‌به‌چپ با فونت وزیرمتن و «دو» تب
- *               (ساده‌سازی نسخهٔ ۱.۷؛ کارت دیوتی دستی دائمی در ۱.۸؛ جریان منفی + میانگین ۳۰۰ + فهرست دیوتی متراکم در ۱.۹):
+ *               (کارت دیوتی دستی از ۱.۱۰ در تب پنل؛ سقف دیوتی، نمونه‌های نمودار، حذف صبر و مقسم پک هم در ۱.۱۰):
  *               ۱) پنل: ولتاژهای مشترک (با کالیبراسیون آفست از مولتی‌متر)، فیلتر جریان (مدین ۱..۱۵،
  *                  میانگین ۱..۳۰۰) و یک ستون برای هر شارژر: وضعیت زنده، زنجیرهٔ اندازه‌گیری با فرمول
  *                  زنده، نمودار فیلتر و دکمهٔ قطع شارژر.
@@ -180,8 +185,8 @@ typedef enum
    [FA] شناسه: ۰..۱ آفست، ۲..۳ گین، ۴..۶ آفست mV علامت‌دار، ۷ مدین ۱..۱۵، ۸ پنجره میانگین ۱..۳۰۰ (نسخه ۱.۴؛ بالا رفتن در ۱.۹)، ۹..۱۰ ضریب تبدیل η (v1.3، صفر = همانی)،
         ۱۱..۱۲ قطع/وصل شارژر، ۱۳..۱۴ سقف duty، ۱۵/۱۷ مود duty فیکس، ۱۶/۱۸ duty فیکس/دستی،
         ۱۹ مود تست دستی (نسخه ۱.۲). */
-static const int32_t INT32_T__G__ParamMin[ESP_PARAM_COUNT] = {   0,   0,  100,  100, -2000, -2000, -2000, 1,  1,   0,   0, 0, 0,   0,   0, 0,   0, 0,   0, 0 };
-static const int32_t INT32_T__G__ParamMax[ESP_PARAM_COUNT] = { 255, 255, 3000, 3000,  2000,  2000,  2000, 15, 300, 999, 999, 1, 1, 500, 500, 1, 500, 1, 500, 1 };
+static const int32_t INT32_T__G__ParamMin[ESP_PARAM_COUNT] = {   0,   0,  100,  100, -5000, -5000, -5000, 1,  1,   0,   0, 0, 0,   0,   0, 0,   0, 0,   0, 0 };
+static const int32_t INT32_T__G__ParamMax[ESP_PARAM_COUNT] = { 255, 255, 3000, 3000,  5000,  5000,  5000, 15, 300, 999, 999, 1, 1, 500, 500, 1, 500, 1, 500, 1 };
 
 /* ==================== RX State ==================== */
 static esp_rx_state_t ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
@@ -322,6 +327,7 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <div class="cd" id="sh"><div class="hd"><b>ولتاژها <span class="lb">· عدد مولتی‌متر (V) را کنار هر ولتاژ وارد کنید تا آفست آن کالیبره شود</span></b><div class="fl" id="fl"></div></div><div class="vs" id="vs"></div>
 <div class="sec">فیلتر جریان <span class="lb">(مشترک هر دو کانال)</span></div><div class="frr" id="fg"></div><div class="fx fxw" id="ff"></div></div>
 <div class="ch" id="ch"></div>
+<div id="mc"></div>
 </div>
 <div class="pgx" id="p1"></div>
 </main>
@@ -331,13 +337,15 @@ const $=i=>document.getElementById(i);
 const ST=['خاموش','Bulk','Absorb','Float','راه‌اندازی','انتظار JIT','انتظار ورودی','خطای نهایی','باتری قطع','دستی'];
 const SC=['','g','g','g','y','r','y','r','r','y'];
 /* ثابت‌های بخش 5.3 سند */
-const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*76000/6800,K12=3300/4095*41000/6800;
+const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*76000/6800,K24B=3300/4095*69200/6800,K12=3300/4095*41000/6800;
 /* شناسه: [عنوان, واحد, کمینه, بیشینه, نوع(n عدد، b کلید), توضیح] */
 const P={
 7:['پنجرهٔ مدین','نمونه',1,15,'n','مرحلهٔ اول فیلتر، هر عدد ۱ تا ۱۵ (زوج هم مجاز)؛ ۱ و ۲ = خاموش، ۳ = پیش‌فرض، بزرگ‌تر = حذف پالس قوی‌تر با تاخیر بیشتر'],
-8:['پنجرهٔ میانگین','نمونه',1,300,'n','مرحلهٔ دوم فیلتر، هر عدد ۱ تا ۳۰۰: میانگین آخرین W خروجی مدین (هر نمونه ۱ms = ۱ms تاریخچه). ۱ = خاموش، ۱۰ = پیش‌فرض. برای دیدن صاف‌کردن روی پنل (TLM هر ۱۰۰ms می‌آید) W را ۲۰۰..۳۰۰ بگذارید؛ در مود خودکار شارژر بالای ~۵۰ توصیه نمی‌شود (کندی حلقهٔ تنظیم ۱۰۰Hz)']};
+8:['پنجرهٔ میانگین','نمونه',1,300,'n','مرحلهٔ دوم فیلتر، هر عدد ۱ تا ۳۰۰: میانگین آخرین W خروجی مدین (هر نمونه ۱ms = ۱ms تاریخچه). ۱ = خاموش، ۱۰ = پیش‌فرض. برای دیدن صاف‌کردن روی پنل (TLM هر ۱۰۰ms می‌آید) W را ۲۰۰..۳۰۰ بگذارید؛ در مود خودکار شارژر بالای ~۵۰ توصیه نمی‌شود (کندی حلقهٔ تنظیم ۱۰۰Hz)'],
+13:['سقف دیوتی ۱','‰',0,500,'n','سقف duty کانال ۱ به هزارم درصد (۵۰۰ = ۵۰٪)؛ هر دیوتی اعمالی (تنظیم خودکار، فیکس، دستی) به این سقف گیره می‌شود'],
+14:['سقف دیوتی ۲','‰',0,500,'n','سقف duty کانال ۲ به هزارم درصد (۵۰۰ = ۵۰٪)؛ مثل کانال ۱']};
 /* ولتاژها: [عنوان, اندیس t, شناسهٔ آفست, ضریب مقسم] */
-const V=[['ورودی',14,4,K24],['پک ۲۴V',15,5,K24],['نود ۱۲V',16,6,K12],['باتری بالا',18],['باتری پایین',17]];
+const V=[['ورودی',14,4,K24],['پک ۲۴V',15,5,K24B],['نود ۱۲V',16,6,K12],['باتری بالا',18],['باتری پایین',17]];
 let D=null;
 const v2=mv=>(mv/1000).toFixed(2),pc=pm=>(pm/10).toFixed(1)+'%';
 function send(id,v){const a=$('a'+id);if(a)a.textContent='…';fetch('/s?id='+id+'&v='+v,{method:'POST'}).then(r=>{if(!r.ok)throw 0;}).catch(()=>{if(a)a.textContent='خطا';});}
@@ -350,7 +358,7 @@ const row=(id,x)=>`<div class="rw"><div>${P[id][0]} <span class="lb">${P[id][1]}
 $('vs').innerHTML=V.map((v,i)=>`<div class="vt"><small>${v[0]}</small><b class="n" id="v${i}">—</b><div class="fx" id="fv${i}"></div>${i<3?`
 <div class="ct vc"><input type="number" step="any" id="vm${i}" placeholder="مولتی‌متر V" onkeydown="if(event.key=='Enter')vcal(${i})"><button class="sb sb2" onclick="vcal(${i})">اعمال</button></div>
 <div class="lb">آفست <span class="ap n" id="a${v[2]}">—</span> mV</div>`:''}</div>`).join('');
-$('fg').innerHTML=row(7)+row(8)+'<div class="lb" id="fspan" style="margin-top:6px">—</div>';
+$('fg').innerHTML=row(7)+row(8)+'<div class="lb" id="fspan" style="margin-top:6px">—</div><div class="bctl" style="margin-top:8px"><label class="lb">نمونه‌های نمودار <input type="number" id="hN" data-s min="10" max="600" value="100" style="width:64px"></label></div>';
 /* ---------- دو ستون جدا: شارژر ۱ و شارژر ۲ ---------- */
 $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}">—</span></div>
 <div class="big"><span class="lb">جریان تخمینی باتری (iest)</span><b class="n" id="ie${n}">—</b></div>
@@ -358,19 +366,28 @@ $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${
 <div class="sec">زنجیرهٔ اندازه‌گیری و محاسبه</div>
 <table>${[['ADC خام','count',0],['ولتاژ شنت','µV',1],['جریان بدون فیلتر','mA',2],['جریان فیلترشده','mA',3],['تخمین باتری (iest)','mA',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}">—</b> <span class="lb">${r[1]}</span></td></tr>`).join('')}</table>
 <div class="lb kc">ثابت‌ها: ADC دوازده‌بیتی، ۳۳۰۰mV، R41/R42 = 1k/10k، LM358 × 101، شنت 10 mOhm</div>
-<canvas id="cv${n}"></canvas><div class="lg"><span><i style="background:#5b6784"></i>بدون فیلتر · نوسان <b class="n" id="pu${n}">—</b> mA</span><span><i style="background:#4f8cff"></i>فیلترشده · نوسان <b class="n" id="pf${n}">—</b> mA</span><span>۳۶ ثانیهٔ اخیر</span></div>
+<canvas id="cv${n}"></canvas><div class="lg"><span><i style="background:#5b6784"></i>بدون فیلتر · نوسان <b class="n" id="pu${n}">—</b> mA</span><span><i style="background:#4f8cff"></i>فیلترشده · نوسان <b class="n" id="pf${n}">—</b> mA</span><span class="hnl"></span></div>
 <button class="bt" id="tg${n}">—</button></div>`).join('');
 [1,2].forEach(n=>$('tg'+n).onclick=()=>{const c=D&&D.p[10+n];if(c!==0&&!confirm('PWM شارژر '+n+' فوراً قطع شود؟'))return;send(10+n,c===0?1:0);});
+/* کارت کنترل دستی دیوتی — v1.10 در تب «پنل» (دستور کاربر ۲۰۲۶-۰۹-۲۵) + سقف دیوتی هر کانال */
+$('mc').innerHTML=`<div class="cd"><div class="ti">کنترل دستی دیوتی (تست جریان)</div><div class="ds">مود دستی شارژر خودکار و محافظت باتری‌ها را متوقف می‌کند و دیوتی را خودتان تعیین می‌کنید؛ فقط حضور ۲۴V، قطع JIT، قطع ۱۵٫۰V و سقف دیوتی می‌ماند. پنل را نبندید — ۱۰ ثانیه بعد از بستن، مود دستی خاموش و دیوتی صفر می‌شود. بعد از تریپ JIT همان دیوتی را دوباره اعمال کنید.</div>
+<div class="bctl"><span class="lb">مود دستی</span><button class="sw w" id="s19">—</button>
+<label class="lb">دیوتی ۱ ٪ <input type="number" step="any" id="qm1" data-s style="width:64px"></label><button class="sb" onclick="qset(1)">اعمال</button>
+<label class="lb">دیوتی ۲ ٪ <input type="number" step="any" id="qm2" data-s style="width:64px"></label><button class="sb" onclick="qset(2)">اعمال</button>
+<button class="sb off2" id="ao">هر دو = 0</button></div>
+<div class="frr" id="clr"></div>
+<div class="lb" id="mq" style="margin-top:6px"></div></div>`;
+$('clr').innerHTML=row(13)+row(14);
 /* ---------- تاریخچهٔ نمودار هر کانال ---------- */
-let LS=-1;const HN=120,H=[0,1].map(()=>({u:[],f:[]}));
+let LS=-1;const hn=()=>{const v=Math.round(+$('hN').value);return !v?100:Math.min(600,Math.max(10,v));},H=[0,1].map(()=>({u:[],f:[]}));
 function vcal(k){const R=V[k],m=Math.round(+$('vm'+k).value*1000),shown=D&&D.t[R[1]],off=D&&D.p[R[2]];if(!(m>0))return alert('عدد مولتی‌متر را به ولت وارد کنید (مثلاً 13.05).');if(off==null)return;
- const no=Math.min(2000,Math.max(-2000,off+m-shown));if(confirm(R[0]+': آفست '+off+' ← '+no+' mV\n(نمایش '+v2(shown)+' V، مولتی‌متر '+v2(m)+' V)')){send(R[2],no);$('vm'+k).value='';}}
+ const no=Math.min(5000,Math.max(-5000,off+m-shown));if(confirm(R[0]+': آفست '+off+' ← '+no+' mV\n(نمایش '+v2(shown)+' V، مولتی‌متر '+v2(m)+' V)')){send(R[2],no);$('vm'+k).value='';}}
 /* نمودار زندهٔ فیلتر هر کانال */
-function chart(){[0,1].forEach(ci=>{const c=$('cv'+(ci+1)),w=c.clientWidth,h=c.clientHeight,dp=devicePixelRatio||1;if(!w)return;
+function chart(){document.querySelectorAll('.hnl').forEach(e=>e.textContent=hn()+' نمونهٔ اخیر');[0,1].forEach(ci=>{const c=$('cv'+(ci+1)),w=c.clientWidth,h=c.clientHeight,dp=devicePixelRatio||1;if(!w)return;
  if(c.width!=Math.round(w*dp)){c.width=Math.round(w*dp);c.height=Math.round(h*dp);}
  const x=c.getContext('2d');x.setTransform(dp,0,0,dp,0,0);x.clearRect(0,0,w,h);const s=H[ci];if(s.u.length<2)return;
  let lo=Math.min(...s.u,...s.f),hi=Math.max(...s.u,...s.f);if(hi-lo<10){const m=(hi+lo)/2;lo=m-5;hi=m+5;}const pd=(hi-lo)*.12,a=lo-pd,z=hi+pd;
- const X=i=>w-8-(s.u.length-1-i)*(w-16)/(HN-1),Y=v=>h-8-(v-a)/(z-a)*(h-16);
+ const X=i=>w-8-(s.u.length-1-i)*(w-16)/(hn()-1),Y=v=>h-8-(v-a)/(z-a)*(h-16);
  const ln=(A,col,lw)=>{x.beginPath();A.forEach((v,i)=>i?x.lineTo(X(i),Y(v)):x.moveTo(X(i),Y(v)));x.strokeStyle=col;x.lineWidth=lw;x.stroke();};
  x.fillStyle='#6f7a93';x.font='11px Vazirmatn,sans-serif';x.fillText(Math.round(hi)+' mA',8,16);x.fillText(Math.round(lo)+' mA',8,h-10);
  ln(s.u,'#5b6784',1);ln(s.f,'#4f8cff',2);const pp=A=>{const B=A.slice(-50);return Math.max(...B)-Math.min(...B);};$('pu'+(ci+1)).textContent=pp(s.u);$('pf'+(ci+1)).textContent=pp(s.f);});}
@@ -392,7 +409,7 @@ function formulas(t,p){
  V.forEach((v,i)=>{const e=$('fv'+i);if(i<3){const o=p[v[2]]==null?0:p[v[2]],c=Math.round((t[v[1]]-o)/v[3]);e.textContent=`${c} × ${v[3].toFixed(3)} ${o<0?'−':'+'} ${Math.abs(o)}`;}
   else e.textContent=i==3?'V24 − V12':'= V12';});
  $('ff').textContent=`I_filtered = average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( mA_unfiltered ) )`;}
-function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>HN){s.u.shift();s.f.shift();}});}}
+function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>hn()){s.u.shift();s.f.shift();}});}}
 function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;
  document.body.classList.toggle('dn',!on);$('lk').classList.toggle('on',on);
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');
@@ -434,7 +451,6 @@ function wst(m,c){const e=$('wS0');e.innerHTML=m;e.className='cm '+(c||'lb');}
 function wchk(){if(W.abort)throw 'پایان توسط کاربر';const d=D;if(!d||d.on!=1)throw 'لینک STM32 قطع شد';
  (W.act||[]).forEach(n=>{const s=d.t[(n-1)*7+6];if(s==7)throw 'خطای نهایی کانال '+fa(n);if(s==5)throw 'تریپ JIT کانال '+fa(n);if(d.t[n==1?18:17]>=15000)throw 'قطع ۱۵V کانال '+fa(n);});
  if(W.man&&!(d.fl&32))throw 'مود دستی قطع شد (ددمن یا محافظ پنل)';}
-async function wwait(ms,lbl){const e=Date.now()+ms;while(Date.now()<e){wchk();wst(lbl+' · <span class="n">'+Math.ceil((e-Date.now())/1000)+' s</span>');await sl(100);}wchk();}
 /* نوشتن پارامتر و صبر تا گزارش همان مقدار از STM32 */
 async function setv(id,v){for(let k=0;k<3;k++){const j=await req('/s?id='+id+'&v='+v,'POST');if(j._s!=200)throw 'پاسخ ESP: '+j._s;const e=Date.now()+2500;while(Date.now()<e){await sl(150);if(D&&D.p[id]===v)return;}}throw 'برد مقدار شناسهٔ '+id+' = '+v+' را گزارش نکرد';}
 async function wrestore(o){wst('بازگردانی تنظیمات قبل از ثبت…');W.man=false;W.act=null;const L=[[16,0],[18,0],[19,o[19]],[11,o[11]],[12,o[12]]];if(o[19]===0)L.push([16,o[16]],[18,o[18]]);for(const [i,v] of L){try{await setv(i,v);}catch(e){}}}
@@ -468,8 +484,7 @@ function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const N=id=>`<inpu
  const L=(id,t)=>`<label class="lb">${t} <input type="number" step="any" id="${id}" class="wi"></label>`;
  const e=document.createElement('tr');e.id='wX';e.innerHTML=`<td colspan="13"><div class="bctl">${L('wVi','ولتاژ ورودی V')}${L('wV1','ولتاژ باتری ۱ V')}${L('wV2','ولتاژ باتری ۲ V')}<label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label>
 <button class="sb" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2" id="wRe">تکرار همین مرحله</button><button class="sb stp2" id="wEn">پایان</button></div>
-<div class="lb">اعداد پنل همین‌جا زنده‌اند و همان لحظهٔ زدن «ثبت» در فایل قفل می‌شوند. اجباری: جریان ورودی کل و جریان هر باتری روشن. ولتاژ ورودی توصیه می‌شود؛ ولتاژ باتری‌ها و یادداشت (فقط حروف انگلیسی) اختیاری‌اند. جریان باتری می‌تواند <b>منفی</b> هم باشد — با شارژر خاموش خود باتری مصرف می‌کند (مثل بار زنر)؛ همان عدد منفی مولتی‌متر را بنویسید.</div>
-<div class="lb">آمپرمتر باتری مرجع کالیبراسیون است و باید نزدیک عدد پنل باشد؛ جریان ورودی کل ~۰٫۷ برابر مجموع پنل است — طبیعی.</div></td>`;r.after(e);
+<div class="lb">اجباری: جریان ورودی کل + جریان هر باتری روشن (<b>منفی هم مجاز</b> — تخلیهٔ باتری با شارژر خاموش، مثل بار زنر). جریان باتری باید نزدیک عدد پنل باشد؛ ورودی کل ~۰٫۷ برابر مجموع پنل طبیعی است. ولتاژها (V) و یادداشت اختیاری.</div></td>`;r.after(e);
  const f=$('wB'+act[0]);if(f)f.focus();
  const lv=setInterval(()=>wcell(x,wlive(act)),400);
  return new Promise(res=>{$('wGo').onclick=()=>{const v={},ok=id=>gv(id);/* v1.9 (user order 2026-09-25): negative currents are VALID - with the charger off the battery itself discharges into other loads (e.g. the zener), the DMM then reads minus */
@@ -479,8 +494,8 @@ function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const N=id=>`<inpu
   $('wRe').onclick=()=>res({a:'repeat'});$('wEn').onclick=()=>res({a:'end'});
   r.onkeydown=e.onkeydown=ev=>{if(ev.key=='Enter'&&ev.target.tagName=='INPUT')$('wGo').click();};
   W.ft=setInterval(()=>{try{wchk();}catch(er){clearInterval(W.ft);res({a:'err',e:er});}},200);}).finally(()=>{clearInterval(W.ft);clearInterval(lv);e.remove();r.classList.remove('wa');r.onkeydown=null;});}
-async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');let L,se;
- try{L=wlist();}catch(e){return alert(e);}se=r0(Math.max(1,Math.min(60,+$('wSe').value||3))*1000);
+async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');let L;
+ try{L=wlist();}catch(e){return alert(e);}
  const SC=Object.keys(WSC).filter(k=>$('wc'+k).checked);if(!SC.length)return alert('حداقل یک سناریو را انتخاب کنید.');
  const o={};[11,12,16,18,19].forEach(i=>o[i]=D.p[i]);if(Object.values(o).some(v=>v==null))return alert('پارامترها هنوز از STM32 خوانده نشده‌اند.');
  if(D.p[15]===1||D.p[17]===1)return alert('مود duty فیکس (۱۵/۱۷) روشن است؛ اول خاموشش کنید.');
@@ -496,12 +511,11 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
    try{for(let i=0;i<L.length;){const pm=r0(L[i]*10),lb=sc+' · مرحلهٔ '+(i+1)+' از '+L.length+' · duty '+L[i]+'%';
      wcell(x,[],'در حال اندازه‌گیری','wr');$('wr'+x).scrollIntoView({block:'nearest'});
      for(const n of act){const c=D.p[12+n],v=Math.min(pm,c==null?500:c,500);await setv(14+2*n,v);}
-     await wwait(se,lb+' · صبر');
      await wopen();
      wst(lb+': عددهای مولتی‌متر را در ردیف رنگی جدول بنویسید','cm wr');const f=await wform(x,act);
      if(f.a=='err')throw f.e;if(f.a=='end'){W.abort=true;throw 'پایان توسط کاربر';}if(f.a=='repeat'){wcell(x,Array(9).fill('·'),'تکرار');continue;}
      const m=await wlatch();
-     await wlog(wrow(sc,i,pm,se,r0(Date.now()-W.winMs),m,f.v,f.iso));
+     await wlog(wrow(sc,i,pm,0,r0(Date.now()-W.winMs),m,f.v,f.iso));
      const A=wmeas(m,act);A[3]=f.v.b1??'-';A[7]=f.v.b2??'-';A[8]=f.v.ii;wcell(x,A,'ثبت شد','okc');
      i++;x++;}}
    finally{await wrestore(o);}}}
@@ -512,20 +526,14 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
  $('wDone').classList.add('v');winfo();}
 /* ---------- ساخت تب‌ها ---------- */
 /* تب ۱: داده‌برداری بنچ */
-$('p1').innerHTML=`<div class="cd"><div class="ds">پنل duty هر مرحله را خودش می‌گذارد و بعد از صبر روی همان ردیف جدول <b>می‌ایستد</b>. عددهای مولتی‌متر را بنویسید و <b>ثبت و مرحلهٔ بعد</b> را بزنید — آمار همان لحظهٔ ثبت در فایل قفل می‌شود، نه قبلش. هر ردیف با همهٔ پارامترها و کل وضعیت TLM (۷۱ ستون) در فایل ESP نوشته می‌شود. <b>SOLO1</b>: فقط کانال ۱ · <b>SOLO2</b>: فقط کانال ۲ · <b>BOTH</b>: هر دو با همان duty. آمپرمتر لازم است: یکی در مسیر تغذیهٔ کل برد و یکی سری با سیم شارژ هر باتری روشن. هیچ ضریبی خودکار اعمال نمی‌شود.</div>
-<div class="bctl"><label class="lb">duty % <input type="text" id="wL" data-s class="dl" value="2,4,6,8,10,12,14,16,18,20" style="width:160px"></label><label class="lb">صبر s <input type="number" id="wSe" data-s value="3" min="1" max="60" style="width:64px"></label>
+$('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty را می‌گذارد و جدول روی همان ردیف <b>می‌ایستد</b> تا عدد مولتی‌متر را بنویسی و <b>ثبت</b> کنی — آمار همان لحظهٔ ثبت قفل می‌شود. <b>SOLO1</b>: کانال ۱ · <b>SOLO2</b>: کانال ۲ · <b>BOTH</b>: هر دو. آمپرمتر: یکی در تغذیهٔ کل برد + سری با سیم شارژ هر باتری روشن. هیچ ضریبی خودکار اعمال نمی‌شود.</div>
+<div class="bctl"><label class="lb">duty % <input type="text" id="wL" data-s class="dl" value="2,4,6,8,10,12,14,16,18,20" style="width:160px"></label>
 ${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${k}</label>`).join('')}</div>
 <div class="bctl"><button class="sb brun" onclick="wStart()">شروع</button><button class="sb stp2 wstop" onclick="W.abort=true">پایان</button><span class="lb">فایل: <b id="wF">—</b></span><a class="sb sb2 lnk" href="/benchlog" download="benchlog.csv">دانلود فایل</a><button class="sb sb2 brun" onclick="wclear()">پاک کردن فایل</button></div>
 <div class="cm lb" id="wS0"></div><div id="wT"></div>
-<div class="wn gb" id="wDone" style="background:#10301f;color:#bff0d8"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div>
-<div class="cd"><div class="ti">کنترل دستی دیوتی (تست جریان)</div><div class="ds">مود دستی شارژر خودکار و محافظت‌های باتری را متوقف می‌کند و دیوتی را خودتان تعیین می‌کنید؛ فقط حضور ۲۴V، قطع JIT، قطع ۱۵٫۰V، سقف دیوتی کانال و قطع کانال فعال می‌ماند. پنل را نبندید: ۱۰ ثانیه بعد از بستن، مود دستی خودکار خاموش و دیوتی صفر می‌شود. بعد از تریپ JIT، همان دیوتی را دوباره «اعمال» کنید تا دوباره مسلح شود.</div>
-<div class="bctl"><span class="lb">مود دستی</span><button class="sw w" id="s19">—</button>
-<label class="lb">دیوتی ۱ ٪ <input type="number" step="any" id="qm1" data-s style="width:64px"></label><button class="sb" onclick="qset(1)">اعمال ۱</button>
-<label class="lb">دیوتی ۲ ٪ <input type="number" step="any" id="qm2" data-s style="width:64px"></label><button class="sb" onclick="qset(2)">اعمال ۲</button>
-<button class="sb off2" id="ao">دیوتی هر دو = 0</button></div>
-<div class="lb" id="mq" style="margin-top:6px"></div></div></div>`;
-bload($('p1'));$('p1').addEventListener('input',bsave);$('p1').addEventListener('change',bsave);winfo();
-/* ---------- کنترل دستی دیوتی دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کارت فشرده در همین تب؛
+<div class="wn gb" id="wDone" style="background:#10301f;color:#bff0d8"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div></div>`;
+bload(document.body);document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
+/* ---------- کنترل دستی دیوتی دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کارت در تب «پنل» (از v1.10)؛
  * ---------- قرارداد ایمنی بخش 5.2 اسپک بدون تغییر: ددمن ۱۰ ثانیه، سقف کانال (p13/p14)،
  * ---------- JIT با مسلح مجدد با ارسال دوبارهٔ همان دیوتی. هیچ ضریبی اینجا ارسال نمی‌شود. ---------- */
 const manOn=()=>!!(D&&((D.fl&32)||D.p[19]===1));

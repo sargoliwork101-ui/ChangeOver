@@ -23,7 +23,12 @@
 > filter ceiling is 300 samples so the smoothing is VISIBLE at the 10 Hz
 > TLM stream (audit verdict: the filters were correct but unobservable),
 > the LUT point count became sizeof-derived for the denser next run, and
-> the wizard's default duty list switched to 2% steps.
+> the wizard's default duty list switched to 2% steps. v1.10 (same day,
+> fourth order): manual-duty card moved into the PANEL tab with per-channel
+> duty-ceiling inputs (IDs 13/14, 0..500 permille); chart sample count is
+> user-settable (default 100); the wizard settle step REMOVED (capture is
+> user-latched - the wait added nothing); pack-24V divider corrected with
+> the user's exact factor and voltage offsets widened to +/-5000 mV.
 >
 > v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
 > conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
@@ -136,9 +141,9 @@ AA 55 11 05 02 B0 04 00 00 A2
 | 1 | CUR2_OFFSET_COUNTS | u32 | ADC counts | 8 | 0..255 | Same, channel 2 (Trans2, lower battery) |
 | 2 | CUR1_GAIN_PERMILLE | u32 | permille | 1046 | 100..3000 | Bench gain trim, channel 1 |
 | 3 | CUR2_GAIN_PERMILLE | u32 | permille | 1303 | 100..3000 | Same, channel 2 |
-| 4 | VIN_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 24 V input voltage calibration |
-| 5 | V24_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 24 V battery pack voltage calibration |
-| 6 | V12_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 12 V (middle node) battery calibration |
+| 4 | VIN_OFFSET_MV | **i32** | mV | 0 | −5000..5000 | 24 V input voltage calibration (v1.10: range widened from 2000) |
+| 5 | V24_OFFSET_MV | **i32** | mV | 0 | −5000..5000 | 24 V battery pack voltage calibration (v1.10: range widened from 2000) |
+| 6 | V12_OFFSET_MV | **i32** | mV | 0 | −5000..5000 | 12 V (middle node) battery calibration (v1.10: range widened from 2000) |
 | 7 | FILTER_MEDIAN_SIZE | u32 | samples | 3 | 1..15 | **v1.4: ANY value 1..15** - even sizes allowed, no more odd rounding. 1..2 = bypass, 3..15 = active median. Default 3. Filter state resets on change. |
 | 8 | FILTER_AVERAGE_WINDOW | u32 | samples | 10 | 1..300 | **v1.4: ANY value; v1.9: ceiling raised 100 -> 300** - at the 1 ms cadence that is 1..300 ms of history. **1 = bypass.** Default 10 (unchanged). Filter state resets on change. WHY v1.9: TLM streams at 10 Hz, so at W <= 100 two consecutive panel samples share almost no filter history - the filter worked but was invisible on the panel; W = 200..300 spans 2..3 TLM frames and the smoothing becomes observable. CAVEAT: the auto-mode charger regulates at 100 Hz on this value - keep W <= ~50 in AUTO mode; large W is for MANUAL-duty bench watching. |
 | 9 | CHG_ETA1_PERMILLE | u32 | permille | 0 | 0..999 | **v1.3**: charger 1 conversion factor. 0 = identity (default - `iest = i_filtered`; with the battery-calibrated gains the reading already is the battery current). Non-zero: `iest = i_filtered x Vin x eta / (1000 x Vbat)` with LIVE voltages, so the battery-current reading stays true while the battery charges. Set with CAL_REFERENCE (section 5.4), not by hand |
@@ -331,12 +336,23 @@ enforces it).
 Voltage chain (offsets = IDs 4/5/6, saturating add, never below 0 mV):
 
 ```text
-Vin_mV = raw x 3300/4095 x 76000/6800 + VIN_OFFSET   (divider 69.2k/6.8k; = raw x 9.007)
-V24_mV = raw x 3300/4095 x 76000/6800 + V24_OFFSET   (same 69.2k/6.8k divider)
-V12_mV = raw x 3300/4095 x 41000/6800 + V12_OFFSET   (divider 34.2k/6.8k; = raw x 4.859)
+Vin_mV  = raw x 3300/4095 x 76000/6800 + VIN_OFFSET  (input net: 69.2k/6.8k, total 76k; = raw x 9.007)
+V24_mV  = raw x 3300/4095 x 69200/6800 + V24_OFFSET  (PACK net: total 69.2k; = raw x 8.203 - v1.10)
+V12_mV  = raw x 3300/4095 x 41000/6800 + V12_OFFSET  (divider 34.2k/6.8k; = raw x 4.859)
 V12_mV -= 140 mV + 0.47 ohm x I2_bat_mA              (bench compensation, clamp at 0)
 Vlow_mV = V12_mV        Vhigh_mV = V24_mV - V12_mV (clamped at 0)
 ```
+
+Pack-24V divider (v1.10, user order 2026-09-25): the battery-pack sense
+path does NOT share the input net's divider - the user gave the exact net
+attenuation to the MCU pin: 0.09826589595375722543352601156069
+(= 6.8 k / 69.2 k; besides the 68 k there are a 1.2 k and a 6.8 k in the
+path), so the conversion uses total 69.2 k over the 6.8 k bottom. The old
+shared 76 k assumption made the panel overread the PACK by 9.8 percent
+(~2.3 V at 24 V - beyond the old +/-2 V offset range, which is why the
+pack read wrong and the offset could not fix it). The INPUT net keeps
+76 k: bench-verified within +1.2 percent (23889 vs 23600 mV). The runtime
+voltage offsets (IDs 4..6) are now clamped to +/-5000 mV (was 2000).
 
 V12 bench compensation (user order 2026-09-25, firmware v1.6): the same
 latched SOLO2 run compared the V12 channel against a DMM on the battery-2
@@ -359,7 +375,8 @@ the next bench runs so it can be fitted the same way.
 Fixed hardware constants (NOT parameters - never editable): 12-bit ADC,
 3300 mV reference, full scale 4095; R41/R42 = 1 k / 10 k MCU-input divider
 on the current nets; LM358 non-inverting gain 101; shunt 10 mOhm; voltage
-dividers 69.2 k / 6.8 k (both 24 V nets) and 34.2 k / 6.8 k (12 V net).
+dividers: input-24V net 69.2 k / 6.8 k (total 76 k), battery-PACK-24V net
+effective total 69.2 k (user factor 0.09827, v1.10), 12 V net 34.2 k / 6.8 k.
 
 ### 5.4 Panel calibration command CAL_REFERENCE (v1.3 — user order 2026-09-24)
 
@@ -443,7 +460,8 @@ Test A - Current linearity (the calibration data collector):
   2. For each duty in {5, 10, 15, 20}% (editable list):
      a. ID 19 = 1 (manual), tested channel duty = duty x 10 (ID 16/18),
         neighbor duty = 0.
-     b. Wait 3 s (settle), then sample TLM for 3 s.
+     b. (v1.10: the settle step was REMOVED - capture is user-latched;
+        the window opens with the form and is read at the submit press.)
      c. Record raw avg/min/max, i_filtered avg, Vin, Vbat of the tested
         channel.
      d. Open an input field for the INPUT-side DMM mA (mandatory) and the
