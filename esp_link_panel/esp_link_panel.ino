@@ -127,15 +127,15 @@
 #define ESP_STAT_FAULT_FIELD        19u
 #define ESP_STAT_MAX_FRAMES         60000u
 
-/* ==================== Bench Data Log File (spec 5.6, CSV v2: 70 self-contained columns) ==================== */
+/* ==================== Bench Data Log File (spec 5.6, CSV v2 + DMM v4: 71 self-contained columns) ==================== */
 /* [EN] One append-only CSV on LittleFS. The panel builds each row from the /m window (every TLM frame,
         raw included) plus the typed DMM readings and POSTs it to /benchlog/add; the ESP only validates
-        (printable ASCII, newline-terminated, bounded length) and appends. The column header (the v2 comment
-        block of spec 5.6, 70 columns) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
+        (printable ASCII, newline-terminated, bounded length) and appends. The column header (the comment block
+        of spec 5.6, 71 columns) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
         Arduino IDE: pick a flash layout WITH a file system (ESP8266 e.g. "4MB (FS:1MB)"; ESP32 default is fine).
    [FA] یک فایل CSV فقط-افزودنی روی LittleFS. پنل هر ردیف را از پنجرهٔ /m (تک‌تک فریم‌های TLM با raw)
         و عددهای مولتی‌متر می‌سازد و به /benchlog/add می‌فرستد؛ ESP فقط بررسی (ASCII قابل چاپ، پایان با
-        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح نسخه ۲ بخش 5.6، ۷۰ ستون) را ESP هنگام ساخت فایل می‌نویسد. در سقف
+        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 5.6، ۷۱ ستون) را ESP هنگام ساخت فایل می‌نویسد. در سقف
         اندازه افزودن متوقف می‌شود (HTTP 507) و پنل هشدار می‌دهد.
         در Arduino IDE چیدمان فلشِ دارای فایل‌سیستم را انتخاب کنید (ESP8266 مثلاً "4MB (FS:1MB)"؛ ESP32 پیش‌فرض کافی است). */
 #define ESP_BENCHLOG_PATH           "/benchlog.csv"
@@ -151,7 +151,8 @@
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \
     "#           filt2,filt2_min,filt2_max,iest2,iest2_min,iest2_max,duty2,state2\n" \
     "#  [glob]   seq,flags,vin_mv,v24_mv,v12_mv,vlow_mv,vhigh_mv,faults_or\n" \
-    "#  [dmm]    dmm_i1_ma,dmm_i2_ma,dmm_vin_mv,dmm_vhigh_mv,dmm_vlow_mv,note\n" \
+    "#  [dmm]    dmm_i_in_ma,dmm_vin_mv,dmm_i_bat1_ma,dmm_vbat1_mv,\n" \
+    "#           dmm_i_bat2_ma,dmm_vbat2_mv,note\n" \
     "# run <n> browser_ts=<ISO from the panel page> scenario=<SOLO1|SOLO2|BOTH>\n" \
     "#  duty_list=<...>\n"
 
@@ -516,7 +517,7 @@ const need=()=>{if(!D){alert('هنوز داده‌ای از برد نرسیده 
 const OK=x=>`<b class="okc">${x}</b>`,NO=x=>`<b class="erc">${x}</b>`;
 
 /* ----- داده‌برداری بنچ (بخش 5.6 نسخه ۲): همهٔ مرحله‌ها در یک جدول؛ جلو رفتن فقط با دکمهٔ کاربر -----
- * هر مرحله: duty → صبر → پنجرهٔ /m (قبلش GET_PARAMS) → توقف روی ردیف فعال برای عدد مولتی‌متر → با دکمهٔ ثبت و مرحلهٔ بعد یک ردیف ۷۰ستونی در ESP.
+ * هر مرحله: duty → صبر → پنجرهٔ /m (قبلش GET_PARAMS) → توقف روی ردیف فعال برای عدد مولتی‌متر → با دکمهٔ ثبت و مرحلهٔ بعد یک ردیف ۷۱ستونی در ESP.
  * Capture v2: set duty → settle → /m window (preceded by GET_PARAMS) → STOP on the active table row for the DMM → one 70-column row only on submit. */
 const WSC={SOLO1:[1],SOLO2:[2],BOTH:[1,2]};let W={run:false,abort:false,act:null},RS={};try{RS=JSON.parse(localStorage.getItem('wrs')||'{}');}catch(e){}
 const sl=ms=>new Promise(r=>setTimeout(r,ms));
@@ -539,24 +540,30 @@ function wlist(){const a=$('wL').value.split(/[,، ]+/).filter(x=>x!=='').map(Nu
 /* پنجرهٔ /m: هر ۲۰ فیلد t[] با مجموع/کمینه/بیشینه/آخرین فریم، OR خطاها، seq و flags آخر */
 async function wsample(ms){let j=await req('/m','POST');if(j._s!=200)throw 'پنجرهٔ آمار ESP پاسخ نداد';await wwait(ms,'نمونه‌برداری');j=await req('/m');if(!j.n||!j.s||j.s.length<20)throw 'در این بازه TLM نرسید';
  j.a=i=>j.s[i]/j.n;return j;}
-/* ردیف CSV نسخه ۲ (۷۰ ستون، ترتیب دقیق بخش 5.6) / v2 CSV row, exact 5.6 column order */
+/* ردیف CSV (۷۱ ستون، ترتیب دقیق بخش 5.6، مولتی‌متر نسخه ۴) / CSV row, exact 5.6 column order (DMM v4) */
 function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x,P=[];for(let k=0;k<20;k++)P.push(q(D.p[k]));
  const C=b=>[m.a(b).toFixed(1),m.lo[b],m.hi[b],r0(m.a(b+1)),r0(m.a(b+2)),m.lo[b+2],m.hi[b+2],r0(m.a(b+3)),m.lo[b+3],m.hi[b+3],r0(m.a(b+4)),m.lo[b+4],m.hi[b+4],m.la[b+5],m.la[b+6]];
- return [sc,i+1,pm,se,sa,iso,...P,...C(0),...C(7),m.seq,m.fl,...[14,15,16,17,18].map(k=>r0(m.a(k))),m.or,q(v.i1),q(v.i2),q(v.Vi),q(v.Vh),q(v.Vl),v.note||'-'].join(',')+'\n';}
+ return [sc,i+1,pm,se,sa,iso,...P,...C(0),...C(7),m.seq,m.fl,...[14,15,16,17,18].map(k=>r0(m.a(k))),m.or,q(v.ii),q(v.vi),q(v.b1),q(v.v1),q(v.b2),q(v.v2),v.note||'-'].join(',')+'\n';}
 /* جدول واحد: هر مرحلهٔ هر سناریو یک ردیف؛ ردیف فعال ورودی‌ها و دکمه‌ها را دارد */
-const WH=['سناریو','#','duty %','raw ۱','filt ۱ mA','iest ۱ mA','آمپرمتر ۱ mA','raw ۲','filt ۲ mA','iest ۲ mA','آمپرمتر ۲ mA','Vin V','وضعیت'];
+const WH=['سناریو','#','duty %','raw ۱','filt ۱ mA','iest ۱ mA','جریان باتری ۱ mA','raw ۲','filt ۲ mA','iest ۲ mA','جریان باتری ۲ mA','جریان ورودی کل mA','وضعیت'];
 function wbuild(SC,L){W.K=[];SC.forEach(sc=>L.forEach((d,i)=>W.K.push({sc,i,d})));
  $('wT').innerHTML=`<div class="tw"><table class="bt2 wt"><tr>${WH.map(h=>`<th>${h}</th>`).join('')}</tr>${W.K.map((k,x)=>`<tr id="wr${x}"><td>${k.sc}</td><td>${k.i+1}</td><td>${k.d}</td>${'<td>·</td>'.repeat(9)}<td class="lb">در صف</td></tr>`).join('')}</table></div>`;}
 function wcell(x,A,st,cl){const r=$('wr'+x);if(!r)return;const c=r.children;A.forEach((v,i)=>{if(v!==undefined)c[3+i].innerHTML=v;});if(st!=null){c[12].textContent=st;c[12].className=cl||'lb';}}
-function wmeas(m,act){const M=(n,b)=>act.includes(n)?[m.a(b).toFixed(1),r0(m.a(b+3)),r0(m.a(b+4))]:['قطع','-','-'];const a=M(1,0),b=M(2,7);return [a[0],a[1],a[2],undefined,b[0],b[1],b[2],undefined,v2(m.a(14))];}
-/* ردیف فعال: عدد آمپرمتر در خانهٔ خودش؛ ولت‌مترها، یادداشت و سه دکمه در ردیف زیرش */
-function wform(x,m,act){const r=$('wr'+x);r.classList.add('wa');const F=n=>act.includes(n)?`<input type="number" step="any" id="wI${n}" class="wi">`:'-';
- wcell(x,wmeas(m,act).map((v,i)=>i==3?F(1):i==7?F(2):v),'منتظر عدد شما','wr');
- const e=document.createElement('tr');e.id='wX';e.innerHTML=`<td colspan="13"><div class="bctl"><label class="lb">Vin V <input type="number" step="any" id="wVi" class="wi"></label><label class="lb">باتری بالا V <input type="number" step="any" id="wVh" class="wi"></label><label class="lb">باتری پایین V <input type="number" step="any" id="wVl" class="wi"></label><label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label>
-<button class="sb" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2" id="wRe">تکرار همین مرحله</button><button class="sb stp2" id="wEn">پایان</button></div><div class="lb">آمپرمتر کانال روشن اجباری است؛ ولت‌مترها و یادداشت (فقط حروف انگلیسی) اختیاری‌اند. <span class="n">${m.n}</span> فریم</div></td>`;r.after(e);
- const f=$('wI'+act[0]);if(f)f.focus();
- return new Promise(res=>{$('wGo').onclick=()=>{const v={};for(const n of act){const y=gv('wI'+n);if(y==null||!(y>=0))return alert('عدد آمپرمتر کانال '+n+' اجباری است.');v['i'+n]=y;}
-   ['Vi','Vh','Vl'].forEach(k=>{const y=gv('w'+k);v[k]=y==null?null:r0(y*1000);});v.note=asc($('wN').value);res({a:'next',v});};
+function wmeas(m,act){const M=(n,b)=>act.includes(n)?[m.a(b).toFixed(1),r0(m.a(b+3)),r0(m.a(b+4))]:['قطع','-','-'];const a=M(1,0),b=M(2,7);return [a[0],a[1],a[2],undefined,b[0],b[1],b[2],undefined,undefined];}
+/* ردیف فعال (مولتی‌متر نسخه ۴): جریان باتری‌ها و جریان ورودی کل در خانهٔ خودشان؛ ولتاژها، یادداشت و سه دکمه در ردیف زیرش
+ * Active row (DMM v4): battery currents + total input current inline; voltages, note and the three buttons in the row below */
+function wform(x,m,act){const r=$('wr'+x);r.classList.add('wa');const N=id=>`<input type="number" step="any" id="${id}" class="wi">`,F=n=>act.includes(n)?N('wB'+n):'-';
+ wcell(x,wmeas(m,act).map((v,i)=>i==3?F(1):i==7?F(2):i==8?N('wIi'):v),'منتظر عدد شما','wr');
+ const L=(id,t)=>`<label class="lb">${t} <input type="number" step="any" id="${id}" class="wi"></label>`;
+ const e=document.createElement('tr');e.id='wX';e.innerHTML=`<td colspan="13"><div class="bctl">${L('wVi','ولتاژ ورودی V')}${L('wV1','ولتاژ باتری ۱ V')}${L('wV2','ولتاژ باتری ۲ V')}<label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label>
+<button class="sb" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2" id="wRe">تکرار همین مرحله</button><button class="sb stp2" id="wEn">پایان</button></div>
+<div class="lb">اجباری: جریان ورودی کل و جریان هر باتری روشن. ولتاژ ورودی توصیه می‌شود؛ ولتاژ باتری‌ها و یادداشت (فقط حروف انگلیسی) اختیاری‌اند. <span class="n">${m.n}</span> فریم</div>
+<div class="lb">آمپرمتر باتری مرجع کالیبراسیون است و باید نزدیک عدد پنل باشد؛ جریان ورودی کل ~۰٫۷ برابر مجموع پنل است — طبیعی.</div></td>`;r.after(e);
+ const f=$('wB'+act[0]);if(f)f.focus();
+ return new Promise(res=>{$('wGo').onclick=()=>{const v={},ok=id=>{const y=gv(id);return y!=null&&y>=0?y:null;};
+   v.ii=ok('wIi');if(v.ii==null)return alert('جریان ورودی کل اجباری است.');
+   for(const n of act){v['b'+n]=ok('wB'+n);if(v['b'+n]==null)return alert('جریان باتری '+n+' اجباری است (کانال '+n+' روشن است).');}
+   [['vi','wVi'],['v1','wV1'],['v2','wV2']].forEach(k=>{const y=gv(k[1]);v[k[0]]=y==null?null:r0(y*1000);});v.note=asc($('wN').value);res({a:'next',v});};
   $('wRe').onclick=()=>res({a:'repeat'});$('wEn').onclick=()=>res({a:'end'});
   r.onkeydown=e.onkeydown=ev=>{if(ev.key=='Enter'&&ev.target.tagName=='INPUT')$('wGo').click();};
   W.ft=setInterval(()=>{try{wchk();}catch(er){clearInterval(W.ft);res({a:'err',e:er});}},200);}).finally(()=>{clearInterval(W.ft);e.remove();r.classList.remove('wa');r.onkeydown=null;});}
@@ -578,11 +585,11 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
      wcell(x,[],'در حال اندازه‌گیری','wr');$('wr'+x).scrollIntoView({block:'nearest'});
      for(const n of act){const c=D.p[12+n],v=Math.min(pm,c==null?500:c,500);await setv(14+2*n,v);}
      await wwait(se,lb+' · صبر');const m=await wsample(sa);
-     wst(lb+': عدد آمپرمتر را در ردیف رنگی جدول بنویسید','cm wr');const f=await wform(x,m,act);
+     wst(lb+': عددهای مولتی‌متر را در ردیف رنگی جدول بنویسید','cm wr');const f=await wform(x,m,act);
      if(f.a=='err')throw f.e;if(f.a=='end'){W.abort=true;throw 'پایان توسط کاربر';}if(f.a=='repeat'){wcell(x,Array(9).fill('·'),'تکرار');continue;}
      await wlog(wrow(sc,i,pm,se,sa,m,f.v,new Date().toISOString()));
-     const A=wmeas(m,act);A[3]=f.v.i1??'-';A[7]=f.v.i2??'-';wcell(x,A,'ثبت شد','okc');
-     if(sc!='BOTH'){const n=act[0],b=(n-1)*7;(RS[n]=RS[n]||{n,R:[]}).R.push({d:L[i],raw:m.a(b),pm:m.a(b+3),di:f.v['i'+n]});}
+     const A=wmeas(m,act);A[3]=f.v.b1??'-';A[7]=f.v.b2??'-';A[8]=f.v.ii;wcell(x,A,'ثبت شد','okc');
+     if(sc!='BOTH'){const n=act[0],b=(n-1)*7;(RS[n]=RS[n]||{n,R:[]}).R.push({d:L[i],raw:m.a(b),pm:m.a(b+3),di:f.v['b'+n]});}
      i++;x++;}}
    finally{await wrestore(o);}}}
  catch(e){err=e;}
@@ -631,7 +638,7 @@ function calcD(){if(!need())return;const T=[],S=[];
 const BOX=(k,title,desc,body)=>`<div class="cd" id="bc${k}"><div class="ti">${title}</div><div class="ds">${desc}</div>${body}
 <div class="bqr2"><button class="sb" onclick="calc${k}()">محاسبه</button><button class="sb sb2" onclick="bclr('${k}')">پاک کردن اعداد</button></div><div id="ro${k}"></div><div class="gb bxw"><textarea id="bx${k}" readonly></textarea><button class="sb sb2" id="bk${k}" onclick="copy('${k}')">کپی</button></div></div>`;
 /* تب ۱: داده‌برداری بنچ */
-$('p1').innerHTML=`<div class="cd"><div class="ds">پنل duty هر مرحله را خودش می‌گذارد، صبر و نمونه‌برداری می‌کند و روی همان ردیف جدول <b>می‌ایستد</b>. عدد آمپرمتر را بنویسید و <b>ثبت و مرحلهٔ بعد</b> را بزنید. هر ردیف با همهٔ پارامترها و کل وضعیت TLM (۷۰ ستون) در فایل ESP نوشته می‌شود. <b>SOLO1</b>: فقط کانال ۱ · <b>SOLO2</b>: فقط کانال ۲ · <b>BOTH</b>: هر دو با همان duty. آمپرمتر سری با هر کانال روشن لازم است. هیچ ضریبی خودکار اعمال نمی‌شود.</div>
+$('p1').innerHTML=`<div class="cd"><div class="ds">پنل duty هر مرحله را خودش می‌گذارد، صبر و نمونه‌برداری می‌کند و روی همان ردیف جدول <b>می‌ایستد</b>. عددهای مولتی‌متر را بنویسید و <b>ثبت و مرحلهٔ بعد</b> را بزنید. هر ردیف با همهٔ پارامترها و کل وضعیت TLM (۷۱ ستون) در فایل ESP نوشته می‌شود. <b>SOLO1</b>: فقط کانال ۱ · <b>SOLO2</b>: فقط کانال ۲ · <b>BOTH</b>: هر دو با همان duty. آمپرمتر لازم است: یکی در مسیر تغذیهٔ کل برد و یکی سری با سیم شارژ هر باتری روشن. هیچ ضریبی خودکار اعمال نمی‌شود.</div>
 <div class="bctl"><label class="lb">duty % <input type="text" id="wL" data-s class="dl" value="5,10,15,20" style="width:160px"></label><label class="lb">صبر s <input type="number" id="wSe" data-s value="3" min="1" max="60" style="width:64px"></label><label class="lb">نمونه‌برداری s <input type="number" id="wSa" data-s value="3" min="1" max="60" style="width:64px"></label>
 ${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${k}</label>`).join('')}</div>
 <div class="bctl"><button class="sb brun" onclick="wStart()">شروع</button><button class="sb stp2 wstop" onclick="W.abort=true">پایان</button><span class="lb">فایل: <b id="wF">—</b></span><a class="sb sb2 lnk" href="/benchlog" download="benchlog.csv">دانلود فایل</a><button class="sb sb2 brun" onclick="wclear()">پاک کردن فایل</button></div>
@@ -694,6 +701,67 @@ function eSend(n){if(!need())return;const m=EID(n),C=[];Object.keys(m).forEach(k
 let EF=false;
 function eview(d){const p=d.p,t=d.t;[1,2].forEach(n=>{const m=EID(n);Object.keys(m).forEach(k=>$('e'+k+'b'+n).textContent=nz(p[m[k]]));});
  if(!EF&&p[0]!=null&&p[2]!=null){EF=true;[1,2].forEach(n=>{if(gv('eG'+n)==null)eFill(n);})}}
+/* ---------- تحلیل و پیشنهاد کالیبراسیون (فقط نمایش؛ نه به برد فرستاده می‌شود نه در فایل نوشته می‌شود) ----------
+ * فایل benchlog.csv را از ESP می‌خواند و روی ردیف‌های ۷۱ستونی سه مدل را برازش می‌کند: یک گین، گین+آفست (خط)، درجه دو (فقط برای تشخیص انحنا).
+ * Calibration analysis (display only; nothing is sent to the board or written to the file): reads benchlog.csv and fits
+ * single gain / gain+offset line / quadratic (curvature check only) on the 71-column rows; recommends the simplest adequate method. */
+const AC='scenario,step,duty_permille,settle_ms,sample_ms,browser_ts,off1,off2,gain1,gain2,voff_in,voff_24,voff_12,med,avg,eta1,eta2,en1,en2,ceil1,ceil2,fixon1,fix1,fixon2,fix2,manual,raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1,raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,filt2,filt2_min,filt2_max,iest2,iest2_min,iest2_max,duty2,state2,seq,flags,vin_mv,v24_mv,v12_mv,vlow_mv,vhigh_mv,faults_or,dmm_i_in_ma,dmm_vin_mv,dmm_i_bat1_ma,dmm_vbat1_mv,dmm_i_bat2_ma,dmm_vbat2_mv,note'.split(',');
+const ATH=2,AMIN=50;/* آستانهٔ خطای قابل قبول (%) و کمترین جریان برای خطای درصدی (mA) / acceptable error (%) and min current for % error (mA) */
+let AR=null;
+function aParse(t){const R=[];let bad=0;t.split('\n').forEach(l=>{l=l.trim();if(!l||l[0]=='#')return;const c=l.split(',');if(c.length!=AC.length){bad++;return;}const o={};AC.forEach((k,i)=>{const v=c[i];o[k]=v=='-'?null:(v!==''&&!isNaN(+v)?+v:v);});R.push(o);});return {R,bad};}
+/* کمترین مربعات: خط و درجه دو (raw مقیاس‌شده برای پایداری عددی) / least squares: line and quadratic (scaled raw for conditioning) */
+function lsLine(P){const n=P.length,mx=mean(P.map(p=>p.raw)),my=mean(P.map(p=>p.I)),sxx=P.reduce((a,p)=>a+(p.raw-mx)**2,0);if(n<2||!sxx)return null;const a=P.reduce((s,p)=>s+(p.raw-mx)*(p.I-my),0)/sxx;return {a,b:my-a*mx};}
+function lsQuad(P){if(new Set(P.map(p=>r0(p.raw))).size<5)return null;/* با کمتر از ۵ نقطه منحنی درجه دو همه را می‌پوشاند / under 5 points a quadratic fits everything */const S=Array.from({length:3},()=>[0,0,0,0]);P.forEach(p=>{const x=p.raw/1000,v=[1,x,x*x];for(let i=0;i<3;i++){for(let j=0;j<3;j++)S[i][j]+=v[i]*v[j];S[i][3]+=v[i]*p.I;}});
+ for(let i=0;i<3;i++){let m=i;for(let k=i+1;k<3;k++)if(Math.abs(S[k][i])>Math.abs(S[m][i]))m=k;[S[i],S[m]]=[S[m],S[i]];if(Math.abs(S[i][i])<1e-12)return null;for(let k=0;k<3;k++)if(k!=i){const f=S[k][i]/S[i][i];for(let j=i;j<4;j++)S[k][j]-=f*S[i][j];}}
+ const c=S.map((r,i)=>r[3]/r[i]);return x=>c[0]+c[1]*x/1000+c[2]*(x/1000)**2;}
+/* خطا: بیشترین درصد روی نقاط >= AMIN و بیشترین قدرمطلق mA روی همه / error: max % on points >= AMIN, max abs mA on all */
+function aErr(P,f){const E=P.map(p=>{const y=f(p);return {d:y-p.I,pc:p.I>0?(y-p.I)/p.I*100:null};});const B=E.filter((e,i)=>P[i].I>=AMIN);const U=B.length?B:E;
+ return {E,pc:Math.max(...U.map(e=>Math.abs(e.pc??0))),ab:Math.max(...E.map(e=>Math.abs(e.d)))};}
+function aChan(R,n){const K=K_MA,bi='dmm_i_bat'+n+'_ma',P=R.filter(o=>o.scenario=='SOLO'+n&&o[bi]>0&&o['raw'+n]!=null).map(o=>({o,raw:o['raw'+n],I:o[bi],off:o['off'+n],g:o['gain'+n],eta:o['eta'+n],vin:o.vin_mv,vb:n==1?o.vhigh_mv:o.vlow_mv,sp:o['raw'+n+'_max']-o['raw'+n+'_min'],d:o.duty_permille}));
+ const X={n,P,note:[]};if(P.length<2||new Set(P.map(p=>r0(p.raw))).size<2){X.note.push('برای کانال '+n+' حداقل ۲ مرحلهٔ SOLO'+n+' با duty متفاوت و جریان باتری لازم است.');return X;}
+ const off=P[P.length-1].off,g0=P[P.length-1].g,fB=p=>Math.max(p.raw-p.off,0)*K*p.g/1000;X.cur={g:g0,off,...aErr(P,fB)};
+ const xs=P.map(p=>Math.max(p.raw-off,0)*K),g1=r0(1000*P.reduce((s,p,i)=>s+xs[i]*p.I,0)/xs.reduce((s,x)=>s+x*x,0));X.one={g:g1,off,...aErr(P,p=>Math.max(p.raw-off,0)*K*g1/1000)};
+ const L=lsLine(P);if(L&&L.a>0){const gL=r0(L.a/K*1000),oL=r0(-L.b/L.a);X.lin={g:gL,off:oL,ok:gL>=100&&gL<=3000&&oL>=0&&oL<=255,...aErr(P,p=>Math.max(p.raw-oL,0)*K*gL/1000)};}
+ const Q=lsQuad(P);if(Q)X.quad=aErr(P,p=>Q(p.raw));
+ /* روش پیشنهادی: ساده‌ترین مدلی که زیر آستانه است / recommendation: simplest model under the threshold */
+ if(X.one.pc<=ATH){X.rec='one';X.why=`یک گین کافی است: بیشترین خطا ${f1(X.one.pc)}% (آستانه ${ATH}%). آفست فعلی (${off}) بماند و گین ${g1} شود.`;}
+ else if(X.lin&&X.lin.ok&&X.lin.pc<=ATH){X.rec='lin';X.why=`یک گین کافی نیست (${f1(X.one.pc)}%). گین + آفست با خط: گین ${X.lin.g} و آفست ${X.lin.off}، بیشترین خطا ${f1(X.lin.pc)}%.`;}
+ else if(X.quad&&X.lin&&X.quad.pc<=ATH&&X.quad.pc<X.lin.pc/2){X.rec='lut';X.why=`رابطه غیرخطی است: خط ${f1(X.lin.pc)}% خطا دارد ولی منحنی درجه دو ${f1(X.quad.pc)}%. فرمول فعلی فرمور (گین و آفست) کافی نیست؛ جدول LUT یا اصلاح فرمور لازم است (تصمیم مهندس فرمور). تا آن موقع بهترین خط: گین ${X.lin?X.lin.g:'-'} و آفست ${X.lin?X.lin.off:'-'}.`;}
+ else{X.rec=X.lin&&X.lin.ok?'lin':'one';X.why=`هیچ مدلی زیر ${ATH}% نیست (یک گین ${f1(X.one.pc)}%${X.lin?`، خط ${f1(X.lin.pc)}%`:''}${X.quad?`، درجه دو ${f1(X.quad.pc)}%`:''}). پراکندگی زیاد است؛ اتصال آمپرمتر و ثابت بودن عددها را بررسی و مرحله‌ها را تکرار کنید. فعلاً بهترین گزینه: ${X.rec=='lin'?'خط':'یک گین'}.`;}
+ if(!X.quad)X.note.push('تشخیص غیرخطی بودن (LUT) حداقل ۵ مرحلهٔ SOLO'+n+' با duty متفاوت لازم دارد.');
+ const sp=mean(P.map(p=>p.sp));X.note.push(`نویز raw در پنجرهٔ نمونه‌برداری (کمینه تا بیشینه): به‌طور میانگین ${f1(sp)} count، یعنی حدود ${f1(sp*K*(X.rec=='lin'?X.lin.g:g1)/1000)} mA.`);
+ if(P.some(p=>p.I<AMIN))X.note.push(`نقاط زیر ${AMIN} mA فقط در خطای mA حساب شده‌اند (خطای درصدی آن‌ها گمراه‌کننده است).`);
+ /* ضریب تبدیل: با گین پیشنهادی، iest با eta=0 همان جریان پنل است / ETA: with the suggested gain, eta=0 makes iest equal the panel current */
+ const gN=X.rec=='lin'?X.lin.g:g1,oN=X.rec=='lin'?X.lin.off:off,Ip=p=>Math.max(p.raw-oN,0)*K*gN/1000,V=P.filter(p=>p.vin>=10000&&p.vb>=5000);
+ if(V.length){const y=V.map(p=>Ip(p)*p.vin/p.vb),e1=r0(1000*V.reduce((s,p,i)=>s+y[i]*p.I,0)/y.reduce((s,v)=>s+v*v,0)),E0=aErr(V,Ip),E1=aErr(V,p=>Ip(p)*e1/1000*p.vin/p.vb),Ec=aErr(V,p=>iestN(r0(fB(p)),p.vin,p.eta,p.vb));
+  X.eta={e1,E0,E1,Ec,cur:V[V.length-1].eta};X.etaRec=E0.pc<=E1.pc+0.5?0:e1;}
+ /* اثر متقابل: خطای مدل پیشنهادی در BOTH در برابر SOLO / cross-talk: suggested-model error in BOTH vs SOLO */
+ const B=R.filter(o=>o.scenario=='BOTH'&&o[bi]>0).map(o=>({raw:o['raw'+n],I:o[bi],d:o.duty_permille}));
+ if(B.length){const eb=mean(aErr(B,Ip).E.map(e=>e.pc??0)),es=mean(aErr(P,Ip).E.map(e=>e.pc??0));X.xt={eb,es,dd:eb-es,
+  rows:B.map(b=>{const s=P.find(p=>p.d==b.d);return s?{d:b.d,dr:b.raw-s.raw,dI:b.I-s.I}:null;}).filter(v=>v)};}
+ return X;}
+function aEff(R){const P=R.filter(o=>o.dmm_i_in_ma>0).map(o=>{const vin=o.dmm_vin_mv??o.vin_mv;let po=0,ok=true,ps=0;[1,2].forEach(n=>{if(o['en'+n]!==1)return;const I=o['dmm_i_bat'+n+'_ma'],v=o['dmm_vbat'+n+'_mv']??(n==1?o.vhigh_mv:o.vlow_mv);if(I==null){ok=false;return;}po+=I*v;ps+=o['filt'+n];});
+  return ok&&vin>0?{Iin:o.dmm_i_in_ma,x:po/vin,eta:po/(o.dmm_i_in_ma*vin)*100,rt:ps>0?o.dmm_i_in_ma/ps:null}:null;}).filter(v=>v);if(!P.length)return null;
+ const L=lsLine(P.map(p=>({raw:p.x,I:p.Iin})));return {n:P.length,eta:mean(P.map(p=>p.eta)),rt:mean(P.filter(p=>p.rt).map(p=>p.rt)),k:L?L.a:null,iq:L?L.b:null};}
+async function aRun(){const o=$('aOut');o.innerHTML='<div class="lb">در حال خواندن فایل…</div>';let t='';try{const r=await fetch('/benchlog',{cache:'no-store'});t=await r.text();}catch(e){o.innerHTML=NO('فایل از ESP خوانده نشد.');return;}
+ const {R,bad}=aParse(t);if(!R.length){o.innerHTML=NO('ردیف ۷۱ستونی در فایل نیست. اول داده‌برداری بنچ را انجام دهید.')+(bad?`<div class="lb">${bad} ردیف با قالب قدیمی نادیده گرفته شد.</div>`:'');return;}
+ const C=[1,2].map(n=>aChan(R,n)),E=aEff(R),pc=x=>x==null?'-':f1(x)+' %',h=[];AR=C;
+ h.push(`<div class="lb">${R.length} ردیف تحلیل شد${bad?` · ${bad} ردیف قدیمی نادیده گرفته شد`:''} · مرجع = آمپرمتر باتری · آستانهٔ قبول ${ATH}%</div>`);
+ C.forEach(X=>{h.push(`<div class="sec">کانال ${X.n}</div>`);if(!X.one){h.push(`<div class="lb">${X.note.join(' ')}</div>`);return;}
+  const M=[['برد فعلی',X.cur],['یک گین',X.one],['گین + آفست (خط)',X.lin],['درجه دو (فقط تشخیص)',X.quad]].filter(m=>m[1]);
+  h.push(`<div class="tw"><table class="bt2"><tr><th>مدل</th><th>گین</th><th>آفست</th><th>بیشترین خطا</th><th>بیشترین خطا mA</th></tr>${M.map(m=>`<tr><td>${m[0]}</td><td class="n">${m[1].g??'-'}</td><td class="n">${m[1].off??'-'}</td><td class="n">${pc(m[1].pc)}</td><td class="n">${f1(m[1].ab)}</td></tr>`).join('')}</table></div>`);
+  h.push(`<div class="tw"><table class="bt2"><tr><th>duty %</th><th>raw</th><th>باتری mA</th><th>خطای برد فعلی</th><th>خطای یک گین</th><th>خطای خط</th></tr>${X.P.map((p,i)=>`<tr><td>${p.d/10}</td><td class="n">${f1(p.raw)}</td><td class="n">${p.I}</td><td class="n">${pc(X.cur.E[i].pc)}</td><td class="n">${pc(X.one.E[i].pc)}</td><td class="n">${X.lin?pc(X.lin.E[i].pc):'-'}</td></tr>`).join('')}</table></div>`);
+  const L=[`<b>نظر من:</b> ${X.why}`];
+  if(X.eta)L.push(`ضریب تبدیل: iest فعلی (eta=${X.eta.cur}) تا ${pc(X.eta.Ec.pc)} با آمپرمتر باتری فاصله دارد. با گین پیشنهادی، eta=0 خطای ${pc(X.eta.E0.pc)} و بهترین eta (${X.eta.e1}) خطای ${pc(X.eta.E1.pc)} می‌دهد. پیشنهاد: <b class="n">eta = ${X.etaRec}</b>${X.etaRec===0?' (iest برابر جریان پنل؛ به ولتاژها وابسته نیست)':''}.`);
+  if(X.xt)L.push(`اثر متقابل: خطای میانگین در BOTH ${pc(X.xt.eb)} در برابر SOLO ${pc(X.xt.es)} (فرق ${pc(X.xt.dd)}). `+(Math.abs(X.xt.dd)<=1?'ناچیز است.':'قابل توجه است؛ بهتر است کالیبراسیون با هر دو کانال روشن هم بررسی شود.')+(X.xt.rows.length?' · تغییر raw در همان duty: '+X.xt.rows.map(r=>`${r.d/10}%: ${r.dr>=0?'+':''}${f1(r.dr)}`).join('، '):''));
+  X.note.forEach(x=>L.push(x));h.push(`<div class="bsum">${L.map(x=>`<div>${x}</div>`).join('')}</div><div class="bctl"><button class="sb sb2" onclick="aUse(${X.n})">انتقال پیشنهاد به کارت کانال ${X.n}</button></div>`);});
+ if(E)h.push(`<div class="sec">ورودی کل برد</div><div class="bsum"><div>راندمان میانگین (توان باتری‌ها / توان ورودی): <b class="n">${f1(E.eta)} %</b> در ${E.n} ردیف · جریان ورودی کل / مجموع پنل: <b class="n">${E.rt?E.rt.toFixed(2):'-'}</b> (حدود ۰٫۷ طبیعی است)</div>`+
+  (E.k&&E.n>=2?`<div>برازش جریان ورودی بر حسب توان باتری: راندمان مبدل حدود <b class="n">${f1(100/E.k)} %</b> و مصرف ثابت برد حدود <b class="n">${r0(E.iq)} mA</b>.</div>`:'')+`<div class="lb">این بخش فقط برای کنترل درستی اندازه‌هاست؛ مرجع کالیبراسیون آمپرمتر باتری است.</div></div>`);
+ o.innerHTML=h.join('');}
+/* فقط خانه‌های کارت کانال را پر می‌کند؛ ارسال فقط با دکمهٔ ارسال به برد همان کارت است / fills the channel card only; sending stays manual */
+function aUse(n){const X=AR&&AR[n-1];if(!X||!X.one)return;const L=X.rec=='lin'&&X.lin;sv('eG'+n,L?X.lin.g:X.one.g);sv('eO'+n,L?X.lin.off:X.one.off);if(X.etaRec!=null)sv('eE'+n,X.etaRec);bsave();eCalc(n);$('eX'+n).scrollIntoView({block:'nearest'});}
+$('p3').insertAdjacentHTML('afterbegin',`<div class="cd"><div class="ti">تحلیل و پیشنهاد کالیبراسیون</div><div class="ds">فایل ثبت بنچ از ESP خوانده می‌شود و برای هر کانال سه مدل با آمپرمتر باتری مقایسه می‌شود: یک گین، گین + آفست، و منحنی درجه دو (فقط برای تشخیص نیاز به LUT). ساده‌ترین مدلی که خطایش زیر ${ATH}% باشد پیشنهاد می‌شود. این تحلیل فقط نمایش است؛ نه در فایل نوشته می‌شود و نه چیزی به برد می‌فرستد.</div>
+<div class="bctl"><button class="sb" onclick="aRun()">خواندن فایل و تحلیل</button></div><div id="aOut"></div></div>`);
 try{eng(localStorage.getItem('eng')==='1');}catch(e){eng(false);}
 poll();
 </script></body></html>)HTML";
