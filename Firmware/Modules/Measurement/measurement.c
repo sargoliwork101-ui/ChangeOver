@@ -586,18 +586,126 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
     return func__BspMeasurement_Current1CountsToMa(uint16_t__counts);
 }
 
+/* ==================== Measurement Current2 Bench LUT (user order 2026-09-25) ==================== */
+
+/* [EN] The 2026-09-25 SOLO2 bench runs (two independent captures, duty 0..17%,
+        battery ammeter as the reference) proved the channel-2 chain is strongly
+        non-linear vs the true battery current: about 2x too high at 5% duty and
+        0.85x too low at 15..17%. No single gain or gain+offset line covers both
+        ends (least-squares single gain: +101%/-7% residuals), and the duty-based
+        physics model spreads 37% - so a piecewise-linear table on the OLD linear
+        chain output is the honest correction. Physical cause: the mid-ON
+        synchronized ADC sample of the primary ramp vs the ~duty^2 energy
+        transfer, with a DCM->CCM kink near 12% duty. Anchors = the latched
+        2026-09-25T16:31 run (v1.7 wizard: the /m window is read at the submit
+        press, so MCU numbers and typed meters are simultaneous):
+        chain mA -> battery mA: (0,0) (65,33) (139,90) (237,208) (278,300)
+        (393,455) (487,545); captured with off2=8 / gain2=1303 (as logged in
+        every row - if those params ever change, the table must be re-derived).
+        Above the last anchor the last slope extends; input 0 maps to 0. Raw
+        counts and shunt uV stay untouched. Channel 1 stays linear until its own
+        SOLO1 data arrives.
+   [FA] اجراهای بنچ SOLO2 در ۲۰۲۶-۰۹-۲۵ (دو برداشت مستقل، دیوتی ۰ تا ۱۷٪،
+        مرجع = آمپرمتر سری باتری) ثابت کرد زنجیرهٔ کانال ۲ نسبت به جریان واقعی
+        باتری به‌شدت غیرخطی است: حدود ۲ برابر زیاد در دیوتی ۵٪ و ۰٫۸۵ برابر
+        کم در ۱۵..۱۷٪. نه گین واحد و نه خط گین+آفست دو سر را پوشش می‌دهد
+        (بهترین تک‌گین: خطای +۱۰۱٪/−۷٪) و مدل فیزیکی مبتنی بر duty هم ۳۷٪
+        پراکندگی دارد - پس جدول خطی-تکه‌ای روی خروجی زنجیرهٔ خطی قدیم،
+        اصلاح درست است. علت فیزیکی: نمونهٔ سنکرون وسط-ON از رمپ اولیه در
+        برابر انتقال انرژی ~duty²، با شکست DCM→CCM نزدیک دیوتی ۱۲٪.
+        لنگرها = اجرای قفل‌در-لحظهٔ ثبت 2026-09-T16:31 (ویزارد 1.7: پنجرهٔ /m
+        همان لحظهٔ ثبت خوانده می‌شود، پس اعداد میکرو و مولتی‌متر هم‌لحظه‌اند):
+        mA زنجیره → mA باتری: (0,0) (65,33) (139,90) (237,208) (278,300)
+        (393,455) (487,545)؛ با off2=8 / gain2=1303 گرفته شده‌اند (همان که در
+        هر ردیف ثبت شده - اگر این پارامترها عوض شوند جدول باید دوباره ساخته
+        شود). بالای آخرین لنگر شیب آخرین بازه ادامه می‌یابد؛ ورودی صفر صفر.
+        شمارش خام و uV شانت دست نمی‌خورند. کانال ۱ تا رسیدن دادهٔ SOLO1 خودش
+        خطی می‌ماند. */
+#if (MEASUREMENT_CURRENT2_LUT_ENABLE != 0u)
+#define MEASUREMENT_CURRENT2_LUT_POINTS 7u
+static const uint32_t UINT32_T__G__Current2LutChainMa[MEASUREMENT_CURRENT2_LUT_POINTS] =
+    { 0u, 65u, 139u, 237u, 278u, 393u, 487u };
+static const uint32_t UINT32_T__G__Current2LutBatteryMa[MEASUREMENT_CURRENT2_LUT_POINTS] =
+    { 0u, 33u, 90u, 208u, 300u, 455u, 545u };
+#endif
+
 /* ==================== Measurement Current2 Counts To Ma ==================== */
 
+#if (MEASUREMENT_CURRENT2_LUT_ENABLE != 0u)
 /**
- * @brief  [EN] Channel-2 raw counts to mA via the BSP per-channel
- *              calibration (Shunt2 / Trans2 chain).
- *         [FA] تبدیل شمارش کانال ۲ به mA با کالیبراسیون مستقل BSP.
+ * @brief  [EN] Piecewise-linear bench correction: OLD linear chain mA of
+ *              channel 2 -> true battery mA. Inside the anchor range the
+ *              segments interpolate linearly; above the last anchor the last
+ *              slope extends; 0 maps to 0. u32 math only: the products stay
+ *              far below 2^32 for any realistic chain value.
+ *         [FA] اصلاح خطی-تکه‌ای بنچ: mA زنجیرهٔ خطی قدیم کانال ۲ → mA واقعی
+ *              باتری. بین لنگرها درون‌یابی خطی؛ بالای آخرین لنگر شیب آخرین
+ *              بازه ادامه می‌یابد؛ صفر به صفر. فقط ریاضی u32: حاصل‌ضرب‌ها
+ *              برای هر مقدار واقع‌بینانهٔ زنجیره بسیار زیر 2^32 می‌مانند.
+ * @param  uint32_t__chainMa [EN] OLD linear chain output in mA / خروجی زنجیرهٔ خطی قدیم mA
+ * @return uint32_t [EN] Corrected battery current in mA / جریان اصلاح‌شدهٔ باتری mA
+ */
+static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
+{
+    uint32_t uint32_t__index;
+
+    for (uint32_t__index = 1u;
+         uint32_t__index < MEASUREMENT_CURRENT2_LUT_POINTS;
+         uint32_t__index++)
+    {
+        uint32_t uint32_t__xHigh =
+            UINT32_T__G__Current2LutChainMa[uint32_t__index];
+        if (uint32_t__chainMa <= uint32_t__xHigh)
+        {
+            uint32_t uint32_t__xLow =
+                UINT32_T__G__Current2LutChainMa[uint32_t__index - 1u];
+            uint32_t uint32_t__yLow =
+                UINT32_T__G__Current2LutBatteryMa[uint32_t__index - 1u];
+            uint32_t uint32_t__yHigh =
+                UINT32_T__G__Current2LutBatteryMa[uint32_t__index];
+            return uint32_t__yLow +
+                   (((uint32_t__chainMa - uint32_t__xLow) *
+                     (uint32_t__yHigh - uint32_t__yLow)) /
+                    (uint32_t__xHigh - uint32_t__xLow));
+        }
+    }
+
+    /* [EN] Above the last anchor: extend the last segment's slope.
+       [FA] بالای آخرین لنگر: شیب آخرین بازه ادامه می‌یابد. */
+    return UINT32_T__G__Current2LutBatteryMa[MEASUREMENT_CURRENT2_LUT_POINTS - 1u] +
+           (((uint32_t__chainMa -
+              UINT32_T__G__Current2LutChainMa[MEASUREMENT_CURRENT2_LUT_POINTS - 1u]) *
+             (UINT32_T__G__Current2LutBatteryMa[MEASUREMENT_CURRENT2_LUT_POINTS - 1u] -
+              UINT32_T__G__Current2LutBatteryMa[MEASUREMENT_CURRENT2_LUT_POINTS - 2u])) /
+            (UINT32_T__G__Current2LutChainMa[MEASUREMENT_CURRENT2_LUT_POINTS - 1u] -
+             UINT32_T__G__Current2LutChainMa[MEASUREMENT_CURRENT2_LUT_POINTS - 2u]));
+}
+#endif
+
+/**
+ * @brief  [EN] Channel-2 raw counts to battery mA: the BSP per-channel linear
+ *              calibration (Shunt2 / Trans2 chain), then - when the bench LUT
+ *              is enabled - the piecewise-linear bench correction of user
+ *              order 2026-09-25. The LUT sits on the OLD chain output, so
+ *              unfiltered, filtered and iest all become true battery mA;
+ *              raw counts and shunt uV are untouched.
+ *         [FA] شمارش خام کانال ۲ به mA باتری: کالیبراسیون خطی مستقل BSP
+ *              (زنجیرهٔ Shunt2 / Trans2) و بعد - با فعال بودن جدول بنچ -
+ *              اصلاح خطی-تکه‌ای طبق دستور کاربر ۲۰۲۶-۰۹-۲۵. جدول روی
+ *              خروجی زنجیرهٔ قدیم می‌نشیند، پس بدون فیلتر، فیلترشده و iest
+ *              هر سه به mA واقعی باتری تبدیل می‌شوند؛ شمارش خام و uV شانت
+ *              دست نمی‌خورند.
  * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Current in mA / جریان mA
+ * @return uint32_t [EN] Corrected current in mA / جریان اصلاح‌شده mA
  */
 uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
 {
+#if (MEASUREMENT_CURRENT2_LUT_ENABLE != 0u)
+    return func__Measurement_Current2BenchLut(
+        func__BspMeasurement_Current2CountsToMa(uint16_t__counts));
+#else
     return func__BspMeasurement_Current2CountsToMa(uint16_t__counts);
+#endif
 }
 
 /* ==================== Measurement Current Counts To Ma (legacy) ==================== */

@@ -55,6 +55,18 @@
  *      واکنش می‌دهد. ۱u فعال و ۰u کامپایل‌نشده. */
 #define MEASUREMENT_CURRENT_AVERAGE_ENABLE   1u
 
+/* [EN] Channel-2 bench LUT (user order 2026-09-25): the SOLO2 bench data proved
+        the channel-2 chain non-linear vs the true battery current (about 2x too
+        high at 5% duty, 0.85x too low at 15..17%); a piecewise-linear table
+        replaces the single gain for channel 2. Channel 1 stays linear until its
+        own SOLO1 data arrives. 0 = old linear behaviour.
+   [FA] جدول بنچ کانال ۲ (دستور کاربر ۲۰۲۶-۰۹-۲۵): دادهٔ بنچ SOLO2 غیرخطی
+        بودن زنجیرهٔ کانال ۲ را ثابت کرد (حدود ۲ برابر زیاد در دیوتی ۵٪ و
+        ۰٫۸۵ برابر کم در ۱۵..۱۷٪)؛ جدول خطی-تکه‌ای جای گین واحد کانال ۲ را
+        می‌گیرد. کانال ۱ تا رسیدن دادهٔ SOLO1 خودش خطی می‌ماند. 0 = رفتار
+        خطی قدیم. */
+#define MEASUREMENT_CURRENT2_LUT_ENABLE    1u
+
 /* [EN] Compiled ring size and hard ceiling of the ESP-adjustable runtime
  *      moving-average window, per channel (v1.4, user order 2026-09-25:
  *      ANY value 1..100 is accepted - at the 1 ms cadence that is 1..100 ms

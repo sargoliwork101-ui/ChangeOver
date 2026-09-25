@@ -301,6 +301,19 @@ ETA > 0:    iest_ma = i_filtered_ma x Vin_mv x eta / (1000 x Vbat_mv)
           must not hand-compute it.
 ```
 
+Channel-2 bench LUT (user order 2026-09-25, firmware v1.5): the SOLO2 bench
+runs proved the channel-2 chain non-linear vs the true battery current (about
+2x too high at 5% duty, 0.85x too low at 15..17%; best single gain still leaves
++101%/-7%). Channel 2 therefore converts as
+`I_bat = LUT((raw - off2) * 0.8776 * gain2/1000)` with a 7-point piecewise-linear
+table on the OLD chain output - anchors from the latched 2026-09-25T16:31 run
+(chain mA -> battery mA): (0,0) (65,33) (139,90) (237,208) (278,300) (393,455)
+(487,545), captured with off2=8 / gain2=1303. Above the last anchor the last
+slope extends. Unfiltered, filtered and iest all become true battery mA; raw
+counts and shunt uV are untouched. `MEASUREMENT_CURRENT2_LUT_ENABLE = 0`
+restores the old linear behaviour. Channel 1 stays linear until its own SOLO1
+data arrives. The wire protocol is unchanged.
+
 Voltage chain (offsets = IDs 4/5/6, saturating add, never below 0 mV):
 
 ```text

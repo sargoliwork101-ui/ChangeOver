@@ -449,6 +449,16 @@ def test_setpoints_and_timing():
           "func__Measurement_ApplyCurrentFilters" in meas_c_raw and
           "MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX" in meas_h_txt,
           "Measurement must run the median chain (v1.4: runtime size ANY 1..15, default 3) then the moving-average chain (v1.4: runtime window ANY 1..100, default 10) on each current channel (user order 2026-09-25)")
+    check(re.search(r"#define MEASUREMENT_CURRENT2_LUT_ENABLE\s+1u", meas_h_txt) and
+          "static const uint32_t UINT32_T__G__Current2LutChainMa[MEASUREMENT_CURRENT2_LUT_POINTS]" in meas_c_raw and
+          "{ 0u, 65u, 139u, 237u, 278u, 393u, 487u }" in meas_c_raw and
+          "{ 0u, 33u, 90u, 208u, 300u, 455u, 545u }" in meas_c_raw,
+          "channel-2 bench LUT must be ON with the 2026-09-25 SOLO2 latched anchors (user order 2026-09-25: the chain read ~2x high at 5% duty and 0.85x low at 15..17% - no single gain can cover it)")
+    check("return func__Measurement_Current2BenchLut(\n        func__BspMeasurement_Current2CountsToMa(uint16_t__counts));" in meas_c_raw,
+          "the ch2 LUT must wrap the BSP conversion inside func__Measurement_Current2CountsToMa so unfiltered, filtered and iest all become true battery mA while raw counts and shunt uV stay untouched")
+    check(re.search(r"func__Measurement_Current2CountsToMa\(uint16_t uint16_t__counts\)\n\{\n#if \(MEASUREMENT_CURRENT2_LUT_ENABLE != 0u\)", meas_c_raw) and
+          re.search(r"#else\n    return func__BspMeasurement_Current2CountsToMa\(uint16_t__counts\);\n#endif", meas_c_raw),
+          "the ch2 LUT must be compile-switchable: MEASUREMENT_CURRENT2_LUT_ENABLE=0 restores the old linear behaviour exactly")
     check("BSP_MEASUREMENT_MA_PER_A" in bsp_meas_c and "BSP_MEASUREMENT_PERMILLE_SCALE" in bsp_meas_c and
           "BSP_MEASUREMENT_CURRENT_MA_SCALE" not in bsp_meas_c,
           "the ADC-to-current formula must be built stage-by-stage from the schematic resistor values (shunt mOhm, LM358 gain, R41/R42 divider), no shared magic scale (user order 2026-09-22)")
