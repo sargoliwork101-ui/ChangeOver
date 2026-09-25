@@ -1,32 +1,39 @@
 /**
  * @file    esp_link_panel.ino
- * @brief   [EN] ESP-side ESP-Link bridge: exchanges binary frames with the STM32
- *               over UART (921600 8N1, ESP_AGENT_SPEC.md v1.3 incl. 5.3 formulas and 5.4 CAL_REFERENCE) and exposes a small
- *               dark RTL web panel (Vazirmatn) with three tabs: status, calibration, manual test;
- *               the section 5.3 conversion formulas are shown with live values, plus calibration
- *               helpers (zero from raw, voltage offset from a multimeter, and the v1.3 CAL_REFERENCE card:
- *               the typed DMM mA goes to the STM32, which computes gain or ETA from its live snapshot),
- *               a live 36 s filter chart, a per-channel re-apply (JIT re-arm) button in manual mode, and a
- *               bench tab (spec 5.5) that runs tests A-D itself, reads every TLM frame through the /m
- *               statistics window and prints copyable result blocks (never auto-applies a calibration).
- *               Engineer mode switch (default off, remembered per device): off = status (read-only) and
- *               the CAL card only; on = manual/bench tabs, the parameter table, helpers and formulas.
- *          [FA] پل ESP-Link سمت ESP: تبادل فریم باینری با STM32 روی UART
- *               (921600 8N1، مطابق ESP_AGENT_SPEC.md نسخه ۱.۳) و یک پنل وب دارک ساده
- *               راست‌به‌چپ با فونت وزیرمتن و سه تب: وضعیت، کالیبراسیون، تست دستی؛
- *               فرمول‌های تبدیل بخش 5.3 با مقادیر زنده، دستیار کالیبراسیون (صفر از raw، آفست ولتاژ از
- *               مولتی‌متر، و کارت CAL_REFERENCE نسخه ۱.۳: عدد مولتی‌متر به STM32 می‌رود و خودش گین یا
- *               ضریب تبدیل را از داده‌های زنده حساب می‌کند)، نمودار زندهٔ ۳۶ ثانیه‌ای فیلتر و دکمهٔ «اعمال مجدد
- *               duty» (مسلح‌سازی بعد از JIT) برای هر کانال در مود دستی، و تب «تست بنچ» (بخش 5.5) که تست‌های
- *               A تا D را خودش اجرا می‌کند، تک‌تک فریم‌های TLM را از پنجرهٔ آمار /m می‌خواند و بلوک متن
- *               کپی‌شدنی می‌دهد (هیچ کالیبراسیونی را خودکار اعمال نمی‌کند).
- *               کلید «حالت مهندس» (پیش‌فرض خاموش، روی هر دستگاه به یاد می‌ماند): خاموش = وضعیت (فقط خواندنی) و
- *               فقط کارت CAL؛ روشن = تب‌های تست دستی و بنچ، جدول پارامترها، دستیارها و فرمول‌ها.
+ * @brief   [EN] ESP-side ESP-Link bridge: exchanges binary frames with the STM32 over UART
+ *               (921600 8N1, ESP_AGENT_SPEC.md v1.4: 5.3 formulas, 5.4 CAL_REFERENCE, 5.6 bench log) and
+ *               serves a dark RTL web panel (Vazirmatn) with three tabs:
+ *               1) Panel: one laptop page - shared voltages (with DMM offset helpers) + current filter
+ *                  (median 1..15, average 1..100), then one column per charger: live status, the
+ *                  measurement chain with live formulas, zero/gain/ETA + CAL card, live filter chart,
+ *                  duty ceiling / fixed duty and manual duty with JIT re-arm.
+ *               2) Tests: a manual control strip, the section 5.6 capture wizard (SOLO1/SOLO2/BOTH,
+ *                  user-typed duty list, advances ONLY on the user's submit, one CSV row per step in
+ *                  LittleFS /benchlog.csv, download at GET /benchlog) and manual tests B/C/D with a
+ *                  calculate button and copyable result blocks.
+ *               3) Correction and calculation: edit offset/gain/ETA and voltage offsets on paper, see
+ *                  the resulting currents and errors, send only on an explicit button.
+ *               Nothing is ever calibrated automatically. Engineer mode (default off, remembered per
+ *               device) shows the manual/ceiling/fixed-duty tools and tabs 2 and 3.
+ *          [FA] پل ESP-Link سمت ESP: تبادل فریم باینری با STM32 روی UART (921600 8N1، مطابق
+ *               ESP_AGENT_SPEC.md نسخه ۱.۴: فرمول‌های 5.3، CAL_REFERENCE بخش 5.4، فایل ثبت بنچ 5.6) و یک
+ *               پنل وب دارک راست‌به‌چپ با فونت وزیرمتن و سه تب:
+ *               ۱) پنل: یک صفحهٔ لپ‌تاپ - ولتاژهای مشترک (با کالیبراسیون آفست از مولتی‌متر) و فیلتر
+ *                  جریان (مدین ۱..۱۵، میانگین ۱..۱۰۰)، بعد یک ستون برای هر شارژر: وضعیت زنده، زنجیرهٔ
+ *                  اندازه‌گیری با فرمول زنده، صفر/گین/ضریب تبدیل و کارت CAL، نمودار فیلتر، سقف و duty فیکس
+ *                  و duty دستی با مسلح‌سازی بعد از JIT.
+ *               ۲) تست‌ها: نوار کنترل دستی، ویزارد ثبت داده بخش 5.6 (SOLO1/SOLO2/BOTH، فهرست duty دلخواه،
+ *                  جلو رفتن فقط با دکمهٔ کاربر، یک خط CSV برای هر مرحله در فایل LittleFS به نام
+ *                  /benchlog.csv، دانلود با GET /benchlog) و تست‌های دستی B/C/D با دکمهٔ محاسبه و بلوک متن.
+ *               ۳) اصلاح و محاسبه: تغییر آفست/گین/ضریب تبدیل و آفست ولتاژها روی کاغذ، دیدن جریان و خطای
+ *                  حاصل، و ارسال فقط با دکمهٔ صریح.
+ *               هیچ کالیبراسیونی خودکار اعمال نمی‌شود. حالت مهندس (پیش‌فرض خاموش، روی هر دستگاه به یاد
+ *               می‌ماند) ابزارهای دستی/سقف/duty فیکس و تب‌های ۲ و ۳ را نشان می‌دهد.
  *
  * @note    [EN] Wiring: STM32 PA9 (TX) -> ESP RX, STM32 PA10 (RX) <- ESP TX, common GND.
  *               STM32 PA8 drives ESP CH_PD/EN; this sketch never touches that line.
  *               Wi-Fi AP "ChangeOver-ESP", password "123456789", panel at http://192.168.4.1
- *               No flash storage, no cloud: only MCU <-> ESP data exchange.
+ *               No cloud: only MCU <-> ESP data exchange (flash is used only for the bench log file).
  *               Manual test mode (ID 19): a GET_PARAMS keepalive is sent every 1 s while manual
  *               mode is active (TLM flag b5 or param 19), also with a background tab (spec 5.2).
  *               Safety: if no browser has polled /t for 10 s (or none since the ESP booted), the ESP
@@ -36,7 +43,7 @@
  *          [FA] سیم‌بندی: PA9 به RX ماژول، PA10 به TX ماژول، زمین مشترک.
  *               پایه CH_PD/EN را STM32 (PA8) کنترل می‌کند؛ این برنامه به آن دست نمی‌زند.
  *               وای‌فای "ChangeOver-ESP" با رمز "123456789"، پنل در http://192.168.4.1
- *               بدون حافظه فلش و بدون اینترنت: فقط تبادل داده بین MCU و ESP.
+ *               بدون اینترنت: فقط تبادل داده بین MCU و ESP (فلش فقط برای فایل ثبت بنچ استفاده می‌شود).
  *               مود تست دستی (شناسه ۱۹): تا وقتی مود دستی فعال است (پرچم b5 یا پارامتر ۱۹) هر ۱ ثانیه
  *               یک GET_PARAMS فرستاده می‌شود، حتی با تب پس‌زمینه (بخش 5.2 سند). ایمنی: اگر ۱۰ ثانیه
  *               هیچ مرورگری /t را نخواند (یا از بوت ESP هنوز نخوانده باشد)، ESP هر ۱ ثانیه شناسهٔ ۱۹ = 0 را
@@ -57,6 +64,7 @@
   #error "Select an ESP8266 or ESP32 board / برد ESP8266 یا ESP32 را انتخاب کنید"
 #endif
 
+#include <LittleFS.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -89,7 +97,6 @@
 #define ESP_PARAM_COUNT             20u
 #define ESP_PARAM_CHG1_ENABLE       11u
 #define ESP_PARAM_CHG2_ENABLE       12u
-#define ESP_PARAM_MEDIAN_SIZE       7u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
 #define ESP_TLM_FLAG_MANUAL_MODE    0x20u
 #define ESP_PARAM_CUR1_GAIN         2u
@@ -117,6 +124,27 @@
         7..12، Vin 14، Vlow 17، Vhigh 18. شمارش در ۶۰۰۰۰ فریم (۱۰۰ دقیقه) می‌ایستد تا مجموع u32 سرریز نشود. */
 #define ESP_STAT_FIELD_COUNT        13u
 #define ESP_STAT_MAX_FRAMES         60000u
+
+/* ==================== Bench Data Log File (spec 5.6, v1.4) ==================== */
+/* [EN] One append-only CSV on LittleFS. The panel builds each row from the /m window (every TLM frame,
+        raw included) plus the typed DMM readings and POSTs it to /benchlog/add; the ESP only validates
+        (printable ASCII, newline-terminated, bounded length) and appends. The column header is written
+        by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
+        Arduino IDE: pick a flash layout WITH a file system (ESP8266 e.g. "4MB (FS:1MB)"; ESP32 default is fine).
+   [FA] یک فایل CSV فقط-افزودنی روی LittleFS. پنل هر ردیف را از پنجرهٔ /m (تک‌تک فریم‌های TLM با raw)
+        و عددهای مولتی‌متر می‌سازد و به /benchlog/add می‌فرستد؛ ESP فقط بررسی (ASCII قابل چاپ، پایان با
+        خط جدید، طول محدود) و اضافه می‌کند. سطر عنوان ستون‌ها را ESP هنگام ساخت فایل می‌نویسد. در سقف
+        اندازه افزودن متوقف می‌شود (HTTP 507) و پنل هشدار می‌دهد.
+        در Arduino IDE چیدمان فلشِ دارای فایل‌سیستم را انتخاب کنید (ESP8266 مثلاً "4MB (FS:1MB)"؛ ESP32 پیش‌فرض کافی است). */
+#define ESP_BENCHLOG_PATH           "/benchlog.csv"
+#define ESP_BENCHLOG_MAX_BYTES      102400u
+#define ESP_BENCHLOG_MAX_POST       1024u
+#define ESP_BENCHLOG_HEADER \
+    "# cols: scenario,step,duty_permille,settle_ms,sample_ms," \
+    "raw1,raw1_min,raw1_max,unf1_ma,filt1_ma,filt1_min,filt1_max,iest1_ma," \
+    "raw2,raw2_min,raw2_max,unf2_ma,filt2_ma,filt2_min,filt2_max,iest2_ma," \
+    "vin_mv,vhigh_mv,vlow_mv," \
+    "dmm_i1_ma,dmm_i2_ma,dmm_vin_mv,dmm_vhigh_mv,dmm_vlow_mv,note\n"
 
 /* ==================== Wi-Fi / HTTP Constants ==================== */
 #define ESP_WIFI_AP_SSID            "ChangeOver-ESP"
@@ -146,14 +174,14 @@ typedef enum
 } esp_cal_state_t;
 
 /* ==================== Parameter Ranges (STM32 clamps too) ==================== */
-/* [EN] ID: 0..1 offset, 2..3 gain, 4..6 mV offset (signed), 7 median 1/3/5, 8 avg window, 9..10 ETA conversion (v1.3, 0 = identity),
+/* [EN] ID: 0..1 offset, 2..3 gain, 4..6 mV offset (signed), 7 median 1..15, 8 avg window 1..100 (v1.4), 9..10 ETA conversion (v1.3, 0 = identity),
         11..12 charger enable, 13..14 duty ceiling, 15/17 fixed-duty on, 16/18 fixed/manual duty,
         19 manual test mode (v1.2).
-   [FA] شناسه: ۰..۱ آفست، ۲..۳ گین، ۴..۶ آفست mV علامت‌دار، ۷ مدین ۱/۳/۵، ۸ پنجره میانگین، ۹..۱۰ ضریب تبدیل η (v1.3، صفر = همانی)،
+   [FA] شناسه: ۰..۱ آفست، ۲..۳ گین، ۴..۶ آفست mV علامت‌دار، ۷ مدین ۱..۱۵، ۸ پنجره میانگین ۱..۱۰۰ (نسخه ۱.۴)، ۹..۱۰ ضریب تبدیل η (v1.3، صفر = همانی)،
         ۱۱..۱۲ قطع/وصل شارژر، ۱۳..۱۴ سقف duty، ۱۵/۱۷ مود duty فیکس، ۱۶/۱۸ duty فیکس/دستی،
         ۱۹ مود تست دستی (نسخه ۱.۲). */
 static const int32_t INT32_T__G__ParamMin[ESP_PARAM_COUNT] = {   0,   0,  100,  100, -2000, -2000, -2000, 1,  1,   0,   0, 0, 0,   0,   0, 0,   0, 0,   0, 0 };
-static const int32_t INT32_T__G__ParamMax[ESP_PARAM_COUNT] = { 255, 255, 3000, 3000,  2000,  2000,  2000, 5, 10, 999, 999, 1, 1, 500, 500, 1, 500, 1, 500, 1 };
+static const int32_t INT32_T__G__ParamMax[ESP_PARAM_COUNT] = { 255, 255, 3000, 3000,  2000,  2000,  2000, 15, 100, 999, 999, 1, 1, 500, 500, 1, 500, 1, 500, 1 };
 
 /* ==================== RX State ==================== */
 static esp_rx_state_t ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
@@ -197,6 +225,7 @@ static uint32_t        UINT32_T__G__CalRun = 0u;
 
 /* [EN] Bench statistics window (see ESP_STAT_FIELD_COUNT) / [FA] پنجرهٔ آمار بنچ */
 static const uint8_t UINT8_T__G__StatField[ESP_STAT_FIELD_COUNT] = { 0, 2, 3, 4, 5, 7, 9, 10, 11, 12, 14, 17, 18 };
+static bool     BOOL__G__FsOk = false;   /* [EN] LittleFS mounted / [FA] LittleFS سوار شده */
 static uint32_t UINT32_T__G__StatSum[ESP_STAT_FIELD_COUNT];
 static uint32_t UINT32_T__G__StatMin[ESP_STAT_FIELD_COUNT];
 static uint32_t UINT32_T__G__StatMax[ESP_STAT_FIELD_COUNT];
@@ -279,7 +308,8 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .qs{display:grid;grid-template-columns:1fr 1fr;gap:12px}.q{background:#0c1018;border-radius:10px;padding:10px}.q input[type=number]{width:90px}.q .cut{background:var(--er)}.q .run{background:var(--ok);color:#06140d}
 select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);border-radius:8px;padding:5px 7px}
 .eg3{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:6px}.eg3 label{display:flex;flex-direction:column;gap:3px;font-size:13px}
-.pgx{display:none}.pgx.a{display:block}nav{margin-bottom:12px}
+.pgx{display:none}.pgx.a{display:block}body:not(.br) .wstop{display:none}body.br .brun{opacity:.4;pointer-events:none}a.lnk{text-decoration:none;display:inline-block}
+.bq{background:#0c1018;border:1px solid var(--wa);border-radius:10px;padding:10px;margin-top:10px}.bqr{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:8px}.bqr label{display:flex;flex-direction:column;gap:3px;font-size:13px}.bqr input[type=number]{width:120px}nav{margin-bottom:12px}
 /* حالت مهندس: پیش‌فرض خاموش؛ ابزارها فقط پنهان‌اند */
 .hr{display:flex;align-items:center;gap:12px}
 .eg{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu);border:1px solid var(--ln);background:none;border-radius:8px;padding:3px 8px;cursor:pointer}
@@ -320,7 +350,7 @@ const ST=['خاموش','Bulk','Absorb','Float','راه‌اندازی','انتظ
 const SC=['','g','g','g','y','r','y','r','r','y'];
 /* ثابت‌های بخش 5.3 سند */
 const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*76000/6800,K12=3300/4095*41000/6800;
-/* شناسه: [عنوان, واحد, کمینه, بیشینه, نوع(n عدد، b کلید، m مدین), توضیح] */
+/* شناسه: [عنوان, واحد, کمینه, بیشینه, نوع(n عدد، b کلید), توضیح] */
 const P={0:['آفست صفر','count',0,255,'n','شمارش ADC در جریان صفر؛ داخل فرمول mA از raw کم می‌شود. کانال را بی‌جریان کنید و دکمهٔ صفر = raw فعلی را بزنید'],
 1:['آفست صفر','count',0,255,'n','شمارش ADC در جریان صفر؛ داخل فرمول mA از raw کم می‌شود. کانال را بی‌جریان کنید و دکمهٔ صفر = raw فعلی را بزنید'],
 2:['گین','‰',100,3000,'n','mA ≈ (raw − آفست) × 0.8776 × گین/۱۰۰۰؛ مقدار بنچ ۱۰۴۶. با دکمهٔ گین پایین از عدد مولتی‌متر کالیبره می‌شود'],
@@ -328,8 +358,8 @@ const P={0:['آفست صفر','count',0,255,'n','شمارش ADC در جریان 
 4:['آفست ولتاژ ورودی','mV',-2000,2000,'n','بعد از تبدیل مقسم 69.2k/6.8k جمع می‌شود (علامت‌دار)'],
 5:['آفست ولتاژ پک ۲۴V','mV',-2000,2000,'n','کالیبراسیون ولتاژ پک ۲۴V (علامت‌دار)'],
 6:['آفست ولتاژ ۱۲V','mV',-2000,2000,'n','مقسم 34.2k/6.8k؛ روی باتری پایین و بالا (V24 − V12) هر دو اثر دارد'],
-7:['پنجرهٔ مدین','',1,5,'m','مرحلهٔ اول فیلتر؛ ۱ = خاموش، ۳ = پیش‌فرض، ۵ پالس‌های دوتایی را هم حذف می‌کند'],
-8:['پنجرهٔ میانگین','نمونه',1,10,'n','مرحلهٔ دوم فیلتر: میانگین آخرین W خروجی مدین؛ ۱ = خاموش، ۱۰ = پیش‌فرض'],
+7:['پنجرهٔ مدین','نمونه',1,15,'n','مرحلهٔ اول فیلتر، هر عدد ۱ تا ۱۵ (زوج هم مجاز)؛ ۱ و ۲ = خاموش، ۳ = پیش‌فرض، بزرگ‌تر = حذف پالس قوی‌تر با تأخیر بیشتر'],
+8:['پنجرهٔ میانگین','نمونه',1,100,'n','مرحلهٔ دوم فیلتر، هر عدد ۱ تا ۱۰۰: میانگین آخرین W خروجی مدین (هر نمونه ۱ms)؛ ۱ = خاموش، ۱۰ = پیش‌فرض'],
 9:['ضریب تبدیل','‰',0,999,'n','صفر = همانی (عدد فیلترشده خودش جریان باتری است)؛ غیرصفر: iest = I × Vin × eta / (1000 × Vbat) با ولتاژهای زنده (Vbat = باتری بالا). با دکمهٔ ضریب تبدیل پایین تنظیم کنید، نه دستی'],
 10:['ضریب تبدیل','‰',0,999,'n','صفر = همانی؛ غیرصفر: iest = I × Vin × eta / (1000 × Vbat) با ولتاژهای زنده (Vbat = باتری پایین). با دکمهٔ ضریب تبدیل پایین تنظیم کنید، نه دستی'],
 13:['سقف duty','‰',0,500,'n','رمپ، تنظیم و مود فیکس همه به این سقف محدودند'],
@@ -347,7 +377,6 @@ function num(id){const e=$('i'+id),p=P[id],v=Math.round(+e.value);if(e.value==='
 function flip(id){const c=D&&D.p[id],nv=c===1?0:1;if(nv&&(id==15||id==17)&&!confirm('حلقهٔ تنظیم این کانال خاموش و PWM روی مقدار فیکس نگه داشته می‌شود. ادامه؟'))return;send(id,nv);}
 function ctl(id){const p=P[id];
  if(p[4]=='b')return `<button class="sw w" id="b${id}" onclick="flip(${id})">—</button>`;
- if(p[4]=='m')return `<div class="sg" id="g${id}">${[1,3,5].map(v=>`<button data-v="${v}" onclick="send(${id},${v})">${v}</button>`).join('')}</div>`;
  return `<input type="number" id="i${id}" min="${p[2]}" max="${p[3]}" placeholder="${p[2]<0?'±'+p[3]:p[2]+'…'+p[3]}" onkeydown="if(event.key=='Enter')num(${id})"><button class="sb" onclick="num(${id})">ثبت</button>`;}
 const row=(id,x)=>`<div class="rw"><div>${P[id][0]} <span class="lb">${P[id][1]}</span><span class="ap n" id="a${id}">—</span></div><div class="ct">${x||''}${ctl(id)}</div><div class="h" onclick="this.classList.toggle('o')">${P[id][5]}</div></div>`;
 
@@ -502,30 +531,76 @@ function bclr(k){if(!confirm('همهٔ اعداد این تست پاک شود؟'
 const need=()=>{if(!D){alert('هنوز داده‌ای از برد نرسیده است.');return false;}return true;};
 const OK=x=>`<b class="okc">${x}</b>`,NO=x=>`<b class="erc">${x}</b>`;
 
-/* ----- تست A: خطی بودن جریان ----- */
-const AD=[5,10,15,20];let NA=Math.min(10,Math.max(2,+(BDS.nA||4)));
-function aRows(){bsave();$('aT').innerHTML=`<tr><th>#</th><th>duty %</th><th>raw</th><th>جریان پنل mA</th><th>Vin V</th><th>Vbat V</th><th>مولتی‌متر ورودی mA</th><th>مولتی‌متر باتری mA</th><th></th></tr>`+
- Array.from({length:NA},(_,i)=>`<tr><td>${i+1}</td><td>${I('aD'+i,AD[i]||'',64)}</td><td>${I('aR'+i,'',70)}</td><td>${I('aP'+i,'',70)}</td><td>${I('aV'+i,'',64)}</td><td>${I('aB'+i,'',64)}</td><td>${I('aI'+i,'اجباری',84)}</td><td>${I('aJ'+i,'اختیاری',84)}</td><td><button class="sb sb2" onclick="aRead(${i})">خواندن از پنل</button></td></tr>`).join('');
- bload($('aT'));BDS.nA=NA;}
-function aAdd(d){NA=Math.min(10,Math.max(2,NA+d));aRows();bsave();}
-function aRead(i){if(!live(10))return;const c=ch('aCh')-1;sv('aD'+i,(av(c,'d',10)/10).toFixed(1));sv('aR'+i,r0(av(c,'r',10)));sv('aP'+i,r0(av(c,'f',10)));sv('aV'+i,(av(c,'v',10)/1000).toFixed(2));sv('aB'+i,(av(c,'b',10)/1000).toFixed(2));bsave();}
-let RA=null;
-function calcA(){if(!need())return;const n=ch('aCh'),c=n-1,off=D.p[c],g=D.p[2+c],R=[];
- for(let i=0;i<NA;i++){const raw=gv('aR'+i),pm=gv('aP'+i),di=gv('aI'+i);if(raw==null||pm==null||!(di>0))continue;R.push({d:gv('aD'+i),raw,pm,di,db:gv('aJ'+i),vin:gv('aV'+i),vb:gv('aB'+i),net:Math.max(raw-off,0)});}
- if(R.length<2)return alert('حداقل ۲ ردیف کامل لازم است (raw، جریان پنل و مولتی‌متر ورودی).');
- /* گین هر نقطه مستقیم از raw (مستقل از تأخیر فیلتر)؛ ضریب تبدیل با فرض درست بودن گین (I = مولتی‌متر ورودی)
-    per-point gain straight from raw (independent of filter lag); eta assumes the gain is already correct (I = DMM_in) */
- if(R.some(r=>r.net<=0))return alert('در یکی از ردیف‌ها raw از آفست کمتر یا برابر است؛ آن ردیف را اصلاح کنید.');
- R.forEach(r=>{r.gi=r.di*1000/(r.net*K_MA);r.err=(r.pm-r.di)/r.di*100;if(r.db>0&&r.vin&&r.vb){r.eff=r.db*r.vb/(r.di*r.vin)*100;r.eta=r.eff*10;}});
- const gA=r0(mean(R.map(r=>r.gi))),xs=R.map(r=>r.net),ys=R.map(r=>r.di),mx=mean(xs),my=mean(ys),sxx=xs.reduce((a,x)=>a+(x-mx)**2,0);
- const a=sxx?xs.reduce((s,x,i)=>s+(x-mx)*(ys[i]-my),0)/sxx:0,b=my-a*mx,gF=r0(a/K_MA*1000),oF=a?r0(off-b/a):off;
- const eA=Math.max(...R.map(r=>Math.abs(r.net*K_MA*gA/1000-r.di)/r.di*100)),eF=Math.max(...R.map(r=>Math.abs(a*r.net+b-r.di)/r.di*100));
- const ET=R.filter(r=>r.eta!=null),etA=ET.length?r0(mean(ET.map(r=>r.eta))):null;
- RA={n,gA,gF,oF,etA,R};
- bout('A','Test A - current linearity | CH'+n,[{cap:'CH'+n+' (offset '+off+', gain '+g+')',h:['duty%','raw','panel mA','DMM_in mA','panel/DMM','error %','gain for this point','DMM_bat mA','Vin V','Vbat V','efficiency %','eta for this point'],
-  r:R.map(r=>[nz(r.d),r.raw,r.pm,r.di,(r.pm/r.di).toFixed(3),r.err.toFixed(1),r0(r.gi),r.db==null?'-':r.db,nz(r.vin),nz(r.vb),r.eff==null?'-':r.eff.toFixed(1),r.eta==null?'-':r0(r.eta)])}],
-  [`single gain (average) = ${gA} per-mille -> max error ${eA.toFixed(1)} %`,`line fit: gain = ${gF} , offset = ${oF} -> max error ${eF.toFixed(1)} %`,etA==null?'eta: no battery DMM data':`eta (average of points, valid once the gain is correct) = ${etA} per-mille`,
-   'Only numbers, nothing was sent to the board. Compare in tab 3 before sending.']);}
+/* ----- ثبت داده در فایل (بخش 5.6، نسخه ۱.۴): SOLO1 → SOLO2 → BOTH؛ جلو رفتن فقط با دکمهٔ کاربر -----
+ * هر مرحله: duty → صبر → نمونه‌برداری از پنجرهٔ /m (تک‌تک فریم‌های TLM، raw خام) → توقف و فرم مولتی‌متر → با «ثبت و مرحلهٔ بعد» یک خط CSV در ESP.
+ * Capture wizard: set duty → settle → sample the /m window (every TLM frame, raw included) → STOP for the DMM form → append one CSV row only on submit. */
+const WSC={SOLO1:[1],SOLO2:[2],BOTH:[1,2]};let W={run:false,abort:false,act:null},RS={};try{RS=JSON.parse(localStorage.getItem('wrs')||'{}');}catch(e){}
+const sl=ms=>new Promise(r=>setTimeout(r,ms));
+async function req(u,m,body){const o={method:m||'GET',cache:'no-store'};if(body!=null){o.body=body;o.headers={'Content-Type':'text/plain'};}const r=await fetch(u,o);let j={};try{j=await r.json();}catch(e){}j._s=r.status;return j;}
+function wst(m,c){const e=$('wS0');e.innerHTML=m;e.className='cm '+(c||'lb');}
+/* ایمنی حین ثبت: لینک، خطای نهایی، JIT، قطع ۱۵V، خاموش شدن ناخواستهٔ مود دستی */
+function wchk(){if(W.abort)throw 'پایان توسط کاربر';const d=D;if(!d||d.on!=1)throw 'لینک STM32 قطع شد';
+ (W.act||[]).forEach(n=>{const s=d.t[(n-1)*7+6];if(s==7)throw 'خطای نهایی کانال '+fa(n);if(s==5)throw 'تریپ JIT کانال '+fa(n);if(d.t[n==1?18:17]>=15000)throw 'قطع ۱۵V کانال '+fa(n);});
+ if(W.man&&!(d.fl&32))throw 'مود دستی قطع شد (ددمن یا محافظ پنل)';}
+async function wwait(ms,lbl){const e=Date.now()+ms;while(Date.now()<e){wchk();wst(lbl+' · <span class="n">'+Math.ceil((e-Date.now())/1000)+' s</span>');await sl(100);}wchk();}
+/* نوشتن پارامتر و صبر تا گزارش همان مقدار از STM32 */
+async function setv(id,v){for(let k=0;k<3;k++){const j=await req('/s?id='+id+'&v='+v,'POST');if(j._s!=200)throw 'پاسخ ESP: '+j._s;const e=Date.now()+2500;while(Date.now()<e){await sl(150);if(D&&D.p[id]===v)return;}}throw 'برد مقدار شناسهٔ '+id+' = '+v+' را گزارش نکرد';}
+async function wrestore(o){wst('بازگردانی تنظیمات قبل از ثبت…');W.man=false;W.act=null;const L=[[16,0],[18,0],[19,o[19]],[11,o[11]],[12,o[12]]];if(o[19]===0)L.push([16,o[16]],[18,o[18]]);for(const [i,v] of L){try{await setv(i,v);}catch(e){}}}
+async function wlog(txt){const j=await req('/benchlog/add','POST',txt);if(j._s==507)throw 'فایل پر است (حدود ۱۰۰KB). فایل را دانلود و پاک کنید.';if(j._s!=200)throw 'نوشتن در فایل انجام نشد (پاسخ '+j._s+')';wfs(j.size);return j;}
+function wfs(sz){$('wF').innerHTML=sz==null?'—':`<span class="n">${(sz/1024).toFixed(1)} / 100 KB</span>`;}
+async function winfo(){try{const j=await req('/benchlog?i=1');if(j._s!=200)return null;wfs(j.size);if(!j.fs)$('wF').innerHTML='<b class="erc">فایل‌سیستم ESP در دسترس نیست</b>';return j;}catch(e){return null;}}
+async function wclear(){if(W.run)return;if(!confirm('فایل ثبت بنچ کامل پاک شود؟ (اول آن را دانلود کنید)'))return;const j=await req('/benchlog/clear','POST');if(j._s==200){try{localStorage.removeItem('wrun');}catch(e){}wst('فایل پاک شد.','cm g');}else wst('پاک کردن انجام نشد.','cm r');winfo();}
+const asc=s=>String(s||'').replace(/[^ -~]/g,'').replace(/,/g,';').trim().slice(0,80);
+function wlist(){const a=$('wL').value.split(/[,، ]+/).filter(x=>x!=='').map(Number);if(!a.length||a.some(x=>!(x>=0&&x<=50)))throw 'فهرست duty نامعتبر است (درصد بین ۰ و ۵۰، با کاما جدا؛ مثلاً 5,10,15,20)';return a;}
+/* فرم مولتی‌متر: تا کاربر یکی از سه دکمه را نزند، مرحله نگه داشته می‌شود */
+function wform(sc,i,N,pm,m,act){const F=(id,lb,req_)=>`<label>${lb}${req_?' <b class="wr">(اجباری)</b>':' <span class="lb">(اختیاری)</span>'}<input type="number" step="any" id="${id}"></label>`;
+ const S=n=>{const o=(n-1)*5;return `<div class="n">CH${n}${act.includes(n)?'':' (cut)'}: raw ${m[o].a.toFixed(1)} (${m[o].lo}..${m[o].hi}) · unf ${r0(m[o+1].a)} · filt ${r0(m[o+2].a)} (${m[o+2].lo}..${m[o+2].hi}) · iest ${r0(m[o+3].a)} mA · duty ${pc(r0(m[o+4].a))}</div>`;};
+ $('wQ').innerHTML=`<div class="ti">${sc} · مرحلهٔ ${i+1} از ${N} · duty ${pm/10}%</div><div class="bsum">${S(1)}${S(2)}<div class="n">Vin ${v2(m[10].a)} · Vhigh ${v2(m[12].a)} · Vlow ${v2(m[11].a)} V · ${m.n} frames</div></div>
+<div class="bqr">${act.map(n=>F('wI'+n,'آمپرمتر کانال '+n+' mA',1)).join('')}${F('wVi','ولت‌متر ورودی V')}${F('wVh','ولت‌متر باتری بالا V')}${F('wVl','ولت‌متر باتری پایین V')}<label>یادداشت <span class="lb">(اختیاری، فقط حروف انگلیسی)</span><input type="text" id="wN" class="dl"></label></div>
+<div class="bqr2"><button class="sb" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2" id="wRe">تکرار همین مرحله</button><button class="sb stp2" id="wEn">پایان</button></div>`;$('wQ').classList.add('v');
+ return new Promise(res=>{$('wGo').onclick=()=>{const v={};for(const n of act){const x=gv('wI'+n);if(!(x>=0)||$('wI'+n).value==='')return alert('عدد آمپرمتر کانال '+n+' اجباری است.');v['i'+n]=x;}
+   ['Vi','Vh','Vl'].forEach(k=>{const x=gv('w'+k);v[k]=x==null?null:r0(x*1000);});v.note=asc($('wN').value);res({a:'next',v});};
+  $('wRe').onclick=()=>res({a:'repeat'});$('wEn').onclick=()=>res({a:'end'});
+  const t=setInterval(()=>{try{wchk();}catch(e){clearInterval(t);res({a:'err',e});}},200);$('wQ').dataset.t=t;}).finally(()=>{clearInterval(+$('wQ').dataset.t);$('wQ').classList.remove('v');$('wQ').innerHTML='';});}
+function wrow(sc,i,pm,se,sa,m,v){const q=x=>x==null?'-':x,o=n=>(n-1)*5,C=n=>[m[o(n)].a.toFixed(1),m[o(n)].lo,m[o(n)].hi,r0(m[o(n)+1].a),r0(m[o(n)+2].a),m[o(n)+2].lo,m[o(n)+2].hi,r0(m[o(n)+3].a)];
+ return [sc,i+1,pm,se,sa,...C(1),...C(2),r0(m[10].a),r0(m[12].a),r0(m[11].a),q(v.i1),q(v.i2),q(v.Vi),q(v.Vh),q(v.Vl),v.note||'-'].join(',')+'\n';}
+const FN=['r1','u1','f1','e1','d1','r2','u2','f2','e2','d2','vin','vlo','vhi'];
+async function wsample(ms){let j=await req('/m','POST');if(j._s!=200)throw 'پنجرهٔ آمار ESP پاسخ نداد';await wwait(ms,'نمونه‌برداری');j=await req('/m');if(!j.n)throw 'در این بازه TLM نرسید';
+ const m=FN.map((k,i)=>({a:j.s[i]/j.n,lo:j.lo[i],hi:j.hi[i]}));m.n=j.n;return m;}
+function wtab(sc){const R=W.rows[sc]||[];$('wT'+sc).innerHTML=R.length?`<div class="lb">${sc}</div><div class="tw"><table class="bt2"><tr><th>step</th><th>duty%</th><th>raw1</th><th>filt1</th><th>iest1</th><th>DMM1</th><th>raw2</th><th>filt2</th><th>iest2</th><th>DMM2</th><th>Vin</th></tr>${R.map(r=>`<tr>${r.map(x=>`<td>${x}</td>`).join('')}</tr>`).join('')}</table></div>`:'';}
+async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');let L,se,sa;
+ try{L=wlist();}catch(e){return alert(e);}se=r0(Math.max(1,Math.min(60,+$('wSe').value||3))*1000);sa=r0(Math.max(1,Math.min(60,+$('wSa').value||3))*1000);
+ const SC=Object.keys(WSC).filter(k=>$('wc'+k).checked);if(!SC.length)return alert('حداقل یک جدول را انتخاب کنید.');
+ const o={};[11,12,16,18,19].forEach(i=>o[i]=D.p[i]);if(Object.values(o).some(v=>v==null))return alert('پارامترها هنوز از STM32 خوانده نشده‌اند.');
+ if(D.p[15]===1||D.p[17]===1)return alert('مود duty فیکس (۱۵/۱۷) روشن است؛ اول خاموشش کنید.');
+ const fi=await winfo();if(!fi||!fi.fs)return alert('فایل‌سیستم ESP در دسترس نیست؛ در Arduino IDE چیدمان فلشِ دارای FS را انتخاب و دوباره فلش کنید.');
+ if(!confirm('ثبت داده شروع شود؟ جدول‌ها: '+SC.join('، ')+'\nپنل duty هر مرحله را می‌گذارد و بعد منتظر عدد مولتی‌متر شما می‌ماند. در پایان هر جدول تنظیمات قبلی برمی‌گردد.'))return;
+ W={run:true,abort:false,act:null,man:false,rows:{}};document.body.classList.add('br');SC.forEach(sc=>$('wT'+sc).innerHTML='');$('wDone').classList.remove('v');RS={};let err=null;
+ try{for(const sc of SC){const act=WSC[sc];W.rows[sc]=[];
+   let run=1;try{run=(+localStorage.getItem('wrun')||0)+1;localStorage.setItem('wrun',run);}catch(e){}
+   wst(sc+': آماده‌سازی (duty صفر، قطع/وصل کانال‌ها، مود دستی)…');W.act=null;W.man=false;
+   await setv(16,0);await setv(18,0);for(const n of [1,2])await setv(10+n,act.includes(n)?1:0);
+   await setv(19,1);{const e=Date.now()+3000;while(!(D.fl&32)){if(Date.now()>e)throw 'مود دستی روشن نشد';await sl(100);}}W.man=true;W.act=act;
+   const p=D.p;await wlog(`# run ${run} date=${ts()} scenario=${sc} duty_list=${L.join(';')} off1=${p[0]} gain1=${p[2]} off2=${p[1]} gain2=${p[3]} eta1=${p[9]} eta2=${p[10]} med=${p[7]} avg=${p[8]} seq=${D.seq}\n`);
+   try{for(let i=0;i<L.length;){const pm=r0(L[i]*10);
+     for(const n of act){const c=D.p[12+n],v=Math.min(pm,c==null?500:c,500);await setv(14+2*n,v);}
+     await wwait(se,sc+' · مرحلهٔ '+(i+1)+' از '+L.length+' · duty '+L[i]+'% · صبر');const m=await wsample(sa);
+     wst(sc+' · مرحلهٔ '+(i+1)+': عدد مولتی‌متر را وارد کنید','cm wr');const f=await wform(sc,i,L.length,pm,m,act);
+     if(f.a=='err')throw f.e;if(f.a=='end'){W.abort=true;throw 'پایان توسط کاربر';}if(f.a=='repeat')continue;
+     await wlog(wrow(sc,i,pm,se,sa,m,f.v));
+     W.rows[sc].push([i+1,L[i],m[0].a.toFixed(1),r0(m[2].a),r0(m[3].a),f.v.i1??'-',m[5].a.toFixed(1),r0(m[7].a),r0(m[8].a),f.v.i2??'-',v2(m[10].a)]);wtab(sc);
+     if(sc!='BOTH'){const n=act[0],o_=(n-1)*5;(RS[n]=RS[n]||{n,R:[]}).R.push({d:L[i],raw:m[o_].a,pm:m[o_+2].a,di:f.v['i'+n]});}
+     i++;}}
+   finally{await wrestore(o);}}}
+ catch(e){err=e;}
+ W.run=false;W.act=null;W.man=false;document.body.classList.remove('br');
+ [1,2].forEach(n=>{if(RS[n])wfit(n);});try{localStorage.setItem('wrs',JSON.stringify(RS));}catch(e){}
+ if(err&&err!=='پایان توسط کاربر')wst('ثبت متوقف شد: '+err+' · تنظیمات قبلی برگشت. خط‌های ثبت‌شده در فایل مانده‌اند.','cm r');else wst(err?'ثبت با دکمهٔ پایان تمام شد؛ تنظیمات قبلی برگشت.':'همهٔ جدول‌ها ثبت شد؛ تنظیمات قبلی برگشت.','cm g');
+ $('wDone').classList.add('v');winfo();}
+/* برازش گین برای تب اصلاح و محاسبه (فقط نمایش؛ چیزی ارسال نمی‌شود) */
+function wfit(n){const S=RS[n],off=D.p[n-1],R=S.R.filter(r=>r.di>0).map(r=>({...r,net:Math.max(r.raw-off,0)})).filter(r=>r.net>0);S.gA=S.gF=S.oF=null;if(R.length<1)return;
+ S.gA=r0(mean(R.map(r=>r.di*1000/(r.net*K_MA))));if(R.length<2)return;const xs=R.map(r=>r.net),ys=R.map(r=>r.di),mx=mean(xs),my=mean(ys),sxx=xs.reduce((a,x)=>a+(x-mx)**2,0);if(!sxx)return;
+ const a=xs.reduce((s,x,i)=>s+(x-mx)*(ys[i]-my),0)/sxx,b=my-a*mx;S.gF=r0(a/K_MA*1000);S.oF=a?r0(off-b/a):off;}
 
 /* ----- تست B: صفر و اثر متقابل ----- */
 const BX=[[1,10],[1,15],[1,20],[2,10],[2,15],[2,20]];
@@ -558,11 +633,11 @@ function calcD(){if(!need())return;const T=[],S=[];
 const BOX=(k,title,desc,body,calc)=>`<div class="cd" id="bc${k}"><div class="ti">${title}</div><div class="ds">${desc}</div>${body}
 ${calc?`<div class="bqr2"><button class="sb" onclick="calc${k}()">محاسبه</button><button class="sb sb2" onclick="bclr('${k}')">پاک کردن اعداد</button></div><div id="ro${k}"></div><div class="gb bxw"><textarea id="bx${k}" readonly></textarea><button class="sb sb2" id="bk${k}" onclick="copy('${k}')">کپی</button></div>`:''}</div>`;
 $('p1').innerHTML=`<div class="cd"><div class="ti">راهنمای کلی</div><div class="ds"><ul>
-<li>همهٔ تست‌ها دستی‌اند: duty و قطع و وصل کانال را خودتان در <b>نوار کنترل</b> پایین همین متن می‌گذارید. پنل هیچ کاری را خودکار انجام نمی‌دهد و هیچ عددی را به برد نمی‌فرستد.</li>
+<li>تست‌های B، C و D دستی‌اند: duty و قطع و وصل کانال را خودتان در <b>نوار کنترل</b> پایین همین متن می‌گذارید. در <b>ثبت داده در فایل</b> پنل duty هر مرحله را می‌گذارد، ولی فقط با دکمهٔ شما جلو می‌رود. هیچ ضریبی خودکار به برد فرستاده نمی‌شود.</li>
 <li>در هر ردیف، بعد از اینکه عددها ثابت شد، دکمهٔ <b>خواندن از پنل</b> را بزنید. میانگین چند ثانیهٔ اخیر در ردیف نوشته می‌شود. عدد مولتی‌متر را خودتان تایپ کنید. همهٔ خانه‌ها قابل اصلاح‌اند.</li>
 <li>در آخر دکمهٔ <b>محاسبه</b> را بزنید، نتیجه را ببینید و بلوک متن را با دکمهٔ <b>کپی</b> بفرستید.</li>
 <li>اعداد در همین مرورگر ذخیره می‌مانند و با بستن یا تازه کردن صفحه پاک نمی‌شوند.</li>
-<li>ترتیب پیشنهادی: تست B (صفر)، تست A (خطی بودن)، اصلاح ضرایب در تب <b>اصلاح و محاسبه</b>، تست C (پایداری)، تست D (عملکرد).</li>
+<li>ترتیب پیشنهادی: تست B (صفر)، ثبت داده در فایل (SOLO1، SOLO2، BOTH)، اصلاح ضرایب در تب <b>اصلاح و محاسبه</b>، تست C (پایداری)، تست D (عملکرد).</li>
 <li>مود دستی فقط تا وقتی این صفحه باز است روشن می‌ماند. اگر صفحه بیش از ۱۰ ثانیه بسته یا قطع باشد، برد خودش مود دستی را خاموش و duty را صفر می‌کند.</li>
 <li>بعد از هر تست duty را صفر و کانال قطع‌شده را دوباره وصل کنید.</li></ul></div></div>
 <div class="cd bsb"><div class="hd"><b>نوار کنترل تست</b><div class="ct"><span class="lb">مود دستی</span><button class="sw w" id="s19b">—</button></div></div><div class="qs">${[1,2].map(n=>`<div class="q"><div class="hd"><b>کانال ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="qt${n}">—</span></div>
@@ -573,14 +648,20 @@ ${BOX('B','تست B · صفر و اثر متقابل دو کانال',`<b>هدف
 <b>مرحلهٔ ۳ (اثر کانال ۲ روی ۱، سه ردیف):</b> برعکس مرحلهٔ ۲. بعد duty هر دو را ۰ کنید و محاسبه بزنید.`,
 `<div class="tw"><table class="bt3"><tr><th>مرحله</th><th>raw</th><th></th></tr>${[1,2].map(n=>`<tr><td>صفر کانال ${n}</td><td>${I('bZ'+n,'',80)}</td><td><button class="sb sb2" onclick="bReadZ(${n})">خواندن از پنل</button></td></tr>`).join('')}</table></div>
 <div class="tw"><table class="bt3"><tr><th>کانال روشن</th><th>duty %</th><th>raw کانال خاموش</th><th></th></tr>${BX.map((x,i)=>`<tr><td>کانال ${x[0]} روشن، کانال ${3-x[0]} روی ۰</td><td>${I('bXd'+i,x[1],64)}</td><td>${I('bXr'+i,'',80)}</td><td><button class="sb sb2" onclick="bReadX(${i})">خواندن از پنل</button></td></tr>`).join('')}</table></div>`,1)}
-${BOX('A','تست A · خطی بودن جریان (دادهٔ کالیبراسیون)',`<b>هدف:</b> ببینیم عدد جریان پنل در چند نقطه با مولتی‌متر چقدر فرق دارد و این فرق ثابت است یا با جریان عوض می‌شود. نتیجه نشان می‌دهد یک گین کافی است یا گین به‌همراه آفست لازم است.<br>
-<b>لازم:</b> یک مولتی‌متر روی mA، سری با <b>ورودی ۲۴V همان کانال</b>. مولتی‌متر دوم سری با باتری اختیاری است و ضریب تبدیل را هم حساب می‌کند.<br>
-<b>مراحل (۴ نقطه: ۵، ۱۰، ۱۵ و ۲۰ درصد):</b><br>۱. کانال را انتخاب و کانال دیگر را با دکمهٔ <b>قطع</b> در نوار کنترل قطع کنید.<br>۲. مود دستی را روشن کنید.<br>
-۳. برای هر ردیف duty همان کانال را روی عدد ستون duty بگذارید و <b>اعمال duty</b> را بزنید. ۵ ثانیه صبر کنید تا عددها ثابت شوند.<br>
-۴. <b>خواندن از پنل</b> همان ردیف را بزنید (raw، جریان پنل، Vin و Vbat پر می‌شوند). عدد مولتی‌متر ورودی را تایپ کنید (و مولتی‌متر باتری اگر دارید).<br>
-۵. بعد از ۴ ردیف <b>محاسبه</b> را بزنید. اگر نقطهٔ بیشتری خواستید، <b>افزودن ردیف</b> را بزنید.<br>
-اگر duty اعمال نشد، سقف duty همان کانال (تب پنل) را ببینید.`,
-`<div class="bctl"><span class="lb">کانال تست</span>${SEL('aCh')}<button class="sb sb2" onclick="aAdd(1)">افزودن ردیف</button><button class="sb sb2" onclick="aAdd(-1)">حذف ردیف آخر</button></div><div class="tw"><table class="bt3" id="aT"></table></div>`,1)}
+${BOX('W','ثبت داده در فایل · SOLO1، SOLO2، BOTH (جای تست A)',`<b>هدف:</b> همهٔ چیزهایی که STM32 می‌بیند (raw خام ADC بدون هیچ فیلتر، جریان بدون فیلتر و فیلترشده، تخمین باتری و ولتاژها) به‌همراه عدد مولتی‌متر شما در یک فایل روی ESP ثبت می‌شود. فایل را دانلود و برای مهندس فرمور بفرستید. هیچ ضریبی خودکار اعمال نمی‌شود.<br>
+<b>سه جدول به ترتیب:</b> <b>SOLO1</b> فقط شارژر ۱ روشن و کانال ۲ قطع، <b>SOLO2</b> برعکس، <b>BOTH</b> هر دو با هم روی همان duty. فرق تنها و باهم همان اثر متقابل دو کانال است.<br>
+<b>لازم:</b> آمپرمتر سری با هر کانالی که روشن است (در BOTH دو آمپرمتر). ولت‌مترها اختیاری‌اند.<br>
+<b>مراحل:</b><br>۱. فهرست duty را به درصد بنویسید، هر عدد و هر تعداد (مثلاً 5,10,15,20). زمان صبر و نمونه‌برداری را اگر لازم است عوض کنید (پیش‌فرض ۳ و ۳ ثانیه).<br>
+۲. <b>شروع</b> را بزنید. پنل خودش مود دستی را روشن، کانال‌ها را قطع و وصل و duty مرحله را اعمال می‌کند، صبر و نمونه‌برداری می‌کند و بعد <b>می‌ایستد</b>.<br>
+۳. عدد آمپرمتر را (و ولت‌متر اگر دارید) در فرم بنویسید و <b>ثبت و مرحلهٔ بعد</b> را بزنید. تا این دکمه را نزنید، هیچ چیزی نوشته نمی‌شود و مرحله جلو نمی‌رود. اگر عدد ثابت نبود، <b>تکرار همین مرحله</b> را بزنید. <b>پایان</b> ثبت را همان‌جا تمام می‌کند.<br>
+۴. آخر هر جدول تنظیمات قبلی برمی‌گردد و جدول بعدی شروع می‌شود. در پایان پیام فایل آماده است و لینک دانلود نشان داده می‌شود.<br>
+هر اجرا یک خط شروع با آفست، گین، ضریب تبدیل، مدین و میانگین همان لحظه در فایل می‌نویسد. فایل حداکثر حدود ۱۰۰KB است.`,
+`<div class="bctl"><label class="lb">duty % <input type="text" id="wL" data-s class="dl" value="5,10,15,20" style="width:160px"></label><label class="lb">صبر s <input type="number" id="wSe" data-s value="3" min="1" max="60" style="width:64px"></label><label class="lb">نمونه‌برداری s <input type="number" id="wSa" data-s value="3" min="1" max="60" style="width:64px"></label>
+${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${k}</label>`).join('')}</div>
+<div class="bctl"><button class="sb brun" onclick="wStart()">شروع</button><button class="sb stp2 wstop" onclick="W.abort=true">پایان</button><span class="lb">فایل: <b id="wF">—</b></span><a class="sb sb2 lnk" href="/benchlog" download="benchlog.csv">دانلود فایل</a><button class="sb sb2 brun" onclick="wclear()">پاک کردن فایل</button></div>
+<div class="cm lb" id="wS0"></div><div class="bq gb" id="wQ"></div>
+<div class="wn gb" id="wDone" style="background:#10301f;color:#bff0d8"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div>
+${Object.keys(WSC).map(k=>`<div id="wT${k}"></div>`).join('')}`,0)}
 ${BOX('C','تست C · پایداری در یک دقیقه',`<b>هدف:</b> ببینیم با duty ثابت، جریان در یک دقیقه ثابت می‌ماند یا کم‌کم بالا یا پایین می‌رود (اثر گرم شدن).<br><b>لازم:</b> مولتی‌متر لازم نیست.<br>
 <b>مراحل (۷ ردیف، هر ۱۰ ثانیه یکی):</b><br>۱. کانال را انتخاب، کانال دیگر را قطع و مود دستی را روشن کنید.<br>۲. duty را روی ۱۵ درصد بگذارید و ۵ ثانیه صبر کنید.<br>
 ۳. <b>شروع زمان‌سنج</b> را بزنید و همان لحظه ردیف ۱ را بخوانید. بعد هر ۱۰ ثانیه ردیف بعدی را بخوانید تا ۶۰ ثانیه.<br>۴. محاسبه.`,
@@ -592,9 +673,9 @@ ${BOX('D','تست D · عملکرد شارژر خودکار (قبول: ۶۳۰ ت
 ۴. محاسبه. جریان نشسته = میانگین ۳ ردیف آخر. قبول وقتی است که جریان نشسته در بازه باشد و بعد از نشستن از بازه بیرون نرود.`,
 `<div class="bctl"><button class="sb sb2" onclick="swGo('d')">شروع زمان‌سنج</button><span class="lb">زمان: <b class="n" id="dE">—</b> ثانیه</span></div>
 <div class="tw"><table class="bt3"><tr><th>#</th><th>زمان s</th><th>iest کانال ۱</th><th>duty ۱ %</th><th>iest کانال ۲</th><th>duty ۲ %</th><th></th></tr>${Array.from({length:7},(_,i)=>`<tr><td>${i+1}</td><td>${I('dT'+i,i*10,64)}</td><td>${I('dI1'+i,'',72)}</td><td>${I('dD1'+i,'',60)}</td><td>${I('dI2'+i,'',72)}</td><td>${I('dD2'+i,'',60)}</td><td><button class="sb sb2" onclick="dRead(${i})">خواندن از پنل</button></td></tr>`).join('')}</table></div>`,1)}
-${BOX('E','تست E · کالیبراسیون یک‌دکمه‌ای (CAL)',`وقتی نتیجهٔ تست A نشان داد یک گین (و ضریب تبدیل) کافی است، کالیبراسیون را با کارت <b>کالیبراسیون با مولتی‌متر (CAL)</b> در ستون همان کانال در تب پنل انجام دهید: جریان را بالای ۵۰ mA ببرید، عدد مولتی‌متر را وارد و دکمهٔ گین یا ضریب تبدیل را بزنید. یا در تب <b>اصلاح و محاسبه</b> عددها را خودتان اصلاح و قبل از ارسال نتیجه را ببینید.`,'',0)}`;
-bload($('p1'));aRows();
-$('p1').addEventListener('input',bsave);$('p1').addEventListener('change',e=>{bsave();if(e.target.id=='aCh')RA=null;});
+${BOX('E','تست E · کالیبراسیون یک‌دکمه‌ای (CAL)',`وقتی مهندس از روی فایل ثبت‌شده گفت یک گین (و ضریب تبدیل) کافی است، کالیبراسیون را با کارت <b>کالیبراسیون با مولتی‌متر (CAL)</b> در ستون همان کانال در تب پنل انجام دهید: جریان را بالای ۵۰ mA ببرید، عدد مولتی‌متر را وارد و دکمهٔ گین یا ضریب تبدیل را بزنید. یا در تب <b>اصلاح و محاسبه</b> عددها را خودتان اصلاح و قبل از ارسال نتیجه را ببینید.`,'',0)}`;
+bload($('p1'));winfo();
+$('p1').addEventListener('input',bsave);$('p1').addEventListener('change',bsave);
 /* نوار کنترل: duty به درصد، محدود به سقف همان کانال */
 function qset(n){const v=gv('qm'+n);if(v==null||!D)return;const lim=Math.min(500,D.p[12+n]==null?500:D.p[12+n]),pm=Math.max(0,Math.min(lim,r0(v*10)));
  if(r0(v*10)>lim)alert('duty به سقف کانال ('+lim/10+'%) محدود شد.');if(!(D.fl&32)&&!confirm('مود دستی خاموش است؛ این عدد فقط مقدار duty فیکس ذخیره می‌شود. ادامه؟'))return;send(14+2*n,pm);$('qm'+n).value='';}
@@ -607,10 +688,10 @@ function bview(d){const t=d.t,p=d.p,man=(d.fl&32)!=0,sup=p[19]!=null,b=$('s19b')
 
 /* ---------- تب اصلاح و محاسبه: عدد را عوض کنید، نتیجه را ببینید، بعد در صورت تمایل بفرستید ---------- */
 $('p2').innerHTML=`<div class="cd"><div class="ti">اصلاح و محاسبه</div><div class="ds">در این صفحه آفست، گین و ضریب تبدیل هر کانال و آفست ولتاژها را <b>روی کاغذ</b> تغییر می‌دهید و با دکمهٔ <b>محاسبه</b> می‌بینید پنل با این عددها چه جریانی نشان می‌داد و خطا در برابر مولتی‌متر چقدر می‌شد. تا دکمهٔ <b>ارسال به برد</b> را نزنید، هیچ چیزی به STM32 فرستاده نمی‌شود.<br>
-عددها را می‌توانید از مقادیر فعلی برد یا از نتیجهٔ تست A پر کنید. اگر تست A برای همین کانال محاسبه شده باشد، جدول آن هم با عددهای جدید دوباره حساب می‌شود.</div></div>
+عددها را می‌توانید از مقادیر فعلی برد یا از جدول SOLO همان کانال (ثبت داده در فایل) پر کنید. اگر جدول SOLO این کانال ثبت شده باشد، ردیف‌های آن هم با عددهای جدید دوباره حساب می‌شود.</div></div>
 <div class="ch">${[1,2].map(n=>`<div class="cd"><div class="hd"><b>کانال ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b></div>
 <div class="eg3">${[['O','آفست صفر','count',n-1],['G','گین','‰',n+1],['E','ضریب تبدیل','‰',8+n]].map(x=>`<label>${x[1]} <span class="lb">${x[2]}</span>${I('e'+x[0]+n,'',90)}<span class="lb">برد: <b class="n" id="e${x[0]}b${n}">—</b></span></label>`).join('')}</div>
-<div class="bctl"><button class="sb sb2" onclick="eFill(${n})">پر کردن از مقادیر برد</button><button class="sb sb2" onclick="eFromA(${n},0)">از تست A: گین میانگین</button><button class="sb sb2" onclick="eFromA(${n},1)">از تست A: گین + آفست (خط)</button><button class="sb sb2" onclick="eFromA(${n},2)">از تست A: ضریب تبدیل</button></div>
+<div class="bctl"><button class="sb sb2" onclick="eFill(${n})">پر کردن از مقادیر برد</button><button class="sb sb2" onclick="eFromA(${n},0)">از SOLO${n}: گین میانگین</button><button class="sb sb2" onclick="eFromA(${n},1)">از SOLO${n}: گین + آفست (خط)</button></div>
 <div class="sec">نقطهٔ آزمایش</div><div class="eg3">${[['R','raw','count'],['V','Vin','V'],['B','Vbat','V'],['I','مولتی‌متر ورودی','mA'],['J','مولتی‌متر باتری','mA']].map(x=>`<label>${x[1]} <span class="lb">${x[2]}</span>${I('e'+x[0]+n,'',90)}</label>`).join('')}</div>
 <div class="bctl"><button class="sb sb2" onclick="eRead(${n})">خواندن از پنل</button><button class="sb" onclick="eCalc(${n})">محاسبه</button><button class="sb off2" onclick="eSend(${n})">ارسال به برد</button></div><div id="eX${n}"></div></div>`).join('')}</div>
 <div class="cd"><div class="ti">آفست ولتاژها</div><div class="tw"><table class="bt3"><tr><th>ولتاژ</th><th>نمایش فعلی V</th><th>آفست برد mV</th><th>آفست جدید mV</th><th>مولتی‌متر V</th><th>نمایش با آفست جدید</th><th></th></tr>
@@ -619,8 +700,8 @@ ${[0,1,2].map(k=>`<tr><td>${V[k][0]}</td><td class="n" id="eVs${k}">—</td><td 
 bload($('p2'));$('p2').addEventListener('input',bsave);
 const EID=n=>({O:n-1,G:n+1,E:8+n});
 function eFill(n){if(!need())return;const m=EID(n);Object.keys(m).forEach(k=>sv('e'+k+n,nz(D.p[m[k]])));bsave();}
-function eFromA(n,w){if(!RA||RA.n!==n)return alert('اول تست A را برای کانال '+n+' محاسبه کنید (تب تست‌ها).');
- if(w==0){sv('eG'+n,RA.gA);if(gv('eO'+n)==null)sv('eO'+n,D.p[n-1]);}else if(w==1){sv('eG'+n,RA.gF);sv('eO'+n,Math.min(255,Math.max(0,RA.oF)));}else{if(RA.etA==null)return alert('تست A عدد مولتی‌متر باتری ندارد.');sv('eE'+n,Math.min(999,RA.etA));}bsave();eCalc(n);}
+function eFromA(n,w){const S=RS[n];if(!S||S.gA==null)return alert('اول جدول SOLO'+n+' را در ثبت داده در فایل پر کنید (تب تست‌ها).');
+ if(w==0){sv('eG'+n,S.gA);if(gv('eO'+n)==null)sv('eO'+n,D.p[n-1]);}else{if(S.gF==null)return alert('برای خط حداقل ۲ مرحلهٔ متفاوت لازم است.');sv('eG'+n,S.gF);sv('eO'+n,Math.min(255,Math.max(0,S.oF)));}bsave();eCalc(n);}
 function eRead(n){if(!live(10))return;const c=n-1;sv('eR'+n,r0(av(c,'r',10)));sv('eV'+n,(av(c,'v',10)/1000).toFixed(2));sv('eB'+n,(av(c,'b',10)/1000).toFixed(2));bsave();}
 function eCalc(n){if(!need())return;const p=D.p,bo=p[n-1],bg=p[n+1],be=p[8+n],o=gv('eO'+n)??bo,g=gv('eG'+n)??bg,e=gv('eE'+n)??be,raw=gv('eR'+n),vin=gv('eV'+n),vb=gv('eB'+n),di=gv('eI'+n),db=gv('eJ'+n);
  const mA=(r,oo,gg)=>Math.max(r-oo,0)*K_MA*gg/1000,er=(x,y)=>y>0?((x-y)/y*100).toFixed(1)+' %':'-',L=[];
@@ -628,7 +709,7 @@ function eCalc(n){if(!need())return;const p=D.p,bo=p[n-1],bg=p[n+1],be=p[8+n],o=
  if(raw!=null){const a=mA(raw,bo,bg),b=mA(raw,o,g);L.push(`<div class="fx">mA = (${raw} − ${o}) × 0.8776 × ${g}/1000 = ${f1(b)}</div><div>جریان پنل با مقادیر برد <b class="n">${f1(a)}</b> mA · با مقادیر جدید <b class="n">${f1(b)}</b> mA`+(di>0?` · مولتی‌متر <b class="n">${di}</b> mA · خطا قبل <b class="n">${er(a,di)}</b> · بعد <b class="n">${er(b,di)}</b>`:'')+'</div>');
   if(vin&&vb){const ia=iestN(r0(a),vin*1000,be,vb*1000),ib=iestN(r0(b),vin*1000,e,vb*1000);L.push(`<div>iest با مقادیر برد <b class="n">${ia}</b> mA · با مقادیر جدید <b class="n">${ib}</b> mA`+(db>0?` · مولتی‌متر باتری <b class="n">${db}</b> mA · خطا قبل <b class="n">${er(ia,db)}</b> · بعد <b class="n">${er(ib,db)}</b>`:'')+'</div>');}}
  else L.push('<div class="lb">برای دیدن نتیجه raw را وارد کنید یا خواندن از پنل را بزنید.</div>');
- if(RA&&RA.n===n)L.push(`<div class="lb" style="margin-top:8px">جدول تست A با عددهای جدید</div><div class="tw"><table class="bt2"><tr><th>duty%</th><th>DMM mA</th><th>board</th><th>new</th><th>error board</th><th>error new</th></tr>${RA.R.map(r=>{const a=mA(r.raw,bo,bg),b=mA(r.raw,o,g);return `<tr><td>${nz(r.d)}</td><td>${r.di}</td><td>${f1(a)}</td><td>${f1(b)}</td><td>${er(a,r.di)}</td><td>${er(b,r.di)}</td></tr>`;}).join('')}</table></div>`);
+ if(RS[n])L.push(`<div class="lb" style="margin-top:8px">جدول SOLO${n} با عددهای جدید</div><div class="tw"><table class="bt2"><tr><th>duty%</th><th>DMM mA</th><th>board</th><th>new</th><th>error board</th><th>error new</th></tr>${RS[n].R.filter(r=>r.di>0).map(r=>{const a=mA(r.raw,bo,bg),b=mA(r.raw,o,g);return `<tr><td>${nz(r.d)}</td><td>${r.di}</td><td>${f1(a)}</td><td>${f1(b)}</td><td>${er(a,r.di)}</td><td>${er(b,r.di)}</td></tr>`;}).join('')}</table></div>`);
  $('eX'+n).innerHTML=L.join('');}
 function eSend(n){if(!need())return;const m=EID(n),C=[];Object.keys(m).forEach(k=>{const id=m[k],v=gv('e'+k+n);if(v==null)return;const q=Math.min(P[id][3],Math.max(P[id][2],r0(v)));if(q!==D.p[id])C.push([id,q]);});
  if(!C.length)return alert('عددی با مقدار برد فرق ندارد.');if(!confirm('این مقادیر به برد فرستاده شوند؟\n'+C.map(c=>P[c[0]][0]+' کانال '+n+': '+nz(D.p[c[0]])+' ← '+c[1]).join('\n')))return;C.forEach(c=>send(c[0],c[1]));}
@@ -1680,12 +1761,8 @@ static void func__Esp_HttpSetParam(void)
     int32_t int32_t__clamped = (int32_t__value < int32_t__min) ? int32_t__min : int32_t__value;
     int32_t__clamped = (int32_t__clamped > int32_t__max) ? int32_t__max : int32_t__clamped;
 
-    /* [EN] Median size is 1/3/5: round an even value DOWN like the STM32 does.
-       [FA] اندازهٔ مدین ۱/۳/۵ است: مقدار زوج مثل STM32 به پایین گرد می‌شود. */
-    if ((uint8_t__id == ESP_PARAM_MEDIAN_SIZE) && ((int32_t__clamped % 2) == 0))
-    {
-        int32_t__clamped = int32_t__clamped - 1;
-    }
+    /* [EN] v1.4: any median size 1..15 is valid (even sizes too), so no rounding here.
+       [FA] نسخه ۱.۴: هر اندازهٔ مدین ۱..۱۵ مجاز است (زوج هم)، پس اینجا گرد نمی‌شود. */
 
     UINT32_T__G__TxParamValue[uint8_t__id] = (uint32_t)int32_t__clamped;
     BOOL__G__TxParamPending[uint8_t__id] = true;
@@ -1792,6 +1869,145 @@ static void func__Esp_HttpStatRead(void)
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
 
+/**
+ * @brief  [EN] Current size of the bench log file (0 when missing or no file system).
+ *         [FA] اندازهٔ فعلی فایل ثبت بنچ (بدون فایل یا فایل‌سیستم = ۰).
+ * @return [EN] Size in bytes / [FA] اندازه به بایت
+ */
+static uint32_t func__Esp_BenchLogSize(void)
+{
+    uint32_t uint32_t__size = 0u;
+
+    if (BOOL__G__FsOk && LittleFS.exists(ESP_BENCHLOG_PATH))
+    {
+        File file__log = LittleFS.open(ESP_BENCHLOG_PATH, "r");
+        if (file__log)
+        {
+            uint32_t__size = (uint32_t)file__log.size();
+            file__log.close();
+        }
+    }
+
+    return uint32_t__size;
+}
+
+/**
+ * @brief  [EN] GET /benchlog : download the CSV (header only when empty); GET /benchlog?i=1 : {fs,size,max}.
+ *         [FA] مسیر GET /benchlog : دانلود CSV (خالی = فقط عنوان ستون‌ها)؛ GET /benchlog?i=1 : {fs,size,max}.
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__Esp_HttpBenchLogGet(void)
+{
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+
+    if (ESP_WEB_SERVER_T__G__Server.hasArg("i"))
+    {
+        (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"fs\":%u,\"size\":%lu,\"max\":%lu}",
+                       BOOL__G__FsOk ? 1u : 0u, (unsigned long)func__Esp_BenchLogSize(),
+                       (unsigned long)ESP_BENCHLOG_MAX_BYTES);
+        ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+        return;
+    }
+
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Content-Disposition", "attachment; filename=benchlog.csv");
+    if (func__Esp_BenchLogSize() == 0u)
+    {
+        ESP_WEB_SERVER_T__G__Server.send(200, "text/csv", ESP_BENCHLOG_HEADER);
+        return;
+    }
+
+    File file__log = LittleFS.open(ESP_BENCHLOG_PATH, "r");
+    if (!file__log)
+    {
+        ESP_WEB_SERVER_T__G__Server.send(503, "text/plain", "fs");
+        return;
+    }
+    (void)ESP_WEB_SERVER_T__G__Server.streamFile(file__log, "text/csv");
+    file__log.close();
+}
+
+/**
+ * @brief  [EN] POST /benchlog/add (text/plain body): append panel-built CSV line(s).
+ *              400 = empty/too long/not newline-terminated/non-printable, 503 = no file system,
+ *              507 = the ~100 KB cap would be exceeded (nothing written).
+ *         [FA] مسیر POST /benchlog/add (بدنهٔ متنی): افزودن خط(های) CSV ساختهٔ پنل.
+ *              400 = خالی/خیلی بلند/بدون خط جدید پایانی/نویسهٔ غیرقابل چاپ، 503 = فایل‌سیستم نیست،
+ *              507 = از سقف حدود ۱۰۰KB می‌گذرد (چیزی نوشته نمی‌شود).
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__Esp_HttpBenchLogAdd(void)
+{
+    const String string__body = ESP_WEB_SERVER_T__G__Server.arg("plain");
+    const uint32_t uint32_t__len = (uint32_t)string__body.length();
+    uint32_t uint32_t__index;
+    uint32_t uint32_t__size;
+    uint32_t uint32_t__extra;
+
+    if ((uint32_t__len == 0u) || (uint32_t__len > ESP_BENCHLOG_MAX_POST) || (string__body[uint32_t__len - 1u] != '\n'))
+    {
+        ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
+        return;
+    }
+    for (uint32_t__index = 0u; uint32_t__index < uint32_t__len; uint32_t__index++)
+    {
+        const char char__c = string__body[uint32_t__index];
+        if ((char__c != '\n') && ((char__c < ' ') || (char__c > '~')))
+        {
+            ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0}");
+            return;
+        }
+    }
+    if (!BOOL__G__FsOk)
+    {
+        ESP_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0}");
+        return;
+    }
+
+    uint32_t__size = func__Esp_BenchLogSize();
+    uint32_t__extra = (uint32_t__size == 0u) ? (uint32_t)(sizeof(ESP_BENCHLOG_HEADER) - 1u) : 0u;
+    if ((uint32_t__size + uint32_t__extra + uint32_t__len) > ESP_BENCHLOG_MAX_BYTES)
+    {
+        (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"ok\":0,\"full\":1,\"size\":%lu}", (unsigned long)uint32_t__size);
+        ESP_WEB_SERVER_T__G__Server.send(507, "application/json", CHAR__G__JsonBuffer);
+        return;
+    }
+
+    File file__log = LittleFS.open(ESP_BENCHLOG_PATH, "a");
+    if (!file__log)
+    {
+        ESP_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0}");
+        return;
+    }
+    if (uint32_t__extra != 0u)
+    {
+        (void)file__log.print(ESP_BENCHLOG_HEADER);
+    }
+    (void)file__log.print(string__body);
+    file__log.close();
+
+    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE, "{\"ok\":1,\"size\":%lu}", (unsigned long)func__Esp_BenchLogSize());
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+}
+
+/**
+ * @brief  [EN] POST /benchlog/clear : delete the CSV (the next append recreates it with the header).
+ *         [FA] مسیر POST /benchlog/clear : حذف CSV (افزودن بعدی آن را با سطر عنوان از نو می‌سازد).
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__Esp_HttpBenchLogClear(void)
+{
+    if (!BOOL__G__FsOk)
+    {
+        ESP_WEB_SERVER_T__G__Server.send(503, "application/json", "{\"ok\":0}");
+        return;
+    }
+    if (LittleFS.exists(ESP_BENCHLOG_PATH))
+    {
+        (void)LittleFS.remove(ESP_BENCHLOG_PATH);
+    }
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
+}
+
 /* ==================== Arduino Entry Points ==================== */
 
 /**
@@ -1812,6 +2028,14 @@ void setup(void)
 #endif
     (void)WiFi.softAP(ESP_WIFI_AP_SSID, ESP_WIFI_AP_PASS);
 
+    /* [EN] Mount the file system for the bench log; format once if it has never been used.
+       [FA] سوار کردن فایل‌سیستم برای فایل ثبت بنچ؛ اگر هرگز استفاده نشده یک‌بار فرمت می‌شود. */
+#if defined(ESP8266)
+    BOOL__G__FsOk = LittleFS.begin();
+#else
+    BOOL__G__FsOk = LittleFS.begin(true);
+#endif
+
     ESP_WEB_SERVER_T__G__Server.on("/", HTTP_GET, func__Esp_HttpRoot);
     ESP_WEB_SERVER_T__G__Server.on("/f.css", HTTP_GET, func__Esp_HttpFont);
     ESP_WEB_SERVER_T__G__Server.on("/t", HTTP_GET, func__Esp_HttpTelemetry);
@@ -1819,6 +2043,9 @@ void setup(void)
     ESP_WEB_SERVER_T__G__Server.on("/c", HTTP_POST, func__Esp_HttpCalReference);
     ESP_WEB_SERVER_T__G__Server.on("/m", HTTP_POST, func__Esp_HttpStatReset);
     ESP_WEB_SERVER_T__G__Server.on("/m", HTTP_GET, func__Esp_HttpStatRead);
+    ESP_WEB_SERVER_T__G__Server.on("/benchlog", HTTP_GET, func__Esp_HttpBenchLogGet);
+    ESP_WEB_SERVER_T__G__Server.on("/benchlog/add", HTTP_POST, func__Esp_HttpBenchLogAdd);
+    ESP_WEB_SERVER_T__G__Server.on("/benchlog/clear", HTTP_POST, func__Esp_HttpBenchLogClear);
     ESP_WEB_SERVER_T__G__Server.begin();
 }
 
