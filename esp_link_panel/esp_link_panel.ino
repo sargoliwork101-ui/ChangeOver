@@ -11,13 +11,17 @@
  *                  reset when the DMM form OPENS and is read the moment the user PRESSES submit, so the
  *                  CSV row matches the typed meters instead of a stale earlier window; sample_ms in the
  *                  CSV is the actual window duration. One 71-column row per step in LittleFS
- *                  /benchlog.csv, GET /benchlog to download.
+ *                  /benchlog.csv, GET /benchlog to download. v1.8 (user order 2026-09-25,
+ *                  same day): the bench tab also carries a compact PERMANENT manual-duty card
+ *                  (manual-mode toggle + per-channel duty + both-to-zero) so current tests can
+ *                  run without the removed engineer tab; the section 5.2 safety contract (10 s
+ *                  dead-man, channel ceilings, JIT re-arm) is unchanged.
  *               The v1.6 extras (CAL card, manual tests B/C/D, correction/analysis tab, engineer mode)
- *               were removed; nothing was ever calibrated automatically and the wire protocol
- *               (SET_PARAM / GET_PARAMS / TLM) is unchanged and still two-way.
+ *               were removed except the manual-duty card above; nothing was ever calibrated
+ *               automatically and the wire protocol (SET_PARAM / GET_PARAMS / TLM) is unchanged.
  *          [FA] پل ESP-Link سمت ESP: تبادل فریم باینری با STM32 روی UART (921600 8N1، مطابق
  *               ESP_AGENT_SPEC.md نسخهٔ ۱.۴) و یک پنل وب دارک راست‌به‌چپ با فونت وزیرمتن و «دو» تب
- *               (ساده‌سازی نسخهٔ ۱.۷، دستور کاربر ۲۰۲۶-۰۹-۲۵):
+ *               (ساده‌سازی نسخهٔ ۱.۷، دستور کاربر ۲۰۲۶-۰۹-۲۵؛ کارت دیوتی دستی دائمی برگشت در ۱.۸):
  *               ۱) پنل: ولتاژهای مشترک (با کالیبراسیون آفست از مولتی‌متر)، فیلتر جریان (مدین ۱..۱۵،
  *                  میانگین ۱..۱۰۰) و یک ستون برای هر شارژر: وضعیت زنده، زنجیرهٔ اندازه‌گیری با فرمول
  *                  زنده، نمودار فیلتر و دکمهٔ قطع شارژر.
@@ -401,7 +405,7 @@ function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;
   const g=$('tg'+n);g.textContent=en===0?'وصل مجدد شارژر '+n:'قطع شارژر '+n;g.className='bt '+(en===0?'run':'cut');
 });
  for(let id=0;id<20;id++){const a=$('a'+id);if(a&&!(d.q&(1<<id)))a.textContent=p[id]==null?'—':p[id];}
- formulas(t,p);chart();
+ formulas(t,p);chart();mview(d);
  $('mb').classList.toggle('v',man);$('ka').innerHTML=man?(d.ka<1500?`پایش لینک فعال · <span class="n">keepalive ${d.ka} ms</span>`:'<b>keepalive متوقف است</b>'):'';}
 async function poll(){const c=new AbortController(),k=setTimeout(()=>c.abort(),2000);try{const r=await fetch('/t',{cache:'no-store',signal:c.signal});const d=await r.json();clearTimeout(k);if(document.hidden){D=d;hist(d);}else draw(d);}catch(e){clearTimeout(k);document.body.classList.add('dn');$('lk').classList.remove('on');$('lt').textContent='ESP در دسترس نیست';}
  setTimeout(poll,300);}
@@ -507,8 +511,34 @@ $('p1').innerHTML=`<div class="cd"><div class="ds">پنل duty هر مرحله �
 ${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${k}</label>`).join('')}</div>
 <div class="bctl"><button class="sb brun" onclick="wStart()">شروع</button><button class="sb stp2 wstop" onclick="W.abort=true">پایان</button><span class="lb">فایل: <b id="wF">—</b></span><a class="sb sb2 lnk" href="/benchlog" download="benchlog.csv">دانلود فایل</a><button class="sb sb2 brun" onclick="wclear()">پاک کردن فایل</button></div>
 <div class="cm lb" id="wS0"></div><div id="wT"></div>
-<div class="wn gb" id="wDone" style="background:#10301f;color:#bff0d8"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div></div>`;
+<div class="wn gb" id="wDone" style="background:#10301f;color:#bff0d8"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div>
+<div class="cd"><div class="ti">کنترل دستی دیوتی (تست جریان)</div><div class="ds">مود دستی شارژر خودکار و محافظت‌های باتری را متوقف می‌کند و دیوتی را خودتان تعیین می‌کنید؛ فقط حضور ۲۴V، قطع JIT، قطع ۱۵٫۰V، سقف دیوتی کانال و قطع کانال فعال می‌ماند. پنل را نبندید: ۱۰ ثانیه بعد از بستن، مود دستی خودکار خاموش و دیوتی صفر می‌شود. بعد از تریپ JIT، همان دیوتی را دوباره «اعمال» کنید تا دوباره مسلح شود.</div>
+<div class="bctl"><span class="lb">مود دستی</span><button class="sw w" id="s19">—</button>
+<label class="lb">دیوتی ۱ ٪ <input type="number" step="any" id="qm1" data-s style="width:64px"></label><button class="sb" onclick="qset(1)">اعمال ۱</button>
+<label class="lb">دیوتی ۲ ٪ <input type="number" step="any" id="qm2" data-s style="width:64px"></label><button class="sb" onclick="qset(2)">اعمال ۲</button>
+<button class="sb off2" id="ao">دیوتی هر دو = 0</button></div>
+<div class="lb" id="mq" style="margin-top:6px"></div></div></div>`;
 bload($('p1'));$('p1').addEventListener('input',bsave);$('p1').addEventListener('change',bsave);winfo();
+/* ---------- کنترل دستی دیوتی دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کارت فشرده در همین تب؛
+ * ---------- قرارداد ایمنی بخش 5.2 اسپک بدون تغییر: ددمن ۱۰ ثانیه، سقف کانال (p13/p14)،
+ * ---------- JIT با مسلح مجدد با ارسال دوبارهٔ همان دیوتی. هیچ ضریبی اینجا ارسال نمی‌شود. ---------- */
+const manOn=()=>!!(D&&((D.fl&32)||D.p[19]===1));
+async function qset(n){if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');
+ const v=gv('qm'+n);if(v==null)return alert('عدد دیوتی (٪) را وارد کنید.');if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');
+ const lim=(D.p[12+n]==null?500:D.p[12+n]),pm=Math.max(0,Math.min(lim,r0(v*10)));
+ if(pm<r0(v*10))alert('دیوتی به سقف کانال ('+(lim/10)+'٪) محدود شد.');
+ const man=manOn();let go=man;
+ if(!man)go=confirm('مود دستی خاموش است؛ روشن شود و دیوتی اعمال گردد؟\n(لغو = فقط عدد دیوتی ذخیره می‌شود)');
+ try{if(go&&!man)await setv(19,1);await setv(14+2*n,pm);$('qm'+n).value='';}catch(e){alert(e);}}
+$('s19').onclick=async()=>{if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');
+ if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');const man=manOn();
+ if(!man&&!confirm('شارژر خودکار و محافظت‌های باتری متوقف می‌شوند و دیوتی را خودتان تعیین می‌کنید. ادامه؟'))return;
+ try{await setv(19,man?0:1);}catch(e){alert(e);}};
+$('ao').onclick=async()=>{if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');
+ if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');try{await setv(16,0);await setv(18,0);}catch(e){alert(e);}};
+function mview(d){const b=$('s19');if(!b)return;const man=(d.fl&32)!=0,sup=d.p[19]!=null,pend=(d.q&(1<<19))!=0;
+ b.disabled=!sup||d.on!=1;b.textContent=!sup?'—':pend?'…':man?'روشن':'خاموش';b.classList.toggle('on',man);
+ $('mq').innerHTML=man?('کانال ۱: دیوتی '+pc(d.t[5])+' · جریان '+d.t[3]+' mA — کانال ۲: دیوتی '+pc(d.t[12])+' · جریان '+d.t[10]+' mA'):'';}
 poll();
 </script></body></html>)HTML";
 

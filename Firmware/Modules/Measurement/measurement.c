@@ -733,6 +733,58 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
     return func__BspMeasurement_CurrentCountsToShuntUv(uint16_t__counts);
 }
 
+/* ==================== Measurement Battery12 Bench Compensation (user order 2026-09-25) ==================== */
+
+#if (MEASUREMENT_BATTERY12_BENCH_COMP_ENABLE != 0u)
+/* [EN] The latched 2026-09-25 SOLO2 run (wizard v1.7: the /m window is read at
+        the submit press) measured the V12 channel against a DMM on the battery
+        terminals: the board read +140 mV at zero current (static divider error)
+        growing to +374 mV at 545 mA. Least squares over the seven points:
+        error = 143 mV + 0.47 ohm x I2, i.e. a static channel offset plus the
+        charge-path wire drop (board sense point sits above the battery terminal
+        while charging). This compensation subtracts both so the panel - and the
+        charger's own decisions on Vlow - work on the TRUE battery-2 terminal
+        voltage; Vhigh = V24 - V12 shifts up by the same amount, which is the
+        physically correct direction (an overreading V12 used to underread
+        Vhigh). Constants reflect the 2026-09-25 bench wiring; re-derive them if
+        the wiring changes. The I2 input is the post-LUT corrected current.
+   [FA] اجرای قفل‌در-لحظهٔ ثبت SOLO2 در ۲۰۲۶-۰۹-۲۵ (ویزارد 1.7: پنجرهٔ /m
+        همان لحظهٔ ثبت خوانده می‌شود) کانال V12 را با مولتی‌متر روی ترمینال
+        باتری سنجید: برد در جریان صفر ‎+۱۴۰mV می‌خواند (خطای ثابت مقسم) که در
+        ۵45mA به ‎+۳۷۴mV می‌رسد. کمینه مربعات روی هفت نقطه: خطا = ۱۴۳mV +
+        ۰٫۴۷ اهم × I2؛ یعنی آفست ثابت کانال به‌اضافهٔ افت مسیر شارژ (نقطهٔ
+        سنس برد حین شارژ بالاتر از ترمینال باتری است). این جبران هر دو را کم
+        می‌کند تا پنل - و تصمیم‌های خود شارژر روی Vlow - روی ولتاژ واقعی
+        ترمینال باتری ۲ کار کنند؛ Vhigh = V24 − V12 به همان اندازه بالا
+        می‌رود که جهت فیزیکی درستی است (V12ِ زیادخوان، Vhigh را کم‌خوان می‌کرد).
+        ثابت‌ها مال سیم‌بندی بنچ ۲۰۲۶-۰۹-۲۵ هستند؛ با تغییر سیم‌بندی دوباره
+        ساخته شوند. ورودی I2 همان جریان اصلاح‌شدهٔ بعد از جدول است. */
+#define MEASUREMENT_BATTERY12_BENCH_STATIC_MV 140u
+#define MEASUREMENT_BATTERY12_BENCH_PATH_MOHM 470u
+
+/**
+ * @brief  [EN] V12 true-battery compensation: subtract the static channel
+ *              error and the I2 x R charge-path wire drop, never below 0 mV.
+ *         [FA] جبران V12 به باتری واقعی: کم‌کردن خطای ثابت کانال و افت
+ *              مسیر I2×R؛ هرگز زیر 0mV نمی‌رود.
+ * @param  uint32_t__v12Mv      [EN] Measured V12 in mV / V12 اندازه‌گیری‌شده mV
+ * @param  uint32_t__current2Ma [EN] Corrected channel-2 current in mA / جریان اصلاح‌شدهٔ کانال ۲ mA
+ * @return uint32_t [EN] Compensated battery-low voltage in mV / ولتاژ جبران‌شدهٔ باتری پایین mV
+ */
+static uint32_t func__Measurement_Battery12BenchCompensate(uint32_t uint32_t__v12Mv,
+                                                           uint32_t uint32_t__current2Ma)
+{
+    uint32_t uint32_t__dropMv = MEASUREMENT_BATTERY12_BENCH_STATIC_MV +
+        ((uint32_t__current2Ma * MEASUREMENT_BATTERY12_BENCH_PATH_MOHM) / 1000u);
+
+    if (uint32_t__v12Mv > uint32_t__dropMv)
+    {
+        return uint32_t__v12Mv - uint32_t__dropMv;
+    }
+    return 0u;
+}
+#endif
+
 /* ==================== Measurement ApplyVoltageOffsetMv ==================== */
 
 /**
@@ -873,6 +925,19 @@ void func__Measurement_Run(void)
     uint32_t__battery12Mv =
         func__Measurement_V12CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_12V_BAT]);
 
+    /* [EN] Channel-2 sample conversion moved BEFORE the voltage chain (user
+            order 2026-09-25): the V12 bench compensation needs the corrected
+            channel-2 current. Pure function of the raw frame - no state, so
+            the earlier position changes nothing else.
+       [FA] تبدیل نمونهٔ کانال ۲ به قبل از زنجیرهٔ ولتاژ منتقل شد (دستور
+            کاربر ۲۰۲۶-۰۹-۲۵): جبران بنچ V12 به جریان اصلاح‌شدهٔ کانال ۲
+            نیاز دارد. تابع خالصِ فریم خام است - بدون وضعیت - پس جابه‌جایی
+            چیز دیگری را عوض نمی‌کند. */
+    uint32_t__current2SampleMa =
+        func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
+    uint32_t__current2ShuntUv =
+        func__Measurement_CurrentCountsToShuntUv(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
+
     /* [EN] Runtime voltage calibration offsets (ESP panel, user order
  *          2026-09-22): applied after the divider conversion and before the
  *          low/high derivation, each clamped by the setter to
@@ -889,6 +954,16 @@ void func__Measurement_Run(void)
         uint32_t__battery24Mv, INT32_T__G__Voltage24OffsetMv);
     uint32_t__battery12Mv = func__Measurement_ApplyVoltageOffsetMv(
         uint32_t__battery12Mv, INT32_T__G__Voltage12OffsetMv);
+#if (MEASUREMENT_BATTERY12_BENCH_COMP_ENABLE != 0u)
+    /* [EN] Bench compensation of the battery-low channel (user order
+            2026-09-25): static error + I2 wire drop, so Vlow and the derived
+            Vhigh describe the true battery terminals.
+       [FA] جبران بنچ کانال باتری پایین (دستور کاربر ۲۰۲۶-۰۹-۲۵): خطای
+            ثابت + افت مسیر I2 تا Vlow و Vhigh مشتق‌شده، ترمینال واقعی
+            باتری‌ها را توصیف کنند. */
+    uint32_t__battery12Mv = func__Measurement_Battery12BenchCompensate(
+        uint32_t__battery12Mv, uint32_t__current2SampleMa);
+#endif
     uint32_t__batteryLowMv = uint32_t__battery12Mv;
     if (uint32_t__battery24Mv >= uint32_t__battery12Mv)
     {
@@ -910,10 +985,6 @@ void func__Measurement_Run(void)
         func__Measurement_MedianFilterVoltageSample(0u, uint32_t__batteryLowMv);
     uint32_t__batteryHighMv =
         func__Measurement_MedianFilterVoltageSample(1u, uint32_t__batteryHighMv);
-    uint32_t__current2SampleMa =
-        func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
-    uint32_t__current2ShuntUv =
-        func__Measurement_CurrentCountsToShuntUv(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
     uint32_t__current2Ma =
         func__Measurement_ApplyCurrentFilters(1u, uint32_t__current2SampleMa);
 

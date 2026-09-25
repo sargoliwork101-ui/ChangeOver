@@ -13,7 +13,12 @@
 > and pushed. v1.7 panel (same day): simplified to two tabs (charts +
 > wizard), CAL card / manual tests / correction tab removed, and the
 > wizard latches the MCU statistics at the SUBMIT press (form-open
-> resets the window; `sample_ms` = actual duration).
+> resets the window; `sample_ms` = actual duration). v1.8 panel +
+> firmware v1.6 (same day, second order): the wizard tab also carries a
+> compact manual-duty control card (manual mode stays as a PERMANENT
+> feature for current testing - section 5.6), and the STM32 corrects the
+> V12 channel with the latched bench fit (static 140 mV + 0.47 ohm x I2
+> - section 5.3).
 >
 > v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
 > conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
@@ -320,8 +325,27 @@ Voltage chain (offsets = IDs 4/5/6, saturating add, never below 0 mV):
 Vin_mV = raw x 3300/4095 x 76000/6800 + VIN_OFFSET   (divider 69.2k/6.8k; = raw x 9.007)
 V24_mV = raw x 3300/4095 x 76000/6800 + V24_OFFSET   (same 69.2k/6.8k divider)
 V12_mV = raw x 3300/4095 x 41000/6800 + V12_OFFSET   (divider 34.2k/6.8k; = raw x 4.859)
+V12_mV -= 140 mV + 0.47 ohm x I2_bat_mA              (bench compensation, clamp at 0)
 Vlow_mV = V12_mV        Vhigh_mV = V24_mV - V12_mV (clamped at 0)
 ```
+
+V12 bench compensation (user order 2026-09-25, firmware v1.6): the same
+latched SOLO2 run compared the V12 channel against a DMM on the battery-2
+terminals - the board read +140 mV at zero current, growing to +374 mV at
+545 mA (least squares 143 mV + 0.47 ohm x I2: a static divider error plus
+the charge-path wire drop; the board sense point sits above the battery
+terminal while charging). The firmware subtracts `140 mV + 0.47 ohm x I2`
+from V12 AFTER the runtime V12_OFFSET, using the post-LUT channel-2
+current, BEFORE Vlow/Vhigh are derived - so the panel, the charger's own
+decisions and the bench log all describe the TRUE battery-2 terminal
+voltage. Vhigh = V24 - V12 shifts up by the same amount, which is the
+physically correct direction (an overreading V12 used to underread
+Vhigh). `MEASUREMENT_BATTERY12_BENCH_COMP_ENABLE = 0` restores the
+uncompensated reading. Vin keeps its own static offset (~+270 mV, growing
+slightly under load): NOT firmware-corrected - remove it with the
+panel-side voltage helper against a DMM. The battery-1 path (Vhigh) is
+not yet DMM-verified: fill `dmm_vbat1_mv` (and the DMM Vin/V24 fields) in
+the next bench runs so it can be fitted the same way.
 
 Fixed hardware constants (NOT parameters - never editable): 12-bit ADC,
 3300 mV reference, full scale 4095; R41/R42 = 1 k / 10 k MCU-input divider
@@ -453,6 +477,15 @@ plus the typed multimeter readings into ONE text file on the ESP flash.
 The user hands that file to the firmware engineer, who alone decides the
 correction method (single gain / two-point / lookup table). No calibration
 is ever applied automatically by the panel.
+
+Manual-duty control card (panel v1.8, user order 2026-09-25): the wizard
+tab also carries a compact manual-duty card - the manual-mode toggle
+(parameter 19, with the v1.7 banner `#mb` still warning while it is on),
+a duty field per channel (sent as SET_PARAM permille, clamped to the
+channel ceiling p13/p14, re-sending the duty re-arms after a JIT trip)
+and a both-to-zero button. It exists so current bench tests can run
+without re-adding the engineer tab; the safety contract of section 5.2
+applies unchanged (10 s dead-man if the panel closes).
 
 Storage: LittleFS (the sketch currently has no flash storage - add it; a
 ~256 KB partition is plenty). One append-only file: `/benchlog.csv`.

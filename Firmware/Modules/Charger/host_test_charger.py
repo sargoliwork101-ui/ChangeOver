@@ -459,6 +459,20 @@ def test_setpoints_and_timing():
     check(re.search(r"func__Measurement_Current2CountsToMa\(uint16_t uint16_t__counts\)\n\{\n#if \(MEASUREMENT_CURRENT2_LUT_ENABLE != 0u\)", meas_c_raw) and
           re.search(r"#else\n    return func__BspMeasurement_Current2CountsToMa\(uint16_t__counts\);\n#endif", meas_c_raw),
           "the ch2 LUT must be compile-switchable: MEASUREMENT_CURRENT2_LUT_ENABLE=0 restores the old linear behaviour exactly")
+    check(re.search(r"#define MEASUREMENT_BATTERY12_BENCH_COMP_ENABLE\s+1u", meas_h_txt) and
+          re.search(r"#define MEASUREMENT_BATTERY12_BENCH_STATIC_MV 140u", meas_c_raw) and
+          re.search(r"#define MEASUREMENT_BATTERY12_BENCH_PATH_MOHM 470u", meas_c_raw),
+          "V12 bench compensation must be ON with the latched 2026-09-25 SOLO2 fit: static 140 mV + 470 mOhm x I2 (MCU read +140 mV at 0 mA growing to +374 mV at 545 mA vs DMM on the battery-2 terminals)")
+    check("func__Measurement_Battery12BenchCompensate(\n        uint32_t__battery12Mv, uint32_t__current2SampleMa);" in meas_c_raw and
+          meas_c_raw.find("func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2])") <
+          meas_c_raw.find("uint32_t__battery12Mv = func__Measurement_ApplyVoltageOffsetMv(") and
+          meas_c_raw.find("func__Measurement_Battery12BenchCompensate(\n        uint32_t__battery12Mv, uint32_t__current2SampleMa);") <
+          meas_c_raw.find("uint32_t__batteryLowMv = uint32_t__battery12Mv;"),
+          "the V12 compensation must consume the post-LUT channel-2 current (sample moved ahead of the voltage chain) and must land on battery12Mv after the runtime voff, before the low/high derivation and the median - so Vlow, published V12 and derived Vhigh all describe the true battery-2 terminals")
+    check(len(re.findall(r"#if \(MEASUREMENT_BATTERY12_BENCH_COMP_ENABLE != 0u\)", meas_c_raw)) == 2 and
+          "uint32_t__dropMv = MEASUREMENT_BATTERY12_BENCH_STATIC_MV +" in meas_c_raw and
+          "return 0u;" in meas_c_raw.split("func__Measurement_Battery12BenchCompensate")[1].split("\n}\n")[0],
+          "the V12 bench compensation must be compile-switchable (enable=0 restores today's behaviour), use saturating subtraction (static + I2 x mOhm / 1000, never below 0 mV)")
     check("BSP_MEASUREMENT_MA_PER_A" in bsp_meas_c and "BSP_MEASUREMENT_PERMILLE_SCALE" in bsp_meas_c and
           "BSP_MEASUREMENT_CURRENT_MA_SCALE" not in bsp_meas_c,
           "the ADC-to-current formula must be built stage-by-stage from the schematic resistor values (shunt mOhm, LM358 gain, R41/R42 divider), no shared magic scale (user order 2026-09-22)")

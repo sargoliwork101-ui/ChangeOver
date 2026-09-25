@@ -67,6 +67,20 @@
         خطی قدیم. */
 #define MEASUREMENT_CURRENT2_LUT_ENABLE    1u
 
+/* [EN] V12 (battery-low) bench compensation (user order 2026-09-25): the
+        latched SOLO2 run measured this channel against a DMM on the battery
+        terminals - +140 mV at zero current (static divider error) growing to
+        +374 mV at 545 mA (charge-path wire drop). The compensation subtracts
+        static + I2 x R so every consumer of V12/Vlow reads the TRUE battery-2
+        terminal voltage. 0 = uncompensated.
+   [FA] جبران بنچ V12 (باتری پایین، دستور کاربر ۲۰۲۶-۰۹-۲۵): اجرای
+        قفل‌در-لحظهٔ SOLO2 این کانال را با مولتی‌متر روی ترمینال باتری سنجید
+        - ‎+۱۴۰mV در جریان صفر (خطای ثابت مقسم) که تا ‎+۳۷۴mV در ۵45mA رشد
+        می‌کند (افت مسیر شارژ). جبران، مقدار ثابت + I2×R را کم می‌کند تا
+        هر مصرف‌کنندهٔ V12/Vlow ولتاژ واقعی ترمینال باتری ۲ را بخواند.
+        0 = بدون جبران. */
+#define MEASUREMENT_BATTERY12_BENCH_COMP_ENABLE 1u
+
 /* [EN] Compiled ring size and hard ceiling of the ESP-adjustable runtime
  *      moving-average window, per channel (v1.4, user order 2026-09-25:
  *      ANY value 1..100 is accepted - at the 1 ms cadence that is 1..100 ms
