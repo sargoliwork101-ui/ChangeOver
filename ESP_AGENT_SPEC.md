@@ -18,7 +18,12 @@
 > compact manual-duty control card (manual mode stays as a PERMANENT
 > feature for current testing - section 5.6), and the STM32 corrects the
 > V12 channel with the latched bench fit (static 140 mV + 0.47 ohm x I2
-> - section 5.3).
+> - section 5.3). v1.9 (same day, third order): DMM currents accept
+> negative values (battery discharge path, e.g. the zener), the average
+> filter ceiling is 300 samples so the smoothing is VISIBLE at the 10 Hz
+> TLM stream (audit verdict: the filters were correct but unobservable),
+> the LUT point count became sizeof-derived for the denser next run, and
+> the wizard's default duty list switched to 2% steps.
 >
 > v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
 > conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
@@ -135,7 +140,7 @@ AA 55 11 05 02 B0 04 00 00 A2
 | 5 | V24_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 24 V battery pack voltage calibration |
 | 6 | V12_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 12 V (middle node) battery calibration |
 | 7 | FILTER_MEDIAN_SIZE | u32 | samples | 3 | 1..15 | **v1.4: ANY value 1..15** - even sizes allowed, no more odd rounding. 1..2 = bypass, 3..15 = active median. Default 3. Filter state resets on change. |
-| 8 | FILTER_AVERAGE_WINDOW | u32 | samples | 10 | 1..100 | **v1.4: ANY value 1..100** - at the 1 ms cadence that is 1..100 ms of history. **1 = bypass.** Default 10. Filter state resets on change. |
+| 8 | FILTER_AVERAGE_WINDOW | u32 | samples | 10 | 1..300 | **v1.4: ANY value; v1.9: ceiling raised 100 -> 300** - at the 1 ms cadence that is 1..300 ms of history. **1 = bypass.** Default 10 (unchanged). Filter state resets on change. WHY v1.9: TLM streams at 10 Hz, so at W <= 100 two consecutive panel samples share almost no filter history - the filter worked but was invisible on the panel; W = 200..300 spans 2..3 TLM frames and the smoothing becomes observable. CAVEAT: the auto-mode charger regulates at 100 Hz on this value - keep W <= ~50 in AUTO mode; large W is for MANUAL-duty bench watching. |
 | 9 | CHG_ETA1_PERMILLE | u32 | permille | 0 | 0..999 | **v1.3**: charger 1 conversion factor. 0 = identity (default - `iest = i_filtered`; with the battery-calibrated gains the reading already is the battery current). Non-zero: `iest = i_filtered x Vin x eta / (1000 x Vbat)` with LIVE voltages, so the battery-current reading stays true while the battery charges. Set with CAL_REFERENCE (section 5.4), not by hand |
 | 10 | CHG_ETA2_PERMILLE | u32 | permille | 0 | 0..999 | Same, charger 2 |
 | 11 | CHG1_ENABLE | u32 | 0/1 | 1 | 0..1 | 0 = cut charger module 1 (PWM off, state OFF); 1 = reconnect (soft BULK restart from 1% duty) |
@@ -190,7 +195,7 @@ English line is for the agent/maintainers.
 | 5 | V24 offset (mV, signed) - adder in: V24_mV ≈ counts × 9.007 + offset | آفست کالیبراسیون ولتاژ پک ۲۴V بر حسب mV (علامت‌دار)؛ فرمول: V24 ≈ counts × 9.007 + آفست |
 | 6 | V12 offset (mV, signed) - adder in: V12_mV ≈ counts × 4.859 + offset; Vhigh = V24 − V12 | آفست کالیبراسیون ولتاژ باتری ۱۲V (نود میانی) بر حسب mV (علامت‌دار)؛ فرمول: V12 ≈ counts × 4.859 + آفست و Vhigh = V24 − V12 |
 | 7 | Median window - ANY value 1..15 (v1.4: even sizes allowed, no rounding); 1..2 = off, 3 = default, bigger = stronger spike rejection with more lag | پنجرهٔ مدین - هر مقدار ۱..۱۵ (v1.4: زوج هم مجاز، بدون گردکردن)؛ ۱..۲ = خاموش، ۳ = پیش‌فرض، بزرگ‌تر = حذف پالس قوی‌تر با تأخیر بیشتر |
-| 8 | Average window - ANY value 1..100 (v1.4; 1 ms cadence = 1..100 ms of history); 1 = off, 10 = default | پنجرهٔ میانگین - هر مقدار ۱..۱۰۰ (v1.4؛ کادانس ۱ms یعنی ۱..۱۰۰ms تاریخچه)؛ ۱ = خاموش، ۱۰ = پیش‌فرض |
+| 8 | Average window - ANY value 1..300 (v1.4; raised in v1.9; 1 ms cadence = 1..300 ms of history); 1 = off, 10 = default; the panel shows the live effective span (median + average in ms) | پنجرهٔ میانگین - هر مقدار ۱..۳۰۰ (v1.4؛ بالا رفتن در 1.9؛ کادانس ۱ms یعنی ۱..۳۰۰ms تاریخچه)؛ ۱ = خاموش، ۱۰ = پیش‌فرض؛ پنل طول مؤثر فیلتر را زنده به ms نشان می‌دهد |
 | 9 | Ch1 conversion factor ETA1 (permille, v1.3) - 0 = identity (default: the reading already is the battery current); non-zero = `iest = i_filtered x Vin x eta / (1000 x Vbat)` with live voltages. Calibrate with the CAL_REFERENCE button (type the battery-side DMM mA), never by hand | ضریب تبدیل کانال ۱ (پرمیل، v1.3) — صفر = همانی (پیش‌فرض: عدد خودش جریان باتری است)؛ غیرصفر = iest = i_فیلترشده × Vin × η ÷ (۱۰۰۰ × Vbat) با ولتاژهای زنده. با دکمهٔ CAL_REFERENCE کالیبره کنید (عدد مولتی‌متر سمت باتری را بدهید)، نه دستی |
 | 10 | Ch2 conversion factor ETA2 (permille, v1.3) - same as ID 9, charger 2 | ضریب تبدیل کانال ۲ (پرمیل، v1.3) — مانند ID 9، برای کانال ۲ |
 | 11 | Charger 1 on/off - 0 cuts the PWM immediately (battery keeps its charge), 1 resumes with a soft ramp | کلید قطع/وصل شارژر ۱؛ صفر فوراً PWM را قطع می‌کند و یک شارژ را با رمپ نرم ادامه می‌دهد |
@@ -317,7 +322,11 @@ table on the OLD chain output - anchors from the latched 2026-09-25T16:31 run
 slope extends. Unfiltered, filtered and iest all become true battery mA; raw
 counts and shunt uV are untouched. `MEASUREMENT_CURRENT2_LUT_ENABLE = 0`
 restores the old linear behaviour. Channel 1 stays linear until its own SOLO1
-data arrives. The wire protocol is unchanged.
+data arrives. The wire protocol is unchanged. v1.9 (same day): the anchor
+tables size themselves from their initializers and the point count is
+sizeof-derived, so the next DENSER run (more duty points for higher accuracy)
+is a pure initializer edit - both lists must keep the same length (host test
+enforces it).
 
 Voltage chain (offsets = IDs 4/5/6, saturating add, never below 0 mV):
 
@@ -585,9 +594,20 @@ STM32 CAL handler stays in the firmware, unused):
 5. At the very end show "فایل آماده است" with the download link and a
    "پاک کردن فایل" button.
 
-Free filter sizes (v1.4 firmware, already pushed): the ID 7 / ID 8 input
-fields must accept any value in 1..15 / 1..100 (no more 1/3/5 and 1..10
-restrictions in the UI); the firmware clamps by itself.
+Free filter sizes (v1.4 firmware, already pushed; ID 8 ceiling raised to
+300 in v1.9): the ID 7 / ID 8 input fields must accept any value in
+1..15 / 1..300 (no more 1/3/5 and 1..10 restrictions in the UI); the
+firmware clamps by itself. The filter card additionally shows the LIVE
+effective span (median N x 1 ms + average W x 1 ms) so the timing is
+explicit: filters run at 1 kHz but TLM streams at 10 Hz.
+
+v1.9 (user order 2026-09-25): (a) DMM current fields accept NEGATIVE
+values - with the charger off the battery itself discharges into other
+loads (e.g. the zener) and the ammeter reads minus; the validation only
+checks "not empty", never the sign. (b) The wizard's default duty list
+is denser (2% steps: 2,4,6,8,10,12,14,16,18,20) because the next bench
+run takes a denser LUT point set for higher accuracy. (c) The panel-side
+ID 8 clamp follows the new 1..300 ceiling.
 
 ## 6. TLM_LIVE payload layout (84 bytes, little-endian)
 

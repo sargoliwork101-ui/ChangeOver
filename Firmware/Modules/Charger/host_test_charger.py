@@ -441,19 +441,27 @@ def test_setpoints_and_timing():
     check(re.search(r"#define MEASUREMENT_CURRENT_MEDIAN3_ENABLE\s+1u", meas_h_txt) and
           re.search(r"#define MEASUREMENT_CURRENT_AVERAGE_ENABLE\s+1u", meas_h_txt) and
           re.search(r"#define MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX\s+15u", meas_h_txt) and
-          re.search(r"#define MEASUREMENT_CURRENT_AVERAGE_WINDOW\s+100u", meas_h_txt) and
+          re.search(r"#define MEASUREMENT_CURRENT_AVERAGE_WINDOW\s+300u", meas_h_txt) and
           re.search(r"#define MEASUREMENT_CURRENT_AVERAGE_WINDOW_DEFAULT\s+10u", meas_h_txt),
-          "current filters: both compile switches ON; v1.4 free sizes - median ceiling 15, average ring 100, boot defaults UNCHANGED (median 3, average 10; user order 2026-09-25)")
+          "current filters: both compile switches ON; v1.4 free sizes - median ceiling 15, average ring 300 (v1.9 raise 100->300 so the smoothing is visible at the 10 Hz TLM stream; boot defaults UNCHANGED: median 3, average 10; user orders 2026-09-25)")
     check("func__Measurement_CurrentMedian(" in meas_c_raw and
           "func__Measurement_CurrentMovingAverage" in meas_c_raw and
           "func__Measurement_ApplyCurrentFilters" in meas_c_raw and
           "MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX" in meas_h_txt,
           "Measurement must run the median chain (v1.4: runtime size ANY 1..15, default 3) then the moving-average chain (v1.4: runtime window ANY 1..100, default 10) on each current channel (user order 2026-09-25)")
+    lut_chain = re.search(r"UINT32_T__G__Current2LutChainMa\[\] =\s*\{([^}]*)\}", meas_c_raw)
+    lut_batt = re.search(r"UINT32_T__G__Current2LutBatteryMa\[\] =\s*\{([^}]*)\}", meas_c_raw)
+    lut_chain_n = len(lut_chain.group(1).split(",")) if lut_chain else 0
+    lut_batt_n = len(lut_batt.group(1).split(",")) if lut_batt else 0
     check(re.search(r"#define MEASUREMENT_CURRENT2_LUT_ENABLE\s+1u", meas_h_txt) and
-          "static const uint32_t UINT32_T__G__Current2LutChainMa[MEASUREMENT_CURRENT2_LUT_POINTS]" in meas_c_raw and
+          "static const uint32_t UINT32_T__G__Current2LutChainMa[] =" in meas_c_raw and
+          "static const uint32_t UINT32_T__G__Current2LutBatteryMa[] =" in meas_c_raw and
+          "#define MEASUREMENT_CURRENT2_LUT_POINTS \\" in meas_c_raw.replace("\\\\", "\\") and
+          "sizeof(UINT32_T__G__Current2LutChainMa) /" in meas_c_raw and
           "{ 0u, 65u, 139u, 237u, 278u, 393u, 487u }" in meas_c_raw and
-          "{ 0u, 33u, 90u, 208u, 300u, 455u, 545u }" in meas_c_raw,
-          "channel-2 bench LUT must be ON with the 2026-09-25 SOLO2 latched anchors (user order 2026-09-25: the chain read ~2x high at 5% duty and 0.85x low at 15..17% - no single gain can cover it)")
+          "{ 0u, 33u, 90u, 208u, 300u, 455u, 545u }" in meas_c_raw and
+          lut_chain_n == lut_batt_n and lut_chain_n == 7,
+          f"channel-2 bench LUT must be ON with the 2026-09-25 SOLO2 latched anchors (user order 2026-09-25: the chain read ~2x high at 5% duty and 0.85x low at 15..17% - no single gain can cover it); the tables size themselves from the initializers and the point count is sizeof-derived so the next DENSER run only edits the two lists, and both lists must stay the same length (got chain={lut_chain_n} battery={lut_batt_n})")
     check("return func__Measurement_Current2BenchLut(\n        func__BspMeasurement_Current2CountsToMa(uint16_t__counts));" in meas_c_raw,
           "the ch2 LUT must wrap the BSP conversion inside func__Measurement_Current2CountsToMa so unfiltered, filtered and iest all become true battery mA while raw counts and shunt uV stay untouched")
     check(re.search(r"func__Measurement_Current2CountsToMa\(uint16_t uint16_t__counts\)\n\{\n#if \(MEASUREMENT_CURRENT2_LUT_ENABLE != 0u\)", meas_c_raw) and

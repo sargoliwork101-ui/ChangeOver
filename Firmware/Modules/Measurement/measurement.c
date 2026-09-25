@@ -622,11 +622,23 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
         شمارش خام و uV شانت دست نمی‌خورند. کانال ۱ تا رسیدن دادهٔ SOLO1 خودش
         خطی می‌ماند. */
 #if (MEASUREMENT_CURRENT2_LUT_ENABLE != 0u)
-#define MEASUREMENT_CURRENT2_LUT_POINTS 7u
-static const uint32_t UINT32_T__G__Current2LutChainMa[MEASUREMENT_CURRENT2_LUT_POINTS] =
+/* [EN] The anchor tables take their size from the initializers and the point
+        count is DERIVED from them (user order 2026-09-25: the next bench run
+        takes a DENSER point set for higher accuracy) - growing the table is a
+        pure initializer edit, nothing else changes. Both tables MUST keep the
+        same length (host test enforces it).
+   [FA] جداول لنگر اندازه‌شان را از مقداردهی می‌گیرند و تعداد نقاط از
+        خودشان استخراج می‌شود (دستور کاربر ۲۰۲۶-۰۹-۲۵: اجرای بعدی بنچ
+        برای دقت بیشتر با نقاط متراکم‌تر گرفته می‌شود) - بزرگ‌کردن جدول
+        فقط ویرایش مقداردهی است و هیچ چیز دیگری عوض نمی‌شود. طول دو جدول
+        باید برابر بماند (تست هاست همین را قفل می‌کند). */
+static const uint32_t UINT32_T__G__Current2LutChainMa[] =
     { 0u, 65u, 139u, 237u, 278u, 393u, 487u };
-static const uint32_t UINT32_T__G__Current2LutBatteryMa[MEASUREMENT_CURRENT2_LUT_POINTS] =
+static const uint32_t UINT32_T__G__Current2LutBatteryMa[] =
     { 0u, 33u, 90u, 208u, 300u, 455u, 545u };
+#define MEASUREMENT_CURRENT2_LUT_POINTS \
+    ((uint32_t)(sizeof(UINT32_T__G__Current2LutChainMa) / \
+               sizeof(UINT32_T__G__Current2LutChainMa[0u])))
 #endif
 
 /* ==================== Measurement Current2 Counts To Ma ==================== */

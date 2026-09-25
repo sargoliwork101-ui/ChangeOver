@@ -83,15 +83,25 @@
 
 /* [EN] Compiled ring size and hard ceiling of the ESP-adjustable runtime
  *      moving-average window, per channel (v1.4, user order 2026-09-25:
- *      ANY value 1..100 is accepted - at the 1 ms cadence that is 1..100 ms
- *      of history). The startup default stays 10 via the _DEFAULT constant
- *      below so today's behavior is unchanged until the panel changes it.
+ *      ANY value is accepted; v1.9 same day: ceiling raised 100 -> 300
+ *      samples). WHY: TLM streams to the ESP at 10 Hz, so two panel
+ *      samples 100 ms apart share almost no filter history at W <= 100 -
+ *      the filter worked but was INVISIBLE on the panel. W = 200..300
+ *      spans 2..3 TLM frames and the smoothing becomes observable. CAVEAT:
+ *      the auto-mode charger regulates at 100 Hz on this filtered value -
+ *      keep W <= ~50 in AUTO mode; large W is for MANUAL-duty bench
+ *      watching (user order 2026-09-25). Ring RAM cost: 2 x 300 x 4 B.
  * [FA] اندازهٔ حلقهٔ کامپایل و سقف قطعی پنجرهٔ میانگین متحرکِ قابل‌تنظیم
  *      از ESP، به ازای هر کانال (v1.4، دستور کاربر ۲۰۲۶-۰۹-۲۵: هر مقدار
- *      ۱..۱۰۰ پذیرفته می‌شود - با کادانس ۱ms یعنی ۱..۱۰۰ms تاریخچه).
- *      پیش‌فرضِ بوت همان ۱۰ با ثابت _DEFAULT پایین می‌ماند تا رفتار فعلی
- *      تا وقتی پنل عوضش نکند تغییر نکند. */
-#define MEASUREMENT_CURRENT_AVERAGE_WINDOW   100u
+ *      پذیرفته می‌شود؛ همان روز v1.9: سقف از ۱۰۰ به ۳۰۰ نمونه بالا رفت).
+ *      چرا: TLM با ۱۰ هرتز به ESP می‌رود، پس دو نمونهٔ پنل با ۱۰۰ms فاصله
+ *      در W <= 100 تقریباً هیچ تاریخچهٔ فیلتر مشترکی ندارند - فیلتر کار
+ *      می‌کرد اما روی پنل دیده نمی‌شد. W = ۲۰۰..۳۰۰ روی ۲..۳ فریم TLM
+ *      می‌ایستد و صاف‌کردن قابل‌مشاهده می‌شود. هشدار: شارژر مود خودکار با
+ *      ۱۰۰ هرتز روی همین مقدار تنظیم می‌کند - در مود خودکار W را ~۵۰ یا
+ *      کمتر نگه دارید؛ W بزرگ برای تماشای بنچ با دیوتی دستی است (دستور
+ *      کاربر ۲۰۲۶-۰۹-۲۵). RAM حلقه: ۲×۳۰۰×۴ بایت. */
+#define MEASUREMENT_CURRENT_AVERAGE_WINDOW   300u
 
 /* [EN] Startup default of the runtime moving-average window (today's
  *      behavior). [FA] پیش‌فرض بوت پنجرهٔ میانگین (رفتار فعلی). */

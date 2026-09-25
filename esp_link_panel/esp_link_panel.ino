@@ -2,9 +2,9 @@
  * @file    esp_link_panel.ino
  * @brief   [EN] ESP-side ESP-Link bridge: exchanges binary frames with the STM32 over UART
  *               (921600 8N1, ESP_AGENT_SPEC.md v1.4: 5.3 formulas, 5.6 bench log) and serves a dark
- *               RTL web panel (Vazirmatn) with TWO tabs (v1.7 simplification, user order 2026-09-25):
+ *               RTL web panel (Vazirmatn) with TWO tabs (v1.7 simplification; filter avg window 1..300 since v1.9):
  *               1) Panel: shared voltages (with DMM offset helpers), the current filter (median 1..15,
- *                  average 1..100) and one column per charger: live status, the measurement chain with
+ *                  average 1..300) and one column per charger: live status, the measurement chain with
  *                  live formulas, the live filter chart and a charger cut button.
  *               2) Bench capture (spec 5.6): SOLO1/SOLO2/BOTH, a user-typed duty list, advance ONLY on
  *                  the user's submit. v1.7 latch fix (user order 2026-09-25): the statistics window is
@@ -15,15 +15,19 @@
  *                  same day): the bench tab also carries a compact PERMANENT manual-duty card
  *                  (manual-mode toggle + per-channel duty + both-to-zero) so current tests can
  *                  run without the removed engineer tab; the section 5.2 safety contract (10 s
- *                  dead-man, channel ceilings, JIT re-arm) is unchanged.
+ *                  dead-man, channel ceilings, JIT re-arm) is unchanged. v1.9 (user order 2026-09-25,
+ *                  same day): DMM currents accept NEGATIVE values (battery discharge path), the
+ *                  moving-average ceiling is 300 samples (visible smoothing at the 10 Hz TLM), the
+ *                  filter card shows the live effective span, and the wizard's default duty list is
+ *                  denser (2% steps) for the next, denser LUT run.
  *               The v1.6 extras (CAL card, manual tests B/C/D, correction/analysis tab, engineer mode)
  *               were removed except the manual-duty card above; nothing was ever calibrated
  *               automatically and the wire protocol (SET_PARAM / GET_PARAMS / TLM) is unchanged.
  *          [FA] پل ESP-Link سمت ESP: تبادل فریم باینری با STM32 روی UART (921600 8N1، مطابق
  *               ESP_AGENT_SPEC.md نسخهٔ ۱.۴) و یک پنل وب دارک راست‌به‌چپ با فونت وزیرمتن و «دو» تب
- *               (ساده‌سازی نسخهٔ ۱.۷، دستور کاربر ۲۰۲۶-۰۹-۲۵؛ کارت دیوتی دستی دائمی برگشت در ۱.۸):
+ *               (ساده‌سازی نسخهٔ ۱.۷؛ کارت دیوتی دستی دائمی در ۱.۸؛ جریان منفی + میانگین ۳۰۰ + فهرست دیوتی متراکم در ۱.۹):
  *               ۱) پنل: ولتاژهای مشترک (با کالیبراسیون آفست از مولتی‌متر)، فیلتر جریان (مدین ۱..۱۵،
- *                  میانگین ۱..۱۰۰) و یک ستون برای هر شارژر: وضعیت زنده، زنجیرهٔ اندازه‌گیری با فرمول
+ *                  میانگین ۱..۳۰۰) و یک ستون برای هر شارژر: وضعیت زنده، زنجیرهٔ اندازه‌گیری با فرمول
  *                  زنده، نمودار فیلتر و دکمهٔ قطع شارژر.
  *               ۲) داده‌برداری بنچ (بخش 5.6): SOLO1/SOLO2/BOTH با فهرست duty دلخواه و جلو رفتن فقط
  *                  با دکمهٔ کاربر. اصلاح ۱.۷ (دستور کاربر ۲۰۲۶-۰۹-۲۵): پنجرهٔ آمار با باز شدن فرم
@@ -170,14 +174,14 @@ typedef enum
 } esp_rx_state_t;
 
 /* ==================== Parameter Ranges (STM32 clamps too) ==================== */
-/* [EN] ID: 0..1 offset, 2..3 gain, 4..6 mV offset (signed), 7 median 1..15, 8 avg window 1..100 (v1.4), 9..10 ETA conversion (v1.3, 0 = identity),
+/* [EN] ID: 0..1 offset, 2..3 gain, 4..6 mV offset (signed), 7 median 1..15, 8 avg window 1..300 (v1.4, raised in v1.9), 9..10 ETA conversion (v1.3, 0 = identity),
         11..12 charger enable, 13..14 duty ceiling, 15/17 fixed-duty on, 16/18 fixed/manual duty,
         19 manual test mode (v1.2).
-   [FA] شناسه: ۰..۱ آفست، ۲..۳ گین، ۴..۶ آفست mV علامت‌دار، ۷ مدین ۱..۱۵، ۸ پنجره میانگین ۱..۱۰۰ (نسخه ۱.۴)، ۹..۱۰ ضریب تبدیل η (v1.3، صفر = همانی)،
+   [FA] شناسه: ۰..۱ آفست، ۲..۳ گین، ۴..۶ آفست mV علامت‌دار، ۷ مدین ۱..۱۵، ۸ پنجره میانگین ۱..۳۰۰ (نسخه ۱.۴؛ بالا رفتن در ۱.۹)، ۹..۱۰ ضریب تبدیل η (v1.3، صفر = همانی)،
         ۱۱..۱۲ قطع/وصل شارژر، ۱۳..۱۴ سقف duty، ۱۵/۱۷ مود duty فیکس، ۱۶/۱۸ duty فیکس/دستی،
         ۱۹ مود تست دستی (نسخه ۱.۲). */
 static const int32_t INT32_T__G__ParamMin[ESP_PARAM_COUNT] = {   0,   0,  100,  100, -2000, -2000, -2000, 1,  1,   0,   0, 0, 0,   0,   0, 0,   0, 0,   0, 0 };
-static const int32_t INT32_T__G__ParamMax[ESP_PARAM_COUNT] = { 255, 255, 3000, 3000,  2000,  2000,  2000, 15, 100, 999, 999, 1, 1, 500, 500, 1, 500, 1, 500, 1 };
+static const int32_t INT32_T__G__ParamMax[ESP_PARAM_COUNT] = { 255, 255, 3000, 3000,  2000,  2000,  2000, 15, 300, 999, 999, 1, 1, 500, 500, 1, 500, 1, 500, 1 };
 
 /* ==================== RX State ==================== */
 static esp_rx_state_t ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
@@ -331,7 +335,7 @@ const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*76000/6800,K12=33
 /* شناسه: [عنوان, واحد, کمینه, بیشینه, نوع(n عدد، b کلید), توضیح] */
 const P={
 7:['پنجرهٔ مدین','نمونه',1,15,'n','مرحلهٔ اول فیلتر، هر عدد ۱ تا ۱۵ (زوج هم مجاز)؛ ۱ و ۲ = خاموش، ۳ = پیش‌فرض، بزرگ‌تر = حذف پالس قوی‌تر با تاخیر بیشتر'],
-8:['پنجرهٔ میانگین','نمونه',1,100,'n','مرحلهٔ دوم فیلتر، هر عدد ۱ تا ۱۰۰: میانگین آخرین W خروجی مدین (هر نمونه ۱ms)؛ ۱ = خاموش، ۱۰ = پیش‌فرض']};
+8:['پنجرهٔ میانگین','نمونه',1,300,'n','مرحلهٔ دوم فیلتر، هر عدد ۱ تا ۳۰۰: میانگین آخرین W خروجی مدین (هر نمونه ۱ms = ۱ms تاریخچه). ۱ = خاموش، ۱۰ = پیش‌فرض. برای دیدن صاف‌کردن روی پنل (TLM هر ۱۰۰ms می‌آید) W را ۲۰۰..۳۰۰ بگذارید؛ در مود خودکار شارژر بالای ~۵۰ توصیه نمی‌شود (کندی حلقهٔ تنظیم ۱۰۰Hz)']};
 /* ولتاژها: [عنوان, اندیس t, شناسهٔ آفست, ضریب مقسم] */
 const V=[['ورودی',14,4,K24],['پک ۲۴V',15,5,K24],['نود ۱۲V',16,6,K12],['باتری بالا',18],['باتری پایین',17]];
 let D=null;
@@ -346,7 +350,7 @@ const row=(id,x)=>`<div class="rw"><div>${P[id][0]} <span class="lb">${P[id][1]}
 $('vs').innerHTML=V.map((v,i)=>`<div class="vt"><small>${v[0]}</small><b class="n" id="v${i}">—</b><div class="fx" id="fv${i}"></div>${i<3?`
 <div class="ct vc"><input type="number" step="any" id="vm${i}" placeholder="مولتی‌متر V" onkeydown="if(event.key=='Enter')vcal(${i})"><button class="sb sb2" onclick="vcal(${i})">اعمال</button></div>
 <div class="lb">آفست <span class="ap n" id="a${v[2]}">—</span> mV</div>`:''}</div>`).join('');
-$('fg').innerHTML=row(7)+row(8);
+$('fg').innerHTML=row(7)+row(8)+'<div class="lb" id="fspan" style="margin-top:6px">—</div>';
 /* ---------- دو ستون جدا: شارژر ۱ و شارژر ۲ ---------- */
 $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}">—</span></div>
 <div class="big"><span class="lb">جریان تخمینی باتری (iest)</span><b class="n" id="ie${n}">—</b></div>
@@ -405,6 +409,8 @@ function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;
   const g=$('tg'+n);g.textContent=en===0?'وصل مجدد شارژر '+n:'قطع شارژر '+n;g.className='bt '+(en===0?'run':'cut');
 });
  for(let id=0;id<20;id++){const a=$('a'+id);if(a&&!(d.q&(1<<id)))a.textContent=p[id]==null?'—':p[id];}
+ const fe=$('fspan');if(fe){const mn=p[7]==null?null:(p[7]>=3?p[7]:0),av=p[8]==null?null:(p[8]>=2?p[8]:0);
+  fe.innerHTML=(mn==null||av==null)?'—':'فیلتر فعال: مدین '+(p[7]>=3?p[7]+'×1ms':'خاموش (۱..۲)')+' + میانگین '+(p[8]>=2?p[8]+'×1ms':'خاموش (۱)')+' ≈ <b>'+((mn||0)+(av||0))+'ms</b> تاریخچه در کادانس ۱kHz — پنل هر ۱۰۰ms فریم TLM می‌گیرد؛ برای صاف‌شدنِ قابل‌مشاهده مجموع را بالای ~۲۰۰ms ببرید (در مود خودکار ≤۵۰).';}
  formulas(t,p);chart();mview(d);
  $('mb').classList.toggle('v',man);$('ka').innerHTML=man?(d.ka<1500?`پایش لینک فعال · <span class="n">keepalive ${d.ka} ms</span>`:'<b>keepalive متوقف است</b>'):'';}
 async function poll(){const c=new AbortController(),k=setTimeout(()=>c.abort(),2000);try{const r=await fetch('/t',{cache:'no-store',signal:c.signal});const d=await r.json();clearTimeout(k);if(document.hidden){D=d;hist(d);}else draw(d);}catch(e){clearTimeout(k);document.body.classList.add('dn');$('lk').classList.remove('on');$('lt').textContent='ESP در دسترس نیست';}
@@ -462,11 +468,11 @@ function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const N=id=>`<inpu
  const L=(id,t)=>`<label class="lb">${t} <input type="number" step="any" id="${id}" class="wi"></label>`;
  const e=document.createElement('tr');e.id='wX';e.innerHTML=`<td colspan="13"><div class="bctl">${L('wVi','ولتاژ ورودی V')}${L('wV1','ولتاژ باتری ۱ V')}${L('wV2','ولتاژ باتری ۲ V')}<label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label>
 <button class="sb" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2" id="wRe">تکرار همین مرحله</button><button class="sb stp2" id="wEn">پایان</button></div>
-<div class="lb">اعداد پنل همین‌جا زنده‌اند و همان لحظهٔ زدن «ثبت» در فایل قفل می‌شوند. اجباری: جریان ورودی کل و جریان هر باتری روشن. ولتاژ ورودی توصیه می‌شود؛ ولتاژ باتری‌ها و یادداشت (فقط حروف انگلیسی) اختیاری‌اند.</div>
+<div class="lb">اعداد پنل همین‌جا زنده‌اند و همان لحظهٔ زدن «ثبت» در فایل قفل می‌شوند. اجباری: جریان ورودی کل و جریان هر باتری روشن. ولتاژ ورودی توصیه می‌شود؛ ولتاژ باتری‌ها و یادداشت (فقط حروف انگلیسی) اختیاری‌اند. جریان باتری می‌تواند <b>منفی</b> هم باشد — با شارژر خاموش خود باتری مصرف می‌کند (مثل بار زنر)؛ همان عدد منفی مولتی‌متر را بنویسید.</div>
 <div class="lb">آمپرمتر باتری مرجع کالیبراسیون است و باید نزدیک عدد پنل باشد؛ جریان ورودی کل ~۰٫۷ برابر مجموع پنل است — طبیعی.</div></td>`;r.after(e);
  const f=$('wB'+act[0]);if(f)f.focus();
  const lv=setInterval(()=>wcell(x,wlive(act)),400);
- return new Promise(res=>{$('wGo').onclick=()=>{const v={},ok=id=>{const y=gv(id);return y!=null&&y>=0?y:null;};
+ return new Promise(res=>{$('wGo').onclick=()=>{const v={},ok=id=>gv(id);/* v1.9 (user order 2026-09-25): negative currents are VALID - with the charger off the battery itself discharges into other loads (e.g. the zener), the DMM then reads minus */
    v.ii=ok('wIi');if(v.ii==null)return alert('جریان ورودی کل اجباری است.');
    for(const n of act){v['b'+n]=ok('wB'+n);if(v['b'+n]==null)return alert('جریان باتری '+n+' اجباری است (کانال '+n+' روشن است).');}
    [['vi','wVi'],['v1','wV1'],['v2','wV2']].forEach(k=>{const y=gv(k[1]);v[k[0]]=y==null?null:r0(y*1000);});v.note=asc($('wN').value);res({a:'next',v,iso:new Date().toISOString()});};
@@ -507,7 +513,7 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
 /* ---------- ساخت تب‌ها ---------- */
 /* تب ۱: داده‌برداری بنچ */
 $('p1').innerHTML=`<div class="cd"><div class="ds">پنل duty هر مرحله را خودش می‌گذارد و بعد از صبر روی همان ردیف جدول <b>می‌ایستد</b>. عددهای مولتی‌متر را بنویسید و <b>ثبت و مرحلهٔ بعد</b> را بزنید — آمار همان لحظهٔ ثبت در فایل قفل می‌شود، نه قبلش. هر ردیف با همهٔ پارامترها و کل وضعیت TLM (۷۱ ستون) در فایل ESP نوشته می‌شود. <b>SOLO1</b>: فقط کانال ۱ · <b>SOLO2</b>: فقط کانال ۲ · <b>BOTH</b>: هر دو با همان duty. آمپرمتر لازم است: یکی در مسیر تغذیهٔ کل برد و یکی سری با سیم شارژ هر باتری روشن. هیچ ضریبی خودکار اعمال نمی‌شود.</div>
-<div class="bctl"><label class="lb">duty % <input type="text" id="wL" data-s class="dl" value="5,10,15,20" style="width:160px"></label><label class="lb">صبر s <input type="number" id="wSe" data-s value="3" min="1" max="60" style="width:64px"></label>
+<div class="bctl"><label class="lb">duty % <input type="text" id="wL" data-s class="dl" value="2,4,6,8,10,12,14,16,18,20" style="width:160px"></label><label class="lb">صبر s <input type="number" id="wSe" data-s value="3" min="1" max="60" style="width:64px"></label>
 ${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${k}</label>`).join('')}</div>
 <div class="bctl"><button class="sb brun" onclick="wStart()">شروع</button><button class="sb stp2 wstop" onclick="W.abort=true">پایان</button><span class="lb">فایل: <b id="wF">—</b></span><a class="sb sb2 lnk" href="/benchlog" download="benchlog.csv">دانلود فایل</a><button class="sb sb2 brun" onclick="wclear()">پاک کردن فایل</button></div>
 <div class="cm lb" id="wS0"></div><div id="wT"></div>
