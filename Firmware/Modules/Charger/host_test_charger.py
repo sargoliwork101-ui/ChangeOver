@@ -440,13 +440,15 @@ def test_setpoints_and_timing():
           "the old EMA current filter must stay removed; only the switchable median-3/moving-average chain is allowed (user order 2026-09-22)")
     check(re.search(r"#define MEASUREMENT_CURRENT_MEDIAN3_ENABLE\s+1u", meas_h_txt) and
           re.search(r"#define MEASUREMENT_CURRENT_AVERAGE_ENABLE\s+1u", meas_h_txt) and
-          re.search(r"#define MEASUREMENT_CURRENT_AVERAGE_WINDOW\s+10u", meas_h_txt),
-          "current filters must exist as compile-time switches: median-3 + moving-average over the last 10 samples, both ON by default (user order 2026-09-22)")
+          re.search(r"#define MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX\s+15u", meas_h_txt) and
+          re.search(r"#define MEASUREMENT_CURRENT_AVERAGE_WINDOW\s+100u", meas_h_txt) and
+          re.search(r"#define MEASUREMENT_CURRENT_AVERAGE_WINDOW_DEFAULT\s+10u", meas_h_txt),
+          "current filters: both compile switches ON; v1.4 free sizes - median ceiling 15, average ring 100, boot defaults UNCHANGED (median 3, average 10; user order 2026-09-25)")
     check("func__Measurement_CurrentMedian(" in meas_c_raw and
           "func__Measurement_CurrentMovingAverage" in meas_c_raw and
           "func__Measurement_ApplyCurrentFilters" in meas_c_raw and
           "MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX" in meas_h_txt,
-          "Measurement must run the median chain (runtime size 1/3/5, default 3) then the moving-average chain (runtime window 1..10, default 10) on each current channel (user order 2026-09-22)")
+          "Measurement must run the median chain (v1.4: runtime size ANY 1..15, default 3) then the moving-average chain (v1.4: runtime window ANY 1..100, default 10) on each current channel (user order 2026-09-25)")
     check("BSP_MEASUREMENT_MA_PER_A" in bsp_meas_c and "BSP_MEASUREMENT_PERMILLE_SCALE" in bsp_meas_c and
           "BSP_MEASUREMENT_CURRENT_MA_SCALE" not in bsp_meas_c,
           "the ADC-to-current formula must be built stage-by-stage from the schematic resistor values (shunt mOhm, LM358 gain, R41/R42 divider), no shared magic scale (user order 2026-09-22)")

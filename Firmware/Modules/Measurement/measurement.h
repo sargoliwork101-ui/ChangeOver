@@ -55,21 +55,33 @@
  *      واکنش می‌دهد. ۱u فعال و ۰u کامپایل‌نشده. */
 #define MEASUREMENT_CURRENT_AVERAGE_ENABLE   1u
 
-/* [EN] Number of current samples in the moving-average window, per channel.
- *      Range: 1..255 samples; the two channels keep separate windows.
- * [FA] تعداد نمونه‌های جریان در پنجرهٔ میانگین متحرک، به ازای هر کانال.
- *      بازهٔ ۱ تا ۲۵۵ نمونه؛ دو کانال پنجرهٔ جدا دارند. */
-#define MEASUREMENT_CURRENT_AVERAGE_WINDOW   10u
+/* [EN] Compiled ring size and hard ceiling of the ESP-adjustable runtime
+ *      moving-average window, per channel (v1.4, user order 2026-09-25:
+ *      ANY value 1..100 is accepted - at the 1 ms cadence that is 1..100 ms
+ *      of history). The startup default stays 10 via the _DEFAULT constant
+ *      below so today's behavior is unchanged until the panel changes it.
+ * [FA] اندازهٔ حلقهٔ کامپایل و سقف قطعی پنجرهٔ میانگین متحرکِ قابل‌تنظیم
+ *      از ESP، به ازای هر کانال (v1.4، دستور کاربر ۲۰۲۶-۰۹-۲۵: هر مقدار
+ *      ۱..۱۰۰ پذیرفته می‌شود - با کادانس ۱ms یعنی ۱..۱۰۰ms تاریخچه).
+ *      پیش‌فرضِ بوت همان ۱۰ با ثابت _DEFAULT پایین می‌ماند تا رفتار فعلی
+ *      تا وقتی پنل عوضش نکند تغییر نکند. */
+#define MEASUREMENT_CURRENT_AVERAGE_WINDOW   100u
 
-/* [EN] Hard ceiling of the ESP-adjustable runtime median window (user
- *      order 2026-09-22: the panel can set the current median to 1
- *      (bypass), 3 or 5; valid sizes are odd only, anything else rounds
- *      down). The history arrays are sized by this constant.
- * [FA] سقف قطعی پنجرهٔ مدینِ قابل‌تنظیم از ESP (دستور کاربر
- *      ۲۰۲۶-۰۹-۲۲: پنل می‌تواند مدین جریان را روی ۱ (عبور مستقیم)، ۳
- *      یا ۵ بگذارد؛ فقط اندازه‌های فرد معتبرند و بقیه به پایین گرد
- *      می‌شوند). آرایه‌های تاریخچه با همین ثابت اندازه می‌گیرند. */
-#define MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX  5u
+/* [EN] Startup default of the runtime moving-average window (today's
+ *      behavior). [FA] پیش‌فرض بوت پنجرهٔ میانگین (رفتار فعلی). */
+#define MEASUREMENT_CURRENT_AVERAGE_WINDOW_DEFAULT 10u
+
+/* [EN] Hard ceiling of the ESP-adjustable runtime median window (v1.4,
+ *      user order 2026-09-25: the panel can set ANY value 1..15 - even
+ *      sizes allowed, no odd rounding anymore; 1..2 = bypass, 3..15 =
+ *      active insertion-sort median). The history arrays are sized by
+ *      this constant.
+ * [FA] سقف قطعی پنجرهٔ مدینِ قابل‌تنظیم از ESP (v1.4، دستور کاربر
+ *      ۲۰۲۶-۰۹-۲۵: پنل هر مقدار ۱..۱۵ را می‌گذارد - اندازهٔ زوج هم
+ *      مجاز است و دیگر به فرد گرد نمی‌شود؛ ۱..۲ = عبور مستقیم،
+ *      ۳..۱۵ = مدین فعال با مرتب‌سازی درجی). آرایه‌های تاریخچه با
+ *      همین ثابت اندازه می‌گیرند. */
+#define MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX  15u
 
 /* [EN] Clamp limit of the ESP-adjustable runtime voltage calibration
  *      offsets in mV (user order 2026-09-22): the panel can trim each
