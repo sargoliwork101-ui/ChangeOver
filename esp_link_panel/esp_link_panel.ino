@@ -215,7 +215,7 @@ static const char ESP_PANEL_HTML[] PROGMEM = R"HTML(<!doctype html><html lang="f
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>ChangeOver</title><link rel="stylesheet" href="/f.css?v=2"><style>
 :root{--bg:#0b0e14;--cd:#121722;--ln:#1e2533;--tx:#e7eaf0;--mu:#8089a0;--ac:#4f8cff;--ok:#2ecc8f;--wa:#f5b942;--er:#ff5c6c}
 *{box-sizing:border-box;margin:0}
-body{background:var(--bg);color:var(--tx);font:14px/1.6 Vazirmatn,Tahoma,sans-serif;max-width:980px;margin:auto;padding:0 12px 24px}
+body{background:var(--bg);color:var(--tx);font:14px/1.6 Vazirmatn,Tahoma,sans-serif;max-width:1440px;margin:auto;padding:0 12px 24px}
 button,input{font:inherit;color:inherit}
 .n{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
 header{display:flex;align-items:center;justify-content:space-between;padding:14px 2px 10px}
@@ -225,7 +225,7 @@ h1{font-size:17px;font-weight:700}
 nav{display:flex;gap:4px;background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:4px;position:sticky;top:6px;z-index:5}
 nav button{flex:1;border:0;background:none;border-radius:9px;padding:8px;cursor:pointer;color:var(--mu);font-weight:500}
 nav button.a{background:#1f2738;color:var(--tx)}nav button.m.a{background:#3a2a10;color:var(--wa)}
-section{display:none;margin-top:12px}section.a{display:block}
+section{margin-top:12px}
 .cd{background:var(--cd);border:1px solid var(--ln);border-radius:14px;padding:14px;margin-bottom:12px}
 .ti{font-size:13px;font-weight:700;color:var(--mu);margin-bottom:10px}
 .vs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
@@ -268,8 +268,8 @@ canvas{width:100%;height:140px;display:block;background:#0c1018;border-radius:10
 .cb{border:0;border-radius:10px;padding:8px 10px;background:#243052;color:#cfe0ff;cursor:pointer;display:flex;justify-content:space-between;align-items:center}.cb b{font-weight:500;color:#8fb3ff}
 .cb.lo{background:#1c2130;color:var(--mu)}.cb:disabled{opacity:.45;cursor:default}
 .cm{margin-top:10px;min-height:1.6em}.cm.g{color:var(--ok)}.cm.r{color:var(--er)}.wr{color:var(--wa)}
-body.dn section:not(#t2){opacity:.45;filter:grayscale(1)}
-.bsb{position:sticky;top:52px;z-index:4;border-color:var(--wa)}.stp{background:var(--er)}
+body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
+.bsb{position:sticky;top:6px;z-index:4;border-color:var(--wa)}.stp{background:var(--er)}
 .bctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}.bctl .sg button{width:auto;padding:3px 10px}.bctl input{width:120px}input.dl{background:#0c1018;border:1px solid var(--ln);border-radius:8px;padding:5px 7px;direction:ltr}
 .bqr2{display:flex;gap:8px;margin-top:10px}body.br .brun{opacity:.4;pointer-events:none}
 .bq{background:#0c1018;border:1px solid var(--wa);border-radius:10px;padding:10px;margin-top:10px}.bqr{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-top:8px}.bqr label{display:flex;flex-direction:column;gap:3px}
@@ -281,123 +281,125 @@ body.dn section:not(#t2){opacity:.45;filter:grayscale(1)}
 .eg{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu);border:1px solid var(--ln);background:none;border-radius:8px;padding:3px 8px;cursor:pointer}
 .eg i{width:26px;height:14px;border-radius:7px;background:#252e42;position:relative}.eg i:after{content:'';position:absolute;top:2px;right:2px;width:10px;height:10px;border-radius:50%;background:var(--mu);transition:right .2s}
 body.eng .eg{color:var(--wa);border-color:#5a4418}body.eng .eg i{background:var(--wa)}body.eng .eg i:after{right:14px;background:#fff}
-body:not(.eng) .en,body:not(.eng) #ch .fx,body:not(.eng) #ch .bt{display:none}
+body:not(.eng) .en{display:none}
 .cc .ca{border-top:0;margin-top:0;padding-top:0}.stp2{background:var(--er);white-space:nowrap}
+/* صفحهٔ واحد لپ‌تاپ: نوار مشترک بالا، دو ستون شارژر، تست بنچ پایین */
+.vt{background:#0c1018;border-radius:12px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:4px}.vt .fx{text-align:center;max-width:100%}
+.vc{justify-content:center}.vc input[type=number]{width:96px}
+.fl{margin-top:0;padding-top:0;border-top:0}#sh .hd{flex-wrap:wrap;gap:8px}
+.sec{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;color:var(--mu);margin:14px 0 6px;padding-top:12px;border-top:1px solid var(--ln)}
+.frr{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}.frr .rw:first-of-type{border-top:1px solid var(--ln)}.fxw{margin-top:6px;font-size:12px}
+.kc{font-size:11px;margin-top:6px}.cr{margin-top:10px;flex-wrap:wrap}.cr .cb{flex:1 1 120px}.cr input[type=number]{width:120px}
+.off2{background:#5b1c26;white-space:nowrap}.mbar{border-color:#5a4418}
+.mn.dis{opacity:.4}.mn.dis input,.mn.dis button{pointer-events:none}
+.h2{font-size:15px;margin:22px 2px 4px}#t3>.bk>.ti{cursor:pointer;margin-bottom:0}#t3>.bk>.ti:before{content:'+ ';color:var(--ac)}#t3>.bk.op>.ti:before{content:'- '}
+#t3>.bk.op>.ti{margin-bottom:10px}#t3>.bk:not(.op)>:not(.ti){display:none}
+@media(max-width:1000px){.ch,.frr{grid-template-columns:1fr}.vs{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:640px){.cb{font-size:12px;padding:8px 7px}.cb span{white-space:nowrap}.vs{grid-template-columns:repeat(3,1fr)}.ch{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}}
 </style></head><body>
-<header><h1>پنل ChangeOver</h1><div class="hr"><button class="eg" id="eg" title="نمایش ابزارهای مهندسی"><i></i>حالت مهندس</button><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></div></header>
-<nav><button class="a" data-t="0">وضعیت</button><button data-t="1">کالیبراسیون</button><button class="m en" data-t="2">تست دستی</button><button class="en" data-t="3">تست بنچ</button></nav>
+<header><h1>پنل ChangeOver</h1><div class="hr"><button class="eg" id="eg" title="نمایش ابزارهای مهندسی: مود دستی، سقف و duty فیکس، قطع کانال، تست‌های بنچ"><i></i>حالت مهندس</button><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></div></header>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
-
-<section class="a" id="t0">
-<div class="cd"><div class="vs" id="vs"></div><div class="fl" id="fl"></div></div>
+<main id="pg">
+<div class="cd" id="sh"><div class="hd"><b>ولتاژها <span class="lb">· عدد مولتی‌متر (V) را کنار هر ولتاژ وارد کنید تا آفست آن کالیبره شود</span></b><div class="fl" id="fl"></div></div><div class="vs" id="vs"></div>
+<div class="sec">فیلتر جریان <span class="lb">(مشترک هر دو کانال)</span></div><div class="frr" id="fg"></div><div class="fx fxw" id="ff"></div></div>
+<div class="cd en mbar"><div class="mx"><div><b>مود تست دستی</b> <span class="ap n" id="a19"></span><div class="lb" id="mh">duty هر کانال مستقیم از شناسه‌های ۱۶ و ۱۸ اعمال می‌شود.</div></div><div class="ct"><button class="sb off2" id="ao">خاموش کردن هر دو کانال (duty = 0)</button><button class="sw w" id="s19">—</button></div></div>
+<div class="lb" style="margin-top:6px">در این مود ماشین حالت شارژر، رمپ، پنجرهٔ اعتبار باتری، BAT_LOST و توقف ۱۴٫۴V همه خاموش‌اند. فقط حضور ورودی ۲۴V، قطع سخت‌افزاری JIT، قطع ۱۵٫۰V هر کانال، سقف duty و قطع کانال فعال می‌مانند.</div></div>
 <div class="ch" id="ch"></div>
-</section>
-
-<section id="t1"></section>
-
-<section id="t2">
-<div class="wn">در این مود ماشین حالت شارژر، رمپ، پنجرهٔ اعتبار باتری، BAT_LOST و توقف ۱۴٫۴V همه خاموش‌اند. فقط حضور ورودی ۲۴V، قطع سخت‌افزاری JIT، قطع ۱۵٫۰V هر کانال، سقف duty و قطع کانال فعال می‌مانند.</div>
-<div class="cd" style="margin-top:12px"><div class="mx"><div><b>مود تست دستی</b> <span class="ap n" id="a19"></span><div class="lb" id="mh">duty هر کانال مستقیم از شناسه‌های ۱۶ و ۱۸ اعمال می‌شود.</div></div><button class="sw w" id="s19">—</button></div></div>
-<div class="ch" id="mc"></div>
-<button class="bt off" id="ao">خاموش کردن هر دو کانال (duty = 0)</button>
-</section>
-
-<section id="t3"></section>
+<section id="t3" class="en"></section>
+</main>
 
 <script>
 const $=i=>document.getElementById(i);
 const ST=['خاموش','Bulk','Absorb','Float','راه‌اندازی','انتظار JIT','انتظار ورودی','خطای نهایی','باتری قطع','دستی'];
 const SC=['','g','g','g','y','r','y','r','r','y'];
+/* ثابت‌های بخش 5.3 سند */
+const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*76000/6800,K12=3300/4095*41000/6800;
 /* شناسه: [عنوان, واحد, کمینه, بیشینه, نوع(n عدد، b کلید، m مدین), توضیح] */
-const P={0:['آفست صفر کانال ۱','count',0,255,'n','شمارش ADC در جریان صفر؛ داخل فرمول mA از raw کم می‌شود'],
-1:['آفست صفر کانال ۲','count',0,255,'n','مانند کانال ۱ برای زنجیرهٔ دوم'],
-2:['گین کانال ۱','‰',100,3000,'n','mA ≈ (raw − آفست) × 0.8776 × گین/۱۰۰۰؛ مقدار بنچ ۱۰۴۶. با دکمهٔ گین در کارت کالیبراسیون از عدد مولتی‌متر کالیبره می‌شود'],
-3:['گین کانال ۲','‰',100,3000,'n','همان فرمول کانال ۱ برای زنجیرهٔ دوم؛ مقدار بنچ ۱۳۰۳'],
+const P={0:['آفست صفر','count',0,255,'n','شمارش ADC در جریان صفر؛ داخل فرمول mA از raw کم می‌شود. کانال را بی‌جریان کنید و دکمهٔ صفر = raw فعلی را بزنید'],
+1:['آفست صفر','count',0,255,'n','شمارش ADC در جریان صفر؛ داخل فرمول mA از raw کم می‌شود. کانال را بی‌جریان کنید و دکمهٔ صفر = raw فعلی را بزنید'],
+2:['گین','‰',100,3000,'n','mA ≈ (raw − آفست) × 0.8776 × گین/۱۰۰۰؛ مقدار بنچ ۱۰۴۶. با دکمهٔ گین پایین از عدد مولتی‌متر کالیبره می‌شود'],
+3:['گین','‰',100,3000,'n','mA ≈ (raw − آفست) × 0.8776 × گین/۱۰۰۰؛ مقدار بنچ ۱۳۰۳. با دکمهٔ گین پایین از عدد مولتی‌متر کالیبره می‌شود'],
 4:['آفست ولتاژ ورودی','mV',-2000,2000,'n','بعد از تبدیل مقسم 69.2k/6.8k جمع می‌شود (علامت‌دار)'],
 5:['آفست ولتاژ پک ۲۴V','mV',-2000,2000,'n','کالیبراسیون ولتاژ پک ۲۴V (علامت‌دار)'],
 6:['آفست ولتاژ ۱۲V','mV',-2000,2000,'n','مقسم 34.2k/6.8k؛ روی باتری پایین و بالا (V24 − V12) هر دو اثر دارد'],
 7:['پنجرهٔ مدین','',1,5,'m','مرحلهٔ اول فیلتر؛ ۱ = خاموش، ۳ = پیش‌فرض، ۵ پالس‌های دوتایی را هم حذف می‌کند'],
 8:['پنجرهٔ میانگین','نمونه',1,10,'n','مرحلهٔ دوم فیلتر: میانگین آخرین W خروجی مدین؛ ۱ = خاموش، ۱۰ = پیش‌فرض'],
-9:['ضریب تبدیل کانال ۱','‰',0,999,'n','صفر = همانی (عدد فیلترشده خودش جریان باتری است)؛ غیرصفر: iest = I × Vin × eta / (1000 × Vbat) با ولتاژهای زنده. با دکمهٔ ضریب تبدیل در کارت کالیبراسیون جریان تنظیم کنید، نه دستی'],
-10:['ضریب تبدیل کانال ۲','‰',0,999,'n','مانند شناسهٔ ۹ برای کانال ۲ (Vbat = باتری پایین)'],
-13:['سقف duty کانال ۱','‰',0,500,'n','رمپ، تنظیم و مود فیکس همه به این سقف محدودند'],
-14:['سقف duty کانال ۲','‰',0,500,'n','سقف PWM شارژر ۲'],
-15:['نگه‌داشت duty فیکس ۱','',0,1,'b','PWM روی مقدار شناسهٔ ۱۶ می‌ماند؛ توقف در ولتاژ ابزورب همچنان فعال است'],
-16:['مقدار duty فیکس ۱','‰',0,500,'n','در مود تست دستی همین مقدار duty کانال ۱ است'],
-17:['نگه‌داشت duty فیکس ۲','',0,1,'b','PWM روی مقدار شناسهٔ ۱۸ می‌ماند'],
-18:['مقدار duty فیکس ۲','‰',0,500,'n','در مود تست دستی همین مقدار duty کانال ۲ است']};
-const G=[['کالیبراسیون جریان',[0,1,2,3]],['کالیبراسیون ولتاژ',[4,5,6]],['فیلتر جریان',[7,8]],['ضریب تبدیل جریان باتری',[9,10]],['محدودیت duty',[13,14]],['نگه‌داشت duty فیکس (با محافظت خودکار)',[15,16,17,18]]];
-const V=[['ورودی',14],['پک ۲۴V',15],['نود ۱۲V',16],['باتری بالا',18],['باتری پایین',17]];
-let D=null,tab=0;
+9:['ضریب تبدیل','‰',0,999,'n','صفر = همانی (عدد فیلترشده خودش جریان باتری است)؛ غیرصفر: iest = I × Vin × eta / (1000 × Vbat) با ولتاژهای زنده (Vbat = باتری بالا). با دکمهٔ ضریب تبدیل پایین تنظیم کنید، نه دستی'],
+10:['ضریب تبدیل','‰',0,999,'n','صفر = همانی؛ غیرصفر: iest = I × Vin × eta / (1000 × Vbat) با ولتاژهای زنده (Vbat = باتری پایین). با دکمهٔ ضریب تبدیل پایین تنظیم کنید، نه دستی'],
+13:['سقف duty','‰',0,500,'n','رمپ، تنظیم و مود فیکس همه به این سقف محدودند'],
+14:['سقف duty','‰',0,500,'n','رمپ، تنظیم و مود فیکس همه به این سقف محدودند'],
+15:['نگه‌داشت duty فیکس','',0,1,'b','PWM روی مقدار duty فیکس می‌ماند؛ توقف در ولتاژ ابزورب همچنان فعال است'],
+16:['مقدار duty فیکس','‰',0,500,'n','در مود تست دستی همین مقدار duty کانال ۱ است'],
+17:['نگه‌داشت duty فیکس','',0,1,'b','PWM روی مقدار duty فیکس می‌ماند؛ توقف در ولتاژ ابزورب همچنان فعال است'],
+18:['مقدار duty فیکس','‰',0,500,'n','در مود تست دستی همین مقدار duty کانال ۲ است']};
+/* ولتاژها: [عنوان, اندیس t, شناسهٔ آفست, ضریب مقسم] */
+const V=[['ورودی',14,4,K24],['پک ۲۴V',15,5,K24],['نود ۱۲V',16,6,K12],['باتری بالا',18],['باتری پایین',17]];
+let D=null;
 const v2=mv=>(mv/1000).toFixed(2),pc=pm=>(pm/10).toFixed(1)+'%';
 function send(id,v){const a=$('a'+id);if(a)a.textContent='…';fetch('/s?id='+id+'&v='+v,{method:'POST'}).then(r=>{if(!r.ok)throw 0;}).catch(()=>{if(a)a.textContent='خطا';});}
 function num(id){const e=$('i'+id),p=P[id],v=Math.round(+e.value);if(e.value===''||isNaN(v))return;send(id,Math.min(p[3],Math.max(p[2],v)));e.value='';e.blur();}
 function flip(id){const c=D&&D.p[id],nv=c===1?0:1;if(nv&&(id==15||id==17)&&!confirm('حلقهٔ تنظیم این کانال خاموش و PWM روی مقدار فیکس نگه داشته می‌شود. ادامه؟'))return;send(id,nv);}
-
-/* ---------- ساخت صفحه ---------- */
-$('vs').innerHTML=V.map((v,i)=>`<div><small>${v[0]}</small><b class="n" id="v${i}">—</b></div>`).join('');
-$('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}">—</span></div>
-<div class="big"><span class="lb">جریان تخمینی باتری</span><b class="n" id="ie${n}">—</b></div>
-<div class="big"><span class="lb">duty</span><span class="n" id="du${n}">—</span></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
-<table>${[['ADC خام','count',0],['ولتاژ شنت','µV',1],['جریان بدون فیلتر','mA',2],['جریان فیلترشده','mA',3],['تخمین باتری','mA',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}">—</b> <span class="lb">${r[1]}</span></td></tr>`).join('')}</table>
-<button class="bt" id="tg${n}">—</button></div>`).join('');
-[1,2].forEach(n=>$('tg'+n).onclick=()=>{const c=D&&D.p[10+n];if(c!==0&&!confirm('PWM شارژر '+n+' فوراً قطع شود؟'))return;send(10+n,c===0?1:0);});
 function ctl(id){const p=P[id];
- if(p[4]=='b')return `<button class="sw${id>14?' w':''}" id="b${id}" onclick="flip(${id})">—</button>`;
+ if(p[4]=='b')return `<button class="sw w" id="b${id}" onclick="flip(${id})">—</button>`;
  if(p[4]=='m')return `<div class="sg" id="g${id}">${[1,3,5].map(v=>`<button data-v="${v}" onclick="send(${id},${v})">${v}</button>`).join('')}</div>`;
  return `<input type="number" id="i${id}" min="${p[2]}" max="${p[3]}" placeholder="${p[2]<0?'±'+p[3]:p[2]+'…'+p[3]}" onkeydown="if(event.key=='Enter')num(${id})"><button class="sb" onclick="num(${id})">ثبت</button>`;}
-$('t1').innerHTML=G.map((g,gi)=>`<div class="cd"><div class="ti">${g[0]}</div>${gi<4?`<div class="fb" id="fb${gi}"></div>`:''}${g[1].map(id=>`<div class="rw"><div>${P[id][0]} <span class="lb">${P[id][1]}</span><span class="ap n" id="a${id}">—</span></div><div class="ct">${ctl(id)}</div><div class="h" onclick="this.classList.toggle('o')">${P[id][5]}</div></div>`).join('')}</div>`).join('');
+const row=(id,x)=>`<div class="rw"><div>${P[id][0]} <span class="lb">${P[id][1]}</span><span class="ap n" id="a${id}">—</span></div><div class="ct">${x||''}${ctl(id)}</div><div class="h" onclick="this.classList.toggle('o')">${P[id][5]}</div></div>`;
+
+/* ---------- ساخت صفحه: ولتاژها + فیلتر (مشترک) ---------- */
+$('vs').innerHTML=V.map((v,i)=>`<div class="vt"><small>${v[0]}</small><b class="n" id="v${i}">—</b><div class="fx" id="fv${i}"></div>${i<3?`
+<div class="ct vc"><input type="number" step="any" id="vm${i}" placeholder="مولتی‌متر V" onkeydown="if(event.key=='Enter')vcal(${i})"><button class="sb sb2" onclick="vcal(${i})">اعمال</button></div>
+<div class="lb">آفست <span class="ap n" id="a${v[2]}">—</span> mV</div><div class="ct vc en"><input type="number" id="i${v[2]}" min="-2000" max="2000" placeholder="±2000 mV" onkeydown="if(event.key=='Enter')num(${v[2]})"><button class="sb" onclick="num(${v[2]})">ثبت</button></div>`:''}</div>`).join('');
+$('fg').innerHTML=row(7)+row(8);
+/* ---------- دو ستون جدا: شارژر ۱ و شارژر ۲ ---------- */
+$('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}">—</span></div>
+<div class="big"><span class="lb">جریان تخمینی باتری (iest)</span><b class="n" id="ie${n}">—</b></div>
+<div class="big"><span class="lb">duty <span id="dc${n}"></span></span><span class="n" id="du${n}">—</span></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
+<div class="sec">زنجیرهٔ اندازه‌گیری و محاسبه</div>
+<table>${[['ADC خام','count',0],['ولتاژ شنت','µV',1],['جریان بدون فیلتر','mA',2],['جریان فیلترشده','mA',3],['تخمین باتری (iest)','mA',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}">—</b> <span class="lb">${r[1]}</span></td></tr>`).join('')}</table>
+<div class="lb kc">ثابت‌ها: ADC دوازده‌بیتی، ۳۳۰۰mV، R41/R42 = 1k/10k، LM358 × 101، شنت 10 mOhm</div>
+<canvas id="cv${n}"></canvas><div class="lg"><span><i style="background:#5b6784"></i>بدون فیلتر · نوسان <b class="n" id="pu${n}">—</b> mA</span><span><i style="background:#4f8cff"></i>فیلترشده · نوسان <b class="n" id="pf${n}">—</b> mA</span><span>۳۶ ثانیهٔ اخیر</span></div>
+<div class="sec">کالیبراسیون جریان</div>
+${row(n-1)}<div class="as"><span class="lb">raw → فیلترشده <b class="n lv" id="lc${n}">—</b></span><button class="sb sb2" onclick="zero(${n})">صفر = raw فعلی</button></div>
+${row(n+1)}${row(8+n)}
+<div class="ca"><div class="ti">کالیبراسیون با مولتی‌متر (CAL)</div><div class="lb">جریان کانال بالای ۵۰ mA باشد (مثلاً در حالت مهندس: مود دستی با duty حدود ۱۵۰‰). ضریب تبدیل: مولتی‌متر سری با باتری همین کانال. گین (اختیاری و اول): بعدش ضریب تبدیل صفر می‌شود و باید دوباره زده شود. STM32 خودش ضریب را از دادهٔ زنده حساب می‌کند.</div>
+<div class="ct cr"><input type="number" id="cr${n}" min="50" max="5000" placeholder="مولتی‌متر mA"><button class="cb" id="cb${n-1}" onclick="cal(${n-1})"><span>گین</span><b class="n" id="kv${n-1}">—</b></button><button class="cb" id="cb${n+1}" onclick="cal(${n+1})"><span>ضریب تبدیل</span><b class="n" id="kv${n+1}">—</b></button></div>
+<div class="lb" id="cq${n}"></div><div class="cm lb" id="cm${n}"></div></div>
+<div class="en"><div class="sec">محدودیت و duty فیکس</div>${row(12+n)}${row(13+2*n)}${row(14+2*n)}</div>
+<div class="en mn" id="mn${n}"><div class="sec">تست دستی <span class="tg" id="ms${n}">—</span></div>
+<div class="mx"><span class="lb">duty فرمان <span class="ap n" id="a${14+2*n}m">—</span></span><div class="ct"><input type="number" id="m${n}" min="0" max="500"><button class="sb" id="mk${n}">اعمال</button></div></div>
+<input type="range" id="r${n}" min="0" max="500" step="1" value="0"><button class="bt rm" id="rm${n}">اعمال مجدد duty</button></div>
+<button class="bt en" id="tg${n}">—</button></div>`).join('');
+[1,2].forEach(n=>$('tg'+n).onclick=()=>{const c=D&&D.p[10+n];if(c!==0&&!confirm('PWM شارژر '+n+' فوراً قطع شود؟'))return;send(10+n,c===0?1:0);});
 /* ---------- دستیار کالیبراسیون (روی فرمول‌های بخش 5.3) ---------- */
-const VR=[['ولتاژ ورودی',14,4],['پک ۲۴V',15,5],['نود ۱۲V',16,6]];
-const aIn=(id,ph,fn,bt)=>`<input type="number" step="any" id="${id}" placeholder="${ph}"><button class="sb sb2" onclick="${fn}">${bt}</button>`;
-const g0=$('fb0').parentNode,g1=$('fb1').parentNode,g2=$('fb2').parentNode;
-g0.insertAdjacentHTML('beforeend','<div class="as"><div class="lb">صفر: کانال را بی‌جریان کنید (duty = 0)؛ میانگین ۱۰ نمونهٔ اخیر raw آفست می‌شود.</div></div>'+[1,2].map(n=>`<div class="as"><div class="nm">کانال ${n} <span class="lb">raw → فیلترشده</span> <b class="n lv" id="lc${n}">—</b></div>
-<button class="sb sb2" onclick="zero(${n})">صفر = raw فعلی</button></div>`).join('')+
-`<div class="ca"><div class="ti">کالیبراسیون جریان با مولتی‌متر</div><div class="lb">جریان کانال را بالای ۵۰ mA ببرید (مثلاً در حالت مهندس: مود دستی با duty حدود ۱۵۰‰)، عدد مولتی‌متر را وارد و هدف را انتخاب کنید؛ STM32 ضریب را از دادهٔ زنده حساب و اعمال می‌کند. ضریب تبدیل: مولتی‌متر سری با باتری همان کانال. گین (اختیاری، اول): سری با جریانی که عدد نمایش باید برابرش باشد — بعد از گین، ضریب تبدیل همان کانال صفر می‌شود و باید دوباره آن را بزنید.</div>
-<div class="mx" style="margin-top:10px"><span>عدد مولتی‌متر <span class="lb">mA</span></span><input type="number" id="cr" min="50" max="5000" placeholder="50…5000"></div>
-<div class="cg">${[0,1,2,3].map(k=>{const n='۱۲'[k&1];return `<button class="cb" id="cb${k}" onclick="cal(${k})"><span>${k<2?'گین':'ضریب تبدیل'} کانال ${n}</span><b class="n" id="cv${k}">—</b></button>`;}).join('')}</div>
-<div class="cm lb" id="cm"></div><div class="lb" id="cl"></div></div>`);
-g1.insertAdjacentHTML('beforeend',VR.map((v,k)=>`<div class="as"><div class="nm">${v[0]} <b class="n lv" id="vl${k}">—</b><div class="lb">عدد مولتی‌متر (V) را وارد کنید؛ آفست جدید = آفست + (واقعی − نمایش)</div></div><div class="ct">${aIn('vm'+k,'V','vcal('+k+')','اعمال')}</div></div>`).join(''));
-g2.firstElementChild.outerHTML='<div class="ti ti2"><span>فیلتر جریان</span><span class="sg" id="cs"><button data-c="0" class="on" style="width:auto;padding:3px 10px">کانال ۱</button><button data-c="1" style="width:auto;padding:3px 10px">کانال ۲</button></span></div>';
-g2.insertAdjacentHTML('beforeend','<canvas id="cv"></canvas><div class="lg"><span><i style="background:#5b6784"></i>بدون فیلتر · نوسان <b class="n" id="pu">—</b> mA</span><span><i style="background:#4f8cff"></i>فیلترشده · نوسان <b class="n" id="pf">—</b> mA</span><span>۳۶ ثانیهٔ اخیر</span></div>');
-let CS=0,LS=-1;const HN=120,H=[{u:[],f:[],r:[]},{u:[],f:[],r:[]}];
-document.querySelectorAll('#cs button').forEach(b=>b.onclick=()=>{CS=+b.dataset.c;document.querySelectorAll('#cs button').forEach(x=>x.classList.toggle('on',x===b));chart();});
+let LS=-1;const HN=120,H=[{u:[],f:[],r:[]},{u:[],f:[],r:[]}];
 function zero(n){const r=H[n-1].r.slice(-10);if(r.length<3)return alert('دادهٔ کافی نیست؛ چند ثانیه صبر کنید.');
  const avg=Math.round(r.reduce((a,b)=>a+b,0)/r.length),du=D.t[(n-1)*7+5];
  if(!confirm((du>0?'هشدار: duty کانال '+n+' صفر نیست و جریان جاری است!\n':'')+'آفست صفر کانال '+n+': '+nz(D.p[n-1])+' ← '+avg+' (میانگین '+r.length+' نمونهٔ raw)؟'))return;send(n-1,Math.min(255,Math.max(0,avg)));}
-/* کارت CAL جدا و بالای تب کالیبراسیون (همیشه دیده می‌شود)؛ بقیهٔ کارت‌ها فقط در حالت مهندس */
-{const cc=document.createElement('div');cc.className='cd cc';cc.appendChild(document.querySelector('#t1 .ca'));
- document.querySelectorAll('#t1>.cd').forEach(c=>c.classList.add('en'));$('t1').prepend(cc);}
+function vcal(k){const R=V[k],m=Math.round(+$('vm'+k).value*1000),shown=D&&D.t[R[1]],off=D&&D.p[R[2]];if(!(m>0))return alert('عدد مولتی‌متر را به ولت وارد کنید (مثلاً 13.05).');if(off==null)return;
+ const no=Math.min(2000,Math.max(-2000,off+m-shown));if(confirm(R[0]+': آفست '+off+' ← '+no+' mV\n(نمایش '+v2(shown)+' V، مولتی‌متر '+v2(m)+' V)')){send(R[2],no);$('vm'+k).value='';}}
 /* CAL_REFERENCE (بخش 5.4): فقط عدد مولتی‌متر و هدف فرستاده می‌شود؛ محاسبه با STM32 است. رد شدن = هیچ پاسخی */
 const CN=['گین کانال ۱','گین کانال ۲','ضریب تبدیل کانال ۱','ضریب تبدیل کانال ۲'];let CR=-1;
-function cal(k){const e=$('cr'),r=Math.round(+e.value),n='۱۲'[k&1];if(e.value===''||!(r>=50&&r<=5000))return alert('عدد مولتی‌متر را بین 50 و 5000 mA وارد کنید.');
+function cal(k){const ch=(k&1)+1,e=$('cr'+ch),r=Math.round(+e.value),n='۱۲'[k&1];if(e.value===''||!(r>=50&&r<=5000))return alert('عدد مولتی‌متر را بین 50 و 5000 mA وارد کنید.');
  if(k<2&&!confirm(CN[k]+' از '+r+' mA کالیبره شود؟\nضریب تبدیل کانال '+n+' صفر می‌شود و باید بعدش دوباره آن را کالیبره کنید.'))return;
- const m=$('cm');m.className='cm lb';m.textContent='در حال ارسال '+CN[k]+'…';
+ const m=$('cm'+ch);m.className='cm lb';m.textContent='در حال ارسال '+CN[k]+'…';
  fetch('/c?t='+k+'&r='+r,{method:'POST'}).then(x=>{if(x.status==409)throw 'کالیبراسیون قبلی هنوز منتظر پاسخ است.';if(x.status==503)throw 'لینک STM32 قطع است.';if(!x.ok)throw 'ورودی نامعتبر.';e.value='';}).catch(t=>{m.className='cm r';m.textContent=typeof t=='string'?t:'ESP در دسترس نیست.';});}
 function calView(d){const c=d.c,t=d.t,p=d.p,on=d.on==1;if(!c)return;const w=c[1]==1;
- [0,1,2,3].forEach(k=>{const b=$('cb'+k),n=k&1,lo=t[n*7+3]<50;b.disabled=!on||w;b.classList.toggle('lo',lo);$('cv'+k).textContent=nz(p[k<2?2+n:9+n])+'‰';});
- $('cl').innerHTML=[1,2].map(n=>{const i=t[(n-1)*7+3];return `کانال ${'۱۲'[n-1]}: <b class="n ${i<50?'wr':''}">${i} mA</b>`;}).join(' · ')+(t[3]<50||t[10]<50?' — زیر ۵۰ mA رد می‌شود':'');
- if(w)$('cm').textContent='منتظر پاسخ STM32 ('+CN[c[2]]+')…';
- if(CR<0)CR=c[0];else if(c[0]!==CR&&c[1]>=2){const m=$('cm'),k=c[2],n='۱۲'[k&1];
-  if(c[1]==2){m.className='cm g';m.textContent=CN[k]+' = '+c[3]+'‰ اعمال شد'+(k<2?' — ضریب تبدیل کانال '+n+' صفر شد؛ حالا ضریب تبدیل کانال '+n+' را کالیبره کنید.':'.');}
+ [0,1,2,3].forEach(k=>{const b=$('cb'+k),n=k&1,lo=t[n*7+3]<50;b.disabled=!on||w;b.classList.toggle('lo',lo);$('kv'+k).textContent=nz(p[k<2?2+n:9+n])+'‰';});
+ [1,2].forEach(n=>{const i=t[(n-1)*7+3];$('cq'+n).innerHTML=`جریان فیلترشدهٔ فعلی <b class="n ${i<50?'wr':''}">${i} mA</b>`+(i<50?' — زیر ۵۰ mA رد می‌شود':'');});
+ if(w)$('cm'+((c[2]&1)+1)).textContent='منتظر پاسخ STM32 ('+CN[c[2]]+')…';
+ if(CR<0)CR=c[0];else if(c[0]!==CR&&c[1]>=2){const k=c[2],n='۱۲'[k&1],m=$('cm'+((k&1)+1));
+  if(c[1]==2){m.className='cm g';m.textContent=CN[k]+' = '+c[3]+'‰ اعمال شد'+(k<2?' — ضریب تبدیل کانال '+n+' صفر شد؛ حالا ضریب تبدیل را کالیبره کنید.':'.');}
   else{m.className='cm r';m.textContent='رد شد: جریان/شرایط ناکافی ('+CN[k]+'). جریان کانال باید بالای ۵۰ mA باشد'+(k>=2?' و ورودی حداقل 10V و باتری حداقل 5V':'')+'.';}
   CR=c[0];}}
-function vcal(k){const R=VR[k],m=Math.round(+$('vm'+k).value*1000),shown=D&&D.t[R[1]],off=D&&D.p[R[2]];if(!(m>0))return alert('عدد مولتی‌متر را به ولت وارد کنید (مثلاً 13.05).');if(off==null)return;
- const no=Math.min(2000,Math.max(-2000,off+m-shown));if(confirm(R[0]+': آفست '+off+' ← '+no+' mV\n(نمایش '+v2(shown)+' V، مولتی‌متر '+v2(m)+' V)')){send(R[2],no);$('vm'+k).value='';}}
-/* نمودار زندهٔ فیلتر */
-function chart(){const c=$('cv');if(tab!=1)return;const w=c.clientWidth,h=c.clientHeight,dp=devicePixelRatio||1;if(!w)return;
+/* نمودار زندهٔ فیلتر هر کانال */
+function chart(){[0,1].forEach(ci=>{const c=$('cv'+(ci+1)),w=c.clientWidth,h=c.clientHeight,dp=devicePixelRatio||1;if(!w)return;
  if(c.width!=Math.round(w*dp)){c.width=Math.round(w*dp);c.height=Math.round(h*dp);}
- const x=c.getContext('2d');x.setTransform(dp,0,0,dp,0,0);x.clearRect(0,0,w,h);const s=H[CS];if(s.u.length<2)return;
+ const x=c.getContext('2d');x.setTransform(dp,0,0,dp,0,0);x.clearRect(0,0,w,h);const s=H[ci];if(s.u.length<2)return;
  let lo=Math.min(...s.u,...s.f),hi=Math.max(...s.u,...s.f);if(hi-lo<10){const m=(hi+lo)/2;lo=m-5;hi=m+5;}const pd=(hi-lo)*.12,a=lo-pd,z=hi+pd;
  const X=i=>w-8-(s.u.length-1-i)*(w-16)/(HN-1),Y=v=>h-8-(v-a)/(z-a)*(h-16);
  const ln=(A,col,lw)=>{x.beginPath();A.forEach((v,i)=>i?x.lineTo(X(i),Y(v)):x.moveTo(X(i),Y(v)));x.strokeStyle=col;x.lineWidth=lw;x.stroke();};
  x.fillStyle='#6f7a93';x.font='11px Vazirmatn,sans-serif';x.fillText(Math.round(hi)+' mA',8,16);x.fillText(Math.round(lo)+' mA',8,h-10);
- ln(s.u,'#5b6784',1);ln(s.f,'#4f8cff',2);const pp=A=>{const B=A.slice(-50);return Math.max(...B)-Math.min(...B);};$('pu').textContent=pp(s.u);$('pf').textContent=pp(s.f);}
-$('mc').innerHTML=[1,2].map(n=>{const id=14+2*n;return `<div class="cd"><div class="hd"><b>کانال ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="ms${n}">—</span></div>
-<div class="mx"><span class="lb">duty فرمان <span class="ap n" id="a${id}m">—</span></span><div class="ct"><input type="number" id="m${n}" min="0" max="500"><button class="sb" id="mk${n}">اعمال</button></div></div>
-<input type="range" id="r${n}" min="0" max="500" step="1" value="0">
-<div class="ms"><div><span class="lb">duty</span><b class="n" id="md${n}">—</b></div><div><span class="lb">جریان اولیه</span><b class="n" id="mi${n}">—</b></div><div><span class="lb">تخمین باتری</span><b class="n" id="me${n}">—</b></div><div><span class="lb">ولتاژ کانال</span><b class="n" id="mv${n}">—</b></div><div><span class="lb">سقف</span><b class="n" id="mc${n}">—</b></div></div><button class="bt rm" id="rm${n}">اعمال مجدد duty</button></div>`;}).join('');
+ ln(s.u,'#5b6784',1);ln(s.f,'#4f8cff',2);const pp=A=>{const B=A.slice(-50);return Math.max(...B)-Math.min(...B);};$('pu'+(ci+1)).textContent=pp(s.u);$('pf'+(ci+1)).textContent=pp(s.f);});}
 [1,2].forEach(n=>{const id=14+2*n,r=$('r'+n),m=$('m'+n);
  r.oninput=()=>m.value=r.value;r.onchange=()=>send(id,r.value);
  $('mk'+n).onclick=()=>{const v=Math.round(+m.value);if(m.value===''||isNaN(v))return;send(id,Math.max(0,Math.min(+r.max,v)));m.blur();};
@@ -408,57 +410,46 @@ $('ao').onclick=()=>{send(16,0);send(18,0);[1,2].forEach(n=>{$('r'+n).value=0;$(
 /* اعمال مجدد: مقدار فعلی پارامتر ۱۶/۱۸ دوباره فرستاده می‌شود؛ بعد از تریپ JIT (وضعیت ۵) همین کار کانال را مسلح می‌کند */
 [1,2].forEach(n=>$('rm'+n).onclick=()=>{const id=14+2*n,v=D&&D.p[id];if(v==null)return;
  if(D.t[(n-1)*7+6]===5&&!confirm('کانال '+n+' با duty '+v+'‰ دوباره مسلح شود؟\nسومین تریپ JIT = خطای نهایی (فقط با ری‌استارت برد پاک می‌شود).'))return;send(id,v);});
-document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{tab=+b.dataset.t;document.querySelectorAll('nav button,section').forEach(x=>x.classList.remove('a'));b.classList.add('a');$('t'+tab).classList.add('a');if(D)draw(D);});
 /* کلید حالت مهندس: روی همین دستگاه به یاد می‌ماند؛ حین تست بنچ خاموش نمی‌شود */
-function eng(on){document.body.classList.toggle('eng',on);try{localStorage.setItem('eng',on?'1':'0');}catch(e){}
- if(!on&&tab>=2)document.querySelector('nav button[data-t="0"]').click();}
+function eng(on){document.body.classList.toggle('eng',on);try{localStorage.setItem('eng',on?'1':'0');}catch(e){}chart();}
 $('eg').onclick=()=>{const on=!document.body.classList.contains('eng');if(!on&&BT.run)return alert('تست بنچ در حال اجراست؛ اول آن را متوقف کنید.');eng(on);};
 $('mx').onclick=()=>send(19,0);
 
-/* ---------- به‌روزرسانی ---------- */
-/* فرمول‌های بخش 5.3 سند با مقادیر زنده */
-const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*76000/6800,K12=3300/4095*41000/6800;
+/* ---------- به‌روزرسانی: فرمول‌های بخش 5.3 با مقادیر زنده ---------- */
 const f1=x=>x.toFixed(1),V_=mv=>(mv/1000).toFixed(2)+'V',nz=v=>v==null?'?':v;
 /* iest مثل STM32 (charger.c): زیر Vin 10V یا Vbat 5V برگشت به همانی */
 const ie=(fl,vin,eta,vb)=>vin<10000||vb<5000?fl+' (همانی: ولتاژ زیر حد)':Math.floor(Math.floor(fl*eta/1000)*vin/vb);
-function formulas(t,p,tb){
- if(tb==0){[1,2].forEach(n=>{const b=n==1?0:7,raw=t[b],off=p[n-1],g=p[n+1],eta=p[8+n],vb=n==1?t[18]:t[17],vin=t[14],fl=t[b+3];
+function formulas(t,p){
+ [1,2].forEach(n=>{const b=n==1?0:7,raw=t[b],off=p[n-1],g=p[n+1],eta=p[8+n],vb=n==1?t[18]:t[17],vin=t[14],fl=t[b+3];
   $('f'+n+'0').textContent='12-bit ADC · Vref 3300 mV';
-  $('f'+n+'1').textContent=`${raw} × 8.7756 ≈ ${Math.round(raw*K_UV)}`;
+  $('f'+n+'1').textContent=`${raw} × 3300/4095 × 11/10 × 1000/101 = ${raw} × 8.7756 ≈ ${Math.round(raw*K_UV)}`;
   $('f'+n+'2').textContent=off==null||g==null?'':`(${raw} − ${off}) × 0.8776 × ${g}/1000 ≈ ${f1(Math.max(raw-off,0)*K_MA*g/1000)}`;
-  $('f'+n+'3').textContent=`average[${nz(p[8])}]( median[${nz(p[7])}]( mA ) )`;
-  $('f'+n+'4').textContent=eta==null?'':eta==0?`eta = 0 → Iest = I = ${fl}`:`${fl} × ${V_(vin)} × ${eta}‰ / ${V_(vb)} ≈ ${ie(fl,vin,eta,vb)}`;});return;}
- const L=(a,b)=>`<div class="fx">${a}</div>`+(b?`<div class="lb">${b}</div>`:'');
- $('fb0').innerHTML=[1,2].map(n=>{const raw=t[n==1?0:7],off=p[n-1],g=p[n+1];return L(`Ch${n}: mA = (${raw} − ${nz(off)}) × 0.8776 × ${nz(g)}/1000 ≈ ${off==null||g==null?'?':f1(Math.max(raw-off,0)*K_MA*g/1000)}`);}).join('')+
-  L('shunt µV = raw × 3300/4095 × 11/10 × 1000/101 = raw × 8.7756','ثابت‌ها: ADC دوازده‌بیتی، ۳۳۰۰mV، R41/R42 = 1k/10k، LM358 × 101، شنت 10 mOhm');
- const vc=(nm,mv,k,off)=>{const o=off==null?0:off,c=Math.round((mv-o)/k);return L(`${nm} = ${c} × ${k.toFixed(3)} ${o<0?'−':'+'} ${Math.abs(o)} ≈ ${V_(mv)}`);};
- $('fb1').innerHTML=vc('Vin',t[14],K24,p[4])+vc('V24',t[15],K24,p[5])+vc('V12',t[16],K12,p[6])+L(`Vhigh = V24 − V12 = ${V_(t[18])}   ·   Vlow = V12 = ${V_(t[17])}`);
- $('fb2').innerHTML=L(`I_filtered = average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( mA_unfiltered ) )`)+[1,2].map(n=>{const b=n==1?0:7;return L(`Ch${n}: ${t[b+2]} mA → ${t[b+3]} mA`);}).join('');
- $('fb3').innerHTML=L('eta = 0: Iest = I_filtered   ·   eta > 0: Iest = I_filtered × Vin × eta / (1000 × Vbat)','Vbat کانال ۱ = باتری بالا، کانال ۲ = باتری پایین؛ ضریب را با دکمهٔ ضریب تبدیل در کارت کالیبراسیون جریان بگیرید')+[1,2].map(n=>{const b=n==1?0:7,vb=n==1?t[18]:t[17],eta=p[8+n],fl=t[b+3];return L(eta==null?`Ch${n}: ?`:eta==0?`Ch${n}: eta = 0 → Iest = ${fl} mA`:`Ch${n}: ${fl} × ${V_(t[14])} × ${eta}‰ / ${V_(vb)} ≈ ${ie(fl,t[14],eta,vb)} mA`);}).join('');}
+  $('f'+n+'3').textContent=`average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( ${t[b+2]} mA ) ) = ${fl}`;
+  $('f'+n+'4').textContent=eta==null?'':eta==0?`eta = 0 → Iest = I = ${fl}`:`${fl} × ${V_(vin)} × ${eta}‰ / ${V_(vb)} ≈ ${ie(fl,vin,eta,vb)}`;});
+ V.forEach((v,i)=>{const e=$('fv'+i);if(i<3){const o=p[v[2]]==null?0:p[v[2]],c=Math.round((t[v[1]]-o)/v[3]);e.textContent=`${c} × ${v[3].toFixed(3)} ${o<0?'−':'+'} ${Math.abs(o)}`;}
+  else e.textContent=i==3?'V24 − V12':'= V12';});
+ $('ff').textContent=`I_filtered = average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( mA_unfiltered ) )`;}
 function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);s.r.push(t[b]);if(s.u.length>HN){s.u.shift();s.f.shift();s.r.shift();}});}}
 function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;
  document.body.classList.toggle('dn',!on);$('lk').classList.toggle('on',on);
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');
  hist(d);
  V.forEach((v,i)=>$('v'+i).textContent=v2(t[v[1]]));
- [1,2].forEach(n=>{const b=(n-1)*7;$('lc'+n).textContent=t[b]+' → '+t[b+3]+' mA';});VR.forEach((v,k)=>$('vl'+k).textContent=v2(t[v[1]])+' V');
  const F=[['snapshot',d.fl&1],['ورودی ۲۴V',d.fl&2],['اندازه‌گیری معتبر',d.fl&4]];
  $('fl').innerHTML=F.map(f=>`<span class="tg ${f[1]?'g':'r'}">${f[0]}</span>`).join('')+(t[19]&64?'<span class="tg r">خطا: باتری قطع</span>':'')+
   (t[19]&~64?`<span class="tg r n">fault 0x${t[19].toString(16)}</span>`:'')+(man?'<span class="tg y">مود دستی</span>':'');
  [1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=p[10+n],ce=p[12+n],fx=p[13+2*n],cv=t[n==1?18:17];
   const st=$('st'+n);st.textContent=(ST[s]||'#'+s)+(fx===1&&!man?' · فیکس':'');st.className='tg '+(SC[s]||'');
-  $('ie'+n).innerHTML=t[b+4]+' <span class="lb">mA</span>';$('du'+n).textContent=pc(t[b+5]);
+  $('ie'+n).innerHTML=t[b+4]+' <span class="lb">mA</span>';$('du'+n).textContent=pc(t[b+5]);$('dc'+n).textContent=ce==null?'':'· سقف '+pc(ce);
   $('db'+n).style.width=Math.min(100,t[b+5]/10)+'%';$('cl'+n).style.left=(100-Math.min(100,(ce==null?1000:ce)/10))+'%';
-  [0,1,2,3,4].forEach(k=>$('c'+n+k).textContent=t[b+k]);
-  const g=$('tg'+n);g.textContent=en===0?'وصل مجدد شارژر '+n:'قطع شارژر '+n;g.className='bt '+(en===0?'run':'cut');
-  /* تب تست دستی */
-  const lim=Math.min(500,ce==null?500:ce),r=$('r'+n),m=$('m'+n),dv=p[14+2*n];r.max=lim;m.max=lim;
+  [0,1,2,3,4].forEach(k=>$('c'+n+k).textContent=t[b+k]);$('lc'+n).textContent=t[b]+' → '+t[b+3]+' mA';
+  const g=$('tg'+n);g.textContent=en===0?'وصل مجدد شارژر '+n:'قطع شارژر '+n;g.className='bt en '+(en===0?'run':'cut');
+  /* بخش تست دستی همین ستون */
+  const lim=Math.min(500,ce==null?500:ce),r=$('r'+n),m=$('m'+n),dv=p[14+2*n];r.max=lim;m.max=lim;$('mn'+n).classList.toggle('dis',!man);
   if(dv!=null&&document.activeElement!==r&&document.activeElement!==m&&!(d.q&(1<<(14+2*n)))){r.value=dv;}
-  let tag=ST[s]||'#'+s,cl=SC[s]||'';if(cv>=15000&&man){tag='قطع ۱۵V';cl='r';}const jit=man&&s===5&&en!==0;if(jit){tag='تریپ JIT — مسلح‌سازی لازم است';cl='r';}if(s===7){tag='خطای نهایی — فقط ری‌استارت برد';cl='r';}if(en===0){tag='کانال قطع';cl='r';}
+  let tag=man?(ST[s]||'#'+s):'مود دستی خاموش',cl=man?(SC[s]||''):'';if(cv>=15000&&man){tag='قطع ۱۵V';cl='r';}const jit=man&&s===5&&en!==0;if(jit){tag='تریپ JIT — مسلح‌سازی لازم است';cl='r';}if(s===7){tag='خطای نهایی — فقط ری‌استارت برد';cl='r';}if(en===0){tag='کانال قطع';cl='r';}
   const rb=$('rm'+n);rb.classList.toggle('j',jit);rb.disabled=!man||dv==null;rb.innerHTML=(jit?'مسلح‌سازی · ':'')+'اعمال مجدد duty'+(dv==null?'':' <span class="n">'+dv+'‰</span>');
   $('ms'+n).textContent=tag;$('ms'+n).className='tg '+cl;
-  $('md'+n).textContent=pc(t[b+5]);$('mi'+n).textContent=t[b+3]+' mA';$('me'+n).textContent=t[b+4]+' mA';
-  $('mv'+n).textContent=v2(cv)+' V';$('mc'+n).textContent=pc(lim);
   const a=$('a'+(14+2*n)+'m');if(!(d.q&(1<<(14+2*n))))a.textContent=dv==null?'—':dv+'‰';});
  Object.keys(P).forEach(id=>{if(d.q&(1<<id))return;const v=p[id],a=$('a'+id);a.textContent=v==null?'—':v;
   const b=$('b'+id);if(b){b.textContent=v===1?'روشن':v===0?'خاموش':'—';b.classList.toggle('on',v===1);}
@@ -467,8 +458,8 @@ function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;
  const sup=p[19]!=null,s19=$('s19');s19.disabled=!sup||!on;
  s19.textContent=!sup?'پشتیبانی نمی‌شود':man?'روشن':'خاموش';s19.classList.toggle('on',man);
  $('a19').textContent=d.q&(1<<19)?'…':'';
- $('mh').textContent=sup?'duty هر کانال مستقیم از شناسه‌های ۱۶ و ۱۸ اعمال می‌شود.':'فرمور فعلی STM32 شناسهٔ ۱۹ را گزارش نکرده است (پروتکل v1.2 لازم است).';
- if(tab<2)formulas(t,p,tab);calView(d);chart();
+ $('mh').textContent=sup?'duty هر کانال در ستون همان کانال (بخش تست دستی) تعیین می‌شود.':'فرمور فعلی STM32 شناسهٔ ۱۹ را گزارش نکرده است (پروتکل v1.2 لازم است).';
+ formulas(t,p);calView(d);chart();
  $('mb').classList.toggle('v',man);$('ka').innerHTML=man?(d.ka<1500?`پایش لینک فعال · <span class="n">keepalive ${d.ka} ms</span>`:'<b>keepalive متوقف است</b>'):'';}
 async function poll(){const c=new AbortController(),k=setTimeout(()=>c.abort(),2000);try{const r=await fetch('/t',{cache:'no-store',signal:c.signal});const d=await r.json();clearTimeout(k);if(document.hidden){D=d;hist(d);}else draw(d);}catch(e){clearTimeout(k);document.body.classList.add('dn');$('lk').classList.remove('on');$('lt').textContent='ESP در دسترس نیست';}
  setTimeout(poll,300);}
@@ -513,7 +504,7 @@ function copy(k){const a=$('bx'+k);a.focus();a.select();let ok=false;try{ok=docu
 async function dmm(k,txt,req_){const q=$('bq'+k);q.innerHTML=`<div class="lb">${txt}</div><div class="bqr"><label>مولتی‌متر ورودی ۲۴V <span class="lb">mA${req_?' (اجباری)':''}</span><input type="number" id="dq1"></label><label>مولتی‌متر باتری <span class="lb">mA (اختیاری)</span><input type="number" id="dq2"></label><button class="sb" id="dqk">ثبت و بعدی</button></div>`;
  q.classList.add('v');BT.go=false;$('dqk').onclick=()=>{const a=$('dq1').value;if(req_&&!(+a>0))return alert('عدد مولتی‌متر ورودی ۲۴V اجباری است.');BT.go=true;};$('dq1').focus();
  try{while(!BT.go){chk();await sl(100);}return [$('dq1').value===''?null:+$('dq1').value,$('dq2').value===''?null:+$('dq2').value];}finally{q.classList.remove('v');q.innerHTML='';}}
-async function run(k,name,fn){if(BT.run)return;if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');
+async function run(k,name,fn){if(BT.run)return;if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');$('br'+k).closest('.cd').classList.add('op');
  const o={};[11,12,16,18,19].forEach(i=>o[i]=D.p[i]);if(Object.values(o).some(v=>v==null))return alert('پارامترها هنوز از STM32 خوانده نشده‌اند.');
  if(D.p[15]===1||D.p[17]===1)return alert('مود duty فیکس (۱۵/۱۷) روشن است؛ اول خاموشش کنید.');
  const O={head:`[ChangeOver bench] ${name} | ${ts()}`,T:[],sum:[],err:null};
@@ -578,6 +569,9 @@ function bB(){if(cfm('تست صفر و کراس‌تاک: مود دستی روش
 function bC(){if(cfm('تست پایداری: مود دستی روشن و کانال همسایه قطع می‌شود.'))run(3,'Test C - stability / drift',tC);}
 function bD(){if(cfm('تست عملکرد: کانال همسایه قطع و مود دستی خاموش می‌شود؛ شارژر خودکار کانال تست کار می‌کند.'))run(4,'Test D - regulation (band 630-650 on iest)',tD);}
 function bS(){if(cfm('پیمایش duty: مود دستی روشن و کانال همسایه قطع می‌شود.'))run(5,'Test D sweep - converter curve',tS);}
+/* کارت‌های تست بنچ جمع‌شده؛ با کلیک روی عنوان باز می‌شوند */
+$('t3').insertAdjacentHTML('afterbegin','<h2 class="h2">تست‌های بنچ</h2>');
+document.querySelectorAll('#t3>.cd:not(.bsb)').forEach(c=>{c.classList.add('bk');c.querySelector('.ti').onclick=()=>c.classList.toggle('op');});
 try{eng(localStorage.getItem('eng')==='1');}catch(e){eng(false);}
 poll();
 </script></body></html>)HTML";
