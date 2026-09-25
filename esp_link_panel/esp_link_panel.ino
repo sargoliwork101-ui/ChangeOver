@@ -358,7 +358,7 @@ const P={0:['آفست صفر','count',0,255,'n','شمارش ADC در جریان 
 4:['آفست ولتاژ ورودی','mV',-2000,2000,'n','بعد از تبدیل مقسم 69.2k/6.8k جمع می‌شود (علامت‌دار)'],
 5:['آفست ولتاژ پک ۲۴V','mV',-2000,2000,'n','کالیبراسیون ولتاژ پک ۲۴V (علامت‌دار)'],
 6:['آفست ولتاژ ۱۲V','mV',-2000,2000,'n','مقسم 34.2k/6.8k؛ روی باتری پایین و بالا (V24 − V12) هر دو اثر دارد'],
-7:['پنجرهٔ مدین','نمونه',1,15,'n','مرحلهٔ اول فیلتر، هر عدد ۱ تا ۱۵ (زوج هم مجاز)؛ ۱ و ۲ = خاموش، ۳ = پیش‌فرض، بزرگ‌تر = حذف پالس قوی‌تر با تأخیر بیشتر'],
+7:['پنجرهٔ مدین','نمونه',1,15,'n','مرحلهٔ اول فیلتر، هر عدد ۱ تا ۱۵ (زوج هم مجاز)؛ ۱ و ۲ = خاموش، ۳ = پیش‌فرض، بزرگ‌تر = حذف پالس قوی‌تر با تاخیر بیشتر'],
 8:['پنجرهٔ میانگین','نمونه',1,100,'n','مرحلهٔ دوم فیلتر، هر عدد ۱ تا ۱۰۰: میانگین آخرین W خروجی مدین (هر نمونه ۱ms)؛ ۱ = خاموش، ۱۰ = پیش‌فرض'],
 9:['ضریب تبدیل','‰',0,999,'n','صفر = همانی (عدد فیلترشده خودش جریان باتری است)؛ غیرصفر: iest = I × Vin × eta / (1000 × Vbat) با ولتاژهای زنده (Vbat = باتری بالا). با دکمهٔ ضریب تبدیل پایین تنظیم کنید، نه دستی'],
 10:['ضریب تبدیل','‰',0,999,'n','صفر = همانی؛ غیرصفر: iest = I × Vin × eta / (1000 × Vbat) با ولتاژهای زنده (Vbat = باتری پایین). با دکمهٔ ضریب تبدیل پایین تنظیم کنید، نه دستی'],
@@ -532,7 +532,7 @@ const need=()=>{if(!D){alert('هنوز داده‌ای از برد نرسیده 
 const OK=x=>`<b class="okc">${x}</b>`,NO=x=>`<b class="erc">${x}</b>`;
 
 /* ----- ثبت داده در فایل (بخش 5.6، نسخه ۱.۴): SOLO1 → SOLO2 → BOTH؛ جلو رفتن فقط با دکمهٔ کاربر -----
- * هر مرحله: duty → صبر → نمونه‌برداری از پنجرهٔ /m (تک‌تک فریم‌های TLM، raw خام) → توقف و فرم مولتی‌متر → با «ثبت و مرحلهٔ بعد» یک خط CSV در ESP.
+ * هر مرحله: duty → صبر → نمونه‌برداری از پنجرهٔ /m (تک‌تک فریم‌های TLM، raw خام) → توقف و فرم مولتی‌متر → با دکمهٔ ثبت و مرحلهٔ بعد یک خط CSV در ESP.
  * Capture wizard: set duty → settle → sample the /m window (every TLM frame, raw included) → STOP for the DMM form → append one CSV row only on submit. */
 const WSC={SOLO1:[1],SOLO2:[2],BOTH:[1,2]};let W={run:false,abort:false,act:null},RS={};try{RS=JSON.parse(localStorage.getItem('wrs')||'{}');}catch(e){}
 const sl=ms=>new Promise(r=>setTimeout(r,ms));
@@ -573,7 +573,7 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
  const SC=Object.keys(WSC).filter(k=>$('wc'+k).checked);if(!SC.length)return alert('حداقل یک جدول را انتخاب کنید.');
  const o={};[11,12,16,18,19].forEach(i=>o[i]=D.p[i]);if(Object.values(o).some(v=>v==null))return alert('پارامترها هنوز از STM32 خوانده نشده‌اند.');
  if(D.p[15]===1||D.p[17]===1)return alert('مود duty فیکس (۱۵/۱۷) روشن است؛ اول خاموشش کنید.');
- const fi=await winfo();if(!fi||!fi.fs)return alert('فایل‌سیستم ESP در دسترس نیست؛ در Arduino IDE چیدمان فلشِ دارای FS را انتخاب و دوباره فلش کنید.');
+ const fi=await winfo();if(!fi||!fi.fs)return alert('فایل‌سیستم ESP در دسترس نیست؛ در Arduino IDE چیدمان فلش دارای FS را انتخاب و دوباره فلش کنید.');
  if(!confirm('ثبت داده شروع شود؟ جدول‌ها: '+SC.join('، ')+'\nپنل duty هر مرحله را می‌گذارد و بعد منتظر عدد مولتی‌متر شما می‌ماند. در پایان هر جدول تنظیمات قبلی برمی‌گردد.'))return;
  W={run:true,abort:false,act:null,man:false,rows:{}};document.body.classList.add('br');SC.forEach(sc=>$('wT'+sc).innerHTML='');$('wDone').classList.remove('v');RS={};let err=null;
  try{for(const sc of SC){const act=WSC[sc];W.rows[sc]=[];
@@ -599,8 +599,10 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
  $('wDone').classList.add('v');winfo();}
 /* برازش گین برای تب اصلاح و محاسبه (فقط نمایش؛ چیزی ارسال نمی‌شود) */
 function wfit(n){const S=RS[n],off=D.p[n-1],R=S.R.filter(r=>r.di>0).map(r=>({...r,net:Math.max(r.raw-off,0)})).filter(r=>r.net>0);S.gA=S.gF=S.oF=null;if(R.length<1)return;
- S.gA=r0(mean(R.map(r=>r.di*1000/(r.net*K_MA))));if(R.length<2)return;const xs=R.map(r=>r.net),ys=R.map(r=>r.di),mx=mean(xs),my=mean(ys),sxx=xs.reduce((a,x)=>a+(x-mx)**2,0);if(!sxx)return;
- const a=xs.reduce((s,x,i)=>s+(x-mx)*(ys[i]-my),0)/sxx,b=my-a*mx;S.gF=r0(a/K_MA*1000);S.oF=a?r0(off-b/a):off;}
+ S.gA=r0(mean(R.map(r=>r.di*1000/(r.net*K_MA))));if(!(S.gA>=100&&S.gA<=3000))S.gA=null;if(R.length<2)return;const xs=R.map(r=>r.net),ys=R.map(r=>r.di),mx=mean(xs),my=mean(ys),sxx=xs.reduce((a,x)=>a+(x-mx)**2,0);if(!sxx)return;
+ const a=xs.reduce((s,x,i)=>s+(x-mx)*(ys[i]-my),0)/sxx,b=my-a*mx;S.gF=r0(a/K_MA*1000);S.oF=a?r0(off-b/a):off;
+ /* خارج از محدودهٔ مجاز پارامتر = پیشنهاد نمی‌شود / outside the parameter range = no suggestion */
+ if(!(S.gF>=100&&S.gF<=3000&&S.oF>=0&&S.oF<=255))S.gF=S.oF=null;}
 
 /* ----- تست B: صفر و اثر متقابل ----- */
 const BX=[[1,10],[1,15],[1,20],[2,10],[2,15],[2,20]];
@@ -700,8 +702,8 @@ ${[0,1,2].map(k=>`<tr><td>${V[k][0]}</td><td class="n" id="eVs${k}">—</td><td 
 bload($('p2'));$('p2').addEventListener('input',bsave);
 const EID=n=>({O:n-1,G:n+1,E:8+n});
 function eFill(n){if(!need())return;const m=EID(n);Object.keys(m).forEach(k=>sv('e'+k+n,nz(D.p[m[k]])));bsave();}
-function eFromA(n,w){const S=RS[n];if(!S||S.gA==null)return alert('اول جدول SOLO'+n+' را در ثبت داده در فایل پر کنید (تب تست‌ها).');
- if(w==0){sv('eG'+n,S.gA);if(gv('eO'+n)==null)sv('eO'+n,D.p[n-1]);}else{if(S.gF==null)return alert('برای خط حداقل ۲ مرحلهٔ متفاوت لازم است.');sv('eG'+n,S.gF);sv('eO'+n,Math.min(255,Math.max(0,S.oF)));}bsave();eCalc(n);}
+function eFromA(n,w){const S=RS[n];if(!S)return alert('اول جدول SOLO'+n+' را در ثبت داده در فایل پر کنید (تب تست‌ها).');if(w==0&&S.gA==null)return alert('گین میانگین SOLO'+n+' خارج از محدودهٔ ۱۰۰ تا ۳۰۰۰ است؛ عددهای مولتی‌متر را بررسی کنید.');
+ if(w==0){sv('eG'+n,S.gA);if(gv('eO'+n)==null)sv('eO'+n,D.p[n-1]);}else{if(S.gF==null)return alert('خط قابل پیشنهاد نیست: حداقل ۲ مرحلهٔ متفاوت لازم است و گین باید ۱۰۰ تا ۳۰۰۰ و آفست ۰ تا ۲۵۵ باشد.');sv('eG'+n,S.gF);sv('eO'+n,Math.min(255,Math.max(0,S.oF)));}bsave();eCalc(n);}
 function eRead(n){if(!live(10))return;const c=n-1;sv('eR'+n,r0(av(c,'r',10)));sv('eV'+n,(av(c,'v',10)/1000).toFixed(2));sv('eB'+n,(av(c,'b',10)/1000).toFixed(2));bsave();}
 function eCalc(n){if(!need())return;const p=D.p,bo=p[n-1],bg=p[n+1],be=p[8+n],o=gv('eO'+n)??bo,g=gv('eG'+n)??bg,e=gv('eE'+n)??be,raw=gv('eR'+n),vin=gv('eV'+n),vb=gv('eB'+n),di=gv('eI'+n),db=gv('eJ'+n);
  const mA=(r,oo,gg)=>Math.max(r-oo,0)*K_MA*gg/1000,er=(x,y)=>y>0?((x-y)/y*100).toFixed(1)+' %':'-',L=[];
