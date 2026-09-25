@@ -8,7 +8,9 @@
 > boot defaults unchanged) + section 5.6 bench data capture to a text file
 > on the ESP (three scenario tables, user-defined duty steps, user-gated
 > advance, download endpoint; CSV v2 = every row self-contained with all
-> 20 params + the full TLM state) — the STM32 side is IMPLEMENTED and pushed.
+> 20 params + the full TLM state; DMM = whole-board input totals +
+> per-battery output current/voltage) — the STM32 side is IMPLEMENTED
+> and pushed.
 >
 > v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
 > conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
@@ -459,12 +461,13 @@ one row per recorded step. `-` means "not entered".
 #  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,
 #           filt2,filt2_min,filt2_max,iest2,iest2_min,iest2_max,duty2,state2
 #  [glob]   seq,flags,vin_mv,v24_mv,v12_mv,vlow_mv,vhigh_mv,faults_or
-#  [dmm]    dmm_i1_ma,dmm_i2_ma,dmm_vin_mv,dmm_vhigh_mv,dmm_vlow_mv,note
+#  [dmm]    dmm_i_in_ma,dmm_vin_mv,dmm_i_bat1_ma,dmm_vbat1_mv,
+#           dmm_i_bat2_ma,dmm_vbat2_mv,note
 # run <n> browser_ts=<ISO from the panel page> scenario=<SOLO1|SOLO2|BOTH>
 #  duty_list=<...>
 ```
 
-70 columns. Window semantics: every numeric TLM field is averaged over
+71 columns. Window semantics: every numeric TLM field is averaged over
 the sample window; the current-chain signals (raw/unf/filt/iest, both
 channels) additionally carry min and max; `duty`/`state`/`seq`/`flags`
 are the LAST frame's value; `faults_or` is the bitwise OR of the fault
@@ -500,8 +503,21 @@ stay as they are):
    averages), then STOP and show the DMM entry form.
    NO auto-advance: a step is recorded ONLY when the user submits the
    form. Buttons: "ثبت و مرحلهٔ بعد" / "تکرار همین مرحله" / "پایان".
-   DMM fields: the ammeter of every ACTIVE channel (mandatory) and the
-   voltmeters Vin / battery-high / battery-low (optional).
+   DMM fields (v4, user order 2026-09-25 - what the user can actually
+   meter): INPUT of the WHOLE BOARD (one common supply feed, no
+   per-channel input meters): total input ammeter (mA) + input
+   voltmeter (V, recommended). OUTPUT, per battery: battery-1 ammeter
+   (mA, the charge lead of channel 1) + battery-1 voltmeter (V);
+   battery-2 ammeter + voltmeter likewise. Mandatory per step: the
+   total input current AND the ammeter of every ACTIVE battery (in
+   SOLO1 only battery 1, in SOLO2 only battery 2, in BOTH both); the
+   voltmeters are optional but recommended. Volt fields accept decimal
+   volts; the panel converts to mV. Free-text note (optional).
+   UI hint under the form: the BATTERY ammeter is the calibration
+   reference and should sit close to the panel number (their gap IS
+   the calibration error); the total input current is expected to be
+   about 0.7x the panel sum (converter ratio) - both numbers are
+   needed per row on purpose.
 4. On submit: append the CSV row, go to the next step. At scenario end:
    restore the pre-test parameters (as the current tests do) and
    continue with the next scenario.
