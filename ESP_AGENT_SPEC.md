@@ -10,7 +10,10 @@
 > advance, download endpoint; CSV v2 = every row self-contained with all
 > 20 params + the full TLM state; DMM = whole-board input totals +
 > per-battery output current/voltage) — the STM32 side is IMPLEMENTED
-> and pushed.
+> and pushed. v1.7 panel (same day): simplified to two tabs (charts +
+> wizard), CAL card / manual tests / correction tab removed, and the
+> wizard latches the MCU statistics at the SUBMIT press (form-open
+> resets the window; `sample_ms` = actual duration).
 >
 > v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
 > conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
@@ -468,11 +471,12 @@ one row per recorded step. `-` means "not entered".
 ```
 
 71 columns. Window semantics: every numeric TLM field is averaged over
-the sample window; the current-chain signals (raw/unf/filt/iest, both
-channels) additionally carry min and max; `duty`/`state`/`seq`/`flags`
-are the LAST frame's value; `faults_or` is the bitwise OR of the fault
-mask across the whole window; `browser_ts` is the browser's wall clock
-(the ESP has none) attached to the step registration.
+the statistics window (= the time the DMM form was open, v1.7); the
+current-chain signals (raw/unf/filt/iest, both channels) additionally
+carry min and max; `duty`/`state`/`seq`/`flags` are the LAST frame's
+value; `faults_or` is the bitwise OR of the fault mask across the whole
+window; `browser_ts` is the browser's wall clock (the ESP has none)
+taken at the submit press; `sample_ms` is the actual window duration.
 
 Field sources - TLM offsets: seq 0, flags 2, raw 4/32, shunt_uv 8/36,
 unfiltered 12/40, filtered 16/44, iest 20/48, duty 24/52, state 28/56,
@@ -480,29 +484,40 @@ Vin 60, V24 64, V12 68, Vlow 72, Vhigh 76, faults 80. `raw` is the
 pre-offset ADC count (the unfiltered truth); `unf` is post offset+gain;
 `filt` is what the charger regulates on; `iest` is the battery estimate.
 
-Panel duties per step: refresh GET_PARAMS once right before the sample
-window (the [params] columns must be the values that were actually live
-during the window) and extend the /m stats window to EVERY TLM field
-(21 tracked fields x avg/min/max instead of today's 13 - `seq`/`flags`
-track last, `faults` tracks OR).
+Panel duties per step: refresh GET_PARAMS once right before the form
+opens (the [params] columns must be the values that were actually live
+during the window) and track EVERY TLM field in the /m stats window
+(`seq`/`flags` track last, `faults` tracks OR). v1.7 flow: POST /m
+(reset) at form open, GET /m at the submit press.
 
-Capture wizard (this REPLACES the old copy-block Test A; tests B/C/D
-stay as they are):
+Capture wizard (this REPLACED the old copy-block Test A; the v1.7
+simplification, user order 2026-09-25, reduced the panel to TWO tabs -
+the main chart panel and this wizard - and REMOVED the CAL card, the
+manual tests B/C/D and the correction/analysis tab; the wire protocol
+SET_PARAM / GET_PARAMS / TLM is unchanged and still two-way, and the
+STM32 CAL handler stays in the firmware, unused):
 1. The user FREELY defines the duty step list (e.g. "5,10,15,20" in
    percent; any values, any count; the panel converts to permille x 10
-   and clamps to the ID 13/14 ceilings) and the settle / sample windows
-   (defaults 3 s / 3 s, editable).
+   and clamps to the ID 13/14 ceilings) and the settle window (default
+   3 s, editable). There is no separate sample-window input anymore
+   (v1.7): the window IS the time the form stays open.
 2. THREE scenarios, in this order, one table each:
    - `SOLO1`: charger 1 runs, charger 2 cut (ID 12 = 0)
    - `SOLO2`: charger 2 runs, charger 1 cut (ID 11 = 0)
    - `BOTH` : both enabled, both driven at the SAME duty step
    (the solo-vs-both comparison is what quantifies the cross-talk).
 3. Per step: set manual mode (ID 19 = 1) + duty (ID 16 and/or 18), keep
-   the v1.2 keepalive, wait the settle window, sample TLM for the sample
-   window (avg/min/max of raw/unf/filt/iest per channel + Vin/Vhigh/Vlow
-   averages), then STOP and show the DMM entry form.
+   the v1.2 keepalive, wait the settle window, RESET the /m statistics
+   window, then STOP and show the DMM entry form with LIVE panel numbers
+   (v1.7 latch, user order 2026-09-25: the values used to be sampled
+   BEFORE the form and went stale while the user typed, while the battery
+   kept charging - the user demanded capture at the submit moment).
    NO auto-advance: a step is recorded ONLY when the user submits the
-   form. Buttons: "ثبت و مرحلهٔ بعد" / "تکرار همین مرحله" / "پایان".
+   form. When "ثبت و مرحلهٔ بعد" is PRESSED, the panel reads the /m
+   window AT THAT INSTANT and builds the row from it: the MCU numbers
+   and the typed meters now describe the same moment. The CSV
+   `sample_ms` column is the ACTUAL window duration (form open ->
+   submit). Buttons: "ثبت و مرحلهٔ بعد" / "تکرار همین مرحله" / "پایان".
    DMM fields (v4, user order 2026-09-25 - what the user can actually
    meter): INPUT of the WHOLE BOARD (one common supply feed, no
    per-channel input meters): total input ammeter (mA) + input
