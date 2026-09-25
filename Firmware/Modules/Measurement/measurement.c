@@ -117,7 +117,7 @@ static uint32_t UINT32_T__G__CurrentAverageWindowMa[2][MEASUREMENT_CURRENT_AVERA
  *      می‌کند؛ پس قفل بین‌تسکی لازم نیست (نوشته از تسک EspLink، volatile). */
 static volatile uint8_t UINT8_T__G__FilterMedianSize = 3u;
 static volatile uint8_t UINT8_T__G__FilterAverageWindow =
-    (uint8_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW;
+    (uint8_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW_DEFAULT;
 
 /* [EN] Last configuration the measurement task applied; owned by the
  *      measurement task only (change detection).
@@ -125,7 +125,7 @@ static volatile uint8_t UINT8_T__G__FilterAverageWindow =
  *      تسک است (تشخیص تغییر). */
 static uint8_t UINT8_T__G__FilterMedianSizeApplied = 3u;
 static uint8_t UINT8_T__G__FilterAverageWindowApplied =
-    (uint8_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW;
+    (uint8_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW_DEFAULT;
 
 /* [EN] Runtime voltage calibration offsets in mV, default 0 = today's
  *      behavior; applied AFTER the divider conversion, before the
@@ -178,8 +178,9 @@ static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
 /**
  * @brief  [EN] Shift one new converted current sample (mA) of one channel
  *              into its median history and return the middle value. The
- *              window size is the runtime median size (1/3/5, user order
- *              2026-09-22: the ESP panel can change it live); a
+ *              window size is the runtime median size (v1.4, user order
+ *              2026-09-25: ANY value 1..15, even sizes included; the ESP
+ *              panel can change it live); a
  *              single-sample jump of the synchronized mid-ON reading is
  *              discarded with zero added lag. Insertion sort of a LOCAL
  *              copy keeps the live history untouched, same pattern as the
@@ -187,13 +188,14 @@ static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
  *         [FA] یک نمونهٔ تبدیل‌شدهٔ جریان (mA) از یک کانال را در
  *              تاریخچهٔ مدین همان کانال جابه‌جا و مقدار میانی را
  *              برمی‌گرداند. اندازهٔ پنجره همان اندازهٔ مدین زمان اجرا
- *              است (۱/۳/۵، دستور کاربر ۲۰۲۶-۰۹-۲۲: پنل ESP زنده عوضش
- *              می‌کند)؛ پرش تک‌نمونه‌ای خوانش سنکرون وسط ON بدون تأخیر
+ *              است (v1.4، دستور کاربر ۲۰۲۶-۰۹-۲۵: هر مقدار ۱..۱۵، زوج
+ *              هم مجاز؛ پنل ESP زنده عوضش می‌کند)؛ پرش تک‌نمونه‌ای خوانش
+ *              سنکرون وسط ON بدون تأخیر
  *              اضافه دور انداخته می‌شود. مرتب‌سازی درجی روی کپی محلی،
  *              همان الگوی مدین-۵ ولتاژ.
  * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
  * @param  uint32_t__sampleMa [EN] New converted sample in mA / نمونهٔ جدید mA
- * @param  uint8_t__medianSize [EN] Active median window (1..5) / پنجرهٔ فعال
+ * @param  uint8_t__medianSize [EN] Active median window (1..15) / پنجرهٔ فعال
  * @return uint32_t [EN] Median-filtered current in mA / جریان مدین‌شده mA
  */
 static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
@@ -345,9 +347,10 @@ static uint32_t func__Measurement_ApplyCurrentFilters(uint8_t uint8_t__channelIn
 
 #if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
     /* [EN] Runtime window (ESP panel): the compiled switch is the
-       capability, the size is the live setting (1 = bypass, 3/5 = active).
+       capability, the size is the live setting (v1.4: 1..2 = bypass,
+       3..15 = active, any value).
        [FA] پنجرهٔ زمان اجرا (پنل ESP): کلید کامپایل ظرفیت است و اندازه
-       تنظیم زنده (۱ = عبور مستقیم، ۳/۵ = فعال). */
+       تنظیم زنده (v1.4: ۱..۲ = عبور مستقیم، ۳..۱۵ = فعال، هر مقدار). */
     if (UINT8_T__G__FilterMedianSize >= 3u)
     {
         uint32_t__sampleMa =
@@ -940,17 +943,23 @@ bool func__Measurement_GetSnapshot(measurement_snapshot_t *measurement_snapshot_
 uint8_t func__Measurement_SetFilterMedianSize(uint8_t uint8_t__medianSize)
 {
 #if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
-    if (uint8_t__medianSize >= (uint8_t)MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX)
+    /* [EN] v1.4 (user order 2026-09-25): ANY size 1..MAX - even sizes
+       allowed, no odd rounding. 1..2 behave as bypass in the task.
+       [FA] ‌v1.4 (دستور کاربر ۲۰۲۶-۰۹-۲۵): هر اندازهٔ ۱..MAX - زوج هم
+       مجاز، بدون گردکردن به فرد. ۱..۲ در تسک مثل عبور مستقیم رفتار
+       می‌کنند. */
+    if (uint8_t__medianSize < 1u)
+    {
+        uint8_t__medianSize = 1u;
+    }
+    else if (uint8_t__medianSize > (uint8_t)MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX)
     {
         uint8_t__medianSize = (uint8_t)MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX;
     }
-    else if (uint8_t__medianSize >= 3u)
-    {
-        uint8_t__medianSize = 3u;
-    }
     else
     {
-        uint8_t__medianSize = 1u;
+        /* [EN] Any value inside 1..MAX is taken as-is.
+           [FA] هر مقدار داخل ۱..MAX همان‌طور که هست پذیرفته می‌شود. */
     }
 #else
     (void)uint8_t__medianSize;

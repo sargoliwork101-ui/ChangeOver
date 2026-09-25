@@ -4,6 +4,11 @@
 > سمت STM32 کامل و push شده است؛ فقط فعال‌سازی نهایی `MODULE_ESP` مانده (پایین را ببینید).
 > متن فنی عمداً انگلیسی است تا هیچ ابهامی در پروتکل نماند.
 >
+> v1.4 (2026-09-25): free filter sizes (ID 7 any 1..15, ID 8 any 1..100,
+> boot defaults unchanged) + section 5.6 bench data capture to a text file
+> on the ESP (three scenario tables, user-defined duty steps, user-gated
+> advance, download endpoint) — the STM32 side is IMPLEMENTED and pushed.
+>
 > v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
 > conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
 > identity; live `i_filtered x Vin x eta / (1000 x Vbat)` when set) — the
@@ -118,8 +123,8 @@ AA 55 11 05 02 B0 04 00 00 A2
 | 4 | VIN_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 24 V input voltage calibration |
 | 5 | V24_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 24 V battery pack voltage calibration |
 | 6 | V12_OFFSET_MV | **i32** | mV | 0 | −2000..2000 | 12 V (middle node) battery calibration |
-| 7 | FILTER_MEDIAN_SIZE | u32 | samples | 3 | 1/3/5 | Median window on charge currents. Valid sizes 1, 3, 5; other values round DOWN to the next odd size. **1 = bypass** (no separate on/off switch exists). Filter state resets on change. |
-| 8 | FILTER_AVERAGE_WINDOW | u32 | samples | 10 | 1..10 | Moving-average window on charge currents. **1 = bypass.** Filter state resets on change. |
+| 7 | FILTER_MEDIAN_SIZE | u32 | samples | 3 | 1..15 | **v1.4: ANY value 1..15** - even sizes allowed, no more odd rounding. 1..2 = bypass, 3..15 = active median. Default 3. Filter state resets on change. |
+| 8 | FILTER_AVERAGE_WINDOW | u32 | samples | 10 | 1..100 | **v1.4: ANY value 1..100** - at the 1 ms cadence that is 1..100 ms of history. **1 = bypass.** Default 10. Filter state resets on change. |
 | 9 | CHG_ETA1_PERMILLE | u32 | permille | 0 | 0..999 | **v1.3**: charger 1 conversion factor. 0 = identity (default - `iest = i_filtered`; with the battery-calibrated gains the reading already is the battery current). Non-zero: `iest = i_filtered x Vin x eta / (1000 x Vbat)` with LIVE voltages, so the battery-current reading stays true while the battery charges. Set with CAL_REFERENCE (section 5.4), not by hand |
 | 10 | CHG_ETA2_PERMILLE | u32 | permille | 0 | 0..999 | Same, charger 2 |
 | 11 | CHG1_ENABLE | u32 | 0/1 | 1 | 0..1 | 0 = cut charger module 1 (PWM off, state OFF); 1 = reconnect (soft BULK restart from 1% duty) |
@@ -173,8 +178,8 @@ English line is for the agent/maintainers.
 | 4 | VIN offset (mV, signed) - adder in: Vin_mV ≈ counts × 9.007 + offset (divider 69.2k/6.8k) | آفست کالیبراسیون ولتاژ ورودی ۲۴V بر حسب mV (علامت‌دار)؛ فرمول: Vin ≈ counts × 9.007 + آفست (مقسم 69.2k/6.8k) |
 | 5 | V24 offset (mV, signed) - adder in: V24_mV ≈ counts × 9.007 + offset | آفست کالیبراسیون ولتاژ پک ۲۴V بر حسب mV (علامت‌دار)؛ فرمول: V24 ≈ counts × 9.007 + آفست |
 | 6 | V12 offset (mV, signed) - adder in: V12_mV ≈ counts × 4.859 + offset; Vhigh = V24 − V12 | آفست کالیبراسیون ولتاژ باتری ۱۲V (نود میانی) بر حسب mV (علامت‌دار)؛ فرمول: V12 ≈ counts × 4.859 + آفست و Vhigh = V24 − V12 |
-| 7 | Median window (1/3/5) - first stage of the filter pipeline: average_W( median_N( mA_raw ) ); 1 = off, 3 = default, 5 also kills double-spikes | پنجرهٔ مدین (۱/۳/۵) - مرحلهٔ اول فیلتر: اول median(N) بعد average(W) روی mA خام؛ ۱ = خاموش، ۳ = پیش‌فرض، ۵ پالس‌های دوتایی را هم حذف می‌کند |
-| 8 | Average window (1..10) - second stage of the filter pipeline: average_W( median_N( mA_raw ) ); 1 = off, 10 = default | پنجرهٔ میانگین (۱..۱۰) - مرحلهٔ دوم فیلتر: میانگین آخرین W نمونهٔ خروجی مدین؛ ۱ = خاموش، ۱۰ = پیش‌فرض |
+| 7 | Median window - ANY value 1..15 (v1.4: even sizes allowed, no rounding); 1..2 = off, 3 = default, bigger = stronger spike rejection with more lag | پنجرهٔ مدین - هر مقدار ۱..۱۵ (v1.4: زوج هم مجاز، بدون گردکردن)؛ ۱..۲ = خاموش، ۳ = پیش‌فرض، بزرگ‌تر = حذف پالس قوی‌تر با تأخیر بیشتر |
+| 8 | Average window - ANY value 1..100 (v1.4; 1 ms cadence = 1..100 ms of history); 1 = off, 10 = default | پنجرهٔ میانگین - هر مقدار ۱..۱۰۰ (v1.4؛ کادانس ۱ms یعنی ۱..۱۰۰ms تاریخچه)؛ ۱ = خاموش، ۱۰ = پیش‌فرض |
 | 9 | Ch1 conversion factor ETA1 (permille, v1.3) - 0 = identity (default: the reading already is the battery current); non-zero = `iest = i_filtered x Vin x eta / (1000 x Vbat)` with live voltages. Calibrate with the CAL_REFERENCE button (type the battery-side DMM mA), never by hand | ضریب تبدیل کانال ۱ (پرمیل، v1.3) — صفر = همانی (پیش‌فرض: عدد خودش جریان باتری است)؛ غیرصفر = iest = i_فیلترشده × Vin × η ÷ (۱۰۰۰ × Vbat) با ولتاژهای زنده. با دکمهٔ CAL_REFERENCE کالیبره کنید (عدد مولتی‌متر سمت باتری را بدهید)، نه دستی |
 | 10 | Ch2 conversion factor ETA2 (permille, v1.3) - same as ID 9, charger 2 | ضریب تبدیل کانال ۲ (پرمیل، v1.3) — مانند ID 9، برای کانال ۲ |
 | 11 | Charger 1 on/off - 0 cuts the PWM immediately (battery keeps its charge), 1 resumes with a soft ramp | کلید قطع/وصل شارژر ۱؛ صفر فوراً PWM را قطع می‌کند و یک شارژ را با رمپ نرم ادامه می‌دهد |
@@ -421,6 +426,71 @@ Test D - Performance / regulation:
 Test E - the v1.3 CAL card (section 5.4) stays the one-button path once
 the verdict from A-C says a single gain (or a gain + eta) is enough.
 
+### 5.6 Bench data capture to file (v1.4 panel tooling — user order 2026-09-25)
+
+Purpose: the panel records EVERYTHING the STM32 sees (raw ADC counts
+included, so the engineer knows what the chain reads BEFORE any filter)
+plus the typed multimeter readings into ONE text file on the ESP flash.
+The user hands that file to the firmware engineer, who alone decides the
+correction method (single gain / two-point / lookup table). No calibration
+is ever applied automatically by the panel.
+
+Storage: LittleFS (the sketch currently has no flash storage - add it; a
+~256 KB partition is plenty). One append-only file: `/benchlog.csv`.
+Endpoints:
+- `GET /benchlog`  -> serve the file as text/csv (download)
+- `POST /benchlog/clear` -> truncate it
+- Cap at ~100 KB: stop appending when full and warn in the UI.
+
+CSV format - one header row at file creation, one `# run` meta line at
+the start of EVERY capture run, then one row per recorded step. `-` means
+"not entered".
+
+```text
+# cols: scenario,step,duty_permille,settle_ms,sample_ms,
+#  raw1,raw1_min,raw1_max,unf1_ma,filt1_ma,filt1_min,filt1_max,iest1_ma,
+#  raw2,raw2_min,raw2_max,unf2_ma,filt2_ma,filt2_min,filt2_max,iest2_ma,
+#  vin_mv,vhigh_mv,vlow_mv,
+#  dmm_i1_ma,dmm_i2_ma,dmm_vin_mv,dmm_vhigh_mv,dmm_vlow_mv,note
+# run <n> date=<YYYY-MM-DD HH:MM:SS> scenario=<SOLO1|SOLO2|BOTH>
+#  duty_list=<...> off1=<p0> gain1=<p2> off2=<p1> gain2=<p3>
+#  eta1=<p9> eta2=<p10> med=<p7> avg=<p8> seq=<last TLM seq>
+```
+
+Field sources (TLM offsets): raw 4/32, unfiltered 12/40, filtered 16/44,
+iest 20/48, Vin 60, Vlow 72, Vhigh 76. `raw` is the pre-offset ADC count
+(the unfiltered truth); `unf` is post offset+gain; `filt` is what the
+charger regulates on; `iest` is the battery estimate.
+
+Capture wizard (this REPLACES the old copy-block Test A; tests B/C/D
+stay as they are):
+1. The user FREELY defines the duty step list (e.g. "5,10,15,20" in
+   percent; any values, any count; the panel converts to permille x 10
+   and clamps to the ID 13/14 ceilings) and the settle / sample windows
+   (defaults 3 s / 3 s, editable).
+2. THREE scenarios, in this order, one table each:
+   - `SOLO1`: charger 1 runs, charger 2 cut (ID 12 = 0)
+   - `SOLO2`: charger 2 runs, charger 1 cut (ID 11 = 0)
+   - `BOTH` : both enabled, both driven at the SAME duty step
+   (the solo-vs-both comparison is what quantifies the cross-talk).
+3. Per step: set manual mode (ID 19 = 1) + duty (ID 16 and/or 18), keep
+   the v1.2 keepalive, wait the settle window, sample TLM for the sample
+   window (avg/min/max of raw/unf/filt/iest per channel + Vin/Vhigh/Vlow
+   averages), then STOP and show the DMM entry form.
+   NO auto-advance: a step is recorded ONLY when the user submits the
+   form. Buttons: "ثبت و مرحلهٔ بعد" / "تکرار همین مرحله" / "پایان".
+   DMM fields: the ammeter of every ACTIVE channel (mandatory) and the
+   voltmeters Vin / battery-high / battery-low (optional).
+4. On submit: append the CSV row, go to the next step. At scenario end:
+   restore the pre-test parameters (as the current tests do) and
+   continue with the next scenario.
+5. At the very end show "فایل آماده است" with the download link and a
+   "پاک کردن فایل" button.
+
+Free filter sizes (v1.4 firmware, already pushed): the ID 7 / ID 8 input
+fields must accept any value in 1..15 / 1..100 (no more 1/3/5 and 1..10
+restrictions in the UI); the firmware clamps by itself.
+
 ## 6. TLM_LIVE payload layout (84 bytes, little-endian)
 
 | Offset | Size | Field | Meaning |
@@ -544,6 +614,17 @@ documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 1 s keepalive while ID 19 = 1.
 
 ## 10. Protocol version
+
+v1.4 (2026-09-25, user order of the same day): free filter sizes - ID 7
+median now accepts ANY value 1..15 (even sizes, no odd rounding; 1..2 =
+bypass) and ID 8 moving average any 1..100 (1 ms cadence = 1..100 ms of
+history); boot defaults unchanged (median 3, average 10) so a reflash
+changes no behavior. Plus the panel-side bench data capture to a text
+file (section 5.6): three scenario tables (SOLO1 / SOLO2 / BOTH),
+user-defined duty steps, step advance only after the ammeter value is
+entered, raw-ADC columns included, LittleFS storage with a download
+endpoint. No wire-format change, no ID renumbering. The STM32 side of
+v1.4 is implemented and pushed the same day.
 
 v1.3 (2026-09-24, user order of the same day): added the CAL_REFERENCE
 command (type 0x03 - one-shot panel calibration of the current-chain GAIN
