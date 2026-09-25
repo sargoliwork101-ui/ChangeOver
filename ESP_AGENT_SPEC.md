@@ -47,7 +47,20 @@
 > limit 112 -> 144), the bench CSV carries the 7 profile params too
 > (78 columns), and the wizard now CARRIES the input-voltage DMM
 > reading into the next step (user order: Vin is quasi-static, one
-> reading per run is enough).
+> reading per run is enough). v1.13 (same day, seventh order - "the
+> voltages are fixed but the currents you read are wrong"): audit of
+> the whole current path confirmed the chain formula, the parse and the
+> v1.11 anchors all matched the DMM to <= 0.7 mA on the calibration
+> rows - but the table was a chain->CURRENT map, which physically embeds
+> the battery voltage of the calibration run (12.0..13.65 V). The ch2
+> LUT is now a chain->POWER table (mW; the DCM invariant) and the
+> firmware divides by the LIVE battery-2 voltage (cached one pass
+> earlier, clamped 8..15 V): at the same chain current the reading now
+> falls ~7 percent per volt as the battery fills, exactly as the
+> physics demands. Integer-math replay on the dense run: worst DMM
+> error 6 mA. Wizard helper text about the input-current ratio
+> corrected (it said ~0.7x; the truth is voltage- and load-dependent,
+> ~2.5x at low charge down to ~0.95x at the top).
 >
 > v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
 > conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
@@ -346,26 +359,36 @@ ETA > 0:    iest_ma = i_filtered_ma x Vin_mv x eta / (1000 x Vbat_mv)
           must not hand-compute it.
 ```
 
-Channel-2 bench LUT (user order 2026-09-25, firmware v1.5; refit v1.11): the
-SOLO2 bench runs proved the channel-2 chain non-linear vs the true battery
-current (about 2x too high at 5% duty, 0.85x too low at 15..17%; best single
-gain still leaves +101%/-7%). Channel 2 therefore converts as
-`I_bat = LUT((raw - off2) * 0.8776 * gain2/1000)` with an 11-point
-piecewise-linear table - the table input is the ADC CHAIN CURRENT, never the
-duty (user order 2026-09-25: the same duty yields a different chain current as
-the battery fills, so keying on current keeps the table valid across battery
-states). Anchors from the DENSE 2026-09-25T18:14 run (10 DMM points, duty
-2..20% step 2, battery filling 12.0->13.65 V, off2=8 / gain2=1303;
-chain mA -> battery mA): (0,0) (5,0) (37,9) (106,62) (189,130) (236,215)
-(283,310) (353,422) (441,541) (557,660) (707,764); interpolation error
-<= 0.7 mA on every measured point. Above the last anchor the last slope
-(0.69 mA/mA) extends. The 2%-duty point measured a true battery current of
--13 mA (discharge through the zener path) - the chain axis is unsigned, so
-the table floors it to 0 (error <= 13 mA only at the very bottom). Unfiltered,
-filtered and iest all become true battery mA; raw counts and shunt uV are
-untouched. `MEASUREMENT_CURRENT2_LUT_ENABLE = 0`
+Channel-2 bench LUT (user order 2026-09-25, firmware v1.5; refit v1.11;
+POWER form v1.13): the SOLO2 bench runs proved the channel-2 chain non-linear
+vs the true battery current (about 2x too high at 5% duty, 0.85x too low at
+15..17%; best single gain still leaves +101%/-7%). Channel 2 therefore
+converts as `I_bat = LUT_P((raw - off2) * 0.8776 * gain2/1000) / Vlow_live`
+with an 11-point piecewise-linear table whose input is the ADC CHAIN CURRENT
+(never the duty - user order 2026-09-25) and whose OUTPUT IS THE BATTERY-2
+POWER in mW. WHY POWER (v1.13, user order 2026-09-25 "voltages are fixed but
+the currents you read are wrong"): in DCM the mid-ON chain sample tracks the
+energy per cycle, which is battery-voltage independent, while the battery
+CURRENT is P/Vbat. The v1.11 chain->current table silently embedded the
+battery voltage of its calibration run (the dense run's battery rose
+12.0->13.65 V), so once the battery filled it overread by roughly 7 percent
+per volt. The firmware now divides the table's power by the LIVE battery-2
+terminal voltage (cached one 1 ms pass earlier, after the median-5 filter,
+clamped 8.0..15.0 V, boot default 12.0 V). Anchors from the DENSE
+2026-09-25T18:14 run (10 DMM points, duty 2..20% step 2, off2=8 /
+gain2=1303; P = DMM_I2 x DMM_V2; chain mA -> battery mW): (0,0) (5,0)
+(37,109) (106,751) (189,1581) (236,2625) (283,3807) (353,5224) (441,6817)
+(557,8573) (707,10429). Exact integer-math replay of the firmware on the run:
+worst DMM error 6 mA (truncation bias, within DMM accuracy). Above the last
+anchor the last slope (12.37 mW per chain-mA) extends. The 2%-duty point
+measured a true battery current of -13 mA (discharge through the zener path)
+- power cannot go negative on this axis, so the table floors it to 0
+(error <= 13 mA only at the very bottom). Unfiltered, filtered and iest all
+become true battery mA; raw counts and shunt uV are untouched.
+`CAL_CURRENT2_LUT_ENABLE = 0`
 restores the old linear behaviour. Channel 1 stays linear until its own SOLO1
-data arrives. The wire protocol is unchanged. v1.12 (same day): all three
+data arrives (its future table gets the same power form with Vhigh as the
+divisor). The wire protocol is unchanged. v1.12 (same day): all three
 calibration tables moved to ONE separate file,
 `Firmware/Modules/Measurement/calibration.h` (user order: one file named
 after the calibration, next to the module files, easy to amend) - table 1 =
@@ -828,6 +851,10 @@ documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 1 s keepalive while ID 19 = 1.
 
 ## 10. Protocol version
+
+v1.13 (2026-09-25, user order of the same day): the ch2 LUT changed from
+chain->current to chain->POWER with a live /Vlow division (section 5.3) -
+calibration-file edit + measurement.c only, NO wire-format change.
 
 v1.12 (2026-09-25, user order of the same day): charge-profile parameters
 20..26 (section 5.7) - PARAMS_BULK grows to 27 items = 136 payload bytes,

@@ -453,22 +453,31 @@ def test_setpoints_and_timing():
           "MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX" in meas_h_txt,
           "Measurement must run the median chain (v1.4: runtime size ANY 1..15, default 3) then the moving-average chain (v1.4: runtime window ANY 1..100, default 10) on each current channel (user order 2026-09-25)")
     lut_chain = re.search(r"CAL_Current2LutChainMa\[\] =\s*\{([^}]*)\}", cal_h)
-    lut_batt = re.search(r"CAL_Current2LutBatteryMa\[\] =\s*\{([^}]*)\}", cal_h)
+    lut_batt = re.search(r"CAL_Current2LutBatteryMw\[\] =\s*\{([^}]*)\}", cal_h)
     lut_chain_n = len(lut_chain.group(1).split(",")) if lut_chain else 0
     lut_batt_n = len(lut_batt.group(1).split(",")) if lut_batt else 0
     check('#include "calibration.h"' in meas_c_raw and
           re.search(r"#define CAL_CURRENT2_LUT_ENABLE\s+1u", cal_h) and
           "static const uint32_t CAL_Current2LutChainMa[] =" in cal_h and
-          "static const uint32_t CAL_Current2LutBatteryMa[] =" in cal_h and
+          "static const uint32_t CAL_Current2LutBatteryMw[] =" in cal_h and
           "sizeof(CAL_Current2LutChainMa) /" in cal_h and
           "{ 0u, 5u, 37u, 106u, 189u, 236u, 283u, 353u, 441u, 557u, 707u }" in cal_h and
-          "{ 0u, 0u, 9u, 62u, 130u, 215u, 310u, 422u, 541u, 660u, 764u }" in cal_h and
+          "{ 0u, 0u, 109u, 751u, 1581u, 2625u, 3807u, 5224u, 6817u, 8573u, 10429u }" in cal_h and
           lut_chain_n == lut_batt_n and lut_chain_n == 11 and
           re.search(r"#define CAL_CURRENT1_LUT_ENABLE\s+0u", cal_h) and
           "CAL_Current1LutChainMa" in cal_h,
-          f"channel-2 bench LUT must be ON with the 2026-09-25T18:14 DENSE SOLO2 anchors - 10 DMM points, duty 2..20%, battery filling 12.0->13.65V, interpolation error <=0.7 mA on every point; the table is keyed on the ADC chain current (raw-off2)*K*gain, NEVER on duty (user order 2026-09-25: the same duty gives a different current as the battery fills); the tables size themselves from the initializers and the point count is sizeof-derived so the next DENSER run only edits the two lists, and both lists must stay the same length (got chain={lut_chain_n} battery={lut_batt_n})")
-    check("return func__Measurement_Current2BenchLut(\n        func__BspMeasurement_Current2CountsToMa(uint16_t__counts));" in meas_c_raw,
-          "the ch2 LUT must wrap the BSP conversion inside func__Measurement_Current2CountsToMa so unfiltered, filtered and iest all become true battery mA while raw counts and shunt uV stay untouched")
+          f"channel-2 bench LUT must be ON as a chain->POWER table (v1.13, user order 2026-09-25 'voltages are fixed but the currents are wrong'): the DCM invariant is battery POWER, the current is P/Vbat - the old chain->current table embedded the calibration run's battery voltage (12.0..13.65V) and overread ~7 percent per volt as the battery filled; anchors = DMM_I2 x DMM_V2 of the dense 2026-09-25T18:14 run (10 points, duty 2..20%); the axis stays the ADC chain current (raw-off2)*K*gain, NEVER duty; the tables size themselves from the initializers and both lists must stay the same length (got chain={lut_chain_n} power={lut_batt_n})")
+    check("uint32_t uint32_t__batteryPowerMw = func__Measurement_Current2BenchLut(\n        func__BspMeasurement_Current2CountsToMa(uint16_t__counts));" in meas_c_raw and
+          "((uint64_t)uint32_t__batteryPowerMw) * 1000u) /\n                      UINT32_T__G__Battery2VoltageMv" in meas_c_raw,
+          "the ch2 LUT must wrap the BSP conversion inside func__Measurement_Current2CountsToMa (unfiltered, filtered and iest all become true battery mA; raw counts and shunt uV untouched) and v1.13 DIVIDES the table's POWER output by the live cached battery-2 voltage (user order: the currents were wrong as the battery filled)")
+    check("static uint32_t UINT32_T__G__Battery2VoltageMv = 12000u;" in meas_c_raw and
+          meas_c_raw.count("UINT32_T__G__Battery2VoltageMv") >= 5 and
+          "if (uint32_t__batteryLowMv < 8000u)\n    {\n        UINT32_T__G__Battery2VoltageMv = 8000u;" in meas_c_raw and
+          "UINT32_T__G__Battery2VoltageMv = 15000u;" in meas_c_raw,
+          "the ch2 power LUT needs the live battery-2 voltage cache: static default 12.0 V, written each pass after the median-5 filter, clamped 8.0..15.0 V so a missing battery can never blow up the division")
+    check(meas_c_raw.find("func__Measurement_MedianFilterVoltageSample(0u, uint32_t__batteryLowMv);") <
+          meas_c_raw.find("if (uint32_t__batteryLowMv < 8000u)"),
+          "the voltage cache must be fed AFTER the median-5 battery-low filter (spikes must not modulate the current reading)")
     check(re.search(r"func__Measurement_Current2CountsToMa\(uint16_t uint16_t__counts\)\n\{\n#if \(CAL_CURRENT2_LUT_ENABLE != 0u\)", meas_c_raw) and
           re.search(r"#else\n    return func__BspMeasurement_Current2CountsToMa\(uint16_t__counts\);\n#endif", meas_c_raw),
           "the ch2 LUT must be compile-switchable: MEASUREMENT_CURRENT2_LUT_ENABLE=0 restores the old linear behaviour exactly")
@@ -722,6 +731,73 @@ def test_charge_profile_v112():
           "table 3 must document its growth path to an anchor table")
 
 
+def test_ch2_power_lut_v113():
+    """[EN] v1.13 (user order 2026-09-25, "voltages are fixed but the currents
+    you read are wrong"): the ch2 LUT outputs battery-2 POWER; the live battery
+    voltage turns it into current. This test replays the EXACT firmware integer
+    math (BSP u64 chain with truncating divisions -> LUT -> x1000 / V) on the
+    dense-run CSV rows and checks both the DMM agreement AND the voltage
+    behaviour the old current-current table got wrong.
+    [FA] تست عددی v1.13: بازپخش دقیق ریاضی صحیح فرم‌ور روی ردیف‌های ران
+    متراکم + بررسی رفتار ولتاژی که جدول قدیمی اشتباه می‌گرفت."""
+    cal_h = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
+    meas_c_raw = (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text()
+
+    m_chain = re.search(r"CAL_Current2LutChainMa\[\] =\s*\{([^}]*)\}", cal_h)
+    m_mw = re.search(r"CAL_Current2LutBatteryMw\[\] =\s*\{([^}]*)\}", cal_h)
+    check(m_chain and m_mw, "calibration.h must carry both ch2 LUT arrays")
+    xs = [int(v.strip().rstrip("u")) for v in m_chain.group(1).split(",")]
+    ys = [int(v.strip().rstrip("u")) for v in m_mw.group(1).split(",")]
+    check(len(xs) == len(ys) == 11 and all(xs[i] < xs[i + 1] for i in range(10))
+          and all(ys[i] <= ys[i + 1] for i in range(10)),
+          "ch2 LUT anchors: 11 points, chain strictly increasing, power non-decreasing")
+
+    # exact firmware math replay (u64 intermediates, truncating divisions)
+    def bsp_chain(counts, off=8, gain=1303):
+        if counts <= off:
+            return 0
+        num = (counts - off) * 3300
+        den = 4095
+        num *= 11
+        den *= 10
+        den *= 101
+        num *= 1000
+        den *= 10
+        ma = num // den
+        return (ma * gain) // 1000
+
+    def lut_mw(c):
+        if c <= xs[0]:
+            return ys[0]
+        for i in range(1, len(xs)):
+            if c <= xs[i]:
+                return ys[i - 1] + ((c - xs[i - 1]) * (ys[i] - ys[i - 1])) // (xs[i] - xs[i - 1])
+        return ys[-1] + ((c - xs[-1]) * (ys[-1] - ys[-2])) // (xs[-1] - xs[-2])
+
+    def ibat(raw, v_mv):
+        return (lut_mw(bsp_chain(raw)) * 1000) // v_mv
+
+    # dense 2026-09-25T18:14 run: (raw2_avg, vlow TLM, dmm_i_bat2) per duty 2..20%
+    rows = [(12.6, 12073, -13), (40.1, 12085, 9), (100.9, 12122, 62), (173.0, 12159, 130),
+            (214.2, 12230, 215), (255.2, 12306, 310), (316.3, 12430, 422), (393.4, 12651, 541),
+            (494.8, 13031, 660), (626.5, 13626, 764)]
+    worst = 0
+    for raw, vlow, dmm in rows:
+        err = ibat(raw, vlow) - dmm
+        worst = max(worst, err if raw > 20 else 0)  # the 2% row is the documented unsigned floor
+    check(worst <= 6,
+          f"firmware-math replay of the dense run: worst DMM error {worst} mA (<= 6 = integer-truncation bias, within DMM accuracy; the 2%-duty row floors at 0 as documented)")
+
+    # the fix's whole point: same chain, fuller battery -> proportionally less current
+    i_122, i_130, i_140, i_144 = (ibat(494.8, v) for v in (12200, 13000, 14000, 14400))
+    check(i_122 > i_130 > i_140 > i_144 and abs(i_130 - 658) <= 3,
+          f"voltage behaviour: at chain 556 the current must fall as the battery fills (12.2V:{i_122} 13.0V:{i_130} 14.0V:{i_140} 14.4V:{i_144} mA) - the old current-current table answered 658 mA at EVERY voltage")
+
+    check("UINT32_T__G__Battery2VoltageMv = 12000u" in meas_c_raw and
+          "((uint64_t)uint32_t__batteryPowerMw) * 1000u)" in meas_c_raw,
+          "the division must run in u64 with the cached clamped voltage (boot default 12.0 V)")
+
+
 def test_electronic_load_policy_documented():
     text_h = CHARGER_H.read_text()
     check("free resistor" in text_h or "resistor alone" in text_h or "مقاومت آزاد" in text_h,
@@ -795,6 +871,7 @@ def main():
         test_electronic_load_policy_documented,
         test_manual_test_mode_v12,
         test_charge_profile_v112,
+        test_ch2_power_lut_v113,
     ]
     for test in tests:
         test()

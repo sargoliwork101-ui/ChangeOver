@@ -64,35 +64,51 @@ static const uint32_t CAL_Current1LutBatteryMa[] =
 #endif
 
 /* ============================================================================
- * TABLE 2 - channel-2 current LUT (chain mA -> battery-2 mA)
- * جدول ۲ - LUT جریان کانال ۲ (mA زنجیره ← mA باتری ۲)
+ * TABLE 2 - channel-2 LUT (chain mA -> battery-2 POWER mW)
+ * جدول ۲ - LUT کانال ۲ (mA زنجیره ← توان باتری ۲ بر حسب mW)
  * ----------------------------------------------------------------------------
- * [EN] Dense 2026-09-25T18:14 SOLO2 run: 10 DMM points, duty 2..20% step 2,
- *      battery filling 12.0 -> 13.65 V, off2=8 / gain2=1303 (if those params
- *      change the table must be rebuilt). The table axis is the ADC CHAIN
- *      CURRENT (raw - off2) x 0.8776 x gain2/1000, NEVER duty (user order
- *      2026-09-25: the same duty yields a different current as the battery
- *      fills). Interpolation error <= 0.7 mA on every measured point. Above
- *      the last anchor the last slope (0.69 mA/mA) extends. The 2%-duty point
- *      measured a true battery current of -13 mA (discharge through the zener
- *      path) - the chain axis is unsigned, so the table floors it to 0
+/* [EN] v1.13 (user order 2026-09-25, "voltages are fixed but the currents
+ *      you read are wrong"): the table OUTPUT is the battery-2 POWER in mW,
+ *      NOT the current. Physics: in DCM the mid-ON chain sample tracks the
+ *      energy per cycle, which is battery-voltage independent, while the
+ *      battery CURRENT is P/Vbat. The old chain->current table silently
+ *      embedded the battery voltage of the calibration run (its battery rose
+ *      12.0 -> 13.65 V), so it overread by roughly 7 percent per volt once
+ *      the battery filled. measurement.c divides this table's output by the
+ *      LIVE battery-2 terminal voltage (previous 1 ms pass, clamped
+ *      8.0..15.0 V) to get the current.
+ *      Anchors from the dense 2026-09-25T18:14 SOLO2 run (10 DMM points,
+ *      duty 2..20% step 2, off2=8 / gain2=1303 - if those params change the
+ *      table must be rebuilt): P = DMM_I2 x DMM_V2 at each point. The axis
+ *      is still the ADC CHAIN CURRENT (raw - off2) x 0.8776 x gain2/1000,
+ *      NEVER duty (user order 2026-09-25). Above the last anchor the last
+ *      slope (12.37 mW per chain-mA) extends. The 2%-duty point measured a
+ *      true battery current of -13 mA (discharge through the zener path) -
+ *      power cannot go negative on this axis, so the table floors it to 0
  *      (error <= 13 mA only at the very bottom).
- * [FA] اجرای متراکم 2026-09-25T18:14 (۱۰ نقطهٔ DMM، دیوتی ۲..۲۰٪ گام ۲،
- *      باتری در حال پرشدن 12.0→13.65V، off2=8 / gain2=1303 - با عوض شدن این
- *      پارامترها جدول باید دوباره ساخته شود). محور جدول «جریان زنجیره از
- *      ADC» است، هرگز دیوتی (دستور کاربر ۲۰۲۶-۰۹-۲۵: با پرشدن باتری، همان
- *      دیوتی جریان متفاوتی می‌دهد). خطای درون‌یابی ≤ ۰٫۷mA روی هر نقطه.
- *      بالای آخرین لنگر شیب آخرین بازه (۰٫۶۹) ادامه می‌یابد. نقطهٔ دیوتی ۲٪
- *      جریان واقعی باتری 13− میلی‌آمپر بود (تخلیه از مسیر زنر) - محور بدون
- *      علامت است و همان‌جا 0 می‌گیرد (خطا ≤ 13mA فقط در کف).
+ * [FA] v1.13 (دستور کاربر ۲۰۲۶-۰۹-۲۵: «ولتاژها درست شد ولی جریان‌ها
+ *      اشتباه»): خروجی جدول «توان باتری ۲» بر حسب mW است، نه جریان.
+ *      فیزیک: در DCM نمونهٔ وسط-ON زنجیره انرژیِ هر سایکل را دنبال می‌کند
+ *      که مستقل از ولتاژ باتری است، ولی «جریان» باتری = P/Vbat. جدول قدیمی
+ *      جریان↔جریان ولتاژ باتریِ ران کالیبراسیون (۱۲٫۰→۱۳٫۶۵V) را در خود
+ *      داشت و با پُر شدن باتری حدود ۷٪ به‌ازای هر ولت بیش‌خوانی می‌کرد.
+ *      measurement.c خروجی این جدول را به ولتاژ زندهٔ ترمینال باتری ۲
+ *      (پاس ۱ms قبل، گیرهٔ ۸..۱۵V) تقسیم می‌کند تا جریان به‌دست آید.
+ *      لنگرها از اجرای متراکم 2026-09-25T18:14 (۱۰ نقطهٔ DMM، دیوتی
+ *      ۲..۲۰٪ گام ۲، off2=8 / gain2=1303): P = جریان DMM × ولتاژ DMM در هر
+ *      نقطه. محور همچنان «جریان زنجیرهٔ ADC» است، هرگز دیوتی. بالای
+ *      آخرین لنگر شیب آخرین بازه (۱۲٫۳۷ mW به‌ازای هر mA زنجیره) ادامه
+ *      می‌یابد. نقطهٔ دیوتی ۲٪ جریان واقعی 13−mA داشت (تخلیه زنر) -
+ *      توان روی این محور منفی نمی‌شود و همان‌جا 0 می‌گیرد (خطا ≤ 13mA
+ *      فقط در کف).
  * ============================================================================ */
 #define CAL_CURRENT2_LUT_ENABLE 1u
 
 #if (CAL_CURRENT2_LUT_ENABLE != 0u)
 static const uint32_t CAL_Current2LutChainMa[] =
     { 0u, 5u, 37u, 106u, 189u, 236u, 283u, 353u, 441u, 557u, 707u };
-static const uint32_t CAL_Current2LutBatteryMa[] =
-    { 0u, 0u, 9u, 62u, 130u, 215u, 310u, 422u, 541u, 660u, 764u };
+static const uint32_t CAL_Current2LutBatteryMw[] =
+    { 0u, 0u, 109u, 751u, 1581u, 2625u, 3807u, 5224u, 6817u, 8573u, 10429u };
 #define CAL_CURRENT2_LUT_POINTS \
     ((uint32_t)(sizeof(CAL_Current2LutChainMa) / \
                 sizeof(CAL_Current2LutChainMa[0u])))

@@ -655,18 +655,35 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
 
 #if (CAL_CURRENT2_LUT_ENABLE != 0u)
 /**
- * @brief  [EN] Piecewise-linear bench correction: OLD linear chain mA of
- *              channel 2 -> true battery mA. Inside the anchor range the
- *              segments interpolate linearly; above the last anchor the last
- *              slope extends; 0 maps to 0. u32 math only: the products stay
- *              far below 2^32 for any realistic chain value.
- *         [FA] اصلاح خطی-تکه‌ای بنچ: mA زنجیرهٔ خطی قدیم کانال ۲ → mA واقعی
- *              باتری. بین لنگرها درون‌یابی خطی؛ بالای آخرین لنگر شیب آخرین
- *              بازه ادامه می‌یابد؛ صفر به صفر. فقط ریاضی u32: حاصل‌ضرب‌ها
- *              برای هر مقدار واقع‌بینانهٔ زنجیره بسیار زیر 2^32 می‌مانند.
- * @param  uint32_t__chainMa [EN] OLD linear chain output in mA / خروجی زنجیرهٔ خطی قدیم mA
- * @return uint32_t [EN] Corrected battery current in mA / جریان اصلاح‌شدهٔ باتری mA
+ * @brief  [EN] Piecewise-linear bench correction: ADC chain mA of channel 2
+ *              -> battery-2 POWER in mW (v1.13, user order 2026-09-25: the
+ *              DCM energy per cycle is battery-voltage independent; the
+ *              current is P/Vbat, so the table carries POWER and the caller
+ *              divides by the live battery voltage). Inside the anchor range
+ *              the segments interpolate linearly; above the last anchor the
+ *              last slope extends; 0 maps to 0.
+ *         [FA] اصلاح خطی-تکه‌ای بنچ: mA زنجیرهٔ ADC کانال ۲ → «توان باتری ۲»
+ *              بر حسب mW (v1.13: انرژی هر سایکل DCM مستقل از ولتاژ باتری
+ *              است؛ جریان = P/Vbat، پس جدول توان را می‌دهد و صداکننده بر
+ *              ولتاژ زندهٔ باتری تقسیم می‌کند). بین لنگرها درون‌یابی خطی؛
+ *              بالای آخرین لنگر شیب آخرین بازه ادامه می‌یابد؛ صفر به صفر.
+ * @param  uint32_t__chainMa [EN] ADC chain output in mA / خروجی زنجیرهٔ ADC بر حسب mA
+ * @return uint32_t [EN] Battery-2 power in mW / توان باتری ۲ بر حسب mW
  */
+/* [EN] Live battery-2 terminal voltage cache for the ch2 power LUT (v1.13,
+ *      user order 2026-09-25): written AFTER the median-5 voltage filter each
+ *      pass, read by func__Measurement_Current2CountsToMa one pass later
+ *      (1 ms stale - negligible vs the battery time constant). Clamped to
+ *      8.0..15.0 V so a missing/garbage voltage can never blow up the
+ *      division; boot default 12.0 V.
+ * [FA] کش ولتاژ زندهٔ ترمینال باتری ۲ برای LUT توانیِ کانال ۲ (v1.13):
+ *      بعد از فیلتر مدین-۵ هر پاس نوشته می‌شود و یک پاس بعدتر خوانده
+ *      می‌شود (۱ms کهنگی - ناچیز مقابل ثابت زمانی باتری). گیرهٔ ۸..۱۵V
+ *      تا ولتاژ گم/خراب تقسیم را منفجر نکند؛ پیش‌فرض بوت ۱۲٫۰V. */
+#if (CAL_CURRENT2_LUT_ENABLE != 0u)
+static uint32_t UINT32_T__G__Battery2VoltageMv = 12000u;
+#endif
+
 static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
 {
     uint32_t uint32_t__index;
@@ -682,9 +699,9 @@ static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
             uint32_t uint32_t__xLow =
                 CAL_Current2LutChainMa[uint32_t__index - 1u];
             uint32_t uint32_t__yLow =
-                CAL_Current2LutBatteryMa[uint32_t__index - 1u];
+                CAL_Current2LutBatteryMw[uint32_t__index - 1u];
             uint32_t uint32_t__yHigh =
-                CAL_Current2LutBatteryMa[uint32_t__index];
+                CAL_Current2LutBatteryMw[uint32_t__index];
             return uint32_t__yLow +
                    (((uint32_t__chainMa - uint32_t__xLow) *
                      (uint32_t__yHigh - uint32_t__yLow)) /
@@ -694,11 +711,11 @@ static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
 
     /* [EN] Above the last anchor: extend the last segment's slope.
        [FA] بالای آخرین لنگر: شیب آخرین بازه ادامه می‌یابد. */
-    return CAL_Current2LutBatteryMa[CAL_CURRENT2_LUT_POINTS - 1u] +
+    return CAL_Current2LutBatteryMw[CAL_CURRENT2_LUT_POINTS - 1u] +
            (((uint32_t__chainMa -
               CAL_Current2LutChainMa[CAL_CURRENT2_LUT_POINTS - 1u]) *
-             (CAL_Current2LutBatteryMa[CAL_CURRENT2_LUT_POINTS - 1u] -
-              CAL_Current2LutBatteryMa[CAL_CURRENT2_LUT_POINTS - 2u])) /
+             (CAL_Current2LutBatteryMw[CAL_CURRENT2_LUT_POINTS - 1u] -
+              CAL_Current2LutBatteryMw[CAL_CURRENT2_LUT_POINTS - 2u])) /
             (CAL_Current2LutChainMa[CAL_CURRENT2_LUT_POINTS - 1u] -
              CAL_Current2LutChainMa[CAL_CURRENT2_LUT_POINTS - 2u]));
 }
@@ -723,8 +740,25 @@ static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
 uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
 {
 #if (CAL_CURRENT2_LUT_ENABLE != 0u)
-    return func__Measurement_Current2BenchLut(
+    /* [EN] v1.13 (user order 2026-09-25, "voltages are fixed but the
+       currents you read are wrong"): the LUT maps the ADC chain current to
+       the battery-2 POWER (the DCM invariant, independent of the battery
+       voltage); dividing by the LIVE battery-2 terminal voltage (previous
+       1 ms pass, clamped 8.0..15.0 V by the cache writer) yields the
+       battery CURRENT. The old chain->current table embedded the battery
+       voltage of the calibration run (12.0..13.65 V) and overread ~7
+       percent per volt as the battery filled. u64 intermediate: the
+       extrapolated power x 1000 stays far below 2^64 anyway.
+       [FA] v1.13 (دستور کاربر: «ولتاژها درست شد ولی جریان‌ها اشتباه»):
+       جدول جریان زنجیرهٔ ADC را به «توان باتری ۲» می‌برد (ناوردای DCM،
+       مستقل از ولتاژ باتری)؛ تقسیم بر ولتاژ زندهٔ ترمینال باتری ۲ (پاس
+       ۱ms قبل، گیرهٔ ۸..۱۵V توسط نویسندهٔ کش) جریان باتری را می‌دهد.
+       جدول قدیمی جریان↔جریان ولتاژ ران کالیبراسیون (۱۲٫۰..۱۳٫۶۵V) را
+       در خود داشت و با پر شدن باتری ~۷٪ به‌ازای هر ولت بیش می‌خواند. */
+    uint32_t uint32_t__batteryPowerMw = func__Measurement_Current2BenchLut(
         func__BspMeasurement_Current2CountsToMa(uint16_t__counts));
+    return (uint32_t)((((uint64_t)uint32_t__batteryPowerMw) * 1000u) /
+                      UINT32_T__G__Battery2VoltageMv);
 #else
     return func__BspMeasurement_Current2CountsToMa(uint16_t__counts);
 #endif
@@ -1013,6 +1047,25 @@ void func__Measurement_Run(void)
         func__Measurement_MedianFilterVoltageSample(0u, uint32_t__batteryLowMv);
     uint32_t__batteryHighMv =
         func__Measurement_MedianFilterVoltageSample(1u, uint32_t__batteryHighMv);
+
+#if (CAL_CURRENT2_LUT_ENABLE != 0u)
+    /* [EN] Feed the ch2 power-LUT voltage cache (v1.13): the filtered TRUE
+       battery-2 terminal voltage, clamped 8.0..15.0 V.
+       [FA] خوراک کشِ ولتاژ LUT توانی کانال ۲: ولتاژ فیلترشدهٔ واقعی
+            ترمینال باتری ۲، گیرهٔ ۸٫۰..۱۵٫۰V. */
+    if (uint32_t__batteryLowMv < 8000u)
+    {
+        UINT32_T__G__Battery2VoltageMv = 8000u;
+    }
+    else if (uint32_t__batteryLowMv > 15000u)
+    {
+        UINT32_T__G__Battery2VoltageMv = 15000u;
+    }
+    else
+    {
+        UINT32_T__G__Battery2VoltageMv = uint32_t__batteryLowMv;
+    }
+#endif
     uint32_t__current2Ma =
         func__Measurement_ApplyCurrentFilters(1u, uint32_t__current2SampleMa);
 
