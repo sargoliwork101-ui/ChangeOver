@@ -176,6 +176,12 @@ const server = http.createServer((req, res) => {
         const v = Number(url.searchParams.get("v"));
         if (id >= 0 && id < 27 && Number.isFinite(v)) {
             P[id] = clampParam(id, v); /* clamped exactly like the firmware */
+            if (id >= 20) {
+                /* v1.14d: whole-set re-clamp in dependency order, like
+                 * Charger_ClampProfile - so the preview zones move exactly
+                 * as the real board's would after each write. */
+                for (const pid of [20, 21, 22, 23, 24, 25, 26]) P[pid] = clampParam(pid, P[pid]);
+            }
         }
         return send(200, "application/json", '{"_s":200}');
     }

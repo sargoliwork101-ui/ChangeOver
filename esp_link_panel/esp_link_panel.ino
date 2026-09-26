@@ -347,7 +347,8 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <div class="pgx" id="p1"></div>
 <div class="pgx" id="p2">
 <div class="cd">
-<div class="hd"><b>نمودار مراحل شارژ</b><span class="lb">· مشترک هر دو کانال · زنده از مقادیر اعمال‌شدهٔ برد · با تایپ در فیلدهای پایین، خط‌چین پیش‌نمایش می‌شود</span></div>
+<div class="hd"><b>نمودار مراحل شارژ</b><span class="lb">· مشترک هر دو کانال · ناحیه‌ها از مقادیر اعمال‌شدهٔ برد · تایپ = خط‌چین پیش‌نمایش · ترکیب نامعتبر = هشدار قرمز</span></div>
+<div id="qw" style="margin:2px 0 0"></div>
 <div id="qg" style="direction:ltr;overflow-x:auto"></div>
 <div class="lb" id="qgl">در انتظار دادهٔ برد…</div>
 </div>
@@ -383,7 +384,8 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 جریان حداکثر: سقف باند تنظیم جریان بالک؛ کف باند به‌طور خودکار ۲۰mA کمتر است (۶۵۰).
 جریان تیپر: ابزورب پایان می‌یابد وقتی جریان دنباله ۶۰ ثانیه پایدار زیر این مقدار بماند (۵۰ ~ C/90).
 پس از هر تغییر، مقدار «اعمال‌شدهٔ» برد کنار همان فیلد نشان داده می‌شود — اگر با درخواست شما فرق دارد یعنی گیره خورده تا مجموعه سازنده بماند (مثلاً ورود ≤ ابزورب−۵۰). حد سخت ایمنی (خطای ۹۵۰mA و قطع ۱۵V) از پنل قابل تغییر نیست.
-ماندگاری: هر پارامتری که از پنل ثبت کنید (~۱٫۵ ثانیه بعد) در فلش خودِ برد ذخیره می‌شود و خاموش/روشن کردن برد آن را از بین نمی‌برد؛ دکمهٔ «بازگردانی پیش‌فرض کارخانه» پیش‌فرض‌ها را می‌فرستد و همان‌ها ذخیره می‌شوند. مودهای تست (دیوتی فیکس/دستی) هرگز ذخیره نمی‌شوند — بعد از هر ریست، شارژر خودکار است.</div>
+ماندگاری: هر پارامتری که از پنل ثبت کنید (~۱٫۵ ثانیه بعد) در فلش خودِ برد ذخیره می‌شود و خاموش/روشن کردن برد آن را از بین نمی‌برد؛ دکمهٔ «بازگردانی پیش‌فرض کارخانه» پیش‌فرض‌ها را می‌فرستد و همان‌ها ذخیره می‌شوند. مودهای تست (دیوتی فیکس/دستی) هرگز ذخیره نمی‌شوند — بعد از هر ریست، شارژر خودکار است.
+نگهبان ترکیب: اگر عددهای تایپ‌شده با هم ناسازگار باشند (مثلاً شناور بالای ابزورب−۳۰۰)، بالای نمودار هشدار قرمز می‌آید، فیلد مقصر قرمز می‌شود و قبل از ارسال تأیید گرفته می‌شود — چون برد همان را گیره می‌زند و ناحیه‌ها را به‌هم‌ریخته نمی‌گذارد.</div>
 <div class="bqr"><button class="sb sb2" onclick="qdef()">بازگردانی پیش‌فرض کارخانه</button></div>
 </div>
 </div>
@@ -473,36 +475,60 @@ function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650]
 /* ===== v1.14: نمودار مراحل شارژ — مقدار هر خط از فیلد تایپ‌نشده/متفاوت با مقدار اعمال‌شده می‌آید (پیش‌نمایش خط‌چین) ===== */
 const QDEF=[14400,14300,14600,13500,12800,650,50];
 function qv(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:QDEF[id-20];
- if(e&&e.value!==''){const v=parseInt(e.value,10);if(!isNaN(v))return{v,p:v!==d?1:0};}
- return{v:d,p:0};}
+ if(e&&e.value!==''){const v=parseInt(e.value,10);if(!isNaN(v))return{v,d,p:v!==d?1:0};}
+ return{v:d,d,p:0};}
+/* v1.14d: نگهبان ترکیب پروفایل — آینهٔ قوانین Charger_ClampProfile روی برد.
+   هر قانون: [فیلد اصلی، فیلد مرجع] + پیام فارسی. خروجی خالی = ترکیب سالم. */
+function qchk(){const w=[],a=qv(20).v,e=qv(21).v,o=qv(22).v,f=qv(23).v,r=qv(24).v,im=qv(25).v,tp=qv(26).v;
+ const bad=(v,lo,hi)=>!(v>=lo&&v<=hi);
+ if(bad(a,11000,14600))w.push({ids:[20],msg:'ابزورب باید ۱۱۰۰۰..۱۴۶۰۰ باشد'});
+ else{
+  if(bad(e,a-500,a-50))w.push({ids:[21,20],msg:'ورود ابزورب باید ابزورب−۵۰۰ تا ابزورب−۵۰ باشد ('+(a-500)+'..'+(a-50)+')'});
+  if(bad(o,a+100,Math.min(a+400,14750)))w.push({ids:[22,20],msg:'سقف تجاوز باید ابزورب+۱۰۰ تا ابزورب+۴۰۰ (سقف ۱۴۷۵۰) باشد'});
+  if(bad(f,9000,a-300))w.push({ids:[23,20],msg:'شناور باید ۹۰۰۰..ابزورب−۳۰۰ باشد (≤ '+(a-300)+')'});
+  else if(bad(r,8000,f-300))w.push({ids:[24,23],msg:'بازگشت باید ۸۰۰۰..شناور−۳۰۰ باشد (≤ '+(f-300)+')'});
+ }
+ if(bad(im,100,900))w.push({ids:[25],msg:'جریان بالک باید ۱۰۰..۹۰۰ باشد'});
+ if(bad(tp,10,Math.min(300,im)))w.push({ids:[26,25],msg:'تیپر باید ۱۰..سقف بالک باشد (≤ '+Math.min(300,im)+')'});
+ return w;}
 function qgraph(){const g=$('qg');if(!g)return;
- const q={a:qv(20),e:qv(21),o:qv(22),f:qv(23),r:qv(24)},im=qv(25).v,tp=qv(26).v;
- const lo=Math.max(7600,Math.min(q.r.v,12000)-500),hi=15060,W=760,H=330,X0=54,X1=738;
- const Y=mv=>Math.round(H-34-270*(mv-lo)/(hi-lo));
+ const q={a:qv(20),e:qv(21),o:qv(22),f:qv(23),r:qv(24)},im=qv(25),tp=qv(26);
+ /* v1.14d (دستور کاربر ۲۰۲۶-۰۹-۲۶ «به سمت پایین کشیده‌تر»): H=560 تا مرز
+    ناحیه‌ها در هم نرود؛ ناحیه‌ها از مقادیر اعمال‌شده (.d) — چون برد گیره
+    می‌زند هرگز وارونه/هم‌پوشان نمی‌شوند؛ تایپِ هنوز-اعمال‌نشده فقط خط‌چین */
+ const lo=Math.max(7600,Math.min(q.r.d,12000)-500),hi=15060,W=760,H=560,X0=54,X1=738;
+ const Y=mv=>Math.round(H-36-(H-70)*(mv-lo)/(hi-lo));
  const V=mv=>(mv/1000).toFixed(2);
- const ln=(mv,c,txt,dash,sub)=>{const y=Y(mv),pv=(dash?dash.p:0);
-  return`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="${c}" stroke-width="2.5" ${pv?'stroke-dasharray="8 5"':''}/>`+
-  `<text x="${X1-4}" y="${y-5}" text-anchor="end" font-size="12" font-weight="700" fill="${c}">${txt}${sub?` <tspan font-size="10" font-weight="400" fill="${c}">(${sub})</tspan>`:''}${pv?' · پیش‌نمایش':''}</text>`;};
+ /* برچسب‌ها جدا جمع و با کمینهٔ فاصله رندر می‌شوند تا در ناحیه‌های باریک در هم نروند */
+ const ZL=[],LL=[];
  const zone=(mv1,mv2,fill,txt,c)=>{const y1=Y(Math.max(mv1,mv2)),y2=Y(Math.min(mv1,mv2));
-  return`<rect x="${X0}" y="${y1}" width="${X1-X0}" height="${Math.max(3,y2-y1)}" fill="${fill}"/>`+
-  `<text x="${X0+8}" y="${y1+15}" font-size="11.5" font-weight="700" fill="${c}">${txt}</text>`;};
+  if(txt)ZL.push({y:y1+15,txt,c});
+  return`<rect x="${X0}" y="${y1}" width="${X1-X0}" height="${Math.max(3,y2-y1)}" fill="${fill}"/>`;};
+ const aln=(mv,c)=>`<line x1="${X0}" y1="${Y(mv)}" x2="${X1}" y2="${Y(mv)}" stroke="${c}" stroke-width="2.5"/>`;
+ const pvln=(o,c)=>o.p?`<line x1="${X0}" y1="${Y(o.v)}" x2="${X1}" y2="${Y(o.v)}" stroke="${c}" stroke-width="2.5" stroke-dasharray="8 5"/>`:'';
+ const lbl=(o,c,txt)=>{LL.push({y:Y(o.p?o.v:o.d)-5,txt,c,pv:o.p});};
+ const put=(A,x,anchor,fs)=>{A.sort((p,q2)=>p.y-q2.y);let last=4;
+  return A.map(o=>{const yc=Math.min(Math.max(o.y,20),H-14),y=Math.max(last+16,yc),sh=y-yc>3;last=y;
+   return (sh?`<line x1="${x}" y1="${yc+4}" x2="${x}" y2="${y-4}" stroke="${o.c}" stroke-width="1" opacity=".6"/>`:'')+
+   `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="${fs}" font-weight="700" fill="${o.c}">${o.txt}${o.pv?' · پیش‌نمایش':''}</text>`;}).join('');};
  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:640px;font-family:inherit">`;
  s+=`<rect x="${X0}" y="18" width="${X1-X0}" height="${H-52}" fill="#0d1320" stroke="#232c40" rx="6"/>`;
  for(let mv=Math.ceil(lo/500)*500;mv<=hi;mv+=500){const y=Y(mv);
   s+=`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="#1c2436" stroke-width="1"/>`+
      `<text x="${X0-4}" y="${y+4}" text-anchor="end" font-size="10" fill="#8089a0">${(mv/1000).toFixed(1)}</text>`;}
  s+=zone(hi,15000,'rgba(255,92,92,.16)','','#ff5c5c');
- s+=zone(15000,q.o.v,'rgba(255,92,92,.09)','ناحیهٔ تجاوز (Over) — کاهش سریع duty','#ff7373');
- s+=zone(q.o.v,q.e.v,'rgba(245,185,66,.08)','ناحیهٔ ابزورب (Absorb)','#f5b942');
- s+=zone(q.e.v,q.f.v,'rgba(128,137,160,.06)','','#8089a0');
- s+=zone(q.f.v,q.r.v,'rgba(46,204,143,.09)','ناحیهٔ شناور (Float)','#2ecc8f');
- s+=zone(q.r.v,lo,'rgba(79,140,255,.10)','زیر بازگشت (Reentry) — شارژ دوباره از بالک','#6ea8ff');
- s+=ln(15000,'#ff5c5c','قطع سخت (Cutoff) ۱۵V','').replace(' stroke-width="2.5"',' stroke-width="1.5" stroke-dasharray="3 4"');
- s+=ln(q.o.v,'#f08c2e','سقف تجاوز (Over)',q.o);
- s+=ln(q.a.v,'#f5b942','ابزورب (Absorb)',q.a);
- s+=ln(q.e.v,'#d98e2b','ورود ابزورب (Absorb Enter)',q.e);
- s+=ln(q.f.v,'#2ecc8f','شناور (Float)',q.f);
- s+=ln(q.r.v,'#4f8cff','بازگشت به بالک (Reentry)',q.r);
+ s+=zone(15000,q.o.d,'rgba(255,92,92,.09)','ناحیهٔ تجاوز (Over) — کاهش سریع duty','#ff7373');
+ s+=zone(q.o.d,q.e.d,'rgba(245,185,66,.08)','ناحیهٔ ابزورب (Absorb)','#f5b942');
+ s+=zone(q.e.d,q.f.d,'rgba(128,137,160,.06)','','#8089a0');
+ s+=zone(q.f.d,q.r.d,'rgba(46,204,143,.09)','ناحیهٔ شناور (Float)','#2ecc8f');
+ s+=zone(q.r.d,lo,'rgba(79,140,255,.10)','زیر بازگشت (Reentry) — شارژ دوباره از بالک','#6ea8ff');
+ s+=`<line x1="${X0}" y1="${Y(15000)}" x2="${X1}" y2="${Y(15000)}" stroke="#ff5c5c" stroke-width="1.5" stroke-dasharray="3 4"/>`;
+ LL.push({y:Y(15000)-5,txt:'قطع سخت (Cutoff) ۱۵V',c:'#ff5c5c'});
+ s+=aln(q.o.d,'#f08c2e')+pvln(q.o,'#f08c2e');lbl(q.o,'#f08c2e','سقف تجاوز (Over)');
+ s+=aln(q.a.d,'#f5b942')+pvln(q.a,'#f5b942');lbl(q.a,'#f5b942','ابزورب (Absorb)');
+ s+=aln(q.e.d,'#d98e2b')+pvln(q.e,'#d98e2b');lbl(q.e,'#d98e2b','ورود ابزورب (Absorb Enter)');
+ s+=aln(q.f.d,'#2ecc8f')+pvln(q.f,'#2ecc8f');lbl(q.f,'#2ecc8f','شناور (Float)');
+ s+=aln(q.r.d,'#4f8cff')+pvln(q.r,'#4f8cff');lbl(q.r,'#4f8cff','بازگشت به بالک (Reentry)');
  /* موقعیت زندهٔ هر باتری (دستور کاربر ۲۰۲۶-۰۹-۲۶): نقطهٔ رنگی روی ولتاژ خودش
     در ستون مخصوصش + برچسب وضعیت زیر نمودار؛ ناحیه‌ها خودشان داستان مراحل را می‌گویند */
  let lg='';
@@ -516,12 +542,21 @@ function qgraph(){const g=$('qg');if(!g)return;
     s+=`<text x="${x}" y="${Math.min(y+24,H-10)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="${b[4]}">${b[0].split(' (')[0]} ${V(b[1])}V</text>`;}});
   lg=bats.map(b=>{const st=BST[b[2]]||('#'+b[2]);
    return `<span class="tg" style="background:${st[1]}22;color:${st[1]};border:1px solid ${st[1]}66">● ${b[0]}: <b>${V(b[1])}V</b> · ${b[3]}mA · ${st[0]}</span>`;}).join(' ')+
-   `<span class="lb"> · بالک ≤ ${im}mA · تیپر < ${tp}mA · پس از هر تغییر ~۱٫۵ ثانیه بعد روی فلش برد ذخیره می‌شود</span>`;
+   `<span class="lb"> · بالک ≤ ${im.v}mA · تیپر < ${tp.v}mA · پس از هر تغییر ~۱٫۵ ثانیه بعد روی فلش برد ذخیره می‌شود</span>`;
  }else lg='در انتظار دادهٔ برد…';
+ s+=put(ZL,X0+8,'start','11.5')+put(LL,X1-4,'end','12');
  s+=`<text x="${X0}" y="12" font-size="10" fill="#8089a0">ولتاژ باتری / Battery voltage (V)</text></svg>`;
- g.innerHTML=s;const e=$('qgl');if(e)e.innerHTML=lg;}
-/* [EN] bind the profile inputs: on change, POST /s (fire-and-forget; the ack span next to the field shows the APPLIED value reported by the STM32). / اتصال ورودی‌های پروفایل: با تغییر، POST /s؛ نشانگر کنار فیلد مقدار «اعمال‌شده» را از STM32 نشان می‌دهد. */
-for(const id of [7,8,20,21,22,23,24,25,26]){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(!isNaN(v))send(id,v);};if(id>=20)e.oninput=qgraph;}
+ g.innerHTML=s;const e=$('qgl');if(e)e.innerHTML=lg;
+ /* نگهبان: هشدار بالای نمودار + قرمزکردن فیلد مقصر */
+ const w=qchk(),we=$('qw');
+ if(we){we.innerHTML=w.length?('⚠ ترکیب نامعتبر — برد این‌ها را گیره می‌زند: '+w.map(x=>x.msg).join('؛ ')):'';
+  we.style.cssText=w.length?'margin:2px 0 6px;color:#ff7373;font-size:12.5px;line-height:1.9':'margin:2px 0 0';}
+ for(const id of [20,21,22,23,24,25,26]){const ne=$('q'+id);if(ne)ne.style.borderColor=w.some(x=>x.ids.includes(id))?'#b8323f':'';}}
+/* [EN] bind the profile inputs: on change, POST /s (fire-and-forget; the ack span next to the field shows the APPLIED value reported by the STM32). v1.14d: a typed value that breaks the profile rules asks for confirmation first, because the board will clamp it. / اتصال ورودی‌های پروفایل: با تغییر، POST /s؛ نشانگر کنار فیلد مقدار «اعمال‌شده» را از STM32 نشان می‌دهد. v1.14d: مقدار ناسازگار قبل از ارسال تأیید می‌خواهد چون برد گیره‌اش می‌زند. */
+for(const id of [7,8,20,21,22,23,24,25,26]){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;
+ if(id>=20){const m=qchk().filter(x=>x.ids.includes(id));
+  if(m.length&&!confirm('⚠ '+m.map(x=>x.msg).join('\n')+'\n\nبرد مقدار را گیره می‌زند تا مجموعه سازنده بماند. باز هم ارسال شود؟')){e.value='';qgraph();return;}}
+ send(id,v);};if(id>=20)e.oninput=qgraph;}
 function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;qfill();if(TAB==2)qgraph();
  document.body.classList.toggle('dn',!on);$('lk').classList.toggle('on',on);
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');

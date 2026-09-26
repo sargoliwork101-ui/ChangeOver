@@ -63,6 +63,13 @@
 > the zones not enough?"): the graph's V(t) curve and cycle arrow are
 > removed; each battery gets a live position dot on its voltage column
 > plus a bilingual state chip under the chart. No wire-format change.
+> v1.14d (eleventh order, "stretch the graph downward, the zone borders
+> are cramped; zones must follow the profile numbers and never overlap"):
+> taller chart (H 330 -> 560), zones drawn from the APPLIED board values
+> (never inverted - the board clamps) with dashed preview lines for
+> typed-but-not-applied values, a collision-free label pass, and a panel
+> guard mirroring Charger_ClampProfile (red warning + red field +
+> confirm-before-send on invalid combos). Panel + preview-server only.
 > v1.13 (same day, seventh order - "the
 > voltages are fixed but the currents you read are wrong"): audit of
 > the whole current path confirmed the chain formula, the parse and the
@@ -745,7 +752,16 @@ each battery instead gets a live POSITION DOT on its own voltage column
 (ch2 -> battery-low t[17]/state t[13]/current t[10], ch1 ->
 battery-high t[18]/state t[6]/current t[3]) with a colored state chip
 under the chart (voltage, current, bilingual state: خاموش/Off,
-بالک/Bulk, ابزورب/Absorb, شناور/Float, faults red).
+بالک/Bulk, ابزورب/Absorb, شناور/Float, faults red). v1.14d (user order
+2026-09-26, "stretch the graph downward, the zone borders are cramped;
+zones must follow the profile numbers and never overlap"): the chart is
+taller (H 330 -> 560) with a collision-free label pass; zones are drawn
+from the APPLIED board values (so they track every profile write within
+a poll and can never invert or overlap - the firmware clamps the set),
+while typed-but-not-applied values show as dashed preview lines only;
+a panel-side guard (qchk) mirrors Charger_ClampProfile and raises a red
+warning above the chart, paints the offending field red, and asks for
+confirmation before sending any combo the board would clamp.
 
 - Boot defaults equal the old compile-time setpoints (14400 / 14300 /
   14600 / 13500 / 12800 / 650 / 50) - a reflash changes no behavior.
@@ -941,7 +957,11 @@ only, NO wire-format change. Both boards reflash together as usual.
 v1.14b (2026-09-26): panel-only polish - dark bilingual graph, tab
 renamed "تنظیمات", filter windows 7/8 moved to it; firmware untouched
 (panel reflash only). v1.14c (same day): panel-only - graph simplified to
-zones + per-battery position dots and state chips.
+zones + per-battery position dots and state chips. v1.14d (same day):
+panel-only - taller non-overlapping stage graph (applied-value zones +
+dashed typed previews) with a profile-combo guard (warn + confirm);
+the offline preview server now re-clamps the whole profile set after
+each write, exactly like Charger_ClampProfile.
 
 v1.13 (2026-09-25, user order of the same day): the ch2 LUT changed from
 chain->current to chain->POWER with a live /Vlow division (section 5.3) -

@@ -877,6 +877,11 @@ def test_charger_persistence_v114():
           '<circle cx="${x}" cy="${y}" r="7"' in ino and
           'stroke="#e7eaf0"' not in ino and "marker-end" not in ino,
           "v1.14c (user order 2026-09-26, 'show each battery's position and state; the white Bulk curve is confusing - are the zones not enough?'): the graph drops the V(t) curve and cycle arrow, and each battery gets a live position DOT on its own voltage column (ch2->Vlow t17/t13/t10, ch1->Vhigh t18/t6/t3) with a state chip under the chart")
+    check('H=560' in ino and 'id="qw"' in ino and 'function qchk()' in ino and
+          'q.o.d' in ino and 'q.r.d' in ino and 'pvln(q.o' in ino and
+          'const ZL=[],LL=[]' in ino and 'ترکیب نامعتبر' in ino and
+          'باز هم ارسال شود؟' in ino and 'نگهبان ترکیب' in ino,
+          "v1.14d (user order 2026-09-26, 'stretch the graph downward, the zone borders are cramped; zones must follow the profile numbers and never overlap'): taller chart (H=560), zones drawn from APPLIED values with dashed preview lines for typed values, anti-collision label pass (ZL/LL), and a qchk() guard mirroring Charger_ClampProfile - red warning + red field + confirm-before-send on invalid combos")
 
     # ---------- compiled fault-injection run of the EXACT flash-state code ----------
     gcc = shutil.which("gcc")
