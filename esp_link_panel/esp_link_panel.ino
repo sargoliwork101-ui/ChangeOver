@@ -493,10 +493,10 @@ function qchk(){const w=[],a=qv(20).v,e=qv(21).v,o=qv(22).v,f=qv(23).v,r=qv(24).
  return w;}
 function qgraph(){const g=$('qg');if(!g)return;
  const q={a:qv(20),e:qv(21),o:qv(22),f:qv(23),r:qv(24)},im=qv(25),tp=qv(26);
- /* v1.14d (دستور کاربر ۲۰۲۶-۰۹-۲۶ «به سمت پایین کشیده‌تر»): H=560 تا مرز
+ /* v1.14e (دستور کاربر ۲۰۲۶-۰۹-۲۶ «حداقل ۵۰٪ بلندتر»): H=840 تا مرز
     ناحیه‌ها در هم نرود؛ ناحیه‌ها از مقادیر اعمال‌شده (.d) — چون برد گیره
     می‌زند هرگز وارونه/هم‌پوشان نمی‌شوند؛ تایپِ هنوز-اعمال‌نشده فقط خط‌چین */
- const lo=Math.max(7600,Math.min(q.r.d,12000)-500),hi=15060,W=760,H=560,X0=54,X1=738;
+ const lo=Math.max(7600,Math.min(q.r.d,12000)-500),hi=15060,W=760,H=840,X0=54,X1=738;
  const Y=mv=>Math.round(H-36-(H-70)*(mv-lo)/(hi-lo));
  const V=mv=>(mv/1000).toFixed(2);
  /* برچسب‌ها جدا جمع و با کمینهٔ فاصله رندر می‌شوند تا در ناحیه‌های باریک در هم نروند */
@@ -512,6 +512,8 @@ function qgraph(){const g=$('qg');if(!g)return;
    return (sh?`<line x1="${x}" y1="${yc+4}" x2="${x}" y2="${y-4}" stroke="${o.c}" stroke-width="1" opacity=".6"/>`:'')+
    `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="${fs}" font-weight="700" fill="${o.c}">${o.txt}${o.pv?' · پیش‌نمایش':''}</text>`;}).join('');};
  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:640px;font-family:inherit">`;
+ /* v1.14e: حاشور کم‌رنگ ناحیهٔ بالک (دستور کاربر ۲۰۲۶-۰۹-۲۶) */
+ s+=`<defs><pattern id="bkh" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="9" height="9" fill="rgba(79,140,255,.06)"/><line x1="0" y1="0" x2="0" y2="9" stroke="rgba(110,168,255,.30)" stroke-width="1.2"/></pattern></defs>`;
  s+=`<rect x="${X0}" y="18" width="${X1-X0}" height="${H-52}" fill="#0d1320" stroke="#232c40" rx="6"/>`;
  for(let mv=Math.ceil(lo/500)*500;mv<=hi;mv+=500){const y=Y(mv);
   s+=`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="#1c2436" stroke-width="1"/>`+
@@ -519,7 +521,7 @@ function qgraph(){const g=$('qg');if(!g)return;
  s+=zone(hi,15000,'rgba(255,92,92,.16)','','#ff5c5c');
  s+=zone(15000,q.o.d,'rgba(255,92,92,.09)','ناحیهٔ تجاوز (Over) — کاهش سریع duty','#ff7373');
  s+=zone(q.o.d,q.e.d,'rgba(245,185,66,.08)','ناحیهٔ ابزورب (Absorb)','#f5b942');
- s+=zone(q.e.d,q.f.d,'rgba(128,137,160,.06)','','#8089a0');
+ s+=zone(q.e.d,q.f.d,'url(#bkh)','ناحیهٔ بالک (Bulk) — شارژ با جریان ثابت','#6ea8ff');
  s+=zone(q.f.d,q.r.d,'rgba(46,204,143,.09)','ناحیهٔ شناور (Float)','#2ecc8f');
  s+=zone(q.r.d,lo,'rgba(79,140,255,.10)','زیر بازگشت (Reentry) — شارژ دوباره از بالک','#6ea8ff');
  s+=`<line x1="${X0}" y1="${Y(15000)}" x2="${X1}" y2="${Y(15000)}" stroke="#ff5c5c" stroke-width="1.5" stroke-dasharray="3 4"/>`;
