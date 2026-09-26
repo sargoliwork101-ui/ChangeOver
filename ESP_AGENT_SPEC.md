@@ -55,7 +55,10 @@
 > replay at boot - section 5.8); application FLASH shrinks 64K -> 62K.
 > (2) The charge tab gains a live SVG stage graph (threshold bands,
 > BULK->ABSORB->FLOAT curve, reentry cycle, live battery markers,
-> typed-value preview). No wire-format change. v1.13 (same day, seventh order - "the
+> typed-value preview). v1.14b (same day, ninth order): graph recolored to
+> the dark panel palette with bilingual FA+EN labels, the tab renamed
+> "تنظیمات", and the median/average filter windows (params 7/8) moved into
+> it under a "فیلتر جریان" section. No wire-format change. v1.13 (same day, seventh order - "the
 > voltages are fixed but the currents you read are wrong"): audit of
 > the whole current path confirmed the chain formula, the parse and the
 > v1.11 anchors all matched the DMM to <= 0.7 mA on the calibration
@@ -715,7 +718,11 @@ ID 8 clamp follows the new 1..300 ceiling.
 
 ### 5.7 Charge profile tab (v1.12 — user order 2026-09-25)
 
-A THIRD panel tab "تنظیمات شارژ" exposes the automatic-charge profile:
+A THIRD panel tab "تنظیمات" (v1.14b, was "تنظیمات شارژ") exposes the
+automatic-charge profile AND (since v1.14b, user order 2026-09-26) the
+current-filter windows (params 7 median / 8 average) under their own
+"فیلتر جریان" section - the controls moved out of the panel tab, which
+keeps only the live filter status line and the chart-sample count:
 params 20..26 (shared by BOTH channels - one profile for both batteries).
 Each field carries a Persian description in the tab; the applied value
 reported back by the STM32 is shown next to the field, so a clamped write
@@ -726,7 +733,10 @@ absorb-enter, float, reentry), the battery-voltage curve through
 OFF -> BULK (constant current) -> ABSORB (voltage hold + taper) -> FLOAT
 with the reentry cycle arrow, the current annotations (imax / taper), LIVE
 battery-low/high markers and both charger states from TLM, and a dashed
-PREVIEW of any typed-but-not-yet-applied value.
+PREVIEW of any typed-but-not-yet-applied value. v1.14b: the graph uses the
+dark panel palette and every zone, threshold and stage carries its English
+name beside the Persian one (Bulk / Absorb / Float / Reentry / Over /
+Cutoff) - user order 2026-09-26.
 
 - Boot defaults equal the old compile-time setpoints (14400 / 14300 /
   14600 / 13500 / 12800 / 650 / 50) - a reflash changes no behavior.
@@ -919,6 +929,9 @@ documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 v1.14 (2026-09-25, user order of the same day): parameter persistence in
 STM32 flash + the panel stage graph (section 5.8) - firmware + panel
 only, NO wire-format change. Both boards reflash together as usual.
+v1.14b (2026-09-26): panel-only polish - dark bilingual graph, tab
+renamed "تنظیمات", filter windows 7/8 moved to it; firmware untouched
+(panel reflash only).
 
 v1.13 (2026-09-25, user order of the same day): the ch2 LUT changed from
 chain->current to chain->POWER with a live /Vlow division (section 5.3) -

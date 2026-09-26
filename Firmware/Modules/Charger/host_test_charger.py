@@ -674,7 +674,7 @@ def test_charge_profile_v112():
     mx = re.search(r"INT32_T__G__ParamMax\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     check(mn and mx and len(mn.group(1).split(",")) == 27 and len(mx.group(1).split(",")) == 27,
           "panel min/max tables must carry 27 entries (outer envelope for ids 20..26)")
-    check('<button data-t="2">تنظیمات شارژ</button>' in ino, "third nav tab must exist")
+    check('<button data-t="2">تنظیمات</button>' in ino, "third nav tab must exist (v1.14b: renamed from تنظیمات شارژ when the filter windows moved in)")
     check('id="p2"' in ino and all(f'id="q{i}"' in ino for i in range(20, 27)),
           "tab p2 must hold the seven profile inputs q20..q26")
     check("qfill" in ino and "qdef" in ino and "e.onchange=()=>{const v=parseInt(e.value,10);" in ino,
@@ -856,10 +856,22 @@ def test_charger_persistence_v114():
     check(persisted == set(range(15)) | set(range(20, 27)) and 19 not in persisted and 15 not in persisted,
           f"persisted id set must exclude 15..19 (got {len(persisted)} ids)")
 
+    tab2 = ino.split('id="p2"', 2)[1]
     check("روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند" in ino and
           "ماندگاری:" in ino and "function qgraph()" in ino and "e.oninput=qgraph" in ino and
           "if(TAB==2)qgraph();" in ino and "نمودار مراحل شارژ" in ino,
           "the panel must carry the stage graph (qgraph + live preview + redraw hook) and the persistence texts")
+    check('<button data-t="2">تنظیمات</button>' in ino and
+          'id="q7"' in tab2 and 'id="q8"' in tab2 and 'id="a7"' in tab2 and 'id="a8"' in tab2 and
+          "پنجرهٔ مدین (Median)" in tab2 and "پنجرهٔ میانگین (Average)" in tab2 and
+          "for(const id of [7,8,20,21,22,23,24,25,26])" in ino and
+          "row(7)+row(8)" not in ino,
+          "v1.14b (user order 2026-09-26): the median/average window controls must live in the settings tab under the filter section (nav renamed, tab 0 keeps only the live status), and both ids bind through the same send/qfill path")
+    check("ناحیهٔ ابزورب (Absorb)" in ino and "ناحیهٔ شناور (Float)" in ino and
+          "ناحیهٔ تجاوز (Over)" in ino and "زیر بازگشت (Reentry)" in ino and
+          "قطع سخت (Cutoff) ۱۵V" in ino and "بالک (Bulk)" in ino and "خاموش (Off)" in ino and
+          'fill="#0d1320"' in ino,
+          "the stage graph must use the dark panel palette with bilingual (FA+EN) zone, threshold and stage labels")
 
     # ---------- compiled fault-injection run of the EXACT flash-state code ----------
     gcc = shutil.which("gcc")
