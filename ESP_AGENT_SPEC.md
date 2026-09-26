@@ -945,18 +945,20 @@ beside it, plus a "بازگردانی پیش‌فرض کارخانهٔ آلار�
   (15000), validity floor (2000) - DOWN-ONLY from the panel, never above
   the compile maxima.
 
-A live status card shows four grouped boxes (input, battery low/high,
-filtered current: big live value + threshold line + status pill) plus a
-fault box with a per-bit EXPLANATION of every latched fault bit and what
-to do; three threshold bars (input window, batteries vs absent/back/cut,
-current vs hard fault) sit below. v1.15b builds the skeleton ONCE and
+A live status card shows five grouped boxes (input, battery low/high,
+one filtered-current box per channel: big live value + threshold line +
+status pill) plus a fault box with a per-bit EXPLANATION of every
+latched fault bit and what to do; four threshold bars (input window,
+batteries vs absent/back/cut, one current bar per channel vs hard
+fault) sit below (v1.16c - no more max-of-both merge). v1.15b builds the skeleton ONCE and
 updates text/color per poll (no rebuild flicker). A panel-side guard
 (achk) mirrors Fault_ClampAlarms + Charger_ClampAlarms: red warning +
 red field + confirm-before-send on invalid combos. Because 38 params no
 longer fit one u32, /t carries a second pending mask `q2` for ids 32..37
-alongside `q` for 0..31. A backup card at the bottom of the settings tab
-exports/imports the applied filter + profile + alarm values (7/8,
-20..26, 27..37) as a JSON file (`changeover-settings.json`).
+alongside `q` for 0..31. A single backup card at the settings-tab
+level (v1.16c - ONE backup for the whole settings, not per tab)
+exports/imports ALL 71 persisted values (0..14, 20..75) as a JSON file
+(`changeover-settings.json`).
 
 Firmware clamps (every write re-clamps the whole cascade - profile ->
 charger alarms -> fault alarms, so a profile write can re-float a
@@ -1006,8 +1008,9 @@ The alarms sub-tab holds ONLY the alarm cards + ONE selectable card
 per scenario (v1.16b - a picker row: overvoltage / battery-lost /
 BatteryRun / normal charging / battery thresholds; each card only its
 own numbers, e.g. scenario 1 carries its voltage ceiling 70/71
-together with its blink/beep timing 38..43); the live status card and
-the JSON backup card moved to a third settings sub-tab. The guard
+together with its blink/beep timing 38..43); the live status card
+moved to a third settings sub-tab ("وضعیت") while the single backup
+card sits at settings level (v1.16c). The guard
 (achk) covers the whole set (window fits, band order, threshold
 order), and a third pending mask `q3` in /t covers ids 64..76. ONE sticky mirror header stays pinned above everything: the 3
 board LEDs blinking at the board's APPLIED period/duty (panel-side
@@ -1150,6 +1153,13 @@ documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 1 s keepalive while ID 19 = 1.
 
 ## 10. Protocol version
+
+v1.16c (2026-09-26, user order of the same day): panel-only - ONE
+backup card for the whole settings section (all 71 persisted ids
+0..14 + 20..75) at settings-tab level; the live status card shows one
+filtered-current box + one threshold bar PER channel (no max merge);
+uniformly numbered scenario picker (۱..۵); the third sub-tab renamed
+to "وضعیت". No firmware change (ESP reflash only).
 
 v1.16b (2026-09-26, user order of the same day): the mute (76) turns
 from persisted-flash into a panel-session mute (RAM-only, never saved,

@@ -400,7 +400,7 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 </div>
 <div class="pgx" id="p1"></div>
 <div class="pgx" id="p2">
-<div class="sbt" id="sbt"><button class="a" data-s="0">شارژ و فیلتر</button><button data-s="1">آلارم‌ها</button><button data-s="2">وضعیت و پشتیبان</button></div>
+<div class="sbt" id="sbt"><button class="a" data-s="0">شارژ و فیلتر</button><button data-s="1">آلارم‌ها</button><button data-s="2">وضعیت</button></div>
 <div class="sgx a" id="s0">
 <div class="cd">
 <div class="hd"><b>نمودار مراحل شارژ</b><span class="lb">· مشترک هر دو کانال · ناحیه‌ها از مقادیر اعمال‌شدهٔ برد · تایپ = خط‌چین پیش‌نمایش · ترکیب نامعتبر = هشدار قرمز</span></div>
@@ -497,7 +497,7 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <button class="sb" onclick="xmute()">🔇/🔊 میوت</button><span class="lb" id="xmuteS">—</span>
 </div>
 <div class="hd" style="margin-top:10px"><b>سناریوهای LED و بازر</b><span class="lb">· یک سناریو را انتخاب کنید · همه روی فلش برد ذخیره می‌شوند</span></div>
-<div class="sbt" id="usel"><button class="a" data-u="1">سناریو ۱ · اضافه‌ولتاژ</button><button data-u="2">سناریو ۲ · قطع باتری</button><button data-u="3">سناریو ۳ · دشارژ</button><button data-u="4">سناریو ۴ · شارژ عادی</button><button data-u="5">باتری و درصد</button></div>
+<div class="sbt" id="usel"><button class="a" data-u="1">۱ · اضافه‌ولتاژ</button><button data-u="2">۲ · قطع باتری</button><button data-u="3">۳ · دشارژ</button><button data-u="4">۴ · شارژ عادی</button><button data-u="5">۵ · باتری و درصد</button></div>
 <div class="cd" id="ucard1">
 <div class="hd"><b>سناریو ۱ — اضافه‌ولتاژ ورودی</b><span class="lb">· سقف ولتاژ + چشمک و بوق · اولویت اول برد</span></div>
 <div class="sec">سقف ولتاژ <span class="lb">(mV)</span></div>
@@ -601,15 +601,15 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <div id="ast" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div>
 <div id="abars"></div>
 </div>
+</div>
 <div class="cd">
-<div class="hd"><b>پشتیبان‌گیری تنظیمات</b><span class="lb">· خروجی/ورودی JSON — فیلتر (۷/۸)، پروفایل (۲۰..۲۶)، آلارم‌ها و LED/بازر (۲۷..۷۵)</span></div>
+<div class="hd"><b>پشتیبان‌گیری همهٔ تنظیمات</b><span class="lb">· یک بکاپ برای کل بخش تنظیمات — خروجی/ورودی JSON همهٔ ۷۱ مقدار ماندگار (۰..۱۴، ۲۰..۷۵)</span></div>
 <div class="bqr">
 <button class="sb sb2" onclick="xexp()">⬇ خروجی (دانلود JSON)</button>
 <label class="sb" style="cursor:pointer">⬆ ورودی (انتخاب فایل)<input type="file" id="xim" accept=".json,application/json" style="display:none"></label>
 <span class="lb" id="xst">—</span>
 </div>
-<div class="lb">خروجی، مقادیر «اعمال‌شدهٔ» فعلی برد را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). مودهای تست گذرا (۱۵..۱۹) و میوت موقتی (۷۶) جزو پشتیبان نیستند.</div>
-</div>
+<div class="lb">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد (کالیبراسیون، فیلتر، فعال‌سازی/سقف‌ها، پروفایل، آلارم‌ها، سناریوها) را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود؛ شناسه‌های بدون فیلد بی‌صدا اعمال می‌شوند). گذراها (۱۵..۱۹ و میوت ۷۶) جزو پشتیبان نیستند.</div>
 </div>
 </main>
 
@@ -882,12 +882,12 @@ let ASB=null;
 function astat(){const s=$('ast'),b=$('abars');if(!s||!b||!D||!D.t||!D.p)return;
  const t=D.t,p=D.p;
  const g=(id,fb)=>p[id]!=null?p[id]:fb;
- const vin=t[14],vl=t[17],vh=t[18],im=Math.max(t[3],t[10]);
+ const vin=t[14],vl=t[17],vh=t[18],i1=t[3],i2=t[10];
  const mn=g(33,21000),mx=g(34,28000),dc=g(27,14800),ab=g(29,6000),hd=g(35,950),ov=g(36,15000),fl=g(37,2000);
  if(!ASB){
-  s.innerHTML=`<div class="ag">`+[['ورودی'],['باتری پایین'],['باتری بالا'],['جریان فیلترشده']].map((x,k)=>`<div class="ab" id="asb${k}"><small>${x[0]}</small><b class="n" id="asv${k}">—</b><span class="lb" id="asc${k}">—</span><span class="tg" id="asg${k}">—</span></div>`).join('')+`</div><div class="ab" id="asb4" style="margin-top:8px;min-height:0"><small>خطاهای قفل‌شده (fault) — LED جدا برای هر بیت</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit" id="asbb6"><i></i><small>قطع‌باتری</small></span></div><div class="fx2" id="asf">—</div></div>`;
-  b.innerHTML=[0,1,2].map(k=>`<div class="lb" id="abc${k}" style="margin-top:8px">—</div><div class="bar"><i id="abf${k}"></i><span id="abm${k}"></span></div>`).join('');
-  ASB={box:[0,1,2,3,4].map(k=>$('asb'+k)),val:[0,1,2,3].map(k=>$('asv'+k)),cap:[0,1,2,3].map(k=>$('asc'+k)),pill:[0,1,2,3].map(k=>$('asg'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6].map(k=>$('asbb'+k)),bcap:[$('abc0'),$('abc1'),$('abc2')],bfill:[$('abf0'),$('abf1'),$('abf2')],bmark:[$('abm0'),$('abm1'),$('abm2')],sig:'',mask:-1};
+  s.innerHTML=`<div class="ag">`+[['ورودی'],['باتری پایین'],['باتری بالا'],['جریان ۱ (بالا)'],['جریان ۲ (پایین)']].map((x,k)=>`<div class="ab" id="asb${k}"><small>${x[0]}</small><b class="n" id="asv${k}">—</b><span class="lb" id="asc${k}">—</span><span class="tg" id="asg${k}">—</span></div>`).join('')+`</div><div class="ab" id="asb5" style="margin-top:8px;min-height:0"><small>خطاهای قفل‌شده (fault) — LED جدا برای هر بیت</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit" id="asbb6"><i></i><small>قطع‌باتری</small></span></div><div class="fx2" id="asf">—</div></div>`;
+  b.innerHTML=[0,1,2,3].map(k=>`<div class="lb" id="abc${k}" style="margin-top:8px">—</div><div class="bar"><i id="abf${k}"></i><span id="abm${k}"></span></div>`).join('');
+  ASB={box:[0,1,2,3,4,5].map(k=>$('asb'+k)),val:[0,1,2,3,4].map(k=>$('asv'+k)),cap:[0,1,2,3,4].map(k=>$('asc'+k)),pill:[0,1,2,3,4].map(k=>$('asg'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6].map(k=>$('asbb'+k)),bcap:[$('abc0'),$('abc1'),$('abc2'),$('abc3')],bfill:[$('abf0'),$('abf1'),$('abf2'),$('abf3')],bmark:[$('abm0'),$('abm1'),$('abm2'),$('abm3')],sig:'',mask:-1};
   if(!ASB.box[0]||!ASB.bfill[0]||!ASB.flt){ASB=null;return;}
  }
  const set=(k,val,cap,pill,cls)=>{ASB.val[k].textContent=val;ASB.cap[k].textContent=cap;ASB.pill[k].textContent=pill;ASB.pill[k].className='tg '+cls;ASB.box[k].className='ab '+(cls==='g'?'good':cls==='y'?'warn':'bad');};
@@ -895,16 +895,17 @@ function astat(){const s=$('ast'),b=$('abars');if(!s||!b||!D||!D.t||!D.p)return;
  set(0,(vin/1000).toFixed(2)+'V',`بازهٔ سالم ${(mn/1000).toFixed(1)}..${(mx/1000).toFixed(1)}V`,vinOk?'✅ داخل بازه':'⚠ خارج بازه',vinOk?'g':'r');
  [[vl,1],[vh,2]].forEach(B=>{const v=B[0],over=v>=dc,lost=v<ab,inv=v<fl||v>=ov,bad=over||lost||inv;
   set(B[1],(v/1000).toFixed(2)+'V',`قطع ${(dc/1000).toFixed(2)}V · حاشیه ${dc-v}mV`,bad?(over?'⚠ بالای قطع':lost?'⚠ غایب':'⚠ نامعتبر'):'✅ سالم',bad?'r':'g');});
- set(3,im+'mA',`خطای سخت ${hd}mA`,im>=hd?'⚠ تریپ':im>=hd-100?'⚠ نزدیک تریپ':'✅ سالم',im>=hd?'r':im>=hd-100?'y':'g');
+ [[i1,3],[i2,4]].forEach(C=>{const v=C[0];set(C[1],v+'mA',`خطای سخت ${hd}mA`,v>=hd?'⚠ تریپ':v>=hd-100?'⚠ نزدیک تریپ':'✅ سالم',v>=hd?'r':v>=hd-100?'y':'g');});
  if(t[19]!==ASB.mask){ASB.mask=t[19];
-  if(!t[19]){ASB.flt.textContent='✅ بدون خطای قفل‌شده';ASB.box[4].className='ab good';}
+  if(!t[19]){ASB.flt.textContent='✅ بدون خطای قفل‌شده';ASB.box[5].className='ab good';}
   else{let h='';for(let bit=0;bit<7;bit++)if(t[19]&(1<<bit))h+=`<div>⚠ <b>${FEXP[bit][0]}</b> — ${FEXP[bit][1]}</div>`;
    if(t[19]&~127)h+=`<div>⚠ بیت ناشناخته: <span class="n">fault 0x${t[19].toString(16)}</span></div>`;
-   ASB.flt.innerHTML=h;ASB.box[4].className='ab bad';}}
+   ASB.flt.innerHTML=h;ASB.box[5].className='ab bad';}}
  const pc2=(x,lo,hi)=>Math.max(0,Math.min(100,(x-lo)/(hi-lo)*100));
  const R=[[vin,Math.max(15000,mn-3000),Math.min(32000,mx+3000),[[mn,'#2ecc8f'],[mx,'#ff5c5c']],`ورودی — سبز=کف ${(mn/1000).toFixed(1)}V · قرمز=سقف ${(mx/1000).toFixed(1)}V`],
   [Math.max(vl,vh),0,16000,[[ab,'#f5b942'],[g(30,7000),'#2ecc8f'],[dc,'#ff5c5c']],`باتری (بالاترین نیمه) — زرد=غیبت · سبز=برگشت · قرمز=قطع`],
-  [im,0,Math.max(1000,hd+100),[[hd,'#ff5c5c']],`جریان — قرمز=خطای سخت ${hd}mA`]];
+  [i1,0,Math.max(1000,hd+100),[[hd,'#ff5c5c']],`جریان ۱ (باتری بالا) — قرمز=خطای سخت ${hd}mA`],
+  [i2,0,Math.max(1000,hd+100),[[hd,'#ff5c5c']],`جریان ۲ (باتری پایین) — قرمز=خطای سخت ${hd}mA`]];
  const sig=[mn,mx,ab,g(30,7000),dc,hd].join(',');
  if(sig!==ASB.sig){ASB.sig=sig;R.forEach((r,k)=>{ASB.bcap[k].textContent=r[4];ASB.bmark[k].innerHTML=r[3].map(m=>`<u style="right:${pc2(m[0],r[1],r[2])}%;background:${m[1]}"></u>`).join('');});}
  R.forEach((r,k)=>{ASB.bfill[k].style.width=pc2(r[0],r[1],r[2])+'%';});}
@@ -991,7 +992,7 @@ for(const id of AIDS){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=p
  if(m.length&&!confirm('⚠ '+m.map(x=>x.msg).join('\n')+'\n\nبرد مقدار را گیره می‌زند تا مجموعه سازنده بماند. باز هم ارسال شود؟')){e.value='';afresh();return;}
  send(id,v);};e.oninput=afresh;}
 /* ===== v1.15b: پشتیبان‌گیری JSON تنظیمات (فیلتر + پروفایل + آلارم‌ها) ===== */
-const XIDS=[7,8,20,21,22,23,24,25,26];AIDS.forEach(id=>{if(id<76)XIDS.push(id);});
+const XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26];AIDS.forEach(id=>{if(id<76)XIDS.push(id);});
 function xexp(){const x=$('xst');if(!D||!D.p){if(x)x.textContent='هنوز داده‌ای از برد نرسیده';return;}
  const o={app:'ChangeOver-settings',v:1,params:{}};XIDS.forEach(id=>{o.params[id]=D.p[id];});
  const u=URL.createObjectURL(new Blob([JSON.stringify(o)],{type:'application/json'}));

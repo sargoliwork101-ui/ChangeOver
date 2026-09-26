@@ -1505,18 +1505,28 @@ def test_ui_mirror_v116():
           "one LED per fault bit (asbb0..asbb6)")
     check("pendingMask3" in ino and "64..76" in ino,
           "the /t JSON must carry the q3 pending mask for ids 64..76")
-    check("(۲۷..۷۵)" in ino and "(۲۷..۷۶)" not in ino.split('id="s2"')[1].split("</main>")[0], "the backup card must cover ids 27..75 (mute excluded)")
+    check("(۰..۱۴، ۲۰..۷۵)" in ino and "XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26]" in ino,
+          "v1.16c (user order: ONE backup for the whole settings): all 71 persisted ids 0..14 + 20..75")
     check('id="usel"' in ino and "function usel(n)" in ino
           and all(f'id="ucard{k}"' in ino for k in range(1, 6)),
           "one selectable card per scenario (5 cards, single-visible) - no crowded wall of fields")
-    check('data-s="2"' in ino and 'id="s2"' in ino and 'وضعیت و پشتیبان' in ino,
-          "v1.16b (user order: alarms tab holds ONLY alarms + scenarios): a third settings sub-tab for status + backup")
-    s1part, s2part = ino.split('id="s1"')[1].split('id="s2"')[0], ino.split('id="s2"')[1].split("</main>")[0]
+    check('data-s="2"' in ino and 'id="s2"' in ino and 'data-s="2">وضعیت<' in ino
+          and "وضعیت و پشتیبان" not in ino,
+          "v1.16c: the third settings sub-tab is status-only (backup moved to settings level)")
+    s1part = ino.split('id="s1"')[1].split('id="s2"')[0]
+    s2region = ino.split('id="s2"')[1].split("پشتیبان‌گیری")[0]
     check("ucard1" in s1part and "uleds" in s1part and "نظارت باتری" in s1part
           and "وضعیت آلارم‌ها" not in s1part and "پشتیبان‌گیری" not in s1part,
           "s1 keeps only the alarm cards + the scenario picker + the mirror")
-    check("وضعیت آلارم‌ها" in s2part and "پشتیبان‌گیری" in s2part and 'id="ast"' in s2part and 'id="xim"' in s2part,
-          "s2 holds the live status card and the JSON backup card")
+    check("وضعیت آلارم‌ها" in s2region and 'id="ast"' in s2region and "پشتیبان‌گیری" not in s2region,
+          "s2 holds only the live status card")
+    check(ino.index("پشتیبان‌گیری") > ino.index('id="abars"') and 'id="xim"' in ino.split("پشتیبان‌گیری")[1].split("</main>")[0],
+          "the single backup card sits at settings level, after the sub-tabs")
+    check("asb5" in ino and "abf3" in ino and "جریان ۱" in ino and "جریان ۲" in ino
+          and "Math.max(t[3],t[10])" not in ino,
+          "v1.16c (user order: current bars for BOTH batteries): per-channel boxes + bars, no max() merge")
+    check("۱ · اضافه‌ولتاژ" in ino and "۵ · باتری و درصد" in ino and "سناریو ۱ ·" not in ino,
+          "v1.16c (user order: better naming): uniformly numbered scenario picker")
     check("با ریست برد پاک می‌شود" in ino and "روی فلش می‌ماند" not in ino,
           "v1.16b (user order: mute lives only for the panel session): no stale persisted-mute text")
 
