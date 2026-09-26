@@ -139,16 +139,17 @@
 /**
  * @brief  [EN] Battery-lost scenario (2026-09-19): shown only while the
  *         central fault bit FAULT_CHARGER_BAT_LOST is latched by the Fault
- *         module. Design chosen with the user: red fast blink (500 ms ON /
- *         500 ms OFF - clearly different from the 1 s input-overvoltage pulse),
+ *         module. Design chosen with the user: red fast blink (defaults 500 ms ON / 500 ms OFF - clearly
+ *         different from the 1 s input-overvoltage pulse; ids 44/45),
  *         green steady (input is present in both detection cases), and a
- *         repeating buzzer pattern of THREE short beeps then a silence. It can
+ *         repeating buzzer pattern (defaults: THREE short beeps then a silence; ids 46..49). It can
  *         never mix with the BatteryRun critical beep: that one runs only with
  *         the input ABSENT, and in func__Ui_Tick this scenario is checked
  *         (after overvoltage) before every normal scenario and returns.
  *         [FA] سناریوی قطع باتری: فقط تا وقتی پرچم متمرکز قفل است؛ قرمز
- *         چشمک‌تند (نیم‌ثانیه/نیم‌ثانیه)، سبز ثابت و سه بیپ کوتاه + مکثِ
- *         تکرارشونده. با بوق بحرانی دشارژ هرگز قاطی نمی‌شود - آن فقط بی‌ورودی
+ *         چشمک‌تند (پیش‌فرض نیم‌ثانیه/نیم‌ثانیه؛ ۴۴/۴۵)، سبز ثابت و بوق
+ *         دوره‌ای و تکرارشونده (پیش‌فرض سه بیپ کوتاه + مکث؛ ۴۶..۴۹).
+ *         با بوق بحرانی دشارژ هرگز قاطی نمی‌شود - آن فقط بی‌ورودی
  *         است و این سناریو قبل از همه سناریوهای نرمال چک و return می‌شود.
  */
 #define UI_BAT_LOST_LED_PERIOD_MS 1000u
@@ -509,10 +510,11 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv);
 /* ==================== Scenario BatLost Tick / تیک سناریوی قطع باتری ==================== */
 
 /**
- * @brief  [EN] BatLost: red fast blink + green steady + three short beeps and
- *         a pause (see UI_BAT_LOST_* above). Called every Ui pass while
- *         FAULT_CHARGER_BAT_LOST is latched; no latch lives in the UI.
- *         [FA] قطع باتری: قرمز چشمک‌تند + سبز ثابت + سه بیپ کوتاه و مکث؛ تا
+ * @brief  [EN] BatLost: red fast blink + green steady + periodic beeps
+ *         (defaults: three short beeps and a pause, UI_BAT_LOST_*; ids 44..49).
+ *         Called every Ui pass while FAULT_CHARGER_BAT_LOST is latched; no latch lives in the UI.
+ *         [FA] قطع باتری: قرمز چشمک‌تند + سبز ثابت + بوق دوره‌ای
+ *         (پیش‌فرض سه بیپ کوتاه و مکث؛ ۴۴..۴۹)؛ تا
  *         وقتی پرچم متمرکز قفل است هر پاس صدا زده می‌شود؛ UI چیزی لچ نمی‌کند.
  */
 void func__Ui_ScenarioBatLost_Tick(void);
@@ -520,10 +522,12 @@ void func__Ui_ScenarioBatLost_Tick(void);
 /* ==================== Scenario BatteryRun Tick / تیک سناریوی دشارژ ==================== */
 
 /**
- * @brief  [EN] BatteryRun: green blink from the linear 21V..29V percentage and four requested buzzer bands.
- *         Below 1%, all LEDs turn off after one ten-second critical beep.
- *         [FA] دشارژ: سبز بر اساس درصد خطی ۲۱ تا ۲۸ ولت و چهار بازه بوق درخواستی چشمک می‌زند.
- *         زیر ۱٪، بعد از یک بوق بحرانی ده‌ثانیه‌ای همه LEDها خاموش می‌شوند.
+ * @brief  [EN] BatteryRun: green blink from the runtime 74/75 percent map and four buzzer bands (50..53).
+ *         Below the crit band (53) all LEDs turn off and the critical pattern (56/57/58/65)
+ *         plays once for the latch length (61), then silence until the battery recovers.
+ *         [FA] دشارژ: سبز بر اساس نگاشت درصد ۷۴/۷۵ و چهار بازه بوق (۵۰..۵۳) چشمک می‌زند.
+ *         زیر باند بحرانی (۵۳) همهٔ LEDها خاموش و الگوی بحرانی (۵۶/۵۷/۵۸/۶۵) فقط یک‌بار
+ *         به‌اندازهٔ طول یک‌باره (۶۱) پخش می‌شود، بعد سکوت تا برگشت باتری.
  * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 29000=100% / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv);
@@ -547,17 +551,17 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
  *      below become runtime ids 38..76, editable from the ESP panel,
  *      persisted to STM32 flash like the charge profile (~1.5 s debounce)
  *      and clamped as a set on every write. The macros stay as BOOT
- *      DEFAULTS only. Id 76 (mute) persists too - a muted board stays
- *      silent across reboot (the panel shows the mute cross); only the
- *      one-shot BoardTest wiring beep ignores the mute.
+ *      DEFAULTS only. Id 76 (mute) is panel-session only since v1.16b
+ *      (RAM, cleared on reboot - the board returns to its own scenario);
+ *      only the one-shot BoardTest wiring beep ignores the mute.
  * [FA] v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶: «LEDها کشیده شوند با چشمک واقعی،
  *      بازر با ضربدر میوت نشان داده شود و همهٔ اعداد آلارم - بازه‌ها،
  *      زمان و تعداد بوق‌ها - قابل اصلاح باشند»): ۳۹ عدد UI_* شناسه‌های
  *      زمان‌اجرای ۳۸..۷۶ می‌شوند، از پنل ESP قابل اصلاح‌اند، مثل پروفایل
  *      شارژ روی فلش STM32 می‌مانند و با هر نوشتن به‌صورت مجموعه گیره
- *      می‌خورند. ماکروها فقط پیش‌فرض بوت می‌مانند. شناسهٔ ۷۶ (میوت) هم
- *      می‌ماند - بردِ میوت بعد از ریبوت هم ساکت است (پنل ضربدر میوت را
- *      نشان می‌دهد)؛ فقط بوق یک‌بارهٔ تست سیم‌کشی برد میوت را نادیده
+ *      می‌خورند. ماکروها فقط پیش‌فرض بوت می‌مانند. شناسهٔ ۷۶ (میوت) از
+ *      v1.16b فقط جلسه‌ای است (RAM، با ریبوت پاک می‌شود - برد به سناریوی
+ *      خودش برمی‌گردد)؛ فقط بوق یک‌بارهٔ تست سیم‌کشی برد میوت را نادیده
  *      می‌گیرد. */
 #define UI_ALARM_PARAM_OV_LED_PERIOD_MS    38u  /* ms, 100..10000 */
 #define UI_ALARM_PARAM_OV_LED_DUTY_PCT     39u  /* %, 0..100 */

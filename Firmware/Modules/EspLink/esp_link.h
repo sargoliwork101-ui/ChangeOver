@@ -189,13 +189,15 @@
  *      blinking, a buzzer icon with a mute cross, every alarm number
  *      editable): 38..76 live in the Ui module (ids MUST equal
  *      UI_ALARM_PARAM_* in ui_led.h). All values re-clamped as a set on
- *      every write. Id 76 (mute) persists to flash; the one-shot
+ *      every write. Id 76 (mute) is panel-session only since v1.16b
+ *      (RAM, never flashed, cleared on reboot); the one-shot
  *      BoardTest wiring beep ignores it.
  * [FA] اعداد UI (v1.16، دستور کاربر ۲۰۲۶-۰۹-۲۶: LED مجازی با چشمک واقعی،
  *      آیکون بازر با ضربدر میوت، همهٔ اعداد آلارم قابل اصلاح): ۳۸..۷۶ در
  *      ماژول UI (شناسه‌ها باید برابر UI_ALARM_PARAM_* در ui_led.h باشند).
- *      هر نوشتن، کل مجموعه را دوباره گیره می‌زند. ۷۶ (میوت) روی فلش
- *      می‌ماند؛ بوق تست برد آن را نادیده می‌گیرد. */
+ *      هر نوشتن، کل مجموعه را دوباره گیره می‌زند. ۷۶ (میوت) از v1.16b
+ *      فقط جلسه‌ای است (RAM، هرگز فلش نمی‌شود، با ریبوت پاک می‌شود)؛
+ *      بوق تست برد آن را نادیده می‌گیرد. */
 #define ESPLINK_PARAM_UI_OV_LED_PERIOD_MS     38u  /* u32, ms, def 1000,  100..10000 */
 #define ESPLINK_PARAM_UI_OV_LED_DUTY_PCT      39u  /* u32, %,  def 50,    0..100 */
 #define ESPLINK_PARAM_UI_OV_BEEP_PERIOD_MS    40u  /* u32, ms, def 10000, 0=off else 1000..600000 */

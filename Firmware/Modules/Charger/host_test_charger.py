@@ -1541,6 +1541,10 @@ def test_ui_mirror_v116():
           "v1.16c (user order: current bars for BOTH batteries): per-channel boxes + bars, no max() merge")
     check("۱ · اضافه‌ولتاژ" in ino and "۵ · باتری و درصد" in ino and "سناریو ۱ ·" not in ino,
           "v1.16c (user order: better naming): uniformly numbered scenario picker")
+    check("بوق بحرانی در پنجره جا نمی‌شود" in ino and "[56,57,58,65]" in ino,
+          "v1.16e (user order: every beep honors count+gap+range): panel guard warns when the crit window cannot fit")
+    check(ino.count("روند:") >= 5,
+          "v1.16e (user order: explain each scenario flow): every scenario card carries its روند line")
     check("با ریست برد پاک می‌شود" in ino and "روی فلش می‌ماند" not in ino,
           "v1.16b (user order: mute lives only for the panel session): no stale persisted-mute text")
 

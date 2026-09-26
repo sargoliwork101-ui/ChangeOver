@@ -172,6 +172,8 @@ static void func__Ui_ClampAlarms(void)
 {
     uint32_t uint32_t__maxDurMs;
     uint32_t uint32_t__maxCount;
+    uint64_t uint64_t__critWindowMs;
+    uint64_t uint64_t__critGapsMs;
 
     UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs, 100u, 10000u);
@@ -327,6 +329,40 @@ static void func__Ui_ClampAlarms(void)
     }
     UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs, 0u, 120000u);
+    /* [EN] v1.16e: the critical pattern must fit its own window, or the
+       buzzer service goes INVALID and the dying battery gets NO
+       indication at all (every LED is already off below the crit band).
+       Window = period*duty/100 must leave >= 1 ms per pulse after the
+       gaps; otherwise pull the count down (it always converges: one
+       pulse always fits a non-zero window, which is >= 10 ms here).
+       Period 0 / duty 0 / count 0 stay a valid intentional silence.
+       [FA] الگوی بحرانی باید در پنجرهٔ خودش جا شود وگرنه سرویس
+       نامعتبر می‌شود و باتریِ در حال مرگ هیچ نشانه‌ای ندارد (همهٔ
+       LEDها زیر باند بحرانی خاموش‌اند). پنجره باید بعد از گپ‌ها
+       دست‌کم ۱ms برای هر بوق باقی بگذارد؛ وگرنه تعداد کم می‌شود.
+       صفر بودن دوره/دیوتی/تعداد یعنی سکوت عمدی و دست نمی‌خورد. */
+    if ((UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs != 0u) &&
+        (UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct != 0u) &&
+        (UI_ALARM_T__G__Alarm.uint32_t__runCritCount > 1u))
+    {
+        uint64_t__critWindowMs =
+            ((uint64_t)UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs *
+             (uint64_t)UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct) /
+            UI_PERCENT_SCALE;
+        while (UI_ALARM_T__G__Alarm.uint32_t__runCritCount > 1u)
+        {
+            uint64_t__critGapsMs =
+                (uint64_t)UI_ALARM_T__G__Alarm.uint32_t__runGapMs *
+                (uint64_t)(UI_ALARM_T__G__Alarm.uint32_t__runCritCount - 1u);
+            if ((uint64_t__critGapsMs < uint64_t__critWindowMs) &&
+                ((uint64_t__critWindowMs - uint64_t__critGapsMs) >=
+                 (uint64_t)UI_ALARM_T__G__Alarm.uint32_t__runCritCount))
+            {
+                break;
+            }
+            UI_ALARM_T__G__Alarm.uint32_t__runCritCount--;
+        }
+    }
 
     UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs, 100u, 10000u);
@@ -462,7 +498,7 @@ static uint8_t func__Ui_BeepDutyPercent(uint32_t uint32_t__periodMs,
  *              one-shot BoardTest wiring beep calls the service directly
  *              and still sounds, so a muted board still proves its buzzer
  *              works at boot).
- *         [FA] سرویس بوق با میوت ماندگار: تا وقتی ۷۶ ست است هر الگوی
+ *         [FA] سرویس بوق با میوت جلسه‌ای: تا وقتی ۷۶ ست است هر الگوی
  *              سناریو با خاموش صریح جایگزین می‌شود (بوق تست برد مستقیم
  *              است و همچنان می‌زند).
  */
@@ -1351,11 +1387,11 @@ static void func__Ui_UpdateBatteryRunGreenBlink(uint32_t uint32_t__greenOnMs, ui
 
 /**
  * @brief  [EN] Update input presence and input overvoltage state with hysteresis.
- *         Connected: input >= 21V. Disconnected: input <= 20V.
- *         Overvoltage enters above 28V and clears at or below 27V.
+ *         Connected: input >= 21V. Disconnected: input <= 20V (fixed wiring band).
+ *         Overvoltage enters above id 70 and clears at or below 70-71 (defaults 28V / 27V).
  *         [FA] وضعیت اتصال و خطای اضافه‌ولتاژ ورودی را با هیسترزیس به‌روز می‌کند.
- *         وصل: ورودی حداقل ۲۱ ولت. قطع: ورودی حداکثر ۲۰ ولت.
- *         خطا: بالاتر از ۲۸ ولت فعال و در ۲۷ ولت یا پایین‌تر پاک می‌شود.
+ *         وصل: ورودی حداقل ۲۱ ولت. قطع: ورودی حداکثر ۲۰ ولت (باند ثابت).
+ *         خطا: بالاتر از ۷۰ فعال و در ۷۰−۷۱ یا پایین‌تر پاک می‌شود (پیش‌فرض ۲۸/۲۷ ولت).
  * @param  uint32_t__inputVoltageMv [EN] Input voltage in mV / ولتاژ ورودی بر حسب میلی‌ولت
  */
 static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
@@ -1408,10 +1444,12 @@ static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
 /* ==================== Scenario Input Overvoltage / سناریوی اضافه‌ولتاژ ورودی ==================== */
 
 /**
- * @brief  [EN] Display input overvoltage: green steady, yellow off, red at 50% duty,
- *         and one 1-second buzzer pulse every 10 seconds. This tick is non-blocking.
- *         [FA] نمایش اضافه‌ولتاژ ورودی: سبز ثابت، زرد خاموش، قرمز با دیوتی ۵۰ درصد،
- *         و یک بوق یک‌ثانیه‌ای هر ۱۰ ثانیه. این تیک غیرمسدودکننده است.
+ * @brief  [EN] Display input overvoltage: green steady, yellow off, red blink (38/39)
+ *         and the periodic beep pattern (40..43). Defaults: red 50%, one 1-second
+ *         pulse every 10 seconds. This tick is non-blocking.
+ *         [FA] نمایش اضافه‌ولتاژ ورودی: سبز ثابت، زرد خاموش، قرمز چشمک (۳۸/۳۹)
+ *         و الگوی بوق دوره‌ای (۴۰..۴۳). پیش‌فرض: قرمز ۵۰٪ و یک بوق یک‌ثانیه‌ای
+ *         هر ۱۰ ثانیه. این تیک غیرمسدودکننده است.
  */
 static void func__Ui_ScenarioInputOverVoltage_Tick(void)
 {
@@ -1452,16 +1490,17 @@ static void func__Ui_ScenarioInputOverVoltage_Tick(void)
 /* ==================== Scenario BatLost Tick / تیک سناریوی قطع باتری ==================== */
 
 /**
- * @brief  [EN] Battery-lost announcement: red fast blink (50% of a 1 s period,
- *         distinctly unlike the slow overvoltage pulse), green steady since
+ * @brief  [EN] Battery-lost announcement: red fast blink (defaults 50% of a 1 s period,
+ *         distinctly unlike the slow overvoltage pulse; ids 44/45), green steady since
  *         the input is present in both detection cases, and the periodic
- *         three-short-beeps-plus-pause buzzer pattern. The pattern phase uses
+ *         buzzer pattern (defaults: three short beeps plus a pause; ids 46..49). The pattern phase uses
  *         the absolute kernel tick so no state needs remembering here; the
  *         fault bit itself is owned (set and cleared) only by the Fault
  *         module. Must be called every Ui pass while active so the buzzer
  *         pattern advances.
- *         [FA] اعلان قطع باتری: قرمز چشمک‌تند ۵۰٪ در دوره یک‌ثانیه، سبز
- *         ثابت (ورودی حاضر است) و الگوی سه بیپ کوتاه + مکث. فاز از تیک مطلق
+ *         [FA] اعلان قطع باتری: قرمز چشمک‌تند (پیش‌فرض ۵۰٪ در دوره یک‌ثانیه؛ ۴۴/۴۵)،
+ *         سبز ثابت (ورودی حاضر است) و الگوی بوق دوره‌ای (پیش‌فرض سه بیپ کوتاه + مکث؛ ۴۶..۴۹).
+ *         فاز از تیک مطلق
  *         گرفته می‌شود تا وضعیتی لازم نباشد؛ خود پرچم فقط در Fault مدیریت
  *         می‌شود. تا وقتی فعال است هر پاس صدا زده شود.
  */
@@ -1534,7 +1573,7 @@ void func__Ui_ScenarioInputOk(void)
  * @brief  [EN] Charging scenario tick: green steady, yellow shows remaining to full non-linear.
  *         Formula: remainingPercent = 100-pct, periodPerPercent = period/100, yellowOnMs = remaining*periodPer, yellowOffMs = period-yellowOn.
  *         [FA] سناریو شارژ: سبز ثابت، زرد مانده تا فول غیرخطی.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 29000=100% / ولتاژ باتری
+ * @param  uint32_t__batteryMv [EN] Battery voltage mV, percent map 74/75 / ولتاژ باتری
  */
 void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 {
@@ -1601,13 +1640,15 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 /* ==================== Scenario BatteryRun Tick / تیک سناریوی دشارژ ==================== */
 
 /**
- * @brief  [EN] BatteryRun scenario: green blink follows the linear 21V..28V battery percentage;
- *         buzzer warnings use the four requested percentage bands.
- *         Below 1%, all LEDs turn off and one ten-second buzzer is latched until the battery recovers.
- *         [FA] سناریو دشارژ: سبز بر اساس درصد خطی ۲۱ تا ۲۸ ولت چشمک می‌زند؛
- *         بوق بر اساس چهار بازه درصدی درخواستی اجرا می‌شود.
- *         زیر ۱٪ همه LEDها خاموش و یک بوق ده‌ثانیه‌ای تا برگشت باتری فقط یک‌بار اجرا می‌شود.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 29000=100% / ولتاژ باتری
+ * @brief  [EN] BatteryRun scenario: green blink follows the runtime 74/75 percent map;
+ *         buzzer warnings use the four percentage bands (50..53).
+ *         Below the crit band (53) all LEDs turn off and the critical pattern (56/57/58/65)
+ *         plays once for the latch length (61), then silence until the battery recovers.
+ *         [FA] سناریو دشارژ: سبز بر اساس نگاشت درصد ۷۴/۷۵ چشمک می‌زند؛
+ *         بوق بر اساس چهار بازه درصدی (۵۰..۵۳) اجرا می‌شود.
+ *         زیر باند بحرانی (۵۳) همهٔ LEDها خاموش و الگوی بحرانی (۵۶/۵۷/۵۸/۶۵) فقط یک‌بار
+ *         به‌اندازهٔ طول یک‌باره (۶۱) پخش می‌شود، بعد سکوت تا برگشت باتری.
+ * @param  uint32_t__batteryMv [EN] Battery voltage mV, percent map 74/75 / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 {

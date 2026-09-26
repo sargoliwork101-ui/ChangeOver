@@ -481,7 +481,7 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <label>تعداد بوق<input type="number" id="q42" step="1" min="0" max="10"><span class="lb" id="a42">—</span></label>
 <label>گپ بین بوق‌ها (ms)<input type="number" id="q43" step="50" min="0" max="5000"><span class="lb" id="a43">—</span></label>
 </div>
-<div class="lb">با عبور ورودی از سقف، قرمز چشمک می‌زند و بوق می‌زند؛ پاک‌شدن در سقف−هیسترزیس. پیش‌فرض: چشمک ۱۰۰۰/۵۰٪ + یک بوق ۱ثانیه‌ای هر ۱۰ ثانیه.</div>
+<div class="lb">روند: عبور ورودی از سقف ← قرمز چشمک + بوق دوره‌ای (سبز ثابت می‌ماند) ← افت تا سقف−هیسترزیس ← پاک‌شدن و بازگشت به سناریوی قبلی. پیش‌فرض: چشمک ۱۰۰۰/۵۰٪ + یک بوق ۱ثانیه‌ای هر ۱۰ ثانیه.</div>
 </div>
 <div class="cd" id="ucard2" style="display:none">
 <div class="hd"><b>سناریو ۲ — قطع باتری</b><span class="lb">· شناسه‌های ۴۴..۴۹ · اولویت دوم برد</span></div>
@@ -497,7 +497,7 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <label>تعداد بوق<input type="number" id="q48" step="1" min="0" max="10"><span class="lb" id="a48">—</span></label>
 <label>گپ بین بوق‌ها (ms)<input type="number" id="q49" step="50" min="0" max="5000"><span class="lb" id="a49">—</span></label>
 </div>
-<div class="lb">تا وقتی پرچم قطع‌باتری قفل است: چشمک + سه بوق کوتاه. آستانه‌های تشخیص قطع/برگشت در کارت «نظارت باتری» (زیرتب نظارت و ایمنی، ۲۷..۳۲) است.</div>
+<div class="lb">روند: قفل‌شدن پرچم قطع‌باتری ← قرمز چشمک + بوق دوره‌ای (سبز ثابت) ← پاک‌شدن پرچم ← بازگشت به سناریوی قبلی. پیش‌فرض: سه بوق کوتاه. آستانه‌های تشخیص قطع/برگشت در کارت «نظارت باتری» (زیرتب نظارت و ایمنی، ۲۷..۳۲) است.</div>
 </div>
 <div class="cd" id="ucard3" style="display:none">
 <div class="hd"><b>سناریو ۳ — دشارژ (بی‌ورودی)</b><span class="lb">· شناسه‌های ۵۰..۶۷ · باندها + چشمک سبز</span></div>
@@ -531,7 +531,7 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <label>تعداد بوق باند ۳<input type="number" id="q64" step="1" min="0" max="10"><span class="lb" id="a64">—</span></label>
 <label>گپ بوق دشارژ (ms)<input type="number" id="q65" step="10" min="0" max="5000"><span class="lb" id="a65">—</span></label>
 </div>
-<div class="lb">بالای ۴۰٪ بی‌صدا؛ ۲۰..۴۰ یک بوق، ۱۰..۲۰ دو بوق (هر ۶۰ ثانیه)؛ ۱..۱۰ سه بوق (هر ۲۰ ثانیه)؛ زیر ۱٪ یک بوق بحرانی فقط یک‌بار و LEDها خاموش. گپ مشترک همهٔ باندهاست.</div>
+<div class="lb">روند: بالای «شروع بوق» بی‌صدا (سبز چشمک با درصد) ← هر باند بوق خودش با فاصله/مدت/تعداد خودش ← زیر «باند بحرانی»: LEDها خاموش و الگوی بحرانی فقط یک‌بار به‌اندازهٔ «طول یک‌باره» پخش و بعد سکوت تا برگشت باتری. با پیش‌فرض‌ها: بالای ۴۰٪ بی‌صدا؛ ۲۰..۴۰ یک بوق، ۱۰..۲۰ دو بوق (هر ۶۰ ثانیه)؛ ۱..۱۰ سه بوق (هر ۲۰ ثانیه)؛ زیر ۱٪ یک بوق ۱۰ثانیه‌ای. گپ (۶۵) مشترک همهٔ باندهاست.</div>
 </div>
 <div class="cd" id="ucard4" style="display:none">
 <div class="hd"><b>سناریو ۴ — شارژ عادی</b><span class="lb">· شناسه‌های ۶۸/۶۹ · چشمک زرد</span></div>
@@ -540,7 +540,7 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <label>دوره چشمک زرد (ms)<input type="number" id="q68" step="50" min="100" max="10000"><span class="lb" id="a68">—</span></label>
 <label>حداقل خاموشی زرد (ms)<input type="number" id="q69" step="5" min="0" max="10000"><span class="lb" id="a69">—</span></label>
 </div>
-<div class="lb">حین شارژ واقعی، مدت روشن‌بودن زرد = مانده تا فول؛ فول یا شارژر بیکار = سبز ثابت.</div>
+<div class="lb">روند: حین شارژ واقعی، مدت روشن‌بودن زرد = مانده تا فول (باتری پرتر ← چشمک کوتاه‌تر) ← فول (۱۰۰٪، خروج زیر ۹۵٪) یا شارژر بیکار ← سبز ثابت.</div>
 </div>
 <div class="cd" id="ucard5" style="display:none">
 <div class="hd"><b>آستانه‌های باتری و نگاشت درصد</b><span class="lb">· شناسه‌های ۷۲..۷۵</span></div>
@@ -554,7 +554,7 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <label>کف نگاشت درصد (mV)<input type="number" id="q74" step="100" min="15000" max="25000"><span class="lb" id="a74">—</span></label>
 <label>سقف نگاشت درصد (mV)<input type="number" id="q75" step="100" min="25000" max="32000"><span class="lb" id="a75">—</span></label>
 </div>
-<div class="lb">زیر آستانه، پرچم باتری کم + یادداشت در آینه؛ سقف نگاشت همیشه دست‌کم ۱۰۰mV بالای کف است.</div>
+<div class="lb">روند: افت باتری زیر آستانه ← پرچم باتری کم (پیوسته) + ⚠ در آینه ← صعود تا سطح پاک‌شدن ← پاک‌شدن پرچم. نگاشت ۷۴/۷۵ درصد همهٔ سناریوها را می‌سازد؛ سقف همیشه دست‌کم ۱۰۰mV بالای کف است.</div>
 </div>
 <input type="hidden" id="q76" value="">
 <div class="bqr"><button class="sb sb2" onclick="sdef()">بازگردانی پیش‌فرض کارخانهٔ سناریوها</button></div>
@@ -847,6 +847,7 @@ function achk(){const a=ap(),w=[],bad=(v,lo,hi)=>!(v>=lo&&v<=hi);
  if(bad(a.u60,0,600000))w.push({ids:[60],msg:'مدت هر بوق ۳تایی باید ۰..۶۰۰۰۰۰ باشد'});
  else if(!fit(a.u60,a.u55,a.u64,a.u65))w.push({ids:[60,55,64,65],msg:'بوق ۳تایی دشارژ در فاصله جا نمی‌شود — برد بی‌صدا می‌ماند'});
  if(bad(a.u61,0,120000))w.push({ids:[61],msg:'طول بوق بحرانی یک‌باره باید ۰..۱۲۰۰۰۰ باشد'});
+ {const cw=Math.floor(a.u56*a.u57/100);if(a.u56!==0&&a.u57!==0&&a.u58>1){const cg=a.u65*(a.u58-1);if(cg>=cw||(cw-cg)<a.u58)w.push({ids:[56,57,58,65],msg:'بوق بحرانی در پنجره جا نمی‌شود (گپ‌ها + دست‌کم ۱ms هر بوق ≤ دوره×دیوتی) — برد تعداد را کم می‌کند'});}}
  if(bad(a.u66,100,10000))w.push({ids:[66],msg:'دوره چشمک سبز باید ۱۰۰..۱۰۰۰۰ باشد'});
  if(bad(a.u67,0,10000))w.push({ids:[67],msg:'حداقل خاموشی سبز باید ۰..۱۰۰۰۰ باشد'});
  else if(!(a.u67<=a.u66))w.push({ids:[67,66],msg:'حداقل خاموشی سبز باید زیر دوره باشد (≤ '+a.u66+')'});

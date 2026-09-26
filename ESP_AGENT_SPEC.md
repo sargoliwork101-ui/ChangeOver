@@ -990,8 +990,13 @@ reflash with an unreadable (v2) NVM record changes no behavior or sound.
   present.
 - BatteryRun bands (50..65): four pack-percent bands (always start >=
   double >= triple >= crit); band beeps while the input is absent; below
-  crit the board gives ONE latched beep (61) with all LEDs off, then
-  stays silent until the battery recovers.
+  crit every LED turns off and the critical pattern (56/57/58/65) plays
+  once for the latch length (61 - defaults: one 10 s beep), then silence
+  until the battery recovers. Every scenario beep carries its own count
+  + gap + period/duration (v1.16e): OV 40/41/42/43, BatLost 46/47/48/49,
+  band1 54/59/62, band2 54/59/63, band3 55/60/64, crit 56/57/58/61, gap 65
+  shared by all run bands; the board clamps each window to fit (crit
+  pulls its COUNT down) and the panel warns before sending.
 - Normal blink (66..69): green (BatteryRun: OFF time = remaining x
   period/100) and yellow (charging: ON time = remaining x period/100,
   only while a channel is really charging; full = steady green).
@@ -1022,6 +1027,57 @@ effective timing (period/duty/beep counts/thresholds, straight from the
 applied board values), and the mute toggle (76 = hidden field). The
 fault box adds one LED per fault bit (blinking while latched). The
 bench CSV gains the [uicad] block (128 columns).
+
+Scenario flow (v1.16e - one scenario wins per tick, top priority first;
+each scenario resets the foreign blink/beep states so patterns never mix):
+
+```mermaid
+flowchart TD
+    A["تیک UI"] --> B{"اسنپ‌شات معتبر؟"}
+    B -- نه --> Z["حالت امن: همه خاموش"]
+    B -- بله --> C["پرچم باتری کم ۷۲/۷۳"]
+    C --> D["وضعیت ورودی + اضافه‌ولتاژ ۷۰/۷۱"]
+    D --> E{"اضافه‌ولتاژ؟"}
+    E -- بله --> S1["سناریو ۱: قرمز چشمک + بوق دوره‌ای"]
+    E -- نه --> F{"پرچم قطع باتری؟"}
+    F -- بله --> S2["سناریو ۲: قرمز چشمک + بوق دوره‌ای"]
+    F -- نه --> G["درصد از نگاشت ۷۴/۷۵ + فول ۱۰۰/۹۵"]
+    G --> H{"ورودی وصل؟"}
+    H -- بله --> I{"فول یا شارژر بیکار؟"}
+    I -- بله --> S0["سبز ثابت"]
+    I -- نه --> S4["سناریو ۴: زرد با مانده تا فول"]
+    H -- نه --> S3["سناریو ۳: دشارژ"]
+```
+
+```mermaid
+flowchart LR
+    P["درصد پایدار دشارژ"] --> G1{"≥ شروع ۵۰؟"}
+    G1 -- بله --> B0["بی‌صدا + سبز چشمک"]
+    G1 -- نه --> G2{"≥ دو-بوق ۵۱؟"}
+    G2 -- بله --> B1["باند ۱ با ۵۴/۵۹/۶۲"]
+    G2 -- نه --> G3{"≥ سه-بوق ۵۲؟"}
+    G3 -- بله --> B2["باند ۲ با ۵۴/۵۹/۶۳"]
+    G3 -- نه --> G4{"≥ بحرانی ۵۳؟"}
+    G4 -- بله --> B3["باند ۳ با ۵۵/۶۰/۶۴"]
+    G4 -- نه --> BC["بحرانی: LED خاموش + الگو یک‌بار به‌اندازه ۶۱"]
+```
+
+Beep anatomy (every pattern = period + duty window + count + gap;
+`w = dur*count + gap*(count-1)` must fit the window):
+
+```
+دوره (40 / 46 / 54 / 55 / 56)
+|<————— پنجره = دوره × دیوتی٪ —————>|<—— سکوت tail ——>|
+[ بوق ][گپ][ بوق ] … [ بوق ]
+ مدت   گپ   مدت       مدت
+```
+
+OV / BatLost / band beeps derive the duty from their typed duration
+(the board pulls the DURATION down to fit); the critical beep takes
+its duty (57) directly and the board pulls its COUNT (58) down to fit
+(v1.16e - an unfit crit window would otherwise go INVALID = dark AND
+silent on a dying battery). Zero period / duty / count is always a
+valid intentional silence.
 
 Wire change (BREAKING - both boards reflash together): the frame length
 is now u16 little-endian (`AA 55 type len_lo len_hi payload xor`,
@@ -1155,6 +1211,16 @@ documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 1 s keepalive while ID 19 = 1.
 
 ## 10. Protocol version
+
+v1.16e (2026-09-26, user order of the same day): every scenario beep
+provably carries count + gap + period/duration on BOTH sides - new
+board clamp (crit count 58 pulled down until the 56/57/65 window fits,
+or the service would go INVALID) with a matching panel guard warning;
+per-scenario-card flow lines ("روند"); scenario-priority + band
+Mermaid diagrams and beep-anatomy figure in section 5.10; stale
+comments fixed (session-only mute, runtime 70/71 + 74/75 maps). No ID
+renumbered, no wire change (BOTH boards SHOULD flash together so the
+panel warning matches the board clamp).
 
 v1.16d (2026-09-26, user order of the same day): panel-only re-layout
 of the settings sub-tabs - s1 scenarios (mirror + 5 picker cards +

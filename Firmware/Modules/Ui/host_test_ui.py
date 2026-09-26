@@ -493,6 +493,13 @@ def ui_clamp_mirror(s):
         s["runTriDurMs"] = min(s["runTriDurMs"], _maxdur(s["runTriIntervalMs"],
             s["runTriCount"], s["runGapMs"]))
     s["runCritDurMs"] = _w(s["runCritDurMs"], 0, 120000)
+    if s["runCritPeriodMs"] != 0 and s["runCritDutyPct"] != 0 and s["runCritCount"] > 1:
+        window = (s["runCritPeriodMs"] * s["runCritDutyPct"]) // 100
+        while s["runCritCount"] > 1:
+            gaps = s["runGapMs"] * (s["runCritCount"] - 1)
+            if gaps < window and (window - gaps) >= s["runCritCount"]:
+                break
+            s["runCritCount"] -= 1
     s["greenPeriodMs"] = _w(s["greenPeriodMs"], 100, 10000)
     s["greenMinOffMs"] = _w(s["greenMinOffMs"], 0, 10000)
     if s["greenMinOffMs"] > s["greenPeriodMs"]: s["greenMinOffMs"] = s["greenPeriodMs"]
@@ -630,6 +637,12 @@ def run_ui_alarm_tests():
             if 1 <= d <= 100:
                 assert_true(calculate_pattern(s[per], d, s[cnt], s[gap]) is not None,
                             label + " " + dur + " service-valid")
+        if s["runCritPeriodMs"] != 0 and s["runCritDutyPct"] != 0 and s["runCritCount"] > 0:
+            cw = (s["runCritPeriodMs"] * s["runCritDutyPct"]) // 100
+            cg = s["runGapMs"] * (s["runCritCount"] - 1) if s["runCritCount"] > 1 else 0
+            assert_true(cg < cw and (cw - cg) >= s["runCritCount"], label + " crit window fits (v1.16e)")
+            assert_true(calculate_pattern(s["runCritPeriodMs"], s["runCritDutyPct"],
+                        s["runCritCount"], s["runGapMs"]) is not None, label + " crit service-valid")
         assert_true(100 <= s["greenPeriodMs"] <= 10000 and s["greenMinOffMs"] <= s["greenPeriodMs"],
                     label + " green")
         assert_true(100 <= s["yellowPeriodMs"] <= 10000 and s["yellowMinOffMs"] <= s["yellowPeriodMs"],
@@ -652,6 +665,28 @@ def run_ui_alarm_tests():
         check_inv(c1, f"trial {trial}")
         assert_equal(ui_clamp_mirror(c1), c1, f"clamp idempotent trial {trial}")
     print("Clamp invariants + idempotence (2000 random) PASS")
+
+    # --- v1.16e: crit window fit - count pulled down, intentional silence untouched ---
+    assert_true("uint64_t__critWindowMs" in ui_led_c and "runCritCount--" in ui_led_c,
+                "C clamp pulls the crit count down until its window fits")
+    d = dict(defs)
+    d.update({"runCritPeriodMs": 1000, "runCritDutyPct": 10, "runCritCount": 3,
+              "runGapMs": 100, "runStdCount": 0, "runDoubleCount": 0, "runTriCount": 0})
+    assert_equal(ui_clamp_mirror(d)["runCritCount"], 1,
+                 "crit 3->1 when window 100 ms cannot hold gaps 200 ms")
+    d.update({"runCritPeriodMs": 10000, "runCritDutyPct": 100, "runCritCount": 3})
+    assert_equal(ui_clamp_mirror(d)["runCritCount"], 3, "fitting crit count untouched")
+    for quiet in [{"runCritPeriodMs": 0}, {"runCritDutyPct": 0}]:
+        dq = dict(defs)
+        dq.update({"runCritCount": 3, "runGapMs": 100, "runStdCount": 0,
+                   "runDoubleCount": 0, "runTriCount": 0})
+        dq.update(quiet)
+        assert_equal(ui_clamp_mirror(dq)["runCritCount"], 3,
+                     f"crit count untouched on intentional silence {quiet}")
+    assert_true("Id 76 (mute) is panel-session only" in ui_led_h
+                and "persists too - a muted board stays" not in ui_led_h,
+                "no stale persisted-mute comment in ui_led.h")
+    print("Crit window fit (v1.16e) PASS")
 
 def main():
     print("=== UI Host Test (buzzer + BatteryRun 2%+0/1 + Charging 5% + Full 100/95 + phase) ===")
