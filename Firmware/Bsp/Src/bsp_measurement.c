@@ -129,12 +129,12 @@
 
 /* [EN] Runtime copies of the per-channel current calibration, initialized
  *      from the compiled bench defaults above and writable at runtime by
- *      the ESP link (RAM only - a reboot returns to the compiled defaults).
+ *      the ESP link (flash-persisted since v1.14 - a reboot keeps the set).
  *      Written from the EspLink task, read in the measurement task; both
  *      are aligned 32-bit values, atomic on Cortex-M3.
  * [FA] نسخهٔ زمان اجرای کالیبراسیون جریان هر کانال: مقدار اولیه از
- *      پیش‌فرض‌های بنچ بالا و نوشتن در زمان اجرا توسط لینک ESP (فقط RAM -
- *      ری‌استارت به پیش‌فرض کامپایل برمی‌گردد). نوشتن از تسک EspLink و
+ *      پیش‌فرض‌های بنچ بالا و نوشتن در زمان اجرا توسط لینک ESP (روی فلش
+ *      می‌ماند از نسخهٔ ۱.۱۴ - ری‌استارت مجموعه را نگه می‌دارد). نوشتن از تسک EspLink و
  *      خواندن در تسک اندازه‌گیری؛ هر دو ۳۲ بیتی تراز شده‌اند و روی
  *      Cortex-M3 اتمیک‌اند. */
 static volatile uint32_t UINT32_T__G__Current1OffsetCounts =
@@ -365,13 +365,13 @@ uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts)
  * @brief  [EN] Set the zero-current offset (raw counts) of one current
  *              channel at runtime, clamped to 0..255. Channel 0 = the
  *              Trans1/Shunt1 chain, channel 1 = Trans2/Shunt2. The value
- *              lives in RAM only; a reboot restores the compiled bench
- *              default (ESP panel, user order 2026-09-22).
+ *              is flash-persisted (v1.14 NVM); a reboot keeps the tuned
+ *              value (ESP panel, user order 2026-09-22).
  *         [FA] آفست جریان صفر (شمارش خام) یک کانال را در زمان اجرا تنظیم
  *              می‌کند، گیره در ۰..۲۵۵. کانال ۰ = زنجیرهٔ Trans1/Shunt1 و
- *              کانال ۱ = Trans2/Shunt2. مقدار فقط در RAM است؛ ری‌استارت
- *              پیش‌فرض بنچ کامپایل را برمی‌گرداند (پنل ESP، دستور کاربر
- *              ۲۰۲۶-۰۹-۲۲).
+ *              کانال ۱ = Trans2/Shunt2. مقدار روی فلش می‌ماند (NVM نسخهٔ
+ *              ۱.۱۴)؛ ری‌استارت مقدار تنظیم‌شده را نگه می‌دارد (پنل ESP،
+ *              دستور کاربر ۲۰۲۶-۰۹-۲۲).
  * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
  * @param  uint32_t__offsetCounts [EN] Requested offset in counts / آفست
  * @return uint32_t [EN] Actually applied offset / آفست اعمال‌شده
@@ -399,9 +399,10 @@ uint32_t func__BspMeasurement_SetCurrentOffsetCounts(uint8_t uint8_t__channelInd
 /**
  * @brief  [EN] Set the bench gain trim (permille) of one current channel at
  *              runtime, clamped to 100..3000 (ESP panel, user order
- *              2026-09-22; RAM only).
+ *              2026-09-22; flash-persisted since v1.14).
  *         [FA] ضریب گین بنچ (پرمیل) یک کانال را در زمان اجرا تنظیم می‌کند،
- *              گیره در ۱۰۰..۳۰۰۰ (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲؛ فقط RAM).
+ *              گیره در ۱۰۰..۳۰۰۰ (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲؛ روی فلش
+ *              می‌ماند از نسخهٔ ۱.۱۴).
  * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
  * @param  uint32_t__gainPermille [EN] Requested gain permille / گین پرمیل
  * @return uint32_t [EN] Actually applied gain permille / گین اعمال‌شده

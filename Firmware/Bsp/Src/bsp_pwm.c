@@ -361,3 +361,26 @@ bool func__BspPwm_IsGatePulsing(bsp_pwm_channel_t bsp_pwm_channel_t__channel)
 
     return (uint32_t__compareCounts > 0u);
 }
+
+/* ==================== BspPwm_GetCompareCounts ==================== */
+/**
+ * @brief  [EN] Read the live CH1 compare (gate ON width) in timer ticks.
+ *         [FA] مقدار زندهٔ compare ی CH1 (پهنای روشن گیت) بر حسب تیک تایمر.
+ * @param  bsp_pwm_channel_t__channel [EN] Logical channel / کانال منطقی
+ * @return uint32_t [EN] Compare counts, 0 for an invalid channel /
+ *                      شمارش compare، صفر برای کانال نامعتبر
+ */
+uint32_t func__BspPwm_GetCompareCounts(bsp_pwm_channel_t bsp_pwm_channel_t__channel)
+{
+    TIM_HandleTypeDef *TIM_HandleTypeDef__timer = NULL;
+    uint32_t uint32_t__halChannel = 0u;
+
+    if (func__BspPwm_GetTimer(bsp_pwm_channel_t__channel,
+                              &TIM_HandleTypeDef__timer,
+                              &uint32_t__halChannel) == false)
+    {
+        return 0u;
+    }
+
+    return __HAL_TIM_GET_COMPARE(TIM_HandleTypeDef__timer, uint32_t__halChannel);
+}

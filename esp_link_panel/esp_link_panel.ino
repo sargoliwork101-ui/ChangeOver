@@ -538,7 +538,7 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <div class="sec">چشمک زرد <span class="lb">(ms)</span></div>
 <div class="bqr">
 <label>دوره چشمک زرد (ms)<input type="number" id="q68" step="50" min="100" max="10000"><span class="lb" id="a68">—</span></label>
-<label>حداقل خاموشی زرد (ms)<input type="number" id="q69" step="5" min="0" max="10000"><span class="lb" id="a69">—</span></label>
+<label>حداقل روشنی زرد (ms)<input type="number" id="q69" step="5" min="0" max="10000"><span class="lb" id="a69">—</span></label>
 </div>
 <div class="lb">روند: حین شارژ واقعی، مدت روشن‌بودن زرد = مانده تا فول (باتری پرتر ← چشمک کوتاه‌تر) ← فول (۱۰۰٪، خروج زیر ۹۵٪) یا شارژر بیکار ← سبز ثابت.</div>
 </div>
@@ -852,8 +852,8 @@ function achk(){const a=ap(),w=[],bad=(v,lo,hi)=>!(v>=lo&&v<=hi);
  if(bad(a.u67,0,10000))w.push({ids:[67],msg:'حداقل خاموشی سبز باید ۰..۱۰۰۰۰ باشد'});
  else if(!(a.u67<=a.u66))w.push({ids:[67,66],msg:'حداقل خاموشی سبز باید زیر دوره باشد (≤ '+a.u66+')'});
  if(bad(a.u68,100,10000))w.push({ids:[68],msg:'دوره چشمک زرد باید ۱۰۰..۱۰۰۰۰ باشد'});
- if(bad(a.u69,0,10000))w.push({ids:[69],msg:'حداقل خاموشی زرد باید ۰..۱۰۰۰۰ باشد'});
- else if(!(a.u69<=a.u68))w.push({ids:[69,68],msg:'حداقل خاموشی زرد باید زیر دوره باشد (≤ '+a.u68+')'});
+ if(bad(a.u69,0,10000))w.push({ids:[69],msg:'حداقل روشنی زرد باید ۰..۱۰۰۰۰ باشد'});
+ else if(!(a.u69<=a.u68))w.push({ids:[69,68],msg:'حداقل روشنی زرد باید زیر دوره باشد (≤ '+a.u68+')'});
  if(bad(a.u70,24000,32000))w.push({ids:[70],msg:'آستانه اضافه‌ولتاژ باید ۲۴۰۰۰..۳۲۰۰۰ باشد'});
  if(bad(a.u71,0,2000))w.push({ids:[71],msg:'هیسترزیس اضافه‌ولتاژ باید ۰..۲۰۰۰ باشد'});
  if(bad(a.u72,15000,24000))w.push({ids:[72],msg:'آستانه باتری کم باید ۱۵۰۰۰..۲۴۰۰۰ باشد'});
@@ -1828,10 +1828,15 @@ static void func__Esp_HandleFrame(void)
             BOOL__G__TxGetPending = true;
         }
 
-        /* [EN] STM32 params are RAM-only: re-send values the user set in this session.
+        /* [EN] STM32 flash-persists ids 0..14 + 20..75 (v1.14 NVM), so the
+                re-send below only matters for the transient test modes
+                15..19 (+76): re-send values the user set in this session.
                 Manual test mode (ID 19) is never re-enabled automatically.
-           [FA] پارامترهای STM32 فقط در RAM هستند: مقادیری که کاربر در این نشست داده دوباره ارسال شوند.
-                مود تست دستی (شناسه ۱۹) هیچ‌وقت خودکار روشن نمی‌شود. */
+           [FA] STM32 شناسه‌های ۰..۱۴ و ۲۰..۷۵ را روی فلش نگه می‌دارد (NVM
+                نسخهٔ ۱.۱۴)، پس ارسال مجدد زیر فقط برای مودهای گذرای تست
+                ۱۵..۱۹ (+۷۶) لازم است: مقادیری که کاربر در این نشست داده
+                دوباره ارسال شوند. مود تست دستی (شناسه ۱۹) هیچ‌وقت خودکار
+                روشن نمی‌شود. */
         if (bool__seqRestart)
         {
             for (uint8_t__index = 0u; uint8_t__index < ESP_PARAM_COUNT; uint8_t__index++)

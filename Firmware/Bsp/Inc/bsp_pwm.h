@@ -77,4 +77,24 @@ void func__BspPwm_StopAll(void);
  */
 bool func__BspPwm_IsGatePulsing(bsp_pwm_channel_t bsp_pwm_channel_t__channel);
 
+/* ==================== BspPwm_GetCompareCounts ==================== */
+/**
+ * @brief  [EN] Read the live CH1 compare (gate ON width) of one logical
+ *              charger channel in timer ticks. The board ADC port uses it
+ *              to reject mid-ON triggers on runt pulses (compare 1..7):
+ *              the ADC aperture (625 ns) is wider than such a window, so
+ *              the synchronized sample would be garbage and the
+ *              asynchronous scan fallback is the honest value.
+ *         [FA] مقدار زندهٔ compare ی CH1 (پهنای روشن گیت) یک کانال منطقی
+ *              شارژر بر حسب تیک تایمر. پورت ADC برد با آن تریگر وسط ON را
+ *              روی پالس‌های کوتاه (compare ۱..۷) رد می‌کند: دهانهٔ ADC
+ *              (۶۲۵ns) از چنان پنجره‌ای پهن‌تر است، پس نمونهٔ سنکرون
+ *              آشغال می‌شود و جایگزین اسکن غیرهمزمان مقدار درست است.
+ * @param  bsp_pwm_channel_t__channel [EN] Logical charger channel /
+ *                                     کانال منطقی شارژر
+ * @return uint32_t [EN] Compare counts, 0 for an invalid channel /
+ *                      شمارش compare، صفر برای کانال نامعتبر
+ */
+uint32_t func__BspPwm_GetCompareCounts(bsp_pwm_channel_t bsp_pwm_channel_t__channel);
+
 #endif /* BSP_PWM_H */

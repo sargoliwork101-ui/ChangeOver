@@ -21,7 +21,7 @@ typedef struct
     uint32_t ui_bat_v_min_mv;          /* [EN] 0% battery voltage (e.g. 21V) / ولتاژ صفر درصد باتری */
     uint32_t ui_bat_v_max_mv;          /* [EN] 100% battery voltage (e.g. 28V) / ولتاژ فول باتری */
     uint32_t ui_charging_blink_period_ms; /* [EN] Yellow blink period in charging / دوره چشمک زرد شارژ */
-    uint32_t ui_charging_yellow_min_off_ms; /* [EN] Min off for yellow full / حداقل خاموشی زرد */
+    uint32_t ui_charging_yellow_min_on_ms; /* [EN] Min yellow ON blip near full / حداقل روشنی زرد */
     bool     power_stage_enabled;       /* [EN] Power stage enable flag / پرچم فعال‌سازی مرحله توان */
     bool     esp_link_enabled;           /* [EN] ESP link enable flag / پرچم فعال‌سازی ارتباط ESP */
     uint32_t control_period_ms;          /* [EN] Control task period / دوره تسک کنترل */

@@ -102,7 +102,13 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
 
     /* [EN] Main-flash 1 KiB page granularity, whole 64 KiB bank.
        [FA] اندازهٔ صفحهٔ فلش اصلی ۱KB است، کل بنک ۶۴KB. */
-    if (uint32_t__pageAddress > 0x0800FC00u)
+    /* [EN] Page-alignment guard (full-program audit 2026-09-26): an
+       unaligned address would erase an unintended page (F1 erases by
+       AR content, not by masking). Layering-safe: no NVM layout knowledge.
+       [FA] گارد تراز صفحه (ممیزی کل برنامه): آدرس ناتراز صفحهٔ اشتباهی را
+       پاک می‌کرد. بدون دانستن چیدمان NVM. */
+    if ((uint32_t__pageAddress > 0x0800FC00u) ||
+        ((uint32_t__pageAddress & 0x3FFu) != 0u))
     {
         return false;
     }

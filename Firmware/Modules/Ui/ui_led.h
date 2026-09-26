@@ -224,10 +224,12 @@
 #define UI_CHARGING_BLINK_PERIOD_MS     1000u
 
 /**
- * @brief  [EN] Minimum yellow LED OFF time near full charge, in milliseconds.
- *         [FA] کمترین زمان خاموشی LED زرد نزدیک شارژ کامل، بر حسب میلی‌ثانیه.
+ * @brief  [EN] Minimum yellow LED ON blip near full charge, in milliseconds
+ *              (misnamed MIN_OFF until the 2026-09-26 audit: the code floors
+ *              the ON time, keeping the nearly-full blink visible).
+ *         [FA] کمترین زمان روشنی LED زرد نزدیک شارژ کامل، بر حسب میلی‌ثانیه.
  */
-#define UI_CHARGING_YELLOW_MIN_OFF_MS   10u
+#define UI_CHARGING_YELLOW_MIN_ON_MS   10u
 
 /* ==================== BatteryRun warning constants / ثابت‌های هشدار BatteryRun ==================== */
 
@@ -594,7 +596,7 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
 #define UI_ALARM_PARAM_GREEN_PERIOD_MS     66u  /* ms, 100..10000 */
 #define UI_ALARM_PARAM_GREEN_MIN_OFF_MS    67u  /* ms, 0..66 */
 #define UI_ALARM_PARAM_YELLOW_PERIOD_MS    68u  /* ms, 100..10000 */
-#define UI_ALARM_PARAM_YELLOW_MIN_OFF_MS   69u  /* ms, 0..68 */
+#define UI_ALARM_PARAM_YELLOW_MIN_ON_MS   69u  /* ms, 0..68 */
 #define UI_ALARM_PARAM_OV_THRESH_MV        70u  /* mV, 24000..32000 */
 #define UI_ALARM_PARAM_OV_HYST_MV          71u  /* mV, 0..2000 */
 #define UI_ALARM_PARAM_LOWBAT_THRESH_MV    72u  /* mV, 15000..24000, <= 73 */
@@ -644,7 +646,7 @@ typedef struct
     uint32_t uint32_t__greenPeriodMs;
     uint32_t uint32_t__greenMinOffMs;
     uint32_t uint32_t__yellowPeriodMs;
-    uint32_t uint32_t__yellowMinOffMs;
+    uint32_t uint32_t__yellowMinOnMs;
     uint32_t uint32_t__ovThreshMv;
     uint32_t uint32_t__ovHystMv;
     uint32_t uint32_t__lowBatThreshMv;

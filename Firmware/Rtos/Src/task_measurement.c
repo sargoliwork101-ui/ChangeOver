@@ -54,16 +54,18 @@ void func__TaskMeasurement(void *void_ptr__argument)
     func__BspAdc_Init();
     func__Measurement_Init();
 
-    if (func__BspAdc_Start() == false)
+    /* [EN] Retry the ADC start once per second until it succeeds
+       (full-program audit 2026-09-26): a single transient calibration/DMA
+       failure used to brick the measurement task forever (and with it the
+       charger, which safe-idles on an invalid snapshot). The start call
+       is idempotent-safe (calibration + DMA restart), so retrying is free.
+       [FA] شروع ADC را هر ثانیه تا موفقیت تکرار کن (ممیزی کل برنامه): یک
+       خطای گذرا قبلاً تسک اندازه‌گیری را برای همیشه می‌کشت (و با آن
+       شارژر را که روی snapshot نامعتبر safe-idle می‌شود). فراخوان شروع
+       برای تکرار امن است (کالیبراسیون + شروع دوبارهٔ DMA). */
+    while (func__BspAdc_Start() == false)
     {
-        /* [EN] Keep measurement invalid and sleep if calibration/start fails;
-           other RTOS tasks continue to run.
-           [FA] اگر کالیبراسیون/شروع شکست خورد، measurement نامعتبر می‌ماند
-           و فقط همین تسک می‌خوابد؛ بقیهٔ تسک‌های RTOS ادامه می‌دهند. */
-        for (;;)
-        {
-            func__Rtos_DelayMilliseconds(1000u);
-        }
+        func__Rtos_DelayMilliseconds(1000u);
     }
 
     /* [EN] Fixed-period loop (MEASUREMENT_PERIOD_MS, top of measurement.h).

@@ -86,6 +86,16 @@
  *         [FAULT_INPUT_PRESENT_MIN_MV, FAULT_INPUT_PRESENT_MAX_MV]; with no
  *         input there is nothing to report (system runs on battery or off).
  */
+/* [EN] Boot defaults only: since v1.15 (alarms tab, user order 2026-09-26)
+ *      the eight FAULT_* numbers live in FAULT_ALARM_T__G__Alarm (fault.c),
+ *      tunable from the panel as ids 27..34, STM32-flash persisted and
+ *      clamped as a set on every write (func__Fault_ClampAlarms). The macros
+ *      below seed the struct at boot, so an unreadable NVM record changes
+ *      no behaviour.
+ * [FA] فقط پیش‌فرض بوت: از v1.15 (تب آلارم‌ها) هشت عدد FAULT_* در
+ *      FAULT_ALARM_T__G__Alarm (فایل fault.c) زندگی می‌کنند، با شناسه‌های
+ *      ۲۷..۳۴ از پنل تنظیم و روی فلش می‌مانند و با هر نوشتن مجموعه‌ای گیره
+ *      می‌خورند. ماکروهای زیر struct را در بوت مقداردهی می‌کنند. */
 #define FAULT_BAT_DISCONNECT_MV           14800u
 #define FAULT_BAT_DISCONNECT_DEBOUNCE_MS    150u
 /* [EN] Battery-ABSENT detection threshold, case 2 (user threshold split

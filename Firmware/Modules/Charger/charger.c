@@ -72,11 +72,12 @@ static charger_channel_state_t CHARGER_CHANNEL_T__G__State[2];
 
 /* [EN] Runtime charge profile, shared by both channels (user order
  *      2026-09-25: settable from the ESP panel tab, wire ids 20..26). Boot
- *      defaults = the old compile-time setpoints; RAM-only like every other
- *      parameter. func__Charger_ClampProfile() keeps the set consistent.
+ *      defaults = the old compile-time setpoints; flash-persisted since
+ *      v1.14 like every other parameter. func__Charger_ClampProfile()
+ *      keeps the set consistent.
  * [FA] پروفایل شارژ زمان اجرا، مشترک بین هر دو کانال (دستور کاربر
  *      ۲۰۲۶-۰۹-۲۵: تنظیم از تب پنل، شناسه‌های سیمی ۲۰..۲۶). پیش‌فرض بوت =
- *      ست‌پوینت‌های کامپایل‌تایم قبلی؛ مثل بقیهٔ پارامترها فقط در RAM.
+ *      ست‌پوینت‌های کامپایل‌تایم قبلی؛ مثل بقیهٔ پارامترها از نسخهٔ ۱.۱۴ روی فلش می‌ماند.
  *      func__Charger_ClampProfile() مجموعه را سازنده نگه می‌دارد. */
 typedef struct
 {
@@ -89,7 +90,9 @@ typedef struct
     uint32_t uint32_t__taperCurrentMa;  /* [EN] float-entry tail current / زیرجریان ورود به شناور */
 } charger_profile_t;
 
-static charger_profile_t CHARGER_PROFILE_T__G__Profile =
+/* [EN] volatile: written by the EspLink task, read by the control task
+   (full-program audit 2026-09-26). [FA] بین دو تسک بدون قفل پس volatile. */
+static volatile charger_profile_t CHARGER_PROFILE_T__G__Profile =
 {
     CHG_ABSORB_MV, CHG_ABSORB_ENTER_MV, CHG_ABSORB_OVER_MV,
     CHG_FLOAT_MV, CHG_REENTRY_MV, CHG_BULK_CURRENT_MAX_MA, CHG_TAPER_CURRENT_MA
@@ -132,16 +135,16 @@ volatile uint32_t UINT32_T__G__ChargerIest2Ma = 0u;
  *      reading already equals the battery current. Non-zero = the live
  *      conversion iest = I x Vin x eta / (1000 x Vbat), set either directly
  *      (ESP params 9/10) or computed by the panel CAL_REFERENCE command
- *      from a typed battery-side DMM reading. RAM only - a reboot restores
- *      the compiled defaults; written by the EspLink task, read in the
+ *      from a typed battery-side DMM reading. Flash-persisted since v1.14
+ *      (NVM ids 9/10); written by the EspLink task, read in the
  *      control task; aligned 32-bit values are atomic on Cortex-M3.
  * [FA] ضریب‌های تبدیل زمان اجرای هر کانال ETA1/ETA2 (پروتکل v1.3، دستور
  *      کاربر ۲۰۲۶-۰۹-۲۴). صفر (پیش‌فرض کامپایل) = تخمین همانی است: با
  *      گین‌های کالیبره-باتریِ ۲۰۲۶-۰۹-۲۴ عدد فیلترشده خودش جریان باتری
  *      است. غیرصفر = تبدیل زندهٔ iest = I × Vin × η ÷ (۱۰۰۰ × Vbat) که
  *      یا مستقیم (پارامتر ۹/۱۰ ESP) یا با فرمان CAL_REFERENCE پنل از عدد
- *      مولتی‌متر سمت باتری محاسبه می‌شود. فقط RAM - ری‌استارت به پیش‌فرض
- *      کامپایل برمی‌گرداند؛ نوشتن از تسک EspLink و خواندن در تسک کنترل؛
+ *      مولتی‌متر سمت باتری محاسبه می‌شود. روی فلش می‌ماند از نسخهٔ ۱.۱۴
+ *      (شناسه‌های ۹/۱۰)؛ نوشتن از تسک EspLink و خواندن در تسک کنترل؛
  *      مقادیر ۳۲ بیتی تراز روی Cortex-M3 اتمیک‌اند. */
 static volatile uint32_t UINT32_T__G__ChargerEta1Permille =
     CHG_FLYBACK_ETA1_PERMILLE;
@@ -152,22 +155,25 @@ static volatile uint32_t UINT32_T__G__ChargerEta2Permille =
  *      order 2026-09-22: the ESP must be able to cut and reconnect each
  *      charger module). Default true = today's behavior. While false the
  *      channel's PWM is forced off and the state is held at OFF; a faulted
- *      channel (FINAL_FAULT) is never released by this gate. RAM only.
+ *      channel (FINAL_FAULT) is never released by this gate.
+ *      Flash-persisted since v1.14 (NVM ids 11/12).
  * [FA] گیت‌های فعال‌سازی هر کانال برای پنل فرمان ESP (دستور کاربر
  *      ۲۰۲۶-۰۹-۲۲: ESP باید بتواند هر ماژول شارژر را قطع/وصل کند).
  *      پیش‌فرض true = رفتار فعلی. تا وقتی false است PWM آن کانال قطع و
  *      وضعیت روی OFF نگه داشته می‌شود؛ کانال FINAL_FAULT هرگز با این
- *      گیت آزاد نمی‌شود. فقط RAM. */
+ *      گیت آزاد نمی‌شود. روی فلش می‌ماند از نسخهٔ ۱.۱۴ (شناسه‌های ۱۱/۱۲). */
 static volatile bool BOOL__G__ChargerEspEnableCh[2] = {true, true};
 
 /* [EN] Runtime per-channel PWM duty ceiling (user order 2026-09-22: the
  *      ESP panel sets the cap). Default CHG_DUTY_MAX_PERMILLE = today's
  *      behavior; ApplyDuty clamps EVERY requested duty (ramp, regulation,
- *      fixed mode) to min(compile max, this ceiling). RAM only.
+ *      fixed mode) to min(compile max, this ceiling). Flash-persisted
+ *      since v1.14 (NVM ids 13/14).
  * [FA] سقف duty ی PWM هر کانال در زمان اجرا (دستور کاربر ۲۰۲۶-۰۹-۲۲:
  *      پنل ESP سقف را تعیین می‌کند). پیش‌فرض CHG_DUTY_MAX_PERMILLE همان
  *      رفتار فعلی؛ ApplyDuty هر duty درخواستی (رمپ، تنظیم، مود فیکس)
- *      را به min(سقف کامپایل، این سقف) گیره می‌زند. فقط RAM. */
+ *      را به min(سقف کامپایل، این سقف) گیره می‌زند. روی فلش می‌ماند از
+ *      نسخهٔ ۱.۱۴ (شناسه‌های ۱۳/۱۴). */
 static volatile uint32_t UINT32_T__G__ChargerDutyCeilingPermille[2] =
     {CHG_DUTY_MAX_PERMILLE, CHG_DUTY_MAX_PERMILLE};
 
@@ -1826,9 +1832,22 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
         for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
         {
+            /* [EN] A FINAL_FAULT latch is never overwritten by the mirror
+               (full-program audit 2026-09-26): bat-lost arriving AFTER the
+               third JIT used to demote the channel to BAT_LOST, wiping the
+               final state (only the trip count survived). The fault bit
+               still forces app FAULT + SafeIdle, so nothing is lost by
+               skipping - the relay/pwm handling is identical.
+               [FA] قفل FINAL_FAULT هرگز با آینه بازنویسی نمی‌شود (ممیزی کل
+               برنامه): قطع باتریِ بعد از سومین JIT، کانال را به BAT_LOST
+               تنزل می‌داد و حالت نهایی را پاک می‌کرد (فقط شمارش می‌ماند).
+               بیت خطا همچنان FAULT و SafeIdle را می‌آورد، پس با ردشدن چیزی
+               گم نمی‌شود - رفتار رله/PWM یکسان است. */
             if ((bool__batLostLatched == true) &&
                 (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
-                 CHG_STATE_BAT_LOST))
+                 CHG_STATE_BAT_LOST) &&
+                (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
+                 CHG_STATE_FINAL_FAULT))
             {
                 func__Charger_StopOneChannel(uint8_t__channelIndex);
                 CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
@@ -1959,6 +1978,16 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
     if (bool__inputAdcValid == false)
     {
+        /* [EN] SafeIdle FIRST, then stamp INPUT_WAIT (full-program audit
+           2026-09-26): the old order wrote INPUT_WAIT and immediately
+           wiped it back to OFF inside SafeIdle, so the state was never
+           observable. BAT_LOST cannot be present here (its bit forces app
+           FAULT, caught by the earlier gate), only FINAL is skipped.
+           [FA] اول SafeIdle بعد مهر INPUT_WAIT (ممیزی کل برنامه): ترتیب
+           قدیم INPUT_WAIT را می‌نوشت و بلافاصله داخل SafeIdle به OFF
+           برمی‌گرداند، پس حالت هرگز دیده نمی‌شد. BAT_LOST اینجا ممکن
+           نیست (بیتش FAULT می‌آورد و گیت قبلی می‌گیرد)، فقط FINAL رد می‌شود. */
+        func__Charger_SafeIdle();
         for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
         {
             if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
@@ -1968,7 +1997,6 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                     CHG_STATE_INPUT_WAIT;
             }
         }
-        func__Charger_SafeIdle();
         return;
     }
 
@@ -2141,15 +2169,15 @@ bool func__Charger_IsAnyChannelActive(void)
  *              to 0..999 permille (v1.3): 0 = identity bypass (compiled
  *              default), non-zero = the live iest = I x Vin x eta /
  *              (1000 x Vbat) conversion. Channel 0 = charger 1 (upper
- *              battery), channel 1 = charger 2 (lower battery). RAM only -
- *              a reboot restores the compiled defaults. Written by the ESP
+ *              battery), channel 1 = charger 2 (lower battery).
+ *              Flash-persisted since v1.14 (NVM ids 9/10). Written by the ESP
  *              panel (params 9/10) and by the CAL_REFERENCE command (user
  *              order 2026-09-24).
  *         [FA] ضریب تبدیل یک کانال در زمان اجرا، گیرهٔ ۰..۹۹۹ پرمیل (v1.3):
  *              صفر = همانی/گذر (پیش‌فرض کامپایل)، غیرصفر = تبدیل زندهٔ
  *              iest = I × Vin × η ÷ (۱۰۰۰ × Vbat). کانال ۰ = شارژر ۱ (باتری
- *              بالا) و کانال ۱ = شارژر ۲ (باتری پایین). فقط RAM - ری‌استارت
- *              به پیش‌فرض کامپایل برمی‌گرداند. نوشته از پنل ESP (پارامتر
+ *              بالا) و کانال ۱ = شارژر ۲ (باتری پایین). روی فلش می‌ماند
+ *              از نسخهٔ ۱.۱۴ (شناسه‌های ۹/۱۰). نوشته از پنل ESP (پارامتر
  *              ۹/۱۰) و از فرمان CAL_REFERENCE (دستور کاربر ۲۰۲۶-۰۹-۲۴).
  * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
  * @param  uint32_t__etaPermille [EN] Requested efficiency / بازدهی درخواستی
@@ -2203,14 +2231,14 @@ uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex)
  * @brief  [EN] Set the ESP enable gate of one charger channel. false = cut:
  *              PWM forced off and the state held at OFF (a latched
  *              FINAL_FAULT is never released by this gate); true = reconnect
- *              with the normal soft BULK restart from 1% duty. RAM only -
- *              a reboot restores both channels enabled (ESP panel, user
- *              order 2026-09-22).
+ *              with the normal soft BULK restart from 1% duty.
+ *              Flash-persisted since v1.14 - a reboot keeps the gates
+ *              (ESP panel, user order 2026-09-22).
  *         [FA] گیت فعال‌سازی ESP یک کانال شارژر. false = قطع: PWM قطع و
  *              وضعیت روی OFF نگه داشته می‌شود (قفل FINAL_FAULT هرگز با این
  *              گیت آزاد نمی‌شود)؛ true = وصل با ری‌استارت نرم BULK از duty
- *              ۱٪. فقط RAM - ری‌استارت هر دو کانال را فعال برمی‌گرداند
- *              (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ *              ۱٪. روی فلش می‌ماند از نسخهٔ ۱.۱۴ - ری‌استارت گیت‌ها را
+ *              نگه می‌دارد (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
  * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
  * @param  bool__enable [EN] true = channel allowed / کانال آزاد
  */
@@ -2329,11 +2357,14 @@ static void func__Charger_ClampProfile(void)
             CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv + 400u;
     }
     /* [EN] Keep the coarse-step ceiling 50 mV under the 14.8 V
-            battery-disconnect fault so regulation always acts before the
-            fault does (absorb <= 14600 keeps this range non-empty).
-       [FA] سقف کاهش سریع را ۵۰mV زیر خطای قطع باتری ۱۴٫۸V نگه می‌داریم
-            تا تنظیم همیشه قبل از خطا عمل کند (ابزورب ≤ ۱۴۶۰۰ این بازه را
-            تهی نمی‌کند). */
+            battery-disconnect fault (boot default; the threshold itself is
+            runtime since v1.15, id 27, and ClampAlarms keeps it >= over+50)
+            so regulation always acts before the fault does (absorb <= 14600
+            keeps this range non-empty).
+       [FA] سقف کاهش سریع را ۵۰mV زیر خطای قطع باتری ۱۴٫۸V (پیش‌فرض بوت؛
+            خود آستانه از v1.15 زمان‌اجرا است، شناسهٔ ۲۷، و ClampAlarms آن
+            را بالای over+50 نگه می‌دارد) نگه می‌داریم تا تنظیم همیشه قبل
+            از خطا عمل کند (ابزورب ≤ ۱۴۶۰۰ این بازه را تهی نمی‌کند). */
     if (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv > 14750u)
     {
         CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv = 14750u;
@@ -2537,13 +2568,13 @@ void func__Charger_NotifyEspLinkActivity(void)
  * @brief  [EN] Set the runtime PWM duty ceiling of one channel, clamped to
  *              0..CHG_DUTY_MAX_PERMILLE. Every applied duty (ramp,
  *              regulation, fixed mode) is clamped to min(compile max, this
- *              ceiling) inside ApplyDuty. RAM only - a reboot restores
- *              CHG_DUTY_MAX_PERMILLE (ESP panel, user order 2026-09-22).
+ *              ceiling) inside ApplyDuty. Flash-persisted since v1.14 -
+ *              a reboot keeps the ceilings (ESP panel, user order 2026-09-22).
  *         [FA] سقف duty ی PWM یک کانال در زمان اجرا، گیرهٔ
  *              ۰..CHG_DUTY_MAX_PERMILLE. هر duty اعمالی (رمپ، تنظیم، مود
  *              فیکس) داخل ApplyDuty به کمینهٔ سقف کامپایل و این سقف گیره
- *              می‌خورد. فقط RAM - ری‌استارت CHG_DUTY_MAX_PERMILLE را
- *              برمی‌گرداند (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ *              می‌خورد. روی فلش می‌ماند از نسخهٔ ۱.۱۴ - ری‌استارت سقف‌ها
+ *              را نگه می‌دارد (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
  * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
  * @param  uint32_t__ceilingPermille [EN] Requested ceiling / سقف درخواستی
  * @return uint32_t [EN] Applied ceiling / سقف اعمال‌شده
@@ -2626,12 +2657,12 @@ bool func__Charger_GetDutyFixedEnable(uint8_t uint8_t__channelIndex)
  * @brief  [EN] Set the fixed duty value of one channel, clamped to
  *              0..CHG_DUTY_MAX_PERMILLE. Takes effect only while the
  *              channel's fixed mode is enabled; ApplyDuty additionally
- *              respects the runtime ceiling. RAM only (ESP panel, user
- *              order 2026-09-22).
+ *              respects the runtime ceiling. Flash-persisted since v1.14
+ *              (ESP panel, user order 2026-09-22).
  *         [FA] مقدار duty فیکس یک کانال، گیرهٔ ۰..CHG_DUTY_MAX_PERMILLE.
  *              فقط وقتی مود فیکس همان کانال روشن است اثر دارد؛ ApplyDuty
- *              به‌علاوه سقف زمان اجرا را رعایت می‌کند. فقط RAM (پنل
- *              ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ *              به‌علاوه سقف زمان اجرا را رعایت می‌کند. روی فلش می‌ماند
+ *              از نسخهٔ ۱.۱۴ (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
  * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
  * @param  uint32_t__dutyPermille [EN] Requested duty / duty درخواستی
  * @return uint32_t [EN] Applied stored value / مقدار ذخیره‌شده

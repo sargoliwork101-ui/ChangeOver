@@ -34,7 +34,9 @@ static uint32_t UINT32_T__G__BatHealthySinceTick = 0u;
  * [FA] v1.15 (دستور کاربر ۲۰۲۶-۰۹-۲۶: تب آلارم‌ها): هشت عدد FAULT_* در یک
  *      struct زنده - شناسه‌های ۲۷..۳۴، ماندگار در فلش، گیرهٔ مجموعه‌ای با
  *      هر نوشتن. بوت = پیش‌فرض ماکروها. */
-static fault_alarm_t FAULT_ALARM_T__G__Alarm =
+/* [EN] volatile: written by the EspLink task, read by the control task
+   (full-program audit 2026-09-26). [FA] بین دو تسک بدون قفل پس volatile. */
+static volatile fault_alarm_t FAULT_ALARM_T__G__Alarm =
 {
     FAULT_BAT_DISCONNECT_MV,
     FAULT_BAT_DISCONNECT_DEBOUNCE_MS,

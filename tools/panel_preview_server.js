@@ -115,7 +115,18 @@ function clampParam(id, v) {
         case 53: return Math.min(P[52], clampW(v, 0, 100));
         case 54: case 55: case 56: return clampPeriod(v);
         case 57: return clampW(v, 0, 100);
-        case 58: case 62: case 63: case 64: return clampW(v, 0, 10);
+        case 62: case 63: case 64: return clampW(v, 0, 10);
+        case 58: { /* v1.16e crit-fit mirror: count must fit its own window (P56/P57/P65) */
+                   let c = clampW(v, 0, 10);
+                   const win = Math.floor(P[56] * P[57] / 100);
+                   if (P[56] !== 0 && P[57] !== 0 && c > 1) {
+                       while (c > 1) {
+                           const g = P[65] * (c - 1);
+                           if (g < win && win - g >= c) break;
+                           c--;
+                       }
+                   }
+                   return c; }
         case 59: return Math.min(maxDur(P[54], Math.max(P[62], P[63]), P[65]), clampW(v, 0, 600000));
         case 60: return Math.min(maxDur(P[55], P[64], P[65]), clampW(v, 0, 600000));
         case 61: return clampW(v, 0, 120000);
@@ -258,7 +269,7 @@ const server = http.createServer((req, res) => {
                 for (const pid of [20, 21, 22, 23, 24, 25, 26, 35, 36, 37,
                                    27, 28, 29, 30, 31, 32, 33, 34,
                                    38, 39, 40, 42, 43, 41, 44, 45, 46, 48, 49, 47,
-                                   50, 51, 52, 53, 54, 55, 56, 57, 58, 62, 63, 64, 65, 59, 60, 61,
+                                   50, 51, 52, 53, 54, 55, 56, 57, 62, 63, 64, 65, 58, 59, 60, 61,
                                    66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76]) P[pid] = clampParam(pid, P[pid]);
             }
         }

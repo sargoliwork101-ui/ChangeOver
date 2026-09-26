@@ -64,6 +64,13 @@
 #define configTICK_RATE_HZ                       ((TickType_t)1000)
 #define configMAX_PRIORITIES                     ( 56 )
 #define configMINIMAL_STACK_SIZE                 ((uint16_t)128)
+/* [EN] Stack-overflow trap (full-program audit 2026-09-26): method 2 checks
+   the canary + the stack pointer at every switch and calls
+   vApplicationStackOverflowHook (freertos_hooks.c). Without this a blown
+   stack corrupts RAM silently; with it the board halts deterministically.
+   [FA] تلهٔ سرریز استک (ممیزی کل برنامه): متد ۲ در هر سوییچ نگهبان و اشاره‌گر
+   استک را چک می‌کند و هوک freertos_hooks.c را صدا می‌زند. */
+#define configCHECK_FOR_STACK_OVERFLOW           2
 #define configMAX_TASK_NAME_LEN                  ( 16 )
 #define configUSE_TRACE_FACILITY                 1
 #define configUSE_16_BIT_TICKS                   0

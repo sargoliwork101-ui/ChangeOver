@@ -290,7 +290,7 @@ AA 55 11 05 00 02 B0 04 00 00 A2
 | 66 | UI_GREEN_PERIOD_MS | u32 | ms | 1000 | 100..10000 | BatteryRun green-blink period |
 | 67 | UI_GREEN_MIN_OFF_MS | u32 | ms | 10 | 0..period 66 | Green OFF floor (visible blink even near full) |
 | 68 | UI_YELLOW_PERIOD_MS | u32 | ms | 1000 | 100..10000 | Charging yellow-blink period |
-| 69 | UI_YELLOW_MIN_OFF_MS | u32 | ms | 10 | 0..period 68 | Yellow ON floor (visible blink near full) |
+| 69 | UI_YELLOW_MIN_ON_MS | u32 | ms | 10 | 0..period 68 | Yellow ON floor (visible blink near full) |
 | 70 | UI_OV_THRESH_MV | u32 | mV | 28000 | 24000..32000 | Input-overvoltage latch threshold |
 | 71 | UI_OV_HYST_MV | u32 | mV | 1000 | 0..2000 | OV clear level = 70 minus 71 |
 | 72 | UI_LOWBAT_THRESH_MV | u32 | mV | 21000 | 15000..24000, <= 73 | Low-battery alarm sets below this pack voltage |
@@ -448,8 +448,9 @@ mA_unfiltered = max(raw_counts - offset, 0)
                 (TLM: maX_unfiltered)
 
 i_filtered_ma = average_W( median_N( mA_unfiltered ) )
-                first median (N = ID 7, 1/3/5), then moving average
-                (W = ID 8, 1..10) - this is what the charger decides on
+                first median (N = ID 7, any 1..15 since v1.4), then moving
+                average (W = ID 8, any 1..300 since v1.9) - this is what
+                the charger decides on
                 (TLM: iX_filtered_ma)
 ```
 

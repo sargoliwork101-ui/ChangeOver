@@ -186,7 +186,7 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
 
         case ESPLINK_PARAM_FILTER_AVERAGE_WINDOW:
             *uint32_t__appliedValue = (uint32_t)func__Measurement_SetFilterAverageWindow(
-                (uint8_t)(uint32_t__value & 0xFFu));
+                uint32_t__value);
             return true;
 #endif
 
@@ -1006,6 +1006,16 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
             {
                 ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_TYPE;
             }
+            else if (uint8_t__byte == (uint8_t)ESPLINK_SOF_BYTE0)
+            {
+                /* [EN] AA AA 55: the second AA is itself a fresh SOF0
+                   (full-program audit 2026-09-26) - stay in WAIT_SOF1
+                   instead of dropping it, so one garbage byte cannot eat
+                   a whole frame.
+                   [FA] AA AA 55: خود AA دوم یک SOF0 تازه است (ممیزی کل
+                   برنامه) - در WAIT_SOF1 بمان تا یک بایت اضافه یک فریم
+                   کامل را نخورد. */
+            }
             else
             {
                 ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;
@@ -1126,16 +1136,13 @@ void func__EspLink_Power(bool bool__on)
  *              بلافاصله اعمال می‌شود) و بعد یک فریم تله‌متری TLM_LIVE
  *              می‌فرستد. یک‌بار در هر دورهٔ تسک ارتباط صدا زده می‌شود.
  * @param  measurement_snapshot_t__snap [EN] Snapshot / نمونه
- * @param  app_state_t__state [EN] System state / حالت سیستم
  * @param  fault_mask_t__faults [EN] Fault bits / بیت‌های خطا
  */
 void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__snap,
-                       app_state_t app_state_t__state,
                        fault_mask_t fault_mask_t__faults)
 {
     uint8_t uint8_t__byte;
 
-    (void)app_state_t__state;
     (void)APP_CONFIG;
 
     /* [EN] Publish the snapshot for the CAL_REFERENCE handler (the parse

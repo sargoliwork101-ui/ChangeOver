@@ -162,9 +162,32 @@ void func__McuPowerPath_Run(void)
                 /* [EN] Stable 5 s achieved -> disconnect MCU battery path (Q1 off = PB5 High).
                  *      Must not touch PB11/Q17.
                  * [FA] پس از 5 ثانیه پایدار، مسیر باتری MCU را قطع کن (Q1 خاموش = PB5 High). */
-                func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, false); /* High = battery off */
-                BOOL__G__BatteryConnected     = false;
-                BOOL__G__McuPowerTimerActive = false;
+                /* [EN] Live PB4 veto (full-program audit 2026-09-26): the
+                 *      snapshot above can be stale - if the input died in
+                 *      the same pass the 5 s elapsed, disconnecting now
+                 *      would brown out the MCU. PB4 is real-time hardware;
+                 *      when it reads absent, fall through to the reconnect
+                 *      path instead (same as the <21500 band).
+                 * [FA] وتوی زندهٔ PB4 (ممیزی کل برنامه): snapshot بالا
+                 *      می‌تواند کهنه باشد - اگر ورودی همان پاسی که ۵ ثانیه
+                 *      تمام شد مرده باشد، قطع‌کردن الان MCU را بی‌برق
+                 *      می‌کند. PB4 سخت‌افزار بلادرنگ است؛ اگر غایب خواند،
+                 *      به‌جای قطع به مسیر اتصال مجدد برو (مثل باند ۲۱۵۰۰>). */
+                if (func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT) == false)
+                {
+                    BOOL__G__McuPowerTimerActive = false;
+                    if (BOOL__G__BatteryConnected == false)
+                    {
+                        func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, true);
+                        BOOL__G__BatteryConnected = true;
+                    }
+                }
+                else
+                {
+                    func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, false); /* High = battery off */
+                    BOOL__G__BatteryConnected     = false;
+                    BOOL__G__McuPowerTimerActive = false;
+                }
             }
         }
     }

@@ -51,7 +51,7 @@ void func__TaskComm(void *void_ptr__argument)
 #if MODULE_FAULT
             fault_mask_t__faults = func__Fault_Get();
 #endif
-            func__EspLink_Run(&measurement_snapshot_t__snap, APP_STATE_IDLE, fault_mask_t__faults);
+            func__EspLink_Run(&measurement_snapshot_t__snap, fault_mask_t__faults);
         }
         func__Rtos_DelayMilliseconds(APP_CONFIG.comm_period_ms);
 #else

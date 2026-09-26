@@ -60,6 +60,14 @@
 #define BSP_ADC_SYNC_TIMEOUT_US       30u
 #define BSP_ADC_CPU_CYCLES_PER_US     72u
 
+/* [EN] Minimum gate ON width (timer ticks at 72 MHz) worth a synchronized
+ *      sample: 8 ticks = 1.1 us, just above the 625 ns ADC aperture plus
+ *      LM358 settling. Narrower pulses take the asynchronous fallback.
+ * [FA] کمترین پهنای روشن گیت (تیک تایمر در ۷۲MHz) که ارزش نمونهٔ سنکرون
+ *      دارد: ۸ تیک = ۱٫۱µs، کمی بالای دهانهٔ ۶۲۵ns ی ADC به‌علاوهٔ نشست
+ *      LM358. پالس‌های باریک‌تر جایگزین غیرهمزمان می‌گیرند. */
+#define BSP_ADC_SYNC_MIN_COMPARE_COUNTS 8u
+
 /* [EN] ADC2 sampling time for the current channels: 7.5 ADC clocks. The
  *      LM358 output behind the R41(1k)/R42(10k) MCU divider is a ~0.9 kOhm
  *      source, far below the datasheet Rmax for this sampling time at
@@ -167,6 +175,24 @@ static bool func__BspAdc_SampleCurrentSync(bsp_pwm_channel_t bsp_pwm_channel_t__
        سنکرون» اعلام می‌شود و فراخوان به مقدار فریم غیرهمزمان برمی‌گردد
        (که آن هم حدود صفر است). */
     if (func__BspPwm_IsGatePulsing(bsp_pwm_channel_t__channel) == false)
+    {
+        return false;
+    }
+
+    /* [EN] Runt-pulse veto (full-program audit 2026-09-26): with compare
+       1..7 the ON window (<= 1 us) is narrower than the ADC aperture
+       (625 ns) plus the LM358 settling, and CCR2 = CCR1/2 lands on
+       tick 0..3 - i.e. on the switching edge / its ringing, not mid-ON.
+       The asynchronous scan fallback (~0 at such a duty) is the honest
+       value, so report "no synchronized sample" like a parked gate.
+       [FA] رد پالس کوتاه (ممیزی کل برنامه): با compare ۱..۷ پنجرهٔ ON
+       (حداکثر ۱µs) از دهانهٔ ADC (۶۲۵ns) به‌علاوهٔ نشست LM358 باریک‌تر
+       است و CCR2 = CCR1/2 روی تیک ۰..۳ می‌نشیند - یعنی روی لبهٔ سوییچ و
+       رینگش، نه وسط ON. جایگزین اسکن غیرهمزمان (حدود صفر در چنین
+       duty ای) مقدار درست است، پس مثل گیت پارک «بدون نمونهٔ سنکرون»
+       اعلام می‌شود. */
+    if (func__BspPwm_GetCompareCounts(bsp_pwm_channel_t__channel) <
+        BSP_ADC_SYNC_MIN_COMPARE_COUNTS)
     {
         return false;
     }
@@ -302,12 +328,20 @@ static bool func__BspAdc_StartSyncBackend(void)
        [FA] زمان نمونه‌برداری کوتاه برای ورودی‌های جریان IN1/IN7 (هر دو در
        SMPR2 این خانواده): دهانهٔ نمونه‌برداری را حول لحظهٔ وسط ON باریک نگه
        می‌دارد و هنوز خیلی داخل حد مقاومت منبع دیتاشیت است. */
+    /* [EN] MODIFY_REG's set-mask is NOT shifted for us: the raw sample-time
+       value must be moved to the SMPx field position, otherwise the field
+       stays 0 (1.5 cycles - too fast for the ~0.9 kOhm LM358 source) and a
+       stray bit lands in SMP0 (full-program audit 2026-09-26).
+       [FA] ماسکِ set در MODIFY_REG خودکار شیفت نمی‌خورد: مقدار زمان
+       نمونه‌برداری باید به موقعیت فیلد SMPx منتقل شود، وگرنه فیلد صفر
+       می‌ماند (۱٫۵ سیکل - زیادی سریع برای منبع ۰٫۹kΩ) و یک بیت اضافه در
+       SMP0 می‌نشیند (ممیزی کل برنامه). */
     MODIFY_REG(ADC_HANDLETYPEDEF__hadcSync->Instance->SMPR2,
                ADC_SMPR2_SMP1,
-               BSP_ADC_CURRENT_SAMPLE_TIME);
+               ((uint32_t)BSP_ADC_CURRENT_SAMPLE_TIME << ADC_SMPR2_SMP1_Pos));
     MODIFY_REG(ADC_HANDLETYPEDEF__hadcSync->Instance->SMPR2,
                ADC_SMPR2_SMP7,
-               BSP_ADC_CURRENT_SAMPLE_TIME);
+               ((uint32_t)BSP_ADC_CURRENT_SAMPLE_TIME << ADC_SMPR2_SMP7_Pos));
 
     if (HAL_ADCEx_Calibration_Start(ADC_HANDLETYPEDEF__hadcSync) != HAL_OK)
     {

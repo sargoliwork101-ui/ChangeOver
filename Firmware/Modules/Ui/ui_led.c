@@ -54,7 +54,11 @@ volatile bool BOOL__G__UiBatteryAlarmIssued = false;
  * [FA] v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶): ۳۹ عدد UI_* در یک struct زنده -
  *      شناسه‌های ۳۸..۷۶، ماندگار در فلش، گیرهٔ مجموعه‌ای با هر نوشتن.
  *      بوت = پیش‌فرض ماکروها. */
-static ui_alarm_t UI_ALARM_T__G__Alarm =
+/* [EN] volatile: written by the EspLink task (panel edits), read by the UI
+   task (scenarios) with no lock - single-word members stay atomic and no
+   reader may cache a half-applied set across one pass (full-program audit
+   2026-09-26). [FA] بین دو تسک بدون قفل خوانده/نوشته می‌شود پس volatile. */
+static volatile ui_alarm_t UI_ALARM_T__G__Alarm =
 {
     UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS,
     UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT,
@@ -92,7 +96,7 @@ static ui_alarm_t UI_ALARM_T__G__Alarm =
     UI_BLINK_PERIOD_MS,
     UI_GREEN_MIN_OFF_MS,
     UI_CHARGING_BLINK_PERIOD_MS,
-    UI_CHARGING_YELLOW_MIN_OFF_MS,
+    UI_CHARGING_YELLOW_MIN_ON_MS,
     UI_INPUT_OVERVOLTAGE_THRESHOLD_MV,
     UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV,
     UI_LOW_BATTERY_ALARM_THRESHOLD_MV,
@@ -376,12 +380,12 @@ static void func__Ui_ClampAlarms(void)
     }
     UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs, 100u, 10000u);
-    UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs, 0u, 10000u);
-    if (UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs >
+    UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs, 0u, 10000u);
+    if (UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs >
         UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs)
     {
-        UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs =
+        UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs =
             UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs;
     }
 
@@ -616,8 +620,8 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
         case UI_ALARM_PARAM_YELLOW_PERIOD_MS:
             UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs = uint32_t__value;
             break;
-        case UI_ALARM_PARAM_YELLOW_MIN_OFF_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs = uint32_t__value;
+        case UI_ALARM_PARAM_YELLOW_MIN_ON_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs = uint32_t__value;
             break;
         case UI_ALARM_PARAM_OV_THRESH_MV:
             UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv = uint32_t__value;
@@ -746,8 +750,8 @@ bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
         case UI_ALARM_PARAM_YELLOW_PERIOD_MS:
             *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs;
             return true;
-        case UI_ALARM_PARAM_YELLOW_MIN_OFF_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs;
+        case UI_ALARM_PARAM_YELLOW_MIN_ON_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs;
             return true;
         case UI_ALARM_PARAM_OV_THRESH_MV:
             *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv;
@@ -1623,9 +1627,9 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
     uint32_t__periodPerPercent = UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs / UI_PERCENT_SCALE;
     uint32_t__yellowOnMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
 
-    if (uint32_t__yellowOnMs < UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs)
+    if (uint32_t__yellowOnMs < UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs)
     {
-        uint32_t__yellowOnMs = UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs;
+        uint32_t__yellowOnMs = UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs;
     }
     if (uint32_t__yellowOnMs > UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs)
     {

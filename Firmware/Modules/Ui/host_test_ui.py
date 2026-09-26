@@ -41,7 +41,7 @@ UI_PERCENT_SCALE = defines.get("UI_PERCENT_SCALE",100)
 UI_BLINK_PERIOD_MS = defines.get("UI_BLINK_PERIOD_MS",1000)
 UI_GREEN_MIN_OFF_MS = defines.get("UI_GREEN_MIN_OFF_MS",10)
 UI_CHARGING_BLINK_PERIOD_MS = defines.get("UI_CHARGING_BLINK_PERIOD_MS",1000)
-UI_CHARGING_YELLOW_MIN_OFF_MS = defines.get("UI_CHARGING_YELLOW_MIN_OFF_MS",10)
+UI_CHARGING_YELLOW_MIN_ON_MS = defines.get("UI_CHARGING_YELLOW_MIN_ON_MS",10)
 
 def calculate_pattern(period_ms, duty_percent, beep_count, gap_ms):
     if period_ms <=0 or duty_percent<=0 or beep_count<=0: return None
@@ -174,14 +174,14 @@ def green_timing(stable, period=UI_BLINK_PERIOD_MS, min_off=UI_GREEN_MIN_OFF_MS)
     on=period-off
     return on, off
 
-def yellow_timing(stable, period=UI_CHARGING_BLINK_PERIOD_MS, min_off=UI_CHARGING_YELLOW_MIN_OFF_MS):
+def yellow_timing(stable, period=UI_CHARGING_BLINK_PERIOD_MS, min_on=UI_CHARGING_YELLOW_MIN_ON_MS):
     # [EN] REMAINING to full drives the ON time (final user directive 2026-09-19):
     # more charged -> shorter ON; 95% charged (5 remaining) -> 50 ms per 1000 ms.
     # [FA] «مانده تا فول» زمان روشن بودن را می‌دهد: پرتر کوتاه‌تر؛ ۹۵٪ شارژ ⇒ ۵۰ms.
     remaining=UI_PERCENT_FULL-stable
     per=period//UI_PERCENT_SCALE
     on=remaining*per
-    if on<min_off: on=min_off
+    if on<min_on: on=min_on
     if on>period: on=period
     off=period-on
     return on, off
@@ -428,7 +428,7 @@ UI_ALARM_DEFAULTS = {
     62: ("runStdCount", 1), 63: ("runDoubleCount", 2),
     64: ("runTriCount", 3), 65: ("runGapMs", 100),
     66: ("greenPeriodMs", 1000), 67: ("greenMinOffMs", 10),
-    68: ("yellowPeriodMs", 1000), 69: ("yellowMinOffMs", 10),
+    68: ("yellowPeriodMs", 1000), 69: ("yellowMinOnMs", 10),
     70: ("ovThreshMv", 28000), 71: ("ovHystMv", 1000),
     72: ("lowBatThreshMv", 21000), 73: ("lowBatClearMv", 21200),
     74: ("pctVminMv", 21000), 75: ("pctVmaxMv", 29000),
@@ -504,8 +504,8 @@ def ui_clamp_mirror(s):
     s["greenMinOffMs"] = _w(s["greenMinOffMs"], 0, 10000)
     if s["greenMinOffMs"] > s["greenPeriodMs"]: s["greenMinOffMs"] = s["greenPeriodMs"]
     s["yellowPeriodMs"] = _w(s["yellowPeriodMs"], 100, 10000)
-    s["yellowMinOffMs"] = _w(s["yellowMinOffMs"], 0, 10000)
-    if s["yellowMinOffMs"] > s["yellowPeriodMs"]: s["yellowMinOffMs"] = s["yellowPeriodMs"]
+    s["yellowMinOnMs"] = _w(s["yellowMinOnMs"], 0, 10000)
+    if s["yellowMinOnMs"] > s["yellowPeriodMs"]: s["yellowMinOnMs"] = s["yellowPeriodMs"]
     s["ovThreshMv"] = _w(s["ovThreshMv"], 24000, 32000)
     s["ovHystMv"] = _w(s["ovHystMv"], 0, 2000)
     s["lowBatThreshMv"] = _w(s["lowBatThreshMv"], 15000, 24000)
@@ -545,7 +545,7 @@ def run_ui_alarm_tests():
     assert_true("bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId," in ui_led_h, "Get prototype")
 
     # --- struct init order: positional init must list the 39 boot defaults in id order ---
-    m = re.search(r"static ui_alarm_t UI_ALARM_T__G__Alarm =\n\{(.*?)\n\};", ui_led_c, re.S)
+    m = re.search(r"static (?:volatile )?ui_alarm_t UI_ALARM_T__G__Alarm =\n\{(.*?)\n\};", ui_led_c, re.S)
     assert_true(m, "alarm struct init found")
     body = re.sub(r"/\*.*?\*/", "", m.group(1), flags=re.S)
     inits = [x.strip().rstrip(",").strip() for x in body.strip().split("\n")]
@@ -565,7 +565,7 @@ def run_ui_alarm_tests():
         "UI_BATTERY_RUN_BEEP_STANDARD_COUNT", "UI_BATTERY_RUN_BEEP_DOUBLE_COUNT",
         "UI_BATTERY_RUN_BEEP_TRIPLE_COUNT", "UI_BATTERY_RUN_BEEP_GAP_MS",
         "UI_BLINK_PERIOD_MS", "UI_GREEN_MIN_OFF_MS", "UI_CHARGING_BLINK_PERIOD_MS",
-        "UI_CHARGING_YELLOW_MIN_OFF_MS", "UI_INPUT_OVERVOLTAGE_THRESHOLD_MV",
+        "UI_CHARGING_YELLOW_MIN_ON_MS", "UI_INPUT_OVERVOLTAGE_THRESHOLD_MV",
         "UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV", "UI_LOW_BATTERY_ALARM_THRESHOLD_MV",
         "UI_LOW_BATTERY_ALARM_CLEAR_MV", "UI_BAT_V_MIN_MV", "UI_BAT_V_MAX_MV", "0u"]
     assert_equal(inits, expected_macros, "init order == id order (positional!)")
@@ -645,7 +645,7 @@ def run_ui_alarm_tests():
                         s["runCritCount"], s["runGapMs"]) is not None, label + " crit service-valid")
         assert_true(100 <= s["greenPeriodMs"] <= 10000 and s["greenMinOffMs"] <= s["greenPeriodMs"],
                     label + " green")
-        assert_true(100 <= s["yellowPeriodMs"] <= 10000 and s["yellowMinOffMs"] <= s["yellowPeriodMs"],
+        assert_true(100 <= s["yellowPeriodMs"] <= 10000 and s["yellowMinOnMs"] <= s["yellowPeriodMs"],
                     label + " yellow")
         assert_true(24000 <= s["ovThreshMv"] <= 32000 and 0 <= s["ovHystMv"] <= 2000
                     and s["ovHystMv"] < s["ovThreshMv"], label + " OV thresh (no underflow)")

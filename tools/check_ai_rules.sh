@@ -92,15 +92,16 @@ if grep -q "#define MODULE_ESP.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h";
   echo "  FAIL: MODULE_ESP should be 0"
   FAIL=1
 fi
-# Charger/Jitter may be built (MODULE_* = 1) for board validation, but the
-# runtime master switch CHG_MASTER_ENABLE must stay 0 so the module boots into
-# safe-idle until explicitly enabled after board bring-up tests.
+# Charger/Jitter are built (MODULE_* = 1) and the charger runs: bring-up is
+# complete by user decision 2026-09-22 (see Charger README), so the decided
+# state is CHG_MASTER_ENABLE=1 with CHG_TRANSFORMER_KNOWN=1.
 if grep -q "#define MODULE_CHARGER.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
-  if grep -q "#define CHG_MASTER_ENABLE\s*1" "$ROOT/Firmware/Modules/Charger/charger.h"; then
-    echo "  FAIL: MODULE_CHARGER=1 requires CHG_MASTER_ENABLE=0 (safe-idle) until bring-up is complete"
-    FAIL=1
+  if grep -q "#define CHG_MASTER_ENABLE\s*1" "$ROOT/Firmware/Modules/Charger/charger.h" \
+    && grep -q "#define CHG_TRANSFORMER_KNOWN\s*1" "$ROOT/Firmware/Modules/Charger/charger.h"; then
+    echo "  OK: MODULE_CHARGER=1 with the decided CHG_MASTER_ENABLE=1 + CHG_TRANSFORMER_KNOWN=1 (bring-up complete)"
   else
-    echo "  OK: MODULE_CHARGER=1 build enabled with CHG_MASTER_ENABLE=0 runtime safe-idle"
+    echo "  FAIL: MODULE_CHARGER=1 requires the decided CHG_MASTER_ENABLE=1 + CHG_TRANSFORMER_KNOWN=1"
+    FAIL=1
   fi
 else
   echo "  FAIL: MODULE_CHARGER expected 1 for build/compile coverage"

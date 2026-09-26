@@ -117,28 +117,28 @@ static uint32_t UINT32_T__G__CurrentAverageWindowMa[2][MEASUREMENT_CURRENT_AVERA
  *      اندازه‌گیری تغییر را می‌بیند و وضعیت فیلتر را در زمینهٔ خودش ریست
  *      می‌کند؛ پس قفل بین‌تسکی لازم نیست (نوشته از تسک EspLink، volatile). */
 static volatile uint8_t UINT8_T__G__FilterMedianSize = 3u;
-static volatile uint8_t UINT8_T__G__FilterAverageWindow =
-    (uint8_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW_DEFAULT;
+static volatile uint16_t UINT16_T__G__FilterAverageWindow =
+    (uint16_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW_DEFAULT;
 
 /* [EN] Last configuration the measurement task applied; owned by the
  *      measurement task only (change detection).
  * [FA] آخرین پیکربندی اعمال‌شده توسط تسک اندازه‌گیری؛ فقط مالکش همین
  *      تسک است (تشخیص تغییر). */
 static uint8_t UINT8_T__G__FilterMedianSizeApplied = 3u;
-static uint8_t UINT8_T__G__FilterAverageWindowApplied =
-    (uint8_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW_DEFAULT;
+static uint16_t UINT16_T__G__FilterAverageWindowApplied =
+    (uint16_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW_DEFAULT;
 
 /* [EN] Runtime voltage calibration offsets in mV, default 0 = today's
  *      behavior; applied AFTER the divider conversion, before the
- *      low/high derivation. RAM only - a reboot returns to 0.
+ *      low/high derivation. Flash-persisted since v1.14 (NVM ids 4/5/6).
  * [FA] آفست‌های کالیبراسیون ولتاژ بر حسب mV در زمان اجرا؛ پیش‌فرض ۰ یعنی
  *      رفتار فعلی؛ بعد از تبدیل مقسم و قبل از محاسبهٔ پایین/بالا اعمال
- *      می‌شوند. فقط RAM - ری‌استارت صفر برمی‌گردد. */
+ *      می‌شوند. روی فلش می‌مانند (NVM نسخهٔ ۱.۱۴، شناسه‌های ۴/۵/۶). */
 static volatile int32_t INT32_T__G__VoltageInOffsetMv = 0;
 static volatile int32_t INT32_T__G__Voltage24OffsetMv = 0;
 static volatile int32_t INT32_T__G__Voltage12OffsetMv = 0;
-static uint8_t UINT8_T__G__CurrentAverageFillCount[2];
-static uint8_t UINT8_T__G__CurrentAverageNextIndex[2];
+static uint16_t UINT16_T__G__CurrentAverageFillCount[2];
+static uint16_t UINT16_T__G__CurrentAverageNextIndex[2];
 #endif
 
 /* [EN] Median-of-5 for the battery voltage channel prefilter: plain
@@ -290,26 +290,26 @@ static uint32_t func__Measurement_CurrentMovingAverage(uint8_t uint8_t__channelI
        [FA] قدیمی‌ترین خانه جایگزین می‌شود، بعد اندیس حلقه دستی جلو می‌رود
        (بدون باقیماندهٔ تقسیم تا اندیس طبق قواعد MISRA داخل پنجره بماند). */
     UINT32_T__G__CurrentAverageWindowMa[uint8_t__channelIndex]
-        [UINT8_T__G__CurrentAverageNextIndex[uint8_t__channelIndex]] = uint32_t__sampleMa;
+        [UINT16_T__G__CurrentAverageNextIndex[uint8_t__channelIndex]] = uint32_t__sampleMa;
 
-    UINT8_T__G__CurrentAverageNextIndex[uint8_t__channelIndex]++;
-    if (UINT8_T__G__CurrentAverageNextIndex[uint8_t__channelIndex] >=
-        UINT8_T__G__FilterAverageWindow)
+    UINT16_T__G__CurrentAverageNextIndex[uint8_t__channelIndex]++;
+    if (UINT16_T__G__CurrentAverageNextIndex[uint8_t__channelIndex] >=
+        UINT16_T__G__FilterAverageWindow)
     {
-        UINT8_T__G__CurrentAverageNextIndex[uint8_t__channelIndex] = 0u;
+        UINT16_T__G__CurrentAverageNextIndex[uint8_t__channelIndex] = 0u;
     }
 
-    if (UINT8_T__G__CurrentAverageFillCount[uint8_t__channelIndex] <
-        UINT8_T__G__FilterAverageWindow)
+    if (UINT16_T__G__CurrentAverageFillCount[uint8_t__channelIndex] <
+        UINT16_T__G__FilterAverageWindow)
     {
-        UINT8_T__G__CurrentAverageFillCount[uint8_t__channelIndex]++;
+        UINT16_T__G__CurrentAverageFillCount[uint8_t__channelIndex]++;
     }
 
     /* [EN] Sum only the filled slots and divide once by the fill count.
        [FA] جمع فقط روی خانه‌های پر و یک تقسیم بر تعداد خانه‌های پر. */
     uint32_t__windowSumMa = 0u;
     for (uint32_t__windowSlot = 0u;
-         uint32_t__windowSlot < (uint32_t)UINT8_T__G__CurrentAverageFillCount[uint8_t__channelIndex];
+         uint32_t__windowSlot < (uint32_t)UINT16_T__G__CurrentAverageFillCount[uint8_t__channelIndex];
          uint32_t__windowSlot++)
     {
         uint32_t__windowSumMa +=
@@ -317,7 +317,7 @@ static uint32_t func__Measurement_CurrentMovingAverage(uint8_t uint8_t__channelI
     }
 
     uint32_t__averageMa =
-        uint32_t__windowSumMa / (uint32_t)UINT8_T__G__CurrentAverageFillCount[uint8_t__channelIndex];
+        uint32_t__windowSumMa / (uint32_t)UINT16_T__G__CurrentAverageFillCount[uint8_t__channelIndex];
 
     return uint32_t__averageMa;
 }
@@ -364,7 +364,7 @@ static uint32_t func__Measurement_ApplyCurrentFilters(uint8_t uint8_t__channelIn
 #if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
     /* [EN] Runtime window (ESP panel): window 1 = bypass, >= 2 = active.
        [FA] پنجرهٔ زمان اجرا (پنل ESP): پنجرهٔ ۱ = عبور مستقیم، ≥۲ = فعال. */
-    if (UINT8_T__G__FilterAverageWindow >= 2u)
+    if (UINT16_T__G__FilterAverageWindow >= 2u)
     {
         uint32_t__sampleMa =
             func__Measurement_CurrentMovingAverage(uint8_t__channelIndex, uint32_t__sampleMa);
@@ -409,8 +409,8 @@ static void func__Measurement_ResetCurrentFilters(void)
         {
             UINT32_T__G__CurrentAverageWindowMa[uint32_t__i][uint32_t__j] = 0u;
         }
-        UINT8_T__G__CurrentAverageFillCount[uint32_t__i] = 0u;
-        UINT8_T__G__CurrentAverageNextIndex[uint32_t__i] = 0u;
+        UINT16_T__G__CurrentAverageFillCount[uint32_t__i] = 0u;
+        UINT16_T__G__CurrentAverageNextIndex[uint32_t__i] = 0u;
     }
 #endif
 }
@@ -505,7 +505,7 @@ void func__Measurement_Init(void)
        نمی‌رسد). */
     func__Measurement_ResetCurrentFilters();
     UINT8_T__G__FilterMedianSizeApplied = UINT8_T__G__FilterMedianSize;
-    UINT8_T__G__FilterAverageWindowApplied = UINT8_T__G__FilterAverageWindow;
+    UINT16_T__G__FilterAverageWindowApplied = UINT16_T__G__FilterAverageWindow;
 
     UINT32_T__G__MeasInputVoltageMv = 0u;
     UINT32_T__G__MeasBattery24Mv = 0u;
@@ -951,11 +951,11 @@ void func__Measurement_Run(void)
  *      می‌شود - تغییر اندازه هرگز خانه‌های قدیمی را داخل فیلترها
  *      نمی‌آمیزد و قفل بین‌تسکی لازم نیست. */
     if ((UINT8_T__G__FilterMedianSizeApplied != UINT8_T__G__FilterMedianSize) ||
-        (UINT8_T__G__FilterAverageWindowApplied != UINT8_T__G__FilterAverageWindow))
+        (UINT16_T__G__FilterAverageWindowApplied != UINT16_T__G__FilterAverageWindow))
     {
         func__Measurement_ResetCurrentFilters();
         UINT8_T__G__FilterMedianSizeApplied = UINT8_T__G__FilterMedianSize;
-        UINT8_T__G__FilterAverageWindowApplied = UINT8_T__G__FilterAverageWindow;
+        UINT16_T__G__FilterAverageWindowApplied = UINT16_T__G__FilterAverageWindow;
     }
 
     /* [EN] Convert into locals first so other tasks never observe a partly
@@ -1183,20 +1183,20 @@ bool func__Measurement_GetSnapshot(measurement_snapshot_t *measurement_snapshot_
  * @brief  [EN] Set the runtime median window size of the current filter
  *              (user order 2026-09-22: ONE size parameter per filter -
  *              size 1 means bypass, so no separate on/off switch exists).
- *              Valid sizes are the odd values 1, 3 and 5; any other request
- *              is rounded DOWN to the next valid size (0/1/2 -> 1 = bypass,
- *              3/4 -> 3, >=5 -> 5). The compiled switch
+ *              Since v1.4 (user order 2026-09-25) ANY size 1..MAX is valid
+ *              (even sizes too, no odd rounding); 1..2 behave as bypass in
+ *              the task. The compiled switch
  *              MEASUREMENT_CURRENT_MEDIAN3_ENABLE remains the capability
  *              gate: when it is 0 the request is clamped to 1 (bypass).
- *              RAM only - a reboot restores the default of 3.
+ *              Flash-persisted since v1.14 (NVM id 7).
  *         [FA] اندازهٔ پنجرهٔ مدین فیلتر جریان در زمان اجرا (دستور کاربر
  *              ۲۰۲۶-۰۹-۲۲: برای هر فیلتر یک پارامتر اندازه - اندازهٔ ۱
- *              یعنی عبور مستقیم، پس کلید جدا لازم نیست). اندازه‌های معتبر
- *              ۱ و ۳ و ۵ هستند؛ هر درخواست دیگر به پایین‌ترین اندازهٔ
- *              معتبر گرد می‌شود (۰/۱/۲ → ۱، ۳/۴ → ۳، ≥۵ → ۵). کلید کامپایل
+ *              یعنی عبور مستقیم، پس کلید جدا لازم نیست). از نسخهٔ ۱.۴
+ *              (دستور کاربر ۲۰۲۶-۰۹-۲۵) هر اندازهٔ ۱..MAX مجاز است (زوج هم،
+ *              بدون گرد به فرد)؛ ۱..۲ در تسک عبور مستقیم‌اند. کلید کامپایل
  *              MEASUREMENT_CURRENT_MEDIAN3_ENABLE ظرفیت را تعیین می‌کند:
- *              اگر ۰ باشد درخواست به ۱ گیره می‌شود. فقط RAM - ری‌استارت
- *              پیش‌فرض ۳ را برمی‌گرداند.
+ *              اگر ۰ باشد درخواست به ۱ گیره می‌شود. روی فلش می‌ماند (NVM
+ *              نسخهٔ ۱.۱۴، شناسهٔ ۷).
  * @param  uint8_t__medianSize [EN] Requested size / اندازهٔ درخواستی
  * @return uint8_t [EN] Applied size / اندازهٔ اعمال‌شده
  */
@@ -1239,26 +1239,36 @@ uint8_t func__Measurement_SetFilterMedianSize(uint8_t uint8_t__medianSize)
  *              ۱..MEASUREMENT_CURRENT_AVERAGE_WINDOW (اندازهٔ حلقهٔ کامپایل
  *              سقف قطعی است). تسک اندازه‌گیری پس از تغییر در فریم بعدی
  *              وضعیت فیلتر را ریست می‌کند.
- * @param  uint8_t__windowSamples [EN] Requested window / پنجرهٔ درخواستی
- * @return uint8_t [EN] Applied window / پنجرهٔ اعمال‌شده
+ * @param  uint32_t__windowSamples [EN] Requested window / پنجرهٔ درخواستی
+ * @return uint16_t [EN] Applied window / پنجرهٔ اعمال‌شده
  */
-uint8_t func__Measurement_SetFilterAverageWindow(uint8_t uint8_t__windowSamples)
+uint16_t func__Measurement_SetFilterAverageWindow(uint32_t uint32_t__windowSamples)
 {
-    if (uint8_t__windowSamples < 1u)
+    uint16_t uint16_t__appliedWindow;
+
+    /* [EN] Clamp-then-narrow (full-program audit 2026-09-26): the old u8
+       path sliced 256..300 to 0..44 AND clamped the ceiling to (u8)300 =
+       44, so windows above 44 were unreachable. The wire/u32 value is
+       clamped first, then narrowed - the storage/index/counters are u16.
+       [FA] اول گیره بعد باریک‌کردن (ممیزی کل برنامه): مسیر u8 قدیم
+       ۲۵۶..۳۰۰ را به ۰..۴۴ می‌برید و سقف را هم روی (u8)300=۴۴ می‌گذاشت،
+       پس پنجره‌های بالای ۴۴ دست‌نیافتنی بودند. مقدار u32 اول گیره
+       می‌خورد بعد باریک می‌شود. */
+    if (uint32_t__windowSamples < 1u)
     {
-        uint8_t__windowSamples = 1u;
+        uint16_t__appliedWindow = 1u;
     }
-    else if (uint8_t__windowSamples > (uint8_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW)
+    else if (uint32_t__windowSamples > (uint32_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW)
     {
-        uint8_t__windowSamples = (uint8_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW;
+        uint16_t__appliedWindow = (uint16_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW;
     }
     else
     {
-        /* [EN] Value already inside the window. [FA] مقدار داخل بازه است. */
+        uint16_t__appliedWindow = (uint16_t)uint32_t__windowSamples;
     }
 
-    UINT8_T__G__FilterAverageWindow = uint8_t__windowSamples;
-    return uint8_t__windowSamples;
+    UINT16_T__G__FilterAverageWindow = uint16_t__appliedWindow;
+    return uint16_t__appliedWindow;
 }
 
 /**
@@ -1274,22 +1284,23 @@ uint8_t func__Measurement_GetFilterMedianSize(void)
 /**
  * @brief  [EN] Read the live moving-average window size.
  *         [FA] اندازهٔ زندهٔ پنجرهٔ میانگین متحرک.
- * @return uint8_t [EN] Window in samples / پنجره بر حسب نمونه
+ * @return uint16_t [EN] Window in samples / پنجره بر حسب نمونه
  */
-uint8_t func__Measurement_GetFilterAverageWindow(void)
+uint16_t func__Measurement_GetFilterAverageWindow(void)
 {
-    return UINT8_T__G__FilterAverageWindow;
+    return UINT16_T__G__FilterAverageWindow;
 }
 
 /**
  * @brief  [EN] Set one runtime voltage calibration offset, clamped to
  *              +/-MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV. Index 0 = 24 V
  *              input, 1 = 24 V battery pack, 2 = 12 V (middle node)
- *              battery. Default 0 = today's behavior; RAM only.
+ *              battery. Default 0 = today's behavior; flash-persisted
+ *              since v1.14 (NVM ids 4/5/6).
  *         [FA] یک آفست کالیبراسیون ولتاژ زمان اجرا، گیره در
  *              ±MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV. اندیس ۰ = ورودی ۲۴V،
  *              ۱ = باتری ۲۴V، ۲ = باتری ۱۲V (نود میانی). پیش‌فرض ۰ همان
- *              رفتار فعلی؛ فقط RAM.
+ *              رفتار فعلی؛ روی فلش می‌ماند (NVM نسخهٔ ۱.۱۴).
  * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12 / اندیس
  * @param  int32_t__offsetMv [EN] Requested offset, mV / آفست درخواستی
  * @return int32_t [EN] Applied offset, mV / آفست اعمال‌شده
@@ -1341,6 +1352,11 @@ int32_t func__Measurement_GetVoltageOffsetMv(uint8_t uint8_t__channelIndex)
     if (uint8_t__channelIndex == 1u)
     {
         return INT32_T__G__Voltage24OffsetMv;
+    }
+
+    return INT32_T__G__Voltage12OffsetMv;
+}
+tage24OffsetMv;
     }
 
     return INT32_T__G__Voltage12OffsetMv;

@@ -260,7 +260,7 @@ def test_input_voltage_is_real_adc_22000mv():
     # Vin<22000 path: SafeIdle (both PWM 0 + relay coil false/NC closed), no retry/PWM
     idx = text_c.find("bool__inputAdcValid == false")
     check(idx >= 0, "low-Vin gate must exist")
-    snippet = text_c[idx:idx+900]
+    snippet = text_c[idx:idx+1400]  # C26 (2026-09-26): SafeIdle-first + comment widened the block
     check("func__Charger_SafeIdle();" in snippet, "low Vin must SafeIdle (PWM1=PWM2=0, relay off/NC closed)")
     check("CHG_STATE_INPUT_WAIT" in snippet, "low Vin must put channels into INPUT_WAIT (no retry/PWM until recovery)")
 
@@ -451,7 +451,7 @@ def test_setpoints_and_timing():
           "func__Measurement_CurrentMovingAverage" in meas_c_raw and
           "func__Measurement_ApplyCurrentFilters" in meas_c_raw and
           "MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX" in meas_h_txt,
-          "Measurement must run the median chain (v1.4: runtime size ANY 1..15, default 3) then the moving-average chain (v1.4: runtime window ANY 1..100, default 10) on each current channel (user order 2026-09-25)")
+          "Measurement must run the median chain (v1.4: runtime size ANY 1..15, default 3) then the moving-average chain (v1.4: runtime window ANY 1..300 since v1.9, default 10) on each current channel (user order 2026-09-25)")
     lut_chain = re.search(r"CAL_Current2LutChainMa\[\] =\s*\{([^}]*)\}", cal_h)
     lut_batt = re.search(r"CAL_Current2LutBatteryMw\[\] =\s*\{([^}]*)\}", cal_h)
     lut_chain_n = len(lut_chain.group(1).split(",")) if lut_chain else 0

@@ -110,17 +110,19 @@
 /* [EN] SET_PARAM payload = [id:u8][value:u32 LE]. Every value is clamped by
  *      the owning module; PARAM_REPORT returns the APPLIED value. Voltage
  *      offsets are signed (two's complement in the u32 wire field).
- *      RAM only - a reboot restores the compiled defaults, the ESP re-applies
- *      its tuned set after boot. Filters carry ONE size parameter each
- *      (user order 2026-09-22: median 1/3/5 and average window 1..10;
- *      size 1 = bypass, there is no separate on/off switch).
+ *      Ids 0..14 + 20..75 are flash-persisted (v1.14 NVM, ~1.5 s debounce);
+ *      only the transient test modes 15..19 (+76) are RAM-only.
+ *      Filters carry ONE size parameter each
+ *      (user order 2026-09-22: any median 1..15 since v1.4, average
+ *      window 1..300; size 1 = bypass, no separate on/off switch).
  * [FA] payload ی SET_PARAM = [id:u8][value:u32 LE]. هر مقدار در ماژول مالکش
  *      گیره می‌شود و PARAM_REPORT مقدارِ اعمال‌شده را برمی‌گرداند. آفست‌های
- *      ولتاژ علامتدارند (متمم دو در فیلد u32 خط). فقط RAM - ری‌استارت
- *      پیش‌فرض‌های کامپایل را برمی‌گرداند و ESP بعد از بوت مجموعهٔ تنظیم‌شده
- *      خود را دوباره اعمال می‌کند. هر فیلتر یک پارامتر اندازه دارد (دستور
- *      کاربر ۲۰۲۶-۰۹-۲۲: مدین ۱/۳/۵ و پنجرهٔ میانگین ۱..۱۰؛ اندازهٔ ۱ یعنی
- *      عبور مستقیم و کلید جدا وجود ندارد). */
+ *      ولتاژ علامتدارند (متمم دو در فیلد u32 خط). شناسه‌های ۰..۱۴ و
+ *      ۲۰..۷۵ روی فلش می‌مانند (NVM نسخهٔ ۱.۱۴، ~۱٫۵ ثانیه)؛ فقط مودهای
+ *      گذرای تست ۱۵..۱۹ (+۷۶) فقط-RAM هستند. هر فیلتر یک پارامتر اندازه
+ *      دارد (دستور کاربر ۲۰۲۶-۰۹-۲۲: از نسخهٔ ۱.۴ هر مدین ۱..۱۵،
+ *      پنجرهٔ میانگین ۱..۳۰۰؛ اندازهٔ ۱ یعنی عبور مستقیم و کلید جدا وجود
+ *      ندارد). */
 #define ESPLINK_PARAM_CUR1_OFFSET_COUNTS   0u   /* u32, counts,   def 8,    0..255    */
 #define ESPLINK_PARAM_CUR2_OFFSET_COUNTS   1u   /* u32, counts,   def 8,    0..255    */
 #define ESPLINK_PARAM_CUR1_GAIN_PERMILLE   2u   /* u32, permille, def 1046, 100..3000 */
@@ -129,7 +131,7 @@
 #define ESPLINK_PARAM_V24_OFFSET_MV        5u   /* i32, mV,       def 0,    -5000..5000 (v1.10) */
 #define ESPLINK_PARAM_V12_OFFSET_MV        6u   /* i32, mV,       def 0,    -5000..5000 (v1.10) */
 #define ESPLINK_PARAM_FILTER_MEDIAN_SIZE   7u   /* u32, samples,  def 3,    1..15 any, 1..2=bypass (v1.4) */
-#define ESPLINK_PARAM_FILTER_AVERAGE_WINDOW 8u  /* u32, samples,  def 10,   1..100, 1=bypass (v1.4) */
+#define ESPLINK_PARAM_FILTER_AVERAGE_WINDOW 8u  /* u32, samples,  def 10,   1..300, 1=bypass (v1.4, u16 since audit 2026-09-26) */
 #define ESPLINK_PARAM_CHG_ETA1_PERMILLE    9u   /* u32, permille, def 0,    0..999, 0=identity (v1.3) */
 #define ESPLINK_PARAM_CHG_ETA2_PERMILLE   10u   /* u32, permille, def 0,    0..999, 0=identity (v1.3) */
 #define ESPLINK_PARAM_CHG1_ENABLE          11u  /* u32, 0/1,      def 1                */
@@ -151,13 +153,15 @@
  *      ثانیه‌ای لینک). */
 #define ESPLINK_PARAM_MANUAL_TEST_MODE     19u  /* u32, 0/1,      def 0                */
 /* [EN] Charge profile (v1.12, user order 2026-09-25): shared by BOTH
-        channels, RAM-only like every other parameter (defaults at boot =
-        the old compile-time setpoints). Ids MUST equal
+        channels, flash-persisted like every other parameter since v1.14
+        (an unreadable record falls back to the old compile-time
+        setpoints). Ids MUST equal
         CHG_PROFILE_PARAM_* in charger.h. All values re-clamped as a set
         on every write (see Charger_ClampProfile).
    [FA] پروفایل شارژ (v1.12، دستور کاربر ۲۰۲۶-۰۹-۲۵): مشترک بین هر دو
-        کانال، فقط RAM مثل بقیهٔ پارامترها (پیش‌فرض بوت = ست‌پوینت‌های
-        کامپایل‌تایم قبلی). شناسه‌ها باید برابر CHG_PROFILE_PARAM_* در
+        کانال، مثل بقیهٔ پارامترها از نسخهٔ ۱.۱۴ روی فلش می‌ماند (رکورد
+        ناخوانا به ست‌پوینت‌های کامپایل‌تایم قبلی برمی‌گردد). شناسه‌ها
+        باید برابر CHG_PROFILE_PARAM_* در
         charger.h باشند. هر نوشتن، کل مجموعه را دوباره گیره می‌زند. */
 #define ESPLINK_PARAM_CHG_PROFILE_ABSORB_MV          20u  /* u32, mV, def 14400, 11000..14600 */
 #define ESPLINK_PARAM_CHG_PROFILE_ABSORB_ENTER_MV    21u  /* u32, mV, def 14300, absorb-500..absorb-50 */
@@ -229,7 +233,7 @@
 #define ESPLINK_PARAM_UI_GREEN_PERIOD_MS      66u  /* u32, ms, def 1000,  100..10000 */
 #define ESPLINK_PARAM_UI_GREEN_MIN_OFF_MS     67u  /* u32, ms, def 10,    0..66 */
 #define ESPLINK_PARAM_UI_YELLOW_PERIOD_MS     68u  /* u32, ms, def 1000,  100..10000 */
-#define ESPLINK_PARAM_UI_YELLOW_MIN_OFF_MS    69u  /* u32, ms, def 10,    0..68 */
+#define ESPLINK_PARAM_UI_YELLOW_MIN_ON_MS    69u  /* u32, ms, def 10,    0..68 */
 #define ESPLINK_PARAM_UI_OV_THRESH_MV         70u  /* u32, mV, def 28000, 24000..32000 */
 #define ESPLINK_PARAM_UI_OV_HYST_MV           71u  /* u32, mV, def 1000,  0..2000 */
 #define ESPLINK_PARAM_UI_LOWBAT_THRESH_MV     72u  /* u32, mV, def 21000, 15000..24000, <= 73 */
@@ -302,16 +306,18 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId, uint32_t *uint32_t__value)
 
 /**
  * @brief  [EN] Send one telemetry frame and consume every received command
- *              frame. No STM command protocol yet -> replaced by the full
- *              engine (user order 2026-09-22).
+ *              frame (user order 2026-09-22). The telemetry carries no
+ *              app_state field - the panel derives the system face from
+ *              voltages + fault/flag bits - so no state parameter exists
+ *              (the dead one was removed, full-program audit 2026-09-26).
  *         [FA] یک فریم تله‌متری می‌فرستد و همهٔ فریم‌های فرمان دریافتی را
- *              مصرف می‌کند (دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ *              مصرف می‌کند (دستور کاربر ۲۰۲۶-۰۹-۲۲). تله‌متری فیلد
+ *              app_state ندارد - پنل چهرهٔ سیستم را از ولتاژها و بیت‌ها
+ *              می‌سازد - پس پارامتر state وجود ندارد.
  * @param  measurement_snapshot_t__snap [EN] Snapshot / نمونه
- * @param  app_state_t__state [EN] System state / حالت سیستم
  * @param  fault_mask_t__faults [EN] Fault bits / بیت‌های خطا
  */
 void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__snap,
-                       app_state_t app_state_t__state,
                        fault_mask_t fault_mask_t__faults);
 
 /**

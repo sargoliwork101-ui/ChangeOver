@@ -484,11 +484,11 @@ extern volatile uint32_t UINT32_T__G__ChargerIest2Ma;
 
 /**
  * @brief  [EN] Set the runtime flyback efficiency of one channel, clamped
- *              to CHG_ETA_MIN_PERMILLE..CHG_ETA_MAX_PERMILLE; RAM only,
- *              ESP panel (user order 2026-09-22).
+ *              to CHG_ETA_MIN_PERMILLE..CHG_ETA_MAX_PERMILLE;
+ *              flash-persisted since v1.14, ESP panel (user order 2026-09-22).
  *         [FA] بازدهی flyback یک کانال در زمان اجرا، گیرهٔ
- *              CHG_ETA_MIN_PERMILLE..CHG_ETA_MAX_PERMILLE؛ فقط RAM، پنل
- *              ESP (دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ *              CHG_ETA_MIN_PERMILLE..CHG_ETA_MAX_PERMILLE؛ روی فلش
+ *              می‌ماند از نسخهٔ ۱.۱۴، پنل ESP (دستور کاربر ۲۰۲۶-۰۹-۲۲).
  * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
  * @param  uint32_t__etaPermille [EN] Requested efficiency / بازدهی درخواستی
  * @return uint32_t [EN] Applied efficiency permille / بازدهی اعمال‌شده
@@ -507,10 +507,12 @@ uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex);
 /**
  * @brief  [EN] Set the ESP enable gate of one charger channel: false = PWM
  *              off + state OFF (FINAL_FAULT never released by this gate),
- *              true = soft BULK restart; RAM only (user order 2026-09-22).
+ *              true = soft BULK restart; flash-persisted since v1.14
+ *              (user order 2026-09-22).
  *         [FA] گیت فعال‌سازی ESP یک کانال شارژر: false = PWM قطع + وضعیت
  *              OFF (قفل FINAL_FAULT با این گیت آزاد نمی‌شود)، true =
- *              ری‌استارت نرم BULK؛ فقط RAM (دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ *              ری‌استارت نرم BULK؛ روی فلش می‌ماند از نسخهٔ ۱.۱۴ (دستور
+ *              کاربر ۲۰۲۶-۰۹-۲۲).
  * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
  * @param  bool__enable [EN] true = channel allowed / کانال آزاد
  */
@@ -527,10 +529,11 @@ bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex);
 /**
  * @brief  [EN] Set the runtime PWM duty ceiling of one channel, clamped to
  *              0..CHG_DUTY_MAX_PERMILLE; every applied duty respects it.
- *              RAM only, ESP panel (user order 2026-09-22).
+ *              Flash-persisted since v1.14, ESP panel (user order 2026-09-22).
  *         [FA] سقف duty ی PWM یک کانال در زمان اجرا، گیرهٔ
  *              ۰..CHG_DUTY_MAX_PERMILLE؛ هر duty اعمالی آن را رعایت
- *              می‌کند. فقط RAM، پنل ESP (دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ *              می‌کند. روی فلش می‌ماند از نسخهٔ ۱.۱۴، پنل ESP (دستور
+ *              کاربر ۲۰۲۶-۰۹-۲۲).
  * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
  * @param  uint32_t__ceilingPermille [EN] Requested ceiling / سقف درخواستی
  * @return uint32_t [EN] Applied ceiling / سقف اعمال‌شده
@@ -573,11 +576,11 @@ bool func__Charger_GetDutyFixedEnable(uint8_t uint8_t__channelIndex);
  * @brief  [EN] Set the fixed duty value of one channel, clamped to
  *              0..CHG_DUTY_MAX_PERMILLE; effective only while fixed mode is
  *              enabled, and additionally clamped to the runtime ceiling on
- *              apply. RAM only (user order 2026-09-22).
+ *              apply. Flash-persisted since v1.14 (user order 2026-09-22).
  *         [FA] مقدار duty فیکس یک کانال، گیرهٔ ۰..CHG_DUTY_MAX_PERMILLE؛
  *              فقط با روشن‌بودن مود فیکس مؤثر و موقع اعمال به‌علاوه به
- *              سقف زمان اجرا گیره می‌خورد. فقط RAM (دستور کاربر
- *              ۲۰۲۶-۰۹-۲۲).
+ *              سقف زمان اجرا گیره می‌خورد. روی فلش می‌ماند از نسخهٔ ۱.۱۴
+ *              (دستور کاربر ۲۰۲۶-۰۹-۲۲).
  * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
  * @param  uint32_t__dutyPermille [EN] Requested duty / duty درخواستی
  * @return uint32_t [EN] Applied stored value / مقدار ذخیره‌شده
@@ -796,5 +799,8 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
  */
 bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value);
+
+#endif /* CHARGER_H */
+value);
 
 #endif /* CHARGER_H */

@@ -276,12 +276,12 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts);
 
 /**
  * @brief  [EN] Set the runtime median window size of the current filter:
- *              valid sizes 1 (bypass), 3 and 5, other requests round DOWN
- *              to the next odd size; capability-gated by the compiled
- *              switch; RAM only, ESP panel (user order 2026-09-22).
- *         [FA] اندازهٔ پنجرهٔ مدین فیلتر جریان در زمان اجرا: اندازه‌های
- *              معتبر ۱ (عبور مستقیم)، ۳ و ۵ و بقیه به پایین‌ترین فرد گرد
- *              می‌شوند؛ ظرفیت با کلید کامپایل؛ فقط RAM، پنل ESP (دستور
+ *              any size 1..MAX since v1.4 (even sizes too, 1..2 bypass);
+ *              capability-gated by the compiled switch; flash-persisted
+ *              (v1.14 NVM id 7), ESP panel (user order 2026-09-22).
+ *         [FA] اندازهٔ پنجرهٔ مدین فیلتر جریان در زمان اجرا: از نسخهٔ ۱.۴
+ *              هر اندازهٔ ۱..MAX (زوج هم، ۱..۲ عبور مستقیم)؛ ظرفیت با کلید
+ *              کامپایل؛ روی فلش می‌ماند (NVM نسخهٔ ۱.۱۴)، پنل ESP (دستور
  *              کاربر ۲۰۲۶-۰۹-۲۲).
  * @param  uint8_t__medianSize [EN] Requested size / اندازهٔ درخواستی
  * @return uint8_t [EN] Applied size / اندازهٔ اعمال‌شده
@@ -295,10 +295,10 @@ uint8_t func__Measurement_SetFilterMedianSize(uint8_t uint8_t__medianSize);
  *         [FA] پنجرهٔ میانگین متحرک در زمان اجرا، گیرهٔ
  *              ۱..MEASUREMENT_CURRENT_AVERAGE_WINDOW؛ تسک اندازه‌گیری بعد
  *              از تغییر وضعیت فیلتر را ریست می‌کند.
- * @param  uint8_t__windowSamples [EN] Requested window / پنجرهٔ درخواستی
- * @return uint8_t [EN] Applied window / پنجرهٔ اعمال‌شده
+ * @param  uint32_t__windowSamples [EN] Requested window, clamped before narrowing (u8 storage would slice 256..300 to 0..44) / پنجرهٔ درخواستی
+ * @return uint16_t [EN] Applied window / پنجرهٔ اعمال‌شده
  */
-uint8_t func__Measurement_SetFilterAverageWindow(uint8_t uint8_t__windowSamples);
+uint16_t func__Measurement_SetFilterAverageWindow(uint32_t uint32_t__windowSamples);
 
 /**
  * @brief  [EN] Read the live median window size of the current filter.
@@ -310,19 +310,20 @@ uint8_t func__Measurement_GetFilterMedianSize(void);
 /**
  * @brief  [EN] Read the live moving-average window size.
  *         [FA] اندازهٔ زندهٔ پنجرهٔ میانگین.
- * @return uint8_t [EN] Window in samples / پنجره بر حسب نمونه
+ * @return uint16_t [EN] Window in samples / پنجره بر حسب نمونه
  */
-uint8_t func__Measurement_GetFilterAverageWindow(void);
+uint16_t func__Measurement_GetFilterAverageWindow(void);
 
 /**
  * @brief  [EN] Set one runtime voltage calibration offset, clamped to
  *              +/-MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV. Index 0 = 24 V
  *              input, 1 = 24 V battery pack, 2 = 12 V battery (middle
- *              node). Default 0 = today's behavior; RAM only.
+ *              node). Default 0 = today's behavior; flash-persisted
+ *              since v1.14 (NVM ids 4/5/6).
  *         [FA] یک آفست کالیبراسیون ولتاژ زمان اجرا، گیرهٔ
  *              ±MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV. اندیس ۰ = ورودی ۲۴V،
  *              ۱ = باتری ۲۴V، ۲ = باتری ۱۲V. پیش‌فرض ۰ همان رفتار فعلی؛
- *              فقط RAM.
+ *              روی فلش می‌ماند (NVM نسخهٔ ۱.۱۴).
  * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12 / اندیس
  * @param  int32_t__offsetMv [EN] Requested offset, mV / آفست درخواستی
  * @return int32_t [EN] Applied offset, mV / آفست اعمال‌شده

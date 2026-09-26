@@ -62,7 +62,7 @@ API بوق: `func__Ui_Buzzer_Tick(period,duty,beepCount,gap)` غیرمسدودک
 ### سناریو ۳: Charging (5% + فاز-حفاظ non-blocking)
 - شرط: ورودی وصل و `!ChargingFullActive` **و وجودِ کانالِ شارژِ فعال** (`func__Charger_IsAnyChannelActive()` از ۲۰۲۶-۰۹-۱۹: چشمک زرد فقط وقتی شارژر واقعاً **پمپ** می‌کند - کانال ۱، ۲ یا هر دو در بالک/ابزورب؛ FLOAT پارک‌شده‌با-دیوتی-صفر یعنی سیکل تمام شده، فعال حساب نمی‌شود؛ OFF/JIT-retry/انتظار-ورودی/خطای-نهایی/قطع-باتری هم فعال نیست ⇒ سبز ثابت). `Input 24V Battery 25V → سبز ثابت زرد چشمک`
 - سبز ثابت، زرد «مانده تا فول» با `chargingStable 5%`: `remaining=100-chargingStable`, `yellowOn=remaining*10ms(min10)`, `yellowOff=1000-yellowOn` — از ۲۰۲۶-۰۹-۱۹ دوباره برگشته به همین معنا با دستور نهایی کاربر: **هرچه پرتر، زرد کوتاه‌تر** (۹۵٪ شارژ ⇒ ۵۰ms از ۱۰۰۰ms روشن؛ باتری خالی ≈ دائم‌روشن). `stable57` با `53..61` حفظ (25V jitter بی‌اثر)، `52/62`→ تغییر.
-- زرد فاز-محور: `YellowOn/Off`, `phaseStartTick`, `OnMs/OffMs` حفظ فاز روی تغییر stable، بدون delay 1s. `CHARGING_BLINK_PERIOD 1000`, `YELLOW_MIN_OFF 10`.
+- زرد فاز-محور: `YellowOn/Off`, `phaseStartTick`, `OnMs/OffMs` حفظ فاز روی تغییر stable، بدون delay 1s. `CHARGING_BLINK_PERIOD 1000`, `YELLOW_MIN_ON 10`.
 
 ### سناریو ۴: InputOverVoltage
 - `>28000` ورود، `<=27000` پاک، 27-28V حفظ. سبز ثابت زرد خاموش قرمز 50% 1s بوق 1s هر 10s. `THRESHOLD 28000 HYSTERESIS 1000`.

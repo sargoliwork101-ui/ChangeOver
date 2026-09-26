@@ -95,11 +95,12 @@ int8_t func__EspLink_NvmSeqCompare(uint16_t uint16_t__a, uint16_t uint16_t__b)
 /**
  * @brief  [EN] Full record check: magic, version, entry count, every entry a
  *              persisted id, and the CRC over all bytes before the CRC
- *              field. A record with any transient test id (15..19) is
- *              REJECTED on purpose.
+ *              field. A record with any transient id (15..19 test modes,
+ *              76 panel-session mute) is REJECTED on purpose.
  *         [FA] بررسی کامل رکورد: جادو، نسخه، تعداد ورودی، persisted بودن
  *              شناسهٔ هر ورودی و CRC روی همهٔ بایت‌های قبل از فیلد CRC.
- *              رکوردی با هر شناسهٔ تست گذرا (۱۵..۱۹) عمداً رد می‌شود.
+ *              رکوردی با هر شناسهٔ گذرا (مودهای تست ۱۵..۱۹ و میوت
+ *              جلسه‌ای ۷۶) عمداً رد می‌شود.
  */
 bool func__EspLink_NvmRecordValidate(const esp_link_nvm_record_t
                                      *esp_link_nvm_record_t__record)
@@ -306,15 +307,23 @@ void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
 /**
  * @brief  [EN] Snapshot every persisted parameter and write the ping-pong
  *              record to the page that does NOT hold the newest one, then
- *              verify by read-back.
+ *              verify by read-back. The record + entry scratch (~1.2 KiB)
+ *              is STATIC by necessity, not style: the comm task stack is
+ *              256 words (1 KiB) and a stack copy would overflow it on the
+ *              very first save (full-program audit 2026-09-26). Single
+ *              task, non-reentrant, so static is race-free here.
  *         [FA] عکس‌فوری همهٔ پارامترهای ذخیره‌شونده و نوشتن رکورد پینگ‌پنگ
  *              در صفحه‌ای که تازه‌ترین را ندارد، بعد صحت‌سنجی با بازخوانی.
+ *              بافر موقت (~۱٫۲KB) عمداً STATIC است نه سلیقه‌ای: استک تسک
+ *              ارتباط ۲۵۶ کلمه (۱KB) است و نسخهٔ روی استک در همان اولین
+ *              ذخیره سرریز می‌کرد (ممیزی کل برنامه). تک‌تسک و غیربازگشتی،
+ *              پس static بدون مسابقه است.
  * @return bool [EN] true = record now on flash / رکورد روی فلش است
  */
 static bool func__EspLink_NvmSaveNow(void)
 {
-    esp_link_nvm_record_t esp_link_nvm_record_t__record;
-    esp_link_nvm_entry_t ESP_LINK_NVM_ENTRY_T__A__Entry[ESP_LINK_NVM_ENTRY_MAX];
+    static esp_link_nvm_record_t esp_link_nvm_record_t__record;
+    static esp_link_nvm_entry_t ESP_LINK_NVM_ENTRY_T__A__Entry[ESP_LINK_NVM_ENTRY_MAX];
     uint16_t uint16_t__count = 0u;
     uint16_t uint16_t__i;
     uint32_t uint32_t__pageAddress;
