@@ -861,8 +861,8 @@ def test_charger_persistence_v114():
     tab2 = ino.split('id="p2"', 2)[1]
     check("روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند" in ino and
           "ماندگاری:" in ino and "function qgraph()" in ino and "e.oninput=qgraph" in ino and
-          "if(TAB==2){if(STAB==0)qgraph();else{afresh();astat();}}" in ino and "نمودار مراحل شارژ" in ino,
-          "the panel must carry the stage graph (qgraph + live preview + redraw hook, v1.15b: STAB-gated) and the persistence texts")
+          "if(TAB==2){if(STAB==0)qgraph();else afresh();}astat();" in ino and "نمودار مراحل شارژ" in ino,
+          "the panel must carry the stage graph (qgraph + live preview + redraw hook, v1.15b: STAB-gated, v1.16d: astat always live on p0) and the persistence texts")
     check('<button data-t="2">تنظیمات</button>' in ino and
           'id="q7"' in tab2 and 'id="q8"' in tab2 and 'id="a7"' in tab2 and 'id="a8"' in tab2 and
           "پنجرهٔ مدین (Median)" in tab2 and "پنجرهٔ میانگین (Average)" in tab2 and
@@ -1342,15 +1342,16 @@ def test_alarms_tab_v115():
           "GetParam must route all 3 charger alarm ids to Charger_GetAlarmParam")
 
     # --- panel: sub-tab, cards, live status + bars, q2/q3 masks, 128-col CSV ---
-    check('<button data-s="1">آلارم‌ها</button>' in ino and 'id="s1"' in ino
+    check('id="s1"' in ino and 'id="s2"' in ino and 'id="s3"' in ino
           and 'data-t="3"' not in ino,
-          "v1.15b (user order: alarms INSIDE settings): no fourth nav tab - alarms live in a settings sub-tab (s1)")
+          "v1.15b (user order: alarms INSIDE settings): no fourth nav tab - alarms live in settings sub-tabs")
     check(all(f'id="q{i}"' in ino for i in range(27, 38))
           and all(f'id="a{i}"' in ino for i in range(27, 38)),
-          "the alarms sub-tab must hold the eleven alarm inputs q27..q37 with applied-value spans")
+          "the supervision sub-tab (s2) must hold the eleven alarm inputs q27..q37 with applied-value spans")
     check("function achk()" in ino and "function afill()" in ino and "function adef()" in ino
+          and "function sdef()" in ino and 'id="aw2"' in ino
           and "function astat()" in ino and "apend(id)" in ino and "STAB==0" in ino,
-          "the alarms sub-tab needs its guard (achk), fill/defaults (afill/adef), live status+bars (astat) and the STAB hook")
+          "the alarm sub-tabs need their guard (achk), fill/defaults (afill/adef/sdef), split guards (aw/aw2), live status+bars (astat) and the STAB hook")
     check("FEXP=" in ino and "آستانهٔ قطع (۲۷)" in ino and "ASB=" in ino,
           "v1.15b (user order: grouped status + fault explanations, no flicker): per-bit fault explanations and a build-once status skeleton")
     check("function xexp()" in ino and "function ximp(f)" in ino and 'id="xim"' in ino
@@ -1510,18 +1511,31 @@ def test_ui_mirror_v116():
     check('id="usel"' in ino and "function usel(n)" in ino
           and all(f'id="ucard{k}"' in ino for k in range(1, 6)),
           "one selectable card per scenario (5 cards, single-visible) - no crowded wall of fields")
-    check('data-s="2"' in ino and 'id="s2"' in ino and 'data-s="2">وضعیت<' in ino
-          and "وضعیت و پشتیبان" not in ino,
-          "v1.16c: the third settings sub-tab is status-only (backup moved to settings level)")
+    check('data-s="1">سناریوها<' in ino and 'data-s="2">نظارت و ایمنی<' in ino
+          and 'data-s="3">پشتیبان‌گیری<' in ino and 'data-s="1">آلارم‌ها<' not in ino
+          and '>وضعیت</button>' not in ino,
+          "v1.16d (user order: supervision out of alarms; status lives on the panel; backup gets its own sub-tab)")
     s1part = ino.split('id="s1"')[1].split('id="s2"')[0]
-    s2region = ino.split('id="s2"')[1].split("پشتیبان‌گیری")[0]
-    check("ucard1" in s1part and "uleds" in s1part and "نظارت باتری" in s1part
-          and "وضعیت آلارم‌ها" not in s1part and "پشتیبان‌گیری" not in s1part,
-          "s1 keeps only the alarm cards + the scenario picker + the mirror")
-    check("وضعیت آلارم‌ها" in s2region and 'id="ast"' in s2region and "پشتیبان‌گیری" not in s2region,
-          "s2 holds only the live status card")
-    check(ino.index("پشتیبان‌گیری") > ino.index('id="abars"') and 'id="xim"' in ino.split("پشتیبان‌گیری")[1].split("</main>")[0],
-          "the single backup card sits at settings level, after the sub-tabs")
+    s2part = ino.split('id="s2"')[1].split('id="s3"')[0]
+    s3part = ino.split('id="s3"')[1].split("</main>")[0]
+    p0part = ino.split('id="p0"')[1].split('id="p1"')[0]
+    check("ucard1" in s1part and "uleds" in s1part and 'id="aw2"' in s1part
+          and "sdef()" in s1part and "<b>نظارت باتری</b>" not in s1part
+          and "<b>پنجرهٔ ورودی سالم</b>" not in s1part and "<b>سقف‌های ایمنی شارژر</b>" not in s1part
+          and "وضعیت آلارم‌ها" not in s1part and "پشتیبان‌گیری" not in s1part
+          and all(f'id="q{i}"' in s1part for i in range(38, 77))
+          and all(f'id="q{i}"' not in s1part for i in range(27, 38)),
+          "s1 (scenarios) keeps only the mirror + the 5 scenario cards + its own guard/defaults")
+    check("نظارت باتری" in s2part and "پنجرهٔ ورودی سالم" in s2part and "سقف‌های ایمنی شارژر" in s2part
+          and 'id="aw"' in s2part and "adef()" in s2part and "uleds" not in s2part
+          and all(f'id="q{i}"' in s2part for i in range(27, 38))
+          and all(f'id="q{i}"' not in s2part for i in range(38, 77)),
+          "s2 (supervision & safety) keeps only the 27..37 thresholds + its own guard/defaults")
+    check("پشتیبان‌گیری" in s3part and 'id="xim"' in s3part
+          and all(f'id="q{i}"' not in s3part for i in range(27, 77)),
+          "s3 holds only the single backup card")
+    check("وضعیت آلارم‌ها" in p0part and 'id="ast"' in p0part and 'id="abars"' in p0part,
+          "the live status card sits at the end of the main panel tab (p0), not in settings")
     check("asb5" in ino and "abf3" in ino and "جریان ۱" in ino and "جریان ۲" in ino
           and "Math.max(t[3],t[10])" not in ino,
           "v1.16c (user order: current bars for BOTH batteries): per-channel boxes + bars, no max() merge")

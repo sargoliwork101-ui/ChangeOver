@@ -397,10 +397,15 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <div class="sec">فیلتر جریان <span class="lb">(مشترک هر دو کانال)</span></div><div class="frr" id="fg"></div><div class="fx fxw" id="ff"></div></div>
 <div class="ch" id="ch"></div>
 <div id="mc"></div>
+<div class="cd">
+<div class="hd"><b>وضعیت آلارم‌ها</b><span class="lb">· زنده از TLM برد · آستانه‌ها = مقادیر اعمال‌شدهٔ برد</span></div>
+<div id="ast" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div>
+<div id="abars"></div>
+</div>
 </div>
 <div class="pgx" id="p1"></div>
 <div class="pgx" id="p2">
-<div class="sbt" id="sbt"><button class="a" data-s="0">شارژ و فیلتر</button><button data-s="1">آلارم‌ها</button><button data-s="2">وضعیت</button></div>
+<div class="sbt" id="sbt"><button class="a" data-s="0">شارژ و فیلتر</button><button data-s="1">سناریوها</button><button data-s="2">نظارت و ایمنی</button><button data-s="3">پشتیبان‌گیری</button></div>
 <div class="sgx a" id="s0">
 <div class="cd">
 <div class="hd"><b>نمودار مراحل شارژ</b><span class="lb">· مشترک هر دو کانال · ناحیه‌ها از مقادیر اعمال‌شدهٔ برد · تایپ = خط‌چین پیش‌نمایش · ترکیب نامعتبر = هشدار قرمز</span></div>
@@ -446,48 +451,6 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 </div>
 </div>
 <div class="sgx" id="s1">
-<div class="cd">
-<div class="hd"><b>نظارت باتری</b><span class="lb">· شناسه‌های ۲۷..۳۲ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
-<div id="aw" style="margin:2px 0 0"></div>
-<div class="sec">قطع باتری <span class="lb">(mV / ms)</span></div>
-<div class="bqr">
-<label>آستانهٔ قطع باتری (mV)<input type="number" id="q27" step="50" min="14000" max="15000"><span class="lb" id="a27">—</span></label>
-<label>دبانس قطع (ms)<input type="number" id="q28" step="10" min="50" max="1000"><span class="lb" id="a28">—</span></label>
-</div>
-<div class="sec">غیبت / بازگشت باتری <span class="lb">(mV / ms)</span></div>
-<div class="bqr">
-<label>آستانهٔ غیبت (mV)<input type="number" id="q29" step="100" min="3000" max="8000"><span class="lb" id="a29">—</span></label>
-<label>آستانهٔ بازگشت (mV)<input type="number" id="q30" step="100" min="4000" max="9000"><span class="lb" id="a30">—</span></label>
-<label>دبانس غیبت (ms)<input type="number" id="q31" step="50" min="100" max="5000"><span class="lb" id="a31">—</span></label>
-<label>دبانس بازیابی (ms)<input type="number" id="q32" step="50" min="100" max="5000"><span class="lb" id="a32">—</span></label>
-</div>
-<div class="lb">قطع باتری: اگر هر نیمه حین پمپ بالای این ولتاژ برود، سیم باتری قطع فرض می‌شود (پیش‌فرض ۱۴۸۰۰)؛ باید بالای سقف تجاوز+۵۰ و زیر قطع OV−۱۰۰ بماند وگرنه برد گیره‌اش می‌زند.
-دبانس قطع: شرط بالا باید این‌قدر میلی‌ثانیه پیوسته برقرار بماند تا لچ شود (۱۵۰).
-غیبت/برگشت: زیر آستانهٔ غیبت (۶۰۰۰) باتری نیست؛ بالای بازگشت (۷۰۰۰) برگشته — همیشه ۵۰۰mV از هم فاصله دارند.
-دبانس غیبت/بازیابی: پایداری لازم برای اعلام غیبت و اعلام سلامتی (۱۰۰۰/۱۰۰۰).</div>
-</div>
-<div class="cd">
-<div class="hd"><b>پنجرهٔ ورودی سالم</b><span class="lb">· شناسه‌های ۳۳..۳۴ · روی فلش برد ذخیره می‌شود</span></div>
-<div class="bqr">
-<label>کف ورودی سالم (mV)<input type="number" id="q33" step="100" min="18000" max="24000"><span class="lb" id="a33">—</span></label>
-<label>سقف ورودی سالم (mV)<input type="number" id="q34" step="100" min="24000" max="30000"><span class="lb" id="a34">—</span></label>
-</div>
-<div class="lb">تشخیص «ورودی حاضر» فقط داخل این پنجره است (پیش‌فرض ۲۱۰۰۰..۲۸۰۰۰)؛ کف و سقف همیشه ۱۰۰۰mV از هم فاصله دارند. بیرون پنجره، شارژر منتظر ورودی می‌ماند.</div>
-</div>
-<div class="cd">
-<div class="hd"><b>سقف‌های ایمنی شارژر</b><span class="lb">· شناسه‌های ۳۵..۳۷ · فقط پایین‌بردنی — هرگز بالای سقف کارخانه نمی‌روند · روی فلش برد ذخیره می‌شود</span></div>
-<div class="bqr">
-<label>خطای سخت جریان (mA)<input type="number" id="q35" step="10" min="150" max="950"><span class="lb" id="a35">—</span></label>
-<label>قطع اضافه‌ولتاژ OV (mV)<input type="number" id="q36" step="50" min="14000" max="15000"><span class="lb" id="a36">—</span></label>
-<label>کف اعتبار باتری (mV)<input type="number" id="q37" step="100" min="0" max="8000"><span class="lb" id="a37">—</span></label>
-</div>
-<div class="lb">خطای سخت جریان: بالای این مقدار کانال ریست و متوقف می‌شود (پیش‌فرض ۹۵۰)؛ همیشه بالای جریان بالک+۵۰ نگه داشته می‌شود تا تنظیم سالم تریپ نکند.
-قطع OV: بالای این ولتاژ باتری نامعتبر و سوئیچینگ متوقف می‌شود (پیش‌فرض ۱۵۰۰۰)؛ همیشه بالای سقف تجاوز+۱۵۰ است.
-کف اعتبار: زیر این ولتاژ باتری نامعتبر شمرده می‌شود (پیش‌فرض ۲۰۰۰).
-پس از هر تغییر، مقدار «اعمال‌شدهٔ» برد کنار همان فیلد نشان داده می‌شود — اگر با درخواست شما فرق دارد یعنی گیره خورده تا مجموعه سازنده بماند.
-نگهبان ترکیب مثل تب تنظیمات: عدد ناسازگار هشدار قرمز و تأیید قبل از ارسال می‌گیرد.</div>
-<div class="bqr"><button class="sb sb2" onclick="adef()">بازگردانی پیش‌فرض کارخانهٔ آلارم‌ها</button></div>
-</div>
 <div class="leds stick" id="uleds">
 <div class="led r" id="ulR"><i></i><small>قرمز</small></div>
 <div class="led y" id="ulY"><i></i><small>زرد</small></div>
@@ -497,6 +460,7 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <button class="sb" onclick="xmute()">🔇/🔊 میوت</button><span class="lb" id="xmuteS">—</span>
 </div>
 <div class="hd" style="margin-top:10px"><b>سناریوهای LED و بازر</b><span class="lb">· یک سناریو را انتخاب کنید · همه روی فلش برد ذخیره می‌شوند</span></div>
+<div id="aw2" style="margin:2px 0 0"></div>
 <div class="sbt" id="usel"><button class="a" data-u="1">۱ · اضافه‌ولتاژ</button><button data-u="2">۲ · قطع باتری</button><button data-u="3">۳ · دشارژ</button><button data-u="4">۴ · شارژ عادی</button><button data-u="5">۵ · باتری و درصد</button></div>
 <div class="cd" id="ucard1">
 <div class="hd"><b>سناریو ۱ — اضافه‌ولتاژ ورودی</b><span class="lb">· سقف ولتاژ + چشمک و بوق · اولویت اول برد</span></div>
@@ -533,7 +497,7 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <label>تعداد بوق<input type="number" id="q48" step="1" min="0" max="10"><span class="lb" id="a48">—</span></label>
 <label>گپ بین بوق‌ها (ms)<input type="number" id="q49" step="50" min="0" max="5000"><span class="lb" id="a49">—</span></label>
 </div>
-<div class="lb">تا وقتی پرچم قطع‌باتری قفل است: چشمک + سه بوق کوتاه. آستانه‌های تشخیص قطع/برگشت در کارت «نظارت باتری» (۲۷..۳۲) است.</div>
+<div class="lb">تا وقتی پرچم قطع‌باتری قفل است: چشمک + سه بوق کوتاه. آستانه‌های تشخیص قطع/برگشت در کارت «نظارت باتری» (زیرتب نظارت و ایمنی، ۲۷..۳۲) است.</div>
 </div>
 <div class="cd" id="ucard3" style="display:none">
 <div class="hd"><b>سناریو ۳ — دشارژ (بی‌ورودی)</b><span class="lb">· شناسه‌های ۵۰..۶۷ · باندها + چشمک سبز</span></div>
@@ -593,15 +557,53 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <div class="lb">زیر آستانه، پرچم باتری کم + یادداشت در آینه؛ سقف نگاشت همیشه دست‌کم ۱۰۰mV بالای کف است.</div>
 </div>
 <input type="hidden" id="q76" value="">
-</div>
+<div class="bqr"><button class="sb sb2" onclick="sdef()">بازگردانی پیش‌فرض کارخانهٔ سناریوها</button></div>
 </div>
 <div class="sgx" id="s2">
 <div class="cd">
-<div class="hd"><b>وضعیت آلارم‌ها</b><span class="lb">· زنده از TLM برد · آستانه‌ها = مقادیر اعمال‌شدهٔ برد</span></div>
-<div id="ast" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div>
-<div id="abars"></div>
+<div class="hd"><b>نظارت باتری</b><span class="lb">· شناسه‌های ۲۷..۳۲ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
+<div id="aw" style="margin:2px 0 0"></div>
+<div class="sec">قطع باتری <span class="lb">(mV / ms)</span></div>
+<div class="bqr">
+<label>آستانهٔ قطع باتری (mV)<input type="number" id="q27" step="50" min="14000" max="15000"><span class="lb" id="a27">—</span></label>
+<label>دبانس قطع (ms)<input type="number" id="q28" step="10" min="50" max="1000"><span class="lb" id="a28">—</span></label>
+</div>
+<div class="sec">غیبت / بازگشت باتری <span class="lb">(mV / ms)</span></div>
+<div class="bqr">
+<label>آستانهٔ غیبت (mV)<input type="number" id="q29" step="100" min="3000" max="8000"><span class="lb" id="a29">—</span></label>
+<label>آستانهٔ بازگشت (mV)<input type="number" id="q30" step="100" min="4000" max="9000"><span class="lb" id="a30">—</span></label>
+<label>دبانس غیبت (ms)<input type="number" id="q31" step="50" min="100" max="5000"><span class="lb" id="a31">—</span></label>
+<label>دبانس بازیابی (ms)<input type="number" id="q32" step="50" min="100" max="5000"><span class="lb" id="a32">—</span></label>
+</div>
+<div class="lb">قطع باتری: اگر هر نیمه حین پمپ بالای این ولتاژ برود، سیم باتری قطع فرض می‌شود (پیش‌فرض ۱۴۸۰۰)؛ باید بالای سقف تجاوز+۵۰ و زیر قطع OV−۱۰۰ بماند وگرنه برد گیره‌اش می‌زند.
+دبانس قطع: شرط بالا باید این‌قدر میلی‌ثانیه پیوسته برقرار بماند تا لچ شود (۱۵۰).
+غیبت/برگشت: زیر آستانهٔ غیبت (۶۰۰۰) باتری نیست؛ بالای بازگشت (۷۰۰۰) برگشته — همیشه ۵۰۰mV از هم فاصله دارند.
+دبانس غیبت/بازیابی: پایداری لازم برای اعلام غیبت و اعلام سلامتی (۱۰۰۰/۱۰۰۰).</div>
+</div>
+<div class="cd">
+<div class="hd"><b>پنجرهٔ ورودی سالم</b><span class="lb">· شناسه‌های ۳۳..۳۴ · روی فلش برد ذخیره می‌شود</span></div>
+<div class="bqr">
+<label>کف ورودی سالم (mV)<input type="number" id="q33" step="100" min="18000" max="24000"><span class="lb" id="a33">—</span></label>
+<label>سقف ورودی سالم (mV)<input type="number" id="q34" step="100" min="24000" max="30000"><span class="lb" id="a34">—</span></label>
+</div>
+<div class="lb">تشخیص «ورودی حاضر» فقط داخل این پنجره است (پیش‌فرض ۲۱۰۰۰..۲۸۰۰۰)؛ کف و سقف همیشه ۱۰۰۰mV از هم فاصله دارند. بیرون پنجره، شارژر منتظر ورودی می‌ماند.</div>
+</div>
+<div class="cd">
+<div class="hd"><b>سقف‌های ایمنی شارژر</b><span class="lb">· شناسه‌های ۳۵..۳۷ · فقط پایین‌بردنی — هرگز بالای سقف کارخانه نمی‌روند · روی فلش برد ذخیره می‌شود</span></div>
+<div class="bqr">
+<label>خطای سخت جریان (mA)<input type="number" id="q35" step="10" min="150" max="950"><span class="lb" id="a35">—</span></label>
+<label>قطع اضافه‌ولتاژ OV (mV)<input type="number" id="q36" step="50" min="14000" max="15000"><span class="lb" id="a36">—</span></label>
+<label>کف اعتبار باتری (mV)<input type="number" id="q37" step="100" min="0" max="8000"><span class="lb" id="a37">—</span></label>
+</div>
+<div class="lb">خطای سخت جریان: بالای این مقدار کانال ریست و متوقف می‌شود (پیش‌فرض ۹۵۰)؛ همیشه بالای جریان بالک+۵۰ نگه داشته می‌شود تا تنظیم سالم تریپ نکند.
+قطع OV: بالای این ولتاژ باتری نامعتبر و سوئیچینگ متوقف می‌شود (پیش‌فرض ۱۵۰۰۰)؛ همیشه بالای سقف تجاوز+۱۵۰ است.
+کف اعتبار: زیر این ولتاژ باتری نامعتبر شمرده می‌شود (پیش‌فرض ۲۰۰۰).
+پس از هر تغییر، مقدار «اعمال‌شدهٔ» برد کنار همان فیلد نشان داده می‌شود — اگر با درخواست شما فرق دارد یعنی گیره خورده تا مجموعه سازنده بماند.
+نگهبان ترکیب مثل تب تنظیمات: عدد ناسازگار هشدار قرمز و تأیید قبل از ارسال می‌گیرد.</div>
+<div class="bqr"><button class="sb sb2" onclick="adef()">بازگردانی پیش‌فرض کارخانهٔ نظارت و ایمنی</button></div>
 </div>
 </div>
+<div class="sgx" id="s3">
 <div class="cd">
 <div class="hd"><b>پشتیبان‌گیری همهٔ تنظیمات</b><span class="lb">· یک بکاپ برای کل بخش تنظیمات — خروجی/ورودی JSON همهٔ ۷۱ مقدار ماندگار (۰..۱۴، ۲۰..۷۵)</span></div>
 <div class="bqr">
@@ -610,6 +612,8 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 <span class="lb" id="xst">—</span>
 </div>
 <div class="lb">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد (کالیبراسیون، فیلتر، فعال‌سازی/سقف‌ها، پروفایل، آلارم‌ها، سناریوها) را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود؛ شناسه‌های بدون فیلد بی‌صدا اعمال می‌شوند). گذراها (۱۵..۱۹ و میوت ۷۶) جزو پشتیبان نیستند.</div>
+</div>
+</div>
 </div>
 </main>
 
@@ -861,14 +865,15 @@ function achk(){const a=ap(),w=[],bad=(v,lo,hi)=>!(v>=lo&&v<=hi);
  else if(!(a.u75>=a.u74+100))w.push({ids:[75,74],msg:'سقف نگاشت باید دست‌کم ۱۰۰ بالای کف باشد (≥ '+(a.u74+100)+')'});
  if(bad(a.u76,0,1))w.push({ids:[76],msg:'میوت باید ۰ یا ۱ باشد'});
  return w;}
-function afresh(){const w=achk(),we=$('aw');
- if(we){we.innerHTML=w.length?('⚠ ترکیب نامعتبر — برد این‌ها را گیره می‌زند: '+w.map(x=>x.msg).join('؛ ')):'';
-  we.style.cssText=w.length?'margin:2px 0 6px;color:#ff7373;font-size:12.5px;line-height:1.9':'margin:2px 0 0';}
+function afresh(){const w=achk();
+ const wset=(el,l)=>{if(!el)return;el.innerHTML=l.length?('⚠ ترکیب نامعتبر — برد این‌ها را گیره می‌زند: '+l.map(x=>x.msg).join('؛ ')):'';el.style.cssText=l.length?'margin:2px 0 6px;color:#ff7373;font-size:12.5px;line-height:1.9':'margin:2px 0 0';};
+ wset($('aw'),w.filter(x=>x.ids.some(i=>i<38)));wset($('aw2'),w.filter(x=>x.ids.some(i=>i>=38)));
  for(const id of AIDS){const ne=$('q'+id);if(ne)ne.style.borderColor=w.some(x=>x.ids.includes(id))?'#b8323f':'';}
  const ms=$('xmuteS');if(ms)ms.textContent=(D&&D.p&&D.p[76]===1)?'🔇 میوت روشن — موقتی، با ریست برد پاک می‌شود؛ LEDها همچنان چشمک می‌زنند':'🔊 بوق روشن';}
 function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id-32))):((D.q3||0)&(1<<(id-64)));}
 function afill(){if(!D||!D.p)return;for(const id of AIDS){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!apend(id))a.textContent=D.p[id]==null?'—':D.p[id];}}
-function adef(){AIDS.forEach((id,k)=>{$('q'+id).value=ADEF[k];send(id,ADEF[k]);});afresh();}
+function adef(){ADEF.slice(0,11).forEach((v,k)=>{const id=27+k;$('q'+id).value=v;send(id,v);});afresh();}
+function sdef(){AIDS.forEach((id,k)=>{if(id<38)return;const e=$('q'+id);if(e)e.value=ADEF[k];send(id,ADEF[k]);});afresh();}
 /* v1.15b: کارت وضعیت گروه‌بندی‌شده — اسکلت یک‌بار ساخته می‌شود و هر poll فقط متن/رنگ به‌روز می‌شود (بدون پر/خالی شدن و چشمک) */
 const FEXP=[
  ['خطای ADC','نمونه‌برداری ADC نامعتبر است و اندازه‌گیری‌ها قابل‌اعتماد نیست؛ برد محافظه‌کار می‌شود. سیم‌کشی آنالوگ و تغذیه را بررسی کنید.'],
@@ -1008,7 +1013,7 @@ async function ximp(f){const x=$('xst');let o;try{o=JSON.parse(await f.text());}
  if(x)x.textContent=(ok===jobs.length?'✅ ':'⚠ ')+ok+'/'+jobs.length+' اعمال شد — مقادیر گیره‌خورده کنار فیلدها';
  const xi=$('xim');if(xi)xi.value='';}
 $('xim').onchange=e=>{if(e.target.files[0])ximp(e.target.files[0]);};
-function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;qfill();afill();if(TAB==2){if(STAB==0)qgraph();else{afresh();astat();}}
+function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;qfill();afill();if(TAB==2){if(STAB==0)qgraph();else afresh();}astat();
  document.body.classList.toggle('dn',!on);$('lk').classList.toggle('on',on);
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');
  hist(d);

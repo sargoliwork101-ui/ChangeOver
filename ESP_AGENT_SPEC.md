@@ -945,7 +945,7 @@ beside it, plus a "بازگردانی پیش‌فرض کارخانهٔ آلار�
   (15000), validity floor (2000) - DOWN-ONLY from the panel, never above
   the compile maxima.
 
-A live status card shows five grouped boxes (input, battery low/high,
+A live status card (v1.16d: at the end of the main panel tab, not in settings) shows five grouped boxes (input, battery low/high,
 one filtered-current box per channel: big live value + threshold line +
 status pill) plus a fault box with a per-bit EXPLANATION of every
 latched fault bit and what to do; four threshold bars (input window,
@@ -955,10 +955,10 @@ updates text/color per poll (no rebuild flicker). A panel-side guard
 (achk) mirrors Fault_ClampAlarms + Charger_ClampAlarms: red warning +
 red field + confirm-before-send on invalid combos. Because 38 params no
 longer fit one u32, /t carries a second pending mask `q2` for ids 32..37
-alongside `q` for 0..31. A single backup card at the settings-tab
-level (v1.16c - ONE backup for the whole settings, not per tab)
-exports/imports ALL 71 persisted values (0..14, 20..75) as a JSON file
-(`changeover-settings.json`).
+alongside `q` for 0..31. A single backup card in its own settings
+sub-tab (v1.16d - ONE backup for the whole settings, not per tab;
+v1.16c had it at settings-tab level) exports/imports ALL 71 persisted
+values (0..14, 20..75) as a JSON file (`changeover-settings.json`).
 
 Firmware clamps (every write re-clamps the whole cascade - profile ->
 charger alarms -> fault alarms, so a profile write can re-float a
@@ -1004,15 +1004,17 @@ reflash with an unreadable (v2) NVM record changes no behavior or sound.
   backup; silences the scenario beeps only - LEDs keep blinking and
   the boot wiring-test beep still sounds.
 
-The alarms sub-tab holds ONLY the alarm cards + ONE selectable card
-per scenario (v1.16b - a picker row: overvoltage / battery-lost /
-BatteryRun / normal charging / battery thresholds; each card only its
-own numbers, e.g. scenario 1 carries its voltage ceiling 70/71
-together with its blink/beep timing 38..43); the live status card
-moved to a third settings sub-tab ("وضعیت") while the single backup
-card sits at settings level (v1.16c). The guard
-(achk) covers the whole set (window fits, band order, threshold
-order), and a third pending mask `q3` in /t covers ids 64..76. ONE sticky mirror header stays pinned above everything: the 3
+The settings sub-tabs are (v1.16d): s1 scenarios - the mirror + ONE
+selectable card per scenario (v1.16b - a picker row: overvoltage /
+battery-lost / BatteryRun / normal charging / battery thresholds;
+each card only its own numbers, e.g. scenario 1 carries its voltage
+ceiling 70/71 together with its blink/beep timing 38..43) + its own
+guard readout (aw2) + its own factory-defaults button (sdef, 38..76);
+s2 supervision & safety - the 27..37 threshold cards + their guard
+readout (aw) + their defaults button (adef, 27..37 only); s3 backup.
+The guard (achk) covers the whole set (window fits, band order,
+threshold order) and each sub-tab shows only its own warnings, and a
+third pending mask `q3` in /t covers ids 64..76. ONE sticky mirror header stays pinned above everything: the 3
 board LEDs blinking at the board's APPLIED period/duty (panel-side
 phase), the buzzer icon (dim = silent, bright = beeping now, cross
 overlay = muted), the active scenario name, a live readout of the
@@ -1153,6 +1155,16 @@ documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 1 s keepalive while ID 19 = 1.
 
 ## 10. Protocol version
+
+v1.16d (2026-09-26, user order of the same day): panel-only re-layout
+of the settings sub-tabs - s1 scenarios (mirror + 5 picker cards +
+own guard aw2 + sdef defaults for 38..76), s2 supervision & safety
+(the 27..37 cards + own guard aw + adef defaults for 27..37), s3
+backup (the single card); the live status card moves to the end of
+the main panel tab (astat runs on every draw now). Also fixes a
+v1.16c nesting bug (a stray close tag pushed the status/backup cards
+outside the settings container). No firmware change (ESP reflash
+only).
 
 v1.16c (2026-09-26, user order of the same day): panel-only - ONE
 backup card for the whole settings section (all 71 persisted ids
