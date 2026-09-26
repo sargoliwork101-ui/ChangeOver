@@ -34,7 +34,7 @@ const html = ino.split('R"HTML(', 2)[1].split(')HTML";', 2)[0];
 const inject = `<script>(function(){
 var b=document.createElement('div');
 b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99;background:#3a2b06;color:#ffd970;font:13px Vazirmatn,sans-serif;padding:6px 12px;text-align:center;border-bottom:1px solid #6b5206;direction:rtl';
-b.textContent='پیش‌نمایش آفلاین — مقادیر از شبیه‌ساز STM32 می‌آیند، نه برد واقعی';
+b.textContent='پیش‌نمایش آفلاین — شبیه‌ساز STM32 + چرخه نمایشی سناریوها (شارژ/اضافه‌ولتاژ/قطع‌باتری/دشارژ) برای آینه LED/بازر';
 document.body.appendChild(b);document.body.style.paddingTop='32px';
 var t2=document.querySelector('nav button[data-t="2"]');if(t2)t2.click();
 var s1=document.querySelector('#sbt button[data-s="1"]');if(s1)s1.click();
@@ -45,7 +45,21 @@ if (page === html) page = html + inject; /* fallback: append */
 /* ---------- simulated STM32 ---------- */
 const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0,
            14400, 14300, 14600, 13500, 12800, 650, 50,
-           14800, 150, 6000, 7000, 1000, 1000, 21000, 28000, 950, 15000, 2000];
+           14800, 150, 6000, 7000, 1000, 1000, 21000, 28000, 950, 15000, 2000,
+           /* v1.16 ids 38..76 = firmware UI_ALARM_T__G__Alarm boot defaults */
+           1000, 50, 10000, 1000, 1, 0, 1000, 50, 3000, 233, 3, 100,
+           40, 20, 10, 1, 60000, 20000, 10000, 100, 1,
+           1000, 2000, 10000, 1, 2, 3, 100,
+           1000, 10, 1000, 10, 28000, 1000, 21000, 21200, 21000, 29000, 0];
+
+const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
+const maxDur = (per, cnt, gap) => { /* v1.16: mirror of Ui_MaxBeepDurMs */
+    if (per === 0 || cnt === 0) return per === 0 ? 600000 : per;
+    const g = gap * (cnt - 1);
+    if (g >= per) return 0;
+    return Math.floor((per - g) / cnt);
+};
 
 function clampParam(id, v) {
     const a = P[20];
@@ -82,6 +96,42 @@ function clampParam(id, v) {
         case 35: return Math.min(950, Math.max(im + 50, v));
         case 36: return Math.min(15000, Math.max(Math.max(14000, over + 150), v));
         case 37: return Math.min(8000, Math.max(0, v));
+        /* v1.16 UI: exact mirror of Ui_ClampAlarms (single pass, dependency order) */
+        case 38: return clampW(v, 100, 10000);
+        case 39: return clampW(v, 0, 100);
+        case 40: return clampPeriod(v);
+        case 41: return Math.min(maxDur(P[40], P[42], P[43]), clampW(v, 0, 600000));
+        case 42: return clampW(v, 0, 10);
+        case 43: { const g = clampW(v, 0, 5000); return (P[42] > 1 && P[40] !== 0 && g < 100) ? 100 : g; }
+        case 44: return clampW(v, 100, 10000);
+        case 45: return clampW(v, 0, 100);
+        case 46: return clampPeriod(v);
+        case 47: return Math.min(maxDur(P[46], P[48], P[49]), clampW(v, 0, 600000));
+        case 48: return clampW(v, 0, 10);
+        case 49: { const g = clampW(v, 0, 5000); return (P[48] > 1 && P[46] !== 0 && g < 100) ? 100 : g; }
+        case 50: return clampW(v, 0, 100);
+        case 51: return Math.min(P[50], clampW(v, 0, 100));
+        case 52: return Math.min(P[51], clampW(v, 0, 100));
+        case 53: return Math.min(P[52], clampW(v, 0, 100));
+        case 54: case 55: case 56: return clampPeriod(v);
+        case 57: return clampW(v, 0, 100);
+        case 58: case 62: case 63: case 64: return clampW(v, 0, 10);
+        case 59: return Math.min(maxDur(P[54], Math.max(P[62], P[63]), P[65]), clampW(v, 0, 600000));
+        case 60: return Math.min(maxDur(P[55], P[64], P[65]), clampW(v, 0, 600000));
+        case 61: return clampW(v, 0, 120000);
+        case 65: { const g = clampW(v, 0, 5000);
+                   return ((P[58] > 1 || P[62] > 1 || P[63] > 1 || P[64] > 1) && g < 100) ? 100 : g; }
+        case 66: return clampW(v, 100, 10000);
+        case 67: return Math.min(P[66], clampW(v, 0, 10000));
+        case 68: return clampW(v, 100, 10000);
+        case 69: return Math.min(P[68], clampW(v, 0, 10000));
+        case 70: return clampW(v, 24000, 32000);
+        case 71: return clampW(v, 0, 2000);
+        case 72: return clampW(v, 15000, 24000); /* threshold authoritative; 73 pulls up in cascade */
+        case 73: return Math.max(P[72], clampW(v, 15000, 24000));
+        case 74: return clampW(v, 15000, 25000); /* Vmin authoritative; 75 pulls up in cascade */
+        case 75: return Math.max(P[74] + 100, clampW(v, 25000, 32000));
+        case 76: return clampW(v, 0, 1);
         default: return v;
     }
 }
@@ -167,8 +217,15 @@ function telemetry() {
     t[17] = vlow;                  /* battery low, compensated */
     t[18] = vhigh;                 /* battery high */
     t[19] = 0;                     /* fault mask */
+    /* v1.16 demo: rotate scenarios so the LED/buzzer mirror shows every face:
+     * 0-30 s normal charging, 30-38 s input overvoltage, 38-46 s battery lost,
+     * 46-54 s BatteryRun (input absent, double-beep band), 54-60 s normal. */
+    const cyc = ms % 60000;
+    if (cyc >= 30000 && cyc < 38000) t[14] = 29500;
+    else if (cyc >= 38000 && cyc < 46000) t[19] = 64;
+    else if (cyc >= 46000 && cyc < 54000) { t[14] = 15000; t[17] = 22200; t[18] = 22200; t[6] = 0; t[13] = 0; }
     seq += 1; frames += 1; ms += SIM_MS;
-    return { on: 1, age: 40, seq, fl: 7, n: frames, q: 0, q2: 0, ka: 800, t, p: P.slice() };
+    return { on: 1, age: 40, seq, fl: 7, n: frames, q: 0, q2: 0, q3: 0, ka: 800, t, p: P.slice() };
 }
 
 /* ---------- HTTP server ---------- */
@@ -191,7 +248,7 @@ const server = http.createServer((req, res) => {
     if (req.method === "POST" && url.pathname === "/s") {
         const id = Number(url.searchParams.get("id"));
         const v = Number(url.searchParams.get("v"));
-        if (id >= 0 && id < 38 && Number.isFinite(v)) {
+        if (id >= 0 && id < 77 && Number.isFinite(v)) {
             P[id] = clampParam(id, v); /* clamped exactly like the firmware */
             if (id >= 20) {
                 /* v1.14d: whole-set re-clamp in dependency order, like
@@ -199,7 +256,10 @@ const server = http.createServer((req, res) => {
                  * as the real board's would after each write. v1.15: the
                  * same cascade (profile -> charger alarms -> fault alarms). */
                 for (const pid of [20, 21, 22, 23, 24, 25, 26, 35, 36, 37,
-                                   27, 28, 29, 30, 31, 32, 33, 34]) P[pid] = clampParam(pid, P[pid]);
+                                   27, 28, 29, 30, 31, 32, 33, 34,
+                                   38, 39, 40, 42, 43, 41, 44, 45, 46, 48, 49, 47,
+                                   50, 51, 52, 53, 54, 55, 56, 57, 58, 62, 63, 64, 65, 59, 60, 61,
+                                   66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76]) P[pid] = clampParam(pid, P[pid]);
             }
         }
         return send(200, "application/json", '{"_s":200}');

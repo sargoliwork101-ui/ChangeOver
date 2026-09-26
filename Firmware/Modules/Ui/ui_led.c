@@ -5,9 +5,15 @@
  *          CMSIS-RTOS2 simple readable, non-linear formulas, markers above each function and variable in h and c.
  *          [FA] سناریوهای LED ماژول UI - ثابت‌های LED در هدر خودش، هر تابع و متغیر با جدا کننده و کامنت.
  *
- * @note    [EN] ui_led.h provides defaults; runtime-tunable values are read from const APP_CONFIG. Naming __ after type, func__ prefix.
+ * @note    [EN] ui_led.h provides defaults; since v1.16 the live cadence
+ *          comes from the persisted UI_ALARM_T__G__Alarm struct (ids
+ *          38..76), not from const APP_CONFIG (which now feeds only the
+ *          one-shot BoardTest timings). Naming __ after type, func__ prefix.
  *          CMSIS-RTOS2: osDelay allowed, HAL_Delay forbidden. Formulas non-linear broken into steps.
- *          [FA] ui_led.h پیش‌فرض‌ها را می‌دهد؛ مقدارهای قابل تنظیم زمان اجرا از APP_CONFIG ثابت خوانده می‌شوند. نام‌گذاری با __، پیشوند func__، فرمول غیرخطی.
+ *          [FA] ui_led.h پیش‌فرض‌ها را می‌دهد؛ از v1.16 مقدارهای زنده از
+ *          struct ماندگار UI می‌آیند (۳۸..۷۶) نه از APP_CONFIG (که فقط
+ *          زمان‌بندی تست برد را می‌دهد). نام‌گذاری با __، پیشوند func__،
+ *          فرمول غیرخطی.
  */
 
 #include "ui_led.h"
@@ -38,6 +44,700 @@
  */
 volatile bool BOOL__G__UiBatteryAlarmIssued = false;
 
+/* ==================== Runtime UI cadence (v1.16) ==================== */
+
+/* [EN] v1.16 (user order 2026-09-26): the 39 UI_* numbers as one live
+ *      struct - ids 38..76, STM32-flash persisted, clamped as a set on
+ *      every write. Boot = the macro defaults, so a reflash with an
+ *      unreadable NVM record changes no behaviour.
+ * [FA] v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶): ۳۹ عدد UI_* در یک struct زنده -
+ *      شناسه‌های ۳۸..۷۶، ماندگار در فلش، گیرهٔ مجموعه‌ای با هر نوشتن.
+ *      بوت = پیش‌فرض ماکروها. */
+static ui_alarm_t UI_ALARM_T__G__Alarm =
+{
+    UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS,
+    UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT,
+    UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS,
+    UI_INPUT_OVERVOLTAGE_BEEP_DURATION_MS,
+    UI_INPUT_OVERVOLTAGE_BEEP_COUNT,
+    UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS,
+    UI_BAT_LOST_LED_PERIOD_MS,
+    UI_BAT_LOST_LED_DUTY_PERCENT,
+    UI_BAT_LOST_BEEP_PERIOD_MS,
+    /* [EN] v1.16: durations are uniformly PER-BEEP; the legacy 900 ms
+       BatLost window was shared by 3 beeps + 2 gaps, i.e. (900-200)/3 =
+       233 ms per beep - this keeps the exact boot sound (duty 30 ->
+       [233,233,234], see host_test_ui).
+       [FA] مدت‌ها یکنواخت «هر بوق»‌اند؛ پنجرهٔ ۹۰۰ قدیم یعنی ۲۳۳ هر بوق. */
+    233u,
+    UI_BAT_LOST_BEEP_COUNT,
+    UI_BAT_LOST_BEEP_GAP_MS,
+    UI_BATTERY_RUN_BEEP_START_PERCENT,
+    UI_BATTERY_RUN_BEEP_DOUBLE_PERCENT,
+    UI_BATTERY_RUN_BEEP_TRIPLE_PERCENT,
+    UI_BATTERY_RUN_BEEP_CRITICAL_PERCENT,
+    UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS,
+    UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS,
+    UI_BATTERY_RUN_BEEP_CRITICAL_PERIOD_MS,
+    UI_BATTERY_RUN_BEEP_CRITICAL_DUTY_PERCENT,
+    UI_BATTERY_RUN_BEEP_CRITICAL_COUNT,
+    UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS,
+    UI_BATTERY_RUN_BEEP_TRIPLE_DURATION_MS,
+    UI_BATTERY_RUN_BEEP_CRITICAL_DURATION_MS,
+    UI_BATTERY_RUN_BEEP_STANDARD_COUNT,
+    UI_BATTERY_RUN_BEEP_DOUBLE_COUNT,
+    UI_BATTERY_RUN_BEEP_TRIPLE_COUNT,
+    UI_BATTERY_RUN_BEEP_GAP_MS,
+    UI_BLINK_PERIOD_MS,
+    UI_GREEN_MIN_OFF_MS,
+    UI_CHARGING_BLINK_PERIOD_MS,
+    UI_CHARGING_YELLOW_MIN_OFF_MS,
+    UI_INPUT_OVERVOLTAGE_THRESHOLD_MV,
+    UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV,
+    UI_LOW_BATTERY_ALARM_THRESHOLD_MV,
+    UI_LOW_BATTERY_ALARM_CLEAR_MV,
+    UI_BAT_V_MIN_MV,
+    UI_BAT_V_MAX_MV,
+    0u
+};
+
+/**
+ * @brief  [EN] Clamp one value into an outer window.
+ *         [FA] گیرهٔ یک مقدار در پنجرهٔ بیرونی.
+ */
+static uint32_t func__Ui_ClampWindow(uint32_t uint32_t__value,
+                                     uint32_t uint32_t__low,
+                                     uint32_t uint32_t__high)
+{
+    if (uint32_t__value < uint32_t__low)
+    {
+        return uint32_t__low;
+    }
+    if (uint32_t__value > uint32_t__high)
+    {
+        return uint32_t__high;
+    }
+    return uint32_t__value;
+}
+
+/**
+ * @brief  [EN] Clamp one beep period: 0 disables the pattern, otherwise
+ *              1000..600000 (below 1000 the buzzer service would go
+ *              INVALID and silent anyway).
+ *         [FA] گیرهٔ دورهٔ بوق: صفر یعنی خاموش، وگرنه ۱۰۰۰..۶۰۰۰۰۰.
+ */
+static uint32_t func__Ui_ClampPeriod(uint32_t uint32_t__value)
+{
+    if (uint32_t__value == 0u)
+    {
+        return 0u;
+    }
+    return func__Ui_ClampWindow(uint32_t__value, 1000u, 600000u);
+}
+
+/**
+ * @brief  [EN] Largest single-beep duration that still fits its period:
+ *              dur*count + gap*(count-1) <= period. Overflow-safe: gap <=
+ *              5000 and count <= 10, so the gap total stays below 45000.
+ *         [FA] بیشترین مدت تک‌بوق که هنوز در دوره جا می‌شود.
+ */
+static uint32_t func__Ui_MaxBeepDurMs(uint32_t uint32_t__periodMs,
+                                      uint32_t uint32_t__count,
+                                      uint32_t uint32_t__gapMs)
+{
+    uint32_t uint32_t__gapsTotal;
+
+    if (uint32_t__count == 0u)
+    {
+        return uint32_t__periodMs;
+    }
+    uint32_t__gapsTotal = uint32_t__gapMs * (uint32_t__count - 1u);
+    if (uint32_t__gapsTotal >= uint32_t__periodMs)
+    {
+        return 0u;
+    }
+    return (uint32_t__periodMs - uint32_t__gapsTotal) / uint32_t__count;
+}
+
+/**
+ * @brief  [EN] Re-clamp the whole UI set, single pass, dependency order
+ *              inside each group (period -> count -> gap -> duration, then
+ *              the band/threshold orderings). A duration is left stale
+ *              while its period is 0 (pattern off - the duty helper
+ *              guards the divide-by-zero and the service stays silent).
+ *         [FA] گیرهٔ کل مجموعهٔ UI، یک پاس، ترتیب وابستگی در هر گروه.
+ */
+static void func__Ui_ClampAlarms(void)
+{
+    uint32_t uint32_t__maxDurMs;
+    uint32_t uint32_t__maxCount;
+
+    UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs, 100u, 10000u);
+    UI_ALARM_T__G__Alarm.uint32_t__ovLedDutyPct =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovLedDutyPct, 0u, 100u);
+    UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs =
+        func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs);
+    UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount, 0u, 10u);
+    UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs, 0u, 5000u);
+    if ((UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount > 1u) &&
+        (UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs != 0u) &&
+        (UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs < UI_BUZZER_MIN_GAP_MS))
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs = UI_BUZZER_MIN_GAP_MS;
+    }
+    UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs, 0u, 600000u);
+    if (UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs != 0u)
+    {
+        uint32_t__maxDurMs = func__Ui_MaxBeepDurMs(
+            UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs,
+            UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount,
+            UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs);
+        if (UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs > uint32_t__maxDurMs)
+        {
+            UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs = uint32_t__maxDurMs;
+        }
+    }
+
+    UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs, 100u, 10000u);
+    UI_ALARM_T__G__Alarm.uint32_t__blLedDutyPct =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blLedDutyPct, 0u, 100u);
+    UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs =
+        func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs);
+    UI_ALARM_T__G__Alarm.uint32_t__blBeepCount =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blBeepCount, 0u, 10u);
+    UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs, 0u, 5000u);
+    if ((UI_ALARM_T__G__Alarm.uint32_t__blBeepCount > 1u) &&
+        (UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs != 0u) &&
+        (UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs < UI_BUZZER_MIN_GAP_MS))
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs = UI_BUZZER_MIN_GAP_MS;
+    }
+    UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs, 0u, 600000u);
+    if (UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs != 0u)
+    {
+        uint32_t__maxDurMs = func__Ui_MaxBeepDurMs(
+            UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs,
+            UI_ALARM_T__G__Alarm.uint32_t__blBeepCount,
+            UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs);
+        if (UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs > uint32_t__maxDurMs)
+        {
+            UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs = uint32_t__maxDurMs;
+        }
+    }
+
+    /* [EN] Beep bands must stay ordered: start >= double >= triple >=
+       crit. One top-down pass always converges (each level is pulled
+       down to its ceiling); start is authoritative.
+       [FA] باندها مرتب: یک پاس از بالا همیشه همگرا می‌شود؛ start مرجع. */
+    UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct, 0u, 100u);
+    UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct, 0u, 100u);
+    UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct, 0u, 100u);
+    UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct, 0u, 100u);
+    if (UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct >
+        UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct)
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct =
+            UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct;
+    }
+    if (UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct >
+        UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct)
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct =
+            UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct;
+    }
+    if (UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct >
+        UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct)
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct =
+            UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct;
+    }
+
+    UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs =
+        func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs);
+    UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs =
+        func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs);
+    UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs =
+        func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs);
+    UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct, 0u, 100u);
+    UI_ALARM_T__G__Alarm.uint32_t__runCritCount =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runCritCount, 0u, 10u);
+    UI_ALARM_T__G__Alarm.uint32_t__runStdCount =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runStdCount, 0u, 10u);
+    UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount, 0u, 10u);
+    UI_ALARM_T__G__Alarm.uint32_t__runTriCount =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runTriCount, 0u, 10u);
+    UI_ALARM_T__G__Alarm.uint32_t__runGapMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runGapMs, 0u, 5000u);
+    if (((UI_ALARM_T__G__Alarm.uint32_t__runCritCount > 1u) ||
+         (UI_ALARM_T__G__Alarm.uint32_t__runStdCount > 1u) ||
+         (UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount > 1u) ||
+         (UI_ALARM_T__G__Alarm.uint32_t__runTriCount > 1u)) &&
+        (UI_ALARM_T__G__Alarm.uint32_t__runGapMs < UI_BUZZER_MIN_GAP_MS))
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__runGapMs = UI_BUZZER_MIN_GAP_MS;
+    }
+    UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs, 0u, 600000u);
+    if (UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs != 0u)
+    {
+        /* [EN] The standard duration is shared by the 1-beep and 2-beep
+           bands, so it must fit the WIDER count of the two.
+           [FA] مدت استاندارد بین باند ۱-بوق و ۲-بوق مشترک است پس باید
+           در تعداد بیشتر جا شود. */
+        uint32_t__maxCount = UI_ALARM_T__G__Alarm.uint32_t__runStdCount;
+        if (UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount > uint32_t__maxCount)
+        {
+            uint32_t__maxCount = UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount;
+        }
+        uint32_t__maxDurMs = func__Ui_MaxBeepDurMs(
+            UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs,
+            uint32_t__maxCount,
+            UI_ALARM_T__G__Alarm.uint32_t__runGapMs);
+        if (UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs > uint32_t__maxDurMs)
+        {
+            UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs = uint32_t__maxDurMs;
+        }
+    }
+    UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs, 0u, 600000u);
+    if (UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs != 0u)
+    {
+        uint32_t__maxDurMs = func__Ui_MaxBeepDurMs(
+            UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs,
+            UI_ALARM_T__G__Alarm.uint32_t__runTriCount,
+            UI_ALARM_T__G__Alarm.uint32_t__runGapMs);
+        if (UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs > uint32_t__maxDurMs)
+        {
+            UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs = uint32_t__maxDurMs;
+        }
+    }
+    UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs, 0u, 120000u);
+
+    UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs, 100u, 10000u);
+    UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs, 0u, 10000u);
+    if (UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs >
+        UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs)
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs =
+            UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs;
+    }
+    UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs, 100u, 10000u);
+    UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs, 0u, 10000u);
+    if (UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs >
+        UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs)
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs =
+            UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs;
+    }
+
+    UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv, 24000u, 32000u);
+    UI_ALARM_T__G__Alarm.uint32_t__ovHystMv =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovHystMv, 0u, 2000u);
+
+    /* [EN] The threshold is authoritative: the clear level is pulled up to
+       it, never the threshold down (zero hysteresis = a consistent level).
+       [FA] آستانه مرجع است: سطح پاک‌شدن به آن بالا کشیده می‌شود. */
+    UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv, 15000u, 24000u);
+    UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv, 15000u, 24000u);
+    if (UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv <
+        UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv)
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv =
+            UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv;
+    }
+    if (UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv >
+        UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv)
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv =
+            UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv;
+    }
+
+    /* [EN] The percent map must keep a strictly positive range (division
+       safety); Vmin is authoritative, Vmax is pulled up.
+       [FA] نگاشت درصد باید بازهٔ اکیداً مثبت نگه دارد؛ Vmin مرجع است. */
+    UI_ALARM_T__G__Alarm.uint32_t__pctVminMv =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__pctVminMv, 15000u, 25000u);
+    UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv, 25000u, 32000u);
+    if (UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv <
+        (UI_ALARM_T__G__Alarm.uint32_t__pctVminMv + 100u))
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv =
+            UI_ALARM_T__G__Alarm.uint32_t__pctVminMv + 100u;
+    }
+    if (UI_ALARM_T__G__Alarm.uint32_t__pctVminMv >
+        (UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv - 100u))
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__pctVminMv =
+            UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv - 100u;
+    }
+
+    UI_ALARM_T__G__Alarm.uint32_t__buzzerMute =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__buzzerMute, 0u, 1u);
+}
+
+/**
+ * @brief  [EN] Duty percent of one beep pattern from its live window:
+ *              ceil((dur*count + gap*(count-1)) * 100 / period). The ceil
+ *              matches the legacy DUTY_PERCENT macros exactly on defaults
+ *              (exact divisions are unaffected). A zero period yields 0
+ *              (the caller passes period 0 = buzzer off). Overflow-safe:
+ *              the clamped window never exceeds the period (<= 600000),
+ *              x100 stays far below 2^32, and the result never exceeds
+ *              100. Formula broken into steps (beeps, gaps+window, duty).
+ *         [FA] درصد دیوتی یک الگوی بوق از پنجرهٔ زنده‌اش (سقف‌گرد مثل
+ *              ماکروهای قدیم) - غیرخطی ۳ گام.
+ */
+static uint8_t func__Ui_BeepDutyPercent(uint32_t uint32_t__periodMs,
+                                        uint32_t uint32_t__durMs,
+                                        uint32_t uint32_t__count,
+                                        uint32_t uint32_t__gapMs)
+{
+    uint32_t uint32_t__beepsTotalMs;
+    uint32_t uint32_t__gapsTotalMs;
+    uint32_t uint32_t__windowMs;
+    uint32_t uint32_t__scaledWindow;
+
+    if ((uint32_t__periodMs == 0u) || (uint32_t__durMs == 0u) ||
+        (uint32_t__count == 0u))
+    {
+        return 0u;
+    }
+
+    /* [EN] Step 1: beeps window = dur * count
+       [FA] گام ۱: پنجرهٔ بوق‌ها */
+    uint32_t__beepsTotalMs = uint32_t__durMs * uint32_t__count;
+
+    /* [EN] Step 2: gaps window + full duty window
+       [FA] گام ۲: پنجرهٔ گپ‌ها + پنجرهٔ کامل دیوتی */
+    uint32_t__gapsTotalMs = 0u;
+    if (uint32_t__count > 1u)
+    {
+        uint32_t__gapsTotalMs = uint32_t__gapMs * (uint32_t__count - 1u);
+    }
+    uint32_t__windowMs = uint32_t__beepsTotalMs + uint32_t__gapsTotalMs;
+
+    /* [EN] A window wider than the period is infeasible (gaps alone can
+       overflow it): report 101 so the service goes INVALID = deterministic
+       silence instead of a uint8-truncated phantom duty.
+       [FA] پنجرهٔ بزرگ‌تر از دوره ناممکن است: ۱۰۱ بده تا سرویس deterministic
+       ساکت شود نه دیوتی بریده‌شده. */
+    if (uint32_t__windowMs > uint32_t__periodMs)
+    {
+        return (uint8_t)(UI_BUZZER_DUTY_MAX_PERCENT + 1u);
+    }
+
+    /* [EN] Step 3: duty = ceil(window * 100 / period)
+       [FA] گام ۳: دیوتی با سقف‌گرد */
+    uint32_t__scaledWindow = uint32_t__windowMs * UI_PERCENT_SCALE;
+    return (uint8_t)((uint32_t__scaledWindow + uint32_t__periodMs - 1u) /
+                     uint32_t__periodMs);
+}
+
+/**
+ * @brief  [EN] Buzzer service with the persisted mute: while id 76 is set,
+ *              every SCENARIO pattern is replaced by an explicit off (the
+ *              one-shot BoardTest wiring beep calls the service directly
+ *              and still sounds, so a muted board still proves its buzzer
+ *              works at boot).
+ *         [FA] سرویس بوق با میوت ماندگار: تا وقتی ۷۶ ست است هر الگوی
+ *              سناریو با خاموش صریح جایگزین می‌شود (بوق تست برد مستقیم
+ *              است و همچنان می‌زند).
+ */
+static int32_t func__Ui_Buzzer_Gated(uint32_t uint32_t__periodMs,
+                                     uint8_t uint8_t__dutyPercent,
+                                     uint8_t uint8_t__beepCount,
+                                     uint32_t uint32_t__gapMs)
+{
+    if (UI_ALARM_T__G__Alarm.uint32_t__buzzerMute != 0u)
+    {
+        return func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+    }
+    return func__Ui_Buzzer_Tick(uint32_t__periodMs,
+                                uint8_t__dutyPercent,
+                                uint8_t__beepCount,
+                                uint32_t__gapMs);
+}
+
+bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
+                            uint32_t uint32_t__value,
+                            uint32_t *uint32_t__appliedValue)
+{
+    switch (uint8_t__paramId)
+    {
+        case UI_ALARM_PARAM_OV_LED_PERIOD_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_OV_LED_DUTY_PCT:
+            UI_ALARM_T__G__Alarm.uint32_t__ovLedDutyPct = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_OV_BEEP_PERIOD_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_OV_BEEP_DUR_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_OV_BEEP_COUNT:
+            UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_OV_BEEP_GAP_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_BL_LED_PERIOD_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_BL_LED_DUTY_PCT:
+            UI_ALARM_T__G__Alarm.uint32_t__blLedDutyPct = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_BL_BEEP_PERIOD_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_BL_BEEP_DUR_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_BL_BEEP_COUNT:
+            UI_ALARM_T__G__Alarm.uint32_t__blBeepCount = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_BL_BEEP_GAP_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_BEEP_START_PCT:
+            UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_BEEP_DOUBLE_PCT:
+            UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_BEEP_TRIPLE_PCT:
+            UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_BEEP_CRIT_PCT:
+            UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_STD_INTERVAL_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_TRI_INTERVAL_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_CRIT_PERIOD_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_CRIT_DUTY_PCT:
+            UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_CRIT_COUNT:
+            UI_ALARM_T__G__Alarm.uint32_t__runCritCount = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_STD_DUR_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_TRI_DUR_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_CRIT_DUR_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_STD_COUNT:
+            UI_ALARM_T__G__Alarm.uint32_t__runStdCount = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_DOUBLE_COUNT:
+            UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_TRI_COUNT:
+            UI_ALARM_T__G__Alarm.uint32_t__runTriCount = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_RUN_GAP_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__runGapMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_GREEN_PERIOD_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_GREEN_MIN_OFF_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_YELLOW_PERIOD_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_YELLOW_MIN_OFF_MS:
+            UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_OV_THRESH_MV:
+            UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_OV_HYST_MV:
+            UI_ALARM_T__G__Alarm.uint32_t__ovHystMv = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_LOWBAT_THRESH_MV:
+            UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_LOWBAT_CLEAR_MV:
+            UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_PCT_VMIN_MV:
+            UI_ALARM_T__G__Alarm.uint32_t__pctVminMv = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_PCT_VMAX_MV:
+            UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv = uint32_t__value;
+            break;
+        case UI_ALARM_PARAM_BUZZER_MUTE:
+            UI_ALARM_T__G__Alarm.uint32_t__buzzerMute = uint32_t__value;
+            break;
+        default:
+            return false;
+    }
+
+    func__Ui_ClampAlarms();
+    return func__Ui_GetAlarmParam(uint8_t__paramId, uint32_t__appliedValue);
+}
+
+bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
+                            uint32_t *uint32_t__value)
+{
+    switch (uint8_t__paramId)
+    {
+        case UI_ALARM_PARAM_OV_LED_PERIOD_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs;
+            return true;
+        case UI_ALARM_PARAM_OV_LED_DUTY_PCT:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovLedDutyPct;
+            return true;
+        case UI_ALARM_PARAM_OV_BEEP_PERIOD_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs;
+            return true;
+        case UI_ALARM_PARAM_OV_BEEP_DUR_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs;
+            return true;
+        case UI_ALARM_PARAM_OV_BEEP_COUNT:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount;
+            return true;
+        case UI_ALARM_PARAM_OV_BEEP_GAP_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs;
+            return true;
+        case UI_ALARM_PARAM_BL_LED_PERIOD_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs;
+            return true;
+        case UI_ALARM_PARAM_BL_LED_DUTY_PCT:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__blLedDutyPct;
+            return true;
+        case UI_ALARM_PARAM_BL_BEEP_PERIOD_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs;
+            return true;
+        case UI_ALARM_PARAM_BL_BEEP_DUR_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs;
+            return true;
+        case UI_ALARM_PARAM_BL_BEEP_COUNT:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__blBeepCount;
+            return true;
+        case UI_ALARM_PARAM_BL_BEEP_GAP_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs;
+            return true;
+        case UI_ALARM_PARAM_RUN_BEEP_START_PCT:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct;
+            return true;
+        case UI_ALARM_PARAM_RUN_BEEP_DOUBLE_PCT:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct;
+            return true;
+        case UI_ALARM_PARAM_RUN_BEEP_TRIPLE_PCT:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct;
+            return true;
+        case UI_ALARM_PARAM_RUN_BEEP_CRIT_PCT:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct;
+            return true;
+        case UI_ALARM_PARAM_RUN_STD_INTERVAL_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs;
+            return true;
+        case UI_ALARM_PARAM_RUN_TRI_INTERVAL_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs;
+            return true;
+        case UI_ALARM_PARAM_RUN_CRIT_PERIOD_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs;
+            return true;
+        case UI_ALARM_PARAM_RUN_CRIT_DUTY_PCT:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct;
+            return true;
+        case UI_ALARM_PARAM_RUN_CRIT_COUNT:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runCritCount;
+            return true;
+        case UI_ALARM_PARAM_RUN_STD_DUR_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs;
+            return true;
+        case UI_ALARM_PARAM_RUN_TRI_DUR_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs;
+            return true;
+        case UI_ALARM_PARAM_RUN_CRIT_DUR_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs;
+            return true;
+        case UI_ALARM_PARAM_RUN_STD_COUNT:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runStdCount;
+            return true;
+        case UI_ALARM_PARAM_RUN_DOUBLE_COUNT:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount;
+            return true;
+        case UI_ALARM_PARAM_RUN_TRI_COUNT:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runTriCount;
+            return true;
+        case UI_ALARM_PARAM_RUN_GAP_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runGapMs;
+            return true;
+        case UI_ALARM_PARAM_GREEN_PERIOD_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs;
+            return true;
+        case UI_ALARM_PARAM_GREEN_MIN_OFF_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs;
+            return true;
+        case UI_ALARM_PARAM_YELLOW_PERIOD_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs;
+            return true;
+        case UI_ALARM_PARAM_YELLOW_MIN_OFF_MS:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs;
+            return true;
+        case UI_ALARM_PARAM_OV_THRESH_MV:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv;
+            return true;
+        case UI_ALARM_PARAM_OV_HYST_MV:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovHystMv;
+            return true;
+        case UI_ALARM_PARAM_LOWBAT_THRESH_MV:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv;
+            return true;
+        case UI_ALARM_PARAM_LOWBAT_CLEAR_MV:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv;
+            return true;
+        case UI_ALARM_PARAM_PCT_VMIN_MV:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__pctVminMv;
+            return true;
+        case UI_ALARM_PARAM_PCT_VMAX_MV:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv;
+            return true;
+        case UI_ALARM_PARAM_BUZZER_MUTE:
+            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__buzzerMute;
+            return true;
+        default:
+            return false;
+    }
+}
+
 /* ==================== Battery Voltage To Percent / تبدیل ولتاژ باتری به درصد ==================== */
 
 /**
@@ -53,23 +753,28 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
     uint32_t uint32_t__scaledOffset;
     uint8_t uint8_t__batteryPercent;
 
-    if (uint32_t__batteryMv <= APP_CONFIG.ui_bat_v_min_mv)
+    /* [EN] v1.16: the percent map is runtime (ids 74/75), clamped to a
+       strictly positive range; the range==0 guard below stays as a belt.
+       [FA] نسخه ۱.۱۶: نگاشت درصد زمان‌اجرا است (۷۴/۷۵). */
+    if (uint32_t__batteryMv <= UI_ALARM_T__G__Alarm.uint32_t__pctVminMv)
     {
         return 0u;
     }
 
-    if (uint32_t__batteryMv >= APP_CONFIG.ui_bat_v_max_mv)
+    if (uint32_t__batteryMv >= UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv)
     {
         return UI_PERCENT_FULL;
     }
 
     /* [EN] Step 1: range = Vmax - Vmin
        [FA] گام ۱: بازه ولتاژ */
-    uint32_t__voltageRangeMv = APP_CONFIG.ui_bat_v_max_mv - APP_CONFIG.ui_bat_v_min_mv;
+    uint32_t__voltageRangeMv = UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv -
+                               UI_ALARM_T__G__Alarm.uint32_t__pctVminMv;
 
     /* [EN] Step 2: offset = Vbat - Vmin
        [FA] گام ۲: فاصله از کف */
-    uint32_t__voltageOffsetMv = uint32_t__batteryMv - APP_CONFIG.ui_bat_v_min_mv;
+    uint32_t__voltageOffsetMv = uint32_t__batteryMv -
+                                UI_ALARM_T__G__Alarm.uint32_t__pctVminMv;
 
     if (uint32_t__voltageRangeMv == 0u)
     {
@@ -654,15 +1359,23 @@ static void func__Ui_UpdateBatteryRunGreenBlink(uint32_t uint32_t__greenOnMs, ui
  */
 static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
 {
+    /* [EN] v1.16: the overvoltage threshold (id 70) and its hysteresis
+       (id 71) are runtime; clear = thresh - hyst, no underflow (71 <=
+       2000 < 24000 <= 70 by clamp). The 21 V / 20 V input-present band
+       stays a fixed wiring constant.
+       [FA] آستانه/هیسترزیس اضافه‌ولتاژ زمان‌اجرا (۷۰/۷۱)؛ باند اتصال
+       ورودی ثابت می‌ماند. */
     if (BOOL__G__UiInputOverVoltage == false)
     {
-        if (uint32_t__inputVoltageMv > UI_INPUT_OVERVOLTAGE_THRESHOLD_MV)
+        if (uint32_t__inputVoltageMv > UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv)
         {
             BOOL__G__UiInputOverVoltage = true;
             TICKTYPE_T__G__UiInputOverVoltageStartTick = osKernelGetTickCount();
         }
     }
-    else if (uint32_t__inputVoltageMv <= UI_INPUT_OVERVOLTAGE_CLEAR_THRESHOLD_MV)
+    else if (uint32_t__inputVoltageMv <=
+             (UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv -
+              UI_ALARM_T__G__Alarm.uint32_t__ovHystMv))
     {
         BOOL__G__UiInputOverVoltage = false;
         (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
@@ -714,9 +1427,10 @@ static void func__Ui_ScenarioInputOverVoltage_Tick(void)
 
     ticktype__nowTick = osKernelGetTickCount();
     uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(ticktype__nowTick - TICKTYPE_T__G__UiInputOverVoltageStartTick);
-    uint32_t__phaseMs = uint32_t__elapsedMs % UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS;
+    uint32_t__phaseMs = uint32_t__elapsedMs % UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs;
 
-    uint64_t__redDutyProduct = (uint64_t)UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS * UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT;
+    uint64_t__redDutyProduct = (uint64_t)UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs *
+                               UI_ALARM_T__G__Alarm.uint32_t__ovLedDutyPct;
     uint32_t__redOnMs = (uint32_t)(uint64_t__redDutyProduct / UI_PERCENT_SCALE);
     bool__redOn = (uint32_t__phaseMs < uint32_t__redOnMs);
 
@@ -724,11 +1438,14 @@ static void func__Ui_ScenarioInputOverVoltage_Tick(void)
     func__yellow(false);
     func__red(bool__redOn);
 
-    (void)func__Ui_Buzzer_Tick(
-        UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS,
-        (uint8_t)UI_INPUT_OVERVOLTAGE_BEEP_DUTY_PERCENT,
-        (uint8_t)UI_INPUT_OVERVOLTAGE_BEEP_COUNT,
-        UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS);
+    (void)func__Ui_Buzzer_Gated(
+        UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs,
+        func__Ui_BeepDutyPercent(UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs,
+                                 UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs,
+                                 UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount,
+                                 UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs),
+        (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount,
+        UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs);
 }
 
 /* ==================== Scenario BatLost Tick / تیک سناریوی قطع باتری ==================== */
@@ -764,23 +1481,28 @@ void func__Ui_ScenarioBatLost_Tick(void)
 
     uint32_t__nowTick   = osKernelGetTickCount();
     uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(uint32_t__nowTick);
-    uint32_t__phaseMs   = uint32_t__elapsedMs % UI_BAT_LOST_LED_PERIOD_MS;
+    uint32_t__phaseMs   = uint32_t__elapsedMs % UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs;
 
-    /* [EN] 0..50% of the period = ON, 50..100% = OFF -> 500/500 ms fast blink.
-       [FA] نیمه اول دوره روشن، نیمه دوم خاموش ⇒ چشمک تند ۵۰۰/۵۰۰. */
+    /* [EN] First duty% of the period = ON (default 0..50% -> 500/500 ms
+       fast blink); v1.16 reads the live period/duty (ids 44/45).
+       [FA] duty٪ اول دوره روشن؛ نسخه ۱.۱۶ دوره/دیوتی زنده (۴۴/۴۵). */
     bool__redOn = (uint32_t__phaseMs <
-                   ((UI_BAT_LOST_LED_PERIOD_MS * UI_BAT_LOST_LED_DUTY_PERCENT) /
+                   ((UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs *
+                     UI_ALARM_T__G__Alarm.uint32_t__blLedDutyPct) /
                     UI_PERCENT_SCALE));
 
     func__green(true);
     func__yellow(false);
     func__red(bool__redOn);
 
-    (void)func__Ui_Buzzer_Tick(
-        UI_BAT_LOST_BEEP_PERIOD_MS,
-        (uint8_t)UI_BAT_LOST_BEEP_DUTY_PERCENT,
-        (uint8_t)UI_BAT_LOST_BEEP_COUNT,
-        UI_BAT_LOST_BEEP_GAP_MS);
+    (void)func__Ui_Buzzer_Gated(
+        UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs,
+        func__Ui_BeepDutyPercent(UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs,
+                                 UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs,
+                                 UI_ALARM_T__G__Alarm.uint32_t__blBeepCount,
+                                 UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs),
+        (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__blBeepCount,
+        UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs);
 }
 
 /* ==================== Scenario InputOk / سناریوی ورودی عادی ==================== */
@@ -798,7 +1520,7 @@ void func__Ui_ScenarioInputOk(void)
     func__green(true);
     func__red(false);
     func__yellow(false);
-    (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+    (void)func__Ui_Buzzer_Gated(0u, 0u, 0u, 0u);
 
     /* [EN] InputOk is steady green, no blink — return immediately. The UI task's 10ms loop provides the poll period,
          so a 500ms blocking delay inside the scenario is not needed and would slow UI reaction.
@@ -824,7 +1546,7 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 
     func__Ui_ResetBatteryCriticalBeep();
     func__Ui_ResetBatteryRunGreenBlink();
-    (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+    (void)func__Ui_Buzzer_Gated(0u, 0u, 0u, 0u);
 
     /* [EN] Charging yellow timing uses hysteresis 5%: stable only moves when |raw-stable|>=5. v_bat is PA3 / v_bat24_mv.
        [FA] زمان‌بندی زرد شارژ با هیسترزیس ۵٪: پایدار فقط وقتی اختلاف حداقل ۵ باشد به‌روز می‌شود. */
@@ -858,19 +1580,19 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
        کوتاه‌تر؛ با ۵٪ مانده، ۵۰ms از ۱۰۰۰ms چشمک می‌زند و باتری خالی زرد را
        تقریباً دائم روشن نگه می‌دارد. */
     uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__stablePercent;
-    uint32_t__periodPerPercent = APP_CONFIG.ui_charging_blink_period_ms / UI_PERCENT_SCALE;
+    uint32_t__periodPerPercent = UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs / UI_PERCENT_SCALE;
     uint32_t__yellowOnMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
 
-    if (uint32_t__yellowOnMs < APP_CONFIG.ui_charging_yellow_min_off_ms)
+    if (uint32_t__yellowOnMs < UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs)
     {
-        uint32_t__yellowOnMs = APP_CONFIG.ui_charging_yellow_min_off_ms;
+        uint32_t__yellowOnMs = UI_ALARM_T__G__Alarm.uint32_t__yellowMinOffMs;
     }
-    if (uint32_t__yellowOnMs > APP_CONFIG.ui_charging_blink_period_ms)
+    if (uint32_t__yellowOnMs > UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs)
     {
-        uint32_t__yellowOnMs = APP_CONFIG.ui_charging_blink_period_ms;
+        uint32_t__yellowOnMs = UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs;
     }
 
-    uint32_t__yellowOffMs = APP_CONFIG.ui_charging_blink_period_ms - uint32_t__yellowOnMs;
+    uint32_t__yellowOffMs = UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs - uint32_t__yellowOnMs;
 
     func__Ui_UpdateChargingYellowBlink(uint32_t__yellowOnMs, uint32_t__yellowOffMs);
 }
@@ -911,7 +1633,7 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     /* [EN] Critical 0% uses stable percent: one 10s beep, then LEDs off until battery exits critical area.
        Noise 0<->1 does not restart the beep because stable 0 stays 0 until raw>=2.
        [FA] ۰٪ بحرانی با درصد پایدار: یک بوق ۱۰ ثانیه‌ای فقط یک بار، سپس LED خاموش تا خروج از ناحیه بحرانی. */
-    if (uint8_t__stablePercent < UI_BATTERY_RUN_BEEP_CRITICAL_PERCENT)
+    if (uint8_t__stablePercent < (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct)
     {
         func__Ui_ResetBatteryRunGreenBlink();
         func__green(false);
@@ -920,7 +1642,7 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 
         if (BOOL__G__UiBatteryCriticalBeepCompleted == true)
         {
-            (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+            (void)func__Ui_Buzzer_Gated(0u, 0u, 0u, 0u);
             return;
         }
 
@@ -933,19 +1655,19 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
         ticktype__nowTick = osKernelGetTickCount();
         uint32_t__criticalElapsedMs = func__Rtos_TicksToMilliseconds(ticktype__nowTick - TICKTYPE_T__G__UiBatteryCriticalBeepStartTick);
 
-        if (uint32_t__criticalElapsedMs >= UI_BATTERY_RUN_BEEP_CRITICAL_DURATION_MS)
+        if (uint32_t__criticalElapsedMs >= UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs)
         {
-            (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+            (void)func__Ui_Buzzer_Gated(0u, 0u, 0u, 0u);
             BOOL__G__UiBatteryCriticalBeepActive = false;
             BOOL__G__UiBatteryCriticalBeepCompleted = true;
             return;
         }
 
-        (void)func__Ui_Buzzer_Tick(
-            UI_BATTERY_RUN_BEEP_CRITICAL_PERIOD_MS,
-            (uint8_t)UI_BATTERY_RUN_BEEP_CRITICAL_DUTY_PERCENT,
-            (uint8_t)UI_BATTERY_RUN_BEEP_CRITICAL_COUNT,
-            UI_BATTERY_RUN_BEEP_GAP_MS);
+        (void)func__Ui_Buzzer_Gated(
+            UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs,
+            (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct,
+            (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runCritCount,
+            UI_ALARM_T__G__Alarm.uint32_t__runGapMs);
         return;
     }
 
@@ -954,43 +1676,55 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     /* [EN] Non-linear: green blink OFF = remaining * period/100, with min. Input is stablePercent.
        [FA] فرمول غیرخطی سبز چشمک: خاموشی برابر مانده درصد پایدار ضربدر دوره است. */
     uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__stablePercent;
-    uint32_t__periodPerPercent = APP_CONFIG.ui_blink_period_ms / UI_PERCENT_SCALE;
+    uint32_t__periodPerPercent = UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs / UI_PERCENT_SCALE;
     uint32_t__greenOffMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
 
-    if (uint32_t__greenOffMs < APP_CONFIG.ui_green_min_off_ms)
+    if (uint32_t__greenOffMs < UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs)
     {
-        uint32_t__greenOffMs = APP_CONFIG.ui_green_min_off_ms;
+        uint32_t__greenOffMs = UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs;
     }
 
-    uint32_t__greenOnMs = APP_CONFIG.ui_blink_period_ms - uint32_t__greenOffMs;
+    uint32_t__greenOnMs = UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs - uint32_t__greenOffMs;
 
-    if (uint8_t__stablePercent >= UI_BATTERY_RUN_BEEP_START_PERCENT)
+    if (uint8_t__stablePercent >= (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct)
     {
-        (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+        (void)func__Ui_Buzzer_Gated(0u, 0u, 0u, 0u);
     }
-    else if (uint8_t__stablePercent >= UI_BATTERY_RUN_BEEP_DOUBLE_PERCENT)
+    else if (uint8_t__stablePercent >= (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct)
     {
-        (void)func__Ui_Buzzer_Tick(
-            UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS,
-            (uint8_t)UI_BATTERY_RUN_BEEP_STANDARD_DUTY_PERCENT,
-            (uint8_t)UI_BATTERY_RUN_BEEP_STANDARD_COUNT,
-            UI_BATTERY_RUN_BEEP_GAP_MS);
+        /* [EN] v1.16: duty from the live window (dur/count/gap), shared
+           standard duration (id 59) + band count (id 62).
+           [FA] دیوتی از پنجرهٔ زنده. */
+        (void)func__Ui_Buzzer_Gated(
+            UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs,
+            func__Ui_BeepDutyPercent(UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs,
+                                     UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs,
+                                     UI_ALARM_T__G__Alarm.uint32_t__runStdCount,
+                                     UI_ALARM_T__G__Alarm.uint32_t__runGapMs),
+            (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runStdCount,
+            UI_ALARM_T__G__Alarm.uint32_t__runGapMs);
     }
-    else if (uint8_t__stablePercent >= UI_BATTERY_RUN_BEEP_TRIPLE_PERCENT)
+    else if (uint8_t__stablePercent >= (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct)
     {
-        (void)func__Ui_Buzzer_Tick(
-            UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS,
-            (uint8_t)UI_BATTERY_RUN_BEEP_DOUBLE_DUTY_PERCENT,
-            (uint8_t)UI_BATTERY_RUN_BEEP_DOUBLE_COUNT,
-            UI_BATTERY_RUN_BEEP_GAP_MS);
+        (void)func__Ui_Buzzer_Gated(
+            UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs,
+            func__Ui_BeepDutyPercent(UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs,
+                                     UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs,
+                                     UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount,
+                                     UI_ALARM_T__G__Alarm.uint32_t__runGapMs),
+            (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount,
+            UI_ALARM_T__G__Alarm.uint32_t__runGapMs);
     }
     else
     {
-        (void)func__Ui_Buzzer_Tick(
-            UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS,
-            (uint8_t)UI_BATTERY_RUN_BEEP_TRIPLE_DUTY_PERCENT,
-            (uint8_t)UI_BATTERY_RUN_BEEP_TRIPLE_COUNT,
-            UI_BATTERY_RUN_BEEP_GAP_MS);
+        (void)func__Ui_Buzzer_Gated(
+            UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs,
+            func__Ui_BeepDutyPercent(UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs,
+                                     UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs,
+                                     UI_ALARM_T__G__Alarm.uint32_t__runTriCount,
+                                     UI_ALARM_T__G__Alarm.uint32_t__runGapMs),
+            (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runTriCount,
+            UI_ALARM_T__G__Alarm.uint32_t__runGapMs);
     }
 
     func__red(false);
@@ -1057,11 +1791,11 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
     /* [EN] Update global low-battery alarm flag continuously with hysteresis.
        Threshold <21000 sets true, >=21200 clears false, otherwise hold.
        [FA] فلگ سراسری آلارم باتری کم را به‌صورت پیوسته با هیسترزیس به‌روز کن. */
-    if (uint32_t__batteryVoltageMv < UI_LOW_BATTERY_ALARM_THRESHOLD_MV)
+    if (uint32_t__batteryVoltageMv < UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv)
     {
         BOOL__G__UiBatteryAlarmIssued = true;
     }
-    else if (uint32_t__batteryVoltageMv >= UI_LOW_BATTERY_ALARM_CLEAR_MV)
+    else if (uint32_t__batteryVoltageMv >= UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv)
     {
         BOOL__G__UiBatteryAlarmIssued = false;
     }
@@ -1098,9 +1832,9 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
 #endif
 
     uint32_t__batteryClampedMv = uint32_t__batteryVoltageMv;
-    if (uint32_t__batteryClampedMv > APP_CONFIG.ui_bat_v_max_mv)
+    if (uint32_t__batteryClampedMv > UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv)
     {
-        uint32_t__batteryClampedMv = APP_CONFIG.ui_bat_v_max_mv;
+        uint32_t__batteryClampedMv = UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv;
     }
 
     uint8_t__rawPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryClampedMv);

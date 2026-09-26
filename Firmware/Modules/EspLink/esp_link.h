@@ -31,15 +31,20 @@
 /* [EN] Start-of-frame bytes and geometry. / [FA] بایت‌های شروع فریم و هندسه. */
 #define ESPLINK_SOF_BYTE0             0xAAu
 #define ESPLINK_SOF_BYTE1             0x55u
-#define ESPLINK_FRAME_HEADER_SIZE     4u   /* SOF0 + SOF1 + type + len / بدون payload و xor */
+/* [EN] v1.16 (user order 2026-09-26): the length field is u16
+ *      little-endian (len_lo + len_hi) - 77 parameters grow PARAMS_BULK
+ *      to 1 + 77 x 5 = 386 payload bytes, past the old u8 ceiling of
+ *      255. Frame = AA 55 type len_lo len_hi payload xor; the xor covers
+ *      type + both length bytes + payload. Both boards MUST flash
+ *      together (a v1.15 parser reads len_hi as payload).
+ *      / [FA] از v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶): فیلد طول u16 لیتل‌اندین
+ *      است - ۷۷ پارامتر PARAMS_BULK را به ۱ + ۷۷ × ۵ = ۳۸۶ بایت
+ *      می‌رساند که از سقف u8 قبلی (۲۵۵) گذشته است. فریم = AA 55 نوع
+ *      len_lo len_hi و xor روی نوع + هر دو بایت طول + payload. هر دو برد
+ *      باید با هم فلش شوند. */
+#define ESPLINK_FRAME_HEADER_SIZE     5u   /* SOF0 + SOF1 + type + len_lo + len_hi / بدون payload و xor */
 #define ESPLINK_FRAME_CHECKSUM_SIZE   1u
-/* [EN] 192 since v1.15 (user order 2026-09-26): 38 parameters grow
- *      PARAMS_BULK to 1 + 38 x 5 = 191 payload bytes (was 136 for 27
- *      parameters in v1.12). Both boards MUST flash together.
- *      / [FA] از v1.15 (دستور کاربر ۲۰۲۶-۰۹-۲۶): ۳۸ پارامتر PARAMS_BULK را
- *      به 1 + 38 × 5 = ۱۹۱ بایت payload می‌رساند (قبلاً ۱۳۶ برای ۲۷
- *      پارامتر در v1.12). هر دو برد باید با هم فلش شوند. */
-#define ESPLINK_FRAME_MAX_PAYLOAD     192u
+#define ESPLINK_FRAME_MAX_PAYLOAD     512u
 
 /* [EN] Message types. ESP -> STM: SET_PARAM / GET_PARAMS / CAL_REFERENCE
  *      (v1.3). STM -> ESP: TLM_LIVE (periodic), PARAM_REPORT (after each
@@ -180,7 +185,57 @@
 #define ESPLINK_PARAM_CHG_ALARM_HARD_CURRENT_MA      35u  /* u32, mA, def 950,   imax+50..950 (down-only) */
 #define ESPLINK_PARAM_CHG_ALARM_OV_CUTOFF_MV         36u  /* u32, mV, def 15000, over+150..15000 (down-only) */
 #define ESPLINK_PARAM_CHG_ALARM_VALID_FLOOR_MV       37u  /* u32, mV, def 2000,  0..8000 */
-#define ESPLINK_PARAM_COUNT                38u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15) / [FA] پروفایل و آلارم‌ها */
+/* [EN] UI cadence (v1.16, user order 2026-09-26: virtual LEDs with real
+ *      blinking, a buzzer icon with a mute cross, every alarm number
+ *      editable): 38..76 live in the Ui module (ids MUST equal
+ *      UI_ALARM_PARAM_* in ui_led.h). All values re-clamped as a set on
+ *      every write. Id 76 (mute) persists to flash; the one-shot
+ *      BoardTest wiring beep ignores it.
+ * [FA] اعداد UI (v1.16، دستور کاربر ۲۰۲۶-۰۹-۲۶: LED مجازی با چشمک واقعی،
+ *      آیکون بازر با ضربدر میوت، همهٔ اعداد آلارم قابل اصلاح): ۳۸..۷۶ در
+ *      ماژول UI (شناسه‌ها باید برابر UI_ALARM_PARAM_* در ui_led.h باشند).
+ *      هر نوشتن، کل مجموعه را دوباره گیره می‌زند. ۷۶ (میوت) روی فلش
+ *      می‌ماند؛ بوق تست برد آن را نادیده می‌گیرد. */
+#define ESPLINK_PARAM_UI_OV_LED_PERIOD_MS     38u  /* u32, ms, def 1000,  100..10000 */
+#define ESPLINK_PARAM_UI_OV_LED_DUTY_PCT      39u  /* u32, %,  def 50,    0..100 */
+#define ESPLINK_PARAM_UI_OV_BEEP_PERIOD_MS    40u  /* u32, ms, def 10000, 0=off else 1000..600000 */
+#define ESPLINK_PARAM_UI_OV_BEEP_DUR_MS       41u  /* u32, ms, def 1000,  per beep, 0..window-fit */
+#define ESPLINK_PARAM_UI_OV_BEEP_COUNT        42u  /* u32, n,  def 1,     0..10 */
+#define ESPLINK_PARAM_UI_OV_BEEP_GAP_MS       43u  /* u32, ms, def 0,     0..5000, >=100 when 42>1 */
+#define ESPLINK_PARAM_UI_BL_LED_PERIOD_MS     44u  /* u32, ms, def 1000,  100..10000 */
+#define ESPLINK_PARAM_UI_BL_LED_DUTY_PCT      45u  /* u32, %,  def 50,    0..100 */
+#define ESPLINK_PARAM_UI_BL_BEEP_PERIOD_MS    46u  /* u32, ms, def 3000,  0=off else 1000..600000 */
+#define ESPLINK_PARAM_UI_BL_BEEP_DUR_MS       47u  /* u32, ms, def 233,   per beep (legacy 900 window), 0..fit */
+#define ESPLINK_PARAM_UI_BL_BEEP_COUNT        48u  /* u32, n,  def 3,     0..10 */
+#define ESPLINK_PARAM_UI_BL_BEEP_GAP_MS       49u  /* u32, ms, def 100,   0..5000, >=100 when 48>1 */
+#define ESPLINK_PARAM_UI_RUN_BEEP_START_PCT   50u  /* u32, %,  def 40,    0..100, >= 51 */
+#define ESPLINK_PARAM_UI_RUN_BEEP_DOUBLE_PCT  51u  /* u32, %,  def 20,    0..100, <= 50, >= 52 */
+#define ESPLINK_PARAM_UI_RUN_BEEP_TRIPLE_PCT  52u  /* u32, %,  def 10,    0..100, <= 51, >= 53 */
+#define ESPLINK_PARAM_UI_RUN_BEEP_CRIT_PCT    53u  /* u32, %,  def 1,     0..100, <= 52 */
+#define ESPLINK_PARAM_UI_RUN_STD_INTERVAL_MS  54u  /* u32, ms, def 60000, 0=off else 1000..600000 */
+#define ESPLINK_PARAM_UI_RUN_TRI_INTERVAL_MS  55u  /* u32, ms, def 20000, 0=off else 1000..600000 */
+#define ESPLINK_PARAM_UI_RUN_CRIT_PERIOD_MS   56u  /* u32, ms, def 10000, 0=off else 1000..600000 */
+#define ESPLINK_PARAM_UI_RUN_CRIT_DUTY_PCT    57u  /* u32, %,  def 100,   0..100 */
+#define ESPLINK_PARAM_UI_RUN_CRIT_COUNT       58u  /* u32, n,  def 1,     0..10 */
+#define ESPLINK_PARAM_UI_RUN_STD_DUR_MS       59u  /* u32, ms, def 1000,  per beep, 0..fit */
+#define ESPLINK_PARAM_UI_RUN_TRI_DUR_MS       60u  /* u32, ms, def 2000,  per beep, 0..fit */
+#define ESPLINK_PARAM_UI_RUN_CRIT_DUR_MS      61u  /* u32, ms, def 10000, 0..120000 one-shot latch */
+#define ESPLINK_PARAM_UI_RUN_STD_COUNT        62u  /* u32, n,  def 1,     0..10 */
+#define ESPLINK_PARAM_UI_RUN_DOUBLE_COUNT     63u  /* u32, n,  def 2,     0..10 */
+#define ESPLINK_PARAM_UI_RUN_TRI_COUNT        64u  /* u32, n,  def 3,     0..10 */
+#define ESPLINK_PARAM_UI_RUN_GAP_MS           65u  /* u32, ms, def 100,   0..5000, >=100 when any band count>1 */
+#define ESPLINK_PARAM_UI_GREEN_PERIOD_MS      66u  /* u32, ms, def 1000,  100..10000 */
+#define ESPLINK_PARAM_UI_GREEN_MIN_OFF_MS     67u  /* u32, ms, def 10,    0..66 */
+#define ESPLINK_PARAM_UI_YELLOW_PERIOD_MS     68u  /* u32, ms, def 1000,  100..10000 */
+#define ESPLINK_PARAM_UI_YELLOW_MIN_OFF_MS    69u  /* u32, ms, def 10,    0..68 */
+#define ESPLINK_PARAM_UI_OV_THRESH_MV         70u  /* u32, mV, def 28000, 24000..32000 */
+#define ESPLINK_PARAM_UI_OV_HYST_MV           71u  /* u32, mV, def 1000,  0..2000 */
+#define ESPLINK_PARAM_UI_LOWBAT_THRESH_MV     72u  /* u32, mV, def 21000, 15000..24000, <= 73 */
+#define ESPLINK_PARAM_UI_LOWBAT_CLEAR_MV      73u  /* u32, mV, def 21200, 15000..24000, >= 72 */
+#define ESPLINK_PARAM_UI_PCT_VMIN_MV          74u  /* u32, mV, def 21000, 15000..25000, <= 75-100 */
+#define ESPLINK_PARAM_UI_PCT_VMAX_MV          75u  /* u32, mV, def 29000, 25000..32000, >= 74+100 */
+#define ESPLINK_PARAM_UI_BUZZER_MUTE          76u  /* u32, 0/1, def 0,    persisted; scenarios only */
+#define ESPLINK_PARAM_COUNT                77u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16) / [FA] پروفایل، آلارم‌ها و اعداد UI */
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

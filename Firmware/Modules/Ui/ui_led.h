@@ -5,9 +5,14 @@
  *          RTOS simple readable, non-linear formulas, markers above each function in h and c.
  *          [FA] سناریوهای LED ماژول UI - ثابت‌های LED در هدر خودش، فرمول غیرخطی، RTOS ساده.
  *
- * @note    [EN] LED defaults live in this header; app_config.c copies them into const APP_CONFIG, and runtime logic reads APP_CONFIG. Naming __ after type, func__ prefix.
+ * @note    [EN] LED defaults live in this header; since v1.16 the live
+ *          cadence is the persisted ui_alarm_t (ids 38..76) and runtime
+ *          logic reads it - APP_CONFIG keeps only the one-shot BoardTest
+ *          timings. Naming __ after type, func__ prefix.
  *          CMSIS-RTOS2: osDelay allowed, HAL_Delay forbidden. Formulas broken into steps.
- *          [FA] پیش‌فرض‌های LED در این هدر هستند؛ app_config.c آن‌ها را به APP_CONFIG ثابت منتقل می‌کند و منطق زمان اجرا از APP_CONFIG می‌خواند.
+ *          [FA] پیش‌فرض‌های LED در این هدر هستند؛ از v1.16 منطق زمان اجرا
+ *          از ui_alarm_t ماندگار (۳۸..۷۶) می‌خواند و APP_CONFIG فقط
+ *          زمان‌بندی تست برد را نگه می‌دارد.
  */
 
 #ifndef UI_LED_H
@@ -534,5 +539,139 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv);
  * @param  measurement_snapshot_t__snap [EN] Pointer to snapshot, may be NULL / اشاره‌گر snapshot
  */
 void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
+
+/* ==================== Runtime UI cadence (v1.16) ==================== */
+/* [EN] v1.16 (user order 2026-09-26: "draw the LEDs with real blinking,
+ *      show the buzzer with a mute cross, and make every alarm number
+ *      editable - ranges, beep times, beep counts"): the 39 UI_* numbers
+ *      below become runtime ids 38..76, editable from the ESP panel,
+ *      persisted to STM32 flash like the charge profile (~1.5 s debounce)
+ *      and clamped as a set on every write. The macros stay as BOOT
+ *      DEFAULTS only. Id 76 (mute) persists too - a muted board stays
+ *      silent across reboot (the panel shows the mute cross); only the
+ *      one-shot BoardTest wiring beep ignores the mute.
+ * [FA] v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶: «LEDها کشیده شوند با چشمک واقعی،
+ *      بازر با ضربدر میوت نشان داده شود و همهٔ اعداد آلارم - بازه‌ها،
+ *      زمان و تعداد بوق‌ها - قابل اصلاح باشند»): ۳۹ عدد UI_* شناسه‌های
+ *      زمان‌اجرای ۳۸..۷۶ می‌شوند، از پنل ESP قابل اصلاح‌اند، مثل پروفایل
+ *      شارژ روی فلش STM32 می‌مانند و با هر نوشتن به‌صورت مجموعه گیره
+ *      می‌خورند. ماکروها فقط پیش‌فرض بوت می‌مانند. شناسهٔ ۷۶ (میوت) هم
+ *      می‌ماند - بردِ میوت بعد از ریبوت هم ساکت است (پنل ضربدر میوت را
+ *      نشان می‌دهد)؛ فقط بوق یک‌بارهٔ تست سیم‌کشی برد میوت را نادیده
+ *      می‌گیرد. */
+#define UI_ALARM_PARAM_OV_LED_PERIOD_MS    38u  /* ms, 100..10000 */
+#define UI_ALARM_PARAM_OV_LED_DUTY_PCT     39u  /* %, 0..100 */
+#define UI_ALARM_PARAM_OV_BEEP_PERIOD_MS   40u  /* ms, 0=off else 1000..600000 */
+#define UI_ALARM_PARAM_OV_BEEP_DUR_MS      41u  /* ms per beep, 0..window-fit vs 40/42/43 */
+#define UI_ALARM_PARAM_OV_BEEP_COUNT       42u  /* n, 0..10, 0=off */
+#define UI_ALARM_PARAM_OV_BEEP_GAP_MS      43u  /* ms, 0..5000, >=100 when 42>1 */
+#define UI_ALARM_PARAM_BL_LED_PERIOD_MS    44u  /* ms, 100..10000 */
+#define UI_ALARM_PARAM_BL_LED_DUTY_PCT     45u  /* %, 0..100 */
+#define UI_ALARM_PARAM_BL_BEEP_PERIOD_MS   46u  /* ms, 0=off else 1000..600000 */
+#define UI_ALARM_PARAM_BL_BEEP_DUR_MS      47u  /* ms per beep, def 233 (legacy 900 window shared), 0..fit vs 46/48/49 */
+#define UI_ALARM_PARAM_BL_BEEP_COUNT       48u  /* n, 0..10, 0=off */
+#define UI_ALARM_PARAM_BL_BEEP_GAP_MS      49u  /* ms, 0..5000, >=100 when 48>1 */
+#define UI_ALARM_PARAM_RUN_BEEP_START_PCT  50u  /* %, 0..100, >= 51 */
+#define UI_ALARM_PARAM_RUN_BEEP_DOUBLE_PCT 51u  /* %, 0..100, <= 50, >= 52 */
+#define UI_ALARM_PARAM_RUN_BEEP_TRIPLE_PCT 52u  /* %, 0..100, <= 51, >= 53 */
+#define UI_ALARM_PARAM_RUN_BEEP_CRIT_PCT   53u  /* %, 0..100, <= 52 */
+#define UI_ALARM_PARAM_RUN_STD_INTERVAL_MS 54u  /* ms, 0=off else 1000..600000 */
+#define UI_ALARM_PARAM_RUN_TRI_INTERVAL_MS 55u  /* ms, 0=off else 1000..600000 */
+#define UI_ALARM_PARAM_RUN_CRIT_PERIOD_MS  56u  /* ms, 0=off else 1000..600000 */
+#define UI_ALARM_PARAM_RUN_CRIT_DUTY_PCT   57u  /* %, 0..100 */
+#define UI_ALARM_PARAM_RUN_CRIT_COUNT      58u  /* n, 0..10 */
+#define UI_ALARM_PARAM_RUN_STD_DUR_MS      59u  /* ms per beep, 0..fit vs 54/62/63/65 */
+#define UI_ALARM_PARAM_RUN_TRI_DUR_MS      60u  /* ms per beep, 0..fit vs 55/64/65 */
+#define UI_ALARM_PARAM_RUN_CRIT_DUR_MS     61u  /* ms, 0..120000 one-shot latch length */
+#define UI_ALARM_PARAM_RUN_STD_COUNT       62u  /* n, 0..10 */
+#define UI_ALARM_PARAM_RUN_DOUBLE_COUNT    63u  /* n, 0..10 */
+#define UI_ALARM_PARAM_RUN_TRI_COUNT       64u  /* n, 0..10 */
+#define UI_ALARM_PARAM_RUN_GAP_MS          65u  /* ms, 0..5000, >=100 when any band count>1 */
+#define UI_ALARM_PARAM_GREEN_PERIOD_MS     66u  /* ms, 100..10000 */
+#define UI_ALARM_PARAM_GREEN_MIN_OFF_MS    67u  /* ms, 0..66 */
+#define UI_ALARM_PARAM_YELLOW_PERIOD_MS    68u  /* ms, 100..10000 */
+#define UI_ALARM_PARAM_YELLOW_MIN_OFF_MS   69u  /* ms, 0..68 */
+#define UI_ALARM_PARAM_OV_THRESH_MV        70u  /* mV, 24000..32000 */
+#define UI_ALARM_PARAM_OV_HYST_MV          71u  /* mV, 0..2000 */
+#define UI_ALARM_PARAM_LOWBAT_THRESH_MV    72u  /* mV, 15000..24000, <= 73 */
+#define UI_ALARM_PARAM_LOWBAT_CLEAR_MV     73u  /* mV, 15000..24000, >= 72 */
+#define UI_ALARM_PARAM_PCT_VMIN_MV         74u  /* mV, 15000..25000, <= 75-100 */
+#define UI_ALARM_PARAM_PCT_VMAX_MV         75u  /* mV, 25000..32000, >= 74+100 */
+#define UI_ALARM_PARAM_BUZZER_MUTE         76u  /* 0/1, persisted; scenarios only */
+#define UI_ALARM_PARAM_MIN_ID              38u
+#define UI_ALARM_PARAM_MAX_ID              76u
+
+/**
+ * @brief  [EN] Live UI cadence set (one struct, like the fault alarms).
+ *              Scenarios read these, never the macros.
+ *         [FA] مجموعهٔ زندهٔ اعداد UI (یک struct مثل آلارم‌های فالت).
+ *              سناریوها این‌ها را می‌خوانند، نه ماکروها.
+ */
+typedef struct
+{
+    uint32_t uint32_t__ovLedPeriodMs;
+    uint32_t uint32_t__ovLedDutyPct;
+    uint32_t uint32_t__ovBeepPeriodMs;
+    uint32_t uint32_t__ovBeepDurMs;
+    uint32_t uint32_t__ovBeepCount;
+    uint32_t uint32_t__ovBeepGapMs;
+    uint32_t uint32_t__blLedPeriodMs;
+    uint32_t uint32_t__blLedDutyPct;
+    uint32_t uint32_t__blBeepPeriodMs;
+    uint32_t uint32_t__blBeepDurMs;
+    uint32_t uint32_t__blBeepCount;
+    uint32_t uint32_t__blBeepGapMs;
+    uint32_t uint32_t__runBeepStartPct;
+    uint32_t uint32_t__runBeepDoublePct;
+    uint32_t uint32_t__runBeepTriplePct;
+    uint32_t uint32_t__runBeepCritPct;
+    uint32_t uint32_t__runStdIntervalMs;
+    uint32_t uint32_t__runTriIntervalMs;
+    uint32_t uint32_t__runCritPeriodMs;
+    uint32_t uint32_t__runCritDutyPct;
+    uint32_t uint32_t__runCritCount;
+    uint32_t uint32_t__runStdDurMs;
+    uint32_t uint32_t__runTriDurMs;
+    uint32_t uint32_t__runCritDurMs;
+    uint32_t uint32_t__runStdCount;
+    uint32_t uint32_t__runDoubleCount;
+    uint32_t uint32_t__runTriCount;
+    uint32_t uint32_t__runGapMs;
+    uint32_t uint32_t__greenPeriodMs;
+    uint32_t uint32_t__greenMinOffMs;
+    uint32_t uint32_t__yellowPeriodMs;
+    uint32_t uint32_t__yellowMinOffMs;
+    uint32_t uint32_t__ovThreshMv;
+    uint32_t uint32_t__ovHystMv;
+    uint32_t uint32_t__lowBatThreshMv;
+    uint32_t uint32_t__lowBatClearMv;
+    uint32_t uint32_t__pctVminMv;
+    uint32_t uint32_t__pctVmaxMv;
+    uint32_t uint32_t__buzzerMute;
+} ui_alarm_t;
+
+/**
+ * @brief  [EN] Write one UI cadence value (38..76): store, re-clamp the
+ *              whole set, report the applied value.
+ *         [FA] نوشتن یک عدد UI (۳۸..۷۶): ذخیره، گیرهٔ کل مجموعه، گزارش
+ *              مقدار اعمال‌شده.
+ * @param  uint8_t__paramId [EN] 38..76 / شناسه
+ * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
+ * @param  uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
+ * @return bool [EN] true when the id is 38..76 / شناسه معتبر بود
+ */
+bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
+                            uint32_t uint32_t__value,
+                            uint32_t *uint32_t__appliedValue);
+
+/**
+ * @brief  [EN] Read one live UI cadence value (38..76).
+ *         [FA] خواندن یک عدد زندهٔ UI (۳۸..۷۶).
+ * @param  uint8_t__paramId [EN] 38..76 / شناسه
+ * @param  uint32_t__value [EN] Value out / مقدار
+ * @return bool [EN] true when the id is 38..76 / شناسه معتبر بود
+ */
+bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
+                            uint32_t *uint32_t__value);
 
 #endif /* UI_LED_H */

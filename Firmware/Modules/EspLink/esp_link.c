@@ -29,6 +29,9 @@
 #if MODULE_FAULT
 #include "fault.h"
 #endif
+#if MODULE_UI
+#include "ui_led.h"
+#endif
 
 /* ==================== Parser state / وضعیت پارسر ==================== */
 
@@ -41,7 +44,8 @@ typedef enum
     ESP_LINK_PARSE_WAIT_SOF0 = 0,
     ESP_LINK_PARSE_WAIT_SOF1,
     ESP_LINK_PARSE_WAIT_TYPE,
-    ESP_LINK_PARSE_WAIT_LEN,
+    ESP_LINK_PARSE_WAIT_LEN_LO,
+    ESP_LINK_PARSE_WAIT_LEN_HI,
     ESP_LINK_PARSE_WAIT_PAYLOAD,
     ESP_LINK_PARSE_WAIT_CHECKSUM
 } esp_link_parse_state_t;
@@ -49,8 +53,8 @@ typedef enum
 static esp_link_parse_state_t ESP_LINK_PARSE_STATE_T__G__State =
     ESP_LINK_PARSE_WAIT_SOF0;
 static uint8_t UINT8_T__G__FrameType;
-static uint8_t UINT8_T__G__FrameLen;
-static uint8_t UINT8_T__G__PayloadIndex;
+static uint16_t UINT16_T__G__FrameLen;
+static uint16_t UINT16_T__G__PayloadIndex;
 static uint8_t UINT8_T__G__PayloadBuffer[ESPLINK_FRAME_MAX_PAYLOAD];
 static uint8_t UINT8_T__G__Checksum;
 static uint16_t UINT16_T__G__TelemetrySeq = 0u;
@@ -297,6 +301,18 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
 #endif
 
         default:
+#if MODULE_UI
+            /* [EN] UI cadence, ids 38..76 (v1.16): range-dispatched - 39
+                    case labels would drown the switch; Set re-validates.
+               [FA] اعداد UI، شناسه‌های ۳۸..۷۶ (v1.16): دیسپچ بازه‌ای. */
+            if ((uint8_t__paramId >= UI_ALARM_PARAM_MIN_ID) &&
+                (uint8_t__paramId <= UI_ALARM_PARAM_MAX_ID))
+            {
+                return func__Ui_SetAlarmParam(uint8_t__paramId,
+                                              uint32_t__value,
+                                              uint32_t__appliedValue);
+            }
+#endif
             return false;
     }
 }
@@ -436,6 +452,16 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
 #endif
 
         default:
+#if MODULE_UI
+            /* [EN] UI cadence live read, ids 38..76 (v1.16).
+               [FA] خواندن زندهٔ اعداد UI، شناسه‌های ۳۸..۷۶. */
+            if ((uint8_t__paramId >= UI_ALARM_PARAM_MIN_ID) &&
+                (uint8_t__paramId <= UI_ALARM_PARAM_MAX_ID))
+            {
+                return func__Ui_GetAlarmParam(uint8_t__paramId,
+                                              uint32_t__value);
+            }
+#endif
             return false;
     }
 }
@@ -447,43 +473,52 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
  *         [FA] payload را در فریم استاندارد می‌پیچد و ارسال می‌کند.
  * @param  uint8_t__messageType [EN] Message type byte / بایت نوع پیام
  * @param  const uint8_t *uint8_t__payload [EN] Payload / payload
- * @param  uint8_t uint8_t__payloadLength [EN] Payload length / طول payload
+ * @param  uint16_t uint16_t__payloadLength [EN] Payload length, 0..512 (v1.16 u16 length) / طول payload
  */
 static void func__EspLink_SendFrame(uint8_t uint8_t__messageType,
                                     const uint8_t *uint8_t__payload,
-                                    uint8_t uint8_t__payloadLength)
+                                    uint16_t uint16_t__payloadLength)
 {
     uint8_t UINT8_T__A__Frame[ESPLINK_FRAME_HEADER_SIZE +
                               ESPLINK_FRAME_MAX_PAYLOAD +
                               ESPLINK_FRAME_CHECKSUM_SIZE];
     uint16_t uint16_t__cursor;
     uint8_t uint8_t__checksum;
+    uint8_t uint8_t__lenLo;
+    uint8_t uint8_t__lenHi;
     uint32_t uint32_t__i;
 
-    if (uint8_t__payloadLength > ESPLINK_FRAME_MAX_PAYLOAD)
+    if (uint16_t__payloadLength > ESPLINK_FRAME_MAX_PAYLOAD)
     {
         return;
     }
 
+    /* [EN] v1.16: u16 little-endian length (len_lo + len_hi).
+       [FA] نسخه ۱.۱۶: طول u16 لیتل‌اندین. */
+    uint8_t__lenLo = (uint8_t)(uint16_t__payloadLength & 0xFFu);
+    uint8_t__lenHi = (uint8_t)((uint16_t__payloadLength >> 8) & 0xFFu);
+
     UINT8_T__A__Frame[0] = (uint8_t)ESPLINK_SOF_BYTE0;
     UINT8_T__A__Frame[1] = (uint8_t)ESPLINK_SOF_BYTE1;
     UINT8_T__A__Frame[2] = uint8_t__messageType;
-    UINT8_T__A__Frame[3] = uint8_t__payloadLength;
+    UINT8_T__A__Frame[3] = uint8_t__lenLo;
+    UINT8_T__A__Frame[4] = uint8_t__lenHi;
 
-    for (uint32_t__i = 0u; uint32_t__i < (uint32_t)uint8_t__payloadLength; uint32_t__i++)
+    for (uint32_t__i = 0u; uint32_t__i < (uint32_t)uint16_t__payloadLength; uint32_t__i++)
     {
         UINT8_T__A__Frame[ESPLINK_FRAME_HEADER_SIZE + uint32_t__i] =
             uint8_t__payload[uint32_t__i];
     }
 
     uint8_t__checksum = uint8_t__messageType;
-    uint8_t__checksum = (uint8_t)(uint8_t__checksum ^ uint8_t__payloadLength);
-    for (uint32_t__i = 0u; uint32_t__i < (uint32_t)uint8_t__payloadLength; uint32_t__i++)
+    uint8_t__checksum = (uint8_t)(uint8_t__checksum ^ uint8_t__lenLo);
+    uint8_t__checksum = (uint8_t)(uint8_t__checksum ^ uint8_t__lenHi);
+    for (uint32_t__i = 0u; uint32_t__i < (uint32_t)uint16_t__payloadLength; uint32_t__i++)
     {
         uint8_t__checksum = (uint8_t)(uint8_t__checksum ^ uint8_t__payload[uint32_t__i]);
     }
 
-    uint16_t__cursor = (uint16_t)(ESPLINK_FRAME_HEADER_SIZE + uint8_t__payloadLength);
+    uint16_t__cursor = (uint16_t)(ESPLINK_FRAME_HEADER_SIZE + uint16_t__payloadLength);
     UINT8_T__A__Frame[uint16_t__cursor] = uint8_t__checksum;
     uint16_t__cursor = (uint16_t)(uint16_t__cursor + ESPLINK_FRAME_CHECKSUM_SIZE);
 
@@ -545,7 +580,7 @@ static void func__EspLink_SendParamsBulk(void)
 
     UINT8_T__A__Payload[0] = uint8_t__count;
     func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_PARAMS_BULK,
-                            UINT8_T__A__Payload, (uint8_t)uint16_t__cursor);
+                            UINT8_T__A__Payload, uint16_t__cursor);
 }
 
 /**
@@ -698,7 +733,7 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
 
     func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_TLM_LIVE,
                             UINT8_T__A__Payload,
-                            (uint8_t)ESPLINK_TLM_PAYLOAD_SIZE);
+                            (uint16_t)ESPLINK_TLM_PAYLOAD_SIZE);
 }
 
 /* ==================== CAL_REFERENCE (v1.3) / کالیبراسیون از پنل ==================== */
@@ -852,11 +887,11 @@ static bool func__EspLink_ApplyCalReference(uint8_t uint8_t__target,
  *              PARAM_REPORT، پایین را ببین). نوع ناشناخته و طول payload غلط
  *              بی‌صدا کنار گذاشته می‌شود.
  * @param  uint8_t__messageType [EN] Message type / نوع پیام
- * @param  uint8_t__payloadLength [EN] Payload length / طول payload
+ * @param  uint16_t__payloadLength [EN] Payload length (v1.16 u16) / طول payload
  * @param  const uint8_t *uint8_t__payload [EN] Payload / payload
  */
 static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
-                                      uint8_t uint8_t__payloadLength,
+                                      uint16_t uint16_t__payloadLength,
                                       const uint8_t *uint8_t__payload)
 {
     uint32_t uint32_t__value;
@@ -864,7 +899,7 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
 
     if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_SET_PARAM)
     {
-        if (uint8_t__payloadLength == 5u)
+        if (uint16_t__payloadLength == 5u)
         {
             /* [EN] Valid frame: refresh the manual-mode link dead-man
                (protocol v1.2 - while manual is on, 3 s of silence makes
@@ -893,7 +928,7 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
     }
     else if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_GET_PARAMS)
     {
-        if (uint8_t__payloadLength == 0u)
+        if (uint16_t__payloadLength == 0u)
         {
             func__Charger_NotifyEspLinkActivity();
             func__EspLink_SendParamsBulk();
@@ -902,7 +937,7 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
 #if MODULE_CHARGER
     else if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_CAL_REFERENCE)
     {
-        if (uint8_t__payloadLength == 5u)
+        if (uint16_t__payloadLength == 5u)
         {
             /* [EN] Valid frame: refresh the manual-mode link dead-man (see
                SET_PARAM above), then calibrate from the typed DMM value.
@@ -980,11 +1015,25 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
         case ESP_LINK_PARSE_WAIT_TYPE:
             UINT8_T__G__FrameType = uint8_t__byte;
             UINT8_T__G__Checksum = uint8_t__byte;
-            ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_LEN;
+            ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_LEN_LO;
             break;
 
-        case ESP_LINK_PARSE_WAIT_LEN:
-            if (uint8_t__byte > (uint8_t)ESPLINK_FRAME_MAX_PAYLOAD)
+        case ESP_LINK_PARSE_WAIT_LEN_LO:
+            /* [EN] v1.16: u16 little-endian length; the range check runs
+               once both bytes are in.
+               [FA] نسخه ۱.۱۶: طول u16 لیتل‌اندین. */
+            UINT16_T__G__FrameLen = (uint16_t)uint8_t__byte;
+            UINT8_T__G__Checksum =
+                (uint8_t)(UINT8_T__G__Checksum ^ uint8_t__byte);
+            ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_LEN_HI;
+            break;
+
+        case ESP_LINK_PARSE_WAIT_LEN_HI:
+            UINT16_T__G__FrameLen = (uint16_t)(UINT16_T__G__FrameLen |
+                ((uint16_t)((uint16_t)uint8_t__byte << 8)));
+            UINT8_T__G__Checksum =
+                (uint8_t)(UINT8_T__G__Checksum ^ uint8_t__byte);
+            if (UINT16_T__G__FrameLen > (uint16_t)ESPLINK_FRAME_MAX_PAYLOAD)
             {
                 /* [EN] Impossible length: resynchronize.
                    [FA] طول ناممکن: همگام‌سازی دوباره. */
@@ -992,11 +1041,8 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
             }
             else
             {
-                UINT8_T__G__FrameLen = uint8_t__byte;
-                UINT8_T__G__Checksum =
-                    (uint8_t)(UINT8_T__G__Checksum ^ uint8_t__byte);
-                UINT8_T__G__PayloadIndex = 0u;
-                if (UINT8_T__G__FrameLen == 0u)
+                UINT16_T__G__PayloadIndex = 0u;
+                if (UINT16_T__G__FrameLen == 0u)
                 {
                     ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_CHECKSUM;
                 }
@@ -1008,11 +1054,11 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
             break;
 
         case ESP_LINK_PARSE_WAIT_PAYLOAD:
-            UINT8_T__G__PayloadBuffer[UINT8_T__G__PayloadIndex] = uint8_t__byte;
-            UINT8_T__G__PayloadIndex = (uint8_t)(UINT8_T__G__PayloadIndex + 1u);
+            UINT8_T__G__PayloadBuffer[UINT16_T__G__PayloadIndex] = uint8_t__byte;
+            UINT16_T__G__PayloadIndex = (uint16_t)(UINT16_T__G__PayloadIndex + 1u);
             UINT8_T__G__Checksum =
                 (uint8_t)(UINT8_T__G__Checksum ^ uint8_t__byte);
-            if (UINT8_T__G__PayloadIndex >= UINT8_T__G__FrameLen)
+            if (UINT16_T__G__PayloadIndex >= UINT16_T__G__FrameLen)
             {
                 ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_CHECKSUM;
             }
@@ -1022,7 +1068,7 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
             if (uint8_t__byte == UINT8_T__G__Checksum)
             {
                 func__EspLink_HandleFrame(UINT8_T__G__FrameType,
-                                          UINT8_T__G__FrameLen,
+                                          UINT16_T__G__FrameLen,
                                           UINT8_T__G__PayloadBuffer);
             }
             ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;

@@ -411,10 +411,253 @@ def run_batlost_tests():
     assert_true(ov_idx != -1 and bl_idx != -1 and ov_idx < bl_idx, "batlost has priority right after overvoltage")
     print("BatLost scenario PASS")
 
+UI_ALARM_DEFAULTS = {
+    # id: (struct field, boot default) - must match the positional struct init in ui_led.c
+    38: ("ovLedPeriodMs", 1000), 39: ("ovLedDutyPct", 50),
+    40: ("ovBeepPeriodMs", 10000), 41: ("ovBeepDurMs", 1000),
+    42: ("ovBeepCount", 1), 43: ("ovBeepGapMs", 0),
+    44: ("blLedPeriodMs", 1000), 45: ("blLedDutyPct", 50),
+    46: ("blBeepPeriodMs", 3000), 47: ("blBeepDurMs", 233),
+    48: ("blBeepCount", 3), 49: ("blBeepGapMs", 100),
+    50: ("runBeepStartPct", 40), 51: ("runBeepDoublePct", 20),
+    52: ("runBeepTriplePct", 10), 53: ("runBeepCritPct", 1),
+    54: ("runStdIntervalMs", 60000), 55: ("runTriIntervalMs", 20000),
+    56: ("runCritPeriodMs", 10000), 57: ("runCritDutyPct", 100),
+    58: ("runCritCount", 1), 59: ("runStdDurMs", 1000),
+    60: ("runTriDurMs", 2000), 61: ("runCritDurMs", 10000),
+    62: ("runStdCount", 1), 63: ("runDoubleCount", 2),
+    64: ("runTriCount", 3), 65: ("runGapMs", 100),
+    66: ("greenPeriodMs", 1000), 67: ("greenMinOffMs", 10),
+    68: ("yellowPeriodMs", 1000), 69: ("yellowMinOffMs", 10),
+    70: ("ovThreshMv", 28000), 71: ("ovHystMv", 1000),
+    72: ("lowBatThreshMv", 21000), 73: ("lowBatClearMv", 21200),
+    74: ("pctVminMv", 21000), 75: ("pctVmaxMv", 29000),
+    76: ("buzzerMute", 0),
+}
+
+def _w(v, lo, hi): return min(hi, max(lo, v))
+def _period(v): return 0 if v == 0 else _w(v, 1000, 600000)
+def _maxdur(period, count, gap):
+    if count == 0: return period
+    gt = gap * (count - 1)
+    if gt >= period: return 0
+    return (period - gt) // count
+
+def ui_clamp_mirror(s):
+    """[EN] Exact single-pass mirror of func__Ui_ClampAlarms (same order).
+       [FA] آینهٔ دقیق گیرهٔ C با همان ترتیب."""
+    s = dict(s)
+    s["ovLedPeriodMs"] = _w(s["ovLedPeriodMs"], 100, 10000)
+    s["ovLedDutyPct"] = _w(s["ovLedDutyPct"], 0, 100)
+    s["ovBeepPeriodMs"] = _period(s["ovBeepPeriodMs"])
+    s["ovBeepCount"] = _w(s["ovBeepCount"], 0, 10)
+    s["ovBeepGapMs"] = _w(s["ovBeepGapMs"], 0, 5000)
+    if s["ovBeepCount"] > 1 and s["ovBeepPeriodMs"] != 0 and s["ovBeepGapMs"] < 100:
+        s["ovBeepGapMs"] = 100
+    s["ovBeepDurMs"] = _w(s["ovBeepDurMs"], 0, 600000)
+    if s["ovBeepPeriodMs"] != 0:
+        s["ovBeepDurMs"] = min(s["ovBeepDurMs"],
+            _maxdur(s["ovBeepPeriodMs"], s["ovBeepCount"], s["ovBeepGapMs"]))
+    s["blLedPeriodMs"] = _w(s["blLedPeriodMs"], 100, 10000)
+    s["blLedDutyPct"] = _w(s["blLedDutyPct"], 0, 100)
+    s["blBeepPeriodMs"] = _period(s["blBeepPeriodMs"])
+    s["blBeepCount"] = _w(s["blBeepCount"], 0, 10)
+    s["blBeepGapMs"] = _w(s["blBeepGapMs"], 0, 5000)
+    if s["blBeepCount"] > 1 and s["blBeepPeriodMs"] != 0 and s["blBeepGapMs"] < 100:
+        s["blBeepGapMs"] = 100
+    s["blBeepDurMs"] = _w(s["blBeepDurMs"], 0, 600000)
+    if s["blBeepPeriodMs"] != 0:
+        s["blBeepDurMs"] = min(s["blBeepDurMs"],
+            _maxdur(s["blBeepPeriodMs"], s["blBeepCount"], s["blBeepGapMs"]))
+    for k in ["runBeepStartPct", "runBeepDoublePct", "runBeepTriplePct", "runBeepCritPct"]:
+        s[k] = _w(s[k], 0, 100)
+    if s["runBeepDoublePct"] > s["runBeepStartPct"]: s["runBeepDoublePct"] = s["runBeepStartPct"]
+    if s["runBeepTriplePct"] > s["runBeepDoublePct"]: s["runBeepTriplePct"] = s["runBeepDoublePct"]
+    if s["runBeepCritPct"] > s["runBeepTriplePct"]: s["runBeepCritPct"] = s["runBeepTriplePct"]
+    s["runStdIntervalMs"] = _period(s["runStdIntervalMs"])
+    s["runTriIntervalMs"] = _period(s["runTriIntervalMs"])
+    s["runCritPeriodMs"] = _period(s["runCritPeriodMs"])
+    s["runCritDutyPct"] = _w(s["runCritDutyPct"], 0, 100)
+    for k in ["runCritCount", "runStdCount", "runDoubleCount", "runTriCount"]:
+        s[k] = _w(s[k], 0, 10)
+    s["runGapMs"] = _w(s["runGapMs"], 0, 5000)
+    if any(s[k] > 1 for k in ["runCritCount", "runStdCount", "runDoubleCount", "runTriCount"]) \
+            and s["runGapMs"] < 100:
+        s["runGapMs"] = 100
+    s["runStdDurMs"] = _w(s["runStdDurMs"], 0, 600000)
+    if s["runStdIntervalMs"] != 0:
+        s["runStdDurMs"] = min(s["runStdDurMs"], _maxdur(s["runStdIntervalMs"],
+            max(s["runStdCount"], s["runDoubleCount"]), s["runGapMs"]))
+    s["runTriDurMs"] = _w(s["runTriDurMs"], 0, 600000)
+    if s["runTriIntervalMs"] != 0:
+        s["runTriDurMs"] = min(s["runTriDurMs"], _maxdur(s["runTriIntervalMs"],
+            s["runTriCount"], s["runGapMs"]))
+    s["runCritDurMs"] = _w(s["runCritDurMs"], 0, 120000)
+    s["greenPeriodMs"] = _w(s["greenPeriodMs"], 100, 10000)
+    s["greenMinOffMs"] = _w(s["greenMinOffMs"], 0, 10000)
+    if s["greenMinOffMs"] > s["greenPeriodMs"]: s["greenMinOffMs"] = s["greenPeriodMs"]
+    s["yellowPeriodMs"] = _w(s["yellowPeriodMs"], 100, 10000)
+    s["yellowMinOffMs"] = _w(s["yellowMinOffMs"], 0, 10000)
+    if s["yellowMinOffMs"] > s["yellowPeriodMs"]: s["yellowMinOffMs"] = s["yellowPeriodMs"]
+    s["ovThreshMv"] = _w(s["ovThreshMv"], 24000, 32000)
+    s["ovHystMv"] = _w(s["ovHystMv"], 0, 2000)
+    s["lowBatThreshMv"] = _w(s["lowBatThreshMv"], 15000, 24000)
+    s["lowBatClearMv"] = _w(s["lowBatClearMv"], 15000, 24000)
+    if s["lowBatClearMv"] < s["lowBatThreshMv"]: s["lowBatClearMv"] = s["lowBatThreshMv"]
+    if s["lowBatThreshMv"] > s["lowBatClearMv"]: s["lowBatThreshMv"] = s["lowBatClearMv"]
+    s["pctVminMv"] = _w(s["pctVminMv"], 15000, 25000)
+    s["pctVmaxMv"] = _w(s["pctVmaxMv"], 25000, 32000)
+    if s["pctVmaxMv"] < s["pctVminMv"] + 100: s["pctVmaxMv"] = s["pctVminMv"] + 100
+    if s["pctVminMv"] > s["pctVmaxMv"] - 100: s["pctVminMv"] = s["pctVmaxMv"] - 100
+    s["buzzerMute"] = _w(s["buzzerMute"], 0, 1)
+    return s
+
+def _ui_duty(period, dur, count, gap):
+    if period == 0 or dur == 0 or count == 0: return 0
+    window = dur * count + (gap * (count - 1) if count > 1 else 0)
+    if window > period: return 101  # infeasible -> service INVALID (deterministic silence)
+    return (window * 100 + period - 1) // period
+
+def run_ui_alarm_tests():
+    """[EN] v1.16: 39 runtime UI ids 38..76 - defines, boot defaults, exact
+       legacy-sound equivalence, mute gate, read swaps, clamp invariants.
+       [FA] تست شناسه‌های ۳۸..۷۶: دیفاین‌ها، دیفالت بوت، تطابق دقیق صدا،
+       میوت، تعویض خوانش‌ها، نامتغیرهای گیره."""
+    print("\n=== UI alarms v1.16 (ids 38..76) ===")
+    ui_led_h = open(LED_HEADER, "r", encoding="utf-8", errors="ignore").read()
+    ui_led_c = open(os.path.join(BASE_DIR, "ui_led.c"), "r", encoding="utf-8", errors="ignore").read()
+
+    # --- ID defines: contiguous 38..76 + MIN/MAX ---
+    ids = sorted(int(m.group(2)) for m in
+                 re.finditer(r"#define\s+(UI_ALARM_PARAM_\w+)\s+\(?(\d+)\)?u?",
+                             ui_led_h) if "MIN_ID" not in m.group(1) and "MAX_ID" not in m.group(1))
+    assert_equal(ids, list(range(38, 77)), "UI alarm ids contiguous 38..76")
+    assert_equal(defines.get("UI_ALARM_PARAM_MIN_ID"), 38, "MIN_ID 38")
+    assert_equal(defines.get("UI_ALARM_PARAM_MAX_ID"), 76, "MAX_ID 76")
+    assert_true("bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId," in ui_led_h, "Set prototype")
+    assert_true("bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId," in ui_led_h, "Get prototype")
+
+    # --- struct init order: positional init must list the 39 boot defaults in id order ---
+    m = re.search(r"static ui_alarm_t UI_ALARM_T__G__Alarm =\n\{(.*?)\n\};", ui_led_c, re.S)
+    assert_true(m, "alarm struct init found")
+    body = re.sub(r"/\*.*?\*/", "", m.group(1), flags=re.S)
+    inits = [x.strip().rstrip(",").strip() for x in body.strip().split("\n")]
+    inits = [x for x in inits if x]
+    assert_equal(len(inits), 39, "39 init entries")
+    expected_macros = ["UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS", "UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT",
+        "UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS", "UI_INPUT_OVERVOLTAGE_BEEP_DURATION_MS",
+        "UI_INPUT_OVERVOLTAGE_BEEP_COUNT", "UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS",
+        "UI_BAT_LOST_LED_PERIOD_MS", "UI_BAT_LOST_LED_DUTY_PERCENT", "UI_BAT_LOST_BEEP_PERIOD_MS",
+        "233u", "UI_BAT_LOST_BEEP_COUNT", "UI_BAT_LOST_BEEP_GAP_MS",
+        "UI_BATTERY_RUN_BEEP_START_PERCENT", "UI_BATTERY_RUN_BEEP_DOUBLE_PERCENT",
+        "UI_BATTERY_RUN_BEEP_TRIPLE_PERCENT", "UI_BATTERY_RUN_BEEP_CRITICAL_PERCENT",
+        "UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS", "UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS",
+        "UI_BATTERY_RUN_BEEP_CRITICAL_PERIOD_MS", "UI_BATTERY_RUN_BEEP_CRITICAL_DUTY_PERCENT",
+        "UI_BATTERY_RUN_BEEP_CRITICAL_COUNT", "UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS",
+        "UI_BATTERY_RUN_BEEP_TRIPLE_DURATION_MS", "UI_BATTERY_RUN_BEEP_CRITICAL_DURATION_MS",
+        "UI_BATTERY_RUN_BEEP_STANDARD_COUNT", "UI_BATTERY_RUN_BEEP_DOUBLE_COUNT",
+        "UI_BATTERY_RUN_BEEP_TRIPLE_COUNT", "UI_BATTERY_RUN_BEEP_GAP_MS",
+        "UI_BLINK_PERIOD_MS", "UI_GREEN_MIN_OFF_MS", "UI_CHARGING_BLINK_PERIOD_MS",
+        "UI_CHARGING_YELLOW_MIN_OFF_MS", "UI_INPUT_OVERVOLTAGE_THRESHOLD_MV",
+        "UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV", "UI_LOW_BATTERY_ALARM_THRESHOLD_MV",
+        "UI_LOW_BATTERY_ALARM_CLEAR_MV", "UI_BAT_V_MIN_MV", "UI_BAT_V_MAX_MV", "0u"]
+    assert_equal(inits, expected_macros, "init order == id order (positional!)")
+    print("IDs + boot defaults PASS")
+
+    # --- legacy-sound equivalence: ceil duty on defaults must equal the old DUTY macros ---
+    assert_equal(_ui_duty(10000, 1000, 1, 0), 10, "OV duty 10 (legacy macro 10)")
+    assert_equal(_ui_duty(3000, 233, 3, 100), 30, "BatLost duty 30 from 233 ms/beep")
+    assert_equal(calculate_pattern(3000, 30, 3, 100), (900, [233, 233, 234], 100, 2100),
+                 "BatLost default triple unchanged")
+    assert_equal(_ui_duty(60000, 1000, 1, 100), 2, "standard duty 2 (legacy ceil macro)")
+    assert_equal(_ui_duty(60000, 1000, 2, 100), 4, "double duty 4 (legacy ceil macro)")
+    assert_equal(_ui_duty(20000, 2000, 3, 100), 31, "triple duty 31 (legacy ceil macro)")
+    assert_equal(calculate_pattern(60000, 2, 1, 100), (1200, [1200], 0, 58800), "std 1200 ms beep")
+    print("Legacy-sound equivalence PASS")
+
+    # --- read swaps: scenarios read the live struct through the mute gate ---
+    assert_equal(ui_led_c.count("func__Ui_Buzzer_Gated("), 12,
+                 "11 scenario sites + 1 prototype-free def use the mute gate")
+    # direct Tick calls left: 2 inside Gated + 1 all_off + 1 OV-clear explicit off
+    # + 2 BoardTest (mute bypass, still proves the buzzer works at boot)
+    assert_equal(ui_led_c.count("func__Ui_Buzzer_Tick("), 6,
+                 "direct Tick only in Gated/all_off/OV-clear/BoardTest")
+    assert_true("uint32_t__pctVminMv" in ui_led_c and "uint32_t__pctVmaxMv" in ui_led_c,
+                "percent map reads live 74/75")
+    assert_true("uint32_t__ovThreshMv" in ui_led_c and "uint32_t__lowBatThreshMv" in ui_led_c,
+                "thresholds read live 70/72/73")
+    assert_true("APP_CONFIG.ui_blink_period_ms" not in ui_led_c
+                and "APP_CONFIG.ui_charging_blink_period_ms" not in ui_led_c,
+                "no scenario reads blink periods from APP_CONFIG anymore")
+    print("Read swaps + mute gate PASS")
+
+    # --- clamp invariants: defaults no-op + 2000 random states incl. idempotence ---
+    import random
+    defs = {f: d for _, (f, d) in UI_ALARM_DEFAULTS.items()}
+    assert_equal(ui_clamp_mirror(defs), defs, "clamp is a no-op on boot defaults")
+    def check_inv(s, label):
+        assert_true(100 <= s["ovLedPeriodMs"] <= 10000, label + " 38 window")
+        assert_true(0 <= s["ovLedDutyPct"] <= 100, label + " 39 window")
+        assert_true(s["ovBeepPeriodMs"] == 0 or 1000 <= s["ovBeepPeriodMs"] <= 600000, label + " 40")
+        assert_true(100 <= s["blLedPeriodMs"] <= 10000, label + " 44 window")
+        assert_true(s["blBeepPeriodMs"] == 0 or 1000 <= s["blBeepPeriodMs"] <= 600000, label + " 46")
+        assert_true(s["runBeepStartPct"] >= s["runBeepDoublePct"] >= s["runBeepTriplePct"]
+                    >= s["runBeepCritPct"], label + " bands ordered")
+        for k in ["runStdIntervalMs", "runTriIntervalMs", "runCritPeriodMs"]:
+            assert_true(s[k] == 0 or 1000 <= s[k] <= 600000, label + " " + k)
+        assert_true(0 <= s["runCritDutyPct"] <= 100, label + " 57")
+        for k in ["runCritCount", "runStdCount", "runDoubleCount", "runTriCount",
+                  "ovBeepCount", "blBeepCount"]:
+            assert_true(0 <= s[k] <= 10, label + " " + k)
+        for k in ["ovBeepGapMs", "blBeepGapMs", "runGapMs"]:
+            assert_true(0 <= s[k] <= 5000, label + " " + k)
+        if s["ovBeepCount"] > 1 and s["ovBeepPeriodMs"] != 0:
+            assert_true(s["ovBeepGapMs"] >= 100, label + " OV gap rule")
+        if s["blBeepCount"] > 1 and s["blBeepPeriodMs"] != 0:
+            assert_true(s["blBeepGapMs"] >= 100, label + " BL gap rule")
+        if any(s[k] > 1 for k in ["runCritCount", "runStdCount", "runDoubleCount", "runTriCount"]):
+            assert_true(s["runGapMs"] >= 100, label + " run gap rule")
+        for (dur, per, cnt, gap) in [("ovBeepDurMs", "ovBeepPeriodMs", "ovBeepCount", "ovBeepGapMs"),
+                                     ("blBeepDurMs", "blBeepPeriodMs", "blBeepCount", "blBeepGapMs"),
+                                     ("runStdDurMs", "runStdIntervalMs", "runStdCount", "runGapMs"),
+                                     ("runStdDurMs", "runStdIntervalMs", "runDoubleCount", "runGapMs"),
+                                     ("runTriDurMs", "runTriIntervalMs", "runTriCount", "runGapMs")]:
+            d = _ui_duty(s[per], s[dur], s[cnt], s[gap])
+            window = s[dur] * s[cnt] + (s[gap] * (s[cnt] - 1) if s[cnt] > 1 else 0)
+            # sounding (1..100) exactly when period active + dur/count live + window fits
+            expect_sound = (s[per] != 0 and s[dur] > 0 and s[cnt] > 0 and window <= s[per])
+            assert_true((1 <= d <= 100) == expect_sound, label + " " + dur + " sound iff fits")
+            if 1 <= d <= 100:
+                assert_true(calculate_pattern(s[per], d, s[cnt], s[gap]) is not None,
+                            label + " " + dur + " service-valid")
+        assert_true(100 <= s["greenPeriodMs"] <= 10000 and s["greenMinOffMs"] <= s["greenPeriodMs"],
+                    label + " green")
+        assert_true(100 <= s["yellowPeriodMs"] <= 10000 and s["yellowMinOffMs"] <= s["yellowPeriodMs"],
+                    label + " yellow")
+        assert_true(24000 <= s["ovThreshMv"] <= 32000 and 0 <= s["ovHystMv"] <= 2000
+                    and s["ovHystMv"] < s["ovThreshMv"], label + " OV thresh (no underflow)")
+        assert_true(s["lowBatThreshMv"] <= s["lowBatClearMv"], label + " lowbat order")
+        assert_true(s["pctVmaxMv"] >= s["pctVminMv"] + 100, label + " pct range strictly positive")
+        assert_true(s["buzzerMute"] in (0, 1), label + " mute 0/1")
+    random.seed(1616)
+    fields = list(defs.keys())
+    for trial in range(2000):
+        r = {}
+        for f in fields:
+            if "Pct" in f or "Duty" in f: r[f] = random.randint(0, 150)
+            elif "Count" in f or "Mute" in f or "mute" in f: r[f] = random.randint(0, 15)
+            elif "Mv" in f: r[f] = random.randint(0, 40000)
+            else: r[f] = random.randint(0, 700000)
+        c1 = ui_clamp_mirror(r)
+        check_inv(c1, f"trial {trial}")
+        assert_equal(ui_clamp_mirror(c1), c1, f"clamp idempotent trial {trial}")
+    print("Clamp invariants + idempotence (2000 random) PASS")
+
 def main():
     print("=== UI Host Test (buzzer + BatteryRun 2%+0/1 + Charging 5% + Full 100/95 + phase) ===")
     run_assertions()
     print("ALL BUZZER TESTS PASSED")
+    run_ui_alarm_tests()
     run_batlost_tests()
     run_battery_hysteresis_tests()
     run_charging_hysteresis_tests()

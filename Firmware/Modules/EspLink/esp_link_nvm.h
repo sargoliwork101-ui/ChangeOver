@@ -62,28 +62,28 @@
  * [FA] هویت رکورد: «CHO1» + نسخهٔ قالب. تغییر نسخه رکوردهای قدیمی را
  *      نامعتبر می‌کند (اعتبارسنجی می‌شکنند و پیش‌فرض کامپایل می‌ماند). */
 #define ESP_LINK_NVM_MAGIC              0x43484F31u
-/* [EN] v1.15 (user order 2026-09-26): 2. The slot growth (27 -> 38) changes
- *      the record size, so v1 records fail CRC and fall back to the compiled
- *      defaults - a v1.12 profile saved on flash is lost on upgrade.
- * [FA] v1.15 (دستور کاربر ۲۰۲۶-۰۹-۲۶): نسخه ۲. رشد جای‌ها اندازهٔ رکورد را
- *      عوض می‌کند پس رکوردهای v1 در CRC می‌افتند و پیش‌فرض کامپایل می‌ماند -
- *      پروفایل ذخیره‌شدهٔ v1.12 با ارتقا از دست می‌رود. */
-#define ESP_LINK_NVM_VERSION            2u
+/* [EN] v1.16 (user order 2026-09-26): 3. The slot growth (38 -> 77)
+ *      changes the record size, so v2 records fail CRC and fall back to
+ *      the compiled defaults - a v1.15 profile saved on flash is lost on
+ *      upgrade (re-tune from the panel once).
+ * [FA] v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶): نسخه ۳. رشد جای‌ها اندازهٔ رکورد را
+ *      عوض می‌کند پس رکوردهای v2 در CRC می‌افتند و پیش‌فرض کامپایل می‌ماند -
+ *      پروفایل ذخیره‌شدهٔ v1.15 با ارتقا از دست می‌رود (یک‌بار از پنل
+ *      دوباره تنظیم کنید). */
+#define ESP_LINK_NVM_VERSION            3u
 
-/* [EN] Slot cap: 33 persisted parameters today (0..14 = 15 config ids +
- *      20..37 = 7 charge-profile ids + 11 alarm ids). The cap is 38 so a
- *      future parameter can join the set without touching the record layout
- *      (320 B with 38 slots still fits one 1 KiB page with room to grow).
- *      The C harness caught the first draft's wrong count (17) as a silent
- *      early-return that would have programmed stack garbage - keep the
- *      harness in sync.
- * [FA] سقف جای‌ها: امروز ۳۳ پارامتر ذخیره می‌شود (0..14 = ۱۵ شناسهٔ
- *      پیکربندی + 20..37 = ۷ شناسهٔ پروفایل + ۱۱ شناسهٔ آلارم). سقف ۳۸ است
- *      تا پارامتر آینده بدون دست‌زدن به چیدمان رکورد به مجموعه بپیوندد (با
- *      ۳۸ جای ۳۲۰ بایت می‌شود که هنوز در یک صفحهٔ ۱KB جا می‌گیرد). هارنس C
- *      خطای شمارش نسخهٔ اول (۱۷) را به‌صورت بازگشت زودهنگامِ بی‌صدا گرفت که
- *      آشغال استک را فلش می‌کرد - هارنس را هم‌روز نگه دارید. */
-#define ESP_LINK_NVM_ENTRY_MAX          38u
+/* [EN] Slot cap: 72 persisted parameters today (0..14 = 15 config ids +
+ *      20..76 = 7 charge-profile ids + 11 alarm ids + 39 UI cadence ids,
+ *      mute included). The cap is 77 and the record (~632 B with 77
+ *      slots) still fits one 1 KiB page. The C harness caught the first
+ *      draft's wrong count (17) as a silent early-return that would have
+ *      programmed stack garbage - keep the harness in sync.
+ * [FA] سقف جای‌ها: امروز ۷۲ پارامتر ذخیره می‌شود (0..14 = ۱۵ شناسهٔ
+ *      پیکربندی + 20..76 = ۷ شناسهٔ پروفایل + ۱۱ شناسهٔ آلارم + ۳۹ شناسهٔ
+ *      UI با میوت). سقف ۷۷ است و رکورد (حدود ۶۳۲ بایت با ۷۷ جای) هنوز در
+ *      یک صفحهٔ ۱KB جا می‌گیرد. هارنس C خطای شمارش نسخهٔ اول (۱۷) را
+ *      گرفت - هارنس را هم‌روز نگه دارید. */
+#define ESP_LINK_NVM_ENTRY_MAX          77u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
  *      change; a shorter window would rewrite flash on every keystroke burst).
@@ -110,7 +110,7 @@
  *      ببرند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    37u
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    76u
 
 /**
  * @brief  [EN] Is this parameter id persisted to flash? (config + charge
