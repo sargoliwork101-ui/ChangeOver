@@ -95,6 +95,17 @@ static charger_profile_t CHARGER_PROFILE_T__G__Profile =
     CHG_FLOAT_MV, CHG_REENTRY_MV, CHG_BULK_CURRENT_MAX_MA, CHG_TAPER_CURRENT_MA
 };
 
+/* [EN] Runtime charger alarms (v1.15, wire ids 35..37, alarms tab). Boot
+ *      defaults equal the old compile-time ceilings; Set clamps DOWN-ONLY
+ *      (never above the compile maxima) and func__Charger_ClampAlarms()
+ *      re-asserts clearance above the live profile band.
+ * [FA] آلارم‌های زمان‌اجرا شارژر (v1.15، شناسه‌های ۳۵..۳۷، تب آلارم‌ها).
+ *      پیش‌فرض بوت همان سقف‌های کامپایل‌تایم قبلی است؛ Set فقط پایین می‌برد
+ *      (هرگز بالای سقف کامپایل) و ClampAlarms فاصله بالای باند زنده پروفایل را بازمی‌گرداند. */
+static uint32_t UINT32_T__G__ChargerHardFaultMa = CHG_CURRENT_HARD_FAULT_MA;
+static uint32_t UINT32_T__G__ChargerOvCutoffMv = CHG_MAX_VALID_BATTERY_MV;
+static uint32_t UINT32_T__G__ChargerValidFloorMv = CHG_MIN_VALID_BATTERY_MV;
+
 /* [EN] Live diag array - see the layout map in charger.h (user order
  *      2026-09-22: all charge-decision values visible in one Live
  *      Expressions entry).
@@ -487,8 +498,8 @@ static uint32_t func__Charger_ActiveCurrentLimitMa(void)
 
 static bool func__Charger_BatteryVoltageIsValid(uint32_t uint32_t__batteryMv)
 {
-    return ((uint32_t__batteryMv >= CHG_MIN_VALID_BATTERY_MV) &&
-            (uint32_t__batteryMv <= CHG_MAX_VALID_BATTERY_MV));
+    return ((uint32_t__batteryMv >= UINT32_T__G__ChargerValidFloorMv) &&
+            (uint32_t__batteryMv <= UINT32_T__G__ChargerOvCutoffMv));
 }
 
 static void func__Charger_ApplyDuty(uint8_t uint8_t__channelIndex,
@@ -1012,7 +1023,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         return;
     }
 
-    if (uint32_t__currentMa > CHG_CURRENT_HARD_FAULT_MA)
+    if (uint32_t__currentMa > UINT32_T__G__ChargerHardFaultMa)
     {
         /* [EN] Only a hard over-current fault resets the channel; normal
            over-target is handled by the duty band below (no cut/restart).
@@ -1596,7 +1607,7 @@ static void func__Charger_ManualDriveChannel(uint8_t uint8_t__channelIndex,
        نگه ندارد، سوئیچینگ در ۱۵٫۰V متوقف و با افت زیرش خودکار ادامه
        می‌یابد (پروتکل v1.2، بخش 5.2). */
     if (func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,
-                                       uint8_t__channelIndex) >= CHG_MAX_VALID_BATTERY_MV)
+                                       uint8_t__channelIndex) >= UINT32_T__G__ChargerOvCutoffMv)
     {
         func__Charger_ApplyDuty(uint8_t__channelIndex, 0u);
         return;
@@ -2234,14 +2245,53 @@ bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex)
 /* [EN] Interdependency clamps: after ANY profile write the whole set is
  *      re-clamped so it stays physically consistent. The hard safety stack
  *      (CHG_CURRENT_HARD_FAULT_MA 950, CHG_MAX_VALID_BATTERY_MV 15000, the
- *      15.0 V hardware cutoff) stays compile-time and can NOT be raised
- *      from the panel - ABSORB tops out at 14.6 V and the current band at
- *      900 mA (limit = band + 25 < 950).
+ *      15.0 V hardware cutoff) can NEVER be raised above the compile maxima
+ *      from the panel (v1.15: ids 35..37 lower them only) - ABSORB tops
+ *      out at 14.6 V and the current band at 900 mA (limit = band+25).
  * [FA] گیره‌های وابستگی: بعد از هر نوشتن، کل مجموعه دوباره گیره می‌خورد تا
- *      فیزیکیِ سازنده بماند. پشتهٔ ایمنی سخت (۹۵۰mA خطای سخت، ۱۵٫۰V سقف
- *      اعتبار باتری، قطع سخت‌افزاری ۱۵V) کامپایل‌تایم می‌ماند و از پنل
- *      بالا بردنی نیست - ابزورب حداکثر ۱۴٫۶V و باند جریان حداکثر ۹۰۰mA
- *      (سقف = باند + ۲۵ < ۹۵۰). */
+ *      فیزیکیِ سازنده بماند. پشتهٔ ایمنی سخت از پنل هرگز بالای سقف کامپایل
+ *      نمی‌رود (v1.15: شناسه‌های ۳۵..۳۷ فقط پایین می‌برند) - ابزورب حداکثر
+ *      ۱۴٫۶V و باند جریان حداکثر ۹۰۰mA (سقف = باند + ۲۵). */
+
+/* [EN] v1.15 alarm clamps: hard >= imax+50 (never above 950),
+ *      OV >= over+150 (never above 15000), floor in 0..8000.
+ * [FA] گیره‌های آلارم v1.15: خطای سخت بالای imax+50 (هرگز بالای ۹۵۰)،
+ *      قطع OV بالای over+150 (هرگز بالای ۱۵۰۰۰)، فلور در ۰..۸۰۰۰. */
+static void func__Charger_ClampAlarms(void)
+{
+    uint32_t uint32_t__imax =
+        CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa;
+    uint32_t uint32_t__over =
+        CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv;
+    uint32_t uint32_t__floorHard = uint32_t__imax + 50u;
+    uint32_t uint32_t__floorOv = uint32_t__over + 150u;
+
+    if (uint32_t__floorOv < 14000u)
+    {
+        uint32_t__floorOv = 14000u;
+    }
+    if (UINT32_T__G__ChargerHardFaultMa < uint32_t__floorHard)
+    {
+        UINT32_T__G__ChargerHardFaultMa = uint32_t__floorHard;
+    }
+    if (UINT32_T__G__ChargerHardFaultMa > CHG_CURRENT_HARD_FAULT_MA)
+    {
+        UINT32_T__G__ChargerHardFaultMa = CHG_CURRENT_HARD_FAULT_MA;
+    }
+    if (UINT32_T__G__ChargerOvCutoffMv < uint32_t__floorOv)
+    {
+        UINT32_T__G__ChargerOvCutoffMv = uint32_t__floorOv;
+    }
+    if (UINT32_T__G__ChargerOvCutoffMv > CHG_MAX_VALID_BATTERY_MV)
+    {
+        UINT32_T__G__ChargerOvCutoffMv = CHG_MAX_VALID_BATTERY_MV;
+    }
+    if (UINT32_T__G__ChargerValidFloorMv > 8000u)
+    {
+        UINT32_T__G__ChargerValidFloorMv = 8000u;
+    }
+}
+
 static void func__Charger_ClampProfile(void)
 {
     if (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv < 11000u)
@@ -2334,6 +2384,16 @@ static void func__Charger_ClampProfile(void)
         CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa =
             CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa;
     }
+
+    /* [EN] v1.15: cascade - the charger alarms ride on the profile band
+     *      (hard >= imax+50, OV >= over+150) and the fault alarms ride on
+     *      the charger alarms (disconnect < OV). Order: profile -> charger
+     *      alarms -> fault alarms.
+     * [FA] آبشار v1.15: آلارم‌های شارژر سوار باند پروفایل‌اند و آلارم‌های
+     *      فالت سوار آلارم‌های شارژر (قطع زیر OV). ترتیب: پروفایل، آلارم
+     *      شارژر، آلارم فالت. */
+    func__Charger_ClampAlarms();
+    func__Fault_OnSupervisionChange();
 }
 
 bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
@@ -2396,6 +2456,57 @@ bool func__Charger_GetProfileParam(uint8_t uint8_t__paramId,
             return true;
         case CHG_PROFILE_PARAM_TAPER_CURRENT_MA:
             *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa;
+            return true;
+        default:
+            return false;
+    }
+}
+
+/* ==================== Charger Alarms (v1.15, wire ids 35..37) ==================== */
+
+bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
+                                 uint32_t uint32_t__value,
+                                 uint32_t *uint32_t__appliedValue)
+{
+    switch (uint8_t__paramId)
+    {
+        case CHG_ALARM_PARAM_HARD_CURRENT_MA:
+            UINT32_T__G__ChargerHardFaultMa = uint32_t__value;
+            break;
+        case CHG_ALARM_PARAM_OV_CUTOFF_MV:
+            UINT32_T__G__ChargerOvCutoffMv = uint32_t__value;
+            break;
+        case CHG_ALARM_PARAM_VALID_FLOOR_MV:
+            UINT32_T__G__ChargerValidFloorMv = uint32_t__value;
+            break;
+        default:
+            return false;
+    }
+
+    /* [EN] Same cascade as the profile path: charger alarms first (a
+     *      lowered OV floor re-floats here), then the fault alarms ride
+     *      along (disconnect stays < OV).
+     * [FA] همان آبشار مسیر پروفایل: اول آلارم‌های شارژر، بعد آلارم‌های
+     *      فالت سوار می‌شوند (قطع زیر OV می‌ماند). */
+    func__Charger_ClampAlarms();
+    func__Fault_OnSupervisionChange();
+
+    return func__Charger_GetAlarmParam(uint8_t__paramId, uint32_t__appliedValue);
+}
+
+bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
+                                 uint32_t *uint32_t__value)
+{
+    switch (uint8_t__paramId)
+    {
+        case CHG_ALARM_PARAM_HARD_CURRENT_MA:
+            *uint32_t__value = UINT32_T__G__ChargerHardFaultMa;
+            return true;
+        case CHG_ALARM_PARAM_OV_CUTOFF_MV:
+            *uint32_t__value = UINT32_T__G__ChargerOvCutoffMv;
+            return true;
+        case CHG_ALARM_PARAM_VALID_FLOOR_MV:
+            *uint32_t__value = UINT32_T__G__ChargerValidFloorMv;
             return true;
         default:
             return false;

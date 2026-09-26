@@ -26,6 +26,9 @@
 #if MODULE_CHARGER
 #include "charger.h"
 #endif
+#if MODULE_FAULT
+#include "fault.h"
+#endif
 
 /* ==================== Parser state / وضعیت پارسر ==================== */
 
@@ -262,6 +265,35 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
             return func__Charger_SetProfileParam(uint8_t__paramId,
                                                  uint32_t__value,
                                                  uint32_t__appliedValue);
+
+        /* [EN] Charger alarms, ids 35..37 (v1.15, user order 2026-09-26):
+                down-only safety ceilings; same clamp + applied pattern.
+           [FA] آلارم‌های شارژر، شناسه‌های ۳۵..۳۷ (v1.15، دستور کاربر
+                ۲۰۲۶-۰۹-۲۶): سقف‌های ایمنی فقط-پایین؛ همان الگوی گیره و
+                مقدار اعمال‌شده. */
+        case ESPLINK_PARAM_CHG_ALARM_HARD_CURRENT_MA:
+        case ESPLINK_PARAM_CHG_ALARM_OV_CUTOFF_MV:
+        case ESPLINK_PARAM_CHG_ALARM_VALID_FLOOR_MV:
+            return func__Charger_SetAlarmParam(uint8_t__paramId,
+                                               uint32_t__value,
+                                               uint32_t__appliedValue);
+#endif
+#if MODULE_FAULT
+        /* [EN] Fault alarms, ids 27..34 (v1.15): battery/input supervision
+                thresholds; the fault module clamps the whole set.
+           [FA] آلارم‌های فالت، شناسه‌های ۲۷..۳۴ (v1.15): آستانه‌های نظارت
+                باتری/ورودی؛ ماژول فالت کل مجموعه را گیره می‌زند. */
+        case ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_MV:
+        case ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_DEB_MS:
+        case ESPLINK_PARAM_FAULT_ALARM_ABSENT_MV:
+        case ESPLINK_PARAM_FAULT_ALARM_BACK_MV:
+        case ESPLINK_PARAM_FAULT_ALARM_ABSENT_DEB_MS:
+        case ESPLINK_PARAM_FAULT_ALARM_RECOVER_DEB_MS:
+        case ESPLINK_PARAM_FAULT_ALARM_INPUT_MIN_MV:
+        case ESPLINK_PARAM_FAULT_ALARM_INPUT_MAX_MV:
+            return func__Fault_SetAlarmParam(uint8_t__paramId,
+                                             uint32_t__value,
+                                             uint32_t__appliedValue);
 #endif
 
         default:
@@ -383,6 +415,24 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
         case ESPLINK_PARAM_CHG_PROFILE_TAPER_CURRENT_MA:
             return func__Charger_GetProfileParam(uint8_t__paramId,
                                                  uint32_t__value);
+
+        case ESPLINK_PARAM_CHG_ALARM_HARD_CURRENT_MA:
+        case ESPLINK_PARAM_CHG_ALARM_OV_CUTOFF_MV:
+        case ESPLINK_PARAM_CHG_ALARM_VALID_FLOOR_MV:
+            return func__Charger_GetAlarmParam(uint8_t__paramId,
+                                               uint32_t__value);
+#endif
+#if MODULE_FAULT
+        case ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_MV:
+        case ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_DEB_MS:
+        case ESPLINK_PARAM_FAULT_ALARM_ABSENT_MV:
+        case ESPLINK_PARAM_FAULT_ALARM_BACK_MV:
+        case ESPLINK_PARAM_FAULT_ALARM_ABSENT_DEB_MS:
+        case ESPLINK_PARAM_FAULT_ALARM_RECOVER_DEB_MS:
+        case ESPLINK_PARAM_FAULT_ALARM_INPUT_MIN_MV:
+        case ESPLINK_PARAM_FAULT_ALARM_INPUT_MAX_MV:
+            return func__Fault_GetAlarmParam(uint8_t__paramId,
+                                             uint32_t__value);
 #endif
 
         default:

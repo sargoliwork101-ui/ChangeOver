@@ -707,16 +707,17 @@ bool func__Charger_IsAnyChannelActive(void);
  *      the ESP panel tab "تنظیمات شارژ" (wire params 20..26, section 5.7 of
  *      ESP_AGENT_SPEC.md). Boot defaults equal the old compile-time setpoints
  *      (CHG_*_MV / CHG_*_MA below); values live in RAM and reset at boot,
- *      like every other parameter. The hard safety stack stays compile-time:
- *      CHG_CURRENT_HARD_FAULT_MA, CHG_MAX_VALID_BATTERY_MV and the 15.0 V
- *      overvoltage cutoff can NOT be raised from the panel.
+ *      like every other parameter. v1.15: the hard safety stack
+ *      (CHG_CURRENT_HARD_FAULT_MA, CHG_MAX_VALID_BATTERY_MV, the 15.0 V
+ *      overvoltage cutoff) is runtime-LOWERABLE from the alarms tab (ids
+ *      35..37) but can NEVER be raised above the compile maxima.
  * [FA] پروفایل شارژِ قابل‌تنظیم در زمان اجرا، مشترک بین هر دو کانال، از تب
  *      «تنظیمات شارژ» پنل نوشته می‌شود (پارامترهای سیمی ۲۰..۲۶، بخش 5.7
  *      سند). پیش‌فرض بوت همان ست‌پوینت‌های کامپایل‌تایم قبلی است (ماکروهای
  *      CHG_*_MV / CHG_*_MA پایین)؛ مقادیر در RAM می‌مانند و با ریست به
- *      پیش‌فرض برمی‌گردند، مثل بقیهٔ پارامترها. پشتهٔ ایمنی سخت همان
- *      کامپایل‌تایم می‌ماند: CHG_CURRENT_HARD_FAULT_MA و
- *      CHG_MAX_VALID_BATTERY_MV و قطع ۱۵٫۰V از پنل قابل بالا بردن نیستند. */
+ *      پیش‌فرض برمی‌گردند، مثل بقیهٔ پارامترها. v1.15: پشتهٔ ایمنی سخت
+ *      از تب آلارم‌ها (شناسه‌های ۳۵..۳۷) فقط پایین‌بردنی است و هرگز بالای
+ *      سقف کامپایل نمی‌رود. */
 
 /**
  * @brief  [EN] Write one charge-profile parameter (ESP link, ids 20..26:
@@ -752,5 +753,48 @@ bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
  */
 bool func__Charger_GetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t *uint32_t__value);
+
+/* [EN] Charger-owned alarm wire ids (MUST equal ESPLINK_PARAM_CHG_ALARM_* in
+ *      esp_link.h; the host test enforces the match). v1.15: the hard
+ *      current/voltage ceilings become runtime-lowerable (never raisable
+ *      above the compile maxima) from the alarms tab.
+ * [FA] شناسه‌های سیمی آلارم‌های شارژر (باید برابر ESPLINK_PARAM_CHG_ALARM_*
+ *      در esp_link.h باشند؛ تست هاست همین را قفل می‌کند). v1.15: سقف‌های
+ *      سخت جریان/ولتاژ از تب آلارم‌ها فقط پایین‌بردنی‌اند (هرگز بالاتر از
+ *      سقف کامپایل). */
+#define CHG_ALARM_PARAM_HARD_CURRENT_MA       35u  /* [EN] mA, imax+50..950, never above 950 / mA */
+#define CHG_ALARM_PARAM_OV_CUTOFF_MV          36u  /* [EN] mV, over+150..15000, never above 15000 / mV */
+#define CHG_ALARM_PARAM_VALID_FLOOR_MV        37u  /* [EN] mV, 0..8000 / mV */
+
+/**
+ * @brief  [EN] Write one charger alarm parameter (ESP link, ids 35..37:
+ *              35=HARD_CURRENT_MA, 36=OV_CUTOFF_MV, 37=VALID_FLOOR_MV).
+ *              Safety direction is DOWN ONLY: the hard current fault can
+ *              never exceed 950 mA and the OV cutoff never 15000 mV; both
+ *              keep clearance above the live profile band (hard >= imax+50,
+ *              OV >= over+150) so legit regulation can never trip them.
+ *              Returns the APPLIED value (SET_PARAM reports it back).
+ *         [FA] نوشتن یک پارامتر آلارم شارژر (لینک ESP، شناسه‌های ۳۵..۳۷).
+ *              جهت ایمنی فقط پایین است: خطای سخت جریان هرگز بالای ۹۵۰mA و
+ *              قطع OV هرگز بالای ۱۵۰۰۰mV نمی‌رود؛ هر دو بالای
+ *              باند زندهٔ پروفایل فاصله نگه می‌دارند تا تنظیم سالم تریپ نکند.
+ * @param  uint8_t__paramId [EN] 35..37 / شناسهٔ پارامتر
+ * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
+ * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
+ * @return bool [EN] true = id known / شناسه شناخته شده
+ */
+bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
+                                 uint32_t uint32_t__value,
+                                 uint32_t *uint32_t__appliedValue);
+
+/**
+ * @brief  [EN] Read one charger alarm parameter (ESP link GET/PARAMS_BULK).
+ *         [FA] خواندن یک پارامتر آلارم شارژر (لینک ESP).
+ * @param  uint8_t__paramId [EN] 35..37 / شناسهٔ پارامتر
+ * @param  uint32_t *uint32_t__value [EN] Live value out / مقدار زنده
+ * @return bool [EN] true = id known / شناسه شناخته شده
+ */
+bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
+                                 uint32_t *uint32_t__value);
 
 #endif /* CHARGER_H */

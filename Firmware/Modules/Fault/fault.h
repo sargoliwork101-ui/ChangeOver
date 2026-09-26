@@ -161,4 +161,77 @@ bool func__Fault_Any(void);
  */
 void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap);
 
+/* ==================== Runtime alarm thresholds (v1.15) ==================== */
+/* [EN] v1.15 (user order 2026-09-26: "an alarms tab - the number behind
+ *      every alarm must be editable from the ESP panel and stick on the
+ *      board MCU"): the eight FAULT_* numbers above become runtime ids
+ *      27..34, persisted to STM32 flash like the charge profile (~1.5 s
+ *      debounce) and clamped as a set on every write. The macros stay as
+ *      BOOT DEFAULTS only.
+ * [FA] v1.15 (دستور کاربر ۲۰۲۶-۰۹-۲۶: «تب آلارم‌ها - عدد هر آلارم از پنل
+ *      ESP قابل اصلاح باشد و روی میکروی برد بنشیند»): هشت عدد FAULT_*
+ *      شناسه‌های زمان‌اجرای ۲۷..۳۴ می‌شوند، مثل پروفایل شارژ روی فلش
+ *      STM32 می‌مانند و با هر نوشتن به‌صورت مجموعه گیره می‌خورند. ماکروها
+ *      فقط پیش‌فرض بوت می‌مانند. */
+#define FAULT_ALARM_PARAM_DISCONNECT_MV        27u  /* [EN] mV, 14000..15000, >= absorbOver+50, <= ovCutoff-100 / mV */
+#define FAULT_ALARM_PARAM_DISCONNECT_DEB_MS    28u  /* [EN] ms, 50..1000 / ms */
+#define FAULT_ALARM_PARAM_ABSENT_MV            29u  /* [EN] mV, 3000..8000, < back-500 / mV */
+#define FAULT_ALARM_PARAM_BACK_MV              30u  /* [EN] mV, 4000..9000, > absent+500 / mV */
+#define FAULT_ALARM_PARAM_ABSENT_DEB_MS        31u  /* [EN] ms, 100..5000 / ms */
+#define FAULT_ALARM_PARAM_RECOVER_MS           32u  /* [EN] ms, 100..5000 / ms */
+#define FAULT_ALARM_PARAM_INPUT_MIN_MV         33u  /* [EN] mV, 18000..24000, < max-1000 / mV */
+#define FAULT_ALARM_PARAM_INPUT_MAX_MV         34u  /* [EN] mV, 24000..30000, > min+1000 / mV */
+
+/**
+ * @brief  [EN] Live alarm-threshold set (one struct, like the charger
+ *              profile). Evaluate() reads these, never the macros.
+ *         [FA] مجموعهٔ زندهٔ آستانه‌های آلارم (یک struct مثل پروفایل
+ *              شارژر). Evaluate این‌ها را می‌خواند، نه ماکروها.
+ */
+typedef struct
+{
+    uint32_t uint32_t__disconnectMv;
+    uint32_t uint32_t__disconnectDebMs;
+    uint32_t uint32_t__absentMv;
+    uint32_t uint32_t__backMv;
+    uint32_t uint32_t__absentDebMs;
+    uint32_t uint32_t__recoverMs;
+    uint32_t uint32_t__inputMinMv;
+    uint32_t uint32_t__inputMaxMv;
+} fault_alarm_t;
+
+/**
+ * @brief  [EN] Write one alarm threshold (27..34): store, re-clamp the whole
+ *              set, report the applied value.
+ *         [FA] نوشتن یک آستانهٔ آلارم (۲۷..۳۴): ذخیره، گیرهٔ کل مجموعه،
+ *              گزارش مقدار اعمال‌شده.
+ * @param  uint8_t__paramId [EN] 27..34 / شناسه
+ * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
+ * @param  uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
+ * @return bool [EN] true when the id is 27..34 / شناسه معتبر بود
+ */
+bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
+                               uint32_t uint32_t__value,
+                               uint32_t *uint32_t__appliedValue);
+
+/**
+ * @brief  [EN] Read one live alarm threshold (27..34).
+ *         [FA] خواندن یک آستانهٔ زندهٔ آلارم (۲۷..۳۴).
+ * @param  uint8_t__paramId [EN] 27..34 / شناسه
+ * @param  uint32_t__value [EN] Value out / مقدار
+ * @return bool [EN] true when the id is 27..34 / شناسه معتبر بود
+ */
+bool func__Fault_GetAlarmParam(uint8_t uint8_t__paramId,
+                               uint32_t *uint32_t__value);
+
+/**
+ * @brief  [EN] Re-clamp the disconnect threshold after a profile/OV change
+ *              (called from Charger_ClampProfile so the pump rule can never
+ *              be stranded above the OV cutoff or inside the charge band).
+ *         [FA] گیرهٔ دوبارهٔ آستانهٔ قطع بعد از تغییر پروفایل/OV (از
+ *              ClampProfile صدا زده می‌شود تا قانون پمپ هرگز بالای قطع OV
+ *              یا داخل باند شارژ گیر نکند).
+ */
+void func__Fault_OnSupervisionChange(void);
+
 #endif /* FAULT_H */

@@ -33,12 +33,13 @@
 #define ESPLINK_SOF_BYTE1             0x55u
 #define ESPLINK_FRAME_HEADER_SIZE     4u   /* SOF0 + SOF1 + type + len / بدون payload و xor */
 #define ESPLINK_FRAME_CHECKSUM_SIZE   1u
-/* [EN] 144 since v1.12 (user order 2026-09-25): 27 parameters grow
- *      PARAMS_BULK to 1 + 27 x 5 = 136 payload bytes (was 112 for 20
- *      parameters since protocol v1.2). / [FA] از v1.12 (دستور کاربر
- *      ۲۰۲۶-۰۹-۲۵): ۲۷ پارامتر PARAMS_BULK را به 1 + 27 × 5 = ۱۳۶ بایت
- *      payload می‌رساند (قبلاً ۱۱۲ برای ۲۰ پارامتر از پروتکل v1.2). */
-#define ESPLINK_FRAME_MAX_PAYLOAD     144u
+/* [EN] 192 since v1.15 (user order 2026-09-26): 38 parameters grow
+ *      PARAMS_BULK to 1 + 38 x 5 = 191 payload bytes (was 136 for 27
+ *      parameters in v1.12). Both boards MUST flash together.
+ *      / [FA] از v1.15 (دستور کاربر ۲۰۲۶-۰۹-۲۶): ۳۸ پارامتر PARAMS_BULK را
+ *      به 1 + 38 × 5 = ۱۹۱ بایت payload می‌رساند (قبلاً ۱۳۶ برای ۲۷
+ *      پارامتر در v1.12). هر دو برد باید با هم فلش شوند. */
+#define ESPLINK_FRAME_MAX_PAYLOAD     192u
 
 /* [EN] Message types. ESP -> STM: SET_PARAM / GET_PARAMS / CAL_REFERENCE
  *      (v1.3). STM -> ESP: TLM_LIVE (periodic), PARAM_REPORT (after each
@@ -160,7 +161,26 @@
 #define ESPLINK_PARAM_CHG_PROFILE_REENTRY_MV         24u  /* u32, mV, def 12800, 8000..float-300 */
 #define ESPLINK_PARAM_CHG_PROFILE_BULK_CURRENT_MAX_MA 25u /* u32, mA, def 650,   100..900 */
 #define ESPLINK_PARAM_CHG_PROFILE_TAPER_CURRENT_MA   26u  /* u32, mA, def 50,    10..min(300,imax) */
-#define ESPLINK_PARAM_COUNT                27u  /* [EN] 20..26 = charge profile (v1.12) / پروفایل شارژ */
+/* [EN] Alarms tab (v1.15, user order 2026-09-26): 27..34 live in the Fault
+ *      module (ids MUST equal FAULT_ALARM_PARAM_* in fault.h),
+ *      35..37 live in the Charger module (ids MUST equal CHG_ALARM_PARAM_*
+ *      in charger.h). All values re-clamped as a set on every write.
+ * [FA] تب آلارم‌ها (v1.15، دستور کاربر ۲۰۲۶-۰۹-۲۶): ۲۷..۳۴ در ماژول فالت
+ *      (شناسه‌ها باید برابر FAULT_ALARM_PARAM_* در fault.h باشند)، ۳۵..۳۷
+ *      در ماژول شارژر (برابر CHG_ALARM_PARAM_* در charger.h). هر نوشتن،
+ *      کل مجموعه را دوباره گیره می‌زند. */
+#define ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_MV      27u  /* u32, mV, def 14800, over+50..OV-100 */
+#define ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_DEB_MS  28u  /* u32, ms, def 150,   50..1000 */
+#define ESPLINK_PARAM_FAULT_ALARM_ABSENT_MV          29u  /* u32, mV, def 6000,  3000..8000, < back-500 */
+#define ESPLINK_PARAM_FAULT_ALARM_BACK_MV            30u  /* u32, mV, def 7000,  4000..9000, > absent+500 */
+#define ESPLINK_PARAM_FAULT_ALARM_ABSENT_DEB_MS      31u  /* u32, ms, def 1000,  100..5000 */
+#define ESPLINK_PARAM_FAULT_ALARM_RECOVER_DEB_MS     32u  /* u32, ms, def 1000,  100..5000 */
+#define ESPLINK_PARAM_FAULT_ALARM_INPUT_MIN_MV       33u  /* u32, mV, def 21000, 18000..24000, < max-1000 */
+#define ESPLINK_PARAM_FAULT_ALARM_INPUT_MAX_MV       34u  /* u32, mV, def 28000, 24000..30000, > min+1000 */
+#define ESPLINK_PARAM_CHG_ALARM_HARD_CURRENT_MA      35u  /* u32, mA, def 950,   imax+50..950 (down-only) */
+#define ESPLINK_PARAM_CHG_ALARM_OV_CUTOFF_MV         36u  /* u32, mV, def 15000, over+150..15000 (down-only) */
+#define ESPLINK_PARAM_CHG_ALARM_VALID_FLOOR_MV       37u  /* u32, mV, def 2000,  0..8000 */
+#define ESPLINK_PARAM_COUNT                38u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15) / [FA] پروفایل و آلارم‌ها */
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

@@ -74,6 +74,17 @@
 > float and absorb - hatch the bulk zone lightly"): chart height 560 ->
 > 840 (+50%), and the former grey filler between absorb-enter and float
 > is now a labelled Bulk zone (FA+EN) with a light diagonal hatch.
+> v1.15 (2026-09-26, thirteenth order - "an alarms tab: the number behind
+> every alarm editable from the panel, stuck on the board MCU"): params
+> 27..34 = fault supervision thresholds (runtime, persisted, set-clamped),
+> 35..37 = charger safety ceilings (DOWN-ONLY, never above 950 mA /
+> 15000 mV); an alarms SUB-TAB inside settings (v1.15b) with grouped
+> cards, a flicker-free grouped status card with fault explanations,
+> threshold bars, a combo guard (achk) mirroring the firmware clamps, a
+> q2 pending mask in /t for ids 32..37, and JSON settings backup.
+> PARAMS_BULK grows to 38 params (payload limit 144 -> 192), the NVM
+> record to 38 slots (version 1 -> 2, old records fall back to defaults),
+> the bench CSV to 89 columns - BOTH boards reflash together.
 > v1.13 (same day, seventh order - "the
 > voltages are fixed but the currents you read are wrong"): audit of
 > the whole current path confirmed the chain formula, the parse and the
@@ -157,11 +168,12 @@ immediately and drain within ~1 ms.
 
 - `xor` = XOR of `type`, `len`, and every payload byte (starting value 0x00).
 - All multi-byte payload fields are **little-endian**.
-- Max payload length = **144 bytes** (v1.12; was 112 in v1.2 - PARAMS_BULK
-  grew with the charge-profile parameters; a 27-param bulk is 1 + 27 x 5 =
-  136 payload bytes). Longer `len` = invalid frame. The ESP parser must
-  accept up to 144 regardless of STM
-  firmware version.
+- Max payload length = **192 bytes** (v1.15; was 144 in v1.12 -
+  PARAMS_BULK grew with the alarm parameters; a 38-param bulk is
+  1 + 38 x 5 = 191 payload bytes). Longer `len` = invalid frame.
+  The ESP parser must accept up to 192 regardless of STM
+  firmware version. Both boards MUST flash together (a v1.12 board
+  truncates a 191-byte bulk).
 - On checksum error or unknown type: the STM32 silently drops the frame and
   resynchronizes on the next `AA 55`. The ESP should do the same.
 
@@ -174,7 +186,7 @@ immediately and drain within ~1 ms.
 | 0x03 | ESP→STM | CAL_REFERENCE | `[target:u8][ref_mA:u32 LE]` (5 bytes) — one-shot calibration from a typed DMM reading; targets 0/1 = GAIN ch1/2, 2/3 = ETA ch1/2 (v1.3, section 5.4) |
 | 0x10 | STM→ESP | TLM_LIVE | 84 bytes, layout below |
 | 0x11 | STM→ESP | PARAM_REPORT | `[id:u8][value:u32 LE]` — the **applied** value (sent after every accepted SET_PARAM) |
-| 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS; 27 params since v1.12 = 136 payload bytes) |
+| 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS; 38 params since v1.15 = 191 payload bytes) |
 
 Verified example frames (hex):
 
@@ -193,7 +205,7 @@ PARAM_REPORT reply for id=2, applied=1200:
 AA 55 11 05 02 B0 04 00 00 A2
 ```
 
-## 5. Parameter table (IDs 0..18 = protocol v1.1, ID 19 = v1.2, IDs 20..26 = v1.12 append — IDs are final, never renumbered)
+## 5. Parameter table (IDs 0..18 = protocol v1.1, ID 19 = v1.2, IDs 20..26 = v1.12 append, IDs 27..37 = v1.15 append — IDs are final, never renumbered)
 
 | ID | Name | Type | Unit | Default | Range | What it changes |
 |---|---|---|---|---|---|---|
@@ -224,6 +236,17 @@ AA 55 11 05 02 B0 04 00 00 A2
 | 24 | CHG_PROFILE_REENTRY_MV | u32 | mV | 12800 | 8000..float−300 | Float→bulk reentry voltage (battery sagged below this = recharge) |
 | 25 | CHG_PROFILE_BULK_CURRENT_MAX_MA | u32 | mA | 650 | 100..900 | Maximum charge current - top of the regulation band (bottom = this − 20, hard limit = this + 25 < the 950 mA fault) |
 | 26 | CHG_PROFILE_TAPER_CURRENT_MA | u32 | mA | 50 | 10..min(300, imax) | Float-entry taper current - absorb ends when the tail current stays below it for 60 s |
+| 27 | FAULT_ALARM_DISCONNECT_MV | u32 | mV | 14800 | max(14000, over+50)..min(15000, OV−100) | **v1.15 alarms tab** (section 5.9): battery-wire-cut threshold - either half pumped above this while charging = wire cut (latch) |
+| 28 | FAULT_ALARM_DISCONNECT_DEB_MS | u32 | ms | 150 | 50..1000 | Cut-condition debounce before the latch |
+| 29 | FAULT_ALARM_ABSENT_MV | u32 | mV | 6000 | 3000..8000, < back−500 | Battery-absent threshold (either half below = no battery, input-gated) |
+| 30 | FAULT_ALARM_BACK_MV | u32 | mV | 7000 | 4000..9000, > absent+500 | Battery-back threshold (both halves above = healthy again) |
+| 31 | FAULT_ALARM_ABSENT_DEB_MS | u32 | ms | 1000 | 100..5000 | Absent-condition debounce |
+| 32 | FAULT_ALARM_RECOVER_DEB_MS | u32 | ms | 1000 | 100..5000 | Healthy-condition debounce before the latch clears |
+| 33 | FAULT_ALARM_INPUT_MIN_MV | u32 | mV | 21000 | 18000..24000, < max−1000 | Input-present window floor |
+| 34 | FAULT_ALARM_INPUT_MAX_MV | u32 | mV | 28000 | 24000..30000, > min+1000 | Input-present window ceiling |
+| 35 | CHG_ALARM_HARD_CURRENT_MA | u32 | mA | 950 | imax+50..950, **down-only** | Hard over-current fault - channel reset+stop above this; can be LOWERED from the panel, never raised above 950 |
+| 36 | CHG_ALARM_OV_CUTOFF_MV | u32 | mV | 15000 | max(14000, over+150)..15000, **down-only** | Overvoltage cutoff - battery invalid + switching stops above this (also the manual-mode floor); never above 15000 |
+| 37 | CHG_ALARM_VALID_FLOOR_MV | u32 | mV | 2000 | 0..8000 | Battery-validity floor - sense below this = invalid battery |
 
 Notes:
 - Signed values (4..6) travel as two's-complement u32 on the wire.
@@ -244,10 +267,13 @@ Notes:
   Do NOT confuse it with manual test mode (section 5.2): fixed-duty is the
   auto-gated hold, manual mode is the gate-free bench mode.
 - **v1.12: the charge setpoints ARE exposed now** (params 20..26, section
-  5.7) - the compile-time macros remain as BOOT DEFAULTS only. The hard
-  safety stack stays compile-time and is NOT reachable from the ESP: the
-  950 mA hard current fault, the 15.0 V overvoltage cutoff,
-  CHG_MAX_VALID_BATTERY_MV and the JIT trip.
+  5.7) - the compile-time macros remain as BOOT DEFAULTS only.
+- **v1.15: the supervision numbers ARE exposed now** (params 27..37,
+  section 5.9) - the FAULT_*/CHG_* macros remain as BOOT DEFAULTS only.
+  Safety direction is DOWN ONLY for the hard stack: the 950 mA hard
+  current fault and the 15.0 V overvoltage cutoff can be LOWERED from the
+  panel but NEVER raised above the compile maxima. Still compile-time and
+  unreachable: the JIT trip (3 trips / 3000 ms lockout).
 - **v1.2 dual use of IDs 16/18:** while ID 19 = 1 the ID 16/18 values act as
   the MANUAL duty command (applied immediately, no ramp); IDs 15/17 are
   ignored in that state. With ID 19 = 0 the v1.1 fixed-duty semantics of
@@ -632,6 +658,9 @@ one row per recorded step. `-` means "not entered".
 #           eta1,eta2,en1,en2,ceil1,ceil2,fixon1,fix1,fixon2,fix2,manual
 #  [profile] chg_absorb_mv,chg_absorb_enter_mv,chg_absorb_over_mv,
 #            chg_float_mv,chg_reentry_mv,chg_bulk_imax_ma,chg_taper_ma
+#  [alarms]  alm_disc_mv,alm_disc_deb_ms,alm_absent_mv,alm_back_mv,
+#            alm_absent_deb_ms,alm_recover_ms,alm_in_min_mv,alm_in_max_mv,
+#            alm_hard_ma,alm_ov_mv,alm_floor_mv
 #  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,
 #           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1
 #  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,
@@ -643,7 +672,7 @@ one row per recorded step. `-` means "not entered".
 #  duty_list=<...>
 ```
 
-78 columns (v1.12: +7 charge-profile params). Window semantics: every numeric TLM field is averaged over
+89 columns (v1.12: +7 charge-profile params; v1.15: +11 alarm params). Window semantics: every numeric TLM field is averaged over
 the statistics window (= the time the DMM form was open, v1.7); the
 current-chain signals (raw/unf/filt/iest, both channels) additionally
 carry min and max; `duty`/`state`/`seq`/`flags` are the LAST frame's
@@ -783,9 +812,10 @@ a bilingual label, instead of the old nameless grey filler.
   float in [9000, absorb−300], reentry in [8000, float−300], imax in
   [100, 900], taper in [10, min(300, imax)]; derived: regulation band
   bottom = imax−20, active current limit = imax+25.
-- NOT reachable from the panel (compile-time safety stack): the 950 mA
-  hard current fault, the 15.0 V overvoltage cutoff, battery-validity
-  bounds, the JIT trip.
+- v1.15 (section 5.9): the hard current fault, the OV cutoff and the
+  battery-validity floor ARE reachable from the alarms tab (ids 35..37)
+  but DOWN-ONLY - never above 950 mA / 15000 mV. Still compile-time and
+  unreachable: the JIT trip.
 - Manual test mode (5.2) ignores the profile - manual duty is the user's
   own responsibility, only the hardware floor applies.
 
@@ -794,10 +824,10 @@ a bilingual label, instead of the old nameless grey filler.
 User order: "I want to send the constants from the panel to the board and,
 once sent, they must stay there and survive power loss." Scope: EVERY
 settable parameter EXCEPT the transient test modes - that is ids 0..14
-(offsets, gains, filters, eta, charger enables, duty ceilings) and 20..26
-(charge profile). The fixed-duty ids 15..18 and manual test id 19 are
-NEVER persisted: after any reboot the charger is guaranteed to be in its
-automatic mode.
+(offsets, gains, filters, eta, charger enables, duty ceilings), 20..26
+(charge profile) and 27..37 (alarms, since v1.15). The fixed-duty ids
+15..18 and manual test id 19 are NEVER persisted: after any reboot the
+charger is guaranteed to be in its automatic mode.
 
 - Layout: the last two 1 KiB flash pages of the STM32F103C8 (0x0800F800 /
   0x0800FC00); the linker script shrinks application FLASH 64K -> 62K and
@@ -805,8 +835,11 @@ automatic mode.
   overwriting records. Driver: `Firmware/Bsp/Src/bsp_flash.c` (direct
   RM0008 FPEC register sequences - no HAL flash sources needed).
 - Record (esp_link_nvm.c): magic "CHO1" + version + wrap-around u16
-  sequence + up to 27 {id, value} slots + CRC32 over everything before it.
-  A record containing any non-persisted id is rejected WHOLE.
+  sequence + up to 38 {id, value} slots + CRC32 over everything before it.
+  A record containing any non-persisted id is rejected WHOLE. v1.15 bumps
+  the version 1 -> 2 (the slot growth changes the record size, so v1
+  records fail CRC): upgrading LOSES a v1.12 profile saved on flash -
+  both boards reflash together and the panel re-sends the set.
 - Power-cut safety (ping-pong): each save erases the page that does NOT
   hold the newest record, then programs the new record there and verifies
   by read-back. A cut during erase or program can never destroy the
@@ -835,6 +868,50 @@ automatic mode.
   program, bit-flip corruption, hostile record, out-of-window value,
   sequence wrap, transient-id rejection) - see host_test_charger.py
   v1.14 (test_charger_persistence_v114).
+
+### 5.9 Alarms tab (v1.15 — user order 2026-09-26)
+
+User order: "an alarms tab - the number behind every alarm must be
+editable from the ESP panel and stick on the board MCU." An "آلارم‌ها"
+SUB-TAB inside the settings tab (v1.15b - the user moved it in from a
+fourth top-level tab) exposes params 27..37 in three grouped cards,
+each field with a Persian description and the APPLIED board value
+beside it, plus a "بازگردانی پیش‌فرض کارخانهٔ آلارم‌ها" button:
+
+- Battery supervision (27..32): wire-cut threshold + debounce (27/28),
+  absent/back thresholds + debounces (29..32). Boot defaults are the old
+  FAULT_* macros (14800 / 150 / 6000 / 7000 / 1000 / 1000).
+- Input window (33/34): the "input present" range (default 21..28 V).
+- Charger safety ceilings (35..37): hard current fault (950), OV cutoff
+  (15000), validity floor (2000) - DOWN-ONLY from the panel, never above
+  the compile maxima.
+
+A live status card shows four grouped boxes (input, battery low/high,
+filtered current: big live value + threshold line + status pill) plus a
+fault box with a per-bit EXPLANATION of every latched fault bit and what
+to do; three threshold bars (input window, batteries vs absent/back/cut,
+current vs hard fault) sit below. v1.15b builds the skeleton ONCE and
+updates text/color per poll (no rebuild flicker). A panel-side guard
+(achk) mirrors Fault_ClampAlarms + Charger_ClampAlarms: red warning +
+red field + confirm-before-send on invalid combos. Because 38 params no
+longer fit one u32, /t carries a second pending mask `q2` for ids 32..37
+alongside `q` for 0..31. A backup card at the bottom of the settings tab
+exports/imports the applied filter + profile + alarm values (7/8,
+20..26, 27..37) as a JSON file (`changeover-settings.json`).
+
+Firmware clamps (every write re-clamps the whole cascade - profile ->
+charger alarms -> fault alarms, so a profile write can re-float a
+lowered OV or disconnect threshold):
+
+- 27 in [max(14000, over+50), min(15000, OV−100)] (floor wins a transient
+  empty range - no false trips; the OV cutoff still protects);
+- 28 in 50..1000; 29 in 3000..8000 and <= back−500; 30 in 4000..9000 and
+  >= absent+500; 31/32 in 100..5000; 33 in 18000..24000 and <= max−1000;
+  34 in 24000..30000 and >= min+1000; 35 in [imax+50, 950]; 36 in
+  [max(14000, over+150), 15000]; 37 in 0..8000.
+- Boot defaults equal the old compile-time numbers - a reflash with an
+  unreadable (v1) NVM record changes no behavior; applied values persist
+  ~1.5 s after the last change (section 5.8).
 
 ## 6. TLM_LIVE payload layout (84 bytes, little-endian)
 
@@ -920,8 +997,10 @@ raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
   STM RX ring is 256 bytes (DMA-filled) and frames are checksummed, but
   there is no reason to flood.
 - Always respect clamping (the STM32 enforces it anyway).
-- Do not try to change charge voltages/setpoints — they are not in the
-  protocol; requesting an unknown ID is silently ignored.
+- Do not try to change charge voltages/setpoints outside the protocol —
+  requesting an unknown ID is silently ignored. (v1.12+: the setpoints ARE
+  params 20..26; v1.15+: the supervision numbers are 27..37 with 35/36
+  down-only.)
 - Treat loss of telemetry > 1 s as "link down": show a warning, keep last
   values greyed out. (The charger continues autonomously — the STM32 never
   depends on the ESP.)
@@ -953,12 +1032,21 @@ protocol. That flip is intentionally left to the project owner.
 test mode (ID 19, section 5.2), charger state 9 = MANUAL, TLM flags bit
 5, the 3 s link dead-man with manual JIT re-arm, the 15.0 V manual
 overvoltage cutoff, the frozen battery-lost detection during manual, and
-the payload limit 144 (PARAMS_BULK = 27 params / 136 payload bytes since v1.12) are
+the payload limit 192 (PARAMS_BULK = 38 params / 191 payload bytes since v1.15) are
 all in the firmware. The ESP-side constraints that come with it are
 documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 1 s keepalive while ID 19 = 1.
 
 ## 10. Protocol version
+
+v1.15 (2026-09-26, user order of the same day): alarm parameters 27..37
+(section 5.9) - PARAMS_BULK grows to 38 items = 191 payload bytes, so the
+frame payload limit rises 144 -> 192 (the ESP parser must accept 192);
+the NVM record grows to 38 slots with version 1 -> 2 (v1 records fail
+CRC and fall back to compiled defaults); the bench CSV gains the
+[alarms] block (89 columns); /t gains the q2 pending mask for ids
+32..37. No existing ID renumbered, no TLM_LIVE change. BOTH boards MUST
+flash together.
 
 v1.14 (2026-09-25, user order of the same day): parameter persistence in
 STM32 flash + the panel stage graph (section 5.8) - firmware + panel

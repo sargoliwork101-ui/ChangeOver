@@ -26,6 +26,234 @@ static uint32_t UINT32_T__G__BatOverSinceTick    = 0u;
 static uint32_t UINT32_T__G__BatAbsentSinceTick  = 0u;
 static uint32_t UINT32_T__G__BatHealthySinceTick = 0u;
 
+/* ==================== Runtime alarm thresholds (v1.15) ==================== */
+/* [EN] v1.15 (user order 2026-09-26: alarms tab): the eight FAULT_* numbers
+ *      as one live struct - ids 27..34, STM32-flash persisted, clamped as a
+ *      set on every write. Boot = the macro defaults, so a reflash with an
+ *      unreadable NVM record changes no behaviour.
+ * [FA] v1.15 (دستور کاربر ۲۰۲۶-۰۹-۲۶: تب آلارم‌ها): هشت عدد FAULT_* در یک
+ *      struct زنده - شناسه‌های ۲۷..۳۴، ماندگار در فلش، گیرهٔ مجموعه‌ای با
+ *      هر نوشتن. بوت = پیش‌فرض ماکروها. */
+static fault_alarm_t FAULT_ALARM_T__G__Alarm =
+{
+    FAULT_BAT_DISCONNECT_MV,
+    FAULT_BAT_DISCONNECT_DEBOUNCE_MS,
+    FAULT_BAT_ABSENT_MV,
+    FAULT_BATTERY_BACK_MV,
+    FAULT_BAT_ABSENT_DEBOUNCE_MS,
+    FAULT_BAT_RECOVER_MS,
+    FAULT_INPUT_PRESENT_MIN_MV,
+    FAULT_INPUT_PRESENT_MAX_MV
+};
+
+/* [EN] Interdependency clamps: the disconnect threshold must sit strictly
+ *      between the charge band and the OV cutoff (over+50 <= disc <= OV-100)
+ *      so the pump rule can neither false-trip on legit absorb voltages nor
+ *      die under the validity cut; absent/back keep >= 500 mV hysteresis and
+ *      the input window >= 1000 mV. If a transient replay order empties the
+ *      disconnect range, the floor wins (no false trips; the OV cutoff still
+ *      protects the hardware) and the next profile/OV write re-converges it.
+ * [FA] گیره‌های وابستگی: آستانهٔ قطع باید اکیداً بین باند شارژ و قطع OV
+ *      باشد تا قانون پمپ نه روی ابزورب سالم فایر کند نه زیر قطع اعتبار
+ *      بمیرد؛ غیبت/برگشت ≥۵۰۰mV هیسترزیس و پنجرهٔ ورودی ≥۱۰۰۰mV نگه می‌دارند. */
+static void func__Fault_ClampAlarms(void)
+{
+    uint32_t uint32_t__overMv = FAULT_BAT_DISCONNECT_MV;
+    uint32_t uint32_t__ovCutMv = CHG_MAX_VALID_BATTERY_MV;
+    uint32_t uint32_t__floorMv;
+    uint32_t uint32_t__ceilMv;
+
+    (void)func__Charger_GetProfileParam(CHG_PROFILE_PARAM_ABSORB_OVER_MV,
+                                       &uint32_t__overMv);
+    (void)func__Charger_GetAlarmParam(CHG_ALARM_PARAM_OV_CUTOFF_MV,
+                                      &uint32_t__ovCutMv);
+
+    uint32_t__floorMv = 14000u;
+    if ((uint32_t__overMv + 50u) > uint32_t__floorMv)
+    {
+        uint32_t__floorMv = uint32_t__overMv + 50u;
+    }
+    uint32_t__ceilMv = 15000u;
+    if ((uint32_t__ovCutMv > 100u) &&
+        ((uint32_t__ovCutMv - 100u) < uint32_t__ceilMv))
+    {
+        uint32_t__ceilMv = uint32_t__ovCutMv - 100u;
+    }
+    if (uint32_t__floorMv > uint32_t__ceilMv)
+    {
+        uint32_t__ceilMv = uint32_t__floorMv;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv < uint32_t__floorMv)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv = uint32_t__floorMv;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv > uint32_t__ceilMv)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv = uint32_t__ceilMv;
+    }
+
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__disconnectDebMs < 50u)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__disconnectDebMs = 50u;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__disconnectDebMs > 1000u)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__disconnectDebMs = 1000u;
+    }
+
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__absentMv < 3000u)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__absentMv = 3000u;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__absentMv > 8000u)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__absentMv = 8000u;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__backMv < 4000u)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__backMv = 4000u;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__backMv > 9000u)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__backMv = 9000u;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__absentMv >
+        (FAULT_ALARM_T__G__Alarm.uint32_t__backMv - 500u))
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__absentMv =
+            FAULT_ALARM_T__G__Alarm.uint32_t__backMv - 500u;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__backMv <
+        (FAULT_ALARM_T__G__Alarm.uint32_t__absentMv + 500u))
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__backMv =
+            FAULT_ALARM_T__G__Alarm.uint32_t__absentMv + 500u;
+    }
+
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__absentDebMs < 100u)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__absentDebMs = 100u;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__absentDebMs > 5000u)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__absentDebMs = 5000u;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__recoverMs < 100u)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__recoverMs = 100u;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__recoverMs > 5000u)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__recoverMs = 5000u;
+    }
+
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv < 18000u)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv = 18000u;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv > 24000u)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv = 24000u;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv < 24000u)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv = 24000u;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv > 30000u)
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv = 30000u;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv >
+        (FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv - 1000u))
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv =
+            FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv - 1000u;
+    }
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv <
+        (FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv + 1000u))
+    {
+        FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv =
+            FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv + 1000u;
+    }
+}
+
+bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
+                               uint32_t uint32_t__value,
+                               uint32_t *uint32_t__appliedValue)
+{
+    switch (uint8_t__paramId)
+    {
+        case FAULT_ALARM_PARAM_DISCONNECT_MV:
+            FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv = uint32_t__value;
+            break;
+        case FAULT_ALARM_PARAM_DISCONNECT_DEB_MS:
+            FAULT_ALARM_T__G__Alarm.uint32_t__disconnectDebMs = uint32_t__value;
+            break;
+        case FAULT_ALARM_PARAM_ABSENT_MV:
+            FAULT_ALARM_T__G__Alarm.uint32_t__absentMv = uint32_t__value;
+            break;
+        case FAULT_ALARM_PARAM_BACK_MV:
+            FAULT_ALARM_T__G__Alarm.uint32_t__backMv = uint32_t__value;
+            break;
+        case FAULT_ALARM_PARAM_ABSENT_DEB_MS:
+            FAULT_ALARM_T__G__Alarm.uint32_t__absentDebMs = uint32_t__value;
+            break;
+        case FAULT_ALARM_PARAM_RECOVER_MS:
+            FAULT_ALARM_T__G__Alarm.uint32_t__recoverMs = uint32_t__value;
+            break;
+        case FAULT_ALARM_PARAM_INPUT_MIN_MV:
+            FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv = uint32_t__value;
+            break;
+        case FAULT_ALARM_PARAM_INPUT_MAX_MV:
+            FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv = uint32_t__value;
+            break;
+        default:
+            return false;
+    }
+
+    func__Fault_ClampAlarms();
+    return func__Fault_GetAlarmParam(uint8_t__paramId, uint32_t__appliedValue);
+}
+
+bool func__Fault_GetAlarmParam(uint8_t uint8_t__paramId,
+                               uint32_t *uint32_t__value)
+{
+    switch (uint8_t__paramId)
+    {
+        case FAULT_ALARM_PARAM_DISCONNECT_MV:
+            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv;
+            return true;
+        case FAULT_ALARM_PARAM_DISCONNECT_DEB_MS:
+            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__disconnectDebMs;
+            return true;
+        case FAULT_ALARM_PARAM_ABSENT_MV:
+            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__absentMv;
+            return true;
+        case FAULT_ALARM_PARAM_BACK_MV:
+            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__backMv;
+            return true;
+        case FAULT_ALARM_PARAM_ABSENT_DEB_MS:
+            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__absentDebMs;
+            return true;
+        case FAULT_ALARM_PARAM_RECOVER_MS:
+            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__recoverMs;
+            return true;
+        case FAULT_ALARM_PARAM_INPUT_MIN_MV:
+            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv;
+            return true;
+        case FAULT_ALARM_PARAM_INPUT_MAX_MV:
+            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv;
+            return true;
+        default:
+            return false;
+    }
+}
+
+void func__Fault_OnSupervisionChange(void)
+{
+    func__Fault_ClampAlarms();
+}
+
 /**
  * @brief  [EN] Shared debounce helper: returns true once the condition has
  *         been continuously true for uint32_t__milliseconds. Call it only
@@ -197,8 +425,8 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
 
     /* [EN] Case-2 gate: input present and in range (21..28 V).
        [FA] گِیت حالت دوم: ورودی حاضر و در بازه سالم ۲۱ تا ۲۸ ولت. */
-    bool__inputOk = ((measurement_snapshot_t__snap->v_in_mv >= FAULT_INPUT_PRESENT_MIN_MV) &&
-                     (measurement_snapshot_t__snap->v_in_mv <= FAULT_INPUT_PRESENT_MAX_MV));
+    bool__inputOk = ((measurement_snapshot_t__snap->v_in_mv >= FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv) &&
+                     (measurement_snapshot_t__snap->v_in_mv <= FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv));
 
     /* [EN] Case 1: either half pumped above 14.8 V (flyback signature while
        charging with the battery wire cut). No input gate needed - only
@@ -213,9 +441,9 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
     bool__anyOver =
         (func__Charger_IsAnyChannelActive() == true) &&
         (((bool__lowHalfInstalled  == true) &&
-          (uint32_t__lowMv  > FAULT_BAT_DISCONNECT_MV)) ||
+          (uint32_t__lowMv  > FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv)) ||
          ((bool__highHalfInstalled == true) &&
-          (uint32_t__highMv > FAULT_BAT_DISCONNECT_MV)));
+          (uint32_t__highMv > FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv)));
 
     /* [EN] Case 2, user rewrite 2026-09-19 + threshold split 2026-09-22:
        EITHER half below FAULT_BAT_ABSENT_MV (6 V) while the input is fine =
@@ -238,15 +466,15 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
        امکان-لرزش، یک هیسترزیس تمیز ۱V می‌گیرد. */
     bool__anyHalfLow =
         (((bool__lowHalfInstalled  == true) &&
-          (uint32_t__lowMv  < FAULT_BAT_ABSENT_MV)) ||
+          (uint32_t__lowMv  < FAULT_ALARM_T__G__Alarm.uint32_t__absentMv)) ||
          ((bool__highHalfInstalled == true) &&
-          (uint32_t__highMv < FAULT_BAT_ABSENT_MV)));
+          (uint32_t__highMv < FAULT_ALARM_T__G__Alarm.uint32_t__absentMv)));
 
     /* ---------- Rule 1: pumped overvoltage => latch ---------- */
     if ((bool__anyOver == true) &&
         (func__Fault_DebounceDone(&UINT32_T__G__BatOverSinceTick,
                                   uint32_t__nowTick,
-                                  FAULT_BAT_DISCONNECT_DEBOUNCE_MS) == true))
+                                  FAULT_ALARM_T__G__Alarm.uint32_t__disconnectDebMs) == true))
     {
         func__Fault_Set(FAULT_CHARGER_BAT_LOST);
     }
@@ -263,7 +491,7 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
     if ((bool__inputOk == true) && (bool__anyHalfLow == true) &&
         (func__Fault_DebounceDone(&UINT32_T__G__BatAbsentSinceTick,
                                   uint32_t__nowTick,
-                                  FAULT_BAT_ABSENT_DEBOUNCE_MS) == true))
+                                  FAULT_ALARM_T__G__Alarm.uint32_t__absentDebMs) == true))
     {
         func__Fault_Set(FAULT_CHARGER_BAT_LOST);
     }
@@ -294,9 +522,9 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
        آلارم قفل است و یادآوری تکرار می‌شود. */
     bool__batteryTrulyPresent =
         (((bool__lowHalfInstalled  == false) ||
-          (uint32_t__lowMv  >= FAULT_BATTERY_BACK_MV)) &&
+          (uint32_t__lowMv  >= FAULT_ALARM_T__G__Alarm.uint32_t__backMv)) &&
          ((bool__highHalfInstalled == false) ||
-          (uint32_t__highMv >= FAULT_BATTERY_BACK_MV)));
+          (uint32_t__highMv >= FAULT_ALARM_T__G__Alarm.uint32_t__backMv)));
 
     bool__healthy = ((bool__anyOver == false) &&
                      (bool__batteryTrulyPresent == true));
@@ -307,7 +535,7 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
     }
     else if (func__Fault_DebounceDone(&UINT32_T__G__BatHealthySinceTick,
                                       uint32_t__nowTick,
-                                      FAULT_BAT_RECOVER_MS) == true)
+                                      FAULT_ALARM_T__G__Alarm.uint32_t__recoverMs) == true)
     {
         /* [EN] Both halves back inside the valid window for the settle time:
            the battery is really connected again. The charger mirrors the

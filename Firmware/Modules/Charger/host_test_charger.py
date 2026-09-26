@@ -528,8 +528,8 @@ def test_setpoints_and_timing():
           "func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2])" in meas_c_txt,
           "each normalised current channel must convert through its OWN per-channel function")
     check("bool__anyHalfLow" in (ROOT / "Firmware/Modules/Fault/fault.c").read_text() and
-          "uint32_t__lowMv  < FAULT_BAT_ABSENT_MV" in (ROOT / "Firmware/Modules/Fault/fault.c").read_text(),
-          "rule 2 must be EITHER half below FAULT_BAT_ABSENT_MV = 6 V with recovery kept at 7 V (user threshold split 2026-09-22; was ALL six-V: silent on a single cut lead)")
+          "uint32_t__lowMv  < FAULT_ALARM_T__G__Alarm.uint32_t__absentMv" in (ROOT / "Firmware/Modules/Fault/fault.c").read_text(),
+          "rule 2 must be EITHER half below the absent threshold (boot default FAULT_BAT_ABSENT_MV = 6 V, runtime id 29 since v1.15) with recovery kept at 7 V (user threshold split 2026-09-22; was ALL six-V: silent on a single cut lead)")
     check("bool__batteryTrulyPresent" in (ROOT / "Firmware/Modules/Fault/fault.c").read_text(), "bat-lost clear must require BOTH halves >= FAULT_BATTERY_BACK_MV (7 V) - one lead cut keeps its half below 7 V so the alarm repeats until reconnect (one-burst bug)")
     check(re.search(r"#define FAULT_BAT_DISCONNECT_MV\s+14800u", text_fault_h), "threshold stays 14.8 V, NOT 15.0 V: 15.0 would collide with the validity cut (~0.1 s float vs ~0.5 s at 14.8)")
     check(re.search(r"#define FAULT_BAT_ABSENT_MV\s+6000u", text_fault_h), "battery-absent threshold must be 6 V in Fault (user choice)")
@@ -668,12 +668,12 @@ def test_charge_profile_v112():
     check("func__Charger_GetProfileParam" in get_block and get_block.count("ESPLINK_PARAM_CHG_PROFILE_") >= 7,
           "GetParam must route all 7 profile ids to Charger_GetProfileParam")
 
-    # --- ESP panel: 27 params, third tab with 7 fields + descriptions, 78-col CSV, vin carry ---
-    check(re.search(r"#define ESP_PARAM_COUNT\s+27u", ino), "panel ESP_PARAM_COUNT must be 27")
+    # --- ESP panel: 38 params, third tab with 7 fields + descriptions, 89-col CSV, vin carry ---
+    check(re.search(r"#define ESP_PARAM_COUNT\s+38u", ino), "panel ESP_PARAM_COUNT must be 38 (v1.15: +11 alarm ids)")
     mn = re.search(r"INT32_T__G__ParamMin\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     mx = re.search(r"INT32_T__G__ParamMax\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(mn and mx and len(mn.group(1).split(",")) == 27 and len(mx.group(1).split(",")) == 27,
-          "panel min/max tables must carry 27 entries (outer envelope for ids 20..26)")
+    check(mn and mx and len(mn.group(1).split(",")) == 38 and len(mx.group(1).split(",")) == 38,
+          "panel min/max tables must carry 38 entries (outer envelope for ids 20..26 and 27..37)")
     check('<button data-t="2">تنظیمات</button>' in ino, "third nav tab must exist (v1.14b: renamed from تنظیمات شارژ when the filter windows moved in)")
     check('id="p2"' in ino and all(f'id="q{i}"' in ino for i in range(20, 27)),
           "tab p2 must hold the seven profile inputs q20..q26")
@@ -681,8 +681,8 @@ def test_charge_profile_v112():
           "profile inputs must auto-fill from /t, POST on change, and offer factory defaults")
     check("حداکثر ولتاژ باتری (ابزورب)" in ino and "جریان تیپر" in ino and "ولتاژ شناور" in ino,
           "the tab must label/describe every field (user order: with descriptions)")
-    check("for(let k=0;k<27;k++)P.push(q(D.p[k]));" in ino and "[profile]" in ino,
-          "wrow must log all 27 params (78 columns) with the [profile] header block")
+    check("for(let k=0;k<38;k++)P.push(q(D.p[k]));" in ino and "[profile]" in ino and "[alarms]" in ino,
+          "wrow must log all 38 params (89 columns) with the [profile] and [alarms] header blocks")
     check("window.WVI=" in ino and "L('wVi','ولتاژ ورودی V',WVI)" in ino,
           "the input-voltage DMM reading must carry into the next wizard step (user order 2026-09-25: quasi-static, type once)")
 
@@ -845,22 +845,24 @@ def test_charger_persistence_v114():
           "the linker must shrink application FLASH to 62K and reserve the 2K NVM region at 0x0800F800 (build-time collision guard)")
     check("0x0800F800u" in nvm_h and "0x0800FC00u" in nvm_h,
           "the persistence pages must be the last two 1 KiB pages of the 64 KiB bank")
-    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+27u", nvm_h) and
+    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+38u", nvm_h) and
           "ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u" in nvm_h and
           "ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u" in nvm_h and
-          "ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    26u" in nvm_h,
-          "persisted set = 0..14 + 20..26 (22 ids, 27 slots) - the transient test modes 15..19 must NEVER survive a reboot")
+          "ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    37u" in nvm_h,
+          "persisted set = 0..14 + 20..37 (33 ids, 38 slots) - the transient test modes 15..19 must NEVER survive a reboot")
+    check(re.search(r"ESP_LINK_NVM_VERSION\s+2u", nvm_h),
+          "v1.15 bumps the NVM record version to 2: the 38-slot record fails the v1 CRC, so a stale flash falls back to compiled defaults")
 
     # the persisted-id predicate in C, replicated and cross-checked
-    persisted = {i for i in range(27) if i <= 14 or 20 <= i <= 26}
-    check(persisted == set(range(15)) | set(range(20, 27)) and 19 not in persisted and 15 not in persisted,
+    persisted = {i for i in range(38) if i <= 14 or 20 <= i <= 37}
+    check(persisted == set(range(15)) | set(range(20, 38)) and 19 not in persisted and 15 not in persisted,
           f"persisted id set must exclude 15..19 (got {len(persisted)} ids)")
 
     tab2 = ino.split('id="p2"', 2)[1]
     check("روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند" in ino and
           "ماندگاری:" in ino and "function qgraph()" in ino and "e.oninput=qgraph" in ino and
-          "if(TAB==2)qgraph();" in ino and "نمودار مراحل شارژ" in ino,
-          "the panel must carry the stage graph (qgraph + live preview + redraw hook) and the persistence texts")
+          "if(TAB==2){if(STAB==0)qgraph();else{afresh();astat();}}" in ino and "نمودار مراحل شارژ" in ino,
+          "the panel must carry the stage graph (qgraph + live preview + redraw hook, v1.15b: STAB-gated) and the persistence texts")
     check('<button data-t="2">تنظیمات</button>' in ino and
           'id="q7"' in tab2 and 'id="q8"' in tab2 and 'id="a7"' in tab2 and 'id="a8"' in tab2 and
           "پنجرهٔ مدین (Median)" in tab2 and "پنجرهٔ میانگین (Average)" in tab2 and
@@ -895,7 +897,7 @@ def test_charger_persistence_v114():
     try:
         (Path(tmp) / "stub_esp_link.h").write_text(
             "#include <stdint.h>\n#include <stdbool.h>\n"
-            "#define ESPLINK_PARAM_COUNT 27u\n"
+            "#define ESPLINK_PARAM_COUNT 38u\n"
             "bool func__EspLink_ApplyParam(uint8_t id, uint32_t value, uint32_t *applied);\n"
             "bool func__EspLink_GetParam(uint8_t id, uint32_t *value);\n", encoding="utf-8")
         (Path(tmp) / "stub_bsp_flash.h").write_text(
@@ -918,11 +920,11 @@ uint8_t *EMU_FLASH;
 #include "stub_bsp_flash.h"
 
 int g_cut_after = -1, g_erase_cut = 0, g_apply_calls = 0;
-uint32_t g_params[27];
+uint32_t g_params[38];
 static uint32_t clampf(uint32_t v, uint32_t lo, uint32_t hi){ return v < lo ? lo : (v > hi ? hi : v); }
 bool func__EspLink_ApplyParam(uint8_t id, uint32_t value, uint32_t *applied){
     g_apply_calls++;
-    if (id >= 27u) return false;
+    if (id >= 38u) return false;
     switch (id) {
         case 20: value = clampf(value, 11000, 14600); break;
         case 21: value = clampf(value, 13800, 14550); break;
@@ -931,13 +933,24 @@ bool func__EspLink_ApplyParam(uint8_t id, uint32_t value, uint32_t *applied){
         case 24: value = clampf(value, 8000, 13200); break;
         case 25: value = clampf(value, 100, 900); break;
         case 26: value = clampf(value, 10, 300); break;
+        case 27: value = clampf(value, 14000, 15000); break;
+        case 28: value = clampf(value, 50, 1000); break;
+        case 29: value = clampf(value, 3000, 8000); break;
+        case 30: value = clampf(value, 4000, 9000); break;
+        case 31: value = clampf(value, 100, 5000); break;
+        case 32: value = clampf(value, 100, 5000); break;
+        case 33: value = clampf(value, 18000, 24000); break;
+        case 34: value = clampf(value, 24000, 30000); break;
+        case 35: value = clampf(value, 150, 950); break;
+        case 36: value = clampf(value, 14000, 15000); break;
+        case 37: value = clampf(value, 0, 8000); break;
         default: break;
     }
     g_params[id] = value;
     if (applied) *applied = value;
     return true;
 }
-bool func__EspLink_GetParam(uint8_t id, uint32_t *value){ if (id >= 27u) return false; *value = g_params[id]; return true; }
+bool func__EspLink_GetParam(uint8_t id, uint32_t *value){ if (id >= 38u) return false; *value = g_params[id]; return true; }
 bool func__BspFlash_ErasePage(uint32_t p){
     if (p != EMU_FLASH_BASE && p != EMU_FLASH_BASE + 1024u) return false;
     memset((void *)(uintptr_t)p, 0xFF, 1024);
@@ -1072,6 +1085,20 @@ int main(void){
     run_ticks(30);
     assert(EMU_FLASH[0] == 0xFF && EMU_FLASH[1024] == 0xFF);
 
+    /* T11 (v1.15): alarm ids persist round-trip; a hostile hard-current
+       replays CLAMPED to the 950 ceiling (down-only safety) */
+    memset(EMU_FLASH, 0xFF, 2048); reboot();
+    {
+        esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[2];
+        e[0].uint16_t__id = 27; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 14700;
+        e[1].uint16_t__id = 35; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 990;
+        func__EspLink_NvmRecordBuild(&rec, 11, e, 2);
+        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_A_ADDR));
+        assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_A_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
+        reboot();
+        assert(g_params[27] == 14700 && g_params[35] == 950);
+    }
+
     printf("ALL NVM HARNESS TESTS PASSED\n");
     return 0;
 }
@@ -1113,18 +1140,18 @@ def test_manual_test_mode_v12():
     check("CHG_STATE_MANUAL" in text_c, "manual test mode needs its own charger state (9)")
     check(re.search(r"#define CHG_MANUAL_WATCHDOG_MS\s+3000u", text_h),
           "manual link dead-man must be 3 s")
-    check(re.search(r"#define ESPLINK_FRAME_MAX_PAYLOAD\s+144u", text_esph),
-          "payload limit must be 144: PARAMS_BULK with 27 params = 1 + 27 x 5 = 136 bytes (v1.12 charge-profile params; was 112 for 20)")
+    check(re.search(r"#define ESPLINK_FRAME_MAX_PAYLOAD\s+192u", text_esph),
+          "payload limit must be 192: PARAMS_BULK with 38 params = 1 + 38 x 5 = 191 bytes (v1.15 alarm params; was 136 for 27)")
     check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
-          and re.search(r"#define ESPLINK_PARAM_COUNT\s+27u", text_esph),
-          "param 19 = manual test mode; 27 params total since v1.12 (20..26 = charge profile)")
+          and re.search(r"#define ESPLINK_PARAM_COUNT\s+38u", text_esph),
+          "param 19 = manual test mode; 38 params total since v1.15 (20..26 = charge profile, 27..37 = alarms)")
 
     manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
                     text_c.find("/* ==================== Charger_Evaluate")]
     check("func__Charger_ManualDriveChannel" in text_c,
           "manual mode must drive the duty directly")
-    check("CHG_MAX_VALID_BATTERY_MV" in manual,
-          "manual mode keeps the 15 V hard overvoltage cutoff")
+    check("UINT32_T__G__ChargerOvCutoffMv" in manual,
+          "manual mode keeps the hard overvoltage cutoff (v1.15: runtime id 36, down-only from the 15 V compile ceiling)")
     check("func__Charger_ApplyDuty" in manual,
           "manual duty must go through the ApplyDuty clamp choke point")
 
@@ -1139,6 +1166,212 @@ def test_manual_test_mode_v12():
           "every valid ESP frame must feed the manual dead-man")
     check("ESPLINK_TLM_FLAG_MANUAL_MODE" in text_esp and "0x20u" in text_esp,
           "telemetry must expose the manual flag on b5")
+
+
+def test_alarms_tab_v115():
+    """[EN] v1.15 (user order 2026-09-26, "an alarms tab - the number behind
+    every alarm must be editable from the ESP panel and stick on the board
+    MCU"): ids 27..34 = fault supervision thresholds (runtime, persisted),
+    35..37 = charger safety ceilings (down-only, never above the compile
+    maxima); an alarms SUB-TAB inside settings (v1.15b) with grouped cards,
+    a flicker-free grouped status card with fault explanations, threshold
+    bars and JSON import/export; PARAMS_BULK grows to 191 bytes.
+    [FA] تست‌های v1.15: تب آلارم‌ها — شناسه‌های ۲۷..۳۴ آستانه‌های نظارت فالت
+    (زمان‌اجرا، ماندگار)، ۳۵..۳۷ سقف‌های ایمنی شارژر (فقط پایین‌بردنی)؛ تب
+    چهارم پنل با کارت‌های دسته‌بندی‌شده، کارت وضعیت زنده و نوار آستانه."""
+    text_cc = CHARGER_C.read_text()
+    text_ch = CHARGER_H.read_text()
+    text_fc = FAULT_C.read_text()
+    text_fh = FAULT_H.read_text()
+    text_esph = ESP_LINK_H.read_text()
+    text_espc = ESP_LINK_C.read_text()
+    ino = (ROOT / "esp_link_panel/esp_link_panel.ino").read_text()
+
+    # --- id match: fault 27..34 and charger 35..37 identical on both sides ---
+    fault_pairs = [("FAULT_ALARM_PARAM_DISCONNECT_MV", "ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_MV", 27),
+                   ("FAULT_ALARM_PARAM_DISCONNECT_DEB_MS", "ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_DEB_MS", 28),
+                   ("FAULT_ALARM_PARAM_ABSENT_MV", "ESPLINK_PARAM_FAULT_ALARM_ABSENT_MV", 29),
+                   ("FAULT_ALARM_PARAM_BACK_MV", "ESPLINK_PARAM_FAULT_ALARM_BACK_MV", 30),
+                   ("FAULT_ALARM_PARAM_ABSENT_DEB_MS", "ESPLINK_PARAM_FAULT_ALARM_ABSENT_DEB_MS", 31),
+                   ("FAULT_ALARM_PARAM_RECOVER_MS", "ESPLINK_PARAM_FAULT_ALARM_RECOVER_DEB_MS", 32),
+                   ("FAULT_ALARM_PARAM_INPUT_MIN_MV", "ESPLINK_PARAM_FAULT_ALARM_INPUT_MIN_MV", 33),
+                   ("FAULT_ALARM_PARAM_INPUT_MAX_MV", "ESPLINK_PARAM_FAULT_ALARM_INPUT_MAX_MV", 34)]
+    for mod_name, esp_name, num in fault_pairs:
+        m_h = re.search(rf"#define {mod_name}\s+(\d+)u", text_fh)
+        m_e = re.search(rf"#define {esp_name}\s+(\d+)u", text_esph)
+        check(m_h is not None and m_e is not None and int(m_h.group(1)) == num and int(m_e.group(1)) == num,
+              f"fault alarm id {num} must be identical in fault.h ({mod_name}) and esp_link.h ({esp_name})")
+    chg_pairs = [("CHG_ALARM_PARAM_HARD_CURRENT_MA", "ESPLINK_PARAM_CHG_ALARM_HARD_CURRENT_MA", 35),
+                 ("CHG_ALARM_PARAM_OV_CUTOFF_MV", "ESPLINK_PARAM_CHG_ALARM_OV_CUTOFF_MV", 36),
+                 ("CHG_ALARM_PARAM_VALID_FLOOR_MV", "ESPLINK_PARAM_CHG_ALARM_VALID_FLOOR_MV", 37)]
+    for mod_name, esp_name, num in chg_pairs:
+        m_h = re.search(rf"#define {mod_name}\s+(\d+)u", text_ch)
+        m_e = re.search(rf"#define {esp_name}\s+(\d+)u", text_esph)
+        check(m_h is not None and m_e is not None and int(m_h.group(1)) == num and int(m_e.group(1)) == num,
+              f"charger alarm id {num} must be identical in charger.h ({mod_name}) and esp_link.h ({esp_name})")
+    for decl, where, what in [
+            ("func__Fault_SetAlarmParam(uint8_t uint8_t__paramId", text_fh, "fault.h"),
+            ("func__Fault_GetAlarmParam(uint8_t uint8_t__paramId", text_fh, "fault.h"),
+            ("func__Fault_OnSupervisionChange(void)", text_fh, "fault.h"),
+            ("func__Charger_SetAlarmParam(uint8_t uint8_t__paramId", text_ch, "charger.h"),
+            ("func__Charger_GetAlarmParam(uint8_t uint8_t__paramId", text_ch, "charger.h")]:
+        check(decl in where, f"{what} must declare {decl.split('(')[0]}")
+
+    # --- fault.c: live struct, set-clamp, Evaluate reads runtime only ---
+    check("fault_alarm_t" in text_fc and "FAULT_ALARM_T__G__Alarm" in text_fc,
+          "fault.c must hold the runtime alarm struct")
+    check("func__Fault_ClampAlarms" in text_fc and "func__Fault_SetAlarmParam" in text_fc
+          and "func__Fault_GetAlarmParam" in text_fc,
+          "fault.c must implement clamp + set/get alarm API")
+    fbody = re.sub(r"/\*.*?\*/", "", text_fc, flags=re.S)
+    fbody = re.sub(r"FAULT_ALARM_T__G__Alarm\s*=\s*\{[^}]*\}", "", fbody)
+    fbody = fbody.replace("uint32_t uint32_t__overMv = FAULT_BAT_DISCONNECT_MV;", "")
+    for macro in ["FAULT_BAT_DISCONNECT_MV", "FAULT_BAT_DISCONNECT_DEBOUNCE_MS", "FAULT_BAT_ABSENT_MV",
+                  "FAULT_BATTERY_BACK_MV", "FAULT_BAT_ABSENT_DEBOUNCE_MS", "FAULT_BAT_RECOVER_MS",
+                  "FAULT_INPUT_PRESENT_MIN_MV", "FAULT_INPUT_PRESENT_MAX_MV"]:
+        leftover = [ln for ln in fbody.split("\n")
+                    if macro in ln and not ln.strip().startswith(("*", "/*", "//"))]
+        check(not leftover,
+              f"no bare {macro} use outside the alarm initializer/comments (got {leftover[:2]})")
+    check(text_fc.count("FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv") >= 3 and
+          text_fc.count("FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv") >= 2,
+          "Evaluate must read the disconnect/input thresholds from the live struct")
+
+    # --- charger.c: runtime ceilings, down-only clamps, cascade ---
+    check("UINT32_T__G__ChargerHardFaultMa" in text_cc and "UINT32_T__G__ChargerOvCutoffMv" in text_cc
+          and "UINT32_T__G__ChargerValidFloorMv" in text_cc,
+          "charger.c must hold the three runtime alarm statics")
+    check("func__Charger_ClampAlarms" in text_cc and "func__Charger_SetAlarmParam" in text_cc
+          and "func__Charger_GetAlarmParam" in text_cc,
+          "charger.c must implement clamp + set/get alarm API")
+    check(text_cc.count("func__Fault_OnSupervisionChange();") >= 2,
+          "both the profile path and the alarm path must cascade into the fault re-clamp (disconnect stays < OV)")
+    cbody = re.sub(r"/\*.*?\*/", "", text_cc, flags=re.S)
+    cbody = re.sub(r"static uint32_t UINT32_T__G__Charger(HardFaultMa|OvCutoffMv|ValidFloorMv) = [A-Z_0-9]+;", "", cbody)
+    cbody = "\n".join(ln for ln in cbody.split("\n")
+                      if "UINT32_T__G__ChargerHardFaultMa = CHG_CURRENT_HARD_FAULT_MA" not in ln
+                      and "UINT32_T__G__ChargerOvCutoffMv = CHG_MAX_VALID_BATTERY_MV" not in ln
+                      and "> CHG_CURRENT_HARD_FAULT_MA" not in ln
+                      and "> CHG_MAX_VALID_BATTERY_MV" not in ln)
+    for macro in ["CHG_CURRENT_HARD_FAULT_MA", "CHG_MAX_VALID_BATTERY_MV", "CHG_MIN_VALID_BATTERY_MV"]:
+        leftover = [ln for ln in cbody.split("\n")
+                    if macro in ln and not ln.strip().startswith(("*", "/*", "//"))]
+        check(not leftover,
+              f"no bare {macro} use outside boot defaults/clamp ceilings/comments (got {leftover[:2]})")
+    check("uint32_t__currentMa > UINT32_T__G__ChargerHardFaultMa" in text_cc,
+          "the hard-fault comparison must read the runtime ceiling (id 35)")
+
+    # --- esp_link.c routes 27..37 through the module APIs ---
+    apply_region = text_espc.split("bool func__EspLink_ApplyParam")[1].split("bool func__EspLink_GetParam")[0]
+    get_region = text_espc.split("bool func__EspLink_GetParam")[1]
+    check('#include "fault.h"' in text_espc, "esp_link.c must include fault.h for the alarm dispatch")
+    check("func__Fault_SetAlarmParam" in apply_region and apply_region.count("ESPLINK_PARAM_FAULT_ALARM_") >= 8,
+          "ApplyParam must route all 8 fault alarm ids to Fault_SetAlarmParam")
+    check("func__Fault_GetAlarmParam" in get_region and get_region.count("ESPLINK_PARAM_FAULT_ALARM_") >= 8,
+          "GetParam must route all 8 fault alarm ids to Fault_GetAlarmParam")
+    check("func__Charger_SetAlarmParam" in apply_region and apply_region.count("ESPLINK_PARAM_CHG_ALARM_") >= 3,
+          "ApplyParam must route all 3 charger alarm ids to Charger_SetAlarmParam")
+    check("func__Charger_GetAlarmParam" in get_region and get_region.count("ESPLINK_PARAM_CHG_ALARM_") >= 3,
+          "GetParam must route all 3 charger alarm ids to Charger_GetAlarmParam")
+
+    # --- panel: fourth tab, cards, live status + bars, q2 mask, 89-col CSV ---
+    check('<button data-s="1">آلارم‌ها</button>' in ino and 'id="s1"' in ino
+          and 'data-t="3"' not in ino,
+          "v1.15b (user order: alarms INSIDE settings): no fourth nav tab - alarms live in a settings sub-tab (s1)")
+    check(all(f'id="q{i}"' in ino for i in range(27, 38))
+          and all(f'id="a{i}"' in ino for i in range(27, 38)),
+          "the alarms sub-tab must hold the eleven alarm inputs q27..q37 with applied-value spans")
+    check("function achk()" in ino and "function afill()" in ino and "function adef()" in ino
+          and "function astat()" in ino and "apend(id)" in ino and "STAB==0" in ino,
+          "the alarms sub-tab needs its guard (achk), fill/defaults (afill/adef), live status+bars (astat) and the STAB hook")
+    check("FEXP=" in ino and "آستانهٔ قطع (۲۷)" in ino and "ASB=" in ino,
+          "v1.15b (user order: grouped status + fault explanations, no flicker): per-bit fault explanations and a build-once status skeleton")
+    check("function xexp()" in ino and "function ximp(f)" in ino and 'id="xim"' in ino
+          and "changeover-settings.json" in ino and "XIDS=" in ino,
+          "v1.15b (user order: settings import/export): JSON backup card for filter + profile + alarms")
+    check("نظارت باتری" in ino and "پنجرهٔ ورودی سالم" in ino and "سقف‌های ایمنی شارژر" in ino
+          and "فقط پایین‌بردنی" in ino,
+          "alarm inputs must be grouped (battery supervision / input window / safety ceilings) with the down-only note")
+    check("قابل تغییر نیست" not in ino, "the stale 'safety limits cannot change' sentence must be gone (v1.15 lowers them)")
+    check('\\"q2\\":%lu' in ino and "pendingMask2" in ino,
+          "the /t JSON must carry the q2 pending mask for ids 32..37 (one u32 no longer fits 38 params)")
+    tx = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
+    check(tx and len(tx.group(1).split(",")) == 38, "TxOrder must carry all 38 ids")
+    check("alm_disc_mv" in ino and "alm_hard_ma" in ino and "alm_floor_mv" in ino
+          and ("89 columns" in ino or "۸۹ ستون" in ino),
+          "the bench CSV header must name the alarm columns (89 total)")
+
+    # --- python models of both clamp sets: fixed point + random invariants ---
+    def fclamp(a, over=14600, ov=15000):
+        a = dict(a)
+        lo, hi = max(14000, over + 50), min(15000, ov - 100)
+        if lo > hi:
+            hi = lo
+        a[27] = min(max(a[27], lo), hi)
+        a[28] = min(max(a[28], 50), 1000)
+        a[29] = min(max(a[29], 3000), 8000)
+        a[30] = min(max(a[30], 4000), 9000)
+        if a[29] > a[30] - 500:
+            a[29] = a[30] - 500
+        if a[30] < a[29] + 500:
+            a[30] = a[29] + 500
+        a[31] = min(max(a[31], 100), 5000)
+        a[32] = min(max(a[32], 100), 5000)
+        a[33] = min(max(a[33], 18000), 24000)
+        a[34] = min(max(a[34], 24000), 30000)
+        if a[33] > a[34] - 1000:
+            a[33] = a[34] - 1000
+        if a[34] < a[33] + 1000:
+            a[34] = a[33] + 1000
+        return a
+
+    def cclamp(a, imax=650, over=14600):
+        a = dict(a)
+        a[35] = min(max(a[35], imax + 50), 950)
+        a[36] = min(max(a[36], max(14000, over + 150)), 15000)
+        a[37] = min(max(a[37], 0), 8000)
+        return a
+
+    fd = {27: 14800, 28: 150, 29: 6000, 30: 7000, 31: 1000, 32: 1000, 33: 21000, 34: 28000}
+    check(fclamp(fd) == fd, "fault alarm defaults must be a fixed point of the clamp")
+    cd = {35: 950, 36: 15000, 37: 2000}
+    check(cclamp(cd) == cd, "charger alarm defaults must be a fixed point of the clamp")
+    check(cclamp({35: 9999, 36: 99999, 37: 0})[35] == 950
+          and cclamp({35: 9999, 36: 99999, 37: 0})[36] == 15000,
+          "safety ceilings are DOWN-ONLY: absurd writes collapse to 950 mA / 15000 mV, never above")
+    import random
+    rng = random.Random(20260926)
+    ok = True
+    for _ in range(2000):
+        over = rng.randint(14000, 14750)
+        ov = rng.randint(14000, 15000)
+        w = {27: rng.randint(0, 20000), 28: rng.randint(0, 9000), 29: rng.randint(0, 12000),
+             30: rng.randint(0, 12000), 31: rng.randint(0, 20000), 32: rng.randint(0, 20000),
+             33: rng.randint(0, 40000), 34: rng.randint(0, 40000)}
+        c = fclamp(w, over, ov)
+        lo, hi = max(14000, over + 50), min(15000, ov - 100)
+        if lo > hi:
+            hi = lo
+        if not (lo <= c[27] <= hi and 50 <= c[28] <= 1000
+                and 3000 <= c[29] <= c[30] - 500 and c[29] + 500 <= c[30] <= 9000
+                and 100 <= c[31] <= 5000 and 100 <= c[32] <= 5000
+                and 18000 <= c[33] <= c[34] - 1000 and c[33] + 1000 <= c[34] <= 30000):
+            ok = False
+            break
+        imax = rng.randint(100, 900)
+        cw = {35: rng.randint(0, 2000), 36: rng.randint(0, 20000), 37: rng.randint(0, 12000)}
+        cc2 = cclamp(cw, imax, over)
+        if not (imax + 50 <= cc2[35] <= 950
+                and max(14000, over + 150) <= cc2[36] <= 15000
+                and 0 <= cc2[37] <= 8000):
+            ok = False
+            break
+    check(ok, "2000 random alarm writes must all land inside the invariant ranges")
+
+    # --- offline preview mirrors the 38-param board ---
+    prev = (ROOT / "tools/panel_preview_server.js").read_text()
+    check("q2: 0" in prev and "id < 38" in prev and all(f"case {i}:" in prev for i in range(27, 38)),
+          "the preview server must serve 38 params with alarm clamps and the q2 mask")
 
 
 def main():
@@ -1170,6 +1403,7 @@ def main():
         test_charge_profile_v112,
         test_ch2_power_lut_v113,
         test_charger_persistence_v114,
+        test_alarms_tab_v115,
     ]
     for test in tests:
         test()

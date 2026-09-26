@@ -6,15 +6,16 @@
  * [EN] Serves the REAL panel HTML extracted from esp_link_panel.ino and
  *      simulates the STM32 behind it: a full charge cycle
  *      OFF -> BULK -> ABSORB -> FLOAT -> (sag) -> REENTRY -> BULK ...,
- *      the v1.14 charge-stage graph, parameter writes with the REAL clamp
- *      windows, and the telemetry JSON in the exact /t shape the ESP sends.
+ *      the v1.14 charge-stage graph, the v1.15 alarms tab, parameter writes
+ *      with the REAL clamp windows, and the telemetry JSON in the exact /t
+ *      shape the ESP sends.
  *      No hardware needed:  node tools/panel_preview_server.js  ->  http://localhost:3000
  *      (binds 0.0.0.0 so it also works inside a sandboxed preview).
  * [FA] همان HTML واقعی پنل را از esp_link_panel.ino بیرون می‌کشد و STM32
  *      را پشت آن شبیه‌سازی می‌کند: یک چرخهٔ کامل شارژ
  *      خاموش → بالک → ابزورب → شناور → (افت) → بازگشت → بالک...،
- *      نمودار مراحل v1.14، ثبت پارامتر با همان پنجره‌های گیرهٔ واقعی، و
- *      JSON تله‌متری دقیقاً به شکل /t روی ESP. بدون سخت‌افزار:
+ *      نمودار مراحل v1.14، تب آلارم‌های v1.15، ثبت پارامتر با همان پنجره‌های
+ *      گیرهٔ واقعی، و JSON تله‌متری دقیقاً به شکل /t روی ESP. بدون سخت‌افزار:
  *      node tools/panel_preview_server.js  →  http://localhost:3000
  */
 
@@ -36,18 +37,22 @@ b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99;background:#3a2b
 b.textContent='پیش‌نمایش آفلاین — مقادیر از شبیه‌ساز STM32 می‌آیند، نه برد واقعی';
 document.body.appendChild(b);document.body.style.paddingTop='32px';
 var t2=document.querySelector('nav button[data-t="2"]');if(t2)t2.click();
+var s1=document.querySelector('#sbt button[data-s="1"]');if(s1)s1.click();
 })();</script></body></html>`;
 const page = html.replace("</body></html>", inject);
 if (page === html) page = html + inject; /* fallback: append */
 
 /* ---------- simulated STM32 ---------- */
 const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0,
-           14400, 14300, 14600, 13500, 12800, 650, 50];
+           14400, 14300, 14600, 13500, 12800, 650, 50,
+           14800, 150, 6000, 7000, 1000, 1000, 21000, 28000, 950, 15000, 2000];
 
 function clampParam(id, v) {
     const a = P[20];
     const f = P[23];
     const im = P[25];
+    const over = P[22];
+    const ov = P[36];
     switch (id) {
         case 20: return Math.min(14600, Math.max(11000, v));
         case 21: return Math.min(a - 50, Math.max(a - 500, v));
@@ -65,6 +70,18 @@ function clampParam(id, v) {
         case 2: case 3: return Math.min(3000, Math.max(100, v));
         case 4: case 5: case 6: return Math.min(5000, Math.max(-5000, v));
         case 9: case 10: return Math.min(999, Math.max(0, v));
+        /* v1.15 alarms: mirror of Fault_ClampAlarms / Charger_ClampAlarms */
+        case 27: { let lo = Math.max(14000, over + 50), hi = Math.min(15000, ov - 100);
+                   if (lo > hi) hi = lo; return Math.min(hi, Math.max(lo, v)); }
+        case 28: return Math.min(1000, Math.max(50, v));
+        case 29: return Math.min(P[30] - 500, Math.min(8000, Math.max(3000, v)));
+        case 30: return Math.max(P[29] + 500, Math.min(9000, Math.max(4000, v)));
+        case 31: case 32: return Math.min(5000, Math.max(100, v));
+        case 33: return Math.min(P[34] - 1000, Math.min(24000, Math.max(18000, v)));
+        case 34: return Math.max(P[33] + 1000, Math.min(30000, Math.max(24000, v)));
+        case 35: return Math.min(950, Math.max(im + 50, v));
+        case 36: return Math.min(15000, Math.max(Math.max(14000, over + 150), v));
+        case 37: return Math.min(8000, Math.max(0, v));
         default: return v;
     }
 }
@@ -151,7 +168,7 @@ function telemetry() {
     t[18] = vhigh;                 /* battery high */
     t[19] = 0;                     /* fault mask */
     seq += 1; frames += 1; ms += SIM_MS;
-    return { on: 1, age: 40, seq, fl: 7, n: frames, q: 0, ka: 800, t, p: P.slice() };
+    return { on: 1, age: 40, seq, fl: 7, n: frames, q: 0, q2: 0, ka: 800, t, p: P.slice() };
 }
 
 /* ---------- HTTP server ---------- */
@@ -174,13 +191,15 @@ const server = http.createServer((req, res) => {
     if (req.method === "POST" && url.pathname === "/s") {
         const id = Number(url.searchParams.get("id"));
         const v = Number(url.searchParams.get("v"));
-        if (id >= 0 && id < 27 && Number.isFinite(v)) {
+        if (id >= 0 && id < 38 && Number.isFinite(v)) {
             P[id] = clampParam(id, v); /* clamped exactly like the firmware */
             if (id >= 20) {
                 /* v1.14d: whole-set re-clamp in dependency order, like
                  * Charger_ClampProfile - so the preview zones move exactly
-                 * as the real board's would after each write. */
-                for (const pid of [20, 21, 22, 23, 24, 25, 26]) P[pid] = clampParam(pid, P[pid]);
+                 * as the real board's would after each write. v1.15: the
+                 * same cascade (profile -> charger alarms -> fault alarms). */
+                for (const pid of [20, 21, 22, 23, 24, 25, 26, 35, 36, 37,
+                                   27, 28, 29, 30, 31, 32, 33, 34]) P[pid] = clampParam(pid, P[pid]);
             }
         }
         return send(200, "application/json", '{"_s":200}');

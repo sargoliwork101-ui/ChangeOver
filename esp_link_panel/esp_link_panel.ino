@@ -8,6 +8,14 @@
  *               values) and the persistence texts - every applied parameter is stored on the
  *               STM32's own flash ~1.5 s after the change and survives power loss there
  *               (wire protocol unchanged; see ESP_AGENT_SPEC.md 5.8).
+ *               v1.15 (user order 2026-09-26): ALARMS inside the settings
+ *               tab (ids 27..34 fault supervision + 35..37 down-only
+ *               charger safety ceilings), with grouped cards, live
+ *               threshold bars and a TLM-derived grouped status card
+ *               (v1.15b: build-once skeleton, per-bit fault explanations)
+ *               plus JSON settings backup (import/export);
+ *               PARAMS_BULK grows to 191 payload bytes (38 params), both
+ *               boards must flash together.
  *               Tabs (v1.7 simplification; filter avg window 1..300 since v1.9):
  *               1) Panel: shared voltages (with DMM offset helpers), the current filter (median 1..15,
  *                  average 1..300) and one column per charger: live status, the measurement chain with
@@ -16,7 +24,7 @@
  *                  the user's submit. v1.7 latch fix (user order 2026-09-25): the statistics window is
  *                  reset when the DMM form OPENS and is read the moment the user PRESSES submit, so the
  *                  CSV row matches the typed meters instead of a stale earlier window; sample_ms in the
- *                  CSV is the actual window duration. One 71-column row per step in LittleFS
+ *                  CSV is the actual window duration. One 89-column row per step in LittleFS
  *                  /benchlog.csv, GET /benchlog to download. v1.8 (user order 2026-09-25,
  *                  same day): the bench tab also carries a compact PERMANENT manual-duty card
  *                  (manual-mode toggle + per-channel duty + both-to-zero) so current tests can
@@ -44,7 +52,7 @@
  *                  با دکمهٔ کاربر. اصلاح ۱.۷ (دستور کاربر ۲۰۲۶-۰۹-۲۵): پنجرهٔ آمار با باز شدن فرم
  *                  مولتی‌متر صفر می‌شود و «همان لحظهٔ زدن ثبت» خوانده می‌شود تا ردیف CSV با عددهای
  *                  واردشده هم‌لحظه باشد، نه یک پنجرهٔ کهنه؛ ستون sample_ms مدت واقعی همان پنجره است.
- *                  یک ردیف ۷۱ستونی برای هر مرحله در LittleFS به نام /benchlog.csv، دانلود با GET /benchlog.
+ *                  یک ردیف ۸۹ستونی برای هر مرحله در LittleFS به نام /benchlog.csv، دانلود با GET /benchlog.
  *               اضافات نسخهٔ ۱.۶ (کارت CAL، تست‌های دستی B/C/D، تب اصلاح/تحلیل، حالت مهندس) حذف شدند؛
  *               هیچ کالیبراسیونی خودکار اعمال نمی‌شود و پروتکل سیمی (SET/GET/TLM) دست‌نخورده و دوطرفه است.
  *
@@ -92,10 +100,13 @@
 #define ESP_LINK_SOF_BYTE0          0xAAu
 #define ESP_LINK_SOF_BYTE1          0x55u
 #define ESP_LINK_HEADER_SIZE        4u
-/* [EN] 144 since v1.12: PARAMS_BULK with 27 parameters = 1 + 27 x 5 = 136
-         payload bytes (was 112 for 20). / [FA] از v1.12: PARAMS_BULK با
-         ۲۷ پارامتر = ۱ + ۲۷ × ۵ = ۱۳۶ بایت payload (قبلاً ۱۱۲ برای ۲۰). */
-#define ESP_LINK_MAX_PAYLOAD        144u
+/* [EN] 192 since v1.15 (user order 2026-09-26): PARAMS_BULK with 38
+         parameters = 1 + 38 x 5 = 191 payload bytes (was 136 for 27 in
+         v1.12). Both boards MUST flash together.
+         / [FA] از v1.15 (دستور کاربر ۲۰۲۶-۰۹-۲۶): PARAMS_BULK با ۳۸ پارامتر
+         = ۱ + ۳۸ × ۵ = ۱۹۱ بایت payload (قبلاً ۱۳۶ برای ۲۷ در v1.12). هر دو
+         برد باید با هم فلش شوند. */
+#define ESP_LINK_MAX_PAYLOAD        192u
 #define ESP_LINK_TLM_SIZE           84u
 #define ESP_LINK_TLM_FIELD_OFFSET   4u
 #define ESP_LINK_TLM_FIELD_COUNT    20u
@@ -114,10 +125,13 @@
 #define ESP_MSG_PARAMS_BULK         0x12u
 
 /* ==================== Parameter Constants ==================== */
-/* [EN] 27 since v1.12 (user order 2026-09-25): ids 20..26 = the shared
-         charge profile (section 5.7). / [FA] از v1.12: شناسه‌های ۲۰..۲۶ =
-         پروفایل شارژ مشترک (بخش 5.7). */
-#define ESP_PARAM_COUNT             27u
+/* [EN] 38 since v1.15 (user order 2026-09-26): ids 20..26 = the shared
+         charge profile (section 5.7), ids 27..37 = the alarms tab (27..34
+         fault supervision, 35..37 charger safety ceilings).
+         / [FA] از v1.15: شناسه‌های ۲۰..۲۶ = پروفایل شارژ مشترک (بخش 5.7)،
+         شناسه‌های ۲۷..۳۷ = تب آلارم‌ها (۲۷..۳۴ نظارت فالت، ۳۵..۳۷ سقف‌های
+         ایمنی شارژر). */
+#define ESP_PARAM_COUNT             38u
 #define ESP_PARAM_CHG1_ENABLE       11u
 #define ESP_PARAM_CHG2_ENABLE       12u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
@@ -143,15 +157,15 @@
 #define ESP_STAT_FAULT_FIELD        19u
 #define ESP_STAT_MAX_FRAMES         60000u
 
-/* ==================== Bench Data Log File (spec 5.6, CSV v2 + DMM v4: 71 self-contained columns) ==================== */
+/* ==================== Bench Data Log File (spec 5.6, CSV v2 + DMM v4: 89 self-contained columns) ==================== */
 /* [EN] One append-only CSV on LittleFS. The panel builds each row from the /m window (every TLM frame,
         raw included) plus the typed DMM readings and POSTs it to /benchlog/add; the ESP only validates
         (printable ASCII, newline-terminated, bounded length) and appends. The column header (the comment block
-        of spec 5.6, 78 columns - v1.12: +7 charge-profile params) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
+        of spec 5.6, 89 columns - v1.12: +7 charge-profile params, v1.15: +11 alarm params) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
         Arduino IDE: pick a flash layout WITH a file system (ESP8266 e.g. "4MB (FS:1MB)"; ESP32 default is fine).
    [FA] یک فایل CSV فقط-افزودنی روی LittleFS. پنل هر ردیف را از پنجرهٔ /m (تک‌تک فریم‌های TLM با raw)
         و عددهای مولتی‌متر می‌سازد و به /benchlog/add می‌فرستد؛ ESP فقط بررسی (ASCII قابل چاپ، پایان با
-        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 5.6، ۷۸ ستون - v1.12: +۷ پارامتر پروفایل شارژ) را ESP هنگام ساخت فایل می‌نویسد. در سقف
+        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 5.6، ۸۹ ستون - v1.12: +۷ پارامتر پروفایل شارژ، v1.15: +۱۱ پارامتر آلارم) را ESP هنگام ساخت فایل می‌نویسد. در سقف
         اندازه افزودن متوقف می‌شود (HTTP 507) و پنل هشدار می‌دهد.
         در Arduino IDE چیدمان فلشِ دارای فایل‌سیستم را انتخاب کنید (ESP8266 مثلاً "4MB (FS:1MB)"؛ ESP32 پیش‌فرض کافی است). */
 #define ESP_BENCHLOG_PATH           "/benchlog.csv"
@@ -164,6 +178,9 @@
     "#           eta1,eta2,en1,en2,ceil1,ceil2,fixon1,fix1,fixon2,fix2,manual\n" \
     "#  [profile] chg_absorb_mv,chg_absorb_enter_mv,chg_absorb_over_mv,\n" \
     "#            chg_float_mv,chg_reentry_mv,chg_bulk_imax_ma,chg_taper_ma\n" \
+    "#  [alarms]  alm_disc_mv,alm_disc_deb_ms,alm_absent_mv,alm_back_mv,\n" \
+    "#            alm_absent_deb_ms,alm_recover_ms,alm_in_min_mv,alm_in_max_mv,\n" \
+    "#            alm_hard_ma,alm_ov_mv,alm_floor_mv\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \
@@ -196,12 +213,15 @@ typedef enum
 /* [EN] ID: 0..1 offset, 2..3 gain, 4..6 mV offset (signed), 7 median 1..15, 8 avg window 1..300 (v1.4, raised in v1.9), 9..10 ETA conversion (v1.3, 0 = identity),
         11..12 charger enable, 13..14 duty ceiling, 15/17 fixed-duty on, 16/18 fixed/manual duty,
         19 manual test mode (v1.2), 20..26 charge profile (v1.12: outer envelope only - the STM32
-        re-clamps the interdependencies, e.g. enter <= absorb-50).
+        re-clamps the interdependencies, e.g. enter <= absorb-50), 27..37 alarms tab (v1.15:
+        outer envelope only - the STM32 re-clamps the set, e.g. 27 in over+50..OV-100,
+        35 never above 950).
    [FA] شناسه: ۰..۱ آفست، ۲..۳ گین، ۴..۶ آفست mV علامت‌دار، ۷ مدین ۱..۱۵، ۸ پنجره میانگین ۱..۳۰۰ (نسخه ۱.۴؛ بالا رفتن در ۱.۹)، ۹..۱۰ ضریب تبدیل η (v1.3، صفر = همانی)،
         ۱۱..۱۲ قطع/وصل شارژر، ۱۳..۱۴ سقف duty، ۱۵/۱۷ مود duty فیکس، ۱۶/۱۸ duty فیکس/دستی،
-        ۱۹ مود تست دستی (نسخه ۱.۲). */
-static const int32_t INT32_T__G__ParamMin[ESP_PARAM_COUNT] = {   0,   0,  100,  100, -5000, -5000, -5000, 1,  1,   0,   0, 0, 0,   0,   0, 0,   0, 0,   0, 0, 11000, 10500, 11100, 9000, 8000, 100,  10 };
-static const int32_t INT32_T__G__ParamMax[ESP_PARAM_COUNT] = { 255, 255, 3000, 3000,  5000,  5000,  5000, 15, 300, 999, 999, 1, 1, 500, 500, 1, 500, 1, 500, 1, 14600, 14550, 14750, 14300, 13200, 900, 300 };
+        ۱۹ مود تست دستی (نسخه ۱.۲)، ۲۷..۳۷ تب آلارم‌ها (نسخه ۱.۱۵: فقط پاکت بیرونی —
+        برد مجموعه را دوباره گیره می‌زند). */
+static const int32_t INT32_T__G__ParamMin[ESP_PARAM_COUNT] = {   0,   0,  100,  100, -5000, -5000, -5000, 1,  1,   0,   0, 0, 0,   0,   0, 0,   0, 0,   0, 0, 11000, 10500, 11100, 9000, 8000, 100,  10, 14000,  50, 3000, 4000,  100,  100, 18000, 24000,  150, 14000,     0 };
+static const int32_t INT32_T__G__ParamMax[ESP_PARAM_COUNT] = { 255, 255, 3000, 3000,  5000,  5000,  5000, 15, 300, 999, 999, 1, 1, 500, 500, 1, 500, 1, 500, 1, 14600, 14550, 14750, 14300, 13200, 900, 300, 15000, 1000, 8000, 9000, 5000, 5000, 24000, 30000,  950, 15000,  8000 };
 
 /* ==================== RX State ==================== */
 static esp_rx_state_t ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
@@ -246,7 +266,7 @@ static uint32_t UINT32_T__G__StatCount = 0u;
 
 /* [EN] Send priority: charger cut, manual mode, manual duties, then the rest.
    [FA] اولویت ارسال: قطع شارژر، مود دستی، duty دستی، سپس بقیه. */
-static const uint8_t UINT8_T__G__TxOrder[ESP_PARAM_COUNT] = { 11, 12, 19, 16, 18, 15, 17, 13, 14, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 21, 22, 23, 24, 25, 26 };
+static const uint8_t UINT8_T__G__TxOrder[ESP_PARAM_COUNT] = { 11, 12, 19, 16, 18, 15, 17, 13, 14, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37 };
 
 /* ==================== HTTP ==================== */
 static esp_web_server_t ESP_WEB_SERVER_T__G__Server(ESP_HTTP_PORT);
@@ -333,6 +353,15 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 .off2{background:#5b1c26;white-space:nowrap}
 @media(max-width:1000px){.ch,.frr,.qs{grid-template-columns:1fr}.vs{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:640px){.cb{font-size:12px;padding:8px 7px}.cb span{white-space:nowrap}.vs{grid-template-columns:repeat(3,1fr)}.ch{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}}
+.sbt{display:flex;gap:4px;background:var(--cd);border:1px solid var(--ln);border-radius:10px;padding:3px;margin-bottom:10px}
+.sbt button{flex:1;border:0;background:none;border-radius:7px;padding:6px;cursor:pointer;color:var(--mu);font-weight:600}
+.sbt button.a{background:#1f2738;color:var(--tx)}
+.sgx{display:none}.sgx.a{display:block}
+.ag{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin:6px 0}
+.ab{background:#0c1018;border:1px solid var(--ln);border-radius:10px;padding:8px 10px;min-height:88px}
+.ab small{color:var(--mu)}.ab b{font-size:18px;display:block;margin:1px 0}.ab .lb{display:block;min-height:20px}.ab .tg{margin-top:3px;display:inline-block}
+.ab.bad{border-color:#7a2b33}.ab.warn{border-color:#6b5206}.ab.good{border-color:#1d4a3a}
+.fx2{font-size:12px;color:#c3cad8;line-height:1.9;margin-top:4px}
 </style></head><body>
 <header><h1>پنل ChangeOver</h1><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
@@ -346,6 +375,8 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 </div>
 <div class="pgx" id="p1"></div>
 <div class="pgx" id="p2">
+<div class="sbt" id="sbt"><button class="a" data-s="0">شارژ و فیلتر</button><button data-s="1">آلارم‌ها</button></div>
+<div class="sgx a" id="s0">
 <div class="cd">
 <div class="hd"><b>نمودار مراحل شارژ</b><span class="lb">· مشترک هر دو کانال · ناحیه‌ها از مقادیر اعمال‌شدهٔ برد · تایپ = خط‌چین پیش‌نمایش · ترکیب نامعتبر = هشدار قرمز</span></div>
 <div id="qw" style="margin:2px 0 0"></div>
@@ -383,10 +414,69 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 ولتاژ بازگشت: افت باتری در شناور زیر این مقدار، بالک را دوباره آغاز می‌کند (۱۲۸۰۰).
 جریان حداکثر: سقف باند تنظیم جریان بالک؛ کف باند به‌طور خودکار ۲۰mA کمتر است (۶۵۰).
 جریان تیپر: ابزورب پایان می‌یابد وقتی جریان دنباله ۶۰ ثانیه پایدار زیر این مقدار بماند (۵۰ ~ C/90).
-پس از هر تغییر، مقدار «اعمال‌شدهٔ» برد کنار همان فیلد نشان داده می‌شود — اگر با درخواست شما فرق دارد یعنی گیره خورده تا مجموعه سازنده بماند (مثلاً ورود ≤ ابزورب−۵۰). حد سخت ایمنی (خطای ۹۵۰mA و قطع ۱۵V) از پنل قابل تغییر نیست.
+پس از هر تغییر، مقدار «اعمال‌شدهٔ» برد کنار همان فیلد نشان داده می‌شود — اگر با درخواست شما فرق دارد یعنی گیره خورده تا مجموعه سازنده بماند (مثلاً ورود ≤ ابزورب−۵۰). سقف‌های ایمنی (خطای سخت ۹۵۰mA و قطع OV ۱۵V) از تب «آلارم‌ها» فقط پایین‌بردنی‌اند و هرگز بالای مقدار کارخانه نمی‌روند.
 ماندگاری: هر پارامتری که از پنل ثبت کنید (~۱٫۵ ثانیه بعد) در فلش خودِ برد ذخیره می‌شود و خاموش/روشن کردن برد آن را از بین نمی‌برد؛ دکمهٔ «بازگردانی پیش‌فرض کارخانه» پیش‌فرض‌ها را می‌فرستد و همان‌ها ذخیره می‌شوند. مودهای تست (دیوتی فیکس/دستی) هرگز ذخیره نمی‌شوند — بعد از هر ریست، شارژر خودکار است.
 نگهبان ترکیب: اگر عددهای تایپ‌شده با هم ناسازگار باشند (مثلاً شناور بالای ابزورب−۳۰۰)، بالای نمودار هشدار قرمز می‌آید، فیلد مقصر قرمز می‌شود و قبل از ارسال تأیید گرفته می‌شود — چون برد همان را گیره می‌زند و ناحیه‌ها را به‌هم‌ریخته نمی‌گذارد.</div>
 <div class="bqr"><button class="sb sb2" onclick="qdef()">بازگردانی پیش‌فرض کارخانه</button></div>
+</div>
+</div>
+<div class="sgx" id="s1">
+<div class="cd">
+<div class="hd"><b>وضعیت آلارم‌ها</b><span class="lb">· زنده از TLM برد · آستانه‌ها = مقادیر اعمال‌شدهٔ برد</span></div>
+<div id="ast" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div>
+<div id="abars"></div>
+</div>
+<div class="cd">
+<div class="hd"><b>نظارت باتری</b><span class="lb">· شناسه‌های ۲۷..۳۲ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
+<div id="aw" style="margin:2px 0 0"></div>
+<div class="sec">قطع باتری <span class="lb">(mV / ms)</span></div>
+<div class="bqr">
+<label>آستانهٔ قطع باتری (mV)<input type="number" id="q27" step="50" min="14000" max="15000"><span class="lb" id="a27">—</span></label>
+<label>دبانس قطع (ms)<input type="number" id="q28" step="10" min="50" max="1000"><span class="lb" id="a28">—</span></label>
+</div>
+<div class="sec">غیبت / بازگشت باتری <span class="lb">(mV / ms)</span></div>
+<div class="bqr">
+<label>آستانهٔ غیبت (mV)<input type="number" id="q29" step="100" min="3000" max="8000"><span class="lb" id="a29">—</span></label>
+<label>آستانهٔ بازگشت (mV)<input type="number" id="q30" step="100" min="4000" max="9000"><span class="lb" id="a30">—</span></label>
+<label>دبانس غیبت (ms)<input type="number" id="q31" step="50" min="100" max="5000"><span class="lb" id="a31">—</span></label>
+<label>دبانس بازیابی (ms)<input type="number" id="q32" step="50" min="100" max="5000"><span class="lb" id="a32">—</span></label>
+</div>
+<div class="lb">قطع باتری: اگر هر نیمه حین پمپ بالای این ولتاژ برود، سیم باتری قطع فرض می‌شود (پیش‌فرض ۱۴۸۰۰)؛ باید بالای سقف تجاوز+۵۰ و زیر قطع OV−۱۰۰ بماند وگرنه برد گیره‌اش می‌زند.
+دبانس قطع: شرط بالا باید این‌قدر میلی‌ثانیه پیوسته برقرار بماند تا لچ شود (۱۵۰).
+غیبت/برگشت: زیر آستانهٔ غیبت (۶۰۰۰) باتری نیست؛ بالای بازگشت (۷۰۰۰) برگشته — همیشه ۵۰۰mV از هم فاصله دارند.
+دبانس غیبت/بازیابی: پایداری لازم برای اعلام غیبت و اعلام سلامتی (۱۰۰۰/۱۰۰۰).</div>
+</div>
+<div class="cd">
+<div class="hd"><b>پنجرهٔ ورودی سالم</b><span class="lb">· شناسه‌های ۳۳..۳۴ · روی فلش برد ذخیره می‌شود</span></div>
+<div class="bqr">
+<label>کف ورودی سالم (mV)<input type="number" id="q33" step="100" min="18000" max="24000"><span class="lb" id="a33">—</span></label>
+<label>سقف ورودی سالم (mV)<input type="number" id="q34" step="100" min="24000" max="30000"><span class="lb" id="a34">—</span></label>
+</div>
+<div class="lb">تشخیص «ورودی حاضر» فقط داخل این پنجره است (پیش‌فرض ۲۱۰۰۰..۲۸۰۰۰)؛ کف و سقف همیشه ۱۰۰۰mV از هم فاصله دارند. بیرون پنجره، شارژر منتظر ورودی می‌ماند.</div>
+</div>
+<div class="cd">
+<div class="hd"><b>سقف‌های ایمنی شارژر</b><span class="lb">· شناسه‌های ۳۵..۳۷ · فقط پایین‌بردنی — هرگز بالای سقف کارخانه نمی‌روند · روی فلش برد ذخیره می‌شود</span></div>
+<div class="bqr">
+<label>خطای سخت جریان (mA)<input type="number" id="q35" step="10" min="150" max="950"><span class="lb" id="a35">—</span></label>
+<label>قطع اضافه‌ولتاژ OV (mV)<input type="number" id="q36" step="50" min="14000" max="15000"><span class="lb" id="a36">—</span></label>
+<label>کف اعتبار باتری (mV)<input type="number" id="q37" step="100" min="0" max="8000"><span class="lb" id="a37">—</span></label>
+</div>
+<div class="lb">خطای سخت جریان: بالای این مقدار کانال ریست و متوقف می‌شود (پیش‌فرض ۹۵۰)؛ همیشه بالای جریان بالک+۵۰ نگه داشته می‌شود تا تنظیم سالم تریپ نکند.
+قطع OV: بالای این ولتاژ باتری نامعتبر و سوئیچینگ متوقف می‌شود (پیش‌فرض ۱۵۰۰۰)؛ همیشه بالای سقف تجاوز+۱۵۰ است.
+کف اعتبار: زیر این ولتاژ باتری نامعتبر شمرده می‌شود (پیش‌فرض ۲۰۰۰).
+پس از هر تغییر، مقدار «اعمال‌شدهٔ» برد کنار همان فیلد نشان داده می‌شود — اگر با درخواست شما فرق دارد یعنی گیره خورده تا مجموعه سازنده بماند.
+نگهبان ترکیب مثل تب تنظیمات: عدد ناسازگار هشدار قرمز و تأیید قبل از ارسال می‌گیرد.</div>
+<div class="bqr"><button class="sb sb2" onclick="adef()">بازگردانی پیش‌فرض کارخانهٔ آلارم‌ها</button></div>
+</div>
+</div>
+<div class="cd">
+<div class="hd"><b>پشتیبان‌گیری تنظیمات</b><span class="lb">· خروجی/ورودی JSON — فیلتر (۷/۸)، پروفایل (۲۰..۲۶)، آلارم‌ها (۲۷..۳۷)</span></div>
+<div class="bqr">
+<button class="sb sb2" onclick="xexp()">⬇ خروجی (دانلود JSON)</button>
+<label class="sb" style="cursor:pointer">⬆ ورودی (انتخاب فایل)<input type="file" id="xim" accept=".json,application/json" style="display:none"></label>
+<span class="lb" id="xst">—</span>
+</div>
+<div class="lb">خروجی، مقادیر «اعمال‌شدهٔ» فعلی برد را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). مودهای تست گذرا (۱۵..۱۹) جزو پشتیبان نیستند.</div>
 </div>
 </div>
 </main>
@@ -453,6 +543,8 @@ function chart(){document.querySelectorAll('.hnl').forEach(e=>e.textContent=hn()
  ln(s.u,'#5b6784',1);ln(s.f,'#4f8cff',2);const pp=A=>{const B=A.slice(-50);return Math.max(...B)-Math.min(...B);};$('pu'+(ci+1)).textContent=pp(s.u);$('pf'+(ci+1)).textContent=pp(s.f);});}
 /* تعویض تب: پنل و داده‌برداری بنچ */
 let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=+b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i==TAB));if(D)draw(D);});
+/* v1.15b: زیرتب داخل تنظیمات — ۰=شارژ و فیلتر، ۱=آلارم‌ها */
+let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{STAB=+b.dataset.s;document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i==STAB));if(D)draw(D);});
 $('mx').onclick=()=>send(19,0);
 
 /* ---------- به‌روزرسانی: فرمول‌های بخش 5.3 با مقادیر زنده ---------- */
@@ -559,7 +651,104 @@ for(const id of [7,8,20,21,22,23,24,25,26]){const e=$('q'+id);if(!e)continue;e.o
  if(id>=20){const m=qchk().filter(x=>x.ids.includes(id));
   if(m.length&&!confirm('⚠ '+m.map(x=>x.msg).join('\n')+'\n\nبرد مقدار را گیره می‌زند تا مجموعه سازنده بماند. باز هم ارسال شود؟')){e.value='';qgraph();return;}}
  send(id,v);};if(id>=20)e.oninput=qgraph;}
-function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;qfill();if(TAB==2)qgraph();
+/* ===== v1.15: تب آلارم‌ها — آینهٔ قوانین Fault_ClampAlarms/Charger_ClampAlarms روی برد ===== */
+const ADEF=[14800,150,6000,7000,1000,1000,21000,28000,950,15000,2000];
+function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:ADEF[id-27];
+ if(e&&e.value!==''){const v=parseInt(e.value,10);if(!isNaN(v))return{v,d};}
+ return{v:d,d};}
+function ap(){
+ const g=(id,fb)=>D&&D.p&&D.p[id]!=null?D.p[id]:fb;
+ /* [EN] profile refs come from the APPLIED board values (QDEF fallback); alarm refs from typed-or-applied (av). */
+ return{over:g(22,14600),imax:g(25,650),d:av(27).v,dd:av(28).v,ab:av(29).v,bk:av(30).v,ad:av(31).v,rc:av(32).v,mn:av(33).v,mx:av(34).v,hd:av(35).v,ov:av(36).v,fl:av(37).v};}
+function achk(){const a=ap(),w=[],bad=(v,lo,hi)=>!(v>=lo&&v<=hi);
+ const dlo=Math.max(14000,a.over+50),dhi=Math.min(15000,a.ov-100);
+ if(dlo>dhi)w.push({ids:[27,36],msg:'بازهٔ قطع خالی است — قطع OV را بالا ببرید یا سقف تجاوز را پایین بیاورید'});
+ else if(bad(a.d,dlo,dhi))w.push({ids:[27],msg:'قطع باتری باید '+dlo+'..'+dhi+' باشد (بالای تجاوز+۵۰، زیر OV−۱۰۰)'});
+ if(bad(a.dd,50,1000))w.push({ids:[28],msg:'دبانس قطع باید ۵۰..۱۰۰۰ باشد'});
+ if(bad(a.ab,3000,8000))w.push({ids:[29],msg:'غیبت باید ۳۰۰۰..۸۰۰۰ باشد'});
+ else if(!(a.ab<=a.bk-500))w.push({ids:[29,30],msg:'غیبت باید زیر بازگشت−۵۰۰ باشد (≤ '+(a.bk-500)+')'});
+ if(bad(a.bk,4000,9000))w.push({ids:[30],msg:'برگشت باید ۴۰۰۰..۹۰۰۰ باشد'});
+ else if(!(a.bk>=a.ab+500))w.push({ids:[30,29],msg:'برگشت باید بالای غیبت+۵۰۰ باشد (≥ '+(a.ab+500)+')'});
+ if(bad(a.ad,100,5000))w.push({ids:[31],msg:'دبانس غیبت باید ۱۰۰..۵۰۰۰ باشد'});
+ if(bad(a.rc,100,5000))w.push({ids:[32],msg:'دبانس بازیابی باید ۱۰۰..۵۰۰۰ باشد'});
+ if(bad(a.mn,18000,24000))w.push({ids:[33],msg:'کف ورودی باید ۱۸۰۰۰..۲۴۰۰۰ باشد'});
+ else if(!(a.mn<=a.mx-1000))w.push({ids:[33,34],msg:'کف ورودی باید زیر سقف−۱۰۰۰ باشد (≤ '+(a.mx-1000)+')'});
+ if(bad(a.mx,24000,30000))w.push({ids:[34],msg:'سقف ورودی باید ۲۴۰۰۰..۳۰۰۰۰ باشد'});
+ else if(!(a.mx>=a.mn+1000))w.push({ids:[34,33],msg:'سقف ورودی باید بالای کف+۱۰۰۰ باشد (≥ '+(a.mn+1000)+')'});
+ if(bad(a.hd,a.imax+50,950))w.push({ids:[35,25],msg:'خطای سخت باید '+(a.imax+50)+'..۹۵۰ باشد (بالای بالک+۵۰، هرگز بالای ۹۵۰)'});
+ const olo=Math.max(14000,a.over+150);
+ if(bad(a.ov,olo,15000))w.push({ids:[36,22],msg:'قطع OV باید '+olo+'..۱۵۰۰۰ باشد (بالای تجاوز+۱۵۰، هرگز بالای ۱۵۰۰۰)'});
+ if(bad(a.fl,0,8000))w.push({ids:[37],msg:'کف اعتبار باید ۰..۸۰۰۰ باشد'});
+ return w;}
+function afresh(){const w=achk(),we=$('aw');
+ if(we){we.innerHTML=w.length?('⚠ ترکیب نامعتبر — برد این‌ها را گیره می‌زند: '+w.map(x=>x.msg).join('؛ ')):'';
+  we.style.cssText=w.length?'margin:2px 0 6px;color:#ff7373;font-size:12.5px;line-height:1.9':'margin:2px 0 0';}
+ for(const id of [27,28,29,30,31,32,33,34,35,36,37]){const ne=$('q'+id);if(ne)ne.style.borderColor=w.some(x=>x.ids.includes(id))?'#b8323f':'';}}
+function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):(D.q2&(1<<(id-32)));}
+function afill(){if(!D||!D.p)return;for(const id of [27,28,29,30,31,32,33,34,35,36,37]){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!apend(id))a.textContent=D.p[id]==null?'—':D.p[id];}}
+function adef(){[[27,14800],[28,150],[29,6000],[30,7000],[31,1000],[32,1000],[33,21000],[34,28000],[35,950],[36,15000],[37,2000]].forEach(x=>{$('q'+x[0]).value=x[1];send(x[0],x[1]);});afresh();}
+/* v1.15b: کارت وضعیت گروه‌بندی‌شده — اسکلت یک‌بار ساخته می‌شود و هر poll فقط متن/رنگ به‌روز می‌شود (بدون پر/خالی شدن و چشمک) */
+const FEXP=[
+ ['خطای ADC','نمونه‌برداری ADC نامعتبر است و اندازه‌گیری‌ها قابل‌اعتماد نیست؛ برد محافظه‌کار می‌شود. سیم‌کشی آنالوگ و تغذیه را بررسی کنید.'],
+ ['اضافه‌جریان کانال ۱','جریان کانال ۱ از حد گذشت و کانال متوقف شد؛ باتری/بار کانال ۱ را بررسی و برد را ریست کنید.'],
+ ['اضافه‌جریان کانال ۲','جریان کانال ۲ از حد گذشت و کانال متوقف شد؛ باتری/بار کانال ۲ را بررسی و برد را ریست کنید.'],
+ ['باتری ضعیف','ولتاژ باتری خیلی پایین است؛ باتری را بررسی/شارژ کنید.'],
+ ['خطای جیتر کانال ۱','ناپایداری داخلی نمونه‌برداری کانال ۱؛ اگر ماندگار شد برد را ریست کنید.'],
+ ['خطای جیتر کانال ۲','ناپایداری داخلی نمونه‌برداری کانال ۲؛ اگر ماندگار شد برد را ریست کنید.'],
+ ['قطع باتری','سیم باتری قطع است یا باتری نیست: یا ولتاژ حین پمپ بالای آستانهٔ قطع (۲۷) رفته یا باتری زیر آستانهٔ غیبت (۲۹) با ورودی سالم دیده شده. سیم‌کشی باتری را بررسی کنید؛ با بازگشت هر دو نیمه بالای آستانهٔ برگشت (۳۰) و پایداری (۳۲)، لچ خودکار پاک می‌شود.']];
+let ASB=null;
+function astat(){const s=$('ast'),b=$('abars');if(!s||!b||!D||!D.t||!D.p)return;
+ const t=D.t,p=D.p;
+ const g=(id,fb)=>p[id]!=null?p[id]:fb;
+ const vin=t[14],vl=t[17],vh=t[18],im=Math.max(t[3],t[10]);
+ const mn=g(33,21000),mx=g(34,28000),dc=g(27,14800),ab=g(29,6000),hd=g(35,950),ov=g(36,15000),fl=g(37,2000);
+ if(!ASB){
+  s.innerHTML=`<div class="ag">`+[['ورودی'],['باتری پایین'],['باتری بالا'],['جریان فیلترشده']].map((x,k)=>`<div class="ab" id="asb${k}"><small>${x[0]}</small><b class="n" id="asv${k}">—</b><span class="lb" id="asc${k}">—</span><span class="tg" id="asg${k}">—</span></div>`).join('')+`</div><div class="ab" id="asb4" style="margin-top:8px;min-height:0"><small>خطاهای قفل‌شده (fault)</small><div class="fx2" id="asf">—</div></div>`;
+  b.innerHTML=[0,1,2].map(k=>`<div class="lb" id="abc${k}" style="margin-top:8px">—</div><div class="bar"><i id="abf${k}"></i><span id="abm${k}"></span></div>`).join('');
+  ASB={box:[0,1,2,3,4].map(k=>$('asb'+k)),val:[0,1,2,3].map(k=>$('asv'+k)),cap:[0,1,2,3].map(k=>$('asc'+k)),pill:[0,1,2,3].map(k=>$('asg'+k)),flt:$('asf'),bcap:[$('abc0'),$('abc1'),$('abc2')],bfill:[$('abf0'),$('abf1'),$('abf2')],bmark:[$('abm0'),$('abm1'),$('abm2')],sig:'',mask:-1};
+  if(!ASB.box[0]||!ASB.bfill[0]||!ASB.flt){ASB=null;return;}
+ }
+ const set=(k,val,cap,pill,cls)=>{ASB.val[k].textContent=val;ASB.cap[k].textContent=cap;ASB.pill[k].textContent=pill;ASB.pill[k].className='tg '+cls;ASB.box[k].className='ab '+(cls==='g'?'good':cls==='y'?'warn':'bad');};
+ const vinOk=vin>=mn&&vin<=mx;
+ set(0,(vin/1000).toFixed(2)+'V',`بازهٔ سالم ${(mn/1000).toFixed(1)}..${(mx/1000).toFixed(1)}V`,vinOk?'✅ داخل بازه':'⚠ خارج بازه',vinOk?'g':'r');
+ [[vl,1],[vh,2]].forEach(B=>{const v=B[0],over=v>=dc,lost=v<ab,inv=v<fl||v>=ov,bad=over||lost||inv;
+  set(B[1],(v/1000).toFixed(2)+'V',`قطع ${(dc/1000).toFixed(2)}V · حاشیه ${dc-v}mV`,bad?(over?'⚠ بالای قطع':lost?'⚠ غایب':'⚠ نامعتبر'):'✅ سالم',bad?'r':'g');});
+ set(3,im+'mA',`خطای سخت ${hd}mA`,im>=hd?'⚠ تریپ':im>=hd-100?'⚠ نزدیک تریپ':'✅ سالم',im>=hd?'r':im>=hd-100?'y':'g');
+ if(t[19]!==ASB.mask){ASB.mask=t[19];
+  if(!t[19]){ASB.flt.textContent='✅ بدون خطای قفل‌شده';ASB.box[4].className='ab good';}
+  else{let h='';for(let bit=0;bit<7;bit++)if(t[19]&(1<<bit))h+=`<div>⚠ <b>${FEXP[bit][0]}</b> — ${FEXP[bit][1]}</div>`;
+   if(t[19]&~127)h+=`<div>⚠ بیت ناشناخته: <span class="n">fault 0x${t[19].toString(16)}</span></div>`;
+   ASB.flt.innerHTML=h;ASB.box[4].className='ab bad';}}
+ const pc2=(x,lo,hi)=>Math.max(0,Math.min(100,(x-lo)/(hi-lo)*100));
+ const R=[[vin,Math.max(15000,mn-3000),Math.min(32000,mx+3000),[[mn,'#2ecc8f'],[mx,'#ff5c5c']],`ورودی — سبز=کف ${(mn/1000).toFixed(1)}V · قرمز=سقف ${(mx/1000).toFixed(1)}V`],
+  [Math.max(vl,vh),0,16000,[[ab,'#f5b942'],[g(30,7000),'#2ecc8f'],[dc,'#ff5c5c']],`باتری (بالاترین نیمه) — زرد=غیبت · سبز=برگشت · قرمز=قطع`],
+  [im,0,Math.max(1000,hd+100),[[hd,'#ff5c5c']],`جریان — قرمز=خطای سخت ${hd}mA`]];
+ const sig=[mn,mx,ab,g(30,7000),dc,hd].join(',');
+ if(sig!==ASB.sig){ASB.sig=sig;R.forEach((r,k)=>{ASB.bcap[k].textContent=r[4];ASB.bmark[k].innerHTML=r[3].map(m=>`<u style="right:${pc2(m[0],r[1],r[2])}%;background:${m[1]}"></u>`).join('');});}
+ R.forEach((r,k)=>{ASB.bfill[k].style.width=pc2(r[0],r[1],r[2])+'%';});}
+/* اتصال ورودی‌های آلارم: مثل پروفایل + نگهبان + q2 برای شناسه‌های ۳۲..۳۷ */
+for(const id of [27,28,29,30,31,32,33,34,35,36,37]){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;
+ const m=achk().filter(x=>x.ids.includes(id));
+ if(m.length&&!confirm('⚠ '+m.map(x=>x.msg).join('\n')+'\n\nبرد مقدار را گیره می‌زند تا مجموعه سازنده بماند. باز هم ارسال شود؟')){e.value='';afresh();return;}
+ send(id,v);};e.oninput=afresh;}
+/* ===== v1.15b: پشتیبان‌گیری JSON تنظیمات (فیلتر + پروفایل + آلارم‌ها) ===== */
+const XIDS=[7,8,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37];
+function xexp(){const x=$('xst');if(!D||!D.p){if(x)x.textContent='هنوز داده‌ای از برد نرسیده';return;}
+ const o={app:'ChangeOver-settings',v:1,params:{}};XIDS.forEach(id=>{o.params[id]=D.p[id];});
+ const u=URL.createObjectURL(new Blob([JSON.stringify(o)],{type:'application/json'}));
+ const a=document.createElement('a');a.href=u;a.download='changeover-settings.json';a.click();
+ setTimeout(()=>URL.revokeObjectURL(u),2000);
+ if(x)x.textContent='⬇ خروجی گرفته شد ('+XIDS.filter(id=>D.p[id]!=null).length+' مقدار اعمال‌شده)';}
+async function ximp(f){const x=$('xst');let o;try{o=JSON.parse(await f.text());}catch(e){if(x)x.textContent='⚠ فایل JSON معتبر نیست';return;}
+ const ps=o&&o.params?o.params:{};
+ const jobs=XIDS.filter(id=>Number.isFinite(+ps[id])).map(id=>[id,Math.round(+ps[id])]);
+ if(!jobs.length){if(x)x.textContent='⚠ هیچ مقدار معتبری در فایل نیست';return;}
+ if(!confirm(jobs.length+' مقدار از فایل روی برد اعمال شود؟\nبرد هر کدام را گیره می‌زند؛ نتیجه کنار همان فیلد دیده می‌شود.'))return;
+ let ok=0;for(const j of jobs){try{const r=await fetch('/s?id='+j[0]+'&v='+j[1],{method:'POST'});if(r.ok)ok++;}catch(e){}if(x)x.textContent='… '+ok+'/'+jobs.length;await sl(130);}
+ if(x)x.textContent=(ok===jobs.length?'✅ ':'⚠ ')+ok+'/'+jobs.length+' اعمال شد — مقادیر گیره‌خورده کنار فیلدها';
+ const xi=$('xim');if(xi)xi.value='';}
+$('xim').onchange=e=>{if(e.target.files[0])ximp(e.target.files[0]);};
+function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;qfill();afill();if(TAB==2){if(STAB==0)qgraph();else{afresh();astat();}}
  document.body.classList.toggle('dn',!on);$('lk').classList.toggle('on',on);
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');
  hist(d);
@@ -590,8 +779,8 @@ let BDS={};try{BDS=JSON.parse(localStorage.getItem('bd')||'{}');}catch(e){}
 function bsave(){document.querySelectorAll('[data-s]').forEach(e=>{if(e.value==='')delete BDS[e.id];else BDS[e.id]=e.value;});try{localStorage.setItem('bd',JSON.stringify(BDS));}catch(e){}}
 function bload(r){r.querySelectorAll('[data-s]').forEach(e=>{if(BDS[e.id]!=null)e.value=BDS[e.id];});}
 /* ----- داده‌برداری بنچ (بخش 5.6 نسخه ۲): همهٔ مرحله‌ها در یک جدول؛ جلو رفتن فقط با دکمهٔ کاربر -----
- * هر مرحله: duty → صبر → پنجرهٔ /m (قبلش GET_PARAMS) → توقف روی ردیف فعال برای عدد مولتی‌متر → با دکمهٔ ثبت و مرحلهٔ بعد یک ردیف ۷۱ستونی در ESP.
- * Capture v2: set duty → settle → /m window (preceded by GET_PARAMS) → STOP on the active table row for the DMM → one 70-column row only on submit. */
+ * هر مرحله: duty → صبر → پنجرهٔ /m (قبلش GET_PARAMS) → توقف روی ردیف فعال برای عدد مولتی‌متر → با دکمهٔ ثبت و مرحلهٔ بعد یک ردیف ۸۹ستونی در ESP.
+ * Capture v2: set duty → settle → /m window (preceded by GET_PARAMS) → STOP on the active table row for the DMM → one 89-column row only on submit. */
 const WSC={SOLO1:[1],SOLO2:[2],BOTH:[1,2]};let W={run:false,abort:false,act:null};
 const sl=ms=>new Promise(r=>setTimeout(r,ms));
 async function req(u,m,body){const o={method:m||'GET',cache:'no-store'};if(body!=null){o.body=body;o.headers={'Content-Type':'text/plain'};}const r=await fetch(u,o);let j={};try{j=await r.json();}catch(e){}j._s=r.status;return j;}
@@ -616,8 +805,8 @@ async function wopen(){const j=await req('/m','POST');if(j._s!=200)throw 'پنج
 async function wlatch(){const j=await req('/m');if(!j.n||!j.s||j.s.length<20)throw 'در این بازه TLM نرسید';j.a=i=>j.s[i]/j.n;return j;}
 /* خانه‌های زندهٔ ردیف فعال از آخرین /t — فقط نمایش؛ ردیف فایل از /m لحظهٔ ثبت ساخته می‌شود */
 function wlive(act){if(!D||D.on!=1)return['-','-','-',undefined,'-','-','-',undefined,undefined];const M=(n,b)=>act.includes(n)?[D.t[b],D.t[b+3],D.t[b+4]]:['قطع','-','-'];const a=M(1,0),b=M(2,7);return[a[0],a[1],a[2],undefined,b[0],b[1],b[2],undefined,undefined];}
-/* ردیف CSV (۷۱ ستون، ترتیب دقیق بخش 5.6، مولتی‌متر نسخه ۴) / CSV row, exact 5.6 column order (DMM v4) */
-function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x,P=[];for(let k=0;k<27;k++)P.push(q(D.p[k]));
+/* ردیف CSV (۸۹ ستون، ترتیب دقیق بخش 5.6، مولتی‌متر نسخه ۴؛ v1.15: +۱۱ ستون آلارم) / CSV row, exact 5.6 column order (DMM v4; v1.15: +11 alarm cols) */
+function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x,P=[];for(let k=0;k<38;k++)P.push(q(D.p[k]));
  const C=b=>[m.a(b).toFixed(1),m.lo[b],m.hi[b],r0(m.a(b+1)),r0(m.a(b+2)),m.lo[b+2],m.hi[b+2],r0(m.a(b+3)),m.lo[b+3],m.hi[b+3],r0(m.a(b+4)),m.lo[b+4],m.hi[b+4],m.la[b+5],m.la[b+6]];
  return [sc,i+1,pm,se,sa,iso,...P,...C(0),...C(7),m.seq,m.fl,...[14,15,16,17,18].map(k=>r0(m.a(k))),m.or,q(v.ii),q(v.vi),q(v.b1),q(v.v1),q(v.b2),q(v.v2),v.note||'-'].join(',')+'\n';}
 /* جدول واحد: هر مرحلهٔ هر سناریو یک ردیف؛ ردیف فعال ورودی‌ها و دکمه‌ها را دارد */
@@ -1144,7 +1333,7 @@ static uint32_t func__Esp_ReadU32(const uint8_t *uint8_t__ptr_buffer, uint8_t ui
  *         [FA] ساخت و ارسال یک فریم: AA 55 type len payload xor.
  * @param  uint8_t__type        [EN] Message type (0x01 SET_PARAM / 0x02 GET_PARAMS) / [FA] نوع پیام (0x01 یا 0x02)
  * @param  uint8_t__ptr_payload [EN] Payload bytes, may be NULL when len = 0 / [FA] بایت‌های payload؛ برای طول صفر می‌تواند NULL باشد
- * @param  uint8_t__len         [EN] Payload length, 0..112 bytes / [FA] طول payload، ۰ تا ۱۱۲ بایت
+ * @param  uint8_t__len         [EN] Payload length, 0..191 bytes (SET frames use 5) / [FA] طول payload، ۰ تا ۱۹۱ بایت (فریم SET پنج بایت است)
  * @return [EN] None / [FA] ندارد
  */
 static void func__Esp_WriteFrame(uint8_t uint8_t__type, const uint8_t *uint8_t__ptr_payload, uint8_t uint8_t__len)
@@ -1578,6 +1767,7 @@ static void func__Esp_HttpTelemetry(void)
     uint32_t uint32_t__ageMs = uint32_t__nowMs - UINT32_T__G__LastTlmMs;
     bool bool__online = BOOL__G__TlmSeen && (uint32_t__ageMs <= ESP_LINK_TIMEOUT_MS);
     uint32_t uint32_t__pendingMask = 0u;
+    uint32_t uint32_t__pendingMask2 = 0u;
     uint32_t uint32_t__keepaliveAgeMs = uint32_t__nowMs - UINT32_T__G__LastKeepaliveMs;
     uint8_t uint8_t__index;
     size_t size_t__used;
@@ -1585,19 +1775,31 @@ static void func__Esp_HttpTelemetry(void)
     UINT32_T__G__LastBrowserPollMs = uint32_t__nowMs;
     BOOL__G__BrowserSeen = true;
 
+    /* [EN] v1.15: 38 params no longer fit one u32 mask (and 1UL << 32+ is UB),
+            so ids 0..31 go to "q" and 32..37 to "q2" (panel apend() reads both).
+       [FA] نسخه ۱.۱۵: ۳۸ پارامتر در یک ماسک u32 جا نمی‌شود (و شیفت ۳۲+ تعریف‌نشده است)،
+            پس شناسه‌های ۰..۳۱ در q و ۳۲..۳۷ در q2 می‌روند. */
     for (uint8_t__index = 0u; uint8_t__index < ESP_PARAM_COUNT; uint8_t__index++)
     {
         if (BOOL__G__TxParamPending[uint8_t__index])
         {
-            uint32_t__pendingMask |= (1UL << uint8_t__index);
+            if (uint8_t__index < 32u)
+            {
+                uint32_t__pendingMask |= (1UL << uint8_t__index);
+            }
+            else
+            {
+                uint32_t__pendingMask2 |= (1UL << (uint8_t__index - 32u));
+            }
         }
     }
 
     size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
-        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"n\":%lu,\"q\":%lu,\"ka\":%lu,\"t\":[",
+        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"n\":%lu,\"q\":%lu,\"q2\":%lu,\"ka\":%lu,\"t\":[",
         bool__online ? 1u : 0u, (unsigned long)uint32_t__ageMs, (unsigned int)UINT16_T__G__TlmSeq,
         (unsigned int)UINT8_T__G__TlmFlags, (unsigned long)UINT32_T__G__TlmFrameCount,
-        (unsigned long)uint32_t__pendingMask, (unsigned long)uint32_t__keepaliveAgeMs);
+        (unsigned long)uint32_t__pendingMask, (unsigned long)uint32_t__pendingMask2,
+        (unsigned long)uint32_t__keepaliveAgeMs);
 
     for (uint8_t__index = 0u; uint8_t__index < ESP_LINK_TLM_FIELD_COUNT; uint8_t__index++)
     {
