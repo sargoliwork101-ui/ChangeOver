@@ -58,7 +58,12 @@
 > typed-value preview). v1.14b (same day, ninth order): graph recolored to
 > the dark panel palette with bilingual FA+EN labels, the tab renamed
 > "تنظیمات", and the median/average filter windows (params 7/8) moved into
-> it under a "فیلتر جریان" section. No wire-format change. v1.13 (same day, seventh order - "the
+> it under a "فیلتر جریان" section. v1.14c (tenth order, "show each
+> battery's position and state; the white Bulk curve is confusing - are
+> the zones not enough?"): the graph's V(t) curve and cycle arrow are
+> removed; each battery gets a live position dot on its voltage column
+> plus a bilingual state chip under the chart. No wire-format change.
+> v1.13 (same day, seventh order - "the
 > voltages are fixed but the currents you read are wrong"): audit of
 > the whole current path confirmed the chain formula, the parse and the
 > v1.11 anchors all matched the DMM to <= 0.7 mA on the calibration
@@ -727,16 +732,20 @@ params 20..26 (shared by BOTH channels - one profile for both batteries).
 Each field carries a Persian description in the tab; the applied value
 reported back by the STM32 is shown next to the field, so a clamped write
 is visible immediately. A "بازگردانی پیش‌فرض کارخانه" button restores all
-seven defaults. v1.14 adds a live SVG STAGE GRAPH at the top of the tab:
-voltage threshold bands (hard 15 V cutoff, absorb-over, absorb,
-absorb-enter, float, reentry), the battery-voltage curve through
-OFF -> BULK (constant current) -> ABSORB (voltage hold + taper) -> FLOAT
-with the reentry cycle arrow, the current annotations (imax / taper), LIVE
-battery-low/high markers and both charger states from TLM, and a dashed
-PREVIEW of any typed-but-not-yet-applied value. v1.14b: the graph uses the
-dark panel palette and every zone, threshold and stage carries its English
-name beside the Persian one (Bulk / Absorb / Float / Reentry / Over /
-Cutoff) - user order 2026-09-26.
+seven defaults. v1.14 adds a live SVG STAGE GRAPH at the top of the tab: voltage
+threshold bands (hard 15 V cutoff, absorb-over, absorb, absorb-enter,
+float, reentry) plus a dashed PREVIEW of any typed-but-not-yet-applied
+value. v1.14b: the graph uses the dark panel palette and every zone,
+threshold and stage carries its English name beside the Persian one
+(Bulk / Absorb / Float / Reentry / Over / Cutoff). v1.14c (user order
+2026-09-26, "show each battery's position and state; the white Bulk curve
+is confusing - are the zones not enough?"): the V(t) curve and the
+reentry cycle arrow are REMOVED - the zones alone tell the story - and
+each battery instead gets a live POSITION DOT on its own voltage column
+(ch2 -> battery-low t[17]/state t[13]/current t[10], ch1 ->
+battery-high t[18]/state t[6]/current t[3]) with a colored state chip
+under the chart (voltage, current, bilingual state: خاموش/Off,
+بالک/Bulk, ابزورب/Absorb, شناور/Float, faults red).
 
 - Boot defaults equal the old compile-time setpoints (14400 / 14300 /
   14600 / 13500 / 12800 / 650 / 50) - a reflash changes no behavior.
@@ -931,7 +940,8 @@ STM32 flash + the panel stage graph (section 5.8) - firmware + panel
 only, NO wire-format change. Both boards reflash together as usual.
 v1.14b (2026-09-26): panel-only polish - dark bilingual graph, tab
 renamed "تنظیمات", filter windows 7/8 moved to it; firmware untouched
-(panel reflash only).
+(panel reflash only). v1.14c (same day): panel-only - graph simplified to
+zones + per-battery position dots and state chips.
 
 v1.13 (2026-09-25, user order of the same day): the ch2 LUT changed from
 chain->current to chain->POWER with a live /Vlow division (section 5.3) -

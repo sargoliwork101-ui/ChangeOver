@@ -486,7 +486,6 @@ function qgraph(){const g=$('qg');if(!g)return;
  const zone=(mv1,mv2,fill,txt,c)=>{const y1=Y(Math.max(mv1,mv2)),y2=Y(Math.min(mv1,mv2));
   return`<rect x="${X0}" y="${y1}" width="${X1-X0}" height="${Math.max(3,y2-y1)}" fill="${fill}"/>`+
   `<text x="${X0+8}" y="${y1+15}" font-size="11.5" font-weight="700" fill="${c}">${txt}</text>`;};
- const xb=X0+16,xa=250,xf=430,xr=620;
  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:640px;font-family:inherit">`;
  s+=`<rect x="${X0}" y="18" width="${X1-X0}" height="${H-52}" fill="#0d1320" stroke="#232c40" rx="6"/>`;
  for(let mv=Math.ceil(lo/500)*500;mv<=hi;mv+=500){const y=Y(mv);
@@ -504,26 +503,20 @@ function qgraph(){const g=$('qg');if(!g)return;
  s+=ln(q.e.v,'#d98e2b','ورود ابزورب (Absorb Enter)',q.e);
  s+=ln(q.f.v,'#2ecc8f','شناور (Float)',q.f);
  s+=ln(q.r.v,'#4f8cff','بازگشت به بالک (Reentry)',q.r);
- /* منحنی ولتاژ باتری طی مراحل */
- const yp=Y(Math.min(q.r.v+700,hi-200));
- s+=`<path d="M${xb} ${yp} L${xa-30} ${Y(q.e.v)} L${xa} ${Y(q.a.v)} L${xf} ${Y(q.a.v)} L${xf+22} ${Y(q.f.v)} L${xr} ${Y(q.r.v+150)}" fill="none" stroke="#e7eaf0" stroke-width="2.2"/>`;
- s+=`<path d="M${xr} ${Y(q.r.v+150)} C ${xr+60} ${Y(q.r.v-250)}, ${xb+130} ${Y(q.r.v+700)}, ${xb+6} ${yp}" fill="none" stroke="#4f8cff" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#qa)"/>`;
- s+=`<defs><marker id="qa" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L9 4.5 L0 9 z" fill="#4f8cff"/></marker></defs>`;
- /* برچسب مراحل روی منحنی */
- const stg=(x,y,ttl,sub,c)=>`<text x="${x}" y="${y}" text-anchor="middle" font-size="12" font-weight="700" fill="${c}">${ttl}</text><text x="${x}" y="${y+14}" text-anchor="middle" font-size="10" fill="#5a6a80">${sub}</text>`;
- s+=stg((xb+xa-30)/2,yp-16,'بالک (Bulk)','جریان ثابت ≤ '+im+'mA','#c9d3e8');
- s+=stg((xa+xf)/2,Y(q.a.v)-30,'ابزورب (Absorb)','تثبیت '+V(q.a.v)+'V · شستشو ۱۰دقیقه · تیپر <'+tp+'mA×۶۰s','#f5b942');
- s+=stg((xf+xr)/2,Y(q.f.v)-24,'شناور (Float)','نگه‌داشت '+V(q.f.v)+'V · جریان ~۰','#2ecc8f');
- s+=stg(X0+70,H-40,'خاموش (Off)','۱۵ ثانیه ثبات اتصال','#9aa5bd');
- s+=`<text x="${X1-6}" y="${H-40}" text-anchor="end" font-size="10" fill="#6ea8ff">افت زیر ${V(q.r.v)}V → بازگشت به بالک / Reentry (خط‌چین آبی)</text>`;
- /* نشانگرهای زندهٔ ولتاژ باتری + وضعیت کانال‌ها */
+ /* موقعیت زندهٔ هر باتری (دستور کاربر ۲۰۲۶-۰۹-۲۶): نقطهٔ رنگی روی ولتاژ خودش
+    در ستون مخصوصش + برچسب وضعیت زیر نمودار؛ ناحیه‌ها خودشان داستان مراحل را می‌گویند */
  let lg='';
  if(D&&D.t){const tt=D.t;
-  [[tt[17],'باتری پایین (Vlow)','#c084fc'],[tt[18],'باتری بالا (Vhigh)','#fbbf24']].forEach(m=>{
-   if(m[0]>lo&&m[0]<hi){const y=Y(m[0]);
-    s+=`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="${m[2]}" stroke-width="1.6" stroke-dasharray="2 3"/>`+
-       `<text x="${X0+10}" y="${y-4}" font-size="10.5" font-weight="700" fill="${m[2]}">${m[1]}: ${V(m[0])}V</text>`;}});
-  lg=`زنده: باتری پایین <b>${V(tt[17])}V</b> · باتری بالا <b>${V(tt[18])}V</b> · کانال ۱: <b>${ST[tt[6]]||('‌'+tt[6])}</b> · کانال ۲: <b>${ST[tt[13]]||tt[13]}</b> · پس از هر تغییر، ~۱٫۵ ثانیه بعد روی فلش برد ذخیره می‌شود.`;
+  const BST={0:['خاموش (Off)','#9aa5bd'],1:['بالک (Bulk)','#4f8cff'],2:['ابزورب (Absorb)','#f5b942'],3:['شناور (Float)','#2ecc8f'],4:['راه‌اندازی (Bring-up)','#f5b942'],5:['انتظار JIT (JIT wait)','#ff5c5c'],6:['انتظار ورودی (No input)','#f5b942'],7:['خطای نهایی (Final fault)','#ff5c5c'],8:['باتری قطع (Battery lost)','#ff5c5c'],9:['دستی (Manual)','#f5b942']};
+  const bats=[['باتری پایین (Vlow)',tt[17],tt[13],tt[10],'#c084fc',0.60],['باتری بالا (Vhigh)',tt[18],tt[6],tt[3],'#fbbf24',0.82]];
+  bats.forEach(b=>{
+   if(b[1]>lo&&b[1]<hi){const y=Y(b[1]),x=X0+Math.round((X1-X0)*b[5]);
+    s+=`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="${b[4]}" stroke-width="1.6" stroke-dasharray="2 3"/>`;
+    s+=`<circle cx="${x}" cy="${y}" r="7" fill="${b[4]}" stroke="#0d1320" stroke-width="2.5"/>`;
+    s+=`<text x="${x}" y="${Math.min(y+24,H-10)}" text-anchor="middle" font-size="10.5" font-weight="700" fill="${b[4]}">${b[0].split(' (')[0]} ${V(b[1])}V</text>`;}});
+  lg=bats.map(b=>{const st=BST[b[2]]||('#'+b[2]);
+   return `<span class="tg" style="background:${st[1]}22;color:${st[1]};border:1px solid ${st[1]}66">● ${b[0]}: <b>${V(b[1])}V</b> · ${b[3]}mA · ${st[0]}</span>`;}).join(' ')+
+   `<span class="lb"> · بالک ≤ ${im}mA · تیپر < ${tp}mA · پس از هر تغییر ~۱٫۵ ثانیه بعد روی فلش برد ذخیره می‌شود</span>`;
  }else lg='در انتظار دادهٔ برد…';
  s+=`<text x="${X0}" y="12" font-size="10" fill="#8089a0">ولتاژ باتری / Battery voltage (V)</text></svg>`;
  g.innerHTML=s;const e=$('qgl');if(e)e.innerHTML=lg;}

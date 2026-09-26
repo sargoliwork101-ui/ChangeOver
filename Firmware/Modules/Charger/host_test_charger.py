@@ -872,6 +872,11 @@ def test_charger_persistence_v114():
           "قطع سخت (Cutoff) ۱۵V" in ino and "بالک (Bulk)" in ino and "خاموش (Off)" in ino and
           'fill="#0d1320"' in ino,
           "the stage graph must use the dark panel palette with bilingual (FA+EN) zone, threshold and stage labels")
+    check("'باتری پایین (Vlow)',tt[17],tt[13],tt[10]" in ino and
+          "'باتری بالا (Vhigh)',tt[18],tt[6],tt[3]" in ino and
+          '<circle cx="${x}" cy="${y}" r="7"' in ino and
+          'stroke="#e7eaf0"' not in ino and "marker-end" not in ino,
+          "v1.14c (user order 2026-09-26, 'show each battery's position and state; the white Bulk curve is confusing - are the zones not enough?'): the graph drops the V(t) curve and cycle arrow, and each battery gets a live position DOT on its own voltage column (ch2->Vlow t17/t13/t10, ch1->Vhigh t18/t6/t3) with a state chip under the chart")
 
     # ---------- compiled fault-injection run of the EXACT flash-state code ----------
     gcc = shutil.which("gcc")
