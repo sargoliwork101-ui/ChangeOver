@@ -400,7 +400,7 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 </div>
 <div class="pgx" id="p1"></div>
 <div class="pgx" id="p2">
-<div class="sbt" id="sbt"><button class="a" data-s="0">شارژ و فیلتر</button><button data-s="1">آلارم‌ها</button></div>
+<div class="sbt" id="sbt"><button class="a" data-s="0">شارژ و فیلتر</button><button data-s="1">آلارم‌ها</button><button data-s="2">وضعیت و پشتیبان</button></div>
 <div class="sgx a" id="s0">
 <div class="cd">
 <div class="hd"><b>نمودار مراحل شارژ</b><span class="lb">· مشترک هر دو کانال · ناحیه‌ها از مقادیر اعمال‌شدهٔ برد · تایپ = خط‌چین پیش‌نمایش · ترکیب نامعتبر = هشدار قرمز</span></div>
@@ -446,11 +446,6 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 </div>
 </div>
 <div class="sgx" id="s1">
-<div class="cd">
-<div class="hd"><b>وضعیت آلارم‌ها</b><span class="lb">· زنده از TLM برد · آستانه‌ها = مقادیر اعمال‌شدهٔ برد</span></div>
-<div id="ast" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div>
-<div id="abars"></div>
-</div>
 <div class="cd">
 <div class="hd"><b>نظارت باتری</b><span class="lb">· شناسه‌های ۲۷..۳۲ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
 <div id="aw" style="margin:2px 0 0"></div>
@@ -599,14 +594,21 @@ select{font:inherit;color:inherit;background:#0c1018;border:1px solid var(--ln);
 </div>
 <input type="hidden" id="q76" value="">
 </div>
+</div>
+<div class="sgx" id="s2">
 <div class="cd">
-<div class="hd"><b>پشتیبان‌گیری تنظیمات</b><span class="lb">· خروجی/ورودی JSON — فیلتر (۷/۸)، پروفایل (۲۰..۲۶)، آلارم‌ها و LED/بازر (۲۷..۷۶)</span></div>
+<div class="hd"><b>وضعیت آلارم‌ها</b><span class="lb">· زنده از TLM برد · آستانه‌ها = مقادیر اعمال‌شدهٔ برد</span></div>
+<div id="ast" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div>
+<div id="abars"></div>
+</div>
+<div class="cd">
+<div class="hd"><b>پشتیبان‌گیری تنظیمات</b><span class="lb">· خروجی/ورودی JSON — فیلتر (۷/۸)، پروفایل (۲۰..۲۶)، آلارم‌ها و LED/بازر (۲۷..۷۵)</span></div>
 <div class="bqr">
 <button class="sb sb2" onclick="xexp()">⬇ خروجی (دانلود JSON)</button>
 <label class="sb" style="cursor:pointer">⬆ ورودی (انتخاب فایل)<input type="file" id="xim" accept=".json,application/json" style="display:none"></label>
 <span class="lb" id="xst">—</span>
 </div>
-<div class="lb">خروجی، مقادیر «اعمال‌شدهٔ» فعلی برد را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). مودهای تست گذرا (۱۵..۱۹) جزو پشتیبان نیستند.</div>
+<div class="lb">خروجی، مقادیر «اعمال‌شدهٔ» فعلی برد را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). مودهای تست گذرا (۱۵..۱۹) و میوت موقتی (۷۶) جزو پشتیبان نیستند.</div>
 </div>
 </div>
 </main>
@@ -863,7 +865,7 @@ function afresh(){const w=achk(),we=$('aw');
  if(we){we.innerHTML=w.length?('⚠ ترکیب نامعتبر — برد این‌ها را گیره می‌زند: '+w.map(x=>x.msg).join('؛ ')):'';
   we.style.cssText=w.length?'margin:2px 0 6px;color:#ff7373;font-size:12.5px;line-height:1.9':'margin:2px 0 0';}
  for(const id of AIDS){const ne=$('q'+id);if(ne)ne.style.borderColor=w.some(x=>x.ids.includes(id))?'#b8323f':'';}
- const ms=$('xmuteS');if(ms)ms.textContent=(D&&D.p&&D.p[76]===1)?'🔇 میوت روشن — روی فلش می‌ماند؛ LEDها همچنان چشمک می‌زنند':'🔊 بوق روشن';}
+ const ms=$('xmuteS');if(ms)ms.textContent=(D&&D.p&&D.p[76]===1)?'🔇 میوت روشن — موقتی، با ریست برد پاک می‌شود؛ LEDها همچنان چشمک می‌زنند':'🔊 بوق روشن';}
 function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id-32))):((D.q3||0)&(1<<(id-64)));}
 function afill(){if(!D||!D.p)return;for(const id of AIDS){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!apend(id))a.textContent=D.p[id]==null?'—':D.p[id];}}
 function adef(){AIDS.forEach((id,k)=>{$('q'+id).value=ADEF[k];send(id,ADEF[k]);});afresh();}
@@ -989,7 +991,7 @@ for(const id of AIDS){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=p
  if(m.length&&!confirm('⚠ '+m.map(x=>x.msg).join('\n')+'\n\nبرد مقدار را گیره می‌زند تا مجموعه سازنده بماند. باز هم ارسال شود؟')){e.value='';afresh();return;}
  send(id,v);};e.oninput=afresh;}
 /* ===== v1.15b: پشتیبان‌گیری JSON تنظیمات (فیلتر + پروفایل + آلارم‌ها) ===== */
-const XIDS=[7,8,20,21,22,23,24,25,26];AIDS.forEach(id=>XIDS.push(id));
+const XIDS=[7,8,20,21,22,23,24,25,26];AIDS.forEach(id=>{if(id<76)XIDS.push(id);});
 function xexp(){const x=$('xst');if(!D||!D.p){if(x)x.textContent='هنوز داده‌ای از برد نرسیده';return;}
  const o={app:'ChangeOver-settings',v:1,params:{}};XIDS.forEach(id=>{o.params[id]=D.p[id];});
  const u=URL.createObjectURL(new Blob([JSON.stringify(o)],{type:'application/json'}));

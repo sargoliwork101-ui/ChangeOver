@@ -848,14 +848,14 @@ def test_charger_persistence_v114():
     check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+77u", nvm_h) and
           "ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u" in nvm_h and
           "ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u" in nvm_h and
-          "ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    76u" in nvm_h,
-          "persisted set = 0..14 + 20..76 (72 ids, 77 slots) - the transient test modes 15..19 must NEVER survive a reboot")
-    check(re.search(r"ESP_LINK_NVM_VERSION\s+3u", nvm_h),
-          "v1.16 bumps the NVM record version to 3: the 77-slot record fails the v2 CRC, so a stale flash falls back to compiled defaults")
+          "ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    75u" in nvm_h,
+          "persisted set = 0..14 + 20..75 (71 ids, 77 slots) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot")
+    check(re.search(r"ESP_LINK_NVM_VERSION\s+4u", nvm_h),
+          "v1.16b bumps the NVM record version to 4: v3 records may carry the now-transient id 76, so they fail the version check and fall back to compiled defaults")
 
     # the persisted-id predicate in C, replicated and cross-checked
-    persisted = {i for i in range(77) if i <= 14 or 20 <= i <= 76}
-    check(persisted == set(range(15)) | set(range(20, 77)) and 19 not in persisted and 15 not in persisted,
+    persisted = {i for i in range(77) if i <= 14 or 20 <= i <= 75}
+    check(persisted == set(range(15)) | set(range(20, 76)) and 19 not in persisted and 15 not in persisted and 76 not in persisted,
           f"persisted id set must exclude 15..19 (got {len(persisted)} ids)")
 
     tab2 = ino.split('id="p2"', 2)[1]
@@ -1138,19 +1138,32 @@ int main(void){
         assert(g_params[27] == 14700 && g_params[35] == 950);
     }
 
-    /* T12 (v1.16): UI ids persist round-trip; a hostile red-duty
-       replays CLAMPED to the 100 ceiling, mute survives the reboot */
+    /* T12 (v1.16b): UI ids persist round-trip; a hostile red-duty
+       replays CLAMPED to the 100 ceiling */
     memset(EMU_FLASH, 0xFF, 2048); reboot();
     {
-        esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[3];
-        e[0].uint16_t__id = 76; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 1;
-        e[1].uint16_t__id = 39; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 999;
-        e[2].uint16_t__id = 38; e[2].uint16_t__pad = 0; e[2].uint32_t__value = 5000;
-        func__EspLink_NvmRecordBuild(&rec, 12, e, 3);
+        esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[2];
+        e[0].uint16_t__id = 39; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 999;
+        e[1].uint16_t__id = 38; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 5000;
+        func__EspLink_NvmRecordBuild(&rec, 12, e, 2);
         assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_A_ADDR));
         assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_A_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
         reboot();
-        assert(g_params[76] == 1 && g_params[39] == 100 && g_params[38] == 5000);
+        assert(g_params[76] == 0 && g_params[39] == 100 && g_params[38] == 5000);
+    }
+
+    /* T13 (v1.16b): a record carrying the panel-session mute (76) is
+       rejected WHOLE - nothing applied, compiled defaults stay */
+    memset(EMU_FLASH, 0xFF, 2048); reboot();
+    {
+        esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[2];
+        e[0].uint16_t__id = 38; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 5000;
+        e[1].uint16_t__id = 76; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 1;
+        func__EspLink_NvmRecordBuild(&rec, 13, e, 2);
+        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_A_ADDR));
+        assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_A_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
+        reboot();
+        assert(g_apply_calls == 0 && g_params[38] == 0 && g_params[76] == 0);
     }
 
     printf("ALL NVM HARNESS TESTS PASSED\n");
@@ -1492,10 +1505,20 @@ def test_ui_mirror_v116():
           "one LED per fault bit (asbb0..asbb6)")
     check("pendingMask3" in ino and "64..76" in ino,
           "the /t JSON must carry the q3 pending mask for ids 64..76")
-    check("(۲۷..۷۶)" in ino, "the backup card must cover ids 27..76")
+    check("(۲۷..۷۵)" in ino and "(۲۷..۷۶)" not in ino.split('id="s2"')[1].split("</main>")[0], "the backup card must cover ids 27..75 (mute excluded)")
     check('id="usel"' in ino and "function usel(n)" in ino
           and all(f'id="ucard{k}"' in ino for k in range(1, 6)),
           "one selectable card per scenario (5 cards, single-visible) - no crowded wall of fields")
+    check('data-s="2"' in ino and 'id="s2"' in ino and 'وضعیت و پشتیبان' in ino,
+          "v1.16b (user order: alarms tab holds ONLY alarms + scenarios): a third settings sub-tab for status + backup")
+    s1part, s2part = ino.split('id="s1"')[1].split('id="s2"')[0], ino.split('id="s2"')[1].split("</main>")[0]
+    check("ucard1" in s1part and "uleds" in s1part and "نظارت باتری" in s1part
+          and "وضعیت آلارم‌ها" not in s1part and "پشتیبان‌گیری" not in s1part,
+          "s1 keeps only the alarm cards + the scenario picker + the mirror")
+    check("وضعیت آلارم‌ها" in s2part and "پشتیبان‌گیری" in s2part and 'id="ast"' in s2part and 'id="xim"' in s2part,
+          "s2 holds the live status card and the JSON backup card")
+    check("با ریست برد پاک می‌شود" in ino and "روی فلش می‌ماند" not in ino,
+          "v1.16b (user order: mute lives only for the panel session): no stale persisted-mute text")
 
     # --- preview server: 77 params + q3 ---
     check("q3: 0" in prev and "id < 77" in prev,

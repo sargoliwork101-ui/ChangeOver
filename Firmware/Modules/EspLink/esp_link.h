@@ -234,7 +234,7 @@
 #define ESPLINK_PARAM_UI_LOWBAT_CLEAR_MV      73u  /* u32, mV, def 21200, 15000..24000, >= 72 */
 #define ESPLINK_PARAM_UI_PCT_VMIN_MV          74u  /* u32, mV, def 21000, 15000..25000, <= 75-100 */
 #define ESPLINK_PARAM_UI_PCT_VMAX_MV          75u  /* u32, mV, def 29000, 25000..32000, >= 74+100 */
-#define ESPLINK_PARAM_UI_BUZZER_MUTE          76u  /* u32, 0/1, def 0,    persisted; scenarios only */
+#define ESPLINK_PARAM_UI_BUZZER_MUTE          76u  /* u32, 0/1, def 0,    panel-session only (RAM); scenarios only */
 #define ESPLINK_PARAM_COUNT                77u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16) / [FA] پروفایل، آلارم‌ها و اعداد UI */
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */

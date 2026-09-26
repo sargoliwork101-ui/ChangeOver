@@ -66,23 +66,31 @@
  *      changes the record size, so v2 records fail CRC and fall back to
  *      the compiled defaults - a v1.15 profile saved on flash is lost on
  *      upgrade (re-tune from the panel once).
+ *      v1.16b (user order 2026-09-26): 4. Id 76 (buzzer mute) is a
+ *      panel-session mute now, never persisted - v3 records may carry a
+ *      76 entry, so they fail the version check and fall back to the
+ *      compiled defaults (re-tune from the panel once).
  * [FA] v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶): نسخه ۳. رشد جای‌ها اندازهٔ رکورد را
  *      عوض می‌کند پس رکوردهای v2 در CRC می‌افتند و پیش‌فرض کامپایل می‌ماند -
  *      پروفایل ذخیره‌شدهٔ v1.15 با ارتقا از دست می‌رود (یک‌بار از پنل
- *      دوباره تنظیم کنید). */
-#define ESP_LINK_NVM_VERSION            3u
+ *      دوباره تنظیم کنید).
+ *      v1.16b (دستور کاربر ۲۰۲۶-۰۹-۲۶): نسخه ۴. شناسهٔ ۷۶ (میوت بازر) فقط
+ *      میوت زمان کار با پنل است و هرگز ذخیره نمی‌شود - رکوردهای v3 ممکن
+ *      است ورودی ۷۶ داشته باشند پس در چک نسخه می‌افتند و پیش‌فرض کامپایل
+ *      می‌ماند (یک‌بار از پنل دوباره تنظیم کنید). */
+#define ESP_LINK_NVM_VERSION            4u
 
-/* [EN] Slot cap: 72 persisted parameters today (0..14 = 15 config ids +
- *      20..76 = 7 charge-profile ids + 11 alarm ids + 39 UI cadence ids,
- *      mute included). The cap is 77 and the record (~632 B with 77
- *      slots) still fits one 1 KiB page. The C harness caught the first
- *      draft's wrong count (17) as a silent early-return that would have
- *      programmed stack garbage - keep the harness in sync.
- * [FA] سقف جای‌ها: امروز ۷۲ پارامتر ذخیره می‌شود (0..14 = ۱۵ شناسهٔ
- *      پیکربندی + 20..76 = ۷ شناسهٔ پروفایل + ۱۱ شناسهٔ آلارم + ۳۹ شناسهٔ
- *      UI با میوت). سقف ۷۷ است و رکورد (حدود ۶۳۲ بایت با ۷۷ جای) هنوز در
- *      یک صفحهٔ ۱KB جا می‌گیرد. هارنس C خطای شمارش نسخهٔ اول (۱۷) را
- *      گرفت - هارنس را هم‌روز نگه دارید. */
+/* [EN] Slot cap: 71 persisted parameters today (0..14 = 15 config ids +
+ *      20..75 = 7 charge-profile ids + 11 alarm ids + 38 UI cadence ids;
+ *      id 76 = panel-session mute, transient like 15..19). The cap stays
+ *      77 and the record still fits one 1 KiB page. The C harness caught
+ *      the first draft's wrong count (17) as a silent early-return that
+ *      would have programmed stack garbage - keep the harness in sync.
+ * [FA] سقف جای‌ها: امروز ۷۱ پارامتر ذخیره می‌شود (0..14 = ۱۵ شناسهٔ
+ *      پیکربندی + 20..75 = ۷ شناسهٔ پروفایل + ۱۱ شناسهٔ آلارم + ۳۸ شناسهٔ
+ *      UI؛ شناسهٔ ۷۶ = میوت زمان پنل، گذرا مثل ۱۵..۱۹). سقف ۷۷ می‌ماند و
+ *      رکورد هنوز در یک صفحهٔ ۱KB جا می‌گیرد. هارنس C خطای شمارش نسخهٔ
+ *      اول (۱۷) را گرفت - هارنس را هم‌روز نگه دارید. */
 #define ESP_LINK_NVM_ENTRY_MAX          77u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
@@ -100,17 +108,17 @@
 
 /* [EN] Persisted id ranges: ALL settable configuration (0..14 = offsets,
  *      gains, filters, eta, charger enables and duty ceilings; 20..26 =
- *      charge profile; 27..37 = alarms) EXCEPT the transient test modes
- *      15..18 (fixed duty) and 19 (manual test) - those must never survive
- *      a reboot.
+ *      charge profile; 27..37 = alarms; 38..75 = UI cadence) EXCEPT the
+ *      transient test modes 15..18 (fixed duty), 19 (manual test) and 76
+ *      (panel-session buzzer mute) - those must never survive a reboot.
  * [FA] بازه‌های شناسهٔ ذخیره‌شونده: تمام پیکربندی قابل‌تنظیم (0..14 =
  *      آفست‌ها، گین‌ها، فیلترها، eta، فعال‌بودن شارژر و سقف دیوتی؛ 20..26 =
- *      پروفایل شارژ؛ ۲۷..۳۷ = آلارم‌ها) به‌جز مودهای تست گذرای ۱۵..۱۸
- *      (فیکس‌دیوتی) و ۱۹ (تست دستی) - آنها هرگز نباید از ریبوت جان به در
- *      ببرند. */
+ *      پروفایل شارژ؛ ۲۷..۳۷ = آلارم‌ها؛ ۳۸..۷۵ = اعداد UI) به‌جز مودهای
+ *      تست گذرای ۱۵..۱۸ (فیکس‌دیوتی)، ۱۹ (تست دستی) و ۷۶ (میوت زمان پنل) -
+ *      آنها هرگز نباید از ریبوت جان به در ببرند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    76u
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    75u
 
 /**
  * @brief  [EN] Is this parameter id persisted to flash? (config + charge

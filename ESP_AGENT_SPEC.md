@@ -89,7 +89,7 @@
 > that really blink, a buzzer icon with a cross on mute, every alarm
 > number editable"): params 38..76 = the 39 UI cadence numbers
 > (fault LED/buzzer scenarios, BatteryRun bands, normal blink,
-> voltage thresholds, persisted mute); the frame length grows to u16
+> voltage thresholds, panel-session mute); the frame length grows to u16
 > LE (5-byte header, payload limit 192 -> 512); PARAMS_BULK grows to
 > 77 params (386 bytes), the NVM record to 77 slots (version 2 -> 3),
 > the bench CSV to 128 columns ([uicad]); /t gains the q3 mask for
@@ -297,7 +297,7 @@ AA 55 11 05 00 02 B0 04 00 00 A2
 | 73 | UI_LOWBAT_CLEAR_MV | u32 | mV | 21200 | 15000..24000, >= 72 | Alarm clears at/above this |
 | 74 | UI_PCT_VMIN_MV | u32 | mV | 21000 | 15000..25000, <= 75-100 | Pack voltage mapped to 0% |
 | 75 | UI_PCT_VMAX_MV | u32 | mV | 29000 | 25000..32000, >= 74+100 | Pack voltage mapped to 100% (also clamps the input) |
-| 76 | UI_BUZZER_MUTE | u32 | 0/1 | 0 | 0..1 | **Persisted** mute: 1 silences scenario beeps (LEDs keep blinking); the boot wiring-test beep still sounds |
+| 76 | UI_BUZZER_MUTE | u32 | 0/1 | 0 | 0..1 | **Panel-session** mute (v1.16b: RAM-only, never persisted or backed up - a reboot unmutes): 1 silences scenario beeps (LEDs keep blinking); the boot wiring-test beep still sounds |
 
 Notes:
 - Signed values (4..6) travel as two's-complement u32 on the wire.
@@ -881,10 +881,11 @@ User order: "I want to send the constants from the panel to the board and,
 once sent, they must stay there and survive power loss." Scope: EVERY
 settable parameter EXCEPT the transient test modes - that is ids 0..14
 (offsets, gains, filters, eta, charger enables, duty ceilings), 20..26
-(charge profile), 27..37 (alarms, since v1.15) and 38..76 (UI cadence,
+(charge profile), 27..37 (alarms, since v1.15) and 38..75 (UI cadence,
 since v1.16). The fixed-duty ids
-15..18 and manual test id 19 are NEVER persisted: after any reboot the
-charger is guaranteed to be in its automatic mode.
+15..18, manual test id 19 and the panel-session mute 76 (since v1.16b)
+are NEVER persisted: after any reboot the charger is guaranteed to be in
+its automatic mode and the buzzer unmuted.
 
 - Layout: the last two 1 KiB flash pages of the STM32F103C8 (0x0800F800 /
   0x0800FC00); the linker script shrinks application FLASH 64K -> 62K and
@@ -894,10 +895,10 @@ charger is guaranteed to be in its automatic mode.
 - Record (esp_link_nvm.c): magic "CHO1" + version + wrap-around u16
   sequence + up to 77 {id, value} slots + CRC32 over everything before it.
   A record containing any non-persisted id is rejected WHOLE. v1.15 bumps
-  the version 1 -> 2, v1.16 bumps it 2 -> 3 (each slot growth changes
-  the record size, so old records fail CRC): upgrading LOSES a set
-  saved by the previous version - both boards reflash together and
-  the panel re-sends the set.
+  the version 1 -> 2, v1.16 bumps it 2 -> 3, v1.16b bumps it 3 -> 4
+  (id 76 turns transient, so v3 records may carry it): upgrading LOSES
+  a set saved by the previous version - both boards reflash together
+  and the panel re-sends the set.
 - Power-cut safety (ping-pong): each save erases the page that does NOT
   hold the newest record, then programs the new record there and verifies
   by read-back. A cut during erase or program can never destroy the
@@ -995,16 +996,20 @@ reflash with an unreadable (v2) NVM record changes no behavior or sound.
 - Thresholds (70..75): the runtime OV latch, the continuous low-battery
   flag (72/73), and the pack-voltage-to-percent map (74/75, strictly
   positive range).
-- Mute (76): persisted; silences the scenario beeps only - LEDs keep
-  blinking and the boot wiring-test beep still sounds.
+- Mute (76): panel-session only (v1.16b - user order: "mute lives only
+  while I work with the panel; after a board reset it must be back in
+  its own scenario"): RAM-only, never flashed, excluded from the JSON
+  backup; silences the scenario beeps only - LEDs keep blinking and
+  the boot wiring-test beep still sounds.
 
-The alarms sub-tab shows ONE selectable card per scenario (a picker
-row: overvoltage / battery-lost / BatteryRun / normal charging /
-battery thresholds - each card only its own numbers, e.g. scenario 1
-carries its voltage ceiling 70/71 together with its blink/beep timing
-38..43), the guard (achk) extended to the whole set (window fits, band
-order, threshold order), and a third pending mask `q3` in /t for ids
-64..76. ONE sticky mirror header stays pinned above everything: the 3
+The alarms sub-tab holds ONLY the alarm cards + ONE selectable card
+per scenario (v1.16b - a picker row: overvoltage / battery-lost /
+BatteryRun / normal charging / battery thresholds; each card only its
+own numbers, e.g. scenario 1 carries its voltage ceiling 70/71
+together with its blink/beep timing 38..43); the live status card and
+the JSON backup card moved to a third settings sub-tab. The guard
+(achk) covers the whole set (window fits, band order, threshold
+order), and a third pending mask `q3` in /t covers ids 64..76. ONE sticky mirror header stays pinned above everything: the 3
 board LEDs blinking at the board's APPLIED period/duty (panel-side
 phase), the buzzer icon (dim = silent, bright = beeping now, cross
 overlay = muted), the active scenario name, a live readout of the
@@ -1146,6 +1151,15 @@ documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 
 ## 10. Protocol version
 
+v1.16b (2026-09-26, user order of the same day): the mute (76) turns
+from persisted-flash into a panel-session mute (RAM-only, never saved,
+excluded from backup - a reboot unmutes), so the NVM version bumps
+3 -> 4 (v3 records may carry a 76 entry and fail validation); the
+alarms sub-tab keeps ONLY the alarm cards + the scenario picker (the
+live status card and the backup card move to a third settings
+sub-tab). No wire-format change beyond the version bump. BOTH boards
+MUST flash together.
+
 v1.16 (2026-09-26, user order of the same day): UI cadence parameters
 38..76 (section 5.10) - the frame length grows to u16 LE (5-byte
 header, payload limit 192 -> 512; short-frame checksums UNCHANGED
@@ -1154,7 +1168,7 @@ bytes; the NVM record grows to 77 slots with version 2 -> 3 (v2
 records fail CRC and fall back to compiled defaults); the bench CSV
 gains the [uicad] block (128 columns); /t gains the q3 pending mask
 for ids 64..76; the panel gains the LED/buzzer mirror + one LED per
-fault bit + the persisted mute toggle. No existing ID renumbered,
+fault bit + the panel-session mute toggle. No existing ID renumbered,
 no TLM_LIVE change. BOTH boards MUST flash together (a v1.15 parser
 cannot read v1.16 frames at all).
 

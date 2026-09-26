@@ -597,7 +597,7 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
 #define UI_ALARM_PARAM_LOWBAT_CLEAR_MV     73u  /* mV, 15000..24000, >= 72 */
 #define UI_ALARM_PARAM_PCT_VMIN_MV         74u  /* mV, 15000..25000, <= 75-100 */
 #define UI_ALARM_PARAM_PCT_VMAX_MV         75u  /* mV, 25000..32000, >= 74+100 */
-#define UI_ALARM_PARAM_BUZZER_MUTE         76u  /* 0/1, persisted; scenarios only */
+#define UI_ALARM_PARAM_BUZZER_MUTE         76u  /* 0/1, panel-session only (RAM); never persisted, cleared on reboot; scenarios only */
 #define UI_ALARM_PARAM_MIN_ID              38u
 #define UI_ALARM_PARAM_MAX_ID              76u
 

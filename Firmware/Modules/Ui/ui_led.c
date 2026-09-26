@@ -47,7 +47,8 @@ volatile bool BOOL__G__UiBatteryAlarmIssued = false;
 /* ==================== Runtime UI cadence (v1.16) ==================== */
 
 /* [EN] v1.16 (user order 2026-09-26): the 39 UI_* numbers as one live
- *      struct - ids 38..76, STM32-flash persisted, clamped as a set on
+ *      struct - ids 38..76 (76 = panel-session mute, RAM-only), STM32-flash
+ *      persisted, clamped as a set on
  *      every write. Boot = the macro defaults, so a reflash with an
  *      unreadable NVM record changes no behaviour.
  * [FA] v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶): ۳۹ عدد UI_* در یک struct زنده -
@@ -456,7 +457,7 @@ static uint8_t func__Ui_BeepDutyPercent(uint32_t uint32_t__periodMs,
 }
 
 /**
- * @brief  [EN] Buzzer service with the persisted mute: while id 76 is set,
+ * @brief  [EN] Buzzer service with the panel-session mute: while id 76 is set,
  *              every SCENARIO pattern is replaced by an explicit off (the
  *              one-shot BoardTest wiring beep calls the service directly
  *              and still sounds, so a muted board still proves its buzzer
