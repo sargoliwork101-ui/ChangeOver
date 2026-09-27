@@ -67,9 +67,9 @@ static void func__Esp_HttpFont(void)
 }
 
 /**
- * @brief  [EN] GET /t : compact JSON snapshot {on,age,seq,fl,n,q,q2,q3,ka,t[20],p[77]} (v1.16).
+ * @brief  [EN] GET /t : compact JSON snapshot {on,age,seq,fl,n,q,q2,q3,ka,t[20],p[83]} (v1.17).
  *              t = TLM u32 fields in spec order (offset 4..80); p = applied params or null.
- *         [FA] مسیر GET /t : خلاصه JSON فشرده {on,age,seq,fl,n,q,q2,q3,ka,t[20],p[77]} (نسخه ۱.۱۶).
+ *         [FA] مسیر GET /t : خلاصه JSON فشرده {on,age,seq,fl,n,q,q2,q3,ka,t[20],p[83]} (نسخه ۱.۱۷).
  *              t فیلدهای u32 تله‌متری به ترتیب سند (آفست ۴ تا ۸۰)؛ p مقدار اعمال‌شده یا null.
  * @return [EN] None / [FA] ندارد
  */
@@ -90,9 +90,11 @@ static void func__Esp_HttpTelemetry(void)
 
     /* [EN] v1.16: 77 params need three u32 masks (and 1UL << 32+ is UB),
             so ids 0..31 go to "q", 32..63 to "q2" and 64..76 to "q3"
-            (panel apend() reads all three).
+            (panel apend() reads all three). v1.17: 83 params, q3 now
+            covers 64..82 (bits 0..18 - still one mask).
        [FA] نسخه ۱.۱۶: ۷۷ پارامتر سه ماسک u32 می‌خواهد (و شیفت ۳۲+ تعریف‌نشده
-            است)، پس شناسه‌های ۰..۳۱ در q و ۳۲..۶۳ در q2 و ۶۴..۷۶ در q3 می‌روند. */
+            است)، پس شناسه‌های ۰..۳۱ در q و ۳۲..۶۳ در q2 و ۶۴..۷۶ در q3 می‌روند.
+            نسخه ۱.۱۷: ۸۳ پارامتر و q3 حالا ۶۴..۸۲ را می‌پوشاند (بیت‌های ۰..۱۸). */
     for (uint8_t__index = 0u; uint8_t__index < ESP_PARAM_COUNT; uint8_t__index++)
     {
         if (BOOL__G__TxParamPending[uint8_t__index])

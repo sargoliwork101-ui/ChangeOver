@@ -41,7 +41,8 @@
  *      است - ۷۷ پارامتر PARAMS_BULK را به ۱ + ۷۷ × ۵ = ۳۸۶ بایت
  *      می‌رساند که از سقف u8 قبلی (۲۵۵) گذشته است. فریم = AA 55 نوع
  *      len_lo len_hi و xor روی نوع + هر دو بایت طول + payload. هر دو برد
- *      باید با هم فلش شوند. */
+ *      باید با هم فلش شوند.
+ *      v1.17: 83 params = 1 + 83 x 5 = 416 payload bytes (۸۳ پارامتر = ۴۱۶ بایت). */
 #define ESPLINK_FRAME_HEADER_SIZE     5u   /* SOF0 + SOF1 + type + len_lo + len_hi / بدون payload و xor */
 #define ESPLINK_FRAME_CHECKSUM_SIZE   1u
 #define ESPLINK_FRAME_MAX_PAYLOAD     512u
@@ -233,7 +234,7 @@
 #define ESPLINK_PARAM_UI_GREEN_PERIOD_MS      66u  /* u32, ms, def 1000,  100..10000 */
 #define ESPLINK_PARAM_UI_GREEN_MIN_OFF_MS     67u  /* u32, ms, def 10,    0..66 */
 #define ESPLINK_PARAM_UI_YELLOW_PERIOD_MS     68u  /* u32, ms, def 1000,  100..10000 */
-#define ESPLINK_PARAM_UI_YELLOW_MIN_ON_MS    69u  /* u32, ms, def 10,    0..68 */
+#define ESPLINK_PARAM_UI_YELLOW_MIN_ON_MS    69u  /* u32, ms, def 150,   0..68 (v1.17: 10->150, visible end-of-charge blink) */
 #define ESPLINK_PARAM_UI_OV_THRESH_MV         70u  /* u32, mV, def 28000, 24000..32000 */
 #define ESPLINK_PARAM_UI_OV_HYST_MV           71u  /* u32, mV, def 1000,  0..2000 */
 #define ESPLINK_PARAM_UI_LOWBAT_THRESH_MV     72u  /* u32, mV, def 21000, 15000..24000, <= 73 */
@@ -241,7 +242,13 @@
 #define ESPLINK_PARAM_UI_PCT_VMIN_MV          74u  /* u32, mV, def 21000, 15000..25000, <= 75-100 */
 #define ESPLINK_PARAM_UI_PCT_VMAX_MV          75u  /* u32, mV, def 29000, 25000..32000, >= 74+100 */
 #define ESPLINK_PARAM_UI_BUZZER_MUTE          76u  /* u32, 0/1, def 0,    panel-session only (RAM); scenarios only */
-#define ESPLINK_PARAM_COUNT                77u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16) / [FA] پروفایل، آلارم‌ها و اعداد UI */
+#define ESPLINK_PARAM_UI_CHG_FULL_ENTER_PCT  77u  /* u32, %,  def 100,   1..100, enter authoritative */
+#define ESPLINK_PARAM_UI_CHG_FULL_EXIT_PCT   78u  /* u32, %,  def 95,    0..100, < 77 after clamp */
+#define ESPLINK_PARAM_UI_CHG_HYST_PCT        79u  /* u32, %,  def 5,     0..50 */
+#define ESPLINK_PARAM_UI_RUN_HYST_PCT        80u  /* u32, %,  def 2,     0..50 */
+#define ESPLINK_PARAM_UI_RUN_ZERO_EXIT       81u  /* u32, %,  def 2,     0..100 */
+#define ESPLINK_PARAM_UI_RUN_ONE_EXIT        82u  /* u32, %,  def 3,     0..100 */
+#define ESPLINK_PARAM_COUNT                83u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17) / [FA] پروفایل، آلارم‌ها و اعداد UI */
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

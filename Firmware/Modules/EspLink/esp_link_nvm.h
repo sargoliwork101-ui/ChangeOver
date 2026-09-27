@@ -70,6 +70,9 @@
  *      panel-session mute now, never persisted - v3 records may carry a
  *      76 entry, so they fail the version check and fall back to the
  *      compiled defaults (re-tune from the panel once).
+ *      v1.17 (user order 2026-09-27): 5. Six full/hysteresis ids (77..82)
+ *      join the persisted set - v4 records fail the version check and
+ *      fall back to the compiled defaults (re-tune from the panel once).
  * [FA] v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶): نسخه ۳. رشد جای‌ها اندازهٔ رکورد را
  *      عوض می‌کند پس رکوردهای v2 در CRC می‌افتند و پیش‌فرض کامپایل می‌ماند -
  *      پروفایل ذخیره‌شدهٔ v1.15 با ارتقا از دست می‌رود (یک‌بار از پنل
@@ -77,21 +80,27 @@
  *      v1.16b (دستور کاربر ۲۰۲۶-۰۹-۲۶): نسخه ۴. شناسهٔ ۷۶ (میوت بازر) فقط
  *      میوت زمان کار با پنل است و هرگز ذخیره نمی‌شود - رکوردهای v3 ممکن
  *      است ورودی ۷۶ داشته باشند پس در چک نسخه می‌افتند و پیش‌فرض کامپایل
- *      می‌ماند (یک‌بار از پنل دوباره تنظیم کنید). */
-#define ESP_LINK_NVM_VERSION            4u
+ *      می‌ماند (یک‌بار از پنل دوباره تنظیم کنید).
+ *      v1.17 (دستور کاربر ۲۰۲۶-۰۹-۲۷): نسخه ۵. شش شناسهٔ فول/هیسترزیس
+ *      (۷۷..۸۲) به مجموعهٔ ذخیره‌شونده پیوست - رکوردهای v4 در چک نسخه
+ *      می‌افتند و پیش‌فرض کامپایل می‌ماند (یک‌بار از پنل دوباره تنظیم
+ *      کنید). */
+#define ESP_LINK_NVM_VERSION            5u
 
-/* [EN] Slot cap: 71 persisted parameters today (0..14 = 15 config ids +
- *      20..75 = 7 charge-profile ids + 11 alarm ids + 38 UI cadence ids;
- *      id 76 = panel-session mute, transient like 15..19). The cap stays
- *      77 and the record still fits one 1 KiB page. The C harness caught
- *      the first draft's wrong count (17) as a silent early-return that
- *      would have programmed stack garbage - keep the harness in sync.
- * [FA] سقف جای‌ها: امروز ۷۱ پارامتر ذخیره می‌شود (0..14 = ۱۵ شناسهٔ
+/* [EN] Slot cap: 77 persisted parameters today (0..14 = 15 config ids +
+ *      20..75 = 7 charge-profile ids + 11 alarm ids + 38 UI cadence ids +
+ *      77..82 = 6 full/hysteresis ids (v1.17); id 76 = panel-session mute,
+ *      transient like 15..19). The cap is 83 and the record still fits one
+ *      1 KiB page. The C harness caught the first draft's wrong count (17)
+ *      as a silent early-return that would have programmed stack garbage -
+ *      keep the harness in sync.
+ * [FA] سقف جای‌ها: امروز ۷۷ پارامتر ذخیره می‌شود (0..14 = ۱۵ شناسهٔ
  *      پیکربندی + 20..75 = ۷ شناسهٔ پروفایل + ۱۱ شناسهٔ آلارم + ۳۸ شناسهٔ
- *      UI؛ شناسهٔ ۷۶ = میوت زمان پنل، گذرا مثل ۱۵..۱۹). سقف ۷۷ می‌ماند و
- *      رکورد هنوز در یک صفحهٔ ۱KB جا می‌گیرد. هارنس C خطای شمارش نسخهٔ
- *      اول (۱۷) را گرفت - هارنس را هم‌روز نگه دارید. */
-#define ESP_LINK_NVM_ENTRY_MAX          77u
+ *      UI + ۷۷..۸۲ = ۶ شناسهٔ فول/هیسترزیس؛ شناسهٔ ۷۶ = میوت زمان پنل،
+ *      گذرا مثل ۱۵..۱۹). سقف ۸۳ است و رکورد هنوز در یک صفحهٔ ۱KB جا
+ *      می‌گیرد. هارنس C خطای شمارش نسخهٔ اول (۱۷) را گرفت - هارنس را
+ *      هم‌روز نگه دارید. */
+#define ESP_LINK_NVM_ENTRY_MAX          83u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
  *      change; a shorter window would rewrite flash on every keystroke burst).
@@ -108,17 +117,22 @@
 
 /* [EN] Persisted id ranges: ALL settable configuration (0..14 = offsets,
  *      gains, filters, eta, charger enables and duty ceilings; 20..26 =
- *      charge profile; 27..37 = alarms; 38..75 = UI cadence) EXCEPT the
- *      transient test modes 15..18 (fixed duty), 19 (manual test) and 76
- *      (panel-session buzzer mute) - those must never survive a reboot.
+ *      charge profile; 27..37 = alarms; 38..75 = UI cadence; 77..82 = full/
+ *      hysteresis (v1.17)) EXCEPT the transient test modes 15..18 (fixed
+ *      duty), 19 (manual test) and 76 (panel-session buzzer mute) - those
+ *      must never survive a reboot. Id 76 sits INSIDE the high range, so
+ *      the predicate excludes it explicitly (see the .c).
  * [FA] بازه‌های شناسهٔ ذخیره‌شونده: تمام پیکربندی قابل‌تنظیم (0..14 =
  *      آفست‌ها، گین‌ها، فیلترها، eta، فعال‌بودن شارژر و سقف دیوتی؛ 20..26 =
- *      پروفایل شارژ؛ ۲۷..۳۷ = آلارم‌ها؛ ۳۸..۷۵ = اعداد UI) به‌جز مودهای
- *      تست گذرای ۱۵..۱۸ (فیکس‌دیوتی)، ۱۹ (تست دستی) و ۷۶ (میوت زمان پنل) -
- *      آنها هرگز نباید از ریبوت جان به در ببرند. */
+ *      پروفایل شارژ؛ ۲۷..۳۷ = آلارم‌ها؛ ۳۸..۷۵ = اعداد UI؛ ۷۷..۸۲ =
+ *      فول/هیسترزیس) به‌جز مودهای تست گذرای ۱۵..۱۸ (فیکس‌دیوتی)، ۱۹
+ *      (تست دستی) و ۷۶ (میوت زمان پنل) - آنها هرگز نباید از ریبوت جان به
+ *      در ببرند. شناسهٔ ۷۶ داخل بازهٔ بالا است پس محمول صریحاً کنارش
+ *      می‌گذارد. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    75u
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    82u
+#define ESP_LINK_NVM_TRANSIENT_ID_MUTE        76u
 
 /**
  * @brief  [EN] Is this parameter id persisted to flash? (config + charge
@@ -141,10 +155,10 @@ typedef struct
 
 /**
  * @brief  [EN] Flash record: header + entry list + CRC32 over all preceding
- *              bytes. Size 632 B for 77 entries - one erased page holds it
+ *              bytes. Size 680 B for 83 entries - one erased page holds it
  *              with room to grow.
  *         [FA] رکورد فلش: سربرگ + فهرست ورودی‌ها + CRC32 روی همهٔ بایت‌های
- *              قبل از خودش. اندازه ۶۳۲ بایت برای ۷۷ ورودی - یک صفحهٔ پاک‌
+ *              قبل از خودش. اندازه ۶۸۰ بایت برای ۸۳ ورودی - یک صفحهٔ پاک‌
  *              شده با حاشیه جایش را می‌دهد.
  */
 typedef struct

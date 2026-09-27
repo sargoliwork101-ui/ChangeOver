@@ -7,11 +7,11 @@
  *
  * @note    [EN] ui_led.h provides defaults; since v1.16 the live cadence
  *          comes from the persisted UI_ALARM_T__G__Alarm struct (ids
- *          38..76), not from const APP_CONFIG (which now feeds only the
+ *          38..82), not from const APP_CONFIG (which now feeds only the
  *          one-shot BoardTest timings). Naming __ after type, func__ prefix.
  *          CMSIS-RTOS2: osDelay allowed, HAL_Delay forbidden. Formulas non-linear broken into steps.
  *          [FA] ui_led.h پیش‌فرض‌ها را می‌دهد؛ از v1.16 مقدارهای زنده از
- *          struct ماندگار UI می‌آیند (۳۸..۷۶) نه از APP_CONFIG (که فقط
+ *          struct ماندگار UI می‌آیند (۳۸..۸۲) نه از APP_CONFIG (که فقط
  *          زمان‌بندی تست برد را می‌دهد). نام‌گذاری با __، پیشوند func__،
  *          فرمول غیرخطی.
  */
@@ -53,9 +53,13 @@ volatile bool BOOL__G__UiBatteryAlarmIssued = false;
  *      persisted, clamped as a set on
  *      every write. Boot = the macro defaults, so a reflash with an
  *      unreadable NVM record changes no behaviour.
+ *      v1.17 (user order 2026-09-27): 45 numbers, ids 38..82 (77..82 =
+ *      full latch + stable hysteresis + 0/1 exits, all flash-persisted).
  * [FA] v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶): ۳۹ عدد UI_* در یک struct زنده -
  *      شناسه‌های ۳۸..۷۶، ماندگار در فلش، گیرهٔ مجموعه‌ای با هر نوشتن.
- *      بوت = پیش‌فرض ماکروها. */
+ *      بوت = پیش‌فرض ماکروها.
+ *      v1.17: ۴۵ عدد، شناسه‌های ۳۸..۸۲ (۷۷..۸۲ = لچ فول + هیسترزیس +
+ *      خروج‌های ۰/۱، همه ماندگار در فلش). */
 /* [EN] volatile: written by the EspLink task (panel edits), read by the UI
    task (scenarios) with no lock - single-word members stay atomic and no
    reader may cache a half-applied set across one pass (full-program audit
@@ -105,7 +109,13 @@ static volatile ui_alarm_t UI_ALARM_T__G__Alarm =
     UI_LOW_BATTERY_ALARM_CLEAR_MV,
     UI_BAT_V_MIN_MV,
     UI_BAT_V_MAX_MV,
-    0u
+    0u,
+    UI_CHARGING_FULL_ENTER_PERCENT,
+    UI_CHARGING_FULL_EXIT_PERCENT,
+    UI_CHARGING_PERCENT_HYSTERESIS_PERCENT,
+    UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT,
+    UI_BATTERY_ZERO_EXIT_THRESHOLD,
+    UI_BATTERY_ONE_EXIT_THRESHOLD
 };
 
 /**
@@ -442,6 +452,30 @@ static void func__Ui_ClampAlarms(void)
 
     UI_ALARM_T__G__Alarm.uint32_t__buzzerMute =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__buzzerMute, 0u, 1u);
+
+    /* [EN] v1.17: full latch + stable hysteresis (ids 77..82). Enter is
+       authoritative (>= 1, so exit = enter-1 can never underflow);
+       hysteresis 0 = stable follows raw every pass.
+       [FA] لچ فول + هیسترزیس پایداری: ورود مرجع است (دست‌کم ۱ تا
+       خروج = ورود-۱ زیر صفر نرود)؛ هیسترزیس صفر یعنی تعقیب خام. */
+    UI_ALARM_T__G__Alarm.uint32_t__chgFullEnterPct =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgFullEnterPct, 1u, 100u);
+    UI_ALARM_T__G__Alarm.uint32_t__chgFullExitPct =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgFullExitPct, 0u, 100u);
+    if (UI_ALARM_T__G__Alarm.uint32_t__chgFullExitPct >=
+        UI_ALARM_T__G__Alarm.uint32_t__chgFullEnterPct)
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__chgFullExitPct =
+            UI_ALARM_T__G__Alarm.uint32_t__chgFullEnterPct - 1u;
+    }
+    UI_ALARM_T__G__Alarm.uint32_t__chgHystPct =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgHystPct, 0u, 50u);
+    UI_ALARM_T__G__Alarm.uint32_t__runHystPct =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runHystPct, 0u, 50u);
+    UI_ALARM_T__G__Alarm.uint32_t__runZeroExit =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runZeroExit, 0u, 100u);
+    UI_ALARM_T__G__Alarm.uint32_t__runOneExit =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runOneExit, 0u, 100u);
 }
 
 /**
@@ -540,7 +574,7 @@ _Static_assert(sizeof(ui_alarm_t) ==
                "ui_alarm_t must pack exactly one word per wire id");
 _Static_assert(offsetof(ui_alarm_t, uint32_t__ovLedPeriodMs) == 0u,
                "first field must be the MIN-id word");
-_Static_assert(offsetof(ui_alarm_t, uint32_t__buzzerMute) ==
+_Static_assert(offsetof(ui_alarm_t, uint32_t__runOneExit) ==
                    ((UI_ALARM_PARAM_MAX_ID - UI_ALARM_PARAM_MIN_ID) *
                     sizeof(uint32_t)),
                "last field must be the MAX-id word");
@@ -551,10 +585,10 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
 {
     /* [EN] Writer-side scheduler lock (v1.16 audit C11): strictly redundant
        today (the UI reader runs BELOW the comm writer, so no preemption),
-       but it closes the 40-field set against future priority moves for a
+       but it closes the 46-field set against future priority moves for a
        few microseconds. Pre-kernel the plain path runs (NVM replay).
        [FA] قفل زمان‌بند سمت نویسنده: امروز عملاً افزونه (خواننده پایین‌تر
-       از نویسنده است) ولی ست ۴۰فیلدی را در برابر جابه‌جایی آیندهٔ
+       از نویسنده است) ولی ست ۴۶فیلدی را در برابر جابه‌جایی آیندهٔ
        اولویت‌ها می‌بندد. */
     int32_t int32_t__savedKernelLock = osKernelLock();
 
@@ -932,7 +966,8 @@ static uint8_t func__Ui_UpdateBatteryStablePercent(uint8_t uint8_t__rawPercent)
 
     if (uint8_t__stablePercent == 0u)
     {
-        if (uint8_t__rawPercent >= UI_BATTERY_ZERO_EXIT_THRESHOLD)
+        if ((uint32_t)uint8_t__rawPercent >=
+            UI_ALARM_T__G__Alarm.uint32_t__runZeroExit)
         {
             uint8_t__stablePercent = 1u;
         }
@@ -948,7 +983,8 @@ static uint8_t func__Ui_UpdateBatteryStablePercent(uint8_t uint8_t__rawPercent)
         {
             uint8_t__stablePercent = 0u;
         }
-        else if (uint8_t__rawPercent >= UI_BATTERY_ONE_EXIT_THRESHOLD)
+        else if ((uint32_t)uint8_t__rawPercent >=
+                 UI_ALARM_T__G__Alarm.uint32_t__runOneExit)
         {
             uint8_t__stablePercent = 2u;
         }
@@ -969,7 +1005,8 @@ static uint8_t func__Ui_UpdateBatteryStablePercent(uint8_t uint8_t__rawPercent)
             uint8_t__diffPercent = uint8_t__stablePercent - uint8_t__rawPercent;
         }
 
-        if (uint8_t__diffPercent >= UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT)
+        if ((uint32_t)uint8_t__diffPercent >=
+            UI_ALARM_T__G__Alarm.uint32_t__runHystPct)
         {
             uint8_t__stablePercent = uint8_t__rawPercent;
         }
@@ -1023,7 +1060,8 @@ static uint8_t func__Ui_UpdateChargingStablePercent(uint8_t uint8_t__rawPercent)
         uint8_t__diffPercent = uint8_t__stablePercent - uint8_t__rawPercent;
     }
 
-    if (uint8_t__diffPercent >= UI_CHARGING_PERCENT_HYSTERESIS_PERCENT)
+    if ((uint32_t)uint8_t__diffPercent >=
+        UI_ALARM_T__G__Alarm.uint32_t__chgHystPct)
     {
         uint8_t__stablePercent = uint8_t__rawPercent;
     }
@@ -1056,7 +1094,8 @@ static bool func__Ui_UpdateChargingFullHysteresis(uint8_t uint8_t__rawPercent)
 {
     if (BOOL__G__UiChargingFullActive == true)
     {
-        if (uint8_t__rawPercent < UI_CHARGING_FULL_EXIT_PERCENT)
+        if ((uint32_t)uint8_t__rawPercent <
+            UI_ALARM_T__G__Alarm.uint32_t__chgFullExitPct)
         {
             BOOL__G__UiChargingFullActive = false;
         }
@@ -1068,7 +1107,8 @@ static bool func__Ui_UpdateChargingFullHysteresis(uint8_t uint8_t__rawPercent)
     }
     else
     {
-        if (uint8_t__rawPercent >= UI_CHARGING_FULL_ENTER_PERCENT)
+        if ((uint32_t)uint8_t__rawPercent >=
+            UI_ALARM_T__G__Alarm.uint32_t__chgFullEnterPct)
         {
             BOOL__G__UiChargingFullActive = true;
         }

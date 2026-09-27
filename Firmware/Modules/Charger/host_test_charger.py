@@ -708,12 +708,12 @@ def test_charge_profile_v112():
     check("func__Charger_GetProfileParam" in get_block and get_block.count("ESPLINK_PARAM_CHG_PROFILE_") >= 7,
           "GetParam must route all 7 profile ids to Charger_GetProfileParam")
 
-    # --- ESP panel: 77 params, third tab with 7 fields + descriptions, 128-col CSV, vin carry ---
-    check(re.search(r"#define ESP_PARAM_COUNT\s+77u", ino), "panel ESP_PARAM_COUNT must be 77 (v1.16: +39 UI ids)")
+    # --- ESP panel: 83 params, third tab with 7 fields + descriptions, 134-col CSV, vin carry ---
+    check(re.search(r"#define ESP_PARAM_COUNT\s+83u", ino), "panel ESP_PARAM_COUNT must be 83 (v1.17: +6 full/hysteresis ids 77..82)")
     mn = re.search(r"INT32_T__G__ParamMin\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     mx = re.search(r"INT32_T__G__ParamMax\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(mn and mx and len(mn.group(1).split(",")) == 77 and len(mx.group(1).split(",")) == 77,
-          "panel min/max tables must carry 77 entries (outer envelope for ids 20..26 and 27..76)")
+    check(mn and mx and len(mn.group(1).split(",")) == 83 and len(mx.group(1).split(",")) == 83,
+          "panel min/max tables must carry 83 entries (outer envelope for ids 20..26 and 27..82)")
     check('<button data-t="2">تنظیمات</button>' in ino, "third nav tab must exist (v1.14b: renamed from تنظیمات شارژ when the filter windows moved in)")
     check('id="p2"' in ino and all(f'id="q{i}"' in ino for i in range(20, 27)),
           "tab p2 must hold the seven profile inputs q20..q26")
@@ -721,8 +721,11 @@ def test_charge_profile_v112():
           "profile inputs must auto-fill from /t, POST on change, and offer factory defaults")
     check("حداکثر ولتاژ باتری (ابزورب)" in ino and "جریان تیپر" in ino and "ولتاژ شناور" in ino,
           "the tab must label/describe every field (user order: with descriptions)")
-    check("for(let k=0;k<77;k++)P.push(q(D.p[k]));" in ino and "[profile]" in ino and "[alarms]" in ino and "[uicad]" in ino,
-          "wrow must log all 77 params (128 columns) with the [profile], [alarms] and [uicad] header blocks")
+    check("for(let k=0;k<83;k++)P.push(q(D.p[k]));" in ino and "[profile]" in ino and "[alarms]" in ino and "[uicad]" in ino,
+          "wrow must log all 83 params (134 columns) with the [profile], [alarms] and [uicad] header blocks")
+    txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
+    check(txo and len(txo.group(1).split(",")) == 83 and "74, 75, 76, 77, 78, 79, 80, 81, 82 };" in ino,
+          "TxOrder must list all 83 ids explicitly (v1.17: a short initializer zero-fills the tail, so ids 77..82 would never transmit and id 0 would repeat)")
     check("window.WVI=" in ino and "L('wVi','ولتاژ ورودی V',WVI)" in ino,
           "the input-voltage DMM reading must carry into the next wizard step (user order 2026-09-25: quasi-static, type once)")
 
@@ -1039,18 +1042,18 @@ def test_charger_persistence_v114():
           "the linker must shrink application FLASH to 62K and reserve the 2K NVM region at 0x0800F800 (build-time collision guard)")
     check("0x0800F800u" in nvm_h and "0x0800FC00u" in nvm_h,
           "the persistence pages must be the last two 1 KiB pages of the 64 KiB bank")
-    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+77u", nvm_h) and
+    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+83u", nvm_h) and
           "ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u" in nvm_h and
           "ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u" in nvm_h and
-          "ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    75u" in nvm_h,
-          "persisted set = 0..14 + 20..75 (71 ids, 77 slots) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot")
-    check(re.search(r"ESP_LINK_NVM_VERSION\s+4u", nvm_h),
-          "v1.16b bumps the NVM record version to 4: v3 records may carry the now-transient id 76, so they fail the version check and fall back to compiled defaults")
+          "ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    82u" in nvm_h,
+          "persisted set = 0..14 + 20..75 + 77..82 (77 ids, 83 slots) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot")
+    check(re.search(r"ESP_LINK_NVM_VERSION\s+5u", nvm_h),
+          "v1.17 bumps the NVM record version to 5: v4 records only carry 77 slots, so they fail the version check and fall back to compiled defaults")
 
     # the persisted-id predicate in C, replicated and cross-checked
-    persisted = {i for i in range(77) if i <= 14 or 20 <= i <= 75}
-    check(persisted == set(range(15)) | set(range(20, 76)) and 19 not in persisted and 15 not in persisted and 76 not in persisted,
-          f"persisted id set must exclude 15..19 (got {len(persisted)} ids)")
+    persisted = {i for i in range(83) if i <= 14 or (20 <= i <= 82 and i != 76)}
+    check(persisted == set(range(15)) | set(range(20, 76)) | set(range(77, 83)) and 19 not in persisted and 15 not in persisted and 76 not in persisted,
+          f"persisted id set must exclude 15..19 and 76 (got {len(persisted)} ids)")
 
     tab2 = ino.split('id="p2"', 2)[1]
     check("روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند" in ino and
@@ -1091,7 +1094,7 @@ def test_charger_persistence_v114():
     try:
         (Path(tmp) / "stub_esp_link.h").write_text(
             "#include <stdint.h>\n#include <stdbool.h>\n"
-            "#define ESPLINK_PARAM_COUNT 77u\n"
+            "#define ESPLINK_PARAM_COUNT 83u\n"
             "bool func__EspLink_ApplyParam(uint8_t id, uint32_t value, uint32_t *applied);\n"
             "bool func__EspLink_GetParam(uint8_t id, uint32_t *value);\n", encoding="utf-8")
         (Path(tmp) / "stub_bsp_flash.h").write_text(
@@ -1114,11 +1117,11 @@ uint8_t *EMU_FLASH;
 #include "stub_bsp_flash.h"
 
 int g_cut_after = -1, g_erase_cut = 0, g_apply_calls = 0;
-uint32_t g_params[77];
+uint32_t g_params[83];
 static uint32_t clampf(uint32_t v, uint32_t lo, uint32_t hi){ return v < lo ? lo : (v > hi ? hi : v); }
 bool func__EspLink_ApplyParam(uint8_t id, uint32_t value, uint32_t *applied){
     g_apply_calls++;
-    if (id >= 77u) return false;
+    if (id >= 83u) return false;
     switch (id) {
         case 20: value = clampf(value, 11000, 14600); break;
         case 21: value = clampf(value, 13800, 14550); break;
@@ -1177,13 +1180,19 @@ bool func__EspLink_ApplyParam(uint8_t id, uint32_t value, uint32_t *applied){
         case 74: value = clampf(value, 15000, 25000); break;
         case 75: value = clampf(value, 25000, 32000); break;
         case 76: value = clampf(value, 0, 1); break;
+        case 77: value = clampf(value, 1, 100); break;
+        case 78: value = clampf(value, 0, 100); break;
+        case 79: value = clampf(value, 0, 50); break;
+        case 80: value = clampf(value, 0, 50); break;
+        case 81: value = clampf(value, 0, 100); break;
+        case 82: value = clampf(value, 0, 100); break;
         default: break;
     }
     g_params[id] = value;
     if (applied) *applied = value;
     return true;
 }
-bool func__EspLink_GetParam(uint8_t id, uint32_t *value){ if (id >= 77u) return false; *value = g_params[id]; return true; }
+bool func__EspLink_GetParam(uint8_t id, uint32_t *value){ if (id >= 83u) return false; *value = g_params[id]; return true; }
 bool func__BspFlash_ErasePage(uint32_t p){
     if (p != EMU_FLASH_BASE && p != EMU_FLASH_BASE + 1024u) return false;
     memset((void *)(uintptr_t)p, 0xFF, 1024);
@@ -1360,6 +1369,21 @@ int main(void){
         assert(g_apply_calls == 0 && g_params[38] == 0 && g_params[76] == 0);
     }
 
+    /* T14 (v1.17): the six full/hysteresis ids persist round-trip; a
+       hostile full-exit replays CLAMPED to the 100 ceiling */
+    memset(EMU_FLASH, 0xFF, 2048); reboot();
+    {
+        esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[3];
+        e[0].uint16_t__id = 77; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 90;
+        e[1].uint16_t__id = 78; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 999;
+        e[2].uint16_t__id = 82; e[2].uint16_t__pad = 0; e[2].uint32_t__value = 4;
+        func__EspLink_NvmRecordBuild(&rec, 14, e, 3);
+        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_A_ADDR));
+        assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_A_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
+        reboot();
+        assert(g_params[77] == 90 && g_params[78] == 100 && g_params[82] == 4);
+    }
+
     printf("ALL NVM HARNESS TESTS PASSED\n");
     return 0;
 }
@@ -1402,10 +1426,10 @@ def test_manual_test_mode_v12():
     check(re.search(r"#define CHG_MANUAL_WATCHDOG_MS\s+3000u", text_h),
           "manual link dead-man must be 3 s")
     check(re.search(r"#define ESPLINK_FRAME_MAX_PAYLOAD\s+512u", text_esph),
-          "payload limit must be 512: PARAMS_BULK with 77 params = 1 + 77 x 5 = 386 bytes (v1.16 UI params; was 191 for 38)")
+          "payload limit must be 512: PARAMS_BULK with 83 params = 1 + 83 x 5 = 416 bytes (v1.17 scenario params; was 386 for 77)")
     check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
-          and re.search(r"#define ESPLINK_PARAM_COUNT\s+77u", text_esph),
-          "param 19 = manual test mode; 77 params total since v1.16 (20..26 = charge profile, 27..37 = alarms, 38..76 = UI cadence)")
+          and re.search(r"#define ESPLINK_PARAM_COUNT\s+83u", text_esph),
+          "param 19 = manual test mode; 83 params total since v1.17 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence)")
 
     manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
                     text_c.find("/* ==================== Charger_Evaluate")]
@@ -1558,10 +1582,10 @@ def test_alarms_tab_v115():
     check('\\"q2\\":%lu' in ino and "pendingMask2" in ino,
           "the /t JSON must carry the q2 pending mask for ids 32..37 (one u32 no longer fits 38 params)")
     tx = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(tx and len(tx.group(1).split(",")) == 77, "TxOrder must carry all 77 ids")
+    check(tx and len(tx.group(1).split(",")) == 83, "TxOrder must carry all 83 ids")
     check("alm_disc_mv" in ino and "alm_hard_ma" in ino and "alm_floor_mv" in ino and "ui_ov_led_per" in ino
-          and ("128 columns" in ino or "۱۲۸ ستون" in ino),
-          "the bench CSV header must name the alarm + UI columns (128 total)")
+          and ("134 columns" in ino or "۱۳۴ ستون" in ino),
+          "the bench CSV header must name the alarm + UI columns (134 total)")
 
     # --- python models of both clamp sets: fixed point + random invariants ---
     def fclamp(a, over=14600, ov=15000):
@@ -1632,8 +1656,8 @@ def test_alarms_tab_v115():
 
     # --- offline preview mirrors the 38-param board ---
     prev = (ROOT / "tools/panel_preview_server.js").read_text()
-    check("q2: 0" in prev and "q3: 0" in prev and "id < 77" in prev and all(f"case {i}:" in prev for i in range(27, 77)),
-          "the preview server must serve 77 params with alarm + UI clamps and the q2/q3 masks")
+    check("q2: 0" in prev and "q3: 0" in prev and "id < 83" in prev and all(f"case {i}:" in prev for i in range(27, 83)),
+          "the preview server must serve 83 params with alarm + UI clamps and the q2/q3 masks")
 
 
 def test_ui_mirror_v116():
@@ -1661,35 +1685,40 @@ def test_ui_mirror_v116():
           "both frame headers must be 5 bytes (AA 55 type len_lo len_hi)")
     check(re.search(r"#define ESPLINK_FRAME_MAX_PAYLOAD\s+512u", text_esph)
           and re.search(r"#define ESP_LINK_MAX_PAYLOAD\s+512u", ino),
-          "both payload ceilings must be 512 (386-byte bulk + headroom)")
+          "both payload ceilings must be 512 (416-byte bulk + headroom)")
     check("ESP_LINK_PARSE_WAIT_LEN_LO" in text_espc and "ESP_LINK_PARSE_WAIT_LEN_HI" in text_espc,
           "the STM32 parser must assemble the length from two bytes")
     check("ESP_RX_WAIT_LEN_LO" in ino and "ESP_RX_WAIT_LEN_HI" in ino
           and "UINT16_T__G__RxLen" in ino and "UINT16_T__G__RxIndex" in ino,
           "the ESP parser must assemble a u16 length (two states, u16 len/index)")
 
-    # --- id match: UI 38..76 identical on the link and the Ui module ---
+    # --- id match: UI 38..82 identical on the link and the Ui module ---
     for esp_name, ui_name, num in [
             ("ESPLINK_PARAM_UI_OV_LED_PERIOD_MS", "UI_ALARM_PARAM_OV_LED_PERIOD_MS", 38),
-            ("ESPLINK_PARAM_UI_BUZZER_MUTE", "UI_ALARM_PARAM_BUZZER_MUTE", 76)]:
+            ("ESPLINK_PARAM_UI_BUZZER_MUTE", "UI_ALARM_PARAM_BUZZER_MUTE", 76),
+            ("ESPLINK_PARAM_UI_CHG_FULL_ENTER_PCT", "UI_ALARM_PARAM_CHG_FULL_ENTER_PCT", 77),
+            ("ESPLINK_PARAM_UI_RUN_ONE_EXIT", "UI_ALARM_PARAM_RUN_ONE_EXIT", 82)]:
         m_esp = re.search(rf"#define {esp_name}\s+(\d+)u", text_esph)
         m_ui = re.search(rf"#define {ui_name}\s+(\d+)u", text_uih)
         check(m_esp and m_ui and int(m_esp.group(1)) == num and int(m_ui.group(1)) == num,
               f"UI id {num} must match on both sides ({esp_name} / {ui_name})")
     check("UI_ALARM_PARAM_MIN_ID" in text_espc and text_espc.count("UI_ALARM_PARAM_MIN_ID") >= 2
           and "ui_led.h" in text_espc,
-          "ApplyParam AND GetParam must range-dispatch 38..76 to the Ui module")
-    check("MIN_ID              38u" in text_uih and "MAX_ID              76u" in text_uih,
-          "the Ui range must be 38..76")
+          "ApplyParam AND GetParam must range-dispatch 38..82 to the Ui module")
+    check("MIN_ID              38u" in text_uih and "MAX_ID              82u" in text_uih,
+          "the Ui range must be 38..82")
 
-    # --- panel: 50 edit fields, guard, mirror, per-bit LEDs, q3, backup ---
-    check(all(f'id="q{i}"' in ino for i in range(27, 77))
-          and all(f'id="a{i}"' in ino for i in range(27, 76))
+    # --- panel: 56 edit fields, guard, mirror, per-bit LEDs, q3, backup ---
+    check(all(f'id="q{i}"' in ino for i in range(27, 83))
+          and all(f'id="a{i}"' in ino for i in list(range(27, 76)) + list(range(77, 83)))
           and '<input type="hidden" id="q76"' in ino
           and 'id="a76"' not in ino,
-          "the settings sub-tab must hold q27..q76 with applied-value spans (76 = hidden mute field)")
+          "the settings sub-tab must hold q27..q82 with applied-value spans (76 = hidden mute field)")
     check("const AIDS=" in ino and "const ADEF=" in ino and "u76" in ino,
-          "the guard needs the 27..76 id list, the 50 defaults and the u76 refs")
+          "the guard needs the 27..82 id list, the 56 defaults and the u76 refs")
+    adef = re.search(r"const ADEF=\[([^\]]*)\]", ino)
+    check(adef and len(adef.group(1).split(",")) == 56,
+          "ADEF must carry one default per guarded id (56 for 27..82)")
     check("function uview()" in ino and "setInterval(uview,50)" in ino and "function xmute()" in ino,
           "the board-rate LED/buzzer mirror (50 ms) and the mute toggle must exist")
     check('id="ulR"' in ino and 'id="ulY"' in ino and 'id="ulG"' in ino
@@ -1698,10 +1727,10 @@ def test_ui_mirror_v116():
           "ONE sticky mirror header: 3 LEDs + buzzer + scenario caption + live timing readout")
     check(all(f'id="asbb{k}"' in ino for k in range(7)),
           "one LED per fault bit (asbb0..asbb6)")
-    check("pendingMask3" in ino and "64..76" in ino,
-          "the /t JSON must carry the q3 pending mask for ids 64..76")
-    check("(۰..۱۴، ۲۰..۷۵)" in ino and "XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26]" in ino,
-          "v1.16c (user order: ONE backup for the whole settings): all 71 persisted ids 0..14 + 20..75")
+    check("pendingMask3" in ino and "64..82" in ino,
+          "the /t JSON must carry the q3 pending mask for ids 64..82")
+    check("(۰..۱۴، ۲۰..۷۵، ۷۷..۸۲)" in ino and "XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26]" in ino,
+          "v1.16c (user order: ONE backup for the whole settings): all 77 persisted ids 0..14 + 20..75 + 77..82")
     check('id="usel"' in ino and "function usel(n)" in ino
           and all(f'id="ucard{k}"' in ino for k in range(1, 6)),
           "one selectable card per scenario (5 cards, single-visible) - no crowded wall of fields")
@@ -1717,16 +1746,16 @@ def test_ui_mirror_v116():
           and "sdef()" in s1part and "<b>نظارت باتری</b>" not in s1part
           and "<b>پنجرهٔ ورودی سالم</b>" not in s1part and "<b>سقف‌های ایمنی شارژر</b>" not in s1part
           and "وضعیت آلارم‌ها" not in s1part and "پشتیبان‌گیری" not in s1part
-          and all(f'id="q{i}"' in s1part for i in range(38, 77))
+          and all(f'id="q{i}"' in s1part for i in range(38, 83))
           and all(f'id="q{i}"' not in s1part for i in range(27, 38)),
           "s1 (scenarios) keeps only the mirror + the 5 scenario cards + its own guard/defaults")
     check("نظارت باتری" in s2part and "پنجرهٔ ورودی سالم" in s2part and "سقف‌های ایمنی شارژر" in s2part
           and 'id="aw"' in s2part and "adef()" in s2part and "uleds" not in s2part
           and all(f'id="q{i}"' in s2part for i in range(27, 38))
-          and all(f'id="q{i}"' not in s2part for i in range(38, 77)),
+          and all(f'id="q{i}"' not in s2part for i in range(38, 83)),
           "s2 (supervision & safety) keeps only the 27..37 thresholds + its own guard/defaults")
     check("پشتیبان‌گیری" in s3part and 'id="xim"' in s3part
-          and all(f'id="q{i}"' not in s3part for i in range(27, 77)),
+          and all(f'id="q{i}"' not in s3part for i in range(27, 83)),
           "s3 holds only the single backup card")
     check("وضعیت آلارم‌ها" in p0part and 'id="ast"' in p0part and 'id="abars"' not in p0part,
           "the merged voltages+alarm table sits on the main panel tab (p0, v1.16k: fixed layout, each value once), not in settings")
@@ -1742,10 +1771,71 @@ def test_ui_mirror_v116():
     check("با ریست برد پاک می‌شود" in ino and "روی فلش می‌ماند" not in ino,
           "v1.16b (user order: mute lives only for the panel session): no stale persisted-mute text")
 
-    # --- preview server: 77 params + q3 ---
-    check("q3: 0" in prev and "id < 77" in prev,
-          "the offline preview must serve 77 params with the q3 mask")
+    # --- preview server: 83 params + q3 ---
+    check("q3: 0" in prev and "id < 83" in prev,
+          "the offline preview must serve 83 params with the q3 mask")
 
+
+
+def test_ui_mirror_v117():
+    """[EN] v1.17 (user order 2026-09-27, "the charge number must follow the
+    scenario, and the like"): ids 77..82 = the full latch (enter/exit) +
+    the stable-percent hysteresis + the 0%/1% exits (defaults 100/95/5/2/2/3);
+    the yellow floor (69) default rises 10 -> 150; enter is authoritative
+    (exit is pulled to enter-1); everything persists like the rest except
+    the still-transient mute 76; the panel gains the enter>=exit+1 guard,
+    the mirror fallback and the two new card rows.
+    [FA] تست‌های v1.17: شناسه‌های ۷۷..۸۲ (لچ فول + هیسترزیس پایداری +
+    خروج‌های ۰٪/۱٪)؛ پیش‌فرض ۶۹ از ۱۰ به ۱۵۰؛ ورود مرجع (خروج = ورود-۱)؛
+    ماندگاری مثل بقیه جز میوت ۷۶؛ گارد و آینه و کارت‌های جدید پنل."""
+    text_uih = (ROOT / "Firmware/Modules/Ui/ui_led.h").read_text()
+    text_uic = (ROOT / "Firmware/Modules/Ui/ui_led.c").read_text()
+    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
+    prev = (ROOT / "tools/panel_preview_server.js").read_text()
+
+    # --- board boot defaults (the UI_* macros stay the single source) ---
+    for name, val in [("UI_CHARGING_FULL_ENTER_PERCENT", "100u"),
+                      ("UI_CHARGING_FULL_EXIT_PERCENT", "95u"),
+                      ("UI_CHARGING_PERCENT_HYSTERESIS_PERCENT", "5u"),
+                      ("UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT", "2u"),
+                      ("UI_BATTERY_ZERO_EXIT_THRESHOLD", "2u"),
+                      ("UI_BATTERY_ONE_EXIT_THRESHOLD", "3u"),
+                      ("UI_CHARGING_YELLOW_MIN_ON_MS", "150u")]:
+        check(re.search(rf"#define {name}\s+{val}", text_uih),
+              f"boot default {name} must be {val} (v1.17: 69 rises 10 -> 150)")
+
+    # --- board clamp: enter authoritative, exit pulled to enter-1 ---
+    check("uint32_t__chgFullEnterPct, 1u, 100u" in text_uic
+          and "uint32_t__chgFullExitPct, 0u, 100u" in text_uic
+          and "uint32_t__chgFullExitPct - 1u" in text_uic
+          and "uint32_t__chgHystPct, 0u, 50u" in text_uic
+          and "uint32_t__runHystPct, 0u, 50u" in text_uic
+          and "uint32_t__runZeroExit, 0u, 100u" in text_uic
+          and "uint32_t__runOneExit, 0u, 100u" in text_uic,
+          "ClampAlarms must clamp 77..82 to 1..100/0..100/0..50/0..50/0..100/0..100 with exit pulled to enter-1")
+
+    # --- panel: ADEF tail + the 150 fallback for 69 ---
+    adef = re.search(r"const ADEF=\[([^\]]*)\]", ino)
+    check(adef and adef.group(1).split(",")[-6:] == ["100", "95", "5", "2", "2", "3"]
+          and adef.group(1).split(",")[42].strip() == "150",
+          "ADEF must end with the six v1.17 defaults (100/95/5/2/2/3) and carry 150 at the id-69 slot")
+
+    # --- panel: enter>=exit+1 guard + mirror fallbacks ---
+    check("a.u78<=a.u77-1" in ino and "خروج فول باید زیر ورود باشد" in ino,
+          "the panel guard must warn unless exit <= enter-1 (77 authoritative)")
+    check("g(77,100)" in ino and "g(78,95)" in ino and "g(69,150)" in ino,
+          "the LED mirror must fall back to the v1.17 boot defaults")
+
+    # --- panel: ucard4 holds q77..q79, ucard3 holds q80..q82 ---
+    ucard3 = ino.split('id="ucard3"')[1].split('id="ucard4"')[0]
+    ucard4 = ino.split('id="ucard4"')[1].split('id="ucard5"')[0]
+    check(all(f'id="q{i}"' in ucard4 for i in range(77, 80))
+          and all(f'id="q{i}"' in ucard3 for i in range(80, 83)),
+          "ucard4 must hold the full/hysteresis inputs q77..q79 and ucard3 the run exits q80..q82")
+
+    # --- preview server mirrors the same numbers ---
+    check("100, 95, 5, 2, 2, 3]" in prev and "case 78:" in prev and "P[77] - 1" in prev,
+          "the offline preview must serve the v1.17 defaults with the enter-authoritative clamp")
 
 
 def test_audit_batch_v116b():
@@ -1828,14 +1918,14 @@ def test_audit_batch_v116b():
     # --- E4/E1: bulk must fit the TX ring, off the comm stack ---
     ring_line = [ln for ln in uart.splitlines() if "BSP_UART_TX_RING_SIZE" in ln and "#define" in ln][0]
     ring_size = int("".join(ch for ch in ring_line.split()[-1] if ch.isdigit()))
-    check(ring_size >= 392,
-          "TX ring must fit the 392 B PARAMS_BULK frame (77 params)")
+    check(ring_size >= 422,
+          "TX ring must fit the 422 B PARAMS_BULK frame (83 params)")
     check("static uint8_t UINT8_T__A__Payload[1u + (ESPLINK_PARAM_COUNT * 5u)];" in link,
           "bulk payload must be static (comm stack is 1 KiB)")
     check("ESPLINK_PARAM_COUNT <= ESP_LINK_NVM_ENTRY_MAX" in nvmc,
           "NVM must statically assert the record fits the param table")
-    check("632 B for 77 entries" in nvmh,
-          "NVM record comment must state the true 632 B / 77 size")
+    check("680 B for 83 entries" in nvmh,
+          "NVM record comment must state the true 680 B / 83 size")
 
     # --- LUT hardening + dead-clamp cleanup ---
     check("uint32_t__xHigh == uint32_t__xLow" in meas,
@@ -1893,8 +1983,8 @@ def test_flash_diet_pins_v116d():
     ui_ids = sorted(int(v) for v in re.findall(
         r"#define UI_ALARM_PARAM_(?!MIN_ID|MAX_ID)[A-Z_0-9]+\s+(\d+)u",
         UI_LED_H.read_text()))
-    check(ui_ids == list(range(38, 77)),
-          f"UI-alarm ids must be exactly dense 38..76 (39 params), got {len(ui_ids)} ids")
+    check(ui_ids == list(range(38, 83)),
+          f"UI-alarm ids must be exactly dense 38..82 (45 params), got {len(ui_ids)} ids")
     for src, base, name in (
             (CHARGER_C, 20, "SetProfileParam"),
             (FAULT_C, 27, "SetAlarmParam"),

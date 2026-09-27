@@ -7,12 +7,12 @@
 #define ESP_LINK_SOF_BYTE0          0xAAu
 #define ESP_LINK_SOF_BYTE1          0x55u
 #define ESP_LINK_HEADER_SIZE        5u   /* SOF0 + SOF1 + type + len_lo + len_hi (v1.16 u16 length) */
-/* [EN] 512 since v1.16 (user order 2026-09-26): PARAMS_BULK with 77
-         parameters = 1 + 77 x 5 = 386 payload bytes (was 191 for 38 in
-         v1.15). The length field is u16 little-endian. Both boards MUST
-         flash together.
-         / [FA] از v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶): PARAMS_BULK با ۷۷ پارامتر
-         = ۱ + ۷۷ × ۵ = ۳۸۶ بایت payload (قبلاً ۱۹۱ برای ۳۸ در v1.15).
+/* [EN] 512 since v1.16 (user order 2026-09-26): PARAMS_BULK with 83
+         parameters = 1 + 83 x 5 = 416 payload bytes (was 386 for 77 in
+         v1.16, 191 for 38 in v1.15). The length field is u16
+         little-endian. Both boards MUST flash together.
+         / [FA] از v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶): PARAMS_BULK با ۸۳ پارامتر
+         = ۱ + ۸۳ × ۵ = ۴۱۶ بایت payload (قبلاً ۳۸۶ برای ۷۷ در v1.16).
          فیلد طول u16 لیتل‌اندین است. هر دو برد باید با هم فلش شوند. */
 #define ESP_LINK_MAX_PAYLOAD        512u
 #define ESP_LINK_TLM_SIZE           84u
@@ -40,8 +40,8 @@
          / [FA] از v1.16: شناسه‌های ۲۰..۲۶ = پروفایل شارژ مشترک (بخش 5.7)،
          شناسه‌های ۲۷..۳۷ = تب آلارم‌ها (۲۷..۳۴ نظارت فالت، ۳۵..۳۷ سقف‌های
          ایمنی شارژر)، شناسه‌های ۳۸..۷۶ = اعداد UI (الگوهای LED/بوق، باندها،
-         چشمک، آستانه‌ها، میوت). */
-#define ESP_PARAM_COUNT             77u
+         چشمک، آستانه‌ها، میوت)، شناسه‌های ۷۷..۸۲ = فول/هیسترزیس (v1.17). */
+#define ESP_PARAM_COUNT             83u
 #define ESP_PARAM_CHG1_ENABLE       11u
 #define ESP_PARAM_CHG2_ENABLE       12u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
@@ -67,15 +67,15 @@
 #define ESP_STAT_FAULT_FIELD        19u
 #define ESP_STAT_MAX_FRAMES         60000u
 
-/* ==================== Bench Data Log File (spec 5.6, CSV v2 + DMM v4: 128 self-contained columns) ==================== */
+/* ==================== Bench Data Log File (spec 5.6, CSV v2 + DMM v4: 134 self-contained columns) ==================== */
 /* [EN] One append-only CSV on LittleFS. The panel builds each row from the /m window (every TLM frame,
         raw included) plus the typed DMM readings and POSTs it to /benchlog/add; the ESP only validates
         (printable ASCII, newline-terminated, bounded length) and appends. The column header (the comment block
-        of spec 5.6, 128 columns - v1.12: +7 charge-profile params, v1.15: +11 alarm params, v1.16: +39 UI cadence params) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
+        of spec 5.6, 134 columns - v1.12: +7 charge-profile params, v1.15: +11 alarm params, v1.16: +39 UI cadence params, v1.17: +6 full/hysteresis params) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
         Arduino IDE: pick a flash layout WITH a file system (ESP8266 e.g. "4MB (FS:1MB)"; ESP32 default is fine).
    [FA] یک فایل CSV فقط-افزودنی روی LittleFS. پنل هر ردیف را از پنجرهٔ /m (تک‌تک فریم‌های TLM با raw)
         و عددهای مولتی‌متر می‌سازد و به /benchlog/add می‌فرستد؛ ESP فقط بررسی (ASCII قابل چاپ، پایان با
-        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 5.6، ۱۲۸ ستون - v1.12: +۷ پارامتر پروفایل شارژ، v1.15: +۱۱ پارامتر آلارم، v1.16: +۳۹ پارامتر UI) را ESP هنگام ساخت فایل می‌نویسد. در سقف
+        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 5.6، ۱۳۴ ستون - v1.12: +۷ پارامتر پروفایل شارژ، v1.15: +۱۱ پارامتر آلارم، v1.16: +۳۹ پارامتر UI، v1.17: +۶ پارامتر فول/هیسترزیس) را ESP هنگام ساخت فایل می‌نویسد. در سقف
         اندازه افزودن متوقف می‌شود (HTTP 507) و پنل هشدار می‌دهد.
         در Arduino IDE چیدمان فلشِ دارای فایل‌سیستم را انتخاب کنید (ESP8266 مثلاً "4MB (FS:1MB)"؛ ESP32 پیش‌فرض کافی است). */
 #define ESP_BENCHLOG_PATH           "/benchlog.csv"
@@ -100,7 +100,9 @@
     "#            ui_run_std_cnt,ui_run_dbl_cnt,ui_run_tri_cnt,ui_run_gap,\n" \
     "#            ui_green_per,ui_green_min,ui_yellow_per,ui_yellow_min,\n" \
     "#            ui_ov_thr,ui_ov_hyst,ui_lowbat_thr,ui_lowbat_clr,\n" \
-    "#            ui_pct_vmin,ui_pct_vmax,ui_mute\n" \
+    "#            ui_pct_vmin,ui_pct_vmax,ui_mute,\n" \
+    "#            ui_chg_full_enter,ui_chg_full_exit,ui_chg_hyst,\n" \
+    "#            ui_run_hyst,ui_run_zero,ui_run_one\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \
@@ -115,7 +117,7 @@
 #define ESP_WIFI_AP_SSID            "ChangeOver-ESP"
 #define ESP_WIFI_AP_PASS            "123456789"
 #define ESP_HTTP_PORT               80
-#define ESP_JSON_BUFFER_SIZE        2048u   /* v1.16: p[77] needs the headroom (~950 B worst case) */
+#define ESP_JSON_BUFFER_SIZE        2048u   /* v1.16: p[77] needs the headroom (~950 B worst case); v1.17: p[83] adds ~70 B, still fits */
 #define ESP_HTTP_FONT_CACHE         "public, max-age=31536000"
 
 /* ==================== Parser States ==================== */

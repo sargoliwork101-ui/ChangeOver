@@ -244,7 +244,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 
 </div>
 <div class="cd" id="ucard3" style="display:none">
-<div class="hd"><b>سناریو ۳ — دشارژ (بی‌ورودی)</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">روند: بالای «شروع بوق» بی‌صدا (سبز چشمک با درصد) ← هر باند بوق خودش با فاصله/مدت/تعداد خودش ← زیر «باند بحرانی»: LEDها خاموش و الگوی بحرانی فقط یک‌بار به‌اندازهٔ «طول یک‌باره» پخش و بعد سکوت تا برگشت باتری. با پیش‌فرض‌ها: بالای ۴۰٪ بی‌صدا؛ ۲۰..۴۰ یک بوق، ۱۰..۲۰ دو بوق (هر ۶۰ ثانیه)؛ ۱..۱۰ سه بوق (هر ۲۰ ثانیه)؛ زیر ۱٪ یک بوق ۱۰ثانیه‌ای. گپ (۶۵) مشترک همهٔ باندهاست.</span></button><span class="lb">· شناسه‌های ۵۰..۶۷ · باندها + چشمک سبز</span></div>
+<div class="hd"><b>سناریو ۳ — دشارژ (بی‌ورودی)</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">روند: بالای «شروع بوق» بی‌صدا (سبز چشمک با درصد) ← هر باند بوق خودش با فاصله/مدت/تعداد خودش ← زیر «باند بحرانی»: LEDها خاموش و الگوی بحرانی فقط یک‌بار به‌اندازهٔ «طول یک‌باره» پخش و بعد سکوت تا برگشت باتری. با پیش‌فرض‌ها: بالای ۴۰٪ بی‌صدا؛ ۲۰..۴۰ یک بوق، ۱۰..۲۰ دو بوق (هر ۶۰ ثانیه)؛ ۱..۱۰ سه بوق (هر ۲۰ ثانیه)؛ زیر ۱٪ یک بوق ۱۰ثانیه‌ای. گپ (۶۵) مشترک همهٔ باندهاست.</span></button><span class="lb">· شناسه‌های ۵۰..۶۷/۸۰..۸۲ · باندها + چشمک سبز + پایداری</span></div>
 <div class="sec">چشمک سبز <span class="lb">(ms)</span></div>
 <div class="bqr">
 <label>دوره چشمک سبز (ms)<input type="number" id="q66" step="50" min="100" max="10000"><span class="lb" id="a66">—</span></label>
@@ -275,14 +275,26 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 <label>تعداد بوق باند ۳<input type="number" id="q64" step="1" min="0" max="10"><span class="lb" id="a64">—</span></label>
 <label>گپ بوق دشارژ (ms)<input type="number" id="q65" step="10" min="0" max="5000"><span class="lb" id="a65">—</span></label>
 </div>
+<div class="sec">پایداری درصد <span class="lb">(٪؛ صفر یعنی تعقیب لحظه‌ای خام)</span></div>
+<div class="bqr">
+<label>هیسترزیس پایداری دشارژ (٪)<input type="number" id="q80" step="1" min="0" max="50"><span class="lb" id="a80">—</span></label>
+<label>خروج از حالت ۰٪ (٪)<input type="number" id="q81" step="1" min="0" max="100"><span class="lb" id="a81">—</span></label>
+<label>خروج از حالت ۱٪ (٪)<input type="number" id="q82" step="1" min="0" max="100"><span class="lb" id="a82">—</span></label>
+</div>
 
 </div>
 <div class="cd" id="ucard4" style="display:none">
-<div class="hd"><b>سناریو ۴ — شارژ عادی</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">روند: حین شارژ واقعی، مدت روشن‌بودن زرد = مانده تا فول (باتری پرتر ← چشمک کوتاه‌تر) ← فول (۱۰۰٪، خروج زیر ۹۵٪) یا شارژر بیکار ← سبز ثابت.</span></button><span class="lb">· شناسه‌های ۶۸/۶۹ · چشمک زرد</span></div>
+<div class="hd"><b>سناریو ۴ — شارژ عادی</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">روند: حین شارژ واقعی، مدت روشن‌بودن زرد = مانده تا فول (باتری پرتر ← چشمک کوتاه‌تر) ← فول (۱۰۰٪، خروج زیر ۹۵٪) یا شارژر بیکار ← سبز ثابت.</span></button><span class="lb">· شناسه‌های ۶۸/۶۹/۷۷..۷۹ · چشمک زرد + فول</span></div>
 <div class="sec">چشمک زرد <span class="lb">(ms)</span></div>
 <div class="bqr">
 <label>دوره چشمک زرد (ms)<input type="number" id="q68" step="50" min="100" max="10000"><span class="lb" id="a68">—</span></label>
 <label>حداقل روشنی زرد (ms)<input type="number" id="q69" step="5" min="0" max="10000"><span class="lb" id="a69">—</span></label>
+</div>
+<div class="sec">فول و پایداری <span class="lb">(٪؛ ورود فول همیشه بالای خروج است)</span></div>
+<div class="bqr">
+<label>ورود فول (٪)<input type="number" id="q77" step="1" min="1" max="100"><span class="lb" id="a77">—</span></label>
+<label>خروج فول (٪)<input type="number" id="q78" step="1" min="0" max="100"><span class="lb" id="a78">—</span></label>
+<label>هیسترزیس پایداری شارژ (٪)<input type="number" id="q79" step="1" min="0" max="50"><span class="lb" id="a79">—</span></label>
 </div>
 
 </div>
@@ -342,7 +354,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 </div>
 <div class="sgx" id="s3">
 <div class="cd">
-<div class="hd"><b>پشتیبان‌گیری همهٔ تنظیمات</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد (کالیبراسیون، فیلتر، فعال‌سازی/سقف‌ها، پروفایل، آلارم‌ها، سناریوها) را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). گذراها (۱۵..۱۹ و میوت ۷۶) جزو پشتیبان نیستند.</span></button><span class="lb">· یک بکاپ برای کل بخش تنظیمات — خروجی/ورودی JSON همهٔ ۷۱ مقدار ماندگار (۰..۱۴، ۲۰..۷۵)</span></div>
+<div class="hd"><b>پشتیبان‌گیری همهٔ تنظیمات</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد (کالیبراسیون، فیلتر، فعال‌سازی/سقف‌ها، پروفایل، آلارم‌ها، سناریوها) را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). گذراها (۱۵..۱۹ و میوت ۷۶) جزو پشتیبان نیستند.</span></button><span class="lb">· یک بکاپ برای کل بخش تنظیمات — خروجی/ورودی JSON همهٔ ۷۷ مقدار ماندگار (۰..۱۴، ۲۰..۷۵، ۷۷..۸۲)</span></div>
 <div class="bqr">
 <button class="sb sb2" onclick="xexp()">⬇ خروجی (دانلود JSON)</button>
 <label class="sb" style="cursor:pointer">⬆ ورودی (انتخاب فایل)<input type="file" id="xim" accept=".json,application/json" style="display:none"></label>
@@ -532,8 +544,8 @@ for(const id of [7,8,20,21,22,23,24,25,26]){const e=$('q'+id);if(!e)continue;e.o
 function cfill(){if(!D||!D.p)return;for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];}}
 for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;send(id,v);};}
 /* ===== v1.15: تب آلارم‌ها — آینهٔ قوانین Fault_ClampAlarms/Charger_ClampAlarms روی برد ===== */
-const AIDS=[];for(let _i=27;_i<=76;_i++)AIDS.push(_i);
-const ADEF=[14800,150,6000,7000,1000,1000,21000,28000,950,15000,2000,1000,50,10000,1000,1,0,1000,50,3000,233,3,100,40,20,10,1,60000,20000,10000,100,1,1000,2000,10000,1,2,3,100,1000,10,1000,10,28000,1000,21000,21200,21000,29000,0];
+const AIDS=[];for(let _i=27;_i<=82;_i++)AIDS.push(_i);
+const ADEF=[14800,150,6000,7000,1000,1000,21000,28000,950,15000,2000,1000,50,10000,1000,1,0,1000,50,3000,233,3,100,40,20,10,1,60000,20000,10000,100,1,1000,2000,10000,1,2,3,100,1000,10,1000,150,28000,1000,21000,21200,21000,29000,0,100,95,5,2,2,3];
 function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:ADEF[id-27];
  if(e&&e.value!==''){const v=parseInt(e.value,10);if(!isNaN(v))return{v,d};}
  return{v:d,d};}
@@ -607,6 +619,13 @@ function achk(){const a=ap(),w=[],bad=(v,lo,hi)=>!(v>=lo&&v<=hi);
  if(bad(a.u75,25000,32000))w.push({ids:[75],msg:'سقف نگاشت درصد باید ۲۵۰۰۰..۳۲۰۰۰ باشد'});
  else if(!(a.u75>=a.u74+100))w.push({ids:[75,74],msg:'سقف نگاشت باید دست‌کم ۱۰۰ بالای کف باشد (≥ '+(a.u74+100)+')'});
  if(bad(a.u76,0,1))w.push({ids:[76],msg:'میوت باید ۰ یا ۱ باشد'});
+ if(bad(a.u77,1,100))w.push({ids:[77],msg:'ورود فول باید ۱..۱۰۰ باشد'});
+ if(bad(a.u78,0,100))w.push({ids:[78],msg:'خروج فول باید ۰..۱۰۰ باشد'});
+ else if(!(a.u78<=a.u77-1))w.push({ids:[78,77],msg:'خروج فول باید زیر ورود باشد (≤ '+(a.u77-1)+')'});
+ if(bad(a.u79,0,50))w.push({ids:[79],msg:'هیسترزیس شارژ باید ۰..۵۰ باشد'});
+ if(bad(a.u80,0,50))w.push({ids:[80],msg:'هیسترزیس دشارژ باید ۰..۵۰ باشد'});
+ if(bad(a.u81,0,100))w.push({ids:[81],msg:'خروج از ۰٪ باید ۰..۱۰۰ باشد'});
+ if(bad(a.u82,0,100))w.push({ids:[82],msg:'خروج از ۱٪ باید ۰..۱۰۰ باشد'});
  return w;}
 function afresh(){const w=achk();
  const wset=(el,l)=>{if(!el)return;el.innerHTML=l.length?('⚠ ترکیب نامعتبر — برد این‌ها را گیره می‌زند: '+l.map(x=>x.msg).join('؛ ')):'';el.style.cssText=l.length?'margin:2px 0 6px;color:#fc8086;font-size:12.5px;line-height:1.9':'margin:2px 0 0';};
@@ -668,9 +687,9 @@ function uview(){
  const ovT=g(70,28000),ovH=g(71,1000);
  if(!UV.ov&&vin>ovT)UV.ov=true;else if(UV.ov&&vin<=ovT-ovH)UV.ov=false;
  if(vbat<g(72,21000))UV.bat=true;else if(vbat>=g(73,21200))UV.bat=false;
- if(UV.pct<0)UV.pct=raw;else if(!(UV.pct===0&&raw<2)&&Math.abs(raw-UV.pct)>=2)UV.pct=raw;
- if(UV.cpct<0)UV.cpct=raw;else if(Math.abs(raw-UV.cpct)>=5)UV.cpct=raw;
- if(raw>=100)UV.full=true;else if(raw<95)UV.full=false;
+ if(UV.pct<0)UV.pct=raw;else if(!(UV.pct===0&&raw<g(81,2))&&Math.abs(raw-UV.pct)>=g(80,2))UV.pct=raw;
+ if(UV.cpct<0)UV.cpct=raw;else if(Math.abs(raw-UV.cpct)>=g(79,5))UV.cpct=raw;
+ if(raw>=g(77,100))UV.full=true;else if(raw<g(78,95))UV.full=false;
  const mute=g(76,0)===1;
  const blink=(per,onMs)=>per>0&&onMs>0&&(now%per)<onMs;
  const beepNow=(per,dur,cnt,gap)=>{if(!per||!dur||!cnt)return false;const w=dur*cnt+(cnt>1?gap*(cnt-1):0);return w>0&&w<=per&&(now%per)<w;};
@@ -696,7 +715,7 @@ function uview(){
    const st=UV.cpct,per=g(68,1000);
    tim='زرد '+per+'ms · سبز ثابت';
    if(st<=0)y=true;
-   else if(st<100){y=blink(per,Math.max(g(69,10),Math.min(per,(100-st)*Math.floor(per/100))));}
+   else if(st<100){y=blink(per,Math.max(g(69,150),Math.min(per,(100-st)*Math.floor(per/100))));}
    cap='🔋 در حال شارژ '+raw+'٪ — زرد با مانده تا فول'+loW;
   }
  }else{
@@ -726,13 +745,13 @@ function uview(){
  if(tm)tm.textContent=tim;
 }
 function xmute(){const v=(D&&D.p&&D.p[76]===1)?0:1;const f=$('q76');if(f)f.value=v;send(76,v);}
-/* اتصال ورودی‌های آلارم (۲۷..۷۶): مثل پروفایل + نگهبان + q2/q3 برای شناسه‌های ۳۲..۷۶ */
+/* اتصال ورودی‌های آلارم (۲۷..۸۲): مثل پروفایل + نگهبان + q2/q3 برای شناسه‌های ۳۲..۸۲ */
 for(const id of AIDS){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;
  const m=achk().filter(x=>x.ids.includes(id));
  if(m.length&&!confirm('⚠ '+m.map(x=>x.msg).join('\n')+'\n\nبرد مقدار را گیره می‌زند تا مجموعه سازنده بماند. باز هم ارسال شود؟')){e.value='';afresh();return;}
  send(id,v);};e.oninput=afresh;}
 /* ===== v1.15b: پشتیبان‌گیری JSON تنظیمات (فیلتر + پروفایل + آلارم‌ها) ===== */
-const XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26];AIDS.forEach(id=>{if(id<76)XIDS.push(id);});
+const XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26];AIDS.forEach(id=>{if(id!==76)XIDS.push(id);});
 function xexp(){const x=$('xst');if(!D||!D.p){if(x)x.textContent='هنوز داده‌ای از برد نرسیده';return;}
  const o={app:'ChangeOver-settings',v:1,params:{}};XIDS.forEach(id=>{o.params[id]=D.p[id];});
  const u=URL.createObjectURL(new Blob([JSON.stringify(o)],{type:'application/json'}));
@@ -779,7 +798,7 @@ function bsave(){document.querySelectorAll('[data-s]').forEach(e=>{if(e.value===
 function bload(r){r.querySelectorAll('[data-s]').forEach(e=>{if(BDS[e.id]!=null)e.value=BDS[e.id];});}
 /* ----- داده‌برداری بنچ (بخش 5.6 نسخه ۲): همهٔ مرحله‌ها در یک جدول؛ جلو رفتن فقط با دکمهٔ کاربر -----
  * هر مرحله: duty → صبر → پنجرهٔ /m (قبلش GET_PARAMS) → توقف روی ردیف فعال برای عدد مولتی‌متر → با دکمهٔ ثبت و مرحلهٔ بعد یک ردیف ۸۹ستونی در ESP.
- * Capture v2: set duty → settle → /m window (preceded by GET_PARAMS) → STOP on the active table row for the DMM → one 128-column row only on submit. */
+ * Capture v2: set duty → settle → /m window (preceded by GET_PARAMS) → STOP on the active table row for the DMM → one 134-column row only on submit. */
 const WSC={SOLO1:[1],SOLO2:[2],BOTH:[1,2]};let W={run:false,abort:false,act:null};
 const sl=ms=>new Promise(r=>setTimeout(r,ms));
 async function req(u,m,body){const o={method:m||'GET',cache:'no-store'};if(body!=null){o.body=body;o.headers={'Content-Type':'text/plain'};}const r=await fetch(u,o);let j={};try{j=await r.json();}catch(e){}j._s=r.status;return j;}
@@ -813,8 +832,8 @@ async function wopen(){const j=await req('/m','POST');if(j._s!=200)throw 'پنج
 async function wlatch(){const j=await req('/m');if(!j.n||!j.s||j.s.length<20)throw 'در این بازه TLM نرسید';j.a=i=>j.s[i]/j.n;return j;}
 /* خانه‌های زندهٔ ردیف فعال از آخرین /t — فقط نمایش؛ ردیف فایل از /m لحظهٔ ثبت ساخته می‌شود */
 function wlive(act){if(!D||D.on!=1)return['-','-','-',undefined,'-','-','-',undefined,undefined];const M=(n,b)=>act.includes(n)?[D.t[b],D.t[b+3],D.t[b+4]]:['قطع','-','-'];const a=M(1,0),b=M(2,7);return[a[0],a[1],a[2],undefined,b[0],b[1],b[2],undefined,undefined];}
-/* ردیف CSV (۱۲۸ ستون، ترتیب دقیق بخش 5.6، مولتی‌متر نسخه ۴؛ v1.16: +۳۹ ستون UI) / CSV row, exact 5.6 column order (DMM v4; v1.16: +39 UI cols) */
-function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x,P=[];for(let k=0;k<77;k++)P.push(q(D.p[k]));
+/* ردیف CSV (۱۳۴ ستون، ترتیب دقیق بخش 5.6، مولتی‌متر نسخه ۴؛ v1.17: +۶ ستون فول/هیسترزیس) / CSV row, exact 5.6 column order (DMM v4; v1.17: +6 full/hyst cols) */
+function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x,P=[];for(let k=0;k<83;k++)P.push(q(D.p[k]));
  const C=b=>[m.a(b).toFixed(1),m.lo[b],m.hi[b],r0(m.a(b+1)),r0(m.a(b+2)),m.lo[b+2],m.hi[b+2],r0(m.a(b+3)),m.lo[b+3],m.hi[b+3],r0(m.a(b+4)),m.lo[b+4],m.hi[b+4],m.la[b+5],m.la[b+6]];
  return [sc,i+1,pm,se,sa,iso,...P,...C(0),...C(7),m.seq,m.fl,...[14,15,16,17,18].map(k=>r0(m.a(k))),m.or,q(v.ii),q(v.vi),q(v.b1),q(v.v1),q(v.b2),q(v.v2),v.note||'-'].join(',')+'\n';}
 /* جدول واحد: هر مرحلهٔ هر سناریو یک ردیف؛ ردیف فعال ورودی‌ها و دکمه‌ها را دارد */

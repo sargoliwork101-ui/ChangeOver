@@ -77,9 +77,13 @@ uint32_t func__EspLink_NvmCrc32(const uint8_t *uint8_t__A__Data,
  */
 bool func__EspLink_NvmParamPersisted(uint8_t uint8_t__paramId)
 {
+    /* [EN] v1.17: id 76 (panel-session mute) sits inside the high range
+       and is excluded explicitly - it must never survive a reboot.
+       [FA] شناسهٔ ۷۶ داخل بازهٔ بالاست و صریحاً کنار گذاشته می‌شود. */
     return ((uint8_t__paramId <= ESP_LINK_NVM_PERSISTED_ID_MAX_LOW) ||
-            ((uint8_t__paramId >= ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH) &&
-             (uint8_t__paramId <= ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH)));
+            (((uint8_t__paramId >= ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH) &&
+              (uint8_t__paramId <= ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH)) &&
+             (uint8_t__paramId != ESP_LINK_NVM_TRANSIENT_ID_MUTE)));
 }
 
 /**

@@ -6,12 +6,12 @@
  *          [FA] سناریوهای LED ماژول UI - ثابت‌های LED در هدر خودش، فرمول غیرخطی، RTOS ساده.
  *
  * @note    [EN] LED defaults live in this header; since v1.16 the live
- *          cadence is the persisted ui_alarm_t (ids 38..76) and runtime
+ *          cadence is the persisted ui_alarm_t (ids 38..82) and runtime
  *          logic reads it - APP_CONFIG keeps only the one-shot BoardTest
  *          timings. Naming __ after type, func__ prefix.
  *          CMSIS-RTOS2: osDelay allowed, HAL_Delay forbidden. Formulas broken into steps.
  *          [FA] پیش‌فرض‌های LED در این هدر هستند؛ از v1.16 منطق زمان اجرا
- *          از ui_alarm_t ماندگار (۳۸..۷۶) می‌خواند و APP_CONFIG فقط
+ *          از ui_alarm_t ماندگار (۳۸..۸۲) می‌خواند و APP_CONFIG فقط
  *          زمان‌بندی تست برد را نگه می‌دارد.
  */
 
@@ -227,9 +227,13 @@
  * @brief  [EN] Minimum yellow LED ON blip near full charge, in milliseconds
  *              (misnamed MIN_OFF until the 2026-09-26 audit: the code floors
  *              the ON time, keeping the nearly-full blink visible).
- *         [FA] کمترین زمان روشنی LED زرد نزدیک شارژ کامل، بر حسب میلی‌ثانیه.
+ *              Raised 10 -> 150 by user order 2026-09-27 (v1.17): at 28.8 V
+ *              the remaining-based blink was only ~30-50 ms/s and looked
+ *              dead - the floor keeps it clearly visible until full/cutoff.
+ *         [FA] کمترین زمان روشنی LED زرد نزدیک شارژ کامل، بر حسب میلی‌ثانیه
+ *              (۱۰ ← ۱۵۰ به دستور کاربر: چشمک آخر شارژ دیده شود).
  */
-#define UI_CHARGING_YELLOW_MIN_ON_MS   10u
+#define UI_CHARGING_YELLOW_MIN_ON_MS   150u
 
 /* ==================== BatteryRun warning constants / ثابت‌های هشدار BatteryRun ==================== */
 
@@ -556,6 +560,10 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
  *      DEFAULTS only. Id 76 (mute) is panel-session only since v1.16b
  *      (RAM, cleared on reboot - the board returns to its own scenario);
  *      only the one-shot BoardTest wiring beep ignores the mute.
+ *      v1.17 (user order 2026-09-27: "the charge-scenario numbers must be
+ *      panel-editable too"): ids 77..82 add the full latch (enter/exit),
+ *      the charging/discharge stable hysteresis and the 0/1 exits - 45
+ *      numbers, ids 38..82.
  * [FA] v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶: «LEDها کشیده شوند با چشمک واقعی،
  *      بازر با ضربدر میوت نشان داده شود و همهٔ اعداد آلارم - بازه‌ها،
  *      زمان و تعداد بوق‌ها - قابل اصلاح باشند»): ۳۹ عدد UI_* شناسه‌های
@@ -564,7 +572,9 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
  *      می‌خورند. ماکروها فقط پیش‌فرض بوت می‌مانند. شناسهٔ ۷۶ (میوت) از
  *      v1.16b فقط جلسه‌ای است (RAM، با ریبوت پاک می‌شود - برد به سناریوی
  *      خودش برمی‌گردد)؛ فقط بوق یک‌بارهٔ تست سیم‌کشی برد میوت را نادیده
- *      می‌گیرد. */
+ *      می‌گیرد.
+ *      v1.17 (دستور کاربر ۲۰۲۶-۰۹-۲۷): شناسه‌های ۷۷..۸۲ (لچ فول، هیسترزیس
+ *      پایداری شارژ/دشارژ و خروج‌های ۰/۱) اضافه شد - ۴۵ عدد، ۳۸..۸۲. */
 #define UI_ALARM_PARAM_OV_LED_PERIOD_MS    38u  /* ms, 100..10000 */
 #define UI_ALARM_PARAM_OV_LED_DUTY_PCT     39u  /* %, 0..100 */
 #define UI_ALARM_PARAM_OV_BEEP_PERIOD_MS   40u  /* ms, 0=off else 1000..600000 */
@@ -604,8 +614,14 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
 #define UI_ALARM_PARAM_PCT_VMIN_MV         74u  /* mV, 15000..25000, <= 75-100 */
 #define UI_ALARM_PARAM_PCT_VMAX_MV         75u  /* mV, 25000..32000, >= 74+100 */
 #define UI_ALARM_PARAM_BUZZER_MUTE         76u  /* 0/1, panel-session only (RAM); never persisted, cleared on reboot; scenarios only */
+#define UI_ALARM_PARAM_CHG_FULL_ENTER_PCT  77u  /* %, 1..100, enter authoritative: exit pulled to enter-1 */
+#define UI_ALARM_PARAM_CHG_FULL_EXIT_PCT   78u  /* %, 0..100, < 77 after clamp */
+#define UI_ALARM_PARAM_CHG_HYST_PCT        79u  /* %, 0..50, charging stable-percent hysteresis (0 = follow raw) */
+#define UI_ALARM_PARAM_RUN_HYST_PCT        80u  /* %, 0..50, BatteryRun stable-percent hysteresis (0 = follow raw) */
+#define UI_ALARM_PARAM_RUN_ZERO_EXIT       81u  /* %, 0..100, raw needed to leave the 0% state to 1 */
+#define UI_ALARM_PARAM_RUN_ONE_EXIT        82u  /* %, 0..100, raw needed to leave the 1% state to 2 */
 #define UI_ALARM_PARAM_MIN_ID              38u
-#define UI_ALARM_PARAM_MAX_ID              76u
+#define UI_ALARM_PARAM_MAX_ID              82u
 
 /**
  * @brief  [EN] Live UI cadence set (one struct, like the fault alarms).
@@ -654,14 +670,20 @@ typedef struct
     uint32_t uint32_t__pctVminMv;
     uint32_t uint32_t__pctVmaxMv;
     uint32_t uint32_t__buzzerMute;
+    uint32_t uint32_t__chgFullEnterPct;
+    uint32_t uint32_t__chgFullExitPct;
+    uint32_t uint32_t__chgHystPct;
+    uint32_t uint32_t__runHystPct;
+    uint32_t uint32_t__runZeroExit;
+    uint32_t uint32_t__runOneExit;
 } ui_alarm_t;
 
 /**
- * @brief  [EN] Write one UI cadence value (38..76): store, re-clamp the
+ * @brief  [EN] Write one UI cadence value (38..82): store, re-clamp the
  *              whole set, report the applied value.
- *         [FA] نوشتن یک عدد UI (۳۸..۷۶): ذخیره، گیرهٔ کل مجموعه، گزارش
+ *         [FA] نوشتن یک عدد UI (۳۸..۸۲): ذخیره، گیرهٔ کل مجموعه، گزارش
  *              مقدار اعمال‌شده.
- * @param  uint8_t__paramId [EN] 38..76 / شناسه
+ * @param  uint8_t__paramId [EN] 38..82 / شناسه
  * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
  * @param  uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
  * @return bool [EN] true when the id is 38..76 / شناسه معتبر بود
@@ -671,11 +693,11 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t *uint32_t__appliedValue);
 
 /**
- * @brief  [EN] Read one live UI cadence value (38..76).
- *         [FA] خواندن یک عدد زندهٔ UI (۳۸..۷۶).
- * @param  uint8_t__paramId [EN] 38..76 / شناسه
+ * @brief  [EN] Read one live UI cadence value (38..82).
+ *         [FA] خواندن یک عدد زندهٔ UI (۳۸..۸۲).
+ * @param  uint8_t__paramId [EN] 38..82 / شناسه
  * @param  uint32_t__value [EN] Value out / مقدار
- * @return bool [EN] true when the id is 38..76 / شناسه معتبر بود
+ * @return bool [EN] true when the id is 38..82 / شناسه معتبر بود
  */
 bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t *uint32_t__value);

@@ -71,7 +71,7 @@ static void func__Esp_WriteFrame(uint8_t uint8_t__type, const uint8_t *uint8_t__
 /**
  * @brief  [EN] Send SET_PARAM [id:u8][value:u32 LE].
  *         [FA] ارسال SET_PARAM با قالب [id:u8][value:u32 LE].
- * @param  uint8_t__id     [EN] Parameter ID, 0..76 (77 params since v1.16) / [FA] شناسه پارامتر، ۰ تا ۷۶ (۷۷ پارامتر از نسخه ۱.۱۶)
+ * @param  uint8_t__id     [EN] Parameter ID, 0..82 (83 params since v1.17) / [FA] شناسه پارامتر، ۰ تا ۸۲ (۸۳ پارامتر از نسخه ۱.۱۷)
  * @param  uint32_t__value [EN] Raw wire value (signed IDs as two's complement) / [FA] مقدار خام (شناسه‌های علامت‌دار به صورت مکمل دو)
  * @return [EN] None / [FA] ندارد
  */
@@ -260,7 +260,7 @@ static void func__Esp_HandleFrame(void)
                 re-send below only matters for the transient test modes
                 15..19 (+76): re-send values the user set in this session.
                 Manual test mode (ID 19) is never re-enabled automatically.
-           [FA] STM32 شناسه‌های ۰..۱۴ و ۲۰..۷۵ را روی فلش نگه می‌دارد (NVM
+           [FA] STM32 شناسه‌های ۰..۱۴، ۲۰..۷۵ و ۷۷..۸۲ را روی فلش نگه می‌دارد (NVM
                 نسخهٔ ۱.۱۴)، پس ارسال مجدد زیر فقط برای مودهای گذرای تست
                 ۱۵..۱۹ (+۷۶) لازم است: مقادیری که کاربر در این نشست داده
                 دوباره ارسال شوند. مود تست دستی (شناسه ۱۹) هیچ‌وقت خودکار
@@ -297,8 +297,9 @@ static void func__Esp_HandleFrame(void)
     }
     else if ((UINT8_T__G__RxType == ESP_MSG_PARAMS_BULK) && (UINT16_T__G__RxLen >= 1u))
     {
-        /* [EN] v1.16: 77 items need u16 offsets (52 x 5 already overflows u8).
-           [FA] نسخه ۱.۱۶: ۷۷ آیتم آفست u16 می‌خواهد. */
+        /* [EN] v1.16: 77 items need u16 offsets (52 x 5 already overflows u8);
+           v1.17: 83 items, same count-driven loop.
+           [FA] نسخه ۱.۱۶: ۷۷ آیتم آفست u16 می‌خواهد؛ نسخه ۱.۱۷: ۸۳ آیتم با همان حلقه. */
         uint8_t uint8_t__count = uint8_t__ptr_payload[0];
         uint16_t uint16_t__item;
         for (uint16_t__item = 0u; uint16_t__item < (uint16_t)uint8_t__count; uint16_t__item++)

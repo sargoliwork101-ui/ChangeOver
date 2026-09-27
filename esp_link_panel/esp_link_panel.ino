@@ -22,8 +22,8 @@
  *               mute, RAM-only since v1.16b) with virtual board LEDs (real blinking), a buzzer
  *               icon with a mute cross, per-bit fault LEDs and editable
  *               fields; the wire length field grows to u16 (frame = AA 55
- *               type len_lo len_hi payload xor) and PARAMS_BULK to 386
- *               payload bytes (77 params) - both boards must flash
+ *               type len_lo len_hi payload xor) and PARAMS_BULK to 416
+ *               payload bytes (83 params, v1.17) - both boards must flash
  *               together (a v1.15 parser reads len_hi as payload).
  *               Tabs (v1.7 simplification; filter avg window 1..300 since v1.9):
  *               1) Panel: shared voltages (with DMM offset helpers), the current filter (median 1..15,

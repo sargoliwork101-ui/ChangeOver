@@ -302,9 +302,9 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
 
         default:
 #if MODULE_UI
-            /* [EN] UI cadence, ids 38..76 (v1.16): range-dispatched - 39
-                    case labels would drown the switch; Set re-validates.
-               [FA] اعداد UI، شناسه‌های ۳۸..۷۶ (v1.16): دیسپچ بازه‌ای. */
+            /* [EN] UI cadence, ids 38..82 (v1.16 + v1.17 append): range-dispatched -
+                    45 case labels would drown the switch; Set re-validates.
+               [FA] اعداد UI، شناسه‌های ۳۸..۸۲: دیسپچ بازه‌ای. */
             if ((uint8_t__paramId >= UI_ALARM_PARAM_MIN_ID) &&
                 (uint8_t__paramId <= UI_ALARM_PARAM_MAX_ID))
             {
@@ -453,8 +453,8 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
 
         default:
 #if MODULE_UI
-            /* [EN] UI cadence live read, ids 38..76 (v1.16).
-               [FA] خواندن زندهٔ اعداد UI، شناسه‌های ۳۸..۷۶. */
+            /* [EN] UI cadence live read, ids 38..82 (v1.16 + v1.17 append).
+               [FA] خواندن زندهٔ اعداد UI، شناسه‌های ۳۸..۸۲. */
             if ((uint8_t__paramId >= UI_ALARM_PARAM_MIN_ID) &&
                 (uint8_t__paramId <= UI_ALARM_PARAM_MAX_ID))
             {
@@ -552,12 +552,12 @@ static void func__EspLink_SendParamReport(uint8_t uint8_t__paramId,
  */
 static void func__EspLink_SendParamsBulk(void)
 {
-    /* [EN] STATIC by necessity, not style (v1.16 audit E1): 386 B on the
+    /* [EN] STATIC by necessity, not style (v1.16 audit E1): 416 B on the
        1 KiB comm stack next to SendFrame's 518 B frame left only dozens of
        bytes of margin on every GET_PARAMS. Single task (comm),
        non-reentrant, so static is race-free here (same rationale as the
        NVM save scratch).
-       [FA] عمداً STATIC نه سلیقه‌ای: ۳۸۶ بایت روی استک ۱KB ارتباط کنار فریم
+       [FA] عمداً STATIC نه سلیقه‌ای: ۴۱۶ بایت روی استک ۱KB ارتباط کنار فریم
        ۵۱۸ بایتی حاشیه را به چند ده بایت می‌رساند؛ تک‌تسک و غیربازگشتی پس
        بدون مسابقه است (همان دلیل بافر NVM). */
     static uint8_t UINT8_T__A__Payload[1u + (ESPLINK_PARAM_COUNT * 5u)];

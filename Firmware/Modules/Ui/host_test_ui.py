@@ -41,7 +41,7 @@ UI_PERCENT_SCALE = defines.get("UI_PERCENT_SCALE",100)
 UI_BLINK_PERIOD_MS = defines.get("UI_BLINK_PERIOD_MS",1000)
 UI_GREEN_MIN_OFF_MS = defines.get("UI_GREEN_MIN_OFF_MS",10)
 UI_CHARGING_BLINK_PERIOD_MS = defines.get("UI_CHARGING_BLINK_PERIOD_MS",1000)
-UI_CHARGING_YELLOW_MIN_ON_MS = defines.get("UI_CHARGING_YELLOW_MIN_ON_MS",10)
+UI_CHARGING_YELLOW_MIN_ON_MS = defines.get("UI_CHARGING_YELLOW_MIN_ON_MS",150)
 
 def calculate_pattern(period_ms, duty_percent, beep_count, gap_ms):
     if period_ms <=0 or duty_percent<=0 or beep_count<=0: return None
@@ -303,12 +303,13 @@ def run_charging_hysteresis_tests():
     assert_equal(c.update(62),62,"57->62 change")
     print("53..61 keep PASS, outside 5 change PASS")
     # [EN] Yellow ON must follow the REMAINING percent (final user directive
-    # 2026-09-19): more charged -> shorter ON; 95% charged (5 remaining) ->
-    # 50 ms ON per 1000 ms; 5% charged -> 950 ms ON.
-    # [FA] زرد بر اساس «مانده»: ۹۵٪ شارژ ⇒ ۵۰ms روشن؛ ۵٪ شارژ ⇒ ۹۵۰ms روشن.
-    assert_equal(yellow_timing(95), (50, 950), "yellow 95% charged -> 50ms on")
+    # 2026-09-19): more charged -> shorter ON; 5% charged -> 950 ms ON.
+    # v1.17: the 150 ms floor (id 69, was 10) keeps the nearly-full blink
+    # visible - 95% charged (5 remaining) -> 150 ms, not 50 ms.
+    # [FA] زرد بر اساس «مانده»: ۵٪ شارژ ⇒ ۹۵۰ms روشن؛ کف ۱۵۰ms از v1.17.
+    assert_equal(yellow_timing(95), (150, 850), "yellow 95% charged -> 150ms floor (v1.17)")
     assert_equal(yellow_timing(5), (950, 50), "yellow 5% charged -> 950ms on")
-    assert_equal(yellow_timing(99), (10, 990), "yellow 99% charged -> min 10ms on")
+    assert_equal(yellow_timing(99), (150, 850), "yellow 99% charged -> min 150ms on")
     # yellow timing stable
     on57,off57=yellow_timing(57)
     on53,off53=yellow_timing(53) # diff but should not be used if stable 57
@@ -428,11 +429,15 @@ UI_ALARM_DEFAULTS = {
     62: ("runStdCount", 1), 63: ("runDoubleCount", 2),
     64: ("runTriCount", 3), 65: ("runGapMs", 100),
     66: ("greenPeriodMs", 1000), 67: ("greenMinOffMs", 10),
-    68: ("yellowPeriodMs", 1000), 69: ("yellowMinOnMs", 10),
+    68: ("yellowPeriodMs", 1000), 69: ("yellowMinOnMs", 150),
     70: ("ovThreshMv", 28000), 71: ("ovHystMv", 1000),
     72: ("lowBatThreshMv", 21000), 73: ("lowBatClearMv", 21200),
     74: ("pctVminMv", 21000), 75: ("pctVmaxMv", 29000),
     76: ("buzzerMute", 0),
+    # v1.17: full latch + stable hysteresis + 0%/1% exits
+    77: ("chgFullEnterPct", 100), 78: ("chgFullExitPct", 95),
+    79: ("chgHystPct", 5), 80: ("runHystPct", 2),
+    81: ("runZeroExit", 2), 82: ("runOneExit", 3),
 }
 
 def _w(v, lo, hi): return min(hi, max(lo, v))
@@ -517,6 +522,15 @@ def ui_clamp_mirror(s):
     if s["pctVmaxMv"] < s["pctVminMv"] + 100: s["pctVmaxMv"] = s["pctVminMv"] + 100
     if s["pctVminMv"] > s["pctVmaxMv"] - 100: s["pctVminMv"] = s["pctVmaxMv"] - 100
     s["buzzerMute"] = _w(s["buzzerMute"], 0, 1)
+    # v1.17: enter authoritative (>= 1, so enter-1 never underflows)
+    s["chgFullEnterPct"] = _w(s["chgFullEnterPct"], 1, 100)
+    s["chgFullExitPct"] = _w(s["chgFullExitPct"], 0, 100)
+    if s["chgFullExitPct"] >= s["chgFullEnterPct"]:
+        s["chgFullExitPct"] = s["chgFullEnterPct"] - 1
+    s["chgHystPct"] = _w(s["chgHystPct"], 0, 50)
+    s["runHystPct"] = _w(s["runHystPct"], 0, 50)
+    s["runZeroExit"] = _w(s["runZeroExit"], 0, 100)
+    s["runOneExit"] = _w(s["runOneExit"], 0, 100)
     return s
 
 def _ui_duty(period, dur, count, gap):
@@ -528,29 +542,31 @@ def _ui_duty(period, dur, count, gap):
 def run_ui_alarm_tests():
     """[EN] v1.16: 39 runtime UI ids 38..76 - defines, boot defaults, exact
        legacy-sound equivalence, mute gate, read swaps, clamp invariants.
-       [FA] تست شناسه‌های ۳۸..۷۶: دیفاین‌ها، دیفالت بوت، تطابق دقیق صدا،
+       v1.17 appends 77..82 (full latch + hysteresis) and raises the 69
+       default 10 -> 150: 45 ids 38..82.
+       [FA] تست شناسه‌های ۳۸..۸۲: دیفاین‌ها، دیفالت بوت، تطابق دقیق صدا،
        میوت، تعویض خوانش‌ها، نامتغیرهای گیره."""
-    print("\n=== UI alarms v1.16 (ids 38..76) ===")
+    print("\n=== UI alarms v1.16/v1.17 (ids 38..82) ===")
     ui_led_h = open(LED_HEADER, "r", encoding="utf-8", errors="ignore").read()
     ui_led_c = open(os.path.join(BASE_DIR, "ui_led.c"), "r", encoding="utf-8", errors="ignore").read()
 
-    # --- ID defines: contiguous 38..76 + MIN/MAX ---
+    # --- ID defines: contiguous 38..82 + MIN/MAX ---
     ids = sorted(int(m.group(2)) for m in
                  re.finditer(r"#define\s+(UI_ALARM_PARAM_\w+)\s+\(?(\d+)\)?u?",
                              ui_led_h) if "MIN_ID" not in m.group(1) and "MAX_ID" not in m.group(1))
-    assert_equal(ids, list(range(38, 77)), "UI alarm ids contiguous 38..76")
+    assert_equal(ids, list(range(38, 83)), "UI alarm ids contiguous 38..82")
     assert_equal(defines.get("UI_ALARM_PARAM_MIN_ID"), 38, "MIN_ID 38")
-    assert_equal(defines.get("UI_ALARM_PARAM_MAX_ID"), 76, "MAX_ID 76")
+    assert_equal(defines.get("UI_ALARM_PARAM_MAX_ID"), 82, "MAX_ID 82")
     assert_true("bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId," in ui_led_h, "Set prototype")
     assert_true("bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId," in ui_led_h, "Get prototype")
 
-    # --- struct init order: positional init must list the 39 boot defaults in id order ---
+    # --- struct init order: positional init must list the 45 boot defaults in id order ---
     m = re.search(r"static (?:volatile )?ui_alarm_t UI_ALARM_T__G__Alarm =\n\{(.*?)\n\};", ui_led_c, re.S)
     assert_true(m, "alarm struct init found")
     body = re.sub(r"/\*.*?\*/", "", m.group(1), flags=re.S)
     inits = [x.strip().rstrip(",").strip() for x in body.strip().split("\n")]
     inits = [x for x in inits if x]
-    assert_equal(len(inits), 39, "39 init entries")
+    assert_equal(len(inits), 45, "45 init entries")
     expected_macros = ["UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS", "UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT",
         "UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS", "UI_INPUT_OVERVOLTAGE_BEEP_DURATION_MS",
         "UI_INPUT_OVERVOLTAGE_BEEP_COUNT", "UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS",
@@ -567,7 +583,10 @@ def run_ui_alarm_tests():
         "UI_BLINK_PERIOD_MS", "UI_GREEN_MIN_OFF_MS", "UI_CHARGING_BLINK_PERIOD_MS",
         "UI_CHARGING_YELLOW_MIN_ON_MS", "UI_INPUT_OVERVOLTAGE_THRESHOLD_MV",
         "UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV", "UI_LOW_BATTERY_ALARM_THRESHOLD_MV",
-        "UI_LOW_BATTERY_ALARM_CLEAR_MV", "UI_BAT_V_MIN_MV", "UI_BAT_V_MAX_MV", "0u"]
+        "UI_LOW_BATTERY_ALARM_CLEAR_MV", "UI_BAT_V_MIN_MV", "UI_BAT_V_MAX_MV", "0u",
+        "UI_CHARGING_FULL_ENTER_PERCENT", "UI_CHARGING_FULL_EXIT_PERCENT",
+        "UI_CHARGING_PERCENT_HYSTERESIS_PERCENT", "UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT",
+        "UI_BATTERY_ZERO_EXIT_THRESHOLD", "UI_BATTERY_ONE_EXIT_THRESHOLD"]
     assert_equal(inits, expected_macros, "init order == id order (positional!)")
     print("IDs + boot defaults PASS")
 
@@ -652,6 +671,14 @@ def run_ui_alarm_tests():
         assert_true(s["lowBatThreshMv"] <= s["lowBatClearMv"], label + " lowbat order")
         assert_true(s["pctVmaxMv"] >= s["pctVminMv"] + 100, label + " pct range strictly positive")
         assert_true(s["buzzerMute"] in (0, 1), label + " mute 0/1")
+        # v1.17: enter authoritative, exit strictly below it (enter >= 1: no underflow)
+        assert_true(1 <= s["chgFullEnterPct"] <= 100, label + " 77 window")
+        assert_true(0 <= s["chgFullExitPct"] <= 100
+                    and s["chgFullExitPct"] < s["chgFullEnterPct"], label + " 78 below enter")
+        assert_true(0 <= s["chgHystPct"] <= 50, label + " 79 window")
+        assert_true(0 <= s["runHystPct"] <= 50, label + " 80 window")
+        assert_true(0 <= s["runZeroExit"] <= 100, label + " 81 window")
+        assert_true(0 <= s["runOneExit"] <= 100, label + " 82 window")
     random.seed(1616)
     fields = list(defs.keys())
     for trial in range(2000):
@@ -687,6 +714,27 @@ def run_ui_alarm_tests():
                 and "persists too - a muted board stays" not in ui_led_h,
                 "no stale persisted-mute comment in ui_led.h")
     print("Crit window fit (v1.16e) PASS")
+
+    # --- v1.17: enter authoritative, yellow floor 150, scenario reads live 77..82 ---
+    e = dict(defs)
+    e.update({"chgFullEnterPct": 90, "chgFullExitPct": 95})
+    assert_equal(ui_clamp_mirror(e)["chgFullExitPct"], 89,
+                 "exit 95 pulled to enter-1 when enter drops to 90")
+    e.update({"chgFullEnterPct": 0, "chgFullExitPct": 0})
+    c = ui_clamp_mirror(e)
+    assert_equal((c["chgFullEnterPct"], c["chgFullExitPct"]), (1, 0),
+                 "enter floored at 1, exit 0 stays (no underflow)")
+    e = dict(defs)
+    e.update({"chgFullEnterPct": 100, "chgFullExitPct": 100})
+    assert_equal(ui_clamp_mirror(e)["chgFullExitPct"], 99,
+                 "exit == enter pulled to 99")
+    assert_equal(defines.get("UI_CHARGING_YELLOW_MIN_ON_MS"), 150,
+                 "yellow floor macro is 150 (v1.17)")
+    assert_true("uint32_t__chgFullEnterPct" in ui_led_c and "uint32_t__chgFullExitPct" in ui_led_c
+                and "uint32_t__chgHystPct" in ui_led_c and "uint32_t__runHystPct" in ui_led_c
+                and "uint32_t__runZeroExit" in ui_led_c and "uint32_t__runOneExit" in ui_led_c,
+                "scenarios read live 77..82")
+    print("Full latch + yellow 150 (v1.17) PASS")
 
 def main():
     print("=== UI Host Test (buzzer + BatteryRun 2%+0/1 + Charging 5% + Full 100/95 + phase) ===")

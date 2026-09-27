@@ -78,9 +78,11 @@
  *      since the v1.16 audit: PARAMS_BULK grew to a 392 B frame (77 params)
  *      and the 256 B ring silently refused every bulk reply, so a fresh
  *      panel never learned the live values. Still a power of two.
+ *      v1.17: 83 params = 422 B frame - still fits.
  * [FA] حلقهٔ نرم‌افزاری TX و حداکثر بایت هر انتقال DMA. از ممیزی ۱.۱۶ مقدار
  *      ۱۰۲۴ است: فریم بالک ۳۹۲ بایت شد و حلقهٔ ۲۵۶ هر پاسخ بالک را بی‌صدا رد
- *      می‌کرد پس پنل تازه مقادیر زنده را نمی‌گرفت. همچنان توان دو. */
+ *      می‌کرد پس پنل تازه مقادیر زنده را نمی‌گرفت. همچنان توان دو.
+ *      نسخه ۱.۱۷: ۸۳ پارامتر = فریم ۴۲۲ بایتی - هنوز جا می‌شود. */
 #define BSP_UART_TX_RING_SIZE     1024u
 #define BSP_UART_TX_CHUNK_SIZE    128u
 

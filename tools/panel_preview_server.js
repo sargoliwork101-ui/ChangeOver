@@ -50,7 +50,9 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            1000, 50, 10000, 1000, 1, 0, 1000, 50, 3000, 233, 3, 100,
            40, 20, 10, 1, 60000, 20000, 10000, 100, 1,
            1000, 2000, 10000, 1, 2, 3, 100,
-           1000, 10, 1000, 10, 28000, 1000, 21000, 21200, 21000, 29000, 0];
+           1000, 10, 1000, 150, 28000, 1000, 21000, 21200, 21000, 29000, 0,
+           /* v1.17 ids 77..82 = full latch + stable hysteresis boot defaults */
+           100, 95, 5, 2, 2, 3];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -143,6 +145,12 @@ function clampParam(id, v) {
         case 74: return clampW(v, 15000, 25000); /* Vmin authoritative; 75 pulls up in cascade */
         case 75: return Math.max(P[74] + 100, clampW(v, 25000, 32000));
         case 76: return clampW(v, 0, 1);
+        case 77: return clampW(v, 1, 100);
+        case 78: { const e = clampW(v, 0, 100); return e >= P[77] ? P[77] - 1 : e; }
+        case 79: return clampW(v, 0, 50);
+        case 80: return clampW(v, 0, 50);
+        case 81: return clampW(v, 0, 100);
+        case 82: return clampW(v, 0, 100);
         default: return v;
     }
 }
@@ -260,7 +268,7 @@ const server = http.createServer((req, res) => {
     if (req.method === "POST" && url.pathname === "/s") {
         const id = Number(url.searchParams.get("id"));
         const v = Number(url.searchParams.get("v"));
-        if (id >= 0 && id < 77 && Number.isFinite(v)) {
+        if (id >= 0 && id < 83 && Number.isFinite(v)) {
             P[id] = clampParam(id, v); /* clamped exactly like the firmware */
             if (id >= 20) {
                 /* v1.14d: whole-set re-clamp in dependency order, like
@@ -271,7 +279,8 @@ const server = http.createServer((req, res) => {
                                    27, 28, 29, 30, 31, 32, 33, 34,
                                    38, 39, 40, 42, 43, 41, 44, 45, 46, 48, 49, 47,
                                    50, 51, 52, 53, 54, 55, 56, 57, 62, 63, 64, 65, 58, 59, 60, 61,
-                                   66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76]) P[pid] = clampParam(pid, P[pid]);
+                                   66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76,
+                                   77, 78, 79, 80, 81, 82]) P[pid] = clampParam(pid, P[pid]);
             }
         }
         return send(200, "application/json", '{"_s":200}');

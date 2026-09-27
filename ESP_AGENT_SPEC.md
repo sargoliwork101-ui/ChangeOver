@@ -149,6 +149,16 @@
 > 72 mA S-curve -29..+72). Gate (5,0): D1..D3 never exceed chain 1.
 > D7's dip is the curve (kept); D5's DMM voltage is a +150 mV outlier
 > (harmless at 36 mA). Panel mirror v1.16x. STM32 reflash for both.
+> v1.20 (2026-09-27, eighteenth order - "the charge-scenario numbers must
+> be panel-editable too"): protocol v1.17 appends SIX UI ids 77..82 (full
+> latch enter/exit 100/95, charging stable hysteresis 5, run hysteresis
+> 2, 0-exit 2, 1-exit 3) - the last hardcoded LED-scenario numbers; the
+> panel gains fields + guards + mirror reads, the CSV [uicad] block grows
+> to 134 columns. Yellow-min-ON default (69) 10 -> 150 ms so the
+> end-of-charge blink stays visible until full/cutoff. NVM record v5
+> (77 persisted ids, 83 slots, 680 B; v4 records fall back to defaults -
+> re-tune once). PARAMS_BULK 386 -> 416 bytes (still < 512, q3 still one
+> mask for 64..82). Panel v1.17. STM32 + ESP flash together.
 >
 > v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
 > conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
@@ -219,8 +229,8 @@ immediately and drain within ~1 ms.
 - `xor` = XOR of `type`, `len_lo`, `len_hi`, and every payload byte (starting value 0x00).
 - All multi-byte payload fields are **little-endian**.
 - Max payload length = **512 bytes** (v1.16; was 192 in v1.15 -
-  PARAMS_BULK grew with the UI cadence parameters; a 77-param bulk is
-  1 + 77 x 5 = 386 payload bytes, which no longer fits one length
+  PARAMS_BULK grew with the UI cadence parameters; an 83-param bulk is
+  1 + 83 x 5 = 416 payload bytes, which no longer fits one length
   byte, so `len` is u16 little-endian since v1.16). Longer `len` =
   invalid frame. The ESP parser must accept up to 512 regardless of
   STM firmware version. Both boards MUST flash together (a v1.15
@@ -237,14 +247,15 @@ immediately and drain within ~1 ms.
 | 0x03 | ESP→STM | CAL_REFERENCE | `[target:u8][ref_mA:u32 LE]` (5 bytes) — one-shot calibration from a typed DMM reading; targets 0/1 = GAIN ch1/2, 2/3 = ETA ch1/2 (v1.3, section 5.4) |
 | 0x10 | STM→ESP | TLM_LIVE | 84 bytes, layout below |
 | 0x11 | STM→ESP | PARAM_REPORT | `[id:u8][value:u32 LE]` — the **applied** value (sent after every accepted SET_PARAM) |
-| 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS; 77 params since v1.16 = 386 payload bytes) |
+| 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS; 83 params since v1.17 = 416 payload bytes) |
 
 Audit 2026-09-27: the 77-param growth had silently outgrown the STM32 256 B
 TX ring, so every PARAMS_BULK reply was refused and a fresh panel never
 learned the live values (it showed ESP-side defaults until each value was
 touched). The ring is now 1024 B and the bulk payload is static - GET_PARAMS
 is answered with the board truth again, and the manual-mode 1 s keepalive
-bulk no longer burns ~900 B of the 1 KiB comm stack.
+bulk no longer burns ~900 B of the 1 KiB comm stack. v1.17 grows the
+bulk to 83 params / 416 B - still inside the 1024 B ring and the 512 frame ceiling.
 
 Verified example frames (hex):
 
@@ -263,7 +274,7 @@ PARAM_REPORT reply for id=2, applied=1200:
 AA 55 11 05 00 02 B0 04 00 00 A2
 ```
 
-## 5. Parameter table (IDs 0..18 = protocol v1.1, ID 19 = v1.2, IDs 20..26 = v1.12 append, IDs 27..37 = v1.15 append, IDs 38..76 = v1.16 append — IDs are final, never renumbered)
+## 5. Parameter table (IDs 0..18 = protocol v1.1, ID 19 = v1.2, IDs 20..26 = v1.12 append, IDs 27..37 = v1.15 append, IDs 38..76 = v1.16 append, IDs 77..82 = v1.17 append — IDs are final, never renumbered)
 
 | ID | Name | Type | Unit | Default | Range | What it changes |
 |---|---|---|---|---|---|---|
@@ -336,7 +347,7 @@ AA 55 11 05 00 02 B0 04 00 00 A2
 | 66 | UI_GREEN_PERIOD_MS | u32 | ms | 1000 | 100..10000 | BatteryRun green-blink period |
 | 67 | UI_GREEN_MIN_OFF_MS | u32 | ms | 10 | 0..period 66 | Green OFF floor (visible blink even near full) |
 | 68 | UI_YELLOW_PERIOD_MS | u32 | ms | 1000 | 100..10000 | Charging yellow-blink period |
-| 69 | UI_YELLOW_MIN_ON_MS | u32 | ms | 10 | 0..period 68 | Yellow ON floor (visible blink near full) |
+| 69 | UI_YELLOW_MIN_ON_MS | u32 | ms | 150 | 0..period 68 | Yellow ON floor (visible blink near full; v1.17: 10->150) |
 | 70 | UI_OV_THRESH_MV | u32 | mV | 28000 | 24000..32000 | Input-overvoltage latch threshold |
 | 71 | UI_OV_HYST_MV | u32 | mV | 1000 | 0..2000 | OV clear level = 70 minus 71 |
 | 72 | UI_LOWBAT_THRESH_MV | u32 | mV | 21000 | 15000..24000, <= 73 | Low-battery alarm sets below this pack voltage |
@@ -344,6 +355,12 @@ AA 55 11 05 00 02 B0 04 00 00 A2
 | 74 | UI_PCT_VMIN_MV | u32 | mV | 21000 | 15000..25000, <= 75-100 | Pack voltage mapped to 0% |
 | 75 | UI_PCT_VMAX_MV | u32 | mV | 29000 | 25000..32000, >= 74+100 | Pack voltage mapped to 100% (also clamps the input) |
 | 76 | UI_BUZZER_MUTE | u32 | 0/1 | 0 | 0..1 | **Panel-session** mute (v1.16b: RAM-only, never persisted or backed up - a reboot unmutes): 1 silences scenario beeps (LEDs keep blinking); the boot wiring-test beep still sounds |
+| 77 | UI_CHG_FULL_ENTER_PCT | u32 | % | 100 | 1..100, enter authoritative | **v1.17:** raw percent that latches the Full (green-steady) face; exit is pulled to enter−1 |
+| 78 | UI_CHG_FULL_EXIT_PCT | u32 | % | 95 | 0..100, < 77 after clamp | **v1.17:** Full unlatches when raw falls below this |
+| 79 | UI_CHG_HYST_PCT | u32 | % | 5 | 0..50 | **v1.17:** charging stable-percent hysteresis (0 = follow raw every pass) |
+| 80 | UI_RUN_HYST_PCT | u32 | % | 2 | 0..50 | **v1.17:** BatteryRun stable-percent hysteresis (0 = follow raw every pass) |
+| 81 | UI_RUN_ZERO_EXIT | u32 | % | 2 | 0..100 | **v1.17:** raw percent that moves stable 0% → 1% in BatteryRun |
+| 82 | UI_RUN_ONE_EXIT | u32 | % | 3 | 0..100 | **v1.17:** raw percent that moves stable 1% → 2% in BatteryRun (raw 0 always drops to 0) |
 
 Notes:
 - Signed values (4..6) travel as two's-complement u32 on the wire.
@@ -1039,8 +1056,8 @@ red field + confirm-before-send on invalid combos. Because 38 params no
 longer fit one u32, /t carries a second pending mask `q2` for ids 32..37
 alongside `q` for 0..31. A single backup card in its own settings
 sub-tab (v1.16d - ONE backup for the whole settings, not per tab;
-v1.16c had it at settings-tab level) exports/imports ALL 71 persisted
-values (0..14, 20..75) as a JSON file (`changeover-settings.json`).
+v1.16c had it at settings-tab level) exports/imports ALL 77 persisted
+values (0..14, 20..75, 77..82) as a JSON file (`changeover-settings.json`).
 
 Firmware clamps (every write re-clamps the whole cascade - profile ->
 charger alarms -> fault alarms, so a profile write can re-float a
@@ -1056,12 +1073,12 @@ lowered OV or disconnect threshold):
   unreadable (v1) NVM record changes no behavior; applied values persist
   ~1.5 s after the last change (section 5.8).
 
-### 5.10 UI LED/buzzer mirror (v1.16 — user order 2026-09-26)
+### 5.10 UI LED/buzzer mirror (v1.16 — user order 2026-09-26; v1.17 appends 77..82)
 
 User order: "draw the LEDs for every fault/alarm so they really blink;
 show the buzzer with an icon that gets a cross on mute; every alarm
 number editable - ranges, beep times, beep counts and the like." Params
-38..76 (table above) are the 39 UI cadence numbers in one live struct
+38..82 (table above) are the 45 UI cadence numbers in one live struct
 (`UI_ALARM_T__G__Alarm`), set-clamped on every write and persisted like
 the rest (section 5.8). Boot defaults equal the old UI_* macros - a
 reflash with an unreadable (v2) NVM record changes no behavior or sound.
@@ -1103,19 +1120,19 @@ selectable card per scenario (v1.16b - a picker row: overvoltage /
 battery-lost / BatteryRun / normal charging / battery thresholds;
 each card only its own numbers, e.g. scenario 1 carries its voltage
 ceiling 70/71 together with its blink/beep timing 38..43) + its own
-guard readout (aw2) + its own factory-defaults button (sdef, 38..76);
+guard readout (aw2) + its own factory-defaults button (sdef, 38..82);
 s2 supervision & safety - the 27..37 threshold cards + their guard
 readout (aw) + their defaults button (adef, 27..37 only); s3 backup.
 The guard (achk) covers the whole set (window fits, band order,
 threshold order) and each sub-tab shows only its own warnings, and a
-third pending mask `q3` in /t covers ids 64..76. ONE sticky mirror header stays pinned above everything: the 3
+third pending mask `q3` in /t covers ids 64..82. ONE sticky mirror header stays pinned above everything: the 3
 board LEDs blinking at the board's APPLIED period/duty (panel-side
 phase), the buzzer icon (dim = silent, bright = beeping now, cross
 overlay = muted), the active scenario name, a live readout of the
 effective timing (period/duty/beep counts/thresholds, straight from the
 applied board values), and the mute toggle (76 = hidden field). The
 fault box adds one LED per fault bit (blinking while latched). The
-bench CSV gains the [uicad] block (128 columns).
+bench CSV gains the [uicad] block (134 columns since v1.17).
 
 Scenario flow (v1.16e - one scenario wins per tick, top priority first;
 each scenario resets the foreign blink/beep states so patterns never mix):
@@ -1294,7 +1311,7 @@ protocol. That flip is intentionally left to the project owner.
 test mode (ID 19, section 5.2), charger state 9 = MANUAL, TLM flags bit
 5, the 3 s link dead-man with manual JIT re-arm, the 15.0 V manual
 overvoltage cutoff, the frozen battery-lost detection during manual, and
-the payload limit 512 (PARAMS_BULK = 77 params / 386 payload bytes since v1.16) are
+the payload limit 512 (PARAMS_BULK = 83 params / 416 payload bytes since v1.17) are
 all in the firmware. The ESP-side constraints that come with it are
 documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 1 s keepalive while ID 19 = 1.
@@ -1336,6 +1353,20 @@ alarms sub-tab keeps ONLY the alarm cards + the scenario picker (the
 live status card and the backup card move to a third settings
 sub-tab). No wire-format change beyond the version bump. BOTH boards
 MUST flash together.
+
+v1.17 (2026-09-27, user order of the same day): charge-number
+scenario parameters 77..82 (section 5.10) - full enter 77 (1..100,
+default 100), full exit 78 (0..100, default 95, clamped below enter),
+charging hysteresis 79 (0..50, default 5), BatteryRun hysteresis 80
+(0..50, default 2), zero/one exits 81/82 (defaults 2/3); the default
+of 69 (yellow floor) rises 10 -> 150; PARAMS_BULK grows to 83 items
+= 416 payload bytes; the NVM record grows to 83 slots with version
+4 -> 5 (v4 records fail CRC and fall back to compiled defaults); the
+bench CSV grows to 134 columns ([uicad] gains 6 names); the /t q3
+mask covers ids 64..82; the panel gains the enter>=exit+1 guard (77
+authoritative) + the two new card rows. No existing ID renumbered,
+no TLM_LIVE change, no wire-format change beyond the version bump.
+BOTH boards MUST flash together.
 
 v1.16 (2026-09-26, user order of the same day): UI cadence parameters
 38..76 (section 5.10) - the frame length grows to u16 LE (5-byte
