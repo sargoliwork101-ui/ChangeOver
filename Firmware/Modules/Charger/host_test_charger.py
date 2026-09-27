@@ -941,7 +941,7 @@ bool func__EspLink_ApplyParam(uint8_t id, uint32_t value, uint32_t *applied){
         case 21: value = clampf(value, 13800, 14550); break;
         case 22: value = clampf(value, 14500, 14750); break;
         case 23: value = clampf(value, 9000, 14300); break;
-        case 24: value = clampf(value, 8000, 13200); break;
+        case 24: value = clampf(value, 8000, 14000); break;  /* float-300, float max 14300 */
         case 25: value = clampf(value, 100, 900); break;
         case 26: value = clampf(value, 10, 300); break;
         case 27: value = clampf(value, 14000, 15000); break;
