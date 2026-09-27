@@ -149,6 +149,17 @@
 > 72 mA S-curve -29..+72). Gate (5,0): D1..D3 never exceed chain 1.
 > D7's dip is the curve (kept); D5's DMM voltage is a +150 mV outlier
 > (harmless at 36 mA). Panel mirror v1.16x. STM32 reflash for both.
+> v1.21 (2026-09-27, nineteenth order - "after a full charge the blinking
+> must be gone"): the charger declares completion itself - IsChargeComplete
+> (every installed+enabled channel through ABSORB: taper <50 mA x 60 s or
+> the 1 h ceiling; FLOAT entered from that one place only, so FLOAT means
+> DONE); the UI + panel full face key on it (the 100/95 voltage latch
+> stays a second path); the 1 h clock survives 14.3 V dips (anti-hunt -
+> soak/taper still restart); the "idle charger" caption/flow/docs piece
+> is gone. Panel v1.17b: full caption from enables 11/12 + TLM states,
+> charging-card flow reworded, bench DMM form above the table (no
+> horizontal scroll for entry). No wire change. STM32 + ESP flash together.
+>
 > v1.20 (2026-09-27, eighteenth order - "the charge-scenario numbers must
 > be panel-editable too"): protocol v1.17 appends SIX UI ids 77..82 (full
 > latch enter/exit 100/95, charging stable hysteresis 5, run hysteresis
@@ -1147,11 +1158,13 @@ flowchart TD
     E -- بله --> S1["سناریو ۱: قرمز چشمک + بوق دوره‌ای"]
     E -- نه --> F{"پرچم قطع باتری؟"}
     F -- بله --> S2["سناریو ۲: قرمز چشمک + بوق دوره‌ای"]
-    F -- نه --> G["درصد از نگاشت ۷۴/۷۵ + فول ۱۰۰/۹۵"]
+    F -- نه --> G["درصد از نگاشت ۷۴/۷۵ + فول شارژر/ولتاژ"]
     G --> H{"ورودی وصل؟"}
-    H -- بله --> I{"فول یا شارژر بیکار؟"}
+    H -- بله --> I{"فول؟ (هر دو کانال تمام / خام≥۱۰۰)"}
     I -- بله --> S0["سبز ثابت"]
-    I -- نه --> S4["سناریو ۴: زرد با مانده تا فول"]
+    I -- نه --> J{"پمپی فعال؟"}
+    J -- بله --> S4["سناریو ۴: زرد با مانده تا فول"]
+    J -- نه --> S0
     H -- نه --> S3["سناریو ۳: دشارژ"]
 ```
 
@@ -1353,6 +1366,19 @@ alarms sub-tab keeps ONLY the alarm cards + the scenario picker (the
 live status card and the backup card move to a third settings
 sub-tab). No wire-format change beyond the version bump. BOTH boards
 MUST flash together.
+
+v1.17b (2026-09-27, user order of the same day): real full from the
+charger - IsChargeComplete (every installed+enabled channel in FLOAT;
+FLOAT entered from ABSORB-done only: soak + taper <50 mA x 60 s, or the
+1 h safety ceiling) latches the UI + panel full face together with the
+100/95 voltage latch (77/78 stay a second path); the 1 h clock is a wall
+clock from the first absorb entry (dips below 14.3 V restart soak/taper
+but no longer postpone the forced FLOAT - anti-hunt); the "idle charger"
+caption/flow/docs piece is gone (post-charge steady green is full, and
+the mirror derives it from enables 11/12 + TLM states == 3); the bench
+DMM entry form moves above the table (wF0) so data entry needs no
+horizontal scroll, with table-local auto-scroll (the page never jumps).
+No wire-format change, no new IDs. BOTH boards MUST flash together.
 
 v1.17 (2026-09-27, user order of the same day): charge-number
 scenario parameters 77..82 (section 5.10) - full enter 77 (1..100,

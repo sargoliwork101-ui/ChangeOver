@@ -284,7 +284,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 
 </div>
 <div class="cd" id="ucard4" style="display:none">
-<div class="hd"><b>سناریو ۴ — شارژ عادی</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">روند: حین شارژ واقعی، مدت روشن‌بودن زرد = مانده تا فول (باتری پرتر ← چشمک کوتاه‌تر) ← فول (۱۰۰٪، خروج زیر ۹۵٪) یا شارژر بیکار ← سبز ثابت.</span></button><span class="lb">· شناسه‌های ۶۸/۶۹/۷۷..۷۹ · چشمک زرد + فول</span></div>
+<div class="hd"><b>سناریو ۴ — شارژ عادی</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">روند: حین شارژ واقعی، مدت روشن‌بودن زرد = مانده تا فول (باتری پرتر ← چشمک کوتاه‌تر) ← پایان ابزورب هر کانال (تیپر زیر ۵۰mA یا سقف ۱ساعت)؛ با تمام‌شدن هر دو کانال: فول ← سبز ثابت. فول ولتاژی (۱۰۰٪، خروج زیر ۹۵٪) هم سر جایش است.</span></button><span class="lb">· شناسه‌های ۶۸/۶۹/۷۷..۷۹ · چشمک زرد + فول</span></div>
 <div class="sec">چشمک زرد <span class="lb">(ms)</span></div>
 <div class="bqr">
 <label>دوره چشمک زرد (ms)<input type="number" id="q68" step="50" min="100" max="10000"><span class="lb" id="a68">—</span></label>
@@ -706,11 +706,14 @@ function uview(){
   tim='قرمز '+per+'ms/'+g(45,50)+'٪ · '+(g(46,3000)&&g(48,3)?('بوق هر '+g(46,3000)+'ms ('+g(48,3)+'×'+g(47,233)+'ms)'):'بوق خاموش');
   cap='⚠ قطع باتری — قرمز چشمک + بوق'+loW;
  }else if(UV.inP){
-  const act=[t[6],t[13]].some(s=>s===1||s===2);/* FLOAT یعنی کار تمام (مثل برد) */
+  const act=[t[6],t[13]].some(s=>s===1||s===2);/* فعال = BULK/ABSORB در حال پمپ (مثل برد) */
+  /* v1.17b: فول شارژر = هر کانالِ فعال‌شده در FLOAT (مثل IsChargeComplete برد) */
+  const en1=g(11,1)===1,en2=g(12,1)===1;
+  const done=(en1||en2)&&(!en1||t[6]===3)&&(!en2||t[13]===3);
   gr=true;
   tim='سبز ثابت';
-  if(UV.full)cap='✅ ورودی وصل · فول — سبز ثابت'+loW;
-  else if(!act)cap='✅ ورودی وصل · شارژر بیکار — سبز ثابت'+loW;
+  if(UV.full||done)cap='✅ ورودی وصل · فول — سبز ثابت'+loW;
+  else if(!act)cap='✅ ورودی وصل — سبز ثابت'+loW;
   else{
    const st=UV.cpct,per=g(68,1000);
    tim='زرد '+per+'ms · سبز ثابت';
@@ -842,15 +845,18 @@ function wbuild(SC,L){W.K=[];SC.forEach(sc=>L.forEach((d,i)=>W.K.push({sc,i,d}))
  $('wT').innerHTML=`<div class="tw"><table class="bt2 wt"><tr>${WH.map(h=>`<th>${h}</th>`).join('')}</tr>${W.K.map((k,x)=>`<tr id="wr${x}"><td>${k.sc}</td><td>${k.i+1}</td><td>${k.d}</td>${'<td>·</td>'.repeat(9)}<td class="lb">در صف</td></tr>`).join('')}</table></div>`;}
 function wcell(x,A,st,cl){const r=$('wr'+x);if(!r)return;const c=r.children;A.forEach((v,i)=>{if(v!==undefined)c[3+i].innerHTML=v;});if(st!=null){c[12].textContent=st;c[12].className=cl||'lb';}}
 function wmeas(m,act){const M=(n,b)=>act.includes(n)?[m.a(b).toFixed(1),r0(m.a(b+3)),r0(m.a(b+4))]:['قطع','-','-'];const a=M(1,0),b=M(2,7);return [a[0],a[1],a[2],undefined,b[0],b[1],b[2],undefined,undefined];}
-/* ردیف فعال (مولتی‌متر نسخه ۴): جریان باتری‌ها و جریان ورودی کل در خانهٔ خودشان؛ ولتاژها، یادداشت و سه دکمه در ردیف زیرش
- * Active row (DMM v4): battery currents + total input current inline; voltages, note and the three buttons in the row below */
-function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const N=id=>`<input type="number" step="any" id="${id}" class="wi">`,F=n=>act.includes(n)?N('wB'+n):'-';
- wcell(x,wlive(act).map((v,i)=>i==3?F(1):i==7?F(2):i==8?N('wIi'):v),'منتظر عدد شما','wr');
- const L=(id,t,pre)=>`<label class="lb">${t} <input type="number" step="any" id="${id}" class="wi"${pre!=null?' value="'+pre+'"':''}></label>`;
+/* اسکرول خودکار فقط داخل کادر جدول (v1.17b: خود صفحه تکان نمی‌خورد) / auto-scroll inside the table box only (the page never jumps) */
+function wsee(x){const tw=$('wT').firstChild,r=$('wr'+x);if(!tw||!r||!tw.getBoundingClientRect)return;const rt=r.getBoundingClientRect(),tt=tw.getBoundingClientRect();if(rt.top<tt.top-2)tw.scrollTop-=(tt.top-rt.top);else if(rt.bottom>tt.bottom+2)tw.scrollTop+=(rt.bottom-tt.bottom);}
+/* فرم ورود عدد (v1.17b، مولتی‌متر نسخه ۴): بیرون جدول، بالای آن — ورود داده دیگر اسکرول افقی نمی‌خواهد و جدول فقط برای مرور می‌ماند
+ * Entry form (v1.17b, DMM v4): outside/above the table - data entry needs no horizontal scroll; the table stays for review */
+function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const k=W.K[x];
+ wcell(x,wlive(act),'منتظر عدد شما','wr');
+ const N=id=>`<input type="number" step="any" id="${id}">`;
+ const L=(id,t,pre)=>`<label class="lb">${t} <input type="number" step="any" id="${id}"${pre!=null?' value="'+pre+'"':''}></label>`;
+ const F=n=>act.includes(n)?`<label class="lb">جریان باتری ${n} mA ${N('wB'+n)}</label>`:'';
  let WVI=window.WVI||'';/* [EN] input voltage is quasi-static: carry the last submitted DMM reading into the next step (user order 2026-09-25: no need to retype it every step) / ولتاژ ورودی تقریباً ثابت است: آخرین عدد ثبت‌شده در مرحلهٔ بعد پیش‌پر می‌شود */
- const e=document.createElement('tr');e.id='wX';e.innerHTML=`<td colspan="13"><div class="bctl">${L('wVi','ولتاژ ورودی V',WVI)}${L('wV1','ولتاژ باتری ۱ V')}${L('wV2','ولتاژ باتری ۲ V')}<label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label>
-<button class="sb" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2" id="wRe">تکرار همین مرحله</button><button class="sb stp2" id="wEn">پایان</button></div>
-<div class="lb">اجباری: جریان ورودی کل + جریان هر باتری روشن (<b>منفی هم مجاز</b> — تخلیهٔ باتری با شارژر خاموش، مثل بار زنر). جریان باتری باید نزدیک عدد پنل باشد؛ ورودی کل به ولتاژ/جریان باتری وابسته است (فرمول توان: ~۲٫۵ برابر در جریان کم تا ~۰٫۹ برابر در بالای بازه — مصرف ثابت برد در جریان کم برجسته می‌شود). ولتاژها (V) و یادداشت اختیاری.</div></td>`;r.after(e);
+ const box=$('wF0');
+ box.innerHTML=`<div class="bq"><div class="hd"><b>${k.sc} · مرحلهٔ ${k.i+1} · duty ${k.d}٪ — عددهای مولتی‌متر</b></div><div class="bctl">${F(1)}${F(2)}<label class="lb">جریان ورودی کل mA ${N('wIi')}</label>${L('wVi','ولتاژ ورودی V',WVI)}${L('wV1','ولتاژ باتری ۱ V')}${L('wV2','ولتاژ باتری ۲ V')}<label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label><button class="sb" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2" id="wRe">تکرار همین مرحله</button><button class="sb stp2" id="wEn">پایان</button></div><div class="lb">اجباری: جریان ورودی کل + جریان هر باتری روشن (<b>منفی هم مجاز</b> — تخلیهٔ باتری با شارژر خاموش، مثل بار زنر). جریان باتری باید نزدیک عدد پنل باشد؛ ورودی کل به ولتاژ/جریان باتری وابسته است (فرمول توان: ~۲٫۵ برابر در جریان کم تا ~۰٫۹ برابر در بالای بازه — مصرف ثابت برد در جریان کم برجسته می‌شود). ولتاژها (V) و یادداشت اختیاری.</div></div>`;
  const f=$('wB'+act[0]);if(f)f.focus();
  const lv=setInterval(()=>wcell(x,wlive(act)),400);
  return new Promise(res=>{$('wGo').onclick=()=>{const v={},ok=id=>gv(id);/* v1.9 (user order 2026-09-25): negative currents are VALID - with the charger off the battery itself discharges into other loads (e.g. the zener), the DMM then reads minus */
@@ -858,8 +864,8 @@ function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const N=id=>`<inpu
    for(const n of act){v['b'+n]=ok('wB'+n);if(v['b'+n]==null)return alert('جریان باتری '+n+' اجباری است (کانال '+n+' روشن است).');}
    [['vi','wVi'],['v1','wV1'],['v2','wV2']].forEach(k=>{const y=gv(k[1]);v[k[0]]=y==null?null:r0(y*1000);});WVI=window.WVI=(v.vi==null)?'':(v.vi/1000);v.note=asc($('wN').value);res({a:'next',v,iso:new Date().toISOString()});};
   $('wRe').onclick=()=>res({a:'repeat'});$('wEn').onclick=()=>res({a:'end'});
-  r.onkeydown=e.onkeydown=ev=>{if(ev.key=='Enter'&&ev.target.tagName=='INPUT')$('wGo').click();};
-  W.ft=setInterval(()=>{try{wchk();}catch(er){clearInterval(W.ft);res({a:'err',e:er});}},200);}).finally(()=>{clearInterval(W.ft);clearInterval(lv);e.remove();r.classList.remove('wa');r.onkeydown=null;});}
+  box.onkeydown=ev=>{if(ev.key=='Enter'&&ev.target.tagName=='INPUT')$('wGo').click();};
+  W.ft=setInterval(()=>{try{wchk();}catch(er){clearInterval(W.ft);res({a:'err',e:er});}},200);}).finally(()=>{clearInterval(W.ft);clearInterval(lv);box.innerHTML='';box.onkeydown=null;r.classList.remove('wa');});}
 async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');let L;
  try{try{localStorage.setItem('wsw',$('wSw').checked?'1':'0');}catch(e){}L=$('wSw').checked?wsweep():wlist();}catch(e){return alert(e);}
  const SC=Object.keys(WSC).filter(k=>$('wc'+k).checked);if(!SC.length)return alert('حداقل یک سناریو را انتخاب کنید.');
@@ -877,7 +883,7 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
    await setv(19,1);{const e=Date.now()+3000;while(!(D.fl&32)){if(Date.now()>e)throw 'مود دستی روشن نشد';await sl(100);}}W.man=true;W.act=act;
    await wlog(`# run ${run} browser_ts=${new Date().toISOString()} scenario=${sc} duty_list=${L.join(';')}\n`);
    try{for(let i=0;i<L.length;){const pm=r0(L[i]*10),lb=sc+' · مرحلهٔ '+(i+1)+' از '+L.length+' · duty '+L[i]+'% ('+Math.round((i+1)/L.length*100)+'%)';
-     wcell(x,[],'در حال اندازه‌گیری','wr');$('wr'+x).scrollIntoView({block:'nearest'});
+     wcell(x,[],'در حال اندازه‌گیری','wr');wsee(x);
      for(const n of act){const c=D.p[12+n],v=Math.min(pm,c==null?500:c,500);await setv(14+2*n,v);}
      await wopen();
      wst(lb+': عددهای مولتی‌متر را در ردیف رنگی جدول بنویسید','cm wr');const f=await wform(x,act);
@@ -894,13 +900,13 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
  $('wDone').classList.add('v');winfo();}
 /* ---------- ساخت تب‌ها ---------- */
 /* تب ۱: داده‌برداری بنچ */
-$('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty را می‌گذارد و جدول روی همان ردیف <b>می‌ایستد</b> تا عدد مولتی‌متر را بنویسی و <b>ثبت</b> کنی — آمار همان لحظهٔ ثبت قفل می‌شود. <b>SOLO1</b>: کانال ۱ · <b>SOLO2</b>: کانال ۲ · <b>BOTH</b>: هر دو. آمپرمتر: یکی در تغذیهٔ کل برد + سری با سیم شارژ هر باتری روشن. هیچ ضریبی خودکار اعمال نمی‌شود.</div>
+$('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty را می‌گذارد، جدول همان ردیف را نشان می‌دهد و عدد مولتی‌متر را در فرم بالای جدول بنویس و <b>ثبت</b> کن — آمار همان لحظهٔ ثبت قفل می‌شود. <b>SOLO1</b>: کانال ۱ · <b>SOLO2</b>: کانال ۲ · <b>BOTH</b>: هر دو. آمپرمتر: یکی در تغذیهٔ کل برد + سری با سیم شارژ هر باتری روشن. هیچ ضریبی خودکار اعمال نمی‌شود.</div>
 <div class="bctl"><label class="lb">duty % <input type="text" id="wL" data-s class="dl" value="2,4,6,8,10,12,14,16,18,20" style="width:160px"></label>
 ${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${k}</label>`).join('')}</div>
 <div class="bctl"><label class="lb"><input type="checkbox" id="wSw" checked> sweep خودکار با گام ۱٪</label><label class="lb">از <input type="number" id="wA" data-s value="1" min="0" max="50"></label><label class="lb">تا <input type="number" id="wB" data-s value="50" min="0" max="50"></label><span class="lb">خاموش = فهرست دستی بالا</span></div>
 <div class="movl" id="wEx" style="display:none"><div class="mod" id="wExB"></div></div>
 <div class="bctl"><button class="sb brun" onclick="wStart()">شروع</button><button class="sb stp2 wstop" onclick="W.abort=true">پایان</button><span class="lb">فایل: <b id="wF">—</b></span><a class="sb sb2 lnk" href="/benchlog" download="benchlog.csv">دانلود فایل</a><button class="sb sb2 brun" onclick="wclear()">پاک کردن فایل</button></div>
-<div class="cm lb" id="wS0"></div><div id="wT"></div>
+<div class="cm lb" id="wS0"></div><div id="wF0"></div><div id="wT"></div>
 <div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div></div>`;
 bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{const s=$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB');if(L)L.disabled=s;if(A)A.disabled=!s;if(B)B.disabled=!s;};$('wSw').onchange();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
 /* ---------- کنترل دستی دیوتی دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کنترلها داخل کارت هر شارژر (از v1.16p)؛

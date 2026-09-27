@@ -391,7 +391,7 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_REENTRY_MV\s+12800u", text_h), "reentry stays 12.8 V (13.0 caused repeat charge cycles as the battery rested at ~13.0 V)")
     check(re.search(r"#define CHG_CONNECT_SETTLE_MS\s+15000u", text_h), "connection-settle must be 15 s (user: 10..20 s before charge start)")
     check("func__Charger_BulkStartSettled" in text_c and "uint32_t__stableFromTick" in text_c, "OFF->BULK must be gated on the connection-settle stamp (kills bat-lost flap + yellow blink inside the buzzer)")
-    iso_active = text_c.split("bool func__Charger_IsAnyChannelActive(void)")[-1]
+    iso_active = text_c.split("bool func__Charger_IsAnyChannelActive(void)")[-1].split("bool func__Charger_IsChargeComplete(void)")[0]
     check("CHG_STATE_FLOAT" not in iso_active and "CHG_STATE_BULK" in iso_active and "CHG_STATE_ABSORB" in iso_active, "IsAnyChannelActive must count only BULK/ABSORB - parked FLOAT is DONE, not pumping (kills done-phase false buzzers and stops the yellow blink)")
     check(re.search(r"#define CHG_FLOAT_MV\s+13500u", text_h), "float must be 13500 mV")
     check(re.search(r"#define CHG_REENTRY_MV\s+12800u", text_h), "reentry must be 12800 mV")
@@ -1807,7 +1807,7 @@ def test_ui_mirror_v117():
     # --- board clamp: enter authoritative, exit pulled to enter-1 ---
     check("uint32_t__chgFullEnterPct, 1u, 100u" in text_uic
           and "uint32_t__chgFullExitPct, 0u, 100u" in text_uic
-          and "uint32_t__chgFullExitPct - 1u" in text_uic
+          and "uint32_t__chgFullEnterPct - 1u" in text_uic
           and "uint32_t__chgHystPct, 0u, 50u" in text_uic
           and "uint32_t__runHystPct, 0u, 50u" in text_uic
           and "uint32_t__runZeroExit, 0u, 100u" in text_uic
@@ -1836,6 +1836,67 @@ def test_ui_mirror_v117():
     # --- preview server mirrors the same numbers ---
     check("100, 95, 5, 2, 2, 3]" in prev and "case 78:" in prev and "P[77] - 1" in prev,
           "the offline preview must serve the v1.17 defaults with the enter-authoritative clamp")
+
+
+def test_ui_mirror_v117b():
+    """[EN] v1.17b (user order 2026-09-27, "after a full charge the blinking
+    must be gone"): the charger declares completion itself (FLOAT is entered
+    only from ABSORB-done) and the UI/panel full face keys on it; the 1 h
+    safety clock survives dips below 14.3 V (anti-hunt); the "idle charger"
+    piece is gone from caption/flow/docs; the bench entry form moves above
+    the table so data entry needs no horizontal scroll and the page never
+    jumps.
+    [FA] تست‌های v1.17b: اعلام اتمام از خود شارژر (فقط پایان ابزورب وارد
+    FLOAT می‌شود)؛ ساعت ۱ساعته با افت‌ها ریست نمی‌شود؛ تکه «شارژر بیکار»
+    حذف؛ فرم ورود بنچ بالای جدول بدون اسکرول افقی."""
+    text_ch = CHARGER_H.read_text()
+    text_cc = CHARGER_C.read_text()
+    text_uic = (ROOT / "Firmware/Modules/Ui/ui_led.c").read_text()
+    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
+    prev = (ROOT / "tools/panel_preview_server.js").read_text()
+
+    # --- charger: IsChargeComplete = installed+enabled, all in FLOAT ---
+    check("func__Charger_IsChargeComplete" in text_ch
+          and "bool func__Charger_IsChargeComplete(void)" in text_cc
+          and "CHG_STATE_FLOAT" in text_cc
+          and "GetChannelEspEnable" in text_cc
+          and "relevantCount" in text_cc,
+          "charger must offer IsChargeComplete (all installed+enabled channels in FLOAT, >=1 relevant)")
+    check(text_cc.count("= CHG_STATE_FLOAT;") == 1,
+          "FLOAT must be entered from exactly one place (ABSORB done: taper or 1 h) - FLOAT means DONE")
+
+    # --- anti-hunt: the dip keeps the 1 h clock, fresh cycles reset it ---
+    check("func__Charger_DipResetAbsorbWindow" in text_cc
+          and text_cc.count("func__Charger_DipResetAbsorbWindow(") == 2,
+          "the 14.3 V dip path must use DipReset (soak/taper restart, 1 h clock kept)")
+    check("uint32_t__absorbEnterTick == 0u" in text_cc,
+          "the 1 h clock must stamp once (dip-kept stamps survive, fresh cycles stamp anew)")
+    check(text_cc.count("func__Charger_ClearAbsorbWindow(") >= 6,
+          "fresh cycles (init/idle/off/retry/bulk/reentry) must still fully reset the absorb window")
+
+    # --- UI: full = voltage latch OR charger completion ---
+    check("func__Charger_IsChargeComplete() == true" in text_uic
+          and "bool__isFull = true;" in text_uic,
+          "the UI dispatcher must latch full on charger completion too")
+
+    # --- panel mirror: done from enables + TLM states, idle piece gone ---
+    check("t[6]===3" in ino and "t[13]===3" in ino and "g(11,1)" in ino and "g(12,1)" in ino
+          and "UV.full||done" in ino,
+          "the mirror must derive charger-done from enables 11/12 + FLOAT states t[6]/t[13]")
+    check("ورودی وصل · فول" in ino and "ورودی وصل — سبز ثابت" in ino
+          and "شارژر بیکار" not in ino,
+          "post-charge caption must be full; the 'idle charger' piece must be gone")
+    check("پایان ابزورب هر کانال" in ino,
+          "the charging card flow must end at absorb-done, not at idle")
+
+    # --- bench: entry form above the table, page never jumps ---
+    check('id="wF0"' in ino and "$('wF0')" in ino and "wsee(x)" in ino
+          and "scrollIntoView" not in ino and "id='wX'" not in ino,
+          "the DMM entry form must live above the table (wF0) with table-local auto-scroll")
+
+    # --- preview: the demo cycle reaches FLOAT with enables on ---
+    check("c.state = 3" in prev,
+          "the offline preview must demo the FLOAT/completion face")
 
 
 def test_audit_batch_v116b():
@@ -2052,6 +2113,8 @@ def main():
         test_charger_persistence_v114,
         test_alarms_tab_v115,
         test_ui_mirror_v116,
+        test_ui_mirror_v117,
+        test_ui_mirror_v117b,
         test_audit_batch_v116b,
         test_telemetry_frame_pins_v116c,
         test_flash_diet_pins_v116d,

@@ -717,15 +717,35 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
  * @brief  [EN] True while at least one installed channel is actually
  *         charging - its state machine sits in BULK or ABSORB (user
  *         directive 2026-09-19: a FLOAT channel is parked at zero duty, the
- *         charge is DONE, not active - for the UI the charging yellow blink
- *         stops as soon as the pump parks, and the fault pump-window is not
- *         armed there either).
+ *         charge is DONE, not active - v1.17b: the UI full face keys on
+ *         IsChargeComplete, and the fault pump-window is not armed there
+ *         either).
  *         [FA] true وقتی دست‌کم یک کانال نصب‌شده واقعاً در حال شارژ است
  *         (بالک/ابزورب؛ فلوت پارک‌شده یعنی کار تمام شده و فعال حساب
- *         نمی‌شود - نه زرد چشمک می‌زند نه آشکارساز قطع باتری مسلح است).
+ *         نمی‌شود - چهرهٔ فول با IsChargeComplete می‌آید و آشکارساز قطع
+ *         باتری هم آنجا مسلح نیست).
  * @return bool [EN] true if any channel is charging / اگر هر کانالی شارژ کند true
  */
 bool func__Charger_IsAnyChannelActive(void);
+
+/**
+ * @brief  [EN] True when every relevant channel finished its charge: at
+ *         least one installed+enabled channel exists and ALL of them sit
+ *         in FLOAT. FLOAT is entered from one place only (ABSORB done:
+ *         soak + taper, or the 1 h safety ceiling), so FLOAT means DONE;
+ *         any restart (reentry BULK, fresh OFF->BULK, disable) leaves it.
+ *         v1.17b (user order 2026-09-27: "after a full charge the blinking
+ *         must be gone"): the UI latches its full face on this - not on
+ *         the unreachable voltage 100 (pack 29 V tops the 28.8 V absorb).
+ *         [FA] true وقتی همهٔ کانال‌های مربوط شارژشان تمام شده: دست‌کم یک
+ *         کانال نصب+فعال هست و همه در FLOATاند. ورود به FLOAT فقط از یک
+ *         جا (پایان ابزورب: شستشو+تیپر یا سقف ۱ساعت) پس FLOAT یعنی تمام؛
+ *         هر شروع دوباره از آن بیرون می‌آید. نسخه ۱.۱۷b: چهرهٔ فول UI
+ *         روی همین لچ می‌شود نه روی ۱۰۰ ولتاژی دست‌نیافتنی.
+ * @return bool [EN] true if the charge is complete on all relevant channels /
+ *         اگر شارژ همهٔ کانال‌های مربوط کامل شده true
+ */
+bool func__Charger_IsChargeComplete(void);
 
 /* [EN] Charge-profile wire ids (MUST equal ESPLINK_PARAM_CHG_PROFILE_* in
  *      esp_link.h; the host test enforces the match).

@@ -1752,13 +1752,27 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
 
     uint8_t__rawPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryClampedMv);
     bool__isFull = func__Ui_UpdateChargingFullHysteresis(uint8_t__rawPercent);
+#if MODULE_CHARGER
+    /* [EN] v1.17b (user order 2026-09-27: "after a full charge the blinking
+       must be gone"): the charger itself declares completion - every
+       relevant channel through ABSORB (taper or the 1 h ceiling). The
+       voltage latch above stays as an independent second path (pack at
+       the 74/75 ceiling also means full, even mid-pump).
+       [FA] نسخه ۱.۱۷b: خود شارژر اتمام را اعلام می‌کند (گذر هر کانال مربوط
+       از ابزورب)؛ لچ ولتاژی بالا هم مسیر دوم مستقل می‌ماند. */
+    if (func__Charger_IsChargeComplete() == true)
+    {
+        bool__isFull = true;
+    }
+#endif
 
     if (BOOL__G__UiInputPresent == true)
     {
         if (bool__isFull == true)
         {
-            /* [EN] Full hysteresis: entered at 100, stays InputOk until <95.
-               [FA] هیسترزیس فول: ورود در ۱۰۰، ماندن تا کمتر از ۹۵. */
+            /* [EN] Full: charge complete (v1.17b) or the 100/<95 voltage
+               hysteresis - steady green, the yellow blink is gone.
+               [FA] فول (اتمام شارژ یا هیسترزیس ولتاژی): سبز ثابت، پایان چشمک زرد. */
             func__Ui_ScenarioInputOk();
         }
 #if MODULE_CHARGER

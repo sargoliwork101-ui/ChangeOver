@@ -280,6 +280,24 @@ static void func__Charger_ClearAbsorbWindow(
     charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
 }
 
+/* [EN] Dip reset (v1.17b): like ClearAbsorbWindow EXCEPT the 1 h safety
+ *      clock (absorbEnterTick) keeps running across dips below 14.3 V -
+ *      the soak + taper restart (user directive) but the ceiling is now a
+ *      wall clock from the FIRST absorb entry, so hunting around 14.3 V
+ *      can no longer postpone FLOAT (and the end of the yellow blink)
+ *      forever. Fresh cycles (reentry/OFF/JIT/init) still use the full
+ *      ClearAbsorbWindow above.
+ * [FA] ریست افت لحظه‌ای: مثل پاک‌کردن پنجره ابزورب ولی ساعت ۱ساعته نگه
+ *      داشته می‌شود تا شکار دور ۱۴٫۳V نتواند FLOAT (و پایان چشمک زرد) را
+ *      تا ابد عقب بیندازد؛ سیکل تازه هنوز ریست کامل می‌خواهد. */
+static void func__Charger_DipResetAbsorbWindow(
+    charger_channel_state_t *charger_channel_state_t__channel)
+{
+    charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
+    charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
+    charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
+}
+
 static void func__Charger_SafeIdle(void)
 {
     uint8_t uint8_t__channelIndex;
@@ -1164,7 +1182,14 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
             charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_ABSORB;
             charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
             charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
-            charger_channel_state_t__channel->uint32_t__absorbEnterTick = uint32_t__nowTick;
+            /* [EN] v1.17b: stamp the 1 h safety clock once - a dip-kept
+               stamp survives (dip path), a fresh cycle stamps anew (its
+               Clear zeroed the field). [FA] ساعت ۱ساعته فقط یک‌بار مهر
+               می‌خورد: مهرِ نگه‌داشته‌شدهٔ افت می‌ماند، سیکل تازه مهر نو. */
+            if (charger_channel_state_t__channel->uint32_t__absorbEnterTick == 0u)
+            {
+                charger_channel_state_t__channel->uint32_t__absorbEnterTick = uint32_t__nowTick;
+            }
             charger_channel_state_t__channel->uint32_t__absorbLastTick = uint32_t__nowTick;
         }
 
@@ -1294,11 +1319,16 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                bottom mean "the voltage hold failed": back to
                current-regulated BULK and RESET the soak (user directive).
                An already-BULK channel just stays BULK with a zeroed soak.
+               v1.17b: the dip keeps the 1 h safety clock running
+               (DipReset, not Clear), so repeated dips cannot postpone
+               the forced FLOAT forever.
                [FA] فقط در حالت ابزورب افت زیر ۱۴٫۳V یعنی تثبیت شکست خورد:
-               برگشت به بالک و ریست شستشو (دستور کاربر). */
+               برگشت به بالک و ریست شستشو (دستور کاربر) ولی ساعت ۱ساعته
+               نگه داشته می‌شود تا افت‌های پیاپی FLOAT اجباری را تا ابد
+               عقب نیندازند. */
             charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_BULK;
             uint32_t__targetMv = CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv;
-            func__Charger_ClearAbsorbWindow(
+            func__Charger_DipResetAbsorbWindow(
                 charger_channel_state_t__channel);
         }
     }
@@ -2191,14 +2221,15 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
  *         OFF, JIT_RETRY_WAIT, INPUT_WAIT, FINAL_FAULT or BAT_LOST does NOT
  *         count; since 2026-09-19 a FLOAT channel does not count either -
  *         the pump is parked at zero duty there, so the charge is DONE, not
- *         active. Used by (a) the UI so the charging yellow blink stops as
- *         soon as the charger shuts off, and (b) the fault pump-window, so
+ *         active. Used by (a) the UI Charging face, which additionally
+ *         requires "not full" (v1.17b: the full face keys on
+ *         IsChargeComplete), and (b) the fault pump-window, so
  *         a transient above 14.8 V in the parked/done phase can no longer
  *         catch the battery-lost buzzer (nothing is pumping then).
  *         [FA] آیا دست‌کم یک کانال نصب‌شده واقعاً در حال پمپ‌کردن شارژ است؟
  *         فقط BULK/ABSORB؛ FLOAT پارک‌شده (دیوتی صفر) یعنی کار تمام شده و
- *         فعال حساب نمی‌شود - نه زرد باید بچشمکد نه آشکارساز قطع باتری
- *         مسلح است.
+ *         فعال حساب نمی‌شود (چهرهٔ فول با IsChargeComplete می‌آید) و
+ *         آشکارساز قطع باتری هم آنجا مسلح نیست.
  * @return bool [EN] true if any installed channel is pumping / true اگر هر کانال نصب‌شده پمپ کند
  */
 bool func__Charger_IsAnyChannelActive(void)
@@ -2218,6 +2249,42 @@ bool func__Charger_IsAnyChannelActive(void)
     }
 
     return false;
+}
+
+/* ==================== Charger_IsChargeComplete ==================== */
+
+/**
+ * @brief  [EN] True when every relevant channel finished its charge: at
+ *         least one installed+enabled channel exists and ALL of them sit
+ *         in FLOAT (entered from ABSORB done only - soak + taper, or the
+ *         1 h safety ceiling). Disabled channels (bench SOLO runs) and
+ *         uninstalled channels are excluded, never blockers.
+ *         [FA] شارژ همهٔ کانال‌های مربوط (نصب+فعال) کامل شده؟ دست‌کم یکی
+ *         هست و همه در FLOATاند. کانال غیرفعال/نصب‌نشده کنار گذاشته
+ *         می‌شود و مانع نیست.
+ * @return bool [EN] true if the charge is complete on all relevant channels /
+ *         اگر شارژ کامل شده true
+ */
+bool func__Charger_IsChargeComplete(void)
+{
+    uint8_t uint8_t__channelIndex;
+    uint8_t uint8_t__relevantCount = 0u;
+
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    {
+        if ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed == true) &&
+            (func__Charger_GetChannelEspEnable(uint8_t__channelIndex) != false))
+        {
+            uint8_t__relevantCount = (uint8_t)(uint8_t__relevantCount + 1u);
+            if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
+                CHG_STATE_FLOAT)
+            {
+                return false;
+            }
+        }
+    }
+
+    return (uint8_t__relevantCount > 0u);
 }
 
 /* ==================== Charger runtime config API (ESP panel) ==================== */
