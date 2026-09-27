@@ -42,8 +42,31 @@
         ۹٫۸٪ (~2.3V در ۲۴V) زیاد بخواند - از بازهٔ آفست قدیمی ±2V بیرون؛
         برای همین ولتاژ باتری کل اشتباه خوانده می‌شد. نت ورودی ۲۴V روی همان
         مقسم 76k می‌ماند: در بنچ فقط +1٫۲٪ خطا داشت (23889 در برابر 23600mV،
-        اجرای ۲۰۲۶-۰۹-۲۵). */
-#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS 62400u
+        اجرای ۲۰۲۶-۰۹-۲۵).
+   [EN] v1.19 CORRECTION (user order 2026-09-27, SOLO1 sweep): the 69.2 k
+        total above reads the pack ~1.4 V LOW against a DMM on the battery
+        terminals (18 points, duty 1..18%: firmware 22.7..26.0 V vs true
+        24.2..27.4 V) - it blinded the 15.0 V hard OV cut in manual mode
+        (firmware saw 13.9 V while the battery was at 15.2 V, the user had
+        to stop by hand) and every 14.4/14.6/15.0 V supervision in auto
+        mode. The INPUT channel on the same ADC reads +29 mV steady, which
+        acquits ADC/VREF - the error is pack-path-specific (likely the
+        1.2 k wrongly counted in the top: a series ADC-pin resistor does
+        not belong in the ratio; true top is nearer the schematic 68 k).
+        Bench truth (minimax over the sweep, top-exact +104 mV at 15.22 V
+        so the OV cut trips ~100 mV early - safe): effective total 73.0 k,
+        i.e. TOP 66200 over the same 6.8 k bottom. Re-verify pack+ with a
+        DMM after flashing.
+   [FA] اصلاح v1.19 (دستور کاربر ۲۰۲۶-۰۹-۲۷، سوییپ SOLO1): مجموع 69.2k
+        بالا پک را ‎~1.4V‎ کم می‌خواند (۱۸ نقطه برابر DMM ترمینال) - قطع
+        سخت ۱۵V دستی (فرم‌ور ۱۳٫۹V می‌دید و باتری ۱۵٫۲V بود، کاربر دستی
+        پایان زد) و همهٔ نظارت‌های خودکار را نابینا کرده بود. کانال ورودی
+        روی همان ADC ثابت ‎+29mV‎ است پس ADC/VREF تبرئه‌اند - خطا مختص
+        مسیر پک است (احتمالاً 1.2k اشتباه در تاپ شمرده شده). حقیقت بنچ
+        (مینیماکس روی سوییپ، دقیق در قله ‎+104mV‎ تا قطع OV کمی زودتر
+        بزند - امن): مجموع مؤثر 73.0k یعنی تاپ ۶۶۲۰۰ روی همان پایین 6.8k.
+        بعد از فلش پک+ با مولتی‌متر راستی‌آزمایی شود. */
+#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS 66200u
 #define BSP_MEASUREMENT_DIV24BAT_BOTTOM_OHMS 6800u
 #define BSP_MEASUREMENT_DIV12_TOP_OHMS   34200u
 #define BSP_MEASUREMENT_DIV12_BOTTOM_OHMS 6800u

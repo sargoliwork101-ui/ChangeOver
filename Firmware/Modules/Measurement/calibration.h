@@ -39,26 +39,55 @@
 #include <stdint.h>
 
 /* ============================================================================
- * TABLE 1 - channel-1 current LUT (chain mA -> battery-1 mA)
- * جدول ۱ - LUT جریان کانال ۱ (mA زنجیره ← mA باتری ۱)
+ * TABLE 1 - channel-1 LUT (chain mA -> battery-1 POWER mW)
+ * جدول ۱ - LUT کانال ۱ (mA زنجیره ← توان باتری ۱ بر حسب mW)
  * ----------------------------------------------------------------------------
- * [EN] EMPTY until the SOLO1 bench run exists (dmm_i_bat1 was still blank in
- *      every run so far). Channel 1 keeps its linear gain conversion.
- *      WHEN THE DATA ARRIVES: fill the anchors below, set the enable to 1u,
- *      and mirror the channel-2 LUT path in measurement.c
- *      (func__Measurement_Current2BenchLut) for channel 1.
- * [FA] تا رسیدن دادهٔ ران SOLO1 خالی می‌ماند (dmm_i_bat1 تا حالا همیشه خالی
- *      بوده). کانال ۱ با تبدیل خطی گین خودش می‌ماند. وقتی داده آمد: لنگرها
- *      را پر کن، انیبل را 1u کن و مسیر LUT کانال ۲ در measurement.c را برای
- *      کانال ۱ هم قرینه کن.
+ * [EN] v1.19 (user order 2026-09-27, "check the upper charger's data, it went
+ *      past 15 V and never cut off"): same chain->POWER architecture as TABLE
+ *      2 (v1.13 DCM invariant: current = P/Vbat, divided at runtime by the
+ *      LIVE vhigh = V24-V12, clamped 8.0..15.0 V). Anchors from the
+ *      2026-09-27 SOLO1 sweep (18 rows, duty 1..18% step 1, off1=8 /
+ *      gain1=1046 - if those params change the table MUST be rebuilt):
+ *      P = ceil(DMM_I1 x DMM_V1 / 1000) at each row's exact integer chain,
+ *      so the firmware-math replay reads every DMM point EXACTLY
+ *      (worst(new) = 0 mA pure-LUT, 4 mA end-to-end with the corrected
+ *      firmware divisor, mixed sign; worst(old linear) = 72 mA S-curve
+ *      -29..+72). Gate (5,0): SOLO1 rows D1..D3 (backfeed -15..-5 mA, same
+ *      as ch2) never exceed chain 1, so chain <= 5 is switching noise and
+ *      reads exactly 0. D7's dip (81,1028: -123 mW under both neighbour
+ *      chords) is KEPT as an anchor - raw/I/V are all smooth there and the
+ *      DMM sits on the firmware window edge, so it is the curve, not an
+ *      outlier (ch2 precedent: the 236..353 hollow was kept, only the
+ *      window-mismatched D9 was excluded). D5's DMM VOLTAGE (12200 mV) is a
+ *      +150 mV outlier vs neighbours/trend but harmless here (36 mA x
+ *      150 mV = 5 mW). Above the last anchor (640,8645) the last slope
+ *      (13.15 mW per chain-mA) extends. COMPANION FIX: the V24 pack divider
+ *      top 62400 -> 66200 (same order - the pack channel read ~1.4 V low,
+ *      blinding the 15.0 V hard OV cut in manual mode AND every 14.4/14.6/
+ *      15.0 V supervision in auto mode; the corrected divisor is top-exact
+ *      +104 mV at 15.22 V and the residual mid-range hump (+461..+121 mV,
+ *      likely R47 warming from the ch1 power stage) is split minimax by
+ *      the 66200 choice - worst 4 mA. Re-verify with a DMM after flashing).
+ * [FA] v1.19 (دستور کاربر ۲۰۲۶-۰۹-۲۷ «داده‌های شارژر بالایی را چک کن، بالای
+ *      ۱۵V رفت و قطع نکرد»): همان معماری توانِ جدول ۲ (ناوردای DCM: جریان =
+ *      P/Vbat با تقسیم زمان اجرا بر vhigh زنده). لنگرها از سوییپ SOLO1
+ *      (۱۸ سطر، off1=8 / gain1=1046): توان سقفی هر سطر روی زنجیرهٔ صحیح
+ *      خودش - بازپخش ریاضی فرم‌ور همهٔ نقاط DMM را دقیق می‌خواند
+ *      (بدترین جدید ۰ خالص / ۴ سرتاسری، قدیم خطی ۷۲). گیت (۵٫۰): نویز
+ *      سطرهای D1..D3 از زنجیرهٔ ۱ بالاتر نمی‌رود پس ≤۵ دقیقاً صفر است.
+ *      گودی D7 لنگر نگه داشته شد (منحنی است نه اوت‌لایر). فیکس همراه: تاپ
+ *      مقسم پک ۶۲۴۰۰←۶۶۲۰۰ (همان دستور - کانال پک ‎~1.4V‎ کم می‌خواند و قطع
+ *      سخت ۱۵V دستی و همهٔ نظارت‌های خودکار را نابینا کرده بود؛ مقسوم‌علیه
+ *      اصلاح‌شده در قله دقیق است و کوهان میانی با انتخاب ۶۶۲۰۰ مینیماکس
+ *      شد - بدترین ۴mA. بعد از فلش با مولتی‌متر راستی‌آزمایی شود).
  * ============================================================================ */
-#define CAL_CURRENT1_LUT_ENABLE 0u
+#define CAL_CURRENT1_LUT_ENABLE 1u
 
 #if (CAL_CURRENT1_LUT_ENABLE != 0u)
 static const uint32_t CAL_Current1LutChainMa[] =
-    { 0u };
-static const uint32_t CAL_Current1LutBatteryMa[] =
-    { 0u };
+    { 0u, 5u, 11u, 31u, 54u, 81u, 114u, 148u, 189u, 231u, 277u, 330u, 382u, 444u, 504u, 567u, 640u };
+static const uint32_t CAL_Current1LutBatteryMw[] =
+    { 0u, 0u, 132u, 440u, 772u, 1028u, 1615u, 2111u, 2674u, 3261u, 3857u, 4553u, 5288u, 6074u, 6854u, 7686u, 8645u };
 #define CAL_CURRENT1_LUT_POINTS \
     ((uint32_t)(sizeof(CAL_Current1LutChainMa) / \
                 sizeof(CAL_Current1LutChainMa[0u])))

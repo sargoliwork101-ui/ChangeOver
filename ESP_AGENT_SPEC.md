@@ -130,6 +130,25 @@
 > (236,2685) (253,3260) (283,3925) (312,4550) (353,5355). New run worst
 > 3 mA with no systematic sign, old run worst 5 mA, i_130 = 658 mA.
 > Methodology floor is now +-1 count = +-3 mA. Panel mirror v1.16w.
+> v1.19 (2026-09-27, seventeenth order - "check the upper charger's data,
+> it went past 15 V and never cut off"): TWO fixes. (1) SAFETY: the V24
+> pack divider top 62400 -> 66200 - the old top read ~1.4 V low (bench
+> truth 73.0k total over 6.8k; the input channel on the same ADC reads
+> +29 mV steady, acquitting ADC/VREF), blinding the 15.0 V hard OV cut in
+> manual mode (firmware saw 13.9 V at a true 15.22 V) and every
+> 14.4/14.6/15.0 V supervision in auto mode. The corrected divisor is
+> top-exact (+104 mV at 15.22 V: OV trips ~100 mV early, safe) and the
+> residual mid-range hump (+461..+121 mV, likely R47 warming) is split
+> minimax by the 66200 choice. (2) CALIBRATION: TABLE 1 (ch1) gets the
+> SAME chain->POWER architecture as ch2 from the 18-row SOLO1 sweep
+> (duty 1..18, off1=8/gain1=1046): 17 anchors (0,0) (5,0) (11,132)
+> (31,440) (54,772) (81,1028) (114,1615) (148,2111) (189,2674)
+> (231,3261) (277,3857) (330,4553) (382,5288) (444,6074) (504,6854)
+> (567,7686) (640,8645); ceil-fitted so every DMM point replays EXACTLY
+> (worst(new) 0 pure-LUT / 4 end-to-end, mixed sign; worst(old linear)
+> 72 mA S-curve -29..+72). Gate (5,0): D1..D3 never exceed chain 1.
+> D7's dip is the curve (kept); D5's DMM voltage is a +150 mV outlier
+> (harmless at 36 mA). Panel mirror v1.16x. STM32 reflash for both.
 >
 > v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
 > conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
@@ -532,13 +551,23 @@ axis, so the table floors it to 0 (the (20,0) noise gate; error <= 15 mA
 only at the very bottom). Unfiltered, filtered and iest all become true
 battery mA; raw counts and shunt uV are untouched.
 `CAL_CURRENT2_LUT_ENABLE = 0`
-restores the old linear behaviour. Channel 1 stays linear until its own SOLO1
-data arrives (its future table gets the same power form with Vhigh as the
-divisor). The wire protocol is unchanged. v1.12 (same day): all three
+restores the old linear behaviour. Channel 1 got its own power table in
+v1.19 from the 18-row 2026-09-27 SOLO1 sweep (duty 1..18 step 1, off1=8 /
+gain1=1046; P = ceil(DMM_I1 x DMM_V1 / 1000); chain mA -> battery mW):
+(0,0) (5,0) (11,132) (31,440) (54,772) (81,1028) (114,1615) (148,2111)
+(189,2674) (231,3261) (277,3857) (330,4553) (382,5288) (444,6074)
+(504,6854) (567,7686) (640,8645), divided at runtime by the LIVE vhigh =
+V24 - V12 (cached one 1 ms pass earlier, clamped 8.0..15.0 V). Exact
+integer-math replay: every DMM point reads EXACTLY (worst 0 pure-LUT, 4
+end-to-end with the corrected divisor, mixed sign; old linear S-curve
+-29..+72 mA). Gate (5,0): D1..D3 never exceed chain 1. D7's dip is the
+curve (kept); D5's DMM voltage is a +150 mV outlier (harmless at 36 mA).
+Above the last anchor the last slope (13.15 mW per chain-mA) extends.
+The wire protocol is unchanged. v1.12 (same day): all three
 calibration tables moved to ONE separate file,
 `Firmware/Modules/Measurement/calibration.h` (user order: one file named
 after the calibration, next to the module files, easy to amend) - table 1 =
-the channel-1 LUT (EMPTY placeholder until SOLO1 data arrives), table 2 =
+the channel-1 LUT above, table 2 =
 the channel-2 LUT above, table 3 = the V12 battery-voltage compensation;
 missing points get appended later for higher accuracy, and every edit is a
 pure initializer change. v1.9 (same day): the anchor
@@ -551,7 +580,7 @@ Voltage chain (offsets = IDs 4/5/6, saturating add, never below 0 mV):
 
 ```text
 Vin_mV  = raw x 3300/4095 x 76000/6800 + VIN_OFFSET  (input net: 69.2k/6.8k, total 76k; = raw x 9.007)
-V24_mV  = raw x 3300/4095 x 69200/6800 + V24_OFFSET  (PACK net: total 69.2k; = raw x 8.203 - v1.10)
+V24_mV  = raw x 3300/4095 x 73000/6800 + V24_OFFSET  (PACK net: bench truth total 73.0k, TOP 66200; = raw x 8.651 - v1.19; the old 69.2k read ~1.4 V low and blinded the 15 V OV cut)
 V12_mV  = raw x 3300/4095 x 41000/6800 + V12_OFFSET  (divider 34.2k/6.8k; = raw x 4.859)
 V12_mV -= 150 mV + 0.47 ohm x I2_bat_mA              (bench compensation, clamp at 0 - v1.11 refit)
 Vlow_mV = V12_mV        Vhigh_mV = V24_mV - V12_mV (clamped at 0)

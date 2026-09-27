@@ -600,18 +600,141 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
     return func__BspMeasurement_V12CountsToMv(uint16_t__counts);
 }
 
+/* ==================== Measurement Current1 Counts To Ma (LUT, user order 2026-09-27) ==================== */
+
+#if (CAL_CURRENT1_LUT_ENABLE != 0u)
+/* [EN] Live battery-1 terminal voltage cache for the ch1 power LUT (v1.19,
+ *      user order 2026-09-27): vhigh = V24 - V12, written AFTER the median-5
+ *      voltage filter each pass, read by func__Measurement_Current1CountsToMa
+ *      one pass later (1 ms stale - negligible vs the battery time
+ *      constant). Clamped to 8.0..15.0 V so a missing/garbage voltage can
+ *      never blow up the division; boot default 12.0 V.
+ * [FA] کش ولتاژ زندهٔ ترمینال باتری ۱ برای LUT توانیِ کانال ۱ (v1.19):
+ *      vhigh = V24 − V12، بعد از فیلتر مدین-۵ هر پاس نوشته می‌شود و یک پاس
+ *      بعدتر خوانده می‌شود (۱ms کهنگی - ناچیز مقابل ثابت زمانی باتری).
+ *      گیرهٔ ۸..۱۵V تا ولتاژ گم/خراب تقسیم را منفجر نکند؛ پیش‌فرض بوت
+ *      ۱۲٫۰V. */
+static uint32_t UINT32_T__G__Battery1VoltageMv = 12000u;
+#endif
+
+/* [EN] The tail slope indexes POINTS-1/POINTS-2: fail the build if the
+   table ever shrinks below 2 points.
+   [FA] شیب دنباله POINTS-1/POINTS-2 را می‌خواند: اگر جدول روزی زیر ۲ نقطه
+   رفت، بیلد بشکند. */
+_Static_assert(CAL_CURRENT1_LUT_POINTS >= 2u, "ch1 LUT needs >= 2 points");
+
+#if (CAL_CURRENT1_LUT_ENABLE != 0u)
+/**
+ * @brief  [EN] Piecewise-linear bench correction: ADC chain mA of channel 1
+ *              -> battery-1 POWER in mW (v1.19, user order 2026-09-27: the
+ *              DCM energy per cycle is battery-voltage independent; the
+ *              current is P/Vbat, so the table carries POWER and the caller
+ *              divides by the live battery voltage). Inside the anchor range
+ *              the segments interpolate linearly; above the last anchor the
+ *              last slope extends; 0 maps to 0.
+ *         [FA] اصلاح خطی-تکه‌ای بنچ: mA زنجیرهٔ ADC کانال ۱ → «توان باتری ۱»
+ *              بر حسب mW (v1.19: انرژی هر سایکل DCM مستقل از ولتاژ باتری
+ *              است؛ جریان = P/Vbat، پس جدول توان را می‌دهد و صداکننده بر
+ *              ولتاژ زندهٔ باتری تقسیم می‌کند). بین لنگرها درون‌یابی خطی؛
+ *              بالای آخرین لنگر شیب آخرین بازه ادامه می‌یابد؛ صفر به صفر.
+ * @param  uint32_t__chainMa [EN] ADC chain output in mA / خروجی زنجیرهٔ ADC بر حسب mA
+ * @return uint32_t [EN] Battery-1 power in mW / توان باتری ۱ بر حسب mW
+ */
+static uint32_t func__Measurement_Current1BenchLut(uint32_t uint32_t__chainMa)
+{
+    uint32_t uint32_t__index;
+
+    for (uint32_t__index = 1u;
+         uint32_t__index < CAL_CURRENT1_LUT_POINTS;
+         uint32_t__index++)
+    {
+        uint32_t uint32_t__xHigh =
+            CAL_Current1LutChainMa[uint32_t__index];
+        if (uint32_t__chainMa <= uint32_t__xHigh)
+        {
+            uint32_t uint32_t__xLow =
+                CAL_Current1LutChainMa[uint32_t__index - 1u];
+            uint32_t uint32_t__yLow =
+                CAL_Current1LutBatteryMw[uint32_t__index - 1u];
+            uint32_t uint32_t__yHigh =
+                CAL_Current1LutBatteryMw[uint32_t__index];
+            /* [EN] Degenerate-segment guard (the table is hand-edited):
+               equal anchors would divide by zero - return the point value.
+               No effect on a strictly increasing table.
+               [FA] گارد بازهٔ تباه‌شده (جدول دستی ویرایش می‌شود): لنگرهای
+               برابر تقسیم‌برصفر می‌کردند - مقدار نقطه برگردد. روی جدول
+               سالم بی‌اثر است. */
+            if (uint32_t__xHigh == uint32_t__xLow)
+            {
+                return uint32_t__yHigh;
+            }
+            return uint32_t__yLow +
+                   (((uint32_t__chainMa - uint32_t__xLow) *
+                     (uint32_t__yHigh - uint32_t__yLow)) /
+                    (uint32_t__xHigh - uint32_t__xLow));
+        }
+    }
+
+    /* [EN] Above the last anchor: extend the last segment's slope.
+       [FA] بالای آخرین لنگر: شیب آخرین بازه ادامه می‌یابد. */
+    /* [EN] Same degenerate guard for the extrapolated tail slope. */
+    if (CAL_Current1LutChainMa[CAL_CURRENT1_LUT_POINTS - 1u] ==
+        CAL_Current1LutChainMa[CAL_CURRENT1_LUT_POINTS - 2u])
+    {
+        return CAL_Current1LutBatteryMw[CAL_CURRENT1_LUT_POINTS - 1u];
+    }
+    return CAL_Current1LutBatteryMw[CAL_CURRENT1_LUT_POINTS - 1u] +
+           (((uint32_t__chainMa -
+              CAL_Current1LutChainMa[CAL_CURRENT1_LUT_POINTS - 1u]) *
+             (CAL_Current1LutBatteryMw[CAL_CURRENT1_LUT_POINTS - 1u] -
+              CAL_Current1LutBatteryMw[CAL_CURRENT1_LUT_POINTS - 2u])) /
+            (CAL_Current1LutChainMa[CAL_CURRENT1_LUT_POINTS - 1u] -
+             CAL_Current1LutChainMa[CAL_CURRENT1_LUT_POINTS - 2u]));
+}
+#endif
+
 /* ==================== Measurement Current1 Counts To Ma ==================== */
 
 /**
- * @brief  [EN] Channel-1 raw counts to mA via the BSP per-channel
- *              calibration (Shunt1 / Trans1 chain).
- *         [FA] تبدیل شمارش کانال ۱ به mA با کالیبراسیون مستقل BSP.
+ * @brief  [EN] Channel-1 raw counts to battery mA: the BSP per-channel linear
+ *              calibration (Shunt1 / Trans1 chain), then - when the bench LUT
+ *              is enabled - the piecewise-linear bench correction of user
+ *              order 2026-09-27 (v1.19 SOLO1 sweep: the linear chain reads an
+ *              S-curve -29..+72 mA vs the DMM). The LUT sits on the OLD chain
+ *              output, so unfiltered, filtered and iest all become true
+ *              battery mA; raw counts and shunt uV are untouched.
+ *         [FA] شمارش خام کانال ۱ به mA باتری: کالیبراسیون خطی مستقل BSP
+ *              (زنجیرهٔ Shunt1 / Trans1) و بعد - با فعال بودن جدول بنچ -
+ *              اصلاح خطی-تکه‌ای طبق دستور کاربر ۲۰۲۶-۰۹-۲۷ (سوییپ SOLO1 در
+ *              v1.19: زنجیرهٔ خطی Sشکل ‎-29..+72mA‎ برابر DMM می‌خواند).
+ *              جدول روی خروجی زنجیرهٔ قدیم می‌نشیند پس بدون فیلتر، فیلترشده
+ *              و iest هر سه به mA واقعی باتری تبدیل می‌شوند؛ شمارش خام و uV
+ *              شانت دست نمی‌خورند.
  * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Current in mA / جریان mA
+ * @return uint32_t [EN] Corrected current in mA / جریان اصلاح‌شده mA
  */
 uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
 {
+#if (CAL_CURRENT1_LUT_ENABLE != 0u)
+    /* [EN] v1.19 (user order 2026-09-27, SOLO1 sweep): the LUT maps the ADC
+       chain current to the battery-1 POWER (the DCM invariant, independent
+       of the battery voltage - same architecture as the ch2 v1.13 path);
+       dividing by the LIVE battery-1 terminal voltage (vhigh = V24 - V12,
+       previous 1 ms pass, clamped 8.0..15.0 V by the cache writer) yields
+       the battery CURRENT. u32 intermediate (flash diet 2026-09-27):
+       power x 1000 peaks near 135M, far below 2^32.
+       [FA] v1.19 (دستور کاربر، سوییپ SOLO1): جدول جریان زنجیرهٔ ADC را به
+       «توان باتری ۱» می‌برد (ناوردای DCM، مستقل از ولتاژ باتری - همان
+       معماری مسیر v1.13 کانال ۲)؛ تقسیم بر ولتاژ زندهٔ ترمینال باتری ۱
+       (vhigh = V24 − V12، پاس ۱ms قبل، گیرهٔ ۸..۱۵V توسط نویسندهٔ کش)
+       جریان باتری را می‌دهد. */
+    uint32_t uint32_t__batteryPowerMw = func__Measurement_Current1BenchLut(
+        func__BspMeasurement_Current1CountsToMa(uint16_t__counts));
+    return (uint32_t__batteryPowerMw * 1000u) /
+           UINT32_T__G__Battery1VoltageMv;
+#else
     return func__BspMeasurement_Current1CountsToMa(uint16_t__counts);
+#endif
 }
 
 /* ==================== Measurement Current2 Bench LUT (user order 2026-09-25) ==================== */
@@ -631,8 +754,8 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
         (393,455) (487,545); captured with off2=8 / gain2=1303 (as logged in
         every row - if those params ever change, the table must be re-derived).
         Above the last anchor the last slope extends; input 0 maps to 0. Raw
-        counts and shunt uV stay untouched. Channel 1 stays linear until its own
-        SOLO1 data arrives.
+        counts and shunt uV stay untouched. Channel 1 got its own SOLO1 power
+        table in v1.19 (TABLE 1 in calibration.h, same architecture).
    [FA] اجراهای بنچ SOLO2 در ۲۰۲۶-۰۹-۲۵ (دو برداشت مستقل، دیوتی ۰ تا ۱۷٪،
         مرجع = آمپرمتر سری باتری) ثابت کرد زنجیرهٔ کانال ۲ نسبت به جریان واقعی
         باتری به‌شدت غیرخطی است: حدود ۲ برابر زیاد در دیوتی ۵٪ و ۰٫۸۵ برابر
@@ -651,8 +774,8 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
         شیب آخرین بازه (12.37 mW به‌ازای هر mA زنجیره) ادامه
         می‌یابد. نقطهٔ دیوتی ۲٪ جریان واقعی باتری 13− میلی‌آمپر بود (تخلیه از
         مسیر زنر) - زنجیره بدون علامت است و همان‌جا 0 می‌گیرد (خطای ≤13mA
-        فقط در کف). شمارش خام و uV شانت دست نمی‌خورند. کانال ۱ تا رسیدن دادهٔ
-        SOLO1 خودش خطی می‌ماند. */
+        فقط در کف). شمارش خام و uV شانت دست نمی‌خورند. کانال ۱ در v1.19 جدول
+        توان SOLO1 خودش را گرفت (جدول ۱ در calibration.h، همان معماری). */
 /* [EN] The anchor tables and the enable macro moved to calibration.h (user
         order 2026-09-25: one separate calibration file, three tables, easy
         to amend; the count still derives from the initializers there and the
@@ -1131,6 +1254,24 @@ void func__Measurement_Run(void)
     else
     {
         UINT32_T__G__Battery2VoltageMv = uint32_t__batteryLowMv;
+    }
+#endif
+#if (CAL_CURRENT1_LUT_ENABLE != 0u)
+    /* [EN] Feed the ch1 power-LUT voltage cache (v1.19): the filtered TRUE
+       battery-1 terminal voltage (vhigh = V24 - V12), clamped 8.0..15.0 V.
+       [FA] خوراک کشِ ولتاژ LUT توانی کانال ۱: ولتاژ فیلترشدهٔ واقعی
+            ترمینال باتری ۱ (vhigh = V24 − V12)، گیرهٔ ۸٫۰..۱۵٫۰V. */
+    if (uint32_t__batteryHighMv < 8000u)
+    {
+        UINT32_T__G__Battery1VoltageMv = 8000u;
+    }
+    else if (uint32_t__batteryHighMv > 15000u)
+    {
+        UINT32_T__G__Battery1VoltageMv = 15000u;
+    }
+    else
+    {
+        UINT32_T__G__Battery1VoltageMv = uint32_t__batteryHighMv;
     }
 #endif
     /* [EN] Convert the filtered counts AFTER the LUT voltage cache above

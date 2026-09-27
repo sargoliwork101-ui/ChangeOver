@@ -425,11 +425,15 @@ const ie=(fl,vin,eta,vb)=>vin<10000||vb<5000?fl+' (همانی: ولتاژ زیر
 const LUTX=[0,20,37,106,189,236,253,283,312,353,390,441,557,707],LUTY=[0,0,109,751,1581,2685,3260,3925,4550,5355,6035,6817,8573,10429];
 const lutPow=c=>{for(let i=1;i<LUTX.length;i++){if(c<=LUTX[i]){const x0=LUTX[i-1],x1=LUTX[i];if(x1==x0)return LUTY[i];return LUTY[i-1]+Math.floor((c-x0)*(LUTY[i]-LUTY[i-1])/(x1-x0));}}const n=LUTX.length-1,d=LUTX[n]-LUTX[n-1];if(!d)return LUTY[n];return LUTY[n]+Math.floor((c-LUTX[n])*(LUTY[n]-LUTY[n-1])/d);};
 const lutTap=(ch,vb)=>{const pw=lutPow(Math.round(ch)),v=Math.min(15000,Math.max(8000,vb));return ' => LUT:'+pw+'mW/'+v+'='+Math.floor(pw*1000/v)+'mA';};
+/* v1.19: آینهٔ جدول توان کانال ۱ (SOLO1، ۱۷ لنگر) — قرینهٔ کانال ۲ */
+const LUT1X=[0,5,11,31,54,81,114,148,189,231,277,330,382,444,504,567,640],LUT1Y=[0,0,132,440,772,1028,1615,2111,2674,3261,3857,4553,5288,6074,6854,7686,8645];
+const lut1Pow=c=>{for(let i=1;i<LUT1X.length;i++){if(c<=LUT1X[i]){const x0=LUT1X[i-1],x1=LUT1X[i];if(x1==x0)return LUT1Y[i];return LUT1Y[i-1]+Math.floor((c-x0)*(LUT1Y[i]-LUT1Y[i-1])/(x1-x0));}}const n=LUT1X.length-1,d=LUT1X[n]-LUT1X[n-1];if(!d)return LUT1Y[n];return LUT1Y[n]+Math.floor((c-LUT1X[n])*(LUT1Y[n]-LUT1Y[n-1])/d);};
+const lut1Tap=(ch,vb)=>{const pw=lut1Pow(Math.round(ch)),v=Math.min(15000,Math.max(8000,vb));return ' => LUT:'+pw+'mW/'+v+'='+Math.floor(pw*1000/v)+'mA';};
 function formulas(t,p){
  [1,2].forEach(n=>{const b=n==1?0:7,raw=t[b],off=p[n-1],g=p[n+1],eta=p[8+n],vb=n==1?t[18]:t[17],vin=t[14],fl=t[b+3];
   $('f'+n+'0').textContent='12-bit ADC · Vref 3300 mV';
   $('f'+n+'1').textContent=`${raw} × 3300/4095 × 11/10 × 1000/101 = ${raw} × 8.7767 ≈ ${Math.round(raw*K_UV)}`;
-  $('f'+n+'2').textContent=off==null||g==null?'':`(${raw} − ${off}) × 0.8777 × ${g}/1000 ≈ ${f1(Math.max(raw-off,0)*K_MA*g/1000)}${n==2?lutTap(Math.max(raw-off,0)*K_MA*g/1000,vb):''}`;
+  $('f'+n+'2').textContent=off==null||g==null?'':`(${raw} − ${off}) × 0.8777 × ${g}/1000 ≈ ${f1(Math.max(raw-off,0)*K_MA*g/1000)}${n==2?lutTap(Math.max(raw-off,0)*K_MA*g/1000,vb):lut1Tap(Math.max(raw-off,0)*K_MA*g/1000,vb)}`;
   $('f'+n+'3').textContent=`convert( average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( raw ) ) ) = ${fl}`;
   $('f'+n+'4').textContent=eta==null?'':eta==0?`eta = 0 → Iest = I = ${fl}`:`${fl} × ${V_(vin)} × ${eta}‰ / ${V_(vb)} ≈ ${ie(fl,vin,eta,vb)}`;});
  V.forEach((v,i)=>{const e=$('fv'+i);if(i<3){const o=p[v[2]]==null?0:p[v[2]],c=Math.round((t[v[1]]-o+(i==2?150+Math.floor(t[9]*470/1000):0))/v[3]);e.textContent=`${c} × ${v[3].toFixed(3)} ${o<0?'−':'+'} ${Math.abs(o)}${i==2?' − (150 + '+t[9]+'×470/1000)':''}`;}
