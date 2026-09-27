@@ -319,9 +319,7 @@ nav button.m.a{background:linear-gradient(180deg,#6e4a10,#543806);color:#ffe1a8}
 section{margin-top:12px}
 .cd{background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 30%),var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--sh)}
 .ti{font-size:12.5px;font-weight:700;color:var(--mu);margin-bottom:10px;text-transform:uppercase;letter-spacing:.3px}
-.vs{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-.vs>div{background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:8px 4px;text-align:center}
-.vs small,.lb{color:var(--mu);font-size:12px}.vs b{display:block;font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
+.lb{color:var(--mu);font-size:12px}
 .fl{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--ln)}
 .tg{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--rs);color:var(--mu);border:1px solid transparent;display:inline-flex;align-items:center;gap:6px}
 .tg::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.9}
@@ -386,7 +384,6 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .pgx{display:none}.pgx.a{display:block}body:not(.br) .wstop{display:none}body.br .brun{opacity:.4;pointer-events:none}a.lnk{text-decoration:none;display:inline-block}
 .bq{background:var(--in);border:1px solid rgba(251,191,36,.4);border-radius:12px;padding:11px;margin-top:10px}.bqr{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin-top:10px}.bqr label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600}.bqr label .lb{font-weight:400}.bqr input[type=number]{width:124px}
 .cc .ca{border-top:0;margin-top:0;padding-top:0}.stp2{background:linear-gradient(180deg,#e5484d,#c62f35);white-space:nowrap}
-.vt{background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:4px}.vt .fx{text-align:center;max-width:100%}
 .vc{justify-content:center}.vc input[type=number]{width:96px}
 .fl{margin-top:0;padding-top:0;border-top:0}#sh .hd{flex-wrap:wrap;gap:8px}
 .sec{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--tx);margin:16px 0 8px;padding-top:13px;border-top:1px solid var(--ln)}
@@ -394,8 +391,8 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .frr{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}.frr .rw:first-of-type{border-top:1px solid var(--ln)}.fxw{margin-top:6px;font-size:12px}
 .kc{font-size:11px;margin-top:6px}.cr{margin-top:10px;flex-wrap:wrap}.cr .cb{flex:1 1 120px}.cr input[type=number]{width:124px}
 .off2{background:linear-gradient(180deg,#a02b33,#7c1f27);white-space:nowrap}
-@media(max-width:1000px){.ch,.frr,.qs{grid-template-columns:1fr}.vs{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:640px){.sbt button{font-size:12px;padding:8px 2px}.cb{font-size:12px;padding:9px 8px}.cb span{white-space:nowrap}.vs{grid-template-columns:repeat(3,1fr)}.ch{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}header{margin:0 -8px 10px;padding-left:8px;padding-right:8px}body{padding:0 8px 24px}}
+@media(max-width:1000px){.ch,.frr,.qs{grid-template-columns:1fr}}
+@media(max-width:640px){.sbt button{font-size:12px;padding:8px 2px}.cb{font-size:12px;padding:9px 8px}.cb span{white-space:nowrap}.ch{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}header{margin:0 -8px 10px;padding-left:8px;padding-right:8px}body{padding:0 8px 24px}}
 .sbt{display:flex;gap:4px;background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:4px;margin-bottom:12px}
 #sbt{position:sticky;top:113px;z-index:53}
 .sbt button{flex:1;border:0;background:none;border-radius:8px;padding:8px 6px;color:var(--mu);font-weight:700;transition:background .15s,color .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -417,18 +414,25 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .mod h3{font-size:16px;margin-bottom:8px}
 .mod .sb{width:100%;margin-top:10px}
 input:disabled{opacity:.38;cursor:not-allowed}
+.srvw{overflow-x:auto;border:1px solid var(--ln);border-radius:12px}
+.srv{width:100%;min-width:680px;border-collapse:collapse;font-size:13px;table-layout:fixed}
+.srv col.c1{width:118px}.srv col.c2{width:96px}.srv col.c4{width:128px}.srv col.c5{width:196px}
+.srv th{color:var(--mu);font-weight:600;text-align:right;padding:7px 10px;border-bottom:1px solid var(--ln);white-space:nowrap}
+.srv td{padding:6px 10px;border-top:1px solid var(--ln);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srv tr:first-child td{border-top:0}
+.srv .tg{min-width:104px;justify-content:center}
+.srv input[type=number]{width:78px;min-height:30px;padding:3px 6px}
+.srv .sb{min-height:30px;padding:3px 10px}
+tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr.rbd{background:rgba(251,94,106,.08)}
 </style></head><body>
 <header><h1>پنل ChangeOver</h1><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
 <div class="pgx a" id="p0">
-<div class="cd" id="sh"><div class="hd"><b>ولتاژها <span class="lb">· عدد مولتی‌متر (V) را کنار هر ولتاژ وارد کنید تا آفست آن کالیبره شود</span></b><div class="fl" id="fl"></div></div><div class="vs" id="vs"></div>
+<div class="cd" id="sh"><div class="hd"><b>ولتاژها و وضعیت آلارم‌ها <span class="lb">· عدد مولتی‌متر (V) را کنار هر ولتاژ وارد کنید تا آفست آن کالیبره شود</span> <span class="ldon" id="aslive"></span></b><div class="fl" id="fl"></div></div><div id="ast"></div>
 <div class="sec">فیلتر جریان <span class="lb">(مشترک هر دو کانال)</span></div><div class="frr" id="fg"></div><div class="fx fxw" id="ff"></div></div>
-<div class="cd">
-<div class="hd"><b>وضعیت آلارم‌ها</b> <span class="ldon" id="aslive"></span><span class="lb">· زنده از TLM برد · آستانه‌ها = مقادیر اعمال‌شدهٔ برد</span></div>
-<div id="ast" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div>
-</div>
+
 <div class="ch" id="ch"></div>
 <div id="mc"></div>
 
@@ -670,9 +674,13 @@ function ctl(id){const p=P[id];
 const row=(id,x)=>`<div class="rw"><div>${P[id][0]} <span class="lb">${P[id][1]}</span><span class="ap n" id="a${id}">—</span></div><div class="ct">${x||''}${ctl(id)}</div><div class="h" onclick="this.classList.toggle('o')">${P[id][5]}</div></div>`;
 
 /* ---------- ساخت صفحه: ولتاژها + فیلتر (مشترک) ---------- */
-$('vs').innerHTML=V.map((v,i)=>`<div class="vt"><small>${v[0]}</small><b class="n" id="v${i}">—</b><div class="fx" id="fv${i}"></div>${i<3?`
-<div class="ct vc"><input type="number" step="any" id="vm${i}" placeholder="مولتی‌متر V" onkeydown="if(event.key=='Enter')vcal(${i})"><button class="sb sb2" onclick="vcal(${i})">اعمال</button></div>
-<div class="lb">آفست <span class="ap n" id="a${v[2]}">—</span> mV</div>`:''}</div>`).join('');
+/* v1.16k: merged voltages+alarm table - fixed layout, each value once, pills inline */
+const SR=[['ورودی',0],['پک ۲۴V',1],['نود ۱۲V',2],['باتری بالا',3],['باتری پایین',4],['جریان ۱ (بالا)',5],['جریان ۲ (پایین)',6]];
+$('ast').innerHTML=`<div class="srvw"><table class="srv"><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"></colgroup><tr><th>سیگنال</th><th>مقدار</th><th>فرمول / بازه</th><th>وضعیت</th><th>کالیبره با مولتی‌متر</th></tr>${SR.map(r=>{const k=r[1];
+ const cal=k<3?`<input type="number" step="any" id="vm${k}" placeholder="مولتی‌متر V" onkeydown="if(event.key=='Enter')vcal(${k})"> <button class="sb sb2" onclick="vcal(${k})">اعمال</button> <span class="lb">±<span class="ap n" id="a${[4,5,6][k]}">—</span></span>`:'—';
+ return `<tr id="sr${k}"><td>${r[0]}</td><td class="n" id="v${k}">—</td><td><div class="fx" id="fv${k}"></div></td><td><span class="tg" id="sp${k}">—</span></td><td>${cal}</td></tr>`;}).join('')}</table></div>`+'<div class="ab" id="asb5" style="margin-top:8px;min-height:0"><small>خطاهای قفل‌شده (fault) — LED جدا برای هر بیت</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit" id="asbb6"><i></i><small>قطع‌باتری</small></span></div><div class="fx2" id="asf">—</div></div>';
+let ASB=null;
+ASB={sp:[0,1,2,3,4,5,6].map(k=>$('sp'+k)),sr:[0,1,2,3,4,5,6].map(k=>$('sr'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6].map(k=>$('asbb'+k)),box5:$('asb5'),mask:-1,live:$('aslive'),tick:false};
 /* v1.14b (user order 2026-09-26): پنجرهٔ مدین/میانگین به تب «تنظیمات» رفت؛ اینجا فقط وضعیت زندهٔ فیلتر و نمونه‌های نمودار می‌مانند */
 $('fg').innerHTML='<div class="lb" id="fspan" style="margin-top:6px">—</div>';
 /* ---------- دو ستون جدا: شارژر ۱ و شارژر ۲ ---------- */
@@ -914,28 +922,28 @@ const FEXP=[
  ['خطای جیتر کانال ۱','ناپایداری داخلی نمونه‌برداری کانال ۱؛ اگر ماندگار شد برد را ریست کنید.'],
  ['خطای جیتر کانال ۲','ناپایداری داخلی نمونه‌برداری کانال ۲؛ اگر ماندگار شد برد را ریست کنید.'],
  ['قطع باتری','سیم باتری قطع است یا باتری نیست: یا ولتاژ حین پمپ بالای آستانهٔ قطع (۲۷) رفته یا باتری زیر آستانهٔ غیبت (۲۹) با ورودی سالم دیده شده. سیم‌کشی باتری را بررسی کنید؛ با بازگشت هر دو نیمه بالای آستانهٔ برگشت (۳۰) و پایداری (۳۲)، لچ خودکار پاک می‌شود.']];
-let ASB=null;
-function astat(){const s=$('ast');if(!s||!D||!D.t||!D.p)return;
+function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
  const t=D.t,p=D.p;
  const g=(id,fb)=>p[id]!=null?p[id]:fb;
  const vin=t[14],vl=t[17],vh=t[18],i1=t[3],i2=t[10];
  const mn=g(33,21000),mx=g(34,28000),dc=g(27,14800),ab=g(29,6000),hd=g(35,950),ov=g(36,15000),fl=g(37,2000);
- if(!ASB){
-  s.innerHTML=`<div class="ag">`+[['ورودی'],['باتری پایین'],['باتری بالا'],['جریان ۱ (بالا)'],['جریان ۲ (پایین)']].map((x,k)=>`<div class="ab" id="asb${k}"><small>${x[0]}</small><b class="n" id="asv${k}">—</b><span class="lb" id="asc${k}">—</span><span class="tg" id="asg${k}">—</span></div>`).join('')+`</div><div class="ab" id="asb5" style="margin-top:8px;min-height:0"><small>خطاهای قفل‌شده (fault) — LED جدا برای هر بیت</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit" id="asbb6"><i></i><small>قطع‌باتری</small></span></div><div class="fx2" id="asf">—</div></div>`;
-  ASB={box:[0,1,2,3,4,5].map(k=>$('asb'+k)),val:[0,1,2,3,4].map(k=>$('asv'+k)),cap:[0,1,2,3,4].map(k=>$('asc'+k)),pill:[0,1,2,3,4].map(k=>$('asg'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6].map(k=>$('asbb'+k)),sig:'',mask:-1,live:$('aslive'),tick:false};
-  if(!ASB.box[0]||!ASB.flt){ASB=null;return;}
- }
- const set=(k,val,cap,pill,cls)=>{ASB.val[k].textContent=val;ASB.cap[k].textContent=cap;ASB.pill[k].textContent=pill;ASB.pill[k].className='tg '+cls;ASB.box[k].className='ab '+(cls==='g'?'good':cls==='y'?'warn':'bad');};
+ $('v0').textContent=v2(vin);$('v1').textContent=v2(t[15]);$('v2').textContent=v2(t[16]);
+ $('v3').textContent=v2(vh);$('v4').textContent=v2(vl);
+ $('v5').textContent=i1+' mA';$('v6').textContent=i2+' mA';
+ $('fv5').textContent='خطای سخت '+hd+'mA';$('fv6').textContent='خطای سخت '+hd+'mA';
+ const set=(k,txt,cls)=>{ASB.sp[k].textContent=txt;ASB.sp[k].className='tg '+cls;ASB.sr[k].className=cls==='g'?'rok':cls==='y'?'rwr':'rbd';};
  const vinOk=vin>=mn&&vin<=mx;
- set(0,(vin/1000).toFixed(2)+'V',`بازهٔ سالم ${(mn/1000).toFixed(1)}..${(mx/1000).toFixed(1)}V`,vinOk?'✅ داخل بازه':'⚠ خارج بازه',vinOk?'g':'r');
- [[vl,1],[vh,2]].forEach(B=>{const v=B[0],over=v>=dc,lost=v<ab,inv=v<fl||v>=ov,bad=over||lost||inv;
-  set(B[1],(v/1000).toFixed(2)+'V',`قطع ${(dc/1000).toFixed(2)}V · حاشیه ${dc-v}mV`,bad?(over?'⚠ بالای قطع':lost?'⚠ غایب':'⚠ نامعتبر'):'✅ سالم',bad?'r':'g');});
- [[i1,3],[i2,4]].forEach(C=>{const v=C[0];set(C[1],v+'mA',`خطای سخت ${hd}mA`,v>=hd?'⚠ تریپ':v>=hd-100?'⚠ نزدیک تریپ':'✅ سالم',v>=hd?'r':v>=hd-100?'y':'g');});
+ set(0,vinOk?'داخل بازه':'خارج بازه',vinOk?'g':'r');
+ set(1,'—','g');set(2,'—','g');
+ [[vh,3],[vl,4]].forEach(B=>{const v=B[0],over=v>=dc,lost=v<ab,inv=v<fl||v>=ov,bad=over||lost||inv;
+  set(B[1],bad?(over?'بالای قطع':lost?'غایب':'نامعتبر'):'سالم',bad?'r':'g');});
+ [[i1,5],[i2,6]].forEach(C=>{const v=C[0];
+  set(C[1],v>=hd?'تریپ':v>=hd-100?'نزدیک تریپ':'سالم',v>=hd?'r':v>=hd-100?'y':'g');});
  if(t[19]!==ASB.mask){ASB.mask=t[19];
-  if(!t[19]){ASB.flt.textContent='✅ بدون خطای قفل‌شده';ASB.box[5].className='ab good';}
+  if(!t[19]){ASB.flt.textContent='✅ بدون خطای قفل‌شده';ASB.box5.className='ab good';}
   else{let h='';for(let bit=0;bit<7;bit++)if(t[19]&(1<<bit))h+=`<div>⚠ <b>${FEXP[bit][0]}</b> — ${FEXP[bit][1]}</div>`;
    if(t[19]&~127)h+=`<div>⚠ بیت ناشناخته: <span class="n">fault 0x${t[19].toString(16)}</span></div>`;
-   ASB.flt.innerHTML=h;ASB.box[5].className='ab bad';}}
+   ASB.flt.innerHTML=h;ASB.box5.className='ab bad';}}
  ASB.tick=!ASB.tick;if(ASB.live)ASB.live.style.opacity=ASB.tick?1:.3;}
 /* ===== v1.16: آینهٔ LED و بازر برد — همان اولویت Ui_Tick با مقادیر اعمال‌شده؛ چشمک با همان دوره/دیوتی برد (فاز محلی، هم‌سرعت) ===== */
 let UV={inP:false,ov:false,bat:false,pct:-1,cpct:-1,full:false,critT:0};
@@ -1040,7 +1048,6 @@ function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;qfill();afill
  document.body.classList.toggle('dn',!on);$('lk').classList.toggle('on',on);
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');
  hist(d);
- V.forEach((v,i)=>$('v'+i).textContent=v2(t[v[1]]));
  const F=[['snapshot',d.fl&1],['ورودی ۲۴V',d.fl&2],['اندازه‌گیری معتبر',d.fl&4]];
  $('fl').innerHTML=F.map(f=>`<span class="tg ${f[1]?'g':'r'}">${f[0]}</span>`).join('')+(t[19]&64?'<span class="tg r">خطا: باتری قطع</span>':'')+
   (t[19]&~64?`<span class="tg r n">fault 0x${t[19].toString(16)}</span>`:'')+(man?'<span class="tg y">مود دستی</span>':'');
