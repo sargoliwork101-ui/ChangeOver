@@ -3,7 +3,7 @@
  * panel_preview_server.js — [EN] Offline preview of the ESP web panel.
  * [FA] پیش‌نمایش آفلاین پنل وب ESP.
  *
- * [EN] Serves the REAL panel HTML extracted from esp_link_panel.ino and
+ * [EN] Serves the REAL panel HTML extracted from plink_panel.h and
  *      simulates the STM32 behind it: a full charge cycle
  *      OFF -> BULK -> ABSORB -> FLOAT -> (sag) -> REENTRY -> BULK ...,
  *      the v1.14 charge-stage graph, the v1.15 alarms tab, parameter writes
@@ -11,7 +11,7 @@
  *      shape the ESP sends.
  *      No hardware needed:  node tools/panel_preview_server.js  ->  http://localhost:3000
  *      (binds 0.0.0.0 so it also works inside a sandboxed preview).
- * [FA] همان HTML واقعی پنل را از esp_link_panel.ino بیرون می‌کشد و STM32
+ * [FA] همان HTML واقعی پنل را از plink_panel.h بیرون می‌کشد و STM32
  *      را پشت آن شبیه‌سازی می‌کند: یک چرخهٔ کامل شارژ
  *      خاموش → بالک → ابزورب → شناور → (افت) → بازگشت → بالک...،
  *      نمودار مراحل v1.14، تب آلارم‌های v1.15، ثبت پارامتر با همان پنجره‌های
@@ -25,10 +25,10 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 
-/* ---------- extract the real panel HTML from the .ino ---------- */
-const inoPath = path.join(__dirname, "..", "esp_link_panel", "esp_link_panel.ino");
-const ino = fs.readFileSync(inoPath, "utf8");
-const html = ino.split('R"HTML(', 2)[1].split(')HTML";', 2)[0];
+/* ---------- extract the real panel HTML from the panel module ---------- */
+const panelPath = path.join(__dirname, "..", "esp_link_panel", "plink_panel.h");
+const panelSrc = fs.readFileSync(panelPath, "utf8");
+const html = panelSrc.split('R"HTML(', 2)[1].split(')HTML";', 2)[0];
 
 /* banner + auto-open the charge tab (injected into the served page ONLY) */
 const inject = `<script>(function(){

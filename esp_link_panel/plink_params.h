@@ -1,0 +1,16 @@
+/* plink_params.h - ESP-side parameter envelopes (clamp mirror) + transmit priority order.
+   Included by esp_link_panel.ino (single translation unit, order matters).
+   No include guard on purpose: including twice would redefine everything. */
+/* ==================== Parameter Ranges (STM32 clamps too) ==================== */
+/* [EN] ID: 0..1 offset, 2..3 gain, 4..6 mV offset (signed), 7 median 1..15, 8 avg window 1..300 (v1.4, raised in v1.9), 9..10 ETA conversion (v1.3, 0 = identity),
+        11..12 charger enable, 13..14 duty ceiling, 15/17 fixed-duty on, 16/18 fixed/manual duty,
+        19 manual test mode (v1.2), 20..26 charge profile (v1.12: outer envelope only - the STM32
+        re-clamps the interdependencies, e.g. enter <= absorb-50), 27..37 alarms tab (v1.15:
+        outer envelope only - the STM32 re-clamps the set, e.g. 27 in over+50..OV-100,
+        35 never above 950).
+   [FA] شناسه: ۰..۱ آفست، ۲..۳ گین، ۴..۶ آفست mV علامت‌دار، ۷ مدین ۱..۱۵، ۸ پنجره میانگین ۱..۳۰۰ (نسخه ۱.۴؛ بالا رفتن در ۱.۹)، ۹..۱۰ ضریب تبدیل η (v1.3، صفر = همانی)،
+        ۱۱..۱۲ قطع/وصل شارژر، ۱۳..۱۴ سقف duty، ۱۵/۱۷ مود duty فیکس، ۱۶/۱۸ duty فیکس/دستی،
+        ۱۹ مود تست دستی (نسخه ۱.۲)، ۲۷..۳۷ تب آلارم‌ها (نسخه ۱.۱۵: فقط پاکت بیرونی —
+        برد مجموعه را دوباره گیره می‌زند)، ۳۸..۷۶ اعداد UI (نسخه ۱.۱۶: فقط پاکت بیرونی). */
+static const int32_t INT32_T__G__ParamMin[ESP_PARAM_COUNT] = {   0,   0,  100,  100, -5000, -5000, -5000, 1,  1,   0,   0, 0, 0,   0,   0, 0,   0, 0,   0, 0, 11000, 10500, 11100, 9000, 8000, 100,  10, 14000,  50, 3000, 4000,  100,  100, 18000, 24000,  150, 14000,     0,   100,     0,     0,     0,   0,     0,   100,     0,     0,     0,   0,     0,     0,     0,     0,     0,     0,     0,     0,     0,   0,     0,     0,     0,   0,   0,   0,     0,   100,     0,   100,     0, 24000,     0, 15000, 15000, 15000, 25000,     0 };
+static const int32_t INT32_T__G__ParamMax[ESP_PARAM_COUNT] = { 255, 255, 3000, 3000,  5000,  5000,  5000, 15, 300, 999, 999, 1, 1, 500, 500, 1, 500, 1, 500, 1, 14600, 14550, 14750, 14300, 14000, 900, 300, 15000, 1000, 8000, 9000, 5000, 5000, 24000, 30000,  950, 15000,  8000, 10000,   100, 600000, 600000,  10,  5000, 10000,   100, 600000, 600000,  10,  5000,   100,   100,   100,   100, 600000, 600000, 600000,   100,  10, 600000, 600000, 120000,  10,  10,  10,  5000, 10000, 10000, 10000, 10000, 32000,  2000, 24000, 24000, 25000, 32000,     1 };

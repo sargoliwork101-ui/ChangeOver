@@ -617,7 +617,7 @@ def test_charge_profile_v112():
     text_h = CHARGER_H.read_text()
     text_esph = ESP_LINK_H.read_text()
     text_espc = ESP_LINK_C.read_text()
-    ino = (ROOT / "esp_link_panel/esp_link_panel.ino").read_text()
+    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
     cal_h = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
 
     # --- charger.h declares the profile API + ids matching esp_link.h ---
@@ -828,7 +828,7 @@ def test_charger_persistence_v114():
     flash_h = (ROOT / "Firmware/Bsp/Inc/bsp_flash.h").read_text(encoding="utf-8")
     app_c = (ROOT / "Firmware/App/Src/app.c").read_text(encoding="utf-8")
     ld = (ROOT / "CubeIDE/STM32CubeIDE/STM32F103C8TX_FLASH.ld").read_text(encoding="utf-8")
-    ino = (ROOT / "esp_link_panel/esp_link_panel.ino").read_text(encoding="utf-8")
+    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
 
     check((ROOT / "Firmware/Bsp/Src/bsp_flash.c").exists() and
           (ROOT / "Firmware/Bsp/Inc/bsp_flash.h").exists() and
@@ -1263,7 +1263,7 @@ def test_alarms_tab_v115():
     text_fh = FAULT_H.read_text()
     text_esph = ESP_LINK_H.read_text()
     text_espc = ESP_LINK_C.read_text()
-    ino = (ROOT / "esp_link_panel/esp_link_panel.ino").read_text()
+    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
 
     # --- id match: fault 27..34 and charger 35..37 identical on both sides ---
     fault_pairs = [("FAULT_ALARM_PARAM_DISCONNECT_MV", "ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_MV", 27),
@@ -1469,7 +1469,7 @@ def test_ui_mirror_v116():
     text_esph = ESP_LINK_H.read_text()
     text_espc = ESP_LINK_C.read_text()
     text_uih = (ROOT / "Firmware/Modules/Ui/ui_led.h").read_text()
-    ino = (ROOT / "esp_link_panel/esp_link_panel.ino").read_text()
+    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
     prev = (ROOT / "tools/panel_preview_server.js").read_text()
 
     # --- frame: u16 LE length, 5-byte header, 512 ceiling, BOTH sides ---
