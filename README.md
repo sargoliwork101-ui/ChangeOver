@@ -8,7 +8,7 @@
 
 تغییر مسیر تغذیه ۲۴ ولت DC: ورودی یا باتری. MCU: `STM32F103C8T6`.
 
-**مرحله فعلی:** قرارداد BSP برای کل شماتیک تثبیت شده است: GPIOهای خروجی/ورودی، ADC+DMA و کالیبراسیون، دو PWM شارژر، USART1/ESP-Link و سه منبع EXTI در پورت برد وجود دارند. `MODULE_UI=1`، `MODULE_FAULT=1`، `MODULE_MEASUREMENT=1`، `MODULE_CHANGEOVER=1`، `MODULE_MCU_POWER_PATH=1`، `MODULE_CHARGER=1` و `MODULE_JITTER=1` فعال‌اند (شارژر با `CHG_MASTER_ENABLE=1`، تصمیم کاربر ۲۰۲۶-۰۹-۲۲)؛ فقط `MODULE_PROTECTION=0` و `MODULE_ESP=0` خاموش‌اند اما backendهایشان حذف یا از Build خارج نشده‌اند — فعال‌سازی ESP-Link فقط با همان یک خط `MODULE_ESP=1`.
+**مرحله فعلی (۲۰۲۶-۰۹-۲۷، فرم‌ور v1.19):** محصول کامل است و روی بنچ واقعی کالیبره شده: دو شارژر مستقل ۱۲V با LUT توانی بنچ پر-کانال (mA واقعی باتری)، نمونه‌برداری سنکرون جریان، ESP-Link با پروتکل v1.16 (۷۷ پارامتر، ماندگاری فلش) و پنل وب v1.16x. همهٔ ماژول‌ها فعال‌اند (`MODULE_UI/MEASUREMENT/CHARGER/JITTER/FAULT/CHANGEOVER/MCU_POWER_PATH/ESP=1`؛ شارژر با `CHG_MASTER_ENABLE=1`)؛ فقط `MODULE_PROTECTION=0` خاموش است ولی backendاش در Build مانده.
 
 شماتیک: `Circuit/ChangeOver(24V_DC).pdf`
 
@@ -25,7 +25,7 @@
 
 `main.c` فقط کلاک، HAL، `MX_*_Init`، وضعیت امن BSP و بعد `App_Start()` را مدیریت می‌کند. منطق محصول در `Firmware/` و نگاشت فیزیکی فقط در پورت BSP برد است.
 
-کلید ماژول‌ها: `Firmware/Config/Inc/modules_enable.h` — اکنون `MODULE_UI = 1` و `MODULE_MEASUREMENT = 1` هستند؛ سایر ماژول‌ها خاموش‌اند.
+کلید ماژول‌ها: `Firmware/Config/Inc/modules_enable.h` — همه `1` هستند جز `MODULE_PROTECTION = 0`؛ بیلدِ پوش‌شده بدون هیچ تغییری با پنل کار می‌کند (`MODULE_ESP = 1` پیش‌فرض از ۲۰۲۶-۰۹-۲۷).
 
 ## اجرا الان (اتصال مرحله‌ای Measurement به UI)
 
@@ -38,10 +38,11 @@ CubeIDE/Core/Src/main.c
         ADC1 + DMA1                   سخت‌افزار، بافر چرخشی ۵ کاناله
           Measurement_Run()           تبدیل ADC خام به mV/mA و انتشار snapshot
       TaskUi                          Firmware/Rtos/Src/task_ui.c
-        ورودی معتبر ADC               UINT32_T__G__MeasInputVoltageMv، بر حسب mV
-        ورودی نامعتبر ADC              صفر امن، یعنی ورودی قطع
-        باتری در مرحله فعلی            UINT32_T__G__BatteryVoltageMv، تست دستی mV
-        Ui_Tick(inputMv, batteryMv)    انتخاب InputOk / Charging / BatteryRun / InputOverVoltage
+        سناریوهای LED/بازر از snapshot کامل (ولتاژها + جریان‌ها + وضعیت شارژر)
+      TaskControl                     Firmware/Rtos/Src/task_control.c
+        حلقهٔ شارژر دوکاناله (BULK/ABSORB/FLOAT + مود تست دستی + JIT retry)
+      TaskComm                        Firmware/Rtos/Src/task_comm.c
+        ESP-Link: پارامترها + تله‌متری ۱۰۰ms + ماندگاری فلش (NVM)
 ```
 
 ## قرارداد تثبیت‌شدهٔ BSP
@@ -54,18 +55,18 @@ CubeIDE/Core/Src/main.c
 | ADC | `func__BspAdc_Init/Start/GetRaw` | ADC1 + DMA1 Channel1، پنج کانال PA1/PA2/PA3/PA5/PA7 |
 | Calibration | `func__BspMeasurement_*` | تقسیم‌های ۲۴V/۱۲V، شانت و gain در پورت برد |
 | PWM | `func__BspPwm_Init/SetDutyPermille/StopAll` | TIM2_CH1 روی PA0 و TIM3_CH1 روی PA6 |
-| UART | `func__BspUart_Init/Write/ReadByte` | USART1 روی PA9/PA10، 115200 8-N-1 |
+| UART | `func__BspUart_Init/Write/ReadByte` | USART1 روی PA9/PA10؛ init مکعب 115200، ران‌تایم 921600 8-N-1 با DMA دوطرفه |
 | EXTI | `func__BspExti_Init/OnIrq/TakeEvent` | PB2/PB6 falling برای JIT active-low؛ PB4 هر دو لبه |
 
 وضعیت امن startup: بازر، ESP و LEDها Low؛ رله Low؛ کنترل‌های active-low باتری روی High؛ compare هر دو PWM صفر و event flagها پاک هستند. تغییر پایه یا قطبیت فقط در `board_pins.h` و پورت BSP مجاز است.
 
-در این مرحله فقط مسیر ولتاژ ورودی به UI وصل شده است:
+مسیر دادهٔ زنده (همه وصل‌اند):
 
-- پورت فعلی برد، سیگنال منطقی ورودی ۲۴ ولت را از کانال فیزیکی `PA2 / ADC1_IN2` می‌گیرد و به mV تبدیل می‌کند؛ Measurement فقط قرارداد منطقی را می‌بیند.
+- پورت برد، سیگنال منطقی ورودی ۲۴ ولت را از کانال فیزیکی `PA2 / ADC1_IN2` می‌گیرد و به mV تبدیل می‌کند؛ Measurement فقط قرارداد منطقی را می‌بیند.
 - تا معتبرشدن اولین فریم ADC، ورودی UI برابر صفر و قطع در نظر گرفته می‌شود.
-- ولتاژ باتری هنوز از `UINT32_T__G__BatteryVoltageMv` خوانده می‌شود و با Live Expressions قابل تغییر است.
-- اتصال ورودی باعث کندشدن یا هنگ‌کردن نمی‌شود؛ ADC و DMA توسط سخت‌افزار کار می‌کنند و Task Measurement هر ۱۰ms فقط یک فریم کوتاه را تبدیل می‌کند.
-- مقدار `BOOL__G__MeasDataValid` معتبرشدن اولین فریم را مشخص می‌کند.
+- ولتاژ هر دو نیم‌باتری (`VLOW`/`VHIGH`) و جریان واقعی هر دو کانال از snapshot واقعی می‌آیند (کالیبره‌شده با بنچ، فرم‌ور v1.19).
+- اتصال ورودی باعث کندشدن یا هنگ‌کردن نمی‌شود؛ ADC و DMA توسط سخت‌افزار کار می‌کنند و Task Measurement هر ۱ms فقط یک فریم کوتاه را تبدیل می‌کند.
+- مقدار `BOOL__G__MeasDataValid` معتبرشدن فریم‌ها را مشخص می‌کند (بعد از سه فریم کامل و پایدار).
 
 ### سناریوهای فعلی
 
@@ -74,7 +75,7 @@ CubeIDE/Core/Src/main.c
 3. **Charging**: ورودی وصل و باتری کمتر از `28V` → سبز ثابت، زرد متناسب با مانده شارژ چشمک‌زن، قرمز/بوق خاموش.
 4. **BatteryRun**: ورودی قطع (`<=20V`) → سبز متناسب با درصد باتری چشمک‌زن، زرد و قرمز خاموش و بوق طبق چهار بازه BatteryRun.
 
-بین `20V` و `21V` وضعیت قبلی اتصال ورودی حفظ می‌شود. محدودهٔ درصد باتری در منطق UI برابر `21V = 0%` تا `28V = 100%` است، اما در مرحلهٔ فعلی مقدار باتری هنوز از ورودی تست دستی خوانده می‌شود.
+بین `20V` و `21V` وضعیت قبلی اتصال ورودی حفظ می‌شود. محدودهٔ درصد باتری در منطق UI برابر `21V = 0%` تا `28V = 100%` است و مقدار باتری از نیم‌باتری‌های واقعی خوانده می‌شود. فهرست کامل سناریوها (قطع باتری، خطاها، آینهٔ آلارم‌ها): README ماژول Ui.
 
 ثابت‌های سیاست UI در `Firmware/Modules/Ui/ui_led.h` و محدودیت‌های سرویس بوق در `ui_buzzer.h` هستند. همهٔ Threadها با CMSIS-RTOS2 و حافظهٔ ثابت ساخته می‌شوند؛ FreeRTOS فقط Backend فعلی CMSIS-RTOS2 است و تخصیص پویا خاموش است.
 
@@ -106,25 +107,26 @@ ChangeOver
     │   bsp_gpio.c ◄── Ui ، EspLink (سیگنال‌های منطقی)
     │   bsp_adc.c  ◄── Measurement (فریم ADC normalized)
     │   bsp_measurement.c ◄── کالیبراسیون مدار برد
-    │   bsp_pwm.c  ◄── Charger (اسکلت، رابط منطقی)
-    │   bsp_uart.c ◄── EspLink (اسکلت، رابط منطقی)
-    │   bsp_exti.c ◄── Jitter (اسکلت، رویداد منطقی)
+    │   bsp_pwm.c  ◄── Charger (درایو TIM2/TIM3 + گیت پارک)
+    │   bsp_uart.c ◄── EspLink (USART1 با 921600 + DMA دوطرفه)
+    │   bsp_exti.c ◄── Jitter (رویداد منطقی JIT1/JIT2/INPUT)
     ├── Rtos/
-    │   rtos_app.c ──► task_ui.c          (MODULE_UI)
+    │   rtos_app.c ──► task_ui.c          (MODULE_UI، فعال)
     │              ──► task_measurement.c (MODULE_MEASUREMENT، فعال)
     │              ──► task_protection.c  (فلگ ۰)
-    │              ──► task_control.c     (فلگ ۰)
-    │              ──► task_comm.c        (فلگ ۰)
+    │              ──► task_control.c     (MODULE_CHARGER، فعال)
+    │              ──► task_comm.c        (MODULE_ESP، فعال)
     │   freertos_hooks.c
     └── Modules/
-        Ui          ◄── فعال (+ host_test_ui.py)
-        Measurement     فعال (تبدیل ADC → mV/mA + snapshot)
-        Protection      اسکلت
-        Changeover      اسکلت
-        Charger         اسکلت
-        Jitter          اسکلت
-        Fault           اسکلت
-        EspLink         اسکلت (درخت اتصال تکمیل شد)
+        Ui              فعال (+ host_test_ui.py)
+        Measurement     فعال (ADC → mV/mA + LUT بنچ + snapshot)
+        Charger         فعال (دو شارژر ۱۲V + مود دستی، + host_test_charger.py)
+        EspLink         فعال (پروتکل v1.16 + NVM + پنل v1.16x)
+        Fault           فعال (تشخیص قطع باتری + نظارت)
+        Jitter          فعال (رویداد EXTI → صف retry شارژر)
+        Changeover      فعال (انتخاب ورودی/باتری + APP_STATE)
+        McuPowerPath    فعال (Q1/PB5 مستقل)
+        Protection      خاموش (فلگ ۰، backend در Build)
 ```
 
 برگهٔ هر ماژول (توابع، پایه‌ها، درخت همان ماژول): `Firmware/Modules/<نام>/README.md`
@@ -133,6 +135,7 @@ ChangeOver
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-27 | **به‌روزرسانی کامل صفحه (فرم‌ور v1.19):** همهٔ ماژول‌ها فعال جز Protection؛ کالیبراسیون بنچ دوکاناله (LUT توانی + مقسم پک 66200)؛ پروتکل v1.16 با ۷۷ پارامتر و ماندگاری فلش؛ پنل v1.16x؛ تست هاست ۳۴/۳۴ + همهٔ گیت‌ها سبز |
 | 2026-09-16 | تثبیت BSP کامل از روی شماتیک: GPIO و safe-state، ADC+DMA و کالیبراسیون، TIM2/TIM3 PWM، USART1/ESP-Link، EXTI و IRQ/MSP؛ همسان‌سازی `.ioc`ها، افزودن HAL UART به Build و ثبت قرارداد Agentهای بعدی |
 | 2026-09-15 | چک کامل UI با `AI_AGENT_RULES.md` و اصلاحات: braces MISRA در `ui_buzzer.c`، بازر در `ui_led.c` فقط از طریق API ماژول بازر (جداسازی کامل)، شارژ بازر را صریح خاموش می‌کند، نام `BUZZER_STATE_T__G__State`، پاک‌سازی `task_ui.c`؛ مقادیر measurement به سبک قانون `BOOL__G__` اصلاح شد؛ مستندات قدیمی `ui.h`/`ui.c` (حذف‌شده) از برگه‌ها حذف شد |
 | 2026-09-15 | مقادیر اندازه‌گیری گلوبال شدند (`UINT32_T__G__Meas*` / `BOOL__G__Meas*` در measurement) — هر تسک می‌تواند بخواند و در دیباگر با Live Expressions دیده می‌شود |

@@ -67,8 +67,8 @@
 - `MODULE_UI=1`، `MODULE_MEASUREMENT=1`، `MODULE_CHANGEOVER=1`، `MODULE_FAULT=1`، `MODULE_CHARGER=1`، `MODULE_JITTER=1` و `MODULE_ESP=1` هستند (ESP از ممیزی ۲۰۲۶-۰۹-۲۷ پیش‌فرض روشن است تا بیلدِ پوش‌شده بدون هیچ تغییری با پنل کار کند؛ `CHG_MASTER_ENABLE=1` از تصمیم کاربر ۲۰۲۶-۰۹-۲۲). فقط `MODULE_PROTECTION=0` می‌ماند (اسکلت: فقط بیت لحظه‌ای FAULT_ADC؛ با فعال‌شدن منطق OC/باتری-کم روشن می‌شود)؛ صفر بودن ماژول باعث حذف backend نمی‌شود.
 - ADC1: پنج کانال (PA1/PA2/PA3/PA5/PA7 = IN1/IN2/IN3/IN5/IN7)، scan + continuous، sampling 55.5 cycle، کلاک **12MHz** (PCLK2/6؛ سقف ADC در F103 برابر 14MHz).
 - DMA1 Channel1: circular، N=10 (دو فریم ۵ کاناله)، بدون interrupt؛ `bsp_adc.c` فقط نیمهٔ کامل DMA را می‌خواند.
-- PWMهای شارژر: TIM2_CH1 روی PA0 و TIM3_CH1 روی PA6، prescaler=0 و period=1439 در clock 72MHz (50kHz)، compare صفر و stop در startup؛ با `CHG_MASTER_ENABLE=0` runtime safe-off هستند.
-- ESP-Link: USART1 روی PA9/PA10 با 115200، 8-N-1؛ `HAL_UART_MODULE_ENABLED` و درایور HAL UART در Build هستند، ولی `MODULE_ESP=0` است.
+- PWMهای شارژر: TIM2_CH1 روی PA0 و TIM3_CH1 روی PA6، prescaler=0 و period=1439 در clock 72MHz (50kHz)، compare صفر و stop در startup؛ حلقهٔ شارژر (`CHG_MASTER_ENABLE=1`) ران‌تایم درایوشان می‌کند.
+- ESP-Link: USART1 روی PA9/PA10 با 115200 در init مکعب (ران‌تایم 921600 با DMA دوطرفه)، 8-N-1؛ `HAL_UART_MODULE_ENABLED` و درایور HAL UART در Build هستند و `MODULE_ESP=1` است.
 - EXTI واقعی: PB2=`JITTER1` و PB6=`JITTER2` خروجی active-low LM393 با falling edge؛ PB4=`MCU_INT_24_IN` با هر دو لبه؛ IRQهای `EXTI2`، `EXTI4` و `EXTI9_5` فعال هستند.
 - خروجی‌های امن: PA4/PA8/PB0/PB1/PB7/PB10 Low و PB5/PB11 High. جزئیات قطبیت در `Firmware/Bsp/README.md` است.
 - `task_measurement.c` فقط APIهای منطقی `func__BspAdc_Init()` و `func__BspAdc_Start()` را صدا می‌زند؛ هندل‌ها و پایه‌های فیزیکی در پورت BSP باقی می‌مانند.
@@ -78,6 +78,7 @@
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-09-27 | اصلاح ناسازگاری داخلی: `MODULE_ESP=1` و `CHG_MASTER_ENABLE=1` (init مکعب 115200، ران‌تایم 921600) — سطرهای PWM/ESP که هنوز فلگ‌های ۰ قدیمی را نشان می‌دادند |
 | 2026-09-16 | تثبیت قرارداد کامل BSP: دو PWM شارژر، USART1/ESP-Link، EXTIهای JITTER/حضور ۲۴V، MSP/IRQ، safe startup و درایور HAL UART؛ ADC روی 12MHz با PCLK2/6 باقی ماند و دو `.ioc` همسان شدند |
 | 2026-09-15 | لیبل (User Label) برای همه پایه‌های ADC در `.ioc`: PA1=`ADC_CURRENT1`، PA2=`MCU_ADC_24_IN`، PA3=`MCU_ADC_24_BAT`، PA5=`MCU_ADC_12_BAT`، PA7=`ADC_CURRENT2`، PB4=`MCU_INT_24_IN` (یکی با نام‌های شماتیک و برگه‌ی Measurement) |
 | 2026-09-15 | ADC1 + DMA1 چرخشی (5 کانال، 9MHz) و PB4 (MCU_INT_24_IN) به `.ioc` اضافه شد؛ کلاک ADC از 36MHz به 9MHz (سقف 14MHz)؛ درایور ADC v1.1.10 به CubeIDE/Drivers |
