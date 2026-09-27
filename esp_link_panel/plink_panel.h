@@ -656,7 +656,7 @@ function uview(){
  if(!D||!D.t||!D.p||D.on!=1){allOff(!D?'در انتظار داده…':'لینک قطع است — آینه خاموش');if(ASB&&ASB.bits)ASB.bits.forEach(e=>{if(e)e.className='bit';});return;}
  const t=D.t,pp=D.p;
  const g=(id,fb)=>pp[id]!=null?pp[id]:fb;
- const vin=t[14],vbat=Math.max(t[17],t[18]);
+ const vin=t[14],vbat=t[15];/* v_bat24 مثل برد */
  if(!(vin>0||vbat>0)){allOff('داده نامعتبر — همه خاموش (حالت امن برد)');return;}
  const lo=g(74,21000),hi=g(75,29000);
  let raw=hi>lo?Math.round((Math.min(vbat,hi)-lo)/(hi-lo)*100):0;raw=Math.max(0,Math.min(100,raw));
@@ -683,7 +683,7 @@ function uview(){
   tim='قرمز '+per+'ms/'+g(45,50)+'٪ · '+(g(46,3000)&&g(48,3)?('بوق هر '+g(46,3000)+'ms ('+g(48,3)+'×'+g(47,233)+'ms)'):'بوق خاموش');
   cap='⚠ قطع باتری — قرمز چشمک + بوق'+loW;
  }else if(UV.inP){
-  const act=[t[6],t[13]].some(s=>s>=1&&s<=3);
+  const act=[t[6],t[13]].some(s=>s===1||s===2);/* FLOAT یعنی کار تمام (مثل برد) */
   gr=true;
   tim='سبز ثابت';
   if(UV.full)cap='✅ ورودی وصل · فول — سبز ثابت'+loW;
