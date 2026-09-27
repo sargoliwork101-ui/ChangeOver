@@ -153,6 +153,7 @@ function mkChannel() {
 }
 const ch = [mkChannel(), mkChannel()];
 let seq = 1, frames = 0;
+let benchSize = 3120; /* simulated /benchlog.csv bytes (nonzero so the resume/choice flow is exercisable) */
 const SIM_MS = 100;
 let ms = 0;
 
@@ -286,11 +287,21 @@ const server = http.createServer((req, res) => {
         return send(200, "application/json", JSON.stringify({ _s: 200, n: 1, s, lo, hi, la }));
     }
     if (req.method === "GET" && url.pathname === "/benchlog") {
+        if (url.searchParams.get("i") === "1") {
+            return send(200, "application/json",
+                JSON.stringify({ fs: 1, size: benchSize, max: 102400 }));
+        }
         return send(200, "text/csv; charset=utf-8",
-            "# [EN] offline preview: no bench log. / [FA] پیش‌نمایش آفلاین: فایل بنچ ندارد.\n");
+            "# [EN] offline preview: simulated bench log (" + benchSize + " bytes). / [FA] پیش‌نمایش آفلاین: فایل بنچ ندارد.\n");
     }
-    if (req.method === "POST" && (url.pathname === "/benchlog/add" || url.pathname === "/benchlog/clear")) {
-        return send(200, "application/json", '{"_s":200}');
+    if (req.method === "POST" && url.pathname === "/benchlog/add") {
+        benchSize += 400; /* one simulated row; the stub ignores the POST body */
+        if (benchSize >= 102400) { benchSize = 102400; return send(507, "application/json", '{"ok":0}'); }
+        return send(200, "application/json", JSON.stringify({ size: benchSize }));
+    }
+    if (req.method === "POST" && url.pathname === "/benchlog/clear") {
+        benchSize = 0;
+        return send(200, "application/json", '{"ok":1}');
     }
     return send(404, "text/plain", "not found");
 });

@@ -713,6 +713,13 @@ Endpoints:
 - `GET /benchlog`  -> serve the file as text/csv (download)
 - `POST /benchlog/clear` -> truncate it
 - Cap at ~100 KB: stop appending when full and warn in the UI.
+- Duty source (v1.16h, user order 2026-09-27): the wizard offers an auto
+  sweep (default ON, from..to with a fixed 1% step) besides the manual
+  comma-separated duty list; every step still waits for the typed DMM
+  readings and locks the /m window at submit.
+- Resume (v1.16h): if /benchlog.csv is non-empty at start, the panel asks:
+  download the old file and append to it (default) or clear first and
+  start fresh; the choice replaces the generic start confirmation.
 
 CSV format (v2, user order 2026-09-25: EVERY row is SELF-CONTAINED - the
 full parameter set AND the full TLM state of the sample window are inside
