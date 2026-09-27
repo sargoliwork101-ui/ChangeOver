@@ -71,7 +71,7 @@ static void func__Esp_WriteFrame(uint8_t uint8_t__type, const uint8_t *uint8_t__
 /**
  * @brief  [EN] Send SET_PARAM [id:u8][value:u32 LE].
  *         [FA] ارسال SET_PARAM با قالب [id:u8][value:u32 LE].
- * @param  uint8_t__id     [EN] Parameter ID, 0..19 / [FA] شناسه پارامتر، ۰ تا ۱۹
+ * @param  uint8_t__id     [EN] Parameter ID, 0..76 (77 params since v1.16) / [FA] شناسه پارامتر، ۰ تا ۷۶ (۷۷ پارامتر از نسخه ۱.۱۶)
  * @param  uint32_t__value [EN] Raw wire value (signed IDs as two's complement) / [FA] مقدار خام (شناسه‌های علامت‌دار به صورت مکمل دو)
  * @return [EN] None / [FA] ندارد
  */

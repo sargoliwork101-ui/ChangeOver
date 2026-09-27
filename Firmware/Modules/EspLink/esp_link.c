@@ -968,6 +968,14 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
             {
                 func__EspLink_SendParamReport(uint8_t__calParamId,
                                               uint32_t__calApplied);
+                /* [EN] v1.14 persistence (full-program audit 2026-09-27):
+                   a calibrated gain/ETA is a persisted parameter - arm the
+                   debounced flash save, otherwise a reboot silently loses
+                   the calibration (the SET_PARAM path already does this).
+                   [FA] ماندگاری: گین/η کالیبره‌شده پارامتر ذخیره‌شونده است -
+                   ذخیرهٔ فلش را مسلح کن وگرنه ریبوت آن را بی‌صدا از بین
+                   می‌برد (مسیر SET_PARAM همین کار را می‌کند). */
+                func__EspLink_NvmMarkDirty(uint8_t__calParamId);
 
                 if (uint8_t__payload[0] <= 1u)
                 {
@@ -981,6 +989,12 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
                             : ESPLINK_PARAM_CHG_ETA2_PERMILLE,
                         func__Charger_GetEfficiencyPermille(
                             (uint8_t)(uint8_t__payload[0] & 1u)));
+                    /* [EN] The ETA reset above is persisted too (same audit).
+                       [FA] صفرشدن η هم ذخیره‌شونده است. */
+                    func__EspLink_NvmMarkDirty(
+                        (uint8_t__payload[0] == 0u)
+                            ? ESPLINK_PARAM_CHG_ETA1_PERMILLE
+                            : ESPLINK_PARAM_CHG_ETA2_PERMILLE);
                 }
             }
         }

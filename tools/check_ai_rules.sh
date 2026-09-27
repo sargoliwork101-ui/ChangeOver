@@ -88,8 +88,12 @@ if grep -q "#define MODULE_PROTECTION.*1" "$ROOT/Firmware/Config/Inc/modules_ena
   echo "  FAIL: MODULE_PROTECTION should be 0"
   FAIL=1
 fi
+# MODULE_ESP defaults to 1 since the 2026-09-27 full audit: the pushed build
+# must work with the panel untouched (harmless with no ESP attached).
 if grep -q "#define MODULE_ESP.*1" "$ROOT/Firmware/Config/Inc/modules_enable.h"; then
-  echo "  FAIL: MODULE_ESP should be 0"
+  echo "  OK: MODULE_ESP=1 (panel-ready default)"
+else
+  echo "  FAIL: MODULE_ESP not 1"
   FAIL=1
 fi
 # Charger/Jitter are built (MODULE_* = 1) and the charger runs: bring-up is

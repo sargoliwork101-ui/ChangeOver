@@ -93,6 +93,10 @@ def test_modules_enabled_build():
           "MODULE_JITTER must be 1 for build/compile coverage")
     check(re.search(r"#define CHG_MASTER_ENABLE\s+1u", ch),
           "master switch must be 1 for the active charge scenario (normal Bulk/Absorb/Float)")
+    check(re.search(r"#define MODULE_ESP\s+1", mods),
+          "MODULE_ESP must be 1 (default since the 2026-09-27 audit: pushed build works with the panel untouched)")
+    check(re.search(r"#define MODULE_PROTECTION\s+0", mods),
+          "MODULE_PROTECTION must stay 0 (skeleton: only the instantaneous FAULT_ADC bit)")
 
 
 def test_master_enable_constant_is_single_gate():
@@ -1668,6 +1672,29 @@ def test_audit_batch_v116b():
           "calibration.h must not nest a block comment inside the banner")
 
 
+def test_telemetry_frame_pins_v116c():
+    """2026-09-27 full audit: the TLM_LIVE writer count must match the 84 B
+    frame - 1 u16 (seq) + flags/reserved (2 B) + 20 u32. The source carries
+    each conditional u32 twice (live value under #if, 0u under #else), so the
+    textual count is 39 (19 live + 19 #else fillers + the unconditional
+    fault-mask word). Any added field without a size bump would silently
+    truncate at SendFrame."""
+    esp_h = ESP_LINK_H.read_text()
+    link = ESP_LINK_C.read_text()
+    check(re.search(r"#define ESPLINK_TLM_PAYLOAD_SIZE\s+84u", esp_h),
+          "TLM payload size must stay 84 (2 seq + 2 flags + 20x4)")
+    start = link.index("func__EspLink_SendTelemetry")
+    body = link[start:link.index("CAL_REFERENCE (v1.3)", start)]
+    check(body.count("func__EspLink_PutU16(") == 1,
+          "SendTelemetry must write exactly one u16 (the sequence number)")
+    check(body.count("func__EspLink_PutU32(") == 39,
+          "SendTelemetry must carry 39 textual u32 writes (19 live + 19 #else fillers + faults)")
+    check(body.count("func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);") == 19,
+          "SendTelemetry must carry exactly 19 zero-filler u32 writes")
+    check(body.count("#else") == 7,
+          "SendTelemetry must keep its 7 conditional blocks (ch1/iest1/diag1/ch2/iest2/diag2/voltages)")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -1700,6 +1727,7 @@ def main():
         test_alarms_tab_v115,
         test_ui_mirror_v116,
         test_audit_batch_v116b,
+        test_telemetry_frame_pins_v116c,
     ]
     for test in tests:
         test()

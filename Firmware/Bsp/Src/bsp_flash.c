@@ -106,8 +106,15 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
        unaligned address would erase an unintended page (F1 erases by
        AR content, not by masking). Layering-safe: no NVM layout knowledge.
        [FA] گارد تراز صفحه (ممیزی کل برنامه): آدرس ناتراز صفحهٔ اشتباهی را
-       پاک می‌کرد. بدون دانستن چیدمان NVM. */
-    if ((uint32_t__pageAddress > 0x0800FC00u) ||
+       پاک می‌کرد. بدون دانستن چیدمان NVM.
+       [EN] Floor guard (full-program audit 2026-09-27, same class as the
+       ProgramHalfWords range guard below): the NVM layout owns only the
+       last two 1 KiB pages (0x0800F800/0x0800FC00, see esp_link_nvm.h) -
+       a caller bug must never erase the application area.
+       [FA] گارد کف (همان ممیزی): فقط دو صفحهٔ آخر مال NVM است - باگ
+       فراخواننده هرگز نباید برنامه را پاک کند. */
+    if ((uint32_t__pageAddress < 0x0800F800u) ||
+        (uint32_t__pageAddress > 0x0800FC00u) ||
         ((uint32_t__pageAddress & 0x3FFu) != 0u))
     {
         return false;
@@ -136,7 +143,18 @@ bool func__BspFlash_ProgramHalfWords(uint32_t uint32_t__address,
 {
     bool bool__ok = true;
 
-    if ((uint16_t__A__Data == NULL) || ((uint32_t__address & 1u) != 0u))
+    /* [EN] Range guard (full-program audit 2026-09-27): the NVM layout
+       owns 0x0800F800..0x0800FFFF (last two 1 KiB pages, see
+       esp_link_nvm.h) - a caller bug must never program the application
+       area. The end address cannot wrap: count is bounded by the NVM
+       record size (<< 2^31 halfwords).
+       [FA] گارد بازه (ممیزی کل برنامه): چیدمان NVM مالک
+       0x0800F800..0x0800FFFF است (دو صفحهٔ ۱KB آخر) - باگ فراخواننده
+       هرگز نباید ناحیهٔ برنامه را بنویسد. */
+    if ((uint16_t__A__Data == NULL) || ((uint32_t__address & 1u) != 0u) ||
+        (uint32_t__count > 1024u) ||
+        (uint32_t__address < 0x0800F800u) ||
+        ((uint32_t__address + (uint32_t__count * 2u)) > 0x08010000u))
     {
         return false;
     }

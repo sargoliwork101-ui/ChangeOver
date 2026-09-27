@@ -1148,7 +1148,7 @@ frame - mixed versions NEVER link.
 | 68 | u32 | v_bat12_mv | 12 V (middle node) battery, mV |
 | 72 | u32 | v_bat_low_mv | Lower battery = V12, mV |
 | 76 | u32 | v_bat_high_mv | Upper battery = V24 − V12, mV |
-| 80 | u32 | fault_mask | Bit 6 = FAULT_CHARGER_BAT_LOST; other bits reserved |
+| 80 | u32 | fault_mask | b0 ADC, b1 overcurrent-1, b2 overcurrent-2, b3 low battery, b4 jitter-1, b5 jitter-2, b6 FAULT_CHARGER_BAT_LOST (see `app_types.h`); b7+ = 0 |
 
 Charger states: `0 OFF, 1 BULK, 2 ABSORB, 3 FLOAT, 4 BRINGUP, 5 JIT_RETRY_WAIT,
 6 INPUT_WAIT, 7 FINAL_FAULT, 8 BAT_LOST, 9 MANUAL (v1.2, section 5.2)`.

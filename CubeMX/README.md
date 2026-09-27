@@ -64,7 +64,7 @@
 
 ### وضعیت فعلی: قرارداد کامل BSP شماتیک
 
-- `MODULE_UI=1`، `MODULE_MEASUREMENT=1`، `MODULE_CHANGEOVER=1`، `MODULE_FAULT=1`، `MODULE_CHARGER=1` و `MODULE_JITTER=1` هستند؛ `CHG_MASTER_ENABLE=0` کل Charger را runtime safe-off نگه می‌دارد. `MODULE_ESP=0` و `MODULE_PROTECTION=0` باقی می‌مانند؛ صفر بودن ماژول باعث حذف backend نمی‌شود.
+- `MODULE_UI=1`، `MODULE_MEASUREMENT=1`، `MODULE_CHANGEOVER=1`، `MODULE_FAULT=1`، `MODULE_CHARGER=1`، `MODULE_JITTER=1` و `MODULE_ESP=1` هستند (ESP از ممیزی ۲۰۲۶-۰۹-۲۷ پیش‌فرض روشن است تا بیلدِ پوش‌شده بدون هیچ تغییری با پنل کار کند؛ `CHG_MASTER_ENABLE=1` از تصمیم کاربر ۲۰۲۶-۰۹-۲۲). فقط `MODULE_PROTECTION=0` می‌ماند (اسکلت: فقط بیت لحظه‌ای FAULT_ADC؛ با فعال‌شدن منطق OC/باتری-کم روشن می‌شود)؛ صفر بودن ماژول باعث حذف backend نمی‌شود.
 - ADC1: پنج کانال (PA1/PA2/PA3/PA5/PA7 = IN1/IN2/IN3/IN5/IN7)، scan + continuous، sampling 55.5 cycle، کلاک **12MHz** (PCLK2/6؛ سقف ADC در F103 برابر 14MHz).
 - DMA1 Channel1: circular، N=10 (دو فریم ۵ کاناله)، بدون interrupt؛ `bsp_adc.c` فقط نیمهٔ کامل DMA را می‌خواند.
 - PWMهای شارژر: TIM2_CH1 روی PA0 و TIM3_CH1 روی PA6، prescaler=0 و period=1439 در clock 72MHz (50kHz)، compare صفر و stop در startup؛ با `CHG_MASTER_ENABLE=0` runtime safe-off هستند.

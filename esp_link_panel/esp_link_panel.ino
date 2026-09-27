@@ -18,8 +18,8 @@
  *               boards must flash together.
  *               v1.16 (user order 2026-09-26): UI cadence (ids 38..76 -
  *               LED periods/duties, beep periods/durations/counts/gaps,
- *               beep bands, blink periods, thresholds, persisted buzzer
- *               mute) with virtual board LEDs (real blinking), a buzzer
+ *               beep bands, blink periods, thresholds, panel-session buzzer
+ *               mute, RAM-only since v1.16b) with virtual board LEDs (real blinking), a buzzer
  *               icon with a mute cross, per-bit fault LEDs and editable
  *               fields; the wire length field grows to u16 (frame = AA 55
  *               type len_lo len_hi payload xor) and PARAMS_BULK to 386
