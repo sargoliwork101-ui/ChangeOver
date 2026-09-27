@@ -25,6 +25,7 @@
 
 #if MODULE_MEASUREMENT
 #include "bsp_adc.h"
+#include "bsp_iwdg.h"
 #include "measurement.h"
 #endif
 
@@ -65,6 +66,13 @@ void func__TaskMeasurement(void *void_ptr__argument)
        برای تکرار امن است (کالیبراسیون + شروع دوبارهٔ DMA). */
     while (func__BspAdc_Start() == false)
     {
+        /* [EN] The task is alive, only the ADC hardware is not answering -
+           check in so the watchdog tracks TASK liveness, not hardware
+           health (a dead ADC keeps safe-idling the charger, it must not
+           reboot-loop the board). 1 s cadence is inside BSP_IWDG_STALE_MS.
+           [FA] تسک زنده است فقط سخت‌افزار ADC جواب نمی‌دهد - اعلام حضور کن
+           تا واچ‌داگ زنده‌بودن تسک را بپاید نه سلامت سخت‌افزار را. */
+        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_MEASUREMENT, osKernelGetTickCount());
         func__Rtos_DelayMilliseconds(1000u);
     }
 
@@ -79,6 +87,7 @@ void func__TaskMeasurement(void *void_ptr__argument)
         UINT32_T__lastWakeTime += func__Rtos_MillisecondsToTicks(MEASUREMENT_PERIOD_MS);
         (void)osDelayUntil(UINT32_T__lastWakeTime);
         func__Measurement_Run();
+        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_MEASUREMENT, osKernelGetTickCount());
     }
 #else
     /* [EN] Flag off: task body is a plain 1 s sleep.

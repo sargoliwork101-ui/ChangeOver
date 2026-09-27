@@ -14,6 +14,7 @@
 
 #if MODULE_ESP
 #include "esp_link.h"
+#include "bsp_iwdg.h"
 #endif
 #if MODULE_MEASUREMENT
 #include "measurement.h"
@@ -52,6 +53,7 @@ void func__TaskComm(void *void_ptr__argument)
             fault_mask_t__faults = func__Fault_Get();
 #endif
             func__EspLink_Run(&measurement_snapshot_t__snap, fault_mask_t__faults);
+            func__BspIwdg_CheckIn(BSP_IWDG_SLOT_COMM, osKernelGetTickCount());
         }
         func__Rtos_DelayMilliseconds(APP_CONFIG.comm_period_ms);
 #else

@@ -77,10 +77,13 @@ HAL_Init → SystemClock_Config
   → BspPwm_Init    : compare=0 and PWM stopped
   → BspUart_Init   : select USART1 backend
   → BspExti_Init   : clear pending logical event flags
+  → BspIwdg_Init   : start the independent watchdog (~1 s, user order 2026-09-27)
   → App_Start
 ```
 
 ADC توسط `task_measurement.c` با `func__BspAdc_Init` و `func__BspAdc_Start` آغاز می‌شود تا مالکیت شروع acquisition با Measurement بماند. تا پیش از فریم معتبر، دادهٔ Measurement نامعتبر است.
+
+`bsp_iwdg.c` واچ‌داگ مستقل (پری‌اسکیلر ۳۲/، ریلود ۱۲۵۰ → اسمی ۱٫۰ ثانیه، واقعی ۰٫۶۷..۱٫۳۳ با پراکندگی LSI) به‌علاوهٔ ناظر زنده‌بودن چندتسکی است: تسک‌های measurement/comm/protection/ui هر چرخه `func__BspIwdg_CheckIn` می‌زنند و تسک کنترل با `func__BspIwdg_PollKick` فقط وقتی kick می‌کند که همهٔ شکاف‌های موردانتظار (ساخته‌شده از همان فلگ‌های `MODULE_*` که threadها را می‌سازند) داخل ۱۵۰۰ms تازه باشند — قفل هر تسک به ریست fail-safe می‌انجامد. فریز با halt دیباگر ست است تا دیباگ ریست ندهد؛ اگر ترکیب ماژول‌ها تسک کنترل نداشته باشد واچ‌داگ عمداً روشن نمی‌شود.
 
 ## درخت اتصال
 

@@ -22,6 +22,9 @@
 #if MODULE_MEASUREMENT
 #include "measurement.h"
 #endif
+#if MODULE_UI
+#include "bsp_iwdg.h"
+#endif
 
 #include <stdint.h>
 #include "app_types.h"
@@ -65,6 +68,9 @@ void func__TaskUi(void *void_ptr__argument)
            [FA] UI مالک BOOL__G__UiBatteryAlarmIssued است و آن را فقط از valid و v_bat24_mv می‌سازد. */
         func__Ui_Tick(&measurement_snapshot_t__snap);
 
+#if MODULE_UI
+        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_UI, osKernelGetTickCount());
+#endif
         func__Rtos_DelayMilliseconds(UI_TICK_MS);
     }
 }

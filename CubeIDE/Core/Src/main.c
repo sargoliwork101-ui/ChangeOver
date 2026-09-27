@@ -26,6 +26,7 @@
 #include "bsp_pwm.h"
 #include "bsp_uart.h"
 #include "bsp_exti.h"
+#include "bsp_iwdg.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -112,6 +113,12 @@ int main(void)
   func__BspPwm_Init();
   func__BspUart_Init();
   func__BspExti_Init();
+  /* [EN] Start the independent watchdog last (user order 2026-09-27): from
+     here a kick must arrive every <0.67 s; the control task pumps it every
+     pass, first pass milliseconds after the scheduler starts.
+     [FA] واچ‌داگ مستقل آخر از همه شروع می‌شود؛ از اینجا kick باید هر کمتر
+     از ۰٫۶۷ ثانیه برسد. */
+  func__BspIwdg_Init();
   /* USER CODE BEGIN 2 */
   func__App_Start();
 
