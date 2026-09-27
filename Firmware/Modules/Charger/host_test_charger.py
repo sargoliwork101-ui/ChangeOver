@@ -455,8 +455,12 @@ def test_setpoints_and_timing():
     check("func__Measurement_CurrentMedian(" in meas_c_raw and
           "func__Measurement_CurrentMovingAverage" in meas_c_raw and
           "func__Measurement_ApplyCurrentFilters" in meas_c_raw and
-          "MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX" in meas_h_txt,
-          "Measurement must run the median chain (v1.4: runtime size ANY 1..15, default 3) then the moving-average chain (v1.4: runtime window ANY 1..300 since v1.9, default 10) on each current channel (user order 2026-09-25)")
+          "MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX" in meas_h_txt and
+          "func__Measurement_ApplyCurrentFilters(0u,\n            (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1]);" in meas_c_raw and
+          "func__Measurement_ApplyCurrentFilters(1u,\n            (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);" in meas_c_raw and
+          "func__Measurement_Current1CountsToMa((uint16_t)uint32_t__current1CountsFiltered);" in meas_c_raw and
+          "func__Measurement_Current2CountsToMa((uint16_t)uint32_t__current2CountsFiltered);" in meas_c_raw,
+          "Measurement must run the median chain (v1.4: runtime size ANY 1..15, default 3) then the moving-average chain (v1.4: runtime window ANY 1..300 since v1.9, default 10) on each current channel (user order 2026-09-25) - and on the RAW ADC counts with the counts->mA conversion AFTER the filter (user order 2026-09-27)")
     lut_chain = re.search(r"CAL_Current2LutChainMa\[\] =\s*\{([^}]*)\}", cal_h)
     lut_batt = re.search(r"CAL_Current2LutBatteryMw\[\] =\s*\{([^}]*)\}", cal_h)
     lut_chain_n = len(lut_chain.group(1).split(",")) if lut_chain else 0
@@ -480,9 +484,11 @@ def test_setpoints_and_timing():
           "if (uint32_t__batteryLowMv < 8000u)\n    {\n        UINT32_T__G__Battery2VoltageMv = 8000u;" in meas_c_raw and
           "UINT32_T__G__Battery2VoltageMv = 15000u;" in meas_c_raw,
           "the ch2 power LUT needs the live battery-2 voltage cache: static default 12.0 V, written each pass after the median-5 filter, clamped 8.0..15.0 V so a missing battery can never blow up the division")
-    check(meas_c_raw.find("func__Measurement_MedianFilterVoltageSample(0u, uint32_t__batteryLowMv);") <
+    check("func__Measurement_MedianFilterVoltageSample(0u,\n            (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);" in meas_c_raw and
+          "func__Measurement_MedianFilterVoltageSample(1u,\n            (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_12V_BAT]);" in meas_c_raw and
+          meas_c_raw.find("func__Measurement_MedianFilterVoltageSample(0u,") <
           meas_c_raw.find("if (uint32_t__batteryLowMv < 8000u)"),
-          "the voltage cache must be fed AFTER the median-5 battery-low filter (spikes must not modulate the current reading)")
+          "the median-5 must run on the RAW V24/V12 ADC counts (user order 2026-09-27: filters on raw data, conversion after) and the LUT voltage cache must be fed AFTER it (spikes must not modulate the current reading)")
     check(re.search(r"func__Measurement_Current2CountsToMa\(uint16_t uint16_t__counts\)\n\{\n#if \(CAL_CURRENT2_LUT_ENABLE != 0u\)", meas_c_raw) and
           re.search(r"#else\n    return func__BspMeasurement_Current2CountsToMa\(uint16_t__counts\);\n#endif", meas_c_raw),
           "the ch2 LUT must be compile-switchable: MEASUREMENT_CURRENT2_LUT_ENABLE=0 restores the old linear behaviour exactly")
@@ -495,14 +501,14 @@ def test_setpoints_and_timing():
           meas_c_raw.find("uint32_t__battery12Mv = func__Measurement_ApplyVoltageOffsetMv(") and
           meas_c_raw.find("func__Measurement_Battery12BenchCompensate(\n        uint32_t__battery12Mv, uint32_t__current2SampleMa);") <
           meas_c_raw.find("uint32_t__batteryLowMv = uint32_t__battery12Mv;"),
-          "the V12 compensation must consume the post-LUT channel-2 current (sample moved ahead of the voltage chain) and must land on battery12Mv after the runtime voff, before the low/high derivation and the median - so Vlow, published V12 and derived Vhigh all describe the true battery-2 terminals")
+          "the V12 compensation must consume the post-LUT channel-2 current (sample moved ahead of the voltage chain) and must land on battery12Mv after the runtime voff, before the low/high derivation (the median now runs on the raw counts ahead of the chain) - so Vlow, published V12 and derived Vhigh all describe the true battery-2 terminals")
     check(len(re.findall(r"#if \(CAL_BATTERY12_BENCH_COMP_ENABLE != 0u\)", meas_c_raw)) == 2 and
           "uint32_t__dropMv = CAL_BATTERY12_BENCH_STATIC_MV +" in meas_c_raw and
           "return 0u;" in meas_c_raw.split("func__Measurement_Battery12BenchCompensate")[1].split("\n}\n")[0],
           "the V12 bench compensation must be compile-switchable (enable=0 restores today's behaviour), use saturating subtraction (static + I2 x mOhm / 1000, never below 0 mV)")
     check(re.search(r"#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS\s+62400u", bsp_meas_c) and
           "func__BspMeasurement_Battery24CountsToMv" in bsp_meas_c and
-          "func__Measurement_Battery24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);" in meas_c_raw and
+          "func__Measurement_Battery24CountsToMv(uint16_t__battery24CountsFiltered);" in meas_c_raw and
           "func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_IN]);" in meas_c_raw,
           "the battery-PACK 24 V channel must use its OWN divider (user order 2026-09-25: net attenuation to the pin is exactly 0.09826589595375722543352601156069 = 6.8k/69.2k, i.e. total 69.2k over the 6.8k bottom - besides the 68k there are a 1.2k and a 6.8k in the path) while the INPUT 24 V net keeps the 76k conversion (bench-verified +1.2 percent)")
     check(re.search(r"#define MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV\s+5000u", meas_h_txt),
@@ -877,8 +883,8 @@ def test_charger_persistence_v114():
     check("ناحیهٔ ابزورب (Absorb)" in ino and "ناحیهٔ شناور (Float)" in ino and
           "ناحیهٔ تجاوز (Over)" in ino and "زیر بازگشت (Reentry)" in ino and
           "قطع سخت (Cutoff) ۱۵V" in ino and "بالک (Bulk)" in ino and "خاموش (Off)" in ino and
-          'fill="#0d1320"' in ino,
-          "the stage graph must use the dark panel palette with bilingual (FA+EN) zone, threshold and stage labels")
+          'fill="#0b0f17"' in ino,
+          "the stage graph must use the dark panel palette (v1.16f inset #0b0f17) with bilingual (FA+EN) zone, threshold and stage labels")
     check("'باتری پایین (Vlow)',tt[17],tt[13],tt[10]" in ino and
           "'باتری بالا (Vhigh)',tt[18],tt[6],tt[3]" in ino and
           '<circle cx="${x}" cy="${y}" r="7"' in ino and

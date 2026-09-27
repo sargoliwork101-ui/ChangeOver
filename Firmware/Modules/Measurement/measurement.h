@@ -146,16 +146,16 @@ extern volatile uint32_t UINT32_T__G__MeasCurrent1Ma;       /* [EN] Logical char
 extern volatile uint32_t UINT32_T__G__MeasCurrent2Ma;       /* [EN] Logical charge current 2, mA / جریان منطقی شارژ ۲، mA */
 /* [EN] Unfiltered single-frame current-chain diagnostics (user order
  *      2026-09-22): raw ADC counts, pure-hardware shunt voltage (no offset,
- *      no trim) and pre-filter mA of the last frame, per channel.
+ *      no trim) and unfiltered single-frame mA of the last frame, per channel.
  * [FA] دیاگ تک‌فریمیِ فیلترنشدهٔ زنجیرهٔ جریان (دستور کاربر ۲۰۲۶-۰۹-۲۲):
  *      شمارش خام ADC، ولتاژ شانت فقط-سخت‌افزاری (بدون آفست و اصلاح) و
- *      mA قبل از فیلترِ آخرین فریم، برای هر کانال. */
+ *      mA تک‌فریمِ بدون فیلترِ آخرین فریم، برای هر کانال. */
 extern volatile uint32_t UINT32_T__G__MeasCurrent1RawCounts;  /* [EN] Raw ADC counts ch1 / شمارش خام کانال ۱ */
 extern volatile uint32_t UINT32_T__G__MeasCurrent1ShuntUv;    /* [EN] Shunt voltage ch1, uV / ولتاژ شانت کانال ۱ */
-extern volatile uint32_t UINT32_T__G__MeasCurrent1MaUnfiltered; /* [EN] Pre-filter mA ch1 / mA قبل از فیلتر کانال ۱ */
+extern volatile uint32_t UINT32_T__G__MeasCurrent1MaUnfiltered; /* [EN] Unfiltered single-frame mA ch1 / mA تک‌فریم بدون فیلتر کانال ۱ */
 extern volatile uint32_t UINT32_T__G__MeasCurrent2RawCounts;  /* [EN] Raw ADC counts ch2 / شمارش خام کانال ۲ */
 extern volatile uint32_t UINT32_T__G__MeasCurrent2ShuntUv;    /* [EN] Shunt voltage ch2, uV / ولتاژ شانت کانال ۲ */
-extern volatile uint32_t UINT32_T__G__MeasCurrent2MaUnfiltered; /* [EN] Pre-filter mA ch2 / mA قبل از فیلتر کانال ۲ */
+extern volatile uint32_t UINT32_T__G__MeasCurrent2MaUnfiltered; /* [EN] Unfiltered single-frame mA ch2 / mA تک‌فریم بدون فیلتر کانال ۲ */
 extern volatile bool BOOL__G__MeasInputPresent;           /* [EN] Logical 24 V input present / حضور منطقی ورودی ۲۴ ولت */
 extern volatile bool BOOL__G__MeasDataValid;              /* [EN] true after ADC warm-up frames / پس از فریم‌های warm-up ADC true */
 

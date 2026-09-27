@@ -4,19 +4,23 @@
  *              the latest snapshot shared to the other tasks. Runs inside the
  *              measurement task (RTOS): only a few conversions + one GPIO read,
  *              then it yields - no HAL_Delay anywhere. Charge currents are the
- *              PWM mid-ON synchronized samples converted to mA and then passed
- *              through the switchable filter chain - median-3 plus the
+ *              PWM mid-ON synchronized samples passed through the switchable
+ *              filter chain on the RAW counts first - median-3 plus the
  *              moving average of the last 10 samples (user order 2026-09-22,
- *              constants at the top of measurement.h); battery voltages keep
- *              their median-5 spike guard.
+ *              constants at the top of measurement.h) - and converted to mA
+ *              after; battery voltages keep their median-5 spike guard on
+ *              the raw counts of the two battery ADC channels (user order
+ *              2026-09-27: filters must run on the raw ADC data).
  *          [FA] شمارش ADC به واحد مهندسی (mV / mA)، گام‌به‌گام، با آخرین
  *              snapshot مشترک برای تسک‌های دیگر. داخل تسک اندازه‌گیری اجرا
  *              می‌شود (RTOS): فقط چند تبدیل + یک خواندن GPIO و بعد yield —
  *              هیچ‌جا HAL_Delay ندارد. جریان‌های شارژ، نمونه‌های سنکرون وسط
- *              ON پالس PWM هستند که به mA تبدیل و بعد از زنجیرهٔ فیلتر
+ *              ON پالس PWM هستند که اول روی شمارش خام از زنجیرهٔ فیلتر
  *              کلیددار عبور می‌کنند — مدین-۳ به‌علاوهٔ میانگین متحرک ۱۰ نمونهٔ
- *              اخیر (دستور کاربر ۲۰۲۶-۰۹-۲۲، ثابت‌ها بالای measurement.h)؛
- *              ولتاژهای باتری محافظ مدین-۵ خود را نگه می‌دارند.
+ *              اخیر (دستور کاربر ۲۰۲۶-۰۹-۲۲، ثابت‌ها بالای measurement.h) —
+ *              و بعد به mA تبدیل می‌شوند؛ ولتاژهای باتری محافظ مدین-۵ خود را
+ *              روی شمارش خام دو کانال ADC باتری نگه می‌دارند (دستور کاربر
+ *              ۲۰۲۶-۰۹-۲۷: فیلترها باید روی دادهٔ خام ADC اعمال شوند).
  *
  * @note    [EN] Divider/gain values come from the schematic and are private
  *              board calibration constants in bsp_measurement.c. The
@@ -55,19 +59,21 @@ static volatile measurement_snapshot_t MEASUREMENT_SNAPSHOT_T__G__Snap;
  *      واحد: فریم کامل ADC. */
 static uint8_t UINT8_T__G__MeasurementWarmupFrameCount;
 
-/* [EN] Median-of-5 history per battery channel voltage (0=v_bat_low,
-   1=v_bat_high): raised 2026-09-19 from median-3 because a false buzzer
+/* [EN] Median-of-5 history of the RAW counts of the two battery ADC
+   channels (0=V24_BAT, 1=V12_BAT; user order 2026-09-27: filters run on
+   the raw ADC data, conversion/derivation happen after): raised
+   2026-09-19 from median-3 because a false buzzer
    still fired WHILE the charger genuinely pumped (absorb mode) - that
    means glitch bursts of two consecutive frames also cross 14.8 V, and
    median-3 passes a 2-frame burst straight through. Median-of-5 only
    outputs the middle sample, so any burst shorter than 3 frames is dead
    while real voltage steps pass with ~20 ms of lag at the 10 ms frame
    cadence - nothing the control loop can notice.
-   [FA] تاریخچهٔ مدین-۵ ولتاژ دو نیم‌باتری: چون بوق فیک حین ابزوربِ
+   [FA] تاریخچهٔ مدین-۵ شمارش خام دو کانال ADC باتری: چون بوق فیک حین ابزوربِ
    واقعی هم زده شد، پرش‌های دو-فریمی پشت‌سر از مدین-۳ رد می‌شدند؛ مدین-۵
    هر ترکیدگی کوتاه‌تر از ۳ فریم را نابود می‌کند و پلهٔ واقعی با حدود دو
    فریم تأخیر عبور می‌کند. */
-static uint32_t UINT32_T__G__BatVoltageMedianHistoryMv[2][5];
+static uint32_t UINT32_T__G__BatVoltageMedianHistoryCounts[2][5];
 
 #if (MEASUREMENT_CURRENT_MEDIAN3_ENABLE != 0u)
 /* [EN] Median history per current channel (0=Current1, 1=Current2), window
@@ -80,19 +86,21 @@ static uint32_t UINT32_T__G__BatVoltageMedianHistoryMv[2][5];
  *      ۲۰۲۶-۰۹-۲۲): پرش‌های تک‌نمونه‌ای خوانش سنکرون وسط ON را بدون
  *      تأخیر اضافه حذف می‌کند. فقط وقتی کلید فیلتر کامپایل روشن است
  *      وجود دارد. */
-static uint32_t UINT32_T__G__CurrentMedianHistoryMa[2][MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX];
+static uint32_t UINT32_T__G__CurrentMedianHistoryCounts[2][MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX];
 #endif
 
 #if (MEASUREMENT_CURRENT_AVERAGE_ENABLE != 0u)
 /* [EN] Moving-average window per current channel (user order 2026-09-22):
- *      the last MEASUREMENT_CURRENT_AVERAGE_WINDOW converted mA samples,
- *      a fill counter for the startup ramp and the next slot index. Exists
- *      only when the filter switch is on.
+ *      the last MEASUREMENT_CURRENT_AVERAGE_WINDOW raw count samples (user
+ *      order 2026-09-27: filters run on the raw ADC data), a fill counter
+ *      for the startup ramp and the next slot index. Exists only when the
+ *      filter switch is on.
  * [FA] پنجرهٔ میانگین متحرک برای هر کانال جریان (دستور کاربر
- *      ۲۰۲۶-۰۹-۲۲): آخرین MEASUREMENT_CURRENT_AVERAGE_WINDOW نمونهٔ تبدیل‌شده
- *      به mA، شمارندهٔ پرشدن برای شیب شروع و اندیس خانهٔ بعدی. فقط وقتی
- *      کلید فیلتر روشن است وجود دارد. */
-static uint32_t UINT32_T__G__CurrentAverageWindowMa[2][MEASUREMENT_CURRENT_AVERAGE_WINDOW];
+ *      ۲۰۲۶-۰۹-۲۲): آخرین MEASUREMENT_CURRENT_AVERAGE_WINDOW نمونهٔ شمارش
+ *      خام (دستور کاربر ۲۰۲۶-۰۹-۲۷: فیلتر روی دادهٔ خام ADC)، شمارندهٔ
+ *      پرشدن برای شیب شروع و اندیس خانهٔ بعدی. فقط وقتی کلید فیلتر روشن
+ *      است وجود دارد. */
+static uint32_t UINT32_T__G__CurrentAverageWindowCounts[2][MEASUREMENT_CURRENT_AVERAGE_WINDOW];
 
 /* ==================== Runtime filter config / voltage offsets (ESP panel) ==================== */
 
@@ -177,7 +185,7 @@ static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
 /* ==================== Measurement Current Median3 ==================== */
 
 /**
- * @brief  [EN] Shift one new converted current sample (mA) of one channel
+ * @brief  [EN] Shift one new raw current count sample of one channel
  *              into its median history and return the middle value. The
  *              window size is the runtime median size (v1.4, user order
  *              2026-09-25: ANY value 1..15, even sizes included; the ESP
@@ -186,7 +194,7 @@ static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
  *              discarded with zero added lag. Insertion sort of a LOCAL
  *              copy keeps the live history untouched, same pattern as the
  *              voltage median-5.
- *         [FA] یک نمونهٔ تبدیل‌شدهٔ جریان (mA) از یک کانال را در
+ *         [FA] یک نمونهٔ شمارش خام جریان از یک کانال را در
  *              تاریخچهٔ مدین همان کانال جابه‌جا و مقدار میانی را
  *              برمی‌گرداند. اندازهٔ پنجره همان اندازهٔ مدین زمان اجرا
  *              است (v1.4، دستور کاربر ۲۰۲۶-۰۹-۲۵: هر مقدار ۱..۱۵، زوج
@@ -195,16 +203,16 @@ static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
  *              اضافه دور انداخته می‌شود. مرتب‌سازی درجی روی کپی محلی،
  *              همان الگوی مدین-۵ ولتاژ.
  * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
- * @param  uint32_t__sampleMa [EN] New converted sample in mA / نمونهٔ جدید mA
+ * @param  uint32_t__sampleCounts [EN] New raw count sample / نمونهٔ شمارش خام جدید
  * @param  uint8_t__medianSize [EN] Active median window (1..15) / پنجرهٔ فعال
- * @return uint32_t [EN] Median-filtered current in mA / جریان مدین‌شده mA
+ * @return uint32_t [EN] Median-filtered counts / شمارش مدین‌شده
  */
 static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
-                                                uint32_t uint32_t__sampleMa,
+                                                uint32_t uint32_t__sampleCounts,
                                                 uint8_t uint8_t__medianSize)
 {
     uint32_t UINT32_T__A__Sorted[MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX];
-    uint32_t *uint32_t__historyMa;
+    uint32_t *uint32_t__historyCounts;
     uint8_t uint8_t__index;
     uint8_t uint8_t__pass;
 
@@ -212,28 +220,28 @@ static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
         (uint8_t__medianSize < 1u) ||
         (uint8_t__medianSize > (uint8_t)MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX))
     {
-        return uint32_t__sampleMa;
+        return uint32_t__sampleCounts;
     }
 
     if (uint8_t__medianSize == 1u)
     {
         /* [EN] Window of one = bypass. [FA] پنجرهٔ یک‌تایی = عبور مستقیم. */
-        return uint32_t__sampleMa;
+        return uint32_t__sampleCounts;
     }
 
-    uint32_t__historyMa = UINT32_T__G__CurrentMedianHistoryMa[uint8_t__channelIndex];
+    uint32_t__historyCounts = UINT32_T__G__CurrentMedianHistoryCounts[uint8_t__channelIndex];
     for (uint8_t__index = (uint8_t)(uint8_t__medianSize - 1u);
          uint8_t__index > 0u;
          uint8_t__index--)
     {
-        uint32_t__historyMa[uint8_t__index] =
-            uint32_t__historyMa[uint8_t__index - 1u];
+        uint32_t__historyCounts[uint8_t__index] =
+            uint32_t__historyCounts[uint8_t__index - 1u];
     }
-    uint32_t__historyMa[0] = uint32_t__sampleMa;
+    uint32_t__historyCounts[0] = uint32_t__sampleCounts;
 
     for (uint8_t__index = 0u; uint8_t__index < uint8_t__medianSize; uint8_t__index++)
     {
-        UINT32_T__A__Sorted[uint8_t__index] = uint32_t__historyMa[uint8_t__index];
+        UINT32_T__A__Sorted[uint8_t__index] = uint32_t__historyCounts[uint8_t__index];
     }
     for (uint8_t__pass = 1u; uint8_t__pass < uint8_t__medianSize; uint8_t__pass++)
     {
@@ -257,40 +265,40 @@ static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
 /* ==================== Measurement Current Moving Average ==================== */
 
 /**
- * @brief  [EN] Push one new converted current sample (mA) of one channel
+ * @brief  [EN] Push one new raw current count sample of one channel
  *              into its moving-average window and return the average of the
  *              last MEASUREMENT_CURRENT_AVERAGE_WINDOW samples (user order
  *              2026-09-22: window of 10). Until the window fills after a
  *              restart, the average runs over the collected samples only,
  *              so the value converges without a zero-drag from empty slots.
- *         [FA] یک نمونهٔ تبدیل‌شدهٔ جریان (mA) از یک کانال را در پنجرهٔ
+ *         [FA] یک نمونهٔ شمارش خام جریان از یک کانال را در پنجرهٔ
  *              میانگین متحرک همان کانال می‌نویسد و میانگین آخرین
  *              MEASUREMENT_CURRENT_AVERAGE_WINDOW نمونه را برمی‌گرداند (دستور
  *              کاربر ۲۰۲۶-۰۹-۲۲: پنجرهٔ ۱۰تایی). تا پرشدن پنجره بعد از
  *              ری‌استارت، میانگین فقط روی نمونه‌های جمع‌شده اجرا می‌شود تا
  *              بدون کشیده‌شدن به صفرِ خانه‌های خالی همگرا شود.
  * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
- * @param  uint32_t__sampleMa [EN] New converted sample in mA / نمونهٔ جدید mA
- * @return uint32_t [EN] Moving-average current in mA / جریان میانگین‌گرفته mA
+ * @param  uint32_t__sampleCounts [EN] New raw count sample / نمونهٔ شمارش خام جدید
+ * @return uint32_t [EN] Moving-average counts / شمارش میانگین‌گرفته
  */
 static uint32_t func__Measurement_CurrentMovingAverage(uint8_t uint8_t__channelIndex,
-                                                       uint32_t uint32_t__sampleMa)
+                                                       uint32_t uint32_t__sampleCounts)
 {
-    uint32_t uint32_t__windowSumMa;
+    uint32_t uint32_t__windowSumCounts;
     uint32_t uint32_t__windowSlot;
-    uint32_t uint32_t__averageMa;
+    uint32_t uint32_t__averageCounts;
 
     if (uint8_t__channelIndex >= 2u)
     {
-        return uint32_t__sampleMa;
+        return uint32_t__sampleCounts;
     }
 
     /* [EN] Replace the oldest slot, then advance the ring index by hand (no
        modulo, keeps the index inside the window under MISRA rules).
        [FA] قدیمی‌ترین خانه جایگزین می‌شود، بعد اندیس حلقه دستی جلو می‌رود
        (بدون باقیماندهٔ تقسیم تا اندیس طبق قواعد MISRA داخل پنجره بماند). */
-    UINT32_T__G__CurrentAverageWindowMa[uint8_t__channelIndex]
-        [UINT16_T__G__CurrentAverageNextIndex[uint8_t__channelIndex]] = uint32_t__sampleMa;
+    UINT32_T__G__CurrentAverageWindowCounts[uint8_t__channelIndex]
+        [UINT16_T__G__CurrentAverageNextIndex[uint8_t__channelIndex]] = uint32_t__sampleCounts;
 
     UINT16_T__G__CurrentAverageNextIndex[uint8_t__channelIndex]++;
     if (UINT16_T__G__CurrentAverageNextIndex[uint8_t__channelIndex] >=
@@ -307,19 +315,19 @@ static uint32_t func__Measurement_CurrentMovingAverage(uint8_t uint8_t__channelI
 
     /* [EN] Sum only the filled slots and divide once by the fill count.
        [FA] جمع فقط روی خانه‌های پر و یک تقسیم بر تعداد خانه‌های پر. */
-    uint32_t__windowSumMa = 0u;
+    uint32_t__windowSumCounts = 0u;
     for (uint32_t__windowSlot = 0u;
          uint32_t__windowSlot < (uint32_t)UINT16_T__G__CurrentAverageFillCount[uint8_t__channelIndex];
          uint32_t__windowSlot++)
     {
-        uint32_t__windowSumMa +=
-            UINT32_T__G__CurrentAverageWindowMa[uint8_t__channelIndex][uint32_t__windowSlot];
+        uint32_t__windowSumCounts +=
+            UINT32_T__G__CurrentAverageWindowCounts[uint8_t__channelIndex][uint32_t__windowSlot];
     }
 
-    uint32_t__averageMa =
-        uint32_t__windowSumMa / (uint32_t)UINT16_T__G__CurrentAverageFillCount[uint8_t__channelIndex];
+    uint32_t__averageCounts =
+        uint32_t__windowSumCounts / (uint32_t)UINT16_T__G__CurrentAverageFillCount[uint8_t__channelIndex];
 
-    return uint32_t__averageMa;
+    return uint32_t__averageCounts;
 }
 #endif
 
@@ -338,11 +346,11 @@ static uint32_t func__Measurement_CurrentMovingAverage(uint8_t uint8_t__channelI
  *              و MEASUREMENT_CURRENT_AVERAGE_ENABLE در زمان کامپایل. با
  *              خاموش‌بودن هر دو کلید نمونه بدون تغییر عبور می‌کند.
  * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
- * @param  uint32_t__sampleMa [EN] Converted sample in mA / نمونهٔ تبدیل‌شده mA
- * @return uint32_t [EN] Filtered current in mA / جریان فیلترشده mA
+ * @param  uint32_t__sampleCounts [EN] Raw count sample / نمونهٔ شمارش خام
+ * @return uint32_t [EN] Filtered counts / شمارش فیلترشده
  */
 static uint32_t func__Measurement_ApplyCurrentFilters(uint8_t uint8_t__channelIndex,
-                                                      uint32_t uint32_t__sampleMa)
+                                                      uint32_t uint32_t__sampleCounts)
 {
     (void)uint8_t__channelIndex;
 
@@ -354,9 +362,9 @@ static uint32_t func__Measurement_ApplyCurrentFilters(uint8_t uint8_t__channelIn
        تنظیم زنده (v1.4: ۱..۲ = عبور مستقیم، ۳..۱۵ = فعال، هر مقدار). */
     if (UINT8_T__G__FilterMedianSize >= 3u)
     {
-        uint32_t__sampleMa =
+        uint32_t__sampleCounts =
             func__Measurement_CurrentMedian(uint8_t__channelIndex,
-                                            uint32_t__sampleMa,
+                                            uint32_t__sampleCounts,
                                             UINT8_T__G__FilterMedianSize);
     }
 #endif
@@ -366,12 +374,12 @@ static uint32_t func__Measurement_ApplyCurrentFilters(uint8_t uint8_t__channelIn
        [FA] پنجرهٔ زمان اجرا (پنل ESP): پنجرهٔ ۱ = عبور مستقیم، ≥۲ = فعال. */
     if (UINT16_T__G__FilterAverageWindow >= 2u)
     {
-        uint32_t__sampleMa =
-            func__Measurement_CurrentMovingAverage(uint8_t__channelIndex, uint32_t__sampleMa);
+        uint32_t__sampleCounts =
+            func__Measurement_CurrentMovingAverage(uint8_t__channelIndex, uint32_t__sampleCounts);
     }
 #endif
 
-    return uint32_t__sampleMa;
+    return uint32_t__sampleCounts;
 }
 
 /* ==================== Measurement ResetCurrentFilters ==================== */
@@ -397,7 +405,7 @@ static void func__Measurement_ResetCurrentFilters(void)
              uint32_t__j < (uint32_t)MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX;
              uint32_t__j++)
         {
-            UINT32_T__G__CurrentMedianHistoryMa[uint32_t__i][uint32_t__j] = 0u;
+            UINT32_T__G__CurrentMedianHistoryCounts[uint32_t__i][uint32_t__j] = 0u;
         }
     }
 #endif
@@ -407,7 +415,7 @@ static void func__Measurement_ResetCurrentFilters(void)
     {
         for (uint32_t uint32_t__j = 0u; uint32_t__j < MEASUREMENT_CURRENT_AVERAGE_WINDOW; uint32_t__j++)
         {
-            UINT32_T__G__CurrentAverageWindowMa[uint32_t__i][uint32_t__j] = 0u;
+            UINT32_T__G__CurrentAverageWindowCounts[uint32_t__i][uint32_t__j] = 0u;
         }
         UINT16_T__G__CurrentAverageFillCount[uint32_t__i] = 0u;
         UINT16_T__G__CurrentAverageNextIndex[uint32_t__i] = 0u;
@@ -416,37 +424,39 @@ static void func__Measurement_ResetCurrentFilters(void)
 }
 
 /**
- * @brief  [EN] Shift one new battery-channel voltage (mV) into the median-5
- *         history and return the filtered value. Filters the DERIVED low/high
- *         voltages that feed the charger state machine and the central
- *         battery-lost detector, so a short spike burst cannot fake
- *         "battery gone".
- *         [FA] نمونهٔ جدید ولتاژ نیم‌باتری (mV) را در تاریخچهٔ مدین-۵
- *         جابه‌جا و مقدار فیلترشده را برمی‌گرداند؛ روی مقادیر مشتق‌شدهٔ
- *         low/high که خوراک شارژر و آشکارساز مرکزی قطع باتری هستند اعمال
- *         می‌شود تا ترکیدگی کوتاه نتواند «باتری رفت» را جعل کند.
- * @param  uint8_t__channelIndex [EN] Battery channel 0 or 1 / کانال باتری
- * @param  uint32_t__sampleMv    [EN] New derived voltage sample in mV / ولتاژ جدید
- * @return uint32_t [EN] Median-of-5 filtered voltage in mV / ولتاژ مدین‌شده
+ * @brief  [EN] Shift one new RAW count sample of a battery ADC channel
+ *         into the median-5 history and return the filtered counts (user
+ *         order 2026-09-27: filters run on the raw ADC data). The charger
+ *         state machine and the central battery-lost detector consume the
+ *         low/high voltages DERIVED from these filtered conversions, so a
+ *         short spike burst cannot fake "battery gone".
+ *         [FA] نمونهٔ شمارش خام یک کانال ADC باتری را در تاریخچهٔ مدین-۵
+ *         جابه‌جا و شمارش فیلترشده را برمی‌گرداند (دستور کاربر ۲۰۲۶-۰۹-۲۷:
+ *         فیلتر روی دادهٔ خام ADC). ماشین حالت شارژر و آشکارساز مرکزی قطع
+ *         باتری، ولتاژهای low/high مشتق‌شده از همین تبدیل‌های فیلترشده را
+ *         مصرف می‌کنند تا ترکیدگی کوتاه نتواند «باتری رفت» را جعل کند.
+ * @param  uint8_t__channelIndex [EN] 0 = V24_BAT raw, 1 = V12_BAT raw / شمارش خام
+ * @param  uint32_t__sampleCounts [EN] New raw count sample / شمارش خام جدید
+ * @return uint32_t [EN] Median-of-5 filtered counts / شمارش مدین‌شده
  */
 static uint32_t func__Measurement_MedianFilterVoltageSample(uint8_t uint8_t__channelIndex,
-                                                            uint32_t uint32_t__sampleMv)
+                                                            uint32_t uint32_t__sampleCounts)
 {
-    uint32_t *uint32_t__historyMv;
+    uint32_t *uint32_t__historyCounts;
 
     if (uint8_t__channelIndex >= 2u)
     {
-        return uint32_t__sampleMv;
+        return uint32_t__sampleCounts;
     }
 
-    uint32_t__historyMv = UINT32_T__G__BatVoltageMedianHistoryMv[uint8_t__channelIndex];
-    uint32_t__historyMv[0] = uint32_t__historyMv[1];
-    uint32_t__historyMv[1] = uint32_t__historyMv[2];
-    uint32_t__historyMv[2] = uint32_t__historyMv[3];
-    uint32_t__historyMv[3] = uint32_t__historyMv[4];
-    uint32_t__historyMv[4] = uint32_t__sampleMv;
+    uint32_t__historyCounts = UINT32_T__G__BatVoltageMedianHistoryCounts[uint8_t__channelIndex];
+    uint32_t__historyCounts[0] = uint32_t__historyCounts[1];
+    uint32_t__historyCounts[1] = uint32_t__historyCounts[2];
+    uint32_t__historyCounts[2] = uint32_t__historyCounts[3];
+    uint32_t__historyCounts[3] = uint32_t__historyCounts[4];
+    uint32_t__historyCounts[4] = uint32_t__sampleCounts;
 
-    return func__Measurement_Median5(uint32_t__historyMv);
+    return func__Measurement_Median5(uint32_t__historyCounts);
 }
 
 
@@ -909,6 +919,10 @@ static uint32_t func__Measurement_ApplyVoltageOffsetMv(uint32_t uint32_t__voltag
 void func__Measurement_Run(void)
 {
     uint16_t uint16_t__raw[BSP_ADC_CHANNEL_COUNT];
+    uint16_t uint16_t__battery24CountsFiltered;
+    uint16_t uint16_t__battery12CountsFiltered;
+    uint32_t uint32_t__current1CountsFiltered;
+    uint32_t uint32_t__current2CountsFiltered;
     uint32_t uint32_t__current1SampleMa;
     uint32_t uint32_t__current1Ma;
     uint32_t uint32_t__current1ShuntUv;
@@ -985,29 +999,53 @@ void func__Measurement_Run(void)
        [FA] ابتدا در متغیرهای محلی تبدیل می‌کند تا تسک‌های دیگر مجموعهٔ
        اندازه‌گیری نیمه‌به‌روزشده نبینند. */
     /* [EN] Currents: the board port delivers the PWM mid-ON synchronized raw
-       counts in the CURRENT1/CURRENT2 frame positions; this module converts
-       them to mA and then runs the switchable filter chain - median-3 to
-       kill single-sample jumps, moving average of the last 10 samples to
-       smooth (user order 2026-09-22, constants at the top of
-       measurement.h). Voltages keep their median-5 spike guard.
+       counts in the CURRENT1/CURRENT2 frame positions; this module runs the
+       switchable filter chain on the RAW counts first - median-3 to kill
+       single-sample jumps, moving average of the last 10 samples to smooth
+       (user order 2026-09-22, constants at the top of measurement.h) - and
+       converts the filtered counts to mA after (user order 2026-09-27:
+       filters run on the raw ADC data). Voltages keep their median-5 spike
+       guard, likewise on the raw counts.
        [FA] جریان‌ها: پورت برد شمارش‌های خام سنکرونِ وسط ON پالس PWM را در
-       جایگاه‌های CURRENT1/2 فریم می‌گذارد؛ این ماژول آن‌ها را به mA تبدیل و
-       بعد زنجیرهٔ فیلتر کلیددار را اجرا می‌کند — مدین-۳ برای حذف پرش
-       تک‌نمونه‌ای و میانگین متحرک ۱۰ نمونهٔ اخیر برای صاف‌کردن (دستور کاربر
-       ۲۰۲۶-۰۹-۲۲، ثابت‌ها بالای measurement.h). ولتاژها محافظ مدین-۵ خود را
-       نگه می‌دارند. */
+       جایگاه‌های CURRENT1/2 فریم می‌گذارد؛ این ماژول اول زنجیرهٔ فیلتر
+       کلیددار را روی شمارش خام اجرا می‌کند — مدین-۳ برای حذف پرش تک‌نمونه‌ای
+       و میانگین متحرک ۱۰ نمونهٔ اخیر برای صاف‌کردن (دستور کاربر ۲۰۲۶-۰۹-۲۲،
+       ثابت‌ها بالای measurement.h) — و بعد شمارش فیلترشده را به mA تبدیل
+       می‌کند (دستور کاربر ۲۰۲۶-۰۹-۲۷: فیلتر روی دادهٔ خام ADC). ولتاژها هم
+       محافظ مدین-۵ خود را روی شمارش خام نگه می‌دارند. */
+    /* [EN] Filters run on the RAW ADC counts (user order 2026-09-27):
+       median/average of 12-bit counts cannot exceed 4095, so the u16 casts
+       at the conversion calls are airtight. The unfiltered converted
+       samples stay for telemetry (unf) and diagnostics.
+       [FA] فیلترها روی شمارش خام ADC اجرا می‌شوند (دستور کاربر ۲۰۲۶-۰۹-۲۷):
+       مدین/میانگین شمارش ۱۲بیتی از ۴۰۹۵ بیشتر نمی‌شود پس castهای u16 سر
+       تبدیل‌ها قطعی‌اند. نمونه‌های تبدیل‌شدهٔ بدون فیلتر برای تله‌متری
+       (unf) می‌مانند. */
+    uint32_t__current1CountsFiltered =
+        func__Measurement_ApplyCurrentFilters(0u,
+            (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1]);
     uint32_t__current1SampleMa =
         func__Measurement_Current1CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1]);
     uint32_t__current1ShuntUv =
         func__Measurement_CurrentCountsToShuntUv(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1]);
     uint32_t__current1Ma =
-        func__Measurement_ApplyCurrentFilters(0u, uint32_t__current1SampleMa);
+        func__Measurement_Current1CountsToMa((uint16_t)uint32_t__current1CountsFiltered);
     uint32_t__inputVoltageMv =
         func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_IN]);
+    /* [EN] Median-5 on the raw counts of the two battery ADC channels
+       (Vin keeps no filter, exactly as before).
+       [FA] مدین-۵ روی شمارش خام دو کانال ADC باتری (ورودی مثل قبل بدون
+       فیلتر می‌ماند). */
+    uint16_t__battery24CountsFiltered =
+        (uint16_t)func__Measurement_MedianFilterVoltageSample(0u,
+            (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);
+    uint16_t__battery12CountsFiltered =
+        (uint16_t)func__Measurement_MedianFilterVoltageSample(1u,
+            (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_12V_BAT]);
     uint32_t__battery24Mv =
-        func__Measurement_Battery24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);
+        func__Measurement_Battery24CountsToMv(uint16_t__battery24CountsFiltered);
     uint32_t__battery12Mv =
-        func__Measurement_V12CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_12V_BAT]);
+        func__Measurement_V12CountsToMv(uint16_t__battery12CountsFiltered);
 
     /* [EN] Channel-2 sample conversion moved BEFORE the voltage chain (user
             order 2026-09-25): the V12 bench compensation needs the corrected
@@ -1019,6 +1057,9 @@ void func__Measurement_Run(void)
             چیز دیگری را عوض نمی‌کند. */
     uint32_t__current2SampleMa =
         func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
+    uint32_t__current2CountsFiltered =
+        func__Measurement_ApplyCurrentFilters(1u,
+            (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
     uint32_t__current2ShuntUv =
         func__Measurement_CurrentCountsToShuntUv(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2]);
 
@@ -1058,17 +1099,14 @@ void func__Measurement_Run(void)
         uint32_t__batteryHighMv = 0u;
     }
 
-    /* [EN] Median-5 on both derived battery channel voltages, right where the
-       charger and the battery-lost detector consume them: a single-frame ADC
-       spike on the switching node can no longer fake a >14.8 V jump; real
-       steps pass with only a few frames of lag, no moving average.
-       [FA] مدین-۵ روی ولتاژ مشتق‌شدهٔ هر دو نیم‌باتری دقیقاً همان‌جایی که
-       شارژر و آشکارساز قطع باتری مصرفش می‌کنند؛ اسپایک تک‌فریمی دیگر پرش
-       بالای ۱۴٫۸V را جعل نمی‌کند و پله واقعی با چند فریم تأخیر عبور می‌کند. */
-    uint32_t__batteryLowMv =
-        func__Measurement_MedianFilterVoltageSample(0u, uint32_t__batteryLowMv);
-    uint32_t__batteryHighMv =
-        func__Measurement_MedianFilterVoltageSample(1u, uint32_t__batteryHighMv);
+    /* [EN] No median here anymore: the median-5 ran on the raw V24/V12
+       counts above (user order 2026-09-27), so a single-frame ADC spike on
+       the switching node is already dead before the conversion; low/high
+       derive from the filtered conversions. Real steps pass with only a
+       few frames of lag, no moving average.
+       [FA] مدین اینجا دیگر نیست: مدین-۵ روی شمارش خام V24/V12 بالا اجرا شد
+       پس اسپایک تک‌فریمی پیش از تبدیل مرده است؛ low/high از تبدیل‌های
+       فیلترشده مشتق می‌شوند. */
 
 #if (CAL_CURRENT2_LUT_ENABLE != 0u)
     /* [EN] Feed the ch2 power-LUT voltage cache (v1.13): the filtered TRUE
@@ -1088,8 +1126,13 @@ void func__Measurement_Run(void)
         UINT32_T__G__Battery2VoltageMv = uint32_t__batteryLowMv;
     }
 #endif
+    /* [EN] Convert the filtered counts AFTER the LUT voltage cache above
+       is refreshed, so the ch2 power correction divides by this pass's
+       battery-2 voltage.
+       [FA] تبدیل شمارش فیلترشده بعد از تازه‌شدن کش ولتاژ LUT تا تصحیح توان
+       کانال ۲ بر ولتاژ همین پاس تقسیم شود. */
     uint32_t__current2Ma =
-        func__Measurement_ApplyCurrentFilters(1u, uint32_t__current2SampleMa);
+        func__Measurement_Current2CountsToMa((uint16_t)uint32_t__current2CountsFiltered);
 
     /* [EN] The BSP exposes the board input-detect signal as a logical GPIO;
        polarity and physical pin mapping remain inside the board port.

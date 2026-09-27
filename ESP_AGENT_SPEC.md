@@ -454,11 +454,16 @@ mA_unfiltered = max(raw_counts - offset, 0)
                    defaults offset=8; gain ch1=1046 -> x 0.9180, ch2=1303 -> x 1.1436 mA per count)
                 (TLM: maX_unfiltered)
 
-i_filtered_ma = average_W( median_N( mA_unfiltered ) )
-                first median (N = ID 7, any 1..15 since v1.4), then moving
-                average (W = ID 8, any 1..300 since v1.9) - this is what
+counts_filtered = average_W( median_N( raw_counts ) )
+                filters run on the RAW ADC counts (user order 2026-09-27),
+                THEN the chain formula below converts to mA; first median
+                (N = ID 7, any 1..15 since v1.4), then moving average
+                (W = ID 8, any 1..300 since v1.9) - this is what
                 the charger decides on
                 (TLM: iX_filtered_ma)
+                (median/average of 12-bit counts cannot exceed 4095, so the
+                conversion cast is airtight; the unfiltered sample stays for
+                TLM maX_unfiltered and the V12 bench compensation)
 ```
 
 Output-current estimate (TLM: iestX_ma) - v1.3, two modes (ETA = ID 9/10):
