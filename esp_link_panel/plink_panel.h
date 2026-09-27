@@ -37,6 +37,7 @@ section{margin-top:12px}
 .hd b{font-size:15px;display:flex;align-items:center;gap:8px}
 .hd b::before{content:"";width:4px;height:18px;border-radius:4px;background:linear-gradient(180deg,var(--ac2),var(--ac))}
 .big{display:flex;justify-content:space-between;align-items:baseline;margin:6px 0}.big b{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+.bg2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
 .bar{height:8px;background:var(--in);border:1px solid var(--ln);border-radius:8px;overflow:hidden;position:relative;margin:5px 0 12px}
 .bar i{position:absolute;inset:0 0 0 auto;width:0;background:linear-gradient(90deg,var(--ac),var(--ac2));transition:width .3s}
 .bar u{position:absolute;top:0;bottom:0;width:2px;background:var(--wa);box-shadow:0 0 6px var(--wa)}
@@ -98,7 +99,7 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .kc{font-size:11px;margin-top:6px}.cr{margin-top:10px;flex-wrap:wrap}.cr .cb{flex:1 1 120px}.cr input[type=number]{width:124px}
 .off2{background:linear-gradient(180deg,#a02b33,#7c1f27);white-space:nowrap}
 @media(max-width:1000px){.ch,.frr,.qs{grid-template-columns:1fr}}
-@media(max-width:640px){.sbt button{font-size:12px;padding:8px 2px}.cb{font-size:12px;padding:9px 8px}.cb span{white-space:nowrap}.ch{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}header{margin:0 -8px 10px;padding-left:8px;padding-right:8px}body{padding:0 8px 24px}}
+@media(max-width:640px){.sbt button{font-size:12px;padding:8px 2px}.cb{font-size:12px;padding:9px 8px}.cb span{white-space:nowrap}.ch{grid-template-columns:1fr}.bg2{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}header{margin:0 -8px 10px;padding-left:8px;padding-right:8px}body{padding:0 8px 24px}}
 .sbt{display:flex;gap:4px;background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:4px;margin-bottom:12px}
 #sbt{position:sticky;top:113px;z-index:53}
 .sbt button{flex:1;border:0;background:none;border-radius:8px;padding:8px 6px;color:var(--mu);font-weight:700;transition:background .15s,color .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -140,8 +141,6 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 <div class="sec">فیلتر جریان <span class="lb">(مشترک هر دو کانال)</span></div><div class="frr" id="fg"></div><div class="fx fxw" id="ff"></div></div>
 
 <div class="ch" id="ch"></div>
-<div id="mc"></div>
-
 </div>
 <div class="pgx" id="p1"></div>
 <div class="pgx" id="p2">
@@ -391,22 +390,18 @@ ASB={sp:[0,1,2,3,4,5,6].map(k=>$('sp'+k)),sr:[0,1,2,3,4,5,6].map(k=>$('sr'+k)),f
 $('fg').innerHTML='<div class="lb" id="fspan" style="margin-top:6px">—</div>';
 /* ---------- دو ستون جدا: شارژر ۱ و شارژر ۲ ---------- */
 $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}">—</span></div>
-<div class="big"><span class="lb">جریان تخمینی باتری (iest)</span><b class="n" id="ie${n}">—</b></div>
-<div class="big"><span class="lb">duty <span id="dc${n}"></span></span><span class="n" id="du${n}">—</span></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
+<div class="bg2"><div class="big"><span class="lb">جریان تخمینی باتری (iest)</span><b class="n" id="ie${n}">—</b></div>
+<div class="big"><span class="lb">duty <span id="dc${n}"></span></span><span class="n" id="du${n}">—</span></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
 <div class="bctl"><span class="lb">مود</span><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button></div>
-<div class="bctl"><span class="lb">دیوتی دستی ٪</span><input type="number" step="any" id="qm${n}" data-s style="width:76px"><button class="sb" onclick="qset(${n})">اعمال</button></div>
+<div class="bctl"><span class="lb">دیوتی دستی ٪</span><input type="number" step="any" id="qm${n}" data-s style="width:76px"><button class="sb" onclick="qset(${n})">اعمال</button><button class="sb off2" onclick="qzero(${n})">صفر</button></div>
 ${row(12+n)}
+<div class="lb">بستن پنل: ۱۰ ثانیه بعد مود دستی خاموش و دیوتی صفر می‌شود؛ بعد از تریپ JIT همان دیوتی را دوباره اعمال کنید.</div>
 <div class="sec">زنجیرهٔ اندازه‌گیری و محاسبه</div>
 <table>${[['ADC خام','count',0],['ولتاژ شنت','µV',1],['جریان بدون فیلتر','mA',2],['جریان فیلترشده','mA',3],['تخمین باتری (iest)','mA',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}">—</b> <span class="lb">${r[1]}</span></td></tr>`).join('')}</table>
 <div class="lb kc">ثابت‌ها: ADC دوازده‌بیتی، ۳۳۰۰mV، R41/R42 = 1k/10k، LM358 × 101، شنت 10 mOhm</div>
 <canvas id="cv${n}"></canvas><div class="lg"><span><i style="background:#6b7691"></i>بدون فیلتر · نوسان <b class="n" id="pu${n}">—</b> mA</span><span><i style="background:#5b9dff"></i>فیلترشده · نوسان <b class="n" id="pf${n}">—</b> mA</span><span class="hnl">نقاط <input type="number" id="hN${n}" data-s min="10" max="600" value="100"> از <b class="n" id="hC${n}">--</b></span></div>
 <button class="bt" id="tg${n}">—</button></div>`).join('');
 [1,2].forEach(n=>$('tg'+n).onclick=()=>{const c=D&&D.p[10+n];if(c!==0&&!confirm('PWM شارژر '+n+' فوراً قطع شود؟'))return;send(10+n,c===0?1:0);});
-/* کارت کنترل دستی دیوتی — v1.10 در تب «پنل» (دستور کاربر ۲۰۲۶-۰۹-۲۵) + سقف دیوتی هر کانال */
-$('mc').innerHTML=`<div class="cd"><div class="ti">کنترل دستی دیوتی (تست جریان)</div><div class="ds">مود دستی شارژر خودکار و محافظت باتری‌ها را متوقف می‌کند و دیوتی را خودتان تعیین می‌کنید؛ فقط حضور ۲۴V، قطع JIT، قطع ۱۵٫۰V و سقف دیوتی می‌ماند. پنل را نبندید — ۱۰ ثانیه بعد از بستن، مود دستی خاموش و دیوتی صفر می‌شود. بعد از تریپ JIT همان دیوتی را دوباره اعمال کنید. مود (خودکار/دستی)، عدد دیوتی و سقف دیوتی هر کانال در کارت خودش وارد می‌شود.</div>
-<div class="bctl"><button class="sb off2" id="ao">هر دو = 0</button></div>
-<div class="lb" id="mq" style="margin-top:6px"></div></div>`;
-
 /* ---------- تاریخچهٔ نمودار هر کانال ---------- */
 let LS=-1;const hn=c=>{const e=$('hN'+(c+1)),v=e?Math.round(+e.value):0;return !v?100:Math.min(600,Math.max(10,v));},H=[0,1].map(()=>({u:[],f:[]}));
 function vcal(k){const R=V[k],m=Math.round(+$('vm'+k).value*1000),shown=D&&D.t[R[1]],off=D&&D.p[R[2]];if(!(m>0))return alert('عدد مولتی‌متر را به ولت وارد کنید (مثلاً 13.05).');if(off==null)return;
@@ -896,17 +891,18 @@ async function qset(n){if(W.run)return alert('داده‌برداری ویزار
  const man=manOn();let go=man;
  if(!man)go=confirm('مود دستی خاموش است؛ روشن شود و دیوتی اعمال گردد؟\n(لغو = فقط عدد دیوتی ذخیره می‌شود)');
  try{if(go&&!man)await setv(19,1);await setv(14+2*n,pm);$('qm'+n).value='';}catch(e){alert(e);}}
+async function qzero(n){if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');
+ if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');
+ const man=manOn();if(!man&&!confirm('مود دستی خاموش است؛ روشن شود و دیوتی صفر گردد؟'))return;
+ try{if(!man)await setv(19,1);await setv(14+2*n,0);}catch(e){alert(e);}}
 async function mset(v){if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');
  if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');const man=manOn();if((man?1:0)===v)return;
  if(v&&!man&&!confirm('شارژر خودکار و محافظت‌های باتری متوقف می‌شوند و دیوتی را خودتان تعیین می‌کنید. ادامه؟'))return;
  try{await setv(19,v);}catch(e){alert(e);}}
 [1,2].forEach(n=>{const a=$('ma'+n),m=$('mm'+n);if(a)a.onclick=()=>mset(0);if(m)m.onclick=()=>mset(1);});
-$('ao').onclick=async()=>{if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');
- if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');try{await setv(16,0);await setv(18,0);}catch(e){alert(e);}};
 function mview(d){const man=(d.fl&32)!=0,sup=d.p[19]!=null&&d.on==1;
  [1,2].forEach(n=>{const a=$('ma'+n),m=$('mm'+n);if(!a||!m)return;
-  a.disabled=m.disabled=!sup;a.classList.toggle('on',sup&&!man);m.classList.toggle('on',sup&&man);});
- $('mq').innerHTML=man?('کانال ۱: دیوتی '+pc(d.t[5])+' · جریان '+d.t[3]+' mA — کانال ۲: دیوتی '+pc(d.t[12])+' · جریان '+d.t[10]+' mA'):'';}
+  a.disabled=m.disabled=!sup;a.classList.toggle('on',sup&&!man);m.classList.toggle('on',sup&&man);});}
 poll();
 setInterval(uview,50); /* v1.16: آینهٔ LED با ۵۰ms — چشمک هم‌سرعت برد */
 </script></body></html>)HTML";
