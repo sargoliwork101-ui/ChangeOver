@@ -684,6 +684,12 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
 static uint32_t UINT32_T__G__Battery2VoltageMv = 12000u;
 #endif
 
+/* [EN] The tail slope indexes POINTS-1/POINTS-2: fail the build if the
+   table ever shrinks below 2 points.
+   [FA] شیب دنباله POINTS-1/POINTS-2 را می‌خواند: اگر جدول روزی زیر ۲ نقطه
+   رفت، بیلد بشکند. */
+_Static_assert(CAL_CURRENT2_LUT_POINTS >= 2u, "ch2 LUT needs >= 2 points");
+
 static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
 {
     uint32_t uint32_t__index;
@@ -702,6 +708,16 @@ static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
                 CAL_Current2LutBatteryMw[uint32_t__index - 1u];
             uint32_t uint32_t__yHigh =
                 CAL_Current2LutBatteryMw[uint32_t__index];
+            /* [EN] Degenerate-segment guard (the table is hand-edited since
+               v1.12): equal anchors would divide by zero - return the point
+               value. No effect on a strictly increasing table.
+               [FA] گارد بازهٔ تباه‌شده (جدول دستی ویرایش می‌شود): لنگرهای
+               برابر تقسیم‌برصفر می‌کردند - مقدار نقطه برگردد. روی جدول
+               سالم بی‌اثر است. */
+            if (uint32_t__xHigh == uint32_t__xLow)
+            {
+                return uint32_t__yHigh;
+            }
             return uint32_t__yLow +
                    (((uint32_t__chainMa - uint32_t__xLow) *
                      (uint32_t__yHigh - uint32_t__yLow)) /
@@ -711,6 +727,12 @@ static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
 
     /* [EN] Above the last anchor: extend the last segment's slope.
        [FA] بالای آخرین لنگر: شیب آخرین بازه ادامه می‌یابد. */
+    /* [EN] Same degenerate guard for the extrapolated tail slope. */
+    if (CAL_Current2LutChainMa[CAL_CURRENT2_LUT_POINTS - 1u] ==
+        CAL_Current2LutChainMa[CAL_CURRENT2_LUT_POINTS - 2u])
+    {
+        return CAL_Current2LutBatteryMw[CAL_CURRENT2_LUT_POINTS - 1u];
+    }
     return CAL_Current2LutBatteryMw[CAL_CURRENT2_LUT_POINTS - 1u] +
            (((uint32_t__chainMa -
               CAL_Current2LutChainMa[CAL_CURRENT2_LUT_POINTS - 1u]) *
@@ -1352,11 +1374,6 @@ int32_t func__Measurement_GetVoltageOffsetMv(uint8_t uint8_t__channelIndex)
     if (uint8_t__channelIndex == 1u)
     {
         return INT32_T__G__Voltage24OffsetMv;
-    }
-
-    return INT32_T__G__Voltage12OffsetMv;
-}
-tage24OffsetMv;
     }
 
     return INT32_T__G__Voltage12OffsetMv;

@@ -652,6 +652,31 @@ bool func__Charger_IsManualTestModeActive(void);
  */
 void func__Charger_NotifyEspLinkActivity(void);
 
+/* ==================== Charger NVM-save suspension / تعلیق برای ذخیره NVM ==================== */
+/**
+ * @brief  [EN] Suspend / resume switching for an NVM flash save (user order
+ *              2026-09-27: idle the charger, save, restart it). While
+ *              suspended, Charger_Evaluate holds both gates at 0 and skips
+ *              the pass; state machines, soak accumulators and the 15 s
+ *              settle gate are untouched, so the resume continues
+ *              seamlessly. Fault and Changeover keep evaluating (separate
+ *              calls in the control task). Single volatile flag, no lock
+ *              needed. Pre-kernel safe (plain bool store/load).
+ *         [FA] تعلیق/ادامهٔ سوییچینگ برای ذخیرهٔ فلش NVM (دستور کاربر):
+ *              در تعلیق هر دو گیت صفر و پاس رد می‌شود؛ ماشین‌های حالت و
+ *              شستشو دست نمی‌خورند پس ادامه یکپارچه است. فالت و چنج‌اور
+ *              به ارزیابی ادامه می‌دهند. تک‌پرچم volatile بدون قفل.
+ * @param  bool__suspended [EN] true = hold gates at 0 / گیت‌ها صفر نگه داشته شوند
+ */
+void func__Charger_SetSuspended(bool bool__suspended);
+
+/**
+ * @brief  [EN] Read the NVM-save suspension flag.
+ *         [FA] خواندن پرچم تعلیق ذخیرهٔ NVM.
+ * @return bool [EN] true = suspension active / تعلیق فعال است
+ */
+bool func__Charger_IsSuspended(void);
+
 /* ==================== Charger_Init / مقداردهی اولیه ==================== */
 /**
  * @brief  [EN] Initialize policy state, stop every PWM channel and force a
@@ -799,8 +824,5 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
  */
 bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value);
-
-#endif /* CHARGER_H */
-value);
 
 #endif /* CHARGER_H */

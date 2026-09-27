@@ -200,6 +200,13 @@ immediately and drain within ~1 ms.
 | 0x11 | STM→ESP | PARAM_REPORT | `[id:u8][value:u32 LE]` — the **applied** value (sent after every accepted SET_PARAM) |
 | 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS; 77 params since v1.16 = 386 payload bytes) |
 
+Audit 2026-09-27: the 77-param growth had silently outgrown the STM32 256 B
+TX ring, so every PARAMS_BULK reply was refused and a fresh panel never
+learned the live values (it showed ESP-side defaults until each value was
+touched). The ring is now 1024 B and the bulk payload is static - GET_PARAMS
+is answered with the board truth again, and the manual-mode 1 s keepalive
+bulk no longer burns ~900 B of the 1 KiB comm stack.
+
 Verified example frames (hex):
 
 ```text
@@ -905,6 +912,15 @@ its automatic mode and the buzzer unmuted.
   by read-back. A cut during erase or program can never destroy the
   previous good record; boot picks the CRC-valid record with the newest
   sequence (int16 difference, wrap-safe).
+- Charger suspension (audit 2026-09-27, user order: "idle the charger,
+  save, restart it"): ~1.5 s after the last edit the comm task sets the
+  suspension flag, waits (<= 200 ms) until both PWM compares read 0, and
+  only then erases/programs - so NO switching happens inside the
+  ~30..50 ms CPU-wide flash stall (F1 single bank, no read-while-write:
+  SysTick time jumps, EXTI/UART ISRs go latent, in-flight UART bytes
+  overrun into CRC retries). Charge state, soak and settle are untouched
+  and resume seamlessly; the one stretched comm pass delays a single
+  TLM_LIVE frame by ~0.2 s.
 - Boot: `func__App_Init` (pre-scheduler, under MODULE_ESP) replays the
   record through the SAME `func__EspLink_ApplyParam` clamped setters the
   panel path uses - a stale or hostile record can only land inside the
@@ -998,6 +1014,13 @@ reflash with an unreadable (v2) NVM record changes no behavior or sound.
   band1 54/59/62, band2 54/59/63, band3 55/60/64, crit 56/57/58/61, gap 65
   shared by all run bands; the board clamps each window to fit (crit
   pulls its COUNT down) and the panel warns before sending.
+- Beep audibility floor (audit 2026-09-27, user decision: keep behavior +
+  document): the UI task samples every pattern at a fixed 10 ms cadence,
+  so a beep duration of 1..9 ms can fall between two samples and sound
+  short or never sound at all (0 = deterministic off; >= 10 ms always
+  renders). All compiled defaults are >= 100 ms; only a hand-typed 1..9 ms
+  duration is affected. The panel shows durations as sent - prefer
+  >= 10 ms for an audible beep.
 - Normal blink (66..69): green (BatteryRun: OFF time = remaining x
   period/100) and yellow (charging: ON time = remaining x period/100,
   only while a channel is really charging; full = steady green).

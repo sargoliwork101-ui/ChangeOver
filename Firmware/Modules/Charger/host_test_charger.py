@@ -21,6 +21,11 @@ IOC = ROOT / "CubeMX/CubeIDE.ioc"
 BSP_EXTI_C = ROOT / "Firmware/Bsp/Src/bsp_exti.c"
 ESP_LINK_H = ROOT / "Firmware/Modules/EspLink/esp_link.h"
 ESP_LINK_C = ROOT / "Firmware/Modules/EspLink/esp_link.c"
+ESP_LINK_NVM_H = ROOT / "Firmware/Modules/EspLink/esp_link_nvm.h"
+ESP_LINK_NVM_C = ROOT / "Firmware/Modules/EspLink/esp_link_nvm.c"
+BSP_UART_C = ROOT / "Firmware/Bsp/Src/bsp_uart.c"
+MEASUREMENT_C = ROOT / "Firmware/Modules/Measurement/measurement.c"
+CALIBRATION_H = ROOT / "Firmware/Modules/Measurement/calibration.h"
 
 ABSORB_MV = 14400
 FLOAT_MV = 13500
@@ -1314,7 +1319,7 @@ def test_alarms_tab_v115():
     check(text_cc.count("func__Fault_OnSupervisionChange();") >= 2,
           "both the profile path and the alarm path must cascade into the fault re-clamp (disconnect stays < OV)")
     cbody = re.sub(r"/\*.*?\*/", "", text_cc, flags=re.S)
-    cbody = re.sub(r"static uint32_t UINT32_T__G__Charger(HardFaultMa|OvCutoffMv|ValidFloorMv) = [A-Z_0-9]+;", "", cbody)
+    cbody = re.sub(r"static (?:volatile )?uint32_t UINT32_T__G__Charger(HardFaultMa|OvCutoffMv|ValidFloorMv) = [A-Z_0-9]+;", "", cbody)
     cbody = "\n".join(ln for ln in cbody.split("\n")
                       if "UINT32_T__G__ChargerHardFaultMa = CHG_CURRENT_HARD_FAULT_MA" not in ln
                       and "UINT32_T__G__ChargerOvCutoffMv = CHG_MAX_VALID_BATTERY_MV" not in ln
@@ -1553,6 +1558,110 @@ def test_ui_mirror_v116():
           "the offline preview must serve 77 params with the q3 mask")
 
 
+
+def test_audit_batch_v116b():
+    """v1.16 second audit sweep: locks, suspend, bulk TX, LUT guards, tail junk."""
+    ch = CHARGER_H.read_text()
+    cc = CHARGER_C.read_text()
+    fc = FAULT_C.read_text()
+    uart = BSP_UART_C.read_text()
+    link = ESP_LINK_C.read_text()
+    nvmh = ESP_LINK_NVM_H.read_text()
+    nvmc = ESP_LINK_NVM_C.read_text()
+    meas = MEASUREMENT_C.read_text()
+    calh = CALIBRATION_H.read_text()
+
+    def fn_body(text, name):
+        # first mention can be a comment: take the occurrence whose next
+        # newline-brace (definition) comes before any semicolon (decl/call)
+        pos = 0
+        while True:
+            at = text.index("func__" + name, pos)
+            nl = chr(10)
+            brace = text.find(nl + "{", at)
+            semi = text.find(";", at)
+            if brace != -1 and (semi == -1 or brace < semi):
+                break
+            pos = at + 1
+        depth = 0
+        i = brace
+        while i < len(text):
+            if text[i] == "{":
+                depth += 1
+            elif text[i] == "}":
+                depth -= 1
+                if depth == 0:
+                    return text[at:i]
+            i += 1
+        raise AssertionError("unbalanced braces for " + name)
+
+    # --- race-artifact tails stay gone (74785d7 script junk) ---
+    check(ch.count("#endif") == 1,
+          "charger.h must end with exactly one header guard")
+    check("value);" not in ch.split("#endif")[0].splitlines()[-1],
+          "charger.h must not carry the stray declaration fragment")
+    stray = [ln for ln in meas.splitlines() if ln.strip() == "tage24OffsetMv;"]
+    check(not stray,
+          "measurement.c must not carry the stray tail fragment")
+
+    # --- C11: writer-side scheduler locks in the multi-field setters ---
+    for name in ["Charger_SetProfileParam", "Charger_SetAlarmParam"]:
+        body = fn_body(cc, name)
+        check("osKernelLock()" in body and "osKernelRestoreLock" in body,
+              name + " must apply store+clamp under a scheduler lock")
+    body = fn_body(fc, "Fault_SetAlarmParam")
+    check("osKernelLock()" in body and "osKernelRestoreLock" in body,
+          "Fault_SetAlarmParam must apply store+clamp under a scheduler lock")
+
+    # --- F4 + G1: fault mask + charger ceilings volatile, Set/Clear locked ---
+    check("static volatile fault_mask_t FAULT_MASK_T__G__Mask" in fc,
+          "fault mask must be volatile")
+    for name in ["Fault_Set", "Fault_Clear"]:
+        body = fn_body(fc, name)
+        check("osKernelLock()" in body and "osKernelRestoreLock" in body,
+              name + " must hold a scheduler lock across the RMW")
+    for var in ["ChargerHardFaultMa", "ChargerOvCutoffMv", "ChargerValidFloorMv"]:
+        check("static volatile uint32_t UINT32_T__G__" + var in cc,
+              var + " must be volatile (comm writer, control reader)")
+
+    # --- NVM suspend: charger idles around the flash stall (user 2026-09-27) ---
+    check("func__Charger_SetSuspended" in ch and "func__Charger_IsSuspended" in ch,
+          "charger.h must declare the suspension API")
+    check("BOOL__G__ChargerSuspended" in cc and "func__BspPwm_StopAll();" in cc,
+          "Charger_Evaluate must hold both gates at 0 while suspended")
+    check("NvmSuspendCharger" in nvmc and "NvmResumeCharger" in nvmc,
+          "NvmSaveNow must suspend around erase/program/verify and resume on every exit")
+    check(nvmc.count("func__EspLink_NvmResumeCharger(bool__chargerSuspended);") >= 4,
+          "all four SaveNow exits (erase/program/verify fail + success) must resume")
+    check("IsGatePulsing(BSP_PWM_CHARGER_1)" in nvmc and "IsGatePulsing(BSP_PWM_CHARGER_2)" in nvmc,
+          "the suspend wait must poll the hardware truth of both gates")
+
+    # --- E4/E1: bulk must fit the TX ring, off the comm stack ---
+    ring_line = [ln for ln in uart.splitlines() if "BSP_UART_TX_RING_SIZE" in ln and "#define" in ln][0]
+    ring_size = int("".join(ch for ch in ring_line.split()[-1] if ch.isdigit()))
+    check(ring_size >= 392,
+          "TX ring must fit the 392 B PARAMS_BULK frame (77 params)")
+    check("static uint8_t UINT8_T__A__Payload[1u + (ESPLINK_PARAM_COUNT * 5u)];" in link,
+          "bulk payload must be static (comm stack is 1 KiB)")
+    check("ESPLINK_PARAM_COUNT <= ESP_LINK_NVM_ENTRY_MAX" in nvmc,
+          "NVM must statically assert the record fits the param table")
+    check("632 B for 77 entries" in nvmh,
+          "NVM record comment must state the true 632 B / 77 size")
+
+    # --- LUT hardening + dead-clamp cleanup ---
+    check("uint32_t__xHigh == uint32_t__xLow" in meas,
+          "LUT must guard the degenerate (equal-anchor) segment")
+    check("CAL_CURRENT2_LUT_POINTS >= 2u" in meas,
+          "LUT must statically assert >= 2 points for the tail slope")
+    check("#if (CHG_ETA_MIN_PERMILLE != 0u)" in cc,
+          "the always-false u32<0 ETA clamp must compile out (type-limits green)")
+    check("v1.13 (user order 2026-09-25" in calh and "voltages are fixed but the currents" in calh,
+          "calibration.h must keep the v1.13 power-LUT note")
+    nested = [ln for ln in calh.splitlines() if ln.startswith("/* [EN] v1.13")]
+    check(not nested,
+          "calibration.h must not nest a block comment inside the banner")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -1584,6 +1693,7 @@ def main():
         test_charger_persistence_v114,
         test_alarms_tab_v115,
         test_ui_mirror_v116,
+        test_audit_batch_v116b,
     ]
     for test in tests:
         test()

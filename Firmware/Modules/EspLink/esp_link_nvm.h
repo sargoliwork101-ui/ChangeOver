@@ -141,10 +141,10 @@ typedef struct
 
 /**
  * @brief  [EN] Flash record: header + entry list + CRC32 over all preceding
- *              bytes. Size 152 B for 17 entries - one erased page holds it
+ *              bytes. Size 632 B for 77 entries - one erased page holds it
  *              with room to grow.
  *         [FA] رکورد فلش: سربرگ + فهرست ورودی‌ها + CRC32 روی همهٔ بایت‌های
- *              قبل از خودش. اندازه ۱۵۲ بایت برای ۱۷ ورودی - یک صفحهٔ پاک‌
+ *              قبل از خودش. اندازه ۶۳۲ بایت برای ۷۷ ورودی - یک صفحهٔ پاک‌
  *              شده با حاشیه جایش را می‌دهد.
  */
 typedef struct

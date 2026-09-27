@@ -525,6 +525,15 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t uint32_t__value,
                             uint32_t *uint32_t__appliedValue)
 {
+    /* [EN] Writer-side scheduler lock (v1.16 audit C11): strictly redundant
+       today (the UI reader runs BELOW the comm writer, so no preemption),
+       but it closes the 40-field set against future priority moves for a
+       few microseconds. Pre-kernel the plain path runs (NVM replay).
+       [FA] قفل زمان‌بند سمت نویسنده: امروز عملاً افزونه (خواننده پایین‌تر
+       از نویسنده است) ولی ست ۴۰فیلدی را در برابر جابه‌جایی آیندهٔ
+       اولویت‌ها می‌بندد. */
+    int32_t int32_t__savedKernelLock = osKernelLock();
+
     switch (uint8_t__paramId)
     {
         case UI_ALARM_PARAM_OV_LED_PERIOD_MS:
@@ -645,10 +654,18 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
             UI_ALARM_T__G__Alarm.uint32_t__buzzerMute = uint32_t__value;
             break;
         default:
+            if (int32_t__savedKernelLock >= 0)
+            {
+                (void)osKernelRestoreLock(int32_t__savedKernelLock);
+            }
             return false;
     }
 
     func__Ui_ClampAlarms();
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
     return func__Ui_GetAlarmParam(uint8_t__paramId, uint32_t__appliedValue);
 }
 

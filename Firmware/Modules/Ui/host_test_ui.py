@@ -710,6 +710,10 @@ def main():
     onY,offY=yellow_timing(57)
     assert_true(onY+offY==UI_CHARGING_BLINK_PERIOD_MS,"yellow on+off period")
     print(f"57% yellow on {onY} off {offY} PASS")
+    ui_led_c = open(os.path.join(BASE_DIR, "ui_led.c"), "r", encoding="utf-8", errors="ignore").read()
+    m = re.search(r"func__Ui_SetAlarmParam.*?\n\}", ui_led_c, flags=re.S)
+    assert_true(m and "osKernelLock()" in m.group(0) and "osKernelRestoreLock" in m.group(0),
+                "Ui_SetAlarmParam store+clamp under scheduler lock (v1.16 C11)")
     print("\nALL HOST TESTS PASSED (buzzer + BatteryRun 2%+0/1 + Charging 5% + Full 100/95 + phase)")
 if __name__=="__main__":
     main()

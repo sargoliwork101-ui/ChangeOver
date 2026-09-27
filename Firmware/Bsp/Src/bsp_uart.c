@@ -74,9 +74,14 @@
  *      می‌کند؛ شرط درستی نیست). */
 #define BSP_UART_RX_RING_SIZE     256u
 
-/* [EN] Software TX ring and the max bytes moved per DMA transfer.
- * [FA] حلقهٔ نرم‌افزاری TX و حداکثر بایت منتقل‌شده در هر انتقال DMA. */
-#define BSP_UART_TX_RING_SIZE     256u
+/* [EN] Software TX ring and the max bytes moved per DMA transfer. 1024
+ *      since the v1.16 audit: PARAMS_BULK grew to a 392 B frame (77 params)
+ *      and the 256 B ring silently refused every bulk reply, so a fresh
+ *      panel never learned the live values. Still a power of two.
+ * [FA] حلقهٔ نرم‌افزاری TX و حداکثر بایت هر انتقال DMA. از ممیزی ۱.۱۶ مقدار
+ *      ۱۰۲۴ است: فریم بالک ۳۹۲ بایت شد و حلقهٔ ۲۵۶ هر پاسخ بالک را بی‌صدا رد
+ *      می‌کرد پس پنل تازه مقادیر زنده را نمی‌گرفت. همچنان توان دو. */
+#define BSP_UART_TX_RING_SIZE     1024u
 #define BSP_UART_TX_CHUNK_SIZE    128u
 
 /* [EN] Lowest NVIC priority for both interrupt vectors of this port (the

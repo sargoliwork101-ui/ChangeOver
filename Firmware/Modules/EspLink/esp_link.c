@@ -552,7 +552,15 @@ static void func__EspLink_SendParamReport(uint8_t uint8_t__paramId,
  */
 static void func__EspLink_SendParamsBulk(void)
 {
-    uint8_t UINT8_T__A__Payload[1u + (ESPLINK_PARAM_COUNT * 5u)];
+    /* [EN] STATIC by necessity, not style (v1.16 audit E1): 386 B on the
+       1 KiB comm stack next to SendFrame's 518 B frame left only dozens of
+       bytes of margin on every GET_PARAMS. Single task (comm),
+       non-reentrant, so static is race-free here (same rationale as the
+       NVM save scratch).
+       [FA] عمداً STATIC نه سلیقه‌ای: ۳۸۶ بایت روی استک ۱KB ارتباط کنار فریم
+       ۵۱۸ بایتی حاشیه را به چند ده بایت می‌رساند؛ تک‌تسک و غیربازگشتی پس
+       بدون مسابقه است (همان دلیل بافر NVM). */
+    static uint8_t UINT8_T__A__Payload[1u + (ESPLINK_PARAM_COUNT * 5u)];
     uint16_t uint16_t__cursor = 0u;
     uint8_t uint8_t__count = 0u;
     uint32_t uint32_t__value;
@@ -1163,11 +1171,17 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
     func__EspLink_SendTelemetry(measurement_snapshot_t__snap,
                                 fault_mask_t__faults);
 
-    /* [EN] v1.14: debounced flash save of the persisted parameters (a page
-       erase stalls flash-fetching code ~20..40 ms once per save; this is the
-       comm task, so only this task's own period stretches).
-       [FA] v1.14: ذخیرهٔ دیبانس‌شدهٔ فلش پارامترهای ذخیره‌شونده (پاک‌کردن
-       صفحه یک‌بار ~۲۰..۴۰ms کدِ خوانده‌شده از فلش را نگه می‌دارد؛ اینجا
-       تسک ارتباط است، پس فقط دورهٔ همین تسک کش می‌آید). */
+    /* [EN] v1.14: debounced flash save of the persisted parameters. A
+       save stalls the whole CPU ~30..50 ms (F1 single bank, no
+       read-while-write: SysTick time jumps, EXTI/UART ISRs go latent,
+       in-flight UART bytes overrun into CRC retries) - NOT just this
+       task's period. Since the v1.16 audit the charger is suspended
+       (gates at 0) around the save (user order 2026-09-27), so no
+       switching happens inside the blind window; the stall itself is
+       inherent to the part.
+       [FA] v1.14: ذخیرهٔ دیبانس‌شدهٔ فلش. هر ذخیره کل CPU را ~۳۰..۵۰ms نگه
+       می‌دارد (تک‌بانک F1: پرش ساعت کرنل، تأخیر ISRها، افت بایت UART با
+       ریکاوری CRC) - نه فقط دورهٔ همین تسک. از ممیزی ۱.۱۶ شارژر دور ذخیره
+       معلق می‌شود (گیت‌ها صفر) تا سوییچینگی داخل پنجرهٔ کور نباشد. */
     func__EspLink_NvmTick();
 }

@@ -17,7 +17,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-static fault_mask_t FAULT_MASK_T__G__Mask = FAULT_NONE;
+static volatile fault_mask_t FAULT_MASK_T__G__Mask = FAULT_NONE;
 
 /* [EN] Battery-lost debounce timers: start tick of the current sustained
    condition, 0 = condition not running.
@@ -183,6 +183,14 @@ bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t uint32_t__value,
                                uint32_t *uint32_t__appliedValue)
 {
+    /* [EN] Writer-side scheduler lock (v1.16 audit C11): the comm task
+       writes, the control task (fault eval) preempts mid-clamp and would
+       read a torn threshold set for one pass. Pre-kernel the plain path
+       runs (NVM replay).
+       [FA] قفل زمان‌بند سمت نویسنده: تسک ارتباط می‌نویسد و ارزیابی فالت
+       وسط گیره پیشی می‌گیرد و یک پاس آستانهٔ پاره می‌خواند. */
+    int32_t int32_t__savedKernelLock = osKernelLock();
+
     switch (uint8_t__paramId)
     {
         case FAULT_ALARM_PARAM_DISCONNECT_MV:
@@ -210,10 +218,18 @@ bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
             FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv = uint32_t__value;
             break;
         default:
+            if (int32_t__savedKernelLock >= 0)
+            {
+                (void)osKernelRestoreLock(int32_t__savedKernelLock);
+            }
             return false;
     }
 
     func__Fault_ClampAlarms();
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
     return func__Fault_GetAlarmParam(uint8_t__paramId, uint32_t__appliedValue);
 }
 
@@ -316,7 +332,20 @@ void func__Fault_Init(void)
 
 void func__Fault_Set(fault_mask_t fault_mask_t__bits)
 {
+    /* [EN] Scheduler lock (v1.16 audit F4): the RMW is shared by the
+       control and protection tasks - a Set racing a Clear loses one
+       update. Pre-kernel the lock call fails and the plain RMW runs
+       single-threaded (same pattern as measurement.c).
+       [FA] قفل زمان‌بند: RMW بین تسک کنترل و حفاظت مشترک است - بدون آن Set
+       همزمان با Clear یک به‌روزرسانی را گم می‌کند. */
+    int32_t int32_t__savedKernelLock = osKernelLock();
+
     FAULT_MASK_T__G__Mask |= fault_mask_t__bits;
+
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
 }
 
 /**
@@ -328,7 +357,16 @@ void func__Fault_Set(fault_mask_t fault_mask_t__bits)
 
 void func__Fault_Clear(fault_mask_t fault_mask_t__bits)
 {
+    /* [EN] Scheduler lock: same lost-update closure as Fault_Set.
+       [FA] قفل زمان‌بند: همان بستن گم‌شدن به‌روزرسانی. */
+    int32_t int32_t__savedKernelLock = osKernelLock();
+
     FAULT_MASK_T__G__Mask &= (fault_mask_t)~fault_mask_t__bits;
+
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
 }
 
 /**

@@ -18,8 +18,22 @@
 #include "esp_link_nvm.h"
 #include "esp_link.h"
 #include "bsp_flash.h"
+#include "bsp_pwm.h"
+#include "modules_enable.h"
+#include "rtos_time.h"
+#include "cmsis_os2.h"
+#if MODULE_CHARGER
+#include "charger.h"
+#endif
 
 #include <stddef.h>
+
+/* [EN] The save snapshot loop can fill at most ESPLINK_PARAM_COUNT entries:
+   fail the BUILD (not the board) if the table ever outgrows the record.
+   [FA] حلقهٔ عکس‌فوری حداکثر ESPLINK_PARAM_COUNT ورودی پر می‌کند: اگر جدول
+   روزی از رکورد بزرگ‌تر شد، «بیلد» بشکند نه برد. */
+_Static_assert(ESPLINK_PARAM_COUNT <= ESP_LINK_NVM_ENTRY_MAX,
+               "NVM record too small for the param table");
 
 /* ====================================================================
  * ===== EspLink Nvm pure record logic (host-testable, no flash) =====
@@ -320,6 +334,78 @@ void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
  *              پس static بدون مسابقه است.
  * @return bool [EN] true = record now on flash / رکورد روی فلش است
  */
+#if MODULE_CHARGER
+/* [EN] Charger quiet-down poll: every 5 ms, up to 200 ms (the control task
+   zeroes both gates on its next 10 ms pass after the flag is set).
+   [FA] نظرسنجی آرام‌شدن شارژر: هر ۵ms تا سقف ۲۰۰ms. */
+#define ESP_LINK_NVM_SUSPEND_POLL_MS        5u
+#define ESP_LINK_NVM_SUSPEND_TIMEOUT_POLLS  40u
+#endif
+
+/**
+ * @brief  [EN] Quiet the charger down for a flash save (user order
+ *              2026-09-27: idle the charger, save, restart it). Sets the
+ *              suspension flag, then polls the HARDWARE truth (both
+ *              compares read 0). On timeout the save still proceeds (params
+ *              must persist; a dead control task is WDT business).
+ *              Without MODULE_CHARGER there is no switching, and pre-kernel
+ *              there is no scheduler to observe the flag - both return
+ *              false immediately (nothing to resume).
+ *         [FA] آرام‌کردن شارژر برای ذخیرهٔ فلش (دستور کاربر: بیکار کن،
+ *              ذخیره کن، راه بینداز). پرچم تعلیق ست و بعد حقیقت سخت‌افزار
+ *              (هر دو compare صفر) نظرسنجی می‌شود. با timeout هم ذخیره
+ *              انجام می‌شود (پارامترها باید بمانند). بدون شارژر یا پیش از
+ *              کرنل بلافاصله false (چیزی برای ادامه نیست).
+ * @return bool [EN] true = suspend flag set, caller must resume / پرچم ست شد و ادامه لازم است
+ */
+static bool func__EspLink_NvmSuspendCharger(void)
+{
+#if MODULE_CHARGER
+    uint8_t uint8_t__poll;
+
+    if (osKernelGetState() != osKernelRunning)
+    {
+        return false;
+    }
+
+    func__Charger_SetSuspended(true);
+
+    for (uint8_t__poll = 0u;
+         uint8_t__poll < ESP_LINK_NVM_SUSPEND_TIMEOUT_POLLS;
+         uint8_t__poll++)
+    {
+        if ((func__BspPwm_IsGatePulsing(BSP_PWM_CHARGER_1) == false) &&
+            (func__BspPwm_IsGatePulsing(BSP_PWM_CHARGER_2) == false))
+        {
+            return true;
+        }
+        func__Rtos_DelayMilliseconds(ESP_LINK_NVM_SUSPEND_POLL_MS);
+    }
+
+    return true;
+#else
+    return false;
+#endif
+}
+
+/**
+ * @brief  [EN] Resume the charger after a flash save (no-op unless the
+ *              suspend helper set the flag).
+ *         [FA] ادامهٔ شارژر بعد از ذخیرهٔ فلش (بی‌اثر اگر پرچم ست نشده).
+ * @param  bool__wasSuspended [EN] Suspend-helper return / خروجی تابع تعلیق
+ */
+static void func__EspLink_NvmResumeCharger(bool bool__wasSuspended)
+{
+#if MODULE_CHARGER
+    if (bool__wasSuspended != false)
+    {
+        func__Charger_SetSuspended(false);
+    }
+#else
+    (void)bool__wasSuspended;
+#endif
+}
+
 static bool func__EspLink_NvmSaveNow(void)
 {
     static esp_link_nvm_record_t esp_link_nvm_record_t__record;
@@ -327,6 +413,7 @@ static bool func__EspLink_NvmSaveNow(void)
     uint16_t uint16_t__count = 0u;
     uint16_t uint16_t__i;
     uint32_t uint32_t__pageAddress;
+    bool bool__chargerSuspended = false;
 
     for (uint16_t__i = 0u; uint16_t__i < (uint16_t)ESPLINK_PARAM_COUNT;
          uint16_t__i++)
@@ -362,8 +449,16 @@ static bool func__EspLink_NvmSaveNow(void)
                                 ? ESP_LINK_NVM_PAGE_A_ADDR
                                 : ESP_LINK_NVM_PAGE_B_ADDR;
 
+    /* [EN] Idle the charger around the flash stall (user order 2026-09-27):
+       no switching inside the ~30..50 ms blind window. Every exit below
+       resumes first.
+       [FA] بیکارکردن شارژر دور استال فلش: بدون سوییچینگ داخل پنجرهٔ کور؛
+       هر خروجی پایین اول ادامه می‌دهد. */
+    bool__chargerSuspended = func__EspLink_NvmSuspendCharger();
+
     if (func__BspFlash_ErasePage(uint32_t__pageAddress) == false)
     {
+        func__EspLink_NvmResumeCharger(bool__chargerSuspended);
         return false;
     }
 
@@ -373,6 +468,7 @@ static bool func__EspLink_NvmSaveNow(void)
             (uint32_t)(sizeof(esp_link_nvm_record_t) / sizeof(uint16_t))) ==
         false)
     {
+        func__EspLink_NvmResumeCharger(bool__chargerSuspended);
         return false;
     }
 
@@ -384,9 +480,12 @@ static bool func__EspLink_NvmSaveNow(void)
         if (((const volatile uint16_t *)uint32_t__pageAddress)[uint16_t__i] !=
             ((const uint16_t *)&esp_link_nvm_record_t__record)[uint16_t__i])
         {
+            func__EspLink_NvmResumeCharger(bool__chargerSuspended);
             return false;
         }
     }
+
+    func__EspLink_NvmResumeCharger(bool__chargerSuspended);
 
     UINT16_T__G__NvmNewestSeq =
         esp_link_nvm_record_t__record.uint16_t__seq;

@@ -105,9 +105,21 @@ static volatile charger_profile_t CHARGER_PROFILE_T__G__Profile =
  * [FA] آلارم‌های زمان‌اجرا شارژر (v1.15، شناسه‌های ۳۵..۳۷، تب آلارم‌ها).
  *      پیش‌فرض بوت همان سقف‌های کامپایل‌تایم قبلی است؛ Set فقط پایین می‌برد
  *      (هرگز بالای سقف کامپایل) و ClampAlarms فاصله بالای باند زنده پروفایل را بازمی‌گرداند. */
-static uint32_t UINT32_T__G__ChargerHardFaultMa = CHG_CURRENT_HARD_FAULT_MA;
-static uint32_t UINT32_T__G__ChargerOvCutoffMv = CHG_MAX_VALID_BATTERY_MV;
-static uint32_t UINT32_T__G__ChargerValidFloorMv = CHG_MIN_VALID_BATTERY_MV;
+/* [EN] Cross-task alarm ceilings (written by the comm task, read by the
+   control task): volatile for visibility; the multi-field tear is closed
+   by the scheduler lock in func__Charger_SetAlarmParam.
+   [FA] سقف‌های آلارم بین‌تسکی: volatile برای دیده‌شدن؛ پارگی چندفیلدی با
+   قفل زمان‌بند در ستر بسته می‌شود. */
+static volatile uint32_t UINT32_T__G__ChargerHardFaultMa = CHG_CURRENT_HARD_FAULT_MA;
+static volatile uint32_t UINT32_T__G__ChargerOvCutoffMv = CHG_MAX_VALID_BATTERY_MV;
+static volatile uint32_t UINT32_T__G__ChargerValidFloorMv = CHG_MIN_VALID_BATTERY_MV;
+
+/* [EN] NVM-save suspension flag (user order 2026-09-27): set by the comm
+   task around a flash save, read by the control task. Single volatile
+   bool, no lock needed.
+   [FA] پرچم تعلیق برای ذخیرهٔ NVM: تسک ارتباط دور ذخیرهٔ فلش ست می‌کند و
+   تسک کنترل می‌خواند. تک‌بولین volatile بدون قفل. */
+static volatile bool BOOL__G__ChargerSuspended = false;
 
 /* [EN] Live diag array - see the layout map in charger.h (user order
  *      2026-09-22: all charge-decision values visible in one Live
@@ -518,6 +530,17 @@ static void func__Charger_ApplyDuty(uint8_t uint8_t__channelIndex,
 
     if (uint8_t__channelIndex >= 2u)
     {
+        return;
+    }
+
+    /* [EN] Suspension belt (see the Evaluate gate): any stray duty request
+       while suspended forces the hardware to 0 WITHOUT touching the duty
+       mirror, so the resume continues the ramp seamlessly.
+       [FA] کمربند تعلیق: هر درخواست duty سرگردان در تعلیق، سخت‌افزار را صفر
+       می‌کند بدون دست‌زدن به آینهٔ duty تا ادامهٔ رمپ یکپارچه باشد. */
+    if (BOOL__G__ChargerSuspended != false)
+    {
+        func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
         return;
     }
 
@@ -1624,6 +1647,28 @@ static void func__Charger_ManualDriveChannel(uint8_t uint8_t__channelIndex,
         (uint16_t)UINT32_T__G__ChargerDutyFixedPermille[uint8_t__channelIndex]);
 }
 
+/* ==================== Charger suspension API ==================== */
+
+/**
+ * @brief  [EN] Set the NVM-save suspension flag (see header contract).
+ *         [FA] ست‌کردن پرچم تعلیق ذخیرهٔ NVM (قرارداد هدر).
+ * @param  bool__suspended [EN] true = hold gates at 0 / گیت‌ها صفر نگه داشته شوند
+ */
+void func__Charger_SetSuspended(bool bool__suspended)
+{
+    BOOL__G__ChargerSuspended = bool__suspended;
+}
+
+/**
+ * @brief  [EN] Read the NVM-save suspension flag.
+ *         [FA] خواندن پرچم تعلیق ذخیرهٔ NVM.
+ * @return bool [EN] true = suspension active / تعلیق فعال است
+ */
+bool func__Charger_IsSuspended(void)
+{
+    return BOOL__G__ChargerSuspended;
+}
+
 /* ==================== Charger_Evaluate ==================== */
 /**
  * @brief  [EN] Refresh the live diag array and the calibration worksheet
@@ -1770,6 +1815,19 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     if (BOOL__G__ChargerInitialized == false)
     {
         func__Charger_Init();
+    }
+
+    /* [EN] NVM-save suspension (user order 2026-09-27): hold both gates at
+       0 and skip the pass. State, soak and settle are untouched, so the
+       resume continues seamlessly. Manual/dead-man/fault-mirror bookkeeping
+       below pauses for the ~0.1 s save - all their time constants are
+       seconds (the dead-man is 3 s).
+       [FA] تعلیق ذخیرهٔ NVM: هر دو گیت صفر و پاس رد می‌شود. حالت و شستشو
+       دست نمی‌خورند پس ادامه یکپارچه است. */
+    if (BOOL__G__ChargerSuspended != false)
+    {
+        func__BspPwm_StopAll();
+        return;
     }
 
     uint32_t__nowTick = osKernelGetTickCount();
@@ -2186,11 +2244,18 @@ bool func__Charger_IsAnyChannelActive(void)
 uint32_t func__Charger_SetEfficiencyPermille(uint8_t uint8_t__channelIndex,
                                              uint32_t uint32_t__etaPermille)
 {
+    /* [EN] The lower clamp compiles out while CHG_ETA_MIN_PERMILLE is 0
+       (a u32 can never be below 0; keeps -Wtype-limits green). If the floor
+       ever rises above zero the clamp reactivates automatically.
+       [FA] گیرهٔ پایین تا وقتی کف صفر است کامپایل نمی‌شود (u32 هرگز زیر صفر
+       نیست). اگر کف روزی بالای صفر رفت، گیره خودکار برمی‌گردد. */
+#if (CHG_ETA_MIN_PERMILLE != 0u)
     if (uint32_t__etaPermille < CHG_ETA_MIN_PERMILLE)
     {
         uint32_t__etaPermille = CHG_ETA_MIN_PERMILLE;
     }
-    else if (uint32_t__etaPermille > CHG_ETA_MAX_PERMILLE)
+#endif
+    if (uint32_t__etaPermille > CHG_ETA_MAX_PERMILLE)
     {
         uint32_t__etaPermille = CHG_ETA_MAX_PERMILLE;
     }
@@ -2431,6 +2496,16 @@ bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t uint32_t__value,
                                    uint32_t *uint32_t__appliedValue)
 {
+    /* [EN] Writer-side scheduler lock (v1.16 audit C11): the comm task
+       (Low1) writes, the control task (Low2) preempts mid-clamp and would
+       read a torn set for one pass (fresh absorb vs stale reentry). Store
+       + clamp run atomic; pre-kernel (NVM replay) the lock call fails and
+       the plain path runs single-threaded (same pattern as measurement.c).
+       [FA] قفل زمان‌بند سمت نویسنده: تسک ارتباط می‌نویسد و تسک کنترل وسط
+       گیره پیشی می‌گیرد و یک پاس ست پاره می‌خواند؛ ذخیره + گیره اتمیک
+       می‌شود. پیش از کرنل مسیر سادهٔ تک‌نخی اجرا می‌شود. */
+    int32_t int32_t__savedKernelLock = osKernelLock();
+
     switch (uint8_t__paramId)
     {
         case CHG_PROFILE_PARAM_ABSORB_MV:
@@ -2455,10 +2530,18 @@ bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
             CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa = uint32_t__value;
             break;
         default:
+            if (int32_t__savedKernelLock >= 0)
+            {
+                (void)osKernelRestoreLock(int32_t__savedKernelLock);
+            }
             return false;
     }
 
     func__Charger_ClampProfile();
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
     return func__Charger_GetProfileParam(uint8_t__paramId, uint32_t__appliedValue);
 }
 
@@ -2499,6 +2582,13 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t uint32_t__value,
                                  uint32_t *uint32_t__appliedValue)
 {
+    /* [EN] Writer-side scheduler lock (v1.16 audit C11): same torn-set
+       closure as the profile path; the supervision cascade below is pure
+       computation, lock-safe. Pre-kernel the plain path runs (NVM replay).
+       [FA] قفل زمان‌بند سمت نویسنده: همان بستن پارگی مسیر پروفایل؛ آبشار
+       نظارت محاسبهٔ خالص و امن زیر قفل است. */
+    int32_t int32_t__savedKernelLock = osKernelLock();
+
     switch (uint8_t__paramId)
     {
         case CHG_ALARM_PARAM_HARD_CURRENT_MA:
@@ -2511,6 +2601,10 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
             UINT32_T__G__ChargerValidFloorMv = uint32_t__value;
             break;
         default:
+            if (int32_t__savedKernelLock >= 0)
+            {
+                (void)osKernelRestoreLock(int32_t__savedKernelLock);
+            }
             return false;
     }
 
@@ -2522,6 +2616,10 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
     func__Charger_ClampAlarms();
     func__Fault_OnSupervisionChange();
 
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
     return func__Charger_GetAlarmParam(uint8_t__paramId, uint32_t__appliedValue);
 }
 

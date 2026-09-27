@@ -68,7 +68,7 @@ static const uint32_t CAL_Current1LutBatteryMa[] =
  * TABLE 2 - channel-2 LUT (chain mA -> battery-2 POWER mW)
  * جدول ۲ - LUT کانال ۲ (mA زنجیره ← توان باتری ۲ بر حسب mW)
  * ----------------------------------------------------------------------------
-/* [EN] v1.13 (user order 2026-09-25, "voltages are fixed but the currents
+ * [EN] v1.13 (user order 2026-09-25, "voltages are fixed but the currents
  *      you read are wrong"): the table OUTPUT is the battery-2 POWER in mW,
  *      NOT the current. Physics: in DCM the mid-ON chain sample tracks the
  *      energy per cycle, which is battery-voltage independent, while the
