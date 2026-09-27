@@ -110,6 +110,22 @@ static const uint32_t CAL_Current1LutBatteryMa[] =
  *      accuracy - fitting further would fit instrument noise. If off2 or
  *      gain2 ever change, the chain axis rescales and the table MUST be
  *      rebuilt from a fresh sweep.
+ *      v1.18 END-TO-END FIT (same 2026-09-27 sweep, user order "look
+ *      closer, there is still drift"): the v1.17 anchors were fitted to
+ *      FLOAT chains, but the firmware feeds the LUT an INTEGER chain whose
+ *      truncating divisions sit ~1.5 chain-mA LEFT of the float value -
+ *      on the steep 236..353 slopes (~30 mW per chain-mA) that is a
+ *      systematic -40..-60 mW, i.e. the -4..-8 mA drift the user saw at
+ *      D10..D15. The program itself is sound (PWM mid-ON sync sampling,
+ *      median-3 + avg-10 on raw counts, fresh Vbat cache for the filtered
+ *      path, V12 compensation verified to +0.1..0.2%): the ~-2..-4 mA
+ *      truncation bias is now absorbed INTO the table, fitted directly
+ *      against the exact integer pipeline (verified replay: new run worst
+ *      3 mA with NO systematic sign, old run worst 5 mA, i_130 = 658 mA).
+ *      Moved again: (236,2685) (253,3260) (283,3925) (312,4550)
+ *      (353,5355); added (390,6035) from D15 (455x13200 = 6006 mW).
+ *      Methodology floor from here on is +-1 count = +-3 mA (slope ~30);
+ *      tighter needs sub-count filtering, not more anchors.
  * [FA] v1.13 (دستور کاربر ۲۰۲۶-۰۹-۲۵: «ولتاژها درست شد ولی جریان‌ها
  *      اشتباه»): خروجی جدول «توان باتری ۲» بر حسب mW است، نه جریان.
  *      فیزیک: در DCM نمونهٔ وسط-ON زنجیره انرژیِ هر سایکل را دنبال می‌کند
@@ -140,14 +156,22 @@ static const uint32_t CAL_Current1LutBatteryMa[] =
  *      کنارگذاشته: D9 (نقطهٔ پرت ۱۰٫۴٪ - نمونهٔ نانشانده) و ولتاژ DMM در
  *      D16 (عدد ۱۲۶۵۰ تایپی است؛ با ۱۳۶۱۷ بازمحاسبه شد و ۰٫۴٪ نشست).
  *      بدترین خطای باقی‌مانده 8mA روی ۲۵۰..۴۵۰mA ≈ دقت خود DMM است.
+ *      برازش سرتاسری v1.18 (همان سوییپ، دستور «دقیق‌تر نگاه کن، هنوز
+ *      دریفت هست»): لنگرهای v1.17 روی زنجیرهٔ اعشاری فیت شده بودند ولی
+ *      فرم‌ور زنجیرهٔ صحیح به LUT می‌دهد که ~۱٫۵mA چپ‌تر می‌نشیند - روی
+ *      شیب‌های تند ۲۳۶..۳۵۳ همین ‎-4..-8mA دریفت D10..D15 بود. برنامه
+ *      سالم است (نمونه‌برداری سنکرون وسط ON، مدین+میانگین روی شمارش خام،
+ *      کش تازهٔ ولتاژ، جبران V12 تأییدشده) و بایاس truncation داخل خود
+ *      جدول جذب شد: بدترین خطای ران جدید 3mA بدون علامت سیستماتیک، ران
+ *      قدیمی 5mA. کف روش از اینجا ‎±1 شمارش = ‎±3mA است.
  * ============================================================================ */
 #define CAL_CURRENT2_LUT_ENABLE 1u
 
 #if (CAL_CURRENT2_LUT_ENABLE != 0u)
 static const uint32_t CAL_Current2LutChainMa[] =
-    { 0u, 20u, 37u, 106u, 189u, 236u, 253u, 283u, 312u, 353u, 441u, 557u, 707u };
+    { 0u, 20u, 37u, 106u, 189u, 236u, 253u, 283u, 312u, 353u, 390u, 441u, 557u, 707u };
 static const uint32_t CAL_Current2LutBatteryMw[] =
-    { 0u, 0u, 109u, 751u, 1581u, 2625u, 3180u, 3860u, 4500u, 5280u, 6817u, 8573u, 10429u };
+    { 0u, 0u, 109u, 751u, 1581u, 2685u, 3260u, 3925u, 4550u, 5355u, 6035u, 6817u, 8573u, 10429u };
 #define CAL_CURRENT2_LUT_POINTS \
     ((uint32_t)(sizeof(CAL_Current2LutChainMa) / \
                 sizeof(CAL_Current2LutChainMa[0u])))

@@ -482,12 +482,12 @@ def test_setpoints_and_timing():
           "static const uint32_t CAL_Current2LutChainMa[] =" in cal_h and
           "static const uint32_t CAL_Current2LutBatteryMw[] =" in cal_h and
           "sizeof(CAL_Current2LutChainMa) /" in cal_h and
-          "{ 0u, 20u, 37u, 106u, 189u, 236u, 253u, 283u, 312u, 353u, 441u, 557u, 707u }" in cal_h and
-          "{ 0u, 0u, 109u, 751u, 1581u, 2625u, 3180u, 3860u, 4500u, 5280u, 6817u, 8573u, 10429u }" in cal_h and
-          lut_chain_n == lut_batt_n and lut_chain_n == 13 and
+          "{ 0u, 20u, 37u, 106u, 189u, 236u, 253u, 283u, 312u, 353u, 390u, 441u, 557u, 707u }" in cal_h and
+          "{ 0u, 0u, 109u, 751u, 1581u, 2685u, 3260u, 3925u, 4550u, 5355u, 6035u, 6817u, 8573u, 10429u }" in cal_h and
+          lut_chain_n == lut_batt_n and lut_chain_n == 14 and
           re.search(r"#define CAL_CURRENT1_LUT_ENABLE\s+0u", cal_h) and
           "CAL_Current1LutChainMa" in cal_h,
-          f"channel-2 bench LUT must be ON as a chain->POWER table (v1.13, user order 2026-09-25 'voltages are fixed but the currents are wrong'; v1.17 refit 2026-09-27 SOLO2 sweep duty 1..19): the DCM invariant is battery POWER, the current is P/Vbat - the old chain->current table embedded the calibration run's battery voltage (12.0..13.65V) and overread ~7 percent per volt as the battery filled; anchors = DMM_I2 x DMM_V2 of the dense 2026-09-25T18:14 run (10 points, duty 2..20%) plus the 2026-09-27 SOLO2 refit points (253,3180) (312,4500), the (20,0) noise gate, and the split anchors (283,3860) (353,5280); the axis stays the ADC chain current (raw-off2)*K*gain, NEVER duty; the tables size themselves from the initializers and both lists must stay the same length (got chain={lut_chain_n} power={lut_batt_n})")
+          f"channel-2 bench LUT must be ON as a chain->POWER table (v1.13, user order 2026-09-25 'voltages are fixed but the currents are wrong'; v1.17/v1.18 refit 2026-09-27 SOLO2 sweep duty 1..19): the DCM invariant is battery POWER, the current is P/Vbat - the old chain->current table embedded the calibration run's battery voltage (12.0..13.65V) and overread ~7 percent per volt as the battery filled; anchors = DMM_I2 x DMM_V2 of the dense 2026-09-25T18:14 run (10 points, duty 2..20%) plus the 2026-09-27 SOLO2 refit points, fitted end-to-end against the exact integer pipeline (v1.18: the integer chain sits ~1.5 mA left of the float chain, so float-fitted anchors drifted -4..-8 mA on the steep slopes); the axis stays the ADC chain current (raw-off2)*K*gain, NEVER duty; the tables size themselves from the initializers and both lists must stay the same length (got chain={lut_chain_n} power={lut_batt_n})")
     check("uint32_t uint32_t__batteryPowerMw = func__Measurement_Current2BenchLut(\n        func__BspMeasurement_Current2CountsToMa(uint16_t__counts));" in meas_c_raw and
           "(uint32_t__batteryPowerMw * 1000u) /\n           UINT32_T__G__Battery2VoltageMv" in meas_c_raw,
           "the ch2 LUT must wrap the BSP conversion inside func__Measurement_Current2CountsToMa (unfiltered, filtered and iest all become true battery mA; raw counts and shunt uV untouched) and v1.13 DIVIDES the table's POWER output by the live cached battery-2 voltage (user order: the currents were wrong as the battery filled)")
@@ -761,8 +761,8 @@ def test_ch2_power_lut_v113():
     math (BSP staged chain = the folded u32 form, proven bit-identical, with
     truncating divisions -> LUT -> x1000 / V) on the dense-run CSV rows and
     checks both the DMM agreement AND the voltage behaviour the old
-    current-current table got wrong. The LUT under test is the v1.17 refit
-    (13 anchors); the 2026-09-25 rows below must STILL agree (<= 6 mA).
+    current-current table got wrong. The LUT under test is the v1.18 refit
+    (14 anchors); the 2026-09-25 rows below must STILL agree (<= 6 mA).
     [FA] تست عددی v1.13: بازپخش دقیق ریاضی صحیح فرم‌ور روی ردیف‌های ران
     متراکم + بررسی رفتار ولتاژی که جدول قدیمی اشتباه می‌گرفت."""
     cal_h = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
@@ -773,9 +773,9 @@ def test_ch2_power_lut_v113():
     check(m_chain and m_mw, "calibration.h must carry both ch2 LUT arrays")
     xs = [int(v.strip().rstrip("u")) for v in m_chain.group(1).split(",")]
     ys = [int(v.strip().rstrip("u")) for v in m_mw.group(1).split(",")]
-    check(len(xs) == len(ys) == 13 and all(xs[i] < xs[i + 1] for i in range(12))
-          and all(ys[i] <= ys[i + 1] for i in range(12)),
-          "ch2 LUT anchors: 13 points (v1.17 refit), chain strictly increasing, power non-decreasing")
+    check(len(xs) == len(ys) == 14 and all(xs[i] < xs[i + 1] for i in range(13))
+          and all(ys[i] <= ys[i + 1] for i in range(13)),
+          "ch2 LUT anchors: 14 points (v1.18 refit), chain strictly increasing, power non-decreasing")
 
     # exact firmware math replay (folded u32 chain, truncating divisions)
     def bsp_chain(counts, off=8, gain=1303):
@@ -823,22 +823,24 @@ def test_ch2_power_lut_v113():
           "the division must run with the cached clamped voltage (boot default 12.0 V); flash diet 2026-09-27: u32 is exact (power x 1000 < 2^32), the u64 only pulled __aeabi_uldivmod")
 
 
-def test_ch2_lut_refit_v117():
-    """[EN] v1.17 refit (user order 2026-09-27, "fix the coefficients so at
-    least the currents read right"): replay the exact firmware integer math
-    on the 2026-09-27 SOLO2 sweep (duty 1..19 step 1, off2=8/gain2=1303)
-    and require DMM agreement within 8 mA - the DMM's own accuracy on its
-    400 mA range, so fitting tighter would fit instrument noise. D9 is
+def test_ch2_lut_refit_v118():
+    """[EN] v1.18 end-to-end fit (user order 2026-09-27, "look closer, there
+    is still drift"): replay the exact firmware integer math on the
+    2026-09-27 SOLO2 sweep (duty 1..19 step 1, off2=8/gain2=1303) and
+    require DMM agreement within 5 mA with NO systematic sign - the v1.17
+    float-fitted anchors drifted -4..-8 mA at D10..D15 because the integer
+    chain sits ~1.5 mA left of the float chain on the steep slopes. D9 is
     EXCLUDED (10.4% low outlier: unsettled sample, raw spread 197..210,
     DMM 167 mA below the whole firmware window 177..186 mA); D16 uses the
     firmware voltage (13617 mV - the DMM 12650 mV reading is a typo against
-    neighbours 13200/14000 mV and lands +0.4% once corrected). D1..D3 must
-    read exactly 0 (the (20,0) noise gate + unsigned floor; the DMM's
-    -15..-5 mA there is backfeed through the idle converter, which the
-    single-supply shunt chain cannot see).
-    [FA] تست عددی v1.17: بازپخش ریاضی فرم‌ور روی سوییپ SOLO2 با تلرانس
-    8mA (دقت خود DMM)؛ D9 کنارگذاشته (نمونهٔ نانشانده)، ولتاژ D16 اصلاح‌شده،
-    D1..D3 دقیقاً صفر (دروازهٔ نویز)."""
+    neighbours 13200/14000 mV). D1..D3 must read exactly 0 (the (20,0)
+    noise gate + unsigned floor; the DMM's -15..-5 mA there is backfeed
+    through the idle converter, which the single-supply shunt chain cannot
+    see). Methodology floor is +-1 count = +-3 mA; the old 2026-09-25 run
+    still replays within 6 mA (v113 test).
+    [FA] تست عددی v1.18: بازپخش ریاضی فرم‌ور روی سوییپ SOLO2 با تلرانس
+    5mA و بدون علامت سیستماتیک؛ D9 کنارگذاشته، ولتاژ D16 اصلاح‌شده،
+    D1..D3 دقیقاً صفر. کف روش ‎±3mA است."""
     cal_h = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
     m_chain = re.search(r"CAL_Current2LutChainMa\[\] =\s*\{([^}]*)\}", cal_h)
     m_mw = re.search(r"CAL_Current2LutBatteryMw\[\] =\s*\{([^}]*)\}", cal_h)
@@ -883,8 +885,8 @@ def test_ch2_lut_refit_v117():
     worst = 0
     for raw, vlow, dmm in rows:
         worst = max(worst, abs(ibat(raw, vlow) - dmm))
-    check(worst <= 8,
-          f"firmware-math replay of the 2026-09-27 SOLO2 sweep: worst DMM error {worst} mA (<= 8 = DMM accuracy; the v1.13 table read 15 mA low at D11)")
+    check(worst <= 5,
+          f"firmware-math replay of the 2026-09-27 SOLO2 sweep: worst DMM error {worst} mA (<= 5, no systematic sign; the v1.17 float fit drifted -8 mA at D15)")
 
 
 def test_charger_persistence_v114():
@@ -1852,7 +1854,7 @@ def main():
         test_manual_test_mode_v12,
         test_charge_profile_v112,
         test_ch2_power_lut_v113,
-        test_ch2_lut_refit_v117,
+        test_ch2_lut_refit_v118,
         test_charger_persistence_v114,
         test_alarms_tab_v115,
         test_ui_mirror_v116,

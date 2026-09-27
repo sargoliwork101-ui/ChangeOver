@@ -120,6 +120,16 @@
 > and kept. D9 excluded (unsettled outlier), D16 DMM voltage corrected
 > (12650 mV typo -> 13617 mV). Worst residual 8 mA = DMM accuracy; the
 > panel LUT mirror follows (v1.16v). STM32 reflash for the new table.
+> v1.18 (2026-09-27, sixteenth order - "look closer, there is still
+> drift"): end-to-end fit of the SAME sweep against the EXACT integer
+> pipeline. Program review verdict: the program is sound (PWM mid-ON sync
+> sampling, median-3 + avg-10 on raw counts, fresh Vbat cache, V12 comp
+> within +0.2%) - the -4..-8 mA drift at D10..D15 came from fitting v1.17
+> to FLOAT chains while the firmware's truncating integer chain sits ~1.5
+> mA left on the steep slopes. 14 anchors: added (390,6035), moved
+> (236,2685) (253,3260) (283,3925) (312,4550) (353,5355). New run worst
+> 3 mA with no systematic sign, old run worst 5 mA, i_130 = 658 mA.
+> Methodology floor is now +-1 count = +-3 mA. Panel mirror v1.16w.
 >
 > v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
 > conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
@@ -380,9 +390,7 @@ English line is for the agent/maintainers.
 | 16 | Ch1 fixed duty value (permille) - the number to hold while ID 15 is on | مقدار duty فیکس شارژر ۱ (پرمیل)؛ عددی که در مود فیکس نگه داشته می‌شود |
 | 17 | Ch2 fixed-duty mode - hold the PWM at ID 18 | مود duty فیکس شارژر ۲ |
 | 18 | Ch2 fixed duty value (permille) | مقدار duty فیکس شارژر ۲ (پرمیل) |
-| 19 | Manual test mode - master switch: the automatic charger stops completely and you set each channel's duty yourself; battery checks are off, the JIT/input/15 V hardware protections stay on, and the panel must keep the link alive | کلید مود تست دستی؛ با روشن‌شدنش شارژر خودکار کاملاً متوقف می‌شود و duty هر کانال را خودتان مستقیم می‌گذارید؛ شرط‌های باتری غیرفعال می‌شوند، محافظت‌های سخت‌افزاری JIT/ورودی/۱۵V باقی می‌مانند و پنل باید لینک را زنده نگه دارد |
-
-### 5.2 Manual test mode contract (v1.2 — user order 2026-09-23)
+| 193)
 
 `MANUAL_TEST_MODE` (ID 19) is a **global bench/test switch**. While it is 1
 the automatic charger is fully suspended and the human at the panel owns the
@@ -492,8 +500,9 @@ ETA > 0:    iest_ma = i_filtered_ma x Vin_mv x eta / (1000 x Vbat_mv)
 ```
 
 Channel-2 bench LUT (user order 2026-09-25, firmware v1.5; refit v1.11;
-POWER form v1.13; refit v1.17): the SOLO2 bench runs proved the channel-2
-chain non-linear vs the true battery current (about 2x too high at 5% duty,
+POWER form v1.13; refit v1.17; end-to-end fit v1.18): the SOLO2 bench runs
+proved the channel-2 chain non-linear
+vs the true battery current (about 2x too high at 5% duty,
 0.85x too low at 15..17%; best single gain still leaves +101%/-7%). Channel
 2 therefore converts as `I_bat = LUT_P((raw - off2) * 0.8776 * gain2/1000) /
 Vlow_live` with a 13-point piecewise-linear table whose input is the ADC
@@ -508,13 +517,14 @@ percent per volt. The firmware now divides the table's power by the LIVE
 battery-2 terminal voltage (cached one 1 ms pass earlier, after the median-5
 filter, clamped 8.0..15.0 V, boot default 12.0 V). Anchors from the DENSE
 2026-09-25T18:14 run (10 DMM points, duty 2..20% step 2, off2=8 /
-gain2=1303; P = DMM_I2 x DMM_V2; chain mA -> battery mW), refit v1.17 with
-the 2026-09-27 SOLO2 sweep (duty 1..19 step 1, same off2/gain2): (0,0)
-(20,0) (37,109) (106,751) (189,1581) (236,2625) (253,3180) (283,3860)
-(312,4500) (353,5280) (441,6817) (557,8573) (707,10429). Exact integer-math
-replay of the firmware on BOTH runs: worst DMM error 6 mA on the old run,
-8 mA on the new run (DMM accuracy; D9 unsettled outlier excluded, D16 DMM
-voltage typo corrected 12650 -> 13617 mV). Above the last anchor the last
+gain2=1303; P = DMM_I2 x DMM_V2; chain mA -> battery mW), refit v1.17/v1.18
+with the 2026-09-27 SOLO2 sweep (duty 1..19 step 1, same off2/gain2): (0,0)
+(20,0) (37,109) (106,751) (189,1581) (236,2685) (253,3260) (283,3925)
+(312,4550) (353,5355) (390,6035) (441,6817) (557,8573) (707,10429). Exact
+integer-math replay of the firmware on BOTH runs: worst DMM error 5 mA on
+the old run, 3 mA on the new run with no systematic sign (D9 unsettled
+outlier excluded, D16 DMM voltage typo corrected 12650 -> 13617 mV).
+Above the last anchor the last
 slope (12.37 mW per chain-mA) extends. The 1..3%-duty points measure a true
 battery current of -15..-5 mA (backfeed through the idle converter at low
 duty, discharge through the zener path) - power cannot go negative on this
@@ -1390,3 +1400,15 @@ raised to 921600 with DMA in both directions (no protocol change), and the
 per-parameter UI descriptions (section 5.1) added. Parameter IDs and the
 TLM layout are frozen from here on; future additions append new IDs / new
 message types only, never renumber.
+of v1.2 is implemented and pushed the same day - see section 9.
+
+v1.1 (2026-09-22, same day as v1 and BEFORE any ESP-side implementation
+existed — the v1.1 IDs are the final ones). Changes vs v1: filter switches
+merged into ONE size parameter per filter (median 1/3/5, average window
+1..10; size 1 = bypass, no separate on/off), and six new duty params
+(ceiling + fixed-mode enable/value per channel). 2026-09-23: link speed
+raised to 921600 with DMA in both directions (no protocol change), and the
+per-parameter UI descriptions (section 5.1) added. Parameter IDs and the
+TLM layout are frozen from here on; future additions append new IDs / new
+message types only, never renumber.
+ never renumber.
