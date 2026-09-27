@@ -85,6 +85,14 @@
 #define configMAX_CO_ROUTINE_PRIORITIES          ( 2 )
 
 /* Software timer definitions. */
+/* [EN] Timers stay ON (flash-diet note 2026-09-27): nothing calls
+   osTimer/xTimer, but timers.c hard-errors when compiled with
+   configUSE_TIMERS=0 while the always-linked cmsis_os2 osTimer API still
+   references xTimerCreate - so OFF either breaks the compile (file
+   linked) or risks the link (file unlinked, non-GC builds). The timer
+   task + queue (~2.7 KiB) are dropped/kept by --gc-sections instead.
+   [FA] تایمر روشن می‌ماند: خاموش‌کردن یا کامپایل را می‌شکند (فایل لینک
+   است) یا لینک را (غیر-GC)؛ حذفش با gc-sections انجام می‌شود. */
 #define configUSE_TIMERS                         1
 #define configTIMER_TASK_PRIORITY                ( 2 )
 #define configTIMER_QUEUE_LENGTH                 10

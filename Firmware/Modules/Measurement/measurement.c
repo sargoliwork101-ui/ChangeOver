@@ -790,8 +790,12 @@ uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
        در خود داشت و با پر شدن باتری ~۷٪ به‌ازای هر ولت بیش می‌خواند. */
     uint32_t uint32_t__batteryPowerMw = func__Measurement_Current2BenchLut(
         func__BspMeasurement_Current2CountsToMa(uint16_t__counts));
-    return (uint32_t)((((uint64_t)uint32_t__batteryPowerMw) * 1000u) /
-                      UINT32_T__G__Battery2VoltageMv);
+    /* [EN] Flash diet 2026-09-27: u32 is exact - power x 1000 stays below
+       2^32 even for a pathological full-u16 count (chain gain is clamped,
+       LUT tail slope is fixed), so the u64 only pulled __aeabi_uldivmod.
+       [FA] رژیم فلش: ضرب ۳۲بیتی حتی برای ورودی بیمارگون دقیق است. */
+    return (uint32_t__batteryPowerMw * 1000u) /
+           UINT32_T__G__Battery2VoltageMv;
 #else
     return func__BspMeasurement_Current2CountsToMa(uint16_t__counts);
 #endif

@@ -2492,6 +2492,23 @@ static void func__Charger_ClampProfile(void)
     func__Fault_OnSupervisionChange();
 }
 
+/* [EN] Layout contract for the indexed Set/GetProfileParam below (flash
+   diet 2026-09-27): wire ids 20..26 dense, one packed uint32_t per id in
+   the same order (host test pins every wire id).
+   [FA] قرارداد چیدمان Set/Get نمایه‌ای: شناسه‌های ۲۰..۲۶ پشت‌سرهم، یک
+   کلمه به همان ترتیب. */
+_Static_assert(CHG_PROFILE_PARAM_ABSORB_MV == 20u,
+               "profile id base must be 20");
+_Static_assert(CHG_PROFILE_PARAM_TAPER_CURRENT_MA == 26u,
+               "profile id top must be 26");
+_Static_assert(sizeof(charger_profile_t) == (7u * sizeof(uint32_t)),
+               "charger_profile_t must pack exactly 7 words");
+_Static_assert(offsetof(charger_profile_t, uint32_t__absorbMv) == 0u,
+               "first field must be the id-20 word");
+_Static_assert(offsetof(charger_profile_t, uint32_t__taperCurrentMa) ==
+                   (6u * sizeof(uint32_t)),
+               "last field must be the id-26 word");
+
 bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t uint32_t__value,
                                    uint32_t *uint32_t__appliedValue)
@@ -2506,36 +2523,23 @@ bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
        می‌شود. پیش از کرنل مسیر سادهٔ تک‌نخی اجرا می‌شود. */
     int32_t int32_t__savedKernelLock = osKernelLock();
 
-    switch (uint8_t__paramId)
+    /* [EN] Indexed store (flash diet 2026-09-27): wire ids 20..26 are
+       dense and charger_profile_t packs the same fields in the same order
+       (layout asserts above, wire-id density pinned by the host test):
+       identical store, identical clamp call, identical lock/unlock paths.
+       [FA] ذخیرهٔ نمایه‌ای (رژیم فلش): شناسه‌های ۲۰..۲۶ پشت‌سرهم و فیلدها
+       به همان ترتیب‌اند - همان ذخیره، همان گیره، همان قفل. */
+    if ((uint8_t__paramId < CHG_PROFILE_PARAM_ABSORB_MV) ||
+        (uint8_t__paramId > CHG_PROFILE_PARAM_TAPER_CURRENT_MA))
     {
-        case CHG_PROFILE_PARAM_ABSORB_MV:
-            CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv = uint32_t__value;
-            break;
-        case CHG_PROFILE_PARAM_ABSORB_ENTER_MV:
-            CHARGER_PROFILE_T__G__Profile.uint32_t__absorbEnterMv = uint32_t__value;
-            break;
-        case CHG_PROFILE_PARAM_ABSORB_OVER_MV:
-            CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv = uint32_t__value;
-            break;
-        case CHG_PROFILE_PARAM_FLOAT_MV:
-            CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv = uint32_t__value;
-            break;
-        case CHG_PROFILE_PARAM_REENTRY_MV:
-            CHARGER_PROFILE_T__G__Profile.uint32_t__reentryMv = uint32_t__value;
-            break;
-        case CHG_PROFILE_PARAM_BULK_CURRENT_MAX_MA:
-            CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa = uint32_t__value;
-            break;
-        case CHG_PROFILE_PARAM_TAPER_CURRENT_MA:
-            CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa = uint32_t__value;
-            break;
-        default:
-            if (int32_t__savedKernelLock >= 0)
-            {
-                (void)osKernelRestoreLock(int32_t__savedKernelLock);
-            }
-            return false;
+        if (int32_t__savedKernelLock >= 0)
+        {
+            (void)osKernelRestoreLock(int32_t__savedKernelLock);
+        }
+        return false;
     }
+    ((volatile uint32_t *)&CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv)
+        [uint8_t__paramId - CHG_PROFILE_PARAM_ABSORB_MV] = uint32_t__value;
 
     func__Charger_ClampProfile();
     if (int32_t__savedKernelLock >= 0)
@@ -2548,32 +2552,17 @@ bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
 bool func__Charger_GetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t *uint32_t__value)
 {
-    switch (uint8_t__paramId)
+    /* [EN] Indexed read: same dense-id/struct contract as the setter.
+       [FA] خواندن نمایه‌ای: همان قرارداد شناسه/ساختار. */
+    if ((uint8_t__paramId < CHG_PROFILE_PARAM_ABSORB_MV) ||
+        (uint8_t__paramId > CHG_PROFILE_PARAM_TAPER_CURRENT_MA))
     {
-        case CHG_PROFILE_PARAM_ABSORB_MV:
-            *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv;
-            return true;
-        case CHG_PROFILE_PARAM_ABSORB_ENTER_MV:
-            *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__absorbEnterMv;
-            return true;
-        case CHG_PROFILE_PARAM_ABSORB_OVER_MV:
-            *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv;
-            return true;
-        case CHG_PROFILE_PARAM_FLOAT_MV:
-            *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv;
-            return true;
-        case CHG_PROFILE_PARAM_REENTRY_MV:
-            *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__reentryMv;
-            return true;
-        case CHG_PROFILE_PARAM_BULK_CURRENT_MAX_MA:
-            *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa;
-            return true;
-        case CHG_PROFILE_PARAM_TAPER_CURRENT_MA:
-            *uint32_t__value = CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa;
-            return true;
-        default:
-            return false;
+        return false;
     }
+    *uint32_t__value =
+        ((volatile uint32_t *)&CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv)
+        [uint8_t__paramId - CHG_PROFILE_PARAM_ABSORB_MV];
+    return true;
 }
 
 /* ==================== Charger Alarms (v1.15, wire ids 35..37) ==================== */

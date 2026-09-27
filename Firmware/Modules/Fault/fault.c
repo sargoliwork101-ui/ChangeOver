@@ -179,6 +179,23 @@ static void func__Fault_ClampAlarms(void)
     }
 }
 
+/* [EN] Layout contract for the indexed Set/GetAlarmParam below (flash diet
+   2026-09-27): wire ids 27..34 dense, one packed uint32_t per id in the
+   same order (host test pins every wire id).
+   [FA] قرارداد چیدمان Set/Get نمایه‌ای: شناسه‌های ۲۷..۳۴ پشت‌سرهم، یک
+   کلمه به همان ترتیب. */
+_Static_assert(FAULT_ALARM_PARAM_DISCONNECT_MV == 27u,
+               "fault alarm id base must be 27");
+_Static_assert(FAULT_ALARM_PARAM_INPUT_MAX_MV == 34u,
+               "fault alarm id top must be 34");
+_Static_assert(sizeof(fault_alarm_t) == (8u * sizeof(uint32_t)),
+               "fault_alarm_t must pack exactly 8 words");
+_Static_assert(offsetof(fault_alarm_t, uint32_t__disconnectMv) == 0u,
+               "first field must be the id-27 word");
+_Static_assert(offsetof(fault_alarm_t, uint32_t__inputMaxMv) ==
+                   (7u * sizeof(uint32_t)),
+               "last field must be the id-34 word");
+
 bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t uint32_t__value,
                                uint32_t *uint32_t__appliedValue)
@@ -191,39 +208,23 @@ bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
        وسط گیره پیشی می‌گیرد و یک پاس آستانهٔ پاره می‌خواند. */
     int32_t int32_t__savedKernelLock = osKernelLock();
 
-    switch (uint8_t__paramId)
+    /* [EN] Indexed store (flash diet 2026-09-27): wire ids 27..34 are
+       dense and fault_alarm_t packs the same fields in the same order
+       (layout asserts above, wire-id density pinned by the host test):
+       identical store, identical clamp call, identical lock/unlock paths.
+       [FA] ذخیرهٔ نمایه‌ای (رژیم فلش): شناسه‌های ۲۷..۳۴ پشت‌سرهم و فیلدها
+       به همان ترتیب‌اند - همان ذخیره، همان گیره، همان قفل. */
+    if ((uint8_t__paramId < FAULT_ALARM_PARAM_DISCONNECT_MV) ||
+        (uint8_t__paramId > FAULT_ALARM_PARAM_INPUT_MAX_MV))
     {
-        case FAULT_ALARM_PARAM_DISCONNECT_MV:
-            FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv = uint32_t__value;
-            break;
-        case FAULT_ALARM_PARAM_DISCONNECT_DEB_MS:
-            FAULT_ALARM_T__G__Alarm.uint32_t__disconnectDebMs = uint32_t__value;
-            break;
-        case FAULT_ALARM_PARAM_ABSENT_MV:
-            FAULT_ALARM_T__G__Alarm.uint32_t__absentMv = uint32_t__value;
-            break;
-        case FAULT_ALARM_PARAM_BACK_MV:
-            FAULT_ALARM_T__G__Alarm.uint32_t__backMv = uint32_t__value;
-            break;
-        case FAULT_ALARM_PARAM_ABSENT_DEB_MS:
-            FAULT_ALARM_T__G__Alarm.uint32_t__absentDebMs = uint32_t__value;
-            break;
-        case FAULT_ALARM_PARAM_RECOVER_MS:
-            FAULT_ALARM_T__G__Alarm.uint32_t__recoverMs = uint32_t__value;
-            break;
-        case FAULT_ALARM_PARAM_INPUT_MIN_MV:
-            FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv = uint32_t__value;
-            break;
-        case FAULT_ALARM_PARAM_INPUT_MAX_MV:
-            FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv = uint32_t__value;
-            break;
-        default:
-            if (int32_t__savedKernelLock >= 0)
-            {
-                (void)osKernelRestoreLock(int32_t__savedKernelLock);
-            }
-            return false;
+        if (int32_t__savedKernelLock >= 0)
+        {
+            (void)osKernelRestoreLock(int32_t__savedKernelLock);
+        }
+        return false;
     }
+    ((volatile uint32_t *)&FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv)
+        [uint8_t__paramId - FAULT_ALARM_PARAM_DISCONNECT_MV] = uint32_t__value;
 
     func__Fault_ClampAlarms();
     if (int32_t__savedKernelLock >= 0)
@@ -236,35 +237,17 @@ bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
 bool func__Fault_GetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value)
 {
-    switch (uint8_t__paramId)
+    /* [EN] Indexed read: same dense-id/struct contract as the setter.
+       [FA] خواندن نمایه‌ای: همان قرارداد شناسه/ساختار. */
+    if ((uint8_t__paramId < FAULT_ALARM_PARAM_DISCONNECT_MV) ||
+        (uint8_t__paramId > FAULT_ALARM_PARAM_INPUT_MAX_MV))
     {
-        case FAULT_ALARM_PARAM_DISCONNECT_MV:
-            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv;
-            return true;
-        case FAULT_ALARM_PARAM_DISCONNECT_DEB_MS:
-            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__disconnectDebMs;
-            return true;
-        case FAULT_ALARM_PARAM_ABSENT_MV:
-            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__absentMv;
-            return true;
-        case FAULT_ALARM_PARAM_BACK_MV:
-            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__backMv;
-            return true;
-        case FAULT_ALARM_PARAM_ABSENT_DEB_MS:
-            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__absentDebMs;
-            return true;
-        case FAULT_ALARM_PARAM_RECOVER_MS:
-            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__recoverMs;
-            return true;
-        case FAULT_ALARM_PARAM_INPUT_MIN_MV:
-            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv;
-            return true;
-        case FAULT_ALARM_PARAM_INPUT_MAX_MV:
-            *uint32_t__value = FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv;
-            return true;
-        default:
-            return false;
+        return false;
     }
+    *uint32_t__value =
+        ((volatile uint32_t *)&FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv)
+        [uint8_t__paramId - FAULT_ALARM_PARAM_DISCONNECT_MV];
+    return true;
 }
 
 void func__Fault_OnSupervisionChange(void)

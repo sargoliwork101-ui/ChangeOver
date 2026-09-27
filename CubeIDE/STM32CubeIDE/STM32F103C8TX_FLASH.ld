@@ -95,21 +95,17 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
-  .ARM.extab (READONLY) : /* The "READONLY" keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
+  /* [EN] Flash diet 2026-09-27: discard C++ unwinding tables. This is a
+     pure-C bare-metal image (no exceptions); keeping them costs ~6.4 KiB
+     of FLASH whenever --gc-sections is off, and they are dead weight even
+     when it is on. Nothing references __exidx_start/end.
+     [FA] رژیم فلش: جدول‌های unwind سی++ دور ریخته می‌شود (کد خالص C است؛
+     بدون gc حدود ۶٫۴KB فلش می‌بلعید). */
+  /DISCARD/ :
   {
-    . = ALIGN(4);
     *(.ARM.extab* .gnu.linkonce.armextab.*)
-    . = ALIGN(4);
-  } >FLASH
-
-  .ARM (READONLY) : /* The "READONLY" keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
-  {
-    . = ALIGN(4);
-    __exidx_start = .;
     *(.ARM.exidx*)
-    __exidx_end = .;
-    . = ALIGN(4);
-  } >FLASH
+  }
 
   .preinit_array (READONLY) : /* The "READONLY" keyword is only supported in GCC11 and later, remove it if using GCC10 or earlier. */
   {

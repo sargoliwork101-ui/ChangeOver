@@ -667,7 +667,7 @@ def run_ui_alarm_tests():
     print("Clamp invariants + idempotence (2000 random) PASS")
 
     # --- v1.16e: crit window fit - count pulled down, intentional silence untouched ---
-    assert_true("uint64_t__critWindowMs" in ui_led_c and "runCritCount--" in ui_led_c,
+    assert_true("uint32_t__critWindowMs" in ui_led_c and "runCritCount--" in ui_led_c,
                 "C clamp pulls the crit count down until its window fits")
     d = dict(defs)
     d.update({"runCritPeriodMs": 1000, "runCritDutyPct": 10, "runCritCount": 3,

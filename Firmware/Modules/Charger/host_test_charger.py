@@ -26,6 +26,14 @@ ESP_LINK_NVM_C = ROOT / "Firmware/Modules/EspLink/esp_link_nvm.c"
 BSP_UART_C = ROOT / "Firmware/Bsp/Src/bsp_uart.c"
 MEASUREMENT_C = ROOT / "Firmware/Modules/Measurement/measurement.c"
 CALIBRATION_H = ROOT / "Firmware/Modules/Measurement/calibration.h"
+UI_LED_H = ROOT / "Firmware/Modules/Ui/ui_led.h"
+UI_LED_C = ROOT / "Firmware/Modules/Ui/ui_led.c"
+UI_BUZZER_C = ROOT / "Firmware/Modules/Ui/ui_buzzer.c"
+BSP_MEAS_C = ROOT / "Firmware/Bsp/Src/bsp_measurement.c"
+RTOS_TIME_C = ROOT / "Firmware/Rtos/Src/rtos_time.c"
+FREERTOSCONFIG_H = ROOT / "CubeIDE/Core/Inc/FreeRTOSConfig.h"
+FLASH_LD = ROOT / "CubeIDE/STM32CubeIDE/STM32F103C8TX_FLASH.ld"
+CPROJECT = ROOT / "CubeIDE/STM32CubeIDE/.cproject"
 
 ABSORB_MV = 14400
 FLOAT_MV = 13500
@@ -481,7 +489,7 @@ def test_setpoints_and_timing():
           "CAL_Current1LutChainMa" in cal_h,
           f"channel-2 bench LUT must be ON as a chain->POWER table (v1.13, user order 2026-09-25 'voltages are fixed but the currents are wrong'): the DCM invariant is battery POWER, the current is P/Vbat - the old chain->current table embedded the calibration run's battery voltage (12.0..13.65V) and overread ~7 percent per volt as the battery filled; anchors = DMM_I2 x DMM_V2 of the dense 2026-09-25T18:14 run (10 points, duty 2..20%); the axis stays the ADC chain current (raw-off2)*K*gain, NEVER duty; the tables size themselves from the initializers and both lists must stay the same length (got chain={lut_chain_n} power={lut_batt_n})")
     check("uint32_t uint32_t__batteryPowerMw = func__Measurement_Current2BenchLut(\n        func__BspMeasurement_Current2CountsToMa(uint16_t__counts));" in meas_c_raw and
-          "((uint64_t)uint32_t__batteryPowerMw) * 1000u) /\n                      UINT32_T__G__Battery2VoltageMv" in meas_c_raw,
+          "(uint32_t__batteryPowerMw * 1000u) /\n           UINT32_T__G__Battery2VoltageMv" in meas_c_raw,
           "the ch2 LUT must wrap the BSP conversion inside func__Measurement_Current2CountsToMa (unfiltered, filtered and iest all become true battery mA; raw counts and shunt uV untouched) and v1.13 DIVIDES the table's POWER output by the live cached battery-2 voltage (user order: the currents were wrong as the battery filled)")
     check("static uint32_t UINT32_T__G__Battery2VoltageMv = 12000u;" in meas_c_raw and
           meas_c_raw.count("UINT32_T__G__Battery2VoltageMv") >= 5 and
@@ -809,8 +817,8 @@ def test_ch2_power_lut_v113():
           f"voltage behaviour: at chain 556 the current must fall as the battery fills (12.2V:{i_122} 13.0V:{i_130} 14.0V:{i_140} 14.4V:{i_144} mA) - the old current-current table answered 658 mA at EVERY voltage")
 
     check("UINT32_T__G__Battery2VoltageMv = 12000u" in meas_c_raw and
-          "((uint64_t)uint32_t__batteryPowerMw) * 1000u)" in meas_c_raw,
-          "the division must run in u64 with the cached clamped voltage (boot default 12.0 V)")
+          "(uint32_t__batteryPowerMw * 1000u)" in meas_c_raw,
+          "the division must run with the cached clamped voltage (boot default 12.0 V); flash diet 2026-09-27: u32 is exact (power x 1000 < 2^32), the u64 only pulled __aeabi_uldivmod")
 
 
 def test_charger_persistence_v114():
@@ -1695,6 +1703,61 @@ def test_telemetry_frame_pins_v116c():
           "SendTelemetry must keep its 7 conditional blocks (ch1/iest1/diag1/ch2/iest2/diag2/voltages)")
 
 
+def test_flash_diet_pins_v116d():
+    """2026-09-27 flash diet (region FLASH overflowed by 1840 B): the three
+    panel-id families must stay dense so the indexed setters/getters
+    (((volatile u32*)&first)[id-BASE]) stay correct, and the diet itself
+    must not regress: no u64 (kills __aeabi_uldivmod ~1 KiB), timers stay
+    ON (OFF breaks the linked timers.c compile / non-GC link), exidx is
+    discarded by the linker script, and .cproject forces per-function
+    sections + --gc-sections in both Debug and Release."""
+    chg_ids = sorted(int(v) for v in re.findall(
+        r"#define CHG_PROFILE_PARAM_[A-Z_0-9]+\s+(\d+)u", CHARGER_H.read_text()))
+    check(chg_ids == list(range(20, 27)),
+          f"charge-profile ids must be exactly dense 20..26, got {chg_ids}")
+    flt_ids = sorted(int(v) for v in re.findall(
+        r"#define FAULT_ALARM_PARAM_[A-Z_0-9]+\s+(\d+)u", FAULT_H.read_text()))
+    check(flt_ids == list(range(27, 35)),
+          f"fault-alarm ids must be exactly dense 27..34, got {flt_ids}")
+    ui_ids = sorted(int(v) for v in re.findall(
+        r"#define UI_ALARM_PARAM_(?!MIN_ID|MAX_ID)[A-Z_0-9]+\s+(\d+)u",
+        UI_LED_H.read_text()))
+    check(ui_ids == list(range(38, 77)),
+          f"UI-alarm ids must be exactly dense 38..76 (39 params), got {len(ui_ids)} ids")
+    for src, base, name in (
+            (CHARGER_C, 20, "SetProfileParam"),
+            (FAULT_C, 27, "SetAlarmParam"),
+            (UI_LED_C, 38, "Ui_SetAlarmParam")):
+        body = src.read_text()
+        start = body.index(name)
+        window = body[start:start + 6000]
+        check("[uint8_t__paramId - " in window and
+              "(uint8_t__paramId < " in window and
+              "(uint8_t__paramId > " in window and
+              "volatile uint32_t" in window,
+              f"{src.name}:{name} must index [id-FIRST] with a FIRST..LAST guard")
+        check("_Static_assert" in body and "offsetof" in body and "sizeof" in body,
+              f"{src.name} must carry the sizeof/offsetof layout asserts above {name}")
+        check(f"case {base}:" not in window,
+              f"{src.name}:{name} must not keep the old per-id switch")
+    for src in (BSP_MEAS_C, MEASUREMENT_C, RTOS_TIME_C, UI_LED_C, UI_BUZZER_C):
+        text = src.read_text()
+        check("uint64_t" not in text and "unsigned long long" not in text,
+              f"{src.name} must stay u64-free (diet pins __aeabi_uldivmod out)")
+    check(re.search(r"#define\s+configUSE_TIMERS\s+1\b", FREERTOSCONFIG_H.read_text()),
+          "configUSE_TIMERS must stay 1 (OFF breaks the linked timers.c build)")
+    check("*(.ARM.exidx*)" in FLASH_LD.read_text() and "/DISCARD/" in FLASH_LD.read_text(),
+          "linker script must discard .ARM.exidx (C++ unwind tables ~6.4 KiB)")
+    proj = CPROJECT.read_text()
+    for opt in ("tool.c.compiler.option.ffunction",
+                "tool.c.compiler.option.fdata",
+                "tool.c.linker.option.gcsections"):
+        hits = [ln for ln in proj.splitlines()
+                if opt in ln and 'value="true"' in ln and "<option" in ln]
+        check(len(hits) >= 2,
+              f".cproject must force {opt}=true in both Debug and Release")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -1728,6 +1791,7 @@ def main():
         test_ui_mirror_v116,
         test_audit_batch_v116b,
         test_telemetry_frame_pins_v116c,
+        test_flash_diet_pins_v116d,
     ]
     for test in tests:
         test()

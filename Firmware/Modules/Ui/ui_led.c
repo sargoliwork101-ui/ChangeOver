@@ -24,6 +24,8 @@
 #include "rtos_time.h"
 #include "modules_enable.h"
 
+#include <stddef.h>
+
 #if MODULE_FAULT
 #include "fault.h"
 #endif
@@ -176,8 +178,8 @@ static void func__Ui_ClampAlarms(void)
 {
     uint32_t uint32_t__maxDurMs;
     uint32_t uint32_t__maxCount;
-    uint64_t uint64_t__critWindowMs;
-    uint64_t uint64_t__critGapsMs;
+    uint32_t uint32_t__critWindowMs;
+    uint32_t uint32_t__critGapsMs;
 
     UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs, 100u, 10000u);
@@ -349,18 +351,22 @@ static void func__Ui_ClampAlarms(void)
         (UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct != 0u) &&
         (UI_ALARM_T__G__Alarm.uint32_t__runCritCount > 1u))
     {
-        uint64_t__critWindowMs =
-            ((uint64_t)UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs *
-             (uint64_t)UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct) /
+        /* [EN] Flash diet 2026-09-27: u32 is exact - period <= 600000
+           (ClampPeriod) x duty <= 100 = 60,000,000 < 2^32; gaps <=
+           5000 x 9 = 45,000. The u64 division only fed uldivmod.
+           [FA] رژیم فلش: ۳۲بیتی دقیق است (حداکثر ۶×۱۰^۷). */
+        uint32_t__critWindowMs =
+            (UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs *
+             UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct) /
             UI_PERCENT_SCALE;
         while (UI_ALARM_T__G__Alarm.uint32_t__runCritCount > 1u)
         {
-            uint64_t__critGapsMs =
-                (uint64_t)UI_ALARM_T__G__Alarm.uint32_t__runGapMs *
-                (uint64_t)(UI_ALARM_T__G__Alarm.uint32_t__runCritCount - 1u);
-            if ((uint64_t__critGapsMs < uint64_t__critWindowMs) &&
-                ((uint64_t__critWindowMs - uint64_t__critGapsMs) >=
-                 (uint64_t)UI_ALARM_T__G__Alarm.uint32_t__runCritCount))
+            uint32_t__critGapsMs =
+                UI_ALARM_T__G__Alarm.uint32_t__runGapMs *
+                (UI_ALARM_T__G__Alarm.uint32_t__runCritCount - 1u);
+            if ((uint32_t__critGapsMs < uint32_t__critWindowMs) &&
+                ((uint32_t__critWindowMs - uint32_t__critGapsMs) >=
+                 UI_ALARM_T__G__Alarm.uint32_t__runCritCount))
             {
                 break;
             }
@@ -521,6 +527,24 @@ static int32_t func__Ui_Buzzer_Gated(uint32_t uint32_t__periodMs,
                                 uint32_t__gapMs);
 }
 
+/* [EN] Layout contract for the indexed Set/GetAlarmParam below (flash diet
+   2026-09-27): the wire ids MIN..MAX are dense and ui_alarm_t packs one
+   uint32_t per id in the SAME order (no padding possible between u32
+   words); the host test pins every wire id, these pins the struct side.
+   [FA] قرارداد چیدمان برای Set/Get نمایه‌ای: شناسه‌ها پشت‌سرهم و struct
+   همان فیلدها به همان ترتیب؛ تست هاست شناسه‌ها را قفل می‌کند، این‌ها سمت
+   struct را. */
+_Static_assert(sizeof(ui_alarm_t) ==
+                   ((UI_ALARM_PARAM_MAX_ID - UI_ALARM_PARAM_MIN_ID + 1u) *
+                    sizeof(uint32_t)),
+               "ui_alarm_t must pack exactly one word per wire id");
+_Static_assert(offsetof(ui_alarm_t, uint32_t__ovLedPeriodMs) == 0u,
+               "first field must be the MIN-id word");
+_Static_assert(offsetof(ui_alarm_t, uint32_t__buzzerMute) ==
+                   ((UI_ALARM_PARAM_MAX_ID - UI_ALARM_PARAM_MIN_ID) *
+                    sizeof(uint32_t)),
+               "last field must be the MAX-id word");
+
 bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t uint32_t__value,
                             uint32_t *uint32_t__appliedValue)
@@ -534,132 +558,26 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
        اولویت‌ها می‌بندد. */
     int32_t int32_t__savedKernelLock = osKernelLock();
 
-    switch (uint8_t__paramId)
+    /* [EN] Indexed store (flash diet 2026-09-27: the 39-case switch cost
+       1.4 KiB the F103C8 no longer has). Wire ids are dense MIN..MAX and
+       the struct packs the same fields in the same order (layout asserts
+       above, wire-id density pinned by the host test), so id-MIN indexes
+       the target word directly: identical store, identical clamp call,
+       identical lock/unlock paths.
+       [FA] ذخیرهٔ نمایه‌ای (رژیم فلش: سوییچ ۳۹حالته ۱٫۴KB می‌خورد که
+       نداریم). شناسه‌ها پشت‌سرهم و فیلدها به همان ترتیب‌اند پس مستقیم
+       ایندکس می‌زنیم - همان ذخیره، همان گیره، همان قفل. */
+    if ((uint8_t__paramId < UI_ALARM_PARAM_MIN_ID) ||
+        (uint8_t__paramId > UI_ALARM_PARAM_MAX_ID))
     {
-        case UI_ALARM_PARAM_OV_LED_PERIOD_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_OV_LED_DUTY_PCT:
-            UI_ALARM_T__G__Alarm.uint32_t__ovLedDutyPct = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_OV_BEEP_PERIOD_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_OV_BEEP_DUR_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_OV_BEEP_COUNT:
-            UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_OV_BEEP_GAP_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_BL_LED_PERIOD_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_BL_LED_DUTY_PCT:
-            UI_ALARM_T__G__Alarm.uint32_t__blLedDutyPct = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_BL_BEEP_PERIOD_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_BL_BEEP_DUR_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_BL_BEEP_COUNT:
-            UI_ALARM_T__G__Alarm.uint32_t__blBeepCount = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_BL_BEEP_GAP_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_BEEP_START_PCT:
-            UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_BEEP_DOUBLE_PCT:
-            UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_BEEP_TRIPLE_PCT:
-            UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_BEEP_CRIT_PCT:
-            UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_STD_INTERVAL_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_TRI_INTERVAL_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_CRIT_PERIOD_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_CRIT_DUTY_PCT:
-            UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_CRIT_COUNT:
-            UI_ALARM_T__G__Alarm.uint32_t__runCritCount = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_STD_DUR_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_TRI_DUR_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_CRIT_DUR_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_STD_COUNT:
-            UI_ALARM_T__G__Alarm.uint32_t__runStdCount = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_DOUBLE_COUNT:
-            UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_TRI_COUNT:
-            UI_ALARM_T__G__Alarm.uint32_t__runTriCount = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_RUN_GAP_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__runGapMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_GREEN_PERIOD_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_GREEN_MIN_OFF_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_YELLOW_PERIOD_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_YELLOW_MIN_ON_MS:
-            UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_OV_THRESH_MV:
-            UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_OV_HYST_MV:
-            UI_ALARM_T__G__Alarm.uint32_t__ovHystMv = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_LOWBAT_THRESH_MV:
-            UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_LOWBAT_CLEAR_MV:
-            UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_PCT_VMIN_MV:
-            UI_ALARM_T__G__Alarm.uint32_t__pctVminMv = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_PCT_VMAX_MV:
-            UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv = uint32_t__value;
-            break;
-        case UI_ALARM_PARAM_BUZZER_MUTE:
-            UI_ALARM_T__G__Alarm.uint32_t__buzzerMute = uint32_t__value;
-            break;
-        default:
-            if (int32_t__savedKernelLock >= 0)
-            {
-                (void)osKernelRestoreLock(int32_t__savedKernelLock);
-            }
-            return false;
+        if (int32_t__savedKernelLock >= 0)
+        {
+            (void)osKernelRestoreLock(int32_t__savedKernelLock);
+        }
+        return false;
     }
+    ((volatile uint32_t *)&UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs)
+        [uint8_t__paramId - UI_ALARM_PARAM_MIN_ID] = uint32_t__value;
 
     func__Ui_ClampAlarms();
     if (int32_t__savedKernelLock >= 0)
@@ -672,128 +590,17 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
 bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t *uint32_t__value)
 {
-    switch (uint8_t__paramId)
+    /* [EN] Indexed read: same dense-id/struct contract as the setter.
+       [FA] خواندن نمایه‌ای: همان قرارداد شناسه/ساختار. */
+    if ((uint8_t__paramId < UI_ALARM_PARAM_MIN_ID) ||
+        (uint8_t__paramId > UI_ALARM_PARAM_MAX_ID))
     {
-        case UI_ALARM_PARAM_OV_LED_PERIOD_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs;
-            return true;
-        case UI_ALARM_PARAM_OV_LED_DUTY_PCT:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovLedDutyPct;
-            return true;
-        case UI_ALARM_PARAM_OV_BEEP_PERIOD_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs;
-            return true;
-        case UI_ALARM_PARAM_OV_BEEP_DUR_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs;
-            return true;
-        case UI_ALARM_PARAM_OV_BEEP_COUNT:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount;
-            return true;
-        case UI_ALARM_PARAM_OV_BEEP_GAP_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs;
-            return true;
-        case UI_ALARM_PARAM_BL_LED_PERIOD_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs;
-            return true;
-        case UI_ALARM_PARAM_BL_LED_DUTY_PCT:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__blLedDutyPct;
-            return true;
-        case UI_ALARM_PARAM_BL_BEEP_PERIOD_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs;
-            return true;
-        case UI_ALARM_PARAM_BL_BEEP_DUR_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs;
-            return true;
-        case UI_ALARM_PARAM_BL_BEEP_COUNT:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__blBeepCount;
-            return true;
-        case UI_ALARM_PARAM_BL_BEEP_GAP_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs;
-            return true;
-        case UI_ALARM_PARAM_RUN_BEEP_START_PCT:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct;
-            return true;
-        case UI_ALARM_PARAM_RUN_BEEP_DOUBLE_PCT:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct;
-            return true;
-        case UI_ALARM_PARAM_RUN_BEEP_TRIPLE_PCT:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct;
-            return true;
-        case UI_ALARM_PARAM_RUN_BEEP_CRIT_PCT:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct;
-            return true;
-        case UI_ALARM_PARAM_RUN_STD_INTERVAL_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs;
-            return true;
-        case UI_ALARM_PARAM_RUN_TRI_INTERVAL_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs;
-            return true;
-        case UI_ALARM_PARAM_RUN_CRIT_PERIOD_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs;
-            return true;
-        case UI_ALARM_PARAM_RUN_CRIT_DUTY_PCT:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct;
-            return true;
-        case UI_ALARM_PARAM_RUN_CRIT_COUNT:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runCritCount;
-            return true;
-        case UI_ALARM_PARAM_RUN_STD_DUR_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs;
-            return true;
-        case UI_ALARM_PARAM_RUN_TRI_DUR_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs;
-            return true;
-        case UI_ALARM_PARAM_RUN_CRIT_DUR_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs;
-            return true;
-        case UI_ALARM_PARAM_RUN_STD_COUNT:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runStdCount;
-            return true;
-        case UI_ALARM_PARAM_RUN_DOUBLE_COUNT:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount;
-            return true;
-        case UI_ALARM_PARAM_RUN_TRI_COUNT:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runTriCount;
-            return true;
-        case UI_ALARM_PARAM_RUN_GAP_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__runGapMs;
-            return true;
-        case UI_ALARM_PARAM_GREEN_PERIOD_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs;
-            return true;
-        case UI_ALARM_PARAM_GREEN_MIN_OFF_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs;
-            return true;
-        case UI_ALARM_PARAM_YELLOW_PERIOD_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs;
-            return true;
-        case UI_ALARM_PARAM_YELLOW_MIN_ON_MS:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs;
-            return true;
-        case UI_ALARM_PARAM_OV_THRESH_MV:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv;
-            return true;
-        case UI_ALARM_PARAM_OV_HYST_MV:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__ovHystMv;
-            return true;
-        case UI_ALARM_PARAM_LOWBAT_THRESH_MV:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv;
-            return true;
-        case UI_ALARM_PARAM_LOWBAT_CLEAR_MV:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv;
-            return true;
-        case UI_ALARM_PARAM_PCT_VMIN_MV:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__pctVminMv;
-            return true;
-        case UI_ALARM_PARAM_PCT_VMAX_MV:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv;
-            return true;
-        case UI_ALARM_PARAM_BUZZER_MUTE:
-            *uint32_t__value = UI_ALARM_T__G__Alarm.uint32_t__buzzerMute;
-            return true;
-        default:
-            return false;
+        return false;
     }
+    *uint32_t__value =
+        ((volatile uint32_t *)&UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs)
+        [uint8_t__paramId - UI_ALARM_PARAM_MIN_ID];
+    return true;
 }
 
 /* ==================== Battery Voltage To Percent / تبدیل ولتاژ باتری به درصد ==================== */
@@ -1478,7 +1285,7 @@ static void func__Ui_ScenarioInputOverVoltage_Tick(void)
     uint32_t uint32_t__elapsedMs;
     uint32_t uint32_t__phaseMs;
     uint32_t uint32_t__redOnMs;
-    uint64_t uint64_t__redDutyProduct;
+    uint32_t uint32_t__redDutyProduct;
     bool bool__redOn;
 
     func__Ui_ResetBatteryCriticalBeep();
@@ -1489,9 +1296,12 @@ static void func__Ui_ScenarioInputOverVoltage_Tick(void)
     uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(ticktype__nowTick - TICKTYPE_T__G__UiInputOverVoltageStartTick);
     uint32_t__phaseMs = uint32_t__elapsedMs % UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs;
 
-    uint64_t__redDutyProduct = (uint64_t)UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs *
+    /* [EN] Flash diet 2026-09-27: u32 is exact - period <= 10000 x duty
+       <= 100 = 1,000,000 < 2^32 (both clamped). No uldivmod.
+       [FA] رژیم فلش: ۳۲بیتی دقیق است (هر دو گیره‌خورده‌اند). */
+    uint32_t__redDutyProduct = UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs *
                                UI_ALARM_T__G__Alarm.uint32_t__ovLedDutyPct;
-    uint32_t__redOnMs = (uint32_t)(uint64_t__redDutyProduct / UI_PERCENT_SCALE);
+    uint32_t__redOnMs = uint32_t__redDutyProduct / UI_PERCENT_SCALE;
     bool__redOn = (uint32_t__phaseMs < uint32_t__redOnMs);
 
     func__green(true);
@@ -1971,7 +1781,7 @@ void func__Ui_BoardTest_Start(void)
 {
     uint32_t uint32_t__beepPeriodMs;
     uint32_t uint32_t__beepDutyPercent;
-    uint64_t uint64_t__beepDutyProduct;
+    uint32_t uint32_t__beepDutyProduct;
     int32_t int32_t__buzzerResult;
 
     func__all_off();
@@ -2008,9 +1818,13 @@ void func__Ui_BoardTest_Start(void)
     uint32_t__beepDutyPercent = UI_BUZZER_DUTY_MAX_PERCENT;
     if (APP_CONFIG.ui_boot_beep_ms < uint32_t__beepPeriodMs)
     {
-        uint64_t__beepDutyProduct = (uint64_t)APP_CONFIG.ui_boot_beep_ms * UI_BUZZER_PERCENT_SCALE;
-        uint32_t__beepDutyPercent = (uint32_t)(uint64_t__beepDutyProduct / uint32_t__beepPeriodMs);
-        if ((uint64_t__beepDutyProduct % uint32_t__beepPeriodMs) != 0u)
+        /* [EN] Flash diet 2026-09-27: u32 is exact - boot beep is the
+           150 ms compile default x 100 = 15,000 (never written at
+           runtime). No uldivmod.
+           [FA] رژیم فلش: ۳۲بیتی دقیق است (۱۵۰×۱۰۰). */
+        uint32_t__beepDutyProduct = APP_CONFIG.ui_boot_beep_ms * UI_BUZZER_PERCENT_SCALE;
+        uint32_t__beepDutyPercent = uint32_t__beepDutyProduct / uint32_t__beepPeriodMs;
+        if ((uint32_t__beepDutyProduct % uint32_t__beepPeriodMs) != 0u)
         {
             uint32_t__beepDutyPercent++;
         }

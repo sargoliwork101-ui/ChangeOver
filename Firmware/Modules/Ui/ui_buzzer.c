@@ -125,9 +125,7 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
     uint32_t uint32_t__cursorMs;
     uint32_t uint32_t__currentBeepOnMs;
     uint8_t uint8_t__beepIndex;
-    uint64_t uint64_t__dutyProduct;
-    uint64_t uint64_t__gapProduct;
-    uint64_t uint64_t__checkProduct;
+    uint32_t uint32_t__gapProduct;
     bool bool__configurationChanged;
     bool bool__buzzerOn;
 
@@ -161,26 +159,41 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         uint32_t__effectiveGapMs = uint32_t__gapMs;
     }
 
-    /* [EN] Calculate the duty window without overflowing a 32-bit period.
-       [FA] پنجره دیوتی را بدون سرریز دوره ۳۲ بیتی محاسبه کن. */
-    uint64_t__dutyProduct = (uint64_t)uint32_t__periodMs * (uint64_t)uint8_t__dutyPercent;
-    uint32_t__dutyWindowMs = (uint32_t)(uint64_t__dutyProduct / UI_BUZZER_PERCENT_SCALE);
+    /* [EN] Duty window without overflowing a 32-bit period and WITHOUT u64
+       (flash diet 2026-09-27): (p/100)*d + ((p%100)*d)/100 is the identical
+       quotient for the FULL u32 range, and (p/100)*d peaks at 4,294,967,200
+       < 2^32 because duty <= 100 (proven over 200k random + edge values).
+       The u64 division pulled __aeabi_uldivmod (~1 KiB).
+       [FA] پنجره دیوتی بدون سرریز و بدون ۶۴بیت: خارج‌قسمت یکسان برای کل
+       بازه ۳۲بیت (دیوتی ≤۱۰۰ پس ضرب جا می‌شود). */
+    uint32_t__dutyWindowMs =
+        ((uint32_t__periodMs / UI_BUZZER_PERCENT_SCALE) * (uint32_t)uint8_t__dutyPercent) +
+        (((uint32_t__periodMs % UI_BUZZER_PERCENT_SCALE) * (uint32_t)uint8_t__dutyPercent) /
+         UI_BUZZER_PERCENT_SCALE);
 
     uint32_t__gapCount = (uint32_t)uint8_t__beepCount - 1u;
-    uint64_t__gapProduct = (uint64_t)uint32_t__effectiveGapMs * (uint64_t)uint32_t__gapCount;
+    /* [EN] Gap total in u32 (flash diet 2026-09-27): an overflowing product
+       can only exceed the u32 duty window, i.e. exactly the reject the u64
+       path took - clamp it to UINT32_MAX and the comparisons below keep
+       identical outcomes; otherwise the product is identical.
+       [FA] جمع گپ‌ها با ۳۲بیت: سرریز فقط یعنی رد همان‌طور که قبلاً بود. */
+    uint32_t__gapProduct = ((uint32_t__gapCount != 0u) &&
+                            (uint32_t__effectiveGapMs > (UINT32_MAX / uint32_t__gapCount)))
+                               ? UINT32_MAX
+                               : (uint32_t__effectiveGapMs * uint32_t__gapCount);
 
     /* [EN] Reject a pattern when gaps leave no positive time for every pulse.
        [FA] اگر گپ‌ها زمان مثبت برای همه پالس‌ها باقی نگذارند، الگو را رد کن. */
     if ((uint32_t__dutyWindowMs == 0u) ||
-        (uint64_t__gapProduct >= (uint64_t)uint32_t__dutyWindowMs) ||
-        ((uint32_t__dutyWindowMs - (uint32_t)uint64_t__gapProduct) < (uint32_t)uint8_t__beepCount))
+        (uint32_t__gapProduct >= uint32_t__dutyWindowMs) ||
+        ((uint32_t__dutyWindowMs - uint32_t__gapProduct) < (uint32_t)uint8_t__beepCount))
     {
         func__BspGpio_Write(BSP_GPIO_BUZZER, false);
         BOOL__G__BuzzerPatternValid = false;
         return UI_BUZZER_INVALID_RESULT;
     }
 
-    uint32_t__totalGapMs = (uint32_t)uint64_t__gapProduct;
+    uint32_t__totalGapMs = uint32_t__gapProduct;
     uint32_t__availableOnMs = uint32_t__dutyWindowMs - uint32_t__totalGapMs;
     uint32_t__beepOnMs = uint32_t__availableOnMs / (uint32_t)uint8_t__beepCount;
     uint32_t__onRemainderMs = uint32_t__availableOnMs % (uint32_t)uint8_t__beepCount;
@@ -205,8 +218,13 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         uint32_t__smallestTimingMs = uint32_t__periodTailMs;
     }
 
-    uint64_t__checkProduct = (uint64_t)uint32_t__smallestTimingMs * UI_BUZZER_CHECK_PERCENT;
-    uint32_t__nextCheckMs = (uint32_t)(uint64_t__checkProduct / UI_BUZZER_PERCENT_SCALE);
+    /* [EN] Next-check percent WITHOUT u64 (flash diet 2026-09-27): same
+       exact split as the duty window (CHECK_PERCENT = 10 <= 100).
+       [FA] درصد مراجعه بعدی بدون ۶۴بیت: همان تجزیهٔ دقیق. */
+    uint32_t__nextCheckMs =
+        ((uint32_t__smallestTimingMs / UI_BUZZER_PERCENT_SCALE) * UI_BUZZER_CHECK_PERCENT) +
+        (((uint32_t__smallestTimingMs % UI_BUZZER_PERCENT_SCALE) * UI_BUZZER_CHECK_PERCENT) /
+         UI_BUZZER_PERCENT_SCALE);
     if (uint32_t__nextCheckMs < UI_BUZZER_MIN_CHECK_MS)
     {
         uint32_t__nextCheckMs = UI_BUZZER_MIN_CHECK_MS;

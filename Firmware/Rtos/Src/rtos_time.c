@@ -18,7 +18,8 @@
 uint32_t func__Rtos_MillisecondsToTicks(uint32_t uint32_t__milliseconds)
 {
     uint32_t uint32_t__tickFrequency;
-    uint64_t uint64_t__ticks;
+    uint32_t uint32_t__wholeSeconds;
+    uint32_t uint32_t__leftoverMs;
 
     uint32_t__tickFrequency = osKernelGetTickFreq();
     if (uint32_t__tickFrequency == 0u)
@@ -26,15 +27,29 @@ uint32_t func__Rtos_MillisecondsToTicks(uint32_t uint32_t__milliseconds)
         return 0u;
     }
 
-    uint64_t__ticks = ((uint64_t)uint32_t__milliseconds * (uint64_t)uint32_t__tickFrequency) + 999u;
-    uint64_t__ticks /= 1000u;
-
-    if (uint64_t__ticks > UINT32_MAX)
+    /* [EN] Flash diet 2026-09-27: (ms*freq+999)/1000 WITHOUT u64 - split ms
+       into whole seconds + leftover: whole*freq + (left*freq+999)/1000 is
+       the identical quotient (whole*freq*1000 is divisible by 1000) and no
+       product can overflow: leftover <= 999 and rates above 1 MHz (1000x
+       any real RTOS tick) saturate. The old >UINT32_MAX trip is kept as
+       the whole-seconds guard; only its far-overflow boundary for
+       hypothetical rates above 1 kHz may differ by one tick (the live rate
+       is 1000 Hz, where this is bit-exact). The u64 division pulled
+       __aeabi_uldivmod (~1 KiB).
+       [FA] رژیم فلش: همان خارج‌قسمت بدون ۶۴بیت؛ برای نرخ واقعی ۱kHz
+       بیت‌به‌بیت یکسان. */
+    if (uint32_t__tickFrequency > 1000000u)
     {
         return UINT32_MAX;
     }
-
-    return (uint32_t)uint64_t__ticks;
+    uint32_t__wholeSeconds = uint32_t__milliseconds / 1000u;
+    uint32_t__leftoverMs = uint32_t__milliseconds % 1000u;
+    if (uint32_t__wholeSeconds > (UINT32_MAX / uint32_t__tickFrequency))
+    {
+        return UINT32_MAX;
+    }
+    return (uint32_t__wholeSeconds * uint32_t__tickFrequency) +
+           (((uint32_t__leftoverMs * uint32_t__tickFrequency) + 999u) / 1000u);
 }
 
 /**
@@ -46,7 +61,8 @@ uint32_t func__Rtos_MillisecondsToTicks(uint32_t uint32_t__milliseconds)
 uint32_t func__Rtos_TicksToMilliseconds(uint32_t uint32_t__ticks)
 {
     uint32_t uint32_t__tickFrequency;
-    uint64_t uint64_t__milliseconds;
+    uint32_t uint32_t__wholeQuotient;
+    uint32_t uint32_t__remainderTicks;
 
     uint32_t__tickFrequency = osKernelGetTickFreq();
     if (uint32_t__tickFrequency == 0u)
@@ -54,15 +70,23 @@ uint32_t func__Rtos_TicksToMilliseconds(uint32_t uint32_t__ticks)
         return 0u;
     }
 
-    uint64_t__milliseconds = (uint64_t)uint32_t__ticks * 1000u;
-    uint64_t__milliseconds /= (uint64_t)uint32_t__tickFrequency;
-
-    if (uint64_t__milliseconds > UINT32_MAX)
+    /* [EN] Flash diet 2026-09-27: (ticks*1000)/freq WITHOUT u64 - split
+       ticks by the rate: whole*1000 + (rem*1000)/freq is the identical
+       quotient, rem*1000 fits (rem < freq <= 1 MHz guard above the real
+       1000 Hz, bit-exact there). Saturation matches the old trip.
+       [FA] رژیم فلش: همان خارج‌قسمت بدون ۶۴بیت؛ در ۱kHz یکسان. */
+    if (uint32_t__tickFrequency > 1000000u)
     {
         return UINT32_MAX;
     }
-
-    return (uint32_t)uint64_t__milliseconds;
+    uint32_t__wholeQuotient = uint32_t__ticks / uint32_t__tickFrequency;
+    uint32_t__remainderTicks = uint32_t__ticks % uint32_t__tickFrequency;
+    if (uint32_t__wholeQuotient > (UINT32_MAX / 1000u))
+    {
+        return UINT32_MAX;
+    }
+    return (uint32_t__wholeQuotient * 1000u) +
+           ((uint32_t__remainderTicks * 1000u) / uint32_t__tickFrequency);
 }
 
 /**
