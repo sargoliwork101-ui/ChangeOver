@@ -412,6 +412,11 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 .ldon{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);margin-right:8px}
 .hnl input[type=number]{width:66px;min-height:30px;padding:4px 6px}
+.movl{position:fixed;inset:0;z-index:300;background:rgba(3,5,9,.72);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:16px}
+.mod{background:var(--cd);border:1px solid var(--ln);border-radius:18px;padding:22px;max-width:460px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+.mod h3{font-size:16px;margin-bottom:8px}
+.mod .sb{width:100%;margin-top:10px}
+input:disabled{opacity:.38;cursor:not-allowed}
 </style></head><body>
 <header><h1>پنل ChangeOver</h1><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
@@ -423,7 +428,6 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 <div class="cd">
 <div class="hd"><b>وضعیت آلارم‌ها</b> <span class="ldon" id="aslive"></span><span class="lb">· زنده از TLM برد · آستانه‌ها = مقادیر اعمال‌شدهٔ برد</span></div>
 <div id="ast" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div>
-<div id="abars"></div>
 </div>
 <div class="ch" id="ch"></div>
 <div id="mc"></div>
@@ -911,16 +915,15 @@ const FEXP=[
  ['خطای جیتر کانال ۲','ناپایداری داخلی نمونه‌برداری کانال ۲؛ اگر ماندگار شد برد را ریست کنید.'],
  ['قطع باتری','سیم باتری قطع است یا باتری نیست: یا ولتاژ حین پمپ بالای آستانهٔ قطع (۲۷) رفته یا باتری زیر آستانهٔ غیبت (۲۹) با ورودی سالم دیده شده. سیم‌کشی باتری را بررسی کنید؛ با بازگشت هر دو نیمه بالای آستانهٔ برگشت (۳۰) و پایداری (۳۲)، لچ خودکار پاک می‌شود.']];
 let ASB=null;
-function astat(){const s=$('ast'),b=$('abars');if(!s||!b||!D||!D.t||!D.p)return;
+function astat(){const s=$('ast');if(!s||!D||!D.t||!D.p)return;
  const t=D.t,p=D.p;
  const g=(id,fb)=>p[id]!=null?p[id]:fb;
  const vin=t[14],vl=t[17],vh=t[18],i1=t[3],i2=t[10];
  const mn=g(33,21000),mx=g(34,28000),dc=g(27,14800),ab=g(29,6000),hd=g(35,950),ov=g(36,15000),fl=g(37,2000);
  if(!ASB){
   s.innerHTML=`<div class="ag">`+[['ورودی'],['باتری پایین'],['باتری بالا'],['جریان ۱ (بالا)'],['جریان ۲ (پایین)']].map((x,k)=>`<div class="ab" id="asb${k}"><small>${x[0]}</small><b class="n" id="asv${k}">—</b><span class="lb" id="asc${k}">—</span><span class="tg" id="asg${k}">—</span></div>`).join('')+`</div><div class="ab" id="asb5" style="margin-top:8px;min-height:0"><small>خطاهای قفل‌شده (fault) — LED جدا برای هر بیت</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit" id="asbb6"><i></i><small>قطع‌باتری</small></span></div><div class="fx2" id="asf">—</div></div>`;
-  b.innerHTML=[0,1,2].map(k=>`<div class="lb" id="abc${k}" style="margin-top:8px">—</div><div class="bar"><i id="abf${k}"></i><span id="abm${k}"></span></div>`).join('');
-  ASB={box:[0,1,2,3,4,5].map(k=>$('asb'+k)),val:[0,1,2,3,4].map(k=>$('asv'+k)),cap:[0,1,2,3,4].map(k=>$('asc'+k)),pill:[0,1,2,3,4].map(k=>$('asg'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6].map(k=>$('asbb'+k)),bcap:[$('abc0'),$('abc1'),$('abc2')],bfill:[$('abf0'),$('abf1'),$('abf2')],bmark:[$('abm0'),$('abm1'),$('abm2')],sig:'',mask:-1,live:$('aslive'),tick:false};
-  if(!ASB.box[0]||!ASB.bfill[0]||!ASB.flt){ASB=null;return;}
+  ASB={box:[0,1,2,3,4,5].map(k=>$('asb'+k)),val:[0,1,2,3,4].map(k=>$('asv'+k)),cap:[0,1,2,3,4].map(k=>$('asc'+k)),pill:[0,1,2,3,4].map(k=>$('asg'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6].map(k=>$('asbb'+k)),sig:'',mask:-1,live:$('aslive'),tick:false};
+  if(!ASB.box[0]||!ASB.flt){ASB=null;return;}
  }
  const set=(k,val,cap,pill,cls)=>{ASB.val[k].textContent=val;ASB.cap[k].textContent=cap;ASB.pill[k].textContent=pill;ASB.pill[k].className='tg '+cls;ASB.box[k].className='ab '+(cls==='g'?'good':cls==='y'?'warn':'bad');};
  const vinOk=vin>=mn&&vin<=mx;
@@ -933,13 +936,7 @@ function astat(){const s=$('ast'),b=$('abars');if(!s||!b||!D||!D.t||!D.p)return;
   else{let h='';for(let bit=0;bit<7;bit++)if(t[19]&(1<<bit))h+=`<div>⚠ <b>${FEXP[bit][0]}</b> — ${FEXP[bit][1]}</div>`;
    if(t[19]&~127)h+=`<div>⚠ بیت ناشناخته: <span class="n">fault 0x${t[19].toString(16)}</span></div>`;
    ASB.flt.innerHTML=h;ASB.box[5].className='ab bad';}}
- const pc2=(x,lo,hi)=>Math.max(0,Math.min(100,(x-lo)/(hi-lo)*100));
- const R=[[Math.max(vl,vh),0,16000,[[ab,'#fbbf24'],[g(30,7000),'#34d399'],[dc,'#fb5e6a']],`باتری (بالاترین نیمه) — زرد=غیبت · سبز=برگشت · قرمز=قطع`],
-  [i1,0,Math.max(1000,hd+100),[[hd,'#fb5e6a']],`جریان ۱ (باتری بالا) — قرمز=خطای سخت ${hd}mA`],
-  [i2,0,Math.max(1000,hd+100),[[hd,'#fb5e6a']],`جریان ۲ (باتری پایین) — قرمز=خطای سخت ${hd}mA`]];
- const sig=[mn,mx,ab,g(30,7000),dc,hd].join(',');
- if(sig!==ASB.sig){ASB.sig=sig;R.forEach((r,k)=>{ASB.bcap[k].textContent=r[4];ASB.bmark[k].innerHTML=r[3].map(m=>`<u style="right:${pc2(m[0],r[1],r[2])}%;background:${m[1]}"></u>`).join('');});}
- R.forEach((r,k)=>{ASB.bfill[k].style.width=pc2(r[0],r[1],r[2])+'%';});ASB.tick=!ASB.tick;if(ASB.live)ASB.live.style.opacity=ASB.tick?1:.3;}
+ ASB.tick=!ASB.tick;if(ASB.live)ASB.live.style.opacity=ASB.tick?1:.3;}
 /* ===== v1.16: آینهٔ LED و بازر برد — همان اولویت Ui_Tick با مقادیر اعمال‌شده؛ چشمک با همان دوره/دیوتی برد (فاز محلی، هم‌سرعت) ===== */
 let UV={inP:false,ov:false,bat:false,pct:-1,cpct:-1,full:false,critT:0};
 function uview(){
@@ -1093,8 +1090,9 @@ function wsweep(){const a=+($('wA').value),b=+($('wB').value);
  const L=[];for(let d=a;d<=b;d++)L.push(d);return L;}
 function wdl(){const a=document.createElement('a');a.href='/benchlog';a.download='benchlog.csv';document.body.appendChild(a);a.click();a.remove();}
 function wexist(sz){return new Promise(res=>{const e=$('wEx'),kb=(sz/1024).toFixed(1);
- e.style.display='flex';e.innerHTML='<span class="lb">فایل بنچ از قبل <b class="n">'+kb+' KB</b> داده دارد:</span><button class="sb" id="wExD">دانلود قبلی و ادامه همان فایل</button><button class="sb sb2" id="wExC">پاک کردن و شروع تازه</button><button class="sb stp2" id="wExX">انصراف</button>';
- const done=v=>{e.style.display='none';e.innerHTML='';res(v);};
+ $('wExB').innerHTML='<h3>فایل بنچ قبلی پیدا شد</h3><div class="lb">فایل داخل ESP از قبل <b class="n">'+kb+' KB</b> داده دارد. چه شود؟</div><button class="sb" id="wExD">دانلود قبلی و ادامه همان فایل</button><button class="sb sb2" id="wExC">پاک کردن و شروع تازه</button><button class="sb stp2" id="wExX">انصراف</button>';
+ e.style.display='flex';
+ const done=v=>{e.style.display='none';res(v);};
  $('wExD').onclick=()=>done('append');$('wExC').onclick=()=>done('clear');$('wExX').onclick=()=>done('cancel');});}
 function wlist(){const a=$('wL').value.split(/[,، ]+/).filter(x=>x!=='').map(Number);if(!a.length||a.some(x=>!(x>=0&&x<=50)))throw 'فهرست duty نامعتبر است (درصد بین ۰ و ۵۰، با کاما جدا؛ مثلاً 5,10,15,20)';return a;}
 /* پنجرهٔ /m: هر ۲۰ فیلد t[] با مجموع/کمینه/بیشینه/آخرین فریم، OR خطاها، seq و flags آخر.
@@ -1170,11 +1168,11 @@ $('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty 
 <div class="bctl"><label class="lb">duty % <input type="text" id="wL" data-s class="dl" value="2,4,6,8,10,12,14,16,18,20" style="width:160px"></label>
 ${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${k}</label>`).join('')}</div>
 <div class="bctl"><label class="lb"><input type="checkbox" id="wSw" checked> sweep خودکار با گام ۱٪</label><label class="lb">از <input type="number" id="wA" data-s value="1" min="0" max="50"></label><label class="lb">تا <input type="number" id="wB" data-s value="50" min="0" max="50"></label><span class="lb">خاموش = فهرست دستی بالا</span></div>
-<div class="bqr2" id="wEx" style="display:none;margin-top:10px"></div>
+<div class="movl" id="wEx" style="display:none"><div class="mod" id="wExB"></div></div>
 <div class="bctl"><button class="sb brun" onclick="wStart()">شروع</button><button class="sb stp2 wstop" onclick="W.abort=true">پایان</button><span class="lb">فایل: <b id="wF">—</b></span><a class="sb sb2 lnk" href="/benchlog" download="benchlog.csv">دانلود فایل</a><button class="sb sb2 brun" onclick="wclear()">پاک کردن فایل</button></div>
 <div class="cm lb" id="wS0"></div><div id="wT"></div>
 <div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div></div>`;
-bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){}document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
+bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{const s=$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB');if(L)L.disabled=s;if(A)A.disabled=!s;if(B)B.disabled=!s;};$('wSw').onchange();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
 /* ---------- کنترل دستی دیوتی دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کارت در تب «پنل» (از v1.10)؛
  * ---------- قرارداد ایمنی بخش 5.2 اسپک بدون تغییر: ددمن ۱۰ ثانیه، سقف کانال (p13/p14)،
  * ---------- JIT با مسلح مجدد با ارسال دوبارهٔ همان دیوتی. هیچ ضریبی اینجا ارسال نمی‌شود. ---------- */

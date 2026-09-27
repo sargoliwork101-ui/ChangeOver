@@ -1545,11 +1545,11 @@ def test_ui_mirror_v116():
     check("پشتیبان‌گیری" in s3part and 'id="xim"' in s3part
           and all(f'id="q{i}"' not in s3part for i in range(27, 77)),
           "s3 holds only the single backup card")
-    check("وضعیت آلارم‌ها" in p0part and 'id="ast"' in p0part and 'id="abars"' in p0part,
-          "the live status card sits right under the voltages on the main panel tab (p0), not in settings")
-    check("asb5" in ino and "abf2" in ino and "abf3" not in ino and "جریان ۱" in ino and "جریان ۲" in ino
+    check("وضعیت آلارم‌ها" in p0part and 'id="ast"' in p0part and 'id="abars"' not in p0part,
+          "the live status card sits right under the voltages on the main panel tab (p0) with boxes only (bars removed v1.16j), not in settings")
+    check("asb5" in ino and "abf0" not in ino and "abf1" not in ino and "abf2" not in ino and "جریان ۱" in ino and "جریان ۲" in ino
           and "Math.max(t[3],t[10])" not in ino,
-          "v1.16c (user order: current bars for BOTH batteries): per-channel boxes + bars, no max() merge; v1.16i: the input-voltage bar removed as redundant with the input box (3 bars: battery + both currents)")
+          "v1.16c (user order: current boxes for BOTH batteries, no max() merge); v1.16j: all threshold bars removed with their captions (input v1.16i, rest v1.16j) - boxes only")
     check("۱ · اضافه‌ولتاژ" in ino and "۵ · باتری و درصد" in ino and "سناریو ۱ ·" not in ino,
           "v1.16c (user order: better naming): uniformly numbered scenario picker")
     check("بوق بحرانی در پنجره جا نمی‌شود" in ino and "[56,57,58,65]" in ino,
