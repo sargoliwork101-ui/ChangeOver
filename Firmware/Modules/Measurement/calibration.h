@@ -87,6 +87,29 @@ static const uint32_t CAL_Current1LutBatteryMa[] =
  *      true battery current of -13 mA (discharge through the zener path) -
  *      power cannot go negative on this axis, so the table floors it to 0
  *      (error <= 13 mA only at the very bottom).
+ *      v1.17 REFIT (2026-09-27 SOLO2 sweep, duty 1..19 step 1, off2=8 /
+ *      gain2=1303 unchanged): the old table predicted the new run within
+ *      1 percent on 12 of 15 positive points, confirming the DCM power
+ *      invariant up to 14.85 V - but read 2..5 percent LOW in the
+ *      chain 236..353 hollow (the true curve bulges above the old chord).
+ *      Three anchors added, two moved; all other anchors verified and kept:
+ *        (20,0) NEW - noise gate: chain <= 20 (raw <= ~26) is switching
+ *          noise at 1..3% duty, not charge current (DMM reads -15..-5 mA
+ *          backfeed there, which the single-supply shunt chain cannot see).
+ *        (253,3180) NEW - D11: 256 mA x 12430 mV = 3182 mW @ chain 252.5.
+ *        (312,4500) NEW - D13: 354 mA x 12720 mV = 4503 mW @ chain 311.6.
+ *        (283,3860) MOVED from 3807 - splits the old anchor (3815 mW) and
+ *          the new run's implied ~3900 mW (D12: 303x12530 = 3797 @ 277.7).
+ *        (353,5280) MOVED from 5224 - splits the old anchor (5245 mW) and
+ *          the new run's implied ~5313 mW (D14: 404x12920 = 5220 @ 347.5).
+ *      EXCLUDED: D9 (10.4% low outlier - unsettled sample, raw spread
+ *      197..210, DMM 167 mA below the whole firmware window 177..186) and
+ *      the D16 DMM VOLTAGE (12650 mV is a typo - neighbours 13200/14000 mV,
+ *      firmware 13617 mV; power recomputed with 13617 mV lands +0.4%).
+ *      Worst residual after refit is 8 mA on 250..450 mA ~= the DMM's own
+ *      accuracy - fitting further would fit instrument noise. If off2 or
+ *      gain2 ever change, the chain axis rescales and the table MUST be
+ *      rebuilt from a fresh sweep.
  * [FA] v1.13 (دستور کاربر ۲۰۲۶-۰۹-۲۵: «ولتاژها درست شد ولی جریان‌ها
  *      اشتباه»): خروجی جدول «توان باتری ۲» بر حسب mW است، نه جریان.
  *      فیزیک: در DCM نمونهٔ وسط-ON زنجیره انرژیِ هر سایکل را دنبال می‌کند
@@ -102,14 +125,29 @@ static const uint32_t CAL_Current1LutBatteryMa[] =
  *      می‌یابد. نقطهٔ دیوتی ۲٪ جریان واقعی 13−mA داشت (تخلیه زنر) -
  *      توان روی این محور منفی نمی‌شود و همان‌جا 0 می‌گیرد (خطا ≤ 13mA
  *      فقط در کف).
+ *      بازبرازش v1.17 (سوییپ SOLO2 تاریخ ۲۰۲۶-۰۹-۲۷، دیوتی ۱..۱۹ گام ۱،
+ *      off2=8 / gain2=1303 دست‌نخورده): جدول قدیمی ران جدید را در ۱۲ نقطه
+ *      از ۱۵ نقطهٔ مثبت در حد ۱٪ پیش‌بینی کرد (تأیید ناوردای توان DCM تا
+ *      ۱۴٫۸۵V) ولی در گودی زنجیرهٔ ۲۳۶..۳۵۳ حدود ۲..۵٪ کم می‌خواند (منحنی
+ *      واقعی بالای وتر قدیمی برآمده است). سه لنگر اضافه و دو لنگر جابه‌جا
+ *      شد؛ بقیه تأیید و حفظ شدند:
+ *        (20,0) جدید - دروازهٔ نویز: زنجیره ≤۲۰ نویز سوییچینگ دیوتی
+ *          ۱..۳٪ است نه جریان شارژ (DMM آنجا ۱۵−..۵−mA برگشتی می‌خواند که
+ *          زنجیرهٔ شنت تک‌تغذیه نمی‌تواند ببیند).
+ *        (253,3180) جدید از D11؛ (312,4500) جدید از D13.
+ *        (283,3860) جابه‌جا از ۳۸۰۷؛ (353,5280) جابه‌جا از ۵۲۲۴ (میانگین
+ *          لنگر قدیمی و ران جدید).
+ *      کنارگذاشته: D9 (نقطهٔ پرت ۱۰٫۴٪ - نمونهٔ نانشانده) و ولتاژ DMM در
+ *      D16 (عدد ۱۲۶۵۰ تایپی است؛ با ۱۳۶۱۷ بازمحاسبه شد و ۰٫۴٪ نشست).
+ *      بدترین خطای باقی‌مانده 8mA روی ۲۵۰..۴۵۰mA ≈ دقت خود DMM است.
  * ============================================================================ */
 #define CAL_CURRENT2_LUT_ENABLE 1u
 
 #if (CAL_CURRENT2_LUT_ENABLE != 0u)
 static const uint32_t CAL_Current2LutChainMa[] =
-    { 0u, 5u, 37u, 106u, 189u, 236u, 283u, 353u, 441u, 557u, 707u };
+    { 0u, 20u, 37u, 106u, 189u, 236u, 253u, 283u, 312u, 353u, 441u, 557u, 707u };
 static const uint32_t CAL_Current2LutBatteryMw[] =
-    { 0u, 0u, 109u, 751u, 1581u, 2625u, 3807u, 5224u, 6817u, 8573u, 10429u };
+    { 0u, 0u, 109u, 751u, 1581u, 2625u, 3180u, 3860u, 4500u, 5280u, 6817u, 8573u, 10429u };
 #define CAL_CURRENT2_LUT_POINTS \
     ((uint32_t)(sizeof(CAL_Current2LutChainMa) / \
                 sizeof(CAL_Current2LutChainMa[0u])))

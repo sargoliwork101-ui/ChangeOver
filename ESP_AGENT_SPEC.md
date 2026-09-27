@@ -110,6 +110,16 @@
 > error 6 mA. Wizard helper text about the input-current ratio
 > corrected (it said ~0.7x; the truth is voltage- and load-dependent,
 > ~2.5x at low charge down to ~0.95x at the top).
+> v1.17 (2026-09-27, fifteenth order - "fix the coefficients so at least
+> the currents read right"): the ch2 POWER LUT refit from the new SOLO2
+> sweep (duty 1..19 step 1, off2=8/gain2=1303 unchanged, battery up to
+> 14.85 V). The v1.13 table predicted the new run within 1% on 12 of 15
+> positive points (DCM invariant confirmed) but read 2..5% low in the
+> chain 236..353 hollow: 13 anchors now - new (20,0) noise gate, new
+> (253,3180) + (312,4500), moved (283,3860) + (353,5280), rest verified
+> and kept. D9 excluded (unsettled outlier), D16 DMM voltage corrected
+> (12650 mV typo -> 13617 mV). Worst residual 8 mA = DMM accuracy; the
+> panel LUT mirror follows (v1.16v). STM32 reflash for the new table.
 >
 > v1.3 (2026-09-24): CAL_REFERENCE command (type 0x03, section 5.4) + ETA
 > conversion factors (ID 9/10 renamed CHG_ETA1/ETA2_PERMILLE, default 0 =
@@ -482,31 +492,35 @@ ETA > 0:    iest_ma = i_filtered_ma x Vin_mv x eta / (1000 x Vbat_mv)
 ```
 
 Channel-2 bench LUT (user order 2026-09-25, firmware v1.5; refit v1.11;
-POWER form v1.13): the SOLO2 bench runs proved the channel-2 chain non-linear
-vs the true battery current (about 2x too high at 5% duty, 0.85x too low at
-15..17%; best single gain still leaves +101%/-7%). Channel 2 therefore
-converts as `I_bat = LUT_P((raw - off2) * 0.8776 * gain2/1000) / Vlow_live`
-with an 11-point piecewise-linear table whose input is the ADC CHAIN CURRENT
-(never the duty - user order 2026-09-25) and whose OUTPUT IS THE BATTERY-2
-POWER in mW. WHY POWER (v1.13, user order 2026-09-25 "voltages are fixed but
-the currents you read are wrong"): in DCM the mid-ON chain sample tracks the
-energy per cycle, which is battery-voltage independent, while the battery
-CURRENT is P/Vbat. The v1.11 chain->current table silently embedded the
-battery voltage of its calibration run (the dense run's battery rose
-12.0->13.65 V), so once the battery filled it overread by roughly 7 percent
-per volt. The firmware now divides the table's power by the LIVE battery-2
-terminal voltage (cached one 1 ms pass earlier, after the median-5 filter,
-clamped 8.0..15.0 V, boot default 12.0 V). Anchors from the DENSE
+POWER form v1.13; refit v1.17): the SOLO2 bench runs proved the channel-2
+chain non-linear vs the true battery current (about 2x too high at 5% duty,
+0.85x too low at 15..17%; best single gain still leaves +101%/-7%). Channel
+2 therefore converts as `I_bat = LUT_P((raw - off2) * 0.8776 * gain2/1000) /
+Vlow_live` with a 13-point piecewise-linear table whose input is the ADC
+CHAIN CURRENT (never the duty - user order 2026-09-25) and whose OUTPUT IS
+THE BATTERY-2 POWER in mW. WHY POWER (v1.13, user order 2026-09-25 "voltages
+are fixed but the currents you read are wrong"): in DCM the mid-ON chain
+sample tracks the energy per cycle, which is battery-voltage independent,
+while the battery CURRENT is P/Vbat. The v1.11 chain->current table silently
+embedded the battery voltage of its calibration run (the dense run's battery
+rose 12.0->13.65 V), so once the battery filled it overread by roughly 7
+percent per volt. The firmware now divides the table's power by the LIVE
+battery-2 terminal voltage (cached one 1 ms pass earlier, after the median-5
+filter, clamped 8.0..15.0 V, boot default 12.0 V). Anchors from the DENSE
 2026-09-25T18:14 run (10 DMM points, duty 2..20% step 2, off2=8 /
-gain2=1303; P = DMM_I2 x DMM_V2; chain mA -> battery mW): (0,0) (5,0)
-(37,109) (106,751) (189,1581) (236,2625) (283,3807) (353,5224) (441,6817)
-(557,8573) (707,10429). Exact integer-math replay of the firmware on the run:
-worst DMM error 6 mA (truncation bias, within DMM accuracy). Above the last
-anchor the last slope (12.37 mW per chain-mA) extends. The 2%-duty point
-measured a true battery current of -13 mA (discharge through the zener path)
-- power cannot go negative on this axis, so the table floors it to 0
-(error <= 13 mA only at the very bottom). Unfiltered, filtered and iest all
-become true battery mA; raw counts and shunt uV are untouched.
+gain2=1303; P = DMM_I2 x DMM_V2; chain mA -> battery mW), refit v1.17 with
+the 2026-09-27 SOLO2 sweep (duty 1..19 step 1, same off2/gain2): (0,0)
+(20,0) (37,109) (106,751) (189,1581) (236,2625) (253,3180) (283,3860)
+(312,4500) (353,5280) (441,6817) (557,8573) (707,10429). Exact integer-math
+replay of the firmware on BOTH runs: worst DMM error 6 mA on the old run,
+8 mA on the new run (DMM accuracy; D9 unsettled outlier excluded, D16 DMM
+voltage typo corrected 12650 -> 13617 mV). Above the last anchor the last
+slope (12.37 mW per chain-mA) extends. The 1..3%-duty points measure a true
+battery current of -15..-5 mA (backfeed through the idle converter at low
+duty, discharge through the zener path) - power cannot go negative on this
+axis, so the table floors it to 0 (the (20,0) noise gate; error <= 15 mA
+only at the very bottom). Unfiltered, filtered and iest all become true
+battery mA; raw counts and shunt uV are untouched.
 `CAL_CURRENT2_LUT_ENABLE = 0`
 restores the old linear behaviour. Channel 1 stays linear until its own SOLO1
 data arrives (its future table gets the same power form with Vhigh as the

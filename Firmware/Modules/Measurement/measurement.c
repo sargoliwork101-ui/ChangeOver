@@ -780,8 +780,8 @@ uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
        1 ms pass, clamped 8.0..15.0 V by the cache writer) yields the
        battery CURRENT. The old chain->current table embedded the battery
        voltage of the calibration run (12.0..13.65 V) and overread ~7
-       percent per volt as the battery filled. u64 intermediate: the
-       extrapolated power x 1000 stays far below 2^64 anyway.
+       percent per volt as the battery filled. u32 intermediate (flash
+       diet 2026-09-27): power x 1000 peaks near 135M, far below 2^32.
        [FA] v1.13 (دستور کاربر: «ولتاژها درست شد ولی جریان‌ها اشتباه»):
        جدول جریان زنجیرهٔ ADC را به «توان باتری ۲» می‌برد (ناوردای DCM،
        مستقل از ولتاژ باتری)؛ تقسیم بر ولتاژ زندهٔ ترمینال باتری ۲ (پاس
