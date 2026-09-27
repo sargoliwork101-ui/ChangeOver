@@ -687,6 +687,7 @@ $('fg').innerHTML='<div class="lb" id="fspan" style="margin-top:6px">—</div>';
 $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}">—</span></div>
 <div class="big"><span class="lb">جریان تخمینی باتری (iest)</span><b class="n" id="ie${n}">—</b></div>
 <div class="big"><span class="lb">duty <span id="dc${n}"></span></span><span class="n" id="du${n}">—</span></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
+<div class="bctl"><span class="lb">مود</span><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button></div>
 <div class="bctl"><span class="lb">دیوتی دستی ٪</span><input type="number" step="any" id="qm${n}" data-s style="width:76px"><button class="sb" onclick="qset(${n})">اعمال</button></div>
 <div class="sec">زنجیرهٔ اندازه‌گیری و محاسبه</div>
 <table>${[['ADC خام','count',0],['ولتاژ شنت','µV',1],['جریان بدون فیلتر','mA',2],['جریان فیلترشده','mA',3],['تخمین باتری (iest)','mA',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}">—</b> <span class="lb">${r[1]}</span></td></tr>`).join('')}</table>
@@ -695,9 +696,8 @@ $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${
 <button class="bt" id="tg${n}">—</button></div>`).join('');
 [1,2].forEach(n=>$('tg'+n).onclick=()=>{const c=D&&D.p[10+n];if(c!==0&&!confirm('PWM شارژر '+n+' فوراً قطع شود؟'))return;send(10+n,c===0?1:0);});
 /* کارت کنترل دستی دیوتی — v1.10 در تب «پنل» (دستور کاربر ۲۰۲۶-۰۹-۲۵) + سقف دیوتی هر کانال */
-$('mc').innerHTML=`<div class="cd"><div class="ti">کنترل دستی دیوتی (تست جریان)</div><div class="ds">مود دستی شارژر خودکار و محافظت باتری‌ها را متوقف می‌کند و دیوتی را خودتان تعیین می‌کنید؛ فقط حضور ۲۴V، قطع JIT، قطع ۱۵٫۰V و سقف دیوتی می‌ماند. پنل را نبندید — ۱۰ ثانیه بعد از بستن، مود دستی خاموش و دیوتی صفر می‌شود. بعد از تریپ JIT همان دیوتی را دوباره اعمال کنید. عدد دیوتی هر کانال در کارت خودش وارد می‌شود.</div>
-<div class="bctl"><span class="lb">مود دستی</span><button class="sw w" id="s19">—</button>
-<button class="sb off2" id="ao">هر دو = 0</button></div>
+$('mc').innerHTML=`<div class="cd"><div class="ti">کنترل دستی دیوتی (تست جریان)</div><div class="ds">مود دستی شارژر خودکار و محافظت باتری‌ها را متوقف می‌کند و دیوتی را خودتان تعیین می‌کنید؛ فقط حضور ۲۴V، قطع JIT، قطع ۱۵٫۰V و سقف دیوتی می‌ماند. پنل را نبندید — ۱۰ ثانیه بعد از بستن، مود دستی خاموش و دیوتی صفر می‌شود. بعد از تریپ JIT همان دیوتی را دوباره اعمال کنید. مود (خودکار/دستی) و عدد دیوتی هر کانال در کارت خودش وارد می‌شود.</div>
+<div class="bctl"><button class="sb off2" id="ao">هر دو = 0</button></div>
 <div class="frr" id="clr"></div>
 <div class="lb" id="mq" style="margin-top:6px"></div></div>`;
 $('clr').innerHTML=row(13)+row(14);
@@ -1190,14 +1190,16 @@ async function qset(n){if(W.run)return alert('داده‌برداری ویزار
  const man=manOn();let go=man;
  if(!man)go=confirm('مود دستی خاموش است؛ روشن شود و دیوتی اعمال گردد؟\n(لغو = فقط عدد دیوتی ذخیره می‌شود)');
  try{if(go&&!man)await setv(19,1);await setv(14+2*n,pm);$('qm'+n).value='';}catch(e){alert(e);}}
-$('s19').onclick=async()=>{if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');
- if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');const man=manOn();
- if(!man&&!confirm('شارژر خودکار و محافظت‌های باتری متوقف می‌شوند و دیوتی را خودتان تعیین می‌کنید. ادامه؟'))return;
- try{await setv(19,man?0:1);}catch(e){alert(e);}};
+async function mset(v){if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');
+ if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');const man=manOn();if((man?1:0)===v)return;
+ if(v&&!man&&!confirm('شارژر خودکار و محافظت‌های باتری متوقف می‌شوند و دیوتی را خودتان تعیین می‌کنید. ادامه؟'))return;
+ try{await setv(19,v);}catch(e){alert(e);}}
+[1,2].forEach(n=>{const a=$('ma'+n),m=$('mm'+n);if(a)a.onclick=()=>mset(0);if(m)m.onclick=()=>mset(1);});
 $('ao').onclick=async()=>{if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');
  if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');try{await setv(16,0);await setv(18,0);}catch(e){alert(e);}};
-function mview(d){const b=$('s19');if(!b)return;const man=(d.fl&32)!=0,sup=d.p[19]!=null,pend=(d.q&(1<<19))!=0;
- b.disabled=!sup||d.on!=1;b.textContent=!sup?'—':pend?'…':man?'روشن':'خاموش';b.classList.toggle('on',man);
+function mview(d){const man=(d.fl&32)!=0,sup=d.p[19]!=null&&d.on==1;
+ [1,2].forEach(n=>{const a=$('ma'+n),m=$('mm'+n);if(!a||!m)return;
+  a.disabled=m.disabled=!sup;a.classList.toggle('on',sup&&!man);m.classList.toggle('on',sup&&man);});
  $('mq').innerHTML=man?('کانال ۱: دیوتی '+pc(d.t[5])+' · جریان '+d.t[3]+' mA — کانال ۲: دیوتی '+pc(d.t[12])+' · جریان '+d.t[10]+' mA'):'';}
 poll();
 setInterval(uview,50); /* v1.16: آینهٔ LED با ۵۰ms — چشمک هم‌سرعت برد */
