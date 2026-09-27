@@ -687,6 +687,7 @@ $('fg').innerHTML='<div class="lb" id="fspan" style="margin-top:6px">—</div>';
 $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}">—</span></div>
 <div class="big"><span class="lb">جریان تخمینی باتری (iest)</span><b class="n" id="ie${n}">—</b></div>
 <div class="big"><span class="lb">duty <span id="dc${n}"></span></span><span class="n" id="du${n}">—</span></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
+<div class="bctl"><span class="lb">دیوتی دستی ٪</span><input type="number" step="any" id="qm${n}" data-s style="width:76px"><button class="sb" onclick="qset(${n})">اعمال</button></div>
 <div class="sec">زنجیرهٔ اندازه‌گیری و محاسبه</div>
 <table>${[['ADC خام','count',0],['ولتاژ شنت','µV',1],['جریان بدون فیلتر','mA',2],['جریان فیلترشده','mA',3],['تخمین باتری (iest)','mA',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}">—</b> <span class="lb">${r[1]}</span></td></tr>`).join('')}</table>
 <div class="lb kc">ثابت‌ها: ADC دوازده‌بیتی، ۳۳۰۰mV، R41/R42 = 1k/10k، LM358 × 101، شنت 10 mOhm</div>
@@ -694,10 +695,8 @@ $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${
 <button class="bt" id="tg${n}">—</button></div>`).join('');
 [1,2].forEach(n=>$('tg'+n).onclick=()=>{const c=D&&D.p[10+n];if(c!==0&&!confirm('PWM شارژر '+n+' فوراً قطع شود؟'))return;send(10+n,c===0?1:0);});
 /* کارت کنترل دستی دیوتی — v1.10 در تب «پنل» (دستور کاربر ۲۰۲۶-۰۹-۲۵) + سقف دیوتی هر کانال */
-$('mc').innerHTML=`<div class="cd"><div class="ti">کنترل دستی دیوتی (تست جریان)</div><div class="ds">مود دستی شارژر خودکار و محافظت باتری‌ها را متوقف می‌کند و دیوتی را خودتان تعیین می‌کنید؛ فقط حضور ۲۴V، قطع JIT، قطع ۱۵٫۰V و سقف دیوتی می‌ماند. پنل را نبندید — ۱۰ ثانیه بعد از بستن، مود دستی خاموش و دیوتی صفر می‌شود. بعد از تریپ JIT همان دیوتی را دوباره اعمال کنید.</div>
+$('mc').innerHTML=`<div class="cd"><div class="ti">کنترل دستی دیوتی (تست جریان)</div><div class="ds">مود دستی شارژر خودکار و محافظت باتری‌ها را متوقف می‌کند و دیوتی را خودتان تعیین می‌کنید؛ فقط حضور ۲۴V، قطع JIT، قطع ۱۵٫۰V و سقف دیوتی می‌ماند. پنل را نبندید — ۱۰ ثانیه بعد از بستن، مود دستی خاموش و دیوتی صفر می‌شود. بعد از تریپ JIT همان دیوتی را دوباره اعمال کنید. عدد دیوتی هر کانال در کارت خودش وارد می‌شود.</div>
 <div class="bctl"><span class="lb">مود دستی</span><button class="sw w" id="s19">—</button>
-<label class="lb">دیوتی ۱ ٪ <input type="number" step="any" id="qm1" data-s style="width:64px"></label><button class="sb" onclick="qset(1)">اعمال</button>
-<label class="lb">دیوتی ۲ ٪ <input type="number" step="any" id="qm2" data-s style="width:64px"></label><button class="sb" onclick="qset(2)">اعمال</button>
 <button class="sb off2" id="ao">هر دو = 0</button></div>
 <div class="frr" id="clr"></div>
 <div class="lb" id="mq" style="margin-top:6px"></div></div>`;
