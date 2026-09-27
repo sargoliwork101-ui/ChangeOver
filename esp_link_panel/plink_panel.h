@@ -392,9 +392,8 @@ $('fg').innerHTML='<div class="lb" id="fspan" style="margin-top:6px">—</div>';
 /* ---------- دو ستون جدا: شارژر ۱ و شارژر ۲ ---------- */
 $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}">—</span></div>
 <div class="bg2"><div class="big"><span class="lb">جریان باتری (iest)</span><b class="n" id="ie${n}">—</b></div>
-<div class="big"><span class="lb">duty <span id="dc${n}"></span></span><span class="n" id="du${n}">—</span></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
-<div class="bctl"><span class="lb">مود</span><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button></div>
-<div class="bctl"><span class="lb">دیوتی دستی ٪</span><input type="number" step="any" id="qm${n}" data-s style="width:76px"><button class="sb" onclick="qset(${n})">اعمال</button><button class="sb off2" onclick="qzero(${n})">صفر</button></div>
+<div class="big"><span class="lb">duty <span id="dc${n}"></span></span><b class="n" id="du${n}">—</b></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
+<div class="bctl"><span class="lb">مود</span><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button><span class="lb">·</span><span class="lb">دیوتی دستی ٪</span><input type="number" step="any" id="qm${n}" data-s style="width:76px"><button class="sb" onclick="qset(${n})">اعمال</button><button class="sb off2" onclick="qzero(${n})">صفر</button></div>
 ${row(12+n)}
 <div class="lb">بستن پنل: ۱۰ ثانیه بعد مود دستی خاموش و دیوتی صفر می‌شود؛ بعد از تریپ JIT همان دیوتی را دوباره اعمال کنید.</div>
 <div class="sec">زنجیرهٔ اندازه‌گیری و محاسبه</div>
