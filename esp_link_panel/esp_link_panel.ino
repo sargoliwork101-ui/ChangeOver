@@ -410,6 +410,8 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .leds.stick{position:sticky;top:170px;z-index:52;background:rgba(11,15,23,.9);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 18px rgba(0,0,0,.5)}
 .fx2{font-size:12px;color:#c9d0df;line-height:1.9;margin-top:4px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.ldon{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);margin-right:8px}
+.hnl input[type=number]{width:66px;min-height:30px;padding:4px 6px}
 </style></head><body>
 <header><h1>پنل ChangeOver</h1><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
@@ -418,13 +420,14 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 <div class="pgx a" id="p0">
 <div class="cd" id="sh"><div class="hd"><b>ولتاژها <span class="lb">· عدد مولتی‌متر (V) را کنار هر ولتاژ وارد کنید تا آفست آن کالیبره شود</span></b><div class="fl" id="fl"></div></div><div class="vs" id="vs"></div>
 <div class="sec">فیلتر جریان <span class="lb">(مشترک هر دو کانال)</span></div><div class="frr" id="fg"></div><div class="fx fxw" id="ff"></div></div>
-<div class="ch" id="ch"></div>
-<div id="mc"></div>
 <div class="cd">
-<div class="hd"><b>وضعیت آلارم‌ها</b><span class="lb">· زنده از TLM برد · آستانه‌ها = مقادیر اعمال‌شدهٔ برد</span></div>
+<div class="hd"><b>وضعیت آلارم‌ها</b> <span class="ldon" id="aslive"></span><span class="lb">· زنده از TLM برد · آستانه‌ها = مقادیر اعمال‌شدهٔ برد</span></div>
 <div id="ast" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0"></div>
 <div id="abars"></div>
 </div>
+<div class="ch" id="ch"></div>
+<div id="mc"></div>
+
 </div>
 <div class="pgx" id="p1"></div>
 <div class="pgx" id="p2">
@@ -667,7 +670,7 @@ $('vs').innerHTML=V.map((v,i)=>`<div class="vt"><small>${v[0]}</small><b class="
 <div class="ct vc"><input type="number" step="any" id="vm${i}" placeholder="مولتی‌متر V" onkeydown="if(event.key=='Enter')vcal(${i})"><button class="sb sb2" onclick="vcal(${i})">اعمال</button></div>
 <div class="lb">آفست <span class="ap n" id="a${v[2]}">—</span> mV</div>`:''}</div>`).join('');
 /* v1.14b (user order 2026-09-26): پنجرهٔ مدین/میانگین به تب «تنظیمات» رفت؛ اینجا فقط وضعیت زندهٔ فیلتر و نمونه‌های نمودار می‌مانند */
-$('fg').innerHTML='<div class="lb" id="fspan" style="margin-top:6px">—</div><div class="bctl" style="margin-top:8px"><label class="lb">نمونه‌های نمودار <input type="number" id="hN" data-s min="10" max="600" value="100" style="width:64px"></label></div>';
+$('fg').innerHTML='<div class="lb" id="fspan" style="margin-top:6px">—</div>';
 /* ---------- دو ستون جدا: شارژر ۱ و شارژر ۲ ---------- */
 $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}">—</span></div>
 <div class="big"><span class="lb">جریان تخمینی باتری (iest)</span><b class="n" id="ie${n}">—</b></div>
@@ -675,7 +678,7 @@ $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${
 <div class="sec">زنجیرهٔ اندازه‌گیری و محاسبه</div>
 <table>${[['ADC خام','count',0],['ولتاژ شنت','µV',1],['جریان بدون فیلتر','mA',2],['جریان فیلترشده','mA',3],['تخمین باتری (iest)','mA',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}">—</b> <span class="lb">${r[1]}</span></td></tr>`).join('')}</table>
 <div class="lb kc">ثابت‌ها: ADC دوازده‌بیتی، ۳۳۰۰mV، R41/R42 = 1k/10k، LM358 × 101، شنت 10 mOhm</div>
-<canvas id="cv${n}"></canvas><div class="lg"><span><i style="background:#6b7691"></i>بدون فیلتر · نوسان <b class="n" id="pu${n}">—</b> mA</span><span><i style="background:#5b9dff"></i>فیلترشده · نوسان <b class="n" id="pf${n}">—</b> mA</span><span class="hnl"></span></div>
+<canvas id="cv${n}"></canvas><div class="lg"><span><i style="background:#6b7691"></i>بدون فیلتر · نوسان <b class="n" id="pu${n}">—</b> mA</span><span><i style="background:#5b9dff"></i>فیلترشده · نوسان <b class="n" id="pf${n}">—</b> mA</span><span class="hnl">نقاط <input type="number" id="hN${n}" data-s min="10" max="600" value="100"> از <b class="n" id="hC${n}">--</b></span></div>
 <button class="bt" id="tg${n}">—</button></div>`).join('');
 [1,2].forEach(n=>$('tg'+n).onclick=()=>{const c=D&&D.p[10+n];if(c!==0&&!confirm('PWM شارژر '+n+' فوراً قطع شود؟'))return;send(10+n,c===0?1:0);});
 /* کارت کنترل دستی دیوتی — v1.10 در تب «پنل» (دستور کاربر ۲۰۲۶-۰۹-۲۵) + سقف دیوتی هر کانال */
@@ -688,15 +691,15 @@ $('mc').innerHTML=`<div class="cd"><div class="ti">کنترل دستی دیوت�
 <div class="lb" id="mq" style="margin-top:6px"></div></div>`;
 $('clr').innerHTML=row(13)+row(14);
 /* ---------- تاریخچهٔ نمودار هر کانال ---------- */
-let LS=-1;const hn=()=>{const v=Math.round(+$('hN').value);return !v?100:Math.min(600,Math.max(10,v));},H=[0,1].map(()=>({u:[],f:[]}));
+let LS=-1;const hn=c=>{const e=$('hN'+(c+1)),v=e?Math.round(+e.value):0;return !v?100:Math.min(600,Math.max(10,v));},H=[0,1].map(()=>({u:[],f:[]}));
 function vcal(k){const R=V[k],m=Math.round(+$('vm'+k).value*1000),shown=D&&D.t[R[1]],off=D&&D.p[R[2]];if(!(m>0))return alert('عدد مولتی‌متر را به ولت وارد کنید (مثلاً 13.05).');if(off==null)return;
  const no=Math.min(5000,Math.max(-5000,off+m-shown));if(confirm(R[0]+': آفست '+off+' ← '+no+' mV\n(نمایش '+v2(shown)+' V، مولتی‌متر '+v2(m)+' V)')){send(R[2],no);$('vm'+k).value='';}}
 /* نمودار زندهٔ فیلتر هر کانال */
-function chart(){document.querySelectorAll('.hnl').forEach(e=>e.textContent=hn()+' نمونهٔ اخیر');[0,1].forEach(ci=>{const c=$('cv'+(ci+1)),w=c.clientWidth,h=c.clientHeight,dp=devicePixelRatio||1;if(!w)return;
+function chart(){[0,1].forEach(ci=>{const c=$('cv'+(ci+1)),w=c.clientWidth,h=c.clientHeight,dp=devicePixelRatio||1;if(!w)return;
  if(c.width!=Math.round(w*dp)){c.width=Math.round(w*dp);c.height=Math.round(h*dp);}
- const x=c.getContext('2d');x.setTransform(dp,0,0,dp,0,0);x.clearRect(0,0,w,h);const s=H[ci];if(s.u.length<2)return;
+ const x=c.getContext('2d');x.setTransform(dp,0,0,dp,0,0);x.clearRect(0,0,w,h);const s=H[ci],hc=$('hC'+(ci+1));if(hc)hc.textContent=s.u.length;if(s.u.length<2)return;
  let lo=Math.min(...s.u,...s.f),hi=Math.max(...s.u,...s.f);if(hi-lo<10){const m=(hi+lo)/2;lo=m-5;hi=m+5;}const pd=(hi-lo)*.12,a=lo-pd,z=hi+pd;
- const X=i=>w-8-(s.u.length-1-i)*(w-16)/(hn()-1),Y=v=>h-8-(v-a)/(z-a)*(h-16);
+ const X=i=>w-8-(s.u.length-1-i)*(w-16)/(hn(ci)-1),Y=v=>h-8-(v-a)/(z-a)*(h-16);
  const ln=(A,col,lw)=>{x.beginPath();A.forEach((v,i)=>i?x.lineTo(X(i),Y(v)):x.moveTo(X(i),Y(v)));x.strokeStyle=col;x.lineWidth=lw;x.stroke();};
  x.fillStyle='#8b94ab';x.font='11px Vazirmatn,sans-serif';x.fillText(Math.round(hi)+' mA',8,16);x.fillText(Math.round(lo)+' mA',8,h-10);
  ln(s.u,'#6b7691',1);ln(s.f,'#5b9dff',2);const pp=A=>{const B=A.slice(-50);return Math.max(...B)-Math.min(...B);};$('pu'+(ci+1)).textContent=pp(s.u);$('pf'+(ci+1)).textContent=pp(s.f);});}
@@ -722,7 +725,7 @@ function formulas(t,p){
  V.forEach((v,i)=>{const e=$('fv'+i);if(i<3){const o=p[v[2]]==null?0:p[v[2]],c=Math.round((t[v[1]]-o)/v[3]);e.textContent=`${c} × ${v[3].toFixed(3)} ${o<0?'−':'+'} ${Math.abs(o)}`;}
   else e.textContent=i==3?'V24 − V12':'= V12';});
  $('ff').textContent=`I_filtered = average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( mA_unfiltered ) )`;}
-function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>hn()){s.u.shift();s.f.shift();}});}}
+function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>hn(c)){s.u.shift();s.f.shift();}});}}
 function qfill(){if(!D||!D.p)return;for(const id of [7,8,20,21,22,23,24,25,26]){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!(D.q&(1<<id)))a.textContent=D.p[id]==null?'—':D.p[id];}}
 function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{$('q'+x[0]).value=x[1];send(x[0],x[1]);});qgraph();}
 /* ===== v1.14: نمودار مراحل شارژ — مقدار هر خط از فیلد تایپ‌نشده/متفاوت با مقدار اعمال‌شده می‌آید (پیش‌نمایش خط‌چین) ===== */
@@ -915,8 +918,8 @@ function astat(){const s=$('ast'),b=$('abars');if(!s||!b||!D||!D.t||!D.p)return;
  const mn=g(33,21000),mx=g(34,28000),dc=g(27,14800),ab=g(29,6000),hd=g(35,950),ov=g(36,15000),fl=g(37,2000);
  if(!ASB){
   s.innerHTML=`<div class="ag">`+[['ورودی'],['باتری پایین'],['باتری بالا'],['جریان ۱ (بالا)'],['جریان ۲ (پایین)']].map((x,k)=>`<div class="ab" id="asb${k}"><small>${x[0]}</small><b class="n" id="asv${k}">—</b><span class="lb" id="asc${k}">—</span><span class="tg" id="asg${k}">—</span></div>`).join('')+`</div><div class="ab" id="asb5" style="margin-top:8px;min-height:0"><small>خطاهای قفل‌شده (fault) — LED جدا برای هر بیت</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit" id="asbb6"><i></i><small>قطع‌باتری</small></span></div><div class="fx2" id="asf">—</div></div>`;
-  b.innerHTML=[0,1,2,3].map(k=>`<div class="lb" id="abc${k}" style="margin-top:8px">—</div><div class="bar"><i id="abf${k}"></i><span id="abm${k}"></span></div>`).join('');
-  ASB={box:[0,1,2,3,4,5].map(k=>$('asb'+k)),val:[0,1,2,3,4].map(k=>$('asv'+k)),cap:[0,1,2,3,4].map(k=>$('asc'+k)),pill:[0,1,2,3,4].map(k=>$('asg'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6].map(k=>$('asbb'+k)),bcap:[$('abc0'),$('abc1'),$('abc2'),$('abc3')],bfill:[$('abf0'),$('abf1'),$('abf2'),$('abf3')],bmark:[$('abm0'),$('abm1'),$('abm2'),$('abm3')],sig:'',mask:-1};
+  b.innerHTML=[0,1,2].map(k=>`<div class="lb" id="abc${k}" style="margin-top:8px">—</div><div class="bar"><i id="abf${k}"></i><span id="abm${k}"></span></div>`).join('');
+  ASB={box:[0,1,2,3,4,5].map(k=>$('asb'+k)),val:[0,1,2,3,4].map(k=>$('asv'+k)),cap:[0,1,2,3,4].map(k=>$('asc'+k)),pill:[0,1,2,3,4].map(k=>$('asg'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6].map(k=>$('asbb'+k)),bcap:[$('abc0'),$('abc1'),$('abc2')],bfill:[$('abf0'),$('abf1'),$('abf2')],bmark:[$('abm0'),$('abm1'),$('abm2')],sig:'',mask:-1,live:$('aslive'),tick:false};
   if(!ASB.box[0]||!ASB.bfill[0]||!ASB.flt){ASB=null;return;}
  }
  const set=(k,val,cap,pill,cls)=>{ASB.val[k].textContent=val;ASB.cap[k].textContent=cap;ASB.pill[k].textContent=pill;ASB.pill[k].className='tg '+cls;ASB.box[k].className='ab '+(cls==='g'?'good':cls==='y'?'warn':'bad');};
@@ -931,13 +934,12 @@ function astat(){const s=$('ast'),b=$('abars');if(!s||!b||!D||!D.t||!D.p)return;
    if(t[19]&~127)h+=`<div>⚠ بیت ناشناخته: <span class="n">fault 0x${t[19].toString(16)}</span></div>`;
    ASB.flt.innerHTML=h;ASB.box[5].className='ab bad';}}
  const pc2=(x,lo,hi)=>Math.max(0,Math.min(100,(x-lo)/(hi-lo)*100));
- const R=[[vin,Math.max(15000,mn-3000),Math.min(32000,mx+3000),[[mn,'#34d399'],[mx,'#fb5e6a']],`ورودی — سبز=کف ${(mn/1000).toFixed(1)}V · قرمز=سقف ${(mx/1000).toFixed(1)}V`],
-  [Math.max(vl,vh),0,16000,[[ab,'#fbbf24'],[g(30,7000),'#34d399'],[dc,'#fb5e6a']],`باتری (بالاترین نیمه) — زرد=غیبت · سبز=برگشت · قرمز=قطع`],
+ const R=[[Math.max(vl,vh),0,16000,[[ab,'#fbbf24'],[g(30,7000),'#34d399'],[dc,'#fb5e6a']],`باتری (بالاترین نیمه) — زرد=غیبت · سبز=برگشت · قرمز=قطع`],
   [i1,0,Math.max(1000,hd+100),[[hd,'#fb5e6a']],`جریان ۱ (باتری بالا) — قرمز=خطای سخت ${hd}mA`],
   [i2,0,Math.max(1000,hd+100),[[hd,'#fb5e6a']],`جریان ۲ (باتری پایین) — قرمز=خطای سخت ${hd}mA`]];
  const sig=[mn,mx,ab,g(30,7000),dc,hd].join(',');
  if(sig!==ASB.sig){ASB.sig=sig;R.forEach((r,k)=>{ASB.bcap[k].textContent=r[4];ASB.bmark[k].innerHTML=r[3].map(m=>`<u style="right:${pc2(m[0],r[1],r[2])}%;background:${m[1]}"></u>`).join('');});}
- R.forEach((r,k)=>{ASB.bfill[k].style.width=pc2(r[0],r[1],r[2])+'%';});}
+ R.forEach((r,k)=>{ASB.bfill[k].style.width=pc2(r[0],r[1],r[2])+'%';});ASB.tick=!ASB.tick;if(ASB.live)ASB.live.style.opacity=ASB.tick?1:.3;}
 /* ===== v1.16: آینهٔ LED و بازر برد — همان اولویت Ui_Tick با مقادیر اعمال‌شده؛ چشمک با همان دوره/دیوتی برد (فاز محلی، هم‌سرعت) ===== */
 let UV={inP:false,ov:false,bat:false,pct:-1,cpct:-1,full:false,critT:0};
 function uview(){
