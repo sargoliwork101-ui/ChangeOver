@@ -165,7 +165,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 
 </div>
 <div class="cd">
-<div class="hd"><b>کالیبراسیون جریان</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">آفست، عدد ADC در جریان صفر است و از هر نمونه کم می‌شود. گین و ETA را با تست جریان سمت باتری حساب کنید — ستونهای خام CSV تب بنچ راهنماست — و اینجا ثبت کنید؛ ETA صفر یعنی بدون تبدیل. هر ۶ عدد روی فلش برد ذخیره و با قطع برق ماندگار است.</span></button><span class="lb">· شناسه ۰..۳ و ۹..۱۰ · روی فلش برد ذخیره می‌شود</span></div>
+<div class="hd"><b>کالیبراسیون جریان</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">آفست، عدد ADC در جریان صفر است و از هر نمونه کم می‌شود. گین و ETA را با تست جریان سمت باتری حساب کنید — ستونهای خام CSV تب بنچ راهنماست — و اینجا ثبت کنید؛ ETA صفر یعنی بدون تبدیل. کانال ۲ جدول بنچ دارد پس ETA آن صفر بماند؛ تغییر آفست یا گین کانال ۲ نیاز به ساخت دوباره جدول بنچ دارد. هر ۶ عدد روی فلش برد ذخیره و با قطع برق ماندگار است.</span></button><span class="lb">· شناسه ۰..۳ و ۹..۱۰ · روی فلش برد ذخیره می‌شود</span></div>
 <div class="bqr">
 <label>آفست کانال ۱ (count)<input type="number" id="q0" step="1" min="0" max="255"><span class="lb" id="a0">—</span></label>
 <label>آفست کانال ۲ (count)<input type="number" id="q1" step="1" min="0" max="255"><span class="lb" id="a1">—</span></label>
@@ -422,16 +422,19 @@ $('mx').onclick=()=>send(19,0);
 const f1=x=>x.toFixed(1),V_=mv=>(mv/1000).toFixed(2)+'V',nz=v=>v==null?'?':v;
 /* iest مثل STM32 (charger.c): زیر Vin 10V یا Vbat 5V برگشت به همانی */
 const ie=(fl,vin,eta,vb)=>vin<10000||vb<5000?fl+' (همانی: ولتاژ زیر حد)':Math.floor(Math.floor(fl*eta/1000)*vin/vb);
+const LUTX=[0,5,37,106,189,236,283,353,441,557,707],LUTY=[0,0,109,751,1581,2625,3807,5224,6817,8573,10429];
+const lutPow=c=>{for(let i=1;i<LUTX.length;i++){if(c<=LUTX[i]){const x0=LUTX[i-1],x1=LUTX[i];if(x1==x0)return LUTY[i];return LUTY[i-1]+Math.floor((c-x0)*(LUTY[i]-LUTY[i-1])/(x1-x0));}}const n=LUTX.length-1,d=LUTX[n]-LUTX[n-1];if(!d)return LUTY[n];return LUTY[n]+Math.floor((c-LUTX[n])*(LUTY[n]-LUTY[n-1])/d);};
+const lutTap=(ch,vb)=>{const pw=lutPow(Math.round(ch)),v=Math.min(15000,Math.max(8000,vb));return ' => LUT:'+pw+'mW/'+v+'='+Math.floor(pw*1000/v)+'mA';};
 function formulas(t,p){
  [1,2].forEach(n=>{const b=n==1?0:7,raw=t[b],off=p[n-1],g=p[n+1],eta=p[8+n],vb=n==1?t[18]:t[17],vin=t[14],fl=t[b+3];
   $('f'+n+'0').textContent='12-bit ADC · Vref 3300 mV';
-  $('f'+n+'1').textContent=`${raw} × 3300/4095 × 11/10 × 1000/101 = ${raw} × 8.7756 ≈ ${Math.round(raw*K_UV)}`;
-  $('f'+n+'2').textContent=off==null||g==null?'':`(${raw} − ${off}) × 0.8776 × ${g}/1000 ≈ ${f1(Math.max(raw-off,0)*K_MA*g/1000)}`;
-  $('f'+n+'3').textContent=`average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( ${t[b+2]} mA ) ) = ${fl}`;
+  $('f'+n+'1').textContent=`${raw} × 3300/4095 × 11/10 × 1000/101 = ${raw} × 8.7767 ≈ ${Math.round(raw*K_UV)}`;
+  $('f'+n+'2').textContent=off==null||g==null?'':`(${raw} − ${off}) × 0.8777 × ${g}/1000 ≈ ${f1(Math.max(raw-off,0)*K_MA*g/1000)}${n==2?lutTap(Math.max(raw-off,0)*K_MA*g/1000,vb):''}`;
+  $('f'+n+'3').textContent=`convert( average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( raw ) ) ) = ${fl}`;
   $('f'+n+'4').textContent=eta==null?'':eta==0?`eta = 0 → Iest = I = ${fl}`:`${fl} × ${V_(vin)} × ${eta}‰ / ${V_(vb)} ≈ ${ie(fl,vin,eta,vb)}`;});
- V.forEach((v,i)=>{const e=$('fv'+i);if(i<3){const o=p[v[2]]==null?0:p[v[2]],c=Math.round((t[v[1]]-o)/v[3]);e.textContent=`${c} × ${v[3].toFixed(3)} ${o<0?'−':'+'} ${Math.abs(o)}`;}
+ V.forEach((v,i)=>{const e=$('fv'+i);if(i<3){const o=p[v[2]]==null?0:p[v[2]],c=Math.round((t[v[1]]-o+(i==2?150+Math.floor(t[9]*470/1000):0))/v[3]);e.textContent=`${c} × ${v[3].toFixed(3)} ${o<0?'−':'+'} ${Math.abs(o)}${i==2?' − (150 + '+t[9]+'×470/1000)':''}`;}
   else e.textContent=i==3?'V24 − V12':'= V12';});
- $('ff').textContent=`I_filtered = average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( mA_unfiltered ) )`;}
+ $('ff').textContent=`I_filtered = convert( average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( raw counts ) ) )`;}
 function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>hn(c)){s.u.shift();s.f.shift();}});}}
 function qfill(){if(!D||!D.p)return;for(const id of [7,8,20,21,22,23,24,25,26]){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!(D.q&(1<<id)))a.textContent=D.p[id]==null?'—':D.p[id];}}
 function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{$('q'+x[0]).value=x[1];send(x[0],x[1]);});qgraph();}

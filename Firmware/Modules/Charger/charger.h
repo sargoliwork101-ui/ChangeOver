@@ -281,6 +281,15 @@
  * [FA] حدود گیرهٔ ضریب تبدیل زمان اجرای قابل‌تنظیم از ESP (v1.3): صفر =
  *      همانی/گذر (پیش‌فرض کامپایل)، ۱..۹۹۹ = تبدیل زندهٔ Vin/Vbat. پنل
  *      می‌تواند هر وقت خواست صفرش کند تا به خوانش فیلترشدهٔ خام برگردد. */
+/* [EN] ETA vs the ch2 bench LUT (full-program audit 2026-09-27): ch2
+ *      already yields true battery current through the power LUT in
+ *      measurement.c - keep ETA2 at 0 or the current converts twice
+ *      (LUT shape x power factor). ETA calibration is for channels
+ *      without a bench table (ch1 until its SOLO1 data arrives).
+ * [FA] نسبت ETA با جدول بنچ کانال ۲ (ممیزی کل برنامه): کانال ۲ با
+ *      خروجی جدول توانی measurement.c همان جریان واقعی باتری است -
+ *      ETA آن صفر بماند تا جریان دو بار تبدیل نشود.
+ *      کالیبرهٔ ETA برای کانال بدون جدول بنچ است. */
 #define CHG_ETA_MIN_PERMILLE                  0u
 #define CHG_ETA_MAX_PERMILLE                  999u
 
