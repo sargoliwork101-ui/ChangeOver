@@ -1117,6 +1117,14 @@ reflash with an unreadable (v2) NVM record changes no behavior or sound.
 - Normal blink (66..69): green (BatteryRun: OFF time = remaining x
   period/100) and yellow (charging: ON time = remaining x period/100,
   only while a channel is really charging; full = steady green).
+  v1.20 (user order 2026-09-28: "even at 1% the yellow must blink once -
+  say it never goes below 2%; fully dark only when the charger is cut"):
+  the remaining-to-full is floored at 2% (compiled constant
+  UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT, no new wire id) and a 100%
+  reading mid-charge no longer darks the yellow - while any channel is
+  pumping the Charging face keeps blinking (the id 69 ON floor keeps the
+  blip visible); the full face yields to it until the charger is cut
+  (charge complete / no active channel).
 - Thresholds (70..75): the runtime OV latch, the continuous low-battery
   flag (72/73), and the pack-voltage-to-percent map (74/75, strictly
   positive range).

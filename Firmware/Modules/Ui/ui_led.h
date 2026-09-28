@@ -235,6 +235,27 @@
  */
 #define UI_CHARGING_YELLOW_MIN_ON_MS   150u
 
+/**
+ * @brief  [EN] Floor for the remaining-to-full percent that drives the
+ *              Charging yellow ON time (user order 2026-09-28: "even at
+ *              1 percent the yellow must still blink once - say it never
+ *              goes below 2 percent"). With it the yellow never goes
+ *              fully dark INSIDE the Charging scenario: while a charger
+ *              channel is pumping, the LED always gives at least this
+ *              blink level, and UI_CHARGING_YELLOW_MIN_ON_MS (id 69)
+ *              then keeps that blip visible. Fully dark is reserved for
+ *              the charger being cut (charge complete / no channel
+ *              active).
+ *         [FA] کفِ «مانده تا فول» که زمان روشن‌بودن زرد شارژ را می‌دهد
+ *              (دستور کاربر ۲۰۲۶-۰۹-۲۸: «تا ۱٪ هم که شده یک چشمک بزند -
+ *              بگیم کمتر از ۲٪ نرود»). زرد داخل سناریوی شارژ هرگز کاملاً
+ *              خاموش نمی‌شود: تا وقتی کانال شارژری پمپ می‌کند حداقل همین
+ *              سطح چشمک می‌زند و کف UI_CHARGING_YELLOW_MIN_ON_MS (شناسهٔ ۶۹)
+ *              آن را مرئی نگه می‌دارد. خاموشی کامل فقط برای قطع‌بودن شارژر
+ *              (اتمام شارژ / بدون کانال فعال) است.
+ */
+#define UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT 2u
+
 /* ==================== BatteryRun warning constants / ثابت‌های هشدار BatteryRun ==================== */
 
 /**

@@ -42,6 +42,7 @@ UI_BLINK_PERIOD_MS = defines.get("UI_BLINK_PERIOD_MS",1000)
 UI_GREEN_MIN_OFF_MS = defines.get("UI_GREEN_MIN_OFF_MS",10)
 UI_CHARGING_BLINK_PERIOD_MS = defines.get("UI_CHARGING_BLINK_PERIOD_MS",1000)
 UI_CHARGING_YELLOW_MIN_ON_MS = defines.get("UI_CHARGING_YELLOW_MIN_ON_MS",150)
+UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT = defines.get("UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT",2)
 
 def calculate_pattern(period_ms, duty_percent, beep_count, gap_ms):
     if period_ms <=0 or duty_percent<=0 or beep_count<=0: return None
@@ -177,8 +178,17 @@ def green_timing(stable, period=UI_BLINK_PERIOD_MS, min_off=UI_GREEN_MIN_OFF_MS)
 def yellow_timing(stable, period=UI_CHARGING_BLINK_PERIOD_MS, min_on=UI_CHARGING_YELLOW_MIN_ON_MS):
     # [EN] REMAINING to full drives the ON time (final user directive 2026-09-19):
     # more charged -> shorter ON; 95% charged (5 remaining) -> 50 ms per 1000 ms.
-    # [FA] «مانده تا فول» زمان روشن بودن را می‌دهد: پرتر کوتاه‌تر؛ ۹۵٪ شارژ ⇒ ۵۰ms.
-    remaining=UI_PERCENT_FULL-stable
+    # v1.20 (user order 2026-09-28): remaining is floored at
+    # UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT and stable>=100 no longer darks
+    # the yellow (this scenario only runs while a charger channel pumps).
+    # [FA] «مانده تا فول» زمان روشن بودن را می‌دهد؛ کف ۲٪ و بدون خاموشی در ۱۰۰٪
+    # از v1.20 (دستور کاربر ۲۰۲۶-۰۹-۲۸).
+    if stable >= UI_PERCENT_FULL:
+        remaining = 0
+    else:
+        remaining = UI_PERCENT_FULL - stable
+    if remaining < UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT:
+        remaining = UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT
     per=period//UI_PERCENT_SCALE
     on=remaining*per
     if on<min_on: on=min_on
@@ -310,6 +320,34 @@ def run_charging_hysteresis_tests():
     assert_equal(yellow_timing(95), (150, 850), "yellow 95% charged -> 150ms floor (v1.17)")
     assert_equal(yellow_timing(5), (950, 50), "yellow 5% charged -> 950ms on")
     assert_equal(yellow_timing(99), (150, 850), "yellow 99% charged -> min 150ms on")
+    # [EN] v1.20 (user order 2026-09-28: "even at 1% one blink; say it never
+    # goes below 2%; fully dark only when the charger is cut"):
+    # - the remaining floor is 2% -> raw on-time 20 ms per 1000 ms period
+    # - the min-on clamp (id 69, default 150) then keeps the blip visible
+    # - a 100% reading mid-charge keeps blinking (no early dark) because
+    #   this scenario only runs while a charger channel is pumping.
+    # [FA] نسخهٔ ۱٫۲۰: کف مانده ۲٪ ⇒ ۲۰ms خام در دوره ۱۰۰۰ms، کف ۱۵۰ms مرئی
+    # می‌کند و درصد ۱۰۰ وسط شارژ دیگر زرد را خاموش نمی‌کند.
+    assert_equal(yellow_timing(100, min_on=0), (20, 980), "v1.20 100% mid-pump keeps the 2% blink, no dark")
+    assert_equal(yellow_timing(99, min_on=0), (20, 980), "v1.20 99% -> 2% remaining floor")
+    assert_equal(yellow_timing(98, min_on=0), (20, 980), "v1.20 98% -> 2% remaining floor")
+    assert_equal(yellow_timing(97, min_on=0), (30, 970), "v1.20 97% -> 3% remaining, no floor")
+    assert_equal(yellow_timing(100), (150, 850), "v1.20 100% mid-pump -> visible 150ms blip")
+    # selection mirror (v1.20): the full face yields while any channel pumps
+    def v120_face(full_active, complete, any_active):
+        if complete: return "InputOk"
+        if full_active and not any_active: return "InputOk"
+        if any_active: return "Charging"
+        return "InputOk"
+    assert_equal(v120_face(True, False, True), "Charging", "v1.20 full-latch yields while pumping")
+    assert_equal(v120_face(True, False, False), "InputOk", "v1.20 full-latch decides when nothing pumps")
+    assert_equal(v120_face(False, True, True), "InputOk", "v1.20 charge complete stays the primary full path")
+    ui_led_c_v120 = open(os.path.join(BASE_DIR, "ui_led.c"), "r", encoding="utf-8", errors="ignore").read()
+    assert_true("UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT" in ui_led_c_v120,
+                "v1.20 remaining floor constant used in ui_led.c")
+    assert_true(re.search(r"else if \(func__Charger_IsAnyChannelActive\(\) == true\)", ui_led_c_v120),
+                "v1.20 full face yields while a channel pumps (selection)")
+    print("Charging v1.20 yellow floor + no-mid-pump-dark PASS")
     # yellow timing stable
     on57,off57=yellow_timing(57)
     on53,off53=yellow_timing(53) # diff but should not be used if stable 57

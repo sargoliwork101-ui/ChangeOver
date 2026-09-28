@@ -1443,7 +1443,16 @@ void func__Ui_ScenarioInputOk(void)
 /**
  * @brief  [EN] Charging scenario tick: green steady, yellow shows remaining to full non-linear.
  *         Formula: remainingPercent = 100-pct, periodPerPercent = period/100, yellowOnMs = remaining*periodPer, yellowOffMs = period-yellowOn.
- *         [FA] سناریو شارژ: سبز ثابت، زرد مانده تا فول غیرخطی.
+ *         v1.20 (user order 2026-09-28): the remaining is floored at
+ *         UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT and a 100% reading no
+ *         longer darks the yellow - this scenario only runs while a
+ *         charger channel is pumping, so the LED keeps one visible blink
+ *         per period until the charger is cut (full face / no channel).
+ *         [FA] سناریو شارژ: سبز ثابت، زرد مانده تا فول غیرخطی. نسخهٔ
+ *         ۱٫۲۰ (دستور کاربر ۲۰۲۶-۰۹-۲۸): مانده روی کف
+ *         UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT می‌نشیند و درصد ۱۰۰ دیگر
+ *         زرد را خاموش نمی‌کند - این سناریو فقط با پمپِ کانال شارژر اجرا
+ *         می‌شود پس تا قطع شارژر حداقل یک چشمکِ مرئی در هر دوره می‌ماند.
  * @param  uint32_t__batteryMv [EN] Battery voltage mV, percent map 74/75 / ولتاژ باتری
  */
 void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
@@ -1467,13 +1476,6 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
     func__green(true);
     func__red(false);
 
-    if (uint8_t__stablePercent >= UI_PERCENT_FULL)
-    {
-        func__Ui_ResetChargingYellowBlink();
-        func__yellow(false);
-        return;
-    }
-
     if (uint8_t__stablePercent == 0u)
     {
         func__Ui_ResetChargingYellowBlink();
@@ -1481,16 +1483,26 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
         return;
     }
 
-    /* [EN] Non-linear formula with chargingStablePercent: the REMAINING to
-       full drives yellow ON time (final user directive 2026-09-19): the more
-       charged the battery, the SHORTER the yellow ON, so with 5% remaining
-       it blinks 50 ms per 1000 ms and a nearly empty battery keeps yellow
-       almost fully ON.
-       [FA] فرمول غیرخطی با درصد پایدار شارژ: «مانده تا فول» زمان روشن‌بودن
-       زرد را می‌دهد (دستور نهایی کاربر): هرچه باتری پرتر، روشن‌بودن زرد
-       کوتاه‌تر؛ با ۵٪ مانده، ۵۰ms از ۱۰۰۰ms چشمک می‌زند و باتری خالی زرد را
-       تقریباً دائم روشن نگه می‌دارد. */
-    uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__stablePercent;
+    /* [EN] v1.20 (user order 2026-09-28): a 100% reading while this
+       scenario runs means the percent map is at its ceiling but the
+       charger is still pumping (ABSORB soak up to 1 h) - keep the minimum
+       blink instead of going dark. Fully dark happens only outside this
+       scenario (full face / no active channel).
+       [FA] نسخهٔ ۱٫۲۰: درصد ۱۰۰ اینجا یعنی نگاشت درصد روی سقف است ولی
+       شارژر هنوز پمپ می‌کند (شستشوی ابزورب تا ۱ ساعت) - حداقل چشمک
+       ادامه می‌یابد نه خاموشی. خاموشی کامل فقط بیرون این سناریو است. */
+    if (uint8_t__stablePercent >= UI_PERCENT_FULL)
+    {
+        uint32_t__remainingPercent = 0u;
+    }
+    else
+    {
+        uint32_t__remainingPercent = UI_PERCENT_FULL - uint8_t__stablePercent;
+    }
+    if (uint32_t__remainingPercent < UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT)
+    {
+        uint32_t__remainingPercent = UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT;
+    }
     uint32_t__periodPerPercent = UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs / UI_PERCENT_SCALE;
     uint32_t__yellowOnMs = uint32_t__remainingPercent * uint32_t__periodPerPercent;
 
@@ -1758,11 +1770,28 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
        relevant channel through ABSORB (taper or the 1 h ceiling). The
        voltage latch above stays as an independent second path (pack at
        the 74/75 ceiling also means full, even mid-pump).
+       v1.20 (user order 2026-09-28: "the yellow may go FULLY dark only
+       when the charger is cut"): while any channel is still pumping, the
+       full face yields to the Charging face - the pack can legitimately
+       sit at the percent ceiling for the whole ABSORB soak (up to 1 h)
+       and the yellow keeps its minimum visible blink instead of dying
+       mid-charge. The voltage latch keeps deciding when nothing pumps
+       (FLOAT parked / done) and IsChargeComplete stays the primary full
+       path (the v1.17b order stays intact).
        [FA] نسخه ۱.۱۷b: خود شارژر اتمام را اعلام می‌کند (گذر هر کانال مربوط
-       از ابزورب)؛ لچ ولتاژی بالا هم مسیر دوم مستقل می‌ماند. */
+       از ابزورب)؛ لچ ولتاژی بالا هم مسیر دوم مستقل می‌ماند. نسخهٔ ۱٫۲۰
+       (دستور کاربر ۲۰۲۶-۰۹-۲۸: «زرد فقط وقتی کاملاً خاموش شود که شارژر هم
+       قطع باشد»): تا وقتی کانالی پمپ می‌کند چهرهٔ فول به چهرهٔ شارژ راه
+       می‌دهد - پک می‌تواند کل شستشوی ابزورب (تا ۱ ساعت) روی سقف درصد
+       بنشیند و زرد حداقل چشمکِ مرئی‌اش را نگه دارد. لچ ولتاژی وقتی چیزی
+       پمپ نمی‌کند تصمیم می‌گیرد و اتمام شارژ مسیر اصلی فول می‌ماند. */
     if (func__Charger_IsChargeComplete() == true)
     {
         bool__isFull = true;
+    }
+    else if (func__Charger_IsAnyChannelActive() == true)
+    {
+        bool__isFull = false;
     }
 #endif
 
