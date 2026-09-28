@@ -551,30 +551,22 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv);
 void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
 
 /* ==================== Runtime UI cadence (v1.16) ==================== */
-/* [EN] v1.16 (user order 2026-09-26: "draw the LEDs with real blinking,
- *      show the buzzer with a mute cross, and make every alarm number
- *      editable - ranges, beep times, beep counts"): the 39 UI_* numbers
- *      below become runtime ids 38..76, editable from the ESP panel,
- *      persisted to STM32 flash like the charge profile (~1.5 s debounce)
- *      and clamped as a set on every write. The macros stay as BOOT
- *      DEFAULTS only. Id 76 (mute) is panel-session only since v1.16b
- *      (RAM, cleared on reboot - the board returns to its own scenario);
- *      only the one-shot BoardTest wiring beep ignores the mute.
- *      v1.17 (user order 2026-09-27: "the charge-scenario numbers must be
- *      panel-editable too"): ids 77..82 add the full latch (enter/exit),
- *      the charging/discharge stable hysteresis and the 0/1 exits - 45
- *      numbers, ids 38..82.
- * [FA] v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶: «LEDها کشیده شوند با چشمک واقعی،
- *      بازر با ضربدر میوت نشان داده شود و همهٔ اعداد آلارم - بازه‌ها،
- *      زمان و تعداد بوق‌ها - قابل اصلاح باشند»): ۳۹ عدد UI_* شناسه‌های
- *      زمان‌اجرای ۳۸..۷۶ می‌شوند، از پنل ESP قابل اصلاح‌اند، مثل پروفایل
- *      شارژ روی فلش STM32 می‌مانند و با هر نوشتن به‌صورت مجموعه گیره
- *      می‌خورند. ماکروها فقط پیش‌فرض بوت می‌مانند. شناسهٔ ۷۶ (میوت) از
- *      v1.16b فقط جلسه‌ای است (RAM، با ریبوت پاک می‌شود - برد به سناریوی
- *      خودش برمی‌گردد)؛ فقط بوق یک‌بارهٔ تست سیم‌کشی برد میوت را نادیده
- *      می‌گیرد.
- *      v1.17 (دستور کاربر ۲۰۲۶-۰۹-۲۷): شناسه‌های ۷۷..۸۲ (لچ فول، هیسترزیس
- *      پایداری شارژ/دشارژ و خروج‌های ۰/۱) اضافه شد - ۴۵ عدد، ۳۸..۸۲. */
+/* [EN] v1.16 (user order 2026-09-26): the 39 UI_* numbers below became
+ *      runtime ids 38..76, editable from the ESP panel, flash-persisted
+ *      like the charge profile (~1.5 s debounce) and clamped as a set on
+ *      every write; the macros stay BOOT DEFAULTS only. Id 76 (mute) is panel-session only
+ *      since v1.16b (RAM, cleared on reboot - only the one-shot BoardTest
+ *      wiring beep ignores the mute). v1.17 (user
+ *      order 2026-09-27: charge-scenario numbers panel-editable too):
+ *      ids 77..82 add the full latch (enter/exit), the charge/discharge
+ *      stable hysteresis and the 0/1 exits - 45 numbers, ids 38..82.
+ * [FA] v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶): ۳۹ عدد UI_* شناسه‌های ۳۸..۷۶
+ *      شدند، از پنل قابل اصلاح، مثل پروفایل شارژ روی فلش (~۱٫۵s دیبانس) و
+ *      با هر نوشتن مجموعه‌ای گیره می‌خورند؛ ماکروها فقط پیش‌فرض بوت‌اند.
+ *      میوت ۷۶ از v1.16b فقط جلسه‌ای است (RAM، با ریبوت پاک - فقط بوق تست
+ *      سیم‌کشی میوت را نادیده می‌گیرد). v1.17 (۲۰۲۶-۰۹-۲۷): شناسه‌های
+ *      ۷۷..۸۲ (لچ فول، هیسترزیس پایداری شارژ/دشارژ و خروج‌های ۰/۱) -
+ *      ۴۵ عدد، ۳۸..۸۲. */
 #define UI_ALARM_PARAM_OV_LED_PERIOD_MS    38u  /* ms, 100..10000 */
 #define UI_ALARM_PARAM_OV_LED_DUTY_PCT     39u  /* %, 0..100 */
 #define UI_ALARM_PARAM_OV_BEEP_PERIOD_MS   40u  /* ms, 0=off else 1000..600000 */
