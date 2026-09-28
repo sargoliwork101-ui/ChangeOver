@@ -301,6 +301,21 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
 #endif
 
         default:
+#if MODULE_CHARGER
+            /* [EN] Three-stage PID, ids 83..97 (v1.22): range-dispatched
+                    for the same reason as the UI block - fifteen case
+                    labels buy nothing; Set re-validates and clamps.
+               [FA] PID سه‌مرحله‌ای، شناسه‌های ۸۳..۹۷ (v1.22): دیسپچ بازه‌ای
+                    به همان دلیل بلوک UI؛ ستر خودش دوباره اعتبارسنجی و گیره
+                    می‌کند. */
+            if ((uint8_t__paramId >= CHG_PID_PARAM_ENABLE) &&
+                (uint8_t__paramId <= CHG_PID_PARAM_STAGE3_DOWN_RATE))
+            {
+                return func__Charger_SetPidParam(uint8_t__paramId,
+                                                 uint32_t__value,
+                                                 uint32_t__appliedValue);
+            }
+#endif
 #if MODULE_UI
             /* [EN] UI cadence, ids 38..82 (v1.16 + v1.17 append): range-dispatched -
                     45 case labels would drown the switch; Set re-validates.
@@ -452,6 +467,16 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
 #endif
 
         default:
+#if MODULE_CHARGER
+            /* [EN] Three-stage PID live read, ids 83..97 (v1.22).
+               [FA] خواندن زندهٔ PID سه‌مرحله‌ای، شناسه‌های ۸۳..۹۷. */
+            if ((uint8_t__paramId >= CHG_PID_PARAM_ENABLE) &&
+                (uint8_t__paramId <= CHG_PID_PARAM_STAGE3_DOWN_RATE))
+            {
+                return func__Charger_GetPidParam(uint8_t__paramId,
+                                                 uint32_t__value);
+            }
+#endif
 #if MODULE_UI
             /* [EN] UI cadence live read, ids 38..82 (v1.16 + v1.17 append).
                [FA] خواندن زندهٔ اعداد UI، شناسه‌های ۳۸..۸۲. */

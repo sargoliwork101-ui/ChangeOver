@@ -36,12 +36,14 @@
 /* [EN] 77 since v1.16 (user order 2026-09-26): ids 20..26 = the shared
          charge profile (section 5.7), ids 27..37 = the alarms tab (27..34
          fault supervision, 35..37 charger safety ceilings), ids 38..76 =
-         UI cadence (LED/beep patterns, bands, blink, thresholds, mute).
+         UI cadence (LED/beep patterns, bands, blink, thresholds, mute),
+         ids 83..98 = three-stage charge PID (v1.22).
          / [FA] از v1.16: شناسه‌های ۲۰..۲۶ = پروفایل شارژ مشترک (بخش 5.7)،
          شناسه‌های ۲۷..۳۷ = تب آلارم‌ها (۲۷..۳۴ نظارت فالت، ۳۵..۳۷ سقف‌های
          ایمنی شارژر)، شناسه‌های ۳۸..۷۶ = اعداد UI (الگوهای LED/بوق، باندها،
-         چشمک، آستانه‌ها، میوت)، شناسه‌های ۷۷..۸۲ = فول/هیسترزیس (v1.17). */
-#define ESP_PARAM_COUNT             83u
+         چشمک، آستانه‌ها، میوت)، شناسه‌های ۷۷..۸۲ = فول/هیسترزیس (v1.17)، شناسه‌های ۸۳..۹۸ = PID
+         سه‌مرحله‌ای شارژ (v1.22). */
+#define ESP_PARAM_COUNT             99u
 #define ESP_PARAM_CHG1_ENABLE       11u
 #define ESP_PARAM_CHG2_ENABLE       12u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
@@ -75,7 +77,7 @@
         Arduino IDE: pick a flash layout WITH a file system (ESP8266 e.g. "4MB (FS:1MB)"; ESP32 default is fine).
    [FA] یک فایل CSV فقط-افزودنی روی LittleFS. پنل هر ردیف را از پنجرهٔ /m (تک‌تک فریم‌های TLM با raw)
         و عددهای مولتی‌متر می‌سازد و به /benchlog/add می‌فرستد؛ ESP فقط بررسی (ASCII قابل چاپ، پایان با
-        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 5.6، ۱۳۴ ستون - v1.12: +۷ پارامتر پروفایل شارژ، v1.15: +۱۱ پارامتر آلارم، v1.16: +۳۹ پارامتر UI، v1.17: +۶ پارامتر فول/هیسترزیس) را ESP هنگام ساخت فایل می‌نویسد. در سقف
+        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 5.6، ۱۵۰ ستون - v1.12: +۷ پارامتر پروفایل شارژ، v1.15: +۱۱ پارامتر آلارم، v1.16: +۳۹ پارامتر UI، v1.17: +۶ پارامتر فول/هیسترزیس، v1.22: +۱۶ پارامتر PID سه‌مرحله‌ای) را ESP هنگام ساخت فایل می‌نویسد. در سقف
         اندازه افزودن متوقف می‌شود (HTTP 507) و پنل هشدار می‌دهد.
         در Arduino IDE چیدمان فلشِ دارای فایل‌سیستم را انتخاب کنید (ESP8266 مثلاً "4MB (FS:1MB)"؛ ESP32 پیش‌فرض کافی است). */
 #define ESP_BENCHLOG_PATH           "/benchlog.csv"
@@ -103,6 +105,9 @@
     "#            ui_pct_vmin,ui_pct_vmax,ui_mute,\n" \
     "#            ui_chg_full_enter,ui_chg_full_exit,ui_chg_hyst,\n" \
     "#            ui_run_hyst,ui_run_zero,ui_run_one\n" \
+    "#  [pid]     pid_en,pid_s1_kp,pid_s1_ki,pid_s1_kd,pid_s1_up,pid_s1_dn,\n" \
+    "#            pid_s2_kp,pid_s2_ki,pid_s2_kd,pid_s2_up,pid_s2_dn,\n" \
+    "#            pid_s3_kp,pid_s3_ki,pid_s3_kd,pid_s3_up,pid_s3_dn\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \
@@ -117,7 +122,7 @@
 #define ESP_WIFI_AP_SSID            "ChangeOver-ESP"
 #define ESP_WIFI_AP_PASS            "123456789"
 #define ESP_HTTP_PORT               80
-#define ESP_JSON_BUFFER_SIZE        2048u   /* v1.16: p[77] needs the headroom (~950 B worst case); v1.17: p[83] adds ~70 B, still fits */
+#define ESP_JSON_BUFFER_SIZE        2560u   /* v1.16: p[77] needs the headroom (~950 B worst case); v1.17: p[83] adds ~70 B; v1.22: p[99] adds 16 PID values (one is 5 digits) plus the q4 mask, ~1.15 KB worst case */
 #define ESP_HTTP_FONT_CACHE         "public, max-age=31536000"
 
 /* ==================== Parser States ==================== */

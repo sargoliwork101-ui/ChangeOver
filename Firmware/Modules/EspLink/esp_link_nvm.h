@@ -56,27 +56,34 @@
 #define ESP_LINK_NVM_MAGIC              0x43484F31u
 /* [EN] Record version history: v3 = 77 slots (v1.16 LED/buzzer
  *      mirror), v4 = id 76 became a panel-session mute, never persisted
- *      (v1.16b), v5 = CURRENT: 83 slots incl. the six full/hysteresis ids
- *      77..82 (v1.17). A record with an older version fails the version
- *      check and falls back to the compiled defaults - after any upgrade
- *      that changes the record layout, re-tune from the panel once.
+ *      (v1.16b), v5 = 83 slots incl. the six full/hysteresis ids 77..82
+ *      (v1.17), v6 = CURRENT: 98 slots incl. the fifteen three-stage PID
+ *      ids 83..97 (v1.22). A record with an older version fails the
+ *      version check and falls back to the compiled defaults - after any
+ *      upgrade that changes the record layout, re-tune from the panel once
+ *      (v1.22 IS such an upgrade: the first boot after flashing comes up
+ *      on factory values).
  * [FA] تاریخچهٔ نسخهٔ رکورد: v3 = ۷۷ جای (آینهٔ LED/بازر v1.16)، v4 =
- *      میوت ۷۶ جلسه‌ای شد و دیگر ذخیره نمی‌شود (v1.16b)، v5 = فعلی:
- *      ۸۳ جای شامل ۷۷..۸۲ (v1.17). رکورد قدیمی‌تر در چک نسخه می‌افتد و
- *      پیش‌فرض کامپایل می‌ماند - بعد از هر ارتقای چیدمان، یک‌بار از پنل
- *      دوباره تنظیم کنید. */
-#define ESP_LINK_NVM_VERSION            5u
+ *      میوت ۷۶ جلسه‌ای شد و دیگر ذخیره نمی‌شود (v1.16b)، v5 = ۸۳ جای
+ *      شامل ۷۷..۸۲ (v1.17)، v6 = فعلی: ۹۹ جای شامل پانزده شناسهٔ PID
+ *      سه‌مرحله‌ای ۸۳..۹۸ (v1.22). رکورد قدیمی‌تر در چک نسخه می‌افتد و
+ *      پیش‌فرض کامپایل می‌ماند - بعد از هر ارتقای چیدمان یک‌بار از پنل
+ *      دوباره تنظیم کنید (v1.22 دقیقاً چنین ارتقایی است: اولین بوت پس از
+ *      فلش با مقادیر کارخانه بالا می‌آید). */
+#define ESP_LINK_NVM_VERSION            6u
 
-/* [EN] Slot cap: 77 persisted ids today (0..14 config + 20..26 charge
+/* [EN] Slot cap: 93 persisted ids today (0..14 config + 20..26 charge
  *      profile + 27..37 alarms + 38..75 UI cadence + 77..82 full/
- *      hysteresis; id 76 = panel-session mute, transient like 15..19).
- *      Cap 83; the record still fits one 1 KiB page. Keep the C harness
- *      in sync (it once caught a wrong count as a silent early-return).
- * [FA] سقف جای‌ها: امروز ۷۷ شناسهٔ ذخیره‌شونده (0..14 پیکربندی + 20..26
- *      پروفایل + ۲۷..۳۷ آلارم + ۳۸..۷۵ UI + ۷۷..۸۲ فول/هیسترزیس؛ ۷۶ =
- *      میوت جلسه‌ای، گذرا مثل ۱۵..۱۹). سقف ۸۳ و رکورد در یک صفحهٔ ۱KB جا
- *      می‌شود. هارنس C را هم‌روز نگه دارید. */
-#define ESP_LINK_NVM_ENTRY_MAX          83u
+ *      hysteresis + 83..98 three-stage PID; id 76 = panel-session mute,
+ *      transient like 15..19). Cap 99 -> record = 12 + 99 x 8 + 4 = 808 B,
+ *      still one 1 KiB page with room to spare. Keep the C harness in sync
+ *      (it once caught a wrong count as a silent early-return).
+ * [FA] سقف جای‌ها: امروز ۹۳ شناسهٔ ذخیره‌شونده (0..14 پیکربندی + 20..26
+ *      پروفایل + ۲۷..۳۷ آلارم + ۳۸..۷۵ UI + ۷۷..۸۲ فول/هیسترزیس + ۸۳..۹۸
+ *      PID سه‌مرحله‌ای؛ ۷۶ = میوت جلسه‌ای، گذرا مثل ۱۵..۱۹). سقف ۹۹ یعنی
+ *      رکورد ۸۰۸ بایت و باز هم یک صفحهٔ ۱KB با حاشیه. هارنس C را هم‌روز
+ *      نگه دارید. */
+#define ESP_LINK_NVM_ENTRY_MAX          99u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
  *      change; a shorter window would rewrite flash on every keystroke burst).
@@ -94,19 +101,22 @@
 /* [EN] Persisted id ranges: ALL settable configuration (0..14 = offsets,
  *      gains, filters, eta, charger enables, duty ceilings; 20..26 =
  *      charge profile; 27..37 = alarms; 38..75 = UI cadence; 77..82 =
- *      full/hysteresis) EXCEPT the transient test modes 15..18 (fixed
- *      duty), 19 (manual test) and 76 (panel-session mute) - those must
- *      never survive a reboot. Id 76 sits INSIDE the high range, so the
- *      predicate excludes it explicitly (see the .c).
+ *      full/hysteresis; 83..98 = three-stage PID) EXCEPT the transient
+ *      test modes 15..18 (fixed duty), 19 (manual test) and 76
+ *      (panel-session mute) - those must never survive a reboot. Id 76
+ *      sits INSIDE the high range, so the predicate excludes it
+ *      explicitly (see the .c). The PID gains are ordinary tuning numbers,
+ *      so they persist like the profile does.
  * [FA] بازه‌های شناسهٔ ذخیره‌شونده: تمام پیکربندی قابل‌تنظیم (0..14 =
  *      آفست‌ها، گین‌ها، فیلترها، eta، فعال‌بودن شارژر و سقف دیوتی؛ 20..26 =
  *      پروفایل شارژ؛ ۲۷..۳۷ = آلارم‌ها؛ ۳۸..۷۵ = اعداد UI؛ ۷۷..۸۲ =
- *      فول/هیسترزیس) به‌جز مودهای گذرای ۱۵..۱۸، ۱۹ و ۷۶ - آنها هرگز از
- *      ریبوت جان به در نمی‌برند. ۷۶ داخل بازهٔ بالا است پس محمول صریحاً
- *      کنارش می‌گذارد. */
+ *      فول/هیسترزیس؛ ۸۳..۹۸ = PID سه‌مرحله‌ای) به‌جز مودهای گذرای ۱۵..۱۸،
+ *      ۱۹ و ۷۶ - آنها هرگز از ریبوت جان به در نمی‌برند. ۷۶ داخل بازهٔ بالا
+ *      است پس محمول صریحاً کنارش می‌گذارد. ضرایب PID عدد تنظیم عادی‌اند و
+ *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    82u
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    98u
 #define ESP_LINK_NVM_TRANSIENT_ID_MUTE        76u
 
 /**
@@ -130,10 +140,10 @@ typedef struct
 
 /**
  * @brief  [EN] Flash record: header + entry list + CRC32 over all preceding
- *              bytes. Size 680 B for 83 entries - one erased page holds it
+ *              bytes. Size 808 B for 99 entries - one erased page holds it
  *              with room to grow.
  *         [FA] رکورد فلش: سربرگ + فهرست ورودی‌ها + CRC32 روی همهٔ بایت‌های
- *              قبل از خودش. اندازه ۶۸۰ بایت برای ۸۳ ورودی - یک صفحهٔ پاک‌
+ *              قبل از خودش. اندازه ۸۰۸ بایت برای ۹۹ ورودی - یک صفحهٔ پاک‌
  *              شده با حاشیه جایش را می‌دهد.
  */
 typedef struct

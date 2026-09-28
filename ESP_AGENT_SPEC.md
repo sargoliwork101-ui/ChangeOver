@@ -160,6 +160,34 @@
 > charging-card flow reworded, bench DMM form above the table (no
 > horizontal scroll for entry). No wire change. STM32 + ESP flash together.
 >
+> v1.22 (2026-09-28, nineteenth order - USER-ORDERED LOGIC CHANGE: "slow
+> the absorb duty rise down, and instead of all that complexity write a
+> three-stage PID - one gain set at the start, one in the middle, one in
+> the last region - and expose it on the ESP panel"): the fixed-step
+> bang-bang duty chain (0.5%/0.1% steps on 500/1000/2000 ms timers) is
+> replaced by ONE positional PID doing a textbook CC/CV min-select.
+> SIXTEEN new ids 83..98: enable (83) plus one complete
+> (Kp, Ki, Kd, up-rate, down-rate) row per stage. A "stage" is a LOOP,
+> not a voltage window: stage 1 = the current/bulk loop, stage 2 = the
+> voltage loop below the absorb setpoint, stage 3 = the voltage loop on
+> it and above. Each loop needs its own row because a volt of voltage
+> error and an amp of current error are different units - with one
+> shared Kp the min-select degenerates and the pack sails past 14.6 V.
+> The slew limit sits on the INTEGRAL, not the output: an output limiter
+> rectifies the P-term ripple that whole-permille duty quantisation
+> creates into a downward ratchet (simulated, the loop stalled at 268 mA
+> and never reached the 640 mA bulk band). Setting id 83 = 0 restores
+> the legacy chain byte-for-byte. Every protection is untouched (OV
+> cutoff, 950 mA hard fault, JIT, battery-valid, 500 permille DCM
+> ceiling, FLOAT parks at zero) - the PID only picks the duty number
+> inside the window they already allow. PARAMS_BULK 416 -> 496 bytes
+> (still < 512); a FOURTH pending mask q4 carries ids 96..98; NVM record
+> v5 -> v6 (93 persisted ids, 99 slots, 808 B - v5 records fall back to
+> compiled defaults, so RE-TUNE ONCE after flashing); the bench CSV
+> grows to 150 columns with a [pid] block; the panel gains a "PID شارژ"
+> sub-tab with all 16 coefficients and its own combination guard.
+> Panel v1.22. STM32 + ESP flash together.
+>
 > v1.20 (2026-09-27, eighteenth order - "the charge-scenario numbers must
 > be panel-editable too"): protocol v1.17 appends SIX UI ids 77..82 (full
 > latch enter/exit 100/95, charging stable hysteresis 5, run hysteresis
@@ -258,7 +286,7 @@ immediately and drain within ~1 ms.
 | 0x03 | ESP→STM | CAL_REFERENCE | `[target:u8][ref_mA:u32 LE]` (5 bytes) — one-shot calibration from a typed DMM reading; targets 0/1 = GAIN ch1/2, 2/3 = ETA ch1/2 (v1.3, section 5.4) |
 | 0x10 | STM→ESP | TLM_LIVE | 84 bytes, layout below |
 | 0x11 | STM→ESP | PARAM_REPORT | `[id:u8][value:u32 LE]` — the **applied** value (sent after every accepted SET_PARAM) |
-| 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS; 83 params since v1.17 = 416 payload bytes) |
+| 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS; 99 params since v1.22 = 496 payload bytes) |
 
 Audit 2026-09-27: the 77-param growth had silently outgrown the STM32 256 B
 TX ring, so every PARAMS_BULK reply was refused and a fresh panel never
@@ -266,7 +294,8 @@ learned the live values (it showed ESP-side defaults until each value was
 touched). The ring is now 1024 B and the bulk payload is static - GET_PARAMS
 is answered with the board truth again, and the manual-mode 1 s keepalive
 bulk no longer burns ~900 B of the 1 KiB comm stack. v1.17 grows the
-bulk to 83 params / 416 B - still inside the 1024 B ring and the 512 frame ceiling.
+bulk to 83 params / 416 B and v1.22 to 99 params / 496 B - still inside the
+1024 B ring and the 512 frame ceiling (496 + 5 header + 1 xor = 502 B).
 
 Verified example frames (hex):
 
@@ -285,7 +314,7 @@ PARAM_REPORT reply for id=2, applied=1200:
 AA 55 11 05 00 02 B0 04 00 00 A2
 ```
 
-## 5. Parameter table (IDs 0..18 = protocol v1.1, ID 19 = v1.2, IDs 20..26 = v1.12 append, IDs 27..37 = v1.15 append, IDs 38..76 = v1.16 append, IDs 77..82 = v1.17 append — IDs are final, never renumbered)
+## 5. Parameter table (IDs 0..18 = protocol v1.1, ID 19 = v1.2, IDs 20..26 = v1.12 append, IDs 27..37 = v1.15 append, IDs 38..76 = v1.16 append, IDs 77..82 = v1.17 append, IDs 83..98 = v1.22 append — IDs are final, never renumbered)
 
 | ID | Name | Type | Unit | Default | Range | What it changes |
 |---|---|---|---|---|---|---|
@@ -372,6 +401,22 @@ AA 55 11 05 00 02 B0 04 00 00 A2
 | 80 | UI_RUN_HYST_PCT | u32 | % | 2 | 0..50 | **v1.17:** BatteryRun stable-percent hysteresis (0 = follow raw every pass) |
 | 81 | UI_RUN_ZERO_EXIT | u32 | % | 2 | 0..100 | **v1.17:** raw percent that moves stable 0% → 1% in BatteryRun |
 | 82 | UI_RUN_ONE_EXIT | u32 | % | 3 | 0..100 | **v1.17:** raw percent that moves stable 1% → 2% in BatteryRun (raw 0 always drops to 0) |
+| 83 | CHG_PID_ENABLE | u32 | 0/1 | 1 | 0..1 | **v1.22:** 1 = the three-stage PID owns the BULK/ABSORB duty; 0 = the legacy fixed-step regulator, unchanged |
+| 84 | CHG_PID_STAGE1_KP | u32 | ‰/A | 20 | 0..20000 | **Stage 1 = the CURRENT (bulk) loop.** Permille of duty per amp of current error. Kept small on purpose: ~7 mA moves per applied permille, so a big Kp swings the P term past one quantisation step and the loop chatters instead of climbing |
+| 85 | CHG_PID_STAGE1_KI | u32 | — | 800 | 0..20000 | Integral rate = Ki × error / 1000 milli-permille per second; 800 at a 640 mA error ≈ the familiar 0.5 permille/s soft ramp, fading out as the band is reached |
+| 86 | CHG_PID_STAGE1_KD | u32 | — | 0 | 0..20000 | Derivative. 0 by default: the sense chain is filtered but not noise-free, and a derivative on noise is duty jitter |
+| 87 | CHG_PID_STAGE1_UP_RATE | u32 | m‰/s | 500 | 10..20000 | Ceiling on how fast the integral may CLIMB in the current loop |
+| 88 | CHG_PID_STAGE1_DOWN_RATE | u32 | m‰/s | 1000 | 10..20000 | Ceiling on how fast it may FALL (1000 = 1 permille/s = the legacy coarse escape rate) |
+| 89 | CHG_PID_STAGE2_KP | u32 | ‰/V | 150 | 0..20000 | **Stage 2 = the VOLTAGE loop while Vbat < absorb setpoint.** Permille of duty per volt of voltage error |
+| 90 | CHG_PID_STAGE2_KI | u32 | — | 300 | 0..20000 | 300 at 100 mV below the setpoint = 30 m‰/s, i.e. exactly the up-rate cap; proportional, so the climb eases further as the setpoint nears |
+| 91 | CHG_PID_STAGE2_KD | u32 | — | 0 | 0..20000 | Derivative, off by default |
+| 92 | CHG_PID_STAGE2_UP_RATE | u32 | m‰/s | 30 | 10..20000 | **The "slow the absorb rise" knob (the user order).** 30 m‰/s = 0.03 permille/s versus the legacy 0.1 permille / 2000 ms = 0.05 permille/s |
+| 93 | CHG_PID_STAGE2_DOWN_RATE | u32 | m‰/s | 1000 | 10..20000 | Fall ceiling in stage 2 |
+| 94 | CHG_PID_STAGE3_KP | u32 | ‰/V | 300 | 0..20000 | **Stage 3 = the VOLTAGE loop at the setpoint and above.** Modest, so sensor noise is not amplified into duty jitter |
+| 95 | CHG_PID_STAGE3_KI | u32 | — | 12000 | 0..20000 | The setpoint region needs real authority: the duty must fall from ~190 to ~56 permille as the pack stops accepting current, and Ki does that work (the down-rate still caps it at 1 permille/s) |
+| 96 | CHG_PID_STAGE3_KD | u32 | — | 0 | 0..20000 | Derivative, off by default |
+| 97 | CHG_PID_STAGE3_UP_RATE | u32 | m‰/s | 10 | 10..20000 | The calmest climb of all - on the setpoint nothing should hurry |
+| 98 | CHG_PID_STAGE3_DOWN_RATE | u32 | m‰/s | 1000 | 10..20000 | Fall ceiling in stage 3 |
 
 Notes:
 - Signed values (4..6) travel as two's-complement u32 on the wire.
@@ -1068,7 +1113,7 @@ longer fit one u32, /t carries a second pending mask `q2` for ids 32..37
 alongside `q` for 0..31. A single backup card in its own settings
 sub-tab (v1.16d - ONE backup for the whole settings, not per tab;
 v1.16c had it at settings-tab level) exports/imports ALL 77 persisted
-values (0..14, 20..75, 77..82) as a JSON file (`changeover-settings.json`).
+values (0..14, 20..75, 77..98) as a JSON file (`changeover-settings.json`).
 
 Firmware clamps (every write re-clamps the whole cascade - profile ->
 charger alarms -> fault alarms, so a profile write can re-float a
@@ -1213,6 +1258,138 @@ is now u16 little-endian (`AA 55 type len_lo len_hi payload xor`,
 A v1.15 parser reads len_hi as the first payload byte and drops every
 frame - mixed versions NEVER link.
 
+### 5.11 Three-stage charge PID (v1.22 — USER-ORDERED LOGIC CHANGE 2026-09-28)
+
+The user's words: *"slow the absorb duty rise down, and instead of all that
+complexity write a three-stage PID — one gain set at the start, one in the
+middle, one in the last region — and expose it on the ESP panel."*
+
+**What it replaced.** The old regulator was a chain of fixed steps on fixed
+timers: in ABSORB, +0.1 permille every 2000 ms below the target, −0.1 every
+1000 ms above it, −0.5 every 500 ms above the over-voltage ceiling; in BULK,
+±0.5 permille on a 20 mA-wide current band. Because every step was the same
+size no matter how far off the duty was, it could only ever overshoot and
+come back — in a plant simulation the legacy chain reversed the duty
+direction **2607 times** in one charge, and on the corrected plant model it still overshoots the
+650 mA current band to 713 mA and the 14.4 V setpoint to 14498 mV on every
+approach, because a fixed step cannot know how far off it is.
+
+**What it is now.** One positional PID per channel, updated every
+`CHG_PID_PERIOD_MS` (100 ms = one current-filter window), running a textbook
+CC/CV **min-select**:
+
+| Branch | Error | Gain row |
+|---|---|---|
+| Current (CC) | `bulk_imax − 10 mA − I` | **always stage 1** |
+| Voltage (CV) | `setpoint − Vbat` | **stage 2** while `Vbat < setpoint`, **stage 3** at/above |
+
+Both branches are evaluated every pass and **the one asking for the smaller
+duty wins**; the winner alone drives the shared integrator and its own slew
+limits. So the three user-visible "stages" are, in charging order: stage 1 =
+the constant-current bulk loop, stage 2 = the voltage loop climbing to the
+setpoint (the region whose rise the user asked to slow), stage 3 = the
+voltage loop holding at / backing off from the setpoint.
+
+**Why each loop needs its OWN gain row.** A volt of voltage error and an amp
+of current error are different physical quantities. With one shared Kp the
+min-select comparison becomes "millivolts versus milliamps": at the current
+limit `e_i ≈ 0`, so the voltage branch can only win when `e_v ≈ 0` too —
+i.e. exactly on the setpoint. There is no CC→CV knee at all and the pack
+sails to 14.6 V before anything reacts (simulated peak 14599 mV). Separate
+rows make the crossover a real, tunable ratio.
+
+**Why the slew limit is on the integral, not the output.** The PWM stage
+takes whole permille, so every time the applied duty crosses an integer the
+measured current jumps and the P term ripples by a few milli-permille. An
+output rate-limiter with a fast down-rate and a slow up-rate **rectifies**
+that zero-mean ripple into a steady downward ratchet: in simulation the loop
+stalled at 268 mA and never reached the 640 mA bulk band, even though the
+error was 372 mA. Rate-limiting the integral (the operating point the loop
+walks toward) and letting P+D ride on top unclipped leaves the ripple
+zero-mean and makes the ramp rate exactly the number the user dialled in.
+
+**Units** (integers only, no floats in firmware):
+
+```text
+P term  [milli-permille]   = Kp x error / CHG_PID_KP_DIV   (KP_DIV = 1)
+I rate  [milli-permille/s] = Ki x error / CHG_PID_KI_DIV   (KI_DIV = 1000)
+D term  [milli-permille]   = Kd x (error - prev) / CHG_PID_KD_DIV  (KD_DIV = 1)
+```
+
+so Kp reads as "permille of duty per volt (or per amp) of error" and
+Ki = 1000 means "one permille per second per volt of error". Slew rates are
+milli-permille per second: 1000 = 1 permille/s.
+
+**Order of operations each update** (all int32, overflow proven by
+`_Static_assert` in charger.c):
+
+```text
+1  clamp both errors to +/-CHG_PID_ERROR_CLAMP (4000)
+2  P and D for each branch, from ITS OWN row; D only for the branch that
+   also won the previous pass (a fresh branch starts with no history)
+3  min-select on (P + D) -> the winning branch's error, Ki and slew pair
+4  rate = Ki x error / 1000, clamped to [-down_rate, +up_rate]
+5  integral += rate x dt (sub-unit remainder carried, so 0.01 permille/s
+   is exact), then clamped into [0, live duty ceiling] = anti-windup
+6  duty = clamp(integral + P + D, 0, live duty ceiling)
+7  apply it only if it differs from the duty already on the hardware by at
+   least CHG_PID_OUTPUT_HYST_MILLI (700) - see the reversal note below
+```
+
+The live ceiling is `min(compile-time 500 permille DCM cap, panel duty
+ceiling for this channel)` — the same pair `ApplyDuty` enforces, so the
+integrator can never wind up behind a limit the hardware will clip anyway.
+
+**Bumpless transfer.** Whenever the duty actually applied to the hardware
+differs from the PID's integral by more than
+`CHG_PID_RESEED_TOLERANCE_PERMILLE` (1 permille), the PID re-seeds from the
+hardware value. That one rule covers every foreign writer — JIT retry
+halving, manual test mode, fixed-duty mode, a lowered panel ceiling, the
+BULK soft start — without any of them needing to know the PID exists. FLOAT
+stays parked at zero and explicitly invalidates the PID, so the next reentry
+starts from the real duty instead of a stale integral.
+
+**Simulated behaviour with the shipped defaults** (flyback DCM plant
+`i = 230.4 x D^2 / V`, 0.15 ohm series resistance, exponential gassing sink
+putting the absorb operating point near 50 mA / 56 permille):
+
+Both regulators were run on the same model for 10 simulated hours:
+
+| Metric | Legacy step chain | v1.22 PID | Why it matters |
+|---|---|---|---|
+| Peak battery voltage | 14498 mV | **14419 mV** | 79 mV further from the 14.6 V over-voltage step and the 14.8 V disconnect alarm |
+| Peak current | 713 mA | **640 mA** | the legacy chain overshot the 650 mA band by 63 mA on every approach; the PID never exceeds its setpoint |
+| Duty direction changes | 6456 | **4** | this is the "duty keeps jumping around" the user reported |
+| Bulk current hold | 630..636 mA | 633..640 mA | equivalent |
+| Absorb hold | 14400.2..14400.5 mV | 14399.9..14400.2 mV | equivalent |
+
+The reversal number needs a caveat that was found during the audit of this
+very change: **the PID alone is WORSE than the legacy chain on that metric**
+(15570 reversals). The loop updates every 100 ms and can move every tick,
+while the legacy chain could only move on its 500/1000/2000 ms timers. The
+fix is `CHG_PID_OUTPUT_HYST_MILLI` (700): since the PWM stage takes whole
+permille while the loop thinks in thousandths, the applied duty only moves
+once the demand has drifted 0.7 permille from what the hardware already
+carries. That single constant takes 15570 reversals down to 4 with no
+measurable loss of regulation quality, and it is deliberately smaller than
+the 1 permille re-seed tolerance so its lag can never be mistaken for a
+foreign writer.
+
+Re-checked over 0.05..0.30 ohm series resistance, a new pack (low
+acceptance) and a worn pack (high acceptance), and a flat 10.5 V start:
+worst-case peak 14432 mV, worst-case current 640.6 mA, worst-case reversal
+count 476 (0.30 ohm) - still 13x fewer than the legacy chain.
+
+**Escape hatch.** `SET_PARAM id 83 = 0` returns the board to the legacy
+fixed-step chain with no numeric change whatsoever — useful if the bench
+ever wants an A/B comparison.
+
+**Safety invariants NOT touched by this change:** OV cutoff (id 36),
+950 mA hard current fault (id 35), battery-valid floor (id 37), JIT
+retry/settle gating, input-present window (ids 33/34), the 500 permille DCM
+duty ceiling, the BULK/ABSORB/FLOAT state machine with soak, taper, dip and
+reentry, and FLOAT parking at zero duty.
+
 ## 6. TLM_LIVE payload layout (84 bytes, little-endian)
 
 | Offset | Size | Field | Meaning |
@@ -1332,7 +1509,7 @@ protocol. That flip is intentionally left to the project owner.
 test mode (ID 19, section 5.2), charger state 9 = MANUAL, TLM flags bit
 5, the 3 s link dead-man with manual JIT re-arm, the 15.0 V manual
 overvoltage cutoff, the frozen battery-lost detection during manual, and
-the payload limit 512 (PARAMS_BULK = 83 params / 416 payload bytes since v1.17) are
+the payload limit 512 (PARAMS_BULK = 99 params / 496 payload bytes since v1.22) are
 all in the firmware. The ESP-side constraints that come with it are
 documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 1 s keepalive while ID 19 = 1.

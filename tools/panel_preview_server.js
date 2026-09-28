@@ -52,7 +52,14 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            1000, 2000, 10000, 1, 2, 3, 100,
            1000, 10, 1000, 150, 28000, 1000, 21000, 21200, 21000, 29000, 0,
            /* v1.17 ids 77..82 = full latch + stable hysteresis boot defaults */
-           100, 95, 5, 2, 2, 3];
+           100, 95, 5, 2, 2, 3,
+           /* v1.22 ids 83..98 = three-stage charge PID boot defaults (CHG_PID_* in charger.h):
+              enable, then one (Kp, Ki, Kd, up-rate, down-rate) row per stage.
+              Stage 1 = current loop, stages 2/3 = voltage loop below / at the setpoint. */
+           1,
+           20, 800, 0, 500, 1000,
+           150, 300, 0, 30, 1000,
+           300, 12000, 0, 10, 1000];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -151,7 +158,15 @@ function clampParam(id, v) {
         case 80: return clampW(v, 0, 50);
         case 81: return clampW(v, 0, 100);
         case 82: return clampW(v, 0, 100);
-        default: return v;
+        /* v1.22 ids 83..98: mirror of func__Charger_ClampPid - enable is 0/1,
+           every gain is 0..20000 and every slew rate is 10..20000 m permille/s.
+           The row layout is (Kp, Ki, Kd, up, down), so (id - 84) % 5 >= 3 is a rate. */
+        case 83: return clampW(v, 0, 1);
+        default:
+            if (id >= 84 && id <= 98) {
+                return ((id - 84) % 5) >= 3 ? clampW(v, 10, 20000) : clampW(v, 0, 20000);
+            }
+            return v;
     }
 }
 
@@ -245,7 +260,7 @@ function telemetry() {
     else if (cyc >= 38000 && cyc < 46000) t[19] = 64;
     else if (cyc >= 46000 && cyc < 54000) { t[14] = 15000; t[17] = 22200; t[18] = 22200; t[6] = 0; t[13] = 0; }
     seq += 1; frames += 1; ms += SIM_MS;
-    return { on: 1, age: 40, seq, fl: 7, n: frames, q: 0, q2: 0, q3: 0, ka: 800, t, p: P.slice() };
+    return { on: 1, age: 40, seq, fl: 7, n: frames, q: 0, q2: 0, q3: 0, q4: 0, ka: 800, t, p: P.slice() };
 }
 
 /* ---------- HTTP server ---------- */
@@ -268,7 +283,7 @@ const server = http.createServer((req, res) => {
     if (req.method === "POST" && url.pathname === "/s") {
         const id = Number(url.searchParams.get("id"));
         const v = Number(url.searchParams.get("v"));
-        if (id >= 0 && id < 83 && Number.isFinite(v)) {
+        if (id >= 0 && id < 99 && Number.isFinite(v)) {
             P[id] = clampParam(id, v); /* clamped exactly like the firmware */
             if (id >= 20) {
                 /* v1.14d: whole-set re-clamp in dependency order, like

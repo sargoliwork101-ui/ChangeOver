@@ -81,6 +81,7 @@ static void func__Esp_HttpTelemetry(void)
     uint32_t uint32_t__pendingMask = 0u;
     uint32_t uint32_t__pendingMask2 = 0u;
     uint32_t uint32_t__pendingMask3 = 0u;
+    uint32_t uint32_t__pendingMask4 = 0u;
     uint32_t uint32_t__keepaliveAgeMs = uint32_t__nowMs - UINT32_T__G__LastKeepaliveMs;
     uint8_t uint8_t__index;
     size_t size_t__used;
@@ -89,12 +90,16 @@ static void func__Esp_HttpTelemetry(void)
     BOOL__G__BrowserSeen = true;
 
     /* [EN] v1.16: 77 params need three u32 masks (and 1UL << 32+ is UB),
-            so ids 0..31 go to "q", 32..63 to "q2" and 64..76 to "q3"
-            (panel apend() reads all three). v1.17: 83 params, q3 now
-            covers 64..82 (bits 0..18 - still one mask).
+            so ids 0..31 go to "q", 32..63 to "q2" and 64..95 to "q3"
+            (panel apend() reads all four). v1.22: 99 params, so a FOURTH
+            mask "q4" carries 96..98 - without it the three PID ids at the
+            top would show no pending highlight and the panel would look
+            like it dropped the write.
        [FA] نسخه ۱.۱۶: ۷۷ پارامتر سه ماسک u32 می‌خواهد (و شیفت ۳۲+ تعریف‌نشده
-            است)، پس شناسه‌های ۰..۳۱ در q و ۳۲..۶۳ در q2 و ۶۴..۷۶ در q3 می‌روند.
-            نسخه ۱.۱۷: ۸۳ پارامتر و q3 حالا ۶۴..۸۲ را می‌پوشاند (بیت‌های ۰..۱۸). */
+            است)، پس شناسه‌های ۰..۳۱ در q و ۳۲..۶۳ در q2 و ۶۴..۹۵ در q3 می‌روند.
+            نسخه ۱.۲۲: ۹۹ پارامتر، پس ماسک چهارم q4 شناسه‌های ۹۶..۹۸ را
+            می‌برد - بدون آن سه شناسهٔ بالای PID هیچ برجسته‌سازی «در انتظار»
+            نمی‌گرفتند و پنل انگار نوشتن را انداخته بود. */
     for (uint8_t__index = 0u; uint8_t__index < ESP_PARAM_COUNT; uint8_t__index++)
     {
         if (BOOL__G__TxParamPending[uint8_t__index])
@@ -107,19 +112,23 @@ static void func__Esp_HttpTelemetry(void)
             {
                 uint32_t__pendingMask2 |= (1UL << (uint8_t__index - 32u));
             }
-            else
+            else if (uint8_t__index < 96u)
             {
                 uint32_t__pendingMask3 |= (1UL << (uint8_t__index - 64u));
+            }
+            else
+            {
+                uint32_t__pendingMask4 |= (1UL << (uint8_t__index - 96u));
             }
         }
     }
 
     size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
-        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"n\":%lu,\"q\":%lu,\"q2\":%lu,\"q3\":%lu,\"ka\":%lu,\"t\":[",
+        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"n\":%lu,\"q\":%lu,\"q2\":%lu,\"q3\":%lu,\"q4\":%lu,\"ka\":%lu,\"t\":[",
         bool__online ? 1u : 0u, (unsigned long)uint32_t__ageMs, (unsigned int)UINT16_T__G__TlmSeq,
         (unsigned int)UINT8_T__G__TlmFlags, (unsigned long)UINT32_T__G__TlmFrameCount,
         (unsigned long)uint32_t__pendingMask, (unsigned long)uint32_t__pendingMask2,
-        (unsigned long)uint32_t__pendingMask3,
+        (unsigned long)uint32_t__pendingMask3, (unsigned long)uint32_t__pendingMask4,
         (unsigned long)uint32_t__keepaliveAgeMs);
 
     for (uint8_t__index = 0u; uint8_t__index < ESP_LINK_TLM_FIELD_COUNT; uint8_t__index++)

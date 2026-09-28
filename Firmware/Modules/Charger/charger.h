@@ -266,6 +266,278 @@
  *      اورشوت بالای ۱۴٫۶V همان سرعت ۵۰۰ms امنیتی را حفظ می‌کند. */
 #define CHG_DUTY_RAMP_UP_INTERVAL_ABSORB_MS   2000u
 #define CHG_DUTY_RAMP_DOWN_INTERVAL_ABSORB_MS 1000u
+
+/* ==================== Three-stage PID regulator (v1.22) ====================
+ * [EN] USER ORDER 2026-09-28: "slow the absorb duty rise down, and instead of
+ *      all that complexity write a three-stage PID - one gain set at the
+ *      start, one in the middle, one in the last region - and expose it on
+ *      the ESP panel." This block replaces the fixed-step bang-bang chain
+ *      (0.5%/0.1% steps on 500/1000/2000 ms timers) with ONE positional PID
+ *      core running a textbook CC/CV min-select:
+ *
+ *        branch C (current) : error = current setpoint - measured current,
+ *                             ALWAYS uses the stage-1 gain row.
+ *        branch V (voltage) : error = absorb setpoint - measured voltage,
+ *                             uses the stage-2 row while Vbat is BELOW the
+ *                             setpoint and the stage-3 row once it is at or
+ *                             above it.
+ *
+ *      Both branches are evaluated every update and the one asking for the
+ *      SMALLER duty wins; the winner alone drives the shared integrator and
+ *      its own slew limits. That is why each loop needs its own gain row:
+ *      a volt of voltage error and an amp of current error are different
+ *      physical quantities, so one shared Kp would make the comparison
+ *      meaningless and the CC->CV knee would never happen (simulated: the
+ *      pack sails to 14.6 V before the voltage branch ever wins).
+ *
+ *      So the three user-visible "stages" are, in charging order:
+ *        stage 1 "start"  = the constant-current / bulk loop (branch C)
+ *        stage 2 "middle" = the voltage loop climbing to the setpoint - the
+ *                           region whose rise the user asked to slow down
+ *        stage 3 "last"   = the voltage loop holding at / backing off from
+ *                           the setpoint
+ *      The state machine (BULK/ABSORB/FLOAT, soak, taper, dip, reentry) and
+ *      EVERY protection (OV cutoff, hard current limit, JIT, battery-valid,
+ *      duty ceiling, FLOAT parks at zero) are untouched: the PID only
+ *      decides the duty number inside the window they already allow.
+ *      Setting id 83 to 0 restores the legacy step regulator unchanged.
+ * [FA] دستور کاربر ۲۰۲۶-۰۹-۲۸: «سرعت رشد دیوتی در ابزورب کمتر شود و به‌جای
+ *      این همه پیچیدگی یک PID سه‌مرحله‌ای بنویس - اولش یک سری ضریب، وسطش
+ *      یک سری، ناحیهٔ آخرش هم یک سری دیگر - و این تنظیمات در ESP هم بیاید.»
+ *      این بلوک زنجیرهٔ پله‌ثابت (۰٫۵٪/۰٫۱٪ روی تایمرهای ۵۰۰/۱۰۰۰/۲۰۰۰ms) را
+ *      با یک هستهٔ PID موقعیتی جایگزین می‌کند که کمینه‌گیری کلاسیک CC/CV
+ *      انجام می‌دهد: شاخهٔ جریان (خطا = ست‌پوینت جریان منهای جریان اندازه‌گیری
+ *      شده) همیشه ردیف ضریب مرحلهٔ ۱ را می‌خواند؛ شاخهٔ ولتاژ (خطا = ست‌پوینت
+ *      ابزورب منهای ولتاژ) وقتی ولتاژ زیر ست‌پوینت است ردیف مرحلهٔ ۲ و وقتی
+ *      روی آن یا بالاتر است ردیف مرحلهٔ ۳ را می‌خواند. هر به‌روزرسانی هر دو
+ *      شاخه حساب می‌شوند و هرکدام دیوتی کمتری بخواهد برنده است؛ فقط برنده،
+ *      انتگرال‌گیر مشترک و سقف شیب خودش را می‌راند. دلیل جدا بودن ردیف‌ها همین
+ *      است: یک ولت خطای ولتاژ و یک آمپر خطای جریان دو کمیت فیزیکی متفاوت‌اند،
+ *      پس با Kp مشترک مقایسه بی‌معنا می‌شد و زانوی CC→CV هرگز رخ نمی‌داد
+ *      (در شبیه‌سازی: پک تا ۱۴٫۶ ولت بالا می‌رفت و شاخهٔ ولتاژ هیچ‌وقت برنده
+ *      نمی‌شد). پس سه «مرحلهٔ» قابل دیدن کاربر به ترتیب شارژ این‌هاست:
+ *      مرحلهٔ ۱ «شروع» = حلقهٔ جریان ثابت/بالک، مرحلهٔ ۲ «وسط» = حلقهٔ ولتاژ
+ *      در حال بالا رفتن به سمت ست‌پوینت (همان ناحیه‌ای که کاربر خواست کندتر
+ *      شود)، مرحلهٔ ۳ «آخر» = حلقهٔ ولتاژ روی ست‌پوینت و عقب‌نشینی از آن.
+ *      ماشین حالت و همهٔ حفاظت‌ها دست‌نخورده‌اند؛ PID فقط عدد دیوتی را داخل
+ *      پنجره‌ای که آن‌ها اجازه داده‌اند تعیین می‌کند. شناسهٔ ۸۳ = ۰ یعنی
+ *      برگشت به تنظیم‌کنندهٔ پله‌ای قدیمی بدون هیچ تغییر عددی. */
+
+/* [EN] Update cadence. The control task still runs every 10 ms, but the PID
+ *      math advances once per CHG_PID_PERIOD_MS - one window of the
+ *      current filter (median-3 + average-10 = ~100 ms), so the loop never
+ *      reacts to a value the filter has not finished forming.
+ * [FA] ضرب‌آهنگ به‌روزرسانی: تسک کنترل همان هر ۱۰ms اجرا می‌شود ولی ریاضی
+ *      PID هر CHG_PID_PERIOD_MS یک‌بار جلو می‌رود - یک پنجرهٔ فیلتر جریان
+ *      (~۱۰۰ms) تا حلقه به عددی که فیلتر هنوز نساخته واکنش ندهد. */
+#define CHG_PID_ENABLE_DEFAULT            1u
+#define CHG_PID_PERIOD_MS               100u
+#define CHG_PID_DT_MIN_MS                10u
+#define CHG_PID_DT_MAX_MS              1000u
+
+/* [EN] Internal duty resolution: milli-permille (1 unit = 0.001 permille =
+ *      0.0001%). The PWM stage takes whole permille, so the fine units are
+ *      what let a 0.03 permille/s creep exist at all - the integrator moves
+ *      inside the unit and the applied duty steps when it crosses.
+ * [FA] وضوح داخلی دیوتی: میلی‌پرمیل (هر واحد ۰٫۰۰۱ پرمیل). سخت‌افزار PWM
+ *      پرمیل صحیح می‌گیرد، پس همین واحد ریز است که خزش ۰٫۰۳ پرمیل بر ثانیه
+ *      را ممکن می‌کند: انتگرال‌گیر داخل واحد حرکت می‌کند و دیوتی اعمالی با
+ *      عبور از مرز یک پله می‌خورد. */
+#define CHG_PID_DUTY_SCALE             1000u
+
+/* [EN] Gain units (integers only, panel-friendly, no floats in firmware).
+ *      Each term has its OWN divider so every gain lands on a round, human
+ *      number instead of a five-digit one:
+ *        P term  [milli-permille]   = Kp x error / CHG_PID_KP_DIV
+ *        I rate  [milli-permille/s] = Ki x error / CHG_PID_KI_DIV
+ *        D term  [milli-permille]   = Kd x (error - previous) / CHG_PID_KD_DIV
+ *      error is mV in the voltage branch and mA in the current branch, so
+ *      with KP_DIV = 1 the readable unit of Kp is "permille of duty per
+ *      volt of error" (voltage branch) or "permille per amp" (current
+ *      branch), and with KI_DIV = 1000 the unit of Ki is "milli-permille
+ *      per second per millivolt" - Ki = 1000 means one permille per second
+ *      for every volt of error.
+ *      Worked example (defaults, stage 2): 100 mV under the setpoint gives
+ *      an integral rate of 300 x 100 / 1000 = 30 milli-permille/s =
+ *      0.03 permille/s - SLOWER than the legacy 0.1 permille per 2000 ms
+ *      (0.05 permille/s) the user asked to slow down, and it fades to zero
+ *      as the error closes instead of stepping over the setpoint.
+ * [FA] واحد ضرایب (فقط عدد صحیح، بدون ممیز شناور در فریم‌ور). هر جمله
+ *      تقسیم‌کنندهٔ خودش را دارد تا ضرایب عددهای گرد و انسانی بمانند:
+ *      جملهٔ P = Kp×خطا÷CHG_PID_KP_DIV، نرخ I = Ki×خطا÷CHG_PID_KI_DIV،
+ *      جملهٔ D = Kd×تغییر خطا÷CHG_PID_KD_DIV. خطا در شاخهٔ ولتاژ mV و در
+ *      شاخهٔ جریان mA است، پس با KP_DIV=۱ واحد خواندنی Kp می‌شود «پرمیل
+ *      دیوتی به ازای هر ولت خطا» (شاخهٔ ولتاژ) یا «پرمیل به ازای هر آمپر»
+ *      (شاخهٔ جریان)، و با KI_DIV=۱۰۰۰ واحد Ki می‌شود «میلی‌پرمیل بر ثانیه
+ *      به ازای هر میلی‌ولت» یعنی Ki=۱۰۰۰ یعنی یک پرمیل بر ثانیه به ازای هر
+ *      ولت خطا. مثال با پیش‌فرض مرحلهٔ ۲: ۱۰۰mV زیر ست‌پوینت یعنی نرخ
+ *      ۳۰۰×۱۰۰÷۱۰۰۰ = ۳۰ میلی‌پرمیل بر ثانیه = ۰٫۰۳ پرمیل بر ثانیه - کندتر
+ *      از ۰٫۰۵ پرمیل بر ثانیهٔ قدیمی که کاربر خواست کم شود، و با بسته‌شدن
+ *      خطا خودش صفر می‌شود به‌جای اینکه از ست‌پوینت رد شود. */
+#define CHG_PID_KP_DIV                    1u
+#define CHG_PID_KI_DIV                 1000u
+#define CHG_PID_KD_DIV                    1u
+#define CHG_PID_GAIN_MAX              20000u
+
+/* [EN] Error saturation before any gain is applied (a 24 V pack read on a
+ *      12 V channel, or a first-frame garbage current, must not slam the
+ *      integrator). Both branches share it; mV and mA both fit.
+ * [FA] اشباع خطا پیش از اعمال ضریب (خوانش خراب نباید انتگرال‌گیر را بکوبد)؛
+ *      مشترک هر دو شاخه و برای mV و mA کافی است. */
+#define CHG_PID_ERROR_CLAMP            4000
+
+/* [EN] Slew limits in milli-permille per second. IMPORTANT: they cap the
+ *      rate of the INTEGRAL (the operating point the loop is walking
+ *      toward), not the finished output. Rate-limiting the finished output
+ *      instead looks equivalent but is not: the P term ripples by a few
+ *      milli-permille every time the applied duty quantises to the next
+ *      whole permille, and an output limiter with a fast down-rate and a
+ *      slow up-rate RECTIFIES that ripple into a steady downward ratchet -
+ *      simulated, the loop stalled at 268 mA and never reached the 640 mA
+ *      bulk band. Limiting the integral leaves the ripple zero-mean and the
+ *      ramp rate exactly what the user dialled in.
+ *      One up-rate and one down-rate per stage: the stage-2 up-rate is the
+ *      user's "grow slower in absorb" knob, and the default down-rates of
+ *      1000 = 1 permille/s match the legacy coarse escape rate (0.5
+ *      permille per 500 ms) so backing off is never slower than before.
+ * [FA] حد شیب بر حسب میلی‌پرمیل بر ثانیه. نکتهٔ مهم: این سقف روی نرخ
+ *      «انتگرال» (نقطهٔ کاری که حلقه به سمتش راه می‌رود) است نه روی خروجی
+ *      نهایی. سقف‌گذاری روی خروجی نهایی شبیه همین به نظر می‌رسد ولی نیست:
+ *      هر بار دیوتی اعمالی به پرمیل صحیح بعدی گرد می‌شود جملهٔ P چند
+ *      میلی‌پرمیل ریپل می‌خورد، و محدودکنندهٔ خروجی با نرخ نزول تند و نرخ
+ *      صعود کند آن ریپل را «یکسوسازی» می‌کند و به یک جغجغهٔ رو به پایین
+ *      تبدیل می‌کند - در شبیه‌سازی حلقه روی ۲۶۸mA گیر کرد و هرگز به باند
+ *      ۶۴۰mA بالک نرسید. با سقف‌گذاری روی انتگرال، ریپل میانگین‌صفر می‌ماند
+ *      و نرخ رمپ دقیقاً همانی می‌شود که کاربر تنظیم کرده. هر مرحله یک نرخ
+ *      صعود و یک نرخ نزول دارد: نرخ صعود مرحلهٔ ۲ همان کلید «در ابزورب
+ *      آهسته‌تر رشد کن» کاربر است، و پیش‌فرض نزول ۱۰۰۰ = ۱ پرمیل بر ثانیه
+ *      برابر نرخ فرار قدیمی است پس عقب‌نشینی هرگز کندتر از قبل نیست. */
+#define CHG_PID_RATE_MIN                 10u
+#define CHG_PID_RATE_MAX              20000u
+
+/* [EN] The current branch aims BELOW the profile ceiling by this margin, so
+ *      the loop settles in the middle of the old 630..650 mA band instead
+ *      of resting exactly on its top edge (a setpoint sitting on the limit
+ *      would let every noise sample ask for a duty cut).
+ * [FA] شاخهٔ جریان به اندازهٔ این حاشیه زیر سقف پروفایل را هدف می‌گیرد تا
+ *      حلقه وسط باند قدیمی ۶۳۰..۶۵۰ بنشیند نه دقیقاً روی لبهٔ بالایش
+ *      (ست‌پوینت روی خود حد یعنی هر نمونهٔ نویزی تقاضای کاهش دیوتی می‌کند). */
+#define CHG_PID_CURRENT_MARGIN_MA        10u
+
+/* [EN] Boot defaults, one row per stage (Kp, Ki, Kd, up-rate, down-rate).
+ *      Tuned against a flyback + lead-acid plant model (DCM transfer
+ *      i = 230.4 x D^2 / V, 0.15 ohm series resistance, an exponential
+ *      gassing sink that puts the absorb operating point near 50 mA /
+ *      56 permille) and re-checked over 0.05..0.30 ohm, a new pack and a
+ *      worn pack, and +/-20 mV of sensor noise:
+ *        stage 1 current 20 / 800 / 0 /  500 / 1000
+ *              -> Kp small on purpose. The current branch sees about
+ *                 7 mA of change per applied permille at the bulk operating
+ *                 point, so a big Kp would swing the P term by more than a
+ *                 whole permille on every quantisation step and the loop
+ *                 would chatter instead of climb. 800 gives the familiar
+ *                 0.5 permille/s soft ramp at a 640 mA error and fades out
+ *                 as the band is reached. Result: 633..640 mA held flat,
+ *                 no reversals at all during bulk.
+ *        stage 2 voltage 150 / 300 / 0 /   30 / 1000
+ *              -> 0.03 permille/s at 100 mV below the setpoint: the slowed
+ *                 absorb rise the user asked for, proportional so it eases
+ *                 off further as the setpoint is approached.
+ *        stage 3 voltage 300 / 12000 / 0 / 10 / 1000
+ *              -> the setpoint region needs real authority: the duty has to
+ *                 fall from ~190 to ~56 permille as the pack stops taking
+ *                 current. Ki does that work (the down-rate still caps it
+ *                 at 1 permille/s) while Kp stays modest so sensor noise is
+ *                 not amplified into duty jitter. Simulated peak overshoot
+ *                 +19 mV (14419 mV), settling to 14400 +/- 1 mV at 55..56
+ *                 permille - far below the 14.6 V over-voltage step and the
+ *                 14.8 V fault threshold.
+ *      Kd = 0 on purpose: the current/voltage chain is filtered but still
+ *      noisy, and a derivative on noise is duty jitter. The panel can raise
+ *      it if the bench ever wants damping.
+ * [FA] پیش‌فرض بوت، هر مرحله یک ردیف (Kp، Ki، Kd، نرخ صعود، نرخ نزول). با
+ *      یک مدل فلای‌بک + باتری سرب‌اسید تیون شده (انتقال DCM با
+ *      i = ۲۳۰٫۴×D²÷V، مقاومت سری ۰٫۱۵ اهم، و یک سینک گازدهی نمایی که نقطهٔ
+ *      کار ابزورب را حدود ۵۰mA و ۵۶ پرمیل می‌نشاند) و روی ۰٫۰۵ تا ۰٫۳۰ اهم،
+ *      باتری نو و فرسوده، و نویز ±۲۰mV سنسور بازبینی شده:
+ *      مرحلهٔ ۱ جریان ۲۰/۸۰۰/۰/۵۰۰/۱۰۰۰ - Kp عمداً کوچک است: شاخهٔ جریان در
+ *      نقطهٔ کار بالک حدود ۷ میلی‌آمپر تغییر به ازای هر پرمیل می‌بیند، پس Kp
+ *      بزرگ یعنی جملهٔ P با هر پلهٔ گردکردن بیش از یک پرمیل کامل می‌جهد و
+ *      حلقه به‌جای بالا رفتن می‌لرزد؛ ۸۰۰ همان رمپ نرم ۰٫۵ پرمیل بر ثانیه را
+ *      با خطای ۶۴۰mA می‌دهد و نزدیک باند محو می‌شود (نتیجهٔ شبیه‌سازی:
+ *      ۶۳۳ تا ۶۴۰ میلی‌آمپر صاف، بدون حتی یک بار تغییر جهت در کل بالک).
+ *      مرحلهٔ ۲ ولتاژ ۱۵۰/۳۰۰/۰/۳۰/۱۰۰۰ - ۰٫۰۳ پرمیل بر ثانیه در ۱۰۰mV زیر
+ *      ست‌پوینت: همان رشد کندشدهٔ ابزورب که کاربر خواست، و چون تناسبی است با
+ *      نزدیک شدن به ست‌پوینت باز هم آرام‌تر می‌شود. مرحلهٔ ۳ ولتاژ
+ *      ۳۰۰/۱۲۰۰۰/۰/۱۰/۱۰۰۰ - ناحیهٔ ست‌پوینت اقتدار واقعی می‌خواهد چون دیوتی
+ *      باید از حدود ۱۹۰ به حدود ۵۶ پرمیل بیاید؛ این کار را Ki انجام می‌دهد
+ *      (نرخ نزول باز هم آن را روی ۱ پرمیل بر ثانیه سقف می‌زند) و Kp متوسط
+ *      می‌ماند تا نویز سنسور به لرزش دیوتی تبدیل نشود. اوج اورشوت شبیه‌سازی
+ *      فقط ۱۹ میلی‌ولت (۱۴۴۱۹mV) و نشست روی ۱۴۴۰۰±۱ میلی‌ولت با ۵۵..۵۶
+ *      پرمیل - بسیار پایین‌تر از پلهٔ اضافه‌ولتاژ ۱۴٫۶V و آستانهٔ فالت ۱۴٫۸V.
+ *      Kd عمداً صفر است: زنجیرهٔ جریان/ولتاژ فیلتر شده ولی بی‌نویز نیست و
+ *      مشتقِ نویز یعنی لرزش دیوتی؛ پنل هر وقت بنچ میرایی خواست بالا می‌برد. */
+#define CHG_PID_STAGE1_KP                20u
+#define CHG_PID_STAGE1_KI               800u
+#define CHG_PID_STAGE1_KD                 0u
+#define CHG_PID_STAGE1_UP_RATE          500u
+#define CHG_PID_STAGE1_DOWN_RATE       1000u
+#define CHG_PID_STAGE2_KP               150u
+#define CHG_PID_STAGE2_KI               300u
+#define CHG_PID_STAGE2_KD                 0u
+#define CHG_PID_STAGE2_UP_RATE           30u
+#define CHG_PID_STAGE2_DOWN_RATE       1000u
+#define CHG_PID_STAGE3_KP               300u
+#define CHG_PID_STAGE3_KI             12000u
+#define CHG_PID_STAGE3_KD                 0u
+#define CHG_PID_STAGE3_UP_RATE           10u
+#define CHG_PID_STAGE3_DOWN_RATE       1000u
+
+/* [EN] Re-seed guard: whenever the duty actually applied to the hardware
+ *      differs from the PID's own integral by more than this many permille,
+ *      the PID re-seeds from the hardware value (bumpless transfer). That
+ *      single rule covers every foreign writer - JIT retry halving, manual
+ *      test mode, fixed-duty mode, a lowered panel duty ceiling, the BULK
+ *      soft start - without any of them having to know the PID exists.
+ * [FA] نگهبان هم‌ترازی: هر وقت دیوتی واقعاً اعمال‌شده بیش از این مقدار
+ *      پرمیل با انتگرال PID فرق کند، PID از مقدار سخت‌افزار دوباره بذر
+ *      می‌گیرد (انتقال بدون پرش). همین یک قانون همهٔ نویسنده‌های بیرونی را
+ *      پوشش می‌دهد - نصف‌شدن دیوتی در ری‌تریِ JIT، مود تست دستی، مود دیوتی
+ *      فیکس، پایین‌آمدن سقف دیوتی از پنل، شروع نرم بالک - بدون اینکه هیچ‌کدام
+ *      لازم باشد از وجود PID خبر داشته باشند. */
+#define CHG_PID_RESEED_TOLERANCE_PERMILLE 1u
+
+/* [EN] Output quantisation hysteresis, in milli-permille. The PWM stage
+ *      takes WHOLE permille while the loop thinks in thousandths of one, so
+ *      without this the applied duty toggles between two neighbouring
+ *      integers every time the integral sits near a boundary - a 1 permille
+ *      dither at up to 10 Hz. It is harmless electrically but it is
+ *      exactly the "hunting" the user complained about, and it is what the
+ *      duty readout shows. So the applied duty only moves once the demand
+ *      has drifted at least this far from the value already on the
+ *      hardware. Measured on the plant model over 10 h: 15570 duty
+ *      direction changes without it, 4 with it (the legacy step chain
+ *      managed 6456), with no measurable loss of regulation quality.
+ *      MUST stay below CHG_PID_RESEED_TOLERANCE_PERMILLE x
+ *      CHG_PID_DUTY_SCALE (asserted in charger.c): the deliberate lag it
+ *      introduces must never look like a foreign writer and trigger a
+ *      bumpless re-seed, or the two mechanisms would fight each other.
+ * [FA] هیسترزیس گردکردن خروجی بر حسب میلی‌پرمیل. سخت‌افزار PWM پرمیل صحیح
+ *      می‌گیرد ولی حلقه با هزارم پرمیل فکر می‌کند، پس بدون این، هر وقت
+ *      انتگرال نزدیک مرز دو عدد صحیح بنشیند دیوتی اعمالی بین آن دو بالا و
+ *      پایین می‌پرد - لرزش یک پرمیلی تا ۱۰ بار در ثانیه. از نظر برقی بی‌ضرر
+ *      است ولی دقیقاً همان «بالا-پایین پریدن» است که کاربر شکایت کرد و
+ *      همان چیزی است که در نمایش دیوتی دیده می‌شود. پس دیوتی اعمالی فقط
+ *      وقتی تکان می‌خورد که تقاضا دست‌کم به این اندازه از مقدار روی
+ *      سخت‌افزار فاصله گرفته باشد. اندازه‌گیری روی مدل در ۱۰ ساعت: بدون آن
+ *      ۱۵۵۷۰ بار تغییر جهت دیوتی، با آن ۴ بار (زنجیرهٔ پله‌ای قدیمی ۶۴۵۶
+ *      بار) و بدون افت محسوس کیفیت تنظیم. باید زیر حاصل‌ضرب
+ *      CHG_PID_RESEED_TOLERANCE_PERMILLE در CHG_PID_DUTY_SCALE بماند (در
+ *      charger.c اثبات شده): تأخیر عمدی‌اش هرگز نباید شبیه نویسندهٔ بیرونی
+ *      دیده شود و بذرگیری دوباره را راه بیندازد، وگرنه این دو سازوکار با
+ *      هم می‌جنگند. */
+#define CHG_PID_OUTPUT_HYST_MILLI       700u
+
 #define CHG_DUTY_RETRY_SECOND_MAX       100u
 /* [EN] DCM ceiling: 50% max - anything higher risks core/MOSFET overlap and
  *      burns the MOSFET (board requirement). The regulation band settles near
@@ -808,5 +1080,75 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
  */
 bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value);
+
+/* [EN] Three-stage PID wire ids (MUST equal ESPLINK_PARAM_CHG_PID_* in
+ *      esp_link.h; the host test enforces the match). Dense 83..98 in the
+ *      same order as charger_pid_t packs them, so Set/Get index instead of
+ *      switching (same "flash diet" contract as the profile ids 20..26).
+ *      Each stage is a complete five-field row (Kp, Ki, Kd, up-rate,
+ *      down-rate), so the index arithmetic is uniform: (id - 84) % 5 says
+ *      which field, (id - 84) / 5 says which stage, and fields 3 and 4 are
+ *      the slew rates. Remember what a "stage" is here (see the regulator
+ *      block above): stage 1 is the CURRENT loop, stages 2 and 3 are the
+ *      VOLTAGE loop below and at the setpoint.
+ * [FA] شناسه‌های سیمی PID سه‌مرحله‌ای (باید برابر ESPLINK_PARAM_CHG_PID_* در
+ *      esp_link.h باشند؛ تست هاست همین را قفل می‌کند). ۸۳..۹۸ پشت‌سرهم و
+ *      دقیقاً به ترتیب فیلدهای charger_pid_t، پس Set/Get به‌جای switch
+ *      نمایه می‌زنند (همان قرارداد «رژیم فلش» شناسه‌های ۲۰..۲۶). هر مرحله یک
+ *      ردیف کامل پنج‌فیلدی است (Kp، Ki، Kd، نرخ صعود، نرخ نزول) تا حساب
+ *      نمایه یکنواخت بماند: باقیماندهٔ (شناسه−۸۴) بر ۵ یعنی کدام فیلد، خارج
+ *      قسمتش یعنی کدام مرحله، و فیلدهای ۳ و ۴ همان سقف‌های شیب‌اند. یادآوری
+ *      معنی «مرحله» (بلوک تنظیم‌کننده در بالا): مرحلهٔ ۱ حلقهٔ جریان است و
+ *      مرحله‌های ۲ و ۳ حلقهٔ ولتاژ زیر ست‌پوینت و روی ست‌پوینت. */
+#define CHG_PID_PARAM_ENABLE            83u  /* [EN] 0/1, 0 = legacy step regulator / صفر = تنظیم‌کنندهٔ پله‌ای قدیمی */
+#define CHG_PID_PARAM_STAGE1_KP         84u  /* [EN] 0..20000, permille per amp / پرمیل بر آمپر، حلقهٔ جریان */
+#define CHG_PID_PARAM_STAGE1_KI         85u  /* [EN] 0..20000 / ضریب انتگرالی حلقهٔ جریان */
+#define CHG_PID_PARAM_STAGE1_KD         86u  /* [EN] 0..20000 / ضریب مشتقی حلقهٔ جریان */
+#define CHG_PID_PARAM_STAGE1_UP_RATE    87u  /* [EN] milli-permille/s, 10..20000 / سقف شیب صعود مرحلهٔ ۱ */
+#define CHG_PID_PARAM_STAGE1_DOWN_RATE  88u  /* [EN] milli-permille/s, 10..20000 / سقف شیب نزول مرحلهٔ ۱ */
+#define CHG_PID_PARAM_STAGE2_KP         89u  /* [EN] 0..20000, permille per volt / پرمیل بر ولت، حلقهٔ ولتاژ */
+#define CHG_PID_PARAM_STAGE2_KI         90u
+#define CHG_PID_PARAM_STAGE2_KD         91u
+#define CHG_PID_PARAM_STAGE2_UP_RATE    92u  /* [EN] the "slow the absorb rise" knob / کلید «رشد کندتر ابزورب» */
+#define CHG_PID_PARAM_STAGE2_DOWN_RATE  93u
+#define CHG_PID_PARAM_STAGE3_KP         94u
+#define CHG_PID_PARAM_STAGE3_KI         95u
+#define CHG_PID_PARAM_STAGE3_KD         96u
+#define CHG_PID_PARAM_STAGE3_UP_RATE    97u
+#define CHG_PID_PARAM_STAGE3_DOWN_RATE  98u
+
+/**
+ * @brief  [EN] Write one three-stage PID parameter (ESP link, ids 83..98).
+ *              Values are clamped to the compiled windows: enable 0/1,
+ *              gains 0..CHG_PID_GAIN_MAX, slew rates CHG_PID_RATE_MIN..
+ *              CHG_PID_RATE_MAX milli-permille/s. Changing a gain never
+ *              bumps the duty: the integrator keeps the present operating
+ *              point and only its rate of change is re-scheduled. Returns
+ *              the APPLIED value.
+ *         [FA] نوشتن یک پارامتر PID سه‌مرحله‌ای (لینک ESP، ۸۳..۹۸). مقادیر
+ *              به پنجره‌های کامپایل گیره می‌خورند: فعال‌ساز ۰/۱، ضرایب تا
+ *              CHG_PID_GAIN_MAX و شیب‌ها بین CHG_PID_RATE_MIN و
+ *              CHG_PID_RATE_MAX میلی‌پرمیل بر ثانیه. تغییر ضریب هیچ پرشی در
+ *              دیوتی نمی‌سازد: انتگرال‌گیر نقطهٔ کار فعلی را نگه می‌دارد و
+ *              فقط نرخ تغییرش زمان‌بندی دوباره می‌شود. مقدار اعمال‌شده
+ *              برگردانده می‌شود.
+ * @param  uint8_t__paramId [EN] 83..98 / شناسهٔ پارامتر
+ * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
+ * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
+ * @return bool [EN] true = id known / شناسه شناخته شده
+ */
+bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
+                               uint32_t uint32_t__value,
+                               uint32_t *uint32_t__appliedValue);
+
+/**
+ * @brief  [EN] Read one three-stage PID parameter (ESP link GET/PARAMS_BULK).
+ *         [FA] خواندن یک پارامتر PID سه‌مرحله‌ای (لینک ESP).
+ * @param  uint8_t__paramId [EN] 83..98 / شناسهٔ پارامتر
+ * @param  uint32_t *uint32_t__value [EN] Live value out / مقدار زنده
+ * @return bool [EN] true = id known / شناسه شناخته شده
+ */
+bool func__Charger_GetPidParam(uint8_t uint8_t__paramId,
+                               uint32_t *uint32_t__value);
 
 #endif /* CHARGER_H */
