@@ -3,19 +3,18 @@
  * @brief   [EN] STM32F103C8T6 on-chip flash writer for parameter persistence.
  *          [FA] نگارندهٔ فلش رویتراشهٔ STM32F103C8T6 برای ماندگاری پارامترها.
  *
- * @note    [EN] Direct F1 flash-register driver (KEYR/CR/SR/AR), no HAL flash
- *              sources needed. Page erase on F1 stalls every code fetch from
- *              flash (single bank) for typ. 20..40 ms - callers must run in
- *              THREAD context, never an ISR (user order 2026-09-25: the panel
- *              values must survive power loss; the save runs in the comm
- *              task after the 1.5 s debounce, so a regulation hiccup of one
- *              comm period is acceptable).
- *          [FA] درایور مستقیم رجیسترهای فلش F1 (KEYR/CR/SR/AR) بدون نیاز به
- *              سورس‌های HAL فلش. پاک‌کردن صفحه در F1 همهٔ خواندن‌های کد از فلش
- *              را (تک-بنک) حدود ۲۰..۴۰ms نگه می‌دارد - صداکننده باید در بافت
- *              THREAD باشد نه ISR (دستور کاربر ۲۰۲۶-۰۹-۲۵: مقادیر پنل باید
- *              با قطع برق بمانند؛ ذخیره پس از ۱٫۵ ثانیه دیبانس در تسک ارتباط
- *              اجرا می‌شود، پس یک دورهٔ تاخیر تنظیم قابل قبول است).
+ * @note    [EN] Direct F1 flash-register driver (KEYR/CR/SR/AR), no HAL.
+ *              A page erase on the single-bank F1 stalls every code fetch
+ *              from flash for typ. 20..40 ms - callers must be in THREAD
+ *              context, never an ISR (user order 2026-09-25: panel values
+ *              must survive power loss; the save runs in the comm task
+ *              after the 1.5 s debounce, so one regulation hiccup is
+ *              acceptable).
+ *          [FA] درایور مستقیم رجیسترهای فلش F1 (KEYR/CR/SR/AR) بدون HAL.
+ *              پاک‌کردن صفحه در F1 تک‌بانک همهٔ fetchهای کد را ~۲۰..۴۰ms نگه
+ *              می‌دارد - صداکننده باید THREAD باشد نه ISR (دستور کاربر:
+ *              مقادیر پنل باید بمانند؛ ذخیره بعد از دیبانس ۱٫۵ ثانیه‌ای در
+ *              تسک ارتباط است و یک تاخیر تنظیم قابل قبول است).
  */
 
 #ifndef BSP_FLASH_H

@@ -3,14 +3,13 @@
  * @brief   [EN] Panel parameter persistence in STM32 on-chip flash (v1.14).
  *          [FA] ماندگاری پارامترهای پنل در فلش رویتراشهٔ STM32 (v1.14).
  *
- * @note    [EN] See esp_link_nvm.h for the contract. The PURE RECORD LOGIC
- *              block below (CRC32, validation, sequence compare, record
- *              build) is self-contained - the host test compiles exactly
- *              this block against a RAM-emulated flash to prove the
- *              power-cut behaviour without hardware.
- *          [FA] قرارداد در esp_link_nvm.h آمده. بلوک «منطق خالص رکورد»
- *              پایین (CRC32، اعتبارسنجی، مقایسهٔ ترتیب، ساخت رکورد)
- *              خودکفاست - تست هاست دقیقاً همین بلوک را روی فلشِ شبیه‌سازی‌
+ * @note    [EN] Contract in esp_link_nvm.h. The PURE RECORD LOGIC block
+ *              below (CRC32, validation, sequence compare, record build)
+ *              is self-contained - the host test compiles exactly this
+ *              block against a RAM-emulated flash to prove the power-cut
+ *              behaviour without hardware.
+ *          [FA] قرارداد در esp_link_nvm.h است. بلوک «منطق خالص رکورد»
+ *              پایین خودکفاست - تست هاست همین بلوک را روی فلشِ شبیه‌سازی‌
  *              شدهٔ RAM کامپایل می‌کند تا رفتار قطع برق بدون سخت‌افزار
  *              اثبات شود.
  */
@@ -325,17 +324,16 @@ void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
 /**
  * @brief  [EN] Snapshot every persisted parameter and write the ping-pong
  *              record to the page that does NOT hold the newest one, then
- *              verify by read-back. The record + entry scratch (~1.2 KiB)
- *              is STATIC by necessity, not style: the comm task stack is
- *              256 words (1 KiB) and a stack copy would overflow it on the
- *              very first save (full-program audit 2026-09-26). Single
- *              task, non-reentrant, so static is race-free here.
+ *              verify by read-back. The ~1.2 KiB record + entry scratch is
+ *              STATIC by necessity, not style: the comm task stack is
+ *              256 words and a stack copy would overflow it on the first
+ *              save (full-program audit 2026-09-26). Single task,
+ *              non-reentrant, so static is race-free here.
  *         [FA] عکس‌فوری همهٔ پارامترهای ذخیره‌شونده و نوشتن رکورد پینگ‌پنگ
  *              در صفحه‌ای که تازه‌ترین را ندارد، بعد صحت‌سنجی با بازخوانی.
- *              بافر موقت (~۱٫۲KB) عمداً STATIC است نه سلیقه‌ای: استک تسک
- *              ارتباط ۲۵۶ کلمه (۱KB) است و نسخهٔ روی استک در همان اولین
- *              ذخیره سرریز می‌کرد (ممیزی کل برنامه). تک‌تسک و غیربازگشتی،
- *              پس static بدون مسابقه است.
+ *              بافر ~۱٫۲KB عمداً STATIC است: استک تسک ارتباط ۲۵۶ کلمه است
+ *              و نسخهٔ استکی در اولین ذخیره سرریز می‌کرد. تک‌تسک و
+ *              غیربازگشتی، پس بدون مسابقه.
  * @return bool [EN] true = record now on flash / رکورد روی فلش است
  */
 #if MODULE_CHARGER
@@ -350,17 +348,16 @@ void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
  * @brief  [EN] Quiet the charger down for a flash save (user order
  *              2026-09-27: idle the charger, save, restart it). Sets the
  *              suspension flag, then polls the HARDWARE truth (both
- *              compares read 0). On timeout the save still proceeds (params
- *              must persist; a dead control task is WDT business).
- *              Without MODULE_CHARGER there is no switching, and pre-kernel
- *              there is no scheduler to observe the flag - both return
- *              false immediately (nothing to resume).
- *         [FA] آرام‌کردن شارژر برای ذخیرهٔ فلش (دستور کاربر: بیکار کن،
- *              ذخیره کن، راه بینداز). پرچم تعلیق ست و بعد حقیقت سخت‌افزار
- *              (هر دو compare صفر) نظرسنجی می‌شود. با timeout هم ذخیره
- *              انجام می‌شود (پارامترها باید بمانند). بدون شارژر یا پیش از
- *              کرنل بلافاصله false (چیزی برای ادامه نیست).
- * @return bool [EN] true = suspend flag set, caller must resume / پرچم ست شد و ادامه لازم است
+ *              compares read 0). On timeout the save still proceeds -
+ *              params must persist; a dead control task is WDT business.
+ *              Without MODULE_CHARGER or pre-kernel there is nothing to
+ *              resume: return false immediately.
+ *         [FA] آرام‌کردن شارژر برای ذخیرهٔ فلش (دستور کاربر): پرچم تعلیق
+ *              ست و بعد حقیقت سخت‌افزار (هر دو compare صفر) نظرسنجی می‌شود.
+ *              با timeout هم ذخیره انجام می‌شود (پارامترها باید بمانند).
+ *              بدون شارژر یا پیش از کرنل بلافاصله false (چیزی برای ادامه
+ *              نیست).
+ * @return bool [EN] true = suspend flag set, caller must resume / ادامه لازم است
  */
 static bool func__EspLink_NvmSuspendCharger(void)
 {

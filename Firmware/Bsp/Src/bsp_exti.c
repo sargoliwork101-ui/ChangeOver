@@ -55,20 +55,17 @@ void func__BspExti_OnIrq(bsp_exti_src_t bsp_exti_src_t__src)
 /**
  * @brief  [EN] Read and clear one logical event flag. The read-clear pair
  *         runs inside a short PRIMASK critical section (full-program audit
- *         2026-09-22): an EXTI event arriving exactly between the read and
- *         the clear would otherwise be lost - and a lost jitter event never
- *         re-fires, because the LM393 output stays low without a new edge,
- *         so one lost flag could swallow a real JIT trip. The critical
- *         section is only a few cycles long.
+ *         2026-09-22): an EXTI event landing exactly between read and
+ *         clear would be lost forever - the LM393 output stays low without
+ *         a new edge - swallowing a real JIT trip. Critical section is a
+ *         few cycles only.
  *         [FA] پرچم یک رویداد منطقی را می‌خواند و پاک می‌کند. جفت
- *         خواندن-پاک‌کردن داخل یک بخش بحرانی کوتاه PRIMASK اجرا می‌شود
- *         (ممیزی کل برنامه ۲۰۲۶-۰۹-۲۲): رویدادی که دقیقاً بین خواندن و
- *         پاک‌کردن برسد گم می‌شد - و رویداد jitter گم‌شده دیگر تکرار
- *         نمی‌شود چون خروجی LM393 بدون لبهٔ جدید پایین می‌ماند، پس یک
- *         پرچم گم‌شده می‌توانست یک تریپ واقعی JIT را قورت بدهد. بخش
- *         بحرانی فقط چند سیکل است.
+ *         خواندن-پاک‌کردن داخل بخش بحرانی کوتاه PRIMASK است (ممیزی
+ *         ۲۰۲۶-۰۹-۲۲): رویدادی که دقیقاً بین خواندن و پاک‌کردن برسد برای
+ *         همیشه گم می‌شود (خروجی LM393 بدون لبهٔ جدید پایین می‌ماند) و یک
+ *         تریپ واقعی JIT قورت داده می‌شود. بخش بحرانی فقط چند سیکل است.
  * @param  bsp_exti_src_t__src [EN] Logical source / منبع منطقی
- * @return bool [EN] true when an event was pending / اگر رویداد pending باشد true
+ * @return bool [EN] true when an event was pending / اگر pending باشد true
  */
 bool func__BspExti_TakeEvent(bsp_exti_src_t bsp_exti_src_t__src)
 {

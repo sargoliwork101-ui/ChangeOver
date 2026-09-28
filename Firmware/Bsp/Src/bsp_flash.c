@@ -3,21 +3,17 @@
  * @brief   [EN] STM32F103C8T6 on-chip flash writer for parameter persistence.
  *          [FA] نگارندهٔ فلش رویتراشهٔ STM32F103C8T6 برای ماندگاری پارامترها.
  *
- * @note    [EN] Direct register sequences from RM0008 chapter 3 (FPEC):
- *              unlock via KEYR 0x45670123 / 0xCDEF89AB, page erase
- *              PER+AR+STRT, halfword program PG, then re-lock. Status is
- *              polled from SR (BSY / EOP / PGERR / WRPRTERR) with a bounded
- *              spin - no interrupts, no RTOS, no HAL dependency, so the same
- *              code runs in any thread and in the pre-scheduler boot phase
- *              (reads of the record are plain memory reads and need nothing
- *              from this file).
- *          [FA] توالی‌های مستقیم رجیستر از فصل ۳ RM0008 (FPEC): بازکردن قفل
- *              با KEYR، پاک‌کردن صفحه با PER+AR+STRT، نوشتن نیم‌کلمه با PG و
- *              قفل مجدد. وضعیت از SR خوانده می‌شود (BSY/EOP/PGERR/WRPRTERR)
- *              با اسپین محدود - بدون وقفه، بدون RTOS، بدون وابستگی به HAL،
- *              تا همین کد در هر تسک و در فاز بوتِ قبل از زمان‌بند اجرا شود
- *              (خواندن رکورد خواندن حافظهٔ ساده است و چیزی از این فایل
- *              نمی‌خواهد).
+ * @note    [EN] Direct register sequences from RM0008 ch.3 (FPEC): unlock
+ *              via KEYR, page erase PER+AR+STRT, halfword program PG,
+ *              re-lock. Status polled from SR (BSY/EOP/PGERR/WRPRTERR)
+ *              with a bounded spin - no interrupts, no RTOS, no HAL, so
+ *              the code runs in any thread and pre-scheduler (record
+ *              reads are plain memory reads).
+ *          [FA] توالی‌های مستقیم رجیستر از فصل ۳ RM0008 (FPEC): بازکردن
+ *              قفل با KEYR، پاک‌کردن صفحه با PER+AR+STRT، نوشتن نیم‌کلمه
+ *              با PG و قفل مجدد. وضعیت از SR با اسپین محدود خوانده می‌شود
+ *              - بدون وقفه، بدون RTOS، بدون HAL، تا در هر تسک و قبل از
+ *              زمان‌بند اجرا شود (خواندن رکورد خواندن سادهٔ حافظه است).
  */
 
 #include "bsp_flash.h"
@@ -102,18 +98,17 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
 
     /* [EN] Main-flash 1 KiB page granularity, whole 64 KiB bank.
        [FA] اندازهٔ صفحهٔ فلش اصلی ۱KB است، کل بنک ۶۴KB. */
-    /* [EN] Page-alignment guard (full-program audit 2026-09-26): an
-       unaligned address would erase an unintended page (F1 erases by
-       AR content, not by masking). Layering-safe: no NVM layout knowledge.
-       [FA] گارد تراز صفحه (ممیزی کل برنامه): آدرس ناتراز صفحهٔ اشتباهی را
-       پاک می‌کرد. بدون دانستن چیدمان NVM.
-       [EN] Floor guard (full-program audit 2026-09-27, same class as the
-       ProgramHalfWords range guard below): the NVM layout owns only the
-       last two 1 KiB pages (0x0800F800/0x0800FC00, see esp_link_nvm.h) -
-       a caller bug must never erase the application area.
-       [FA] گارد کف (همان ممیزی): فقط دو صفحهٔ آخر مال NVM است - باگ
-       فراخواننده هرگز نباید برنامه را پاک کند. */
-    if ((uint32_t__pageAddress < 0x0800F800u) ||
+    /* [EN] Range + alignment guards (full-program audits 2026-09-26/27):
+       only the last two 1 KiB pages (0x0800F800/0x0800FC00, esp_link_nvm.h)
+       belong to NVM and the address must be page-aligned - F1 erases by AR
+       content, not by masking, so an unaligned or out-of-range address
+       would erase an unintended page. A caller bug must never erase the
+       application area.
+       [FA] گارد بازه و تراز (ممیزی ۲۰۲۶-۰۹-۲۶/۲۷): فقط دو صفحهٔ آخر ۱KB
+       مال NVM است و آدرس باید تراز باشد - F1 با محتوای AR پاک می‌کند نه
+       با ماسک‌کردن، پس آدرس ناتراز یا خارج از بازه صفحهٔ اشتباه را پاک
+       می‌کرد و باگ فراخواننده هرگز نباید برنامه را پاک کند. */
+if ((uint32_t__pageAddress < 0x0800F800u) ||
         (uint32_t__pageAddress > 0x0800FC00u) ||
         ((uint32_t__pageAddress & 0x3FFu) != 0u))
     {
