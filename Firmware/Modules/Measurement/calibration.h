@@ -1,36 +1,18 @@
 /* ============================================================================
  * @file    calibration.h
- * ChangeOver calibration tables / جداول کالیبراسیون ChangeOver
+ * ChangeOver bench calibration tables / جداول کالیبراسیون بنچ ChangeOver
  * ----------------------------------------------------------------------------
- * [EN] ONE file for every bench calibration table (user order 2026-09-25:
- *      "put the calibration tables in a separate file named after this
- *      calibration, next to the existing files, so we can amend them easily").
- *      THREE tables live here; missing points get appended later for higher
- *      accuracy - editing a table is a pure initializer edit.
- *      This header is included ONLY by measurement.c (the arrays are static;
- *      a second include would duplicate them harmlessly but pointlessly).
- * [FA] یک فایل برای همهٔ جدول‌های کالیبراسیون بنچ (دستور کاربر
- *      ۲۰۲۶-۰۹-۲۵: «جدول‌های کالیبراسیون داخل یک فایل جدا به اسم همین
- *      کالیبراسیون، کنار همون فایل‌ها، برای اصلاح راحت‌تر»). سه جدول همین‌جاست؛
- *      نقاطی که نداریم بعداً اضافه می‌شوند تا دقت بیشتر شود - ویرایش جدول فقط
- *      ویرایش مقداردهی است و هیچ چیز دیگری عوض نمی‌شود.
- *      این هدر فقط توسط measurement.c اینکلود می‌شود (آرایه‌ها static هستند).
- *
- * [EN] HOW TO EXTEND (all three tables):
- *      1. Append the new anchor to BOTH arrays (chain AND battery) - the two
- *         arrays MUST keep the same length; the host test enforces it.
- *      2. Keep each axis strictly increasing; the point count derives itself
- *         from the initializer (sizeof), nothing else to touch.
- *      3. Tables are keyed on MEASURED quantities (ADC chain current), never
- *         on duty - the same duty gives different currents as the battery
- *         fills (user order 2026-09-25).
- * [FA] راهنمای بزرگ‌کردن (هر سه جدول):
- *      ۱. لنگر جدید را به «هر دو» آرایه اضافه کن (زنجیره و باتری) - طول دو
- *         آرایه باید برابر بماند؛ تست هاست همین را قفل می‌کند.
- *      ۲. هر محور اکیداً صعودی بماند؛ تعداد نقاط از خود مقداردهی (sizeof)
- *         استخراج می‌شود و چیز دیگری دست نمی‌خورد.
- *      ۳. جدول‌ها روی کمیت «اندازه‌گیری‌شده» (جریان زنجیرهٔ ADC) بسته می‌شوند،
- *         نه دیوتی - همان دیوتی با پرشدن باتری جریان متفاوتی می‌دهد.
+ * [EN] All bench calibration tables in ONE place (included ONLY by
+ *      measurement.c; the arrays are static). HOW TO EXTEND (all three
+ *      tables): 1) append the anchor to BOTH arrays (chain AND battery -
+ *      equal lengths, host-test enforced); 2) keep each axis strictly
+ *      increasing (the point count derives itself via sizeof); 3) tables
+ *      are keyed on MEASURED chain current, never duty.
+ * [FA] همهٔ جدول‌های کالیبراسیون بنچ یک‌جا (فقط measurement.c اینکلود
+ *      می‌کند؛ آرایه‌ها static). راهنمای بزرگ‌کردن (هر سه جدول): ۱) لنگر
+ *      را به «هر دو» آرایه اضافه کن (طول برابر - تست هاست قفل می‌کند)؛
+ *      ۲) محورها اکیداً صعودی بمانند (تعداد نقاط از sizeof)؛ ۳) کلید
+ *      جدول «جریان زنجیرهٔ اندازه‌گیری‌شده» است، هرگز دیوتی.
  * ============================================================================ */
 
 #ifndef CALIBRATION_H
@@ -42,45 +24,29 @@
  * TABLE 1 - channel-1 LUT (chain mA -> battery-1 POWER mW)
  * جدول ۱ - LUT کانال ۱ (mA زنجیره ← توان باتری ۱ بر حسب mW)
  * ----------------------------------------------------------------------------
- * [EN] v1.19 (user order 2026-09-27, "check the upper charger's data, it went
- *      past 15 V and never cut off"): same chain->POWER architecture as TABLE
- *      2 (v1.13 DCM invariant: current = P/Vbat, divided at runtime by the
- *      LIVE vhigh = V24-V12, clamped 8.0..15.0 V). Anchors from the
- *      2026-09-27 SOLO1 sweep (18 rows, duty 1..18% step 1, off1=8 /
- *      gain1=1046 - if those params change the table MUST be rebuilt):
- *      P = ceil(DMM_I1 x DMM_V1 / 1000) at each row's exact integer chain,
- *      so the firmware-math replay reads every DMM point EXACTLY
- *      (worst(new) = 0 mA pure-LUT, 4 mA end-to-end with the corrected
- *      firmware divisor, mixed sign; worst(old linear) = 72 mA S-curve
- *      -29..+72). Gate (5,0): SOLO1 rows D1..D3 (backfeed -15..-5 mA, same
- *      as ch2) never exceed chain 1, so chain <= 5 is switching noise and
- *      reads exactly 0. D7's dip (81,1028: -123 mW under both neighbour
- *      chords) is KEPT as an anchor - raw/I/V are all smooth there and the
- *      DMM sits on the firmware window edge, so it is the curve, not an
- *      outlier (ch2 precedent: the 236..353 hollow was kept, only the
- *      window-mismatched D9 was excluded). D5's DMM VOLTAGE (12200 mV) is a
- *      +150 mV outlier vs neighbours/trend but harmless here (36 mA x
- *      150 mV = 5 mW). Above the last anchor (640,8645) the last slope
- *      (13.15 mW per chain-mA) extends. COMPANION FIX: the V24 pack divider
- *      top 62400 -> 66200 (same order - the pack channel read ~1.4 V low,
- *      blinding the 15.0 V hard OV cut in manual mode AND every 14.4/14.6/
- *      15.0 V supervision in auto mode; the corrected divisor is top-exact
- *      +104 mV at 15.22 V and the residual mid-range hump (+461..+121 mV,
- *      likely R47 warming from the ch1 power stage) is split minimax by
- *      the 66200 choice - worst 4 mA. Re-verify with a DMM after flashing).
- * [FA] v1.19 (دستور کاربر ۲۰۲۶-۰۹-۲۷ «داده‌های شارژر بالایی را چک کن، بالای
- *      ۱۵V رفت و قطع نکرد»): همان معماری توانِ جدول ۲ (ناوردای DCM: جریان =
- *      P/Vbat با تقسیم زمان اجرا بر vhigh زنده). لنگرها از سوییپ SOLO1
- *      (۱۸ سطر، off1=8 / gain1=1046): توان سقفی هر سطر روی زنجیرهٔ صحیح
- *      خودش - بازپخش ریاضی فرم‌ور همهٔ نقاط DMM را دقیق می‌خواند
- *      (بدترین جدید ۰ خالص / ۴ سرتاسری، قدیم خطی ۷۲). گیت (۵٫۰): نویز
- *      سطرهای D1..D3 از زنجیرهٔ ۱ بالاتر نمی‌رود پس ≤۵ دقیقاً صفر است.
- *      گودی D7 لنگر نگه داشته شد (منحنی است نه اوت‌لایر). فیکس همراه: تاپ
- *      مقسم پک ۶۲۴۰۰←۶۶۲۰۰ (همان دستور - کانال پک ‎~1.4V‎ کم می‌خواند و قطع
- *      سخت ۱۵V دستی و همهٔ نظارت‌های خودکار را نابینا کرده بود؛ مقسوم‌علیه
- *      اصلاح‌شده در قله دقیق است و کوهان میانی با انتخاب ۶۶۲۰۰ مینیماکس
- *      شد - بدترین ۴mA. بعد از فلش با مولتی‌متر راستی‌آزمایی شود).
+ * [EN] Output is battery-1 POWER in mW, not current: in DCM the mid-ON
+ *      chain sample tracks the energy per cycle (battery-voltage
+ *      independent); measurement.c divides by the LIVE vhigh (clamped
+ *      8.0..15.0 V) to get mA. Anchored on the 2026-09-27 SOLO1 sweep with
+ *      off1=8 / gain1=1046 - if those params change the table MUST be
+ *      rebuilt (the chain axis rescales). Gate (5,0): chain <= 5 is
+ *      switching noise and reads exactly 0. The D7 dip (81,1028) is the
+ *      real curve, kept as an anchor. D5's DMM voltage (12200 mV) is a
+ *      +150 mV outlier vs its neighbours but harmless (36 mA x 150 mV =
+ *      5 mW). Above the last anchor the last slope (13.14 mW per
+ *      chain-mA) extends. COMPANION: V24 pack divider
+ *      top = 66200 ohms.
+ * [FA] خروجی «توان باتری ۱» است نه جریان: در DCM نمونهٔ وسط-ON زنجیره
+ *      انرژیِ هر سایکل را دنبال می‌کند (مستقل از ولتاژ باتری) و
+ *      measurement.c آن را به vhigh زنده (گیرهٔ ۸..۱۵V) تقسیم می‌کند.
+ *      لنگرها با off1=8 / gain1=1046 ثبت شده‌اند - با تغییر آنها جدول
+ *      باید بازسازی شود (محور زنجیره جابه‌جا می‌شود). گیت (۵٫۰):
+ *      زنجیره ≤۵ نویز سوییچینگ است و دقیقاً صفر می‌خواند. گودی D7
+ *      (81,1028) منحنی واقعی است و لنگر ماند. بالای آخرین لنگر، شیب
+ *      آخر (۱۳٫۱۴ mW به‌ازای هر mA زنجیره) ادامه می‌یابد. همراه: تاپ
+ *      مقسم پک = ۶۶۲۰۰ اهم.
  * ============================================================================ */
+
 #define CAL_CURRENT1_LUT_ENABLE 1u
 
 #if (CAL_CURRENT1_LUT_ENABLE != 0u)
@@ -98,102 +64,32 @@ static const uint32_t CAL_Current1LutBatteryMw[] =
  * جدول ۲ - LUT کانال ۲ (mA زنجیره ← توان باتری ۲ بر حسب mW)
  * ----------------------------------------------------------------------------
  * [EN] v1.13 (user order 2026-09-25, "voltages are fixed but the currents
- *      you read are wrong"): the table OUTPUT is the battery-2 POWER in mW,
- *      NOT the current. Physics: in DCM the mid-ON chain sample tracks the
- *      energy per cycle, which is battery-voltage independent, while the
- *      battery CURRENT is P/Vbat. The old chain->current table silently
- *      embedded the battery voltage of the calibration run (its battery rose
- *      12.0 -> 13.65 V), so it overread by roughly 7 percent per volt once
- *      the battery filled. measurement.c divides this table's output by the
- *      LIVE battery-2 terminal voltage (previous 1 ms pass, clamped
- *      8.0..15.0 V) to get the current.
- *      Anchors from the dense 2026-09-25T18:14 SOLO2 run (10 DMM points,
- *      duty 2..20% step 2, off2=8 / gain2=1303 - if those params change the
- *      table must be rebuilt): P = DMM_I2 x DMM_V2 at each point. The axis
- *      is still the ADC CHAIN CURRENT (raw - off2) x 0.8776 x gain2/1000,
- *      NEVER duty (user order 2026-09-25). Above the last anchor the last
- *      slope (12.37 mW per chain-mA) extends. The 2%-duty point measured a
- *      true battery current of -13 mA (discharge through the zener path) -
- *      power cannot go negative on this axis, so the table floors it to 0
- *      (error <= 13 mA only at the very bottom).
- *      v1.17 REFIT (2026-09-27 SOLO2 sweep, duty 1..19 step 1, off2=8 /
- *      gain2=1303 unchanged): the old table predicted the new run within
- *      1 percent on 12 of 15 positive points, confirming the DCM power
- *      invariant up to 14.85 V - but read 2..5 percent LOW in the
- *      chain 236..353 hollow (the true curve bulges above the old chord).
- *      Three anchors added, two moved; all other anchors verified and kept:
- *        (20,0) NEW - noise gate: chain <= 20 (raw <= ~26) is switching
- *          noise at 1..3% duty, not charge current (DMM reads -15..-5 mA
- *          backfeed there, which the single-supply shunt chain cannot see).
- *        (253,3180) NEW - D11: 256 mA x 12430 mV = 3182 mW @ chain 252.5.
- *        (312,4500) NEW - D13: 354 mA x 12720 mV = 4503 mW @ chain 311.6.
- *        (283,3860) MOVED from 3807 - splits the old anchor (3815 mW) and
- *          the new run's implied ~3900 mW (D12: 303x12530 = 3797 @ 277.7).
- *        (353,5280) MOVED from 5224 - splits the old anchor (5245 mW) and
- *          the new run's implied ~5313 mW (D14: 404x12920 = 5220 @ 347.5).
- *      EXCLUDED: D9 (10.4% low outlier - unsettled sample, raw spread
- *      197..210, DMM 167 mA below the whole firmware window 177..186) and
- *      the D16 DMM VOLTAGE (12650 mV is a typo - neighbours 13200/14000 mV,
- *      firmware 13617 mV; power recomputed with 13617 mV lands +0.4%).
- *      Worst residual after refit is 8 mA on 250..450 mA ~= the DMM's own
- *      accuracy - fitting further would fit instrument noise. If off2 or
- *      gain2 ever change, the chain axis rescales and the table MUST be
- *      rebuilt from a fresh sweep.
- *      v1.18 END-TO-END FIT (same 2026-09-27 sweep, user order "look
- *      closer, there is still drift"): the v1.17 anchors were fitted to
- *      FLOAT chains, but the firmware feeds the LUT an INTEGER chain whose
- *      truncating divisions sit ~1.5 chain-mA LEFT of the float value -
- *      on the steep 236..353 slopes (~30 mW per chain-mA) that is a
- *      systematic -40..-60 mW, i.e. the -4..-8 mA drift the user saw at
- *      D10..D15. The program itself is sound (PWM mid-ON sync sampling,
- *      median-3 + avg-10 on raw counts, fresh Vbat cache for the filtered
- *      path, V12 compensation verified to +0.1..0.2%): the ~-2..-4 mA
- *      truncation bias is now absorbed INTO the table, fitted directly
- *      against the exact integer pipeline (verified replay: new run worst
- *      3 mA with NO systematic sign, old run worst 5 mA, i_130 = 658 mA).
- *      Moved again: (236,2685) (253,3260) (283,3925) (312,4550)
- *      (353,5355); added (390,6035) from D15 (455x13200 = 6006 mW).
- *      Methodology floor from here on is +-1 count = +-3 mA (slope ~30);
- *      tighter needs sub-count filtering, not more anchors.
- * [FA] v1.13 (دستور کاربر ۲۰۲۶-۰۹-۲۵: «ولتاژها درست شد ولی جریان‌ها
- *      اشتباه»): خروجی جدول «توان باتری ۲» بر حسب mW است، نه جریان.
- *      فیزیک: در DCM نمونهٔ وسط-ON زنجیره انرژیِ هر سایکل را دنبال می‌کند
- *      که مستقل از ولتاژ باتری است، ولی «جریان» باتری = P/Vbat. جدول قدیمی
- *      جریان↔جریان ولتاژ باتریِ ران کالیبراسیون (۱۲٫۰→۱۳٫۶۵V) را در خود
- *      داشت و با پُر شدن باتری حدود ۷٪ به‌ازای هر ولت بیش‌خوانی می‌کرد.
- *      measurement.c خروجی این جدول را به ولتاژ زندهٔ ترمینال باتری ۲
- *      (پاس ۱ms قبل، گیرهٔ ۸..۱۵V) تقسیم می‌کند تا جریان به‌دست آید.
- *      لنگرها از اجرای متراکم 2026-09-25T18:14 (۱۰ نقطهٔ DMM، دیوتی
- *      ۲..۲۰٪ گام ۲، off2=8 / gain2=1303): P = جریان DMM × ولتاژ DMM در هر
- *      نقطه. محور همچنان «جریان زنجیرهٔ ADC» است، هرگز دیوتی. بالای
- *      آخرین لنگر شیب آخرین بازه (۱۲٫۳۷ mW به‌ازای هر mA زنجیره) ادامه
- *      می‌یابد. نقطهٔ دیوتی ۲٪ جریان واقعی 13−mA داشت (تخلیه زنر) -
- *      توان روی این محور منفی نمی‌شود و همان‌جا 0 می‌گیرد (خطا ≤ 13mA
- *      فقط در کف).
- *      بازبرازش v1.17 (سوییپ SOLO2 تاریخ ۲۰۲۶-۰۹-۲۷، دیوتی ۱..۱۹ گام ۱،
- *      off2=8 / gain2=1303 دست‌نخورده): جدول قدیمی ران جدید را در ۱۲ نقطه
- *      از ۱۵ نقطهٔ مثبت در حد ۱٪ پیش‌بینی کرد (تأیید ناوردای توان DCM تا
- *      ۱۴٫۸۵V) ولی در گودی زنجیرهٔ ۲۳۶..۳۵۳ حدود ۲..۵٪ کم می‌خواند (منحنی
- *      واقعی بالای وتر قدیمی برآمده است). سه لنگر اضافه و دو لنگر جابه‌جا
- *      شد؛ بقیه تأیید و حفظ شدند:
- *        (20,0) جدید - دروازهٔ نویز: زنجیره ≤۲۰ نویز سوییچینگ دیوتی
- *          ۱..۳٪ است نه جریان شارژ (DMM آنجا ۱۵−..۵−mA برگشتی می‌خواند که
- *          زنجیرهٔ شنت تک‌تغذیه نمی‌تواند ببیند).
- *        (253,3180) جدید از D11؛ (312,4500) جدید از D13.
- *        (283,3860) جابه‌جا از ۳۸۰۷؛ (353,5280) جابه‌جا از ۵۲۲۴ (میانگین
- *          لنگر قدیمی و ران جدید).
- *      کنارگذاشته: D9 (نقطهٔ پرت ۱۰٫۴٪ - نمونهٔ نانشانده) و ولتاژ DMM در
- *      D16 (عدد ۱۲۶۵۰ تایپی است؛ با ۱۳۶۱۷ بازمحاسبه شد و ۰٫۴٪ نشست).
- *      بدترین خطای باقی‌مانده 8mA روی ۲۵۰..۴۵۰mA ≈ دقت خود DMM است.
- *      برازش سرتاسری v1.18 (همان سوییپ، دستور «دقیق‌تر نگاه کن، هنوز
- *      دریفت هست»): لنگرهای v1.17 روی زنجیرهٔ اعشاری فیت شده بودند ولی
- *      فرم‌ور زنجیرهٔ صحیح به LUT می‌دهد که ~۱٫۵mA چپ‌تر می‌نشیند - روی
- *      شیب‌های تند ۲۳۶..۳۵۳ همین ‎-4..-8mA دریفت D10..D15 بود. برنامه
- *      سالم است (نمونه‌برداری سنکرون وسط ON، مدین+میانگین روی شمارش خام،
- *      کش تازهٔ ولتاژ، جبران V12 تأییدشده) و بایاس truncation داخل خود
- *      جدول جذب شد: بدترین خطای ران جدید 3mA بدون علامت سیستماتیک، ران
- *      قدیمی 5mA. کف روش از اینجا ‎±1 شمارش = ‎±3mA است.
+ *      you read are wrong"): the table OUTPUT is the battery-2 POWER in
+ *      mW, not current - the DCM energy per cycle is battery-voltage
+ *      independent (current = P/Vbat); measurement.c divides by the LIVE
+ *      battery-2 voltage (clamped 8.0..15.0 V) to get mA. Anchors are
+ *      fitted end-to-end against the exact integer firmware pipeline
+ *      (2026-09-27 SOLO2 sweep; off2=8 / gain2=1303 - if those params
+ *      change the table MUST be rebuilt). Gate (20,0): chain <= 20 is
+ *      switching noise at 1..3% duty (the true backfeed there is
+ *      invisible to the single-supply shunt chain) and reads exactly 0;
+ *      the 2%-duty zener discharge also floors to 0 (error <= 13 mA at
+ *      the very bottom). EXCLUDED: D9 (unsettled-sample outlier) and the
+ *      D16 DMM VOLTAGE (12650 mV is a typo; power recomputed with the
+ *      firmware 13617 mV). Above the last anchor the last slope
+ *      (12.37 mW per chain-mA) extends. Methodology floor: +-1 count =
+ *      +-3 mA (slope ~30 mW/chain-mA on the steep band).
+ * [FA] همان معماری توان جدول ۱ (ناوردای DCM: جریان = P/Vbat با تقسیم
+ *      زمان اجرا بر ولتاژ زندهٔ باتری ۲، گیرهٔ ۸..۱۵V). لنگرها
+ *      سرتاسری روی خط‌لولهٔ صحیحِ خود فرم‌ور فیت شده‌اند (سوییپ SOLO2
+ *      ۲۰۲۶-۰۹-۲۷؛ off2=8 / gain2=1303 - با تغییر آنها جدول باید
+ *      بازسازی شود). گیت (۲۰٫۰): زنجیره ≤۲۰ نویز سوییچینگ دیوتی ۱..۳٪
+ *      است (برگشت جریان واقعی آنجا برای زنجیرهٔ شنت تک‌تغذیه نامرئی
+ *      است) و دقیقاً صفر می‌خواند؛ تخلیهٔ زنرِ دیوتی ۲٪ هم کف ۰ می‌گیرد
+ *      (خطا ≤ ۱۳mA فقط در کف). بالای آخرین لنگر شیب آخر (۱۲٫۳۷ mW
+ *      به‌ازای هر mA زنجیره) ادامه می‌یابد. کف روش: ‎±1 شمارش = ‎±3mA.
  * ============================================================================ */
+
 #define CAL_CURRENT2_LUT_ENABLE 1u
 
 #if (CAL_CURRENT2_LUT_ENABLE != 0u)
@@ -210,28 +106,22 @@ static const uint32_t CAL_Current2LutBatteryMw[] =
  * TABLE 3 - battery-2 (V12 / Vlow) voltage compensation
  * جدول ۳ - جبران ولتاژ باتری ۲ (V12 / Vlow)
  * ----------------------------------------------------------------------------
- * [EN] The board's V12 sense reads above the battery-2 terminals: a static
- *      divider error plus a current-proportional charge-path wire drop. The
- *      dense 2026-09-25T18:14 run (10 DMM points, 0..764 mA) gives the LSQ
- *      fit error = 150 mV + 0.47 ohm x I2 (149.8 mV + 472.5 mOhm, rounded;
- *      residual within +/-28 mV = 0.23 percent; the 20%-duty point rides a
- *      fast-rising battery, so its window average lags the submit-time DMM
- *      reading). measurement.c subtracts STATIC + I2 x PATH/1000 from V12
- *      AFTER the runtime V12 offset, using the post-LUT channel-2 current,
- *      BEFORE Vlow/Vhigh are derived. WHEN MORE POINTS ARRIVE this two-term
- *      model can grow into a full anchor table (chain mA -> drop mV) exactly
- *      like tables 1/2 - until then the two constants ARE the table.
- * [FA] سنس V12 برد بالاتر از ترمینال باتری ۲ می‌خواند: خطای ثابت مقسم +
- *      افت مسیر شارژ متناسب با جریان. اجرای متراکم 2026-09-25T18:14
- *      (۱۰ نقطهٔ DMM، 0..764mA) کمینهٔ مربعات را می‌دهد: خطا = 150mV +
- *      ۰٫۴۷ اهم × I2 (گردشدهٔ 149.8/472.5؛ خطای باقی‌مانده ±۲۸mV = ۰٫۲۳٪؛
- *      نقطهٔ دیوتی ۲۰٪ روی باتریِ سریع‌بالارونده است و میانگین پنجره‌اش از
- *      قرائت هم‌لحظهٔ ثبت DMM عقب می‌ماند). measurement.c این را بعد از آفست
- *      زمان اجرا و با جریان پس از جدول، قبل از مشتق‌گیری Vlow/Vhigh کم
- *      می‌کند. با آمدن نقاط بیشتر این مدل دو جمله‌ای می‌تواند مثل جدول‌های
- *      ۱ و ۲ به جدول انکری کامل (mA زنجیره ← mV افت) تبدیل شود - تا آن
- *      موقع همین دو ثابت خودِ جدول‌اند.
+ * [EN] The V12 sense reads above the battery-2 terminals: static divider
+ *      error + charge-path wire drop proportional to the current. LSQ fit
+ *      (10 DMM points, 0..764 mA): error = 150 mV + 0.47 ohm x I2
+ *      (residual +/-28 mV = 0.23%). measurement.c subtracts
+ *      STATIC + I2 x PATH/1000 AFTER the runtime V12 offset, using the
+ *      post-LUT channel-2 current, BEFORE Vlow/Vhigh are derived. With
+ *      more bench points this two-term model can grow into a full anchor table
+ *      exactly like tables 1/2.
+ * [FA] سنس V12 بالاتر از ترمینال باتری ۲ می‌خواند: خطای ثابت مقسم + افت
+ *      مسیر شارژ متناسب با جریان. برازش LSQ (۱۰ نقطهٔ DMM، 0..764mA):
+ *      خطا = 150mV + ۰٫۴۷ اهم × I2 (خطای باقی‌مانده ±۲۸mV = ۰٫۲۳٪).
+ *      measurement.c آن را بعد از آفست زمان اجرا و با جریان پس از
+ *      جدول، قبل از مشتق‌گیری Vlow/Vhigh کم می‌کند. با نقاط بیشتر این
+ *      مدل دو جمله‌ای می‌تواند مثل جدول‌های ۱/۲ جدول انکری کامل شود.
  * ============================================================================ */
+
 #define CAL_BATTERY12_BENCH_COMP_ENABLE 1u
 
 #if (CAL_BATTERY12_BENCH_COMP_ENABLE != 0u)

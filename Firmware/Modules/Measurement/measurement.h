@@ -18,18 +18,13 @@
 
 /* ==================== Defines ==================== */
 
-/* [EN] MEASUREMENT TASK PERIOD. CHANGE HERE to change the sample rate.
- *      The BSP returns only completed normalized frames, so this task period
- *      remains independent of the MCU ADC clock. Since 2026-09-22 (user
- *      order) the period is 1 ms so the synchronized charge-current samples
- *      in the snapshot are at most 1 ms old when the control task reads
- *      them; the voltage channels only get fresher.
- * [FA] دورهٔ تسک اندازه‌گیری. برای تغییر نرخ نمونه‌برداری همین‌جا عوض شود.
- *      BSP فقط فریم‌های استانداردشدهٔ کامل را برمی‌گرداند، پس این دوره
- *      مستقل از کلاک ADC میکروکنترلر است. از ۲۰۲۶-۰۹-۲۲ (دستور کاربر)
- *      دوره ۱ms است تا نمونه‌های سنکرون جریان شارژ داخل snapshot حداکثر
- *      ۱ms عمر داشته باشند وقتی تسک کنترل می‌خواندشان؛ ولتاژها هم فقط
- *      تازه‌تر می‌شوند. */
+/* [EN] MEASUREMENT TASK PERIOD - change the sample rate HERE. The BSP
+ *      returns only completed normalized frames, so this period is
+ *      independent of the ADC clock. 1 ms keeps the synchronized current
+ *      samples at most 1 ms old when the control task reads them.
+ * [FA] دورهٔ تسک اندازه‌گیری - نرخ نمونه‌برداری همین‌جا عوض می‌شود. BSP
+ *      فقط فریم‌های کامل را می‌دهد، پس دوره مستقل از کلاک ADC است. ۱ms
+ *      یعنی نمونه‌های سنکرون جریان حداکثر ۱ms کهنه‌اند. */
 #define MEASUREMENT_PERIOD_MS      1u
 
 /* ==================== Current filter switches / کلیدهای فیلتر جریان ==================== */
@@ -66,26 +61,20 @@
         می‌شوند). calibration.h فقط توسط measurement.c اینکلود می‌شود. */
 
 
-/* [EN] Compiled ring size and hard ceiling of the ESP-adjustable runtime
- *      moving-average window, per channel (v1.4, user order 2026-09-25:
- *      ANY value is accepted; v1.9 same day: ceiling raised 100 -> 300
- *      samples). WHY: TLM streams to the ESP at 10 Hz, so two panel
- *      samples 100 ms apart share almost no filter history at W <= 100 -
- *      the filter worked but was INVISIBLE on the panel. W = 200..300
- *      spans 2..3 TLM frames and the smoothing becomes observable. CAVEAT:
- *      the auto-mode charger regulates at 100 Hz on this filtered value -
- *      keep W <= ~50 in AUTO mode; large W is for MANUAL-duty bench
- *      watching (user order 2026-09-25). Ring RAM cost: 2 x 300 x 4 B.
- * [FA] اندازهٔ حلقهٔ کامپایل و سقف قطعی پنجرهٔ میانگین متحرکِ قابل‌تنظیم
- *      از ESP، به ازای هر کانال (v1.4، دستور کاربر ۲۰۲۶-۰۹-۲۵: هر مقدار
- *      پذیرفته می‌شود؛ همان روز v1.9: سقف از ۱۰۰ به ۳۰۰ نمونه بالا رفت).
- *      چرا: TLM با ۱۰ هرتز به ESP می‌رود، پس دو نمونهٔ پنل با ۱۰۰ms فاصله
- *      در W <= 100 تقریباً هیچ تاریخچهٔ فیلتر مشترکی ندارند - فیلتر کار
- *      می‌کرد اما روی پنل دیده نمی‌شد. W = ۲۰۰..۳۰۰ روی ۲..۳ فریم TLM
- *      می‌ایستد و صاف‌کردن قابل‌مشاهده می‌شود. هشدار: شارژر مود خودکار با
- *      ۱۰۰ هرتز روی همین مقدار تنظیم می‌کند - در مود خودکار W را ~۵۰ یا
- *      کمتر نگه دارید؛ W بزرگ برای تماشای بنچ با دیوتی دستی است (دستور
- *      کاربر ۲۰۲۶-۰۹-۲۵). RAM حلقه: ۲×۳۰۰×۴ بایت. */
+/* [EN] Compiled ring size / hard ceiling of the ESP-adjustable runtime
+ *      moving-average window, per channel. WHY 300: TLM streams at 10 Hz,
+ *      so at W <= 100 two panel samples share almost no filter history -
+ *      the filter worked but was INVISIBLE on the panel; W = 200..300
+ *      spans 2..3 TLM frames and the smoothing becomes observable.
+ *      CAVEAT: the auto-mode charger regulates at 100 Hz on this filtered
+ *      value - keep W <= ~50 in AUTO mode; large W is for MANUAL-duty
+ *      bench watching. Ring RAM cost: 2 x 300 x 4 B.
+ * [FA] اندازهٔ حلقهٔ کامپایل / سقف پنجرهٔ میانگین متحرکِ قابل‌تنظیم از ESP
+ *      (هر کانال). چرا ۳۰۰: TLM با ۱۰Hz می‌رود، پس در W≤۱۰۰ دو نمونهٔ پنل
+ *      تاریخچهٔ مشترکی ندارند و صاف‌کردن روی پنل دیده نمی‌شود؛ W=۲۰۰..۳۰۰
+ *      روی ۲..۳ فریم TLM می‌ایستد. هشدار: شارژر مود خودکار با ۱۰۰Hz روی
+ *      همین مقدار تنظیم می‌کند - در مود خودکار W را ~۵۰ یا کمتر نگه
+ *      دارید؛ W بزرگ برای تماشای بنچ با دیوتی دستی است. RAM: ۲×۳۰۰×۴B. */
 #define MEASUREMENT_CURRENT_AVERAGE_WINDOW   300u
 
 /* [EN] Startup default of the runtime moving-average window (today's
@@ -123,20 +112,13 @@
 
 /* ==================== Globals (shared values) ==================== */
 /* [EN] Shared engineering values, written ONLY by the measurement task
- *      (Run). Any module/task can read them: #include "measurement.h" and
- *      use. Check BOOL__G__MeasDataValid before trusting the numbers.
- * [FA] مقادیر مهندسی مشترک، فقط توسط تسک measurement (Run) نوشته
- *      می‌شوند. هر ماژول/تسک می‌تواند بخواند: کافی است measurement.h را
- *      include کنید. قبل از اعتماد به اعداد، BOOL__G__MeasDataValid را
- *      چک کنید.
- * @note [EN] Named Meas* on purpose: the UI test globals in task_ui.c use
- *          InputVoltageMv/BatteryVoltageMv, so Meas* avoids a link
- *          collision. When the UI switches to the real values, the manual
- *          test globals are deleted in that stage.
- *      [FA] عمداً با پیشوند Meas*: متغیرهای تست UI در task_ui.c از
- *          InputVoltageMv/BatteryVoltageMv استفاده می‌کنند و Meas* از
- *          تداخل لینک جلوگیری می‌کند. وقتی UI به مقدار واقعی وصل شد،
- *          متغیرهای تست دستی در همان مرحله حذف می‌شوند. */
+ *      (Run). Any module/task can read them (#include "measurement.h");
+ *      check BOOL__G__MeasDataValid first. Named Meas* on purpose to
+ *      avoid a link collision with the manual test globals in task_ui.c.
+ * [FA] مقادیر مهندسی مشترک، فقط توسط تسک measurement نوشته می‌شوند؛ هر
+ *      ماژول می‌تواند بخواند (پیش از اعتماد، BOOL__G__MeasDataValid را
+ *      چک کنید). پیشوند Meas* عمدی است تا با متغیرهای تست task_ui.c
+ *      تداخل لینک نگیرد. */
 extern volatile uint32_t UINT32_T__G__MeasInputVoltageMv;   /* [EN] Logical 24 V input, mV / ورودی منطقی ۲۴ ولت، mV */
 extern volatile uint32_t UINT32_T__G__MeasBattery24Mv;      /* [EN] Logical pack monitor only, mV / فقط مانیتور پک، mV */
 extern volatile uint32_t UINT32_T__G__MeasBattery12Mv;      /* [EN] Middle-node/low-battery monitor, mV / مانیتور MID/باتری پایین، mV */
@@ -170,16 +152,16 @@ void func__Measurement_Init(void);
 /* ==================== Measurement Run ==================== */
 
 /**
- * @brief  [EN] Pull one raw frame from the BSP and convert every channel into
- *              the shared snapshot (mV / mA + input_present + valid).
+ * @brief  [EN] Pull one raw frame from the BSP and convert every channel
+ *              into the shared snapshot (mV / mA + input_present + valid).
  *         [FA] یک فریم خام از BSP می‌گیرد و همهٔ کانال‌ها را در snapshot
  *              مشترک تبدیل می‌کند (mV / mA + input_present + valid).
  * @note   [EN] Three completed stable ADC frames are required before this
- *              function publishes valid data. Unit: completed ADC frame.
- *         [FA] پیش از انتشار دادهٔ معتبر توسط این تابع، سه فریم کامل و پایدار
- *              ADC لازم است. واحد: فریم کامل ADC.
- *         [EN] Input voltage and input presence do not affect ADC validity.
- *         [FA] ولتاژ ورودی و حضور ورودی روی اعتبار ADC اثر ندارند.
+ *              function publishes valid data (unit: completed ADC frame);
+ *              input voltage / input presence do not affect ADC validity.
+ *         [FA] سه فریم کامل و پایدار ADC لازم است تا دادهٔ معتبر منتشر
+ *              شود (واحد: فریم کامل ADC)؛ ولتاژ/حضور ورودی روی اعتبار
+ *              ADC اثر ندارند.
  */
 #define MEASUREMENT_WARMUP_FRAME_COUNT 3u
 void func__Measurement_Run(void);
@@ -276,13 +258,11 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts);
 
 /**
  * @brief  [EN] Set the runtime median window size of the current filter:
- *              any size 1..MAX since v1.4 (even sizes too, 1..2 bypass);
- *              capability-gated by the compiled switch; flash-persisted
- *              (v1.14 NVM id 7), ESP panel (user order 2026-09-22).
- *         [FA] اندازهٔ پنجرهٔ مدین فیلتر جریان در زمان اجرا: از نسخهٔ ۱.۴
- *              هر اندازهٔ ۱..MAX (زوج هم، ۱..۲ عبور مستقیم)؛ ظرفیت با کلید
- *              کامپایل؛ روی فلش می‌ماند (NVM نسخهٔ ۱.۱۴)، پنل ESP (دستور
- *              کاربر ۲۰۲۶-۰۹-۲۲).
+ *              any size 1..MAX (even sizes too, 1..2 bypass); capability-
+ *              gated by the compiled switch; flash-persisted (NVM id 7).
+ *         [FA] اندازهٔ پنجرهٔ مدین فیلتر جریان در زمان اجرا: هر اندازهٔ
+ *              ۱..MAX (زوج هم، ۱..۲ عبور مستقیم)؛ با کلید کامپایل؛ روی
+ *              فلش می‌ماند (شناسهٔ NVM ۷).
  * @param  uint8_t__medianSize [EN] Requested size / اندازهٔ درخواستی
  * @return uint8_t [EN] Applied size / اندازهٔ اعمال‌شده
  */
@@ -316,14 +296,11 @@ uint16_t func__Measurement_GetFilterAverageWindow(void);
 
 /**
  * @brief  [EN] Set one runtime voltage calibration offset, clamped to
- *              +/-MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV. Index 0 = 24 V
- *              input, 1 = 24 V battery pack, 2 = 12 V battery (middle
- *              node). Default 0 = today's behavior; flash-persisted
- *              since v1.14 (NVM ids 4/5/6).
+ *              +/-MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV; flash-persisted
+ *              (NVM ids 4/5/6). Default 0 = today's behavior.
  *         [FA] یک آفست کالیبراسیون ولتاژ زمان اجرا، گیرهٔ
- *              ±MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV. اندیس ۰ = ورودی ۲۴V،
- *              ۱ = باتری ۲۴V، ۲ = باتری ۱۲V. پیش‌فرض ۰ همان رفتار فعلی؛
- *              روی فلش می‌ماند (NVM نسخهٔ ۱.۱۴).
+ *              ±MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV؛ روی فلش می‌ماند
+ *              (شناسه‌های NVM ۴/۵/۶). پیش‌فرض ۰ همان رفتار فعلی است.
  * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12 / اندیس
  * @param  int32_t__offsetMv [EN] Requested offset, mV / آفست درخواستی
  * @return int32_t [EN] Applied offset, mV / آفست اعمال‌شده

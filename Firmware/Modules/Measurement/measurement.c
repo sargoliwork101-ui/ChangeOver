@@ -1,42 +1,28 @@
 /**
  * @file    measurement.c
- * @brief   [EN] ADC counts to engineering units (mV / mA), step by step, with
- *              the latest snapshot shared to the other tasks. Runs inside the
- *              measurement task (RTOS): only a few conversions + one GPIO read,
- *              then it yields - no HAL_Delay anywhere. Charge currents are the
- *              PWM mid-ON synchronized samples passed through the switchable
- *              filter chain on the RAW counts first - median-3 plus the
- *              moving average of the last 10 samples (user order 2026-09-22,
- *              constants at the top of measurement.h) - and converted to mA
- *              after; battery voltages keep their median-5 spike guard on
- *              the raw counts of the two battery ADC channels (user order
- *              2026-09-27: filters must run on the raw ADC data).
- *          [FA] شمارش ADC به واحد مهندسی (mV / mA)، گام‌به‌گام، با آخرین
- *              snapshot مشترک برای تسک‌های دیگر. داخل تسک اندازه‌گیری اجرا
- *              می‌شود (RTOS): فقط چند تبدیل + یک خواندن GPIO و بعد yield —
- *              هیچ‌جا HAL_Delay ندارد. جریان‌های شارژ، نمونه‌های سنکرون وسط
- *              ON پالس PWM هستند که اول روی شمارش خام از زنجیرهٔ فیلتر
- *              کلیددار عبور می‌کنند — مدین-۳ به‌علاوهٔ میانگین متحرک ۱۰ نمونهٔ
- *              اخیر (دستور کاربر ۲۰۲۶-۰۹-۲۲، ثابت‌ها بالای measurement.h) —
- *              و بعد به mA تبدیل می‌شوند؛ ولتاژهای باتری محافظ مدین-۵ خود را
- *              روی شمارش خام دو کانال ADC باتری نگه می‌دارند (دستور کاربر
- *              ۲۰۲۶-۰۹-۲۷: فیلترها باید روی دادهٔ خام ADC اعمال شوند).
- *
- * @note    [EN] Divider/gain values come from the schematic and are private
- *              board calibration constants in bsp_measurement.c. The
- *              converted values are exposed as globals (UINT32_T__G__Meas*,
- *              BOOL__G__Meas*), written only by this task, readable from
- *              any module - that is how the other tasks (and the debugger
- *              via Live Expressions) use them.
- *          [FA] مقادیر تقسیم/گین از شماتیک می‌آید و ثابت خصوصی
- *              bsp_measurement.c است (MISRA: عدد جادویی وسط منطق ممنوع).
- *              مقادیر تبدیل‌شده به‌صورت
- *              گلوبال (UINT32_T__G__Meas*, BOOL__G__Meas*) در دسترس‌اند —
- *              فقط این تسک می‌نویسد و هر ماژولی می‌تواند بخواند (از جمله
- *              دیباگر با Live Expressions).
+ * @brief   [EN] ADC counts to engineering units (mV / mA), step by step;
+ *              latest snapshot shared with the other tasks. Runs in the
+ *              measurement task: a few conversions + one GPIO read, then
+ *              yield - no HAL_Delay anywhere. Charge currents = the PWM
+ *              mid-ON synchronized samples, filtered on the RAW counts
+ *              first (median + moving average), converted to mA after;
+ *              battery voltages keep their median-5 spike guard on the
+ *              raw counts.
+ *          [FA] شمارش ADC به واحد مهندسی (mV/mA) گام‌به‌گام؛ آخرین snapshot
+ *              مشترک با تسک‌های دیگر. فقط چند تبدیل + یک خواندن GPIO و بعد
+ *              yield - بدون HAL_Delay. جریان شارژ = نمونهٔ سنکرون وسط ON که
+ *              اول روی شمارش خام فیلتر می‌شود (مدین + میانگین متحرک) و بعد
+ *              تبدیل؛ ولتاژ باتری محافظ مدین-۵ روی شمارش خام دارد.
+ * @note    [EN] Divider/gain constants are private to bsp_measurement.c;
+ *              converted values are exposed as UINT32_T__G__Meas* /
+ *              BOOL__G__Meas* globals - written only by this task,
+ *              readable by any module (and the debugger via Live
+ *              Expressions).
+ *          [FA] ثابت‌های تقسیم/گین خصوصی bsp_measurement.c است؛ مقادیر
+ *              تبدیل‌شده در گلوبال‌های Meas* فقط با نوشتن همین تسک در
+ *              دسترس همه‌اند (از جمله دیباگ با Live Expressions).
  */
 
-/* ==================== Includes ==================== */
 #include "measurement.h"
 #include "calibration.h"
 #include "bsp_adc.h"
@@ -104,26 +90,16 @@ static uint32_t UINT32_T__G__CurrentAverageWindowCounts[2][MEASUREMENT_CURRENT_A
 
 /* ==================== Runtime filter config / voltage offsets (ESP panel) ==================== */
 
-/* [EN] Runtime copies of the current-filter configuration (user order
- *      2026-09-22: the ESP command panel can resize the median window and
- *      the moving-average window live; ONE size parameter per filter -
- *      size 1 means bypass, so a separate on/off switch is unnecessary).
- *      The compile-time switches above remain the capability gates: a
- *      filter compiled out can never be switched on at runtime, the median
- *      window can never exceed MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX and the
- *      average window never exceeds the compiled ring size. The measurement
- *      task detects a change and resets the filter state in its own
- *      context, so no cross-task locking is needed (written by the EspLink
- *      task, volatile).
- * [FA] نسخهٔ زمان اجرای پیکربندی فیلتر جریان (دستور کاربر ۲۰۲۶-۰۹-۲۲:
- *      پنل ESP می‌تواند پنجرهٔ مدین و پنجرهٔ میانگین متحرک را زنده تغییر
- *      دهد؛ برای هر فیلتر یک پارامتر اندازه - اندازهٔ ۱ یعنی عبور
- *      مستقیم، پس کلید روشن/خاموش جدا لازم نیست). کلیدهای کامپایل بالا
- *      ظرفیت را تعیین می‌کنند: فیلتری که کامپایل نشده هرگز روشن نمی‌شود،
- *      پنجرهٔ مدین هرچه باشد از MEASUREMENT_CURRENT_MEDIAN_SIZE_MAX و
- *      پنجرهٔ میانگین از اندازهٔ حلقهٔ کامپایل بزرگ‌تر نمی‌شود. تسک
- *      اندازه‌گیری تغییر را می‌بیند و وضعیت فیلتر را در زمینهٔ خودش ریست
- *      می‌کند؛ پس قفل بین‌تسکی لازم نیست (نوشته از تسک EspLink، volatile). */
+/* [EN] Runtime copies of the current-filter configuration (resizable
+ *      live from the ESP panel; size 1 = bypass, no separate on/off
+ *      switch). The compile-time switches stay the capability gates; the
+ *      measurement task detects a change and resets the filter state in
+ *      its own context, so no cross-task locking (written by EspLink,
+ *      volatile).
+ * [FA] نسخهٔ زمان اجرای پیکربندی فیلتر جریان (قابل تغییر زنده از پنل؛
+ *      اندازهٔ ۱ = عبور مستقیم). کلیدهای کامپایل ظرفیت را تعیین می‌کنند و
+ *      تسک اندازه‌گیری تغییر را در زمینهٔ خودش ریست می‌کند - بدون قفل
+ *      بین‌تسکی (نوشته از تسک EspLink، volatile). */
 static volatile uint8_t UINT8_T__G__FilterMedianSize = 3u;
 static volatile uint16_t UINT16_T__G__FilterAverageWindow =
     (uint16_t)MEASUREMENT_CURRENT_AVERAGE_WINDOW_DEFAULT;
@@ -185,23 +161,18 @@ static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
 /* ==================== Measurement Current Median3 ==================== */
 
 /**
- * @brief  [EN] Shift one new raw current count sample of one channel
- *              into its median history and return the middle value. The
- *              window size is the runtime median size (v1.4, user order
- *              2026-09-25: ANY value 1..15, even sizes included; the ESP
- *              panel can change it live); a
- *              single-sample jump of the synchronized mid-ON reading is
- *              discarded with zero added lag. Insertion sort of a LOCAL
- *              copy keeps the live history untouched, same pattern as the
- *              voltage median-5.
- *         [FA] یک نمونهٔ شمارش خام جریان از یک کانال را در
- *              تاریخچهٔ مدین همان کانال جابه‌جا و مقدار میانی را
- *              برمی‌گرداند. اندازهٔ پنجره همان اندازهٔ مدین زمان اجرا
- *              است (v1.4، دستور کاربر ۲۰۲۶-۰۹-۲۵: هر مقدار ۱..۱۵، زوج
- *              هم مجاز؛ پنل ESP زنده عوضش می‌کند)؛ پرش تک‌نمونه‌ای خوانش
- *              سنکرون وسط ON بدون تأخیر
- *              اضافه دور انداخته می‌شود. مرتب‌سازی درجی روی کپی محلی،
- *              همان الگوی مدین-۵ ولتاژ.
+ * @brief  [EN] Shift one new raw current count sample into the channel's
+ *              median history and return the middle value. Window size =
+ *              the runtime median size (any 1..15, even sizes too); a
+ *              single-sample jump of the synchronized reading is discarded
+ *              with zero added lag. Insertion sort of a LOCAL copy keeps
+ *              the live history untouched (same pattern as the voltage
+ *              median-5).
+ *         [FA] نمونهٔ خام جدید را در تاریخچهٔ مدین کانال جابه‌جا و مقدار
+ *              میانی را برمی‌گرداند. اندازهٔ پنجره = اندازهٔ مدین زمان اجرا
+ *              (هر ۱..۱۵، زوج هم)؛ پرش تک‌نمونه‌ای بدون تأخیر اضافه دور
+ *              داده می‌شود. مرتب‌سازی درجی روی کپی محلی، تاریخچهٔ زنده دست
+ *              نمی‌خورد (الگوی مدین-۵ ولتاژ).
  * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
  * @param  uint32_t__sampleCounts [EN] New raw count sample / نمونهٔ شمارش خام جدید
  * @param  uint8_t__medianSize [EN] Active median window (1..15) / پنجرهٔ فعال
@@ -265,18 +236,14 @@ static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
 /* ==================== Measurement Current Moving Average ==================== */
 
 /**
- * @brief  [EN] Push one new raw current count sample of one channel
- *              into its moving-average window and return the average of the
- *              last MEASUREMENT_CURRENT_AVERAGE_WINDOW samples (user order
- *              2026-09-22: window of 10). Until the window fills after a
- *              restart, the average runs over the collected samples only,
- *              so the value converges without a zero-drag from empty slots.
- *         [FA] یک نمونهٔ شمارش خام جریان از یک کانال را در پنجرهٔ
- *              میانگین متحرک همان کانال می‌نویسد و میانگین آخرین
- *              MEASUREMENT_CURRENT_AVERAGE_WINDOW نمونه را برمی‌گرداند (دستور
- *              کاربر ۲۰۲۶-۰۹-۲۲: پنجرهٔ ۱۰تایی). تا پرشدن پنجره بعد از
- *              ری‌استارت، میانگین فقط روی نمونه‌های جمع‌شده اجرا می‌شود تا
- *              بدون کشیده‌شدن به صفرِ خانه‌های خالی همگرا شود.
+ * @brief  [EN] Push one new raw current count sample into the channel's
+ *              moving-average window and return the average. Until the
+ *              window fills after a restart, the average runs over the
+ *              collected samples only (no zero-drag from empty slots).
+ *         [FA] نمونهٔ خام جدید را در پنجرهٔ میانگین متحرک کانال می‌نویسد
+ *              و میانگین را برمی‌گرداند. تا پرشدن پنجره، میانگین فقط روی
+ *              نمونه‌های جمع‌شده اجرا می‌شود (بدون کشیده‌شدن به صفرِ
+ *              خانه‌های خالی).
  * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
  * @param  uint32_t__sampleCounts [EN] New raw count sample / نمونهٔ شمارش خام جدید
  * @return uint32_t [EN] Moving-average counts / شمارش میانگین‌گرفته
@@ -334,17 +301,13 @@ static uint32_t func__Measurement_CurrentMovingAverage(uint8_t uint8_t__channelI
 /* ==================== Measurement ApplyCurrentFilters / اعمال فیلترهای جریان ==================== */
 
 /**
- * @brief  [EN] Run the enabled current-filter chain of one channel, in the
- *              fixed order median-3 first (kill single jumps) then the
- *              moving average (smooth), exactly as the two switches
- *              MEASUREMENT_CURRENT_MEDIAN3_ENABLE and
- *              MEASUREMENT_CURRENT_AVERAGE_ENABLE select at compile time.
- *              With both switches off the sample passes through unchanged.
- *         [FA] زنجیرهٔ فیلتر جریان فعالِ یک کانال را با ترتیب ثابت اجرا
- *              می‌کند: اول مدین-۳ (حذف پرش تکی) بعد میانگین متحرک (صاف‌کردن)
- *              — دقیقاً طبق انتخاب دو کلید MEASUREMENT_CURRENT_MEDIAN3_ENABLE
- *              و MEASUREMENT_CURRENT_AVERAGE_ENABLE در زمان کامپایل. با
- *              خاموش‌بودن هر دو کلید نمونه بدون تغییر عبور می‌کند.
+ * @brief  [EN] Run the enabled current-filter chain of one channel in the
+ *              fixed order: median first (kill single jumps), then the
+ *              moving average (smooth) - exactly as the two compile-time
+ *              switches select. Both off = pass-through unchanged.
+ *         [FA] زنجیرهٔ فیلتر جریان فعال کانال را با ترتیب ثابت اجرا
+ *              می‌کند: اول مدین (حذف پرش تکی) بعد میانگین متحرک (صاف‌کردن)
+ *              - دقیقاً طبق دو کلید کامپایل. هر دو خاموش = عبور بدون تغییر.
  * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
  * @param  uint32_t__sampleCounts [EN] Raw count sample / نمونهٔ شمارش خام
  * @return uint32_t [EN] Filtered counts / شمارش فیلترشده
@@ -425,16 +388,14 @@ static void func__Measurement_ResetCurrentFilters(void)
 
 /**
  * @brief  [EN] Shift one new RAW count sample of a battery ADC channel
- *         into the median-5 history and return the filtered counts (user
- *         order 2026-09-27: filters run on the raw ADC data). The charger
- *         state machine and the central battery-lost detector consume the
- *         low/high voltages DERIVED from these filtered conversions, so a
- *         short spike burst cannot fake "battery gone".
- *         [FA] نمونهٔ شمارش خام یک کانال ADC باتری را در تاریخچهٔ مدین-۵
- *         جابه‌جا و شمارش فیلترشده را برمی‌گرداند (دستور کاربر ۲۰۲۶-۰۹-۲۷:
- *         فیلتر روی دادهٔ خام ADC). ماشین حالت شارژر و آشکارساز مرکزی قطع
- *         باتری، ولتاژهای low/high مشتق‌شده از همین تبدیل‌های فیلترشده را
- *         مصرف می‌کنند تا ترکیدگی کوتاه نتواند «باتری رفت» را جعل کند.
+ *         into the median-5 history and return the filtered counts. The
+ *         charger state machine and the battery-lost detector consume the
+ *         voltages DERIVED from these filtered conversions, so a short
+ *         spike burst cannot fake "battery gone".
+ *         [FA] نمونهٔ خام کانال ADC باتری را در تاریخچهٔ مدین-۵ جابه‌جا و
+ *         شمارش فیلترشده را برمی‌گرداند. شارژر و آشکارساز قطع باتری از
+ *         ولتاژهای مشتق‌شده از همین تبدیل‌ها استفاده می‌کنند تا ترکیدگی
+ *         کوتاه «باتری رفت» را جعل نکند.
  * @param  uint8_t__channelIndex [EN] 0 = V24_BAT raw, 1 = V12_BAT raw / شمارش خام
  * @param  uint32_t__sampleCounts [EN] New raw count sample / شمارش خام جدید
  * @return uint32_t [EN] Median-of-5 filtered counts / شمارش مدین‌شده
@@ -625,18 +586,17 @@ _Static_assert(CAL_CURRENT1_LUT_POINTS >= 2u, "ch1 LUT needs >= 2 points");
 
 #if (CAL_CURRENT1_LUT_ENABLE != 0u)
 /**
- * @brief  [EN] Piecewise-linear bench correction: ADC chain mA of channel 1
- *              -> battery-1 POWER in mW (v1.19, user order 2026-09-27: the
- *              DCM energy per cycle is battery-voltage independent; the
- *              current is P/Vbat, so the table carries POWER and the caller
- *              divides by the live battery voltage). Inside the anchor range
- *              the segments interpolate linearly; above the last anchor the
- *              last slope extends; 0 maps to 0.
- *         [FA] اصلاح خطی-تکه‌ای بنچ: mA زنجیرهٔ ADC کانال ۱ → «توان باتری ۱»
- *              بر حسب mW (v1.19: انرژی هر سایکل DCM مستقل از ولتاژ باتری
- *              است؛ جریان = P/Vbat، پس جدول توان را می‌دهد و صداکننده بر
- *              ولتاژ زندهٔ باتری تقسیم می‌کند). بین لنگرها درون‌یابی خطی؛
- *              بالای آخرین لنگر شیب آخرین بازه ادامه می‌یابد؛ صفر به صفر.
+ * @brief  [EN] Piecewise-linear bench correction: ADC chain mA of channel
+ *              1 -> battery-1 POWER in mW (the DCM energy per cycle is
+ *              battery-voltage independent; current = P/Vbat, so the table
+ *              carries POWER and the caller divides by the live battery
+ *              voltage). Linear interpolation between anchors; the last
+ *              slope extends above the last anchor; 0 maps to 0.
+ *         [FA] اصلاح خطی-تکه‌ای بنچ: mA زنجیرهٔ ADC کانال ۱ → «توان باتری
+ *              ۱» بر حسب mW (انرژی هر سایکل DCM مستقل از ولتاژ باتری است؛
+ *              جریان = P/Vbat، پس جدول توان را می‌دهد و صداکننده بر ولتاژ
+ *              زنده تقسیم می‌کند). بین لنگرها درون‌یابی خطی؛ بالای آخرین
+ *              لنگر شیب آخر ادامه می‌یابد؛ صفر به صفر.
  * @param  uint32_t__chainMa [EN] ADC chain output in mA / خروجی زنجیرهٔ ADC بر حسب mA
  * @return uint32_t [EN] Battery-1 power in mW / توان باتری ۱ بر حسب mW
  */
@@ -696,38 +656,31 @@ static uint32_t func__Measurement_Current1BenchLut(uint32_t uint32_t__chainMa)
 /* ==================== Measurement Current1 Counts To Ma ==================== */
 
 /**
- * @brief  [EN] Channel-1 raw counts to battery mA: the BSP per-channel linear
- *              calibration (Shunt1 / Trans1 chain), then - when the bench LUT
- *              is enabled - the piecewise-linear bench correction of user
- *              order 2026-09-27 (v1.19 SOLO1 sweep: the linear chain reads an
- *              S-curve -29..+72 mA vs the DMM). The LUT sits on the OLD chain
- *              output, so unfiltered, filtered and iest all become true
- *              battery mA; raw counts and shunt uV are untouched.
- *         [FA] شمارش خام کانال ۱ به mA باتری: کالیبراسیون خطی مستقل BSP
- *              (زنجیرهٔ Shunt1 / Trans1) و بعد - با فعال بودن جدول بنچ -
- *              اصلاح خطی-تکه‌ای طبق دستور کاربر ۲۰۲۶-۰۹-۲۷ (سوییپ SOLO1 در
- *              v1.19: زنجیرهٔ خطی Sشکل ‎-29..+72mA‎ برابر DMM می‌خواند).
- *              جدول روی خروجی زنجیرهٔ قدیم می‌نشیند پس بدون فیلتر، فیلترشده
- *              و iest هر سه به mA واقعی باتری تبدیل می‌شوند؛ شمارش خام و uV
- *              شانت دست نمی‌خورند.
+ * @brief  [EN] Channel-1 raw counts to battery mA: the BSP per-channel
+ *              linear calibration, then - when the bench LUT is enabled -
+ *              the piecewise-linear bench correction (the linear chain
+ *              alone reads an S-curve vs the DMM). The LUT sits on the OLD
+ *              chain output, so unfiltered, filtered and iest all become
+ *              true battery mA; raw counts and shunt uV are untouched.
+ *         [FA] شمارش خام کانال ۱ به mA باتری: کالیبراسیون خطی BSP و بعد -
+ *              با فعال بودن جدول بنچ - اصلاح خطی-تکه‌ای (زنجیرهٔ خطیِ تنها،
+ *              Sشکل برابر DMM می‌خواند). جدول روی خروجی زنجیرهٔ قدیم
+ *              می‌نشیند پس بدون فیلتر، فیلترشده و iest هر سه به mA واقعی
+ *              باتری تبدیل می‌شوند؛ شمارش خام و uV شانت دست نمی‌خورند.
  * @param  uint16_t__counts [EN] ADC count / شمارش ADC
  * @return uint32_t [EN] Corrected current in mA / جریان اصلاح‌شده mA
  */
 uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
 {
 #if (CAL_CURRENT1_LUT_ENABLE != 0u)
-    /* [EN] v1.19 (user order 2026-09-27, SOLO1 sweep): the LUT maps the ADC
-       chain current to the battery-1 POWER (the DCM invariant, independent
-       of the battery voltage - same architecture as the ch2 v1.13 path);
-       dividing by the LIVE battery-1 terminal voltage (vhigh = V24 - V12,
-       previous 1 ms pass, clamped 8.0..15.0 V by the cache writer) yields
-       the battery CURRENT. u32 intermediate (flash diet 2026-09-27):
-       power x 1000 peaks near 135M, far below 2^32.
-       [FA] v1.19 (دستور کاربر، سوییپ SOLO1): جدول جریان زنجیرهٔ ADC را به
-       «توان باتری ۱» می‌برد (ناوردای DCM، مستقل از ولتاژ باتری - همان
-       معماری مسیر v1.13 کانال ۲)؛ تقسیم بر ولتاژ زندهٔ ترمینال باتری ۱
-       (vhigh = V24 − V12، پاس ۱ms قبل، گیرهٔ ۸..۱۵V توسط نویسندهٔ کش)
-       جریان باتری را می‌دهد. */
+    /* [EN] The LUT maps the ADC chain current to battery-1 POWER (the DCM
+       invariant); dividing by the LIVE battery-1 terminal voltage (vhigh,
+       previous 1 ms pass, clamped 8.0..15.0 V) yields the CURRENT. u32
+       intermediate (flash diet): power x 1000 peaks near 135M < 2^32.
+       [FA] جدول جریان زنجیرهٔ ADC را به «توان باتری ۱» می‌برد (ناوردای
+       DCM)؛ تقسیم بر ولتاژ زندهٔ ترمینال باتری ۱ (vhigh، پاس ۱ms قبل،
+       گیرهٔ ۸..۱۵V) جریان باتری را می‌دهد. میانی u32 (رژیم فلش): توان×۱۰۰۰
+       سقف ~۱۳۵M < ۲^۳². */
     uint32_t uint32_t__batteryPowerMw = func__Measurement_Current1BenchLut(
         func__BspMeasurement_Current1CountsToMa(uint16_t__counts));
     return (uint32_t__batteryPowerMw * 1000u) /
@@ -739,68 +692,30 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
 
 /* ==================== Measurement Current2 Bench LUT (user order 2026-09-25) ==================== */
 
-/* [EN] The 2026-09-25 SOLO2 bench runs (two independent captures, duty 0..17%,
-        battery ammeter as the reference) proved the channel-2 chain is strongly
-        non-linear vs the true battery current: about 2x too high at 5% duty and
-        0.85x too low at 15..17%. No single gain or gain+offset line covers both
-        ends (least-squares single gain: +101%/-7% residuals), and the duty-based
-        physics model spreads 37% - so a piecewise-linear table on the OLD linear
-        chain output is the honest correction. Physical cause: the mid-ON
-        synchronized ADC sample of the primary ramp vs the ~duty^2 energy
-        transfer, with a DCM->CCM kink near 12% duty. Anchors = the latched
-        2026-09-25T16:31 run (v1.7 wizard: the /m window is read at the submit
-        press, so MCU numbers and typed meters are simultaneous):
-        chain mA -> battery mA: (0,0) (65,33) (139,90) (237,208) (278,300)
-        (393,455) (487,545); captured with off2=8 / gain2=1303 (as logged in
-        every row - if those params ever change, the table must be re-derived).
-        Above the last anchor the last slope extends; input 0 maps to 0. Raw
-        counts and shunt uV stay untouched. Channel 1 got its own SOLO1 power
-        table in v1.19 (TABLE 1 in calibration.h, same architecture).
-   [FA] اجراهای بنچ SOLO2 در ۲۰۲۶-۰۹-۲۵ (دو برداشت مستقل، دیوتی ۰ تا ۱۷٪،
-        مرجع = آمپرمتر سری باتری) ثابت کرد زنجیرهٔ کانال ۲ نسبت به جریان واقعی
-        باتری به‌شدت غیرخطی است: حدود ۲ برابر زیاد در دیوتی ۵٪ و ۰٫۸۵ برابر
-        کم در ۱۵..۱۷٪. نه گین واحد و نه خط گین+آفست دو سر را پوشش می‌دهد
-        (بهترین تک‌گین: خطای +۱۰۱٪/−۷٪) و مدل فیزیکی مبتنی بر duty هم ۳۷٪
-        پراکندگی دارد - پس جدول خطی-تکه‌ای روی خروجی زنجیرهٔ خطی قدیم،
-        اصلاح درست است. علت فیزیکی: نمونهٔ سنکرون وسط-ON از رمپ اولیه در
-        برابر انتقال انرژی ~duty²، با شکست DCM→CCM نزدیک دیوتی ۱۰..۱۴٪.
-        لنگرها = اجرای متراکم 2026-09-25T18:14 (۱۰ نقطهٔ DMM، دیوتی ۲..۲۰٪،
-        باتری در حال پرشدن 12.0→13.65V): محور جدول «جریان زنجیره از ADC»
-        است، هرگز دیوتی (دستور کاربر ۲۰۲۶-۰۹-۲۵: با پرشدن باتری، همان دیوتی
-        جریان متفاوتی می‌دهد و جدول باید روی جریان بماند). از v1.13 خروجی
-        جدول «توان» است (mW، نه mA - کامنت تابع پایین را ببین)؛ جدول در
-        calibration.h است (محور mA زنجیره ← توان باتری ۲)؛ با off2=8 /
-        gain2=1303 (اگر عوض شوند جدول دوباره ساخته شود). بالای آخرین لنگر
-        شیب آخرین بازه (12.37 mW به‌ازای هر mA زنجیره) ادامه
-        می‌یابد. نقطهٔ دیوتی ۲٪ جریان واقعی باتری 13− میلی‌آمپر بود (تخلیه از
-        مسیر زنر) - زنجیره بدون علامت است و همان‌جا 0 می‌گیرد (خطای ≤13mA
-        فقط در کف). شمارش خام و uV شانت دست نمی‌خورند. کانال ۱ در v1.19 جدول
-        توان SOLO1 خودش را گرفت (جدول ۱ در calibration.h، همان معماری). */
-/* [EN] The anchor tables and the enable macro moved to calibration.h (user
-        order 2026-09-25: one separate calibration file, three tables, easy
-        to amend; the count still derives from the initializers there and the
-        host test enforces equal lengths).
-   [FA] جدول‌های لنگر و ماکروی انیبل به calibration.h منتقل شدند (دستور
-        کاربر ۲۰۲۶-۰۹-۲۵: فایل جدا کالیبراسیون، سه جدول، اصلاح راحت)؛
-        تعداد نقاط همان‌جا از مقداردهی استخراج می‌شود و تست هاست برابری
-        طول دو آرایه را قفل می‌کند. */
-
-/* ==================== Measurement Current2 Counts To Ma ==================== */
+/* [EN] Bench runs proved the channel-2 chain is strongly non-linear vs
+        the true battery current: ~2x too high at 5% duty, 0.85x too low at
+        15..17% - no single gain or gain+offset line covers both ends, so a
+        piecewise-linear table on the chain output is the honest correction.
+        Physical cause: the mid-ON synchronized sample of the primary ramp
+        vs the ~duty^2 energy transfer, with a DCM->CCM kink near 12% duty.
+   [FA] اجرای بنچ نشان داد زنجیرهٔ کانال ۲ نسبت به جریان واقعی باتری
+        به‌شدت غیرخطی است: ~۲ برابر زیاد در دیوتی ۵٪ و ۰٫۸۵ برابر کم در
+        ۱۵..۱۷٪ - هیچ خط تک‌گین/گین+آفستی دو سر را نمی‌پوشاند، پس جدول
+        خطی-تکه‌ای روی خروجی زنجیره اصلاح درست است. علت فیزیکی: نمونهٔ
+        سنکرون وسط ON از رمپ اولیه در برابر انتقال انرژی ~duty²، با شکست
+        DCM→CCM نزدیک دیوتی ~۱۲٪. */
 
 #if (CAL_CURRENT2_LUT_ENABLE != 0u)
 /**
- * @brief  [EN] Piecewise-linear bench correction: ADC chain mA of channel 2
- *              -> battery-2 POWER in mW (v1.13, user order 2026-09-25: the
- *              DCM energy per cycle is battery-voltage independent; the
- *              current is P/Vbat, so the table carries POWER and the caller
- *              divides by the live battery voltage). Inside the anchor range
- *              the segments interpolate linearly; above the last anchor the
- *              last slope extends; 0 maps to 0.
- *         [FA] اصلاح خطی-تکه‌ای بنچ: mA زنجیرهٔ ADC کانال ۲ → «توان باتری ۲»
- *              بر حسب mW (v1.13: انرژی هر سایکل DCM مستقل از ولتاژ باتری
- *              است؛ جریان = P/Vbat، پس جدول توان را می‌دهد و صداکننده بر
- *              ولتاژ زندهٔ باتری تقسیم می‌کند). بین لنگرها درون‌یابی خطی؛
- *              بالای آخرین لنگر شیب آخرین بازه ادامه می‌یابد؛ صفر به صفر.
+ * @brief  [EN] Piecewise-linear bench correction: ADC chain mA of channel
+ *              2 -> battery-2 POWER in mW (same DCM POWER architecture as
+ *              channel 1; the caller divides by the live battery voltage).
+ *              Linear interpolation between anchors; the last slope
+ *              extends above the last anchor; 0 maps to 0.
+ *         [FA] اصلاح خطی-تکه‌ای بنچ: mA زنجیرهٔ ADC کانال ۲ → «توان باتری
+ *              ۲» بر حسب mW (همان معماری توان کانال ۱؛ صداکننده بر ولتاژ
+ *              زنده تقسیم می‌کند). بین لنگرها درون‌یابی خطی؛ بالای آخرین
+ *              لنگر شیب آخر ادامه می‌یابد؛ صفر به صفر.
  * @param  uint32_t__chainMa [EN] ADC chain output in mA / خروجی زنجیرهٔ ADC بر حسب mA
  * @return uint32_t [EN] Battery-2 power in mW / توان باتری ۲ بر حسب mW
  */
@@ -878,17 +793,15 @@ static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
 #endif
 
 /**
- * @brief  [EN] Channel-2 raw counts to battery mA: the BSP per-channel linear
- *              calibration (Shunt2 / Trans2 chain), then - when the bench LUT
- *              is enabled - the piecewise-linear bench correction of user
- *              order 2026-09-25. The LUT sits on the OLD chain output, so
- *              unfiltered, filtered and iest all become true battery mA;
- *              raw counts and shunt uV are untouched.
- *         [FA] شمارش خام کانال ۲ به mA باتری: کالیبراسیون خطی مستقل BSP
- *              (زنجیرهٔ Shunt2 / Trans2) و بعد - با فعال بودن جدول بنچ -
- *              اصلاح خطی-تکه‌ای طبق دستور کاربر ۲۰۲۶-۰۹-۲۵. جدول روی
- *              خروجی زنجیرهٔ قدیم می‌نشیند، پس بدون فیلتر، فیلترشده و iest
- *              هر سه به mA واقعی باتری تبدیل می‌شوند؛ شمارش خام و uV شانت
+ * @brief  [EN] Channel-2 raw counts to battery mA: the BSP per-channel
+ *              linear calibration, then - when the bench LUT is enabled -
+ *              the piecewise-linear bench correction. The LUT sits on the
+ *              OLD chain output, so unfiltered, filtered and iest all
+ *              become true battery mA; raw counts and shunt uV untouched.
+ *         [FA] شمارش خام کانال ۲ به mA باتری: کالیبراسیون خطی BSP و بعد -
+ *              با فعال بودن جدول بنچ - اصلاح خطی-تکه‌ای. جدول روی خروجی
+ *              زنجیرهٔ قدیم می‌نشیند، پس بدون فیلتر، فیلترشده و iest هر سه
+ *              به mA واقعی باتری تبدیل می‌شوند؛ شمارش خام و uV شانت
  *              دست نمی‌خورند.
  * @param  uint16_t__counts [EN] ADC count / شمارش ADC
  * @return uint32_t [EN] Corrected current in mA / جریان اصلاح‌شده mA
@@ -896,21 +809,13 @@ static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
 uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
 {
 #if (CAL_CURRENT2_LUT_ENABLE != 0u)
-    /* [EN] v1.13 (user order 2026-09-25, "voltages are fixed but the
-       currents you read are wrong"): the LUT maps the ADC chain current to
-       the battery-2 POWER (the DCM invariant, independent of the battery
-       voltage); dividing by the LIVE battery-2 terminal voltage (previous
-       1 ms pass, clamped 8.0..15.0 V by the cache writer) yields the
-       battery CURRENT. The old chain->current table embedded the battery
-       voltage of the calibration run (12.0..13.65 V) and overread ~7
-       percent per volt as the battery filled. u32 intermediate (flash
-       diet 2026-09-27): power x 1000 peaks near 135M, far below 2^32.
-       [FA] v1.13 (دستور کاربر: «ولتاژها درست شد ولی جریان‌ها اشتباه»):
-       جدول جریان زنجیرهٔ ADC را به «توان باتری ۲» می‌برد (ناوردای DCM،
-       مستقل از ولتاژ باتری)؛ تقسیم بر ولتاژ زندهٔ ترمینال باتری ۲ (پاس
-       ۱ms قبل، گیرهٔ ۸..۱۵V توسط نویسندهٔ کش) جریان باتری را می‌دهد.
-       جدول قدیمی جریان↔جریان ولتاژ ران کالیبراسیون (۱۲٫۰..۱۳٫۶۵V) را
-       در خود داشت و با پر شدن باتری ~۷٪ به‌ازای هر ولت بیش می‌خواند. */
+    /* [EN] The LUT maps the ADC chain current to battery-2 POWER (the DCM
+       invariant); dividing by the LIVE battery-2 terminal voltage (previous
+       1 ms pass, clamped 8.0..15.0 V) yields the battery CURRENT. u32
+       intermediate (flash diet): power x 1000 peaks near 135M < 2^32.
+       [FA] جدول جریان زنجیرهٔ ADC را به «توان باتری ۲» می‌برد (ناوردای
+       DCM)؛ تقسیم بر ولتاژ زندهٔ ترمینال باتری ۲ (پاس ۱ms قبل، گیرهٔ
+       ۸..۱۵V) جریان باتری را می‌دهد. میانی u32: توان×۱۰۰۰ سقف ~۱۳۵M < ۲^۳². */
     uint32_t uint32_t__batteryPowerMw = func__Measurement_Current2BenchLut(
         func__BspMeasurement_Current2CountsToMa(uint16_t__counts));
     /* [EN] Flash diet 2026-09-27: u32 is exact - power x 1000 stays below
@@ -952,29 +857,22 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
 /* ==================== Measurement Battery12 Bench Compensation (user order 2026-09-25) ==================== */
 
 #if (CAL_BATTERY12_BENCH_COMP_ENABLE != 0u)
-/* [EN] The latched 2026-09-25 SOLO2 runs (wizard: the /m window is read at
-        the submit press) measured the V12 channel against a DMM on the battery
-        terminals: a static divider error plus a current-proportional charge-path
-        wire drop. Dense-run refit (10 DMM points, 0..764 mA):
-        error = 150 mV + 0.47 ohm x I2, i.e. a static channel offset plus the
-        charge-path wire drop (board sense point sits above the battery terminal
-        while charging). This compensation subtracts both so the panel - and the
-        charger's own decisions on Vlow - work on the TRUE battery-2 terminal
-        voltage; Vhigh = V24 - V12 shifts up by the same amount, which is the
-        physically correct direction (an overreading V12 used to underread
-        Vhigh). Constants reflect the 2026-09-25 bench wiring; re-derive them if
-        the wiring changes. The I2 input is the post-LUT corrected current.
-   [FA] اجرای قفل‌در-لحظهٔ ثبت SOLO2 در ۲۰۲۶-۰۹-۲۵ (ویزارد 1.7: پنجرهٔ /m
-        همان لحظهٔ ثبت خوانده می‌شود) کانال V12 را با مولتی‌متر روی ترمینال
-        باتری سنجید: برد در جریان صفر ‎+۱۴۰mV می‌خواند (خطای ثابت مقسم) که در
-        ۵45mA به ‎+۳۷۴mV می‌رسد. کمینه مربعات روی هفت نقطه: خطا = ۱۴۳mV +
-        ۰٫۴۷ اهم × I2؛ یعنی آفست ثابت کانال به‌اضافهٔ افت مسیر شارژ (نقطهٔ
-        سنس برد حین شارژ بالاتر از ترمینال باتری است). این جبران هر دو را کم
-        می‌کند تا پنل - و تصمیم‌های خود شارژر روی Vlow - روی ولتاژ واقعی
-        ترمینال باتری ۲ کار کنند؛ Vhigh = V24 − V12 به همان اندازه بالا
-        می‌رود که جهت فیزیکی درستی است (V12ِ زیادخوان، Vhigh را کم‌خوان می‌کرد).
-        ثابت‌ها مال سیم‌بندی بنچ ۲۰۲۶-۰۹-۲۵ هستند؛ با تغییر سیم‌بندی دوباره
-        ساخته شوند. ورودی I2 همان جریان اصلاح‌شدهٔ بعد از جدول است. */
+/* [EN] Bench DMM runs measured the V12 channel against the battery
+        terminals: a static divider error plus a current-proportional
+        charge-path wire drop (the board sense point sits above the battery
+        terminal while charging). This compensation subtracts both so the
+        panel - and the charger's own decisions on Vlow - work on the TRUE
+        battery-2 terminal voltage; Vhigh = V24 - V12 shifts up by the same
+        amount (the physically correct direction). The I2 input is the
+        post-LUT corrected current; re-derive the constants if the bench
+        wiring changes.
+   [FA] بنچ با مولتی‌متر روی ترمینال باتری نشان داد کانال V12 خطای ثابت
+        مقسم + افت مسیر شارژ متناسب جریان دارد (نقطهٔ سنس برد حین شارژ
+        بالاتر از ترمینال باتری است). این جبران هر دو را کم می‌کند تا پنل
+        و تصمیم‌های شارژر روی Vlow با ولتاژ واقعی ترمینال باتری ۲ کار
+        کنند؛ Vhigh = V24 − V12 به همان اندازه بالا می‌رود (جهت فیزیکی
+        درست). ورودی I2 جریان اصلاح‌شدهٔ بعد از جدول است؛ با تغییر
+        سیم‌بندی، ثابت‌ها دوباره ساخته شوند. */
 /* [EN] Refit from the dense 2026-09-25T18:14 run (10 DMM points,
         0..764 mA): LSQ static 149.8 mV + 472.5 mOhm - rounded to 150/470.
         Residual vs DMM within +/-28 mV (0.23 percent) across the range.
@@ -1128,22 +1026,19 @@ void func__Measurement_Run(void)
        updated measurement set.
        [FA] ابتدا در متغیرهای محلی تبدیل می‌کند تا تسک‌های دیگر مجموعهٔ
        اندازه‌گیری نیمه‌به‌روزشده نبینند. */
-    /* [EN] Currents: the board port delivers the PWM mid-ON synchronized raw
-       counts in the CURRENT1/CURRENT2 frame positions; this module runs the
-       switchable filter chain on the RAW counts first - median-3 to kill
-       single-sample jumps, moving average of the last 10 samples to smooth
-       (user order 2026-09-22, constants at the top of measurement.h) - and
-       converts the filtered counts to mA after (user order 2026-09-27:
-       filters run on the raw ADC data). Voltages keep their median-5 spike
+    /* [EN] Currents: the board port delivers the PWM mid-ON synchronized
+       raw counts in the CURRENT1/CURRENT2 frame positions; this module
+       runs the switchable filter chain on the RAW counts first (median to
+       kill single-sample jumps, moving average to smooth) and converts the
+       filtered counts to mA after. Voltages keep their median-5 spike
        guard, likewise on the raw counts.
-       [FA] جریان‌ها: پورت برد شمارش‌های خام سنکرونِ وسط ON پالس PWM را در
-       جایگاه‌های CURRENT1/2 فریم می‌گذارد؛ این ماژول اول زنجیرهٔ فیلتر
-       کلیددار را روی شمارش خام اجرا می‌کند — مدین-۳ برای حذف پرش تک‌نمونه‌ای
-       و میانگین متحرک ۱۰ نمونهٔ اخیر برای صاف‌کردن (دستور کاربر ۲۰۲۶-۰۹-۲۲،
-       ثابت‌ها بالای measurement.h) — و بعد شمارش فیلترشده را به mA تبدیل
-       می‌کند (دستور کاربر ۲۰۲۶-۰۹-۲۷: فیلتر روی دادهٔ خام ADC). ولتاژها هم
+       [FA] جریان‌ها: پورت برد شمارش‌های خام سنکرونِ وسط ON را در جایگاه‌های
+       CURRENT1/2 فریم می‌گذارد؛ این ماژول اول زنجیرهٔ فیلتر کلیددار را
+       روی شمارش خام اجرا می‌کند (مدین برای حذف پرش، میانگین متحرک برای
+       صاف‌کردن) و بعد شمارش فیلترشده را به mA تبدیل می‌کند. ولتاژها هم
        محافظ مدین-۵ خود را روی شمارش خام نگه می‌دارند. */
-    /* [EN] Filters run on the RAW ADC counts (user order 2026-09-27):
+
+/* [EN] Filters run on the RAW ADC counts (user order 2026-09-27):
        median/average of 12-bit counts cannot exceed 4095, so the u16 casts
        at the conversion calls are airtight. The unfiltered converted
        samples stay for telemetry (unf) and diagnostics.
@@ -1394,22 +1289,16 @@ bool func__Measurement_GetSnapshot(measurement_snapshot_t *measurement_snapshot_
 
 /**
  * @brief  [EN] Set the runtime median window size of the current filter
- *              (user order 2026-09-22: ONE size parameter per filter -
- *              size 1 means bypass, so no separate on/off switch exists).
- *              Since v1.4 (user order 2026-09-25) ANY size 1..MAX is valid
- *              (even sizes too, no odd rounding); 1..2 behave as bypass in
- *              the task. The compiled switch
- *              MEASUREMENT_CURRENT_MEDIAN3_ENABLE remains the capability
- *              gate: when it is 0 the request is clamped to 1 (bypass).
- *              Flash-persisted since v1.14 (NVM id 7).
- *         [FA] اندازهٔ پنجرهٔ مدین فیلتر جریان در زمان اجرا (دستور کاربر
- *              ۲۰۲۶-۰۹-۲۲: برای هر فیلتر یک پارامتر اندازه - اندازهٔ ۱
- *              یعنی عبور مستقیم، پس کلید جدا لازم نیست). از نسخهٔ ۱.۴
- *              (دستور کاربر ۲۰۲۶-۰۹-۲۵) هر اندازهٔ ۱..MAX مجاز است (زوج هم،
- *              بدون گرد به فرد)؛ ۱..۲ در تسک عبور مستقیم‌اند. کلید کامپایل
- *              MEASUREMENT_CURRENT_MEDIAN3_ENABLE ظرفیت را تعیین می‌کند:
- *              اگر ۰ باشد درخواست به ۱ گیره می‌شود. روی فلش می‌ماند (NVM
- *              نسخهٔ ۱.۱۴، شناسهٔ ۷).
+ *              (one size parameter per filter; 1 = bypass, so no separate
+ *              on/off switch). ANY size 1..MAX is valid (even sizes too,
+ *              no odd rounding; 1..2 behave as bypass). The compiled
+ *              switch stays the capability gate: 0 clamps the request to
+ *              1. Flash-persisted (NVM id 7).
+ *         [FA] اندازهٔ پنجرهٔ مدین فیلتر جریان در زمان اجرا (یک پارامتر
+ *              اندازه؛ ۱ = عبور مستقیم). هر اندازهٔ ۱..MAX مجاز است (زوج
+ *              هم، بدون گرد به فرد؛ ۱..۲ عبور مستقیم‌اند). کلید کامپایل
+ *              ظرفیت را تعیین می‌کند: ۰ یعنی درخواست به ۱ گیره می‌شود. روی
+ *              فلش می‌ماند (شناسهٔ NVM ۷).
  * @param  uint8_t__medianSize [EN] Requested size / اندازهٔ درخواستی
  * @return uint8_t [EN] Applied size / اندازهٔ اعمال‌شده
  */
