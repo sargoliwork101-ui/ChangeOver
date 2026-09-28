@@ -31,20 +31,15 @@ void func__Protection_Run(const measurement_snapshot_t *measurement_snapshot_t__
 {
     if ((measurement_snapshot_t__snap == NULL) || (measurement_snapshot_t__snap->valid == false))
     {
-        /* [EN] ADC not valid right now: report it, but as a LIVE state, not a
-           permanent latch (full-program audit 2026-09-22). At boot the first
-           protection passes run before the measurement warm-up completes; a
-           latched FAULT_ADC would then stick forever (nothing cleared it),
-           Changeover would sit in APP_STATE_FAULT and the charger would stay
-           in safe-idle for the rest of the power cycle. The bit clears by
-           itself in the branch below as soon as a valid snapshot arrives.
-           [FA] ADC الان معتبر نیست: به‌صورت وضعیت لحظه‌ای گزارش شود، نه
-           قفل دائمی (ممیزی کل برنامه ۲۰۲۶-۰۹-۲۲). در بوت، پاس‌های اول
-           حفاظت قبل از تکمیل warm-up اندازه‌گیری اجرا می‌شوند؛ FAULT_ADC
-           قفل‌شده تا ابد می‌ماند (هیچ‌جا پاک نمی‌شد)، Changeover در
-           APP_STATE_FAULT می‌ماند و شارژر تا پایان سیکل تغذیه safe-idle
-           می‌ماند. بیت در شاخهٔ پایین به‌محض رسیدن snapshot معتبر پاک
-           می‌شود. */
+        /* [EN] ADC invalid = LIVE state, never a latch: at boot the first
+           passes run before measurement warm-up; a latched FAULT_ADC would
+           stick forever (nothing cleared it) and park Changeover/Charger in
+           safe states for the whole power cycle. Clears itself below as
+           soon as a valid snapshot arrives.
+           [FA] ADC نامعتبر = وضعیت لحظه‌ای، نه قفل: پاس‌های اول بوت قبل از
+           warm-up اجرا می‌شوند و FAULT_ADC قفل‌شده تا ابد می‌ماند و
+           Changeover/شارژر را در حالت امن قفل می‌کند. به‌محض snapshot
+           معتبر در شاخهٔ پایین پاک می‌شود. */
         func__Fault_Set(FAULT_ADC);
         return;
     }

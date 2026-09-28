@@ -20,74 +20,50 @@
 /* ==================== Buzzer persistent state / وضعیت ماندگار بازر ==================== */
 
 /**
- * @brief  [EN] File-local validity flag for the stored buzzer configuration.
- *         It remains static because func__Ui_Buzzer_Tick() is called repeatedly
- *         and must know whether the current pattern has already been initialized.
- *         FALSE forces the next valid request to start a new buzzer cycle.
- *         [FA] پرچم اعتبار پیکربندی ذخیره‌شده بوق در سطح همین فایل.
- *         این متغیر static است چون func__Ui_Buzzer_Tick() به‌صورت تکراری صدا زده می‌شود
- *         و باید بداند آیا الگوی فعلی قبلاً مقداردهی شده است یا نه.
- *         مقدار FALSE باعث می‌شود درخواست معتبر بعدی از ابتدای یک چرخه جدید شروع شود.
+ * @brief  [EN] Validity flag of the stored pattern; false forces the next
+ *         valid request to start a new cycle.
+ *         [FA] پرچم اعتبار الگوی ذخیره‌شده؛ false یعنی درخواست معتبر بعدی
+ *         چرخهٔ جدید را از ابتدا شروع می‌کند.
  */
 static bool BOOL__G__BuzzerPatternValid = false;
 
 /* ==================== Buzzer period / دوره بازر ==================== */
 
 /**
- * @brief  [EN] Previously accepted complete buzzer period in milliseconds.
- *         It remains static so the service can compare the new period with the
- *         previous one and restart the timing cycle when the period changes.
- *         [FA] دوره کامل قبلی بوق بر حسب میلی‌ثانیه.
- *         این متغیر static است تا سرویس بتواند دوره جدید را با دوره قبلی مقایسه کند
- *         و اگر دوره تغییر کرد، زمان‌بندی چرخه را از ابتدا شروع کند.
+ * @brief  [EN] Last accepted period [ms]; a change restarts the cycle.
+ *         [FA] دورهٔ قبلی [ms]؛ تغییرش چرخه را از ابتدا شروع می‌کند.
  */
 static uint32_t UINT32_T__G__BuzzerPeriodMs = 0u;
 
 /* ==================== Buzzer duty and count / دیوتی و تعداد بوق ==================== */
 
 /**
- * @brief  [EN] Previously accepted duty-window percentage.
- *         It remains static so a change in duty can be detected between
- *         consecutive service calls and the pattern can be restarted safely.
- *         [FA] درصد پنجره دیوتی پذیرفته‌شده قبلی.
- *         این متغیر static است تا تغییر دیوتی بین دو فراخوانی متوالی تشخیص داده شود
- *         و الگو در صورت تغییر، به‌صورت امن از ابتدا شروع شود.
+ * @brief  [EN] Last accepted duty window [percent]; a change restarts.
+ *         [FA] پنجرهٔ دیوتی قبلی [درصد]؛ تغییرش چرخه را از ابتدا شروع می‌کند.
  */
 static uint8_t UINT8_T__G__BuzzerDutyPercent = 0u;
 
 /**
- * @brief  [EN] Previously accepted number of beeps inside the duty window.
- *         It remains static so changing the pulse count can restart the pattern
- *         instead of continuing with the timing of the old configuration.
- *         [FA] تعداد بوق‌های پذیرفته‌شده قبلی در پنجره دیوتی.
- *         این متغیر static است تا تغییر تعداد پالس باعث شروع دوباره الگو شود
- *         و زمان‌بندی پیکربندی قبلی ادامه پیدا نکند.
+ * @brief  [EN] Last accepted pulse count; a change restarts the pattern.
+ *         [FA] تعداد پالس قبلی؛ تغییرش الگو را از ابتدا شروع می‌کند.
  */
 static uint8_t UINT8_T__G__BuzzerCount = 0u;
 
 /* ==================== Buzzer gap / گپ بوق ==================== */
 
 /**
- * @brief  [EN] Previously accepted low gap between adjacent beeps in milliseconds.
- *         It remains static so a gap change can be detected and the cycle timing
- *         can be restarted with the new pattern.
- *         [FA] گپ خاموش پذیرفته‌شده قبلی بین بوق‌های مجاور بر حسب میلی‌ثانیه.
- *         این متغیر static است تا تغییر گپ تشخیص داده شود و زمان‌بندی چرخه
- *         با الگوی جدید از ابتدا شروع شود.
+ * @brief  [EN] Last accepted gap between pulses [ms]; a change restarts.
+ *         [FA] گپ قبلی بین بوق‌ها [ms]؛ تغییرش چرخه را از ابتدا شروع می‌کند.
  */
 static uint32_t UINT32_T__G__BuzzerGapMs = 0u;
 
 /* ==================== Buzzer cycle start / شروع چرخه بوق ==================== */
 
 /**
- * @brief  [EN] CMSIS-RTOS2 tick at which the current buzzer cycle started.
- *         It remains static because the service is non-blocking and is called
- *         in separate invocations. The stored tick is used to calculate elapsed
- *         time and decide whether the buzzer is ON, in a gap, or in the period tail.
- *         [FA] تیک RTOS در زمان شروع چرخه فعلی بوق.
- *         این متغیر static است چون سرویس غیرمسدودکننده است و در فراخوانی‌های جداگانه
- *         اجرا می‌شود. از این زمان برای محاسبه زمان سپری‌شده و تشخیص وضعیت بوق،
- *         گپ یا خاموشی انتهای دوره استفاده می‌شود.
+ * @brief  [EN] Tick of the current cycle start; the non-blocking service
+ *         derives elapsed time (on / gap / period tail) from it.
+ *         [FA] تیک شروع چرخهٔ فعلی؛ سرویس غیرمسدودکننده زمان سپری‌شده
+ *         (بوق/گپ/انتهای دوره) را از آن حساب می‌کند.
  */
 static uint32_t TICKTYPE_T__G__BuzzerCycleStartTick = 0;
 
@@ -159,13 +135,11 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         uint32_t__effectiveGapMs = uint32_t__gapMs;
     }
 
-    /* [EN] Duty window without overflowing a 32-bit period and WITHOUT u64
-       (flash diet 2026-09-27): (p/100)*d + ((p%100)*d)/100 is the identical
-       quotient for the FULL u32 range, and (p/100)*d peaks at 4,294,967,200
-       < 2^32 because duty <= 100 (proven over 200k random + edge values).
-       The u64 division pulled __aeabi_uldivmod (~1 KiB).
-       [FA] پنجره دیوتی بدون سرریز و بدون ۶۴بیت: خارج‌قسمت یکسان برای کل
-       بازه ۳۲بیت (دیوتی ≤۱۰۰ پس ضرب جا می‌شود). */
+    /* [EN] Duty window without u64 (flash diet): (p/100)*d + ((p%100)*d)/100
+       is the identical quotient for the full u32 range; (p/100)*d cannot
+       overflow because duty <= 100.
+       [FA] پنجرهٔ دیوتی بدون u64 و بدون سرریز: همان خارج‌قسمت برای کل بازهٔ
+       u32؛ ضرب جا می‌شود چون دیوتی ≤۱۰۰. */
     uint32_t__dutyWindowMs =
         ((uint32_t__periodMs / UI_BUZZER_PERCENT_SCALE) * (uint32_t)uint8_t__dutyPercent) +
         (((uint32_t__periodMs % UI_BUZZER_PERCENT_SCALE) * (uint32_t)uint8_t__dutyPercent) /

@@ -35,7 +35,7 @@
 |---|---|
 | `func__Protection_Init` | فعلاً خالی |
 | `func__Protection_Run` | `FAULT_ADC` را به‌صورت **وضعیت لحظه‌ای** می‌نویسد: snap تهی/نامعتبر → Set، snap معتبر → Clear (ممیزی کل برنامه ۲۰۲۶-۰۹-۲۲؛ قبلاً فقط Set بود و چون هیچ‌جا پاک نمی‌شد، با روشن‌شدن آیندهٔ این ماژول بیت در بوت قفل و شارژر برای همیشه safe-idle می‌شد). مقایسه جریان هنوز نیست |
-| `TaskProtection` | تا فلگ صفر Idle |
+| `TaskProtection` | تسک فقط با `MODULE_PROTECTION=1` ساخته می‌شود؛ فعلاً `MODULE_PROTECTION=0` است و تسک/این ماژول در بیلد فعلی اجرا نمی‌شود |
 
 حدهای بعدی در `APP_CONFIG`: `overcurrent1_ma`، `overcurrent2_ma`، `low_battery_mv`، `low_battery_recover_mv`.
 

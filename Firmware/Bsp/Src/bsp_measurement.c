@@ -24,48 +24,25 @@
  *      33K+1.2K / 6.8K. */
 #define BSP_MEASUREMENT_DIV24_TOP_OHMS   69200u
 #define BSP_MEASUREMENT_DIV24_BOTTOM_OHMS 6800u
-/* [EN] Battery-PACK 24 V net (user order 2026-09-25): its sense path does
-        NOT match the input net above - the user measured/knows the net
-        attenuation to the MCU pin as exactly 0.09826589595375722543352601156069
-        (= 6.8 k / 69.2 k), i.e. an effective total of 69.2 k over the same
-        6.8 k bottom (besides the 68 k there are a 1.2 k and a 6.8 k in the
-        path). The old shared 76 k assumption made the panel overread the
-        PACK voltage by 9.8 percent (~2.3 V at 24 V - beyond the old
-        +/-2 V offset range, which is why the pack read wrong). The INPUT
-        24 V net keeps the 76 k divider: bench-verified within +1.2 percent
-        (23889 vs 23600 mV, 2026-09-25 run).
-   [FA] نت باتری‌پک ۲۴V (دستور کاربر ۲۰۲۶-۰۹-۲۵): مسیر سنس آن با نت ورودی
-        بالا یکی نیست - کاربر تضعیف دقیق نت تا پایهٔ میکرو را
-        0.09826589595375722543352601156069 (= 6.8k/69.2k) داده؛ یعنی مجموع
-        مؤثر 69.2k روی همان پایین 6.8k (علاوه بر 68k، یک 1.2k و یک 6.8k
-        هم در مسیرش هست). فرض اشتراکی قدیمی 76k باعث می‌شد پنل ولتاژ پک را
-        ۹٫۸٪ (~2.3V در ۲۴V) زیاد بخواند - از بازهٔ آفست قدیمی ±2V بیرون؛
-        برای همین ولتاژ باتری کل اشتباه خوانده می‌شد. نت ورودی ۲۴V روی همان
-        مقسم 76k می‌ماند: در بنچ فقط +1٫۲٪ خطا داشت (23889 در برابر 23600mV،
-        اجرای ۲۰۲۶-۰۹-۲۵).
-   [EN] v1.19 CORRECTION (user order 2026-09-27, SOLO1 sweep): the 69.2 k
-        total above reads the pack ~1.4 V LOW against a DMM on the battery
-        terminals (18 points, duty 1..18%: firmware 22.7..26.0 V vs true
-        24.2..27.4 V) - it blinded the 15.0 V hard OV cut in manual mode
-        (firmware saw 13.9 V while the battery was at 15.2 V, the user had
-        to stop by hand) and every 14.4/14.6/15.0 V supervision in auto
-        mode. The INPUT channel on the same ADC reads +29 mV steady, which
-        acquits ADC/VREF - the error is pack-path-specific (likely the
-        1.2 k wrongly counted in the top: a series ADC-pin resistor does
-        not belong in the ratio; true top is nearer the schematic 68 k).
-        Bench truth (minimax over the sweep, top-exact +104 mV at 15.22 V
-        so the OV cut trips ~100 mV early - safe): effective total 73.0 k,
-        i.e. TOP 66200 over the same 6.8 k bottom. Re-verify pack+ with a
-        DMM after flashing.
-   [FA] اصلاح v1.19 (دستور کاربر ۲۰۲۶-۰۹-۲۷، سوییپ SOLO1): مجموع 69.2k
-        بالا پک را ‎~1.4V‎ کم می‌خواند (۱۸ نقطه برابر DMM ترمینال) - قطع
-        سخت ۱۵V دستی (فرم‌ور ۱۳٫۹V می‌دید و باتری ۱۵٫۲V بود، کاربر دستی
-        پایان زد) و همهٔ نظارت‌های خودکار را نابینا کرده بود. کانال ورودی
-        روی همان ADC ثابت ‎+29mV‎ است پس ADC/VREF تبرئه‌اند - خطا مختص
-        مسیر پک است (احتمالاً 1.2k اشتباه در تاپ شمرده شده). حقیقت بنچ
-        (مینیماکس روی سوییپ، دقیق در قله ‎+104mV‎ تا قطع OV کمی زودتر
-        بزند - امن): مجموع مؤثر 73.0k یعنی تاپ ۶۶۲۰۰ روی همان پایین 6.8k.
-        بعد از فلش پک+ با مولتی‌متر راستی‌آزمایی شود. */
+/* [EN] Battery-PACK 24 V net: its sense path is NOT the input net above
+        (besides the 68 k there are a 1.2 k and a 6.8 k in the path; the
+        old shared 76 k assumption overread the pack by 9.8 percent). The
+        INPUT 24 V net keeps the 76 k divider (bench-verified +1.2
+        percent). v1.19 CORRECTION (SOLO1 sweep vs a DMM on the battery
+        terminals): the 69.2 k total read the pack ~1.4 V LOW and blinded
+        the 15.0 V hard OV cut; the input channel on the same ADC reads
+        +29 mV steady, so the error is pack-path-specific. Bench truth
+        (minimax, top-exact +104 mV so the OV cut trips ~100 mV early -
+        safe): effective total 73.0 k = TOP 66200 over the same 6.8 k
+        bottom. Re-verify pack+ with a DMM after flashing.
+   [FA] نت باتری‌پک ۲۴V با نت ورودی یکی نیست (علاوه بر 68k، یک 1.2k و یک
+        6.8k در مسیرش هست؛ فرض اشتراکی قدیمی 76k پک را ۹٫۸٪ زیاد می‌خواند).
+        نت ورودی روی همان 76k می‌ماند (بنچ +۱٫۲٪). اصلاح v1.19 (سوییپ SOLO1
+        برابر DMM ترمینال): مجموع 69.2k پک را ~1.4V کم می‌خواند و قطع سخت
+        ۱۵V را نابینا کرده بود؛ کانال ورودی روی همان ADC ثابت +29mV است
+        پس خطا مختص مسیر پک است. حقیقت بنچ (مینیماکس، دقیق در قله +104mV
+        تا قطع OV زودتر بزند - امن): مجموع مؤثر 73.0k یعنی تاپ ۶۶۲۰۰ روی
+        همان پایین 6.8k. بعد از فلش با مولتی‌متر راستی‌آزمایی شود. */
 #define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS 66200u
 #define BSP_MEASUREMENT_DIV24BAT_BOTTOM_OHMS 6800u
 #define BSP_MEASUREMENT_DIV12_TOP_OHMS   34200u
@@ -105,25 +82,19 @@
  *      only the offset and the bench gain permille differ per channel.
  * [FA] کالیبراسیون پر-کانال (دستور کاربر): توپولوژی هر دو زنجیره یکی است و
  *      فقط آفست و ضریب گینِ بنچ هر کانال جدا تنظیم می‌شود. */
-/* [EN] Channel 2 (Trans2 / Shunt2 -> PA7): the bench-verified pair
- *      (2026-09-18, fixed 15% duty: firmware read 330 mA while scope MEAN at
- *      the LM358 output gave 362/1.01 = 358 mA true primary; 358/330 = 1085
- *      permille). After this the mA readout equals the physical primary
- *      current; the ETA conversion factors live in CHG_FLYBACK_ETA1/ETA2_PERMILLE (charger.h, v1.3).
- *      2026-09-24 (user order: calibrate from the given bench numbers, no
- *      further tests): gain re-set at the D=15% point - displayed 354 vs
- *      425 mA DMM true (latest of 320/354, readings drift upward through
- *      the session) -> 1085 * 425/354 = 1303 permille. The chain stays
- *      non-linear (D=10%: 185/200/208 vs 185 true, reads ~222-250 after
- *      this trim) - a solo hardware re-check remains on the bench list.
- * [FA] کانال ۲ (Trans2/Shunt2): زوج تأییدشدهٔ بنچ؛ نرم‌افزار ۳۳۰ می‌خواند،
- *      اسکوپ ۳۵۸ واقعی؛ ضریب ۱۰۸۵ پرمیل تا خوانش = جریان فیزیکی اولیه.
- *      ۲۰۲۶-۰۹-۲۴ (دستور کاربر: کالیبره از همین اعداد بنچ، بدون تست بیشتر):
- *      گین در نقطهٔ D=15% تنظیم شد — نمایش 354 در برابر 425 واقعی (آخرین
- *      خوانش از 320/354؛ خوانش‌ها در طول جلسه رو به بالا می‌روند) ←
- *      1085×425÷354 = ۱۳۰۳ پرمیل. زنجیره هنوز غیرخطی است (D=10%:
- *      185/200/208 در برابر 185 واقعی؛ پس از این اصلاح ~222-250 می‌خواند) —
- *      تست تکیِ سخت‌افزاری در فهرست بنچ می‌ماند. */
+/* [EN] Channel 2 (Trans2 / Shunt2 -> PA7): bench-calibrated pair. The
+ *      2026-09-18 scope run gave 1085 permille (330 read vs 358 mA true
+ *      primary at fixed 15% duty); the 2026-09-24 user order (calibrate
+ *      from the given bench numbers, no further tests) re-set the gain at
+ *      the D=15% point: 1085 x 425/354 = 1303 permille (displayed 354 vs
+ *      425 mA DMM true). The chain stays non-linear (D=10%: reads
+ *      ~222-250 vs 185 true) - a solo hardware re-check stays on the
+ *      bench list; the LUT above the chain is the real correction.
+ * [FA] کانال ۲ (Trans2/Shunt2): زوج کالیبره‌شدهٔ بنچ. ران اسکوپ ۲۰۲۶-۰۹-۱۸
+ *      ۱۰۸۵ پرمیل داد؛ دستور ۲۰۲۶-۰۹-۲۴ (کالیبره از همین اعداد، بدون تست
+ *      بیشتر) گین را در نقطهٔ D=15% گذاشت: 1085×425÷354 = ۱۳۰۳ پرمیل.
+ *      زنجیره هنوز غیرخطی است (D=10%: ~222-250 در برابر 185 واقعی) — تست
+ *      تکی سخت‌افزاری در فهرست بنچ می‌ماند؛ اصلاح واقعی LUT روی زنجیره است. */
 #define BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS 8u
 #define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE 1303u
 /* [EN] Channel 1 (Trans1 / Shunt1 -> PA1): bench-calibrated 2026-09-24,
@@ -260,41 +231,33 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
 
 /**
  * @brief  [EN] Shared current formula of both channels, one stage per
- *              schematic element (user order 2026-09-22: coefficients from
- *              the actual resistor values): counts -> ADC pin mV ->
- *              undo the R41/R42 MCU divider -> undo the LM358 gain ->
- *              undo the shunt mOhms -> mA, then subtract the per-channel
- *              zero offset and apply the per-channel bench gain permille.
+ *              schematic element: counts -> ADC pin mV -> undo the
+ *              R41/R42 MCU divider -> undo the LM358 gain -> undo the
+ *              shunt mOhms -> mA, then subtract the per-channel zero
+ *              offset and apply the per-channel bench gain permille.
  *              Every multiply carries its own numerator/denominator stage
- *              and only ONE division runs at the very end, so no
- *              intermediate truncation accumulates.
- *         [FA] قالب فرمول مشترک هر دو کانال، یک مرحله برای هر المان شماتیک
- *              (دستور کاربر ۲۰۲۶-۰۹-۲۲: ضرایب از مقدار واقعی مقاومت‌ها):
- *              شمارش -> mV پایه ADC -> خنثی‌کردن تقسیم R41/R42 -> خنثی‌کردن
- *              گین LM358 -> خنثی‌کردن mΩ شانت -> mA، سپس کم‌کردن آفست صفر
- *              پر-کانال و اعمال گین پرمیل بنچ. هر ضرب مرحلهٔ صورت/مخرج خودش
- *              را جابه‌جا می‌کند و فقط یک تقسیم در انتها اجرا می‌شود تا
- *              خطای گردشدن میانی جمع نشود.
- * @note   [EN] Flash diet 2026-09-27: the five runtime stages are folded
- *              into ONE 32-bit multiply+divide with BIT-IDENTICAL results
- *              (exhaustively proven for all 4096 counts, no intermediate
- *              truncation today and none after). The u64 division pulled
- *              __aeabi_uldivmod (~1 KiB) which the F103C8 image no longer
- *              fits. Derivation from the schematic values, kept staged so
- *              it stays auditable against the resistors:
+ *              and only ONE division runs at the very end (no
+ *              intermediate truncation accumulates).
+ *         [FA] قالب فرمول مشترک هر دو کانال، یک مرحله برای هر المان
+ *              شماتیک: شمارش -> mV پایه ADC -> خنثی‌کردن تقسیم R41/R42 ->
+ *              خنثی‌کردن گین LM358 -> خنثی‌کردن mΩ شانت -> mA، سپس آفست
+ *              صفر پر-کانال و گین پرمیل بنچ. هر ضرب مرحلهٔ صورت/مخرج خودش
+ *              را جابه‌جا می‌کند و فقط یک تقسیم در انتها اجرا می‌شود.
+ * @note   [EN] Flash diet: the five runtime stages are folded into ONE
+ *              32-bit multiply+divide with BIT-IDENTICAL results (proven
+ *              for all 4096 counts; the u64 division pulled
+ *              __aeabi_uldivmod ~1 KiB). Derivation from the schematic
+ *              values, kept staged so it stays auditable:
  *                num = counts x VREF(3300) x (R41+R42)(11000) x MA_PER_A(1000)
  *                den = FULL(4095) x R42(10000) x GAIN(101) x SHUNT(10 mOhm)
- *                = counts x 36,300,000,000 / 41,359,500,000
- *                = counts x 24200 / 27573          (both sides / 1,500,000;
+ *                = counts x 24200 / 27573   (both sides / 1,500,000;
  *                  24200 x 4095 = 99,099,000 < 2^32, exact for every count).
  *              If ANY resistor/value above ever changes, re-derive (the
- *              host test recomputes the collapse from these defines and
- *              fails the build otherwise).
+ *              host test recomputes the collapse from these defines).
  *         [FA] رژیم فلش: پنج مرحله در یک ضرب+تقسیم ۳۲بیتی با نتیجهٔ
- *              بیت‌به‌بیت یکسان جمع شد (برای هر ۴۰۹۶ شمارش اثبات شده).
- *              تقسیم ۶۴بیتی ~۱KB کتابخانه می‌خواست که در فلش جا نمی‌شود.
- *              اگر مقاومتی عوض شد دوباره اشتقاق بگیر (تست هاست از همین
- *              دیفاین‌ها بازمحاسبه می‌کند وگرنه می‌شکند).
+ *              بیت‌به‌بیت یکسان جمع شد (اثبات برای هر ۴۰۹۶ شمارش؛ تقسیم
+ *              ۶۴بیتی ~۱KB می‌خواست). اگر مقاومتی عوض شد دوباره اشتقاق
+ *              بگیر (تست هاست از همین دیفاین‌ها بازمحاسبه می‌کند).
  * @param  uint16_t__counts           [EN] ADC count / شمارش ADC
  * @param  uint32_t__offsetCounts     [EN] zero-current offset, counts / آفست صفر
  * @param  uint32_t__gainPermille     [EN] bench gain permille / ضریب گین بنچ
@@ -374,14 +337,12 @@ uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts)
 /**
  * @brief  [EN] Set the zero-current offset (raw counts) of one current
  *              channel at runtime, clamped to 0..255. Channel 0 = the
- *              Trans1/Shunt1 chain, channel 1 = Trans2/Shunt2. The value
- *              is flash-persisted (v1.14 NVM); a reboot keeps the tuned
- *              value (ESP panel, user order 2026-09-22).
+ *              Trans1/Shunt1 chain, channel 1 = Trans2/Shunt2.
+ *              Flash-persisted (NVM); a reboot keeps the tuned value.
  *         [FA] آفست جریان صفر (شمارش خام) یک کانال را در زمان اجرا تنظیم
  *              می‌کند، گیره در ۰..۲۵۵. کانال ۰ = زنجیرهٔ Trans1/Shunt1 و
- *              کانال ۱ = Trans2/Shunt2. مقدار روی فلش می‌ماند (NVM نسخهٔ
- *              ۱.۱۴)؛ ری‌استارت مقدار تنظیم‌شده را نگه می‌دارد (پنل ESP،
- *              دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ *              کانال ۱ = Trans2/Shunt2. روی فلش می‌ماند؛ ری‌استارت مقدار
+ *              تنظیم‌شده را نگه می‌دارد.
  * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
  * @param  uint32_t__offsetCounts [EN] Requested offset in counts / آفست
  * @return uint32_t [EN] Actually applied offset / آفست اعمال‌شده
@@ -497,30 +458,25 @@ uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts)
 
 /**
  * @brief  [EN] Pure hardware chain only: raw current counts of either
- *              channel to the voltage across the sense shunt, in
- *              microvolts. Applies exactly the three hardware stages -
- *              ADC reference, R41(1k)/R42(10k) input divider, amplifier
- *              gain - and deliberately NO zero offset and NO bench trim,
- *              so the value can be checked directly against a scope probe
- *              on the LM358 output (mV = uV x 101 / 1000). Live
- *              diagnostic for the current-chain review, user order
- *              2026-09-22.
+ *              channel to the shunt voltage in microvolts - exactly the
+ *              three hardware stages (ADC reference, R41/R42 divider,
+ *              amplifier gain), deliberately NO zero offset and NO bench
+ *              trim, so the value checks directly against a scope probe
+ *              on the LM358 output (mV = uV x 101 / 1000).
  *         [FA] فقط زنجیرهٔ سخت‌افزاری: شمارش خام جریان هر کانال به ولتاژ
- *              دو سر شانت بر حسب میکروولت. دقیقاً سه مرحلهٔ سخت‌افزاری را
- *              اعمال می‌کند - مرجع ADC، مقسم ورودی R41(1k)/R42(10k)، گین
- *              تقویت‌کننده - و عمداً نه آفست صفر و نه اصلاح بنچ، تا مقدار
- *              مستقیم با پروب اسکوپ روی خروجی LM358 قابل مقایسه باشد
- *              (mV = uV x 101 / 1000). دیاگ زندهٔ بررسی زنجیرهٔ جریان،
- *              دستور کاربر ۲۰۲۶-۰۹-۲۲.
- * @note   [EN] Flash diet 2026-09-27: same fold as ConvertCurrent (one
- *              u32 multiply+divide, BIT-IDENTICAL for all 4096 counts):
+ *              دو سر شانت بر حسب میکروولت - دقیقاً سه مرحلهٔ سخت‌افزاری،
+ *              عمداً بدون آفست صفر و بدون اصلاح بنچ، تا مستقیم با پروب
+ *              اسکوپ روی خروجی LM358 قابل مقایسه باشد (mV = uV×101÷1000).
+ * @note   [EN] Flash diet: same fold as ConvertCurrent (one u32
+ *              multiply+divide, bit-identical for all 4096 counts):
  *                num = counts x VREF(3300) x (R41+R42)(11000) x UV_PER_MV(1000)
  *                den = FULL(4095) x R42(10000) x GAIN(101)
- *                = counts x 36,300,000,000 / 4,135,950,000
- *                = counts x 242000 / 27573        (both sides / 150,000;
+ *                = counts x 242000 / 27573  (both sides / 150,000;
  *                  242000 x 4095 = 990,990,000 < 2^32, exact every count).
  *              Re-derive if any value changes (host test recomputes).
- *         [FA] رژیم فلش: مثل تابع بالا جمع شد؛ دقیق برای هر شمارش.
+ *         [FA] رژیم فلش: همان تا‌کردن ConvertCurrent (یک ضرب+تقسیم u32،
+ *              بیت‌به‌بیت یکسان برای هر ۴۰۹۶ شمارش). با تغییر هر مقدار
+ *              دوباره اشتقاق بگیر (تست هاست بازمحاسبه می‌کند).
  * @param  uint16_t__counts [EN] Raw ADC count of a current channel /
  *                              شمارش خام ADC یک کانال جریان
  * @return uint32_t [EN] Shunt voltage in uV / ولتاژ شانت بر حسب uV

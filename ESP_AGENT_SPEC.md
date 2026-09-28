@@ -590,7 +590,7 @@ integer-math replay: every DMM point reads EXACTLY (worst 0 pure-LUT, 4
 end-to-end with the corrected divisor, mixed sign; old linear S-curve
 -29..+72 mA). Gate (5,0): D1..D3 never exceed chain 1. D7's dip is the
 curve (kept); D5's DMM voltage is a +150 mV outlier (harmless at 36 mA).
-Above the last anchor the last slope (13.15 mW per chain-mA) extends.
+Above the last anchor the last slope (13.14 mW per chain-mA) extends.
 The wire protocol is unchanged. v1.12 (same day): all three
 calibration tables moved to ONE separate file,
 `Firmware/Modules/Measurement/calibration.h` (user order: one file named

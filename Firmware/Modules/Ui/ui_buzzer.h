@@ -89,24 +89,20 @@
 /* ==================== Buzzer service / سرویس بازر ==================== */
 
 /**
- * @brief  [EN] Service one periodic buzzer pattern without blocking the task.
- *         The pattern repeats every periodMs. The duty window is periodMs*dutyPercent/100.
- *         beepCount pulses share that duty window; gapMs is inserted between adjacent pulses.
- *         A zero period, zero duty, or zero count turns the buzzer off and returns
- *         UI_BUZZER_OFF_RESULT. A non-zero period below UI_BUZZER_MIN_PERIOD_MS,
- *         an out-of-range duty, a too-small gap for multiple pulses, or a pattern
- *         without positive time for every pulse turns the buzzer off and returns
- *         UI_BUZZER_INVALID_RESULT. Valid patterns return the recommended next-call
- *         delay: UI_BUZZER_CHECK_PERCENT of the smallest positive pattern segment.
- *         [FA] یک الگوی دوره‌ای بوق را بدون قفل کردن تسک اجرا می‌کند.
- *         الگو هر periodMs تکرار می‌شود و پنجره دیوتی برابر periodMs*dutyPercent/100 است.
- *         تعداد beepCount بوق این پنجره را تقسیم می‌کنند و gapMs بین بوق‌های مجاور قرار می‌گیرد.
- *         دوره صفر، دیوتی صفر یا تعداد صفر، بوق را خاموش و UI_BUZZER_OFF_RESULT را برمی‌گرداند.
- *         دوره غیرصفر کمتر از UI_BUZZER_MIN_PERIOD_MS، دیوتی خارج از محدوده،
- *         گپ کمتر از حد مجاز برای چند بوق، یا نبود زمان مثبت برای همه بوق‌ها،
- *         بوق را خاموش و UI_BUZZER_INVALID_RESULT را برمی‌گرداند.
- *         در الگوی معتبر، زمان مراجعه بعدی برابر UI_BUZZER_CHECK_PERCENT درصد
- *         کوچک‌ترین بخش مثبت الگو است.
+ * @brief  [EN] Service one periodic buzzer pattern without blocking the
+ *         task. Pattern repeats every periodMs; duty window =
+ *         periodMs*dutyPercent/100, beepCount pulses share it, gapMs sits
+ *         between adjacent pulses. Zero period/duty/count = OFF result;
+         a too-short period, out-of-range duty, too-small gap for multiple
+ *         pulses, or no positive time per pulse = INVALID result (buzzer
+ *         off). Valid patterns return the recommended next-call delay
+         (UI_BUZZER_CHECK_PERCENT of the smallest positive segment).
+ *         [FA] اجرای غیرمسدودکنندهٔ یک الگوی دوره‌ای بوق. الگو هر periodMs
+ *         تکرار می‌شود؛ پنجرهٔ دیوتی = periodMs*dutyPercent/100 که beepCount
+ *         بوق آن را تقسیم می‌کنند و gapMs بین بوق‌های مجاور است. صفر بودن
+ *         دوره/دیوتی/تعداد = خاموشی معتبر؛ دورهٔ کوتاه، دیوتی خارج از بازه،
+ *         گپ کم برای چند بوق یا نبود زمان مثبت برای هر بوق = نامعتبر (بوق
+ *         خاموش). الگوی معتبر زمان مراجعهٔ بعدی را برمی‌گرداند.
  * @param  uint32_t__periodMs [EN] Pattern period in ms / دوره الگو بر حسب ms
  * @param  uint8_t__dutyPercent [EN] Duty window 0..100 percent / پنجره دیوتی از صفر تا صد درصد
  * @param  uint8_t__beepCount [EN] Number of pulses; zero disables / تعداد پالس؛ صفر یعنی خاموش

@@ -1,21 +1,21 @@
 /**
  * @file    mcu_power_path.h
- * @brief   [EN] MCU self-supply path via Q1 (PB5) - independent from Changeover Q17 (PB11).
- *              Q1 is the MCU battery switch (active-low): PB5 Low = battery connected, High = disconnected.
- *              Input presence is PB4 (BSP_GPIO_INPUT_24V_PRESENT) with both-edge EXTI;
- *              valid input for qualification is v_in >= 22000mV for 5000ms, reconnect is v_in < 21500mV (hysteresis 500mV).
- *              After continuous 5s qualification Q1 disconnects; hysteresis dead-band 21500-21999mV preserves Q1; falling PB4 reconnects immediately in ISR.
- *          [FA] مسیر تغذیهٔ خود MCU با Q1 (PB5) - مستقل از Changeover Q17 (PB11).
- *              Q1 کلید باتری MCU (active-low): PB5 Low = باتری وصل، High = باتری قطع.
- *              تشخیص ورودی PB4 با وقفه دو لبه؛ احراز ورودی معتبر v_in >= 22000mV برای 5000ms، اتصال مجدد v_in < 21500mV (هیسترزیس 500mV).
+ * @brief   [EN] MCU self-supply path via Q1 (PB5, active-low: Low = battery
+ *              connected), independent from Changeover (PB11). Qualify
+ *              v_in >= 22000 mV for 5000 ms => Q1 off; v_in < 21500 mV =>
+ *              Q1 on; 21500..21999 = dead-band (preserve Q1); PB4 falling
+ *              edge reconnects immediately in ISR.
+ *          [FA] مسیر تغذیهٔ خود MCU با Q1 (PB5، active-low) مستقل از
+ *              Changeover (PB11): v_in >= 22000mV به‌مدت 5000ms ← قطع؛
+ *              v_in < 21500mV ← وصل؛ ۲۱۵۰۰..۲۱۹۹۹ نوار مرده؛ لبهٔ نزولی PB4
+ *              بلافاصله در ISR وصل می‌کند.
  *
- * @note    [EN] This module owns ONLY PB5 (BSP_GPIO_BATTERY_SWITCH). PB11 remains owned by Changeover.
- *              Changeover thresholds (21000/20800/21200, 3000ms) are not used here.
- *              Thresholds are for v_in only, not v_bat24. PB4 falling edge still reconnects in ISR without ADC wait.
- *              No board_pins.h, no HAL, no float/queue/mutex in ISR; ISR does only GPIO write and volatile flag.
- *              Time conversion ONLY via rtos_time.h; tick=1ms assumption is forbidden.
- *          [FA] این ماژول فقط مالک PB5 است؛ PB11 در اختیار Changeover می‌ماند.
- *              آستانه‌های Changeover در این ماژول استفاده نمی‌شوند. آستانه‌ها برای v_in هستند، نه v_bat24.
+ * @note    [EN] Owns ONLY PB5; thresholds apply to v_in only (not v_bat24);
+ *              Changeover thresholds are not used. No board_pins.h/HAL/
+ *              float; ISR does only GPIO write + volatile flags; time via
+ *              rtos_time.h only.
+ *          [FA] فقط مالک PB5 است؛ آستانه‌ها فقط برای v_in هستند و آستانه‌های
+ *              Changeover اینجا استفاده نمی‌شوند.
  */
 
 #ifndef MCU_POWER_PATH_H
@@ -36,20 +36,18 @@
 #define MCU_POWER_INPUT_STABLE_MS       5000u
 
 /**
- * @brief  [EN] Voltage at or above which DC input qualifies for the 5s disconnect timer, in millivolts.
- *         Range 0..40000 mV; effect: v_in_mv >= 22000 is required to start/continue the 5s qualification.
- *         If Q1 is already disconnected, staying in 21500..21999 does NOT reconnect; only <21500 reconnects.
- *         This threshold is independent from Changeover thresholds and is for v_in only.
- *         [FA] ولتاژی که از آن به بالا ورودی DC واجد شرایط تایمر 5 ثانیه قطع می‌شود، بر حسب میلی‌ولت.
+ * @brief  [EN] Input qualification threshold [mV] for the 5 s disconnect
+ *         timer (v_in only; staying in the dead-band does NOT reconnect).
+ *         [FA] آستانهٔ احراز ورودی [mV] برای تایمر ۵ ثانیهٔ قطع (فقط v_in؛
+ *         ماندن در نوار مرده وصل نمی‌کند).
  */
 #define MCU_POWER_INPUT_QUALIFY_MV      22000u
 
 /**
- * @brief  [EN] Voltage below which a previously disconnected battery path reconnects, in millivolts.
- *         Range 0..40000 mV; effect: v_in_mv < 21500 forces battery reconnect (PB5 Low) and cancels timer.
- *         Dead-band 21500..21999 preserves current Q1 state; 21.9V alone does not reconnect.
- *         For v_in only, not v_bat24.
- *         [FA] ولتاژی که پایین‌تر از آن مسیر باتری قبلاً قطع‌شده دوباره وصل می‌شود، بر حسب میلی‌ولت.
+ * @brief  [EN] Reconnect threshold [mV]: below it Q1 goes Low (battery
+ *         connected) and the timer cancels; 21500..21999 preserves Q1.
+ *         [FA] آستانهٔ اتصال مجدد [mV]: پایین‌تر از آن Q1 می‌شود Low و
+ *         تایمر لغو می‌شود؛ ۲۱۵۰۰..۲۱۹۹۹ حالت Q1 را حفظ می‌کند.
  */
 #define MCU_POWER_INPUT_RECONNECT_MV    21500u
 

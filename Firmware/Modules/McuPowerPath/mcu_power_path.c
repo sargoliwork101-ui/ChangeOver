@@ -71,11 +71,13 @@ void func__McuPowerPath_OnInputIrq(void)
 }
 
 /**
- * @brief  [EN] || func__McuPowerPath_Run || Periodic qualification (~10 ms) for normal delayed disconnect with hysteresis.
- *              Hysteresis bands on v_in (not v_bat): >=22000 → 5s qualify then Q1 off; 21500..21999 → cancel timer, preserve Q1;
- *              <21500 → reconnect Q1 on (Low) and cancel timer. Battery voltage irrelevant while input valid.
- *              No PB11 or Changeover thresholds used here. PB4 falling still handled in ISR immediately.
- *         [FA] || func__McuPowerPath_Run || سنجش دوره‌ای با هیسترزیس برای قطع تأخیری عادی.
+ * @brief  [EN] Periodic qualification (~10 ms): v_in >= 22000 for 5 s =>
+ *         Q1 off; 21500..21999 => cancel timer, preserve Q1; < 21500 =>
+ *         Q1 on. Battery voltage is irrelevant while the input is valid;
+ *         PB4 falling is still handled in the ISR.
+ *         [FA] سنجش دوره‌ای (~۱۰ms) با هیسترزیس: v_in >= 22000 برای ۵s ←
+ *         قطع؛ ۲۱۵۰۰..۲۱۹۹۹ ← لغو تایمر و حفظ Q1؛ < 21500 ← وصل. ولتاژ
+ *         باتری بی‌اثر است و لبهٔ PB4 همچنان در ISR مدیریت می‌شود.
  */
 void func__McuPowerPath_Run(void)
 {
@@ -162,17 +164,13 @@ void func__McuPowerPath_Run(void)
                 /* [EN] Stable 5 s achieved -> disconnect MCU battery path (Q1 off = PB5 High).
                  *      Must not touch PB11/Q17.
                  * [FA] پس از 5 ثانیه پایدار، مسیر باتری MCU را قطع کن (Q1 خاموش = PB5 High). */
-                /* [EN] Live PB4 veto (full-program audit 2026-09-26): the
-                 *      snapshot above can be stale - if the input died in
-                 *      the same pass the 5 s elapsed, disconnecting now
-                 *      would brown out the MCU. PB4 is real-time hardware;
-                 *      when it reads absent, fall through to the reconnect
-                 *      path instead (same as the <21500 band).
-                 * [FA] وتوی زندهٔ PB4 (ممیزی کل برنامه): snapshot بالا
-                 *      می‌تواند کهنه باشد - اگر ورودی همان پاسی که ۵ ثانیه
-                 *      تمام شد مرده باشد، قطع‌کردن الان MCU را بی‌برق
-                 *      می‌کند. PB4 سخت‌افزار بلادرنگ است؛ اگر غایب خواند،
-                 *      به‌جای قطع به مسیر اتصال مجدد برو (مثل باند ۲۱۵۰۰>). */
+                /* [EN] Live PB4 veto: the snapshot can be stale - if the
+                 *      input died in the very pass the 5 s elapsed, cutting
+                 *      now would brown out the MCU. PB4 is real-time
+                 *      hardware: absent => take the reconnect path instead.
+                 * [FA] وتوی زندهٔ PB4: snapshot می‌تواند کهنه باشد؛ اگر ورودی
+                 *      همان پاسِ پایان ۵s مرده باشد، قطع‌کردن MCU را بی‌برق
+                 *      می‌کند. PB4 بلادرنگ است: غایب ← مسیر اتصال مجدد. */
                 if (func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT) == false)
                 {
                     BOOL__G__McuPowerTimerActive = false;
