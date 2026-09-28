@@ -757,35 +757,29 @@ static const measurement_snapshot_t *MEASUREMENT_SNAPSHOT_T__G__CalSnap = NULL;
 
 #if MODULE_CHARGER
 /**
- * @brief  [EN] Apply one CAL_REFERENCE (protocol v1.3, user order
- *              2026-09-24): calibrate a gain or an ETA factor from a typed
- *              multimeter reading - the firmware does the math on its own
- *              live snapshot, the panel never needs it.
- *              target 0/1 = GAIN ch1/ch2: new gain = gain x ref / i_live
- *              (the setter clamps 100..3000); that channel's ETA is reset
- *              to 0 because the old ETA absorbed the old gain - rerun
- *              target 2/3 afterwards.
- *              target 2/3 = ETA ch1/ch2: eta = ref x Vbat x 1000 /
- *              (i_live x Vin) from the live snapshot (ch1 battery =
- *              v_bat_high_mv, ch2 = v_bat_low_mv).
- *              Returns false (caller sends nothing) when the snapshot is
- *              missing/invalid, ref is outside 50..5000 mA, the live
- *              filtered current is below 50 mA, or (ETA only) Vin/Vbat are
- *              below the charger minimums.
- *         [FA] اعمال یک CAL_REFERENCE (پروتکل v1.3، دستور کاربر
- *              ۲۰۲۶-۰۹-۲۴): کالیبره‌کردن گین یا ضریب η از عدد مولتی‌متر -
- *              محاسبه را خود فریم‌ور روی snapshot زنده‌اش انجام می‌دهد و
- *              پنل به ریاضی نیاز ندارد.
- *              target 0/1 = گین کانال۱/۲: گین جدید = گین × ref ÷ جریان زنده
- *              (setter بین ۱۰۰..۳۰۰۰ گیره می‌زند)؛ η همان کانال صفر می‌شود
- *              چون η قدیمی خطای گین قدیمی را جذب کرده بود - بعدش دوباره
- *              target 2/3 بدهید.
- *              target 2/3 = η کانال۱/۲: η = ref × Vbat × ۱۰۰۰ ÷ (جریان زنده
- *              × Vin) از snapshot زنده (باتری ch1 = v_bat_high_mv و
- *              ch2 = v_bat_low_mv).
- *              false برمی‌گرداند (فراخواننده چیزی نمی‌فرستد) وقتی snapshot
- *              نیست/نامعتبر است، ref بیرون ۵۰..۵۰۰۰ mA است، جریان فیلترشدهٔ
- *              زنده زیر ۵۰ mA است، یا (فقط η) Vin/Vbat زیر حد شارژرند.
+ * @brief  [EN] Apply one CAL_REFERENCE (protocol v1.3): calibrate a gain
+ *              or an ETA factor from a typed multimeter reading - the
+ *              firmware does the math on its own live snapshot, the panel
+ *              never needs it. target 0/1 = GAIN ch1/ch2: new gain =
+ *              gain x ref / i_live (setter clamps 100..3000); that
+ *              channel's ETA resets to 0 because the old ETA absorbed the
+ *              old gain - rerun target 2/3 afterwards. target 2/3 = ETA
+ *              ch1/ch2: eta = ref x Vbat x 1000 / (i_live x Vin) from the
+ *              live snapshot (ch1 battery = v_bat_high_mv, ch2 =
+ *              v_bat_low_mv). Returns false (nothing sent) when the
+ *              snapshot is missing/invalid, ref is outside 50..5000 mA,
+ *              the live filtered current is below 50 mA, or (ETA only)
+ *              Vin/Vbat are below the charger minimums.
+ *         [FA] اعمال یک CAL_REFERENCE: کالیبره‌کردن گین یا ضریب η از عدد
+ *              مولتی‌متر - محاسبه را خود فریم‌ور روی snapshot زنده‌اش انجام
+ *              می‌دهد. target 0/1 = گین ch1/ch2: گین جدید = گین × ref ÷
+ *              جریان زنده (گیرهٔ ۱۰۰..۳۰۰۰)؛ η همان کانال صفر می‌شود چون η
+ *              قدیمی خطای گین قدیمی را جذب کرده بود - بعدش دوباره target
+ *              2/3. target 2/3 = η ch1/ch2: η = ref × Vbat × ۱۰۰۰ ÷ (جریان
+ *              زنده × Vin) از snapshot زنده (باتری ch1 = v_bat_high_mv و
+ *              ch2 = v_bat_low_mv). false وقتی snapshot نیست/نامعتبر است،
+ *              ref بیرون ۵۰..۵۰۰۰mA است، جریان زنده زیر ۵۰mA است یا (فقط η)
+ *              ولتاژها زیر حد شارژرند.
  * @param  uint8_t__target [EN] 0..3 / هدف، ۰..۳
  * @param  uint32_t__refMa [EN] Typed DMM reading, mA / عدد مولتی‌متر، mA
  * @param  uint8_t *uint8_t__paramIdOut [EN] Param id for the report / id پارامتر برای گزارش
@@ -1115,18 +1109,13 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
 /* ==================== EspLink_Init ==================== */
 
 /**
- * @brief  [EN] Bring the link up: select the UART backend (also enables the
+ * @brief  [EN] Bring the link up: select the UART backend (enables the
  *              USART1 interrupt and arms the interrupt-driven reception),
- *              reset the parser and power the ESP (CH_PD high). The link
- *              stage is active only while MODULE_ESP is enabled; the former
- *              keep-the-ESP-off safe default applied to the time before a
- *              command protocol existed (user order 2026-09-22).
- *         [FA] لینک را بالا می‌آورد: انتخاب backend ی UART (همچنین فعال‌کردن
- *              وقفهٔ USART1 و مسلح‌کردن دریافت وقفه‌ای)، ریست پارسر و
- *              روشن‌کردن ESP (CH_PD.high). این مرحله فقط با فعال‌بودن
- *              MODULE_ESP فعال است؛ پیش‌فرض امنِ قبلی (ESP خاموش) به
- *              دورهٔ قبل از وجود پروتکل فرمان مربوط بود (دستور کاربر
- *              ۲۰۲۶-۰۹-۲۲).
+ *              reset the parser and power the ESP (CH_PD high). Active
+ *              only while MODULE_ESP is enabled.
+ *         [FA] لینک را بالا می‌آورد: انتخاب backend ی UART (فعال‌کردن وقفهٔ
+ *              USART1 و مسلح‌کردن دریافت وقفه‌ای)، ریست پارسر و روشن‌کردن
+ *              ESP (CH_PD high). فقط با فعال‌بودن MODULE_ESP فعال است.
  */
 void func__EspLink_Init(void)
 {
@@ -1185,17 +1174,15 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
     func__EspLink_SendTelemetry(measurement_snapshot_t__snap,
                                 fault_mask_t__faults);
 
-    /* [EN] v1.14: debounced flash save of the persisted parameters. A
-       save stalls the whole CPU ~30..50 ms (F1 single bank, no
-       read-while-write: SysTick time jumps, EXTI/UART ISRs go latent,
-       in-flight UART bytes overrun into CRC retries) - NOT just this
-       task's period. Since the v1.16 audit the charger is suspended
-       (gates at 0) around the save (user order 2026-09-27), so no
-       switching happens inside the blind window; the stall itself is
-       inherent to the part.
-       [FA] v1.14: ذخیرهٔ دیبانس‌شدهٔ فلش. هر ذخیره کل CPU را ~۳۰..۵۰ms نگه
-       می‌دارد (تک‌بانک F1: پرش ساعت کرنل، تأخیر ISRها، افت بایت UART با
-       ریکاوری CRC) - نه فقط دورهٔ همین تسک. از ممیزی ۱.۱۶ شارژر دور ذخیره
-       معلق می‌شود (گیت‌ها صفر) تا سوییچینگی داخل پنجرهٔ کور نباشد. */
+    /* [EN] Debounced flash save of the persisted parameters. A save
+       stalls the WHOLE CPU ~30..50 ms (F1 single bank: SysTick jumps,
+       EXTI/UART ISRs go latent, in-flight UART bytes overrun) - not just
+       this task. The charger is suspended (gates at 0) around the save,
+       so no switching happens inside the blind window; the stall itself
+       is inherent to the part.
+       [FA] ذخیرهٔ دیبانس‌شدهٔ فلش: هر ذخیره کل CPU را ~۳۰..۵۰ms نگه می‌دارد
+       (تک‌بانک F1: پرش ساعت کرنل، تأخیر ISRها، افت بایت UART) - نه فقط
+       همین تسک. شارژر دور ذخیره معلق می‌شود (گیت‌ها صفر) تا سوییچینگی
+       داخل پنجرهٔ کور نباشد؛ خود تأخیر ذاتیِ چیپ است. */
     func__EspLink_NvmTick();
 }

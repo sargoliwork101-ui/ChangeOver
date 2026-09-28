@@ -1,37 +1,29 @@
 /**
  * @file    bsp_adc.c
  * @brief   [EN] ADC+DMA board layer. ADC1 is calibrated once, then hardware
- *              continuously fills a circular two-frame buffer. The CPU only
- *              polls DMA progress when a measurement snapshot is requested.
- *              Static RAM only; no malloc (MISRA / project memory rule).
- *              Since 2026-09-22 (user order) the two charge-current frame
- *              positions are NOT taken from the free-running scan anymore:
- *              ADC2 performs one hardware-triggered conversion per channel,
- *              synchronized by the PWM timers to the exact middle of the
- *              gate ON window, and those raw counts are spliced into the
- *              returned frame. If a synchronized sample cannot be taken
- *              (gate parked, timeout, ADC2 not ready), the asynchronous
- *              scan value of that position is kept as fallback.
- *          [FA] لایهٔ برد ADC+DMA. ADC1 یک‌بار کالیبره می‌شود و سپس سخت‌افزار
- *              بافر چرخشی دو فریمی را پیوسته پر می‌کند. CPU فقط هنگام درخواست
- *              snapshot پیشرفت DMA را می‌خواند. فقط RAM استاتیک؛ بدون malloc.
- *              از ۲۰۲۶-۰۹-۲۲ (دستور کاربر) دو جایگاه جریان شارژ از اسکن
- *              آزاد گرفته نمی‌شوند: ADC2 برای هر کانال یک تبدیل تریگر
- *              سخت‌افزاری انجام می‌دهد که تایمرهای PWM آن را دقیقاً وسط پنجرهٔ
- *              ON گیت سنکرون می‌کنند و همان شمارش خام داخل فریم برگشتی
- *              قرار می‌گیرد. اگر نمونهٔ سنکرون ممکن نشد (گیت پارک، timeout،
- *              آماده‌نبودن ADC2) مقدار اسکن غیرهمزمان همان جایگاه به‌عنوان
- *              جایگزین می‌ماند.
- *
- * @note    [EN] The raw buffer is volatile because DMA changes it outside the
- *              C execution flow. HAL receives its address as an integer-shaped
- *              pointer only; transfers are configured as halfwords in the MSP.
- *          [FA] بافر خام volatile است چون DMA خارج از جریان اجرای C آن را
- *              تغییر می‌دهد. HAL فقط آدرس آن را به‌شکل اشاره‌گر عددی می‌گیرد؛
- *              انتقال‌ها در MSP به‌صورت نصف‌واژه تنظیم شده‌اند.
+ *              continuously fills a circular two-frame buffer; the CPU only
+ *              polls DMA progress when a snapshot is requested. Static RAM
+ *              only, no malloc. The two charge-current frame positions are
+ *              NOT taken from the free-running scan: ADC2 takes one
+ *              hardware-triggered conversion per channel, synchronized by
+ *              the PWM timers to the exact middle of the gate ON window;
+ *              if a synchronized sample cannot be taken (gate parked,
+ *              timeout, ADC2 not ready), the asynchronous scan value of
+ *              that position stays as fallback.
+ *          [FA] لایهٔ برد ADC+DMA: ADC1 یک‌بار کالیبره می‌شود و سخت‌افزار
+ *              بافر چرخشی دو فریمی را پیوسته پر می‌کند؛ CPU فقط هنگام درخواست
+ *              snapshot پیشرفت DMA را می‌خواند. فقط RAM استاتیک. دو جایگاه
+ *              جریان شارژ از اسکن آزاد گرفته نمی‌شوند: ADC2 برای هر کانال
+ *              یک تبدیل تریگر سخت‌افزاری انجام می‌دهد که تایمرهای PWM آن را
+ *              دقیقاً وسط پنجرهٔ ON گیت سنکرون می‌کنند؛ اگر نمونهٔ سنکرون
+ *              ممکن نشد، مقدار اسکن غیرهمزمان همان جایگاه می‌ماند.
+ * @note    [EN] The raw buffer is volatile because DMA changes it outside
+ *              the C execution flow; HAL receives its address as an
+ *              integer-shaped pointer only (halfword transfers, MSP).
+ *          [FA] بافر خام volatile است چون DMA خارج از جریان C آن را عوض
+ *              می‌کند؛ HAL فقط آدرس آن را به‌شکل اشاره‌گر عددی می‌گیرد.
  */
 
-/* ==================== Includes ==================== */
 #include "bsp_adc.h"
 #include "bsp_pwm.h"
 #include "main.h"
@@ -44,19 +36,16 @@
 
 /* ==================== Synchronized current sampling / نمونه‌برداری سنکرون جریان ==================== */
 
-/* [EN] Cycle budget for the bounded wait between arming the ADC2 external
- *      trigger and its end-of-conversion flag. One PWM period at 50 kHz is
- *      20 us; the next mid-ON edge therefore arrives within 20 us, the
- *      conversion itself takes 20 ADC clocks (7.5 sampling + 12.5
- *      conversion) = 1.67 us at the 12 MHz ADC clock. 30 us covers the
- *      worst case with margin; the wait runs with interrupts enabled so it
- *      only ever delays this one thread.
- * [FA] بودجهٔ سیکل برای انتظار محدود بین مسلح‌کردن تریگر خارجی ADC2 و
- *      پرچم پایان تبدیل. یک دورهٔ PWM در ۵۰kHz برابر ۲۰µs است؛ یعنی لبهٔ
- *      وسط ON حداکثر تا ۲۰µs بعد می‌آید و خود تبدیل ۲۰ کلاک ADC
- *      (۷٫۵ نمونه‌برداری + ۱۲٫۵ تبدیل) = ۱٫۶۷µs در کلاک ۱۲MHz طول می‌کشد.
- *      ۳۰µs بدترین حالت را با حاشیه پوشش می‌دهد؛ انتظار با وقفه‌های فعال
- *      اجرا می‌شود پس فقط همین تسک را کُند می‌کند. */
+/* [EN] Bounded wait between arming the ADC2 external trigger and its
+ *      end-of-conversion flag: one PWM period at 50 kHz is 20 us (the next
+ *      mid-ON edge arrives within that), the conversion itself is 20 ADC
+ *      clocks = 1.67 us at 12 MHz. 30 us covers the worst case with
+ *      margin; the wait runs with interrupts enabled (delays only this
+ *      thread).
+ * [FA] انتظار محدود بین مسلح‌کردن تریگر ADC2 و پرچم پایان تبدیل: یک دورهٔ
+ *      PWM در ۵۰kHz برابر ۲۰µs است (لبهٔ وسط ON حداکثر تا همان می‌آید) و
+ *      خود تبدیل ۲۰ کلاک ADC = ۱٫۶۷µs در ۱۲MHz. ۳۰µs بدترین حالت را با
+ *      حاشیه پوشش می‌دهد؛ انتظار با وقفه‌های فعال اجرا می‌شود. */
 #define BSP_ADC_SYNC_TIMEOUT_US       30u
 #define BSP_ADC_CPU_CYCLES_PER_US     72u
 
@@ -130,21 +119,16 @@ static void func__BspAdc_EnableCycleCounter(void)
  * @brief  [EN] Take ONE PWM-synchronized raw sample of one charge-current
  *              channel with ADC2: select the channel and its timer trigger
  *              (TIM2_CC2 for charger 1, TIM3_TRGO for charger 2), arm the
- *              external trigger, then wait - with a cycle budget of
- *              BSP_ADC_SYNC_TIMEOUT_US - for the hardware edge that sits at
- *              the exact middle of that gate's ON window and the following
- *              end-of-conversion. Returns false WITHOUT waiting when the
- *              gate is parked (compare 0): the primary current is zero then.
- *              Interrupts stay enabled during the short wait, so only this
- *              thread is ever delayed.
+ *              external trigger, then wait (budget
+ *              BSP_ADC_SYNC_TIMEOUT_US) for the hardware mid-ON edge and
+ *              the end of conversion. Returns false WITHOUT waiting when
+ *              the gate is parked (compare 0): the primary current is
+ *              zero then. Interrupts stay enabled during the short wait.
  *         [FA] یک نمونهٔ خام سنکرون با PWM از یک کانال جریان شارژ با ADC2
- *              می‌گیرد: کانال و تریگر تایمرش را انتخاب می‌کند (TIM2_CC2 برای
- *              شارژر ۱ و TIM3_TRGO برای شارژر ۲)، تریگر خارجی را مسلح و بعد
- *              با بودجهٔ BSP_ADC_SYNC_TIMEOUT_US منتظر لبهٔ سخت‌افزاری وسط
- *              پنجرهٔ ON همان گیت و پایان تبدیلی که بعدش می‌آید می‌ماند.
- *              اگر گیت پارک باشد (compare صفر) بدون انتظار false برمی‌گرداند
- *              چون جریان اولیه صفر است. در انتظار کوتاه وقفه‌ها فعال می‌مانند
- *              پس فقط همین تسک تأخیر می‌گیرد.
+ *              می‌گیرد: کانال و تریگر تایمرش را انتخاب، تریگر خارجی را
+ *              مسلح و با بودجهٔ BSP_ADC_SYNC_TIMEOUT_US منتظر لبهٔ وسط ON و
+ *              پایان تبدیل می‌ماند. اگر گیت پارک باشد (compare صفر) بدون
+ *              انتظار false برمی‌گرداند چون جریان اولیه صفر است.
  * @param  bsp_pwm_channel_t__channel [EN] Logical charger channel 1 or 2 /
  *                                     کانال منطقی شارژر ۱ یا ۲
  * @param  uint16_t__counts [EN] Output raw ADC count of the mid-ON sample /
@@ -282,22 +266,20 @@ void func__BspAdc_Init(void)
 
 /* ==================== BspAdc_StartSyncBackend ==================== */
 /**
- * @brief  [EN] Bring up the private ADC2 synchronized-current backend: enable
- *              its clock, initialize it for ONE externally-triggered regular
- *              conversion (trigger selected per sample: TIM2_CC2 or
- *              TIM3_TRGO), set a short sampling time for the current pins
- *              and run the F1 calibration once. The shared ADC clock
- *              prescaler (PCLK2/6 = 12 MHz) is already configured by the
- *              generated ADC1 init; PA1/PA7 are already analog. ADC2 stays
- *              enabled (ADON) afterwards - arming is only the EXTTRG bit.
- *         [FA] بک‌اند خصوصی ADC2 برای نمونه‌های سنکرون جریان را بالا می‌آورد:
- *              کلاکش را فعال می‌کند، برای «یک» تبدیل regular تریگر-خارجی تنظیم
- *              می‌کند (تریگر برای هر نمونه انتخاب می‌شود: TIM2_CC2 یا
- *              TIM3_TRGO)، زمان نمونه‌برداری کوتاه برای پایه‌های جریان می‌گذارد
- *              و کالیبراسیون F1 را یک‌بار اجرا می‌کند. پیش‌تقسیم‌کنندهٔ مشترک
- *              کلاک ADC (PCLK2/6 = 12MHz) از قبل در init تولیدشدهٔ ADC1 تنظیم
- *              شده؛ PA1/PA7 هم از قبل آنالوگ‌اند. ADC2 بعد از این روشن (ADON)
- *              می‌ماند - مسلح‌کردن فقط بیت EXTTRG است.
+ * @brief  [EN] Bring up the private ADC2 synchronized-current backend:
+ *              enable its clock, configure ONE externally-triggered regular
+ *              conversion (trigger selected per sample), short sampling
+ *              time for the current pins, run the F1 calibration once.
+ *              The shared ADC clock prescaler (PCLK2/6 = 12 MHz) is
+ *              already set by the generated ADC1 init; PA1/PA7 are already
+ *              analog. ADC2 stays enabled (ADON) - arming is only the
+ *              EXTTRG bit.
+ *         [FA] بک‌اند خصوصی ADC2 را بالا می‌آورد: کلاک، یک تبدیل regular
+ *              تریگر-خارجی (تریگر برای هر نمونه)، زمان نمونه‌برداری کوتاه و
+ *              کالیبراسیون F1 یک‌بار. پیش‌تقسیم مشترک کلاک ADC (PCLK2/6 =
+ *              12MHz) از قبل در init تولیدی ADC1 تنظیم شده؛ PA1/PA7 هم
+ *              آنالوگ‌اند. ADC2 روشن (ADON) می‌ماند - مسلح‌کردن فقط بیت
+ *              EXTTRG است.
  * @return bool [EN] true when ADC2 is initialized and calibrated /
  *                   اگر ADC2 مقداردهی و کالیبره شد true
  */
@@ -454,28 +436,23 @@ bool func__BspAdc_IsFrameReady(void)
 /* ==================== BspAdc_GetRaw ==================== */
 
 /**
- * @brief  [EN] Copy the newest completed five-sample frame. DMA CNDTR selects
- *              the half not being written; the counter is checked before and
- *              after the copy so a moving half-buffer boundary is rejected.
- *              After the stable voltage copy, the two charge-current
- *              positions are replaced by fresh PWM mid-ON synchronized
- *              ADC2 samples (user order 2026-09-22): each conversion is
- *              started by the hardware edge at the exact middle of that
- *              gate's ON window, the furthest point from both stages'
- *              switching edges and their ringing. When a synchronized
- *              sample cannot be captured (gate parked, lost edge, ADC2 not
- *              ready), the asynchronous scan value of that position stays
- *              in place as the fallback.
- *         [FA] جدیدترین فریم کامل پنج‌نمونه‌ای را کپی می‌کند. CNDTR DMA نیمه‌ای
- *              را که در حال نوشتن نیست انتخاب می‌کند؛ شمارنده قبل و بعد بررسی
- *              می‌شود تا مرز متحرک نیمه باعث کپی ناپایدار نشود. بعد از کپی
- *              پایدار ولتاژها، دو جایگاه جریان شارژ با نمونه‌های تازهٔ سنکرون
- *              وسط ON پالس PWM از ADC2 جایگزین می‌شوند (دستور کاربر
- *              ۲۰۲۶-۰۹-۲۲): هر تبدیل را لبهٔ سخت‌افزاریِ دقیقاً وسط پنجرهٔ ON
- *              همان گیت شروع می‌کند - دورترین نقطه از لبه‌های سوییچ و رینگ
- *              هر دو استیج. اگر نمونهٔ سنکرون گرفته نشود (گیت پارک، لبهٔ
- *              گم‌شده، آماده‌نبودن ADC2) مقدار اسکن غیرهمزمان همان جایگاه
- *              به‌عنوان جایگزین باقی می‌ماند.
+ * @brief  [EN] Copy the newest completed five-sample frame. DMA CNDTR
+ *              selects the half not being written; the counter is checked
+ *              before and after the copy so a moving half-buffer boundary
+ *              is rejected. Afterwards the two charge-current positions
+ *              are replaced by fresh PWM mid-ON synchronized ADC2 samples
+ *              (each conversion starts at the hardware edge exactly
+ *              middle of that gate's ON window - the furthest point from
+ *              both stages' switching edges and their ringing). When a
+ *              synchronized sample cannot be captured, the asynchronous
+ *              scan value of that position stays as fallback.
+ *         [FA] جدیدترین فریم کامل پنج‌نمونه‌ای را کپی می‌کند: CNDTR نیمه‌ای
+ *              را که نوشته نمی‌شود انتخاب می‌کند و شمارنده قبل/بعد بررسی
+ *              می‌شود تا مرز متحرک رد شود. بعد دو جایگاه جریان شارژ با
+ *              نمونه‌های تازهٔ سنکرون وسط ON از ADC2 جایگزین می‌شوند (هر
+ *              تبدیل با لبهٔ سخت‌افزاریِ دقیقاً وسط پنجرهٔ ON شروع می‌شود -
+ *              دورترین نقطه از لبه‌های سوییچ و رینگ هر دو استیج). اگر
+ *              نمونهٔ سنکرون گرفته نشود، مقدار اسکن غیرهمزمان می‌ماند.
  * @param  uint16_t__out [EN] Output array with BSP_ADC_CHANNEL_COUNT elements /
  *                            آرایهٔ خروجی با تعداد کانال‌ها
  * @return bool [EN] true when a stable frame was copied / اگر فریم پایدار کپی شد

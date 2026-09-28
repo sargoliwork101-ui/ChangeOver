@@ -3,31 +3,23 @@
  * @brief   [EN] Panel parameter persistence in STM32 on-chip flash (v1.14).
  *          [FA] ماندگاری پارامترهای پنل در فلش رویتراشهٔ STM32 (v1.14).
  *
- * @note    [EN] User order 2026-09-25: "I want to send the constants from the
- *              panel to the board and, once sent, they must stay on the board
- *              and survive power loss." Every settable parameter EXCEPT the
- *              transient test modes (fixed-duty 15..18, manual test 19) is
- *              snapshotted to the last two 1 KiB flash pages with a CRC and a
- *              sequence number, alternating pages per save so a power cut in
- *              the middle of an erase/program can never lose the previous
- *              good record. Boot loads the newest valid record through the
- *              SAME clamped setters the panel path uses, so a stale or
- *              hostile record can only land inside the compiled safety
- *              windows. Saves are debounced 1.5 s after the last change and
- *              run in the comm task (a page erase stalls flash-fetching code
- *              for ~20..40 ms once per save - acceptable for a rare event).
- *          [FA] دستور کاربر ۲۰۲۶-۰۹-۲۵: «ثابت‌ها را از روی پنل کلا بفرستم
- *              برای برد و وقتی فرستادم بمونه روی برد با قطع برق هم از بین
- *              نره.» همهٔ پارامترهای قابل‌تنظیم به‌جز مودهای تست گذرا
- *              (فیکس‌دیوتی ۱۵..۱۸ و تست دستی ۱۹) با CRC و شمارهٔ ترتیب در
- *              دو صفحهٔ آخر ۱KB فلش ذخیره می‌شوند و هر ذخیره صفحه را عوض
- *              می‌کند تا قطع برق وسط پاک‌کردن/نوشتن هرگز رکورد خوب قبلی را
- *              از بین نبرد. بوت، تازه‌ترین رکورد معتبر را از همان setterهای
- *              گیره‌دارِ مسیر پنل اعمال می‌کند، پس رکورد کهنه یا خراب فقط
- *              می‌تواند داخل پنجره‌های ایمنی کامپایل‌شده بنشیند. ذخیره
- *              ۱٫۵ ثانیه بعد از آخرین تغییر در تسک ارتباط اجرا می‌شود (پاک‌
- *              کردن صفحه یک‌بار ~۲۰..۴۰ms کدِ خوانده‌شده از فلش را نگه
- *              می‌دارد - برای رخداد کمی قابل قبول است).
+ * @note    [EN] Every settable parameter EXCEPT the transient test modes
+ *              (15..18 fixed duty, 19 manual test) is snapshotted to the
+ *              last two 1 KiB flash pages with a CRC and a sequence
+ *              number, alternating pages per save so a power cut mid-write
+ *              can never lose the previous good record. Boot replays the
+ *              newest valid record through the SAME clamped setters as
+ *              the panel path, so a stale or hostile record can only land
+ *              inside the compiled safety windows. Saves are debounced
+ *              ~1.5 s and run in the comm task (a page erase stalls the
+ *              CPU ~20..40 ms once per save).
+ *          [FA] همهٔ پارامترهای قابل‌تنظیم به‌جز مودهای تست گذرا (۱۵..۱۸ و
+ *              ۱۹) با CRC و شمارهٔ ترتیب در دو صفحهٔ آخر ۱KB فلش ذخیره
+ *              می‌شوند و هر ذخیره صفحه را عوض می‌کند تا قطع برق وسط نوشتن
+ *              رکورد خوب قبلی را از بین نبرد. بوت تازه‌ترین رکورد معتبر را
+ *              از همان setterهای گیره‌دارِ مسیر پنل بازپخش می‌کند. ذخیره
+ *              ~۱٫۵ ثانیه دیبانس و در تسک ارتباط است (پاک‌کردن صفحه یک‌بار
+ *              ~۲۰..۴۰ms CPU را نگه می‌دارد).
  */
 
 #ifndef ESP_LINK_NVM_H
@@ -62,44 +54,28 @@
  * [FA] هویت رکورد: «CHO1» + نسخهٔ قالب. تغییر نسخه رکوردهای قدیمی را
  *      نامعتبر می‌کند (اعتبارسنجی می‌شکنند و پیش‌فرض کامپایل می‌ماند). */
 #define ESP_LINK_NVM_MAGIC              0x43484F31u
-/* [EN] v1.16 (user order 2026-09-26): 3. The slot growth (38 -> 77)
- *      changes the record size, so v2 records fail CRC and fall back to
- *      the compiled defaults - a v1.15 profile saved on flash is lost on
- *      upgrade (re-tune from the panel once).
- *      v1.16b (user order 2026-09-26): 4. Id 76 (buzzer mute) is a
- *      panel-session mute now, never persisted - v3 records may carry a
- *      76 entry, so they fail the version check and fall back to the
- *      compiled defaults (re-tune from the panel once).
- *      v1.17 (user order 2026-09-27): 5. Six full/hysteresis ids (77..82)
- *      join the persisted set - v4 records fail the version check and
- *      fall back to the compiled defaults (re-tune from the panel once).
- * [FA] v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶): نسخه ۳. رشد جای‌ها اندازهٔ رکورد را
- *      عوض می‌کند پس رکوردهای v2 در CRC می‌افتند و پیش‌فرض کامپایل می‌ماند -
- *      پروفایل ذخیره‌شدهٔ v1.15 با ارتقا از دست می‌رود (یک‌بار از پنل
- *      دوباره تنظیم کنید).
- *      v1.16b (دستور کاربر ۲۰۲۶-۰۹-۲۶): نسخه ۴. شناسهٔ ۷۶ (میوت بازر) فقط
- *      میوت زمان کار با پنل است و هرگز ذخیره نمی‌شود - رکوردهای v3 ممکن
- *      است ورودی ۷۶ داشته باشند پس در چک نسخه می‌افتند و پیش‌فرض کامپایل
- *      می‌ماند (یک‌بار از پنل دوباره تنظیم کنید).
- *      v1.17 (دستور کاربر ۲۰۲۶-۰۹-۲۷): نسخه ۵. شش شناسهٔ فول/هیسترزیس
- *      (۷۷..۸۲) به مجموعهٔ ذخیره‌شونده پیوست - رکوردهای v4 در چک نسخه
- *      می‌افتند و پیش‌فرض کامپایل می‌ماند (یک‌بار از پنل دوباره تنظیم
- *      کنید). */
+/* [EN] Record version history: v3 = 77 slots (v1.16 LED/buzzer
+ *      mirror), v4 = id 76 became a panel-session mute, never persisted
+ *      (v1.16b), v5 = CURRENT: 83 slots incl. the six full/hysteresis ids
+ *      77..82 (v1.17). A record with an older version fails the version
+ *      check and falls back to the compiled defaults - after any upgrade
+ *      that changes the record layout, re-tune from the panel once.
+ * [FA] تاریخچهٔ نسخهٔ رکورد: v3 = ۷۷ جای (آینهٔ LED/بازر v1.16)، v4 =
+ *      میوت ۷۶ جلسه‌ای شد و دیگر ذخیره نمی‌شود (v1.16b)، v5 = فعلی:
+ *      ۸۳ جای شامل ۷۷..۸۲ (v1.17). رکورد قدیمی‌تر در چک نسخه می‌افتد و
+ *      پیش‌فرض کامپایل می‌ماند - بعد از هر ارتقای چیدمان، یک‌بار از پنل
+ *      دوباره تنظیم کنید. */
 #define ESP_LINK_NVM_VERSION            5u
 
-/* [EN] Slot cap: 77 persisted parameters today (0..14 = 15 config ids +
- *      20..75 = 7 charge-profile ids + 11 alarm ids + 38 UI cadence ids +
- *      77..82 = 6 full/hysteresis ids (v1.17); id 76 = panel-session mute,
- *      transient like 15..19). The cap is 83 and the record still fits one
- *      1 KiB page. The C harness caught the first draft's wrong count (17)
- *      as a silent early-return that would have programmed stack garbage -
- *      keep the harness in sync.
- * [FA] سقف جای‌ها: امروز ۷۷ پارامتر ذخیره می‌شود (0..14 = ۱۵ شناسهٔ
- *      پیکربندی + 20..75 = ۷ شناسهٔ پروفایل + ۱۱ شناسهٔ آلارم + ۳۸ شناسهٔ
- *      UI + ۷۷..۸۲ = ۶ شناسهٔ فول/هیسترزیس؛ شناسهٔ ۷۶ = میوت زمان پنل،
- *      گذرا مثل ۱۵..۱۹). سقف ۸۳ است و رکورد هنوز در یک صفحهٔ ۱KB جا
- *      می‌گیرد. هارنس C خطای شمارش نسخهٔ اول (۱۷) را گرفت - هارنس را
- *      هم‌روز نگه دارید. */
+/* [EN] Slot cap: 77 persisted ids today (0..14 config + 20..26 charge
+ *      profile + 27..37 alarms + 38..75 UI cadence + 77..82 full/
+ *      hysteresis; id 76 = panel-session mute, transient like 15..19).
+ *      Cap 83; the record still fits one 1 KiB page. Keep the C harness
+ *      in sync (it once caught a wrong count as a silent early-return).
+ * [FA] سقف جای‌ها: امروز ۷۷ شناسهٔ ذخیره‌شونده (0..14 پیکربندی + 20..26
+ *      پروفایل + ۲۷..۳۷ آلارم + ۳۸..۷۵ UI + ۷۷..۸۲ فول/هیسترزیس؛ ۷۶ =
+ *      میوت جلسه‌ای، گذرا مثل ۱۵..۱۹). سقف ۸۳ و رکورد در یک صفحهٔ ۱KB جا
+ *      می‌شود. هارنس C را هم‌روز نگه دارید. */
 #define ESP_LINK_NVM_ENTRY_MAX          83u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
@@ -116,19 +92,18 @@
 #define ESP_LINK_NVM_SAVE_RETRIES       3u
 
 /* [EN] Persisted id ranges: ALL settable configuration (0..14 = offsets,
- *      gains, filters, eta, charger enables and duty ceilings; 20..26 =
- *      charge profile; 27..37 = alarms; 38..75 = UI cadence; 77..82 = full/
- *      hysteresis (v1.17)) EXCEPT the transient test modes 15..18 (fixed
- *      duty), 19 (manual test) and 76 (panel-session buzzer mute) - those
- *      must never survive a reboot. Id 76 sits INSIDE the high range, so
- *      the predicate excludes it explicitly (see the .c).
+ *      gains, filters, eta, charger enables, duty ceilings; 20..26 =
+ *      charge profile; 27..37 = alarms; 38..75 = UI cadence; 77..82 =
+ *      full/hysteresis) EXCEPT the transient test modes 15..18 (fixed
+ *      duty), 19 (manual test) and 76 (panel-session mute) - those must
+ *      never survive a reboot. Id 76 sits INSIDE the high range, so the
+ *      predicate excludes it explicitly (see the .c).
  * [FA] بازه‌های شناسهٔ ذخیره‌شونده: تمام پیکربندی قابل‌تنظیم (0..14 =
  *      آفست‌ها، گین‌ها، فیلترها، eta، فعال‌بودن شارژر و سقف دیوتی؛ 20..26 =
  *      پروفایل شارژ؛ ۲۷..۳۷ = آلارم‌ها؛ ۳۸..۷۵ = اعداد UI؛ ۷۷..۸۲ =
- *      فول/هیسترزیس) به‌جز مودهای تست گذرای ۱۵..۱۸ (فیکس‌دیوتی)، ۱۹
- *      (تست دستی) و ۷۶ (میوت زمان پنل) - آنها هرگز نباید از ریبوت جان به
- *      در ببرند. شناسهٔ ۷۶ داخل بازهٔ بالا است پس محمول صریحاً کنارش
- *      می‌گذارد. */
+ *      فول/هیسترزیس) به‌جز مودهای گذرای ۱۵..۱۸، ۱۹ و ۷۶ - آنها هرگز از
+ *      ریبوت جان به در نمی‌برند. ۷۶ داخل بازهٔ بالا است پس محمول صریحاً
+ *      کنارش می‌گذارد. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    82u
@@ -193,16 +168,15 @@ void func__EspLink_NvmRecordBuild(
 /**
  * @brief  [EN] Boot-time load: read both pages, pick the newest CRC-valid
  *              record and replay every entry through the clamped parameter
- *              setters (fails are skipped, never fatal). Runs pre-scheduler
- *              in func__App_Init under MODULE_ESP - module Init functions
- *              only reset channel state, never the settable statics, so the
- *              loaded values survive them.
+ *              setters (fails are skipped, never fatal). Runs
+ *              pre-scheduler in func__App_Init under MODULE_ESP - module
+ *              Init functions only reset channel state, never the
+ *              settable statics, so the loaded values survive them.
  *         [FA] بارگذاری هنگام بوت: خواندن هر دو صفحه، انتخاب تازه‌ترین
- *              رکوردِ سالمِ CRC و بازپخش همهٔ ورودی‌ها از setterهای گیره‌دار
+ *              رکوردِ سالمِ CRC و بازپخش ورودی‌ها از setterهای گیره‌دار
  *              (خطا رد می‌شود، هرگز مهلک نیست). قبل از زمان‌بند داخل
- *              func__App_Init زیر MODULE_ESP اجرا می‌شود - Initهای ماژول فقط
- *              وضعیت کانال را ریست می‌کنند نه staticهای قابل‌تنظیم را، پس
- *              مقادیر بارگذاری‌شده از آنها جان سالم به در می‌برند.
+ *              func__App_Init زیر MODULE_ESP اجرا می‌شود - Initهای ماژول
+ *              فقط وضعیت کانال را ریست می‌کنند نه staticهای قابل‌تنظیم را.
  */
 void func__EspLink_NvmInit(void);
 

@@ -6,37 +6,26 @@
  * @note    [EN] The .ioc initializes TIM2_CH1 on PA0 and TIM3_CH1 on PA6.
  *              Both timers RUN CONTINUOUSLY from func__BspPwm_Init with a
  *              frozen half-period phase offset (10 us at 50 kHz): the two
- *              gate pulses rise exactly one half period apart, can never
+ *              gate pulses rise exactly one half period apart, never
  *              switch simultaneously, and the interleave can never slip
- *              because the counters are never stopped or rewritten again.
- *              Since 2026-09-24 the phase offset is a compile switch
- *              (BSP_PWM_TIM3_PHASE_OFFSET_IN_PHASE): the 2026-09-24
- *              in-phase bench experiment showed no measurable crosstalk
- *              change, so 0u (the frozen 10 us interleave) is active
- *              again; 1u re-runs the in-phase experiment.
- *              A channel is switched off by compare=0 alone.
- *              Since 2026-09-22 each timer also carries an INTERNAL CH2
- *              sampling trigger for the synchronized current ADC (user
- *              order): CH2 runs in PWM mode 2 with CCR2 = CCR1/2, so its
- *              rising edge lands exactly at the middle of the gate ON
- *              window - the furthest point from both stages' switching
- *              edges. TIM2_CC2 and TIM3 TRGO (MMS=OC2REF) feed the ADC
- *              trigger inputs. The CH2 physical pins (PA1/PA7) stay in
- *              analog ADC mode, so the trigger never reaches a pin.
- *          [FA] فایل .ioc، TIM2_CH1 روی PA0 و TIM3_CH1 روی PA6 را مقداردهی
- *              می‌کند و کد محصول فقط کانال‌های منطقی شارژر را می‌بیند. از
- *              زمان Init هر دو تایمر پیوسته می‌چرخند با آفست فاز ثابتِ
- *              نیم‌دوره (۱۰µs در ۵۰kHz): پالس گیت دوم دقیقاً نیم‌دوره بعد از
- *              پالس اول بالا می‌آید، دو استیج هرگز همزمان سوییچ نمی‌کنند و
- *              چون شمارنده‌ها دیگر متوقف یا بازنویسی نمی‌شوند، این درهم‌گذاری
- *              هرگز نمی‌لغزد. خاموش‌کردن یک کانال فقط با compare=0 انجام
- *              می‌شود. از ۲۰۲۶-۰۹-۲۲ هر تایمر یک تریگر نمونه‌برداری داخلی
- *              CH2 هم برای ADC سنکرون جریان دارد (دستور کاربر): CH2 با حالت
- *              PWM 2 و CCR2 = CCR1/2 اجرا می‌شود پس لبهٔ بالارونده‌اش دقیقاً
- *              وسط پنجرهٔ ON گیت می‌افتد - دورترین نقطه از لبه‌های سوییچ هر
- *              دو استیج. TIM2_CC2 و TIM3 TRGO (با MMS=OC2REF) ورودی تریگر ADC
- *              را می‌گیرند. پایه‌های فیزیکی CH2 (PA1/PA7) در حالت آنالوگ ADC
- *              می‌مانند پس تریگر هرگز به پایه نمی‌رسد.
+ *              because the counters are never stopped or rewritten. A
+ *              channel is switched off by compare=0 alone. Each timer
+ *              also carries an INTERNAL CH2 sampling trigger for the
+ *              synchronized current ADC: CH2 runs in PWM mode 2 with
+ *              CCR2 = CCR1/2, so its rising edge lands exactly at the
+ *              middle of the gate ON window. TIM2_CC2 and TIM3 TRGO
+ *              (MMS=OC2REF) feed the ADC trigger inputs; the CH2 physical
+ *              pins (PA1/PA7) stay in analog ADC mode.
+ *          [FA] فایل ‎.ioc مقداردهی TIM2_CH1 روی PA0 و TIM3_CH1 روی PA6 را
+ *              می‌کند. از Init هر دو تایمر پیوسته با آفست فاز ثابتِ
+ *              نیم‌دوره (۱۰µs در ۵۰kHz) می‌چرخند: پالس گیت دوم دقیقاً
+ *              نیم‌دوره بعد از اول بالا می‌آید، دو استیج هرگز همزمان
+ *              سوییچ نمی‌کنند و چون شمارنده‌ها دیگر متوقف/بازنویسی نمی‌شوند
+ *              این درهم‌گذاری نمی‌لغزد. خاموشی فقط با compare=0. هر تایمر
+ *              یک تریگر داخلی CH2 برای ADC سنکرون جریان دارد: CH2 با PWM
+ *              mode 2 و CCR2 = CCR1/2، پس لبه‌اش دقیقاً وسط پنجرهٔ ON است.
+ *              TIM2_CC2 و TIM3 TRGO (MMS=OC2REF) به تریگر ADC می‌روند؛
+ *              پایه‌های CH2 (PA1/PA7) آنالوگ می‌مانند.
  */
 
 #include "bsp_pwm.h"
@@ -46,22 +35,17 @@
 #include <stddef.h>
 
 /* ==================== Gate phase switch / کلید فاز گیت‌ها ==================== */
-/* [EN] Gate phase compile switch. The 2026-09-24 bench experiment
-   (user order) ran both gates IN PHASE (1u) to test whether the 10 us
-   interleave contributed to the residual channel-to-channel analog
-   crosstalk; the bench data showed NO measurable effect, so the
-   production interleave is restored. 0u (current) = production design
-   of 2026-09-21: TIM3 preset to half a period (10 us at 50 kHz,
-   ARR=1439), the two gates never switch simultaneously and the input
-   ripple stays staggered. 1u = both gates rise together (only for
-   repeat experiments).
-   [FA] کلید کامپایل فاز گیت‌ها. آزمایش بنچ ۲۰۲۶-۰۹-۲۴ (دستور کاربر)
-   گیت‌ها را هم‌فاز (1u) اجرا کرد تا سهم درهم‌گذاری ۱۰µs در کراس‌تاک
-   آنالوگ باقی‌ماندهٔ کانال‌ها سنجیده شود؛ دادهٔ بنچ اثر محسوسی
-   نشان نداد پس درهم‌گذاری تولید برگشت. 0u (فعلی) = طراحی تولیدِ
-   ۲۰۲۶-۰۹-۲۱: TIM3 روی نیم‌دوره (۱۰µs در ۵۰kHz با ARR=1439)
-   پیش‌تنظیم، دو گیت هرگز همزمان سوییچ نمی‌کنند و ریپل ورودی پخش
-   می‌ماند. 1u = هر دو گیت با هم (فقط برای تکرار آزمایش). */
+/* [EN] Gate phase compile switch. The 2026-09-24 bench experiment ran
+   both gates IN PHASE (1u); the data showed no measurable crosstalk
+   change, so the production interleave is restored. 0u (current) =
+   production design: TIM3 preset to half a period (10 us at 50 kHz,
+   ARR=1439) - the two gates never switch simultaneously and the input
+   ripple stays staggered. 1u = both gates rise together (experiments
+   only).
+   [FA] کلید کامپایل فاز گیت‌ها: آزمایش بنچ ۲۰۲۶-۰۹-۲۴ هم‌فاز (1u) اثر
+   محسوسی بر کراس‌تاک نشان نداد پس درهم‌گذاری تولید برگشت. 0u (فعلی) =
+   طراحی تولید: TIM3 روی نیم‌دوره (۱۰µs در ۵۰kHz با ARR=1439) - دو گیت
+   هرگز همزمان سوییچ نمی‌کنند. 1u = هم‌فاز (فقط آزمایش). */
 #define BSP_PWM_TIM3_PHASE_OFFSET_IN_PHASE 0u
 
 /* ==================== BspPwm_GetTimer ==================== */
@@ -105,19 +89,17 @@ static bool func__BspPwm_GetTimer(bsp_pwm_channel_t bsp_pwm_channel_t__channel,
 /* ==================== BspPwm_SetOneDuty ==================== */
 /**
  * @brief  [EN] Apply one clamped duty to one timer channel as a compare
- *              value only. The timer counter itself is never touched here:
- *              both counters run continuously from Init with a frozen
- *              half-period offset, so the interleave cannot slip. With
- *              permille=0 the compare is 0, which keeps that gate low
- *              (PWM1: CNT < 0 is never true). The internal CH2 sampling
- *              trigger of the same timer is moved to the middle of the new
- *              ON window in the same call (CCR2 = CCR1/2).
+ *              value only - the counter is never touched (both counters
+ *              run continuously from Init with the frozen half-period
+ *              offset). permille=0 sets compare 0 and keeps that gate
+ *              low. The internal CH2 sampling trigger of the same timer
+ *              moves to the middle of the new ON window in the same call
+ *              (CCR2 = CCR1/2).
  *         [FA] وظیفهٔ محدودشدهٔ یک کانال را فقط به‌صورت compare اعمال
- *              می‌کند. شمارندهٔ تایمر اینجا دست نمی‌خورد: هر دو شمارنده از
- *              زمان Init پیوسته با آفست نیم‌دوره می‌چرخند پس درهم‌گذاری
- *              نمی‌لغزد. با permille=0 مقدار compare صفر می‌شود و گیت پایین
- *              می‌ماند. تریگر داخلی CH2 همان تایمر هم در همین فراخوانی به
- *              وسط پنجرهٔ ON جدید منتقل می‌شود (CCR2 = CCR1/2).
+ *              می‌کند - شمارنده دست نمی‌خورد (هر دو از Init پیوسته با آفست
+ *              نیم‌دوره می‌چرخند). permille=0 یعنی compare صفر و گیت پایین.
+ *              تریگر داخلی CH2 هم در همین فراخوانی به وسط پنجرهٔ ON جدید
+ *              می‌رود (CCR2 = CCR1/2).
  * @param  TIM_HandleTypeDef__timer [EN] Board timer handle / هندل تایمر برد
  * @param  uint32_t__halChannel [EN] HAL channel / کانال HAL
  * @param  uint16_t__permille [EN] Duty in 0..1000 permille /
@@ -155,21 +137,17 @@ static void func__BspPwm_SetOneDuty(TIM_HandleTypeDef *TIM_HandleTypeDef__timer,
                           uint32_t__halChannel,
                           uint32_t__compareCounts);
 
-    /* [EN] Keep the internal CH2 sampling trigger at the exact middle of the
-       ON window: CCR2 = CCR1/2 (user order 2026-09-22). PWM mode 2 makes the
-       CH2 output rise at CNT = CCR2. HAL_TIM_PWM_ConfigChannel enables the
-       OC preload for both CH1 and CH2, so the two compare values latch at
-       the same update event and the half ratio can never be observed split
-       across two periods. compare=0 -> CCR2=0 -> the CH2 output stays high
-       with no edge, which correctly means "no synchronized sample" (the
-       gate is off, the primary current is zero).
-       [FA] تریگر داخلی CH2 را دقیقاً وسط پنجرهٔ ON نگه می‌دارد:
-       CCR2 = CCR1/2 (دستور کاربر ۲۰۲۶-۰۹-۲۲). حالت PWM 2 خروجی CH2 را در
-       CNT = CCR2 بالا می‌آورد. HAL_TIM_PWM_ConfigChannel پیش‌بارگذاری OC را
-       برای CH1 و CH2 فعال می‌کند، پس دو مقدار compare در همان رویداد update
-       قفل می‌شوند و نسبت نیم هرگز بین دو دوره شکسته دیده نمی‌شود.
-       compare=0 -> CCR2=0 -> خروجی CH2 بالا می‌ماند بدون لبه، که دقیقاً یعنی
-       «نمونهٔ سنکرونی نیست» (گیت خاموش است و جریان اولیه صفر). */
+    /* [EN] Keep the internal CH2 sampling trigger at the exact middle of
+       the ON window: CCR2 = CCR1/2. PWM mode 2 makes the CH2 output rise
+       at CNT = CCR2. The OC preload latches CH1 and CH2 at the same
+       update event, so the half ratio is never observed split across two
+       periods. compare=0 -> CCR2=0 -> CH2 stays high with no edge =
+       "no synchronized sample" (gate off, primary current zero).
+       [FA] تریگر CH2 را دقیقاً وسط پنجرهٔ ON نگه می‌دارد: CCR2 = CCR1/2؛
+       حالت PWM 2 خروجی CH2 را در CNT = CCR2 بالا می‌آورد. پیش‌بارگذاری OC
+       دو compare را در همان update قفل می‌کند پس نسبت نیم هرگز بین دو
+       دوره شکسته دیده نمی‌شود. compare=0 -> بدون لبه = «نمونهٔ سنکرونی
+       نیست» (گیت خاموش، جریان اولیه صفر). */
     __HAL_TIM_SET_COMPARE(TIM_HandleTypeDef__timer,
                           TIM_CHANNEL_2,
                           uint32_t__compareCounts / 2u);
@@ -178,19 +156,19 @@ static void func__BspPwm_SetOneDuty(TIM_HandleTypeDef *TIM_HandleTypeDef__timer,
 /* ==================== BspPwm_InitSamplingPulse ==================== */
 /**
  * @brief  [EN] Configure the internal CH2 of one charger timer as the
- *              synchronized-current sampling trigger: PWM mode 2, polarity
- *              high, compare 0 at boot. The channel output stage is enabled
- *              so the internal OC2 signal feeds the ADC trigger mux, but the
- *              physical CH2 pins (PA1/PA7) remain in analog ADC mode, so no
- *              level ever reaches a pin. Must run while the counter is still
- *              halted, before func__BspPwm_Init starts both timers.
+ *              synchronized-current sampling trigger: PWM mode 2,
+ *              polarity high, compare 0 at boot. The output stage is
+ *              enabled so the internal OC2 signal feeds the ADC trigger
+ *              mux, but the physical CH2 pins (PA1/PA7) remain in analog
+ *              ADC mode - no level ever reaches a pin. Must run while the
+ *              counter is still halted, before func__BspPwm_Init starts
+ *              both timers.
  *         [FA] کانال داخلی CH2 یک تایمر شارژر را به‌عنوان تریگر
- *              نمونه‌برداری جریان سنکرون تنظیم می‌کند: حالت PWM 2، قطبیت
- *              high، compare صفر در بوت. مرحلهٔ خروجی کانال فعال می‌شود تا
- *              سیگنال داخلی OC2 به مالتی‌پلکس تریگر ADC برسد، اما پایه‌های
- *              فیزیکی CH2 (PA1/PA7) در حالت آنالوگ ADC می‌مانند و هیچ سطحی
- *              به پایه نمی‌رسد. باید وقتی شمارنده هنوز متوقف است، قبل از
- *              استارت هر دو تایمر در func__BspPwm_Init اجرا شود.
+ *              نمونه‌برداری سنکرون تنظیم می‌کند: PWM mode 2، قطبیت high،
+ *              compare صفر در بوت. مرحلهٔ خروجی فعال می‌شود تا OC2 داخلی به
+ *              مالتی‌پلکس تریگر ADC برسد، اما پایه‌های CH2 (PA1/PA7) آنالوگ
+ *              می‌مانند. باید قبل از استارت تایمرها و وقتی شمارنده متوقف
+ *              است اجرا شود.
  * @param  TIM_HandleTypeDef__timer [EN] Charger timer handle / هندل تایمر شارژر
  */
 static void func__BspPwm_InitSamplingPulse(TIM_HandleTypeDef *TIM_HandleTypeDef__timer)
@@ -215,26 +193,21 @@ static void func__BspPwm_InitSamplingPulse(TIM_HandleTypeDef *TIM_HandleTypeDef_
 /**
  * @brief  [EN] Force both gates low, preset the frozen half-period phase,
  *              then start BOTH counters with two adjacent raw register
- *              writes. HAL_TIM_PWM_Start is deliberately NOT used: its
- *              per-call latency (several microseconds of HAL boilerplate
- *              between the two calls) would slip the interleave by a
- *              nondeterministic amount (bench finding 2026-09-21). The
- *              register pair htim2->CR1|=CEN / htim3->CR1|=CEN executes a
- *              few bus cycles apart (~tens of ns at 72 MHz), so TIM3 gates
- *              rise deterministically 10 us (period/2, derived from the
- *              live ARR) after TIM2 gates. Output stages were enabled
- *              beforehand while both counters were still halted, so no
- *              glitch reaches the pins. After this, counters never stop:
- *              off = compare 0.
- *         [FA] ابتدا هر دو گیت پایین می‌آیند و فازِ ثابتَ نیم‌دوره تنظیم
- *              می‌شود، سپس هر دو شمارنده با دو نوشتن رجیستریِ پشت‌سرهم
- *              استارت می‌شوند. عمداً از HAL_TIM_PWM_Start استفاده نمی‌کنیم:
- *              تأخیر هر فراخوانی HAL (چند میکروثانیه) فاز را غیرقطعی جابه‌جا
- *              می‌کرد (یافتهٔ بنچ ۲۰۲۶-۰۹-۲۱). جفت رجیستر CEN چند سیکل باس
- *              کنار هم اجرا می‌شوند (~چند ده نانوثانیه در ۷۲MHz)، پس پالس
- *              گیت TIM3 دقیقاً ۱۰µs (نیم‌دوره، از ARR واقعی) بعد از پالس گیت
- *              TIM2 می‌آید. خروجی‌ها قبل‌تر و وقتی شمارنده‌ها متوقف بودند
- *              فعال شدند تا کلک به پایه‌ها نرسد. پس‌ازاین شمارنده‌ها هرگز
+ *              writes (htim2->CR1|=CEN / htim3->CR1|=CEN, a few bus
+ *              cycles apart at 72 MHz). HAL_TIM_PWM_Start is deliberately
+ *              NOT used: its per-call latency would slip the interleave
+ *              by a nondeterministic amount. TIM3 gates rise
+ *              deterministically 10 us (period/2 from the live ARR) after
+ *              TIM2 gates. Output stages were enabled beforehand while
+ *              both counters were still halted, so no glitch reaches the
+ *              pins. After this the counters never stop: off = compare 0.
+ *         [FA] ابتدا هر دو گیت پایین می‌آیند و فازِ ثابت نیم‌دوره تنظیم
+ *              می‌شود، سپس هر دو شمارنده با دو نوشتن رجیستری پشت‌سرهم
+ *              استارت می‌شوند (چند سیکل باس فاصله در ۷۲MHz). عمداً از
+ *              HAL_TIM_PWM_Start استفاده نمی‌شود: تأخیر هر فراخوانی فاز را
+ *              غیرقطعی جابه‌جا می‌کرد. پالس TIM3 دقیقاً ۱۰µs (نیم‌دوره از ARR
+ *              واقعی) بعد از TIM2 می‌آید. خروجی‌ها از قبل و با شمارنده‌های
+ *              متوقف فعال شدند تا کلک نرسد. پس‌ازاین شمارنده‌ها هرگز
  *              متوقف نمی‌شوند؛ خاموش یعنی compare صفر.
  */
 void func__BspPwm_Init(void)

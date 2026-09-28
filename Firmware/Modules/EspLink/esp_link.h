@@ -31,18 +31,17 @@
 /* [EN] Start-of-frame bytes and geometry. / [FA] بایت‌های شروع فریم و هندسه. */
 #define ESPLINK_SOF_BYTE0             0xAAu
 #define ESPLINK_SOF_BYTE1             0x55u
-/* [EN] v1.16 (user order 2026-09-26): the length field is u16
- *      little-endian (len_lo + len_hi) - 77 parameters grow PARAMS_BULK
- *      to 1 + 77 x 5 = 386 payload bytes, past the old u8 ceiling of
- *      255. Frame = AA 55 type len_lo len_hi payload xor; the xor covers
- *      type + both length bytes + payload. Both boards MUST flash
- *      together (a v1.15 parser reads len_hi as payload).
- *      / [FA] از v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶): فیلد طول u16 لیتل‌اندین
- *      است - ۷۷ پارامتر PARAMS_BULK را به ۱ + ۷۷ × ۵ = ۳۸۶ بایت
- *      می‌رساند که از سقف u8 قبلی (۲۵۵) گذشته است. فریم = AA 55 نوع
- *      len_lo len_hi و xor روی نوع + هر دو بایت طول + payload. هر دو برد
- *      باید با هم فلش شوند.
- *      v1.17: 83 params = 1 + 83 x 5 = 416 payload bytes (۸۳ پارامتر = ۴۱۶ بایت). */
+/* [EN] Since v1.16 the length field is u16 little-endian (len_lo +
+ *      len_hi) - PARAMS_BULK grows past the old u8 ceiling of 255 (v1.17:
+ *      83 params = 1 + 83 x 5 = 416 payload bytes). Frame = AA 55 type
+ *      len_lo len_hi payload xor; the xor covers type + both length
+ *      bytes + payload. Both boards MUST flash together (a v1.15 parser
+ *      reads len_hi as payload).
+ * [FA] از v1.16 فیلد طول u16 لیتل‌اندین است (len_lo + len_hi) —
+ *      PARAMS_BULK از سقف u8 قبلی رد می‌شود (v1.17: ۸۳ پارامتر = ۴۱۶ بایت
+ *      payload). فریم = AA 55 نوع len_lo len_hi و xor روی نوع + دو بایت
+ *      طول + payload. هر دو برد باید با هم فلش شوند (پارسر v1.15 یعنی
+ *      len_hi را payload می‌خواند). */
 #define ESPLINK_FRAME_HEADER_SIZE     5u   /* SOF0 + SOF1 + type + len_lo + len_hi / بدون payload و xor */
 #define ESPLINK_FRAME_CHECKSUM_SIZE   1u
 #define ESPLINK_FRAME_MAX_PAYLOAD     512u
@@ -108,22 +107,19 @@
 
 /* ==================== Parameter IDs / شناسهٔ پارامترها ==================== */
 
-/* [EN] SET_PARAM payload = [id:u8][value:u32 LE]. Every value is clamped by
- *      the owning module; PARAM_REPORT returns the APPLIED value. Voltage
- *      offsets are signed (two's complement in the u32 wire field).
- *      Ids 0..14 + 20..75 are flash-persisted (v1.14 NVM, ~1.5 s debounce);
- *      only the transient test modes 15..19 (+76) are RAM-only.
- *      Filters carry ONE size parameter each
- *      (user order 2026-09-22: any median 1..15 since v1.4, average
- *      window 1..300; size 1 = bypass, no separate on/off switch).
- * [FA] payload ی SET_PARAM = [id:u8][value:u32 LE]. هر مقدار در ماژول مالکش
- *      گیره می‌شود و PARAM_REPORT مقدارِ اعمال‌شده را برمی‌گرداند. آفست‌های
- *      ولتاژ علامتدارند (متمم دو در فیلد u32 خط). شناسه‌های ۰..۱۴ و
- *      ۲۰..۷۵ روی فلش می‌مانند (NVM نسخهٔ ۱.۱۴، ~۱٫۵ ثانیه)؛ فقط مودهای
- *      گذرای تست ۱۵..۱۹ (+۷۶) فقط-RAM هستند. هر فیلتر یک پارامتر اندازه
- *      دارد (دستور کاربر ۲۰۲۶-۰۹-۲۲: از نسخهٔ ۱.۴ هر مدین ۱..۱۵،
- *      پنجرهٔ میانگین ۱..۳۰۰؛ اندازهٔ ۱ یعنی عبور مستقیم و کلید جدا وجود
- *      ندارد). */
+/* [EN] SET_PARAM payload = [id:u8][value:u32 LE]. Every value is clamped
+ *      by the owning module; PARAM_REPORT returns the APPLIED value.
+ *      Voltage offsets are signed (two's complement in the u32 wire
+ *      field). Ids 0..14 + 20..75 are flash-persisted (~1.5 s debounce);
+ *      only the transient test modes 15..19 (+76) are RAM-only. Filters
+ *      carry ONE size parameter each (any median 1..15, average window
+ *      1..300; size 1 = bypass, no separate on/off switch).
+ * [FA] payload ی SET_PARAM = [id:u8][value:u32 LE]؛ هر مقدار در ماژول
+ *      مالکش گیره می‌شود و PARAM_REPORT مقدارِ اعمال‌شده را برمی‌گرداند.
+ *      آفست‌های ولتاژ علامتدارند (متمم دو در فیلد u32). شناسه‌های ۰..۱۴ و
+ *      ۲۰..۷۵ روی فلش می‌مانند؛ فقط مودهای گذرا ۱۵..۱۹ (+۷۶) فقط-RAM
+ *      هستند. هر فیلتر یک پارامتر اندازه دارد (مدین ۱..۱۵، میانگین
+ *      ۱..۳۰۰؛ ۱ = عبور مستقیم). */
 #define ESPLINK_PARAM_CUR1_OFFSET_COUNTS   0u   /* u32, counts,   def 8,    0..255    */
 #define ESPLINK_PARAM_CUR2_OFFSET_COUNTS   1u   /* u32, counts,   def 8,    0..255    */
 #define ESPLINK_PARAM_CUR1_GAIN_PERMILLE   2u   /* u32, permille, def 1046, 100..3000 */
