@@ -21,50 +21,42 @@
 /* ==================== Master enable / فعال‌سازی کلی ==================== */
 /*
  * [EN] Single master switch for Charger control.
- *   0 = safe-off skeleton only. All PWM outputs are kept stopped and the
- *       transformer input relay keeps its NC contact closed (coil off,
- *       safe-idle). JIT and relay disconnect policy stay inactive: no retry
- *       sequencing and no coil energization. This is the only overall
- *       activation gate. Runtime flags such as power_stage_enabled/pwm_max_duty
- *       are NOT hidden hard gates for Charger; numeric protections are still
- *       not bypassed.
- *   1 = Charger is allowed to enter the per-channel control loop only when
- *       all explicit hardware conditions (valid snapshot, installed channel,
- *       Vin ADC >= 22000 mV, valid battery sense, current limits, JIT policy)
- *       are also satisfied.
+ *   0 = safe-off skeleton only: all PWM stopped, the transformer input
+ *       relay keeps its NC contact closed (coil off, safe-idle), JIT and
+ *       relay disconnect policy inactive. Runtime flags such as
+ *       power_stage_enabled/pwm_max_duty are NOT hidden hard gates for
+ *       Charger; numeric protections are never bypassed.
+ *   1 = the per-channel control loop runs only when every explicit
+ *       hardware condition is also satisfied (valid snapshot, installed
+ *       channel, Vin ADC >= 22000 mV, valid battery sense, current
+ *       limits, JIT policy).
  * [FA] تنها کلید فعال‌سازی کلی Charger.
- *   ۰ = فقط اسکلت safe-off. همه خروجی‌های PWM متوقف می‌مانند و رله ورودی
- *       ترانس NC را بسته نگه می‌دارد (safe-idle). این تنها دروازه کلی است.
- *       پرچم‌های زمان اجرا مثل power_stage_enabled/pwm_max_duty دروازه پنهان
- *       برای Charger نیستند؛ حفاظت‌های عددی هیچ‌گاه bypass نمی‌شوند.
- *   ۱ = Charger فقط در صورت برقرار بودن همه شرایط صریح سخت‌افزاری
- *       (snapshot معتبر، کانال نصب‌شده، Vin ADC >= 22000mV، sense باتری معتبر،
- *       حدهای جریان، سیاست JIT) اجازه ورود به حلقه کنترل هر کانال را دارد.
+ *   ۰ = فقط اسکلت safe-off: PWM متوقف، رله NC بسته (safe-idle)، سیاست
+ *       JIT/رله غیرفعال. پرچم‌های زمان اجرا دروازهٔ پنهان نیستند؛
+ *       حفاظت‌های عددی هیچ‌وقت bypass نمی‌شوند.
+ *   ۱ = حلقهٔ کنترل هر کانال فقط با برقراری همهٔ شرایط صریح سخت‌افزاری
+ *       (snapshot معتبر، کانال نصب‌شده، Vin >= ۲۲۰۰۰mV، sense باتری
+ *       معتبر، حدهای جریان، سیاست JIT) اجرا می‌شود.
  */
 #define CHG_MASTER_ENABLE             1u
 
 /* ==================== Board/test selection constants / ثابت‌های انتخاب برد و تست ==================== */
 /*
- * [EN] These are the only two assembly-selection constants to change when the
- * installed transformer changes. Both transformers are installed now. Set CH1 to 1
- * only after the second transformer, its current path and its JIT input have
- * been verified on the board.
- *   Channel 1 (logical ch1) = 1 now (user bring-up order 2026-09-20) →
- *                             PWM1 PA0 / Current1 / JIT1 active; bench
- *                             verification of Trans1/JIT1 stays on the board
- *                             checklist below.
- *   Channel 2 (logical ch2) = 1 now → PWM2 PA6 / Current2 PA7 / JIT2 PB6.
- * Trans2 is connected to one independent 12 V battery on VLOW = MID - GND;
- * the 24 V pack measurement is monitor-only and is never a charge setpoint or
- * missing-battery condition for CH2.
- * [FA] برای عوض‌کردن ترانس مونتاژشده فقط همین دو ثابت تغییر می‌کنند.
- *   کانال ۱ = ۱ اکنون (دستور راه‌اندازی کاربر ۲۰۲۶-۰۹-۲۰) → PWM1 PA0 /
- *             Current1 / JIT1 فعال؛ تأیید بنجی Trans1/مسیر جریان/JIT1 در
- *             چک‌لیست برد می‌ماند.
- *   کانال ۲ = ۱ اکنون → PWM2 PA6 / Current2 PA7 / JIT2 PB6.
- * Trans2 به یک باتری ۱۲ ولت مستقل روی VLOW = MID - GND وصل است؛ مقدار پک
- * ۲۴ ولت فقط مانیتور است و هیچ‌گاه setpoint شارژ یا شرط battery-missing برای
- * CH2 نیست.
+ * [EN] The only two assembly-selection constants to change when the
+ * installed transformer changes. Both are installed now:
+ *   Channel 1 = 1 (user bring-up order 2026-09-20) -> PWM1 PA0 / Current1
+ *               / JIT1 active (bench verification stays on the board
+ *               checklist).
+ *   Channel 2 = 1 -> PWM2 PA6 / Current2 PA7 / JIT2 PB6. Trans2 feeds an
+ *               independent 12 V battery on VLOW = MID - GND; the 24 V
+ *               pack measurement is monitor-only, never a charge setpoint
+ *               or missing-battery condition for CH2.
+ * [FA] تنها دو ثابتی که با عوض‌شدن ترانس مونتاژشده تغییر می‌کنند؛ هر دو
+ *      نصب‌اند: کانال ۱ = ۱ (دستور راه‌اندازی ۲۰۲۶-۰۹-۲۰) → PWM1 PA0 /
+ *      Current1 / JIT1 (تأیید بنچ در چک‌لیست برد)؛ کانال ۲ = ۱ → PWM2 PA6
+ *      / Current2 PA7 / JIT2 PB6. Trans2 به باتری ۱۲V مستقل روی VLOW وصل
+ *      است؛ پک ۲۴V فقط مانیتور است و هیچ‌گاه setpoint شارژ یا شرط
+ *      battery-missing برای CH2 نیست.
  */
 #define CHG_CHANNEL_1_INSTALLED       1u
 #define CHG_CHANNEL_2_INSTALLED       1u
@@ -89,38 +81,28 @@
 
 /* ==================== Explicit limited bring-up test mode / حالت صریح تست bring-up ==================== */
 /*
- * [EN] Explicit bring-up-only mode: only Trans2 (CH2), NO real battery,
- * external source current-limited, waveform-validation only. This is the
- * ONLY way to run switching when CHG_TRANSFORMER_KNOWN=0. Normal Bulk/Absorb/
- * Float setpoint control does NOT run here. Limits:
- *   CHG_BRINGUP_TEST_ENABLE = 1: active board bring-up (gate/shunt waveforms
- *     already scope-verified at the 10% stage with a calibrated current path).
- *   Only installed CH2 is allowed; CH1 remains forced 0.
- *   Start duty = 1% (CHG_DUTY_START_PERMILLE).
- *   Duty step is still CHG_DUTY_STEP_PERMILLE but max duty is clamped to
- *   CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE.
- *     Current stage: max 10% duty (100 permille), source current
- *       limit 100 mA external. Do not raise above this until the transformer
- *       data is measured and CHG_TRANSFORMER_KNOWN flips to 1.
- *   Bring-up test never enters Absorb/Float, never uses a 24 V pack setpoint,
- *   and is still gated by CHG_MASTER_ENABLE=1 and Vin >= 22000 mV and all
- *   numeric protections (current, JIT, missing-battery sense).
- * [FA] حالت صریح تست فقط-bring-up: فقط Trans2 (CH2)، بدون باتری واقعی،
- * منبع خارجی محدودکننده جریان، فقط اعتبارسنجی شکل‌موج. این تنها راه
- * سوئیچینگ وقتی CHG_TRANSFORMER_KNOWN=0 است. کنترل عادی Bulk/Absorb/Float
- * در این حالت اجرا نمی‌شود. حدود:
- *   CHG_BRINGUP_TEST_ENABLE = 1 فعال: bring-up برد (شکل‌موج‌های gate/shunt
- *     روی مرحله ۱۰٪ با اسکوپ تأیید شده و مسیر جریان کالیبره است).
- *   فقط CH2 نصب‌شده مجاز است؛ CH1 همیشه صفر.
- *   duty شروع = ۱٪ (CHG_DUTY_START_PERMILLE).
- *   گام duty همان CHG_DUTY_STEP_PERMILLE ولی حداکثر duty به
- *   CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE محدود می‌شود.
- *     مرحله فعلی: حداکثر ۱۰٪ duty (۱۰۰ پرمیل)، حد جریان منبع خارجی
- *       ۱۰۰ میلی‌آمپر. تا اندازه‌گیری داده ترانس و یک‌شدن
- *       CHG_TRANSFORMER_KNOWN بالاتر از این نرو.
- *   تست bring-up هرگز وارد Absorb/Float نمی‌شود، از setpoint پک ۲۴ ولت
- *   استفاده نمی‌کند، و همچنان با CHG_MASTER_ENABLE=1، Vin >= ۲۲۰۰۰mV و همه
- *   حفاظت‌های عددی (جریان، JIT، sense باتری) گیت می‌شود. */
+ * [EN] Explicit bring-up-only mode and the ONLY way to run switching when
+ * CHG_TRANSFORMER_KNOWN=0: only Trans2 (CH2), NO real battery, external
+ * source current-limited, waveform validation only - normal Bulk/Absorb/
+ * Float control does NOT run here. Limits: only installed CH2 is allowed
+ * (CH1 forced 0); start duty 1%, duty step as usual but clamped to
+ * CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE - current stage max 10% duty with a
+ * 100 mA external source limit; do not raise until the transformer data
+ * is measured and CHG_TRANSFORMER_KNOWN flips to 1. Never enters Absorb/
+ * Float, never uses a 24 V pack setpoint, still gated by
+ * CHG_MASTER_ENABLE=1, Vin >= 22000 mV and all numeric protections.
+ * (With CHG_BRINGUP_TEST_ENABLE=1: gate/shunt waveforms scope-verified at
+ * the 10% stage with a calibrated current path.)
+ * [FA] مود صریح فقط-bring-up و تنها راه سوئیچینگ با CHG_TRANSFORMER_KNOWN=0:
+ *      فقط Trans2 (CH2)، بدون باتری واقعی، منبع خارجی محدود، فقط
+ *      اعتبارسنجی شکل‌موج - کنترل عادی اجرا نمی‌شود. حدود: فقط CH2 (CH1
+ *      صفر)؛ شروع ۱٪، گام معمول ولی گیرهٔ CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE
+ *      - مرحلهٔ فعلی حداکثر ۱۰٪ duty با حد ۱۰۰mA منبع خارجی؛ تا اندازه‌گیری
+ *      ترانس و یک‌شدن CHG_TRANSFORMER_KNOWN بالاتر نرو. هرگز Absorb/Float و
+ *      setpoint پک ۲۴V نه؛ همچنان گیت CHG_MASTER_ENABLE=1، Vin >= ۲۲۰۰۰mV و
+ *      همهٔ حفاظت‌های عددی. (شکل‌موج‌های gate/shunt در مرحلهٔ ۱۰٪ با اسکوپ
+ *      تأیید و مسیر جریان کالیبره شده است.)
+ */
 #define CHG_BRINGUP_TEST_ENABLE                0u   /* [EN] bring-up finished; normal charge active / bring-up تمام شد، شارژ نرمال فعال است */
 #define CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE    100u  /* [EN] dormant: 10% stage verified on board / غیرفعال: مرحله ۱۰٪ روی برد تأیید شده */
 #define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA      150u  /* [EN] dormant: 150 mA source limit / غیرفعال: حد منبع ۱۵۰mA */
@@ -150,39 +132,35 @@
 #define CHG_DUTY_STEP_FINE_PERMILLE       1u
 #define CHG_FLOAT_MV                  13500u
 #define CHG_REENTRY_MV               12800u
-/* [EN] How long a channel must CONTINUOUSLY SEE battery voltage before any
- *      bulk charge start is allowed (user refinement 2026-09-19: the count
- *      starts the moment battery voltage is seen - input validity is NOT
- *      part of it; original directive the same day: "give it 10..20 s to
- *      settle the battery is connected, then start"). 15 s = middle of his
- *      window. Mid-cycle paths (JIT resume, 12.8 V reentry) stay exempt
- *      because their presence stamp is already live by definition. This gate
- *      also kills the bat-lost FLAP: flag clear -> BULK -> re-pump -> flag
- *      set again every 30 s (and the yellow blink inside the buzzer that
- *      came with it) - with the cable out the voltage is invalid, the stamp
- *      stays 0, and BULK never re-arms.
- * [FA] چند ثانیه «دیده‌شدن ولتاژ باتری» پیوسته لازم است تا شروعِ بالک
- *      اجازه بگیرد (اصلاحیهٔ کاربر: شمارش از لحظهٔ دیدن ولتاژ باتری؛ دستورِ
- *      اصلی همان روز: ۱۰ تا ۲۰ ثانیه ثبات، بعد شارژ؛ ۱۵ ثانیه انتخاب شد).
- *      مسیرهای میان‌چرخه معاف‌اند. همین گیت چرخهٔ پینگ‌پنگِ
- *      قطع‌باتری (آلارم پاک → بالک → پمپ → آلارم دوباره، و چشمک زرد وسط
- *      بوق) را کاملاً می‌کشد. */
+/* [EN] How long a channel must CONTINUOUSLY SEE battery voltage before
+ *      a bulk start is allowed (user 2026-09-19: "10..20 s to settle, then
+ *      start"; the count keys on BATTERY voltage only - input validity
+ *      gates the bulk start separately). 15 s = middle of the window.
+ *      Mid-cycle paths (JIT resume, 12.8 V reentry) are exempt (their
+ *      presence stamp is already live). This gate also kills the bat-lost
+ *      FLAP (clear -> BULK -> re-pump -> set again every 30 s, with the
+ *      yellow blink): with the cable out the voltage is invalid, the
+ *      stamp stays 0, BULK never re-arms.
+ * [FA] چند ثانیه «دیده‌شدن پیوستهٔ ولتاژ باتری» برای مجوز شروع بالک (دستور
+ *      کاربر: ۱۰..۲۰ ثانیه ثبات، بعد شارژ؛ شمارش فقط با ولتاژ باتری -
+ *      ورودی گیت جداگانه دارد). ۱۵ ثانیه وسط پنجره. مسیرهای میان‌چرخه
+ *      معاف‌اند. همین گیت چرخهٔ پینگ‌پنگ قطع‌باتری و چشمک زردش را هم
+ *      می‌کشد: با کابل بیرون ولتاژ نامعتبر است، مهر صفر می‌ماند و بالک
+ *      مسلح نمی‌شود.
+ */
 #define CHG_CONNECT_SETTLE_MS        15000u
 #define CHG_BULK_CURRENT_MAX_MA       650u
-/* [EN] TEMPORARY bench diagnostic (2026-09-18): fixed duty, NO ramp and NO
- *      band regulation. Set to 0 to return to normal charge control. When 1,
- *      after all the usual gates (valid snapshot, Vin >= 22000 mV, battery
- *      sense valid, JIT, >950 mA hard fault) the installed channel simply
- *      holds CHG_FIXED_DUTY_TEST_DUTY_PERMILLE at 15% and skips every
- *      regulation decision; switching also stops while Vbat >= 14.4 V so the
- *      battery cannot be pushed into overcharge with regulation disabled.
- *      Purpose: one stable operating point to calibrate the measurement
- *      coefficients (scope MEAN at LM358 out, bench input/output V and I
- *      vs. the firmware readings).
- * [FA] حالت تست موقت بنچ: دیوتی ثابت ۱۵٪، بدون رمپ و بدون باند جریان؛ فقط
- *      برای کالیبره‌کردن ضرایب اندازه‌گیری روی یک نقطهٔ پایدار. همهٔ
- *      حفاظت‌ها فعال می‌مانند و روی ۱۴٫۴V سوئیچینگ می‌ایستد. برای برگشت به
- *      شارژ نرمال، مقدار را ۰ کن. */
+/* [EN] TEMPORARY bench diagnostic (2026-09-18): fixed 15% duty, NO
+ *      ramp, NO band regulation - one stable operating point to calibrate
+ *      the measurement coefficients (scope MEAN at LM358 out, bench V/I
+ *      vs. the firmware readings). All usual gates stay (snapshot,
+ *      Vin >= 22000 mV, battery sense, JIT, >950 mA hard fault) and
+ *      switching stops while Vbat >= 14.4 V (no overcharge with regulation
+ *      off). Set 0 to return to normal charge control.
+ * [FA] تست موقت بنچ: دیوتی ثابت ۱۵٪، بدون رمپ و باند - یک نقطهٔ پایدار
+ *      برای کالیبره‌کردن ضرایب اندازه‌گیری. همهٔ گیت‌ها فعال و روی ۱۴٫۴V
+ *      سوئیچینگ می‌ایستد. برای شارژ نرمال مقدار را ۰ کن.
+ */
 #define CHG_FIXED_DUTY_TEST_ENABLE              0u  /* [EN] 1=fixed 15% duty diagnostic (DONE, coefficients locked); 0=normal charge / تست تمام شد، شارژ نرمال فعال */
 #define CHG_FIXED_DUTY_TEST_DUTY_PERMILLE     150u
 #define CHG_CURRENT_LIMIT_MA           675u
@@ -197,80 +175,38 @@
  *      از ۹۵۰) کانال را ریست می‌کند. */
 #define CHG_REGULATE_LOW_MA            630u
 #define CHG_CURRENT_HARD_FAULT_MA      950u
-/* [EN] Primary->output current estimate for the charge decisions: the shunt
- *      sits in the MOSFET source leg (primary side), while Bulk/Absorb/Float
- *      limits are output (battery) currents. Estimate Iout =
- *      Ipri_fw * Vin_fw * eta / Vbat_fw, per channel.
- *      PER-CHANNEL bench calibration 2026-09-22 (user calibration session,
- *      ChargerCalib array + real multimeter, duty steady):
- *        ch1/VHIGH: real out 520 mA @ 13.4 V, fw [Ipri=407, Vbat=14363,
- *        Vin=24197] -> eta = 520*14363/(407*24197) = 758 permille.
- *        ch2/VLOW: real out 220 mA @ 12.45 V, fw [Ipri=479, Vbat=12728,
- *        Vin=24197] -> eta = 220*12728/(479*24197) = 242 permille.
- *      ch2's 242 is NOT a physical efficiency: the ch2 sense chain currently
- *      over-reads the primary current ~2.9x (power balance: fw 407+479=886 mA
- *      vs only 680 mA real input; ch1 is the consistent one), so this value
- *      absorbs that error until the ch2 chain is investigated on the bench
- *      (zero-current check + scope). Do not reuse it as a physical constant.
- *      History: single 705 permille from the 2026-09-18 fixed-15%-duty point
- *      (441 mA out x 13.0 V, true primary 358 mA x 22.9 V). Vbat was clamped
- *      to a minimum floor (old define, dropped in v1.3) so a momentary bad
- *      reading could not divide by ~0; the estimate is only used inside the normal charge path, never
- *      in the bring-up source-limit path.
- *      FINAL UPDATE 2026-09-24 (same day, user-established bench fact): the
- *      sense chain is BATTERY-side - the measured voltage is approximately
- *      the battery current itself, so there is no primary->output conversion
- *      at all. func__Charger_OutputEstimateMa is the identity now and these
- *      permille values feed no calculation (kept only as inert defaults for
- *      the ESP eta params 9/10 read-back). The 758/242/786 history above is
- *      the record of the wrong "shunt in the MOSFET source" assumption.
- * [FA] تخمین جریان اولیه->خروجی برای تصمیم‌های شارژ: شانت سمت اولیه است ولی
- *      حدهای Bulk/Absorb/Float خروجی‌اند؛ Iout = Ipri×Vin×eta/Vbat،
- *      پرمیلِ جدا per channel. کالیبراسیون بنچ ۲۰۲۶-۰۹-۲۲ (جلسهٔ کالیبراسیون
- *      کاربر، آرایهٔ ChargerCalib + مولتی‌متر، با duty پایدار):
- *        کانال بالا: خروجی واقعی 520mA در 13.4V، فریمور
- *        [Ipri=407، Vbat=14363، Vin=24197] → eta = 758 پرمیل.
- *        کانال پایین: خروجی واقعی 220mA در 12.45V، فریمور
- *        [Ipri=479، Vbat=12728، Vin=24197] → eta = 242 پرمیل.
- *      ۲۴۲ کانال پایین بازده فیزیکی نیست: زنجیرهٔ sense کانال ۲ الان ~۲٫۹
- *      برابر جریان اولیه را زیاد می‌خواند (بیلان توان: 407+479=886mA فریمور
- *      در برابر فقط 680mA ورودی واقعی؛ کانال ۱ سازگار است) پس این مقدار
- *      خطای sense را جذب می‌کند تا بررسی سخت‌افزاری کانال ۲ (تست جریان‌صفر و
- *      اسکوپ). به‌عنوان ثابت فیزیکی استفاده نشود. سابقه: ۷۰۵ واحدی از
- *      نقطهٔ دیوتی-ثابت ۱۵٪ ۲۰۲۶-۰۹-۱۸. *      به‌روزرسانی نهایی ۲۰۲۶-۰۹-۲۴ (همان روز، روایت کاربر از بنچ): زنجیرهٔ
- *      سنس سمت باتری است — ولتاژ اندازه‌گیری‌شده تقریبا خودِ جریان باتری است؛
- *      پس اصلاً تبدیل اولیه→خروجی وجود ندارد. func__Charger_OutputEstimateMa
- *      حالا همانی است و این مقادیر پرمیل در هیچ محاسبه‌ای نمی‌نشینند (فقط
- *      پیش‌فرض بی‌اثر برای خوانده‌شدن پارامتر eta ‌ی ۹/۱۰ ESP). تاریخچهٔ
- *      758/242/786 بالا سندِ فرض اشتباه «شانت در سورس ماسفت» است.
- *      CALIBRATION ARCHITECTURE v1.3 (user order 2026-09-24, same day):
- *      instead of staying deleted, the conversion is back as an EXPLICIT,
- *      panel-calibratable stage. ETA1/ETA2 (ESP params 9/10, renamed from
- *      the old UP/DN) are per-channel conversion factors with DEFAULT 0 =
- *      identity - a reflash changes no number until the user calibrates.
- *      When non-zero: iest = I_filtered x Vin x eta / (1000 x Vbat) with
- *      the LIVE input and channel-battery voltages, so the battery-current
- *      reading stays true while the battery voltage moves during a charge
- *      (the identity mode drifts by Vbat_cal/Vbat). Calibration is ONE ESP
- *      command (CAL_REFERENCE, protocol v1.3): the user types the
- *      battery-side DMM mA on the panel and the firmware computes eta from
- *      its own live snapshot. With the 2026-09-24 battery-calibrated gains
- *      the computed eta lands near 1000 x Vbat / Vin (~537) and absorbs
- *      both the true converter efficiency and the gain calibration point.
- * [FA] معماری کالیبراسیون v1.3 (دستور کاربر ۲۰۲۶-۰۹-۲۴، همان روز): تبدیل
- *      به‌جای حذفِ کامل، به یک مرحلهٔ صریح و قابل‌کالیبره از پنل برگشت.
- *      ETA1/ETA2 (پارامتر ۹/۱۰ ESP، تغییرنام از UP/DN قدیمی) ضریب تبدیل
- *      هر کانال‌اند با پیش‌فرض ۰ = همانی — ریفلش هیچ عددی را عوض نمی‌کند
- *      تا وقتی کاربر کالیبره کند. وقتی غیرصفر است: iest = I_filtered ×
- *      Vin × η ÷ (۱۰۰۰ × Vbat) با ولتاژهای زندهٔ ورودی و باتری کانال، پس
- *      خوانش جریان باتری با بالا رفتن ولتاژ باتری در طول شارژ درست می‌ماند
- *      (حالت همانی به‌اندازهٔ Vbat_کالیبراسیون÷Vbat منحرف می‌شود). کالیبراسیون
- *      یک فرمان ESP است (CAL_REFERENCE، پروتکل v1.3): کاربر عدد مولتی‌متر
- *      سمت باتری را در پنل وارد می‌کند و فریم‌ور خودش η را از snapshot
- *      زنده محاسبه می‌کند. با گین‌های کالیبره-باتریِ ۲۰۲۶-۰۹-۲۴، η
- *      محاسبه‌شده نزدیک ۱۰۰۰×Vbat÷Vin (~۵۳۷) می‌افتد و هم بازده واقعی
- *      مبدل و هم نقطهٔ کالیبراسیون گین را جذب می‌کند.
- */
+/* [EN] Battery-current estimate architecture v1.3 (user order
+ *      2026-09-24). The sense chain turned out to be battery-side, so
+ *      with the 2026-09-24 battery-calibrated gains the filtered reading
+ *      already IS the battery current. Instead of deleting the old
+ *      primary->output conversion, it stays as an EXPLICIT,
+ *      panel-calibratable stage: ETA1/ETA2 (ESP params 9/10) are
+ *      per-channel factors, DEFAULT 0 = identity (a reflash changes no
+ *      number until the user calibrates). Non-zero: iest = I_filtered x
+ *      Vin x eta / (1000 x Vbat) with LIVE voltages, so the reading stays
+ *      true while Vbat moves during a charge (identity drifts by
+ *      Vbat_cal/Vbat). Calibration is ONE ESP command (CAL_REFERENCE,
+ *      protocol v1.3): the user types the battery-side DMM mA and the
+ *      firmware computes eta from its own live snapshot; with the
+ *      battery-calibrated gains it lands near 1000 x Vbat / Vin (~537).
+ *      The legacy 758/242 permille (bench 2026-09-22, wrong
+ *      shunt-in-MOSFET-source assumption) feed no calculation - kept only
+ *      as inert defaults for the eta param read-back; ch2's 242 also
+ *      absorbs the ch2 sense chain over-reading (~2.9x), do not reuse it
+ *      as a physical constant.
+ * [FA] معماری تخمین جریان باتری v1.3 (دستور ۲۰۲۶-۰۹-۲۴): زنجیرهٔ sense سمت
+ *      باتری است، پس با گین‌های کالیبره-باتری عدد فیلترشده خودش جریان
+ *      باتری است. تبدیل قدیمی اولیه→خروجی به‌جای حذف، مرحلهٔ صریحِ
+ *      قابل‌کالیبره ماند: ETA1/ETA2 (پارامتر ۹/۱۰) ضریب هر کانال با
+ *      پیش‌فرض ۰ = همانی (ریفلش عددی را عوض نمی‌کند). غیرصفر: iest = I ×
+ *      Vin × η ÷ (۱۰۰۰ × Vbat) با ولتاژهای زنده تا خوانش با حرکت Vbat
+ *      درست بماند. کالیبراسیون یک فرمان ESP (CAL_REFERENCE): کاربر عدد
+ *      مولتی‌متر سمت باتری را می‌دهد و فریم‌ور η را از snapshot خودش
+ *      می‌سازد؛ با گین‌های جدید نزدیک ۱۰۰۰×Vbat÷Vin (~۵۳۷) می‌افتد.
+ *      مقادیر قدیمی ۷۵۸/۲۴۲ (فرض اشتباه شانت-در-سورس) در هیچ محاسبه‌ای
+ *      نیستند - فقط پیش‌فرض بی‌اثر برای خوانده‌شدن پارامتر؛ ۲۴۲ کانال ۲
+ *      خطای over-read زنجیرهٔ sense (~۲٫۹×) را هم جذب کرده - ثابت فیزیکی
+ *      نیست. */
 #define CHG_FLYBACK_ETA1_PERMILLE            0u
 #define CHG_FLYBACK_ETA2_PERMILLE            0u
 

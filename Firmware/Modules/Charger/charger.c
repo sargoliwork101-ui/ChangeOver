@@ -1,18 +1,17 @@
 /**
  * @file    charger.c
  * @brief   [EN] Generic per-channel 12 V charger control. CHG_MASTER_ENABLE is
- *          the single master switch; when it is 0 the module stays in
- *          safe-idle with all PWM stopped, NC relay closed, and JIT/relay
- *          policy inactive. CHG_TRANSFORMER_KNOWN is not bypassable; when it
- *          is 0 only the explicit limited bring-up test mode is allowed.
- *          The two channels share implementation only; their voltage,
- *          current, duty, state, retry counter and JIT sequence are separate.
+ *          the single master switch; when 0 the module stays in safe-idle
+ *          (all PWM stopped, NC relay closed, JIT/relay policy inactive).
+ *          CHG_TRANSFORMER_KNOWN is not bypassable; when 0 only the
+ *          explicit limited bring-up test mode is allowed. The channels
+ *          share implementation only - voltage, current, duty, state,
+ *          retry counter and JIT sequence are per-channel.
  *          [FA] کنترل عمومی شارژرهای مستقل ۱۲ ولت. CHG_MASTER_ENABLE تنها
- *          کلید اصلی است؛ با مقدار ۰ ماژول در safe-idle با همه PWM متوقف،
- *          رله NC بسته و سیاست JIT/رله غیرفعال باقی می‌ماند. CHG_TRANSFORMER_KNOWN
- *          bypass نمی‌شود؛ وقتی صفر است فقط حالت صریح و محدود bring-up مجاز است.
- *          فقط پیاده‌سازی مشترک است؛ ولتاژ، جریان، duty، state، retry و توالی
- *          JIT هر کانال جداست.
+ *          کلید اصلی است؛ با ۰ ماژول در safe-idle می‌ماند (PWM متوقف، رلهٔ
+ *          NC بسته، سیاست JIT/رله غیرفعال). CHG_TRANSFORMER_KNOWN bypass
+ *          نمی‌شود؛ با ۰ فقط مود محدود bring-up مجاز است. فقط پیاده‌سازی
+ *          مشترک است؛ ولتاژ/جریان/duty/state/retry/JIT هر کانال جداست.
  */
 
 /* ==================== Includes / شامل‌ها ==================== */
@@ -142,22 +141,19 @@ volatile uint32_t UINT32_T__G__ChargerIest1Ma = 0u;
 volatile uint32_t UINT32_T__G__ChargerIest2Ma = 0u;
 
 /* [EN] Runtime per-channel conversion factors ETA1/ETA2 (protocol v1.3,
- *      user order 2026-09-24). 0 (compiled default) = the estimate is the
- *      identity: with the 2026-09-24 battery-calibrated gains the filtered
- *      reading already equals the battery current. Non-zero = the live
- *      conversion iest = I x Vin x eta / (1000 x Vbat), set either directly
- *      (ESP params 9/10) or computed by the panel CAL_REFERENCE command
- *      from a typed battery-side DMM reading. Flash-persisted since v1.14
- *      (NVM ids 9/10); written by the EspLink task, read in the
- *      control task; aligned 32-bit values are atomic on Cortex-M3.
- * [FA] ضریب‌های تبدیل زمان اجرای هر کانال ETA1/ETA2 (پروتکل v1.3، دستور
- *      کاربر ۲۰۲۶-۰۹-۲۴). صفر (پیش‌فرض کامپایل) = تخمین همانی است: با
- *      گین‌های کالیبره-باتریِ ۲۰۲۶-۰۹-۲۴ عدد فیلترشده خودش جریان باتری
- *      است. غیرصفر = تبدیل زندهٔ iest = I × Vin × η ÷ (۱۰۰۰ × Vbat) که
- *      یا مستقیم (پارامتر ۹/۱۰ ESP) یا با فرمان CAL_REFERENCE پنل از عدد
- *      مولتی‌متر سمت باتری محاسبه می‌شود. روی فلش می‌ماند از نسخهٔ ۱.۱۴
- *      (شناسه‌های ۹/۱۰)؛ نوشتن از تسک EspLink و خواندن در تسک کنترل؛
- *      مقادیر ۳۲ بیتی تراز روی Cortex-M3 اتمیک‌اند. */
+ *      user order 2026-09-24). 0 (compiled default) = identity: with the
+ *      battery-calibrated gains the filtered reading already equals the
+ *      battery current. Non-zero = live conversion iest = I x Vin x eta /
+ *      (1000 x Vbat), set via ESP params 9/10 or computed by the panel
+ *      CAL_REFERENCE command. Flash-persisted since v1.14 (NVM ids 9/10);
+ *      written by the EspLink task, read in the control task; aligned
+ *      32-bit values are atomic on Cortex-M3.
+ * [FA] ضریب تبدیل زمان اجرای هر کانال (پروتکل v1.3، دستور ۲۰۲۶-۰۹-۲۴).
+ *      صفر (پیش‌فرض) = همانی: با گین‌های کالیبره-باتری عدد فیلترشده خودش
+ *      جریان باتری است. غیرصفر = تبدیل زندهٔ iest = I × Vin × η ÷ (۱۰۰۰ ×
+ *      Vbat)؛ ست از پارامتر ۹/۱۰ یا فرمان CAL_REFERENCE. روی فلش از v1.14
+ *      (شناسه ۹/۱۰)؛ نوشتن از تسک EspLink، خواندن در کنترل؛ u32 تراز اتمیک.
+ */
 static volatile uint32_t UINT32_T__G__ChargerEta1Permille =
     CHG_FLYBACK_ETA1_PERMILLE;
 static volatile uint32_t UINT32_T__G__ChargerEta2Permille =
@@ -190,38 +186,30 @@ static volatile uint32_t UINT32_T__G__ChargerDutyCeilingPermille[2] =
     {CHG_DUTY_MAX_PERMILLE, CHG_DUTY_MAX_PERMILLE};
 
 /* [EN] Runtime fixed-duty mode per channel (user order 2026-09-22: hold
- *      the PWM at one chosen number instead of the regulation loop). While
- *      enabled, the channel applies its fixed duty each pass instead of
- *      ramping/regulating - with EXACTLY the safety wrapper of the proven
- *      compile-time bench-test mode: switching stops above CHG_ABSORB_MV
- *      (no overcharge with regulation off), all JIT / input / battery /
- *      ESP-cut gates above stay active. Default off. RAM only.
- * [FA] مود duty فیکس هر کانال در زمان اجرا (دستور کاربر ۲۰۲۶-۰۹-۲۲:
- *      نگه‌داشتن PWM روی یک عدد دلخواه به‌جای حلقهٔ تنظیم). تا وقتی
- *      فعال است کانال در هر پاس duty فیکس خودش را اعمال می‌کند نه رمپ/
- *      تنظیم - با دقیقاً همان پوشش امنیتی مود تست بنچ کامپایل‌تایم:
- *      بالای CHG_ABSORB_MV سوئیچینگ متوقف می‌شود (با تنظیم خاموش،
- *      بیش‌شارژ ممکن نیست) و همهٔ گیت‌های JIT/ورودی/باتری/قطع ESP
- *      بالادست فعال می‌مانند. پیش‌فرض خاموش. فقط RAM. */
+ *      the PWM at one chosen number instead of the regulation loop) - with
+ *      EXACTLY the safety wrapper of the compile-time bench-test mode:
+ *      switching stops above CHG_ABSORB_MV, all JIT/input/battery/ESP-cut
+ *      gates stay active. Default off. RAM only.
+ * [FA] مود duty فیکس هر کانال (دستور ۲۰۲۶-۰۹-۲۲): اعمال duty ثابت به‌جای
+ *      حلقهٔ تنظیم، با همان پوشش امنیتی مود بنچ کامپایل‌تایم: بالای
+ *      CHG_ABSORB_MV توقف سوئیچینگ و همهٔ گیت‌های JIT/ورودی/باتری/ESP
+ *      فعال. پیش‌فرض خاموش. فقط RAM. */
 static volatile bool BOOL__G__ChargerDutyFixedEnable[2] = {false, false};
 static volatile uint32_t UINT32_T__G__ChargerDutyFixedPermille[2] = {0u, 0u};
 
 /* [EN] Manual test mode state (user order 2026-09-23, protocol v1.2
  *      param 19). Requested is written by the ESP link task; Active is
- *      owned by the charger task and flips in func__Charger_Evaluate,
- *      where every enter/exit action runs in the charger context. The
- *      link stamp feeds the CHG_MANUAL_WATCHDOG_MS dead-man and is
- *      refreshed by every valid ESP frame. RearmRequest is the manual
- *      JIT re-arm signal: a fresh duty write while parked re-arms the
- *      channel (the write itself happens in the ESP task, the charger
- *      task consumes the request).
- * [FA] وضعیت مود تست دستی (دستور کاربر ۲۰۲۶-۰۹-۲۳، پارامتر ۱۹ v1.2).
- *      Requested را تسک ESP می‌نویسد؛ Active مالکش تسک شارژر است و در
- *      Evaluate برمی‌گردد جایی که همهٔ عملیات ورود/خروج در زمینهٔ شارژر
- *      اجرا می‌شود. مهرِ لینک ددمنِ CHG_MANUAL_WATCHDOG_MS را غذا می‌دهد و
- *      هر فریم معتبر ESP آن را تازه می‌کند. RearmRequest سیگنال re-arm ی
- *      JIT دستی است: نوشتنِ دوبارهٔ duty در حالت پارک کانال را مسلح
- *      می‌کند (نوشتن در تسک ESP، مصرف درخواست در تسک شارژر). */
+ *      owned by the charger task and flips in func__Charger_Evaluate
+ *      (every enter/exit action runs in the charger context). The link
+ *      stamp feeds the CHG_MANUAL_WATCHDOG_MS dead-man, refreshed by every
+ *      valid ESP frame. RearmRequest = manual JIT re-arm: a fresh duty
+ *      write while parked re-arms the channel (write in the ESP task,
+ *      consumed by the charger task).
+ * [FA] وضعیت مود تست دستی (دستور ۲۰۲۶-۰۹-۲۳، پارامتر ۱۹ v1.2). Requested
+ *      را تسک ESP می‌نویسد؛ Active مالکش تسک شارژر است و در Evaluate
+ *      برمی‌گردد (همهٔ عملیات ورود/خروج در زمینهٔ شارژر). مهر لینک ددمنِ
+ *      CHG_MANUAL_WATCHDOG_MS را غذا می‌دهد؛ RearmRequest یعنی re-arm دستی
+ *      JIT: نوشتن duty در حالت پارک کانال را مسلح می‌کند. */
 static volatile bool BOOL__G__ChargerManualModeRequested = false;
 static volatile bool BOOL__G__ChargerManualModeActive = false;
 static volatile uint32_t UINT32_T__G__ManualLastLinkTick = 0u;
@@ -438,41 +426,27 @@ static uint32_t func__Charger_ChannelCurrentMa(const measurement_snapshot_t *mea
  *              architecture v1.3 (user order 2026-09-24). Two modes:
  *              (1) ETA = 0 (compiled default): identity - with the
  *              battery-calibrated gains the filtered reading already
- *              equals the battery current (user bench fact 2026-09-24), so
- *              a reflash changes no number.
- *              (2) ETA != 0 (ESP param 9/10, or computed by the panel
- *              CAL_REFERENCE command from a battery-side DMM reading):
- *              iest = I x Vin x eta / (1000 x Vbat) with the LIVE input
- *              and channel-battery voltages, so the reading stays true
- *              while the battery voltage moves during a charge (identity
- *              drifts by Vbat_cal/Vbat). Guards: below CHG_ETA_MIN_VIN_MV
- *              / CHG_ETA_MIN_VBAT_MV the estimate falls back to identity
- *              instead of dividing a garbage snapshot. The math is ordered
- *              to stay inside 32 bits: (I*eta/1000) stays under ~1e7, the
- *              product with Vin under ~3e8.
- *              History: the deleted conversion (Vin*eta/Vbat stacked on
- *              top of the battery-calibrated gain) double-counted the
- *              ratio - iest read ~0.5x with eta 242 and ~1.4x with eta 786;
- *              that record lives in charger.h.
+ *              equals the battery current, so a reflash changes no number.
+ *              (2) ETA != 0 (ESP param 9/10 or panel CAL_REFERENCE):
+ *              iest = I x Vin x eta / (1000 x Vbat) with LIVE voltages,
+ *              so the reading stays true while Vbat moves during a charge.
+ *              Guards: below CHG_ETA_MIN_VIN_MV / CHG_ETA_MIN_VBAT_MV the
+ *              estimate falls back to identity instead of dividing a
+ *              garbage snapshot. Math ordered to stay inside 32 bits:
+ *              (I*eta/1000) < ~1e7, product with Vin < ~3e8. (History of
+ *              the deleted double-counting conversion: charger.h.)
  *         [FA] تخمین جریان خروجی (سمت باتری) - معماری کالیبراسیون v1.3
- *              (دستور کاربر ۲۰۲۶-۰۹-۲۴). دو مود:
- *              (۱) η = ۰ (پیش‌فرض کامپایل): همانی - با گین‌های کالیبره-باتری
- *              عدد فیلترشده خودش جریان باتری است (واقعیت بنچ کاربر
- *              ۲۰۲۶-۰۹-۲۴)؛ پس ریفلش هیچ عددی را عوض نمی‌کند.
- *              (۲) η ≠ ۰ (پارامتر ۹/۱۰ ESP، یا محاسبهٔ فرمان CAL_REFERENCE
- *              پنل با مولتی‌متر سمت باتری): iest = I × Vin × η ÷ (۱۰۰۰ ×
- *              Vbat) با ولتاژهای زندهٔ ورودی و باتری کانال، تا خوانش با
- *              بالا رفتن ولتاژ باتری در طول شارژ درست بماند (حالت همانی
- *              به‌اندازهٔ Vbat_کالیبراسیون÷Vbat منحرف می‌شود). گارد: زیر
- *              CHG_ETA_MIN_VIN_MV / CHG_ETA_MIN_VBAT_MV تخمین به‌جای تقسیم
- *              snapshot بی‌معنی به همانی برمی‌گردد. ترتیب ریاضی طوری است
- *              که داخل ۳۲ بیت بماند: (I×η÷۱۰۰۰) زیر ~۱e7 و حاصل‌ضرب با Vin
- *              زیر ~۳e8 می‌ماند. تاریخچه: تبدیل حذف‌شدهٔ قدیمی (Vin×η÷Vbat
- *              روی گین کالیبره-باتری) نسبت را دوبار می‌شمرد - با η=242
- *              عدد ~۰٫۵ برابر و با η=786 عدد ~۱٫۴ برابر می‌شد؛ ثبتش در
- *              charger.h است.
- * @param  measurement_snapshot_t__snap [EN] Live snapshot (Vin/Vbat) / snapshot زنده (Vin/Vbat)
- * @param  uint8_t__channelIndex [EN] 0 = ch1 (upper battery), 1 = ch2 / ۰=کانال۱ (باتری بالا)، ۱=کانال۲
+ *              (دستور کاربر ۲۰۲۶-۰۹-۲۴). (۱) η=۰ (پیش‌فرض): همانی - با
+ *              گین‌های کالیبره-باتری عدد فیلترشده خودش جریان باتری است؛
+ *              ریفلش هیچ عددی را عوض نمی‌کند. (۲) η≠۰ (پارامتر ۹/۱۰ یا
+ *              CAL_REFERENCE پنل): iest = I × Vin × η ÷ (۱۰۰۰ × Vbat) با
+ *              ولتاژهای زنده تا خوانش با حرکت Vbat درست بماند. گارد: زیر
+ *              CHG_ETA_MIN_VIN_MV / CHG_ETA_MIN_VBAT_MV برگشت به همانی
+ *              به‌جای تقسیم snapshot بی‌معنی. ترتیب ریاضی داخل ۳۲ بیت
+ *              می‌ماند: (I×η÷۱۰۰۰) زیر ~1e7 و ضرب در Vin زیر ~3e8.
+ *              (تاریخچهٔ تبدیل دوبارشمرِ حذف‌شده: charger.h.)
+ * @param  measurement_snapshot_t__snap [EN] Live snapshot (Vin/Vbat) / snapshot زنده
+ * @param  uint8_t__channelIndex [EN] 0 = ch1 (upper battery), 1 = ch2 / ۰=کانال۱، ۱=کانال۲
  * @param  uint32_t__primaryMa [EN] Filtered chain current, mA / جریان فیلترشدهٔ زنجیره، mA
  * @return uint32_t [EN] Battery-side current estimate, mA / تخمین جریان سمت باتری، mA
  */
@@ -1004,18 +978,15 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         return;
     }
 
-    /* [EN] Runtime fixed-duty mode (user order 2026-09-22: hold the PWM at
-       one chosen number). Mirrors the proven compile-time bench-test block
-       below: switching stops above CHG_ABSORB_MV so the battery cannot be
-       overcharged with regulation off, the state shows BULK, and every
-       protection cut above (JIT, input, battery, ESP) stays active.
+    /* [EN] Runtime fixed-duty mode (user order 2026-09-22): mirrors the
+       compile-time bench-test block below - switching stops above
+       CHG_ABSORB_MV (no overcharge with regulation off), state shows BULK,
+       every protection cut above (JIT/input/battery/ESP) stays active.
        ApplyDuty clamps to min(compile max, runtime ceiling).
-       [FA] مود duty فیکس زمان اجرا (دستور کاربر ۲۰۲۶-۰۹-۲۲: نگه‌داشتن
-       PWM روی یک عدد). آینهٔ بلوک تست بنچ کامپایل‌تایم پایین است: بالای
-       CHG_ABSORB_MV سوئیچینگ متوقف می‌شود تا با تنظیمِ خاموش باتری
-       بیش‌شارژ نشود، وضعیت BULK دیده می‌شود و همهٔ حفاظت‌های بالادست
-       (JIT، ورودی، باتری، ESP) فعال می‌مانند. ApplyDuty به کمینهٔ سقف
-       کامپایل و سقف زمان اجرا گیره می‌زند. */
+       [FA] مود duty فیکس زمان اجرا (دستور کاربر): آینهٔ بلوک بنچ
+       کامپایل‌تایم پایین - بالای CHG_ABSORB_MV توقف سوئیچینگ، وضعیت BULK،
+       همهٔ حفاظت‌های بالادست فعال. ApplyDuty به کمینهٔ سقف کامپایل و سقف
+       زمان اجرا گیره می‌زند. */
     if (BOOL__G__ChargerDutyFixedEnable[uint8_t__channelIndex] != false)
     {
         uint32_t__batteryMv =
@@ -1088,22 +1059,18 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         return;
     }
 
-    /* [EN] Charger adds no filter of its own on the current (user order
-       2026-09-22): the snapshot current is a clean PWM mid-ON synchronized
-       primary sample, already passed through Measurement's switchable
-       median-3 / moving-average-10 chain, and converted straight to the
-       output estimate above. The regulation band and the >950 mA hard fault
-       both decide on that value; duty rate limits (one step per 500/1000 ms)
-       prevent hunting and the hardware JIT comparator remains the fast
-       over-current protection.
-       [FA] شارژر خودش هیچ فیلتری روی جریان اضافه نمی‌کند (دستور کاربر
-       ۲۰۲۶-۰۹-۲۲): جریان snapshot نمونهٔ سنکرونِ تمیزِ وسط ON پالس PWM است
-       که از زنجیرهٔ کلیددار مدین-۳ / میانگین-۱۰ Measurement عبور کرده و بالا
-       به جریان خروجی تخمینی تبدیل شده. باند تنظیم و خطای سخت بالای ۹۵۰mA
-       هر دو با همین مقدار تصمیم می‌گیرند؛ محدودیت نرخ پله‌های duty (هر
-       ۵۰۰/۱۰۰۰ms) جلوی hunting را می‌گیرد و JIT سخت‌افزاری حفاظت سریع
-       اضافه‌جریان باقی می‌ماند. */
-
+    /* [EN] The charger adds no filter of its own on the current (user
+       order 2026-09-22): the snapshot current is a clean PWM mid-ON
+       synchronized sample, already filtered by Measurement's switchable
+       median-3 / average-10 chain. The regulation band and the >950 mA
+       hard fault both decide on that value; duty rate limits (one step
+       per 500/1000 ms) prevent hunting; the hardware JIT comparator is
+       the fast over-current protection.
+       [FA] شارژر فیلتر خودش را روی جریان اضافه نمی‌کند (دستور کاربر):
+       جریان snapshot نمونهٔ سنکرون وسط ON است که از زنجیرهٔ کلیددار
+       مدین-۳ / میانگین-۱۰ Measurement گذشته. باند تنظیم و خطای سخت ۹۵۰mA
+       با همین تصمیم می‌گیرند؛ محدودیت نرخ duty جلوی hunting را می‌گیرد و
+       JIT سخت‌افزاری حفاظت سریع اضافه‌جریان است. */
 #if (CHG_FIXED_DUTY_TEST_ENABLE != 0u)
     /* [EN] Bench diagnostic: fixed duty, no ramp/band/voltage regulation.
        Switching stops at the absorb voltage so the battery cannot be
@@ -1341,16 +1308,13 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     {
         /* [EN] End of the charge cycle = PARK THE PUMP AT ZERO (user
            directive 2026-09-19: "why is the charger not off, why is duty
-           still 4-5%"): step duty down to 0 on the coarse cadence and keep
-           it parked. The battery rests at its natural voltage; only the
-           <12.8 V reentry (handled above) wakes BULK again. Previously the
-           low-current neutral band could freeze a few-% standby duty and
-           trickle forever.
-           [FA] اتمام سیکل شارژ یعنی پارک پمپ روی صفر (دستور کاربر): دیوتی
-           با ضرب‌آهنگ زبری تا صفر پایین می‌آید و پارک می‌شود؛ باتری روی
-           ولتاژ طبیعی خودش استراحت می‌کند و فقط reentry زیر ۱۲٫۸V به بالک
-           برمی‌گرداند. قبلاً باند خنثیِ جریان کم، چند درصد دیوتی آماده‌باش
-           را تا ابد فریز می‌کرد و شارژ خاموش نمی‌شد. */
+           still 4-5%"): step duty down to 0 on the coarse cadence and
+           keep it parked; only the <12.8 V reentry (above) wakes BULK
+           again.
+           [FA] اتمام سیکل = پارک پمپ روی صفر (دستور کاربر: «چرا شارژر
+           خاموش نیست، دیوتی هنوز ۴-۵٪ است؟»): دیوتی با ضرب‌آهنگ زبری تا
+           صفر پایین می‌آید و پارک می‌ماند؛ فقط reentry زیر ۱۲٫۸V دوباره
+           بالک را بیدار می‌کند. */
         if ((uint16_t__nextDuty != 0u) &&
             ((uint32_t)(uint32_t__nowTick -
                         charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
@@ -1574,16 +1538,15 @@ static void func__Charger_EnterManualTestMode(uint32_t uint32_t__nowTick)
  * @brief  [EN] Leave the manual test mode (panel off-switch or link
  *              dead-man): both duties drop to 0 and every channel
  *              restarts the AUTONOMOUS charger from OFF with fresh
- *              bookkeeping (the 15 s connection settle applies again).
- *              A latched FINAL_FAULT is never released here; the JIT trip
+ *              bookkeeping (the connection settle applies again). A
+ *              latched FINAL_FAULT is never released here; the JIT trip
  *              latches of parked channels are cleared so the comparator
  *              can fire again.
  *         [FA] خروج از مود تست دستی (کلید خاموش پنل یا ددمن لینک): هر
  *              دو duty صفر و هر کانال شارژر خودکار را از OFF با دفترچهٔ
- *              تمیز ری‌استارت می‌کند (ثبات ۱۵ ثانیه‌ای دوباره اعمال
- *              می‌شود). قفل FINAL_FAULT هرگز اینجا آزاد نمی‌شود؛ لچ‌های
- *              تریپ JIT کانال‌های پارک‌شده پاک می‌شوند تا کمپریتور
- *              دوباره بتواند شلیک کند.
+ *              تمیز ری‌استارت می‌کند (ثبات اتصال دوباره اعمال می‌شود).
+ *              قفل FINAL_FAULT هرگز اینجا آزاد نمی‌شود؛ لچ‌های JIT
+ *              کانال‌های پارک‌شده پاک می‌شوند تا کمپریتور دوباره شلیک کند.
  */
 static void func__Charger_ExitManualTestMode(void)
 {
@@ -2217,20 +2180,17 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
 /**
  * @brief  [EN] Report whether any installed channel is currently PUMPING
- *         charge into a battery (BULK / ABSORB only). A channel idling in
- *         OFF, JIT_RETRY_WAIT, INPUT_WAIT, FINAL_FAULT or BAT_LOST does NOT
- *         count; since 2026-09-19 a FLOAT channel does not count either -
- *         the pump is parked at zero duty there, so the charge is DONE, not
- *         active. Used by (a) the UI Charging face, which additionally
- *         requires "not full" (v1.17b: the full face keys on
- *         IsChargeComplete), and (b) the fault pump-window, so
- *         a transient above 14.8 V in the parked/done phase can no longer
- *         catch the battery-lost buzzer (nothing is pumping then).
- *         [FA] آیا دست‌کم یک کانال نصب‌شده واقعاً در حال پمپ‌کردن شارژ است؟
- *         فقط BULK/ABSORB؛ FLOAT پارک‌شده (دیوتی صفر) یعنی کار تمام شده و
- *         فعال حساب نمی‌شود (چهرهٔ فول با IsChargeComplete می‌آید) و
- *         آشکارساز قطع باتری هم آنجا مسلح نیست.
- * @return bool [EN] true if any installed channel is pumping / true اگر هر کانال نصب‌شده پمپ کند
+ *         charge into a battery (BULK / ABSORB only). OFF, JIT_RETRY_WAIT,
+ *         INPUT_WAIT, FINAL_FAULT, BAT_LOST and - since 2026-09-19 - FLOAT
+ *         (pump parked at zero duty = charge DONE) do not count. Used by
+ *         (a) the UI Charging face (the full face keys on
+ *         IsChargeComplete) and (b) the fault pump-window, so a transient
+ *         above 14.8 V in the parked/done phase cannot catch the
+ *         battery-lost buzzer.
+ *         [FA] آیا کانال نصب‌شده‌ای واقعاً پمپ می‌کند؟ فقط BULK/ABSORB؛
+ *         FLOAT پارک‌شده یعنی کار تمام است و حساب نمی‌شود (چهرهٔ فول با
+ *         IsChargeComplete می‌آید) و آشکارساز قطع باتری هم آنجا مسلح نیست.
+ * @return bool [EN] true if any installed channel is pumping / اگر کانالی پمپ کند true
  */
 bool func__Charger_IsAnyChannelActive(void)
 {
@@ -2292,18 +2252,15 @@ bool func__Charger_IsChargeComplete(void)
 /**
  * @brief  [EN] Set the runtime conversion factor of one channel, clamped
  *              to 0..999 permille (v1.3): 0 = identity bypass (compiled
- *              default), non-zero = the live iest = I x Vin x eta /
- *              (1000 x Vbat) conversion. Channel 0 = charger 1 (upper
- *              battery), channel 1 = charger 2 (lower battery).
- *              Flash-persisted since v1.14 (NVM ids 9/10). Written by the ESP
- *              panel (params 9/10) and by the CAL_REFERENCE command (user
- *              order 2026-09-24).
- *         [FA] ضریب تبدیل یک کانال در زمان اجرا، گیرهٔ ۰..۹۹۹ پرمیل (v1.3):
- *              صفر = همانی/گذر (پیش‌فرض کامپایل)، غیرصفر = تبدیل زندهٔ
- *              iest = I × Vin × η ÷ (۱۰۰۰ × Vbat). کانال ۰ = شارژر ۱ (باتری
- *              بالا) و کانال ۱ = شارژر ۲ (باتری پایین). روی فلش می‌ماند
- *              از نسخهٔ ۱.۱۴ (شناسه‌های ۹/۱۰). نوشته از پنل ESP (پارامتر
- *              ۹/۱۰) و از فرمان CAL_REFERENCE (دستور کاربر ۲۰۲۶-۰۹-۲۴).
+ *              default), non-zero = live iest = I x Vin x eta / (1000 x
+ *              Vbat). Channel 0 = charger 1 (upper battery), 1 = charger 2.
+ *              Flash-persisted since v1.14 (NVM ids 9/10); written by the
+ *              ESP panel (params 9/10) and by CAL_REFERENCE (user order
+ *              2026-09-24).
+ *         [FA] ضریب تبدیل زمان اجرای یک کانال، گیرهٔ ۰..۹۹۹ پرمیل (v1.3):
+ *              صفر = همانی (پیش‌فرض)، غیرصفر = تبدیل زندهٔ iest = I × Vin ×
+ *              η ÷ (۱۰۰۰ × Vbat). کانال ۰ = شارژر ۱ (باتری بالا)، ۱ = شارژر
+ *              ۲. روی فلش از v1.14 (شناسه ۹/۱۰)؛ از پنل ESP و CAL_REFERENCE.
  * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
  * @param  uint32_t__etaPermille [EN] Requested efficiency / بازدهی درخواستی
  * @return uint32_t [EN] Applied efficiency permille / بازدهی اعمال‌شده
@@ -2771,15 +2728,14 @@ uint32_t func__Charger_GetDutyCeilingPermille(uint8_t uint8_t__channelIndex)
  *              enabled, the channel holds its fixed duty instead of the
  *              regulation loop, with the bench-test safety wrapper
  *              (switching stops above CHG_ABSORB_MV; JIT/input/battery/ESP
- *              cuts stay active). The duty value itself is set with
- *              SetDutyFixedPermille and clamped on apply. RAM only (ESP
- *              panel, user order 2026-09-22).
- *         [FA] مود duty فیکس یک کانال در زمان اجرا. تا وقتی فعال است
- *              کانال به‌جای حلقهٔ تنظیم، duty فیکس خود را نگه می‌دارد با
- *              همان پوشش امنیتی تست بنچ (توقف سوئیچینگ بالای
- *              CHG_ABSORB_MV؛ حفاظت‌های JIT/ورودی/باتری/ESP فعال).
- *              خودِ عدد duty با SetDutyFixedPermille تنظیم و موقع اعمال
- *              گیره می‌خورد. فقط RAM (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
+ *              cuts stay active). The duty value is set with
+ *              SetDutyFixedPermille and clamped on apply. RAM only (user
+ *              order 2026-09-22).
+ *         [FA] مود duty فیکس یک کانال: تا وقتی فعال است کانال duty فیکس
+ *              را به‌جای حلقهٔ تنظیم نگه می‌دارد با همان پوشش امنیتی بنچ
+ *              (توقف سوئیچینگ بالای CHG_ABSORB_MV؛ برش‌های JIT/ورودی/
+ *              باتری/ESP فعال). عدد duty با SetDutyFixedPermille تنظیم و
+ *              موقع اعمال گیره می‌خورد. فقط RAM (دستور ۲۰۲۶-۰۹-۲۲).
  * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
  * @param  bool__enable [EN] true = fixed mode on / مود فیکس روشن
  */
