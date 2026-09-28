@@ -2192,17 +2192,46 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
  *         IsChargeComplete می‌آید) و آشکارساز قطع باتری هم آنجا مسلح نیست.
  * @return bool [EN] true if any installed channel is pumping / اگر کانالی پمپ کند true
  */
+/**
+ * @brief  [EN] True while ONE given channel (0 = charger 1 / upper
+ *              battery, 1 = charger 2 / lower battery) is actually
+ *              pumping: installed and sitting in BULK or ABSORB - the
+ *              same predicate as func__Charger_IsAnyChannelActive, split
+ *              per channel (v1.21, user order 2026-09-28) so the fault
+ *              pump-rule can arm each battery half by ITS OWN charger: a
+ *              parked channel has no pump, so its half cannot fly up to
+ *              the disconnect threshold.
+ *         [FA] کانالِ داده‌شده (۰ = شارژر ۱ / باتری بالا، ۱ = شارژر ۲ /
+ *              باتری پایین) واقعاً پمپ می‌کند؟ نصب‌شده و در BULK یا
+ *              ABSORB - همان محمولِ IsAnyChannelActive، تجزیه‌شده
+ *              به‌ازای کانال (v1.21، دستور کاربر ۲۰۲۶-۰۹-۲۸) تا قانون
+ *              پمپِ فالت هر نیم را با شارژر خودش مسلح کند: کانال
+ *              پارک‌شده پمپی ندارد پس نیمش نمی‌تواند تا آستانهٔ قطع بالا
+ *              پرود.
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @return bool [EN] true while that channel pumps / وقتی همان کانال پمپ کند
+ */
+bool func__Charger_IsChannelActive(uint8_t uint8_t__channelIndex)
+{
+    if (uint8_t__channelIndex >= 2u)
+    {
+        return false;
+    }
+
+    return ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed == true) &&
+            ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
+              CHG_STATE_BULK) ||
+             (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
+              CHG_STATE_ABSORB)));
+}
+
 bool func__Charger_IsAnyChannelActive(void)
 {
     uint8_t uint8_t__channelIndex;
 
     for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
     {
-        if ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed == true) &&
-            ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
-              CHG_STATE_BULK) ||
-             (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
-              CHG_STATE_ABSORB)))
+        if (func__Charger_IsChannelActive(uint8_t__channelIndex) == true)
         {
             return true;
         }

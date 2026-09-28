@@ -436,16 +436,27 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
     bool__inputOk = ((measurement_snapshot_t__snap->v_in_mv >= FAULT_ALARM_T__G__Alarm.uint32_t__inputMinMv) &&
                      (measurement_snapshot_t__snap->v_in_mv <= FAULT_ALARM_T__G__Alarm.uint32_t__inputMaxMv));
 
-    /* [EN] Case 1: either half pumped above the disconnect threshold
-       (flyback signature of a cut battery wire while charging); armed only
-       while some channel is actually pumping.
-       [FA] حالت ۱: هر نیم بالای آستانهٔ قطع (امضای پمپ سیم قطع حین شارژ)؛
-       فقط حین پمپ واقعی مسلح است. */
+    /* [EN] Case 1: a half pumped above the disconnect threshold (flyback
+       signature of a cut battery wire while charging). v1.21 (user order
+       2026-09-28, kills the repeating false 3-beep cycle during charge):
+       armed PER HALF by THAT half's own pumping channel - a parked
+       channel has no pump, so its half cannot fly up to the threshold
+       and must not be judged. The derived vhigh = V24 - V12 in
+       particular moves with the OTHER channel's load current, so judging
+       it while only ch2 pumps latched phantom battery-lost alarms.
+       [FA] حالت ۱: نیمی که شارژر خودش روی آن پمپ می‌کند بالای آستانهٔ
+       قطع رفته (امضای پمپ سیم قطع حین شارژ). v1.21 (دستور کاربر
+       ۲۰۲۶-۰۹-۲۸، رفع چرخهٔ کاذب سه‌بوق حین شارژ): مسلح‌شدن به‌ازای هر
+       نیم با کانال پمپ‌کنندهٔ خودش - کانال پارک‌شده پمپی ندارد پس نیمش
+       نمی‌تواند بالا پرود و قضاوت نمی‌شود. به‌ویژه vhigh مشتق‌شده =
+       V24 − V12 با جریان بار کانال دیگر حرکت می‌کند و قضاوتش حین پمپِ
+       فقط ch2 آلارم قطع‌باتریِ خیالی قفل می‌کرد. */
     bool__anyOver =
-        (func__Charger_IsAnyChannelActive() == true) &&
         (((bool__lowHalfInstalled  == true) &&
+          (func__Charger_IsChannelActive(1u) == true) &&
           (uint32_t__lowMv  > FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv)) ||
          ((bool__highHalfInstalled == true) &&
+          (func__Charger_IsChannelActive(0u) == true) &&
           (uint32_t__highMv > FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv)));
 
     /* [EN] Case 2: EITHER half below the absent threshold (6 V) with a

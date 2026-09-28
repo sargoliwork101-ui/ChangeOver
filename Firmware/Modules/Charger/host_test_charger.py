@@ -92,6 +92,34 @@ def jit_sequence(channel, trip_count):
         channel["final"] = True
 
 
+def test_fault_pump_rule_per_half_v121():
+    """[EN] v1.21 (user order 2026-09-28): the 14.8 V pump rule arms PER HALF
+       by that half's own pumping channel (channel 0 = high half, 1 = low half).
+       [FA] v1.21: قانون پمپ ۱۴٫۸V هر نیم را فقط شارژر خودش مسلح می‌کند."""
+    def any_over_v120(any_pumping, low_mv, high_mv, installed=(True, True), disc=14800):
+        low_ok, high_ok = installed
+        return any_pumping and ((low_ok and low_mv > disc) or (high_ok and high_mv > disc))
+    def any_over_v121(ch0_pumping, ch1_pumping, low_mv, high_mv, installed=(True, True), disc=14800):
+        low_ok, high_ok = installed
+        return ((low_ok and ch1_pumping and low_mv > disc) or
+                (high_ok and ch0_pumping and high_mv > disc))
+    # [EN] Bench case that produced the repeating 3-beep cycle: only ch2
+    # pumps, the DERIVED vhigh (V24 - V12) spikes above 14.8 V.
+    # [FA] همان حالت بنچ با چرخهٔ سه‌بوق: فقط ch2 پمپ می‌کند و vhigh
+    # مشتق‌شده (V24 - V12) اسپایک می‌گیرد.
+    check(any_over_v120(True, 13000, 15000) == True, "old rule: the parked ch1 half could false-latch while ch2 pumped")
+    check(any_over_v121(False, True, 13000, 15000) == False, "v1.21: parked ch1 half is not judged while only ch2 pumps")
+    # [EN] Real wire cut on a charging channel must still latch.
+    # [FA] قطع واقعی سیم روی کانال در حال شارژ همچنان قفل می‌کند.
+    check(any_over_v121(True, False, 13000, 15000) == True, "v1.21: real ch1 wire cut while ch1 pumps still latches")
+    check(any_over_v121(False, True, 15000, 13000) == True, "v1.21: real ch2 wire cut while ch2 pumps still latches")
+    check(any_over_v121(True, True, 15000, 14400) == True, "v1.21: both pumping + low half over latches")
+    # [EN] No pump -> rule not armed at all; uninstalled half ignored.
+    # [FA] بدون پمپ اصلاً مسلح نیست؛ نیمِ کانال غیرنصب نادیده گرفته می‌شود.
+    check(any_over_v121(False, False, 16000, 16000) == False, "v1.21: no pump -> rule not armed")
+    check(any_over_v121(True, False, 13000, 15000, installed=(True, False)) == False, "v1.21: uninstalled high half ignored")
+
+
 def test_modules_enabled_build():
     mods = (ROOT / "Firmware/Config/Inc/modules_enable.h").read_text()
     ch = CHARGER_H.read_text()
@@ -391,8 +419,9 @@ def test_setpoints_and_timing():
     check(re.search(r"#define CHG_REENTRY_MV\s+12800u", text_h), "reentry stays 12.8 V (13.0 caused repeat charge cycles as the battery rested at ~13.0 V)")
     check(re.search(r"#define CHG_CONNECT_SETTLE_MS\s+15000u", text_h), "connection-settle must be 15 s (user: 10..20 s before charge start)")
     check("func__Charger_BulkStartSettled" in text_c and "uint32_t__stableFromTick" in text_c, "OFF->BULK must be gated on the connection-settle stamp (kills bat-lost flap + yellow blink inside the buzzer)")
-    iso_active = text_c.split("bool func__Charger_IsAnyChannelActive(void)")[-1].split("bool func__Charger_IsChargeComplete(void)")[0]
-    check("CHG_STATE_FLOAT" not in iso_active and "CHG_STATE_BULK" in iso_active and "CHG_STATE_ABSORB" in iso_active, "IsAnyChannelActive must count only BULK/ABSORB - parked FLOAT is DONE, not pumping (kills done-phase false buzzers and stops the yellow blink)")
+    iso_active = text_c.split("bool func__Charger_IsChannelActive(uint8_t")[-1].split("bool func__Charger_IsChargeComplete(void)")[0]
+    check("CHG_STATE_FLOAT" not in iso_active and "CHG_STATE_BULK" in iso_active and "CHG_STATE_ABSORB" in iso_active, "IsAnyChannelActive/IsChannelActive must count only BULK/ABSORB - parked FLOAT is DONE, not pumping (kills done-phase false buzzers and stops the yellow blink)")
+    check("func__Charger_IsChannelActive(uint8_t__channelIndex) == true" in iso_active, "v1.21: IsAnyChannelActive delegates to the per-channel predicate (one source of truth)")
     check(re.search(r"#define CHG_FLOAT_MV\s+13500u", text_h), "float must be 13500 mV")
     check(re.search(r"#define CHG_REENTRY_MV\s+12800u", text_h), "reentry must be 12800 mV")
     check(re.search(r"#define CHG_ABSORB_HOLD_MS\s+600000u", text_h), "absorb soak must be 600000 ms = 10 min inside the timed window")
@@ -579,8 +608,8 @@ def test_setpoints_and_timing():
     check(re.search(r"#define FAULT_INPUT_PRESENT_MAX_MV\s+28000u", text_fault_h), "absent rule must be gated by input <= 28 V")
     check("CHG_INSTALLED_CHANNEL_MASK" in text_fault_c and "bool__highHalfInstalled" in text_fault_c,
           "battery-lost rules must ignore halves of uninstalled channels (bench bug: with CH1 off, the unwired low half latched bat-lost forever and the charger looked dead)")
-    check("func__Charger_IsAnyChannelActive" in text_fault_c,
-          "the 14.8 V pump rule must be armed only while some channel is actually pumping (parked-FLOAT bench transients must not trip it)")
+    check("func__Charger_IsChannelActive(0u)" in text_fault_c and "func__Charger_IsChannelActive(1u)" in text_fault_c,
+          "v1.21 (user order 2026-09-28): the 14.8 V pump rule is armed PER HALF by that half's own pumping channel - a parked channel has no pump, its half cannot fly up (kills the repeating false 3-beep cycle during charge; the derived vhigh = V24 - V12 moves with the OTHER channel's load)")
     check("func__Fault_Evaluate" in text_fault_h and "func__Fault_Evaluate" in text_fault_c, "Fault must own the central battery-lost evaluation")
     check("func__Fault_Set(FAULT_CHARGER_BAT_LOST)" in text_fault_c, "Fault must latch the bit, not the charger")
     check("func__Fault_Clear(FAULT_CHARGER_BAT_LOST)" in text_fault_c, "Fault must clear the bit after the settle time")
@@ -2118,6 +2147,7 @@ def main():
         test_audit_batch_v116b,
         test_telemetry_frame_pins_v116c,
         test_flash_diet_pins_v116d,
+        test_fault_pump_rule_per_half_v121,
     ]
     for test in tests:
         test()

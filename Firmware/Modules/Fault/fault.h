@@ -19,7 +19,9 @@
  *            FAULT_BAT_DISCONNECT_MV for FAULT_BAT_DISCONNECT_DEBOUNCE_MS
  *            (150 ms - the 15.0 V validity cut kills the pump within
  *            milliseconds, so a longer debounce can never fill; the node
- *            still floats ~0.5 s above 14.8 V).
+ *            still floats ~0.5 s above 14.8 V). v1.21: armed PER HALF -
+ *            each half is judged only while ITS OWN charger channel is
+ *            pumping (a parked channel cannot fly its half up).
  *         2) input present and in range but EITHER half below
  *            FAULT_BAT_ABSENT_MV (6 V) for FAULT_BAT_ABSENT_DEBOUNCE_MS.
  *         Recovery: BOTH halves >= FAULT_BATTERY_BACK_MV (7 V, not 6 V - a
@@ -28,8 +30,11 @@
  *         [FA] تشخیص متمرکز قطع باتری (شارژر فقط آینه است). دو حالت با یک
  *         بیت: (۱) شارژ فعال + سیم قطع: نیم‌باتری بالای ۱۴٫۸V به‌مدت ۱۵۰ms
  *         (قطع ۱۵٫۰V پمپ را در حد میلی‌ثانیه می‌خواباند؛ گره ~۰٫۵s بالای
- *         ۱۴٫۸V شناور می‌ماند)؛ (۲) ورودی سالم ولی هر نیم زیر ۶V به‌مدت ۱s.
- *         بازیابی: هر دو نیم >= ۷V بدون پمپ به‌مدت ۱s ← پاک‌شدن بیت.
+ *         ۱۴٫۸V شناور می‌ماند)؛ v1.21: مسلح‌شدن به‌ازای هر نیم - هر نیم فقط
+ *         وقتی کانال شارژر خودش پمپ می‌کند قضاوت می‌شود (کانال پارک‌شده
+ *         نمی‌تواند نیمش را بالا بفرستد)؛ (۲) ورودی سالم ولی هر نیم زیر ۶V
+ *         به‌مدت ۱s. بازیابی: هر دو نیم >= ۷V بدون پمپ به‌مدت ۱s ← پاک‌شدن
+ *         بیت.
  * @note   [EN] Case 2 runs only with the input inside
  *         [FAULT_INPUT_PRESENT_MIN_MV, FAULT_INPUT_PRESENT_MAX_MV].
  *         [FA] حالت ۲ فقط با ورودی سالم ارزیابی می‌شود.

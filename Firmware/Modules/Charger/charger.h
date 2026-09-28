@@ -665,6 +665,25 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 bool func__Charger_IsAnyChannelActive(void);
 
 /**
+ * @brief  [EN] True while ONE given channel (0 = charger 1 / upper battery,
+ *         1 = charger 2 / lower battery) is actually pumping: installed and
+ *         in BULK or ABSORB - the per-channel split of the predicate above
+ *         (v1.21). The Fault module arms its 14.8 V pump-rule PER HALF with
+ *         it: a parked channel has no pump, so its half cannot fly up and
+ *         must not be judged (kills the false 3-beep cycle during charge,
+ *         user order 2026-09-28).
+ *         [FA] کانالِ داده‌شده (۰ = شارژر ۱ / باتری بالا، ۱ = شارژر ۲ /
+ *         باتری پایین) واقعاً پمپ می‌کند؟ نصب‌شده و در BULK یا ABSORB -
+ *         تجزیهٔ به‌ازای کانال همان محمول بالا (v1.21). فالت با آن قانون
+ *         پمپ ۱۴٫۸V را «به‌ازای هر نیم» مسلح می‌کند: کانال پارک‌شده پمپی
+ *         ندارد پس نیمش قضاوت نمی‌شود (رفع چرخهٔ کاذب سه‌بوق حین شارژ،
+ *         دستور کاربر ۲۰۲۶-۰۹-۲۸).
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @return bool [EN] true while that channel pumps / وقتی همان کانال پمپ کند
+ */
+bool func__Charger_IsChannelActive(uint8_t uint8_t__channelIndex);
+
+/**
  * @brief  [EN] True when every relevant channel finished its charge: at
  *         least one installed+enabled channel exists and ALL of them sit
  *         in FLOAT. FLOAT is entered from one place only (ABSORB done:

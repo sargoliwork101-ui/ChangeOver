@@ -316,7 +316,7 @@ AA 55 11 05 00 02 B0 04 00 00 A2
 | 24 | CHG_PROFILE_REENTRY_MV | u32 | mV | 12800 | 8000..float−300 | Float→bulk reentry voltage (battery sagged below this = recharge) |
 | 25 | CHG_PROFILE_BULK_CURRENT_MAX_MA | u32 | mA | 650 | 100..900 | Maximum charge current - top of the regulation band (bottom = this − 20, hard limit = this + 25 < the 950 mA fault) |
 | 26 | CHG_PROFILE_TAPER_CURRENT_MA | u32 | mA | 50 | 10..min(300, imax) | Float-entry taper current - absorb ends when the tail current stays below it for 60 s |
-| 27 | FAULT_ALARM_DISCONNECT_MV | u32 | mV | 14800 | max(14000, over+50)..min(15000, OV−100) | **v1.15 alarms tab** (section 5.9): battery-wire-cut threshold - either half pumped above this while charging = wire cut (latch) |
+| 27 | FAULT_ALARM_DISCONNECT_MV | u32 | mV | 14800 | max(14000, over+50)..min(15000, OV−100) | **v1.15 alarms tab** (section 5.9): battery-wire-cut threshold - a half pumped above this while ITS OWN charger channel is charging = wire cut (latch). v1.21 (user order 2026-09-28): armed PER HALF - a parked channel has no pump, so its half is not judged (kills the repeating false 3-beep cycle during charge; the derived vhigh = V24 − V12 moves with the other channel's load) |
 | 28 | FAULT_ALARM_DISCONNECT_DEB_MS | u32 | ms | 150 | 50..1000 | Cut-condition debounce before the latch |
 | 29 | FAULT_ALARM_ABSENT_MV | u32 | mV | 6000 | 3000..8000, < back−500 | Battery-absent threshold (either half below = no battery, input-gated) |
 | 30 | FAULT_ALARM_BACK_MV | u32 | mV | 7000 | 4000..9000, > absent+500 | Battery-back threshold (both halves above = healthy again) |
