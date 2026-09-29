@@ -348,6 +348,117 @@ def report_trace(hours=5.0):
               % (a["duty"], b["duty"], a["integ"], b["integ"]))
 
 
+def run_events(rows=None, hours=6.0, events=(), seed_duty=10, **plant_kw):
+    """[EN] Like charge(), but the SETPOINT and the DUTY CEILING can move
+       mid-run and the pack can be disturbed - the things that actually
+       happen on a bench (someone edits the absorb voltage or the duty
+       ceiling from the panel, or the pack sags under a load step). The
+       static scenario sweep never exercised any of these.
+       `events` = [(second, key, value)] where key is 'target', 'ceil' or
+       'voc_bump'.
+       [FA] مثل charge() ولی ست‌پوینت و سقف دیوتی وسط کار می‌توانند تغییر
+       کنند و پک می‌تواند اغتشاش ببیند - همان چیزهایی که سر بنچ واقعاً رخ
+       می‌دهند. جاروب سناریوهای ایستا هیچ‌کدام را امتحان نمی‌کرد."""
+    rows = rows or FACTORY
+    pl = Plant(**plant_kw)
+    pid = Pid(rows)
+    pid.seed(seed_duty)
+    d, t, log, S = seed_duty, 0.0, [], None
+    dt = PERIOD_MS / 1000.0
+    target, ceil = ABSORB_MV, DUTY_MAX
+    pending = sorted(events, key=lambda e: e[0])
+    while t < hours * 3600:
+        while pending and pending[0][0] <= t:
+            _, key, val = pending.pop(0)
+            if key == "target":
+                target = val
+            elif key == "ceil":
+                ceil = val
+            elif key == "voc_bump":
+                pl.voc += val
+        v, i = pl.step(d, dt)
+        vi = round(v)
+        if S is None:
+            S = vi * VOLT_FILTER_N
+        S = S - (S // VOLT_FILTER_N) + vi
+        d = pid.step(S // VOLT_FILTER_N, round(i), target, PERIOD_MS,
+                     raw_mv=vi, raw_ma=round(i), ceil_permille=ceil)
+        log.append((t, v, i, d, target, ceil))
+        t += dt
+    return log
+
+
+def _tail_stats(log, seconds=600.0):
+    """[EN] Behaviour over the LAST `seconds` of a run (where it settled).
+       [FA] رفتار در آخرین بازهٔ اجرا (جایی که نشسته است)."""
+    end = log[-1][0]
+    w = [r for r in log if r[0] >= end - seconds]
+    return (min(r[1] for r in w), max(r[1] for r in w),
+            max(r[2] for r in w), w[-1][3], w[-1][4])
+
+
+def report_stress(hours=6.0):
+    """[EN] Dynamic stress suite: does the regulator still behave when the
+       operating point MOVES under it?  / [FA] مجموعهٔ تنش دینامیک."""
+    print("dynamic stress - does the loop hold when the operating point moves?")
+    print("%-34s | %8s | %8s | %7s | %5s | %s"
+          % ("case", "peak V", "end hold", "peak I", "duty", "verdict"))
+    print("-" * 104)
+    worst_v = worst_i = 0.0
+    bad = []
+
+    cases = [
+        ("baseline, no events", dict(events=())),
+        ("absorb setpoint 14.4 -> 14.0 @2h",
+         dict(events=[(7200, "target", 14000)])),
+        ("absorb setpoint 14.4 -> 14.6 @2h",
+         dict(events=[(7200, "target", 14600)])),
+        ("duty ceiling 500 -> 120 permille @2h",
+         dict(events=[(7200, "ceil", 120)])),
+        ("duty ceiling 500 -> 60 then back @2h/@3h",
+         dict(events=[(7200, "ceil", 60), (10800, "ceil", 500)])),
+        ("pack sag -800 mV @2.5h (load step)",
+         dict(events=[(9000, "voc_bump", -800.0)])),
+        ("pack jump +400 mV @2.5h",
+         dict(events=[(9000, "voc_bump", 400.0)])),
+        ("start already full (13.9 V)", dict(events=(), voc=13900.0)),
+        ("start AT the setpoint (14.4 V)", dict(events=(), voc=14400.0)),
+        ("start ABOVE setpoint (14.7 V)", dict(events=(), voc=14700.0)),
+        ("very stiff pack (R=0.02, C=6000)",
+         dict(events=(), R=0.02, C=6000.0)),
+        ("setpoint walk 14.6->14.0 in 4 steps",
+         dict(events=[(3600, "target", 14500), (7200, "target", 14300),
+                      (10800, "target", 14150), (14400, "target", 14000)])),
+    ]
+    for name, kw in cases:
+        log = run_events(hours=hours, **kw)
+        pv = max(r[1] for r in log)
+        pi = max(r[2] for r in log)
+        lo, hi, imax_tail, duty, tgt = _tail_stats(log)
+        worst_v, worst_i = max(worst_v, pv), max(worst_i, pi)
+        err = max(abs(lo - tgt), abs(hi - tgt))
+        # [EN] A charger is a SOURCE: it cannot pull a pack down. When the
+        #      setpoint is moved below the pack's resting voltage the only
+        #      correct response is duty 0 / no current and let it decay, so
+        #      judging that case by hold error would be judging physics.
+        # [FA] شارژر منبع است و نمی‌تواند پک را پایین بکشد. اگر ست‌پوینت زیر
+        #      ولتاژ استراحت پک برود، تنها پاسخ درست duty=0 و بدون جریان است.
+        parked = duty == 0 and imax_tail < 1.0 and lo > tgt
+        ok = pv < BACKSTOP_MV and pi < 950 and (err <= 60 or parked)
+        if not ok:
+            bad.append((name, pv, pi, err))
+        note = "ok (parked: setpoint unreachable downward)" if parked and err > 60 \
+            else ("ok" if ok else "*** CHECK ***")
+        print("%-34s | %8.1f | %+7.1f | %7.1f | %5d | %s"
+              % (name, pv, hi - tgt, pi, duty, note))
+    print("-" * 104)
+    print("worst peak V %.1f mV (backstop %d) | worst peak I %.1f mA (hard fault 950)"
+          % (worst_v, BACKSTOP_MV, worst_i))
+    print("VERDICT:", "PASS - the loop holds through every disturbance"
+          if not bad else "FAIL on: %s" % ", ".join(b[0] for b in bad))
+    return bad
+
+
 def report(rows, title, hours=10.0, current_loop=True):
     print("=" * 78)
     print(title)
@@ -381,6 +492,8 @@ def main():
     ap.add_argument("--hours", type=float, default=10.0, help="simulated hours per run")
     ap.add_argument("--rows", type=str, default=None,
                     help="custom gains, e.g. '12,1600,0,1000,1000;150,600,0,30,1000;150,18000,0,10,1000'")
+    ap.add_argument("--stress", action="store_true",
+                    help="dynamic stress: setpoint / ceiling / pack disturbances")
     ap.add_argument("--trace", action="store_true",
                     help="show which loop drives the single duty, pass by pass")
     ap.add_argument("--compare", action="store_true",
@@ -392,6 +505,10 @@ def main():
     print("hysteresis %d, prefilter N=%d, mis-tune cap %d permille, backstops %d mA / %d mV"
           % (HYST, VOLT_FILTER_N, MAX_STEP, BULK_IMAX_MA, BACKSTOP_MV))
     print()
+
+    if args.stress:
+        report_stress(hours=args.hours if args.hours != 10.0 else 6.0)
+        return
 
     if args.trace:
         report_trace(hours=args.hours)

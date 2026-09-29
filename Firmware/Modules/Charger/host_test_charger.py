@@ -2445,6 +2445,88 @@ def test_min_select_handover_v124():
           "settings backup both iterate it, so a stale bound injects phantom ids")
 
 
+def test_dynamic_disturbances_v124():
+    """[EN] The scenario sweep only ever tested a STATIC operating point.
+       These are the things that actually happen on a bench: someone edits
+       the absorb setpoint or the duty ceiling from the panel while a charge
+       is running, or the pack is disturbed. Regenerate with
+       `python3 tools/pid_tuning_sim.py --stress`.
+       [FA] جاروب سناریوها فقط نقطهٔ کار ایستا را می‌آزمود. این‌ها چیزهایی
+       است که سر بنچ واقعاً رخ می‌دهد: تغییر ست‌پوینت یا سقف دیوتی از پنل
+       وسط شارژ، یا اغتشاش پک."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import pid_tuning_sim as sim
+    text_h_local = CHARGER_H.read_text()
+
+    # --- 1. setpoint RAISED mid-charge: must track up and settle, not run away
+    log = sim.run_events(hours=4.0, events=[(7200, "target", 14600)])
+    lo, hi, _, _, tgt = sim._tail_stats(log)
+    check(tgt == 14600 and abs(hi - 14600) <= 60,
+          f"a setpoint raised to 14.6 V mid-charge must be tracked (settled {hi:.1f})")
+    check(max(r[1] for r in log) < 14800,
+          "raising the setpoint must not push the pack through the 14.8 V backstop")
+
+    # --- 2. setpoint LOWERED below the pack: a charger is a SOURCE and cannot
+    #        pull a pack down, so the only correct answer is duty 0 / no
+    #        current. The failure mode to catch is the opposite: winding up
+    #        and keeping the duty on.
+    log = sim.run_events(hours=4.0, events=[(7200, "target", 14000)])
+    tail = [r for r in log if r[0] >= 3.5 * 3600]
+    check(all(r[3] == 0 for r in tail) and max(r[2] for r in tail) < 1.0,
+          "an unreachable low setpoint must park the duty at ZERO, not wind up")
+
+    # --- 3. duty ceiling cut hard mid-charge (panel write): the integral is
+    #        clamped into [0, ceiling], so it must not wind up above the new
+    #        ceiling and then overshoot when the ceiling is restored.
+    log = sim.run_events(hours=4.0,
+                         events=[(7200, "ceil", 60), (10800, "ceil", 500)])
+    after = [r for r in log if r[0] >= 7200 and r[0] < 10800]
+    check(max(r[3] for r in after) <= 60,
+          "while the duty ceiling is 60 permille the applied duty must never exceed it")
+    check(max(r[1] for r in log) < 14800 and max(r[2] for r in log) < 950,
+          "restoring the ceiling must not produce a stored-up surge")
+
+    # --- 4. the backstop must react in ONE pass, not gradually. This is the
+    #        property that makes it a safety net rather than another loop.
+    log = sim.run_events(hours=3.0, events=[(9000, "voc_bump", 600.0)])
+    at = [r for r in log if r[0] >= 9000][:2]
+    check(at[0][3] == 0,
+          f"an over-voltage pack must drive the duty to 0 on the very first pass "
+          f"(got {at[0][3]} permille)")
+
+    # --- 4b. THE BACKSTOP MUST STAY IDLE during a normal charge. This is the
+    #         whole distinction the v1.24 analysis rests on: a backstop is a
+    #         reactive safety net, and the moment normal operation depends on
+    #         it firing, it has become part of the control loop and the
+    #         current limit-cycles. The bulk target therefore sits a margin
+    #         BELOW the profile limit. Measured: with the shipped 10 mA margin
+    #         the current never once passes 650 mA over a 6 h charge; with the
+    #         margin removed it does so on 13274 passes.
+    # [FA] پشتیبان باید در شارژ عادی بی‌کار بماند: لحظه‌ای که کار عادی به
+    #      شلیک آن وابسته شود، تور ایمنی جزئی از حلقهٔ کنترل شده و جریان
+    #      چرخهٔ حدی می‌زند.
+    margin = int(re.search(r"#define CHG_PID_CURRENT_MARGIN_MA\s+(\d+)u",
+                           text_h_local).group(1))
+    check(margin >= 5,
+          "the bulk target must sit a real margin below the profile current limit, "
+          "or the 650 mA backstop becomes part of normal regulation")
+    log = sim.charge(sim.FACTORY, hours=6.0)
+    limit = sim.BULK_IMAX_MA
+    over = [r for r in log if r[2] > limit]
+    check(not over,
+          f"the shipped tune must never reach the {limit} mA profile limit during a "
+          f"normal charge (the backstop fired on {len(over)} passes) - a safety net "
+          "that is routinely load-bearing is not a safety net")
+
+    # --- 5. starting already at or above the setpoint must not kick
+    for start, name in ((14400.0, "at the setpoint"), (14700.0, "above the setpoint")):
+        log = sim.run_events(hours=3.0, events=(), voc=start)
+        check(max(r[2] for r in log) < 650,
+              f"a pack starting {name} must never be hit with bulk current")
+        check(max(r[1] for r in log) < 14800,
+              f"a pack starting {name} must not be pushed through the backstop")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -2486,6 +2568,7 @@ def main():
         test_fault_pump_rule_per_half_v121,
         test_two_loop_pid_v124,
         test_min_select_handover_v124,
+        test_dynamic_disturbances_v124,
     ]
     for test in tests:
         test()
