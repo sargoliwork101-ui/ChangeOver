@@ -2676,6 +2676,56 @@ def test_vdda_reference_measurement_v125():
           "point is to look at it against a DMM first")
 
 
+def test_param_ranges_match_panel_v125():
+    """[EN] Every parameter's legal range is written TWICE: as a `def D, LO..HI`
+       comment beside the id in esp_link.h, and as real numbers in the panel's
+       ParamMin/ParamMax arrays. Nothing compared them, which is the same
+       duplicated-table trap that let the panel's current LUT go stale. This
+       walks all of them.
+       It also pins the NOTATION. Ids 67 and 69 used to read `0..66` and
+       `0..68`, where 66 and 68 are parameter IDS, not values - a relational
+       bound written in the field that everywhere else holds literals. It
+       misleads every reader (it misled this audit) and it makes the two
+       sources look like they disagree when they do not. Relational bounds go
+       after the literal range, as `0..10000, <= 66`.
+       [FA] بازهٔ مجاز هر پارامتر دو جا نوشته شده: کامنت کنار شناسه در
+       esp_link.h و آرایه‌های ParamMin/ParamMax پنل. هیچ‌چیز آن‌ها را مقایسه
+       نمی‌کرد - همان تلهٔ جدول تکراری که باعث کهنه‌شدن LUT پنل شد.
+       نماد را هم قفل می‌کند: شناسه‌های ۶۷ و ۶۹ قبلاً `0..66` و `0..68` بودند
+       که ۶۶ و ۶۸ در آن‌ها شناسهٔ پارامترند نه مقدار - قید رابطه‌ای در فیلدی که
+       همه‌جای دیگر مقدار ادبی نگه می‌دارد."""
+    h = ESP_LINK_H.read_text()
+    params_h = (ROOT / "esp_link_panel" / "plink_params.h").read_text()
+
+    def panel_arr(name):
+        m = re.search(r"INT32_T__G__" + name + r"\[ESP_PARAM_COUNT\] = \{([^}]*)\}", params_h)
+        check(m, f"the panel must declare {name}")
+        return [int(x.strip()) for x in m.group(1).split(",")]
+
+    pmin, pmax = panel_arr("ParamMin"), panel_arr("ParamMax")
+    count = int(re.search(r"#define ESPLINK_PARAM_COUNT\s+(\d+)u", h).group(1))
+    check(len(pmin) == count and len(pmax) == count,
+          f"ParamMin/ParamMax must have exactly ESP_PARAM_COUNT entries "
+          f"({len(pmin)}/{len(pmax)} vs {count})")
+
+    checked, bad = 0, []
+    for m in re.finditer(r"#define ESPLINK_PARAM_(\w+)\s+(\d+)u\s*/\*(.*?)\*/", h, re.S):
+        name, pid, body = m.group(1), int(m.group(2)), m.group(3)
+        rng = re.search(r"def\s+(-?\d+)\s*,\s*(-?\d+)\.\.(-?\d+)", body)
+        if not rng or pid >= count:
+            continue
+        lo, hi = int(rng.group(2)), int(rng.group(3))
+        checked += 1
+        if pmin[pid] != lo or pmax[pid] != hi:
+            bad.append(f"id {pid} {name}: firmware {lo}..{hi} vs panel {pmin[pid]}..{pmax[pid]}")
+    check(checked >= 60,
+          f"the range cross-check must actually cover the parameter table (only {checked} parsed)")
+    check(not bad,
+          "every documented firmware range must equal the panel's ParamMin/ParamMax, and a "
+          "relational bound must NOT be written in the literal LO..HI field (use "
+          "'0..10000, <= 66'): " + "; ".join(bad))
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -2720,6 +2770,7 @@ def main():
         test_dynamic_disturbances_v124,
         test_panel_lut_mirrors_firmware_v125,
         test_vdda_reference_measurement_v125,
+        test_param_ranges_match_panel_v125,
     ]
     for test in tests:
         test()

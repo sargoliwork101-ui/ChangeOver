@@ -228,9 +228,9 @@
 #define ESPLINK_PARAM_UI_RUN_TRI_COUNT        64u  /* u32, n,  def 3,     0..10 */
 #define ESPLINK_PARAM_UI_RUN_GAP_MS           65u  /* u32, ms, def 100,   0..5000, >=100 when any band count>1 */
 #define ESPLINK_PARAM_UI_GREEN_PERIOD_MS      66u  /* u32, ms, def 1000,  100..10000 */
-#define ESPLINK_PARAM_UI_GREEN_MIN_OFF_MS     67u  /* u32, ms, def 10,    0..66 */
+#define ESPLINK_PARAM_UI_GREEN_MIN_OFF_MS     67u  /* u32, ms, def 10,    0..10000, <= 66 */
 #define ESPLINK_PARAM_UI_YELLOW_PERIOD_MS     68u  /* u32, ms, def 1000,  100..10000 */
-#define ESPLINK_PARAM_UI_YELLOW_MIN_ON_MS    69u  /* u32, ms, def 150,   0..68 (v1.17: 10->150, visible end-of-charge blink) */
+#define ESPLINK_PARAM_UI_YELLOW_MIN_ON_MS    69u  /* u32, ms, def 150,   0..10000, <= 68 (v1.17: 10->150, visible end-of-charge blink) */
 #define ESPLINK_PARAM_UI_OV_THRESH_MV         70u  /* u32, mV, def 28000, 24000..32000 */
 #define ESPLINK_PARAM_UI_OV_HYST_MV           71u  /* u32, mV, def 1000,  0..2000 */
 #define ESPLINK_PARAM_UI_LOWBAT_THRESH_MV     72u  /* u32, mV, def 21000, 15000..24000, <= 73 */
