@@ -16,6 +16,54 @@
 /* ==================== Board calibration constants / ثابت‌های کالیبراسیون برد ==================== */
 /* [EN] Current STM32F1/board values: 3.3 V reference and 12-bit ADC.
  *      [FA] مقدارهای برد فعلی STM32F1: مرجع ۳٫۳V و ADC دوازده‌بیتی. */
+/* [EN] THE SINGLE GLOBAL SCALE. Every voltage and every current on this board
+ *      is counts x VREF / FULL_SCALE, so VREF is the one term common to all of
+ *      them - and therefore the ONLY correct place to fix a common-mode scale
+ *      error. Do not patch individual channels for something that is shared.
+ *
+ *      MEASURED EVIDENCE (bench/solo2_dense.csv, 2026-09-25, zero-current row):
+ *        VIN : firmware 24386 vs DMM 24100  -> ratio 1.01187
+ *        V12 : firmware 12224 vs DMM 12080  -> ratio 1.01192   (patch removed)
+ *      Two independent channels, different resistors, different dividers,
+ *      agreeing to 5 parts in 100000. A per-channel resistor tolerance cannot
+ *      produce that; only the shared reference can. It implies the real VDDA
+ *      is about 3261 mV, i.e. the 3.3 V rail sitting 1.2 percent low - well
+ *      inside a normal regulator spec.
+ *
+ *      THIS IS WHY THE BOARD "NEVER CALIBRATES": the dominant error is a GAIN
+ *      error, and the only runtime calibration the product exposes (params
+ *      4/5/6) is an ADDER. An adder mathematically cannot correct a
+ *      multiplier - it can only be right at one operating point, which is
+ *      exactly why every attempt drifted and why per-channel patches kept
+ *      getting added.
+ *
+ *      NOT CHANGED HERE, DELIBERATELY. Lowering VREF to 3261 would make every
+ *      reading 1.2 percent LOWER, which moves the over-voltage cut LATER - a
+ *      safety regression - and the number comes from one bench session on one
+ *      board with a DMM logged to 100 mV granularity on VIN. Reading slightly
+ *      HIGH is the safe direction, so the nominal 3300 stays until VDDA is
+ *      measured directly.
+ *      TO FIX IT PROPERLY: (1) put a DMM on VDDA and set this constant, or
+ *      better (2) enable the STM32F103 internal reference (VREFINT, ADC
+ *      channel 17) and compute VDDA at runtime, which makes every board
+ *      self-calibrating instead of one-board-tuned. (2) needs a CubeMX
+ *      regeneration (NbrOfConversion 5 -> 6), so it is the owner's call.
+ * [FA] تنها مقیاس سراسری. هر ولتاژ و هر جریان این برد برابر
+ *      counts x VREF / FULL_SCALE است، پس VREF تنها جملهٔ مشترک همهٔ آن‌هاست و
+ *      بنابراین تنها جای درست برای اصلاح خطای مقیاسِ مشترک. برای چیزی که
+ *      مشترک است، تک‌تک کانال‌ها را وصله نکنید.
+ *      شاهد اندازه‌گیری‌شده: در ردیف جریان صفر، ورودی نسبت ۱٫۰۱۱۸۷ و
+ *      دوازده‌ولت نسبت ۱٫۰۱۱۹۲ می‌دهد - دو کانال مستقل با مقاومت‌های متفاوت که
+ *      تا پنج در صدهزار با هم می‌خوانند. تلرانس مقاومت نمی‌تواند چنین کند؛ فقط
+ *      مرجع مشترک می‌تواند. یعنی VDDA واقعی حدود ۳۲۶۱ میلی‌ولت است.
+ *      «چرا برد هیچ‌وقت کالیبره نمی‌شود»: خطای غالب از نوع گین است و تنها
+ *      کالیبراسیون زمان‌اجرای محصول (پارامترهای ۴/۵/۶) جمع‌شونده است. جمع‌شونده
+ *      ریاضیاتاً نمی‌تواند ضرب‌شونده را اصلاح کند.
+ *      عمداً اینجا تغییر داده نشد: پایین‌آوردن به ۳۲۶۱ همهٔ خوانش‌ها را ۱٫۲٪ کم
+ *      می‌کند و قطع اضافه‌ولتاژ را دیرتر می‌اندازد - پس‌رفت ایمنی. خواندنِ کمی
+ *      بالا جهت امن است. راه درست: یا VDDA را با مولتی‌متر اندازه بگیرید و همین
+ *      ثابت را بگذارید، یا بهتر، مرجع داخلی VREFINT را فعال کنید تا هر برد
+ *      خودش را کالیبره کند (نیازمند بازتولید CubeMX، تصمیم با مالک پروژه). */
 #define BSP_MEASUREMENT_VREF_MV             3300u
 #define BSP_MEASUREMENT_ADC_FULL_SCALE     4095u
 

@@ -143,7 +143,25 @@ static const uint32_t CAL_Current2LutBatteryMw[] =
 #define CAL_BATTERY12_BENCH_COMP_ENABLE 1u
 
 #if (CAL_BATTERY12_BENCH_COMP_ENABLE != 0u)
-#define CAL_BATTERY12_BENCH_STATIC_MV  150u   /* [EN] static divider error, mV / خطای ثابت مقسم، mV */
+/* [EN] MISLABELLED UNTIL 2026-09-29: this was called a "static divider
+ *      error", which it is not. The V12 divider is exactly the schematic
+ *      value (R48 33K + R15 1.2K over R16 6.8K) and is correct. 150 mV on
+ *      12.2 V is 1.23 percent - the SAME common-mode error the input channel
+ *      shows (+1.19 percent), i.e. this is this channel's share of the global
+ *      ADC-reference error documented at BSP_MEASUREMENT_VREF_MV, patched
+ *      locally. Kept for now because removing it without correcting VREF
+ *      would make V12 read 1.2 percent low, but it must NOT be treated as a
+ *      divider fix and no further per-channel patch may be added for a
+ *      shared error.
+ * [FA] تا ۲۰۲۶-۰۹-۲۹ برچسب غلط داشت: «خطای ثابت مقسم» نامیده می‌شد که نیست.
+ *      مقسم ۱۲ولت دقیقاً مقدار شماتیک است و درست است. ۱۵۰ میلی‌ولت روی ۱۲٫۲
+ *      ولت یعنی ۱٫۲۳٪ - همان خطای مشترکی که کانال ورودی هم نشان می‌دهد
+ *      (۱٫۱۹٪)؛ یعنی سهم این کانال از خطای سراسری مرجع ADC که در
+ *      BSP_MEASUREMENT_VREF_MV مستند شده، به‌صورت محلی وصله شده است. فعلاً
+ *      می‌ماند چون حذفش بدون اصلاح VREF باعث می‌شود ۱۲ولت ۱٫۲٪ کم بخواند،
+ *      ولی نباید آن را «اصلاح مقسم» دانست و وصلهٔ تک‌کاناله جدید برای خطای
+ *      مشترک مجاز نیست. */
+#define CAL_BATTERY12_BENCH_STATIC_MV  150u   /* [EN] share of the GLOBAL VREF error, mV / سهم خطای سراسری VREF، mV */
 #define CAL_BATTERY12_BENCH_PATH_MOHM   470u   /* [EN] charge-path resistance, mOhm / مقاومت مسیر شارژ، mOhm */
 #endif
 

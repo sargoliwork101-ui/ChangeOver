@@ -2567,6 +2567,41 @@ def test_dynamic_disturbances_v124():
               f"a pack starting {name} must not be pushed through the backstop")
 
 
+def test_panel_lut_mirrors_firmware_v125():
+    """[EN] The ESP panel keeps a HAND-COPIED mirror of both current LUTs so it
+       can show the same milliamps the board computes. Nothing checked that the
+       copy still matched. It bit immediately: refitting the channel-1 power
+       table for the divider correction left the panel showing the old table,
+       so the page and the board would have disagreed by ~8 percent with no
+       warning anywhere. Any duplicated calibration table needs a test that
+       the duplicate is still a duplicate.
+       [FA] پنل ESP یک کپی دستی از هر دو جدول جریان دارد تا همان میلی‌آمپری را
+       نشان دهد که برد حساب می‌کند. هیچ‌چیز بررسی نمی‌کرد که کپی هنوز برابر
+       است. بلافاصله هم گاز گرفت: بعد از بازبرازش جدول کانال ۱ برای اصلاح
+       مقسم، پنل جدول قدیمی را نگه داشت و صفحه با برد حدود ۸٪ اختلاف پیدا
+       می‌کرد، بی‌هیچ هشداری. هر جدول کالیبراسیون تکراری، تست برابری می‌خواهد."""
+    cal = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
+    pan = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
+
+    def c_arr(name):
+        return [int(v.strip().rstrip("u"))
+                for v in re.search(name + r"\[\] =\s*\{([^}]*)\}", cal).group(1).split(",")]
+
+    def js_arr(name):
+        return [int(v) for v in re.search(name + r"=\[([^\]]*)\]", pan).group(1).split(",")]
+
+    for c_name, js_name, label in (
+            ("CAL_Current1LutChainMa", "LUT1X", "channel 1 chain axis"),
+            ("CAL_Current1LutBatteryMw", "LUT1Y", "channel 1 power axis"),
+            ("CAL_Current2LutChainMa", "LUTX", "channel 2 chain axis"),
+            ("CAL_Current2LutBatteryMw", "LUTY", "channel 2 power axis")):
+        fw_vals, panel_vals = c_arr(c_name), js_arr(js_name)
+        check(fw_vals == panel_vals,
+              f"the panel's {label} mirror must equal the firmware table exactly "
+              f"({c_name} vs {js_name}); firmware={fw_vals} panel={panel_vals} - a stale "
+              "mirror makes the page report a different current than the board")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -2609,6 +2644,7 @@ def main():
         test_two_loop_pid_v124,
         test_min_select_handover_v124,
         test_dynamic_disturbances_v124,
+        test_panel_lut_mirrors_firmware_v125,
     ]
     for test in tests:
         test()

@@ -461,7 +461,7 @@ const LUTX=[0,20,37,106,189,236,253,283,312,353,390,441,557,707],LUTY=[0,0,109,7
 const lutPow=c=>{for(let i=1;i<LUTX.length;i++){if(c<=LUTX[i]){const x0=LUTX[i-1],x1=LUTX[i];if(x1==x0)return LUTY[i];return LUTY[i-1]+Math.floor((c-x0)*(LUTY[i]-LUTY[i-1])/(x1-x0));}}const n=LUTX.length-1,d=LUTX[n]-LUTX[n-1];if(!d)return LUTY[n];return LUTY[n]+Math.floor((c-LUTX[n])*(LUTY[n]-LUTY[n-1])/d);};
 const lutTap=(ch,vb)=>{const pw=lutPow(Math.round(ch)),v=Math.min(15000,Math.max(8000,vb));return ' => LUT:'+pw+'mW/'+v+'='+Math.floor(pw*1000/v)+'mA';};
 /* v1.19: آینهٔ جدول توان کانال ۱ (SOLO1، ۱۷ لنگر) — قرینهٔ کانال ۲ */
-const LUT1X=[0,5,11,31,54,81,114,148,189,231,277,330,382,444,504,567,640],LUT1Y=[0,0,132,440,772,1028,1615,2111,2674,3261,3857,4553,5288,6074,6854,7686,8645];
+const LUT1X=[0,5,11,31,54,81,114,148,189,231,277,330,382,444,504,567,640],LUT1Y=[0,0,140,459,820,1095,1723,2259,2865,3496,4130,4862,5636,6488,7364,8290,9345];
 const lut1Pow=c=>{for(let i=1;i<LUT1X.length;i++){if(c<=LUT1X[i]){const x0=LUT1X[i-1],x1=LUT1X[i];if(x1==x0)return LUT1Y[i];return LUT1Y[i-1]+Math.floor((c-x0)*(LUT1Y[i]-LUT1Y[i-1])/(x1-x0));}}const n=LUT1X.length-1,d=LUT1X[n]-LUT1X[n-1];if(!d)return LUT1Y[n];return LUT1Y[n]+Math.floor((c-LUT1X[n])*(LUT1Y[n]-LUT1Y[n-1])/d);};
 const lut1Tap=(ch,vb)=>{const pw=lut1Pow(Math.round(ch)),v=Math.min(15000,Math.max(8000,vb));return ' => LUT:'+pw+'mW/'+v+'='+Math.floor(pw*1000/v)+'mA';};
 function formulas(t,p){
