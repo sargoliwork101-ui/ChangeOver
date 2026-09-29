@@ -465,20 +465,28 @@ def test_setpoints_and_timing():
           "live-voltage sanity guards must exist for the ETA conversion")
     esp_link_h_txt = (ROOT / "Firmware/Modules/EspLink/esp_link.h").read_text()
     esp_link_c_txt = (ROOT / "Firmware/Modules/EspLink/esp_link.c").read_text()
-    check("#define ESPLINK_MSG_CAL_REFERENCE     0x03u" in esp_link_h_txt,
-          "protocol v1.3 must define the CAL_REFERENCE command 0x03 (user order 2026-09-24: send/receive every calibration number via the ESP)")
-    check("func__EspLink_ApplyCalReference" in esp_link_c_txt and "ESPLINK_MSG_CAL_REFERENCE" in esp_link_c_txt,
-          "esp_link must handle CAL_REFERENCE (GAIN targets 0/1, ETA targets 2/3, PARAM_REPORT replies, silent rejection)")
-    check("uint32_t__gain = (uint32_t__gain * uint32_t__refMa) / uint32_t__liveMa;" in esp_link_c_txt and
-          "(((uint32_t__refMa * uint32_t__vbatMv) / uint32_t__vinMv) * 1000u)" in esp_link_c_txt,
-          "CAL math must be: gain *= ref/live and eta = ref*Vbat*1000/(live*Vin) on the live snapshot")
-    import re as _re
-    check(_re.search(r"#define ESPLINK_CAL_MAX_REF_MA\s+5000u", esp_link_h_txt) is not None,
-          "CAL_REFERENCE must sanity-cap the typed reference (50..5000 mA) so wire garbage cannot overflow the 32-bit math")
-    check("func__Charger_SetEfficiencyPermille(uint8_t__channelIndex, 0u);" in esp_link_c_txt,
-          "CAL GAIN must reset that channel's ETA to 0 - the old ETA absorbed the old gain's error")
-    check("#if MODULE_CHARGER\n    else if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_CAL_REFERENCE)" in esp_link_c_txt,
-          "the CAL_REFERENCE frame branch must be compiled out when the charger module is disabled")
+    # [EN] CAL_REFERENCE was a v1.3 command the panel stopped sending in v1.7.
+    #      The STM32 handler was then carried DEAD for six versions - 172 source
+    #      lines, roughly 0.7-1.1 KB of a 62 KB flash budget - and it is what
+    #      pushed the v2 build 92 bytes over the limit. Removed, along with the
+    #      whole cluster of tests that were pinning dead code in place.
+    #      The id stays RESERVED rather than freed: if 0x03 were reused for
+    #      something else, an older panel still sending CAL_REFERENCE would be
+    #      silently misinterpreted instead of harmlessly ignored.
+    # [FA] CAL_REFERENCE فرمانی از نسخهٔ ۱.۳ بود که پنل از نسخهٔ ۱.۷ نمی‌فرستد.
+    #      هندلرش شش نسخه مرده حمل شد - ۱۷۲ خط و حدود یک کیلوبایت از ۶۲ کیلوبایت
+    #      فلش - و همان چیزی بود که بیلد نسخهٔ ۲ را ۹۲ بایت سرریز کرد. حذف شد،
+    #      به‌همراه دسته تستی که آن کد مرده را سر جایش قفل کرده بود. شناسه رزرو
+    #      می‌ماند نه آزاد.
+    check("#define ESPLINK_MSG_CAL_REFERENCE     0x03u" in esp_link_h_txt
+          and "reserved, not handled" in esp_link_h_txt,
+          "message id 0x03 must stay RESERVED and marked as no longer handled, so it "
+          "is never reused and an old panel's CAL_REFERENCE stays harmlessly ignored")
+    check("func__EspLink_ApplyCalReference" not in esp_link_c_txt
+          and "ESPLINK_CAL_MAX_REF_MA" not in esp_link_c_txt,
+          "the dead CAL_REFERENCE handler must stay removed - the panel has not sent "
+          "it since v1.7, and carrying it dead is what overflowed the 62 KB flash "
+          "budget by 92 bytes")
     check("CHG_CURRENT_EMA_SHIFT" not in text_h and "currentEma" not in text_c,
           "charger must NOT filter the current estimate itself (user order 2026-09-22: Measurement's switchable median-3/moving-average chain feeds it; charger decides on that value)")
     check(re.search(r"#define MEASUREMENT_PERIOD_MS\s+1u", (ROOT / "Firmware/Modules/Measurement/measurement.h").read_text()),
