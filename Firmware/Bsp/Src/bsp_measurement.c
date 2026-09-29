@@ -146,8 +146,20 @@
 #define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS   BSP_MEASUREMENT_DIV24_TOP_OHMS
 #define BSP_MEASUREMENT_DIV24BAT_BOTTOM_OHMS BSP_MEASUREMENT_DIV24_BOTTOM_OHMS
 
-#define BSP_MEASUREMENT_DIV12_TOP_OHMS \
-    (BSP_MEASUREMENT_SENSE_TOP_12V_OHMS + BSP_MEASUREMENT_SENSE_SERIES_MCU_OHMS)
+/* [EN] MEASURED 2026-09-29: 14.88 V at CON2 pin 2 against 2.456 V at PA5 gives
+ *      a ratio of 6.0586. 33K+1.2K over 6.8K gives 6.0294, so the firmware read
+ *      0.48 % LOW - and reading low on the battery the charger regulates means
+ *      charging it HIGH, which is the unsafe direction. Unlike the 24 V nets
+ *      there is no clean structural story here (the 1.2K IS in this path); the
+ *      residual is ordinary 1 % resistor spread, so the top is set to what the
+ *      divider actually measures: 6800 x (6.0586 - 1) = 34398.
+ * [FA] اندازه‌گیری ۲۰۲۶-۰۹-۲۹: ۱۴٫۸۸ ولت روی پین ۲ کانکتور در برابر ۲٫۴۵۶ روی
+ *      PA5 نسبت ۶٫۰۵۸۶ می‌دهد، ولی فرم‌ور ۶٫۰۲۹۴ داشت یعنی ۰٫۴۸٪ کم می‌خواند - و
+ *      کم‌خواندن روی باتری‌ای که شارژر تنظیمش می‌کند یعنی بیش‌شارژ، که جهت ناامن
+ *      است. برخلاف نت‌های ۲۴ولت اینجا داستان ساختاری تمیزی نیست و باقی‌مانده
+ *      پراکندگی عادی مقاومت ۱٪ است، پس تاپ برابر همان چیزی گذاشته می‌شود که
+ *      مقسم واقعاً اندازه می‌دهد. */
+#define BSP_MEASUREMENT_DIV12_TOP_OHMS      34398u
 #define BSP_MEASUREMENT_DIV12_BOTTOM_OHMS   BSP_MEASUREMENT_SENSE_SHUNT_OHMS
 
 /* [EN] Current sense: 10mOhm shunt and LM358 gain 101.

@@ -528,7 +528,7 @@ def test_setpoints_and_timing():
           "static const uint32_t CAL_Current2LutBatteryMw[] =" in cal_h and
           "sizeof(CAL_Current2LutChainMa) /" in cal_h and
           "{ 0u, 20u, 37u, 106u, 189u, 236u, 253u, 283u, 312u, 353u, 390u, 441u, 557u, 707u }" in cal_h and
-          "{ 0u, 0u, 109u, 751u, 1581u, 2685u, 3260u, 3925u, 4550u, 5355u, 6035u, 6817u, 8573u, 10429u }" in cal_h and
+          "{ 0u, 0u, 111u, 766u, 1616u, 2753u, 3347u, 4037u, 4686u, 5523u, 6231u, 7043u, 8867u, 10794u }" in cal_h and
           lut_chain_n == lut_batt_n and lut_chain_n == 14 and
           re.search(r"#define CAL_CURRENT1_LUT_ENABLE\s+1u", cal_h) and
           "static const uint32_t CAL_Current1LutChainMa[] =" in cal_h and
@@ -562,10 +562,32 @@ def test_setpoints_and_timing():
     check(re.search(r"func__Measurement_Current2CountsToMa\(uint16_t uint16_t__counts\)\n\{\n#if \(CAL_CURRENT2_LUT_ENABLE != 0u\)", meas_c_raw) and
           re.search(r"#else\n    return func__BspMeasurement_Current2CountsToMa\(uint16_t__counts\);\n#endif", meas_c_raw),
           "the ch2 LUT must be compile-switchable: MEASUREMENT_CURRENT2_LUT_ENABLE=0 restores the old linear behaviour exactly")
-    check(re.search(r"#define CAL_BATTERY12_BENCH_COMP_ENABLE\s+1u", cal_h) and
-          re.search(r"#define CAL_BATTERY12_BENCH_STATIC_MV\s+150u", cal_h) and
-          re.search(r"#define CAL_BATTERY12_BENCH_PATH_MOHM\s+470u", cal_h),
-          "V12 bench compensation must be ON with the dense 2026-09-25T18:14 refit: static 150 mV + 470 mOhm x I2 (LSQ over 10 DMM points 0..764 mA = 149.8 mV + 472.5 mOhm; residual within +/-28 mV vs DMM on the battery-2 terminals)")
+    # [EN] TURNED OFF 2026-09-29. This test used to require the compensation to
+    #      be ON, and cited a good least-squares fit as the justification -
+    #      149.8 mV + 472.5 mOhm, residual within +/-28 mV. The fit was good and
+    #      the MODEL was wrong, which is the more dangerous combination: the
+    #      residual is 203 mV at essentially ZERO current, and an I x R term must
+    #      be zero there. Replayed with the divider corrected, the implied
+    #      resistance runs from 12.4 ohm at 17 mA to 0.73 ohm at 754 mA. That is
+    #      not a resistance.
+    #      What it actually did: the block SUBTRACTS from the 12 V reading, the
+    #      regulator only sees the reading, so the real terminal sat that much
+    #      HIGHER - 14.86 V at 500 mA while the panel showed 14.40. The user
+    #      measured 14.88 V. It also blinded the protection: the 14.85 V cut was
+    #      tripping at a real 15.31 V.
+    #      A static term is only legitimate if it survives at zero current.
+    # [FA] ۲۰۲۶-۰۹-۲۹ خاموش شد. این تست قبلاً روشن‌بودن جبران‌ساز را الزام می‌کرد و
+    #      برازش خوب کمترین‌مربعات را دلیل می‌آورد. برازش خوب بود و مدل غلط، که
+    #      ترکیب خطرناک‌تری است: باقی‌مانده در جریانِ عملاً صفر ۲۰۳ میلی‌ولت است و
+    #      جملهٔ I×R آنجا باید صفر باشد. کاری که می‌کرد: از خوانش کم می‌کرد و چون
+    #      تنظیم‌کننده فقط خوانش را می‌بیند، ترمینال واقعی همان‌قدر بالاتر می‌نشست.
+    check(re.search(r"#define CAL_BATTERY12_BENCH_COMP_ENABLE\s+0u", cal_h),
+          "the V12 bench compensation must stay OFF: it subtracts 150 mV + I x 0.47 ohm "
+          "from the reading the regulator uses, so it pushed the lower battery to a real "
+          "14.86 V while the panel showed 14.40, and made the 14.85 V cut trip at a real "
+          "15.31 V. Its residual is 203 mV at zero current, where an I x R term must be "
+          "zero - a good fit to a wrong model. Re-enable only with a drop measured "
+          "directly at a known current, and with STATIC_MV at 0")
     check("func__Measurement_Battery12BenchCompensate(\n        uint32_t__battery12Mv, uint32_t__current2SampleMa);" in meas_c_raw and
           meas_c_raw.find("func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2])") <
           meas_c_raw.find("uint32_t__battery12Mv = func__Measurement_ApplyVoltageOffsetMv(") and
@@ -906,16 +928,39 @@ def test_ch2_power_lut_v113():
     rows = [(12.6, 12073, -13), (40.1, 12085, 9), (100.9, 12122, 62), (173.0, 12159, 130),
             (214.2, 12230, 215), (255.2, 12306, 310), (316.3, 12430, 422), (393.4, 12651, 541),
             (494.8, 13031, 660), (626.5, 13626, 764)]
+    # [EN] The vlow column was LOGGED by a firmware that used the old 12 V
+    #      divider and still applied the bench compensation. The table is power
+    #      and the firmware divides it by this voltage, so the replay has to use
+    #      the voltage the firmware will ACTUALLY see now: undo the compensation
+    #      the logger had applied, then correct the divider to the ratio measured
+    #      on the board. Replaying against the old logged value would be testing
+    #      a firmware that no longer exists.
+    # [FA] ستون vlow را فرم‌وری ثبت کرده که مقسم قدیمی ۱۲ولت را داشت و جبران‌ساز
+    #      را هم اعمال می‌کرد. جدول «توان» است و فرم‌ور بر همین ولتاژ تقسیم می‌کند،
+    #      پس بازپخش باید ولتاژی را بگذارد که فرم‌ور واقعاً خواهد دید.
+    def vlow_now(vlow, i_ma):
+        undone = vlow + 150 + ((i_ma if i_ma > 0 else 0) * 470) // 1000
+        return round(undone * 6.0585 / 6.0294)
+
     worst = 0
     for raw, vlow, dmm in rows:
-        err = ibat(raw, vlow) - dmm
+        err = ibat(raw, vlow_now(vlow, dmm)) - dmm
         worst = max(worst, err if raw > 20 else 0)  # the 2% row is the documented unsigned floor
     check(worst <= 6,
           f"firmware-math replay of the dense run: worst DMM error {worst} mA (<= 6 = integer-truncation bias, within DMM accuracy; the 2%-duty row floors at 0 as documented)")
 
     # the fix's whole point: same chain, fuller battery -> proportionally less current
     i_122, i_130, i_140, i_144 = (ibat(494.8, v) for v in (12200, 13000, 14000, 14400))
-    check(i_122 > i_130 > i_140 > i_144 and abs(i_130 - 658) <= 3,
+    # [EN] The property - more voltage, less current for the same chain - is the
+    #      point of the power table and still holds. The absolute anchor moved
+    #      658 -> 680 mA because the table was rescaled when the 12 V voltage it
+    #      is divided by was corrected (divider fixed, bench compensation off):
+    #      658 x 1.034 = 680. Same current from the board, different number here
+    #      only because the voltage underneath it is now right.
+    # [FA] خاصیت - ولتاژ بیشتر، جریان کمتر برای همان زنجیره - هدف جدول توان است و
+    #      هنوز برقرار است. لنگر مطلق از ۶۵۸ به ۶۸۰ رفت چون جدول با اصلاح ولتاژ
+    #      ۱۲ولت بازمقیاس شد؛ جریان واقعی همان است و فقط ولتاژ زیرش درست شده.
+    check(i_122 > i_130 > i_140 > i_144 and abs(i_130 - 680) <= 3,
           f"voltage behaviour: at chain 556 the current must fall as the battery fills (12.2V:{i_122} 13.0V:{i_130} 14.0V:{i_140} 14.4V:{i_144} mA) - the old current-current table answered 658 mA at EVERY voltage")
 
     check("UINT32_T__G__Battery2VoltageMv = 12000u" in meas_c_raw and
@@ -982,9 +1027,17 @@ def test_ch2_lut_refit_v118():
             (228.8, 12442, 256), (250.8, 12543, 303), (280.5, 12721, 354),
             (311.9, 12936, 404), (349.1, 13213, 455), (390.6, 13617, 498),
             (436.3, 14006, 540), (491.6, 14458, 585), (552.1, 14879, 632)]
+    # [EN] Same correction as the dense-run replay above: this vlow column was
+    #      logged with the old 12 V divider and the bench compensation applied,
+    #      so it has to be brought to the voltage the firmware will now see.
+    # [FA] همان اصلاح بازپخش بالا: این ستون vlow با مقسم قدیمی و جبران‌ساز روشن
+    #      ثبت شده، پس باید به ولتاژی برسد که فرم‌ور حالا می‌بیند.
+    def _vnow(vlow, i_ma):
+        return round((vlow + 150 + (max(i_ma, 0) * 470) // 1000) * 6.0585 / 6.0294)
+
     worst = 0
     for raw, vlow, dmm in rows:
-        worst = max(worst, abs(ibat(raw, vlow) - dmm))
+        worst = max(worst, abs(ibat(raw, _vnow(vlow, dmm)) - dmm))
     check(worst <= 5,
           f"firmware-math replay of the 2026-09-27 SOLO2 sweep: worst DMM error {worst} mA (<= 5, no systematic sign; the v1.17 float fit drifted -8 mA at D15)")
 

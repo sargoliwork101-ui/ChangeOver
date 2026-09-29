@@ -115,8 +115,18 @@ static const uint32_t CAL_Current1LutBatteryMw[] =
 #if (CAL_CURRENT2_LUT_ENABLE != 0u)
 static const uint32_t CAL_Current2LutChainMa[] =
     { 0u, 20u, 37u, 106u, 189u, 236u, 253u, 283u, 312u, 353u, 390u, 441u, 557u, 707u };
+/* [EN] REFITTED 2026-09-29 together with the V12 fix. This table is battery
+ *      POWER and the firmware reports current as P / Vbat, so it is only valid
+ *      against the voltage it was fitted with. Correcting the 12 V divider and
+ *      switching OFF the bench compensation moved that voltage by up to 3.4 %;
+ *      left alone the replay error went 4 -> 24 mA. Rescaled on the ORIGINAL 14
+ *      anchors by the per-point voltage ratio, back to 4 mA.
+ * [FA] ۲۰۲۶-۰۹-۲۹ همراه اصلاح ۱۲ولت دوباره برازش شد. این جدول «توان» است و جریان
+ *      از P تقسیم بر ولتاژ باتری می‌آید، پس فقط با همان ولتاژی معتبر است که با آن
+ *      برازش شده. اصلاح مقسم و خاموش‌کردن جبران‌ساز آن ولتاژ را تا ۳٫۴٪ جابه‌جا کرد
+ *      و بدون برازش دوباره خطای بازپخش از ۴ به ۲۴ میلی‌آمپر می‌رفت. */
 static const uint32_t CAL_Current2LutBatteryMw[] =
-    { 0u, 0u, 109u, 751u, 1581u, 2685u, 3260u, 3925u, 4550u, 5355u, 6035u, 6817u, 8573u, 10429u };
+    { 0u, 0u, 111u, 766u, 1616u, 2753u, 3347u, 4037u, 4686u, 5523u, 6231u, 7043u, 8867u, 10794u };
 #define CAL_CURRENT2_LUT_POINTS \
     ((uint32_t)(sizeof(CAL_Current2LutChainMa) / \
                 sizeof(CAL_Current2LutChainMa[0u])))
@@ -142,7 +152,33 @@ static const uint32_t CAL_Current2LutBatteryMw[] =
  *      مدل دو جمله‌ای می‌تواند مثل جدول‌های ۱/۲ جدول انکری کامل شود.
  * ============================================================================ */
 
-#define CAL_BATTERY12_BENCH_COMP_ENABLE 1u
+/* [EN] TURNED OFF 2026-09-29 - it was overcharging the lower battery.
+ *      This block SUBTRACTS 150 mV + I x 0.47 ohm from the 12 V reading. The
+ *      regulator only ever sees the reading, so subtracting from it pushes the
+ *      REAL terminal voltage up by exactly the same amount: at ~500 mA it adds
+ *      385 mV, so the loop holding a displayed 14.40 V actually sits at 14.86 V.
+ *      The user measured 14.88 V at the connector. That is this.
+ *      It cannot be the wire drop it claims to be. Replaying the 2026-09-25
+ *      sweep with the divider corrected, the implied resistance is 12.4 ohm at
+ *      17 mA falling to 0.73 ohm at 754 mA - that is not a resistance - and the
+ *      residual is 203 mV at essentially ZERO current, where an I x R term must
+ *      be zero. It was a curve fitted to one run, and it has been holding a
+ *      lead-acid cell ~0.4 V above its absorb target ever since.
+ *      TO RE-ENABLE IT HONESTLY: measure the drop directly - DMM on the
+ *      connector and DMM on the battery post at a known current - and set
+ *      PATH_MOHM to that, with STATIC_MV at 0. A static term is only ever
+ *      legitimate if it survives at zero current, and this one does not.
+ * [FA] ۲۰۲۶-۰۹-۲۹ خاموش شد - باتری پایینی را بیش‌شارژ می‌کرد.
+ *      این بلوک ۱۵۰ میلی‌ولت به‌اضافهٔ I×۰٫۴۷ اهم را از خوانش ۱۲ولت کم می‌کند.
+ *      تنظیم‌کننده فقط همان خوانش را می‌بیند، پس کم‌کردن از آن، ولتاژ واقعی
+ *      ترمینال را دقیقاً به همان اندازه بالا می‌برد: در ~۵۰۰ میلی‌آمپر یعنی
+ *      ۳۸۵ میلی‌ولت، پس حلقه‌ای که ۱۴٫۴۰ نشان می‌دهد واقعاً روی ۱۴٫۸۶ است.
+ *      کاربر ۱۴٫۸۸ روی کانکتور اندازه گرفت. علتش همین است.
+ *      و افت سیمی که ادعا می‌کند نیست: در بازپخش سوییپ، مقاومت ضمنی از ۱۲٫۴ اهم
+ *      در ۱۷ میلی‌آمپر تا ۰٫۷۳ اهم در ۷۵۴ میلی‌آمپر تغییر می‌کند - این مقاومت
+ *      نیست - و در جریانِ عملاً صفر ۲۰۳ میلی‌ولت باقی می‌ماند، جایی که جملهٔ I×R
+ *      باید صفر باشد. منحنی‌ای بود که روی یک اجرا برازش شده بود. */
+#define CAL_BATTERY12_BENCH_COMP_ENABLE 0u
 
 #if (CAL_BATTERY12_BENCH_COMP_ENABLE != 0u)
 /* [EN] MISLABELLED UNTIL 2026-09-29: this was called a "static divider

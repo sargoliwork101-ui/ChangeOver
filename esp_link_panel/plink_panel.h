@@ -473,7 +473,7 @@ $('mx').onclick=()=>send(19,0);
 const f1=x=>x.toFixed(1),V_=mv=>(mv/1000).toFixed(2)+'V',nz=v=>v==null?'?':v;
 /* iest مثل STM32 (charger.c): زیر Vin 10V یا Vbat 5V برگشت به همانی */
 const ie=(fl,vin,eta,vb)=>vin<10000||vb<5000?fl+' (همانی: ولتاژ زیر حد)':Math.floor(Math.floor(fl*eta/1000)*vin/vb);
-const LUTX=[0,20,37,106,189,236,253,283,312,353,390,441,557,707],LUTY=[0,0,109,751,1581,2685,3260,3925,4550,5355,6035,6817,8573,10429];
+const LUTX=[0,20,37,106,189,236,253,283,312,353,390,441,557,707],LUTY=[0,0,111,766,1616,2753,3347,4037,4686,5523,6231,7043,8867,10794];
 const lutPow=c=>{for(let i=1;i<LUTX.length;i++){if(c<=LUTX[i]){const x0=LUTX[i-1],x1=LUTX[i];if(x1==x0)return LUTY[i];return LUTY[i-1]+Math.floor((c-x0)*(LUTY[i]-LUTY[i-1])/(x1-x0));}}const n=LUTX.length-1,d=LUTX[n]-LUTX[n-1];if(!d)return LUTY[n];return LUTY[n]+Math.floor((c-LUTX[n])*(LUTY[n]-LUTY[n-1])/d);};
 const lutTap=(ch,vb)=>{const pw=lutPow(Math.round(ch)),v=Math.min(15000,Math.max(8000,vb));return ' => LUT:'+pw+'mW/'+v+'='+Math.floor(pw*1000/v)+'mA';};
 /* v1.19: آینهٔ جدول توان کانال ۱ (SOLO1، ۱۷ لنگر) — قرینهٔ کانال ۲ */
