@@ -43,11 +43,13 @@ typedef enum
 {
     ESP_LINK_PARSE_WAIT_SOF0 = 0,
     ESP_LINK_PARSE_WAIT_SOF1,
+    ESP_LINK_PARSE_WAIT_VERSION,
     ESP_LINK_PARSE_WAIT_TYPE,
     ESP_LINK_PARSE_WAIT_LEN_LO,
     ESP_LINK_PARSE_WAIT_LEN_HI,
     ESP_LINK_PARSE_WAIT_PAYLOAD,
-    ESP_LINK_PARSE_WAIT_CHECKSUM
+    ESP_LINK_PARSE_WAIT_CRC_LO,
+    ESP_LINK_PARSE_WAIT_CRC_HI
 } esp_link_parse_state_t;
 
 static esp_link_parse_state_t ESP_LINK_PARSE_STATE_T__G__State =
@@ -56,7 +58,14 @@ static uint8_t UINT8_T__G__FrameType;
 static uint16_t UINT16_T__G__FrameLen;
 static uint16_t UINT16_T__G__PayloadIndex;
 static uint8_t UINT8_T__G__PayloadBuffer[ESPLINK_FRAME_MAX_PAYLOAD];
-static uint8_t UINT8_T__G__Checksum;
+static uint16_t UINT16_T__G__Crc;
+static uint8_t  UINT16_T__G__RxCrcLow;
+/* [EN] Link health counters. A CRC error used to be indistinguishable from a
+   quiet link; now both conditions are countable, and a version mismatch says
+   plainly that the two boards were flashed out of step.
+   [FA] شمارنده‌های سلامت لینک. قبلاً خطای CRC از لینک ساکت قابل تشخیص نبود. */
+static uint32_t UINT32_T__G__RxCrcError;
+static uint32_t UINT32_T__G__RxVersionMismatch;
 static uint16_t UINT16_T__G__TelemetrySeq = 0u;
 
 /* [EN] TLM_LIVE flag bits (payload offset 2). / [FA] بیت‌های پرچم TLM_LIVE. */
@@ -493,6 +502,40 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
 
 /* ==================== Frame transmit / ارسال فریم ==================== */
 
+/* ==================== CRC-16 ==================== */
+/**
+ * @brief  [EN] CRC-16/CCITT-FALSE (poly 0x1021, init 0xFFFF, no reflection, no
+ *              final xor). Bitwise on purpose: a 256-entry table would cost
+ *              512 bytes of flash on a part that does not have it to spare, and
+ *              these frames are at most ~470 bytes at 10 Hz, so the loop is far
+ *              cheaper than the table.
+ *         [FA] CRC-16/CCITT-FALSE. عمداً بیتی: جدول ۲۵۶تایی ۵۱۲ بایت فلش می‌خواهد
+ *              روی قطعه‌ای که این فضا را ندارد، و این فریم‌ها حداکثر ~۴۷۰ بایت با
+ *              نرخ ۱۰ هرتز‌اند، پس حلقه از جدول خیلی ارزان‌تر است.
+ * @param  uint16_t__crc  [EN] Running value / مقدار جاری
+ * @param  uint8_t__byte  [EN] Next byte / بایت بعدی
+ * @return uint16_t [EN] Updated CRC / CRC به‌روزشده
+ */
+static uint16_t func__EspLink_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte)
+{
+    uint8_t uint8_t__bit;
+
+    uint16_t__crc = (uint16_t)(uint16_t__crc ^ ((uint16_t)uint8_t__byte << 8));
+    for (uint8_t__bit = 0u; uint8_t__bit < 8u; uint8_t__bit++)
+    {
+        if ((uint16_t__crc & 0x8000u) != 0u)
+        {
+            uint16_t__crc = (uint16_t)(((uint16_t)(uint16_t__crc << 1)) ^
+                                       (uint16_t)ESPLINK_CRC16_POLY);
+        }
+        else
+        {
+            uint16_t__crc = (uint16_t)(uint16_t__crc << 1);
+        }
+    }
+    return uint16_t__crc;
+}
+
 /**
  * @brief  [EN] Wrap a payload in the standard frame and transmit it.
  *         [FA] payload را در فریم استاندارد می‌پیچد و ارسال می‌کند.
@@ -508,7 +551,7 @@ static void func__EspLink_SendFrame(uint8_t uint8_t__messageType,
                               ESPLINK_FRAME_MAX_PAYLOAD +
                               ESPLINK_FRAME_CHECKSUM_SIZE];
     uint16_t uint16_t__cursor;
-    uint8_t uint8_t__checksum;
+    uint16_t uint16_t__crc;
     uint8_t uint8_t__lenLo;
     uint8_t uint8_t__lenHi;
     uint32_t uint32_t__i;
@@ -525,9 +568,10 @@ static void func__EspLink_SendFrame(uint8_t uint8_t__messageType,
 
     UINT8_T__A__Frame[0] = (uint8_t)ESPLINK_SOF_BYTE0;
     UINT8_T__A__Frame[1] = (uint8_t)ESPLINK_SOF_BYTE1;
-    UINT8_T__A__Frame[2] = uint8_t__messageType;
-    UINT8_T__A__Frame[3] = uint8_t__lenLo;
-    UINT8_T__A__Frame[4] = uint8_t__lenHi;
+    UINT8_T__A__Frame[2] = (uint8_t)ESPLINK_PROTOCOL_VERSION;
+    UINT8_T__A__Frame[3] = uint8_t__messageType;
+    UINT8_T__A__Frame[4] = uint8_t__lenLo;
+    UINT8_T__A__Frame[5] = uint8_t__lenHi;
 
     for (uint32_t__i = 0u; uint32_t__i < (uint32_t)uint16_t__payloadLength; uint32_t__i++)
     {
@@ -535,16 +579,22 @@ static void func__EspLink_SendFrame(uint8_t uint8_t__messageType,
             uint8_t__payload[uint32_t__i];
     }
 
-    uint8_t__checksum = uint8_t__messageType;
-    uint8_t__checksum = (uint8_t)(uint8_t__checksum ^ uint8_t__lenLo);
-    uint8_t__checksum = (uint8_t)(uint8_t__checksum ^ uint8_t__lenHi);
+    /* [EN] The CRC covers version, type, both length bytes and the payload -
+       everything after the SOF pair. [FA] CRC نسخه، نوع، هر دو بایت طول و
+       payload را پوشش می‌دهد - هرچه بعد از جفت SOF می‌آید. */
+    uint16_t__crc = (uint16_t)ESPLINK_CRC16_INIT;
+    uint16_t__crc = func__EspLink_Crc16(uint16_t__crc, (uint8_t)ESPLINK_PROTOCOL_VERSION);
+    uint16_t__crc = func__EspLink_Crc16(uint16_t__crc, uint8_t__messageType);
+    uint16_t__crc = func__EspLink_Crc16(uint16_t__crc, uint8_t__lenLo);
+    uint16_t__crc = func__EspLink_Crc16(uint16_t__crc, uint8_t__lenHi);
     for (uint32_t__i = 0u; uint32_t__i < (uint32_t)uint16_t__payloadLength; uint32_t__i++)
     {
-        uint8_t__checksum = (uint8_t)(uint8_t__checksum ^ uint8_t__payload[uint32_t__i]);
+        uint16_t__crc = func__EspLink_Crc16(uint16_t__crc, uint8_t__payload[uint32_t__i]);
     }
 
     uint16_t__cursor = (uint16_t)(ESPLINK_FRAME_HEADER_SIZE + uint16_t__payloadLength);
-    UINT8_T__A__Frame[uint16_t__cursor] = uint8_t__checksum;
+    UINT8_T__A__Frame[uint16_t__cursor] = (uint8_t)(uint16_t__crc & 0xFFu);
+    UINT8_T__A__Frame[uint16_t__cursor + 1u] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
     uint16_t__cursor = (uint16_t)(uint16_t__cursor + ESPLINK_FRAME_CHECKSUM_SIZE);
 
     (void)func__BspUart_Write(UINT8_T__A__Frame, (uint16_t)uint16_t__cursor);
@@ -1078,7 +1128,7 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
         case ESP_LINK_PARSE_WAIT_SOF1:
             if (uint8_t__byte == (uint8_t)ESPLINK_SOF_BYTE1)
             {
-                ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_TYPE;
+                ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_VERSION;
             }
             else if (uint8_t__byte == (uint8_t)ESPLINK_SOF_BYTE0)
             {
@@ -1096,9 +1146,31 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
             }
             break;
 
+        case ESP_LINK_PARSE_WAIT_VERSION:
+            /* [EN] A version we do not speak means the two boards were flashed
+               out of step. Parsing on would either fail on the CRC or, worse,
+               accept a frame whose layout has moved. Count it and resync, so
+               the condition is visible instead of looking like a dead link.
+               [FA] نسخه‌ای که نمی‌شناسیم یعنی دو برد ناهماهنگ فلش شده‌اند. ادامهٔ
+               تجزیه یا روی CRC می‌افتد یا بدتر، فریمی را می‌پذیرد که چیدمانش عوض
+               شده. شمرده و همگام می‌شویم تا این وضع دیده شود نه اینکه شبیه لینک
+               مرده به نظر برسد. */
+            if (uint8_t__byte != (uint8_t)ESPLINK_PROTOCOL_VERSION)
+            {
+                UINT32_T__G__RxVersionMismatch++;
+                ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;
+            }
+            else
+            {
+                UINT16_T__G__Crc = func__EspLink_Crc16((uint16_t)ESPLINK_CRC16_INIT,
+                                                       uint8_t__byte);
+                ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_TYPE;
+            }
+            break;
+
         case ESP_LINK_PARSE_WAIT_TYPE:
             UINT8_T__G__FrameType = uint8_t__byte;
-            UINT8_T__G__Checksum = uint8_t__byte;
+            UINT16_T__G__Crc = func__EspLink_Crc16(UINT16_T__G__Crc, uint8_t__byte);
             ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_LEN_LO;
             break;
 
@@ -1107,16 +1179,14 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
                once both bytes are in.
                [FA] نسخه ۱.۱۶: طول u16 لیتل‌اندین. */
             UINT16_T__G__FrameLen = (uint16_t)uint8_t__byte;
-            UINT8_T__G__Checksum =
-                (uint8_t)(UINT8_T__G__Checksum ^ uint8_t__byte);
+            UINT16_T__G__Crc = func__EspLink_Crc16(UINT16_T__G__Crc, uint8_t__byte);
             ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_LEN_HI;
             break;
 
         case ESP_LINK_PARSE_WAIT_LEN_HI:
             UINT16_T__G__FrameLen = (uint16_t)(UINT16_T__G__FrameLen |
                 ((uint16_t)((uint16_t)uint8_t__byte << 8)));
-            UINT8_T__G__Checksum =
-                (uint8_t)(UINT8_T__G__Checksum ^ uint8_t__byte);
+            UINT16_T__G__Crc = func__EspLink_Crc16(UINT16_T__G__Crc, uint8_t__byte);
             if (UINT16_T__G__FrameLen > (uint16_t)ESPLINK_FRAME_MAX_PAYLOAD)
             {
                 /* [EN] Impossible length: resynchronize.
@@ -1128,7 +1198,7 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
                 UINT16_T__G__PayloadIndex = 0u;
                 if (UINT16_T__G__FrameLen == 0u)
                 {
-                    ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_CHECKSUM;
+                    ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_CRC_LO;
                 }
                 else
                 {
@@ -1140,20 +1210,32 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
         case ESP_LINK_PARSE_WAIT_PAYLOAD:
             UINT8_T__G__PayloadBuffer[UINT16_T__G__PayloadIndex] = uint8_t__byte;
             UINT16_T__G__PayloadIndex = (uint16_t)(UINT16_T__G__PayloadIndex + 1u);
-            UINT8_T__G__Checksum =
-                (uint8_t)(UINT8_T__G__Checksum ^ uint8_t__byte);
+            UINT16_T__G__Crc = func__EspLink_Crc16(UINT16_T__G__Crc, uint8_t__byte);
             if (UINT16_T__G__PayloadIndex >= UINT16_T__G__FrameLen)
             {
-                ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_CHECKSUM;
+                ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_CRC_LO;
             }
             break;
 
-        case ESP_LINK_PARSE_WAIT_CHECKSUM:
-            if (uint8_t__byte == UINT8_T__G__Checksum)
+        case ESP_LINK_PARSE_WAIT_CRC_LO:
+            UINT16_T__G__RxCrcLow = uint8_t__byte;
+            ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_CRC_HI;
+            break;
+
+        case ESP_LINK_PARSE_WAIT_CRC_HI:
+            if (((uint16_t)(((uint16_t)uint8_t__byte << 8) |
+                            (uint16_t)UINT16_T__G__RxCrcLow)) == UINT16_T__G__Crc)
             {
                 func__EspLink_HandleFrame(UINT8_T__G__FrameType,
                                           UINT16_T__G__FrameLen,
                                           UINT8_T__G__PayloadBuffer);
+            }
+            else
+            {
+                /* [EN] Counted so a noisy link is measurable instead of just
+                   feeling unreliable. [FA] شمرده می‌شود تا لینک نویزی قابل
+                   اندازه‌گیری باشد نه فقط «به نظر بی‌اعتماد». */
+                UINT32_T__G__RxCrcError++;
             }
             ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;
             break;

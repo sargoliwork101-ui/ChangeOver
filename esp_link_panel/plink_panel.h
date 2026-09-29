@@ -124,6 +124,9 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .ag{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:8px 0}
 .ab{background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:10px 12px;min-height:92px;transition:border-color .2s}
 .ab small{color:var(--mu)}.ab b{font-size:19px;display:block;margin:2px 0;font-variant-numeric:tabular-nums}.ab .lb{display:block;min-height:20px}.ab .tg{margin-top:4px;display:inline-flex}
+.wbx:empty{display:none}.wbx{margin:10px 0;padding:10px 12px;border-radius:12px;border:1px solid var(--ln);background:var(--rs);font-size:13px;line-height:1.9}
+.wbx.bad{border-color:var(--er);background:rgba(255,104,115,.12);color:var(--er)}
+.wbx.warn{border-color:var(--wa);background:rgba(247,193,60,.10);color:var(--wa)}
 .ab.bad{border-color:rgba(251,94,106,.55);box-shadow:0 0 0 1px rgba(251,94,106,.2)}.ab.warn{border-color:rgba(251,191,36,.5)}.ab.good{border-color:rgba(52,211,153,.4)}
 .leds{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--in);border:1px solid var(--ln);border-radius:14px;padding:10px 14px;margin:2px 0 12px}
 .led{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:58px}.led i{width:26px;height:26px;border-radius:50%;background:#2a3245;box-shadow:inset 0 2px 5px rgba(0,0,0,.6);transition:background .12s,box-shadow .12s}.led small{color:var(--mu);font-size:11px}.led.r.on i{background:#ff4545;box-shadow:0 0 16px #ff4545,0 0 4px #fff inset}.led.y.on i{background:#ffd23b;box-shadow:0 0 16px #ffd23b}.led.g.on i{background:#2eff8f;box-shadow:0 0 16px #2eff8f}.bit{display:inline-flex;align-items:center;gap:6px;margin:2px 8px 2px 0}.bit i{width:14px;height:14px;border-radius:50%;background:#2a3245;display:inline-block;box-shadow:inset 0 1px 3px rgba(0,0,0,.6)}.bit.on i{background:#ff4545;box-shadow:0 0 9px #ff4545}.bz{font-size:30px;line-height:1;position:relative;min-width:44px;text-align:center}.bz.off{opacity:.22;filter:grayscale(1)}.bz .mx{position:absolute;inset:-4px 0 0 0;color:#ff4545;font-size:36px;display:none;font-weight:700;text-shadow:0 0 6px #000}.bz.muted .mx{display:block}.bz.muted{opacity:.85}
@@ -153,6 +156,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
 <div class="pgx a" id="p0">
+<div id="lnkw" class="wbx"></div>
 <div class="cd" id="sh"><div class="hd"><b>ولتاژها و وضعیت آلارم‌ها <span class="lb">· عدد مولتی‌متر (V) را کنار هر ولتاژ وارد کنید تا آفست آن کالیبره شود</span> <span class="ldon" id="aslive"></span></b><div class="fl" id="fl"></div></div><div id="ast"></div>
 <div class="sec">فیلتر جریان <span class="lb">(مشترک هر دو کانال)</span></div><div class="frr" id="fg"></div><div class="fx fxw" id="ff"></div></div>
 
@@ -938,7 +942,19 @@ async function ximp(f){const x=$('xst');let o;try{o=JSON.parse(await f.text());}
  if(x)x.textContent=(ok===jobs.length?'✅ ':'⚠ ')+ok+'/'+jobs.length+' اعمال شد — مقادیر گیره‌خورده کنار فیلدها';
  const xi=$('xim');if(xi)xi.value='';}
 $('xim').onchange=e=>{if(e.target.files[0])ximp(e.target.files[0]);};
-function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;qfill();cfill();afill();if(TAB==2){if(STAB==0)qgraph();else if(STAB==3)pchk();else afresh();}astat();
+/* v1.27: سلامت لینک. تا پیش از این، اگر STM32 و ESP ناهماهنگ فلش می‌شدند پنل
+   فقط خالی می‌ماند و هیچ توضیحی نبود — همان حالتی که عیناً شبیه کابل قطع است.
+   حالا بایت نسخه در فریم هست و گیرنده ناهم‌نسخگی را می‌شمارد، پس می‌شود صریح گفت
+   چه اتفاقی افتاده. خطاهای CRC هم نمایش داده می‌شوند تا هارنس نویزی دیده شود.
+   v1.27: link health. A version-mismatched flash used to show an empty panel
+   with no explanation - identical in appearance to an unplugged cable. */
+function lnkhealth(d){const e=$('lnkw');if(!e)return;
+ const vm=d.vm|0,ce=d.ce|0;
+ if(vm>0){e.className='wbx bad';e.innerHTML='⛔ <b>نسخهٔ فرم‌ور و پنل یکی نیست</b> — '+vm+
+  ' فریم با نسخهٔ ناشناخته رد شد. برد و ESP باید <b>با هم</b> دوباره فلش شوند (Clean + Rebuild کامل).';return;}
+ if(ce>0){e.className='wbx warn';e.innerHTML='⚠ <b>'+ce+'</b> فریم به‌خاطر خطای CRC رد شد — اتصال سیم و زمین لینک را بررسی کنید. داده‌ها معتبرند؛ فقط بخشی از قاب‌ها رسیده‌اند.';return;}
+ e.className='wbx';e.innerHTML='';}
+function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;lnkhealth(d);qfill();cfill();afill();if(TAB==2){if(STAB==0)qgraph();else if(STAB==3)pchk();else afresh();}astat();
  document.body.classList.toggle('dn',!on);$('lk').classList.toggle('on',on);
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');
  hist(d);

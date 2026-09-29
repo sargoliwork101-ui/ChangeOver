@@ -6,7 +6,14 @@
 #define ESP_LINK_RX_BUFFER_SIZE     1024u
 #define ESP_LINK_SOF_BYTE0          0xAAu
 #define ESP_LINK_SOF_BYTE1          0x55u
-#define ESP_LINK_HEADER_SIZE        5u   /* SOF0 + SOF1 + type + len_lo + len_hi (v1.16 u16 length) */
+/* [EN] v2 frame, must stay byte-identical to the firmware's esp_link.h:
+       SOF0 SOF1 VER TYPE LEN_LO LEN_HI [payload] CRC_LO CRC_HI
+   [FA] فریم نسخهٔ ۲؛ باید بایت‌به‌بایت با esp_link.h فرم‌ور یکی بماند. */
+#define ESP_LINK_PROTOCOL_VERSION   2u
+#define ESP_LINK_HEADER_SIZE        6u   /* SOF0 + SOF1 + ver + type + len_lo + len_hi */
+#define ESP_LINK_CRC_SIZE           2u
+#define ESP_LINK_CRC16_INIT         0xFFFFu
+#define ESP_LINK_CRC16_POLY         0x1021u
 /* [EN] 512 since v1.16 (user order 2026-09-26): PARAMS_BULK with 83
          parameters = 1 + 83 x 5 = 416 payload bytes (was 386 for 77 in
          v1.16, 191 for 38 in v1.15). The length field is u16
@@ -141,9 +148,11 @@ typedef enum
 {
     ESP_RX_WAIT_SOF0 = 0,
     ESP_RX_WAIT_SOF1,
+    ESP_RX_WAIT_VERSION,
     ESP_RX_WAIT_TYPE,
     ESP_RX_WAIT_LEN_LO,
     ESP_RX_WAIT_LEN_HI,
     ESP_RX_WAIT_PAYLOAD,
-    ESP_RX_WAIT_XOR
+    ESP_RX_WAIT_CRC_LO,
+    ESP_RX_WAIT_CRC_HI
 } esp_rx_state_t;

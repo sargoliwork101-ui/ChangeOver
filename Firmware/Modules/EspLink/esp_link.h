@@ -42,8 +42,35 @@
  *      payload). فریم = AA 55 نوع len_lo len_hi و xor روی نوع + دو بایت
  *      طول + payload. هر دو برد باید با هم فلش شوند (پارسر v1.15 یعنی
  *      len_hi را payload می‌خواند). */
-#define ESPLINK_FRAME_HEADER_SIZE     5u   /* SOF0 + SOF1 + type + len_lo + len_hi / بدون payload و xor */
-#define ESPLINK_FRAME_CHECKSUM_SIZE   1u
+/* [EN] v2 FRAME (2026-09-29). Two changes, both because this link is about to
+ *      carry a calibration campaign and a silent error there is worse than no
+ *      data at all:
+ *
+ *      1. CRC-16/CCITT-FALSE replaces the XOR-8 check. XOR-8 lets roughly 1 in
+ *         256 random corruptions through, and it is blind to ANY even number of
+ *         flips in the same bit position - which is exactly the pattern a
+ *         switching converter's noise produces on a UART. CRC-16 takes that to
+ *         about 1 in 65536 and detects every burst up to 16 bits.
+ *      2. An explicit VERSION byte. Before this, flashing one side and not the
+ *         other produced no error whatsoever: the receiver simply dropped every
+ *         frame whose length it did not expect, and the panel went blank with
+ *         nothing to explain it. The version byte turns that failure into a
+ *         message the operator can act on.
+ *
+ *      Wire layout: SOF0 SOF1 VER TYPE LEN_LO LEN_HI [payload] CRC_LO CRC_HI
+ *      The CRC covers VER, TYPE, both length bytes and the payload.
+ * [FA] فریم نسخهٔ ۲ (۲۰۲۶-۰۹-۲۹). دو تغییر، هر دو چون این لینک قرار است یک
+ *      کمپین کالیبراسیون را حمل کند و خطای بی‌صدا آنجا از نبودِ داده هم بدتر است:
+ *      ۱. CRC-16/CCITT-FALSE جای XOR-8 را می‌گیرد. XOR-8 تقریباً یک از ۲۵۶ خرابی
+ *         تصادفی را رد می‌کند و نسبت به هر تعداد زوجِ تغییرِ بیت در یک موقعیت
+ *         کاملاً کور است - دقیقاً الگویی که نویز مبدل کلیدزن روی UART می‌سازد.
+ *      ۲. بایت نسخهٔ صریح. پیش از این، فلش‌کردن یک طرف و نکردن طرف دیگر هیچ خطایی
+ *         تولید نمی‌کرد و پنل بدون هیچ توضیحی خالی می‌ماند. */
+#define ESPLINK_PROTOCOL_VERSION      2u
+#define ESPLINK_FRAME_HEADER_SIZE     6u   /* SOF0 + SOF1 + ver + type + len_lo + len_hi */
+#define ESPLINK_FRAME_CHECKSUM_SIZE   2u   /* CRC-16/CCITT-FALSE, little endian */
+#define ESPLINK_CRC16_INIT            0xFFFFu
+#define ESPLINK_CRC16_POLY            0x1021u
 #define ESPLINK_FRAME_MAX_PAYLOAD     512u
 
 /* [EN] Message types. ESP -> STM: SET_PARAM / GET_PARAMS / CAL_REFERENCE

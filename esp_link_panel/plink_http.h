@@ -121,12 +121,21 @@ static void func__Esp_HttpTelemetry(void)
     }
 
     size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
-        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"n\":%lu,\"q\":%lu,\"q2\":%lu,\"q3\":%lu,\"q4\":%lu,\"ka\":%lu,\"t\":[",
+        /* [EN] vm/ce: link health. vm > 0 means the STM32 and this panel were
+           flashed out of step - the failure that used to be indistinguishable
+           from a dead cable. ce counts CRC rejections, so a noisy harness is
+           measurable instead of just feeling flaky.
+           [FA] vm/ce: سلامت لینک. vm بزرگ‌تر از صفر یعنی STM32 و این پنل ناهماهنگ
+           فلش شده‌اند - خرابی‌ای که قبلاً از کابل قطع قابل تشخیص نبود. ce خطاهای
+           CRC را می‌شمارد تا هارنس نویزی قابل اندازه‌گیری باشد. */
+        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"n\":%lu,\"q\":%lu,\"q2\":%lu,\"q3\":%lu,\"q4\":%lu,\"ka\":%lu,\"vm\":%lu,\"ce\":%lu,\"t\":[",
         bool__online ? 1u : 0u, (unsigned long)uint32_t__ageMs, (unsigned int)UINT16_T__G__TlmSeq,
         (unsigned int)UINT8_T__G__TlmFlags, (unsigned long)UINT32_T__G__TlmFrameCount,
         (unsigned long)uint32_t__pendingMask, (unsigned long)uint32_t__pendingMask2,
         (unsigned long)uint32_t__pendingMask3, 0UL,
-        (unsigned long)uint32_t__keepaliveAgeMs);
+        (unsigned long)uint32_t__keepaliveAgeMs,
+        (unsigned long)UINT32_T__G__RxVersionMismatch,
+        (unsigned long)UINT32_T__G__RxCrcError);
 
     for (uint8_t__index = 0u; uint8_t__index < ESP_LINK_TLM_FIELD_COUNT; uint8_t__index++)
     {

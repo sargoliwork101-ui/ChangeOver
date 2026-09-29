@@ -24,6 +24,44 @@ static uint32_t func__Esp_ReadU32(const uint8_t *uint8_t__ptr_buffer, uint8_t ui
 /* ==================== Frame Transmit ==================== */
 
 /**
+ * @brief  [EN] CRC-16/CCITT-FALSE, identical to the firmware's implementation.
+ *              Both sides must agree bit for bit or every frame is rejected.
+ *         [FA] CRC-16/CCITT-FALSE، عیناً مثل پیاده‌سازی فرم‌ور. هر دو طرف باید
+ *              بیت‌به‌بیت یکی باشند وگرنه هر فریمی رد می‌شود.
+ * @param  uint16_t__crc  [EN] Running value / مقدار جاری
+ * @param  uint8_t__byte  [EN] Next byte / بایت بعدی
+ * @return uint16_t [EN] Updated CRC / CRC به‌روزشده
+ */
+static uint16_t func__Esp_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte)
+{
+    uint8_t uint8_t__bit;
+
+    uint16_t__crc = (uint16_t)(uint16_t__crc ^ ((uint16_t)uint8_t__byte << 8));
+    for (uint8_t__bit = 0u; uint8_t__bit < 8u; uint8_t__bit++)
+    {
+        if ((uint16_t__crc & 0x8000u) != 0u)
+        {
+            uint16_t__crc = (uint16_t)(((uint16_t)(uint16_t__crc << 1)) ^ (uint16_t)ESP_LINK_CRC16_POLY);
+        }
+        else
+        {
+            uint16_t__crc = (uint16_t)(uint16_t__crc << 1);
+        }
+    }
+    return uint16_t__crc;
+}
+
+/* [EN] Link health, surfaced to the page. A version mismatch means the STM32
+   and this panel were flashed out of step - the failure that used to look
+   exactly like a dead cable.
+   [FA] سلامت لینک، نمایش‌داده‌شده در صفحه. ناهم‌نسخگی یعنی STM32 و این پنل
+   ناهماهنگ فلش شده‌اند - خرابی‌ای که قبلاً عیناً شبیه کابل قطع به نظر می‌رسید. */
+static uint32_t UINT32_T__G__RxCrcError = 0u;
+static uint32_t UINT32_T__G__RxVersionMismatch = 0u;
+static uint16_t UINT16_T__G__RxCrc = 0u;
+static uint8_t  UINT8_T__G__RxCrcLow = 0u;
+
+/**
  * @brief  [EN] Build and write one frame: AA 55 type len payload xor.
  *         [FA] ساخت و ارسال یک فریم: AA 55 type len payload xor.
  * @param  uint8_t__type        [EN] Message type (0x01 SET_PARAM / 0x02 GET_PARAMS) / [FA] نوع پیام (0x01 یا 0x02)
@@ -33,10 +71,10 @@ static uint32_t func__Esp_ReadU32(const uint8_t *uint8_t__ptr_buffer, uint8_t ui
  */
 static void func__Esp_WriteFrame(uint8_t uint8_t__type, const uint8_t *uint8_t__ptr_payload, uint16_t uint16_t__len)
 {
-    uint8_t UINT8_T__A__Frame[ESP_LINK_HEADER_SIZE + ESP_LINK_MAX_PAYLOAD + 1u];
+    uint8_t UINT8_T__A__Frame[ESP_LINK_HEADER_SIZE + ESP_LINK_MAX_PAYLOAD + ESP_LINK_CRC_SIZE];
     uint8_t uint8_t__lenLo = (uint8_t)(uint16_t__len & 0xFFu);
     uint8_t uint8_t__lenHi = (uint8_t)((uint16_t__len >> 8) & 0xFFu);
-    uint8_t uint8_t__xor = (uint8_t)(uint8_t__type ^ uint8_t__lenLo ^ uint8_t__lenHi);
+    uint16_t uint16_t__crc = (uint16_t)ESP_LINK_CRC16_INIT;
     uint16_t uint16_t__index;
 
     if (uint16_t__len > ESP_LINK_MAX_PAYLOAD)
@@ -46,20 +84,26 @@ static void func__Esp_WriteFrame(uint8_t uint8_t__type, const uint8_t *uint8_t__
 
     UINT8_T__A__Frame[0] = ESP_LINK_SOF_BYTE0;
     UINT8_T__A__Frame[1] = ESP_LINK_SOF_BYTE1;
-    UINT8_T__A__Frame[2] = uint8_t__type;
-    UINT8_T__A__Frame[3] = uint8_t__lenLo;
-    UINT8_T__A__Frame[4] = uint8_t__lenHi;
+    UINT8_T__A__Frame[2] = (uint8_t)ESP_LINK_PROTOCOL_VERSION;
+    UINT8_T__A__Frame[3] = uint8_t__type;
+    UINT8_T__A__Frame[4] = uint8_t__lenLo;
+    UINT8_T__A__Frame[5] = uint8_t__lenHi;
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, (uint8_t)ESP_LINK_PROTOCOL_VERSION);
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, uint8_t__type);
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, uint8_t__lenLo);
+    uint16_t__crc = func__Esp_Crc16(uint16_t__crc, uint8_t__lenHi);
 
     for (uint16_t__index = 0u; uint16_t__index < uint16_t__len; uint16_t__index++)
     {
         uint8_t uint8_t__byte = uint8_t__ptr_payload[uint16_t__index];
         UINT8_T__A__Frame[ESP_LINK_HEADER_SIZE + uint16_t__index] = uint8_t__byte;
-        uint8_t__xor = (uint8_t)(uint8_t__xor ^ uint8_t__byte);
+        uint16_t__crc = func__Esp_Crc16(uint16_t__crc, uint8_t__byte);
     }
 
-    uint16_t uint16_t__xorPosition = (uint16_t)(ESP_LINK_HEADER_SIZE + uint16_t__len);
-    UINT8_T__A__Frame[uint16_t__xorPosition] = uint8_t__xor;
-    uint16_t uint16_t__frameSize = (uint16_t)(uint16_t__xorPosition + 1u);
+    uint16_t uint16_t__crcPosition = (uint16_t)(ESP_LINK_HEADER_SIZE + uint16_t__len);
+    UINT8_T__A__Frame[uint16_t__crcPosition] = (uint8_t)(uint16_t__crc & 0xFFu);
+    UINT8_T__A__Frame[uint16_t__crcPosition + 1u] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
+    uint16_t uint16_t__frameSize = (uint16_t)(uint16_t__crcPosition + ESP_LINK_CRC_SIZE);
 
     (void)Serial.write(UINT8_T__A__Frame, uint16_t__frameSize);
     UINT32_T__G__LastTxMs = (uint32_t)millis();
@@ -339,7 +383,7 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
         case ESP_RX_WAIT_SOF1:
             if (uint8_t__byte == ESP_LINK_SOF_BYTE1)
             {
-                ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_TYPE;
+                ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_VERSION;
             }
             else if (uint8_t__byte != ESP_LINK_SOF_BYTE0)
             {
@@ -351,21 +395,39 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
             }
             break;
 
+        case ESP_RX_WAIT_VERSION:
+            /* [EN] A frame from a firmware we do not speak. Counted and dropped,
+               so the page can say "the two boards were flashed out of step"
+               instead of showing an empty panel with no explanation.
+               [FA] فریمی از فرم‌وری که نمی‌شناسیم. شمرده و رها می‌شود تا صفحه
+               بتواند بگوید «دو برد ناهماهنگ فلش شده‌اند» به‌جای نمایش پنل خالی. */
+            if (uint8_t__byte != (uint8_t)ESP_LINK_PROTOCOL_VERSION)
+            {
+                UINT32_T__G__RxVersionMismatch++;
+                ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
+            }
+            else
+            {
+                UINT16_T__G__RxCrc = func__Esp_Crc16((uint16_t)ESP_LINK_CRC16_INIT, uint8_t__byte);
+                ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_TYPE;
+            }
+            break;
+
         case ESP_RX_WAIT_TYPE:
             UINT8_T__G__RxType = uint8_t__byte;
-            UINT8_T__G__RxXor = uint8_t__byte;
+            UINT16_T__G__RxCrc = func__Esp_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
             ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_LEN_LO;
             break;
 
         case ESP_RX_WAIT_LEN_LO:
             UINT16_T__G__RxLen = (uint16_t)uint8_t__byte;
-            UINT8_T__G__RxXor = (uint8_t)(UINT8_T__G__RxXor ^ uint8_t__byte);
+            UINT16_T__G__RxCrc = func__Esp_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
             ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_LEN_HI;
             break;
 
         case ESP_RX_WAIT_LEN_HI:
             UINT16_T__G__RxLen = (uint16_t)(UINT16_T__G__RxLen | ((uint16_t)((uint16_t)uint8_t__byte << 8)));
-            UINT8_T__G__RxXor = (uint8_t)(UINT8_T__G__RxXor ^ uint8_t__byte);
+            UINT16_T__G__RxCrc = func__Esp_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
             if (UINT16_T__G__RxLen > ESP_LINK_MAX_PAYLOAD)
             {
                 ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
@@ -373,24 +435,33 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
             else
             {
                 UINT16_T__G__RxIndex = 0u;
-                ESP_RX_STATE_T__G__RxState = (UINT16_T__G__RxLen == 0u) ? ESP_RX_WAIT_XOR : ESP_RX_WAIT_PAYLOAD;
+                ESP_RX_STATE_T__G__RxState = (UINT16_T__G__RxLen == 0u) ? ESP_RX_WAIT_CRC_LO : ESP_RX_WAIT_PAYLOAD;
             }
             break;
 
         case ESP_RX_WAIT_PAYLOAD:
             UINT8_T__G__RxPayload[UINT16_T__G__RxIndex] = uint8_t__byte;
             UINT16_T__G__RxIndex++;
-            UINT8_T__G__RxXor = (uint8_t)(UINT8_T__G__RxXor ^ uint8_t__byte);
+            UINT16_T__G__RxCrc = func__Esp_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
             if (UINT16_T__G__RxIndex >= UINT16_T__G__RxLen)
             {
-                ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_XOR;
+                ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_CRC_LO;
             }
             break;
 
-        case ESP_RX_WAIT_XOR:
-            if (uint8_t__byte == UINT8_T__G__RxXor)
+        case ESP_RX_WAIT_CRC_LO:
+            UINT8_T__G__RxCrcLow = uint8_t__byte;
+            ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_CRC_HI;
+            break;
+
+        case ESP_RX_WAIT_CRC_HI:
+            if (((uint16_t)(((uint16_t)uint8_t__byte << 8) | (uint16_t)UINT8_T__G__RxCrcLow)) == UINT16_T__G__RxCrc)
             {
                 func__Esp_HandleFrame();
+            }
+            else
+            {
+                UINT32_T__G__RxCrcError++;
             }
             ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
             break;

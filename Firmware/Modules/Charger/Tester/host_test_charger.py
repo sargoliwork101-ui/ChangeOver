@@ -1831,10 +1831,26 @@ def test_ui_mirror_v116():
     ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
     prev = (ROOT / "tools/panel_preview_server.js").read_text()
 
-    # --- frame: u16 LE length, 5-byte header, 512 ceiling, BOTH sides ---
-    check(re.search(r"#define ESPLINK_FRAME_HEADER_SIZE\s+5u", text_esph)
-          and re.search(r"#define ESP_LINK_HEADER_SIZE\s+5u", ino),
-          "both frame headers must be 5 bytes (AA 55 type len_lo len_hi)")
+    # --- frame v2: u16 LE length, 6-byte header, CRC-16, 512 ceiling, BOTH sides ---
+    # [EN] Was pinned at 5 bytes. v2 (2026-09-29) inserts a protocol VERSION byte
+    #      after the SOF pair and replaces the XOR-8 trailer with CRC-16, so the
+    #      header is 6 and the trailer is 2. The version byte exists because a
+    #      mismatched flash used to produce no error at all - the receiver just
+    #      dropped everything and the panel looked like an unplugged cable.
+    #      The exact sizes are cross-checked against the ESP by
+    #      tools/audit_consistency.py; here we pin the SHAPE.
+    # [FA] قبلاً روی ۵ بایت قفل بود. نسخهٔ ۲ یک بایت نسخه بعد از SOF می‌گذارد و
+    #      XOR-8 را با CRC-16 عوض می‌کند، پس هدر ۶ و دنباله ۲ است. بایت نسخه هست
+    #      چون فلش ناهماهنگ قبلاً هیچ خطایی تولید نمی‌کرد.
+    check(re.search(r"#define ESPLINK_FRAME_HEADER_SIZE\s+6u", text_esph)
+          and re.search(r"#define ESP_LINK_HEADER_SIZE\s+6u", ino),
+          "both frame headers must be 6 bytes (AA 55 ver type len_lo len_hi)")
+    check(re.search(r"#define ESPLINK_FRAME_CHECKSUM_SIZE\s+2u", text_esph)
+          and re.search(r"#define ESPLINK_PROTOCOL_VERSION\s+\d+u", text_esph)
+          and "func__EspLink_Crc16" in text_espc,
+          "the frame must carry a 16-bit CRC and an explicit protocol version - XOR-8 "
+          "was measured to miss 100 percent of same-position bit pairs, the pattern a "
+          "switching converter puts on a UART")
     check(re.search(r"#define ESPLINK_FRAME_MAX_PAYLOAD\s+512u", text_esph)
           and re.search(r"#define ESP_LINK_MAX_PAYLOAD\s+512u", ino),
           "both payload ceilings must be 512 (416-byte bulk + headroom)")

@@ -475,7 +475,11 @@ def sec_link():
     # --- framing must be byte-identical on both sides ---
     for label, a, b in (("SOF byte 0", "ESPLINK_SOF_BYTE0", "ESP_LINK_SOF_BYTE0"),
                         ("SOF byte 1", "ESPLINK_SOF_BYTE1", "ESP_LINK_SOF_BYTE1"),
+                        ("protocol version", "ESPLINK_PROTOCOL_VERSION", "ESP_LINK_PROTOCOL_VERSION"),
                         ("header size", "ESPLINK_FRAME_HEADER_SIZE", "ESP_LINK_HEADER_SIZE"),
+                        ("CRC size", "ESPLINK_FRAME_CHECKSUM_SIZE", "ESP_LINK_CRC_SIZE"),
+                        ("CRC init", "ESPLINK_CRC16_INIT", "ESP_LINK_CRC16_INIT"),
+                        ("CRC polynomial", "ESPLINK_CRC16_POLY", "ESP_LINK_CRC16_POLY"),
                         ("max payload", "ESPLINK_FRAME_MAX_PAYLOAD", "ESP_LINK_MAX_PAYLOAD")):
         va, vb = fwd(a), espd(b)
         ok(va is not None and va == vb, f"link framing disagrees: {label}",
@@ -491,6 +495,37 @@ def sec_link():
         va, vb = fwd(a), espd(b)
         ok(va is not None and va == vb, f"message id disagrees: {label}",
            f"firmware {va} vs ESP {vb}")
+
+
+    # [EN] The frame check must be a CRC, not the XOR-8 it used to be: XOR-8 is
+    #      blind to ANY even number of flips in the same bit position, which is
+    #      the pattern a switching converter puts on a UART - measured, it missed
+    #      100 % of that class while CRC-16 missed 0 %.
+    # [FA] چک فریم باید CRC باشد نه XOR-8 قبلی: XOR-8 نسبت به هر تعداد زوجِ تغییر
+    #      بیت در یک موقعیت کاملاً کور است - همان الگوی نویز مبدل کلیدزن. اندازه‌گیری
+    #      شد: XOR-8 صددرصد آن دسته را از دست می‌داد و CRC-16 صفر درصد.
+    ok(fwd("ESPLINK_FRAME_CHECKSUM_SIZE") == 2,
+       "the frame check is not 16-bit", "XOR-8 was blind to same-position bit pairs")
+    ok("func__EspLink_Crc16" in ESP_C and "func__Esp_Crc16" in read("esp_link_panel/plink_link.h"),
+       "one side is missing its CRC implementation")
+    # [EN] Word-boundary, not substring: a plain `in` test also matches a renamed
+    #      symbol like RxCrcErrorX, so it would pass while the counter is gone.
+    #      Found by mutation-testing this very check. Note \\b does NOT work here:
+    #      underscore is a word character, so there is no boundary inside
+    #      UINT32_T__G__RxCrcError - a negative lookahead is what is needed.
+    # [FA] با مرز کلمه، نه زیررشته: تست ساده با نام تغییریافته هم می‌خواند و پاس
+    #      می‌شود در حالی که شمارنده رفته. با موتیشن‌تستِ خودِ همین چک پیدا شد.
+    for nm, txt in (("firmware", ESP_C), ("ESP", read("esp_link_panel/plink_link.h"))):
+        ok(re.search(r"RxCrcError(?![0-9A-Za-z_])", txt) and
+           re.search(r"RxVersionMismatch(?![0-9A-Za-z_])", txt),
+           f"{nm} does not count CRC errors and version mismatches",
+           "an unreadable link must be diagnosable, not just silent")
+    ok('\\"vm\\":%lu' in read("esp_link_panel/plink_http.h"),
+       "the link health counters are not reported to the page",
+       "a version-mismatched flash would look exactly like an unplugged cable again")
+    ok(re.search(r"function lnkhealth\s*\(", P_PAN) and "lnkhealth(d);" in P_PAN
+       and "نسخهٔ فرم‌ور و پنل یکی نیست" in P_PAN,
+       "the panel does not surface a version mismatch to the operator")
 
     ids = {}
     for m in re.finditer(r"#define\s+ESPLINK_MSG_(\w+)\s+(0x[0-9A-Fa-f]+)u", ESP_H):
