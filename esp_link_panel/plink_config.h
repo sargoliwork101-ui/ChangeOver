@@ -71,15 +71,15 @@
 #define ESP_STAT_FAULT_FIELD        19u
 #define ESP_STAT_MAX_FRAMES         60000u
 
-/* ==================== Bench Data Log File (spec 5.6, CSV v2 + DMM v4: 149 self-contained columns) ==================== */
+/* ==================== Bench Data Log File (spec 5.6, CSV v3: 56 data columns per row + a one-off settings line (was 149 repeated every row)) ==================== */
 /* [EN] One append-only CSV on LittleFS. The panel builds each row from the /m window (every TLM frame,
         raw included) plus the typed DMM readings and POSTs it to /benchlog/add; the ESP only validates
         (printable ASCII, newline-terminated, bounded length) and appends. The column header (the comment block
-        of spec 5.6, 149 columns - v1.12: +7 charge-profile params, v1.15: +11 alarm params, v1.16: +39 UI cadence params, v1.17: +6 full/hysteresis params, v1.24: +10 two-loop PID params, v1.25: +5 raw-count calibration columns) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
+        of spec 5.6; v1.26 split the 149 into 56 data columns plus 93 settings written once - v1.12: +7 charge-profile params, v1.15: +11 alarm params, v1.16: +39 UI cadence params, v1.17: +6 full/hysteresis params, v1.24: +10 two-loop PID params, v1.25: +5 raw-count calibration columns) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
         Arduino IDE: pick a flash layout WITH a file system (ESP8266 e.g. "4MB (FS:1MB)"; ESP32 default is fine).
    [FA] یک فایل CSV فقط-افزودنی روی LittleFS. پنل هر ردیف را از پنجرهٔ /m (تک‌تک فریم‌های TLM با raw)
         و عددهای مولتی‌متر می‌سازد و به /benchlog/add می‌فرستد؛ ESP فقط بررسی (ASCII قابل چاپ، پایان با
-        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 5.6، ۱۴۹ ستون - v1.12: +۷ پارامتر پروفایل شارژ، v1.15: +۱۱ پارامتر آلارم، v1.16: +۳۹ پارامتر UI، v1.17: +۶ پارامتر فول/هیسترزیس، v1.24: +۱۰ پارامتر PID دوحلقه‌ای، v1.25: +۵ ستون شمارش خام برای کالیبراسیون) را ESP هنگام ساخت فایل می‌نویسد. در سقف
+        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 5.6؛ نسخهٔ ۱.۲۶ آن ۱۴۹ را به ۵۶ ستون داده به‌اضافهٔ ۹۳ تنظیم که یک‌بار نوشته می‌شود تقسیم کرد - v1.12: +۷ پارامتر پروفایل شارژ، v1.15: +۱۱ پارامتر آلارم، v1.16: +۳۹ پارامتر UI، v1.17: +۶ پارامتر فول/هیسترزیس، v1.24: +۱۰ پارامتر PID دوحلقه‌ای، v1.25: +۵ ستون شمارش خام برای کالیبراسیون) را ESP هنگام ساخت فایل می‌نویسد. در سقف
         اندازه افزودن متوقف می‌شود (HTTP 507) و پنل هشدار می‌دهد.
         در Arduino IDE چیدمان فلشِ دارای فایل‌سیستم را انتخاب کنید (ESP8266 مثلاً "4MB (FS:1MB)"؛ ESP32 پیش‌فرض کافی است). */
 #define ESP_BENCHLOG_PATH           "/benchlog.csv"
@@ -88,14 +88,23 @@
 #define ESP_BENCHLOG_HEADER \
     "# cols:\n" \
     "#  [id]     scenario,step,duty_permille,settle_ms,sample_ms,browser_ts\n" \
-    "#  [params] off1,off2,gain1,gain2,voff_in,voff_24,voff_12,med,avg,\n" \
+    "# NOTE: the settings below are NOT data columns. They do not change during a\n" \
+    "#       sweep, so they are written ONCE as a '# settings:' line (same order,\n" \
+    "#       comma separated) instead of repeating on all 149 columns of every\n" \
+    "#       row. If any of them IS changed mid-run, a fresh '# settings:' line\n" \
+    "#       is written before the next data row, so every row is still covered\n" \
+    "#       by the most recent settings line above it.\n" \
+    "#       تنظیمات زیر ستون داده نیستند: در طول سوییپ عوض نمی‌شوند، پس یک‌بار\n" \
+    "#       به‌صورت خط '# settings:' نوشته می‌شوند نه در هر ردیف. اگر وسط کار\n" \
+    "#       عوض شوند، خط تازه‌ای پیش از ردیف بعدی نوشته می‌شود.\n" \
+    "#  [settings] off1,off2,gain1,gain2,voff_in,voff_24,voff_12,med,avg,\n" \
     "#           eta1,eta2,en1,en2,ceil1,ceil2,fixon1,fix1,fixon2,fix2,manual\n" \
-    "#  [profile] chg_absorb_mv,chg_absorb_enter_mv,chg_absorb_over_mv,\n" \
+    "#  [settings2] chg_absorb_mv,chg_absorb_enter_mv,chg_absorb_over_mv,\n" \
     "#            chg_float_mv,chg_reentry_mv,chg_bulk_imax_ma,chg_taper_ma\n" \
-    "#  [alarms]  alm_disc_mv,alm_disc_deb_ms,alm_absent_mv,alm_back_mv,\n" \
+    "#  [settings3] alm_disc_mv,alm_disc_deb_ms,alm_absent_mv,alm_back_mv,\n" \
     "#            alm_absent_deb_ms,alm_recover_ms,alm_in_min_mv,alm_in_max_mv,\n" \
     "#            alm_hard_ma,alm_ov_mv,alm_floor_mv\n" \
-    "#  [uicad]   ui_ov_led_per,ui_ov_led_duty,ui_ov_beep_per,ui_ov_beep_dur,\n" \
+    "#  [settings4] ui_ov_led_per,ui_ov_led_duty,ui_ov_beep_per,ui_ov_beep_dur,\n" \
     "#            ui_ov_beep_cnt,ui_ov_beep_gap,ui_bl_led_per,ui_bl_led_duty,\n" \
     "#            ui_bl_beep_per,ui_bl_beep_dur,ui_bl_beep_cnt,ui_bl_beep_gap,\n" \
     "#            ui_run_start,ui_run_double,ui_run_triple,ui_run_crit,\n" \
@@ -107,7 +116,7 @@
     "#            ui_pct_vmin,ui_pct_vmax,ui_mute,\n" \
     "#            ui_chg_full_enter,ui_chg_full_exit,ui_chg_hyst,\n" \
     "#            ui_run_hyst,ui_run_zero,ui_run_one\n" \
-    "#  [pid]     pid_i_kp,pid_i_ki,pid_i_kd,pid_i_up,pid_i_dn,\n" \
+    "#  [settings5] pid_i_kp,pid_i_ki,pid_i_kd,pid_i_up,pid_i_dn,\n" \
     "#            pid_v_kp,pid_v_ki,pid_v_kd,pid_v_up,pid_v_dn\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \

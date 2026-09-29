@@ -770,10 +770,30 @@ def test_charge_profile_v112():
     #      بود: ۹۹ تعداد پارامتر v1.22 بود و نگه‌داشتنش باعث شد هر ردیف CSV از
     #      v1.23 به بعد ۶ ستون اضافه داشته باشد. تستی که عددی را hard-code کند
     #      که باید مشتق شود، از جواب غلط دفاع می‌کند.
-    check("for(let k=0;k<PN;k++)P.push(q(D.p[k]));" in ino and "[profile]" in ino and "[alarms]" in ino and "[uicad]" in ino and "[pid]" in ino and "[raw]" in ino,
-          "wrow must log the parameters using the DERIVED bound PN (never a literal "
-          "count - a literal is what kept the row 6 columns too long since v1.23) and "
-          "the header must carry the [profile], [alarms], [uicad], [pid] and [raw] blocks")
+    # [EN] v1.26 (user order 2026-09-29: "a lot of these are zero and never change
+    #      - do not log them every row, or send them once at the start"): the 93
+    #      settings moved out of the data row into a single '# settings:' line.
+    #      That was 62 percent of every row, so the ~100 KB file now holds about
+    #      2.7x more sweep points. The row must therefore NOT contain them, the
+    #      settings line must still be built from the derived bound PN, and a
+    #      mid-run change must be re-logged so no row inherits stale settings.
+    # [FA] نسخهٔ ۱.۲۶ (دستور کاربر): ۹۳ تنظیم از ردیف داده بیرون رفت و به یک خط
+    #      «# settings:» منتقل شد - ۶۲٪ هر ردیف. پس ردیف نباید آن‌ها را داشته
+    #      باشد، خط تنظیمات باید از PN ساخته شود، و تغییر وسط کار باید دوباره
+    #      ثبت شود تا هیچ ردیفی تنظیمات کهنه به ارث نبرد.
+    check("function wset(){" in ino and "for(let k=0;k<PN;k++)P.push(" in ino and
+          "async function wsync()" in ino and "WSIG" in ino and
+          "'# settings: '" in ino and
+          "[settings]" in ino and "[raw]" in ino,
+          "the settings must be written ONCE as a '# settings:' line built from the "
+          "derived bound PN, with a signature check (wsync/WSIG) that re-logs them if "
+          "anything is changed mid-run - otherwise a row silently inherits the wrong "
+          "settings")
+    wrow_body = re.search(r"function wrow\([^)]*\)\{.*?\n\s*return \[(.*?)\]\.join",
+                          ino, re.S)
+    check(wrow_body and "...P," not in wrow_body.group(1),
+          "the data row must NOT repeat the 93 settings - that was 62 percent of every "
+          "row and it is what filled the file cap")
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     check(txo and len(txo.group(1).split(",")) == 93 and "88, 89, 90, 91, 92 };" in ino,
           "TxOrder must list all 99 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")

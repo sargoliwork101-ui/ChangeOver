@@ -1013,9 +1013,26 @@ function wlive(act){if(!D||D.on!=1)return['-','-','-',undefined,'-','-','-',unde
    extra columns and everything after the parameter block landed under the wrong
    heading. It now derives the bound so it cannot go stale again. */
 const PN=93;
-function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x,P=[];for(let k=0;k<PN;k++)P.push(q(D.p[k]));
+/* v1.26 (دستور کاربر ۲۰۲۶-۰۹-۲۹): ۹۳ ستون از ۱۴۹ ستونِ هر ردیف، «تنظیمات» بودند
+   که در طول یک سوییپ اصلاً عوض نمی‌شوند — یعنی ۶۲٪ هر ردیف تکرار بی‌فایده. حالا
+   تنظیمات یک‌بار به‌صورت خط «# settings:» نوشته می‌شود و ردیف‌ها فقط ۵۶ ستون
+   متغیر دارند. با سقف ~۱۰۰ کیلوبایتی فایل، این یعنی ~۲٫۷ برابر نقطهٔ سوییپ بیشتر.
+   نکتهٔ ایمنی: اگر وسط کار تنظیمی عوض شود نباید گم شود، پس امضای تنظیمات هر ردیف
+   سنجیده می‌شود و در صورت تغییر، خط «# settings:» تازه پیش از آن ردیف نوشته
+   می‌شود — پس فایل هنوز کامل است و هر ردیف می‌داند با چه تنظیماتی گرفته شده.
+   v1.26: 93 of the 149 columns were SETTINGS that never change during a sweep -
+   62 % of every row repeated for nothing. They are now written once as a
+   "# settings:" line and the rows carry only the 56 varying columns, which is
+   ~2.7x more sweep points inside the ~100 KB file cap. If a setting DOES change
+   mid-run it must not be lost, so the signature is checked per row and a fresh
+   settings line is emitted before the row that differs. */
+function wset(){const P=[];for(let k=0;k<PN;k++)P.push(D.p[k]==null?'-':D.p[k]);return P.join(',');}
+let WSIG=null;
+async function wsync(){const g=wset();if(g===WSIG)return;WSIG=g;
+ await wlog('# settings: '+g+'\n');}
+function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x;
  const C=b=>[m.a(b).toFixed(1),m.lo[b],m.hi[b],r0(m.a(b+1)),r0(m.a(b+2)),m.lo[b+2],m.hi[b+2],r0(m.a(b+3)),m.lo[b+3],m.hi[b+3],r0(m.a(b+4)),m.lo[b+4],m.hi[b+4],m.la[b+5],m.la[b+6]];
- return [sc,i+1,pm,se,sa,iso,...P,...C(0),...C(7),m.seq,m.fl,...[14,15,16,17,18].map(k=>r0(m.a(k))),m.or,...[20,21,22,23,24].map(k=>m.la[k]),q(v.ii),q(v.vi),q(v.b1),q(v.v1),q(v.b2),q(v.v2),v.note||'-'].join(',')+'\n';}
+ return [sc,i+1,pm,se,sa,iso,...C(0),...C(7),m.seq,m.fl,...[14,15,16,17,18].map(k=>r0(m.a(k))),m.or,...[20,21,22,23,24].map(k=>m.la[k]),q(v.ii),q(v.vi),q(v.b1),q(v.v1),q(v.b2),q(v.v2),v.note||'-'].join(',')+'\n';}
 /* جدول واحد: هر مرحلهٔ هر سناریو یک ردیف؛ ردیف فعال ورودی‌ها و دکمه‌ها را دارد */
 const WH=['سناریو','#','duty %','raw ۱','filt ۱ mA','iest ۱ mA','جریان باتری ۱ mA','raw ۲','filt ۲ mA','iest ۲ mA','جریان باتری ۲ mA','جریان ورودی کل mA','وضعیت'];
 function wbuild(SC,L){W.K=[];SC.forEach(sc=>L.forEach((d,i)=>W.K.push({sc,i,d})));
@@ -1059,6 +1076,7 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
    await setv(16,0);await setv(18,0);for(const n of [1,2])await setv(10+n,act.includes(n)?1:0);
    await setv(19,1);{const e=Date.now()+3000;while(!(D.fl&32)){if(Date.now()>e)throw 'مود دستی روشن نشد';await sl(100);}}W.man=true;W.act=act;
    await wlog(`# run ${run} browser_ts=${new Date().toISOString()} scenario=${sc} duty_list=${L.join(';')}\n`);
+   WSIG=null;await wsync();
    try{for(let i=0;i<L.length;){const pm=r0(L[i]*10),lb=sc+' · مرحلهٔ '+(i+1)+' از '+L.length+' · duty '+L[i]+'% ('+Math.round((i+1)/L.length*100)+'%)';
      wcell(x,[],'در حال اندازه‌گیری','wr');wsee(x);
      for(const n of act){const c=D.p[12+n],v=Math.min(pm,c==null?500:c,500);await setv(14+2*n,v);}
@@ -1066,6 +1084,7 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
      wst(lb+': عددهای مولتی‌متر را در ردیف رنگی جدول بنویسید','cm wr');const f=await wform(x,act);
      if(f.a=='err')throw f.e;if(f.a=='end'){W.abort=true;throw 'پایان توسط کاربر';}if(f.a=='repeat'){wcell(x,Array(9).fill('·'),'تکرار');continue;}
      const m=await wlatch();
+     await wsync();  /* اگر تنظیمی عوض شده، پیش از این ردیف ثبتش کن */
      await wlog(wrow(sc,i,pm,0,r0(Date.now()-W.winMs),m,f.v,f.iso));
      const A=wmeas(m,act);A[3]=f.v.b1??'-';A[7]=f.v.b2??'-';A[8]=f.v.ii;wcell(x,A,'ثبت شد','okc');
      i++;x++;}}

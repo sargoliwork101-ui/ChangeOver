@@ -288,7 +288,7 @@ def sec_protocol():
        "the ESP expects a different TLM size than the firmware sends",
        f"{define(P_CFG, 'ESP_LINK_TLM_SIZE')} vs {size}")
 
-    names, group = [], None
+    names, group, groups = [], None, {}
     blk = re.search(r"#define ESP_BENCHLOG_HEADER(.*?)(?=\n#define )", P_CFG, re.S)
     if ok(blk is not None, "bench CSV header block not found"):
         for line in re.findall(r'"([^"]*)"', blk.group(1)):
@@ -303,30 +303,55 @@ def sec_protocol():
                 continue
             if group is None or "cols" in body:
                 continue
-            names += [x for x in body.split(",") if x.strip()]
+            cols = [x for x in body.split(",") if x.strip()]
+            names += cols
+            groups.setdefault(group, []).extend(cols)
         dups = {n for n in names if names.count(n) > 1}
         ok(not dups, "duplicate column name in the bench CSV header", str(dups))
 
+        # [EN] v1.26 split the log in two: a one-off "# settings:" line carrying
+        #      the 93 settings, and data rows carrying only the 56 columns that
+        #      actually vary. Both halves must still add up to the header, and
+        #      the settings line must still cover every parameter.
+        # [FA] نسخهٔ ۱.۲۶ لاگ را دو تکه کرد: یک خط «# settings:» با ۹۳ تنظیم و
+        #      ردیف‌های داده فقط با ۵۶ ستون متغیر. هر دو نیمه باید با عنوان جمع
+        #      بزنند و خط تنظیمات باید همهٔ پارامترها را پوشش دهد.
+        setting_names = [n for g, lst in groups.items() if g.startswith("settings")
+                         for n in lst]
+        data_names = [n for g, lst in groups.items() if not g.startswith("settings")
+                      for n in lst]
         pn = re.search(r"const PN=(\d+);", P_PAN)
-        if ok(pn is not None, "the CSV row no longer derives its parameter bound"):
+        if ok(pn is not None, "the settings line no longer derives its bound"):
             pn = int(pn.group(1))
-            ok(pn == COUNT, "CSV parameter loop != COUNT",
+            ok(pn == COUNT, "the settings line does not cover every parameter",
                f"PN={pn} vs COUNT={COUNT}")
+            ok(len(setting_names) == COUNT,
+               "the header's settings block does not name every parameter",
+               f"{len(setting_names)} names vs {COUNT} parameters")
+            ok(re.search(r"function wset\(\)\{.*?for\(let k=0;k<PN;k\+\+\)", P_PAN, re.S)
+               is not None,
+               "the settings line must be built from the derived bound PN")
+            ok("async function wsync()" in P_PAN and "WSIG" in P_PAN,
+               "a mid-run settings change must be detected and re-logged, or rows "
+               "silently inherit the wrong settings")
             row = re.search(r"function wrow\([^)]*\)\{.*?\n\s*return \[(.*?)\]\.join",
                             P_PAN, re.S)
             if ok(row is not None, "wrow() return list not found"):
                 r = row.group(1)
+                ok("...P," not in r,
+                   "the data row must NOT repeat the settings - that was 62 percent "
+                   "of every row")
                 spread = sum(len([x for x in g.split(",") if x.strip()])
                              for g in re.findall(r"\.\.\.\[([\d,\s]+)\]\.map", r))
-                total = (6 + pn
+                total = (6
                          + len(re.findall(r"\.\.\.C\(\d+\)", r)) * 15
                          + len(re.findall(r"m\.(?:seq|fl|or)\b", r))
                          + spread
                          + len(re.findall(r"q\(v\.\w+\)", r)) + 1)
-                ok(total == len(names),
-                   "bench CSV row length != header column count",
-                   f"row emits {total}, header declares {len(names)} - every value "
-                   "after the mismatch is filed under the wrong name")
+                ok(total == len(data_names),
+                   "bench CSV row length != the header's DATA column count",
+                   f"row emits {total}, header declares {len(data_names)} data columns "
+                   "- every value after the mismatch is filed under the wrong name")
 
 
 # ============================================================== 7. ADC/HW
