@@ -84,7 +84,7 @@ Measurement) — بعد به mA زنجیره تبدیل و با LUT توانی �
 | `../../Modules/Measurement/measurement.c` | محاسبهٔ `VLOW = MID-GND` و `VHIGH = V24-MID` |
 | `../../Bsp/Src/bsp_pwm.c` | اعمال duty به PWM منطقی انتخاب‌شده |
 | `../../Bsp/Src/bsp_gpio.c` | منطق coil رله و polarity برد |
-| `host_test_charger.py` | تست host سیاست و قراردادهای source |
+| `Tester/` | پوشهٔ تست ماژول — `host_test_charger.py` (تست host سیاست و قراردادهای source) + `pid_tuning_sim.py` (شبیه‌ساز شارژ) + `README.md` توضیحات |
 
 ## توابع
 
@@ -158,7 +158,7 @@ rtos_app.c → TaskControl → task_control.c
       └─ bsp_pwm / bsp_gpio
 ```
 
-`host_test_charger.py` فقط policy و source contract را بررسی می‌کند (۳۶ تست، شامل قرارداد مود دستی و پین‌های LUT). PASS شدن
+`Tester/host_test_charger.py` فقط policy و source contract را بررسی می‌کند (۴۰ تست، شامل قرارداد مود دستی و پین‌های LUT). PASS شدن
 host یا syntax به‌تنهایی مجوز اتصال باتری، اثبات waveform واقعی MCU یا تأیید
 LM393/رله نیست. شارژر اکنون با `CHG_MASTER_ENABLE=1` فعال است (تصمیم کاربر
 ۲۰۲۶-۰۹-۲۲)؛ تست‌های سخت‌افزاری جدید باید با منبع ورودی محدودشده، پایش جریان و

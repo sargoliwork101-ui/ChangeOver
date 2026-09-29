@@ -197,7 +197,7 @@
 > errors? it does not matter if it is slow, because the battery itself is
 > slow; my goal is maximum accuracy by the simplest method"): the regulator
 > is reduced to the simplest structure that still regulates both limits.
-> Measured, not argued (tools/pid_tuning_sim.py, 10 h x 10 scenarios):
+> Measured, not argued (Firmware/Modules/Charger/Tester/pid_tuning_sim.py, 10 h x 10 scenarios):
 > ONE shared gain row FAILS (mV compared with mA in the min-select;
 > 1408..84660 duty reversals per 10 h against 4), and ONE voltage PID with
 > the 650 mA backstop as the only current limiter FAILS on the safety
@@ -1364,7 +1364,7 @@ ignored entirely for that pass — not averaged, not summed. One says "don't
 let the current pass 640 mA", the other says "don't let the voltage pass
 14.4 V".
 
-Real trace from `tools/pid_tuning_sim.py`, factory tune, nominal pack
+Real trace from `Firmware/Modules/Charger/Tester/pid_tuning_sim.py`, factory tune, nominal pack
 (the two "wants" are P+D terms in milli-permille):
 
 | Minute | V (mV) | I (mA) | Current loop wants | Voltage loop wants | Winner | Duty |
@@ -1409,7 +1409,7 @@ control.
 The user asked whether **one** PID over the whole path would do, noting that
 slowness is acceptable *"because the battery itself is slow"*. The honest
 answer needed numbers, not opinion, so every candidate was run through
-`tools/pid_tuning_sim.py` — a faithful transcript of `func__Charger_PidStep`
+`Firmware/Modules/Charger/Tester/pid_tuning_sim.py` — a faithful transcript of `func__Charger_PidStep`
 that **reads its constants out of `charger.h` by regex** rather than copying
 them, driven by a plant fitted to the real converter. Ten hours simulated,
 ten scenarios each:

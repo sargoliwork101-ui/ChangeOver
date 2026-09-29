@@ -109,7 +109,7 @@ BoardTest → یک‌بار قرمز/زرد/سبز + بوق
 | `task_ui.c` | 10ms `GetSnapshot→Ui_Tick` non-blocking |
 | `bsp_gpio.c/h` | LED/BUZZER GPIO |
 | `app_config.h` | زمان‌بندی LED |
-| `host_test_ui.py` | تست بوق + BatteryRun 56/57/58 + 0/1 + Charging 5% (53..61) + Full 100/95 + فاز |
+| `Tester/` | پوشهٔ تست ماژول — `host_test_ui.py` (تست بوق + BatteryRun 56/57/58 + 0/1 + Charging 5% (53..61) + Full 100/95 + فاز) + `README.md` توضیحات |
 | `UI_Board_Validation.xlsx` | 6 شیت تست 25V jitter + فول + RTOS |
 | `RTOS_Mapping_Report.md` | بررسی نگاشت و RTOS/static/stack |
 

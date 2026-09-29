@@ -5,7 +5,11 @@
 
 import os, re
 
-BASE_DIR = os.path.dirname(__file__)
+# [EN] v1.25: this script now lives in the module's Tester/ folder, so the
+#      headers it reads are one level UP, in the module root.
+# [FA] نسخهٔ ۱.۲۵: این اسکریپت حالا در پوشهٔ Tester ماژول است، پس هدرهایی
+#      که می‌خواند یک سطح بالاتر، در ریشهٔ ماژول‌اند.
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUZZER_HEADER = os.path.join(BASE_DIR, "ui_buzzer.h")
 LED_HEADER = os.path.join(BASE_DIR, "ui_led.h")
 defines={}

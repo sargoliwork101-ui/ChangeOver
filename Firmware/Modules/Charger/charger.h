@@ -478,7 +478,7 @@
  *      slow, because the battery itself is slow; maximum accuracy by the
  *      SIMPLEST method").
  *
- *      HOW SIMPLE CAN IT GET - measured, not argued (tools/pid_tuning_sim.py):
+ *      HOW SIMPLE CAN IT GET - measured, not argued (Firmware/Modules/Charger/Tester/pid_tuning_sim.py):
  *        1 shared row .... FAILS. A volt of voltage error and an amp of
  *                          current error are not the same quantity, so the
  *                          min-select compares millivolts with milliamps.

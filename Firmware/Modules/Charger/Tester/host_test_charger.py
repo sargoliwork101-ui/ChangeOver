@@ -10,8 +10,8 @@ from pathlib import Path
 import re
 import sys
 
-ROOT = Path(__file__).resolve().parents[3]
-APP_TYPES_H = Path(__file__).resolve().parents[2] / "Config" / "Inc" / "app_types.h"
+ROOT = Path(__file__).resolve().parents[4]
+APP_TYPES_H = Path(__file__).resolve().parents[3] / "Config" / "Inc" / "app_types.h"
 CHARGER_H = ROOT / "Firmware/Modules/Charger/charger.h"
 CHARGER_C = ROOT / "Firmware/Modules/Charger/charger.c"
 FAULT_H = ROOT / "Firmware/Modules/Fault/fault.h"
@@ -2370,7 +2370,7 @@ def test_min_select_handover_v124():
        یک انتگرال‌گیر هست و هر حلقه که کمتر بخواهد آن را می‌راند. حالا این
        جواب به‌صورت یک ترنسکریپت عددی در بخش ۵.۱۱ و راهنمای پنل منتشر شده،
        پس نگهبان می‌خواهد وگرنه با اولین تغییر ضریب بی‌صدا غلط می‌شود."""
-    sys.path.insert(0, str(ROOT / "tools"))
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
     import pid_tuning_sim as sim
 
     rec = sim.trace(hours=5.0)
@@ -2450,11 +2450,11 @@ def test_dynamic_disturbances_v124():
        These are the things that actually happen on a bench: someone edits
        the absorb setpoint or the duty ceiling from the panel while a charge
        is running, or the pack is disturbed. Regenerate with
-       `python3 tools/pid_tuning_sim.py --stress`.
+       `python3 pid_tuning_sim.py --stress` (this folder).
        [FA] جاروب سناریوها فقط نقطهٔ کار ایستا را می‌آزمود. این‌ها چیزهایی
        است که سر بنچ واقعاً رخ می‌دهد: تغییر ست‌پوینت یا سقف دیوتی از پنل
        وسط شارژ، یا اغتشاش پک."""
-    sys.path.insert(0, str(ROOT / "tools"))
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
     import pid_tuning_sim as sim
     text_h_local = CHARGER_H.read_text()
 

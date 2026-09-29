@@ -14,8 +14,8 @@
      effects (P-term ripple, output hysteresis, backstop granularity) that
      every hard-won constant in charger.h exists to tame.
 
-     Run:  python3 tools/pid_tuning_sim.py            # default report
-           python3 tools/pid_tuning_sim.py --help
+     Run:  python3 pid_tuning_sim.py                  # default report
+           python3 pid_tuning_sim.py --help           # (in this folder)
 
 [FA] شبیه‌ساز تیون PID شارژ - ترجمهٔ وفادار func__Charger_PidStep به‌همراه
      مدل فلای‌بک و باتری سرب-اسید. برای این است که هر ضریب پیش از فلش‌شدن
@@ -36,7 +36,7 @@ import random
 import re
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[4]
 CHARGER_H = ROOT / "Firmware" / "Modules" / "Charger" / "charger.h"
 
 

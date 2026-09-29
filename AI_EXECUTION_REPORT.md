@@ -83,11 +83,11 @@
 ## اعتبارسنجی انجام‌شده (2026-09-22 + 2026-09-27)
 
 - `bash tools/check_firmware_syntax.sh` — موفق؛ syntax سورس‌های CubeIDE/Core و Firmware با GCC سمت Host.
-- `python3 Firmware/Modules/Charger/host_test_charger.py` — **۳۶/۳۶ موفق** (۲۰۲۶-۰۹-۲۸؛ شامل قرارداد مود دستی، پین‌های LUT، `test_ch1_lut_v119` و `test_ui_mirror_v117/v117b`)
-- `python3 Firmware/Modules/Ui/host_test_ui.py` — موفق (۲۰۲۶-۰۹-۲۷)؛ `bash tools/check_ai_rules.sh` — سبز؛ `node --check tools/panel_preview_server.js` — سبز.
+- `python3 Firmware/Modules/Charger/Tester/host_test_charger.py` — **۳۶/۳۶ موفق** (۲۰۲۶-۰۹-۲۸؛ شامل قرارداد مود دستی، پین‌های LUT، `test_ch1_lut_v119` و `test_ui_mirror_v117/v117b`)
+- `python3 Firmware/Modules/Ui/Tester/host_test_ui.py` — موفق (۲۰۲۶-۰۹-۲۷)؛ `bash tools/check_ai_rules.sh` — سبز؛ `node --check tools/panel_preview_server.js` — سبز.
 - کمپین بنچ ۲۰۲۶-۰۹-۲۷: SOLO2 (۱۹ سطر، مبنای v1.17/v1.18) + SOLO1 (۱۸ سطر DMM-V/I، مبنای TABLE1 و تاپ 66200 در v1.19) + ران BOTH (۱۵ نقطهٔ دوکاناله: کوتاه‌ها ±۸mA، بلندها ‎+3..+17mA‎ با اثر گرمای شنت DMM).
 - ممیزی خط‌به‌خط پنل ESP (2026-09-23) — سینتکس C++ هر دو ESP8266/ESP32 پاس، JS پاس، فونت معتبر، نگاشت‌های پروتکل تطبیق کامل (قرارداد فیلترهای کلیددار، فرمول مرحله‌ای، تریگرهای سخت‌افزاری، آستانهٔ ۶V/۷V قطع باتری و...).
-- `python3 Firmware/Modules/Ui/host_test_ui.py` — موفق.
+- `python3 Firmware/Modules/Ui/Tester/host_test_ui.py` — موفق.
 - `bash tools/check_ai_rules.sh` — فقط **یک FAIL شناخته‌شده**: چک [17] انتظار `CHG_MASTER_ENABLE=0` دارد تا «تکمیل bring-up»؛ bring-up کامل شده و کاربر روشن‌بودن شارژر را انتخاب کرده است (تصمیم کاربر ۲۰۲۶-۰۹-۲۲: دست نزنیم).
 - کامپایل جداگانهٔ هر ۴ ترکیب کلیدهای فیلتر جریان (هر دو روشن/خاموش و تک‌کلید) — موفق.
 - راستی‌آزمایی رفتار فیلترها روی host (هارنس): پرش تک‌نمونه‌ای حذف، پلهٔ واقعی با تأخیر یک نمونه، میانگین فقط روی خانه‌های پر.
