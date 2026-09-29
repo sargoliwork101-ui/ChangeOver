@@ -427,6 +427,85 @@ def sec_single_source():
 
 
 
+# ================================================= 10. the STM32 <-> ESP link
+def sec_link():
+    """[EN] The wire protocol is written TWICE - once in the firmware header and
+       once in the ESP's config - and nothing compared them. A silent
+       disagreement here does not produce an error message: the receiver simply
+       drops every frame whose length or type it does not recognise, and the
+       panel goes blank with no explanation. That already almost happened when
+       the telemetry frame grew from 84 to 104 bytes.
+       [FA] پروتکل سیم دو بار نوشته شده - یک‌بار در هدر فرم‌ور و یک‌بار در پیکربندی
+       ESP - و هیچ‌چیز آن‌ها را مقایسه نمی‌کرد. اختلاف بی‌صدا اینجا پیام خطا تولید
+       نمی‌کند: گیرنده هر فریمی را که طول یا نوعش را نشناسد دور می‌ریزد و پنل بدون
+       توضیح خالی می‌ماند."""
+    def fwd(n):
+        m = re.search(r"#define\s+" + n + r"\s+(0x[0-9A-Fa-f]+|\d+)u?", ESP_H)
+        return int(m.group(1), 0) if m else None
+
+    def espd(n):
+        m = re.search(r"#define\s+" + n + r"\s+(0x[0-9A-Fa-f]+|\d+)u?", P_CFG)
+        return int(m.group(1), 0) if m else None
+
+    # --- framing must be byte-identical on both sides ---
+    for label, a, b in (("SOF byte 0", "ESPLINK_SOF_BYTE0", "ESP_LINK_SOF_BYTE0"),
+                        ("SOF byte 1", "ESPLINK_SOF_BYTE1", "ESP_LINK_SOF_BYTE1"),
+                        ("header size", "ESPLINK_FRAME_HEADER_SIZE", "ESP_LINK_HEADER_SIZE"),
+                        ("max payload", "ESPLINK_FRAME_MAX_PAYLOAD", "ESP_LINK_MAX_PAYLOAD")):
+        va, vb = fwd(a), espd(b)
+        ok(va is not None and va == vb, f"link framing disagrees: {label}",
+           f"firmware {va} vs ESP {vb}")
+
+    # --- message ids. CAL_REFERENCE is deliberately one-sided (dropped from the
+    #     panel in v1.7, handler kept harmless on the STM32), so it is exempt. ---
+    for label, a, b in (("SET_PARAM", "ESPLINK_MSG_SET_PARAM", "ESP_MSG_SET_PARAM"),
+                        ("GET_PARAMS", "ESPLINK_MSG_GET_PARAMS", "ESP_MSG_GET_PARAMS"),
+                        ("TLM_LIVE", "ESPLINK_MSG_TLM_LIVE", "ESP_MSG_TLM_LIVE"),
+                        ("PARAM_REPORT", "ESPLINK_MSG_PARAM_REPORT", "ESP_MSG_PARAM_REPORT"),
+                        ("PARAMS_BULK", "ESPLINK_MSG_PARAMS_BULK", "ESP_MSG_PARAMS_BULK")):
+        va, vb = fwd(a), espd(b)
+        ok(va is not None and va == vb, f"message id disagrees: {label}",
+           f"firmware {va} vs ESP {vb}")
+
+    ids = {}
+    for m in re.finditer(r"#define\s+ESPLINK_MSG_(\w+)\s+(0x[0-9A-Fa-f]+)u", ESP_H):
+        v = int(m.group(2), 0)
+        ok(v not in ids, "two message types share one id",
+           f"{ids.get(v)} and {m.group(1)} are both {hex(v)}")
+        ids[v] = m.group(1)
+
+    # --- the telemetry header is 2 seq + 1 flags + 1 reserved, then the u32s ---
+    ok(espd("ESP_LINK_TLM_FIELD_OFFSET") == 4,
+       "the ESP reads the telemetry u32 array from the wrong offset",
+       "the firmware writes u16 seq + u8 flags + u8 reserved first")
+
+    # --- the receiver must be able to hold the biggest frame ---
+    rx = espd("ESP_LINK_RX_BUFFER_SIZE")
+    biggest = espd("ESP_LINK_HEADER_SIZE") + espd("ESP_LINK_MAX_PAYLOAD") + 1
+    ok(rx >= biggest, "the ESP receive buffer cannot hold a maximum frame",
+       f"{rx} < {biggest}")
+
+    # --- the JSON replies must fit, or snprintf truncates into invalid JSON and
+    #     the page silently shows nothing ---
+    jb = espd("ESP_JSON_BUFFER_SIZE")
+    fields = espd("ESP_LINK_TLM_FIELD_COUNT")
+    worst_m = 15 + 4 * (7 + fields * 11) + 38
+    worst_t = 6 + 20 * 11 + 6 + COUNT * 12 + 200
+    ok(jb > worst_m, "the /m statistics reply can overflow the JSON buffer",
+       f"worst case {worst_m} vs buffer {jb} - snprintf would truncate into "
+       "invalid JSON and the panel would show nothing, with no error")
+    ok(jb > worst_t, "the /t telemetry reply can overflow the JSON buffer",
+       f"worst case {worst_t} vs buffer {jb}")
+
+    # --- losing the link while a human is driving the duty by hand must fail safe ---
+    wd = define(CHG_H, "CHG_MANUAL_WATCHDOG_MS")
+    ok(wd is not None and 500 <= wd <= 10000,
+       "the manual-mode dead-man is missing or implausible",
+       f"got {wd}; if the ESP dies mid-test the charger must drop both duties, "
+       "not keep driving unattended")
+
+
+
 # ================================================================= report
 def main():
     ids = sec_ids()
@@ -438,6 +517,7 @@ def main():
     sec_hardware()
     sec_charger()
     sec_single_source()
+    sec_link()
 
     print("whole-program consistency audit")
     print("=" * 72)
