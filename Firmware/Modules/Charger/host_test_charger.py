@@ -741,11 +741,11 @@ def test_charge_profile_v112():
           "GetParam must route all 7 profile ids to Charger_GetProfileParam")
 
     # --- ESP panel: 99 params, third tab with 7 fields + descriptions, 150-col CSV, vin carry ---
-    check(re.search(r"#define ESP_PARAM_COUNT\s+98u", ino), "panel ESP_PARAM_COUNT must be 98 (v1.23: +15 three-stage PID ids 83..97)")
+    check(re.search(r"#define ESP_PARAM_COUNT\s+93u", ino), "panel ESP_PARAM_COUNT must be 93 (v1.24: +10 two-loop PID ids 83..92)")
     mn = re.search(r"INT32_T__G__ParamMin\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     mx = re.search(r"INT32_T__G__ParamMax\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(mn and mx and len(mn.group(1).split(",")) == 98 and len(mx.group(1).split(",")) == 98,
-          "panel min/max tables must carry 98 entries (outer envelope for ids 20..26, 27..82 and 83..97)")
+    check(mn and mx and len(mn.group(1).split(",")) == 93 and len(mx.group(1).split(",")) == 93,
+          "panel min/max tables must carry 93 entries (outer envelope for ids 20..26, 27..82 and 83..92)")
     check('<button data-t="2">تنظیمات</button>' in ino, "third nav tab must exist (v1.14b: renamed from تنظیمات شارژ when the filter windows moved in)")
     check('id="p2"' in ino and all(f'id="q{i}"' in ino for i in range(20, 27)),
           "tab p2 must hold the seven profile inputs q20..q26")
@@ -756,7 +756,7 @@ def test_charge_profile_v112():
     check("for(let k=0;k<99;k++)P.push(q(D.p[k]));" in ino and "[profile]" in ino and "[alarms]" in ino and "[uicad]" in ino and "[pid]" in ino,
           "wrow must log all 99 params (150 columns) with the [profile], [alarms], [uicad] and [pid] header blocks")
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(txo and len(txo.group(1).split(",")) == 98 and "93, 94, 95, 96, 97 };" in ino,
+    check(txo and len(txo.group(1).split(",")) == 93 and "88, 89, 90, 91, 92 };" in ino,
           "TxOrder must list all 99 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
     check("window.WVI=" in ino and "L('wVi','ولتاژ ورودی V',WVI)" in ino,
           "the input-voltage DMM reading must carry into the next wizard step (user order 2026-09-25: quasi-static, type once)")
@@ -1074,17 +1074,19 @@ def test_charger_persistence_v114():
           "the linker must shrink application FLASH to 62K and reserve the 2K NVM region at 0x0800F800 (build-time collision guard)")
     check("0x0800F800u" in nvm_h and "0x0800FC00u" in nvm_h,
           "the persistence pages must be the last two 1 KiB pages of the 64 KiB bank")
-    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+98u", nvm_h) and
+    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+93u", nvm_h) and
           "ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u" in nvm_h and
           "ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u" in nvm_h and
-          "ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    97u" in nvm_h,
-          "persisted set = 0..14 + 20..75 + 77..97 (92 ids, 98 slots) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot")
-    check(re.search(r"ESP_LINK_NVM_VERSION\s+7u", nvm_h),
-          "v1.22 bumps the NVM record version to 6: v5 records only carry 83 slots, so they fail the version check and fall back to compiled defaults")
+          "ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    92u" in nvm_h,
+          "persisted set = 0..14 + 20..75 + 77..92 (87 ids, 93 slots) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot")
+    check(re.search(r"ESP_LINK_NVM_VERSION\s+8u", nvm_h),
+          "v1.24 bumps the NVM record version to 8: v7 records carry 98 slots whose top "
+          "five are the retired third gain row, so they must fail the version check and "
+          "fall back to compiled defaults rather than load a stale row into ids 88..92")
 
     # the persisted-id predicate in C, replicated and cross-checked
-    persisted = {i for i in range(99) if i <= 14 or (20 <= i <= 98 and i != 76)}
-    check(persisted == set(range(15)) | set(range(20, 76)) | set(range(77, 99)) and 19 not in persisted and 15 not in persisted and 76 not in persisted,
+    persisted = {i for i in range(93) if i <= 14 or (20 <= i <= 92 and i != 76)}
+    check(persisted == set(range(15)) | set(range(20, 76)) | set(range(77, 93)) and 19 not in persisted and 15 not in persisted and 76 not in persisted,
           f"persisted id set must exclude 15..19 and 76 (got {len(persisted)} ids)")
 
     tab2 = ino.split('id="p2"', 2)[1]
@@ -1460,8 +1462,8 @@ def test_manual_test_mode_v12():
     check(re.search(r"#define ESPLINK_FRAME_MAX_PAYLOAD\s+512u", text_esph),
           "payload limit must be 512: PARAMS_BULK with 99 params = 1 + 99 x 5 = 496 bytes (v1.22 PID params; was 416 for 83)")
     check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
-          and re.search(r"#define ESPLINK_PARAM_COUNT\s+98u", text_esph),
-          "param 19 = manual test mode; 98 params total since v1.23 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..97 = three-stage PID)")
+          and re.search(r"#define ESPLINK_PARAM_COUNT\s+93u", text_esph),
+          "param 19 = manual test mode; 93 params total since v1.24 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID)")
 
     manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
                     text_c.find("/* ==================== Charger_Evaluate")]
@@ -1614,7 +1616,7 @@ def test_alarms_tab_v115():
     check('\\"q2\\":%lu' in ino and "pendingMask2" in ino,
           "the /t JSON must carry the q2 pending mask for ids 32..37 (one u32 no longer fits 38 params)")
     tx = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(tx and len(tx.group(1).split(",")) == 98, "TxOrder must carry all 98 ids")
+    check(tx and len(tx.group(1).split(",")) == 93, "TxOrder must carry all 93 ids")
     check("alm_disc_mv" in ino and "alm_hard_ma" in ino and "alm_floor_mv" in ino and "ui_ov_led_per" in ino
           and ("134 columns" in ino or "۱۳۴ ستون" in ino),
           "the bench CSV header must name the alarm + UI columns (134 total)")
@@ -1688,8 +1690,8 @@ def test_alarms_tab_v115():
 
     # --- offline preview mirrors the 38-param board ---
     prev = (ROOT / "tools/panel_preview_server.js").read_text()
-    check("q2: 0" in prev and "q3: 0" in prev and "q4: 0" in prev and "id < 98" in prev and all(f"case {i}:" in prev for i in range(27, 83)),
-          "the preview server must serve 98 params with alarm + UI clamps and the q2/q3/q4 masks")
+    check("q2: 0" in prev and "q3: 0" in prev and "id < 93" in prev and all(f"case {i}:" in prev for i in range(27, 83)),
+          "the preview server must serve 93 params with alarm + UI clamps and the q2/q3 masks")
 
 
 def test_ui_mirror_v116():
@@ -1759,10 +1761,11 @@ def test_ui_mirror_v116():
           "ONE sticky mirror header: 3 LEDs + buzzer + scenario caption + live timing readout")
     check(all(f'id="asbb{k}"' in ino for k in range(7)),
           "one LED per fault bit (asbb0..asbb6)")
-    check("pendingMask3" in ino and "pendingMask4" in ino and "64..95" in ino and "96..97" in ino,
-          "the /t JSON must carry the q3 (64..95) and q4 (96..97) pending masks - the PID block pushed the id space past three u32 masks")
+    check("pendingMask3" in ino and "pendingMask4" not in ino and "64..95" in ino,
+          "the /t JSON must carry the q3 (64..95) pending mask; with the top id back to 92 "
+          "the fourth mask is dead weight and must be gone")
     check("(۰..۱۴، ۲۰..۷۵، ۷۷..۹۷)" in ino and "XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26]" in ino,
-          "v1.16c (user order: ONE backup for the whole settings): all 92 persisted ids 0..14 + 20..75 + 77..97 (the PID rows are included)")
+          "v1.16c (user order: ONE backup for the whole settings): all 87 persisted ids 0..14 + 20..75 + 77..92 (the PID rows are included)")
     check('id="usel"' in ino and "function usel(n)" in ino
           and all(f'id="ucard{k}"' in ino for k in range(1, 6)),
           "one selectable card per scenario (5 cards, single-visible) - no crowded wall of fields")
@@ -1788,15 +1791,15 @@ def test_ui_mirror_v116():
           and 'id="aw"' in s2part and "adef()" in s2part and "uleds" not in s2part
           and all(f'id="q{i}"' in s2part for i in range(27, 38))
           and all(f'id="q{i}"' not in s2part for i in range(38, 83))
-          and all(f'id="q{i}"' not in s2part for i in range(83, 98)),
+          and all(f'id="q{i}"' not in s2part for i in range(83, 93)),
           "s2 (supervision & safety) keeps only the 27..37 thresholds + its own guard/defaults")
-    check("PID سه‌مرحله‌ای شارژ" in s3part and "pdef()" in s3part and 'id="pw"' in s3part
-          and all(f'id="q{i}"' in s3part for i in range(83, 98))
-          and all(f'id="a{i}"' in s3part for i in range(83, 98))
+    check("PID دوحلقه‌ای شارژ (CC/CV)" in s3part and "pdef()" in s3part and 'id="pw"' in s3part
+          and all(f'id="q{i}"' in s3part for i in range(83, 93))
+          and all(f'id="a{i}"' in s3part for i in range(83, 93))
           and all(f'id="q{i}"' not in s3part for i in range(27, 83)),
-          "s3 holds the three-stage PID card: all 15 ids 83..97 with their applied-value labels, the guard box and factory defaults")
+          "s3 holds the two-loop PID card: all 10 ids 83..92 with their applied-value labels, the guard box and factory defaults")
     check("پشتیبان‌گیری" in s4part and 'id="xim"' in s4part
-          and all(f'id="q{i}"' not in s4part for i in range(27, 98)),
+          and all(f'id="q{i}"' not in s4part for i in range(27, 93)),
           "s4 holds only the single backup card")
     check("وضعیت آلارم‌ها" in p0part and 'id="ast"' in p0part and 'id="abars"' not in p0part,
           "the merged voltages+alarm table sits on the main panel tab (p0, v1.16k: fixed layout, each value once), not in settings")
@@ -1812,9 +1815,9 @@ def test_ui_mirror_v116():
     check("با ریست برد پاک می‌شود" in ino and "روی فلش می‌ماند" not in ino,
           "v1.16b (user order: mute lives only for the panel session): no stale persisted-mute text")
 
-    # --- preview server: 99 params + q3/q4 ---
-    check("q3: 0" in prev and "q4: 0" in prev and "id < 98" in prev,
-          "the offline preview must serve 98 params with the q3 and q4 masks")
+    # --- preview server: 93 params + q3 ---
+    check("q3: 0" in prev and "id < 93" in prev,
+          "the offline preview must serve 93 params with the q3 mask")
 
 
 
@@ -1876,7 +1879,7 @@ def test_ui_mirror_v117():
 
     # --- preview server mirrors the same numbers ---
     check("100, 95, 5, 2, 2, 3," in prev and "case 78:" in prev and "P[77] - 1" in prev
-          and "150, 18000, 0, 10, 1000];" in prev,
+          and "50, 18000, 0, 10, 1000];" in prev,
           "the offline preview must serve the v1.17 defaults with the enter-authoritative clamp, and the calibrated PID rows after them")
 
 
@@ -2027,8 +2030,8 @@ def test_audit_batch_v116b():
           "bulk payload must be static (comm stack is 1 KiB)")
     check("ESPLINK_PARAM_COUNT <= ESP_LINK_NVM_ENTRY_MAX" in nvmc,
           "NVM must statically assert the record fits the param table")
-    check("800 B for 98 entries" in nvmh,
-          "NVM record comment must state the true record size for 98 entries")
+    check("760 B for 93 entries" in nvmh,
+          "NVM record comment must state the true record size for 93 entries")
 
     # --- LUT hardening + dead-clamp cleanup ---
     check("uint32_t__xHigh == uint32_t__xLow" in meas,
@@ -2122,20 +2125,27 @@ def test_flash_diet_pins_v116d():
               f".cproject must force {opt}=true in both Debug and Release")
 
 
-def test_three_stage_pid_v123():
-    """[EN] USER-ORDERED LOGIC CHANGE 2026-09-28: slow the absorb duty rise and
-       replace the fixed-step regulator with a three-stage (gain-scheduled)
-       PID whose coefficients are settable from the ESP panel.
-       [FA] تغییر منطق به دستور کاربر: رشد کندتر دیوتی در ابزورب و جایگزینی
-       تنظیم‌کنندهٔ پله‌ای با PID سه‌مرحله‌ای و قابل تنظیم از پنل ESP."""
+def test_two_loop_pid_v124():
+    """[EN] USER-ORDERED LOGIC CHANGE 2026-09-28/29: slow the absorb duty rise,
+       replace the fixed-step regulator with a panel-tunable PID, then reduce
+       that PID to the SIMPLEST structure that still regulates both limits.
+       The user asked whether ONE PID over the whole path would do, noting
+       that slowness is acceptable "because the battery itself is slow".
+       Measured answer, kept here as a regression: one row cannot, two can,
+       three was one too many.
+       [FA] تغییر منطق به دستور کاربر: رشد کندتر دیوتی در ابزورب، جایگزینی
+       تنظیم‌کنندهٔ پله‌ای با PID قابل تنظیم از پنل، و سپس ساده‌سازی همان PID
+       به ساده‌ترین ساختاری که هنوز هر دو حد را تنظیم می‌کند. کاربر پرسید آیا
+       یک PID در کل مسیر کافی است و گفت کندی اشکالی ندارد «چون باتری خودش
+       کند است». جواب اندازه‌گیری‌شده: یک ردیف نه، دو ردیف بله، سه ردیف زیادی."""
     text_h = CHARGER_H.read_text()
     text_c = CHARGER_C.read_text()
     text_esph = ESP_LINK_H.read_text()
     text_espc = ESP_LINK_C.read_text()
     ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
 
-    # --- 1. the 16 wire ids are dense 83..98 and agree on BOTH sides ---
-    names = [f"STAGE{st}_{f}" for st in (1, 2, 3)
+    # --- 1. the 10 wire ids are dense 83..92 and agree on BOTH sides ---
+    names = [f"{loop}_{f}" for loop in ("CURRENT", "VOLTAGE")
              for f in ("KP", "KI", "KD", "UP_RATE", "DOWN_RATE")]
     for k, nm in enumerate(names):
         wid = 83 + k
@@ -2143,19 +2153,25 @@ def test_three_stage_pid_v123():
               f"charger.h must map CHG_PID_PARAM_{nm} to id {wid}")
         check(re.search(rf"#define ESPLINK_PARAM_CHG_PID_{nm}\s+{wid}u", text_esph),
               f"esp_link.h must map ESPLINK_PARAM_CHG_PID_{nm} to the SAME id {wid}")
-    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+98u", text_esph),
-          "ESPLINK_PARAM_COUNT must be 98 (last PID id 97 + 1)")
+    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+93u", text_esph),
+          "ESPLINK_PARAM_COUNT must be 93 (last PID id 92 + 1)")
+    check("STAGE1" not in text_h and "STAGE3" not in text_h and "stage3" not in text_c,
+          "the retired third gain row must leave NOTHING behind (it was measured to "
+          "buy nothing and it cost five panel numbers)")
 
     # --- 2. each loop owns its own gain row (the min-select is meaningless
     #        with one shared Kp: simulated, the pack sails past 14.6 V) ---
     step = text_c[text_c.find("static uint16_t func__Charger_PidStep"):
                   text_c.find("static void func__Charger_RegulateChannel")]
     check(step, "func__Charger_PidStep must exist")
-    check("uint32_t__stage1Kp" in step and "uint32_t__stage1DownRate" in step,
-          "the CURRENT branch must always read the stage-1 row")
-    check(step.count("uint32_t__stage2Kp") == 1 and step.count("uint32_t__stage3Kp") == 1
-          and "(uint32_t__batteryMv < uint32_t__targetMv)" in step,
-          "the VOLTAGE branch must pick stage 2 below the live setpoint and stage 3 on/above it")
+    check("uint32_t__currentKp" in step and "uint32_t__currentDownRate" in step,
+          "the CURRENT branch must read the current row")
+    check(step.count("uint32_t__voltageKp") == 1 and "uint32_t__voltageDownRate" in step,
+          "the VOLTAGE branch must read ONE voltage row, unconditionally: the v1.23 "
+          "setpoint split was measured to be equal on the clean plant and NOISIER "
+          "under broadband sensor noise, so it is gone")
+    check("(uint32_t__batteryMv < uint32_t__targetMv)" not in step,
+          "no gain row may be selected by the pack voltage any more")
     check("int32_t__voltageKp * int32_t__errorVoltage" in step
           and "int32_t__currentKp * int32_t__errorCurrent" in step,
           "each branch's P term must use ITS OWN Kp (mV and mA are different units)")
@@ -2163,7 +2179,7 @@ def test_three_stage_pid_v123():
           or "bool__useVoltage = ((int32_t__termPv + int32_t__termDv) <=" in step,
           "CC/CV must be a min-select on the P+D demand of the two branches")
     check("CHG_PID_MID_ENTER_MV" not in text_h and "midEnterMv" not in text_c,
-          "the old fixed stage-1/2 voltage border must be gone (the rows switch at the setpoint)")
+          "the old fixed voltage border must be gone")
 
     # --- 3. the slew limit must sit on the INTEGRAL, not on the output.
     #        Limiting the output rectifies the P-term ripple that the whole-
@@ -2212,35 +2228,40 @@ def test_three_stage_pid_v123():
         m = re.search(rf"#define CHG_PID_{name}\s+(\d+)u", text_h)
         check(m, f"charger.h must define CHG_PID_{name}")
         return int(m.group(1))
-    check(g("STAGE2_UP_RATE") < g("STAGE1_UP_RATE"),
-          "stage-2 (absorb climb) must rise slower than stage-1 (bulk)")
-    check(g("STAGE3_UP_RATE") < g("STAGE2_UP_RATE"),
-          "stage-3 (at the setpoint) must be the calmest of all")
-    check(g("STAGE2_UP_RATE") < 50,
+    check(g("VOLTAGE_UP_RATE") < g("CURRENT_UP_RATE"),
+          "the absorb climb must rise slower than bulk")
+    check(g("VOLTAGE_UP_RATE") < 50,
           "the absorb climb must be slower than the legacy 0.1 permille / 2000 ms = 50 m-permille/s")
-    check(g("STAGE1_KP") <= 150,
+    check(g("CURRENT_KP") <= 150,
           "the current-loop Kp must stay small: ~7 mA moves per applied permille, so a big Kp "
           "swings the P term by more than one quantisation step and the loop chatters instead of climbing")
-    for st in (1, 2, 3):
+    # the voltage loop's Kp is its NOISE GAIN: the pack voltage has no upstream
+    # filter, so Kp multiplies raw ADC noise onto the duty. Measured at +/-7 mV
+    # broadband: Kp=150 -> 744 duty reversals / 10 h, Kp=50 -> 62, with the same
+    # overshoot, the same 0.5 mV hold error and the same 113 min to 14.4 V.
+    check(g("VOLTAGE_KP") <= 60,
+          "the voltage-loop Kp must stay small: it multiplies UNFILTERED pack-voltage "
+          "noise straight onto the duty and buys no accuracy above ~50")
+    for loop in ("CURRENT", "VOLTAGE"):
         for f in ("KP", "KI", "KD"):
-            check(g(f"STAGE{st}_{f}") <= 20000, f"default STAGE{st}_{f} must fit the panel window")
+            check(g(f"{loop}_{f}") <= 20000, f"default {loop}_{f} must fit the panel window")
         for f in ("UP_RATE", "DOWN_RATE"):
-            check(10 <= g(f"STAGE{st}_{f}") <= 20000, f"default STAGE{st}_{f} must fit the rate window")
+            check(10 <= g(f"{loop}_{f}") <= 20000, f"default {loop}_{f} must fit the rate window")
 
     # --- 5. clamps and dispatch. v1.23: there is NO escape hatch any more -
     #        the legacy regulator is deleted, so the PID branch is the only
     #        branch and nothing selects between them. ---
     clamp = text_c[text_c.find("static void func__Charger_ClampPid"):
                    text_c.find("static void func__Charger_ClampProfile")]
-    check("(uint32_t__index % 5u) >= 3u" in clamp and "uint32_t__index < 15u" in clamp,
-          "ClampPid must sweep the 15 row words and treat fields 3/4 of every 5 as slew rates")
+    check("(uint32_t__index % 5u) >= 3u" in clamp and "uint32_t__index < 10u" in clamp,
+          "ClampPid must sweep the 10 row words and treat fields 3/4 of every 5 as slew rates")
     check("func__Charger_ClampPid();" in text_c[text_c.find("static void func__Charger_ClampProfile"):],
           "ClampProfile must re-assert the PID windows (one NVM restore can never strand a gain)")
     for fn in ("func__EspLink_ApplyParam", "func__EspLink_GetParam"):
         window = text_espc[text_espc.find(fn):]
         window = window[:window.find("\n}\n")]
-        check("CHG_PID_PARAM_STAGE1_KP" in window and "CHG_PID_PARAM_STAGE3_DOWN_RATE" in window,
-              f"{fn} must range-dispatch ids 83..97 to the charger PID setter/getter")
+        check("CHG_PID_PARAM_CURRENT_KP" in window and "CHG_PID_PARAM_VOLTAGE_DOWN_RATE" in window,
+              f"{fn} must range-dispatch ids 83..92 to the charger PID setter/getter")
     check("func__Charger_PidInvalidate" in text_c, "FLOAT must invalidate the PID")
     reg = text_c[text_c.find("static void func__Charger_RegulateChannel"):]
     reg = reg[:reg.find("void func__Charger_Init")]
@@ -2293,7 +2314,7 @@ def test_three_stage_pid_v123():
     check(step.count(up) == 2 and step.count(dn) == 2,
           "the cap must be SYMMETRIC (same magnitude up and down) or it becomes the "
           "ratchet that stalled the loop at 268 mA")
-    check(all(f'id="q{i}"' not in ino for i in (98, 99)) and "BACKSTOP" not in ino,
+    check(all(f'id="q{i}"' not in ino for i in (93, 94, 95, 96, 97, 98)) and "BACKSTOP" not in ino,
           "the backstops must NOT be panel-settable (they are what makes re-tuning safe)")
 
     # --- 5c. the voltage prefilter. The current chain is filtered upstream,
@@ -2302,25 +2323,34 @@ def test_three_stage_pid_v123():
     check(re.search(r"#define CHG_PID_VOLT_FILTER_N\s+(\d+)u", text_h),
           "the PID voltage prefilter divisor must exist")
     nfilt = int(re.search(r"#define CHG_PID_VOLT_FILTER_N\s+(\d+)u", text_h).group(1))
-    check(nfilt >= 8, "a prefilter below N=8 leaves the voltage loop chattering on sensor noise")
+    # measured, two-loop design, duty reversals per 10 h at +/-7 mV / +/-15 mV
+    # broadband noise (mean of four seeds): N=1 -> 32307/69656, N=8 -> 115/931,
+    # N=16 -> 72/186, N=32 -> 62/104. The knee is real but N=32 is free here
+    # because the user explicitly accepted slowness ("the battery is slow").
+    check(nfilt >= 16, "a prefilter below N=16 leaves the voltage loop chattering on sensor noise")
     check("uint32_t__pidVoltFilt" in text_c and "uint32_t__pidVoltFilt =\n            uint32_t__batteryMv * CHG_PID_VOLT_FILTER_N;" in text_c,
           "the prefilter must be seeded on re-seed so a bumpless transfer does not start from zero")
 
     # --- 6. the panel exposes every coefficient with its own guard ---
-    check(all(f'id="q{i}"' in ino for i in range(83, 98)),
-          "the panel must expose all 15 PID coefficients")
-    check("function pchk()" in ino and "const PDEF=[12,1600,0,1000,1000,150,600,0,30,1000,150,18000,0,10,1000];" in ino,
+    check(all(f'id="q{i}"' in ino for i in range(83, 93)),
+          "the panel must expose all 10 PID coefficients")
+    check("function pchk()" in ino and "const PDEF=[12,1600,0,1000,1000,50,18000,0,10,1000];" in ino,
           "the panel must mirror the firmware clamps and carry the calibrated PID defaults")
     # the panel table and the firmware table must be the SAME numbers
     pdef = [int(x) for x in re.search(r"const PDEF=\[([^\]]*)\]", ino).group(1).split(",")]
-    fw = [int(re.search(rf"#define CHG_PID_STAGE{st}_{f}\s+(\d+)u", text_h).group(1))
-          for st in (1, 2, 3) for f in ("KP", "KI", "KD", "UP_RATE", "DOWN_RATE")]
+    fw = [int(re.search(rf"#define CHG_PID_{loop}_{f}\s+(\d+)u", text_h).group(1))
+          for loop in ("CURRENT", "VOLTAGE") for f in ("KP", "KI", "KD", "UP_RATE", "DOWN_RATE")]
     check(pdef == fw, f"panel PDEF {pdef} must equal the firmware defaults {fw}")
-    check("مرحلهٔ ۱ — حلقهٔ جریان" in ino and "مرحلهٔ ۲ — حلقهٔ ولتاژ، زیر ست‌پوینت" in ino
-          and "مرحلهٔ ۳ — حلقهٔ ولتاژ، روی ست‌پوینت" in ino,
-          "each stage must be labelled with WHAT IT CONTROLS, not just a number (user asks for concrete wording)")
-    check("id<96?((D.q3||0)&(1<<(id-64))):((D.q4||0)&(1<<(id-96)))" in ino,
-          "apend() must read the fourth pending mask or ids 96..97 would never highlight")
+    check("حلقهٔ جریان — CC" in ino and "حلقهٔ ولتاژ — CV" in ino
+          and "مرحلهٔ ۳" not in ino,
+          "each loop must be labelled with WHAT IT CONTROLS, not a stage number (user asks "
+          "for concrete wording), and the retired third stage must be gone from the panel")
+    check("((D.q3||0)&(1<<(id-64)))" in ino and "D.q4" not in ino,
+          "with the top id back to 92 the fourth pending mask is dead weight and must go")
+    # the question that drove v1.24, preserved so nobody 'simplifies' it back
+    check("۱۴۰۸" in ino and "۷۰۷" in ino,
+          "the panel must explain WHY one PID is not enough (shared row = mV compared with "
+          "mA = duty hunting; voltage-only + backstop = 707 mA because a backstop is reactive)")
     check("if(id<38||id>82)return;" in ino,
           "sdef() must stop at id 82: ADEF only covers 27..82, so without the guard "
           "the scenario-default button sends undefined to every PID id")
@@ -2365,7 +2395,7 @@ def main():
         test_telemetry_frame_pins_v116c,
         test_flash_diet_pins_v116d,
         test_fault_pump_rule_per_half_v121,
-        test_three_stage_pid_v123,
+        test_two_loop_pid_v124,
     ]
     for test in tests:
         test()

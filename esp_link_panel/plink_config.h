@@ -37,15 +37,15 @@
          charge profile (section 5.7), ids 27..37 = the alarms tab (27..34
          fault supervision, 35..37 charger safety ceilings), ids 38..76 =
          UI cadence (LED/beep patterns, bands, blink, thresholds, mute),
-         ids 83..97 = three-stage charge PID (v1.23; the v1.22 draft had an
-         enable flag at 83 - it was deleted with the legacy regulator and
-         never reached hardware, so the block was renumbered down by one).
+         ids 77..82 = full/hysteresis (v1.17), ids 83..92 = two-loop CC/CV charge
+         PID (v1.24: five ids fewer than v1.23, whose third gain row was
+         measured to buy nothing).
          / [FA] از v1.16: شناسه‌های ۲۰..۲۶ = پروفایل شارژ مشترک (بخش 5.7)،
          شناسه‌های ۲۷..۳۷ = تب آلارم‌ها (۲۷..۳۴ نظارت فالت، ۳۵..۳۷ سقف‌های
          ایمنی شارژر)، شناسه‌های ۳۸..۷۶ = اعداد UI (الگوهای LED/بوق، باندها،
-         چشمک، آستانه‌ها، میوت)، شناسه‌های ۷۷..۸۲ = فول/هیسترزیس (v1.17)، شناسه‌های ۸۳..۹۷ = PID
-         سه‌مرحله‌ای شارژ (v1.22). */
-#define ESP_PARAM_COUNT             98u
+         چشمک، آستانه‌ها، میوت)، شناسه‌های ۷۷..۸۲ = فول/هیسترزیس (v1.17)، شناسه‌های ۸۳..۹۲ = PID
+         دوحلقه‌ای CC/CV شارژ (v1.24). */
+#define ESP_PARAM_COUNT             93u
 #define ESP_PARAM_CHG1_ENABLE       11u
 #define ESP_PARAM_CHG2_ENABLE       12u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
@@ -71,15 +71,15 @@
 #define ESP_STAT_FAULT_FIELD        19u
 #define ESP_STAT_MAX_FRAMES         60000u
 
-/* ==================== Bench Data Log File (spec 5.6, CSV v2 + DMM v4: 134 self-contained columns) ==================== */
+/* ==================== Bench Data Log File (spec 5.6, CSV v2 + DMM v4: 144 self-contained columns) ==================== */
 /* [EN] One append-only CSV on LittleFS. The panel builds each row from the /m window (every TLM frame,
         raw included) plus the typed DMM readings and POSTs it to /benchlog/add; the ESP only validates
         (printable ASCII, newline-terminated, bounded length) and appends. The column header (the comment block
-        of spec 5.6, 134 columns - v1.12: +7 charge-profile params, v1.15: +11 alarm params, v1.16: +39 UI cadence params, v1.17: +6 full/hysteresis params) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
+        of spec 5.6, 144 columns - v1.12: +7 charge-profile params, v1.15: +11 alarm params, v1.16: +39 UI cadence params, v1.17: +6 full/hysteresis params, v1.24: +10 two-loop PID params) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
         Arduino IDE: pick a flash layout WITH a file system (ESP8266 e.g. "4MB (FS:1MB)"; ESP32 default is fine).
    [FA] یک فایل CSV فقط-افزودنی روی LittleFS. پنل هر ردیف را از پنجرهٔ /m (تک‌تک فریم‌های TLM با raw)
         و عددهای مولتی‌متر می‌سازد و به /benchlog/add می‌فرستد؛ ESP فقط بررسی (ASCII قابل چاپ، پایان با
-        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 5.6، ۱۴۹ ستون - v1.12: +۷ پارامتر پروفایل شارژ، v1.15: +۱۱ پارامتر آلارم، v1.16: +۳۹ پارامتر UI، v1.17: +۶ پارامتر فول/هیسترزیس، v1.23: +۱۵ پارامتر PID سه‌مرحله‌ای) را ESP هنگام ساخت فایل می‌نویسد. در سقف
+        خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 5.6، ۱۴۴ ستون - v1.12: +۷ پارامتر پروفایل شارژ، v1.15: +۱۱ پارامتر آلارم، v1.16: +۳۹ پارامتر UI، v1.17: +۶ پارامتر فول/هیسترزیس، v1.24: +۱۰ پارامتر PID دوحلقه‌ای) را ESP هنگام ساخت فایل می‌نویسد. در سقف
         اندازه افزودن متوقف می‌شود (HTTP 507) و پنل هشدار می‌دهد.
         در Arduino IDE چیدمان فلشِ دارای فایل‌سیستم را انتخاب کنید (ESP8266 مثلاً "4MB (FS:1MB)"؛ ESP32 پیش‌فرض کافی است). */
 #define ESP_BENCHLOG_PATH           "/benchlog.csv"
@@ -107,9 +107,8 @@
     "#            ui_pct_vmin,ui_pct_vmax,ui_mute,\n" \
     "#            ui_chg_full_enter,ui_chg_full_exit,ui_chg_hyst,\n" \
     "#            ui_run_hyst,ui_run_zero,ui_run_one\n" \
-    "#  [pid]     pid_s1_kp,pid_s1_ki,pid_s1_kd,pid_s1_up,pid_s1_dn,\n" \
-    "#            pid_s2_kp,pid_s2_ki,pid_s2_kd,pid_s2_up,pid_s2_dn,\n" \
-    "#            pid_s3_kp,pid_s3_ki,pid_s3_kd,pid_s3_up,pid_s3_dn\n" \
+    "#  [pid]     pid_i_kp,pid_i_ki,pid_i_kd,pid_i_up,pid_i_dn,\n" \
+    "#            pid_v_kp,pid_v_ki,pid_v_kd,pid_v_up,pid_v_dn\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \
@@ -124,7 +123,7 @@
 #define ESP_WIFI_AP_SSID            "ChangeOver-ESP"
 #define ESP_WIFI_AP_PASS            "123456789"
 #define ESP_HTTP_PORT               80
-#define ESP_JSON_BUFFER_SIZE        2560u   /* v1.16: p[77] needs the headroom (~950 B worst case); v1.17: p[83] adds ~70 B; v1.23: p[98] adds 15 PID values (one is 5 digits) plus the q4 mask, ~1.15 KB worst case */
+#define ESP_JSON_BUFFER_SIZE        2560u   /* v1.16: p[77] needs the headroom (~950 B worst case); v1.17: p[83] adds ~70 B; v1.24: p[93] adds 10 PID values (one is 5 digits), ~1.1 KB worst case */
 #define ESP_HTTP_FONT_CACHE         "public, max-age=31536000"
 
 /* ==================== Parser States ==================== */

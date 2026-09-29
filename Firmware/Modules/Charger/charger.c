@@ -63,14 +63,14 @@ typedef struct
     uint32_t uint32_t__stableFromTick; /* [EN] tick when installed+input+battery first looked valid; 0 = not present, gates bulk start (CHG_CONNECT_SETTLE_MS) / تیک اولین‌لحظه‌ای که اتصال معتبر دیده شد؛ صفر = باتری حاضر نیست؛ گیت شروع بالک */
     uint32_t uint32_t__taperSinceTick; /* [EN] first tick in this ABSORB episode that the tail current looked below CHG_TAPER_CURRENT_MA; 0 = not tapering / تیک اولین زیرجریان در ابزورب؛ صفر یعنی زیرجریان نیست */
     uint32_t uint32_t__absorbEnterTick; /* [EN] tick this ABSORB episode started; 0 = not in absorb; feeds the CHG_ABSORB_MAX_MS ceiling / تیک ورود به این ابزورب؛ صفر یعنی خارج؛ برای سقف یک‌ساعت */
-    /* [EN] Three-stage PID state (v1.22), per channel. The integral is in
+    /* [EN] Two-loop CC/CV PID state (v1.22), per channel. The integral is in
        milli-permille (CHG_PID_DUTY_SCALE) and its remainder keeps the
        sub-unit fraction so a 0.01 permille/s creep survives integer math.
        pidDutyMilli holds the duty LAST APPLIED (not the fine demand), which
        is what the bumpless re-seed guard compares against the hardware.
        error/branch feed the derivative and reset it when the CC/CV winner
        changes.
-       [FA] وضعیت PID سه‌مرحله‌ای (v1.22) برای هر کانال: انتگرال بر حسب
+       [FA] وضعیت PID دوحلقه‌ای (v1.22) برای هر کانال: انتگرال بر حسب
        میلی‌پرمیل است و باقی‌مانده‌اش کسر زیرواحدی را نگه می‌دارد تا خزش
        ۰٫۰۱ پرمیل بر ثانیه در ریاضی صحیح گم نشود. pidDutyMilli دیوتی
        «آخرین‌بار اعمال‌شده» را نگه می‌دارد نه تقاضای ریز را، و همین چیزی
@@ -118,15 +118,15 @@ static volatile charger_profile_t CHARGER_PROFILE_T__G__Profile =
     CHG_FLOAT_MV, CHG_REENTRY_MV, CHG_BULK_CURRENT_MAX_MA, CHG_TAPER_CURRENT_MA
 };
 
-/* [EN] Three-stage PID settings (v1.22, user order 2026-09-28), shared by
- *      both channels, wire ids 83..98. The field ORDER is the wire-id order
+/* [EN] Two-loop CC/CV PID settings (v1.22, user order 2026-09-28), shared by
+ *      both channels, wire ids 83..92. The field ORDER is the wire-id order
  *      (asserts near the setter): enable, then three complete stage rows of
  *      Kp,Ki,Kd,up-rate,down-rate. Stage 1 is the CURRENT loop, stages 2
  *      and 3 are the VOLTAGE loop below / at the setpoint (see the
  *      regulator block in charger.h). Boot defaults = the CHG_PID_* macros;
  *      flash-persisted like every other parameter.
- * [FA] تنظیمات PID سه‌مرحله‌ای (v1.22، دستور کاربر ۲۰۲۶-۰۹-۲۸)، مشترک بین
- *      دو کانال، شناسه‌های سیمی ۸۳..۹۸. ترتیب فیلدها همان ترتیب شناسه‌هاست
+ * [FA] تنظیمات PID دوحلقه‌ای (v1.22، دستور کاربر ۲۰۲۶-۰۹-۲۸)، مشترک بین
+ *      دو کانال، شناسه‌های سیمی ۸۳..۹۲. ترتیب فیلدها همان ترتیب شناسه‌هاست
  *      (اثبات‌های کنار ستر): فعال‌سازی، سپس سه ردیف کامل مرحله شامل Kp و Ki
  *      و Kd و نرخ صعود و نرخ نزول. مرحلهٔ ۱ حلقهٔ جریان است و مرحله‌های ۲ و ۳
  *      حلقهٔ ولتاژ زیر ست‌پوینت و روی ست‌پوینت (بلوک تنظیم‌کننده در
@@ -134,33 +134,32 @@ static volatile charger_profile_t CHARGER_PROFILE_T__G__Profile =
  *      فلش می‌ماند. */
 typedef struct
 {
-    uint32_t uint32_t__stage1Kp;        /* [EN] id 83, current loop / حلقهٔ جریان */
-    uint32_t uint32_t__stage1Ki;        /* [EN] id 84 */
-    uint32_t uint32_t__stage1Kd;        /* [EN] id 85 */
-    uint32_t uint32_t__stage1UpRate;    /* [EN] id 86, milli-permille/s */
-    uint32_t uint32_t__stage1DownRate;  /* [EN] id 87, milli-permille/s */
-    uint32_t uint32_t__stage2Kp;        /* [EN] id 88, voltage loop below setpoint / حلقهٔ ولتاژ زیر ست‌پوینت */
-    uint32_t uint32_t__stage2Ki;        /* [EN] id 89 */
-    uint32_t uint32_t__stage2Kd;        /* [EN] id 90 */
-    uint32_t uint32_t__stage2UpRate;    /* [EN] id 91, milli-permille/s */
-    uint32_t uint32_t__stage2DownRate;  /* [EN] id 92, milli-permille/s */
-    uint32_t uint32_t__stage3Kp;        /* [EN] id 93, voltage loop at setpoint / حلقهٔ ولتاژ روی ست‌پوینت */
-    uint32_t uint32_t__stage3Ki;        /* [EN] id 94 */
-    uint32_t uint32_t__stage3Kd;        /* [EN] id 95 */
-    uint32_t uint32_t__stage3UpRate;    /* [EN] id 96, milli-permille/s */
-    uint32_t uint32_t__stage3DownRate;  /* [EN] id 97, milli-permille/s */
+    uint32_t uint32_t__currentKp;       /* [EN] id 83, CC loop / حلقهٔ جریان */
+    uint32_t uint32_t__currentKi;       /* [EN] id 84 */
+    uint32_t uint32_t__currentKd;       /* [EN] id 85 */
+    uint32_t uint32_t__currentUpRate;   /* [EN] id 86, milli-permille/s */
+    uint32_t uint32_t__currentDownRate; /* [EN] id 87, milli-permille/s */
+    uint32_t uint32_t__voltageKp;       /* [EN] id 88, CV loop / حلقهٔ ولتاژ */
+    uint32_t uint32_t__voltageKi;       /* [EN] id 89 */
+    uint32_t uint32_t__voltageKd;       /* [EN] id 90 */
+    uint32_t uint32_t__voltageUpRate;   /* [EN] id 91, milli-permille/s */
+    uint32_t uint32_t__voltageDownRate; /* [EN] id 92, milli-permille/s */
 } charger_pid_t;
 
 /* [EN] volatile for the same cross-task reason as the profile: the EspLink
    task writes, the control task reads. [FA] همان دلیل بین‌تسکی پروفایل. */
 static volatile charger_pid_t CHARGER_PID_T__G__Pid =
 {
-    CHG_PID_STAGE1_KP, CHG_PID_STAGE1_KI, CHG_PID_STAGE1_KD,
-    CHG_PID_STAGE1_UP_RATE, CHG_PID_STAGE1_DOWN_RATE,
-    CHG_PID_STAGE2_KP, CHG_PID_STAGE2_KI, CHG_PID_STAGE2_KD,
-    CHG_PID_STAGE2_UP_RATE, CHG_PID_STAGE2_DOWN_RATE,
-    CHG_PID_STAGE3_KP, CHG_PID_STAGE3_KI, CHG_PID_STAGE3_KD,
-    CHG_PID_STAGE3_UP_RATE, CHG_PID_STAGE3_DOWN_RATE
+    CHG_PID_CURRENT_KP,
+    CHG_PID_CURRENT_KI,
+    CHG_PID_CURRENT_KD,
+    CHG_PID_CURRENT_UP_RATE,
+    CHG_PID_CURRENT_DOWN_RATE,
+    CHG_PID_VOLTAGE_KP,
+    CHG_PID_VOLTAGE_KI,
+    CHG_PID_VOLTAGE_KD,
+    CHG_PID_VOLTAGE_UP_RATE,
+    CHG_PID_VOLTAGE_DOWN_RATE
 };
 
 /* [EN] Runtime charger alarms (v1.15, wire ids 35..37, alarms tab). Boot
@@ -988,7 +987,7 @@ static bool func__Charger_BulkStartSettled(uint8_t uint8_t__channelIndex,
             func__Charger_DurationTicks(CHG_CONNECT_SETTLE_MS));
 }
 
-/* ==================== Three-stage PID core (v1.22) ====================
+/* ==================== Two-loop CC/CV PID core (v1.22) ====================
  * [EN] One positional PID whose gains are scheduled by the battery-voltage
  *      stage, feeding a per-stage slew limiter. Everything is integer math
  *      in milli-permille; see the charger.h block for the unit contract.
@@ -1042,11 +1041,11 @@ static int32_t func__Charger_PidClampError(int32_t int32_t__error)
 }
 
 /**
- * @brief  [EN] Advance the three-stage PID for one channel and return the
+ * @brief  [EN] Advance the two-loop CC/CV PID for one channel and return the
  *              duty it wants, in permille. Called once per control pass;
  *              the math only advances every CHG_PID_PERIOD_MS, in between
  *              the last duty is repeated so ApplyDuty keeps its housekeeping.
- *         [FA] یک قدم PID سه‌مرحله‌ای برای یک کانال و بازگرداندن دیوتی
+ *         [FA] یک قدم PID دوحلقه‌ای برای یک کانال و بازگرداندن دیوتی
  *              خواسته‌شده بر حسب پرمیل. هر پاس کنترل صدا زده می‌شود ولی
  *              ریاضی فقط هر CHG_PID_PERIOD_MS جلو می‌رود؛ بین آن‌ها همان
  *              دیوتی قبلی تکرار می‌شود تا کارهای جانبی ApplyDuty بماند.
@@ -1226,43 +1225,55 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
     uint32_t__batteryMv =
         charger_channel_state_t__channel->uint32_t__pidVoltFilt / CHG_PID_VOLT_FILTER_N;
 
-    /* [EN] Gain rows. The CURRENT branch always reads the stage-1 row: it
-       is one physical loop and it needs one tuning, whatever the battery
-       voltage happens to be. The VOLTAGE branch reads stage 2 while the
-       pack is below the setpoint (the climb the user asked to slow down)
-       and stage 3 once it is on it or above (hold and back-off). Giving
-       each loop its own row is what makes the min-select below meaningful:
-       with one shared Kp the comparison would be "millivolts versus
-       milliamps" and the CC->CV knee would never happen.
-       [FA] ردیف‌های ضریب: شاخهٔ جریان همیشه ردیف مرحلهٔ ۱ را می‌خواند - یک
-       حلقهٔ فیزیکی است و یک تیون می‌خواهد، ولتاژ باتری هرچه باشد. شاخهٔ
-       ولتاژ تا وقتی پک زیر ست‌پوینت است ردیف مرحلهٔ ۲ (همان بالا رفتنی که
-       کاربر خواست کندتر شود) و از ست‌پوینت به بالا ردیف مرحلهٔ ۳ (تثبیت و
-       عقب‌نشینی) را می‌خواند. جدا بودن ردیف هر حلقه همان چیزی است که
-       کمینه‌گیری پایین را معنادار می‌کند: با Kp مشترک، مقایسه می‌شد
-       «میلی‌ولت در برابر میلی‌آمپر» و زانوی CC→CV هرگز رخ نمی‌داد. */
-    int32_t__currentKp = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage1Kp;
-    int32_t__currentKi = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage1Ki;
-    int32_t__currentKd = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage1Kd;
-    int32_t__currentUpRate = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage1UpRate;
-    int32_t__currentDownRate = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage1DownRate;
-
-    if (uint32_t__batteryMv < uint32_t__targetMv)
-    {
-        int32_t__voltageKp = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage2Kp;
-        int32_t__voltageKi = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage2Ki;
-        int32_t__voltageKd = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage2Kd;
-        int32_t__voltageUpRate = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage2UpRate;
-        int32_t__voltageDownRate = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage2DownRate;
-    }
-    else
-    {
-        int32_t__voltageKp = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage3Kp;
-        int32_t__voltageKi = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage3Ki;
-        int32_t__voltageKd = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage3Kd;
-        int32_t__voltageUpRate = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage3UpRate;
-        int32_t__voltageDownRate = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__stage3DownRate;
-    }
+    /* [EN] TWO gain rows, one per physical control loop - that is the whole
+       regulator (user order 2026-09-29: "if we do it with one PID over the
+       whole path does it not work? it does not matter if it is slow,
+       because the battery itself is slow; I want maximum accuracy by the
+       SIMPLEST method"). Measured answer: one row cannot do it, two rows
+       are enough, three were one too many.
+         - ONE shared row fails because a volt of voltage error and an amp
+           of current error are different quantities. The min-select then
+           compares millivolts against milliamps, there is no real CC->CV
+           knee, and the duty hunts: 1408..84660 direction changes per 10 h
+           against 4 here.
+         - A single VOLTAGE PID with the 650 mA backstop as the only current
+           limiter also fails, and it fails on the user's own safety
+           requirement: a backstop is reactive, it can only answer AFTER the
+           limit is crossed, so the current limit-cycles and peaks at 707 mA
+           instead of sitting on 640.
+         - The third row (a separate set for at/above the setpoint) was
+           measured to buy nothing: with broadband sensor noise the two-row
+           design is equal or QUIETER at every noise level, and identical on
+           the clean plant. It was deleted.
+       So: the current row always drives the CC branch and the voltage row
+       always drives the CV branch, whatever the pack voltage happens to be.
+       [FA] دو ردیف ضریب، هر کدام برای یک حلقهٔ کنترل فیزیکی - و کل
+       تنظیم‌کننده همین است (دستور کاربر ۲۰۲۶-۰۹-۲۹: «اگر با یک PID در کل
+       مسیر انجام بدهیم کار درنمی‌آید؟ مهم نیست کند باشد، چون باتری خودش
+       کند است؛ با نهایت دقت ولی ساده‌ترین روش»). جواب اندازه‌گیری‌شده: یک
+       ردیف نمی‌تواند، دو ردیف کافی است، سه ردیف یکی زیادی بود.
+         - یک ردیف مشترک شکست می‌خورد چون یک ولت خطای ولتاژ و یک آمپر خطای
+           جریان دو کمیت متفاوت‌اند. آن‌وقت کمینه‌گیری میلی‌ولت را با
+           میلی‌آمپر مقایسه می‌کند، زانوی واقعی CC→CV وجود ندارد و دیوتی
+           می‌لرزد: ۱۴۰۸ تا ۸۴۶۶۰ تغییر جهت در ۱۰ ساعت در برابر ۴ تای اینجا.
+         - فقط یک PID ولتاژ با پشتیبان ۶۵۰ میلی‌آمپر به‌عنوان تنها
+           محدودکنندهٔ جریان هم شکست می‌خورد، آن هم دقیقاً روی خواستهٔ ایمنی
+           خود کاربر: پشتیبان واکنشی است و فقط بعد از رد شدن از حد جواب
+           می‌دهد، پس جریان چرخهٔ حدی می‌زند و به‌جای نشستن روی ۶۴۰ تا ۷۰۷
+           میلی‌آمپر بالا می‌رود.
+         - ردیف سوم (دستهٔ جدا برای روی ست‌پوینت و بالاتر) اندازه‌گیری شد و
+           هیچ سودی نداشت: با نویز پهن‌باند سنسور، طرح دوردیفی در هر سطح
+           نویز مساوی یا آرام‌تر است و روی مدل تمیز دقیقاً یکی. حذف شد. */
+    int32_t__currentKp = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__currentKp;
+    int32_t__currentKi = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__currentKi;
+    int32_t__currentKd = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__currentKd;
+    int32_t__currentUpRate = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__currentUpRate;
+    int32_t__currentDownRate = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__currentDownRate;
+    int32_t__voltageKp = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__voltageKp;
+    int32_t__voltageKi = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__voltageKi;
+    int32_t__voltageKd = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__voltageKd;
+    int32_t__voltageUpRate = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__voltageUpRate;
+    int32_t__voltageDownRate = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__voltageDownRate;
 
     /* [EN] CC/CV min-select. The current branch aims at the middle of the
        old regulation band (top - CHG_PID_CURRENT_MARGIN_MA), so the
@@ -1898,7 +1909,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     }
     else
     {
-        /* [EN] v1.23 (user order 2026-09-29): the three-stage PID is now the
+        /* [EN] v1.23 (user order 2026-09-29): the two-loop CC/CV PID is now the
            ONLY duty regulator - the fixed-step chain that used to live here
            is deleted, not merely bypassed. The state machine above already
            chose the setpoint and did the soak/taper/dip bookkeeping;
@@ -1907,7 +1918,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
            band with its 20 mA hysteresis - is now the scheduled gains, the
            per-stage slew limit and the two non-tunable backstops inside
            PidStep. There is no fallback path and no enable flag any more.
-           [FA] v1.23 (دستور کاربر ۲۰۲۶-۰۹-۲۹): PID سه‌مرحله‌ای حالا تنها
+           [FA] v1.23 (دستور کاربر ۲۰۲۶-۰۹-۲۹): PID دوحلقه‌ای حالا تنها
            تنظیم‌کنندهٔ دیوتی است - زنجیرهٔ پله‌ثابتی که اینجا بود حذف شده،
            نه فقط دور زده. ماشین حالت بالا ست‌پوینت را انتخاب و دفترداری
            شستشو/تیپر/افت را انجام داده؛ هرچه زنجیرهٔ قدیمی می‌کرد - پله‌های
@@ -2921,11 +2932,11 @@ static void func__Charger_ClampPid(void)
     /* [EN] Gains and rates share one indexed sweep: the struct packs the
        three stage rows as (Kp, Ki, Kd, up-rate, down-rate), so index % 5
        >= 3 is a slew rate and everything else is a gain.
-       [FA] ضرایب و شیب‌ها با یک پیمایش نمایه‌ای: ساختار سه ردیف مرحله را
+       [FA] ضرایب و شیب‌ها با یک پیمایش نمایه‌ای: ساختار دو ردیف حلقه را
        به‌صورت (Kp، Ki، Kd، نرخ صعود، نرخ نزول) می‌چیند، پس باقی‌ماندهٔ
        نمایه بر ۵ اگر ۳ یا بیشتر باشد یعنی شیب و بقیه ضریب‌اند. */
-    uint32_t__ptr_words = &CHARGER_PID_T__G__Pid.uint32_t__stage1Kp;
-    for (uint32_t__index = 0u; uint32_t__index < 15u; uint32_t__index++)
+    uint32_t__ptr_words = &CHARGER_PID_T__G__Pid.uint32_t__currentKp;
+    for (uint32_t__index = 0u; uint32_t__index < 10u; uint32_t__index++)
     {
         if ((uint32_t__index % 5u) >= 3u)
         {
@@ -3199,31 +3210,27 @@ bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
     }
 }
 
-/* ==================== Three-stage PID params (v1.22, ids 83..98) ==================== */
+/* ==================== Two-loop CC/CV PID params (v1.22, ids 83..92) ==================== */
 
-/* [EN] Same dense-id/packed-struct contract as the profile: wire ids 83..98
+/* [EN] Same dense-id/packed-struct contract as the profile: wire ids 83..92
    map 1:1 onto charger_pid_t's 16 words in order, so Set/Get index instead
    of switching (host test pins every wire id).
-   [FA] همان قرارداد شناسهٔ پشت‌سرهم و ساختار فشرده: ۸۳..۹۷ یک‌به‌یک روی ۱۵
+   [FA] همان قرارداد شناسهٔ پشت‌سرهم و ساختار فشرده: ۸۳..۹۲ یک‌به‌یک روی ۱۰
    کلمهٔ charger_pid_t می‌افتند، پس Set/Get نمایه می‌زنند. */
-_Static_assert(CHG_PID_PARAM_STAGE1_KP == 83u, "PID id base must be 83");
-_Static_assert(CHG_PID_PARAM_STAGE3_DOWN_RATE == 97u, "PID id top must be 97");
-_Static_assert((CHG_PID_PARAM_STAGE3_DOWN_RATE - CHG_PID_PARAM_STAGE1_KP) == 14u,
+_Static_assert(CHG_PID_PARAM_CURRENT_KP == 83u, "PID id base must be 83");
+_Static_assert(CHG_PID_PARAM_VOLTAGE_DOWN_RATE == 92u, "PID id top must be 92");
+_Static_assert((CHG_PID_PARAM_VOLTAGE_DOWN_RATE - CHG_PID_PARAM_CURRENT_KP) == 9u,
                "PID id block must stay dense");
-_Static_assert(sizeof(charger_pid_t) == (15u * sizeof(uint32_t)),
-               "charger_pid_t must pack exactly 15 words");
-_Static_assert(offsetof(charger_pid_t, uint32_t__stage1Kp) ==
-                   (0u * sizeof(uint32_t)),
-               "stage 1 row must start at the id-83 word");
-_Static_assert(offsetof(charger_pid_t, uint32_t__stage2Kp) ==
+_Static_assert(sizeof(charger_pid_t) == (10u * sizeof(uint32_t)),
+               "charger_pid_t must pack exactly 10 words");
+_Static_assert(offsetof(charger_pid_t, uint32_t__currentKp) == 0u,
+               "current row must start at the id-83 word");
+_Static_assert(offsetof(charger_pid_t, uint32_t__voltageKp) ==
                    (5u * sizeof(uint32_t)),
-               "stage 2 row must start at the id-88 word");
-_Static_assert(offsetof(charger_pid_t, uint32_t__stage3Kp) ==
-                   (10u * sizeof(uint32_t)),
-               "stage 3 row must start at the id-93 word");
-_Static_assert(offsetof(charger_pid_t, uint32_t__stage3DownRate) ==
-                   (14u * sizeof(uint32_t)),
-               "last field must be the id-97 word");
+               "voltage row must start at the id-88 word");
+_Static_assert(offsetof(charger_pid_t, uint32_t__voltageDownRate) ==
+                   (9u * sizeof(uint32_t)),
+               "last field must be the id-92 word");
 
 /* [EN] Arithmetic headroom proofs for func__Charger_PidStep - the whole
    loop runs in int32_t, so the worst case a panel user can dial in must
@@ -3254,20 +3261,18 @@ _Static_assert((((int64_t)CHG_PID_RATE_MAX * (int64_t)CHG_PID_DT_MAX_MS) + 1000L
 _Static_assert(CHG_PID_OUTPUT_HYST_MILLI <
                    ((uint32_t)CHG_PID_RESEED_TOLERANCE_PERMILLE * CHG_PID_DUTY_SCALE),
                "output hysteresis must stay inside the bumpless re-seed tolerance");
-/* [EN] The stage-1 row is the current loop and the stage-2/3 rows are the
-   voltage loop, so the two default Kp values live in DIFFERENT units and
-   must not be silently swapped: keep a cheap sanity floor on the pairing.
-   [FA] ردیف مرحلهٔ ۱ حلقهٔ جریان و ردیف‌های ۲و۳ حلقهٔ ولتاژند، پس دو Kp
-   پیش‌فرض واحد متفاوت دارند و نباید بی‌صدا جابه‌جا شوند: یک کف سلامت ارزان
+/* [EN] The two rows tune loops whose errors are in DIFFERENT units (amps
+   versus volts), so their Kp values are not interchangeable and must never
+   be silently swapped: keep a cheap sanity floor on the pairing.
+   [FA] دو ردیف، حلقه‌هایی را تیون می‌کنند که خطایشان واحد متفاوت دارد
+   (آمپر در برابر ولت)، پس Kp آن‌ها قابل جابه‌جایی نیست: یک کف سلامت ارزان
    روی این جفت‌شدن. */
-_Static_assert(CHG_PID_STAGE1_KP <= CHG_PID_STAGE2_KP,
-               "current-loop Kp is per-amp and must stay below the per-volt rows");
-_Static_assert((CHG_PID_STAGE1_KI <= CHG_PID_GAIN_MAX) &&
-                   (CHG_PID_STAGE2_KI <= CHG_PID_GAIN_MAX) &&
-                   (CHG_PID_STAGE3_KI <= CHG_PID_GAIN_MAX),
+_Static_assert(CHG_PID_CURRENT_KP <= CHG_PID_VOLTAGE_KP,
+               "current-loop Kp is per-amp and must stay below the per-volt row");
+_Static_assert((CHG_PID_CURRENT_KI <= CHG_PID_GAIN_MAX) &&
+                   (CHG_PID_VOLTAGE_KI <= CHG_PID_GAIN_MAX),
                "default Ki rows must fit the panel window");
-_Static_assert((CHG_PID_STAGE2_UP_RATE < CHG_PID_STAGE1_UP_RATE) &&
-                   (CHG_PID_STAGE3_UP_RATE < CHG_PID_STAGE2_UP_RATE),
+_Static_assert(CHG_PID_VOLTAGE_UP_RATE < CHG_PID_CURRENT_UP_RATE,
                "the absorb rise must stay slower than bulk (user order 2026-09-28)");
 
 bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
@@ -3282,8 +3287,8 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
        نیمه‌اعمال‌شده بخواند. */
     int32_t int32_t__savedKernelLock = osKernelLock();
 
-    if ((uint8_t__paramId < CHG_PID_PARAM_STAGE1_KP) ||
-        (uint8_t__paramId > CHG_PID_PARAM_STAGE3_DOWN_RATE))
+    if ((uint8_t__paramId < CHG_PID_PARAM_CURRENT_KP) ||
+        (uint8_t__paramId > CHG_PID_PARAM_VOLTAGE_DOWN_RATE))
     {
         if (int32_t__savedKernelLock >= 0)
         {
@@ -3292,8 +3297,8 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
         return false;
     }
 
-    ((volatile uint32_t *)&CHARGER_PID_T__G__Pid.uint32_t__stage1Kp)
-        [uint8_t__paramId - CHG_PID_PARAM_STAGE1_KP] = uint32_t__value;
+    ((volatile uint32_t *)&CHARGER_PID_T__G__Pid.uint32_t__currentKp)
+        [uint8_t__paramId - CHG_PID_PARAM_CURRENT_KP] = uint32_t__value;
 
     func__Charger_ClampPid();
     if (int32_t__savedKernelLock >= 0)
@@ -3306,14 +3311,14 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
 bool func__Charger_GetPidParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value)
 {
-    if ((uint8_t__paramId < CHG_PID_PARAM_STAGE1_KP) ||
-        (uint8_t__paramId > CHG_PID_PARAM_STAGE3_DOWN_RATE))
+    if ((uint8_t__paramId < CHG_PID_PARAM_CURRENT_KP) ||
+        (uint8_t__paramId > CHG_PID_PARAM_VOLTAGE_DOWN_RATE))
     {
         return false;
     }
     *uint32_t__value =
-        ((volatile uint32_t *)&CHARGER_PID_T__G__Pid.uint32_t__stage1Kp)
-        [uint8_t__paramId - CHG_PID_PARAM_STAGE1_KP];
+        ((volatile uint32_t *)&CHARGER_PID_T__G__Pid.uint32_t__currentKp)
+        [uint8_t__paramId - CHG_PID_PARAM_CURRENT_KP];
     return true;
 }
 

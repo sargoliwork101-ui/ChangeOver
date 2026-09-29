@@ -81,7 +81,6 @@ static void func__Esp_HttpTelemetry(void)
     uint32_t uint32_t__pendingMask = 0u;
     uint32_t uint32_t__pendingMask2 = 0u;
     uint32_t uint32_t__pendingMask3 = 0u;
-    uint32_t uint32_t__pendingMask4 = 0u;
     uint32_t uint32_t__keepaliveAgeMs = uint32_t__nowMs - UINT32_T__G__LastKeepaliveMs;
     uint8_t uint8_t__index;
     size_t size_t__used;
@@ -90,16 +89,18 @@ static void func__Esp_HttpTelemetry(void)
     BOOL__G__BrowserSeen = true;
 
     /* [EN] v1.16: 77 params need three u32 masks (and 1UL << 32+ is UB),
-            so ids 0..31 go to "q", 32..63 to "q2" and 64..95 to "q3"
-            (panel apend() reads all four). v1.23: 98 params, so a FOURTH
-            mask "q4" carries 96..97 - without it the two PID ids at the
-            top would show no pending highlight and the panel would look
-            like it dropped the write.
+            so ids 0..31 go to "q", 32..63 to "q2" and 64..95 to "q3".
+            v1.23 briefly needed a FOURTH mask because the three-stage PID
+            pushed the top id to 97; v1.24 dropped the redundant third gain
+            row, the top id is 92 again, and "q4" went with it. The field is
+            still emitted as a constant 0 so an older cached panel keeps
+            working.
        [FA] نسخه ۱.۱۶: ۷۷ پارامتر سه ماسک u32 می‌خواهد (و شیفت ۳۲+ تعریف‌نشده
-            است)، پس شناسه‌های ۰..۳۱ در q و ۳۲..۶۳ در q2 و ۶۴..۹۵ در q3 می‌روند.
-            نسخه ۱.۲۳: ۹۸ پارامتر، پس ماسک چهارم q4 شناسه‌های ۹۶..۹۷ را
-            می‌برد - بدون آن سه شناسهٔ بالای PID هیچ برجسته‌سازی «در انتظار»
-            نمی‌گرفتند و پنل انگار نوشتن را انداخته بود. */
+            است)، پس شناسه‌های ۰..۳۱ در q و ۳۲..۶۳ در q2 و ۶۴..۹۵ در q3.
+            نسخهٔ ۱.۲۳ کوتاه‌مدت ماسک چهارم خواست چون PID سه‌مرحله‌ای بالاترین
+            شناسه را به ۹۷ رساند؛ نسخهٔ ۱.۲۴ ردیف سوم زائد را حذف کرد،
+            بالاترین شناسه دوباره ۹۲ شد و q4 هم با آن رفت. این فیلد هنوز
+            ثابت صفر فرستاده می‌شود تا پنل کش‌شدهٔ قدیمی نشکند. */
     for (uint8_t__index = 0u; uint8_t__index < ESP_PARAM_COUNT; uint8_t__index++)
     {
         if (BOOL__G__TxParamPending[uint8_t__index])
@@ -112,13 +113,9 @@ static void func__Esp_HttpTelemetry(void)
             {
                 uint32_t__pendingMask2 |= (1UL << (uint8_t__index - 32u));
             }
-            else if (uint8_t__index < 96u)
-            {
-                uint32_t__pendingMask3 |= (1UL << (uint8_t__index - 64u));
-            }
             else
             {
-                uint32_t__pendingMask4 |= (1UL << (uint8_t__index - 96u));
+                uint32_t__pendingMask3 |= (1UL << (uint8_t__index - 64u));
             }
         }
     }
@@ -128,7 +125,7 @@ static void func__Esp_HttpTelemetry(void)
         bool__online ? 1u : 0u, (unsigned long)uint32_t__ageMs, (unsigned int)UINT16_T__G__TlmSeq,
         (unsigned int)UINT8_T__G__TlmFlags, (unsigned long)UINT32_T__G__TlmFrameCount,
         (unsigned long)uint32_t__pendingMask, (unsigned long)uint32_t__pendingMask2,
-        (unsigned long)uint32_t__pendingMask3, (unsigned long)uint32_t__pendingMask4,
+        (unsigned long)uint32_t__pendingMask3, 0UL,
         (unsigned long)uint32_t__keepaliveAgeMs);
 
     for (uint8_t__index = 0u; uint8_t__index < ESP_LINK_TLM_FIELD_COUNT; uint8_t__index++)

@@ -302,14 +302,14 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
 
         default:
 #if MODULE_CHARGER
-            /* [EN] Three-stage PID, ids 83..97 (v1.23): range-dispatched
+            /* [EN] Two-loop CC/CV PID, ids 83..92 (v1.24): range-dispatched
                     for the same reason as the UI block - fifteen case
                     labels buy nothing; Set re-validates and clamps.
-               [FA] PID سه‌مرحله‌ای، شناسه‌های ۸۳..۹۷ (v1.23): دیسپچ بازه‌ای
+               [FA] PID دوحلقه‌ای، شناسه‌های ۸۳..۹۲ (v1.23): دیسپچ بازه‌ای
                     به همان دلیل بلوک UI؛ ستر خودش دوباره اعتبارسنجی و گیره
                     می‌کند. */
-            if ((uint8_t__paramId >= CHG_PID_PARAM_STAGE1_KP) &&
-                (uint8_t__paramId <= CHG_PID_PARAM_STAGE3_DOWN_RATE))
+            if ((uint8_t__paramId >= CHG_PID_PARAM_CURRENT_KP) &&
+                (uint8_t__paramId <= CHG_PID_PARAM_VOLTAGE_DOWN_RATE))
             {
                 return func__Charger_SetPidParam(uint8_t__paramId,
                                                  uint32_t__value,
@@ -468,10 +468,10 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
 
         default:
 #if MODULE_CHARGER
-            /* [EN] Three-stage PID live read, ids 83..97 (v1.23).
-               [FA] خواندن زندهٔ PID سه‌مرحله‌ای، شناسه‌های ۸۳..۹۷. */
-            if ((uint8_t__paramId >= CHG_PID_PARAM_STAGE1_KP) &&
-                (uint8_t__paramId <= CHG_PID_PARAM_STAGE3_DOWN_RATE))
+            /* [EN] Two-loop CC/CV PID live read, ids 83..92 (v1.23).
+               [FA] خواندن زندهٔ PID دوحلقه‌ای، شناسه‌های ۸۳..۹۲. */
+            if ((uint8_t__paramId >= CHG_PID_PARAM_CURRENT_KP) &&
+                (uint8_t__paramId <= CHG_PID_PARAM_VOLTAGE_DOWN_RATE))
             {
                 return func__Charger_GetPidParam(uint8_t__paramId,
                                                  uint32_t__value);

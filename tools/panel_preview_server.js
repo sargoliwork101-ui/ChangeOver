@@ -53,14 +53,14 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            1000, 10, 1000, 150, 28000, 1000, 21000, 21200, 21000, 29000, 0,
            /* v1.17 ids 77..82 = full latch + stable hysteresis boot defaults */
            100, 95, 5, 2, 2, 3,
-           /* v1.22 ids 83..98 = three-stage charge PID boot defaults (CHG_PID_* in charger.h):
-              one (Kp, Ki, Kd, up-rate, down-rate) row per stage, factory
-              calibrated. Stage 1 = current loop, stages 2/3 = voltage loop
-              below / at the setpoint. v1.23 dropped the v1.22 enable flag
-              (the legacy regulator it selected no longer exists). */
+           /* v1.24 ids 83..92 = two-loop CC/CV charge PID boot defaults (CHG_PID_* in charger.h):
+              one (Kp, Ki, Kd, up-rate, down-rate) row per physical control
+              loop, factory calibrated. v1.24 removed the third row (the
+              at/above-setpoint voltage set): it was measured to buy nothing
+              and cost five numbers. v1.23 had already dropped the enable
+              flag with the legacy regulator it selected. */
            12, 1600, 0, 1000, 1000,
-           150, 600, 0, 30, 1000,
-           150, 18000, 0, 10, 1000];
+           50, 18000, 0, 10, 1000];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -159,11 +159,11 @@ function clampParam(id, v) {
         case 80: return clampW(v, 0, 50);
         case 81: return clampW(v, 0, 100);
         case 82: return clampW(v, 0, 100);
-        /* v1.23 ids 83..97: mirror of func__Charger_ClampPid - every gain is
+        /* v1.24 ids 83..92: mirror of func__Charger_ClampPid - every gain is
            0..20000 and every slew rate is 10..20000 m permille/s. The row
            layout is (Kp, Ki, Kd, up, down), so (id - 83) % 5 >= 3 is a rate. */
         default:
-            if (id >= 83 && id <= 97) {
+            if (id >= 83 && id <= 92) {
                 return ((id - 83) % 5) >= 3 ? clampW(v, 10, 20000) : clampW(v, 0, 20000);
             }
             return v;
@@ -283,7 +283,7 @@ const server = http.createServer((req, res) => {
     if (req.method === "POST" && url.pathname === "/s") {
         const id = Number(url.searchParams.get("id"));
         const v = Number(url.searchParams.get("v"));
-        if (id >= 0 && id < 98 && Number.isFinite(v)) {
+        if (id >= 0 && id < 93 && Number.isFinite(v)) {
             P[id] = clampParam(id, v); /* clamped exactly like the firmware */
             if (id >= 20) {
                 /* v1.14d: whole-set re-clamp in dependency order, like

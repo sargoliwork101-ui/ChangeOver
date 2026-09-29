@@ -261,9 +261,9 @@
  *      سخت‌افزار بذر بگیرد نه از انتگرال کهنه. */
 #define CHG_DUTY_RAMP_DOWN_INTERVAL_MS  500u
 
-/* ==================== Three-stage PID regulator (v1.22) ====================
+/* ==================== Two-loop CC/CV PID regulator (v1.22) ====================
  * [EN] USER ORDER 2026-09-28: "slow the absorb duty rise down, and instead of
- *      all that complexity write a three-stage PID - one gain set at the
+ *      all that complexity write a two-loop CC/CV PID - one gain set at the
  *      start, one in the middle, one in the last region - and expose it on
  *      the ESP panel." This block replaces the fixed-step bang-bang chain
  *      (0.5%/0.1% steps on 500/1000/2000 ms timers) with ONE positional PID
@@ -296,7 +296,7 @@
  *      decides the duty number inside the window they already allow.
  *      Setting id 83 to 0 restores the legacy step regulator unchanged.
  * [FA] دستور کاربر ۲۰۲۶-۰۹-۲۸: «سرعت رشد دیوتی در ابزورب کمتر شود و به‌جای
- *      این همه پیچیدگی یک PID سه‌مرحله‌ای بنویس - اولش یک سری ضریب، وسطش
+ *      این همه پیچیدگی یک PID دوحلقه‌ای بنویس - اولش یک سری ضریب، وسطش
  *      یک سری، ناحیهٔ آخرش هم یک سری دیگر - و این تنظیمات در ESP هم بیاید.»
  *      این بلوک زنجیرهٔ پله‌ثابت (۰٫۵٪/۰٫۱٪ روی تایمرهای ۵۰۰/۱۰۰۰/۲۰۰۰ms) را
  *      با یک هستهٔ PID موقعیتی جایگزین می‌کند که کمینه‌گیری کلاسیک CC/CV
@@ -471,72 +471,97 @@
  *      پرمیل - بسیار پایین‌تر از پلهٔ اضافه‌ولتاژ ۱۴٫۶V و آستانهٔ فالت ۱۴٫۸V.
  *      Kd عمداً صفر است: زنجیرهٔ جریان/ولتاژ فیلتر شده ولی بی‌نویز نیست و
  *      مشتقِ نویز یعنی لرزش دیوتی؛ پنل هر وقت بنچ میرایی خواست بالا می‌برد. */
-/* [EN] FACTORY CALIBRATION (user order 2026-09-29: "calibrate it yourself
- *      from the tables for the first time, so I can optimise it later").
- *      Every number below was swept on the plant model against the values
- *      in the charge-profile table (14.4 V absorb, 14.3 V enter, 14.6 V
- *      over, 650 mA bulk, 500 permille DCM ceiling) - see section 5.11 of
- *      ESP_AGENT_SPEC.md for the sweep tables and the reasoning:
- *        Kp1  12   flat optimum 8..15; above 20 the current loop slows
- *                  (the min-select hands over early) and above ~45 the
- *                  7 mA-per-permille plant quantisation makes it chatter
- *        Ki1  1600 reaches the 640 mA band in 545 s from a flat pack with
- *                  ZERO duty reversals; 800 needed 1373 s and held a
- *                  looser 617..640 mA, 3000 reached it in 350 s but cost
- *                  44 reversals
- *        Kp2/ 150  the voltage loop's noise gain: at 300 the unfiltered
- *        Kp3       +/-15 mV sensor noise still produced 839 reversals per
- *                  4 h even behind the prefilter; at 150 it is 3, with
- *                  identical overshoot and hold on the clean plant
- *        Ki2  600  closes the last few mV; at 300 the hold sat 2..3 mV
- *                  low, at 150 it sat 8..13 mV low (visible offset)
- *        Ki3  18000 least overshoot of the sweep (13.5 mV over setpoint
- *                  versus 18.7 at 12000 and 33.6 at 6000) with a 0.0 mV
- *                  hold band; the stability bound is ~37000
- *        up2  30   THE "SLOW THE ABSORB RISE" KNOB (user order): 0.03
- *                  permille/s against the legacy chain's 0.05
- *        up3  10   nothing should hurry on the setpoint
- *        down 1000 one permille per second - the legacy coarse escape rate,
- *                  kept so a falling pack is followed promptly
- *        Kd   0    the derivative of a noisy sensor is duty jitter; the
- *                  panel can raise it if the bench ever wants damping
- * [FA] کالیبراسیون کارخانه (دستور کاربر ۲۰۲۶-۰۹-۲۹: «خودت بر اساس جدول‌ها
- *      برای اولین بار کالیبره کن تا بعداً اگر خواستم بهینه‌اش کنم»). هر عدد
- *      زیر روی مدل و بر پایهٔ مقادیر جدول پروفایل شارژ (ابزورب ۱۴٫۴ ولت،
- *      ورود ۱۴٫۳، اضافه ۱۴٫۶، بالک ۶۵۰ میلی‌آمپر، سقف ۵۰۰ پرمیل) جاروب شده
- *      - جدول‌های جاروب و استدلال در بخش 5.11 سند ESP_AGENT_SPEC.md:
- *        Kp1=۱۲ بهینهٔ مسطح ۸..۱۵؛ بالای ۲۰ حلقهٔ جریان کند می‌شود و بالای
- *          حدود ۴۵ به‌خاطر کوانتیزاسیون ۷ میلی‌آمپر بر پرمیل می‌لرزد
- *        Ki1=۱۶۰۰ از پک خالی در ۵۴۵ ثانیه به باند ۶۴۰ می‌رسد با صفر تغییر
- *          جهت دیوتی؛ ۸۰۰ به ۱۳۷۳ ثانیه و باند شل‌تر ۶۱۷..۶۴۰ رسید و ۳۰۰۰
- *          در ۳۵۰ ثانیه ولی با ۴۴ تغییر جهت
- *        Kp2/Kp3=۱۵۰ بهرهٔ نویز حلقهٔ ولتاژ: با ۳۰۰ نویز ±۱۵ میلی‌ولت حتی
- *          پشت پیش‌فیلتر ۸۳۹ تغییر جهت در ۴ ساعت می‌داد، با ۱۵۰ سه تا، و
- *          اورشوت و تثبیت روی مدل تمیز دقیقاً یکی است
- *        Ki2=۶۰۰ آخرین چند میلی‌ولت را می‌بندد؛ با ۳۰۰ تثبیت ۲..۳ و با ۱۵۰
- *          هشت تا سیزده میلی‌ولت پایین‌تر می‌نشست
- *        Ki3=۱۸۰۰۰ کمترین اورشوت جاروب (۱۳٫۵ در برابر ۱۸٫۷ با ۱۲۰۰۰ و
- *          ۳۳٫۶ با ۶۰۰۰) با باند تثبیت صفر؛ مرز پایداری حدود ۳۷۰۰۰
- *        up2=۳۰ همان «کلید رشد کندتر ابزورب» (دستور کاربر)
- *        up3=۱۰ روی ست‌پوینت هیچ‌چیز نباید عجله کند
- *        down=۱۰۰۰ یک پرمیل بر ثانیه، همان نرخ فرار زبر قدیمی
- *        Kd=۰ مشتقِ سنسور نویزی یعنی لرزش دیوتی؛ پنل هر وقت بنچ میرایی
- *          خواست بالا می‌برد */
-#define CHG_PID_STAGE1_KP                12u
-#define CHG_PID_STAGE1_KI              1600u
-#define CHG_PID_STAGE1_KD                 0u
-#define CHG_PID_STAGE1_UP_RATE         1000u
-#define CHG_PID_STAGE1_DOWN_RATE       1000u
-#define CHG_PID_STAGE2_KP               150u
-#define CHG_PID_STAGE2_KI               600u
-#define CHG_PID_STAGE2_KD                 0u
-#define CHG_PID_STAGE2_UP_RATE           30u
-#define CHG_PID_STAGE2_DOWN_RATE       1000u
-#define CHG_PID_STAGE3_KP               150u
-#define CHG_PID_STAGE3_KI             18000u
-#define CHG_PID_STAGE3_KD                 0u
-#define CHG_PID_STAGE3_UP_RATE           10u
-#define CHG_PID_STAGE3_DOWN_RATE       1000u
+/* [EN] FACTORY CALIBRATION - TWO loops, ten numbers (user orders
+ *      2026-09-29: "calibrate it yourself from the tables for the first
+ *      time, so I can optimise it later", then "if we do it with one PID
+ *      over the whole path does it not work? it does not matter if it is
+ *      slow, because the battery itself is slow; maximum accuracy by the
+ *      SIMPLEST method").
+ *
+ *      HOW SIMPLE CAN IT GET - measured, not argued (tools/pid_tuning_sim.py):
+ *        1 shared row .... FAILS. A volt of voltage error and an amp of
+ *                          current error are not the same quantity, so the
+ *                          min-select compares millivolts with milliamps.
+ *                          1408..84660 duty reversals per 10 h versus 4.
+ *        1 voltage row + the 650 mA backstop as the only current limiter
+ *                   ...... FAILS, and on the safety requirement itself: a
+ *                          backstop is reactive, so current limit-cycles
+ *                          and peaks at 707 mA instead of sitting on 640.
+ *        2 rows ........... CORRECT. One PI for current, one PI for
+ *                          voltage - textbook CC/CV, and the simplest
+ *                          thing that actually regulates both.
+ *        3 rows ........... no better. The extra at/above-setpoint row was
+ *                          measured to buy nothing once the noise model
+ *                          was broadband instead of a tone, so it is gone.
+ *
+ *      THE TEN NUMBERS, each from a sweep against the charge-profile table
+ *      (14.4 V absorb, 650 mA bulk, 500 permille DCM ceiling):
+ *        Kp_I 12     flat optimum 8..15; above ~45 the 7 mA-per-permille
+ *                    plant quantisation makes the loop chatter
+ *        Ki_I 1600   reaches the 640 mA band in 545 s from a flat pack with
+ *                    ZERO duty reversals; 800 needed 1373 s and held a
+ *                    looser 617..640 mA; 3000 got there in 350 s but cost
+ *                    44 reversals
+ *        Kp_V 50     the voltage loop's NOISE GAIN, and the reason this is
+ *                    not 150: the pack voltage is unfiltered upstream, so
+ *                    Kp multiplies raw ADC noise straight onto the duty.
+ *                    With broadband +/-7 mV noise, Kp=150 gives 744 duty
+ *                    reversals per 10 h, Kp=50 gives 62 - with identical
+ *                    overshoot, identical hold error (0.5 mV) and the same
+ *                    113 min to reach 14.4 V on the clean plant
+ *        Ki_V 18000  the setpoint region needs the authority to walk the
+ *                    duty from ~190 down to ~56 permille as the pack stops
+ *                    accepting current. Least overshoot of the sweep
+ *                    (13.5 mV versus 18.7 at 12000 and 33.6 at 6000);
+ *                    stability bound is ~37000
+ *        up_V 10     THE "SLOW THE ABSORB RISE" KNOB of the earlier order,
+ *                    now the only voltage up-rate, so it governs the whole
+ *                    climb: 0.01 permille/s against the legacy chain's 0.05
+ *        up_I 1000   the current loop may climb at 1 permille/s
+ *        down 1000   both loops fall at 1 permille/s so a sagging pack is
+ *                    followed promptly
+ *        Kd   0      the derivative of a noisy sensor is duty jitter; the
+ *                    panel can raise it if the bench ever wants damping
+ * [FA] کالیبراسیون کارخانه - دو حلقه، ده عدد (دستورهای کاربر ۲۰۲۶-۰۹-۲۹:
+ *      «خودت بر اساس جدول‌ها برای اولین بار کالیبره کن تا بعداً اگر خواستم
+ *      بهینه‌اش کنم»، سپس «اگر با یک PID در کل مسیر انجام بدهیم کار
+ *      درنمی‌آید؟ مهم نیست کند باشد، چون باتری خودش کند است؛ با نهایت دقت
+ *      ولی ساده‌ترین روش»).
+ *
+ *      چقدر می‌شود ساده کرد - اندازه‌گیری‌شده نه استدلالی:
+ *        یک ردیف مشترک: شکست. یک ولت خطای ولتاژ و یک آمپر خطای جریان یک
+ *          کمیت نیستند، پس کمینه‌گیری میلی‌ولت را با میلی‌آمپر می‌سنجد.
+ *          ۱۴۰۸ تا ۸۴۶۶۰ تغییر جهت دیوتی در ۱۰ ساعت در برابر ۴.
+ *        یک ردیف ولتاژ + پشتیبان ۶۵۰ به‌عنوان تنها محدودکنندهٔ جریان: شکست،
+ *          آن هم روی خودِ خواستهٔ ایمنی: پشتیبان واکنشی است، پس جریان چرخهٔ
+ *          حدی می‌زند و به‌جای ۶۴۰ تا ۷۰۷ میلی‌آمپر می‌رود.
+ *        دو ردیف: درست. یک PI برای جریان، یک PI برای ولتاژ - همان CC/CV
+ *          کتابی و ساده‌ترین چیزی که واقعاً هر دو را تنظیم می‌کند.
+ *        سه ردیف: بهتر نبود. ردیف اضافهٔ «روی ست‌پوینت» وقتی مدل نویز از
+ *          تک‌تن به پهن‌باند تغییر کرد، هیچ سودی نشان نداد و حذف شد.
+ *
+ *      ده عدد، هرکدام از یک جاروب بر پایهٔ جدول پروفایل شارژ:
+ *        Kp_I=۱۲ بهینهٔ مسطح ۸..۱۵؛ بالای ۴۵ می‌لرزد
+ *        Ki_I=۱۶۰۰ از پک خالی در ۵۴۵ ثانیه به باند ۶۴۰ با صفر تغییر جهت
+ *        Kp_V=۵۰ بهرهٔ نویز حلقهٔ ولتاژ و دلیل اینکه ۱۵۰ نیست: ولتاژ پک
+ *          بالادست فیلتر ندارد، پس Kp نویز خام ADC را مستقیم روی دیوتی
+ *          ضرب می‌کند. با نویز پهن‌باند ±۷ میلی‌ولت، ۱۵۰ یعنی ۷۴۴ تغییر
+ *          جهت در ۱۰ ساعت و ۵۰ یعنی ۶۲ - با اورشوت یکسان، خطای تثبیت یکسان
+ *          (۰٫۵ میلی‌ولت) و همان ۱۱۳ دقیقه تا ۱۴٫۴ ولت روی مدل تمیز
+ *        Ki_V=۱۸۰۰۰ کمترین اورشوت جاروب (۱۳٫۵ در برابر ۱۸٫۷ و ۳۳٫۶)
+ *        up_V=۱۰ همان «کلید رشد کندتر ابزورب»، حالا تنها نرخ صعود ولتاژ
+ *        up_I=۱۰۰۰ و down=۱۰۰۰ یک پرمیل بر ثانیه
+ *        Kd=۰ مشتقِ سنسور نویزی یعنی لرزش دیوتی */
+#define CHG_PID_CURRENT_KP               12u
+#define CHG_PID_CURRENT_KI             1600u
+#define CHG_PID_CURRENT_KD                0u
+#define CHG_PID_CURRENT_UP_RATE        1000u
+#define CHG_PID_CURRENT_DOWN_RATE      1000u
+#define CHG_PID_VOLTAGE_KP               50u
+#define CHG_PID_VOLTAGE_KI            18000u
+#define CHG_PID_VOLTAGE_KD                0u
+#define CHG_PID_VOLTAGE_UP_RATE          10u
+#define CHG_PID_VOLTAGE_DOWN_RATE      1000u
 
 /* [EN] Re-seed guard: whenever the duty actually applied to the hardware
  *      differs from the PID's own integral by more than this many permille,
@@ -658,8 +683,8 @@
  *      duty, far more than the output hysteresis can absorb, and the duty
  *      visibly hunts again. Measured over 4 h with +/-15 mV of sensor
  *      noise: 50913 duty direction changes unfiltered, 217 at N = 8, and
- *      3 at N = 16. N = 16 at one update per 100 ms is a 1.6 s time
- *      constant - invisible against a battery whose own dynamics are
+ *      62 at N = 32 (broadband noise, mean of four seeds). N = 32 at one
+ *      update per 100 ms is a 3.2 s time constant - invisible against a battery whose own dynamics are
  *      measured in minutes, and it costs 1 mV of truncation bias.
  *      The HARD BACKSTOPS deliberately do NOT use this filtered value:
  *      protection reads the raw sample so a real over-voltage is never
@@ -672,13 +697,13 @@
  *      P حلقهٔ ولتاژ می‌نشیند - با Kp=۱۵۰ یعنی ۲٫۲۵ پرمیل نویز خالص روی
  *      دیوتی، خیلی بیشتر از آنچه هیسترزیس خروجی جذب می‌کند، و دیوتی دوباره
  *      آشکارا بالا-پایین می‌پرد. اندازه‌گیری ۴ ساعته با نویز ±۱۵ میلی‌ولت:
- *      بدون فیلتر ۵۰۹۱۳ بار تغییر جهت، با N=۸ برابر ۲۱۷، با N=۱۶ برابر ۳.
- *      N=۱۶ با یک به‌روزرسانی در هر ۱۰۰ms یعنی ثابت زمانی ۱٫۶ ثانیه - در
+ *      بدون فیلتر ۵۰۹۱۳ بار تغییر جهت، با N=۸ برابر ۱۱۵، با N=۳۲ برابر ۶۲
+ *      (نویز پهن‌باند، میانگین چهار seed). N=۳۲ یعنی ثابت زمانی ۳٫۲ ثانیه - در
  *      برابر باتری‌ای که دینامیکش با دقیقه سنجیده می‌شود نامرئی است و
  *      هزینه‌اش ۱ میلی‌ولت خطای قطع اعشار است. پشتیبان‌های سخت عمداً از این
  *      مقدار فیلترشده استفاده نمی‌کنند: حفاظت نمونهٔ خام را می‌خواند تا
  *      اضافه‌ولتاژ واقعی هرگز با فیلتر عقب نیفتد. */
-#define CHG_PID_VOLT_FILTER_N            16u
+#define CHG_PID_VOLT_FILTER_N            32u
 
 /* [EN] Symmetric per-update cap on how far the APPLIED duty may move, in
  *      permille. This exists purely to bound a mis-tune, and it was added
@@ -1262,7 +1287,7 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
 bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value);
 
-/* [EN] Three-stage PID wire ids (MUST equal ESPLINK_PARAM_CHG_PID_* in
+/* [EN] Two-loop CC/CV PID wire ids (MUST equal ESPLINK_PARAM_CHG_PID_* in
  *      esp_link.h; the host test enforces the match). Dense 83..98 in the
  *      same order as charger_pid_t packs them, so Set/Get index instead of
  *      switching (same "flash diet" contract as the profile ids 20..26).
@@ -1272,8 +1297,8 @@ bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
  *      the slew rates. Remember what a "stage" is here (see the regulator
  *      block above): stage 1 is the CURRENT loop, stages 2 and 3 are the
  *      VOLTAGE loop below and at the setpoint.
- * [FA] شناسه‌های سیمی PID سه‌مرحله‌ای (باید برابر ESPLINK_PARAM_CHG_PID_* در
- *      esp_link.h باشند؛ تست هاست همین را قفل می‌کند). ۸۳..۹۸ پشت‌سرهم و
+ * [FA] شناسه‌های سیمی PID دوحلقه‌ای (باید برابر ESPLINK_PARAM_CHG_PID_* در
+ *      esp_link.h باشند؛ تست هاست همین را قفل می‌کند). ۸۳..۹۲ پشت‌سرهم و
  *      دقیقاً به ترتیب فیلدهای charger_pid_t، پس Set/Get به‌جای switch
  *      نمایه می‌زنند (همان قرارداد «رژیم فلش» شناسه‌های ۲۰..۲۶). هر مرحله یک
  *      ردیف کامل پنج‌فیلدی است (Kp، Ki، Kd، نرخ صعود، نرخ نزول) تا حساب
@@ -1281,31 +1306,26 @@ bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
  *      قسمتش یعنی کدام مرحله، و فیلدهای ۳ و ۴ همان سقف‌های شیب‌اند. یادآوری
  *      معنی «مرحله» (بلوک تنظیم‌کننده در بالا): مرحلهٔ ۱ حلقهٔ جریان است و
  *      مرحله‌های ۲ و ۳ حلقهٔ ولتاژ زیر ست‌پوینت و روی ست‌پوینت. */
-#define CHG_PID_PARAM_STAGE1_KP         83u  /* [EN] 0..20000, permille per amp / پرمیل بر آمپر، حلقهٔ جریان */
-#define CHG_PID_PARAM_STAGE1_KI         84u  /* [EN] 0..20000 / ضریب انتگرالی حلقهٔ جریان */
-#define CHG_PID_PARAM_STAGE1_KD         85u  /* [EN] 0..20000 / ضریب مشتقی حلقهٔ جریان */
-#define CHG_PID_PARAM_STAGE1_UP_RATE    86u  /* [EN] milli-permille/s, 10..20000 / سقف شیب صعود مرحلهٔ ۱ */
-#define CHG_PID_PARAM_STAGE1_DOWN_RATE  87u  /* [EN] milli-permille/s, 10..20000 / سقف شیب نزول مرحلهٔ ۱ */
-#define CHG_PID_PARAM_STAGE2_KP         88u  /* [EN] 0..20000, permille per volt / پرمیل بر ولت، حلقهٔ ولتاژ */
-#define CHG_PID_PARAM_STAGE2_KI         89u
-#define CHG_PID_PARAM_STAGE2_KD         90u
-#define CHG_PID_PARAM_STAGE2_UP_RATE    91u  /* [EN] the "slow the absorb rise" knob / کلید «رشد کندتر ابزورب» */
-#define CHG_PID_PARAM_STAGE2_DOWN_RATE  92u
-#define CHG_PID_PARAM_STAGE3_KP         93u
-#define CHG_PID_PARAM_STAGE3_KI         94u
-#define CHG_PID_PARAM_STAGE3_KD         95u
-#define CHG_PID_PARAM_STAGE3_UP_RATE    96u
-#define CHG_PID_PARAM_STAGE3_DOWN_RATE  97u
+#define CHG_PID_PARAM_CURRENT_KP        83u  /* [EN] 0..20000, permille per amp / پرمیل بر آمپر، حلقهٔ جریان */
+#define CHG_PID_PARAM_CURRENT_KI        84u  /* [EN] 0..20000 */
+#define CHG_PID_PARAM_CURRENT_KD        85u  /* [EN] 0..20000 */
+#define CHG_PID_PARAM_CURRENT_UP_RATE   86u  /* [EN] milli-permille/s, 10..20000 */
+#define CHG_PID_PARAM_CURRENT_DOWN_RATE 87u  /* [EN] milli-permille/s, 10..20000 */
+#define CHG_PID_PARAM_VOLTAGE_KP        88u  /* [EN] 0..20000, permille per volt / پرمیل بر ولت، حلقهٔ ولتاژ */
+#define CHG_PID_PARAM_VOLTAGE_KI        89u  /* [EN] 0..20000 */
+#define CHG_PID_PARAM_VOLTAGE_KD        90u  /* [EN] 0..20000 */
+#define CHG_PID_PARAM_VOLTAGE_UP_RATE   91u  /* [EN] the "slow the absorb rise" knob / کلید «رشد کندتر ابزورب» */
+#define CHG_PID_PARAM_VOLTAGE_DOWN_RATE 92u  /* [EN] milli-permille/s, 10..20000 */
 
 /**
- * @brief  [EN] Write one three-stage PID parameter (ESP link, ids 83..98).
+ * @brief  [EN] Write one two-loop CC/CV PID parameter (ESP link, ids 83..92).
  *              Values are clamped to the compiled windows: enable 0/1,
  *              gains 0..CHG_PID_GAIN_MAX, slew rates CHG_PID_RATE_MIN..
  *              CHG_PID_RATE_MAX milli-permille/s. Changing a gain never
  *              bumps the duty: the integrator keeps the present operating
  *              point and only its rate of change is re-scheduled. Returns
  *              the APPLIED value.
- *         [FA] نوشتن یک پارامتر PID سه‌مرحله‌ای (لینک ESP، ۸۳..۹۸). مقادیر
+ *         [FA] نوشتن یک پارامتر PID دوحلقه‌ای (لینک ESP، ۸۳..۹۲). مقادیر
  *              به پنجره‌های کامپایل گیره می‌خورند: فعال‌ساز ۰/۱، ضرایب تا
  *              CHG_PID_GAIN_MAX و شیب‌ها بین CHG_PID_RATE_MIN و
  *              CHG_PID_RATE_MAX میلی‌پرمیل بر ثانیه. تغییر ضریب هیچ پرشی در
@@ -1322,8 +1342,8 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__appliedValue);
 
 /**
- * @brief  [EN] Read one three-stage PID parameter (ESP link GET/PARAMS_BULK).
- *         [FA] خواندن یک پارامتر PID سه‌مرحله‌ای (لینک ESP).
+ * @brief  [EN] Read one two-loop CC/CV PID parameter (ESP link GET/PARAMS_BULK).
+ *         [FA] خواندن یک پارامتر PID دوحلقه‌ای (لینک ESP).
  * @param  uint8_t__paramId [EN] 83..98 / شناسهٔ پارامتر
  * @param  uint32_t *uint32_t__value [EN] Live value out / مقدار زنده
  * @return bool [EN] true = id known / شناسه شناخته شده

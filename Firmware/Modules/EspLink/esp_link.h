@@ -244,7 +244,7 @@
 #define ESPLINK_PARAM_UI_RUN_HYST_PCT        80u  /* u32, %,  def 2,     0..50 */
 #define ESPLINK_PARAM_UI_RUN_ZERO_EXIT       81u  /* u32, %,  def 2,     0..100 */
 #define ESPLINK_PARAM_UI_RUN_ONE_EXIT        82u  /* u32, %,  def 3,     0..100 */
-/* [EN] Three-stage PID charge regulator, ids 83..98 (v1.22, user order
+/* [EN] Two-loop CC/CV PID charge regulator, ids 83..92 (v1.22, user order
  *      2026-09-28). Dense and in the same order as charger_pid_t packs
  *      them: enable, then one complete (Kp, Ki, Kd, up-rate, down-rate)
  *      row per stage. What a "stage" is: stage 1 is the CURRENT (bulk)
@@ -255,7 +255,7 @@
  *      milliamp of error, i.e. Ki = 1000 means 1 permille/s per volt; slew
  *      rates are milli-permille per second (1000 = 1 permille/s). See the
  *      regulator block in charger.h for the full derivation.
- * [FA] تنظیم‌کنندهٔ PID سه‌مرحله‌ای شارژ، شناسه‌های ۸۳..۹۸ (v1.22، دستور
+ * [FA] تنظیم‌کنندهٔ PID دوحلقه‌ای CC/CV شارژ، شناسه‌های ۸۳..۹۲ (v1.22، دستور
  *      کاربر ۲۰۲۶-۰۹-۲۸). پشت‌سرهم و دقیقاً به ترتیب فیلدهای charger_pid_t:
  *      فعال‌سازی، سپس برای هر مرحله یک ردیف کامل (Kp، Ki، Kd، نرخ صعود،
  *      نرخ نزول). «مرحله» یعنی: مرحلهٔ ۱ حلقهٔ جریان (بالک)، مرحلهٔ ۲ حلقهٔ
@@ -265,22 +265,17 @@
  *      هر میلی‌ولت یا میلی‌آمپر خطا، پس Ki=۱۰۰۰ یعنی ۱ پرمیل بر ثانیه به
  *      ازای هر ولت؛ شیب‌ها میلی‌پرمیل بر ثانیه (۱۰۰۰ = ۱ پرمیل بر ثانیه).
  *      استدلال کامل در بلوک تنظیم‌کنندهٔ charger.h. */
-#define ESPLINK_PARAM_CHG_PID_STAGE1_KP        83u  /* u32, ‰/A,  def 20,    0..20000, current loop */
-#define ESPLINK_PARAM_CHG_PID_STAGE1_KI        84u  /* u32, -,    def 800,   0..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE1_KD        85u  /* u32, -,    def 0,     0..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE1_UP_RATE   86u  /* u32, m‰/s, def 500,   10..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE1_DOWN_RATE 87u  /* u32, m‰/s, def 1000,  10..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE2_KP        88u  /* u32, ‰/V,  def 150,   0..20000, voltage loop below setpoint */
-#define ESPLINK_PARAM_CHG_PID_STAGE2_KI        89u  /* u32, -,    def 300,   0..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE2_KD        90u  /* u32, -,    def 0,     0..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE2_UP_RATE   91u  /* u32, m‰/s, def 30,    10..20000, "slow the absorb rise" knob */
-#define ESPLINK_PARAM_CHG_PID_STAGE2_DOWN_RATE 92u  /* u32, m‰/s, def 1000,  10..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE3_KP        93u  /* u32, ‰/V,  def 300,   0..20000, voltage loop at setpoint */
-#define ESPLINK_PARAM_CHG_PID_STAGE3_KI        94u  /* u32, -,    def 12000, 0..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE3_KD        95u  /* u32, -,    def 0,     0..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE3_UP_RATE   96u  /* u32, m‰/s, def 10,    10..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE3_DOWN_RATE 97u  /* u32, m‰/s, def 1000,  10..20000 */
-#define ESPLINK_PARAM_COUNT                98u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..97 = three-stage PID (v1.23) / [FA] پروفایل، آلارم‌ها، اعداد UI و PID سه‌مرحله‌ای */
+#define ESPLINK_PARAM_CHG_PID_CURRENT_KP        83u  /* u32, -,    def 12,    0..20000 */
+#define ESPLINK_PARAM_CHG_PID_CURRENT_KI        84u  /* u32, -,    def 1600,  0..20000 */
+#define ESPLINK_PARAM_CHG_PID_CURRENT_KD        85u  /* u32, -,    def 0,     0..20000 */
+#define ESPLINK_PARAM_CHG_PID_CURRENT_UP_RATE   86u  /* u32, m‰/s, def 1000,  10..20000 */
+#define ESPLINK_PARAM_CHG_PID_CURRENT_DOWN_RATE 87u  /* u32, m‰/s, def 1000,  10..20000 */
+#define ESPLINK_PARAM_CHG_PID_VOLTAGE_KP        88u  /* u32, -,    def 50,    0..20000 */
+#define ESPLINK_PARAM_CHG_PID_VOLTAGE_KI        89u  /* u32, -,    def 18000, 0..20000 */
+#define ESPLINK_PARAM_CHG_PID_VOLTAGE_KD        90u  /* u32, -,    def 0,     0..20000 */
+#define ESPLINK_PARAM_CHG_PID_VOLTAGE_UP_RATE   91u  /* u32, m‰/s, def 10,    10..20000 */
+#define ESPLINK_PARAM_CHG_PID_VOLTAGE_DOWN_RATE 92u  /* u32, m‰/s, def 1000,  10..20000 */
+#define ESPLINK_PARAM_COUNT                93u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24) / [FA] پروفایل، آلارم‌ها، اعداد UI و PID دوحلقه‌ای CC/CV */
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

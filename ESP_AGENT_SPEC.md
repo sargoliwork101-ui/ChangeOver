@@ -185,10 +185,37 @@
 > pack saw 4475 mA. A SYMMETRIC 8 permille per-update cap fixes that
 > (worst abuse now 704 mA, below the 950 mA hard fault) without touching
 > normal charging, which never moves more than 3 permille per pass. A
-> 16-sample voltage prefilter was also added: the current chain is filtered
-> upstream but the pack voltage is not, and ~7 mV of ADC step times Kp was
-> putting 50913 duty reversals per 4 h into the output. Panel v1.23.
-> STM32 + ESP flash together.
+> voltage prefilter was also added: the current chain is filtered upstream
+> but the pack voltage is not, and ~7 mV of ADC step times Kp was putting
+> tens of thousands of duty reversals into the output. (The exact "50913"
+> figure first published here came from a deterministic sinusoidal noise
+> model and was superseded in v1.24 by seeded-PRNG measurements - see 5.11.)
+> Panel v1.23. STM32 + ESP flash together.
+>
+> v1.24 (2026-09-29, twenty-first order - USER-ORDERED LOGIC CHANGE: "if we
+> do it with one PID over the whole path does it not work? do we have
+> errors? it does not matter if it is slow, because the battery itself is
+> slow; my goal is maximum accuracy by the simplest method"): the regulator
+> is reduced to the simplest structure that still regulates both limits.
+> Measured, not argued (tools/pid_tuning_sim.py, 10 h x 10 scenarios):
+> ONE shared gain row FAILS (mV compared with mA in the min-select;
+> 1408..84660 duty reversals per 10 h against 4), and ONE voltage PID with
+> the 650 mA backstop as the only current limiter FAILS on the safety
+> requirement itself (a backstop is reactive, so the current limit-cycles
+> and peaks at 706.9 mA instead of sitting on 640; the only tune that
+> stayed under the limit locked the charge at 351 mA). TWO rows - one PI
+> per physical loop - is the floor, and the v1.23 THIRD row was measured to
+> buy nothing: re-run with a seeded broadband PRNG instead of the original
+> deterministic tone, two rows are equal on the clean plant and quieter at
+> every noise level. So ids 93..97 are deleted (ESPLINK_PARAM_COUNT 98 ->
+> 93, PARAMS_BULK 491 -> 466 B, NVM v7 -> v8 / 93 slots / 760 B, the q4
+> pending mask is gone, bench CSV 149 -> 144 columns), the rows are renamed
+> after the loops they tune (CHG_PID_CURRENT_* / CHG_PID_VOLTAGE_*), and
+> the voltage row is re-tuned for the noise the panel cannot see: Kp_v
+> 150 -> 50 with the prefilter N 16 -> 32, which cuts duty reversals under
+> +/-7 mV noise from 744 to 62 with IDENTICAL overshoot, hold error
+> (0.5 mV) and time-to-14.4 V (113 min). Ten numbers instead of fifteen.
+> Panel v1.24. STM32 + ESP flash together.
 >
 > v1.22 (2026-09-28, nineteenth order - USER-ORDERED LOGIC CHANGE: "slow
 > the absorb duty rise down, and instead of all that complexity write a
@@ -316,7 +343,7 @@ immediately and drain within ~1 ms.
 | 0x03 | ESP→STM | CAL_REFERENCE | `[target:u8][ref_mA:u32 LE]` (5 bytes) — one-shot calibration from a typed DMM reading; targets 0/1 = GAIN ch1/2, 2/3 = ETA ch1/2 (v1.3, section 5.4) |
 | 0x10 | STM→ESP | TLM_LIVE | 84 bytes, layout below |
 | 0x11 | STM→ESP | PARAM_REPORT | `[id:u8][value:u32 LE]` — the **applied** value (sent after every accepted SET_PARAM) |
-| 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS; 98 params since v1.23 = 491 payload bytes) |
+| 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS; 93 params since v1.24 = 466 payload bytes) |
 
 Audit 2026-09-27: the 77-param growth had silently outgrown the STM32 256 B
 TX ring, so every PARAMS_BULK reply was refused and a fresh panel never
@@ -324,7 +351,8 @@ learned the live values (it showed ESP-side defaults until each value was
 touched). The ring is now 1024 B and the bulk payload is static - GET_PARAMS
 is answered with the board truth again, and the manual-mode 1 s keepalive
 bulk no longer burns ~900 B of the 1 KiB comm stack. v1.17 grows the
-bulk to 83 params / 416 B and v1.23 to 98 params / 491 B - still inside the
+bulk to 83 params / 416 B, v1.23 to 98 params / 491 B and v1.24 back to
+93 params / 466 B - still inside the
 1024 B ring and the 512 frame ceiling (491 + 5 header + 1 xor = 497 B).
 
 Verified example frames (hex):
@@ -344,7 +372,7 @@ PARAM_REPORT reply for id=2, applied=1200:
 AA 55 11 05 00 02 B0 04 00 00 A2
 ```
 
-## 5. Parameter table (IDs 0..18 = protocol v1.1, ID 19 = v1.2, IDs 20..26 = v1.12 append, IDs 27..37 = v1.15 append, IDs 38..76 = v1.16 append, IDs 77..82 = v1.17 append, IDs 83..97 = v1.23 append — IDs are final, never renumbered)
+## 5. Parameter table (IDs 0..18 = protocol v1.1, ID 19 = v1.2, IDs 20..26 = v1.12 append, IDs 27..37 = v1.15 append, IDs 38..76 = v1.16 append, IDs 77..82 = v1.17 append, IDs 83..92 = v1.24 — IDs are final, never renumbered)
 
 | ID | Name | Type | Unit | Default | Range | What it changes |
 |---|---|---|---|---|---|---|
@@ -431,21 +459,16 @@ AA 55 11 05 00 02 B0 04 00 00 A2
 | 80 | UI_RUN_HYST_PCT | u32 | % | 2 | 0..50 | **v1.17:** BatteryRun stable-percent hysteresis (0 = follow raw every pass) |
 | 81 | UI_RUN_ZERO_EXIT | u32 | % | 2 | 0..100 | **v1.17:** raw percent that moves stable 0% → 1% in BatteryRun |
 | 82 | UI_RUN_ONE_EXIT | u32 | % | 3 | 0..100 | **v1.17:** raw percent that moves stable 1% → 2% in BatteryRun (raw 0 always drops to 0) |
-| 83 | CHG_PID_STAGE1_KP | u32 | ‰/A | 12 | 0..20000 | **Stage 1 = the CURRENT (bulk) loop.** Permille of duty per amp of current error. Swept: 8..15 is a flat optimum, above 20 the loop reaches the band more slowly and above ~45 the 7 mA-per-permille plant quantisation makes it chatter |
-| 84 | CHG_PID_STAGE1_KI | u32 | — | 1600 | 0..20000 | Integral rate = Ki × error / 1000 milli-permille per second. 1600 reaches the 640 mA band in 545 s from a flat pack with **zero** duty reversals; 800 took 1373 s and held a looser 617..640 mA; 3000 took 350 s but cost 44 reversals |
-| 85 | CHG_PID_STAGE1_KD | u32 | — | 0 | 0..20000 | Derivative. 0 by default: a derivative on a noisy sensor is duty jitter |
-| 86 | CHG_PID_STAGE1_UP_RATE | u32 | m‰/s | 1000 | 10..20000 | Ceiling on how fast the integral may CLIMB in the current loop |
-| 87 | CHG_PID_STAGE1_DOWN_RATE | u32 | m‰/s | 1000 | 10..20000 | Ceiling on how fast it may FALL (1000 = 1 permille/s) |
-| 88 | CHG_PID_STAGE2_KP | u32 | ‰/V | 150 | 0..20000 | **Stage 2 = the VOLTAGE loop while Vbat < absorb setpoint.** 150 rather than 300 because of sensor noise: at 300 even behind the prefilter ±15 mV produced 839 reversals per 4 h, at 150 it is 3, with identical clean-plant overshoot and hold |
-| 89 | CHG_PID_STAGE2_KI | u32 | — | 600 | 0..20000 | Closes the last few millivolts. At 300 the hold sat 2..3 mV low, at 150 it sat 8..13 mV low — a visible offset |
-| 90 | CHG_PID_STAGE2_KD | u32 | — | 0 | 0..20000 | Derivative, off by default |
-| 91 | CHG_PID_STAGE2_UP_RATE | u32 | m‰/s | 30 | 10..20000 | **The "slow the absorb rise" knob (the original user order).** 30 m‰/s = 0.03 permille/s versus the legacy chain's 0.1 permille / 2000 ms = 0.05 permille/s |
-| 92 | CHG_PID_STAGE2_DOWN_RATE | u32 | m‰/s | 1000 | 10..20000 | Fall ceiling in stage 2 |
-| 93 | CHG_PID_STAGE3_KP | u32 | ‰/V | 150 | 0..20000 | **Stage 3 = the VOLTAGE loop at the setpoint and above.** Same noise argument as stage 2 |
-| 94 | CHG_PID_STAGE3_KI | u32 | — | 18000 | 0..20000 | The setpoint region needs authority: the duty must fall from ~190 to ~56 permille as the pack stops accepting current. Least overshoot of the whole sweep (13.5 mV over setpoint versus 18.7 at 12000 and 33.6 at 6000) with a 0.0 mV hold band; the stability bound is ~37000 |
-| 95 | CHG_PID_STAGE3_KD | u32 | — | 0 | 0..20000 | Derivative, off by default |
-| 96 | CHG_PID_STAGE3_UP_RATE | u32 | m‰/s | 10 | 10..20000 | The calmest climb of all — on the setpoint nothing should hurry |
-| 97 | CHG_PID_STAGE3_DOWN_RATE | u32 | m‰/s | 1000 | 10..20000 | Fall ceiling in stage 3 |
+| 83 | CHG_PID_CURRENT_KP | u32 | ‰/A | 12 | 0..20000 | **The CURRENT (CC/bulk) loop.** Permille of duty per amp of current error. Swept: 8..15 is a flat optimum, above 20 the loop reaches the band more slowly and above ~45 the 7 mA-per-permille plant quantisation makes it chatter |
+| 84 | CHG_PID_CURRENT_KI | u32 | — | 1600 | 0..20000 | Integral rate = Ki × error / 1000 milli-permille per second. 1600 reaches the 640 mA band in 545 s from a flat pack with **zero** duty reversals; 800 took 1373 s and held a looser 617..640 mA; 3000 took 350 s but cost 44 reversals |
+| 85 | CHG_PID_CURRENT_KD | u32 | — | 0 | 0..20000 | Derivative. 0 by default: a derivative on a noisy sensor is duty jitter |
+| 86 | CHG_PID_CURRENT_UP_RATE | u32 | m‰/s | 1000 | 10..20000 | Ceiling on how fast the integral may CLIMB in the current loop |
+| 87 | CHG_PID_CURRENT_DOWN_RATE | u32 | m‰/s | 1000 | 10..20000 | Ceiling on how fast it may FALL (1000 = 1 permille/s) |
+| 88 | CHG_PID_VOLTAGE_KP | u32 | ‰/V | 50 | 0..20000 | **The VOLTAGE (CV/absorb) loop**, used at every pack voltage — v1.24 removed the setpoint split. This gain is the loop's **noise gain**: the pack voltage has no upstream filter, so Kp multiplies raw ADC noise onto the duty. At ±7 mV broadband noise, Kp=150 gives 744 duty reversals per 10 h and Kp=50 gives **62**, with identical overshoot, identical 0.5 mV hold error and the same 113 min to 14.4 V. Stability bound is ~300 |
+| 89 | CHG_PID_VOLTAGE_KI | u32 | — | 18000 | 0..20000 | The setpoint region needs authority: the duty must fall from ~190 to ~56 permille as the pack stops accepting current. Least overshoot of the whole sweep (13.5 mV over setpoint versus 18.7 at 12000 and 33.6 at 6000) with a 0.5 mV hold band; the stability bound is ~37000 |
+| 90 | CHG_PID_VOLTAGE_KD | u32 | — | 0 | 0..20000 | Derivative, off by default |
+| 91 | CHG_PID_VOLTAGE_UP_RATE | u32 | m‰/s | 10 | 10..20000 | **The "slow the absorb rise" knob (the original user order).** Now the only voltage up-rate, so it governs the whole climb: 10 m‰/s = 0.01 permille/s versus the legacy chain's 0.1 permille / 2000 ms = 0.05 permille/s |
+| 92 | CHG_PID_VOLTAGE_DOWN_RATE | u32 | m‰/s | 1000 | 10..20000 | Fall ceiling in the voltage loop |
 
 Notes:
 - Signed values (4..6) travel as two's-complement u32 on the wire.
@@ -1287,7 +1310,7 @@ is now u16 little-endian (`AA 55 type len_lo len_hi payload xor`,
 A v1.15 parser reads len_hi as the first payload byte and drops every
 frame - mixed versions NEVER link.
 
-### 5.11 Three-stage charge PID — the only charge regulator (v1.23)
+### 5.11 Two-loop CC/CV charge PID — the only charge regulator (v1.24)
 
 Two user orders built this section. 2026-09-28: *"slow the absorb duty rise
 down, and instead of all that complexity write a three-stage PID — one gain
@@ -1295,7 +1318,10 @@ set at the start, one in the middle, one in the last region — and expose it
 on the ESP panel."* 2026-09-29: *"you have to remove that previous logic, it
 must be PID only for the charger now; and you calibrate it yourself from the
 tables for the first time so I can optimise it later; also the 650 mA limit
-and 14.8 V must be ACTIVE so the batteries are not damaged."*
+and 14.8 V must be ACTIVE so the batteries are not damaged."* 2026-09-29
+(second): *"if we do it with one PID over the whole path does it not work?
+do we have errors? it does not matter if it is slow, because the battery
+itself is slow; my goal is maximum accuracy by the simplest method."*
 
 #### What was removed
 
@@ -1306,7 +1332,8 @@ a 20 mA-wide current band. v1.22 bypassed it behind an enable flag; **v1.23
 deletes it** — 146 lines of regulator, plus `CHG_REGULATE_LOW_MA`, the two
 up-step cadences, the absorb cadences and the fine-step constant. The enable
 flag (v1.22 id 83) went with it, since there is no longer anything to select
-between; the PID block therefore renumbered down one to **83..97**. That
+between; the PID block therefore renumbered down one to 83..97 (and v1.24
+reduced it again to **83..92**). That
 renumbering is safe precisely because v1.22 was never flashed. A host test
 now fails if any of those symbols reappear.
 
@@ -1317,22 +1344,71 @@ one current-filter window), running a textbook CC/CV **min-select**:
 
 | Branch | Error | Gain row |
 |---|---|---|
-| Current (CC) | `bulk_imax − 10 mA − I` | **always stage 1** |
-| Voltage (CV) | `setpoint − Vbat` | **stage 2** while `Vbat < setpoint`, **stage 3** at/above |
+| Current (CC) | `bulk_imax − 10 mA − I` | the **current** row (ids 83..87) |
+| Voltage (CV) | `setpoint − Vbat` | the **voltage** row (ids 88..92) |
 
 Both branches are evaluated every pass and **the one asking for the smaller
 duty wins**; the winner alone drives the shared integrator and its own slew
-limits. So the three user-visible "stages" are, in charging order: stage 1 =
-the constant-current bulk loop, stage 2 = the voltage loop climbing to the
-setpoint (the region the user asked to slow), stage 3 = the voltage loop
-holding at / backing off from the setpoint.
+limits. Neither row is selected by the pack voltage — each row belongs to a
+physical loop, permanently.
 
-**Why each loop needs its OWN gain row.** A volt of voltage error and an amp
-of current error are different physical quantities. With one shared Kp the
-min-select comparison becomes "millivolts versus milliamps": at the current
-limit `e_i ≈ 0`, so the voltage branch can only win when `e_v ≈ 0` too. There
-is no CC→CV knee at all and the pack sails to 14.6 V before anything reacts
-(simulated peak 14599 mV). Separate rows make the crossover a real ratio.
+#### How simple can it get? (the v1.24 question, answered by measurement)
+
+The user asked whether **one** PID over the whole path would do, noting that
+slowness is acceptable *"because the battery itself is slow"*. The honest
+answer needed numbers, not opinion, so every candidate was run through
+`tools/pid_tuning_sim.py` — a faithful transcript of `func__Charger_PidStep`
+that **reads its constants out of `charger.h` by regex** rather than copying
+them, driven by a plant fitted to the real converter. Ten hours simulated,
+ten scenarios each:
+
+| Architecture | Numbers to tune | Peak V | Peak I | Duty reversals / 10 h | Verdict |
+|---|---|---|---|---|---|
+| One PID, shared row, min-select | 5 | 14413 | 644.8..668.5 | 1408..84660 | ✗ hunts |
+| One PID on voltage only, backstop as the current limiter | 5 | 14404.5 | **706.9** | 8136..28808 | ✗ over-current |
+| **Two rows (current + voltage)** | **10** | **14414.3** | **642.0** | **4** | ✓ **shipped** |
+| Three rows (v1.23) | 15 | 14414.0 | 642.0 | 4 | = no better |
+
+Two failures worth keeping in the record:
+
+* **A shared row cannot work** because `e_v` is in millivolts and `e_i` is in
+  milliamps. One Kp cannot be "permille per volt" and "permille per amp" at
+  the same time, so the min-select compares unlike quantities and the duty
+  hunts instead of crossing over cleanly.
+* **Voltage-only + the 650 mA backstop fails on the user's own safety
+  requirement.** A backstop is *reactive*: it can only respond **after** the
+  limit is crossed, so the current limit-cycles and peaks at **706.9 mA**
+  instead of sitting at 640. The only tune that stayed under the limit
+  (Kp = 50 alone) locked the current at 351 mA and never finished the charge
+  (230 min). **A limiter is not a regulator.**
+
+So two rows is the floor: one PI per physical quantity being limited. The
+third row was then measured to be pure cost — see below.
+
+#### Why the third row was deleted (v1.24)
+
+v1.23 split the voltage row at the setpoint (one set climbing, one holding).
+Re-measured with a **seeded broadband PRNG** noise model instead of the
+deterministic tone used originally, the split buys nothing, and the two-row
+design tuned properly is strictly quieter:
+
+| Design | Clean | ±7 mV | ±15 mV | ±30 mV |
+|---|---|---|---|---|
+| Three rows, Kp_v 150/300, N=16 (v1.23) | 4 | 1275 | 4576 | 11061 |
+| Two rows, Kp_v 150, N=16 | 4 | 744 | 3448 | — |
+| **Two rows, Kp_v 50, N=32 (v1.24)** | **4** | **62** | **104** | **270** |
+
+(duty reversals per 10 h, mean of 4–5 seeds). Overshoot, hold error
+(0.5 mV) and time-to-14.4 V (113 min) are **identical** across that table —
+the only thing that changes is how hard the duty works. Five fewer numbers
+to tune, ~12× less duty motion, same accuracy.
+
+> **Audit note.** The original "50913 → 3" figures published in v1.23 came
+> from a *deterministic sinusoidal* noise model, which turned out to be
+> chaotic enough in its reversal count to reverse a design decision: it first
+> argued the third row was needed for noise, and the seeded PRNG showed the
+> opposite. The tables above supersede them. Any future noise claim must use
+> a seeded PRNG averaged over ≥4 seeds.
 
 **Why the slew limit is on the integral, not the output.** The PWM stage
 takes whole permille, so every time the applied duty crosses an integer the
@@ -1382,7 +1458,7 @@ problem that the control law alone did not solve.
 | Constant | Value | Problem it solves | Measured |
 |---|---|---|---|
 | `CHG_PID_OUTPUT_HYST_MILLI` | 700 | Whole-permille PWM makes the applied duty toggle between two neighbouring integers whenever the integral rests near a boundary | 15570 duty reversals per 10 h without it, **4** with it (legacy chain: 6456) |
-| `CHG_PID_VOLT_FILTER_N` | 16 | Current is filtered upstream, pack voltage is not; ~7 mV of ADC step times Kp lands on the duty | 50913 reversals per 4 h at ±15 mV noise unfiltered, 217 at N=8, **3** at N=16 |
+| `CHG_PID_VOLT_FILTER_N` | 32 | Current is filtered upstream, pack voltage is not; ~7 mV of ADC step times Kp lands on the duty | reversals/10 h at ±7 mV / ±15 mV broadband noise: N=1 → 32307/69656, N=8 → 115/931, N=16 → 72/186, **N=32 → 62/104** |
 | `CHG_PID_MAX_STEP_PERMILLE` | 8 | The integral is rate-limited but P is not, so panel-maximum gains jumped the duty across its range in one pass | **4475 mA** for 100 ms under abuse without it, **704 mA** with it |
 
 The hysteresis is deliberately below the 1 permille re-seed tolerance so its
@@ -1423,7 +1499,7 @@ regulator from taking the pack there.
 Every coefficient was swept on the plant model against the charge-profile
 table (14.4 V absorb, 14.3 V enter, 14.6 V over, 650 mA bulk, 500 permille
 ceiling) rather than hand-picked. What changed from the v1.22 hand-set
-values, and why, is in the block comment above `CHG_PID_STAGE1_KP` in
+values, and why, is in the block comment above `CHG_PID_CURRENT_KP` in
 charger.h and in the parameter table above.
 
 **Normal charging, 10 simulated hours, calibrated defaults:**
@@ -1579,7 +1655,7 @@ protocol. That flip is intentionally left to the project owner.
 test mode (ID 19, section 5.2), charger state 9 = MANUAL, TLM flags bit
 5, the 3 s link dead-man with manual JIT re-arm, the 15.0 V manual
 overvoltage cutoff, the frozen battery-lost detection during manual, and
-the payload limit 512 (PARAMS_BULK = 98 params / 491 payload bytes since v1.23) are
+the payload limit 512 (PARAMS_BULK = 93 params / 466 payload bytes since v1.24) are
 all in the firmware. The ESP-side constraints that come with it are
 documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 1 s keepalive while ID 19 = 1.
