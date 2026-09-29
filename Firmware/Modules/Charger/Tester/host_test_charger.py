@@ -1157,7 +1157,17 @@ def test_charger_persistence_v114():
     check("ناحیهٔ ابزورب (Absorb)" in ino and "ناحیهٔ شناور (Float)" in ino and
           "ناحیهٔ تجاوز (Over)" in ino and "زیر بازگشت (Reentry)" in ino and
           "قطع سخت (Cutoff) ۱۵V" in ino and "بالک (Bulk)" in ino and "خاموش (Off)" in ino and
-          'fill="#0b0f17"' in ino,
+          # [EN] This pinned the literal #0b0f17. Fifth frozen hex/number found
+          #      defending a VALUE instead of an INTENT, and it blocked the
+          #      requested re-theme. The intent is "the graph uses the panel's
+          #      own inset colour", so derive it from :root - which is strictly
+          #      stronger, because now the graph can never drift from the theme.
+          # [FA] این عدد ۰b0f17 را منجمد کرده بود - پنجمین مقدار ثابتی که
+          #      به‌جای «نیت» از یک «عدد» دفاع می‌کرد و جلوی تغییر تم را گرفت.
+          #      نیت این است که نمودار از رنگ فرورفتگی خود پنل استفاده کند، پس
+          #      از :root مشتق می‌شود و حالا نمودار هرگز از تم جدا نمی‌افتد.
+          ('fill="%s"' % re.search(r"--in:(#[0-9a-f]{6})",
+                                   re.search(r":root\{([^}]*)\}", ino).group(1)).group(1)) in ino,
           "the stage graph must use the dark panel palette (v1.16f inset #0b0f17) with bilingual (FA+EN) zone, threshold and stage labels")
     check("'باتری پایین (Vlow)',tt[17],tt[13],tt[10]" in ino and
           "'باتری بالا (Vhigh)',tt[18],tt[6],tt[3]" in ino and
@@ -2965,6 +2975,85 @@ def test_section_parameter_help_v125():
               "behaviour and must be explained")
 
 
+def test_theme_contrast_and_param_coverage_v125():
+    """[EN] User order 2026-09-29: explain the variables everywhere, and fix the
+       colouring.
+       On the theme: measuring first showed the TEXT was never the problem -
+       every text pair already passed AA. The fault was that the SURFACES were
+       indistinguishable (card against page 1.07, borders 1.22), so the whole
+       page read as one flat dark sheet with no depth. The palette is now an
+       elevation ladder, and this pins it by COMPUTING the contrast rather than
+       trusting the hex values to look right.
+       [FA] دستور کاربر: متغیرها همه‌جا توضیح داده شوند و رنگ‌بندی درست شود.
+       اندازه‌گیری نشان داد متن هیچ‌وقت مشکل نبود و همه AA را رد می‌کردند؛ ایراد
+       این بود که سطح‌ها از هم تشخیص داده نمی‌شدند، پس کل صفحه یک ورق تخت بود.
+       این تست کنتراست را حساب می‌کند نه اینکه به ظاهر کدهای رنگ اعتماد کند."""
+    ino = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
+
+    # ---------- every parameter is explained, and reachable from a section ----------
+    px_blk = re.search(r"const PX=\{(.*?)\n?\};", ino, re.S)
+    check(px_blk is not None, "the PX help table must exist")
+    px = set(int(m) for m in re.findall(r"(\d+):\['", px_blk.group(1)))
+    count = int(re.search(r"#define ESP_PARAM_COUNT\s+(\d+)u",
+                          (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1))
+    missing = sorted(set(range(count)) - px)
+    check(not missing,
+          f"every parameter must be explained on the page; missing: {missing}")
+
+    advertised = set()
+    for group in re.findall(r'data-p="([^"]+)"', ino):
+        advertised |= {int(x) for x in re.findall(r"\d+", group)}
+    unreachable = sorted(set(range(count)) - advertised)
+    check(not unreachable,
+          f"a described parameter the user can never reach from any section's '!' "
+          f"is not actually explained on the page: {unreachable}")
+
+    # ---------- the palette, computed ----------
+    def lum(h):
+        h = h.lstrip("#")
+        ch = [int(h[i:i + 2], 16) / 255 for i in (0, 2, 4)]
+        ch = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in ch]
+        return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2]
+
+    def contrast(a, b):
+        la, lb = lum(a), lum(b)
+        return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+    root = re.search(r":root\{([^}]*)\}", ino)
+    check(root is not None, "the theme must be declared in one :root block")
+    V = dict(re.findall(r"--([a-z0-9]+):(#[0-9a-f]{6})", root.group(1)))
+    for key in ("bg", "cd", "in", "rs", "ln", "tx", "mu", "ac", "ok", "wa", "er"):
+        check(key in V, f"the theme is missing --{key}")
+
+    # [EN] Text must clear WCAG AA 4.5:1.
+    # [FA] متن باید حد AA یعنی ۴٫۵ را رد کند.
+    for label, fg, bgk in (("body on card", "tx", "cd"), ("muted on card", "mu", "cd"),
+                           ("muted on raised", "mu", "rs"), ("accent on card", "ac", "cd"),
+                           ("ok on card", "ok", "cd"), ("warn on card", "wa", "cd"),
+                           ("error on card", "er", "cd")):
+        r = contrast(V[fg], V[bgk])
+        check(r >= 4.5, f"{label} contrast {r:.2f} is below AA 4.5")
+
+    # [EN] Surfaces must form a visible ladder. The thresholds are GitHub dark's
+    #      own measured ratios, so this is "at least as separated as a dark theme
+    #      people read all day", not an arbitrary preference.
+    # [FA] سطح‌ها باید نردبان دیدنی بسازند. آستانه‌ها نسبت‌های اندازه‌گیری‌شدهٔ یک
+    #      تم تیرهٔ پرکاربردند، نه سلیقهٔ دلبخواه.
+    for label, a, b, need in (("card vs page", "cd", "bg", 1.09),
+                              ("raised vs card", "rs", "cd", 1.14),
+                              ("border vs card", "ln", "cd", 1.42),
+                              ("inset vs card", "in", "cd", 1.05)):
+        r = contrast(V[a], V[b])
+        check(r >= need,
+              f"{label} separation {r:.2f} is below {need} - this is what made the "
+              "page read as one flat dark sheet")
+
+    # [EN] The ladder must actually ascend: inset darker than card, card than page... 
+    # [FA] نردبان باید واقعاً بالا برود.
+    check(lum(V["in"]) < lum(V["cd"]) < lum(V["rs"]),
+          "inset < card < raised must hold, or the depth cues point the wrong way")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -3013,6 +3102,7 @@ def main():
         test_benchlog_row_matches_header_v125,
         test_whole_program_consistency_v125,
         test_section_parameter_help_v125,
+        test_theme_contrast_and_param_coverage_v125,
     ]
     for test in tests:
         test()

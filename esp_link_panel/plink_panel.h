@@ -4,10 +4,22 @@
 /* ==================== Web Panel (PROGMEM) ==================== */
 static const char ESP_PANEL_HTML[] PROGMEM = R"HTML(<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>ChangeOver</title><link rel="stylesheet" href="/f.css?v=2"><style>
-:root{--bg:#090c12;--cd:#10151f;--in:#0b0f17;--rs:#1a2231;--ln:#1e2736;--tx:#eef1f7;--mu:#8f98ae;--ac:#5b9dff;--ac2:#8fc2ff;--ok:#34d399;--wa:#fbbf24;--er:#fb5e6a;--ring:rgba(91,157,255,.35);--sh:0 8px 24px rgba(0,0,0,.35)}
+/* [EN] v1.25 theme (user order 2026-09-29 "the colouring is not good").
+   The text colours were already fine - measured, they all passed AA. The
+   real fault was that the SURFACES were indistinguishable: card against
+   page was 1.07 and the borders 1.22, so every panel melted into one flat
+   dark sheet with no depth. Rebuilt as a proper elevation ladder and
+   checked against GitHub dark as a reference; this beats it on every
+   surface step (card/page 1.14 vs 1.09, raised/card 1.22 vs 1.14,
+   border/card 1.75 vs 1.42) while every text pair stays above AA 4.5.
+   [FA] تم نسخهٔ ۱.۲۵ (دستور کاربر: «رنگ‌بندی خوب نیست»). رنگ متن‌ها از اول
+   مشکلی نداشتند و همه AA را رد می‌کردند؛ ایراد واقعی این بود که سطح‌ها از هم
+   تشخیص داده نمی‌شدند - کارت در برابر پس‌زمینه ۱.۰۷ و خط‌ها ۱.۲۲، پس همه‌چیز
+   یک ورق تخت تیره می‌شد بدون عمق. به‌صورت نردبان ارتفاع بازسازی شد. */
+:root{--bg:#0b0f18;--cd:#161d2b;--in:#080b12;--rs:#232d40;--ln:#38455e;--tx:#e9eef6;--mu:#96a1b8;--ac:#63a2ff;--ac2:#9ac8ff;--ok:#35d6a0;--wa:#f7c13c;--er:#ff6873;--ring:rgba(99,162,255,.38);--sh:0 10px 30px rgba(0,0,0,.45)}
 *{box-sizing:border-box;margin:0}
-::selection{background:rgba(91,157,255,.35)}
-body{background:radial-gradient(1200px 300px at 50% -80px,rgba(91,157,255,.08),transparent),var(--bg);color:var(--tx);font:14px/1.65 Vazirmatn,Tahoma,sans-serif;max-width:1480px;margin:auto;padding:0 14px 28px;scrollbar-color:#2a3448 transparent}
+::selection{background:rgba(99,162,255,.38)}
+body{background:radial-gradient(1200px 300px at 50% -80px,rgba(99,162,255,.09),transparent),var(--bg);color:var(--tx);font:14px/1.65 Vazirmatn,Tahoma,sans-serif;max-width:1480px;margin:auto;padding:0 14px 28px;scrollbar-color:#3a4767 transparent}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:8px}
@@ -207,7 +219,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 <div id="aw2" style="margin:2px 0 0"></div>
 <div class="sbt" id="usel"><button class="a" data-u="1">۱ · اضافه‌ولتاژ</button><button data-u="2">۲ · قطع باتری</button><button data-u="3">۳ · دشارژ</button><button data-u="4">۴ · شارژ عادی</button><button data-u="5">۵ · باتری و درصد</button></div>
 <div class="cd" id="ucard1">
-<div class="hd"><b>سناریو ۱ — اضافه‌ولتاژ ورودی</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">روند: عبور ورودی از سقف ← قرمز چشمک + بوق دوره‌ای (سبز ثابت می‌ماند) ← افت تا سقف−هیسترزیس ← پاک‌شدن و بازگشت به سناریوی قبلی. پیش‌فرض: چشمک ۱۰۰۰/۵۰٪ + یک بوق ۱ثانیه‌ای هر ۱۰ ثانیه.</span></button><span class="lb">· سقف ولتاژ + چشمک و بوق · اولویت اول برد</span></div>
+<div class="hd"><b>سناریو ۱ — اضافه‌ولتاژ ورودی</b> <button class="ib" data-p="38,39,40,41,42,43" onclick="this.classList.toggle('o')">!<span class="it">روند: عبور ورودی از سقف ← قرمز چشمک + بوق دوره‌ای (سبز ثابت می‌ماند) ← افت تا سقف−هیسترزیس ← پاک‌شدن و بازگشت به سناریوی قبلی. پیش‌فرض: چشمک ۱۰۰۰/۵۰٪ + یک بوق ۱ثانیه‌ای هر ۱۰ ثانیه.</span></button><span class="lb">· سقف ولتاژ + چشمک و بوق · اولویت اول برد</span></div>
 <div class="sec">سقف ولتاژ <span class="lb">(mV)</span></div>
 <div class="bqr">
 <label>آستانه اضافه‌ولتاژ ورودی (mV)<input type="number" id="q70" step="100" min="24000" max="32000"><span class="lb" id="a70">—</span></label>
@@ -228,7 +240,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 
 </div>
 <div class="cd" id="ucard2" style="display:none">
-<div class="hd"><b>سناریو ۲ — قطع باتری</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">روند: قفل‌شدن پرچم قطع‌باتری ← قرمز چشمک + بوق دوره‌ای (سبز ثابت) ← پاک‌شدن پرچم ← بازگشت به سناریوی قبلی. پیش‌فرض: سه بوق کوتاه. آستانه‌های تشخیص قطع/برگشت در کارت «نظارت باتری» (زیرتب نظارت و ایمنی، ۲۷..۳۲) است.</span></button><span class="lb">· شناسه‌های ۴۴..۴۹ · اولویت دوم برد</span></div>
+<div class="hd"><b>سناریو ۲ — قطع باتری</b> <button class="ib" data-p="27,28,29,30,31,32" onclick="this.classList.toggle('o')">!<span class="it">روند: قفل‌شدن پرچم قطع‌باتری ← قرمز چشمک + بوق دوره‌ای (سبز ثابت) ← پاک‌شدن پرچم ← بازگشت به سناریوی قبلی. پیش‌فرض: سه بوق کوتاه. آستانه‌های تشخیص قطع/برگشت در کارت «نظارت باتری» (زیرتب نظارت و ایمنی، ۲۷..۳۲) است.</span></button><span class="lb">· شناسه‌های ۴۴..۴۹ · اولویت دوم برد</span></div>
 <div class="sec">چشمک قرمز <span class="lb">(دوره/دیوتی)</span></div>
 <div class="bqr">
 <label>دوره چشمک قرمز (ms)<input type="number" id="q44" step="50" min="100" max="10000"><span class="lb" id="a44">—</span></label>
@@ -244,7 +256,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 
 </div>
 <div class="cd" id="ucard3" style="display:none">
-<div class="hd"><b>سناریو ۳ — دشارژ (بی‌ورودی)</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">روند: بالای «شروع بوق» بی‌صدا (سبز چشمک با درصد) ← هر باند بوق خودش با فاصله/مدت/تعداد خودش ← زیر «باند بحرانی»: LEDها خاموش و الگوی بحرانی فقط یک‌بار به‌اندازهٔ «طول یک‌باره» پخش و بعد سکوت تا برگشت باتری. با پیش‌فرض‌ها: بالای ۴۰٪ بی‌صدا؛ ۲۰..۴۰ یک بوق، ۱۰..۲۰ دو بوق (هر ۶۰ ثانیه)؛ ۱..۱۰ سه بوق (هر ۲۰ ثانیه)؛ زیر ۱٪ یک بوق ۱۰ثانیه‌ای. گپ (۶۵) مشترک همهٔ باندهاست.</span></button><span class="lb">· شناسه‌های ۵۰..۶۷/۸۰..۸۲ · باندها + چشمک سبز + پایداری</span></div>
+<div class="hd"><b>سناریو ۳ — دشارژ (بی‌ورودی)</b> <button class="ib" data-p="44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65" onclick="this.classList.toggle('o')">!<span class="it">روند: بالای «شروع بوق» بی‌صدا (سبز چشمک با درصد) ← هر باند بوق خودش با فاصله/مدت/تعداد خودش ← زیر «باند بحرانی»: LEDها خاموش و الگوی بحرانی فقط یک‌بار به‌اندازهٔ «طول یک‌باره» پخش و بعد سکوت تا برگشت باتری. با پیش‌فرض‌ها: بالای ۴۰٪ بی‌صدا؛ ۲۰..۴۰ یک بوق، ۱۰..۲۰ دو بوق (هر ۶۰ ثانیه)؛ ۱..۱۰ سه بوق (هر ۲۰ ثانیه)؛ زیر ۱٪ یک بوق ۱۰ثانیه‌ای. گپ (۶۵) مشترک همهٔ باندهاست.</span></button><span class="lb">· شناسه‌های ۵۰..۶۷/۸۰..۸۲ · باندها + چشمک سبز + پایداری</span></div>
 <div class="sec">چشمک سبز <span class="lb">(ms)</span></div>
 <div class="bqr">
 <label>دوره چشمک سبز (ms)<input type="number" id="q66" step="50" min="100" max="10000"><span class="lb" id="a66">—</span></label>
@@ -284,7 +296,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 
 </div>
 <div class="cd" id="ucard4" style="display:none">
-<div class="hd"><b>سناریو ۴ — شارژ عادی</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">روند: حین شارژ واقعی، مدت روشن‌بودن زرد = مانده تا فول (باتری پرتر ← چشمک کوتاه‌تر) ← پایان ابزورب هر کانال (تیپر زیر ۵۰mA یا سقف ۱ساعت)؛ با تمام‌شدن هر دو کانال: فول ← سبز ثابت. فول ولتاژی (۱۰۰٪، خروج زیر ۹۵٪) هم سر جایش است.</span></button><span class="lb">· شناسه‌های ۶۸/۶۹/۷۷..۷۹ · چشمک زرد + فول</span></div>
+<div class="hd"><b>سناریو ۴ — شارژ عادی</b> <button class="ib" data-p="66,67,68,69,77,78,79,80,81,82" onclick="this.classList.toggle('o')">!<span class="it">روند: حین شارژ واقعی، مدت روشن‌بودن زرد = مانده تا فول (باتری پرتر ← چشمک کوتاه‌تر) ← پایان ابزورب هر کانال (تیپر زیر ۵۰mA یا سقف ۱ساعت)؛ با تمام‌شدن هر دو کانال: فول ← سبز ثابت. فول ولتاژی (۱۰۰٪، خروج زیر ۹۵٪) هم سر جایش است.</span></button><span class="lb">· شناسه‌های ۶۸/۶۹/۷۷..۷۹ · چشمک زرد + فول</span></div>
 <div class="sec">چشمک زرد <span class="lb">(ms)</span></div>
 <div class="bqr">
 <label>دوره چشمک زرد (ms)<input type="number" id="q68" step="50" min="100" max="10000"><span class="lb" id="a68">—</span></label>
@@ -377,7 +389,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 </div>
 <div class="sgx" id="s4">
 <div class="cd">
-<div class="hd"><b>پشتیبان‌گیری همهٔ تنظیمات</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد (کالیبراسیون، فیلتر، فعال‌سازی/سقف‌ها، پروفایل، آلارم‌ها، سناریوها) را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). گذراها (۱۵..۱۹ و میوت ۷۶) جزو پشتیبان نیستند. از v1.23 ضرایب PID سه‌مرحله‌ای (۸۳..۹۷) هم در همین پشتیبان می‌آیند.</span></button><span class="lb">· یک بکاپ برای کل بخش تنظیمات — خروجی/ورودی JSON همهٔ ۹۲ مقدار ماندگار (۰..۱۴، ۲۰..۷۵، ۷۷..۹۷) — شامل ضرایب PID</span></div>
+<div class="hd"><b>پشتیبان‌گیری همهٔ تنظیمات</b> <button class="ib" data-p="76" onclick="this.classList.toggle('o')">!<span class="it">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد (کالیبراسیون، فیلتر، فعال‌سازی/سقف‌ها، پروفایل، آلارم‌ها، سناریوها) را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). گذراها (۱۵..۱۹ و میوت ۷۶) جزو پشتیبان نیستند. از v1.23 ضرایب PID سه‌مرحله‌ای (۸۳..۹۷) هم در همین پشتیبان می‌آیند.</span></button><span class="lb">· یک بکاپ برای کل بخش تنظیمات — خروجی/ورودی JSON همهٔ ۹۲ مقدار ماندگار (۰..۱۴، ۲۰..۷۵، ۷۷..۹۷) — شامل ضرایب PID</span></div>
 <div class="bqr">
 <button class="sb sb2" onclick="xexp()">⬇ خروجی (دانلود JSON)</button>
 <label class="sb" style="cursor:pointer">⬆ ورودی (انتخاب فایل)<input type="file" id="xim" accept=".json,application/json" style="display:none"></label>
@@ -420,7 +432,7 @@ ASB={sp:[0,1,2,3,4,5,6].map(k=>$('sp'+k)),sr:[0,1,2,3,4,5,6].map(k=>$('sr'+k)),f
 /* v1.14b (user order 2026-09-26): پنجرهٔ مدین/میانگین به تب «تنظیمات» رفت؛ اینجا فقط وضعیت زندهٔ فیلتر و نمونه‌های نمودار می‌مانند */
 $('fg').innerHTML='<div class="lb" id="fspan" style="margin-top:6px">—</div>';
 /* ---------- دو ستون جدا: شارژر ۱ و شارژر ۲ ---------- */
-$('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}">—</span></div>
+$('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><button class="ib" data-p="${n==1?'11,13,15,16,9':'12,14,17,18,10'},19" onclick="this.classList.toggle('o')">!<span class="it">کارت زندهٔ همین کانال: جریان تخمینی باتری، دیوتی فعلی و وضعیت. مود «دستی» حلقهٔ کنترل را کنار می‌گذارد و دیوتی را به شما می‌دهد — حدهای سخت (۹۵۰ میلی‌آمپر، سقف ولتاژ، سقف دیوتی) همچنان فعال می‌مانند.</span></button><span class="tg" id="st${n}">—</span></div>
 <div class="bg2"><div class="big"><span class="lb">جریان باتری (iest)</span><b class="n" id="ie${n}">—</b></div>
 <div class="big"><span class="lb">duty <span id="dc${n}"></span></span><b class="n" id="du${n}">—</b></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
 <div class="bctl"><span class="lb">مود</span><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button><span class="lb">·</span><span class="lb">دیوتی دستی ٪</span><input type="number" step="any" id="qm${n}" data-s style="width:76px"><button class="sb" onclick="qset(${n})">اعمال</button><button class="sb off2" onclick="qzero(${n})">صفر</button><button class="sw" id="fx${n}" title="دیوتی ثابت همین کانال با حفاظتها؛ مود دستی سراسری اولویت دارد">فیکس</button></div>
@@ -429,7 +441,7 @@ ${row(12+n)}
 <div class="sec">زنجیرهٔ اندازه‌گیری و محاسبه</div>
 <table>${[['ADC خام','count',0],['ولتاژ شنت','µV',1],['جریان بدون فیلتر','mA',2],['جریان فیلترشده','mA',3],['تخمین باتری (iest)','mA',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}">—</b></td><td class="lb">${r[1]}</td></tr>`).join('')}</table>
 <div class="lb kc">ثابت‌ها: ADC دوازده‌بیتی، ۳۳۰۰mV، R41/R42 = 1k/10k، LM358 × 101، شنت 10 mOhm</div>
-<canvas id="cv${n}"></canvas><div class="lg"><span><i style="background:#6b7691"></i>بدون فیلتر · نوسان <b class="n" id="pu${n}">—</b> mA</span><span><i style="background:#5b9dff"></i>فیلترشده · نوسان <b class="n" id="pf${n}">—</b> mA</span><span class="hnl">نقاط <input type="number" id="hN${n}" data-s min="10" max="600" value="100"> از <b class="n" id="hC${n}">--</b></span></div>
+<canvas id="cv${n}"></canvas><div class="lg"><span><i style="background:#78849f"></i>بدون فیلتر · نوسان <b class="n" id="pu${n}">—</b> mA</span><span><i style="background:#63a2ff"></i>فیلترشده · نوسان <b class="n" id="pf${n}">—</b> mA</span><span class="hnl">نقاط <input type="number" id="hN${n}" data-s min="10" max="600" value="100"> از <b class="n" id="hC${n}">--</b></span></div>
 <button class="bt" id="tg${n}">—</button></div>`).join('');
 [1,2].forEach(n=>$('tg'+n).onclick=()=>{const c=D&&D.p[10+n];if(c!==0&&!confirm('PWM شارژر '+n+' فوراً قطع شود؟'))return;send(10+n,c===0?1:0);});
 /* ---------- تاریخچهٔ نمودار هر کانال ---------- */
@@ -443,8 +455,8 @@ function chart(){[0,1].forEach(ci=>{const c=$('cv'+(ci+1)),w=c.clientWidth,h=c.c
  let lo=Math.min(...s.u,...s.f),hi=Math.max(...s.u,...s.f);if(hi-lo<10){const m=(hi+lo)/2;lo=m-5;hi=m+5;}const pd=(hi-lo)*.12,a=lo-pd,z=hi+pd;
  const X=i=>w-8-(s.u.length-1-i)*(w-16)/(hn(ci)-1),Y=v=>h-8-(v-a)/(z-a)*(h-16);
  const ln=(A,col,lw)=>{x.beginPath();A.forEach((v,i)=>i?x.lineTo(X(i),Y(v)):x.moveTo(X(i),Y(v)));x.strokeStyle=col;x.lineWidth=lw;x.stroke();};
- x.fillStyle='#8b94ab';x.font='11px Vazirmatn,sans-serif';x.fillText(Math.round(hi)+' mA',8,16);x.fillText(Math.round(lo)+' mA',8,h-10);
- ln(s.u,'#6b7691',1);ln(s.f,'#5b9dff',2);const pp=A=>{const B=A.slice(-50);return Math.max(...B)-Math.min(...B);};$('pu'+(ci+1)).textContent=pp(s.u);$('pf'+(ci+1)).textContent=pp(s.f);});}
+ x.fillStyle='#96a1b8';x.font='11px Vazirmatn,sans-serif';x.fillText(Math.round(hi)+' mA',8,16);x.fillText(Math.round(lo)+' mA',8,h-10);
+ ln(s.u,'#6b7691',1);ln(s.f,'#63a2ff',2);const pp=A=>{const B=A.slice(-50);return Math.max(...B)-Math.min(...B);};$('pu'+(ci+1)).textContent=pp(s.u);$('pf'+(ci+1)).textContent=pp(s.f);});}
 /* تعویض تب: پنل و داده‌برداری بنچ */
 let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=+b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i==TAB));if(D)draw(D);});
 /* v1.15b: زیرتب داخل تنظیمات — ۰=شارژ و فیلتر، ۱=آلارم‌ها */
@@ -505,6 +517,56 @@ function qchk(){const w=[],a=qv(20).v,e=qv(21).v,o=qv(22).v,f=qv(23).v,r=qv(24).
    one pass rather than eight hand-written HTML blobs - hand-written copies are
    exactly what has gone stale here before. */
 const PX={
+ 9:['بازده کانال ۱','بازده مبدل بر حسب پرمیل برای تخمین جریان ورودی از توان باتری؛ صفر یعنی بدون تصحیح.'],
+ 10:['بازده کانال ۲','همان محاسبه برای کانال دوم؛ فقط روی عدد تخمینی جریان ورودی اثر دارد، نه روی شارژ.'],
+ 11:['فعال‌بودن شارژر ۱','اجازهٔ کار کانال ۱ از سمت پنل؛ صفر یعنی این کانال اصلاً سوئیچ نمی‌کند.'],
+ 12:['فعال‌بودن شارژر ۲','همان اجازه برای کانال ۲؛ برای تست تک‌کاناله یکی را خاموش می‌کنند.'],
+ 13:['سقف دیوتی ۱','بیشترین دیوتی مجاز کانال ۱ (‰). هر دیوتی بالاتر — خودکار یا دستی — به همین سقف گیره می‌شود.'],
+ 14:['سقف دیوتی ۲','همان سقف برای کانال ۲؛ برای محدودکردن توان یک کانال بدون دست‌زدن به پروفایل.'],
+ 15:['دیوتی ثابت ۱ روشن','کانال ۱ به‌جای حلقهٔ کنترل، دیوتی ثابت بگیرد؛ فقط برای تست و کالیبراسیون.'],
+ 16:['مقدار دیوتی ثابت ۱','همان دیوتی ثابتی که کانال ۱ در حالت بالا می‌گیرد (‰).'],
+ 17:['دیوتی ثابت ۲ روشن','همان قفل دستی برای کانال ۲.'],
+ 18:['مقدار دیوتی ثابت ۲','همان دیوتی ثابتی که کانال ۲ در حالت قفل دستی می‌گیرد (‰)؛ همچنان به سقف دیوتی همان کانال گیره می‌شود.'],
+ 19:['مود تست دستی','کل شارژر را از حالت خودکار بیرون می‌آورد و کنترل دیوتی را به شما می‌دهد؛ حدهای سخت همچنان فعال‌اند.'],
+ 38:['دورهٔ LED اضافه‌ولتاژ','طول یک چرخهٔ چشمک LED هنگام هشدار اضافه‌ولتاژ (ms).'],
+ 39:['روشنی LED اضافه‌ولتاژ','چند درصد از هر چرخه LED روشن باشد؛ ۵۰ یعنی نصف روشن نصف خاموش.'],
+ 40:['دورهٔ بوق اضافه‌ولتاژ','هر چند وقت یک‌بار دستهٔ بوق اضافه‌ولتاژ تکرار شود (ms)؛ صفر یعنی بی‌صدا.'],
+ 41:['طول هر بوق اضافه‌ولتاژ','هر تک‌بوق چقدر طول بکشد (ms).'],
+ 42:['تعداد بوق اضافه‌ولتاژ','در هر دسته چند بوق زده شود.'],
+ 43:['فاصلهٔ بوق‌های اضافه‌ولتاژ','سکوت بین دو بوق یک دسته (ms)؛ اگر تعداد بیش از یکی است باید معنادار باشد وگرنه به هم می‌چسبند.'],
+ 44:['دورهٔ LED باتری ضعیف','طول یک چرخهٔ چشمک LED هنگام هشدار باتری ضعیف (ms).'],
+ 45:['روشنی LED باتری ضعیف','چند درصد از هر چرخه LED روشن باشد.'],
+ 46:['دورهٔ بوق باتری ضعیف','هر چند وقت یک‌بار دستهٔ بوق باتری ضعیف تکرار شود (ms)؛ صفر یعنی بی‌صدا.'],
+ 47:['طول هر بوق باتری ضعیف','هر تک‌بوق چقدر طول بکشد (ms).'],
+ 48:['تعداد بوق باتری ضعیف','در هر دسته چند بوق زده شود.'],
+ 49:['فاصلهٔ بوق‌های باتری ضعیف','سکوت بین دو بوق یک دسته (ms).'],
+ 50:['درصد شروع هشدار مصرف','از این درصد شارژ به پایین، بوق دوره‌ای حالت مصرف شروع می‌شود.'],
+ 51:['درصد بوق دوتایی','از این درصد به پایین، هشدار به دو بوق تغییر می‌کند — یعنی وضعیت جدی‌تر شد.'],
+ 52:['درصد بوق سه‌تایی','از این درصد به پایین، سه بوق؛ مرحلهٔ هشدار بعدی.'],
+ 53:['درصد بحرانی','از این درصد به پایین، حالت بحرانی با الگوی مخصوص خودش.'],
+ 54:['فاصلهٔ هشدار عادی','هر چند وقت یک‌بار هشدار مصرف در بازهٔ عادی تکرار شود (ms).'],
+ 55:['فاصلهٔ هشدار سه‌تایی','هر چند وقت یک‌بار هشدار سه‌تایی تکرار شود (ms).'],
+ 56:['دورهٔ هشدار بحرانی','دورهٔ تکرار هشدار در حالت بحرانی (ms).'],
+ 57:['روشنی بحرانی','شدت/درصد روشنی الگوی بحرانی.'],
+ 58:['تعداد بوق بحرانی','چند بوق در هر دستهٔ بحرانی.'],
+ 59:['طول بوق عادی','طول هر بوق در بازهٔ عادی (ms).'],
+ 60:['طول بوق سه‌تایی','طول هر بوق در بازهٔ سه‌تایی (ms).'],
+ 61:['طول هشدار بحرانی','مدت یک‌بارهٔ هشدار بحرانی (ms) که قفل می‌شود.'],
+ 62:['تعداد بوق عادی','چند بوق در هر دستهٔ عادی.'],
+ 63:['تعداد بوق دوتایی','چند بوق در هر دستهٔ دوتایی.'],
+ 64:['تعداد بوق سه‌تایی','چند بوق در هر دستهٔ سه‌تایی.'],
+ 65:['فاصلهٔ بوق‌های مصرف','سکوت بین بوق‌های یک دسته در حالت مصرف (ms).'],
+ 66:['دورهٔ LED سبز','طول یک چرخهٔ چشمک سبز (ms)؛ سبز یعنی وضعیت خوب.'],
+ 67:['کمینهٔ خاموشی سبز','حداقل زمان خاموشی در هر چرخهٔ سبز تا چشمک دیده شود (ms).'],
+ 68:['دورهٔ LED زرد','طول یک چرخهٔ چشمک زرد (ms)؛ زرد یعنی در حال شارژ.'],
+ 69:['کمینهٔ روشنی زرد','حداقل زمان روشنی در هر چرخهٔ زرد تا چشمک پایان شارژ واقعاً دیده شود (ms).'],
+ 76:['بی‌صداکردن بوق','فقط برای همین نشست پنل بوق را خاموش می‌کند؛ روی فلش ذخیره نمی‌شود و با ریست برمی‌گردد.'],
+ 77:['درصد ورود به پر','از این درصد به بالا، نمایش «پر» می‌شود.'],
+ 78:['درصد خروج از پر','زیر این درصد، از حالت «پر» بیرون می‌آید؛ عمداً کمتر از ورود است تا نمایش چشمک نزند.'],
+ 79:['هیسترزیس شارژ','چقدر تغییر لازم است تا درصد نمایش شارژ عوض شود؛ جلوی بالا-پایین شدن دائمی عدد را می‌گیرد.'],
+ 80:['هیسترزیس مصرف','همان پایدارسازی برای درصد در حالت مصرف.'],
+ 81:['خروج از صفر درصد','تا این درصد بالا نرود، نمایش از صفر بیرون نمی‌آید.'],
+ 82:['خروج از یک درصد','تا این درصد بالا نرود، نمایش از یک بیرون نمی‌آید.'],
  0:['آفست جریان ۱','شمارش ADC که در جریان صفر خوانده می‌شود و از هر نمونه کم می‌گردد؛ اگر در حالت بی‌بار عدد جریان صفر نیست، این را تنظیم کنید.'],
  1:['آفست جریان ۲','شمارش ADC که کانال دوم در جریان صفر می‌خواند و از هر نمونه کم می‌شود؛ اگر بی‌بار عدد جریان ۲ صفر نیست، این را تنظیم کنید.'],
  2:['ضریب جریان ۱','مقیاس محور جدول توان کانال ۱ (‰). با جدول کالیبراسیون جفت است — تغییرش خوانش جریان را بی‌صدا غلط می‌کند.'],
@@ -579,41 +641,41 @@ function qgraph(){const g=$('qg');if(!g)return;
    `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="${fs}" font-weight="700" fill="${o.c}">${o.txt}${o.pv?' · پیش‌نمایش':''}</text>`;}).join('');};
  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:640px;font-family:inherit">`;
  /* v1.14e: حاشور کم‌رنگ ناحیهٔ بالک (دستور کاربر ۲۰۲۶-۰۹-۲۶) */
- s+=`<defs><pattern id="bkh" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="9" height="9" fill="rgba(91,157,255,.07)"/><line x1="0" y1="0" x2="0" y2="9" stroke="rgba(143,194,255,.32)" stroke-width="1.2"/></pattern></defs>`;
- s+=`<rect x="${X0}" y="12" width="${X1-X0}" height="${H-34}" fill="#0b0f17" stroke="#1e2736" rx="6"/>`;
+ s+=`<defs><pattern id="bkh" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="9" height="9" fill="rgba(99,162,255,.08)"/><line x1="0" y1="0" x2="0" y2="9" stroke="rgba(143,194,255,.32)" stroke-width="1.2"/></pattern></defs>`;
+ s+=`<rect x="${X0}" y="12" width="${X1-X0}" height="${H-34}" fill="#080b12" stroke="#38455e" rx="6"/>`;
  for(let mv=Math.ceil(lo/500)*500;mv<=hi;mv+=500){const y=Y(mv);
-  s+=`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="#161d2b" stroke-width="1"/>`+
-     `<text x="${X0-4}" y="${y+3}" text-anchor="end" font-size="8" fill="#8b94ab">${(mv/1000).toFixed(1)}</text>`;}
- s+=zone(hi,15000,'rgba(251,94,106,.16)','','#fb5e6a');
+  s+=`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="#26304a" stroke-width="1"/>`+
+     `<text x="${X0-4}" y="${y+3}" text-anchor="end" font-size="8" fill="#96a1b8">${(mv/1000).toFixed(1)}</text>`;}
+ s+=zone(hi,15000,'rgba(251,94,106,.16)','','#ff6873');
  s+=zone(15000,q.o.d,'rgba(251,94,106,.09)','ناحیهٔ تجاوز (Over) — کاهش سریع duty','#fc8086');
- s+=zone(q.o.d,q.e.d,'rgba(251,191,36,.08)','ناحیهٔ ابزورب (Absorb)','#fbbf24');
- s+=zone(q.e.d,q.f.d,'url(#bkh)','ناحیهٔ بالک (Bulk) — شارژ با جریان ثابت','#8fc2ff');
- s+=zone(q.f.d,q.r.d,'rgba(52,211,153,.09)','ناحیهٔ شناور (Float)','#34d399');
- s+=zone(q.r.d,lo,'rgba(91,157,255,.10)','زیر بازگشت (Reentry) — شارژ دوباره از بالک','#8fc2ff');
- s+=`<line x1="${X0}" y1="${Y(15000)}" x2="${X1}" y2="${Y(15000)}" stroke="#fb5e6a" stroke-width="1.2" stroke-dasharray="3 4"/>`;
- LL.push({y:Y(15000)-4,txt:'قطع سخت (Cutoff) ۱۵V',c:'#fb5e6a'});
+ s+=zone(q.o.d,q.e.d,'rgba(251,191,36,.08)','ناحیهٔ ابزورب (Absorb)','#f7c13c');
+ s+=zone(q.e.d,q.f.d,'url(#bkh)','ناحیهٔ بالک (Bulk) — شارژ با جریان ثابت','#9ac8ff');
+ s+=zone(q.f.d,q.r.d,'rgba(52,211,153,.09)','ناحیهٔ شناور (Float)','#35d6a0');
+ s+=zone(q.r.d,lo,'rgba(99,162,255,.11)','زیر بازگشت (Reentry) — شارژ دوباره از بالک','#9ac8ff');
+ s+=`<line x1="${X0}" y1="${Y(15000)}" x2="${X1}" y2="${Y(15000)}" stroke="#ff6873" stroke-width="1.2" stroke-dasharray="3 4"/>`;
+ LL.push({y:Y(15000)-4,txt:'قطع سخت (Cutoff) ۱۵V',c:'#ff6873'});
  s+=aln(q.o.d,'#fb923c')+pvln(q.o,'#fb923c');lbl(q.o,'#fb923c','سقف تجاوز (Over)');
- s+=aln(q.a.d,'#fbbf24')+pvln(q.a,'#fbbf24');lbl(q.a,'#fbbf24','ابزورب (Absorb)');
+ s+=aln(q.a.d,'#f7c13c')+pvln(q.a,'#f7c13c');lbl(q.a,'#f7c13c','ابزورب (Absorb)');
  s+=aln(q.e.d,'#e8a33d')+pvln(q.e,'#e8a33d');lbl(q.e,'#e8a33d','ورود ابزورب (Absorb Enter)');
- s+=aln(q.f.d,'#34d399')+pvln(q.f,'#34d399');lbl(q.f,'#34d399','شناور (Float)');
- s+=aln(q.r.d,'#5b9dff')+pvln(q.r,'#5b9dff');lbl(q.r,'#5b9dff','بازگشت به بالک (Reentry)');
+ s+=aln(q.f.d,'#35d6a0')+pvln(q.f,'#35d6a0');lbl(q.f,'#35d6a0','شناور (Float)');
+ s+=aln(q.r.d,'#63a2ff')+pvln(q.r,'#63a2ff');lbl(q.r,'#63a2ff','بازگشت به بالک (Reentry)');
  /* موقعیت زندهٔ هر باتری (دستور کاربر ۲۰۲۶-۰۹-۲۶): نقطهٔ رنگی روی ولتاژ خودش
     در ستون مخصوصش + برچسب وضعیت زیر نمودار؛ ناحیه‌ها خودشان داستان مراحل را می‌گویند */
  let lg='';
  if(D&&D.t){const tt=D.t;
-  const BST={0:['خاموش (Off)','#8b94ab'],1:['بالک (Bulk)','#5b9dff'],2:['ابزورب (Absorb)','#fbbf24'],3:['شناور (Float)','#34d399'],4:['راه‌اندازی (Bring-up)','#fbbf24'],5:['انتظار JIT (JIT wait)','#fb5e6a'],6:['انتظار ورودی (No input)','#fbbf24'],7:['خطای نهایی (Final fault)','#fb5e6a'],8:['باتری قطع (Battery lost)','#fb5e6a'],9:['دستی (Manual)','#fbbf24']};
-  const bats=[['باتری پایین (Vlow)',tt[17],tt[13],tt[10],'#c084fc',0.60],['باتری بالا (Vhigh)',tt[18],tt[6],tt[3],'#fbbf24',0.82]];
+  const BST={0:['خاموش (Off)','#96a1b8'],1:['بالک (Bulk)','#63a2ff'],2:['ابزورب (Absorb)','#f7c13c'],3:['شناور (Float)','#35d6a0'],4:['راه‌اندازی (Bring-up)','#f7c13c'],5:['انتظار JIT (JIT wait)','#ff6873'],6:['انتظار ورودی (No input)','#f7c13c'],7:['خطای نهایی (Final fault)','#ff6873'],8:['باتری قطع (Battery lost)','#ff6873'],9:['دستی (Manual)','#f7c13c']};
+  const bats=[['باتری پایین (Vlow)',tt[17],tt[13],tt[10],'#c084fc',0.60],['باتری بالا (Vhigh)',tt[18],tt[6],tt[3],'#f7c13c',0.82]];
   bats.forEach(b=>{
    if(b[1]>lo&&b[1]<hi){const y=Y(b[1]),x=X0+Math.round((X1-X0)*b[5]);
     s+=`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="${b[4]}" stroke-width="1.2" stroke-dasharray="2 3"/>`;
-    s+=`<circle cx="${x}" cy="${y}" r="4.5" fill="${b[4]}" stroke="#0b0f17" stroke-width="1.8"/>`;
+    s+=`<circle cx="${x}" cy="${y}" r="4.5" fill="${b[4]}" stroke="#080b12" stroke-width="1.8"/>`;
     s+=`<text x="${x}" y="${Math.min(y+15,H-6)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="${b[4]}">${b[0].split(' (')[0]} ${V(b[1])}V</text>`;}});
   lg=bats.map(b=>{const st=BST[b[2]]||('#'+b[2]);
    return `<span class="tg" style="background:${st[1]}22;color:${st[1]};border:1px solid ${st[1]}66">● ${b[0]}: <b>${V(b[1])}V</b> · ${b[3]}mA · ${st[0]}</span>`;}).join(' ')+
    `<span class="lb"> · بالک ≤ ${im.v}mA · تیپر < ${tp.v}mA · پس از هر تغییر ~۱٫۵ ثانیه بعد روی فلش برد ذخیره می‌شود</span>`;
  }else lg='در انتظار دادهٔ برد…';
  s+=put(ZL,X0+6,'start','8.5')+put(LL,X1-4,'end','9');
- s+=`<text x="${X0}" y="8" font-size="8" fill="#8b94ab">ولتاژ باتری / Battery voltage (V)</text></svg>`;
+ s+=`<text x="${X0}" y="8" font-size="8" fill="#96a1b8">ولتاژ باتری / Battery voltage (V)</text></svg>`;
  g.innerHTML=s;const e=$('qgl');if(e)e.innerHTML=lg;
  /* نگهبان: هشدار بالای نمودار + قرمزکردن فیلد مقصر */
  const w=qchk(),we=$('qw');
