@@ -2851,6 +2851,33 @@ def test_benchlog_row_matches_header_v125():
               "column carrying a constant zero is worse than no column")
 
 
+def test_whole_program_consistency_v125():
+    """[EN] Runs tools/audit_consistency.py, which compares every number this
+       project writes by hand in more than one place: the parameter ids,
+       counts, defaults and ranges across the firmware header, the panel's
+       three tables, the preview server and the NVM map; the current LUTs
+       against their panel mirrors; the TLM frame against what the ESP
+       expects; the bench CSV row against its header; and the ADC chain from
+       the .ioc through the generated init to the BSP channel map.
+       It exists because every file in this repo can be locally correct while
+       the product is broken - the defect lives BETWEEN files, so no amount of
+       line-by-line reading finds it.
+       [FA] اسکریپت ممیزی را اجرا می‌کند که هر عددی را که این پروژه دستی در
+       بیش از یک جا می‌نویسد با هم مقایسه می‌کند. هست چون هر فایل این مخزن
+       می‌تواند به‌تنهایی درست باشد در حالی که محصول خراب است - ایراد «بین»
+       فایل‌ها زندگی می‌کند و هیچ مقدار خواندن خط‌به‌خط پیدایش نمی‌کند."""
+    import subprocess
+    r = subprocess.run([sys.executable, str(ROOT / "tools" / "audit_consistency.py")],
+                       capture_output=True, text=True)
+    check(r.returncode == 0,
+          "cross-file consistency audit failed:\n" + r.stdout + r.stderr)
+    m = re.search(r"invariants checked : (\d+)", r.stdout)
+    check(m and int(m.group(1)) >= 50,
+          f"the audit must actually check a meaningful number of invariants "
+          f"(got {m.group(1) if m else 'none'}) - an audit that checks nothing "
+          "passes everything")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -2897,6 +2924,7 @@ def main():
         test_vdda_reference_measurement_v125,
         test_param_ranges_match_panel_v125,
         test_benchlog_row_matches_header_v125,
+        test_whole_program_consistency_v125,
     ]
     for test in tests:
         test()

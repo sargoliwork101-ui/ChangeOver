@@ -135,6 +135,22 @@ else
 fi
 echo "  Other non-validation modules are 0"
 echo ""
+echo "[6b] Whole-program cross-file consistency audit"
+# [EN] Almost every defect in this project has been one number written by hand
+#      in several files, with the copies drifting apart. Each file stays
+#      locally correct, so reading them line by line never finds it - the
+#      defect only exists BETWEEN files. This compares them.
+# [FA] تقریباً هر ایراد این پروژه یک عدد بوده که دستی در چند فایل نوشته شده و
+#      کپی‌ها از هم جدا افتاده‌اند. هر فایل به‌تنهایی درست می‌ماند، پس خواندن
+#      خط‌به‌خط پیدایش نمی‌کند؛ ایراد فقط «بین» فایل‌هاست.
+if python3 "$ROOT/tools/audit_consistency.py" > /tmp/consistency_audit.txt 2>&1; then
+  echo "  OK: $(grep -o 'invariants checked : [0-9]*' /tmp/consistency_audit.txt) - no drift"
+else
+  echo "  FAIL: cross-file inconsistency found"
+  sed 's/^/    /' /tmp/consistency_audit.txt
+  FAIL=1
+fi
+
 echo "[7] CubeMX .ioc peripheral check (full schematic BSP contract)"
 IOC="$ROOT/CubeMX/CubeIDE.ioc"
 if [ -f "$IOC" ]; then
