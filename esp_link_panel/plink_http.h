@@ -91,13 +91,13 @@ static void func__Esp_HttpTelemetry(void)
 
     /* [EN] v1.16: 77 params need three u32 masks (and 1UL << 32+ is UB),
             so ids 0..31 go to "q", 32..63 to "q2" and 64..95 to "q3"
-            (panel apend() reads all four). v1.22: 99 params, so a FOURTH
-            mask "q4" carries 96..98 - without it the three PID ids at the
+            (panel apend() reads all four). v1.23: 98 params, so a FOURTH
+            mask "q4" carries 96..97 - without it the two PID ids at the
             top would show no pending highlight and the panel would look
             like it dropped the write.
        [FA] نسخه ۱.۱۶: ۷۷ پارامتر سه ماسک u32 می‌خواهد (و شیفت ۳۲+ تعریف‌نشده
             است)، پس شناسه‌های ۰..۳۱ در q و ۳۲..۶۳ در q2 و ۶۴..۹۵ در q3 می‌روند.
-            نسخه ۱.۲۲: ۹۹ پارامتر، پس ماسک چهارم q4 شناسه‌های ۹۶..۹۸ را
+            نسخه ۱.۲۳: ۹۸ پارامتر، پس ماسک چهارم q4 شناسه‌های ۹۶..۹۷ را
             می‌برد - بدون آن سه شناسهٔ بالای PID هیچ برجسته‌سازی «در انتظار»
             نمی‌گرفتند و پنل انگار نوشتن را انداخته بود. */
     for (uint8_t__index = 0u; uint8_t__index < ESP_PARAM_COUNT; uint8_t__index++)

@@ -265,23 +265,22 @@
  *      هر میلی‌ولت یا میلی‌آمپر خطا، پس Ki=۱۰۰۰ یعنی ۱ پرمیل بر ثانیه به
  *      ازای هر ولت؛ شیب‌ها میلی‌پرمیل بر ثانیه (۱۰۰۰ = ۱ پرمیل بر ثانیه).
  *      استدلال کامل در بلوک تنظیم‌کنندهٔ charger.h. */
-#define ESPLINK_PARAM_CHG_PID_ENABLE           83u  /* u32, 0/1,  def 1,     0 = legacy step regulator */
-#define ESPLINK_PARAM_CHG_PID_STAGE1_KP        84u  /* u32, ‰/A,  def 20,    0..20000, current loop */
-#define ESPLINK_PARAM_CHG_PID_STAGE1_KI        85u  /* u32, -,    def 800,   0..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE1_KD        86u  /* u32, -,    def 0,     0..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE1_UP_RATE   87u  /* u32, m‰/s, def 500,   10..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE1_DOWN_RATE 88u  /* u32, m‰/s, def 1000,  10..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE2_KP        89u  /* u32, ‰/V,  def 150,   0..20000, voltage loop below setpoint */
-#define ESPLINK_PARAM_CHG_PID_STAGE2_KI        90u  /* u32, -,    def 300,   0..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE2_KD        91u  /* u32, -,    def 0,     0..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE2_UP_RATE   92u  /* u32, m‰/s, def 30,    10..20000, "slow the absorb rise" knob */
-#define ESPLINK_PARAM_CHG_PID_STAGE2_DOWN_RATE 93u  /* u32, m‰/s, def 1000,  10..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE3_KP        94u  /* u32, ‰/V,  def 300,   0..20000, voltage loop at setpoint */
-#define ESPLINK_PARAM_CHG_PID_STAGE3_KI        95u  /* u32, -,    def 12000, 0..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE3_KD        96u  /* u32, -,    def 0,     0..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE3_UP_RATE   97u  /* u32, m‰/s, def 10,    10..20000 */
-#define ESPLINK_PARAM_CHG_PID_STAGE3_DOWN_RATE 98u  /* u32, m‰/s, def 1000,  10..20000 */
-#define ESPLINK_PARAM_COUNT                99u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..98 = three-stage PID (v1.22) / [FA] پروفایل، آلارم‌ها، اعداد UI و PID سه‌مرحله‌ای */
+#define ESPLINK_PARAM_CHG_PID_STAGE1_KP        83u  /* u32, ‰/A,  def 20,    0..20000, current loop */
+#define ESPLINK_PARAM_CHG_PID_STAGE1_KI        84u  /* u32, -,    def 800,   0..20000 */
+#define ESPLINK_PARAM_CHG_PID_STAGE1_KD        85u  /* u32, -,    def 0,     0..20000 */
+#define ESPLINK_PARAM_CHG_PID_STAGE1_UP_RATE   86u  /* u32, m‰/s, def 500,   10..20000 */
+#define ESPLINK_PARAM_CHG_PID_STAGE1_DOWN_RATE 87u  /* u32, m‰/s, def 1000,  10..20000 */
+#define ESPLINK_PARAM_CHG_PID_STAGE2_KP        88u  /* u32, ‰/V,  def 150,   0..20000, voltage loop below setpoint */
+#define ESPLINK_PARAM_CHG_PID_STAGE2_KI        89u  /* u32, -,    def 300,   0..20000 */
+#define ESPLINK_PARAM_CHG_PID_STAGE2_KD        90u  /* u32, -,    def 0,     0..20000 */
+#define ESPLINK_PARAM_CHG_PID_STAGE2_UP_RATE   91u  /* u32, m‰/s, def 30,    10..20000, "slow the absorb rise" knob */
+#define ESPLINK_PARAM_CHG_PID_STAGE2_DOWN_RATE 92u  /* u32, m‰/s, def 1000,  10..20000 */
+#define ESPLINK_PARAM_CHG_PID_STAGE3_KP        93u  /* u32, ‰/V,  def 300,   0..20000, voltage loop at setpoint */
+#define ESPLINK_PARAM_CHG_PID_STAGE3_KI        94u  /* u32, -,    def 12000, 0..20000 */
+#define ESPLINK_PARAM_CHG_PID_STAGE3_KD        95u  /* u32, -,    def 0,     0..20000 */
+#define ESPLINK_PARAM_CHG_PID_STAGE3_UP_RATE   96u  /* u32, m‰/s, def 10,    10..20000 */
+#define ESPLINK_PARAM_CHG_PID_STAGE3_DOWN_RATE 97u  /* u32, m‰/s, def 1000,  10..20000 */
+#define ESPLINK_PARAM_COUNT                98u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..97 = three-stage PID (v1.23) / [FA] پروفایل، آلارم‌ها، اعداد UI و PID سه‌مرحله‌ای */
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

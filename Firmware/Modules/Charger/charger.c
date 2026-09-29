@@ -77,6 +77,7 @@ typedef struct
        است که نگهبان بذرگیری بدون پرش با سخت‌افزار مقایسه می‌کند.
        خطا/شاخه مشتق را تغذیه و با عوض‌شدن برندهٔ CC/CV ریستش می‌کنند. */
     uint32_t uint32_t__pidDutyMilli;    /* [EN] last APPLIED duty, milli-permille / دیوتی آخرین‌بار اعمال‌شده */
+    uint32_t uint32_t__pidVoltFilt;     /* [EN] N x filtered pack mV (see CHG_PID_VOLT_FILTER_N) / ولتاژ فیلترشدهٔ ضرب در N */
     int32_t  int32_t__pidIntegral;      /* [EN] integral term, milli-permille / جملهٔ انتگرالی */
     int32_t  int32_t__pidIntegralRem;   /* [EN] integral sub-unit remainder / باقی‌ماندهٔ انتگرال */
     int32_t  int32_t__pidLastError;     /* [EN] previous error of the winning branch / خطای قبلی شاخهٔ برنده */
@@ -133,29 +134,27 @@ static volatile charger_profile_t CHARGER_PROFILE_T__G__Profile =
  *      فلش می‌ماند. */
 typedef struct
 {
-    uint32_t uint32_t__enable;          /* [EN] id 83, 0 = legacy step regulator / صفر = تنظیم پله‌ای قدیمی */
-    uint32_t uint32_t__stage1Kp;        /* [EN] id 84, current loop / حلقهٔ جریان */
-    uint32_t uint32_t__stage1Ki;        /* [EN] id 85 */
-    uint32_t uint32_t__stage1Kd;        /* [EN] id 86 */
-    uint32_t uint32_t__stage1UpRate;    /* [EN] id 87, milli-permille/s */
-    uint32_t uint32_t__stage1DownRate;  /* [EN] id 88, milli-permille/s */
-    uint32_t uint32_t__stage2Kp;        /* [EN] id 89, voltage loop below setpoint / حلقهٔ ولتاژ زیر ست‌پوینت */
-    uint32_t uint32_t__stage2Ki;        /* [EN] id 90 */
-    uint32_t uint32_t__stage2Kd;        /* [EN] id 91 */
-    uint32_t uint32_t__stage2UpRate;    /* [EN] id 92, milli-permille/s */
-    uint32_t uint32_t__stage2DownRate;  /* [EN] id 93, milli-permille/s */
-    uint32_t uint32_t__stage3Kp;        /* [EN] id 94, voltage loop at setpoint / حلقهٔ ولتاژ روی ست‌پوینت */
-    uint32_t uint32_t__stage3Ki;        /* [EN] id 95 */
-    uint32_t uint32_t__stage3Kd;        /* [EN] id 96 */
-    uint32_t uint32_t__stage3UpRate;    /* [EN] id 97, milli-permille/s */
-    uint32_t uint32_t__stage3DownRate;  /* [EN] id 98, milli-permille/s */
+    uint32_t uint32_t__stage1Kp;        /* [EN] id 83, current loop / حلقهٔ جریان */
+    uint32_t uint32_t__stage1Ki;        /* [EN] id 84 */
+    uint32_t uint32_t__stage1Kd;        /* [EN] id 85 */
+    uint32_t uint32_t__stage1UpRate;    /* [EN] id 86, milli-permille/s */
+    uint32_t uint32_t__stage1DownRate;  /* [EN] id 87, milli-permille/s */
+    uint32_t uint32_t__stage2Kp;        /* [EN] id 88, voltage loop below setpoint / حلقهٔ ولتاژ زیر ست‌پوینت */
+    uint32_t uint32_t__stage2Ki;        /* [EN] id 89 */
+    uint32_t uint32_t__stage2Kd;        /* [EN] id 90 */
+    uint32_t uint32_t__stage2UpRate;    /* [EN] id 91, milli-permille/s */
+    uint32_t uint32_t__stage2DownRate;  /* [EN] id 92, milli-permille/s */
+    uint32_t uint32_t__stage3Kp;        /* [EN] id 93, voltage loop at setpoint / حلقهٔ ولتاژ روی ست‌پوینت */
+    uint32_t uint32_t__stage3Ki;        /* [EN] id 94 */
+    uint32_t uint32_t__stage3Kd;        /* [EN] id 95 */
+    uint32_t uint32_t__stage3UpRate;    /* [EN] id 96, milli-permille/s */
+    uint32_t uint32_t__stage3DownRate;  /* [EN] id 97, milli-permille/s */
 } charger_pid_t;
 
 /* [EN] volatile for the same cross-task reason as the profile: the EspLink
    task writes, the control task reads. [FA] همان دلیل بین‌تسکی پروفایل. */
 static volatile charger_pid_t CHARGER_PID_T__G__Pid =
 {
-    CHG_PID_ENABLE_DEFAULT,
     CHG_PID_STAGE1_KP, CHG_PID_STAGE1_KI, CHG_PID_STAGE1_KD,
     CHG_PID_STAGE1_UP_RATE, CHG_PID_STAGE1_DOWN_RATE,
     CHG_PID_STAGE2_KP, CHG_PID_STAGE2_KI, CHG_PID_STAGE2_KD,
@@ -1094,6 +1093,7 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
     int32_t int32_t__rate;
     int32_t int32_t__demand;
     int32_t int32_t__appliedPermille;
+    int32_t int32_t__prevPermille;
     int32_t int32_t__deviation;
     int32_t int32_t__numerator;
     int32_t int32_t__step;
@@ -1104,6 +1104,61 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
     uint32_t__appliedMilli =
         (uint32_t)charger_channel_state_t__channel->uint16_t__dutyPermille *
         CHG_PID_DUTY_SCALE;
+
+    /* [EN] HARD BACKSTOPS (user order 2026-09-29): the 650 mA profile limit
+       and the 14.8 V pack limit must be actively enforced so the batteries
+       cannot be damaged - including by a future mis-tune of the gains,
+       which is why they live here and not on the panel. Both shrink the
+       duty ceiling in proportion to the excess instead of tripping: a
+       fixed step would re-create the hunting this rewrite removed, and a
+       latch would abort a healthy charge on one noisy sample. Because the
+       integral is clamped to this same ceiling a few lines below, there is
+       no windup left behind when the excess clears. See the block comment
+       on CHG_PID_BACKSTOP_MV in charger.h.
+       [FA] پشتیبان‌های سخت (دستور کاربر ۲۰۲۶-۰۹-۲۹): حد ۶۵۰ میلی‌آمپرِ
+       پروفایل و حد ۱۴٫۸ ولتِ باتری باید فعالانه اعمال شوند تا باتری‌ها
+       آسیب نبینند - از جمله در برابر تنظیم بد آیندهٔ ضرایب، و دلیل اینکه
+       اینجا هستند نه در پنل همین است. هر دو به‌جای قطع‌کردن، سقف دیوتی را
+       به تناسب مقدار تجاوز جمع می‌کنند: پلهٔ ثابت همان بالا-پایین پریدن را
+       برمی‌گرداند و قطع قفل‌شونده یک شارژ سالم را با یک نمونهٔ نویزی متوقف
+       می‌کند. چون انتگرال چند خط پایین‌تر به همین سقف مقید می‌شود، وقتی
+       تجاوز رفع شد چیزی برای باز شدن نمی‌ماند. */
+    if (uint32_t__currentMa > CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa)
+    {
+        uint32_t uint32_t__cutMilli =
+            (uint32_t__currentMa -
+             CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa) *
+            CHG_PID_BACKSTOP_GAIN_I;
+
+        if (uint32_t__appliedMilli > uint32_t__cutMilli)
+        {
+            if ((uint32_t__appliedMilli - uint32_t__cutMilli) < uint32_t__ceilingMilli)
+            {
+                uint32_t__ceilingMilli = uint32_t__appliedMilli - uint32_t__cutMilli;
+            }
+        }
+        else
+        {
+            uint32_t__ceilingMilli = 0u;
+        }
+    }
+    if (uint32_t__batteryMv > CHG_PID_BACKSTOP_MV)
+    {
+        uint32_t uint32_t__cutMilli =
+            (uint32_t__batteryMv - CHG_PID_BACKSTOP_MV) * CHG_PID_BACKSTOP_GAIN_V;
+
+        if (uint32_t__appliedMilli > uint32_t__cutMilli)
+        {
+            if ((uint32_t__appliedMilli - uint32_t__cutMilli) < uint32_t__ceilingMilli)
+            {
+                uint32_t__ceilingMilli = uint32_t__appliedMilli - uint32_t__cutMilli;
+            }
+        }
+        else
+        {
+            uint32_t__ceilingMilli = 0u;
+        }
+    }
 
     /* [EN] Bumpless (re)seed. Any foreign writer - the BULK soft start, a
        halved JIT retry duty, manual/fixed mode, a lowered panel ceiling -
@@ -1122,6 +1177,8 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
           ((uint32_t)CHG_PID_RESEED_TOLERANCE_PERMILLE * CHG_PID_DUTY_SCALE))))
     {
         charger_channel_state_t__channel->uint32_t__pidDutyMilli = uint32_t__appliedMilli;
+        charger_channel_state_t__channel->uint32_t__pidVoltFilt =
+            uint32_t__batteryMv * CHG_PID_VOLT_FILTER_N;
         charger_channel_state_t__channel->int32_t__pidIntegral = (int32_t)uint32_t__appliedMilli;
         charger_channel_state_t__channel->int32_t__pidIntegralRem = 0;
         charger_channel_state_t__channel->int32_t__pidLastError = 0;
@@ -1148,6 +1205,26 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
         uint32_t__elapsedMs = CHG_PID_DT_MIN_MS;
     }
     charger_channel_state_t__channel->uint32_t__pidLastTick = uint32_t__nowTick;
+
+    /* [EN] Voltage prefilter, advanced once per PID update so its time
+       constant is CHG_PID_VOLT_FILTER_N x CHG_PID_PERIOD_MS = 1.6 s. The
+       charge current arrives already filtered from measurement.c; the pack
+       voltage does not, and ~7 mV of ADC step lands straight on the
+       voltage loop's P term. Only the CONTROL path reads this - the hard
+       backstops above deliberately used the raw sample.
+       [FA] پیش‌فیلتر ولتاژ، یک‌بار در هر به‌روزرسانی PID جلو می‌رود پس ثابت
+       زمانی‌اش CHG_PID_VOLT_FILTER_N ضرب در CHG_PID_PERIOD_MS = ۱٫۶ ثانیه
+       است. جریان شارژ از measurement.c فیلترشده می‌آید ولی ولتاژ پک نه، و
+       حدود ۷ میلی‌ولت پلهٔ ADC مستقیم روی جملهٔ P حلقهٔ ولتاژ می‌نشیند. فقط
+       مسیر کنترل این را می‌خواند - پشتیبان‌های سخت بالا عمداً نمونهٔ خام را
+       خواندند. */
+    charger_channel_state_t__channel->uint32_t__pidVoltFilt =
+        (charger_channel_state_t__channel->uint32_t__pidVoltFilt -
+         (charger_channel_state_t__channel->uint32_t__pidVoltFilt /
+          CHG_PID_VOLT_FILTER_N)) +
+        uint32_t__batteryMv;
+    uint32_t__batteryMv =
+        charger_channel_state_t__channel->uint32_t__pidVoltFilt / CHG_PID_VOLT_FILTER_N;
 
     /* [EN] Gain rows. The CURRENT branch always reads the stage-1 row: it
        is one physical loop and it needs one tuning, whatever the battery
@@ -1336,7 +1413,8 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
        «اعمال‌شده» را نگه می‌دارد نه تقاضای ریز را، و همین باعث می‌شود
        نگهبان بذرگیری دقیقاً به همان اندازهٔ قبل به نویسندهٔ بیرونی حساس
        بماند. */
-    int32_t__appliedPermille = (int32_t)charger_channel_state_t__channel->uint16_t__dutyPermille;
+    int32_t__prevPermille = (int32_t)charger_channel_state_t__channel->uint16_t__dutyPermille;
+    int32_t__appliedPermille = int32_t__prevPermille;
     int32_t__deviation = int32_t__demand -
                          (int32_t__appliedPermille * (int32_t)CHG_PID_DUTY_SCALE);
     if ((int32_t__deviation >= (int32_t)CHG_PID_OUTPUT_HYST_MILLI) ||
@@ -1344,6 +1422,51 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
     {
         int32_t__appliedPermille =
             (int32_t__demand + ((int32_t)CHG_PID_DUTY_SCALE / 2)) / (int32_t)CHG_PID_DUTY_SCALE;
+    }
+
+    /* [EN] Symmetric mis-tune cap. The integral is rate-limited but P is
+       not, so a gain set pushed to the panel maximum could otherwise jump
+       the duty across its whole range in one update - measured on the
+       plant model, 4475 mA for 100 ms before the backstop could answer.
+       Symmetric so it cannot rectify the P-term ripple the way the old
+       asymmetric output limiter did, and wide enough (8 permille against a
+       measured worst of 3) that normal charging never touches it. It sits
+       BEFORE the hard ceiling below on purpose: a backstop must still be
+       able to pull the duty down by any amount in a single pass.
+       [FA] سقف متقارن مهار تنظیم اشتباه. انتگرال محدودِ نرخ است ولی P نه،
+       پس دسته‌ضریبی که تا بیشینهٔ پنل بالا رفته می‌توانست دیوتی را در یک
+       به‌روزرسانی در تمام بازه‌اش بپراند - روی مدل اندازه‌گیری شد: ۴۴۷۵
+       میلی‌آمپر برای ۱۰۰ میلی‌ثانیه، پیش از آنکه پشتیبان بتواند جواب دهد.
+       متقارن است تا نتواند ریپل جملهٔ P را مثل محدودکنندهٔ نامتقارن قدیمی
+       یکسو کند، و آن‌قدر باز هست (۸ پرمیل در برابر بیشینهٔ اندازه‌گیری‌شدهٔ
+       ۳) که شارژ عادی هرگز به آن نخورد. عمداً پیش از سقف سخت پایین
+       می‌نشیند: پشتیبان باید بتواند دیوتی را در یک پاس هر قدر لازم است
+       پایین بکشد. */
+    if (int32_t__appliedPermille > (int32_t__prevPermille + (int32_t)CHG_PID_MAX_STEP_PERMILLE))
+    {
+        int32_t__appliedPermille = int32_t__prevPermille + (int32_t)CHG_PID_MAX_STEP_PERMILLE;
+    }
+    if (int32_t__appliedPermille < (int32_t__prevPermille - (int32_t)CHG_PID_MAX_STEP_PERMILLE))
+    {
+        int32_t__appliedPermille = int32_t__prevPermille - (int32_t)CHG_PID_MAX_STEP_PERMILLE;
+    }
+
+    /* [EN] The ceiling is an ABSOLUTE cap, applied after the hysteresis so
+       the hysteresis can never hold the duty above a limit. This is what
+       makes the 650 mA / 14.8 V backstops a guarantee rather than a
+       tendency: without it a sub-hysteresis cut (under 0.7 permille) would
+       simply be ignored and the pack would sit a few mA over the limit.
+       Truncating division, never rounding - rounding up could re-cross it.
+       [FA] سقف یک حد مطلق است و بعد از هیسترزیس اعمال می‌شود تا هیسترزیس
+       هرگز نتواند دیوتی را بالای یک حد نگه دارد. همین است که پشتیبان‌های
+       ۶۵۰ میلی‌آمپر و ۱۴٫۸ ولت را از «تمایل» به «تضمین» تبدیل می‌کند:
+       بدون آن، کاهشی کوچک‌تر از هیسترزیس (زیر ۰٫۷ پرمیل) نادیده می‌رفت و
+       باتری چند میلی‌آمپر بالای حد می‌ماند. تقسیم با قطع اعشار، نه گرد
+       کردن - گرد کردن به بالا می‌تواند دوباره از حد رد شود. */
+    if (int32_t__appliedPermille >
+        (int32_t)(uint32_t__ceilingMilli / CHG_PID_DUTY_SCALE))
+    {
+        int32_t__appliedPermille = (int32_t)(uint32_t__ceilingMilli / CHG_PID_DUTY_SCALE);
     }
 
     charger_channel_state_t__channel->uint32_t__pidDutyMilli =
@@ -1364,8 +1487,6 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     uint32_t uint32_t__targetMv;
     uint32_t uint32_t__absorbTicks;
     uint16_t uint16_t__nextDuty;
-    uint32_t uint32_t__increasedDuty;
-    uint32_t uint32_t__upIntervalTicks;
     uint32_t uint32_t__downIntervalTicks;
 
     charger_channel_state_t__channel = &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
@@ -1740,7 +1861,6 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     }
 
     uint16_t__nextDuty = charger_channel_state_t__channel->uint16_t__dutyPermille;
-    uint32_t__upIntervalTicks = func__Charger_DurationTicks(CHG_DUTY_RAMP_UP_INTERVAL_MS);
     uint32_t__downIntervalTicks = func__Charger_DurationTicks(CHG_DUTY_RAMP_DOWN_INTERVAL_MS);
 
     if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT)
@@ -1776,175 +1896,31 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
            و بازگشت بعدی از دیوتی واقعی شروع می‌شود نه انتگرال کهنه. */
         func__Charger_PidInvalidate(charger_channel_state_t__channel);
     }
-    else if (CHARGER_PID_T__G__Pid.uint32_t__enable != 0u)
+    else
     {
-        /* [EN] v1.22 (user order 2026-09-28): the three-stage PID owns the
-           duty for BULK and ABSORB. The state machine above already chose
-           the setpoint and did the soak/taper/dip bookkeeping; everything
-           the old fixed-step chain below used to do - coarse/fine steps,
-           the 500/1000/2000 ms cadences, the over-voltage escape, the
-           current band with its 20 mA hysteresis - collapses into the
-           scheduled gains plus the per-stage slew limit. Set id 83 to 0 to
-           fall back to that chain unchanged.
-           [FA] v1.22 (دستور کاربر ۲۰۲۶-۰۹-۲۸): PID سه‌مرحله‌ای مالک دیوتی
-           در بالک و ابزورب است. ماشین حالت بالا ست‌پوینت را انتخاب و
-           دفترداری شستشو/تیپر/افت را انجام داده؛ هرچه زنجیرهٔ پله‌ثابتِ
-           پایین می‌کرد - پله‌های زبر و ریز، ضرب‌آهنگ‌های ۵۰۰/۱۰۰۰/۲۰۰۰ms،
-           فرار اضافه‌ولتاژ، باند جریان با هیسترزیس ۲۰mA - در ضرایب
-           زمان‌بندی‌شده و سقف شیب هر مرحله جمع می‌شود. شناسهٔ ۸۳ = ۰ یعنی
-           برگشت بی‌تغییر به همان زنجیره. */
+        /* [EN] v1.23 (user order 2026-09-29): the three-stage PID is now the
+           ONLY duty regulator - the fixed-step chain that used to live here
+           is deleted, not merely bypassed. The state machine above already
+           chose the setpoint and did the soak/taper/dip bookkeeping;
+           everything the old chain did - coarse/fine steps, the
+           500/1000/2000 ms cadences, the over-voltage escape, the current
+           band with its 20 mA hysteresis - is now the scheduled gains, the
+           per-stage slew limit and the two non-tunable backstops inside
+           PidStep. There is no fallback path and no enable flag any more.
+           [FA] v1.23 (دستور کاربر ۲۰۲۶-۰۹-۲۹): PID سه‌مرحله‌ای حالا تنها
+           تنظیم‌کنندهٔ دیوتی است - زنجیرهٔ پله‌ثابتی که اینجا بود حذف شده،
+           نه فقط دور زده. ماشین حالت بالا ست‌پوینت را انتخاب و دفترداری
+           شستشو/تیپر/افت را انجام داده؛ هرچه زنجیرهٔ قدیمی می‌کرد - پله‌های
+           زبر و ریز، ضرب‌آهنگ‌های ۵۰۰/۱۰۰۰/۲۰۰۰ms، فرار اضافه‌ولتاژ، باند
+           جریان با هیسترزیس ۲۰mA - حالا همان ضرایب زمان‌بندی‌شده و سقف شیب
+           هر مرحله و دو پشتیبان غیرقابل‌تنظیم داخل PidStep است. دیگر نه
+           مسیر جایگزینی هست نه پرچم فعال‌سازی. */
         uint16_t__nextDuty = func__Charger_PidStep(uint8_t__channelIndex,
                                                    uint32_t__batteryMv,
                                                    uint32_t__currentMa,
                                                    uint32_t__targetMv,
                                                    uint32_t__nowTick);
         charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
-    }
-    else if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_ABSORB)
-    {
-        uint32_t uint32_t__absorbUpIntervalTicks;
-        uint32_t uint32_t__absorbDownIntervalTicks;
-
-        /* [EN] Voltage hold at 14.4 V with fine 0.1% duty steps at HALF the
-           bulk rate (user directive 2026-09-19: no back-to-back duty moves):
-           up every 2000 ms, down every 1000 ms. Above 14.6 V the step grows
-           to 0.5% at the normal 500 ms cadence - that path is protection.
-           [FA] تثبیت ۱۴٫۴V با پلهٔ ۰٫۱٪ و نصف سرعت بالک (دستور کاربر): صعود
-           هر ۲۰۰۰ms، نزول هر ۱۰۰۰ms؛ بالای ۱۴٫۶V کاهش ۰٫۵٪ با فرکانس ۵۰۰ms. */
-        uint32_t__absorbUpIntervalTicks =
-            func__Charger_DurationTicks(CHG_DUTY_RAMP_UP_INTERVAL_ABSORB_MS);
-        uint32_t__absorbDownIntervalTicks =
-            func__Charger_DurationTicks(CHG_DUTY_RAMP_DOWN_INTERVAL_ABSORB_MS);
-
-        if (uint32_t__batteryMv > CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv)
-        {
-            if ((uint32_t)(uint32_t__nowTick -
-                           charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
-                uint32_t__downIntervalTicks)
-            {
-                if (uint16_t__nextDuty > CHG_DUTY_STEP_PERMILLE)
-                {
-                    uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_PERMILLE);
-                }
-                else
-                {
-                    uint16_t__nextDuty = 0u;
-                }
-                charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
-            }
-        }
-        else if (uint32_t__batteryMv > uint32_t__targetMv)
-        {
-            if ((uint32_t)(uint32_t__nowTick -
-                           charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
-                uint32_t__absorbDownIntervalTicks)
-            {
-                if (uint16_t__nextDuty > CHG_DUTY_STEP_FINE_PERMILLE)
-                {
-                    uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_FINE_PERMILLE);
-                }
-                else
-                {
-                    uint16_t__nextDuty = 0u;
-                }
-                charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
-            }
-        }
-        else if (uint32_t__batteryMv < uint32_t__targetMv)
-        {
-            if ((uint32_t)(uint32_t__nowTick -
-                           charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
-                uint32_t__absorbUpIntervalTicks)
-            {
-                uint32_t__increasedDuty =
-                    (uint32_t)uint16_t__nextDuty + CHG_DUTY_STEP_FINE_PERMILLE;
-                if (uint32_t__increasedDuty > CHG_DUTY_MAX_PERMILLE)
-                {
-                    uint16_t__nextDuty = CHG_DUTY_MAX_PERMILLE;
-                }
-                else
-                {
-                    uint16_t__nextDuty = (uint16_t)uint32_t__increasedDuty;
-                }
-                charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
-            }
-        }
-        else
-        {
-            /* [EN] Exactly on the 14.4 V setpoint: hold.
-               / دقیقاً روی ۱۴٫۴V: نگه‌داشت. */
-        }
-    }
-    else if (uint32_t__batteryMv < uint32_t__targetMv)
-    {
-        /* [EN] Current regulation band with rate-limited steps: above 650 mA
-           step duty DOWN (one 0.5% step per 500 ms), below 630 mA step duty
-           UP (one 0.5% step per 1000 ms), inside 630..650 hold. Gradual
-           down-steps let the loop sit near the band with hysteresis instead
-           of cutting and restarting from zero.
-           [FA] باند تنظیم جریان با پله‌های محدودشدهٔ زمانی: بالای ۶۵۰ کاهش
-           تدریجی (هر ۵۰۰ms)، زیر ۶۳۰ افزایش تدریجی (هر ۱ ثانیه)، داخل باند
-           نگه‌داشت — بدون قطع و شروع از صفر، مثل یه هیسترزیس. */
-        if (uint32_t__currentMa > CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa)
-        {
-            if ((uint32_t)(uint32_t__nowTick -
-                           charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
-                uint32_t__downIntervalTicks)
-            {
-                if (uint16_t__nextDuty > CHG_DUTY_STEP_PERMILLE)
-                {
-                    uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_PERMILLE);
-                }
-                else
-                {
-                    uint16_t__nextDuty = 0u;
-                }
-                charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
-            }
-        }
-        else if (uint32_t__currentMa <
-                 ((CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa > 70u)
-                      ? (CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa - 20u)
-                      : 50u)) /* [EN] derived band bottom = top - 20 / کف باند = سقف − ۲۰ */
-        {
-            if ((uint32_t)(uint32_t__nowTick -
-                           charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
-                uint32_t__upIntervalTicks)
-            {
-                uint32_t__increasedDuty =
-                    (uint32_t)uint16_t__nextDuty + CHG_DUTY_STEP_PERMILLE;
-                if (uint32_t__increasedDuty > CHG_DUTY_MAX_PERMILLE)
-                {
-                    uint16_t__nextDuty = CHG_DUTY_MAX_PERMILLE;
-                }
-                else
-                {
-                    uint16_t__nextDuty = (uint16_t)uint32_t__increasedDuty;
-                }
-                charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
-            }
-        }
-        else
-        {
-            /* [EN] Inside the 630..650 band: hold duty. / داخل باند: نگه‌داشت دیوتی */
-        }
-    }
-    else if (uint32_t__batteryMv > uint32_t__targetMv)
-    {
-        if ((uint32_t)(uint32_t__nowTick -
-                       charger_channel_state_t__channel->uint32_t__lastDutyStepTick) >=
-            uint32_t__downIntervalTicks)
-        {
-            if (uint16_t__nextDuty > CHG_DUTY_STEP_PERMILLE)
-            {
-                uint16_t__nextDuty = (uint16_t)(uint16_t__nextDuty - CHG_DUTY_STEP_PERMILLE);
-            }
-            else
-            {
-                uint16_t__nextDuty = 0u;
-            }
-            charger_channel_state_t__channel->uint32_t__lastDutyStepTick = uint32_t__nowTick;
-        }
     }
 
     func__Charger_ApplyDuty(uint8_t__channelIndex, uint16_t__nextDuty);
@@ -2942,11 +2918,6 @@ static void func__Charger_ClampPid(void)
     uint32_t uint32_t__index;
     volatile uint32_t *uint32_t__ptr_words;
 
-    if (CHARGER_PID_T__G__Pid.uint32_t__enable > 1u)
-    {
-        CHARGER_PID_T__G__Pid.uint32_t__enable = 1u;
-    }
-
     /* [EN] Gains and rates share one indexed sweep: the struct packs the
        three stage rows as (Kp, Ki, Kd, up-rate, down-rate), so index % 5
        >= 3 is a slew rate and everything else is a gain.
@@ -3233,28 +3204,26 @@ bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
 /* [EN] Same dense-id/packed-struct contract as the profile: wire ids 83..98
    map 1:1 onto charger_pid_t's 16 words in order, so Set/Get index instead
    of switching (host test pins every wire id).
-   [FA] همان قرارداد شناسهٔ پشت‌سرهم و ساختار فشرده: ۸۳..۹۸ یک‌به‌یک روی ۱۶
+   [FA] همان قرارداد شناسهٔ پشت‌سرهم و ساختار فشرده: ۸۳..۹۷ یک‌به‌یک روی ۱۵
    کلمهٔ charger_pid_t می‌افتند، پس Set/Get نمایه می‌زنند. */
-_Static_assert(CHG_PID_PARAM_ENABLE == 83u, "PID id base must be 83");
-_Static_assert(CHG_PID_PARAM_STAGE3_DOWN_RATE == 98u, "PID id top must be 98");
-_Static_assert((CHG_PID_PARAM_STAGE3_DOWN_RATE - CHG_PID_PARAM_ENABLE) == 15u,
+_Static_assert(CHG_PID_PARAM_STAGE1_KP == 83u, "PID id base must be 83");
+_Static_assert(CHG_PID_PARAM_STAGE3_DOWN_RATE == 97u, "PID id top must be 97");
+_Static_assert((CHG_PID_PARAM_STAGE3_DOWN_RATE - CHG_PID_PARAM_STAGE1_KP) == 14u,
                "PID id block must stay dense");
-_Static_assert(sizeof(charger_pid_t) == (16u * sizeof(uint32_t)),
-               "charger_pid_t must pack exactly 16 words");
-_Static_assert(offsetof(charger_pid_t, uint32_t__enable) == 0u,
-               "first field must be the id-83 word");
+_Static_assert(sizeof(charger_pid_t) == (15u * sizeof(uint32_t)),
+               "charger_pid_t must pack exactly 15 words");
 _Static_assert(offsetof(charger_pid_t, uint32_t__stage1Kp) ==
-                   (1u * sizeof(uint32_t)),
-               "stage rows must start at the id-84 word");
+                   (0u * sizeof(uint32_t)),
+               "stage 1 row must start at the id-83 word");
 _Static_assert(offsetof(charger_pid_t, uint32_t__stage2Kp) ==
-                   (6u * sizeof(uint32_t)),
-               "stage 2 row must start at the id-89 word");
+                   (5u * sizeof(uint32_t)),
+               "stage 2 row must start at the id-88 word");
 _Static_assert(offsetof(charger_pid_t, uint32_t__stage3Kp) ==
-                   (11u * sizeof(uint32_t)),
-               "stage 3 row must start at the id-94 word");
+                   (10u * sizeof(uint32_t)),
+               "stage 3 row must start at the id-93 word");
 _Static_assert(offsetof(charger_pid_t, uint32_t__stage3DownRate) ==
-                   (15u * sizeof(uint32_t)),
-               "last field must be the id-98 word");
+                   (14u * sizeof(uint32_t)),
+               "last field must be the id-97 word");
 
 /* [EN] Arithmetic headroom proofs for func__Charger_PidStep - the whole
    loop runs in int32_t, so the worst case a panel user can dial in must
@@ -3313,7 +3282,7 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
        نیمه‌اعمال‌شده بخواند. */
     int32_t int32_t__savedKernelLock = osKernelLock();
 
-    if ((uint8_t__paramId < CHG_PID_PARAM_ENABLE) ||
+    if ((uint8_t__paramId < CHG_PID_PARAM_STAGE1_KP) ||
         (uint8_t__paramId > CHG_PID_PARAM_STAGE3_DOWN_RATE))
     {
         if (int32_t__savedKernelLock >= 0)
@@ -3323,8 +3292,8 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
         return false;
     }
 
-    ((volatile uint32_t *)&CHARGER_PID_T__G__Pid.uint32_t__enable)
-        [uint8_t__paramId - CHG_PID_PARAM_ENABLE] = uint32_t__value;
+    ((volatile uint32_t *)&CHARGER_PID_T__G__Pid.uint32_t__stage1Kp)
+        [uint8_t__paramId - CHG_PID_PARAM_STAGE1_KP] = uint32_t__value;
 
     func__Charger_ClampPid();
     if (int32_t__savedKernelLock >= 0)
@@ -3337,14 +3306,14 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
 bool func__Charger_GetPidParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value)
 {
-    if ((uint8_t__paramId < CHG_PID_PARAM_ENABLE) ||
+    if ((uint8_t__paramId < CHG_PID_PARAM_STAGE1_KP) ||
         (uint8_t__paramId > CHG_PID_PARAM_STAGE3_DOWN_RATE))
     {
         return false;
     }
     *uint32_t__value =
-        ((volatile uint32_t *)&CHARGER_PID_T__G__Pid.uint32_t__enable)
-        [uint8_t__paramId - CHG_PID_PARAM_ENABLE];
+        ((volatile uint32_t *)&CHARGER_PID_T__G__Pid.uint32_t__stage1Kp)
+        [uint8_t__paramId - CHG_PID_PARAM_STAGE1_KP];
     return true;
 }
 

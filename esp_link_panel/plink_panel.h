@@ -354,34 +354,30 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 </div>
 <div class="sgx" id="s3">
 <div class="cd">
-<div class="hd"><b>PID سه‌مرحله‌ای شارژ</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">به‌جای پله‌های ثابت قدیمی، دیوتی را یک PID تعیین می‌کند. سه «مرحله» یعنی سه دسته ضریب:<br><b>مرحلهٔ ۱ — حلقهٔ جریان (بالک):</b> تا وقتی باتری خالی است، شارژر جریان ثابت می‌دهد و این ردیف آن را می‌راند.<br><b>مرحلهٔ ۲ — حلقهٔ ولتاژ، زیر ست‌پوینت:</b> وقتی ولتاژ به ابزورب نزدیک می‌شود. «نرخ صعود» همین ردیف، همان کلیدی است که سرعت رشد دیوتی در ابزورب را کم می‌کند.<br><b>مرحلهٔ ۳ — حلقهٔ ولتاژ، روی ست‌پوینت و بالاتر:</b> تثبیت روی ۱۴٫۴ و عقب‌نشینی از اضافه‌ولتاژ.<br>هر لحظه هر شاخه‌ای که دیوتی کمتری بخواهد برنده است، پس حد جریان و حد ولتاژ هر دو همیشه می‌بندند.<br>واحدها: Kp = پرمیل دیوتی به ازای هر ولت خطا (ردیف‌های ولتاژ) یا هر آمپر خطا (ردیف جریان). Ki = میلی‌پرمیل بر ثانیه به ازای هر میلی‌ولت/میلی‌آمپر خطا (Ki=۱۰۰۰ یعنی ۱ پرمیل بر ثانیه به ازای هر ولت). نرخ صعود/نزول = سقف سرعت حرکت نقطهٔ کار بر حسب میلی‌پرمیل بر ثانیه (۱۰۰۰ = ۱ پرمیل بر ثانیه).<br>Kd پیش‌فرض صفر است؛ مشتق روی سیگنال نویزی فقط دیوتی را می‌لرزاند.<br>کلید «فعال» را صفر کنید تا دقیقاً به تنظیم‌کنندهٔ پله‌ای قدیمی برگردید (هیچ عددی عوض نمی‌شود).<br>حفاظت‌ها دست‌نخورده‌اند: سقف دیوتی ۵۰۰‰، خطای سخت جریان، قطع OV و کل ماشین حالت بالای این حلقه‌اند.</span></button><span class="lb">· شناسه‌های ۸۳..۹۸ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
-<div class="sec">فعال‌سازی <span class="lb">(۰ = تنظیم‌کنندهٔ پله‌ای قدیمی، ۱ = PID)</span></div>
+<div class="hd"><b>PID سه‌مرحله‌ای شارژ</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">به‌جای پله‌های ثابت قدیمی، دیوتی را یک PID تعیین می‌کند. سه «مرحله» یعنی سه دسته ضریب:<br><b>مرحلهٔ ۱ — حلقهٔ جریان (بالک):</b> تا وقتی باتری خالی است، شارژر جریان ثابت می‌دهد و این ردیف آن را می‌راند.<br><b>مرحلهٔ ۲ — حلقهٔ ولتاژ، زیر ست‌پوینت:</b> وقتی ولتاژ به ابزورب نزدیک می‌شود. «نرخ صعود» همین ردیف، همان کلیدی است که سرعت رشد دیوتی در ابزورب را کم می‌کند.<br><b>مرحلهٔ ۳ — حلقهٔ ولتاژ، روی ست‌پوینت و بالاتر:</b> تثبیت روی ۱۴٫۴ و عقب‌نشینی از اضافه‌ولتاژ.<br>هر لحظه هر شاخه‌ای که دیوتی کمتری بخواهد برنده است، پس حد جریان و حد ولتاژ هر دو همیشه می‌بندند.<br>واحدها: Kp = پرمیل دیوتی به ازای هر ولت خطا (ردیف‌های ولتاژ) یا هر آمپر خطا (ردیف جریان). Ki = میلی‌پرمیل بر ثانیه به ازای هر میلی‌ولت/میلی‌آمپر خطا (Ki=۱۰۰۰ یعنی ۱ پرمیل بر ثانیه به ازای هر ولت). نرخ صعود/نزول = سقف سرعت حرکت نقطهٔ کار بر حسب میلی‌پرمیل بر ثانیه (۱۰۰۰ = ۱ پرمیل بر ثانیه).<br>Kd پیش‌فرض صفر است؛ مشتق روی سیگنال نویزی فقط دیوتی را می‌لرزاند.<br>این تنها تنظیم‌کنندهٔ شارژ است؛ منطق پله‌ای قدیمی حذف شده و راه برگشتی ندارد.<br>اعداد پیش‌فرض یک‌بار روی مدل کالیبره شده‌اند (بر پایهٔ همان جدول پروفایل شارژ: ۱۴٫۴ ولت، ۶۵۰ میلی‌آمپر، سقف ۵۰۰ پرمیل) — می‌توانید از همین‌جا بهینه‌شان کنید و با دکمهٔ پایین به کالیبراسیون کارخانه برگردید.<br><b>دو پشتیبان سخت همیشه فعال‌اند و از پنل تنظیم نمی‌شوند:</b> اگر جریان از حد پروفایل (۶۵۰ میلی‌آمپر) یا ولتاژ از ۱۴٫۸ ولت رد شود، سقف دیوتی به تناسب مقدار تجاوز جمع می‌شود. عمداً بیرون از دسترس این صفحه‌اند تا تیون اشتباه نتواند باتری را آسیب بزند.<br>بقیهٔ حفاظت‌ها هم دست‌نخورده‌اند: سقف دیوتی ۵۰۰‰، خطای سخت جریان، قطع OV و کل ماشین حالت بالای این حلقه‌اند.</span></button><span class="lb">· شناسه‌های ۸۳..۹۷ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
+<div class="sec">مرحلهٔ ۱ — حلقهٔ جریان (بالک) <span class="lb">· پیش‌فرض ۱۲ / ۱۶۰۰ / ۰ / ۱۰۰۰ / ۱۰۰۰ · کالیبرهٔ کارخانه</span></div>
 <div class="bqr">
-<label>PID فعال<input type="number" id="q83" step="1" min="0" max="1"><span class="lb" id="a83">—</span></label>
+<label>Kp (‰ بر آمپر)<input type="number" id="q83" step="5" min="0" max="20000"><span class="lb" id="a83">—</span></label>
+<label>Ki<input type="number" id="q84" step="50" min="0" max="20000"><span class="lb" id="a84">—</span></label>
+<label>Kd<input type="number" id="q85" step="10" min="0" max="20000"><span class="lb" id="a85">—</span></label>
+<label>نرخ صعود (m‰/s)<input type="number" id="q86" step="10" min="10" max="20000"><span class="lb" id="a86">—</span></label>
+<label>نرخ نزول (m‰/s)<input type="number" id="q87" step="10" min="10" max="20000"><span class="lb" id="a87">—</span></label>
 </div>
-<div class="sec">مرحلهٔ ۱ — حلقهٔ جریان (بالک) <span class="lb">· پیش‌فرض ۲۰ / ۸۰۰ / ۰ / ۵۰۰ / ۱۰۰۰</span></div>
+<div class="sec">مرحلهٔ ۲ — حلقهٔ ولتاژ، زیر ست‌پوینت <span class="lb">· پیش‌فرض ۱۵۰ / ۶۰۰ / ۰ / ۳۰ / ۱۰۰۰ · نرخ صعود = کلید «رشد کندتر ابزورب»</span></div>
 <div class="bqr">
-<label>Kp (‰ بر آمپر)<input type="number" id="q84" step="5" min="0" max="20000"><span class="lb" id="a84">—</span></label>
-<label>Ki<input type="number" id="q85" step="50" min="0" max="20000"><span class="lb" id="a85">—</span></label>
-<label>Kd<input type="number" id="q86" step="10" min="0" max="20000"><span class="lb" id="a86">—</span></label>
-<label>نرخ صعود (m‰/s)<input type="number" id="q87" step="10" min="10" max="20000"><span class="lb" id="a87">—</span></label>
-<label>نرخ نزول (m‰/s)<input type="number" id="q88" step="10" min="10" max="20000"><span class="lb" id="a88">—</span></label>
+<label>Kp (‰ بر ولت)<input type="number" id="q88" step="10" min="0" max="20000"><span class="lb" id="a88">—</span></label>
+<label>Ki<input type="number" id="q89" step="50" min="0" max="20000"><span class="lb" id="a89">—</span></label>
+<label>Kd<input type="number" id="q90" step="10" min="0" max="20000"><span class="lb" id="a90">—</span></label>
+<label>نرخ صعود (m‰/s)<input type="number" id="q91" step="5" min="10" max="20000"><span class="lb" id="a91">—</span></label>
+<label>نرخ نزول (m‰/s)<input type="number" id="q92" step="10" min="10" max="20000"><span class="lb" id="a92">—</span></label>
 </div>
-<div class="sec">مرحلهٔ ۲ — حلقهٔ ولتاژ، زیر ست‌پوینت <span class="lb">· پیش‌فرض ۱۵۰ / ۳۰۰ / ۰ / ۳۰ / ۱۰۰۰ · نرخ صعود = کلید «رشد کندتر ابزورب»</span></div>
+<div class="sec">مرحلهٔ ۳ — حلقهٔ ولتاژ، روی ست‌پوینت و بالاتر <span class="lb">· پیش‌فرض ۱۵۰ / ۱۸۰۰۰ / ۰ / ۱۰ / ۱۰۰۰</span></div>
 <div class="bqr">
-<label>Kp (‰ بر ولت)<input type="number" id="q89" step="10" min="0" max="20000"><span class="lb" id="a89">—</span></label>
-<label>Ki<input type="number" id="q90" step="50" min="0" max="20000"><span class="lb" id="a90">—</span></label>
-<label>Kd<input type="number" id="q91" step="10" min="0" max="20000"><span class="lb" id="a91">—</span></label>
-<label>نرخ صعود (m‰/s)<input type="number" id="q92" step="5" min="10" max="20000"><span class="lb" id="a92">—</span></label>
-<label>نرخ نزول (m‰/s)<input type="number" id="q93" step="10" min="10" max="20000"><span class="lb" id="a93">—</span></label>
-</div>
-<div class="sec">مرحلهٔ ۳ — حلقهٔ ولتاژ، روی ست‌پوینت و بالاتر <span class="lb">· پیش‌فرض ۳۰۰ / ۱۲۰۰۰ / ۰ / ۱۰ / ۱۰۰۰</span></div>
-<div class="bqr">
-<label>Kp (‰ بر ولت)<input type="number" id="q94" step="10" min="0" max="20000"><span class="lb" id="a94">—</span></label>
-<label>Ki<input type="number" id="q95" step="500" min="0" max="20000"><span class="lb" id="a95">—</span></label>
-<label>Kd<input type="number" id="q96" step="10" min="0" max="20000"><span class="lb" id="a96">—</span></label>
-<label>نرخ صعود (m‰/s)<input type="number" id="q97" step="5" min="10" max="20000"><span class="lb" id="a97">—</span></label>
-<label>نرخ نزول (m‰/s)<input type="number" id="q98" step="10" min="10" max="20000"><span class="lb" id="a98">—</span></label>
+<label>Kp (‰ بر ولت)<input type="number" id="q93" step="10" min="0" max="20000"><span class="lb" id="a93">—</span></label>
+<label>Ki<input type="number" id="q94" step="500" min="0" max="20000"><span class="lb" id="a94">—</span></label>
+<label>Kd<input type="number" id="q95" step="10" min="0" max="20000"><span class="lb" id="a95">—</span></label>
+<label>نرخ صعود (m‰/s)<input type="number" id="q96" step="5" min="10" max="20000"><span class="lb" id="a96">—</span></label>
+<label>نرخ نزول (m‰/s)<input type="number" id="q97" step="10" min="10" max="20000"><span class="lb" id="a97">—</span></label>
 </div>
 <div id="pw" style="margin:6px 0 0"></div>
 <div class="bqr"><button class="sb sb2" onclick="pdef()">بازگردانی پیش‌فرض کارخانهٔ PID</button></div>
@@ -389,7 +385,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 </div>
 <div class="sgx" id="s4">
 <div class="cd">
-<div class="hd"><b>پشتیبان‌گیری همهٔ تنظیمات</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد (کالیبراسیون، فیلتر، فعال‌سازی/سقف‌ها، پروفایل، آلارم‌ها، سناریوها) را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). گذراها (۱۵..۱۹ و میوت ۷۶) جزو پشتیبان نیستند. از v1.22 ضرایب PID سه‌مرحله‌ای (۸۳..۹۸) هم در همین پشتیبان می‌آیند.</span></button><span class="lb">· یک بکاپ برای کل بخش تنظیمات — خروجی/ورودی JSON همهٔ ۹۳ مقدار ماندگار (۰..۱۴، ۲۰..۷۵، ۷۷..۹۸) — شامل ضرایب PID</span></div>
+<div class="hd"><b>پشتیبان‌گیری همهٔ تنظیمات</b> <button class="ib" onclick="this.classList.toggle('o')">!<span class="it">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد (کالیبراسیون، فیلتر، فعال‌سازی/سقف‌ها، پروفایل، آلارم‌ها، سناریوها) را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). گذراها (۱۵..۱۹ و میوت ۷۶) جزو پشتیبان نیستند. از v1.23 ضرایب PID سه‌مرحله‌ای (۸۳..۹۷) هم در همین پشتیبان می‌آیند.</span></button><span class="lb">· یک بکاپ برای کل بخش تنظیمات — خروجی/ورودی JSON همهٔ ۹۲ مقدار ماندگار (۰..۱۴، ۲۰..۷۵، ۷۷..۹۷) — شامل ضرایب PID</span></div>
 <div class="bqr">
 <button class="sb sb2" onclick="xexp()">⬇ خروجی (دانلود JSON)</button>
 <label class="sb" style="cursor:pointer">⬆ ورودی (انتخاب فایل)<input type="file" id="xim" accept=".json,application/json" style="display:none"></label>
@@ -579,9 +575,9 @@ for(const id of [7,8,20,21,22,23,24,25,26]){const e=$('q'+id);if(!e)continue;e.o
 function cfill(){if(!D||!D.p)return;for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];}}
 for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;send(id,v);};}
 /* ===== v1.15: تب آلارم‌ها — آینهٔ قوانین Fault_ClampAlarms/Charger_ClampAlarms روی برد ===== */
-const AIDS=[];for(let _i=27;_i<=98;_i++)AIDS.push(_i);
+const AIDS=[];for(let _i=27;_i<=97;_i++)AIDS.push(_i);
 const ADEF=[14800,150,6000,7000,1000,1000,21000,28000,950,15000,2000,1000,50,10000,1000,1,0,1000,50,3000,233,3,100,40,20,10,1,60000,20000,10000,100,1,1000,2000,10000,1,2,3,100,1000,10,1000,150,28000,1000,21000,21200,21000,29000,0,100,95,5,2,2,3];
-function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:ADEF[id-27];
+function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:(id>=83?PDEF[id-83]:ADEF[id-27]);
  if(e&&e.value!==''){const v=parseInt(e.value,10);if(!isNaN(v))return{v,d};}
  return{v:d,d};}
 function ap(){
@@ -671,24 +667,23 @@ function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id
 function afill(){if(!D||!D.p)return;for(const id of AIDS){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!apend(id))a.textContent=D.p[id]==null?'—':D.p[id];}}
 function adef(){ADEF.slice(0,11).forEach((v,k)=>{const id=27+k;$('q'+id).value=v;send(id,v);});afresh();}
 /* v1.22: پیش‌فرض کارخانهٔ PID سه‌مرحله‌ای — همان اعداد CHG_PID_* در charger.h */
-const PDEF=[1,20,800,0,500,1000,150,300,0,30,1000,300,12000,0,10,1000];
+const PDEF=[12,1600,0,1000,1000,150,600,0,30,1000,150,18000,0,10,1000];
 /* v1.22: نگهبان ترکیب PID — آینهٔ func__Charger_ClampPid روی برد به اضافهٔ دو
    هشدار تیون که شبیه‌سازی نشان داد. خروجی خالی = ترکیب سالم. */
 function pv(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:PDEF[id-83];
  if(e&&e.value!==''){const v=parseInt(e.value,10);if(!isNaN(v))return v;}
  return d;}
-function pchk(){const w=[],en=pv(83);
- for(let id=84;id<=98;id++){const v=pv(id),rate=((id-84)%5)>=3;
+function pchk(){const w=[];
+ for(let id=83;id<=97;id++){const v=pv(id),rate=((id-83)%5)>=3;
   if(rate&&(v<10||v>20000))w.push({ids:[id],msg:'نرخ شیب باید ۱۰ تا ۲۰۰۰۰ میلی‌پرمیل بر ثانیه باشد'});
   if(!rate&&(v<0||v>20000))w.push({ids:[id],msg:'ضریب باید ۰ تا ۲۰۰۰۰ باشد'});}
- if(pv(92)>=pv(87))w.push({ids:[92,87],msg:'نرخ صعود مرحلهٔ ۲ باید کمتر از مرحلهٔ ۱ بماند، وگرنه دیوتی در ابزورب تندتر از بالک رشد می‌کند (همان چیزی که قرار بود کم شود)'});
- if(pv(97)>=pv(92))w.push({ids:[97,92],msg:'نرخ صعود مرحلهٔ ۳ باید کمتر از مرحلهٔ ۲ بماند؛ روی ست‌پوینت باید از همه آرام‌تر باشد'});
- if(pv(84)>150)w.push({ids:[84],msg:'Kp حلقهٔ جریان بالای ۱۵۰ ریسک لرزش دارد: هر یک پرمیل تغییر دیوتی حدود ۷ میلی‌آمپر جریان جابه‌جا می‌کند، پس Kp بزرگ باعث می‌شود حلقه بین دو عدد صحیح پرمیل گیر کند و بالا نرود'});
- if(pv(83)>1)w.push({ids:[83],msg:'فعال‌سازی فقط ۰ یا ۱'});
- const box=$('pw');if(box)box.innerHTML=!w.length?(en?'<span class="lb">✅ ترکیب PID سالم است — کنترل با PID سه‌مرحله‌ای</span>':'<span class="lb">ℹ PID خاموش است — برد دقیقاً با تنظیم‌کنندهٔ پله‌ای قدیمی کار می‌کند</span>'):w.map(x=>'<div class="wn">⚠ '+x.msg+'</div>').join('');
+ if(pv(91)>=pv(86))w.push({ids:[91,86],msg:'نرخ صعود مرحلهٔ ۲ باید کمتر از مرحلهٔ ۱ بماند، وگرنه دیوتی در ابزورب تندتر از بالک رشد می‌کند (همان چیزی که قرار بود کم شود)'});
+ if(pv(96)>=pv(91))w.push({ids:[96,91],msg:'نرخ صعود مرحلهٔ ۳ باید کمتر از مرحلهٔ ۲ بماند؛ روی ست‌پوینت باید از همه آرام‌تر باشد'});
+ if(pv(83)>150)w.push({ids:[83],msg:'Kp حلقهٔ جریان بالای ۱۵۰ ریسک لرزش دارد: هر یک پرمیل تغییر دیوتی حدود ۷ میلی‌آمپر جریان جابه‌جا می‌کند، پس Kp بزرگ باعث می‌شود حلقه بین دو عدد صحیح پرمیل گیر کند و بالا نرود'});
+ const box=$('pw');if(box)box.innerHTML=!w.length?'<span class="lb">✅ ترکیب PID سالم است · پشتیبان‌های ۶۵۰ میلی‌آمپر و ۱۴٫۸ ولت همیشه فعال‌اند</span>':w.map(x=>'<div class="wn">⚠ '+x.msg+'</div>').join('');
  return w;}
 function pdef(){PDEF.forEach((v,k)=>{const id=83+k,e=$('q'+id);if(e)e.value=v;send(id,v);});pchk();}
-function sdef(){AIDS.forEach((id,k)=>{if(id<38)return;const e=$('q'+id);if(e)e.value=ADEF[k];send(id,ADEF[k]);});afresh();}
+function sdef(){AIDS.forEach((id,k)=>{if(id<38||id>82)return;const e=$('q'+id);if(e)e.value=ADEF[k];send(id,ADEF[k]);});afresh();}
 /* v1.15b: کارت وضعیت گروه‌بندی‌شده — اسکلت یک‌بار ساخته می‌شود و هر poll فقط متن/رنگ به‌روز می‌شود (بدون پر/خالی شدن و چشمک) */
 const FEXP=[
  ['خطای ADC','نمونه‌برداری ADC نامعتبر است و اندازه‌گیری‌ها قابل‌اعتماد نیست؛ برد محافظه‌کار می‌شود. سیم‌کشی آنالوگ و تغذیه را بررسی کنید.'],

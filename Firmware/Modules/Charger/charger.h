@@ -164,16 +164,20 @@
 #define CHG_FIXED_DUTY_TEST_ENABLE              0u  /* [EN] 1=fixed 15% duty diagnostic (DONE, coefficients locked); 0=normal charge / تست تمام شد، شارژ نرمال فعال */
 #define CHG_FIXED_DUTY_TEST_DUTY_PERMILLE     150u
 #define CHG_CURRENT_LIMIT_MA           675u
-/* [EN] Output-current regulation band: below CHG_REGULATE_LOW_MA the duty
- *      steps up, above CHG_BULK_CURRENT_MAX_MA it steps down, inside the band
- *      it holds. Only a hard fault (> CHG_CURRENT_HARD_FAULT_MA) resets the
- *      channel. Band narrowed 620..675 -> 630..650 mA (~20 mA tolerance) on
- *      user bench directive 2026-09-18: the measurement and estimate filters
- *      are now strong enough for a tight band without hunting.
- * [FA] باند تنظیم جریان خروجی: زیر ۶۳۰ افزایش دیوتی، بالای ۶۵۰ کاهش دیوتی،
- *      داخل باند نگه‌داشت (~۲۰mA تلورانس طبق دستور). فقط خطای سخت (بالاتر
- *      از ۹۵۰) کانال را ریست می‌کند. */
-#define CHG_REGULATE_LOW_MA            630u
+/* [EN] The 630..650 mA hysteresis band that the deleted step chain used is
+ *      gone with it (v1.23): a PID has no band, it has a setpoint
+ *      (CHG_BULK_CURRENT_MAX_MA minus CHG_PID_CURRENT_MARGIN_MA = 640 mA)
+ *      and it sits on it. CHG_BULK_CURRENT_MAX_MA now has a second job as
+ *      the hard over-current BACKSTOP inside the PID (user order
+ *      2026-09-29), while CHG_CURRENT_HARD_FAULT_MA stays what it always
+ *      was: the 950 mA trip that cuts the channel and raises the fault.
+ * [FA] باند هیسترزیس ۶۳۰..۶۵۰ میلی‌آمپر که زنجیرهٔ پله‌ای حذف‌شده استفاده
+ *      می‌کرد با خودش رفت (v1.23): PID باند ندارد، ست‌پوینت دارد
+ *      (CHG_BULK_CURRENT_MAX_MA منهای CHG_PID_CURRENT_MARGIN_MA = ۶۴۰
+ *      میلی‌آمپر) و روی همان می‌نشیند. حالا CHG_BULK_CURRENT_MAX_MA کار
+ *      دومی هم دارد: پشتیبان سخت اضافه‌جریان داخل PID (دستور کاربر
+ *      ۲۰۲۶-۰۹-۲۹)، و CHG_CURRENT_HARD_FAULT_MA همان چیزی می‌ماند که بود:
+ *      تریپ ۹۵۰ میلی‌آمپری که کانال را قطع و خطا را بلند می‌کند. */
 #define CHG_CURRENT_HARD_FAULT_MA      950u
 /* [EN] Battery-current estimate architecture v1.3 (user order
  *      2026-09-24). The sense chain turned out to be battery-side, so
@@ -240,32 +244,22 @@
 #define CHG_INPUT_VALID_MV           22000u
 #define CHG_DUTY_START_PERMILLE        10u
 #define CHG_DUTY_STEP_PERMILLE          5u
-/* [EN] The control task evaluates the charger every 10 ms (control_period_ms),
- *      so a plain "+5 permille per pass" would ramp 50%/s - far above the
- *      intended 0.5%/s - overshoot the current band and trip the ~15.5 A JIT.
- *      Steps are therefore rate-limited per channel:
- *      one 0.5% up-step per CHG_DUTY_RAMP_UP_INTERVAL_MS (slow soft-start ramp)
- *      and one 0.5% down-step per CHG_DUTY_RAMP_DOWN_INTERVAL_MS (twice as
- *      fast so over-current/over-voltage recovers gradually instead of
- *      cutting, but slow enough to follow the ~0.64 s current filter without
- *      hunting).
- * [FA] تسک کنترل شارژر را هر ۱۰ms اجرا می‌کند؛ بدون محدودیت زمانی، پلهٔ
- *      ۵ پرمیل ۱۰۰ بار در ثانیه اعمال می‌شد (۵۰٪/s) و JIT تریپ می‌کرد. حالا
- *      به‌ازای هر کانال: افزایش هر ۱ ثانیه یک پلهٔ ۰٫۵٪ (رمپ نرم)، کاهش هر
- *      ۵۰۰ms یک پلهٔ ۰٫۵٪ (کاهش تدریجی به‌جای قطع، برای نگه‌داشتن جریان
- *      نزدیک باند با هیسترزیس). */
-#define CHG_DUTY_RAMP_UP_INTERVAL_MS   1000u
+/* [EN] The only fixed-step cadence left after v1.23. The BULK/ABSORB step
+ *      chain and its four other intervals were deleted with the legacy
+ *      regulator (user order 2026-09-29: "remove the previous logic, the
+ *      charger must be PID only"); what survives is the FLOAT park-down,
+ *      which is not regulation - it walks the duty to zero at one 0.5%
+ *      step per CHG_DUTY_RAMP_DOWN_INTERVAL_MS and leaves it there. The PID
+ *      is explicitly invalidated while that runs, so the next reentry seeds
+ *      from the real hardware duty rather than a stale integral.
+ * [FA] تنها ضرب‌آهنگ پله‌ای باقی‌مانده بعد از v1.23. زنجیرهٔ پله‌ای
+ *      بالک/ابزورب و چهار بازهٔ دیگرش با تنظیم‌کنندهٔ قدیمی حذف شدند (دستور
+ *      کاربر ۲۰۲۶-۰۹-۲۹: «منطق قبلی را بردار، شارژر فقط PID باشد»)؛ آنچه
+ *      مانده پارک‌کردن در فلوت است که تنظیم نیست - دیوتی را با پلهٔ ۰٫۵٪ در
+ *      هر CHG_DUTY_RAMP_DOWN_INTERVAL_MS تا صفر می‌برد و همان‌جا رها می‌کند.
+ *      PID در طول آن عمداً باطل می‌شود تا بازگشت بعدی از دیوتی واقعی
+ *      سخت‌افزار بذر بگیرد نه از انتگرال کهنه. */
 #define CHG_DUTY_RAMP_DOWN_INTERVAL_MS  500u
-/* [EN] ABSORB pacing (user directive 2026-09-19): inside the 14.3-14.6 V
- *      voltage hold the fine 0.1% steps run at HALF the bulk rate, so the
- *      setpoint creeps instead of twitching (one up-step per 2000 ms, one
- *      down-step per 1000 ms). The >14.6 V overshoot escape keeps the fast
- *      500 ms coarse cadence - it is protection, not regulation.
- * [FA] کِرن‌دنِ پله در ابزورب (دستور کاربر): پله‌های ۰٫۱٪ با نصف سرعت بالک،
- *      یعنی صعود هر ۲۰۰۰ms و نزول هر ۱۰۰۰ms تا ست‌پوینت آهسته بخزد؛ فرار از
- *      اورشوت بالای ۱۴٫۶V همان سرعت ۵۰۰ms امنیتی را حفظ می‌کند. */
-#define CHG_DUTY_RAMP_UP_INTERVAL_ABSORB_MS   2000u
-#define CHG_DUTY_RAMP_DOWN_INTERVAL_ABSORB_MS 1000u
 
 /* ==================== Three-stage PID regulator (v1.22) ====================
  * [EN] USER ORDER 2026-09-28: "slow the absorb duty rise down, and instead of
@@ -320,8 +314,9 @@
  *      در حال بالا رفتن به سمت ست‌پوینت (همان ناحیه‌ای که کاربر خواست کندتر
  *      شود)، مرحلهٔ ۳ «آخر» = حلقهٔ ولتاژ روی ست‌پوینت و عقب‌نشینی از آن.
  *      ماشین حالت و همهٔ حفاظت‌ها دست‌نخورده‌اند؛ PID فقط عدد دیوتی را داخل
- *      پنجره‌ای که آن‌ها اجازه داده‌اند تعیین می‌کند. شناسهٔ ۸۳ = ۰ یعنی
- *      برگشت به تنظیم‌کنندهٔ پله‌ای قدیمی بدون هیچ تغییر عددی. */
+ *      پنجره‌ای که آن‌ها اجازه داده‌اند تعیین می‌کند. این تنها
+ *      تنظیم‌کنندهٔ دیوتی است؛ مسیر پله‌ای قدیمی حذف شده و راه برگشتی
+ *      وجود ندارد (دستور کاربر ۲۰۲۶-۰۹-۲۹). */
 
 /* [EN] Update cadence. The control task still runs every 10 ms, but the PID
  *      math advances once per CHG_PID_PERIOD_MS - one window of the
@@ -330,7 +325,6 @@
  * [FA] ضرب‌آهنگ به‌روزرسانی: تسک کنترل همان هر ۱۰ms اجرا می‌شود ولی ریاضی
  *      PID هر CHG_PID_PERIOD_MS یک‌بار جلو می‌رود - یک پنجرهٔ فیلتر جریان
  *      (~۱۰۰ms) تا حلقه به عددی که فیلتر هنوز نساخته واکنش ندهد. */
-#define CHG_PID_ENABLE_DEFAULT            1u
 #define CHG_PID_PERIOD_MS               100u
 #define CHG_PID_DT_MIN_MS                10u
 #define CHG_PID_DT_MAX_MS              1000u
@@ -477,18 +471,69 @@
  *      پرمیل - بسیار پایین‌تر از پلهٔ اضافه‌ولتاژ ۱۴٫۶V و آستانهٔ فالت ۱۴٫۸V.
  *      Kd عمداً صفر است: زنجیرهٔ جریان/ولتاژ فیلتر شده ولی بی‌نویز نیست و
  *      مشتقِ نویز یعنی لرزش دیوتی؛ پنل هر وقت بنچ میرایی خواست بالا می‌برد. */
-#define CHG_PID_STAGE1_KP                20u
-#define CHG_PID_STAGE1_KI               800u
+/* [EN] FACTORY CALIBRATION (user order 2026-09-29: "calibrate it yourself
+ *      from the tables for the first time, so I can optimise it later").
+ *      Every number below was swept on the plant model against the values
+ *      in the charge-profile table (14.4 V absorb, 14.3 V enter, 14.6 V
+ *      over, 650 mA bulk, 500 permille DCM ceiling) - see section 5.11 of
+ *      ESP_AGENT_SPEC.md for the sweep tables and the reasoning:
+ *        Kp1  12   flat optimum 8..15; above 20 the current loop slows
+ *                  (the min-select hands over early) and above ~45 the
+ *                  7 mA-per-permille plant quantisation makes it chatter
+ *        Ki1  1600 reaches the 640 mA band in 545 s from a flat pack with
+ *                  ZERO duty reversals; 800 needed 1373 s and held a
+ *                  looser 617..640 mA, 3000 reached it in 350 s but cost
+ *                  44 reversals
+ *        Kp2/ 150  the voltage loop's noise gain: at 300 the unfiltered
+ *        Kp3       +/-15 mV sensor noise still produced 839 reversals per
+ *                  4 h even behind the prefilter; at 150 it is 3, with
+ *                  identical overshoot and hold on the clean plant
+ *        Ki2  600  closes the last few mV; at 300 the hold sat 2..3 mV
+ *                  low, at 150 it sat 8..13 mV low (visible offset)
+ *        Ki3  18000 least overshoot of the sweep (13.5 mV over setpoint
+ *                  versus 18.7 at 12000 and 33.6 at 6000) with a 0.0 mV
+ *                  hold band; the stability bound is ~37000
+ *        up2  30   THE "SLOW THE ABSORB RISE" KNOB (user order): 0.03
+ *                  permille/s against the legacy chain's 0.05
+ *        up3  10   nothing should hurry on the setpoint
+ *        down 1000 one permille per second - the legacy coarse escape rate,
+ *                  kept so a falling pack is followed promptly
+ *        Kd   0    the derivative of a noisy sensor is duty jitter; the
+ *                  panel can raise it if the bench ever wants damping
+ * [FA] کالیبراسیون کارخانه (دستور کاربر ۲۰۲۶-۰۹-۲۹: «خودت بر اساس جدول‌ها
+ *      برای اولین بار کالیبره کن تا بعداً اگر خواستم بهینه‌اش کنم»). هر عدد
+ *      زیر روی مدل و بر پایهٔ مقادیر جدول پروفایل شارژ (ابزورب ۱۴٫۴ ولت،
+ *      ورود ۱۴٫۳، اضافه ۱۴٫۶، بالک ۶۵۰ میلی‌آمپر، سقف ۵۰۰ پرمیل) جاروب شده
+ *      - جدول‌های جاروب و استدلال در بخش 5.11 سند ESP_AGENT_SPEC.md:
+ *        Kp1=۱۲ بهینهٔ مسطح ۸..۱۵؛ بالای ۲۰ حلقهٔ جریان کند می‌شود و بالای
+ *          حدود ۴۵ به‌خاطر کوانتیزاسیون ۷ میلی‌آمپر بر پرمیل می‌لرزد
+ *        Ki1=۱۶۰۰ از پک خالی در ۵۴۵ ثانیه به باند ۶۴۰ می‌رسد با صفر تغییر
+ *          جهت دیوتی؛ ۸۰۰ به ۱۳۷۳ ثانیه و باند شل‌تر ۶۱۷..۶۴۰ رسید و ۳۰۰۰
+ *          در ۳۵۰ ثانیه ولی با ۴۴ تغییر جهت
+ *        Kp2/Kp3=۱۵۰ بهرهٔ نویز حلقهٔ ولتاژ: با ۳۰۰ نویز ±۱۵ میلی‌ولت حتی
+ *          پشت پیش‌فیلتر ۸۳۹ تغییر جهت در ۴ ساعت می‌داد، با ۱۵۰ سه تا، و
+ *          اورشوت و تثبیت روی مدل تمیز دقیقاً یکی است
+ *        Ki2=۶۰۰ آخرین چند میلی‌ولت را می‌بندد؛ با ۳۰۰ تثبیت ۲..۳ و با ۱۵۰
+ *          هشت تا سیزده میلی‌ولت پایین‌تر می‌نشست
+ *        Ki3=۱۸۰۰۰ کمترین اورشوت جاروب (۱۳٫۵ در برابر ۱۸٫۷ با ۱۲۰۰۰ و
+ *          ۳۳٫۶ با ۶۰۰۰) با باند تثبیت صفر؛ مرز پایداری حدود ۳۷۰۰۰
+ *        up2=۳۰ همان «کلید رشد کندتر ابزورب» (دستور کاربر)
+ *        up3=۱۰ روی ست‌پوینت هیچ‌چیز نباید عجله کند
+ *        down=۱۰۰۰ یک پرمیل بر ثانیه، همان نرخ فرار زبر قدیمی
+ *        Kd=۰ مشتقِ سنسور نویزی یعنی لرزش دیوتی؛ پنل هر وقت بنچ میرایی
+ *          خواست بالا می‌برد */
+#define CHG_PID_STAGE1_KP                12u
+#define CHG_PID_STAGE1_KI              1600u
 #define CHG_PID_STAGE1_KD                 0u
-#define CHG_PID_STAGE1_UP_RATE          500u
+#define CHG_PID_STAGE1_UP_RATE         1000u
 #define CHG_PID_STAGE1_DOWN_RATE       1000u
 #define CHG_PID_STAGE2_KP               150u
-#define CHG_PID_STAGE2_KI               300u
+#define CHG_PID_STAGE2_KI               600u
 #define CHG_PID_STAGE2_KD                 0u
 #define CHG_PID_STAGE2_UP_RATE           30u
 #define CHG_PID_STAGE2_DOWN_RATE       1000u
-#define CHG_PID_STAGE3_KP               300u
-#define CHG_PID_STAGE3_KI             12000u
+#define CHG_PID_STAGE3_KP               150u
+#define CHG_PID_STAGE3_KI             18000u
 #define CHG_PID_STAGE3_KD                 0u
 #define CHG_PID_STAGE3_UP_RATE           10u
 #define CHG_PID_STAGE3_DOWN_RATE       1000u
@@ -537,6 +582,142 @@
  *      دیده شود و بذرگیری دوباره را راه بیندازد، وگرنه این دو سازوکار با
  *      هم می‌جنگند. */
 #define CHG_PID_OUTPUT_HYST_MILLI       700u
+
+/* ==================== Hard backstops (user order 2026-09-29) ====================
+ * [EN] "the 650 mA limit and the 14.8 V must be ACTIVE so the batteries are
+ *      not damaged." These two limits are the last line of defence inside
+ *      the PID and they are deliberately NOT tunable from the panel. The
+ *      reason is the user's own next sentence: they intend to re-tune the
+ *      coefficients later. A badly tuned gain set can overshoot; the
+ *      backstops are what makes that experiment safe, so they must not be
+ *      reachable from the same screen as the gains.
+ *
+ *      They work as a SHRINKING DUTY CEILING, not as a trip:
+ *
+ *          over-current -> ceiling = applied - GAIN_I x (I - limit_i)
+ *          over-voltage -> ceiling = applied - GAIN_V x (V - limit_v)
+ *
+ *      Proportional to the excess, so 1 mA over costs 0.1 permille and
+ *      nothing visibly moves, while 50 mA over costs 5 permille and the
+ *      duty is pulled down hard. That shape matters: a fixed step would
+ *      re-introduce exactly the hunting this whole rewrite removed, and a
+ *      latching trip would stop a healthy charge over one noisy sample.
+ *      The integral is clamped to the same shrunk ceiling, so there is no
+ *      windup to unwind once the excess clears.
+ *
+ *      Current limit = the live profile value (id 25, 650 mA default), so
+ *      lowering the charge current on the panel lowers the backstop with
+ *      it. Voltage limit is the compile-time CHG_PID_BACKSTOP_MV (14.8 V),
+ *      which is 400 mV above the absorb setpoint and 200 mV below the OV
+ *      cutoff - it can only ever act on a real fault (a disconnected pack,
+ *      a drifted sensor, or a future mis-tune), never during normal
+ *      charging, where the measured peak is 14419 mV.
+ *
+ *      These do NOT replace the existing protections. The 950 mA hard
+ *      fault, the 15.0 V OV cutoff, the battery-valid floor and the JIT
+ *      gating all still run: those cut the charge and raise alarms, these
+ *      merely keep the regulator from ever taking the pack there.
+ * [FA] «حد ۶۵۰ میلی‌آمپر و ۱۴٫۸ ولت باید فعال باشند تا باتری‌ها آسیب
+ *      نبینند.» این دو حد، آخرین خط دفاع داخل PID هستند و عمداً از پنل
+ *      قابل تغییر نیستند. دلیلش جملهٔ بعدی خود کاربر است: قصد دارند بعداً
+ *      ضرایب را بهینه کنند. یک دستهٔ ضریبِ بد می‌تواند اورشوت کند؛ همین
+ *      پشتیبان‌ها هستند که آن آزمایش را ایمن می‌کنند، پس نباید از همان
+ *      صفحه‌ای که ضرایب هستند در دسترس باشند.
+ *
+ *      این‌ها مثل «سقف دیوتیِ جمع‌شونده» کار می‌کنند نه مثل قطع‌کننده:
+ *      کاهش، متناسب با مقدار تجاوز است، پس ۱ میلی‌آمپر تجاوز فقط ۰٫۱
+ *      پرمیل هزینه دارد و چیزی دیده نمی‌شود، ولی ۵۰ میلی‌آمپر تجاوز ۵
+ *      پرمیل و دیوتی محکم پایین کشیده می‌شود. این شکل مهم است: پلهٔ ثابت
+ *      دقیقاً همان بالا-پایین پریدنی را برمی‌گرداند که این بازنویسی حذفش
+ *      کرد، و قطع قفل‌شونده یک شارژ سالم را با یک نمونهٔ نویزی متوقف
+ *      می‌کند. انتگرال هم به همین سقف جمع‌شده مقید می‌شود تا وقتی تجاوز
+ *      رفع شد چیزی برای باز شدن نمانده باشد.
+ *
+ *      حد جریان = مقدار زندهٔ پروفایل (شناسهٔ ۲۵، پیش‌فرض ۶۵۰)، پس کم‌کردن
+ *      جریان شارژ از پنل، پشتیبان را هم با خودش پایین می‌آورد. حد ولتاژ
+ *      همان CHG_PID_BACKSTOP_MV کامپایل‌تایم (۱۴٫۸ ولت) است: ۴۰۰ میلی‌ولت
+ *      بالای ست‌پوینت ابزورب و ۲۰۰ میلی‌ولت زیر قطع OV - فقط روی خطای
+ *      واقعی عمل می‌کند (باتری جداشده، سنسور منحرف، یا تنظیم بد آینده)،
+ *      نه در شارژ عادی که اوج اندازه‌گیری‌شده ۱۴۴۱۹ میلی‌ولت است.
+ *
+ *      این‌ها جایگزین حفاظت‌های موجود نیستند: خطای سخت ۹۵۰ میلی‌آمپر، قطع
+ *      OV روی ۱۵ ولت، کف اعتبار باتری و گیت JIT همه سر جایشان کار می‌کنند؛
+ *      آن‌ها شارژ را قطع و آلارم می‌دهند، این‌ها فقط نمی‌گذارند
+ *      تنظیم‌کننده باتری را اصلاً به آنجا ببرد. */
+#define CHG_PID_BACKSTOP_MV           14800u
+#define CHG_PID_BACKSTOP_GAIN_I         100u  /* [EN] milli-permille per mA over / میلی‌پرمیل به ازای هر میلی‌آمپر تجاوز */
+#define CHG_PID_BACKSTOP_GAIN_V         500u  /* [EN] milli-permille per mV over / میلی‌پرمیل به ازای هر میلی‌ولت تجاوز */
+
+/* [EN] Voltage prefilter for the PID input, as a leaky-integrator divisor:
+ *      S += V - S/N, and the loop reads S/N. WHY IT EXISTS: the charge
+ *      CURRENT is filtered upstream (median-3 + moving average in
+ *      measurement.c) but the battery VOLTAGE is not, and one ADC step on
+ *      the pack divider is about 7 mV, so the raw reading carries roughly
+ *      +/-15 mV of noise. That noise lands directly on the voltage loop's
+ *      P term - at Kp = 150 that is 2.25 permille of pure noise on the
+ *      duty, far more than the output hysteresis can absorb, and the duty
+ *      visibly hunts again. Measured over 4 h with +/-15 mV of sensor
+ *      noise: 50913 duty direction changes unfiltered, 217 at N = 8, and
+ *      3 at N = 16. N = 16 at one update per 100 ms is a 1.6 s time
+ *      constant - invisible against a battery whose own dynamics are
+ *      measured in minutes, and it costs 1 mV of truncation bias.
+ *      The HARD BACKSTOPS deliberately do NOT use this filtered value:
+ *      protection reads the raw sample so a real over-voltage is never
+ *      delayed by a filter.
+ * [FA] پیش‌فیلتر ولتاژ برای ورودی PID به‌صورت مقسوم‌علیهِ انتگرال‌گیر نشتی:
+ *      S += V - S/N و حلقه S/N را می‌خواند. چرا لازم است: جریان شارژ
+ *      بالادست فیلتر می‌شود (میانهٔ ۳ + میانگین متحرک در measurement.c) ولی
+ *      ولتاژ باتری نه، و یک پلهٔ ADC روی مقسم پک حدود ۷ میلی‌ولت است، پس
+ *      خواندن خام تقریباً ±۱۵ میلی‌ولت نویز دارد. این نویز مستقیم روی جملهٔ
+ *      P حلقهٔ ولتاژ می‌نشیند - با Kp=۱۵۰ یعنی ۲٫۲۵ پرمیل نویز خالص روی
+ *      دیوتی، خیلی بیشتر از آنچه هیسترزیس خروجی جذب می‌کند، و دیوتی دوباره
+ *      آشکارا بالا-پایین می‌پرد. اندازه‌گیری ۴ ساعته با نویز ±۱۵ میلی‌ولت:
+ *      بدون فیلتر ۵۰۹۱۳ بار تغییر جهت، با N=۸ برابر ۲۱۷، با N=۱۶ برابر ۳.
+ *      N=۱۶ با یک به‌روزرسانی در هر ۱۰۰ms یعنی ثابت زمانی ۱٫۶ ثانیه - در
+ *      برابر باتری‌ای که دینامیکش با دقیقه سنجیده می‌شود نامرئی است و
+ *      هزینه‌اش ۱ میلی‌ولت خطای قطع اعشار است. پشتیبان‌های سخت عمداً از این
+ *      مقدار فیلترشده استفاده نمی‌کنند: حفاظت نمونهٔ خام را می‌خواند تا
+ *      اضافه‌ولتاژ واقعی هرگز با فیلتر عقب نیفتد. */
+#define CHG_PID_VOLT_FILTER_N            16u
+
+/* [EN] Symmetric per-update cap on how far the APPLIED duty may move, in
+ *      permille. This exists purely to bound a mis-tune, and it was added
+ *      because the audit of the backstops proved they were not enough on
+ *      their own: the integral is rate-limited but the P term is not (by
+ *      design - rate-limiting P is what created the downward ratchet), so
+ *      with every gain pushed to the panel maximum of 20000 the duty could
+ *      jump from 190 to 500 permille inside ONE update and the pack saw
+ *      4475 mA for 100 ms before the backstop could react. With this cap
+ *      the same abuse peaks at 704 mA, below the 950 mA hard fault.
+ *      SYMMETRIC is the whole point. The asymmetric output limiter tried
+ *      earlier (slow up, fast down) rectified the P-term ripple into a
+ *      downward ratchet and the loop stalled at 268 mA. A symmetric cap
+ *      cannot rectify anything, and at 8 permille it sits 2.7x above the
+ *      largest move the calibrated loop ever makes (3 permille, measured
+ *      across flat/worn/new packs, 0.05..0.30 ohm and 40 mV of noise), so
+ *      in normal charging it never engages at all - verified: identical
+ *      reversal count, peak and time-to-setpoint with the cap present.
+ *      It is applied BEFORE the hard ceiling so it can never slow a
+ *      backstop down: protection always reaches the hardware in one pass.
+ * [FA] سقف متقارن روی اندازهٔ حرکت دیوتی اعمالی در هر به‌روزرسانی، بر حسب
+ *      پرمیل. فقط برای مهار تنظیم اشتباه است و وقتی اضافه شد که ممیزی
+ *      پشتیبان‌ها ثابت کرد به‌تنهایی کافی نیستند: انتگرال محدودِ نرخ است
+ *      ولی جملهٔ P نه (عمداً - محدودکردن نرخ P همان چیزی بود که جغجغهٔ رو
+ *      به پایین را ساخت)، پس با تمام ضرایب روی بیشینهٔ پنل یعنی ۲۰۰۰۰،
+ *      دیوتی می‌توانست در یک به‌روزرسانی از ۱۹۰ به ۵۰۰ پرمیل بپرد و باتری
+ *      ۱۰۰ میلی‌ثانیه ۴۴۷۵ میلی‌آمپر ببیند، پیش از آنکه پشتیبان فرصت
+ *      واکنش پیدا کند. با این سقف همان بدرفتاری روی ۷۰۴ میلی‌آمپر می‌ماند،
+ *      زیر خطای سخت ۹۵۰. «متقارن» بودن تمام ماجراست: محدودکنندهٔ نامتقارن
+ *      قبلی (صعود کند، نزول تند) ریپل P را یکسو کرد و حلقه روی ۲۶۸
+ *      میلی‌آمپر گیر کرد. سقف متقارن چیزی را یکسو نمی‌کند، و با ۸ پرمیل
+ *      ۲٫۷ برابر بزرگ‌ترین حرکتی است که حلقهٔ کالیبره‌شده اصلاً انجام
+ *      می‌دهد (۳ پرمیل، اندازه‌گیری‌شده روی پک خالی/فرسوده/نو، مقاومت
+ *      ۰٫۰۵ تا ۰٫۳۰ اهم و نویز ۴۰ میلی‌ولت)، پس در شارژ عادی هرگز فعال
+ *      نمی‌شود - راستی‌آزمایی شد: تعداد تغییر جهت، اوج و زمان رسیدن به
+ *      ست‌پوینت با و بدون آن یکی است. پیش از سقف سخت اعمال می‌شود تا هرگز
+ *      نتواند پشتیبان را کند کند: حفاظت همیشه در یک پاس به سخت‌افزار
+ *      می‌رسد. */
+#define CHG_PID_MAX_STEP_PERMILLE         8u
 
 #define CHG_DUTY_RETRY_SECOND_MAX       100u
 /* [EN] DCM ceiling: 50% max - anything higher risks core/MOSFET overlap and
@@ -687,13 +868,13 @@ extern volatile uint32_t UINT32_T__G__ChargerCalib[CHG_CALIB_COUNT];
  *      (user order 2026-09-22: watch them directly in Live Expressions).
  *      ch1 = VHIGH half (upper battery), ch2 = VLOW half (lower battery);
  *      refreshed every control pass together with the diag/calib arrays.
- *      The regulation band holds duty when the value sits inside
- *      CHG_REGULATE_LOW_MA..CHG_BULK_CURRENT_MAX_MA (630..650 mA).
+ *      The PID drives this value onto its setpoint of
+ *      CHG_BULK_CURRENT_MAX_MA - CHG_PID_CURRENT_MARGIN_MA (640 mA).
  * [FA] همان دو جریان خروجی تخمینی که شارژر واقعاً با آن‌ها تصمیم می‌گیرد
  *      (دستور کاربر ۲۰۲۶-۰۹-۲۲: مستقیم در Live Expressions دیده شوند).
  *      کانال ۱ = نیم VHIGH (باتری بالا)، کانال ۲ = نیم VLOW (باتری پایین)؛
  *      هر پاس کنترل همراه آرایه‌های دیاگ/کالیبراسیون به‌روز می‌شوند.
- *      وقتی مقدار داخل باند ۶۳۰..۶۵۰ باشد دیوتی نگه داشته می‌شود. */
+ *      PID این مقدار را روی ست‌پوینت ۶۴۰ میلی‌آمپر می‌نشاند. */
 extern volatile uint32_t UINT32_T__G__ChargerIest1Ma;
 extern volatile uint32_t UINT32_T__G__ChargerIest2Ma;
 
@@ -1100,22 +1281,21 @@ bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
  *      قسمتش یعنی کدام مرحله، و فیلدهای ۳ و ۴ همان سقف‌های شیب‌اند. یادآوری
  *      معنی «مرحله» (بلوک تنظیم‌کننده در بالا): مرحلهٔ ۱ حلقهٔ جریان است و
  *      مرحله‌های ۲ و ۳ حلقهٔ ولتاژ زیر ست‌پوینت و روی ست‌پوینت. */
-#define CHG_PID_PARAM_ENABLE            83u  /* [EN] 0/1, 0 = legacy step regulator / صفر = تنظیم‌کنندهٔ پله‌ای قدیمی */
-#define CHG_PID_PARAM_STAGE1_KP         84u  /* [EN] 0..20000, permille per amp / پرمیل بر آمپر، حلقهٔ جریان */
-#define CHG_PID_PARAM_STAGE1_KI         85u  /* [EN] 0..20000 / ضریب انتگرالی حلقهٔ جریان */
-#define CHG_PID_PARAM_STAGE1_KD         86u  /* [EN] 0..20000 / ضریب مشتقی حلقهٔ جریان */
-#define CHG_PID_PARAM_STAGE1_UP_RATE    87u  /* [EN] milli-permille/s, 10..20000 / سقف شیب صعود مرحلهٔ ۱ */
-#define CHG_PID_PARAM_STAGE1_DOWN_RATE  88u  /* [EN] milli-permille/s, 10..20000 / سقف شیب نزول مرحلهٔ ۱ */
-#define CHG_PID_PARAM_STAGE2_KP         89u  /* [EN] 0..20000, permille per volt / پرمیل بر ولت، حلقهٔ ولتاژ */
-#define CHG_PID_PARAM_STAGE2_KI         90u
-#define CHG_PID_PARAM_STAGE2_KD         91u
-#define CHG_PID_PARAM_STAGE2_UP_RATE    92u  /* [EN] the "slow the absorb rise" knob / کلید «رشد کندتر ابزورب» */
-#define CHG_PID_PARAM_STAGE2_DOWN_RATE  93u
-#define CHG_PID_PARAM_STAGE3_KP         94u
-#define CHG_PID_PARAM_STAGE3_KI         95u
-#define CHG_PID_PARAM_STAGE3_KD         96u
-#define CHG_PID_PARAM_STAGE3_UP_RATE    97u
-#define CHG_PID_PARAM_STAGE3_DOWN_RATE  98u
+#define CHG_PID_PARAM_STAGE1_KP         83u  /* [EN] 0..20000, permille per amp / پرمیل بر آمپر، حلقهٔ جریان */
+#define CHG_PID_PARAM_STAGE1_KI         84u  /* [EN] 0..20000 / ضریب انتگرالی حلقهٔ جریان */
+#define CHG_PID_PARAM_STAGE1_KD         85u  /* [EN] 0..20000 / ضریب مشتقی حلقهٔ جریان */
+#define CHG_PID_PARAM_STAGE1_UP_RATE    86u  /* [EN] milli-permille/s, 10..20000 / سقف شیب صعود مرحلهٔ ۱ */
+#define CHG_PID_PARAM_STAGE1_DOWN_RATE  87u  /* [EN] milli-permille/s, 10..20000 / سقف شیب نزول مرحلهٔ ۱ */
+#define CHG_PID_PARAM_STAGE2_KP         88u  /* [EN] 0..20000, permille per volt / پرمیل بر ولت، حلقهٔ ولتاژ */
+#define CHG_PID_PARAM_STAGE2_KI         89u
+#define CHG_PID_PARAM_STAGE2_KD         90u
+#define CHG_PID_PARAM_STAGE2_UP_RATE    91u  /* [EN] the "slow the absorb rise" knob / کلید «رشد کندتر ابزورب» */
+#define CHG_PID_PARAM_STAGE2_DOWN_RATE  92u
+#define CHG_PID_PARAM_STAGE3_KP         93u
+#define CHG_PID_PARAM_STAGE3_KI         94u
+#define CHG_PID_PARAM_STAGE3_KD         95u
+#define CHG_PID_PARAM_STAGE3_UP_RATE    96u
+#define CHG_PID_PARAM_STAGE3_DOWN_RATE  97u
 
 /**
  * @brief  [EN] Write one three-stage PID parameter (ESP link, ids 83..98).

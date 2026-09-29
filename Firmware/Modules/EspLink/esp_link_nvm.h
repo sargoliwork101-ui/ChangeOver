@@ -70,12 +70,12 @@
  *      پیش‌فرض کامپایل می‌ماند - بعد از هر ارتقای چیدمان یک‌بار از پنل
  *      دوباره تنظیم کنید (v1.22 دقیقاً چنین ارتقایی است: اولین بوت پس از
  *      فلش با مقادیر کارخانه بالا می‌آید). */
-#define ESP_LINK_NVM_VERSION            6u
+#define ESP_LINK_NVM_VERSION            7u
 
 /* [EN] Slot cap: 93 persisted ids today (0..14 config + 20..26 charge
  *      profile + 27..37 alarms + 38..75 UI cadence + 77..82 full/
  *      hysteresis + 83..98 three-stage PID; id 76 = panel-session mute,
- *      transient like 15..19). Cap 99 -> record = 12 + 99 x 8 + 4 = 808 B,
+ *      transient like 15..19). Cap 98 -> record = 12 + 98 x 8 + 4 = 800 B,
  *      still one 1 KiB page with room to spare. Keep the C harness in sync
  *      (it once caught a wrong count as a silent early-return).
  * [FA] سقف جای‌ها: امروز ۹۳ شناسهٔ ذخیره‌شونده (0..14 پیکربندی + 20..26
@@ -83,7 +83,7 @@
  *      PID سه‌مرحله‌ای؛ ۷۶ = میوت جلسه‌ای، گذرا مثل ۱۵..۱۹). سقف ۹۹ یعنی
  *      رکورد ۸۰۸ بایت و باز هم یک صفحهٔ ۱KB با حاشیه. هارنس C را هم‌روز
  *      نگه دارید. */
-#define ESP_LINK_NVM_ENTRY_MAX          99u
+#define ESP_LINK_NVM_ENTRY_MAX          98u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
  *      change; a shorter window would rewrite flash on every keystroke burst).
@@ -116,7 +116,7 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    98u
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    97u
 #define ESP_LINK_NVM_TRANSIENT_ID_MUTE        76u
 
 /**
@@ -140,7 +140,7 @@ typedef struct
 
 /**
  * @brief  [EN] Flash record: header + entry list + CRC32 over all preceding
- *              bytes. Size 808 B for 99 entries - one erased page holds it
+ *              bytes. Size 800 B for 98 entries - one erased page holds it
  *              with room to grow.
  *         [FA] رکورد فلش: سربرگ + فهرست ورودی‌ها + CRC32 روی همهٔ بایت‌های
  *              قبل از خودش. اندازه ۸۰۸ بایت برای ۹۹ ورودی - یک صفحهٔ پاک‌
