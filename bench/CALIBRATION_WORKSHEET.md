@@ -10,20 +10,40 @@
 
 ## 0. Before anything / قبل از هر کاری
 
-> **[EN] FLASH BOTH SIDES. The STM32 telemetry frame grew from 84 to 104 bytes
-> (five new raw-count columns). The ESP drops any frame whose length does not
-> match, and there is NO version handshake - so if you flash only one side the
-> panel simply goes blank with no error at all.**
+> **[EN] FLASH BOTH SIDES. The frame changed twice: it is now 104 bytes (five
+> raw-count fields) and carries a CRC-16 plus a version byte. An
+> out-of-step flash no longer fails silently - the panel now says "the firmware
+> and panel versions do not match, reflash both" - but the two still will not
+> talk until you do.**
 >
-> **[FA] هر دو طرف را فلش کنید. فریم تله‌متری از ۸۴ به ۱۰۴ بایت رفت. ESP هر
-> فریمی را که طولش نخواند بی‌صدا دور می‌ریزد و هیچ هندشیک نسخه‌ای هم وجود ندارد
-> - پس اگر فقط یک طرف را فلش کنید، پنل بدون هیچ خطایی خالی می‌ماند.**
+> **[FA] هر دو طرف را فلش کنید. قاب دو بار عوض شد: حالا ۱۰۴ بایت است و CRC-16
+> به‌اضافهٔ بایت نسخه دارد. فلش ناهماهنگ دیگر بی‌صدا شکست نمی‌خورد — پنل صریح
+> می‌گوید «نسخهٔ فرم‌ور و پنل یکی نیست» — ولی تا فلش نکنید با هم حرف نمی‌زنند.**
 
 - [ ] **Clean + Rebuild** (not incremental - a stale `bsp.o` gives a hybrid:
       new LUT with the old divider) / **Clean + Rebuild کامل**، نه افزایشی
 - [ ] Flash **STM32** / فلش STM32
 - [ ] Flash **ESP** / فلش ESP
 - [ ] Panel shows live data / پنل داده زنده نشان می‌دهد
+
+---
+
+## 0b. WHAT IS ALREADY DONE / آنچه قبلاً انجام شده
+
+[EN] These came out of your 2026-09-29 readings and are already in the
+firmware, so do NOT redo them - they are here so you know what the board now
+believes:
+
+| item | value | how it was established |
+|---|---|---|
+| VDDA | 3.300 V | you measured it; the reference is fine |
+| 24 V dividers (both) | 68000 / 6800 | connector vs ADC pin: 10.9968 and 11.0139, and 68K/6.8K is exactly 11.0000 |
+| 12 V divider | 34398 / 6800 | 14.88 V / 2.456 V = 6.0586 |
+| V12 bench compensation | **OFF** | it was subtracting 150 mV + I x 0.47 ohm, which pushed the real terminal 0.4 V above target |
+| both current LUTs | refitted | they are power tables and the voltage they divide by moved |
+
+[FA] این‌ها از خوانش‌های ۲۰۲۹-۰۹-۲۹ شما درآمدند و در فرم‌ور هستند؛ **دوباره
+انجامشان ندهید**. اینجا آمده‌اند تا بدانید برد حالا چه باوری دارد.
 
 ---
 
@@ -102,12 +122,32 @@ counts, so the file alone is enough. / [FA] همان روش SOLO1/SOLO2. حال�
 
 ---
 
+## 3b. The one measurement still open / تنها اندازه‌گیری باز
+
+[EN] If your battery sits at the end of a cable rather than right at the
+connector, a drop term may be legitimate - but it has to be MEASURED, not
+fitted. The old one was fitted to a single run and was subtracting 203 mV at
+zero current, where an I x R term must be zero.
+
+  1. set a known charge current (say 400 mA)
+  2. DMM on **CON2 pin 2** (the connector) -> ______ V
+  3. DMM on the **battery post itself**     -> ______ V
+  4. the current at that moment             -> ______ mA
+
+[FA] اگر باتری سر یک کابل است نه روی خود کانکتور، جملهٔ افت می‌تواند درست باشد —
+ولی باید **اندازه گرفته شود**، نه برازش. قبلی روی یک اجرا برازش شده بود و در
+جریان صفر ۲۰۳ میلی‌ولت کم می‌کرد، جایی که I×R باید صفر باشد.
+
+---
+
 ## 4. Send me / برایم بفرستید
 
 1. Section 1 - the three VDDA numbers / سه عدد مرجع
 2. Sections 2a, 2b, 2c - the table above / جدول ولتاژها
 3. Section 3 - **both CSV files** / هر دو فایل CSV
-4. Anything that looked wrong / هرچه عجیب به نظر رسید
+4. Section 3b - the cable-drop measurement, if the battery is not at the
+   connector / اندازه‌گیری افت کابل، اگر باتری روی کانکتور نیست
+5. Anything that looked wrong / هرچه عجیب به نظر رسید
 
 [EN] From that I rebuild, from first principles: the ADC reference, all three
 voltage scales, and both current LUTs. / [FA] از روی این‌ها مرجع ADC، هر سه

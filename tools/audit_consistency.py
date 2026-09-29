@@ -566,6 +566,81 @@ def sec_link():
 
 
 
+# ================================================= 11. docs vs the code
+def sec_docs():
+    """[EN] Documentation drifts the same way duplicated constants do, and it is
+       worse: a stale number in a README is what the next person trusts. Every
+       fault this project has had started as a number that was true once. So
+       the docs are checked against the CODE, not proof-read.
+       Historical changelog rows are exempt on purpose - "we used to use 66200"
+       is a true statement about the past and must stay readable.
+       [FA] مستندات هم مثل ثابت‌های تکراری کهنه می‌شوند و بدتر: عدد کهنه در README
+       همان چیزی است که نفر بعدی به آن اعتماد می‌کند. پس سند در برابر «کد»
+       سنجیده می‌شود نه بازخوانی. ردیف‌های تاریخچه عمداً استثنا هستند."""
+    import glob
+    docs = {}
+    for f in glob.glob(str(ROOT / "**" / "*.md"), recursive=True):
+        rel = str(Path(f).relative_to(ROOT))
+        if "/Tester/" in rel or rel.startswith("Documentation/"):
+            continue
+        body = Path(f).read_text(encoding="utf-8", errors="ignore")
+        # drop changelog rows: they describe history and are allowed to cite
+        # numbers that are no longer current
+        live = "\n".join(l for l in body.split("\n")
+                          if not re.match(r"\s*\|\s*20\d\d-\d\d-\d\d\s*\|", l))
+        docs[rel] = live
+
+    def code(txt, name):
+        m = re.search(r"#define\s+" + name + r"\s+(\d+)u", txt)
+        return int(m.group(1)) if m else None
+
+    tlm = code(ESP_H, "ESPLINK_TLM_PAYLOAD_SIZE")
+    hdr = code(ESP_H, "ESPLINK_FRAME_HEADER_SIZE")
+    top24 = code(BSP_M, "BSP_MEASUREMENT_SENSE_TOP_24V_OHMS")
+
+    # [EN] Each entry: a string that must NOT appear outside a changelog row,
+    #      because the code now says otherwise.
+    # [FA] هر ورودی رشته‌ای است که بیرون از ردیف تاریخچه نباید بیاید.
+    forbidden = [
+        (r"\[xor:u8\]", "the frame trailer is a 16-bit CRC now, not XOR-8"),
+        (r"TLM_LIVE payload layout \((?!%d)" % tlm,
+         "the TLM layout heading states a size the firmware no longer sends"),
+        (r"76000/6800", "the 24 V ratio was measured on the board as 68000/6800"),
+        (r"41000/6800", "the 12 V ratio was measured on the board"),
+        (r"total 76k", "the 24 V total is 74.8k"),
+    ]
+    for pat, why in forbidden:
+        hits = sorted(f for f, b in docs.items() if re.search(pat, b))
+        ok(not hits, f"stale documentation: {why}",
+           f"pattern {pat!r} still present in {hits}")
+
+    # the frame description must actually describe the frame
+    spec = docs.get("ESP_AGENT_SPEC.md", "")
+    ok("[crc_lo:u8][crc_hi:u8]" in spec and "[ver:u8]" in spec,
+       "the spec's frame diagram does not match the v2 frame")
+    ok(str(tlm) in spec, f"the spec never states the real TLM size ({tlm})")
+    ok(str(hdr) + "-byte header" in spec or "6-byte header" in spec,
+       "the spec still describes the old header size")
+    # [EN] Not "does the number appear somewhere" - that passed while one of the
+    #      two rows had been reverted, because the other row still had it. Both
+    #      24 V rows of the divider table must carry the code's value.
+    #      Found by mutation-testing this check.
+    # [FA] نه «آیا عدد جایی هست» - آن حالت وقتی یکی از دو ردیف برگردانده شده بود
+    #      هم پاس می‌شد، چون ردیف دیگر هنوز عدد را داشت. هر دو ردیف ۲۴ولت جدول
+    #      باید مقدار کد را داشته باشند. با موتیشن‌تستِ خود این چک پیدا شد.
+    bspmd = docs.get("Firmware/Bsp/README.md", "")
+    rows24 = [l for l in bspmd.split("\n")
+              if l.startswith("|") and ("PA2)" in l or "PA3)" in l) and "6800" in l]
+    ok(len(rows24) == 2,
+       "the BSP README divider table must still list both 24 V nets",
+       f"found {len(rows24)} rows")
+    bad24 = [l.strip()[:60] for l in rows24 if str(top24) not in l]
+    ok(not bad24,
+       f"a 24 V divider row in the BSP README disagrees with the code ({top24})",
+       "; ".join(bad24))
+
+
+
 # ================================================================= report
 def main():
     ids = sec_ids()
@@ -578,6 +653,7 @@ def main():
     sec_charger()
     sec_single_source()
     sec_link()
+    sec_docs()
 
     print("whole-program consistency audit")
     print("=" * 72)

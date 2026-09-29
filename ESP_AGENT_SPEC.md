@@ -319,10 +319,26 @@ immediately and drain within ~1 ms.
 ## 3. Frame format (both directions)
 
 ```text
-[0xAA][0x55][type:u8][len_lo:u8][len_hi:u8][payload: len bytes][xor:u8]
+[0xAA][0x55][ver:u8][type:u8][len_lo:u8][len_hi:u8][payload: len bytes][crc_lo:u8][crc_hi:u8]
 ```
 
-- `xor` = XOR of `type`, `len_lo`, `len_hi`, and every payload byte (starting value 0x00).
+**Frame v2 (2026-09-29).** Two changes, both because this link carries the
+calibration campaign and a silently wrong number there is worse than no number:
+
+- `crc` = **CRC-16/CCITT-FALSE** (poly 0x1021, init 0xFFFF, no reflection, no
+  final xor), little-endian, computed over `ver`, `type`, both length bytes and
+  the payload — everything after the SOF pair.
+  It replaces the old XOR-8. Measured, not argued: XOR-8 is blind to ANY even
+  number of bit flips in the same bit position, which is exactly the pattern a
+  switching converter couples onto a UART. Over 200000 two-bit same-position
+  corruptions of 64-byte frames, **XOR-8 missed 100 %** and **CRC-16 missed 0 %**.
+  Verified against the standard check vector: `"123456789"` → `0x29B1`.
+- `ver` = **2**. Before this there was no version field, so flashing one board
+  and not the other produced no error of any kind: the receiver dropped every
+  frame whose length it did not expect and the panel went blank, which is
+  indistinguishable from an unplugged cable. Both receivers now count version
+  mismatches and CRC rejections, `/t` reports them as `vm` and `ce`, and the
+  panel says plainly that the two boards were flashed out of step.
 - All multi-byte payload fields are **little-endian**.
 - Max payload length = **512 bytes** (v1.16; was 192 in v1.15 -
   PARAMS_BULK grew with the UI cadence parameters; an 83-param bulk is
@@ -331,8 +347,10 @@ immediately and drain within ~1 ms.
   invalid frame. The ESP parser must accept up to 512 regardless of
   STM firmware version. Both boards MUST flash together (a v1.15
   board reads len_hi as payload and drops every v1.16 frame).
-- On checksum error or unknown type: the STM32 silently drops the frame and
-  resynchronizes on the next `AA 55`. The ESP should do the same.
+- On CRC error, unknown version or unknown type: the frame is dropped and the
+  parser resynchronizes on the next `AA 55`. Both sides do this, and both count
+  the rejection so a noisy harness is measurable instead of merely feeling
+  unreliable.
 
 ## 4. Message types
 
@@ -340,8 +358,8 @@ immediately and drain within ~1 ms.
 |---|---|---|---|
 | 0x01 | ESP→STM | SET_PARAM | `[id:u8][value:u32 LE]` (5 bytes) |
 | 0x02 | ESP→STM | GET_PARAMS | empty (len = 0) |
-| 0x03 | ESP→STM | CAL_REFERENCE | `[target:u8][ref_mA:u32 LE]` (5 bytes) — one-shot calibration from a typed DMM reading; targets 0/1 = GAIN ch1/2, 2/3 = ETA ch1/2 (v1.3, section 5.4) |
-| 0x10 | STM→ESP | TLM_LIVE | 84 bytes, layout below |
+| 0x03 | — | *(reserved, not handled)* | Was a v1.3 one-shot calibration command. The panel stopped sending it in v1.7 and the STM32 handler was carried dead for six versions - 172 source lines - until it overflowed the 62 KB flash budget by 92 bytes and was removed. The id stays RESERVED: reusing it would make an older panel's frames silently misinterpreted instead of harmlessly ignored. Calibrate by reading the raw ADC counts in the telemetry and writing coefficients back as ordinary SET_PARAM. Old targets 0/1 = GAIN ch1/2, 2/3 = ETA ch1/2 (v1.3, section 5.4) |
+| 0x10 | STM→ESP | TLM_LIVE | **104 bytes**, layout below (84 until v1.25; +5 u32 raw calibration fields) |
 | 0x11 | STM→ESP | PARAM_REPORT | `[id:u8][value:u32 LE]` — the **applied** value (sent after every accepted SET_PARAM) |
 | 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS; 93 params since v1.24 = 466 payload bytes) |
 
@@ -704,9 +722,9 @@ enforces it).
 Voltage chain (offsets = IDs 4/5/6, saturating add, never below 0 mV):
 
 ```text
-Vin_mV  = raw x 3300/4095 x 76000/6800 + VIN_OFFSET  (R46 68K + R11 1.2K over R12 6.8K; total 76k; = raw x 9.007)
-V24_mV  = raw x 3300/4095 x 76000/6800 + V24_OFFSET  (R47 68K + R13 1.2K over R14 6.8K - ELECTRICALLY IDENTICAL to the input net; = raw x 9.007. USER-ORDERED 2026-09-29: the old TOP 66200 / total 73.0k was a fabricated number, not a resistor on the board)
-V12_mV  = raw x 3300/4095 x 41000/6800 + V12_OFFSET  (R48 33K + R15 1.2K over R16 6.8K; total 41k; = raw x 4.859)
+Vin_mV  = raw x 3300/4095 x 74800/6800 + VIN_OFFSET  (R46 68K over R12 6.8K; = raw x 8.864)
+V24_mV  = raw x 3300/4095 x 74800/6800 + V24_OFFSET  (R47 68K over R14 6.8K - the SAME network as the input net; = raw x 8.864)
+V12_mV  = raw x 3300/4095 x 41198/6800 + V12_OFFSET  (measured on the board; = raw x 4.882)
 
 #### Voltage sense dividers - read them off the schematic, never tune them
 
@@ -812,7 +830,7 @@ on its own live snapshot - the panel never needs the raw math. This is the
 Frame (ESP→STM, type 0x03, payload 5 bytes):
 
 ```text
-AA 55 03 05 00 [target:u8] [ref_mA:u32 LE] [xor checksum]
+(CAL_REFERENCE 0x03 is reserved and no longer handled - see section 4)
 ```
 
 | target | meaning | DMM placement | firmware computes | replies |
@@ -1358,7 +1376,7 @@ valid intentional silence.
 
 Wire change (BREAKING - both boards reflash together): the frame length
 is now u16 little-endian (`AA 55 type len_lo len_hi payload xor`,
-5-byte header, 512 ceiling, checksum over both length bytes) because the
+6-byte header incl. the version byte, 512 ceiling, CRC-16 over everything after the SOF pair) because the
 77-param bulk (1 + 77 x 5 = 386 bytes) no longer fits one length byte.
 A v1.15 parser reads len_hi as the first payload byte and drops every
 frame - mixed versions NEVER link.
@@ -1641,7 +1659,7 @@ So **no combination the panel allows** takes the pack past 14.8 V or 950 mA.
 That is the property the backstops plus the mis-tune cap were added to
 guarantee, and it is what makes the user's "I will optimise it later" safe.
 
-## 6. TLM_LIVE payload layout (84 bytes, little-endian)
+## 6. TLM_LIVE payload layout (104 bytes, little-endian)
 
 | Offset | Size | Field | Meaning |
 |---|---|---|---|
@@ -1668,6 +1686,21 @@ guarantee, and it is what makes the user's "I will optimise it later" safe.
 | 72 | u32 | v_bat_low_mv | Lower battery = V12, mV |
 | 76 | u32 | v_bat_high_mv | Upper battery = V24 − V12, mV |
 | 80 | u32 | fault_mask | b0 ADC, b1 overcurrent-1, b2 overcurrent-2, b3 low battery, b4 jitter-1, b5 jitter-2, b6 FAULT_CHARGER_BAT_LOST (see `app_types.h`); b7+ = 0 |
+| 84 | u32 | vin_raw_counts | **Raw** ADC counts, input net — before the divider maths, the runtime offsets and any compensation |
+| 88 | u32 | v24_raw_counts | **Raw** ADC counts, pack net |
+| 92 | u32 | v12_raw_counts | **Raw** ADC counts, mid node |
+| 96 | u32 | vrefint_counts | **Raw** ADC counts of the internal 1.20 V reference |
+| 100 | u32 | vdda_mv | Measured VDDA, or 0 when the reading is outside a plausible 3.0..3.6 V |
+
+The last five (v1.25) are **calibration ground truth**. Counts are the only
+numbers on this board that no coefficient can distort, so logging them beside a
+DMM lets every scale be rebuilt from first principles instead of being tuned on
+top of whatever the firmware already believes. They are published
+unconditionally — deliberately NOT behind a "calibration mode", because a mode
+that neutralises gains and offsets neutralises them for the CONTROL path too,
+leaving the over-voltage cut and the current fault judging uncalibrated numbers
+for as long as it is left on.
+
 
 Charger states: `0 OFF, 1 BULK, 2 ABSORB, 3 FLOAT, 4 BRINGUP, 5 JIT_RETRY_WAIT,
 6 INPUT_WAIT, 7 FINAL_FAULT, 8 BAT_LOST, 9 MANUAL (v1.2, section 5.2)`.
