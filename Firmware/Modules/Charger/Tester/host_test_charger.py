@@ -1161,7 +1161,15 @@ def test_charger_persistence_v114():
           "the stage graph must use the dark panel palette (v1.16f inset #0b0f17) with bilingual (FA+EN) zone, threshold and stage labels")
     check("'باتری پایین (Vlow)',tt[17],tt[13],tt[10]" in ino and
           "'باتری بالا (Vhigh)',tt[18],tt[6],tt[3]" in ino and
-          '<circle cx="${x}" cy="${y}" r="7"' in ino and
+          # [EN] The DOT must exist; its radius is cosmetic and was frozen at 7
+          #      here, which blocked a requested resize. Fourth hard-coded
+          #      literal found defending a value instead of an intent - check
+          #      that a dot is drawn at a sane size, not that it never changes.
+          # [FA] نقطه باید باشد؛ شعاعش ظاهری است و روی ۷ منجمد شده بود و جلوی
+          #      تغییر اندازهٔ درخواستی را گرفت. چهارمین عدد hard-code شده که
+          #      به‌جای «نیت» از یک «مقدار» دفاع می‌کرد.
+          re.search(r'<circle cx="\$\{x\}" cy="\$\{y\}" r="(\d+(?:\.\d+)?)"', ino) and
+          2.0 <= float(re.search(r'<circle cx="\$\{x\}" cy="\$\{y\}" r="(\d+(?:\.\d+)?)"', ino).group(1)) <= 10.0 and
           'stroke="#e7eaf0"' not in ino and "marker-end" not in ino,
           "v1.14c (user order 2026-09-26, 'show each battery's position and state; the white Bulk curve is confusing - are the zones not enough?'): the graph drops the V(t) curve and cycle arrow, and each battery gets a live position DOT on its own voltage column (ch2->Vlow t17/t13/t10, ch1->Vhigh t18/t6/t3) with a state chip under the chart")
     check('id="qw"' in ino and 'function qchk()' in ino and
@@ -1169,9 +1177,24 @@ def test_charger_persistence_v114():
           'const ZL=[],LL=[]' in ino and 'ترکیب نامعتبر' in ino and
           'باز هم ارسال شود؟' in ino and 'نگهبان ترکیب' in ino,
           "v1.14d (user order 2026-09-26, 'stretch the graph downward, the zone borders are cramped; zones must follow the profile numbers and never overlap'): zones drawn from APPLIED values with dashed preview lines for typed values, anti-collision label pass (ZL/LL), and a qchk() guard mirroring Charger_ClampProfile - red warning + red field + confirm-before-send on invalid combos")
-    check('H=840' in ino and 'id="bkh"' in ino and 'url(#bkh)' in ino and
+    # [EN] The 2026-09-26 order was "at least 50 % taller" (H 560 -> 840); the
+    #      2026-09-29 order REVERSES it ("make the height 50 % less, and the
+    #      text smaller so it stops overlapping"), so H is 420. What still
+    #      matters and is still checked: the hatched Bulk zone, and that the
+    #      label pitch shrank WITH the height - halving the canvas while
+    #      leaving a 16 px stacking pitch is exactly what would make the
+    #      labels collide, which is the thing the user complained about.
+    # [FA] دستور ۲۰۲۶-۰۹-۲۶ «حداقل ۵۰٪ بلندتر» بود؛ دستور ۲۰۲۶-۰۹-۲۹ برعکسش
+    #      می‌کند، پس H برابر ۴۲۰ است. آنچه هنوز مهم است و سنجیده می‌شود: ناحیهٔ
+    #      حاشورخوردهٔ بالک، و اینکه گام عمودی برچسب‌ها همراه ارتفاع کوچک شده
+    #      باشد - نصف‌کردن بوم با نگه‌داشتن گام ۱۶ پیکسلی دقیقاً همان چیزی است
+    #      که برچسب‌ها را روی هم می‌اندازد.
+    m_h = re.search(r"\bH=(\d+),X0=", ino)
+    m_gap = re.search(r"LBL_GAP=(\d+)", ino)
+    check(m_h and int(m_h.group(1)) == 420 and m_gap and int(m_gap.group(1)) <= 12 and
+          'id="bkh"' in ino and 'url(#bkh)' in ino and
           'ناحیهٔ بالک (Bulk)' in ino and 'patternTransform="rotate(45)"' in ino,
-          "v1.14e (user order 2026-09-26, 'at least 50% taller; what is the zone between float and absorb - hatch the bulk zone lightly'): chart height 560->840 (+50%), and the former grey filler between absorb-enter and float is now a labelled Bulk zone with a light diagonal hatch pattern")
+          "v1.14e (user order 2026-09-26, 'at least 50% taller; what is the zone between float and absorb - hatch the bulk zone lightly'): chart height is now 420 (user order 2026-09-29 halved the 840 set on 2026-09-26) and the label stacking pitch shrank with it (LBL_GAP <= 12) so the labels stop colliding; the former grey filler between absorb-enter and float remains a labelled Bulk zone with a light diagonal hatch pattern")
 
     # ---------- compiled fault-injection run of the EXACT flash-state code ----------
     gcc = shutil.which("gcc")
@@ -2878,6 +2901,70 @@ def test_whole_program_consistency_v125():
           "passes everything")
 
 
+def test_section_parameter_help_v125():
+    """[EN] User order 2026-09-29: "in each section's ! help, explain the
+       parameters too - what each one is and what it does."
+       Written as ONE table (PX) plus one pass (pexp) that appends to any
+       button carrying data-p, rather than eight hand-edited HTML bubbles.
+       Hand-copied text is exactly what has rotted in this project before -
+       the panel's LUT mirror and three frozen test literals all came from
+       maintaining a second copy by hand.
+       The trap to guard is a section advertising an id that has no entry:
+       the bubble would then just silently omit that parameter, which looks
+       like a complete list but is not.
+       [FA] دستور کاربر: در «!» هر بخش، پارامترها هم توضیح داده شوند.
+       به‌صورت یک جدول و یک پاس نوشته شده نه هشت حباب HTML دستی، چون متن
+       دستی‌کپی‌شده همان چیزی است که قبلاً در این پروژه پوسیده. تلهٔ اصلی این
+       است که بخشی شناسه‌ای را اعلام کند که در جدول نیست: آن‌وقت حباب بی‌صدا
+       همان پارامتر را جا می‌اندازد و فهرست کامل به نظر می‌رسد."""
+    ino = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
+
+    check("const PX={" in ino and "function pexp()" in ino and "pexp();" in ino,
+          "the parameter-help table, its renderer and the startup call must all exist")
+
+    # [EN] Parse ONLY the PX block - the panel has another id-keyed table (P,
+    #      the manual-mode rows) whose entries have six fields, and a loose
+    #      regex silently mixes the two.
+    # [FA] فقط بلوک PX خوانده شود - پنل جدول دیگری هم با کلید شناسه دارد و
+    #      regex شل، این دو را بی‌صدا قاطی می‌کند.
+    px_blk = re.search(r"const PX=\{(.*?)\n?\};", ino, re.S)
+    check(px_blk is not None, "the PX table must be findable as a single block")
+    px_blk = px_blk.group(1)
+    px = set(int(m) for m in re.findall(r"(\d+):\['", px_blk))
+    tagged = re.findall(r'data-p="([\d,]+)"', ino)
+    check(len(tagged) >= 8,
+          f"every section that owns parameters must advertise them with data-p "
+          f"(found {len(tagged)})")
+
+    advertised = set()
+    for group in tagged:
+        advertised |= {int(x) for x in group.split(",")}
+    missing = sorted(advertised - px)
+    check(not missing,
+          f"a section advertises ids with no entry in PX: {missing} - the bubble "
+          "would silently drop them and still look like a complete list")
+
+    count = int(re.search(r"#define ESP_PARAM_COUNT\s+(\d+)u",
+                          (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1))
+    stray = sorted(i for i in px if i >= count)
+    check(not stray, f"PX describes ids that do not exist: {stray}")
+
+    # the whole point is prose a bench user can act on, not a restated name
+    descs = {int(i): d for i, d in
+             re.findall(r"(\d+):\['[^']*','([^']*)'\]", px_blk)}
+    check(len(descs) == len(px),
+          f"every PX entry must parse as [name, description] "
+          f"({len(descs)} parsed of {len(px)})")
+    thin = sorted(i for i, d in descs.items() if len(d) < 25)
+    check(not thin,
+          f"these parameters have a description too short to explain anything: {thin}")
+
+    for must in (83, 88, 35, 36, 20, 25):
+        check(must in px,
+              f"id {must} is one of the parameters that actually changes charging "
+              "behaviour and must be explained")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -2925,6 +3012,7 @@ def main():
         test_param_ranges_match_panel_v125,
         test_benchlog_row_matches_header_v125,
         test_whole_program_consistency_v125,
+        test_section_parameter_help_v125,
     ]
     for test in tests:
         test()
