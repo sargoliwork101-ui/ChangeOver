@@ -806,7 +806,26 @@
  * [FA] قطع سخت بالای سنجش باتری برای همهٔ مسیرهای کنترل. باتری VRLA دوازده
  *      ولت نباید به شارژری که از حد محافظه‌کارانهٔ ۱۵٫۰V بالاتر است وصل شود.
  *      این قطع firmware جای فیوز، منبع محدودشده یا حدود سازندهٔ باتری نیست. */
+/* [EN] DECIDE EARLIER, DO NOT BEND THE SCALE (user order 2026-09-29).
+ *      The pack divider used to be falsified (TOP 66200 instead of the real
+ *      68K+1.2K) partly so that the over-voltage cut would trip ~100 mV
+ *      early. That bought a little safety margin at the cost of every
+ *      voltage the product reports. The divider is honest again, so the
+ *      margin is taken where it belongs - at the DECISION.
+ *      CHG_MAX_VALID_BATTERY_MV stays the absolute ceiling a half-pack may
+ *      ever read; CHG_OV_DECIDE_EARLY_MV is how far BELOW it the default
+ *      cut-off sits, so the charger stops before the ceiling rather than at
+ *      it. Raise the early margin to act sooner; never re-scale a reading to
+ *      fake it.
+ * [FA] زودتر تصمیم بگیر، مقیاس را خم نکن (دستور کاربر ۲۰۲۶-۰۹-۲۹).
+ *      مقسم پک قبلاً جعل شده بود (۶۶۲۰۰ به‌جای 68K+1.2K واقعی) تا از جمله قطع
+ *      اضافه‌ولتاژ حدود ۱۰۰ میلی‌ولت زودتر بزند. آن حاشیه به قیمت خراب‌شدن هر
+ *      ولتاژی که محصول گزارش می‌کند خریده شده بود. مقسم دوباره صادق است، پس
+ *      حاشیه جایی گرفته می‌شود که باید: سر تصمیم. */
 #define CHG_MAX_VALID_BATTERY_MV     15000u
+#define CHG_OV_DECIDE_EARLY_MV         150u
+#define CHG_OV_CUTOFF_DEFAULT_MV \
+    (CHG_MAX_VALID_BATTERY_MV - CHG_OV_DECIDE_EARLY_MV)
 
 /* ==================== Charger diag array / آرایه دیاگ شارژر ==================== */
 /* [EN] Live-diagnostics array (user order 2026-09-22): every value the charge

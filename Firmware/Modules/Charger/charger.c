@@ -175,7 +175,7 @@ static volatile charger_pid_t CHARGER_PID_T__G__Pid =
    [FA] سقف‌های آلارم بین‌تسکی: volatile برای دیده‌شدن؛ پارگی چندفیلدی با
    قفل زمان‌بند در ستر بسته می‌شود. */
 static volatile uint32_t UINT32_T__G__ChargerHardFaultMa = CHG_CURRENT_HARD_FAULT_MA;
-static volatile uint32_t UINT32_T__G__ChargerOvCutoffMv = CHG_MAX_VALID_BATTERY_MV;
+static volatile uint32_t UINT32_T__G__ChargerOvCutoffMv = CHG_OV_CUTOFF_DEFAULT_MV;
 static volatile uint32_t UINT32_T__G__ChargerValidFloorMv = CHG_MIN_VALID_BATTERY_MV;
 
 /* [EN] NVM-save suspension flag (user order 2026-09-27): set by the comm

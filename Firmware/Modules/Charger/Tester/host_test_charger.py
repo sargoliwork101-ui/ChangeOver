@@ -527,9 +527,9 @@ def test_setpoints_and_timing():
           "static const uint32_t CAL_Current1LutBatteryMw[] =" in cal_h and
           "sizeof(CAL_Current1LutChainMa) /" in cal_h and
           "{ 0u, 5u, 11u, 31u, 54u, 81u, 114u, 148u, 189u, 231u, 277u, 330u, 382u, 444u, 504u, 567u, 640u }" in cal_h and
-          "{ 0u, 0u, 132u, 440u, 772u, 1028u, 1615u, 2111u, 2674u, 3261u, 3857u, 4553u, 5288u, 6074u, 6854u, 7686u, 8645u }" in cal_h and
+          "{ 0u, 0u, 140u, 459u, 820u, 1095u, 1723u, 2259u, 2865u, 3496u, 4130u, 4862u, 5636u, 6488u, 7364u, 8290u, 9345u }" in cal_h and
           lut1_chain_n == lut1_batt_n and lut1_chain_n == 17,
-          f"channel-2 bench LUT must be ON as a chain->POWER table (v1.13, user order 2026-09-25 'voltages are fixed but the currents are wrong'; v1.17/v1.18 refit 2026-09-27 SOLO2 sweep duty 1..19): the DCM invariant is battery POWER, the current is P/Vbat - the old chain->current table embedded the calibration run's battery voltage (12.0..13.65V) and overread ~7 percent per volt as the battery filled; anchors = DMM_I2 x DMM_V2 of the dense 2026-09-25T18:14 run (10 points, duty 2..20%) plus the 2026-09-27 SOLO2 refit points, fitted end-to-end against the exact integer pipeline (v1.18: the integer chain sits ~1.5 mA left of the float chain, so float-fitted anchors drifted -4..-8 mA on the steep slopes); the axis stays the ADC chain current (raw-off2)*K*gain, NEVER duty; the tables size themselves from the initializers and both lists must stay the same length (got chain={lut_chain_n} power={lut_batt_n}); v1.19 (user order 2026-09-27, SOLO1 sweep duty 1..18): channel 1 gets the SAME chain->POWER architecture (TABLE 1, 17 anchors, gate (5,0), ceil-fitted so every DMM point replays EXACTLY - got chain={lut1_chain_n} power={lut1_batt_n})")
+          f"channel-2 bench LUT must be ON as a chain->POWER table (v1.13, user order 2026-09-25 'voltages are fixed but the currents are wrong'; v1.17/v1.18 refit 2026-09-27 SOLO2 sweep duty 1..19): the DCM invariant is battery POWER, the current is P/Vbat - the old chain->current table embedded the calibration run's battery voltage (12.0..13.65V) and overread ~7 percent per volt as the battery filled; anchors = DMM_I2 x DMM_V2 of the dense 2026-09-25T18:14 run (10 points, duty 2..20%) plus the 2026-09-27 SOLO2 refit points, fitted end-to-end against the exact integer pipeline (v1.18: the integer chain sits ~1.5 mA left of the float chain, so float-fitted anchors drifted -4..-8 mA on the steep slopes); the axis stays the ADC chain current (raw-off2)*K*gain, NEVER duty; the tables size themselves from the initializers and both lists must stay the same length (got chain={lut_chain_n} power={lut_batt_n}); v1.19 (user order 2026-09-27, SOLO1 sweep duty 1..18): channel 1 gets the SAME chain->POWER architecture (TABLE 1, 17 anchors, gate (5,0), ceil-fitted so every DMM point replays EXACTLY - got chain={lut1_chain_n} power={lut1_batt_n}); USER-ORDERED 2026-09-29: TABLE 1 was REFITTED when the pack divider was corrected to the schematic - power is V x I, so the table had silently absorbed the divider error and I = P/V only looked right because BOTH terms were wrong by the same factor")
     check("uint32_t uint32_t__batteryPowerMw = func__Measurement_Current2BenchLut(\n        func__BspMeasurement_Current2CountsToMa(uint16_t__counts));" in meas_c_raw and
           "(uint32_t__batteryPowerMw * 1000u) /\n           UINT32_T__G__Battery2VoltageMv" in meas_c_raw,
           "the ch2 LUT must wrap the BSP conversion inside func__Measurement_Current2CountsToMa (unfiltered, filtered and iest all become true battery mA; raw counts and shunt uV untouched) and v1.13 DIVIDES the table's POWER output by the live cached battery-2 voltage (user order: the currents were wrong as the battery filled)")
@@ -568,11 +568,16 @@ def test_setpoints_and_timing():
           "uint32_t__dropMv = CAL_BATTERY12_BENCH_STATIC_MV +" in meas_c_raw and
           "return 0u;" in meas_c_raw.split("func__Measurement_Battery12BenchCompensate")[1].split("\n}\n")[0],
           "the V12 bench compensation must be compile-switchable (enable=0 restores today's behaviour), use saturating subtraction (static + I2 x mOhm / 1000, never below 0 mV)")
-    check(re.search(r"#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS\s+66200u", bsp_meas_c) and
+    check(re.search(r"#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS\s+BSP_MEASUREMENT_DIV24_TOP_OHMS", bsp_meas_c) and
+          re.search(r"#define BSP_MEASUREMENT_SENSE_TOP_24V_OHMS\s+68000u", bsp_meas_c) and
+          re.search(r"#define BSP_MEASUREMENT_SENSE_TOP_12V_OHMS\s+33000u", bsp_meas_c) and
+          re.search(r"#define BSP_MEASUREMENT_SENSE_SERIES_MCU_OHMS\s+1200u", bsp_meas_c) and
+          re.search(r"#define BSP_MEASUREMENT_SENSE_SHUNT_OHMS\s+6800u", bsp_meas_c) and
+          not re.search(r"#define\s+\w+\s+66200u", bsp_meas_c) and
           "func__BspMeasurement_Battery24CountsToMv" in bsp_meas_c and
           "func__Measurement_Battery24CountsToMv(uint16_t__battery24CountsFiltered);" in meas_c_raw and
           "func__Measurement_V24CountsToMv(uint16_t__raw[BSP_ADC_CHANNEL_24V_IN]);" in meas_c_raw,
-          "the battery-PACK 24 V channel must use its OWN divider: v1.19 bench truth (user order 2026-09-27, SOLO1 sweep: the old 69.2k total read ~1.4 V low and blinded the 15 V OV cut) is total 73.0k over the 6.8k bottom, i.e. TOP 66200 - while the INPUT 24 V net keeps the 76k conversion (bench-verified +1.2 percent)")
+          "USER-ORDERED 2026-09-29: the sense dividers must be the SCHEMATIC values, never tuned. Each net is two series resistors into the ADC pin plus one to ground: R46=68K (input) / R47=68K (pack) / R48=33K (mid), each + R11/R13/R15=1.2K, each over R12/R14/R16=6.8K. The two 24 V nets are electrically IDENTICAL so the pack MUST reuse the input's divider expression - it carried a fabricated TOP=66200 that matches no resistor on the board, which is exactly why the pack voltage never calibrated. A wrong divider is a GAIN error: right at one point, wrong everywhere else. If a decision must happen sooner, move the THRESHOLD (CHG_OV_DECIDE_EARLY_MV), never the scale")
     check(re.search(r"#define MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV\s+5000u", meas_h_txt),
           "runtime voltage offset range must be +/-5000 mV (v1.10, user order 2026-09-25: the pack divider error alone was ~2.3 V at 24 V, beyond the old +/-2000, so the offset could not even express it)")
     check("BSP_MEASUREMENT_MA_PER_A" in bsp_meas_c and "BSP_MEASUREMENT_PERMILLE_SCALE" in bsp_meas_c and
@@ -994,7 +999,12 @@ def test_ch1_lut_v119():
         return ys[-1] + ((c - xs[-1]) * (ys[-1] - ys[-2])) // (xs[-1] - xs[-2])
 
     def vhigh_corr(v24, vlow):
-        return (v24 * 73000) // 69200 - vlow
+        # [EN] The sweep's v24 was logged while the pack net still used total
+        #      69200; rescale it to the HONEST schematic total 76000
+        #      (68K+1.2K over 6.8K), not to the fabricated 73000.
+        # [FA] v24 این سوییپ زمانی ثبت شده که نت پک مجموع ۶۹۲۰۰ داشت؛ به مجموع
+        #      صادقانهٔ شماتیک یعنی ۷۶۰۰۰ مقیاس می‌شود، نه به ۷۳۰۰۰ جعلی.
+        return (v24 * 76000) // 69200 - vlow
 
     def ibat(raw, v24, vlow):
         return (lut_mw(bsp_chain(raw)) * 1000) // vhigh_corr(v24, vlow)
@@ -1018,12 +1028,42 @@ def test_ch1_lut_v119():
         worst = max(worst, abs(ibat(raw, v24, vlow) - dmm))
     check(worst <= 5,
           f"firmware-math replay of the 2026-09-27 SOLO1 sweep through the ch1 power LUT with the corrected divisor: worst DMM error {worst} mA (<= 5, no systematic sign; the old linear chain drifted -29..+72 mA)")
-    check(re.search(r"#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS\s+66200u", bsp_c) and
-          "62400u" not in bsp_c,
-          "the V24 pack divider top must be the bench-truth 66200 (v1.19: 62400 read ~1.4 V low and blinded the 15 V OV cut)")
+    check(re.search(r"#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS\s+BSP_MEASUREMENT_DIV24_TOP_OHMS", bsp_c) and
+          not re.search(r"#define\s+\w+\s+(66200|62400)u", bsp_c),
+          "the pack divider must BE the input divider (both nets are 68K+1.2K over 6.8K); "
+          "62400 and 66200 were successive fudges, neither is a resistor on this board")
+    ov_ceiling = int(re.search(r"#define CHG_MAX_VALID_BATTERY_MV\s+(\d+)u",
+                               (ROOT / "Firmware/Modules/Charger/charger.h").read_text()).group(1))
     vh18 = vhigh_corr(26040, 12145)
-    check(vh18 >= 15000,
-          f"D18's replayed vhigh with the corrected divider must reach the 15000 mV hard cutoff (got {vh18} mV) so the manual-mode OV cut provably trips where the battery really was 15.22 V")
+    check(vh18 >= ov_ceiling,
+          f"D18's replayed vhigh must still reach the {ov_ceiling} mV hard cutoff "
+          f"(got {vh18} mV) so the manual-mode OV cut provably trips on the row where the "
+          "operator had to stop by hand")
+    # [EN] OPEN BENCH DISCREPANCY, recorded rather than papered over. With the
+    #      honest divider this row replays at ~16.4 V while the 2026-09-27 note
+    #      says the DMM read 15.22 V. The 2026-09-25 CSV disagrees with that
+    #      note: there the V12 net is accurate to 0.4 percent and the input net
+    #      to 1.2 percent using this SAME two-series-plus-shunt model, and the
+    #      honest divider is what makes the two half-packs come out plausible
+    #      (12.07 / 12.94 V) instead of leaving one half at an implausible
+    #      10.70 V. One DMM reading on pack+ settles it; until then the
+    #      SCHEMATIC wins, because a divider is hardware, not a fitted number.
+    # [FA] اختلاف باز بنچ، ثبت شده نه ماست‌مالی. با مقسم صادقانه این ردیف حدود
+    #      ۱۶٫۴ ولت بازپخش می‌شود در حالی که یادداشت ۲۰۲۶-۰۹-۲۷ می‌گوید DMM
+    #      ۱۵٫۲۲ خوانده. CSV ۲۰۲۶-۰۹-۲۵ با آن یادداشت نمی‌خواند: همین مدل روی
+    #      نت ۱۲ولت تا ۰٫۴٪ و روی ورودی تا ۱٫۲٪ دقیق است. یک اندازه‌گیری DMM
+    #      روی pack+ تکلیف را روشن می‌کند؛ تا آن موقع شماتیک برنده است.
+    chg_h_txt = (ROOT / "Firmware/Modules/Charger/charger.h").read_text()
+    m_early = re.search(r"#define CHG_OV_DECIDE_EARLY_MV\s+(\d+)u", chg_h_txt)
+    check(m_early and int(m_early.group(1)) >= 50,
+          "the safety margin that used to be bought by bending the divider must now exist "
+          "as a REAL earlier decision: CHG_OV_DECIDE_EARLY_MV has to be a non-trivial "
+          f"margin, got {m_early.group(1) if m_early else 'missing'}")
+    check(re.search(r"#define CHG_OV_CUTOFF_DEFAULT_MV\s*\\?\s*\n?\s*\(CHG_MAX_VALID_BATTERY_MV - CHG_OV_DECIDE_EARLY_MV\)", chg_h_txt) and
+          "UINT32_T__G__ChargerOvCutoffMv = CHG_OV_CUTOFF_DEFAULT_MV;" in chg_c,
+          "the default OV cut-off must sit BELOW the absolute ceiling by that margin and "
+          "actually be used as the power-on default - stopping before the ceiling instead "
+          "of at it is the honest replacement for the old scale fudge")
     check("func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,\n                                       uint8_t__channelIndex) >= UINT32_T__G__ChargerOvCutoffMv" in chg_c,
           "ManualDriveChannel must keep the hard OV comparison (channel voltage >= ChargerOvCutoffMv forces duty 0) - the logic was sound, it was only blinded by the divider")
 

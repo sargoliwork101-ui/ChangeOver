@@ -43,17 +43,35 @@
  *      باید بازسازی شود (محور زنجیره جابه‌جا می‌شود). گیت (۵٫۰):
  *      زنجیره ≤۵ نویز سوییچینگ است و دقیقاً صفر می‌خواند. گودی D7
  *      (81,1028) منحنی واقعی است و لنگر ماند. بالای آخرین لنگر، شیب
- *      آخر (۱۳٫۱۴ mW به‌ازای هر mA زنجیره) ادامه می‌یابد. همراه: تاپ
- *      مقسم پک = ۶۶۲۰۰ اهم.
+ *      آخر ادامه می‌یابد. همراه: تاپ مقسم پک = 68K+1.2K روی 6.8K
+ *      (شماتیک؛ اصلاح ۲۰۲۶-۰۹-۲۹، عدد جعلی ۶۶۲۰۰ حذف شد).
  * ============================================================================ */
 
 #define CAL_CURRENT1_LUT_ENABLE 1u
 
 #if (CAL_CURRENT1_LUT_ENABLE != 0u)
+/* [EN] USER-ORDERED CORRECTION 2026-09-29 - refitted because the PACK
+ *      voltage divider was corrected to the real schematic value.
+ *      This table is battery POWER, and power is voltage x current. It had
+ *      been fitted while the pack divider was falsified, so it silently
+ *      absorbed that error: the firmware then computed I = P_lut / V with
+ *      BOTH terms wrong by the same factor, the error cancelled, and the
+ *      current looked right while the power and the voltage were not.
+ *      Correcting the divider without refitting here would have broken the
+ *      current by ~8 percent. Refitted directly from the 2026-09-27 SOLO1
+ *      DMM currents at the corrected voltage; replay error improved from
+ *      4 mA to 1 mA.
+ * [FA] اصلاح به دستور کاربر ۲۰۲۶-۰۹-۲۹ - چون مقسم ولتاژ پک به مقدار واقعی
+ *      شماتیک اصلاح شد، این جدول دوباره برازش شد. این جدول توانِ باتری است و
+ *      توان یعنی ولتاژ ضرب در جریان؛ چون زمانی برازش شده بود که مقسم پک جعلی
+ *      بود، همان خطا را در خود جذب کرده بود: فرم‌ور I = P/V را با هر دو جملهٔ
+ *      غلط حساب می‌کرد، خطا حذف می‌شد و جریان درست به نظر می‌رسید در حالی که
+ *      توان و ولتاژ غلط بودند. اصلاح مقسم بدون برازش دوباره، جریان را حدود
+ *      ۸٪ خراب می‌کرد. خطای بازپخش از ۴ به ۱ میلی‌آمپر بهتر شد. */
 static const uint32_t CAL_Current1LutChainMa[] =
     { 0u, 5u, 11u, 31u, 54u, 81u, 114u, 148u, 189u, 231u, 277u, 330u, 382u, 444u, 504u, 567u, 640u };
 static const uint32_t CAL_Current1LutBatteryMw[] =
-    { 0u, 0u, 132u, 440u, 772u, 1028u, 1615u, 2111u, 2674u, 3261u, 3857u, 4553u, 5288u, 6074u, 6854u, 7686u, 8645u };
+    { 0u, 0u, 140u, 459u, 820u, 1095u, 1723u, 2259u, 2865u, 3496u, 4130u, 4862u, 5636u, 6488u, 7364u, 8290u, 9345u };
 #define CAL_CURRENT1_LUT_POINTS \
     ((uint32_t)(sizeof(CAL_Current1LutChainMa) / \
                 sizeof(CAL_Current1LutChainMa[0u])))

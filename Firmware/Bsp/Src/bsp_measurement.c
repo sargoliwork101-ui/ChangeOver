@@ -19,34 +19,64 @@
 #define BSP_MEASUREMENT_VREF_MV             3300u
 #define BSP_MEASUREMENT_ADC_FULL_SCALE     4095u
 
-/* [EN] Schematic dividers: 24V = 68K+1.2K / 6.8K, 12V = 33K+1.2K / 6.8K.
- *      [FA] تقسیم‌های شماتیک: ۲۴V برابر 68K+1.2K / 6.8K و ۱۲V برابر
- *      33K+1.2K / 6.8K. */
-#define BSP_MEASUREMENT_DIV24_TOP_OHMS   69200u
-#define BSP_MEASUREMENT_DIV24_BOTTOM_OHMS 6800u
-/* [EN] Battery-PACK 24 V net: its sense path is NOT the input net above
-        (besides the 68 k there are a 1.2 k and a 6.8 k in the path; the
-        old shared 76 k assumption overread the pack by 9.8 percent). The
-        INPUT 24 V net keeps the 76 k divider (bench-verified +1.2
-        percent). v1.19 CORRECTION (SOLO1 sweep vs a DMM on the battery
-        terminals): the 69.2 k total read the pack ~1.4 V LOW and blinded
-        the 15.0 V hard OV cut; the input channel on the same ADC reads
-        +29 mV steady, so the error is pack-path-specific. Bench truth
-        (minimax, top-exact +104 mV so the OV cut trips ~100 mV early -
-        safe): effective total 73.0 k = TOP 66200 over the same 6.8 k
-        bottom. Re-verify pack+ with a DMM after flashing.
-   [FA] نت باتری‌پک ۲۴V با نت ورودی یکی نیست (علاوه بر 68k، یک 1.2k و یک
-        6.8k در مسیرش هست؛ فرض اشتراکی قدیمی 76k پک را ۹٫۸٪ زیاد می‌خواند).
-        نت ورودی روی همان 76k می‌ماند (بنچ +۱٫۲٪). اصلاح v1.19 (سوییپ SOLO1
-        برابر DMM ترمینال): مجموع 69.2k پک را ~1.4V کم می‌خواند و قطع سخت
-        ۱۵V را نابینا کرده بود؛ کانال ورودی روی همان ADC ثابت +29mV است
-        پس خطا مختص مسیر پک است. حقیقت بنچ (مینیماکس، دقیق در قله +104mV
-        تا قطع OV زودتر بزند - امن): مجموع مؤثر 73.0k یعنی تاپ ۶۶۲۰۰ روی
-        همان پایین 6.8k. بعد از فلش با مولتی‌متر راستی‌آزمایی شود. */
-#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS 66200u
-#define BSP_MEASUREMENT_DIV24BAT_BOTTOM_OHMS 6800u
-#define BSP_MEASUREMENT_DIV12_TOP_OHMS   34200u
-#define BSP_MEASUREMENT_DIV12_BOTTOM_OHMS 6800u
+/* [EN] VOLTAGE SENSE DIVIDERS - read straight off the schematic, not tuned.
+ *      USER-ORDERED CORRECTION 2026-09-29. Every one of the three sense
+ *      nets has the SAME shape: two resistors in series feeding the ADC pin,
+ *      and one resistor from that pin to ground.
+ *
+ *        sheet 1 (power)      sheet 4 (MCU)        to GND
+ *        ADC_MICRO_+24V_INPUT     R46 = 68K  +  R11 = 1.2K  |  R12 = 6.8K
+ *        ADC_MICRO_+24V_BAT       R47 = 68K  +  R13 = 1.2K  |  R14 = 6.8K
+ *        ADC_MICRO_+24V_BAT_COM   R48 = 33K  +  R15 = 1.2K  |  R16 = 6.8K
+ *
+ *      So the two 24 V nets are ELECTRICALLY IDENTICAL (68K+1.2K over 6.8K)
+ *      and there is no physical reason for their coefficients to differ.
+ *
+ *      WHY THIS HAD TO BE CORRECTED. The pack net used to carry TOP = 66200,
+ *      which is not a resistor that exists on this board. It was invented to
+ *      make one bench reading line up, and it was the real reason the pack
+ *      voltage never calibrated: a wrong divider is a GAIN error, so it can
+ *      only ever be right at a single point and is wrong everywhere else -
+ *      and it silently corrupts every consumer of that reading (charge PID,
+ *      OV cut, panel, bench CSV, half-pack balance).
+ *      The rule from here on: READ THE VOLTAGE HONESTLY. If a decision needs
+ *      to happen sooner, move the THRESHOLD (see CHG_ALARM_PARAM_OV_CUTOFF_MV
+ *      and the absorb/over pair), never the scale. Residual per-board error
+ *      belongs in the runtime offsets, ESP params 4/5/6, which are an ADDER
+ *      and therefore cannot distort the slope.
+ * [FA] مقسم‌های حس ولتاژ - مستقیم از شماتیک خوانده شده‌اند، نه تنظیم‌شده.
+ *      اصلاح به دستور کاربر ۲۰۲۶-۰۹-۲۹. هر سه نت حس یک شکل دارند: دو مقاومت
+ *      سری تا پایهٔ ADC و یک مقاومت از همان پایه به زمین (R46/R47=68K و
+ *      R48=33K روی شیت قدرت، به‌اضافهٔ R11/R13/R15=1.2K و R12/R14/R16=6.8K
+ *      روی شیت MCU). پس دو نت ۲۴ولت از نظر الکتریکی یکی‌اند و هیچ دلیل فیزیکی
+ *      برای تفاوت ضرایبشان وجود ندارد.
+ *      چرا اصلاح لازم بود: نت پک قبلاً TOP=66200 داشت که هیچ مقاومتی روی این
+ *      برد نیست؛ ساخته شده بود تا یک خواندن بنچ جور دربیاید، و دقیقاً همین
+ *      دلیل کالیبره‌نشدن ولتاژ پک بود. مقسم غلط یعنی خطای گین: فقط در یک نقطه
+ *      درست است و در بقیهٔ نقاط غلط، و بی‌صدا همهٔ مصرف‌کننده‌های آن عدد را
+ *      خراب می‌کند. قاعده از این به بعد: ولتاژ را صادقانه بخوان؛ اگر تصمیمی
+ *      باید زودتر گرفته شود، آستانه را جابه‌جا کن نه مقیاس را. خطای باقی‌ماندهٔ
+ *      هر برد جای آفست‌های زمان اجرا (پارامترهای ۴/۵/۶) است که جمع‌شونده‌اند و
+ *      نمی‌توانند شیب را خراب کنند. */
+#define BSP_MEASUREMENT_SENSE_SERIES_MCU_OHMS  1200u  /* R11 / R13 / R15 */
+#define BSP_MEASUREMENT_SENSE_SHUNT_OHMS       6800u  /* R12 / R14 / R16 */
+#define BSP_MEASUREMENT_SENSE_TOP_24V_OHMS    68000u  /* R46 (input), R47 (pack) */
+#define BSP_MEASUREMENT_SENSE_TOP_12V_OHMS    33000u  /* R48 (mid node)          */
+
+#define BSP_MEASUREMENT_DIV24_TOP_OHMS \
+    (BSP_MEASUREMENT_SENSE_TOP_24V_OHMS + BSP_MEASUREMENT_SENSE_SERIES_MCU_OHMS)
+#define BSP_MEASUREMENT_DIV24_BOTTOM_OHMS   BSP_MEASUREMENT_SENSE_SHUNT_OHMS
+
+/* [EN] Same physical network as the input net above - deliberately spelled
+        out from the same constants so the two can never drift apart again.
+   [FA] دقیقاً همان شبکهٔ فیزیکی نت ورودی - عمداً از همان ثابت‌ها ساخته شده تا
+        دیگر هرگز از هم جدا نشوند. */
+#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS   BSP_MEASUREMENT_DIV24_TOP_OHMS
+#define BSP_MEASUREMENT_DIV24BAT_BOTTOM_OHMS BSP_MEASUREMENT_DIV24_BOTTOM_OHMS
+
+#define BSP_MEASUREMENT_DIV12_TOP_OHMS \
+    (BSP_MEASUREMENT_SENSE_TOP_12V_OHMS + BSP_MEASUREMENT_SENSE_SERIES_MCU_OHMS)
+#define BSP_MEASUREMENT_DIV12_BOTTOM_OHMS   BSP_MEASUREMENT_SENSE_SHUNT_OHMS
 
 /* [EN] Current sense: 10mOhm shunt and LM358 gain 101.
  *      [FA] سنجش جریان: شانت ۱۰mΩ و گین LM358 برابر ۱۰۱. */

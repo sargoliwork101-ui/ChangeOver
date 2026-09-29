@@ -519,7 +519,7 @@ English line is for the agent/maintainers.
 | 1 | Ch2 zero offset (ADC counts) - same formula as channel 1 | آفست جریان صفر کانال ۲؛ همان فرمول کانال ۱ برای زنجیرهٔ دوم: mA ≈ (raw − آفست) × 0.8776 × گین/1000 |
 | 2 | Ch1 gain trim (permille) - final scale of the mA conversion: mA ≈ (raw − offset) × 0.8776 × gain/1000; 1046 = bench value (bench 2026-09-24) | ضریب گین تبدیل جریان کانال ۱ (پرمیل)؛ فرمول: mA ≈ (raw − آفست) × 0.8776 × گین/۱۰۰۰ — مقدار بنچ ۱۰۴۶ (۲۰۲۶-۰۹-۲۴؛ پیش‌فرض ≈ ×۰٫۹۱۸۰ به‌ازای هر count) |
 | 3 | Ch2 gain trim (permille) - same formula as channel 1 | ضریب گین تبدیل جریان کانال ۲ (پرمیل)؛ فرمول: mA ≈ (raw − آفست) × 0.8776 × گین/۱۰۰۰ |
-| 4 | VIN offset (mV, signed) - adder in: Vin_mV ≈ counts × 9.007 + offset (divider 69.2k/6.8k) | آفست کالیبراسیون ولتاژ ورودی ۲۴V بر حسب mV (علامت‌دار)؛ فرمول: Vin ≈ counts × 9.007 + آفست (مقسم 69.2k/6.8k) |
+| 4 | VIN offset (mV, signed) - adder in: Vin_mV ≈ counts × 9.007 + offset (68K+1.2K over 6.8K) | آفست کالیبراسیون ولتاژ ورودی ۲۴V بر حسب mV (علامت‌دار)؛ فرمول: Vin ≈ counts × 9.007 + آفست (مقسم 69.2k/6.8k) |
 | 5 | V24 offset (mV, signed) - adder in: V24_mV ≈ counts × 9.007 + offset | آفست کالیبراسیون ولتاژ پک ۲۴V بر حسب mV (علامت‌دار)؛ فرمول: V24 ≈ counts × 9.007 + آفست |
 | 6 | V12 offset (mV, signed) - adder in: V12_mV ≈ counts × 4.859 + offset; Vhigh = V24 − V12 | آفست کالیبراسیون ولتاژ باتری ۱۲V (نود میانی) بر حسب mV (علامت‌دار)؛ فرمول: V12 ≈ counts × 4.859 + آفست و Vhigh = V24 − V12 |
 | 7 | Median window - ANY value 1..15 (v1.4: even sizes allowed, no rounding); 1..2 = off, 3 = default, bigger = stronger spike rejection with more lag | پنجرهٔ مدین - هر مقدار ۱..۱۵ (v1.4: زوج هم مجاز، بدون گردکردن)؛ ۱..۲ = خاموش، ۳ = پیش‌فرض، بزرگ‌تر = حذف پالس قوی‌تر با تأخیر بیشتر |
@@ -704,9 +704,62 @@ enforces it).
 Voltage chain (offsets = IDs 4/5/6, saturating add, never below 0 mV):
 
 ```text
-Vin_mV  = raw x 3300/4095 x 76000/6800 + VIN_OFFSET  (input net: 69.2k/6.8k, total 76k; = raw x 9.007)
-V24_mV  = raw x 3300/4095 x 73000/6800 + V24_OFFSET  (PACK net: bench truth total 73.0k, TOP 66200; = raw x 8.651 - v1.19; the old 69.2k read ~1.4 V low and blinded the 15 V OV cut)
-V12_mV  = raw x 3300/4095 x 41000/6800 + V12_OFFSET  (divider 34.2k/6.8k; = raw x 4.859)
+Vin_mV  = raw x 3300/4095 x 76000/6800 + VIN_OFFSET  (R46 68K + R11 1.2K over R12 6.8K; total 76k; = raw x 9.007)
+V24_mV  = raw x 3300/4095 x 76000/6800 + V24_OFFSET  (R47 68K + R13 1.2K over R14 6.8K - ELECTRICALLY IDENTICAL to the input net; = raw x 9.007. USER-ORDERED 2026-09-29: the old TOP 66200 / total 73.0k was a fabricated number, not a resistor on the board)
+V12_mV  = raw x 3300/4095 x 41000/6800 + V12_OFFSET  (R48 33K + R15 1.2K over R16 6.8K; total 41k; = raw x 4.859)
+
+#### Voltage sense dividers - read them off the schematic, never tune them
+
+USER-ORDERED CORRECTION, 2026-09-29. All three sense nets have the SAME
+shape: **two resistors in series** into the ADC pin, and **one resistor from
+that pin to ground**.
+
+| Net | series (power sheet) | series (MCU sheet) | to GND | total | mV / count |
+|---|---|---|---|---|---|
+| `ADC_MICRO_+24V_INPUT` | R46 = 68K | R11 = 1.2K | R12 = 6.8K | 76.0k | 9.007 |
+| `ADC_MICRO_+24V_BAT` | R47 = 68K | R13 = 1.2K | R14 = 6.8K | 76.0k | 9.007 |
+| `ADC_MICRO_+24V_BAT_COM` | R48 = 33K | R15 = 1.2K | R16 = 6.8K | 41.0k | 4.859 |
+
+The two 24 V nets are **electrically identical**, so their coefficients must
+be identical; the firmware now literally defines the pack divider as the
+input divider so they cannot drift apart again.
+
+**Why this had to be corrected.** The pack net carried `TOP = 66200`, which
+is not a resistor on this board. It was invented to make one bench reading
+line up, and it was the reason the pack voltage never calibrated. A wrong
+divider is a **gain** error: it can only be right at a single point, it is
+wrong everywhere else, and it silently corrupts every consumer of the value -
+the charge PID, the OV cut, the panel, the bench CSV and the half-pack
+balance. Worse, the channel-1 power LUT was fitted *through* that wrong
+voltage, so it absorbed the error; `I = P/V` then looked right only because
+both terms were wrong by the same factor.
+
+**Evidence that the schematic model is the correct one.** The same
+two-series-plus-shunt model, applied to the two nets that have a DMM
+reference in `bench/solo2_dense.csv` (10 points, 2026-09-25):
+
+| Net | model total | error vs DMM |
+|---|---|---|
+| V12 | 41.0k | **-0.05 % .. +0.40 %** |
+| VIN | 76.0k | **+1.02 % .. +1.19 %** (inside a 1 % resistor stack) |
+
+and replaying that CSV's pack samples, the honest divider puts the idle half
+at **12.94 V** while the old fudge put it at **10.70 V** - a voltage that
+would mean a ruined battery, which the bench operator would have noticed.
+
+**The rule.** Read the voltage honestly. If a decision has to happen sooner,
+move the **threshold** - that is what `CHG_OV_DECIDE_EARLY_MV` (150 mV below
+`CHG_MAX_VALID_BATTERY_MV`) is for - never the scale. Residual per-board
+error belongs in the runtime offsets (params 4/5/6), which are an **adder**
+and therefore cannot bend the slope.
+
+**Independent confirmation.** `Firmware/Bsp/README.md` had already recorded
+the symptom that started this whole thread: *"the real battery reached
+~16.4 V without cutting off"*. Replaying that same SOLO1 row D18 with the
+honest divider gives **16453 mV** - the schematic divider reads exactly what
+the operator physically observed, while the 66200 fudge reported 15324 mV and
+made a runaway look safe. The fudge did not just mis-scale the display; it
+hid the very fault it was introduced to catch.
 V12_mV -= 150 mV + 0.47 ohm x I2_bat_mA              (bench compensation, clamp at 0 - v1.11 refit)
 Vlow_mV = V12_mV        Vhigh_mV = V24_mV - V12_mV (clamped at 0)
 ```
