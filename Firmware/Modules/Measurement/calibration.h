@@ -58,9 +58,11 @@
  *      BOTH terms wrong by the same factor, the error cancelled, and the
  *      current looked right while the power and the voltage were not.
  *      Correcting the divider without refitting here would have broken the
- *      current by ~8 percent. Refitted directly from the 2026-09-27 SOLO1
- *      DMM currents at the corrected voltage; replay error improved from
- *      4 mA to 1 mA.
+ *      current by ~8 percent. Refitted from the 2026-09-27 SOLO1 DMM
+ *      currents at the corrected voltage. Refitted AGAIN 2026-09-29 when the
+ *      24 V divider was measured on the board (top 69200 -> 68000): without it
+ *      the replay error went 1 -> 15 mA, because this table is power and the
+ *      voltage it is divided by had moved. Back to 1 mA.
  * [FA] اصلاح به دستور کاربر ۲۰۲۶-۰۹-۲۹ - چون مقسم ولتاژ پک به مقدار واقعی
  *      شماتیک اصلاح شد، این جدول دوباره برازش شد. این جدول توانِ باتری است و
  *      توان یعنی ولتاژ ضرب در جریان؛ چون زمانی برازش شده بود که مقسم پک جعلی
@@ -71,7 +73,7 @@
 static const uint32_t CAL_Current1LutChainMa[] =
     { 0u, 5u, 11u, 31u, 54u, 81u, 114u, 148u, 189u, 231u, 277u, 330u, 382u, 444u, 504u, 567u, 640u };
 static const uint32_t CAL_Current1LutBatteryMw[] =
-    { 0u, 0u, 140u, 459u, 820u, 1095u, 1723u, 2259u, 2865u, 3496u, 4130u, 4862u, 5636u, 6488u, 7364u, 8290u, 9345u };
+    { 0u, 0u, 135u, 445u, 795u, 1061u, 1670u, 2189u, 2778u, 3390u, 4007u, 4720u, 5474u, 6306u, 7159u, 8061u, 9089u };
 #define CAL_CURRENT1_LUT_POINTS \
     ((uint32_t)(sizeof(CAL_Current1LutChainMa) / \
                 sizeof(CAL_Current1LutChainMa[0u])))

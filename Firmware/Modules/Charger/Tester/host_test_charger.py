@@ -535,7 +535,7 @@ def test_setpoints_and_timing():
           "static const uint32_t CAL_Current1LutBatteryMw[] =" in cal_h and
           "sizeof(CAL_Current1LutChainMa) /" in cal_h and
           "{ 0u, 5u, 11u, 31u, 54u, 81u, 114u, 148u, 189u, 231u, 277u, 330u, 382u, 444u, 504u, 567u, 640u }" in cal_h and
-          "{ 0u, 0u, 140u, 459u, 820u, 1095u, 1723u, 2259u, 2865u, 3496u, 4130u, 4862u, 5636u, 6488u, 7364u, 8290u, 9345u }" in cal_h and
+          "{ 0u, 0u, 135u, 445u, 795u, 1061u, 1670u, 2189u, 2778u, 3390u, 4007u, 4720u, 5474u, 6306u, 7159u, 8061u, 9089u }" in cal_h and
           lut1_chain_n == lut1_batt_n and lut1_chain_n == 17,
           f"channel-2 bench LUT must be ON as a chain->POWER table (v1.13, user order 2026-09-25 'voltages are fixed but the currents are wrong'; v1.17/v1.18 refit 2026-09-27 SOLO2 sweep duty 1..19): the DCM invariant is battery POWER, the current is P/Vbat - the old chain->current table embedded the calibration run's battery voltage (12.0..13.65V) and overread ~7 percent per volt as the battery filled; anchors = DMM_I2 x DMM_V2 of the dense 2026-09-25T18:14 run (10 points, duty 2..20%) plus the 2026-09-27 SOLO2 refit points, fitted end-to-end against the exact integer pipeline (v1.18: the integer chain sits ~1.5 mA left of the float chain, so float-fitted anchors drifted -4..-8 mA on the steep slopes); the axis stays the ADC chain current (raw-off2)*K*gain, NEVER duty; the tables size themselves from the initializers and both lists must stay the same length (got chain={lut_chain_n} power={lut_batt_n}); v1.19 (user order 2026-09-27, SOLO1 sweep duty 1..18): channel 1 gets the SAME chain->POWER architecture (TABLE 1, 17 anchors, gate (5,0), ceil-fitted so every DMM point replays EXACTLY - got chain={lut1_chain_n} power={lut1_batt_n}); USER-ORDERED 2026-09-29: TABLE 1 was REFITTED when the pack divider was corrected to the schematic - power is V x I, so the table had silently absorbed the divider error and I = P/V only looked right because BOTH terms were wrong by the same factor")
     check("uint32_t uint32_t__batteryPowerMw = func__Measurement_Current2BenchLut(\n        func__BspMeasurement_Current2CountsToMa(uint16_t__counts));" in meas_c_raw and
@@ -1041,11 +1041,16 @@ def test_ch1_lut_v119():
 
     def vhigh_corr(v24, vlow):
         # [EN] The sweep's v24 was logged while the pack net still used total
-        #      69200; rescale it to the HONEST schematic total 76000
-        #      (68K+1.2K over 6.8K), not to the fabricated 73000.
-        # [FA] v24 این سوییپ زمانی ثبت شده که نت پک مجموع ۶۹۲۰۰ داشت؛ به مجموع
-        #      صادقانهٔ شماتیک یعنی ۷۶۰۰۰ مقیاس می‌شود، نه به ۷۳۰۰۰ جعلی.
-        return (v24 * 76000) // 69200 - vlow
+        #      69200. Rescale it to the total the divider was MEASURED to have
+        #      on the board: 74800 (68K over 6.8K). The schematic reading said
+        #      76000 because it counted the 1.2K, but probing the ADC pin showed
+        #      that resistor sits after the tap and drops no DC - two
+        #      independent nets landed on 11.0000 to within 0.05 %.
+        # [FA] v24 این سوییپ با مجموع ۶۹۲۰۰ ثبت شده؛ به مجموعی مقیاس می‌شود که
+        #      روی برد اندازه گرفته شد یعنی ۷۴۸۰۰. خوانش شماتیک ۷۶۰۰۰ می‌گفت چون
+        #      ۱٫۲ کیلواهم را می‌شمرد، ولی اندازه‌گیری پایهٔ ADC نشان داد آن مقاومت
+        #      بعد از نقطهٔ تقسیم است و افت DC ندارد.
+        return (v24 * 74800) // 69200 - vlow
 
     def ibat(raw, v24, vlow):
         return (lut_mw(bsp_chain(raw)) * 1000) // vhigh_corr(v24, vlow)

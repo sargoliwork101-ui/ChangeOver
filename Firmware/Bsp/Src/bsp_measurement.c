@@ -113,8 +113,30 @@
 #define BSP_MEASUREMENT_SENSE_TOP_24V_OHMS    68000u  /* R46 (input), R47 (pack) */
 #define BSP_MEASUREMENT_SENSE_TOP_12V_OHMS    33000u  /* R48 (mid node)          */
 
-#define BSP_MEASUREMENT_DIV24_TOP_OHMS \
-    (BSP_MEASUREMENT_SENSE_TOP_24V_OHMS + BSP_MEASUREMENT_SENSE_SERIES_MCU_OHMS)
+/* [EN] MEASURED CORRECTION 2026-09-29, and it overrules the schematic reading.
+ *      With VDDA confirmed at exactly 3.300 V, the divider ratio was measured
+ *      directly - DMM on the connector, DMM on the ADC pin - which needs no
+ *      assumption at all, because a resistive divider is ratiometric and has no
+ *      offset:
+ *          input net (PA2): 24.16 V / 2.197 V = 10.9968
+ *          pack net  (PA3): 28.46 V / 2.584 V = 11.0139   average 11.0054
+ *      68K over 6.8K gives exactly 11.0000. A 0.05 % fit on TWO independent
+ *      nets is not a coincidence, so the 1.2K is NOT in the divider: R11/R13
+ *      sit between the tap and the ADC pin, where they are series protection
+ *      into a high-impedance input and drop no DC. Including them, as the
+ *      schematic reading implied, made the board read 1.55 % high.
+ *      The 12 V net still includes its 1.2K: 34.2K/6.8K = 6.0294 against a
+ *      measured 6.0586, i.e. -0.48 %, which is inside a 1 % resistor stack and
+ *      inside most meters' DC accuracy. One point is not enough to chase that,
+ *      so it is left alone and flagged for a second reading.
+ * [FA] اصلاح اندازه‌گیری‌شدهٔ ۲۰۲۶-۰۹-۲۹ که بر خوانش شماتیک ارجح است. با VDDA
+ *      دقیقاً ۳٫۳۰۰، نسبت مقسم مستقیم اندازه گرفته شد - مولتی‌متر روی کانکتور و
+ *      روی پایهٔ ADC - که هیچ فرضی نمی‌خواهد چون مقسم مقاومتی نسبتی است و آفست
+ *      ندارد. میانگین دو نت ۲۴ولت ۱۱٫۰۰۵۴ شد و 68K روی 6.8K دقیقاً ۱۱٫۰۰۰۰
+ *      می‌دهد؛ برازش ۰٫۰۵٪ روی دو نت مستقل تصادفی نیست. پس ۱٫۲ کیلواهم در مقسم
+ *      نیست: بین نقطهٔ تقسیم و پایهٔ ADC است، جایی که مقاومت سری محافظ روی ورودی
+ *      امپدانس‌بالاست و هیچ افت DC ندارد. */
+#define BSP_MEASUREMENT_DIV24_TOP_OHMS         BSP_MEASUREMENT_SENSE_TOP_24V_OHMS
 #define BSP_MEASUREMENT_DIV24_BOTTOM_OHMS   BSP_MEASUREMENT_SENSE_SHUNT_OHMS
 
 /* [EN] Same physical network as the input net above - deliberately spelled
