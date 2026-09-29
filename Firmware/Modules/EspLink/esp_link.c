@@ -776,6 +776,27 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
                          (uint32_t)fault_mask_t__faults);
 
+    /* [EN] v1.25 CALIBRATION GROUND TRUTH: raw ADC counts, before the divider
+       maths, before the runtime offsets, before any bench compensation. Counts
+       are the only numbers on this board that no coefficient can distort, so a
+       sweep that logs these beside a DMM lets every scale be rebuilt from
+       first principles rather than tuned on top of what the firmware already
+       believes. VDDA rides along so the shared reference can be checked too.
+       [FA] مبنای کالیبراسیون: شمارش خام ADC پیش از ریاضیات مقسم، آفست‌های زمان
+       اجرا و هر جبران بنچی. شمارش تنها عددی روی این برد است که هیچ ضریبی
+       خرابش نمی‌کند، پس سوییپی که این‌ها را کنار مولتی‌متر ثبت کند اجازه می‌دهد
+       هر مقیاس از پایه بازساخته شود نه اینکه روی باور فعلی فرم‌ور تنظیم شود. */
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         UINT32_T__G__MeasVinRawCounts);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         UINT32_T__G__MeasV24RawCounts);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         UINT32_T__G__MeasV12RawCounts);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         UINT32_T__G__MeasVrefintRawCounts);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         UINT32_T__G__MeasVddaMv);
+
     func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_TLM_LIVE,
                             UINT8_T__A__Payload,
                             (uint16_t)ESPLINK_TLM_PAYLOAD_SIZE);

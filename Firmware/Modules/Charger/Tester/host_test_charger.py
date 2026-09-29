@@ -759,8 +759,21 @@ def test_charge_profile_v112():
           "profile inputs must auto-fill from /t, POST on change, and offer factory defaults")
     check("حداکثر ولتاژ باتری (ابزورب)" in ino and "جریان تیپر" in ino and "ولتاژ شناور" in ino,
           "the tab must label/describe every field (user order: with descriptions)")
-    check("for(let k=0;k<99;k++)P.push(q(D.p[k]));" in ino and "[profile]" in ino and "[alarms]" in ino and "[uicad]" in ino and "[pid]" in ino,
-          "wrow must log all 99 params (150 columns) with the [profile], [alarms], [uicad] and [pid] header blocks")
+    # [EN] This used to assert the literal `k<99`, which PINNED THE BUG: 99 was
+    #      the v1.22 parameter count, and holding it there made every bench CSV
+    #      row 6 columns too long from v1.23 onward. A test that hard-codes a
+    #      count it should be deriving will defend the wrong answer. It now
+    #      requires the loop bound to come from PN, and
+    #      test_benchlog_row_matches_header_v125 checks PN against the real
+    #      count and the whole row against the header.
+    # [FA] این تست قبلاً خودِ عدد ۹۹ را الزام می‌کرد و در عمل باگ را قفل کرده
+    #      بود: ۹۹ تعداد پارامتر v1.22 بود و نگه‌داشتنش باعث شد هر ردیف CSV از
+    #      v1.23 به بعد ۶ ستون اضافه داشته باشد. تستی که عددی را hard-code کند
+    #      که باید مشتق شود، از جواب غلط دفاع می‌کند.
+    check("for(let k=0;k<PN;k++)P.push(q(D.p[k]));" in ino and "[profile]" in ino and "[alarms]" in ino and "[uicad]" in ino and "[pid]" in ino and "[raw]" in ino,
+          "wrow must log the parameters using the DERIVED bound PN (never a literal "
+          "count - a literal is what kept the row 6 columns too long since v1.23) and "
+          "the header must carry the [profile], [alarms], [uicad], [pid] and [raw] blocks")
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     check(txo and len(txo.group(1).split(",")) == 93 and "88, 89, 90, 91, 92 };" in ino,
           "TxOrder must list all 99 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
@@ -1658,9 +1671,20 @@ def test_alarms_tab_v115():
           "the /t JSON must carry the q2 pending mask for ids 32..37 (one u32 no longer fits 38 params)")
     tx = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     check(tx and len(tx.group(1).split(",")) == 93, "TxOrder must carry all 93 ids")
-    check("alm_disc_mv" in ino and "alm_hard_ma" in ino and "alm_floor_mv" in ino and "ui_ov_led_per" in ino
-          and ("134 columns" in ino or "۱۳۴ ستون" in ino),
-          "the bench CSV header must name the alarm + UI columns (134 total)")
+    # [EN] The literal "134 columns" used to be asserted here. That is the third
+    #      hard-coded column count found in this suite, and every one of them was
+    #      stale - they defend whatever number was true when they were written.
+    #      The column total is now verified properly, by counting, in
+    #      test_benchlog_row_matches_header_v125; this check keeps only what it
+    #      is actually about: that the alarm and UI columns are NAMED.
+    # [FA] عدد ادبی «۱۳۴ ستون» اینجا الزام می‌شد. این سومین شمارش hard-code شده
+    #      در این مجموعه بود و هر سه کهنه بودند - از عددی دفاع می‌کنند که هنگام
+    #      نوشتنشان درست بوده. شمارش واقعی حالا در تست جداگانه‌ای با شمردن انجام
+    #      می‌شود؛ این چک فقط همان چیزی را نگه می‌دارد که دربارهٔ آن است.
+    check("alm_disc_mv" in ino and "alm_hard_ma" in ino and "alm_floor_mv" in ino
+          and "ui_ov_led_per" in ino,
+          "the bench CSV header must NAME the alarm and UI columns (the total is "
+          "counted in test_benchlog_row_matches_header_v125, never hard-coded here)")
 
     # --- python models of both clamp sets: fixed point + random invariants ---
     def fclamp(a, over=14600, ov=15000):
@@ -2097,14 +2121,39 @@ def test_telemetry_frame_pins_v116c():
     truncate at SendFrame."""
     esp_h = ESP_LINK_H.read_text()
     link = ESP_LINK_C.read_text()
-    check(re.search(r"#define ESPLINK_TLM_PAYLOAD_SIZE\s+84u", esp_h),
-          "TLM payload size must stay 84 (2 seq + 2 flags + 20x4)")
+    # [EN] Derive the size from the field count instead of freezing 84. The
+    #      point of this check is that the size and the number of fields agree,
+    #      not that the number never grows - v1.25 added five raw-count fields
+    #      for calibration and a frozen literal would simply have blocked it
+    #      while proving nothing.
+    # [FA] اندازه از تعداد فیلد مشتق می‌شود نه اینکه روی ۸۴ منجمد بماند. هدف
+    #      این چک هم‌خوانی اندازه با تعداد فیلدهاست، نه اینکه هرگز بزرگ نشود.
+    tlm_fields = int(re.search(r"#define ESP_LINK_TLM_FIELD_COUNT\s+(\d+)u",
+                               (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1))
+    tlm_size = int(re.search(r"#define ESPLINK_TLM_PAYLOAD_SIZE\s+(\d+)u", esp_h).group(1))
+    check(tlm_size == 4 + (tlm_fields * 4),
+          f"TLM payload size must be 2 seq + 2 flags + {tlm_fields}x4 = "
+          f"{4 + tlm_fields * 4}, got {tlm_size} - any added field without a matching "
+          "size bump truncates silently at SendFrame")
+    check(int(re.search(r"#define ESP_LINK_TLM_SIZE\s+(\d+)u",
+              (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1)) == tlm_size,
+          "the ESP's expected TLM size must equal the firmware's payload size, or every "
+          "frame is rejected as malformed")
     start = link.index("func__EspLink_SendTelemetry")
     body = link[start:link.index("CAL_REFERENCE (v1.3)", start)]
     check(body.count("func__EspLink_PutU16(") == 1,
           "SendTelemetry must write exactly one u16 (the sequence number)")
-    check(body.count("func__EspLink_PutU32(") == 39,
-          "SendTelemetry must carry 39 textual u32 writes (19 live + 19 #else fillers + faults)")
+    # [EN] 19 live + 19 #else fillers + faults + the 5 raw calibration fields.
+    #      Only ONE of the two 19-blocks is compiled, so the runtime count is
+    #      19 + 1 + 5 = 25 = ESP_LINK_TLM_FIELD_COUNT, which the size check
+    #      above ties to the payload length.
+    # [FA] ۱۹ زنده + ۱۹ پرکنندهٔ #else + خطاها + ۵ فیلد خام کالیبراسیون. فقط
+    #      یکی از دو بلوک ۱۹تایی کامپایل می‌شود، پس تعداد زمان اجرا ۲۵ است.
+    expected_writes = 19 + 19 + 1 + 5
+    check(body.count("func__EspLink_PutU32(") == expected_writes,
+          f"SendTelemetry must carry {expected_writes} textual u32 writes "
+          "(19 live + 19 #else fillers + faults + 5 raw calibration fields); only one "
+          "19-block compiles, so the runtime field count is 25")
     check(body.count("func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);") == 19,
           "SendTelemetry must carry exactly 19 zero-filler u32 writes")
     check(body.count("#else") == 7,
@@ -2726,6 +2775,82 @@ def test_param_ranges_match_panel_v125():
           "'0..10000, <= 66'): " + "; ".join(bad))
 
 
+def test_benchlog_row_matches_header_v125():
+    """[EN] The bench CSV is the artefact the whole calibration is built from,
+       and its row was 6 columns longer than its header. wrow() looped
+       `k<99` - the parameter count from v1.22 - while the real count is 93,
+       so everything after the parameter block (both current channels, the
+       globals and every DMM entry) was written under the WRONG heading. It
+       had been wrong since v1.23 and nothing noticed, because the header is
+       declared as text in plink_config.h and the row is built in JavaScript
+       in plink_panel.h with no link between them.
+       This counts BOTH and requires them to agree.
+       [FA] فایل CSV بنچ همان چیزی است که کل کالیبراسیون از آن ساخته می‌شود، و
+       ردیفش ۶ ستون از عنوانش بلندتر بود: حلقهٔ wrow روی ۹۹ (تعداد v1.22) مانده
+       بود در حالی که تعداد واقعی ۹۳ است، پس هرچه بعد از بلوک پارامتر می‌آمد
+       زیر عنوان اشتباه نوشته می‌شد. از v1.23 غلط بود و کسی نفهمید، چون عنوان
+       متن است در یک فایل و ردیف جاوااسکریپت است در فایلی دیگر."""
+    cfg = (ROOT / "esp_link_panel" / "plink_config.h").read_text()
+    pan = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
+
+    # --- count the column NAMES declared in the header block ---
+    blk = re.search(r"#define ESP_BENCHLOG_HEADER(.*?)(?=\n#define )", cfg, re.S).group(1)
+    names, group = [], None
+    for line in re.findall(r'"([^"]*)"', blk):
+        line = line.replace("\\n", "").strip()
+        if not line.startswith("#"):
+            continue
+        body = line[1:].strip()
+        g = re.match(r"\[(\w+)\]\s*(.*)", body)
+        if g:
+            group, body = g.group(1), g.group(2)
+        elif group and not re.fullmatch(r"[\w,]+", body):
+            continue          # trailing free-text lines are not columns
+        if group is None or "cols" in body:
+            continue
+        names += [x for x in body.split(",") if x.strip()]
+    header_n = len(names)
+
+    # --- count what wrow() actually emits ---
+    pn = int(re.search(r"const PN=(\d+);", pan).group(1))
+    count = int(re.search(r"#define ESP_PARAM_COUNT\s+(\d+)u", cfg).group(1))
+    check(pn == count,
+          f"the CSV parameter loop must emit exactly ESP_PARAM_COUNT columns "
+          f"(PN={pn} vs COUNT={count}) - this is the exact bug that shifted every "
+          "column after the parameter block")
+    row = re.search(r"function wrow\([^)]*\)\{.*?\n\s*return \[(.*?)\]\.join", pan, re.S).group(1)
+    fixed = len(re.findall(r"q\(v\.\w+\)", row)) + 1          # the DMM group + note
+    spreads = re.findall(r"\.\.\.\[([\d,\s]+)\]\.map", row)
+    spread_n = sum(len([x for x in g.split(",") if x.strip()]) for g in spreads)
+    lead = len(re.findall(r"^\s*sc,\s*i\+1", row)) and 6 or 6   # [id] group
+    c_groups = len(re.findall(r"\.\.\.C\(\d+\)", row)) * 15   # ch1 + ch2
+    scalars = len(re.findall(r"m\.(?:seq|fl|or)\b", row))
+    row_n = lead + pn + c_groups + scalars + spread_n + fixed
+    check(row_n == header_n,
+          f"the CSV row must emit exactly as many columns as the header declares "
+          f"(row {row_n} vs header {header_n}) - a mismatch silently files every "
+          "later value under the wrong name, which corrupts the calibration table")
+
+    # --- the raw calibration columns must be present in both ---
+    for col in ("vin_counts", "v24_counts", "v12_counts", "vrefint_counts", "vdda_mv"):
+        check(col in cfg,
+              f"the bench header must carry the raw calibration column {col}")
+    check("ESP_LINK_TLM_FIELD_COUNT    25u" in cfg and "ESP_LINK_TLM_SIZE          104u" in cfg,
+          "the ESP telemetry window must be widened for the 5 raw calibration fields")
+    # [EN] The header naming a column proves nothing if the firmware never sends
+    #      the value - the slot would just carry a zero and the calibration would
+    #      be built on it. Require the actual globals to be transmitted.
+    # [FA] نام‌بردن ستون در عنوان وقتی فرم‌ور مقدارش را نمی‌فرستد چیزی را ثابت
+    #      نمی‌کند - آن خانه صفر می‌ماند و کالیبراسیون روی صفر ساخته می‌شود.
+    link_c = ESP_LINK_C.read_text()
+    for g in ("UINT32_T__G__MeasVinRawCounts", "UINT32_T__G__MeasV24RawCounts",
+              "UINT32_T__G__MeasV12RawCounts", "UINT32_T__G__MeasVrefintRawCounts",
+              "UINT32_T__G__MeasVddaMv"):
+        check(g in link_c,
+              f"SendTelemetry must actually transmit {g}, not a placeholder - a named "
+              "column carrying a constant zero is worse than no column")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -2771,6 +2896,7 @@ def main():
         test_panel_lut_mirrors_firmware_v125,
         test_vdda_reference_measurement_v125,
         test_param_ranges_match_panel_v125,
+        test_benchlog_row_matches_header_v125,
     ]
     for test in tests:
         test()

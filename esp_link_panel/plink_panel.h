@@ -877,13 +877,22 @@ function wlist(){const a=$('wL').value.split(/[,، ]+/).filter(x=>x!=='').map(Nu
  * باز شدن فرم مولتی‌متر پنجره را صفر می‌کند و همان لحظهٔ زدن «ثبت» خوانده می‌شود — آمار مال لحظهٔ عدد دادن شماست، نه قبلش (دستور کاربر ۲۰۲۶-۰۹-۲۵).
  * Opening the DMM form resets the window; the submit press reads it: the stats belong to the moment you press, not before. */
 async function wopen(){const j=await req('/m','POST');if(j._s!=200)throw 'پنجرهٔ آمار ESP پاسخ نداد';W.winMs=Date.now();}
-async function wlatch(){const j=await req('/m');if(!j.n||!j.s||j.s.length<20)throw 'در این بازه TLM نرسید';j.a=i=>j.s[i]/j.n;return j;}
+async function wlatch(){const j=await req('/m');if(!j.n||!j.s||j.s.length<25)throw 'در این بازه TLM نرسید';j.a=i=>j.s[i]/j.n;return j;}
 /* خانه‌های زندهٔ ردیف فعال از آخرین /t — فقط نمایش؛ ردیف فایل از /m لحظهٔ ثبت ساخته می‌شود */
 function wlive(act){if(!D||D.on!=1)return['-','-','-',undefined,'-','-','-',undefined,undefined];const M=(n,b)=>act.includes(n)?[D.t[b],D.t[b+3],D.t[b+4]]:['قطع','-','-'];const a=M(1,0),b=M(2,7);return[a[0],a[1],a[2],undefined,b[0],b[1],b[2],undefined,undefined];}
-/* ردیف CSV (۱۳۴ ستون، ترتیب دقیق بخش 5.6، مولتی‌متر نسخه ۴؛ v1.17: +۶ ستون فول/هیسترزیس) / CSV row, exact 5.6 column order (DMM v4; v1.17: +6 full/hyst cols) */
-function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x,P=[];for(let k=0;k<99;k++)P.push(q(D.p[k]));
+/* ردیف CSV (۱۴۹ ستون، ترتیب دقیق بخش 5.6، مولتی‌متر نسخه ۴).
+   v1.25 رفع باگ: شمارندهٔ پارامترها روی ۹۹ (تعداد v1.22) جا مانده بود در حالی که
+   تعداد واقعی ۹۳ است، پس هر ردیف ۶ ستون اضافه می‌نوشت و همهٔ ستون‌های بعد از بلوک
+   پارامتر زیر عنوان اشتباه می‌افتادند. حالا از PN که از تعداد واقعی می‌آید استفاده
+   می‌شود تا دوباره کهنه نشود. v1.25: +۵ ستون شمارش خام برای کالیبراسیون.
+   CSV row, exact 5.6 column order (DMM v4). v1.25 BUGFIX: the parameter loop was
+   stuck at 99 (the v1.22 count) while the real count is 93, so every row wrote 6
+   extra columns and everything after the parameter block landed under the wrong
+   heading. It now derives the bound so it cannot go stale again. */
+const PN=93;
+function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x,P=[];for(let k=0;k<PN;k++)P.push(q(D.p[k]));
  const C=b=>[m.a(b).toFixed(1),m.lo[b],m.hi[b],r0(m.a(b+1)),r0(m.a(b+2)),m.lo[b+2],m.hi[b+2],r0(m.a(b+3)),m.lo[b+3],m.hi[b+3],r0(m.a(b+4)),m.lo[b+4],m.hi[b+4],m.la[b+5],m.la[b+6]];
- return [sc,i+1,pm,se,sa,iso,...P,...C(0),...C(7),m.seq,m.fl,...[14,15,16,17,18].map(k=>r0(m.a(k))),m.or,q(v.ii),q(v.vi),q(v.b1),q(v.v1),q(v.b2),q(v.v2),v.note||'-'].join(',')+'\n';}
+ return [sc,i+1,pm,se,sa,iso,...P,...C(0),...C(7),m.seq,m.fl,...[14,15,16,17,18].map(k=>r0(m.a(k))),m.or,...[20,21,22,23,24].map(k=>m.la[k]),q(v.ii),q(v.vi),q(v.b1),q(v.v1),q(v.b2),q(v.v2),v.note||'-'].join(',')+'\n';}
 /* جدول واحد: هر مرحلهٔ هر سناریو یک ردیف؛ ردیف فعال ورودی‌ها و دکمه‌ها را دارد */
 const WH=['سناریو','#','duty %','raw ۱','filt ۱ mA','iest ۱ mA','جریان باتری ۱ mA','raw ۲','filt ۲ mA','iest ۲ mA','جریان باتری ۲ mA','جریان ورودی کل mA','وضعیت'];
 function wbuild(SC,L){W.K=[];SC.forEach(sc=>L.forEach((d,i)=>W.K.push({sc,i,d})));

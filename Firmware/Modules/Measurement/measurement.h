@@ -127,6 +127,24 @@ extern volatile uint32_t UINT32_T__G__MeasBatteryHighMv;    /* [EN] VHIGH = V24-
 /* [EN] Measured ADC reference (VDDA), mV; 0 = unavailable.
  * [FA] مرجع ADC اندازه‌گیری‌شده، mV؛ صفر یعنی در دسترس نیست. */
 extern volatile uint32_t UINT32_T__G__MeasVddaMv;
+/* [EN] RAW ADC counts of the three voltage channels and the internal
+ *      reference, straight off the DMA frame - before the divider maths,
+ *      before the runtime offsets, before the V12 bench compensation.
+ *      They exist so a calibration can be built from FIRST PRINCIPLES: counts
+ *      are the only number on this board that no coefficient can distort, so
+ *      a sweep that logs counts next to a DMM lets every scale be recomputed
+ *      offline without trusting any constant currently in the firmware.
+ *      Deliberately NOT gated behind a mode - see measurement.c.
+ * [FA] شمارش خام ADC سه کانال ولتاژ و مرجع داخلی، مستقیم از فریم DMA - پیش از
+ *      ریاضیات مقسم، پیش از آفست‌های زمان اجرا و پیش از جبران بنچ ۱۲ولت.
+ *      هستند تا کالیبراسیون از پایه ساخته شود: شمارش تنها عددی روی این برد
+ *      است که هیچ ضریبی نمی‌تواند خرابش کند، پس سوییپی که شمارش را کنار
+ *      مولتی‌متر ثبت کند اجازه می‌دهد هر مقیاس آفلاین و بدون اعتماد به هیچ
+ *      ثابت فعلی بازمحاسبه شود. عمداً پشت هیچ مودی قفل نشده‌اند. */
+extern volatile uint32_t UINT32_T__G__MeasVinRawCounts;
+extern volatile uint32_t UINT32_T__G__MeasV24RawCounts;
+extern volatile uint32_t UINT32_T__G__MeasV12RawCounts;
+extern volatile uint32_t UINT32_T__G__MeasVrefintRawCounts;
 extern volatile uint32_t UINT32_T__G__MeasCurrent1Ma;       /* [EN] Logical charge current 1, mA / جریان منطقی شارژ ۱، mA */
 extern volatile uint32_t UINT32_T__G__MeasCurrent2Ma;       /* [EN] Logical charge current 2, mA / جریان منطقی شارژ ۲، mA */
 /* [EN] Unfiltered single-frame current-chain diagnostics (user order

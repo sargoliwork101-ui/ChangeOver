@@ -293,6 +293,15 @@
  *       52  u32 duty2_permille    56 u32 state2           60 u32 v_in_mv
  *       64  u32 v_bat24_mv        68 u32 v_bat12_mv       72 u32 v_bat_low_mv
  *       76  u32 v_bat_high_mv     80 u32 fault_mask
+ *       84  u32 vin_raw_counts    88 u32 v24_raw_counts   92 u32 v12_raw_counts
+ *       96  u32 vrefint_counts   100 u32 vdda_mv
+ *      [EN] v1.25: the last five are CALIBRATION GROUND TRUTH. Counts are the
+ *      only numbers on this board no coefficient can distort, so logging them
+ *      beside a DMM lets every scale be rebuilt from first principles instead
+ *      of being tuned on top of whatever the firmware already believes.
+ *      [FA] پنج فیلد آخر مبنای کالیبراسیون‌اند: شمارش تنها عددی است که هیچ
+ *      ضریبی خرابش نمی‌کند، پس ثبتشان کنار مولتی‌متر اجازه می‌دهد هر مقیاس از
+ *      پایه بازساخته شود نه اینکه روی باور فعلی فرم‌ور تنظیم شود.
  *      Channel 1 = Trans1 / upper battery, channel 2 = Trans2 / lower
  *      battery. Charger states: 0 OFF, 1 BULK, 2 ABSORB, 3 FLOAT, 4 BRINGUP,
  *      5 JIT_RETRY_WAIT, 6 INPUT_WAIT, 7 FINAL_FAULT, 8 BAT_LOST,
@@ -300,7 +309,7 @@
  * [FA] payload ی TLM_LIVE (۸۴ بایت، اندیان کوچک): ترتیب فیلدها مثل جدول
  *      بالا؛ کانال ۱ = Trans1 / باتری بالا و کانال ۲ = Trans2 / باتری
  *      پایین. وضعیت شارژر: 0 OFF تا 8 BAT_LOST. */
-#define ESPLINK_TLM_PAYLOAD_SIZE      84u
+#define ESPLINK_TLM_PAYLOAD_SIZE     104u
 
 /* ==================== Functions ==================== */
 

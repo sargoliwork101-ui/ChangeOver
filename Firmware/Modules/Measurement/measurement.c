@@ -445,6 +445,26 @@ volatile uint32_t UINT32_T__G__MeasBatteryHighMv = 0u;
  *      با مولتی‌متر روی ریل ۳٫۳ ولت مقایسه کنید؛ اختلاف، همان خطای مقیاس
  *      سراسری است که همهٔ کانال‌ها حمل می‌کنند. صفر یعنی در دسترس نیست. */
 volatile uint32_t UINT32_T__G__MeasVddaMv = 0u;
+/* [EN] Raw ADC counts of the voltage channels. WHY THEY ARE ALWAYS ON rather
+ *      than behind a "calibration mode": a mode that neutralises gains and
+ *      offsets would also neutralise them for the CONTROL path, so the
+ *      over-voltage cut and the current fault would be judging uncalibrated
+ *      numbers for as long as the mode is left on - and a mode left on by
+ *      accident is a real failure mode on a bench. Publishing the raw counts
+ *      alongside costs nothing, can never mis-protect, and is strictly MORE
+ *      informative: from counts plus a DMM every coefficient can be rebuilt
+ *      from scratch, including ones a bypass mode would still have applied.
+ * [FA] چرا همیشه روشن‌اند نه پشت «مود کالیبره»: مودی که ضرایب و آفست‌ها را
+ *      خنثی کند، آن‌ها را برای مسیر کنترل هم خنثی می‌کند، پس تا وقتی آن مود
+ *      روشن است قطع اضافه‌ولتاژ و خطای جریان دارند روی اعداد کالیبره‌نشده قضاوت
+ *      می‌کنند - و مودی که سهواً روشن بماند سر بنچ یک حالت خرابی واقعی است.
+ *      انتشار شمارش خام در کنارش هیچ هزینه‌ای ندارد، هرگز نمی‌تواند حفاظت را
+ *      خراب کند، و اطلاعات بیشتری می‌دهد: از شمارش به‌اضافهٔ مولتی‌متر هر ضریبی
+ *      از صفر بازساخته می‌شود، حتی ضرایبی که مود بایپس همچنان اعمالشان می‌کرد. */
+volatile uint32_t UINT32_T__G__MeasVinRawCounts = 0u;
+volatile uint32_t UINT32_T__G__MeasV24RawCounts = 0u;
+volatile uint32_t UINT32_T__G__MeasV12RawCounts = 0u;
+volatile uint32_t UINT32_T__G__MeasVrefintRawCounts = 0u;
 volatile uint32_t UINT32_T__G__MeasCurrent1Ma = 0u;
 volatile uint32_t UINT32_T__G__MeasCurrent2Ma = 0u;
 /* [EN] Live current-chain diagnostics, unfiltered single-frame values of
@@ -494,6 +514,10 @@ void func__Measurement_Init(void)
     UINT32_T__G__MeasBatteryLowMv = 0u;
     UINT32_T__G__MeasBatteryHighMv = 0u;
     UINT32_T__G__MeasVddaMv = 0u;
+    UINT32_T__G__MeasVinRawCounts = 0u;
+    UINT32_T__G__MeasV24RawCounts = 0u;
+    UINT32_T__G__MeasV12RawCounts = 0u;
+    UINT32_T__G__MeasVrefintRawCounts = 0u;
     UINT32_T__G__MeasCurrent1Ma = 0u;
     UINT32_T__G__MeasCurrent2Ma = 0u;
     UINT32_T__G__MeasCurrent1RawCounts = 0u;
@@ -1225,6 +1249,14 @@ void func__Measurement_Run(void)
     UINT32_T__G__MeasBatteryHighMv = uint32_t__batteryHighMv;
     UINT32_T__G__MeasVddaMv = func__BspMeasurement_VddaMv(
         uint16_t__raw[BSP_ADC_CHANNEL_VREFINT], CAL_VREFINT_MV);
+    UINT32_T__G__MeasVinRawCounts =
+        (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_24V_IN];
+    UINT32_T__G__MeasV24RawCounts =
+        (uint32_t)uint16_t__battery24CountsFiltered;
+    UINT32_T__G__MeasV12RawCounts =
+        (uint32_t)uint16_t__battery12CountsFiltered;
+    UINT32_T__G__MeasVrefintRawCounts =
+        (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_VREFINT];
     UINT32_T__G__MeasCurrent2Ma = uint32_t__current2Ma;
     UINT32_T__G__MeasCurrent2RawCounts =
         (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2];
