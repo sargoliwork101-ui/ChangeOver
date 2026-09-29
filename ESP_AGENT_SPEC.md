@@ -1352,6 +1352,58 @@ duty wins**; the winner alone drives the shared integrator and its own slew
 limits. Neither row is selected by the pack voltage — each row belongs to a
 physical loop, permanently.
 
+#### How TWO loops drive ONE duty (there is no second output)
+
+A fair question when reading the parameter table: ten numbers, two rows —
+so where does the second duty go? **There is no second duty.** There is one
+output, one integrator, and two loops that take turns driving it.
+
+Picture two people standing over a *single* knob. The rule is one line:
+**whichever of them wants the knob lower gets to turn it**, and the other is
+ignored entirely for that pass — not averaged, not summed. One says "don't
+let the current pass 640 mA", the other says "don't let the voltage pass
+14.4 V".
+
+Real trace from `tools/pid_tuning_sim.py`, factory tune, nominal pack
+(the two "wants" are P+D terms in milli-permille):
+
+| Minute | V (mV) | I (mA) | Current loop wants | Voltage loop wants | Winner | Duty |
+|---|---|---|---|---|---|---|
+| 0.0 | 12200 | 6 | **+7608** | +110000 | current | 18 |
+| 5.0 | 12327 | 553 | **+1044** | +103650 | current | 172 |
+| 50.0 | 13198 | 637 | **+36** | +60100 | current | 191 |
+| 113.35 | **14400** | 640 | +0 | **+0** | **voltage** ← handover | 200 |
+| 115.0 | 14413 | 541 | +1188 | **−650** | voltage | 184 |
+| 130.0 | 14402 | 54 | +7032 | **−100** | voltage | 58 |
+| 240.0 | 14400 | 50 | +7080 | **+0** | voltage | 56 |
+
+Early on the pack is flat, so the voltage loop has enormous headroom and
+would happily add 110 permille; the current loop only wants 7.6. The
+smaller number wins, so the current loop drives — that *is* CC. At minute
+113 the pack reaches 14.4 V, the voltage loop's number goes **negative**
+("pull down"), and it takes the knob — that *is* CV. Over a whole charge
+the handover happens exactly **once**.
+
+**Why the handover does not bump.** Look at the 113.35 row: the integrator
+reads 199511 before and after, and the duty stays at 200. Zero jump. That
+is precisely because the integrator is **shared**. If each loop owned a
+private integral, the idle one would have drifted somewhere else and the
+duty would jump the moment control changed hands.
+
+```c
+bool__useVoltage = ((termPv + termDv) <= (termPi + termDi));
+if (useVoltage) { error = errorVoltage; gainI = voltageKi; ... }
+else            { error = errorCurrent; gainI = currentKi; ... }
+/* from here on ONE path: one rate, one pidIntegral, one demand, one duty */
+```
+
+Note the comparison is on **P+D**, not on a finished duty: neither loop ever
+computes a duty of its own. Each only says "this is how far I want the knob
+moved", and the winner applies that to the shared integrator. The technique
+is standard and has a name — **min-select** (low-selector) control, the same
+arrangement used in industrial CC/CV chargers and in gas-turbine fuel
+control.
+
 #### How simple can it get? (the v1.24 question, answered by measurement)
 
 The user asked whether **one** PID over the whole path would do, noting that

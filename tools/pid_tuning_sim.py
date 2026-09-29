@@ -281,6 +281,73 @@ SCENARIOS = {
 }
 
 
+def trace(rows=None, hours=5.0, **plant_kw):
+    """[EN] Record who wins the min-select on every pass. This is the evidence
+       behind the "how TWO loops drive ONE duty" table in ESP_AGENT_SPEC 5.11
+       and the charge-PID card's help text: without it those numbers could go
+       stale silently the next time a gain moves.
+       [FA] ثبت اینکه در هر پاس کدام شاخه کمینه‌گیری را می‌برد. مدرکِ پشت
+       جدول «دو حلقه چطور یک دیوتی را می‌رانند» در بخش ۵.۱۱ و راهنمای کارت
+       PID پنل؛ بدون آن، آن اعداد با اولین تغییر ضریب بی‌صدا کهنه می‌شوند."""
+    rows = rows or FACTORY
+    rec = []
+    original = Pid.step
+
+    def spy(self, vmv, ima, target, dt_ms, **kw):
+        crow, vrow = self._rowset(vmv, target)
+        ev = max(-ERRCLAMP, min(ERRCLAMP, int(target) - int(vmv)))
+        ei = max(-ERRCLAMP, min(ERRCLAMP, (self.imax - MARGIN_MA) - int(ima)))
+        pv = cdiv(vrow[0] * ev, KP_DIV)
+        pi = cdiv(crow[0] * ei, KP_DIV)
+        out = original(self, vmv, ima, target, dt_ms, **kw)
+        rec.append(dict(v=vmv, i=ima, pv=pv, pi=pi,
+                        win=("VOLT" if pv <= pi else "CURR"),
+                        integ=self.I, duty=out))
+        return out
+
+    Pid.step = spy
+    try:
+        charge(rows, hours=hours, **plant_kw)
+    finally:
+        Pid.step = original
+    return rec
+
+
+def handovers(rec):
+    """[EN] Indices where control changed hands. / [FA] اندیس‌های تحویل کنترل."""
+    return [k for k in range(1, len(rec)) if rec[k]["win"] != rec[k - 1]["win"]]
+
+
+def report_trace(hours=5.0):
+    rec = trace(hours=hours)
+    sw = handovers(rec)
+    print("min-select trace - who drives the ONE duty (P+D wants, milli-permille)")
+    print("%9s | %6s | %5s | %13s | %13s | %6s | %8s | %5s"
+          % ("minute", "V(mV)", "I(mA)", "current wants", "voltage wants",
+             "winner", "integral", "duty"))
+    print("-" * 92)
+    marks = [1, 3000, 30000] + ([sw[0] - 2, sw[0], sw[0] + 2] if sw else [])
+    marks += [int(m * 600) for m in (115, 130, 240)]
+    for k in sorted(set(x for x in marks if 0 <= x < len(rec))):
+        r = rec[k]
+        tag = "  <- handover" if sw and k == sw[0] else ""
+        print("%9.3f | %6d | %5d | %+13d | %+13d | %6s | %8d | %5d%s"
+              % (k * 0.1 / 60, r["v"], r["i"], r["pi"], r["pv"],
+                 r["win"], r["integ"], r["duty"], tag))
+    print("-" * 92)
+    cw = sum(1 for r in rec if r["win"] == "CURR")
+    print("current loop won %d passes (%.0f%%), voltage loop %d (%.0f%%)"
+          % (cw, 100.0 * cw / len(rec), len(rec) - cw,
+             100.0 * (len(rec) - cw) / len(rec)))
+    print("handovers in %.0f h: %d%s"
+          % (hours, len(sw),
+             (" (first at minute %.2f)" % (sw[0] * 0.1 / 60)) if sw else ""))
+    if sw:
+        a, b = rec[sw[0] - 1], rec[sw[0]]
+        print("bumpless check at the handover: duty %d -> %d, integral %d -> %d"
+              % (a["duty"], b["duty"], a["integ"], b["integ"]))
+
+
 def report(rows, title, hours=10.0, current_loop=True):
     print("=" * 78)
     print(title)
@@ -314,6 +381,8 @@ def main():
     ap.add_argument("--hours", type=float, default=10.0, help="simulated hours per run")
     ap.add_argument("--rows", type=str, default=None,
                     help="custom gains, e.g. '12,1600,0,1000,1000;150,600,0,30,1000;150,18000,0,10,1000'")
+    ap.add_argument("--trace", action="store_true",
+                    help="show which loop drives the single duty, pass by pass")
     ap.add_argument("--compare", action="store_true",
                     help="compare 1-row / 2-row / 3-row architectures")
     args = ap.parse_args()
@@ -323,6 +392,10 @@ def main():
     print("hysteresis %d, prefilter N=%d, mis-tune cap %d permille, backstops %d mA / %d mV"
           % (HYST, VOLT_FILTER_N, MAX_STEP, BULK_IMAX_MA, BACKSTOP_MV))
     print()
+
+    if args.trace:
+        report_trace(hours=args.hours)
+        return
 
     if args.rows:
         rows = [tuple(int(x) for x in r.split(",")) for r in args.rows.split(";")]

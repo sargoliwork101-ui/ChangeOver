@@ -8,6 +8,7 @@ oscilloscope tests on the board.
 
 from pathlib import Path
 import re
+import sys
 
 ROOT = Path(__file__).resolve().parents[3]
 APP_TYPES_H = Path(__file__).resolve().parents[2] / "Config" / "Inc" / "app_types.h"
@@ -2356,6 +2357,94 @@ def test_two_loop_pid_v124():
           "the scenario-default button sends undefined to every PID id")
 
 
+def test_min_select_handover_v124():
+    """[EN] The user asked, reading the parameter table: "how are you
+       controlling one percent parameter with two duties? you have two
+       parameters and one output." The answer is that there is ONE output and
+       ONE integrator, driven by whichever loop asks for less. That answer is
+       now published as a numeric trace in ESP_AGENT_SPEC 5.11 and in the
+       panel's help text, so it needs a guard: without one, the next gain
+       change makes those printed numbers quietly wrong.
+       [FA] کاربر با دیدن جدول پارامترها پرسید: «چطور با دو دیوتی یک درصد را
+       کنترل می‌کنی؟ دو پارامتر داری و یک خروجی.» جواب این است که یک خروجی و
+       یک انتگرال‌گیر هست و هر حلقه که کمتر بخواهد آن را می‌راند. حالا این
+       جواب به‌صورت یک ترنسکریپت عددی در بخش ۵.۱۱ و راهنمای پنل منتشر شده،
+       پس نگهبان می‌خواهد وگرنه با اولین تغییر ضریب بی‌صدا غلط می‌شود."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    import pid_tuning_sim as sim
+
+    rec = sim.trace(hours=5.0)
+    sw = sim.handovers(rec)
+
+    # --- 1. exactly one handover: CC for the whole climb, CV from there on ---
+    check(len(sw) == 1,
+          f"a healthy CC/CV charge hands control over exactly ONCE, got {len(sw)} "
+          "(more than one means the two loops are fighting at the knee)")
+    check(rec[0]["win"] == "CURR" and rec[-1]["win"] == "VOLT",
+          "the current loop must own the flat-pack climb and the voltage loop "
+          "must own the absorb hold")
+
+    # --- 2. the handover must be BUMPLESS. This is the whole reason the
+    #        integrator is shared rather than one-per-loop: an idle private
+    #        integral would have drifted and the duty would jump the moment
+    #        control changed hands. ---
+    before, after = rec[sw[0] - 1], rec[sw[0]]
+    check(before["duty"] == after["duty"],
+          f"handover must not move the duty (got {before['duty']} -> {after['duty']}); "
+          "a jump here means the integrator is no longer shared")
+    check(before["integ"] == after["integ"],
+          f"handover must not move the integrator ({before['integ']} -> {after['integ']})")
+
+    # --- 3. the direction of the selection must stay physical: while the pack
+    #        is flat the voltage loop has huge headroom and would race; it is
+    #        the CURRENT loop that must be the smaller (winning) demand. ---
+    early = rec[1]
+    check(early["pi"] < early["pv"] and early["win"] == "CURR",
+          "on a flat pack the voltage loop must be the one with headroom and the "
+          "current loop must be the binding constraint")
+    late = rec[int(130 * 600)]
+    check(late["pv"] < late["pi"] and late["win"] == "VOLT",
+          "in absorb the voltage loop must be the binding constraint and must be "
+          "able to go NEGATIVE (pull the duty down)")
+    check(late["pv"] < 0, "the voltage loop must actively reduce duty in absorb")
+
+    # --- 4. the published explanation must exist in both places the user reads ---
+    spec = (ROOT / "ESP_AGENT_SPEC.md").read_text(encoding="utf-8")
+    check("How TWO loops drive ONE duty" in spec and "min-select" in spec,
+          "spec 5.11 must explain how two loops drive one output")
+    check("199511" in spec,
+          "the spec's bumpless claim must cite the measured integrator value")
+    panel = (ROOT / "esp_link_panel" / "plink_panel.h").read_text(encoding="utf-8")
+    fa_integ = "199511".translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
+    check("دو حلقه چطور یک دیوتی را می‌رانند" in panel and fa_integ in panel,
+          "the panel card must carry the same concrete explanation, in the Persian "
+          "numerals the panel actually renders (the user reads the panel at the "
+          "bench, not the spec)")
+
+    # --- 5. AIDS must track the top real id. It was left at 97 when the third
+    #        PID row was deleted, which made ap() build u93..u97 = undefined and
+    #        put five phantom ids in the settings backup - the same class of bug
+    #        as the v1.22 AIDS/ADEF mismatch. ---
+    ino = (ROOT / "esp_link_panel" / "plink_panel.h").read_text(encoding="utf-8")
+    m = re.search(r"for\(let _i=27;_i<=(\d+);_i\+\+\)AIDS", ino)
+    check(m, "the panel must build AIDS from a bounded loop")
+    pdef = re.search(r"const PDEF=\[([^\]]*)\]", ino).group(1).split(",")
+    top = 83 + len(pdef) - 1
+    # --- 6. the PARAMS_BULK reply must be proven to fit the protocol payload
+    #        ceiling. The buffer auto-sizes from the count so it cannot be
+    #        overrun, but the FRAME can still exceed 512 B and be rejected by
+    #        the receiver; nothing proved that until v1.24. ---
+    espc = ESP_LINK_C.read_text()
+    check("PARAMS_BULK reply must fit the protocol payload ceiling" in espc
+          and "ESPLINK_FRAME_MAX_PAYLOAD" in espc,
+          "a _Static_assert must tie 1 + COUNT*5 to the protocol payload ceiling, "
+          "or a future param append silently builds an over-long frame")
+
+    check(int(m.group(1)) == top,
+          f"AIDS must stop at the top real id {top}, not {m.group(1)}: ap() and the "
+          "settings backup both iterate it, so a stale bound injects phantom ids")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -2396,6 +2485,7 @@ def main():
         test_flash_diet_pins_v116d,
         test_fault_pump_rule_per_half_v121,
         test_two_loop_pid_v124,
+        test_min_select_handover_v124,
     ]
     for test in tests:
         test()

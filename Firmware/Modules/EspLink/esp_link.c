@@ -586,6 +586,18 @@ static void func__EspLink_SendParamsBulk(void)
        ۵۱۸ بایتی حاشیه را به چند ده بایت می‌رساند؛ تک‌تسک و غیربازگشتی پس
        بدون مسابقه است (همان دلیل بافر NVM). */
     static uint8_t UINT8_T__A__Payload[1u + (ESPLINK_PARAM_COUNT * 5u)];
+    /* [EN] The buffer auto-sizes from the param count, so it can never be
+       overrun - but the FRAME still has to fit the protocol's payload
+       ceiling, and nothing used to prove that. At 93 params the bulk reply
+       is 466 B against a 512 B limit; a future append past 102 params would
+       silently build a frame the receiver must reject.
+       [FA] بافر از تعداد پارامتر اندازه می‌گیرد پس سرریز نمی‌شود، ولی خود
+       فریم باید در سقف payload پروتکل جا شود و این هرگز اثبات نشده بود. با
+       ۹۳ پارامتر پاسخ ۴۶۶ بایت در برابر سقف ۵۱۲ است؛ افزودن بیش از ۱۰۲
+       پارامتر در آینده بی‌صدا فریمی می‌سازد که گیرنده باید ردش کند. */
+    _Static_assert((1u + (ESPLINK_PARAM_COUNT * 5u)) <= ESPLINK_FRAME_MAX_PAYLOAD,
+                   "PARAMS_BULK reply must fit the protocol payload ceiling");
+
     uint16_t uint16_t__cursor = 0u;
     uint8_t uint8_t__count = 0u;
     uint32_t uint32_t__value;
