@@ -115,6 +115,56 @@ voltage scales, and both current LUTs. / [FA] از روی این‌ها مرجع
 
 ---
 
+## WHERE to put the probes / پراب را کجا بگذارم
+
+[EN] Read off the schematic, so these are physical parts, not net names.
+[FA] از شماتیک خوانده شده - پس این‌ها قطعهٔ فیزیکی‌اند، نه اسم نت.
+
+### Ground reference / مرجع زمین
+[EN] Black probe stays on **CON2 pin 1** (battery minus) for everything below.
+That is the same ground the dividers measure against, so using any other
+ground point adds an error that is not in the firmware.
+[FA] پراب مشکی برای همهٔ اندازه‌گیری‌های زیر روی **پین ۱ کانکتور CON2** (منفی
+باتری) بماند. همان زمینی است که مقسم‌ها نسبت به آن می‌سنجند؛ هر زمین دیگری خطایی
+اضافه می‌کند که در فرم‌ور نیست.
+
+### The three voltages / سه ولتاژ
+
+| Firmware value | Red probe on | What it is |
+|---|---|---|
+| `MeasVinRawCounts` / `MeasInputVoltageMv` | **CON1 pin 2** (`24V_IN_CON`) | the 24 V supply coming in / ورودی ۲۴ ولت |
+| `MeasV24RawCounts` / `MeasBattery24Mv` | **CON2 pin 3** (`24V_BAT_CON`) | top of the battery string / سر مثبت پک |
+| `MeasV12RawCounts` / `MeasBattery12Mv` | **CON2 pin 2** (`12V_BAT_CON`) | the tap between the two batteries / وسط دو باتری |
+
+```
+CON2  (the connector marked BATT / کانکتور BATT)
+   pin 3  ---- pack +      <- 24 V measurement
+              [ battery 1 ]
+   pin 2  ---- middle tap  <- 12 V measurement
+              [ battery 2 ]
+   pin 1  ---- pack -      <- BLACK PROBE HERE / پراب مشکی اینجا
+```
+
+### The ADC reference / مرجع ADC
+
+| Firmware value | Red probe on |
+|---|---|
+| `MeasVddaMv`, `MeasVrefintRawCounts` | **UP3 output** (the `AMS1117-3.3` regulator, the pin that is NOT input or ground) - or equivalently **MCU pin 9 (VDDA)** on the LQFP48 |
+
+[EN] Power chain for orientation: 24 V in -> UP1 (LM2576-12) -> 12 V ->
+UP2 (78M05) -> 5 V -> **UP3 (AMS1117-3.3)** -> 3.3 V. UP3's output IS the ADC
+reference, which is why one reading there fixes all three voltage channels.
+[FA] زنجیرهٔ تغذیه: ۲۴ ولت ورودی به UP1 و بعد UP2 و بعد **UP3**. خروجی UP3
+همان مرجع ADC است - برای همین یک اندازه‌گیری آنجا هر سه کانال را درست می‌کند.
+
+### The currents / جریان‌ها
+[EN] Do NOT probe the shunt. Put the DMM **in series with the battery** and read
+the charge current the normal way; that is the number the panel form wants.
+[FA] روی شانت پراب نگذارید. مولتی‌متر را **سری با باتری** ببندید و جریان شارژ را
+عادی بخوانید؛ همان عددی است که فرم پنل می‌خواهد.
+
+---
+
 ## Safety while you work / ایمنی حین کار
 
 - [EN] The board now reads ~1.2 % HIGH, so the over-voltage cut trips EARLY -
