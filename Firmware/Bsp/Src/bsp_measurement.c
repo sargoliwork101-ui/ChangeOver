@@ -65,6 +65,8 @@
  *      ثابت را بگذارید، یا بهتر، مرجع داخلی VREFINT را فعال کنید تا هر برد
  *      خودش را کالیبره کند (نیازمند بازتولید CubeMX، تصمیم با مالک پروژه). */
 #define BSP_MEASUREMENT_VREF_MV             3300u
+#define BSP_MEASUREMENT_VDDA_MIN_MV         3000u
+#define BSP_MEASUREMENT_VDDA_MAX_MV         3600u
 #define BSP_MEASUREMENT_ADC_FULL_SCALE     4095u
 
 /* [EN] VOLTAGE SENSE DIVIDERS - read straight off the schematic, not tuned.
@@ -224,6 +226,72 @@ static volatile uint32_t UINT32_T__G__Current2GainPermille =
  * @param  uint16_t__counts [EN] ADC count / شمارش ADC
  * @return uint32_t [EN] Pin voltage in mV / ولتاژ پایه بر حسب mV
  */
+/* ==================== VDDA from the internal reference ==================== */
+/**
+ * @brief  [EN] Work out the real VDDA (= ADC reference) from the internal
+ *              1.20 V reference channel. VREFINT sits at a known voltage, so
+ *              whatever count it produces tells you what full scale is worth:
+ *                  VDDA = VREFINT_mV * FULL_SCALE / vrefint_counts
+ *              HONEST LIMIT, read this before trusting it: the STM32F103 does
+ *              NOT store a factory VREFINT calibration (unlike F0/F3/F4/L0).
+ *              The datasheet only guarantees 1.16..1.24 V, so used raw this is
+ *              +-3.3 percent - WORSE than the ~1.2 percent error it would be
+ *              correcting. It becomes accurate only once VDDA has been
+ *              measured on THIS board with a DMM and CAL_VREFINT_MV set to
+ *              match. After that the board tracks supply and temperature drift
+ *              by itself, which is the part no fixed constant can ever do.
+ *              That is why CAL_VDDA_TRACKING_ENABLE ships OFF: this function
+ *              is a measurement you can look at first, not a silent change to
+ *              every reading.
+ *         [FA] VDDA واقعی را از کانال مرجع داخلی ۱٫۲۰ ولت حساب می‌کند: چون
+ *              ولتاژ VREFINT معلوم است، هر شمارشی که تولید کند می‌گوید مقیاس
+ *              کامل چقدر می‌ارزد. محدودیت صادقانه: STM32F103 مقدار کالیبراسیون
+ *              کارخانه‌ای VREFINT را ذخیره نمی‌کند و دیتاشیت فقط ۱٫۱۶ تا ۱٫۲۴
+ *              ولت را تضمین می‌کند، یعنی خام یعنی ±۳٫۳٪ که از خطای ~۱٫۲٪ فعلی
+ *              بدتر است. فقط وقتی دقیق می‌شود که VDDA همین برد را با مولتی‌متر
+ *              اندازه بگیرید و CAL_VREFINT_MV را مطابقش بگذارید؛ از آن به بعد
+ *              برد خودش دریفت تغذیه و دما را دنبال می‌کند، کاری که هیچ ثابتی
+ *              نمی‌تواند. به همین دلیل CAL_VDDA_TRACKING_ENABLE خاموش عرضه
+ *              می‌شود: این یک اندازه‌گیری است که اول ببینید، نه تغییر بی‌صدای
+ *              همهٔ خوانش‌ها.
+ * @param  uint16_t__vrefintCounts [EN] Raw counts of the VREFINT channel /
+ *                                      شمارش خام کانال VREFINT
+ * @param  uint32_t__vrefintMv [EN] Reference voltage of that channel in mV -
+ *                                  passed IN so the board port stays free of
+ *                                  bench-calibration headers /
+ *                                  ولتاژ مرجع همان کانال بر حسب mV - از بیرون
+ *                                  داده می‌شود تا لایهٔ برد به هدرهای
+ *                                  کالیبراسیون بنچ وابسته نشود
+ * @return uint32_t [EN] Measured VDDA in mV, 0 if the reading is implausible /
+ *                      VDDA اندازه‌گیری‌شده بر حسب mV، صفر اگر نامعقول باشد
+ */
+uint32_t func__BspMeasurement_VddaMv(uint16_t uint16_t__vrefintCounts,
+                                    uint32_t uint32_t__vrefintMv)
+{
+    uint32_t uint32_t__vddaMv;
+
+    if (uint16_t__vrefintCounts == 0u)
+    {
+        return 0u;
+    }
+
+    uint32_t__vddaMv = (uint32_t__vrefintMv *
+                        (uint32_t)BSP_MEASUREMENT_ADC_FULL_SCALE) /
+                       (uint32_t)uint16_t__vrefintCounts;
+
+    /* [EN] Refuse anything a 3.3 V rail could not physically be; a stuck or
+            un-enabled VREFINT channel must not silently rescale the product.
+       [FA] هر چیزی که یک ریل ۳٫۳ ولت فیزیکاً نمی‌تواند باشد رد می‌شود؛ کانال
+            گیرکرده یا فعال‌نشده نباید بی‌صدا کل محصول را بازمقیاس کند. */
+    if ((uint32_t__vddaMv < BSP_MEASUREMENT_VDDA_MIN_MV) ||
+        (uint32_t__vddaMv > BSP_MEASUREMENT_VDDA_MAX_MV))
+    {
+        return 0u;
+    }
+
+    return uint32_t__vddaMv;
+}
+
 /* ==================== BspMeasurement_CountsToMv ==================== */
 uint32_t func__BspMeasurement_CountsToMv(uint16_t uint16_t__counts)
 {

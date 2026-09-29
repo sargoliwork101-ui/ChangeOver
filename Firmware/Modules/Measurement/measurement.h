@@ -124,6 +124,9 @@ extern volatile uint32_t UINT32_T__G__MeasBattery24Mv;      /* [EN] Logical pack
 extern volatile uint32_t UINT32_T__G__MeasBattery12Mv;      /* [EN] Middle-node/low-battery monitor, mV / مانیتور MID/باتری پایین، mV */
 extern volatile uint32_t UINT32_T__G__MeasBatteryLowMv;     /* [EN] VLOW = MID-GND, mV / باتری پایین، mV */
 extern volatile uint32_t UINT32_T__G__MeasBatteryHighMv;    /* [EN] VHIGH = V24-MID, mV / باتری بالا، mV */
+/* [EN] Measured ADC reference (VDDA), mV; 0 = unavailable.
+ * [FA] مرجع ADC اندازه‌گیری‌شده، mV؛ صفر یعنی در دسترس نیست. */
+extern volatile uint32_t UINT32_T__G__MeasVddaMv;
 extern volatile uint32_t UINT32_T__G__MeasCurrent1Ma;       /* [EN] Logical charge current 1, mA / جریان منطقی شارژ ۱، mA */
 extern volatile uint32_t UINT32_T__G__MeasCurrent2Ma;       /* [EN] Logical charge current 2, mA / جریان منطقی شارژ ۲، mA */
 /* [EN] Unfiltered single-frame current-chain diagnostics (user order

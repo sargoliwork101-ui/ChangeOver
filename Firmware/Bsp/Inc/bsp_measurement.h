@@ -135,4 +135,7 @@ uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts);
  */
 uint32_t func__BspMeasurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts);
 
+uint32_t func__BspMeasurement_VddaMv(uint16_t uint16_t__vrefintCounts,
+                                    uint32_t uint32_t__vrefintMv);
+
 #endif /* BSP_MEASUREMENT_H */

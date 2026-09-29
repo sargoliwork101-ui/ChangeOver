@@ -435,6 +435,16 @@ volatile uint32_t UINT32_T__G__MeasBattery24Mv = 0u;
 volatile uint32_t UINT32_T__G__MeasBattery12Mv = 0u;
 volatile uint32_t UINT32_T__G__MeasBatteryLowMv = 0u;
 volatile uint32_t UINT32_T__G__MeasBatteryHighMv = 0u;
+/* [EN] Measured ADC reference (VDDA) in mV, from the internal 1.20 V channel.
+ *      Published even while CAL_VDDA_TRACKING_ENABLE is 0, because the whole
+ *      point is to LOOK at it first: compare this against a DMM on the 3.3 V
+ *      rail, and the gap is the global scale error every channel carries.
+ *      0 = not available / reading outside a plausible 3.0..3.6 V.
+ * [FA] مرجع ADC اندازه‌گیری‌شده بر حسب mV از کانال داخلی ۱٫۲۰ ولت. حتی وقتی
+ *      ردیابی خاموش است منتشر می‌شود، چون هدف همین است که اول ببینیدش: این را
+ *      با مولتی‌متر روی ریل ۳٫۳ ولت مقایسه کنید؛ اختلاف، همان خطای مقیاس
+ *      سراسری است که همهٔ کانال‌ها حمل می‌کنند. صفر یعنی در دسترس نیست. */
+volatile uint32_t UINT32_T__G__MeasVddaMv = 0u;
 volatile uint32_t UINT32_T__G__MeasCurrent1Ma = 0u;
 volatile uint32_t UINT32_T__G__MeasCurrent2Ma = 0u;
 /* [EN] Live current-chain diagnostics, unfiltered single-frame values of
@@ -483,6 +493,7 @@ void func__Measurement_Init(void)
     UINT32_T__G__MeasBattery12Mv = 0u;
     UINT32_T__G__MeasBatteryLowMv = 0u;
     UINT32_T__G__MeasBatteryHighMv = 0u;
+    UINT32_T__G__MeasVddaMv = 0u;
     UINT32_T__G__MeasCurrent1Ma = 0u;
     UINT32_T__G__MeasCurrent2Ma = 0u;
     UINT32_T__G__MeasCurrent1RawCounts = 0u;
@@ -1212,6 +1223,8 @@ void func__Measurement_Run(void)
     UINT32_T__G__MeasBattery12Mv = uint32_t__battery12Mv;
     UINT32_T__G__MeasBatteryLowMv = uint32_t__batteryLowMv;
     UINT32_T__G__MeasBatteryHighMv = uint32_t__batteryHighMv;
+    UINT32_T__G__MeasVddaMv = func__BspMeasurement_VddaMv(
+        uint16_t__raw[BSP_ADC_CHANNEL_VREFINT], CAL_VREFINT_MV);
     UINT32_T__G__MeasCurrent2Ma = uint32_t__current2Ma;
     UINT32_T__G__MeasCurrent2RawCounts =
         (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2];

@@ -30,12 +30,20 @@
  *      انتخاب می‌شوند. از ۲۰۲۶-۰۹-۲۲ (دستور کاربر) CURRENT1/CURRENT2
  *      نمونه‌های سنکرون با PWM در وسط پنجرهٔ ON گیت را دارند (تریگر
  *      سخت‌افزاری، نمونهٔ خام)؛ اسکن غیرهمزمان فقط جایگزین است. */
-#define BSP_ADC_CHANNEL_COUNT        5u
+#define BSP_ADC_CHANNEL_COUNT        6u
 #define BSP_ADC_CHANNEL_CURRENT1     0u   /* normalized charge current 1, PWM mid-ON synchronized / جریان شارژ استاندارد ۱، سنکرون وسط ON پالس */
 #define BSP_ADC_CHANNEL_24V_IN       1u   /* normalized 24V input / ورودی ۲۴ ولت استاندارد */
 #define BSP_ADC_CHANNEL_24V_BAT      2u   /* normalized 24V battery / باتری ۲۴ ولت استاندارد */
 #define BSP_ADC_CHANNEL_12V_BAT      3u   /* normalized 12V battery / باتری ۱۲ ولت استاندارد */
 #define BSP_ADC_CHANNEL_CURRENT2     4u   /* normalized charge current 2, PWM mid-ON synchronized / جریان شارژ استاندارد ۲، سنکرون وسط ON پالس */
+/* [EN] Internal 1.20 V reference (ADC1_IN17). It measures nothing external -
+ *      it exists so the firmware can work out the REAL VDDA instead of
+ *      assuming 3.300 V, because VDDA is the one term every voltage and every
+ *      current on this board is multiplied by.
+ * [FA] مرجع داخلی ۱٫۲۰ ولت. چیزی بیرونی را اندازه نمی‌گیرد؛ هست تا فرم‌ور
+ *      بتواند VDDA واقعی را حساب کند به‌جای فرض ۳٫۳۰۰ ولت، چون VDDA همان
+ *      جمله‌ای است که هر ولتاژ و هر جریان این برد در آن ضرب می‌شود. */
+#define BSP_ADC_CHANNEL_VREFINT      5u
 
 /* ==================== DMA buffer ==================== */
 /* [EN] The DMA buffer holds two full frames. When DMA writes one half, the

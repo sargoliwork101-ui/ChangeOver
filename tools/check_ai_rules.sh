@@ -139,15 +139,24 @@ echo "[7] CubeMX .ioc peripheral check (full schematic BSP contract)"
 IOC="$ROOT/CubeMX/CubeIDE.ioc"
 if [ -f "$IOC" ]; then
   if grep -q "Mcu.IP.*ADC" "$IOC"; then
-    echo "  OK: ADC1 enabled (5-channel measurement backend)"
+    echo "  OK: ADC1 enabled (6-channel measurement backend: 5 external + VREFINT)"
   else
     echo "  FAIL: ADC1 missing in .ioc"
     FAIL=1
   fi
-  if grep -q "ADC1.NbrOfConversion=5" "$IOC" && grep -q "DMA1.Request1=ADC1" "$IOC"; then
-    echo "  OK: ADC1 has 5 channels + circular DMA"
+  # [EN] 6 ranks: the 5 external inputs plus the internal 1.20 V reference.
+  #      VREFINT is what lets the firmware measure the REAL VDDA instead of
+  #      assuming 3.300 V, and VDDA is the single term every voltage and every
+  #      current is multiplied by - so losing this rank silently removes the
+  #      only way this board can ever be calibrated for gain.
+  # [FA] شش رنک: پنج ورودی بیرونی به‌اضافهٔ مرجع داخلی ۱٫۲۰ ولت. حذف این رنک
+  #      بی‌صدا تنها راه کالیبراسیون گین این برد را از بین می‌برد.
+  if grep -q "ADC1.NbrOfConversion=6" "$IOC" && grep -q "DMA1.Request1=ADC1" "$IOC" \
+     && grep -q "ADC1.Channel-6=ADC_CHANNEL_VREFINT" "$IOC" \
+     && grep -q "ADC1.SamplingTime-1-6=239.5" "$IOC"; then
+    echo "  OK: ADC1 has 6 ranks (5 external + VREFINT @239.5 cycles) + circular DMA"
   else
-    echo "  FAIL: ADC1 channels/DMA not configured"
+    echo "  FAIL: ADC1 channels/DMA not configured (need NbrOfConversion=6, Channel-6=ADC_CHANNEL_VREFINT, SamplingTime-1-6=239.5, circular DMA)"
     FAIL=1
   fi
   if grep -q "Mcu.IP.*TIM2" "$IOC" && grep -q "Mcu.IP.*TIM3" "$IOC" && \

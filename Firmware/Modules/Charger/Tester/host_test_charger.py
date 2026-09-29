@@ -2602,6 +2602,80 @@ def test_panel_lut_mirrors_firmware_v125():
               "mirror makes the page report a different current than the board")
 
 
+def test_vdda_reference_measurement_v125():
+    """[EN] The board "never calibrates" for a mathematical reason: the
+       dominant error is a GAIN (the ADC reference is not the assumed 3.300 V)
+       while the only runtime calibration the product exposes is an ADDER.
+       Bench proof: at the zero-current row of solo2_dense.csv the input
+       channel and the 12 V channel over-read by the SAME 1.19 percent -
+       different dividers, different resistors, agreeing to 5 parts in 100000,
+       which only a shared term can do. This pins the machinery that finally
+       makes the gain measurable.
+       [FA] دلیل «کالیبره نشدن» ریاضی است: خطای غالب ضربی است و تنها
+       کالیبراسیون موجود جمعی. این تست زیرساختی را قفل می‌کند که بالاخره آن
+       خطای ضربی را قابل اندازه‌گیری می‌کند."""
+    ioc = (ROOT / "CubeMX" / "CubeIDE.ioc").read_text()
+    ioc2 = (ROOT / "CubeIDE" / "CubeIDE.ioc").read_text()
+    main_c = (ROOT / "CubeIDE/Core/Src/main.c").read_text()
+    adc_h = (ROOT / "Firmware/Bsp/Inc/bsp_adc.h").read_text()
+    bsp_c = (ROOT / "Firmware/Bsp/Src/bsp_measurement.c").read_text()
+    cal_h = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
+    meas_c = (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text()
+
+    check(ioc == ioc2,
+          "the CubeMX and CubeIDE .ioc copies must stay identical - they were "
+          "byte-identical before and a one-sided edit would make the next "
+          "regeneration silently revert the ADC config")
+    check("ADC1.Channel-6=ADC_CHANNEL_VREFINT" in ioc and
+          "ADC1.NbrOfConversion=6" in ioc,
+          "the .ioc must carry the internal reference as a 6th rank")
+    # [EN] VREFINT needs >=17.1 us of sampling. The ADC clock is 12 MHz, so one
+    #      cycle is 83.3 ns and 239.5 cycles = 19.96 us is the ONLY legal
+    #      setting; anything shorter returns a silently wrong reference and so
+    #      a silently wrong VDDA for every channel.
+    # [FA] VREFINT حداقل ۱۷٫۱ میکروثانیه نمونه‌برداری می‌خواهد و با کلاک ۱۲
+    #      مگاهرتز تنها گزینهٔ مجاز ۲۳۹٫۵ سیکل است.
+    check("ADC1.SamplingTime-1-6=239.5" in ioc and "RCC.ADCFreqValue=12000000" in ioc,
+          "VREFINT needs >=17.1 us; at a 12 MHz ADC clock only 239.5 cycles "
+          "(19.96 us) qualifies - a shorter sample returns a wrong reference")
+    check("sConfig.Channel = ADC_CHANNEL_VREFINT;" in main_c and
+          "sConfig.Rank = ADC_REGULAR_RANK_6;" in main_c and
+          "sConfig.SamplingTime = ADC_SAMPLETIME_239CYCLES_5;" in main_c and
+          "hadc1.Init.NbrOfConversion = 6;" in main_c,
+          "the generated ADC init must match the .ioc (rank 6 = VREFINT at "
+          "239.5 cycles), or the DMA frame and the channel map disagree")
+    check(re.search(r"#define BSP_ADC_CHANNEL_COUNT\s+6u", adc_h) and
+          re.search(r"#define BSP_ADC_CHANNEL_VREFINT\s+5u", adc_h),
+          "the BSP channel map must grow with the DMA frame")
+
+    # --- the reference voltage must be passed IN, so the board port keeps no
+    #     dependency on bench-calibration headers (layering) ---
+    sig = ("func__BspMeasurement_VddaMv(uint16_t uint16_t__vrefintCounts,"
+           + chr(10) +
+           "                                    uint32_t uint32_t__vrefintMv)")
+    check(sig in bsp_c and "calibration.h" not in bsp_c,
+          "the BSP must take the reference voltage as an argument and must NOT "
+          "include the Modules-layer calibration header")
+    check("BSP_MEASUREMENT_VDDA_MIN_MV" in bsp_c and "BSP_MEASUREMENT_VDDA_MAX_MV" in bsp_c,
+          "an implausible VDDA (stuck or un-enabled VREFINT) must be rejected rather "
+          "than silently rescaling every voltage and current on the board")
+
+    # --- it must ship OFF: the F103 stores no factory VREFINT calibration, so
+    #     un-calibrated tracking is +-3.3 % (worse than the 1.2 % it fixes) AND
+    #     it lowers every reading, which moves the OV cut LATER. ---
+    check(re.search(r"#define CAL_VDDA_TRACKING_ENABLE\s+0u", cal_h),
+          "VDDA tracking must ship DISABLED: the STM32F103 has no factory VREFINT "
+          "calibration, so before a DMM step it is +-3.3 percent - worse than the "
+          "error it corrects - and enabling it un-calibrated lowers every reading, "
+          "moving the over-voltage cut LATER")
+    check(re.search(r"#define CAL_VREFINT_MV\s+1200u", cal_h),
+          "the nominal internal reference must be the datasheet 1.20 V until measured")
+    check("UINT32_T__G__MeasVddaMv" in meas_c and
+          "BSP_ADC_CHANNEL_VREFINT" in meas_c,
+          "the measured VDDA must be published even while tracking is off - the whole "
+          "point is to look at it against a DMM first")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -2645,6 +2719,7 @@ def main():
         test_min_select_handover_v124,
         test_dynamic_disturbances_v124,
         test_panel_lut_mirrors_firmware_v125,
+        test_vdda_reference_measurement_v125,
     ]
     for test in tests:
         test()
