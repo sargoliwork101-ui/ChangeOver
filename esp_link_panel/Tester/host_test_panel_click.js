@@ -1,13 +1,17 @@
 /**
- * [EN] Behavioural test for the panel's click-to-edit operating table.
+ * [EN] Behavioural test for the panel's click-to-edit values.
  *
  *      Every other check in this repository reads the panel as TEXT. That
  *      catches a missing field and it catches a renamed id, but it cannot
  *      catch an editor that opens and then gets wiped by the next telemetry
  *      tick, or an Escape key that saves, or a clamp the user never sees.
  *      Those are the failures this file exists for: it loads the real
- *      generated page in a DOM, clicks the real cells and asserts on what
+ *      generated page in a DOM, clicks the real labels and asserts on what
  *      actually happens.
+ *
+ *      v1.30 (user order): the CHART is the editor and the operating table
+ *      only reports. So this file also pins the direction of that split -
+ *      a table that quietly became editable again would pass every grep.
  *
  *      Optional by design. jsdom is not a dependency of this project and the
  *      firmware build must never need node, so a missing jsdom SKIPS (exit 0)
@@ -16,18 +20,19 @@
  *          npm install --no-save jsdom
  *          node esp_link_panel/Tester/host_test_panel_click.js
  *
- * [FA] تست رفتاری جدول عملکردِ کلیک-و-ویرایش پنل.
+ * [FA] تست رفتاری مقادیر کلیک-و-ویرایش پنل.
  *
  *      هر چک دیگری در این مخزن پنل را به‌صورت «متن» می‌خواند. آن روش نبودِ یک
  *      فیلد یا تغییر نام یک شناسه را می‌گیرد، ولی نمی‌تواند ویرایشگری را بگیرد
  *      که باز می‌شود و تلمتری بعدی پاکش می‌کند، یا کلید Esc که به‌جای لغو ذخیره
- *      کند، یا گیره‌ای که کاربر هرگز نمی‌بیندش. این فایل برای همان خرابی‌هاست:
- *      صفحهٔ واقعی تولیدشده را در یک DOM بار می‌کند، روی خانه‌های واقعی کلیک
- *      می‌کند و روی آنچه واقعاً رخ می‌دهد ادعا می‌گذارد.
+ *      کند، یا گیره‌ای که کاربر هرگز نمی‌بیندش.
+ *
+ *      نسخهٔ ۱.۳۰ (دستور کاربر): نمودار ویرایشگر است و جدول عملکرد فقط گزارش
+ *      می‌دهد. پس این فایل جهتِ همان تقسیم را هم میخ می‌کند - جدولی که بی‌صدا
+ *      دوباره ویرایش‌پذیر شود، از هر grep سالم رد می‌شود.
  *
  *      عمداً اختیاری است. jsdom وابستگی این پروژه نیست و بیلد فرم‌ور هرگز نباید
- *      به node نیاز پیدا کند، پس نبودن jsdom یعنی SKIP (خروج ۰) همراه با
- *      دستور نصب، نه شکست.
+ *      به node نیاز پیدا کند، پس نبودن jsdom یعنی SKIP (خروج ۰).
  */
 
 "use strict";
@@ -59,8 +64,13 @@ function check(cond, what, detail) {
     }
 }
 
-/* [EN] The limit ids the user ordered to be panel-settable.
-   [FA] شناسه‌هایی که کاربر دستور داد از پنل تنظیم‌شدنی باشند. */
+/* [EN] The ids the user ordered to be settable from the panel, split by where
+        the chart can honestly draw them.
+   [FA] شناسه‌هایی که کاربر دستور داد از پنل تنظیم‌شدنی باشند، بر حسب اینکه
+        نمودار کجا می‌تواند صادقانه رسمشان کند. */
+const ON_VOLT_AXIS = [20, 21, 22, 23, 24, 36, 100];
+const ON_CURR_AXIS = [25, 26, 35, 94];
+const AS_CHIPS = [93, 95, 96, 97, 98, 99, 101, 102, 103, 104, 105, 106, 107];
 const LIMIT_IDS = [];
 for (let i = 93; i <= 107; i++) { LIMIT_IDS.push(i); }
 
@@ -87,9 +97,8 @@ function main() {
 
     setTimeout(() => {
         const sent = [];
-        /* [EN] Intercept the write path: this test is about the panel, not
-                about the link. The board echo is simulated by writing the
-                value straight back, which is what a real accepted SET_PARAM
+        /* [EN] Intercept the write path: this test is about the panel, not the
+                link. Echoing the value back is what an accepted SET_PARAM
                 looks like from the page's point of view.
            [FA] مسیر نوشتن قطع می‌شود: موضوع این تست پنل است نه لینک. */
         w.send = (id, v) => { sent.push([id, v]); if (w.D && w.D.p) { w.D.p[id] = v; } };
@@ -97,112 +106,158 @@ function main() {
             p: seedParams(), t: new Array(25).fill(0),
             q: 0, q2: 0, q3: 0, q4: 0, fl: 0, on: 1
         };
+        w.qgraph();
         w.ctab();
 
-        const cell = (i) => d.querySelector('#ctb .ev[data-i="' + i + '"]');
+        const anchor = (i) => d.querySelector('[data-i="' + i + '"]');
+        const pop = () => d.getElementById("evpop");
+        const field = () => { const p = pop(); return p ? p.querySelector("input") : null; };
         const open = (i) => {
-            cell(i).dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
-            return d.querySelector("#ctb input.evi");
+            anchor(i).dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+            return field();
         };
         const key = (el, k) =>
             el.dispatchEvent(new w.KeyboardEvent("keydown", { key: k, bubbles: true }));
 
-        console.log("panel click-to-edit behaviour");
+        console.log("panel click-to-edit behaviour (chart edits, table reports)");
         console.log("=".repeat(68));
 
-        /* --- 1. every ordered id is actually on screen and clickable --- */
+        /* --- 1. the user order: every limit still has an editor, and it is
+                 on the chart card, not in the table --- */
         for (const id of LIMIT_IDS) {
-            check(cell(id) !== null,
-                  "id " + id + " is drawn as an editable cell",
-                  "the user ordered every limit settable from the panel");
+            check(anchor(id) !== null,
+                  "id " + id + " still has an editor somewhere",
+                  "the standing order is that every limit stays settable");
+        }
+        for (const id of ON_VOLT_AXIS.concat(ON_CURR_AXIS)) {
+            const el = d.querySelector('#qg [data-i="' + id + '"]');
+            check(el !== null, "id " + id + " is drawn on the chart itself",
+                  "it is a voltage or a current, so it belongs on an axis");
+        }
+        for (const id of AS_CHIPS) {
+            check(d.querySelector('#qgc [data-i="' + id + '"]') !== null,
+                  "id " + id + " is a chip under the chart",
+                  "a time or a gain has no honest position on these axes");
         }
 
-        /* --- 2. values are formatted for humans but edited as raw units --- */
-        check(cell(93).textContent.trim() === "1 ساعت",
-              "a millisecond value is shown in human units",
-              cell(93).textContent);
-        check(cell(20).textContent.trim() === "14.40 V",
-              "a millivolt value is shown as volts", cell(20).textContent);
+        /* --- 2. the table reports and nothing more (user order) --- */
+        check(d.querySelectorAll("#ctb [data-i]").length === 0,
+              "the operating table holds NO editable value",
+              "one place to write means one place to be wrong");
+        check(d.querySelectorAll("#ctb .evv").length > 0,
+              "the operating table still shows the values");
 
+        /* --- 3. the chart labels carry the number, not just a name --- */
+        check(/14\.40V/.test(anchor(20).textContent),
+              "a voltage label shows its value", anchor(20).textContent);
+        check(/650mA/.test(anchor(25).textContent),
+              "a current label shows its value", anchor(25).textContent);
+        /* [EN] Reading the label text proves nothing here: it says "950mA"
+                whether the line is drawn at 950 or pinned to the right edge
+                by a too-small IMAX. Mutation testing caught exactly that -
+                the assertion has to be about the POSITION.
+           [FA] خواندن متن برچسب اینجا چیزی ثابت نمی‌کند: چه خط روی ۹۵۰ رسم
+                شود چه IMAXِ کوچک آن را به لبهٔ راست بچسباند، متن همان
+                «950mA» است. موتیشن‌تست دقیقاً همین را گرفت - ادعا باید دربارهٔ
+                «جای» خط باشد. */
+        check(/950mA/.test(anchor(35).textContent),
+              "the hard fault label shows its value", anchor(35).textContent);
+        const X1 = 742;   /* the plot's right edge, from qgraph() */
+        const x35 = parseFloat(anchor(35).getAttribute("x"));
+        const x25 = parseFloat(anchor(25).getAttribute("x"));
+        check(x35 > x25,
+              "950 mA sits to the right of the 650 mA bulk ceiling",
+              "x35=" + x35 + " x25=" + x25);
+        check(x35 <= X1 - 10,
+              "the hard fault line is INSIDE the plot, not clipped to the edge",
+              "x=" + x35 + " with the right edge at " + X1 +
+              " - IMAX must cover every current threshold it draws");
+
+        /* --- 4. clicking opens a floating editor with the RAW value --- */
         let inp = open(93);
-        check(inp !== null, "clicking a value opens an input in its place");
+        check(inp !== null, "clicking a value opens the editor");
         check(inp.value === "3600000",
-              "the input carries the RAW value, not the pretty one",
-              "typing 1 into a field showing '1 hour' must not mean 1 ms");
+              "the editor carries the RAW value, not the pretty one",
+              "typing 1 into a field reading '1 hour' must not mean 1 ms");
         check(inp.getAttribute("min") === "0" &&
               inp.getAttribute("max") === "21600000",
-              "the input advertises the firmware's own window",
+              "the editor advertises the firmware's own window",
               inp.getAttribute("min") + ".." + inp.getAttribute("max"));
 
-        /* --- 3. Enter commits --- */
+        /* --- 5. Enter commits --- */
         inp.value = "0";
         key(inp, "Enter");
         check(sent.length === 1 && sent[0][0] === 93 && sent[0][1] === 0,
               "Enter sends the typed value", JSON.stringify(sent));
-        check(cell(93).textContent.trim() === "بدون سقف",
+        check(pop() === null, "committing closes the editor");
+        check(anchor(93).textContent.indexOf("بدون سقف") >= 0,
               "zero renders as 'no ceiling', not as '0 ms'",
-              cell(93).textContent);
+              anchor(93).textContent);
 
-        /* --- 4. Escape must not write. A cancel key that saves is worse
-                  than no cancel key, because the user believes they backed
-                  out of a safety limit. --- */
+        /* --- 6. Escape must not write. A cancel key that saves is worse than
+                 no cancel key: the user believes they backed out of changing
+                 a safety limit. --- */
         const before = sent.length;
         const inp2 = open(99);
         inp2.value = "7";
         key(inp2, "Escape");
         check(sent.length === before, "Escape writes nothing");
-        check(cell(99).textContent.trim() === "32",
+        check(pop() === null, "Escape closes the editor");
+        check(anchor(99).textContent.indexOf("32") >= 0,
               "Escape leaves the displayed value untouched",
-              cell(99).textContent);
+              anchor(99).textContent);
 
-        /* --- 5. the regression this design is most likely to hit: the table
-                  re-renders roughly once a second from telemetry, and a naive
-                  implementation deletes the field the user is typing into. --- */
+        /* --- 7. what happens under an open editor when telemetry keeps
+                 arriving. The field itself lives on <body>, so a redraw was
+                 never going to delete it - mutation testing proved that
+                 assertion was vacuous. The property that IS load-bearing is
+                 that the page freezes while you type: the value you are
+                 editing must not be rewritten under the open editor, and the
+                 anchor you aimed at must not move. --- */
         const inp3 = open(97);
+        w.D.p[97] = 42;                 /* the board reports something new */
+        w.qgraph();
         w.ctab();
-        w.ctab();
-        const survivor = d.querySelector("#ctb input.evi");
-        check(survivor !== null,
-              "an open editor survives a telemetry re-render",
-              "a ~1 s tick must not delete the field under the user's fingers");
+        const survivor = field();
+        check(survivor !== null, "the editor is still open");
+        check(survivor.value === "8",
+              "what you typed is not overwritten by an incoming telemetry value",
+              survivor.value);
+        check(anchor(97).textContent.indexOf("42") < 0,
+              "the frozen page does not swap the value under the open editor",
+              anchor(97).textContent);
         if (survivor) {
             survivor.value = "3";
             key(survivor, "Enter");
             check(sent[sent.length - 1][0] === 97 &&
                   sent[sent.length - 1][1] === 3,
-                  "the survivor still commits correctly");
+                  "committing after the freeze still sends the typed value");
+            check(anchor(97).textContent.indexOf("3") >= 0,
+                  "and the page resumes updating once the editor closes",
+                  anchor(97).textContent);
         }
 
-        /* --- 6. a clamp must be visible. The board silently clamping while
-                  the panel shows what you typed is how a safety ceiling ends
-                  up believed-set and not set. --- */
+        /* --- 8. a clamp must be visible. The board clamping while the panel
+                 keeps showing what was typed is how a ceiling ends up
+                 believed-set and not set. --- */
         w.send = (id, v) => { sent.push([id, v]); w.D.p[id] = Math.min(v, 14800); };
         const inp4 = open(100);
         inp4.value = "20000";
         key(inp4, "Enter");
-        const c100 = cell(100);
-        check(c100.className.indexOf("cl") >= 0,
-              "a clamped value is marked on screen");
-        check(c100.textContent.trim() === "14.80 V",
-              "the cell shows the APPLIED value, not the requested one",
-              c100.textContent);
-        check((c100.getAttribute("title") || "").indexOf("20000") >= 0,
-              "the marker explains what was asked for",
-              c100.getAttribute("title"));
+        const a100 = anchor(100);
+        check(a100.textContent.indexOf("14.80") >= 0,
+              "the label shows the APPLIED value, not the requested one",
+              a100.textContent);
+        check((a100.getAttribute("fill") || "") === "#f7c13c",
+              "a clamped chart label is recoloured so the clamp is visible",
+              a100.getAttribute("fill"));
 
-        /* --- 7. the separate card is gone (user order) and the derived
-                  read-only cell is not clickable --- */
-        check(d.getElementById("q93") === null &&
-              d.getElementById("q107") === null,
-              "the old separate limits card is gone");
-        const ro = d.querySelector("#ctb .ev.ro");
-        check(ro !== null && ro.textContent.indexOf("%") >= 0,
-              "the derived duty ceiling is shown read-only", ro && ro.textContent);
-        const roSent = sent.length;
-        if (ro) { ro.dispatchEvent(new w.MouseEvent("click", { bubbles: true })); }
-        check(d.querySelector("#ctb input.evi") === null &&
-              sent.length === roSent,
-              "clicking the read-only cell opens nothing");
+        /* --- 9. the hard constant is not offered as a control --- */
+        const cutoff = [...d.querySelectorAll("#qg text")]
+            .filter(t => t.textContent.indexOf("قطع سخت") >= 0);
+        check(cutoff.length === 1 && !cutoff[0].hasAttribute("data-i"),
+              "the 15 V measurement ceiling stays read-only",
+              "it is the board's valid-range limit, not a setting");
 
         console.log("=".repeat(68));
         if (failures === 0) {

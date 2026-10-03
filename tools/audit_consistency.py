@@ -366,13 +366,45 @@ def sec_defaults(ids):
         ok(not missing,
            "a charger limit has no click-to-edit cell and no form field",
            f"ids {missing} became unreachable from the panel")
-        # the cells must actually be rendered, not merely declared
-        tab = block(P_PAN, "function ctab()")
-        notrendered = [i for i in range(lim_lo, lim_hi + 1)
-                       if f"ev({i})" not in tab]
+        # [EN] v1.30 (user order): the CHART edits, the operating table only
+        #      reports. Three lists drive the rendering - EVV (voltage axis),
+        #      EVI (current axis) and EVC (times and gains, which have no
+        #      honest position on either axis) - so their union is what
+        #      decides whether a parameter still has an editor at all. The
+        #      previous version of this check asked whether ctab() drew the
+        #      cell, which is now exactly the wrong question.
+        # [FA] نمودار ویرایش می‌کند و جدول عملکرد فقط گزارش می‌دهد. سه فهرست
+        #      رندر را می‌رانند - EVV (محور ولتاژ)، EVI (محور جریان) و EVC
+        #      (زمان‌ها و گین‌ها که روی هیچ‌کدام از دو محور جای صادقانه‌ای
+        #      ندارند) - پس اجتماعشان تعیین می‌کند که آیا پارامتری اصلاً هنوز
+        #      ویرایشگر دارد یا نه. نسخهٔ قبلی این چک می‌پرسید ctab خانه را
+        #      رسم می‌کند یا نه، که حالا دقیقاً سؤال غلطی است.
+        drawn = set()
+        for name in ("EVV", "EVI"):
+            m = re.search(r"const " + name + r"=\{(.*?)\};", P_PAN, re.S)
+            if m:
+                drawn |= {int(x) for x in re.findall(r"(\d+):\[", m.group(1))}
+        m = re.search(r"const EVC=\[([0-9,\s]*)\];", P_PAN)
+        if m:
+            drawn |= {int(x) for x in m.group(1).split(",") if x.strip()}
+        notrendered = [i for i in range(lim_lo, lim_hi + 1) if i not in drawn]
         ok(not notrendered,
-           "a limit is in EVB but never drawn in the operating table",
+           "a limit is in EVB but drawn by no renderer",
            f"ids {notrendered} are settable in theory only")
+        ok(drawn <= seen,
+           "something is drawn as editable with no EVB window",
+           f"ids {sorted(drawn - seen)} would open an editor with no bounds")
+
+        # the split the user asked for, pinned in both directions
+        tab = block(P_PAN, "function ctab()")
+        ok("ev(" not in tab.replace("evr(", "").replace("evr_plain(", ""),
+           "the operating table must only REPORT values",
+           "an editable cell there reintroduces the two-places-to-be-wrong bug")
+        chart = block(P_PAN, "function qgraph()")
+        ok("evat(" in chart and "ev(" in chart.replace("evat(", "")
+           .replace("evval(", "").replace("evcl(", ""),
+           "the chart must be where values are edited",
+           "both the axis labels and the chips are the chart's job now")
     ok(not bad_p, "documented default != preview server P", "; ".join(bad_p))
 
     lo_hi = [f"id {i}" for i in range(min(len(pmin), len(pmax))) if pmin[i] > pmax[i]]

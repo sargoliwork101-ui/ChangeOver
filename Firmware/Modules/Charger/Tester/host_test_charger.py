@@ -2586,19 +2586,41 @@ def test_two_loop_pid_v124():
     evb = re.search(r"const EVB=\{(.*?)\};", ino, re.S)
     check(evb, "the panel must declare the click-to-edit bounds table EVB")
     evb_ids = {int(x) for x in re.findall(r"(\d+):\[", evb.group(1))}
-    ctab = ino[ino.find("function ctab()"):]
-    ctab = ctab[:ctab.find("\ndocument.addEventListener")]
+    # [EN] v1.30 (user order): the chart edits, the table reports. Three
+    #      renderers decide where each id is drawn - the two chart axes and
+    #      the chip strip for values that are neither a voltage nor a current.
+    # [FA] نمودار ویرایش می‌کند و جدول گزارش می‌دهد. سه رندرکننده تعیین می‌کنند
+    #      هر شناسه کجا رسم شود - دو محور نمودار و نوار تراشه برای مقادیری که
+    #      نه ولتاژند و نه جریان.
+    drawn = set()
+    for name in ("EVV", "EVI"):
+        m = re.search(r"const " + name + r"=\{(.*?)\};", ino, re.S)
+        check(m, f"the panel must declare the {name} renderer list")
+        if m:
+            drawn |= {int(x) for x in re.findall(r"(\d+):\[", m.group(1))}
+    m = re.search(r"const EVC=\[([0-9,\s]*)\];", ino)
+    check(m, "the panel must declare the EVC chip list")
+    if m:
+        drawn |= {int(x) for x in m.group(1).split(",") if x.strip()}
     for i in range(93, 108):
-        check(i in evb_ids, f"limit id {i} has no EVB window, so its cell cannot be clicked")
-        check(f"ev({i})" in ctab, f"limit id {i} is never drawn in the operating table")
+        check(i in evb_ids, f"limit id {i} has no EVB window, so it cannot be edited")
+        check(i in drawn, f"limit id {i} is drawn by no renderer - settable in theory only")
     check('id="q93"' not in ino and 'id="q107"' not in ino,
-          "the separate limits card must be GONE: a table showing a number next to a "
-          "form setting the same number is two places to be wrong")
+          "the separate limits card must stay GONE")
+    ctab = ino[ino.find("function ctab()"):]
+    ctab = ctab[:ctab.find("function astat()")]
+    check("ev(" not in ctab.replace("evr(", "").replace("evr_plain(", ""),
+          "the operating table must only REPORT: an editable cell there puts the same "
+          "number in two places, which is how the help text, the backup label and the "
+          "OV cutoff default all drifted")
     check("EVOPEN" in ino and "document.activeElement" in ino,
           "an open editor must suppress the re-render, or the ~1 s telemetry tick "
           "deletes the field under the user's fingers")
     check("e.key==='Escape'" in ino and "e.key==='Enter'" in ino,
           "click-to-edit needs both a commit key and a cancel key")
+    check("function evedit" in ino and "evpop" in ino,
+          "an SVG <text> cannot host an <input>, so the editor must be a floating "
+          "panel anchored to the clicked label")
     check("BACKSTOP" in text_h and "CHG_LIMIT_PARAM_BACKSTOP_MV" in text_h,
           "the backstop voltage must be a parameter id, not a bare #define")
     bs = re.search(r"CHG_LIMIT_PARAM_BACKSTOP_MV[^\\n]*\\n[^\\n]*?(\\d+)u?,\\s*(\\d+)u?,\\s*(\\d+)u?", text_c)
@@ -3349,11 +3371,29 @@ def test_stage_graph_is_current_vs_voltage_v3():
           "falling current")
 
     # --- the current limit and taper are vertical now, not horizontal ---
-    check('x1="${X(im.d)}" y1="12" x2="${X(im.d)}"' in body,
-          "the bulk current ceiling must be a VERTICAL line now that current is "
+    # [EN] v1.30 draws every current threshold through one EVI loop so they
+    #      can all be clicked, so the literal per-line markup is gone. The
+    #      property still has to hold: same x at both ends, spanning y. The
+    #      mapping of 25/26 onto the preview-aware im.d/tp.d is checked too -
+    #      reading those from D.p instead would quietly drop the dashed
+    #      "typed but not applied yet" preview.
+    # [FA] حالا همهٔ آستانه‌های جریان از یک حلقهٔ EVI رسم می‌شوند تا همه
+    #      کلیک‌پذیر باشند، پس مارک‌آپ جداگانهٔ هر خط رفته است. ولی همان خاصیت
+    #      باید برقرار بماند: x یکسان در دو سر، گسترده در y.
+    check('x1="${x}" y1="12" x2="${x}" y2="${H-22}"' in body,
+          "every current threshold must be a VERTICAL line now that current is "
           "the horizontal axis")
-    check('x1="${X(tp.d)}" y1="12" x2="${X(tp.d)}"' in body,
-          "the taper threshold must be a VERTICAL line too")
+    evi = re.search(r"const EVI=\{(.*?)\};", ino, re.S)
+    check(evi, "the chart must declare its current-axis thresholds in EVI")
+    evi_ids = {int(x) for x in re.findall(r"(\d+):\[", evi.group(1))}
+    check({25, 26} <= evi_ids,
+          "the bulk ceiling and the taper threshold must still be on the current "
+          "axis, got " + str(sorted(evi_ids)))
+    check("(id===25)?im.d:(id===26)?tp.d:evval(id)" in body,
+          "ids 25/26 must keep reading the preview-aware values, or the dashed "
+          "'typed but not applied yet' preview silently disappears")
+    check("evat(id)" in body,
+          "the current-axis labels must be clickable, not decoration")
 
     # --- live dots at their real operating point, not a fixed column ---
     check("const y=Y(b[1]),x=X(b[3]);" in body,

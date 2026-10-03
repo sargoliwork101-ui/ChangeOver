@@ -1734,6 +1734,42 @@ has overflowed the 62 KB flash budget before.
 > ESP together**, then import. Restoring a v8 export is safe - the import
 > replays values id by id, and the ids did not move.
 
+### Where these are edited (v1.30 — user order)
+
+The **chart is the editor; the operating table only reports.** Click any
+underlined number on the stage chart (Settings → "شارژ و فیلتر"), type, Enter.
+Escape cancels. The operating table on the chargers page shows the same values
+and sets none of them.
+
+Three renderers decide where each id appears, and the audit reads those three
+lists to prove nothing lost its editor:
+
+| list | axis | ids |
+|---|---|---|
+| `EVV` | horizontal voltage lines | 20, 21, 22, 23, 24, 36, 100 |
+| `EVI` | vertical current lines | 25, 26, 35, 94 |
+| `EVC` | chips under the plot | 93, 95, 96, 97, 98, 99, 101, 102, 103, 104, 105, 106, 107 |
+
+`EVC` exists because a time and a gain have no honest position on a
+voltage/current plane. Putting them on an axis they do not belong to would be
+a prettier lie than leaving them off it.
+
+Two consequences worth recording:
+
+- `IMAX` (the current axis range) is now derived from the hard-fault threshold
+  as well as the bulk ceiling. It used to be `bulk × 1.25`, which pinned the
+  950 mA fault line to the right-hand edge — a current chart that clips a
+  current limit at its border is a quiet lie, and the label still read
+  "950mA" while sitting in the wrong place.
+- The editor is a floating panel on `<body>`, not an `<input>` swapped into
+  the label, because an SVG `<text>` cannot host one. One mechanism serves the
+  axis labels and the chips, so they cannot disagree.
+
+The 15 V line stays read-only: it is `CHG_MAX_VALID_BATTERY_MV`, the board's
+measurement validity ceiling, not a setting. So does the duty ceiling shown in
+the table — that is `max(id 13, id 14)`, a derived number with no parameter
+behind it.
+
 **The operating table moved into the chargers page.** It is rendered from the
 board's *applied* parameters, never from numbers written into the markup.
 That is not decoration: this same release found a stale help sentence, a

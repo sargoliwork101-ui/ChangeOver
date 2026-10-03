@@ -48,10 +48,29 @@ section{margin-top:12px}
 .ev:hover{color:var(--ac2);border-bottom-color:var(--ac2)}
 .ev.ro{color:var(--tx);border:0;cursor:default}
 .ev.cl{color:var(--wa);border-bottom-color:var(--wa)}
-.evw{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
-.evi{width:11ch;background:var(--in);color:var(--tx);border:1px solid var(--ac);border-radius:5px;
-     padding:3px 6px;font:inherit;font-size:13px;text-align:left}
+.evi{width:12ch;background:var(--in);color:var(--tx);border:1px solid var(--ac);border-radius:5px;
+     padding:4px 7px;font:inherit;font-size:13px;text-align:left}
 .evu{color:var(--mu);font-size:11px}
+/* [EN] v1.30 (user order): the CHART is the editor and the table only reports.
+   An SVG <text> cannot host an <input>, so the editor is a small floating
+   panel anchored to whatever was clicked - one mechanism for the plot labels
+   and for the chips under it, instead of two that can disagree.
+   [FA] نمودار ویرایشگر است و جدول فقط گزارش می‌دهد. متن SVG نمی‌تواند input
+   داشته باشد، پس ویرایشگر یک پنل کوچک شناور است که به هر چیزی که کلیک شده
+   لنگر می‌اندازد - یک ساز و کار برای برچسب‌های نمودار و تراشه‌های زیرش، نه دو
+   تا که بتوانند با هم اختلاف پیدا کنند. */
+.evs{cursor:pointer;text-decoration:underline dotted}
+.evs:hover{fill:var(--ac2)}
+.evpop{position:absolute;z-index:70;background:var(--cd);border:1px solid var(--ac);
+       border-radius:9px;padding:9px 11px;box-shadow:0 10px 30px #0009;direction:rtl}
+.evpt{font-size:12px;font-weight:700;color:var(--tx);margin-bottom:6px;white-space:nowrap}
+.evpr{display:flex;align-items:center;gap:6px;direction:ltr;justify-content:flex-end}
+.evph{font-size:10.5px;color:var(--mu);margin-top:6px;white-space:nowrap}
+.evchips{display:flex;flex-wrap:wrap;gap:7px;margin-top:2px}
+.evc{display:inline-flex;align-items:center;gap:6px;background:var(--in);border:1px solid var(--rs);
+     border-radius:7px;padding:4px 9px;font-size:12.5px}
+.evcl{color:var(--mu)}
+.evv{color:var(--tx);font-weight:700;white-space:nowrap}
 .fl{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--ln)}
 .tg{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--rs);color:var(--mu);border:1px solid transparent;display:inline-flex;align-items:center;gap:6px}
 .tg::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.9}
@@ -185,10 +204,11 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 <div class="sbt" id="sbt"><button class="a" data-s="0">شارژ و فیلتر</button><button data-s="1">سناریوها</button><button data-s="2">نظارت و ایمنی</button><button data-s="3">PID شارژ</button><button data-s="4">پشتیبان‌گیری</button></div>
 <div class="sgx a" id="s0">
 <div class="cd">
-<div class="hd"><b>نمودار مراحل شارژ</b><span class="lb">· مشترک هر دو کانال · ناحیه‌ها از مقادیر اعمال‌شدهٔ برد · تایپ = خط‌چین پیش‌نمایش · ترکیب نامعتبر = هشدار قرمز</span></div>
+<div class="hd"><b>نمودار مراحل شارژ</b> <button class="ib" data-p="93,94,95,96,97,98,99,100,101,102,103,104,105,106,107" onclick="this.classList.toggle('o')">!<span class="it"><b>اینجا جای تغییر دادن اعداد است.</b> روی هر عددِ زیرخط‌دار روی خود نمودار کلیک کنید — چه برچسب‌های ولتاژ سمت راست، چه برچسب‌های جریان زیر نمودار، چه تراشه‌های پایین صفحه. یک کادر کوچک باز می‌شود: مقدار را تایپ کنید و Enter بزنید (Esc لغو می‌کند).<br>«جدول عملکرد شارژ» در صفحهٔ شارژرها فقط <i>نمایش</i> می‌دهد و دیگر ویرایش نمی‌شود؛ یک جا برای نوشتن یعنی یک جا برای اشتباه‌کردن.<br>هر مقدار از پارامترهای «اعمال‌شدهٔ» برد خوانده می‌شود. برد هر عدد را به بازهٔ مجازش گیره می‌زند؛ اگر چیزی که برگشت با آنچه تایپ کردید فرق داشت، آن برچسب <b>زرد</b> می‌شود.<br><b>زمان‌ها و گین‌ها</b> (سقف زمان ابزورب، شستشو، پله و هیسترزیس دیوتی، فیلتر ولتاژ، گین‌های پشتیبان، نشست اتصال، قفل ضدلرزش، ددمن دستی، فاصلهٔ رمپ) نه ولتاژند و نه جریان، پس روی محورهای نمودار جایی ندارند و به‌صورت تراشه زیر همان نمودار آمده‌اند.<br><b>پایان ابزورب دو راه دارد:</b> راه عادی تیپر است؛ راه پشتیبان «سقف زمان ابزورب» است که از لحظهٔ افت جریان زیر «جریان مسلح‌کننده» می‌شمارد. صفرش کنید تا فقط تیپر پایان بدهد.<br><b>گین پشتیبان صفر یعنی آن پشتیبان خاموش.</b> قطع اضافه‌ولتاژ، ولتاژ پشتیبان و خطای سخت جریان فقط پایین‌آوردنی‌اند.<br>خط «قطع سخت ۱۵V» عمداً ویرایش‌پذیر نیست: سقف اعتبار اندازه‌گیری برد است نه یک تنظیم.</span></button><span class="lb">· مشترک هر دو کانال · <b style="color:var(--ac)">روی عددهای روی نمودار کلیک کنید تا تغییرشان دهید</b> · ناحیه‌ها از مقادیر اعمال‌شدهٔ برد · تایپ = خط‌چین پیش‌نمایش</span></div>
 <div id="qw" style="margin:2px 0 0"></div>
 <div id="qg" style="direction:ltr;overflow-x:auto"></div>
 <div class="lb" id="qgl">در انتظار دادهٔ برد…</div>
+<div id="qgc"></div>
 </div>
 <div class="cd">
 <div class="hd"><b>فیلتر جریان</b> <button class="ib" data-p="7,8" onclick="this.classList.toggle('o')">!<span class="it">پنجرهٔ مدین: مرحلهٔ اول فیلتر، هر عدد ۱ تا ۱۵ (زوج هم مجاز)؛ ۱ و ۲ = خاموش، ۳ = پیش‌فرض، بزرگ‌تر = حذف پالس قوی‌تر با تاخیر بیشتر.<br>پنجرهٔ میانگین: مرحلهٔ دوم، هر عدد ۱ تا ۳۰۰ — میانگین آخرین W خروجی مدین (هر نمونه ۱ms = ۱ms تاریخچه)؛ ۱ = خاموش، ۱۰ = پیش‌فرض. برای صاف‌شدن قابل‌مشاهده روی نمودار تب «پنل» مجموع را بالای ~۲۰۰ms ببرید؛ در مود خودکار شارژر بالای ~۵۰ توصیه نمی‌شود (کندی حلقهٔ تنظیم ۱۰۰Hz).</span></button><span class="lb">· مشترک هر دو کانال · Median + Average · مثل بقیه روی فلش برد ذخیره می‌شود</span></div>
@@ -655,7 +675,7 @@ function pexp(){document.querySelectorAll('button.ib[data-p]').forEach(b=>{
   '<b style="font-size:11.5px">هر پارامتر چه می‌کند</b>'+
   rows.map(r=>'<div style="margin-top:4px;font-size:11.5px;line-height:1.75"><b>'+r[0]+'</b> — '+r[1]+'</div>').join('')+
   '</div>');});}
-function qgraph(){const g=$('qg');if(!g)return;
+function qgraph(){const g=$('qg');if(!g||EVOPEN!=null)return;
  const q={a:qv(20),e:qv(21),o:qv(22),f:qv(23),r:qv(24)},im=qv(25),tp=qv(26);
  /* v3 (دستور کاربر ۲۰۲۶-۰۹-۲۹): نمودار دوبعدی جریان-ولتاژ.
     محور افقی = جریان (mA)، محور عمودی = ولتاژ (mV).
@@ -671,7 +691,7 @@ function qgraph(){const g=$('qg');if(!g)return;
     ناحیه‌ها از مقادیر اعمال‌شده (.d) می‌آیند؛ تایپِ هنوز-اعمال‌نشده فقط خط‌چین */
  const lo=Math.max(7600,Math.min(q.r.d,12000)-500),hi=15060,W=760,H=420,X0=48,X1=742;
  const LBL_GAP=11;
- const IMAX=Math.max(200,Math.round((im.d||650)*1.25/50)*50);
+ const IMAX=Math.max(200,Math.round(Math.max((im.d||650)*1.25,(evval(35)||0)*1.05)/50)*50);
  const Y=mv=>Math.round(H-24-(H-46)*(mv-lo)/(hi-lo));
  const X=ma=>Math.round(X0+(X1-X0)*Math.min(Math.max(ma,0),IMAX)/IMAX);
  const V=mv=>(mv/1000).toFixed(2);
@@ -682,11 +702,11 @@ function qgraph(){const g=$('qg');if(!g)return;
   return`<rect x="${X0}" y="${y1}" width="${X1-X0}" height="${Math.max(3,y2-y1)}" fill="${fill}"/>`;};
  const aln=(mv,c)=>`<line x1="${X0}" y1="${Y(mv)}" x2="${X1}" y2="${Y(mv)}" stroke="${c}" stroke-width="1.8"/>`;
  const pvln=(o,c)=>o.p?`<line x1="${X0}" y1="${Y(o.v)}" x2="${X1}" y2="${Y(o.v)}" stroke="${c}" stroke-width="1.8" stroke-dasharray="6 4"/>`:'';
- const lbl=(o,c,txt)=>{LL.push({y:Y(o.p?o.v:o.d)-4,txt,c,pv:o.p});};
+ const lbl=(o,c,txt,id)=>{LL.push({y:Y(o.p?o.v:o.d)-4,txt,c,pv:o.p,i:id,val:V(o.d)+'V'});};
  const put=(A,x,anchor,fs)=>{A.sort((p,q2)=>p.y-q2.y);let last=4;
   return A.map(o=>{const yc=Math.min(Math.max(o.y,14),H-10),y=Math.max(last+LBL_GAP,yc),sh=y-yc>3;last=y;
    return (sh?`<line x1="${x}" y1="${yc+3}" x2="${x}" y2="${y-3}" stroke="${o.c}" stroke-width="1" opacity=".6"/>`:'')+
-   `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="${fs}" font-weight="700" fill="${o.c}">${o.txt}${o.pv?' · پیش‌نمایش':''}</text>`;}).join('');};
+   `<text ${o.i!=null?evat(o.i):''} x="${x}" y="${y}" text-anchor="${anchor}" font-size="${fs}" font-weight="700" fill="${o.i!=null&&evcl(o.i)?'#f7c13c':o.c}">${o.txt}${o.val?' '+o.val:''}${o.pv?' · پیش‌نمایش':''}</text>`;}).join('');};
  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:640px;font-family:inherit">`;
  s+=`<defs><pattern id="bkh" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="9" height="9" fill="rgba(99,162,255,.08)"/><line x1="0" y1="0" x2="0" y2="9" stroke="rgba(99,162,255,.22)" stroke-width="1"/></pattern></defs>`;
  s+=`<rect x="${X0}" y="12" width="${X1-X0}" height="${H-34}" fill="#080b12" stroke="#38455e" rx="6"/>`;
@@ -707,16 +727,33 @@ function qgraph(){const g=$('qg');if(!g)return;
  s+=zone(q.r.d,lo,'rgba(99,162,255,.11)','زیر بازگشت (Reentry) — شارژ دوباره از بالک','#9ac8ff');
  s+=`<line x1="${X0}" y1="${Y(15000)}" x2="${X1}" y2="${Y(15000)}" stroke="#ff6873" stroke-width="1.2" stroke-dasharray="3 4"/>`;
  LL.push({y:Y(15000)-4,txt:'قطع سخت (Cutoff) ۱۵V',c:'#ff6873'});
- s+=aln(q.o.d,'#fb923c')+pvln(q.o,'#fb923c');lbl(q.o,'#fb923c','سقف تجاوز (Over)');
- s+=aln(q.a.d,'#f7c13c')+pvln(q.a,'#f7c13c');lbl(q.a,'#f7c13c','ابزورب (Absorb)');
- s+=aln(q.e.d,'#e8a33d')+pvln(q.e,'#e8a33d');lbl(q.e,'#e8a33d','ورود ابزورب (Absorb Enter)');
- s+=aln(q.f.d,'#35d6a0')+pvln(q.f,'#35d6a0');lbl(q.f,'#35d6a0','شناور (Float)');
- s+=aln(q.r.d,'#63a2ff')+pvln(q.r,'#63a2ff');lbl(q.r,'#63a2ff','بازگشت به بالک (Reentry)');
- /* سقف جریان بالک و آستانهٔ تیپر: حالا خط عمودی‌اند، چون جریان محور افقی است */
- s+=`<line x1="${X(im.d)}" y1="12" x2="${X(im.d)}" y2="${H-22}" stroke="#63a2ff" stroke-width="1.6"/>`+
-    `<text x="${X(im.d)-3}" y="${H-26}" text-anchor="end" font-size="8.5" font-weight="700" fill="#63a2ff">سقف بالک ${im.d}mA</text>`;
- s+=`<line x1="${X(tp.d)}" y1="12" x2="${X(tp.d)}" y2="${H-22}" stroke="#35d6a0" stroke-width="1.4" stroke-dasharray="4 3"/>`+
-    `<text x="${X(tp.d)+3}" y="${H-26}" text-anchor="start" font-size="8.5" font-weight="700" fill="#35d6a0">تیپر ${tp.d}mA</text>`;
+ /* [EN] Two safety ceilings that were only ever numbers in a card: on the
+       voltage axis they belong, and now they are set from it. Down-only on
+       the board, so the window in EVB can never raise them.
+    [FA] دو سقف ایمنی که همیشه فقط عددی در یک کادر بودند: جایشان روی محور
+       ولتاژ است و حالا از همان‌جا تنظیم می‌شوند. روی برد فقط پایین‌آوردنی‌اند. */
+ Object.keys(EVV).forEach(k=>{const id=+k;if(id<35)return;const mv=evval(id);
+  if(mv==null||mv<=lo||mv>=hi)return;
+  s+=`<line x1="${X0}" y1="${Y(mv)}" x2="${X1}" y2="${Y(mv)}" stroke="${EVV[id][0]}" stroke-width="1.3" stroke-dasharray="5 3"/>`;
+  LL.push({y:Y(mv)-4,txt:EVV[id][1],c:EVV[id][0],i:id,val:V(mv)+'V'});});
+ s+=aln(q.o.d,'#fb923c')+pvln(q.o,'#fb923c');lbl(q.o,'#fb923c','سقف تجاوز (Over)',22);
+ s+=aln(q.a.d,'#f7c13c')+pvln(q.a,'#f7c13c');lbl(q.a,'#f7c13c','ابزورب (Absorb)',20);
+ s+=aln(q.e.d,'#e8a33d')+pvln(q.e,'#e8a33d');lbl(q.e,'#e8a33d','ورود ابزورب (Enter)',21);
+ s+=aln(q.f.d,'#35d6a0')+pvln(q.f,'#35d6a0');lbl(q.f,'#35d6a0','شناور (Float)',23);
+ s+=aln(q.r.d,'#63a2ff')+pvln(q.r,'#63a2ff');lbl(q.r,'#63a2ff','بازگشت به بالک (Reentry)',24);
+ /* [EN] The current axis carries four settable thresholds now. Every one is
+       clickable, including the hard fault - which is why IMAX above had to
+       stop being derived from the bulk limit alone: a current chart that
+       clips a current limit at its right edge is a quiet lie.
+    [FA] محور جریان حالا چهار آستانهٔ تنظیم‌شدنی دارد و همه کلیک‌پذیرند، از
+       جمله خطای سخت - و دقیقاً به همین دلیل IMAX بالا دیگر فقط از سقف بالک
+       مشتق نمی‌شود: نمودار جریانی که یک حد جریان را لب راستش ببُرد، یک دروغ
+       بی‌صداست. */
+ Object.keys(EVI).forEach(k=>{const id=+k;
+  const ma=(id===25)?im.d:(id===26)?tp.d:evval(id);
+  if(ma==null)return;const x=X(ma),cfg=EVI[id];
+  s+=`<line x1="${x}" y1="12" x2="${x}" y2="${H-22}" stroke="${cfg[0]}" stroke-width="${id===25?1.6:1.4}"${id===25?'':' stroke-dasharray="4 3"'}/>`+
+     `<text ${evat(id)} x="${x+(cfg[2]<0?-3:3)}" y="${H-26}" text-anchor="${cfg[2]<0?'end':'start'}" font-size="8.5" font-weight="700" fill="${evcl(id)?'#f7c13c':cfg[0]}">${cfg[1]} ${ma}mA</text>`;});
  /* مسیر واقعی شارژ CC/CV: پای عمودی روی سقف جریان، بعد پای افقی روی ولتاژ ابزورب */
  s+=`<polyline points="${X(im.d)},${Y(lo)} ${X(im.d)},${Y(q.e.d)} ${X(im.d)},${Y(q.a.d)} ${X(tp.d)},${Y(q.a.d)} ${X(0)+6},${Y(q.f.d)}" fill="none" stroke="#e8eaf2" stroke-width="2" stroke-opacity=".55" stroke-linejoin="round" stroke-dasharray="7 4"/>`;
  /* موقعیت زندهٔ هر باتری: حالا روی مختصات واقعی (جریان، ولتاژ) */
@@ -738,6 +775,18 @@ function qgraph(){const g=$('qg');if(!g)return;
  s+=`<text x="${X0}" y="8" font-size="8" fill="#96a1b8">ولتاژ باتری / Battery voltage (V)</text>`;
  s+=`<text x="${X1}" y="${H-2}" text-anchor="end" font-size="8" fill="#96a1b8">جریان شارژ / Charge current (mA)</text></svg>`;
  g.innerHTML=s;const e=$('qgl');if(e)e.innerHTML=lg;
+ /* [EN] Times and gains have no honest position on a voltage/current plot, so
+    they sit under it as chips - still on the chart card, still one click to
+    edit. Putting them on an axis they do not belong to would be a prettier
+    lie than leaving them off it.
+    [FA] زمان‌ها و گین‌ها روی نمودار ولتاژ/جریان جای صادقانه‌ای ندارند، پس
+    زیرش به‌صورت تراشه می‌نشینند - هنوز روی همان کارت نمودار و هنوز با یک
+    کلیک ویرایش‌شدنی. گذاشتنشان روی محوری که به آن تعلق ندارند، دروغی
+    خوش‌قیافه‌تر از نگذاشتنشان بود. */
+ const gc=$('qgc');
+ if(gc)gc.innerHTML='<div class="sec">زمان‌ها و گین‌ها <span class="lb">· نه ولتاژند نه جریان، پس روی محورها جا ندارند · روی هر عدد کلیک کنید</span></div>'+
+  '<div class="evchips">'+EVC.map(id=>'<span class="evc"><span class="evcl">'+
+   ((typeof PX!=='undefined'&&PX[id])?PX[id][0]:('#'+id))+'</span>'+ev(id)+'</span>').join('')+'</div>';
  /* نگهبان: هشدار بالای نمودار + قرمزکردن فیلد مقصر */
  const w=qchk(),we=$('qw');
  if(we){we.innerHTML=w.length?('⚠ ترکیب نامعتبر — برد این‌ها را گیره می‌زند: '+w.map(x=>x.msg).join('؛ ')):'';
@@ -918,8 +967,28 @@ const EVB={
  105:[0,60000,500,'ms'],     106:[500,60000,500,'ms'], 107:[50,5000,50,'ms']};
 
 const EVU={mv:'mV',ma:'mA',ms:'ms',pm:'‰',n:''};
+
+/* [EN] Which ids are drawn WHERE. These two lists drive the rendering, so
+   they cannot drift from what is actually on screen, and the audit reads
+   them to prove no ordered parameter lost its editor.
+   EVV = horizontal voltage lines, EVI = vertical current lines (the chart's
+   two axes), EVC = everything that is neither a voltage nor a current and
+   therefore has no honest place on those axes.
+   [FA] اینکه هر شناسه کجا رسم می‌شود. همین دو فهرست رندر را می‌رانند، پس
+   نمی‌توانند از آنچه واقعاً روی صفحه است جدا بیفتند، و ممیزی از رویشان ثابت
+   می‌کند هیچ پارامتر دستور داده‌شده‌ای ویرایشگرش را از دست نداده.
+   EVV = خطوط افقی ولتاژ، EVI = خطوط عمودی جریان (دو محور نمودار)،
+   EVC = هر چیزی که نه ولتاژ است نه جریان و روی آن محورها جای صادقانه‌ای ندارد. */
+const EVV={22:['#fb923c','سقف تجاوز (Over)'],20:['#f7c13c','ابزورب (Absorb)'],
+           21:['#e8a33d','ورود ابزورب (Enter)'],23:['#35d6a0','شناور (Float)'],
+           24:['#63a2ff','بازگشت به بالک (Reentry)'],36:['#ff6873','قطع اضافه‌ولتاژ (OV)'],
+           100:['#fc8086','پشتیبان سخت (Backstop)']};
+const EVI={25:['#63a2ff','سقف بالک',-1],26:['#35d6a0','تیپر',1],
+           94:['#f7c13c','مسلح‌کنندهٔ سقف',1],35:['#ff6873','خطای سخت',-1]};
+const EVC=[93,95,96,97,98,99,101,102,103,104,105,106,107];
+
 let EVOPEN=null;          /* id being edited, or null */
-const EVWANT={};          /* what the user typed, to spot a clamp */
+const EVWANT={};          /* what the user asked for, to spot a clamp */
 
 function ms2(ms){if(ms==null)return '—';if(ms===0)return 'بدون سقف';
  if(ms>=3600000)return (ms/3600000).toFixed(ms%3600000?1:0)+' ساعت';
@@ -933,78 +1002,114 @@ function evfmt(v,u){if(v==null)return '—';
  if(u==='pm')return v+' ‰';
  return ''+v;}
 
-/* [EN] One editable value. Carries its own id so the click handler needs no
-   closure and the table can be re-rendered freely.
-   [FA] یک مقدار ویرایش‌پذیر که شناسه‌اش را با خود دارد. */
-function ev(id){const b=EVB[id];if(!b)return '—';
- const v=(D&&D.p&&D.p[id]!=null)?D.p[id]:null;
- const cl=(EVWANT[id]!=null&&v!=null&&EVWANT[id]!==v)?' cl':'';
- const t=cl?' title="برد این مقدار را به بازهٔ مجاز گیره زد؛ شما '+EVWANT[id]+' خواسته بودید"':'';
- return '<b class="ev'+cl+'" data-i="'+id+'"'+t+'>'+evfmt(v,b[3])+'</b>';}
+function evval(id){return (D&&D.p&&D.p[id]!=null)?D.p[id]:null;}
+function evtxt(id){const b=EVB[id];return b?evfmt(evval(id),b[3]):'—';}
+function evcl(id){const v=evval(id);return (EVWANT[id]!=null&&v!=null&&EVWANT[id]!==v);}
 
-function evro(txt){return '<b class="ev ro">'+txt+'</b>';}
+/* [EN] Read-only rendering. The operating table uses ONLY this now (user
+   order): it reports, it does not edit.
+   [FA] رندر فقط‌خواندنی. جدول عملکرد حالا فقط از همین استفاده می‌کند. */
+function evr(id){return '<b class="evv">'+evtxt(id)+'</b>';}
+/* [EN] A derived number with no parameter behind it (the duty ceiling is
+   max(id 13, id 14)); it is reported, never offered as a control.
+   [FA] عددی مشتق که پارامتری پشتش نیست؛ گزارش می‌شود، هرگز به‌عنوان کنترل
+   پیشنهاد نمی‌شود. */
+function evr_plain(txt){return '<b class="evv">'+txt+'</b>';}
 
-/* [EN] Swap the span for an input. Escape cancels, Enter and blur commit.
-   While one is open ctab() stops re-rendering, otherwise the next telemetry
-   tick (every ~1 s) would delete the field under the user's fingers - the
-   same reason qfill() checks document.activeElement.
-   [FA] جای span را به input می‌دهد. Esc لغو، Enter و خروج از فیلد ثبت. تا
-   وقتی یکی باز است ctab() دیگر رسم نمی‌کند، وگرنه تلمتری بعدی (هر ~۱ ثانیه)
-   فیلد را زیر دست کاربر پاک می‌کرد - همان دلیلی که qfill هم activeElement را
-   چک می‌کند. */
-function evopen(el){
- const id=+el.dataset.i,b=EVB[id];if(!b||EVOPEN!=null)return;
- const v=(D&&D.p&&D.p[id]!=null)?D.p[id]:'';
+/* [EN] An editable chip (HTML) and the attributes that make an SVG <text>
+   editable. Same data-i contract, so one click handler serves both.
+   [FA] تراشهٔ ویرایش‌پذیر (HTML) و صفت‌هایی که متن SVG را ویرایش‌پذیر می‌کنند. */
+function ev(id){return '<b class="ev'+(evcl(id)?' cl':'')+'" data-i="'+id+'">'+evtxt(id)+'</b>';}
+function evat(id){return 'class="evs" data-i="'+id+'"';}
+
+function evclose(){const e=$('evpop');if(e)e.remove();EVOPEN=null;}
+
+/* [EN] Floating editor anchored to the clicked label. It lives on <body>, not
+   inside the SVG, so a chart redraw cannot delete the field mid-typing - but
+   the redraw is suppressed anyway while it is open, because watching the
+   numbers move under an open editor is its own kind of wrong.
+   [FA] ویرایشگر شناور که به برچسب کلیک‌شده لنگر می‌اندازد. روی body است نه
+   داخل SVG، پس بازرسم نمودار نمی‌تواند وسط تایپ فیلد را پاک کند - با این حال
+   تا باز است بازرسم متوقف می‌شود، چون تکان‌خوردن اعداد زیر ویرایشگرِ باز خودش
+   یک جور غلط است. */
+function evedit(el){
+ const id=+el.dataset.i,b=EVB[id];if(!b)return;
+ evclose();
+ const v=evval(id);
  EVOPEN=id;
- const w=document.createElement('span');w.className='evw';
- w.innerHTML='<input type="number" class="evi" min="'+b[0]+'" max="'+b[1]+'" step="'+b[2]+'">'+
-             '<span class="evu">'+(EVU[b[3]]||'')+'</span>';
- const inp=w.firstChild;inp.value=v;
- el.replaceWith(w);inp.focus();inp.select();
+ const pop=document.createElement('div');pop.id='evpop';pop.className='evpop';
+ pop.innerHTML='<div class="evpt">'+((typeof PX!=='undefined'&&PX[id])?PX[id][0]:('شناسهٔ '+id))+'</div>'+
+  '<div class="evpr"><input type="number" class="evi" min="'+b[0]+'" max="'+b[1]+'" step="'+b[2]+'">'+
+  '<span class="evu">'+(EVU[b[3]]||'')+'</span></div>'+
+  '<div class="evph">مجاز: '+b[0]+' تا '+b[1]+' · Enter ثبت · Esc لغو</div>';
+ document.body.appendChild(pop);
+ const r=el.getBoundingClientRect(),pw=pop.offsetWidth||200;
+ const sx=window.pageXOffset||0,sy=window.pageYOffset||0;
+ pop.style.left=Math.max(8,Math.min((window.innerWidth||900)-pw-8,r.left+sx))+'px';
+ pop.style.top=(r.bottom+sy+6)+'px';
+ const inp=pop.querySelector('input');inp.value=(v==null?'':v);inp.focus();inp.select();
  let done=false;
- const close=save=>{if(done)return;done=true;EVOPEN=null;
+ const close=save=>{if(done)return;done=true;
   if(save){const n=parseInt(inp.value,10);
    if(!isNaN(n)&&n!==v){EVWANT[id]=n;send(id,n);}}
-  ctab();};
+  evclose();qgraph();ctab();};
  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();close(true);}
                    else if(e.key==='Escape'){e.preventDefault();close(false);}};
  inp.onblur=()=>close(true);}
 
-function ctab(){const e=$('ctb');if(!e||!D||!D.p||EVOPEN!=null)return;
+/* [EN] One delegated listener for every editable value, wherever it is drawn.
+   [FA] یک شنوندهٔ واگذارشده برای هر مقدار ویرایش‌پذیر، هر جا که رسم شده باشد. */
+document.addEventListener('click',e=>{
+ const t=e.target&&e.target.closest?e.target.closest('[data-i]'):null;
+ if(!t||!t.dataset||t.dataset.i==null)return;
+ if(t.classList&&t.classList.contains('ro'))return;
+ if(!EVB[+t.dataset.i])return;
+ evedit(t);});
+
+/* [EN] No EVOPEN guard here, deliberately. The chart freezes while you type
+   because you are aiming at a label on it; the table is a read-only report
+   and a report that stops reporting is just stale. Mutation testing is what
+   settled this: removing the guard broke nothing, which meant the guard was
+   defending nothing - so it went, rather than gaining a test to justify it.
+   [FA] اینجا عمداً گاردِ EVOPEN نیست. نمودار موقع تایپ فریز می‌شود چون شما
+   به برچسبی روی آن نشانه رفته‌اید؛ ولی جدول یک گزارش فقط‌خواندنی است و
+   گزارشی که گزارش ندهد فقط کهنه است. موتیشن‌تست این را حل کرد: برداشتن گارد
+   هیچ‌چیزی را نشکست، یعنی گارد از هیچ‌چیز دفاع نمی‌کرد - پس خودش رفت، نه
+   اینکه تستی برای توجیهش اضافه شود. */
+function ctab(){const e=$('ctb');if(!e||!D||!D.p)return;
  const p=D.p,g=i=>p[i]==null?null:p[i];
  const dmax=Math.max(g(13)||0,g(14)||0);
  const rows=[
-  ['بالک (CC)','تا '+ev(21),'ثابت '+ev(25),'جریان روی سقف می‌نشیند و ولتاژ آزادانه بالا می‌رود'],
-  ['ابزورب (CV)','ثابت '+ev(20),'کاهشی','ولتاژ نگه داشته می‌شود و جریان خودش می‌افتد'],
-  ['پایان شارژ','—','زیر '+ev(26)+' به‌مدت '+ev(96),'راه عادی پایان؛ پیش از آن دست‌کم '+ev(95)+' شستشو'],
-  ['سقف زمانی','—','مسلح زیر '+ev(94),
-   g(93)===0?'برداشته شده — فقط تیپر پایان می‌دهد ('+ev(93)+')':'پایان اجباری '+ev(93)+' پس از مسلح‌شدن'],
-  ['شناور','ثابت '+ev(23),'دیوتی پارک صفر','نگه‌داری پس از پر شدن'],
-  ['بازگشت به بالک','افت زیر '+ev(24),'—','چرخه از نو شروع می‌شود']];
+  ['بالک (CC)','تا '+evr(21),'ثابت '+evr(25),'جریان روی سقف می‌نشیند و ولتاژ آزادانه بالا می‌رود'],
+  ['ابزورب (CV)','ثابت '+evr(20),'کاهشی','ولتاژ نگه داشته می‌شود و جریان خودش می‌افتد'],
+  ['پایان شارژ','—','زیر '+evr(26)+' به‌مدت '+evr(96),'راه عادی پایان؛ پیش از آن دست‌کم '+evr(95)+' شستشو'],
+  ['سقف زمانی','—','مسلح زیر '+evr(94),
+   g(93)===0?'برداشته شده — فقط تیپر پایان می‌دهد ('+evr(93)+')':'پایان اجباری '+evr(93)+' پس از مسلح‌شدن'],
+  ['شناور','ثابت '+evr(23),'دیوتی پارک صفر','نگه‌داری پس از پر شدن'],
+  ['بازگشت به بالک','افت زیر '+evr(24),'—','چرخه از نو شروع می‌شود']];
  const grid=l=>'<div class="srvw"><table class="srv"><tr>'+
    l.map(x=>'<th>'+x[0]+'</th>').join('')+'</tr><tr>'+
    l.map(x=>'<td class="n">'+x[1]+'</td>').join('')+'</tr></table></div>';
  e.innerHTML=
-  '<div class="lb" style="margin:2px 0 8px">روی هر عدد آبی کلیک کنید تا تغییرش دهید — Enter ثبت، Esc لغو · زرد یعنی برد مقدارتان را به بازهٔ مجاز گیره زد</div>'+
+  '<div class="lb" style="margin:2px 0 8px">این جدول فقط گزارش می‌دهد. برای تغییر این اعداد به تب «تنظیمات ← شارژ و فیلتر» بروید و روی عددهای روی نمودار کلیک کنید.</div>'+
   '<div class="srvw"><table class="srv"><tr><th>مرحله</th><th>ولتاژ</th><th>جریان</th><th>توضیح</th></tr>'+
   rows.map(r=>'<tr><td><b>'+r[0]+'</b></td><td class="n">'+r[1]+'</td><td class="n">'+r[2]+
             '</td><td>'+r[3]+'</td></tr>').join('')+'</table></div>'+
   '<div class="sec">سقف‌های ایمنی <span class="lb">· قطع اضافه‌ولتاژ، خطای سخت و ولتاژ پشتیبان فقط پایین‌آوردنی‌اند</span></div>'+
-  grid([['سقف تجاوز',ev(22)],['قطع اضافه‌ولتاژ',ev(36)],['ولتاژ پشتیبان سخت',ev(100)],
-        ['خطای سخت جریان',ev(35)],['سقف دیوتی',evro(dmax?((dmax/10).toFixed(1)+'%'):'—')]])+
+  grid([['سقف تجاوز',evr(22)],['قطع اضافه‌ولتاژ',evr(36)],['ولتاژ پشتیبان سخت',evr(100)],
+        ['خطای سخت جریان',evr(35)],['سقف دیوتی',evr_plain(dmax?((dmax/10).toFixed(1)+'%'):'—')]])+
   '<div class="sec">پشتیبان سخت و حلقهٔ کنترل <span class="lb">· گین صفر یعنی آن پشتیبان خاموش · سقف دیوتی مشخصهٔ برد است و از زیرتب هر کانال پایین می‌آید</span></div>'+
-  grid([['گین پشتیبان جریان',ev(101)],['گین پشتیبان ولتاژ',ev(102)],['بیشینهٔ پلهٔ دیوتی',ev(97)],
-        ['هیسترزیس خروجی',ev(98)],['پنجرهٔ فیلتر ولتاژ',ev(99)],['حاشیهٔ ست‌پوینت',ev(103)]])+
+  grid([['گین پشتیبان جریان',evr(101)],['گین پشتیبان ولتاژ',evr(102)],['بیشینهٔ پلهٔ دیوتی',evr(97)],
+        ['هیسترزیس خروجی',evr(98)],['پنجرهٔ فیلتر ولتاژ',evr(99)],['حاشیهٔ ست‌پوینت',evr(103)]])+
   '<div class="sec">زمان‌بندی‌ها</div>'+
-  grid([['نشست اتصال',ev(104)],['قفل ضدلرزش',ev(105)],['ددمن مود دستی',ev(106)],['فاصلهٔ رمپ پایین',ev(107)]])+
+  grid([['نشست اتصال',evr(104)],['قفل ضدلرزش',evr(105)],['ددمن مود دستی',evr(106)],['فاصلهٔ رمپ پایین',evr(107)]])+
   '<div class="bqr" style="margin-top:10px"><button class="sb sb2" onclick="ldef()">بازگردانی پیش‌فرض کارخانهٔ حدها</button></div>';}
 
 /* [EN] One delegated listener: the table is re-rendered constantly, so
    per-element handlers would leak and die with every refresh.
    [FA] یک شنوندهٔ واگذارشده: جدول مدام بازرسم می‌شود و شنوندهٔ تک‌عنصری با هر
    بازرسم می‌مرد. */
-document.addEventListener('click',e=>{const t=e.target.closest('.ev');
- if(t&&!t.classList.contains('ro')&&$('ctb')&&$('ctb').contains(t))evopen(t);});
+
 
 function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
  const t=D.t,p=D.p;
