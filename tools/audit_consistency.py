@@ -379,14 +379,16 @@ def sec_defaults(ids):
         #      ندارند) - پس اجتماعشان تعیین می‌کند که آیا پارامتری اصلاً هنوز
         #      ویرایشگر دارد یا نه. نسخهٔ قبلی این چک می‌پرسید ctab خانه را
         #      رسم می‌کند یا نه، که حالا دقیقاً سؤال غلطی است.
-        drawn = set()
+        drawn_axes = set()
         for name in ("EVV", "EVI"):
             m = re.search(r"const " + name + r"=\{(.*?)\};", P_PAN, re.S)
             if m:
-                drawn |= {int(x) for x in re.findall(r"(\d+):\[", m.group(1))}
-        m = re.search(r"const EVC=\[([0-9,\s]*)\];", P_PAN)
-        if m:
-            drawn |= {int(x) for x in m.group(1).split(",") if x.strip()}
+                drawn_axes |= {int(x) for x in re.findall(r"(\d+):\[", m.group(1))}
+        chart_body = block(P_PAN, "function qgraph()")
+        annotated = set()
+        for grp in re.findall(r"ann\((.*?)\);", chart_body, re.S):
+            annotated |= {int(x) for x in re.findall(r",\s*(\d+)\]", grp)}
+        drawn = drawn_axes | annotated
         notrendered = [i for i in range(lim_lo, lim_hi + 1) if i not in drawn]
         ok(not notrendered,
            "a limit is in EVB but drawn by no renderer",
@@ -397,14 +399,41 @@ def sec_defaults(ids):
 
         # the split the user asked for, pinned in both directions
         tab = block(P_PAN, "function ctab()")
-        ok("ev(" not in tab.replace("evr(", "").replace("evr_plain(", ""),
+        # [EN] Check for what makes a cell editable, not for one spelling of
+        #      it. The first version looked for "ev(" and a mutation to
+        #      "evat(" walked straight past - "evat(" does not contain "ev(".
+        #      data-i is the actual contract the click handler keys on, so
+        #      that is the thing to ban here.
+        # [FA] چیزی را بسنج که خانه را ویرایش‌پذیر می‌کند، نه یک املای خاصش را.
+        #      نسخهٔ اول دنبال "ev(" بود و جهش به "evat(" راست از کنارش رد شد.
+        #      قرارداد واقعی که شنوندهٔ کلیک رویش کار می‌کند data-i است.
+        ok("evat(" not in tab and "data-i" not in tab,
            "the operating table must only REPORT values",
            "an editable cell there reintroduces the two-places-to-be-wrong bug")
-        chart = block(P_PAN, "function qgraph()")
-        ok("evat(" in chart and "ev(" in chart.replace("evat(", "")
-           .replace("evval(", "").replace("evcl(", ""),
-           "the chart must be where values are edited",
-           "both the axis labels and the chips are the chart's job now")
+        # [EN] v1.32 (user order: "I wanted to click ON the chart, not have you
+        #      write it below it"): the chip strip is gone. Everything settable
+        #      is now drawn inside the SVG - axis labels for the voltages and
+        #      currents, inline annotations for the loop and timing values. So
+        #      the check is that every EVC id really appears inside an ann()
+        #      group in the chart, not merely that some chip helper exists.
+        # [FA] نوار تراشه حذف شد. هر چیز تنظیم‌شدنی حالا داخل خود SVG رسم
+        #      می‌شود - برچسب محورها برای ولتاژها و جریان‌ها، و یادداشت‌های درون
+        #      نمودار برای مقادیر حلقه و زمان‌بندی. پس چک این است که هر شناسهٔ
+        #      EVC واقعاً داخل یک گروه ann() در نمودار بیاید.
+        ok("evat(" in chart_body, "the chart must be where values are edited")
+        # derived, not declared: whatever EVB can edit and the two axes do not
+        # draw MUST be annotated on the plot. A third hand list would just be
+        # one more thing to fall out of step.
+        need = seen - drawn_axes
+        ok(need <= annotated,
+           "a loop or timing value is settable but never drawn on the plot",
+           f"ids {sorted(need - annotated)} would vanish from the panel entirely")
+        ok(".evchips" not in P_PAN and "class=\"evc\"" not in P_PAN,
+           "the chip strip under the chart must stay gone",
+           "the user asked to click the number on the plot, not read a list below it")
+        ok(P_PAN.count('class="qgm"') == 1,
+           "exactly ONE chart must be mounted",
+           "two copies of the same chart is the duplication the user asked to remove")
     ok(not bad_p, "documented default != preview server P", "; ".join(bad_p))
 
     lo_hi = [f"id {i}" for i in range(min(len(pmin), len(pmax))) if pmin[i] > pmax[i]]

@@ -787,8 +787,20 @@ def test_charge_profile_v112():
           "tab p2 must hold the seven profile inputs q20..q26")
     check("qfill" in ino and "qdef" in ino and "e.onchange=()=>{const v=parseInt(e.value,10);" in ino,
           "profile inputs must auto-fill from /t, POST on change, and offer factory defaults")
-    check("حداکثر ولتاژ باتری (ابزورب)" in ino and "جریان تیپر" in ino and "ولتاژ شناور" in ino,
+    # [EN] v1.32 (user order 2026-10-03: "write the English word for the ones
+    #      that should be English"): the transliterated stage names are gone -
+    #      Absorb/Taper/Float are English terms, and ابزورب/تیپر/شناور were the
+    #      worst of both worlds, neither English nor a Persian word you could
+    #      look up. The labels still have to exist; only their spelling moved.
+    # [FA] نام مرحله‌های ترانویسی‌شده حذف شدند - Absorb/Taper/Float اصطلاح
+    #      انگلیسی‌اند و «ابزورب/تیپر/شناور» بدترین حالت هر دو زبان بودند: نه
+    #      انگلیسی، نه واژه‌ای فارسی که بشود جایی پیدایش کرد.
+    check("حداکثر ولتاژ باتری (Absorb)" in ino and "جریان Taper" in ino and
+          "ولتاژ Float" in ino,
           "the tab must label/describe every field (user order: with descriptions)")
+    for bad in ("ابزورب", "تیپر", "بالک", "دیوتی", "ددمن", "هیسترزیس"):
+        check(bad not in ino,
+              "transliterated term '" + bad + "' must be written as the English word")
     # [EN] This used to assert the literal `k<99`, which PINNED THE BUG: 99 was
     #      the v1.22 parameter count, and holding it there made every bench CSV
     #      row 6 columns too long from v1.23 onward. A test that hard-codes a
@@ -1254,9 +1266,18 @@ def test_charger_persistence_v114():
           "the panel must carry the stage graph (qgraph + live preview + redraw hook, "
           "v1.15b: STAB-gated, v1.16d: astat always live on p0, v1.22: STAB 3 = PID guard, "
           "v1.31: also drawn on the chargers page) and the persistence texts")
-    # one renderer, many mounts - ids would have made the second copy silent
-    check(ino.count('class="qgm"') >= 2 and ino.count('class="qgcm"') >= 2,
-          "the chart must be mounted both above the operating table and in settings")
+    # [EN] v1.32 (user order: "remove the extra and duplicated items"): the
+    #      second copy of the chart was itself the duplication. Exactly one
+    #      mount survives, on the chargers page above the operating table.
+    # [FA] نسخهٔ دوم نمودار خودش همان تکرار بود. دقیقاً یک محل نصب می‌ماند، روی
+    #      صفحهٔ شارژرها بالای جدول عملکرد.
+    check(ino.count('class="qgm"') == 1,
+          "exactly ONE chart mount: the duplicate copy was the redundancy removed")
+    check(".evchips" not in ino and 'class="evc"' not in ino,
+          "the chip strip must stay gone: the numbers are clicked on the plot, "
+          "not read from a list written underneath it")
+    check(" const ann=(x,y,parts,anchor)=>{" in ino,
+          "loop and timing values must be annotated INSIDE the plot")
     # [EN] Strip comments before looking for the banned call. The first run of
     #      this check failed on the only remaining $('qg') in the file - inside
     #      the bilingual comment explaining why $('qg') is wrong. Same trap as
@@ -1267,19 +1288,39 @@ def test_charger_persistence_v114():
     #      که توضیح می‌دهد چرا $('qg') غلط است.
     ino_live = re.sub(r"/\*.*?\*/", "", ino, flags=re.S)
     check("document.querySelectorAll('.qgm')" in ino_live and
-          "document.querySelectorAll('.qgcm').forEach" in ino_live and
           "$('qg')" not in ino_live,
-          "every mount must be filled by the SAME renderer: $('qg') would have "
-          "silently filled only the first copy and left the other blank forever")
+          "the mount must still be found by class, not a hard-coded id: $('qg') "
+          "would silently fill only the first of any future pair")
     check('<button data-t="2">تنظیمات</button>' in ino and
           'id="q7"' in tab2 and 'id="q8"' in tab2 and 'id="a7"' in tab2 and 'id="a8"' in tab2 and
-          "پنجرهٔ مدین (Median)" in tab2 and "پنجرهٔ میانگین (Average)" in tab2 and
+          "پنجرهٔ median" in tab2 and "پنجرهٔ میانگین" in tab2 and
           "for(const id of [7,8,20,21,22,23,24,25,26])" in ino and
           "row(7)+row(8)" not in ino,
           "v1.14b (user order 2026-09-26): the median/average window controls must live in the settings tab under the filter section (nav renamed, tab 0 keeps only the live status), and both ids bind through the same send/qfill path")
-    check("ناحیهٔ ابزورب (Absorb)" in ino and "ناحیهٔ شناور (Float)" in ino and
-          "ناحیهٔ تجاوز (Over)" in ino and "زیر بازگشت (Reentry)" in ino and
-          "قطع سخت (Cutoff) ۱۵V" in ino and "بالک (Bulk)" in ino and "خاموش (Off)" in ino and
+    # [EN] v1.32 (user order 2026-10-03: "write the English word for the ones
+    #      that should be English"). This check used to demand the doubled
+    #      form "ناحیهٔ ابزورب (Absorb)" - a transliteration followed by the
+    #      real term in brackets. That is the pattern the user rejected, so
+    #      the assertion is INVERTED rather than deleted: the labels must
+    #      still all exist, in the single English form, and the doubled form
+    #      must not come back. Deleting it would have left the next rename
+    #      unguarded.
+    # [FA] این چک قبلاً شکل دوتایی «ناحیهٔ ابزورب (Absorb)» را طلب می‌کرد -
+    #      ترانویسی به‌علاوهٔ اصطلاح واقعی در پرانتز؛ دقیقاً همان الگویی که
+    #      کاربر رد کرد. پس ادعا به‌جای حذف‌شدن «وارونه» شد: همهٔ برچسب‌ها باید
+    #      همچنان وجود داشته باشند، در شکل یگانهٔ انگلیسی، و شکل دوتایی نباید
+    #      برگردد. حذف‌کردنش تغییرنام بعدی را بی‌نگهبان می‌گذاشت.
+    check("ناحیهٔ Absorb" in ino and "ناحیهٔ Float" in ino and
+          "ناحیهٔ Over" in ino and "زیر Reentry" in ino and
+          "Hard cutoff 15V" in ino and "'Bulk'" in ino and "'Off'" in ino and
+          # [EN] A Persian description with the English term in brackets is
+          #      fine and stays - "حداکثر ولتاژ باتری (Absorb)" names a thing
+          #      in Persian and then gives its standard term. What is banned
+          #      is the transliteration, and the loop above already pins that,
+          #      so this must NOT be widened into "no brackets anywhere".
+          # [FA] توضیح فارسی با اصطلاح انگلیسی داخل پرانتز درست است و می‌ماند؛
+          #      چیزی که ممنوع است ترانویسی است و حلقهٔ بالا همان را میخ کرده.
+          "ابزورب" not in ino and "شناور (" not in ino and
           # [EN] This pinned the literal #0b0f17. Fifth frozen hex/number found
           #      defending a VALUE instead of an INTENT, and it blocked the
           #      requested re-theme. The intent is "the graph uses the panel's
@@ -1292,8 +1333,8 @@ def test_charger_persistence_v114():
           ('fill="%s"' % re.search(r"--in:(#[0-9a-f]{6})",
                                    re.search(r":root\{([^}]*)\}", ino).group(1)).group(1)) in ino,
           "the stage graph must use the dark panel palette (v1.16f inset #0b0f17) with bilingual (FA+EN) zone, threshold and stage labels")
-    check("'باتری پایین (Vlow)',tt[17],tt[13],tt[10]" in ino and
-          "'باتری بالا (Vhigh)',tt[18],tt[6],tt[3]" in ino and
+    check("'Battery low (Vlow)',tt[17],tt[13],tt[10]" in ino and
+          "'Battery high (Vhigh)',tt[18],tt[6],tt[3]" in ino and
           # [EN] The DOT must exist; its radius is cosmetic and was frozen at 7
           #      here, which blocked a requested resize. Fourth hard-coded
           #      literal found defending a value instead of an intent - check
@@ -1311,7 +1352,7 @@ def test_charger_persistence_v114():
     # [FA] جعبهٔ هشدار کنار هر نسخه از نمودار نصب است، پس حالا کلاس است. با id
     #      فقط روی یک صفحه هشدار می‌داد - و صفحهٔ شارژرها همان جایی است که
     #      اعداد ویرایش می‌شوند.
-    check(ino.count('class="qwm"') >= 2 and
+    check(ino.count('class="qwm"') >= 1 and
           "document.querySelectorAll('.qwm').forEach" in ino and
           'function qchk()' in ino and
           'q.o.d' in ino and 'q.r.d' in ino and 'pvln(q.o' in ino and
@@ -1334,7 +1375,7 @@ def test_charger_persistence_v114():
     m_gap = re.search(r"LBL_GAP=(\d+)", ino)
     check(m_h and int(m_h.group(1)) == 420 and m_gap and int(m_gap.group(1)) <= 12 and
           'id="bkh"' in ino and 'url(#bkh)' in ino and
-          'ناحیهٔ بالک (Bulk)' in ino and 'patternTransform="rotate(45)"' in ino,
+          'ناحیهٔ Bulk' in ino and 'patternTransform="rotate(45)"' in ino,
           "v1.14e (user order 2026-09-26, 'at least 50% taller; what is the zone between float and absorb - hatch the bulk zone lightly'): chart height is now 420 (user order 2026-09-29 halved the 840 set on 2026-09-26) and the label stacking pitch shrank with it (LBL_GAP <= 12) so the labels stop colliding; the former grey filler between absorb-enter and float remains a labelled Bulk zone with a light diagonal hatch pattern")
 
     # ---------- compiled fault-injection run of the EXACT flash-state code ----------
@@ -2186,7 +2227,7 @@ def test_ui_mirror_v117b():
     check("ورودی وصل · فول" in ino and "ورودی وصل — سبز ثابت" in ino
           and "شارژر بیکار" not in ino,
           "post-charge caption must be full; the 'idle charger' piece must be gone")
-    check("پایان ابزورب هر کانال" in ino,
+    check("پایان Absorb هر کانال" in ino,
           "the charging card flow must end at absorb-done, not at idle")
 
     # --- bench: entry form above the table, page never jumps ---
@@ -2636,10 +2677,17 @@ def test_two_loop_pid_v124():
         check(m, f"the panel must declare the {name} renderer list")
         if m:
             drawn |= {int(x) for x in re.findall(r"(\d+):\[", m.group(1))}
-    m = re.search(r"const EVC=\[([0-9,\s]*)\];", ino)
-    check(m, "the panel must declare the EVC chip list")
-    if m:
-        drawn |= {int(x) for x in m.group(1).split(",") if x.strip()}
+    # [EN] v1.32: the third hand list is gone. Whatever EVB can edit and the
+    #      two axes do not draw must be annotated inside the plot, and that
+    #      set is DERIVED from the qgraph() body rather than declared - one
+    #      less list to fall out of step with what is actually rendered.
+    # [FA] فهرست دستی سوم حذف شد. هر چیزی که EVB می‌تواند ویرایش کند و دو محور
+    #      رسمش نمی‌کنند باید داخل نمودار یادداشت شود، و آن مجموعه از بدنهٔ
+    #      qgraph «مشتق» می‌شود نه اعلام - یک فهرست کمتر برای عقب‌ماندن.
+    chart_body = ino[ino.find("function qgraph()"):]
+    chart_body = chart_body[:chart_body.find("\nfunction ")]
+    for grp in re.findall(r"ann\((.*?)\);", chart_body, re.S):
+        drawn |= {int(x) for x in re.findall(r",\s*(\d+)\]", grp)}
     for i in range(93, 108):
         check(i in evb_ids, f"limit id {i} has no EVB window, so it cannot be edited")
         check(i in drawn, f"limit id {i} is drawn by no renderer - settable in theory only")
@@ -2765,7 +2813,7 @@ def test_min_select_handover_v124():
           "the spec's bumpless claim must cite the measured integrator value")
     panel = (ROOT / "esp_link_panel" / "plink_panel.h").read_text(encoding="utf-8")
     fa_integ = "199511".translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
-    check("دو حلقه چطور یک دیوتی را می‌رانند" in panel and fa_integ in panel,
+    check("دو حلقه چطور یک duty را می‌رانند" in panel and fa_integ in panel,
           "the panel card must carry the same concrete explanation, in the Persian "
           "numerals the panel actually renders (the user reads the panel at the "
           "bench, not the spec)")

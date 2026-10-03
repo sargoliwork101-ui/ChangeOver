@@ -214,7 +214,7 @@ static void func__Esp_HttpSetParam(void)
     int32_t__clamped = (int32_t__clamped > int32_t__max) ? int32_t__max : int32_t__clamped;
 
     /* [EN] v1.4: any median size 1..15 is valid (even sizes too), so no rounding here.
-       [FA] نسخه ۱.۴: هر اندازهٔ مدین ۱..۱۵ مجاز است (زوج هم)، پس اینجا گرد نمی‌شود. */
+       [FA] نسخه ۱.۴: هر اندازهٔ median ۱..۱۵ مجاز است (زوج هم)، پس اینجا گرد نمی‌شود. */
 
     UINT32_T__G__TxParamValue[uint8_t__id] = (uint32_t)int32_t__clamped;
     BOOL__G__TxParamPending[uint8_t__id] = true;

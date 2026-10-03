@@ -13,7 +13,7 @@
  *      (binds 0.0.0.0 so it also works inside a sandboxed preview).
  * [FA] همان HTML واقعی پنل را از plink_panel.h بیرون می‌کشد و STM32
  *      را پشت آن شبیه‌سازی می‌کند: یک چرخهٔ کامل شارژ
- *      خاموش → بالک → ابزورب → شناور → (افت) → بازگشت → بالک...،
+ *      خاموش → Bulk → Absorb → Float → (افت) → بازگشت → Bulk...،
  *      نمودار مراحل v1.14، تب آلارم‌های v1.15، ثبت پارامتر با همان پنجره‌های
  *      گیرهٔ واقعی، و JSON تله‌متری دقیقاً به شکل /t روی ESP. بدون سخت‌افزار:
  *      node tools/panel_preview_server.js  →  http://localhost:3000
@@ -177,7 +177,7 @@ function clampParam(id, v) {
            round 5000 - it is derived there from the re-seed tolerance, and
            the compiler rejected the round number.
            [FA] حدهای شارژر ۹۳..۱۰۷: آینهٔ CHG_LIMIT_ROWS در charger.c. سقف
-           هیسترزیس ۹۹۹ است نه ۵۰۰۰ رُند - آنجا از تحمل بذرگیری مشتق می‌شود و
+           hysteresis ۹۹۹ است نه ۵۰۰۰ رُند - آنجا از تحمل بذرگیری مشتق می‌شود و
            کامپایلر عدد رُند را رد کرد. */
         case 93:  return Math.min(21600000, Math.max(0, v));
         case 94:  return Math.min(500, Math.max(10, v));

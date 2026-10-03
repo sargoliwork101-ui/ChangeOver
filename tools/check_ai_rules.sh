@@ -135,6 +135,19 @@ else
 fi
 echo "  Other non-validation modules are 0"
 echo ""
+# [EN] Standing user order (2026-10-03): for anything touching the ESP side,
+#      the SIMULATED panel must be regenerated so it can be inspected before
+#      the firmware is ever flashed. Regenerating here means a stale preview
+#      can never survive a check run - the audit then fails if the generated
+#      page disagrees with the source header.
+# [FA] دستور دائمی کاربر: برای هر چیزی که سمت ESP را لمس می‌کند، پنلِ
+#      شبیه‌سازی‌شده باید بازتولید شود تا بتوان پیش از فلش‌کردن فرم‌ور دیدش.
+#      بازتولید در همین‌جا یعنی پیش‌نمایش کهنه هرگز از یک اجرای بررسی جان سالم
+#      به در نمی‌برد.
+echo "[6a2] Regenerate the simulated ESP panel (must be viewable before flashing)"
+python3 tools/make_panel_preview.py >/dev/null || { echo "FAILED to regenerate esp_link_panel/panel_preview.html"; exit 1; }
+echo "      esp_link_panel/panel_preview.html refreshed"
+
 echo "[6b] Whole-program cross-file consistency audit"
 # [EN] Almost every defect in this project has been one number written by hand
 #      in several files, with the copies drifting apart. Each file stays

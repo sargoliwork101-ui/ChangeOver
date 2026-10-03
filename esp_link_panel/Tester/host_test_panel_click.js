@@ -70,7 +70,12 @@ function check(cond, what, detail) {
         نمودار کجا می‌تواند صادقانه رسمشان کند. */
 const ON_VOLT_AXIS = [20, 21, 22, 23, 24, 36, 100];
 const ON_CURR_AXIS = [25, 26, 35, 94];
-const AS_CHIPS = [93, 95, 96, 97, 98, 99, 101, 102, 103, 104, 105, 106, 107];
+/* [EN] v1.32 (user order: "I wanted to click ON the chart, not have you write
+        it below it"): the chip strip is gone. These are annotated inside the
+        SVG, next to the line each one acts on.
+   [FA] نوار تراشه حذف شد. این‌ها داخل خود SVG و کنار همان خطی که رویش اثر
+        می‌گذارند یادداشت می‌شوند. */
+const ANNOTATED = [93, 95, 96, 97, 98, 99, 101, 102, 103, 104, 105, 106, 107];
 const LIMIT_IDS = [];
 for (let i = 93; i <= 107; i++) { LIMIT_IDS.push(i); }
 
@@ -133,15 +138,14 @@ function main() {
         check(P0.querySelectorAll(".qgm svg").length === 1,
               "the chargers page carries the chart, drawn",
               "the table is here, so the numbers must be editable here");
-        check(P0.querySelectorAll(".qgm [data-i]").length > 0 &&
-              P0.querySelectorAll(".qgcm [data-i]").length > 0,
-              "both the plot labels and the chips are editable on that page");
-        check(P2.querySelectorAll(".qgm svg").length === 1,
-              "the settings copy is still drawn next to the profile fields");
-        check(P0.querySelector(".qgm").innerHTML ===
-              P2.querySelector(".qgm").innerHTML,
-              "both mounts come from ONE renderer",
-              "two charts that can disagree is the bug this whole split avoids");
+        check(d.querySelectorAll(".qgm svg").length === 1,
+              "exactly ONE chart exists in the whole panel",
+              "the duplicate copy was the redundancy the user asked to remove");
+        check(d.querySelectorAll(".evchips, .evc").length === 0,
+              "no chip strip anywhere",
+              "the numbers are clicked on the plot, not read from a list below it");
+        check(P2.querySelectorAll(".qgm svg").length === 0,
+              "the settings tab no longer carries its own copy of the chart");
 
         /* --- 0b. editing from the chart must not leave the classic settings
                  input stale: qv() would then see typed != applied and label
@@ -175,16 +179,15 @@ function main() {
                   "the standing order is that every limit stays settable");
         }
         for (const id of ON_VOLT_AXIS.concat(ON_CURR_AXIS)) {
-            check(P0.querySelector('.qgm [data-i="' + id + '"]') !== null &&
-                  P2.querySelector('.qgm [data-i="' + id + '"]') !== null,
-                  "id " + id + " is drawn on the chart itself, at both mounts",
+            check(P0.querySelector('.qgm [data-i="' + id + '"]') !== null,
+                  "id " + id + " is drawn on the chart itself",
                   "it is a voltage or a current, so it belongs on an axis");
         }
-        for (const id of AS_CHIPS) {
-            check(P0.querySelector('.qgcm [data-i="' + id + '"]') !== null &&
-                  P2.querySelector('.qgcm [data-i="' + id + '"]') !== null,
-                  "id " + id + " is a chip under the chart, at both mounts",
-                  "a time or a gain has no honest position on these axes");
+        for (const id of ANNOTATED) {
+            const el = P0.querySelector('.qgm [data-i="' + id + '"]');
+            check(el !== null && el.tagName.toLowerCase() === "tspan",
+                  "id " + id + " is annotated INSIDE the plot",
+                  "it must be clickable on the chart, not listed below it");
         }
 
         /* --- 2. the table reports and nothing more (user order) --- */
@@ -302,7 +305,7 @@ function main() {
 
         /* --- 9. the hard constant is not offered as a control --- */
         const cutoff = [...P0.querySelectorAll(".qgm text")]
-            .filter(t => t.textContent.indexOf("قطع سخت") >= 0);
+            .filter(t => t.textContent.indexOf("Hard cutoff") >= 0);
         check(cutoff.length === 1 && !cutoff[0].hasAttribute("data-i"),
               "the 15 V measurement ceiling stays read-only",
               "it is the board's valid-range limit, not a setting");

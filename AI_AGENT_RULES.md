@@ -283,3 +283,30 @@ ADC / PWM / UART / رله را در برگهٔ ماژول خاموش، Enable ن
 ریشهٔ ریپو یک `README.md` دارد (توضیح کلی + درخت اتصال **کل** پروژه).
 
 بعد از هر اصلاح ساختار یا اتصال فایل‌ها، همان جلسه آن README را به‌روز کن.
+
+## Simulated ESP panel — always refresh it / پنل شبیه‌سازی‌شدهٔ ESP — همیشه تازه‌اش کن
+
+**EN —** Standing user order (2026-10-03): *every* change that touches the ESP
+side must leave the **simulated panel** up to date, so the result can be looked
+at before anything is flashed. Two things count as "the simulated panel":
+
+| artefact | how to refresh | why |
+|---|---|---|
+| `esp_link_panel/panel_preview.html` | `python3 tools/make_panel_preview.py` | standalone file, opens in a browser with no server |
+| the preview server | restart `node tools/panel_preview_server.js` | it reads the headers at startup, so an already-running server keeps serving the OLD page |
+
+`tools/check_ai_rules.sh` step `[6a2]` regenerates the standalone file, and the
+audit fails if it disagrees with `plink_panel.h` — so a stale preview cannot
+survive a check run. **The running server is not covered by any check**: it must
+be restarted by hand after editing the panel. A server left running from before
+an edit is indistinguishable, from the user's side, from the edit never having
+happened — this has already cost a full round trip twice.
+
+**FA —** دستور دائمی کاربر: **هر** تغییری که سمت ESP را لمس کند باید **پنل
+شبیه‌سازی‌شده** را به‌روز بگذارد تا نتیجه پیش از هر فلشی دیده شود. دو چیز «پنل
+شبیه‌سازی‌شده» حساب می‌شوند: فایل مستقل `panel_preview.html` (با دستور بالا
+بازتولید می‌شود و مرحلهٔ `[6a2]` اسکریپت بررسی هم همین کار را می‌کند) و سرور
+پیش‌نمایش، که هدرها را **فقط هنگام راه‌اندازی** می‌خواند — پس سروری که از قبل
+بالا مانده باشد همچنان صفحهٔ **قدیمی** را سرو می‌کند و باید دستی ری‌استارت شود.
+سرورِ جامانده از نگاه کاربر از «اصلاً انجام‌نشدن تغییر» قابل تشخیص نیست؛ همین
+موضوع تا حالا دو بار یک رفت‌وبرگشت کامل هزینه داده است.

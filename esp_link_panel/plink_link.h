@@ -108,7 +108,7 @@ static void func__Esp_WriteFrame(uint8_t uint8_t__type, const uint8_t *uint8_t__
     (void)Serial.write(UINT8_T__A__Frame, uint16_t__frameSize);
     UINT32_T__G__LastTxMs = (uint32_t)millis();
     /* [EN] Every valid frame feeds the STM32 dead-man, so it also counts as the keepalive.
-       [FA] هر فریم معتبر ددمن STM32 را تغذیه می‌کند، پس keepalive هم حساب می‌شود. */
+       [FA] هر فریم معتبر deadman STM32 را تغذیه می‌کند، پس keepalive هم حساب می‌شود. */
     UINT32_T__G__LastKeepaliveMs = UINT32_T__G__LastTxMs;
 }
 
