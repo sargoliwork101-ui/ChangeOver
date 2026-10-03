@@ -187,15 +187,15 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .mod .sb{width:100%;margin-top:10px}
 input:disabled{opacity:.38;cursor:not-allowed}
 .srvw{overflow-x:auto;border:1px solid var(--ln);border-radius:12px}
-/* [EN] The two summary tables: the last row INSIDE the chargers section
-   (v1.34), still report-only; every number is edited on the chart, which
-   lives in the settings tab (Charge and PID). Zebra rows, a colour
-   dot per stage matching that stage's band on the chart, and numbers in a
-   tabular figure so columns line up instead of dancing.
-   [FA] دو جدول خلاصه: آخرین ردیفِ درون بخش شارژرها (v1.34)، همچنان فقط گزارش؛ هر
-   عددشان روی نمودار ویرایش می‌شود و نمودار در تب تنظیمات است. ردیف‌های یک‌درمیان، یک نقطهٔ رنگی برای
-   هر مرحله هم‌رنگ باند همان مرحله روی نمودار، و اعداد با رقم جدولی تا ستون‌ها
-   به‌جای رقصیدن، تراز بمانند. */
+/* [EN] The summary table (v1.35 = one grouped table - charge cycle rows,
+   then the always-on safety limits under banded group breaks): the last
+   row INSIDE the chargers section, still report-only; every number is
+   edited on the chart (Settings > Charge and PID). Zebra rows, a colour
+   dot per stage matching that stage's band on the chart, tabular figures.
+   [FA] جدول خلاصه (v1.35 = یک جدول گروه‌داری‌شده: مراحل شارژ، سپس حدهای
+   همیشه‌فعال زیر خط گروه): آخرین ردیفِ درون بخش شارژرها، همچنان فقط گزارش؛
+   هر عددشان روی نمودار ویرایش می‌شود. یک‌درمیان، نقطهٔ رنگی مرحله‌ها، رقم
+   جدولی برای تراز ستون‌ها. */
 .ct{width:100%;border-collapse:collapse;font-size:13px}
 .ct th{color:var(--mu);font-weight:600;text-align:right;padding:8px 12px;
  border-bottom:1px solid var(--ln);white-space:nowrap;font-size:12px}
@@ -207,7 +207,11 @@ input:disabled{opacity:.38;cursor:not-allowed}
 .ct .cs{display:inline-flex;align-items:center;gap:7px;font-weight:700;white-space:nowrap}
 .ct .cdot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
 .ctw{overflow-x:auto;border:1px solid var(--ln);border-radius:12px;background:var(--in)}
-.ct2 td:first-child{color:var(--mu);width:52%}
+.ct1 .grp td{background:rgba(99,162,255,.06);color:var(--mu);font-size:11.5px;font-weight:700;padding:6px 12px;border-top:1px solid var(--ln)}
+.ct1 .grp td::before{content:"";display:inline-block;width:4px;height:12px;border-radius:3px;background:var(--ac);margin-left:7px;vertical-align:-2px}
+.ct1 .grp td span{color:var(--mu);font-weight:400;font-size:11px;margin-right:8px}
+.ct1 td.lname{color:var(--tx);font-weight:600}
+.ct1 td:first-child{padding-right:14px}
 .ctn{color:var(--mu);font-size:12px;margin:9px 2px 0;line-height:1.9}
 .srv{width:100%;min-width:680px;border-collapse:collapse;font-size:13px;table-layout:fixed}
 .srv col.c1{width:118px}.srv col.c2{width:96px}.srv col.c4{width:128px}.srv col.c5{width:196px}
@@ -219,7 +223,7 @@ input:disabled{opacity:.38;cursor:not-allowed}
 .srv .sb{min-height:30px;padding:3px 10px}
 tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr.rbd{background:rgba(251,94,106,.08)}
 </style></head><body>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 5b06a4b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 1ef49a5</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -237,7 +241,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
      هنوز فقط-گزارش و هنوز در تب پنل - ممیزی فرود پیش‌نمایش روی همان
      عنصر ctb لنگر دارد. -->
 <div class="cd" style="grid-column:1/-1">
-<div class="hd"><b>جدول — الان با این اعداد شارژ می‌کند</b> <button class="ib" data-p="20,21,22,23,24,25,26,35,36" onclick="this.classList.toggle('o')">!<span class="it"><b>این دو جدول فقط گزارش می‌دهند.</b> هیچ عددی اینجا ویرایش نمی‌شود — جایِ تغییر، نمودار مراحل شارژ در تب <b>تنظیمات › شارژ و PID</b> است: ولتاژها و جریان‌ها روی خود نمودار، و زمان‌ها و گین‌ها به‌صورت تراشه زیرش. هر چه آنجا ثبت کنید، در بازرسم بعدی همین‌جا هم عوض می‌شود؛ نسخهٔ دومی از مقدار وجود ندارد که عقب بماند.<br>همهٔ اعداد از پارامترهای «اعمال‌شدهٔ» خود برد خوانده می‌شوند، نه از چیزی که در صفحه تایپ شده. برد هر مقدار را به بازهٔ مجازش گیره می‌زند، پس اگر عددی که می‌بینید با آنچه خواسته بودید فرق دارد، یعنی گیره خورده است.<br><b>جدول اول</b> ترتیب واقعی یک چرخهٔ شارژ است: Bulk با جریان ثابت بالا می‌برد، Absorb ولتاژ را نگه می‌دارد تا جریان خودش بیفتد، پایان Absorb وقتی است که جریان به‌اندازهٔ کافی پایین بماند، Float فقط نگه می‌دارد، و افت ولتاژ چرخه را از نو شروع می‌کند. رنگ کنار نام هر مرحله همان رنگ باند آن مرحله روی نمودار است.<br><b>جدول دوم</b> حدهای ایمنی است. «قطع اضافه‌ولتاژ» و «خطای سخت جریان» فقط پایین‌آوردنی‌اند و هرگز بالاتر از مقدار کارخانه نمی‌روند. «سقف مطلق» و «سقف duty» اصلاً ویرایش‌پذیر نیستند: مشخصهٔ خود برد هستند نه سلیقه.<br>جدول‌های گین و زمان‌بندی که قبلاً همین‌جا بودند حذف شدند — آن اعداد حالا تراشه‌های زیر نمودارند و چاپ دوباره‌شان یعنی دو جا برای غلط‌بودن.</span></button><span class="lb">· هر دو کانال · فقط گزارش · ویرایش روی نمودار، در تب تنظیمات</span></div>
+<div class="hd"><b>جدول — اعداد شارژ و حدهای ایمنی</b> <button class="ib" data-p="20,21,22,23,24,25,26,35,36" onclick="this.classList.toggle('o')">!<span class="it"><b>این جدول یکدست فقط گزارش می‌دهد.</b> هیچ عددی اینجا ویرایش نمی‌شود — جایِ تغییر، نمودار مراحل شارژ در تب <b>تنظیمات › شارژ و PID</b> است: ولتاژها و جریان‌ها روی خود نمودار، و زمان‌ها و گین‌ها به‌صورت تراشه زیرش. هر چه آنجا ثبت کنید، در بازرسم بعدی همین‌جا هم عوض می‌شود؛ نسخهٔ دومی از مقدار وجود ندارد که عقب بماند.<br>همهٔ اعداد از پارامترهای «اعمال‌شدهٔ» خود برد خوانده می‌شوند، نه از چیزی که در صفحه تایپ شده. برد هر مقدار را به بازهٔ مجازش گیره می‌زند، پس اگر عددی که می‌بینید با آنچه خواسته بودید فرق دارد، یعنی گیره خورده است.<br><b>بخش اول</b> ترتیب واقعی یک چرخهٔ شارژ است: Bulk با جریان ثابت بالا می‌برد، Absorb ولتاژ را نگه می‌دارد تا جریان خودش بیفتد، پایان Absorb وقتی است که جریان به‌اندازهٔ کافی پایین بماند، Float فقط نگه می‌دارد، و افت ولتاژ چرخه را از نو شروع می‌کند. رنگ کنار نام هر مرحله همان رنگ باند آن مرحله روی نمودار است.<br><b>بخش دوم</b> حدهای ایمنی است. «قطع اضافه‌ولتاژ» و «خطای سخت جریان» فقط پایین‌آوردنی‌اند و هرگز بالاتر از مقدار کارخانه نمی‌روند. «سقف مطلق» و «سقف duty» اصلاً ویرایش‌پذیر نیستند: مشخصهٔ خود برد هستند نه سلیقه.<br>جدول‌های گین و زمان‌بندی که قبلاً همین‌جا بودند حذف شدند — آن اعداد حالا تراشه‌های زیر نمودارند و چاپ دوباره‌شان یعنی دو جا برای غلط‌بودن.</span></button><span class="lb">· هر دو کانال · فقط گزارش · ویرایش روی نمودار، در تب تنظیمات</span></div>
 <div id="ctb"></div>
 </div>
 </div>
@@ -1250,46 +1254,53 @@ document.addEventListener('click',e=>{
    هیچ‌چیزی را نشکست، یعنی گارد از هیچ‌چیز دفاع نمی‌کرد - پس خودش رفت، نه
    اینکه تستی برای توجیهش اضافه شود. */
 function ctab(){const e=$('ctb');if(!e||!D||!D.p)return;
- /* [EN] Two tables, at the foot of the chargers page, in the shape the user
-    asked for: "what it is charging with right now", then the safety limits.
-    Every number is read from the board's APPLIED parameters through the same
-    evr() the chart uses, so editing a label on the plot moves the table on
-    the next refresh - there is no second copy of the value to fall behind.
-    The tables REPORT ONLY. The gain and timing tables that used to sit here
-    are gone: those numbers are the chips under the chart now, and printing
-    them twice is exactly the duplication the user asked to be rid of.
-    [FA] دو جدول در انتهای صفحهٔ شارژرها، به همان شکلی که خواسته شد: «الان با
-    این اعداد شارژ می‌کند» و بعد حدهای ایمنی. هر عدد از پارامترهای «اعمال‌شدهٔ»
-    برد و از طریق همان evr() نمودار خوانده می‌شود، پس ویرایش یک برچسب روی
-    نمودار در بازرسم بعدی جدول را هم جابه‌جا می‌کند - نسخهٔ دومی از مقدار وجود
-    ندارد که عقب بماند. جدول‌ها فقط گزارش می‌دهند. جدول‌های گین و زمان‌بندی که
-    قبلاً اینجا بودند حذف شدند: آن اعداد حالا تراشه‌های زیر نمودارند و چاپ
-    دوباره‌شان همان تکراری است که کاربر خواست برداشته شود. */
+ /* [EN] v1.35 (user order 2026-10-03: "bring the charge numbers AND the
+    limits ALL into ONE table, right here, but neater"): one grouped table
+    now reports everything the two separate tables did - the live cycle rows
+    first, then the always-on safety limits under banded group breaks. Same
+    source as ever: the board's APPLIED parameters through evr(), so editing
+    a label on the chart shifts the table on the next refresh - there is no
+    second copy of the value to fall behind. Still report-only; the gain and
+    timing numbers stay chips under the chart, not printed twice.
+    [FA] v1.35 (دستور کاربر: «اعداد شارژ و حدها همه توی یک جدول، همینجا، ولی
+    شکیل‌تر») - یک جدول گروه‌داری‌شده همان دادهٔ دو جدول قبلی را می‌دهد:
+    ردیف‌های چرخهٔ زنده بالا و حدهای همیشه‌فعال زیر سربرگ‌های گروهی. منبع
+    همان پارامترهای «اعمال‌شدهٔ» برد از راه evr() است - نسخهٔ دومی از مقدار
+    وجود ندارد که عقب بماند. فقط-گزارش؛ گین‌ها و زمان‌ها همان تراشه‌های زیر
+    نمودار می‌مانند. */
  const p=D.p,g=i=>p[i]==null?null:p[i];
  const dmax=Math.max(g(13)||0,g(14)||0);
  const dot=c=>'<span class="cdot" style="background:'+c+'"></span>';
  const st=(c,n)=>'<span class="cs">'+dot(c)+n+'</span>';
+ const grp=(t,s)=>'<tr class="grp"><td colspan="4">'+t+'<span>'+s+'</span></td></tr>';
+ const row=(r,lc)=>'<tr>'+
+  '<td'+(lc?' class="'+lc+'"':'')+'>'+r[0]+'</td>'+
+  '<td class="cn">'+r[1]+'</td>'+
+  '<td class="cn">'+r[2]+'</td>'+
+  '<td class="cw">'+r[3]+'</td></tr>';
  const rows=[
   [st('#9ac8ff','Bulk'),'تا '+evr(21),evr(25),'جریان ثابت روی سقف؛ ولتاژ آزادانه بالا می‌رود'],
   [st('#f7c13c','Absorb'),evr(20)+' نگه می‌دارد','کم می‌شود','پر کردن نهایی با ولتاژ ثابت'],
   [st('#e8a33d','پایان Absorb'),'—','زیر '+evr(26)+' به‌مدت '+evr(96),'یعنی باتری سیر شد'],
   [st('#35d6a0','Float'),evr(23)+' هدف','۰ — duty پارک روی صفر','نگه‌داری پس از پر شدن'],
   [st('#63a2ff','برگشت به شارژ'),'افت زیر '+evr(24),'—','چرخه از Bulk از نو شروع می‌شود']];
- const lim=[['ورود به Absorb',evr(21)],['سقف تجاوز (Over)',evr(22)],
-  ['قطع اضافه‌ولتاژ (OV cutoff)',evr(36)],
-  ['سقف مطلق (Hard cutoff)',evr_plain('۱۵٫۰۰ V')],
-  ['خطای سخت جریان (Hard fault)',evr(35)],
-  ['سقف duty',evr_plain(dmax?((dmax/10).toFixed(1)+'٪'):'—')]];
+ const lim=[
+  ['ورود به Absorb',evr(21),'—','آستانهٔ ورود به نگه‌داری ولتاژ'],
+  ['سقف تجاوز (Over)',evr(22),'—','عبور از آن = کاهش سریع duty'],
+  ['قطع اضافه‌ولتاژ (OV cutoff)',evr(36),'—','باتری نامعتبر و توقف سوئیچینگ · فقط پایین‌آوردنی'],
+  ['سقف مطلق (Hard cutoff)',evr_plain('۱۵٫۰۰ V'),'—','مشخصهٔ خود برد است و ویرایش نمی‌شود'],
+  ['خطای سخت جریان (Hard fault)','—',evr(35),'تریپ نهایی کانال · فقط پایین‌آوردنی'],
+  ['سقف duty','—',evr_plain(dmax?((dmax/10).toFixed(1)+'٪'):'—'),'مشخصهٔ خود برد است و ویرایش نمی‌شود']];
  e.innerHTML=
-  '<div class="sec">الان با این اعداد شارژ می‌کند <span class="lb">· هر باتری ۱۲ ولتی جداگانه — پایینی و بالایی، هرکدام کانال خودش</span></div>'+
-  '<div class="ctw"><table class="ct"><tr><th>مرحله</th><th>ولتاژ</th><th>جریان</th><th>چه می‌کند</th></tr>'+
-  rows.map(r=>'<tr><td>'+r[0]+'</td><td class="cn">'+r[1]+'</td><td class="cn">'+r[2]+
-            '</td><td class="cw">'+r[3]+'</td></tr>').join('')+'</table></div>'+
-  '<div class="sec">حدهای ایمنی <span class="lb">· قطع اضافه‌ولتاژ و Hard fault فقط پایین‌آوردنی‌اند</span></div>'+
-  '<div class="ctw"><table class="ct ct2">'+
-  lim.map(r=>'<tr><td>'+r[0]+'</td><td class="cn">'+r[1]+'</td></tr>').join('')+'</table></div>'+
-  '<div class="ctn">این دو جدول فقط <b>گزارش</b> می‌دهند. برای عوض‌کردن هر عدد، روی همان عدد در نمودار کلیک کنید؛ نمودار در تب <b>تنظیمات › شارژ و PID</b> است — زمان‌ها و گین‌ها هم تراشه‌های زیر همان نمودارند. «سقف مطلق» و «سقف duty» مشخصهٔ برد هستند و ویرایش نمی‌شوند.</div>'+
-  '<div class="bqr" style="margin-top:10px"><button class="sb sb2" onclick="ldef()">بازگردانی پیش‌فرض کارخانهٔ حدها</button></div>;'.replace(';','');}
+  '<div class="sec">الان با این اعداد شارژ می‌کند — و حدهای همیشه‌فعال <span class="lb">· هر باتری ۱۲ ولتی جداگانه — پایینی و بالایی، هرکدام کانال خودش</span></div>'+
+  '<div class="ctw"><table class="ct ct1"><tr><th style="width:29%">عنصر</th><th>ولتاژ</th><th>جریان / duty</th><th>چه می‌کند</th></tr>'+
+  grp('مراحل شارژ','چرخهٔ زنده، به ترتیب اجرا')+
+  rows.map(r=>row(r,'')).join('')+
+  grp('حدهای ایمنی','همیشه فعال‌اند')+
+  lim.map(r=>row(r,'lname')).join('')+'</table></div>'+
+  '<div class="ctn">این جدول فقط <b>گزارش</b> می‌دهد. برای عوض‌کردن هر عدد، روی همان عدد در نمودار کلیک کنید؛ نمودار در تب <b>تنظیمات › شارژ و PID</b> است — زمان‌ها و گین‌ها هم تراشه‌های زیر همان نمودارند. «سقف مطلق» و «سقف duty» مشخصهٔ برد هستند و ویرایش نمی‌شوند.</div>'+
+  '<div class="bqr" style="margin-top:10px"><button class="sb sb2" onclick="ldef()">بازگردانی پیش‌فرض کارخانهٔ حدها</button></div>';}
+
 
 /* [EN] One delegated listener: the table is re-rendered constantly, so
    per-element handlers would leak and die with every refresh.
