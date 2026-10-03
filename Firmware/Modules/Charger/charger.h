@@ -768,6 +768,32 @@
  *      می‌کند تا باتری هرگز-تیپر‌نشده پمپ را بیدار نگه ندارد. */
 #define CHG_TAPER_CURRENT_MA           50u
 #define CHG_TAPER_SUSTAIN_MS        60000u
+/* [EN] USER-ORDERED LOGIC CHANGE 2026-09-29. The one-hour absorb ceiling used
+ *      to start the moment absorb was ENTERED, at 14.3 V, and it ended the
+ *      charge an hour later whether the tail current had come down or not. On
+ *      a pack that is still pulling hundreds of milliamps that cuts the charge
+ *      off before the battery is full - it then sags past the 12.8 V reentry
+ *      and starts all over again, which is the restart loop the user was
+ *      seeing on the bench.
+ *      The ceiling now ARMS on current, not on voltage: it starts counting the
+ *      first time the tail falls below CHG_ABSORB_MAX_ARM_MA. Its job was
+ *      never "limit absorb to an hour" - it was "once we are plainly in the
+ *      tail, do not sit here forever" - and that is what it now does.
+ *      Once armed it stays armed for the episode: re-arming on every wobble
+ *      would let a noisy sense chain defeat the ceiling completely, and the
+ *      chain is specified at +/-10..20 mA.
+ * [FA] تغییر منطق به دستور کاربر ۲۰۲۹-۰۹-۲۹. سقف یک‌ساعتهٔ ابزورب از لحظهٔ
+ *      ورود به ابزورب (۱۴٫۳ ولت) شروع می‌شد و یک ساعت بعد شارژ را تمام می‌کرد،
+ *      چه جریان پایین آمده باشد چه نه. روی پکی که هنوز صدها میلی‌آمپر می‌کشد،
+ *      این یعنی قطع شارژ پیش از پرشدن باتری؛ بعد ولتاژ تا زیر ۱۲٫۸ می‌افتد و
+ *      همه‌چیز از نو شروع می‌شود - همان حلقهٔ بازگشتی که کاربر سر بنچ می‌دید.
+ *      حالا سقف با «جریان» مسلح می‌شود نه «ولتاژ»: اولین باری که جریان دنباله
+ *      زیر CHG_ABSORB_MAX_ARM_MA برود شمارش آغاز می‌شود. کار این سقف هیچ‌وقت
+ *      «ابزورب حداکثر یک ساعت» نبود، «وقتی آشکارا در دنباله‌ایم اینجا ابدی
+ *      نمان» بود. پس از مسلح‌شدن تا پایان همین اپیزود مسلح می‌ماند: مسلح‌کردن
+ *      دوباره با هر نوسان، اجازه می‌داد زنجیرهٔ نویزی حس (مشخصهٔ ±۱۰ تا ۲۰
+ *      میلی‌آمپر) سقف را کاملاً بی‌اثر کند. */
+#define CHG_ABSORB_MAX_ARM_MA          100u
 #define CHG_ABSORB_MAX_MS         3600000u
 /* [EN] Battery-lost (both cases: pumped >14.8 V while charging, and battery
  *      absent with valid input) is OWNED BY THE FAULT MODULE since 2026-09-19

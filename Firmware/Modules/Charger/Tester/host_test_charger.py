@@ -3156,6 +3156,61 @@ def test_theme_contrast_and_param_coverage_v125():
           "inset < card < raised must hold, or the depth cues point the wrong way")
 
 
+def test_absorb_ceiling_arms_on_current_v2():
+    """[EN] USER-ORDERED LOGIC CHANGE 2026-09-29. The one-hour absorb ceiling
+       used to start the moment absorb was ENTERED, at 14.3 V, and it ended the
+       charge an hour later whether the tail had come down or not. The user
+       spotted it from the symptom: "the charger turns off and then keeps
+       coming back". On a pack still pulling hundreds of milliamps that hour
+       expires mid-charge, the battery is not full, it sags past the 12.8 V
+       reentry, and the whole cycle starts again.
+       The ceiling now ARMS on CURRENT: it only begins counting once the tail
+       first falls below CHG_ABSORB_MAX_ARM_MA. Its purpose was never "absorb
+       lasts at most an hour", it was "once we are plainly in the tail, do not
+       sit here forever".
+       [FA] تغییر منطق به دستور کاربر. سقف یک‌ساعته از لحظهٔ ورود به ابزورب
+       شروع می‌شد و بدون توجه به جریان قطع می‌کرد؛ کاربر از روی نشانه‌اش پیدایش
+       کرد: «شارژر خاموش می‌شود و مدام برمی‌گردد». حالا سقف با جریان مسلح
+       می‌شود."""
+    h = CHARGER_H.read_text()
+    c = CHARGER_C.read_text()
+
+    arm = re.search(r"#define CHG_ABSORB_MAX_ARM_MA\s+(\d+)u", h)
+    check(arm, "the absorb ceiling must have an explicit current arming threshold")
+    arm_ma = int(arm.group(1))
+    taper = int(re.search(r"#define CHG_TAPER_CURRENT_MA\s+(\d+)u", h).group(1))
+    check(arm_ma > taper,
+          f"the arming threshold ({arm_ma} mA) must sit ABOVE the taper-complete "
+          f"current ({taper} mA) - arming at or below it would make the ceiling "
+          "pointless, since the normal taper rule would already have finished")
+
+    # the ceiling must count from the ARM tick, never from absorb entry again
+    check("uint32_t__absorbMaxArmTick" in c,
+          "the armed tick must be tracked per channel")
+    timeout_blk = re.search(r"bool__absorbTimedOut =\s*\((.*?)\);", c, re.S)
+    check(timeout_blk, "the absorb timeout expression must be findable")
+    expr = timeout_blk.group(1)
+    check("absorbMaxArmTick" in expr and "absorbEnterTick" not in expr,
+          "the one-hour ceiling must count from the ARMED tick, not from absorb "
+          "entry - counting from entry is what cut the charge off mid-tail")
+
+    # arming must be latched, not re-evaluated every frame
+    check(re.search(r"if \(\(charger_channel_state_t__channel->uint32_t__absorbMaxArmTick == 0u\) &&",
+                    c),
+          "arming must only happen when not already armed - re-arming on every "
+          "frame that pops back above the threshold would let a sense chain "
+          "specified at +/-10..20 mA defeat the ceiling entirely")
+
+    # and it must be cleared wherever the absorb episode resets, or a stale arm
+    # from the previous cycle would time the next one out immediately
+    resets = len(re.findall(r"uint32_t__absorbMaxArmTick = 0u;", c))
+    enters = len(re.findall(r"uint32_t__absorbEnterTick = 0u;", c))
+    check(resets == enters,
+          f"the armed tick must be cleared everywhere the absorb episode is reset "
+          f"({resets} vs {enters} for absorbEnterTick) - a stale arm would end the "
+          "next absorb the moment it starts")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -3203,6 +3258,7 @@ def main():
         test_param_ranges_match_panel_v125,
         test_benchlog_row_matches_header_v125,
         test_whole_program_consistency_v125,
+        test_absorb_ceiling_arms_on_current_v2,
         test_section_parameter_help_v125,
         test_theme_contrast_and_param_coverage_v125,
     ]

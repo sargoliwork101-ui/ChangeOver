@@ -63,6 +63,13 @@ typedef struct
     uint32_t uint32_t__stableFromTick; /* [EN] tick when installed+input+battery first looked valid; 0 = not present, gates bulk start (CHG_CONNECT_SETTLE_MS) / تیک اولین‌لحظه‌ای که اتصال معتبر دیده شد؛ صفر = باتری حاضر نیست؛ گیت شروع بالک */
     uint32_t uint32_t__taperSinceTick; /* [EN] first tick in this ABSORB episode that the tail current looked below CHG_TAPER_CURRENT_MA; 0 = not tapering / تیک اولین زیرجریان در ابزورب؛ صفر یعنی زیرجریان نیست */
     uint32_t uint32_t__absorbEnterTick; /* [EN] tick this ABSORB episode started; 0 = not in absorb; feeds the CHG_ABSORB_MAX_MS ceiling / تیک ورود به این ابزورب؛ صفر یعنی خارج؛ برای سقف یک‌ساعت */
+    /* [EN] Tick the one-hour ceiling was ARMED, i.e. the first time the tail
+       current fell below CHG_ABSORB_MAX_ARM_MA in this episode; 0 = not yet
+       armed, and while it is 0 the ceiling does not count at all.
+       [FA] تیکِ مسلح‌شدن سقف یک‌ساعته، یعنی اولین باری که جریان دنباله در این
+       اپیزود زیر آستانه رفت؛ صفر یعنی هنوز مسلح نشده و تا وقتی صفر است سقف
+       اصلاً نمی‌شمارد. */
+    uint32_t uint32_t__absorbMaxArmTick;
     /* [EN] Two-loop CC/CV PID state (v1.22), per channel. The integral is in
        milli-permille (CHG_PID_DUTY_SCALE) and its remainder keeps the
        sub-unit fraction so a 0.01 permille/s creep survives integer math.
@@ -332,6 +339,7 @@ static void func__Charger_ClearAbsorbWindow(
     charger_channel_state_t__channel->uint32_t__absorbAccumTicks = 0u;
     charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
     charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
+    charger_channel_state_t__channel->uint32_t__absorbMaxArmTick = 0u;
     charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
 }
 
@@ -1792,6 +1800,28 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
             uint32_t__taperSustainTicks = func__Charger_DurationTicks(CHG_TAPER_SUSTAIN_MS);
             uint32_t__absorbMaxTicks = func__Charger_DurationTicks(CHG_ABSORB_MAX_MS);
 
+            /* [EN] ARM the one-hour ceiling on CURRENT (user order 2026-09-29).
+               Until the tail has actually come down below
+               CHG_ABSORB_MAX_ARM_MA this episode, the ceiling does not count
+               at all - a pack still pulling hundreds of milliamps is not
+               finished, and ending its charge on a voltage-started clock is
+               what made it sag past the 12.8 V reentry and begin again.
+               Latched for the episode on purpose: the sense chain wobbles
+               +/-10..20 mA, so re-arming on every frame that pops back above
+               the threshold would let noise defeat the ceiling entirely.
+               [FA] مسلح‌کردن سقف یک‌ساعته با «جریان» (دستور کاربر). تا وقتی
+               جریان دنباله در این اپیزود واقعاً زیر آستانه نرفته باشد، سقف
+               اصلاً نمی‌شمارد: پکی که هنوز صدها میلی‌آمپر می‌کشد تمام نشده، و
+               پایان‌دادن شارژش با ساعتی که از روی ولتاژ شروع شده همان چیزی بود
+               که باعث می‌شد تا زیر ۱۲٫۸ بیفتد و از نو شروع کند. عمداً برای کل
+               اپیزود قفل می‌شود، چون زنجیرهٔ حس ±۱۰ تا ۲۰ میلی‌آمپر نوسان دارد. */
+            if ((charger_channel_state_t__channel->uint32_t__absorbMaxArmTick == 0u) &&
+                (uint32_t__currentMa < (uint32_t)CHG_ABSORB_MAX_ARM_MA))
+            {
+                charger_channel_state_t__channel->uint32_t__absorbMaxArmTick =
+                    uint32_t__nowTick;
+            }
+
             bool__taperNow = (uint32_t__currentMa < CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa);
             if (bool__taperNow == false)
             {
@@ -1816,9 +1846,9 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                  (charger_channel_state_t__channel->uint32_t__absorbAccumTicks >=
                   uint32_t__absorbTicks));
             bool__absorbTimedOut =
-                ((charger_channel_state_t__channel->uint32_t__absorbEnterTick != 0u) &&
+                ((charger_channel_state_t__channel->uint32_t__absorbMaxArmTick != 0u) &&
                  ((uint32_t)(uint32_t__nowTick -
-                             charger_channel_state_t__channel->uint32_t__absorbEnterTick) >=
+                             charger_channel_state_t__channel->uint32_t__absorbMaxArmTick) >=
                   uint32_t__absorbMaxTicks));
 
             if (((bool__soakDone == true) && (bool__taperDone == true)) ||
@@ -1830,6 +1860,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                    از صفحهٔ تمیز آغاز شود. */
                 charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
                 charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
+                charger_channel_state_t__channel->uint32_t__absorbMaxArmTick = 0u;
                 charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_FLOAT;
                 uint32_t__targetMv = CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv;
             }
