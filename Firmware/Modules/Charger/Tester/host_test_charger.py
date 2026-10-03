@@ -3211,6 +3211,65 @@ def test_absorb_ceiling_arms_on_current_v2():
           "next absorb the moment it starts")
 
 
+def test_stage_graph_is_current_vs_voltage_v3():
+    """[EN] User order 2026-09-29: "the horizontal axis of the chart should be
+       current and the vertical axis voltage."
+       It used to be a voltage ladder only - horizontal bands at each
+       threshold, with current nowhere on the picture and the live dots placed
+       at an arbitrary fixed x. Now it is a real I-V plane, which is the
+       natural way to draw a CC/CV charger: the bulk leg is VERTICAL at the
+       current limit (constant current, rising voltage) and the absorb leg is
+       HORIZONTAL at the target voltage (constant voltage, falling current).
+       Each battery's dot sits at its true (I, V), so one look says where on
+       that path it actually is.
+       [FA] دستور کاربر: محور افقی جریان و محور عمودی ولتاژ. قبلاً فقط نردبان
+       عمودی ولتاژ بود و جریان اصلاً روی تصویر نبود. حالا صفحهٔ واقعی
+       جریان-ولتاژ است: پای بالک عمودی روی سقف جریان و پای ابزورب افقی روی
+       ولتاژ هدف."""
+    ino = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
+    # [EN] qchk() is defined BEFORE qgraph() in the file, so slice forwards
+    #      from qgraph to the next top-level function, not to qchk.
+    # [FA] qchk پیش از qgraph تعریف شده، پس باید رو به جلو برش زد.
+    _i = ino.index("\nfunction qgraph()")
+    body = ino[_i:ino.index("\nfunction afresh()", _i)]
+
+    # --- both axes must exist and map the right quantity ---
+    check(re.search(r"const X=ma=>Math\.round\(X0\+\(X1-X0\)\*", body),
+          "the horizontal axis must map CURRENT to x")
+    check(re.search(r"const Y=mv=>Math\.round\(H-", body),
+          "the vertical axis must map VOLTAGE to y")
+    check("IMAX" in body and "const istep" in body,
+          "the current axis needs its own range and gridline step")
+    check("جریان شارژ / Charge current (mA)" in body and
+          "ولتاژ باتری / Battery voltage (V)" in body,
+          "both axes must be labelled, bilingually")
+
+    # --- the CC/CV path: a vertical leg at the current limit, a horizontal leg
+    #     at the absorb voltage. This is the whole point of the new chart. ---
+    poly = re.search(r"<polyline points=\"([^\"]*)\"", body)
+    check(poly, "the CC/CV charge path must be drawn")
+    pts = poly.group(1)
+    check("${X(im.d)},${Y(lo)} ${X(im.d)},${Y(q.e.d)}" in pts,
+          "the bulk leg must be VERTICAL at the current limit - same x, rising "
+          "voltage")
+    check("${X(im.d)},${Y(q.a.d)} ${X(tp.d)},${Y(q.a.d)}" in pts,
+          "the absorb leg must be HORIZONTAL at the absorb voltage - same y, "
+          "falling current")
+
+    # --- the current limit and taper are vertical now, not horizontal ---
+    check('x1="${X(im.d)}" y1="12" x2="${X(im.d)}"' in body,
+          "the bulk current ceiling must be a VERTICAL line now that current is "
+          "the horizontal axis")
+    check('x1="${X(tp.d)}" y1="12" x2="${X(tp.d)}"' in body,
+          "the taper threshold must be a VERTICAL line too")
+
+    # --- live dots at their real operating point, not a fixed column ---
+    check("const y=Y(b[1]),x=X(b[3]);" in body,
+          "each battery's dot must be placed at its true (current, voltage) - "
+          "b[1] is its voltage and b[3] its current; the old chart pinned x to a "
+          "fixed fraction of the width, which carried no information")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -3259,6 +3318,7 @@ def main():
         test_benchlog_row_matches_header_v125,
         test_whole_program_consistency_v125,
         test_absorb_ceiling_arms_on_current_v2,
+        test_stage_graph_is_current_vs_voltage_v3,
         test_section_parameter_help_v125,
         test_theme_contrast_and_param_coverage_v125,
     ]

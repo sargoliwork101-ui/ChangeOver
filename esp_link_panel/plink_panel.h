@@ -624,12 +624,23 @@ function pexp(){document.querySelectorAll('button.ib[data-p]').forEach(b=>{
   '</div>');});}
 function qgraph(){const g=$('qg');if(!g)return;
  const q={a:qv(20),e:qv(21),o:qv(22),f:qv(23),r:qv(24)},im=qv(25),tp=qv(26);
- /* v1.14e (دستور کاربر ۲۰۲۶-۰۹-۲۶ «۵۰٪ کوتاه‌تر» ۲۰۲۶-۰۹-۲۹): H=420؛ با نصف‌شدن ارتفاع، قلم و کمینهٔ فاصلهٔ برچسب‌ها (LBL_GAP) هم کوچک شد تا چیدمان ضدتداخل برچسب‌ها را به هم نچسباند. مرز
-    ناحیه‌ها در هم نرود؛ ناحیه‌ها از مقادیر اعمال‌شده (.d) — چون برد گیره
-    می‌زند هرگز وارونه/هم‌پوشان نمی‌شوند؛ تایپِ هنوز-اعمال‌نشده فقط خط‌چین */
+ /* v3 (دستور کاربر ۲۰۲۶-۰۹-۲۹): نمودار دوبعدی جریان-ولتاژ.
+    محور افقی = جریان (mA)، محور عمودی = ولتاژ (mV).
+    قبلاً فقط یک نردبان عمودی ولتاژ بود و جریان اصلاً روی نمودار نبود؛ حالا
+    مسیر واقعی شارژ CC/CV دیده می‌شود: بالک یک خط عمودی روی سقف جریان است
+    (جریان ثابت، ولتاژ بالا می‌رود) و ابزورب یک خط افقی روی ولتاژ هدف
+    (ولتاژ ثابت، جریان پایین می‌آید). نقطهٔ زندهٔ هر باتری روی مختصات واقعی
+    خودش (جریان، ولتاژ) می‌نشیند، پس یک نگاه می‌گوید کجای مسیر است.
+    v3: a real current-voltage chart. X = current, Y = voltage. The CC/CV
+    path is now visible as what it is - a vertical leg at the current limit
+    and a horizontal leg at the absorb voltage - and each battery's live dot
+    sits at its true (I, V), so one look says where it is on that path.
+    ناحیه‌ها از مقادیر اعمال‌شده (.d) می‌آیند؛ تایپِ هنوز-اعمال‌نشده فقط خط‌چین */
  const lo=Math.max(7600,Math.min(q.r.d,12000)-500),hi=15060,W=760,H=420,X0=48,X1=742;
  const LBL_GAP=11;
+ const IMAX=Math.max(200,Math.round((im.d||650)*1.25/50)*50);
  const Y=mv=>Math.round(H-24-(H-46)*(mv-lo)/(hi-lo));
+ const X=ma=>Math.round(X0+(X1-X0)*Math.min(Math.max(ma,0),IMAX)/IMAX);
  const V=mv=>(mv/1000).toFixed(2);
  /* برچسب‌ها جدا جمع و با کمینهٔ فاصله رندر می‌شوند تا در ناحیه‌های باریک در هم نروند */
  const ZL=[],LL=[];
@@ -644,12 +655,17 @@ function qgraph(){const g=$('qg');if(!g)return;
    return (sh?`<line x1="${x}" y1="${yc+3}" x2="${x}" y2="${y-3}" stroke="${o.c}" stroke-width="1" opacity=".6"/>`:'')+
    `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="${fs}" font-weight="700" fill="${o.c}">${o.txt}${o.pv?' · پیش‌نمایش':''}</text>`;}).join('');};
  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:640px;font-family:inherit">`;
- /* v1.14e: حاشور کم‌رنگ ناحیهٔ بالک (دستور کاربر ۲۰۲۶-۰۹-۲۶) */
- s+=`<defs><pattern id="bkh" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="9" height="9" fill="rgba(99,162,255,.08)"/><line x1="0" y1="0" x2="0" y2="9" stroke="rgba(143,194,255,.32)" stroke-width="1.2"/></pattern></defs>`;
+ s+=`<defs><pattern id="bkh" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="9" height="9" fill="rgba(99,162,255,.08)"/><line x1="0" y1="0" x2="0" y2="9" stroke="rgba(99,162,255,.22)" stroke-width="1"/></pattern></defs>`;
  s+=`<rect x="${X0}" y="12" width="${X1-X0}" height="${H-34}" fill="#080b12" stroke="#38455e" rx="6"/>`;
+ /* شبکهٔ ولتاژ (افقی) */
  for(let mv=Math.ceil(lo/500)*500;mv<=hi;mv+=500){const y=Y(mv);
   s+=`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="#26304a" stroke-width="1"/>`+
      `<text x="${X0-4}" y="${y+3}" text-anchor="end" font-size="8" fill="#96a1b8">${(mv/1000).toFixed(1)}</text>`;}
+ /* شبکهٔ جریان (عمودی) — محور افقی تازه */
+ const istep=IMAX>600?200:100;
+ for(let ma=0;ma<=IMAX;ma+=istep){const x=X(ma);
+  s+=`<line x1="${x}" y1="12" x2="${x}" y2="${H-22}" stroke="#26304a" stroke-width="1"/>`+
+     `<text x="${x}" y="${H-12}" text-anchor="middle" font-size="8" fill="#96a1b8">${ma}</text>`;}
  s+=zone(hi,15000,'rgba(251,94,106,.16)','','#ff6873');
  s+=zone(15000,q.o.d,'rgba(251,94,106,.09)','ناحیهٔ تجاوز (Over) — کاهش سریع duty','#fc8086');
  s+=zone(q.o.d,q.e.d,'rgba(251,191,36,.08)','ناحیهٔ ابزورب (Absorb)','#f7c13c');
@@ -663,23 +679,31 @@ function qgraph(){const g=$('qg');if(!g)return;
  s+=aln(q.e.d,'#e8a33d')+pvln(q.e,'#e8a33d');lbl(q.e,'#e8a33d','ورود ابزورب (Absorb Enter)');
  s+=aln(q.f.d,'#35d6a0')+pvln(q.f,'#35d6a0');lbl(q.f,'#35d6a0','شناور (Float)');
  s+=aln(q.r.d,'#63a2ff')+pvln(q.r,'#63a2ff');lbl(q.r,'#63a2ff','بازگشت به بالک (Reentry)');
- /* موقعیت زندهٔ هر باتری (دستور کاربر ۲۰۲۶-۰۹-۲۶): نقطهٔ رنگی روی ولتاژ خودش
-    در ستون مخصوصش + برچسب وضعیت زیر نمودار؛ ناحیه‌ها خودشان داستان مراحل را می‌گویند */
+ /* سقف جریان بالک و آستانهٔ تیپر: حالا خط عمودی‌اند، چون جریان محور افقی است */
+ s+=`<line x1="${X(im.d)}" y1="12" x2="${X(im.d)}" y2="${H-22}" stroke="#63a2ff" stroke-width="1.6"/>`+
+    `<text x="${X(im.d)-3}" y="${H-26}" text-anchor="end" font-size="8.5" font-weight="700" fill="#63a2ff">سقف بالک ${im.d}mA</text>`;
+ s+=`<line x1="${X(tp.d)}" y1="12" x2="${X(tp.d)}" y2="${H-22}" stroke="#35d6a0" stroke-width="1.4" stroke-dasharray="4 3"/>`+
+    `<text x="${X(tp.d)+3}" y="${H-26}" text-anchor="start" font-size="8.5" font-weight="700" fill="#35d6a0">تیپر ${tp.d}mA</text>`;
+ /* مسیر واقعی شارژ CC/CV: پای عمودی روی سقف جریان، بعد پای افقی روی ولتاژ ابزورب */
+ s+=`<polyline points="${X(im.d)},${Y(lo)} ${X(im.d)},${Y(q.e.d)} ${X(im.d)},${Y(q.a.d)} ${X(tp.d)},${Y(q.a.d)} ${X(0)+6},${Y(q.f.d)}" fill="none" stroke="#e8eaf2" stroke-width="2" stroke-opacity=".55" stroke-linejoin="round" stroke-dasharray="7 4"/>`;
+ /* موقعیت زندهٔ هر باتری: حالا روی مختصات واقعی (جریان، ولتاژ) */
  let lg='';
  if(D&&D.t){const tt=D.t;
-  const BST={0:['خاموش (Off)','#96a1b8'],1:['بالک (Bulk)','#63a2ff'],2:['ابزورب (Absorb)','#f7c13c'],3:['شناور (Float)','#35d6a0'],4:['راه‌اندازی (Bring-up)','#f7c13c'],5:['انتظار JIT (JIT wait)','#ff6873'],6:['انتظار ورودی (No input)','#f7c13c'],7:['خطای نهایی (Final fault)','#ff6873'],8:['باتری قطع (Battery lost)','#ff6873'],9:['دستی (Manual)','#f7c13c']};
+  const BST={0:['خاموش (Off)','#96a1b8'],1:['بالک (Bulk)','#63a2ff'],2:['ابزورب (Absorb)','#f7c13c'],3:['شناور (Float)','#35d6a0'],4:['راه‌اندازی (Bring-up)','#9ac8ff'],5:['انتظار JIT','#96a1b8'],6:['انتظار ورودی','#96a1b8'],7:['خطای نهایی','#ff6873'],8:['باتری گم‌شده','#ff6873'],9:['دستی (Manual)','#c084fc']};
   const bats=[['باتری پایین (Vlow)',tt[17],tt[13],tt[10],'#c084fc',0.60],['باتری بالا (Vhigh)',tt[18],tt[6],tt[3],'#f7c13c',0.82]];
   bats.forEach(b=>{
-   if(b[1]>lo&&b[1]<hi){const y=Y(b[1]),x=X0+Math.round((X1-X0)*b[5]);
-    s+=`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="${b[4]}" stroke-width="1.2" stroke-dasharray="2 3"/>`;
+   if(b[1]>lo&&b[1]<hi){const y=Y(b[1]),x=X(b[3]);
+    s+=`<line x1="${X0}" y1="${y}" x2="${x}" y2="${y}" stroke="${b[4]}" stroke-width="1.2" stroke-dasharray="2 3"/>`;
+    s+=`<line x1="${x}" y1="${y}" x2="${x}" y2="${H-22}" stroke="${b[4]}" stroke-width="1.2" stroke-dasharray="2 3"/>`;
     s+=`<circle cx="${x}" cy="${y}" r="4.5" fill="${b[4]}" stroke="#080b12" stroke-width="1.8"/>`;
-    s+=`<text x="${x}" y="${Math.min(y+15,H-6)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="${b[4]}">${b[0].split(' (')[0]} ${V(b[1])}V</text>`;}});
+    s+=`<text x="${x}" y="${Math.min(y+15,H-28)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="${b[4]}">${b[0].split(' (')[0]} ${V(b[1])}V · ${b[3]}mA</text>`;}});
   lg=bats.map(b=>{const st=BST[b[2]]||('#'+b[2]);
    return `<span class="tg" style="background:${st[1]}22;color:${st[1]};border:1px solid ${st[1]}66">● ${b[0]}: <b>${V(b[1])}V</b> · ${b[3]}mA · ${st[0]}</span>`;}).join(' ')+
    `<span class="lb"> · بالک ≤ ${im.v}mA · تیپر < ${tp.v}mA · پس از هر تغییر ~۱٫۵ ثانیه بعد روی فلش برد ذخیره می‌شود</span>`;
  }else lg='در انتظار دادهٔ برد…';
  s+=put(ZL,X0+6,'start','8.5')+put(LL,X1-4,'end','9');
- s+=`<text x="${X0}" y="8" font-size="8" fill="#96a1b8">ولتاژ باتری / Battery voltage (V)</text></svg>`;
+ s+=`<text x="${X0}" y="8" font-size="8" fill="#96a1b8">ولتاژ باتری / Battery voltage (V)</text>`;
+ s+=`<text x="${X1}" y="${H-2}" text-anchor="end" font-size="8" fill="#96a1b8">جریان شارژ / Charge current (mA)</text></svg>`;
  g.innerHTML=s;const e=$('qgl');if(e)e.innerHTML=lg;
  /* نگهبان: هشدار بالای نمودار + قرمزکردن فیلد مقصر */
  const w=qchk(),we=$('qw');
