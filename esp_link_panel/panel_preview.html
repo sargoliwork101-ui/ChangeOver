@@ -307,7 +307,7 @@ window.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 </head><body>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build ff7dcc9</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 5b06a4b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -635,7 +635,7 @@ ${row(12+n)}
 <table>${[['ADC خام','count',0],['ولتاژ شنت','µV',1],['جریان بدون فیلتر','mA',2],['جریان فیلترشده','mA',3],['تخمین باتری (iest)','mA',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}">—</b></td><td class="lb">${r[1]}</td></tr>`).join('')}</table>
 <div class="lb kc">ثابت‌ها: ADC دوازده‌بیتی، ۳۳۰۰mV، R41/R42 = 1k/10k، LM358 × 101، شنت 10 mOhm</div>
 <canvas id="cv${n}"></canvas><div class="lg"><span><i style="background:#78849f"></i>بدون فیلتر · نوسان <b class="n" id="pu${n}">—</b> mA</span><span><i style="background:#63a2ff"></i>فیلترشده · نوسان <b class="n" id="pf${n}">—</b> mA</span><span class="hnl">نقاط <input type="number" id="hN${n}" data-s min="10" max="600" value="100"> از <b class="n" id="hC${n}">--</b></span></div>
-<button class="bt" id="tg${n}">—</button></div>`).join('');
+<button class="bt" id="tg${n}">—</button></div>`).join(''));
 [1,2].forEach(n=>$('tg'+n).onclick=()=>{const c=D&&D.p[10+n];if(c!==0&&!confirm('PWM شارژر '+n+' فوراً قطع شود؟'))return;send(10+n,c===0?1:0);});
 /* ---------- تاریخچهٔ نمودار هر کانال ---------- */
 let LS=-1;const hn=c=>{const e=$('hN'+(c+1)),v=e?Math.round(+e.value):0;return !v?100:Math.min(600,Math.max(10,v));},H=[0,1].map(()=>({u:[],f:[]}));
