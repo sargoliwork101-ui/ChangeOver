@@ -33,6 +33,7 @@ UI_BUZZER_C = ROOT / "Firmware/Modules/Ui/ui_buzzer.c"
 BSP_MEAS_C = ROOT / "Firmware/Bsp/Src/bsp_measurement.c"
 RTOS_TIME_C = ROOT / "Firmware/Rtos/Src/rtos_time.c"
 FREERTOSCONFIG_H = ROOT / "CubeIDE/Core/Inc/FreeRTOSConfig.h"
+FREERTOS_HOOKS_C = ROOT / "Firmware/Rtos/Src/freertos_hooks.c"
 FLASH_LD = ROOT / "CubeIDE/STM32CubeIDE/STM32F103C8TX_FLASH.ld"
 CPROJECT = ROOT / "CubeIDE/STM32CubeIDE/.cproject"
 
@@ -2591,8 +2592,37 @@ def test_flash_diet_pins_v116d():
         text = src.read_text()
         check("uint64_t" not in text and "unsigned long long" not in text,
               f"{src.name} must stay u64-free (diet pins __aeabi_uldivmod out)")
-    check(re.search(r"#define\s+configUSE_TIMERS\s+1\b", FREERTOSCONFIG_H.read_text()),
-          "configUSE_TIMERS must stay 1 (OFF breaks the linked timers.c build)")
+    # [EN] This used to assert configUSE_TIMERS == 1, on the belief that OFF
+    #      breaks the build. It does not. Two #errors stood in the way and
+    #      both were opt-outs: timers.c:41 wanted INCLUDE_xTimerPendFunctionCall
+    #      off too, and freertos_os2.h:208 wanted the unused Event Flags API
+    #      off. With timers on, tasks.c:2022 starts the timer task
+    #      unconditionally, which links timers.c AND queue.c - about 3 KB that
+    #      no call in this firmware can reach. That is what pushed the image
+    #      780 bytes past the 62K FLASH region on 2026-10-03.
+    # [FA] اینجا قبلاً ادعا می‌شد configUSE_TIMERS باید ۱ بماند چون خاموشی بیلد
+    #      را می‌شکند. نمی‌شکند. دو #error سر راه بود و هر دو قابل خاموش‌کردن:
+    #      timers.c:41 و freertos_os2.h:208. با تایمر روشن، tasks.c:2022 بی‌قید
+    #      تسک تایمر را راه می‌اندازد و timers.c و queue.c را لینک می‌کند -
+    #      حدود ۳ کیلوبایت بدون هیچ فراخوانی. همین ایمیج را ۷۸۰ بایت از ناحیهٔ
+    #      ۶۲ کیلوبایتی فلش بیرون زده بود.
+    frtc = FREERTOSCONFIG_H.read_text()
+    check(re.search(r"#define\s+configUSE_TIMERS\s+0\b", frtc),
+          "configUSE_TIMERS must stay 0: nothing creates a timer and it costs ~3 KB of FLASH")
+    check(re.search(r"#define\s+INCLUDE_xTimerPendFunctionCall\s+0\b", frtc),
+          "INCLUDE_xTimerPendFunctionCall must stay 0 or timers.c:41 #errors")
+    check(re.search(r"#define\s+configUSE_OS2_EVENTFLAGS_FROM_ISR\s+0\b", frtc),
+          "configUSE_OS2_EVENTFLAGS_FROM_ISR must stay 0 or freertos_os2.h:208 #errors")
+    check(re.search(r"#define\s+configUSE_COUNTING_SEMAPHORES\s+1\b", frtc),
+          "configUSE_COUNTING_SEMAPHORES must stay 1: the CMSIS shim needs it even unused")
+    # [EN] CubeMX does not keep configUSE_TIMERS in the .ioc, so a regenerate
+    #      would silently restore it and the only symptom would be an opaque
+    #      "region FLASH overflowed". The guard turns that into a sentence.
+    # [FA] CubeMX این تنظیم را در .ioc نگه نمی‌دارد؛ تولید دوباره بی‌صدا برش
+    #      می‌گرداند و تنها نشانه پیام مبهم سرریز است. نگهبان آن را جمله می‌کند.
+    check("configUSE_TIMERS != 0" in FREERTOS_HOOKS_C.read_text() and
+          "#error" in FREERTOS_HOOKS_C.read_text(),
+          "freertos_hooks.c must #error if a CubeMX regenerate turns timers back on")
     check("*(.ARM.exidx*)" in FLASH_LD.read_text() and "/DISCARD/" in FLASH_LD.read_text(),
           "linker script must discard .ARM.exidx (C++ unwind tables ~6.4 KiB)")
     proj = CPROJECT.read_text()

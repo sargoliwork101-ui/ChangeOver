@@ -85,18 +85,64 @@
 #define configMAX_CO_ROUTINE_PRIORITIES          ( 2 )
 
 /* Software timer definitions. */
-/* [EN] Timers stay ON (flash-diet note 2026-09-27): nothing calls
-   osTimer/xTimer, but timers.c hard-errors when compiled with
-   configUSE_TIMERS=0 while the always-linked cmsis_os2 osTimer API still
-   references xTimerCreate - so OFF either breaks the compile (file
-   linked) or risks the link (file unlinked, non-GC builds). The timer
-   task + queue (~2.7 KiB) are dropped/kept by --gc-sections instead.
-   [FA] تایمر روشن می‌ماند: خاموش‌کردن یا کامپایل را می‌شکند (فایل لینک
-   است) یا لینک را (غیر-GC)؛ حذفش با gc-sections انجام می‌شود. */
-#define configUSE_TIMERS                         1
+/* [EN] Timers OFF - flash diet 2026-10-03, after the linker reported
+   "region FLASH overflowed by 780 bytes".
+   Nothing in this firmware creates a software timer. The only mention was
+   the hook that hands the timer task its RAM, and that hook is already
+   wrapped in #if (configUSE_TIMERS == 1).
+   The note that used to sit here said OFF "breaks the compile", and named
+   cmsis_os2's osTimer API. That was the wrong cause. Two walls existed and
+   both are opt-outs, not laws:
+     timers.c:41        #error, raised only because INCLUDE_xTimerPendFunctionCall
+                        was 1. Nothing calls xTimerPendFunctionCall.
+     freertos_os2.h:208 #error, raised only because the CMSIS-RTOS v2 Event
+                        Flags API was enabled. Nothing calls osEventFlags*.
+   The same note claimed --gc-sections drops the timer code anyway. It
+   cannot: tasks.c:2022 calls xTimerCreateTimerTask() unconditionally while
+   configUSE_TIMERS == 1, so timers.c is reachable from the scheduler itself
+   and is always linked. Measured in a linked image it was 1376 bytes that no
+   call site could reach, plus the timer task's 1 KiB stack in RAM.
+   [FA] تایمرها خاموش شدند - رژیم فلش، پس از پیام لینکر «سرریز ۷۸۰ بایت».
+   هیچ‌جای این فرم‌ور تایمر نرم‌افزاری نمی‌سازد؛ تنها اشاره، هوکی است که RAM
+   تسک تایمر را می‌دهد و خودش با #if محافظت شده است.
+   یادداشت قبلی اینجا می‌گفت خاموش‌کردن «کامپایل را می‌شکند» و علت را osTimer
+   می‌دانست. علت اشتباه بود: دو سد وجود داشت و هر دو گزینهٔ قابل خاموش‌کردن
+   بودند - یکی timers.c:41 به‌خاطر INCLUDE_xTimerPendFunctionCall و دیگری
+   freertos_os2.h:208 به‌خاطر روشن‌ماندن Event Flags.
+   همان یادداشت می‌گفت gc-sections خودش حذفش می‌کند؛ نمی‌تواند، چون
+   tasks.c:2022 تا وقتی configUSE_TIMERS==1 باشد بی‌قید xTimerCreateTimerTask()
+   را صدا می‌زند. در ایمیج لینک‌شده ۱۳۷۶ بایت بود که هیچ فراخوانی به آن
+   نمی‌رسید، به‌علاوهٔ ۱ کیلوبایت استک تسک تایمر در RAM. */
+#define configUSE_TIMERS                         0
 #define configTIMER_TASK_PRIORITY                ( 2 )
 #define configTIMER_QUEUE_LENGTH                 10
 #define configTIMER_TASK_STACK_DEPTH             256
+
+/* [EN] CMSIS-RTOS v2 surface, trimmed to what this firmware actually calls.
+   The complete list it uses is: osKernelInitialize, osKernelStart,
+   osKernelLock, osKernelRestoreLock, osKernelGetState, osKernelGetTickCount,
+   osKernelGetTickFreq, osThreadNew, osDelay, osDelayUntil. Nothing else.
+   Each switch below drops a wrapper family with no caller in this tree, and
+   the Event Flags one is also what forced INCLUDE_xTimerPendFunctionCall to
+   stay on. These are the shim's own documented opt-outs (freertos_os2.h
+   lines 47..84), not edits to middleware.
+   configUSE_COUNTING_SEMAPHORES is deliberately NOT switched off: the shim
+   requires it even when no semaphore is created, and turning it off stops
+   cmsis_os2.c from compiling. Measured, not assumed.
+   [FA] سطح CMSIS-RTOS v2 به همان چیزی که این فرم‌ور واقعاً صدا می‌زند کوتاه شد؛
+   کل مصرفش همان ده تابع بالاست. هر کلید زیر خانواده‌ای بدون‌فراخوان را برمی‌دارد
+   و کلید Event Flags همان بود که INCLUDE_xTimerPendFunctionCall را روشن نگه
+   می‌داشت. این‌ها گزینه‌های رسمی خود شیم‌اند (freertos_os2.h خطوط ۴۷ تا ۸۴)، نه
+   دست‌کاری میان‌افزار. configUSE_COUNTING_SEMAPHORES عمداً خاموش نشد: شیم حتی
+   بدون ساختن سمافور به آن نیاز دارد و خاموش‌کردنش کامپایل cmsis_os2.c را
+   می‌شکند - این آزموده شده، نه فرض‌شده. */
+#define configUSE_OS2_THREAD_SUSPEND_RESUME      0
+#define configUSE_OS2_THREAD_ENUMERATE           0
+#define configUSE_OS2_EVENTFLAGS_FROM_ISR        0
+#define configUSE_OS2_THREAD_FLAGS               0
+#define configUSE_OS2_TIMER                      0
+#define configUSE_OS2_MUTEX                      0
+
 
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
@@ -108,7 +154,7 @@ to exclude the API function. */
 #define INCLUDE_vTaskDelayUntil             1
 #define INCLUDE_vTaskDelay                  1
 #define INCLUDE_xTaskGetSchedulerState      1
-#define INCLUDE_xTimerPendFunctionCall      1
+#define INCLUDE_xTimerPendFunctionCall      0
 #define INCLUDE_xQueueGetMutexHolder        1
 #define INCLUDE_uxTaskGetStackHighWaterMark 1
 #define INCLUDE_xTaskGetCurrentTaskHandle   1

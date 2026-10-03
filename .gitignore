@@ -26,3 +26,6 @@ esp_link_panel/chart_now.svg
 
 # [EN] ESP host-test binaries / [FA] باینری تست هاست ESP
 esp_link_panel/Tester/build/
+
+# [EN] host flash-measurement objects / [FA] آبجکت‌های اندازه‌گیری فلش روی هاست
+/tmp/flashmeasure/
