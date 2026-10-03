@@ -174,6 +174,45 @@ function main() {
            panel's own send() path. The last one is the whole point - a table
            built from a second copy of the values would pass a static check
            and still go stale the moment something is edited. */
+        /* ---- every tab must actually REVEAL its own page ----
+           The settings sub-tabs were broken for four commits: a dropped
+           </div> made s1/s2/s3 children of s0, so hiding s0 hid them too and
+           only "charge, filter and PID" worked. Nothing caught it, because
+           every assertion asked whether some text existed somewhere in the
+           document - never whether the clicked page was the visible one.
+           A page counts as visible only if it AND every ancestor page carry
+           the active class, which is what the CSS actually does. */
+        const visible = el => {
+            for (let n = el; n && n.classList; n = n.parentElement) {
+                if ((n.classList.contains("sgx") || n.classList.contains("pgx"))
+                    && !n.classList.contains("a")) return false;
+            }
+            return true;
+        };
+        const navs = [...d.querySelectorAll("nav button")];
+        navs.forEach((b, i) => {
+            b.click();
+            const on = [...d.querySelectorAll(".pgx")].filter(visible).map(x => x.id);
+            check(on.length === 1 && on[0] === "p" + i,
+                  'clicking tab "' + b.textContent.trim() + '" shows exactly p' + i,
+                  "visible instead: " + (on.join(",") || "nothing"));
+        });
+        navs[2].click();
+        [...d.querySelectorAll("#sbt button")].forEach((b, i) => {
+            b.click();
+            const on = [...d.querySelectorAll(".sgx")].filter(visible).map(x => x.id);
+            check(on.length === 1 && on[0] === "s" + i,
+                  'clicking "' + b.textContent.trim() + '" shows exactly s' + i,
+                  "visible instead: " + (on.join(",") || "nothing"));
+        });
+        check([...d.querySelectorAll(".sgx")].every(
+                  x => !x.parentElement.classList.contains("sgx")),
+              "no settings page is nested inside another",
+              "a nested page disappears whenever its host is hidden");
+        check(new Set([...d.querySelectorAll(".pgx")]
+                  .map(x => x.parentElement)).size === 1,
+              "all main pages share one parent");
+        navs[0].click();
         const CTB = d.getElementById("ctb");
         const CARDS = [...P0.querySelectorAll(".cd")];
         check(CARDS[CARDS.length - 1].contains(CTB),

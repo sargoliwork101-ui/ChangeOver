@@ -382,6 +382,15 @@ window.addEventListener('DOMContentLoaded', function(){
 <div class="hd"><b>بازگردانی پیش‌فرض کارخانه</b><span class="lb">· همهٔ پارامترهای شارژ، فیلتر، PID و آلارم را به مقدار کارخانه برمی‌گرداند و همان‌ها را ذخیره می‌کند</span></div>
 <div class="bqr"><button class="sb sb2" onclick="qdef()">بازگردانی پیش‌فرض کارخانه</button></div>
 </div>
+</div>
+<!-- [EN] This closing tag was dropped in 0593f7c, when the profile card
+     was removed and the sub-tabs renumbered. Without it s0 swallowed s1,
+     s2 and s3, so hiding s0 hid them too and every sub-tab except
+     "charge, filter and PID" looked dead. p2 was left unclosed and the
+     tag that should have closed it was closing s0 instead.
+     [FA] این تگ بسته در 0593f7c افتاد، وقتی کارت profile حذف و زیرتب‌ها
+     دوباره شماره‌گذاری شدند. بدون آن s0 سه زیرتب دیگر را در خود می‌گرفت،
+     پس مخفی‌کردن s0 آن‌ها را هم مخفی می‌کرد. -->
 <div class="sgx" id="s1">
 <div class="leds stick" id="uleds">
 <div class="led r" id="ulR"><i></i><small>قرمز</small></div>

@@ -564,6 +564,68 @@ def sec_defaults(ids):
         #      نصب» نامتغیر غلطی است - یک ترجیح را کد کرده بود که برگشت.
         #      چیزی که واقعاً خطرناک است دو نسخه‌ای است که بتوانند حرف متفاوت
         #      بزنند، یا محل نصبی که هیچ‌وقت چیزی در آن رسم نشود.
+        # [EN] STRUCTURE, not strings. A missing </div> in 0593f7c made s1,
+        #      s2 and s3 children of s0 instead of its siblings, so hiding s0
+        #      hid them too and every settings sub-tab except "charge, filter
+        #      and PID" looked dead. It survived four commits, 180 string
+        #      invariants and 144 rendered-content assertions, because every
+        #      one of them asked "is the text there?" and none asked "is the
+        #      tree the right shape?". The tab machinery toggles a class by
+        #      INDEX across a flat NodeList, so it is only correct when the
+        #      pages are siblings - that assumption is now checked instead of
+        #      assumed, together with overall tag balance.
+        # [FA] ساختار، نه رشته. یک </div> که در 0593f7c افتاد باعث شد s1 و s2
+        #      و s3 به‌جای خواهرِ s0 فرزندش شوند، پس مخفی‌کردن s0 آن‌ها را هم
+        #      مخفی می‌کرد و هر زیرتبی جز «شارژ، فیلتر و PID» مرده به نظر
+        #      می‌رسید. چهار کامیت و ۱۸۰ نامتغیر رشته‌ای و ۱۴۴ ادعای محتوا از
+        #      کنارش رد شدند، چون همه می‌پرسیدند «متن هست؟» و هیچ‌کدام
+        #      نمی‌پرسید «درخت شکل درستی دارد؟». سازوکار تب کلاس را با
+        #      «اندیس» روی یک فهرست تخت جابه‌جا می‌کند، پس فقط وقتی درست است
+        #      که صفحه‌ها خواهر باشند.
+        _html = re.search(r'R"HTML\(([\s\S]*)\)HTML"', P_PAN)
+        ok(bool(_html), "the panel must expose its HTML literal")
+        if _html:
+            _h = _html.group(1)
+            _depth, _bad = 0, False
+            for _m in re.finditer(r"<div\b[^>]*>|</div>", _h):
+                _depth += -1 if _m.group(0) == "</div>" else 1
+                if _depth < 0:
+                    _bad = True
+            ok(not _bad and _depth == 0,
+               "the panel markup must be tag-balanced",
+               f"{_depth} <div> left unclosed - the page tree is not what the "
+               "markup looks like, and index-based tab switching breaks")
+
+            # parentage: every page of a switcher must share one parent
+            def _parents(cls):
+                out = []
+                for _m in re.finditer(r'<div\b[^>]*class="[^"]*\b' + cls +
+                                      r'\b[^"]*"[^>]*>', _h):
+                    d2 = 0
+                    for _n in re.finditer(r"<div\b[^>]*>|</div>",
+                                          _h[:_m.start()]):
+                        d2 += -1 if _n.group(0) == "</div>" else 1
+                    out.append(d2)
+                return out
+
+            for cls, who in (("pgx", "main tabs"), ("sgx", "settings sub-tabs")):
+                depths = _parents(cls)
+                ok(depths and len(set(depths)) == 1,
+                   f"the {who} must all be siblings at one nesting level",
+                   f"depths {depths} - a page nested inside another vanishes "
+                   "whenever its host is hidden, and the index-based toggle "
+                   "then points at the wrong element")
+
+            # the switcher must have exactly as many pages as buttons
+            _nb = len(re.findall(r'<button[^>]*data-t="\d+"', _h)) or \
+                  len(re.findall(r"<nav[^>]*>[\s\S]*?</nav>", _h)) and \
+                  len(re.findall(r'data-t="\d+"', _h))
+            _ns = len(re.findall(r'class="[^"]*\bsgx\b', _h))
+            _nsb = len(re.findall(r'data-s="\d+"', _h))
+            ok(_ns == _nsb,
+               "one settings page per settings button",
+               f"{_ns} pages vs {_nsb} buttons")
+
         mounts = P_PAN.count('class="qgm"')
         ok(mounts >= 1, "the chart must be mounted somewhere")
         ok("document.querySelectorAll('.qgm')" in P_PAN and "$('qg')" not in
