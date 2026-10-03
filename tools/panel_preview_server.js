@@ -28,6 +28,61 @@ const path = require("path");
 /* ---------- extract the real panel HTML from the panel module ---------- */
 const panelPath = path.join(__dirname, "..", "esp_link_panel", "plink_panel.h");
 const panelSrc = fs.readFileSync(panelPath, "utf8");
+
+/* [EN] v1.28: the telemetry width is DERIVED from the firmware header, never
+ *      retyped here. This file used to hardcode 20 while the link carried 25
+ *      fields, so the five calibration counts (indices 20..24) silently read
+ *      back undefined in the preview - the simulator was a stale second
+ *      opinion instead of a mirror. Deriving it means the next field added to
+ *      the frame shows up here with no edit, and a missing define is a loud
+ *      startup failure rather than a quietly short array.
+ * [FA] عرض تله‌متری از هدر فرم‌ور مشتق می‌شود و اینجا دوباره تایپ نمی‌شود.
+ *      قبلاً اینجا ۲۰ ثابت بود در حالی که لینک ۲۵ فیلد می‌برد، پس پنج شمارش
+ *      کالیبراسیون (اندیس ۲۰ تا ۲۴) در پیش‌نمایش بی‌صدا undefined می‌شدند -
+ *      شبیه‌ساز به‌جای آینه، یک نظر کهنهٔ دوم بود. با اشتقاق، فیلد بعدی که به
+ *      قاب اضافه شود بدون ویرایش اینجا دیده می‌شود و نبودِ define یک خطای
+ *      بلند هنگام بالا آمدن است نه آرایه‌ای که بی‌صدا کوتاه مانده. */
+const configPath = path.join(__dirname, "..", "esp_link_panel", "plink_config.h");
+const configSrc = fs.readFileSync(configPath, "utf8");
+const tlmMatch = configSrc.match(/#define\s+ESP_LINK_TLM_FIELD_COUNT\s+(\d+)u?/);
+if (!tlmMatch) {
+    console.error("panel preview: ESP_LINK_TLM_FIELD_COUNT not found in " + configPath);
+    process.exit(1);
+}
+const TLM_FIELDS = Number(tlmMatch[1]);
+
+/* [EN] Divider scales are derived from the BSP, not retyped, so the raw counts
+ *      this simulator reports actually reconstruct the volts it reports beside
+ *      them. A preview whose counts disagree with its own voltages would be
+ *      worse than no preview while the board is being calibrated from counts.
+ * [FA] مقیاس مقسم‌ها از BSP مشتق می‌شود نه تایپ دوباره، تا شمارش‌های خامی که
+ *      این شبیه‌ساز می‌دهد واقعاً همان ولتاژی را بسازند که کنارشان نشان می‌دهد.
+ *      پیش‌نمایشی که شمارشش با ولتاژ خودش نخواند، وقتی برد دارد از روی شمارش
+ *      کالیبره می‌شود، از نبودِ پیش‌نمایش بدتر است. */
+const bspPath = path.join(__dirname, "..", "Firmware", "Bsp", "Src", "bsp_measurement.c");
+const bspSrc = fs.readFileSync(bspPath, "utf8");
+function bspDefine(name) {
+    const m = bspSrc.match(new RegExp("#define\\s+" + name + "\\s+(\\d+)u?(?![0-9A-Za-z_])"));
+    if (!m) {
+        console.error("panel preview: " + name + " not found in " + bspPath);
+        process.exit(1);
+    }
+    return Number(m[1]);
+}
+const VREF_MV = bspDefine("BSP_MEASUREMENT_VREF_MV");
+const ADC_FULL = bspDefine("BSP_MEASUREMENT_ADC_FULL_SCALE");
+const SHUNT_OHMS = bspDefine("BSP_MEASUREMENT_SENSE_SHUNT_OHMS");
+const TOP_24V = bspDefine("BSP_MEASUREMENT_SENSE_TOP_24V_OHMS");
+const TOP_12V = bspDefine("BSP_MEASUREMENT_DIV12_TOP_OHMS");
+/* mV per ADC count on each voltage net (same maths as the BSP converters). */
+const MV_PER_COUNT_24 = (VREF_MV / ADC_FULL) * ((TOP_24V + SHUNT_OHMS) / SHUNT_OHMS);
+const MV_PER_COUNT_12 = (VREF_MV / ADC_FULL) * ((TOP_12V + SHUNT_OHMS) / SHUNT_OHMS);
+/* VREFINT nominal 1.20 V against a healthy 3.300 V VDDA. */
+const VREFINT_COUNTS = Math.round((1200 / VREF_MV) * ADC_FULL);
+
+/* Link-health counters surfaced by /t; 0 = healthy link (see telemetry()). */
+const DEMO_VM = process.env.PLINK_DEMO_VM ? Number(process.env.PLINK_DEMO_VM) : 0;
+const DEMO_CE = process.env.PLINK_DEMO_CE ? Number(process.env.PLINK_DEMO_CE) : 0;
 const html = panelSrc.split('R"HTML(', 2)[1].split(')HTML";', 2)[0];
 
 /* banner + auto-open the charge tab (injected into the served page ONLY) */
@@ -235,7 +290,7 @@ function telemetry() {
     stepChannel(ch[0]);
     stepChannel(ch[1]);
     const vlow = ch[1].v, vhigh = ch[0].v;
-    const t = new Array(20).fill(0);
+    const t = new Array(TLM_FIELDS).fill(0);
     for (let k = 0; k < 2; k++) {
         const b = k === 0 ? 0 : 7, c = ch[k];
         t[b + 0] = rawFromCurrent(c.i, k === 0 ? vhigh : vlow);
@@ -248,10 +303,10 @@ function telemetry() {
     }
     t[14] = 24100;                 /* input, one reading per run (bench rule) */
     t[15] = vlow + vhigh;          /* 24 V pack */
-    t[16] = vlow + 150 + Math.round(0.47 * ch[1].i); /* V12 sense before comp */
-    t[17] = vlow;                  /* battery low, compensated */
+    t[16] = vlow;                  /* 12 V mid node (see invariant below) */
+    t[17] = vlow;                  /* battery low  */
     t[18] = vhigh;                 /* battery high */
-    t[19] = 0;                     /* fault mask */
+    t[19] = 0;                     /* fault mask   */
     /* v1.16 demo: rotate scenarios so the LED/buzzer mirror shows every face:
      * 0-30 s normal charging, 30-38 s input overvoltage, 38-46 s battery lost,
      * 46-54 s BatteryRun (input absent, double-beep band), 54-60 s normal. */
@@ -259,8 +314,58 @@ function telemetry() {
     if (cyc >= 30000 && cyc < 38000) t[14] = 29500;
     else if (cyc >= 38000 && cyc < 46000) t[19] = 64;
     else if (cyc >= 46000 && cyc < 54000) { t[14] = 15000; t[17] = 22200; t[18] = 22200; t[6] = 0; t[13] = 0; }
+
+    /* [EN] Re-impose the firmware's own relationship AFTER the demo scenarios
+     *      have had their say, so no scenario can emit a combination the real
+     *      board cannot produce. measurement.c: batteryLow IS battery12, and
+     *      batteryHigh is battery24 minus battery12 - therefore battery24 is
+     *      exactly low + high. The old code instead added the 150 mV + 0.47 R
+     *      bench compensation to t[16]; that compensation was switched off in
+     *      calibration.h, so the preview was showing a 12 V rail sitting a few
+     *      hundred mV above the battery-low reading, which the hardware can no
+     *      longer do.
+     * [FA] رابطهٔ خودِ فرم‌ور را بعد از اعمال سناریوهای نمایشی دوباره برقرار
+     *      می‌کند تا هیچ سناریویی ترکیبی نسازد که برد واقعی نمی‌تواند بسازد.
+     *      در measurement.c باتری پایین همان battery12 است و باتری بالا برابر
+     *      battery24 منهای battery12 - پس battery24 دقیقاً پایین + بالا است.
+     *      کد قبلی به‌جای این، جبران بنچ ۱۵۰mV + ۰٫۴۷ اهم را به t[16] اضافه
+     *      می‌کرد؛ آن جبران در calibration.h خاموش شد، پس پیش‌نمایش ریل ۱۲ولتی
+     *      را چند صد میلی‌ولت بالاتر از باتری پایین نشان می‌داد که سخت‌افزار
+     *      دیگر نمی‌تواند چنین کند. */
+    t[16] = t[17];
+    t[15] = t[17] + t[18];
+
+    /* [EN] v1.25 calibration ground truth (indices 20..24): raw counts for the
+     *      three voltage nets, the VREFINT count and VDDA in mV. Derived from
+     *      the volts above through the real divider scales and clamped to the
+     *      12-bit range, so counts x scale reproduces the displayed volts.
+     * [FA] مبنای کالیبراسیون (اندیس ۲۰ تا ۲۴): شمارش خام سه نت ولتاژ، شمارش
+     *      VREFINT و VDDA برحسب میلی‌ولت. از ولتاژهای بالا با مقیاس واقعی
+     *      مقسم‌ها مشتق و به بازهٔ ۱۲ بیتی گیره می‌شوند، پس شمارش × مقیاس همان
+     *      ولتاژ نمایش‌داده‌شده را بازمی‌سازد. */
+    const counts = (mv, scale) =>
+        Math.max(0, Math.min(ADC_FULL, Math.round(mv / scale)));
+    t[20] = counts(t[14], MV_PER_COUNT_24);
+    t[21] = counts(t[15], MV_PER_COUNT_24);
+    t[22] = counts(t[16], MV_PER_COUNT_12);
+    t[23] = VREFINT_COUNTS;
+    t[24] = VREF_MV;
+
     seq += 1; frames += 1; ms += SIM_MS;
-    return { on: 1, age: 40, seq, fl: 7, n: frames, q: 0, q2: 0, q3: 0, q4: 0, ka: 800, t, p: P.slice() };
+    return {
+        on: 1, age: 40, seq, fl: 7, n: frames,
+        q: 0, q2: 0, q3: 0, q4: 0, ka: 800,
+        /* [EN] Link health, same two counters the ESP publishes: vm = frames
+         *      dropped for an unknown protocol version, ce = frames dropped on
+         *      CRC. Zero by default; set PLINK_DEMO_VM / PLINK_DEMO_CE to see
+         *      the mismatch and noisy-harness banners without miswiring a rig.
+         * [FA] سلامت لینک، همان دو شمارنده‌ای که ESP منتشر می‌کند: vm فریم‌های
+         *      ردشده به‌خاطر نسخهٔ ناشناخته، ce فریم‌های ردشده به‌خاطر CRC.
+         *      پیش‌فرض صفر؛ با PLINK_DEMO_VM / PLINK_DEMO_CE می‌شود بنر
+         *      ناهم‌نسخگی و بنر هارنس نویزی را بدون سیم‌کشی غلط دید. */
+        vm: DEMO_VM, ce: DEMO_CE,
+        t, p: P.slice()
+    };
 }
 
 /* ---------- HTTP server ---------- */
@@ -304,10 +409,10 @@ const server = http.createServer((req, res) => {
         return send(200, "application/json", '{"_s":200}');
     }
     if (req.method === "GET" && url.pathname === "/m") {
-        const s = new Array(20).fill(0), lo = new Array(20).fill(0),
-              hi = new Array(20).fill(0), la = new Array(20).fill(0);
+        const s = new Array(TLM_FIELDS).fill(0), lo = new Array(TLM_FIELDS).fill(0),
+              hi = new Array(TLM_FIELDS).fill(0), la = new Array(TLM_FIELDS).fill(0);
         const d = telemetry();
-        for (let k = 0; k < 20; k++) { s[k] = d.t[k]; lo[k] = d.t[k]; hi[k] = d.t[k]; la[k] = d.t[k]; }
+        for (let k = 0; k < TLM_FIELDS; k++) { s[k] = d.t[k]; lo[k] = d.t[k]; hi[k] = d.t[k]; la[k] = d.t[k]; }
         return send(200, "application/json", JSON.stringify({ _s: 200, n: 1, s, lo, hi, la }));
     }
     if (req.method === "GET" && url.pathname === "/benchlog") {

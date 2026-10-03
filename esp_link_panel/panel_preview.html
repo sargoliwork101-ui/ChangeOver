@@ -192,8 +192,12 @@ function tlm(){
   t[3]  = b.i; t[4] = b.i; t[5] = 180; t[6]  = b.st;   /* channel 1 = Vhigh */
   t[10] = a.i; t[11] = a.i; t[12] = 190; t[13] = a.st; /* channel 2 = Vlow  */
   t[14] = 24160; t[15] = v24; t[16] = v12; t[17] = v12; t[18] = vhigh; t[19] = 0;
-  t[20] = 2687;  t[21] = Math.round(v24/8.864);
-  t[22] = Math.round(v12/4.882); t[23] = 1489; t[24] = 3300;
+  /* raw counts derived from the volts above, so count x scale == the mV shown
+     (t[20] used to be a hand-typed 2687, which claimed 23819 mV while t[14]
+     said 24160 - a 341 mV lie sitting on the calibration page) */
+  const cnt = (mv,sc) => Math.max(0, Math.min(4095, Math.round(mv/sc)));
+  t[20] = cnt(t[14], 8.8645); t[21] = cnt(v24, 8.8645);
+  t[22] = cnt(v12, 4.8823);   t[23] = 1489; t[24] = 3300;
   seq = (seq+1) & 0xFFFF;
   return {on:1, age:40, seq:seq, fl:0, n:seq, q:0, q2:0, q3:0, q4:0,
           ka:120, vm:0, ce:0, t:t, p:P};
@@ -206,7 +210,7 @@ window.fetch = function(url, opt){
   if(u.indexOf('/t') === 0){
     body = tlm();
   } else if(u.indexOf('/m') === 0){
-    const z = new Array(25).fill(0), d = tlm();
+    const d = tlm();
     body = {n:10, s:d.t.map(x=>x*10), lo:d.t, hi:d.t, la:d.t,
             or:0, seq:d.seq, fl:0};
   } else if(u.indexOf('/s') === 0){

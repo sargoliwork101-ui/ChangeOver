@@ -31,6 +31,7 @@ audit_consistency.py - whole-program cross-file consistency audit.
 Run: python3 tools/audit_consistency.py
 """
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -671,6 +672,172 @@ def sec_preview():
         ok("OFFLINE SHIM" in after and after.index("OFFLINE SHIM") < after.index("function qgraph"),
            "the preview's offline shim must be injected BEFORE the panel script",
            "otherwise fetch is replaced too late and the page stays empty")
+
+    # [EN] Both simulators must speak the CURRENT frame. The Node server
+    #      hardcoded a 20-field telemetry array while the link had carried 25
+    #      since v1.25, so indices 20..24 - the raw ADC counts the whole
+    #      calibration effort now rests on - read back undefined in the
+    #      preview, and the version-mismatch banner could never be seen
+    #      because vm/ce were absent. Neither simulator may retype the width.
+    # [FA] هر دو شبیه‌ساز باید قاب «فعلی» را حرف بزنند. سرور Node آرایهٔ ۲۰
+    #      فیلدی را ثابت نوشته بود در حالی که لینک از v1.25 بیست‌وپنج فیلد
+    #      می‌برد، پس اندیس ۲۰ تا ۲۴ - همان شمارش‌های خامی که کل کالیبراسیون
+    #      روی آن‌ها بنا شده - در پیش‌نمایش undefined خوانده می‌شدند و بنر
+    #      ناهم‌نسخگی هرگز دیده نمی‌شد چون vm/ce نبودند.
+    cfg = read("esp_link_panel/plink_config.h")
+    m = re.search(r"#define\s+ESP_LINK_TLM_FIELD_COUNT\s+(\d+)u?", cfg)
+    n_fields = int(m.group(1)) if m else -1
+    ok(n_fields > 0, "ESP_LINK_TLM_FIELD_COUNT not found in plink_config.h")
+
+    # [EN] Judge LIVE CODE, not prose. A plain "is the name in the file" test
+    #      is satisfied by the very comment that explains the rule, so ripping
+    #      the derivation out while leaving the comment behind would pass. The
+    #      comments go first, then the question is asked.
+    # [FA] «کدِ زنده» سنجیده می‌شود نه متن توضیح. تست سادهٔ «آیا نام در فایل
+    #      هست» با همان کامنتی که قانون را توضیح می‌دهد ارضا می‌شود، پس حذف
+    #      اشتقاق و باقی گذاشتن کامنت قبول می‌شد. اول کامنت‌ها حذف، بعد سؤال.
+    def live(src):
+        src = re.sub(r"/\*.*?\*/", " ", src, flags=re.S)       # C / JS blocks
+        src = re.sub(r"(?m)^\s*//.*$", " ", src)               # JS line
+        src = re.sub(r"(?m)^\s*#.*$", " ", src)                # Python line
+        return src
+
+    prev_js = live(PREV)
+    gen_py = live(read("tools/make_panel_preview.py"))
+
+    ok("ESP_LINK_TLM_FIELD_COUNT" in prev_js,
+       "the preview server must DERIVE the telemetry width from plink_config.h",
+       "a retyped width silently truncates the frame when a field is added")
+    ok("ESP_LINK_TLM_FIELD_COUNT" in gen_py,
+       "the preview generator must DERIVE the telemetry width from plink_config.h",
+       "a retyped width silently truncates the frame when a field is added")
+
+    # no literal array of the old width may survive in either simulator
+    for name, src in (("preview server", prev_js), ("preview generator", gen_py)):
+        lits = re.findall(r"new Array\((\d+)\)", src)
+        ok(not lits,
+           f"the {name} still builds a fixed-length telemetry array",
+           f"literal length(s) {', '.join(lits)} - derive from "
+           f"ESP_LINK_TLM_FIELD_COUNT ({n_fields}) instead")
+
+    # the link-health counters must exist on both, or the banner is untestable
+    for name, src in (("preview server", prev_js), ("preview generator", gen_py)):
+        missing = [k for k in ("vm", "ce") if not re.search(r"\b" + k + r"\s*:", src)]
+        ok(not missing,
+           f"the {name} does not publish link health {missing}",
+           "lnkhealth() reads d.vm / d.ce, so the mismatch banner cannot be previewed")
+
+    # [EN] measurement.c: batteryLow IS battery12 and battery24 = low + high.
+    #      The dead 150 mV + 0.47 R bench compensation must not reappear in a
+    #      simulator after being switched off in calibration.h.
+    # [FA] در measurement.c باتری پایین همان battery12 است و battery24 برابر
+    #      پایین + بالا. جبران مردهٔ ۱۵۰mV + ۰٫۴۷ اهم نباید بعد از خاموش شدن
+    #      در calibration.h دوباره در شبیه‌ساز سبز شود.
+    comp_off = re.search(r"#define\s+CAL_BATTERY12_BENCH_COMP_ENABLE\s+0u",
+                         read("Firmware/Modules/Measurement/calibration.h"))
+    if comp_off:
+        for name, src in (("preview server", prev_js), ("preview generator", gen_py)):
+            ok(not re.search(r"t\[16\]\s*=\s*[^;]*\b150\b", src),
+               f"the {name} still applies the disabled 12 V bench compensation",
+               "CAL_BATTERY12_BENCH_COMP_ENABLE is 0, so battery12 == batteryLow")
+
+    _preview_server_behaviour(n_fields)
+
+
+def _preview_server_behaviour(n_fields):
+    """[EN] Reading the simulator's source only proves what it says. This
+       starts it and asks it, because the three ways it actually went wrong -
+       a literal loop bound, a width named in an error string while the
+       derivation was gone, and a voltage identity that is arithmetic rather
+       than text - are all invisible to grep. Skipped (not failed) when node
+       is unavailable, so the audit still runs on a bare box.
+       [FA] خواندن سورس شبیه‌ساز فقط حرفش را ثابت می‌کند. اینجا اجرا و از خودش
+       پرسیده می‌شود، چون سه خرابی واقعی - کران حلقهٔ عددی، عرضی که فقط در
+       رشتهٔ خطا نامش بود در حالی که اشتقاق رفته بود، و اتحاد ولتاژی که حساب
+       است نه متن - هیچ‌کدام با grep دیده نمی‌شوند. اگر node نباشد رد می‌شود
+       نه اینکه شکست بخورد."""
+    import json
+    import shutil
+    import socket
+    import subprocess
+    import time
+    import urllib.request
+
+    if shutil.which("node") is None:
+        return
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+
+    env = dict(os.environ, PORT=str(port))
+    proc = subprocess.Popen(["node", "tools/panel_preview_server.js"],
+                            cwd=str(ROOT), env=env,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+    try:
+        base, live_t, live_m = f"http://127.0.0.1:{port}", None, None
+        for _ in range(50):
+            if proc.poll() is not None:
+                break
+            try:
+                live_t = json.load(urllib.request.urlopen(base + "/t", timeout=1))
+                live_m = json.load(urllib.request.urlopen(base + "/m", timeout=1))
+                break
+            except Exception:
+                time.sleep(0.1)
+
+        if not ok(live_t is not None, "the preview server does not answer /t",
+                  (proc.stderr.read().decode()[-300:] if proc.poll() is not None else
+                   "no response within 5 s")):
+            return
+
+        ok(len(live_t["t"]) == n_fields,
+           "the running preview server sends the wrong telemetry width",
+           f"/t returned {len(live_t['t'])} fields, the frame carries {n_fields}")
+        ok(all(len(live_m[k]) == n_fields for k in ("s", "lo", "hi", "la")),
+           "the running preview server sends wrong-width /m statistics",
+           f"got { {k: len(live_m[k]) for k in ('s','lo','hi','la')} }, expected {n_fields}")
+        ok("vm" in live_t and "ce" in live_t,
+           "the running preview server omits the link-health counters")
+
+        # measurement.c identities, sampled across the demo scenarios
+        bad, samples = [], []
+        for _ in range(12):
+            t = json.load(urllib.request.urlopen(base + "/t", timeout=1))["t"]
+            samples.append(t)
+            if t[16] != t[17]:
+                bad.append(f"battery12 {t[16]} != batteryLow {t[17]}")
+            if t[15] != t[17] + t[18]:
+                bad.append(f"battery24 {t[15]} != {t[17]}+{t[18]}")
+            time.sleep(0.08)
+        ok(not bad,
+           "the running preview server emits voltages the board cannot produce",
+           "; ".join(sorted(set(bad))[:3]))
+
+        # [EN] Right LENGTH is not the same as right CONTENT. A stats loop that
+        #      stops early still returns a full-width array - just with zeros
+        #      where the calibration counts belong. Any field that /t reports
+        #      non-zero in EVERY sample must also be non-zero in /m, which is
+        #      stable for the voltages and counts while letting a current or
+        #      the fault mask legitimately sit at zero.
+        # [FA] طولِ درست یعنیِ محتوای درست نیست. حلقهٔ آماری که زود متوقف شود
+        #      باز هم آرایه‌ای با عرض کامل برمی‌گرداند - فقط آنجا که شمارش‌های
+        #      کالیبراسیون باید باشند صفر است. هر فیلدی که /t در «همهٔ» نمونه‌ها
+        #      ناصفر می‌دهد باید در /m هم ناصفر باشد؛ این برای ولتاژها و
+        #      شمارش‌ها پایدار است و به جریان یا ماسک خطا اجازهٔ صفر بودن می‌دهد.
+        always = [k for k in range(n_fields) if all(s[k] != 0 for s in samples)]
+        stats = json.load(urllib.request.urlopen(base + "/m", timeout=1))
+        holes = [k for k in always if stats["la"][k] == 0]
+        ok(not holes,
+           "the running preview server's /m statistics skip telemetry fields",
+           f"indices {holes} are always non-zero on /t but zero in /m - "
+           "a loop bound that is not the derived field width")
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except Exception:
+            proc.kill()
 
 
 

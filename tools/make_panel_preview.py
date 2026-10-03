@@ -41,7 +41,47 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "esp_link_panel" / "plink_panel.h"
 PREV = ROOT / "tools" / "panel_preview_server.js"
+CFG = ROOT / "esp_link_panel" / "plink_config.h"
+BSP = ROOT / "Firmware" / "Bsp" / "Src" / "bsp_measurement.c"
 OUT = ROOT / "esp_link_panel" / "panel_preview.html"
+
+
+def c_define(path, name):
+    """[EN] One unsigned #define, read from the firmware. Dies loudly if the
+       name moved, because a silently-missing constant is how the shim drifted
+       away from the frame in the first place.
+       [FA] یک #define بدون علامت از فرم‌ور. اگر نام جابه‌جا شود با صدای بلند
+       می‌میرد، چون ثابتی که بی‌صدا غایب شود همان راهی است که شیم از ابتدا از
+       قاب فاصله گرفت."""
+    m = re.search(r"#define\s+" + name + r"\s+(\d+)u?(?![0-9A-Za-z_])",
+                  path.read_text(encoding="utf-8"))
+    if not m:
+        sys.exit("could not read %s from %s" % (name, path.name))
+    return int(m.group(1))
+
+
+def tlm_fields():
+    """[EN] Telemetry width, from the firmware header. / [FA] عرض تله‌متری."""
+    return c_define(CFG, "ESP_LINK_TLM_FIELD_COUNT")
+
+
+def divider_scales():
+    """[EN] mV per ADC count for the 24 V and 12 V nets, derived from the BSP
+       resistors exactly as bsp_measurement.c derives them, so the simulated
+       raw counts reconstruct the simulated volts.
+       [FA] میلی‌ولت بر هر شمارش ADC برای نت‌های ۲۴ و ۱۲ ولت، از مقاومت‌های BSP
+       دقیقاً به همان روش bsp_measurement.c مشتق می‌شود تا شمارش خام شبیه‌سازی
+       همان ولتاژ شبیه‌سازی را بازبسازد."""
+    vref = c_define(BSP, "BSP_MEASUREMENT_VREF_MV")
+    full = c_define(BSP, "BSP_MEASUREMENT_ADC_FULL_SCALE")
+    shunt = c_define(BSP, "BSP_MEASUREMENT_SENSE_SHUNT_OHMS")
+    top24 = c_define(BSP, "BSP_MEASUREMENT_SENSE_TOP_24V_OHMS")
+    top12 = c_define(BSP, "BSP_MEASUREMENT_DIV12_TOP_OHMS")
+    lsb = vref / full
+    return (lsb * (top24 + shunt) / shunt,
+            lsb * (top12 + shunt) / shunt,
+            round(1200 / vref * full),
+            vref)
 
 
 def panel_html():
@@ -108,12 +148,16 @@ function tlm(){
      distinguishable on the chart instead of sitting on top of each other */
   const b = sim(); b.v = Math.round(a.v*0.965); b.i = Math.round(a.i*0.88);
   const v12 = a.v, vhigh = b.v, v24 = v12 + vhigh;
-  const t = new Array(25).fill(0);
+  const t = new Array(__TLMN__).fill(0);
   t[3]  = b.i; t[4] = b.i; t[5] = 180; t[6]  = b.st;   /* channel 1 = Vhigh */
   t[10] = a.i; t[11] = a.i; t[12] = 190; t[13] = a.st; /* channel 2 = Vlow  */
   t[14] = 24160; t[15] = v24; t[16] = v12; t[17] = v12; t[18] = vhigh; t[19] = 0;
-  t[20] = 2687;  t[21] = Math.round(v24/8.864);
-  t[22] = Math.round(v12/4.882); t[23] = 1489; t[24] = 3300;
+  /* raw counts derived from the volts above, so count x scale == the mV shown
+     (t[20] used to be a hand-typed 2687, which claimed 23819 mV while t[14]
+     said 24160 - a 341 mV lie sitting on the calibration page) */
+  const cnt = (mv,sc) => Math.max(0, Math.min(__FULL__, Math.round(mv/sc)));
+  t[20] = cnt(t[14], __S24__); t[21] = cnt(v24, __S24__);
+  t[22] = cnt(v12, __S12__);   t[23] = __VRI__; t[24] = __VDDA__;
   seq = (seq+1) & 0xFFFF;
   return {on:1, age:40, seq:seq, fl:0, n:seq, q:0, q2:0, q3:0, q4:0,
           ka:120, vm:0, ce:0, t:t, p:P};
@@ -126,7 +170,7 @@ window.fetch = function(url, opt){
   if(u.indexOf('/t') === 0){
     body = tlm();
   } else if(u.indexOf('/m') === 0){
-    const z = new Array(25).fill(0), d = tlm();
+    const d = tlm();
     body = {n:10, s:d.t.map(x=>x*10), lo:d.t, hi:d.t, la:d.t,
             or:0, seq:d.seq, fl:0};
   } else if(u.indexOf('/s') === 0){
@@ -158,7 +202,18 @@ window.addEventListener('DOMContentLoaded', function(){
 
 def main():
     html = panel_html()
-    shim = SHIM.replace("__PARAMS__", repr(factory_params()))
+    s24, s12, vrefint, vdda = divider_scales()
+    shim = (SHIM.replace("__PARAMS__", repr(factory_params()))
+                .replace("__TLMN__", str(tlm_fields()))
+                .replace("__FULL__", str(c_define(BSP, "BSP_MEASUREMENT_ADC_FULL_SCALE")))
+                .replace("__S24__", "%.4f" % s24)
+                .replace("__S12__", "%.4f" % s12)
+                .replace("__VRI__", str(vrefint))
+                .replace("__VDDA__", str(vdda)))
+    if "__" in re.sub(r"[A-Za-z0-9_]*__[A-Za-z0-9_]*\(", "", shim.replace("__PARAMS__", "")):
+        leftover = sorted(set(re.findall(r"__[A-Z0-9]+__", shim)))
+        if leftover:
+            sys.exit("unsubstituted placeholder(s) in shim: " + ", ".join(leftover))
 
     # the shim must run BEFORE the panel's own script, so inject at </head>
     if "</head>" not in html:
