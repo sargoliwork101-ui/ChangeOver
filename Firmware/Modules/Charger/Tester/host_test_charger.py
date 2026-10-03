@@ -2573,8 +2573,32 @@ def test_two_loop_pid_v124():
     #      پنل تغییرپذیر باشند». قانون قبلی «پشتیبان‌ها نباید از پنل تنظیم
     #      شوند» بود. حالا ایمنی را پنجرهٔ گیره تأمین می‌کند نه دسترس‌ناپذیری،
     #      پس همان چک می‌شود: شناسه‌ها هستند، و ولتاژ پشتیبان فقط پایین می‌رود.
-    check(all(f'id="q{i}"' in ino for i in range(93, 108)),
-          "the user-ordered limits block (93..107) must have a panel input for EVERY id")
+# [EN] v1.29 (user order): the separate card of fields is gone - the value
+    #      in the operating table IS the input, clicked in place. So the thing
+    #      to prove is no longer "a field exists" but "every id is drawn as an
+    #      editable cell AND has a window to edit it with". A cell without an
+    #      EVB row renders as an em dash and silently cannot be clicked.
+    # [FA] کادر جدای فیلدها حذف شد - خودِ مقدار در جدول عملکرد همان ورودی است
+    #      که درجا کلیک می‌شود. پس چیزی که باید اثبات شود دیگر «فیلد هست» نیست
+    #      بلکه «هر شناسه به‌صورت خانهٔ ویرایش‌پذیر رسم می‌شود و پنجره‌ای برای
+    #      ویرایش دارد» است. خانه‌ای که ردیف EVB نداشته باشد خط تیره می‌شود و
+    #      بی‌صدا کلیک‌ناپذیر است.
+    evb = re.search(r"const EVB=\{(.*?)\};", ino, re.S)
+    check(evb, "the panel must declare the click-to-edit bounds table EVB")
+    evb_ids = {int(x) for x in re.findall(r"(\d+):\[", evb.group(1))}
+    ctab = ino[ino.find("function ctab()"):]
+    ctab = ctab[:ctab.find("\ndocument.addEventListener")]
+    for i in range(93, 108):
+        check(i in evb_ids, f"limit id {i} has no EVB window, so its cell cannot be clicked")
+        check(f"ev({i})" in ctab, f"limit id {i} is never drawn in the operating table")
+    check('id="q93"' not in ino and 'id="q107"' not in ino,
+          "the separate limits card must be GONE: a table showing a number next to a "
+          "form setting the same number is two places to be wrong")
+    check("EVOPEN" in ino and "document.activeElement" in ino,
+          "an open editor must suppress the re-render, or the ~1 s telemetry tick "
+          "deletes the field under the user's fingers")
+    check("e.key==='Escape'" in ino and "e.key==='Enter'" in ino,
+          "click-to-edit needs both a commit key and a cancel key")
     check("BACKSTOP" in text_h and "CHG_LIMIT_PARAM_BACKSTOP_MV" in text_h,
           "the backstop voltage must be a parameter id, not a bare #define")
     bs = re.search(r"CHG_LIMIT_PARAM_BACKSTOP_MV[^\\n]*\\n[^\\n]*?(\\d+)u?,\\s*(\\d+)u?,\\s*(\\d+)u?", text_c)

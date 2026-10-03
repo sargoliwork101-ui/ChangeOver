@@ -328,6 +328,51 @@ def sec_defaults(ids):
             bad_c.append(f"id {pid}: fw {want} vs preview P {prev_p[pid]}")
     ok(not bad_c, "computed firmware default != panel/preview default",
        "; ".join(bad_c))
+
+    # [EN] v1.29: the limits lost their form fields and became click-to-edit
+    #      cells in the operating table, so their min/max now live in a JS
+    #      object the browser can reach (EVB) instead of in HTML attributes.
+    #      That is a hand-copied table, which this repo allows only under
+    #      watch: every row is pinned to the firmware's own ParamMin/ParamMax
+    #      here. A window that is wider than the firmware's lets the panel
+    #      offer a value the board will silently clamp; narrower, and a legal
+    #      setting becomes untypeable.
+    # [FA] حدها فیلد فرم‌شان را از دست دادند و به خانه‌های کلیک-و-ویرایش جدول
+    #      عملکرد تبدیل شدند، پس کمینه/بیشینه‌شان حالا در یک آبجکت JS (EVB)
+    #      است نه در صفت‌های HTML. این یک جدول دست‌نویس است و در این مخزن فقط
+    #      زیر نظر مجاز است: هر ردیفش همین‌جا به ParamMin/ParamMax خود فرم‌ور
+    #      میخ می‌شود. پنجرهٔ بازتر یعنی پنل مقداری را پیشنهاد دهد که برد بی‌صدا
+    #      گیره‌اش می‌زند؛ پنجرهٔ تنگ‌تر یعنی تنظیمِ مجاز اصلاً تایپ‌شدنی نباشد.
+    evb = re.search(r"const EVB=\{(.*?)\};", P_PAN, re.S)
+    if ok(evb is not None, "the panel lost its click-to-edit bounds table"):
+        rows = re.findall(r"(\d+):\[(-?\d+),(-?\d+),(\d+),'(\w+)'\]", evb.group(1))
+        ok(len(rows) >= 15, "EVB does not cover the limits block",
+           f"only {len(rows)} rows")
+        bad_b, seen = [], set()
+        for pid, lo, hi, step, unit in rows:
+            pid, lo, hi, step = int(pid), int(lo), int(hi), int(step)
+            seen.add(pid)
+            if pid < len(pmin) and lo != pmin[pid]:
+                bad_b.append(f"id {pid} min {lo} vs firmware {pmin[pid]}")
+            if pid < len(pmax) and hi != pmax[pid]:
+                bad_b.append(f"id {pid} max {hi} vs firmware {pmax[pid]}")
+            if step < 1 or step > max(1, hi - lo):
+                bad_b.append(f"id {pid} step {step} outside its own window")
+        ok(not bad_b, "EVB window != firmware ParamMin/ParamMax",
+           "; ".join(bad_b))
+        lim_lo = define_alias(CHG_H, "CHG_LIMIT_PARAM_FIRST_ID")
+        lim_hi = define_alias(CHG_H, "CHG_LIMIT_PARAM_LAST_ID")
+        missing = [i for i in range(lim_lo, lim_hi + 1) if i not in seen]
+        ok(not missing,
+           "a charger limit has no click-to-edit cell and no form field",
+           f"ids {missing} became unreachable from the panel")
+        # the cells must actually be rendered, not merely declared
+        tab = block(P_PAN, "function ctab()")
+        notrendered = [i for i in range(lim_lo, lim_hi + 1)
+                       if f"ev({i})" not in tab]
+        ok(not notrendered,
+           "a limit is in EVB but never drawn in the operating table",
+           f"ids {notrendered} are settable in theory only")
     ok(not bad_p, "documented default != preview server P", "; ".join(bad_p))
 
     lo_hi = [f"id {i}" for i in range(min(len(pmin), len(pmax))) if pmin[i] > pmax[i]]

@@ -17,3 +17,6 @@ __pycache__/
 # Excel/Office lock+temp files (e.g. DOC/~$State.xlsx)
 ~$*
 *.tmp
+
+# node tooling for the optional panel behaviour test (esp_link_panel/Tester)
+node_modules/

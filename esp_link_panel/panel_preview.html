@@ -34,6 +34,20 @@ section{margin-top:12px}
 .cd{background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 30%),var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--sh)}
 .ti{font-size:12.5px;font-weight:700;color:var(--mu);margin-bottom:10px;text-transform:uppercase;letter-spacing:.3px}
 .lb{color:var(--mu);font-size:12px}
+/* [EN] v1.29 click-to-edit (user order): the value IS the control. A dotted
+   underline is the only affordance - a number that looks like a button stops
+   reading like a number, and this table's whole job is to be read.
+   [FA] ویرایش با کلیک (دستور کاربر): خودِ عدد همان کنترل است. تنها نشانه،
+   زیرخط نقطه‌چین است - عددی که شبیه دکمه باشد دیگر مثل عدد خوانده نمی‌شود و
+   کار اصلی این جدول خوانده‌شدن است. */
+.ev{color:var(--ac);border-bottom:1px dashed var(--ac);cursor:pointer;white-space:nowrap}
+.ev:hover{color:var(--ac2);border-bottom-color:var(--ac2)}
+.ev.ro{color:var(--tx);border:0;cursor:default}
+.ev.cl{color:var(--wa);border-bottom-color:var(--wa)}
+.evw{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.evi{width:11ch;background:var(--in);color:var(--tx);border:1px solid var(--ac);border-radius:5px;
+     padding:3px 6px;font:inherit;font-size:13px;text-align:left}
+.evu{color:var(--mu);font-size:11px}
 .fl{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid var(--ln)}
 .tg{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--rs);color:var(--mu);border:1px solid transparent;display:inline-flex;align-items:center;gap:6px}
 .tg::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.9}
@@ -249,7 +263,10 @@ window.addEventListener('DOMContentLoaded', function(){
 <div class="sec">فیلتر جریان <span class="lb">(مشترک هر دو کانال)</span></div><div class="frr" id="fg"></div><div class="fx fxw" id="ff"></div></div>
 
 <div class="ch" id="ch"></div>
-<div class="cd" id="ctb"></div>
+<div class="cd">
+<div class="hd"><b>جدول عملکرد شارژ</b> <button class="ib" data-p="93,94,95,96,97,98,99,100,101,102,103,104,105,106,107" onclick="this.classList.toggle('o')">!<span class="it">هر عددی که در این جدول آبی و زیرخط‌دار است، خودش ورودی خودش است: روی آن کلیک کنید، مقدار تازه را تایپ کنید و Enter بزنید (Esc لغو می‌کند). کادر جداگانه‌ای برای این تنظیمات وجود ندارد — جدولی که عددی را نشان بدهد کنار فرمی که همان عدد را تنظیم کند، یعنی دو جا برای غلط‌بودن.<br>همهٔ مقادیر از پارامترهای «اعمال‌شدهٔ» خود برد خوانده می‌شوند، نه از اعداد نوشته‌شده در صفحه. برد هر مقدار را به بازهٔ مجازش گیره می‌زند؛ اگر عددی که برگشت با چیزی که تایپ کردید فرق داشت، آن خانه <b>زرد</b> می‌شود و با نگه‌داشتن ماوس رویش می‌بینید چه خواسته بودید.<br>تا v1.27 این‌ها ثابت کامپایل بودند و فقط با فلش دوباره عوض می‌شدند — حتی راهنمای PID نوشته بود پشتیبان‌های سخت «از پنل تنظیم نمی‌شوند». به دستور کاربر (۲۰۲۶-۱۰-۰۳) همه تنظیم‌شدنی شدند.<br><b>پایان ابزورب دو راه دارد:</b> راه عادی «تیپر» است (جریان زیر جریان تیپر، به‌مدت پایداری تیپر)؛ راه پشتیبان «سقف زمان» است که <i>از لحظهٔ افت جریان زیر جریان مسلح‌کننده</i> می‌شمارد، نه از ورود به ابزورب. سقف زمان را صفر کنید تا کلاً برداشته شود و فقط تیپر پایان بدهد — برای پک کند همین کار را بکنید.<br><b>گین پشتیبان صفر = آن پشتیبان خاموش.</b> ولتاژ پشتیبان، قطع اضافه‌ولتاژ و خطای سخت جریان فقط پایین‌آوردنی‌اند و هرگز بالاتر از مقدار کارخانه نمی‌روند.<br>سقف دیوتی عمداً ویرایش‌پذیر نیست: مشخصهٔ مغناطیس برد است نه سلیقه، و سقف هر کانال جداگانه از زیرتب شارژرها پایین می‌آید.</span></button><span class="lb">· هر دو کانال · شناسه‌های ۹۳..۱۰۷ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
+<div id="ctb"></div>
+</div>
 </div>
 <div class="pgx" id="p1"></div>
 <div class="pgx" id="p2">
@@ -459,7 +476,7 @@ window.addEventListener('DOMContentLoaded', function(){
 </div>
 <div class="sgx" id="s3">
 <div class="cd">
-<div class="hd"><b>PID دوحلقه‌ای شارژ (CC/CV)</b> <button class="ib" data-p="83,84,85,86,87,88,89,90,91,92" onclick="this.classList.toggle('o')">!<span class="it">به‌جای پله‌های ثابت قدیمی، دیوتی را PID تعیین می‌کند. دقیقاً دو حلقه دارد، چون شارژ باتری دقیقاً دو چیز را باید هم‌زمان محدود کند:<br><b>حلقهٔ جریان (CC):</b> تا وقتی باتری خالی است، جریان ثابت ۶۵۰ میلی‌آمپر می‌دهد.<br><b>حلقهٔ ولتاژ (CV):</b> وقتی باتری پر می‌شود، ولتاژ را روی ۱۴٫۴ نگه می‌دارد و دیوتی را پایین می‌آورد. «نرخ صعود» این ردیف همان کلید «رشد کندتر ابزورب» است.<br>هر لحظه هر حلقه‌ای که دیوتی کمتری بخواهد برنده است، پس هر دو حد همیشه می‌بندند.<br><br><b>دو حلقه چطور یک دیوتی را می‌رانند؟</b> دو خروجی وجود ندارد — یک دیوتی هست، یک انتگرال‌گیر، و دو حلقه که نوبتی آن را می‌رانند. تصور کنید دو نفر بالای <i>یک</i> ولوم ایستاده‌اند و قانون یک خط است: هر لحظه هر کس عدد کمتری بخواهد ولوم دست اوست، و نفر دیگر آن پاس کاملاً نادیده گرفته می‌شود (نه میانگین، نه جمع). اول شارژ باتری خالی است و تا ۱۴٫۴ کلی جا دارد، پس نفر «ولتاژ» می‌گوید «+۱۱۰ پرمیل راحت برو بالا» ولی نفر «جریان» می‌گوید «+۷٫۶ پرمیل، یواش» ⇒ عدد کمتر برنده، حلقهٔ جریان می‌راند (همان CC). حدود دقیقهٔ ۱۱۳ ولتاژ به ۱۴٫۴ می‌رسد، نفر «ولتاژ» عددش منفی می‌شود (یعنی «بکش پایین») و ولوم را می‌گیرد (همان CV). در کل شارژ فقط <b>یک بار</b> این تحویل رخ می‌دهد.<br><b>و چرا لحظهٔ تحویل تکان نمی‌خورد:</b> چون انتگرال‌گیر یکی است و مشترک. سر همان پاس تحویل، انتگرال ۱۹۹۵۱۱ می‌ماند و دیوتی روی ۲۰۰ ثابت است — صفر پرش. اگر هر حلقه انتگرال خودش را داشت، آن‌که بی‌کار بود انتگرالش جای دیگری می‌ماند و لحظهٔ تحویل دیوتی می‌پرید. پس ۱۰ عدد یعنی «دستورالعمل نفر اول + دستورالعمل نفر دوم»، نه دو خروجی. این روش اسم استاندارد دارد: min-select (کمینه‌گیری)، همان چیزی که در هر شارژر CC/CV صنعتی هست.<br><b>چرا یک PID تنها کافی نیست؟</b> امتحان شد و روی شبیه‌ساز مردود شد: یک ردیف ضریب مشترک یعنی مقایسهٔ میلی‌ولت با میلی‌آمپر و لرزش دیوتی (۱۴۰۸ تا ۸۴۶۶۰ تغییر جهت در ۱۰ ساعت در برابر ۴ تای الان)؛ و فقط یک PID ولتاژ با پشتیبان ۶۵۰ به‌عنوان تنها ترمز جریان، جریان را روی ۷۰۷ میلی‌آمپر می‌برد، چون پشتیبان فقط <i>بعد از</i> رد شدن از حد جواب می‌دهد. دو حلقه کمترین چیزی است که واقعاً کار می‌کند.<br><b>مرحلهٔ سوم قبلی حذف شد:</b> اندازه‌گیری نشان داد هیچ سودی ندارد و پنج عدد اضافه بود.<br>واحدها: Kp = پرمیل دیوتی به ازای هر ولت خطا (حلقهٔ ولتاژ) یا هر آمپر خطا (حلقهٔ جریان). Ki = میلی‌پرمیل بر ثانیه. نرخ صعود/نزول = سقف سرعت حرکت نقطهٔ کار (۱۰۰۰ = ۱ پرمیل بر ثانیه).<br>Kd پیش‌فرض صفر است؛ مشتق روی سیگنال نویزی فقط دیوتی را می‌لرزاند.<br>اعداد پیش‌فرض روی مدل کالیبره شده‌اند (۱۴٫۴ ولت، ۶۵۰ میلی‌آمپر، سقف ۵۰۰ پرمیل) — می‌توانید بهینه‌شان کنید و با دکمهٔ پایین برگردید.<br><b>دو پشتیبان سخت همیشه فعال‌اند و از v1.28 از پنل تنظیم می‌شوند:</b> عبور جریان از سقف بالک یا ولتاژ از «ولتاژ پشتیبان سخت» سقف دیوتی را به تناسب تجاوز جمع می‌کند — ولتاژ و دو گینش در کارت «حدها، گین‌ها و زمان‌بندی‌ها» پایین همین زیرتب‌اند (۱۰۰..۱۰۲)، و گین صفر یعنی آن پشتیبان خاموش.<br>بقیهٔ حفاظت‌ها دست‌نخورده‌اند: سقف دیوتی ۵۰۰‰، خطای سخت جریان، قطع OV و کل ماشین حالت.</span></button><span class="lb">· شناسه‌های ۸۳..۹۲ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
+<div class="hd"><b>PID دوحلقه‌ای شارژ (CC/CV)</b> <button class="ib" data-p="83,84,85,86,87,88,89,90,91,92" onclick="this.classList.toggle('o')">!<span class="it">به‌جای پله‌های ثابت قدیمی، دیوتی را PID تعیین می‌کند. دقیقاً دو حلقه دارد، چون شارژ باتری دقیقاً دو چیز را باید هم‌زمان محدود کند:<br><b>حلقهٔ جریان (CC):</b> تا وقتی باتری خالی است، جریان ثابت ۶۵۰ میلی‌آمپر می‌دهد.<br><b>حلقهٔ ولتاژ (CV):</b> وقتی باتری پر می‌شود، ولتاژ را روی ۱۴٫۴ نگه می‌دارد و دیوتی را پایین می‌آورد. «نرخ صعود» این ردیف همان کلید «رشد کندتر ابزورب» است.<br>هر لحظه هر حلقه‌ای که دیوتی کمتری بخواهد برنده است، پس هر دو حد همیشه می‌بندند.<br><br><b>دو حلقه چطور یک دیوتی را می‌رانند؟</b> دو خروجی وجود ندارد — یک دیوتی هست، یک انتگرال‌گیر، و دو حلقه که نوبتی آن را می‌رانند. تصور کنید دو نفر بالای <i>یک</i> ولوم ایستاده‌اند و قانون یک خط است: هر لحظه هر کس عدد کمتری بخواهد ولوم دست اوست، و نفر دیگر آن پاس کاملاً نادیده گرفته می‌شود (نه میانگین، نه جمع). اول شارژ باتری خالی است و تا ۱۴٫۴ کلی جا دارد، پس نفر «ولتاژ» می‌گوید «+۱۱۰ پرمیل راحت برو بالا» ولی نفر «جریان» می‌گوید «+۷٫۶ پرمیل، یواش» ⇒ عدد کمتر برنده، حلقهٔ جریان می‌راند (همان CC). حدود دقیقهٔ ۱۱۳ ولتاژ به ۱۴٫۴ می‌رسد، نفر «ولتاژ» عددش منفی می‌شود (یعنی «بکش پایین») و ولوم را می‌گیرد (همان CV). در کل شارژ فقط <b>یک بار</b> این تحویل رخ می‌دهد.<br><b>و چرا لحظهٔ تحویل تکان نمی‌خورد:</b> چون انتگرال‌گیر یکی است و مشترک. سر همان پاس تحویل، انتگرال ۱۹۹۵۱۱ می‌ماند و دیوتی روی ۲۰۰ ثابت است — صفر پرش. اگر هر حلقه انتگرال خودش را داشت، آن‌که بی‌کار بود انتگرالش جای دیگری می‌ماند و لحظهٔ تحویل دیوتی می‌پرید. پس ۱۰ عدد یعنی «دستورالعمل نفر اول + دستورالعمل نفر دوم»، نه دو خروجی. این روش اسم استاندارد دارد: min-select (کمینه‌گیری)، همان چیزی که در هر شارژر CC/CV صنعتی هست.<br><b>چرا یک PID تنها کافی نیست؟</b> امتحان شد و روی شبیه‌ساز مردود شد: یک ردیف ضریب مشترک یعنی مقایسهٔ میلی‌ولت با میلی‌آمپر و لرزش دیوتی (۱۴۰۸ تا ۸۴۶۶۰ تغییر جهت در ۱۰ ساعت در برابر ۴ تای الان)؛ و فقط یک PID ولتاژ با پشتیبان ۶۵۰ به‌عنوان تنها ترمز جریان، جریان را روی ۷۰۷ میلی‌آمپر می‌برد، چون پشتیبان فقط <i>بعد از</i> رد شدن از حد جواب می‌دهد. دو حلقه کمترین چیزی است که واقعاً کار می‌کند.<br><b>مرحلهٔ سوم قبلی حذف شد:</b> اندازه‌گیری نشان داد هیچ سودی ندارد و پنج عدد اضافه بود.<br>واحدها: Kp = پرمیل دیوتی به ازای هر ولت خطا (حلقهٔ ولتاژ) یا هر آمپر خطا (حلقهٔ جریان). Ki = میلی‌پرمیل بر ثانیه. نرخ صعود/نزول = سقف سرعت حرکت نقطهٔ کار (۱۰۰۰ = ۱ پرمیل بر ثانیه).<br>Kd پیش‌فرض صفر است؛ مشتق روی سیگنال نویزی فقط دیوتی را می‌لرزاند.<br>اعداد پیش‌فرض روی مدل کالیبره شده‌اند (۱۴٫۴ ولت، ۶۵۰ میلی‌آمپر، سقف ۵۰۰ پرمیل) — می‌توانید بهینه‌شان کنید و با دکمهٔ پایین برگردید.<br><b>دو پشتیبان سخت همیشه فعال‌اند و از v1.28 از پنل تنظیم می‌شوند:</b> عبور جریان از سقف بالک یا ولتاژ از «ولتاژ پشتیبان سخت» سقف دیوتی را به تناسب تجاوز جمع می‌کند — ولتاژ و دو گینش (۱۰۰..۱۰۲) در «جدول عملکرد شارژ» پایین صفحهٔ شارژرها تنظیم می‌شوند — روی خود عدد کلیک کنید. گین صفر یعنی آن پشتیبان خاموش.<br>بقیهٔ حفاظت‌ها دست‌نخورده‌اند: سقف دیوتی ۵۰۰‰، خطای سخت جریان، قطع OV و کل ماشین حالت.</span></button><span class="lb">· شناسه‌های ۸۳..۹۲ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
 <div class="sec">حلقهٔ جریان — CC (بالک) <span class="lb">· پیش‌فرض ۱۲ / ۱۶۰۰ / ۰ / ۱۰۰۰ / ۱۰۰۰ · کالیبرهٔ کارخانه</span></div>
 <div class="bqr">
 <label>Kp (‰ بر آمپر)<input type="number" id="q83" step="5" min="0" max="20000"><span class="lb" id="a83">—</span></label>
@@ -478,37 +495,6 @@ window.addEventListener('DOMContentLoaded', function(){
 </div>
 <div id="pw" style="margin:6px 0 0"></div>
 <div class="bqr"><button class="sb sb2" onclick="pdef()">بازگردانی پیش‌فرض کارخانهٔ PID</button></div>
-</div>
-<div class="cd">
-<div class="hd"><b>حدها، گین‌ها و زمان‌بندی‌ها</b> <button class="ib" data-p="93,94,95,96,97,98,99,100,101,102,103,104,105,106,107" onclick="this.classList.toggle('o')">!<span class="it">تا v1.27 این‌ها ثابت کامپایل بودند و فقط با فلش دوباره عوض می‌شدند — حتی راهنمای PID بالا نوشته بود پشتیبان‌های سخت «از پنل تنظیم نمی‌شوند». به دستور کاربر (۲۰۲۶-۱۰-۰۳) همه تنظیم‌شدنی شدند.<br><b>پایان ابزورب دو راه دارد و هر دو اینجاست:</b> راه عادی «تیپر» است (جریان زیر «جریان تیپر» پروفایل، به‌مدت «پایداری تیپر»)؛ راه پشتیبان «سقف زمان» است که <i>از لحظهٔ افت جریان زیر جریان مسلح‌کننده</i> می‌شمارد، نه از ورود به ابزورب. سقف زمان را صفر کنید تا کلاً برداشته شود و فقط تیپر پایان بدهد — برای پک کند همین کار را بکنید.<br><b>گین پشتیبان صفر = آن پشتیبان خاموش.</b> ولتاژ پشتیبان فقط پایین‌بردنی است و هرگز از مقدار کارخانه بالاتر نمی‌رود.<br>هر عدد به پنجرهٔ مجاز خودش گیره می‌خورد و مقدار «اعمال‌شدهٔ» برد کنار همان فیلد می‌آید؛ اگر با چیزی که تایپ کردید فرق دارد یعنی گیره خورده.<br>سقف‌هایی که عمداً اینجا نیستند: سقف دیوتی ۵۰۰‰ (مشخصهٔ ماسفت برد است نه انتخاب تنظیمی — سقف هر کانال از زیرتب شارژرها پایین‌آوردنی است) و خطای سخت جریان/قطع OV که شناسه‌های فقط-پایین ۳۵..۳۶ خودشان را دارند.</span></button><span class="lb">· شناسه‌های ۹۳..۱۰۷ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
-<div class="sec">پایان ابزورب <span class="lb">· سقف زمان از افت جریان می‌شمارد، نه از ورود به ابزورب · صفر = بدون سقف زمانی</span></div>
-<div class="bqr">
-<label>سقف زمان ابزورب (ms)<input type="number" id="q93" step="60000" min="0" max="21600000"><span class="lb" id="a93">—</span></label>
-<label>جریان مسلح‌کننده (mA)<input type="number" id="q94" step="10" min="10" max="500"><span class="lb" id="a94">—</span></label>
-<label>کمینهٔ شستشو (ms)<input type="number" id="q95" step="60000" min="0" max="7200000"><span class="lb" id="a95">—</span></label>
-<label>پایداری تیپر (ms)<input type="number" id="q96" step="5000" min="1000" max="600000"><span class="lb" id="a96">—</span></label>
-</div>
-<div class="sec">پشتیبان سخت <span class="lb">· گین صفر یعنی آن پشتیبان خاموش · ولتاژ فقط پایین‌بردنی</span></div>
-<div class="bqr">
-<label>ولتاژ پشتیبان (mV)<input type="number" id="q100" step="50" min="13000" max="14800"><span class="lb" id="a100">—</span></label>
-<label>گین پشتیبان جریان<input type="number" id="q101" step="10" min="0" max="2000"><span class="lb" id="a101">—</span></label>
-<label>گین پشتیبان ولتاژ<input type="number" id="q102" step="10" min="0" max="2000"><span class="lb" id="a102">—</span></label>
-</div>
-<div class="sec">رفتار حلقهٔ کنترل</div>
-<div class="bqr">
-<label>بیشینهٔ پلهٔ دیوتی (‰)<input type="number" id="q97" step="1" min="1" max="100"><span class="lb" id="a97">—</span></label>
-<label>هیسترزیس خروجی (m‰)<input type="number" id="q98" step="50" min="0" max="999"><span class="lb" id="a98">—</span></label>
-<label>پنجرهٔ فیلتر ولتاژ<input type="number" id="q99" step="1" min="1" max="64"><span class="lb" id="a99">—</span></label>
-<label>حاشیهٔ ست‌پوینت (mA)<input type="number" id="q103" step="5" min="0" max="100"><span class="lb" id="a103">—</span></label>
-<label>فاصلهٔ رمپ پایین (ms)<input type="number" id="q107" step="50" min="50" max="5000"><span class="lb" id="a107">—</span></label>
-</div>
-<div class="sec">زمان‌بندی‌ها</div>
-<div class="bqr">
-<label>نشست اتصال (ms)<input type="number" id="q104" step="1000" min="0" max="120000"><span class="lb" id="a104">—</span></label>
-<label>قفل ضدلرزش (ms)<input type="number" id="q105" step="500" min="0" max="60000"><span class="lb" id="a105">—</span></label>
-<label>ددمن مود دستی (ms)<input type="number" id="q106" step="500" min="500" max="60000"><span class="lb" id="a106">—</span></label>
-</div>
-<div class="bqr"><button class="sb sb2" onclick="ldef()">بازگردانی پیش‌فرض کارخانهٔ حدها</button></div>
 </div>
 </div>
 <div class="sgx" id="s4">
@@ -969,7 +955,13 @@ function pchk(){const w=[];
  const box=$('pw');if(box)box.innerHTML=!w.length?'<span class="lb">✅ ترکیب PID سالم است · پشتیبان‌های ۶۵۰ میلی‌آمپر و ۱۴٫۸ ولت همیشه فعال‌اند</span>':w.map(x=>'<div class="wn">⚠ '+x.msg+'</div>').join('');
  return w;}
 function pdef(){PDEF.forEach((v,k)=>{const id=83+k,e=$('q'+id);if(e)e.value=v;send(id,v);});pchk();}
-function ldef(){LDEF.forEach((v,k)=>{const id=93+k,e=$('q'+id);if(e)e.value=v;send(id,v);});afresh();}
+/* [EN] The limits have no q-inputs any more - they are edited in place in
+   the operating table - so this just writes and lets the table re-render
+   from the applied values. Clearing EVWANT stops stale clamp warnings.
+   [FA] حدها دیگر ورودی q ندارند و درجا در جدول عملکرد ویرایش می‌شوند، پس
+   اینجا فقط می‌نویسد و جدول از مقادیر اعمال‌شده بازرسم می‌شود. پاک‌کردن
+   EVWANT جلوی هشدار گیرهٔ کهنه را می‌گیرد. */
+function ldef(){LDEF.forEach((v,k)=>{const id=93+k;delete EVWANT[id];send(id,v);});afresh();}
 function sdef(){AIDS.forEach((id,k)=>{if(id<38||id>82)return;const e=$('q'+id);if(e)e.value=ADEF[k];send(id,ADEF[k]);});afresh();}
 /* v1.15b: کارت وضعیت گروه‌بندی‌شده — اسکلت یک‌بار ساخته می‌شود و هر poll فقط متن/رنگ به‌روز می‌شود (بدون پر/خالی شدن و چشمک) */
 const FEXP=[
@@ -980,36 +972,128 @@ const FEXP=[
  ['خطای جیتر کانال ۱','ناپایداری داخلی نمونه‌برداری کانال ۱؛ اگر ماندگار شد برد را ریست کنید.'],
  ['خطای جیتر کانال ۲','ناپایداری داخلی نمونه‌برداری کانال ۲؛ اگر ماندگار شد برد را ریست کنید.'],
  ['قطع باتری','سیم باتری قطع است یا باتری نیست: یا ولتاژ حین پمپ بالای آستانهٔ قطع (۲۷) رفته یا باتری زیر آستانهٔ غیبت (۲۹) با ورودی سالم دیده شده. سیم‌کشی باتری را بررسی کنید؛ با بازگشت هر دو نیمه بالای آستانهٔ برگشت (۳۰) و پایداری (۳۲)، لچ خودکار پاک می‌شود.']];
-/* [EN] v1.28 (user order): the operating table lives on the chargers page.
-   Every cell is read from the board's APPLIED parameters - writing today's
-   numbers into the markup is exactly how the help text ended up claiming
-   the backstops were not adjustable long after they were. If a setting is
-   changed on the settings tab, this table has already changed with it.
-   [FA] جدول عملکرد، روی صفحهٔ شارژرها (دستور کاربر). هر خانه از پارامترهای
-   «اعمال‌شدهٔ» برد خوانده می‌شود - نوشتن اعداد امروز داخل مارک‌آپ دقیقاً همان
-   کاری است که باعث شد راهنما مدت‌ها بعد از تنظیم‌پذیرشدن پشتیبان‌ها هنوز
-   بگوید تنظیم نمی‌شوند. هر تغییری در تب تنظیمات، همین‌جا هم دیده می‌شود. */
+/* [EN] v1.28/v1.29 (user order): the operating table lives on the chargers
+   page, and every number in it IS its own input - click the value, type,
+   Enter. There is no separate box of fields any more: a table that shows a
+   number next to a form that sets the same number is two places to be wrong,
+   and this code base has lost days to exactly that shape of bug.
+   Every cell is read from the board's APPLIED parameters. Writing today's
+   numbers into the markup is how the help text ended up claiming the
+   backstops were not adjustable long after they were.
+   [FA] جدول عملکرد روی صفحهٔ شارژرهاست و هر عددش خودش ورودی خودش است - روی
+   مقدار کلیک کنید، تایپ کنید، Enter. دیگر کادر جدای فیلدها وجود ندارد: جدولی
+   که عددی را نشان دهد کنار فرمی که همان عدد را تنظیم کند، یعنی دو جا برای
+   غلط‌بودن، و همین شکلِ باگ قبلاً روزها از این مخزن گرفته است.
+   هر خانه از پارامترهای «اعمال‌شدهٔ» برد خوانده می‌شود. */
+
+/* [EN] id -> [min, max, step, unit]. Hand-written here because the browser
+   cannot see the firmware's tables - so audit_consistency.py pins every row
+   of this against ParamMin/ParamMax and fails the build-check on drift. A
+   hand-copied table is allowed in this repo only when something mechanical
+   is watching it.
+   [FA] شناسه -> [کمینه، بیشینه، گام، واحد]. دستی است چون مرورگر جدول‌های
+   فرم‌ور را نمی‌بیند - پس audit_consistency.py تک‌تک ردیف‌هایش را به
+   ParamMin/ParamMax میخ می‌کند و سر اختلاف، بررسی را رد می‌کند. جدول دستی در
+   این مخزن فقط وقتی مجاز است که چیزی ماشینی مراقبش باشد. */
+const EVB={
+ 20:[11000,14600,50,'mv'], 21:[10500,14550,50,'mv'], 22:[11100,14750,50,'mv'],
+ 23:[9000,14300,50,'mv'],  24:[8000,14000,50,'mv'],  25:[100,900,10,'ma'],
+ 26:[10,300,5,'ma'],       35:[150,950,10,'ma'],     36:[14000,15000,50,'mv'],
+ 93:[0,21600000,60000,'ms'], 94:[10,500,10,'ma'],    95:[0,7200000,60000,'ms'],
+ 96:[1000,600000,5000,'ms'], 97:[1,100,1,'pm'],      98:[0,999,50,'n'],
+ 99:[1,64,1,'n'],            100:[13000,14800,50,'mv'], 101:[0,2000,10,'n'],
+ 102:[0,2000,10,'n'],        103:[0,100,5,'ma'],     104:[0,120000,1000,'ms'],
+ 105:[0,60000,500,'ms'],     106:[500,60000,500,'ms'], 107:[50,5000,50,'ms']};
+
+const EVU={mv:'mV',ma:'mA',ms:'ms',pm:'‰',n:''};
+let EVOPEN=null;          /* id being edited, or null */
+const EVWANT={};          /* what the user typed, to spot a clamp */
+
 function ms2(ms){if(ms==null)return '—';if(ms===0)return 'بدون سقف';
  if(ms>=3600000)return (ms/3600000).toFixed(ms%3600000?1:0)+' ساعت';
  if(ms>=60000)return (ms/60000).toFixed(ms%60000?1:0)+' دقیقه';
  return (ms/1000).toFixed(ms%1000?1:0)+' ثانیه';}
-function ctab(){const e=$('ctb');if(!e||!D||!D.p)return;const p=D.p;
- const g=i=>p[i]==null?null:p[i],mv=i=>g(i)==null?'—':v2(g(i))+' V',ma=i=>g(i)==null?'—':g(i)+' mA';
+
+function evfmt(v,u){if(v==null)return '—';
+ if(u==='mv')return (v/1000).toFixed(2)+' V';
+ if(u==='ma')return v+' mA';
+ if(u==='ms')return ms2(v);
+ if(u==='pm')return v+' ‰';
+ return ''+v;}
+
+/* [EN] One editable value. Carries its own id so the click handler needs no
+   closure and the table can be re-rendered freely.
+   [FA] یک مقدار ویرایش‌پذیر که شناسه‌اش را با خود دارد. */
+function ev(id){const b=EVB[id];if(!b)return '—';
+ const v=(D&&D.p&&D.p[id]!=null)?D.p[id]:null;
+ const cl=(EVWANT[id]!=null&&v!=null&&EVWANT[id]!==v)?' cl':'';
+ const t=cl?' title="برد این مقدار را به بازهٔ مجاز گیره زد؛ شما '+EVWANT[id]+' خواسته بودید"':'';
+ return '<b class="ev'+cl+'" data-i="'+id+'"'+t+'>'+evfmt(v,b[3])+'</b>';}
+
+function evro(txt){return '<b class="ev ro">'+txt+'</b>';}
+
+/* [EN] Swap the span for an input. Escape cancels, Enter and blur commit.
+   While one is open ctab() stops re-rendering, otherwise the next telemetry
+   tick (every ~1 s) would delete the field under the user's fingers - the
+   same reason qfill() checks document.activeElement.
+   [FA] جای span را به input می‌دهد. Esc لغو، Enter و خروج از فیلد ثبت. تا
+   وقتی یکی باز است ctab() دیگر رسم نمی‌کند، وگرنه تلمتری بعدی (هر ~۱ ثانیه)
+   فیلد را زیر دست کاربر پاک می‌کرد - همان دلیلی که qfill هم activeElement را
+   چک می‌کند. */
+function evopen(el){
+ const id=+el.dataset.i,b=EVB[id];if(!b||EVOPEN!=null)return;
+ const v=(D&&D.p&&D.p[id]!=null)?D.p[id]:'';
+ EVOPEN=id;
+ const w=document.createElement('span');w.className='evw';
+ w.innerHTML='<input type="number" class="evi" min="'+b[0]+'" max="'+b[1]+'" step="'+b[2]+'">'+
+             '<span class="evu">'+(EVU[b[3]]||'')+'</span>';
+ const inp=w.firstChild;inp.value=v;
+ el.replaceWith(w);inp.focus();inp.select();
+ let done=false;
+ const close=save=>{if(done)return;done=true;EVOPEN=null;
+  if(save){const n=parseInt(inp.value,10);
+   if(!isNaN(n)&&n!==v){EVWANT[id]=n;send(id,n);}}
+  ctab();};
+ inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();close(true);}
+                   else if(e.key==='Escape'){e.preventDefault();close(false);}};
+ inp.onblur=()=>close(true);}
+
+function ctab(){const e=$('ctb');if(!e||!D||!D.p||EVOPEN!=null)return;
+ const p=D.p,g=i=>p[i]==null?null:p[i];
  const dmax=Math.max(g(13)||0,g(14)||0);
  const rows=[
-  ['بالک (CC)','تا '+mv(21),'ثابت '+ma(25),'جریان روی سقف می‌نشیند و ولتاژ آزادانه بالا می‌رود'],
-  ['ابزورب (CV)','ثابت '+mv(20),'کاهشی','ولتاژ نگه داشته می‌شود و جریان خودش می‌افتد'],
-  ['پایان شارژ','—','زیر '+ma(26)+' به‌مدت '+ms2(g(96)),'راه عادی پایان؛ پیش از آن دست‌کم '+ms2(g(95))+' شستشو'],
-  ['سقف زمانی','—','مسلح زیر '+ma(94),g(93)===0?'برداشته شده — فقط تیپر پایان می‌دهد':'پایان اجباری '+ms2(g(93))+' پس از مسلح‌شدن'],
-  ['شناور','ثابت '+mv(23),'دیوتی پارک صفر','نگه‌داری پس از پر شدن'],
-  ['بازگشت به بالک','افت زیر '+mv(24),'—','چرخه از نو شروع می‌شود']];
- const saf=[['ورود به ابزورب',mv(21)],['سقف تجاوز',mv(22)],['قطع اضافه‌ولتاژ',mv(36)],
-  ['ولتاژ پشتیبان سخت',mv(100)],['خطای سخت جریان',ma(35)],['سقف دیوتی',dmax?((dmax/10).toFixed(1)+'%'):'—']];
- e.innerHTML='<div class="hd"><b>جدول عملکرد شارژ</b><span class="lb">· هر دو کانال · از مقادیر اعمال‌شدهٔ برد، نه اعداد ثابت</span></div>'+
+  ['بالک (CC)','تا '+ev(21),'ثابت '+ev(25),'جریان روی سقف می‌نشیند و ولتاژ آزادانه بالا می‌رود'],
+  ['ابزورب (CV)','ثابت '+ev(20),'کاهشی','ولتاژ نگه داشته می‌شود و جریان خودش می‌افتد'],
+  ['پایان شارژ','—','زیر '+ev(26)+' به‌مدت '+ev(96),'راه عادی پایان؛ پیش از آن دست‌کم '+ev(95)+' شستشو'],
+  ['سقف زمانی','—','مسلح زیر '+ev(94),
+   g(93)===0?'برداشته شده — فقط تیپر پایان می‌دهد ('+ev(93)+')':'پایان اجباری '+ev(93)+' پس از مسلح‌شدن'],
+  ['شناور','ثابت '+ev(23),'دیوتی پارک صفر','نگه‌داری پس از پر شدن'],
+  ['بازگشت به بالک','افت زیر '+ev(24),'—','چرخه از نو شروع می‌شود']];
+ const grid=l=>'<div class="srvw"><table class="srv"><tr>'+
+   l.map(x=>'<th>'+x[0]+'</th>').join('')+'</tr><tr>'+
+   l.map(x=>'<td class="n">'+x[1]+'</td>').join('')+'</tr></table></div>';
+ e.innerHTML=
+  '<div class="lb" style="margin:2px 0 8px">روی هر عدد آبی کلیک کنید تا تغییرش دهید — Enter ثبت، Esc لغو · زرد یعنی برد مقدارتان را به بازهٔ مجاز گیره زد</div>'+
   '<div class="srvw"><table class="srv"><tr><th>مرحله</th><th>ولتاژ</th><th>جریان</th><th>توضیح</th></tr>'+
-  rows.map(r=>'<tr><td><b>'+r[0]+'</b></td><td class="n">'+r[1]+'</td><td class="n">'+r[2]+'</td><td>'+r[3]+'</td></tr>').join('')+
-  '</table></div><div class="sec">سقف‌های ایمنی</div><div class="srvw"><table class="srv"><tr>'+
-  saf.map(x=>'<th>'+x[0]+'</th>').join('')+'</tr><tr>'+saf.map(x=>'<td class="n">'+x[1]+'</td>').join('')+'</tr></table></div>';}
+  rows.map(r=>'<tr><td><b>'+r[0]+'</b></td><td class="n">'+r[1]+'</td><td class="n">'+r[2]+
+            '</td><td>'+r[3]+'</td></tr>').join('')+'</table></div>'+
+  '<div class="sec">سقف‌های ایمنی <span class="lb">· قطع اضافه‌ولتاژ، خطای سخت و ولتاژ پشتیبان فقط پایین‌آوردنی‌اند</span></div>'+
+  grid([['سقف تجاوز',ev(22)],['قطع اضافه‌ولتاژ',ev(36)],['ولتاژ پشتیبان سخت',ev(100)],
+        ['خطای سخت جریان',ev(35)],['سقف دیوتی',evro(dmax?((dmax/10).toFixed(1)+'%'):'—')]])+
+  '<div class="sec">پشتیبان سخت و حلقهٔ کنترل <span class="lb">· گین صفر یعنی آن پشتیبان خاموش · سقف دیوتی مشخصهٔ برد است و از زیرتب هر کانال پایین می‌آید</span></div>'+
+  grid([['گین پشتیبان جریان',ev(101)],['گین پشتیبان ولتاژ',ev(102)],['بیشینهٔ پلهٔ دیوتی',ev(97)],
+        ['هیسترزیس خروجی',ev(98)],['پنجرهٔ فیلتر ولتاژ',ev(99)],['حاشیهٔ ست‌پوینت',ev(103)]])+
+  '<div class="sec">زمان‌بندی‌ها</div>'+
+  grid([['نشست اتصال',ev(104)],['قفل ضدلرزش',ev(105)],['ددمن مود دستی',ev(106)],['فاصلهٔ رمپ پایین',ev(107)]])+
+  '<div class="bqr" style="margin-top:10px"><button class="sb sb2" onclick="ldef()">بازگردانی پیش‌فرض کارخانهٔ حدها</button></div>';}
+
+/* [EN] One delegated listener: the table is re-rendered constantly, so
+   per-element handlers would leak and die with every refresh.
+   [FA] یک شنوندهٔ واگذارشده: جدول مدام بازرسم می‌شود و شنوندهٔ تک‌عنصری با هر
+   بازرسم می‌مرد. */
+document.addEventListener('click',e=>{const t=e.target.closest('.ev');
+ if(t&&!t.classList.contains('ro')&&$('ctb')&&$('ctb').contains(t))evopen(t);});
+
 function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
  const t=D.t,p=D.p;
  const g=(id,fb)=>p[id]!=null?p[id]:fb;
