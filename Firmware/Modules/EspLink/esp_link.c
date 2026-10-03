@@ -59,7 +59,7 @@ static uint16_t UINT16_T__G__FrameLen;
 static uint16_t UINT16_T__G__PayloadIndex;
 static uint8_t UINT8_T__G__PayloadBuffer[ESPLINK_FRAME_MAX_PAYLOAD];
 static uint16_t UINT16_T__G__Crc;
-static uint8_t  UINT16_T__G__RxCrcLow;
+static uint8_t  UINT8_T__G__RxCrcLow;
 /* [EN] Link health counters. A CRC error used to be indistinguishable from a
    quiet link; now both conditions are countable, and a version mismatch says
    plainly that the two boards were flashed out of step.
@@ -936,20 +936,6 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
                             (uint16_t)ESPLINK_TLM_PAYLOAD_SIZE);
 }
 
-/* ==================== CAL_REFERENCE (v1.3) / کالیبراسیون از پنل ==================== */
-
-/* [EN] Snapshot published by func__EspLink_Run while the RX parse loop runs
- *      (synchronously inside that call; NULL outside it, so no dangling
- *      pointer survives the task period). Only the CAL_REFERENCE handler
- *      below reads it.
- * [FA] snapshot منتشرشده از func__EspLink_Run در زمان اجرای حلقهٔ پارس RX
- *      (همزمان داخل همان فراخوانی؛ بیرون آن تهی است تا اشاره‌گر آویزان از
- *      دورهٔ تسک باقی نماند). فقط هندلر CAL_REFERENCE پایین آن را می‌خواند. */
-static const measurement_snapshot_t *MEASUREMENT_SNAPSHOT_T__G__CalSnap = NULL;
-
-#if MODULE_CHARGER
-#endif /* MODULE_CHARGER */
-
 /* ==================== Frame handling / رسیدگی به فریم ==================== */
 
 /**
@@ -986,7 +972,9 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
                [FA] فریم معتبر: مهر ددمنِ لینک مود دستی تازه می‌شود (v1.2 -
                در مود دستی، ۳ ثانیه سکوت یعنی صفرشدن هر دو duty و بازگشت
                به حالت خودکار). */
+#if MODULE_CHARGER
             func__Charger_NotifyEspLinkActivity();
+#endif /* MODULE_CHARGER */
             uint32_t__value = func__EspLink_GetU32(uint8_t__payload, 1u);
             if (func__EspLink_ApplyParam(uint8_t__payload[0], uint32_t__value,
                                          &uint32_t__appliedValue) != false)
@@ -1009,12 +997,12 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
     {
         if (uint16_t__payloadLength == 0u)
         {
+#if MODULE_CHARGER
             func__Charger_NotifyEspLinkActivity();
+#endif /* MODULE_CHARGER */
             func__EspLink_SendParamsBulk();
         }
     }
-#if MODULE_CHARGER
-    #endif /* MODULE_CHARGER */
     else
     {
         /* [EN] Unknown message type: ignore and resync on the next frame.
@@ -1131,13 +1119,13 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
             break;
 
         case ESP_LINK_PARSE_WAIT_CRC_LO:
-            UINT16_T__G__RxCrcLow = uint8_t__byte;
+            UINT8_T__G__RxCrcLow = uint8_t__byte;
             ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_CRC_HI;
             break;
 
         case ESP_LINK_PARSE_WAIT_CRC_HI:
             if (((uint16_t)(((uint16_t)uint8_t__byte << 8) |
-                            (uint16_t)UINT16_T__G__RxCrcLow)) == UINT16_T__G__Crc)
+                            (uint16_t)UINT8_T__G__RxCrcLow)) == UINT16_T__G__Crc)
             {
                 func__EspLink_HandleFrame(UINT8_T__G__FrameType,
                                           UINT16_T__G__FrameLen,
@@ -1209,20 +1197,10 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
 
     (void)APP_CONFIG;
 
-    /* [EN] Publish the snapshot for the CAL_REFERENCE handler (the parse
-       loop runs synchronously inside this call; cleared on exit so no
-       dangling pointer survives the task period).
-       [FA] snapshot برای هندلر CAL_REFERENCE منتشر می‌شود (حلقهٔ پارس
-       همزمان داخل همین فراخوانی اجرا می‌شود؛ در خروج پاک می‌شود تا
-       اشاره‌گر آویزان از دورهٔ تسک باقی نماند). */
-    MEASUREMENT_SNAPSHOT_T__G__CalSnap = measurement_snapshot_t__snap;
-
     while (func__BspUart_ReadByte(&uint8_t__byte) != false)
     {
         func__EspLink_ParseByte(uint8_t__byte);
     }
-
-    MEASUREMENT_SNAPSHOT_T__G__CalSnap = NULL;
 
     func__EspLink_SendTelemetry(measurement_snapshot_t__snap,
                                 fault_mask_t__faults);

@@ -2211,14 +2211,25 @@ def test_ui_mirror_v116():
     #      کارت PID صرفاً حذف شده باشد.
     check('data-s="1">سناریوها<' in ino and 'data-s="2">نظارت و ایمنی<' in ino
           and 'data-s="3">پشتیبان‌گیری<' in ino
-          and 'data-s="3">PID شارژ<' not in ino and 'data-s="4"' not in ino
+          and 'data-s="3">PID شارژ<' not in ino and 'data-s="4">PID شارژ<' not in ino
+          and 'data-s="4">کالیبراسیون و فیلتر جریان<' in ino
           and 'data-s="1">آلارم‌ها<' not in ino
           and '>وضعیت</button>' not in ino,
-          "v1.33: PID folded into sub-tab 0, backup moves to 3, no standalone PID tab")
+          "v1.33: PID folded into sub-tab 0, backup moves to 3, no standalone "
+          "PID tab; v1.34 (user order 2026-10-03: \"current calibration + "
+          "current filters into their own settings sub-tab\"): a fifth sub-tab "
+          "exists and PID stays folded")
     s0part = ino.split('id="s0"')[1].split('id="s1"')[0]
     check("PID دوحلقه‌ای شارژ (CC/CV)" in s0part,
           "the PID card must live INSIDE the charge-and-filter sub-tab, not "
           "just be gone from its old one")
+    cfpart = ino.split('id="s4"')[1].split("</main>")[0]
+    check('<div class="hd"><b>فیلتر جریان</b>' in cfpart
+          and '<div class="hd"><b>کالیبراسیون جریان</b>' in cfpart
+          and '<div class="hd"><b>فیلتر جریان</b>' not in s0part
+          and '<div class="hd"><b>کالیبراسیون جریان</b>' not in s0part,
+          "v1.34: the current-filter and current-calibration cards moved INTO "
+          "the fifth sub-tab (s4) and out of the charge sub-tab")
     s1part = ino.split('id="s1"')[1].split('id="s2"')[0]
     s2part = ino.split('id="s2"')[1].split('id="s3"')[0]
     # [EN] v1.33: PID lives in s0 now and backup is s3 (last page).
@@ -2530,8 +2541,18 @@ def test_telemetry_frame_pins_v116c():
               (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1)) == tlm_size,
           "the ESP's expected TLM size must equal the firmware's payload size, or every "
           "frame is rejected as malformed")
-    start = link.index("func__EspLink_SendTelemetry")
-    body = link[start:link.index("CAL_REFERENCE (v1.3)", start)]
+    # [EN] Slice INSIDE SendTelemetry only: from right after its opening
+    #      brace (so the prototype/comment above cannot leak in) to the end
+    #      of the function = its final SendFrame call's closing paren, which
+    #      is exactly where the closing brace sits (no code follows SendFrame
+    #      inside SendTelemetry). Anchoring on prose banners broke once
+    #      already when a comment block was removed (audit 2026-10-03).
+    # [FA] برش فقط داخل SendTelemetry: از بعد از آکولاد آغازین تا پایان خود
+    #      تابع (پرانتز پایانی SendFrame؛ پس از آن فقط آکولاد پایانی است).
+    #      لنگر روی بنر متنی یک‌بار با حذف کامنت شکست (ممیزی ۲۰۲۶-۱۰-۰۳).
+    start = link.index("void func__EspLink_SendTelemetry")
+    start = link.index("{", start) + 1
+    body = link[start:link.index("(uint16_t)ESPLINK_TLM_PAYLOAD_SIZE);", start)]
     check(body.count("func__EspLink_PutU16(") == 1,
           "SendTelemetry must write exactly one u16 (the sequence number)")
     # [EN] 19 live + 19 #else fillers + faults + the 5 raw calibration fields.

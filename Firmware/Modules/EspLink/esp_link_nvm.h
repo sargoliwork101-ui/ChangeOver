@@ -58,9 +58,10 @@
  *      mirror), v4 = id 76 became a panel-session mute, never persisted
  *      (v1.16b), v5 = 83 slots incl. the six full/hysteresis ids 77..82
  *      (v1.17), v6/v7 = 98 slots incl. the fifteen three-stage PID ids
- *      83..97 (v1.22/v1.23), v8 = CURRENT: 93 slots incl. the ten
+ *      83..97 (v1.22/v1.23), v8 = 93 slots incl. the ten
  *      two-loop CC/CV PID ids 83..92 (v1.24 deleted the redundant third
- *      gain row). A record with an older version fails the version check
+ *      gain row), v9 = CURRENT: 108 slots incl. the fifteen charger
+ *      limits/timer/gain ids 93..107. A record with an older version fails the version check
  *      and falls back to the compiled defaults - after any upgrade that
  *      changes the record layout, re-tune from the panel once (v8 IS such
  *      an upgrade, and the bump is mandatory rather than cosmetic: a v7
@@ -69,8 +70,10 @@
  * [FA] تاریخچهٔ نسخهٔ رکورد: v3 = ۷۷ جای (آینهٔ LED/بازر v1.16)، v4 =
  *      میوت ۷۶ جلسه‌ای شد و دیگر ذخیره نمی‌شود (v1.16b)، v5 = ۸۳ جای
  *      شامل ۷۷..۸۲ (v1.17)، v6/v7 = ۹۸ جای شامل پانزده شناسهٔ PID
- *      سه‌مرحله‌ای ۸۳..۹۷، v8 = فعلی: ۹۳ جای شامل ده شناسهٔ PID دوحلقه‌ای
- *      ۸۳..۹۲ (v1.24 ردیف سوم زائد را حذف کرد). رکورد قدیمی‌تر می‌افتد و
+ *      سه‌مرحله‌ای ۸۳..۹۷، v8 = ۹۳ جای شامل ده شناسهٔ PID دوحلقه‌ای
+ *      ۸۳..۹۲ (v1.24 ردیف سوم زائد را حذف کرد)، v9 = فعلی: ۱۰۸ جای شامل
+ *      پانزده شناسهٔ ۹۳..۱۰۷ (حدها/زمان‌ها/گین‌های شارژر). رکورد قدیمی‌تر
+ *      می‌افتد و
  *      پیش‌فرض کامپایل می‌ماند - بعد از هر ارتقای چیدمان یک‌بار از پنل
  *      دوباره تنظیم کنید (v1.22 دقیقاً چنین ارتقایی است: اولین بوت پس از
  *      فلش با مقادیر کارخانه بالا می‌آید). */

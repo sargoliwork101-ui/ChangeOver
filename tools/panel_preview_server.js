@@ -300,12 +300,27 @@ function mkChannel() {
     return { state: 0, v: 12400, i: 0, duty: 0, soak: 0, taper: 0, off: 0, floatT: 0 };
 }
 const ch = [mkChannel(), mkChannel()];
+/* [EN] v1.34 (user order 2026-10-03: "split the battery values in your
+ *      simulator so they can be compared"). Both channels used to boot at
+ *      the SAME 12400 mV with the SAME current sine, so the two live
+ *      dots/labels on the charge chart stacked exactly on top of each
+ *      other and could not be compared. Stagger the start: the upper
+ *      battery boots 400 mV ahead (reaches every stage a beat sooner) and
+ *      the two current waves run out of phase, so the two values stay
+ *      visibly separate everywhere they are drawn. Scenario overrides
+ *      below (BatteryRun etc.) still apply to both.
+ * [FA] v1.34 (دستور کاربر: «مقادیر باتری‌ها را در سیمولاتورت جدا جدا بذار
+ *      که بشه مقایسشون کرد») - هر دو کانال از همان ۱۲۴۰۰ و با همان سینوسی
+ *      شروع می‌شدند و دو نقطه/عدد روی نمودار عیناً روی هم می‌افتادند.
+ *      باتری بالا ۴۰۰ میلی‌ولت جلوتر شروع می‌کند و موج جریان دو کانال
+ *      اختلاف‌فاز دارد تا دو عدد همیشه جدا و قابل مقایسه بمانند. */
+ch[0].v = 12800;
 let seq = 1, frames = 0;
 let benchSize = 3120; /* simulated /benchlog.csv bytes (nonzero so the resume/choice flow is exercisable) */
 const SIM_MS = 100;
 let ms = 0;
 
-function stepChannel(c) {
+function stepChannel(c, phase) {
     const prof = { enter: P[21], absorb: P[20], float: P[23], reentry: P[24], imax: P[25], taper: P[26] };
     switch (c.state) {
         case 0: /* OFF: connection-stability gate (demo: 3 s) */
@@ -315,7 +330,7 @@ function stepChannel(c) {
             break;
         case 1: /* BULK: constant current, voltage rising */
             c.duty = Math.min(c.duty + 2, 320);
-            c.i = 620 + Math.round(25 * Math.sin(ms / 700));
+            c.i = 620 + Math.round(25 * Math.sin(ms / 700 + phase));
             c.v += 80; /* demo-speed rise (~80 mV/s) */
             if (c.v >= prof.enter) { c.state = 2; c.soak = 0; c.taper = 0; }
             break;
@@ -357,8 +372,8 @@ let SNAP = null;
 setInterval(() => { SNAP = telemetry(); }, SIM_MS);
 
 function telemetry() {
-    stepChannel(ch[0]);
-    stepChannel(ch[1]);
+    stepChannel(ch[0], 0);
+    stepChannel(ch[1], 2.1);
     const vlow = ch[1].v, vhigh = ch[0].v;
     const t = new Array(TLM_FIELDS).fill(0);
     for (let k = 0; k < 2; k++) {

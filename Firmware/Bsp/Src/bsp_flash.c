@@ -108,7 +108,7 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
        مال NVM است و آدرس باید تراز باشد - F1 با محتوای AR پاک می‌کند نه
        با ماسک‌کردن، پس آدرس ناتراز یا خارج از بازه صفحهٔ اشتباه را پاک
        می‌کرد و باگ فراخواننده هرگز نباید برنامه را پاک کند. */
-if ((uint32_t__pageAddress < 0x0800F800u) ||
+    if ((uint32_t__pageAddress < 0x0800F800u) ||
         (uint32_t__pageAddress > 0x0800FC00u) ||
         ((uint32_t__pageAddress & 0x3FFu) != 0u))
     {
