@@ -101,14 +101,25 @@ const DEMO_VM = process.env.PLINK_DEMO_VM ? Number(process.env.PLINK_DEMO_VM) : 
 const DEMO_CE = process.env.PLINK_DEMO_CE ? Number(process.env.PLINK_DEMO_CE) : 0;
 const html = panelSrc.split('R"HTML(', 2)[1].split(')HTML";', 2)[0];
 
-/* banner + auto-open the charge tab (injected into the served page ONLY) */
+/* [EN] Banner + landing tab (injected into the served page ONLY).
+        This used to force-click nav tab 2 / sub-tab 1 on every load, because
+        that is where the stage chart lived. The chart has moved to the
+        chargers page, so that jump was landing the user on a page with
+        NEITHER the chart NOR the operating table - which is exactly why the
+        table looked missing. It now lands on tab 0, the chargers page, which
+        carries both. Land where the thing being previewed actually is.
+   [FA] بنر + تب فرود (فقط به صفحهٔ سروشده تزریق می‌شود). این کد قبلاً در هر
+        بار بارگذاری تب ۲ / زیرتب ۱ را به‌زور کلیک می‌کرد، چون نمودار آنجا
+        بود. نمودار به صفحهٔ شارژرها منتقل شد، پس آن پرش کاربر را روی صفحه‌ای
+        می‌نشاند که نه نمودار داشت نه جدول عملکرد - و دقیقاً به همین دلیل
+        جدول «غایب» به نظر می‌رسید. حالا روی تب ۰ (صفحهٔ شارژرها) فرود می‌آید
+        که هر دو را دارد. */
 const inject = `<script>(function(){
 var b=document.createElement('div');
 b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99;background:#3a2b06;color:#ffd970;font:13px Vazirmatn,sans-serif;padding:6px 12px;text-align:center;border-bottom:1px solid #6b5206;direction:rtl';
-b.textContent='پیش‌نمایش آفلاین — شبیه‌ساز STM32 + چرخه نمایشی سناریوها (شارژ/اضافه‌ولتاژ/قطع‌باتری/دشارژ) برای آینه LED/بازر';
+b.textContent='پیش‌نمایش آفلاین — شبیه‌ساز STM32 + چرخه نمایشی سناریوها (شارژ/اضافه‌ولتاژ/قطع‌باتری/دشارژ). روی هر عدد آبی‌رنگ روی نمودار کلیک کنید تا همان‌جا ویرایش شود.';
 document.body.appendChild(b);document.body.style.paddingTop='32px';
-var t2=document.querySelector('nav button[data-t="2"]');if(t2)t2.click();
-var s1=document.querySelector('#sbt button[data-s="1"]');if(s1)s1.click();
+var t0=document.querySelector('nav button[data-t="0"]');if(t0)t0.click();
 })();</script></body></html>`;
 const page = html.replace("</body></html>", inject);
 if (page === html) page = html + inject; /* fallback: append */

@@ -407,6 +407,45 @@ def sec_defaults(ids):
         # [FA] چیزی را بسنج که خانه را ویرایش‌پذیر می‌کند، نه یک املای خاصش را.
         #      نسخهٔ اول دنبال "ev(" بود و جهش به "evat(" راست از کنارش رد شد.
         #      قرارداد واقعی که شنوندهٔ کلیک رویش کار می‌کند data-i است.
+        # [EN] The preview server injects a tab to land on. If it lands
+        #      anywhere other than the page that actually mounts the chart,
+        #      the user opens the preview and sees neither the chart nor the
+        #      operating table - which is precisely the "I can't see the
+        #      charger table" report. Pin the landing tab to the mount: the
+        #      chart lives on p0, so the injected click must be data-t="0".
+        # [FA] سرور پیش‌نمایش یک تب فرود تزریق می‌کند. اگر جایی غیر از صفحه‌ای
+        #      که واقعاً نمودار را نصب می‌کند فرود بیاید، کاربر پیش‌نمایش را باز
+        #      می‌کند و نه نمودار می‌بیند نه جدول عملکرد - دقیقاً همان گزارش
+        #      «جدول شارژر را نمی‌بینم». تب فرود به محل نصب میخ می‌شود.
+        # [EN] User order 2026-10-03: terms that ARE English stay English.
+        #      Bulk / Absorb / Taper / Float / Over / Reentry / backstop are
+        #      the standard charger vocabulary; translating or transliterating
+        #      one makes it unsearchable in either language. The axis labels
+        #      are the most visible place this can regress, so pin them to
+        #      ASCII - a Persian label in EVV/EVI fails here.
+        # [FA] اصطلاحاتی که انگلیسی‌اند انگلیسی می‌مانند. برچسب محورها
+        #      دیدنی‌ترین جایی است که می‌تواند پس‌رفت کند، پس به ASCII میخ
+        #      می‌شوند؛ هر برچسب فارسی در EVV/EVI اینجا رد می‌شود.
+        for lname in ("EVV", "EVI"):
+            lm = re.search(r"const " + lname + r"=\{(.*?)\};", P_PAN, re.S)
+            if lm:
+                for lbl in re.findall(r"'#[0-9a-f]{6}','([^']*)'", lm.group(1)):
+                    ok(lbl.isascii(),
+                       "chart axis labels must keep the English term",
+                       f"{lname} label {lbl!r} is not the English word")
+
+        srv = read(ROOT / "tools" / "panel_preview_server.js")
+        m = re.search(r"nav button\[data-t=\\?\"(\d)\\?\"\]'\);if\(t\d\)t\d\.click", srv)
+        land = m.group(1) if m else None
+        # which page div is the single chart mount inside? scan backwards
+        # from the mount to the nearest id="pN" - derived, never assumed.
+        mi = P_PAN.find('class="qgm"')
+        pm = list(re.finditer(r'id="p(\d)"', P_PAN[:mi])) if mi >= 0 else []
+        mount_page = pm[-1].group(1) if pm else "?"
+        ok(land == mount_page,
+           "the preview must land on the page that carries the chart",
+           f"server lands on tab {land}, but the chart is mounted on p{mount_page}")
+
         ok("evat(" not in tab and "data-i" not in tab,
            "the operating table must only REPORT values",
            "an editable cell there reintroduces the two-places-to-be-wrong bug")
