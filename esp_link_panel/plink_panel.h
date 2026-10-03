@@ -195,6 +195,13 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 
 <div class="ch" id="ch"></div>
 <div class="cd">
+<div class="hd"><b>نمودار مراحل شارژ</b> <button class="ib" data-p="20,21,22,23,24,25,26,35,36" onclick="this.classList.toggle('o')">!<span class="it"><b>اینجا جای تغییر دادن اعداد است.</b> روی هر عددِ زیرخط‌دار روی نمودار کلیک کنید — برچسب‌های ولتاژ سمت راست، برچسب‌های جریان زیر نمودار، و تراشه‌های پایین. یک کادر کوچک باز می‌شود: مقدار را تایپ کنید و Enter بزنید (Esc لغو می‌کند).<br>جدولِ پایینِ همین صفحه فقط <i>نمایش</i> می‌دهد و ویرایش نمی‌شود؛ یک جا برای نوشتن یعنی یک جا برای اشتباه‌کردن.<br>همین نمودار عیناً در «تنظیمات ← شارژ و فیلتر» هم هست و از یک رندرکنندهٔ واحد می‌آید، پس هرگز نمی‌توانند دو چیز متفاوت بگویند. آنجا کنار فیلدهای پروفایل است و مقدار تایپ‌شدهٔ هنوز اعمال‌نشده را خط‌چین نشان می‌دهد.</span></button><span class="lb">· <b style="color:var(--ac)">روی عددهای روی نمودار کلیک کنید تا تغییرشان دهید</b> · مشترک هر دو کانال · از مقادیر اعمال‌شدهٔ برد</span></div>
+<div class="qwm" style="margin:2px 0 0"></div>
+<div class="qgm" style="direction:ltr;overflow-x:auto"></div>
+<div class="lb qglm">در انتظار دادهٔ برد…</div>
+<div class="qgcm"></div>
+</div>
+<div class="cd">
 <div class="hd"><b>جدول عملکرد شارژ</b> <button class="ib" data-p="93,94,95,96,97,98,99,100,101,102,103,104,105,106,107" onclick="this.classList.toggle('o')">!<span class="it">هر عددی که در این جدول آبی و زیرخط‌دار است، خودش ورودی خودش است: روی آن کلیک کنید، مقدار تازه را تایپ کنید و Enter بزنید (Esc لغو می‌کند). کادر جداگانه‌ای برای این تنظیمات وجود ندارد — جدولی که عددی را نشان بدهد کنار فرمی که همان عدد را تنظیم کند، یعنی دو جا برای غلط‌بودن.<br>همهٔ مقادیر از پارامترهای «اعمال‌شدهٔ» خود برد خوانده می‌شوند، نه از اعداد نوشته‌شده در صفحه. برد هر مقدار را به بازهٔ مجازش گیره می‌زند؛ اگر عددی که برگشت با چیزی که تایپ کردید فرق داشت، آن خانه <b>زرد</b> می‌شود و با نگه‌داشتن ماوس رویش می‌بینید چه خواسته بودید.<br>تا v1.27 این‌ها ثابت کامپایل بودند و فقط با فلش دوباره عوض می‌شدند — حتی راهنمای PID نوشته بود پشتیبان‌های سخت «از پنل تنظیم نمی‌شوند». به دستور کاربر (۲۰۲۶-۱۰-۰۳) همه تنظیم‌شدنی شدند.<br><b>پایان ابزورب دو راه دارد:</b> راه عادی «تیپر» است (جریان زیر جریان تیپر، به‌مدت پایداری تیپر)؛ راه پشتیبان «سقف زمان» است که <i>از لحظهٔ افت جریان زیر جریان مسلح‌کننده</i> می‌شمارد، نه از ورود به ابزورب. سقف زمان را صفر کنید تا کلاً برداشته شود و فقط تیپر پایان بدهد — برای پک کند همین کار را بکنید.<br><b>گین پشتیبان صفر = آن پشتیبان خاموش.</b> ولتاژ پشتیبان، قطع اضافه‌ولتاژ و خطای سخت جریان فقط پایین‌آوردنی‌اند و هرگز بالاتر از مقدار کارخانه نمی‌روند.<br>سقف دیوتی عمداً ویرایش‌پذیر نیست: مشخصهٔ مغناطیس برد است نه سلیقه، و سقف هر کانال جداگانه از زیرتب شارژرها پایین می‌آید.</span></button><span class="lb">· هر دو کانال · شناسه‌های ۹۳..۱۰۷ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
 <div id="ctb"></div>
 </div>
@@ -205,10 +212,10 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 <div class="sgx a" id="s0">
 <div class="cd">
 <div class="hd"><b>نمودار مراحل شارژ</b> <button class="ib" data-p="93,94,95,96,97,98,99,100,101,102,103,104,105,106,107" onclick="this.classList.toggle('o')">!<span class="it"><b>اینجا جای تغییر دادن اعداد است.</b> روی هر عددِ زیرخط‌دار روی خود نمودار کلیک کنید — چه برچسب‌های ولتاژ سمت راست، چه برچسب‌های جریان زیر نمودار، چه تراشه‌های پایین صفحه. یک کادر کوچک باز می‌شود: مقدار را تایپ کنید و Enter بزنید (Esc لغو می‌کند).<br>«جدول عملکرد شارژ» در صفحهٔ شارژرها فقط <i>نمایش</i> می‌دهد و دیگر ویرایش نمی‌شود؛ یک جا برای نوشتن یعنی یک جا برای اشتباه‌کردن.<br>هر مقدار از پارامترهای «اعمال‌شدهٔ» برد خوانده می‌شود. برد هر عدد را به بازهٔ مجازش گیره می‌زند؛ اگر چیزی که برگشت با آنچه تایپ کردید فرق داشت، آن برچسب <b>زرد</b> می‌شود.<br><b>زمان‌ها و گین‌ها</b> (سقف زمان ابزورب، شستشو، پله و هیسترزیس دیوتی، فیلتر ولتاژ، گین‌های پشتیبان، نشست اتصال، قفل ضدلرزش، ددمن دستی، فاصلهٔ رمپ) نه ولتاژند و نه جریان، پس روی محورهای نمودار جایی ندارند و به‌صورت تراشه زیر همان نمودار آمده‌اند.<br><b>پایان ابزورب دو راه دارد:</b> راه عادی تیپر است؛ راه پشتیبان «سقف زمان ابزورب» است که از لحظهٔ افت جریان زیر «جریان مسلح‌کننده» می‌شمارد. صفرش کنید تا فقط تیپر پایان بدهد.<br><b>گین پشتیبان صفر یعنی آن پشتیبان خاموش.</b> قطع اضافه‌ولتاژ، ولتاژ پشتیبان و خطای سخت جریان فقط پایین‌آوردنی‌اند.<br>خط «قطع سخت ۱۵V» عمداً ویرایش‌پذیر نیست: سقف اعتبار اندازه‌گیری برد است نه یک تنظیم.</span></button><span class="lb">· مشترک هر دو کانال · <b style="color:var(--ac)">روی عددهای روی نمودار کلیک کنید تا تغییرشان دهید</b> · ناحیه‌ها از مقادیر اعمال‌شدهٔ برد · تایپ = خط‌چین پیش‌نمایش</span></div>
-<div id="qw" style="margin:2px 0 0"></div>
-<div id="qg" style="direction:ltr;overflow-x:auto"></div>
-<div class="lb" id="qgl">در انتظار دادهٔ برد…</div>
-<div id="qgc"></div>
+<div class="qwm" style="margin:2px 0 0"></div>
+<div class="qgm" style="direction:ltr;overflow-x:auto"></div>
+<div class="lb qglm">در انتظار دادهٔ برد…</div>
+<div class="qgcm"></div>
 </div>
 <div class="cd">
 <div class="hd"><b>فیلتر جریان</b> <button class="ib" data-p="7,8" onclick="this.classList.toggle('o')">!<span class="it">پنجرهٔ مدین: مرحلهٔ اول فیلتر، هر عدد ۱ تا ۱۵ (زوج هم مجاز)؛ ۱ و ۲ = خاموش، ۳ = پیش‌فرض، بزرگ‌تر = حذف پالس قوی‌تر با تاخیر بیشتر.<br>پنجرهٔ میانگین: مرحلهٔ دوم، هر عدد ۱ تا ۳۰۰ — میانگین آخرین W خروجی مدین (هر نمونه ۱ms = ۱ms تاریخچه)؛ ۱ = خاموش، ۱۰ = پیش‌فرض. برای صاف‌شدن قابل‌مشاهده روی نمودار تب «پنل» مجموع را بالای ~۲۰۰ms ببرید؛ در مود خودکار شارژر بالای ~۵۰ توصیه نمی‌شود (کندی حلقهٔ تنظیم ۱۰۰Hz).</span></button><span class="lb">· مشترک هر دو کانال · Median + Average · مثل بقیه روی فلش برد ذخیره می‌شود</span></div>
@@ -675,7 +682,20 @@ function pexp(){document.querySelectorAll('button.ib[data-p]').forEach(b=>{
   '<b style="font-size:11.5px">هر پارامتر چه می‌کند</b>'+
   rows.map(r=>'<div style="margin-top:4px;font-size:11.5px;line-height:1.75"><b>'+r[0]+'</b> — '+r[1]+'</div>').join('')+
   '</div>');});}
-function qgraph(){const g=$('qg');if(!g||EVOPEN!=null)return;
+/* [EN] v1.31: the chart is mounted in two places - above the operating table
+   on the chargers page (where you read the numbers, so where you reach for
+   them) and next to the profile fields in settings (where the dashed
+   "typed but not applied" preview is worth seeing). ONE renderer fills every
+   mount, so the two can never say different things; adding or moving a mount
+   is markup only. The containers are classes, not ids, for exactly that
+   reason - $('qg') would have silently filled only the first.
+   [FA] نمودار در دو جا نصب شده - بالای جدول عملکرد در صفحهٔ شارژرها (جایی که
+   اعداد را می‌خوانید، پس همان‌جا سراغشان می‌روید) و کنار فیلدهای پروفایل در
+   تنظیمات (جایی که پیش‌نمایش خط‌چینِ «تایپ‌شده ولی هنوز اعمال‌نشده» ارزش
+   دیدن دارد). یک رندرکننده همهٔ محل‌ها را پر می‌کند، پس آن دو هرگز نمی‌توانند
+   دو چیز متفاوت بگویند؛ افزودن یا جابه‌جاکردن یک محل فقط مارک‌آپ است. */
+function qgraph(){const MG=document.querySelectorAll('.qgm');
+ if(!MG.length||EVOPEN!=null)return;const g=MG[0];
  const q={a:qv(20),e:qv(21),o:qv(22),f:qv(23),r:qv(24)},im=qv(25),tp=qv(26);
  /* v3 (دستور کاربر ۲۰۲۶-۰۹-۲۹): نمودار دوبعدی جریان-ولتاژ.
     محور افقی = جریان (mA)، محور عمودی = ولتاژ (mV).
@@ -774,7 +794,8 @@ function qgraph(){const g=$('qg');if(!g||EVOPEN!=null)return;
  s+=put(ZL,X0+6,'start','8.5')+put(LL,X1-4,'end','9');
  s+=`<text x="${X0}" y="8" font-size="8" fill="#96a1b8">ولتاژ باتری / Battery voltage (V)</text>`;
  s+=`<text x="${X1}" y="${H-2}" text-anchor="end" font-size="8" fill="#96a1b8">جریان شارژ / Charge current (mA)</text></svg>`;
- g.innerHTML=s;const e=$('qgl');if(e)e.innerHTML=lg;
+ MG.forEach(m=>{m.innerHTML=s;});
+ document.querySelectorAll('.qglm').forEach(m=>{m.innerHTML=lg;});
  /* [EN] Times and gains have no honest position on a voltage/current plot, so
     they sit under it as chips - still on the chart card, still one click to
     edit. Putting them on an axis they do not belong to would be a prettier
@@ -783,14 +804,15 @@ function qgraph(){const g=$('qg');if(!g||EVOPEN!=null)return;
     زیرش به‌صورت تراشه می‌نشینند - هنوز روی همان کارت نمودار و هنوز با یک
     کلیک ویرایش‌شدنی. گذاشتنشان روی محوری که به آن تعلق ندارند، دروغی
     خوش‌قیافه‌تر از نگذاشتنشان بود. */
- const gc=$('qgc');
- if(gc)gc.innerHTML='<div class="sec">زمان‌ها و گین‌ها <span class="lb">· نه ولتاژند نه جریان، پس روی محورها جا ندارند · روی هر عدد کلیک کنید</span></div>'+
+ const chips='<div class="sec">زمان‌ها و گین‌ها <span class="lb">· نه ولتاژند نه جریان، پس روی محورها جا ندارند · روی هر عدد کلیک کنید</span></div>'+
   '<div class="evchips">'+EVC.map(id=>'<span class="evc"><span class="evcl">'+
    ((typeof PX!=='undefined'&&PX[id])?PX[id][0]:('#'+id))+'</span>'+ev(id)+'</span>').join('')+'</div>';
+ document.querySelectorAll('.qgcm').forEach(m=>{m.innerHTML=chips;});
  /* نگهبان: هشدار بالای نمودار + قرمزکردن فیلد مقصر */
- const w=qchk(),we=$('qw');
- if(we){we.innerHTML=w.length?('⚠ ترکیب نامعتبر — برد این‌ها را گیره می‌زند: '+w.map(x=>x.msg).join('؛ ')):'';
-  we.style.cssText=w.length?'margin:2px 0 6px;color:#fc8086;font-size:12.5px;line-height:1.9':'margin:2px 0 0';}
+ const w=qchk();
+ document.querySelectorAll('.qwm').forEach(we=>{
+  we.innerHTML=w.length?('⚠ ترکیب نامعتبر — برد این‌ها را گیره می‌زند: '+w.map(x=>x.msg).join('؛ ')):'';
+  we.style.cssText=w.length?'margin:2px 0 6px;color:#fc8086;font-size:12.5px;line-height:1.9':'margin:2px 0 0';});
  for(const id of [20,21,22,23,24,25,26]){const ne=$('q'+id);if(ne)ne.style.borderColor=w.some(x=>x.ids.includes(id))?'#e5484d':'';}}
 /* [EN] bind the profile inputs: on change, POST /s (fire-and-forget; the ack span next to the field shows the APPLIED value reported by the STM32). v1.14d: a typed value that breaks the profile rules asks for confirmation first, because the board will clamp it. / اتصال ورودی‌های پروفایل: با تغییر، POST /s؛ نشانگر کنار فیلد مقدار «اعمال‌شده» را از STM32 نشان می‌دهد. v1.14d: مقدار ناسازگار قبل از ارسال تأیید می‌خواهد چون برد گیره‌اش می‌زند. */
 for(const id of [7,8,20,21,22,23,24,25,26]){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;
@@ -1051,7 +1073,19 @@ function evedit(el){
  let done=false;
  const close=save=>{if(done)return;done=true;
   if(save){const n=parseInt(inp.value,10);
-   if(!isNaN(n)&&n!==v){EVWANT[id]=n;send(id,n);}}
+   if(!isNaN(n)&&n!==v){EVWANT[id]=n;
+    /* [EN] Some of these ids also have a classic input in the settings tab.
+       Leaving it stale makes qv() see "typed value != applied value" and the
+       chart then labels the line "preview", dashed - announcing a pending
+       change that does not exist. Two representations of one number, so both
+       move together or neither is trustworthy.
+       [FA] بعضی از این شناسه‌ها در تب تنظیمات ورودی کلاسیک هم دارند. کهنه
+       گذاشتنش باعث می‌شود qv() ببیند «مقدار تایپ‌شده با اعمال‌شده فرق دارد» و
+       نمودار آن خط را خط‌چین و «پیش‌نمایش» برچسب بزند - اعلام تغییری معلق که
+       اصلاً وجود ندارد. دو نمایش از یک عدد: یا با هم حرکت می‌کنند یا هیچ‌کدام
+       قابل اعتماد نیست. */
+    const qe=$('q'+id);if(qe)qe.value=n;
+    send(id,n);}}
   evclose();qgraph();ctab();};
  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();close(true);}
                    else if(e.key==='Escape'){e.preventDefault();close(false);}};
@@ -1248,7 +1282,16 @@ function lnkhealth(d){const e=$('lnkw');if(!e)return;
   ' فریم با نسخهٔ ناشناخته رد شد. برد و ESP باید <b>با هم</b> دوباره فلش شوند (Clean + Rebuild کامل).';return;}
  if(ce>0){e.className='wbx warn';e.innerHTML='⚠ <b>'+ce+'</b> فریم به‌خاطر خطای CRC رد شد — اتصال سیم و زمین لینک را بررسی کنید. داده‌ها معتبرند؛ فقط بخشی از قاب‌ها رسیده‌اند.';return;}
  e.className='wbx';e.innerHTML='';}
-function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;lnkhealth(d);qfill();cfill();afill();ctab();if(TAB==2){if(STAB==0)qgraph();else if(STAB==3)pchk();else afresh();}astat();
+function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;lnkhealth(d);qfill();cfill();afill();ctab();
+/* [EN] The chart is mounted on the chargers page too, so the redraw can no
+   longer be gated on the settings tab alone. Adding a mount without this
+   line gives a container that is present, empty and permanently silent -
+   the markup looks right and nothing ever appears.
+   [FA] نمودار روی صفحهٔ شارژرها هم نصب است، پس بازرسم دیگر نمی‌تواند فقط به
+   تب تنظیمات مشروط باشد. افزودن یک محل نصب بدون این خط یعنی ظرفی که هست،
+   خالی است و برای همیشه ساکت می‌ماند. */
+if(TAB==0||(TAB==2&&STAB==0))qgraph();
+if(TAB==2){if(STAB==3)pchk();else if(STAB!=0)afresh();}astat();
  document.body.classList.toggle('dn',!on);$('lk').classList.toggle('on',on);
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');
  hist(d);

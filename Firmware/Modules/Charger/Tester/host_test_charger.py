@@ -1237,10 +1237,40 @@ def test_charger_persistence_v114():
           f"persisted id set must exclude 15..19 and 76 (got {len(persisted)} ids)")
 
     tab2 = ino.split('id="p2"', 2)[1]
+    # [EN] v1.31: the chart is mounted on the chargers page as well, because
+    #      that is where the operating table is and the user edits ON the
+    #      chart. So the redraw can no longer be gated on tab 2 alone - a
+    #      mount that is never drawn is a container that is present, empty
+    #      and permanently silent, and the markup looks perfectly correct.
+    # [FA] نمودار روی صفحهٔ شارژرها هم نصب است، چون جدول عملکرد همان‌جاست و
+    #      کاربر روی نمودار ویرایش می‌کند. پس بازرسم دیگر نمی‌تواند فقط به تب ۲
+    #      مشروط باشد - محل نصبی که هرگز رسم نشود یعنی ظرفی که هست، خالی است و
+    #      برای همیشه ساکت می‌ماند، در حالی که مارک‌آپ کاملاً درست به نظر می‌رسد.
     check("روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند" in ino and
           "ماندگاری:" in ino and "function qgraph()" in ino and "e.oninput=qgraph" in ino and
-          "if(TAB==2){if(STAB==0)qgraph();else if(STAB==3)pchk();else afresh();}astat();" in ino and "نمودار مراحل شارژ" in ino,
-          "the panel must carry the stage graph (qgraph + live preview + redraw hook, v1.15b: STAB-gated, v1.16d: astat always live on p0, v1.22: STAB 3 = PID guard) and the persistence texts")
+          "if(TAB==0||(TAB==2&&STAB==0))qgraph();" in ino and
+          "if(TAB==2){if(STAB==3)pchk();else if(STAB!=0)afresh();}astat();" in ino and
+          "نمودار مراحل شارژ" in ino,
+          "the panel must carry the stage graph (qgraph + live preview + redraw hook, "
+          "v1.15b: STAB-gated, v1.16d: astat always live on p0, v1.22: STAB 3 = PID guard, "
+          "v1.31: also drawn on the chargers page) and the persistence texts")
+    # one renderer, many mounts - ids would have made the second copy silent
+    check(ino.count('class="qgm"') >= 2 and ino.count('class="qgcm"') >= 2,
+          "the chart must be mounted both above the operating table and in settings")
+    # [EN] Strip comments before looking for the banned call. The first run of
+    #      this check failed on the only remaining $('qg') in the file - inside
+    #      the bilingual comment explaining why $('qg') is wrong. Same trap as
+    #      the audit's "hard-coded bound" finding that lived only in the
+    #      sentence warning against hard-coded bounds.
+    # [FA] قبل از جست‌وجوی فراخوان ممنوع، کامنت‌ها را حذف کن. اولین اجرای این
+    #      چک روی تنها $('qg') باقی‌ماندهٔ فایل شکست - داخل همان کامنت دوزبانه‌ای
+    #      که توضیح می‌دهد چرا $('qg') غلط است.
+    ino_live = re.sub(r"/\*.*?\*/", "", ino, flags=re.S)
+    check("document.querySelectorAll('.qgm')" in ino_live and
+          "document.querySelectorAll('.qgcm').forEach" in ino_live and
+          "$('qg')" not in ino_live,
+          "every mount must be filled by the SAME renderer: $('qg') would have "
+          "silently filled only the first copy and left the other blank forever")
     check('<button data-t="2">تنظیمات</button>' in ino and
           'id="q7"' in tab2 and 'id="q8"' in tab2 and 'id="a7"' in tab2 and 'id="a8"' in tab2 and
           "پنجرهٔ مدین (Median)" in tab2 and "پنجرهٔ میانگین (Average)" in tab2 and
@@ -1275,7 +1305,15 @@ def test_charger_persistence_v114():
           2.0 <= float(re.search(r'<circle cx="\$\{x\}" cy="\$\{y\}" r="(\d+(?:\.\d+)?)"', ino).group(1)) <= 10.0 and
           'stroke="#e7eaf0"' not in ino and "marker-end" not in ino,
           "v1.14c (user order 2026-09-26, 'show each battery's position and state; the white Bulk curve is confusing - are the zones not enough?'): the graph drops the V(t) curve and cycle arrow, and each battery gets a live position DOT on its own voltage column (ch2->Vlow t17/t13/t10, ch1->Vhigh t18/t6/t3) with a state chip under the chart")
-    check('id="qw"' in ino and 'function qchk()' in ino and
+    # [EN] v1.31: the warning box is mounted next to every copy of the chart,
+    #      so it is a class now. An id would have warned on one page only -
+    #      and the chargers page is the one where the numbers are edited.
+    # [FA] جعبهٔ هشدار کنار هر نسخه از نمودار نصب است، پس حالا کلاس است. با id
+    #      فقط روی یک صفحه هشدار می‌داد - و صفحهٔ شارژرها همان جایی است که
+    #      اعداد ویرایش می‌شوند.
+    check(ino.count('class="qwm"') >= 2 and
+          "document.querySelectorAll('.qwm').forEach" in ino and
+          'function qchk()' in ino and
           'q.o.d' in ino and 'q.r.d' in ino and 'pvln(q.o' in ino and
           'const ZL=[],LL=[]' in ino and 'ترکیب نامعتبر' in ino and
           'باز هم ارسال شود؟' in ino and 'نگهبان ترکیب' in ino,

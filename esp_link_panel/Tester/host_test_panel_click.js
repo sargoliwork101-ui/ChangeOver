@@ -106,8 +106,14 @@ function main() {
             p: seedParams(), t: new Array(25).fill(0),
             q: 0, q2: 0, q3: 0, q4: 0, fl: 0, on: 1
         };
-        w.qgraph();
-        w.ctab();
+        /* [EN] draw() rather than qgraph() directly: TAB defaults to 0, the
+                chargers page, so this also proves the redraw is not gated on
+                the settings tab. A mount that is never drawn is a container
+                that is present, empty and permanently silent.
+           [FA] به‌جای صدازدن مستقیم qgraph از draw استفاده می‌شود: TAB پیش‌فرض
+                ۰ است یعنی صفحهٔ شارژرها، پس این ثابت می‌کند بازرسم به تب
+                تنظیمات مشروط نیست. */
+        w.draw(w.D);
 
         const anchor = (i) => d.querySelector('[data-i="' + i + '"]');
         const pop = () => d.getElementById("evpop");
@@ -118,6 +124,45 @@ function main() {
         };
         const key = (el, k) =>
             el.dispatchEvent(new w.KeyboardEvent("keydown", { key: k, bubbles: true }));
+        const P0 = d.getElementById("p0");
+        const P2 = d.getElementById("p2");
+
+        /* --- 0. the chart has to be ON the page the table is on, or the
+                 instruction "edit on the chart, the table just displays"
+                 cannot be followed without changing tabs --- */
+        check(P0.querySelectorAll(".qgm svg").length === 1,
+              "the chargers page carries the chart, drawn",
+              "the table is here, so the numbers must be editable here");
+        check(P0.querySelectorAll(".qgm [data-i]").length > 0 &&
+              P0.querySelectorAll(".qgcm [data-i]").length > 0,
+              "both the plot labels and the chips are editable on that page");
+        check(P2.querySelectorAll(".qgm svg").length === 1,
+              "the settings copy is still drawn next to the profile fields");
+        check(P0.querySelector(".qgm").innerHTML ===
+              P2.querySelector(".qgm").innerHTML,
+              "both mounts come from ONE renderer",
+              "two charts that can disagree is the bug this whole split avoids");
+
+        /* --- 0b. editing from the chart must not leave the classic settings
+                 input stale: qv() would then see typed != applied and label
+                 the line a dashed 'preview' that nothing is pending for --- */
+        const lbl20 = P0.querySelector('.qgm [data-i="20"]');
+        lbl20.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+        const i20 = field();
+        i20.value = "14500";
+        key(i20, "Enter");
+        check(d.getElementById("q20").value === "14500",
+              "the mirrored settings input follows a chart edit",
+              d.getElementById("q20").value);
+        check(P0.querySelector('.qgm [data-i="20"]')
+               .textContent.indexOf("پیش‌نمایش") < 0,
+              "no phantom 'preview' is announced after committing",
+              "a dashed preview means a pending change; there is none");
+        check(d.getElementById("ctb").textContent.indexOf("14.50") >= 0,
+              "the read-only table follows the chart edit");
+        w.D.p[20] = 14400;
+        d.getElementById("q20").value = "14400";
+        w.draw(w.D);
 
         console.log("panel click-to-edit behaviour (chart edits, table reports)");
         console.log("=".repeat(68));
@@ -130,13 +175,15 @@ function main() {
                   "the standing order is that every limit stays settable");
         }
         for (const id of ON_VOLT_AXIS.concat(ON_CURR_AXIS)) {
-            const el = d.querySelector('#qg [data-i="' + id + '"]');
-            check(el !== null, "id " + id + " is drawn on the chart itself",
+            check(P0.querySelector('.qgm [data-i="' + id + '"]') !== null &&
+                  P2.querySelector('.qgm [data-i="' + id + '"]') !== null,
+                  "id " + id + " is drawn on the chart itself, at both mounts",
                   "it is a voltage or a current, so it belongs on an axis");
         }
         for (const id of AS_CHIPS) {
-            check(d.querySelector('#qgc [data-i="' + id + '"]') !== null,
-                  "id " + id + " is a chip under the chart",
+            check(P0.querySelector('.qgcm [data-i="' + id + '"]') !== null &&
+                  P2.querySelector('.qgcm [data-i="' + id + '"]') !== null,
+                  "id " + id + " is a chip under the chart, at both mounts",
                   "a time or a gain has no honest position on these axes");
         }
 
@@ -187,7 +234,8 @@ function main() {
         /* --- 5. Enter commits --- */
         inp.value = "0";
         key(inp, "Enter");
-        check(sent.length === 1 && sent[0][0] === 93 && sent[0][1] === 0,
+        const last = sent[sent.length - 1];
+        check(last && last[0] === 93 && last[1] === 0,
               "Enter sends the typed value", JSON.stringify(sent));
         check(pop() === null, "committing closes the editor");
         check(anchor(93).textContent.indexOf("بدون سقف") >= 0,
@@ -253,7 +301,7 @@ function main() {
               a100.getAttribute("fill"));
 
         /* --- 9. the hard constant is not offered as a control --- */
-        const cutoff = [...d.querySelectorAll("#qg text")]
+        const cutoff = [...P0.querySelectorAll(".qgm text")]
             .filter(t => t.textContent.indexOf("قطع سخت") >= 0);
         check(cutoff.length === 1 && !cutoff[0].hasAttribute("data-i"),
               "the 15 V measurement ceiling stays read-only",
