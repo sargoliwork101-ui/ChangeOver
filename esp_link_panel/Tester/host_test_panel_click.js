@@ -166,6 +166,39 @@ function main() {
         const HELPS = [...SRC.matchAll(
             />!<span class="it">([\s\S]*?)<\/span><\/button>/g)]
             .map(x => x[1]).filter(h => h.includes("Taper sustain"));
+        /* ---- v1.36: the two summary tables at the foot of the page ----
+           User order: "show these two tables, tidier, at the end of this
+           charger page, and write their numbers from the chart when I update
+           it." So the properties worth pinning are: the tables are LAST, they
+           are report-only, and they really do follow an edit made through the
+           panel's own send() path. The last one is the whole point - a table
+           built from a second copy of the values would pass a static check
+           and still go stale the moment something is edited. */
+        const CTB = d.getElementById("ctb");
+        const CARDS = [...P0.querySelectorAll(".cd")];
+        check(CARDS[CARDS.length - 1].contains(CTB),
+              "the summary tables are the last thing on the chargers page");
+        const TABS = CTB.querySelectorAll("table");
+        check(TABS.length === 2,
+              "exactly the two tables the user asked for",
+              "found " + TABS.length);
+        check(TABS[0].rows.length === 6 && TABS[1].rows.length === 6,
+              "the stage table has its five stages and the limits table its six");
+        check(CTB.querySelectorAll("[data-i]").length === 0,
+              "nothing in the tables is editable",
+              "a number editable in two places is two places to be wrong");
+        check([...TABS[0].rows].slice(1).every(
+                  r => r.querySelector(".cdot")),
+              "every stage carries the colour of its band on the chart");
+        for (const word of ["Bulk", "Absorb", "Float", "Hard fault",
+                            "OV cutoff", "Hard cutoff"]) {
+            check(CTB.textContent.includes(word),
+                  "the tables name " + word + " in the English term");
+        }
+        for (const bad of ["ابزورب", "بالک", "شناور ", "دیوتی"]) {
+            check(!CTB.textContent.includes(bad),
+                  "the tables must not transliterate '" + bad + "'");
+        }
         const strips = [...d.querySelectorAll(".qgcm")];
         check(strips.length === mounts.length,
               "a chip strip is mounted under every chart");
@@ -410,6 +443,41 @@ function main() {
               "x(edge)=" + xEdge + " x(trip)=" + xTrip);
         w.D.p[35] = 950;
         w.draw(w.D);
+
+        /* ---- the tables must FOLLOW the chart, not merely look like it ----
+           This is the assertion that actually matters. A table built from a
+           second copy of the numbers passes every structural check above and
+           still goes stale the instant something is edited, which is the bug
+           the user has hit before. So: change the applied parameters the way
+           an edit on the chart does, redraw, and require BOTH the on-chart
+           label and the table cell to move together. */
+        const cellOf = (t, r, c) =>
+            d.getElementById("ctb").querySelectorAll("table")[t]
+             .rows[r].cells[c].textContent.trim();
+        const chartLabel = id => {
+            const el = P0.querySelector('.qgm svg [data-i="' + id + '"]');
+            return el ? el.textContent.trim() : "";
+        };
+        const wasCell = [cellOf(0, 1, 2), cellOf(1, 4, 1)];
+        w.D.p[25] = 1200;
+        w.D.p[35] = 2400;
+        w.draw(w.D);
+        check(cellOf(0, 1, 2).includes("1200") &&
+              chartLabel(25).includes("1200"),
+              "editing the bulk current moves the chart AND the table",
+              "chart=" + chartLabel(25) + " table=" + cellOf(0, 1, 2));
+        check(cellOf(1, 4, 1).includes("2400") &&
+              chartLabel(35).includes("2400"),
+              "editing the hard fault moves the chart AND the table",
+              "chart=" + chartLabel(35) + " table=" + cellOf(1, 4, 1));
+        check(wasCell[0] !== cellOf(0, 1, 2) && wasCell[1] !== cellOf(1, 4, 1),
+              "the table cells really changed",
+              "a cell that never moves would pass the test above by accident");
+        w.D.p[25] = 650;
+        w.D.p[35] = 950;
+        w.draw(w.D);
+        check(cellOf(0, 1, 2).includes("650"),
+              "and it follows the value back down again");
 
         console.log("=".repeat(68));
         if (failures === 0) {
