@@ -132,25 +132,35 @@ function main() {
         const P0 = d.getElementById("p0");
         const P2 = d.getElementById("p2");
 
-        /* --- 0. the chart has to be ON the page the table is on, or the
-                 instruction "edit on the chart, the table just displays"
-                 cannot be followed without changing tabs --- */
-        check(P0.querySelectorAll(".qgm svg").length === 1,
-              "the chargers page carries the chart, drawn",
-              "the table is here, so the numbers must be editable here");
-        /* v1.34 (user order: "why did you take the chart away entirely? go
-           back to the previous version"): the settings copy is back. Head
-           count is not the property worth testing - two copies that can
-           DISAGREE is. Both mounts are compared byte for byte below. */
+        /* --- 0. v1.37 (user order: "why did you put the chart in the panel
+                 too? delete it from there. put the tables under it into the
+                 chargers page"). The chart now has one home, Settings >
+                 charge filter and PID, and the chargers page carries the two
+                 charger cards with the operating table directly under them.
+                 The redraw gate narrowed with it, so the chart is only drawn
+                 while that sub-tab is open - every chart assertion below has
+                 to GO there rather than assume the landing page holds a
+                 copy. Third reversal of this preference, so the assertions
+                 pin placement and single-sourcing, never a head count. --- */
+        const gotoChart = () => {
+            [...d.querySelectorAll("nav button")][2].click();
+            [...d.querySelectorAll("#sbt button")][0].click();
+        };
+        gotoChart();
+        const CHART = d.getElementById("s0");
+        check(P0.querySelectorAll(".qgm").length === 0,
+              "the chart is gone from the chargers page, as ordered",
+              "it was removed on the user's order; a mount here is a relapse");
+        check(P0.querySelector("#ctb") !== null,
+              "the operating table stays on the chargers page, as ordered");
         const mounts = [...d.querySelectorAll(".qgm")];
-        check(mounts.length === 2,
-              "the chart is mounted on the chargers page AND in settings");
+        check(mounts.length === 1,
+              "the chart has exactly one home, so no two copies can disagree");
         check(mounts.every(m => m.querySelectorAll("svg").length === 1),
-              "every mount is actually drawn into",
+              "the mount is actually drawn into",
               "a mount outside the redraw gate stays an empty box forever");
-        check(mounts[0].innerHTML === mounts[1].innerHTML,
-              "both copies come from ONE renderer and are identical",
-              "two charts that can disagree is the real bug, not two charts");
+        check(CHART.contains(mounts[0]),
+              "that home is the charge/filter/PID sub-tab of settings");
         /* v1.35 (user order: "write those times underneath so the charts do
            not get so crowded - do the same for the gains"). This demanded the
            chip strip stay DELETED. Inverted, not removed: the strip must now
@@ -268,7 +278,11 @@ function main() {
         check(new Set([...d.querySelectorAll(".pgx")]
                   .map(x => x.parentElement)).size === 1,
               "all main pages share one parent");
-        navs[0].click();
+        /* leave the walk on the tab that owns the chart: from v1.37 the
+           redraw gate only fires there, so anything below that calls draw()
+           and then reads a chart label would otherwise read a stale one and
+           pass or fail for the wrong reason */
+        gotoChart();
         const CTB = d.getElementById("ctb");
         const CARDS = [...P0.querySelectorAll(".cd")];
         check(CARDS[CARDS.length - 1].contains(CTB),
@@ -300,8 +314,9 @@ function main() {
         check(strips.every(x => x.querySelectorAll(".evc").length > 0),
               "every chip strip actually renders chips",
               "an empty strip is a setting the user can no longer reach");
-        check(strips[0].innerHTML === strips[1].innerHTML,
-              "both chip strips come from one renderer and are identical");
+        check(/querySelectorAll\('\.qgcm'\)/.test(SRC),
+              "the chip strips are filled by class, not by id lookup",
+              "an id lookup fills only the first and lets copies disagree");
         check(P2.querySelectorAll(".qgm svg").length === 1,
               "the settings tab carries the chart again, as asked");
 
@@ -314,12 +329,12 @@ function main() {
                   "no duplicate input box for id " + i,
                   "the chart is the only place these are set");
         }
-        const lbl20 = P0.querySelector('.qgm [data-i="20"]');
+        const lbl20 = CHART.querySelector('.qgm [data-i="20"]');
         lbl20.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
         const i20 = field();
         i20.value = "14500";
         key(i20, "Enter");
-        check(P0.querySelector('.qgm [data-i="20"]')
+        check(CHART.querySelector('.qgm [data-i="20"]')
                .textContent.indexOf("پیش‌نمایش") < 0,
               "no phantom 'preview' is announced after committing",
               "a dashed preview means a pending change; there is none");
@@ -339,7 +354,7 @@ function main() {
                   "the standing order is that every limit stays settable");
         }
         for (const id of ON_VOLT_AXIS.concat(ON_CURR_AXIS)) {
-            check(P0.querySelector('.qgm [data-i="' + id + '"]') !== null,
+            check(CHART.querySelector('.qgm [data-i="' + id + '"]') !== null,
                   "id " + id + " is drawn on the chart itself",
                   "it is a voltage or a current, so it belongs on an axis");
         }
@@ -348,11 +363,11 @@ function main() {
            - checking only the first half would let a duplicate survive in
            both places, which is the two-places-to-be-wrong bug again. */
         for (const id of ANNOTATED) {
-            const chip = P0.querySelector('.qgcm [data-i="' + id + '"]');
+            const chip = CHART.querySelector('.qgcm [data-i="' + id + '"]');
             check(chip !== null,
                   "id " + id + " is reachable as a chip under the chart",
                   "it is neither a voltage nor a current, so it has no axis");
-            check(P0.querySelector('.qgm svg [data-i="' + id + '"]') === null,
+            check(CHART.querySelector('.qgm svg [data-i="' + id + '"]') === null,
                   "id " + id + " no longer crowds the plot itself",
                   "left in both places it would be editable twice");
             const nm = EVN[id];
@@ -481,7 +496,7 @@ function main() {
               a100.getAttribute("fill"));
 
         /* --- 9. the hard constant is not offered as a control --- */
-        const cutoff = [...P0.querySelectorAll(".qgm text")]
+        const cutoff = [...CHART.querySelectorAll(".qgm text")]
             .filter(t => t.textContent.indexOf("Hard cutoff") >= 0);
         check(cutoff.length === 1 && !cutoff[0].hasAttribute("data-i"),
               "the 15 V measurement ceiling stays read-only",
@@ -492,7 +507,7 @@ function main() {
                  the chart must SHOW where measured data ends - otherwise the
                  freedom is real but silent, and a trip set at 2 A looks as
                  trustworthy as one set at 600 mA. --- */
-        const edge = () => [...P0.querySelectorAll(".qgm line")]
+        const edge = () => [...CHART.querySelectorAll(".qgm line")]
             .filter(l => l.getAttribute("stroke-dasharray") === "2 4");
         /* The first draft of this check asserted the edge is HIDDEN at
            default. Running it proved the opposite is the honest answer: the
@@ -507,10 +522,10 @@ function main() {
               "the calibration edge is drawn even at the factory setting",
               "the default 950 mA trip already sits past the 631 mA fit");
         check(Number(edge()[0].getAttribute("x1")) <
-              Number(P0.querySelector('.qgm [data-i="35"]').getAttribute("x")),
+              Number(CHART.querySelector('.qgm [data-i="35"]').getAttribute("x")),
               "the edge sits left of the factory trip");
 
-        const lbl35 = P0.querySelector('.qgm [data-i="35"]');
+        const lbl35 = CHART.querySelector('.qgm [data-i="35"]');
         lbl35.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
         const i35 = field();
         check(Number(i35.max) >= 3000,
@@ -529,7 +544,7 @@ function main() {
               "going above the bench fit must be visible, not hidden");
         const xEdge = Number(edge()[0].getAttribute("x1"));
         const xTrip = Number(
-            [...P0.querySelectorAll(".qgm line")]
+            [...CHART.querySelectorAll(".qgm line")]
                 .filter(l => l.getAttribute("stroke") === "#ff6873")
                 .map(l => Number(l.getAttribute("x1")))
                 .filter(v => !isNaN(v)).pop());
@@ -550,9 +565,14 @@ function main() {
             d.getElementById("ctb").querySelectorAll("table")[t]
              .rows[r].cells[c].textContent.trim();
         const chartLabel = id => {
-            const el = P0.querySelector('.qgm svg [data-i="' + id + '"]');
+            const el = CHART.querySelector('.qgm svg [data-i="' + id + '"]');
             return el ? el.textContent.trim() : "";
         };
+        /* the gate only draws the chart while its sub-tab is open, and the
+           tab walk above left us elsewhere - go back before redrawing, or
+           the chart label would be read stale and the test would pass for
+           the wrong reason */
+        gotoChart();
         const wasCell = [cellOf(0, 1, 2), cellOf(1, 4, 1)];
         w.D.p[25] = 1200;
         w.D.p[35] = 2400;

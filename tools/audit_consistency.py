@@ -473,11 +473,21 @@ def sec_defaults(ids):
         land = m.group(1) if m else None
         # which page div is the single chart mount inside? scan backwards
         # from the mount to the nearest id="pN" - derived, never assumed.
-        mi = P_PAN.find('class="qgm"')
+        # [EN] This used to derive the landing page from the chart mount.
+        #      The chart has since been ordered off the chargers page, so
+        #      following it would open the preview on the settings tab and
+        #      hide the page the user actually asked to review. The anchor
+        #      moves to the operating table, which is what the chargers page
+        #      is for - still derived from the markup, never hardcoded.
+        # [FA] قبلاً صفحهٔ فرود از محل نصب نمودار مشتق می‌شد. حالا نمودار به
+        #      دستور کاربر از صفحهٔ شارژرها رفته، پس دنبال‌کردنش پیش‌نمایش را
+        #      روی تب تنظیمات باز می‌کرد و همان صفحه‌ای را که کاربر می‌خواهد
+        #      ببیند پنهان می‌کرد. لنگر به جدول عملکردی منتقل شد.
+        mi = P_PAN.find('id="ctb"')
         pm = list(re.finditer(r'id="p(\d)"', P_PAN[:mi])) if mi >= 0 else []
         mount_page = pm[-1].group(1) if pm else "?"
         ok(land == mount_page,
-           "the preview must land on the page that carries the chart",
+           "the preview must land on the page that carries the operating table",
            f"server lands on tab {land}, but the chart is mounted on p{mount_page}")
 
         ok("evat(" not in tab and "data-i" not in tab,
@@ -806,8 +816,23 @@ def sec_panel(ids):
             ok(f"(1<<(id-{lo_b}))" in P_PAN,
                "the panel pending-mask has no arm for this word",
                f"apend() must handle ids {lo_b}..{lo_b + 31}")
-        ok("_Static_assert(ESP_PARAM_COUNT <= 128" in p_http,
+        ok("static_assert(ESP_PARAM_COUNT <= 128" in p_http,
            "nothing stops the next parameter block from overflowing the masks")
+
+        # [EN] The sketch is C++, so _Static_assert (a C11 keyword) does not
+        #      compile in ANY dialect: using it does not weaken a check, it
+        #      stops the whole ESP program from building. That is how it got
+        #      here unnoticed - nothing built this program until now.
+        # [FA] اسکچ ++C است، پس _Static_assert (کلیدواژهٔ C11) در هیچ دیالکتی
+        #      کامپایل نمی‌شود: استفاده از آن چک را ضعیف نمی‌کند، کل برنامهٔ ESP
+        #      را از ساخته‌شدن بازمی‌دارد. دقیقاً به همین شکل بی‌سروصدا وارد شد.
+        for esp_file in ("plink_config.h", "plink_params.h", "plink_state.h",
+                         "plink_panel.h", "plink_font.h", "plink_link.h",
+                         "plink_http.h", "esp_link_panel.ino"):
+            body = read(f"esp_link_panel/{esp_file}")
+            ok("_Static_assert(" not in body,
+               "the C++ sketch uses _Static_assert, which no C++ dialect accepts",
+               f"{esp_file}: write static_assert; the board cannot build this")
 
     sd = re.search(r"function sdef\(\)\{AIDS\.forEach\(\(id,k\)=>\{if\(id<(\d+)\|\|id>(\d+)\)return;", P_PAN)
     ok(sd is not None, "sdef() lost its id guard")

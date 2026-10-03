@@ -1339,11 +1339,12 @@ def test_charger_persistence_v114():
     #      منتقل شد - از دست دادنش یعنی انداختن «اطلاعات»، نه «تکرار».
     check("روی فلش برد ذخیره" in ino and
           "ماندگاری:" in ino and "function qgraph()" in ino and
-          "if(TAB==0||(TAB==2&&STAB==0))qgraph();" in ino and
+          "if(TAB==2&&STAB==0)qgraph();" in ino and
           "if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();" in ino and
           "نمودار مراحل شارژ" in ino,
           "the panel must carry the stage graph (one mount, gated on the "
-          "chargers page; PID guard now on sub-tab 0) and the persistence texts")
+          "settings sub-tab that now owns it; PID guard on sub-tab 0) and "
+          "the persistence texts")
     # [EN] v1.32 (user order: "remove the extra and duplicated items"): the
     #      second copy of the chart was itself the duplication. Exactly one
     #      mount survives, on the chargers page above the operating table.
@@ -1355,8 +1356,24 @@ def test_charger_persistence_v114():
     # [FA] نسخهٔ تب تنظیمات به دستور کاربر برگشت. شمردن محل نصب یک ترجیح را
     #      کد کرده بود که برگشت؛ چیزی که باید برقرار بماند این است که یک
     #      رندرکننده همه را پر کند تا نتوانند حرف متفاوت بزنند.
-    check(ino.count('class="qgm"') >= 2,
-          "the chart must be mounted on the chargers page AND in settings")
+    # [EN] v1.37 (user order 2026-10-03: "why did you put the chart in the
+    #      panel too? delete it from there. put the tables under it into the
+    #      chargers page"). The preference reversed a THIRD time, which is
+    #      exactly why the count is not what gets pinned. What is pinned is
+    #      the pair of facts that cannot be argued with: the chart has one
+    #      home and cannot be out of step with itself, and the chargers page
+    #      keeps the operating table the user asked to have there.
+    # [FA] ترجیح برای سومین بار برگشت، و دقیقاً به همین دلیل «تعداد» چیزی
+    #      نیست که قفل شود. چیزی که قفل می‌شود دو واقعیت بحث‌ناپذیر است:
+    #      نمودار یک خانه دارد و نمی‌تواند با خودش ناهماهنگ شود، و صفحهٔ
+    #      شارژرها جدول عملکردی را که کاربر خواسته نگه می‌دارد.
+    check(ino.count('class="qgm"') == 1,
+          "the chart has exactly one home, so no two copies can disagree")
+    _p0 = ino.split('id="p0"', 1)[1].split('id="p1"', 1)[0]
+    check('class="qgm"' not in _p0,
+          "the chart is OFF the chargers page, as ordered")
+    check('id="ctb"' in _p0,
+          "the operating table stays ON the chargers page, as ordered")
     # [EN] v1.35 (user order 2026-10-03: "write those times underneath so the
     #      charts do not get so crowded - do the same for the gains"). These
     #      two assertions demanded the exact opposite and are INVERTED, not
