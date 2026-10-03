@@ -641,6 +641,39 @@ def sec_docs():
 
 
 
+# ============================================== 12. standalone preview
+def sec_preview():
+    """[EN] The generated offline copy of the panel must stay in step.
+       [FA] کپی آفلاین تولیدشدهٔ پنل باید هم‌گام بماند."""
+
+    # [EN] The standalone preview is a GENERATED copy of the panel markup. A
+    #      committed copy of something is exactly the duplication trap this
+    #      whole audit exists for, so it is not trusted - it is regenerated in
+    #      memory and compared. If plink_panel.h moved and nobody re-ran the
+    #      generator, this fails instead of quietly showing an old page.
+    # [FA] پیش‌نمایش خودکفا یک کپی «تولیدشده» از مارک‌آپ پنل است. کپی کامیت‌شده
+    #      دقیقاً همان تلهٔ تکراری است که این ممیز برای آن وجود دارد، پس به آن
+    #      اعتماد نمی‌شود: دوباره در حافظه ساخته و مقایسه می‌شود.
+    prev_html = ROOT / "esp_link_panel" / "panel_preview.html"
+    if ok(prev_html.exists(), "the standalone panel preview is missing",
+          "run tools/make_panel_preview.py"):
+        import subprocess
+        before = prev_html.read_text(encoding="utf-8")
+        r = subprocess.run([sys.executable, str(ROOT / "tools" / "make_panel_preview.py")],
+                           capture_output=True, text=True)
+        ok(r.returncode == 0, "the panel preview generator does not run",
+           (r.stdout + r.stderr)[-300:])
+        after = prev_html.read_text(encoding="utf-8")
+        ok(before == after,
+           "esp_link_panel/panel_preview.html is stale",
+           "plink_panel.h changed without re-running tools/make_panel_preview.py, "
+           "so the preview shows an older page than the firmware serves")
+        ok("OFFLINE SHIM" in after and after.index("OFFLINE SHIM") < after.index("function qgraph"),
+           "the preview's offline shim must be injected BEFORE the panel script",
+           "otherwise fetch is replaced too late and the page stays empty")
+
+
+
 # ================================================================= report
 def main():
     ids = sec_ids()
@@ -654,6 +687,7 @@ def main():
     sec_single_source()
     sec_link()
     sec_docs()
+    sec_preview()
 
     print("whole-program consistency audit")
     print("=" * 72)
