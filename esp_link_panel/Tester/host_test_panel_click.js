@@ -151,9 +151,29 @@ function main() {
         check(mounts[0].innerHTML === mounts[1].innerHTML,
               "both copies come from ONE renderer and are identical",
               "two charts that can disagree is the real bug, not two charts");
-        check(d.querySelectorAll(".evchips, .evc").length === 0,
-              "no chip strip anywhere",
-              "the numbers are clicked on the plot, not read from a list below it");
+        /* v1.35 (user order: "write those times underneath so the charts do
+           not get so crowded - do the same for the gains"). This demanded the
+           chip strip stay DELETED. Inverted, not removed: the strip must now
+           exist under EVERY chart and must actually render. */
+        const SRC = require("fs").readFileSync(
+            require("path").join(__dirname, "..", "plink_panel.h"), "utf8");
+        const EVN = {};
+        {
+            const m = SRC.match(/const EVN=\{([\s\S]*?)\};/);
+            if (m) for (const r of m[1].matchAll(/(\d+):'([^']+)'/g))
+                EVN[+r[1]] = r[2];
+        }
+        const HELPS = [...SRC.matchAll(
+            />!<span class="it">([\s\S]*?)<\/span><\/button>/g)]
+            .map(x => x[1]).filter(h => h.includes("Taper sustain"));
+        const strips = [...d.querySelectorAll(".qgcm")];
+        check(strips.length === mounts.length,
+              "a chip strip is mounted under every chart");
+        check(strips.every(x => x.querySelectorAll(".evc").length > 0),
+              "every chip strip actually renders chips",
+              "an empty strip is a setting the user can no longer reach");
+        check(strips[0].innerHTML === strips[1].innerHTML,
+              "both chip strips come from one renderer and are identical");
         check(P2.querySelectorAll(".qgm svg").length === 1,
               "the settings tab carries the chart again, as asked");
 
@@ -195,11 +215,28 @@ function main() {
                   "id " + id + " is drawn on the chart itself",
                   "it is a voltage or a current, so it belongs on an axis");
         }
+        /* The off-axis values moved OUT of the SVG and into the chips. Each
+           one must be reachable there, and must no longer be inside the plot
+           - checking only the first half would let a duplicate survive in
+           both places, which is the two-places-to-be-wrong bug again. */
         for (const id of ANNOTATED) {
-            const el = P0.querySelector('.qgm [data-i="' + id + '"]');
-            check(el !== null && el.tagName.toLowerCase() === "tspan",
-                  "id " + id + " is annotated INSIDE the plot",
-                  "it must be clickable on the chart, not listed below it");
+            const chip = P0.querySelector('.qgcm [data-i="' + id + '"]');
+            check(chip !== null,
+                  "id " + id + " is reachable as a chip under the chart",
+                  "it is neither a voltage nor a current, so it has no axis");
+            check(P0.querySelector('.qgm svg [data-i="' + id + '"]') === null,
+                  "id " + id + " no longer crowds the plot itself",
+                  "left in both places it would be editable twice");
+            const nm = EVN[id];
+            check(nm && chip && chip.closest(".evc").textContent.includes(nm),
+                  "chip " + id + " is labelled with its variable name " + nm);
+        }
+        /* the help behind "!" must define every one of those names */
+        for (const id of ANNOTATED) {
+            const nm = EVN[id];
+            check(HELPS.every(h => h.includes(nm)),
+                  "the ! help explains the name " + nm,
+                  "user order: say what each variable name means");
         }
 
         /* --- 2. the table reports and nothing more (user order) --- */

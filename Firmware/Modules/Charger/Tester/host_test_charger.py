@@ -1357,11 +1357,37 @@ def test_charger_persistence_v114():
     #      رندرکننده همه را پر کند تا نتوانند حرف متفاوت بزنند.
     check(ino.count('class="qgm"') >= 2,
           "the chart must be mounted on the chargers page AND in settings")
-    check(".evchips" not in ino and 'class="evc"' not in ino,
-          "the chip strip must stay gone: the numbers are clicked on the plot, "
-          "not read from a list written underneath it")
-    check(" const ann=(x,y,parts,anchor)=>{" in ino,
-          "loop and timing values must be annotated INSIDE the plot")
+    # [EN] v1.35 (user order 2026-10-03: "write those times underneath so the
+    #      charts do not get so crowded - do the same for the gains"). These
+    #      two assertions demanded the exact opposite and are INVERTED, not
+    #      deleted: the timers and gains must now be chips UNDER the chart,
+    #      and must no longer be drawn as floating runs over the I-V plane.
+    #      Deleting them would leave the next layout change unguarded, which
+    #      is how the on-plot version crept back in the first place.
+    # [FA] این دو ادعا دقیقاً عکس دستور تازه بودند و «وارونه» شدند، نه حذف:
+    #      زمان‌ها و گین‌ها حالا باید زیر نمودار تراشه باشند و دیگر نباید روی
+    #      صفحهٔ I-V شناور رسم شوند. حذف‌کردنشان تغییر چیدمان بعدی را بی‌نگهبان
+    #      می‌گذاشت - و دقیقاً همین‌طور بود که نسخهٔ روی‌نمودار برگشت.
+    check(".evcg" in ino and 'class="evc"' in ino and
+          ino.count('class="qgcm"') == ino.count('class="qgm"'),
+          "the timers and gains must be chips under EVERY chart, not drawn on it")
+    check(" const ann=(x,y,parts,anchor)=>{" not in ino and
+          "s+=ann(" not in ino,
+          "the on-plot annotation helper must be gone, not merely unused: "
+          "dead UI code is how a removed layout comes back by accident")
+    # [EN] Moved, never demoted - a chip that lost its editor hook would look
+    #      the same and silently stop being settable.
+    # [FA] منتقل شد، نه تنزل‌یافته - تراشه‌ای که قلاب ویرایش را از دست بدهد
+    #      دقیقاً همان‌شکل است و بی‌صدا غیرقابل‌تنظیم می‌شود.
+    import re as _re
+    _evn = _re.search(r"const EVN=\{(.*?)\};", ino, _re.S)
+    _names = _re.findall(r"\d+:'([^']+)'", _evn.group(1)) if _evn else []
+    _help = _re.findall(r'>!<span class="it">(.*?)</span></button>', ino, _re.S)
+    _ch = [h for h in _help if "Taper sustain" in h]
+    check(len(_names) >= 13 and _ch and
+          all(all(n in h for n in _names) for h in _ch),
+          "the ! help on every chart card must explain every variable name "
+          "(user order: say how to tune these and what each name means)")
     # [EN] Strip comments before looking for the banned call. The first run of
     #      this check failed on the only remaining $('qg') in the file - inside
     #      the bilingual comment explaining why $('qg') is wrong. Same trap as
@@ -2794,10 +2820,22 @@ def test_two_loop_pid_v124():
     # [FA] فهرست دستی سوم حذف شد. هر چیزی که EVB می‌تواند ویرایش کند و دو محور
     #      رسمش نمی‌کنند باید داخل نمودار یادداشت شود، و آن مجموعه از بدنهٔ
     #      qgraph «مشتق» می‌شود نه اعلام - یک فهرست کمتر برای عقب‌ماندن.
+    # [EN] v1.35: the off-axis values moved from inline ann() groups to the
+    #      chip strip under the chart, so the derived set now reads EVCT and
+    #      EVCG. Still derived, never declared here - adding an id to a chip
+    #      group is enough, and dropping one still fails loudly.
+    # [FA] مقادیر خارج از محور از گروه‌های ann به نوار تراشهٔ زیر نمودار منتقل
+    #      شدند، پس مجموعهٔ مشتق‌شده حالا EVCT و EVCG را می‌خواند. همچنان مشتق
+    #      است نه اعلام‌شده.
     chart_body = ino[ino.find("function qgraph()"):]
     chart_body = chart_body[:chart_body.find("\nfunction ")]
     for grp in re.findall(r"ann\((.*?)\);", chart_body, re.S):
         drawn |= {int(x) for x in re.findall(r",\s*(\d+)\]", grp)}
+    for name in ("EVCT", "EVCG"):
+        m = re.search(r"const " + name + r"=\[([0-9,\s]*)\]", ino)
+        check(m, f"the panel must declare the {name} chip group")
+        if m:
+            drawn |= {int(x) for x in re.findall(r"\d+", m.group(1))}
     for i in range(93, 108):
         check(i in evb_ids, f"limit id {i} has no EVB window, so it cannot be edited")
         check(i in drawn, f"limit id {i} is drawn by no renderer - settable in theory only")

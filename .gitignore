@@ -20,3 +20,6 @@ __pycache__/
 
 # node tooling for the optional panel behaviour test (esp_link_panel/Tester)
 node_modules/
+
+# generated diagnostic snapshot, not source
+esp_link_panel/chart_now.svg

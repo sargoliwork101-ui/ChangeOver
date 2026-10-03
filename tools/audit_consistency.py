@@ -385,10 +385,28 @@ def sec_defaults(ids):
             if m:
                 drawn_axes |= {int(x) for x in re.findall(r"(\d+):\[", m.group(1))}
         chart_body = block(P_PAN, "function qgraph()")
+        # [EN] v1.35 (user order: "write those times underneath so the charts
+        #      do not get so crowded - do the same for the gains"). The timers
+        #      and gains are no longer <tspan> runs floating over the plane;
+        #      they are chips under it, listed in EVCT and EVCG. A renderer is
+        #      a renderer wherever it draws, so the chip groups count exactly
+        #      as the annotations used to. Reading the two id lists instead of
+        #      hard-coding them keeps this derived: add an id to a group and
+        #      the audit follows without being edited.
+        # [FA] زمان‌ها و گین‌ها دیگر روی صفحه شناور نیستند؛ زیر نمودار به‌صورت
+        #      تراشه‌اند و در EVCT و EVCG فهرست شده‌اند. رندرکننده هر جا که رسم
+        #      کند رندرکننده است، پس گروه‌های تراشه دقیقاً مثل یادداشت‌های قبلی
+        #      حساب می‌شوند. خواندن دو فهرست به‌جای نوشتن دستی‌شان یعنی این چک
+        #      مشتق می‌ماند.
+        chipped = set()
+        for name in ("EVCT", "EVCG"):
+            m = re.search(r"const " + name + r"=\[([0-9,\s]*)\]", P_PAN)
+            if m:
+                chipped |= {int(x) for x in re.findall(r"\d+", m.group(1))}
         annotated = set()
         for grp in re.findall(r"ann\((.*?)\);", chart_body, re.S):
             annotated |= {int(x) for x in re.findall(r",\s*(\d+)\]", grp)}
-        drawn = drawn_axes | annotated
+        drawn = drawn_axes | annotated | chipped
         notrendered = [i for i in range(lim_lo, lim_hi + 1) if i not in drawn]
         ok(not notrendered,
            "a limit is in EVB but drawn by no renderer",
@@ -477,15 +495,61 @@ def sec_defaults(ids):
         #      EVC واقعاً داخل یک گروه ann() در نمودار بیاید.
         ok("evat(" in chart_body, "the chart must be where values are edited")
         # derived, not declared: whatever EVB can edit and the two axes do not
-        # draw MUST be annotated on the plot. A third hand list would just be
-        # one more thing to fall out of step.
+        # draw MUST appear somewhere a user can click - on the plot or in the
+        # chips under it. A third hand list would just be one more thing to
+        # fall out of step.
         need = seen - drawn_axes
-        ok(need <= annotated,
-           "a loop or timing value is settable but never drawn on the plot",
-           f"ids {sorted(need - annotated)} would vanish from the panel entirely")
-        ok(".evchips" not in P_PAN and "class=\"evc\"" not in P_PAN,
-           "the chip strip under the chart must stay gone",
-           "the user asked to click the number on the plot, not read a list below it")
+        placed = annotated | chipped
+        ok(need <= placed,
+           "a loop or timing value is settable but reaches no renderer",
+           f"ids {sorted(need - placed)} would vanish from the panel entirely")
+        # [EN] This check used to demand the chip strip stay DELETED, written
+        #      when the order was "click the number on the plot, not a list
+        #      below it". The order reversed once the plane got crowded, so
+        #      the old assertion is now exactly backwards. Pinning the strip's
+        #      presence alone would be just as brittle, so what is pinned is
+        #      the property that matters: the chips must be EDITABLE, must be
+        #      mounted under every chart, and must not quietly overlap the
+        #      axis labels - one number, one place to change it.
+        # [FA] این چک قبلاً اصرار داشت نوار تراشه حذف بماند، چون دستور آن زمان
+        #      «روی خود نمودار کلیک کنم، نه فهرستی زیرش» بود. وقتی صفحه شلوغ
+        #      شد دستور برعکس شد، پس ادعای قبلی حالا دقیقاً وارونه است. صرفِ
+        #      «بودن» نوار را قفل‌کردن هم به همان اندازه شکننده بود، پس چیزی
+        #      قفل می‌شود که اهمیت دارد: تراشه‌ها باید ویرایش‌پذیر باشند، زیر
+        #      هر نمودار نصب شوند، و با برچسب‌های محور هم‌پوشانی نکنند.
+        ok(chipped and 'class="evcg"' in chart_body,
+           "the timers and gains must be rendered as chips under the chart")
+        ok('class="evc"' in chart_body and "evat(" in
+           chart_body[chart_body.find('class="evc"'):],
+           "every chip must carry the shared editor hook",
+           "a chip that only displays is a number the user cannot change")
+        # [EN] The user asked for the help behind the "!" to say how to tune
+        #      these and what each variable name means. A help text that
+        #      silently stops covering a setting is how a panel becomes
+        #      folklore, so every name in EVN must appear in it.
+        # [FA] کاربر خواست راهنمای پشت «!» بگوید این‌ها را چطور تنظیم کنیم و هر
+        #      نام متغیر یعنی چه. راهنمایی که بی‌صدا از پوشش یک تنظیم جا بماند،
+        #      پنل را به شایعه تبدیل می‌کند، پس هر نام در EVN باید در آن بیاید.
+        mn = re.search(r"const EVN=\{(.*?)\};", P_PAN, re.S)
+        names = re.findall(r"\d+:'([^']+)'", mn.group(1)) if mn else []
+        helps = re.findall(r'>!<span class="it">(.*?)</span></button>',
+                           P_PAN, re.S)
+        chart_help = [h for h in helps if "Taper sustain" in h]
+        ok(len(chart_help) == P_PAN.count('class="qgm"'),
+           "every chart card must carry the tuning help",
+           "a card whose help was left behind teaches the old layout")
+        missing = sorted({n for n in names
+                          if any(n not in h for h in chart_help)})
+        ok(names and not missing,
+           "the ! help must explain every chip by its variable name",
+           f"undocumented: {missing}")
+        ok(P_PAN.count('class="qgcm"') == P_PAN.count('class="qgm"'),
+           "every chart must have a chip strip mounted under it",
+           "a chart whose chips are missing hides half of its settings")
+        ok(not (chipped & drawn_axes),
+           "a value must not be both an axis label and a chip",
+           f"ids {sorted(chipped & drawn_axes)} would be editable in two "
+           "places on one page")
         # [EN] This used to demand exactly ONE mount, written when the user
         #      asked for the duplicate to go. They have since asked for the
         #      settings copy back ("why did you take the chart away entirely?
