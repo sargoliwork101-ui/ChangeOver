@@ -361,7 +361,7 @@ calibration campaign and a silently wrong number there is worse than no number:
 | 0x03 | — | *(reserved, not handled)* | Was a v1.3 one-shot calibration command. The panel stopped sending it in v1.7 and the STM32 handler was carried dead for six versions - 172 source lines - until it overflowed the 62 KB flash budget by 92 bytes and was removed. The id stays RESERVED: reusing it would make an older panel's frames silently misinterpreted instead of harmlessly ignored. Calibrate by reading the raw ADC counts in the telemetry and writing coefficients back as ordinary SET_PARAM. Old targets 0/1 = GAIN ch1/2, 2/3 = ETA ch1/2 (v1.3, section 5.4) |
 | 0x10 | STM→ESP | TLM_LIVE | **104 bytes**, layout below (84 until v1.25; +5 u32 raw calibration fields) |
 | 0x11 | STM→ESP | PARAM_REPORT | `[id:u8][value:u32 LE]` — the **applied** value (sent after every accepted SET_PARAM) |
-| 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS; 93 params since v1.24 = 466 payload bytes) |
+| 0x12 | STM→ESP | PARAMS_BULK | `[count:u8]` then `count` × `[id:u8][value:u32 LE]` (answer to GET_PARAMS). **Since v1.28 the reply is CHUNKED into one or more frames:** 108 params would need 1 + 108×5 = 541 B against the 512 B ceiling, so each frame carries at most `(512−1)/5 = 102` items and the receiver merges whatever ids arrive, in any grouping (`func__Esp_StoreParamItem` is id-keyed, not index-keyed, so no ESP change was needed). 108 params = 2 frames (102 + 6). An empty trailing frame is never sent: it would read as "zero parameters known" |
 
 Audit 2026-09-27: the 77-param growth had silently outgrown the STM32 256 B
 TX ring, so every PARAMS_BULK reply was refused and a fresh panel never
@@ -372,6 +372,11 @@ bulk no longer burns ~900 B of the 1 KiB comm stack. v1.17 grows the
 bulk to 83 params / 416 B, v1.23 to 98 params / 491 B and v1.24 back to
 93 params / 466 B - still inside the
 1024 B ring and the 512 frame ceiling (491 + 5 header + 1 xor = 497 B).
+v1.28 is the first release that does **not** fit: the user-ordered limits
+block takes the count to 108, so a single reply would need 541 B. Raising
+`ESPLINK_FRAME_MAX_PAYLOAD` was rejected - that buffer is charged twice,
+once on each side, and both sides are 20 KB parts. The reply is chunked
+instead, at a bound DERIVED from the ceiling, so the two can never disagree.
 
 Verified example frames (hex):
 
@@ -390,7 +395,7 @@ PARAM_REPORT reply for id=2, applied=1200:
 AA 55 11 05 00 02 B0 04 00 00 A2
 ```
 
-## 5. Parameter table (IDs 0..18 = protocol v1.1, ID 19 = v1.2, IDs 20..26 = v1.12 append, IDs 27..37 = v1.15 append, IDs 38..76 = v1.16 append, IDs 77..82 = v1.17 append, IDs 83..92 = v1.24 — IDs are final, never renumbered)
+## 5. Parameter table (IDs 0..18 = protocol v1.1, ID 19 = v1.2, IDs 20..26 = v1.12 append, IDs 27..37 = v1.15 append, IDs 38..76 = v1.16 append, IDs 77..82 = v1.17 append, IDs 83..92 = v1.24, IDs 93..107 = v1.28 charger limits & backstop gains — IDs are final, never renumbered)
 
 | ID | Name | Type | Unit | Default | Range | What it changes |
 |---|---|---|---|---|---|---|
@@ -1659,6 +1664,85 @@ So **no combination the panel allows** takes the pack past 14.8 V or 950 mA.
 That is the property the backstops plus the mis-tune cap were added to
 guarantee, and it is what makes the user's "I will optimise it later" safe.
 
+### 5.12 Charger limits, backstop gains and stage timers (v1.28 — user order 2026-10-03)
+
+User order, verbatim in spirit: *every gain, every limit and every parameter
+must be changeable from the panel*, and *the operating table belongs inside
+the chargers page itself*. The absorb current ceiling and the one-hour
+absorb wall were called out by name.
+
+Before this release the PID help text in the panel ended with the sentence
+"the two hard backstops are always active and **are not settable from the
+panel**". That sentence was accurate and it was the problem: fifteen numbers
+that shape charging behaviour were compile-time `#define`s, so changing any
+of them meant a rebuild and a re-flash.
+
+| id | name | unit | min | max | default |
+|---|---|---|---|---|---|
+| 93 | `ABSORB_MAX_MS` | ms | 0 = no wall | 21 600 000 | 3 600 000 |
+| 94 | `ABSORB_MAX_ARM_MA` | mA | 10 | 500 | 100 |
+| 95 | `ABSORB_HOLD_MS` | ms | 0 | 7 200 000 | 600 000 |
+| 96 | `TAPER_SUSTAIN_MS` | ms | 1 000 | 600 000 | 60 000 |
+| 97 | `PID_MAX_STEP_PM` | ‰/step | 1 | 100 | 8 |
+| 98 | `PID_OUT_HYST_MILLI` | m‰ | 0 | 999 (derived) | 700 |
+| 99 | `PID_VOLT_FILTER_N` | — | 1 | 64 | 32 |
+| 100 | `BACKSTOP_MV` | mV | 13 000 | 14 800 (down-only) | 14 800 |
+| 101 | `BACKSTOP_GAIN_I` | ‰/A over | 0 = off | 2 000 | 100 |
+| 102 | `BACKSTOP_GAIN_V` | ‰/V over | 0 = off | 2 000 | 500 |
+| 103 | `PID_CUR_MARGIN_MA` | mA | 0 | 100 | 10 |
+| 104 | `CONNECT_SETTLE_MS` | ms | 0 | 120 000 | 15 000 |
+| 105 | `JIT_LOCKOUT_MS` | ms | 0 | 60 000 | 3 000 |
+| 106 | `MANUAL_WATCHDOG_MS` | ms | 500 | 60 000 | 3 000 |
+| 107 | `RAMP_DOWN_INT_MS` | ms | 50 | 5 000 | 500 |
+
+**Deliberately NOT in this block.** `CHG_DUTY_MAX_PERMILLE` (500‰) is a
+property of the board's DCM magnetics, not a preference - ids 13/14 already
+lower it per channel. The 950 mA hard fault and the OV cutoff keep their
+existing down-only ids 35/36: a safety trip that can be raised is not a
+safety trip. `CHG_CURRENT_LIMIT_MA` was **deleted** rather than exposed - it
+had zero readers and had been dead since the profile limit replaced it.
+
+**Row 98's ceiling is derived, not chosen.** The first attempt used a round
+5000 and the build failed: the output hysteresis must stay below the re-seed
+tolerance or the loop can hysteresis its way past a re-seed. The ceiling is
+now `CHG_LIMIT_MAX_PID_OUT_HYST_MILLI`, computed from that tolerance. The
+general lesson, which cost a build: **when a constant becomes a parameter,
+the asserts must constrain the whole settable window, not just the boot
+default.**
+
+**Implementation.** One X-macro `CHG_LIMIT_ROWS(X)` in `charger.c` emits the
+bounds table, the live value array and three `_Static_assert`s per row (in
+the id block, default above its floor, default below its ceiling). The
+dispatch in `esp_link.c` is a range test, not a switch arm per id - this part
+has overflowed the 62 KB flash budget before.
+
+**Consequences, all of which are build-enforced:**
+
+- `ESPLINK_PARAM_COUNT` 93 → 108, `ESP_PARAM_COUNT` likewise.
+- PARAMS_BULK no longer fits one frame → chunked (section 4).
+- Pending masks: ids 96..107 need a **fourth** word. The old code funnelled
+  every id ≥ 64 into mask 3, so id 96 evaluated `1UL << 32` - undefined
+  behaviour in C, hidden on the panel side by JavaScript's modulo-32 shift.
+  `q4` had been emitted as a constant 0 since v1.24; it is real again.
+- **NVM layout v8 → v9** (`ENTRY_MAX` 108, record 12 + 108×8 + 4 = 880 B in a
+  1024 B page). A v8 record describes 93 slots, so replaying one would leave
+  ids 93..107 holding erased flash. The version check rejects it.
+
+> ⚠ **Upgrade note.** The first boot after flashing v1.28 is a
+> factory-default boot: saved settings are discarded by the version check.
+> Export your settings from the panel's backup card first, flash **STM32 and
+> ESP together**, then import. Restoring a v8 export is safe - the import
+> replays values id by id, and the ids did not move.
+
+**The operating table moved into the chargers page.** It is rendered from the
+board's *applied* parameters, never from numbers written into the markup.
+That is not decoration: this same release found a stale help sentence, a
+stale backup label (it still advertised a retired 83..97 range), and an OV
+cutoff default that the documentation and the panel both got wrong - the
+firmware boots 15000 − 150 = **14 850 mV** while the comment said 15 000 and
+the panel's factory-restore button pushed 15 000, i.e. it *raised* a safety
+ceiling. A table built from live values cannot drift that way.
+
 ## 6. TLM_LIVE payload layout (104 bytes, little-endian)
 
 | Offset | Size | Field | Meaning |
@@ -1793,7 +1877,7 @@ protocol. That flip is intentionally left to the project owner.
 test mode (ID 19, section 5.2), charger state 9 = MANUAL, TLM flags bit
 5, the 3 s link dead-man with manual JIT re-arm, the 15.0 V manual
 overvoltage cutoff, the frozen battery-lost detection during manual, and
-the payload limit 512 (PARAMS_BULK = 93 params / 466 payload bytes since v1.24) are
+the payload limit 512 (PARAMS_BULK is chunked since v1.28: 108 params = 2 frames of at most 102 items) are
 all in the firmware. The ESP-side constraints that come with it are
 documented in `Firmware/Modules/EspLink/README.md` - most importantly the
 1 s keepalive while ID 19 = 1.

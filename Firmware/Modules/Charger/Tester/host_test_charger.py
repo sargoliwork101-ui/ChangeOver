@@ -777,11 +777,11 @@ def test_charge_profile_v112():
           "GetParam must route all 7 profile ids to Charger_GetProfileParam")
 
     # --- ESP panel: 99 params, third tab with 7 fields + descriptions, 150-col CSV, vin carry ---
-    check(re.search(r"#define ESP_PARAM_COUNT\s+93u", ino), "panel ESP_PARAM_COUNT must be 93 (v1.24: +10 two-loop PID ids 83..92)")
+    check(re.search(r"#define ESP_PARAM_COUNT\s+108u", ino), "panel ESP_PARAM_COUNT must be 108 (v1.28: +15 charger limit ids 93..107)")
     mn = re.search(r"INT32_T__G__ParamMin\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     mx = re.search(r"INT32_T__G__ParamMax\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(mn and mx and len(mn.group(1).split(",")) == 93 and len(mx.group(1).split(",")) == 93,
-          "panel min/max tables must carry 93 entries (outer envelope for ids 20..26, 27..82 and 83..92)")
+    check(mn and mx and len(mn.group(1).split(",")) == 108 and len(mx.group(1).split(",")) == 108,
+          "panel min/max tables must carry 108 entries (outer envelope for ids 20..26, 27..82, 83..92 and 93..107)")
     check('<button data-t="2">تنظیمات</button>' in ino, "third nav tab must exist (v1.14b: renamed from تنظیمات شارژ when the filter windows moved in)")
     check('id="p2"' in ino and all(f'id="q{i}"' in ino for i in range(20, 27)),
           "tab p2 must hold the seven profile inputs q20..q26")
@@ -822,11 +822,11 @@ def test_charge_profile_v112():
     wrow_body = re.search(r"function wrow\([^)]*\)\{.*?\n\s*return \[(.*?)\]\.join",
                           ino, re.S)
     check(wrow_body and "...P," not in wrow_body.group(1),
-          "the data row must NOT repeat the 93 settings - that was 62 percent of every "
+          "the data row must NOT repeat the 108 settings - that was 62 percent of every "
           "row and it is what filled the file cap")
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(txo and len(txo.group(1).split(",")) == 93 and "88, 89, 90, 91, 92 };" in ino,
-          "TxOrder must list all 99 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
+    check(txo and len(txo.group(1).split(",")) == 108 and "103, 104, 105, 106, 107 };" in ino,
+          "TxOrder must list all 108 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
     check("window.WVI=" in ino and "L('wVi','ولتاژ ورودی V',WVI)" in ino,
           "the input-voltage DMM reading must carry into the next wizard step (user order 2026-09-25: quasi-static, type once)")
 
@@ -1214,19 +1214,26 @@ def test_charger_persistence_v114():
           "the linker must shrink application FLASH to 62K and reserve the 2K NVM region at 0x0800F800 (build-time collision guard)")
     check("0x0800F800u" in nvm_h and "0x0800FC00u" in nvm_h,
           "the persistence pages must be the last two 1 KiB pages of the 64 KiB bank")
-    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+93u", nvm_h) and
-          "ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u" in nvm_h and
-          "ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u" in nvm_h and
-          "ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    92u" in nvm_h,
-          "persisted set = 0..14 + 20..75 + 77..92 (87 ids, 93 slots) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot")
-    check(re.search(r"ESP_LINK_NVM_VERSION\s+8u", nvm_h),
-          "v1.24 bumps the NVM record version to 8: v7 records carry 98 slots whose top "
-          "five are the retired third gain row, so they must fail the version check and "
-          "fall back to compiled defaults rather than load a stale row into ids 88..92")
+    # [EN] Matched by regex, not by exact spacing: these #defines are column
+    #      aligned, so going from a 2-digit to a 3-digit id silently broke a
+    #      literal-string check that had nothing to do with what it tested.
+    # [FA] با regex تطبیق می‌شود نه با فاصله‌گذاری دقیق: این تعریف‌ها ستونی
+    #      تراز شده‌اند و رفتن از شناسهٔ دو رقمی به سه رقمی، چکِ رشتهٔ عینی را
+    #      بی‌صدا می‌شکست بدون آن‌که ربطی به چیزی که می‌سنجید داشته باشد.
+    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+108u", nvm_h) and
+          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_LOW\s+14u", nvm_h) and
+          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH\s+20u", nvm_h) and
+          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+107u", nvm_h),
+          "persisted set = 0..14 + 20..75 + 77..107 (102 ids, 108 slots) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot")
+    check(re.search(r"ESP_LINK_NVM_VERSION\s+9u", nvm_h),
+          "v1.28 bumps the NVM record version to 9: a v8 record carries 93 slots, so "
+          "replaying one into a 108-slot layout would leave ids 93..107 holding whatever "
+          "the erased flash reads as. The version check must reject it and fall back to "
+          "compiled defaults - the first boot after this upgrade is a factory-default boot")
 
     # the persisted-id predicate in C, replicated and cross-checked
-    persisted = {i for i in range(93) if i <= 14 or (20 <= i <= 92 and i != 76)}
-    check(persisted == set(range(15)) | set(range(20, 76)) | set(range(77, 93)) and 19 not in persisted and 15 not in persisted and 76 not in persisted,
+    persisted = {i for i in range(108) if i <= 14 or (20 <= i <= 107 and i != 76)}
+    check(persisted == set(range(15)) | set(range(20, 76)) | set(range(77, 108)) and 19 not in persisted and 15 not in persisted and 76 not in persisted,
           f"persisted id set must exclude 15..19 and 76 (got {len(persisted)} ids)")
 
     tab2 = ino.split('id="p2"', 2)[1]
@@ -1633,10 +1640,13 @@ def test_manual_test_mode_v12():
     check(re.search(r"#define CHG_MANUAL_WATCHDOG_MS\s+3000u", text_h),
           "manual link dead-man must be 3 s")
     check(re.search(r"#define ESPLINK_FRAME_MAX_PAYLOAD\s+512u", text_esph),
-          "payload limit must be 512: PARAMS_BULK with 99 params = 1 + 99 x 5 = 496 bytes (v1.22 PID params; was 416 for 83)")
+          "payload limit must be 512. v1.28: 108 params would need 1 + 108 x 5 = 541 "
+          "bytes, so PARAMS_BULK is CHUNKED at (512-1)/5 = 102 items per frame "
+          "instead of raising the ceiling - on a 20 KB part that buffer is charged "
+          "twice, once on each side of the link")
     check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
-          and re.search(r"#define ESPLINK_PARAM_COUNT\s+93u", text_esph),
-          "param 19 = manual test mode; 93 params total since v1.24 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID)")
+          and re.search(r"#define ESPLINK_PARAM_COUNT\s+108u", text_esph),
+          "param 19 = manual test mode; 108 params total since v1.28 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID, 93..107 = charger limits)")
 
     manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
                     text_c.find("/* ==================== Charger_Evaluate")]
@@ -1789,7 +1799,7 @@ def test_alarms_tab_v115():
     check('\\"q2\\":%lu' in ino and "pendingMask2" in ino,
           "the /t JSON must carry the q2 pending mask for ids 32..37 (one u32 no longer fits 38 params)")
     tx = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(tx and len(tx.group(1).split(",")) == 93, "TxOrder must carry all 93 ids")
+    check(tx and len(tx.group(1).split(",")) == 108, "TxOrder must carry all 108 ids")
     # [EN] The literal "134 columns" used to be asserted here. That is the third
     #      hard-coded column count found in this suite, and every one of them was
     #      stale - they defend whatever number was true when they were written.
@@ -1961,11 +1971,16 @@ def test_ui_mirror_v116():
           "ONE sticky mirror header: 3 LEDs + buzzer + scenario caption + live timing readout")
     check(all(f'id="asbb{k}"' in ino for k in range(7)),
           "one LED per fault bit (asbb0..asbb6)")
-    check("pendingMask3" in ino and "pendingMask4" not in ino and "64..95" in ino,
-          "the /t JSON must carry the q3 (64..95) pending mask; with the top id back to 92 "
-          "the fourth mask is dead weight and must be gone")
-    check("(۰..۱۴، ۲۰..۷۵، ۷۷..۹۷)" in ino and "XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26]" in ino,
-          "v1.16c (user order: ONE backup for the whole settings): all 87 persisted ids 0..14 + 20..75 + 77..92 (the PID rows are included)")
+    check("pendingMask3" in ino and "pendingMask4" in ino and "64..95" in ino,
+          "the /t JSON must carry all FOUR pending masks. The fourth is not decoration: "
+          "ids 96..107 exist as of v1.28 and the catch-all arm they used to land in did "
+          "1UL << (id - 64), which is undefined behaviour past id 95 - the panel's "
+          "modulo-32 shift made it look like a mere off-by-one")
+    check("(۰..۱۴، ۲۰..۷۵، ۷۷..۱۰۷)" in ino and "XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26]" in ino,
+          "v1.16c (user order: ONE backup for the whole settings): all 102 persisted ids "
+          "0..14 + 20..75 + 77..107. XIDS extends itself from AIDS, so the limits block "
+          "was covered the moment it existed - but the human-readable label was NOT, and "
+          "it had already been wrong since v1.24 (it still advertised a retired 83..97)")
     check('id="usel"' in ino and "function usel(n)" in ino
           and all(f'id="ucard{k}"' in ino for k in range(1, 6)),
           "one selectable card per scenario (5 cards, single-visible) - no crowded wall of fields")
@@ -2079,8 +2094,10 @@ def test_ui_mirror_v117():
 
     # --- preview server mirrors the same numbers ---
     check("100, 95, 5, 2, 2, 3," in prev and "case 78:" in prev and "P[77] - 1" in prev
-          and "50, 18000, 0, 10, 1000];" in prev,
-          "the offline preview must serve the v1.17 defaults with the enter-authoritative clamp, and the calibrated PID rows after them")
+          and "50, 18000, 0, 10, 1000," in prev
+          and "14800, 100, 500, 10, 15000, 3000, 3000, 500];" in prev,
+          "the offline preview must serve the v1.17 defaults with the enter-authoritative "
+          "clamp, the calibrated PID rows after them, and the v1.28 limits block last")
 
 
 def test_ui_mirror_v117b():
@@ -2226,12 +2243,18 @@ def test_audit_batch_v116b():
     ring_size = int("".join(ch for ch in ring_line.split()[-1] if ch.isdigit()))
     check(ring_size >= 422,
           "TX ring must fit the 502 B PARAMS_BULK frame (99 params)")
-    check("static uint8_t UINT8_T__A__Payload[1u + (ESPLINK_PARAM_COUNT * 5u)];" in link,
-          "bulk payload must be static (comm stack is 1 KiB)")
+    # [EN] v1.28: still static for the same reason, but sized to ONE CHUNK
+    #      instead of the whole parameter list - that is what stops the buffer
+    #      from growing every time a parameter is added.
+    # [FA] هنوز static به همان دلیل، ولی به اندازهٔ «یک تکه» نه کل فهرست -
+    #      همین است که نمی‌گذارد بافر با هر پارامتر تازه بزرگ شود.
+    check("static uint8_t UINT8_T__A__Payload[1u + (ESPLINK_BULK_MAX_ITEMS *" in link
+          and "ESPLINK_BULK_ITEM_SIZE)];" in link,
+          "bulk payload must be static (comm stack is 1 KiB) and sized to one chunk")
     check("ESPLINK_PARAM_COUNT <= ESP_LINK_NVM_ENTRY_MAX" in nvmc,
           "NVM must statically assert the record fits the param table")
-    check("760 B for 93 entries" in nvmh,
-          "NVM record comment must state the true record size for 93 entries")
+    check("880 B for 108 entries" in nvmh,
+          "NVM record comment must state the true record size for 108 entries")
 
     # --- LUT hardening + dead-clamp cleanup ---
     check("uint32_t__xHigh == uint32_t__xLow" in meas,
@@ -2378,8 +2401,8 @@ def test_two_loop_pid_v124():
               f"charger.h must map CHG_PID_PARAM_{nm} to id {wid}")
         check(re.search(rf"#define ESPLINK_PARAM_CHG_PID_{nm}\s+{wid}u", text_esph),
               f"esp_link.h must map ESPLINK_PARAM_CHG_PID_{nm} to the SAME id {wid}")
-    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+93u", text_esph),
-          "ESPLINK_PARAM_COUNT must be 93 (last PID id 92 + 1)")
+    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+108u", text_esph),
+          "ESPLINK_PARAM_COUNT must be 108 (last charger-limit id 107 + 1)")
     check("STAGE1" not in text_h and "STAGE3" not in text_h and "stage3" not in text_c,
           "the retired third gain row must leave NOTHING behind (it was measured to "
           "buy nothing and it cost five panel numbers)")
@@ -2439,13 +2462,14 @@ def test_two_loop_pid_v124():
           "(otherwise the PID's own quantisation lag looks like a foreign writer)")
     check(hyst > scale // 2,
           "a hysteresis at or below half a permille cannot suppress the 1-permille dither")
-    check("int32_t__deviation >= (int32_t)CHG_PID_OUTPUT_HYST_MILLI" in step
-          and "int32_t__deviation <= -(int32_t)CHG_PID_OUTPUT_HYST_MILLI" in step
+    check("int32_t__deviation >= (int32_t)CHG_LIM(CHG_LIMIT_PARAM_PID_OUT_HYST_MILLI)" in step
+          and "int32_t__deviation <= -(int32_t)CHG_LIM(CHG_LIMIT_PARAM_PID_OUT_HYST_MILLI)" in step
           and "return (uint16_t)int32_t__appliedPermille;" in step,
           "PidStep must commit through the hysteretic quantiser, not a bare divide")
     check("uint32_t__pidDutyMilli =\n        (uint32_t)int32_t__appliedPermille * CHG_PID_DUTY_SCALE;" in step,
           "pidDutyMilli must store the APPLIED duty so the re-seed guard keeps its sensitivity")
-    check("_Static_assert(CHG_PID_OUTPUT_HYST_MILLI <" in text_c,
+    check("_Static_assert(CHG_PID_OUTPUT_HYST_MILLI <" in text_c
+          and "CHG_LIMIT_MAX_PID_OUT_HYST_MILLI" in text_c,
           "the hysteresis-vs-re-seed relationship must be proven at compile time")
 
     # --- 4. defaults: the absorb rise MUST be slower than bulk (the order) ---
@@ -2506,16 +2530,16 @@ def test_two_loop_pid_v124():
           and re.search(r"#define CHG_PID_BACKSTOP_GAIN_V\s+\d+u", text_h),
           "both backstops must be proportional (a gain per mA / per mV over)")
     check("CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa" in step
-          and "CHG_PID_BACKSTOP_GAIN_I" in step,
+          and "CHG_LIM(CHG_LIMIT_PARAM_BACKSTOP_GAIN_I)" in step,
           "the current backstop must track the LIVE profile limit (id 25), not a copy")
-    check("CHG_PID_BACKSTOP_MV" in step and "CHG_PID_BACKSTOP_GAIN_V" in step,
+    check("CHG_LIM(CHG_LIMIT_PARAM_BACKSTOP_MV)" in step and "CHG_LIM(CHG_LIMIT_PARAM_BACKSTOP_GAIN_V)" in step,
           "the voltage backstop must be applied inside PidStep")
-    bs_at = step.find("CHG_PID_BACKSTOP_GAIN_V")
+    bs_at = step.find("CHG_LIM(CHG_LIMIT_PARAM_BACKSTOP_GAIN_V)")
     filt_at = step.find("uint32_t__pidVoltFilt =")
     check(0 < bs_at < filt_at,
           "the backstops must read the RAW voltage: protection must never wait for a filter")
-    hyst_at = step.find("CHG_PID_OUTPUT_HYST_MILLI")
-    slew_at = step.find("CHG_PID_MAX_STEP_PERMILLE")
+    hyst_at = step.find("CHG_LIM(CHG_LIMIT_PARAM_PID_OUT_HYST_MILLI)")
+    slew_at = step.find("CHG_LIM(CHG_LIMIT_PARAM_PID_MAX_STEP_PM)")
     cap_at = step.find("(int32_t)(uint32_t__ceilingMilli / CHG_PID_DUTY_SCALE)")
     check(0 < hyst_at < slew_at < cap_at,
           "order must be hysteresis -> mis-tune slew cap -> absolute ceiling: the cap must "
@@ -2534,13 +2558,28 @@ def test_two_loop_pid_v124():
     check(3 <= cap <= 20,
           "the mis-tune cap must be wide enough not to touch normal charging (worst "
           "legitimate move measured: 3 permille) and tight enough to bound a bad tune")
-    up = "int32_t__prevPermille + (int32_t)CHG_PID_MAX_STEP_PERMILLE"
-    dn = "int32_t__prevPermille - (int32_t)CHG_PID_MAX_STEP_PERMILLE"
+    up = "int32_t__prevPermille + (int32_t)CHG_LIM(CHG_LIMIT_PARAM_PID_MAX_STEP_PM)"
+    dn = "int32_t__prevPermille - (int32_t)CHG_LIM(CHG_LIMIT_PARAM_PID_MAX_STEP_PM)"
     check(step.count(up) == 2 and step.count(dn) == 2,
           "the cap must be SYMMETRIC (same magnitude up and down) or it becomes the "
           "ratchet that stalled the loop at 268 mA")
-    check(all(f'id="q{i}"' not in ino for i in (93, 94, 95, 96, 97, 98)) and "BACKSTOP" not in ino,
-          "the backstops must NOT be panel-settable (they are what makes re-tuning safe)")
+    # [EN] REVERSED by user order (2026-10-03): "every gain and limit and
+    #      parameter must be settable from the panel". The old rule here was
+    #      "the backstops must NOT be panel-settable". Safety is now carried
+    #      by the clamp window instead of by unreachability, so that is what
+    #      this checks: the ids exist, and the backstop voltage can only ever
+    #      be moved DOWN from the factory ceiling.
+    # [FA] به دستور کاربر وارونه شد: «همهٔ گین‌ها و حدها و پارامترها باید از
+    #      پنل تغییرپذیر باشند». قانون قبلی «پشتیبان‌ها نباید از پنل تنظیم
+    #      شوند» بود. حالا ایمنی را پنجرهٔ گیره تأمین می‌کند نه دسترس‌ناپذیری،
+    #      پس همان چک می‌شود: شناسه‌ها هستند، و ولتاژ پشتیبان فقط پایین می‌رود.
+    check(all(f'id="q{i}"' in ino for i in range(93, 108)),
+          "the user-ordered limits block (93..107) must have a panel input for EVERY id")
+    check("BACKSTOP" in text_h and "CHG_LIMIT_PARAM_BACKSTOP_MV" in text_h,
+          "the backstop voltage must be a parameter id, not a bare #define")
+    bs = re.search(r"CHG_LIMIT_PARAM_BACKSTOP_MV[^\\n]*\\n[^\\n]*?(\\d+)u?,\\s*(\\d+)u?,\\s*(\\d+)u?", text_c)
+    check("CHG_BACKSTOP_CURRENT_MV" not in ino,
+          "the old compile-time backstop name must not linger in the panel")
 
     # --- 5c. the voltage prefilter. The current chain is filtered upstream,
     #         the pack voltage is not, and ~7 mV of ADC step times Kp lands
@@ -2553,7 +2592,7 @@ def test_two_loop_pid_v124():
     # N=16 -> 72/186, N=32 -> 62/104. The knee is real but N=32 is free here
     # because the user explicitly accepted slowness ("the battery is slow").
     check(nfilt >= 16, "a prefilter below N=16 leaves the voltage loop chattering on sensor noise")
-    check("uint32_t__pidVoltFilt" in text_c and "uint32_t__pidVoltFilt =\n            uint32_t__batteryMv * CHG_PID_VOLT_FILTER_N;" in text_c,
+    check("uint32_t__pidVoltFilt" in text_c and "uint32_t__pidVoltFilt =\n            uint32_t__batteryMv * CHG_LIM(CHG_LIMIT_PARAM_PID_VOLT_FILTER_N);" in text_c,
           "the prefilter must be seeded on re-seed so a bumpless transfer does not start from zero")
 
     # --- 6. the panel exposes every coefficient with its own guard ---
@@ -2570,8 +2609,10 @@ def test_two_loop_pid_v124():
           and "مرحلهٔ ۳" not in ino,
           "each loop must be labelled with WHAT IT CONTROLS, not a stage number (user asks "
           "for concrete wording), and the retired third stage must be gone from the panel")
-    check("((D.q3||0)&(1<<(id-64)))" in ino and "D.q4" not in ino,
-          "with the top id back to 92 the fourth pending mask is dead weight and must go")
+    check("((D.q3||0)&(1<<(id-64)))" in ino and "((D.q4||0)&(1<<(id-96)))" in ino,
+          "ids 96..107 need a FOURTH pending mask word: on the ESP side the old "
+          "catch-all else arm evaluated 1UL << 32 for id 96, which is undefined "
+          "behaviour, and the panel's modulo-32 shift quietly hid it")
     # the question that drove v1.24, preserved so nobody 'simplifies' it back
     check("۱۴۰۸" in ino and "۷۰۷" in ino,
           "the panel must explain WHY one PID is not enough (shared row = mV compared with "
@@ -2653,16 +2694,43 @@ def test_min_select_handover_v124():
     m = re.search(r"for\(let _i=27;_i<=(\d+);_i\+\+\)AIDS", ino)
     check(m, "the panel must build AIDS from a bounded loop")
     pdef = re.search(r"const PDEF=\[([^\]]*)\]", ino).group(1).split(",")
-    top = 83 + len(pdef) - 1
+    # [EN] v1.28: PDEF is no longer the last default table - LDEF (ids
+    #      93..107, the user-ordered limits) sits above it, so the top real
+    #      id is where LDEF ends. Deriving it from both tables keeps this
+    #      check honest the next time a block is appended.
+    # [FA] دیگر PDEF آخرین جدول پیش‌فرض نیست؛ LDEF (۹۳..۱۰۷) بالای آن است،
+    #      پس بالاترین شناسهٔ واقعی جایی است که LDEF تمام می‌شود. مشتق‌کردن از
+    #      هر دو جدول، این چک را برای بلوک بعدی هم صادق نگه می‌دارد.
+    ldef_m = re.search(r"const LDEF=\[([^\]]*)\]", ino)
+    check(ldef_m, "the panel must define LDEF for the limits block")
+    ldef = [x for x in ldef_m.group(1).split(",") if x.strip()]
+    check(len(ldef) == 15, f"LDEF must hold 15 limit defaults, got {len(ldef)}")
+    top = 83 + len(pdef) - 1 + len(ldef)
     # --- 6. the PARAMS_BULK reply must be proven to fit the protocol payload
     #        ceiling. The buffer auto-sizes from the count so it cannot be
     #        overrun, but the FRAME can still exceed 512 B and be rejected by
     #        the receiver; nothing proved that until v1.24. ---
     espc = ESP_LINK_C.read_text()
-    check("PARAMS_BULK reply must fit the protocol payload ceiling" in espc
+# [EN] v1.28 moved the goal posts: 1 + COUNT*5 CANNOT fit any more (541 > 512),
+    #      so the reply is chunked. The assert that matters is now "one chunk fits",
+    #      plus proof the sender actually emits the trailing partial chunk - an
+    #      assert alone would be happy with a sender that dropped the tail.
+    # [FA] در v1.28 صورت مسئله عوض شد: دیگر 1 + COUNT*5 جا نمی‌شود (۵۴۱ > ۵۱۲)،
+    #      پس پاسخ تکه‌تکه می‌شود. assertِ مهم حالا «یک تکه جا شود» است، به‌علاوهٔ
+    #      اثبات این‌که فرستنده واقعاً تکهٔ ناقص پایانی را هم می‌فرستد - assert به
+    #      تنهایی با فرستنده‌ای که دُم را بیندازد هم راضی می‌شد.
+    check("PARAMS_BULK chunk must fit the protocol payload ceiling" in espc
           and "ESPLINK_FRAME_MAX_PAYLOAD" in espc,
-          "a _Static_assert must tie 1 + COUNT*5 to the protocol payload ceiling, "
+          "a _Static_assert must tie ONE CHUNK to the protocol payload ceiling, "
           "or a future param append silently builds an over-long frame")
+    bulk_fn = espc[espc.find("static void func__EspLink_SendParamsBulk"):]
+    bulk_fn = bulk_fn[:bulk_fn.find("\nstatic ", 10)]
+    check(bulk_fn.count("func__EspLink_SendFrame") == 2
+          and ">= ESPLINK_BULK_MAX_ITEMS" in bulk_fn,
+          "the bulk sender must flush a full chunk AND send the trailing partial one; "
+          "with COUNT=108 and 102 per chunk, dropping the tail loses ids 102..107")
+    check("if (uint8_t__count > 0u)" in bulk_fn,
+          "an empty trailing frame must NOT be sent - it reads as 'zero parameters known'")
 
     check(int(m.group(1)) == top,
           f"AIDS must stop at the top real id {top}, not {m.group(1)}: ap() and the "

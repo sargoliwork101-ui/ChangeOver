@@ -51,6 +51,22 @@ if (!tlmMatch) {
 }
 const TLM_FIELDS = Number(tlmMatch[1]);
 
+/* [EN] Same lesson as the telemetry width, same fix. This file guarded panel
+ *      writes with a literal "id < 93"; when the user-ordered limits block
+ *      took the count to 108 the preview answered 200 OK to writes on ids
+ *      93..107 and then dropped them - the worst possible failure, because
+ *      it looks like it worked. Derived from the header instead.
+ * [FA] همان درس عرض تله‌متری، همان راه‌حل. این فایل نوشتن‌های پنل را با عدد
+ *      ثابت «id < 93» گارد می‌کرد؛ وقتی بلوک حدها تعداد را به ۱۰۸ رساند،
+ *      پیش‌نمایش به نوشتن روی ۹۳..۱۰۷ جواب ۲۰۰ می‌داد و بعد دورشان می‌ریخت -
+ *      بدترین نوع خرابی، چون شبیه «کار کرد» است. حالا از هدر مشتق می‌شود. */
+const pcMatch = configSrc.match(/#define\s+ESP_PARAM_COUNT\s+(\d+)u?/);
+if (!pcMatch) {
+    console.error("panel preview: ESP_PARAM_COUNT not found in " + configPath);
+    process.exit(1);
+}
+const PARAM_COUNT = Number(pcMatch[1]);
+
 /* [EN] Divider scales are derived from the BSP, not retyped, so the raw counts
  *      this simulator reports actually reconstruct the volts it reports beside
  *      them. A preview whose counts disagree with its own voltages would be
@@ -100,7 +116,7 @@ if (page === html) page = html + inject; /* fallback: append */
 /* ---------- simulated STM32 ---------- */
 const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0,
            14400, 14300, 14600, 13500, 12800, 650, 50,
-           14800, 150, 6000, 7000, 1000, 1000, 21000, 28000, 950, 15000, 2000,
+           14800, 150, 6000, 7000, 1000, 1000, 21000, 28000, 950, 14850, 2000,
            /* v1.16 ids 38..76 = firmware UI_ALARM_T__G__Alarm boot defaults */
            1000, 50, 10000, 1000, 1, 0, 1000, 50, 3000, 233, 3, 100,
            40, 20, 10, 1, 60000, 20000, 10000, 100, 1,
@@ -115,7 +131,14 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
               and cost five numbers. v1.23 had already dropped the enable
               flag with the legacy regulator it selected. */
            12, 1600, 0, 1000, 1000,
-           50, 18000, 0, 10, 1000];
+           50, 18000, 0, 10, 1000,
+           /* v1.28 ids 93..107 = charger limits, backstop gains and stage
+              timers (CHG_LIMIT_ROWS in charger.c). These were compile-time
+              constants until the user asked for every gain and limit to be
+              panel-settable; the absorb ceiling and the two hard backstops
+              are the ones that had been called out by name. */
+           3600000, 100, 600000, 60000, 8, 700, 32,
+           14800, 100, 500, 10, 15000, 3000, 3000, 500];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -149,6 +172,27 @@ function clampParam(id, v) {
         case 2: case 3: return Math.min(3000, Math.max(100, v));
         case 4: case 5: case 6: return Math.min(5000, Math.max(-5000, v));
         case 9: case 10: return Math.min(999, Math.max(0, v));
+        /* [EN] v1.28 charger limits 93..107: mirror of CHG_LIMIT_ROWS in
+           charger.c (min, max per row). The hysteresis ceiling is 999, not a
+           round 5000 - it is derived there from the re-seed tolerance, and
+           the compiler rejected the round number.
+           [FA] حدهای شارژر ۹۳..۱۰۷: آینهٔ CHG_LIMIT_ROWS در charger.c. سقف
+           هیسترزیس ۹۹۹ است نه ۵۰۰۰ رُند - آنجا از تحمل بذرگیری مشتق می‌شود و
+           کامپایلر عدد رُند را رد کرد. */
+        case 93:  return Math.min(21600000, Math.max(0, v));
+        case 94:  return Math.min(500, Math.max(10, v));
+        case 95:  return Math.min(7200000, Math.max(0, v));
+        case 96:  return Math.min(600000, Math.max(1000, v));
+        case 97:  return Math.min(100, Math.max(1, v));
+        case 98:  return Math.min(999, Math.max(0, v));
+        case 99:  return Math.min(64, Math.max(1, v));
+        case 100: return Math.min(14800, Math.max(13000, v));
+        case 101: case 102: return Math.min(2000, Math.max(0, v));
+        case 103: return Math.min(100, Math.max(0, v));
+        case 104: return Math.min(120000, Math.max(0, v));
+        case 105: return Math.min(60000, Math.max(0, v));
+        case 106: return Math.min(60000, Math.max(500, v));
+        case 107: return Math.min(5000, Math.max(50, v));
         /* v1.15 alarms: mirror of Fault_ClampAlarms / Charger_ClampAlarms */
         case 27: { let lo = Math.max(14000, over + 50), hi = Math.min(15000, ov - 100);
                    if (lo > hi) hi = lo; return Math.min(hi, Math.max(lo, v)); }
@@ -388,7 +432,7 @@ const server = http.createServer((req, res) => {
     if (req.method === "POST" && url.pathname === "/s") {
         const id = Number(url.searchParams.get("id"));
         const v = Number(url.searchParams.get("v"));
-        if (id >= 0 && id < 93 && Number.isFinite(v)) {
+        if (id >= 0 && id < PARAM_COUNT && Number.isFinite(v)) {
             P[id] = clampParam(id, v); /* clamped exactly like the firmware */
             if (id >= 20) {
                 /* v1.14d: whole-set re-clamp in dependency order, like

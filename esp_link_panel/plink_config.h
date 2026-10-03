@@ -51,8 +51,9 @@
          شناسه‌های ۲۷..۳۷ = تب آلارم‌ها (۲۷..۳۴ نظارت فالت، ۳۵..۳۷ سقف‌های
          ایمنی شارژر)، شناسه‌های ۳۸..۷۶ = اعداد UI (الگوهای LED/بوق، باندها،
          چشمک، آستانه‌ها، میوت)، شناسه‌های ۷۷..۸۲ = فول/هیسترزیس (v1.17)، شناسه‌های ۸۳..۹۲ = PID
-         دوحلقه‌ای CC/CV شارژ (v1.24). */
-#define ESP_PARAM_COUNT             93u
+         دوحلقه‌ای CC/CV شارژ (v1.24)، شناسه‌های ۹۳..۱۰۷ = حدها، گین‌های
+         پشتیبان و تایمرهای مرحله‌ای شارژر (v1.28، دستور کاربر ۲۰۲۶-۱۰-۰۳). */
+#define ESP_PARAM_COUNT            108u
 #define ESP_PARAM_CHG1_ENABLE       11u
 #define ESP_PARAM_CHG2_ENABLE       12u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
@@ -125,6 +126,11 @@
     "#            ui_run_hyst,ui_run_zero,ui_run_one\n" \
     "#  [settings5] pid_i_kp,pid_i_ki,pid_i_kd,pid_i_up,pid_i_dn,\n" \
     "#            pid_v_kp,pid_v_ki,pid_v_kd,pid_v_up,pid_v_dn\n" \
+    "#  [settings6] lim_absorb_max_ms,lim_absorb_arm_ma,lim_absorb_hold_ms,\n" \
+    "#            lim_taper_sustain_ms,lim_pid_max_step_pm,lim_pid_out_hyst,\n" \
+    "#            lim_pid_volt_filt_n,lim_backstop_mv,lim_backstop_gain_i,\n" \
+    "#            lim_backstop_gain_v,lim_pid_cur_margin_ma,lim_connect_settle_ms,\n" \
+    "#            lim_jit_lockout_ms,lim_manual_wdg_ms,lim_ramp_down_int_ms\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \

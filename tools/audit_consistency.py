@@ -67,6 +67,62 @@ def c_array(text, name):
     return [v.strip() for v in body.split(",") if v.strip()]
 
 
+def live(src):
+    """[EN] Source with comments removed. A plain "is this text in the file"
+       check is satisfied by a COMMENT - this audit itself tripped over that
+       while being written, flagging a hard-coded bound that existed only in
+       the sentence explaining why hard-coded bounds are wrong.
+       [FA] متن بدون کامنت. چک سادهٔ «آیا این رشته در فایل هست» با یک کامنت هم
+       ارضا می‌شود - همین ممیز موقع نوشته‌شدن سر همین لغزید و کرانِ ثابتی را
+       گزارش کرد که فقط داخل جمله‌ای وجود داشت که توضیح می‌داد کران ثابت بد است.
+    """
+    src = re.sub(r"/\*.*?\*/", " ", src, flags=re.S)       # C / JS blocks
+    src = re.sub(r"(?m)^\s*//.*$", " ", src)               # JS line
+    src = re.sub(r"(?m)^\s*#.*$", " ", src)                # Python line
+    return src
+
+
+def define_alias(text, name):
+    """[EN] define() follows numbers; FIRST_ID/LAST_ID are aliases pointing at
+       the first and last row macro, so resolve one hop. Deliberately ONE hop:
+       a deeper chain would hide which macro actually carries the number.
+       [FA] define() عدد می‌خواند ولی FIRST_ID/LAST_ID نام مستعارِ اولین و آخرین
+       ردیف‌اند، پس یک پله دنبال می‌شود. عمداً فقط یک پله: زنجیرهٔ عمیق‌تر پنهان
+       می‌کند که کدام ماکرو واقعاً عدد را دارد."""
+    v = define(text, name)
+    if v is not None:
+        return v
+    m = re.search(r"#define\s+" + re.escape(name) + r"\s+([A-Za-z_][0-9A-Za-z_]*)", text)
+    return define(text, m.group(1)) if m else None
+
+
+def block(text, fname):
+    """[EN] Body of a C function, brace-matched. Used when an invariant is
+       about what a function DOES, not just which constants exist - "the
+       name appears in the file" is satisfied by a comment, which is how a
+       stale claim survived in this code base before.
+       [FA] بدنهٔ یک تابع C با تطبیق آکولاد. وقتی لازم است که نامتغیر دربارهٔ
+       «کاری که تابع می‌کند» باشد نه صرفِ وجود ثابت‌ها؛ چون «نام در فایل هست»
+       با یک کامنت هم ارضا می‌شود و دقیقاً همین‌طور یک ادعای کهنه در همین مخزن
+       زنده مانده بود."""
+    i = text.find(fname)
+    if i < 0:
+        return ""
+    i = text.find("{", i)
+    if i < 0:
+        return ""
+    depth, j = 0, i
+    while j < len(text):
+        if text[j] == "{":
+            depth += 1
+        elif text[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[i:j + 1]
+        j += 1
+    return text[i:]
+
+
 def js_array(text, name):
     m = re.search(r"\b" + re.escape(name) + r"\s*=\s*\[(.*?)\]", text, re.S)
     if not m:
@@ -149,18 +205,61 @@ def sec_counts():
     ok(p is not None and len(p) == COUNT,
        "preview server P length != COUNT",
        f"{len(p) if p else 'missing'} vs {COUNT}")
-    ok(f"id < {COUNT}" in PREV,
-       "preview server id guard != COUNT",
-       f"expected 'id < {COUNT}'")
+    # [EN] v1.28: the guard used to be the literal "id < 93" and silently
+    #      dropped writes to the new ids while still answering 200 OK. The
+    #      fix was to derive it from the header, so a literal is now the
+    #      failure and the derivation is the thing to check.
+    # [FA] گارد قبلاً عدد ثابت «id < 93» بود و نوشتن روی شناسه‌های جدید را
+    #      بی‌صدا دور می‌ریخت در حالی که ۲۰۰ جواب می‌داد. رفع، مشتق‌کردن از
+    #      هدر بود؛ پس حالا عدد ثابت خودش خطاست و مشتق‌شدن چیزی است که چک می‌شود.
+    prev_live = live(PREV)
+    ok("id < PARAM_COUNT" in prev_live,
+       "preview server id guard is not derived from ESP_PARAM_COUNT",
+       "a literal bound goes stale the next time a parameter is added")
+    ok("ESP_PARAM_COUNT" in prev_live,
+       "preview server does not read ESP_PARAM_COUNT from the header")
+    ok(not re.search(r"id < \d", prev_live),
+       "preview server still has a hard-coded id bound")
 
     ok(define(NVM_H, "ESP_LINK_NVM_ENTRY_MAX") >= COUNT,
        "NVM ENTRY_MAX smaller than COUNT",
        f"{define(NVM_H, 'ESP_LINK_NVM_ENTRY_MAX')} < {COUNT}")
 
-    bulk = 1 + COUNT * 5
-    ok(bulk <= define(ESP_H, "ESPLINK_FRAME_MAX_PAYLOAD"),
-       "PARAMS_BULK reply exceeds the protocol payload ceiling",
-       f"{bulk} > {define(ESP_H, 'ESPLINK_FRAME_MAX_PAYLOAD')}")
+    # [EN] v1.28: PARAMS_BULK no longer has to fit in ONE frame - 108 params
+    #      would need 541 bytes against a 512-byte ceiling. It is chunked, so
+    #      the invariant moved from "the whole reply fits" to "a chunk fits,
+    #      the chunk bound is derived, and the sender really does chunk".
+    #      Checking only the arithmetic would pass on a sender that silently
+    #      truncated at the chunk boundary and never sent the rest.
+    # [FA] حالا کل پاسخ در یک فریم نمی‌گنجد (۱۰۸ پارامتر ۵۴۱ بایت در برابر سقف
+    #      ۵۱۲). پاسخ تکه‌تکه می‌شود، پس نامتغیر از «کل پاسخ جا شود» به «یک تکه
+    #      جا شود، کران تکه مشتق باشد، و فرستنده واقعاً تکه‌تکه بفرستد» منتقل شد.
+    #      چک‌کردن فقط حسابِ عددی، فرستنده‌ای را که سرِ مرز تکه ببُرد و بقیه را
+    #      نفرستد هم قبول می‌کرد.
+    item = define(ESP_C, "ESPLINK_BULK_ITEM_SIZE")
+    ceil_ = define(ESP_H, "ESPLINK_FRAME_MAX_PAYLOAD")
+    # [EN] MAX_ITEMS is an expression, not a literal - that is the point of it.
+    # [FA] MAX_ITEMS عبارت است نه عدد، و اصلاً فلسفه‌اش همین است.
+    expr = re.search(r"#define ESPLINK_BULK_MAX_ITEMS\s*\\\s*\n\s*(.+)", ESP_C)
+    maxit = (ceil_ - 1) // item if (item and ceil_) else None
+    if ok(item is not None and expr is not None,
+          "PARAMS_BULK chunk bounds are not defined"):
+        ok("ESPLINK_FRAME_MAX_PAYLOAD" in expr.group(1)
+           and "ESPLINK_BULK_ITEM_SIZE" in expr.group(1),
+           "ESPLINK_BULK_MAX_ITEMS is not derived from the payload ceiling",
+           expr.group(1).strip())
+        ok(1 + maxit * item <= ceil_,
+           "a PARAMS_BULK chunk exceeds the protocol payload ceiling",
+           f"{1 + maxit * item} > {ceil_}")
+        ok(COUNT > maxit,
+           "PARAMS_BULK chunking is now dead code",
+           f"COUNT {COUNT} fits one {maxit}-item chunk; keep it anyway")
+        body = block(ESP_C, "func__EspLink_SendParamsBulk")
+        ok(body.count("func__EspLink_SendFrame") == 2,
+           "PARAMS_BULK must send a full chunk AND the trailing partial one",
+           "one send site means the tail is dropped when COUNT > one chunk")
+        ok(">= ESPLINK_BULK_MAX_ITEMS" in body,
+           "PARAMS_BULK does not flush on the chunk boundary")
 
 
 # ====================================================== 3. defaults/ranges
@@ -200,6 +299,35 @@ def sec_defaults(ids):
 
     ok(not bad_r, "documented range != panel ParamMin/ParamMax", "; ".join(bad_r))
     ok(not bad_d, "documented default != panel ADEF/PDEF", "; ".join(bad_d))
+
+    # [EN] Defaults that are COMPUTED in the firmware have no "def N" to
+    #      compare against, so sec_defaults skipped them entirely and the OV
+    #      cutoff drifted unnoticed: the firmware boots 15000-150 = 14850 mV
+    #      while the panel's factory-restore button pushed 15000 - a restore
+    #      that moved a safety ceiling UP. Found only because the new
+    #      operating table put the live number on screen. Each entry here is
+    #      (id, firmware expression) and the expression is evaluated from the
+    #      header, never retyped.
+    # [FA] پیش‌فرض‌هایی که در فرم‌ور «محاسبه» می‌شوند عدد def ندارند، پس از
+    #      این بخش کلاً جا می‌افتادند و قطع OV بی‌سروصدا دریفت کرد: فرم‌ور
+    #      ۱۵۰۰۰−۱۵۰ = ۱۴۸۵۰ بوت می‌کند ولی دکمهٔ بازگردانی کارخانهٔ پنل ۱۵۰۰۰
+    #      می‌فرستاد - بازگردانی‌ای که یک سقف ایمنی را بالا می‌برد. فقط به این
+    #      دلیل پیدا شد که جدول عملکرد جدید عدد زنده را روی صفحه آورد.
+    computed = {
+        36: define(CHG_H, "CHG_MAX_VALID_BATTERY_MV")
+            - define(CHG_H, "CHG_OV_DECIDE_EARLY_MV"),
+    }
+    bad_c = []
+    for pid, want in computed.items():
+        if want is None:
+            continue
+        if 27 <= pid <= 82 and (pid - 27) < len(adef) and adef[pid - 27] != want:
+            bad_c.append(f"id {pid}: fw {want} vs panel ADEF {adef[pid - 27]}")
+        prev_p = js_array(PREV, "const P") or []
+        if pid < len(prev_p) and int(prev_p[pid]) != want:
+            bad_c.append(f"id {pid}: fw {want} vs preview P {prev_p[pid]}")
+    ok(not bad_c, "computed firmware default != panel/preview default",
+       "; ".join(bad_c))
     ok(not bad_p, "documented default != preview server P", "; ".join(bad_p))
 
     lo_hi = [f"id {i}" for i in range(min(len(pmin), len(pmax))) if pmin[i] > pmax[i]]
@@ -213,23 +341,68 @@ def sec_panel(ids):
     m = re.search(r"for\(let _i=(\d+);_i<=(\d+);_i\+\+\)AIDS", P_PAN)
     if ok(m is not None, "AIDS is not built from a bounded loop"):
         lo, hi = int(m.group(1)), int(m.group(2))
+        # [EN] v1.28: PDEF is no longer the last default table - LDEF (the
+        #      user-ordered limits, ids 93..107) sits above it. The old form
+        #      of this check hard-wired "the panel's id space ends where the
+        #      PID block ends", which is exactly the assumption that broke.
+        # [FA] دیگر PDEF آخرین جدول پیش‌فرض نیست؛ LDEF (حدها، ۹۳..۱۰۷) بالای
+        #      آن است. شکل قبلی این چک فرض «فضای شناسهٔ پنل همان‌جا که بلوک
+        #      PID تمام می‌شود تمام می‌شود» را سیم‌کشی کرده بود - دقیقاً همان
+        #      فرضی که شکست.
         pdef = js_array(P_PAN, "const PDEF") or []
-        top = 83 + len(pdef) - 1
+        ldef = js_array(P_PAN, "const LDEF") or []
+        adef = js_array(P_PAN, "const ADEF") or []
+        pid_base = define(CHG_H, "CHG_PID_PARAM_CURRENT_KP")
+        lim_base = define_alias(CHG_H, "CHG_LIMIT_PARAM_FIRST_ID")
+        ok(lim_base == pid_base + len(pdef),
+           "LDEF does not start where PDEF ends",
+           f"limits start at {lim_base}, PID block ends at {pid_base + len(pdef) - 1}")
+        top = lim_base + len(ldef) - 1
         ok(hi == top, "AIDS upper bound != the top real id",
            f"AIDS stops at {hi}, the id block ends at {top}")
-        adef = js_array(P_PAN, "const ADEF") or []
+        ok(top == COUNT - 1, "the id blocks do not reach the last parameter",
+           f"top id {top}, COUNT {COUNT}")
         ok(len(adef) == (82 - lo + 1),
            "ADEF length does not cover its id span",
            f"ADEF has {len(adef)}, span {lo}..82 needs {82 - lo + 1}")
         # a phantom id would index past the default tables
         for pid in range(lo, hi + 1):
-            if pid > 82 and (pid - 83) >= len(pdef):
+            if pid >= lim_base:
+                tbl, idx, size = "LDEF", pid - lim_base, len(ldef)
+            elif pid >= pid_base:
+                tbl, idx, size = "PDEF", pid - pid_base, len(pdef)
+            else:
+                tbl, idx, size = "ADEF", pid - lo, len(adef)
+            if idx >= size:
                 ok(False, "AIDS contains an id with no default",
-                   f"id {pid} indexes PDEF[{pid - 83}] of {len(pdef)}")
+                   f"id {pid} indexes {tbl}[{idx}] of {size}")
                 break
-        # every id AIDS iterates must be shiftable in a 32-bit mask
-        ok(hi - 64 < 32, "pending-mask shift would overflow 32 bits",
-           f"id {hi} needs 1<<{hi - 64}; JS shifts modulo 32")
+        # [EN] Every id must be shiftable in SOME 32-bit mask word, and the
+        #      two sides must split them identically. On the C side a shift
+        #      past 31 is undefined behaviour, not a wrong pixel: before
+        #      v1.28 the ESP dropped every id >= 64 into word 3, so id 96
+        #      evaluated 1UL << 32. The panel's modulo-32 shift hid it.
+        # [FA] هر شناسه باید در یکی از کلمه‌های ۳۲ بیتی جا شود و دو طرف باید
+        #      یکسان تقسیم کنند. سمت C شیفت بیش از ۳۱ رفتار تعریف‌نشده است نه
+        #      پیکسل غلط: پیش از v1.28 هر شناسهٔ ۶۴ به بالا در کلمهٔ سوم
+        #      می‌رفت، یعنی شناسهٔ ۹۶ می‌شد 1UL << 32. شیفت مدولو-۳۲ پنل آن را
+        #      پنهان می‌کرد.
+        words = 4
+        ok(hi < words * 32, "pending-mask has no word for the top id",
+           f"id {hi} needs word {hi // 32 + 1} of {words}")
+        p_http = read("esp_link_panel/plink_http.h")
+        for w in range(2, words + 1):
+            lo_b = (w - 1) * 32
+            ok(f"index < {lo_b}u" in p_http or w == words,
+               "the ESP pending-mask split lost a boundary", f"missing {lo_b}")
+            ok(f"- {lo_b}u" in p_http,
+               "the ESP does not rebase ids into their mask word",
+               f"word {w} must shift by id - {lo_b}")
+            ok(f"(1<<(id-{lo_b}))" in P_PAN,
+               "the panel pending-mask has no arm for this word",
+               f"apend() must handle ids {lo_b}..{lo_b + 31}")
+        ok("_Static_assert(ESP_PARAM_COUNT <= 128" in p_http,
+           "nothing stops the next parameter block from overflowing the masks")
 
     sd = re.search(r"function sdef\(\)\{AIDS\.forEach\(\(id,k\)=>\{if\(id<(\d+)\|\|id>(\d+)\)return;", P_PAN)
     ok(sd is not None, "sdef() lost its id guard")
@@ -399,7 +572,8 @@ def sec_charger():
     ok(base is not None and top is not None and (top - base + 1) == len(pdef),
        "the PID id block and PDEF have different sizes",
        f"ids {base}..{top} vs PDEF {len(pdef)}")
-    ok(top == COUNT - 1, "the PID block does not end at the last id",
+    ok(top == define_alias(CHG_H, "CHG_LIMIT_PARAM_FIRST_ID") - 1,
+       "the PID block does not run up to the limits block",
        f"top id {top}, COUNT {COUNT}")
     fw = []
     for loop in ("CURRENT", "VOLTAGE"):
@@ -696,12 +870,6 @@ def sec_preview():
     # [FA] «کدِ زنده» سنجیده می‌شود نه متن توضیح. تست سادهٔ «آیا نام در فایل
     #      هست» با همان کامنتی که قانون را توضیح می‌دهد ارضا می‌شود، پس حذف
     #      اشتقاق و باقی گذاشتن کامنت قبول می‌شد. اول کامنت‌ها حذف، بعد سؤال.
-    def live(src):
-        src = re.sub(r"/\*.*?\*/", " ", src, flags=re.S)       # C / JS blocks
-        src = re.sub(r"(?m)^\s*//.*$", " ", src)               # JS line
-        src = re.sub(r"(?m)^\s*#.*$", " ", src)                # Python line
-        return src
-
     prev_js = live(PREV)
     gen_py = live(read("tools/make_panel_preview.py"))
 

@@ -74,20 +74,23 @@
  *      پیش‌فرض کامپایل می‌ماند - بعد از هر ارتقای چیدمان یک‌بار از پنل
  *      دوباره تنظیم کنید (v1.22 دقیقاً چنین ارتقایی است: اولین بوت پس از
  *      فلش با مقادیر کارخانه بالا می‌آید). */
-#define ESP_LINK_NVM_VERSION            8u
+#define ESP_LINK_NVM_VERSION            9u
 
-/* [EN] Slot cap: 93 persisted ids today (0..14 config + 20..26 charge
+/* [EN] Slot cap: 108 persisted ids today (0..14 config + 20..26 charge
  *      profile + 27..37 alarms + 38..75 UI cadence + 77..82 full/
- *      hysteresis + 83..92 two-loop PID; id 76 = panel-session mute,
- *      transient like 15..19). Cap 93 -> record = 12 + 93 x 8 + 4 = 760 B,
- *      still one 1 KiB page with room to spare. Keep the C harness in sync
- *      (it once caught a wrong count as a silent early-return).
- * [FA] سقف جای‌ها: امروز ۹۳ شناسهٔ ذخیره‌شونده (0..14 پیکربندی + 20..26
+ *      hysteresis + 83..92 two-loop PID + 93..107 charger limits and
+ *      backstop gains; id 76 = panel-session mute, transient like 15..19).
+ *      Cap 108 -> record = 12 + 108 x 8 + 4 = 880 B, still inside one 1 KiB
+ *      page with 144 B to spare - the assert in the .c proves it rather
+ *      than trusting this arithmetic. Keep the C harness in sync (it once
+ *      caught a wrong count as a silent early-return).
+ * [FA] سقف جای‌ها: امروز ۱۰۸ شناسهٔ ذخیره‌شونده (۰..۱۴ پیکربندی + ۲۰..۲۶
  *      پروفایل + ۲۷..۳۷ آلارم + ۳۸..۷۵ UI + ۷۷..۸۲ فول/هیسترزیس + ۸۳..۹۲
- *      PID دوحلقه‌ای؛ ۷۶ = میوت جلسه‌ای، گذرا مثل ۱۵..۱۹). سقف ۹۳ یعنی
- *      رکورد ۷۶۰ بایت و باز هم یک صفحهٔ ۱KB با حاشیه. هارنس C را هم‌روز
- *      نگه دارید. */
-#define ESP_LINK_NVM_ENTRY_MAX          93u
+ *      PID دوحلقه‌ای + ۹۳..۱۰۷ حدها و گین‌های پشتیبان شارژر؛ ۷۶ = میوت
+ *      جلسه‌ای و گذرا). سقف ۱۰۸ یعنی رکورد ۸۸۰ بایت، باز هم داخل یک صفحهٔ
+ *      ۱KB با ۱۴۴ بایت حاشیه - گزارهٔ داخل فایل .c این را «اثبات» می‌کند و
+ *      به این حساب دستی اعتماد نمی‌شود. هارنس C را هم‌روز نگه دارید. */
+#define ESP_LINK_NVM_ENTRY_MAX         108u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
  *      change; a shorter window would rewrite flash on every keystroke burst).
@@ -120,7 +123,7 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH    92u
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   107u
 #define ESP_LINK_NVM_TRANSIENT_ID_MUTE        76u
 
 /**
@@ -144,11 +147,21 @@ typedef struct
 
 /**
  * @brief  [EN] Flash record: header + entry list + CRC32 over all preceding
- *              bytes. Size 760 B for 93 entries - one erased page holds it
- *              with room to grow.
+ *              bytes. 880 B for 108 entries (12 + 108 x 8 + 4), inside one
+ *              1 KiB page with 144 B to spare. Do not trust this sentence:
+ *              the two halves of this very comment disagreed for several
+ *              releases (EN said 760 B for 93, FA said 808 B for 99) because
+ *              both were hand-arithmetic nobody re-ran. The guarantee is the
+ *              _Static_assert in esp_link_nvm.c, which derives the page size
+ *              from the two page addresses and fails the build instead.
  *         [FA] رکورد فلش: سربرگ + فهرست ورودی‌ها + CRC32 روی همهٔ بایت‌های
- *              قبل از خودش. اندازه ۸۰۸ بایت برای ۹۹ ورودی - یک صفحهٔ پاک‌
- *              شده با حاشیه جایش را می‌دهد.
+ *              قبل از خودش. ۸۸۰ بایت برای ۱۰۸ ورودی (۱۲ + ۱۰۸×۸ + ۴)، داخل
+ *              یک صفحهٔ ۱ کیلوبایتی با ۱۴۴ بایت حاشیه. به همین جمله اعتماد
+ *              نکنید: دو نیمهٔ همین کامنت چند نسخه با هم اختلاف داشتند
+ *              (انگلیسی ۷۶۰ بایت برای ۹۳، فارسی ۸۰۸ بایت برای ۹۹) چون هر دو
+ *              حساب دستی بودند که کسی دوباره اجرایشان نکرد. ضمانت واقعی
+ *              _Static_assert در esp_link_nvm.c است که اندازهٔ صفحه را از دو
+ *              آدرس صفحه مشتق می‌کند و به‌جای کامنت، بیلد را می‌شکند.
  */
 typedef struct
 {

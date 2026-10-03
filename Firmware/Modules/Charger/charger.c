@@ -60,11 +60,11 @@ typedef struct
     uint32_t uint32_t__absorbLastTick;   /* [EN] previous-pass tick while in ABSORB, for the accumulation delta / تیک پاس قبلی در ابزورب برای دلتای جمع */
     uint32_t uint32_t__retryDeadlineTick;
     uint32_t uint32_t__lastDutyStepTick;
-    uint32_t uint32_t__stableFromTick; /* [EN] tick when installed+input+battery first looked valid; 0 = not present, gates bulk start (CHG_CONNECT_SETTLE_MS) / تیک اولین‌لحظه‌ای که اتصال معتبر دیده شد؛ صفر = باتری حاضر نیست؛ گیت شروع بالک */
+    uint32_t uint32_t__stableFromTick; /* [EN] tick when installed+input+battery first looked valid; 0 = not present, gates bulk start (wire id CHG_LIMIT_PARAM_CONNECT_SETTLE_MS) / تیک اولین‌لحظه‌ای که اتصال معتبر دیده شد؛ صفر = باتری حاضر نیست؛ گیت شروع بالک */
     uint32_t uint32_t__taperSinceTick; /* [EN] first tick in this ABSORB episode that the tail current looked below CHG_TAPER_CURRENT_MA; 0 = not tapering / تیک اولین زیرجریان در ابزورب؛ صفر یعنی زیرجریان نیست */
-    uint32_t uint32_t__absorbEnterTick; /* [EN] tick this ABSORB episode started; 0 = not in absorb; feeds the CHG_ABSORB_MAX_MS ceiling / تیک ورود به این ابزورب؛ صفر یعنی خارج؛ برای سقف یک‌ساعت */
+    uint32_t uint32_t__absorbEnterTick; /* [EN] tick this ABSORB episode started; 0 = not in absorb; feeds the CHG_LIM(CHG_LIMIT_PARAM_ABSORB_MAX_MS) ceiling / تیک ورود به این ابزورب؛ صفر یعنی خارج؛ برای سقف یک‌ساعت */
     /* [EN] Tick the one-hour ceiling was ARMED, i.e. the first time the tail
-       current fell below CHG_ABSORB_MAX_ARM_MA in this episode; 0 = not yet
+       current fell below CHG_LIM(CHG_LIMIT_PARAM_ABSORB_MAX_ARM_MA) in this episode; 0 = not yet
        armed, and while it is 0 the ceiling does not count at all.
        [FA] تیکِ مسلح‌شدن سقف یک‌ساعته، یعنی اولین باری که جریان دنباله در این
        اپیزود زیر آستانه رفت؛ صفر یعنی هنوز مسلح نشده و تا وقتی صفر است سقف
@@ -84,7 +84,7 @@ typedef struct
        است که نگهبان بذرگیری بدون پرش با سخت‌افزار مقایسه می‌کند.
        خطا/شاخه مشتق را تغذیه و با عوض‌شدن برندهٔ CC/CV ریستش می‌کنند. */
     uint32_t uint32_t__pidDutyMilli;    /* [EN] last APPLIED duty, milli-permille / دیوتی آخرین‌بار اعمال‌شده */
-    uint32_t uint32_t__pidVoltFilt;     /* [EN] N x filtered pack mV (see CHG_PID_VOLT_FILTER_N) / ولتاژ فیلترشدهٔ ضرب در N */
+    uint32_t uint32_t__pidVoltFilt;     /* [EN] N x filtered pack mV (see wire id CHG_LIMIT_PARAM_PID_VOLT_FILTER_N) / ولتاژ فیلترشدهٔ ضرب در N */
     int32_t  int32_t__pidIntegral;      /* [EN] integral term, milli-permille / جملهٔ انتگرالی */
     int32_t  int32_t__pidIntegralRem;   /* [EN] integral sub-unit remainder / باقی‌ماندهٔ انتگرال */
     int32_t  int32_t__pidLastError;     /* [EN] previous error of the winning branch / خطای قبلی شاخهٔ برنده */
@@ -304,6 +304,19 @@ static void func__Charger_ManualDriveChannel(uint8_t uint8_t__channelIndex,
                                              const measurement_snapshot_t *measurement_snapshot_t__snap);
 static void func__Charger_PidInvalidate(
     charger_channel_state_t *charger_channel_state_t__channel);
+static uint32_t func__Charger_Limit(uint8_t uint8_t__index);
+
+/* [EN] Read a panel-settable limit by its WIRE ID (ids 93..107, user order
+ *      2026-10-03). Spelling the wire id at every use site keeps the call
+ *      self-describing and means the table index exists in exactly one
+ *      place - this file previously drifted by carrying the same number in
+ *      several spots.
+ * [FA] خواندن یک حدِ تنظیم‌شدنی از پنل با «شناسهٔ سیمی» (۹۳..۱۰۷، دستور
+ *      کاربر). نوشتن شناسه در محل استفاده، فراخوانی را خودتوضیح نگه می‌دارد
+ *      و نمایهٔ جدول فقط در یک نقطه وجود دارد - این فایل قبلاً از حمل یک عدد
+ *      در چند جا دچار واگرایی شده بود. */
+#define CHG_LIM(id) \
+    func__Charger_Limit((uint8_t)((id) - CHG_LIMIT_PARAM_FIRST_ID))
 
 /* ==================== Safe hardware policy / سیاست سخت‌افزاری امن ==================== */
 
@@ -773,7 +786,7 @@ static void func__Charger_HandleJitTrip(uint8_t uint8_t__channelIndex,
     else
     {
         charger_channel_state_t__channel->uint32_t__retryDeadlineTick =
-            uint32_t__nowTick + func__Charger_DurationTicks(CHG_JIT_LOCKOUT_MS);
+            uint32_t__nowTick + func__Charger_DurationTicks(CHG_LIM(CHG_LIMIT_PARAM_JIT_LOCKOUT_MS));
         /* [EN] Take the revive pointer only if it is free; while the rival is
            retrying this channel simply queues in JIT_RETRY_WAIT and the adopt-
            scan in ServiceRetry picks it up next - no pointer stomping, strict
@@ -992,7 +1005,7 @@ static bool func__Charger_BulkStartSettled(uint8_t uint8_t__channelIndex,
         return false;
     }
     return ((uint32_t)(uint32_t__nowTick - uint32_t__stableFromTick) >=
-            func__Charger_DurationTicks(CHG_CONNECT_SETTLE_MS));
+            func__Charger_DurationTicks(CHG_LIM(CHG_LIMIT_PARAM_CONNECT_SETTLE_MS)));
 }
 
 /* ==================== Two-loop CC/CV PID core (v1.22) ====================
@@ -1121,7 +1134,7 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
        latch would abort a healthy charge on one noisy sample. Because the
        integral is clamped to this same ceiling a few lines below, there is
        no windup left behind when the excess clears. See the block comment
-       on CHG_PID_BACKSTOP_MV in charger.h.
+       on CHG_LIM(CHG_LIMIT_PARAM_BACKSTOP_MV) in charger.h.
        [FA] پشتیبان‌های سخت (دستور کاربر ۲۰۲۶-۰۹-۲۹): حد ۶۵۰ میلی‌آمپرِ
        پروفایل و حد ۱۴٫۸ ولتِ باتری باید فعالانه اعمال شوند تا باتری‌ها
        آسیب نبینند - از جمله در برابر تنظیم بد آیندهٔ ضرایب، و دلیل اینکه
@@ -1135,7 +1148,7 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
         uint32_t uint32_t__cutMilli =
             (uint32_t__currentMa -
              CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa) *
-            CHG_PID_BACKSTOP_GAIN_I;
+            CHG_LIM(CHG_LIMIT_PARAM_BACKSTOP_GAIN_I);
 
         if (uint32_t__appliedMilli > uint32_t__cutMilli)
         {
@@ -1149,10 +1162,10 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
             uint32_t__ceilingMilli = 0u;
         }
     }
-    if (uint32_t__batteryMv > CHG_PID_BACKSTOP_MV)
+    if (uint32_t__batteryMv > CHG_LIM(CHG_LIMIT_PARAM_BACKSTOP_MV))
     {
         uint32_t uint32_t__cutMilli =
-            (uint32_t__batteryMv - CHG_PID_BACKSTOP_MV) * CHG_PID_BACKSTOP_GAIN_V;
+            (uint32_t__batteryMv - CHG_LIM(CHG_LIMIT_PARAM_BACKSTOP_MV)) * CHG_LIM(CHG_LIMIT_PARAM_BACKSTOP_GAIN_V);
 
         if (uint32_t__appliedMilli > uint32_t__cutMilli)
         {
@@ -1185,7 +1198,7 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
     {
         charger_channel_state_t__channel->uint32_t__pidDutyMilli = uint32_t__appliedMilli;
         charger_channel_state_t__channel->uint32_t__pidVoltFilt =
-            uint32_t__batteryMv * CHG_PID_VOLT_FILTER_N;
+            uint32_t__batteryMv * CHG_LIM(CHG_LIMIT_PARAM_PID_VOLT_FILTER_N);
         charger_channel_state_t__channel->int32_t__pidIntegral = (int32_t)uint32_t__appliedMilli;
         charger_channel_state_t__channel->int32_t__pidIntegralRem = 0;
         charger_channel_state_t__channel->int32_t__pidLastError = 0;
@@ -1214,13 +1227,13 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
     charger_channel_state_t__channel->uint32_t__pidLastTick = uint32_t__nowTick;
 
     /* [EN] Voltage prefilter, advanced once per PID update so its time
-       constant is CHG_PID_VOLT_FILTER_N x CHG_PID_PERIOD_MS = 1.6 s. The
+       constant is CHG_LIM(CHG_LIMIT_PARAM_PID_VOLT_FILTER_N) x CHG_PID_PERIOD_MS = 1.6 s. The
        charge current arrives already filtered from measurement.c; the pack
        voltage does not, and ~7 mV of ADC step lands straight on the
        voltage loop's P term. Only the CONTROL path reads this - the hard
        backstops above deliberately used the raw sample.
        [FA] پیش‌فیلتر ولتاژ، یک‌بار در هر به‌روزرسانی PID جلو می‌رود پس ثابت
-       زمانی‌اش CHG_PID_VOLT_FILTER_N ضرب در CHG_PID_PERIOD_MS = ۱٫۶ ثانیه
+       زمانی‌اش CHG_LIM(CHG_LIMIT_PARAM_PID_VOLT_FILTER_N) ضرب در CHG_PID_PERIOD_MS = ۱٫۶ ثانیه
        است. جریان شارژ از measurement.c فیلترشده می‌آید ولی ولتاژ پک نه، و
        حدود ۷ میلی‌ولت پلهٔ ADC مستقیم روی جملهٔ P حلقهٔ ولتاژ می‌نشیند. فقط
        مسیر کنترل این را می‌خواند - پشتیبان‌های سخت بالا عمداً نمونهٔ خام را
@@ -1228,10 +1241,10 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
     charger_channel_state_t__channel->uint32_t__pidVoltFilt =
         (charger_channel_state_t__channel->uint32_t__pidVoltFilt -
          (charger_channel_state_t__channel->uint32_t__pidVoltFilt /
-          CHG_PID_VOLT_FILTER_N)) +
+          CHG_LIM(CHG_LIMIT_PARAM_PID_VOLT_FILTER_N))) +
         uint32_t__batteryMv;
     uint32_t__batteryMv =
-        charger_channel_state_t__channel->uint32_t__pidVoltFilt / CHG_PID_VOLT_FILTER_N;
+        charger_channel_state_t__channel->uint32_t__pidVoltFilt / CHG_LIM(CHG_LIMIT_PARAM_PID_VOLT_FILTER_N);
 
     /* [EN] TWO gain rows, one per physical control loop - that is the whole
        regulator (user order 2026-09-29: "if we do it with one PID over the
@@ -1284,16 +1297,16 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
     int32_t__voltageDownRate = (int32_t)CHARGER_PID_T__G__Pid.uint32_t__voltageDownRate;
 
     /* [EN] CC/CV min-select. The current branch aims at the middle of the
-       old regulation band (top - CHG_PID_CURRENT_MARGIN_MA), so the
+       old regulation band (top - CHG_LIM(CHG_LIMIT_PARAM_PID_CUR_MARGIN_MA)), so the
        familiar ~640 mA operating point is kept and the 950 mA hard fault
        keeps its clearance.
        [FA] کمینه‌گیری CC/CV: شاخهٔ جریان وسط باند قدیمی را هدف می‌گیرد
-       (سقف منهای CHG_PID_CURRENT_MARGIN_MA) تا همان نقطهٔ کار آشنای
+       (سقف منهای CHG_LIM(CHG_LIMIT_PARAM_PID_CUR_MARGIN_MA)) تا همان نقطهٔ کار آشنای
        ~۶۴۰mA بماند و خطای سخت ۹۵۰mA فاصله‌اش را حفظ کند. */
     uint32_t__currentTargetMa = CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa;
-    if (uint32_t__currentTargetMa > (uint32_t)CHG_PID_CURRENT_MARGIN_MA)
+    if (uint32_t__currentTargetMa > (uint32_t)CHG_LIM(CHG_LIMIT_PARAM_PID_CUR_MARGIN_MA))
     {
-        uint32_t__currentTargetMa -= (uint32_t)CHG_PID_CURRENT_MARGIN_MA;
+        uint32_t__currentTargetMa -= (uint32_t)CHG_LIM(CHG_LIMIT_PARAM_PID_CUR_MARGIN_MA);
     }
 
     int32_t__errorVoltage =
@@ -1418,7 +1431,7 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
        a 1 permille dither at up to 10 Hz. Electrically harmless, but it is
        the "duty keeps jumping around" the user complained about and it is
        what the readout shows. So the applied value only moves once the
-       demand has drifted CHG_PID_OUTPUT_HYST_MILLI away from what the
+       demand has drifted CHG_LIM(CHG_LIMIT_PARAM_PID_OUT_HYST_MILLI) away from what the
        hardware already carries. pidDutyMilli then stores the APPLIED duty
        (not the fine demand), which keeps the re-seed guard exactly as
        sensitive to foreign writers as it was before.
@@ -1427,7 +1440,7 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
        دو عدد صحیح همسایه بالا و پایین می‌پرد - لرزش یک پرمیلی تا ۱۰ هرتز.
        از نظر برقی بی‌ضرر است ولی همان «دیوتی مدام بالا-پایین می‌پرد» است که
        کاربر گفت و همان چیزی است که در نمایش دیده می‌شود. پس مقدار اعمالی
-       فقط وقتی تکان می‌خورد که تقاضا به اندازهٔ CHG_PID_OUTPUT_HYST_MILLI از
+       فقط وقتی تکان می‌خورد که تقاضا به اندازهٔ CHG_LIM(CHG_LIMIT_PARAM_PID_OUT_HYST_MILLI) از
        آنچه روی سخت‌افزار است فاصله گرفته باشد. آنگاه pidDutyMilli دیوتی
        «اعمال‌شده» را نگه می‌دارد نه تقاضای ریز را، و همین باعث می‌شود
        نگهبان بذرگیری دقیقاً به همان اندازهٔ قبل به نویسندهٔ بیرونی حساس
@@ -1436,8 +1449,8 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
     int32_t__appliedPermille = int32_t__prevPermille;
     int32_t__deviation = int32_t__demand -
                          (int32_t__appliedPermille * (int32_t)CHG_PID_DUTY_SCALE);
-    if ((int32_t__deviation >= (int32_t)CHG_PID_OUTPUT_HYST_MILLI) ||
-        (int32_t__deviation <= -(int32_t)CHG_PID_OUTPUT_HYST_MILLI))
+    if ((int32_t__deviation >= (int32_t)CHG_LIM(CHG_LIMIT_PARAM_PID_OUT_HYST_MILLI)) ||
+        (int32_t__deviation <= -(int32_t)CHG_LIM(CHG_LIMIT_PARAM_PID_OUT_HYST_MILLI)))
     {
         int32_t__appliedPermille =
             (int32_t__demand + ((int32_t)CHG_PID_DUTY_SCALE / 2)) / (int32_t)CHG_PID_DUTY_SCALE;
@@ -1461,13 +1474,13 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
        ۳) که شارژ عادی هرگز به آن نخورد. عمداً پیش از سقف سخت پایین
        می‌نشیند: پشتیبان باید بتواند دیوتی را در یک پاس هر قدر لازم است
        پایین بکشد. */
-    if (int32_t__appliedPermille > (int32_t__prevPermille + (int32_t)CHG_PID_MAX_STEP_PERMILLE))
+    if (int32_t__appliedPermille > (int32_t__prevPermille + (int32_t)CHG_LIM(CHG_LIMIT_PARAM_PID_MAX_STEP_PM)))
     {
-        int32_t__appliedPermille = int32_t__prevPermille + (int32_t)CHG_PID_MAX_STEP_PERMILLE;
+        int32_t__appliedPermille = int32_t__prevPermille + (int32_t)CHG_LIM(CHG_LIMIT_PARAM_PID_MAX_STEP_PM);
     }
-    if (int32_t__appliedPermille < (int32_t__prevPermille - (int32_t)CHG_PID_MAX_STEP_PERMILLE))
+    if (int32_t__appliedPermille < (int32_t__prevPermille - (int32_t)CHG_LIM(CHG_LIMIT_PARAM_PID_MAX_STEP_PM)))
     {
-        int32_t__appliedPermille = int32_t__prevPermille - (int32_t)CHG_PID_MAX_STEP_PERMILLE;
+        int32_t__appliedPermille = int32_t__prevPermille - (int32_t)CHG_LIM(CHG_LIMIT_PARAM_PID_MAX_STEP_PM);
     }
 
     /* [EN] The ceiling is an ABSOLUTE cap, applied after the hysteresis so
@@ -1752,7 +1765,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         {
             uint32_t uint32_t__absorbDeltaTicks;
 
-            uint32_t__absorbTicks = func__Charger_DurationTicks(CHG_ABSORB_HOLD_MS);
+            uint32_t__absorbTicks = func__Charger_DurationTicks(CHG_LIM(CHG_LIMIT_PARAM_ABSORB_HOLD_MS));
 
             /* [EN] The soak counts during the WHOLE ABSORB stay (user
                directive 2026-09-19), from the 14.3 V entry through every
@@ -1788,21 +1801,21 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
             /* [EN] Absorb completion (user formula 2026-09-20, bench pack
                4.5 Ah): FLOAT begins when the minimum soak has passed AND the
                tail current stays below CHG_TAPER_CURRENT_MA (50 mA ~ C/90)
-               steadily for CHG_TAPER_SUSTAIN_MS (60 s; the sense chain
+               steadily for CHG_LIM(CHG_LIMIT_PARAM_TAPER_SUSTAIN_MS) (60 s; the sense chain
                wobbles +/-10..20 mA so single dipping frames must not complete
-               the charge). The CHG_ABSORB_MAX_MS = 1 hour ceiling ends
+               the charge). The CHG_LIM(CHG_LIMIT_PARAM_ABSORB_MAX_MS) = 1 hour ceiling ends
                absorb into FLOAT anyway, so a battery that never tapers
                cannot keep the pump awake forever.
                [FA] پایان ابزورب (فرمول کاربر، پک ۴٫۵ آمپرساعت): وقتی حداقل
                شستشو گذشته باشد **و** زیرجریان <۵۰mA به‌مدت پایدار ۶۰s مانده
                باشد FLOAT آغاز می‌شود؛ سقف امن یک‌ساعت در هرحال به FLOAT
                می‌فرستد تا باتریِ هرگز-تیپر‌نشده پمپ را بیدار نگه ندارد. */
-            uint32_t__taperSustainTicks = func__Charger_DurationTicks(CHG_TAPER_SUSTAIN_MS);
-            uint32_t__absorbMaxTicks = func__Charger_DurationTicks(CHG_ABSORB_MAX_MS);
+            uint32_t__taperSustainTicks = func__Charger_DurationTicks(CHG_LIM(CHG_LIMIT_PARAM_TAPER_SUSTAIN_MS));
+            uint32_t__absorbMaxTicks = func__Charger_DurationTicks(CHG_LIM(CHG_LIMIT_PARAM_ABSORB_MAX_MS));
 
             /* [EN] ARM the one-hour ceiling on CURRENT (user order 2026-09-29).
                Until the tail has actually come down below
-               CHG_ABSORB_MAX_ARM_MA this episode, the ceiling does not count
+               CHG_LIM(CHG_LIMIT_PARAM_ABSORB_MAX_ARM_MA) this episode, the ceiling does not count
                at all - a pack still pulling hundreds of milliamps is not
                finished, and ending its charge on a voltage-started clock is
                what made it sag past the 12.8 V reentry and begin again.
@@ -1816,7 +1829,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                که باعث می‌شد تا زیر ۱۲٫۸ بیفتد و از نو شروع کند. عمداً برای کل
                اپیزود قفل می‌شود، چون زنجیرهٔ حس ±۱۰ تا ۲۰ میلی‌آمپر نوسان دارد. */
             if ((charger_channel_state_t__channel->uint32_t__absorbMaxArmTick == 0u) &&
-                (uint32_t__currentMa < (uint32_t)CHG_ABSORB_MAX_ARM_MA))
+                (uint32_t__currentMa < (uint32_t)CHG_LIM(CHG_LIMIT_PARAM_ABSORB_MAX_ARM_MA)))
             {
                 charger_channel_state_t__channel->uint32_t__absorbMaxArmTick =
                     uint32_t__nowTick;
@@ -1903,7 +1916,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     }
 
     uint16_t__nextDuty = charger_channel_state_t__channel->uint16_t__dutyPermille;
-    uint32_t__downIntervalTicks = func__Charger_DurationTicks(CHG_DUTY_RAMP_DOWN_INTERVAL_MS);
+    uint32_t__downIntervalTicks = func__Charger_DurationTicks(CHG_LIM(CHG_LIMIT_PARAM_RAMP_DOWN_INT_MS));
 
     if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT)
     {
@@ -2351,16 +2364,16 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     }
 
     /* [EN] Link dead-man: while the mode is active the panel must keep the
-       link alive; 3 s of silence (CHG_MANUAL_WATCHDOG_MS) drops both duties
+       link alive; 3 s of silence (CHG_LIM(CHG_LIMIT_PARAM_MANUAL_WATCHDOG_MS)) drops both duties
        to 0 and returns the charger to autonomous operation.
        [FA] ددمنِ لینک: تا وقتی مود فعال است پنل باید لینک را زنده نگه
-       دارد؛ ۳ ثانیه سکوت (CHG_MANUAL_WATCHDOG_MS) هر دو duty را صفر و
+       دارد؛ ۳ ثانیه سکوت (CHG_LIM(CHG_LIMIT_PARAM_MANUAL_WATCHDOG_MS)) هر دو duty را صفر و
        شارژر را به حالت خودکار برمی‌گرداند. */
     if ((BOOL__G__ChargerManualModeActive != false) &&
         (func__Charger_DeadlineElapsed(
              uint32_t__nowTick,
              UINT32_T__G__ManualLastLinkTick +
-                 func__Charger_DurationTicks(CHG_MANUAL_WATCHDOG_MS)) != false))
+                 func__Charger_DurationTicks(CHG_LIM(CHG_LIMIT_PARAM_MANUAL_WATCHDOG_MS))) != false))
     {
         func__Charger_ExitManualTestMode();
     }
@@ -3289,9 +3302,24 @@ _Static_assert((((int64_t)CHG_PID_RATE_MAX * (int64_t)CHG_PID_DT_MAX_MS) + 1000L
    [FA] هیسترزیس خروجی عمداً می‌گذارد دیوتی اعمالی از تقاضا عقب بماند. این
    عقب‌ماندگی باید کوچک‌تر از تحمل بذرگیری دوباره بماند وگرنه گردکردنِ خودِ
    PID شبیه نویسندهٔ بیرونی دیده می‌شود و این دو سازوکار با هم می‌جنگند. */
-_Static_assert(CHG_PID_OUTPUT_HYST_MILLI <
+/* [EN] Now that the hysteresis is panel-settable the assert has to bind the
+   WHOLE settable window, not just the boot default: checking the default
+   would have let the user type a value the firmware forbids itself. The
+   window ceiling is therefore DERIVED from the tolerance instead of being a
+   number someone picked - the first draft of this block used a round 5000,
+   which the compiler rejected here, correctly.
+   [FA] حالا که هیسترزیس از پنل تنظیم می‌شود، این گزاره باید کل پنجرهٔ
+   تنظیم‌پذیر را مقید کند نه فقط پیش‌فرض بوت: سنجیدن پیش‌فرض اجازه می‌داد
+   کاربر عددی بنویسد که خود فرم‌ور آن را ممنوع کرده. پس سقف پنجره از همان
+   تحمل «مشتق» می‌شود نه عددی که کسی انتخاب کرده - پیش‌نویس اول این بلوک
+   عدد رُند ۵۰۰۰ را گذاشته بود و کامپایلر به‌درستی ردش کرد. */
+#define CHG_LIMIT_MAX_PID_OUT_HYST_MILLI \
+    (((uint32_t)CHG_PID_RESEED_TOLERANCE_PERMILLE * CHG_PID_DUTY_SCALE) - 1u)
+_Static_assert(CHG_LIMIT_MAX_PID_OUT_HYST_MILLI <
                    ((uint32_t)CHG_PID_RESEED_TOLERANCE_PERMILLE * CHG_PID_DUTY_SCALE),
-               "output hysteresis must stay inside the bumpless re-seed tolerance");
+               "output hysteresis window must stay inside the bumpless re-seed tolerance");
+_Static_assert(CHG_PID_OUTPUT_HYST_MILLI <= CHG_LIMIT_MAX_PID_OUT_HYST_MILLI,
+               "the boot default must itself fit the settable window");
 /* [EN] The two rows tune loops whose errors are in DIFFERENT units (amps
    versus volts), so their Kp values are not interchangeable and must never
    be silently swapped: keep a cheap sanity floor on the pairing.
@@ -3350,6 +3378,154 @@ bool func__Charger_GetPidParam(uint8_t uint8_t__paramId,
     *uint32_t__value =
         ((volatile uint32_t *)&CHARGER_PID_T__G__Pid.uint32_t__currentKp)
         [uint8_t__paramId - CHG_PID_PARAM_CURRENT_KP];
+    return true;
+}
+
+/* ========== Charger limits & backstop gains, ids 93..107 (user 2026-10-03) ==========
+ * [EN] USER-ORDERED LOGIC CHANGE: the remaining compile-time gains, limits
+ *      and stage timers become panel-settable. One const row per limit keeps
+ *      the clamp in exactly one place; fifteen hand-written switch cases is
+ *      the shape that has gone stale here before, and flash is tight.
+ *      ROW ORDER IS THE WIRE-ID ORDER - the _Static_assert below pins the
+ *      table length to the id span, so adding an id without a row (or the
+ *      reverse) will not compile rather than silently reading past the end.
+ * [FA] تغییر منطق به دستور کاربر: گین‌ها، حدها و تایمرهای مرحله‌ای باقی‌مانده
+ *      از پنل تنظیم‌شدنی می‌شوند. یک ردیف const برای هر حد، گیره را دقیقاً در
+ *      یک جا نگه می‌دارد؛ پانزده case دستی همان شکلی است که قبلاً اینجا کهنه
+ *      شده و فلش هم تنگ است. ترتیب ردیف‌ها همان ترتیب شناسه‌های سیمی است -
+ *      _Static_assert پایین طول جدول را به بازهٔ شناسه‌ها قفل می‌کند، پس
+ *      افزودن شناسه بدون ردیف (یا برعکس) کامپایل نمی‌شود به‌جای اینکه بی‌صدا
+ *      از انتهای جدول رد شود. */
+typedef struct
+{
+    uint32_t uint32_t__min;
+    uint32_t uint32_t__max;
+    uint32_t uint32_t__def;
+} charger_limit_def_t;
+
+/* [EN] ONE list, expanded twice. The window table and the live array both
+ *      come from these rows, so a default cannot disagree with itself - the
+ *      first attempt at this block kept the defaults in two literal lists
+ *      and that is precisely the duplication that has gone stale all over
+ *      this project. Columns: NAME, min, max, boot default.
+ * [FA] یک فهرست، دو بار بسط. هم جدول پنجره و هم آرایهٔ زنده از همین ردیف‌ها
+ *      ساخته می‌شوند، پس یک پیش‌فرض نمی‌تواند با خودش اختلاف پیدا کند -
+ *      تلاش اول این بلوک پیش‌فرض‌ها را در دو فهرست جدا نگه داشت و همین
+ *      تکرار است که در کل این پروژه بارها کهنه شده. ستون‌ها: نام، کمینه،
+ *      بیشینه، پیش‌فرض بوت. */
+#define CHG_LIMIT_ROWS(X)                                                      \
+    X(ABSORB_MAX_MS,       0u, 21600000u, CHG_ABSORB_MAX_MS)                   \
+    X(ABSORB_MAX_ARM_MA,  10u,      500u, CHG_ABSORB_MAX_ARM_MA)               \
+    X(ABSORB_HOLD_MS,      0u,  7200000u, CHG_ABSORB_HOLD_MS)                  \
+    X(TAPER_SUSTAIN_MS, 1000u,   600000u, CHG_TAPER_SUSTAIN_MS)                \
+    X(PID_MAX_STEP_PM,     1u,      100u, CHG_PID_MAX_STEP_PERMILLE)           \
+    X(PID_OUT_HYST_MILLI,  0u, CHG_LIMIT_MAX_PID_OUT_HYST_MILLI, CHG_PID_OUTPUT_HYST_MILLI)           \
+    X(PID_VOLT_FILTER_N,   1u,       64u, CHG_PID_VOLT_FILTER_N)               \
+    X(BACKSTOP_MV,     13000u, CHG_PID_BACKSTOP_MV, CHG_PID_BACKSTOP_MV)       \
+    X(BACKSTOP_GAIN_I,     0u,     2000u, CHG_PID_BACKSTOP_GAIN_I)             \
+    X(BACKSTOP_GAIN_V,     0u,     2000u, CHG_PID_BACKSTOP_GAIN_V)             \
+    X(PID_CUR_MARGIN_MA,   0u,      100u, CHG_PID_CURRENT_MARGIN_MA)           \
+    X(CONNECT_SETTLE_MS,   0u,   120000u, CHG_CONNECT_SETTLE_MS)               \
+    X(JIT_LOCKOUT_MS,      0u,    60000u, CHG_JIT_LOCKOUT_MS)                  \
+    X(MANUAL_WATCHDOG_MS, 500u,   60000u, CHG_MANUAL_WATCHDOG_MS)              \
+    X(RAMP_DOWN_INT_MS,   50u,     5000u, CHG_DUTY_RAMP_DOWN_INTERVAL_MS)
+
+#define CHG_LIMIT_ROW_DEF(name, lo, hi, def)  { (lo), (hi), (def) },
+#define CHG_LIMIT_ROW_VAL(name, lo, hi, def)  (def),
+/* [EN] Row order must stay the wire-id order; this pins it. The window check
+       is the one mutation testing asked for: dropping a row's ceiling below
+       its own factory default used to compile cleanly and then silently clamp
+       the default at boot, so the number printed in the panel as "factory"
+       was a number the board would never actually hold.
+   [FA] ترتیب ردیف‌ها باید همان ترتیب شناسهٔ روی سیم بماند و این آن را میخ
+       می‌کند. چک پنجره همان چیزی است که موتیشن‌تست خواست: پایین‌آوردن سقف یک
+       ردیف زیر پیش‌فرض کارخانهٔ خودش قبلاً بی‌صدا کامپایل می‌شد و بعد سر بوت
+       پیش‌فرض را گیره می‌زد، یعنی عددی که پنل به‌عنوان «کارخانه» نشان می‌داد
+       عددی بود که برد هرگز نگه نمی‌داشت. */
+#define CHG_LIMIT_ROW_CHK(name, lo, hi, def)                                   \
+    _Static_assert(CHG_LIMIT_PARAM_##name >= CHG_LIMIT_PARAM_FIRST_ID,         \
+                   "limit row " #name " is outside the wire-id block");        \
+    _Static_assert((lo) <= (def),                                              \
+                   "limit row " #name " default is below its own floor");      \
+    _Static_assert((def) <= (hi),                                              \
+                   "limit row " #name " default is above its own ceiling");
+
+static const charger_limit_def_t CHARGER_LIMIT_DEF_T__A__Defs[CHG_LIMIT_COUNT] =
+{
+    CHG_LIMIT_ROWS(CHG_LIMIT_ROW_DEF)
+};
+
+/* [EN] volatile: written by the EspLink task, read by the control task.
+   [FA] بین دو تسک بدون قفل پس volatile. */
+static volatile uint32_t UINT32_T__G__ChargerLimit[CHG_LIMIT_COUNT] =
+{
+    CHG_LIMIT_ROWS(CHG_LIMIT_ROW_VAL)
+};
+
+CHG_LIMIT_ROWS(CHG_LIMIT_ROW_CHK)
+
+_Static_assert((sizeof(CHARGER_LIMIT_DEF_T__A__Defs) /
+                sizeof(CHARGER_LIMIT_DEF_T__A__Defs[0])) == CHG_LIMIT_COUNT,
+               "limit table must have exactly one row per wire id 93..107");
+_Static_assert((sizeof(UINT32_T__G__ChargerLimit) /
+                sizeof(UINT32_T__G__ChargerLimit[0])) == CHG_LIMIT_COUNT,
+               "live limit array must have exactly one slot per wire id");
+
+/**
+ * @brief  [EN] Live value of one charger limit, by table index.
+ *         [FA] مقدار زندهٔ یک حد شارژر، با نمایهٔ جدول.
+ * @param  uint8_t__index [EN] 0..CHG_LIMIT_COUNT-1 / نمایه
+ * @return uint32_t [EN] Live value / مقدار زنده
+ */
+static uint32_t func__Charger_Limit(uint8_t uint8_t__index)
+{
+    return UINT32_T__G__ChargerLimit[uint8_t__index];
+}
+
+bool func__Charger_SetLimitParam(uint8_t uint8_t__paramId,
+                                 uint32_t uint32_t__value,
+                                 uint32_t *uint32_t__appliedValue)
+{
+    uint8_t uint8_t__index;
+    uint32_t uint32_t__applied;
+
+    if ((uint8_t__paramId < CHG_LIMIT_PARAM_FIRST_ID) ||
+        (uint8_t__paramId > CHG_LIMIT_PARAM_LAST_ID))
+    {
+        return false;
+    }
+
+    uint8_t__index = (uint8_t)(uint8_t__paramId - CHG_LIMIT_PARAM_FIRST_ID);
+    uint32_t__applied = uint32_t__value;
+
+    if (uint32_t__applied < CHARGER_LIMIT_DEF_T__A__Defs[uint8_t__index].uint32_t__min)
+    {
+        uint32_t__applied = CHARGER_LIMIT_DEF_T__A__Defs[uint8_t__index].uint32_t__min;
+    }
+    if (uint32_t__applied > CHARGER_LIMIT_DEF_T__A__Defs[uint8_t__index].uint32_t__max)
+    {
+        uint32_t__applied = CHARGER_LIMIT_DEF_T__A__Defs[uint8_t__index].uint32_t__max;
+    }
+
+    UINT32_T__G__ChargerLimit[uint8_t__index] = uint32_t__applied;
+
+    if (uint32_t__appliedValue != NULL)
+    {
+        *uint32_t__appliedValue = uint32_t__applied;
+    }
+    return true;
+}
+
+bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
+                                 uint32_t *uint32_t__value)
+{
+    if ((uint8_t__paramId < CHG_LIMIT_PARAM_FIRST_ID) ||
+        (uint8_t__paramId > CHG_LIMIT_PARAM_LAST_ID))
+    {
+        return false;
+    }
+    *uint32_t__value =
+        UINT32_T__G__ChargerLimit[uint8_t__paramId - CHG_LIMIT_PARAM_FIRST_ID];
     return true;
 }
 

@@ -194,7 +194,7 @@
 #define ESPLINK_PARAM_FAULT_ALARM_INPUT_MIN_MV       33u  /* u32, mV, def 21000, 18000..24000, < max-1000 */
 #define ESPLINK_PARAM_FAULT_ALARM_INPUT_MAX_MV       34u  /* u32, mV, def 28000, 24000..30000, > min+1000 */
 #define ESPLINK_PARAM_CHG_ALARM_HARD_CURRENT_MA      35u  /* u32, mA, def 950,   imax+50..950 (down-only) */
-#define ESPLINK_PARAM_CHG_ALARM_OV_CUTOFF_MV         36u  /* u32, mV, def 15000, over+150..15000 (down-only) */
+#define ESPLINK_PARAM_CHG_ALARM_OV_CUTOFF_MV         36u  /* u32, mV, def 14850 = CHG_OV_CUTOFF_DEFAULT_MV (MAX_VALID 15000 - DECIDE_EARLY 150), over+150..15000 (down-only). The comment said 15000 for several releases while the board booted 14850, and the panel believed the comment - so its factory-restore button raised a safety ceiling. */
 #define ESPLINK_PARAM_CHG_ALARM_VALID_FLOOR_MV       37u  /* u32, mV, def 2000,  0..8000 */
 /* [EN] UI cadence (v1.16, user order 2026-09-26: virtual LEDs with real
  *      blinking, a buzzer icon with a mute cross, every alarm number
@@ -285,7 +285,37 @@
 #define ESPLINK_PARAM_CHG_PID_VOLTAGE_KD        90u  /* u32, -,    def 0,     0..20000 */
 #define ESPLINK_PARAM_CHG_PID_VOLTAGE_UP_RATE   91u  /* u32, m‰/s, def 10,    10..20000 */
 #define ESPLINK_PARAM_CHG_PID_VOLTAGE_DOWN_RATE 92u  /* u32, m‰/s, def 1000,  10..20000 */
-#define ESPLINK_PARAM_COUNT                93u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24) / [FA] پروفایل، آلارم‌ها، اعداد UI و PID دوحلقه‌ای CC/CV */
+
+/* [EN] Charger limits, backstop gains and stage timers, ids 93..107 (v1.28,
+ *      USER-ORDERED 2026-10-03: "put all the gains and the limits and the
+ *      parameters in so I can change them in the panel"). These were
+ *      compile-time constants; the panel's own PID help even stated that the
+ *      two hard backstops "are not adjustable from the panel" and described
+ *      the absorb ceiling as a fixed hour. Clamp windows live in ONE table
+ *      in charger.c (CHG_LIMIT_ROWS); this header only owns the wire ids.
+ * [FA] حدها، گین‌های پشتیبان و تایمرهای مرحله‌ای شارژر، شناسه‌های ۹۳..۱۰۷
+ *      (دستور کاربر: «همهٔ گین‌ها و حدها و پارامترها را بگذار تا از پنل
+ *      تغییر بدهم»). این‌ها ثابت کامپایل بودند؛ راهنمای PID خود پنل هم
+ *      نوشته بود دو پشتیبان سخت «از پنل تنظیم نمی‌شوند» و سقف ابزورب را یک
+ *      ساعت ثابت معرفی کرده بود. پنجره‌های گیره در «یک» جدول در charger.c
+ *      هستند؛ این هدر فقط صاحب شناسه‌های سیمی است. */
+#define ESPLINK_PARAM_CHG_ABSORB_MAX_MS         93u  /* u32, ms, def 3600000, 0..21600000 (0 = no ceiling) */
+#define ESPLINK_PARAM_CHG_ABSORB_MAX_ARM_MA     94u  /* u32, mA, def 100,     10..500 */
+#define ESPLINK_PARAM_CHG_ABSORB_HOLD_MS        95u  /* u32, ms, def 600000,  0..7200000 */
+#define ESPLINK_PARAM_CHG_TAPER_SUSTAIN_MS      96u  /* u32, ms, def 60000,   1000..600000 */
+#define ESPLINK_PARAM_CHG_PID_MAX_STEP_PM       97u  /* u32, ‰,  def 8,       1..100 */
+#define ESPLINK_PARAM_CHG_PID_OUT_HYST_MILLI    98u  /* u32, m‰, def 700,     0..999 */
+#define ESPLINK_PARAM_CHG_PID_VOLT_FILTER_N     99u  /* u32, -,  def 32,      1..64 (1 = off) */
+#define ESPLINK_PARAM_CHG_BACKSTOP_MV          100u  /* u32, mV, def 14800,   13000..14800, down only */
+#define ESPLINK_PARAM_CHG_BACKSTOP_GAIN_I      101u  /* u32, -,  def 100,     0..2000 */
+#define ESPLINK_PARAM_CHG_BACKSTOP_GAIN_V      102u  /* u32, -,  def 500,     0..2000 */
+#define ESPLINK_PARAM_CHG_PID_CUR_MARGIN_MA    103u  /* u32, mA, def 10,      0..100 */
+#define ESPLINK_PARAM_CHG_CONNECT_SETTLE_MS    104u  /* u32, ms, def 15000,   0..120000 */
+#define ESPLINK_PARAM_CHG_JIT_LOCKOUT_MS       105u  /* u32, ms, def 3000,    0..60000 */
+#define ESPLINK_PARAM_CHG_MANUAL_WATCHDOG_MS   106u  /* u32, ms, def 3000,    500..60000 */
+#define ESPLINK_PARAM_CHG_RAMP_DOWN_INT_MS     107u  /* u32, ms, def 500,     50..5000 */
+
+#define ESPLINK_PARAM_COUNT               108u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28) / [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای و حدها/گین‌های پشتیبان */
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

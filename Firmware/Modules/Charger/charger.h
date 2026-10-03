@@ -163,7 +163,17 @@
  */
 #define CHG_FIXED_DUTY_TEST_ENABLE              0u  /* [EN] 1=fixed 15% duty diagnostic (DONE, coefficients locked); 0=normal charge / تست تمام شد، شارژ نرمال فعال */
 #define CHG_FIXED_DUTY_TEST_DUTY_PERMILLE     150u
-#define CHG_CURRENT_LIMIT_MA           675u
+/* [EN] CHG_CURRENT_LIMIT_MA (675) was deleted on 2026-10-03: a grep of the
+ *      whole firmware found zero readers, so it had been describing a limit
+ *      that did not exist since the step chain was removed in v1.23. It was
+ *      a candidate for the new panel-settable limit block until that grep -
+ *      publishing it would have given the panel a control wired to nothing,
+ *      which is worse than leaving it out.
+ * [FA] این ثابت در ۲۰۲۶-۱۰-۰۳ حذف شد: جست‌وجو در کل فرم‌ور هیچ خواننده‌ای
+ *      پیدا نکرد، یعنی از حذف زنجیرهٔ پله‌ای در v1.23 حدی را توصیف می‌کرد که
+ *      وجود نداشت. تا پیش از آن جست‌وجو نامزد بلوک حدهای تنظیم‌شدنی بود -
+ *      منتشر کردنش یعنی دادن کنترلی به پنل که به هیچ‌چیز وصل نیست، و این از
+ *      نگذاشتنش بدتر است. */
 /* [EN] The 630..650 mA hysteresis band that the deleted step chain used is
  *      gone with it (v1.23): a PID has no band, it has a setpoint
  *      (CHG_BULK_CURRENT_MAX_MA minus CHG_PID_CURRENT_MARGIN_MA = 640 mA)
@@ -1395,5 +1405,99 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
  */
 bool func__Charger_GetPidParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value);
+
+/* ============ Charger limits & backstop gains (user order 2026-10-03) ============
+ * [EN] USER-ORDERED LOGIC CHANGE. Every remaining charger gain, limit and
+ *      stage timer becomes settable from the panel. These were compile-time
+ *      constants, and the panel even admitted it in writing - the PID help
+ *      bubble said the two hard backstops "are always on and are not
+ *      adjustable from the panel", and the absorb ceiling was described as
+ *      "1 hour" with no way to change it. Anything a bench session needs to
+ *      try is now a parameter.
+ *
+ *      Deliberately NOT in this block, and why:
+ *        - CHG_DUTY_MAX_PERMILLE (500) stays a compile constant: it is the
+ *          DCM/MOSFET rating of the board, not a tuning choice, and the
+ *          per-channel ceiling (ids 13/14) already limits duty downward.
+ *        - CHG_CURRENT_HARD_FAULT_MA (950) and the OV cutoff keep their
+ *          existing down-only ids 35/36. A hard fault limit that can be
+ *          RAISED from a web page is not a hard fault limit.
+ *        - CHG_CURRENT_LIMIT_MA was deleted outright: nothing read it, so
+ *          publishing it would have handed the user a knob wired to nothing.
+ *
+ *      Implementation is TABLE-DRIVEN on purpose. Fifteen more switch cases
+ *      with hand-written clamps is the pattern that has repeatedly gone
+ *      stale here, and this part is already tight on flash (a 92-byte
+ *      overflow had to be cleared in v1.26). One const row per limit -
+ *      {min, max, default} - costs a few hundred bytes of rodata and makes
+ *      the clamp impossible to forget.
+ * [FA] تغییر منطق به دستور کاربر. هر گین، حد و تایمر مرحله‌ای باقی‌ماندهٔ
+ *      شارژر از پنل تنظیم‌شدنی می‌شود. این‌ها ثابت کامپایل بودند و خود پنل هم
+ *      کتباً اعتراف کرده بود: راهنمای PID نوشته بود دو پشتیبان سخت «همیشه
+ *      فعال‌اند و از پنل تنظیم نمی‌شوند» و سقف ابزورب «۱ ساعت» معرفی شده بود
+ *      بی‌آنکه راهی برای تغییرش باشد. هرچه یک جلسهٔ بنچ لازم دارد امتحان کند
+ *      حالا پارامتر است.
+ *
+ *      عمداً در این بلوک نیست و چرا:
+ *        - CHG_DUTY_MAX_PERMILLE (۵۰۰) ثابت می‌ماند: مشخصهٔ DCM/ماسفت برد است
+ *          نه انتخاب تنظیمی، و سقف هر کانال (۱۳/۱۴) از قبل پایین‌آورنده است.
+ *        - خطای سخت جریان (۹۵۰) و قطع OV همان شناسه‌های فقط-پایین ۳۵/۳۶ را
+ *          نگه می‌دارند. حد خطای سختی که از یک صفحهٔ وب «بالا» برود، حد خطای
+ *          سخت نیست.
+ *        - CHG_CURRENT_LIMIT_MA کلاً حذف شد: هیچ‌جا خوانده نمی‌شد، پس منتشر
+ *          کردنش یعنی دادن پیچی به کاربر که به هیچ‌چیز وصل نیست.
+ *
+ *      پیاده‌سازی عمداً جدول‌محور است. پانزده case دیگر با گیره‌های دستی همان
+ *      الگویی است که بارها در این پروژه کهنه شده، و این بخش از نظر فلش تنگ
+ *      است (در v1.26 یک سرریز ۹۲ بایتی رفع شد). یک ردیف const برای هر حد -
+ *      {کمینه، بیشینه، پیش‌فرض} - چند صد بایت rodata می‌گیرد و فراموش‌کردن
+ *      گیره را ناممکن می‌کند. */
+#define CHG_LIMIT_PARAM_ABSORB_MAX_MS        93u  /* [EN] ms, 0=no ceiling..21600000 (6 h) */
+#define CHG_LIMIT_PARAM_ABSORB_MAX_ARM_MA    94u  /* [EN] mA, 10..500 - tail level that ARMS the ceiling */
+#define CHG_LIMIT_PARAM_ABSORB_HOLD_MS       95u  /* [EN] ms, 0..7200000 - minimum soak before FLOAT */
+#define CHG_LIMIT_PARAM_TAPER_SUSTAIN_MS     96u  /* [EN] ms, 1000..600000 - tail must hold this long */
+#define CHG_LIMIT_PARAM_PID_MAX_STEP_PM      97u  /* [EN] permille/tick, 1..100 */
+#define CHG_LIMIT_PARAM_PID_OUT_HYST_MILLI   98u  /* [EN] milli-permille, 0..5000 */
+#define CHG_LIMIT_PARAM_PID_VOLT_FILTER_N    99u  /* [EN] EWMA divisor, 1..64 (1 = filter off) */
+#define CHG_LIMIT_PARAM_BACKSTOP_MV         100u  /* [EN] mV, 13000..14800 - down only, never above compile max */
+#define CHG_LIMIT_PARAM_BACKSTOP_GAIN_I     101u  /* [EN] 0..2000 - permille of duty per amp of overshoot */
+#define CHG_LIMIT_PARAM_BACKSTOP_GAIN_V     102u  /* [EN] 0..2000 - permille of duty per volt of overshoot */
+#define CHG_LIMIT_PARAM_PID_CUR_MARGIN_MA   103u  /* [EN] mA, 0..100 */
+#define CHG_LIMIT_PARAM_CONNECT_SETTLE_MS   104u  /* [EN] ms, 0..120000 */
+#define CHG_LIMIT_PARAM_JIT_LOCKOUT_MS      105u  /* [EN] ms, 0..60000 */
+#define CHG_LIMIT_PARAM_MANUAL_WATCHDOG_MS  106u  /* [EN] ms, 500..60000 - deadman for manual mode */
+#define CHG_LIMIT_PARAM_RAMP_DOWN_INT_MS    107u  /* [EN] ms, 50..5000 */
+
+#define CHG_LIMIT_PARAM_FIRST_ID            CHG_LIMIT_PARAM_ABSORB_MAX_MS
+#define CHG_LIMIT_PARAM_LAST_ID             CHG_LIMIT_PARAM_RAMP_DOWN_INT_MS
+#define CHG_LIMIT_COUNT  \
+    ((CHG_LIMIT_PARAM_LAST_ID - CHG_LIMIT_PARAM_FIRST_ID) + 1u)
+
+/**
+ * @brief  [EN] Write one charger limit / backstop gain (ESP link, ids
+ *              93..107). The value is clamped into the compiled window for
+ *              that row and the APPLIED value is returned, exactly like the
+ *              profile and PID blocks.
+ *         [FA] نوشتن یک حد یا گین پشتیبان شارژر (لینک ESP، ۹۳..۱۰۷). مقدار
+ *              به پنجرهٔ کامپایل همان ردیف گیره می‌خورد و مقدار اعمال‌شده
+ *              برگردانده می‌شود، دقیقاً مثل بلوک پروفایل و PID.
+ * @param  uint8_t__paramId [EN] 93..107 / شناسهٔ پارامتر
+ * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
+ * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
+ * @return bool [EN] true = id known / شناسه شناخته شده
+ */
+bool func__Charger_SetLimitParam(uint8_t uint8_t__paramId,
+                                 uint32_t uint32_t__value,
+                                 uint32_t *uint32_t__appliedValue);
+
+/**
+ * @brief  [EN] Read one charger limit / backstop gain (ESP link GET/BULK).
+ *         [FA] خواندن یک حد یا گین پشتیبان شارژر (لینک ESP).
+ * @param  uint8_t__paramId [EN] 93..107 / شناسهٔ پارامتر
+ * @param  uint32_t *uint32_t__value [EN] Live value out / مقدار زنده
+ * @return bool [EN] true = id known / شناسه شناخته شده
+ */
+bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
+                                 uint32_t *uint32_t__value);
 
 #endif /* CHARGER_H */

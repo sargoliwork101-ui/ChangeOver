@@ -34,6 +34,22 @@
 _Static_assert(ESPLINK_PARAM_COUNT <= ESP_LINK_NVM_ENTRY_MAX,
                "NVM record too small for the param table");
 
+/* [EN] v1.28: the record also has to FIT THE FLASH PAGE it is written into,
+   and nothing proved that. The slot cap grew from 93 to 108 with the
+   user-ordered limits block, taking the record from 760 B to 880 B against
+   a 1 KiB page - comfortable, but the comment saying so was arithmetic
+   somebody did by hand, which is exactly the kind of claim that has gone
+   stale in this project. The page span is derived from the two page
+   addresses rather than retyped.
+   [FA] در v1.28 رکورد باید در «صفحهٔ فلشی» هم که در آن نوشته می‌شود جا شود
+   و هیچ‌چیز این را اثبات نمی‌کرد. سقف جای‌ها با بلوک حدها از ۹۳ به ۱۰۸ رفت
+   و رکورد از ۷۶۰ به ۸۸۰ بایت در برابر صفحهٔ ۱KB - راحت، ولی کامنتی که این
+   را می‌گفت حساب دستی کسی بود، همان نوع ادعایی که در این پروژه کهنه شده.
+   اندازهٔ صفحه از فاصلهٔ دو آدرس صفحه مشتق می‌شود نه تایپ دوباره. */
+_Static_assert(sizeof(esp_link_nvm_record_t) <=
+                   (ESP_LINK_NVM_PAGE_B_ADDR - ESP_LINK_NVM_PAGE_A_ADDR),
+               "NVM record must fit inside one flash page");
+
 /* ====================================================================
  * ===== EspLink Nvm pure record logic (host-testable, no flash) =====
  * ==================================================================== */

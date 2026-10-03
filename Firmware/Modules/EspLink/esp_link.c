@@ -324,6 +324,18 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                                                  uint32_t__value,
                                                  uint32_t__appliedValue);
             }
+            /* [EN] Charger limits / backstop gains, ids 93..107 (v1.28,
+                    user order): same range dispatch; the setter owns the
+                    clamp window table.
+               [FA] حدها و گین‌های پشتیبان شارژر، ۹۳..۱۰۷ (دستور کاربر):
+                    همان دیسپچ بازه‌ای؛ جدول پنجرهٔ گیره مال ستر است. */
+            if ((uint8_t__paramId >= CHG_LIMIT_PARAM_FIRST_ID) &&
+                (uint8_t__paramId <= CHG_LIMIT_PARAM_LAST_ID))
+            {
+                return func__Charger_SetLimitParam(uint8_t__paramId,
+                                                   uint32_t__value,
+                                                   uint32_t__appliedValue);
+            }
 #endif
 #if MODULE_UI
             /* [EN] UI cadence, ids 38..82 (v1.16 + v1.17 append): range-dispatched -
@@ -485,6 +497,14 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
                 return func__Charger_GetPidParam(uint8_t__paramId,
                                                  uint32_t__value);
             }
+            /* [EN] Charger limits / backstop gains live read, ids 93..107.
+               [FA] خواندن زندهٔ حدها و گین‌های پشتیبان، ۹۳..۱۰۷. */
+            if ((uint8_t__paramId >= CHG_LIMIT_PARAM_FIRST_ID) &&
+                (uint8_t__paramId <= CHG_LIMIT_PARAM_LAST_ID))
+            {
+                return func__Charger_GetLimitParam(uint8_t__paramId,
+                                                   uint32_t__value);
+            }
 #endif
 #if MODULE_UI
             /* [EN] UI cadence live read, ids 38..82 (v1.16 + v1.17 append).
@@ -622,60 +642,124 @@ static void func__EspLink_SendParamReport(uint8_t uint8_t__paramId,
 }
 
 /**
- * @brief  [EN] Send one PARAMS_BULK frame with every known parameter.
- *         [FA] یک فریم PARAMS_BULK با همهٔ پارامترهای شناخته‌شده می‌فرستد.
+ * @brief  [EN] Send every known parameter as PARAMS_BULK, in as many frames
+ *              as it takes. The receiver stores items BY ID, so splitting
+ *              the reply needs no protocol change at all.
+ *         [FA] همهٔ پارامترها را در قالب PARAMS_BULK می‌فرستد، در هر چند فریم
+ *              که لازم باشد. گیرنده آیتم‌ها را «با شناسه» ذخیره می‌کند، پس
+ *              تکه‌کردن پاسخ هیچ تغییر پروتکلی لازم ندارد.
  */
+
+/* [EN] v1.28: the single-frame reply hit its ceiling. One frame holds
+ *      1 + N*5 bytes against ESPLINK_FRAME_MAX_PAYLOAD, i.e. at most 102
+ *      parameters, and the user-ordered limits block took the count to 108.
+ *      Rather than raise the payload ceiling - which costs RAM in a static
+ *      buffer on both sides of a 20 KiB part - the reply is now CHUNKED.
+ *      This works without touching the wire format because every item
+ *      carries its own id and the ESP parser is count-driven: it already
+ *      merges whatever ids arrive, in any grouping.
+ *      The chunk size is DERIVED from the payload ceiling, so it can never
+ *      disagree with the buffer it has to fit.
+ * [FA] در v1.28 پاسخ تک‌فریمی به سقفش خورد. یک فریم ۱+۵N بایت در برابر
+ *      ESPLINK_FRAME_MAX_PAYLOAD جا می‌دهد یعنی حداکثر ۱۰۲ پارامتر، و بلوک
+ *      حدها به دستور کاربر تعداد را به ۱۰۸ رساند. به‌جای بالا بردن سقف
+ *      payload - که روی قطعهٔ ۲۰ کیلوبایتی در هر دو سمت RAM می‌خورد - پاسخ
+ *      «تکه‌تکه» می‌شود. این بدون دست‌زدن به فرمت سیم کار می‌کند چون هر آیتم
+ *      شناسهٔ خودش را دارد و پارسر ESP شمارش‌محور است: همین حالا هر شناسه‌ای
+ *      را در هر گروه‌بندی ادغام می‌کند. اندازهٔ تکه از همان سقف payload مشتق
+ *      می‌شود تا هرگز با بافری که باید در آن جا شود اختلاف پیدا نکند. */
+/* [EN] The link is the ONLY way the panel can reach the charger limit block,
+       and this file is the only one that sees both names - so this is where
+       the check belongs. A parameter count that stops short of the last limit
+       id compiles, runs, and simply makes the tail of the block unreachable:
+       the parameter is "settable" in the header and invisible in the panel.
+       That is precisely the failure the user ordered removed, so it is a
+       build error, not a comment. Mutation testing found this gap: lowering
+       ESPLINK_PARAM_COUNT by one passed every check that existed.
+   [FA] تنها راه رسیدن پنل به بلوک حدهای شارژر، همین لینک است و تنها فایلی که
+       هر دو نام را می‌بیند همین است - پس جای این چک همین‌جاست. تعداد پارامتری
+       که به آخرین شناسهٔ حد نرسد، کامپایل و اجرا می‌شود و فقط دُم بلوک را
+       دسترس‌ناپذیر می‌کند: پارامتر در هدر «تنظیم‌شدنی» است و در پنل نامرئی.
+       دقیقاً همان خرابی‌ای که کاربر دستور حذفش را داد، پس خطای بیلد است نه
+       کامنت. موتیشن‌تست این شکاف را پیدا کرد: یکی کم‌کردن ESPLINK_PARAM_COUNT
+       از همهٔ چک‌های موجود سالم رد می‌شد. */
+_Static_assert(ESPLINK_PARAM_COUNT > CHG_LIMIT_PARAM_LAST_ID,
+               "ESPLINK_PARAM_COUNT must cover the whole charger limit block");
+_Static_assert(CHG_LIMIT_PARAM_FIRST_ID + CHG_LIMIT_COUNT - 1u
+               == CHG_LIMIT_PARAM_LAST_ID,
+               "the charger limit block has a hole in its wire-id range");
+
+#define ESPLINK_BULK_ITEM_SIZE   5u
+#define ESPLINK_BULK_MAX_ITEMS   \
+    ((ESPLINK_FRAME_MAX_PAYLOAD - 1u) / ESPLINK_BULK_ITEM_SIZE)
+
+_Static_assert(ESPLINK_BULK_MAX_ITEMS >= 1u,
+               "a bulk frame must carry at least one parameter");
+_Static_assert(ESPLINK_BULK_MAX_ITEMS <= 255u,
+               "the bulk count byte cannot describe more than 255 items");
+
 static void func__EspLink_SendParamsBulk(void)
 {
-    /* [EN] STATIC by necessity, not style (v1.16 audit E1): 416 B on the
-       1 KiB comm stack next to SendFrame's 518 B frame left only dozens of
-       bytes of margin on every GET_PARAMS. Single task (comm),
-       non-reentrant, so static is race-free here (same rationale as the
-       NVM save scratch).
-       [FA] عمداً STATIC نه سلیقه‌ای: ۴۱۶ بایت روی استک ۱KB ارتباط کنار فریم
-       ۵۱۸ بایتی حاشیه را به چند ده بایت می‌رساند؛ تک‌تسک و غیربازگشتی پس
-       بدون مسابقه است (همان دلیل بافر NVM). */
-    static uint8_t UINT8_T__A__Payload[1u + (ESPLINK_PARAM_COUNT * 5u)];
-    /* [EN] The buffer auto-sizes from the param count, so it can never be
-       overrun - but the FRAME still has to fit the protocol's payload
-       ceiling, and nothing used to prove that. At 93 params the bulk reply
-       is 466 B against a 512 B limit; a future append past 102 params would
-       silently build a frame the receiver must reject.
-       [FA] بافر از تعداد پارامتر اندازه می‌گیرد پس سرریز نمی‌شود، ولی خود
-       فریم باید در سقف payload پروتکل جا شود و این هرگز اثبات نشده بود. با
-       ۹۳ پارامتر پاسخ ۴۶۶ بایت در برابر سقف ۵۱۲ است؛ افزودن بیش از ۱۰۲
-       پارامتر در آینده بی‌صدا فریمی می‌سازد که گیرنده باید ردش کند. */
-    _Static_assert((1u + (ESPLINK_PARAM_COUNT * 5u)) <= ESPLINK_FRAME_MAX_PAYLOAD,
-                   "PARAMS_BULK reply must fit the protocol payload ceiling");
+    /* [EN] STATIC by necessity, not style (v1.16 audit E1): on the 1 KiB
+       comm stack next to SendFrame's own frame buffer this would leave only
+       dozens of bytes of margin. Single task (comm), non-reentrant, so
+       static is race-free here (same rationale as the NVM save scratch).
+       Sized to ONE chunk now rather than to the whole parameter list, which
+       is why growing the parameter count no longer grows this buffer.
+       [FA] عمداً STATIC نه سلیقه‌ای: روی استک ۱KB ارتباط کنار بافر فریم خودِ
+       SendFrame فقط چند ده بایت حاشیه می‌ماند؛ تک‌تسک و غیربازگشتی پس بدون
+       مسابقه است. حالا به اندازهٔ «یک تکه» است نه کل فهرست پارامترها، و
+       برای همین زیادشدن تعداد پارامتر دیگر این بافر را بزرگ نمی‌کند. */
+    static uint8_t UINT8_T__A__Payload[1u + (ESPLINK_BULK_MAX_ITEMS *
+                                             ESPLINK_BULK_ITEM_SIZE)];
+    _Static_assert(sizeof(UINT8_T__A__Payload) <= ESPLINK_FRAME_MAX_PAYLOAD,
+                   "PARAMS_BULK chunk must fit the protocol payload ceiling");
 
-    uint16_t uint16_t__cursor = 0u;
+    uint16_t uint16_t__cursor = 1u;
     uint8_t uint8_t__count = 0u;
     uint32_t uint32_t__value;
+    uint32_t uint32_t__i;
 
-    UINT8_T__A__Payload[uint16_t__cursor] = 0u;
-    uint16_t__cursor = (uint16_t)(uint16_t__cursor + 1u);
-
-    for (uint32_t uint32_t__i = 0u; uint32_t__i < ESPLINK_PARAM_COUNT; uint32_t__i++)
+    for (uint32_t__i = 0u; uint32_t__i < ESPLINK_PARAM_COUNT; uint32_t__i++)
     {
-        if (func__EspLink_GetParam((uint8_t)uint32_t__i, &uint32_t__value) != false)
+        if (func__EspLink_GetParam((uint8_t)uint32_t__i, &uint32_t__value) == false)
         {
-            UINT8_T__A__Payload[uint16_t__cursor] = (uint8_t)uint32_t__i;
-            uint16_t__cursor = (uint16_t)(uint16_t__cursor + 1u);
-            UINT8_T__A__Payload[uint16_t__cursor] = (uint8_t)(uint32_t__value & 0xFFu);
-            UINT8_T__A__Payload[uint16_t__cursor + 1u] =
-                (uint8_t)((uint32_t__value >> 8) & 0xFFu);
-            UINT8_T__A__Payload[uint16_t__cursor + 2u] =
-                (uint8_t)((uint32_t__value >> 16) & 0xFFu);
-            UINT8_T__A__Payload[uint16_t__cursor + 3u] =
-                (uint8_t)((uint32_t__value >> 24) & 0xFFu);
-            uint16_t__cursor = (uint16_t)(uint16_t__cursor + 4u);
-            uint8_t__count++;
+            continue;
+        }
+
+        UINT8_T__A__Payload[uint16_t__cursor] = (uint8_t)uint32_t__i;
+        UINT8_T__A__Payload[uint16_t__cursor + 1u] = (uint8_t)(uint32_t__value & 0xFFu);
+        UINT8_T__A__Payload[uint16_t__cursor + 2u] =
+            (uint8_t)((uint32_t__value >> 8) & 0xFFu);
+        UINT8_T__A__Payload[uint16_t__cursor + 3u] =
+            (uint8_t)((uint32_t__value >> 16) & 0xFFu);
+        UINT8_T__A__Payload[uint16_t__cursor + 4u] =
+            (uint8_t)((uint32_t__value >> 24) & 0xFFu);
+        uint16_t__cursor = (uint16_t)(uint16_t__cursor + ESPLINK_BULK_ITEM_SIZE);
+        uint8_t__count++;
+
+        /* [EN] Chunk full: ship it and start the next one.
+           [FA] تکه پر شد: ارسال و شروع تکهٔ بعدی. */
+        if (uint8_t__count >= ESPLINK_BULK_MAX_ITEMS)
+        {
+            UINT8_T__A__Payload[0] = uint8_t__count;
+            func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_PARAMS_BULK,
+                                    UINT8_T__A__Payload, uint16_t__cursor);
+            uint16_t__cursor = 1u;
+            uint8_t__count = 0u;
         }
     }
 
-    UINT8_T__A__Payload[0] = uint8_t__count;
-    func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_PARAMS_BULK,
-                            UINT8_T__A__Payload, uint16_t__cursor);
+    /* [EN] Trailing partial chunk. Sent even when empty is NOT wanted - an
+       empty bulk frame would tell the panel "zero parameters known".
+       [FA] تکهٔ ناقص پایانی. فریم خالی عمداً فرستاده نمی‌شود چون به پنل
+       می‌گوید «هیچ پارامتری شناخته نشد». */
+    if (uint8_t__count > 0u)
+    {
+        UINT8_T__A__Payload[0] = uint8_t__count;
+        func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_PARAMS_BULK,
+                                UINT8_T__A__Payload, uint16_t__cursor);
+    }
 }
 
 /**

@@ -67,9 +67,9 @@ static void func__Esp_HttpFont(void)
 }
 
 /**
- * @brief  [EN] GET /t : compact JSON snapshot {on,age,seq,fl,n,q,q2,q3,ka,t[20],p[83]} (v1.17).
+ * @brief  [EN] GET /t : compact JSON snapshot {on,age,seq,fl,n,q,q2,q3,q4,ka,t[25],p[108]} (v1.17).
  *              t = TLM u32 fields in spec order (offset 4..80); p = applied params or null.
- *         [FA] مسیر GET /t : خلاصه JSON فشرده {on,age,seq,fl,n,q,q2,q3,ka,t[20],p[83]} (نسخه ۱.۱۷).
+ *         [FA] مسیر GET /t : خلاصه JSON فشرده {on,age,seq,fl,n,q,q2,q3,q4,ka,t[25],p[108]} (نسخه ۱.۱۷).
  *              t فیلدهای u32 تله‌متری به ترتیب سند (آفست ۴ تا ۸۰)؛ p مقدار اعمال‌شده یا null.
  * @return [EN] None / [FA] ندارد
  */
@@ -81,6 +81,7 @@ static void func__Esp_HttpTelemetry(void)
     uint32_t uint32_t__pendingMask = 0u;
     uint32_t uint32_t__pendingMask2 = 0u;
     uint32_t uint32_t__pendingMask3 = 0u;
+    uint32_t uint32_t__pendingMask4 = 0u;
     uint32_t uint32_t__keepaliveAgeMs = uint32_t__nowMs - UINT32_T__G__LastKeepaliveMs;
     uint8_t uint8_t__index;
     size_t size_t__used;
@@ -92,15 +93,24 @@ static void func__Esp_HttpTelemetry(void)
             so ids 0..31 go to "q", 32..63 to "q2" and 64..95 to "q3".
             v1.23 briefly needed a FOURTH mask because the three-stage PID
             pushed the top id to 97; v1.24 dropped the redundant third gain
-            row, the top id is 92 again, and "q4" went with it. The field is
-            still emitted as a constant 0 so an older cached panel keeps
-            working.
+            row, the top id is 92 again, and "q4" went with it - but the
+            field kept being emitted as a constant 0.
+            v1.28 brings it back for real: the user-ordered limits block ends
+            at id 107, and the old "else" arm shifted EVERY id >= 64 into
+            mask3, so id 96 evaluated 1UL << 32 - undefined behaviour, not a
+            wrong pixel. Each arm is now a closed range and the static assert
+            below is what actually stops the next person.
        [FA] نسخه ۱.۱۶: ۷۷ پارامتر سه ماسک u32 می‌خواهد (و شیفت ۳۲+ تعریف‌نشده
             است)، پس شناسه‌های ۰..۳۱ در q و ۳۲..۶۳ در q2 و ۶۴..۹۵ در q3.
-            نسخهٔ ۱.۲۳ کوتاه‌مدت ماسک چهارم خواست چون PID سه‌مرحله‌ای بالاترین
-            شناسه را به ۹۷ رساند؛ نسخهٔ ۱.۲۴ ردیف سوم زائد را حذف کرد،
-            بالاترین شناسه دوباره ۹۲ شد و q4 هم با آن رفت. این فیلد هنوز
-            ثابت صفر فرستاده می‌شود تا پنل کش‌شدهٔ قدیمی نشکند. */
+            نسخهٔ ۱.۲۳ کوتاه‌مدت ماسک چهارم خواست؛ نسخهٔ ۱.۲۴ آن را برداشت ولی
+            فیلد همچنان ثابت صفر فرستاده می‌شد.
+            نسخهٔ ۱.۲۸ آن را واقعی برمی‌گرداند: بلوک حدها به دستور کاربر تا
+            شناسهٔ ۱۰۷ می‌رود و شاخهٔ else قدیمی هر شناسهٔ ۶۴ به بالا را در
+            ماسک۳ می‌ریخت، یعنی شناسهٔ ۹۶ می‌شد 1UL << 32 — رفتار تعریف‌نشده،
+            نه فقط یک پیکسل غلط. حالا هر شاخه بازهٔ بسته دارد و assert پایین
+            چیزی است که واقعاً جلوی نفر بعدی را می‌گیرد. */
+    _Static_assert(ESP_PARAM_COUNT <= 128,
+                   "pending masks cover ids 0..127; add a fifth word");
     for (uint8_t__index = 0u; uint8_t__index < ESP_PARAM_COUNT; uint8_t__index++)
     {
         if (BOOL__G__TxParamPending[uint8_t__index])
@@ -113,9 +123,13 @@ static void func__Esp_HttpTelemetry(void)
             {
                 uint32_t__pendingMask2 |= (1UL << (uint8_t__index - 32u));
             }
-            else
+            else if (uint8_t__index < 96u)
             {
                 uint32_t__pendingMask3 |= (1UL << (uint8_t__index - 64u));
+            }
+            else
+            {
+                uint32_t__pendingMask4 |= (1UL << (uint8_t__index - 96u));
             }
         }
     }
@@ -132,7 +146,7 @@ static void func__Esp_HttpTelemetry(void)
         bool__online ? 1u : 0u, (unsigned long)uint32_t__ageMs, (unsigned int)UINT16_T__G__TlmSeq,
         (unsigned int)UINT8_T__G__TlmFlags, (unsigned long)UINT32_T__G__TlmFrameCount,
         (unsigned long)uint32_t__pendingMask, (unsigned long)uint32_t__pendingMask2,
-        (unsigned long)uint32_t__pendingMask3, 0UL,
+        (unsigned long)uint32_t__pendingMask3, (unsigned long)uint32_t__pendingMask4,
         (unsigned long)uint32_t__keepaliveAgeMs,
         (unsigned long)UINT32_T__G__RxVersionMismatch,
         (unsigned long)UINT32_T__G__RxCrcError);
