@@ -1339,7 +1339,7 @@ def test_charger_persistence_v114():
     #      منتقل شد - از دست دادنش یعنی انداختن «اطلاعات»، نه «تکرار».
     check("روی فلش برد ذخیره" in ino and
           "ماندگاری:" in ino and "function qgraph()" in ino and
-          "if(TAB==0)qgraph();" in ino and
+          "if(TAB==0||(TAB==2&&STAB==0))qgraph();" in ino and
           "if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();" in ino and
           "نمودار مراحل شارژ" in ino,
           "the panel must carry the stage graph (one mount, gated on the "
@@ -1349,8 +1349,14 @@ def test_charger_persistence_v114():
     #      mount survives, on the chargers page above the operating table.
     # [FA] نسخهٔ دوم نمودار خودش همان تکرار بود. دقیقاً یک محل نصب می‌ماند، روی
     #      صفحهٔ شارژرها بالای جدول عملکرد.
-    check(ino.count('class="qgm"') == 1,
-          "exactly ONE chart mount: the duplicate copy was the redundancy removed")
+    # [EN] v1.34: the settings mount is back by user order. Counting mounts
+    #      encoded a preference that has since reversed; what must hold is
+    #      that one renderer fills them all, so they cannot disagree.
+    # [FA] نسخهٔ تب تنظیمات به دستور کاربر برگشت. شمردن محل نصب یک ترجیح را
+    #      کد کرده بود که برگشت؛ چیزی که باید برقرار بماند این است که یک
+    #      رندرکننده همه را پر کند تا نتوانند حرف متفاوت بزنند.
+    check(ino.count('class="qgm"') >= 2,
+          "the chart must be mounted on the chargers page AND in settings")
     check(".evchips" not in ino and 'class="evc"' not in ino,
           "the chip strip must stay gone: the numbers are clicked on the plot, "
           "not read from a list written underneath it")

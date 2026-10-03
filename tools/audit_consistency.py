@@ -486,9 +486,57 @@ def sec_defaults(ids):
         ok(".evchips" not in P_PAN and "class=\"evc\"" not in P_PAN,
            "the chip strip under the chart must stay gone",
            "the user asked to click the number on the plot, not read a list below it")
-        ok(P_PAN.count('class="qgm"') == 1,
-           "exactly ONE chart must be mounted",
-           "two copies of the same chart is the duplication the user asked to remove")
+        # [EN] This used to demand exactly ONE mount, written when the user
+        #      asked for the duplicate to go. They have since asked for the
+        #      settings copy back ("why did you take the chart away entirely?
+        #      go back to the previous version"), so counting mounts is the
+        #      wrong invariant - it encoded a preference that reversed.
+        #      What is actually dangerous is two copies that can DISAGREE, or
+        #      a mount nothing ever draws into. Both are pinned instead:
+        #        - every mount is found by class and filled by one renderer,
+        #        - no mount sits on a page the redraw gate does not cover.
+        # [FA] این چک قبلاً دقیقاً یک محل نصب می‌خواست، چون کاربر حذف تکرار را
+        #      خواسته بود. حالا نسخهٔ تب تنظیمات را پس خواسته، پس «شمردن محل
+        #      نصب» نامتغیر غلطی است - یک ترجیح را کد کرده بود که برگشت.
+        #      چیزی که واقعاً خطرناک است دو نسخه‌ای است که بتوانند حرف متفاوت
+        #      بزنند، یا محل نصبی که هیچ‌وقت چیزی در آن رسم نشود.
+        mounts = P_PAN.count('class="qgm"')
+        ok(mounts >= 1, "the chart must be mounted somewhere")
+        ok("document.querySelectorAll('.qgm')" in P_PAN and "$('qg')" not in
+           re.sub(r"/\*.*?\*/", "", P_PAN, flags=re.S),
+           "every chart mount must be filled by the SAME renderer",
+           "an id lookup fills only the first copy and lets the two disagree")
+        # each mount's host page must be covered by the redraw gate
+        # [EN] Read the qgraph GATE ITSELF, not the whole of draw(). The
+        #      first version searched the function body for "STAB==0" and
+        #      passed spuriously, because draw() also contains
+        #      if(STAB==0)pchk() - an unrelated guard. A mutation that
+        #      narrowed the gate to if(TAB==0) survived it. Match the exact
+        #      condition attached to the qgraph() call.
+        # [FA] خودِ گاردِ qgraph خوانده می‌شود نه کل بدنهٔ draw(). نسخهٔ اول در
+        #      بدنه دنبال STAB==0 می‌گشت و الکی سبز می‌شد، چون draw شرط
+        #      بی‌ربط if(STAB==0)pchk() را هم دارد.
+        gm = re.search(r"if\(([^)]*(?:\([^)]*\))?[^)]*)\)qgraph\(\);", P_PAN)
+        gate = gm.group(1) if gm else ""
+        ok(bool(gm), "the chart redraw must be gated by an explicit condition")
+        for m in re.finditer(r'class="qgm"', P_PAN):
+            pg = re.findall(r'id="(p\d|s\d)"', P_PAN[:m.start()])
+            host = pg[-1] if pg else "?"
+            # [EN] "TAB==0" is a SUBSTRING of "STAB==0", so a plain `in`
+            #      test reported the chargers page as covered by a gate that
+            #      only mentioned the settings sub-tab. Third substring trap
+            #      in this file; a negative lookbehind is the fix.
+            # [FA] «TAB==0» زیررشتهٔ «STAB==0» است، پس تست ساده صفحهٔ شارژرها
+            #      را با گاردی که فقط زیرتب تنظیمات را نام می‌برد «پوشیده»
+            #      گزارش می‌کرد. سومین تلهٔ زیررشته در همین فایل.
+            has_tab0 = re.search(r"(?<!S)TAB==0", gate) is not None
+            covered = (has_tab0 if host == "p0"
+                       else ("STAB==0" in gate and "TAB==2" in gate)
+                       if host == "s0" else False)
+            ok(covered,
+               f"the chart mount on {host} is never redrawn",
+               "a mount outside the gate is a box that stays empty forever "
+               "while the markup looks perfectly correct")
     ok(not bad_p, "documented default != preview server P", "; ".join(bad_p))
 
     lo_hi = [f"id {i}" for i in range(min(len(pmin), len(pmax))) if pmin[i] > pmax[i]]

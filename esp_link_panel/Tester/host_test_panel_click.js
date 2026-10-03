@@ -138,14 +138,24 @@ function main() {
         check(P0.querySelectorAll(".qgm svg").length === 1,
               "the chargers page carries the chart, drawn",
               "the table is here, so the numbers must be editable here");
-        check(d.querySelectorAll(".qgm svg").length === 1,
-              "exactly ONE chart exists in the whole panel",
-              "the duplicate copy was the redundancy the user asked to remove");
+        /* v1.34 (user order: "why did you take the chart away entirely? go
+           back to the previous version"): the settings copy is back. Head
+           count is not the property worth testing - two copies that can
+           DISAGREE is. Both mounts are compared byte for byte below. */
+        const mounts = [...d.querySelectorAll(".qgm")];
+        check(mounts.length === 2,
+              "the chart is mounted on the chargers page AND in settings");
+        check(mounts.every(m => m.querySelectorAll("svg").length === 1),
+              "every mount is actually drawn into",
+              "a mount outside the redraw gate stays an empty box forever");
+        check(mounts[0].innerHTML === mounts[1].innerHTML,
+              "both copies come from ONE renderer and are identical",
+              "two charts that can disagree is the real bug, not two charts");
         check(d.querySelectorAll(".evchips, .evc").length === 0,
               "no chip strip anywhere",
               "the numbers are clicked on the plot, not read from a list below it");
-        check(P2.querySelectorAll(".qgm svg").length === 0,
-              "the settings tab no longer carries its own copy of the chart");
+        check(P2.querySelectorAll(".qgm svg").length === 1,
+              "the settings tab carries the chart again, as asked");
 
         /* --- 0b. v1.33: the duplicate q20..q26 form is gone, so there is no
                  mirrored input to keep in step and no "typed but not applied"
