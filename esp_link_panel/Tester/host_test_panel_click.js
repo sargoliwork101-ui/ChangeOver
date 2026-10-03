@@ -182,6 +182,33 @@ function main() {
            document - never whether the clicked page was the visible one.
            A page counts as visible only if it AND every ancestor page carry
            the active class, which is what the CSS actually does. */
+        /* ---- the build stamp has to be ON SCREEN, not just in the file ----
+           Three reports of a broken panel this session were all against
+           builds that rendered correctly; what was missing was any way to
+           tell which build was on screen. A stamp hidden in a comment would
+           not have helped, so this checks it is rendered, visible on the
+           very first page, and matches the markup it is printed on. */
+        {
+            const bs = d.getElementById("bs");
+            check(!!bs, "the header shows a build stamp");
+            if (bs) {
+                check(/^build [0-9a-f]{7}$/.test(bs.textContent.trim()),
+                      "the build stamp reads as seven hex characters",
+                      "got: " + bs.textContent.trim());
+                check(bs.closest(".pgx") === null,
+                      "the stamp sits in the header, visible on every tab");
+                const lit = SRC.split('R"HTML(')[1].split(')HTML"')[0];
+                const blank = lit.replace(
+                    /(<span class="bs" id="bs">build )[0-9a-f]{7}(<\/span>)/,
+                    "$1_______$2");
+                const want = require("crypto").createHash("sha1")
+                    .update(blank, "utf8").digest("hex").slice(0, 7);
+                check(bs.textContent.trim() === "build " + want,
+                      "the stamp on the page matches the page it is on",
+                      "page says " + bs.textContent.trim() + ", markup hashes to " + want);
+            }
+        }
+
         /* ---- the "!" help must describe the fields of its own card ----
            Reported as "scenarios do not work": the help lists had slipped by
            one card, so every scenario explained its neighbour's parameters.

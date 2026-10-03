@@ -51,6 +51,27 @@ static bool func__Esp_ParseInt(const char *char__ptr_text, int32_t *int32_t__ptr
  */
 static void func__Esp_HttpRoot(void)
 {
+    /* [EN] The whole panel leaves in one send_P. It has grown from 118 KB to
+     *      roughly 160 KB with no ceiling anywhere, and on an ESP8266 a page
+     *      this size is sent as ~110 consecutive TCP writes: if the link
+     *      stalls, the transfer is cut and the browser renders whatever
+     *      arrived. The document ends with the settings sub-pages and then
+     *      the scripts, so a cut tail looks exactly like "the scenarios
+     *      section does not come up" while the earlier cards still show.
+     *      This ceiling makes that growth a build error instead of a field
+     *      report. Raising it is a deliberate act, not an accident.
+     * [FA] کل پنل با یک send_P می‌رود. از ۱۱۸ کیلوبایت به حدود ۱۶۰ رسیده و
+     *      هیچ سقفی نداشت؛ روی ESP8266 چنین صفحه‌ای با حدود ۱۱۰ نوشتن پشت سر
+     *      هم TCP می‌رود و اگر لینک گیر کند، انتقال بریده می‌شود و مرورگر هر
+     *      چه رسیده را نشان می‌دهد. انتهای سند زیرصفحه‌های تنظیمات و بعد
+     *      اسکریپت‌هاست، پس بریدگی دقیقاً شبیه «سناریوها بالا نمی‌آید» دیده
+     *      می‌شود در حالی که کارت‌های قبلی هستند. این سقف چنین رشدی را به
+     *      خطای بیلد تبدیل می‌کند نه گزارش میدانی.
+     */
+    _Static_assert(sizeof(ESP_PANEL_HTML) <= ESP_PANEL_HTML_MAX_BYTES,
+                   "panel HTML exceeds the transfer budget - split it or raise "
+                   "ESP_PANEL_HTML_MAX_BYTES on purpose");
+
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     ESP_WEB_SERVER_T__G__Server.send_P(200, "text/html", ESP_PANEL_HTML);
 }

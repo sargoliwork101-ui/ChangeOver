@@ -594,6 +594,44 @@ def sec_defaults(ids):
         #      باتری را توضیح می‌داد که در زیرتب دیگری است، ۳ فیلدهای ۲ را،
         #      ۴ فیلدهای ۳ را و ۵ فیلدهای ۱ را. حالا هر کارت با کنترل‌های
         #      خودش سنجیده می‌شود تا دوباره جابه‌جا نشود.
+        # [EN] The header carries a build id derived from the markup, so a
+        #      page on screen can be identified instead of guessed at. Three
+        #      times this session a correct build was reported broken because
+        #      a stale tab or an unflashed board is indistinguishable from a
+        #      bug. The value is recomputed here: edit the panel without
+        #      restamping it and this fails, which is the whole point - a
+        #      stamp you can forget to update is worse than none.
+        # [FA] سربرگ یک شناسهٔ بیلد دارد که از خود مارک‌آپ مشتق می‌شود تا
+        #      بتوان صفحهٔ روی نمایشگر را شناخت نه حدس زد. سه بار در این جلسه
+        #      بیلد درست «خراب» گزارش شد چون تب کهنه یا برد فلش‌نشده از باگ
+        #      قابل تشخیص نیست. مقدار اینجا دوباره حساب می‌شود.
+        import hashlib as _hl
+        _st = re.search(r'<span class="bs" id="bs">build ([0-9a-f]{7})</span>',
+                        P_PAN)
+        ok(bool(_st), "the panel header carries a build stamp",
+           "without it a stale page cannot be told from a broken one")
+        _lit0 = P_PAN.split('R"HTML(', 1)[1].split(')HTML"', 1)[0]
+        if _st:
+            _blank = re.sub(r'(<span class="bs" id="bs">build )[0-9a-f]{7}(</span>)',
+                            r'\g<1>_______\g<2>', _lit0)
+            _want = _hl.sha1(_blank.encode("utf-8")).hexdigest()[:7]
+            ok(_st.group(1) == _want,
+               "the build stamp matches the panel it is printed on",
+               f"header says {_st.group(1)}, markup hashes to {_want} - run "
+               "tools/stamp_panel.py")
+
+        # [EN] The panel is served in one send_P; keep it under the ceiling.
+        # [FA] پنل با یک send_P می‌رود؛ زیر سقف نگهش دار.
+        _lit = P_PAN.split('R"HTML(', 1)[1].split(')HTML"', 1)[0]
+        _sz = len(_lit.encode("utf-8")) + 1
+        _cap = re.search(r"#define ESP_PANEL_HTML_MAX_BYTES\s+(\d+)u", P_CFG)
+        ok(bool(_cap), "the panel has a declared size ceiling")
+        if _cap:
+            ok(_sz <= int(_cap.group(1)),
+               "the panel fits the transfer budget it declares",
+               f"{_sz} bytes vs ceiling {_cap.group(1)} - a cut transfer drops "
+               "the tail of the page, which is the settings sub-pages")
+
         _cards = re.findall(
             r'<div class="cd"[^>]*>(.*?)(?=<div class="cd"|<div class="sgx"'
             r'|<div class="pgx"|\Z)', P_PAN, re.S)
