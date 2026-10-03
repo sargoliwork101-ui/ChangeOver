@@ -582,6 +582,38 @@ def sec_defaults(ids):
         #      نمی‌پرسید «درخت شکل درستی دارد؟». سازوکار تب کلاس را با
         #      «اندیس» روی یک فهرست تخت جابه‌جا می‌کند، پس فقط وقتی درست است
         #      که صفحه‌ها خواهر باشند.
+        # [EN] The "!" help of a card must describe the fields THAT CARD has.
+        #      The lists had slipped by one card, so scenario 2 explained the
+        #      battery-monitor parameters that live on another sub-tab, 3
+        #      explained 2's fields, 4 explained 3's and 5 explained 1's -
+        #      you opened the help to find out what a box did and were told
+        #      about boxes that were not on screen. Each card is matched
+        #      against its own controls here, so the lists cannot drift again.
+        # [FA] راهنمای «!» هر کارت باید فیلدهای همان کارت را توضیح دهد.
+        #      فهرست‌ها یک کارت جابه‌جا شده بودند: سناریو ۲ پارامترهای نظارت
+        #      باتری را توضیح می‌داد که در زیرتب دیگری است، ۳ فیلدهای ۲ را،
+        #      ۴ فیلدهای ۳ را و ۵ فیلدهای ۱ را. حالا هر کارت با کنترل‌های
+        #      خودش سنجیده می‌شود تا دوباره جابه‌جا نشود.
+        _cards = re.findall(
+            r'<div class="cd"[^>]*>(.*?)(?=<div class="cd"|<div class="sgx"'
+            r'|<div class="pgx"|\Z)', P_PAN, re.S)
+        _drift = []
+        for _c in _cards:
+            _m = re.search(r'<button class="ib" data-p="([^"]+)"', _c)
+            if not _m:
+                continue
+            _help = {int(x) for x in _m.group(1).split(',') if x.strip().isdigit()}
+            # only fields the user can actually see and edit; q76 is a
+            # hidden mirror of the mute state, driven by the mute button
+            _own = {int(x) for x in re.findall(
+                r'<input[^>]*type="number"[^>]*id="q(\d+)"', _c)}
+            if _own - _help:
+                _drift.append(sorted(_own - _help))
+        ok(not _drift,
+           "every field on a card must be explained by that card's ! help",
+           f"unexplained fields {_drift} - the help points at parameters that "
+           "are not on the card the user is looking at")
+
         _html = re.search(r'R"HTML\(([\s\S]*)\)HTML"', P_PAN)
         ok(bool(_html), "the panel must expose its HTML literal")
         if _html:

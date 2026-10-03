@@ -182,6 +182,35 @@ function main() {
            document - never whether the clicked page was the visible one.
            A page counts as visible only if it AND every ancestor page carry
            the active class, which is what the CSS actually does. */
+        /* ---- the "!" help must describe the fields of its own card ----
+           Reported as "scenarios do not work": the help lists had slipped by
+           one card, so every scenario explained its neighbour's parameters.
+           Checked on the rendered page, after pexp() has expanded the texts,
+           so this covers the wording the user actually reads. */
+        [...d.querySelectorAll("button.ib[data-p]")].forEach(b => {
+            const card = b.closest(".cd") || b.parentElement;
+            const own = [...card.querySelectorAll('input[type=number][id^=q]')]
+                .filter(x => /^q\d+$/.test(x.id))   /* qm1/qm2 are buttons' boxes */
+                .map(x => +x.id.slice(1));
+            if (!own.length) return;
+            const help = b.dataset.p.split(",").map(Number);
+            const miss = own.filter(x => !help.includes(x));
+            const ttl = card.querySelector(".hd b, b");
+            check(miss.length === 0,
+                  'the ! help of "' + (ttl ? ttl.textContent.trim() : "?") +
+                  '" covers every field on that card',
+                  "not explained: " + miss.join(","));
+        });
+        check([...d.querySelectorAll("button.ib[data-p]")].length > 10,
+              "the help buttons are still present to be checked");
+        /* 44..49 are ESPLINK_PARAM_UI_BL_* = UI_BAT_LOST_*, the battery
+           DISCONNECT alarm - the help used to call them "weak battery",
+           which is a different alarm and sent people to the wrong knob. */
+        check(/44:\['دورهٔ LED قطع باتری/.test(SRC),
+              "id 44 is named for the disconnect alarm, not the weak-battery one");
+        check(!/باتری ضعیف',\s*'طول یک چرخهٔ چشمک LED هنگام هشدار باتری ضعیف/.test(SRC),
+              "the old mislabel for 44 is gone");
+
         const visible = el => {
             for (let n = el; n && n.classList; n = n.parentElement) {
                 if ((n.classList.contains("sgx") || n.classList.contains("pgx"))
