@@ -147,17 +147,20 @@ function main() {
         check(P2.querySelectorAll(".qgm svg").length === 0,
               "the settings tab no longer carries its own copy of the chart");
 
-        /* --- 0b. editing from the chart must not leave the classic settings
-                 input stale: qv() would then see typed != applied and label
-                 the line a dashed 'preview' that nothing is pending for --- */
+        /* --- 0b. v1.33: the duplicate q20..q26 form is gone, so there is no
+                 mirrored input to keep in step and no "typed but not applied"
+                 state. What must still hold is that a chart edit reaches the
+                 board AND the read-only table re-reports it. --- */
+        for (let i = 20; i < 27; i++) {
+            check(d.getElementById("q" + i) === null,
+                  "no duplicate input box for id " + i,
+                  "the chart is the only place these are set");
+        }
         const lbl20 = P0.querySelector('.qgm [data-i="20"]');
         lbl20.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
         const i20 = field();
         i20.value = "14500";
         key(i20, "Enter");
-        check(d.getElementById("q20").value === "14500",
-              "the mirrored settings input follows a chart edit",
-              d.getElementById("q20").value);
         check(P0.querySelector('.qgm [data-i="20"]')
                .textContent.indexOf("پیش‌نمایش") < 0,
               "no phantom 'preview' is announced after committing",
@@ -165,7 +168,6 @@ function main() {
         check(d.getElementById("ctb").textContent.indexOf("14.50") >= 0,
               "the read-only table follows the chart edit");
         w.D.p[20] = 14400;
-        d.getElementById("q20").value = "14400";
         w.draw(w.D);
 
         console.log("panel click-to-edit behaviour (chart edits, table reports)");
@@ -309,6 +311,58 @@ function main() {
         check(cutoff.length === 1 && !cutoff[0].hasAttribute("data-i"),
               "the 15 V measurement ceiling stays read-only",
               "it is the board's valid-range limit, not a setting");
+
+        /* --- 10. v1.33: the current ceilings were opened so a parallel pack
+                 can be charged. The bench LUTs are only fitted to ~631 mA, so
+                 the chart must SHOW where measured data ends - otherwise the
+                 freedom is real but silent, and a trip set at 2 A looks as
+                 trustworthy as one set at 600 mA. --- */
+        const edge = () => [...P0.querySelectorAll(".qgm line")]
+            .filter(l => l.getAttribute("stroke-dasharray") === "2 4");
+        /* The first draft of this check asserted the edge is HIDDEN at
+           default. Running it proved the opposite is the honest answer: the
+           factory 950 mA trip has ALWAYS been past the 631 mA fitted edge,
+           so hiding the line at default would hide a fact that was already
+           true - it just had never been drawn. The assertion was corrected
+           to match reality rather than the code being bent to match it.
+           نسخهٔ اول این چک ادعا می‌کرد خط در حالت پیش‌فرض پنهان است. اجرا نشان
+           داد عکسش صادقانه است: تریپ کارخانه‌ای ۹۵۰ همیشه بالای لبهٔ ۶۳۱ بوده.
+           پس ادعا با واقعیت درست شد، نه کد با ادعا. */
+        check(edge().length === 1,
+              "the calibration edge is drawn even at the factory setting",
+              "the default 950 mA trip already sits past the 631 mA fit");
+        check(Number(edge()[0].getAttribute("x1")) <
+              Number(P0.querySelector('.qgm [data-i="35"]').getAttribute("x")),
+              "the edge sits left of the factory trip");
+
+        const lbl35 = P0.querySelector('.qgm [data-i="35"]');
+        lbl35.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+        const i35 = field();
+        check(Number(i35.max) >= 3000,
+              "the hard-fault editor must accept a parallel-pack current",
+              "max offered = " + i35.max);
+        i35.value = "2400";
+        key(i35, "Enter");
+        check(sent.some(x => x[0] === 35 && x[1] === 2400),
+              "a 2400 mA hard fault is actually sent",
+              JSON.stringify(sent.slice(-1)));
+
+        w.D.p[35] = 2400;
+        w.draw(w.D);
+        check(edge().length === 1,
+              "the calibration edge appears once the axis passes fitted data",
+              "going above the bench fit must be visible, not hidden");
+        const xEdge = Number(edge()[0].getAttribute("x1"));
+        const xTrip = Number(
+            [...P0.querySelectorAll(".qgm line")]
+                .filter(l => l.getAttribute("stroke") === "#ff6873")
+                .map(l => Number(l.getAttribute("x1")))
+                .filter(v => !isNaN(v)).pop());
+        check(xEdge < xTrip,
+              "the edge is drawn to the LEFT of a trip set beyond it",
+              "x(edge)=" + xEdge + " x(trip)=" + xTrip);
+        w.D.p[35] = 950;
+        w.draw(w.D);
 
         console.log("=".repeat(68));
         if (failures === 0) {

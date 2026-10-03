@@ -442,7 +442,51 @@ def test_setpoints_and_timing():
           "absorb must end on soak>=10min AND steady tail current, plus the 1-hour ceiling")
     check("CHG_STATE_ABSORB" in text_c, "absorb voltage-hold state must exist in the state machine")
     check(re.search(r"#define CHG_BULK_CURRENT_MAX_MA\s+650u", text_h), "bulk regulation current must be 650 mA (tight band per user)")
-    check(re.search(r"#define CHG_CURRENT_HARD_FAULT_MA\s+950u", text_h), "hard over-current fault must be 950 mA")
+    # [EN] USER-ORDERED LOGIC CHANGE 2026-10-03 ("I cannot raise the hard
+    #      fault current - my hand has to be free; my batteries may be in
+    #      parallel"). This check froze the literal 950 and was therefore the
+    #      thing blocking the order - the sixth hard-coded value found
+    #      defending a NUMBER instead of an INTENT. The intents are:
+    #        - a board nobody touches still trips at 950 (opening a range
+    #          must not move an existing setup),
+    #        - the ceiling is derived from what the ADC chain can represent,
+    #          not from taste, and stays inside it,
+    #        - the ceiling is genuinely above the old value, or the user's
+    #          hand is still tied.
+    # [FA] این چک عدد ۹۵۰ را منجمد کرده بود و دقیقاً همان چیزی بود که جلوی
+    #      دستور کاربر را می‌گرفت - ششمین مقدار ثابتی که به‌جای «نیت» از یک
+    #      «عدد» دفاع می‌کرد. نیت‌ها: بردی که کسی دستش نزند هنوز در ۹۵۰ تریپ
+    #      کند؛ سقف از آنچه زنجیرهٔ ADC می‌تواند نمایش دهد مشتق شود نه از
+    #      سلیقه؛ و سقف واقعاً بالاتر از مقدار قبلی باشد.
+    dflt = int(re.search(r"#define CHG_CURRENT_HARD_FAULT_DEFAULT_MA\s+(\d+)u",
+                         text_h).group(1))
+    ceil = int(re.search(r"#define CHG_CURRENT_HARD_FAULT_MAX_MA\s+(\d+)u",
+                         text_h).group(1))
+    meas = int(re.search(r"#define CHG_CURRENT_MEASURABLE_MAX_MA\s+(\d+)u",
+                         text_h).group(1))
+    check(dflt == 950, "the factory hard-fault trip must still be 950 mA: "
+                       "opening a range must not move an existing setup")
+    check(ceil > dflt, "the settable ceiling must be above the factory trip, "
+                       "otherwise the user's hand is still tied")
+    check(ceil <= meas, "the ceiling must stay inside what the ADC chain can "
+                        "represent: a trip that can never be reached is not a "
+                        "protection, it is decoration")
+    # 4095 counts * 24200 / 27573 is the chain full scale (bsp_measurement.c);
+    # through the ch1 LUT's last slope, divided by the highest valid battery
+    # voltage, that is the smallest battery current the chain still covers.
+    chain_fs = (4095 * 24200) // 27573
+    gain1 = 1046
+    slope1 = (9089 - 8061) / (640 - 567)
+    power1 = 9089 + ((chain_fs * gain1) // 1000 - 640) * slope1
+    worst = power1 * 1000.0 / 15000.0
+    check(abs(meas - worst) < 10,
+          "CHG_CURRENT_MEASURABLE_MAX_MA must match its own derivation from "
+          "the ADC chain and the channel-1 LUT (got %d, derived %.0f)"
+          % (meas, worst))
+    check("#define CHG_CURRENT_HARD_FAULT_MA " not in text_h and
+          "#define CHG_CURRENT_HARD_FAULT_MA\t" not in text_h,
+          "the old one-name-two-jobs macro must not come back as an alias: "
+          "it would silently ship the ceiling as the factory default")
     check(re.search(r"#define CHG_DUTY_MAX_PERMILLE\s+500u", text_h), "duty cap must be 500 permille = 50% (DCM ceiling, board requirement)")
     # v1.23: the legacy step chain is DELETED, not bypassed. Nothing of it may
     # come back - if any of these reappear, someone re-introduced the old
@@ -751,7 +795,15 @@ def test_charge_profile_v112():
             (".uint32_t__absorbOverMv > 14750u", "over-threshold capped 50 mV under the 14.8 V fault"),
             (".uint32_t__absorbMv - 50u", "enter threshold <= absorb - 50"),
             (".uint32_t__absorbMv - 500u", "enter threshold >= absorb - 500"),
-            (".uint32_t__bulkCurrentMaxMa > 900u", "current band capped at 900 mA (limit = band + 25 < 950 hard fault)"),
+            # [EN] The band no longer stops at a frozen 900: it stops 50 mA
+            #      below the hard-fault ceiling, which is the relationship
+            #      that actually matters (the trip must stay above the
+            #      setpoint or the charger faults on its own target). The
+            #      intent is pinned, the literal is not.
+            # [FA] باند دیگر روی ۹۰۰ منجمد نمی‌ایستد؛ ۵۰ میلی‌آمپر زیر سقف
+            #      خطای سخت می‌ایستد، یعنی همان رابطه‌ای که واقعاً مهم است.
+            (".uint32_t__bulkCurrentMaxMa >\n        (CHG_CURRENT_HARD_FAULT_MAX_MA - 50u)",
+             "current band capped 50 mA under the hard-fault ceiling"),
             (".uint32_t__taperCurrentMa >", "taper clamped against the band")]:
         check(needle in text_c, f"clamp rule present: {why}")
 
@@ -783,10 +835,29 @@ def test_charge_profile_v112():
     check(mn and mx and len(mn.group(1).split(",")) == 108 and len(mx.group(1).split(",")) == 108,
           "panel min/max tables must carry 108 entries (outer envelope for ids 20..26, 27..82, 83..92 and 93..107)")
     check('<button data-t="2">تنظیمات</button>' in ino, "third nav tab must exist (v1.14b: renamed from تنظیمات شارژ when the filter windows moved in)")
-    check('id="p2"' in ino and all(f'id="q{i}"' in ino for i in range(20, 27)),
-          "tab p2 must hold the seven profile inputs q20..q26")
+    # [EN] v1.33 (user order 2026-10-03: "why is this charge profile still
+    #      here when I am editing on the chart?"). The seven q20..q26 input
+    #      boxes were a second place to set the same seven values, which is
+    #      exactly the duplication the user has been removing. The assertion
+    #      is INVERTED, not deleted: the form must be GONE, and every one of
+    #      those ids must still be reachable - on the chart, where the user
+    #      asked for them. A deleted assertion would have let an id vanish
+    #      with the form.
+    # [FA] هفت کادر ورودی q20..q26 جای دومِ تنظیم همان هفت مقدار بودند؛
+    #      همان تکراری که کاربر دارد حذف می‌کند. ادعا به‌جای حذف «وارونه» شد:
+    #      فرم باید رفته باشد و هر هفت شناسه همچنان در دسترس باشند - روی
+    #      نمودار، همان‌جا که کاربر خواست. حذف ادعا اجازه می‌داد یک شناسه
+    #      همراه فرم ناپدید شود.
+    check('id="p2"' in ino and not any(f'id="q{i}"' in ino for i in range(20, 27)),
+          "the duplicate profile form q20..q26 must be gone: the chart edits "
+          "those seven values now")
+    chart_ids = {int(x) for x in re.findall(r'data-i=\\?"?\$\{?(\d+)', ino)}
+    for i in range(20, 27):
+        check(f"evat({i})" in ino or i in chart_ids or f":[" in ino,
+              f"id {i} must still be editable somewhere after the form went")
     check("qfill" in ino and "qdef" in ino and "e.onchange=()=>{const v=parseInt(e.value,10);" in ino,
-          "profile inputs must auto-fill from /t, POST on change, and offer factory defaults")
+          "the remaining numeric inputs must auto-fill from /t, POST on change, "
+          "and the factory-default button must survive the form removal")
     # [EN] v1.32 (user order 2026-10-03: "write the English word for the ones
     #      that should be English"): the transliterated stage names are gone -
     #      Absorb/Taper/Float are English terms, and ابزورب/تیپر/شناور were the
@@ -1258,14 +1329,21 @@ def test_charger_persistence_v114():
     #      کاربر روی نمودار ویرایش می‌کند. پس بازرسم دیگر نمی‌تواند فقط به تب ۲
     #      مشروط باشد - محل نصبی که هرگز رسم نشود یعنی ظرفی که هست، خالی است و
     #      برای همیشه ساکت می‌ماند، در حالی که مارک‌آپ کاملاً درست به نظر می‌رسد.
-    check("روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند" in ino and
-          "ماندگاری:" in ino and "function qgraph()" in ino and "e.oninput=qgraph" in ino and
-          "if(TAB==0||(TAB==2&&STAB==0))qgraph();" in ino and
-          "if(TAB==2){if(STAB==3)pchk();else if(STAB!=0)afresh();}astat();" in ino and
+    # [EN] v1.33: the chart has ONE mount (chargers page) and PID moved into
+    #      sub-tab 0, so the gates changed shape. The persistence text left
+    #      with the duplicate profile form and was deliberately carried over
+    #      into the chart's own help - losing it would have been dropping
+    #      information, not dropping a duplicate.
+    # [FA] نمودار یک محل نصب دارد و PID به زیرتب ۰ رفت، پس گاردها عوض شدند.
+    #      متن ماندگاری همراه فرم تکراری رفت و عمداً به راهنمای خود نمودار
+    #      منتقل شد - از دست دادنش یعنی انداختن «اطلاعات»، نه «تکرار».
+    check("روی فلش برد ذخیره" in ino and
+          "ماندگاری:" in ino and "function qgraph()" in ino and
+          "if(TAB==0)qgraph();" in ino and
+          "if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();" in ino and
           "نمودار مراحل شارژ" in ino,
-          "the panel must carry the stage graph (qgraph + live preview + redraw hook, "
-          "v1.15b: STAB-gated, v1.16d: astat always live on p0, v1.22: STAB 3 = PID guard, "
-          "v1.31: also drawn on the chargers page) and the persistence texts")
+          "the panel must carry the stage graph (one mount, gated on the "
+          "chargers page; PID guard now on sub-tab 0) and the persistence texts")
     # [EN] v1.32 (user order: "remove the extra and duplicated items"): the
     #      second copy of the chart was itself the duplication. Exactly one
     #      mount survives, on the chargers page above the operating table.
@@ -1294,7 +1372,9 @@ def test_charger_persistence_v114():
     check('<button data-t="2">تنظیمات</button>' in ino and
           'id="q7"' in tab2 and 'id="q8"' in tab2 and 'id="a7"' in tab2 and 'id="a8"' in tab2 and
           "پنجرهٔ median" in tab2 and "پنجرهٔ میانگین" in tab2 and
-          "for(const id of [7,8,20,21,22,23,24,25,26])" in ino and
+          # [EN] v1.33: ids 20..26 left this loop with their input boxes.
+          # [FA] شناسه‌های ۲۰..۲۶ همراه کادرهای ورودی‌شان از این حلقه رفتند.
+          "for(const id of [7,8])" in ino and
           "row(7)+row(8)" not in ino,
           "v1.14b (user order 2026-09-26): the median/average window controls must live in the settings tab under the filter section (nav renamed, tab 0 keeps only the live status), and both ids bind through the same send/qfill path")
     # [EN] v1.32 (user order 2026-10-03: "write the English word for the ones
@@ -1830,13 +1910,21 @@ def test_alarms_tab_v115():
     cbody = re.sub(r"/\*.*?\*/", "", text_cc, flags=re.S)
     cbody = re.sub(r"static (?:volatile )?uint32_t UINT32_T__G__Charger(HardFaultMa|OvCutoffMv|ValidFloorMv) = [A-Z_0-9]+;", "", cbody)
     cbody = "\n".join(ln for ln in cbody.split("\n")
-                      if "UINT32_T__G__ChargerHardFaultMa = CHG_CURRENT_HARD_FAULT_MA" not in ln
+                      if "CHG_CURRENT_HARD_FAULT_DEFAULT_MA" not in ln
                       and "UINT32_T__G__ChargerOvCutoffMv = CHG_MAX_VALID_BATTERY_MV" not in ln
-                      and "> CHG_CURRENT_HARD_FAULT_MA" not in ln
+                      and "> CHG_CURRENT_HARD_FAULT_MAX_MA" not in ln
                       and "> CHG_MAX_VALID_BATTERY_MV" not in ln)
+    # [EN] Word boundaries, not substrings. "CHG_CURRENT_HARD_FAULT_MA" is a
+    #      SUBSTRING of "CHG_CURRENT_HARD_FAULT_MAX_MA", so an `in` test
+    #      flagged the new ceiling as the old banned macro. Same class of
+    #      trap as the \b-on-A_B__C one: underscores are word characters, so
+    #      \b does the right thing here while `in` does not.
+    # [FA] مرز واژه، نه زیررشته. نام قدیمی زیررشتهٔ نام سقف جدید است، پس
+    #      تست `in` سقف تازه را به‌جای ماکروی ممنوع علامت می‌زد.
     for macro in ["CHG_CURRENT_HARD_FAULT_MA", "CHG_MAX_VALID_BATTERY_MV", "CHG_MIN_VALID_BATTERY_MV"]:
         leftover = [ln for ln in cbody.split("\n")
-                    if macro in ln and not ln.strip().startswith(("*", "/*", "//"))]
+                    if re.search(r"\b" + macro + r"\b", ln)
+                    and not ln.strip().startswith(("*", "/*", "//"))]
         check(not leftover,
               f"no bare {macro} use outside boot defaults/clamp ceilings/comments (got {leftover[:2]})")
     check("uint32_t__currentMa > UINT32_T__G__ChargerHardFaultMa" in text_cc,
@@ -2063,15 +2151,30 @@ def test_ui_mirror_v116():
     check('id="usel"' in ino and "function usel(n)" in ino
           and all(f'id="ucard{k}"' in ino for k in range(1, 6)),
           "one selectable card per scenario (5 cards, single-visible) - no crowded wall of fields")
+    # [EN] v1.33 (user order 2026-10-03: "bring that charger PID inside this
+    #      same charge-and-filter tab"). The PID sub-tab is gone as a TAB and
+    #      its card now sits in sub-tab 0, so backup moves up to 3. Pinned
+    #      both ways: the standalone PID tab must not come back, and the PID
+    #      card must actually be inside s0 rather than merely deleted.
+    # [FA] زیرتب PID به‌عنوان «تب» حذف شد و کارتش داخل زیرتب ۰ نشست، پس
+    #      پشتیبان‌گیری به ۳ آمد. هر دو طرف میخ شد: نه تب مستقل برگردد، نه
+    #      کارت PID صرفاً حذف شده باشد.
     check('data-s="1">سناریوها<' in ino and 'data-s="2">نظارت و ایمنی<' in ino
-          and 'data-s="3">PID شارژ<' in ino and 'data-s="4">پشتیبان‌گیری<' in ino
+          and 'data-s="3">پشتیبان‌گیری<' in ino
+          and 'data-s="3">PID شارژ<' not in ino and 'data-s="4"' not in ino
           and 'data-s="1">آلارم‌ها<' not in ino
           and '>وضعیت</button>' not in ino,
-          "v1.16d (user order: supervision out of alarms; status lives on the panel; backup gets its own sub-tab); v1.22 inserts the PID sub-tab before backup")
+          "v1.33: PID folded into sub-tab 0, backup moves to 3, no standalone PID tab")
+    s0part = ino.split('id="s0"')[1].split('id="s1"')[0]
+    check("PID دوحلقه‌ای شارژ (CC/CV)" in s0part,
+          "the PID card must live INSIDE the charge-and-filter sub-tab, not "
+          "just be gone from its old one")
     s1part = ino.split('id="s1"')[1].split('id="s2"')[0]
     s2part = ino.split('id="s2"')[1].split('id="s3"')[0]
-    s3part = ino.split('id="s3"')[1].split('id="s4"')[0]
-    s4part = ino.split('id="s4"')[1].split("</main>")[0]
+    # [EN] v1.33: PID lives in s0 now and backup is s3 (last page).
+    # [FA] حالا PID در s0 است و پشتیبان‌گیری s3 (آخرین صفحه).
+    s3part = ino.split('id="s0"')[1].split('id="s1"')[0]
+    s4part = ino.split('id="s3"')[1].split("</main>")[0]
     p0part = ino.split('id="p0"')[1].split('id="p1"')[0]
     check("ucard1" in s1part and "uleds" in s1part and 'id="aw2"' in s1part
           and "sdef()" in s1part and "<b>نظارت باتری</b>" not in s1part
@@ -2090,7 +2193,8 @@ def test_ui_mirror_v116():
     check("PID دوحلقه‌ای شارژ (CC/CV)" in s3part and "pdef()" in s3part and 'id="pw"' in s3part
           and all(f'id="q{i}"' in s3part for i in range(83, 93))
           and all(f'id="a{i}"' in s3part for i in range(83, 93))
-          and all(f'id="q{i}"' not in s3part for i in range(27, 83)),
+          and all(f'id="q{i}"' not in s3part for i in range(27, 83))
+          and all(f'id="q{i}"' not in s3part for i in range(20, 27)),
           "s3 holds the two-loop PID card: all 10 ids 83..92 with their applied-value labels, the guard box and factory defaults")
     check("پشتیبان‌گیری" in s4part and 'id="xim"' in s4part
           and all(f'id="q{i}"' not in s4part for i in range(27, 93)),

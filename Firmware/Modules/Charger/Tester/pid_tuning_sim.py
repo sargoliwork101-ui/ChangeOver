@@ -58,7 +58,13 @@ def _hdr(name, default=None):
 ABSORB_MV = _hdr("CHG_ABSORB_MV")
 BULK_IMAX_MA = _hdr("CHG_BULK_CURRENT_MAX_MA")
 DUTY_MAX = _hdr("CHG_DUTY_MAX_PERMILLE")
-HARD_FAULT_MA = _hdr("CHG_CURRENT_HARD_FAULT_MA")
+# [EN] v1.33: the trip's power-on value and its settable ceiling became two
+#      different numbers when the ceiling was opened for parallel packs. The
+#      simulator models a board as shipped, so it wants the DEFAULT.
+# [FA] مقدار روشن‌شدن تریپ و سقف تنظیم‌شدنی‌اش وقتی سقف برای پک موازی باز شد
+#      دو عدد متفاوت شدند. شبیه‌ساز بردِ کارخانه را مدل می‌کند، پس پیش‌فرض را
+#      می‌خواهد.
+HARD_FAULT_MA = _hdr("CHG_CURRENT_HARD_FAULT_DEFAULT_MA")
 MARGIN_MA = _hdr("CHG_PID_CURRENT_MARGIN_MA")
 ERRCLAMP = _hdr("CHG_PID_ERROR_CLAMP", 4000)
 SCALE = _hdr("CHG_PID_DUTY_SCALE", 1000)

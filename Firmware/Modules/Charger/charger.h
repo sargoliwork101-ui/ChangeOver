@@ -179,16 +179,123 @@
  *      (CHG_BULK_CURRENT_MAX_MA minus CHG_PID_CURRENT_MARGIN_MA = 640 mA)
  *      and it sits on it. CHG_BULK_CURRENT_MAX_MA now has a second job as
  *      the hard over-current BACKSTOP inside the PID (user order
- *      2026-09-29), while CHG_CURRENT_HARD_FAULT_MA stays what it always
- *      was: the 950 mA trip that cuts the channel and raises the fault.
+ *      2026-09-29), while the hard-fault trip stays what it always was:
+ *      the trip that cuts the channel and raises the fault. Its factory
+ *      value is still 950 mA; only its settable ceiling moved.
  * [FA] باند هیسترزیس ۶۳۰..۶۵۰ میلی‌آمپر که زنجیرهٔ پله‌ای حذف‌شده استفاده
  *      می‌کرد با خودش رفت (v1.23): PID باند ندارد، ست‌پوینت دارد
  *      (CHG_BULK_CURRENT_MAX_MA منهای CHG_PID_CURRENT_MARGIN_MA = ۶۴۰
  *      میلی‌آمپر) و روی همان می‌نشیند. حالا CHG_BULK_CURRENT_MAX_MA کار
  *      دومی هم دارد: پشتیبان سخت اضافه‌جریان داخل PID (دستور کاربر
- *      ۲۰۲۶-۰۹-۲۹)، و CHG_CURRENT_HARD_FAULT_MA همان چیزی می‌ماند که بود:
- *      تریپ ۹۵۰ میلی‌آمپری که کانال را قطع و خطا را بلند می‌کند. */
-#define CHG_CURRENT_HARD_FAULT_MA      950u
+ *      ۲۰۲۶-۰۹-۲۹)، و تریپ خطای سخت همان چیزی می‌ماند که بود: تریپی که
+ *      کانال را قطع و خطا را بلند می‌کند. مقدار کارخانه‌اش هنوز ۹۵۰
+ *      میلی‌آمپر است؛ فقط سقف تنظیم‌شدنی‌اش جابه‌جا شد. */
+/* [EN] ===== Settable-current envelope (USER-ORDERED LOGIC CHANGE
+ *      2026-10-03: "why do the numbers have limits? I cannot raise the hard
+ *      fault current - my hand has to be free; my batteries may be in
+ *      parallel and I may want more current") =====
+ *
+ *      The old 950 mA was NOT a hardware limit. It was a compile-time
+ *      preference, written when a single 7 Ah battery per channel was the
+ *      only case, and it silently capped the panel. Three separate things
+ *      were being conflated, and only one of them is physics:
+ *
+ *        1. MAGNETICS. Protected by CHG_DUTY_MAX_PERMILLE (50 %), which is
+ *           a property of the board's transformer, not a taste. UNCHANGED
+ *           and still not settable - raising the trip level cannot make the
+ *           converter push more through the core than the duty cap allows.
+ *        2. MEASURABILITY. A trip the ADC can never reach is not a
+ *           protection, it is decoration. The chain saturates at 4095
+ *           counts = 3594 mA chain current (bsp_measurement.c
+ *           ConvertCurrent: counts x 24200 / 27573). Through the channel
+ *           LUTs and divided by the HIGHEST valid battery voltage - the
+ *           worst case, because battery current = power / voltage - that
+ *           is 3534 mA on channel 1 and 4124 mA on channel 2. So any
+ *           ceiling at or below 3534 mA is a number the firmware can
+ *           actually observe. That is the real bound, and the one used.
+ *        3. POLICY. Where the user wants the charger to shout. That is the
+ *           user's call, not the firmware's, and it is now settable across
+ *           the whole measurable range.
+ *
+ *      CALIBRATED vs MEASURABLE - the honest caveat. The LUTs are fitted
+ *      from bench data only up to chain 640 mA (ch1) and 707 mA (ch2),
+ *      which at 14.4 V is 631 mA and 749 mA of battery current. Above the
+ *      last anchor calibration.h extends the last slope, so readings there
+ *      are extrapolated, not measured. Extrapolation is fine for a trip
+ *      level - it only has to be monotonic to fire - but the panel marks
+ *      where calibration ends so a current set above it is an informed
+ *      choice rather than a hidden one.
+ *
+ *      Parallel batteries, which is what prompted this, need more CURRENT
+ *      at the SAME voltage. The voltage ceilings (OV cutoff, absorb, the
+ *      15 V valid-range limit) are therefore deliberately NOT raised:
+ *      paralleling does not change battery chemistry, and a 12 V lead-acid
+ *      string damaged above 15 V is damaged whether there is one of them
+ *      or four.
+ *
+ * [FA] ===== پوشش جریان تنظیم‌شدنی (تغییر منطق به دستور کاربر ۲۰۲۶-۱۰-۰۳:
+ *      «چرا اعداد محدودیت دارن؟ نمی‌تونم جریان خطای سخت رو ببرم بالاتر؟
+ *      باید دستم باز باشه؛ ممکنه باتری‌هام موازی باشن») =====
+ *
+ *      عدد ۹۵۰ قدیمی «حد سخت‌افزار» نبود؛ یک ترجیح زمان کامپایل بود که
+ *      وقتی نوشته شد تنها حالت ممکن یک باتری ۷ آمپرساعتی در هر کانال بود،
+ *      و بی‌صدا پنل را سقف می‌زد. سه چیز جداگانه با هم قاطی شده بودند و
+ *      فقط یکی‌شان فیزیک است:
+ *        ۱) مغناطیس: با سقف duty پنجاه درصد محافظت می‌شود که مشخصهٔ ترانس
+ *           برد است نه سلیقه. دست‌نخورده و همچنان غیرقابل تنظیم.
+ *        ۲) قابلیت اندازه‌گیری: تریپی که ADC هرگز به آن نمی‌رسد محافظت
+ *           نیست، تزئین است. زنجیره در ۴۰۹۵ شمارش اشباع می‌شود و از مسیر
+ *           جدول‌ها و تقسیم بر بالاترین ولتاژ معتبر (بدترین حالت) به
+ *           ۳۵۳۴ میلی‌آمپر در کانال ۱ می‌رسد. پس هر سقفی تا ۳۵۳۴ عددی است
+ *           که فرم‌ور واقعاً می‌تواند ببیند. همین حد واقعی است.
+ *        ۳) سیاست: اینکه کاربر کجا بخواهد شارژر فریاد بزند. این تصمیم
+ *           کاربر است نه فرم‌ور، و حالا در تمام بازهٔ قابل اندازه‌گیری
+ *           تنظیم‌شدنی است.
+ *      نکتهٔ صادقانه: جدول‌ها فقط تا ۶۳۱ و ۷۴۹ میلی‌آمپر (در ۱۴٫۴ ولت)
+ *      برازش شده‌اند و بالاتر از آن شیب آخر ادامه می‌یابد، یعنی برون‌یابی.
+ *      برای یک سطح تریپ کافی است، ولی پنل لبهٔ کالیبراسیون را علامت می‌زند
+ *      تا انتخاب بالاتر از آن آگاهانه باشد.
+ *      باتری موازی جریان بیشتر در همان ولتاژ می‌خواهد، پس سقف‌های ولتاژ
+ *      عمداً بالا نرفتند: موازی‌بستن شیمی باتری را عوض نمی‌کند. */
+
+/* [EN] 4095 counts x 24200 / 27573 - the chain's full-scale current.
+ * [FA] جریان تمام‌مقیاس زنجیره. */
+#define CHG_CHAIN_FULL_SCALE_MA        ((4095u * 24200u) / 27573u)
+/* [EN] Worst-case (channel 1, at the highest valid battery voltage)
+ *      battery current the chain can still represent. Derived above.
+ * [FA] بدترین‌حالتِ جریان باتری که زنجیره هنوز می‌تواند نمایش دهد. */
+#define CHG_CURRENT_MEASURABLE_MAX_MA  3534u
+/* [EN] The settable ceiling. Below the measurable maximum so every value
+ *      the panel can ask for is one the firmware can actually observe.
+ * [FA] سقف تنظیم‌شدنی. زیر بیشینهٔ قابل اندازه‌گیری. */
+#define CHG_CURRENT_HARD_FAULT_MAX_MA  3000u
+/* [EN] Where the LUT fit stops and extrapolation begins, at 14.4 V. The
+ *      panel draws this so the user can see the edge of calibrated data.
+ * [FA] جایی که برازش جدول تمام و برون‌یابی شروع می‌شود (در ۱۴٫۴ ولت). */
+#define CHG_CURRENT_CALIBRATED_MA      631u
+/* [EN] The old single name CHG_CURRENT_HARD_FAULT_MA is deliberately NOT
+ *      kept as an alias. It was used for two different jobs - the power-on
+ *      value of the trip AND the ceiling the panel is clamped to - which
+ *      was harmless only while they were the same number. Opening the
+ *      ceiling makes them different, and an alias would have silently
+ *      shipped a 3000 mA factory default. Every use site now says which
+ *      one it means.
+ * [FA] نام قدیمی عمداً به‌صورت alias نگه داشته نشد. آن یک نام دو کار
+ *      می‌کرد - مقدار روشن‌شدن تریپ و سقفی که پنل به آن گیره می‌خورد - و
+ *      این فقط تا وقتی بی‌خطر بود که هر دو یک عدد بودند. بازکردن سقف
+ *      آن‌ها را جدا می‌کند و alias بی‌صدا پیش‌فرض کارخانه را ۳۰۰۰ می‌کرد. */
+/* [EN] Factory default stays where it was: opening a range must not move
+ *      anyone's working setup. A board that is flashed and never touched
+ *      behaves exactly as before.
+ * [FA] پیش‌فرض کارخانه همان‌جا می‌ماند: بازکردن یک بازه نباید تنظیمات کاری
+ *      کسی را جابه‌جا کند. */
+#define CHG_CURRENT_HARD_FAULT_DEFAULT_MA  950u
+_Static_assert(CHG_CURRENT_HARD_FAULT_MAX_MA <= CHG_CURRENT_MEASURABLE_MAX_MA,
+               "hard-fault ceiling above what the ADC chain can represent");
+_Static_assert(CHG_CURRENT_HARD_FAULT_DEFAULT_MA <= CHG_CURRENT_HARD_FAULT_MAX_MA,
+               "factory default above its own ceiling");
+_Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
+               "calibrated edge must sit below the default trip");
 /* [EN] Battery-current estimate architecture v1.3 (user order
  *      2026-09-24). The sense chain turned out to be battery-side, so
  *      with the 2026-09-24 battery-calibrated gains the filtered reading
@@ -1253,7 +1360,7 @@ bool func__Charger_IsChargeComplete(void);
  *      ESP_AGENT_SPEC.md). Boot defaults equal the old compile-time setpoints
  *      (CHG_*_MV / CHG_*_MA below); values live in RAM and reset at boot,
  *      like every other parameter. v1.15: the hard safety stack
- *      (CHG_CURRENT_HARD_FAULT_MA, CHG_MAX_VALID_BATTERY_MV, the 15.0 V
+ *      (the hard-fault trip, CHG_MAX_VALID_BATTERY_MV, the 15.0 V
  *      overvoltage cutoff) is runtime-LOWERABLE from the alarms tab (ids
  *      35..37) but can NEVER be raised above the compile maxima.
  * [FA] پروفایل شارژِ قابل‌تنظیم در زمان اجرا، مشترک بین هر دو کانال، از تب
@@ -1307,7 +1414,7 @@ bool func__Charger_GetProfileParam(uint8_t uint8_t__paramId,
  *      در esp_link.h باشند؛ تست هاست همین را قفل می‌کند). v1.15: سقف‌های
  *      سخت جریان/ولتاژ از تب آلارم‌ها فقط پایین‌بردنی‌اند (هرگز بالاتر از
  *      سقف کامپایل). */
-#define CHG_ALARM_PARAM_HARD_CURRENT_MA       35u  /* [EN] mA, imax+50..950, never above 950 / mA */
+#define CHG_ALARM_PARAM_HARD_CURRENT_MA       35u  /* [EN] mA, imax+50 .. CHG_CURRENT_HARD_FAULT_MAX_MA / mA */
 #define CHG_ALARM_PARAM_OV_CUTOFF_MV          36u  /* [EN] mV, over+150..15000, never above 15000 / mV */
 #define CHG_ALARM_PARAM_VALID_FLOOR_MV        37u  /* [EN] mV, 0..8000 / mV */
 

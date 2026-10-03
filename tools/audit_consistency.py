@@ -434,7 +434,23 @@ def sec_defaults(ids):
                        "chart axis labels must keep the English term",
                        f"{lname} label {lbl!r} is not the English word")
 
+        # [EN] The simulator must clamp like the board it previews. Standing
+        #      user order: the preview has to be right BEFORE anything is
+        #      flashed, which is worth nothing if the preview enforces last
+        #      month's limits. So no current ceiling may be typed into the
+        #      server by hand - it reads the firmware header.
+        # [FA] شبیه‌ساز باید مثل همان بردی گیره بزند که پیش‌نمایشش است. دستور
+        #      دائمی کاربر: پیش‌نمایش باید پیش از هر فلشی درست باشد، و این
+        #      وقتی بی‌ارزش است که پیش‌نمایش حدود ماه قبل را اعمال کند.
         srv = read(ROOT / "tools" / "panel_preview_server.js")
+        ok("CHG_CURRENT_HARD_FAULT_MAX_MA" in srv,
+           "the simulator must read the current ceiling from the firmware",
+           "a hand-copied ceiling makes the preview clamp unlike the board")
+        for cid in (25, 26, 35, 94):
+            cl = re.search(r"case %d:\s*return ([^\n]*)" % cid, srv)
+            ok(cl and not re.search(r"\b(900|950|300|500)\b", cl.group(1)),
+               f"simulator clamp for id {cid} still carries a frozen ceiling",
+               cl.group(1).strip() if cl else "clamp not found")
         m = re.search(r"nav button\[data-t=\\?\"(\d)\\?\"\]'\);if\(t\d\)t\d\.click", srv)
         land = m.group(1) if m else None
         # which page div is the single chart mount inside? scan backwards

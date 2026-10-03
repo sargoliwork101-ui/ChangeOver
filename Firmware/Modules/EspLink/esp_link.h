@@ -175,8 +175,8 @@
 #define ESPLINK_PARAM_CHG_PROFILE_ABSORB_OVER_MV     22u  /* u32, mV, def 14600, absorb+100..min(absorb+400,14750) */
 #define ESPLINK_PARAM_CHG_PROFILE_FLOAT_MV           23u  /* u32, mV, def 13500, 9000..absorb-300 */
 #define ESPLINK_PARAM_CHG_PROFILE_REENTRY_MV         24u  /* u32, mV, def 12800, 8000..float-300 */
-#define ESPLINK_PARAM_CHG_PROFILE_BULK_CURRENT_MAX_MA 25u /* u32, mA, def 650,   100..900 */
-#define ESPLINK_PARAM_CHG_PROFILE_TAPER_CURRENT_MA   26u  /* u32, mA, def 50,    10..min(300,imax) */
+#define ESPLINK_PARAM_CHG_PROFILE_BULK_CURRENT_MAX_MA 25u /* u32, mA, def 650,   100..2950 */
+#define ESPLINK_PARAM_CHG_PROFILE_TAPER_CURRENT_MA   26u  /* u32, mA, def 50,    10..min(1475,imax) */
 /* [EN] Alarms tab (v1.15, user order 2026-09-26): 27..34 live in the Fault
  *      module (ids MUST equal FAULT_ALARM_PARAM_* in fault.h),
  *      35..37 live in the Charger module (ids MUST equal CHG_ALARM_PARAM_*
@@ -193,7 +193,7 @@
 #define ESPLINK_PARAM_FAULT_ALARM_RECOVER_DEB_MS     32u  /* u32, ms, def 1000,  100..5000 */
 #define ESPLINK_PARAM_FAULT_ALARM_INPUT_MIN_MV       33u  /* u32, mV, def 21000, 18000..24000, < max-1000 */
 #define ESPLINK_PARAM_FAULT_ALARM_INPUT_MAX_MV       34u  /* u32, mV, def 28000, 24000..30000, > min+1000 */
-#define ESPLINK_PARAM_CHG_ALARM_HARD_CURRENT_MA      35u  /* u32, mA, def 950,   imax+50..950 (down-only) */
+#define ESPLINK_PARAM_CHG_ALARM_HARD_CURRENT_MA      35u  /* u32, mA, def 950,   imax+50..3000 */
 #define ESPLINK_PARAM_CHG_ALARM_OV_CUTOFF_MV         36u  /* u32, mV, def 14850 = CHG_OV_CUTOFF_DEFAULT_MV (MAX_VALID 15000 - DECIDE_EARLY 150), over+150..15000 (down-only). The comment said 15000 for several releases while the board booted 14850, and the panel believed the comment - so its factory-restore button raised a safety ceiling. */
 #define ESPLINK_PARAM_CHG_ALARM_VALID_FLOOR_MV       37u  /* u32, mV, def 2000,  0..8000 */
 /* [EN] UI cadence (v1.16, user order 2026-09-26: virtual LEDs with real
@@ -300,7 +300,7 @@
  *      ساعت ثابت معرفی کرده بود. پنجره‌های گیره در «یک» جدول در charger.c
  *      هستند؛ این هدر فقط صاحب شناسه‌های سیمی است. */
 #define ESPLINK_PARAM_CHG_ABSORB_MAX_MS         93u  /* u32, ms, def 3600000, 0..21600000 (0 = no ceiling) */
-#define ESPLINK_PARAM_CHG_ABSORB_MAX_ARM_MA     94u  /* u32, mA, def 100,     10..500 */
+#define ESPLINK_PARAM_CHG_ABSORB_MAX_ARM_MA     94u  /* u32, mA, def 100,     10..1500 */
 #define ESPLINK_PARAM_CHG_ABSORB_HOLD_MS        95u  /* u32, ms, def 600000,  0..7200000 */
 #define ESPLINK_PARAM_CHG_TAPER_SUSTAIN_MS      96u  /* u32, ms, def 60000,   1000..600000 */
 #define ESPLINK_PARAM_CHG_PID_MAX_STEP_PM       97u  /* u32, ‰,  def 8,       1..100 */

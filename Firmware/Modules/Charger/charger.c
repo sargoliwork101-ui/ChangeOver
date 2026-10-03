@@ -181,7 +181,8 @@ static volatile charger_pid_t CHARGER_PID_T__G__Pid =
    by the scheduler lock in func__Charger_SetAlarmParam.
    [FA] سقف‌های آلارم بین‌تسکی: volatile برای دیده‌شدن؛ پارگی چندفیلدی با
    قفل زمان‌بند در ستر بسته می‌شود. */
-static volatile uint32_t UINT32_T__G__ChargerHardFaultMa = CHG_CURRENT_HARD_FAULT_MA;
+static volatile uint32_t UINT32_T__G__ChargerHardFaultMa =
+    CHG_CURRENT_HARD_FAULT_DEFAULT_MA;
 static volatile uint32_t UINT32_T__G__ChargerOvCutoffMv = CHG_OV_CUTOFF_DEFAULT_MV;
 static volatile uint32_t UINT32_T__G__ChargerValidFloorMv = CHG_MIN_VALID_BATTERY_MV;
 
@@ -2903,7 +2904,7 @@ bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex)
 
 /* [EN] Interdependency clamps: after ANY profile write the whole set is
  *      re-clamped so it stays physically consistent. The hard safety stack
- *      (CHG_CURRENT_HARD_FAULT_MA 950, CHG_MAX_VALID_BATTERY_MV 15000, the
+ *      (the hard-fault trip, CHG_MAX_VALID_BATTERY_MV 15000, the
  *      15.0 V hardware cutoff) can NEVER be raised above the compile maxima
  *      from the panel (v1.15: ids 35..37 lower them only) - ABSORB tops
  *      out at 14.6 V and the current band at 900 mA (limit = band+25).
@@ -2933,9 +2934,9 @@ static void func__Charger_ClampAlarms(void)
     {
         UINT32_T__G__ChargerHardFaultMa = uint32_t__floorHard;
     }
-    if (UINT32_T__G__ChargerHardFaultMa > CHG_CURRENT_HARD_FAULT_MA)
+    if (UINT32_T__G__ChargerHardFaultMa > CHG_CURRENT_HARD_FAULT_MAX_MA)
     {
-        UINT32_T__G__ChargerHardFaultMa = CHG_CURRENT_HARD_FAULT_MA;
+        UINT32_T__G__ChargerHardFaultMa = CHG_CURRENT_HARD_FAULT_MAX_MA;
     }
     if (UINT32_T__G__ChargerOvCutoffMv < uint32_t__floorOv)
     {
@@ -3079,18 +3080,41 @@ static void func__Charger_ClampProfile(void)
     {
         CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa = 100u;
     }
-    if (CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa > 900u)
+    /* [EN] USER-ORDERED LOGIC CHANGE 2026-10-03 ("my batteries may be in
+     *      parallel and I may want more current"): the band used to stop at
+     *      a frozen 900 mA. It now stops 50 mA below the hard-fault
+     *      ceiling, which is where it always logically belonged - the trip
+     *      must stay above the setpoint or the charger faults on its own
+     *      target (func__Charger_ClampAlarms keeps hard >= imax + 50). One
+     *      number moves, the geometry is unchanged.
+     * [FA] تغییر منطق به دستور کاربر: باند قبلاً روی ۹۰۰ میلی‌آمپرِ منجمد
+     *      می‌ایستاد. حالا ۵۰ میلی‌آمپر زیر سقف خطای سخت می‌ایستد، یعنی
+     *      همان‌جایی که منطقاً جایش بود - تریپ باید بالای ست‌پوینت بماند
+     *      وگرنه شارژر روی هدف خودش خطا می‌دهد. */
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa >
+        (CHG_CURRENT_HARD_FAULT_MAX_MA - 50u))
     {
-        CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa = 900u;
+        CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa =
+            (CHG_CURRENT_HARD_FAULT_MAX_MA - 50u);
     }
 
     if (CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa < 10u)
     {
         CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa = 10u;
     }
-    if (CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa > 300u)
+    /* [EN] Taper is "the charge is finished" expressed as a fraction of the
+     *      pack - typically C/50..C/100 - so a frozen 300 mA ceiling was
+     *      really a frozen assumption about pack size. It now tracks the
+     *      band (half of it), and the clamp below still keeps it under the
+     *      band itself.
+     * [FA] جریان Taper یعنی «شارژ تمام شد» و کسری از ظرفیت پک است، پس سقف
+     *      منجمد ۳۰۰ در واقع فرضِ منجمدی دربارهٔ اندازهٔ پک بود. حالا نصف
+     *      باند را دنبال می‌کند. */
+    if (CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa >
+        ((CHG_CURRENT_HARD_FAULT_MAX_MA - 50u) / 2u))
     {
-        CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa = 300u;
+        CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa =
+            ((CHG_CURRENT_HARD_FAULT_MAX_MA - 50u) / 2u);
     }
     if (CHARGER_PROFILE_T__G__Profile.uint32_t__taperCurrentMa >
         CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa)
@@ -3415,7 +3439,7 @@ typedef struct
  *      بیشینه، پیش‌فرض بوت. */
 #define CHG_LIMIT_ROWS(X)                                                      \
     X(ABSORB_MAX_MS,       0u, 21600000u, CHG_ABSORB_MAX_MS)                   \
-    X(ABSORB_MAX_ARM_MA,  10u,      500u, CHG_ABSORB_MAX_ARM_MA)               \
+    X(ABSORB_MAX_ARM_MA,  10u, (CHG_CURRENT_HARD_FAULT_MAX_MA/2u), CHG_ABSORB_MAX_ARM_MA) \
     X(ABSORB_HOLD_MS,      0u,  7200000u, CHG_ABSORB_HOLD_MS)                  \
     X(TAPER_SUSTAIN_MS, 1000u,   600000u, CHG_TAPER_SUSTAIN_MS)                \
     X(PID_MAX_STEP_PM,     1u,      100u, CHG_PID_MAX_STEP_PERMILLE)           \

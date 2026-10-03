@@ -191,7 +191,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 
 <div class="ch" id="ch"></div>
 <div class="cd">
-<div class="hd"><b>نمودار مراحل شارژ</b> <button class="ib" data-p="20,21,22,23,24,25,26,35,36" onclick="this.classList.toggle('o')">!<span class="it"><b>اینجا جای تغییر دادن اعداد است.</b> روی هر عددِ زیرخط‌دار روی نمودار کلیک کنید — برچسب‌های ولتاژ سمت راست، برچسب‌های جریان زیر نمودار، و تراشه‌های پایین. یک کادر کوچک باز می‌شود: مقدار را تایپ کنید و Enter بزنید (Esc لغو می‌کند).<br>جدولِ پایینِ همین صفحه فقط <i>نمایش</i> می‌دهد و ویرایش نمی‌شود؛ یک جا برای نوشتن یعنی یک جا برای اشتباه‌کردن.<br>همین نمودار عیناً در «تنظیمات ← شارژ و فیلتر» هم هست و از یک رندرکنندهٔ واحد می‌آید، پس هرگز نمی‌توانند دو چیز متفاوت بگویند. آنجا کنار فیلدهای profile است و مقدار تایپ‌شدهٔ هنوز اعمال‌نشده را خط‌چین نشان می‌دهد.</span></button><span class="lb">· <b style="color:var(--ac)">روی عددهای روی نمودار کلیک کنید تا تغییرشان دهید</b> · مشترک هر دو کانال · از مقادیر اعمال‌شدهٔ برد</span></div>
+<div class="hd"><b>نمودار مراحل شارژ</b> <button class="ib" data-p="20,21,22,23,24,25,26,35,36" onclick="this.classList.toggle('o')">!<span class="it"><b>اینجا تنها جای تغییر دادن این اعداد است.</b> روی هر عددِ زیرخط‌دارِ روی نمودار کلیک کنید — ولتاژها روی خطوط افقی، جریان‌ها روی خطوط عمودی، و زمان‌ها و گین‌ها کنار همان خطی که رویش اثر می‌گذارند. کادر کوچکی باز می‌شود: مقدار را تایپ کنید و Enter بزنید (Esc لغو می‌کند).<br>فرم جداگانهٔ profile حذف شد (۲۰۲۶-۱۰-۰۳) — جدولی که عددی را نشان بدهد کنار فرمی که همان عدد را تنظیم کند، یعنی دو جا برای غلط بودن. جدول پایینِ همین صفحه فقط <i>گزارش</i> می‌دهد.<br><b>سقف جریان‌ها باز است.</b> خطای سخت تا ۳۰۰۰ میلی‌آمپر و باند Bulk تا ۲۹۵۰ میلی‌آمپر بالا می‌رود تا پک موازی هم شارژ شود. حد بالا از جایی می‌آید که زنجیرهٔ ADC دیگر نمی‌تواند عدد را نمایش دهد (۳۵۳۴ میلی‌آمپر در بدترین حالت)، نه از سلیقه. خط‌چین عمودی کم‌رنگِ روی نمودار نشان می‌دهد کالیبراسیون بنچ تا کجا برازش شده؛ بالاتر از آن عدد جریان برون‌یابی است نه اندازه‌گیری. مغناطیس برد همچنان با سقف duty پنجاه درصد محافظت می‌شود و آن تنظیم‌شدنی نیست.<br>سقف‌های <i>ولتاژ</i> عمداً بالا نرفتند: موازی‌بستن باتری‌ها جریان را زیاد می‌کند نه ولتاژ را، و یک رشتهٔ سرب-اسید بالای ۱۵ ولت آسیب می‌بیند چه یکی باشد چه چهارتا.<br><b>ماندگاری:</b> هر مقداری که اینجا ثبت کنید (~۱٫۵ ثانیه بعد) روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند. مودهای تست (duty فیکس/دستی) هرگز ذخیره نمی‌شوند — بعد از هر ریست، شارژر خودکار است.</span></button><span class="lb">· <b style="color:var(--ac)">روی عددهای روی نمودار کلیک کنید تا تغییرشان دهید</b> · مشترک هر دو کانال · از مقادیر اعمال‌شدهٔ برد</span></div>
 <div class="qwm" style="margin:2px 0 0"></div>
 <div class="qgm" style="direction:ltr;overflow-x:auto"></div>
 <div class="lb qglm">در انتظار دادهٔ برد…</div>
@@ -203,7 +203,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 </div>
 <div class="pgx" id="p1"></div>
 <div class="pgx" id="p2">
-<div class="sbt" id="sbt"><button class="a" data-s="0">شارژ و فیلتر</button><button data-s="1">سناریوها</button><button data-s="2">نظارت و ایمنی</button><button data-s="3">PID شارژ</button><button data-s="4">پشتیبان‌گیری</button></div>
+<div class="sbt" id="sbt"><button class="a" data-s="0">شارژ، فیلتر و PID</button><button data-s="1">سناریوها</button><button data-s="2">نظارت و ایمنی</button><button data-s="3">پشتیبان‌گیری</button></div>
 <div class="sgx a" id="s0">
 <div class="cd">
 <div class="hd"><b>فیلتر جریان</b> <button class="ib" data-p="7,8" onclick="this.classList.toggle('o')">!<span class="it">پنجرهٔ median: مرحلهٔ اول فیلتر، هر عدد ۱ تا ۱۵ (زوج هم مجاز)؛ ۱ و ۲ = خاموش، ۳ = پیش‌فرض، بزرگ‌تر = حذف پالس قوی‌تر با تاخیر بیشتر.<br>پنجرهٔ میانگین: مرحلهٔ دوم، هر عدد ۱ تا ۳۰۰ — میانگین آخرین W خروجی median (هر نمونه ۱ms = ۱ms تاریخچه)؛ ۱ = خاموش، ۱۰ = پیش‌فرض. برای صاف‌شدن قابل‌مشاهده روی نمودار تب «پنل» مجموع را بالای ~۲۰۰ms ببرید؛ در مود خودکار شارژر بالای ~۵۰ توصیه نمی‌شود (کندی حلقهٔ تنظیم ۱۰۰Hz).</span></button><span class="lb">· مشترک هر دو کانال · Median + Average · مثل بقیه روی فلش برد ذخیره می‌شود</span></div>
@@ -225,23 +225,29 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 </div>
 </div>
 <div class="cd">
-<div class="hd"><b>profile شارژ</b> <button class="ib" data-p="20,21,22,23,24,25,26" onclick="this.classList.toggle('o')">!<span class="it">حداکثر ولتاژ باتری: ولتاژ تثبیت فاز Absorb — بالای آن سوئیچینگ متوقف می‌شود (پیش‌فرض ۱۴۴۰۰).<br>آستانهٔ ورود: با رسیدن باتری به این ولتاژ فاز Absorb با پلهٔ ریز ۰٫۱٪ آغاز می‌شود (۱۴۳۰۰).<br>سقف تجاوز: بالای این ولتاژ کاهش سریع duty (پلهٔ ۰٫۵٪)؛ همیشه ۵۰mV زیر خطای قطع باتری ۱۴٫۸V نگه داشته می‌شود (۱۴۶۰۰).<br>ولتاژ Float: نگه‌داشت باتری پس از پایان شارژ (۱۳۵۰۰).<br>ولتاژ بازگشت: افت باتری در Float زیر این مقدار، Bulk را دوباره آغاز می‌کند (۱۲۸۰۰).<br>جریان حداکثر: سقف باند تنظیم جریان Bulk؛ کف باند به‌طور خودکار ۲۰mA کمتر است (۶۵۰).<br>جریان Taper: Absorb پایان می‌یابد وقتی جریان دنباله ۶۰ ثانیه پایدار زیر این مقدار بماند (۵۰ ~ C/90).<br>پس از هر تغییر، مقدار «اعمال‌شدهٔ» برد کنار همان فیلد نشان داده می‌شود — اگر با درخواست شما فرق دارد یعنی گیره خورده تا مجموعه سازنده بماند (مثلاً ورود ≤ Absorb−۵۰). سقف‌های ایمنی (Hard fault ۹۵۰mA و قطع OV ۱۵V) از زیرتب «نظارت و ایمنی» فقط پایین‌بردنی‌اند و هرگز بالای مقدار کارخانه نمی‌روند.<br>ماندگاری: هر پارامتری که از پنل ثبت کنید (~۱٫۵ ثانیه بعد) در فلش خودِ برد ذخیره می‌شود و خاموش/روشن کردن برد آن را از بین نمی‌برد؛ دکمهٔ «بازگردانی پیش‌فرض کارخانه» پیش‌فرض‌ها را می‌فرستد و همان‌ها ذخیره می‌شوند. مودهای تست (duty فیکس/دستی) هرگز ذخیره نمی‌شوند — بعد از هر ریست، شارژر خودکار است.<br>نگهبان ترکیب: اگر عددهای تایپ‌شده با هم ناسازگار باشند (مثلاً Float بالای Absorb−۳۰۰)، بالای نمودار هشدار قرمز می‌آید، فیلد مقصر قرمز می‌شود و قبل از ارسال تأیید گرفته می‌شود — چون برد همان را گیره می‌زند و ناحیه‌ها را به‌هم‌ریخته نمی‌گذارد.</span></button><span class="lb">· مشترک هر دو کانال · روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
-<div class="sec">ولتاژها <span class="lb">(mV)</span></div>
+<div class="hd"><b>PID دوحلقه‌ای شارژ (CC/CV)</b> <button class="ib" data-p="83,84,85,86,87,88,89,90,91,92" onclick="this.classList.toggle('o')">!<span class="it">به‌جای پله‌های ثابت قدیمی، duty را PID تعیین می‌کند. دقیقاً دو حلقه دارد، چون شارژ باتری دقیقاً دو چیز را باید هم‌زمان محدود کند:<br><b>حلقهٔ جریان (CC):</b> تا وقتی باتری خالی است، جریان ثابت ۶۵۰ میلی‌آمپر می‌دهد.<br><b>حلقهٔ ولتاژ (CV):</b> وقتی باتری پر می‌شود، ولتاژ را روی ۱۴٫۴ نگه می‌دارد و duty را پایین می‌آورد. «نرخ صعود» این ردیف همان کلید «رشد کندتر Absorb» است.<br>هر لحظه هر حلقه‌ای که duty کمتری بخواهد برنده است، پس هر دو حد همیشه می‌بندند.<br><br><b>دو حلقه چطور یک duty را می‌رانند؟</b> دو خروجی وجود ندارد — یک duty هست، یک انتگرال‌گیر، و دو حلقه که نوبتی آن را می‌رانند. تصور کنید دو نفر بالای <i>یک</i> ولوم ایستاده‌اند و قانون یک خط است: هر لحظه هر کس عدد کمتری بخواهد ولوم دست اوست، و نفر دیگر آن پاس کاملاً نادیده گرفته می‌شود (نه میانگین، نه جمع). اول شارژ باتری خالی است و تا ۱۴٫۴ کلی جا دارد، پس نفر «ولتاژ» می‌گوید «+۱۱۰ پرمیل راحت برو بالا» ولی نفر «جریان» می‌گوید «+۷٫۶ پرمیل، یواش» ⇒ عدد کمتر برنده، حلقهٔ جریان می‌راند (همان CC). حدود دقیقهٔ ۱۱۳ ولتاژ به ۱۴٫۴ می‌رسد، نفر «ولتاژ» عددش منفی می‌شود (یعنی «بکش پایین») و ولوم را می‌گیرد (همان CV). در کل شارژ فقط <b>یک بار</b> این تحویل رخ می‌دهد.<br><b>و چرا لحظهٔ تحویل تکان نمی‌خورد:</b> چون انتگرال‌گیر یکی است و مشترک. سر همان پاس تحویل، انتگرال ۱۹۹۵۱۱ می‌ماند و duty روی ۲۰۰ ثابت است — صفر پرش. اگر هر حلقه انتگرال خودش را داشت، آن‌که بی‌کار بود انتگرالش جای دیگری می‌ماند و لحظهٔ تحویل duty می‌پرید. پس ۱۰ عدد یعنی «دستورالعمل نفر اول + دستورالعمل نفر دوم»، نه دو خروجی. این روش اسم استاندارد دارد: min-select (کمینه‌گیری)، همان چیزی که در هر شارژر CC/CV صنعتی هست.<br><b>چرا یک PID تنها کافی نیست؟</b> امتحان شد و روی شبیه‌ساز مردود شد: یک ردیف ضریب مشترک یعنی مقایسهٔ میلی‌ولت با میلی‌آمپر و لرزش duty (۱۴۰۸ تا ۸۴۶۶۰ تغییر جهت در ۱۰ ساعت در برابر ۴ تای الان)؛ و فقط یک PID ولتاژ با پشتیبان ۶۵۰ به‌عنوان تنها ترمز جریان، جریان را روی ۷۰۷ میلی‌آمپر می‌برد، چون پشتیبان فقط <i>بعد از</i> رد شدن از حد جواب می‌دهد. دو حلقه کمترین چیزی است که واقعاً کار می‌کند.<br><b>مرحلهٔ سوم قبلی حذف شد:</b> اندازه‌گیری نشان داد هیچ سودی ندارد و پنج عدد اضافه بود.<br>واحدها: Kp = پرمیل duty به ازای هر ولت خطا (حلقهٔ ولتاژ) یا هر آمپر خطا (حلقهٔ جریان). Ki = میلی‌پرمیل بر ثانیه. نرخ صعود/نزول = سقف سرعت حرکت نقطهٔ کار (۱۰۰۰ = ۱ پرمیل بر ثانیه).<br>Kd پیش‌فرض صفر است؛ مشتق روی سیگنال نویزی فقط duty را می‌لرزاند.<br>اعداد پیش‌فرض روی مدل کالیبره شده‌اند (۱۴٫۴ ولت، ۶۵۰ میلی‌آمپر، سقف ۵۰۰ پرمیل) — می‌توانید بهینه‌شان کنید و با دکمهٔ پایین برگردید.<br><b>دو پشتیبان سخت همیشه فعال‌اند و از v1.28 از پنل تنظیم می‌شوند:</b> عبور جریان از Bulk max یا ولتاژ از «ولتاژ پشتیبان سخت» سقف duty را به تناسب تجاوز جمع می‌کند — ولتاژ و دو گینش (۱۰۰..۱۰۲) در «جدول عملکرد شارژ» پایین صفحهٔ شارژرها تنظیم می‌شوند — روی خود عدد کلیک کنید. گین صفر یعنی آن پشتیبان خاموش.<br>بقیهٔ حفاظت‌ها دست‌نخورده‌اند: سقف duty ۵۰۰‰، Hard fault جریان، قطع OV و کل ماشین حالت.</span></button><span class="lb">· شناسه‌های ۸۳..۹۲ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
+<div class="sec">حلقهٔ جریان — CC (Bulk) <span class="lb">· پیش‌فرض ۱۲ / ۱۶۰۰ / ۰ / ۱۰۰۰ / ۱۰۰۰ · کالیبرهٔ کارخانه</span></div>
 <div class="bqr">
-<label>حداکثر ولتاژ باتری (Absorb)<input type="number" id="q20" step="50" min="11000" max="14600"><span class="lb" id="a20">—</span></label>
-<label>آستانهٔ ورود به Absorb<input type="number" id="q21" step="10" min="10500" max="14550"><span class="lb" id="a21">—</span></label>
-<label>سقف تجاوز Absorb<input type="number" id="q22" step="10" min="11100" max="14750"><span class="lb" id="a22">—</span></label>
-<label>ولتاژ Float<input type="number" id="q23" step="50" min="9000" max="14300"><span class="lb" id="a23">—</span></label>
-<label>ولتاژ بازگشت به Bulk<input type="number" id="q24" step="50" min="8000" max="14000"><span class="lb" id="a24">—</span></label>
+<label>Kp (‰ بر آمپر)<input type="number" id="q83" step="5" min="0" max="20000"><span class="lb" id="a83">—</span></label>
+<label>Ki<input type="number" id="q84" step="50" min="0" max="20000"><span class="lb" id="a84">—</span></label>
+<label>Kd<input type="number" id="q85" step="10" min="0" max="20000"><span class="lb" id="a85">—</span></label>
+<label>نرخ صعود (m‰/s)<input type="number" id="q86" step="10" min="10" max="20000"><span class="lb" id="a86">—</span></label>
+<label>نرخ نزول (m‰/s)<input type="number" id="q87" step="10" min="10" max="20000"><span class="lb" id="a87">—</span></label>
 </div>
-<div class="sec">جریان‌ها <span class="lb">(mA)</span></div>
+<div class="sec">حلقهٔ ولتاژ — CV (Absorb) <span class="lb">· پیش‌فرض ۵۰ / ۱۸۰۰۰ / ۰ / ۱۰ / ۱۰۰۰ · نرخ صعود = کلید «رشد کندتر Absorb»</span></div>
 <div class="bqr">
-<label>جریان حداکثر شارژ (Bulk)<input type="number" id="q25" step="10" min="100" max="900"><span class="lb" id="a25">—</span></label>
-<label>جریان Taper (ورود به Float)<input type="number" id="q26" step="5" min="10" max="300"><span class="lb" id="a26">—</span></label>
+<label>Kp (‰ بر ولت)<input type="number" id="q88" step="10" min="0" max="20000"><span class="lb" id="a88">—</span></label>
+<label>Ki<input type="number" id="q89" step="500" min="0" max="20000"><span class="lb" id="a89">—</span></label>
+<label>Kd<input type="number" id="q90" step="10" min="0" max="20000"><span class="lb" id="a90">—</span></label>
+<label>نرخ صعود (m‰/s)<input type="number" id="q91" step="5" min="10" max="20000"><span class="lb" id="a91">—</span></label>
+<label>نرخ نزول (m‰/s)<input type="number" id="q92" step="10" min="10" max="20000"><span class="lb" id="a92">—</span></label>
 </div>
-
+<div id="pw" style="margin:6px 0 0"></div>
+<div class="bqr"><button class="sb sb2" onclick="pdef()">بازگردانی پیش‌فرض کارخانهٔ PID</button></div>
+</div>
+<div class="cd">
+<div class="hd"><b>بازگردانی پیش‌فرض کارخانه</b><span class="lb">· همهٔ پارامترهای شارژ، فیلتر، PID و آلارم را به مقدار کارخانه برمی‌گرداند و همان‌ها را ذخیره می‌کند</span></div>
 <div class="bqr"><button class="sb sb2" onclick="qdef()">بازگردانی پیش‌فرض کارخانه</button></div>
-</div>
 </div>
 <div class="sgx" id="s1">
 <div class="leds stick" id="uleds">
@@ -403,29 +409,6 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 </div>
 <div class="sgx" id="s3">
 <div class="cd">
-<div class="hd"><b>PID دوحلقه‌ای شارژ (CC/CV)</b> <button class="ib" data-p="83,84,85,86,87,88,89,90,91,92" onclick="this.classList.toggle('o')">!<span class="it">به‌جای پله‌های ثابت قدیمی، duty را PID تعیین می‌کند. دقیقاً دو حلقه دارد، چون شارژ باتری دقیقاً دو چیز را باید هم‌زمان محدود کند:<br><b>حلقهٔ جریان (CC):</b> تا وقتی باتری خالی است، جریان ثابت ۶۵۰ میلی‌آمپر می‌دهد.<br><b>حلقهٔ ولتاژ (CV):</b> وقتی باتری پر می‌شود، ولتاژ را روی ۱۴٫۴ نگه می‌دارد و duty را پایین می‌آورد. «نرخ صعود» این ردیف همان کلید «رشد کندتر Absorb» است.<br>هر لحظه هر حلقه‌ای که duty کمتری بخواهد برنده است، پس هر دو حد همیشه می‌بندند.<br><br><b>دو حلقه چطور یک duty را می‌رانند؟</b> دو خروجی وجود ندارد — یک duty هست، یک انتگرال‌گیر، و دو حلقه که نوبتی آن را می‌رانند. تصور کنید دو نفر بالای <i>یک</i> ولوم ایستاده‌اند و قانون یک خط است: هر لحظه هر کس عدد کمتری بخواهد ولوم دست اوست، و نفر دیگر آن پاس کاملاً نادیده گرفته می‌شود (نه میانگین، نه جمع). اول شارژ باتری خالی است و تا ۱۴٫۴ کلی جا دارد، پس نفر «ولتاژ» می‌گوید «+۱۱۰ پرمیل راحت برو بالا» ولی نفر «جریان» می‌گوید «+۷٫۶ پرمیل، یواش» ⇒ عدد کمتر برنده، حلقهٔ جریان می‌راند (همان CC). حدود دقیقهٔ ۱۱۳ ولتاژ به ۱۴٫۴ می‌رسد، نفر «ولتاژ» عددش منفی می‌شود (یعنی «بکش پایین») و ولوم را می‌گیرد (همان CV). در کل شارژ فقط <b>یک بار</b> این تحویل رخ می‌دهد.<br><b>و چرا لحظهٔ تحویل تکان نمی‌خورد:</b> چون انتگرال‌گیر یکی است و مشترک. سر همان پاس تحویل، انتگرال ۱۹۹۵۱۱ می‌ماند و duty روی ۲۰۰ ثابت است — صفر پرش. اگر هر حلقه انتگرال خودش را داشت، آن‌که بی‌کار بود انتگرالش جای دیگری می‌ماند و لحظهٔ تحویل duty می‌پرید. پس ۱۰ عدد یعنی «دستورالعمل نفر اول + دستورالعمل نفر دوم»، نه دو خروجی. این روش اسم استاندارد دارد: min-select (کمینه‌گیری)، همان چیزی که در هر شارژر CC/CV صنعتی هست.<br><b>چرا یک PID تنها کافی نیست؟</b> امتحان شد و روی شبیه‌ساز مردود شد: یک ردیف ضریب مشترک یعنی مقایسهٔ میلی‌ولت با میلی‌آمپر و لرزش duty (۱۴۰۸ تا ۸۴۶۶۰ تغییر جهت در ۱۰ ساعت در برابر ۴ تای الان)؛ و فقط یک PID ولتاژ با پشتیبان ۶۵۰ به‌عنوان تنها ترمز جریان، جریان را روی ۷۰۷ میلی‌آمپر می‌برد، چون پشتیبان فقط <i>بعد از</i> رد شدن از حد جواب می‌دهد. دو حلقه کمترین چیزی است که واقعاً کار می‌کند.<br><b>مرحلهٔ سوم قبلی حذف شد:</b> اندازه‌گیری نشان داد هیچ سودی ندارد و پنج عدد اضافه بود.<br>واحدها: Kp = پرمیل duty به ازای هر ولت خطا (حلقهٔ ولتاژ) یا هر آمپر خطا (حلقهٔ جریان). Ki = میلی‌پرمیل بر ثانیه. نرخ صعود/نزول = سقف سرعت حرکت نقطهٔ کار (۱۰۰۰ = ۱ پرمیل بر ثانیه).<br>Kd پیش‌فرض صفر است؛ مشتق روی سیگنال نویزی فقط duty را می‌لرزاند.<br>اعداد پیش‌فرض روی مدل کالیبره شده‌اند (۱۴٫۴ ولت، ۶۵۰ میلی‌آمپر، سقف ۵۰۰ پرمیل) — می‌توانید بهینه‌شان کنید و با دکمهٔ پایین برگردید.<br><b>دو پشتیبان سخت همیشه فعال‌اند و از v1.28 از پنل تنظیم می‌شوند:</b> عبور جریان از Bulk max یا ولتاژ از «ولتاژ پشتیبان سخت» سقف duty را به تناسب تجاوز جمع می‌کند — ولتاژ و دو گینش (۱۰۰..۱۰۲) در «جدول عملکرد شارژ» پایین صفحهٔ شارژرها تنظیم می‌شوند — روی خود عدد کلیک کنید. گین صفر یعنی آن پشتیبان خاموش.<br>بقیهٔ حفاظت‌ها دست‌نخورده‌اند: سقف duty ۵۰۰‰، Hard fault جریان، قطع OV و کل ماشین حالت.</span></button><span class="lb">· شناسه‌های ۸۳..۹۲ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
-<div class="sec">حلقهٔ جریان — CC (Bulk) <span class="lb">· پیش‌فرض ۱۲ / ۱۶۰۰ / ۰ / ۱۰۰۰ / ۱۰۰۰ · کالیبرهٔ کارخانه</span></div>
-<div class="bqr">
-<label>Kp (‰ بر آمپر)<input type="number" id="q83" step="5" min="0" max="20000"><span class="lb" id="a83">—</span></label>
-<label>Ki<input type="number" id="q84" step="50" min="0" max="20000"><span class="lb" id="a84">—</span></label>
-<label>Kd<input type="number" id="q85" step="10" min="0" max="20000"><span class="lb" id="a85">—</span></label>
-<label>نرخ صعود (m‰/s)<input type="number" id="q86" step="10" min="10" max="20000"><span class="lb" id="a86">—</span></label>
-<label>نرخ نزول (m‰/s)<input type="number" id="q87" step="10" min="10" max="20000"><span class="lb" id="a87">—</span></label>
-</div>
-<div class="sec">حلقهٔ ولتاژ — CV (Absorb) <span class="lb">· پیش‌فرض ۵۰ / ۱۸۰۰۰ / ۰ / ۱۰ / ۱۰۰۰ · نرخ صعود = کلید «رشد کندتر Absorb»</span></div>
-<div class="bqr">
-<label>Kp (‰ بر ولت)<input type="number" id="q88" step="10" min="0" max="20000"><span class="lb" id="a88">—</span></label>
-<label>Ki<input type="number" id="q89" step="500" min="0" max="20000"><span class="lb" id="a89">—</span></label>
-<label>Kd<input type="number" id="q90" step="10" min="0" max="20000"><span class="lb" id="a90">—</span></label>
-<label>نرخ صعود (m‰/s)<input type="number" id="q91" step="5" min="10" max="20000"><span class="lb" id="a91">—</span></label>
-<label>نرخ نزول (m‰/s)<input type="number" id="q92" step="10" min="10" max="20000"><span class="lb" id="a92">—</span></label>
-</div>
-<div id="pw" style="margin:6px 0 0"></div>
-<div class="bqr"><button class="sb sb2" onclick="pdef()">بازگردانی پیش‌فرض کارخانهٔ PID</button></div>
-</div>
-</div>
-<div class="sgx" id="s4">
-<div class="cd">
 <div class="hd"><b>پشتیبان‌گیری همهٔ تنظیمات</b> <button class="ib" data-p="76" onclick="this.classList.toggle('o')">!<span class="it">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد (کالیبراسیون، فیلتر، فعال‌سازی/سقف‌ها، profile، آلارم‌ها، سناریوها) را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). گذراها (۱۵..۱۹ و میوت ۷۶) جزو پشتیبان نیستند. ضرایب PID دوحلقه‌ای (۸۳..۹۲) و از v1.28 حدها و گین‌های پشتیبان (۹۳..۱۰۷) هم در همین فایل می‌آیند — فهرست از خود شناسه‌ها ساخته می‌شود، پس هر پارامتر تازه‌ای خودبه‌خود پشتیبان می‌گیرد.</span></button><span class="lb">· یک بکاپ برای کل بخش تنظیمات — خروجی/ورودی JSON همهٔ ۱۰۲ مقدار ماندگار (۰..۱۴، ۲۰..۷۵، ۷۷..۱۰۷) — شامل ضرایب PID و حدها</span></div>
 <div class="bqr">
 <button class="sb sb2" onclick="xexp()">⬇ خروجی (دانلود JSON)</button>
@@ -524,13 +507,20 @@ function formulas(t,p){
   else e.textContent=i==3?'V24 − V12':'= V12';});
  $('ff').textContent=`I_filtered = convert( average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( raw counts ) ) )`;}
 function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>hn(c)){s.u.shift();s.f.shift();}});}}
-function qfill(){if(!D||!D.p)return;for(const id of [7,8,20,21,22,23,24,25,26]){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!(D.q&(1<<id)))a.textContent=D.p[id]==null?'—':D.p[id];}}
+function qfill(){if(!D||!D.p)return;for(const id of [7,8]){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!(D.q&(1<<id)))a.textContent=D.p[id]==null?'—':D.p[id];}}
 function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{$('q'+x[0]).value=x[1];send(x[0],x[1]);});qgraph();}
 /* ===== v1.14: نمودار مراحل شارژ — مقدار هر خط از فیلد تایپ‌نشده/متفاوت با مقدار اعمال‌شده می‌آید (پیش‌نمایش خط‌چین) ===== */
 const QDEF=[14400,14300,14600,13500,12800,650,50];
-function qv(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:QDEF[id-20];
- if(e&&e.value!==''){const v=parseInt(e.value,10);if(!isNaN(v))return{v,d,p:v!==d?1:0};}
- return{v:d,d,p:0};}
+/* [EN] v1.33: the q20..q26 input boxes went when the duplicate profile form
+   did, so there is no longer a "typed but not yet applied" state for these
+   seven - the chart writes straight to the board. qv() is now just "the
+   applied value, or the factory default before the first frame arrives",
+   and the .p preview flag it used to return had no readers left.
+   [FA] کادرهای q20..q26 همراه فرم تکراری profile رفتند، پس دیگر حالت «تایپ
+   شده ولی هنوز اعمال نشده» برای این هفت تا وجود ندارد - نمودار مستقیم روی
+   برد می‌نویسد. qv() حالا فقط «مقدار اعمال‌شده، یا پیش‌فرض کارخانه پیش از
+   رسیدن اولین فریم» است و پرچم پیش‌نمایشی که برمی‌گرداند هیچ خواننده‌ای نداشت. */
+function qv(id){const d=D&&D.p&&D.p[id]!=null?D.p[id]:QDEF[id-20];return{v:d,d};}
 /* v1.14d: نگهبان ترکیب profile — آینهٔ قوانین Charger_ClampProfile روی برد.
    هر قانون: [فیلد اصلی، فیلد مرجع] + پیام فارسی. خروجی خالی = ترکیب سالم. */
 function qchk(){const w=[],a=qv(20).v,e=qv(21).v,o=qv(22).v,f=qv(23).v,r=qv(24).v,im=qv(25).v,tp=qv(26).v;
@@ -762,6 +752,16 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
   if(ma==null)return;const x=X(ma),cfg=EVI[id];
   s+=`<line x1="${x}" y1="12" x2="${x}" y2="${H-22}" stroke="${cfg[0]}" stroke-width="${id===25?1.6:1.4}"${id===25?'':' stroke-dasharray="4 3"'}/>`+
      `<text ${evat(id)} x="${x+(cfg[2]<0?-3:3)}" y="${H-26}" text-anchor="${cfg[2]<0?'end':'start'}" font-size="8.5" font-weight="700" fill="${evcl(id)?'#f7c13c':cfg[0]}">${cfg[1]} ${ma}mA</text>`;});
+ /* [EN] The edge of fitted LUT data. Only drawn once the axis actually
+    reaches it, so the normal single-battery view is unchanged; it appears
+    the moment the user opens the current band towards a parallel pack.
+    Read-only on purpose - it is where the bench evidence stops.
+    [FA] لبهٔ دادهٔ برازش‌شده. فقط وقتی رسم می‌شود که محور واقعاً به آن برسد،
+    پس نمای عادی تک‌باتری دست‌نخورده می‌ماند و همین که کاربر باند جریان را
+    به‌سمت پک موازی باز کند ظاهر می‌شود. */
+ if(IMAX>EVCAL){const xc=X(EVCAL);
+  s+=`<line x1="${xc}" y1="12" x2="${xc}" y2="${H-22}" stroke="#7f8ba3" stroke-width="1" stroke-dasharray="2 4" stroke-opacity=".8"/>`+
+     `<text x="${xc+3}" y="20" font-size="8" fill="#7f8ba3">تا اینجا کالیبره شده · بالاتر برون‌یابی است</text>`;}
  /* مسیر واقعی شارژ CC/CV: پای عمودی روی سقف جریان، بعد پای افقی روی ولتاژ Absorb */
  s+=`<polyline points="${X(im.d)},${Y(lo)} ${X(im.d)},${Y(q.e.d)} ${X(im.d)},${Y(q.a.d)} ${X(tp.d)},${Y(q.a.d)} ${X(0)+6},${Y(q.f.d)}" fill="none" stroke="#e8eaf2" stroke-width="2" stroke-opacity=".55" stroke-linejoin="round" stroke-dasharray="7 4"/>`;
  /* موقعیت زندهٔ هر باتری: حالا روی مختصات واقعی (جریان، ولتاژ) */
@@ -815,9 +815,9 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
  document.querySelectorAll('.qwm').forEach(we=>{
   we.innerHTML=w.length?('⚠ ترکیب نامعتبر — برد این‌ها را گیره می‌زند: '+w.map(x=>x.msg).join('؛ ')):'';
   we.style.cssText=w.length?'margin:2px 0 6px;color:#fc8086;font-size:12.5px;line-height:1.9':'margin:2px 0 0';});
- for(const id of [20,21,22,23,24,25,26]){const ne=$('q'+id);if(ne)ne.style.borderColor=w.some(x=>x.ids.includes(id))?'#e5484d':'';}}
+}
 /* [EN] bind the profile inputs: on change, POST /s (fire-and-forget; the ack span next to the field shows the APPLIED value reported by the STM32). v1.14d: a typed value that breaks the profile rules asks for confirmation first, because the board will clamp it. / اتصال ورودی‌های profile: با تغییر، POST /s؛ نشانگر کنار فیلد مقدار «اعمال‌شده» را از STM32 نشان می‌دهد. v1.14d: مقدار ناسازگار قبل از ارسال تأیید می‌خواهد چون برد گیره‌اش می‌زند. */
-for(const id of [7,8,20,21,22,23,24,25,26]){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;
+for(const id of [7,8]){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;
  if(id>=20){const m=qchk().filter(x=>x.ids.includes(id));
   if(m.length&&!confirm('⚠ '+m.map(x=>x.msg).join('\n')+'\n\nبرد مقدار را گیره می‌زند تا مجموعه سازنده بماند. باز هم ارسال شود؟')){e.value='';qgraph();return;}}
  send(id,v);};if(id>=20)e.oninput=qgraph;}
@@ -982,15 +982,30 @@ const FEXP=[
    این مخزن فقط وقتی مجاز است که چیزی ماشینی مراقبش باشد. */
 const EVB={
  20:[11000,14600,50,'mv'], 21:[10500,14550,50,'mv'], 22:[11100,14750,50,'mv'],
- 23:[9000,14300,50,'mv'],  24:[8000,14000,50,'mv'],  25:[100,900,10,'ma'],
- 26:[10,300,5,'ma'],       35:[150,950,10,'ma'],     36:[14000,15000,50,'mv'],
- 93:[0,21600000,60000,'ms'], 94:[10,500,10,'ma'],    95:[0,7200000,60000,'ms'],
+ 23:[9000,14300,50,'mv'],  24:[8000,14000,50,'mv'],  25:[100,2950,10,'ma'],
+ 26:[10,1475,5,'ma'],      35:[150,3000,10,'ma'],    36:[14000,15000,50,'mv'],
+ 93:[0,21600000,60000,'ms'], 94:[10,1500,10,'ma'],   95:[0,7200000,60000,'ms'],
  96:[1000,600000,5000,'ms'], 97:[1,100,1,'pm'],      98:[0,999,50,'n'],
  99:[1,64,1,'n'],            100:[13000,14800,50,'mv'], 101:[0,2000,10,'n'],
  102:[0,2000,10,'n'],        103:[0,100,5,'ma'],     104:[0,120000,1000,'ms'],
  105:[0,60000,500,'ms'],     106:[500,60000,500,'ms'], 107:[50,5000,50,'ms']};
 
 const EVU={mv:'mV',ma:'mA',ms:'ms',pm:'‰',n:''};
+
+/* [EN] Where the bench LUTs stop being fitted data and start extending their
+   last slope (calibration.h: chain 640 mA on ch1 = 631 mA of battery current
+   at 14.4 V). The current ceilings were opened on 2026-10-03 so paralleled
+   packs can be charged, and above this line the current reading is
+   extrapolated rather than measured. Drawing it is the honest way to open a
+   range: the user's hand is free AND the user can see where the evidence
+   ends. Not settable - it is a property of the fit, not a preference.
+   [FA] جایی که جدول‌های بنچ از «دادهٔ برازش‌شده» به «ادامهٔ شیب آخر» تبدیل
+   می‌شوند (۶۳۱ میلی‌آمپر جریان باتری در ۱۴٫۴ ولت). سقف جریان‌ها در
+   ۲۰۲۶-۱۰-۰۳ باز شد تا پک موازی هم شارژ شود، و بالای این خط عدد جریان
+   برون‌یابی است نه اندازه‌گیری. رسم‌کردنش راه صادقانهٔ بازکردن یک بازه است:
+   هم دست کاربر باز است هم می‌بیند شواهد کجا تمام می‌شود. تنظیم‌شدنی نیست -
+   مشخصهٔ برازش است نه سلیقه. */
+const EVCAL=631;
 
 /* [EN] Which ids are drawn WHERE. These two lists drive the rendering, so
    they cannot drift from what is actually on screen, and the audit reads
@@ -1286,15 +1301,17 @@ function lnkhealth(d){const e=$('lnkw');if(!e)return;
  if(ce>0){e.className='wbx warn';e.innerHTML='⚠ <b>'+ce+'</b> فریم به‌خاطر خطای CRC رد شد — اتصال سیم و زمین لینک را بررسی کنید. داده‌ها معتبرند؛ فقط بخشی از قاب‌ها رسیده‌اند.';return;}
  e.className='wbx';e.innerHTML='';}
 function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;lnkhealth(d);qfill();cfill();afill();ctab();
-/* [EN] The chart is mounted on the chargers page too, so the redraw can no
-   longer be gated on the settings tab alone. Adding a mount without this
-   line gives a container that is present, empty and permanently silent -
-   the markup looks right and nothing ever appears.
-   [FA] نمودار روی صفحهٔ شارژرها هم نصب است، پس بازرسم دیگر نمی‌تواند فقط به
-   تب تنظیمات مشروط باشد. افزودن یک محل نصب بدون این خط یعنی ظرفی که هست،
-   خالی است و برای همیشه ساکت می‌ماند. */
-if(TAB==0||(TAB==2&&STAB==0))qgraph();
-if(TAB==2){if(STAB==3)pchk();else if(STAB!=0)afresh();}astat();
+/* [EN] The chart has exactly one mount, on the chargers page, so the redraw
+   is gated on that page alone. A mount without a matching gate here is a
+   container that is present, empty and permanently silent.
+   PID moved into sub-tab 0 (user order 2026-10-03), so its cross-field
+   warning runs there; the backup page is now sub-tab 3 and needs neither.
+   [FA] نمودار دقیقاً یک محل نصب دارد، روی صفحهٔ شارژرها، پس بازرسم فقط به همان
+   صفحه مشروط است. محل نصبی بدون گارد متناظر، ظرفی است که هست، خالی است و
+   برای همیشه ساکت می‌ماند. PID به زیرتب ۰ منتقل شد، پس هشدار ترکیبش همان‌جا
+   اجرا می‌شود؛ صفحهٔ پشتیبان‌گیری حالا زیرتب ۳ است و هیچ‌کدام را نمی‌خواهد. */
+if(TAB==0)qgraph();
+if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
  document.body.classList.toggle('dn',!on);$('lk').classList.toggle('on',on);
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');
  hist(d);

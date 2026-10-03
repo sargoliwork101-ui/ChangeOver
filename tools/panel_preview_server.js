@@ -101,6 +101,21 @@ const DEMO_VM = process.env.PLINK_DEMO_VM ? Number(process.env.PLINK_DEMO_VM) : 
 const DEMO_CE = process.env.PLINK_DEMO_CE ? Number(process.env.PLINK_DEMO_CE) : 0;
 const html = panelSrc.split('R"HTML(', 2)[1].split(')HTML";', 2)[0];
 
+/* [EN] The settable current ceiling, READ FROM THE FIRMWARE HEADER rather
+        than copied here. The simulator exists so the user can see the real
+        clamping before flashing; a second hand-written copy of the ceiling
+        would be a second thing to forget to update, and the preview would
+        then clamp differently from the board it is previewing.
+   [FA] سقف جریان تنظیم‌شدنی، که از هدر خود فرم‌ور خوانده می‌شود نه اینجا کپی
+        شود. شبیه‌ساز برای این است که کاربر گیره‌خوردن واقعی را پیش از فلش
+        ببیند؛ نسخهٔ دستیِ دومِ این سقف یعنی یک چیز دیگر برای یادنکردن، و
+        آن‌وقت پیش‌نمایش جور دیگری از بردی که پیش‌نمایشش است گیره می‌زد. */
+const HARD_MAX = Number(
+  /#define\s+CHG_CURRENT_HARD_FAULT_MAX_MA\s+(\d+)u/.exec(
+    fs.readFileSync(
+      path.join(__dirname, "..", "Firmware", "Modules", "Charger", "charger.h"),
+      "utf8"))[1]);
+
 /* [EN] Banner + landing tab (injected into the served page ONLY).
         This used to force-click nav tab 2 / sub-tab 1 on every load, because
         that is where the stage chart lived. The chart has moved to the
@@ -172,8 +187,8 @@ function clampParam(id, v) {
         case 22: return Math.min(Math.min(a + 400, 14750), Math.max(a + 100, v));
         case 23: return Math.min(a - 300, Math.max(9000, v));
         case 24: return Math.min(f - 300, Math.max(8000, v));
-        case 25: return Math.min(900, Math.max(100, v));
-        case 26: return Math.min(Math.min(300, im), Math.max(10, v));
+        case 25: return Math.min(HARD_MAX - 50, Math.max(100, v));
+        case 26: return Math.min(Math.min((HARD_MAX - 50) / 2, im), Math.max(10, v));
         case 7:  return Math.min(15, Math.max(1, v));
         case 8:  return Math.min(300, Math.max(1, v));
         case 13: case 14: case 16: case 18: return Math.min(500, Math.max(0, v));
@@ -191,7 +206,7 @@ function clampParam(id, v) {
            hysteresis ۹۹۹ است نه ۵۰۰۰ رُند - آنجا از تحمل بذرگیری مشتق می‌شود و
            کامپایلر عدد رُند را رد کرد. */
         case 93:  return Math.min(21600000, Math.max(0, v));
-        case 94:  return Math.min(500, Math.max(10, v));
+        case 94:  return Math.min(HARD_MAX / 2, Math.max(10, v));
         case 95:  return Math.min(7200000, Math.max(0, v));
         case 96:  return Math.min(600000, Math.max(1000, v));
         case 97:  return Math.min(100, Math.max(1, v));
@@ -213,7 +228,7 @@ function clampParam(id, v) {
         case 31: case 32: return Math.min(5000, Math.max(100, v));
         case 33: return Math.min(P[34] - 1000, Math.min(24000, Math.max(18000, v)));
         case 34: return Math.max(P[33] + 1000, Math.min(30000, Math.max(24000, v)));
-        case 35: return Math.min(950, Math.max(im + 50, v));
+        case 35: return Math.min(HARD_MAX, Math.max(im + 50, v));
         case 36: return Math.min(15000, Math.max(Math.max(14000, over + 150), v));
         case 37: return Math.min(8000, Math.max(0, v));
         /* v1.16 UI: exact mirror of Ui_ClampAlarms (single pass, dependency order) */
