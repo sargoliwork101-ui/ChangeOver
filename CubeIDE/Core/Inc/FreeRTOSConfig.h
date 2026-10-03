@@ -136,6 +136,9 @@
    دست‌کاری میان‌افزار. configUSE_COUNTING_SEMAPHORES عمداً خاموش نشد: شیم حتی
    بدون ساختن سمافور به آن نیاز دارد و خاموش‌کردنش کامپایل cmsis_os2.c را
    می‌شکند - این آزموده شده، نه فرض‌شده. */
+/* [EN] Application policy, unchanged: every CMSIS-RTOS2 object supplies its
+   own static memory. / [FA] سیاست برنامه، بدون تغییر: هر شیء CMSIS-RTOS2
+   حافظهٔ ثابت خودش را می‌دهد. */
 #define configUSE_OS2_THREAD_SUSPEND_RESUME      0
 #define configUSE_OS2_THREAD_ENUMERATE           0
 #define configUSE_OS2_EVENTFLAGS_FROM_ISR        0
@@ -159,11 +162,6 @@ to exclude the API function. */
 #define INCLUDE_uxTaskGetStackHighWaterMark 1
 #define INCLUDE_xTaskGetCurrentTaskHandle   1
 #define INCLUDE_eTaskGetState               1
-
-/* CMSIS-RTOS2 application policy: all created objects must provide static memory.
- * سیاست برنامه در CMSIS-RTOS2: هر شیء ساخته‌شده باید حافظهٔ ثابت خودش را ارائه کند. */
-#define configUSE_OS2_THREAD_ENUMERATE         0
-#define configUSE_OS2_TIMER                    0
 
 
 /* Cortex-M specific definitions. */

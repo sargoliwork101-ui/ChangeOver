@@ -2620,9 +2620,16 @@ def test_flash_diet_pins_v116d():
     #      "region FLASH overflowed". The guard turns that into a sentence.
     # [FA] CubeMX این تنظیم را در .ioc نگه نمی‌دارد؛ تولید دوباره بی‌صدا برش
     #      می‌گرداند و تنها نشانه پیام مبهم سرریز است. نگهبان آن را جمله می‌کند.
-    check("configUSE_TIMERS != 0" in FREERTOS_HOOKS_C.read_text() and
-          "#error" in FREERTOS_HOOKS_C.read_text(),
+    hooks = FREERTOS_HOOKS_C.read_text()
+    check("configUSE_TIMERS != 0" in hooks and "#error" in hooks,
           "freertos_hooks.c must #error if a CubeMX regenerate turns timers back on")
+    # [EN] "region FLASH overflowed by 780 bytes" reads identically whether the
+    #      fix is missing from the build or merely too small, so the build log
+    #      has to say which. This marker prints in the CubeIDE console.
+    # [FA] پیام سرریز چه وقتی اصلاح در بیلد نباشد و چه وقتی کم باشد یک‌شکل است،
+    #      پس لاگ بیلد باید بگوید کدام. این نشانگر در کنسول CubeIDE چاپ می‌شود.
+    check("#pragma message(" in hooks and "flash diet" in hooks,
+          "freertos_hooks.c must print a build-log marker proving the diet compiled")
     check("*(.ARM.exidx*)" in FLASH_LD.read_text() and "/DISCARD/" in FLASH_LD.read_text(),
           "linker script must discard .ARM.exidx (C++ unwind tables ~6.4 KiB)")
     proj = CPROJECT.read_text()

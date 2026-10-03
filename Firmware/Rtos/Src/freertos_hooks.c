@@ -28,6 +28,19 @@
 #error "configUSE_TIMERS must stay 0 (flash diet 2026-10-03): the image does not fit in the 62K FLASH region with the timer task. See the note in FreeRTOSConfig.h. / تایمرها باید خاموش بمانند وگرنه ایمیج در ۶۲ کیلوبایت فلش جا نمی‌شود."
 #endif
 
+/* [EN] Build-log marker. "region FLASH overflowed by 780 bytes" looks exactly
+   the same whether the fix is missing or merely insufficient, and the only
+   way to tell from the outside is to see whether the fix was compiled at all.
+   This line prints in the CubeIDE build console, so the question is answered
+   by looking, not by guessing. If it is absent from the log, the build did
+   not use this source tree.
+   [FA] نشانگر کنسول بیلد. پیام «سرریز ۷۸۰ بایت» چه وقتی اصلاح نرسیده باشد و چه
+   وقتی کافی نبوده، دقیقاً یک‌شکل است؛ تنها راه تشخیص از بیرون این است که ببینیم
+   اصلاً اصلاح کامپایل شده یا نه. این خط در کنسول بیلد CubeIDE چاپ می‌شود، پس
+   جواب را با دیدن می‌گیریم نه با حدس. اگر در لاگ نبود، بیلد از این درخت سورس
+   استفاده نکرده است. */
+#pragma message("ChangeOver flash diet 2026-10-03 ACTIVE: configUSE_TIMERS=0, timers.c and queue.c are out (~3 KB)")
+
 static StaticTask_t s_idle_tcb;
 static StackType_t s_idle_stack[configMINIMAL_STACK_SIZE];
 

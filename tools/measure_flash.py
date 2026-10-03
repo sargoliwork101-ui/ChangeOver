@@ -100,6 +100,60 @@ def build(outdir):
     return rows, failures
 
 
+
+def lld_linker_script(outdir):
+    """[EN] The project's own script, with two things lld will not take: a
+       MEMORY block referenced before it is defined, and the GCC-11 READONLY
+       attribute. Hoisted and stripped here, never in the project file.
+       [FA] اسکریپت خود پروژه، با دو چیزی که lld نمی‌پذیرد: بلوک MEMORY که پیش
+       از تعریف ارجاع داده شده و صفت READONLY مخصوص GCC 11. اینجا جابه‌جا و
+       حذف می‌شوند، نه در فایل پروژه."""
+    import re as _re
+    src = (ROOT / "CubeIDE/STM32CubeIDE/STM32F103C8TX_FLASH.ld").read_text()
+    mem = _re.search(r"MEMORY\s*\{.*?\n\}", src, _re.S).group(0)
+    out = src.replace(mem, "/* hoisted for lld */")
+    at = out.rfind("\n", 0, out.index("_estack")) + 1
+    out = out[:at] + mem + "\n\n" + out[at:]
+    out = out.replace(" (READONLY) :", " :")
+    path = Path(outdir) / "measure.ld"
+    path.write_text(out)
+    return path
+
+
+def link(outdir):
+    """[EN] Link the objects the way the board links them, with --gc-sections,
+       and report the flash-resident total. Newlib is absent here, so
+       tools/measure_support/libc_stubs.c stands in - identical in every run,
+       so it cancels out of any comparison.
+       [FA] لینک آبجکت‌ها همان‌طور که روی برد لینک می‌شوند، با gc-sections، و
+       گزارش مجموع بخش‌های ساکن فلش. newlib اینجا نیست و استاب جایش می‌نشیند -
+       در هر اجرا یکسان است، پس در مقایسه حذف می‌شود."""
+    outdir = Path(outdir)
+    startup = ROOT / "CubeIDE/STM32CubeIDE/Application/User/Startup/startup_stm32f103c8tx.s"
+    subprocess.run(["python3", "-m", "ziglang", "cc"] + TARGET +
+                   ["-c", "-x", "assembler-with-cpp", str(startup),
+                    "-o", str(outdir / "zz_startup.o")], capture_output=True)
+    subprocess.run(["python3", "-m", "ziglang", "cc"] + TARGET +
+                   ["-c", "-Os", "-ffunction-sections", "-fdata-sections", "-w",
+                    str(ROOT / "tools/measure_support/libc_stubs.c"),
+                    "-o", str(outdir / "zz_libc.o")], capture_output=True)
+    script = lld_linker_script(outdir)
+    elf = outdir / "image.elf"
+    res = subprocess.run(["python3", "-m", "ziglang", "ld.lld", "-T", str(script),
+                          "--gc-sections", f"-Map={outdir / 'image.map'}",
+                          "-o", str(elf)] + [str(o) for o in sorted(outdir.glob("*.o"))],
+                         capture_output=True, text=True)
+    if res.returncode != 0:
+        return None, res.stderr
+    from elftools.elf.elffile import ELFFile
+    total = 0
+    with open(elf, "rb") as fh:
+        for sec in ELFFile(fh).iter_sections():
+            if (sec["sh_flags"] & 0x2) and sec["sh_type"] != "SHT_NOBITS":
+                total += sec["sh_size"]
+    return total, ""
+
+
 def main():
     outdir = sys.argv[1] if len(sys.argv) > 1 else "/tmp/flashmeasure"
     save = sys.argv[2] if len(sys.argv) > 2 else None
@@ -124,9 +178,19 @@ def main():
     for r in sorted(rows, key=lambda x: -x["total"])[:12]:
         print(f"  {r['total']:>6}  {r['file']}")
 
+    total_linked, err = link(outdir)
+    if total_linked is None:
+        print("\nLINK FAILED (this is a real finding, not a tooling glitch):")
+        print("   " + "\n   ".join(err.strip().splitlines()[:6]))
+        return 2
+    print(f"\nLINKED IMAGE     : {total_linked} bytes of flash-resident sections")
+    print("   (zig/LLVM + stub libc: compare this number against another run,")
+    print("    not against what CubeIDE prints)")
+
     if save:
-        Path(save).write_text(json.dumps(rows, indent=1), encoding="utf-8")
-        print(f"\nsaved: {save}")
+        Path(save).write_text(json.dumps(
+            {"rows": rows, "linked_total": total_linked}, indent=1), encoding="utf-8")
+        print(f"saved: {save}")
     return 1 if failures else 0
 
 
