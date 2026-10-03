@@ -68,7 +68,7 @@ static void func__Esp_HttpRoot(void)
      *      می‌شود در حالی که کارت‌های قبلی هستند. این سقف چنین رشدی را به
      *      خطای بیلد تبدیل می‌کند نه گزارش میدانی.
      */
-    _Static_assert(sizeof(ESP_PANEL_HTML) <= ESP_PANEL_HTML_MAX_BYTES,
+    static_assert(sizeof(ESP_PANEL_HTML) <= ESP_PANEL_HTML_MAX_BYTES,
                    "panel HTML exceeds the transfer budget - split it or raise "
                    "ESP_PANEL_HTML_MAX_BYTES on purpose");
 
@@ -130,7 +130,7 @@ static void func__Esp_HttpTelemetry(void)
             ماسک۳ می‌ریخت، یعنی شناسهٔ ۹۶ می‌شد 1UL << 32 — رفتار تعریف‌نشده،
             نه فقط یک پیکسل غلط. حالا هر شاخه بازهٔ بسته دارد و assert پایین
             چیزی است که واقعاً جلوی نفر بعدی را می‌گیرد. */
-    _Static_assert(ESP_PARAM_COUNT <= 128,
+    static_assert(ESP_PARAM_COUNT <= 128,
                    "pending masks cover ids 0..127; add a fifth word");
     for (uint8_t__index = 0u; uint8_t__index < ESP_PARAM_COUNT; uint8_t__index++)
     {

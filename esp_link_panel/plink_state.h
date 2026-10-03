@@ -6,7 +6,6 @@ static esp_rx_state_t ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
 static uint8_t  UINT8_T__G__RxType = 0u;
 static uint16_t UINT16_T__G__RxLen = 0u;
 static uint16_t UINT16_T__G__RxIndex = 0u;
-static uint8_t  UINT8_T__G__RxXor = 0u;
 static uint8_t  UINT8_T__G__RxPayload[ESP_LINK_MAX_PAYLOAD];
 
 /* ==================== Live Data ==================== */

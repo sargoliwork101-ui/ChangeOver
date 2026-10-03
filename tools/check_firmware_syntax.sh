@@ -49,4 +49,13 @@ for SOURCE_FILE in "${SOURCE_FILES[@]}"; do
         "${SOURCE_FILE}"
 done
 
+# [EN] The ESP sketch is a second program in this repository and it was never
+#      built by any gate: until now the only compiler that ever read it was the
+#      Arduino IDE, at flashing time. It is C++, not C, so it gets its own step.
+# [FA] اسکچ ESP برنامهٔ دوم این مخزن است و هیچ دروازه‌ای آن را نمی‌ساخت: تا امروز
+#      تنها کامپایلری که آن را می‌خواند Arduino IDE بود، سر فلش کردن. چون ++C است
+#      نه C، گام جداگانهٔ خودش را دارد.
+echo "--- ESP sketch (C++) / اسکچ ESP ---"
+./esp_link_panel/Tester/run_esp_tests.sh
+
 echo "HOST SYNTAX CHECK PASSED / بررسی syntax سمت Host موفق بود"

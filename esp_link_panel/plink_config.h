@@ -148,7 +148,7 @@
 #define ESP_HTTP_PORT               80
 #define ESP_JSON_BUFFER_SIZE        2560u   /* v1.16: p[77] needs the headroom (~950 B worst case); v1.17: p[83] adds ~70 B; v1.24: p[93] adds 10 PID values (one is 5 digits), ~1.1 KB worst case */
 #define ESP_HTTP_FONT_CACHE         "public, max-age=31536000"
-/* [EN] Ceiling for the web panel, checked by a _Static_assert in plink_http.h.
+/* [EN] Ceiling for the web panel, checked by a static_assert in plink_http.h.
  *      The panel is served as one send_P and was 118 KB when this project
  *      started; it is 194 KB now and nothing ever stopped it growing. On an
  *      ESP8266 that is ~140 back-to-back TCP writes, and a stalled link cuts
@@ -156,7 +156,7 @@
  *      missing its tail, which is the settings sub-pages and the scripts.
  *      208 KB leaves real headroom while turning the next large addition into
  *      a compile error that has to be answered on purpose.
- * [FA] سقف پنل وب، با _Static_assert در plink_http.h بررسی می‌شود. پنل با یک
+ * [FA] سقف پنل وب، با static_assert در plink_http.h بررسی می‌شود. پنل با یک
  *      send_P می‌رود و اول کار ۱۱۸ کیلوبایت بود؛ حالا ۱۹۴ است و هیچ‌چیز جلوی
  *      رشدش را نگرفته بود. روی ESP8266 یعنی حدود ۱۴۰ نوشتن پیاپی TCP، و لینکِ
  *      گیرکرده انتقال را هر جا که باشد می‌برد — مرورگر صفحه‌ای بدون انتهایش را
