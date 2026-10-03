@@ -1373,8 +1373,8 @@ def test_charger_persistence_v114():
     _p0 = ino.split('id="p0"', 1)[1].split('id="p1"', 1)[0]
     check('class="qgm"' not in _p0,
           "the chart is OFF the chargers page, as ordered")
-    check('id="ctb"' in _p0,
-          "the operating table stays ON the chargers page, as ordered")
+    check('id="ctb"' not in _p0 and 'id="ctb"' not in ino,
+          "the operating table stays GONE - the user ordered its wholesale deletion (v1.36)")
     # [EN] v1.35 (user order 2026-10-03: "write those times underneath so the
     #      charts do not get so crowded - do the same for the gains"). These
     #      two assertions demanded the exact opposite and are INVERTED, not
@@ -2916,12 +2916,9 @@ def test_two_loop_pid_v124():
         check(i in drawn, f"limit id {i} is drawn by no renderer - settable in theory only")
     check('id="q93"' not in ino and 'id="q107"' not in ino,
           "the separate limits card must stay GONE")
-    ctab = ino[ino.find("function ctab()"):]
-    ctab = ctab[:ctab.find("function astat()")]
-    check("ev(" not in ctab.replace("evr(", "").replace("evr_plain(", ""),
-          "the operating table must only REPORT: an editable cell there puts the same "
-          "number in two places, which is how the help text, the backup label and the "
-          "OV cutoff default all drifted")
+    check("function ctab()" not in ino and 'id="ctb"' not in ino,
+          "the operating table must stay REMOVED (user ordered its wholesale "
+          "deletion): no renderer, no mount point")
     check("EVOPEN" in ino and "document.activeElement" in ino,
           "an open editor must suppress the re-render, or the ~1 s telemetry tick "
           "deletes the field under the user's fingers")

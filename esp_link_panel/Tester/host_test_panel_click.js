@@ -9,9 +9,10 @@
  *      generated page in a DOM, clicks the real labels and asserts on what
  *      actually happens.
  *
- *      v1.30 (user order): the CHART is the editor and the operating table
- *      only reports. So this file also pins the direction of that split -
- *      a table that quietly became editable again would pass every grep.
+ *      v1.30 (user order): the CHART is the editor. The report table that
+ *      later sat beside it was deleted wholesale on a follow-up order
+ *      (v1.36), so this file now also pins its ABSENCE - a table that quietly
+ *      crept back would pass every grep.
  *
  *      Optional by design. jsdom is not a dependency of this project and the
  *      firmware build must never need node, so a missing jsdom SKIPS (exit 0)
@@ -132,12 +133,12 @@ function main() {
         const P0 = d.getElementById("p0");
         const P2 = d.getElementById("p2");
 
-        /* --- 0. v1.37 (user order: "why did you put the chart in the panel
-                 too? delete it from there. put the tables under it into the
-                 chargers page"). The chart now has one home, Settings >
-                 charge filter and PID, and the chargers page carries the two
-                 charger cards with the operating table directly under them.
-                 The redraw gate narrowed with it, so the chart is only drawn
+        /* --- 0. v1.36 (user follow-up order: the operating table was not
+                 liked - delete it entirely). The chargers page carries just
+                 the two charger cards now; the chart keeps its one home in
+                 Settings > charge filter and PID.
+                 The redraw gate narrowed with that move, so the chart is
+                 only drawn
                  while that sub-tab is open - every chart assertion below has
                  to GO there rather than assume the landing page holds a
                  copy. Third reversal of this preference, so the assertions
@@ -151,8 +152,9 @@ function main() {
         check(P0.querySelectorAll(".qgm").length === 0,
               "the chart is gone from the chargers page, as ordered",
               "it was removed on the user's order; a mount here is a relapse");
-        check(P0.querySelector("#ctb") !== null,
-              "the operating table stays on the chargers page, as ordered");
+        check(P0.querySelector("#ctb") === null,
+              "the operating table is GONE from the panel, as ordered",
+              "the user had it deleted wholesale; any table here is a relapse");
         const mounts = [...d.querySelectorAll(".qgm")];
         check(mounts.length === 1,
               "the chart has exactly one home, so no two copies can disagree");
@@ -176,138 +178,12 @@ function main() {
         const HELPS = [...SRC.matchAll(
             />!<span class="it">([\s\S]*?)<\/span><\/button>/g)]
             .map(x => x[1]).filter(h => h.includes("Taper sustain"));
-        /* ---- v1.36: the two summary tables at the foot of the page ----
-           User order: "show these two tables, tidier, at the end of this
-           charger page, and write their numbers from the chart when I update
-           it." So the properties worth pinning are: the tables are LAST, they
-           are report-only, and they really do follow an edit made through the
-           panel's own send() path. The last one is the whole point - a table
-           built from a second copy of the values would pass a static check
-           and still go stale the moment something is edited. */
-        /* ---- every tab must actually REVEAL its own page ----
-           The settings sub-tabs were broken for four commits: a dropped
-           </div> made s1/s2/s3 children of s0, so hiding s0 hid them too and
-           only "charge, filter and PID" worked. Nothing caught it, because
-           every assertion asked whether some text existed somewhere in the
-           document - never whether the clicked page was the visible one.
-           A page counts as visible only if it AND every ancestor page carry
-           the active class, which is what the CSS actually does. */
-        /* ---- the build stamp has to be ON SCREEN, not just in the file ----
-           Three reports of a broken panel this session were all against
-           builds that rendered correctly; what was missing was any way to
-           tell which build was on screen. A stamp hidden in a comment would
-           not have helped, so this checks it is rendered, visible on the
-           very first page, and matches the markup it is printed on. */
-        {
-            const bs = d.getElementById("bs");
-            check(!!bs, "the header shows a build stamp");
-            if (bs) {
-                check(/^build [0-9a-f]{7}$/.test(bs.textContent.trim()),
-                      "the build stamp reads as seven hex characters",
-                      "got: " + bs.textContent.trim());
-                check(bs.closest(".pgx") === null,
-                      "the stamp sits in the header, visible on every tab");
-                const lit = SRC.split('R"HTML(')[1].split(')HTML"')[0];
-                const blank = lit.replace(
-                    /(<span class="bs" id="bs">build )[0-9a-f]{7}(<\/span>)/,
-                    "$1_______$2");
-                const want = require("crypto").createHash("sha1")
-                    .update(blank, "utf8").digest("hex").slice(0, 7);
-                check(bs.textContent.trim() === "build " + want,
-                      "the stamp on the page matches the page it is on",
-                      "page says " + bs.textContent.trim() + ", markup hashes to " + want);
-            }
-        }
-
-        /* ---- the "!" help must describe the fields of its own card ----
-           Reported as "scenarios do not work": the help lists had slipped by
-           one card, so every scenario explained its neighbour's parameters.
-           Checked on the rendered page, after pexp() has expanded the texts,
-           so this covers the wording the user actually reads. */
-        [...d.querySelectorAll("button.ib[data-p]")].forEach(b => {
-            const card = b.closest(".cd") || b.parentElement;
-            const own = [...card.querySelectorAll('input[type=number][id^=q]')]
-                .filter(x => /^q\d+$/.test(x.id))   /* qm1/qm2 are buttons' boxes */
-                .map(x => +x.id.slice(1));
-            if (!own.length) return;
-            const help = b.dataset.p.split(",").map(Number);
-            const miss = own.filter(x => !help.includes(x));
-            const ttl = card.querySelector(".hd b, b");
-            check(miss.length === 0,
-                  'the ! help of "' + (ttl ? ttl.textContent.trim() : "?") +
-                  '" covers every field on that card',
-                  "not explained: " + miss.join(","));
-        });
-        check([...d.querySelectorAll("button.ib[data-p]")].length > 10,
-              "the help buttons are still present to be checked");
-        /* 44..49 are ESPLINK_PARAM_UI_BL_* = UI_BAT_LOST_*, the battery
-           DISCONNECT alarm - the help used to call them "weak battery",
-           which is a different alarm and sent people to the wrong knob. */
-        check(/44:\['دورهٔ LED قطع باتری/.test(SRC),
-              "id 44 is named for the disconnect alarm, not the weak-battery one");
-        check(!/باتری ضعیف',\s*'طول یک چرخهٔ چشمک LED هنگام هشدار باتری ضعیف/.test(SRC),
-              "the old mislabel for 44 is gone");
-
-        const visible = el => {
-            for (let n = el; n && n.classList; n = n.parentElement) {
-                if ((n.classList.contains("sgx") || n.classList.contains("pgx"))
-                    && !n.classList.contains("a")) return false;
-            }
-            return true;
-        };
-        const navs = [...d.querySelectorAll("nav button")];
-        navs.forEach((b, i) => {
-            b.click();
-            const on = [...d.querySelectorAll(".pgx")].filter(visible).map(x => x.id);
-            check(on.length === 1 && on[0] === "p" + i,
-                  'clicking tab "' + b.textContent.trim() + '" shows exactly p' + i,
-                  "visible instead: " + (on.join(",") || "nothing"));
-        });
-        navs[2].click();
-        [...d.querySelectorAll("#sbt button")].forEach((b, i) => {
-            b.click();
-            const on = [...d.querySelectorAll(".sgx")].filter(visible).map(x => x.id);
-            check(on.length === 1 && on[0] === "s" + i,
-                  'clicking "' + b.textContent.trim() + '" shows exactly s' + i,
-                  "visible instead: " + (on.join(",") || "nothing"));
-        });
-        check([...d.querySelectorAll(".sgx")].every(
-                  x => !x.parentElement.classList.contains("sgx")),
-              "no settings page is nested inside another",
-              "a nested page disappears whenever its host is hidden");
-        check(new Set([...d.querySelectorAll(".pgx")]
-                  .map(x => x.parentElement)).size === 1,
-              "all main pages share one parent");
-        /* leave the walk on the tab that owns the chart: from v1.37 the
-           redraw gate only fires there, so anything below that calls draw()
-           and then reads a chart label would otherwise read a stale one and
-           pass or fail for the wrong reason */
-        gotoChart();
-        const CTB = d.getElementById("ctb");
-        const CARDS = [...P0.querySelectorAll(".cd")];
-        check(CARDS[CARDS.length - 1].contains(CTB),
-              "the summary tables are the last thing on the chargers page");
-        const TABS = CTB.querySelectorAll("table");
-        check(TABS.length === 2,
-              "exactly the two tables the user asked for",
-              "found " + TABS.length);
-        check(TABS[0].rows.length === 6 && TABS[1].rows.length === 6,
-              "the stage table has its five stages and the limits table its six");
-        check(CTB.querySelectorAll("[data-i]").length === 0,
-              "nothing in the tables is editable",
-              "a number editable in two places is two places to be wrong");
-        check([...TABS[0].rows].slice(1).every(
-                  r => r.querySelector(".cdot")),
-              "every stage carries the colour of its band on the chart");
-        for (const word of ["Bulk", "Absorb", "Float", "Hard fault",
-                            "OV cutoff", "Hard cutoff"]) {
-            check(CTB.textContent.includes(word),
-                  "the tables name " + word + " in the English term");
-        }
-        for (const bad of ["ابزورب", "بالک", "شناور ", "دیوتی"]) {
-            check(!CTB.textContent.includes(bad),
-                  "the tables must not transliterate '" + bad + "'");
-        }
+        /* ---- v1.36 (user order): the summary tables were ordered deleted
+           wholesale, and that absence is what this file now pins - a table
+           that quietly crept back under a new name is the relapse to catch. */
+        check(d.getElementById("ctb") === null && !/function ctab/.test(SRC),
+              "the summary tables stay GONE - no mount, no renderer",
+              "the user rejected the table outright; bringing one back is not a tidy-up, it is disobedience");
         const strips = [...d.querySelectorAll(".qgcm")];
         check(strips.length === mounts.length,
               "a chip strip is mounted under every chart");
@@ -323,7 +199,7 @@ function main() {
         /* --- 0b. v1.33: the duplicate q20..q26 form is gone, so there is no
                  mirrored input to keep in step and no "typed but not applied"
                  state. What must still hold is that a chart edit reaches the
-                 board AND the read-only table re-reports it. --- */
+                 board - and, since v1.36, that nothing else shadows it. --- */
         for (let i = 20; i < 27; i++) {
             check(d.getElementById("q" + i) === null,
                   "no duplicate input box for id " + i,
@@ -338,16 +214,16 @@ function main() {
                .textContent.indexOf("پیش‌نمایش") < 0,
               "no phantom 'preview' is announced after committing",
               "a dashed preview means a pending change; there is none");
-        check(d.getElementById("ctb").textContent.indexOf("14.50") >= 0,
-              "the read-only table follows the chart edit");
+        check(d.getElementById("ctb") === null,
+              "and there is no table that could follow anything");
         w.D.p[20] = 14400;
         w.draw(w.D);
 
-        console.log("panel click-to-edit behaviour (chart edits, table reports)");
+        console.log("panel click-to-edit behaviour (the chart edits; no table anywhere)");
         console.log("=".repeat(68));
 
         /* --- 1. the user order: every limit still has an editor, and it is
-                 on the chart card, not in the table --- */
+                 on the chart card --- */
         for (const id of LIMIT_IDS) {
             check(anchor(id) !== null,
                   "id " + id + " still has an editor somewhere",
@@ -382,12 +258,10 @@ function main() {
                   "user order: say what each variable name means");
         }
 
-        /* --- 2. the table reports and nothing more (user order) --- */
-        check(d.querySelectorAll("#ctb [data-i]").length === 0,
-              "the operating table holds NO editable value",
-              "one place to write means one place to be wrong");
-        check(d.querySelectorAll("#ctb .evv").length > 0,
-              "the operating table still shows the values");
+        /* --- 2. the table stays deleted and edits live on the chart --- */
+        check(d.getElementById("ctb") === null,
+              "the operating table stays deleted, as ordered",
+              "one place to write means one place to be wrong - and that place is the chart");
 
         /* --- 3. the chart labels carry the number, not just a name --- */
         check(/14\.40V/.test(anchor(20).textContent),
@@ -460,7 +334,6 @@ function main() {
         const inp3 = open(97);
         w.D.p[97] = 42;                 /* the board reports something new */
         w.qgraph();
-        w.ctab();
         const survivor = field();
         check(survivor !== null, "the editor is still open");
         check(survivor.value === "8",
@@ -554,16 +427,9 @@ function main() {
         w.D.p[35] = 950;
         w.draw(w.D);
 
-        /* ---- the tables must FOLLOW the chart, not merely look like it ----
-           This is the assertion that actually matters. A table built from a
-           second copy of the numbers passes every structural check above and
-           still goes stale the instant something is edited, which is the bug
-           the user has hit before. So: change the applied parameters the way
-           an edit on the chart does, redraw, and require BOTH the on-chart
-           label and the table cell to move together. */
-        const cellOf = (t, r, c) =>
-            d.getElementById("ctb").querySelectorAll("table")[t]
-             .rows[r].cells[c].textContent.trim();
+        /* ---- the chart must FOLLOW applied telemetry (the table that used
+           to be cross-checked here was deleted wholesale on the user's order,
+           so the still-live risk is a chart label going stale after an edit) */
         const chartLabel = id => {
             const el = CHART.querySelector('.qgm svg [data-i="' + id + '"]');
             return el ? el.textContent.trim() : "";
@@ -573,25 +439,19 @@ function main() {
            the chart label would be read stale and the test would pass for
            the wrong reason */
         gotoChart();
-        const wasCell = [cellOf(0, 1, 2), cellOf(1, 4, 1)];
         w.D.p[25] = 1200;
         w.D.p[35] = 2400;
         w.draw(w.D);
-        check(cellOf(0, 1, 2).includes("1200") &&
-              chartLabel(25).includes("1200"),
-              "editing the bulk current moves the chart AND the table",
-              "chart=" + chartLabel(25) + " table=" + cellOf(0, 1, 2));
-        check(cellOf(1, 4, 1).includes("2400") &&
-              chartLabel(35).includes("2400"),
-              "editing the hard fault moves the chart AND the table",
-              "chart=" + chartLabel(35) + " table=" + cellOf(1, 4, 1));
-        check(wasCell[0] !== cellOf(0, 1, 2) && wasCell[1] !== cellOf(1, 4, 1),
-              "the table cells really changed",
-              "a cell that never moves would pass the test above by accident");
+        check(chartLabel(25).includes("1200"),
+              "editing the bulk current moves the chart label",
+              "chart=" + chartLabel(25));
+        check(chartLabel(35).includes("2400"),
+              "editing the hard fault moves the chart label",
+              "chart=" + chartLabel(35));
         w.D.p[25] = 650;
         w.D.p[35] = 950;
         w.draw(w.D);
-        check(cellOf(0, 1, 2).includes("650"),
+        check(chartLabel(25).includes("650"),
               "and it follows the value back down again");
 
         console.log("=".repeat(68));

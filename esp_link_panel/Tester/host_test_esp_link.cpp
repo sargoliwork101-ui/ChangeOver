@@ -340,8 +340,8 @@ int main(void)
         const std::string page0 = html.substr(p0, p1 - p0);
         check(page0.find("class=\"qgm\"") == std::string::npos,
               "the chart is off the chargers page, as ordered");
-        check(page0.find("id=\"ctb\"") != std::string::npos,
-              "the operating table is on the chargers page, as ordered");
+        check(page0.find("id=\"ctb\"") == std::string::npos,
+              "the operating table is GONE, as ordered - it must not reappear");
 
         ESP_WEB_SERVER_T__G__Server.call("/f.css", HTTP_GET);
         check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
