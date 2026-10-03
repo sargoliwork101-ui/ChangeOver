@@ -13,7 +13,35 @@ the real controls and assert on what happens.
 
 | file | what it proves |
 |---|---|
+| `host_test_esp_link.cpp` | the sketch itself: 79 assertions across 14 sections, built for the host and run with `setup()` and `loop()` actually executing — CRC-16 over the known vector, frame assembly and rejection, parameter storage and bounds, the pending-mask JSON keys, and the HTTP routes |
 | `host_test_panel_click.js` | the click-to-edit operating table: a cell opens an editor, the editor carries the raw value, Enter commits, Escape does not, a telemetry re-render does not delete the field being typed into, a clamped value is visible, and the read-only derived cell is inert |
+
+### The sketch harness / هارنس اسکچ
+
+`./run_esp_tests.sh` builds `host_test_esp_link.cpp`, which `#include`s the real
+`esp_link_panel.ino`. The `.ino` is **not edited to make this possible**: the
+`stubinc/` folder holds four shims (`Arduino.h`, `ESP8266WiFi.h`,
+`ESP8266WebServer.h`, `LittleFS.h`) that each pull in `stub_arduino.h`, so the
+sketch compiles unchanged and the thing under test is the thing that ships.
+
+Built with `-Wall -Wextra -Werror -fsanitize=address,undefined`. The sanitizers
+are not decoration. A pure-assert version of this suite **missed an out-of-bounds
+write**: the check "slot COUNT-1 was left alone" passed a mutated `<=` bound,
+because the write went to `[COUNT]`. ASan caught it immediately.
+
+`-Wno-unused-function` is deliberately absent — `-Werror` is what found the dead
+`UINT8_T__G__RxXor` left over from the pre-v2 XOR frame.
+
+Two real defects were found the first time this ran:
+
+- `_Static_assert` is a C keyword and does not exist in C++. It was **stopping the
+  whole sketch from compiling**, which meant no new panel had ever reached the
+  board — the real reason the panel "never changed". The audit now carries the
+  inverse invariant: no `_Static_assert` anywhere under `esp_link_panel/`.
+- The dead `UINT8_T__G__RxXor` variable.
+
+> Do not guess JSON key names when writing assertions here. The pending masks are
+> `q`, `q2`, `q3`, `q4` — not `pm*`. Read them out of the source.
 
 ### Why this exists
 

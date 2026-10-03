@@ -20,7 +20,7 @@ test that guards it are never separated.
 
 | File | What it is | Why it exists |
 |---|---|---|
-| `host_test_charger.py` | 40 host tests | The safety + contract gate. Runs on a PC, no board needed. |
+| `host_test_charger.py` | 49 host tests | The safety + contract gate. Runs on a PC, no board needed. |
 | `pid_tuning_sim.py` | Charge simulator | Produces the *numbers* the PID design is justified with. |
 | `README.md` | This file | — |
 

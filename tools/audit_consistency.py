@@ -1172,6 +1172,13 @@ def sec_link():
 
 
 # ================================================= 11. docs vs the code
+def fa(n):
+    """[EN] Persian-digit form of an integer, because the docs are written with
+       Persian numerals and a plain str() would never match.
+       [FA] شکل فارسی عدد؛ اسناد با رقم فارسی نوشته شده‌اند."""
+    return str(n).translate(str.maketrans("0123456789", "\u06f0\u06f1\u06f2\u06f3\u06f4\u06f5\u06f6\u06f7\u06f8\u06f9"))
+
+
 def sec_docs():
     """[EN] Documentation drifts the same way duplicated constants do, and it is
        worse: a stale number in a README is what the next person trusts. Every
@@ -1208,6 +1215,14 @@ def sec_docs():
     # [FA] هر ورودی رشته‌ای است که بیرون از ردیف تاریخچه نباید بیاید.
     forbidden = [
         (r"\[xor:u8\]", "the frame trailer is a 16-bit CRC now, not XOR-8"),
+        # [EN] Found 2026-10-03: the EspLink README was still instructing the
+        #      ESP author to build "AA 55 type len payload XOR". The bracket
+        #      form above did not match prose. A spec that tells you to build
+        #      the wrong frame is worse than no spec.
+        # [FA] ۲۰۲۶-۱۰-۰۳: برگهٔ EspLink هنوز به نویسندهٔ ESP می‌گفت قاب
+        #      «AA 55 type len payload XOR» بساز. شکل براکتی بالا متن روان را
+        #      نمی‌گرفت. سندی که قاب غلط را دستور بدهد از نبودنش بدتر است.
+        (r"len\s+payload\s+XOR", "a README still describes the pre-v2 XOR frame as the one to build"),
         (r"TLM_LIVE payload layout \((?!%d)" % tlm,
          "the TLM layout heading states a size the firmware no longer sends"),
         (r"76000/6800", "the 24 V ratio was measured on the board as 68000/6800"),
@@ -1243,6 +1258,56 @@ def sec_docs():
     ok(not bad24,
        f"a 24 V divider row in the BSP README disagrees with the code ({top24})",
        "; ".join(bad24))
+
+    # [EN] Documented numbers that the 2026-10-03 session created. Each one was
+    #      wrong in a README at some point in this project's life, and each was
+    #      believed because it was written down. They are checked against the
+    #      code, the same as everything else above.
+    # [FA] عددهایی که جلسهٔ ۲۰۲۶-۱۰-۰۳ ساخت. هرکدام یک‌بار در یک README غلط بوده
+    #      و چون نوشته شده بود، باور شده بود. مثل بقیه در برابر کد سنجیده می‌شوند.
+    params = code(ESP_H, "ESPLINK_PARAM_COUNT")
+    nvm_ver = code(NVM_H, "ESP_LINK_NVM_VERSION")
+    nvm_max = code(NVM_H, "ESP_LINK_NVM_ENTRY_MAX")
+
+    esplink_md = docs.get("Firmware/Modules/EspLink/README.md", "")
+    ok(f"نسخهٔ {fa(nvm_ver)} با {fa(nvm_max)} جای" in esplink_md,
+       f"the EspLink README must state the live NVM record (v{nvm_ver}, {nvm_max} slots)")
+
+    # [EN] Not "does the number appear somewhere". That form passed a mutation
+    #      that changed one of the two places the front page states the
+    #      parameter count, because the other place still had it - the same
+    #      trap the 24 V divider rows fell into above. EVERY place that states
+    #      a count must state the live one.
+    # [FA] نه «آیا عدد جایی هست». آن شکل، موتیشنی را که یکی از دو جای ذکر تعداد
+    #      پارامتر را عوض می‌کرد پاس می‌داد، چون جای دیگر هنوز عدد را داشت -
+    #      همان دامی که ردیف‌های مقسم ۲۴ولت بالاتر در آن افتادند.
+    root_md = docs.get("README.md", "")
+    stated = re.findall(r"([\u06f0-\u06f9]+)\s*پارامتر", root_md)
+    wrong = [v for v in stated if v != fa(params)]
+    ok(stated and not wrong,
+       f"every parameter count on the front page must be the live one ({params})",
+       f"found {wrong}" if wrong else "the front page never states it")
+    vers = re.findall(r"NVM\s*v(\d+)", root_md)
+    badv = [v for v in vers if int(v) != nvm_ver]
+    ok(vers and not badv,
+       f"every NVM version on the front page must be the live one (v{nvm_ver})",
+       f"found v{badv}" if badv else "the front page never states it")
+
+    # [EN] The flash ceiling and the one setting that keeps the image inside it.
+    #      The linker script is the authority for the size; FreeRTOSConfig for
+    #      the switch; CubeIDE/README.md is where a human goes looking.
+    # [FA] سقف فلش و تنها تنظیمی که ایمیج را داخلش نگه می‌دارد.
+    ld = (ROOT / "CubeIDE/STM32CubeIDE/STM32F103C8TX_FLASH.ld").read_text()
+    m = re.search(r"FLASH\s*\(rx\)\s*:\s*ORIGIN\s*=\s*\S+\s*,\s*LENGTH\s*=\s*(\d+)K", ld)
+    flash_k = int(m.group(1)) if m else None
+    cube_md = docs.get("CubeIDE/README.md", "")
+    ok(flash_k is not None and (f"**{fa(flash_k)}K**" in cube_md or f"{flash_k}K" in cube_md),
+       f"CubeIDE/README.md must state the real FLASH size ({flash_k}K)")
+    frtc = (ROOT / "CubeIDE/Core/Inc/FreeRTOSConfig.h").read_text()
+    timers_off = bool(re.search(r"#define\s+configUSE_TIMERS\s+0\b", frtc))
+    ok(timers_off == ("configUSE_TIMERS 0" in cube_md or "configUSE_TIMERS` 0" in cube_md
+                      or "`configUSE_TIMERS 0`" in cube_md),
+       "CubeIDE/README.md must agree with FreeRTOSConfig.h about software timers")
 
 
 
