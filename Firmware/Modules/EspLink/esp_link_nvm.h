@@ -60,7 +60,7 @@
  *      (v1.17), v6/v7 = 98 slots incl. the fifteen three-stage PID ids
  *      83..97 (v1.22/v1.23), v8 = 93 slots incl. the ten
  *      two-loop CC/CV PID ids 83..92 (v1.24 deleted the redundant third
- *      gain row), v9 = CURRENT: 108 slots incl. the fifteen charger
+ *      gain row), v9 = 108 slots incl. the fifteen charger
  *      limits/timer/gain ids 93..107 (v1.28),
 
  *      v10 = CURRENT: 122 slots incl. the eleven imbalance scenario ids
