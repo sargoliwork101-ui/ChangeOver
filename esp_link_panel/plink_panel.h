@@ -198,7 +198,7 @@ input:disabled{opacity:.38;cursor:not-allowed}
 .srv .sb{min-height:30px;padding:3px 10px}
 tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr.rbd{background:rgba(251,94,106,.08)}
 </style></head><body>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 9a6f01c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 4ae57d2</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -242,22 +242,28 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 <label>Kp (‰ بر آمپر)<input type="number" id="q83" step="5" min="0" max="20000"><span class="lb" id="a83">—</span></label>
 <label>Ki<input type="number" id="q84" step="50" min="0" max="20000"><span class="lb" id="a84">—</span></label>
 <label>Kd<input type="number" id="q85" step="10" min="0" max="20000"><span class="lb" id="a85">—</span></label>
-<label>نرخ صعود (m‰/s)<input type="number" id="q86" step="10" min="10" max="20000"><span class="lb" id="a86">—</span></label>
-<label>نرخ نزول (m‰/s)<input type="number" id="q87" step="10" min="10" max="20000"><span class="lb" id="a87">—</span></label>
+<label>نرخ صعود (هزارمِ‌پرمیل در ثانیه)<input type="number" id="q86" step="10" min="10" max="20000"><span class="lb" id="a86">—</span></label>
+<label>نرخ نزول (هزارمِ‌پرمیل در ثانیه)<input type="number" id="q87" step="10" min="10" max="20000"><span class="lb" id="a87">—</span></label>
 </div>
 <div class="sec">حلقهٔ ولتاژ — CV (Absorb) <span class="lb">· پیش‌فرض ۵۰ / ۱۸۰۰۰ / ۰ / ۱۰ / ۱۰۰۰ · نرخ صعود = کلید «رشد کندتر Absorb»</span></div>
 <div class="bqr">
 <label>Kp (‰ بر ولت)<input type="number" id="q88" step="10" min="0" max="20000"><span class="lb" id="a88">—</span></label>
 <label>Ki<input type="number" id="q89" step="500" min="0" max="20000"><span class="lb" id="a89">—</span></label>
 <label>Kd<input type="number" id="q90" step="10" min="0" max="20000"><span class="lb" id="a90">—</span></label>
-<label>نرخ صعود (m‰/s)<input type="number" id="q91" step="5" min="10" max="20000"><span class="lb" id="a91">—</span></label>
-<label>نرخ نزول (m‰/s)<input type="number" id="q92" step="10" min="10" max="20000"><span class="lb" id="a92">—</span></label>
+<label>نرخ صعود (هزارمِ‌پرمیل در ثانیه)<input type="number" id="q91" step="5" min="10" max="20000"><span class="lb" id="a91">—</span></label>
+<label>نرخ نزول (هزارمِ‌پرمیل در ثانیه)<input type="number" id="q92" step="10" min="10" max="20000"><span class="lb" id="a92">—</span></label>
 </div>
 <div id="pw" style="margin:6px 0 0"></div>
-<div class="bqr"><button class="sb sb2" onclick="pdef()">بازگردانی پیش‌فرض کارخانهٔ PID</button></div>
 </div>
 <div class="cd">
-<div class="hd"><b>بازگردانی پیش‌فرض کارخانه</b><span class="lb">· همهٔ پارامترهای شارژ، فیلتر، PID و آلارم را به مقدار کارخانه برمی‌گرداند و همان‌ها را ذخیره می‌کند</span></div>
+<!-- [EN] v1.38 (user order: \"why two factory-restore keys on the charge
+     page? isn't one enough?\") - the PID-only button is gone; this single
+     one restores the WHOLE charger scope (profile 20-26, PID 83-92 and
+     limits 93-107 - the limits restore lost its own key when the table
+     was deleted) and the caption says exactly that.
+     [FA] v1.38 (دستور کاربر: «چرا دو تا کلید؟») - کلید جداگانهٔ PID رفت؛
+     همین یکی کل محدودهٔ شارژر را برمی‌گرداند. -->
+<div class="hd"><b>بازگردانی پیش‌فرض کارخانه</b><span class="lb">· مقادیر پروفایل شارژ (۲۰-۲۶)، ضرایب PID (۸۳-۹۲) و حدهای شارژر (۹۳-۱۰۷) را به کارخانه برمی‌گرداند؛ به آلارم‌ها، فیلترها و سناریوها دست نمی‌زند</span></div>
 <div class="bqr"><button class="sb sb2" onclick="qdef()">بازگردانی پیش‌فرض کارخانه</button></div>
 </div>
 </div>
@@ -557,7 +563,7 @@ function formulas(t,p){
  $('ff').textContent=`I_filtered = convert( average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( raw counts ) ) )`;}
 function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>hn(c)){s.u.shift();s.f.shift();}});}}
 function qfill(){if(!D||!D.p)return;for(const id of [7,8]){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!(D.q&(1<<id)))a.textContent=D.p[id]==null?'—':D.p[id];}}
-function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{$('q'+x[0]).value=x[1];send(x[0],x[1]);});qgraph();}
+function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{const e=$('q'+x[0]);if(e)e.value=x[1];send(x[0],x[1]);});pdef();ldef();qgraph();}
 /* ===== v1.14: نمودار مراحل شارژ — مقدار هر خط از فیلد تایپ‌نشده/متفاوت با مقدار اعمال‌شده می‌آید (پیش‌نمایش خط‌چین) ===== */
 const QDEF=[14400,14300,14600,13500,12800,650,50];
 /* [EN] v1.33: the q20..q26 input boxes went when the duplicate profile form
@@ -679,15 +685,15 @@ const PX={
  83:['Kp جریان','واکنش فوری حلقهٔ جریان به خطا. زیاد یعنی تند و لرزان.'],
  84:['Ki جریان','خطای انباشته را جمع می‌کند؛ همان چیزی که در نهایت جریان را دقیقاً روی هدف می‌نشاند.'],
  85:['Kd جریان','واکنش به سرعت تغییر. صفر است چون اندازه‌گیری نویز دارد و D نویز را تقویت می‌کند.'],
- 86:['نرخ صعود جریان','چقدر سریع اجازه دارد duty را بالا ببرد.'],
- 87:['نرخ نزول جریان','چقدر سریع اجازه دارد پایین بیاورد؛ بالاتر یعنی ترمز تندتر.'],
+ 86:['نرخ صعود جریان','سقف سرعت بالارفتن duty. واحد: هزارمِ‌پرمیل در ثانیه - ۱۰۰۰ یعنی ۱ پرمیل‌برثانیه (رفتن از صفر تا سقف، ۱۰۰۰ ثانیه طول می‌کشد).'],
+ 87:['نرخ نزول جریان','سقف سرعت پایین‌آمدن duty؛ بالاتر یعنی ترمز تندتر. واحد همان هزارمِ‌پرمیل در ثانیه است (۱۰۰۰ = ۱‰/s)؛ معمولاً باید از نرخ صعود تندتر باشد.'],
  88:['Kp ولتاژ','همان Kp ولی برای حلقهٔ ولتاژ. عمداً کوچک است تا نویز ولتاژ پک تقویت نشود.'],
  89:['Ki ولتاژ','انباشت خطای ولتاژ؛ بزرگ‌ترین عامل کم‌کردن اورشوت.'],
  90:['Kd ولتاژ','صفر، به همان دلیل حلقهٔ جریان.'],
- 91:['نرخ صعود ولتاژ','عمداً خیلی کم است تا موقع تحویل CC به CV پرش نکند.'],
- 92:['نرخ نزول ولتاژ','اجازهٔ کاهش سریع وقتی ولتاژ از هدف رد می‌شود.'],
+ 91:['نرخ صعود ولتاژ','سقف سرعت بالارفتن duty در حلقهٔ ولتاژ؛ عمداً کوچک است تا هنگام تحویل CC به CV پرش نکند. واحد: هزارمِ‌پرمیل در ثانیه (۱۰۰۰ = ۱‰/s).'],
+ 92:['نرخ نزول ولتاژ','سقف سرعت کاهش duty وقتی ولتاژ از هدف رد می‌شود. واحد: هزارمِ‌پرمیل در ثانیه (۱۰۰۰ = ۱‰/s).'],
  93:['سقف زمان Absorb','بیشترین مدت مجاز Absorb (ms). صفر = بدون سقف. جزئیات کامل در تولتیپ تراشهٔ زیر نمودار.'],
- 94:['جریان مسلح‌سازی سقف','شمارش سقف Absorb از این جریان به پایین مسلح می‌شود (mA).'],
+ 94:['جریان Arm سقف زمانی','سقف زمانی Absorb وقتی شروع به شمردن می‌کند که جریان از این حد پایین‌تر بیاید؛ به آن Arm شدن سقف می‌گویند. واحد: mA.'],
  95:['کمینهٔ مدت Absorb','Absorb دست‌کم این مدت ادامه می‌یابد (ms). صفر = بدون نگه‌داشت اجباری.'],
  96:['پایداری Taper','جریان باید این مدت پیوسته زیر «جریان پایانی» بماند تا شارژ تمام اعلام شود (ms).'],
  97:['گام تغییر duty','بیشترین تغییر duty در هر تیک ۵۰ میلی‌ثانیه‌ای PID، به پرمیل (‰).'],
@@ -716,11 +722,11 @@ const PX={
 //   هشدار: این سطرها کامنت JS با نشانهٔ «//» هستند؛ ناظر ثابتی، نشانه‌های
 //   مارک‌آپ را فقط در این شکلِ کامنت می‌پذیرد (قاعدهٔ «در کامنت HTML ننویس»).
 const PXT={
- 93:'از وقتی جریان باتری زیر آستانهٔ مسلح‌سازی بیاید، مرحلهٔ Absorb حداکثر این‌قدر ادامه می‌یابد و بعد شارژ تمام اعلام می‌شود. بیشتر = شارژ کامل‌تر ولی طولانی‌تر. صفر = بدون سقف زمانی؛ فقط نگه‌داشتِ جریانِ پایین (Taper) پایان می‌دهد. واحد: میلی‌ثانیه (۶۰۰۰۰ = یک دقیقه).',
+ 93:'از وقتی جریان باتری زیر آستانهٔ Arm بیاید، مرحلهٔ Absorb حداکثر این‌قدر ادامه می‌یابد و بعد شارژ تمام اعلام می‌شود. بیشتر = شارژ کامل‌تر ولی طولانی‌تر. صفر = بدون سقف زمانی؛ فقط نگه‌داشتِ جریانِ پایین (Taper) پایان می‌دهد. واحد: میلی‌ثانیه (۶۰۰۰۰ = یک دقیقه).',
  95:'کمینهٔ مدت Absorb: حتی اگر جریان خیلی زود افت کند، این مرحله دست‌کم این‌قدر ادامه دارد تا باتری زود ناتمام رها نشود. صفر = بدون نگه‌داشت اجباری. واحد: میلی‌ثانیه.',
  96:'شرط اعلام «شارژ کامل»: جریان باید این مدتِ پیوسته زیر «جریان پایانی» بماند. بیشتر = محافظت در برابر نوسان لحظه‌ای ولی پایانِ دیرتر؛ کمتر = اعلام سریع‌تر ولی یک ریزش گذرا می‌تواند شارژ را زود تمام کند. واحد: میلی‌ثانیه.',
- 97:'گام تغییر duty PID: بیشترین تغییری که حلقهٔ کنترل در هر تیک ۵۰ میلی‌ثانیه‌ای می‌تواند روی duty (پرمیل ‰) اعمال کند. بیشتر = واکنش تندتر به خطا ولی احتمال تندزدن؛ کمتر = حرکت نرم‌تر و کندتر. راهنما: ۸ پیش‌فرض است؛ برای باتری حساس ۳ تا ۵.',
- 98:'hysteresis خروجی PID (میلی‌پرمیل): تا تقاضای جدید کمتر از این‌قدر با duty کنونی فاصله نگیرد، خروجی دست‌نخورده می‌ماند؛ لرزش لحظه‌ای PWM را می‌خواباند. بیشتر = سکون بیشتر و پاسخ گاف‌تر؛ کمتر = تعقیب دقیق‌تر ولی duty پرش‌دارتر. کمی بالاتر از نویز اندازه‌گیری بگذارید.',
+ 97:'قانون این است که PID فقط «هدف» duty را حساب می‌کند، نه اینکه مستقیم اعمالش کند. این عدد «سرعت مجازِ رفتن به‌سوی آن هدف» است: در هر تیک ۵۰ میلی‌ثانیه، duty نمی‌تواند بیش از این‌قدر (پرمیل ‰) جابه‌جا شود. چرا لازم است؟ چون تقاضای PID با نویز یا تغییر ناگهانی می‌تواند بپرد و سخت‌افزار با جهش جریان و اورشوت جواب می‌دهد؛ پس PID هدف را می‌گوید و این محدودکننده می‌گوید با چه سرعتی به آنجا برسیم. بیشتر = تعقیب تندِ PID؛ کمتر = حرکت نرم‌تر و پایدارتر (پیش‌فرض ۸؛ برای باتری حساس ۳ تا ۵).',
+ 98:'PID هر ۵۰ میلی‌ثانیه یک تقاضای تازه می‌دهد که با نویز اندازه‌گیری مدام کمی بالا-پایین می‌پرد. hysteresis می‌گوید: تا اختلاف تقاضا با duty اعمالی از این مقدار (میلی‌پرمیل) کمتر است، خروجی همان می‌ماند؛ یعنی PID همیشه فعال است و این فقط به جنبش‌های ریز بی‌اعتناست تا PWM لرزش ریز پیدا نکند (باقی‌مانده داخلی نگه داشته می‌شود تا چیزی گم نشود). بیشتر = سکون بیشتر و دقت کمتر؛ کمتر = تعقیب دقیق‌تر ولی لرزان‌تر. کمی بالاتر از نویز اندازه‌گیری بگذارید.',
  99:'پنجرهٔ فیلتر ولتاژ باتری: میانگین نمایی روی N نمونهٔ اخیر؛ ثابت زمانی = N × ۵۰ میلی‌ثانیه. ۱ = فیلتر خاموش (ولتاژ خام مستقیم به PID)، بیشتر = ولتاژ آرام‌تر ولی پاسخ دیرتر (پیش‌فرض ۳۲ یعنی ۱٫۶ ثانیه). برای خط پرنویز عدد بزرگ‌تر، برای واکنش سریع کوچک‌تر.',
  101:'گین پشتیبان جریان: وقتی جریان از سقف Bulk max رد شود، سقف duty را به نسبت تجاوز پایین می‌کشد — واحد: پرمیلِ برش به ازای هر آمپر تجاوز. بیشتر = ترمز محکم‌تر (واکنش تند به جهش جریان)؛ کمتر = واکنش ملایم‌تر. صفر = این پشتیبان کاملاً خاموش است. جایگزین PID نیست؛ فقط یک «ترمز اضطراریِ» لایهٔ بالاست.',
  102:'گین پشتیبان ولتاژ: بالای «ولتاژ پشتیبان سخت»، سقف duty را به نسبت تجاوز پایین می‌کشد — واحد: پرمیلِ برش به ازای هر ولت تجاوز (مقیاس به‌ازای میلی‌ولت به‌صورت داخلی). بیشتر = فرمان قطع‌کنندهٔ سریع برای اورولتاژ؛ کمتر = نرم‌تر. صفر = خاموش؛ آنگاه فقط سقف سخت مطلق جلوی ولتاژ را می‌گیرد.',
@@ -794,23 +800,28 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
  const V=mv=>(mv/1000).toFixed(2);
  /* برچسب‌ها جدا جمع و با کمینهٔ فاصله رندر می‌شوند تا در ناحیه‌های باریک در هم نروند */
  const ZL=[],LL=[],PL=[];
- /* [EN] v1.37 (user order): EVERY horizontal voltage-limit line gets its
-    Persian name and value on the LEFT of the plot. The names come from
+ /* [EN] v1.38 (user follow-up): the Persian left label carries ONLY the
+    name - number+unit live on the right English label; it hangs BELOW its
+    line (never above); and each line gets exactly ONE Persian label. Zone
+    names float at the CENTER of their band so a band name can never look
+    like a second label for the boundary line touching it. Names come from
     PX (the same source the chips and help bubbles read), so a rename can
-    never drift in two places. These left labels are display mirrors:
-    editing stays with the English labels on the right.
-    [FA] v1.37 (دستور کاربر): هر خط افقیِ حد ولتاژ، نام و مقدار فارسی‌اش
-    را سمت چپ نمودار می‌گیرد. نام‌ها از PX می‌آیند (همان منبع تراشه‌ها و
-    حباب‌های کمک) تا تغییر نام در دو جا از هم کپی نشود. برچسب‌های چپ فقط
-    نمایشی‌اند؛ ویرایش همان برچسب‌های انگلیسیِ سمت راست است. */
+    never drift in two places. Left labels are display mirrors: editing
+    stays with the English labels on the right.
+    [FA] v1.38 (دستور پیگیری): برچسب فارسیِ چپ فقط نام است - عدد و واحد
+    همان برچسب انگلیسی سمت راست؛ زیر خط خودش می‌آویزد (هرگز بالای آن نیست)
+    و هر خط دقیقاً یک برچسب فارسی دارد. نام ناحیه‌ها هم وسط ناحیهٔ خودشان
+    شناور است تا اسم ناحیه، دومین برچسب خط مرزیِ مجاور به نظر نرسد. نام‌ها
+    از PX می‌آیند (همان منبع تراشه‌ها و حباب‌های کمک) تا تکرار دوبرابری
+    نشود. برچسب‌های چپ فقط نمایشی‌اند؛ ویرایش همان انگلیسی سمت راست است. */
  const pfn=id=>(PX[id]?PX[id][0]:(EVN[id]||''));
  const zone=(mv1,mv2,fill,txt,c)=>{const y1=Y(Math.max(mv1,mv2)),y2=Y(Math.min(mv1,mv2));
-  if(txt)ZL.push({y:y1+10,txt,c});
+  if(txt)ZL.push({y:Math.round((y1+y2)/2)+3,txt,c});
   return`<rect x="${X0}" y="${y1}" width="${X1-X0}" height="${Math.max(3,y2-y1)}" fill="${fill}"/>`;};
  const aln=(mv,c)=>`<line x1="${X0}" y1="${Y(mv)}" x2="${X1}" y2="${Y(mv)}" stroke="${c}" stroke-width="1.8"/>`;
  const pvln=(o,c)=>o.p?`<line x1="${X0}" y1="${Y(o.v)}" x2="${X1}" y2="${Y(o.v)}" stroke="${c}" stroke-width="1.8" stroke-dasharray="6 4"/>`:'';
  const lbl=(o,c,txt,id)=>{LL.push({y:Y(o.p?o.v:o.d)-4,txt,c,pv:o.p,i:id,val:V(o.d)+'V'});
-  PL.push({y:Y(o.p?o.v:o.d)-4,txt:pfn(id),c,pv:o.p,val:V(o.d)+'V'});};
+  PL.push({y:Y(o.p?o.v:o.d)+10,txt:pfn(id),c,pv:o.p});};
  const put=(A,x,anchor,fs)=>{A.sort((p,q2)=>p.y-q2.y);let last=4;
   return A.map(o=>{const yc=Math.min(Math.max(o.y,14),H-10),y=Math.max(last+LBL_GAP,yc),sh=y-yc>3;last=y;
    return (sh?`<line x1="${x}" y1="${yc+3}" x2="${x}" y2="${y-3}" stroke="${o.c}" stroke-width="1" opacity=".6"/>`:'')+
@@ -835,7 +846,7 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
  s+=zone(q.r.d,lo,'rgba(99,162,255,.11)','زیر Reentry — شارژ دوباره از Bulk','#9ac8ff');
  s+=`<line x1="${X0}" y1="${Y(15000)}" x2="${X1}" y2="${Y(15000)}" stroke="#ff6873" stroke-width="1.2" stroke-dasharray="3 4"/>`;
  LL.push({y:Y(15000)-4,txt:'Hard cutoff 15V',c:'#ff6873'});
- PL.push({y:Y(15000)-4,txt:'سقف سخت ۱۵ ولت',c:'#ff6873'});
+ PL.push({y:Y(15000)+10,txt:'سقف سخت',c:'#ff6873'});
  /* [EN] Two safety ceilings that were only ever numbers in a card: on the
        voltage axis they belong, and now they are set from it. Down-only on
        the board, so the window in EVB can never raise them.
@@ -845,7 +856,7 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
   if(mv==null||mv<=lo||mv>=hi)return;
   s+=`<line x1="${X0}" y1="${Y(mv)}" x2="${X1}" y2="${Y(mv)}" stroke="${EVV[id][0]}" stroke-width="1.3" stroke-dasharray="5 3"/>`;
   LL.push({y:Y(mv)-4,txt:EVV[id][1],c:EVV[id][0],i:id,val:V(mv)+'V'});
-  PL.push({y:Y(mv)-4,txt:pfn(id),c:EVV[id][0],val:V(mv)+'V'});});
+  PL.push({y:Y(mv)+10,txt:pfn(id),c:EVV[id][0]});});
  s+=aln(q.o.d,'#fb923c')+pvln(q.o,'#fb923c');lbl(q.o,'#fb923c','Over',22);
  s+=aln(q.a.d,'#f7c13c')+pvln(q.a,'#f7c13c');lbl(q.a,'#f7c13c','Absorb',20);
  s+=aln(q.e.d,'#e8a33d')+pvln(q.e,'#e8a33d');lbl(q.e,'#e8a33d','Absorb enter',21);
@@ -1614,7 +1625,7 @@ ${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" 
 bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{const s=$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB');if(L)L.disabled=s;if(A)A.disabled=!s;if(B)B.disabled=!s;};$('wSw').onchange();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
 /* ---------- کنترل دستی duty دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کنترلها داخل کارت هر شارژر (از v1.16p)؛
  * ---------- قرارداد ایمنی بخش 5.2 اسپک بدون تغییر: deadman ۱۰ ثانیه، سقف کانال (p13/p14)،
- * ---------- JIT با مسلح مجدد با ارسال دوبارهٔ همان duty. هیچ ضریبی اینجا ارسال نمی‌شود. ---------- */
+ * ---------- JIT با Arm مجدد با ارسال دوبارهٔ همان duty. هیچ ضریبی اینجا ارسال نمی‌شود. ---------- */
 const manOn=()=>!!(D&&((D.fl&32)||D.p[19]===1));
 async function qset(n){if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');
  const v=gv('qm'+n);if(v==null)return alert('عدد duty (٪) را وارد کنید.');if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');

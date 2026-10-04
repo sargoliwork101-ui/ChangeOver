@@ -2251,12 +2251,18 @@ def test_ui_mirror_v116():
           and all(f'id="q{i}"' not in s2part for i in range(38, 83))
           and all(f'id="q{i}"' not in s2part for i in range(83, 93)),
           "s2 (supervision & safety) keeps only the 27..37 thresholds + its own guard/defaults")
-    check("PID دوحلقه‌ای شارژ (CC/CV)" in s3part and "pdef()" in s3part and 'id="pw"' in s3part
+    # [EN] v1.38 (user order: one factory-restore key is enough): the
+    #      PID-only button was deleted and the surviving qdef() restores the
+    #      whole charger scope - the section pin follows that consensus.
+    # [FA] v1.38 (دستور کاربر: یک کلید بازگردانی کافی است) - کلید جدای PID
+    #      حذف شد و qdef بازمانده کل محدودهٔ شارژر را برمی‌گرداند.
+    check("PID دوحلقه‌ای شارژ (CC/CV)" in s3part and 'onclick="qdef()"' in s3part and 'id="pw"' in s3part
+          and 'onclick="pdef()"' not in s3part
           and all(f'id="q{i}"' in s3part for i in range(83, 93))
           and all(f'id="a{i}"' in s3part for i in range(83, 93))
           and all(f'id="q{i}"' not in s3part for i in range(27, 83))
           and all(f'id="q{i}"' not in s3part for i in range(20, 27)),
-          "s3 holds the two-loop PID card: all 10 ids 83..92 with their applied-value labels, the guard box and factory defaults")
+          "s3 holds the two-loop PID card: all 10 ids 83..92 with their applied-value labels, the guard box and exactly ONE factory-restore key (v1.38: the user merged the two)")
     check("پشتیبان‌گیری" in s4part and 'id="xim"' in s4part
           and all(f'id="q{i}"' not in s4part for i in range(27, 93)),
           "s4 holds only the single backup card")
