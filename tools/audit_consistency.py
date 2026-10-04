@@ -1461,6 +1461,40 @@ def _preview_server_behaviour(n_fields):
 
 
 # ================================================================= report
+def sec_cubeide_includes():
+    """[EN] Every MODULE_* token that modules_enable.h switches on (value 1)
+       must be backed by a Firmware/Modules/<Name> folder AND that folder must
+       sit on the CubeIDE include path (.cproject), or the target build dies
+       with 'fatal error: <name>.h: No such file' on the developer's machine
+       while every host check stays green (the host compiler finds headers by
+       a different rule). v1.43: imbalance.h was included by task_control.c
+       but Firmware/Modules/Imbalance was never added to .cproject.
+       [FA] هر توکن MODULE_ِ روشن در modules_enable.h باید پوشه‌اش روی مسیر
+       include پروژهٔ CubeIDE باشد، وگرنه بیلد هدف روی سیستم توسعه‌دهنده با
+       «No such file» می‌میرد در حالی که همهٔ تست‌های هاست سبزند (کامپایلر
+       هاست هدرها را به قاعدهٔ دیگری پیدا می‌کند). v1.43: همین باگ برای
+       imbalance.h اتفاق افتاد."""
+    ena = read("Firmware/Config/Inc/modules_enable.h")
+    cproj = read("CubeIDE/STM32CubeIDE/.cproject")
+    enabled = re.findall(r"#define\s+MODULE_(\w+)\s+1(?:u)?\b", ena)
+    ok(len(enabled) > 0, "no MODULE_* flags found in modules_enable.h")
+    missing = []
+    for mod in enabled:
+        folder = {"ESP": "EspLink"}.get(mod, mod[0] + mod[1:].lower().replace("_", ""))
+        # tolerate historical casings: find any case-insensitive folder match
+        candidates = list((ROOT / "Firmware" / "Modules").glob("*"))
+        hit = next((c.name for c in candidates
+                    if c.name.lower() == folder.lower()
+                    or c.name.lower() == mod.lower()
+                    or c.name.lower().startswith(folder.lower())), None)
+        if hit is None:
+            missing.append((mod, "no Firmware/Modules folder"))
+            continue
+        if f"../../../Firmware/Modules/{hit}" not in cproj:
+            missing.append((mod, f"folder {hit} missing from .cproject include paths"))
+    ok(not missing, "module enabled but not buildable from CubeIDE", str(missing))
+
+
 def main():
     ids = sec_ids()
     sec_counts()
@@ -1474,6 +1508,7 @@ def main():
     sec_link()
     sec_docs()
     sec_preview()
+    sec_cubeide_includes()
 
     print("whole-program consistency audit")
     print("=" * 72)
