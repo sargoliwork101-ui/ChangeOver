@@ -161,9 +161,12 @@
  *      has to be answered on purpose. v1.43 (user order 2026-10-04, charge
  *      scenario rebuilt into one usable page: definition of full, the mV
  *      ladder moved next to it and the yellow-blink arithmetic shown) is
- *      such an answer: the page needed ~8 KB more than the 208 KB step, so
- *      the step was raised to 224 KB - one deliberate move, not a drift.
- *      216 KB of markup is still ~150 back-to-back TCP writes, well inside
+ *      such an answer, and so is v1.44, which gave the five remaining
+ *      scenario cards the same treatment (what triggers them, the numbered
+ *      settings and the derived numbers the board will actually use): the
+ *      page needed ~16 KB more, so the step went 208 -> 224 -> 256 KB in two
+ *      deliberate moves, each tied to a named user order, not a drift.
+ *      248 KB of markup is still ~170 back-to-back TCP writes, well inside
  *      what send_P does in one call, and PROGMEM is not the scarce resource
  *      here (the sketch uses a fraction of the 1 MB image).
  * [FA] سقف پنل وب، با static_assert در plink_http.h بررسی می‌شود. پنل با یک
@@ -175,9 +178,12 @@
  *      جواب داده شود. نسخهٔ ۱٫۴۳ (دستور کاربر ۲۰۲۶-۱۰-۰۴: کارت سناریوی شارژ
  *      یک صفحهٔ کاربردی شود — تعریف فول، آوردن حد ولتاژ کنارش و نمایش حساب
  *      چشمک زرد) همان جواب است: صفحه حدود ۸ کیلوبایت بیشتر از پلهٔ ۲۰۸ لازم
- *      داشت، پس پله آگاهانه به ۲۲۴ کیلوبایت رفت — یک حرکت عمدی، نه رانش.
+ *      داشت، و نسخهٔ ۱٫۴۴ همین کار را برای پنج کارت سناریوی باقی‌مانده کرد
+ *      (شرط ورود، تنظیم‌های شماره‌دار و اعداد محاسبه‌شده‌ای که برد به‌کار
+ *      می‌برد) که ~۱۶ کیلوبایت دیگر خواست؛ پس پله در دو حرکت عمدی از ۲۰۸ به
+ *      ۲۲۴ و بعد ۲۵۶ کیلوبایت رفت — هر دو پای یک دستور مشخص، نه رانش.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    229376u
+#define ESP_PANEL_HTML_MAX_BYTES    262144u
 
 /* ==================== Parser States ==================== */
 typedef enum

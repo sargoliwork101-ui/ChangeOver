@@ -14,6 +14,7 @@ the real controls and assert on what happens.
 | file | what it proves |
 |---|---|
 | `host_test_panel_click.js` | the click-to-edit operating table: a cell opens an editor, the editor carries the raw value, Enter commits, Escape does not, a telemetry re-render does not delete the field being typed into, a clamped value is visible, and the read-only derived cell is inert |
+| `host_test_scenario_cards.js` | the six scenario cards (v1.43/v1.44): each card explains what triggers it and is split into numbered sections, and every derived line is the number the board will really use — enter/exit thresholds, red/green/yellow blink milliseconds, the beep window against its period, the mV/percent translation on the 74/75 ladder, the band table, and the clamp warnings. Values are typed into the real inputs, so a derived line that stops following the user is a failure |
 
 ### Why this exists
 
@@ -41,6 +42,7 @@ node, so the test skips with exit code 0 when jsdom is absent:
 ```sh
 npm install --no-save jsdom
 node esp_link_panel/Tester/host_test_panel_click.js
+node esp_link_panel/Tester/host_test_scenario_cards.js
 ```
 
 `node_modules/` is git-ignored. The test reads `esp_link_panel/panel_preview.html`,
@@ -80,6 +82,7 @@ caught:
 
 | فایل | چه چیزی را اثبات می‌کند |
 |---|---|
+| `host_test_scenario_cards.js` | شش کارت سناریو (۱٫۴۳/۱٫۴۴): هر کارت شرط ورودش را توضیح می‌دهد و بخش‌های شماره‌دار دارد، و هر خط محاسبه‌شده همان عددی است که برد به‌کار می‌برد — آستانهٔ ورود/خروج، میلی‌ثانیهٔ چشمک قرمز/سبز/زرد، پنجرهٔ بوق در برابر دوره‌اش، تبدیل mV↔درصد روی نردبان ۷۴/۷۵، جدول باندها و هشدارهای گیره. مقادیر در ورودی‌های واقعی تایپ می‌شوند، پس خطی که دیگر کاربر را دنبال نکند یعنی تست رد شده |
 | `host_test_panel_click.js` | جدول عملکردِ کلیک-و-ویرایش: خانه ویرایشگر باز می‌کند، ویرایشگر مقدار خام را دارد، Enter ثبت می‌کند، Esc نمی‌کند، بازرسمِ تلمتری فیلدِ در حال تایپ را پاک نمی‌کند، مقدار گیره‌خورده دیده می‌شود، و خانهٔ فقط-خواندنیِ مشتق بی‌اثر است |
 
 ### چرا وجود دارد
