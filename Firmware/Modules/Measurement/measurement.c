@@ -1251,10 +1251,21 @@ void func__Measurement_Run(void)
         uint16_t__raw[BSP_ADC_CHANNEL_VREFINT], CAL_VREFINT_MV);
     UINT32_T__G__MeasVinRawCounts =
         (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_24V_IN];
+    /* [EN] Audit fix 2026-10-03: the V24/V12 slots used to publish the
+       median+average filtered counts under a "RawCounts" name, so the
+       calibration-ground-truth channel lied during sweeps (v1.25 esp_link
+       comment: counts BEFORE any processing). Now all three voltage slots
+       carry the true DMA frame counts, matching Vin; the filtered copy still
+       feeds the mV maths above and the control loops, which are untouched.
+       [FA] اصلاح ممیزی ۲۰۲۶-۱۰-۰۳: قبلاً جای‌های V24/V12 شمارشِ
+       فیلترشدهٔ median+میانگین را با نام «RawCounts» منتشر می‌کردند، پس
+       کانال مبنای کالیبراسیون حین سوییپ دروغ می‌گفت. حالا هر سه جای ولتاژ
+       شمارش واقعی فریم DMA را می‌دهند (مثل Vin)؛ کپی فیلترشده همچنان به
+       ریاضیات mV بالا و حلقه‌های کنترل می‌خورد و دست نخورده است. */
     UINT32_T__G__MeasV24RawCounts =
-        (uint32_t)uint16_t__battery24CountsFiltered;
+        (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT];
     UINT32_T__G__MeasV12RawCounts =
-        (uint32_t)uint16_t__battery12CountsFiltered;
+        (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_12V_BAT];
     UINT32_T__G__MeasVrefintRawCounts =
         (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_VREFINT];
     UINT32_T__G__MeasCurrent2Ma = uint32_t__current2Ma;

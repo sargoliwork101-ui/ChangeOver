@@ -34,6 +34,10 @@
 #include "charger.h"
 #endif
 
+#if MODULE_IMBALANCE
+#include "imbalance.h"
+#endif
+
 #include <stdbool.h>
 
 /* ==================== UI Global Battery Alarm Flag / فلگ سراسری آلارم باتری UI ==================== */
@@ -1416,6 +1420,55 @@ void func__Ui_ScenarioBatLost_Tick(void)
         UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs);
 }
 
+/* ==================== Scenario Imbalance Latch / سناریوی قفل عدم‌توازن ==================== */
+
+#if MODULE_IMBALANCE
+/**
+ * @brief  [EN] Imbalance-latched verdict (scenario 6, user order
+ *         2026-10-04): RED solid (the "this battery is condemned" face -
+ *         distinct from the fast BatLost blink and the slow overvoltage
+ *         pulse), green/yellow off, plus the periodic one-short-beep bore by
+ *         the buzzer's absolute-tick pattern machinery: one beep of id 116
+ *         (default 200 ms) repeating every id 115 (default 1 h), starting at
+ *         the latch moment because the pattern anchors on the first call.
+ *         Must be called every Ui pass while the latch holds.
+ *         [FA] سناریوی قفل عدم‌توازن: قرمز ثابت متمایز از چشمک قطع باتری،
+ *         سبز/زرد خاموش، و بوق کوتاه دوره‌ای با الگوی بوق زمان‌مطلق: یک بوق
+ *         به طول ۱۱۶ تکرارشونده هر ۱۱۵ (پیش‌فرض هر ساعت) از لحظهٔ قفل.
+ */
+void func__Ui_ScenarioImbalance_Tick(void)
+{
+    uint32_t uint32_t__beepPeriodMs;
+
+    /* [EN] Stop foreign blink/beep states first (same hygiene as BatLost).
+       [FA] اول وضعیت‌های چشمک/بوق سناریوهای دیگر ریست شود. */
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
+    func__Ui_ResetChargingYellowBlink();
+
+    func__green(false);
+    func__yellow(false);
+    func__red(true);   /* [EN] solid red while latched / قرمز ثابت در قفل */
+
+    func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_PERIOD_MS, &uint32_t__beepPeriodMs);
+    if (uint32_t__beepPeriodMs != 0u)
+    {
+        uint32_t uint32_t__beepLenMs = IMBAL_DEF_BEEP_LEN_MS;
+
+        (void)func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_LEN_MS, &uint32_t__beepLenMs);
+        (void)func__Ui_Buzzer_Gated(
+            uint32_t__beepPeriodMs,
+            func__Ui_BeepDutyPercent(uint32_t__beepPeriodMs, uint32_t__beepLenMs, 1u, 0u),
+            1u,
+            0u);
+    }
+    else
+    {
+        (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+    }
+}
+#endif
+
 /* ==================== Scenario InputOk / سناریوی ورودی عادی ==================== */
 
 /**
@@ -1753,6 +1806,26 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
     {
         func__Ui_ScenarioBatLost_Tick();
         return;
+    }
+#endif
+
+#if MODULE_IMBALANCE
+    /* [EN] Imbalance latch, priority 3 (after overvoltage, after
+          battery-lost, before every normal scenario): while the verdict
+          holds, the condemned-battery face (solid red + periodic one-short
+          beep, ids 115/116) is the ONLY face shown. It ends only with the
+          automatic reset on battery replacement.
+       [FA] قفل عدم‌توازن با اولویت سوم؛ چهرهٔ «باتری محکوم» تنها چهره است
+          تا ریست خودکار هنگام تعویض باتری. */
+    {
+        imbalance_outputs_t imbalance_outputs_t__imbalance;
+
+        func__Imbalance_GetOutputs(&imbalance_outputs_t__imbalance);
+        if (imbalance_outputs_t__imbalance.bool__latched == true)
+        {
+            func__Ui_ScenarioImbalance_Tick();
+            return;
+        }
     }
 #endif
 

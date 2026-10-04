@@ -330,6 +330,9 @@ static void func__Esp_HandleFrame(void)
 
         UINT16_T__G__TlmSeq = uint16_t__seq;
         UINT8_T__G__TlmFlags = uint8_t__ptr_payload[2];
+        /* [EN] v1.43: byte 3 = imbalance scenario 6 status bits.
+           [FA] بایت ۳: بیت‌های وضعیت سناریوی ۶ عدم‌توازن. */
+        UINT8_T__G__TlmFlags2 = uint8_t__ptr_payload[3];
         UINT32_T__G__LastTlmMs = (uint32_t)millis();
         UINT32_T__G__TlmFrameCount++;
         BOOL__G__TlmSeen = true;

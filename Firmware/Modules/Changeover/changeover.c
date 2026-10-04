@@ -15,6 +15,11 @@
 #include "bsp_gpio.h"
 #include "rtos_time.h"
 #include "cmsis_os2.h"
+#include "modules_enable.h"
+
+#if MODULE_IMBALANCE
+#include "imbalance.h"
+#endif
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -128,6 +133,37 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         BOOL__G__ReconnectTimerActive = false;
         return APP_STATE_T__G__State;
     }
+
+#if MODULE_IMBALANCE
+    /* [EN] Scenario 6 output veto (user order 2026-10-04): while the
+          imbalance verdict is latched AND the block checkbox (param 117) is
+          on, the battery must NEVER be switched onto the output - behave
+          like the critical cut: assert the protect line, sit in SAFE, reset
+          the pending timers. Priority: right after hard faults (a latched
+          battery is a degraded asset, above every normal threshold logic).
+          Charging is NOT affected here (the charger has its own gate and
+          imbalance charging stays allowed until the cycle budget is spent).
+       [FA] وتوی خروجی سناریوی ۶: در قفل + تیک ۱۱۷، باتری هرگز روی خروجی
+          سوئیچ نمی‌شود؛ مثل قطع بحرانی رفتار می‌کنیم (محافظ فعال + SAFE). */
+    {
+        imbalance_outputs_t imbalance_outputs_t__imbalance;
+
+        func__Imbalance_GetOutputs(&imbalance_outputs_t__imbalance);
+        if (imbalance_outputs_t__imbalance.bool__blockOutput == true)
+        {
+            if (BOOL__G__ChangeoverProtectAsserted == false)
+            {
+                func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, true);
+                BOOL__G__ChangeoverProtectAsserted = true;
+            }
+            APP_STATE_T__G__State = APP_STATE_SAFE;
+            BOOL__G__CutTimerActive = false;
+            BOOL__G__ReconnectTimerActive = false;
+            return APP_STATE_T__G__State;
+        }
+    }
+#endif
+
 
     /* [EN] Guard: if Rtos tick conversion yields zero ticks (e.g., tick freq 0),
           do not perform immediate cut/reconnect; preserve state and PB11, reset timers.

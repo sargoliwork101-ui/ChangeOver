@@ -32,6 +32,9 @@
 #if MODULE_UI
 #include "ui_led.h"
 #endif
+#if MODULE_IMBALANCE
+#include "imbalance.h"
+#endif
 
 /* ==================== Parser state / وضعیت پارسر ==================== */
 
@@ -59,7 +62,7 @@ static uint16_t UINT16_T__G__FrameLen;
 static uint16_t UINT16_T__G__PayloadIndex;
 static uint8_t UINT8_T__G__PayloadBuffer[ESPLINK_FRAME_MAX_PAYLOAD];
 static uint16_t UINT16_T__G__Crc;
-static uint8_t  UINT16_T__G__RxCrcLow;
+static uint8_t  UINT8_T__G__RxCrcLow;
 /* [EN] Link health counters. A CRC error used to be indistinguishable from a
    quiet link; now both conditions are countable, and a version mismatch says
    plainly that the two boards were flashed out of step.
@@ -77,6 +80,14 @@ static uint16_t UINT16_T__G__TelemetrySeq = 0u;
 /* [EN] v1.2 (user order 2026-09-23): manual test mode active on the STM.
  * [FA] v1.2 (دستور کاربر): مود تست دستی روی برد فعال است. */
 #define ESPLINK_TLM_FLAG_MANUAL_MODE    0x20u
+
+/* [EN] TLM byte 3 (formerly "reserved") since v1.43: imbalance scenario 6
+ *      status bits so the panel can draw the live face without a GET.
+ * [FA] بایت ۳ فریم TLM از نسخهٔ ۱٫۴۳: بیت‌های وضعیت سناریوی ۶. */
+#define ESPLINK_TLM_FLAG2_IMBAL_EPISODE   0x01u
+#define ESPLINK_TLM_FLAG2_IMBAL_LATCHED   0x02u
+#define ESPLINK_TLM_FLAG2_IMBAL_BLOCK_OUT 0x04u
+#define ESPLINK_TLM_FLAG2_IMBAL_NO_CHARGE 0x08u
 
 /* ==================== Byte packing / بسته‌بندی بایت ==================== */
 
@@ -349,6 +360,22 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                                               uint32_t__appliedValue);
             }
 #endif
+#if MODULE_IMBALANCE
+            /* [EN] Imbalance scenario 6, ids 108..118 (v1.43) + runtime
+                    slots 200..202 (NVM boot replay only; the panel never
+                    sends those, and they are never part of a backup).
+               [FA] سناریوی ۶ عدم‌توازن، ۱۰۸..۱۱۸ + اسلات‌های ۲۰۰..۲۰۲
+                    (فقط پخش NVM هنگام بوت). */
+            if (((uint8_t__paramId >= IMBAL_PARAM_FIRST_ID) &&
+                 (uint8_t__paramId <= IMBAL_PARAM_LAST_ID)) ||
+                ((uint8_t__paramId >= IMBAL_SLOT_FIRST_ID) &&
+                 (uint8_t__paramId <= IMBAL_SLOT_LAST_ID)))
+            {
+                return func__Imbalance_SetParam(uint8_t__paramId,
+                                                uint32_t__value,
+                                                uint32_t__appliedValue);
+            }
+#endif
             return false;
     }
 }
@@ -514,6 +541,19 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
             {
                 return func__Ui_GetAlarmParam(uint8_t__paramId,
                                               uint32_t__value);
+            }
+#endif
+#if MODULE_IMBALANCE
+            /* [EN] Imbalance live read, ids 108..118 + slots 200..202
+                    (the NVM save snapshots its persisted set through here).
+               [FA] خواندن زندهٔ عدم‌توازن + اسلات‌ها (برداشت NVM). */
+            if (((uint8_t__paramId >= IMBAL_PARAM_FIRST_ID) &&
+                 (uint8_t__paramId <= IMBAL_PARAM_LAST_ID)) ||
+                ((uint8_t__paramId >= IMBAL_SLOT_FIRST_ID) &&
+                 (uint8_t__paramId <= IMBAL_SLOT_LAST_ID)))
+            {
+                return func__Imbalance_GetParam(uint8_t__paramId,
+                                                uint32_t__value);
             }
 #endif
             return false;
@@ -815,7 +855,37 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
     UINT16_T__G__TelemetrySeq = (uint16_t)(UINT16_T__G__TelemetrySeq + 1u);
     UINT8_T__A__Payload[uint16_t__cursor] = uint8_t__flags;
     uint16_t__cursor = (uint16_t)(uint16_t__cursor + 1u);
-    UINT8_T__A__Payload[uint16_t__cursor] = 0u;
+    /* [EN] v1.43: the old reserved byte now carries the imbalance scenario 6
+     *      status bits (episode / latched / output-blocked / charge-halted).
+     * [FA] بایت رزرو قدیمی حالا بیت‌های وضعیت سناریوی ۶ را حمل می‌کند. */
+    {
+        uint8_t uint8_t__imbalanceFlags = 0u;
+
+#if MODULE_IMBALANCE
+        {
+            imbalance_outputs_t imbalance_outputs_t__imbalance;
+
+            func__Imbalance_GetOutputs(&imbalance_outputs_t__imbalance);
+            if (imbalance_outputs_t__imbalance.bool__episode != false)
+            {
+                uint8_t__imbalanceFlags |= ESPLINK_TLM_FLAG2_IMBAL_EPISODE;
+            }
+            if (imbalance_outputs_t__imbalance.bool__latched != false)
+            {
+                uint8_t__imbalanceFlags |= ESPLINK_TLM_FLAG2_IMBAL_LATCHED;
+            }
+            if (imbalance_outputs_t__imbalance.bool__blockOutput != false)
+            {
+                uint8_t__imbalanceFlags |= ESPLINK_TLM_FLAG2_IMBAL_BLOCK_OUT;
+            }
+            if (imbalance_outputs_t__imbalance.bool__chargingAllowed == false)
+            {
+                uint8_t__imbalanceFlags |= ESPLINK_TLM_FLAG2_IMBAL_NO_CHARGE;
+            }
+        }
+#endif
+        UINT8_T__A__Payload[uint16_t__cursor] = uint8_t__imbalanceFlags;
+    }
     uint16_t__cursor = (uint16_t)(uint16_t__cursor + 1u);
 
 #if MODULE_MEASUREMENT
@@ -931,24 +1001,33 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
                          UINT32_T__G__MeasVddaMv);
 
+    /* [EN] v1.43 imbalance live block (appended at the very end so every
+     *      earlier index is untouched): |vhigh-vlow| mV, episode count,
+     *      charge cycles since latch. Snap-validity is conveyed by the
+     *      flags byte as usual.
+     * [FA] بلوک زندهٔ عدم‌توازن (انتهای فریم، شاخص‌های قبلی دست‌نخورده). */
+#if MODULE_IMBALANCE
+    {
+        imbalance_outputs_t imbalance_outputs_t__imbalance;
+
+        func__Imbalance_GetOutputs(&imbalance_outputs_t__imbalance);
+        func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                             imbalance_outputs_t__imbalance.uint32_t__imbalanceMv);
+        func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                             imbalance_outputs_t__imbalance.uint32_t__events);
+        func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                             imbalance_outputs_t__imbalance.uint32_t__latchedCycles);
+    }
+#else
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
+#endif
+
     func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_TLM_LIVE,
                             UINT8_T__A__Payload,
                             (uint16_t)ESPLINK_TLM_PAYLOAD_SIZE);
 }
-
-/* ==================== CAL_REFERENCE (v1.3) / کالیبراسیون از پنل ==================== */
-
-/* [EN] Snapshot published by func__EspLink_Run while the RX parse loop runs
- *      (synchronously inside that call; NULL outside it, so no dangling
- *      pointer survives the task period). Only the CAL_REFERENCE handler
- *      below reads it.
- * [FA] snapshot منتشرشده از func__EspLink_Run در زمان اجرای حلقهٔ پارس RX
- *      (همزمان داخل همان فراخوانی؛ بیرون آن تهی است تا اشاره‌گر آویزان از
- *      دورهٔ تسک باقی نماند). فقط هندلر CAL_REFERENCE پایین آن را می‌خواند. */
-static const measurement_snapshot_t *MEASUREMENT_SNAPSHOT_T__G__CalSnap = NULL;
-
-#if MODULE_CHARGER
-#endif /* MODULE_CHARGER */
 
 /* ==================== Frame handling / رسیدگی به فریم ==================== */
 
@@ -986,7 +1065,9 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
                [FA] فریم معتبر: مهر ددمنِ لینک مود دستی تازه می‌شود (v1.2 -
                در مود دستی، ۳ ثانیه سکوت یعنی صفرشدن هر دو duty و بازگشت
                به حالت خودکار). */
+#if MODULE_CHARGER
             func__Charger_NotifyEspLinkActivity();
+#endif /* MODULE_CHARGER */
             uint32_t__value = func__EspLink_GetU32(uint8_t__payload, 1u);
             if (func__EspLink_ApplyParam(uint8_t__payload[0], uint32_t__value,
                                          &uint32_t__appliedValue) != false)
@@ -1009,12 +1090,12 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
     {
         if (uint16_t__payloadLength == 0u)
         {
+#if MODULE_CHARGER
             func__Charger_NotifyEspLinkActivity();
+#endif /* MODULE_CHARGER */
             func__EspLink_SendParamsBulk();
         }
     }
-#if MODULE_CHARGER
-    #endif /* MODULE_CHARGER */
     else
     {
         /* [EN] Unknown message type: ignore and resync on the next frame.
@@ -1131,13 +1212,13 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
             break;
 
         case ESP_LINK_PARSE_WAIT_CRC_LO:
-            UINT16_T__G__RxCrcLow = uint8_t__byte;
+            UINT8_T__G__RxCrcLow = uint8_t__byte;
             ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_CRC_HI;
             break;
 
         case ESP_LINK_PARSE_WAIT_CRC_HI:
             if (((uint16_t)(((uint16_t)uint8_t__byte << 8) |
-                            (uint16_t)UINT16_T__G__RxCrcLow)) == UINT16_T__G__Crc)
+                            (uint16_t)UINT8_T__G__RxCrcLow)) == UINT16_T__G__Crc)
             {
                 func__EspLink_HandleFrame(UINT8_T__G__FrameType,
                                           UINT16_T__G__FrameLen,
@@ -1209,20 +1290,10 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
 
     (void)APP_CONFIG;
 
-    /* [EN] Publish the snapshot for the CAL_REFERENCE handler (the parse
-       loop runs synchronously inside this call; cleared on exit so no
-       dangling pointer survives the task period).
-       [FA] snapshot برای هندلر CAL_REFERENCE منتشر می‌شود (حلقهٔ پارس
-       همزمان داخل همین فراخوانی اجرا می‌شود؛ در خروج پاک می‌شود تا
-       اشاره‌گر آویزان از دورهٔ تسک باقی نماند). */
-    MEASUREMENT_SNAPSHOT_T__G__CalSnap = measurement_snapshot_t__snap;
-
     while (func__BspUart_ReadByte(&uint8_t__byte) != false)
     {
         func__EspLink_ParseByte(uint8_t__byte);
     }
-
-    MEASUREMENT_SNAPSHOT_T__G__CalSnap = NULL;
 
     func__EspLink_SendTelemetry(measurement_snapshot_t__snap,
                                 fault_mask_t__faults);

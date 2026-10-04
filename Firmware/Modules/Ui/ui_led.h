@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "app_types.h"
+#include "modules_enable.h"
 
 /* ==================== Battery voltage mapping constants / ثابت‌های نگاشت ولتاژ باتری ==================== */
 
@@ -523,6 +524,13 @@ void func__Ui_BoardTest_Start(void);
  *         [FA] ورودی عادی: سبز ثابت، قرمز/زرد/بوق خاموش، ساده RTOS.
  */
 void func__Ui_ScenarioInputOk(void);
+
+#if MODULE_IMBALANCE
+/* [EN] Scenario 6 latched face: solid red + periodic one-short beep (ids
+ *      115/116). See ui_led.c for the full behaviour contract.
+ * [FA] چهرهٔ قفل سناریوی ۶: قرمز ثابت + بوق کوتاه دوره‌ای (۱۱۵/۱۱۶). */
+void func__Ui_ScenarioImbalance_Tick(void);
+#endif
 
 /* ==================== Scenario Charging Tick / تیک سناریوی شارژ ==================== */
 

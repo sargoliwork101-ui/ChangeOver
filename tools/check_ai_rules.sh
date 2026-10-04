@@ -148,6 +148,30 @@ echo "[6a2] Regenerate the simulated ESP panel (must be viewable before flashing
 python3 tools/make_panel_preview.py >/dev/null || { echo "FAILED to regenerate esp_link_panel/panel_preview.html"; exit 1; }
 echo "      esp_link_panel/panel_preview.html refreshed"
 
+echo "[6a3] ESP panel inline <script> must parse as JavaScript (blank-page guard)"
+# [EN] v1.34 shipped a page whose entire inline <script> failed to PARSE
+#      (one missing paren in a template edit) and the whole panel went blank -
+#      every gate was green because nothing ever handed the panel's JS to a
+#      JS parser. Extract the inline blocks and node --check them. node is
+#      already a required tool here (tools/panel_preview_server.js).
+# [FA] v1.34 صفحه‌ای می‌داد که کل اسکریپتش PARSE نمی‌شد و پنل سفید می‌ماند -
+#      هیچ گیتی JS پنل را به یک پارسر JS نمی‌سپرد. حالا خود اسکریپت پارس می‌شود.
+if command -v node >/dev/null 2>&1; then
+  python3 - <<'PYJS'
+import re, pathlib
+src = pathlib.Path("esp_link_panel/plink_panel.h").read_text(encoding="utf-8")
+blocks = re.findall(r'<script>([\s\S]*?)</script>', src)
+if not blocks:
+    raise SystemExit("no <script> block found in plink_panel.h")
+pathlib.Path("/tmp/panel_inline_check.js").write_text("\n;\n".join(blocks), encoding="utf-8")
+print(f"      {len(blocks)} inline script block(s) extracted")
+PYJS
+  node --check /tmp/panel_inline_check.js || { echo "  FAIL: panel JavaScript does not parse (blank page on ESP)"; exit 1; }
+  echo "  OK: panel JavaScript parses"
+else
+  echo "  WARN: node not found - JS parse gate skipped (install nodejs)"
+fi
+
 echo "[6b] Whole-program cross-file consistency audit"
 # [EN] Almost every defect in this project has been one number written by hand
 #      in several files, with the copies drifting apart. Each file stays

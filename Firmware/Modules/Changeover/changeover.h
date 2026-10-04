@@ -4,10 +4,14 @@
  *          [FA] ماشین حالت مسیر ورودی یا باتری - فقط با API منطقی BSP.
  *
  * @note    [EN] This module uses ONLY: snapshot.valid, snapshot.v_bat24_mv,
- *              snapshot.input_present, fault_mask, BOOL__G__UiBatteryAlarmIssued.
- *              Time conversion uses rtos_time.h only, tick=1ms assumption is forbidden.
+ *              snapshot.input_present, fault_mask, BOOL__G__UiBatteryAlarmIssued
+ *              and (MODULE_IMBALANCE) the func__Imbalance_GetOutputs() veto
+ *              flag. Time conversion uses rtos_time.h only, tick=1ms
+ *              assumption is forbidden.
  *              Only BSP_GPIO_PROTECT_BATTERY is allowed; PB5/PB7 are forbidden.
- *          [FA] این ماژول فقط از valid، v_bat24_mv، input_present، fault_mask و فلگ UI استفاده می‌کند.
+ *          [FA] این ماژول فقط از valid، v_bat24_mv، input_present، fault_mask،
+ *              فلگ UI و (با ماژول عدم‌توازن) پرچم وتوی GetOutputs استفاده
+ *              می‌کند.
  */
 
 #ifndef CHANGEOVER_H

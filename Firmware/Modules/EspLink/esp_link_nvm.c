@@ -27,12 +27,20 @@
 
 #include <stddef.h>
 
-/* [EN] The save snapshot loop can fill at most ESPLINK_PARAM_COUNT entries:
-   fail the BUILD (not the board) if the table ever outgrows the record.
-   [FA] حلقهٔ عکس‌فوری حداکثر ESPLINK_PARAM_COUNT ورودی پر می‌کند: اگر جدول
-   روزی از رکورد بزرگ‌تر شد، «بیلد» بشکند نه برد. */
-_Static_assert(ESPLINK_PARAM_COUNT <= ESP_LINK_NVM_ENTRY_MAX,
-               "NVM record too small for the param table");
+/* [EN] The save snapshot loop scans the WHOLE id space 0..255 because the
+   imbalance runtime slots 200..202 (v10) persist without being parameters:
+   fail the BUILD (not the board) if the persisted table ever outgrows the
+   record. The theoretical maximum of one-byte ids is 256 and the persisted
+   set is a small subset, so the cap, not the loop bound, governs space.
+   [FA] حلقهٔ عکس‌فوری کل فضای دوبیتی را می‌گرداند چون اسلات‌های
+   زمان‌اجرا بدون پارامتر بودن ذخیره می‌شوند؛ اگر مجموعهٔ ذخیره‌شونده از
+   رکورد بزرگ‌تر شد، «بیلد» بشکند نه برد. */
+_Static_assert((((ESP_LINK_NVM_PERSISTED_ID_MAX_LOW + 1u) +
+                 (ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH -
+                  ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH + 1u - 1u) +
+                 (ESP_LINK_NVM_SLOT_MAX_ID - ESP_LINK_NVM_SLOT_MIN_ID + 1u)) <=
+                (uint32_t)ESP_LINK_NVM_ENTRY_MAX),
+               "NVM record too small for the persisted id set");
 
 /* [EN] v1.28: the record also has to FIT THE FLASH PAGE it is written into,
    and nothing proved that. The slot cap grew from 93 to 108 with the
@@ -94,11 +102,17 @@ bool func__EspLink_NvmParamPersisted(uint8_t uint8_t__paramId)
 {
     /* [EN] v1.17: id 76 (panel-session mute) sits inside the high range
        and is excluded explicitly - it must never survive a reboot.
-       [FA] شناسهٔ ۷۶ داخل بازهٔ بالاست و صریحاً کنار گذاشته می‌شود. */
+       v10 (v1.43): the imbalance runtime slots 200..202 persist too - the
+       episode budget must survive power loss, or a power cycle would be a
+       free verdict eraser.
+       [FA] شناسهٔ ۷۶ گذرا و کنار گذاشته شده است. نسخه۱۰: اسلات‌های
+       زمان‌اجرا عدم‌توازن هم ذخیره می‌شوند تا قطع برق قضاوت را پاک نکند. */
     return ((uint8_t__paramId <= ESP_LINK_NVM_PERSISTED_ID_MAX_LOW) ||
             (((uint8_t__paramId >= ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH) &&
               (uint8_t__paramId <= ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH)) &&
-             (uint8_t__paramId != ESP_LINK_NVM_TRANSIENT_ID_MUTE)));
+             (uint8_t__paramId != ESP_LINK_NVM_TRANSIENT_ID_MUTE)) ||
+            ((uint8_t__paramId >= ESP_LINK_NVM_SLOT_MIN_ID) &&
+             (uint8_t__paramId <= ESP_LINK_NVM_SLOT_MAX_ID)));
 }
 
 /**
@@ -432,8 +446,10 @@ static bool func__EspLink_NvmSaveNow(void)
     uint32_t uint32_t__pageAddress;
     bool bool__chargerSuspended = false;
 
-    for (uint16_t__i = 0u; uint16_t__i < (uint16_t)ESPLINK_PARAM_COUNT;
-         uint16_t__i++)
+    /* [EN] 1-byte id space: 0..255. Anything not persisted or not readable
+       (module off) is skipped in O(1) per id - cheap for a debounced save.
+       [FA] فضای دوبیتی شناسه‌ها؛ موارد غیرماندگار/خاموش O(1) پرش می‌کنند. */
+    for (uint16_t__i = 0u; uint16_t__i < 256u; uint16_t__i++)
     {
         uint32_t uint32_t__value = 0u;
 

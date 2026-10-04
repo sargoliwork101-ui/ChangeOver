@@ -416,7 +416,19 @@ def sec_defaults(ids):
            f"ids {sorted(drawn - seen)} would open an editor with no bounds")
 
         # the split the user asked for, pinned in both directions
+        # [EN] v1.36: the operating table is GONE (user order: it must be
+        #      deleted entirely), so its renderer is now pinned to stay absent
+        #      - the table and its mount point must not creep back in without
+        #      a deliberate decision.
+        # [FA] v1.36: جدول عملکردی کاملاً حذف شد (دستور کاربر) و همین
+        #      غایب‌بودن پین می‌شود تا رندرکننده یا جای نصبش بی‌صدا برنگردد.
         tab = block(P_PAN, "function ctab()")
+        ok(tab == "",
+           "function ctab() must stay deleted - the operating table was removed wholesale",
+           "a ctab() renderer reappeared in plink_panel.h")
+        ok('id="ctb"' not in P_PAN,
+           "the operating-table mount point must stay removed",
+           'id="ctb" is back in the markup')
         # [EN] Check for what makes a cell editable, not for one spelling of
         #      it. The first version looked for "ev(" and a mutation to
         #      "evat(" walked straight past - "evat(" does not contain "ev(".
@@ -483,16 +495,18 @@ def sec_defaults(ids):
         #      دستور کاربر از صفحهٔ شارژرها رفته، پس دنبال‌کردنش پیش‌نمایش را
         #      روی تب تنظیمات باز می‌کرد و همان صفحه‌ای را که کاربر می‌خواهد
         #      ببیند پنهان می‌کرد. لنگر به جدول عملکردی منتقل شد.
-        mi = P_PAN.find('id="ctb"')
+        #      v1.36: that table was removed wholesale (user order), so the
+        #      landing anchor moved to the chargers page section itself.
+        # [FA] v1.36: جدول عملکردی به دستور کاربر کلاً حذف شد؛ لنگر فرود به
+        #      خود بخش شارژرها منتقل شد.
+        mi = P_PAN.find('id="ch"')
         pm = list(re.finditer(r'id="p(\d)"', P_PAN[:mi])) if mi >= 0 else []
         mount_page = pm[-1].group(1) if pm else "?"
         ok(land == mount_page,
-           "the preview must land on the page that carries the operating table",
-           f"server lands on tab {land}, but the chart is mounted on p{mount_page}")
+           "the preview must land on the chargers page",
+           f"server lands on tab {land}, but the chargers section is on p{mount_page}")
 
-        ok("evat(" not in tab and "data-i" not in tab,
-           "the operating table must only REPORT values",
-           "an editable cell there reintroduces the two-places-to-be-wrong bug")
+
         # [EN] v1.32 (user order: "I wanted to click ON the chart, not have you
         #      write it below it"): the chip strip is gone. Everything settable
         #      is now drawn inside the SVG - axis labels for the voltages and
@@ -766,13 +780,18 @@ def sec_panel(ids):
         #      فرضی که شکست.
         pdef = js_array(P_PAN, "const PDEF") or []
         ldef = js_array(P_PAN, "const LDEF") or []
+        idef = js_array(P_PAN, "const IDEF") or []
         adef = js_array(P_PAN, "const ADEF") or []
         pid_base = define(CHG_H, "CHG_PID_PARAM_CURRENT_KP")
         lim_base = define_alias(CHG_H, "CHG_LIMIT_PARAM_FIRST_ID")
         ok(lim_base == pid_base + len(pdef),
            "LDEF does not start where PDEF ends",
            f"limits start at {lim_base}, PID block ends at {pid_base + len(pdef) - 1}")
-        top = lim_base + len(ldef) - 1
+        imb_base = define(ESP_H, "ESPLINK_PARAM_IMBAL_REST_LIMIT_MV")
+        ok(imb_base == lim_base + len(ldef),
+           "IDEF does not start where LDEF ends",
+           f"imbalance block starts at {imb_base}, limits end at {lim_base + len(ldef) - 1}")
+        top = imb_base + len(idef) - 1
         ok(hi == top, "AIDS upper bound != the top real id",
            f"AIDS stops at {hi}, the id block ends at {top}")
         ok(top == COUNT - 1, "the id blocks do not reach the last parameter",
@@ -782,7 +801,9 @@ def sec_panel(ids):
            f"ADEF has {len(adef)}, span {lo}..82 needs {82 - lo + 1}")
         # a phantom id would index past the default tables
         for pid in range(lo, hi + 1):
-            if pid >= lim_base:
+            if pid >= imb_base:
+                tbl, idx, size = "IDEF", pid - imb_base, len(idef)
+            elif pid >= lim_base:
                 tbl, idx, size = "LDEF", pid - lim_base, len(ldef)
             elif pid >= pid_base:
                 tbl, idx, size = "PDEF", pid - pid_base, len(pdef)

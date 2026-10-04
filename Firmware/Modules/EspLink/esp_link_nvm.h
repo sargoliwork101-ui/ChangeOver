@@ -58,9 +58,14 @@
  *      mirror), v4 = id 76 became a panel-session mute, never persisted
  *      (v1.16b), v5 = 83 slots incl. the six full/hysteresis ids 77..82
  *      (v1.17), v6/v7 = 98 slots incl. the fifteen three-stage PID ids
- *      83..97 (v1.22/v1.23), v8 = CURRENT: 93 slots incl. the ten
+ *      83..97 (v1.22/v1.23), v8 = 93 slots incl. the ten
  *      two-loop CC/CV PID ids 83..92 (v1.24 deleted the redundant third
- *      gain row). A record with an older version fails the version check
+ *      gain row), v9 = CURRENT: 108 slots incl. the fifteen charger
+ *      limits/timer/gain ids 93..107 (v1.28),
+
+ *      v10 = CURRENT: 122 slots incl. the eleven imbalance scenario ids
+ *      108..118 (v1.43) and the three imbalance runtime slots 200..202
+ *      (events/cycles/latch; never user parameters). A record with an older version fails the version check
  *      and falls back to the compiled defaults - after any upgrade that
  *      changes the record layout, re-tune from the panel once (v8 IS such
  *      an upgrade, and the bump is mandatory rather than cosmetic: a v7
@@ -69,28 +74,29 @@
  * [FA] تاریخچهٔ نسخهٔ رکورد: v3 = ۷۷ جای (آینهٔ LED/بازر v1.16)، v4 =
  *      میوت ۷۶ جلسه‌ای شد و دیگر ذخیره نمی‌شود (v1.16b)، v5 = ۸۳ جای
  *      شامل ۷۷..۸۲ (v1.17)، v6/v7 = ۹۸ جای شامل پانزده شناسهٔ PID
- *      سه‌مرحله‌ای ۸۳..۹۷، v8 = فعلی: ۹۳ جای شامل ده شناسهٔ PID دوحلقه‌ای
- *      ۸۳..۹۲ (v1.24 ردیف سوم زائد را حذف کرد). رکورد قدیمی‌تر می‌افتد و
+ *      سه‌مرحله‌ای ۸۳..۹۷، v8 = ۹۳ جای شامل ده شناسهٔ PID دوحلقه‌ای
+ *      ۸۳..۹۲ (v1.24 ردیف سوم زائد را حذف کرد)، v9 = فعلی: ۱۰۸ جای شامل
+ *      پانزده شناسهٔ ۹۳..۱۰۷ (حدها/زمان‌ها/گین‌های شارژر). رکورد قدیمی‌تر
+ *      می‌افتد و
  *      پیش‌فرض کامپایل می‌ماند - بعد از هر ارتقای چیدمان یک‌بار از پنل
  *      دوباره تنظیم کنید (v1.22 دقیقاً چنین ارتقایی است: اولین بوت پس از
  *      فلش با مقادیر کارخانه بالا می‌آید). */
-#define ESP_LINK_NVM_VERSION            9u
+#define ESP_LINK_NVM_VERSION            10u
 
-/* [EN] Slot cap: 108 persisted ids today (0..14 config + 20..26 charge
+/* [EN] Slot cap: 122 persisted ids today (0..14 config + 20..26 charge
  *      profile + 27..37 alarms + 38..75 UI cadence + 77..82 full/
  *      hysteresis + 83..92 two-loop PID + 93..107 charger limits and
- *      backstop gains; id 76 = panel-session mute, transient like 15..19).
- *      Cap 108 -> record = 12 + 108 x 8 + 4 = 880 B, still inside one 1 KiB
- *      page with 144 B to spare - the assert in the .c proves it rather
+ *      backstop gains + 108..118 imbalance scenario + 200..202 imbalance
+ *      runtime slots; id 76 = panel-session mute, transient like 15..19).
+ *      Cap 122 -> record = 12 + 122 x 8 + 4 = 992 B, still inside one 1 KiB
+ *      page with 32 B to spare - the assert in the .c proves it rather
  *      than trusting this arithmetic. Keep the C harness in sync (it once
  *      caught a wrong count as a silent early-return).
- * [FA] سقف جای‌ها: امروز ۱۰۸ شناسهٔ ذخیره‌شونده (۰..۱۴ پیکربندی + ۲۰..۲۶
- *      پروفایل + ۲۷..۳۷ آلارم + ۳۸..۷۵ UI + ۷۷..۸۲ فول/هیسترزیس + ۸۳..۹۲
- *      PID دوحلقه‌ای + ۹۳..۱۰۷ حدها و گین‌های پشتیبان شارژر؛ ۷۶ = میوت
- *      جلسه‌ای و گذرا). سقف ۱۰۸ یعنی رکورد ۸۸۰ بایت، باز هم داخل یک صفحهٔ
- *      ۱KB با ۱۴۴ بایت حاشیه - گزارهٔ داخل فایل .c این را «اثبات» می‌کند و
- *      به این حساب دستی اعتماد نمی‌شود. هارنس C را هم‌روز نگه دارید. */
-#define ESP_LINK_NVM_ENTRY_MAX         108u
+ * [FA] سقف جای‌ها: امروز ۱۲۲ شناسهٔ ذخیره‌شونده (… + ۱۰۸..۱۱۸ سناریوی
+ *      عدم‌توازن + ۲۰۰..۲۰۲ اسلات زمان‌اجرا؛ ۷۶ گذرا). سقف ۱۲۲ یعنی رکورد
+ *      ۹۹۲ بایت، باز هم داخل یک صفحهٔ ۱KB با ۳۲ بایت حاشیه - گزارهٔ داخل
+ *      فایل .c این را «اثبات» می‌کند. هارنس C را هم‌روز نگه دارید. */
+#define ESP_LINK_NVM_ENTRY_MAX         122u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
  *      change; a shorter window would rewrite flash on every keystroke burst).
@@ -123,8 +129,14 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   107u
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   118u
 #define ESP_LINK_NVM_TRANSIENT_ID_MUTE        76u
+/* [EN] Imbalance runtime slots (scenario 6, v10): persisted but NEVER user
+ *      parameters - the module itself writes them; the panel never draws and
+ *      never backs them up.
+ * [FA] اسلات‌های زمان‌اجرا عدم‌توازن: فقط خود ماژول می‌نویسد. */
+#define ESP_LINK_NVM_SLOT_MIN_ID            200u
+#define ESP_LINK_NVM_SLOT_MAX_ID            202u
 
 /**
  * @brief  [EN] Is this parameter id persisted to flash? (config + charge
@@ -147,16 +159,16 @@ typedef struct
 
 /**
  * @brief  [EN] Flash record: header + entry list + CRC32 over all preceding
- *              bytes. 880 B for 108 entries (12 + 108 x 8 + 4), inside one
- *              1 KiB page with 144 B to spare. Do not trust this sentence:
+ *              bytes. 992 B for 122 entries (12 + 122 x 8 + 4), inside one
+ *              1 KiB page with 32 B to spare. Do not trust this sentence:
  *              the two halves of this very comment disagreed for several
  *              releases (EN said 760 B for 93, FA said 808 B for 99) because
  *              both were hand-arithmetic nobody re-ran. The guarantee is the
  *              _Static_assert in esp_link_nvm.c, which derives the page size
  *              from the two page addresses and fails the build instead.
  *         [FA] رکورد فلش: سربرگ + فهرست ورودی‌ها + CRC32 روی همهٔ بایت‌های
- *              قبل از خودش. ۸۸۰ بایت برای ۱۰۸ ورودی (۱۲ + ۱۰۸×۸ + ۴)، داخل
- *              یک صفحهٔ ۱ کیلوبایتی با ۱۴۴ بایت حاشیه. به همین جمله اعتماد
+ *              قبل از خودش. ۹۹۲ بایت برای ۱۲۲ ورودی (۱۲ + ۱۲۲×۸ + ۴)، داخل
+ *              یک صفحهٔ ۱ کیلوبایتی با ۳۲ بایت حاشیه. به همین جمله اعتماد
  *              نکنید: دو نیمهٔ همین کامنت چند نسخه با هم اختلاف داشتند
  *              (انگلیسی ۷۶۰ بایت برای ۹۳، فارسی ۸۰۸ بایت برای ۹۹) چون هر دو
  *              حساب دستی بودند که کسی دوباره اجرایشان نکرد. ضمانت واقعی

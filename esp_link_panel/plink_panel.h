@@ -19,7 +19,7 @@ static const char ESP_PANEL_HTML[] PROGMEM = R"HTML(<!doctype html><html lang="f
 :root{--bg:#0b0f18;--cd:#161d2b;--in:#080b12;--rs:#232d40;--ln:#38455e;--tx:#e9eef6;--mu:#96a1b8;--ac:#63a2ff;--ac2:#9ac8ff;--ok:#35d6a0;--wa:#f7c13c;--er:#ff6873;--ring:rgba(99,162,255,.38);--sh:0 10px 30px rgba(0,0,0,.45)}
 *{box-sizing:border-box;margin:0}
 ::selection{background:rgba(99,162,255,.38)}
-body{background:radial-gradient(1200px 300px at 50% -80px,rgba(99,162,255,.09),transparent),var(--bg);color:var(--tx);font:14px/1.65 Vazirmatn,Tahoma,sans-serif;max-width:1480px;margin:auto;padding:0 14px 28px;scrollbar-color:#3a4767 transparent}
+body{background:radial-gradient(1200px 300px at 50% -80px,rgba(99,162,255,.09),transparent),var(--bg);color:var(--tx);font:clamp(13px,.28vw + 12.1px,15.3px)/1.65 Vazirmatn,Tahoma,sans-serif;max-width:1480px;margin:auto;padding:0 14px 28px;scrollbar-color:#3a4767 transparent}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:8px}
@@ -37,7 +37,7 @@ nav button.m.a{background:linear-gradient(180deg,#6e4a10,#543806);color:#ffe1a8}
 section{margin-top:12px}
 .cd{background:linear-gradient(180deg,rgba(255,255,255,.025),transparent 30%),var(--cd);border:1px solid var(--ln);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:var(--sh)}
 .ti{font-size:12.5px;font-weight:700;color:var(--mu);margin-bottom:10px;text-transform:uppercase;letter-spacing:.3px}
-.lb{color:var(--mu);font-size:12px}
+.lb{color:var(--mu);font-size:.86em}
 .bs{color:var(--mu);font-size:11px;font-variant-numeric:tabular-nums;letter-spacing:.5px;opacity:.75;margin-inline-start:auto;padding-inline-end:10px;direction:ltr}
 /* [EN] v1.29 click-to-edit (user order): the value IS the control. A dotted
    underline is the only affordance - a number that looks like a button stops
@@ -69,7 +69,10 @@ section{margin-top:12px}
    می‌شدند تا کاربر گفت تصویر شلوغ شده؛ این‌ها نه ولتاژند نه جریان، پس اصلاً
    روی صفحهٔ I-V جای صادقانه‌ای نداشتند. همان data-i، همان ویرایشگر. */
 .evcg{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:7px}
-.evct{font-size:11.5px;color:var(--mu);font-weight:700;margin-inline-end:2px}
+.qglg{display:flex;flex-wrap:wrap;gap:3px 13px;margin:3px 2px 7px;font-size:.86em}
+.qglg .qgit{white-space:nowrap}
+.qglg i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-left:4px;vertical-align:-1px;border:1px solid rgba(140,160,190,.45)}
+.evct{font-size:.82em;color:var(--mu);font-weight:700;margin-inline-end:2px}
 .evc{display:inline-flex;align-items:baseline;gap:5px;background:var(--in);
  border:1px solid var(--rs);border-radius:999px;padding:3px 10px;font-size:11.5px;
  line-height:1.7;cursor:pointer}
@@ -90,12 +93,12 @@ section{margin-top:12px}
 .tg.g{background:rgba(52,211,153,.12);color:var(--ok);border-color:rgba(52,211,153,.25)}
 .tg.r{background:rgba(251,94,106,.12);color:var(--er);border-color:rgba(251,94,106,.3)}
 .tg.y{background:rgba(251,191,36,.12);color:var(--wa);border-color:rgba(251,191,36,.28)}
-.ch{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ch{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));gap:14px}
 .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .hd b{font-size:15px;display:flex;align-items:center;gap:8px}
 .hd b::before{content:"";width:4px;height:18px;border-radius:4px;background:linear-gradient(180deg,var(--ac2),var(--ac))}
 .big{display:flex;justify-content:space-between;align-items:baseline;margin:6px 0}.big b{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
-.bg2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.bg2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));gap:0 14px}
 .ib{position:relative;flex:none;width:22px;height:22px;border-radius:50%;border:1px solid var(--ac2);background:transparent;color:var(--ac2);font-size:13px;font-weight:800;line-height:1;cursor:pointer;padding:0}
 .ib .it{display:none;position:absolute;top:26px;right:-8px;z-index:60;width:max-content;min-width:240px;max-width:min(420px,80vw);background:var(--rs);border:1px solid var(--ln);border-radius:12px;padding:10px 12px;font-size:12.5px;font-weight:400;line-height:2;color:var(--tx);text-align:right;white-space:normal;box-shadow:0 10px 28px rgba(0,0,0,.55)}
 .ib:hover .it,.ib:focus-visible .it,.ib.o .it{display:block}
@@ -103,7 +106,7 @@ section{margin-top:12px}
 .bar{height:8px;background:var(--in);border:1px solid var(--ln);border-radius:8px;overflow:hidden;position:relative;margin:5px 0 12px}
 .bar i{position:absolute;inset:0 0 0 auto;width:0;background:linear-gradient(90deg,var(--ac),var(--ac2));transition:width .3s}
 .bar u{position:absolute;top:0;bottom:0;width:2px;background:var(--wa);box-shadow:0 0 6px var(--wa)}
-table{width:100%;border-collapse:collapse;font-size:13px}td{padding:6px 2px;border-top:1px solid var(--ln)}td:last-child{text-align:left}
+table{width:100%;border-collapse:collapse;font-size:.93em}td{padding:6px 2px;border-top:1px solid var(--ln)}td:last-child{text-align:left}
 .bt{width:100%;border:0;border-radius:12px;padding:12px;margin-top:12px;font-weight:700;color:#fff;min-height:44px;transition:filter .15s,transform .05s}
 .bt:active{transform:scale(.99)}
 .cut{background:linear-gradient(180deg,#e5484d,#c62f35)}.run{background:linear-gradient(180deg,#2fbf8f,#1e9e73);color:#04120c}
@@ -112,7 +115,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}td{padding:6px 2px;bord
 .ap{font-size:12px;color:var(--ac2);margin-right:6px}
 .ct{display:flex;align-items:center;gap:6px}
 input[type=number],select{background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:7px 9px;direction:ltr;min-height:36px;transition:border-color .15s,box-shadow .15s}
-input[type=number]{width:96px}
+input[type=number]{width:min(108px,100%);max-width:100%;box-sizing:border-box}
 input[type=number]:hover,select:hover{border-color:#2c3850}
 input[type=number]:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ring);outline:none}
 select{direction:rtl}
@@ -153,7 +156,7 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .pgx{display:none}.pgx.a{display:block}body:not(.br) .wstop{display:none}body.br .brun{opacity:.4;pointer-events:none}a.lnk{text-decoration:none;display:inline-block}
 .bq{background:var(--in);border:1px solid rgba(251,191,36,.4);border-radius:12px;padding:11px;margin-top:10px}.bqr{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin-top:10px}.bqr label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600}.bqr label .lb{font-weight:400}.bqr input[type=number]{width:124px}
 .cc .ca{border-top:0;margin-top:0;padding-top:0}.stp2{background:linear-gradient(180deg,#e5484d,#c62f35);white-space:nowrap}
-.vc{justify-content:center}.vc input[type=number]{width:96px}
+.vc{justify-content:center}.vc input[type=number]{width:min(108px,100%);max-width:100%;box-sizing:border-box}
 .fl{margin-top:0;padding-top:0;border-top:0}#sh .hd{flex-wrap:wrap;gap:8px}
 .sec{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--tx);margin:16px 0 8px;padding-top:13px;border-top:1px solid var(--ln)}
 .sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--ln));border-radius:1px}
@@ -187,28 +190,7 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .mod .sb{width:100%;margin-top:10px}
 input:disabled{opacity:.38;cursor:not-allowed}
 .srvw{overflow-x:auto;border:1px solid var(--ln);border-radius:12px}
-/* [EN] The two summary tables at the foot of the chargers page. They REPORT;
-   every number in them is edited on the chart, which lives in the settings
-   tab (Charge, filter and PID). Zebra rows, a colour
-   dot per stage matching that stage's band on the chart, and numbers in a
-   tabular figure so columns line up instead of dancing.
-   [FA] دو جدول خلاصه در انتهای صفحهٔ شارژرها. این‌ها فقط گزارش می‌دهند؛ هر
-   عددشان روی نمودار ویرایش می‌شود، و نمودار در تب تنظیمات است. ردیف‌های یک‌درمیان، یک نقطهٔ رنگی برای
-   هر مرحله هم‌رنگ باند همان مرحله روی نمودار، و اعداد با رقم جدولی تا ستون‌ها
-   به‌جای رقصیدن، تراز بمانند. */
-.ct{width:100%;border-collapse:collapse;font-size:13px}
-.ct th{color:var(--mu);font-weight:600;text-align:right;padding:8px 12px;
- border-bottom:1px solid var(--ln);white-space:nowrap;font-size:12px}
-.ct td{padding:9px 12px;border-top:1px solid var(--rs);vertical-align:middle}
-.ct tr:nth-child(even) td{background:rgba(255,255,255,.015)}
-.ct tr:hover td{background:rgba(99,162,255,.06)}
-.ct .cn{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--tx)}
-.ct .cw{color:var(--mu);font-size:12.5px;white-space:normal}
-.ct .cs{display:inline-flex;align-items:center;gap:7px;font-weight:700;white-space:nowrap}
-.ct .cdot{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
-.ctw{overflow-x:auto;border:1px solid var(--ln);border-radius:12px;background:var(--in)}
-.ct2 td:first-child{color:var(--mu);width:52%}
-.ctn{color:var(--mu);font-size:12px;margin:9px 2px 0;line-height:1.9}
+
 .srv{width:100%;min-width:680px;border-collapse:collapse;font-size:13px;table-layout:fixed}
 .srv col.c1{width:118px}.srv col.c2{width:96px}.srv col.c4{width:128px}.srv col.c5{width:196px}
 .srv th{color:var(--mu);font-weight:600;text-align:right;padding:7px 10px;border-bottom:1px solid var(--ln);white-space:nowrap}
@@ -219,7 +201,7 @@ input:disabled{opacity:.38;cursor:not-allowed}
 .srv .sb{min-height:30px;padding:3px 10px}
 tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr.rbd{background:rgba(251,94,106,.08)}
 </style></head><body>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 5a14835</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 46eb245</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -232,73 +214,60 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 <!-- [EN] The charge-stages chart was mounted here as well as in
      Settings. Removed on the user's order ("why did you put the chart
      in the panel too? delete it from there"), so this page now carries
-     the two charger cards and the operating table directly under them,
-     and the chart has exactly one home: Settings > charge, filter and
-     PID. The renderer is untouched - it was always one function
+     just the two charger cards (the report table that later sat inside
+     this section was removed wholesale on the user's follow-up the same
+     day - v1.36), and the chart has exactly one home: Settings > Charge
+     and PID. The renderer is untouched - it was always one function
      filling every .qgm it finds, so dropping a mount removes a copy,
      never a capability.
      [FA] نمودار مراحل شارژ اینجا هم نصب بود، کنار نسخهٔ تب تنظیمات. به
-     دستور کاربر از صفحهٔ شارژرها برداشته شد، پس این صفحه حالا دو کارت
-     شارژر و بلافاصله زیرشان جدول عملکردی را دارد، و نمودار دقیقاً یک
-     خانه دارد: تنظیمات > شارژ، فیلتر و PID. رندرکننده دست‌نخورده است. -->
-<div class="cd">
-<div class="hd"><b>جدول — الان با این اعداد شارژ می‌کند</b> <button class="ib" data-p="20,21,22,23,24,25,26,35,36" onclick="this.classList.toggle('o')">!<span class="it"><b>این دو جدول فقط گزارش می‌دهند.</b> هیچ عددی اینجا ویرایش نمی‌شود — جایِ تغییر، نمودار مراحل شارژ در تب <b>تنظیمات › شارژ، فیلتر و PID</b> است: ولتاژها و جریان‌ها روی خود نمودار، و زمان‌ها و گین‌ها به‌صورت تراشه زیرش. هر چه آنجا ثبت کنید، در بازرسم بعدی همین‌جا هم عوض می‌شود؛ نسخهٔ دومی از مقدار وجود ندارد که عقب بماند.<br>همهٔ اعداد از پارامترهای «اعمال‌شدهٔ» خود برد خوانده می‌شوند، نه از چیزی که در صفحه تایپ شده. برد هر مقدار را به بازهٔ مجازش گیره می‌زند، پس اگر عددی که می‌بینید با آنچه خواسته بودید فرق دارد، یعنی گیره خورده است.<br><b>جدول اول</b> ترتیب واقعی یک چرخهٔ شارژ است: Bulk با جریان ثابت بالا می‌برد، Absorb ولتاژ را نگه می‌دارد تا جریان خودش بیفتد، پایان Absorb وقتی است که جریان به‌اندازهٔ کافی پایین بماند، Float فقط نگه می‌دارد، و افت ولتاژ چرخه را از نو شروع می‌کند. رنگ کنار نام هر مرحله همان رنگ باند آن مرحله روی نمودار است.<br><b>جدول دوم</b> حدهای ایمنی است. «قطع اضافه‌ولتاژ» و «خطای سخت جریان» فقط پایین‌آوردنی‌اند و هرگز بالاتر از مقدار کارخانه نمی‌روند. «سقف مطلق» و «سقف duty» اصلاً ویرایش‌پذیر نیستند: مشخصهٔ خود برد هستند نه سلیقه.<br>جدول‌های گین و زمان‌بندی که قبلاً همین‌جا بودند حذف شدند — آن اعداد حالا تراشه‌های زیر نمودارند و چاپ دوباره‌شان یعنی دو جا برای غلط‌بودن.</span></button><span class="lb">· هر دو کانال · فقط گزارش · ویرایش روی نمودار، در تب تنظیمات</span></div>
-<div id="ctb"></div>
-</div>
+     دستور کاربر از صفحهٔ شارژرها برداشته شد، پس این صفحه فقط دو کارت شارژر را دارد (جدولِ
+     گزارشی که بعداً داخل همین بخش نشانده شد، به دستور پیگیریِ همان روز
+     کاملاً حذف شد - v1.36) و نمودار دقیقاً یک خانه دارد: تنظیمات > شارژ و PID. رندرکننده دست‌نخورده است. -->
+
 </div>
 <div class="pgx" id="p1"></div>
 <div class="pgx" id="p2">
-<div class="sbt" id="sbt"><button class="a" data-s="0">شارژ، فیلتر و PID</button><button data-s="1">سناریوها</button><button data-s="2">نظارت و ایمنی</button><button data-s="3">پشتیبان‌گیری</button></div>
+<div class="sbt" id="sbt"><button class="a" data-s="0">شارژ و PID</button><button data-s="1">سناریوها</button><button data-s="2">نظارت و ایمنی</button><button data-s="3">کالیبراسیون و فیلتر جریان</button><button data-s="4">پشتیبان‌گیری</button></div>
 <div class="sgx a" id="s0">
 <div class="cd">
-<div class="hd"><b>نمودار مراحل شارژ</b> <button class="ib" data-p="20,21,22,23,24,25,26,35,36,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107" onclick="this.classList.toggle('o')">!<span class="it"><b>نمودار فقط ولتاژ و جریان را نشان می‌دهد.</b> هر عددی که روی محورها جای واقعی دارد، روی خود نمودار زیرخط‌دار و کلیک‌پذیر است: ولتاژها روی خطوط افقی سمت راست، جریان‌ها روی خطوط عمودی پایین. کلیک کنید، تایپ کنید، Enter بزنید (Esc لغو می‌کند).<br><b>زمان‌ها و گین‌ها زیر نمودار آمده‌اند.</b> این‌ها نه ولتاژند نه جریان، پس روی صفحهٔ I-V جای صادقانه‌ای نداشتند و فقط تصویر را شلوغ می‌کردند. همان‌جا هم با یک کلیک ویرایش می‌شوند و روی هر تراشه که ماوس ببرید، نام و شرح فارسی‌اش را می‌گوید.<br><br><b>زمان‌ها / Timers</b><br><b>Absorb max</b> — سقف زمان Absorb. از لحظه‌ای می‌شمارد که جریان اولین بار زیر <b>Arm</b> برود. راه عادی پایانِ Absorb Taper است؛ این فقط تور ایمنی است. صفر یعنی خاموش و «بدون سقف». اگر باتری سالم است و شارژ طبیعی تمام می‌شود، دست نزنید؛ اگر شارژر گاهی در Absorb گیر می‌کند، این را کوتاه کنید نه اینکه Taper را بالا ببرید.<br><b>Absorb hold</b> — کمینهٔ شستشو. Absorb دست‌کم این مدت ادامه می‌یابد حتی اگر جریان زود بیفتد. جلوی پایان زودرس روی باتری سرد یا کم‌ظرفیت را می‌گیرد. بلندتر = شارژ کامل‌تر، ولی زمان بیشتر روی ولتاژ بالا.<br><b>Taper sustain</b> — جریان باید این مدت <i>پیوسته</i> زیر <b>Taper</b> بماند تا پایان شارژ اعلام شود. کوتاه = یک نوسان گذرا شارژ را زودتر تمام می‌کند؛ بلند = دیرتر ولی مطمئن‌تر. اگر شارژ زودهنگام تمام می‌شود، اول این را بلند کنید.<br><b>settle</b> — نشست اتصال. پس از وصل باتری، این مدت صبر می‌شود تا اندازه‌گیری آرام بگیرد و بعد تصمیم گرفته شود. کوتاه‌کردنش یعنی تصمیم روی عدد نامطمئن.<br><b>JIT lockout</b> — قفل ضدلرزش. پس از یک تریپ، این مدت دوباره وصل نمی‌شود تا روشن-خاموش پیاپی رخ ندهد.<br><b>manual deadman</b> — خاموش‌کنندهٔ خودکار مود دستی (deadman). اگر پنل بسته شود یا ارتباط قطع شود، پس از این مدت duty دستی خودبه‌خود صفر می‌شود. این یک تنظیم ایمنی است؛ بلندکردنش یعنی شارژر بیشتر بدون ناظر می‌ماند.<br><b>ramp down</b> — فاصلهٔ رمپ پایین‌آمدن duty هنگام خاموشی نرم، تا جریان پله‌ای قطع نشود.<br><br><b>گین‌ها و گام‌ها / Gains &amp; steps</b><br><b>duty step</b> — بیشترین تغییر duty در هر تیک کنترل (‰). کوچک = نرم‌تر و پایدارتر ولی کندتر؛ بزرگ = سریع‌تر ولی مستعد بیش‌جهش. <b>اگر نوسان دیدید، اول این را کم کنید.</b><br><b>hyst</b> — hysteresis خروجی. تا تقاضا این‌قدر تغییر نکند، duty اعمالی عوض نمی‌شود. لرزش دائمی روی یک نقطه را می‌گیرد. زیاد کردنش دقت تنظیم را کم می‌کند.<br><b>V filter</b> — طول فیلتر میانگین ولتاژ. بلندتر = عدد آرام‌تر ولی کندتر، و حلقه دیرتر به تغییر واقعی جواب می‌دهد. برای نویز شدید بالا ببرید، نه برای زیبایی عدد.<br><b>margin</b> — حاشیهٔ جریان زیر سقف باند، تا حلقه مدام به سقف نچسبد.<br><b>Backstop gain I</b> و <b>Backstop gain V</b> — گین دو پشتیبانِ سخت‌افزاری‌نما: اولی وقتی جریان از حد رد می‌شود و دومی وقتی ولتاژ از <b>Backstop</b> بالا می‌زند، duty را پایین می‌کشند. <b>صفر یعنی آن پشتیبان خاموش است.</b> این‌ها جای تنظیم PID نیستند؛ آخرین خط دفاع‌اند. بزرگ‌تر = واکنش تندتر و خطر نوسان؛ کوچک‌تر = نرم‌تر و دیرتر.<br><br><b>قاعدهٔ تنظیم:</b> یک عدد را هر بار عوض کنید و یک چرخهٔ کامل را ببینید. برای آرام‌کردن حلقه از <b>duty step</b> شروع کنید، بعد <b>hyst</b>، و فقط در آخر <b>V filter</b>. گین‌های Backstop را برای تنظیم عملکرد دست نزنید.<br>هر مقدار از پارامترهای «اعمال‌شدهٔ» برد خوانده می‌شود. برد هر عدد را به بازهٔ مجازش گیره می‌زند؛ اگر چیزی که برگشت با آنچه تایپ کردید فرق داشت، آن برچسب <b>زرد</b> می‌شود.<br><b>ماندگاری:</b> هر مقداری که ثبت کنید روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند.<br>خط «Hard cutoff 15V» و سقف duty عمداً ویرایش‌پذیر نیستند: مشخصهٔ برد هستند نه سلیقه.</span></button><span class="lb">· مشترک هر دو کانال · <b style="color:var(--ac)">روی عددهای روی نمودار کلیک کنید تا تغییرشان دهید</b></span></div>
+<div class="hd"><b>نمودار مراحل شارژ</b> <button class="ib" data-p="20,21,22,23,24,25,26,35,36,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107" onclick="this.classList.toggle('o')">!<span class="it"><b>نمودار فقط ولتاژ و جریان را نشان می‌دهد.</b> هر عددی که روی محورها جای واقعی دارد، روی خود نمودار زیرخط‌دار و کلیک‌پذیر است: ولتاژها روی خطوط افقی (انگلیسی سمت راست برای کلیک، نام فارسی زیر هر خط)، جریان‌ها دوخطی روی خطوط عمودی پایین: نام در خط اول و عدد در خط دوم. راهنمای رنگ ناحیه‌ها بیرون نمودار آمده، درست زیر آن. کلیک کنید، تایپ کنید، Enter بزنید (Esc لغو می‌کند).<br><b>سیزده عدد پایین نمودار، در سه دستهٔ مرتب آمده‌اند.</b> این‌ها نه ولتاژند نه جریان، پس روی خود صفحهٔ نمودار جای صادقانه‌ای نداشتند. همان‌جا با یک کلیک ویرایش می‌شوند و روی هر تراشه که ماوس ببرید نام و شرح فارسی‌اش را با یک مثال عددی می‌گوید. هر دسته فقط یک کار دارد:<br><b>۱ · رسیدن نرم به هدف</b> — duty step، hyst و V filter. PID مقصدِ duty را تعیین می‌کند؛ این سه عدد فقط می‌گویند با چه شتابی و با چه سلایقی به سمتش برویم تا خروجی نرم و بی‌لرزش بماند. مثال با اعداد کارخانه: اگر PID ناگهان ۱۰۰ پرمیل (۱۰٪) بیشتر بخواهد، با duty step=۸ حدود ۱۳ تیک (۰٫۶ ثانیه) طول می‌کشد؛ با hyst=۷۰۰ تغییرِ کوچک‌تر از ۰٫۷ پرمیل اصلاً به خروجی نمی‌رسد تا PWM نلرزد؛ و اگر یک بار ناگهانی ولتاژ را ۵۰ میلی‌ولت بیندازد، V filter=۳۲ آن را نرم می‌کند و PID تکان نمی‌خورد.<br><b>۲ · ترمز اضطراری و حاشیهٔ امن</b> — Backstop gain I، Backstop gain V و margin. این‌ها PID نیستند؛ صندوق نجاتی‌اند که <i>بالای</i> PID می‌ایستند تا حتی اگر تنظیم PID به‌هم بریزد مرزها رد نشوند، و همین دلیلِ جدابودنشان است: ایمنی نباید به خوب‌تنظیم‌بودن PID وابسته باشد. مثال با اعداد کارخانه: اگر جریان به ۷۵۰ میلی‌آمپر برسد (۱۰۰ میلی‌آمپر بیشتر از سقف)، سقف duty فوری ۱۰ پرمیل (۱٪) پایین می‌آید؛ اگر ولتاژ از ۱۴٫۸ ولت رد شود، برش به‌نسبت تجاوز (آستانه روی خود محور دیده و ویرایش می‌شود)؛ و margin=۱۰ یعنی حلقهٔ جریان روی ۶۴۰ نشانده می‌شود نه ۶۵۰، تا موج کوتاه نتواند این ترمزها را بی‌جهت فعال کند. صفر یعنی آن پشتیبان خاموش است.<br><b>۳ · تصمیم‌های زمانی</b> — هفت تایمر ماشین حالت: <b>Absorb max</b> سقف ۶۰ دقیقه‌ای Absorb است، تور ایمنی برای وقتی پایان طبیعی هیچ‌وقت نیاید؛ شمارش فقط از لحظه‌ای شروع می‌شود که جریان زیر آستانهٔ «شروع شمارش» بیاید (نیم‌رخ زرد روی خود نمودار، کلیک‌پذیر) و صفر یعنی بدون سقف. <b>Absorb hold</b> تعهد حداقلی ۱۰ دقیقه‌ای ماندن در Absorb است حتی اگر جریان زود بیفتد. <b>Taper sustain</b> یعنی جریان باید ۶۰ ثانیهٔ پیوسته زیر Taper بماند تا پایان شارژ اعلام شود. <b>settle</b> پانزده ثانیه صبر بعد از وصل باتری است تا تصمیم روی عدد مطمئن گرفته شود. <b>JIT lockout</b> سه ثانیه خاموشی اجباری بعد از هر تریپ است تا روشن-خاموش پیاپی رخ ندهد. <b>manual deadman</b> یعنی اگر پنل بسته شود یا ارتباط قطع شود، بعد از سه ثانیه duty دستی خودبه‌خود صفر می‌شود. <b>ramp down</b> هم هر ۵۰۰ میلی‌ثانیه یک پله در پایین‌آمدن نرم duty هنگام خاموشی است.<br><b>قاعدهٔ تنظیم:</b> یک عدد را هر بار عوض کنید و یک چرخهٔ کامل را ببینید. برای آرام‌کردن حلقه از <b>duty step</b> شروع کنید، بعد <b>hyst</b>، و فقط در آخر <b>V filter</b>. گین‌های Backstop را برای تنظیم عملکرد دست نزنید.<br>هر مقدار از پارامترهای «اعمال‌شدهٔ» برد خوانده می‌شود. برد هر عدد را به بازهٔ مجازش گیره می‌زند؛ اگر چیزی که برگشت با آنچه تایپ کردید فرق داشت، آن برچسب <b>زرد</b> می‌شود.<br><b>ماندگاری:</b> هر مقداری که ثبت کنید روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند.<br>خط «Hard cutoff 15V» و سقف duty عمداً ویرایش‌پذیر نیستند: مشخصهٔ برد هستند نه سلیقه.</span></button></div>
 <div class="qwm" style="margin:2px 0 0"></div>
 <div class="qgm" style="direction:ltr;overflow-x:auto"></div>
+<div class="qglg lb"></div>
 <div class="lb qglm">در انتظار دادهٔ برد…</div>
 <div class="qgcm"></div>
 </div>
-<div class="cd">
-<div class="hd"><b>فیلتر جریان</b> <button class="ib" data-p="7,8" onclick="this.classList.toggle('o')">!<span class="it">پنجرهٔ median: مرحلهٔ اول فیلتر، هر عدد ۱ تا ۱۵ (زوج هم مجاز)؛ ۱ و ۲ = خاموش، ۳ = پیش‌فرض، بزرگ‌تر = حذف پالس قوی‌تر با تاخیر بیشتر.<br>پنجرهٔ میانگین: مرحلهٔ دوم، هر عدد ۱ تا ۳۰۰ — میانگین آخرین W خروجی median (هر نمونه ۱ms = ۱ms تاریخچه)؛ ۱ = خاموش، ۱۰ = پیش‌فرض. برای صاف‌شدن قابل‌مشاهده روی نمودار تب «پنل» مجموع را بالای ~۲۰۰ms ببرید؛ در مود خودکار شارژر بالای ~۵۰ توصیه نمی‌شود (کندی حلقهٔ تنظیم ۱۰۰Hz).</span></button><span class="lb">· مشترک هر دو کانال · Median + Average · مثل بقیه روی فلش برد ذخیره می‌شود</span></div>
-<div class="bqr">
-<label>پنجرهٔ median<input type="number" id="q7" step="1" min="1" max="15"><span class="lb" id="a7">—</span></label>
-<label>پنجرهٔ میانگین (average)<input type="number" id="q8" step="1" min="1" max="300"><span class="lb" id="a8">—</span></label>
-</div>
 
-</div>
 <div class="cd">
-<div class="hd"><b>کالیبراسیون جریان</b> <button class="ib" data-p="0,1,2,3,4,5,6,9,10" onclick="this.classList.toggle('o')">!<span class="it">آفست، عدد ADC در جریان صفر است و از هر نمونه کم می‌شود. گین و ETA را با تست جریان سمت باتری حساب کنید — ستونهای خام CSV تب بنچ راهنماست — و اینجا ثبت کنید؛ ETA صفر یعنی بدون تبدیل. کانال ۲ جدول بنچ دارد پس ETA آن صفر بماند؛ تغییر آفست یا گین کانال ۲ نیاز به ساخت دوباره جدول بنچ دارد. هر ۶ عدد روی فلش برد ذخیره و با قطع برق ماندگار است.</span></button><span class="lb">· شناسه ۰..۳ و ۹..۱۰ · روی فلش برد ذخیره می‌شود</span></div>
-<div class="bqr">
-<label>آفست کانال ۱ (count)<input type="number" id="q0" step="1" min="0" max="255"><span class="lb" id="a0">—</span></label>
-<label>آفست کانال ۲ (count)<input type="number" id="q1" step="1" min="0" max="255"><span class="lb" id="a1">—</span></label>
-<label>گین کانال ۱ (‰)<input type="number" id="q2" step="1" min="100" max="3000"><span class="lb" id="a2">—</span></label>
-<label>گین کانال ۲ (‰)<input type="number" id="q3" step="1" min="100" max="3000"><span class="lb" id="a3">—</span></label>
-<label>ضریب ETA کانال ۱ (‰، صفر=خاموش)<input type="number" id="q9" step="1" min="0" max="999"><span class="lb" id="a9">—</span></label>
-<label>ضریب ETA کانال ۲ (‰، صفر=خاموش)<input type="number" id="q10" step="1" min="0" max="999"><span class="lb" id="a10">—</span></label>
-</div>
-</div>
-<div class="cd">
-<div class="hd"><b>PID دوحلقه‌ای شارژ (CC/CV)</b> <button class="ib" data-p="83,84,85,86,87,88,89,90,91,92" onclick="this.classList.toggle('o')">!<span class="it">به‌جای پله‌های ثابت قدیمی، duty را PID تعیین می‌کند. دقیقاً دو حلقه دارد، چون شارژ باتری دقیقاً دو چیز را باید هم‌زمان محدود کند:<br><b>حلقهٔ جریان (CC):</b> تا وقتی باتری خالی است، جریان ثابت ۶۵۰ میلی‌آمپر می‌دهد.<br><b>حلقهٔ ولتاژ (CV):</b> وقتی باتری پر می‌شود، ولتاژ را روی ۱۴٫۴ نگه می‌دارد و duty را پایین می‌آورد. «نرخ صعود» این ردیف همان کلید «رشد کندتر Absorb» است.<br>هر لحظه هر حلقه‌ای که duty کمتری بخواهد برنده است، پس هر دو حد همیشه می‌بندند.<br><br><b>دو حلقه چطور یک duty را می‌رانند؟</b> دو خروجی وجود ندارد — یک duty هست، یک انتگرال‌گیر، و دو حلقه که نوبتی آن را می‌رانند. تصور کنید دو نفر بالای <i>یک</i> ولوم ایستاده‌اند و قانون یک خط است: هر لحظه هر کس عدد کمتری بخواهد ولوم دست اوست، و نفر دیگر آن پاس کاملاً نادیده گرفته می‌شود (نه میانگین، نه جمع). اول شارژ باتری خالی است و تا ۱۴٫۴ کلی جا دارد، پس نفر «ولتاژ» می‌گوید «+۱۱۰ پرمیل راحت برو بالا» ولی نفر «جریان» می‌گوید «+۷٫۶ پرمیل، یواش» ⇒ عدد کمتر برنده، حلقهٔ جریان می‌راند (همان CC). حدود دقیقهٔ ۱۱۳ ولتاژ به ۱۴٫۴ می‌رسد، نفر «ولتاژ» عددش منفی می‌شود (یعنی «بکش پایین») و ولوم را می‌گیرد (همان CV). در کل شارژ فقط <b>یک بار</b> این تحویل رخ می‌دهد.<br><b>و چرا لحظهٔ تحویل تکان نمی‌خورد:</b> چون انتگرال‌گیر یکی است و مشترک. سر همان پاس تحویل، انتگرال ۱۹۹۵۱۱ می‌ماند و duty روی ۲۰۰ ثابت است — صفر پرش. اگر هر حلقه انتگرال خودش را داشت، آن‌که بی‌کار بود انتگرالش جای دیگری می‌ماند و لحظهٔ تحویل duty می‌پرید. پس ۱۰ عدد یعنی «دستورالعمل نفر اول + دستورالعمل نفر دوم»، نه دو خروجی. این روش اسم استاندارد دارد: min-select (کمینه‌گیری)، همان چیزی که در هر شارژر CC/CV صنعتی هست.<br><b>چرا یک PID تنها کافی نیست؟</b> امتحان شد و روی شبیه‌ساز مردود شد: یک ردیف ضریب مشترک یعنی مقایسهٔ میلی‌ولت با میلی‌آمپر و لرزش duty (۱۴۰۸ تا ۸۴۶۶۰ تغییر جهت در ۱۰ ساعت در برابر ۴ تای الان)؛ و فقط یک PID ولتاژ با پشتیبان ۶۵۰ به‌عنوان تنها ترمز جریان، جریان را روی ۷۰۷ میلی‌آمپر می‌برد، چون پشتیبان فقط <i>بعد از</i> رد شدن از حد جواب می‌دهد. دو حلقه کمترین چیزی است که واقعاً کار می‌کند.<br><b>مرحلهٔ سوم قبلی حذف شد:</b> اندازه‌گیری نشان داد هیچ سودی ندارد و پنج عدد اضافه بود.<br>واحدها: Kp = پرمیل duty به ازای هر ولت خطا (حلقهٔ ولتاژ) یا هر آمپر خطا (حلقهٔ جریان). Ki = میلی‌پرمیل بر ثانیه. نرخ صعود/نزول = سقف سرعت حرکت نقطهٔ کار (۱۰۰۰ = ۱ پرمیل بر ثانیه).<br>Kd پیش‌فرض صفر است؛ مشتق روی سیگنال نویزی فقط duty را می‌لرزاند.<br>اعداد پیش‌فرض روی مدل کالیبره شده‌اند (۱۴٫۴ ولت، ۶۵۰ میلی‌آمپر، سقف ۵۰۰ پرمیل) — می‌توانید بهینه‌شان کنید و با دکمهٔ پایین برگردید.<br><b>دو پشتیبان سخت همیشه فعال‌اند و از v1.28 از پنل تنظیم می‌شوند:</b> عبور جریان از Bulk max یا ولتاژ از «ولتاژ پشتیبان سخت» سقف duty را به تناسب تجاوز جمع می‌کند — ولتاژ و دو گینش (۱۰۰..۱۰۲) در «جدول عملکرد شارژ» پایین صفحهٔ شارژرها تنظیم می‌شوند — روی خود عدد کلیک کنید. گین صفر یعنی آن پشتیبان خاموش.<br>بقیهٔ حفاظت‌ها دست‌نخورده‌اند: سقف duty ۵۰۰‰، Hard fault جریان، قطع OV و کل ماشین حالت.</span></button><span class="lb">· شناسه‌های ۸۳..۹۲ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
+<div class="hd"><b>PID دوحلقه‌ای شارژ (CC/CV)</b> <button class="ib" data-p="83,84,85,86,87,88,89,90,91,92" onclick="this.classList.toggle('o')">!<span class="it">به‌جای پله‌های ثابت قدیمی، duty را PID تعیین می‌کند. دقیقاً دو حلقه دارد، چون شارژ باتری دقیقاً دو چیز را باید هم‌زمان محدود کند:<br><b>حلقهٔ جریان (CC):</b> تا وقتی باتری خالی است، جریان ثابت ۶۵۰ میلی‌آمپر می‌دهد.<br><b>حلقهٔ ولتاژ (CV):</b> وقتی باتری پر می‌شود، ولتاژ را روی ۱۴٫۴ نگه می‌دارد و duty را پایین می‌آورد. «نرخ صعود» این ردیف همان کلید «رشد کندتر Absorb» است.<br>هر لحظه هر حلقه‌ای که duty کمتری بخواهد برنده است، پس هر دو حد همیشه می‌بندند.<br><br><b>دو حلقه چطور یک duty را می‌رانند؟</b> دو خروجی وجود ندارد — یک duty هست، یک انتگرال‌گیر، و دو حلقه که نوبتی آن را می‌رانند. تصور کنید دو نفر بالای <i>یک</i> ولوم ایستاده‌اند و قانون یک خط است: هر لحظه هر کس عدد کمتری بخواهد ولوم دست اوست، و نفر دیگر آن پاس کاملاً نادیده گرفته می‌شود (نه میانگین، نه جمع). اول شارژ باتری خالی است و تا ۱۴٫۴ کلی جا دارد، پس نفر «ولتاژ» می‌گوید «+۱۱۰ پرمیل راحت برو بالا» ولی نفر «جریان» می‌گوید «+۷٫۶ پرمیل، یواش» ⇒ عدد کمتر برنده، حلقهٔ جریان می‌راند (همان CC). حدود دقیقهٔ ۱۱۳ ولتاژ به ۱۴٫۴ می‌رسد، نفر «ولتاژ» عددش منفی می‌شود (یعنی «بکش پایین») و ولوم را می‌گیرد (همان CV). در کل شارژ فقط <b>یک بار</b> این تحویل رخ می‌دهد.<br><b>و چرا لحظهٔ تحویل تکان نمی‌خورد:</b> چون انتگرال‌گیر یکی است و مشترک. سر همان پاس تحویل، انتگرال ۱۹۹۵۱۱ می‌ماند و duty روی ۲۰۰ ثابت است — صفر پرش. اگر هر حلقه انتگرال خودش را داشت، آن‌که بی‌کار بود انتگرالش جای دیگری می‌ماند و لحظهٔ تحویل duty می‌پرید. پس ۱۰ عدد یعنی «دستورالعمل نفر اول + دستورالعمل نفر دوم»، نه دو خروجی. این روش اسم استاندارد دارد: min-select (کمینه‌گیری)، همان چیزی که در هر شارژر CC/CV صنعتی هست.<br><b>چرا یک PID تنها کافی نیست؟</b> امتحان شد و روی شبیه‌ساز مردود شد: یک ردیف ضریب مشترک یعنی مقایسهٔ میلی‌ولت با میلی‌آمپر و لرزش duty (۱۴۰۸ تا ۸۴۶۶۰ تغییر جهت در ۱۰ ساعت در برابر ۴ تای الان)؛ و فقط یک PID ولتاژ با پشتیبان ۶۵۰ به‌عنوان تنها ترمز جریان، جریان را روی ۷۰۷ میلی‌آمپر می‌برد، چون پشتیبان فقط <i>بعد از</i> رد شدن از حد جواب می‌دهد. دو حلقه کمترین چیزی است که واقعاً کار می‌کند.<br><b>مرحلهٔ سوم قبلی حذف شد:</b> اندازه‌گیری نشان داد هیچ سودی ندارد و پنج عدد اضافه بود.<br>واحدها: Kp = پرمیل duty به ازای هر ولت خطا (حلقهٔ ولتاژ) یا هر آمپر خطا (حلقهٔ جریان). Ki = میلی‌پرمیل بر ثانیه. نرخ صعود/نزول = سقف سرعت حرکت نقطهٔ کار (۱۰۰۰ = ۱ پرمیل بر ثانیه).<br>Kd پیش‌فرض صفر است؛ مشتق روی سیگنال نویزی فقط duty را می‌لرزاند.<br>اعداد پیش‌فرض روی مدل کالیبره شده‌اند (۱۴٫۴ ولت، ۶۵۰ میلی‌آمپر، سقف ۵۰۰ پرمیل) — می‌توانید بهینه‌شان کنید و با دکمهٔ پایین برگردید.<br><b>دو پشتیبان سخت همیشه فعال‌اند و از v1.28 از پنل تنظیم می‌شوند:</b> عبور جریان از Bulk max یا ولتاژ از «ولتاژ پشتیبان سخت» سقف duty را به تناسب تجاوز جمع می‌کند — ولتاژ و دو گینش (۱۰۰..۱۰۲) در «جدول عملکرد شارژ» پایین صفحهٔ شارژرها تنظیم می‌شوند — روی خود عدد کلیک کنید. گین صفر یعنی آن پشتیبان خاموش.<br>بقیهٔ حفاظت‌ها دست‌نخورده‌اند: سقف duty ۵۰٪ (پشت سیم ۵۰۰ پرمیل)، Hard fault جریان، قطع OV و کل ماشین حالت.</span></button><span class="lb">· شناسه‌های ۸۳..۹۲ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
 <div class="sec">حلقهٔ جریان — CC (Bulk) <span class="lb">· پیش‌فرض ۱۲ / ۱۶۰۰ / ۰ / ۱۰۰۰ / ۱۰۰۰ · کالیبرهٔ کارخانه</span></div>
 <div class="bqr">
 <label>Kp (‰ بر آمپر)<input type="number" id="q83" step="5" min="0" max="20000"><span class="lb" id="a83">—</span></label>
 <label>Ki<input type="number" id="q84" step="50" min="0" max="20000"><span class="lb" id="a84">—</span></label>
 <label>Kd<input type="number" id="q85" step="10" min="0" max="20000"><span class="lb" id="a85">—</span></label>
-<label>نرخ صعود (m‰/s)<input type="number" id="q86" step="10" min="10" max="20000"><span class="lb" id="a86">—</span></label>
-<label>نرخ نزول (m‰/s)<input type="number" id="q87" step="10" min="10" max="20000"><span class="lb" id="a87">—</span></label>
+<label>نرخ صعود (هزارمِ‌پرمیل در ثانیه)<input type="number" id="q86" step="10" min="10" max="20000"><span class="lb" id="a86">—</span></label>
+<label>نرخ نزول (هزارمِ‌پرمیل در ثانیه)<input type="number" id="q87" step="10" min="10" max="20000"><span class="lb" id="a87">—</span></label>
 </div>
 <div class="sec">حلقهٔ ولتاژ — CV (Absorb) <span class="lb">· پیش‌فرض ۵۰ / ۱۸۰۰۰ / ۰ / ۱۰ / ۱۰۰۰ · نرخ صعود = کلید «رشد کندتر Absorb»</span></div>
 <div class="bqr">
 <label>Kp (‰ بر ولت)<input type="number" id="q88" step="10" min="0" max="20000"><span class="lb" id="a88">—</span></label>
 <label>Ki<input type="number" id="q89" step="500" min="0" max="20000"><span class="lb" id="a89">—</span></label>
 <label>Kd<input type="number" id="q90" step="10" min="0" max="20000"><span class="lb" id="a90">—</span></label>
-<label>نرخ صعود (m‰/s)<input type="number" id="q91" step="5" min="10" max="20000"><span class="lb" id="a91">—</span></label>
-<label>نرخ نزول (m‰/s)<input type="number" id="q92" step="10" min="10" max="20000"><span class="lb" id="a92">—</span></label>
+<label>نرخ صعود (هزارمِ‌پرمیل در ثانیه)<input type="number" id="q91" step="5" min="10" max="20000"><span class="lb" id="a91">—</span></label>
+<label>نرخ نزول (هزارمِ‌پرمیل در ثانیه)<input type="number" id="q92" step="10" min="10" max="20000"><span class="lb" id="a92">—</span></label>
 </div>
 <div id="pw" style="margin:6px 0 0"></div>
-<div class="bqr"><button class="sb sb2" onclick="pdef()">بازگردانی پیش‌فرض کارخانهٔ PID</button></div>
 </div>
 <div class="cd">
-<div class="hd"><b>بازگردانی پیش‌فرض کارخانه</b><span class="lb">· همهٔ پارامترهای شارژ، فیلتر، PID و آلارم را به مقدار کارخانه برمی‌گرداند و همان‌ها را ذخیره می‌کند</span></div>
+<!-- [EN] v1.38 (user order: \"why two factory-restore keys on the charge
+     page? isn't one enough?\") - the PID-only button is gone; this single
+     one restores the WHOLE charger scope (profile 20-26, PID 83-92 and
+     limits 93-107 - the limits restore lost its own key when the table
+     was deleted) and the caption says exactly that.
+     [FA] v1.38 (دستور کاربر: «چرا دو تا کلید؟») - کلید جداگانهٔ PID رفت؛
+     همین یکی کل محدودهٔ شارژر را برمی‌گرداند. -->
+<div class="hd"><b>بازگردانی پیش‌فرض کارخانه</b><span class="lb">· مقادیر پروفایل شارژ (۲۰-۲۶)، ضرایب PID (۸۳-۹۲) و حدهای شارژر (۹۳-۱۰۷) را به کارخانه برمی‌گرداند؛ به آلارم‌ها، فیلترها و سناریوها دست نمی‌زند</span></div>
 <div class="bqr"><button class="sb sb2" onclick="qdef()">بازگردانی پیش‌فرض کارخانه</button></div>
 </div>
 </div>
@@ -321,7 +290,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 </div>
 <div class="hd" style="margin-top:10px"><b>سناریوهای LED و بازر</b><span class="lb">· یک سناریو را انتخاب کنید · همه روی فلش برد ذخیره می‌شوند</span></div>
 <div id="aw2" style="margin:2px 0 0"></div>
-<div class="sbt" id="usel"><button class="a" data-u="1">۱ · اضافه‌ولتاژ</button><button data-u="2">۲ · قطع باتری</button><button data-u="3">۳ · دشارژ</button><button data-u="4">۴ · شارژ عادی</button><button data-u="5">۵ · باتری و درصد</button></div>
+<div class="sbt" id="usel"><button class="a" data-u="1">۱ · اضافه‌ولتاژ</button><button data-u="2">۲ · قطع باتری</button><button data-u="3">۳ · دشارژ</button><button data-u="4">۴ · شارژ عادی</button><button data-u="5">۵ · باتری و درصد</button><button data-u="6">۶ · عدم‌توازن</button></div>
 <div class="cd" id="ucard1">
 <div class="hd"><b>سناریو ۱ — اضافه‌ولتاژ ورودی</b> <button class="ib" data-p="38,39,40,41,42,43,70,71" onclick="this.classList.toggle('o')">!<span class="it">روند: عبور ورودی از سقف ← قرمز چشمک + بوق دوره‌ای (سبز ثابت می‌ماند) ← افت تا سقف−hysteresis ← پاک‌شدن و بازگشت به سناریوی قبلی. پیش‌فرض: چشمک ۱۰۰۰/۵۰٪ + یک بوق ۱ثانیه‌ای هر ۱۰ ثانیه.</span></button><span class="lb">· سقف ولتاژ + چشمک و بوق · اولویت اول برد</span></div>
 <div class="sec">سقف ولتاژ <span class="lb">(mV)</span></div>
@@ -344,7 +313,20 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 
 </div>
 <div class="cd" id="ucard2" style="display:none">
-<div class="hd"><b>سناریو ۲ — قطع باتری</b> <button class="ib" data-p="44,45,46,47,48,49" onclick="this.classList.toggle('o')">!<span class="it">روند: قفل‌شدن پرچم قطع‌باتری ← قرمز چشمک + بوق دوره‌ای (سبز ثابت) ← پاک‌شدن پرچم ← بازگشت به سناریوی قبلی. پیش‌فرض: سه بوق کوتاه. آستانه‌های تشخیص قطع/برگشت در کارت «نظارت باتری» (زیرتب نظارت و ایمنی، ۲۷..۳۲) است.</span></button><span class="lb">· شناسه‌های ۴۴..۴۹ · اولویت دوم برد</span></div>
+<div class="hd"><b>سناریو ۲ — قطع باتری</b> <button class="ib" data-p="27,28,29,30,31,32,44,45,46,47,48,49" onclick="this.classList.toggle('o')">!<span class="it">روند: قفل‌شدن پرچم قطع‌باتری ← قرمز چشمک + بوق دوره‌ای (سبز ثابت) ← پاک‌شدن پرچم ← بازگشت به سناریوی قبلی. پیش‌فرض: سه بوق کوتاه. آستانه‌های تشخیص قطع/برگشت همین کارت‌اند (۲۷..۳۲؛ جابه‌جا از کارت نظارت باتری (دستور کاربر: هر آستانه داخل سناریوی خودش)).</span></button><span class="lb">· ۲۷..۳۲ و ۴۴..۴۹ · اولویت دوم برد</span></div>
+<div id="aw" style="margin:2px 0 0"></div>
+<div class="sec">آستانه‌های قطع باتری <span class="lb">(mV / ms)</span></div>
+<div class="bqr">
+<label>آستانهٔ قطع باتری (mV)<input type="number" id="q27" step="50" min="14000" max="15000"><span class="lb" id="a27">—</span></label>
+<label>دبانس قطع (ms)<input type="number" id="q28" step="10" min="50" max="1000"><span class="lb" id="a28">—</span></label>
+</div>
+<div class="sec">غیبت / بازگشت باتری <span class="lb">(mV / ms)</span></div>
+<div class="bqr">
+<label>آستانهٔ غیبت (mV)<input type="number" id="q29" step="100" min="3000" max="8000"><span class="lb" id="a29">—</span></label>
+<label>آستانهٔ بازگشت (mV)<input type="number" id="q30" step="100" min="4000" max="9000"><span class="lb" id="a30">—</span></label>
+<label>دبانس غیبت (ms)<input type="number" id="q31" step="50" min="100" max="5000"><span class="lb" id="a31">—</span></label>
+<label>دبانس بازیابی (ms)<input type="number" id="q32" step="50" min="100" max="5000"><span class="lb" id="a32">—</span></label>
+</div>
 <div class="sec">چشمک قرمز <span class="lb">(دوره/duty)</span></div>
 <div class="bqr">
 <label>دوره چشمک قرمز (ms)<input type="number" id="q44" step="50" min="100" max="10000"><span class="lb" id="a44">—</span></label>
@@ -357,6 +339,8 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 <label>تعداد بوق<input type="number" id="q48" step="1" min="0" max="10"><span class="lb" id="a48">—</span></label>
 <label>گپ بین بوق‌ها (ms)<input type="number" id="q49" step="50" min="0" max="5000"><span class="lb" id="a49">—</span></label>
 </div>
+
+<div class="bqr"><button class="sb sb2" onclick="bdef()">پیش‌فرض کارخانهٔ سناریو ۲</button></div>
 
 </div>
 <div class="cd" id="ucard3" style="display:none">
@@ -428,27 +412,35 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 </div>
 
 </div>
+<div class="cd" id="ucard6" style="display:none">
+<div class="hd"><b>سناریو ۶ — عدم‌توازن دو نیم‌باتری</b> <button class="ib" data-p="108,109,110,111,112,113,114,115,116,117,118" onclick="this.classList.toggle('o')">!<span class="it">روند: قدرمطلق اختلاف دو نیم ← حین استراحت (پس از ۱۱۰) و شارژ (پس از ۱۱۱) با حد ۱۰۸، حین دشارژ فوراً با ۱۰۹ ← بالای حد برای ۱۱۲ = رویداد (اپیزود با ۱۱۳ می‌میرد؛ شمارش ماندگار روی فلش برد) ← از ۱۱۴ رویداد: قفل دائمی = قرمز ثابت + بوق هر ۱۱۵ به طول ۱۱۶ و با تیک ۱۱۷ جدایی از خروجی. شارژ در قفل آزاد ولی سیکل می‌شمارد؛ از ۱۱۸ سیکل شارژش هم قطع می‌شود. ریست فقط خودکار با تعویض باتری (۳ ثانیه). پیش‌فرض: ۳۰۰/۵۰۰mV، ۱۰ دقیقه، ۳۰s، ۱۰۰mV، ۱۰ رویداد، ۲۰۰ms، ۲۰ سیکل.</span></button><span class="lb">· ۱۰۸..۱۱۸ + شمارنده ۲۰۰..۲۰۲ (فوق فلش‌ها) · اولویت سوم</span></div>
+<div class="prod">اختلاف الان: <b id="imbv">—</b> <span class="lb">mV</span> · رویدادها: <b id="imbev">—</b> <span id="imbmx" class="lb">از ۱۰</span> · وضعیت: <b id="imbst">—</b></div>
+<div class="sec">آستانه‌ها</div>
+<div class="bqr">
+<label>حد استراحت عدم‌توازن<input type="number" id="q108" step="50" min="0" max="2000"><span class="lb" id="a108">—</span></label>
+<label>حد دشارژ عدم‌توازن<input type="number" id="q109" step="50" min="0" max="2000"><span class="lb" id="a109">—</span></label>
+</div>
+<div class="sec">گیت زمانی و پایداری</div>
+<div class="bqr">
+<label>صبر پس از پایان شارژ (ms)<input type="number" id="q110" step="60000" min="0" max="3600000"><span class="lb" id="a110">—</span></label>
+<label>صبر پس از شروع شارژ (ms، ۰=خاموش)<input type="number" id="q111" step="60000" min="0" max="3600000"><span class="lb" id="a111">—</span></label>
+<label>پایداری رویداد (ms)<input type="number" id="q112" step="1000" min="1000" max="600000"><span class="lb" id="a112">—</span></label>
+<label>Hysteresis رویداد (mV)<input type="number" id="q113" step="50" min="0" max="1000"><span class="lb" id="a113">—</span></label>
+</div>
+<div class="sec">قضاوت و هشدار</div>
+<div class="bqr">
+<label>سقف رویداد تا قفل<input type="number" id="q114" step="1" min="1" max="255"><span class="lb" id="a114">—</span></label>
+<label>دورهٔ بوق در قفل (ms، ۰=خاموش)<input type="number" id="q115" step="60000" min="0" max="86400000"><span class="lb" id="a115">—</span></label>
+<label>طول بوق (ms)<input type="number" id="q116" step="10" min="20" max="2000"><span class="lb" id="a116">—</span></label>
+<label>سیکل‌های شارژ پس از قفل تا مسدودی<input type="number" id="q118" step="1" min="1" max="255"><span class="lb" id="a118">—</span></label>
+</div>
+<div class="bqr"><button class="bt run" id="ib117">مسدودی خروجی در قفل: فعال</button><span class="lb" id="a117">—</span></div>
+<div class="bqr"><button class="sb sb2" onclick="ibdef()">پیش‌فرض کارخانهٔ سناریو ۶</button></div>
+</div>
 <input type="hidden" id="q76" value="">
 <div class="bqr"><button class="sb sb2" onclick="sdef()">بازگردانی پیش‌فرض کارخانهٔ سناریوها</button></div>
 </div>
 <div class="sgx" id="s2">
-<div class="cd">
-<div class="hd"><b>نظارت باتری</b> <button class="ib" data-p="27,28,29,30,31,32" onclick="this.classList.toggle('o')">!<span class="it">قطع باتری: اگر هر نیمه حین پمپ بالای این ولتاژ برود، سیم باتری قطع فرض می‌شود (پیش‌فرض ۱۴۸۰۰)؛ باید بالای سقف تجاوز+۵۰ و زیر قطع OV−۱۰۰ بماند وگرنه برد گیره‌اش می‌زند.<br>دبانس قطع: شرط بالا باید این‌قدر میلی‌ثانیه پیوسته برقرار بماند تا لچ شود (۱۵۰).<br>غیبت/برگشت: زیر آستانهٔ غیبت (۶۰۰۰) باتری نیست؛ بالای بازگشت (۷۰۰۰) برگشته — همیشه ۵۰۰mV از هم فاصله دارند.<br>دبانس غیبت/بازیابی: پایداری لازم برای اعلام غیبت و اعلام سلامتی (۱۰۰۰/۱۰۰۰).</span></button><span class="lb">· شناسه‌های ۲۷..۳۲ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
-<div id="aw" style="margin:2px 0 0"></div>
-<div class="sec">قطع باتری <span class="lb">(mV / ms)</span></div>
-<div class="bqr">
-<label>آستانهٔ قطع باتری (mV)<input type="number" id="q27" step="50" min="14000" max="15000"><span class="lb" id="a27">—</span></label>
-<label>دبانس قطع (ms)<input type="number" id="q28" step="10" min="50" max="1000"><span class="lb" id="a28">—</span></label>
-</div>
-<div class="sec">غیبت / بازگشت باتری <span class="lb">(mV / ms)</span></div>
-<div class="bqr">
-<label>آستانهٔ غیبت (mV)<input type="number" id="q29" step="100" min="3000" max="8000"><span class="lb" id="a29">—</span></label>
-<label>آستانهٔ بازگشت (mV)<input type="number" id="q30" step="100" min="4000" max="9000"><span class="lb" id="a30">—</span></label>
-<label>دبانس غیبت (ms)<input type="number" id="q31" step="50" min="100" max="5000"><span class="lb" id="a31">—</span></label>
-<label>دبانس بازیابی (ms)<input type="number" id="q32" step="50" min="100" max="5000"><span class="lb" id="a32">—</span></label>
-</div>
-
-</div>
 <div class="cd">
 <div class="hd"><b>پنجرهٔ ورودی سالم</b> <button class="ib" data-p="33,34" onclick="this.classList.toggle('o')">!<span class="it">تشخیص «ورودی حاضر» فقط داخل این پنجره است (پیش‌فرض ۲۱۰۰۰..۲۸۰۰۰)؛ کف و سقف همیشه ۱۰۰۰mV از هم فاصله دارند. بیرون پنجره، شارژر منتظر ورودی می‌ماند.</span></button><span class="lb">· شناسه‌های ۳۳..۳۴ · روی فلش برد ذخیره می‌شود</span></div>
 <div class="bqr">
@@ -469,8 +461,38 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 </div>
 </div>
 <div class="sgx" id="s3">
+<!-- [EN] v1.34 (user order 2026-10-03): current calibration and the
+     current filters got their own Settings sub-tab, so the charge
+     sub-tab keeps only the chart + PID. The STAB handler toggles .sgx
+     by DOM index. v1.34 made it the 5th .sgx (index 4); v1.42 (user
+     order: backup sub-tab LAST) moves it to index 3, before s4=backup.
+     [FA] v1.34 (دستور کاربر): کالیبراسیون جریان و فیلتر جریان به زیرتب
+     مستقل تنظیمات آمدند تا زیرتب شارژ فقط نمودار + PID بماند. چون
+     شنوندهٔ STAB با ترتیب DOM سوییچ می‌کند: v1.42 (دستور کاربر:
+     پشتیبان‌گیری آخرین زیرتب) این بلوک را به اندیس ۳، قبل از s4، منتقل کرد. -->
 <div class="cd">
-<div class="hd"><b>پشتیبان‌گیری همهٔ تنظیمات</b> <button class="ib" data-p="76" onclick="this.classList.toggle('o')">!<span class="it">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد (کالیبراسیون، فیلتر، فعال‌سازی/سقف‌ها، profile، آلارم‌ها، سناریوها) را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). گذراها (۱۵..۱۹ و میوت ۷۶) جزو پشتیبان نیستند. ضرایب PID دوحلقه‌ای (۸۳..۹۲) و از v1.28 حدها و گین‌های پشتیبان (۹۳..۱۰۷) هم در همین فایل می‌آیند — فهرست از خود شناسه‌ها ساخته می‌شود، پس هر پارامتر تازه‌ای خودبه‌خود پشتیبان می‌گیرد.</span></button><span class="lb">· یک بکاپ برای کل بخش تنظیمات — خروجی/ورودی JSON همهٔ ۱۰۲ مقدار ماندگار (۰..۱۴، ۲۰..۷۵، ۷۷..۱۰۷) — شامل ضرایب PID و حدها</span></div>
+<div class="hd"><b>فیلتر جریان</b> <button class="ib" data-p="7,8" onclick="this.classList.toggle('o')">!<span class="it">پنجرهٔ median: مرحلهٔ اول فیلتر، هر عدد ۱ تا ۱۵ (زوج هم مجاز)؛ ۱ و ۲ = خاموش، ۳ = پیش‌فرض، بزرگ‌تر = حذف پالس قوی‌تر با تاخیر بیشتر.<br>پنجرهٔ میانگین: مرحلهٔ دوم، هر عدد ۱ تا ۳۰۰ — میانگین آخرین W خروجی median (هر نمونه ۱ms = ۱ms تاریخچه)؛ ۱ = خاموش، ۱۰ = پیش‌فرض. برای صاف‌شدن قابل‌مشاهده روی نمودار تب «پنل» مجموع را بالای ~۲۰۰ms ببرید؛ در مود خودکار شارژر بالای ~۵۰ توصیه نمی‌شود (کندی حلقهٔ تنظیم ۱۰۰Hz).</span></button><span class="lb">· مشترک هر دو کانال · Median + Average · مثل بقیه روی فلش برد ذخیره می‌شود</span></div>
+<div class="bqr">
+<label>پنجرهٔ median<input type="number" id="q7" step="1" min="1" max="15"><span class="lb" id="a7">—</span></label>
+<label>پنجرهٔ میانگین (average)<input type="number" id="q8" step="1" min="1" max="300"><span class="lb" id="a8">—</span></label>
+</div>
+
+</div>
+<div class="cd">
+<div class="hd"><b>کالیبراسیون جریان</b> <button class="ib" data-p="0,1,2,3,4,5,6,9,10" onclick="this.classList.toggle('o')">!<span class="it">آفست، عدد ADC در جریان صفر است و از هر نمونه کم می‌شود. گین و ETA را با تست جریان سمت باتری حساب کنید — ستونهای خام CSV تب بنچ راهنماست — و اینجا ثبت کنید؛ ETA صفر یعنی بدون تبدیل. کانال ۲ جدول بنچ دارد پس ETA آن صفر بماند؛ تغییر آفست یا گین کانال ۲ نیاز به ساخت دوباره جدول بنچ دارد. هر ۶ عدد روی فلش برد ذخیره و با قطع برق ماندگار است.</span></button><span class="lb">· شناسه ۰..۳ و ۹..۱۰ · روی فلش برد ذخیره می‌شود</span></div>
+<div class="bqr">
+<label>آفست کانال ۱ (count)<input type="number" id="q0" step="1" min="0" max="255"><span class="lb" id="a0">—</span></label>
+<label>آفست کانال ۲ (count)<input type="number" id="q1" step="1" min="0" max="255"><span class="lb" id="a1">—</span></label>
+<label>گین کانال ۱ (‰)<input type="number" id="q2" step="1" min="100" max="3000"><span class="lb" id="a2">—</span></label>
+<label>گین کانال ۲ (‰)<input type="number" id="q3" step="1" min="100" max="3000"><span class="lb" id="a3">—</span></label>
+<label>ضریب ETA کانال ۱ (‰، صفر=خاموش)<input type="number" id="q9" step="1" min="0" max="999"><span class="lb" id="a9">—</span></label>
+<label>ضریب ETA کانال ۲ (‰، صفر=خاموش)<input type="number" id="q10" step="1" min="0" max="999"><span class="lb" id="a10">—</span></label>
+</div>
+</div>
+</div>
+<div class="sgx" id="s4">
+<div class="cd">
+<div class="hd"><b>پشتیبان‌گیری همهٔ تنظیمات</b> <button class="ib" data-p="76" onclick="this.classList.toggle('o')">!<span class="it">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد (کالیبراسیون، فیلتر، فعال‌سازی/سقف‌ها، profile، آلارم‌ها، سناریوها) را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). گذراها (۱۵..۱۹ و میوت ۷۶) جزو پشتیبان نیستند. ضرایب PID دوحلقه‌ای (۸۳..۹۲) و از v1.28 حدها و گین‌های پشتیبان (۹۳..۱۰۷) هم در همین فایل می‌آیند — فهرست از خود شناسه‌ها ساخته می‌شود، پس هر پارامتر تازه‌ای خودبه‌خود پشتیبان می‌گیرد.</span></button><span class="lb">· یک بکاپ برای کل بخش تنظیمات — خروجی/ورودی JSON ۱۱۳ مقدار ماندگار (۰..۱۴، ۲۰..۷۵، ۷۷..۱۱۸) — شامل PID، حدها و عدم‌توازن</span></div>
 <div class="bqr">
 <button class="sb sb2" onclick="xexp()">⬇ خروجی (دانلود JSON)</button>
 <label class="sb" style="cursor:pointer">⬆ ورودی (انتخاب فایل)<input type="file" id="xim" accept=".json,application/json" style="display:none"></label>
@@ -479,6 +501,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 
 </div>
 </div>
+
 </div>
 </main>
 
@@ -489,18 +512,28 @@ const SC=['','g','g','g','y','r','y','r','r','y'];
 /* ثابت‌های بخش 5.3 سند */
 const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*76000/6800,K24B=3300/4095*69200/6800,K12=3300/4095*41000/6800;
 /* شناسه: [عنوان, واحد, کمینه, بیشینه, نوع(n عدد، b کلید), توضیح] */
+/* [EN] v1.39 (user order: show duty as REAL percent everywhere). These two
+   rows now READ and ACCEPT percent (0..50); only the wire value stays
+   permille (x10 at num(), /10 when the applied value is printed). Every
+   other duty display - live value, ceiling note, manual input, blink
+   duties - already spoke percent, so the panel is now uniform.
+   [FA] v1.39 (دستور کاربر: همه‌جا درصد واقعی duty) - این دو ردیف حالا درصد
+   می‌خوانند و درصد قبول می‌کنند (۰..۵۰)؛ فقط مقدار سیمی پرمیل می‌ماند.
+   همهٔ نمایش‌های دیگر duty از قبل درصد بودند. */
+const PUN=id=>(id===13||id===14)?'٪':P[id][1];
 const P={
-13:['سقف duty','‰',0,500,'n','سقف duty همین کانال؛ هر ۱۰ واحد یعنی ۱٪ (۵۰۰ = ۵۰٪). هر duty بالاتر — خودکار، فیکس یا دستی — محدود به همین سقف است.'],
-14:['سقف duty','‰',0,500,'n','سقف duty همین کانال؛ هر ۱۰ واحد یعنی ۱٪ (۵۰۰ = ۵۰٪). هر duty بالاتر — خودکار، فیکس یا دستی — محدود به همین سقف است.']};
+13:['سقف duty','٪',0,500,'n','سقف duty همین کانال؛ عدد را به درصد واقعی بنویسید (حداکثر ۵۰٪) — روی سیم به‌صورت پرمیل ذخیره می‌شود. هر duty بالاتر — خودکار، فیکس یا دستی — محدود به همین سقف است.'],
+14:['سقف duty','٪',0,500,'n','سقف duty همین کانال؛ عدد را به درصد واقعی بنویسید (حداکثر ۵۰٪) — روی سیم به‌صورت پرمیل ذخیره می‌شود. هر duty بالاتر — خودکار، فیکس یا دستی — محدود به همین سقف است.']};
 /* ولتاژها: [عنوان, اندیس t, شناسهٔ آفست, ضریب مقسم] */
 const V=[['ورودی',14,4,K24],['پک ۲۴V',15,5,K24B],['نود ۱۲V',16,6,K12],['باتری بالا',18],['باتری پایین',17]];
 var D=null;/* var (نه let) تا در تست هاست هم قابل‌نوشتن باشد */
 const v2=mv=>(mv/1000).toFixed(2),pc=pm=>(pm/10).toFixed(1)+'%';
 function send(id,v){const a=$('a'+id);if(a)a.textContent='…';fetch('/s?id='+id+'&v='+v,{method:'POST'}).then(r=>{if(!r.ok)throw 0;}).catch(()=>{if(a)a.textContent='خطا';});}
-function num(id){const e=$('i'+id),p=P[id],v=Math.round(+e.value);if(e.value===''||isNaN(v))return;send(id,Math.min(p[3],Math.max(p[2],v)));e.value='';e.blur();}
+function num(id){const e=$('i'+id),p=P[id],t=+e.value;if(e.value===''||isNaN(t))return;const w=(id===13||id===14)?Math.round(t*10):Math.round(t);send(id,Math.min(p[3],Math.max(p[2],w)));e.value='';e.blur();}
 function ctl(id){const p=P[id];
+ if(id===13||id===14)return `<input type="number" id="i${id}" min="0" max="50" step="any" placeholder="0…50٪" onkeydown="if(event.key=='Enter')num(${id})"><button class="sb" onclick="num(${id})">ثبت</button>`;
  return `<input type="number" id="i${id}" min="${p[2]}" max="${p[3]}" placeholder="${p[2]<0?'±'+p[3]:p[2]+'…'+p[3]}" onkeydown="if(event.key=='Enter')num(${id})"><button class="sb" onclick="num(${id})">ثبت</button>`;}
-const row=(id,x)=>`<div class="rw"><div>${P[id][0]} <span class="lb">${P[id][1]}</span><button class="ib" onclick="this.classList.toggle('o')">!<span class="it">${P[id][5]}</span></button><span class="ap n" id="a${id}">—</span></div><div class="ct">${x||''}${ctl(id)}</div></div>`;
+const row=(id,x)=>`<div class="rw"><div>${P[id][0]} <span class="lb">${PUN(id)}</span><button class="ib" onclick="this.classList.toggle('o')">!<span class="it">${P[id][5]}</span></button><span class="ap n" id="a${id}">—</span></div><div class="ct">${x||''}${ctl(id)}</div></div>`;
 
 /* ---------- ساخت صفحه: ولتاژها + فیلتر (مشترک) ---------- */
 /* v1.16k: merged voltages+alarm table - fixed layout, each value once, pills inline */
@@ -540,11 +573,12 @@ function chart(){[0,1].forEach(ci=>{const c=$('cv'+(ci+1)),w=c.clientWidth,h=c.c
  ln(s.u,'#6b7691',1);ln(s.f,'#63a2ff',2);const pp=A=>{const B=A.slice(-50);return Math.max(...B)-Math.min(...B);};$('pu'+(ci+1)).textContent=pp(s.u);$('pf'+(ci+1)).textContent=pp(s.f);});}
 /* تعویض تب: پنل و داده‌برداری بنچ */
 let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=+b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i==TAB));if(D)draw(D);});
-/* v1.15b: زیرتب داخل تنظیمات — ۰=شارژ و فیلتر، ۱=آلارم‌ها */
+/* v1.15b: زیرتب داخل تنظیمات — v1.42 (دستور کاربر: پشتیبان‌گیری آخرین زیرتب): ۰=شارژ و PID، ۱=سناریوها، ۲=نظارت و ایمنی، ۳=کالیبراسیون و فیلتر جریان، ۴=پشتیبان‌گیری */
 let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{STAB=+b.dataset.s;document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i==STAB));if(D)draw(D);});
-let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=5;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));}
+let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=6;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));}
 document.querySelectorAll('#usel button').forEach(b=>b.onclick=()=>usel(+b.dataset.u));
 $('mx').onclick=()=>send(19,0);
+{const b6=$('ib117');if(b6)b6.onclick=()=>{const v=(D&&D.p[117]===0)?1:0;send(117,v);};}
 
 /* ---------- به‌روزرسانی: فرمول‌های بخش 5.3 با مقادیر زنده ---------- */
 const f1=x=>x.toFixed(1),V_=mv=>(mv/1000).toFixed(2)+'V',nz=v=>v==null?'?':v;
@@ -569,7 +603,7 @@ function formulas(t,p){
  $('ff').textContent=`I_filtered = convert( average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( raw counts ) ) )`;}
 function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>hn(c)){s.u.shift();s.f.shift();}});}}
 function qfill(){if(!D||!D.p)return;for(const id of [7,8]){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!(D.q&(1<<id)))a.textContent=D.p[id]==null?'—':D.p[id];}}
-function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{$('q'+x[0]).value=x[1];send(x[0],x[1]);});qgraph();}
+function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{const e=$('q'+x[0]);if(e)e.value=x[1];send(x[0],x[1]);});pdef();ldef();qgraph();}
 /* ===== v1.14: نمودار مراحل شارژ — مقدار هر خط از فیلد تایپ‌نشده/متفاوت با مقدار اعمال‌شده می‌آید (پیش‌نمایش خط‌چین) ===== */
 const QDEF=[14400,14300,14600,13500,12800,650,50];
 /* [EN] v1.33: the q20..q26 input boxes went when the duplicate profile form
@@ -691,31 +725,99 @@ const PX={
  83:['Kp جریان','واکنش فوری حلقهٔ جریان به خطا. زیاد یعنی تند و لرزان.'],
  84:['Ki جریان','خطای انباشته را جمع می‌کند؛ همان چیزی که در نهایت جریان را دقیقاً روی هدف می‌نشاند.'],
  85:['Kd جریان','واکنش به سرعت تغییر. صفر است چون اندازه‌گیری نویز دارد و D نویز را تقویت می‌کند.'],
- 86:['نرخ صعود جریان','چقدر سریع اجازه دارد duty را بالا ببرد.'],
- 87:['نرخ نزول جریان','چقدر سریع اجازه دارد پایین بیاورد؛ بالاتر یعنی ترمز تندتر.'],
+ 86:['نرخ صعود جریان','سقف سرعت بالارفتن duty. واحد: هزارمِ‌پرمیل در ثانیه - ۱۰۰۰ یعنی ۱ پرمیل‌برثانیه (رفتن از صفر تا سقف، ۱۰۰۰ ثانیه طول می‌کشد).'],
+ 87:['نرخ نزول جریان','سقف سرعت پایین‌آمدن duty؛ بالاتر یعنی ترمز تندتر. واحد همان هزارمِ‌پرمیل در ثانیه است (۱۰۰۰ = ۱‰/s)؛ معمولاً باید از نرخ صعود تندتر باشد.'],
  88:['Kp ولتاژ','همان Kp ولی برای حلقهٔ ولتاژ. عمداً کوچک است تا نویز ولتاژ پک تقویت نشود.'],
  89:['Ki ولتاژ','انباشت خطای ولتاژ؛ بزرگ‌ترین عامل کم‌کردن اورشوت.'],
  90:['Kd ولتاژ','صفر، به همان دلیل حلقهٔ جریان.'],
- 91:['نرخ صعود ولتاژ','عمداً خیلی کم است تا موقع تحویل CC به CV پرش نکند.'],
- 92:['نرخ نزول ولتاژ','اجازهٔ کاهش سریع وقتی ولتاژ از هدف رد می‌شود.'],
- 93:['سقف زمان Absorb','بیشترین مدتی که Absorb ادامه می‌یابد، از لحظه‌ای که جریان اولین بار زیر «جریان مسلح‌کننده» برود. صفر یعنی اصلاً سقف زمانی نباشد و فقط Taper پایان بدهد.'],
- 94:['جریان Arm','سقف زمان Absorb از این جریان به پایین شروع به شمردن می‌کند. بالاتر یعنی زودتر مسلح می‌شود.'],
- 95:['کمینهٔ شستشوی Absorb','Absorb دست‌کم این مدت ادامه می‌یابد حتی اگر جریان زود پایین بیاید؛ جلوی پایان زودرس را می‌گیرد.'],
- 96:['پایداری Taper','جریان باید این مدت پیوسته زیر «جریان Taper» بماند تا شارژ تمام‌شده اعلام شود؛ کوتاه یعنی یک نوسان شارژ را تمام می‌کند.'],
- 97:['بیشینهٔ پلهٔ duty','بیشترین تغییر duty در هر تیک کنترل (‰). کوچک یعنی نرم‌تر ولی کندتر.'],
- 98:['hysteresis خروجی','تا تقاضا این‌قدر (میلی‌پرمیل) تغییر نکند، duty اعمالی عوض نمی‌شود؛ جلوی لرزش را می‌گیرد. سقفش از تحمل بذرگیری دوباره مشتق می‌شود.'],
- 99:['پنجرهٔ فیلتر ولتاژ','تقسیم‌کنندهٔ فیلتر نمایی ولتاژ پک؛ ۱ یعنی فیلتر خاموش، بزرگ‌تر یعنی آرام‌تر و کندتر.'],
- 100:['ولتاژ پشتیبان سخت','بالای این ولتاژ، پشتیبان سخت سقف duty را به تناسب تجاوز پایین می‌کشد. فقط پایین‌بردنی است.'],
- 101:['گین پشتیبان جریان','شدت واکنش پشتیبان سخت به تجاوز جریان. صفر یعنی این پشتیبان خاموش.'],
- 102:['گین پشتیبان ولتاژ','شدت واکنش پشتیبان سخت به تجاوز ولتاژ. صفر یعنی این پشتیبان خاموش.'],
- 103:['حاشیهٔ ست‌پوینت جریان','هدف حلقهٔ جریان این‌قدر زیر Bulk max گذاشته می‌شود تا تنظیم سالم به سقف نخورد.'],
- 104:['زمان نشست اتصال','بعد از دیدن اتصال معتبر، این‌قدر صبر می‌کند و بعد Bulk را شروع می‌کند.'],
- 105:['قفل ضدلرزش','بعد از یک تریپ، این مدت دوباره روشن نمی‌شود.'],
- 106:['deadman مود دستی','اگر پنل این‌قدر ساکت بماند، مود دستی خودکار بسته می‌شود — محافظ قطع‌شدن مرورگر.'],
- 107:['فاصلهٔ ramp پایین','فاصلهٔ هر پلهٔ کاهش duty هنگام ramp پایین (ms).']};
+ 91:['نرخ صعود ولتاژ','سقف سرعت بالارفتن duty در حلقهٔ ولتاژ؛ عمداً کوچک است تا هنگام تحویل CC به CV پرش نکند. واحد: هزارمِ‌پرمیل در ثانیه (۱۰۰۰ = ۱‰/s).'],
+ 92:['نرخ نزول ولتاژ','سقف سرعت کاهش duty وقتی ولتاژ از هدف رد می‌شود. واحد: هزارمِ‌پرمیل در ثانیه (۱۰۰۰ = ۱‰/s).'],
+ 93:['سقف زمان Absorb','بیشترین مدت مجاز Absorb (ms). صفر = بدون سقف. جزئیات کامل در تولتیپ تراشهٔ زیر نمودار.'],
+ 94:['جریان شروع شمارش سقف زمانی','سقف زمانی Absorb تا وقتی جریان بالاست اصلاً شروع نمی‌شود؛ از نقطه‌ای که جریان زیر این حد بیاید «شمارش آغاز می‌شود» (در نام‌گذاری فرمور: Arm یعنی آمادهٔ شمردن). واحد: mA.'],
+ 95:['کمینهٔ مدت Absorb','Absorb دست‌کم این مدت ادامه می‌یابد (ms). صفر = بدون نگه‌داشت اجباری.'],
+ 96:['پایداری Taper','جریان باید این مدت پیوسته زیر «جریان پایانی» بماند تا شارژ تمام اعلام شود (ms).'],
+ 97:['گام تغییر duty','بیشترین تغییر duty در هر تیک ۵۰ میلی‌ثانیه‌ای PID، به پرمیل (‰).'],
+ 98:['hysteresis خروجی PID','تقاضای جدید باید دست‌کم این‌قدر (میلی‌پرمیل) با duty کنونی فاصله داشته باشد تا خروجی عوض شود.'],
+ 99:['پنجرهٔ فیلتر ولتاژ','میانگین نمایی روی N نمونه؛ ثابت زمانی N × ۵۰ میلی‌ثانیه. ۱ = فیلتر خاموش.'],
+ 100:['ولتاژ آستانهٔ پشتیبان','از این ولتاژ به بالا، پشتیبانِ سقف duty فعال می‌شود (mV).'],
+ 101:['گین پشتیبان جریان','شدت برشِ سقف duty به ازای تجاوز جریان از Bulk max. صفر = خاموش.'],
+ 102:['گین پشتیبان ولتاژ','شدت برشِ سقف duty به ازای تجاوز ولتاژ از آستانهٔ پشتیبان. صفر = خاموش.'],
+ 103:['حاشیهٔ هدف جریان','هدف حلقهٔ جریان این‌قدر (mA) زیر Bulk max گذاشته می‌شود.'],
+ 104:['زمان نشست اتصال','پس از اتصال معتبر، این مدت (ms) صبر و بعد شارژ شروع می‌شود.'],
+ 105:['قفل پس از تریپ','پس از هر قطع اضطراری، کانال این مدت (ms) خاموش می‌ماند.'],
+ 106:['واچ‌داگ حالت دستی','اگر پنل این مدت (ms) ساکت بماند، دستور دستی خودکار رها می‌شود.'],
+ 107:['فاصلهٔ رِمپ پایین','فاصلهٔ زمانی (ms) بین پله‌های کاهش نرم duty.'],
+108:['حد استراحت عدم‌توازن','حداکثر اختلاف مجاز دو نیم (mV) در استراحت/شارژ؛ پیش‌فرض ۳۰۰.'],
+109:['حد دشارژ عدم‌توازن','حداکثر اختلاف مجاز دو نیم (mV) در دشارژ؛ پیش‌فرض ۵۰۰.'],
+110:['صبر پس از پایان شارژ','سنجش استراحت پس از این مدت از پایان شارژ (ms)؛ ۰=خاموش؛ پیش‌فرض ۱۰ دقیقه.'],
+111:['صبر پس از شروع شارژ','سنجش حین شارژ پس از این مدت از شروع (ms)؛ ۰=خاموش؛ پیش‌فرض ۱۰ دقیقه.'],
+112:['پایداری رویداد','بالای‌حد پیوسته به این مدت (ms) یک رویداد است؛ پیش‌فرض ۳۰ ثانیه.'],
+113:['Hysteresis رویداد','اپیزود در حد منهای این مقدار (mV) بسته می‌شود؛ پیش‌فرض ۱۰۰.'],
+114:['سقف رویداد تا قفل','پس از این‌قدر رویداد ماندگار، قفل؛ پیش‌فرض ۱۰.'],
+115:['دورهٔ بوق در قفل','فاصلهٔ دو بوق در قفل (ms)؛ ۰=بی‌صدا؛ پیش‌فرض یک ساعت.'],
+116:['طول بوق قفل','مدت هر بوق در قفل (ms)؛ پیش‌فرض ۲۰۰.'],
+117:['تیک مسدودی خروجی','۱ = مسدودی خروجی در قفل، ۰ = ریسک با شما؛ پیش‌فرض ۱.'],
+118:['سیکل‌های شارژ پس از قفل','سیکل‌های شارژ مجاز پس از قفل تا قطع شارژ؛ پیش‌فرض ۲۰.']};
+
+// [EN] v1.36 (user order: the chip tooltips must be EXPLICIT - plain
+//   language, real units, and what bigger vs smaller actually does. The
+//   gains especially: they are feed-forward ceiling cuts, not PID gains,
+//   and 0 disables them. These texts feed TWO UIs: the title tooltip of
+//   the chips under the chart and the "what each parameter does" bubbles
+//   (pexp), so keep them short enough for both.
+//   [FA] v1.36 (دستور کاربر: تولتیپ تراشه‌ها باید شفاف شود - زبان ساده،
+//   واحد واقعی، و اینکه بیشتر/کمتر دقیقاً چه می‌کند؛ مخصوصاً گین‌ها:
+//   آن‌ها برش تناسبی «سقف duty» هستند، نه ضرایب PID، و صفر یعنی خاموش.
+//   این متن‌ها دو جا دیده می‌شوند: تولتیپ تراشه‌های زیر نمودار و حبابِ
+//   «کار هر پارامتر»؛ پس هم برای تولتیپ کوتاه و هم برای حباب خوانا بمانند.)
+//   هشدار: این سطرها کامنت JS با نشانهٔ «//» هستند؛ ناظر ثابتی، نشانه‌های
+//   مارک‌آپ را فقط در این شکلِ کامنت می‌پذیرد (قاعدهٔ «در کامنت HTML ننویس»).
+// [EN] v1.40 (user order: "I understand NONE of these with your definitions -
+//   explain SIMPLY, with a NUMERIC EXAMPLE"). Every tooltip now follows the
+//   same fixed pattern: one plain sentence, one worked example computed with
+//   the actual factory defaults, then what bigger/smaller does. PID decides
+//   the destination; these parameters only gate HOW SAFELY/SMOOTHLY we get
+//   there - each tooltip says so plainly.
+//   [FA] v1.40 (دستور کاربر: «با این تعاریف هیچ‌کدام را نمی‌فهمم؛ ساده با
+//   مثال عددی توضیح بده»). الگوی ثابت برای همه: یک جملهٔ ساده + یک مثال
+//   عددی با همان اعداد کارخانه + اثر بیشتر/کمتر. PID مقصد را تعیین می‌کند؛
+//   این پارامترها فقط نگهبانِ «چطوری امن و نرم برسیم»‌اند.
+const PXT={
+ 93:'سقف زمان Absorb، تور ایمنی وقتی پایان طبیعی (Taper) هر دلیلی اتفاق نیفتد. مثال عددی: پیش‌فرض ۶۰ دقیقه؛ اگر جریان در Absorb روی ۳۰mA گیر کند و زیر «جریان پایانی» نیاید، شارژ بعد از ۶۰ دقیقه تمام اعلام می‌شود. شمارش از نقطهٔ «شروع شمارش» (پارامتر ۹۴) آغاز می‌شود. صفر = بدون سقف زمانی. بیشتر = شارژ کامل‌تر ولی طولانی‌تر.',
+ 94:'نقطهٔ شروع شمارش سقف زمانی (فرمور: Arm). ساعت سقفِ پارامترِ ۹۳ تا وقتی جریان بالای این حد است اصلاً شروع نمی‌شود. مثال عددی: آستانه ۱۰۰mA - جریان ۱۲۰mA یعنی ساعت هنوز می‌خوابد؛ جریان ۹۵mA یعنی ساعت شروع به تیک‌خوردن می‌کند.',
+ 95:'تعهد حداقلی ماندن در Absorb: هر چه اتفاق بیفتد، Absorb دست‌کم این مدت ادامه می‌یابد. مثال عددی: پیش‌فرض ۱۰ دقیقه؛ اگر در دقیقهٔ ۳ جریان ناگهان به ۲۰mA افتاد (باتری سرد/ظرفیت کم)، باز هم تا دقیقهٔ ۱۰ ادامه می‌دهد تا باتری نیمه‌کاره رها نشود. صفر = بدون تعهد. بیشتر = پرشارژتر مطمئن ولی بیشتر روی ولتاژ بالا.',
+ 96:'شرط اعلام «شارژ کامل»: جریان باید این مدتِ پیوسته زیر «جریان پایانی» بماند. مثال عددی: پیش‌فرض ۶۰ ثانیه؛ اگر در ثانیهٔ ۴۰ یک پرش لحظه‌ای به ۶۰mA بیاید، شمارش صفر می‌شود و باید از اول ۶۰ ثانیهٔ آرام بگذرد. کمتر = تمام‌کردن زودتر ولی حساس به نوسان؛ بیشتر = دیرتر ولی مطمئن‌تر.',
+ 97:'سرعت مجاز حرکت duty به‌سمت هدفی که PID تعیین کرده. PID مقصد را می‌گوید، این عدد می‌گوید با چه شتابی برویم. مثال عددی: پیش‌فرض ۸ پرمیل در هر تیک ۵۰ میلی‌ثانیه؛ اگر PID ناگهان بخواهد duty را ۱۰۰ پرمیل (۱۰٪) بیشتر کند، با ۸ حدود ۱۳ تیک (۰٫۶ ثانیه) راه است، با ۴ دو برابر طول می‌کشد، با ۴۰ در ۲ تا ۳ تیک می‌رسد. بیشتر = تعقیب تندتر ولی احتمال جهش؛ کمتر = نرم‌تر و پایدارتر.',
+ 98:'نادیده‌گرفتن جنبش‌های ریز خروجی PID تا PWM لرزش نگیرد (واحد: میلی‌پرمیل). مثال عددی: پیش‌فرض ۷۰۰ یعنی اگر duty الان ۲۰۰ پرمیل است و PID عدد ۲۰۰٫۴ حساب کند (فاصله ۰٫۴ < ۰٫۷) هیچ اتفاقی نمی‌افتد؛ اگر ۲۰۱٫۲ بخواهد (فاصله ۱٫۲ > ۰٫۷) حرکت انجام می‌شود. باقی‌مانده درون حلقه جمع می‌شود، چیزی گم نمی‌شود. بیشتر = سکون بیشتر و دقت کمتر؛ کمتر = دقیق‌تر ولی لرزان‌تر. کمی بالاتر از نویز اندازه‌گیری بگذارید.',
+ 99:'نرم‌کردن عدد ولتاژ باتری پیش از رسیدن به PID، تا PID به پرش‌های نویزی جواب ندهد. مثال عددی: پیش‌فرض ۳۲ یعنی میانگینِ نماییِ ۳۲ نمونهٔ اخیر ≈ پنجرهٔ ۱٫۶ ثانیه؛ اگر مصرف ناگهان وصل شود و ولتاژ واقعی ۵۰mV بیفتد، خوانش به‌آرامی طی چند ثانیه می‌رسد (و PID تکان نمی‌خورد). با عدد ۱ فیلتر خاموش است: همان لحظه می‌رسد ولی duty می‌لرزد. بیشتر = آرام‌تر ولی دیرتر.',
+ 100:'آستانه‌ای که از آن بالاتر ترمز اضطراری ولتاژ وارد می‌شود. مثال عددی: پیش‌فرض ۱۴۸۰۰mV؛ تا ۱۴٫۷ ولت پشتیبان کاملاً بی‌خبر است، در ۱۴٫۸۵ برش سقف duty شروع می‌شود و شدتش را گینِ ۱۰۲ تعیین می‌کند. این آستانه خودش هم قابل تنظیم است (۱۳۰۰۰ تا ۱۴۸۰۰).',
+ 101:'گین ترمز اضطراری جریان (بخشی از PID نیست؛ ترمز اضطراری است که بالای او ایستاده). مثال عددی: پیش‌فرض ۱۰۰ یعنی هر ۱mA تجاوز از سقف Bulk، سقف duty را ۰٫۱ پرمیل پایین می‌کشد؛ پس اگر جریان به ۷۵۰mA برسد (۱۰۰mA تجاوز)، سقف duty فوری ۱۰ پرمیل (۱٪) پایین می‌آید و تا برگشتن ادامه دارد. صفر = این تریپ‌نما کاملاً خاموش. بیشتر = ترمز محکم‌تر.',
+ 102:'گین ترمز اضطراری ولتاژ. مثال عددی: پیش‌فرض ۵۰۰ یعنی هر ۱mV بالاتر از آستانهٔ ۱۴٫۸ (پارامترِ قبلی)، سقف duty ۰٫۵ پرمیل پایین می‌آید؛ پس اگر ولتاژ به ۱۴٫۹ برسد (۱۰۰mV تجاوز)، سقف duty فوری ۵۰ پرمیل (۵٪) پایین می‌آید. صفر = خاموش. این‌ها دفاع آخرند، نه جایگزین PID.',
+ 103:'فاصلهٔ ایمن از لبهٔ سقف جریان. هدف واقعی حلقهٔ جریان = Bulk max منهای این عدد. مثال عددی: با سقف ۶۵۰mA و margin ۱۰، PID روی ۶۴۰mA قفل می‌کند؛ موج ناگهانی ۵mA دیگر به لبه نمی‌رسد و ترمز اضطراری (۱۰۱) الکی وارد نمی‌شود. بیشتر = اطمینان بیشتر و متوسط جریان کمی کمتر؛ صفر = دقیقاً روی مرز کار می‌کند.',
+ 104:'صبر بعد از وصل باتری تا اتصال و ولتاژ بنشیند، بعد شروع Bulk. مثال عددی: پیش‌فرض ۱۵ ثانیه؛ اگر باتری را دست می‌زنید و لحظه‌ای لق می‌زند، شارژ روی نمونهٔ نامطمئن شروع نمی‌شود. واحد: میلی‌ثانیه. کمتر = شروع سریع‌تر ولی ریسکی‌تر.',
+ 105:'خاموشی اجباری بعد از هر تریپ پیش از وصلِ دوباره. مثال عددی: پیش‌فرض ۳ ثانیه؛ اگر اتصال خرابی‌دار مدام فتح و قطع شود، خروجی پشت‌سرهم نمی‌تواند فتح/قطع کند و هر بار ۳ ثانیه سکون می‌گیرد. صفر = بدون قفل (ریسکی). واحد: میلی‌ثانیه.',
+ 106:'واچ‌داگ مود دستی: اگر پنل این مدت سکوت کند، دستور دستی منقضی می‌شود. مثال عددی: پیش‌فرض ۳ ثانیه؛ اگر با duty=۳۰٪ دستی لینک/مرورگر قطع شود، خروجی بعد از ۳ ثانیه خودبه‌خود صفر می‌شود تا کلیدی در دستِ هیچ‌کس رها نماند. بیشتر = آزادی بیشتر برای آزمایش، کمتر = امن‌تر. واحد: میلی‌ثانیه.',
+ 107:'پله‌های خاموشی نرم: هنگام خاموش‌شدن، duty هر این‌قدر میلی‌ثانیه یک پلهٔ کوچک پایین می‌آید تا جریان آنی صفر نشود. مثال عددی: پیش‌فرض ۵۰۰ms؛ پایین‌آمدن از ۲۰٪ تا صفر چند ثانیه نرم طول می‌کشد؛ با ۱۰۰ms پنج‌برابر تندتر. واحد: میلی‌ثانیه بین پله‌ها.',
+108:'قدرمطلق اختلاف دو نیم در استراحت و حین شارژ. پیش‌فرض ۳۰۰mV - ۱۳٫۱۰/۱۲٫۷۵V یعنی ۳۵۰mV بالای حد؛ ۱۲٫۹/۱۲٫۷۵ یعنی سالم. واحد: mV.',
+109:'همان حد حین دشارژ (روی بار)، معمولاً بزرگ‌تر. پیش‌فرض ۵۰۰mV - ۳۵۰ سالم، ۶۰۰ با ۳۰ ثانیه ماندن رویداد. واحد: mV.',
+110:'سنجش استراحت فقط این‌قدر بعد از پایان شارژ. پیش‌فرض ۶۰۰۰۰۰ms=۱۰ دقیقه؛ ۰=خاموش. واحد: میلی‌ثانیه.',
+111:'سنجش حین شارژ فقط این‌قدر بعد از شروع، با حد ۱۰۸. پیش‌فرض ۱۰ دقیقه؛ ۰=خاموش. واحد: میلی‌ثانیه.',
+112:'دم: بالا بودن باید این‌قدر پیوسته بماند. پیش‌فرض ۳۰۰۰۰ms=۳۰ ثانیه. واحد: میلی‌ثانیه.',
+113:'اپیزود وقتی بسته می‌شود که اختلاف به حد منهای این مقدار برسد. با ۳۰۰/۱۰۰ یعنی ۲۰۰mV. واحد: mV.',
+114:'از این‌قدر رویداد ماندگار، باتری محکوم (قفل). با قطع برق هم پاک نمی‌شود. پیش‌فرض ۱۰.',
+115:'در قفل هر این‌قدر یک بوق کوتاه. پیش‌فرض ۳۶۰۰۰۰۰ms=یک ساعت؛ ۰=بی‌صدا. واحد: میلی‌ثانیه.',
+116:'طول هر بوق در قفل. پیش‌فرض ۲۰۰ms. واحد: میلی‌ثانیه.',
+117:'تیک: در قفل باتری از خروجی جدا شود؟ پیش‌فرض روشن؛ برداشتن تیک = ریسک با شما.',
+118:'بعد از قفل تا این‌قدر سیکل شارژ مجاز است، بعد شارژش هم می‌ایستد. پیش‌فرض ۲۰.'};
+
+/* [EN] v1.36: the fuller v1.36 text (PXT) wins, else the classic PX row,
+   so help bubbles and chips always agree.
+   [FA] v1.36: متن کامل v1.36 اگر هست همان، وگرنه ردیف کلاسیک PX - تا حباب
+   کمک و تراشه همیشه یک حرف بزنند. */
+const pxt=id=>(typeof PXT!=='undefined'&&PXT[id])?[EVN[id]||((PX[id]||['',''])[0]),PXT[id]]:PX[id];
 function pexp(){document.querySelectorAll('button.ib[data-p]').forEach(b=>{
  const t=b.querySelector('.it');if(!t||t.dataset.px)return;t.dataset.px='1';
- const rows=b.dataset.p.split(',').map(x=>PX[+x]).filter(Boolean);
+ const rows=b.dataset.p.split(',').map(x=>pxt(+x)).filter(Boolean);
  if(!rows.length)return;
  t.insertAdjacentHTML('beforeend','<div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--ln)">'+
   '<b style="font-size:11.5px">هر پارامتر چه می‌کند</b>'+
@@ -750,42 +852,82 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
     ناحیه‌ها از مقادیر اعمال‌شده (.d) می‌آیند؛ تایپِ هنوز-اعمال‌نشده فقط خط‌چین */
  const lo=Math.max(7600,Math.min(q.r.d,12000)-500),hi=15060,W=760,H=420,X0=48,X1=742;
  const LBL_GAP=11;
+ /* [EN] v1.36 (user order: chart texts are FAR too big on some browsers):
+    the SVG stretches with the page width, and SVG scales font-size along
+    with everything else - on a wide browser window an 8px label renders
+    at ~15px. Therefore the on-screen font size is DYNAMIC: measure the
+    real mount width and shrink every size by W/width so it renders close
+    to the designed pixel size on every browser. Shrink-only (never grow),
+    floor 6.5 so an ultra-wide window cannot make it unreadable.
+    [FA] v1.36 (دستور کاربر: نوشته‌های نمودار روی بعضی مرورگرها خیلی درشت
+    است): چون SVG خودش را با پهنای صفحه می‌کشد، فونت هم با آن بزرگ می‌شود؛
+    پس اندازهٔ فونت داینامیک شد: با پهنای واقعی محل نصب سنجیده و هر
+    اندازه در W/width ضرب می‌شود تا روی صفحه نزدیک همان پیکسلِ طراحی بماند.
+    فقط کوچک‌کننده (هرگز بزرگ نمی‌کند) و کف ۶٫۵ تا روی صفحهٔ خیلی عریض
+    ناخوانا نشود. */
+ const RWM=(MG.length&&MG[0].clientWidth)?MG[0].clientWidth:0;
+ const FKF=RWM>W?W/RWM:1;
+ const F=fs=>Math.max(6.5,+(fs*FKF).toFixed(2));
  const IMAX=Math.max(200,Math.round(Math.max((im.d||650)*1.25,(evval(35)||0)*1.05)/50)*50);
  const Y=mv=>Math.round(H-24-(H-46)*(mv-lo)/(hi-lo));
  const X=ma=>Math.round(X0+(X1-X0)*Math.min(Math.max(ma,0),IMAX)/IMAX);
  const V=mv=>(mv/1000).toFixed(2);
  /* برچسب‌ها جدا جمع و با کمینهٔ فاصله رندر می‌شوند تا در ناحیه‌های باریک در هم نروند */
- const ZL=[],LL=[];
- const zone=(mv1,mv2,fill,txt,c)=>{const y1=Y(Math.max(mv1,mv2)),y2=Y(Math.min(mv1,mv2));
-  if(txt)ZL.push({y:y1+10,txt,c});
+ const LL=[],PL=[]; /* [EN] v1.41 audit: zone-name container ZL died with the v1.39 legend move / [FA] ممیزی v1.41: ظرف ZL با رفتن نام‌ها به راهنما مرده بود */
+ /* [EN] v1.38 (user follow-up): the Persian left label carries ONLY the
+    name - number+unit live on the right English label; it hangs BELOW its
+    line (never above); and each line gets exactly ONE Persian label. Zone
+    names float at the CENTER of their band so a band name can never look
+    like a second label for the boundary line touching it. Names come from
+    PX (the same source the chips and help bubbles read), so a rename can
+    never drift in two places. Left labels are display mirrors: editing
+    stays with the English labels on the right.
+    [FA] v1.38 (دستور پیگیری): برچسب فارسیِ چپ فقط نام است - عدد و واحد
+    همان برچسب انگلیسی سمت راست؛ زیر خط خودش می‌آویزد (هرگز بالای آن نیست)
+    و هر خط دقیقاً یک برچسب فارسی دارد. نام ناحیه‌ها هم وسط ناحیهٔ خودشان
+    شناور است تا اسم ناحیه، دومین برچسب خط مرزیِ مجاور به نظر نرسد. نام‌ها
+    از PX می‌آیند (همان منبع تراشه‌ها و حباب‌های کمک) تا تکرار دوبرابری
+    نشود. برچسب‌های چپ فقط نمایشی‌اند؛ ویرایش همان انگلیسی سمت راست است. */
+ const pfn=id=>(PX[id]?PX[id][0]:(EVN[id]||''));
+ /* [EN] v1.39 (user order: the band names crowded the plot - take them out
+    and put them OUTSIDE the chart, like a map legend: which colour means
+    what). ONE definition list drives both the painted bands and the legend,
+    so a colour and its meaning can never drift apart.
+    [FA] v1.39 (دستور کاربر: نام ناحیه‌ها نمودار را شلوغ کرده - ببر بیرون
+    نمودار مثل راهنما). یک فهرست واحد هم باندها را رنگ می‌کند هم راهنما را
+    می‌سازد تا رنگ و معنا هیچ‌وقت از هم کپی نشوند. */
+ const ZONES=[[()=>hi,()=>15000,'rgba(251,94,106,.16)','بالای ۱۵ ولت — ناحیهٔ خطر'],
+  [()=>15000,()=>q.o.d,'rgba(251,94,106,.09)','ناحیهٔ Over — کاهش سریع duty'],
+  [()=>q.o.d,()=>q.e.d,'rgba(251,191,36,.08)','ناحیهٔ Absorb'],
+  [()=>q.e.d,()=>q.f.d,'HATCH','ناحیهٔ Bulk — شارژ با جریان ثابت'],
+  [()=>q.f.d,()=>q.r.d,'rgba(52,211,153,.09)','ناحیهٔ Float'],
+  [()=>q.r.d,()=>lo,'rgba(99,162,255,.11)','زیر Reentry — شارژ دوباره از Bulk']];
+ const zone=(mv1,mv2,fill)=>{const y1=Y(Math.max(mv1,mv2)),y2=Y(Math.min(mv1,mv2));
   return`<rect x="${X0}" y="${y1}" width="${X1-X0}" height="${Math.max(3,y2-y1)}" fill="${fill}"/>`;};
  const aln=(mv,c)=>`<line x1="${X0}" y1="${Y(mv)}" x2="${X1}" y2="${Y(mv)}" stroke="${c}" stroke-width="1.8"/>`;
  const pvln=(o,c)=>o.p?`<line x1="${X0}" y1="${Y(o.v)}" x2="${X1}" y2="${Y(o.v)}" stroke="${c}" stroke-width="1.8" stroke-dasharray="6 4"/>`:'';
- const lbl=(o,c,txt,id)=>{LL.push({y:Y(o.p?o.v:o.d)-4,txt,c,pv:o.p,i:id,val:V(o.d)+'V'});};
+ const lbl=(o,c,txt,id)=>{LL.push({y:Y(o.p?o.v:o.d)-4,txt,c,pv:o.p,i:id,val:V(o.d)+'V'});
+  PL.push({y:Y(o.p?o.v:o.d)+10,txt:pfn(id),c,pv:o.p});};
  const put=(A,x,anchor,fs)=>{A.sort((p,q2)=>p.y-q2.y);let last=4;
   return A.map(o=>{const yc=Math.min(Math.max(o.y,14),H-10),y=Math.max(last+LBL_GAP,yc),sh=y-yc>3;last=y;
    return (sh?`<line x1="${x}" y1="${yc+3}" x2="${x}" y2="${y-3}" stroke="${o.c}" stroke-width="1" opacity=".6"/>`:'')+
-   `<text ${o.i!=null?evat(o.i):''} x="${x}" y="${y}" text-anchor="${anchor}" font-size="${fs}" font-weight="700" fill="${o.i!=null&&evcl(o.i)?'#f7c13c':o.c}">${o.txt}${o.val?' '+o.val:''}${o.pv?' · پیش‌نمایش':''}</text>`;}).join('');};
+   `<text ${o.i!=null?evat(o.i):''} x="${x}" y="${y}" text-anchor="${anchor}" font-size="${F(fs)}" font-weight="700" fill="${o.i!=null&&evcl(o.i)?'#f7c13c':o.c}">${o.txt}${o.val?' '+o.val:''}${o.pv?' · پیش‌نمایش':''}</text>`;}).join('');};
  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:640px;font-family:inherit">`;
  s+=`<defs><pattern id="bkh" width="9" height="9" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="9" height="9" fill="rgba(99,162,255,.08)"/><line x1="0" y1="0" x2="0" y2="9" stroke="rgba(99,162,255,.22)" stroke-width="1"/></pattern></defs>`;
  s+=`<rect x="${X0}" y="12" width="${X1-X0}" height="${H-34}" fill="#080b12" stroke="#38455e" rx="6"/>`;
  /* شبکهٔ ولتاژ (افقی) */
  for(let mv=Math.ceil(lo/500)*500;mv<=hi;mv+=500){const y=Y(mv);
   s+=`<line x1="${X0}" y1="${y}" x2="${X1}" y2="${y}" stroke="#26304a" stroke-width="1"/>`+
-     `<text x="${X0-4}" y="${y+3}" text-anchor="end" font-size="8" fill="#96a1b8">${(mv/1000).toFixed(1)}</text>`;}
+     `<text x="${X0-4}" y="${y+3}" text-anchor="end" font-size="${F(8)}" fill="#96a1b8">${(mv/1000).toFixed(1)}</text>`;}
  /* شبکهٔ جریان (عمودی) — محور افقی تازه */
  const istep=IMAX>600?200:100;
  for(let ma=0;ma<=IMAX;ma+=istep){const x=X(ma);
   s+=`<line x1="${x}" y1="12" x2="${x}" y2="${H-22}" stroke="#26304a" stroke-width="1"/>`+
-     `<text x="${x}" y="${H-12}" text-anchor="middle" font-size="8" fill="#96a1b8">${ma}</text>`;}
- s+=zone(hi,15000,'rgba(251,94,106,.16)','','#ff6873');
- s+=zone(15000,q.o.d,'rgba(251,94,106,.09)','ناحیهٔ Over — کاهش سریع duty','#fc8086');
- s+=zone(q.o.d,q.e.d,'rgba(251,191,36,.08)','ناحیهٔ Absorb','#f7c13c');
- s+=zone(q.e.d,q.f.d,'url(#bkh)','ناحیهٔ Bulk — شارژ با جریان ثابت','#9ac8ff');
- s+=zone(q.f.d,q.r.d,'rgba(52,211,153,.09)','ناحیهٔ Float','#35d6a0');
- s+=zone(q.r.d,lo,'rgba(99,162,255,.11)','زیر Reentry — شارژ دوباره از Bulk','#9ac8ff');
+     `<text x="${x}" y="${H-12}" text-anchor="middle" font-size="${F(8)}" fill="#96a1b8">${ma}</text>`;}
+ ZONES.forEach(z=>{s+=zone(z[0](),z[1](),z[2]==='HATCH'?'url(#bkh)':z[2]);});
  s+=`<line x1="${X0}" y1="${Y(15000)}" x2="${X1}" y2="${Y(15000)}" stroke="#ff6873" stroke-width="1.2" stroke-dasharray="3 4"/>`;
  LL.push({y:Y(15000)-4,txt:'Hard cutoff 15V',c:'#ff6873'});
+ PL.push({y:Y(15000)+10,txt:'سقف سخت',c:'#ff6873'});
  /* [EN] Two safety ceilings that were only ever numbers in a card: on the
        voltage axis they belong, and now they are set from it. Down-only on
        the board, so the window in EVB can never raise them.
@@ -794,7 +936,8 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
  Object.keys(EVV).forEach(k=>{const id=+k;if(id<35)return;const mv=evval(id);
   if(mv==null||mv<=lo||mv>=hi)return;
   s+=`<line x1="${X0}" y1="${Y(mv)}" x2="${X1}" y2="${Y(mv)}" stroke="${EVV[id][0]}" stroke-width="1.3" stroke-dasharray="5 3"/>`;
-  LL.push({y:Y(mv)-4,txt:EVV[id][1],c:EVV[id][0],i:id,val:V(mv)+'V'});});
+  LL.push({y:Y(mv)-4,txt:EVV[id][1],c:EVV[id][0],i:id,val:V(mv)+'V'});
+  PL.push({y:Y(mv)+10,txt:pfn(id),c:EVV[id][0]});});
  s+=aln(q.o.d,'#fb923c')+pvln(q.o,'#fb923c');lbl(q.o,'#fb923c','Over',22);
  s+=aln(q.a.d,'#f7c13c')+pvln(q.a,'#f7c13c');lbl(q.a,'#f7c13c','Absorb',20);
  s+=aln(q.e.d,'#e8a33d')+pvln(q.e,'#e8a33d');lbl(q.e,'#e8a33d','Absorb enter',21);
@@ -811,8 +954,14 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
  Object.keys(EVI).forEach(k=>{const id=+k;
   const ma=(id===25)?im.d:(id===26)?tp.d:evval(id);
   if(ma==null)return;const x=X(ma),cfg=EVI[id];
+  /* [EN] v1.37 (user order: the current-limit numbers read badly in one
+     run) - each threshold label is TWO lines: the name on top and the value
+     underneath it, so 'Bulk max' and '650mA' never fight for the same line.
+     [FA] v1.37 (دستور کاربر): برچسب حد جریان دوخطی شد: نام در خط بالا و
+     عدد در خط زیرین، تا خواناتر شود. */
+  const lx=x+(cfg[2]<0?-3:3),an=cfg[2]<0?'end':'start';
   s+=`<line x1="${x}" y1="12" x2="${x}" y2="${H-22}" stroke="${cfg[0]}" stroke-width="${id===25?1.6:1.4}"${id===25?'':' stroke-dasharray="4 3"'}/>`+
-     `<text ${evat(id)} x="${x+(cfg[2]<0?-3:3)}" y="${H-26}" text-anchor="${cfg[2]<0?'end':'start'}" font-size="8.5" font-weight="700" fill="${evcl(id)?'#f7c13c':cfg[0]}">${cfg[1]} ${ma}mA</text>`;});
+     `<text ${evat(id)} x="${lx}" y="${H-26}" text-anchor="${an}" font-size="${F(8.5)}" font-weight="700" fill="${evcl(id)?'#f7c13c':cfg[0]}"><tspan x="${lx}" dy="-9">${cfg[1]}</tspan><tspan x="${lx}" dy="9">${ma}mA</tspan></text>`;});
  /* [EN] The edge of fitted LUT data. Only drawn once the axis actually
     reaches it, so the normal single-battery view is unchanged; it appears
     the moment the user opens the current band towards a parallel pack.
@@ -822,11 +971,16 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
     به‌سمت پک موازی باز کند ظاهر می‌شود. */
  if(IMAX>EVCAL){const xc=X(EVCAL);
   s+=`<line x1="${xc}" y1="12" x2="${xc}" y2="${H-22}" stroke="#7f8ba3" stroke-width="1" stroke-dasharray="2 4" stroke-opacity=".8"/>`+
-     `<text x="${xc+3}" y="20" font-size="8" fill="#7f8ba3">تا اینجا کالیبره شده · بالاتر برون‌یابی است</text>`;}
+     `<text x="${xc+3}" y="20" font-size="${F(8)}" fill="#7f8ba3">تا اینجا کالیبره شده · بالاتر برون‌یابی است</text>`;}
  /* مسیر واقعی شارژ CC/CV: پای عمودی روی سقف جریان، بعد پای افقی روی ولتاژ Absorb */
  s+=`<polyline points="${X(im.d)},${Y(lo)} ${X(im.d)},${Y(q.e.d)} ${X(im.d)},${Y(q.a.d)} ${X(tp.d)},${Y(q.a.d)} ${X(0)+6},${Y(q.f.d)}" fill="none" stroke="#e8eaf2" stroke-width="2" stroke-opacity=".55" stroke-linejoin="round" stroke-dasharray="7 4"/>`;
- /* موقعیت زندهٔ هر باتری: حالا روی مختصات واقعی (جریان، ولتاژ) */
- let lg='';
+ /* موقعیت زندهٔ هر باتری: حالا روی مختصات واقعی (جریان، ولتاژ).
+    دستور کاربر ۲۰۲۶-۱۰-۰۳: عددهای شارژ زنده باید «روی همهٔ خط‌ها و
+    نوشته‌ها» بیایند تا گم نشوند و خوانا بمانند. پس خطوط راهنما و نقطه
+    همین‌جا و زیر برچسب‌ها رسم می‌شوند، ولی متن عددها جمع می‌شود و در
+    انتها - بعد از put(PL/LL) و همهٔ محورها - رسم می‌گردد، با هالهٔ
+    تیره (paint-order) تا روی هر منحنی/برچسبی خوانا بماند. */
+ let lg='';const BT=[];
  if(D&&D.t){const tt=D.t;
   const BST={0:['Off','#96a1b8'],1:['Bulk','#63a2ff'],2:['Absorb','#f7c13c'],3:['Float','#35d6a0'],4:['Bring-up','#9ac8ff'],5:['JIT wait','#96a1b8'],6:['Input wait','#96a1b8'],7:['Final fault','#ff6873'],8:['Battery lost','#ff6873'],9:['Manual','#c084fc']};
   const bats=[['Battery low (Vlow)',tt[17],tt[13],tt[10],'#c084fc',0.60],['Battery high (Vhigh)',tt[18],tt[6],tt[3],'#f7c13c',0.82]];
@@ -835,7 +989,7 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
     s+=`<line x1="${X0}" y1="${y}" x2="${x}" y2="${y}" stroke="${b[4]}" stroke-width="1.2" stroke-dasharray="2 3"/>`;
     s+=`<line x1="${x}" y1="${y}" x2="${x}" y2="${H-22}" stroke="${b[4]}" stroke-width="1.2" stroke-dasharray="2 3"/>`;
     s+=`<circle cx="${x}" cy="${y}" r="4.5" fill="${b[4]}" stroke="#080b12" stroke-width="1.8"/>`;
-    s+=`<text x="${x}" y="${Math.min(y+15,H-28)}" text-anchor="middle" font-size="8.5" font-weight="700" fill="${b[4]}">${b[0].split(' (')[0]} ${V(b[1])}V · ${b[3]}mA</text>`;}});
+    BT.push({x:x,y:Math.min(y+15,H-28),c:b[4],t:b[0].split(' (')[0]+' '+V(b[1])+'V · '+b[3]+'mA'});}});
   lg=bats.map(b=>{const st=BST[b[2]]||('#'+b[2]);
    return `<span class="tg" style="background:${st[1]}22;color:${st[1]};border:1px solid ${st[1]}66">● ${b[0]}: <b>${V(b[1])}V</b> · ${b[3]}mA · ${st[0]}</span>`;}).join(' ')+
    `<span class="lb"> · Bulk ≤ ${im.v}mA · Taper < ${tp.v}mA · پس از هر تغییر ~۱٫۵ ثانیه بعد روی فلش برد ذخیره می‌شود</span>`;
@@ -863,10 +1017,17 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
     زمان‌ها رو همون زیرش بنویس که انقدر شلوغ نشه نمودارها؛ گین هم همین کار رو
     براش بکن»). هیچ‌چیز فقط‌خواندنی نشد: تراشه‌ها همان data-i و همان ویرایشگر
     را دارند. */
- s+=put(ZL,X0+6,'start','8.5')+put(LL,X1-4,'end','9');
- s+=`<text x="${X0}" y="8" font-size="8" fill="#96a1b8">ولتاژ باتری / Battery voltage (V)</text>`;
- s+=`<text x="${X1}" y="${H-2}" text-anchor="end" font-size="8" fill="#96a1b8">جریان شارژ / Charge current (mA)</text></svg>`;
+ s+=put(PL,X0+6,'start','8.5')+put(LL,X1-4,'end','9');
+ /* عددهای شارژ زنده - دقیقاً روی همهٔ خط‌ها و نوشته‌ها (آخرین لایهٔ رسم)،
+    با جداکنندهٔ عمودی ساده تا در هم نروند و هالهٔ تیره برای خوانایی. */
+ BT.sort((p,q2)=>p.y-q2.y);{let last=-99;BT.forEach(o=>{o.y=Math.min(H-28,Math.max(last+10,o.y));last=o.y;});}
+ BT.forEach(o=>{s+=`<rect x="${o.x-72}" y="${o.y-8}" width="144" height="11" fill="rgba(8,11,18,.72)" rx="3"/>`+
+  `<text x="${o.x}" y="${o.y}" text-anchor="middle" font-size="${F(8.5)}" font-weight="700" fill="${o.c}" paint-order="stroke" stroke="#080b12" stroke-width="2.5" stroke-linejoin="round">${o.t}</text>`;});
+ s+=`<text x="${X0}" y="8" font-size="${F(8)}" fill="#96a1b8">ولتاژ باتری / Battery voltage (V)</text>`;
+ s+=`<text x="${X1}" y="${H-2}" text-anchor="end" font-size="${F(8)}" fill="#96a1b8">جریان شارژ / Charge current (mA)</text></svg>`;
  MG.forEach(m=>{m.innerHTML=s;});
+ document.querySelectorAll('.qglg').forEach(m=>{m.innerHTML='<span class="lb">راهنمای رنگ‌ها:</span>'+
+  ZONES.map(z=>`<span class="qgit"><i style="background:${z[2]==='HATCH'?'repeating-linear-gradient(45deg,rgba(154,200,255,.22) 0 2px,rgba(154,200,255,.06) 2px 4px)':z[2]}"></i>${z[3]}</span>`).join('');});
  document.querySelectorAll('.qglm').forEach(m=>{m.innerHTML=lg;});
 
  /* [EN] Chips under the chart, grouped the way the user asked for them:
@@ -878,12 +1039,22 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
     ردیف، گین‌ها و گام‌ها در ردیف بعد. هر تراشه نام انگلیسیِ خود فرم‌ور، مقدار
     اعمال‌شدهٔ زنده، و نام و شرح فارسی را به‌صورت hover نشان می‌دهد. */
  const qq=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
- const chip=id=>'<span class="evc" title="'+qq(PX[id]?PX[id][0]+' — '+PX[id][1]:EVN[id])+'">'+
+ const chip=id=>{const pr=pxt(id);return '<span class="evc" title="'+qq(pr?pr[0]+' — '+pr[1]:EVN[id])+'">'+
   '<span class="evcl">'+EVN[id]+'</span><span '+evat(id)+
-  (evcl(id)?' style="color:#f7c13c"':'')+'>'+evtxt(id)+'</span></span>';
+  (evcl(id)?' style="color:#f7c13c"':'')+'>'+evtxt(id)+'</span></span>';};
  const grp=(t,ids)=>'<div class="evcg"><span class="evct">'+t+'</span>'+ids.map(chip).join('')+'</div>';
  document.querySelectorAll('.qgcm').forEach(m=>{
-  m.innerHTML=grp('زمان‌ها / Timers',EVCT)+grp('گین‌ها و گام‌ها / Gains &amp; steps',EVCG);});
+  /* [EN] v1.42 (user order): show the 13 chips in the THREE groups the
+     user himself named - 1) reaching the target softly, 2) emergency
+     brakes that stand ABOVE the PID on purpose, 3) the state machine's
+     timing decisions. EVCT and EVCG stay two flat id lists because the
+     consistency audit and the charger tester derive from exactly those
+     two names; only the DISPLAY regroups them.
+     [FA] v1.42 (دستور کاربر): نمایش تراشه‌ها در سه دستهٔ خودِ کاربر.
+     دو فهرست EVCT/EVCG برای ممیزی دست‌نخورده می‌ماند؛ فقط نمایش گروهی شده. */
+  m.innerHTML=grp('۱ · رسیدن نرم به هدف — با چه شتاب و سلایقی به هدف PID برسیم',EVCG.slice(0,3))+
+   grp('۲ · ترمز اضطراری و حاشیهٔ امن — نگهبان‌هایی بالای PID، عمداً از او جدا',EVCG.slice(3))+
+   grp('۳ · تصمیم‌های زمانی — چه زمانی چه اتفاقی بیفتد',EVCT);});
 
  /* نگهبان: هشدار بالای نمودار + قرمزکردن فیلد مقصر */
  const w=qchk();
@@ -905,10 +1076,11 @@ for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>
    AIDS/ADEF mismatch - a host test now pins it to the PDEF length. */
 /* v1.28: ids 93..107 (charger limits + backstop gains) join the generic
    fill/validate/send machinery, so they need no bespoke handlers. */
-const AIDS=[];for(let _i=27;_i<=107;_i++)AIDS.push(_i);
+const AIDS=[];for(let _i=27;_i<=118;_i++)AIDS.push(_i);
 const LDEF=[3600000,100,600000,60000,8,700,32,14800,100,500,10,15000,3000,3000,500];
+const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
 const ADEF=[14800,150,6000,7000,1000,1000,21000,28000,950,14850,2000,1000,50,10000,1000,1,0,1000,50,3000,233,3,100,40,20,10,1,60000,20000,10000,100,1,1000,2000,10000,1,2,3,100,1000,10,1000,150,28000,1000,21000,21200,21000,29000,0,100,95,5,2,2,3];
-function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:(id>=93?LDEF[id-93]:id>=83?PDEF[id-83]:ADEF[id-27]);
+function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:(id>=108?IDEF[id-108]:id>=93?LDEF[id-93]:id>=83?PDEF[id-83]:ADEF[id-27]);
  if(e&&e.value!==''){const v=parseInt(e.value,10);if(!isNaN(v))return{v,d};}
  return{v:d,d};}
 function ap(){
@@ -996,7 +1168,7 @@ function afresh(){const w=achk();
  const ms=$('xmuteS');if(ms)ms.textContent=(D&&D.p&&D.p[76]===1)?'🔇 میوت روشن — موقتی، با ریست برد پاک می‌شود؛ LEDها همچنان چشمک می‌زنند':'🔊 بوق روشن';}
 function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id-32))):id<96?((D.q3||0)&(1<<(id-64))):((D.q4||0)&(1<<(id-96)));}
 function afill(){if(!D||!D.p)return;for(const id of AIDS){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!apend(id))a.textContent=D.p[id]==null?'—':D.p[id];}}
-function adef(){ADEF.slice(0,11).forEach((v,k)=>{const id=27+k;$('q'+id).value=v;send(id,v);});afresh();}
+function adef(){ADEF.slice(6,11).forEach((v,k)=>{const id=33+k;$('q'+id).value=v;send(id,v);});afresh();}
 /* v1.22: پیش‌فرض کارخانهٔ PID سه‌مرحله‌ای — همان اعداد CHG_PID_* در charger.h */
 const PDEF=[12,1600,0,1000,1000,50,18000,0,10,1000];
 /* v1.22: نگهبان ترکیب PID — آینهٔ func__Charger_ClampPid روی برد به اضافهٔ دو
@@ -1023,6 +1195,8 @@ function pdef(){PDEF.forEach((v,k)=>{const id=83+k,e=$('q'+id);if(e)e.value=v;se
    EVWANT جلوی هشدار گیرهٔ کهنه را می‌گیرد. */
 function ldef(){LDEF.forEach((v,k)=>{const id=93+k;delete EVWANT[id];send(id,v);});afresh();}
 function sdef(){AIDS.forEach((id,k)=>{if(id<38||id>82)return;const e=$('q'+id);if(e)e.value=ADEF[k];send(id,ADEF[k]);});afresh();}
+function bdef(){[0,1,2,3,4,5,17,18,19,20,21,22].forEach(k=>{const id=27+k,e=$('q'+id);if(e)e.value=ADEF[k];send(id,ADEF[k]);});afresh();}
+function ibdef(){IDEF.forEach((v,k)=>{const id=108+k,e=$('q'+id);if(e)e.value=v;send(id,v);});afresh();}
 /* v1.15b: کارت وضعیت گروه‌بندی‌شده — اسکلت یک‌بار ساخته می‌شود و هر poll فقط متن/رنگ به‌روز می‌شود (بدون پر/خالی شدن و چشمک) */
 const FEXP=[
  ['خطای ADC','نمونه‌برداری ADC نامعتبر است و اندازه‌گیری‌ها قابل‌اعتماد نیست؛ برد محافظه‌کار می‌شود. سیم‌کشی آنالوگ و تغذیه را بررسی کنید.'],
@@ -1060,7 +1234,7 @@ const EVB={
  23:[9000,14300,50,'mv'],  24:[8000,14000,50,'mv'],  25:[100,2950,10,'ma'],
  26:[10,1475,5,'ma'],      35:[150,3000,10,'ma'],    36:[14000,15000,50,'mv'],
  93:[0,21600000,60000,'ms'], 94:[10,1500,10,'ma'],   95:[0,7200000,60000,'ms'],
- 96:[1000,600000,5000,'ms'], 97:[1,100,1,'pm'],      98:[0,999,50,'n'],
+ 96:[1000,600000,5000,'ms'], 97:[1,100,1,'pm'],      98:[0,999,50,'mpm'],
  99:[1,64,1,'n'],            100:[13000,14800,50,'mv'], 101:[0,2000,10,'n'],
  102:[0,2000,10,'n'],        103:[0,100,5,'ma'],     104:[0,120000,1000,'ms'],
  105:[0,60000,500,'ms'],     106:[500,60000,500,'ms'], 107:[50,5000,50,'ms']};
@@ -1113,7 +1287,7 @@ const EVV={22:['#fb923c','Over'],20:['#f7c13c','Absorb'],
            24:['#63a2ff','Reentry'],36:['#ff6873','OV cutoff'],
            100:['#fc8086','Backstop']};
 const EVI={25:['#63a2ff','Bulk max',-1],26:['#35d6a0','Taper',1],
-           94:['#f7c13c','Arm',1],35:['#ff6873','Hard fault',-1]};
+           94:['#f7c13c','Count start',1],35:['#ff6873','Hard fault',-1]};
 
 let EVOPEN=null;          /* id being edited, or null */
 const EVWANT={};          /* what the user asked for, to spot a clamp */
@@ -1128,6 +1302,7 @@ function evfmt(v,u){if(v==null)return '—';
  if(u==='ma')return v+' mA';
  if(u==='ms')return ms2(v);
  if(u==='pm')return v+' ‰';
+ if(u==='mpm')return v+' m‰'; /* [FA] میلی‌پرمیل - واحد hysteresis خروجی (id 98) */
  return ''+v;}
 
 function evval(id){return (D&&D.p&&D.p[id]!=null)?D.p[id]:null;}
@@ -1191,7 +1366,7 @@ function evedit(el){
        قابل اعتماد نیست. */
     const qe=$('q'+id);if(qe)qe.value=n;
     send(id,n);}}
-  evclose();qgraph();ctab();};
+  evclose();qgraph();};
  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();close(true);}
                    else if(e.key==='Escape'){e.preventDefault();close(false);}};
  inp.onblur=()=>close(true);}
@@ -1215,52 +1390,13 @@ document.addEventListener('click',e=>{
    گزارشی که گزارش ندهد فقط کهنه است. موتیشن‌تست این را حل کرد: برداشتن گارد
    هیچ‌چیزی را نشکست، یعنی گارد از هیچ‌چیز دفاع نمی‌کرد - پس خودش رفت، نه
    اینکه تستی برای توجیهش اضافه شود. */
-function ctab(){const e=$('ctb');if(!e||!D||!D.p)return;
- /* [EN] Two tables, at the foot of the chargers page, in the shape the user
-    asked for: "what it is charging with right now", then the safety limits.
-    Every number is read from the board's APPLIED parameters through the same
-    evr() the chart uses, so editing a label on the plot moves the table on
-    the next refresh - there is no second copy of the value to fall behind.
-    The tables REPORT ONLY. The gain and timing tables that used to sit here
-    are gone: those numbers are the chips under the chart now, and printing
-    them twice is exactly the duplication the user asked to be rid of.
-    [FA] دو جدول در انتهای صفحهٔ شارژرها، به همان شکلی که خواسته شد: «الان با
-    این اعداد شارژ می‌کند» و بعد حدهای ایمنی. هر عدد از پارامترهای «اعمال‌شدهٔ»
-    برد و از طریق همان evr() نمودار خوانده می‌شود، پس ویرایش یک برچسب روی
-    نمودار در بازرسم بعدی جدول را هم جابه‌جا می‌کند - نسخهٔ دومی از مقدار وجود
-    ندارد که عقب بماند. جدول‌ها فقط گزارش می‌دهند. جدول‌های گین و زمان‌بندی که
-    قبلاً اینجا بودند حذف شدند: آن اعداد حالا تراشه‌های زیر نمودارند و چاپ
-    دوباره‌شان همان تکراری است که کاربر خواست برداشته شود. */
- const p=D.p,g=i=>p[i]==null?null:p[i];
- const dmax=Math.max(g(13)||0,g(14)||0);
- const dot=c=>'<span class="cdot" style="background:'+c+'"></span>';
- const st=(c,n)=>'<span class="cs">'+dot(c)+n+'</span>';
- const rows=[
-  [st('#9ac8ff','Bulk'),'تا '+evr(21),evr(25),'جریان ثابت روی سقف؛ ولتاژ آزادانه بالا می‌رود'],
-  [st('#f7c13c','Absorb'),evr(20)+' نگه می‌دارد','کم می‌شود','پر کردن نهایی با ولتاژ ثابت'],
-  [st('#e8a33d','پایان Absorb'),'—','زیر '+evr(26)+' به‌مدت '+evr(96),'یعنی باتری سیر شد'],
-  [st('#35d6a0','Float'),evr(23)+' هدف','۰ — duty پارک روی صفر','نگه‌داری پس از پر شدن'],
-  [st('#63a2ff','برگشت به شارژ'),'افت زیر '+evr(24),'—','چرخه از Bulk از نو شروع می‌شود']];
- const lim=[['ورود به Absorb',evr(21)],['سقف تجاوز (Over)',evr(22)],
-  ['قطع اضافه‌ولتاژ (OV cutoff)',evr(36)],
-  ['سقف مطلق (Hard cutoff)',evr_plain('۱۵٫۰۰ V')],
-  ['خطای سخت جریان (Hard fault)',evr(35)],
-  ['سقف duty',evr_plain(dmax?((dmax/10).toFixed(1)+'٪'):'—')]];
- e.innerHTML=
-  '<div class="sec">الان با این اعداد شارژ می‌کند <span class="lb">· هر باتری ۱۲ ولتی جداگانه — پایینی و بالایی، هرکدام کانال خودش</span></div>'+
-  '<div class="ctw"><table class="ct"><tr><th>مرحله</th><th>ولتاژ</th><th>جریان</th><th>چه می‌کند</th></tr>'+
-  rows.map(r=>'<tr><td>'+r[0]+'</td><td class="cn">'+r[1]+'</td><td class="cn">'+r[2]+
-            '</td><td class="cw">'+r[3]+'</td></tr>').join('')+'</table></div>'+
-  '<div class="sec">حدهای ایمنی <span class="lb">· قطع اضافه‌ولتاژ و Hard fault فقط پایین‌آوردنی‌اند</span></div>'+
-  '<div class="ctw"><table class="ct ct2">'+
-  lim.map(r=>'<tr><td>'+r[0]+'</td><td class="cn">'+r[1]+'</td></tr>').join('')+'</table></div>'+
-  '<div class="ctn">این دو جدول فقط <b>گزارش</b> می‌دهند. برای عوض‌کردن هر عدد، روی همان عدد در نمودار کلیک کنید؛ نمودار در تب <b>تنظیمات › شارژ، فیلتر و PID</b> است — زمان‌ها و گین‌ها هم تراشه‌های زیر همان نمودارند. «سقف مطلق» و «سقف duty» مشخصهٔ برد هستند و ویرایش نمی‌شوند.</div>'+
-  '<div class="bqr" style="margin-top:10px"><button class="sb sb2" onclick="ldef()">بازگردانی پیش‌فرض کارخانهٔ حدها</button></div>;'.replace(';','');}
 
-/* [EN] One delegated listener: the table is re-rendered constantly, so
-   per-element handlers would leak and die with every refresh.
-   [FA] یک شنوندهٔ واگذارشده: جدول مدام بازرسم می‌شود و شنوندهٔ تک‌عنصری با هر
-   بازرسم می‌مرد. */
+
+
+/* [EN] One delegated listener: the chart is re-rendered on every data
+   refresh, so per-element handlers would leak and die with each redraw.
+   [FA] یک شنوندهٔ واگذارشده: نمودار با هر رفرش داده بازرسم می‌شود و
+   شنوندهٔ تک‌عنصری با هر بازرسم می‌مرد. */
 
 
 function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
@@ -1400,7 +1536,7 @@ function lnkhealth(d){const e=$('lnkw');if(!e)return;
   ' فریم با نسخهٔ ناشناخته رد شد. برد و ESP باید <b>با هم</b> دوباره فلش شوند (Clean + Rebuild کامل).';return;}
  if(ce>0){e.className='wbx warn';e.innerHTML='⚠ <b>'+ce+'</b> فریم به‌خاطر خطای CRC رد شد — اتصال سیم و زمین لینک را بررسی کنید. داده‌ها معتبرند؛ فقط بخشی از قاب‌ها رسیده‌اند.';return;}
  e.className='wbx';e.innerHTML='';}
-function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;lnkhealth(d);qfill();cfill();afill();ctab();
+function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;lnkhealth(d);qfill();cfill();afill();
 /* [EN] The chart is mounted twice again (user order 2026-10-03: "why did you
    take the chart away entirely? go back to the previous version") - on the
    chargers page above the operating table, and in the settings tab where it
@@ -1431,7 +1567,18 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   [0,1,2,3,4].forEach(k=>$('c'+n+k).textContent=t[b+k]);
   const g=$('tg'+n);g.textContent=en===0?'وصل مجدد شارژر '+n:'قطع شارژر '+n;g.className='bt '+(en===0?'run':'cut');
 });
- for(let id=0;id<20;id++){const a=$('a'+id);if(a&&!(d.q&(1<<id)))a.textContent=p[id]==null?'—':p[id];}
+ /* v1.43 scenario-6 live face: q/ep-|Δ MV| over half-pack, events, latched cycles + fl2 bits */
+ if($('imbv')){const ibmx=p[114]==null?10:p[114],f2=d.fl2||0;
+  $('imbv').textContent=t[25]==null?'—':t[25];
+  $('imbev').textContent=t[26]==null?'—':t[26];
+  $('imbmx').textContent='از '+ibmx;
+  const f2s=(f2&2)?'قفل دائمی - باتری را تعویض کنید':(f2&1)?'اپیزود جاری':'سالم';
+  $('imbst').textContent=f2s;$('imbst').className='tg '+((f2&2)?'r':(f2&1)?'y':'g');
+  const b117=p[117]==null?1:p[117],bt=document.getElementById('ib117');
+  if(bt){bt.textContent=b117?'مسدودی خروجی در قفل: فعال':'مسدودی خروجی در قفل: غیرفعال (ریسک با شما)';bt.className='bt '+(b117?'run':'cut');}
+  if($('a117'))$('a117').textContent=b117?'روشن':'خاموش';}
+
+ for(let id=0;id<20;id++){const a=$('a'+id);if(a&&!(d.q&(1<<id)))a.textContent=p[id]==null?'—':(id===13||id===14)?pc(p[id]):p[id];}
  const fe=$('fspan');if(fe){const mn=p[7]==null?null:(p[7]>=3?p[7]:0),av=p[8]==null?null:(p[8]>=2?p[8]:0);
   fe.innerHTML=(mn==null||av==null)?'—':'فیلتر فعال: median '+(p[7]>=3?p[7]+'×1ms':'خاموش (۱..۲)')+' + میانگین '+(p[8]>=2?p[8]+'×1ms':'خاموش (۱)')+' ≈ <b>'+((mn||0)+(av||0))+'ms</b> تاریخچه در کادانس ۱kHz — پنل هر ۱۰۰ms فریم TLM می‌گیرد؛ برای صاف‌شدنِ قابل‌مشاهده مجموع را بالای ~۲۰۰ms ببرید (در مود خودکار ≤۵۰).';}
  formulas(t,p);chart();mview(d);
@@ -1491,7 +1638,7 @@ function wlive(act){if(!D||D.on!=1)return['-','-','-',undefined,'-','-','-',unde
    stuck at 99 (the v1.22 count) while the real count is 93, so every row wrote 6
    extra columns and everything after the parameter block landed under the wrong
    heading. It now derives the bound so it cannot go stale again. */
-const PN=108;
+const PN=119;
 /* v1.26 (دستور کاربر ۲۰۲۶-۰۹-۲۹): ۹۳ ستون از ۱۴۹ ستونِ هر ردیف، «تنظیمات» بودند
    که در طول یک سوییپ اصلاً عوض نمی‌شوند — یعنی ۶۲٪ هر ردیف تکرار بی‌فایده. حالا
    تنظیمات یک‌بار به‌صورت خط «# settings:» نوشته می‌شود و ردیف‌ها فقط ۵۶ ستون
@@ -1586,7 +1733,7 @@ ${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" 
 bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{const s=$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB');if(L)L.disabled=s;if(A)A.disabled=!s;if(B)B.disabled=!s;};$('wSw').onchange();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
 /* ---------- کنترل دستی duty دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کنترلها داخل کارت هر شارژر (از v1.16p)؛
  * ---------- قرارداد ایمنی بخش 5.2 اسپک بدون تغییر: deadman ۱۰ ثانیه، سقف کانال (p13/p14)،
- * ---------- JIT با مسلح مجدد با ارسال دوبارهٔ همان duty. هیچ ضریبی اینجا ارسال نمی‌شود. ---------- */
+ * ---------- JIT با شروع‌مجددِ شمارش (Arm در فرمور) با ارسال دوبارهٔ همان duty. هیچ ضریبی اینجا ارسال نمی‌شود. ---------- */
 const manOn=()=>!!(D&&((D.fl&32)||D.p[19]===1));
 async function qset(n){if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');
  const v=gv('qm'+n);if(v==null)return alert('عدد duty (٪) را وارد کنید.');if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');

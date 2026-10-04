@@ -39,6 +39,20 @@
 #if MODULE_MCU_POWER_PATH
 #include "mcu_power_path.h"
 #endif
+#if MODULE_IMBALANCE
+#include "imbalance.h"
+#endif
+#if (MODULE_IMBALANCE && MODULE_ESP)
+#include "esp_link_nvm.h"   /* [EN] persisted-slot dirty marking / علامت‌گذاری اسلات‌ها */
+#endif
+
+#if MODULE_IMBALANCE
+/* [EN] Scenario 6 feed: the changeover state from the PREVIOUS pass is the
+ *      "on battery = discharging" qualifier (one control period of lag at
+ *      100 ms is negligible against 30 s stability times).
+ * [FA] حالت چنج‌اور پاس قبلی = نیرولهٔ «روی باتری» برای گیت دشارژ. */
+static app_state_t APP_STATE_T__G__ImbalancePrevState = APP_STATE_BOOT;
+#endif
 
 /* ==================== Task Control ==================== */
 
@@ -70,6 +84,12 @@ void func__TaskControl(void *void_ptr__argument)
        [FA] رویدادهای قدیمی comparator را پیش از شروع کنترل پاک می‌کند. */
     func__Jitter_Init();
 #endif
+#if MODULE_IMBALANCE
+    /* [EN] Scenario 6 defaults; persisted counters arrive through the NVM
+       replay (EspLink boot) - both orders are safe by design.
+       [FA] پیش‌فرض‌های سناریوی ۶؛ شمارنده‌های ماندگار از پخش NVM می‌آیند. */
+    func__Imbalance_Init();
+#endif
 
     for (;;)
     {
@@ -97,12 +117,68 @@ void func__TaskControl(void *void_ptr__argument)
 #if MODULE_MCU_POWER_PATH
             func__McuPowerPath_Run();
 #endif
+#if MODULE_IMBALANCE
+            /* [EN] Scenario 6 evaluation, BEFORE Changeover so the output
+                   veto (latched + checkbox 117) and the charger gate are
+                   visible to the consumers in this same pass. Time is
+                   ms-from-ticks via CMSIS (no tick=1ms assumption): tick
+                   count / tick frequency * 1000 with 64-bit math.
+               [FA] ارزیابی سناریوی ۶ قبل از چنج‌اور تا وتوی خروجی و گیت
+                   شارژ در همین پاس دیده شوند؛ زمان از فرکانس تیک CMSIS. */
+            {
+                imbalance_inputs_t  imbalance_inputs_t__imbalanceInputs;
+                imbalance_outputs_t imbalance_outputs_t__imbalanceOutputs;
+                uint64_t            uint64_t__nowMs64;
+
+                uint64_t__nowMs64 = ((uint64_t)osKernelGetTickCount() *
+                                    (uint64_t)1000u) / (uint64_t)osKernelGetTickFreq();
+
+                imbalance_inputs_t__imbalanceInputs.uint32_t__vHighMv = measurement_snapshot_t__snap.v_bat_high_mv;
+                imbalance_inputs_t__imbalanceInputs.uint32_t__vLowMv  = measurement_snapshot_t__snap.v_bat_low_mv;
+                imbalance_inputs_t__imbalanceInputs.bool__inputPresent = measurement_snapshot_t__snap.input_present;
+                imbalance_inputs_t__imbalanceInputs.bool__valid =
+                    ((measurement_snapshot_t__snap.valid != false) &&
+                     ((fault_mask_t__faults & FAULT_ADC) == 0u));
+                imbalance_inputs_t__imbalanceInputs.bool__batAbsent =
+                    ((fault_mask_t__faults & FAULT_CHARGER_BAT_LOST) != 0u);
+                imbalance_inputs_t__imbalanceInputs.bool__charging =
+#if MODULE_CHARGER
+                    func__Charger_IsAnyChannelActive();
+#else
+                    false;
+#endif
+                imbalance_inputs_t__imbalanceInputs.bool__onBattery =
+                    (APP_STATE_T__G__ImbalancePrevState == APP_STATE_BATTERY);
+
+                if (func__Imbalance_Evaluate(&imbalance_inputs_t__imbalanceInputs,
+                                             (uint32_t)uint64_t__nowMs64,
+                                             &imbalance_outputs_t__imbalanceOutputs) != false)
+                {
+#if MODULE_ESP
+                    /* [EN] A counter or the latch moved: mark slots 200..202
+                       dirty so the debounced NVM save captures them.
+                       [FA] تغییر ماندگار: اسلات‌های ۲۰۰..۲۰۲ برای ذخیره علامت‌گذاری. */
+                    func__EspLink_NvmMarkDirty(IMBAL_SLOT_EVENTS_ID);
+                    func__EspLink_NvmMarkDirty(IMBAL_SLOT_CYCLES_ID);
+                    func__EspLink_NvmMarkDirty(IMBAL_SLOT_LATCH_ID);
+#else
+                    (void)imbalance_outputs_t__imbalanceOutputs;
+#endif
+                }
+                (void)imbalance_outputs_t__imbalanceOutputs;
+            }
+#endif
 #if MODULE_CHANGEOVER
             /* [EN] UI owns BOOL__G__UiBatteryAlarmIssued and updates it in func__Ui_Tick()
                from snapshot.v_bat24_mv. Changeover reads the same global flag directly;
                no extra wiring is needed in this task beyond the snapshot + faults.
                [FA] UI مالک فلگ است و Changeover همان فلگ سراسری را می‌خواند. */
             app_state_t__state = func__Changeover_Evaluate(&measurement_snapshot_t__snap, fault_mask_t__faults);
+#endif
+#if MODULE_IMBALANCE
+            /* [EN] Remember this pass for the next imbalance cycle.
+               [FA] حالت این پاس برای چرخهٔ بعدی عدم‌توازن. */
+            APP_STATE_T__G__ImbalancePrevState = app_state_t__state;
 #endif
 #if MODULE_CHARGER
             func__Charger_Evaluate(&measurement_snapshot_t__snap, app_state_t__state);

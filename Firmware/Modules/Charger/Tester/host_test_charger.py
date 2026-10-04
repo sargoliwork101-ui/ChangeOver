@@ -830,11 +830,11 @@ def test_charge_profile_v112():
           "GetParam must route all 7 profile ids to Charger_GetProfileParam")
 
     # --- ESP panel: 99 params, third tab with 7 fields + descriptions, 150-col CSV, vin carry ---
-    check(re.search(r"#define ESP_PARAM_COUNT\s+108u", ino), "panel ESP_PARAM_COUNT must be 108 (v1.28: +15 charger limit ids 93..107)")
+    check(re.search(r"#define ESP_PARAM_COUNT\s+119u", ino), "panel ESP_PARAM_COUNT must be 119 (v1.43: +11 imbalance scenario ids 108..118)")
     mn = re.search(r"INT32_T__G__ParamMin\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     mx = re.search(r"INT32_T__G__ParamMax\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(mn and mx and len(mn.group(1).split(",")) == 108 and len(mx.group(1).split(",")) == 108,
-          "panel min/max tables must carry 108 entries (outer envelope for ids 20..26, 27..82, 83..92 and 93..107)")
+    check(mn and mx and len(mn.group(1).split(",")) == 119 and len(mx.group(1).split(",")) == 119,
+          "panel min/max tables must carry 119 entries (outer envelope for ids 20..26, 27..82, 83..92, 93..107 and 108..118)")
     check('<button data-t="2">تنظیمات</button>' in ino, "third nav tab must exist (v1.14b: renamed from تنظیمات شارژ when the filter windows moved in)")
     # [EN] v1.33 (user order 2026-10-03: "why is this charge profile still
     #      here when I am editing on the chart?"). The seven q20..q26 input
@@ -906,11 +906,11 @@ def test_charge_profile_v112():
     wrow_body = re.search(r"function wrow\([^)]*\)\{.*?\n\s*return \[(.*?)\]\.join",
                           ino, re.S)
     check(wrow_body and "...P," not in wrow_body.group(1),
-          "the data row must NOT repeat the 108 settings - that was 62 percent of every "
+          "the data row must NOT repeat the 119 settings - that was 62 percent of every "
           "row and it is what filled the file cap")
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(txo and len(txo.group(1).split(",")) == 108 and "103, 104, 105, 106, 107 };" in ino,
-          "TxOrder must list all 108 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
+    check(txo and len(txo.group(1).split(",")) == 119 and "113, 114, 115, 116, 117, 118 };" in ino,
+          "TxOrder must list all 119 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
     check("window.WVI=" in ino and "L('wVi','ولتاژ ورودی V',WVI)" in ino,
           "the input-voltage DMM reading must carry into the next wizard step (user order 2026-09-25: quasi-static, type once)")
 
@@ -1304,20 +1304,20 @@ def test_charger_persistence_v114():
     # [FA] با regex تطبیق می‌شود نه با فاصله‌گذاری دقیق: این تعریف‌ها ستونی
     #      تراز شده‌اند و رفتن از شناسهٔ دو رقمی به سه رقمی، چکِ رشتهٔ عینی را
     #      بی‌صدا می‌شکست بدون آن‌که ربطی به چیزی که می‌سنجید داشته باشد.
-    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+108u", nvm_h) and
+    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+122u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_LOW\s+14u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH\s+20u", nvm_h) and
-          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+107u", nvm_h),
-          "persisted set = 0..14 + 20..75 + 77..107 (102 ids, 108 slots) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot")
-    check(re.search(r"ESP_LINK_NVM_VERSION\s+9u", nvm_h),
-          "v1.28 bumps the NVM record version to 9: a v8 record carries 93 slots, so "
-          "replaying one into a 108-slot layout would leave ids 93..107 holding whatever "
+          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+118u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+202u", nvm_h),
+          "persisted set = 0..14 + 20..75 + 77..118 + runtime slots 200..202 (116 entries, 122 slots) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
+    check(re.search(r"ESP_LINK_NVM_VERSION\s+10u", nvm_h),
+          "v1.43 bumps the NVM record version to 10: a v9 record carries 108 slots, so "
+          "replaying one into a 122-slot layout would leave ids 108..118 and 200..202 holding whatever "
           "the erased flash reads as. The version check must reject it and fall back to "
           "compiled defaults - the first boot after this upgrade is a factory-default boot")
 
     # the persisted-id predicate in C, replicated and cross-checked
-    persisted = {i for i in range(108) if i <= 14 or (20 <= i <= 107 and i != 76)}
-    check(persisted == set(range(15)) | set(range(20, 76)) | set(range(77, 108)) and 19 not in persisted and 15 not in persisted and 76 not in persisted,
+    persisted = {i for i in range(256) if i <= 14 or (20 <= i <= 118 and i != 76) or 200 <= i <= 202}
+    check(persisted == set(range(15)) | set(range(20, 76)) | set(range(77, 119)) | {200, 201, 202} and 19 not in persisted and 15 not in persisted and 76 not in persisted,
           f"persisted id set must exclude 15..19 and 76 (got {len(persisted)} ids)")
 
     tab2 = ino.split('id="p2"', 2)[1]
@@ -1373,8 +1373,8 @@ def test_charger_persistence_v114():
     _p0 = ino.split('id="p0"', 1)[1].split('id="p1"', 1)[0]
     check('class="qgm"' not in _p0,
           "the chart is OFF the chargers page, as ordered")
-    check('id="ctb"' in _p0,
-          "the operating table stays ON the chargers page, as ordered")
+    check('id="ctb"' not in _p0 and 'id="ctb"' not in ino,
+          "the operating table stays GONE - the user ordered its wholesale deletion (v1.36)")
     # [EN] v1.35 (user order 2026-10-03: "write those times underneath so the
     #      charts do not get so crowded - do the same for the gains"). These
     #      two assertions demanded the exact opposite and are INVERTED, not
@@ -1486,9 +1486,9 @@ def test_charger_persistence_v114():
           "document.querySelectorAll('.qwm').forEach" in ino and
           'function qchk()' in ino and
           'q.o.d' in ino and 'q.r.d' in ino and 'pvln(q.o' in ino and
-          'const ZL=[],LL=[]' in ino and 'ترکیب نامعتبر' in ino and
+          'const LL=[],PL=[]' in ino and 'ترکیب نامعتبر' in ino and
           'باز هم ارسال شود؟' in ino and 'نگهبان ترکیب' in ino,
-          "v1.14d (user order 2026-09-26, 'stretch the graph downward, the zone borders are cramped; zones must follow the profile numbers and never overlap'): zones drawn from APPLIED values with dashed preview lines for typed values, anti-collision label pass (ZL/LL), and a qchk() guard mirroring Charger_ClampProfile - red warning + red field + confirm-before-send on invalid combos")
+          "v1.14d (user order 2026-09-26, 'stretch the graph downward, the zone borders are cramped; zones must follow the profile numbers and never overlap'): zones drawn from APPLIED values with dashed preview lines for typed values, anti-collision label pass (ZL/LL; v1.39 moved the zone names out of the chart into an external legend, so v1.41 pruned the now-empty ZL list - the pass is PL/LL), and a qchk() guard mirroring Charger_ClampProfile - red warning + red field + confirm-before-send on invalid combos")
     # [EN] The 2026-09-26 order was "at least 50 % taller" (H 560 -> 840); the
     #      2026-09-29 order REVERSES it ("make the height 50 % less, and the
     #      text smaller so it stops overlapping"), so H is 420. What still
@@ -1849,13 +1849,13 @@ def test_manual_test_mode_v12():
     check(re.search(r"#define CHG_MANUAL_WATCHDOG_MS\s+3000u", text_h),
           "manual link dead-man must be 3 s")
     check(re.search(r"#define ESPLINK_FRAME_MAX_PAYLOAD\s+512u", text_esph),
-          "payload limit must be 512. v1.28: 108 params would need 1 + 108 x 5 = 541 "
+          "payload limit must be 512. v1.43: 119 params would need 1 + 119 x 5 = 596 "
           "bytes, so PARAMS_BULK is CHUNKED at (512-1)/5 = 102 items per frame "
           "instead of raising the ceiling - on a 20 KB part that buffer is charged "
           "twice, once on each side of the link")
     check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
-          and re.search(r"#define ESPLINK_PARAM_COUNT\s+108u", text_esph),
-          "param 19 = manual test mode; 108 params total since v1.28 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID, 93..107 = charger limits)")
+          and re.search(r"#define ESPLINK_PARAM_COUNT\s+119u", text_esph),
+          "param 19 = manual test mode; 119 params total since v1.43 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID, 93..107 = charger limits, 108..118 = imbalance scenario 6)")
 
     manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
                     text_c.find("/* ==================== Charger_Evaluate")]
@@ -2016,7 +2016,7 @@ def test_alarms_tab_v115():
     check('\\"q2\\":%lu' in ino and "pendingMask2" in ino,
           "the /t JSON must carry the q2 pending mask for ids 32..37 (one u32 no longer fits 38 params)")
     tx = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(tx and len(tx.group(1).split(",")) == 108, "TxOrder must carry all 108 ids")
+    check(tx and len(tx.group(1).split(",")) == 119, "TxOrder must carry all 119 ids")
     # [EN] The literal "134 columns" used to be asserted here. That is the third
     #      hard-coded column count found in this suite, and every one of them was
     #      stale - they defend whatever number was true when they were written.
@@ -2193,14 +2193,15 @@ def test_ui_mirror_v116():
           "ids 96..107 exist as of v1.28 and the catch-all arm they used to land in did "
           "1UL << (id - 64), which is undefined behaviour past id 95 - the panel's "
           "modulo-32 shift made it look like a mere off-by-one")
-    check("(۰..۱۴، ۲۰..۷۵، ۷۷..۱۰۷)" in ino and "XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26]" in ino,
-          "v1.16c (user order: ONE backup for the whole settings): all 102 persisted ids "
-          "0..14 + 20..75 + 77..107. XIDS extends itself from AIDS, so the limits block "
+    check("(۰..۱۴، ۲۰..۷۵، ۷۷..۱۱۸)" in ino and "XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26]" in ino,
+          "v1.16c (user order: ONE backup for the whole settings): all persisted ids "
+          "0..14 + 20..75 + 77..118 (113 params; slots 200..202 stay board-only). "
+          "XIDS extends itself from AIDS, so the limits block "
           "was covered the moment it existed - but the human-readable label was NOT, and "
           "it had already been wrong since v1.24 (it still advertised a retired 83..97)")
     check('id="usel"' in ino and "function usel(n)" in ino
-          and all(f'id="ucard{k}"' in ino for k in range(1, 6)),
-          "one selectable card per scenario (5 cards, single-visible) - no crowded wall of fields")
+          and all(f'id="ucard{k}"' in ino for k in range(1, 7)),
+          "one selectable card per scenario (6 cards incl. imbalance, single-visible) - no crowded wall of fields")
     # [EN] v1.33 (user order 2026-10-03: "bring that charger PID inside this
     #      same charge-and-filter tab"). The PID sub-tab is gone as a TAB and
     #      its card now sits in sub-tab 0, so backup moves up to 3. Pinned
@@ -2210,45 +2211,73 @@ def test_ui_mirror_v116():
     #      پشتیبان‌گیری به ۳ آمد. هر دو طرف میخ شد: نه تب مستقل برگردد، نه
     #      کارت PID صرفاً حذف شده باشد.
     check('data-s="1">سناریوها<' in ino and 'data-s="2">نظارت و ایمنی<' in ino
-          and 'data-s="3">پشتیبان‌گیری<' in ino
-          and 'data-s="3">PID شارژ<' not in ino and 'data-s="4"' not in ino
+          and 'data-s="3">کالیبراسیون و فیلتر جریان<' in ino
+          and 'data-s="4">پشتیبان‌گیری<' in ino
+          and 'data-s="3">پشتیبان‌گیری<' not in ino
+          and 'data-s="4">کالیبراسیون و فیلتر جریان<' not in ino
+          and 'data-s="3">PID شارژ<' not in ino and 'data-s="4">PID شارژ<' not in ino
           and 'data-s="1">آلارم‌ها<' not in ino
           and '>وضعیت</button>' not in ino,
-          "v1.33: PID folded into sub-tab 0, backup moves to 3, no standalone PID tab")
+          "v1.33: PID folded into sub-tab 0, backup moves to 3, no standalone "
+          "PID tab; v1.34 (user order 2026-10-03: \"current calibration + "
+          "current filters into their own settings sub-tab\"): a fifth sub-tab "
+          "exists and PID stays folded")
     s0part = ino.split('id="s0"')[1].split('id="s1"')[0]
     check("PID دوحلقه‌ای شارژ (CC/CV)" in s0part,
           "the PID card must live INSIDE the charge-and-filter sub-tab, not "
           "just be gone from its old one")
+    cfpart = ino.split('id="s3"')[1].split('id="s4"')[0]  # v1.42: calibration+filters now in s3 (backup moved last)
+    check('<div class="hd"><b>فیلتر جریان</b>' in cfpart
+          and '<div class="hd"><b>کالیبراسیون جریان</b>' in cfpart
+          and '<div class="hd"><b>فیلتر جریان</b>' not in s0part
+          and '<div class="hd"><b>کالیبراسیون جریان</b>' not in s0part,
+          "v1.34: the current-filter and current-calibration cards moved INTO "
+          "the fifth sub-tab (s4) and out of the charge sub-tab")
     s1part = ino.split('id="s1"')[1].split('id="s2"')[0]
     s2part = ino.split('id="s2"')[1].split('id="s3"')[0]
-    # [EN] v1.33: PID lives in s0 now and backup is s3 (last page).
-    # [FA] حالا PID در s0 است و پشتیبان‌گیری s3 (آخرین صفحه).
+    # [EN] v1.33: PID lives in s0. v1.42 (user order: backup sub-tab LAST):
+    #      backup is now s4 and calibration+filters s3.
+    # [FA] PID در s0 است، و با دستور v1.42 پشتیبان‌گیری زیرتب آخر (s4) شد.
     s3part = ino.split('id="s0"')[1].split('id="s1"')[0]
-    s4part = ino.split('id="s3"')[1].split("</main>")[0]
+    bkpart = ino.split('id="s4"')[1].split("</main>")[0]
     p0part = ino.split('id="p0"')[1].split('id="p1"')[0]
-    check("ucard1" in s1part and "uleds" in s1part and 'id="aw2"' in s1part
-          and "sdef()" in s1part and "<b>نظارت باتری</b>" not in s1part
+    check("ucard1" in s1part and "ucard6" in s1part and "uleds" in s1part and 'id="aw2"' in s1part
+          and 'id="aw"' in s1part and 'id="ib117"' in s1part
+          and "sdef()" in s1part and "bdef()" in s1part and "ibdef()" in s1part
+          and "<b>نظارت باتری</b>" not in s1part
           and "<b>پنجرهٔ ورودی سالم</b>" not in s1part and "<b>سقف‌های ایمنی شارژر</b>" not in s1part
           and "وضعیت آلارم‌ها" not in s1part and "پشتیبان‌گیری" not in s1part
           and all(f'id="q{i}"' in s1part for i in range(38, 83))
-          and all(f'id="q{i}"' not in s1part for i in range(27, 38))
-          and all(f'id="q{i}"' not in s1part for i in range(83, 99)),
-          "s1 (scenarios) keeps only the mirror + the 5 scenario cards + its own guard/defaults")
-    check("نظارت باتری" in s2part and "پنجرهٔ ورودی سالم" in s2part and "سقف‌های ایمنی شارژر" in s2part
-          and 'id="aw"' in s2part and "adef()" in s2part and "uleds" not in s2part
-          and all(f'id="q{i}"' in s2part for i in range(27, 38))
+          and all(f'id="q{i}"' in s1part for i in range(27, 33))
+          and all(f'id="q{i}"' not in s1part for i in range(33, 38))
+          and all(f'id="q{i}"' not in s1part for i in range(83, 99))
+          and all(f'id="q{i}"' in s1part for i in range(108, 119) if i != 117),
+          "s1 (scenarios): mirror + 6 scenario cards; v1.43 user order pulls the cut-battery "
+          "thresholds 27..32 INTO scenario 2 and adds scenario 6 (108..118, checkbox 117 = ib117)")
+    check("نظارت باتری" not in s2part and "پنجرهٔ ورودی سالم" in s2part and "سقف‌های ایمنی شارژر" in s2part
+          and 'id="aw"' not in s2part and "adef()" in s2part and "uleds" not in s2part
+          and all(f'id="q{i}"' not in s2part for i in range(27, 33))
+          and all(f'id="q{i}"' in s2part for i in range(33, 38))
           and all(f'id="q{i}"' not in s2part for i in range(38, 83))
           and all(f'id="q{i}"' not in s2part for i in range(83, 93)),
-          "s2 (supervision & safety) keeps only the 27..37 thresholds + its own guard/defaults")
-    check("PID دوحلقه‌ای شارژ (CC/CV)" in s3part and "pdef()" in s3part and 'id="pw"' in s3part
+          "s2 (supervision & safety) keeps only 33..37 (input window + charger ceilings): "
+          "v1.43 user order moved 27..32 into scenario 2 and retired the battery-monitoring card")
+    # [EN] v1.38 (user order: one factory-restore key is enough): the
+    #      PID-only button was deleted and the surviving qdef() restores the
+    #      whole charger scope - the section pin follows that consensus.
+    # [FA] v1.38 (دستور کاربر: یک کلید بازگردانی کافی است) - کلید جدای PID
+    #      حذف شد و qdef بازمانده کل محدودهٔ شارژر را برمی‌گرداند.
+    check("PID دوحلقه‌ای شارژ (CC/CV)" in s3part and 'onclick="qdef()"' in s3part and 'id="pw"' in s3part
+          and 'onclick="pdef()"' not in s3part
           and all(f'id="q{i}"' in s3part for i in range(83, 93))
           and all(f'id="a{i}"' in s3part for i in range(83, 93))
           and all(f'id="q{i}"' not in s3part for i in range(27, 83))
           and all(f'id="q{i}"' not in s3part for i in range(20, 27)),
-          "s3 holds the two-loop PID card: all 10 ids 83..92 with their applied-value labels, the guard box and factory defaults")
-    check("پشتیبان‌گیری" in s4part and 'id="xim"' in s4part
-          and all(f'id="q{i}"' not in s4part for i in range(27, 93)),
-          "s4 holds only the single backup card")
+          "s3 holds the two-loop PID card: all 10 ids 83..92 with their applied-value labels, the guard box and exactly ONE factory-restore key (v1.38: the user merged the two)")
+    check("پشتیبان‌گیری" in bkpart and 'id="xim"' in bkpart
+          and all(f'id="q{i}"' not in bkpart for i in range(27, 93)),
+          "v1.42 (user order: backup sub-tab LAST): the final sub-tab (s4) "
+          "holds only the single backup card")
     check("وضعیت آلارم‌ها" in p0part and 'id="ast"' in p0part and 'id="abars"' not in p0part,
           "the merged voltages+alarm table sits on the main panel tab (p0, v1.16k: fixed layout, each value once), not in settings")
     check("asb5" in ino and "abf0" not in ino and "abf1" not in ino and "abf2" not in ino and "جریان ۱" in ino and "جریان ۲" in ino
@@ -2328,9 +2357,12 @@ def test_ui_mirror_v117():
     # --- preview server mirrors the same numbers ---
     check("100, 95, 5, 2, 2, 3," in prev and "case 78:" in prev and "P[77] - 1" in prev
           and "50, 18000, 0, 10, 1000," in prev
-          and "14800, 100, 500, 10, 15000, 3000, 3000, 500];" in prev,
+          and "14800, 100, 500, 10, 15000, 3000, 3000, 500," in prev
+          and "300, 500, 600000, 600000, 30000, 100, 10, 3600000, 200, 1, 20];" in prev
+          and "case 118:" in prev,
           "the offline preview must serve the v1.17 defaults with the enter-authoritative "
-          "clamp, the calibrated PID rows after them, and the v1.28 limits block last")
+          "clamp, the calibrated PID rows after them, the v1.28 limits block, "
+          "and the v1.43 imbalance scenario block last")
 
 
 def test_ui_mirror_v117b():
@@ -2484,10 +2516,10 @@ def test_audit_batch_v116b():
     check("static uint8_t UINT8_T__A__Payload[1u + (ESPLINK_BULK_MAX_ITEMS *" in link
           and "ESPLINK_BULK_ITEM_SIZE)];" in link,
           "bulk payload must be static (comm stack is 1 KiB) and sized to one chunk")
-    check("ESPLINK_PARAM_COUNT <= ESP_LINK_NVM_ENTRY_MAX" in nvmc,
-          "NVM must statically assert the record fits the param table")
-    check("880 B for 108 entries" in nvmh,
-          "NVM record comment must state the true record size for 108 entries")
+    check("NVM record too small for the persisted id set" in nvmc,
+          "NVM must statically assert the record fits the WHOLE persisted id set (params + runtime slots)")
+    check("992 B for 122 entries" in nvmh,
+          "NVM record comment must state the true record size for 122 entries")
 
     # --- LUT hardening + dead-clamp cleanup ---
     check("uint32_t__xHigh == uint32_t__xLow" in meas,
@@ -2530,25 +2562,35 @@ def test_telemetry_frame_pins_v116c():
               (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1)) == tlm_size,
           "the ESP's expected TLM size must equal the firmware's payload size, or every "
           "frame is rejected as malformed")
-    start = link.index("func__EspLink_SendTelemetry")
-    body = link[start:link.index("CAL_REFERENCE (v1.3)", start)]
+    # [EN] Slice INSIDE SendTelemetry only: from right after its opening
+    #      brace (so the prototype/comment above cannot leak in) to the end
+    #      of the function = its final SendFrame call's closing paren, which
+    #      is exactly where the closing brace sits (no code follows SendFrame
+    #      inside SendTelemetry). Anchoring on prose banners broke once
+    #      already when a comment block was removed (audit 2026-10-03).
+    # [FA] برش فقط داخل SendTelemetry: از بعد از آکولاد آغازین تا پایان خود
+    #      تابع (پرانتز پایانی SendFrame؛ پس از آن فقط آکولاد پایانی است).
+    #      لنگر روی بنر متنی یک‌بار با حذف کامنت شکست (ممیزی ۲۰۲۶-۱۰-۰۳).
+    start = link.index("void func__EspLink_SendTelemetry")
+    start = link.index("{", start) + 1
+    body = link[start:link.index("(uint16_t)ESPLINK_TLM_PAYLOAD_SIZE);", start)]
     check(body.count("func__EspLink_PutU16(") == 1,
           "SendTelemetry must write exactly one u16 (the sequence number)")
-    # [EN] 19 live + 19 #else fillers + faults + the 5 raw calibration fields.
-    #      Only ONE of the two 19-blocks is compiled, so the runtime count is
-    #      19 + 1 + 5 = 25 = ESP_LINK_TLM_FIELD_COUNT, which the size check
-    #      above ties to the payload length.
-    # [FA] ۱۹ زنده + ۱۹ پرکنندهٔ #else + خطاها + ۵ فیلد خام کالیبراسیون. فقط
-    #      یکی از دو بلوک ۱۹تایی کامپایل می‌شود، پس تعداد زمان اجرا ۲۵ است.
-    expected_writes = 19 + 19 + 1 + 5
+    # [EN] 28 live u32 writes fill the WHOLE field table (4+28x4 = 116 B,
+    #      including the v1.43 imbalance mv + events/cycles pair at t[25..26]),
+    #      and 22 #else zero-fillers cover the same fields when a module is
+    #      compiled out.
+    # [FA] ۲۸ رایت زندهٔ u32 کل جدول را پر می‌کند (۴+۲۸×۴=۱۱۶ بایت، با جفت
+    #      تازهٔ عدم‌توازن در t[25..26]) و ۲۲ صفرِ #else جایگزین‌اند.
+    expected_writes = 28 + 22
     check(body.count("func__EspLink_PutU32(") == expected_writes,
           f"SendTelemetry must carry {expected_writes} textual u32 writes "
-          "(19 live + 19 #else fillers + faults + 5 raw calibration fields); only one "
-          "19-block compiles, so the runtime field count is 25")
-    check(body.count("func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);") == 19,
-          "SendTelemetry must carry exactly 19 zero-filler u32 writes")
-    check(body.count("#else") == 7,
-          "SendTelemetry must keep its 7 conditional blocks (ch1/iest1/diag1/ch2/iest2/diag2/voltages)")
+          "(28 live + 22 #else fillers); the 28 live ones exactly fill "
+          "ESP_LINK_TLM_FIELD_COUNT fields")
+    check(body.count("func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);") == 22,
+          "SendTelemetry must carry exactly 22 zero-filler u32 writes")
+    check(body.count("#else") == 8,
+          "SendTelemetry must keep its 8 conditional filler blocks")
 
 
 def test_flash_diet_pins_v116d():
@@ -2670,8 +2712,8 @@ def test_two_loop_pid_v124():
               f"charger.h must map CHG_PID_PARAM_{nm} to id {wid}")
         check(re.search(rf"#define ESPLINK_PARAM_CHG_PID_{nm}\s+{wid}u", text_esph),
               f"esp_link.h must map ESPLINK_PARAM_CHG_PID_{nm} to the SAME id {wid}")
-    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+108u", text_esph),
-          "ESPLINK_PARAM_COUNT must be 108 (last charger-limit id 107 + 1)")
+    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+119u", text_esph),
+          "ESPLINK_PARAM_COUNT must be 119 (last imbalance id 118 + 1)")
     check("STAGE1" not in text_h and "STAGE3" not in text_h and "stage3" not in text_c,
           "the retired third gain row must leave NOTHING behind (it was measured to "
           "buy nothing and it cost five panel numbers)")
@@ -2895,12 +2937,9 @@ def test_two_loop_pid_v124():
         check(i in drawn, f"limit id {i} is drawn by no renderer - settable in theory only")
     check('id="q93"' not in ino and 'id="q107"' not in ino,
           "the separate limits card must stay GONE")
-    ctab = ino[ino.find("function ctab()"):]
-    ctab = ctab[:ctab.find("function astat()")]
-    check("ev(" not in ctab.replace("evr(", "").replace("evr_plain(", ""),
-          "the operating table must only REPORT: an editable cell there puts the same "
-          "number in two places, which is how the help text, the backup label and the "
-          "OV cutoff default all drifted")
+    check("function ctab()" not in ino and 'id="ctb"' not in ino,
+          "the operating table must stay REMOVED (user ordered its wholesale "
+          "deletion): no renderer, no mount point")
     check("EVOPEN" in ino and "document.activeElement" in ino,
           "an open editor must suppress the re-render, or the ~1 s telemetry tick "
           "deletes the field under the user's fingers")
@@ -3029,17 +3068,23 @@ def test_min_select_handover_v124():
     check(m, "the panel must build AIDS from a bounded loop")
     pdef = re.search(r"const PDEF=\[([^\]]*)\]", ino).group(1).split(",")
     # [EN] v1.28: PDEF is no longer the last default table - LDEF (ids
-    #      93..107, the user-ordered limits) sits above it, so the top real
-    #      id is where LDEF ends. Deriving it from both tables keeps this
-    #      check honest the next time a block is appended.
-    # [FA] دیگر PDEF آخرین جدول پیش‌فرض نیست؛ LDEF (۹۳..۱۰۷) بالای آن است،
-    #      پس بالاترین شناسهٔ واقعی جایی است که LDEF تمام می‌شود. مشتق‌کردن از
-    #      هر دو جدول، این چک را برای بلوک بعدی هم صادق نگه می‌دارد.
+    #      93..107, the user-ordered limits) sits above it, and v1.43 adds
+    #      IDEF (108..118, the imbalance scenario) as the last block, so the
+    #      top real id is where IDEF ends. Deriving it from all tables keeps
+    #      this check honest the next time a block is appended.
+    # [FA] دیگر PDEF آخرین جدول پیش‌فرض نیست؛ LDEF (۹۳..۱۰۷) و در v1.43 بلوک
+    #      IDEF (۱۰۸..۱۱۸، سناریوی عدم‌توازن) آخر است، پس بالاترین شناسهٔ
+    #      واقعی جایی است که IDEF تمام می‌شود. مشتق‌کردن از هر سه جدول، این
+    #      چک را برای بلوک بعدی هم صادق نگه می‌دارد.
     ldef_m = re.search(r"const LDEF=\[([^\]]*)\]", ino)
     check(ldef_m, "the panel must define LDEF for the limits block")
     ldef = [x for x in ldef_m.group(1).split(",") if x.strip()]
     check(len(ldef) == 15, f"LDEF must hold 15 limit defaults, got {len(ldef)}")
-    top = 83 + len(pdef) - 1 + len(ldef)
+    idef_m = re.search(r"const IDEF=\[([^\]]*)\]", ino)
+    check(idef_m, "the panel must define IDEF for the imbalance scenario block")
+    idef = [x for x in idef_m.group(1).split(",") if x.strip()]
+    check(len(idef) == 11, f"IDEF must hold 11 imbalance defaults, got {len(idef)}")
+    top = 83 + len(pdef) - 1 + len(ldef) + len(idef)
     # --- 6. the PARAMS_BULK reply must be proven to fit the protocol payload
     #        ceiling. The buffer auto-sizes from the count so it cannot be
     #        overrun, but the FRAME can still exceed 512 B and be rejected by
@@ -3062,7 +3107,7 @@ def test_min_select_handover_v124():
     check(bulk_fn.count("func__EspLink_SendFrame") == 2
           and ">= ESPLINK_BULK_MAX_ITEMS" in bulk_fn,
           "the bulk sender must flush a full chunk AND send the trailing partial one; "
-          "with COUNT=108 and 102 per chunk, dropping the tail loses ids 102..107")
+          "with COUNT=119 and 102 per chunk, dropping the tail loses ids 102..118")
     check("if (uint8_t__count > 0u)" in bulk_fn,
           "an empty trailing frame must NOT be sent - it reads as 'zero parameters known'")
 
@@ -3372,7 +3417,7 @@ def test_benchlog_row_matches_header_v125():
     for col in ("vin_counts", "v24_counts", "v12_counts", "vrefint_counts", "vdda_mv"):
         check(col in cfg,
               f"the bench header must carry the raw calibration column {col}")
-    check("ESP_LINK_TLM_FIELD_COUNT    25u" in cfg and "ESP_LINK_TLM_SIZE          104u" in cfg,
+    check("ESP_LINK_TLM_FIELD_COUNT    28u" in cfg and "ESP_LINK_TLM_SIZE          116u" in cfg,
           "the ESP telemetry window must be widened for the 5 raw calibration fields")
     # [EN] The header naming a column proves nothing if the firmware never sends
     #      the value - the slot would just carry a zero and the calibration would

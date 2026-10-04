@@ -340,8 +340,8 @@ int main(void)
         const std::string page0 = html.substr(p0, p1 - p0);
         check(page0.find("class=\"qgm\"") == std::string::npos,
               "the chart is off the chargers page, as ordered");
-        check(page0.find("id=\"ctb\"") != std::string::npos,
-              "the operating table is on the chargers page, as ordered");
+        check(page0.find("id=\"ctb\"") == std::string::npos,
+              "the operating table is GONE, as ordered - it must not reappear");
 
         ESP_WEB_SERVER_T__G__Server.call("/f.css", HTTP_GET);
         check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 &&
@@ -385,7 +385,16 @@ int main(void)
               "POST /s with no arguments is refused");
 
         ESP_WEB_SERVER_T__G__Server.clearArgs();
-        ESP_WEB_SERVER_T__G__Server.setArg("id", "108");
+        {
+            /* [EN] Derived from the live table size so adding parameters no
+             *      longer silently turns this check into an accept.
+             * [FA] از اندازهٔ زندهٔ جدول گرفته می‌شود تا با افزونه شدن پارامتر
+             *      این چک به‌اشتباه پذیرش نشود. */
+            char char__A__Id[12];
+
+            snprintf(char__A__Id, sizeof(char__A__Id), "%u", (unsigned)ESP_PARAM_COUNT);
+            ESP_WEB_SERVER_T__G__Server.setArg("id", char__A__Id);
+        }
         ESP_WEB_SERVER_T__G__Server.setArg("v", "1");
         ESP_WEB_SERVER_T__G__Server.call("/s", HTTP_POST);
         check(ESP_WEB_SERVER_T__G__Server.lastCode == 400,

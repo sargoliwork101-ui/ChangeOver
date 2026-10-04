@@ -164,7 +164,13 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
               panel-settable; the absorb ceiling and the two hard backstops
               are the ones that had been called out by name. */
            3600000, 100, 600000, 60000, 8, 700, 32,
-           14800, 100, 500, 10, 15000, 3000, 3000, 500];
+           14800, 100, 500, 10, 15000, 3000, 3000, 500,
+           /* v1.43 ids 108..118 = imbalance scenario 6 boot defaults
+              (imbalance.h): rest limit, discharge limit, post-charge wait,
+              in-charge wait, episode stability, hysteresis, event budget,
+              latch beep period, beep length, block-output checkbox,
+              latched charge-cycle budget. */
+           300, 500, 600000, 600000, 30000, 100, 10, 3600000, 200, 1, 20];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -219,6 +225,16 @@ function clampParam(id, v) {
         case 105: return Math.min(60000, Math.max(0, v));
         case 106: return Math.min(60000, Math.max(500, v));
         case 107: return Math.min(5000, Math.max(50, v));
+        /* v1.43 imbalance scenario 6 (IMBAL_* clamp windows in imbalance.c) */
+        case 108: case 109: return Math.min(2000, Math.max(0, v));
+        case 110: case 111: return Math.min(3600000, Math.max(0, v));
+        case 112: return Math.min(600000, Math.max(1000, v));
+        case 113: return Math.min(1000, Math.max(0, v));
+        case 114: return Math.min(255, Math.max(1, v));
+        case 115: return Math.min(86400000, Math.max(0, v));
+        case 116: return Math.min(2000, Math.max(20, v));
+        case 117: return Math.min(1, Math.max(0, v));
+        case 118: return Math.min(255, Math.max(1, v));
         /* v1.15 alarms: mirror of Fault_ClampAlarms / Charger_ClampAlarms */
         case 27: { let lo = Math.max(14000, over + 50), hi = Math.min(15000, ov - 100);
                    if (lo > hi) hi = lo; return Math.min(hi, Math.max(lo, v)); }
@@ -300,12 +316,27 @@ function mkChannel() {
     return { state: 0, v: 12400, i: 0, duty: 0, soak: 0, taper: 0, off: 0, floatT: 0 };
 }
 const ch = [mkChannel(), mkChannel()];
+/* [EN] v1.34 (user order 2026-10-03: "split the battery values in your
+ *      simulator so they can be compared"). Both channels used to boot at
+ *      the SAME 12400 mV with the SAME current sine, so the two live
+ *      dots/labels on the charge chart stacked exactly on top of each
+ *      other and could not be compared. Stagger the start: the upper
+ *      battery boots 400 mV ahead (reaches every stage a beat sooner) and
+ *      the two current waves run out of phase, so the two values stay
+ *      visibly separate everywhere they are drawn. Scenario overrides
+ *      below (BatteryRun etc.) still apply to both.
+ * [FA] v1.34 (دستور کاربر: «مقادیر باتری‌ها را در سیمولاتورت جدا جدا بذار
+ *      که بشه مقایسشون کرد») - هر دو کانال از همان ۱۲۴۰۰ و با همان سینوسی
+ *      شروع می‌شدند و دو نقطه/عدد روی نمودار عیناً روی هم می‌افتادند.
+ *      باتری بالا ۴۰۰ میلی‌ولت جلوتر شروع می‌کند و موج جریان دو کانال
+ *      اختلاف‌فاز دارد تا دو عدد همیشه جدا و قابل مقایسه بمانند. */
+ch[0].v = 12800;
 let seq = 1, frames = 0;
 let benchSize = 3120; /* simulated /benchlog.csv bytes (nonzero so the resume/choice flow is exercisable) */
 const SIM_MS = 100;
 let ms = 0;
 
-function stepChannel(c) {
+function stepChannel(c, phase) {
     const prof = { enter: P[21], absorb: P[20], float: P[23], reentry: P[24], imax: P[25], taper: P[26] };
     switch (c.state) {
         case 0: /* OFF: connection-stability gate (demo: 3 s) */
@@ -315,7 +346,7 @@ function stepChannel(c) {
             break;
         case 1: /* BULK: constant current, voltage rising */
             c.duty = Math.min(c.duty + 2, 320);
-            c.i = 620 + Math.round(25 * Math.sin(ms / 700));
+            c.i = 620 + Math.round(25 * Math.sin(ms / 700 + phase));
             c.v += 80; /* demo-speed rise (~80 mV/s) */
             if (c.v >= prof.enter) { c.state = 2; c.soak = 0; c.taper = 0; }
             break;
@@ -349,6 +380,7 @@ function rawFromCurrent(iBat, vMv) {
 }
 
 let SNAP = null;
+let imbFl2 = 0;  /* [EN] scenario 6 demo flags (byte 3 of TLM) / [FA] بیت‌های وضعیت سناریوی ۶ (بایت ۳) */
 
 /* [EN] The sim runs on a REAL 100 ms ticker (like the STM32 measurement
  *      task), independent of browser polling; /t just snapshots it.
@@ -357,8 +389,8 @@ let SNAP = null;
 setInterval(() => { SNAP = telemetry(); }, SIM_MS);
 
 function telemetry() {
-    stepChannel(ch[0]);
-    stepChannel(ch[1]);
+    stepChannel(ch[0], 0);
+    stepChannel(ch[1], 2.1);
     const vlow = ch[1].v, vhigh = ch[0].v;
     const t = new Array(TLM_FIELDS).fill(0);
     for (let k = 0; k < 2; k++) {
@@ -421,9 +453,26 @@ function telemetry() {
     t[23] = VREFINT_COUNTS;
     t[24] = VREF_MV;
 
+    /* [EN] v1.43 imbalance scenario 6 live block. The demo owes the operator
+     *      every face, so it cycles a condemned battery: |imbalance| sweeps
+     *      with the same 30 s episodes the board would see; events ramp to
+     *      the budget, latch holds for a window with one simulated episode
+     *      showing, then an automatic battery-swap resets everything.
+     * [FA] بلوک زندهٔ سناریوی ۶: دموی چرخه‌ای - ارزیابی، رشد شمارش، قفل و
+     *      ریست خودکار با تعویض باتری. */
+    {
+        const imbCyc = ms % 120000;
+        const imb = Math.abs(t[18] - t[17]);
+        t[25] = imb;
+        if (imbCyc < 30000) { t[26] = Math.round(imbCyc / 30000 * 10); t[27] = 0; imbFl2 = (imb > P[108]) ? 1 : 0; }
+        else if (imbCyc < 75000) { t[26] = 10; t[27] = Math.round((imbCyc - 30000) / 1500); imbFl2 = 2 | (P[117] ? 4 : 0) | 1; }
+        else if (imbCyc < 90000) { t[26] = 10; t[27] = 20; imbFl2 = 2 | 4 | 8; }
+        else { t[26] = 0; t[27] = 0; imbFl2 = 0; }
+    }
+
     seq += 1; frames += 1; ms += SIM_MS;
     return {
-        on: 1, age: 40, seq, fl: 7, n: frames,
+        on: 1, age: 40, seq, fl: 7, fl2: imbFl2, n: frames,
         q: 0, q2: 0, q3: 0, q4: 0, ka: 800,
         /* [EN] Link health, same two counters the ESP publishes: vm = frames
          *      dropped for an unknown protocol version, ce = frames dropped on

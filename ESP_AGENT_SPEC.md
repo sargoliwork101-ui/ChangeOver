@@ -1779,13 +1779,13 @@ firmware boots 15000 − 150 = **14 850 mV** while the comment said 15 000 and
 the panel's factory-restore button pushed 15 000, i.e. it *raised* a safety
 ceiling. A table built from live values cannot drift that way.
 
-## 6. TLM_LIVE payload layout (104 bytes, little-endian)
+## 6. TLM_LIVE payload layout (116 bytes, little-endian)
 
 | Offset | Size | Field | Meaning |
 |---|---|---|---|
 | 0 | u16 | seq | Wraps at 65535; use for drop detection |
 | 2 | u8 | flags | b0 snapshot valid, b1 input present, b2 meas data valid, b3 charger-1 ESP enable, b4 charger-2 ESP enable, b5 manual test mode active (v1.2), b6..b7 = 0 |
-| 3 | u8 | reserved | 0 |
+| 3 | u8 | flags2 | v1.43 imbalance-scenario bits: b0 episode active, b1 latched (verdict), b2 output blocked, b3 charge not allowed; b4..b7 = 0 |
 | 4 | u32 | raw1_counts | Raw ADC counts, current ch1, **unfiltered** (mid-ON synchronized sample) |
 | 8 | u32 | shunt1_uv | Pure-hardware shunt voltage ch1, µV (no offset/trim) — LM358 output in mV = this × 101 / 1000 |
 | 12 | u32 | ma1_unfiltered | Converted mA ch1 before any filter |
@@ -1811,6 +1811,9 @@ ceiling. A table built from live values cannot drift that way.
 | 92 | u32 | v12_raw_counts | **Raw** ADC counts, mid node |
 | 96 | u32 | vrefint_counts | **Raw** ADC counts of the internal 1.20 V reference |
 | 100 | u32 | vdda_mv | Measured VDDA, or 0 when the reading is outside a plausible 3.0..3.6 V |
+| 104 | u32 | imb_mv | v1.43 live |imbalance| between the two battery halves, mV |
+| 108 | u32 | imb_events | v1.43 persisted episode count (flash budget, survives power loss) |
+| 112 | u32 | imb_latched_cycles | v1.43 charge cycles counted after the latch (compares against param 118) |
 
 The last five (v1.25) are **calibration ground truth**. Counts are the only
 numbers on this board that no coefficient can distort, so logging them beside a

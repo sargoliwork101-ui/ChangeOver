@@ -22,9 +22,9 @@
          = ۱ + ۸۳ × ۵ = ۴۱۶ بایت payload (قبلاً ۳۸۶ برای ۷۷ در v1.16).
          فیلد طول u16 لیتل‌اندین است. هر دو برد باید با هم فلش شوند. */
 #define ESP_LINK_MAX_PAYLOAD        512u
-#define ESP_LINK_TLM_SIZE          104u
+#define ESP_LINK_TLM_SIZE          116u
 #define ESP_LINK_TLM_FIELD_OFFSET   4u
-#define ESP_LINK_TLM_FIELD_COUNT    25u
+#define ESP_LINK_TLM_FIELD_COUNT    28u
 #define ESP_LINK_PARAM_ITEM_SIZE    5u
 #define ESP_LINK_TIMEOUT_MS         1000u
 #define ESP_LINK_TX_INTERVAL_MS     120u
@@ -53,7 +53,7 @@
          چشمک، آستانه‌ها، میوت)، شناسه‌های ۷۷..۸۲ = فول/hysteresis (v1.17)، شناسه‌های ۸۳..۹۲ = PID
          دوحلقه‌ای CC/CV شارژ (v1.24)، شناسه‌های ۹۳..۱۰۷ = حدها، گین‌های
          پشتیبان و تایمرهای مرحله‌ای شارژر (v1.28، دستور کاربر ۲۰۲۶-۱۰-۰۳). */
-#define ESP_PARAM_COUNT            108u
+#define ESP_PARAM_COUNT            119u
 #define ESP_PARAM_CHG1_ENABLE       11u
 #define ESP_PARAM_CHG2_ENABLE       12u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
@@ -131,6 +131,9 @@
     "#            lim_pid_volt_filt_n,lim_backstop_mv,lim_backstop_gain_i,\n" \
     "#            lim_backstop_gain_v,lim_pid_cur_margin_ma,lim_connect_settle_ms,\n" \
     "#            lim_jit_lockout_ms,lim_manual_wdg_ms,lim_ramp_down_int_ms\n" \
+    "#  [settings7] imb_rest_mv,imb_disch_mv,imb_rest_wait_ms,imb_chg_wait_ms,\n" \
+    "#            imb_event_ms,imb_event_hys_mv,imb_event_max,imb_beep_per_ms,\n" \
+    "#            imb_beep_ms,imb_block_out,imb_chg_cycles\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \
@@ -146,7 +149,7 @@
 #define ESP_WIFI_AP_SSID            "ChangeOver-ESP"
 #define ESP_WIFI_AP_PASS            "123456789"
 #define ESP_HTTP_PORT               80
-#define ESP_JSON_BUFFER_SIZE        2560u   /* v1.16: p[77] needs the headroom (~950 B worst case); v1.17: p[83] adds ~70 B; v1.24: p[93] adds 10 PID values (one is 5 digits), ~1.1 KB worst case */
+#define ESP_JSON_BUFFER_SIZE        2624u   /* v1.16: p[77] needs the headroom (~950 B worst case); v1.17: p[83] adds ~70 B; v1.24: p[93] adds 10 PID values, ~1.1 KB; v1.28: p[108] limits; v1.43: p[119] + t[28] + fl2 adds ~120 B */
 #define ESP_HTTP_FONT_CACHE         "public, max-age=31536000"
 /* [EN] Ceiling for the web panel, checked by a static_assert in plink_http.h.
  *      The panel is served as one send_P and was 118 KB when this project

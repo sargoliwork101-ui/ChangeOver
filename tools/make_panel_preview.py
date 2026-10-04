@@ -158,8 +158,15 @@ function tlm(){
   const cnt = (mv,sc) => Math.max(0, Math.min(__FULL__, Math.round(mv/sc)));
   t[20] = cnt(t[14], __S24__); t[21] = cnt(v24, __S24__);
   t[22] = cnt(v12, __S12__);   t[23] = __VRI__; t[24] = __VDDA__;
+  /* v1.43 imbalance scenario 6 demo (mirrors tools/panel_preview_server.js) */
+  const imb=Math.abs(t[18]-t[17]); t[25]=imb;
+  const imbCyc=(Date.now()-T0)%120000; let fl2=0;
+  if(imbCyc<30000){t[26]=Math.round(imbCyc/30000*10);t[27]=0;fl2=(imb>P[108])?1:0;}
+  else if(imbCyc<75000){t[26]=10;t[27]=Math.round((imbCyc-30000)/1500);fl2=2|(P[117]?4:0)|1;}
+  else if(imbCyc<90000){t[26]=10;t[27]=20;fl2=2|4|8;}
+  else{t[26]=0;t[27]=0;fl2=0;}
   seq = (seq+1) & 0xFFFF;
-  return {on:1, age:40, seq:seq, fl:0, n:seq, q:0, q2:0, q3:0, q4:0,
+  return {on:1, age:40, seq:seq, fl:0, fl2:fl2, n:seq, q:0, q2:0, q3:0, q4:0,
           ka:120, vm:0, ce:0, t:t, p:P};
 }
 

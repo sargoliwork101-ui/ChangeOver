@@ -29,6 +29,7 @@ INCLUDE_FLAGS=(
     -I Firmware/Modules/Fault
     -I Firmware/Modules/EspLink
     -I Firmware/Modules/McuPowerPath
+    -I Firmware/Modules/Imbalance
 )
 
 SOURCE_FILES=(

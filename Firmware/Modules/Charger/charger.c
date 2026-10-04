@@ -33,6 +33,10 @@
 #include "fault.h"
 #endif
 
+#if MODULE_IMBALANCE
+#include "imbalance.h"
+#endif
+
 /* ==================== Local types / نوع‌های داخلی ==================== */
 
 typedef enum
@@ -1570,6 +1574,27 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_OFF;
         return;
     }
+
+#if MODULE_IMBALANCE
+    /* [EN] Scenario 6 gate (user order 2026-10-04): while the imbalance
+       verdict is latched, charging stays ALLOWED only as long as the
+       latched-cycle budget (param 118) is not spent; once spent, both
+       halves of THIS pack (both channels) are held OFF - the battery is
+       beyond service, the hourly beep needs no charger anyway.
+       [FA] گیت سناریوی ۶ (دستور کاربر): تا قبل از پر شدن بودجهٔ سیکل قفل
+       (پارامتر ۱۱۸) شارژ آزاد است؛ پس از آن هر دو کانال همین پک OFF می‌مانند. */
+    {
+        imbalance_outputs_t imbalance_outputs_t__imbalance;
+
+        func__Imbalance_GetOutputs(&imbalance_outputs_t__imbalance);
+        if (imbalance_outputs_t__imbalance.bool__chargingAllowed == false)
+        {
+            func__Charger_StopOneChannel(uint8_t__channelIndex);
+            charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_OFF;
+            return;
+        }
+    }
+#endif
 
     /* [EN] Runtime fixed-duty mode (user order 2026-09-22): mirrors the
        compile-time bench-test block below - switching stops above

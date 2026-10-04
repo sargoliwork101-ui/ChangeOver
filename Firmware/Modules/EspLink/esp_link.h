@@ -315,17 +315,41 @@
 #define ESPLINK_PARAM_CHG_MANUAL_WATCHDOG_MS   106u  /* u32, ms, def 3000,    500..60000 */
 #define ESPLINK_PARAM_CHG_RAMP_DOWN_INT_MS     107u  /* u32, ms, def 500,     50..5000 */
 
-#define ESPLINK_PARAM_COUNT               108u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28) / [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای و حدها/گین‌های پشتیبان */
+/* [EN] v1.43 - battery-imbalance scenario 6 (Imbalance): rest/discharge
+ *      absolute-delta thresholds, the two charge-window gates, episode
+ *      stability + hysteresis, event budget to latch, latch beep cadence,
+ *      the output-block checkbox and the charge-cycle budget. The matching
+ *      persisted runtime slots (events / latched cycles / latch) are
+ *      ESP_LINK_NVM_SLOT_* ids 200..202 - NOT parameters.
+ * [FA] سناریوی ۶ (عدم‌توازن باتری): حدها، گیت‌های پنجره، دم، بودجهٔ رویداد
+ *      تا قفل، بوق قفل، تیک مسدودی و بودجهٔ سیکل شارژ. اسلات‌های شمارندهٔ
+ *      ماندگار ۲۰۰..۲۰۲ پارامتر نیستند. */
+#define ESPLINK_PARAM_IMBAL_REST_LIMIT_MV      108u  /* u32, mV, def 300,    0..2000 */
+#define ESPLINK_PARAM_IMBAL_DISCH_LIMIT_MV     109u  /* u32, mV, def 500,    0..2000 */
+#define ESPLINK_PARAM_IMBAL_REST_WAIT_MS       110u  /* u32, ms, def 600000, 0..3600000 (0 = rest check off) */
+#define ESPLINK_PARAM_IMBAL_CHG_WAIT_MS        111u  /* u32, ms, def 600000, 0..3600000 (0 = during-charge check off) */
+#define ESPLINK_PARAM_IMBAL_EVENT_STABLE_MS    112u  /* u32, ms, def 30000,  1000..600000 */
+#define ESPLINK_PARAM_IMBAL_EVENT_HYST_MV      113u  /* u32, mV, def 100,    0..1000 */
+#define ESPLINK_PARAM_IMBAL_EVENT_MAX          114u  /* u8,  def 10,  1..255: latch after N episodes */
+#define ESPLINK_PARAM_IMBAL_BEEP_PERIOD_MS     115u  /* u32, ms, def 3600000, 0..86400000 (0 = silent latch) */
+#define ESPLINK_PARAM_IMBAL_BEEP_TIME_MS       116u  /* u32, ms, def 200,    20..2000 */
+#define ESPLINK_PARAM_IMBAL_BLOCK_OUTPUT       117u  /* bool, def 1 */
+#define ESPLINK_PARAM_IMBAL_CHG_CYCLE_MAX      118u  /* u8,  def 20,  1..255: latched charge cycles until charge halt */
+
+#define ESPLINK_PARAM_COUNT               119u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28), 108..118 = imbalance scenario 6 (v1.43). Runtime slots 200..202 are persisted but NOT parameters: they stay outside this count and the GET_PARAMS bulk on purpose. [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای، حدها/گین‌های پشتیبان و سناریوی ۶؛ اسلات‌های ۲۰۰..۲۰۲ پارامتر نیستند */
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 
-/* [EN] TLM_LIVE payload (84 bytes, little-endian):
+/* [EN] TLM_LIVE payload (116 bytes, little-endian):
  *        0  u16 sequence (wraps)
  *        2  u8  flags: b0 snapshot valid, b1 input present, b2 meas data
  *                      valid, b3 charger-1 ESP enable, b4 charger-2 ESP
  *                      enable, b5 manual test mode active (v1.2),
  *                      b6..b7 reserved 0
- *        3  u8  reserved 0
+ *        3  u8  imbalance flags (v1.43): b0 episode in progress,
+ *                      b1 latched verdict, b2 output veto engaged,
+ *                      b3 charge budget spent (charging held off),
+ *                      b4..b7 reserved 0
  *        4  u32 raw1_counts        8 u32 shunt1_uv        12 u32 ma1_unfiltered
  *       16  u32 i1_filtered_ma    20 u32 iest1_ma         24 u32 duty1_permille
  *       28  u32 state1            32 u32 raw2_counts      36 u32 shunt2_uv
@@ -335,6 +359,7 @@
  *       76  u32 v_bat_high_mv     80 u32 fault_mask
  *       84  u32 vin_raw_counts    88 u32 v24_raw_counts   92 u32 v12_raw_counts
  *       96  u32 vrefint_counts   100 u32 vdda_mv
+ *      104  u32 imbalance_mv     108 u32 imbalance_events 112 u32 latched_cycles
  *      [EN] v1.25: the last five are CALIBRATION GROUND TRUTH. Counts are the
  *      only numbers on this board no coefficient can distort, so logging them
  *      beside a DMM lets every scale be rebuilt from first principles instead
@@ -346,10 +371,12 @@
  *      battery. Charger states: 0 OFF, 1 BULK, 2 ABSORB, 3 FLOAT, 4 BRINGUP,
  *      5 JIT_RETRY_WAIT, 6 INPUT_WAIT, 7 FINAL_FAULT, 8 BAT_LOST,
  *      9 MANUAL (v1.2).
- * [FA] payload ی TLM_LIVE (۸۴ بایت، اندیان کوچک): ترتیب فیلدها مثل جدول
- *      بالا؛ کانال ۱ = Trans1 / باتری بالا و کانال ۲ = Trans2 / باتری
- *      پایین. وضعیت شارژر: 0 OFF تا 8 BAT_LOST. */
-#define ESPLINK_TLM_PAYLOAD_SIZE     104u
+ * [FA] payload ی TLM_LIVE (۱۱۶ بایت از نسخهٔ ۱٫۴۳، اندیان کوچک): ترتیب
+ *      فیلدها مثل جدول بالا؛ بایت ۳ از v1.43 فلگ‌های عدم‌توازن است و سه
+ *      فیلد انتهایی (۱۰۴/۱۵۸/۱۱۲) بلوک زندهٔ آن. کانال ۱ = Trans1 / باتری
+ *      بالا و کانال ۲ = Trans2 / باتری پایین. وضعیت شارژر: 0 OFF تا 8
+ *      BAT_LOST. */
+#define ESPLINK_TLM_PAYLOAD_SIZE     116u
 
 /* ==================== Functions ==================== */
 
