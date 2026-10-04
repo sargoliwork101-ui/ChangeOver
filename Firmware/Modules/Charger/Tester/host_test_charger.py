@@ -2210,9 +2210,11 @@ def test_ui_mirror_v116():
     #      پشتیبان‌گیری به ۳ آمد. هر دو طرف میخ شد: نه تب مستقل برگردد، نه
     #      کارت PID صرفاً حذف شده باشد.
     check('data-s="1">سناریوها<' in ino and 'data-s="2">نظارت و ایمنی<' in ino
-          and 'data-s="3">پشتیبان‌گیری<' in ino
+          and 'data-s="3">کالیبراسیون و فیلتر جریان<' in ino
+          and 'data-s="4">پشتیبان‌گیری<' in ino
+          and 'data-s="3">پشتیبان‌گیری<' not in ino
+          and 'data-s="4">کالیبراسیون و فیلتر جریان<' not in ino
           and 'data-s="3">PID شارژ<' not in ino and 'data-s="4">PID شارژ<' not in ino
-          and 'data-s="4">کالیبراسیون و فیلتر جریان<' in ino
           and 'data-s="1">آلارم‌ها<' not in ino
           and '>وضعیت</button>' not in ino,
           "v1.33: PID folded into sub-tab 0, backup moves to 3, no standalone "
@@ -2223,7 +2225,7 @@ def test_ui_mirror_v116():
     check("PID دوحلقه‌ای شارژ (CC/CV)" in s0part,
           "the PID card must live INSIDE the charge-and-filter sub-tab, not "
           "just be gone from its old one")
-    cfpart = ino.split('id="s4"')[1].split("</main>")[0]
+    cfpart = ino.split('id="s3"')[1].split('id="s4"')[0]  # v1.42: calibration+filters now in s3 (backup moved last)
     check('<div class="hd"><b>فیلتر جریان</b>' in cfpart
           and '<div class="hd"><b>کالیبراسیون جریان</b>' in cfpart
           and '<div class="hd"><b>فیلتر جریان</b>' not in s0part
@@ -2232,10 +2234,11 @@ def test_ui_mirror_v116():
           "the fifth sub-tab (s4) and out of the charge sub-tab")
     s1part = ino.split('id="s1"')[1].split('id="s2"')[0]
     s2part = ino.split('id="s2"')[1].split('id="s3"')[0]
-    # [EN] v1.33: PID lives in s0 now and backup is s3 (last page).
-    # [FA] حالا PID در s0 است و پشتیبان‌گیری s3 (آخرین صفحه).
+    # [EN] v1.33: PID lives in s0. v1.42 (user order: backup sub-tab LAST):
+    #      backup is now s4 and calibration+filters s3.
+    # [FA] PID در s0 است، و با دستور v1.42 پشتیبان‌گیری زیرتب آخر (s4) شد.
     s3part = ino.split('id="s0"')[1].split('id="s1"')[0]
-    s4part = ino.split('id="s3"')[1].split("</main>")[0]
+    bkpart = ino.split('id="s4"')[1].split("</main>")[0]
     p0part = ino.split('id="p0"')[1].split('id="p1"')[0]
     check("ucard1" in s1part and "uleds" in s1part and 'id="aw2"' in s1part
           and "sdef()" in s1part and "<b>نظارت باتری</b>" not in s1part
@@ -2263,9 +2266,10 @@ def test_ui_mirror_v116():
           and all(f'id="q{i}"' not in s3part for i in range(27, 83))
           and all(f'id="q{i}"' not in s3part for i in range(20, 27)),
           "s3 holds the two-loop PID card: all 10 ids 83..92 with their applied-value labels, the guard box and exactly ONE factory-restore key (v1.38: the user merged the two)")
-    check("پشتیبان‌گیری" in s4part and 'id="xim"' in s4part
-          and all(f'id="q{i}"' not in s4part for i in range(27, 93)),
-          "s4 holds only the single backup card")
+    check("پشتیبان‌گیری" in bkpart and 'id="xim"' in bkpart
+          and all(f'id="q{i}"' not in bkpart for i in range(27, 93)),
+          "v1.42 (user order: backup sub-tab LAST): the final sub-tab (s4) "
+          "holds only the single backup card")
     check("وضعیت آلارم‌ها" in p0part and 'id="ast"' in p0part and 'id="abars"' not in p0part,
           "the merged voltages+alarm table sits on the main panel tab (p0, v1.16k: fixed layout, each value once), not in settings")
     check("asb5" in ino and "abf0" not in ino and "abf1" not in ino and "abf2" not in ino and "جریان ۱" in ino and "جریان ۲" in ino
