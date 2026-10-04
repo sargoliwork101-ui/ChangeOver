@@ -416,9 +416,15 @@ function main() {
               "the calibration edge appears once the axis passes fitted data",
               "going above the bench fit must be visible, not hidden");
         const xEdge = Number(edge()[0].getAttribute("x1"));
+        /* v1.37: the Persian left labels can be displaced by the collision
+           pass, and a displaced red label draws a small red CONNECTOR TICK -
+           also a <line stroke="#ff6873">. The pin below must mean the trip
+           LINE, so it now asks for the full-height vertical (y1=12), which
+           only a threshold can be. */
         const xTrip = Number(
             [...CHART.querySelectorAll(".qgm line")]
-                .filter(l => l.getAttribute("stroke") === "#ff6873")
+                .filter(l => l.getAttribute("stroke") === "#ff6873" &&
+                             l.getAttribute("y1") === "12")
                 .map(l => Number(l.getAttribute("x1")))
                 .filter(v => !isNaN(v)).pop());
         check(xEdge < xTrip,

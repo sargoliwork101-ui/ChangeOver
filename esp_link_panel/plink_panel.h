@@ -198,7 +198,7 @@ input:disabled{opacity:.38;cursor:not-allowed}
 .srv .sb{min-height:30px;padding:3px 10px}
 tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr.rbd{background:rgba(251,94,106,.08)}
 </style></head><body>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 832aeea</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 9a6f01c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -228,7 +228,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 <div class="sbt" id="sbt"><button class="a" data-s="0">شارژ و PID</button><button data-s="1">سناریوها</button><button data-s="2">نظارت و ایمنی</button><button data-s="3">پشتیبان‌گیری</button><button data-s="4">کالیبراسیون و فیلتر جریان</button></div>
 <div class="sgx a" id="s0">
 <div class="cd">
-<div class="hd"><b>نمودار مراحل شارژ</b> <button class="ib" data-p="20,21,22,23,24,25,26,35,36,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107" onclick="this.classList.toggle('o')">!<span class="it"><b>نمودار فقط ولتاژ و جریان را نشان می‌دهد.</b> هر عددی که روی محورها جای واقعی دارد، روی خود نمودار زیرخط‌دار و کلیک‌پذیر است: ولتاژها روی خطوط افقی سمت راست، جریان‌ها روی خطوط عمودی پایین. کلیک کنید، تایپ کنید، Enter بزنید (Esc لغو می‌کند).<br><b>زمان‌ها و گین‌ها زیر نمودار آمده‌اند.</b> این‌ها نه ولتاژند نه جریان، پس روی صفحهٔ I-V جای صادقانه‌ای نداشتند و فقط تصویر را شلوغ می‌کردند. همان‌جا هم با یک کلیک ویرایش می‌شوند و روی هر تراشه که ماوس ببرید، نام و شرح فارسی‌اش را می‌گوید.<br><br><b>زمان‌ها / Timers</b><br><b>Absorb max</b> — سقف زمان Absorb. از لحظه‌ای می‌شمارد که جریان اولین بار زیر <b>Arm</b> برود. راه عادی پایانِ Absorb Taper است؛ این فقط تور ایمنی است. صفر یعنی خاموش و «بدون سقف». اگر باتری سالم است و شارژ طبیعی تمام می‌شود، دست نزنید؛ اگر شارژر گاهی در Absorb گیر می‌کند، این را کوتاه کنید نه اینکه Taper را بالا ببرید.<br><b>Absorb hold</b> — کمینهٔ شستشو. Absorb دست‌کم این مدت ادامه می‌یابد حتی اگر جریان زود بیفتد. جلوی پایان زودرس روی باتری سرد یا کم‌ظرفیت را می‌گیرد. بلندتر = شارژ کامل‌تر، ولی زمان بیشتر روی ولتاژ بالا.<br><b>Taper sustain</b> — جریان باید این مدت <i>پیوسته</i> زیر <b>Taper</b> بماند تا پایان شارژ اعلام شود. کوتاه = یک نوسان گذرا شارژ را زودتر تمام می‌کند؛ بلند = دیرتر ولی مطمئن‌تر. اگر شارژ زودهنگام تمام می‌شود، اول این را بلند کنید.<br><b>settle</b> — نشست اتصال. پس از وصل باتری، این مدت صبر می‌شود تا اندازه‌گیری آرام بگیرد و بعد تصمیم گرفته شود. کوتاه‌کردنش یعنی تصمیم روی عدد نامطمئن.<br><b>JIT lockout</b> — قفل ضدلرزش. پس از یک تریپ، این مدت دوباره وصل نمی‌شود تا روشن-خاموش پیاپی رخ ندهد.<br><b>manual deadman</b> — خاموش‌کنندهٔ خودکار مود دستی (deadman). اگر پنل بسته شود یا ارتباط قطع شود، پس از این مدت duty دستی خودبه‌خود صفر می‌شود. این یک تنظیم ایمنی است؛ بلندکردنش یعنی شارژر بیشتر بدون ناظر می‌ماند.<br><b>ramp down</b> — فاصلهٔ رمپ پایین‌آمدن duty هنگام خاموشی نرم، تا جریان پله‌ای قطع نشود.<br><br><b>گین‌ها و گام‌ها / Gains &amp; steps</b><br><b>duty step</b> — بیشترین تغییر duty در هر تیک کنترل (‰). کوچک = نرم‌تر و پایدارتر ولی کندتر؛ بزرگ = سریع‌تر ولی مستعد بیش‌جهش. <b>اگر نوسان دیدید، اول این را کم کنید.</b><br><b>hyst</b> — hysteresis خروجی. تا تقاضا این‌قدر تغییر نکند، duty اعمالی عوض نمی‌شود. لرزش دائمی روی یک نقطه را می‌گیرد. زیاد کردنش دقت تنظیم را کم می‌کند.<br><b>V filter</b> — طول فیلتر میانگین ولتاژ. بلندتر = عدد آرام‌تر ولی کندتر، و حلقه دیرتر به تغییر واقعی جواب می‌دهد. برای نویز شدید بالا ببرید، نه برای زیبایی عدد.<br><b>margin</b> — حاشیهٔ جریان زیر سقف باند، تا حلقه مدام به سقف نچسبد.<br><b>Backstop gain I</b> و <b>Backstop gain V</b> — گین دو پشتیبانِ سخت‌افزاری‌نما: اولی وقتی جریان از حد رد می‌شود و دومی وقتی ولتاژ از <b>Backstop</b> بالا می‌زند، duty را پایین می‌کشند. <b>صفر یعنی آن پشتیبان خاموش است.</b> این‌ها جای تنظیم PID نیستند؛ آخرین خط دفاع‌اند. بزرگ‌تر = واکنش تندتر و خطر نوسان؛ کوچک‌تر = نرم‌تر و دیرتر.<br><br><b>قاعدهٔ تنظیم:</b> یک عدد را هر بار عوض کنید و یک چرخهٔ کامل را ببینید. برای آرام‌کردن حلقه از <b>duty step</b> شروع کنید، بعد <b>hyst</b>، و فقط در آخر <b>V filter</b>. گین‌های Backstop را برای تنظیم عملکرد دست نزنید.<br>هر مقدار از پارامترهای «اعمال‌شدهٔ» برد خوانده می‌شود. برد هر عدد را به بازهٔ مجازش گیره می‌زند؛ اگر چیزی که برگشت با آنچه تایپ کردید فرق داشت، آن برچسب <b>زرد</b> می‌شود.<br><b>ماندگاری:</b> هر مقداری که ثبت کنید روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند.<br>خط «Hard cutoff 15V» و سقف duty عمداً ویرایش‌پذیر نیستند: مشخصهٔ برد هستند نه سلیقه.</span></button><span class="lb">· مشترک هر دو کانال · <b style="color:var(--ac)">روی عددهای روی نمودار کلیک کنید تا تغییرشان دهید</b></span></div>
+<div class="hd"><b>نمودار مراحل شارژ</b> <button class="ib" data-p="20,21,22,23,24,25,26,35,36,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107" onclick="this.classList.toggle('o')">!<span class="it"><b>نمودار فقط ولتاژ و جریان را نشان می‌دهد.</b> هر عددی که روی محورها جای واقعی دارد، روی خود نمودار زیرخط‌دار و کلیک‌پذیر است: ولتاژها روی خطوط افقی (انگلیسی سمت راست برای کلیک، نام و مقدار فارسی سمت چپ)، جریان‌ها دوخطی روی خطوط عمودی پایین: نام در خط اول و عدد در خط دوم. کلیک کنید، تایپ کنید، Enter بزنید (Esc لغو می‌کند).<br><b>زمان‌ها و گین‌ها زیر نمودار آمده‌اند.</b> این‌ها نه ولتاژند نه جریان، پس روی صفحهٔ I-V جای صادقانه‌ای نداشتند و فقط تصویر را شلوغ می‌کردند. همان‌جا هم با یک کلیک ویرایش می‌شوند و روی هر تراشه که ماوس ببرید، نام و شرح فارسی‌اش را می‌گوید.<br><br><b>زمان‌ها / Timers</b><br><b>Absorb max</b> — سقف زمان Absorb. از لحظه‌ای می‌شمارد که جریان اولین بار زیر <b>Arm</b> برود. راه عادی پایانِ Absorb Taper است؛ این فقط تور ایمنی است. صفر یعنی خاموش و «بدون سقف». اگر باتری سالم است و شارژ طبیعی تمام می‌شود، دست نزنید؛ اگر شارژر گاهی در Absorb گیر می‌کند، این را کوتاه کنید نه اینکه Taper را بالا ببرید.<br><b>Absorb hold</b> — کمینهٔ شستشو. Absorb دست‌کم این مدت ادامه می‌یابد حتی اگر جریان زود بیفتد. جلوی پایان زودرس روی باتری سرد یا کم‌ظرفیت را می‌گیرد. بلندتر = شارژ کامل‌تر، ولی زمان بیشتر روی ولتاژ بالا.<br><b>Taper sustain</b> — جریان باید این مدت <i>پیوسته</i> زیر <b>Taper</b> بماند تا پایان شارژ اعلام شود. کوتاه = یک نوسان گذرا شارژ را زودتر تمام می‌کند؛ بلند = دیرتر ولی مطمئن‌تر. اگر شارژ زودهنگام تمام می‌شود، اول این را بلند کنید.<br><b>settle</b> — نشست اتصال. پس از وصل باتری، این مدت صبر می‌شود تا اندازه‌گیری آرام بگیرد و بعد تصمیم گرفته شود. کوتاه‌کردنش یعنی تصمیم روی عدد نامطمئن.<br><b>JIT lockout</b> — قفل ضدلرزش. پس از یک تریپ، این مدت دوباره وصل نمی‌شود تا روشن-خاموش پیاپی رخ ندهد.<br><b>manual deadman</b> — خاموش‌کنندهٔ خودکار مود دستی (deadman). اگر پنل بسته شود یا ارتباط قطع شود، پس از این مدت duty دستی خودبه‌خود صفر می‌شود. این یک تنظیم ایمنی است؛ بلندکردنش یعنی شارژر بیشتر بدون ناظر می‌ماند.<br><b>ramp down</b> — فاصلهٔ رمپ پایین‌آمدن duty هنگام خاموشی نرم، تا جریان پله‌ای قطع نشود.<br><br><b>گین‌ها و گام‌ها / Gains &amp; steps</b><br><b>duty step</b> — بیشترین تغییر duty در هر تیک کنترل (‰). کوچک = نرم‌تر و پایدارتر ولی کندتر؛ بزرگ = سریع‌تر ولی مستعد بیش‌جهش. <b>اگر نوسان دیدید، اول این را کم کنید.</b><br><b>hyst</b> — hysteresis خروجی. تا تقاضا این‌قدر تغییر نکند، duty اعمالی عوض نمی‌شود. لرزش دائمی روی یک نقطه را می‌گیرد. زیاد کردنش دقت تنظیم را کم می‌کند.<br><b>V filter</b> — طول فیلتر میانگین ولتاژ. بلندتر = عدد آرام‌تر ولی کندتر، و حلقه دیرتر به تغییر واقعی جواب می‌دهد. برای نویز شدید بالا ببرید، نه برای زیبایی عدد.<br><b>margin</b> — حاشیهٔ جریان زیر سقف باند، تا حلقه مدام به سقف نچسبد.<br><b>Backstop gain I</b> و <b>Backstop gain V</b> — گین دو پشتیبانِ سخت‌افزاری‌نما: اولی وقتی جریان از حد رد می‌شود و دومی وقتی ولتاژ از <b>Backstop</b> بالا می‌زند، duty را پایین می‌کشند. <b>صفر یعنی آن پشتیبان خاموش است.</b> این‌ها جای تنظیم PID نیستند؛ آخرین خط دفاع‌اند. بزرگ‌تر = واکنش تندتر و خطر نوسان؛ کوچک‌تر = نرم‌تر و دیرتر.<br><br><b>قاعدهٔ تنظیم:</b> یک عدد را هر بار عوض کنید و یک چرخهٔ کامل را ببینید. برای آرام‌کردن حلقه از <b>duty step</b> شروع کنید، بعد <b>hyst</b>، و فقط در آخر <b>V filter</b>. گین‌های Backstop را برای تنظیم عملکرد دست نزنید.<br>هر مقدار از پارامترهای «اعمال‌شدهٔ» برد خوانده می‌شود. برد هر عدد را به بازهٔ مجازش گیره می‌زند؛ اگر چیزی که برگشت با آنچه تایپ کردید فرق داشت، آن برچسب <b>زرد</b> می‌شود.<br><b>ماندگاری:</b> هر مقداری که ثبت کنید روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند.<br>خط «Hard cutoff 15V» و سقف duty عمداً ویرایش‌پذیر نیستند: مشخصهٔ برد هستند نه سلیقه.</span></button></div>
 <div class="qwm" style="margin:2px 0 0"></div>
 <div class="qgm" style="direction:ltr;overflow-x:auto"></div>
 <div class="lb qglm">در انتظار دادهٔ برد…</div>
@@ -793,13 +793,24 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
  const X=ma=>Math.round(X0+(X1-X0)*Math.min(Math.max(ma,0),IMAX)/IMAX);
  const V=mv=>(mv/1000).toFixed(2);
  /* برچسب‌ها جدا جمع و با کمینهٔ فاصله رندر می‌شوند تا در ناحیه‌های باریک در هم نروند */
- const ZL=[],LL=[];
+ const ZL=[],LL=[],PL=[];
+ /* [EN] v1.37 (user order): EVERY horizontal voltage-limit line gets its
+    Persian name and value on the LEFT of the plot. The names come from
+    PX (the same source the chips and help bubbles read), so a rename can
+    never drift in two places. These left labels are display mirrors:
+    editing stays with the English labels on the right.
+    [FA] v1.37 (دستور کاربر): هر خط افقیِ حد ولتاژ، نام و مقدار فارسی‌اش
+    را سمت چپ نمودار می‌گیرد. نام‌ها از PX می‌آیند (همان منبع تراشه‌ها و
+    حباب‌های کمک) تا تغییر نام در دو جا از هم کپی نشود. برچسب‌های چپ فقط
+    نمایشی‌اند؛ ویرایش همان برچسب‌های انگلیسیِ سمت راست است. */
+ const pfn=id=>(PX[id]?PX[id][0]:(EVN[id]||''));
  const zone=(mv1,mv2,fill,txt,c)=>{const y1=Y(Math.max(mv1,mv2)),y2=Y(Math.min(mv1,mv2));
   if(txt)ZL.push({y:y1+10,txt,c});
   return`<rect x="${X0}" y="${y1}" width="${X1-X0}" height="${Math.max(3,y2-y1)}" fill="${fill}"/>`;};
  const aln=(mv,c)=>`<line x1="${X0}" y1="${Y(mv)}" x2="${X1}" y2="${Y(mv)}" stroke="${c}" stroke-width="1.8"/>`;
  const pvln=(o,c)=>o.p?`<line x1="${X0}" y1="${Y(o.v)}" x2="${X1}" y2="${Y(o.v)}" stroke="${c}" stroke-width="1.8" stroke-dasharray="6 4"/>`:'';
- const lbl=(o,c,txt,id)=>{LL.push({y:Y(o.p?o.v:o.d)-4,txt,c,pv:o.p,i:id,val:V(o.d)+'V'});};
+ const lbl=(o,c,txt,id)=>{LL.push({y:Y(o.p?o.v:o.d)-4,txt,c,pv:o.p,i:id,val:V(o.d)+'V'});
+  PL.push({y:Y(o.p?o.v:o.d)-4,txt:pfn(id),c,pv:o.p,val:V(o.d)+'V'});};
  const put=(A,x,anchor,fs)=>{A.sort((p,q2)=>p.y-q2.y);let last=4;
   return A.map(o=>{const yc=Math.min(Math.max(o.y,14),H-10),y=Math.max(last+LBL_GAP,yc),sh=y-yc>3;last=y;
    return (sh?`<line x1="${x}" y1="${yc+3}" x2="${x}" y2="${y-3}" stroke="${o.c}" stroke-width="1" opacity=".6"/>`:'')+
@@ -824,6 +835,7 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
  s+=zone(q.r.d,lo,'rgba(99,162,255,.11)','زیر Reentry — شارژ دوباره از Bulk','#9ac8ff');
  s+=`<line x1="${X0}" y1="${Y(15000)}" x2="${X1}" y2="${Y(15000)}" stroke="#ff6873" stroke-width="1.2" stroke-dasharray="3 4"/>`;
  LL.push({y:Y(15000)-4,txt:'Hard cutoff 15V',c:'#ff6873'});
+ PL.push({y:Y(15000)-4,txt:'سقف سخت ۱۵ ولت',c:'#ff6873'});
  /* [EN] Two safety ceilings that were only ever numbers in a card: on the
        voltage axis they belong, and now they are set from it. Down-only on
        the board, so the window in EVB can never raise them.
@@ -832,7 +844,8 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
  Object.keys(EVV).forEach(k=>{const id=+k;if(id<35)return;const mv=evval(id);
   if(mv==null||mv<=lo||mv>=hi)return;
   s+=`<line x1="${X0}" y1="${Y(mv)}" x2="${X1}" y2="${Y(mv)}" stroke="${EVV[id][0]}" stroke-width="1.3" stroke-dasharray="5 3"/>`;
-  LL.push({y:Y(mv)-4,txt:EVV[id][1],c:EVV[id][0],i:id,val:V(mv)+'V'});});
+  LL.push({y:Y(mv)-4,txt:EVV[id][1],c:EVV[id][0],i:id,val:V(mv)+'V'});
+  PL.push({y:Y(mv)-4,txt:pfn(id),c:EVV[id][0],val:V(mv)+'V'});});
  s+=aln(q.o.d,'#fb923c')+pvln(q.o,'#fb923c');lbl(q.o,'#fb923c','Over',22);
  s+=aln(q.a.d,'#f7c13c')+pvln(q.a,'#f7c13c');lbl(q.a,'#f7c13c','Absorb',20);
  s+=aln(q.e.d,'#e8a33d')+pvln(q.e,'#e8a33d');lbl(q.e,'#e8a33d','Absorb enter',21);
@@ -849,8 +862,14 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
  Object.keys(EVI).forEach(k=>{const id=+k;
   const ma=(id===25)?im.d:(id===26)?tp.d:evval(id);
   if(ma==null)return;const x=X(ma),cfg=EVI[id];
+  /* [EN] v1.37 (user order: the current-limit numbers read badly in one
+     run) - each threshold label is TWO lines: the name on top and the value
+     underneath it, so 'Bulk max' and '650mA' never fight for the same line.
+     [FA] v1.37 (دستور کاربر): برچسب حد جریان دوخطی شد: نام در خط بالا و
+     عدد در خط زیرین، تا خواناتر شود. */
+  const lx=x+(cfg[2]<0?-3:3),an=cfg[2]<0?'end':'start';
   s+=`<line x1="${x}" y1="12" x2="${x}" y2="${H-22}" stroke="${cfg[0]}" stroke-width="${id===25?1.6:1.4}"${id===25?'':' stroke-dasharray="4 3"'}/>`+
-     `<text ${evat(id)} x="${x+(cfg[2]<0?-3:3)}" y="${H-26}" text-anchor="${cfg[2]<0?'end':'start'}" font-size="${F(8.5)}" font-weight="700" fill="${evcl(id)?'#f7c13c':cfg[0]}">${cfg[1]} ${ma}mA</text>`;});
+     `<text ${evat(id)} x="${lx}" y="${H-26}" text-anchor="${an}" font-size="${F(8.5)}" font-weight="700" fill="${evcl(id)?'#f7c13c':cfg[0]}"><tspan x="${lx}" dy="-9">${cfg[1]}</tspan><tspan x="${lx}" dy="9">${ma}mA</tspan></text>`;});
  /* [EN] The edge of fitted LUT data. Only drawn once the axis actually
     reaches it, so the normal single-battery view is unchanged; it appears
     the moment the user opens the current band towards a parallel pack.
@@ -906,7 +925,7 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
     زمان‌ها رو همون زیرش بنویس که انقدر شلوغ نشه نمودارها؛ گین هم همین کار رو
     براش بکن»). هیچ‌چیز فقط‌خواندنی نشد: تراشه‌ها همان data-i و همان ویرایشگر
     را دارند. */
- s+=put(ZL,X0+6,'start','8.5')+put(LL,X1-4,'end','9');
+ s+=put(ZL.concat(PL),X0+6,'start','8.5')+put(LL,X1-4,'end','9');
  /* عددهای شارژ زنده - دقیقاً روی همهٔ خط‌ها و نوشته‌ها (آخرین لایهٔ رسم)،
     با جداکنندهٔ عمودی ساده تا در هم نروند و هالهٔ تیره برای خوانایی. */
  BT.sort((p,q2)=>p.y-q2.y);{let last=-99;BT.forEach(o=>{o.y=Math.min(H-28,Math.max(last+10,o.y));last=o.y;});}
