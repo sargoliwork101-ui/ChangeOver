@@ -1486,9 +1486,9 @@ def test_charger_persistence_v114():
           "document.querySelectorAll('.qwm').forEach" in ino and
           'function qchk()' in ino and
           'q.o.d' in ino and 'q.r.d' in ino and 'pvln(q.o' in ino and
-          'const ZL=[],LL=[]' in ino and 'ترکیب نامعتبر' in ino and
+          'const LL=[],PL=[]' in ino and 'ترکیب نامعتبر' in ino and
           'باز هم ارسال شود؟' in ino and 'نگهبان ترکیب' in ino,
-          "v1.14d (user order 2026-09-26, 'stretch the graph downward, the zone borders are cramped; zones must follow the profile numbers and never overlap'): zones drawn from APPLIED values with dashed preview lines for typed values, anti-collision label pass (ZL/LL), and a qchk() guard mirroring Charger_ClampProfile - red warning + red field + confirm-before-send on invalid combos")
+          "v1.14d (user order 2026-09-26, 'stretch the graph downward, the zone borders are cramped; zones must follow the profile numbers and never overlap'): zones drawn from APPLIED values with dashed preview lines for typed values, anti-collision label pass (ZL/LL; v1.39 moved the zone names out of the chart into an external legend, so v1.41 pruned the now-empty ZL list - the pass is PL/LL), and a qchk() guard mirroring Charger_ClampProfile - red warning + red field + confirm-before-send on invalid combos")
     # [EN] The 2026-09-26 order was "at least 50 % taller" (H 560 -> 840); the
     #      2026-09-29 order REVERSES it ("make the height 50 % less, and the
     #      text smaller so it stops overlapping"), so H is 420. What still
