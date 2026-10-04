@@ -157,16 +157,27 @@
  *      ESP8266 that is ~140 back-to-back TCP writes, and a stalled link cuts
  *      the transfer wherever it happens to be - the browser then shows a page
  *      missing its tail, which is the settings sub-pages and the scripts.
- *      208 KB leaves real headroom while turning the next large addition into
- *      a compile error that has to be answered on purpose.
+ *      The ceiling turns the next large addition into a compile error that
+ *      has to be answered on purpose. v1.43 (user order 2026-10-04, charge
+ *      scenario rebuilt into one usable page: definition of full, the mV
+ *      ladder moved next to it and the yellow-blink arithmetic shown) is
+ *      such an answer: the page needed ~8 KB more than the 208 KB step, so
+ *      the step was raised to 224 KB - one deliberate move, not a drift.
+ *      216 KB of markup is still ~150 back-to-back TCP writes, well inside
+ *      what send_P does in one call, and PROGMEM is not the scarce resource
+ *      here (the sketch uses a fraction of the 1 MB image).
  * [FA] سقف پنل وب، با static_assert در plink_http.h بررسی می‌شود. پنل با یک
  *      send_P می‌رود و اول کار ۱۱۸ کیلوبایت بود؛ حالا ۱۹۴ است و هیچ‌چیز جلوی
  *      رشدش را نگرفته بود. روی ESP8266 یعنی حدود ۱۴۰ نوشتن پیاپی TCP، و لینکِ
  *      گیرکرده انتقال را هر جا که باشد می‌برد — مرورگر صفحه‌ای بدون انتهایش را
  *      نشان می‌دهد، یعنی بدون زیرصفحه‌های تنظیمات و اسکریپت‌ها. ۲۰۸ کیلوبایت
- *      سرفضای واقعی می‌دهد و افزودنی بزرگ بعدی را به خطای بیلد تبدیل می‌کند.
+ *      سقف، افزودنی بزرگ بعدی را به خطای بیلد تبدیل می‌کند که باید آگاهانه
+ *      جواب داده شود. نسخهٔ ۱٫۴۳ (دستور کاربر ۲۰۲۶-۱۰-۰۴: کارت سناریوی شارژ
+ *      یک صفحهٔ کاربردی شود — تعریف فول، آوردن حد ولتاژ کنارش و نمایش حساب
+ *      چشمک زرد) همان جواب است: صفحه حدود ۸ کیلوبایت بیشتر از پلهٔ ۲۰۸ لازم
+ *      داشت، پس پله آگاهانه به ۲۲۴ کیلوبایت رفت — یک حرکت عمدی، نه رانش.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    212992u
+#define ESP_PANEL_HTML_MAX_BYTES    229376u
 
 /* ==================== Parser States ==================== */
 typedef enum

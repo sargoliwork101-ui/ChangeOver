@@ -198,10 +198,28 @@ input:disabled{opacity:.38;cursor:not-allowed}
 .srv tr:first-child td{border-top:0}
 .srv .tg{min-width:104px;justify-content:center}
 .srv input[type=number]{width:78px;min-height:30px;padding:3px 6px}
+/* [EN] v1.43 charge-scenario card (user order 2026-10-04 "make it one usable
+   page"): the card now carries the explanation, the voltage ladder and the
+   blink arithmetic, so it needs a readable prose block, a calm "computed
+   value" line and a table that is clearly a report, not an input grid.
+   [FA] کارت سناریوی شارژ: توضیح، نردبان ولتاژ و حساب چشمک یک‌جا - پس یک بلوک
+   متن خوانا، یک خط «مقدار محاسبه‌شده» آرام و جدولی که آشکارا گزارش است. */
+.c4ds{margin:2px 0 4px}
+.c4ds ul{margin:4px 0 6px}
+.c4ds li{margin:2px 0}
+.c4n{font-size:12.5px;line-height:2;color:var(--ac2);background:var(--in);border:1px solid var(--rs);border-radius:12px;padding:8px 12px;margin-top:8px}
+.c4f{font-size:12.5px;line-height:2;color:#c9d0df;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:9px 12px;margin:2px 0 8px}
+.c4live{display:flex;align-items:center;gap:10px;font-size:13px;margin:0 0 8px}
+.c4dot{width:18px;height:18px;border-radius:50%;flex:none;background:#2a3245;box-shadow:inset 0 2px 5px rgba(0,0,0,.6);transition:background .06s,box-shadow .06s}
+.c4dot.on{background:#ffd23b;box-shadow:0 0 14px #ffd23b}
+.c4tb{min-width:560px}
+.c4tb td,.c4tb th{text-align:right}
+.c4tb tr.hi td{background:rgba(99,162,255,.10)}
+.c4tb td.n{text-align:left}
 .srv .sb{min-height:30px;padding:3px 10px}
 tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr.rbd{background:rgba(251,94,106,.08)}
 </style></head><body>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 46eb245</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e671a94</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -290,7 +308,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 </div>
 <div class="hd" style="margin-top:10px"><b>سناریوهای LED و بازر</b><span class="lb">· یک سناریو را انتخاب کنید · همه روی فلش برد ذخیره می‌شوند</span></div>
 <div id="aw2" style="margin:2px 0 0"></div>
-<div class="sbt" id="usel"><button class="a" data-u="1">۱ · اضافه‌ولتاژ</button><button data-u="2">۲ · قطع باتری</button><button data-u="3">۳ · دشارژ</button><button data-u="4">۴ · شارژ عادی</button><button data-u="5">۵ · باتری و درصد</button><button data-u="6">۶ · عدم‌توازن</button></div>
+<div class="sbt" id="usel"><button class="a" data-u="1">۱ · اضافه‌ولتاژ</button><button data-u="2">۲ · قطع باتری</button><button data-u="3">۳ · دشارژ</button><button data-u="4">۴ · شارژ عادی</button><button data-u="5">۵ · باتری کم</button><button data-u="6">۶ · عدم‌توازن</button></div>
 <div class="cd" id="ucard1">
 <div class="hd"><b>سناریو ۱ — اضافه‌ولتاژ ورودی</b> <button class="ib" data-p="38,39,40,41,42,43,70,71" onclick="this.classList.toggle('o')">!<span class="it">روند: عبور ورودی از سقف ← قرمز چشمک + بوق دوره‌ای (سبز ثابت می‌ماند) ← افت تا سقف−hysteresis ← پاک‌شدن و بازگشت به سناریوی قبلی. پیش‌فرض: چشمک ۱۰۰۰/۵۰٪ + یک بوق ۱ثانیه‌ای هر ۱۰ ثانیه.</span></button><span class="lb">· سقف ولتاژ + چشمک و بوق · اولویت اول برد</span></div>
 <div class="sec">سقف ولتاژ <span class="lb">(mV)</span></div>
@@ -384,32 +402,53 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 
 </div>
 <div class="cd" id="ucard4" style="display:none">
-<div class="hd"><b>سناریو ۴ — شارژ عادی</b> <button class="ib" data-p="68,69,77,78,79" onclick="this.classList.toggle('o')">!<span class="it">روند: حین شارژ واقعی، مدت روشن‌بودن زرد = مانده تا فول (باتری پرتر ← چشمک کوتاه‌تر) ← پایان Absorb هر کانال (Taper زیر ۵۰mA یا سقف ۱ساعت)؛ با تمام‌شدن هر دو کانال: فول ← سبز ثابت. فول ولتاژی (۱۰۰٪، خروج زیر ۹۵٪) هم سر جایش است.</span></button><span class="lb">· شناسه‌های ۶۸/۶۹/۷۷..۷۹ · چشمک زرد + فول</span></div>
-<div class="sec">چشمک زرد <span class="lb">(ms)</span></div>
-<div class="bqr">
-<label>دوره چشمک زرد (ms)<input type="number" id="q68" step="50" min="100" max="10000"><span class="lb" id="a68">—</span></label>
-<label>حداقل روشنی زرد (ms)<input type="number" id="q69" step="5" min="0" max="10000"><span class="lb" id="a69">—</span></label>
+<div class="hd"><b>سناریو ۴ — شارژ عادی (زرد + فول)</b> <button class="ib" data-p="68,69,74,75,77,78,79" onclick="this.classList.toggle('o')">!<span class="it">روند: حین شارژ واقعی، مدت روشن‌بودن زرد = مانده تا فول (باتری پرتر ← چشمک کوتاه‌تر) ← پایان Absorb هر کانال (Taper زیر ۵۰mA یا سقف ۱ساعت)؛ با تمام‌شدن هر دو کانال: فول ← سبز ثابت. فول ولتاژی (ورود ۷۷٪، خروج ۷۸٪) هم سر جایش است. حد ولتاژ ۷۴/۷۵ همان نردبانی است که درصد از آن ساخته می‌شود.</span></button><span class="lb">· ۶۸/۶۹ چشمک · ۷۴/۷۵ حد ولتاژ · ۷۷..۷۹ فول و پایداری</span></div>
+
+<div class="ds c4ds">
+<b>فول یعنی چه؟</b> برد دو راه مستقل برای «فول» دارد و هرکدام زودتر برسد، چهرهٔ سبزِ ثابت را می‌آورد:
+<ul>
+<li><b>فول شارژری</b> — هر کانالِ فعال کارش تمام شده و در FLOAT است (Taper زیر ۵۰mA یا سقف ۱ ساعت Absorb). این یکی عدد تنظیمی ندارد و از خود شارژر می‌آید.</li>
+<li><b>فول ولتاژی</b> — درصد باتری (که از حد پایین/بالای همین کارت ساخته می‌شود) به <b>ورود فول</b> برسد.</li>
+</ul>
+<b>ورود فول (٪)</b> = درصدی که با <b>رسیدن به آن یا بالاتر</b>، حالت از «در حال شارژ» به «فول» می‌پرد: زرد خاموش، سبز ثابت.<br>
+<b>خروج فول (٪)</b> = تا وقتی «فول» روشن است، فقط با <b>افتادن درصد زیر این عدد</b> دوباره به «در حال شارژ» برمی‌گردد. این فاصله هیسترزیس است و نمی‌گذارد LED روی مرز بلرزد؛ برد همیشه خروج را دست‌کم یک واحد زیر ورود گیره می‌زند.
 </div>
-<div class="sec">فول و پایداری <span class="lb">(٪؛ ورود فول همیشه بالای خروج است)</span></div>
+
+<div class="sec">۱) حد ولتاژ باتری — نردبان درصد <span class="lb">(mV؛ حد پایین = ۰٪ و حد بالا = ۱۰۰٪)</span></div>
+<div class="bqr">
+<label>حد پایین — ۰٪ (mV)<input type="number" id="q74" step="100" min="15000" max="25000"><span class="lb" id="a74">—</span></label>
+<label>حد بالا — ۱۰۰٪ (mV)<input type="number" id="q75" step="100" min="25000" max="32000"><span class="lb" id="a75">—</span></label>
+</div>
+<div class="c4n" id="c4map">—</div>
+
+<div class="sec">۲) فول <span class="lb">(٪؛ ورود همیشه بالای خروج)</span></div>
 <div class="bqr">
 <label>ورود فول (٪)<input type="number" id="q77" step="1" min="1" max="100"><span class="lb" id="a77">—</span></label>
 <label>خروج فول (٪)<input type="number" id="q78" step="1" min="0" max="100"><span class="lb" id="a78">—</span></label>
+</div>
+<div class="c4n" id="c4full">—</div>
+
+<div class="sec">۳) چشمک زرد و پایداری <span class="lb">(ms / ٪)</span></div>
+<div class="bqr">
+<label>دوره چشمک زرد (ms)<input type="number" id="q68" step="50" min="100" max="10000"><span class="lb" id="a68">—</span></label>
+<label>حداقل روشنی زرد (ms)<input type="number" id="q69" step="5" min="0" max="10000"><span class="lb" id="a69">—</span></label>
 <label>hysteresis پایداری شارژ (٪)<input type="number" id="q79" step="1" min="0" max="50"><span class="lb" id="a79">—</span></label>
 </div>
 
+<div class="sec">۴) اعداد چشمک — زرد با این اعداد می‌زند</div>
+<div class="c4f">مانده تا فول = ۱۰۰ − درصد پایدار (کف ۲٪) → گام = دوره ÷ ۱۰۰ → روشن = مانده × گام (کف «حداقل روشنی»، سقف دوره) → خاموش = دوره − روشن. یعنی باتری هرچه پرتر، چشمکِ زرد کوتاه‌تر.</div>
+<div class="c4live"><span class="c4dot" id="c4led"></span><span id="c4now">—</span></div>
+<div class="srvw"><table class="srv c4tb"><thead><tr><th>درصد پایدار</th><th>ولتاژ تقریبی</th><th>مانده تا فول</th><th>زرد روشن</th><th>زرد خاموش</th><th>رفتار</th></tr></thead><tbody id="c4tb"></tbody></table></div>
+
 </div>
 <div class="cd" id="ucard5" style="display:none">
-<div class="hd"><b>آستانه‌های باتری و نگاشت درصد</b> <button class="ib" data-p="72,73,74,75" onclick="this.classList.toggle('o')">!<span class="it">روند: افت باتری زیر آستانه ← پرچم باتری کم (پیوسته) + ⚠ در آینه ← صعود تا سطح پاک‌شدن ← پاک‌شدن پرچم. نگاشت ۷۴/۷۵ درصد همهٔ سناریوها را می‌سازد؛ سقف همیشه دست‌کم ۱۰۰mV بالای کف است.</span></button><span class="lb">· شناسه‌های ۷۲..۷۵</span></div>
+<div class="hd"><b>سناریو ۵ — آلارم باتری کم</b> <button class="ib" data-p="72,73" onclick="this.classList.toggle('o')">!<span class="it">روند: افت باتری زیر آستانه ← پرچم باتری کم (پیوسته) + ⚠ در آینه ← صعود تا سطح پاک‌شدن ← پاک‌شدن پرچم. نگاشت درصد (۷۴/۷۵) که همهٔ سناریوها را می‌سازد به کارت «۴ · شارژ عادی» منتقل شد تا حد بالا و پایین کنار فول باشد.</span></button><span class="lb">· شناسه‌های ۷۲..۷۳ · حد ولتاژ درصد در کارت ۴</span></div>
 <div class="sec">آلارم باتری کم <span class="lb">(mV)</span></div>
 <div class="bqr">
 <label>آستانه آلارم باتری کم (mV)<input type="number" id="q72" step="100" min="15000" max="24000"><span class="lb" id="a72">—</span></label>
 <label>پاک‌شدن آلارم باتری کم (mV)<input type="number" id="q73" step="100" min="15000" max="24000"><span class="lb" id="a73">—</span></label>
 </div>
-<div class="sec">نگاشت ولتاژ به درصد <span class="lb">(mV)</span></div>
-<div class="bqr">
-<label>کف نگاشت درصد (mV)<input type="number" id="q74" step="100" min="15000" max="25000"><span class="lb" id="a74">—</span></label>
-<label>سقف نگاشت درصد (mV)<input type="number" id="q75" step="100" min="25000" max="32000"><span class="lb" id="a75">—</span></label>
-</div>
+<div class="c4n">نگاشت ولتاژ به درصد (حد پایین ۷۴ و حد بالا ۷۵) در کارت <button class="sb sb2" onclick="usel(4)" style="padding:2px 10px">۴ · شارژ عادی</button> تنظیم می‌شود — همان نردبانی که درصد این آلارم و سناریوی دشارژ هم از آن می‌آید.</div>
 
 </div>
 <div class="cd" id="ucard6" style="display:none">
@@ -1165,6 +1204,7 @@ function afresh(){const w=achk();
  const wset=(el,l)=>{if(!el)return;el.innerHTML=l.length?('⚠ ترکیب نامعتبر — برد این‌ها را گیره می‌زند: '+l.map(x=>x.msg).join('؛ ')):'';el.style.cssText=l.length?'margin:2px 0 6px;color:#fc8086;font-size:12.5px;line-height:1.9':'margin:2px 0 0';};
  wset($('aw'),w.filter(x=>x.ids.some(i=>i<38)));wset($('aw2'),w.filter(x=>x.ids.some(i=>i>=38)));
  for(const id of AIDS){const ne=$('q'+id);if(ne)ne.style.borderColor=w.some(x=>x.ids.includes(id))?'#e5484d':'';}
+ try{c4();}catch(e){}
  const ms=$('xmuteS');if(ms)ms.textContent=(D&&D.p&&D.p[76]===1)?'🔇 میوت روشن — موقتی، با ریست برد پاک می‌شود؛ LEDها همچنان چشمک می‌زنند':'🔊 بوق روشن';}
 function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id-32))):id<96?((D.q3||0)&(1<<(id-64))):((D.q4||0)&(1<<(id-96)));}
 function afill(){if(!D||!D.p)return;for(const id of AIDS){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!apend(id))a.textContent=D.p[id]==null?'—':D.p[id];}}
@@ -1500,6 +1540,55 @@ function uview(){
  B.className=mute?'bz muted':(bz?'bz':'bz off');
  if(sc)sc.textContent=cap+(mute?' · 🔇 میوت':'');
  if(tm)tm.textContent=tim;
+ try{c4();}catch(e){}
+}
+/* ==================== سناریو ۴ — اعداد زندهٔ کارت شارژ ==================== */
+/* [EN] Mirror of func__Ui_ScenarioCharging_Tick arithmetic, nothing more: the
+   card must SHOW the numbers the board will use, so the maths here is the
+   same order of steps (remaining -> step -> on -> clamp -> off) and reads
+   the typed-or-applied values through the same helpers as the guards.
+   [FA] آینهٔ همان حساب تیک شارژ برد - نه چیز بیشتر: کارت باید همان اعدادی را
+   نشان دهد که برد به‌کار می‌برد، پس گام‌ها به همان ترتیب‌اند و مقدارها از همان
+   «تایپ‌شده یا اعمال‌شده» خوانده می‌شوند. */
+const C4={sig:'',pct:[0,10,25,50,75,90,98,100]};
+function c4v(id,fb){const e=$('q'+id);if(e&&e.value!==''){const n=parseInt(e.value,10);if(!isNaN(n))return n;}
+ return (D&&D.p&&D.p[id]!=null)?D.p[id]:fb;}
+function c4mv(p,lo,hi){const span=hi-lo;if(span<=0)return lo;const off=Math.round(span*p/100);return lo+off;}
+function c4blink(pct,per,minOn){
+ let remaining=pct>=100?0:100-pct;
+ if(remaining<2)remaining=2;                       /* کف ۲٪ مثل برد */
+ const stepMs=Math.floor(per/100);
+ let onMs=remaining*stepMs;
+ if(onMs<minOn)onMs=minOn;
+ if(onMs>per)onMs=per;
+ return {remaining,onMs,offMs:per-onMs};}
+function c4(){
+ const tb=$('c4tb');if(!tb)return;
+ const lo=c4v(74,21000),hi=c4v(75,29000),per=c4v(68,1000),minOn=c4v(69,150),en=c4v(77,100),ex=c4v(78,95),hy=c4v(79,5);
+ const sig=[lo,hi,per,minOn,en,ex,hy].join(',');
+ if(sig!==C4.sig){
+  C4.sig=sig;
+  const m=$('c4map');
+  if(m)m.innerHTML=hi>lo
+   ?('۰٪ = <span class="n">'+lo+'</span> mV · ۱۰۰٪ = <span class="n">'+hi+'</span> mV · هر ۱٪ ≈ <span class="n">'+Math.round((hi-lo)/100)+'</span> mV · ۵۰٪ ≈ <span class="n">'+c4mv(50,lo,hi)+'</span> mV')
+   :'⚠ حد بالا باید دست‌کم ۱۰۰mV بالاتر از حد پایین باشد.';
+  const f=$('c4full');
+  if(f)f.innerHTML='ورود فول <span class="n">'+en+'</span>٪ ≈ <span class="n">'+c4mv(en,lo,hi)+'</span> mV (سبز ثابت) · خروج فول <span class="n">'+ex+'</span>٪ ≈ <span class="n">'+c4mv(ex,lo,hi)+'</span> mV (برگشت به شارژ) · پهنای هیسترزیس <span class="n">'+(en-ex)+'</span>٪ ≈ <span class="n">'+(c4mv(en,lo,hi)-c4mv(ex,lo,hi))+'</span> mV';
+  let rows='';
+  C4.pct.forEach(p=>{
+   const b=c4blink(p,per,minOn);
+   const note=p===0?'زرد ثابت روشن (درصد صفر)':(p>=en?'فول — زرد خاموش، سبز ثابت':(p>=98?'کمینهٔ چشمک (کف ۲٪ و حداقل روشنی)':'چشمک معمولی'));
+   rows+='<tr><td>'+p+'٪</td><td class="n">'+c4mv(p,lo,hi)+' mV</td><td>'+b.remaining+'٪</td><td class="n">'+b.onMs+' ms</td><td class="n">'+b.offMs+' ms</td><td class="lb">'+note+'</td></tr>';});
+  tb.innerHTML=rows;}
+ /* خط زنده: درصد پایدار همان چیزی است که آینهٔ LED نگه می‌دارد */
+ const nw=$('c4now'),dot=$('c4led');
+ if(!nw)return;
+ if(!D||!D.t||D.on!=1||UV.cpct<0){nw.textContent='— در انتظار داده از برد (اعداد جدول بالا با مقادیر فعلی محاسبه شده‌اند)';if(dot)dot.className='c4dot';return;}
+ const st=UV.cpct,b=c4blink(st,per,minOn),full=UV.full||st>=en;
+ nw.innerHTML='الان: درصد پایدار <span class="n">'+st+'</span>٪ (هیسترزیس '+hy+'٪) → مانده <span class="n">'+b.remaining+'</span>٪ → زرد <span class="n">'+b.onMs+'</span> ms روشن / <span class="n">'+b.offMs+'</span> ms خاموش'+(full?' · <b>فول فعال است، زرد خاموش</b>':'');
+ if(dot)dot.className='c4dot'+((!full&&(performance.now()%per)<b.onMs)?' on':'');
+ const rows=$('c4tb').children;
+ for(let k=0;k<rows.length;k++)rows[k].className=(C4.pct[k]===Math.round(st/5)*5)?'hi':'';
 }
 function xmute(){const v=(D&&D.p&&D.p[76]===1)?0:1;const f=$('q76');if(f)f.value=v;send(76,v);}
 /* اتصال ورودی‌های آلارم (۲۷..۸۲): مثل profile + نگهبان + q2/q3 برای شناسه‌های ۳۲..۸۲ */
