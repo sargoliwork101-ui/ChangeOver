@@ -1494,6 +1494,22 @@ def sec_cubeide_includes():
             missing.append((mod, f"folder {hit} missing from .cproject include paths"))
     ok(not missing, "module enabled but not buildable from CubeIDE", str(missing))
 
+    # [EN] A host tester carries its own main(); if its folder is not excluded
+    #      from the CubeIDE build, the target link dies with
+    #      'multiple definition of main'. .cproject must exclude every
+    #      Tester folder holding a host-main in BOTH configurations.
+    # [FA] تستر هاست main خودش را دارد؛ اگر پوشه‌اش از بیلد CubeIDE حذف
+    #      نشده باشد، لینک هدف با «multiple definition of main» می‌میرد.
+    for tester in (ROOT / "Firmware" / "Modules").glob("*/Tester"):
+        host_src = [c for c in list(tester.glob("*.c")) + list(tester.glob("*.cpp"))
+                    if "main(" in c.read_text(encoding="utf-8", errors="ignore")]
+        if not host_src:
+            continue
+        rel = tester.relative_to(ROOT).as_posix()
+        ok(cproj.count(f'excluding="{rel}"') >= 2,
+           f"host tester {rel} is not excluded from the CubeIDE build (both configs)",
+           str([c.name for c in host_src]))
+
 
 def main():
     ids = sec_ids()
