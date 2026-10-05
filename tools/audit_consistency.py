@@ -923,6 +923,18 @@ def sec_panel(ids):
     #      that writes a default nobody printed is exactly the drift this
     #      audit exists to catch.
     # [FA] هر شناسهٔ UDEF باید پیش‌فرض داشته باشد و در دو سناریو تکرار نشود.
+    # [EN] v1.78 (user order): the two "after the lock, drop the battery from
+    #      the output too" switches are stored yes/no settings, so they must be
+    #      checkboxes - never buttons, which read as "press to act now".
+    # [FA] دو کلید مسدودی خروجی باید چک‌باکس باشند، نه دکمه.
+    for cid, pid in (("ib117", 117), ("db127", 127)):
+        ok(f'<input type="checkbox" id="{cid}">' in P_PAN,
+           f"the output-block switch {cid} (param {pid}) is not a checkbox")
+        ok(f'id="{cid}">' not in P_PAN.replace(f'<input type="checkbox" id="{cid}">', ""),
+           f"{cid} still exists as a button as well")
+        ok(f"$('{cid}')" in P_PAN and f"send({pid}," in P_PAN,
+           f"{cid} does not write param {pid} back to the board")
+
     # [EN] v1.77 (user question: "with one beep, what does a gap even mean?"
     #      and "do it everywhere, not just in some sections"): every writable
     #      "gap between beeps" field must be listed in GAPOF so it switches

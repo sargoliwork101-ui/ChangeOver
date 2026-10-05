@@ -633,6 +633,25 @@ function testSimulator(win, doc) {
     check(doc.getElementById('q65').disabled === false,
           'band 2 alone keeps the shared gap alive');
     typeInto(win, doc, 'q63', 1);
+
+    /* v1.78 (user order): the two output-block switches are checkboxes that
+       mirror the stored parameter and write it back on change. */
+    [['ib117', 117], ['db127', 127]].forEach(([cid, pid]) => {
+      const el = doc.getElementById(cid);
+      check(el && el.type === 'checkbox', cid + ' is a checkbox, not a button');
+      const sent = [];
+      const old = win.send;
+      win.send = (id, v) => sent.push([id, v]);
+      el.checked = true; el.onchange();
+      check(sent.length === 1 && sent[0][0] === pid && sent[0][1] === 1,
+            'ticking ' + cid + ' writes 1 to param ' + pid);
+      el.checked = false; el.onchange();
+      check(sent.length === 2 && sent[1][1] === 0,
+            'unticking ' + cid + ' writes 0 to param ' + pid);
+      win.send = old;
+    });
+    check(doc.getElementById('a117') && doc.getElementById('a127'),
+          'each output-block checkbox keeps its own plain-language state line');
     typeInto(win, doc, 'q42', 3);
     win.simrun();
     check(doc.getElementById('q43').disabled === false,

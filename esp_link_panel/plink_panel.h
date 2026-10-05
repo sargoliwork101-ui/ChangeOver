@@ -220,6 +220,14 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .mod h3{font-size:16px;margin-bottom:8px}
 .mod .sb{width:100%;margin-top:10px}
 input:disabled{opacity:.38;cursor:not-allowed}
+/* [EN] v1.78: the two lock-behaviour switches are real checkboxes now, not
+   buttons - a button looked like "press me to do it", while this is a stored
+   yes/no setting. The row spans the card and carries its own answer line.
+   [FA] دو کلید رفتارِ قفل حالا چک‌باکس واقعی‌اند، نه دکمه. */
+.ckr{grid-column:1/-1;display:flex;align-items:flex-start;gap:10px;background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:10px 12px}
+.ckr input[type="checkbox"]{width:20px;height:20px;margin:2px 0 0;accent-color:#e5484d;flex:0 0 auto;cursor:pointer}
+.ckr .ckt{display:block;font-weight:700}
+.ckr .cks{display:block;color:var(--mu);font-size:12px;margin-top:3px;line-height:1.7}
 .srvw{overflow-x:auto;border:1px solid var(--ln);border-radius:12px}
 
 .srv{width:100%;min-width:680px;border-collapse:collapse;font-size:13px;table-layout:fixed}
@@ -295,7 +303,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e0174af</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build ddc178d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -665,7 +673,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="s5v"></div>
 
 <div class="sec">۳) قضاوت، هشدار و رفتار پس از قفل</div>
-<div class="sx">اینجا تصمیم نهایی و چهرهٔ آن ساخته می‌شود. <b>سقف رویداد تا قفل</b> = با رسیدن شمارندهٔ ماندگار به این عدد، باتری محکوم و قفل می‌شود. <b>دورهٔ بوق</b> و <b>طول بوق</b> = صدای دوره‌ای همان قفل (۰ = بی‌صدا). <b>دورهٔ چشمک</b> و <b>سهم روشنی</b> = شکل چشمک چراغ قرمز در قفل (دورهٔ ۰ = قرمز ثابت). <b>سیکل‌های شارژ پس از قفل</b> = بعد از قفل این‌قدر سیکل شارژ هنوز مجاز است و بعد شارژ هم می‌ایستد. <b>تیک مسدودی خروجی</b> = باتریِ محکوم از خروجی هم جدا شود یا نه.</div>
+<div class="sx">اینجا تصمیم نهایی و چهرهٔ آن ساخته می‌شود. <b>سقف رویداد تا قفل</b> = با رسیدن شمارندهٔ ماندگار به این عدد، باتری محکوم و قفل می‌شود. <b>دورهٔ بوق</b> و <b>طول بوق</b> = صدای دوره‌ای همان قفل (۰ = بی‌صدا). <b>دورهٔ چشمک</b> و <b>سهم روشنی</b> = شکل چشمک چراغ قرمز در قفل (دورهٔ ۰ = قرمز ثابت). <b>سیکل‌های شارژ پس از قفل</b> = بعد از قفل این‌قدر سیکل شارژ هنوز مجاز است و بعد شارژ هم می‌ایستد. <b>مسدودی خروجی</b> = چک‌باکسِ پایین این بخش؛ تیک‌دار یعنی باتریِ قفل‌شده علاوه بر شارژ، از مسیر خروجی هم برداشته می‌شود و بار دیگر از آن تغذیه نمی‌کند.</div>
 <div class="bqr">
 <label>سقف رویداد تا قفل<input type="number" id="q114" step="1" min="1" max="255"><span class="lb" id="a114"></span></label>
 <label>دورهٔ بوق در قفل (ms، ۰=خاموش)<input type="number" id="q115" step="60000" min="0" max="86400000"><span class="lb" id="a115"></span></label>
@@ -674,7 +682,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <label>سهم روشنی چشمک (٪)<input type="number" id="q124" step="5" min="5" max="95"><span class="lb" id="a124"></span></label>
 <label>سیکل‌های شارژ پس از قفل تا مسدودی<input type="number" id="q118" step="1" min="1" max="255"><span class="lb" id="a118"></span></label>
 </div>
-<div class="bqr"><button class="bt run" id="ib117">مسدودی خروجی در قفل: فعال</button><span class="lb" id="a117"></span></div>
+<div class="bqr"><label class="ckr"><input type="checkbox" id="ib117"><span><span class="ckt">پس از قفل، باتریِ محکوم از خروجی هم جدا شود (مسدودی خروجی)</span><span class="cks" id="a117"></span></span></label></div>
 <div class="c4n" id="s5z"></div>
 
 <div class="bqr"><button class="sb sb2 fwb" onclick="ibdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۵</button></div>
@@ -706,9 +714,24 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="c4n" id="s6v"></div>
 
-<div class="sec">۲) رفتار پس از قفل</div>
-<div class="sx">پس از قفل، شارژ آن کانال در هر حالت قطع می‌ماند. این تیک فقط می‌گوید باتریِ محکوم از <b>خروجی</b> هم جدا شود یا نه — دقیقاً مثل تیک همتایش در سناریو ۵.</div>
-<div class="bqr"><button class="bt run" id="db127">جداسازی باتری از خروجی در قفل: فعال</button><span class="lb" id="a127"></span></div>
+<div class="sec">۲) رفتار پس از حکم خرابی</div>
+<div class="sx"><b>«جداسازی باتری از خروجی» یعنی چه؟</b> هر باتری دو مسیر دارد: مسیرِ <b>شارژ</b> (برق به باتری می‌رود) و مسیرِ <b>خروجی</b> (باتری به بار برق می‌دهد). وقتی حکم «باتری خراب» صادر شد، مسیر شارژِ آن کانال در هر حالت و برای همیشه قطع است — این قابل انتخاب نیست. تنها چیزی که این چک‌باکس تعیین می‌کند، تکلیفِ مسیر <b>خروجی</b> است:
+<ul>
+<li><b>تیک‌دار (پیش‌فرض خاموش است، خودتان روشن می‌کنید)</b> — باتریِ محکوم از خروجی هم برداشته می‌شود: نه شارژ می‌گیرد و نه به بار برق می‌دهد. انگار از مدار درآمده و فقط منتظر تعویض است. امن‌ترین حالت برای باتریِ مشکوک به اتصالیِ داخلی، ولی اگر همان یک باتری تنها منبع بار باشد، بار از دست می‌رود.</li>
+<li><b>بدون تیک (پیش‌فرض)</b> — فقط شارژ قطع می‌شود؛ باتری سرِ جایش می‌ماند و تا وقتی ولتاژ دارد به بار برق می‌دهد و بعد خالی می‌شود. هشدار (قرمز ثابت + بوق) در هر دو حالت یکسان است.</li>
+</ul>
+این تیک روی فلش برد ذخیره می‌شود و دقیقاً همتای «مسدودی خروجی» در سناریو ۵ است.</div>
+<div class="bqr"><label class="ckr"><input type="checkbox" id="db127"><span><span class="ckt">پس از حکم خرابی، باتری از خروجی هم جدا شود (نه شارژ، نه تغذیهٔ بار)</span><span class="cks" id="a127"></span></span></label></div>
+<div class="ds c4ds"><b>چک‌لیست — لحظه‌به‌لحظه چه اتفاقی می‌افتد؟</b>
+<ul>
+<li><b>۱ · شمارش</b> — تا کانال در حال شارژ (Bulk یا Absorb) است، ساعتِ همان کانال جلو می‌رود. هر باتری ساعت خودش را دارد.</li>
+<li><b>۲ · صفر شدن</b> — شارژ به Float رسید؟ یعنی باتری پر شد و سالم است: ساعتِ همان کانال صفر می‌شود. وقفهٔ بلندتر از «مهلت وقفه» هم ساعت را صفر می‌کند؛ وقفهٔ کوتاه فقط نگهش می‌دارد.</li>
+<li><b>۳ · حکم</b> — ساعت به «مهلت شارژ پیوسته» (پیش‌فرض ۲۴ ساعت) رسید بدون اینکه هیچ‌وقت پر شود: باتری خراب اعلام می‌شود.</li>
+<li><b>۴ · واکنش</b> — چراغ قرمز <b>ثابت</b> + بوق دوره‌ای، و شارژِ همان کانال برای همیشه قطع. کانال دیگر دست‌نخورده کار می‌کند.</li>
+<li><b>۵ · خروجی</b> — فقط اگر چک‌باکسِ بالا تیک داشته باشد، باتری از خروجی هم جدا می‌شود؛ وگرنه همچنان بار را تغذیه می‌کند.</li>
+<li><b>۶ · خروج از حکم</b> — با ریست، قطع برق یا تغییر تنظیمات پاک نمی‌شود (روی فلش برد، اسلات ۲۰۳). تنها راه: برداشتن باتری به مدت ۳ ثانیه و گذاشتن باتری نو.</li>
+</ul>
+</div>
 
 <div class="bqr"><button class="sb sb2 fwb" onclick="dbdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۶</button></div>
 </div>
@@ -1017,8 +1040,8 @@ let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{ST
 let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=6;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();}
 document.querySelectorAll('#usel button').forEach(b=>b.onclick=()=>usel(+b.dataset.u));
 $('mx').onclick=()=>send(19,0);
-{const b6=$('ib117');if(b6)b6.onclick=()=>{const v=(D&&D.p[117]===0)?1:0;send(117,v);};}
-{const b7=$('db127');if(b7)b7.onclick=()=>{const v=(D&&D.p[127])?0:1;send(127,v);};}
+{const b6=$('ib117');if(b6)b6.onchange=()=>{send(117,b6.checked?1:0);};}
+{const b7=$('db127');if(b7)b7.onchange=()=>{send(127,b7.checked?1:0);};}
 
 /* ---------- به‌روزرسانی: فرمول‌های بخش 5.3 با مقادیر زنده ---------- */
 const f1=x=>x.toFixed(1),V_=mv=>(mv/1000).toFixed(2)+'V',nz=v=>v==null?'?':v;
@@ -2412,8 +2435,8 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   const f2s=(f2&2)?'قفل دائمی - باتری را تعویض کنید':(f2&1)?'اپیزود جاری':'سالم';
   $('imbst').textContent=f2s;$('imbst').className='tg '+((f2&2)?'r':(f2&1)?'y':'g');
   const b117=p[117]==null?1:p[117],bt=document.getElementById('ib117');
-  if(bt){bt.textContent=b117?'مسدودی خروجی در قفل: فعال':'مسدودی خروجی در قفل: غیرفعال (ریسک با شما)';bt.className='bt '+(b117?'run':'cut');}
-  if($('a117'))$('a117').textContent=b117?'روشن':'خاموش';}
+  if(bt&&document.activeElement!==bt)bt.checked=!!b117;
+  if($('a117'))$('a117').textContent=b117?'الان روشن است: باتریِ قفل‌شده نه شارژ می‌شود و نه به بار برق می‌دهد.':'الان خاموش است: فقط شارژ قطع می‌شود و باتریِ قفل‌شده همچنان بار را تغذیه می‌کند (ریسکش با شماست).';}
  /* ‎v1.72 scenario-6 live face: t[28]‎=ماسک قفل باتری خراب، t[29]=بیشترین شارژ پیوسته (ثانیه) */
  if($('dbst')){const dm=t[28]==null?0:t[28],lim=p[125]==null?86400000:p[125];
   /* v1.76: t[29] = شارژ پیوستهٔ کانال ۱ و t[30] = کانال ۲ (ثانیه) — هر باتری ساعت خودش */
@@ -2423,8 +2446,8 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   const ds=dm?('قفل دائمی — باتری '+((dm&3)===3?'هر دو کانال':(dm&1)?'کانال ۱':'کانال ۲')+' خراب است، تعویضش کنید'):'سالم';
   $('dbst').textContent=ds;$('dbst').className='tg '+(dm?'r':'g');
   const b127=p[127]==null?0:p[127],bt7=document.getElementById('db127');
-  if(bt7){bt7.textContent=b127?'جداسازی باتری از خروجی در قفل: فعال':'جداسازی باتری از خروجی در قفل: غیرفعال (فقط شارژ قطع می‌شود)';bt7.className='bt '+(b127?'run':'cut');}
-  if($('a127'))$('a127').textContent=b127?'روشن':'خاموش';}
+  if(bt7&&document.activeElement!==bt7)bt7.checked=!!b127;
+  if($('a127'))$('a127').textContent=b127?'الان روشن است: باتریِ محکوم از خروجی هم برداشته می‌شود — نه شارژ می‌گیرد و نه به بار برق می‌دهد.':'الان خاموش است: فقط شارژِ آن کانال قطع است و باتری تا وقتی ولتاژ دارد به بار برق می‌دهد.';}
 
  for(let id=0;id<20;id++){const a=$('a'+id);if(a&&!(d.q&(1<<id)))a.textContent=p[id]==null?'':(id===13||id===14)?pc(p[id]):p[id];}
  const fe=$('fspan');if(fe){const mn=p[7]==null?null:(p[7]>=3?p[7]:0),av=p[8]==null?null:(p[8]>=2?p[8]:0);
