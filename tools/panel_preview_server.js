@@ -185,7 +185,12 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            /* v1.72 ids 125..127 = dead-battery scenario 6 (charger.h):
               continuous-charge deadline, the pause that zeroes the clock,
               and the output-disconnect checkbox. */
-           86400000, 600000, 0];
+           86400000, 600000, 0,
+           /* v1.80 ids 128..131 = scenario 6's OWN lamp and buzzer (user
+              question: "it has a lamp and a beep, why no boxes?"): beep
+              period, beep length, red blink period (0 = solid) and its
+              on-share. Defaults reproduce the old borrowed behaviour. */
+           600000, 120, 0, 50];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -258,6 +263,12 @@ function clampParam(id, v) {
         case 125: return v === 0 ? 0 : clampW(v, 3600000, 172800000);
         case 126: return clampW(v, 0, 3600000);
         case 127: return clampW(v, 0, 1);
+        /* v1.80 scenario 6's own face: beep period (0 = silent), beep length,
+           red blink period (0 = solid red) and the blink on-share */
+        case 128: return v === 0 ? 0 : clampW(v, 1000, 86400000);
+        case 129: return clampW(v, 20, 2000);
+        case 130: return v === 0 ? 0 : clampW(v, 100, 10000);
+        case 131: return clampW(v, 5, 95);
         /* v1.15 alarms: mirror of Fault_ClampAlarms / Charger_ClampAlarms */
         case 27: { let lo = Math.max(14000, over + 50), hi = Math.min(15000, ov - 100);
                    if (lo > hi) hi = lo; return Math.min(hi, Math.max(lo, v)); }

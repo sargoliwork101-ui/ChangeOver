@@ -210,6 +210,26 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .wbx.bad{border-color:var(--er);background:rgba(255,104,115,.12);color:var(--er)}
 .wbx.warn{border-color:var(--wa);background:rgba(247,193,60,.10);color:var(--wa)}
 .ab.bad{border-color:rgba(251,94,106,.55);box-shadow:0 0 0 1px rgba(251,94,106,.2)}.ab.warn{border-color:rgba(251,191,36,.5)}.ab.good{border-color:rgba(52,211,153,.4)}
+/* [EN] v1.79 (user: "what is this? there used to be a LED behind it"): the
+   .bit class had markup (<i> dot + <small> label) but NO stylesheet rule at
+   all, so the dots were invisible and the labels ran together as
+   "ADCOC1OC2باتری...". ‎The LEDs are needed - they are the only per-bit view‎
+   of the latched fault mask - so they are drawn properly instead of removed.
+   A latched bit stays dim red at all times and brightens on the blink phase,
+   so a fault is never invisible between blinks.
+   [FA] کلاس .bit هیچ استایلی نداشت؛ پس نقطه‌ها دیده نمی‌شدند و برچسب‌ها به هم
+   چسبیده بودند. حالا هر بیت یک LED واقعی با برچسب زیرش دارد: بیتِ قفل‌شده
+   همیشه قرمزِ کم‌رنگ است و در فاز چشمک پررنگ می‌شود. */
+.bit{display:inline-flex;flex-direction:column;align-items:center;gap:5px;min-width:54px}
+.bit i{width:14px;height:14px;border-radius:50%;background:#28303f;border:1px solid var(--ln);box-shadow:inset 0 1px 2px #0009;transition:background .12s,box-shadow .12s}
+.bit small{font-size:11px;line-height:1;color:var(--mu);white-space:nowrap}
+.bit.set i{background:#8d2a2e;border-color:#b13b40}
+.bit.set small{color:#ffbdbf}
+.bit.set.on i{background:#ff5a5f;border-color:#ff5a5f;box-shadow:0 0 9px #ff5a5f,inset 0 1px 2px #0005}
+/* [EN] v1.79: .prod (the live readout strip of scenarios 5 and 6) had no rule
+   either and rendered as loose text. [FA] نوار مقدارهای زنده هم استایل نداشت. */
+.prod{background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:8px 12px;margin:2px 0 10px;font-size:13px;line-height:1.9}
+.prod b{font-variant-numeric:tabular-nums}
 .leds{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--in);border:1px solid var(--ln);border-radius:14px;padding:10px 14px;margin:2px 0 12px}
 .fx2{font-size:12px;color:#c9d0df;line-height:1.9;margin-top:4px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -220,6 +240,14 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .mod h3{font-size:16px;margin-bottom:8px}
 .mod .sb{width:100%;margin-top:10px}
 input:disabled{opacity:.38;cursor:not-allowed}
+/* [EN] v1.78: the two lock-behaviour switches are real checkboxes now, not
+   buttons - a button looked like "press me to do it", while this is a stored
+   yes/no setting. The row spans the card and carries its own answer line.
+   [FA] دو کلید رفتارِ قفل حالا چک‌باکس واقعی‌اند، نه دکمه. */
+.ckr{grid-column:1/-1;display:flex;align-items:flex-start;gap:10px;background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:10px 12px}
+.ckr input[type="checkbox"]{width:20px;height:20px;margin:2px 0 0;accent-color:#e5484d;flex:0 0 auto;cursor:pointer}
+.ckr .ckt{display:block;font-weight:700}
+.ckr .cks{display:block;color:var(--mu);font-size:12px;margin-top:3px;line-height:1.7}
 .srvw{overflow-x:auto;border:1px solid var(--ln);border-radius:12px}
 
 .srv{width:100%;min-width:680px;border-collapse:collapse;font-size:13px;table-layout:fixed}
@@ -295,7 +323,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 07a9a04</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build f94671c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -421,7 +449,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="s1b"></div>
 
 <div class="sec">۳) بوق</div>
-<div class="sx">شکل صدا، دقیقاً مثل بقیهٔ سناریوها با چهار عدد ساخته می‌شود: <b>دوره</b> = هر چند وقت یک‌بار الگو تکرار شود (۰ = بی‌صدا)، <b>مدت هر بوق</b> = طول یک بوق، <b>تعداد</b> = چند بوق در هر تکرار، <b>گپ</b> = سکوت بین آن بوق‌ها. درصدِ روشنیِ بوق خودش از این چهار عدد حساب می‌شود و جایی تایپ نمی‌شود.</div>
+<div class="sx">شکل صدا، دقیقاً مثل بقیهٔ سناریوها با چهار عدد ساخته می‌شود: <b>دوره</b> = هر چند وقت یک‌بار الگو تکرار شود (۰ = بی‌صدا)، <b>مدت هر بوق</b> = طول یک بوق، <b>تعداد</b> = چند بوق در هر تکرار، <b>گپ</b> = سکوت بین آن بوق‌ها. درصدِ روشنیِ بوق خودش از این چهار عدد حساب می‌شود و جایی تایپ نمی‌شود. <b>قانون مشترک همهٔ بوق‌ها:</b> اگر «تعداد بوق» یک باشد، «گپ بین بوق‌ها» هیچ معنایی ندارد (گپ فقط <i>بین</i> دو بوق است)، پس کادرش خودبه‌خود غیرفعال و کم‌رنگ می‌شود؛ با دو بوق یا بیشتر دوباره فعال می‌شود.</div>
 <div class="bqr">
 <label>دوره بوق (ms، صفر=خاموش)<input type="number" id="q40" step="500" min="0" max="600000"><span class="lb" id="a40"></span></label>
 <label>مدت هر بوق (ms)<input type="number" id="q41" step="50" min="0" max="600000"><span class="lb" id="a41"></span></label>
@@ -472,7 +500,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="s2b"></div>
 
 <div class="sec">۴) بوق</div>
-<div class="sx">همان چهار عددِ همیشگیِ صدا: <b>دوره</b> (۰ = بی‌صدا)، <b>مدت هر بوق</b>، <b>تعداد بوق</b> در هر تکرار و <b>گپ</b> بین آن‌ها. پیش‌فرض این سناریو سه بوق کوتاه است.</div>
+<div class="sx">همان چهار عددِ همیشگیِ صدا: <b>دوره</b> (۰ = بی‌صدا)، <b>مدت هر بوق</b>، <b>تعداد بوق</b> در هر تکرار و <b>گپ</b> بین آن‌ها. پیش‌فرض این سناریو سه بوق کوتاه است. <b>قانون مشترک همهٔ بوق‌ها:</b> اگر «تعداد بوق» یک باشد، «گپ بین بوق‌ها» هیچ معنایی ندارد (گپ فقط <i>بین</i> دو بوق است)، پس کادرش خودبه‌خود غیرفعال و کم‌رنگ می‌شود؛ با دو بوق یا بیشتر دوباره فعال می‌شود.</div>
 <div class="bqr">
 <label>دوره بوق (ms، صفر=خاموش)<input type="number" id="q46" step="500" min="0" max="600000"><span class="lb" id="a46"></span></label>
 <label>مدت هر بوق (ms)<input type="number" id="q47" step="50" min="0" max="600000"><span class="lb" id="a47"></span></label>
@@ -486,7 +514,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="cd" id="ucard3" style="display:none">
 <div class="hd"><b>سناریو ۳ — دشارژ، بی‌ورودی (سبز + باندهای بوق)</b></div>
-<div class="sx"><b>روند:</b> بالای «شروع بوق» بی‌صدا (سبز چشمک با درصد) ← هر باند بوق خودش با فاصله/مدت/تعداد خودش ← زیر «باند بحرانی»: LEDها خاموش و الگوی بحرانی فقط یک‌بار به‌اندازهٔ «طول یک‌باره» پخش و بعد سکوت تا برگشت باتری. تنها عدد مشترک، گپ بین بوق‌ها (۶۵) است؛ تعداد، مدت هر بوق و فاصلهٔ تکرارِ هر باند مال خودش است و هر چهار باند یک شکل تنظیم می‌شوند.</div>
+<div class="sx"><b>روند:</b> بالای «شروع بوق» بی‌صدا (سبز چشمک با درصد) ← هر باند بوق خودش با فاصله/مدت/تعداد خودش ← زیر «باند بحرانی»: LEDها خاموش و الگوی بحرانی فقط یک‌بار به‌اندازهٔ «طول یک‌باره» پخش و بعد سکوت تا برگشت باتری. تنها عدد مشترک، گپ بین بوق‌ها (۶۵) است؛ تعداد، مدت هر بوق و فاصلهٔ تکرارِ هر باند مال خودش است و هر چهار باند یک شکل تنظیم می‌شوند. <b>قانون مشترک همهٔ بوق‌ها:</b> گپ فقط <i>بین</i> دو بوق است، پس تا وقتی هر چهار باند یک‌بوقی باشند کادر گپ (و بازتاب‌هایش در باندهای ۲، ۳ و بحرانی) غیرفعال و کم‌رنگ می‌ماند؛ کافی است یکی از باندها دو بوق یا بیشتر بخواهد تا دوباره فعال شود. «فاصلهٔ تکرار» هر باند ربطی به این ندارد و همیشه فعال است، چون فاصلهٔ بین دورهاست نه بین بوق‌ها.</div>
 
 <div class="ds c4ds">
 <b>این سناریو کِی می‌آید؟</b> وقتی ورودی قطع است و بار روی باتری می‌رود (پایین‌ترین اولویت؛ هر آلارمی آن را کنار می‌زند).
@@ -664,17 +692,22 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="c4n" id="s5v"></div>
 
-<div class="sec">۳) قضاوت، هشدار و رفتار پس از قفل</div>
-<div class="sx">اینجا تصمیم نهایی و چهرهٔ آن ساخته می‌شود. <b>سقف رویداد تا قفل</b> = با رسیدن شمارندهٔ ماندگار به این عدد، باتری محکوم و قفل می‌شود. <b>دورهٔ بوق</b> و <b>طول بوق</b> = صدای دوره‌ای همان قفل (۰ = بی‌صدا). <b>دورهٔ چشمک</b> و <b>سهم روشنی</b> = شکل چشمک چراغ قرمز در قفل (دورهٔ ۰ = قرمز ثابت). <b>سیکل‌های شارژ پس از قفل</b> = بعد از قفل این‌قدر سیکل شارژ هنوز مجاز است و بعد شارژ هم می‌ایستد. <b>تیک مسدودی خروجی</b> = باتریِ محکوم از خروجی هم جدا شود یا نه.</div>
+<div class="sec">۳) قضاوت و رفتار پس از قفل</div>
+<div class="sx"><b>سقف رویداد تا قفل</b> = با رسیدن شمارندهٔ ماندگار به این عدد، باتری محکوم و قفل می‌شود. <b>سیکل‌های شارژ پس از قفل</b> = بعد از قفل این‌قدر سیکل شارژ هنوز مجاز است و بعد شارژ هم می‌ایستد. <b>مسدودی خروجی</b> = چک‌باکسِ پایین این بخش؛ تیک‌دار یعنی باتریِ قفل‌شده علاوه بر شارژ، از مسیر خروجی هم برداشته می‌شود و بار دیگر از آن تغذیه نمی‌کند.</div>
 <div class="bqr">
 <label>سقف رویداد تا قفل<input type="number" id="q114" step="1" min="1" max="255"><span class="lb" id="a114"></span></label>
+<label>سیکل‌های شارژ پس از قفل تا مسدودی<input type="number" id="q118" step="1" min="1" max="255"><span class="lb" id="a118"></span></label>
+</div>
+<div class="bqr"><label class="ckr"><input type="checkbox" id="ib117"><span><span class="ckt">پس از قفل، باتریِ محکوم از خروجی هم جدا شود (مسدودی خروجی)</span><span class="cks" id="a117"></span></span></label></div>
+
+<div class="sec">۴) چراغ و بوقِ هشدار در قفل</div>
+<div class="sx">چهرهٔ هشدار پس از قفل، فقط از همین چهار عدد ساخته می‌شود. <b>دورهٔ بوق</b> = هر چند وقت یک‌بار بوق تکرار شود (۰ = بی‌صدا) و <b>طول بوق</b> = طول همان تک‌بوق. <b>دورهٔ چشمک قرمز</b> = یک دور کامل خاموش/روشنِ چراغ قرمز (۰ = قرمزِ ثابت) و <b>سهم روشنی</b> = چند درصد از آن دوره چراغ روشن باشد (وقتی دوره ۰ است بی‌اثر). سناریو ۶ از v1.80 چهار عددِ هم‌نامِ خودش را دارد، پس این چهار عدد فقط قفلِ عدم‌توازن را شکل می‌دهند.</div>
+<div class="bqr">
 <label>دورهٔ بوق در قفل (ms، ۰=خاموش)<input type="number" id="q115" step="60000" min="0" max="86400000"><span class="lb" id="a115"></span></label>
 <label>طول بوق (ms)<input type="number" id="q116" step="10" min="20" max="2000"><span class="lb" id="a116"></span></label>
 <label>دورهٔ چشمک قرمز در قفل (ms، ۰=ثابت)<input type="number" id="q123" step="100" min="0" max="10000"><span class="lb" id="a123"></span></label>
 <label>سهم روشنی چشمک (٪)<input type="number" id="q124" step="5" min="5" max="95"><span class="lb" id="a124"></span></label>
-<label>سیکل‌های شارژ پس از قفل تا مسدودی<input type="number" id="q118" step="1" min="1" max="255"><span class="lb" id="a118"></span></label>
 </div>
-<div class="bqr"><button class="bt run" id="ib117">مسدودی خروجی در قفل: فعال</button><span class="lb" id="a117"></span></div>
 <div class="c4n" id="s5z"></div>
 
 <div class="bqr"><button class="sb sb2 fwb" onclick="ibdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۵</button></div>
@@ -706,9 +739,34 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="c4n" id="s6v"></div>
 
-<div class="sec">۲) رفتار پس از قفل</div>
-<div class="sx">پس از قفل، شارژ آن کانال در هر حالت قطع می‌ماند. این تیک فقط می‌گوید باتریِ محکوم از <b>خروجی</b> هم جدا شود یا نه — دقیقاً مثل تیک همتایش در سناریو ۵.</div>
-<div class="bqr"><button class="bt run" id="db127">جداسازی باتری از خروجی در قفل: فعال</button><span class="lb" id="a127"></span></div>
+<div class="sec">۲) چراغ و بوقِ این سناریو</div>
+<div class="sx">تا نسخهٔ ۱٫۷۹ این سناریو چهرهٔ خودش را نداشت: قرمزش در کد ثابت‌کاری شده بود و بوقش را از قفلِ عدم‌توازن (۱۱۵/۱۱۶) قرض می‌گرفت، برای همین هیچ کادری برایش در پنل نبود. از v1.80 چهار عددِ مستقلِ خودش را دارد: <b>دورهٔ بوق</b> (۰ = بی‌صدا)، <b>طول هر بوق</b>، <b>دورهٔ چشمک قرمز</b> (۰ = قرمزِ ثابت) و <b>سهم روشنی چشمک</b>. پیش‌فرضشان دقیقاً همان رفتار قبلی است (بوق هر ۱۰ دقیقه به طول ۱۲۰ms و قرمزِ ثابت)، پس تا دست نزنید چیزی عوض نمی‌شود. <b>توجه:</b> قرمزِ ثابت همان چیزی است که این حکم را از چشمکِ قفلِ عدم‌توازن جدا می‌کند؛ اگر چشمک را روشن کنید، دو هشدار روی یک لامپ قرمز شبیه هم می‌شوند.</div>
+<div class="bqr">
+<label>دورهٔ بوق پس از حکم (ms، ۰=خاموش)<input type="number" id="q128" step="60000" min="0" max="86400000"><span class="lb" id="a128"></span></label>
+<label>طول هر بوق (ms)<input type="number" id="q129" step="10" min="20" max="2000"><span class="lb" id="a129"></span></label>
+<label>دورهٔ چشمک قرمز (ms، ۰=ثابت)<input type="number" id="q130" step="100" min="0" max="10000"><span class="lb" id="a130"></span></label>
+<label>سهم روشنی چشمک (٪)<input type="number" id="q131" step="5" min="5" max="95"><span class="lb" id="a131"></span></label>
+</div>
+<div class="c4n" id="s6b"></div>
+
+<div class="sec">۳) رفتار پس از حکم خرابی</div>
+<div class="sx"><b>«جداسازی باتری از خروجی» یعنی چه؟</b> هر باتری دو مسیر دارد: مسیرِ <b>شارژ</b> (برق به باتری می‌رود) و مسیرِ <b>خروجی</b> (باتری به بار برق می‌دهد). وقتی حکم «باتری خراب» صادر شد، مسیر شارژِ آن کانال در هر حالت و برای همیشه قطع است — این قابل انتخاب نیست. تنها چیزی که این چک‌باکس تعیین می‌کند، تکلیفِ مسیر <b>خروجی</b> است:
+<ul>
+<li><b>تیک‌دار (پیش‌فرض خاموش است، خودتان روشن می‌کنید)</b> — باتریِ محکوم از خروجی هم برداشته می‌شود: نه شارژ می‌گیرد و نه به بار برق می‌دهد. انگار از مدار درآمده و فقط منتظر تعویض است. امن‌ترین حالت برای باتریِ مشکوک به اتصالیِ داخلی، ولی اگر همان یک باتری تنها منبع بار باشد، بار از دست می‌رود.</li>
+<li><b>بدون تیک (پیش‌فرض)</b> — فقط شارژ قطع می‌شود؛ باتری سرِ جایش می‌ماند و تا وقتی ولتاژ دارد به بار برق می‌دهد و بعد خالی می‌شود. هشدار (قرمز ثابت + بوق) در هر دو حالت یکسان است.</li>
+</ul>
+این تیک روی فلش برد ذخیره می‌شود و دقیقاً همتای «مسدودی خروجی» در سناریو ۵ است.</div>
+<div class="bqr"><label class="ckr"><input type="checkbox" id="db127"><span><span class="ckt">پس از حکم خرابی، باتری از خروجی هم جدا شود (نه شارژ، نه تغذیهٔ بار)</span><span class="cks" id="a127"></span></span></label></div>
+<div class="ds c4ds"><b>چک‌لیست — لحظه‌به‌لحظه چه اتفاقی می‌افتد؟</b>
+<ul>
+<li><b>۱ · شمارش</b> — تا کانال در حال شارژ (Bulk یا Absorb) است، ساعتِ همان کانال جلو می‌رود. هر باتری ساعت خودش را دارد.</li>
+<li><b>۲ · صفر شدن</b> — شارژ به Float رسید؟ یعنی باتری پر شد و سالم است: ساعتِ همان کانال صفر می‌شود. وقفهٔ بلندتر از «مهلت وقفه» هم ساعت را صفر می‌کند؛ وقفهٔ کوتاه فقط نگهش می‌دارد.</li>
+<li><b>۳ · حکم</b> — ساعت به «مهلت شارژ پیوسته» (پیش‌فرض ۲۴ ساعت) رسید بدون اینکه هیچ‌وقت پر شود: باتری خراب اعلام می‌شود.</li>
+<li><b>۴ · واکنش</b> — چراغ قرمز <b>ثابت</b> + بوق دوره‌ای، و شارژِ همان کانال برای همیشه قطع. کانال دیگر دست‌نخورده کار می‌کند.</li>
+<li><b>۵ · خروجی</b> — فقط اگر چک‌باکسِ بالا تیک داشته باشد، باتری از خروجی هم جدا می‌شود؛ وگرنه همچنان بار را تغذیه می‌کند.</li>
+<li><b>۶ · خروج از حکم</b> — با ریست، قطع برق یا تغییر تنظیمات پاک نمی‌شود (روی فلش برد، اسلات ۲۰۳). تنها راه: برداشتن باتری به مدت ۳ ثانیه و گذاشتن باتری نو.</li>
+</ul>
+</div>
 
 <div class="bqr"><button class="sb sb2 fwb" onclick="dbdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۶</button></div>
 </div>
@@ -1017,8 +1075,8 @@ let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{ST
 let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=6;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();}
 document.querySelectorAll('#usel button').forEach(b=>b.onclick=()=>usel(+b.dataset.u));
 $('mx').onclick=()=>send(19,0);
-{const b6=$('ib117');if(b6)b6.onclick=()=>{const v=(D&&D.p[117]===0)?1:0;send(117,v);};}
-{const b7=$('db127');if(b7)b7.onclick=()=>{const v=(D&&D.p[127])?0:1;send(127,v);};}
+{const b6=$('ib117');if(b6)b6.onchange=()=>{send(117,b6.checked?1:0);};}
+{const b7=$('db127');if(b7)b7.onchange=()=>{send(127,b7.checked?1:0);};}
 
 /* ---------- به‌روزرسانی: فرمول‌های بخش 5.3 با مقادیر زنده ---------- */
 const f1=x=>x.toFixed(1),V_=mv=>(mv/1000).toFixed(2)+'V',nz=v=>v==null?'?':v;
@@ -1169,6 +1227,10 @@ const PX={
  124:['سهم روشنی چشمک — قفل عدم‌توازن','چند درصد از هر دوره چراغ روشن باشد. پیش‌فرض ۵۰٪ یعنی روشن و خاموش برابر؛ ۲۰٪ یعنی تک‌تک کوتاه روی زمینهٔ خاموش.'],
  125:['مهلت شارژ پیوسته تا حکم خرابی','اگر کانال این‌قدر پیوسته شارژ کند و هرگز به پایان شارژ (Float) نرسد، باتری خراب اعلام می‌شود: قرمز ثابت و قطع شارژ تا تعویض باتری. پیش‌فرض ۸۶٬۴۰۰٬۰۰۰ms = ۲۴ ساعت. صفر یعنی این حکم خاموش است.'],
  126:['مهلت وقفه‌ای که ساعت را صفر می‌کند','وقفهٔ کوتاه‌تر از این مقدار ساعتِ شارژ را فقط نگه می‌دارد، وقفهٔ بلندتر آن را صفر می‌کند. پیش‌فرض ۶۰۰٬۰۰۰ms = ۱۰ دقیقه؛ بدون این عدد، باتریِ لرزان با روشن/خاموش‌شدن مدام برای همیشه از حکم فرار می‌کرد.'],
+ 128:['دورهٔ بوق — حکم باتری خراب','هر چند وقت یک‌بار بوقِ هشدارِ «باتری خراب» تکرار شود (ms). پیش‌فرض ۶۰۰٬۰۰۰ms = هر ۱۰ دقیقه؛ صفر یعنی این سناریو بی‌صدا باشد. تا v1.79 این عدد از قفل عدم‌توازن (۱۱۵) قرض گرفته می‌شد و قابل تنظیم نبود.'],
+ 129:['طول هر بوق — حکم باتری خراب','طول تک‌بوقی که در هر دوره پخش می‌شود (ms). پیش‌فرض ۱۲۰ms.'],
+ 130:['دورهٔ چشمک قرمز — حکم باتری خراب','یک دور کامل خاموش/روشن چراغ قرمز پس از حکم (ms). پیش‌فرض ۰ یعنی قرمزِ ثابت — همان چیزی که این سناریو را از چشمکِ قفل عدم‌توازن جدا می‌کند؛ اگر عوضش کنید این تمایز از بین می‌رود.'],
+ 131:['سهم روشنی چشمک — حکم باتری خراب','چند درصد از هر دورهٔ چشمک، چراغ روشن باشد. وقتی دورهٔ چشمک صفر (ثابت) است، این عدد بی‌اثر است.'],
  127:['جداسازی باتری از خروجی در قفل سناریو ۶','مثل تیک ۱۱۷ در عدم‌توازن: در قفلِ «باتری خراب» باتری از خروجی هم جدا شود یا فقط شارژش قطع بماند. پیش‌فرض: خاموش.'],
  122:['فاصلهٔ تکرار — باند ۲','هر چند وقت یک‌بار الگوی دو-بوقِ همین باند تکرار شود (ms). از نسخهٔ ۱٫۷۱ باند ۲ هم مثل بقیه فاصلهٔ خودش را دارد و فقط گپ (۶۵) مشترک است.'],
  83:['Kp جریان','واکنش فوری حلقهٔ جریان به خطا. زیاد یعنی تند و لرزان.'],
@@ -1519,7 +1581,7 @@ for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>
 /* v1.28: ids 93..107 (charger limits + backstop gains) join the generic
    fill/validate/send machinery, so they need no bespoke handlers. */
 /* v1.49: ۱۱۹/۱۲۰ (نردبان سمت شارژ) هم مثل بقیه خوانده و نوشته می‌شود */
-const AIDS=[];for(let _i=27;_i<=127;_i++)AIDS.push(_i);
+const AIDS=[];for(let _i=27;_i<=131;_i++)AIDS.push(_i);
 const LDEF=[3600000,100,600000,60000,8,700,32,14800,100,500,10,15000,3000,3000,500];
 const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
 
@@ -1530,7 +1592,8 @@ const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
 /* ۱۱۹..۱۲۴: نگاشت درصد شارژ، شکل بوق باند ۲ و (v1.68) چشمک قرمز قفل عدم‌توازن */
 /* v1.71: ۱۲۲ = فاصلهٔ تکرار باند ۲ (همان ۶۰۰۰۰ که قبلاً از باند ۱ قرض می‌گرفت) */
 /* v1.72: ۱۲۵..۱۲۷ هم به همین آرایه اضافه شد (۲۴ ساعت، ۱۰ دقیقه، قطع خروجی خاموش) */
-const CDEF=[21000,29000,1000,60000,1000,50,86400000,600000,0];
+/* v1.80: ۱۲۸..۱۳۱ چراغ و بوقِ خودِ سناریو ۶ (پیش‌فرض = همان رفتار قبلی: بوق هر ۱۰ دقیقه، قرمز ثابت) */
+const CDEF=[21000,29000,1000,60000,1000,50,86400000,600000,0,600000,120,0,50];
 /* v1.71: شناسهٔ ۵۷ دیگر درصد نیست؛ مدت هر بوق بحرانی بر حسب ms است (۱۰۰۰۰ = همان صدای قبلی) */
 const ADEF=[14800,150,6000,7000,1000,1000,21000,28000,950,14850,2000,1000,50,10000,1000,1,0,1000,50,3000,233,3,100,40,20,10,1,60000,20000,10000,10000,1,1000,2000,10000,1,2,3,100,1000,10,1000,150,28000,1000,21000,21200,21000,29000,0,100,95,5,2,2,3];
 function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:(id>=119?CDEF[id-119]:id>=108?IDEF[id-108]:id>=93?LDEF[id-93]:id>=83?PDEF[id-83]:ADEF[id-27]);
@@ -1614,13 +1677,15 @@ function achk(){const a=ap(),w=[],bad=(v,lo,hi)=>!(v>=lo&&v<=hi);
  if(bad(a.u82,0,100))w.push({ids:[82],msg:'خروج از ۱٪ باید ۰..۱۰۰ باشد'});
  return w;}
 function afresh(){const w=achk();
+ /* v1.77: گپ‌ها بلافاصله پس از هر تغییر/پرشدن مقدار، نه فقط در فریم شبیه‌ساز */
+ if(typeof gapen==='function')gapen();
  /* [FA] v1.69 (دستور کاربر): همان بنر در تب تنظیمات هم حذف شد؛ دلیلش بالاتر
     در qchk آمده. فقط فیلد مقصر قرمز می‌شود. */
  [$('aw'),$('aw2')].forEach(el=>{if(el){el.innerHTML='';el.style.cssText='margin:2px 0 0';}});
  for(const id of AIDS){const ne=$('q'+id);if(ne)ne.style.borderColor=w.some(x=>x.ids.includes(id))?'#e5484d':'';}
  try{c4();sall();}catch(e){}
  const ms=$('xmuteS');if(ms)ms.textContent=(D&&D.p&&D.p[76]===1)?'🔇 میوت روشن — موقتی، با ریست برد پاک می‌شود؛ LEDها همچنان چشمک می‌زنند':'🔊 بوق روشن';}
-function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id-32))):id<96?((D.q3||0)&(1<<(id-64))):((D.q4||0)&(1<<(id-96)));}
+function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id-32))):id<96?((D.q3||0)&(1<<(id-64))):id<128?((D.q4||0)&(1<<(id-96))):((D.q5||0)&(1<<(id-128)));}
 /* v1.70 (دستور کاربر): چیپ «روی برد: …» حذف شد — از فریم تله‌متری پر می‌شد و
    بعد از تغییر هنوز عدد قدیمی را نشان می‌داد. خود کادر از برد پر می‌شود،
    پیش‌فرض کارخانه کنار فیلد هست و کارت نتیجه می‌گوید برد چه را پذیرفت.
@@ -1671,7 +1736,7 @@ const UDEF={
  3:[50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,74,75,80,81,82,121,122],
  4:[68,69,77,78,79],
  5:[108,109,110,111,112,113,114,115,116,117,118,123,124],
- 6:[125,126,127]};
+ 6:[125,126,127,128,129,130,131]};
 function ovdef(){odef(UDEF[1]);}
 function bdef(){odef(UDEF[2]);}
 function dsdef(){odef(UDEF[3]);}
@@ -1915,7 +1980,8 @@ function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
 function uview(){
  const now=performance.now();
  if(ASB&&ASB.bits&&D&&D.t){const m=D.t[19]||0,ph=(now%500)<250;
-  ASB.bits.forEach((e,bit)=>{if(e)e.className='bit'+(((m&(1<<bit))!==0&&ph)?' on':'');});}
+  /* v1.79: بیتِ قفل‌شده همیشه دیده می‌شود (set) و فقط روشنی‌اش چشمک می‌زند (on) */
+  ASB.bits.forEach((e,bit)=>{const on=(m&(1<<bit))!==0;if(e)e.className='bit'+(on?' set':'')+((on&&ph)?' on':'');});}
  try{c4();sall();}catch(e){}
 }
 /* ==================== سناریو ۴ — اعداد زندهٔ کارت شارژ ==================== */
@@ -2008,11 +2074,29 @@ function simblink(ph,per,duty){const on=Math.floor(per*duty/100);return (ph%per)
    [FA] گپ فقط «بین» بوق‌هاست؛ با یک بوق در هر دور، کادر گپ خاموش می‌شود و
    نمی‌شود رویش چیزی نوشت. گپ ۶۵ مشترک است، پس تا وقتی یکی از باندهایش بیش از
    یک بوق بخواهد روشن می‌ماند. */
-const GAPOF=[[43,[42]],[49,[48]],[122,[63]],[65,[62,64,58]]];
+/* [EN] v1.77 (user question: "with a single beep, what does the gap between
+   beeps even mean?" and "you did it for some sections, do it everywhere"):
+   the table had TWO faults. Band 2's repeat interval (122) was listed as if
+   it were a gap, so asking for one beep wrongly killed the interval - an
+   interval is the time BETWEEN ROUNDS and means something even with a single
+   beep. And the shared gap 65 did not count band 2 (63) among its users,
+   although band 2 beeps with that same gap. Every gap field in the page is
+   in this table now, and nothing that is not a gap is.
+   [FA] جدول دو ایراد داشت: «فاصلهٔ تکرارِ» باند ۲ (۱۲۲) اشتباهاً گپ حساب شده
+   بود و با یک بوق خاموش می‌شد - حال آنکه فاصلهٔ تکرار بین دورهاست و با یک
+   بوق هم معنا دارد؛ و گپ مشترک ۶۵ باند ۲ (۶۳) را جزو مصرف‌کننده‌هایش
+   نمی‌شمرد. حالا همهٔ گپ‌های صفحه اینجا هستند و فقط گپ‌ها. */
+const GAPOF=[[43,[42]],[49,[48]],[65,[62,63,64,58]]];
 function gapen(){GAPOF.forEach(g=>{const e=$('q'+g[0]);if(!e)return;
  const need=g[1].some(id=>c4v(id,1)>1);
- e.disabled=!need;e.title=need?'':'با یک بوق در هر دور، فاصلهٔ بین بوق‌ها معنا ندارد';
- const l=e.closest('label');if(l)l.style.opacity=need?'':'0.45';});}
+ const why='با یک بوق در هر دور، فاصلهٔ بین بوق‌ها معنا ندارد';
+ e.disabled=!need;e.title=need?'':why;
+ const l=e.closest('label');if(l)l.style.opacity=need?'':'0.45';
+ /* [EN] The read-only echoes of the same gap go grey with it, so a dead gap
+    looks dead in every card that shows it, not just where it is typed.
+    [FA] بازتاب‌های فقط-خواندنی همان گپ هم با آن خاکستری می‌شوند. */
+ document.querySelectorAll('.qmv[data-q="'+g[0]+'"]').forEach(m=>{
+  const h=m.closest('.shv')||m;h.style.opacity=need?'':'0.45';h.title=need?'':why;});});}
 function simrun(){
  simclk();
  const now=SIMT[3];
@@ -2184,7 +2268,7 @@ function pdflt(id){
  id=+id;
  /* v1.75 audit: CDEF grew to 119..127 with scenario 6 (ids 125..127) but this
     window still said 124, so the dead-battery fields printed no factory default. */
- if(id>=119&&id<=127)return CDEF[id-119];
+ if(id>=119&&id<=131)return CDEF[id-119];
  if(id>=108&&id<=118)return IDEF[id-108];
  if(id>=93&&id<=107)return LDEF[id-93];
  if(id>=83&&id<=92)return PDEF[id-83];
@@ -2392,8 +2476,8 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   const f2s=(f2&2)?'قفل دائمی - باتری را تعویض کنید':(f2&1)?'اپیزود جاری':'سالم';
   $('imbst').textContent=f2s;$('imbst').className='tg '+((f2&2)?'r':(f2&1)?'y':'g');
   const b117=p[117]==null?1:p[117],bt=document.getElementById('ib117');
-  if(bt){bt.textContent=b117?'مسدودی خروجی در قفل: فعال':'مسدودی خروجی در قفل: غیرفعال (ریسک با شما)';bt.className='bt '+(b117?'run':'cut');}
-  if($('a117'))$('a117').textContent=b117?'روشن':'خاموش';}
+  if(bt&&document.activeElement!==bt)bt.checked=!!b117;
+  if($('a117'))$('a117').textContent=b117?'الان روشن است: باتریِ قفل‌شده نه شارژ می‌شود و نه به بار برق می‌دهد.':'الان خاموش است: فقط شارژ قطع می‌شود و باتریِ قفل‌شده همچنان بار را تغذیه می‌کند (ریسکش با شماست).';}
  /* ‎v1.72 scenario-6 live face: t[28]‎=ماسک قفل باتری خراب، t[29]=بیشترین شارژ پیوسته (ثانیه) */
  if($('dbst')){const dm=t[28]==null?0:t[28],lim=p[125]==null?86400000:p[125];
   /* v1.76: t[29] = شارژ پیوستهٔ کانال ۱ و t[30] = کانال ۲ (ثانیه) — هر باتری ساعت خودش */
@@ -2403,8 +2487,8 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   const ds=dm?('قفل دائمی — باتری '+((dm&3)===3?'هر دو کانال':(dm&1)?'کانال ۱':'کانال ۲')+' خراب است، تعویضش کنید'):'سالم';
   $('dbst').textContent=ds;$('dbst').className='tg '+(dm?'r':'g');
   const b127=p[127]==null?0:p[127],bt7=document.getElementById('db127');
-  if(bt7){bt7.textContent=b127?'جداسازی باتری از خروجی در قفل: فعال':'جداسازی باتری از خروجی در قفل: غیرفعال (فقط شارژ قطع می‌شود)';bt7.className='bt '+(b127?'run':'cut');}
-  if($('a127'))$('a127').textContent=b127?'روشن':'خاموش';}
+  if(bt7&&document.activeElement!==bt7)bt7.checked=!!b127;
+  if($('a127'))$('a127').textContent=b127?'الان روشن است: باتریِ محکوم از خروجی هم برداشته می‌شود — نه شارژ می‌گیرد و نه به بار برق می‌دهد.':'الان خاموش است: فقط شارژِ آن کانال قطع است و باتری تا وقتی ولتاژ دارد به بار برق می‌دهد.';}
 
  for(let id=0;id<20;id++){const a=$('a'+id);if(a&&!(d.q&(1<<id)))a.textContent=p[id]==null?'':(id===13||id===14)?pc(p[id]):p[id];}
  const fe=$('fspan');if(fe){const mn=p[7]==null?null:(p[7]>=3?p[7]:0),av=p[8]==null?null:(p[8]>=2?p[8]:0);
@@ -2488,7 +2572,7 @@ function wmeas(m,act){
    stuck at 99 (the v1.22 count) while the real count is 93, so every row wrote 6
    extra columns and everything after the parameter block landed under the wrong
    heading. It now derives the bound so it cannot go stale again. */
-const PN=128;
+const PN=132;
 /* v1.26 (دستور کاربر ۲۰۲۶-۰۹-۲۹): ۹۳ ستون از ۱۴۹ ستونِ هر ردیف، «تنظیمات» بودند
    که در طول یک سوییپ اصلاً عوض نمی‌شوند — یعنی ۶۲٪ هر ردیف تکرار بی‌فایده. حالا
    تنظیمات یک‌بار به‌صورت خط «# settings:» نوشته می‌شود و ردیف‌ها فقط ۵۶ ستون
