@@ -375,7 +375,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 3b6879b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 18887ff</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2355,7 +2355,13 @@ function bload(r){r.querySelectorAll('[data-s]').forEach(e=>{if(BDS[e.id]!=null)
 /* ----- داده‌برداری بنچ (بخش 5.6 نسخه ۲): همهٔ مرحله‌ها در یک جدول؛ جلو رفتن فقط با دکمهٔ کاربر -----
  * هر مرحله: duty → صبر → پنجرهٔ /m (قبلش GET_PARAMS) → توقف روی ردیف فعال برای عدد مولتی‌متر → با دکمهٔ ثبت و مرحلهٔ بعد یک ردیف ۸۹ستونی در ESP.
  * Capture v2: set duty → settle → /m window (preceded by GET_PARAMS) → STOP on the active table row for the DMM → one 134-column row only on submit. */
-const WSC={SOLO1:[1],SOLO2:[2],BOTH:[1,2]};let W={run:false,abort:false,act:null};
+/* [EN] v1.60 (user order: "SOLO means nothing - name them properly"): the
+   wire/CSV tags are now BAT1 / BAT2 / BOTH and every place the user reads
+   them shows the plain Persian name instead.
+   [FA] نام سناریوها به «فقط باتری ۱ / فقط باتری ۲ / هر دو باتری» تغییر کرد؛
+   برچسب داخل فایل CSV هم BAT1/BAT2/BOTH است. */
+const WSC={BAT1:[1],BAT2:[2],BOTH:[1,2]};
+const WSN={BAT1:'فقط باتری ۱',BAT2:'فقط باتری ۲',BOTH:'هر دو باتری'};let W={run:false,abort:false,act:null};
 const sl=ms=>new Promise(r=>setTimeout(r,ms));
 async function req(u,m,body){const o={method:m||'GET',cache:'no-store'};if(body!=null){o.body=body;o.headers={'Content-Type':'text/plain'};}const r=await fetch(u,o);let j={};try{j=await r.json();}catch(e){}j._s=r.status;return j;}
 function wst(m,c){const e=$('wS0');e.innerHTML=m;e.className='cm '+(c||'lb');}
@@ -2421,7 +2427,7 @@ function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x;
 /* جدول واحد: هر مرحلهٔ هر سناریو یک ردیف؛ ردیف فعال ورودی‌ها و دکمه‌ها را دارد */
 const WH=['سناریو','#','duty %','raw ۱','filt ۱ mA','iest ۱ mA','جریان باتری ۱ mA','raw ۲','filt ۲ mA','iest ۲ mA','جریان باتری ۲ mA','جریان ورودی کل mA','وضعیت'];
 function wbuild(SC,L){W.K=[];SC.forEach(sc=>L.forEach((d,i)=>W.K.push({sc,i,d})));
- $('wT').innerHTML=`<div class="tw"><table class="bt2 wt"><tr>${WH.map(h=>`<th>${h}</th>`).join('')}</tr>${W.K.map((k,x)=>`<tr id="wr${x}"><td>${k.sc}</td><td>${k.i+1}</td><td>${k.d}</td>${'<td>·</td>'.repeat(9)}<td class="lb">در صف</td></tr>`).join('')}</table></div>`;}
+ $('wT').innerHTML=`<div class="tw"><table class="bt2 wt"><tr>${WH.map(h=>`<th>${h}</th>`).join('')}</tr>${W.K.map((k,x)=>`<tr id="wr${x}"><td>${WSN[k.sc]||k.sc}</td><td>${k.i+1}</td><td>${k.d}</td>${'<td>·</td>'.repeat(9)}<td class="lb">در صف</td></tr>`).join('')}</table></div>`;}
 function wcell(x,A,st,cl){const r=$('wr'+x);if(!r)return;const c=r.children;A.forEach((v,i)=>{if(v!==undefined)c[3+i].innerHTML=v;});if(st!=null){c[12].textContent=st;c[12].className=cl||'lb';}}
 function wmeas(m,act){const M=(n,b)=>act.includes(n)?[m.a(b).toFixed(1),r0(m.a(b+3)),r0(m.a(b+4))]:['قطع','-','-'];const a=M(1,0),b=M(2,7);return [a[0],a[1],a[2],undefined,b[0],b[1],b[2],undefined,undefined];}
 /* اسکرول خودکار فقط داخل کادر جدول (v1.17b: خود صفحه تکان نمی‌خورد) / auto-scroll inside the table box only (the page never jumps) */
@@ -2435,7 +2441,7 @@ function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const k=W.K[x];
  const F=n=>act.includes(n)?`<label class="lb">جریان باتری ${n} mA ${N('wB'+n)}</label>`:'';
  let WVI=window.WVI||'';/* [EN] input voltage is quasi-static: carry the last submitted DMM reading into the next step (user order 2026-09-25: no need to retype it every step) / ولتاژ ورودی تقریباً ثابت است: آخرین عدد ثبت‌شده در مرحلهٔ بعد پیش‌پر می‌شود */
  const box=$('wF0');
- box.innerHTML=`<div class="bq"><div class="hd"><b>${k.sc} · مرحلهٔ ${k.i+1} · duty ${k.d}٪ — عددهای مولتی‌متر</b></div><div class="bctl">${F(1)}${F(2)}<label class="lb">جریان ورودی کل mA ${N('wIi')}</label>${L('wVi','ولتاژ ورودی V',WVI)}${L('wV1','ولتاژ باتری ۱ V')}${L('wV2','ولتاژ باتری ۲ V')}<label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label><button class="sb" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2" id="wRe">تکرار همین مرحله</button><button class="sb stp2" id="wEn">پایان</button></div><div class="lb">اجباری: جریان ورودی کل + جریان هر باتری روشن (<b>منفی هم مجاز</b> — تخلیهٔ باتری با شارژر خاموش، مثل بار زنر). جریان باتری باید نزدیک عدد پنل باشد؛ ورودی کل به ولتاژ/جریان باتری وابسته است (فرمول توان: ~۲٫۵ برابر در جریان کم تا ~۰٫۹ برابر در بالای بازه — مصرف ثابت برد در جریان کم برجسته می‌شود). ولتاژها (V) و یادداشت اختیاری.</div></div>`;
+ box.innerHTML=`<div class="bq"><div class="hd"><b>${WSN[k.sc]||k.sc} · مرحلهٔ ${k.i+1} · duty ${k.d}٪ — عددهای مولتی‌متر</b></div><div class="bctl">${F(1)}${F(2)}<label class="lb">جریان ورودی کل mA ${N('wIi')}</label>${L('wVi','ولتاژ ورودی V',WVI)}${L('wV1','ولتاژ باتری ۱ V')}${L('wV2','ولتاژ باتری ۲ V')}<label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label><button class="sb" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2" id="wRe">تکرار همین مرحله</button><button class="sb stp2" id="wEn">پایان</button></div><div class="lb">اجباری: جریان ورودی کل + جریان هر باتری روشن (<b>منفی هم مجاز</b> — تخلیهٔ باتری با شارژر خاموش، مثل بار زنر). جریان باتری باید نزدیک عدد پنل باشد؛ ورودی کل به ولتاژ/جریان باتری وابسته است (فرمول توان: ~۲٫۵ برابر در جریان کم تا ~۰٫۹ برابر در بالای بازه — مصرف ثابت برد در جریان کم برجسته می‌شود). ولتاژها (V) و یادداشت اختیاری.</div></div>`;
  const f=$('wB'+act[0]);if(f)f.focus();
  const lv=setInterval(()=>wcell(x,wlive(act)),400);
  return new Promise(res=>{$('wGo').onclick=()=>{const v={},ok=id=>gv(id);/* v1.9 (user order 2026-09-25): negative currents are VALID - with the charger off the battery itself discharges into other loads (e.g. the zener), the DMM then reads minus */
@@ -2457,7 +2463,7 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
  W={run:true,abort:false,act:null,man:false};document.body.classList.add('br');wbuild(SC,L);$('wDone').classList.remove('v');let err=null,x=0;
  try{for(const sc of SC){const act=WSC[sc];
    let run=1;try{run=(+localStorage.getItem('wrun')||0)+1;localStorage.setItem('wrun',run);}catch(e){}
-   wst(sc+': آماده‌سازی (duty صفر، قطع/وصل کانال‌ها، مود دستی)…');W.act=null;W.man=false;
+   wst(WSN[sc]+': آماده‌سازی (duty صفر، قطع/وصل کانال‌ها، مود دستی)…');W.act=null;W.man=false;
    await setv(16,0);await setv(18,0);for(const n of [1,2])await setv(10+n,act.includes(n)?1:0);
    await setv(19,1);{const e=Date.now()+3000;while(!(D.fl&32)){if(Date.now()>e)throw 'مود دستی روشن نشد';await sl(100);}}W.man=true;W.act=act;
    await wlog(`# run ${run} browser_ts=${new Date().toISOString()} scenario=${sc} duty_list=${L.join(';')}\n`);
@@ -2471,7 +2477,7 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
      const m=await wlatch();
      await wsync();  /* اگر تنظیمی عوض شده، پیش از این ردیف ثبتش کن */
      await wlog(wrow(sc,i,pm,0,r0(Date.now()-W.winMs),m,f.v,f.iso));
-     calpush(m,f.v,act);
+     calpush(m,f.v,act,sc,L[i]);
      const A=wmeas(m,act);A[3]=f.v.b1??'-';A[7]=f.v.b2??'-';A[8]=f.v.ii;wcell(x,A,'ثبت شد','okc');
      i++;x++;}}
    finally{await wrestore(o);}}}
@@ -2508,12 +2514,12 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
    پیش از نوشتن روی برد، یک پشتیبان کامل دانلود می‌کند. */
 var CALS=[];try{CALS=JSON.parse(localStorage.getItem('calsmp')||'[]')||[];}catch(e){CALS=[];}
 function calsave(){try{localStorage.setItem('calsmp',JSON.stringify(CALS.slice(-400)));}catch(e){}}
-function calpush(m,v,act){
- CALS.push({r1:m.a(0),r2:m.a(7),vin:m.a(14),v24:m.a(15),v12:m.a(16),vlo:m.a(17),vhi:m.a(18),
+function calpush(m,v,act,sc,duty){
+ CALS.push({sc:sc,d:duty,use:1,r1:m.a(0),r2:m.a(7),vin:m.a(14),v24:m.a(15),v12:m.a(16),vlo:m.a(17),vhi:m.a(18),
   b1:act.includes(1)?v.b1:null,b2:act.includes(2)?v.b2:null,
   dvi:v.vi,dv1:v.v1,dv2:v.v2,ts:Date.now()});
- calsave();caln();}
-function calclr(){if(!confirm('همهٔ نمونه‌های جمع‌شده پاک شوند؟'))return;CALS=[];calsave();caln();
+ calsave();caln();calsmp();}
+function calclr(){if(!confirm('همهٔ نمونه‌های جمع‌شده پاک شوند؟'))return;CALS=[];calsave();caln();calsmp();
  stxt('caltb','');stxt('calst','نمونه‌ها پاک شدند.');CALP=[];}
 function caln(){stxt('caln',String(CALS.length));}
 /* [EN] least squares y = a*x + b, plus R². [FA] برازش خطی + کیفیت. */
@@ -2528,11 +2534,11 @@ var CALP=[],CALR=[];
 function calrun(){
  const cur=id=>(D&&D.p&&D.p[id]!=null)?D.p[id]:null;
  if(!D||!D.p){stxt('calst','⚠ هنوز داده‌ای از برد نرسیده — لینک برقرار نیست.');return;}
- if(CALS.length<3){stxt('calst','⚠ فقط '+CALS.length+' نمونه هست؛ برای کالیبره حداقل ۳ مرحلهٔ ثبت‌شده لازم است.');return;}
+ if(calsel(null).length<3){stxt('calst','⚠ فقط '+calsel(null).length+' نمونهٔ تیک‌خورده هست؛ برای کالیبره حداقل ۳ مرحله لازم است.');return;}
  CALP=[];const rows=[];
  /* --- جریان دو کانال: شیب و آفست با هم از یک خط --- */
  [[1,'r1','b1',0,2],[2,'r2','b2',1,3]].forEach(ch=>{
-  const S=CALS.filter(z=>Number.isFinite(z[ch[2]])&&Number.isFinite(z[ch[1]]));
+  const S=calsel(ch[0]).filter(z=>Number.isFinite(z[ch[2]])&&Number.isFinite(z[ch[1]]));
   const f=calfit(S.map(z=>z[ch[1]]),S.map(z=>z[ch[2]]));
   const ttl='کانال '+fa(ch[0]);
   if(!f||f.a<=0){rows.push([ttl+' (جریان)','—','—','⛔ دادهٔ کافی/سالم برای این کانال نیست',0]);return;}
@@ -2548,7 +2554,7 @@ function calrun(){
   rows.push([ttl+' — گین (‰)',ch[4],cur(ch[4]),gc,w.length?'⚠ '+w.join(' · '):'✅ برازش خوب ('+f.n+' نقطه، R²='+f.r2.toFixed(4)+')',bad?0:1]);
   rows.push([ttl+' — آفست (count)',ch[3],cur(ch[3]),oc,'از همان خط به‌دست آمد (جریان صفر در raw='+oc+')',bad?0:1]);});
  /* --- سه آفست ولتاژ: میانگین اختلاف مولتی‌متر با برد --- */
- const voff=(ttl,id,get)=>{const d=[];CALS.forEach(z=>{const x=get(z);if(x!=null&&Number.isFinite(x))d.push(x);});
+ const voff=(ttl,id,get)=>{const d=[];calsel(null).forEach(z=>{const x=get(z);if(x!=null&&Number.isFinite(x))d.push(x);});
   if(d.length<2){rows.push([ttl,id,cur(id),cur(id),'⛔ عدد مولتی‌متر برای این ولتاژ ثبت نشده — می‌توانید دستی بنویسید',0]);return;}
   const mean=d.reduce((a,b)=>a+b,0)/d.length;
   let sd=0;d.forEach(x=>sd+=(x-mean)*(x-mean));sd=Math.sqrt(sd/d.length);
@@ -2577,7 +2583,7 @@ function calrun(){
    '<td id="cald'+i+'" class="lb">—</td><td>'+r[4]+'</td></tr>').join('')+'</table></div>');
  rows.forEach((r,i)=>caldiff(i));
  const n=rows.filter(r=>r[5]).length;
- stxt('calst',(n?'✅ ':'⚠ ')+n+' عدد از '+rows.length+' تیک‌خورده است (از '+CALS.length+' نمونه). '+
+ stxt('calst',(n?'✅ ':'⚠ ')+n+' عدد از '+rows.length+' تیک‌خورده است (از '+calsel(null).length+' نمونهٔ انتخاب‌شده). '+
   'هر عدد را می‌توانید دستی اصلاح کنید یا تیکش را بردارید؛ پیش از نوشتن یک پشتیبان کامل دانلود می‌شود.');}
 /* [EN] Show how far the (possibly hand-edited) number is from the board's
    current one. [FA] فاصلهٔ عدد جدید با عدد فعلی برد. */
@@ -2596,6 +2602,29 @@ function caldiff(i){const r=CALR[i];if(!r)return;const e=$('calv'+i),d=$('cald'+
    پشتیبان تنظیمات هستند (شناسه‌های ۰ تا ۱۴)، و نمونه‌های خام بنچ هم فایل
    مخصوص خودشان را گرفتند. با برگرداندن نمونه‌ها می‌شود دوباره محاسبه کرد،
    عددی را دستی عوض کرد و روی برد دیگری نشاند، بدون تکرار کل تست. */
+/* [EN] v1.60 (user order: "can it tell whether a row belongs to charger 1 or
+   2, and can the user pick which rows are used?"). Every sample now carries
+   the scenario it came from - only battery 1, only battery 2, or both - and
+   its duty step, and this list lets the user untick any row before fitting.
+   An unticked row stays in the file; it is simply not used in the maths.
+   [FA] هر نمونه می‌داند از کدام سناریو آمده (فقط باتری ۱ / فقط باتری ۲ /
+   هر دو) و duty آن چند بوده. با تیک هر ردیف می‌توانید آن را از محاسبه
+   بیرون بگذارید؛ ردیف بیرون‌گذاشته‌شده پاک نمی‌شود، فقط در حساب نمی‌آید. */
+function calsmp(){const b=$('calsl');if(!b)return;
+ if(!CALS.length){b.innerHTML='<span class="lb">هنوز نمونه‌ای ثبت نشده است.</span>';return;}
+ b.innerHTML='<div class="tw"><table class="bt2"><tr><th>استفاده</th><th>#</th><th>سناریو</th><th>duty ٪</th>'+
+  '<th>raw باتری ۱</th><th>جریان مولتی‌متر ۱ mA</th><th>raw باتری ۲</th><th>جریان مولتی‌متر ۲ mA</th><th>ولتاژ ورودی mV</th></tr>'+
+  CALS.map((z,i)=>'<tr><td><input type="checkbox" id="calu'+i+'"'+(z.use===0?'':' checked')+' onchange="caluse('+i+',this.checked)"></td>'+
+   '<td>'+(i+1)+'</td><td>'+(WSN[z.sc]||z.sc||'—')+'</td><td>'+(z.d==null?'—':z.d)+'</td>'+
+   '<td>'+(z.r1==null?'—':Math.round(z.r1))+'</td><td>'+(z.b1==null?'—':Math.round(z.b1))+'</td>'+
+   '<td>'+(z.r2==null?'—':Math.round(z.r2))+'</td><td>'+(z.b2==null?'—':Math.round(z.b2))+'</td>'+
+   '<td>'+(z.dvi==null?'—':z.dvi)+'</td></tr>').join('')+'</table></div>';}
+function caluse(i,on){if(CALS[i]){CALS[i].use=on?1:0;calsave();}}
+function calpick(on){CALS.forEach(z=>{z.use=on?1:0;});calsave();calsmp();}
+/* [EN] Only ticked rows, and only rows whose scenario really drove that
+   channel. [FA] فقط ردیف‌های تیک‌خورده، و فقط ردیف‌هایی که همان کانال در
+   آن سناریو واقعاً کار می‌کرده. */
+function calsel(n){return CALS.filter(z=>z.use!==0&&(n==null||z.sc==null||WSC[z.sc]==null||WSC[z.sc].indexOf(n)>=0));}
 function calexp(){if(!CALS.length){stxt('calst','نمونه‌ای برای ذخیره نیست.');return;}
  const o={app:'ChangeOver-bench-samples',v:1,build:xbuild(),n:CALS.length,
   saved:new Date().toISOString(),samples:CALS};
@@ -2609,7 +2638,7 @@ async function calimp(f){let o;try{o=JSON.parse(await f.text());}catch(e){stxt('
  const add=o.samples.filter(z=>z&&Number.isFinite(z.r1));
  if(!add.length){stxt('calst','⚠ نمونهٔ معتبری در فایل نیست');return;}
  const keep=CALS.length&&confirm('نمونه‌های فعلی ('+CALS.length+' تا) هم نگه داشته شوند؟\nلغو = فقط نمونه‌های فایل بماند.');
- CALS=keep?CALS.concat(add):add;calsave();caln();
+ CALS=keep?CALS.concat(add):add;calsave();caln();calsmp();
  stxt('calst','⬆ '+add.length+' نمونه بازخوانی شد (مجموع '+CALS.length+'). حالا «محاسبه» را بزنید.');
  const e=$('calf');if(e)e.value='';}
 async function calapply(){
@@ -2633,7 +2662,7 @@ async function calapply(){
 /* تب ۱: داده‌برداری بنچ */
 $('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty را می‌گذارد، جدول همان ردیف را نشان می‌دهد و عدد مولتی‌متر را در فرم بالای جدول بنویس و <b>ثبت</b> کن — آمار همان لحظهٔ ثبت قفل می‌شود. <b>SOLO1</b>: کانال ۱ · <b>SOLO2</b>: کانال ۲ · <b>BOTH</b>: هر دو. آمپرمتر: یکی در تغذیهٔ کل برد + سری با سیم شارژ هر باتری روشن. هیچ ضریبی خودکار اعمال نمی‌شود.</div>
 <div class="bctl"><label class="lb">duty % <input type="text" id="wL" data-s class="dl" value="2,4,6,8,10,12,14,16,18,20" style="width:160px"></label>
-${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${k}</label>`).join('')}</div>
+${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${WSN[k]}</label>`).join('')}</div>
 <div class="bctl"><label class="lb"><input type="checkbox" id="wSw" checked> sweep خودکار با گام ۱٪</label><label class="lb">از <input type="number" id="wA" data-s value="1" min="0" max="50"></label><label class="lb">تا <input type="number" id="wB" data-s value="50" min="0" max="50"></label><span class="lb">خاموش = فهرست دستی بالا</span></div>
 <div class="movl" id="wEx" style="display:none"><div class="mod" id="wExB"></div></div>
 <div class="bctl"><button class="sb brun" onclick="wStart()">شروع</button><button class="sb stp2 wstop" onclick="W.abort=true">پایان</button><span class="lb">فایل: <b id="wF">—</b></span><a class="sb sb2 lnk" href="/benchlog" download="benchlog.csv">دانلود فایل</a><button class="sb sb2 brun" onclick="wclear()">پاک کردن فایل</button></div>
@@ -2641,9 +2670,9 @@ ${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" 
 <div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div></div><div class="cd"><div class="hd"><b>کالیبراسیون خودکار از همین جدول</b><span class="lb">· نمونه‌های ثبت‌شده: <b id="caln">0</b> · عددها فقط با تأیید شما روی برد نوشته می‌شوند</span></div>
 <div class="ds">هر مرحله‌ای که در ویزارد «ثبت» می‌کنید یک نمونه هم اینجا می‌ماند. «محاسبه» از روی همین نمونه‌ها گین و آفست جریان هر دو کانال و سه آفست ولتاژ را درمی‌آورد، مقدار فعلی برد را کنار پیشنهاد می‌گذارد و کیفیت هر برازش را می‌گوید. برای نتیجهٔ خوب حداقل ۴ مرحله با duty پخش‌شده (مثلاً ۲ تا ۲۰٪) بگیرید.</div>
 <div class="bqr2"><button class="sb sb2" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb brun" onclick="calapply()">اعمال روی برد (با تأیید)</button><button class="sb sb2" onclick="calexp()">⬇ ذخیرهٔ نمونه‌ها</button><label class="sb" style="cursor:pointer">⬆ بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2" onclick="calclr()">پاک کردن نمونه‌ها</button></div>
-<div class="cm lb" id="calst">—</div><div id="caltb"></div></div>
+<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calsl" style="margin:6px 0"></div><div class="cm lb" id="calst">—</div><div id="caltb"></div></div>
 `;
-caln();bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{const s=$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB');if(L)L.disabled=s;if(A)A.disabled=!s;if(B)B.disabled=!s;};$('wSw').onchange();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
+caln();calsmp();bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{const s=$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB');if(L)L.disabled=s;if(A)A.disabled=!s;if(B)B.disabled=!s;};$('wSw').onchange();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
 /* ---------- کنترل دستی duty دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کنترلها داخل کارت هر شارژر (از v1.16p)؛
  * ---------- قرارداد ایمنی بخش 5.2 اسپک بدون تغییر: deadman ۱۰ ثانیه، سقف کانال (p13/p14)،
  * ---------- JIT با شروع‌مجددِ شمارش (Arm در فرمور) با ارسال دوبارهٔ همان duty. هیچ ضریبی اینجا ارسال نمی‌شود. ---------- */

@@ -107,8 +107,8 @@ share this. / [FA] یک اندازه‌گیری، هر سه کانال ولتا�
 
 ## 3. Currents - the duty sweep / جریان‌ها: سوییپ
 
-[EN] Same procedure as the SOLO1 / SOLO2 runs. The CSV now records its own raw
-counts, so the file alone is enough. / [FA] همان روش SOLO1/SOLO2. حالا خود CSV
+[EN] Same procedure as the BAT1 / BAT2 runs. The CSV now records its own raw
+counts, so the file alone is enough. / [FA] همان روش «فقط باتری ۱»/«فقط باتری ۲». حالا خود CSV
 شمارش خام را ثبت می‌کند، پس فایل به‌تنهایی کافی است.
 
 - [ ] **Manual mode ON**, one channel at a time / مود دستی، هر بار یک کانال
@@ -116,8 +116,8 @@ counts, so the file alone is enough. / [FA] همان روش SOLO1/SOLO2. حال�
 - [ ] At every step enter in the panel's DMM form:
       **battery current (mA)** and **battery voltage (mV)** /
       در هر پله در فرم مولتی‌متر پنل: **جریان باتری** و **ولتاژ باتری**
-- [ ] **SOLO1** (upper / channel 1) → download the CSV
-- [ ] **SOLO2** (lower / channel 2) → download the CSV
+- [ ] **BAT1 — فقط باتری ۱** (upper / channel 1) → download the CSV
+- [ ] **BAT2 — فقط باتری ۲** (lower / channel 2) → download the CSV
 - [ ] Send me **both CSV files**
 
 ---

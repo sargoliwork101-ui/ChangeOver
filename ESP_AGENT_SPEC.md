@@ -998,7 +998,7 @@ one row per recorded step. `-` means "not entered".
 #  [glob]   seq,flags,vin_mv,v24_mv,v12_mv,vlow_mv,vhigh_mv,faults_or
 #  [dmm]    dmm_i_in_ma,dmm_vin_mv,dmm_i_bat1_ma,dmm_vbat1_mv,
 #           dmm_i_bat2_ma,dmm_vbat2_mv,note
-# run <n> browser_ts=<ISO from the panel page> scenario=<SOLO1|SOLO2|BOTH>
+# run <n> browser_ts=<ISO from the panel page> scenario=<BAT1|BAT2|BOTH>
 #  duty_list=<...>
 ```
 
@@ -1039,10 +1039,13 @@ STM32 CAL handler stays in the firmware, unused):
    3 s, editable). There is no separate sample-window input anymore
    (v1.7): the window IS the time the form stays open.
 2. THREE scenarios, in this order, one table each:
-   - `SOLO1`: charger 1 runs, charger 2 cut (ID 12 = 0)
-   - `SOLO2`: charger 2 runs, charger 1 cut (ID 11 = 0)
-   - `BOTH` : both enabled, both driven at the SAME duty step
-   (the solo-vs-both comparison is what quantifies the cross-talk).
+   - `BAT1` ("only battery 1" on the panel): charger 1 runs, charger 2
+     cut (ID 12 = 0)
+   - `BAT2` ("only battery 2"): charger 2 runs, charger 1 cut (ID 11 = 0)
+   - `BOTH` ("both batteries"): both enabled, both driven at the SAME duty
+     step (the one-battery vs both comparison is what quantifies the
+     cross-talk). Renamed from SOLO1/SOLO2 on 2026-10-05 by user order -
+     the tag in older CSV files is still SOLO1/SOLO2.
 3. Per step: set manual mode (ID 19 = 1) + duty (ID 16 and/or 18), keep
    the v1.2 keepalive, wait the settle window, RESET the /m statistics
    window, then STOP and show the DMM entry form with LIVE panel numbers

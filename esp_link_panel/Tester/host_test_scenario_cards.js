@@ -787,7 +787,8 @@ function testBackupAndCal(win, doc) {
     for (let duty = 2; duty <= 20; duty += 2) {
         const raw = off + duty * 25;
         const mA = (raw - off) * K * gain / 1000;
-        win.CALS.push({ r1: raw, r2: raw, vin: 24000, v24: 25000, v12: 12500, vlo: 12500, vhi: 12500,
+        win.CALS.push({ sc: 'BOTH', d: duty, use: 1, r1: raw, r2: raw, vin: 24000, v24: 25000,
+                        v12: 12500, vlo: 12500, vhi: 12500,
                         b1: mA, b2: mA, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });
     }
     win.D = { p: { 0: 0, 1: 0, 2: 1000, 3: 1000, 4: 0, 5: 0, 6: 0 }, t: [] };
@@ -820,6 +821,33 @@ function testBackupAndCal(win, doc) {
     check(doc.getElementById('cald0').innerHTML.indexOf('خارج از بازهٔ مجاز') >= 0,
           'an impossible hand-typed number is flagged before it is sent');
 
+
+    /* --- v1.60: a sample knows its scenario and can be excluded by hand --- */
+    win.eval('calsmp')();
+    check(doc.getElementById('calsl').innerHTML.indexOf('هر دو باتری') >= 0,
+          'the sample list names the scenario in plain words, not SOLO');
+    check(doc.getElementById('calsl').innerHTML.indexOf('SOLO') < 0,
+          'the word SOLO is gone from what the user reads');
+    win.CALS.push({ sc: 'BAT1', d: 30, use: 1, r1: 900, r2: 900, vin: 24000, v24: 25000,
+                    v12: 12500, vlo: 12500, vhi: 12500, b1: 10, b2: 10,
+                    dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });   /* an obvious outlier */
+    win.eval('calrun')();
+    const spoiled = +doc.getElementById('calv0').value;
+    win.eval('caluse')(win.CALS.length - 1, false);
+    win.eval('calrun')();
+    check(spoiled !== gain && +doc.getElementById('calv0').value === gain,
+          'unticking a bad row takes it straight out of the maths');
+    check(win.CALS[win.CALS.length - 1].use === 0,
+          'an unticked row is kept in the file, only excluded from the fit');
+    /* a battery-2-only row must not touch the channel-1 fit */
+    win.CALS[win.CALS.length - 1] = { sc: 'BAT2', d: 30, use: 1, r1: 900, r2: 900,
+        vin: 24000, v24: 25000, v12: 12500, vlo: 12500, vhi: 12500, b1: 10, b2: null,
+        dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 };
+    win.eval('calrun')();
+    check(+doc.getElementById('calv0').value === gain,
+          'a battery-2-only row is ignored when fitting battery 1');
+    win.CALS.pop();
+    win.eval('calrun')();
 
     /* --- v1.59: the raw bench samples can be saved and restored --- */
     const sbl = [];
