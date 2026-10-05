@@ -205,8 +205,16 @@
  *      v1.57 (user order): the backup identity stamp and the bench
  *      auto-calibration card needed ~13 KiB, so the ceiling was deliberately
  *      stepped 272 KiB -> 288 KiB.
+ *
+ *      v1.61 (دستور کاربر ۲۰۲۶-۱۰-۰۵: «شرط‌ها را توی پنل بیاور و خطا را به
+ *      کاربر بگو» و «یک خروجی بده که در کد میکرو کپی کنم») فهرست شرط‌های
+ *      قابل‌خواندن و تولیدکنندهٔ کد calibration.h حدود ۸ کیلوبایت لازم
+ *      داشت؛ پله یک حرکت عمدی دیگر از ۲۸۸ به ۳۲۰ کیلوبایت.
+ *      v1.61 (user order): the on-page rule check-list and the firmware
+ *      snippet generator needed ~8 KiB, so the ceiling was deliberately
+ *      stepped 288 KiB -> 320 KiB.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    294912u
+#define ESP_PANEL_HTML_MAX_BYTES    327680u
 
 /* ==================== Parser States ==================== */
 typedef enum

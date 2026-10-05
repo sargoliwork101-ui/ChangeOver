@@ -375,7 +375,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 18887ff</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 8ef2ad8</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2518,7 +2518,7 @@ function calpush(m,v,act,sc,duty){
  CALS.push({sc:sc,d:duty,use:1,r1:m.a(0),r2:m.a(7),vin:m.a(14),v24:m.a(15),v12:m.a(16),vlo:m.a(17),vhi:m.a(18),
   b1:act.includes(1)?v.b1:null,b2:act.includes(2)?v.b2:null,
   dvi:v.vi,dv1:v.v1,dv2:v.v2,ts:Date.now()});
- calsave();caln();calsmp();}
+ calsave();caln();calsmp();calchk();}
 function calclr(){if(!confirm('همهٔ نمونه‌های جمع‌شده پاک شوند؟'))return;CALS=[];calsave();caln();calsmp();
  stxt('caltb','');stxt('calst','نمونه‌ها پاک شدند.');CALP=[];}
 function caln(){stxt('caln',String(CALS.length));}
@@ -2575,6 +2575,7 @@ function calrun(){
     [FA] هیچ عددی اجباری نیست: هر پیشنهاد یک کادر قابل ویرایش است، عدد
     فعلی برد کنارش نوشته شده و تیک هر ردیف تعیین می‌کند نوشته بشود یا نه.
     ردیفی که برازشش مردود شده فقط تیکش برداشته می‌شود. */
+ calchk();
  CALR=rows;
  stxt('caltb','<div class="tw"><table class="bt2"><tr><th>اعمال</th><th>عدد</th><th>الان روی برد</th><th>مقدار جدید (قابل ویرایش)</th><th>تفاوت</th><th>کیفیت</th></tr>'+
   rows.map((r,i)=>'<tr><td><input type="checkbox" id="calk'+i+'"'+(r[5]?' checked':'')+'></td>'+
@@ -2625,6 +2626,104 @@ function calpick(on){CALS.forEach(z=>{z.use=on?1:0;});calsave();calsmp();}
    channel. [FA] فقط ردیف‌های تیک‌خورده، و فقط ردیف‌هایی که همان کانال در
    آن سناریو واقعاً کار می‌کرده. */
 function calsel(n){return CALS.filter(z=>z.use!==0&&(n==null||z.sc==null||WSC[z.sc]==null||WSC[z.sc].indexOf(n)>=0));}
+/* ==================== Rules shown to the user / شرط‌ها روی خود صفحه ====================
+   [EN] v1.61 (user order: "put your conditions in the panel and TELL the user
+   when he broke one"). Until now the quality rules lived inside calrun() and
+   only produced a short warning next to a number. They are listed here, each
+   with the plain sentence the user sees, and the list is rendered as a
+   check-list: green when the data satisfies it, red with the reason when it
+   does not. Nothing is hidden in code comments any more.
+   [FA] شرط‌ها تا حالا داخل کد بودند و فقط یک هشدار کوتاه می‌دادند. حالا
+   فهرست‌شان روی خود صفحه است: سبز یعنی داده‌ات این شرط را دارد، قرمز یعنی
+   ندارد و دقیقاً می‌گوید چرا و چه‌کار کنی. */
+function calchk(){
+ const box=$('calck');if(!box)return;
+ const R=[],ok=(t)=>R.push([1,t]),no=(t,f)=>R.push([0,t,f]);
+ const S=calsel(null);
+ /* ۱) لینک */
+ if(D&&D.p)ok('ارتباط با برد برقرار است و عددهای فعلی خوانده شدند.');
+ else no('ارتباط با برد برقرار نیست.','تا لینک وصل نشود نه مقدار فعلی دیده می‌شود نه چیزی نوشتنی است.');
+ /* ۲) تعداد نمونه به تفکیک باتری */
+ [1,2].forEach(n=>{const k=n===1?'b1':'b2',r=n===1?'r1':'r2';
+  const c=calsel(n).filter(z=>Number.isFinite(z[k])&&Number.isFinite(z[r]));
+  if(c.length>=4)ok('باتری '+fa(n)+': '+c.length+' نمونهٔ کامل دارد (حداقل ۴ لازم است).');
+  else no('باتری '+fa(n)+': فقط '+c.length+' نمونهٔ کامل دارد.',
+   'حداقل ۴ مرحله با «فقط باتری '+fa(n)+'» یا «هر دو باتری» بگیرید و جریان مولتی‌متر همان باتری را وارد کنید.');
+  /* ۳) پخش‌بودن نقاط */
+  if(c.length>1){const xs=c.map(z=>z[r]),sp=Math.max(...xs)-Math.min(...xs);
+   if(sp>=20)ok('باتری '+fa(n)+': نقاط به اندازهٔ کافی پخش‌اند (بازهٔ raw برابر '+Math.round(sp)+').');
+   else no('باتری '+fa(n)+': همهٔ نقاط تقریباً روی یک duty هستند (بازهٔ raw فقط '+Math.round(sp)+').',
+    'از duty کم تا زیاد بروید (مثلاً ۲ تا ۲۰ درصد)؛ با نقاط چسبیده شیب قابل محاسبه نیست.');
+   /* ۴) تکراری نبودن duty */
+   const ds=c.map(z=>z.d).filter(x=>x!=null),u=new Set(ds);
+   if(ds.length&&u.size<ds.length)no('باتری '+fa(n)+': '+(ds.length-u.size)+' مرحله با duty تکراری ثبت شده.',
+    'تکراری‌ها را یا تیک بردارید یا نگه دارید؛ تکرار وزن آن نقطه را بی‌دلیل بالا می‌برد.');
+   else ok('باتری '+fa(n)+': duty مرحله‌ها تکراری نیست.');}
+ });
+ /* ۵) عددهای ولتاژ */
+ const nv=S.filter(z=>z.dvi!=null).length,nb=S.filter(z=>z.dv1!=null&&z.dv2!=null).length;
+ if(nv>=3)ok('ولتاژ ورودی در '+nv+' مرحله با مولتی‌متر ثبت شده.');
+ else no('ولتاژ ورودی فقط در '+nv+' مرحله ثبت شده.','بدون حداقل ۳ عدد، آفست ولتاژ ورودی محاسبه نمی‌شود.');
+ if(nb>=3)ok('ولتاژ هر دو نیم‌باتری در '+nb+' مرحله ثبت شده.');
+ else no('ولتاژ نیم‌باتری‌ها فقط در '+nb+' مرحله ثبت شده.','آفست پک ۲۴V و نود ۱۲V به عدد هر دو نیم‌باتری نیاز دارد.');
+ /* ۶) جریان منفی/صفر در همهٔ نقاط */
+ if(S.some(z=>Number.isFinite(z.b1)&&z.b1>0)||S.some(z=>Number.isFinite(z.b2)&&z.b2>0))
+  ok('حداقل در بعضی مرحله‌ها جریان واقعی شارژ ثبت شده.');
+ else no('هیچ مرحله‌ای جریان شارژ مثبت ندارد.','با duty بالاتر یا باتری خالی‌تر تست کنید؛ از روی جریان صفر چیزی درنمی‌آید.');
+ box.innerHTML='<table class="bt2"><tr><th>شرط</th><th>نتیجه</th></tr>'+
+  R.map(r=>'<tr><td>'+(r[0]?'✅ ':'⛔ ')+r[1]+'</td><td class="lb">'+(r[0]?'—':r[2])+'</td></tr>').join('')+'</table>';
+ return R.filter(r=>!r[0]).length;}
+
+/* ==================== Firmware snippet / خروجی برای کد میکرو ====================
+   [EN] v1.61 (user order: "give me something I can paste into the firmware so
+   a new board does not need this table pushed into it"). The board's own
+   bench table is chain-current -> battery POWER, and measurement.c divides
+   that power by the LIVE battery voltage to get current. So the generator
+   rebuilds exactly that: for each accepted sample it computes the chain
+   current the firmware itself would compute, and the battery power the
+   multimeter actually proved (I_dmm x V_bat), sorts them, drops duplicates
+   and prints the two C arrays plus the matching default offsets and gains.
+   Paste it into Firmware/Modules/Measurement/calibration.h and every board
+   flashed with that build already knows the table.
+   [FA] جدول داخل برد «جریان زنجیره ← توان باتری» است و فرم‌ور توان را بر
+   ولتاژ زندهٔ باتری تقسیم می‌کند تا جریان دربیاید. این خروجی دقیقاً همان را
+   می‌سازد و دو آرایهٔ C به‌علاوهٔ آفست و گین پیش‌فرض را چاپ می‌کند تا داخل
+   calibration.h کپی کنید. */
+function calcode(){
+ const get=id=>{const r=CALR.filter(x=>x[1]===id)[0];if(!r)return (D&&D.p&&D.p[id]!=null)?D.p[id]:0;
+  const e=$('calv'+CALR.indexOf(r));return e?Math.round(+e.value):r[3];};
+ const off=[get(0),get(1)],gn=[get(2),get(3)];
+ let out='/* [EN] Generated by the ChangeOver panel on '+new Date().toISOString()+
+  '\n *      from '+calsel(null).length+' accepted bench samples.\n'+
+  ' *      Paste into Firmware/Modules/Measurement/calibration.h.\n'+
+  ' * [FA] ساختهٔ پنل ChangeOver از روی نمونه‌های پذیرفته‌شدهٔ بنچ. */\n\n';
+ [1,2].forEach(n=>{
+  const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'dv1':'dv2';
+  const pts=[];
+  calsel(n).forEach(z=>{if(!Number.isFinite(z[r])||!Number.isFinite(z[b]))return;
+   const vb=(z[v]!=null)?z[v]:(n===1?z.vhi:z.vlo);if(!vb)return;
+   const chain=Math.max(0,Math.round((z[r]-off[n-1])*K_MA*gn[n-1]/1000));
+   const mw=Math.round(z[b]*vb/1000);
+   pts.push([chain,Math.max(0,mw)]);});
+  pts.sort((a,c)=>a[0]-c[0]);
+  const X=[],Y=[];pts.forEach(q=>{if(X.length&&q[0]===X[X.length-1])return;X.push(q[0]);Y.push(q[1]);});
+  if(X.length&&X[0]!==0){X.unshift(0);Y.unshift(0);}
+  out+='/* table '+n+' - battery '+n+', '+X.length+' points */\n'+
+   'static const uint32_t CAL_Current'+n+'LutChainMa[] =\n    { '+X.map(q=>q+'u').join(', ')+' };\n'+
+   'static const uint32_t CAL_Current'+n+'LutBatteryMw[] =\n    { '+Y.map(q=>q+'u').join(', ')+' };\n\n';});
+ out+='/* defaults that belong WITH the tables above (esp_link.h / plink_params.h):\n'+
+  ' *   current offset ch1 = '+off[0]+' counts, ch2 = '+off[1]+' counts\n'+
+  ' *   current gain   ch1 = '+gn[0]+' permille, ch2 = '+gn[1]+' permille\n'+
+  ' *   voltage offsets: input = '+get(4)+' mV, 24V pack = '+get(5)+' mV, 12V node = '+get(6)+' mV\n'+
+  ' * A table fitted with one gain/offset pair is only valid with that pair. */\n';
+ const t=$('calcd');if(t){t.value=out;t.style.display='block';}
+ stxt('calst','کد آماده است — متن زیر را کپی کنید یا فایل را دانلود کنید. با همان بیلد، هر برد این جدول را از قبل دارد.');}
+function calcdl(){const t=$('calcd');if(!t||!t.value)return;
+ const u=URL.createObjectURL(new Blob([t.value],{type:'text/plain'}));
+ const a=document.createElement('a');a.href=u;a.download='calibration_generated.h';a.click();
+ setTimeout(()=>URL.revokeObjectURL(u),2000);}
+function calcopy(){const t=$('calcd');if(!t||!t.value)return;t.select();
+ try{document.execCommand('copy');stxt('calst','کد در کلیپ‌بورد کپی شد.');}catch(e){}}
 function calexp(){if(!CALS.length){stxt('calst','نمونه‌ای برای ذخیره نیست.');return;}
  const o={app:'ChangeOver-bench-samples',v:1,build:xbuild(),n:CALS.length,
   saved:new Date().toISOString(),samples:CALS};
@@ -2670,9 +2769,9 @@ ${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" 
 <div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div></div><div class="cd"><div class="hd"><b>کالیبراسیون خودکار از همین جدول</b><span class="lb">· نمونه‌های ثبت‌شده: <b id="caln">0</b> · عددها فقط با تأیید شما روی برد نوشته می‌شوند</span></div>
 <div class="ds">هر مرحله‌ای که در ویزارد «ثبت» می‌کنید یک نمونه هم اینجا می‌ماند. «محاسبه» از روی همین نمونه‌ها گین و آفست جریان هر دو کانال و سه آفست ولتاژ را درمی‌آورد، مقدار فعلی برد را کنار پیشنهاد می‌گذارد و کیفیت هر برازش را می‌گوید. برای نتیجهٔ خوب حداقل ۴ مرحله با duty پخش‌شده (مثلاً ۲ تا ۲۰٪) بگیرید.</div>
 <div class="bqr2"><button class="sb sb2" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb brun" onclick="calapply()">اعمال روی برد (با تأیید)</button><button class="sb sb2" onclick="calexp()">⬇ ذخیرهٔ نمونه‌ها</button><label class="sb" style="cursor:pointer">⬆ بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2" onclick="calclr()">پاک کردن نمونه‌ها</button></div>
-<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calsl" style="margin:6px 0"></div><div class="cm lb" id="calst">—</div><div id="caltb"></div></div>
+<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="bqr2"><button class="sb sb2" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb" onclick="calcopy()">کپی کد</button><button class="sb" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" style="display:none;width:100%;height:220px;direction:ltr;font-family:monospace;font-size:12px" readonly></textarea><div class="cm lb" id="calst">—</div><div id="caltb"></div></div>
 `;
-caln();calsmp();bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{const s=$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB');if(L)L.disabled=s;if(A)A.disabled=!s;if(B)B.disabled=!s;};$('wSw').onchange();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
+caln();calsmp();calchk();bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{const s=$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB');if(L)L.disabled=s;if(A)A.disabled=!s;if(B)B.disabled=!s;};$('wSw').onchange();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
 /* ---------- کنترل دستی duty دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کنترلها داخل کارت هر شارژر (از v1.16p)؛
  * ---------- قرارداد ایمنی بخش 5.2 اسپک بدون تغییر: deadman ۱۰ ثانیه، سقف کانال (p13/p14)،
  * ---------- JIT با شروع‌مجددِ شمارش (Arm در فرمور) با ارسال دوبارهٔ همان duty. هیچ ضریبی اینجا ارسال نمی‌شود. ---------- */

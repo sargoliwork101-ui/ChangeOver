@@ -849,6 +849,32 @@ function testBackupAndCal(win, doc) {
     win.CALS.pop();
     win.eval('calrun')();
 
+    /* --- v1.61: the conditions are on the page, and a firmware snippet --- */
+    win.eval('calchk')();
+    check(doc.getElementById('calck').innerHTML.indexOf('✅') >= 0,
+          'the rule check-list is rendered with a result for each rule');
+    const keepAll = win.CALS;
+    win.CALS = [keepAll[0]];
+    win.eval('calchk')();
+    check(doc.getElementById('calck').innerHTML.indexOf('⛔') >= 0 &&
+          doc.getElementById('calck').innerHTML.indexOf('حداقل ۴') >= 0,
+          'too few points is shown as a failed rule with what to do about it');
+    win.CALS = keepAll;
+    win.eval('calchk')();
+    win.eval('calrun')();
+    win.eval('calcode')();
+    const code = doc.getElementById('calcd').value;
+    check(code.indexOf('CAL_Current1LutChainMa[] =') >= 0 &&
+          code.indexOf('CAL_Current1LutBatteryMw[] =') >= 0,
+          'the generator emits the two C arrays the firmware already uses');
+    check(code.indexOf('CAL_Current2LutChainMa[] =') >= 0,
+          'both channels get a table');
+    check(/\{ 0u,/.test(code), 'every generated table starts at the origin');
+    check(code.indexOf('current gain   ch1 = 1200 permille') >= 0,
+          'the snippet repeats the gain/offset the table was fitted with');
+    check(doc.getElementById('calcd').style.display === 'block',
+          'the snippet is shown on the page, ready to copy');
+
     /* --- v1.59: the raw bench samples can be saved and restored --- */
     const sbl = [];
     const OldBlob2 = win.Blob;
