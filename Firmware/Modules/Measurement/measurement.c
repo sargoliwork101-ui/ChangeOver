@@ -618,6 +618,18 @@ static uint32_t UINT32_T__G__Battery1VoltageMv = 12000u;
    [FA] شیب دنباله POINTS-1/POINTS-2 را می‌خواند: اگر جدول روزی زیر ۲ نقطه
    رفت، بیلد بشکند. */
 _Static_assert(CAL_CURRENT1_LUT_POINTS >= 2u, "ch1 LUT needs >= 2 points");
+/* [EN] v1.63 (user question: "can the table have more or fewer points -
+   does it break anything?"). The point COUNT is free: every loop here is
+   driven by CAL_CURRENT1_LUT_POINTS, which is sizeof-derived. The one way
+   a re-fitted table can still break the build silently is pasting two axes
+   of DIFFERENT length - the interpolation would then read past the end of
+   the shorter one. That is now a compile error instead of a field fault.
+   [FA] تعداد نقاط آزاد است چون همهٔ حلقه‌ها از روی sizeof حساب می‌شوند.
+   تنها خطای خاموش ممکن این بود که دو محور با طول متفاوت کپی شوند؛ حالا
+   خطای زمان کامپایل است، نه خرابی در میدان. */
+_Static_assert(sizeof(CAL_Current1LutChainMa) ==
+               sizeof(CAL_Current1LutBatteryMw),
+               "ch1 LUT axes must hold the same number of points");
 
 #if (CAL_CURRENT1_LUT_ENABLE != 0u)
 /**
@@ -773,6 +785,10 @@ static uint32_t UINT32_T__G__Battery2VoltageMv = 12000u;
    [FA] شیب دنباله POINTS-1/POINTS-2 را می‌خواند: اگر جدول روزی زیر ۲ نقطه
    رفت، بیلد بشکند. */
 _Static_assert(CAL_CURRENT2_LUT_POINTS >= 2u, "ch2 LUT needs >= 2 points");
+/* [EN] v1.63: same length guard for channel 2. [FA] همان گارد برای کانال ۲. */
+_Static_assert(sizeof(CAL_Current2LutChainMa) ==
+               sizeof(CAL_Current2LutBatteryMw),
+               "ch2 LUT axes must hold the same number of points");
 
 static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
 {

@@ -905,6 +905,23 @@ function testBackupAndCal(win, doc) {
     win.eval('calchk')();
     win.eval('calrun')();
 
+    /* --- v1.63: any point count is fine, but fewer than two is refused --- */
+    const keepP = win.CALS;
+    /* one sample sitting exactly at the zero-current point: a single anchor */
+    win.CALS = [{ sc: 'BOTH', d: 2, use: 1, r1: off, r2: off, vin: 24000, v24: 25000,
+                  v12: 12500, vlo: 12500, vhi: 12500, b1: 0, b2: 0,
+                  dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 }];
+    win.eval('calrun')();
+    win.eval('calcode')();
+    check(doc.getElementById('calcd').value.indexOf('NOT ENOUGH POINTS') >= 0 ||
+          doc.getElementById('calst').textContent.indexOf('حداقل ۲ نقطه') >= 0,
+          'a table with fewer than two points is refused, not emitted');
+    win.CALS = keepP;
+    win.eval('calrun')();
+    win.eval('calcode')();
+    check(doc.getElementById('calcd').value.indexOf('any count is valid') >= 0,
+          'the generated header states that the point count is free');
+
     /* --- v1.59: the raw bench samples can be saved and restored --- */
     const sbl = [];
     const OldBlob2 = win.Blob;

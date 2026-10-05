@@ -375,7 +375,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 0b4f32d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 2ad7f4e</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2708,9 +2708,13 @@ function calchk(){
   if(!f){no(k[0]+': شیب قابل اندازه‌گیری نیست.',
    'برای سنجش شیب لازم است همین ولتاژ در چند مرحله با اختلاف حداقل ۱ ولت ثبت شود (مثلاً باتری خالی و پر).');return;}
   const err=Math.abs(f.a-1)*100;
-  if(err<0.5)ok(k[0]+': شیب '+f.a.toFixed(4)+' است (تقریباً ۱)، پس فقط آفست لازم است.');
+  /* [EN] v1.63 (user decision): the dividers are 1% parts, so a scale error
+     inside ~2% is just part tolerance and is deliberately ignored.
+     [FA] مقاومت‌ها ۱٪ هستند، پس خطای ضریبی تا حدود ۲٪ تلرانس قطعه است و
+     عمداً نادیده گرفته می‌شود. */
+  if(err<2)ok(k[0]+': شیب '+f.a.toFixed(4)+' است ('+err.toFixed(1)+'٪) — در حد تلرانس ۱٪ مقاومت‌ها، کاری لازم نیست.');
   else no(k[0]+': شیب '+f.a.toFixed(4)+' است، یعنی '+err.toFixed(1)+'٪ خطای ضریبی.',
-   'این را آفست درست نمی‌کند چون خطا با بالارفتن ولتاژ بزرگ‌تر می‌شود؛ باید مقاومت مقسم در فرم‌ور اصلاح شود — در «ساخت کد برای میکرو» عدد اصلاح‌شده چاپ می‌شود.');});
+   'این بیشتر از تلرانس ۱٪ مقاومت‌هاست، پس احتمالاً قطعهٔ اشتباه یا اتصال بد است؛ آفست درستش نمی‌کند. در «ساخت کد برای میکرو» عدد اصلاح‌شدهٔ مقسم چاپ می‌شود.');});
  /* ۷) جریان منفی/صفر در همهٔ نقاط */
  if(S.some(z=>Number.isFinite(z.b1)&&z.b1>0)||S.some(z=>Number.isFinite(z.b2)&&z.b2>0))
   ok('حداقل در بعضی مرحله‌ها جریان واقعی شارژ ثبت شده.');
@@ -2753,7 +2757,17 @@ function calcode(){
   pts.sort((a,c)=>a[0]-c[0]);
   const X=[],Y=[];pts.forEach(q=>{if(X.length&&q[0]===X[X.length-1])return;X.push(q[0]);Y.push(q[1]);});
   if(X.length&&X[0]!==0){X.unshift(0);Y.unshift(0);}
-  out+='/* table '+n+' - battery '+n+', '+X.length+' points */\n'+
+  /* [EN] v1.63: the firmware accepts any point count but needs at least two
+     (the tail slope is built from the last two) and both axes equal length.
+     Fewer than two points is refused here instead of producing a header that
+     will not compile; a very long table is allowed but flagged.
+     [FA] فرم‌ور هر تعدادی را قبول می‌کند ولی حداقل دو نقطه لازم دارد. */
+  if(X.length<2){out+='/* table '+n+' - battery '+n+': NOT ENOUGH POINTS ('+X.length+
+    ') - at least 2 are needed; take more bench steps for this battery. */\n\n';
+   stxt('calst','⛔ باتری '+fa(n)+': برای ساختن جدول حداقل ۲ نقطه لازم است.');return;}
+  if(X.length>24)stxt('calst','⚠ جدول باتری '+fa(n)+' با '+X.length+
+   ' نقطه ساخته شد؛ تعدادش محدودیتی ندارد ولی هر نقطه ۸ بایت فلش می‌برد.');
+  out+='/* table '+n+' - battery '+n+', '+X.length+' points (any count is valid) */\n'+
    'static const uint32_t CAL_Current'+n+'LutChainMa[] =\n    { '+X.map(q=>q+'u').join(', ')+' };\n'+
    'static const uint32_t CAL_Current'+n+'LutBatteryMw[] =\n    { '+Y.map(q=>q+'u').join(', ')+' };\n\n';});
  {const f0=calvfit(VDIV[0]),f1=calvfit(VDIV[1]);
@@ -2764,7 +2778,7 @@ function calcode(){
  VDIV.forEach(k=>{const f=calvfit(k);if(!f)return;
   const nt=Math.round(f.a*k[3]+(f.a-1)*k[4]);
   out+='/* '+k[0]+': measured slope '+f.a.toFixed(4)+' ('+((f.a-1)*100).toFixed(2)+'% scale error)\n'+
-   ' *   '+(Math.abs(f.a-1)<0.005?'within 0.5% - keep the constant, the offset is enough.':
+   ' *   '+(Math.abs(f.a-1)<0.02?'within the 1% resistor tolerance - keep the constant as it is.':
     'the offset cannot fix a scale error - in bsp_measurement.c set\n *   #define '+k[2]+'  '+nt+'u   (was '+k[3]+'u)')+' */\n';});
  out+='/* defaults that belong WITH the tables above (esp_link.h / plink_params.h):\n'+
   ' *   current offset ch1 = '+off[0]+' counts, ch2 = '+off[1]+' counts\n'+

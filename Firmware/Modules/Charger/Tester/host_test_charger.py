@@ -2566,6 +2566,14 @@ def test_audit_batch_v116b():
           "LUT must guard the degenerate (equal-anchor) segment")
     check("CAL_CURRENT2_LUT_POINTS >= 2u" in meas,
           "LUT must statically assert >= 2 points for the tail slope")
+    # [EN] v1.63 (user question: may the table have more or fewer points?):
+    #      the count is free, but two axes of different length would read
+    #      past the end of the shorter one - that must not compile.
+    # [FA] تعداد نقاط آزاد است، ولی دو محور با طول متفاوت نباید کامپایل شود.
+    check("sizeof(CAL_Current1LutChainMa) ==" in meas
+          and "sizeof(CAL_Current1LutBatteryMw)" in meas
+          and "sizeof(CAL_Current2LutChainMa) ==" in meas,
+          "v1.63: both LUTs must statically assert the two axes are the same length")
     check("#if (CHG_ETA_MIN_PERMILLE != 0u)" in cc,
           "the always-false u32<0 ETA clamp must compile out (type-limits green)")
     check("v1.13 (user order 2026-09-25" in calh and "voltages are fixed but the currents" in calh,
