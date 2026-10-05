@@ -821,6 +821,24 @@ function testBackupAndCal(win, doc) {
           'an impossible hand-typed number is flagged before it is sent');
 
 
+    /* --- v1.59: the raw bench samples can be saved and restored --- */
+    const sbl = [];
+    const OldBlob2 = win.Blob;
+    win.Blob = function (parts, opts) { sbl.push(String(parts[0])); return new OldBlob2(parts, opts); };
+    const oldCreate2 = doc.createElement.bind(doc);
+    doc.createElement = (t) => { const e = oldCreate2(t); if (t === 'a') { e.click = () => {}; } return e; };
+    win.eval('calexp')();
+    doc.createElement = oldCreate2;
+    win.Blob = OldBlob2;
+    const sf = JSON.parse(sbl[sbl.length - 1]);
+    check(sf.app === 'ChangeOver-bench-samples' && sf.samples.length === win.CALS.length,
+          'the bench samples can be written to their own file');
+    check(sf.n === win.CALS.length && typeof sf.saved === 'string',
+          'the sample file says how many points it holds and when it was taken');
+    const kept = win.CALS.length;
+    win.CALS = [];
+    win.eval('calimp')({ text: async () => JSON.stringify(sf) }).then(() => {});
+
     /* --- noisy / too few samples must be refused, not applied --- */
     win.CALS = [{ r1: 100, r2: 100, vin: 24000, v24: 25000, v12: 12500, vlo: 12500, vhi: 12500,
                   b1: 50, b2: 50, dvi: 24000, dv1: 12500, dv2: 12500, ts: 1 }];
