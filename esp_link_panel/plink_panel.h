@@ -280,7 +280,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 208f762</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 0b4f32d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2548,8 +2548,18 @@ function calsel(n){return CALS.filter(z=>z.use!==0&&(n==null||z.sc==null||WSC[z.
    می‌گوییم: اگر ۱٫۰۰۰ بود آفست کافی است، اگر نبود آفست هرگز درستش
    نمی‌کند (خطا با ولتاژ بزرگ می‌شود) و باید مقاومت مقسم در فرم‌ور اصلاح
    شود - که تولیدکنندهٔ کد همان را چاپ می‌کند. */
-const VDIV=[['ولتاژ ورودی',4,'BSP_MEASUREMENT_SENSE_TOP_24V_OHMS',68000,6800,z=>z.dvi,z=>z.vin],
-            ['ولتاژ پک ۲۴V',5,'BSP_MEASUREMENT_SENSE_TOP_24V_OHMS',68000,6800,
+/* [EN] v1.62b self-audit finding: the input rail (R46) and the pack rail
+   (R47) are two DIFFERENT resistors that today both alias the same
+   constant. Printing one #define for both would have made the generator
+   emit two conflicting lines for the same macro - so each rail gets its
+   own per-rail macro, and if the two measured slopes disagree the output
+   says the alias has to be split first.
+   [FA] یافتهٔ ممیزی خودم: ریل ورودی (R46) و ریل پک (R47) دو مقاومت جدا
+   هستند ولی امروز هر دو به یک ثابت اشاره می‌کنند. پس هر ریل ماکروی خودش
+   را می‌گیرد و اگر دو شیب با هم نخوانند، خروجی می‌گوید اول باید این
+   اشتراک شکسته شود. */
+const VDIV=[['ولتاژ ورودی',4,'BSP_MEASUREMENT_DIV24_TOP_OHMS',68000,6800,z=>z.dvi,z=>z.vin],
+            ['ولتاژ پک ۲۴V',5,'BSP_MEASUREMENT_DIV24BAT_TOP_OHMS',68000,6800,
              z=>(z.dv1!=null&&z.dv2!=null)?(z.dv1+z.dv2):null,z=>z.v24],
             ['نود ۱۲V',6,'BSP_MEASUREMENT_DIV12_TOP_OHMS',34398,6800,z=>z.dv2,z=>z.vlo]];
 function calvfit(k){const xs=[],ys=[];
@@ -2651,6 +2661,11 @@ function calcode(){
   out+='/* table '+n+' - battery '+n+', '+X.length+' points */\n'+
    'static const uint32_t CAL_Current'+n+'LutChainMa[] =\n    { '+X.map(q=>q+'u').join(', ')+' };\n'+
    'static const uint32_t CAL_Current'+n+'LutBatteryMw[] =\n    { '+Y.map(q=>q+'u').join(', ')+' };\n\n';});
+ {const f0=calvfit(VDIV[0]),f1=calvfit(VDIV[1]);
+  if(f0&&f1&&Math.abs(f0.a-f1.a)>0.005)
+   out+='/* WARNING: the input rail and the pack rail measure DIFFERENT slopes ('+
+    f0.a.toFixed(4)+' vs '+f1.a.toFixed(4)+'). They currently share one constant in\n'+
+    ' * bsp_measurement.c, so give each its own value before pasting the two lines below. */\n';}
  VDIV.forEach(k=>{const f=calvfit(k);if(!f)return;
   const nt=Math.round(f.a*k[3]+(f.a-1)*k[4]);
   out+='/* '+k[0]+': measured slope '+f.a.toFixed(4)+' ('+((f.a-1)*100).toFixed(2)+'% scale error)\n'+

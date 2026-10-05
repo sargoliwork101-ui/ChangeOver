@@ -894,9 +894,13 @@ function testBackupAndCal(win, doc) {
     win.eval('calrun')();
     win.eval('calcode')();
     const vcode = doc.getElementById('calcd').value;
-    check(vcode.indexOf('BSP_MEASUREMENT_SENSE_TOP_24V_OHMS') >= 0 &&
+    check(vcode.indexOf('BSP_MEASUREMENT_DIV24_TOP_OHMS') >= 0 &&
           vcode.indexOf('scale error') >= 0,
           'the snippet prints the corrected divider constant for the firmware');
+    check(vcode.indexOf('69496u') >= 0,
+          'the corrected constant is slope x top + (slope - 1) x bottom, checked by hand');
+    check(vcode.indexOf('BSP_MEASUREMENT_DIV24BAT_TOP_OHMS') >= 0,
+          'the input rail and the pack rail get their own macro, not one shared line');
     win.CALS = keepS;
     win.eval('calchk')();
     win.eval('calrun')();
