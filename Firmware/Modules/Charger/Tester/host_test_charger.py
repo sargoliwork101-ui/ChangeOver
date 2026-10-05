@@ -830,11 +830,11 @@ def test_charge_profile_v112():
           "GetParam must route all 7 profile ids to Charger_GetProfileParam")
 
     # --- ESP panel: 99 params, third tab with 7 fields + descriptions, 150-col CSV, vin carry ---
-    check(re.search(r"#define ESP_PARAM_COUNT\s+123u", ino), "panel ESP_PARAM_COUNT must be 123 (v1.50: +2 band-2 beep shape ids 121..122)")
+    check(re.search(r"#define ESP_PARAM_COUNT\s+125u", ino), "panel ESP_PARAM_COUNT must be 125 (v1.68: +2 imbalance blink ids 123..124)")
     mn = re.search(r"INT32_T__G__ParamMin\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     mx = re.search(r"INT32_T__G__ParamMax\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(mn and mx and len(mn.group(1).split(",")) == 123 and len(mx.group(1).split(",")) == 123,
-          "panel min/max tables must carry 123 entries (outer envelope for ids 20..26, 27..82, 83..92, 93..107, 108..118 and 119..122)")
+    check(mn and mx and len(mn.group(1).split(",")) == 125 and len(mx.group(1).split(",")) == 125,
+          "panel min/max tables must carry 125 entries (outer envelope for ids 20..26, 27..82, 83..92, 93..107, 108..118 and 119..124)")
     check('<button data-t="2">تنظیمات</button>' in ino, "third nav tab must exist (v1.14b: renamed from تنظیمات شارژ when the filter windows moved in)")
     # [EN] v1.33 (user order 2026-10-03: "why is this charge profile still
     #      here when I am editing on the chart?"). The seven q20..q26 input
@@ -906,11 +906,11 @@ def test_charge_profile_v112():
     wrow_body = re.search(r"function wrow\([^)]*\)\{.*?\n\s*return \[(.*?)\]\.join",
                           ino, re.S)
     check(wrow_body and "...P," not in wrow_body.group(1),
-          "the data row must NOT repeat the 123 settings - that was 62 percent of every "
+          "the data row must NOT repeat the 125 settings - that was 62 percent of every "
           "row and it is what filled the file cap")
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(txo and len(txo.group(1).split(",")) == 123 and "118, 119, 120, 121, 122 };" in ino,
-          "TxOrder must list all 123 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
+    check(txo and len(txo.group(1).split(",")) == 125 and "118, 119, 120, 121, 122, 123, 124 };" in ino,
+          "TxOrder must list all 125 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
     check("window.WVI=" in ino and "L('wVi','ولتاژ ورودی V',WVI)" in ino,
           "the input-voltage DMM reading must carry into the next wizard step (user order 2026-09-25: quasi-static, type once)")
 
@@ -1310,11 +1310,11 @@ def test_charger_persistence_v114():
     # [FA] با regex تطبیق می‌شود نه با فاصله‌گذاری دقیق: این تعریف‌ها ستونی
     #      تراز شده‌اند و رفتن از شناسهٔ دو رقمی به سه رقمی، چکِ رشتهٔ عینی را
     #      بی‌صدا می‌شکست بدون آن‌که ربطی به چیزی که می‌سنجید داشته باشد.
-    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+124u", nvm_h) and
+    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+126u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_LOW\s+14u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH\s+20u", nvm_h) and
-          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+122u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+202u", nvm_h),
-          "persisted set = 0..14 + 20..75 + 77..122 + runtime slots 200..202 (120 entries, 124 slots; v1.49 added the charge map 119/120, v1.50 the band-2 beep shape 121/122) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
+          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+124u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+202u", nvm_h),
+          "persisted set = 0..14 + 20..75 + 77..124 + runtime slots 200..202 (122 entries, 126 slots; v1.49 added the charge map 119/120, v1.50 the band-2 beep shape 121/122, v1.68 the imbalance blink 123/124) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
     check(re.search(r"ESP_LINK_NVM_VERSION\s+10u", nvm_h),
           "v1.43 bumps the NVM record version to 10: a v9 record carries 108 slots, so "
           "replaying one into a 122-slot layout would leave ids 108..118 and 200..202 holding whatever "
@@ -1860,8 +1860,8 @@ def test_manual_test_mode_v12():
           "instead of raising the ceiling - on a 20 KB part that buffer is charged "
           "twice, once on each side of the link")
     check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
-          and re.search(r"#define ESPLINK_PARAM_COUNT\s+123u", text_esph),
-          "param 19 = manual test mode; 123 params total since v1.50 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID, 93..107 = charger limits, 108..118 = imbalance scenario 6, 119..120 = charge-side percent map, 121..122 = band-2 beep shape)")
+          and re.search(r"#define ESPLINK_PARAM_COUNT\s+125u", text_esph),
+          "param 19 = manual test mode; 125 params total since v1.68 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID, 93..107 = charger limits, 108..118 = imbalance scenario 6, 119..120 = charge-side percent map, 121..122 = band-2 beep shape, 123..124 = imbalance latched red-lamp blink)")
 
     manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
                     text_c.find("/* ==================== Charger_Evaluate")]
@@ -2043,7 +2043,7 @@ def test_alarms_tab_v115():
     check('\\"q2\\":%lu' in ino and "pendingMask2" in ino,
           "the /t JSON must carry the q2 pending mask for ids 32..37 (one u32 no longer fits 38 params)")
     tx = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(tx and len(tx.group(1).split(",")) == 123, "TxOrder must carry all 123 ids")
+    check(tx and len(tx.group(1).split(",")) == 125, "TxOrder must carry all 123 ids")
     # [EN] The literal "134 columns" used to be asserted here. That is the third
     #      hard-coded column count found in this suite, and every one of them was
     #      stale - they defend whatever number was true when they were written.
@@ -2402,11 +2402,11 @@ def test_ui_mirror_v117():
           and "50, 18000, 0, 10, 1000," in prev
           and "14800, 100, 500, 10, 15000, 3000, 3000, 500," in prev
           and "300, 500, 600000, 600000, 30000, 100, 10, 3600000, 200, 1, 20," in prev
-          and "21000, 29000," in prev and "1000, 100];" in prev
-          and "case 118:" in prev and "case 122:" in prev,
+          and "21000, 29000," in prev and "1000, 50];" in prev
+          and "case 118:" in prev and "case 122:" in prev and "case 124:" in prev,
           "the offline preview must serve the v1.17 defaults with the enter-authoritative "
           "clamp, the calibrated PID rows after them, the v1.28 limits block, "
-          "the v1.43 imbalance scenario block, and the v1.49 charge-side percent map last")
+          "the v1.43 imbalance scenario block, and the v1.49 charge-side percent map plus the v1.68 imbalance blink last")
 
 
 def test_ui_mirror_v117b():
@@ -2785,8 +2785,8 @@ def test_two_loop_pid_v124():
               f"charger.h must map CHG_PID_PARAM_{nm} to id {wid}")
         check(re.search(rf"#define ESPLINK_PARAM_CHG_PID_{nm}\s+{wid}u", text_esph),
               f"esp_link.h must map ESPLINK_PARAM_CHG_PID_{nm} to the SAME id {wid}")
-    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+123u", text_esph),
-          "ESPLINK_PARAM_COUNT must be 123 (last band-2 id 122 + 1, v1.50)")
+    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+125u", text_esph),
+          "ESPLINK_PARAM_COUNT must be 125 (last imbalance-blink id 124 + 1, v1.68)")
     check("STAGE1" not in text_h and "STAGE3" not in text_h and "stage3" not in text_c,
           "the retired third gain row must leave NOTHING behind (it was measured to "
           "buy nothing and it cost five panel numbers)")
@@ -3157,6 +3157,37 @@ def test_min_select_handover_v124():
     check(idef_m, "the panel must define IDEF for the imbalance scenario block")
     idef = [x for x in idef_m.group(1).split(",") if x.strip()]
     check(len(idef) == 11, f"IDEF must hold 11 imbalance defaults, got {len(idef)}")
+
+    # [EN] v1.68 (user order 2026-10-05: "why does the red lamp not blink in
+    #      the imbalance state? it must blink"): the latched face is a BLINK
+    #      on both sides. The firmware must read ids 123/124 and drive the
+    #      lamp from the computed phase - a literal func__red(true) would be
+    #      the old solid lamp sneaking back - and the panel simulator must
+    #      show the same thing, because that simulator is what the operator
+    #      checks the behaviour against.
+    # [FA] نسخهٔ ۱.۶۸ به دستور کاربر: چهرهٔ قفل باید چشمک باشد، هم روی برد و
+    #      هم در شبیه‌ساز پنل.
+    uiled = (ROOT / "Firmware" / "Modules" / "Ui" / "ui_led.c").read_text(encoding="utf-8")
+    imb_tick = uiled.split("void func__Ui_ScenarioImbalance_Tick(void)")[1].split("\n}")[0]
+    check("IMBAL_PARAM_LATCH_BLINK_PERIOD_MS" in imb_tick and
+          "IMBAL_PARAM_LATCH_BLINK_DUTY_PCT" in imb_tick,
+          "the imbalance latch face must read the blink period/duty ids (123/124)")
+    check("func__red(bool__redOn)" in imb_tick and "func__red(true)" not in imb_tick,
+          "the latched red lamp must BLINK (user order 2026-10-05), not sit solid")
+    check("func__green(false)" in imb_tick and "func__yellow(false)" in imb_tick,
+          "and green/yellow stay off so the face cannot be read as BatLost")
+    imb_h = (ROOT / "Firmware" / "Modules" / "Imbalance" / "imbalance.h").read_text(encoding="utf-8")
+    check(re.search(r"IMBAL_PARAM_LATCH_BLINK_PERIOD_MS\s+123u", imb_h) and
+          re.search(r"IMBAL_PARAM_LATCH_BLINK_DUTY_PCT\s+124u", imb_h) and
+          re.search(r"IMBAL_DEF_LATCH_BLINK_PERIOD_MS\s+1000u", imb_h) and
+          re.search(r"IMBAL_DEF_LATCH_BLINK_DUTY_PCT\s+50u", imb_h),
+          "ids 123/124 and their 1000 ms / 50 percent defaults must be declared once, in imbalance.h")
+    check("IMBAL_PARAM_OWNS" in imb_h and "IMBAL_PARAM_INDEX" in imb_h,
+          "the two id blocks (108..118 and 123..124) need an ownership and an index helper")
+    check('id="q123"' in ino and 'id="q124"' in ino,
+          "card 6 must expose the blink period and duty inputs")
+    check("c4v(123,1000)" in ino and "simblink(now,bper,bdt)" in ino,
+          "the card-6 simulator must blink its red lamp the way the board does")
     # [EN] v1.49 appends one more block after IDEF: CDEF, the charge-side
     #      percent map (119..120). Derive the top from every table so the next
     #      block keeps this check honest too.
@@ -3164,7 +3195,7 @@ def test_min_select_handover_v124():
     cdef_m = re.search(r"const CDEF=\[([^\]]*)\]", ino)
     check(cdef_m, "the panel must define CDEF for the charge-side percent map")
     cdef = [x for x in cdef_m.group(1).split(",") if x.strip()]
-    check(len(cdef) == 4, f"CDEF must hold 4 ext defaults (charge map + band 2 shape), got {len(cdef)}")
+    check(len(cdef) == 6, f"CDEF must hold 6 ext defaults (charge map + band 2 shape + v1.68 imbalance blink), got {len(cdef)}")
     top = 83 + len(pdef) - 1 + len(ldef) + len(idef) + len(cdef)
     # --- 6. the PARAMS_BULK reply must be proven to fit the protocol payload
     #        ceiling. The buffer auto-sizes from the count so it cannot be

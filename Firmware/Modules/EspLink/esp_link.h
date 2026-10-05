@@ -382,7 +382,10 @@
 #define ESPLINK_PARAM_UI_RUN_DOUBLE_DUR_MS     121u  /* u32, ms, def 1000, 0..fit vs 54/63/122 */
 #define ESPLINK_PARAM_UI_RUN_DOUBLE_GAP_MS     122u  /* u32, ms, def 100,  0..5000 */
 
-#define ESPLINK_PARAM_COUNT               123u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28), 108..118 = imbalance scenario 6 (v1.43), 119..120 = charge-side percent map (v1.49), 121..122 = band-2 own beep shape (v1.50). Runtime slots 200..202 are persisted but NOT parameters: they stay outside this count and the GET_PARAMS bulk on purpose. [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای، حدها/گین‌های پشتیبان، سناریوی ۶ و نگاشت درصد سمت شارژ (۱۱۹..۱۲۰) و شکل بوق باند ۲ (۱۲۱..۱۲۲)؛ اسلات‌های ۲۰۰..۲۰۲ پارامتر نیستند */
+#define ESPLINK_PARAM_IMBAL_BLINK_PERIOD_MS    123u  /* u32, ms, def 1000, 0 = solid red, else 100..10000 (v1.68) */
+#define ESPLINK_PARAM_IMBAL_BLINK_DUTY_PCT     124u  /* u8,  %,  def 50,   5..95 (v1.68) */
+
+#define ESPLINK_PARAM_COUNT               125u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28), 108..118 = imbalance scenario 6 (v1.43), 119..120 = charge-side percent map (v1.49), 121..122 = band-2 own beep shape (v1.50), 123..124 = imbalance latched red-lamp blink (v1.68, user order: the red lamp must blink). Runtime slots 200..202 are persisted but NOT parameters: they stay outside this count and the GET_PARAMS bulk on purpose. [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای، حدها/گین‌های پشتیبان، سناریوی ۶ و نگاشت درصد سمت شارژ (۱۱۹..۱۲۰) و شکل بوق باند ۲ (۱۲۱..۱۲۲) و چشمک قرمز قفل عدم‌توازن (۱۲۳..۱۲۴)؛ اسلات‌های ۲۰۰..۲۰۲ پارامتر نیستند */
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

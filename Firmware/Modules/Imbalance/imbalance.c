@@ -26,13 +26,14 @@
 
 /* ==================== Compile-time invariants / ناورداهای زمان کامپایل ==================== */
 _Static_assert(IMBAL_PARAM_LAST_ID >= IMBAL_PARAM_FIRST_ID, "param range");
-_Static_assert((IMBAL_PARAM_LAST_ID - IMBAL_PARAM_FIRST_ID) <= 32u, "table size");
+_Static_assert(IMBAL_PARAM_TABLE_SIZE <= 32u, "table size");
+_Static_assert(IMBAL_PARAM_FIRST_ID2 > IMBAL_PARAM_LAST_ID, "the two id blocks must not overlap");
 
 /* ==================== Parameter table / جدول پارامترها ==================== */
 
 /* [EN] Live values; boot = macro defaults, NVM replay overrides.
  * [FA] مقادیر زنده؛ بوت = پیش‌فرض ماکرو، پخش NVM بازنویسی می‌کند. */
-static uint32_t UINT32_T__G__A__Param[IMBAL_PARAM_LAST_ID - IMBAL_PARAM_FIRST_ID + 1u];
+static uint32_t UINT32_T__G__A__Param[IMBAL_PARAM_TABLE_SIZE];
 
 /* [EN] Persisted runtime state (NVM slots 200..202).
  * [FA] وضعیت ماندگار زمان‌اجرا. */
@@ -78,6 +79,8 @@ static uint32_t func__Imbalance_ParamDefault(uint8_t uint8_t__paramId)
         case IMBAL_PARAM_LATCH_BEEP_LEN_MS:    uint32_t__ret = IMBAL_DEF_BEEP_LEN_MS;          break;
         case IMBAL_PARAM_BLOCK_OUTPUT_EN:      uint32_t__ret = IMBAL_DEF_BLOCK_OUTPUT_EN;      break;
         case IMBAL_PARAM_MAX_LATCHED_CYCLES:   uint32_t__ret = IMBAL_DEF_MAX_LATCHED_CYCLES;   break;
+        case IMBAL_PARAM_LATCH_BLINK_PERIOD_MS: uint32_t__ret = IMBAL_DEF_LATCH_BLINK_PERIOD_MS; break;
+        case IMBAL_PARAM_LATCH_BLINK_DUTY_PCT:  uint32_t__ret = IMBAL_DEF_LATCH_BLINK_DUTY_PCT;  break;
         default:                               uint32_t__ret = 0u;                             break;
     }
 
@@ -122,6 +125,20 @@ static uint32_t func__Imbalance_ParamClamp(uint8_t uint8_t__paramId, uint32_t ui
         case IMBAL_PARAM_BLOCK_OUTPUT_EN:
             if (uint32_t__ret > 1u) { uint32_t__ret = 1u; }
             break;
+        case IMBAL_PARAM_LATCH_BLINK_PERIOD_MS:
+            /* [EN] 0 = solid red, a deliberate opt-out; any other value is
+             *      pulled into the visible-blink window.
+             * [FA] صفر یعنی قرمز ثابت؛ بقیهٔ مقادیر داخل پنجرهٔ چشمک دیدنی. */
+            if (uint32_t__ret != 0u)
+            {
+                if (uint32_t__ret < IMBAL_MIN_BLINK_PERIOD_MS) { uint32_t__ret = IMBAL_MIN_BLINK_PERIOD_MS; }
+                if (uint32_t__ret > IMBAL_MAX_BLINK_PERIOD_MS) { uint32_t__ret = IMBAL_MAX_BLINK_PERIOD_MS; }
+            }
+            break;
+        case IMBAL_PARAM_LATCH_BLINK_DUTY_PCT:
+            if (uint32_t__ret < IMBAL_MIN_BLINK_DUTY_PCT) { uint32_t__ret = IMBAL_MIN_BLINK_DUTY_PCT; }
+            if (uint32_t__ret > IMBAL_MAX_BLINK_DUTY_PCT) { uint32_t__ret = IMBAL_MAX_BLINK_DUTY_PCT; }
+            break;
         default:
             break;
     }
@@ -131,7 +148,7 @@ static uint32_t func__Imbalance_ParamClamp(uint8_t uint8_t__paramId, uint32_t ui
 
 static uint32_t func__Imbalance_ReadParam(uint8_t uint8_t__paramId)
 {
-    return UINT32_T__G__A__Param[(uint32_t)uint8_t__paramId - (uint32_t)IMBAL_PARAM_FIRST_ID];
+    return UINT32_T__G__A__Param[IMBAL_PARAM_INDEX(uint8_t__paramId)];
 }
 
 /* ==================== Public API / API عمومی ==================== */
@@ -140,10 +157,13 @@ void func__Imbalance_Init(void)
 {
     uint8_t uint8_t__id;
 
-    for (uint8_t__id = IMBAL_PARAM_FIRST_ID; uint8_t__id <= IMBAL_PARAM_LAST_ID; uint8_t__id++)
+    for (uint8_t__id = IMBAL_PARAM_FIRST_ID; uint8_t__id <= IMBAL_PARAM_LAST_ID2; uint8_t__id++)
     {
-        UINT32_T__G__A__Param[(uint32_t)uint8_t__id - (uint32_t)IMBAL_PARAM_FIRST_ID] =
-            func__Imbalance_ParamDefault(uint8_t__id);
+        if (IMBAL_PARAM_OWNS(uint8_t__id))
+        {
+            UINT32_T__G__A__Param[IMBAL_PARAM_INDEX(uint8_t__id)] =
+                func__Imbalance_ParamDefault(uint8_t__id);
+        }
     }
 
     /* [EN] Persisted fields are NOT reset here: EspLink NVM replay may run
@@ -491,12 +511,11 @@ bool func__Imbalance_SetParam(uint8_t uint8_t__paramId,
 {
     bool bool__ret = false;
 
-    if ((uint8_t__paramId >= IMBAL_PARAM_FIRST_ID) && (uint8_t__paramId <= IMBAL_PARAM_LAST_ID))
+    if (IMBAL_PARAM_OWNS(uint8_t__paramId))
     {
         uint32_t uint32_t__clamped = func__Imbalance_ParamClamp(uint8_t__paramId, uint32_t__value);
 
-        UINT32_T__G__A__Param[(uint32_t)uint8_t__paramId - (uint32_t)IMBAL_PARAM_FIRST_ID] =
-            uint32_t__clamped;
+        UINT32_T__G__A__Param[IMBAL_PARAM_INDEX(uint8_t__paramId)] = uint32_t__clamped;
         if (uint32_t__appliedValue != NULL)
         {
             *uint32_t__appliedValue = uint32_t__clamped;
@@ -537,7 +556,7 @@ bool func__Imbalance_GetParam(uint8_t uint8_t__paramId,
 {
     bool bool__ret = false;
 
-    if ((uint8_t__paramId >= IMBAL_PARAM_FIRST_ID) && (uint8_t__paramId <= IMBAL_PARAM_LAST_ID))
+    if (IMBAL_PARAM_OWNS(uint8_t__paramId))
     {
         if (uint32_t__value != NULL)
         {

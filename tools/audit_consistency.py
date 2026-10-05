@@ -800,8 +800,9 @@ def sec_panel(ids):
         ok(chg_base == imb_base + len(idef),
            "CDEF does not start where IDEF ends",
            f"charge map starts at {chg_base}, imbalance block ends at {imb_base + len(idef) - 1}")
-        ok(len(cdef) == 4,
-           "CDEF must cover the charge map (119/120) and band 2's beep shape (121/122)",
+        ok(len(cdef) == 6,
+           "CDEF must cover the charge map (119/120), band 2's beep shape "
+           "(121/122) and the imbalance latch blink (123/124, v1.68)",
            f"CDEF has {len(cdef)} entries")
         top = chg_base + len(cdef) - 1
         ok(hi == top, "AIDS upper bound != the top real id",

@@ -1321,20 +1321,30 @@ void func__Ui_ScenarioBatLost_Tick(void)
 #if MODULE_IMBALANCE
 /**
  * @brief  [EN] Imbalance-latched verdict (scenario 6, user order
- *         2026-10-04): RED solid (the "this battery is condemned" face -
- *         distinct from the fast BatLost blink and the slow overvoltage
- *         pulse), green/yellow off, plus the periodic one-short-beep bore by
+ *         2026-10-04, cadence changed by user order 2026-10-05): RED
+ *         BLINKING - the user asked for a blink, not the solid lamp the
+ *         first version used, because a steady red reads as "a lamp that
+ *         was left on" while a blink reads as "something is wrong now".
+ *         Period and duty come from ids 123/124 (default 1000 ms, 50%), so
+ *         it is still distinct from the BatLost blink (ids 44/45, which also
+ *         keeps GREEN on) and from the overvoltage pulse. Green/yellow off,
+ *         plus the periodic one-short-beep bore by
  *         the buzzer's absolute-tick pattern machinery: one beep of id 116
  *         (default 200 ms) repeating every id 115 (default 1 h), starting at
  *         the latch moment because the pattern anchors on the first call.
  *         Must be called every Ui pass while the latch holds.
- *         [FA] سناریوی قفل عدم‌توازن: قرمز ثابت متمایز از چشمک قطع باتری،
+ *         [FA] سناریوی قفل عدم‌توازن: قرمز «چشمک‌زن» (به دستور کاربر در
+ *         ۲۰۲۶-۱۰-۰۵؛ قبلاً ثابت بود) با دوره و duty ۱۲۳/۱۲۴ (پیش‌فرض ۱۰۰۰ms
+ *         و ۵۰٪) — متمایز از چشمک قطع باتری که سبز را روشن نگه می‌دارد —
  *         سبز/زرد خاموش، و بوق کوتاه دوره‌ای با الگوی بوق زمان‌مطلق: یک بوق
  *         به طول ۱۱۶ تکرارشونده هر ۱۱۵ (پیش‌فرض هر ساعت) از لحظهٔ قفل.
  */
 void func__Ui_ScenarioImbalance_Tick(void)
 {
     uint32_t uint32_t__beepPeriodMs;
+    uint32_t uint32_t__blinkPeriodMs = IMBAL_DEF_LATCH_BLINK_PERIOD_MS;
+    uint32_t uint32_t__blinkDutyPct = IMBAL_DEF_LATCH_BLINK_DUTY_PCT;
+    bool     bool__redOn;
 
     /* [EN] Stop foreign blink/beep states first (same hygiene as BatLost).
        [FA] اول وضعیت‌های چشمک/بوق سناریوهای دیگر ریست شود. */
@@ -1342,9 +1352,32 @@ void func__Ui_ScenarioImbalance_Tick(void)
     func__Ui_ResetBatteryRunGreenBlink();
     func__Ui_ResetChargingYellowBlink();
 
+    /* [EN] Blink the red lamp on the absolute tick, exactly like every other
+       scenario cadence: the first duty% of each period is ON. Period 0 is
+       the documented opt-out and means solid red.
+       [FA] چشمک قرمز روی تیک مطلق، دقیقاً مثل بقیهٔ سناریوها: duty٪ اول هر
+       دوره روشن. دورهٔ صفر یعنی همان قرمز ثابت. */
+    func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BLINK_PERIOD_MS, &uint32_t__blinkPeriodMs);
+    func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BLINK_DUTY_PCT, &uint32_t__blinkDutyPct);
+
+    if (uint32_t__blinkPeriodMs == 0u)
+    {
+        bool__redOn = true;
+    }
+    else
+    {
+        uint32_t uint32_t__elapsedMs =
+            func__Rtos_TicksToMilliseconds(osKernelGetTickCount());
+        uint32_t uint32_t__phaseMs = uint32_t__elapsedMs % uint32_t__blinkPeriodMs;
+        uint32_t uint32_t__onMs =
+            (uint32_t__blinkPeriodMs * uint32_t__blinkDutyPct) / UI_PERCENT_SCALE;
+
+        bool__redOn = (uint32_t__phaseMs < uint32_t__onMs);
+    }
+
     func__green(false);
     func__yellow(false);
-    func__red(true);   /* [EN] solid red while latched / قرمز ثابت در قفل */
+    func__red(bool__redOn);
 
     func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_PERIOD_MS, &uint32_t__beepPeriodMs);
     if (uint32_t__beepPeriodMs != 0u)

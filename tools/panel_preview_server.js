@@ -175,7 +175,10 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
               factory numbers as the discharge map 74/75, separate register. */
            21000, 29000,
            /* v1.50 ids 121..122 = band 2's own per-beep duration and gap */
-           1000, 100];
+           1000, 100,
+           /* v1.68 ids 123..124 = the latched imbalance red lamp's blink
+              (user order: the red lamp must blink, not sit solid) */
+           1000, 50];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -240,6 +243,9 @@ function clampParam(id, v) {
         /* v1.50: band 2 beep shape - gap floor only when its own count > 1 */
         case 121: return clampW(v, 0, 600000);
         case 122: return clampW(v, 0, 5000);
+        /* v1.68: latched imbalance red-lamp blink - 0 keeps the old solid red */
+        case 123: return v === 0 ? 0 : clampW(v, 100, 10000);
+        case 124: return clampW(v, 5, 95);
         /* v1.15 alarms: mirror of Fault_ClampAlarms / Charger_ClampAlarms */
         case 27: { let lo = Math.max(14000, over + 50), hi = Math.min(15000, ov - 100);
                    if (lo > hi) hi = lo; return Math.min(hi, Math.max(lo, v)); }

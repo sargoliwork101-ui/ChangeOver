@@ -99,9 +99,9 @@
 /* [EN] v1.50: 124 slots (12 + 124 x 8 + 4 = 1008 B, inside one 1 KiB page
  *      with 16 B to spare). The record stores its own entry count, so an
  *      older, shorter record still replays correctly - no version bump.
- * [FA] ۱۲۴ جا (۱۰۰۸ بایت، داخل یک صفحهٔ ۱ کیلوبایتی). رکورد تعداد خودش را
+ * [FA] ۱۲۶ جا (۱۰۲۴ بایت، دقیقاً یک صفحه). رکورد تعداد خودش را
  *      ذخیره می‌کند پس رکورد کوتاه‌تر قدیمی هم درست پخش می‌شود. */
-#define ESP_LINK_NVM_ENTRY_MAX         124u
+#define ESP_LINK_NVM_ENTRY_MAX         126u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
  *      change; a shorter window would rewrite flash on every keystroke burst).
@@ -134,7 +134,7 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   122u
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   124u
 #define ESP_LINK_NVM_TRANSIENT_ID_MUTE        76u
 /* [EN] Imbalance runtime slots (scenario 6, v10): persisted but NEVER user
  *      parameters - the module itself writes them; the panel never draws and

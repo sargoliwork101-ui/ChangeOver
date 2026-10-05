@@ -369,8 +369,7 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                     sends those, and they are never part of a backup).
                [FA] سناریوی ۶ عدم‌توازن، ۱۰۸..۱۱۸ + اسلات‌های ۲۰۰..۲۰۲
                     (فقط پخش NVM هنگام بوت). */
-            if (((uint8_t__paramId >= IMBAL_PARAM_FIRST_ID) &&
-                 (uint8_t__paramId <= IMBAL_PARAM_LAST_ID)) ||
+            if (IMBAL_PARAM_OWNS(uint8_t__paramId) ||
                 ((uint8_t__paramId >= IMBAL_SLOT_FIRST_ID) &&
                  (uint8_t__paramId <= IMBAL_SLOT_LAST_ID)))
             {
@@ -552,8 +551,7 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
             /* [EN] Imbalance live read, ids 108..118 + slots 200..202
                     (the NVM save snapshots its persisted set through here).
                [FA] خواندن زندهٔ عدم‌توازن + اسلات‌ها (برداشت NVM). */
-            if (((uint8_t__paramId >= IMBAL_PARAM_FIRST_ID) &&
-                 (uint8_t__paramId <= IMBAL_PARAM_LAST_ID)) ||
+            if (IMBAL_PARAM_OWNS(uint8_t__paramId) ||
                 ((uint8_t__paramId >= IMBAL_SLOT_FIRST_ID) &&
                  (uint8_t__paramId <= IMBAL_SLOT_LAST_ID)))
             {

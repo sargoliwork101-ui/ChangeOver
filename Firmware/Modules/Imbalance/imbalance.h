@@ -117,8 +117,48 @@ extern "C" {
  *  [FA] سیکل‌های شارژ مجاز پس از قفل تا مسدودی شارژ، پیش‌فرض ۲۰. */
 #define IMBAL_PARAM_MAX_LATCHED_CYCLES       118u
 
+/** [EN] v1.68 (user order 2026-10-05: "the red lamp must BLINK in the
+ *  imbalance state"): cadence of the latched red lamp. Period in ms
+ *  (default 1000) and ON share in percent (default 50) - the same
+ *  period/duty shape every other scenario uses, so one pair of knobs
+ *  describes the whole face. Period 0 is still accepted and means the old
+ *  solid red, for anyone who wants it back without a rebuild.
+ *  [FA] آهنگ چشمک چراغ قرمز در حالت قفل عدم‌توازن (دستور کاربر): دوره بر
+ *  حسب میلی‌ثانیه (پیش‌فرض ۱۰۰۰) و سهم روشنی بر حسب درصد (پیش‌فرض ۵۰) -
+ *  همان شکل دوره و duty بقیهٔ سناریوها. دورهٔ صفر یعنی همان قرمز ثابت قدیمی. */
+#define IMBAL_PARAM_LATCH_BLINK_PERIOD_MS    123u
+#define IMBAL_PARAM_LATCH_BLINK_DUTY_PCT     124u
+
+/* [EN] The module owns TWO id ranges: the original 108..118 block and the
+ *      v1.68 blink pair at the end of the parameter space (119..122 belong
+ *      to other modules, so the range could not simply be widened).
+ * [FA] ماژول دو بازهٔ شناسه دارد: بلوک اصلی ۱۰۸..۱۱۸ و جفت چشمک ۱۲۳..۱۲۴
+ *      (۱۱۹..۱۲۲ مال ماژول‌های دیگر است، پس بازه را نمی‌شد کش داد). */
 #define IMBAL_PARAM_FIRST_ID                 IMBAL_PARAM_REST_LIMIT_MV   /* 108 */
 #define IMBAL_PARAM_LAST_ID                  IMBAL_PARAM_MAX_LATCHED_CYCLES /* 118 */
+#define IMBAL_PARAM_FIRST_ID2                IMBAL_PARAM_LATCH_BLINK_PERIOD_MS /* 123 */
+#define IMBAL_PARAM_LAST_ID2                 IMBAL_PARAM_LATCH_BLINK_DUTY_PCT  /* 124 */
+
+#define IMBAL_PARAM_BLOCK1_COUNT \
+    ((uint32_t)IMBAL_PARAM_LAST_ID - (uint32_t)IMBAL_PARAM_FIRST_ID + 1u)
+#define IMBAL_PARAM_BLOCK2_COUNT \
+    ((uint32_t)IMBAL_PARAM_LAST_ID2 - (uint32_t)IMBAL_PARAM_FIRST_ID2 + 1u)
+#define IMBAL_PARAM_TABLE_SIZE \
+    (IMBAL_PARAM_BLOCK1_COUNT + IMBAL_PARAM_BLOCK2_COUNT)
+
+/** [EN] Is this id a parameter of the imbalance module? / [FA] آیا این شناسه مال این ماژول است؟ */
+#define IMBAL_PARAM_OWNS(id) \
+    (((((uint32_t)(id)) >= (uint32_t)IMBAL_PARAM_FIRST_ID) && \
+      (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID)) || \
+     ((((uint32_t)(id)) >= (uint32_t)IMBAL_PARAM_FIRST_ID2) && \
+      (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID2)))
+
+/** [EN] Table index of an owned id (undefined for ids the module does not own).
+ *  [FA] اندیس جدول برای شناسهٔ متعلق به ماژول. */
+#define IMBAL_PARAM_INDEX(id) \
+    ((((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID) \
+        ? (((uint32_t)(id)) - (uint32_t)IMBAL_PARAM_FIRST_ID) \
+        : (IMBAL_PARAM_BLOCK1_COUNT + (((uint32_t)(id)) - (uint32_t)IMBAL_PARAM_FIRST_ID2)))
 
 /* [EN] NVM-only runtime slots (ids 200..202): persisted through the same
  *      EspLink NVM machinery as parameters but never drawn on the panel and
@@ -143,6 +183,8 @@ extern "C" {
 #define IMBAL_DEF_BEEP_LEN_MS                200u
 #define IMBAL_DEF_BLOCK_OUTPUT_EN            1u
 #define IMBAL_DEF_MAX_LATCHED_CYCLES         20u
+#define IMBAL_DEF_LATCH_BLINK_PERIOD_MS      1000u
+#define IMBAL_DEF_LATCH_BLINK_DUTY_PCT       50u
 
 /* [EN] Clamp windows (min..max per id, applied by Set): wide enough for a
  *      workshop, tight enough that a typo cannot create a dead monitor.
@@ -156,6 +198,17 @@ extern "C" {
 #define IMBAL_MAX_BEEP_PERIOD_MS             86400000u /* [EN] id 115، تا ۲۴ ساعت */
 #define IMBAL_MIN_BEEP_LEN_MS                20u       /* [EN] id 116 */
 #define IMBAL_MAX_BEEP_LEN_MS                2000u
+/* [EN] id 123: 0 = solid red (opt-out), otherwise 100 ms..10 s so the lamp
+ *      is always visibly a BLINK and never a flicker nobody can see.
+ * [FA] شناسهٔ ۱۲۳: صفر یعنی قرمز ثابت، وگرنه ۱۰۰ms تا ۱۰s تا چشمک واقعاً
+ *      دیده شود نه لرزش. */
+#define IMBAL_MIN_BLINK_PERIOD_MS            100u
+#define IMBAL_MAX_BLINK_PERIOD_MS            10000u
+/* [EN] id 124: 5..95% - a 0% or 100% duty would silently be "lamp off" or
+ *      "solid", which the period knob already expresses honestly.
+ * [FA] شناسهٔ ۱۲۴: ۵ تا ۹۵ درصد. */
+#define IMBAL_MIN_BLINK_DUTY_PCT             5u
+#define IMBAL_MAX_BLINK_DUTY_PCT             95u
 
 /* [EN] Auto-reset qualifier: battery must stay absent continuously this
  *      long before the module believes a real battery swap happened.
