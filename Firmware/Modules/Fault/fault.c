@@ -1,7 +1,9 @@
 /**
  * @file    fault.c
- * @brief   [EN] Latched fault bits (placeholder). Full type naming, func__ prefix.
- *          [FA] بیت‌های خطای قفل‌شده (اسکلت). نام تایپ کامل.
+ * @brief   [EN] Latched fault bits, battery-lost detection and the runtime
+ *          alarm thresholds (ids 27..34). Full type naming, func__ prefix.
+ *          [FA] بیت‌های خطای قفل‌شده، تشخیص قطع باتری و آستانه‌های زمان اجرا
+ *          (شناسه‌های ۲۷..۳۴). نام تایپ کامل.
  */
 
 #include "fault.h"

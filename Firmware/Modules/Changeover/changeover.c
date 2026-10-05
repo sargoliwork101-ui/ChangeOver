@@ -46,7 +46,7 @@ static bool BOOL__G__ChangeoverProtectAsserted = false;
  * @brief  [EN] Tick at which the current cut condition became continuously true.
  *         [FA] تیکی که در آن شرط قطع به‌صورت پیوسته true شد.
  */
-static uint32_t TICK_T__G__CutStartTick = 0u;
+static uint32_t UINT32_T__G__CutStartTick = 0u;
 
 /**
  * @brief  [EN] Whether a cut condition is currently being timed.
@@ -68,7 +68,7 @@ static bool BOOL__G__LowBatteryLatched = false;
  * @brief  [EN] Tick at which the reconnect condition became continuously true.
  *         [FA] تیکی که در آن شرط وصل مجدد به‌صورت پیوسته true شد.
  */
-static uint32_t TICK_T__G__ReconnectStartTick = 0u;
+static uint32_t UINT32_T__G__ReconnectStartTick = 0u;
 
 /**
  * @brief  [EN] Whether a reconnect condition is currently being timed.
@@ -86,9 +86,9 @@ void func__Changeover_Init(void)
 {
     APP_STATE_T__G__State = APP_STATE_BOOT;
     BOOL__G__ChangeoverProtectAsserted = false;
-    TICK_T__G__CutStartTick = 0u;
+    UINT32_T__G__CutStartTick = 0u;
     BOOL__G__CutTimerActive = false;
-    TICK_T__G__ReconnectStartTick = 0u;
+    UINT32_T__G__ReconnectStartTick = 0u;
     BOOL__G__ReconnectTimerActive = false;
     BOOL__G__LowBatteryLatched = false;
 }
@@ -245,13 +245,13 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         if (BOOL__G__CutTimerActive == false)
         {
             BOOL__G__CutTimerActive = true;
-            TICK_T__G__CutStartTick = uint32_t__nowTick;
+            UINT32_T__G__CutStartTick = uint32_t__nowTick;
         }
         else
         {
             uint32_t uint32_t__elapsedTicks;
 
-            uint32_t__elapsedTicks = uint32_t__nowTick - TICK_T__G__CutStartTick;
+            uint32_t__elapsedTicks = uint32_t__nowTick - UINT32_T__G__CutStartTick;
             if (uint32_t__elapsedTicks >= uint32_t__durationTicks)
             {
                 if (BOOL__G__ChangeoverProtectAsserted == false)
@@ -352,7 +352,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         if (BOOL__G__ReconnectTimerActive == false)
         {
             BOOL__G__ReconnectTimerActive = true;
-            TICK_T__G__ReconnectStartTick = uint32_t__nowTick;
+            UINT32_T__G__ReconnectStartTick = uint32_t__nowTick;
             /* [EN] While waiting for reconnect duration, keep SAFE if already cut,
                   otherwise report INPUT.
                [FA] در انتظار reconnect، اگر قبلاً قطع شده SAFE بماند. */
@@ -369,7 +369,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         {
             uint32_t uint32_t__elapsedTicks;
 
-            uint32_t__elapsedTicks = uint32_t__nowTick - TICK_T__G__ReconnectStartTick;
+            uint32_t__elapsedTicks = uint32_t__nowTick - UINT32_T__G__ReconnectStartTick;
             if (uint32_t__elapsedTicks >= uint32_t__durationTicks)
             {
                 if (BOOL__G__ChangeoverProtectAsserted == true)

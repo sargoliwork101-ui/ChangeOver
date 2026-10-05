@@ -21,6 +21,14 @@
 #include "fault.h"
 #endif
 
+#if MODULE_UI
+/* [EN] Tidy-up 2026-10-05: the UI thread memory is now behind the same
+   MODULE_UI guard that creates the thread, exactly like every other task.
+   With MODULE_UI=0 it used to keep TASK_STACK_UI words of RAM plus an
+   unused attribute block alive for a thread nobody creates.
+   [FA] مرتب‌سازی: حافظهٔ تسک UI هم پشت همان گارد MODULE_UI رفت که خود
+   thread را می‌سازد - مثل بقیهٔ تسک‌ها. قبلاً با ‎MODULE_UI=0‎ استک و
+   attribute برای threadی که ساخته نمی‌شد در RAM می‌ماند. */
 static rtos_stack_word_t STACKTYPE_T__G__UiStack[TASK_STACK_UI];
 static rtos_thread_control_block_t STATICTASK_T__G__UiTcb;
 static const osThreadAttr_t OS_THREAD_ATTR_T__G__Ui =
@@ -35,6 +43,7 @@ static const osThreadAttr_t OS_THREAD_ATTR_T__G__Ui =
     .tz_module = 0u,
     .reserved = 0u
 };
+#endif
 
 #if MODULE_MEASUREMENT
 static rtos_stack_word_t STACKTYPE_T__G__MeasStack[TASK_STACK_MEASUREMENT];

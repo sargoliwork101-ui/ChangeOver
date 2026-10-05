@@ -47,8 +47,9 @@
 
 #if MODULE_IMBALANCE
 /* [EN] Scenario 5 feed: the changeover state from the PREVIOUS pass is the
- *      "on battery = discharging" qualifier (one control period of lag at
- *      100 ms is negligible against 30 s stability times).
+ *      "on battery = discharging" qualifier (one control period of lag -
+ *      APP_CONFIG.control_period_ms, 10 ms today - is negligible against
+ *      the 30 s stability times).
  * [FA] حالت چنج‌اور پاس قبلی = نیرولهٔ «روی باتری» برای گیت دشارژ. */
 static app_state_t APP_STATE_T__G__ImbalancePrevState = APP_STATE_BOOT;
 #endif

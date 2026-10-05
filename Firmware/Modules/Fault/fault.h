@@ -1,7 +1,9 @@
 /**
  * @file    fault.h
- * @brief   [EN] Bit-mask of latched faults (placeholder). Full type naming, func__ prefix.
- *          [FA] بیت‌ماسک خطاهای قفل‌شده (اسکلت). نام تایپ کامل.
+ * @brief   [EN] Bit-mask of latched faults plus the runtime alarm threshold
+ *          contract (ids 27..34). Full type naming, func__ prefix.
+ *          [FA] بیت‌ماسک خطاهای قفل‌شده به‌همراه قرارداد آستانه‌های زمان اجرا
+ *          (شناسه‌های ۲۷..۳۴). نام تایپ کامل.
  */
 
 #ifndef FAULT_H
