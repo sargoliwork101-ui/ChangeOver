@@ -450,6 +450,40 @@ int main(void)
               "a 200 that sends nothing is the worst possible answer");
     }
 
+    /* ---- 12b. v1.54: no browser, no parameter refresh --------------------
+            [EN] The periodic GET_PARAMS exists to keep a WATCHED page honest.
+            With the tab closed the STM32 must never be asked to dump its
+            whole parameter table again; the first poll re-arms it.
+            [FA] نوسازی دوره‌ای فقط برای صفحه‌ای است که کسی می‌بیند. */
+    {
+        BOOL__G__BrowserSeen = false;
+        UINT32_T__G__LastParamRefreshMs = (uint32_t)G_StubMillis;
+        G_StubMillis += ESP_LINK_PARAM_REFRESH_MS + ESP_LINK_TX_INTERVAL_MS + 1u;
+        Serial.tx.clear();
+        func__Esp_PumpTx();
+        bool sawGet = false;
+        for (size_t i = 0; i + 3u < Serial.tx.size(); i++) {
+            if (Serial.tx[i] == ESP_LINK_SOF_BYTE0 && Serial.tx[i + 1] == ESP_LINK_SOF_BYTE1 &&
+                Serial.tx[i + 3] == ESP_MSG_GET_PARAMS) { sawGet = true; }
+        }
+        check(!sawGet, "with no browser polling, the board is not asked to dump its parameters",
+              "an unwatched panel must not keep the STM32 busy");
+
+        BOOL__G__BrowserSeen = true;
+        UINT32_T__G__LastBrowserPollMs = (uint32_t)G_StubMillis;
+        UINT32_T__G__LastParamRefreshMs =
+            (uint32_t)G_StubMillis - ESP_LINK_PARAM_REFRESH_MS - 1u;
+        G_StubMillis += ESP_LINK_TX_INTERVAL_MS + 1u;
+        Serial.tx.clear();
+        func__Esp_PumpTx();
+        sawGet = false;
+        for (size_t i = 0; i + 3u < Serial.tx.size(); i++) {
+            if (Serial.tx[i] == ESP_LINK_SOF_BYTE0 && Serial.tx[i + 1] == ESP_LINK_SOF_BYTE1 &&
+                Serial.tx[i + 3] == ESP_MSG_GET_PARAMS) { sawGet = true; }
+        }
+        check(sawGet, "an open page still gets its periodic refresh");
+    }
+
     /* ---- 13. the bench log on the file system ---------------------------- */
     {
         ESP_WEB_SERVER_T__G__Server.clearArgs();

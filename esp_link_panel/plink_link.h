@@ -204,10 +204,30 @@ static void func__Esp_PumpTx(void)
             GET_PARAMS هر ESP_LINK_PARAM_REFRESH_MS نمایش را راست‌نگه می‌دارد؛
             پارامترهای کاربر را دوباره اعمال نمی‌کند (فقط بعد از ری‌استارتِ
             تشخیص‌شده؛ پس هیچ‌وقت کانال پارک‌شدهٔ JIT را مسلح نمی‌کند). */
-    if ((uint32_t__nowMs - UINT32_T__G__LastParamRefreshMs) >= ESP_LINK_PARAM_REFRESH_MS)
+    /* [EN] v1.54 (user order 2026-10-05: "the panel no longer displays the
+            board's LED/buzzer state, so stop asking the board for things
+            nobody needs"): the refresh exists only to keep a WATCHED page
+            truthful, so it is now skipped while no browser is polling. With
+            the tab closed the STM32 is never asked to dump its 123-value
+            parameter table again; the first poll after a gap re-arms it, so
+            whoever opens the page still sees fresh applied values.
+       [FA] نوسازی دوره‌ای فقط برای راست‌نگه‌داشتن صفحه‌ای است که کسی تماشا
+            می‌کند؛ پس تا وقتی مرورگری poll نمی‌کند انجام نمی‌شود و برد دیگر
+            مجبور نیست جدول ۱۲۳ مقداری را بی‌خود بفرستد. اولین poll بعد از
+            وقفه دوباره مسلحش می‌کند، پس هرکس صفحه را باز کند مقدار تازه
+            می‌بیند. */
+    if (bool__browserLost)
+    {
+        UINT32_T__G__LastParamRefreshMs = uint32_t__nowMs - ESP_LINK_PARAM_REFRESH_MS;
+    }
+    else if ((uint32_t__nowMs - UINT32_T__G__LastParamRefreshMs) >= ESP_LINK_PARAM_REFRESH_MS)
     {
         UINT32_T__G__LastParamRefreshMs = uint32_t__nowMs;
         BOOL__G__TxGetPending = true;
+    }
+    else
+    {
+        /* [EN] MISRA 15.7 / [FA] شاخهٔ پایانی */
     }
 
     if (bool__keepaliveDue)
