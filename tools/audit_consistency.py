@@ -1551,6 +1551,26 @@ def sec_cubeide_includes():
             missing.append((mod, f"folder {hit} missing from .cproject include paths"))
     ok(not missing, "module enabled but not buildable from CubeIDE", str(missing))
 
+    # [EN] v1.68: the check above is keyed on MODULE_* flags, so a module
+    #      WITHOUT a flag could still be missed - and one was. CalLut (v1.66)
+    #      has no enable flag, is included by measurement.c, and was never
+    #      added to .cproject: the user's CubeIDE build died with
+    #      "fatal error: cal_lut.h: No such file or directory" while every
+    #      host check stayed green. Now EVERY module folder that holds a .c
+    #      must be on the include path, flag or no flag.
+    # [FA] چک بالا به فلگ MODULE_ وابسته بود، پس ماژول بدون فلگ از دستش
+    #      در می‌رفت - و رفت: CalLut (v1.66) فلگ ندارد، measurement.c آن را
+    #      include می‌کند و در .cproject نبود؛ بیلد CubeIDE کاربر با
+    #      «cal_lut.h پیدا نشد» مرد در حالی که همهٔ تست‌های هاست سبز بودند.
+    #      حالا هر پوشهٔ ماژول که فایل .c دارد باید روی مسیر include باشد.
+    for folder in sorted((ROOT / "Firmware" / "Modules").glob("*")):
+        if not folder.is_dir() or not list(folder.glob("*.c")):
+            continue
+        ok(f"../../../Firmware/Modules/{folder.name}" in cproj,
+           f"module folder {folder.name} has sources but is not on the CubeIDE include path",
+           "the target build would fail with 'No such file or directory' "
+           "even though every host check passes")
+
     # [EN] A host tester carries its own main(); if its folder is not excluded
     #      from the CubeIDE build, the target link dies with
     #      'multiple definition of main'. .cproject must exclude every
