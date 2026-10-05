@@ -21,3 +21,12 @@
 - پیش از تحویل: `bash tools/check_firmware_syntax.sh`، `bash tools/check_ai_rules.sh` و build واقعی STM32CubeIDE را اجرا کن. تست Host جایگزین build و تست سخت‌افزار نیست.
 
 درخت کامل API و اتصال‌ها: `Firmware/Bsp/README.md` و صفحهٔ اصلی `README.md`.
+
+## بهینه‌سازی و بودجهٔ فلش (v1.68c)
+
+لینکر-اسکریپت فقط **۶۰ کیلوبایت** از ۶۴ کیلوبایت فلش را به برنامه می‌دهد
+(۲KB بالا = NVM پارامترها، ۲KB بعدی = بلوک جدول کالیبراسیون v1.66). بنابراین
+هیچ پیکربندی‌ای نباید با `-O0` ساخته شود: **Debug روی `-Og` و Release روی `-Os`**
+است. اگر با `region FLASH overflowed` روبه‌رو شدید، اول همین سطح بهینه‌سازی را
+بررسی کنید (`Project → Properties → C/C++ Build → Settings → Optimization`).
+ممیز `tools/audit_consistency.py` هر دو پیکربندی را از این بابت چک می‌کند.

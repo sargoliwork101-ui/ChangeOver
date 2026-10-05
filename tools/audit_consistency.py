@@ -1587,6 +1587,28 @@ def sec_cubeide_includes():
            f"host tester {rel} is not excluded from the CubeIDE build (both configs)",
            str([c.name for c in host_src]))
 
+    # [EN] v1.68c: the part has 64 KB of flash and the linker script gives the
+    #      application only 60 KB (the top 4 KB are the parameter NVM and the
+    #      v1.66 LUT block). An unoptimised build does not fit: the user's
+    #      Debug build overflowed FLASH by 4296 bytes because the Debug
+    #      configuration carried no optimization value at all, i.e. -O0.
+    #      Every configuration must therefore name an optimization level, and
+    #      none of them may be "none".
+    # [FA] قطعه ۶۴ کیلوبایت فلش دارد و لینکر فقط ۶۰ کیلوبایت به برنامه می‌دهد
+    #      (۴ کیلوبایت بالا = NVM پارامترها و بلوک جدول v1.66). بیلد بدون
+    #      بهینه‌سازی جا نمی‌شود: بیلد Debug کاربر ۴۲۹۶ بایت سرریز کرد چون
+    #      هیچ سطح بهینه‌سازی نداشت (یعنی -O0). پس هر پیکربندی باید سطح
+    #      بهینه‌سازی داشته باشد و هیچ‌کدام نباید none باشد.
+    opt_values = re.findall(r"optimization\.level\.value\.(\w+)", cproj)
+    n_opt_options = len(re.findall(r"<option [^>]*optimization\.level[^>]*>", cproj))
+    ok(len(opt_values) == n_opt_options and n_opt_options >= 2,
+       "a CubeIDE configuration has no optimization level (that means -O0, "
+       "and -O0 does not fit the 60 KB application region)",
+       f"{len(opt_values)} values for {n_opt_options} options")
+    ok("none" not in opt_values,
+       "a CubeIDE configuration is built with -O0; the image overflows FLASH",
+       str(opt_values))
+
 
 def main():
     ids = sec_ids()
