@@ -491,88 +491,38 @@ def _maxdur(period, count, gap):
     return (period - gt) // count
 
 def ui_clamp_mirror(s):
-    """[EN] Exact single-pass mirror of func__Ui_ClampAlarms (same order).
-       [FA] آینهٔ دقیق گیرهٔ C با همان ترتیب."""
+    """[EN] v1.56: the firmware clamp is per-field only now - every
+       cross-field rule moved into the panel (user order), so this mirror
+       carries exactly one independent window per field and nothing else.
+       [FA] از v1.56 گیرهٔ فرم‌ور فقط تک‌فیلدی است؛ قوانین مشترک به پنل رفتند."""
     s = dict(s)
-    s["ovLedPeriodMs"] = _w(s["ovLedPeriodMs"], 100, 10000)
-    s["ovLedDutyPct"] = _w(s["ovLedDutyPct"], 0, 100)
-    s["ovBeepPeriodMs"] = _period(s["ovBeepPeriodMs"])
-    s["ovBeepCount"] = _w(s["ovBeepCount"], 0, 10)
-    s["ovBeepGapMs"] = _w(s["ovBeepGapMs"], 0, 5000)
-    if s["ovBeepCount"] > 1 and s["ovBeepPeriodMs"] != 0 and s["ovBeepGapMs"] < 100:
-        s["ovBeepGapMs"] = 100
-    s["ovBeepDurMs"] = _w(s["ovBeepDurMs"], 0, 600000)
-    if s["ovBeepPeriodMs"] != 0:
-        s["ovBeepDurMs"] = min(s["ovBeepDurMs"],
-            _maxdur(s["ovBeepPeriodMs"], s["ovBeepCount"], s["ovBeepGapMs"]))
-    s["blLedPeriodMs"] = _w(s["blLedPeriodMs"], 100, 10000)
-    s["blLedDutyPct"] = _w(s["blLedDutyPct"], 0, 100)
-    s["blBeepPeriodMs"] = _period(s["blBeepPeriodMs"])
-    s["blBeepCount"] = _w(s["blBeepCount"], 0, 10)
-    s["blBeepGapMs"] = _w(s["blBeepGapMs"], 0, 5000)
-    if s["blBeepCount"] > 1 and s["blBeepPeriodMs"] != 0 and s["blBeepGapMs"] < 100:
-        s["blBeepGapMs"] = 100
-    s["blBeepDurMs"] = _w(s["blBeepDurMs"], 0, 600000)
-    if s["blBeepPeriodMs"] != 0:
-        s["blBeepDurMs"] = min(s["blBeepDurMs"],
-            _maxdur(s["blBeepPeriodMs"], s["blBeepCount"], s["blBeepGapMs"]))
-    for k in ["runBeepStartPct", "runBeepDoublePct", "runBeepTriplePct", "runBeepCritPct"]:
-        s[k] = _w(s[k], 0, 100)
-    if s["runBeepDoublePct"] > s["runBeepStartPct"]: s["runBeepDoublePct"] = s["runBeepStartPct"]
-    if s["runBeepTriplePct"] > s["runBeepDoublePct"]: s["runBeepTriplePct"] = s["runBeepDoublePct"]
-    if s["runBeepCritPct"] > s["runBeepTriplePct"]: s["runBeepCritPct"] = s["runBeepTriplePct"]
-    s["runStdIntervalMs"] = _period(s["runStdIntervalMs"])
-    s["runTriIntervalMs"] = _period(s["runTriIntervalMs"])
-    s["runCritPeriodMs"] = _period(s["runCritPeriodMs"])
-    s["runCritDutyPct"] = _w(s["runCritDutyPct"], 0, 100)
-    for k in ["runCritCount", "runStdCount", "runDoubleCount", "runTriCount"]:
-        s[k] = _w(s[k], 0, 10)
-    s["runGapMs"] = _w(s["runGapMs"], 0, 5000)
-    if any(s[k] > 1 for k in ["runCritCount", "runStdCount", "runDoubleCount", "runTriCount"]) \
-            and s["runGapMs"] < 100:
-        s["runGapMs"] = 100
-    s["runStdDurMs"] = _w(s["runStdDurMs"], 0, 600000)
-    if s["runStdIntervalMs"] != 0:
-        s["runStdDurMs"] = min(s["runStdDurMs"], _maxdur(s["runStdIntervalMs"],
-            max(s["runStdCount"], s["runDoubleCount"]), s["runGapMs"]))
-    s["runTriDurMs"] = _w(s["runTriDurMs"], 0, 600000)
-    if s["runTriIntervalMs"] != 0:
-        s["runTriDurMs"] = min(s["runTriDurMs"], _maxdur(s["runTriIntervalMs"],
-            s["runTriCount"], s["runGapMs"]))
-    s["runCritDurMs"] = _w(s["runCritDurMs"], 0, 120000)
-    if s["runCritPeriodMs"] != 0 and s["runCritDutyPct"] != 0 and s["runCritCount"] > 1:
-        window = (s["runCritPeriodMs"] * s["runCritDutyPct"]) // 100
-        while s["runCritCount"] > 1:
-            gaps = s["runGapMs"] * (s["runCritCount"] - 1)
-            if gaps < window and (window - gaps) >= s["runCritCount"]:
-                break
-            s["runCritCount"] -= 1
-    s["greenPeriodMs"] = _w(s["greenPeriodMs"], 100, 10000)
-    s["greenMinOffMs"] = _w(s["greenMinOffMs"], 0, 10000)
-    if s["greenMinOffMs"] > s["greenPeriodMs"]: s["greenMinOffMs"] = s["greenPeriodMs"]
-    s["yellowPeriodMs"] = _w(s["yellowPeriodMs"], 100, 10000)
-    s["yellowMinOnMs"] = _w(s["yellowMinOnMs"], 0, 10000)
-    if s["yellowMinOnMs"] > s["yellowPeriodMs"]: s["yellowMinOnMs"] = s["yellowPeriodMs"]
-    s["ovThreshMv"] = _w(s["ovThreshMv"], 24000, 32000)
-    s["ovHystMv"] = _w(s["ovHystMv"], 0, 2000)
-    s["lowBatThreshMv"] = _w(s["lowBatThreshMv"], 15000, 24000)
-    s["lowBatClearMv"] = _w(s["lowBatClearMv"], 15000, 24000)
-    if s["lowBatClearMv"] < s["lowBatThreshMv"]: s["lowBatClearMv"] = s["lowBatThreshMv"]
-    if s["lowBatThreshMv"] > s["lowBatClearMv"]: s["lowBatThreshMv"] = s["lowBatClearMv"]
-    s["pctVminMv"] = _w(s["pctVminMv"], 15000, 25000)
-    s["pctVmaxMv"] = _w(s["pctVmaxMv"], 25000, 32000)
-    if s["pctVmaxMv"] < s["pctVminMv"] + 100: s["pctVmaxMv"] = s["pctVminMv"] + 100
-    if s["pctVminMv"] > s["pctVmaxMv"] - 100: s["pctVminMv"] = s["pctVmaxMv"] - 100
-    s["buzzerMute"] = _w(s["buzzerMute"], 0, 1)
-    # v1.17: enter authoritative (>= 1, so enter-1 never underflows)
-    s["chgFullEnterPct"] = _w(s["chgFullEnterPct"], 1, 100)
-    s["chgFullExitPct"] = _w(s["chgFullExitPct"], 0, 100)
-    if s["chgFullExitPct"] >= s["chgFullEnterPct"]:
-        s["chgFullExitPct"] = s["chgFullEnterPct"] - 1
-    s["chgHystPct"] = _w(s["chgHystPct"], 0, 50)
-    s["runHystPct"] = _w(s["runHystPct"], 0, 50)
-    s["runZeroExit"] = _w(s["runZeroExit"], 0, 100)
-    s["runOneExit"] = _w(s["runOneExit"], 0, 100)
+    W = {"ovLedPeriodMs": (100, 10000), "ovLedDutyPct": (0, 100),
+         "ovBeepDurMs": (0, 600000), "ovBeepCount": (0, 10), "ovBeepGapMs": (0, 5000),
+         "blLedPeriodMs": (100, 10000), "blLedDutyPct": (0, 100),
+         "blBeepDurMs": (0, 600000), "blBeepCount": (0, 10), "blBeepGapMs": (0, 5000),
+         "runBeepStartPct": (0, 100), "runBeepDoublePct": (0, 100),
+         "runBeepTriplePct": (0, 100), "runBeepCritPct": (0, 100),
+         "runCritDutyPct": (0, 100), "runCritCount": (0, 10),
+         "runStdDurMs": (0, 600000), "runTriDurMs": (0, 600000),
+         "runCritDurMs": (0, 120000), "runStdCount": (0, 10),
+         "runDoubleCount": (0, 10), "runTriCount": (0, 10), "runGapMs": (0, 5000),
+         "greenPeriodMs": (100, 10000), "greenMinOffMs": (0, 10000),
+         "yellowPeriodMs": (100, 10000), "yellowMinOnMs": (0, 10000),
+         "ovThreshMv": (24000, 32000), "ovHystMv": (0, 2000),
+         "lowBatThreshMv": (15000, 24000), "lowBatClearMv": (15000, 24000),
+         "pctVminMv": (15000, 25000), "pctVmaxMv": (25000, 32000),
+         "buzzerMute": (0, 1), "chgFullEnterPct": (1, 100), "chgFullExitPct": (0, 100),
+         "chgHystPct": (0, 50), "runHystPct": (0, 50),
+         "runZeroExit": (0, 100), "runOneExit": (0, 100),
+         "chgPctVminMv": (15000, 25000), "chgPctVmaxMv": (25000, 32000),
+         "runDoubleDurMs": (0, 600000), "runDoubleGapMs": (0, 5000)}
+    for k, (lo, hi) in W.items():
+        if k in s:
+            s[k] = _w(s[k], lo, hi)
+    for k in ["ovBeepPeriodMs", "blBeepPeriodMs", "runStdIntervalMs",
+              "runTriIntervalMs", "runCritPeriodMs"]:
+        if k in s:
+            s[k] = _period(s[k])
     return s
 
 def _ui_duty(period, dur, count, gap):
@@ -618,10 +568,13 @@ def run_ui_alarm_tests():
     #      floor must no longer answer to band 2's count.
     # [FA] باند ۲ با مدت و گپ خودش پخش می‌شود و کف گپ مشترک دیگر به تعداد
     #      باند ۲ پاسخ نمی‌دهد.
-    assert_equal(ui_led_c.count("uint32_t__runDoubleDurMs"), 5,
-                 "band 2 duration: init + clamp (x3) + tick")
-    assert_true("(UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount > 1u) &&\n        (UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs < UI_BUZZER_MIN_GAP_MS)" in ui_led_c,
-                "band 2's own gap has its own minimum-gap rule")
+    # [EN] v1.56: the clamp is one line per field now, so band 2's duration
+    #      appears exactly three times: init, clamp, tick.
+    # [FA] از v1.56 گیره تک‌خطی است، پس مدت باند ۲ سه بار می‌آید.
+    assert_equal(ui_led_c.count("uint32_t__runDoubleDurMs"), 3,
+                 "band 2 duration: init + clamp + tick")
+    assert_true("uint32_t__runDoubleGapMs" in ui_led_c,
+                "band 2 keeps its own gap word")
     assert_true("uint32_t uint32_t__chgPctVminMv;" in ui_led_h
                 and "uint32_t uint32_t__chgPctVmaxMv;" in ui_led_h,
                 "the two charge-map words are appended to ui_alarm_t")
@@ -715,13 +668,16 @@ def run_ui_alarm_tests():
     defs = {f: d for _, (f, d) in UI_ALARM_DEFAULTS.items()}
     assert_equal(ui_clamp_mirror(defs), defs, "clamp is a no-op on boot defaults")
     def check_inv(s, label):
+        """[EN] v1.56: only the per-field windows are the firmware's promise
+           now; the joint rules are asserted in the panel test suite.
+           [FA] تنها بازهٔ تک‌فیلدی وعدهٔ فرم‌ور است؛ قوانین مشترک در تست پنل."""
         assert_true(100 <= s["ovLedPeriodMs"] <= 10000, label + " 38 window")
         assert_true(0 <= s["ovLedDutyPct"] <= 100, label + " 39 window")
         assert_true(s["ovBeepPeriodMs"] == 0 or 1000 <= s["ovBeepPeriodMs"] <= 600000, label + " 40")
         assert_true(100 <= s["blLedPeriodMs"] <= 10000, label + " 44 window")
         assert_true(s["blBeepPeriodMs"] == 0 or 1000 <= s["blBeepPeriodMs"] <= 600000, label + " 46")
-        assert_true(s["runBeepStartPct"] >= s["runBeepDoublePct"] >= s["runBeepTriplePct"]
-                    >= s["runBeepCritPct"], label + " bands ordered")
+        for k in ["runBeepStartPct", "runBeepDoublePct", "runBeepTriplePct", "runBeepCritPct"]:
+            assert_true(0 <= s[k] <= 100, label + " " + k)
         for k in ["runStdIntervalMs", "runTriIntervalMs", "runCritPeriodMs"]:
             assert_true(s[k] == 0 or 1000 <= s[k] <= 600000, label + " " + k)
         assert_true(0 <= s["runCritDutyPct"] <= 100, label + " 57")
@@ -730,44 +686,22 @@ def run_ui_alarm_tests():
             assert_true(0 <= s[k] <= 10, label + " " + k)
         for k in ["ovBeepGapMs", "blBeepGapMs", "runGapMs"]:
             assert_true(0 <= s[k] <= 5000, label + " " + k)
-        if s["ovBeepCount"] > 1 and s["ovBeepPeriodMs"] != 0:
-            assert_true(s["ovBeepGapMs"] >= 100, label + " OV gap rule")
-        if s["blBeepCount"] > 1 and s["blBeepPeriodMs"] != 0:
-            assert_true(s["blBeepGapMs"] >= 100, label + " BL gap rule")
-        if any(s[k] > 1 for k in ["runCritCount", "runStdCount", "runDoubleCount", "runTriCount"]):
-            assert_true(s["runGapMs"] >= 100, label + " run gap rule")
-        for (dur, per, cnt, gap) in [("ovBeepDurMs", "ovBeepPeriodMs", "ovBeepCount", "ovBeepGapMs"),
-                                     ("blBeepDurMs", "blBeepPeriodMs", "blBeepCount", "blBeepGapMs"),
-                                     ("runStdDurMs", "runStdIntervalMs", "runStdCount", "runGapMs"),
-                                     ("runStdDurMs", "runStdIntervalMs", "runDoubleCount", "runGapMs"),
-                                     ("runTriDurMs", "runTriIntervalMs", "runTriCount", "runGapMs")]:
-            d = _ui_duty(s[per], s[dur], s[cnt], s[gap])
-            window = s[dur] * s[cnt] + (s[gap] * (s[cnt] - 1) if s[cnt] > 1 else 0)
-            # sounding (1..100) exactly when period active + dur/count live + window fits
-            expect_sound = (s[per] != 0 and s[dur] > 0 and s[cnt] > 0 and window <= s[per])
-            assert_true((1 <= d <= 100) == expect_sound, label + " " + dur + " sound iff fits")
-            if 1 <= d <= 100:
-                assert_true(calculate_pattern(s[per], d, s[cnt], s[gap]) is not None,
-                            label + " " + dur + " service-valid")
-        if s["runCritPeriodMs"] != 0 and s["runCritDutyPct"] != 0 and s["runCritCount"] > 0:
-            cw = (s["runCritPeriodMs"] * s["runCritDutyPct"]) // 100
-            cg = s["runGapMs"] * (s["runCritCount"] - 1) if s["runCritCount"] > 1 else 0
-            assert_true(cg < cw and (cw - cg) >= s["runCritCount"], label + " crit window fits (v1.16e)")
-            assert_true(calculate_pattern(s["runCritPeriodMs"], s["runCritDutyPct"],
-                        s["runCritCount"], s["runGapMs"]) is not None, label + " crit service-valid")
-        assert_true(100 <= s["greenPeriodMs"] <= 10000 and s["greenMinOffMs"] <= s["greenPeriodMs"],
-                    label + " green")
-        assert_true(100 <= s["yellowPeriodMs"] <= 10000 and s["yellowMinOnMs"] <= s["yellowPeriodMs"],
-                    label + " yellow")
+        for k in ["ovBeepDurMs", "blBeepDurMs", "runStdDurMs", "runTriDurMs"]:
+            assert_true(0 <= s[k] <= 600000, label + " " + k)
+        assert_true(0 <= s["runCritDurMs"] <= 120000, label + " 61 window")
+        assert_true(100 <= s["greenPeriodMs"] <= 10000 and 0 <= s["greenMinOffMs"] <= 10000,
+                    label + " green windows")
+        assert_true(100 <= s["yellowPeriodMs"] <= 10000 and 0 <= s["yellowMinOnMs"] <= 10000,
+                    label + " yellow windows")
         assert_true(24000 <= s["ovThreshMv"] <= 32000 and 0 <= s["ovHystMv"] <= 2000
                     and s["ovHystMv"] < s["ovThreshMv"], label + " OV thresh (no underflow)")
-        assert_true(s["lowBatThreshMv"] <= s["lowBatClearMv"], label + " lowbat order")
-        assert_true(s["pctVmaxMv"] >= s["pctVminMv"] + 100, label + " pct range strictly positive")
+        assert_true(15000 <= s["lowBatThreshMv"] <= 24000
+                    and 15000 <= s["lowBatClearMv"] <= 24000, label + " lowbat windows")
+        assert_true(15000 <= s["pctVminMv"] <= 25000
+                    and 25000 <= s["pctVmaxMv"] <= 32000, label + " pct map windows")
         assert_true(s["buzzerMute"] in (0, 1), label + " mute 0/1")
-        # v1.17: enter authoritative, exit strictly below it (enter >= 1: no underflow)
         assert_true(1 <= s["chgFullEnterPct"] <= 100, label + " 77 window")
-        assert_true(0 <= s["chgFullExitPct"] <= 100
-                    and s["chgFullExitPct"] < s["chgFullEnterPct"], label + " 78 below enter")
+        assert_true(0 <= s["chgFullExitPct"] <= 100, label + " 78 window")
         assert_true(0 <= s["chgHystPct"] <= 50, label + " 79 window")
         assert_true(0 <= s["runHystPct"] <= 50, label + " 80 window")
         assert_true(0 <= s["runZeroExit"] <= 100, label + " 81 window")
@@ -786,41 +720,24 @@ def run_ui_alarm_tests():
         assert_equal(ui_clamp_mirror(c1), c1, f"clamp idempotent trial {trial}")
     print("Clamp invariants + idempotence (2000 random) PASS")
 
-    # --- v1.16e: crit window fit - count pulled down, intentional silence untouched ---
-    assert_true("uint32_t__critWindowMs" in ui_led_c and "runCritCount--" in ui_led_c,
-                "C clamp pulls the crit count down until its window fits")
-    d = dict(defs)
-    d.update({"runCritPeriodMs": 1000, "runCritDutyPct": 10, "runCritCount": 3,
-              "runGapMs": 100, "runStdCount": 0, "runDoubleCount": 0, "runTriCount": 0})
-    assert_equal(ui_clamp_mirror(d)["runCritCount"], 1,
-                 "crit 3->1 when window 100 ms cannot hold gaps 200 ms")
-    d.update({"runCritPeriodMs": 10000, "runCritDutyPct": 100, "runCritCount": 3})
-    assert_equal(ui_clamp_mirror(d)["runCritCount"], 3, "fitting crit count untouched")
-    for quiet in [{"runCritPeriodMs": 0}, {"runCritDutyPct": 0}]:
-        dq = dict(defs)
-        dq.update({"runCritCount": 3, "runGapMs": 100, "runStdCount": 0,
-                   "runDoubleCount": 0, "runTriCount": 0})
-        dq.update(quiet)
-        assert_equal(ui_clamp_mirror(dq)["runCritCount"], 3,
-                     f"crit count untouched on intentional silence {quiet}")
-    assert_true("Id 76 (mute) is panel-session only" in ui_led_h
-                and "persists too - a muted board stays" not in ui_led_h,
-                "no stale persisted-mute comment in ui_led.h")
-    print("Crit window fit (v1.16e) PASS")
+    # --- v1.56 (user order): every cross-field rule left the MCU ---
+    for gone in ["uint32_t__critWindowMs", "runCritCount--", "func__Ui_MaxBeepDurMs",
+                 "UI_BUZZER_MIN_GAP_MS"]:
+        assert_true(gone not in ui_led_c,
+                    f"cross-field rule '{gone}' must no longer live in ui_led.c")
+    assert_true("uint32_t__runBeepDoublePct =\n            UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct"
+                not in ui_led_c, "band ordering must no longer be forced by the MCU")
+    assert_true(ui_led_c.count("func__Ui_ClampWindow(") >= 40
+                and "func__Ui_ClampPeriod(" in ui_led_c,
+                "the per-field guard stays: a bad NVM record must not reach the ticks")
+    print("Cross-field rules moved to the panel (v1.56) PASS")
 
     # --- v1.17: enter authoritative, yellow floor 150, scenario reads live 77..82 ---
     e = dict(defs)
-    e.update({"chgFullEnterPct": 90, "chgFullExitPct": 95})
-    assert_equal(ui_clamp_mirror(e)["chgFullExitPct"], 89,
-                 "exit 95 pulled to enter-1 when enter drops to 90")
     e.update({"chgFullEnterPct": 0, "chgFullExitPct": 0})
     c = ui_clamp_mirror(e)
     assert_equal((c["chgFullEnterPct"], c["chgFullExitPct"]), (1, 0),
                  "enter floored at 1, exit 0 stays (no underflow)")
-    e = dict(defs)
-    e.update({"chgFullEnterPct": 100, "chgFullExitPct": 100})
-    assert_equal(ui_clamp_mirror(e)["chgFullExitPct"], 99,
-                 "exit == enter pulled to 99")
     assert_equal(defines.get("UI_CHARGING_YELLOW_MIN_ON_MS"), 150,
                  "yellow floor macro is 150 (v1.17)")
     assert_true("uint32_t__chgFullEnterPct" in ui_led_c and "uint32_t__chgFullExitPct" in ui_led_c

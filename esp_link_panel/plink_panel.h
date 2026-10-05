@@ -277,7 +277,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 269175d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 915b95b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -764,8 +764,71 @@ function pundo(){for(const id of Object.keys(PEND)){const e=$('q'+id);
   if(e){e.classList.remove('pq');e.value=(D&&D.p&&D.p[id]!=null)?D.p[id]:'';}}
  PEND={};pbar();stxt('sbst','تغییرات محلی پاک شد؛ کادرها دوباره مقدار برد را نشان می‌دهند.');
  if(typeof afresh==='function')afresh();if(typeof sall==='function')sall();}
+
+/* ==================== قوانین بین‌فیلدی / Cross-field rules ==================== */
+/* [EN] v1.56 (user order): the MCU no longer checks how these numbers fit
+   TOGETHER - it only guards each field's own min/max. The panel owns the
+   joint rules now and applies them to the staged batch BEFORE sending, then
+   reports every value it had to move. Each rule is the one the firmware used
+   to run, in the same direction (the first value is authoritative).
+   [FA] میکرو دیگر جور بودن این اعداد با هم را چک نمی‌کند؛ فقط کمینه/بیشینهٔ
+   هر فیلد را نگه می‌دارد. قوانین مشترک حالا مال پنل است: پیش از ارسال روی
+   دستهٔ صف‌شده اعمال می‌شود و هر عددی که مجبور شده جابه‌جا کند را می‌گوید.
+   جهت هر قانون همان چیزی است که قبلاً در فرم‌ور بود (عدد اول مرجع است). */
+const MINGAP=100;
+function fitdur(per,cnt,gap){/* بیشترین مدت هر بوق که در پنجره جا می‌شود */
+ if(per<=0||cnt<=0)return 600000;
+ const gaps=cnt>1?gap*(cnt-1):0;
+ if(gaps>=per)return 0;
+ return Math.floor((per-gaps)/cnt);}
+/* [EN] v: id->value map of the WHOLE picture (boxes + board). Returns the
+   list of fixes as [id, from, to]. [FA] فهرست اصلاح‌ها را برمی‌گرداند. */
+function fixrules(v){
+ const fx=[],set=(id,nv)=>{if(v[id]!==nv){fx.push([id,v[id],nv]);v[id]=nv;}};
+ /* ۱) گپ: با بیش از یک بوق، دست‌کم ۱۰۰ ms */
+ if(v[42]>1&&v[40]!==0&&v[43]<MINGAP)set(43,MINGAP);
+ if(v[48]>1&&v[46]!==0&&v[49]<MINGAP)set(49,MINGAP);
+ if((v[62]>1||v[64]>1||v[58]>1)&&v[65]<MINGAP)set(65,MINGAP);
+ if(v[63]>1&&v[122]<MINGAP)set(122,MINGAP);
+ /* ۲) مدت هر بوق باید در پنجرهٔ خودش جا شود */
+ if(v[40]!==0)set(41,Math.min(v[41],fitdur(v[40],v[42],v[43])));
+ if(v[46]!==0)set(47,Math.min(v[47],fitdur(v[46],v[48],v[49])));
+ if(v[54]!==0){set(59,Math.min(v[59],fitdur(v[54],v[62],v[65])));
+               set(121,Math.min(v[121],fitdur(v[54],v[63],v[122])));}
+ if(v[55]!==0)set(60,Math.min(v[60],fitdur(v[55],v[64],v[65])));
+ /* ۳) ترتیب باندها: ۵۰ ≥ ۵۱ ≥ ۵۲ ≥ ۵۳ و عدد اول مرجع */
+ if(v[51]>v[50])set(51,v[50]);
+ if(v[52]>v[51])set(52,v[51]);
+ if(v[53]>v[52])set(53,v[52]);
+ /* ۴) الگوی بحرانی باید در پنجرهٔ duty خودش جا شود، وگرنه بوقی نمی‌ماند */
+ if(v[56]!==0&&v[57]!==0&&v[58]>1){
+  const win=Math.floor(v[56]*v[57]/100);let c=v[58];
+  while(c>1&&!((v[65]*(c-1))<win&&(win-v[65]*(c-1))>=c))c--;
+  set(58,c);}
+ /* ۵) کمینهٔ خاموشی/روشنی بیشتر از دوره نشود */
+ if(v[67]>v[66])set(67,v[66]);
+ if(v[69]>v[68])set(69,v[68]);
+ /* ۶) سطح پاک‌شدن آلارم باتری کم زیر آستانه نرود (آستانه مرجع) */
+ if(v[73]<v[72])set(73,v[72]);
+ /* ۷) نردبان درصد دست‌کم ۱۰۰ mV پهنا داشته باشد (حد پایین مرجع) */
+ if(v[75]<v[74]+100)set(75,v[74]+100);
+ if(v[120]<v[119]+100)set(120,v[119]+100);
+ /* ۸) خروج فول باید زیر ورود فول بماند */
+ if(v[78]>=v[77])set(78,v[77]-1);
+ return fx;}
+/* [EN] Snapshot of every id the rules touch: the staged value if there is
+   one, else the box, else what the board reported.
+   [FA] عکس لحظه‌ای هر شناسه: مقدار صف‌شده، وگرنه کادر، وگرنه مقدار برد. */
+const RIDS=[40,41,42,43,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,62,63,64,65,66,67,68,69,72,73,74,75,77,78,119,120,121,122];
+function rsnap(){const v={};RIDS.forEach(id=>{
+ v[id]=(id in PEND)?PEND[id]:c4v(id,(D&&D.p&&D.p[id]!=null)?D.p[id]:0);});return v;}
 async function sendall(){
- const ids=Object.keys(PEND);if(!ids.length)return;
+ if(!Object.keys(PEND).length)return;
+ /* v1.56: قوانین مشترک اینجا اعمال می‌شوند، نه روی برد */
+ const v=rsnap(),fixed=fixrules(v),fixtxt=[];
+ fixed.forEach(f=>{const id=f[0];qput(id,v[id]);const e=$('q'+id);if(e)e.value=v[id];
+  fixtxt.push(id+': '+f[1]+'→'+f[2]);});
+ const ids=Object.keys(PEND);
  const sent={};let ok=0;
  stxt('sbst','… در حال ارسال');
  for(const id of ids){const v=PEND[id];
@@ -785,8 +848,9 @@ async function sendall(){
  pbar();
  if(typeof afresh==='function')afresh();if(typeof sall==='function')sall();
  if(ok<ids.length){stxt('sbst','⚠ '+ok+' از '+ids.length+' ارسال شد؛ بقیه در صف ماندند — دوباره بزنید.');return;}
- if(!bad.length){stxt('sbst','✅ '+ok+' تنظیم ارسال شد؛ برد همه را عیناً پذیرفت و ذخیره کرد.');return;}
- stxt('sbst','✅ '+ok+' تنظیم نشست، اما برد '+bad.length+' مقدار را به بازهٔ مجاز خودش گیره زد: '+bad.join(' · '));}
+ const pre=fixtxt.length?(' · پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+fixtxt.join(' · ')):'';
+ if(!bad.length){stxt('sbst','✅ '+ok+' تنظیم ارسال شد؛ برد همه را عیناً پذیرفت و ذخیره کرد.'+pre);return;}
+ stxt('sbst','✅ '+ok+' تنظیم نشست، اما برد '+bad.length+' مقدار را به بازهٔ مجاز خودش گیره زد: '+bad.join(' · ')+pre);}
 function num(id){const e=$('i'+id),p=P[id],t=+e.value;if(e.value===''||isNaN(t))return;const w=(id===13||id===14)?Math.round(t*10):Math.round(t);send(id,Math.min(p[3],Math.max(p[2],w)));e.value='';e.blur();}
 function ctl(id){const p=P[id];
  if(id===13||id===14)return `<input type="number" id="i${id}" min="0" max="50" step="any" placeholder="0…50٪" onkeydown="if(event.key=='Enter')num(${id})"><button class="sb" onclick="num(${id})">ثبت</button>`;

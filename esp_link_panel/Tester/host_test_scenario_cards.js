@@ -685,6 +685,70 @@ async function testSendQueue(win, doc) {
           'a clean batch is reported as accepted and stored');
 }
 
+
+/* ==================== v1.56 panel-side rules / قوانین سمت پنل ==================== */
+
+/**
+ * [EN] The MCU now guards only each field's own min/max, so every JOINT rule
+ *      must hold here or a nonsense pattern would reach the board silently.
+ * [FA] میکرو فقط بازهٔ تک‌فیلدی را نگه می‌دارد، پس قوانین مشترک باید اینجا
+ *      درست باشند وگرنه الگوی بی‌معنا بی‌صدا روی برد می‌نشیند.
+ */
+function testFixRules(win, doc) {
+    console.log('\nv1.56 cross-field rules in the panel / قوانین مشترک در پنل');
+
+    const base = {};
+    [40,41,42,43,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,62,63,64,65,66,67,68,69,
+     72,73,74,75,77,78,119,120,121,122].forEach(id => { base[id] = 0; });
+    const run = (over) => {
+        const v = Object.assign({}, base, over);
+        const fx = win.fixrules(v);
+        return { v: v, fx: fx };
+    };
+
+    let r = run({ 40: 10000, 42: 3, 43: 0 });
+    check(r.v[43] === 100, 'more than one beep forces the 100 ms gap floor');
+    r = run({ 40: 10000, 42: 1, 43: 0 });
+    check(r.v[43] === 0, 'a single beep leaves the gap alone');
+    r = run({ 62: 1, 64: 1, 58: 1, 65: 0 });
+    check(r.v[65] === 0, 'the shared gap is untouched while every band wants one beep');
+    r = run({ 64: 2, 65: 0 });
+    check(r.v[65] === 100, 'one band with two beeps raises the shared gap');
+
+    r = run({ 40: 1000, 42: 2, 43: 100, 41: 999999 });
+    check(r.v[41] === 450, 'a beep duration is cut to what the window can hold',
+          String(r.v[41]));
+    r = run({ 40: 0, 41: 999999 });
+    check(r.v[41] === 999999, 'a silent period leaves the duration alone');
+
+    r = run({ 50: 40, 51: 90, 52: 95, 53: 99 });
+    check(r.v[51] === 40 && r.v[52] === 40 && r.v[53] === 40,
+          'the bands are pulled back into order, band 1 authoritative');
+
+    r = run({ 56: 1000, 57: 10, 58: 3, 65: 100 });
+    check(r.v[58] === 1, 'the critical count shrinks until its own window fits');
+    r = run({ 56: 10000, 57: 100, 58: 3, 65: 100 });
+    check(r.v[58] === 3, 'a fitting critical pattern is untouched');
+
+    r = run({ 66: 1000, 67: 5000 });
+    check(r.v[67] === 1000, 'the minimum off time cannot exceed the period');
+    r = run({ 68: 1000, 69: 5000 });
+    check(r.v[69] === 1000, 'the minimum on time cannot exceed the period');
+
+    r = run({ 72: 21000, 73: 20000 });
+    check(r.v[73] === 21000, 'the clear level is pulled up to the alarm level');
+    r = run({ 74: 21000, 75: 20000 });
+    check(r.v[75] === 21100, 'the percent ladder keeps at least 100 mV of span');
+    r = run({ 119: 21000, 120: 21000 });
+    check(r.v[120] === 21100, 'the charge ladder gets the same 100 mV rule');
+    r = run({ 77: 90, 78: 95 });
+    check(r.v[78] === 89, 'the full exit is pulled below the full entry');
+
+    r = run({});
+    check(r.fx.length === 0 || r.fx.every(f => f[1] !== f[2]),
+          'a fix is only reported when the value really moved');
+}
+
 /* ==================== Runner / اجراکننده ==================== */
 
 const dom = loadPanel();
@@ -704,6 +768,7 @@ setTimeout(async () => {
         testImbalance(win, doc);
         testSimulator(win, doc);
         await testSendQueue(win, doc);
+        testFixRules(win, doc);
     } catch (err) {
         failed += 1;
         console.log('  FAIL threw: ' + err.message);

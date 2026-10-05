@@ -2342,10 +2342,13 @@ def test_ui_mirror_v117():
         check(re.search(rf"#define {name}\s+{val}", text_uih),
               f"boot default {name} must be {val} (v1.17: 69 rises 10 -> 150)")
 
-    # --- board clamp: enter authoritative, exit pulled to enter-1 ---
+    # --- v1.56 (user order): the board keeps only the per-field windows;
+    #     "exit below enter" moved into the panel's fixrules().
+    # --- v1.56: فقط بازهٔ تک‌فیلدی روی برد ماند؛ قانون مشترک در پنل است.
     check("uint32_t__chgFullEnterPct, 1u, 100u" in text_uic
           and "uint32_t__chgFullExitPct, 0u, 100u" in text_uic
-          and "uint32_t__chgFullEnterPct - 1u" in text_uic
+          and "uint32_t__chgFullEnterPct - 1u" not in text_uic
+          and "if(v[78]>=v[77])set(78,v[77]-1);" in ino
           and "uint32_t__chgHystPct, 0u, 50u" in text_uic
           and "uint32_t__runHystPct, 0u, 50u" in text_uic
           and "uint32_t__runZeroExit, 0u, 100u" in text_uic
@@ -2375,7 +2378,7 @@ def test_ui_mirror_v117():
           "ucard4 must hold the full/hysteresis inputs q77..q79 and ucard3 the run exits q80..q82")
 
     # --- preview server mirrors the same numbers ---
-    check("100, 95, 5, 2, 2, 3," in prev and "case 78:" in prev and "P[77] - 1" in prev
+    check("100, 95, 5, 2, 2, 3," in prev and "case 78:" in prev and "P[77] - 1" not in prev
           and "50, 18000, 0, 10, 1000," in prev
           and "14800, 100, 500, 10, 15000, 3000, 3000, 500," in prev
           and "300, 500, 600000, 600000, 30000, 100, 10, 3600000, 200, 1, 20," in prev

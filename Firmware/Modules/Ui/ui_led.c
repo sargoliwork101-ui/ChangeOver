@@ -168,29 +168,6 @@ static uint32_t func__Ui_ClampPeriod(uint32_t uint32_t__value)
     return func__Ui_ClampWindow(uint32_t__value, 1000u, 600000u);
 }
 
-/**
- * @brief  [EN] Largest single-beep duration that still fits its period:
- *              dur*count + gap*(count-1) <= period. Overflow-safe: gap <=
- *              5000 and count <= 10, so the gap total stays below 45000.
- *         [FA] بیشترین مدت تک‌بوق که هنوز در دوره جا می‌شود.
- */
-static uint32_t func__Ui_MaxBeepDurMs(uint32_t uint32_t__periodMs,
-                                      uint32_t uint32_t__count,
-                                      uint32_t uint32_t__gapMs)
-{
-    uint32_t uint32_t__gapsTotal;
-
-    if (uint32_t__count == 0u)
-    {
-        return uint32_t__periodMs;
-    }
-    uint32_t__gapsTotal = uint32_t__gapMs * (uint32_t__count - 1u);
-    if (uint32_t__gapsTotal >= uint32_t__periodMs)
-    {
-        return 0u;
-    }
-    return (uint32_t__periodMs - uint32_t__gapsTotal) / uint32_t__count;
-}
 
 /**
  * @brief  [EN] Re-clamp the whole UI set, single pass, dependency order
@@ -202,75 +179,49 @@ static uint32_t func__Ui_MaxBeepDurMs(uint32_t uint32_t__periodMs,
  */
 static void func__Ui_ClampAlarms(void)
 {
-    uint32_t uint32_t__maxDurMs;
-    uint32_t uint32_t__maxCount;
-    uint32_t uint32_t__critWindowMs;
-    uint32_t uint32_t__critGapsMs;
-
+    /* [EN] v1.56 (user order 2026-10-05: "take these checks out of the MCU
+       and put them in the panel - why should the micro check them?").
+       What is LEFT here is one independent min/max per field, and nothing
+       else. Every CROSS-FIELD rule that used to silently move a second
+       value - band ordering, beep duration fitted into its window, the
+       100 ms gap floor, min-off/min-on pulled under the period, the
+       low-battery clear pulled up to the threshold, the percent-map 100 mV
+       span, the full exit pulled under the full entry, and the critical
+       count shrunk until the pattern fit - now lives in the panel, which
+       fixes the numbers BEFORE they are sent and says what it changed.
+       The per-field guard stays because the panel is not the only writer:
+       an NVM record from an older build or a corrupted frame must never
+       reach the ticks as an out-of-range word.
+       [FA] فقط «کمینه/بیشینهٔ هر فیلد به‌تنهایی» اینجا می‌ماند. تمام
+       قوانین بین‌فیلدی که بی‌صدا عدد دومی را جابه‌جا می‌کردند به پنل
+       منتقل شدند؛ پنل پیش از ارسال اصلاح می‌کند و می‌گوید چه چیزی را
+       عوض کرده. گیرهٔ تک‌فیلدی می‌ماند چون نویسندهٔ دیگری هم هست:
+       رکورد NVM نسخهٔ قدیمی یا فریم خراب نباید عددِ خارج از بازه را به
+       تیک‌ها برساند. */
     UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs, 100u, 10000u);
     UI_ALARM_T__G__Alarm.uint32_t__ovLedDutyPct =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovLedDutyPct, 0u, 100u);
     UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs =
         func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs);
+    UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs, 0u, 600000u);
     UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount, 0u, 10u);
     UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs, 0u, 5000u);
-    if ((UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount > 1u) &&
-        (UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs != 0u) &&
-        (UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs < UI_BUZZER_MIN_GAP_MS))
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs = UI_BUZZER_MIN_GAP_MS;
-    }
-    UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs, 0u, 600000u);
-    if (UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs != 0u)
-    {
-        uint32_t__maxDurMs = func__Ui_MaxBeepDurMs(
-            UI_ALARM_T__G__Alarm.uint32_t__ovBeepPeriodMs,
-            UI_ALARM_T__G__Alarm.uint32_t__ovBeepCount,
-            UI_ALARM_T__G__Alarm.uint32_t__ovBeepGapMs);
-        if (UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs > uint32_t__maxDurMs)
-        {
-            UI_ALARM_T__G__Alarm.uint32_t__ovBeepDurMs = uint32_t__maxDurMs;
-        }
-    }
-
     UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blLedPeriodMs, 100u, 10000u);
     UI_ALARM_T__G__Alarm.uint32_t__blLedDutyPct =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blLedDutyPct, 0u, 100u);
     UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs =
         func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs);
+    UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs, 0u, 600000u);
     UI_ALARM_T__G__Alarm.uint32_t__blBeepCount =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blBeepCount, 0u, 10u);
     UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs, 0u, 5000u);
-    if ((UI_ALARM_T__G__Alarm.uint32_t__blBeepCount > 1u) &&
-        (UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs != 0u) &&
-        (UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs < UI_BUZZER_MIN_GAP_MS))
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs = UI_BUZZER_MIN_GAP_MS;
-    }
-    UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs, 0u, 600000u);
-    if (UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs != 0u)
-    {
-        uint32_t__maxDurMs = func__Ui_MaxBeepDurMs(
-            UI_ALARM_T__G__Alarm.uint32_t__blBeepPeriodMs,
-            UI_ALARM_T__G__Alarm.uint32_t__blBeepCount,
-            UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs);
-        if (UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs > uint32_t__maxDurMs)
-        {
-            UI_ALARM_T__G__Alarm.uint32_t__blBeepDurMs = uint32_t__maxDurMs;
-        }
-    }
-
-    /* [EN] Beep bands must stay ordered: start >= double >= triple >=
-       crit. One top-down pass always converges (each level is pulled
-       down to its ceiling); start is authoritative.
-       [FA] باندها مرتب: یک پاس از بالا همیشه همگرا می‌شود؛ start مرجع. */
     UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct, 0u, 100u);
     UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct =
@@ -279,25 +230,6 @@ static void func__Ui_ClampAlarms(void)
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct, 0u, 100u);
     UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct, 0u, 100u);
-    if (UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct >
-        UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct)
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct =
-            UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct;
-    }
-    if (UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct >
-        UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct)
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct =
-            UI_ALARM_T__G__Alarm.uint32_t__runBeepDoublePct;
-    }
-    if (UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct >
-        UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct)
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__runBeepCritPct =
-            UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct;
-    }
-
     UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs =
         func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs);
     UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs =
@@ -308,6 +240,12 @@ static void func__Ui_ClampAlarms(void)
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct, 0u, 100u);
     UI_ALARM_T__G__Alarm.uint32_t__runCritCount =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runCritCount, 0u, 10u);
+    UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs, 0u, 600000u);
+    UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs, 0u, 600000u);
+    UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs, 0u, 120000u);
     UI_ALARM_T__G__Alarm.uint32_t__runStdCount =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runStdCount, 0u, 10u);
     UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount =
@@ -316,218 +254,32 @@ static void func__Ui_ClampAlarms(void)
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runTriCount, 0u, 10u);
     UI_ALARM_T__G__Alarm.uint32_t__runGapMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runGapMs, 0u, 5000u);
-    /* [EN] v1.50: band 2 has its own gap now, so the common gap answers only
-       to the bands that still use it (1, 3, critical).
-       [FA] باند ۲ گپ خودش را دارد، پس گپ مشترک فقط به باندهای ۱، ۳ و بحرانی
-       پاسخ می‌دهد. */
-    if (((UI_ALARM_T__G__Alarm.uint32_t__runCritCount > 1u) ||
-         (UI_ALARM_T__G__Alarm.uint32_t__runStdCount > 1u) ||
-         (UI_ALARM_T__G__Alarm.uint32_t__runTriCount > 1u)) &&
-        (UI_ALARM_T__G__Alarm.uint32_t__runGapMs < UI_BUZZER_MIN_GAP_MS))
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__runGapMs = UI_BUZZER_MIN_GAP_MS;
-    }
-    UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs, 0u, 5000u);
-    if ((UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount > 1u) &&
-        (UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs < UI_BUZZER_MIN_GAP_MS))
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs = UI_BUZZER_MIN_GAP_MS;
-    }
-    UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs, 0u, 600000u);
-    if (UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs != 0u)
-    {
-        /* [EN] v1.50: the standard duration now belongs to band 1 alone, so
-           it only has to fit band 1's own count and the common gap.
-           [FA] مدت استاندارد از این پس فقط مال باند ۱ است، پس فقط باید در
-           تعداد خودِ باند ۱ و گپ مشترک جا شود. */
-        uint32_t__maxCount = UI_ALARM_T__G__Alarm.uint32_t__runStdCount;
-        uint32_t__maxDurMs = func__Ui_MaxBeepDurMs(
-            UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs,
-            uint32_t__maxCount,
-            UI_ALARM_T__G__Alarm.uint32_t__runGapMs);
-        if (UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs > uint32_t__maxDurMs)
-        {
-            UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs = uint32_t__maxDurMs;
-        }
-    }
-    /* [EN] v1.50: band 2's own duration must fit band 2's own window - same
-       interval (54, still shared), its own count (63) and its own gap (122).
-       [FA] مدت مخصوص باند ۲ باید در پنجرهٔ خودش جا شود: همان فاصلهٔ مشترک،
-       تعداد خودش و گپ خودش. */
-    UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs, 0u, 600000u);
-    if (UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs != 0u)
-    {
-        uint32_t__maxDurMs = func__Ui_MaxBeepDurMs(
-            UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs,
-            UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount,
-            UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs);
-        if (UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs > uint32_t__maxDurMs)
-        {
-            UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs = uint32_t__maxDurMs;
-        }
-    }
-    UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs, 0u, 600000u);
-    if (UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs != 0u)
-    {
-        uint32_t__maxDurMs = func__Ui_MaxBeepDurMs(
-            UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs,
-            UI_ALARM_T__G__Alarm.uint32_t__runTriCount,
-            UI_ALARM_T__G__Alarm.uint32_t__runGapMs);
-        if (UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs > uint32_t__maxDurMs)
-        {
-            UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs = uint32_t__maxDurMs;
-        }
-    }
-    UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs, 0u, 120000u);
-    /* [EN] v1.16e: the critical pattern must fit its own window, or the
-       buzzer service goes INVALID and the dying battery gets NO
-       indication at all (every LED is already off below the crit band).
-       Window = period*duty/100 must leave >= 1 ms per pulse after the
-       gaps; otherwise pull the count down (it always converges: one
-       pulse always fits a non-zero window, which is >= 10 ms here).
-       Period 0 / duty 0 / count 0 stay a valid intentional silence.
-       [FA] الگوی بحرانی باید در پنجرهٔ خودش جا شود وگرنه سرویس
-       نامعتبر می‌شود و باتریِ در حال مرگ هیچ نشانه‌ای ندارد (همهٔ
-       LEDها زیر باند بحرانی خاموش‌اند). پنجره باید بعد از گپ‌ها
-       دست‌کم ۱ms برای هر بوق باقی بگذارد؛ وگرنه تعداد کم می‌شود.
-       صفر بودن دوره/دیوتی/تعداد یعنی سکوت عمدی و دست نمی‌خورد. */
-    if ((UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs != 0u) &&
-        (UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct != 0u) &&
-        (UI_ALARM_T__G__Alarm.uint32_t__runCritCount > 1u))
-    {
-        /* [EN] Flash diet 2026-09-27: u32 is exact - period <= 600000
-           (ClampPeriod) x duty <= 100 = 60,000,000 < 2^32; gaps <=
-           5000 x 9 = 45,000. The u64 division only fed uldivmod.
-           [FA] رژیم فلش: ۳۲بیتی دقیق است (حداکثر ۶×۱۰^۷). */
-        uint32_t__critWindowMs =
-            (UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs *
-             UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct) /
-            UI_PERCENT_SCALE;
-        while (UI_ALARM_T__G__Alarm.uint32_t__runCritCount > 1u)
-        {
-            uint32_t__critGapsMs =
-                UI_ALARM_T__G__Alarm.uint32_t__runGapMs *
-                (UI_ALARM_T__G__Alarm.uint32_t__runCritCount - 1u);
-            if ((uint32_t__critGapsMs < uint32_t__critWindowMs) &&
-                ((uint32_t__critWindowMs - uint32_t__critGapsMs) >=
-                 UI_ALARM_T__G__Alarm.uint32_t__runCritCount))
-            {
-                break;
-            }
-            UI_ALARM_T__G__Alarm.uint32_t__runCritCount--;
-        }
-    }
-
     UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs, 100u, 10000u);
     UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs, 0u, 10000u);
-    if (UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs >
-        UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs)
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs =
-            UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs;
-    }
     UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs, 100u, 10000u);
     UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs, 0u, 10000u);
-    if (UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs >
-        UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs)
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__yellowMinOnMs =
-            UI_ALARM_T__G__Alarm.uint32_t__yellowPeriodMs;
-    }
-
     UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv, 24000u, 32000u);
     UI_ALARM_T__G__Alarm.uint32_t__ovHystMv =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovHystMv, 0u, 2000u);
-
-    /* [EN] The threshold is authoritative: the clear level is pulled up to
-       it, never the threshold down (zero hysteresis = a consistent level).
-       [FA] آستانه مرجع است: سطح پاک‌شدن به آن بالا کشیده می‌شود. */
     UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv, 15000u, 24000u);
     UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv, 15000u, 24000u);
-    if (UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv <
-        UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv)
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv =
-            UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv;
-    }
-    if (UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv >
-        UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv)
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv =
-            UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv;
-    }
-
-    /* [EN] The percent map must keep a strictly positive range (division
-       safety); Vmin is authoritative, Vmax is pulled up.
-       [FA] نگاشت درصد باید بازهٔ اکیداً مثبت نگه دارد؛ Vmin مرجع است. */
     UI_ALARM_T__G__Alarm.uint32_t__pctVminMv =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__pctVminMv, 15000u, 25000u);
     UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv, 25000u, 32000u);
-    if (UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv <
-        (UI_ALARM_T__G__Alarm.uint32_t__pctVminMv + 100u))
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv =
-            UI_ALARM_T__G__Alarm.uint32_t__pctVminMv + 100u;
-    }
-    if (UI_ALARM_T__G__Alarm.uint32_t__pctVminMv >
-        (UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv - 100u))
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__pctVminMv =
-            UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv - 100u;
-    }
-
-    /* [EN] v1.49: the charge-side map (119/120) gets the SAME window rules
-       as the discharge map - one rule, two independent pairs.
-       [FA] نگاشت سمت شارژ همان قوانین پنجرهٔ نگاشت دشارژ را دارد - یک قانون،
-       دو جفت مستقل. */
-    UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv, 15000u, 25000u);
-    UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv, 25000u, 32000u);
-    if (UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv <
-        (UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv + 100u))
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv =
-            UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv + 100u;
-    }
-    if (UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv >
-        (UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv - 100u))
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv =
-            UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv - 100u;
-    }
-
     UI_ALARM_T__G__Alarm.uint32_t__buzzerMute =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__buzzerMute, 0u, 1u);
-
-    /* [EN] v1.17: full latch + stable hysteresis (ids 77..82). Enter is
-       authoritative (>= 1, so exit = enter-1 can never underflow);
-       hysteresis 0 = stable follows raw every pass.
-       [FA] لچ فول + هیسترزیس پایداری: ورود مرجع است (دست‌کم ۱ تا
-       خروج = ورود-۱ زیر صفر نرود)؛ هیسترزیس صفر یعنی تعقیب خام. */
     UI_ALARM_T__G__Alarm.uint32_t__chgFullEnterPct =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgFullEnterPct, 1u, 100u);
     UI_ALARM_T__G__Alarm.uint32_t__chgFullExitPct =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgFullExitPct, 0u, 100u);
-    if (UI_ALARM_T__G__Alarm.uint32_t__chgFullExitPct >=
-        UI_ALARM_T__G__Alarm.uint32_t__chgFullEnterPct)
-    {
-        UI_ALARM_T__G__Alarm.uint32_t__chgFullExitPct =
-            UI_ALARM_T__G__Alarm.uint32_t__chgFullEnterPct - 1u;
-    }
     UI_ALARM_T__G__Alarm.uint32_t__chgHystPct =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgHystPct, 0u, 50u);
     UI_ALARM_T__G__Alarm.uint32_t__runHystPct =
@@ -536,6 +288,14 @@ static void func__Ui_ClampAlarms(void)
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runZeroExit, 0u, 100u);
     UI_ALARM_T__G__Alarm.uint32_t__runOneExit =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runOneExit, 0u, 100u);
+    UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv, 15000u, 25000u);
+    UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv, 25000u, 32000u);
+    UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs, 0u, 600000u);
+    UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs, 0u, 5000u);
 }
 
 /**

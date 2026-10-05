@@ -179,12 +179,6 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
-const maxDur = (per, cnt, gap) => { /* v1.16: mirror of Ui_MaxBeepDurMs */
-    if (per === 0 || cnt === 0) return per === 0 ? 600000 : per;
-    const g = gap * (cnt - 1);
-    if (g >= per) return 0;
-    return Math.floor((per - g) / cnt);
-};
 
 function clampParam(id, v) {
     const a = P[20];
@@ -242,11 +236,10 @@ function clampParam(id, v) {
         case 118: return Math.min(255, Math.max(1, v));
         /* v1.49: charge-side percent map - same window rules as 74/75, own pair */
         case 119: return clampW(v, 15000, 25000);
-        case 120: return Math.max(P[119] + 100, clampW(v, 25000, 32000));
+        case 120: return clampW(v, 25000, 32000);
         /* v1.50: band 2 beep shape - gap floor only when its own count > 1 */
         case 121: return clampW(v, 0, 600000);
-        case 122: { const g = clampW(v, 0, 5000);
-                    return (P[63] > 1 && g < 100) ? 100 : g; }
+        case 122: return clampW(v, 0, 5000);
         /* v1.15 alarms: mirror of Fault_ClampAlarms / Charger_ClampAlarms */
         case 27: { let lo = Math.max(14000, over + 50), hi = Math.min(15000, ov - 100);
                    if (lo > hi) hi = lo; return Math.min(hi, Math.max(lo, v)); }
@@ -259,55 +252,49 @@ function clampParam(id, v) {
         case 35: return Math.min(HARD_MAX, Math.max(im + 50, v));
         case 36: return Math.min(15000, Math.max(Math.max(14000, over + 150), v));
         case 37: return Math.min(8000, Math.max(0, v));
-        /* v1.16 UI: exact mirror of Ui_ClampAlarms (single pass, dependency order) */
+        /* [EN] v1.56: the firmware keeps ONLY the per-field min/max now; all
+           cross-field rules moved into the panel (fixrules()), so this mirror
+           had to shed them too or the preview would lie about the board.
+           [FA] از v1.56 فرم‌ور فقط کمینه/بیشینهٔ هر فیلد را نگه می‌دارد؛
+           قوانین مشترک به پنل رفتند، پس این آینه هم باید آن‌ها را کنار بگذارد. */
         case 38: return clampW(v, 100, 10000);
         case 39: return clampW(v, 0, 100);
         case 40: return clampPeriod(v);
-        case 41: return Math.min(maxDur(P[40], P[42], P[43]), clampW(v, 0, 600000));
+        case 41: return clampW(v, 0, 600000);
         case 42: return clampW(v, 0, 10);
-        case 43: { const g = clampW(v, 0, 5000); return (P[42] > 1 && P[40] !== 0 && g < 100) ? 100 : g; }
+        case 43: return clampW(v, 0, 5000);
         case 44: return clampW(v, 100, 10000);
         case 45: return clampW(v, 0, 100);
         case 46: return clampPeriod(v);
-        case 47: return Math.min(maxDur(P[46], P[48], P[49]), clampW(v, 0, 600000));
+        case 47: return clampW(v, 0, 600000);
         case 48: return clampW(v, 0, 10);
-        case 49: { const g = clampW(v, 0, 5000); return (P[48] > 1 && P[46] !== 0 && g < 100) ? 100 : g; }
+        case 49: return clampW(v, 0, 5000);
         case 50: return clampW(v, 0, 100);
-        case 51: return Math.min(P[50], clampW(v, 0, 100));
-        case 52: return Math.min(P[51], clampW(v, 0, 100));
-        case 53: return Math.min(P[52], clampW(v, 0, 100));
+        case 51: return clampW(v, 0, 100);
+        case 52: return clampW(v, 0, 100);
+        case 53: return clampW(v, 0, 100);
         case 54: case 55: case 56: return clampPeriod(v);
         case 57: return clampW(v, 0, 100);
         case 62: case 63: case 64: return clampW(v, 0, 10);
-        case 58: { /* v1.16e crit-fit mirror: count must fit its own window (P56/P57/P65) */
-                   let c = clampW(v, 0, 10);
-                   const win = Math.floor(P[56] * P[57] / 100);
-                   if (P[56] !== 0 && P[57] !== 0 && c > 1) {
-                       while (c > 1) {
-                           const g = P[65] * (c - 1);
-                           if (g < win && win - g >= c) break;
-                           c--;
-                       }
-                   }
-                   return c; }
-        case 59: return Math.min(maxDur(P[54], Math.max(P[62], P[63]), P[65]), clampW(v, 0, 600000));
-        case 60: return Math.min(maxDur(P[55], P[64], P[65]), clampW(v, 0, 600000));
+        case 58: return clampW(v, 0, 10);
+        case 59: return clampW(v, 0, 600000);
+        case 60: return clampW(v, 0, 600000);
         case 61: return clampW(v, 0, 120000);
         case 65: { const g = clampW(v, 0, 5000);
                    return ((P[58] > 1 || P[62] > 1 || P[63] > 1 || P[64] > 1) && g < 100) ? 100 : g; }
         case 66: return clampW(v, 100, 10000);
-        case 67: return Math.min(P[66], clampW(v, 0, 10000));
+        case 67: return clampW(v, 0, 10000);
         case 68: return clampW(v, 100, 10000);
-        case 69: return Math.min(P[68], clampW(v, 0, 10000));
+        case 69: return clampW(v, 0, 10000);
         case 70: return clampW(v, 24000, 32000);
         case 71: return clampW(v, 0, 2000);
         case 72: return clampW(v, 15000, 24000); /* threshold authoritative; 73 pulls up in cascade */
-        case 73: return Math.max(P[72], clampW(v, 15000, 24000));
+        case 73: return clampW(v, 15000, 24000);
         case 74: return clampW(v, 15000, 25000); /* Vmin authoritative; 75 pulls up in cascade */
-        case 75: return Math.max(P[74] + 100, clampW(v, 25000, 32000));
+        case 75: return clampW(v, 25000, 32000);
         case 76: return clampW(v, 0, 1);
         case 77: return clampW(v, 1, 100);
-        case 78: { const e = clampW(v, 0, 100); return e >= P[77] ? P[77] - 1 : e; }
+        case 78: return clampW(v, 0, 100);
         case 79: return clampW(v, 0, 50);
         case 80: return clampW(v, 0, 50);
         case 81: return clampW(v, 0, 100);
