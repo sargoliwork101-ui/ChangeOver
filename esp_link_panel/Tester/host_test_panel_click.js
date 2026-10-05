@@ -107,7 +107,13 @@ function main() {
                 link. Echoing the value back is what an accepted SET_PARAM
                 looks like from the page's point of view.
            [FA] مسیر نوشتن قطع می‌شود: موضوع این تست پنل است نه لینک. */
-        w.send = (id, v) => { sent.push([id, v]); if (w.D && w.D.p) { w.D.p[id] = v; } };
+        const stub = (id, v) => { sent.push([id, v]); if (w.D && w.D.p) { w.D.p[id] = v; } };
+        w.send = stub;
+        /* [EN] v1.52: edits are staged in the global queue instead of being
+                posted field by field, so the queue is the write path now.
+           [FA] از v1.52 ویرایش‌ها در صف سراسری می‌نشینند، پس مسیر نوشتن همان
+                صف است و اینجا هم همان قطع می‌شود. */
+        w.qput = stub;
         w.D = {
             p: seedParams(), t: new Array(25).fill(0),
             q: 0, q2: 0, q3: 0, q4: 0, fl: 0, on: 1
@@ -356,7 +362,7 @@ function main() {
         /* --- 8. a clamp must be visible. The board clamping while the panel
                  keeps showing what was typed is how a ceiling ends up
                  believed-set and not set. --- */
-        w.send = (id, v) => { sent.push([id, v]); w.D.p[id] = Math.min(v, 14800); };
+        w.qput = (id, v) => { sent.push([id, v]); w.D.p[id] = Math.min(v, 14800); };
         const inp4 = open(100);
         inp4.value = "20000";
         key(inp4, "Enter");

@@ -267,8 +267,19 @@ input:disabled{opacity:.38;cursor:not-allowed}
 .c4tb td.n{text-align:left}
 .srv .sb{min-height:30px;padding:3px 10px}
 tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr.rbd{background:rgba(251,94,106,.08)}
+/* v1.52: نوار سراسری «ارسال به برد» و نشانهٔ کادرهای ارسال‌نشده */
+.pq{outline:2px solid #ffb020;outline-offset:1px}
+#sbar{position:fixed;left:0;right:0;bottom:0;z-index:70;display:none;gap:10px;align-items:center;flex-wrap:wrap;
+padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6px 18px rgba(0,0,0,.45);font-size:13px}
+#sbar.on{display:flex}
+#sbar b{color:#ffb020}
+#sbst{color:#9fb0cc}
 </style></head><body>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 68cf794</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<div id="sbar"><span>📝 <b id="sbn">0</b> تغییر هنوز روی برد ننشسته — کادرهای نارنجی</span>
+<button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
+<button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
+<span id="sbst"></span></div>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 952ce0d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -739,6 +750,52 @@ const V=[['ورودی',14,4,K24],['پک ۲۴V',15,5,K24B],['نود ۱۲V',16,6,K
 var D=null;/* var (نه let) تا در تست هاست هم قابل‌نوشتن باشد */
 const v2=mv=>(mv/1000).toFixed(2),pc=pm=>(pm/10).toFixed(1)+'%';
 function send(id,v){const a=$('a'+id);if(a)a.textContent='…';fetch('/s?id='+id+'&v='+v,{method:'POST'}).then(r=>{if(!r.ok)throw 0;}).catch(()=>{if(a)a.textContent='خطا';});}
+
+/* ==================== صف ارسال سراسری / Global send queue ==================== */
+/* [EN] v1.52 (user order 2026-10-05): a typed box no longer posts itself the
+   moment it loses focus. Edits are staged locally, the page marks them, and
+   ONE button ships the whole batch; after the POSTs the panel waits for the
+   next telemetry frame and compares what the board reports back with what was
+   sent, so the user gets a real handshake answer - "accepted and stored" or
+   "the board clamped these".
+   [FA] هر کادر دیگر به‌تنهایی ارسال نمی‌شود: تغییرات محلی صف می‌شوند و یک
+   دکمه همه را با هم می‌فرستد؛ بعد از ارسال، پنل منتظر فریم بعدی برد می‌ماند و
+   مقدار برگشتی را با مقدار فرستاده‌شده مقایسه می‌کند تا بگوید «نشست» یا
+   «برد گیره زد». */
+var PEND={};
+function pbar(){const n=Object.keys(PEND).length,b=$('sbar');if(!b)return;
+ b.className=n?'on':'';$('sbn').textContent=n;
+ document.body.style.paddingBottom=n?'52px':'';}
+function qput(id,v){PEND[id]=v;const e=$('q'+id);if(e)e.classList.add('pq');
+ const a=$('a'+id);if(a)a.textContent='در صف';pbar();}
+function pclr(id){delete PEND[id];const e=$('q'+id);if(e)e.classList.remove('pq');pbar();}
+function pundo(){for(const id of Object.keys(PEND)){const e=$('q'+id);
+  if(e){e.classList.remove('pq');e.value=(D&&D.p&&D.p[id]!=null)?D.p[id]:'';}}
+ PEND={};pbar();stxt('sbst','تغییرات محلی پاک شد؛ کادرها دوباره مقدار برد را نشان می‌دهند.');
+ if(typeof afresh==='function')afresh();if(typeof sall==='function')sall();}
+async function sendall(){
+ const ids=Object.keys(PEND);if(!ids.length)return;
+ const sent={};let ok=0;
+ stxt('sbst','… در حال ارسال');
+ for(const id of ids){const v=PEND[id];
+  try{const r=await fetch('/s?id='+id+'&v='+v,{method:'POST'});if(r.ok){ok++;sent[id]=v;}}catch(e){}
+  await sl(60);}
+ if(ok===0){stxt('sbst','⛔ هیچ‌کدام ارسال نشد — ارتباط با برد برقرار نیست.');return;}
+ /* دست‌دادن: منتظر فریم بعدی برد می‌مانیم و مقدار برگشتی را می‌سنجیم */
+ stxt('sbst','… ارسال شد، منتظر تأیید برد');
+ for(let k=0;k<25;k++){await sl(200);if(D&&D.p)break;}
+ await sl(600);
+ const bad=[];
+ for(const id of Object.keys(sent)){
+  const back=(D&&D.p)?D.p[id]:null;
+  if(back==null){bad.push(id+': بی‌پاسخ');continue;}
+  if(+back!==+sent[id])bad.push(id+': '+sent[id]+'→'+back);
+  pclr(id);}
+ pbar();
+ if(typeof afresh==='function')afresh();if(typeof sall==='function')sall();
+ if(ok<ids.length){stxt('sbst','⚠ '+ok+' از '+ids.length+' ارسال شد؛ بقیه در صف ماندند — دوباره بزنید.');return;}
+ if(!bad.length){stxt('sbst','✅ '+ok+' تنظیم ارسال شد؛ برد همه را عیناً پذیرفت و ذخیره کرد.');return;}
+ stxt('sbst','✅ '+ok+' تنظیم نشست، اما برد '+bad.length+' مقدار را به بازهٔ مجاز خودش گیره زد: '+bad.join(' · '));}
 function num(id){const e=$('i'+id),p=P[id],t=+e.value;if(e.value===''||isNaN(t))return;const w=(id===13||id===14)?Math.round(t*10):Math.round(t);send(id,Math.min(p[3],Math.max(p[2],w)));e.value='';e.blur();}
 function ctl(id){const p=P[id];
  if(id===13||id===14)return `<input type="number" id="i${id}" min="0" max="50" step="any" placeholder="0…50٪" onkeydown="if(event.key=='Enter')num(${id})"><button class="sb" onclick="num(${id})">ثبت</button>`;
@@ -813,7 +870,7 @@ function formulas(t,p){
  $('ff').textContent=`I_filtered = convert( average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( raw counts ) ) )`;}
 function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>hn(c)){s.u.shift();s.f.shift();}});}}
 function qfill(){if(!D||!D.p)return;for(const id of [7,8]){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!(D.q&(1<<id)))a.textContent=D.p[id]==null?'—':D.p[id];}}
-function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{const e=$('q'+x[0]);if(e)e.value=x[1];send(x[0],x[1]);});pdef();ldef();qgraph();}
+function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{const e=$('q'+x[0]);if(e)e.value=x[1];qput(x[0],x[1]);});pdef();ldef();qgraph();}
 /* ===== v1.14: نمودار مراحل شارژ — مقدار هر خط از فیلد تایپ‌نشده/متفاوت با مقدار اعمال‌شده می‌آید (پیش‌نمایش خط‌چین) ===== */
 const QDEF=[14400,14300,14600,13500,12800,650,50];
 /* [EN] v1.33: the q20..q26 input boxes went when the duplicate profile form
@@ -1280,9 +1337,9 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
 for(const id of [7,8]){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;
  if(id>=20){const m=qchk().filter(x=>x.ids.includes(id));
   if(m.length&&!confirm('⚠ '+m.map(x=>x.msg).join('\n')+'\n\nبرد مقدار را گیره می‌زند تا مجموعه سازنده بماند. باز هم ارسال شود؟')){e.value='';qgraph();return;}}
- send(id,v);};if(id>=20)e.oninput=qgraph;}
+ qput(id,v);};if(id>=20)e.oninput=qgraph;}
 function cfill(){if(!D||!D.p)return;for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];}}
-for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;send(id,v);};}
+for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;qput(id,v);};}
 /* ===== v1.15: تب آلارم‌ها — آینهٔ قوانین Fault_ClampAlarms/Charger_ClampAlarms روی برد ===== */
 /* v1.24: upper bound MUST track the top real id. It was left at 97 when the
    third PID row was deleted, so ap() built u93..u97 = undefined and the
@@ -1400,7 +1457,7 @@ function afill(){if(!D||!D.p)return;
   if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];
   if(a&&!apend(id)){const bv=D.p[id],tv=e.value===''?null:parseInt(e.value,10);
    a.textContent=(bv==null||(tv!=null&&tv===bv))?'':'روی برد: '+bv;}}}
-function adef(){ADEF.slice(6,11).forEach((v,k)=>{const id=33+k;$('q'+id).value=v;send(id,v);});afresh();}
+function adef(){ADEF.slice(6,11).forEach((v,k)=>{const id=33+k;$('q'+id).value=v;qput(id,v);});afresh();}
 /* v1.22: پیش‌فرض کارخانهٔ PID سه‌مرحله‌ای — همان اعداد CHG_PID_* در charger.h */
 const PDEF=[12,1600,0,1000,1000,50,18000,0,10,1000];
 /* v1.22: نگهبان ترکیب PID — آینهٔ func__Charger_ClampPid روی برد به اضافهٔ دو
@@ -1418,17 +1475,17 @@ function pchk(){const w=[];
  if(pv(83)>150)w.push({ids:[83],msg:'Kp حلقهٔ جریان بالای ۱۵۰ ریسک لرزش دارد: هر یک پرمیل تغییر duty حدود ۷ میلی‌آمپر جریان جابه‌جا می‌کند، پس Kp بزرگ باعث می‌شود حلقه بین دو عدد صحیح پرمیل گیر کند و بالا نرود'});
  const box=$('pw');if(box)box.innerHTML=!w.length?'<span class="lb">✅ ترکیب PID سالم است · پشتیبان‌های ۶۵۰ میلی‌آمپر و ۱۴٫۸ ولت همیشه فعال‌اند</span>':w.map(x=>'<div class="wn">⚠ '+x.msg+'</div>').join('');
  return w;}
-function pdef(){PDEF.forEach((v,k)=>{const id=83+k,e=$('q'+id);if(e)e.value=v;send(id,v);});pchk();}
+function pdef(){PDEF.forEach((v,k)=>{const id=83+k,e=$('q'+id);if(e)e.value=v;qput(id,v);});pchk();}
 /* [EN] The limits have no q-inputs any more - they are edited in place in
    the operating table - so this just writes and lets the table re-render
    from the applied values. Clearing EVWANT stops stale clamp warnings.
    [FA] حدها دیگر ورودی q ندارند و درجا در جدول عملکرد ویرایش می‌شوند، پس
    اینجا فقط می‌نویسد و جدول از مقادیر اعمال‌شده بازرسم می‌شود. پاک‌کردن
    EVWANT جلوی هشدار گیرهٔ کهنه را می‌گیرد. */
-function ldef(){LDEF.forEach((v,k)=>{const id=93+k;delete EVWANT[id];send(id,v);});afresh();}
-function sdef(){AIDS.forEach((id,k)=>{if(id<38||id>82)return;const e=$('q'+id);if(e)e.value=ADEF[k];send(id,ADEF[k]);});afresh();}
-function bdef(){[0,1,2,3,4,5,17,18,19,20,21,22].forEach(k=>{const id=27+k,e=$('q'+id);if(e)e.value=ADEF[k];send(id,ADEF[k]);});afresh();}
-function ibdef(){IDEF.forEach((v,k)=>{const id=108+k,e=$('q'+id);if(e)e.value=v;send(id,v);});afresh();}
+function ldef(){LDEF.forEach((v,k)=>{const id=93+k;delete EVWANT[id];qput(id,v);});afresh();}
+function sdef(){AIDS.forEach((id,k)=>{if(id<38||id>82)return;const e=$('q'+id);if(e)e.value=ADEF[k];qput(id,ADEF[k]);});afresh();}
+function bdef(){[0,1,2,3,4,5,17,18,19,20,21,22].forEach(k=>{const id=27+k,e=$('q'+id);if(e)e.value=ADEF[k];qput(id,ADEF[k]);});afresh();}
+function ibdef(){IDEF.forEach((v,k)=>{const id=108+k,e=$('q'+id);if(e)e.value=v;qput(id,v);});afresh();}
 /* v1.15b: کارت وضعیت گروه‌بندی‌شده — اسکلت یک‌بار ساخته می‌شود و هر poll فقط متن/رنگ به‌روز می‌شود (بدون پر/خالی شدن و چشمک) */
 const FEXP=[
  ['خطای ADC','نمونه‌برداری ADC نامعتبر است و اندازه‌گیری‌ها قابل‌اعتماد نیست؛ برد محافظه‌کار می‌شود. سیم‌کشی آنالوگ و تغذیه را بررسی کنید.'],
@@ -1597,7 +1654,7 @@ function evedit(el){
        اصلاً وجود ندارد. دو نمایش از یک عدد: یا با هم حرکت می‌کنند یا هیچ‌کدام
        قابل اعتماد نیست. */
     const qe=$('q'+id);if(qe)qe.value=n;
-    send(id,n);}}
+    qput(id,n);}}
   evclose();qgraph();};
  inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();close(true);}
                    else if(e.key==='Escape'){e.preventDefault();close(false);}};
@@ -1997,7 +2054,7 @@ function xmute(){const v=(D&&D.p&&D.p[76]===1)?0:1;const f=$('q76');if(f)f.value
 for(const id of AIDS){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;
  const m=achk().filter(x=>x.ids.includes(id));
  if(m.length&&!confirm('⚠ '+m.map(x=>x.msg).join('\n')+'\n\nبرد مقدار را گیره می‌زند تا مجموعه سازنده بماند. باز هم ارسال شود؟')){e.value='';afresh();return;}
- send(id,v);};e.oninput=(id>=83?pchk:afresh);}
+ qput(id,v);};e.oninput=(id>=83?pchk:afresh);}
 /* ===== v1.15b: پشتیبان‌گیری JSON تنظیمات (فیلتر + profile + آلارم‌ها) ===== */
 const XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26];AIDS.forEach(id=>{if(id!==76)XIDS.push(id);});
 function xexp(){const x=$('xst');if(!D||!D.p){if(x)x.textContent='هنوز داده‌ای از برد نرسیده';return;}

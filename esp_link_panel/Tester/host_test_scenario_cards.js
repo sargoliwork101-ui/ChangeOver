@@ -583,12 +583,75 @@ function testSimulator(win, doc) {
     win.simtog(1);
 }
 
+
+/* ==================== v1.52 send queue / صف ارسال ==================== */
+
+/**
+ * [EN] Nothing may reach the board until the global button is pressed, and
+ *      the report after the handshake must tell the truth about clamping.
+ * [FA] تا وقتی دکمهٔ سراسری زده نشود هیچ چیز به برد نمی‌رود؛ و گزارش بعد از
+ *      دست‌دادن باید دربارهٔ گیره‌خوردن راست بگوید.
+ */
+async function testSendQueue(win, doc) {
+    console.log('\nv1.52 send queue / صف ارسال سراسری');
+
+    const all = [];
+    win.fetch = (u, o) => {
+        all.push(String(u));
+        /* telemetry keeps answering with the board image the test controls */
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(win.D) });
+    };
+    const posts = { get length() { return all.filter(u => u.indexOf('/s?') >= 0).length; },
+                    at(i) { return all.filter(u => u.indexOf('/s?') >= 0)[i]; } };
+    win.PEND = {};
+    win.pbar();
+
+    typeInto(win, doc, 'q38', 2000);
+    doc.getElementById('q38').onchange();
+    check(posts.length === 0, 'typing alone posts nothing to the board');
+    check(win.PEND['38'] === 2000, 'the edit is staged in the queue instead');
+    check(doc.getElementById('q38').className.indexOf('pq') >= 0,
+          'the staged box is marked');
+    check(doc.getElementById('sbar').className === 'on' &&
+          doc.getElementById('sbn').textContent === '1',
+          'the global bar appears and counts the pending edit');
+
+    /* Undo puts the board value back and empties the queue. */
+    win.D = { p: { 38: 1000 }, t: new Array(25).fill(0), q: 0, q2: 0, q3: 0, q4: 0, fl: 0, on: 1 };
+    win.pundo();
+    check(Object.keys(win.PEND).length === 0 && posts.length === 0,
+          'undo clears the queue without touching the board');
+    check(doc.getElementById('q38').value === '1000',
+          'undo restores the value the board reported');
+
+    /* The button ships the batch and then judges the echo. */
+    win.qput(38, 2000);
+    win.qput(39, 60);
+    const done = win.sendall();
+    win.D.p[38] = 2000;
+    win.D.p[39] = 50;          /* the board clamps this one */
+    await done;
+    check(posts.length === 2 &&
+          posts.at(0).indexOf('/s?id=38&v=2000') >= 0 &&
+          posts.at(1).indexOf('/s?id=39&v=60') >= 0,
+          'one press posts every staged edit once');
+    check(Object.keys(win.PEND).length === 0, 'an accepted batch leaves the queue empty');
+    const st = doc.getElementById('sbst').textContent;
+    check(st.indexOf('گیره') >= 0 && st.indexOf('39: 60→50') >= 0,
+          'the report names the value the board clamped', st);
+    win.qput(38, 2000);
+    win.D.p[38] = 2000;
+    await win.sendall();
+    check(doc.getElementById('sbst').textContent.indexOf('عیناً پذیرفت') >= 0,
+          'a clean batch is reported as accepted and stored');
+}
+
 /* ==================== Runner / اجراکننده ==================== */
 
 const dom = loadPanel();
 const win = dom.window;
 
-setTimeout(() => {
+setTimeout(async () => {
     const doc = win.document;
     console.log('ESP panel scenario-card tests - the real generated page in a DOM');
     console.log('='.repeat(70));
@@ -601,6 +664,7 @@ setTimeout(() => {
         testLowBattery(win, doc);
         testImbalance(win, doc);
         testSimulator(win, doc);
+        await testSendQueue(win, doc);
     } catch (err) {
         failed += 1;
         console.log('  FAIL threw: ' + err.message);
