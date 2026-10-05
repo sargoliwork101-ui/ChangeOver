@@ -923,6 +923,27 @@ def sec_panel(ids):
     #      that writes a default nobody printed is exactly the drift this
     #      audit exists to catch.
     # [FA] هر شناسهٔ UDEF باید پیش‌فرض داشته باشد و در دو سناریو تکرار نشود.
+    # [EN] v1.79 (user: "what is this? there used to be a LED behind it" - the
+    #      .bit LEDs had markup but no CSS rule at all, so they were invisible):
+    #      every class that appears in the panel markup must have a stylesheet
+    #      rule, unless it is a pure JavaScript hook listed below.
+    # [FA] هر کلاسی که در مارک‌آپ پنل هست باید قاعدهٔ CSS داشته باشد، مگر
+    #      کلاس‌هایی که فقط قلّاب جاوااسکریپت‌اند.
+    JS_HOOK_CLASSES = {"qmv", "qgm", "qgcm", "qglm", "qwm", "dl", "c3"}
+    style = P_PAN.split("</style>")[0]
+    styled = set(re.findall(r"\.([A-Za-z][\w-]*)", style))
+    marked = set()
+    for grp in re.findall(r'class=\\?"([^"\\]+)', P_PAN):
+        for cl in grp.split():
+            if re.fullmatch(r"[A-Za-z][\w-]*", cl):
+                marked.add(cl)
+    unstyled = sorted(marked - styled - JS_HOOK_CLASSES)
+    ok(not unstyled,
+       "a class used in the panel markup has no CSS rule (it renders unstyled)",
+       f"unstyled: {unstyled}")
+    ok(".bit.set" in P_PAN and ".bit.set.on" in P_PAN,
+       "a latched fault bit must be visible at all times, not only on the blink phase")
+
     # [EN] v1.78 (user order): the two "after the lock, drop the battery from
     #      the output too" switches are stored yes/no settings, so they must be
     #      checkboxes - never buttons, which read as "press to act now".

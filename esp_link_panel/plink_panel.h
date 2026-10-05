@@ -210,6 +210,26 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .wbx.bad{border-color:var(--er);background:rgba(255,104,115,.12);color:var(--er)}
 .wbx.warn{border-color:var(--wa);background:rgba(247,193,60,.10);color:var(--wa)}
 .ab.bad{border-color:rgba(251,94,106,.55);box-shadow:0 0 0 1px rgba(251,94,106,.2)}.ab.warn{border-color:rgba(251,191,36,.5)}.ab.good{border-color:rgba(52,211,153,.4)}
+/* [EN] v1.79 (user: "what is this? there used to be a LED behind it"): the
+   .bit class had markup (<i> dot + <small> label) but NO stylesheet rule at
+   all, so the dots were invisible and the labels ran together as
+   "ADCOC1OC2باتری...". ‎The LEDs are needed - they are the only per-bit view‎
+   of the latched fault mask - so they are drawn properly instead of removed.
+   A latched bit stays dim red at all times and brightens on the blink phase,
+   so a fault is never invisible between blinks.
+   [FA] کلاس .bit هیچ استایلی نداشت؛ پس نقطه‌ها دیده نمی‌شدند و برچسب‌ها به هم
+   چسبیده بودند. حالا هر بیت یک LED واقعی با برچسب زیرش دارد: بیتِ قفل‌شده
+   همیشه قرمزِ کم‌رنگ است و در فاز چشمک پررنگ می‌شود. */
+.bit{display:inline-flex;flex-direction:column;align-items:center;gap:5px;min-width:54px}
+.bit i{width:14px;height:14px;border-radius:50%;background:#28303f;border:1px solid var(--ln);box-shadow:inset 0 1px 2px #0009;transition:background .12s,box-shadow .12s}
+.bit small{font-size:11px;line-height:1;color:var(--mu);white-space:nowrap}
+.bit.set i{background:#8d2a2e;border-color:#b13b40}
+.bit.set small{color:#ffbdbf}
+.bit.set.on i{background:#ff5a5f;border-color:#ff5a5f;box-shadow:0 0 9px #ff5a5f,inset 0 1px 2px #0005}
+/* [EN] v1.79: .prod (the live readout strip of scenarios 5 and 6) had no rule
+   either and rendered as loose text. [FA] نوار مقدارهای زنده هم استایل نداشت. */
+.prod{background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:8px 12px;margin:2px 0 10px;font-size:13px;line-height:1.9}
+.prod b{font-variant-numeric:tabular-nums}
 .leds{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--in);border:1px solid var(--ln);border-radius:14px;padding:10px 14px;margin:2px 0 12px}
 .fx2{font-size:12px;color:#c9d0df;line-height:1.9;margin-top:4px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -303,7 +323,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build ddc178d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 8bb7716</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1940,7 +1960,8 @@ function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
 function uview(){
  const now=performance.now();
  if(ASB&&ASB.bits&&D&&D.t){const m=D.t[19]||0,ph=(now%500)<250;
-  ASB.bits.forEach((e,bit)=>{if(e)e.className='bit'+(((m&(1<<bit))!==0&&ph)?' on':'');});}
+  /* v1.79: بیتِ قفل‌شده همیشه دیده می‌شود (set) و فقط روشنی‌اش چشمک می‌زند (on) */
+  ASB.bits.forEach((e,bit)=>{const on=(m&(1<<bit))!==0;if(e)e.className='bit'+(on?' set':'')+((on&&ph)?' on':'');});}
  try{c4();sall();}catch(e){}
 }
 /* ==================== سناریو ۴ — اعداد زندهٔ کارت شارژ ==================== */

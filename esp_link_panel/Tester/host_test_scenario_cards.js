@@ -652,6 +652,24 @@ function testSimulator(win, doc) {
     });
     check(doc.getElementById('a117') && doc.getElementById('a127'),
           'each output-block checkbox keeps its own plain-language state line');
+
+    /* v1.79 (user: "there used to be a LED behind it"): the latched-fault
+       bits are real LEDs again - styled, and visible between blinks. */
+    if (typeof win.uview === 'function' && win.ASB && win.ASB.bits && win.ASB.bits[0]) {
+      win.D = win.D || {};
+      win.D.t = win.D.t || [];
+      win.D.t[19] = 0b0000101;
+      win.uview();
+      const cls = i => win.ASB.bits[i].className;
+      check(/\bset\b/.test(cls(0)) && /\bset\b/.test(cls(2)),
+            'a latched fault bit is marked set no matter the blink phase');
+      check(!/\bset\b/.test(cls(1)), 'a clear fault bit stays dark');
+      win.D.t[19] = 0;
+      win.uview();
+      check(!/\bset\b/.test(cls(0)), 'clearing the mask turns the LED off again');
+    }
+    check(/\.bit\s*\{/.test(doc.documentElement.innerHTML) || /\.bit\{/.test(doc.documentElement.innerHTML),
+          'the fault-bit LEDs have a stylesheet rule');
     typeInto(win, doc, 'q42', 3);
     win.simrun();
     check(doc.getElementById('q43').disabled === false,
