@@ -72,7 +72,7 @@
          نردبان درصد سمت شارژ، جدا از نردبان دشارژ ۷۴/۷۵ (v1.49، دستور کاربر
          ۲۰۲۶-۱۰-۰۵)، شناسه‌های ۱۲۱..۱۲۲ = مدت و گپ مخصوص باند ۲ دشارژ
          (v1.50، دستور کاربر ۲۰۲۶-۱۰-۰۵). */
-#define ESP_PARAM_COUNT            128u
+#define ESP_PARAM_COUNT            132u
 #define ESP_PARAM_CHG1_ENABLE       11u
 #define ESP_PARAM_CHG2_ENABLE       12u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
@@ -155,7 +155,8 @@
     "#            imb_beep_ms,imb_block_out,imb_chg_cycles\n" \
     "#  [settings8] ui_chg_pct_vmin,ui_chg_pct_vmax,ui_run_dbl_dur,ui_run_dbl_gap,\n" \
     "#            imb_blink_per_ms,imb_blink_duty,\n" \
-    "#            dead_timeout_ms,dead_reset_gap_ms,dead_block_out\n" \
+    "#            dead_timeout_ms,dead_reset_gap_ms,dead_block_out,\n" \
+    "#            dead_beep_per_ms,dead_beep_ms,dead_blink_per_ms,dead_blink_duty\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \
@@ -239,8 +240,16 @@
  *      v1.70/v1.71 (user order): the persistent send-result card and the
  *      uniform four-band discharge form went ~1 KiB past the 320 KiB step,
  *      so the ceiling was deliberately stepped 320 KiB -> 336 KiB.
+ *
+ *      v1.78..v1.80 (user orders: a six-step checklist for scenario 6, real
+ *      checkboxes with plain-language state lines, and scenario 6's own lamp
+ *      and buzzer boxes with the text explaining what they replace) added
+ *      ~4 KiB of markup and went past the 336 KiB step, so the ceiling is
+ *      deliberately stepped 336 KiB -> 352 KiB.
+ *      [FA] چک‌لیست سناریو ۶، چک‌باکس‌ها و بخش چراغ و بوقِ سناریو ۶ حدود ۴
+ *      کیلوبایت اضافه کرد؛ پله یک حرکت عمدی دیگر از ۳۳۶ به ۳۵۲ کیلوبایت.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    344064u
+#define ESP_PANEL_HTML_MAX_BYTES    360448u
 
 /* ==================== Parser States ==================== */
 typedef enum
