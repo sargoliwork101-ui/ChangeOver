@@ -564,25 +564,26 @@ def sec_defaults(ids):
            chart_body[chart_body.find('class="evc"'):],
            "every chip must carry the shared editor hook",
            "a chip that only displays is a number the user cannot change")
-        # [EN] The user asked for the help behind the "!" to say how to tune
-        #      these and what each variable name means. A help text that
-        #      silently stops covering a setting is how a panel becomes
-        #      folklore, so every name in EVN must appear in it.
-        # [FA] کاربر خواست راهنمای پشت «!» بگوید این‌ها را چطور تنظیم کنیم و هر
-        #      نام متغیر یعنی چه. راهنمایی که بی‌صدا از پوشش یک تنظیم جا بماند،
-        #      پنل را به شایعه تبدیل می‌کند، پس هر نام در EVN باید در آن بیاید.
+        # [EN] v1.73 moved this help out of the "!" bubble and onto the page
+        #      (user order: drop the badges, explain above each section). The
+        #      invariant survives the move: every chip name in EVN must still
+        #      be explained in the chart card's visible text, or the panel
+        #      becomes folklore again.
+        # [FA] از v1.73 این راهنما از حباب «!» به متنِ همیشه-روی-صفحه منتقل
+        #      شد؛ ولی قاعده همان است: هر نام در EVN باید در متنِ کارت نمودار
+        #      توضیح داده شده باشد.
         mn = re.search(r"const EVN=\{(.*?)\};", P_PAN, re.S)
         names = re.findall(r"\d+:'([^']+)'", mn.group(1)) if mn else []
-        helps = re.findall(r'>!<span class="it">(.*?)</span></button>',
-                           P_PAN, re.S)
-        chart_help = [h for h in helps if "Taper sustain" in h]
-        ok(len(chart_help) == P_PAN.count('class="qgm"'),
-           "every chart card must carry the tuning help",
-           "a card whose help was left behind teaches the old layout")
+        chart_help = re.findall(
+            r'<b>نمودار فقط ولتاژ و جریان را نشان می‌دهد</b>(.*?)</div>',
+            P_PAN, re.S)
+        ok(len(chart_help) == 1,
+           "the chart card must carry exactly one visible tuning explanation",
+           f"found {len(chart_help)}")
         missing = sorted({n for n in names
                           if any(n not in h for h in chart_help)})
         ok(names and not missing,
-           "the ! help must explain every chip by its variable name",
+           "the chart explanation must name every chip by its variable name",
            f"undocumented: {missing}")
         ok(P_PAN.count('class="qgcm"') == P_PAN.count('class="qgm"'),
            "every chart must have a chip strip mounted under it",
@@ -673,25 +674,25 @@ def sec_defaults(ids):
                f"{_sz} bytes vs ceiling {_cap.group(1)} - a cut transfer drops "
                "the tail of the page, which is the settings sub-pages")
 
-        _cards = re.findall(
-            r'<div class="cd"[^>]*>(.*?)(?=<div class="cd"|<div class="sgx"'
-            r'|<div class="pgx"|\Z)', P_PAN, re.S)
-        _drift = []
-        for _c in _cards:
-            _m = re.search(r'<button class="ib" data-p="([^"]+)"', _c)
-            if not _m:
-                continue
-            _help = {int(x) for x in _m.group(1).split(',') if x.strip().isdigit()}
-            # only fields the user can actually see and edit; q76 is a
-            # hidden mirror of the mute state, driven by the mute button
-            _own = {int(x) for x in re.findall(
-                r'<input[^>]*type="number"[^>]*id="q(\d+)"', _c)}
-            if _own - _help:
-                _drift.append(sorted(_own - _help))
-        ok(not _drift,
-           "every field on a card must be explained by that card's ! help",
-           f"unexplained fields {_drift} - the help points at parameters that "
-           "are not on the card the user is looking at")
+        # [EN] v1.73 (user order: "remove the ! badge on every section so the
+        #      code gets lighter, and instead explain above every section what
+        #      these variables mean"). The coverage guarantee therefore moved
+        #      from a hover bubble to text that is always on screen: every
+        #      section heading must be followed by its explanation, and the old
+        #      bubbles must not creep back in.
+        # [FA] از v1.73 توضیح هر بخش همیشه روی صفحه است نه داخل حباب «!»:
+        #      هر عنوان بخش باید بلافاصله توضیح خودش را داشته باشد و حباب‌های
+        #      قدیمی نباید برگردند.
+        ok('class="ib"' not in P_PAN and 'function pexp(' not in P_PAN,
+           "the removed ! help bubbles came back",
+           "v1.73 replaced them with always-visible section text")
+        _secs = re.findall(r'<div class="sec">(.*?)(?=<div class="sec">|\Z)',
+                           P_PAN, re.S)
+        _nohelp = [re.sub(r"<[^>]*>", "", _x)[:40].strip() for _x in _secs
+                   if '<div class="sx">' not in _x and '<div class="ds">' not in _x]
+        ok(not _nohelp,
+           "every section must explain its own variables above the fields",
+           f"sections with no explanation: {_nohelp}")
 
         _html = re.search(r'R"HTML\(([\s\S]*)\)HTML"', P_PAN)
         ok(bool(_html), "the panel must expose its HTML literal")

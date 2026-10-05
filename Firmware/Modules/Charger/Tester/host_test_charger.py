@@ -1413,11 +1413,15 @@ def test_charger_persistence_v114():
     import re as _re
     _evn = _re.search(r"const EVN=\{(.*?)\};", ino, _re.S)
     _names = _re.findall(r"\d+:'([^']+)'", _evn.group(1)) if _evn else []
-    _help = _re.findall(r'>!<span class="it">(.*?)</span></button>', ino, _re.S)
-    _ch = [h for h in _help if "Taper sustain" in h]
+    # [EN] v1.73 (user order: remove the "!" badges, explain above each
+    #      section instead) - the same coverage rule now applies to the
+    #      always-visible chart explanation.
+    # [FA] از v1.73 همین قاعده روی متنِ همیشه-روی-صفحهٔ کارت نمودار اعمال می‌شود.
+    _ch = _re.findall(
+        r'<b>نمودار فقط ولتاژ و جریان را نشان می‌دهد</b>(.*?)</div>', ino, _re.S)
     check(len(_names) >= 13 and _ch and
           all(all(n in h for n in _names) for h in _ch),
-          "the ! help on every chart card must explain every variable name "
+          "the visible chart explanation must cover every variable name "
           "(user order: say how to tune these and what each name means)")
     # [EN] Strip comments before looking for the banned call. The first run of
     #      this check failed on the only remaining $('qg') in the file - inside
@@ -3677,8 +3681,23 @@ def test_section_parameter_help_v125():
        همان پارامتر را جا می‌اندازد و فهرست کامل به نظر می‌رسد."""
     ino = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
 
-    check("const PX={" in ino and "function pexp()" in ino and "pexp();" in ino,
-          "the parameter-help table, its renderer and the startup call must all exist")
+    # [EN] v1.73 (user order: "remove the ! badge on every section so the code
+    #      gets lighter; explain above every section what the variables mean").
+    #      The bubble renderer is gone; PX stays because the chips and the
+    #      event popup read it. What is pinned now is the replacement: the
+    #      badges must not come back, and every section must carry visible
+    #      text of its own.
+    # [FA] از v1.73 حباب «!» حذف شده و توضیح هر بخش همیشه روی صفحه است؛ PX
+    #      می‌ماند چون تراشه‌ها و پنجرهٔ رویداد از آن می‌خوانند.
+    check("const PX={" in ino and 'class="ib"' not in ino
+          and "function pexp(" not in ino,
+          "the ! help bubbles must stay removed while PX (chips, event popup) stays")
+    secs = re.split(r'<div class="sec">', ino)[1:]
+    nosx = [re.sub(r"<[^>]*>", "", x)[:40].strip() for x in secs
+            if '<div class="sx">' not in x and '<div class="ds">' not in x]
+    check(not nosx,
+          f"every section must explain its variables above the fields; "
+          f"sections with no explanation: {nosx}")
 
     # [EN] Parse ONLY the PX block - the panel has another id-keyed table (P,
     #      the manual-mode rows) whose entries have six fields, and a loose
@@ -3689,18 +3708,17 @@ def test_section_parameter_help_v125():
     check(px_blk is not None, "the PX table must be findable as a single block")
     px_blk = px_blk.group(1)
     px = set(int(m) for m in re.findall(r"(\d+):\['", px_blk))
-    tagged = re.findall(r'data-p="([\d,]+)"', ino)
-    check(len(tagged) >= 8,
-          f"every section that owns parameters must advertise them with data-p "
-          f"(found {len(tagged)})")
-
-    advertised = set()
-    for group in tagged:
-        advertised |= {int(x) for x in group.split(",")}
-    missing = sorted(advertised - px)
+    # [EN] v1.73: with the data-p bubbles gone, the coverage rule is pinned on
+    #      what the user can actually edit - every q<id> field on the page must
+    #      have a PX entry, so no editable number is left without a name and a
+    #      description anywhere in the panel.
+    # [FA] از v1.73 قاعده روی خودِ فیلدهای ویرایش‌پذیر است: هر q<id> باید در
+    #      PX نام و توضیح داشته باشد.
+    edited = {int(x) for x in re.findall(r'<input[^>]*id="q(\d+)"', ino)}
+    missing = sorted(edited - px)
     check(not missing,
-          f"a section advertises ids with no entry in PX: {missing} - the bubble "
-          "would silently drop them and still look like a complete list")
+          f"editable fields with no PX entry: {missing} - a number the user can "
+          "change but the panel never names")
 
     count = int(re.search(r"#define ESP_PARAM_COUNT\s+(\d+)u",
                           (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1))
@@ -3748,13 +3766,10 @@ def test_theme_contrast_and_param_coverage_v125():
     check(not missing,
           f"every parameter must be explained on the page; missing: {missing}")
 
-    advertised = set()
-    for group in re.findall(r'data-p="([^"]+)"', ino):
-        advertised |= {int(x) for x in re.findall(r"\d+", group)}
-    unreachable = sorted(set(range(count)) - advertised)
-    check(not unreachable,
-          f"a described parameter the user can never reach from any section's '!' "
-          f"is not actually explained on the page: {unreachable}")
+    # [EN] v1.73: reachability is now about visible sections, not bubbles.
+    # [FA] از v1.73 دسترس‌پذیری با بخش‌های دیده‌شدنی سنجیده می‌شود نه حباب‌ها.
+    check(ino.count('<div class="sx">') >= ino.count('<div class="sec">'),
+          "every section must carry its own visible explanation")
 
     # ---------- the palette, computed ----------
     def lum(h):
