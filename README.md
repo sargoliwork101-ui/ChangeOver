@@ -93,6 +93,9 @@ ChangeOver
 ├── tools/
 │   ├── check_ai_rules.sh              ← اجرای قوانین AI_AGENT_RULES.md
 │   ├── check_firmware_syntax.sh       ← syntax check سمت Host برای Core و Firmware
+│   ├── audit_consistency.py           ← ممیز نامتغیرهای بین‌فایلی
+│   ├── measure_flash.py               ← اندازهٔ فلش ایمیج (مقایسهٔ دلتا، نه عدد مطلق)
+│   ├── measure_ram.py                 ← بودجهٔ RAM + بدترین عمق پشتهٔ هر تسک و وقفه (capstone)
 │   └── (host tests در Modules/Ui)
 └── Firmware/
     ├── App/

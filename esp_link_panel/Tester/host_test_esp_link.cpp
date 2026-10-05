@@ -520,6 +520,99 @@ int main(void)
         check(Serial.rx.empty(), "and it drains the buffer in one pass");
     }
 
+    /* ---- 15. v1.67: the LUT push is paced, one frame per ACK ----------- */
+    {
+        /* [EN] The board receives on a 256-byte DMA ring. v1.66 wrote all
+           four frames of a push back to back (about 430 bytes), which
+           overruns that ring before the comm task can read it. The sender
+           must now emit ONE frame and then wait for its LUT_ACK.
+           [FA] برد روی حلقهٔ ۲۵۶ بایتی می‌گیرد؛ ارسال باید گام‌به‌گام باشد. */
+        auto lut_ack = [](uint8_t stage, uint8_t status, uint8_t n1, uint8_t n2,
+                          uint32_t crc) {
+            std::vector<uint8_t> p(8, 0u);
+            p[0] = stage; p[1] = status; p[2] = n1; p[3] = n2;
+            p[4] = (uint8_t)(crc & 0xFFu);       p[5] = (uint8_t)((crc >> 8) & 0xFFu);
+            p[6] = (uint8_t)((crc >> 16) & 0xFFu); p[7] = (uint8_t)((crc >> 24) & 0xFFu);
+            return p;
+        };
+
+        /* n1=2, n2=2, then (chain,power) per point, then the CRC32 */
+        const std::string body = "2,2, 1,2, 3,4, 1,2, 3,4, 12345";
+
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.args["plain"] = body;
+        Serial.tx.clear();
+        ESP_WEB_SERVER_T__G__Server.call("/lut", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200,
+              "POST /lut accepts a well-formed two-channel table");
+        check(Serial.tx.empty(),
+              "the handler itself puts NOTHING on the wire",
+              "v1.66 burst all four frames here and overran the board's RX ring");
+
+        G_StubMillis += ESP_LINK_TX_INTERVAL_MS + 1u;
+        func__Esp_PumpTx();
+        const size_t afterBegin = Serial.tx.size();
+        check(afterBegin > 0u && Serial.tx[3] == ESP_MSG_LUT_BEGIN,
+              "the first pump sends LUT_BEGIN");
+
+        G_StubMillis += ESP_LINK_TX_INTERVAL_MS + 1u;
+        func__Esp_PumpTx();
+        check(Serial.tx.size() == afterBegin,
+              "and sends nothing more while that ACK is outstanding",
+              "this is the whole point: one frame in flight at a time");
+
+        feed(build_frame(ESP_MSG_LUT_ACK, lut_ack(1u, 0u, 0u, 0u, 0u)));
+        func__Esp_PumpTx();
+        check(Serial.tx.size() > afterBegin && Serial.tx[afterBegin + 3] == ESP_MSG_LUT_CHUNK,
+              "the ACK for BEGIN releases the first chunk");
+        const size_t afterChunk1 = Serial.tx.size();
+
+        feed(build_frame(ESP_MSG_LUT_ACK, lut_ack(2u, 0u, 2u, 0u, 0u)));
+        func__Esp_PumpTx();
+        check(Serial.tx.size() > afterChunk1 && Serial.tx[afterChunk1 + 3] == ESP_MSG_LUT_CHUNK,
+              "the ACK for chunk 1 releases chunk 2");
+        const size_t afterChunk2 = Serial.tx.size();
+
+        feed(build_frame(ESP_MSG_LUT_ACK, lut_ack(2u, 0u, 2u, 2u, 0u)));
+        func__Esp_PumpTx();
+        check(Serial.tx.size() > afterChunk2 && Serial.tx[afterChunk2 + 3] == ESP_MSG_LUT_COMMIT,
+              "the ACK for chunk 2 releases COMMIT");
+
+        feed(build_frame(ESP_MSG_LUT_ACK, lut_ack(3u, 0u, 2u, 2u, 12345u)));
+        func__Esp_PumpTx();
+        check(UINT8_T__G__LutTxStage == 0u && UINT8_T__G__LutTxError == 0u,
+              "the commit ACK ends the push with no error");
+
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/lut/reset", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200,
+              "and only then is the reboot request accepted");
+    }
+
+    /* ---- 16. v1.67: a board that stops answering fails visibly --------- */
+    {
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.args["plain"] = "2,0,1,2,3,4,999";
+        ESP_WEB_SERVER_T__G__Server.call("/lut", HTTP_POST);
+        for (int i = 0; i < 40; i++) {
+            G_StubMillis += ESP_LUT_TX_ACK_TIMEOUT_MS + 1u;
+            func__Esp_PumpTx();
+        }
+        check(UINT8_T__G__LutTxStage == 0u && UINT8_T__G__LutTxError == 1u,
+              "a silent board stops the push with error 1 after the retries",
+              "the panel must be able to say 'no answer' instead of spinning for ever");
+
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/lut", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find("\"txe\":1") != std::string::npos,
+              "GET /lut reports that failure to the browser");
+
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/lut/reset", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 409,
+              "and a failed push can never be followed by a reboot");
+    }
+
     std::cout << std::string(70, '=') << "\n";
     if (failures == 0) {
         std::cout << "ALL " << checks << " ESP HOST TESTS PASSED\n";

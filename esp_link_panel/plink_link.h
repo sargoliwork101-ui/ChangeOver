@@ -129,6 +129,50 @@ static uint32_t UINT32_T__G__LutAckMs = 0u;
 static uint32_t UINT32_T__G__LutAckCount = 0u;
 static uint32_t UINT32_T__G__LutSentCrc32 = 0u;
 
+/* [EN] v1.67 link audit, finding L1 - the push MUST be paced.
+   The STM32 receives on a 256-byte circular DMA ring that the comm task
+   drains on its own period. v1.66 wrote BEGIN + CHUNK + CHUNK + COMMIT
+   back to back: about 430 bytes at 921600 baud, i.e. the whole burst lands
+   in under 5 ms and overruns the 256-byte ring before the board can read
+   it. The second chunk was being silently overwritten, so a two-channel
+   table would fail its CRC (safe, but the feature would simply never work).
+   The fix: one frame at a time, the next only after the board's LUT_ACK for
+   the previous one, with a timeout, retries and a visible error. That also
+   makes the push robust against a genuinely lost frame.
+   [FA] ممیزی لینک نسخه ۱.۶۷، یافتهٔ L1 - ارسال باید «گام‌به‌گام» باشد.
+   STM32 روی حلقهٔ DMA ۲۵۶ بایتی دریافت می‌کند و تسک ارتباط آن را با دورهٔ
+   خودش خالی می‌کند. نسخه ۱.۶۶ چهار فریم (حدود ۴۳۰ بایت) را پشت‌سرهم
+   می‌نوشت: در کمتر از ۵ میلی‌ثانیه و پیش از خواندهشدن، حلقه سرریز می‌کرد و
+   تکهٔ دوم بی‌صدا پاک می‌شد. حالا هر فریم فقط پس از LUT_ACK فریم قبلی
+   فرستاده می‌شود، با مهلت، تکرار و خطای قابل‌دیدن. */
+#define ESP_LUT_TX_ACK_TIMEOUT_MS       600u
+/* [EN] COMMIT erases and programs a flash page on the board, which stalls it
+   for tens of ms; give that step a much longer leash.
+   [FA] کامیت یک صفحهٔ فلش را پاک و برنامه می‌کند و ده‌ها میلی‌ثانیه برد را
+   متوقف می‌کند؛ مهلت این مرحله بلندتر است. */
+#define ESP_LUT_TX_COMMIT_TIMEOUT_MS    2500u
+#define ESP_LUT_TX_RETRY_MAX            3u
+
+/* [EN] Staged table (filled by POST /lut, sent by func__Esp_LutTxPump).
+   [FA] جدول چیده‌شده که POST /lut پر می‌کند و pump می‌فرستد. */
+static uint32_t UINT32_T__G__LutChain1[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutPower1[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutChain2[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutPower2[ESP_LUT_POINTS_MAX];
+static uint8_t  UINT8_T__G__LutTxCount1 = 0u;
+static uint8_t  UINT8_T__G__LutTxCount2 = 0u;
+static uint32_t UINT32_T__G__LutTxCrc32 = 0u;
+/* [EN] 0 = idle, 1 = BEGIN, 2 = chunk ch1, 3 = chunk ch2, 4 = COMMIT.
+   [FA] ۰ بیکار، ۱ شروع، ۲ تکهٔ کانال۱، ۳ تکهٔ کانال۲، ۴ کامیت. */
+static uint8_t  UINT8_T__G__LutTxStage = 0u;
+static uint8_t  UINT8_T__G__LutTxRetry = 0u;
+static bool     BOOL__G__LutTxWaiting = false;
+static uint32_t UINT32_T__G__LutTxSentMs = 0u;
+static uint32_t UINT32_T__G__LutTxAckMark = 0u;
+/* [EN] 0 = none, 1 = no answer (link/board), 2 = board refused the step.
+   [FA] ۰ بدون خطا، ۱ بی‌پاسخ، ۲ رد شده توسط برد. */
+static uint8_t  UINT8_T__G__LutTxError = 0u;
+
 /**
  * @brief  [EN] Append one little-endian u32 to a payload buffer.
  *         [FA] افزودن یک u32 لیتل‌اندین به بافر payload.
@@ -174,36 +218,156 @@ static void func__Esp_SendLutChunk(uint8_t uint8_t__channel, const uint32_t *uin
 }
 
 /**
- * @brief  [EN] Push a whole table: BEGIN, one CHUNK per non-empty channel,
- *              then COMMIT carrying the CRC32 the browser computed over the
- *              same bytes. The board answers each step with LUT_ACK.
- *         [FA] ارسال کل جدول: BEGIN، یک CHUNK برای هر کانال غیرخالی و بعد
- *              COMMIT با CRC32 که مرورگر روی همان بایت‌ها حساب کرده. برد به
- *              هر مرحله با LUT_ACK پاسخ می‌دهد.
+ * @brief  [EN] Stage a whole table for sending. Nothing goes out here: the
+ *              frames are released one at a time by func__Esp_LutTxPump as
+ *              the board acknowledges them (see finding L1 above). Any push
+ *              in flight is replaced.
+ *         [FA] چیدن کل جدول برای ارسال. اینجا چیزی فرستاده نمی‌شود؛ فریم‌ها
+ *              را pump یکی‌یکی و پس از تأیید برد می‌فرستد (یافتهٔ L1 بالا).
+ *              اگر ارسالی در جریان باشد جایش را می‌گیرد.
+ * @param  uint8_t__count1 [EN] Points staged for channel 1, 0..24 / [FA] نقاط کانال ۱
+ * @param  uint8_t__count2 [EN] Points staged for channel 2, 0..24 / [FA] نقاط کانال ۲
+ * @param  uint32_t__crc32 [EN] CRC32 the browser computed / [FA] CRC32 مرورگر
+ * @return [EN] None / [FA] ندارد
  */
-static void func__Esp_SendLutTable(const uint32_t *uint32_t__ptr_chain1, const uint32_t *uint32_t__ptr_power1, uint8_t uint8_t__count1,
-                                   const uint32_t *uint32_t__ptr_chain2, const uint32_t *uint32_t__ptr_power2, uint8_t uint8_t__count2,
-                                   uint32_t uint32_t__crc32)
+static void func__Esp_LutTxStart(uint8_t uint8_t__count1, uint8_t uint8_t__count2,
+                                 uint32_t uint32_t__crc32)
 {
-    uint8_t UINT8_T__A__Begin[2];
-    uint8_t UINT8_T__A__Commit[4];
-
-    UINT8_T__A__Begin[0] = uint8_t__count1;
-    UINT8_T__A__Begin[1] = uint8_t__count2;
-    func__Esp_WriteFrame(ESP_MSG_LUT_BEGIN, UINT8_T__A__Begin, 2u);
-
-    if (uint8_t__count1 > 0u)
-    {
-        func__Esp_SendLutChunk(1u, uint32_t__ptr_chain1, uint32_t__ptr_power1, uint8_t__count1);
-    }
-    if (uint8_t__count2 > 0u)
-    {
-        func__Esp_SendLutChunk(2u, uint32_t__ptr_chain2, uint32_t__ptr_power2, uint8_t__count2);
-    }
-
-    (void)func__Esp_PutU32(UINT8_T__A__Commit, 0u, uint32_t__crc32);
-    func__Esp_WriteFrame(ESP_MSG_LUT_COMMIT, UINT8_T__A__Commit, 4u);
+    UINT8_T__G__LutTxCount1 = uint8_t__count1;
+    UINT8_T__G__LutTxCount2 = uint8_t__count2;
+    UINT32_T__G__LutTxCrc32 = uint32_t__crc32;
     UINT32_T__G__LutSentCrc32 = uint32_t__crc32;
+    UINT8_T__G__LutTxStage = 1u;
+    UINT8_T__G__LutTxRetry = 0u;
+    UINT8_T__G__LutTxError = 0u;
+    BOOL__G__LutTxWaiting = false;
+    UINT32_T__G__LutTxAckMark = UINT32_T__G__LutAckCount;
+}
+
+/**
+ * @brief  [EN] Advance the staged push by at most one frame per call: send
+ *              the current step, then wait for its LUT_ACK before the next.
+ *              A step whose ACK does not arrive within the timeout is resent
+ *              up to ESP_LUT_TX_RETRY_MAX times; after that the push stops
+ *              with error 1 so the panel can say so instead of hanging on a
+ *              spinner. A step the board refuses (status != 0) stops it with
+ *              error 2 - a half-written table is never committed.
+ *         [FA] پیش‌بردن ارسال، حداکثر یک فریم در هر فراخوانی: ارسال مرحلهٔ
+ *              جاری و بعد انتظار برای LUT_ACK همان مرحله. مرحلهٔ بی‌پاسخ تا
+ *              ESP_LUT_TX_RETRY_MAX بار تکرار و سپس با خطای ۱ متوقف می‌شود
+ *              تا پنل بتواند خطا را بگوید نه اینکه بچرخد. مرحلهٔ ردشده
+ *              (status غیر صفر) با خطای ۲ متوقف می‌شود.
+ * @return [EN] true while a push owns the link / [FA] تا وقتی ارسال جدول لینک را در اختیار دارد
+ */
+static bool func__Esp_LutTxPump(void)
+{
+    uint32_t uint32_t__nowMs = (uint32_t)millis();
+    uint8_t uint8_t__expectStage;
+    uint32_t uint32_t__timeoutMs;
+
+    if (UINT8_T__G__LutTxStage == 0u)
+    {
+        return false;
+    }
+
+    uint8_t__expectStage = (UINT8_T__G__LutTxStage == 1u) ? 1u :
+                           ((UINT8_T__G__LutTxStage == 4u) ? 3u : 2u);
+    uint32_t__timeoutMs = (UINT8_T__G__LutTxStage == 4u) ? ESP_LUT_TX_COMMIT_TIMEOUT_MS
+                                                         : ESP_LUT_TX_ACK_TIMEOUT_MS;
+
+    if (BOOL__G__LutTxWaiting)
+    {
+        /* [EN] The ACK must be NEW and describe the step we are waiting for.
+           Matching the echoed point counts as well means a duplicate ACK
+           caused by a retry cannot be mistaken for the next step's answer.
+           [FA] تأیید باید «تازه» باشد و همان مرحله را توصیف کند. مقایسهٔ
+           تعداد نقاط بازگشتی باعث می‌شود تأیید تکراریِ ناشی از ارسال مجدد،
+           پاسخ مرحلهٔ بعد شمرده نشود. */
+        bool bool__fresh = (UINT32_T__G__LutAckCount != UINT32_T__G__LutTxAckMark) &&
+                           (UINT8_T__G__LutAckStage == uint8_t__expectStage);
+        if (bool__fresh && (UINT8_T__G__LutTxStage == 2u))
+        {
+            bool__fresh = (UINT8_T__G__LutAckPoints1 == UINT8_T__G__LutTxCount1);
+        }
+        if (bool__fresh && (UINT8_T__G__LutTxStage == 3u))
+        {
+            bool__fresh = (UINT8_T__G__LutAckPoints2 == UINT8_T__G__LutTxCount2);
+        }
+
+        if (bool__fresh)
+        {
+            if (UINT8_T__G__LutAckStatus != 0u)
+            {
+                UINT8_T__G__LutTxError = 2u;
+                UINT8_T__G__LutTxStage = 0u;
+                BOOL__G__LutTxWaiting = false;
+                return false;
+            }
+            BOOL__G__LutTxWaiting = false;
+            UINT8_T__G__LutTxRetry = 0u;
+            UINT8_T__G__LutTxStage++;
+            /* [EN] Skip the chunk of a channel that was sent as 0 points.
+               [FA] پرش از تکهٔ کانالی که صفر نقطه دارد. */
+            if ((UINT8_T__G__LutTxStage == 2u) && (UINT8_T__G__LutTxCount1 == 0u))
+            {
+                UINT8_T__G__LutTxStage = 3u;
+            }
+            if ((UINT8_T__G__LutTxStage == 3u) && (UINT8_T__G__LutTxCount2 == 0u))
+            {
+                UINT8_T__G__LutTxStage = 4u;
+            }
+            if (UINT8_T__G__LutTxStage > 4u)
+            {
+                UINT8_T__G__LutTxStage = 0u;   /* [EN] committed / [FA] کامیت شد */
+                return false;
+            }
+        }
+        else if ((uint32_t__nowMs - UINT32_T__G__LutTxSentMs) < uint32_t__timeoutMs)
+        {
+            return true;
+        }
+        else if (UINT8_T__G__LutTxRetry >= (uint8_t)ESP_LUT_TX_RETRY_MAX)
+        {
+            UINT8_T__G__LutTxError = 1u;
+            UINT8_T__G__LutTxStage = 0u;
+            BOOL__G__LutTxWaiting = false;
+            return false;
+        }
+        else
+        {
+            UINT8_T__G__LutTxRetry++;
+            BOOL__G__LutTxWaiting = false;
+        }
+    }
+
+    if (UINT8_T__G__LutTxStage == 1u)
+    {
+        uint8_t UINT8_T__A__Begin[2];
+        UINT8_T__A__Begin[0] = UINT8_T__G__LutTxCount1;
+        UINT8_T__A__Begin[1] = UINT8_T__G__LutTxCount2;
+        func__Esp_WriteFrame(ESP_MSG_LUT_BEGIN, UINT8_T__A__Begin, 2u);
+    }
+    else if (UINT8_T__G__LutTxStage == 2u)
+    {
+        func__Esp_SendLutChunk(1u, UINT32_T__G__LutChain1, UINT32_T__G__LutPower1,
+                               UINT8_T__G__LutTxCount1);
+    }
+    else if (UINT8_T__G__LutTxStage == 3u)
+    {
+        func__Esp_SendLutChunk(2u, UINT32_T__G__LutChain2, UINT32_T__G__LutPower2,
+                               UINT8_T__G__LutTxCount2);
+    }
+    else
+    {
+        uint8_t UINT8_T__A__Commit[4];
+        (void)func__Esp_PutU32(UINT8_T__A__Commit, 0u, UINT32_T__G__LutTxCrc32);
+        func__Esp_WriteFrame(ESP_MSG_LUT_COMMIT, UINT8_T__A__Commit, 4u);
+    }
+
+    UINT32_T__G__LutTxAckMark = UINT32_T__G__LutAckCount;
+    UINT32_T__G__LutTxSentMs = uint32_t__nowMs;
+    BOOL__G__LutTxWaiting = true;
+    return true;
 }
 
 /**
@@ -252,6 +416,19 @@ static void func__Esp_PumpTx(void)
     uint32_t uint32_t__nowMs = (uint32_t)millis();
     uint32_t uint32_t__elapsedMs = uint32_t__nowMs - UINT32_T__G__LastTxMs;
     uint8_t uint8_t__step;
+
+    /* [EN] A LUT push owns the link while it runs (a few hundred ms at most):
+       its frames are big, and interleaving a SET_PARAM between a chunk and
+       its ACK is exactly how the board's RX ring would be overrun again.
+       Parameter writes stay queued and go out right after; nothing is lost.
+       [FA] تا وقتی ارسال جدول در جریان است لینک در اختیار اوست (حداکثر چند
+       صد میلی‌ثانیه): فریم‌هایش بزرگ‌اند و گذاشتن یک SET_PARAM بین تکه و
+       تأییدش دقیقاً همان سرریز حلقهٔ گیرنده است. فرمان‌های پارامتری در صف
+       می‌مانند و بلافاصله بعد فرستاده می‌شوند. */
+    if (func__Esp_LutTxPump())
+    {
+        return;
+    }
 
     if (uint32_t__elapsedMs < ESP_LINK_TX_INTERVAL_MS)
     {

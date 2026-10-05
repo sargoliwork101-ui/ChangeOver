@@ -612,9 +612,27 @@ static void func__EspLink_SendFrame(uint8_t uint8_t__messageType,
                                     const uint8_t *uint8_t__payload,
                                     uint16_t uint16_t__payloadLength)
 {
-    uint8_t UINT8_T__A__Frame[ESPLINK_FRAME_HEADER_SIZE +
-                              ESPLINK_FRAME_MAX_PAYLOAD +
-                              ESPLINK_FRAME_CHECKSUM_SIZE];
+    /* [EN] STATIC by necessity, not style (v1.67 RAM audit, tools/measure_ram.py):
+       this 520-byte buffer on the stack made the worst-case comm chain
+       TaskComm -> EspLink_Run -> SendLutAck -> SendFrame -> BspUart_Write ->
+       PumpTx -> HAL_UART_Transmit_DMA -> HAL_DMA_Start_IT reach 932 of the
+       1024-byte comm stack (91%) - below the usual 70% ceiling only by luck,
+       and one nested interrupt away from a silent overflow into the next
+       task's stack. Only the comm task ever sends a frame and the function is
+       non-reentrant (it never calls anything that calls back into it), so a
+       static buffer is race-free here - the same rationale as
+       SendParamsBulk's payload and the NVM save scratch. Cost: 520 bytes of
+       .bss out of the 3.5 KiB that were free; gain: the chain drops to about
+       410 bytes (40%).
+       [FA] عمداً STATIC نه سلیقه‌ای (ممیزی رم نسخه ۱.۶۷، ابزار
+       tools/measure_ram.py): این بافر ۵۲۰ بایتی روی پشته، بدترین زنجیرهٔ تسک
+       ارتباط را به ۹۳۲ از ۱۰۲۴ بایت (۹۱٪) می‌رساند؛ یک وقفهٔ تودرتو تا سرریز
+       بی‌صدا به پشتهٔ تسک بعدی فاصله داشت. فقط تسک ارتباط فریم می‌فرستد و این
+       تابع بازگشتی نیست، پس static بدون مسابقه است. هزینه: ۵۲۰ بایت .bss از
+       ۳٫۵ کیلوبایت آزاد؛ سود: زنجیره به حدود ۴۱۰ بایت (۴۰٪) می‌رسد. */
+    static uint8_t UINT8_T__A__Frame[ESPLINK_FRAME_HEADER_SIZE +
+                                     ESPLINK_FRAME_MAX_PAYLOAD +
+                                     ESPLINK_FRAME_CHECKSUM_SIZE];
     uint16_t uint16_t__cursor;
     uint16_t uint16_t__crc;
     uint8_t uint8_t__lenLo;

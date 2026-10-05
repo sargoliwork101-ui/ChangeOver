@@ -367,14 +367,10 @@ static void func__Esp_HttpBenchLogGet(void)
 
 /* ==================== v1.66 direct LUT push / ارسال مستقیم جدول ==================== */
 
-/* [EN] Staging arrays for one push. They live here (not on the stack) because
-   a 2 x 24-point table is 400 bytes and the ESP8266 handler stack is small.
-   [FA] آرایه‌های چیدن یک ارسال. اینجا هستند نه روی پشته، چون جدول ۲×۲۴
-   نقطه‌ای ۴۰۰ بایت است و پشتهٔ هندلر ESP8266 کوچک است. */
-static uint32_t UINT32_T__G__LutChain1[ESP_LUT_POINTS_MAX];
-static uint32_t UINT32_T__G__LutPower1[ESP_LUT_POINTS_MAX];
-static uint32_t UINT32_T__G__LutChain2[ESP_LUT_POINTS_MAX];
-static uint32_t UINT32_T__G__LutPower2[ESP_LUT_POINTS_MAX];
+/* [EN] The staging arrays live in plink_link.h (not on the stack, and the
+   paced sender needs them after this handler has returned).
+   [FA] آرایه‌های چیدن در plink_link.h هستند: نه روی پشته، و فرستندهٔ
+   گام‌به‌گام بعد از بازگشت این هندلر هم به آن‌ها نیاز دارد. */
 
 /**
  * @brief  [EN] POST /lut : push one bench table to the STM32.
@@ -509,9 +505,12 @@ static void func__Esp_HttpLutPush(void)
     UINT32_T__G__LutAckCrc32 = 0u;
     UINT32_T__G__LutAckCount = 0u;
 
-    func__Esp_SendLutTable(UINT32_T__G__LutChain1, UINT32_T__G__LutPower1, (uint8_t)UINT32_T__A__Head[0],
-                           UINT32_T__G__LutChain2, UINT32_T__G__LutPower2, (uint8_t)UINT32_T__A__Head[1],
-                           uint32_t__crc32);
+    /* [EN] v1.67: stage it; the link layer releases one frame per ACK so the
+       board's 256-byte RX ring can never be overrun (finding L1).
+       [FA] نسخه ۱.۶۷: فقط چیده می‌شود؛ لایهٔ لینک هر فریم را پس از تأیید
+       می‌فرستد تا حلقهٔ ۲۵۶ بایتی گیرندهٔ برد سرریز نکند (یافتهٔ L1). */
+    func__Esp_LutTxStart((uint8_t)UINT32_T__A__Head[0], (uint8_t)UINT32_T__A__Head[1],
+                         uint32_t__crc32);
 
     (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
                    "{\"ok\":1,\"n1\":%lu,\"n2\":%lu,\"crc\":%lu}",
@@ -524,7 +523,9 @@ static void func__Esp_HttpLutPush(void)
  * @brief  [EN] GET /lut : the last handshake the board sent.
  *              {st: stage 1..4, s: status 0=OK, n1, n2: points now active on
  *              the board, crc: CRC32 the board stored, sent: CRC32 we asked
- *              for, age: ms since the ACK, n: ACK count since the push}.
+ *              for, age: ms since the ACK, n: ACK count since the push,
+ *              tx: step still being sent (0 = sender idle), txe: 0 none,
+ *              1 = no answer after the retries, 2 = the board refused a step}.
  *         [FA] مسیر GET /lut : آخرین دست‌دادن برد.
  * @return [EN] None / [FA] ندارد
  */
@@ -533,12 +534,13 @@ static void func__Esp_HttpLutStatus(void)
     uint32_t uint32_t__ageMs = (uint32_t)millis() - UINT32_T__G__LutAckMs;
 
     (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
-                   "{\"st\":%u,\"s\":%u,\"n1\":%u,\"n2\":%u,\"crc\":%lu,\"sent\":%lu,\"age\":%lu,\"n\":%lu}",
+                   "{\"st\":%u,\"s\":%u,\"n1\":%u,\"n2\":%u,\"crc\":%lu,\"sent\":%lu,\"age\":%lu,\"n\":%lu,\"tx\":%u,\"txe\":%u}",
                    (unsigned int)UINT8_T__G__LutAckStage, (unsigned int)UINT8_T__G__LutAckStatus,
                    (unsigned int)UINT8_T__G__LutAckPoints1, (unsigned int)UINT8_T__G__LutAckPoints2,
                    (unsigned long)UINT32_T__G__LutAckCrc32, (unsigned long)UINT32_T__G__LutSentCrc32,
                    (unsigned long)((UINT32_T__G__LutAckCount == 0u) ? 0u : uint32_t__ageMs),
-                   (unsigned long)UINT32_T__G__LutAckCount);
+                   (unsigned long)UINT32_T__G__LutAckCount,
+                   (unsigned int)UINT8_T__G__LutTxStage, (unsigned int)UINT8_T__G__LutTxError);
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
@@ -555,7 +557,8 @@ static void func__Esp_HttpLutStatus(void)
  */
 static void func__Esp_HttpLutReset(void)
 {
-    if ((UINT8_T__G__LutAckStage != 3u) || (UINT8_T__G__LutAckStatus != 0u) ||
+    if ((UINT8_T__G__LutTxStage != 0u) || (UINT8_T__G__LutTxError != 0u) ||
+        (UINT8_T__G__LutAckStage != 3u) || (UINT8_T__G__LutAckStatus != 0u) ||
         (UINT32_T__G__LutAckCrc32 != UINT32_T__G__LutSentCrc32) || (UINT32_T__G__LutSentCrc32 == 0u))
     {
         ESP_WEB_SERVER_T__G__Server.send(409, "application/json", "{\"ok\":0,\"e\":\"handshake\"}");

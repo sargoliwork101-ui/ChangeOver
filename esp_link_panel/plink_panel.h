@@ -280,7 +280,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e3ec44d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 5eefc41</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2862,10 +2862,20 @@ async function lsend(){
  stxt('calst','… جدول در حال ارسال به برد');
  let r;try{r=await req('/lut','POST',p.body);}catch(e){stxt('calst','⚠ ارسال به ESP نرسید');return;}
  if(!r||r.ok!==1){stxt('calst','⚠ ESP جدول را نپذیرفت ('+((r&&r.e)||'?')+')');return;}
+ /* ارسال گام‌به‌گام است: ESP هر فریم را فقط بعد از تأیید فریم قبلی می‌فرستد
+    (تا حلقهٔ گیرندهٔ برد سرریز نکند)، پس تا ۱۰ ثانیه منتظر می‌مانیم و مرحله را
+    به کاربر نشان می‌دهیم. */
+ const LSTG=['','شروع','نقاط باتری ۱','نقاط باتری ۲','ثبت در فلش'];
  let a=null;
- for(let i=0;i<20;i++){await sl(250);
-  try{a=await req('/lut','GET');}catch(e){a=null;}
+ for(let i=0;i<40;i++){await sl(250);
+  try{a=await req('/lut','GET');}catch(e){a=null;continue;}
+  if(a&&a.txe){break;}
+  if(a&&a.tx){stxt('calst','… ارسال جدول: '+(LSTG[a.tx]||a.tx));continue;}
   if(a&&a.st===3)break;}
+ if(a&&a.txe===1){stxt('calst','⚠ برد به مرحلهٔ ارسال پاسخ نداد (سیم یا نویز لینک)؛ '+
+  'جدول قبلی بدون تغییر ماند — دوباره بزنید.');return;}
+ if(a&&a.txe===2){stxt('calst','⛔ برد یکی از مرحله‌های ارسال را رد کرد: '+
+  (LUTST[a.s]||('کد '+a.s))+' · جدول قبلی بدون تغییر ماند.');return;}
  if(!a||a.st!==3){stxt('calst','⚠ برد پاسخ کامیت را نداد؛ جدول قبلی بدون تغییر ماند.');return;}
  if(a.s!==0){stxt('calst','⛔ برد جدول را رد کرد: '+(LUTST[a.s]||('کد '+a.s))+
   ' · جدول قبلی بدون تغییر ماند.');return;}
