@@ -2187,12 +2187,17 @@ def test_ui_mirror_v116():
     adef = re.search(r"const ADEF=\[([^\]]*)\]", ino)
     check(adef and len(adef.group(1).split(",")) == 56,
           "ADEF must carry one default per guarded id (56 for 27..82)")
-    check("function uview()" in ino and "setInterval(uview,50)" in ino and "function xmute()" in ino,
-          "the board-rate LED/buzzer mirror (50 ms) and the mute toggle must exist")
-    check('id="ulR"' in ino and 'id="ulY"' in ino and 'id="ulG"' in ino
-          and 'id="ulB"' in ino and 'id="uscn"' in ino and 'id="utim"' in ino
-          and 'leds stick' in ino and ino.count('id="uleds"') == 1,
-          "ONE sticky mirror header: 3 LEDs + buzzer + scenario caption + live timing readout")
+    # v1.53 (user order): the board-driven LED/buzzer mirror was deleted - the
+    # per-card simulators replaced it. What must survive is the fault-bit
+    # mirror refresh and the mute toggle.
+    # v1.53: آینهٔ LED برد حذف شد؛ شبیه‌ساز هر کارت جایش را گرفت.
+    check("function uview()" in ino and "setInterval(uview,250)" in ino and "function xmute()" in ino,
+          "the fault-bit refresh and the mute toggle must exist")
+    check("ulR" not in ino and "function simrun()" in ino and "function simbz(" in ino,
+          "the board-driven LED strip is gone and the per-card simulator is in")
+    check(ino.count('id="uleds"') == 1 and 'leds stick' not in ino
+          and all(f'id="sl{n}r"' in ino and f'id="sl{n}z"' in ino for n in range(1, 7)),
+          "no sticky board mirror left; every scenario card carries its own simulated LEDs and buzzer")
     check(all(f'id="asbb{k}"' in ino for k in range(7)),
           "one LED per fault bit (asbb0..asbb6)")
     check("pendingMask3" in ino and "pendingMask4" in ino and "64..95" in ino,
@@ -2354,8 +2359,11 @@ def test_ui_mirror_v117():
     # --- panel: enter>=exit+1 guard + mirror fallbacks ---
     check("a.u78<=a.u77-1" in ino and "خروج فول باید زیر ورود باشد" in ino,
           "the panel guard must warn unless exit <= enter-1 (77 authoritative)")
-    check("g(77,100)" in ino and "g(78,95)" in ino and "g(69,150)" in ino,
-          "the LED mirror must fall back to the v1.17 boot defaults")
+    # v1.53: the fallbacks moved from the deleted board mirror into the
+    # per-card simulator, which reads the boxes through c4v().
+    # v1.53: پیش‌فرض‌ها از آینهٔ حذف‌شده به شبیه‌ساز کارت‌ها منتقل شدند.
+    check("c4v(77,100)" in ino and "c4v(69,150)" in ino and 'id="q78"' in ino,
+          "the simulator must fall back to the v1.17 boot defaults")
 
     # --- panel: ucard4 holds q77..q79, ucard3 holds q80..q82 ---
     ucard3 = ino.split('id="ucard3"')[1].split('id="ucard4"')[0]
@@ -2417,13 +2425,15 @@ def test_ui_mirror_v117b():
           and "bool__isFull = true;" in text_uic,
           "the UI dispatcher must latch full on charger completion too")
 
-    # --- panel mirror: done from enables + TLM states, idle piece gone ---
-    check("t[6]===3" in ino and "t[13]===3" in ino and "g(11,1)" in ino and "g(12,1)" in ino
-          and "UV.full||done" in ino,
-          "the mirror must derive charger-done from enables 11/12 + FLOAT states t[6]/t[13]")
-    check("ورودی وصل · فول" in ino and "ورودی وصل — سبز ثابت" in ino
-          and "شارژر بیکار" not in ino,
-          "post-charge caption must be full; the 'idle charger' piece must be gone")
+    # --- panel: the board mirror that derived charger-done from the
+    #     telemetry is gone (v1.53); the card simulator decides "full" from
+    #     the full-entry percent the user typed, not from the live states.
+    #     v1.53: آینهٔ برد حذف شد؛ شبیه‌ساز «فول» را از درصد ورود فولِ
+    #     تایپ‌شده می‌فهمد، نه از وضعیت زندهٔ شارژرها.
+    check("UV." not in ino and "pct>=en" in ino,
+          "no telemetry-derived charger-done left; the simulator uses the typed full-entry percent")
+    check("فول: سبز ثابت، زرد خاموش" in ino and "شارژر بیکار" not in ino,
+          "the charge simulator must say full = green solid with the yellow off")
     check("پایان Absorb هر کانال" in ino,
           "the charging card flow must end at absorb-done, not at idle")
 

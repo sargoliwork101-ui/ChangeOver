@@ -204,8 +204,6 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .wbx.warn{border-color:var(--wa);background:rgba(247,193,60,.10);color:var(--wa)}
 .ab.bad{border-color:rgba(251,94,106,.55);box-shadow:0 0 0 1px rgba(251,94,106,.2)}.ab.warn{border-color:rgba(251,191,36,.5)}.ab.good{border-color:rgba(52,211,153,.4)}
 .leds{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--in);border:1px solid var(--ln);border-radius:14px;padding:10px 14px;margin:2px 0 12px}
-.led{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:58px}.led i{width:26px;height:26px;border-radius:50%;background:#2a3245;box-shadow:inset 0 2px 5px rgba(0,0,0,.6);transition:background .12s,box-shadow .12s}.led small{color:var(--mu);font-size:11px}.led.r.on i{background:#ff4545;box-shadow:0 0 16px #ff4545,0 0 4px #fff inset}.led.y.on i{background:#ffd23b;box-shadow:0 0 16px #ffd23b}.led.g.on i{background:#2eff8f;box-shadow:0 0 16px #2eff8f}.bit{display:inline-flex;align-items:center;gap:6px;margin:2px 8px 2px 0}.bit i{width:14px;height:14px;border-radius:50%;background:#2a3245;display:inline-block;box-shadow:inset 0 1px 3px rgba(0,0,0,.6)}.bit.on i{background:#ff4545;box-shadow:0 0 9px #ff4545}.bz{font-size:30px;line-height:1;position:relative;min-width:44px;text-align:center}.bz.off{opacity:.22;filter:grayscale(1)}.bz .mx{position:absolute;inset:-4px 0 0 0;color:#ff4545;font-size:36px;display:none;font-weight:700;text-shadow:0 0 6px #000}.bz.muted .mx{display:block}.bz.muted{opacity:.85}
-.leds.stick{position:sticky;top:170px;z-index:52;background:rgba(11,15,23,.9);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);box-shadow:0 4px 18px rgba(0,0,0,.5)}
 .fx2{font-size:12px;color:#c9d0df;line-height:1.9;margin-top:4px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 .ldon{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);margin-right:8px}
@@ -279,7 +277,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 952ce0d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build aa7e76f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -358,14 +356,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
      دوباره شماره‌گذاری شدند. بدون آن s0 سه زیرتب دیگر را در خود می‌گرفت،
      پس مخفی‌کردن s0 آن‌ها را هم مخفی می‌کرد. -->
 <div class="sgx" id="s1">
-<div class="leds stick" id="uleds">
-<div class="led r" id="ulR"><i></i><small>قرمز</small></div>
-<div class="led y" id="ulY"><i></i><small>زرد</small></div>
-<div class="led g" id="ulG"><i></i><small>سبز</small></div>
-<div class="bz off" id="ulB">🔊<span class="mx">✕</span></div>
-<div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:220px"><span class="lb" id="uscn">—</span><span class="lb" id="utim">—</span></div>
-<button class="sb" onclick="xmute()">🔇/🔊 میوت</button><span class="lb" id="xmuteS">—</span>
-</div>
+<div class="leds" id="uleds"><span class="lb">چراغ‌های زندهٔ برد از اینجا برداشته شدند (v1.53): هر کارت سناریو شبیه‌ساز خودش را دارد و این صفحه ابزار راه‌اندازی است، نه داشبورد.</span><button class="sb" onclick="xmute()">🔇/🔊 میوت</button><span class="lb" id="xmuteS">—</span></div>
 <div class="hd" style="margin-top:10px"><b>سناریوهای LED و بازر</b><span class="lb">· یک سناریو را انتخاب کنید · همه روی فلش برد ذخیره می‌شوند</span></div>
 <div id="aw2" style="margin:2px 0 0"></div>
 <div class="sbt" id="usel"><button class="a" data-u="1">۱ · اضافه‌ولتاژ</button><button data-u="2">۲ · قطع باتری</button><button data-u="3">۳ · دشارژ</button><button data-u="4">۴ · شارژ عادی</button><button data-u="5">۵ · باتری کم</button><button data-u="6">۶ · عدم‌توازن</button></div>
@@ -1712,84 +1703,16 @@ function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
    ASB.flt.innerHTML=h;ASB.box5.className='ab bad';}}
  ASB.tick=!ASB.tick;if(ASB.live)ASB.live.style.opacity=ASB.tick?1:.3;}
 /* ===== v1.16: آینهٔ LED و بازر برد — همان اولویت Ui_Tick با مقادیر اعمال‌شده؛ چشمک با همان دوره/duty برد (فاز محلی، هم‌سرعت) ===== */
-let UV={inP:false,ov:false,bat:false,pct:-1,cpct:-1,full:false,critT:0};
+/* [EN] v1.53 (user order): the board-driven LED/buzzer mirror is gone - the
+   per-card simulators replaced it, and dropping it also drops the 50 ms
+   telemetry-replay maths. What is left is the fault-bit mirror plus the
+   periodic refresh of the derived card numbers.
+   [FA] آینهٔ LED و بازرِ برد حذف شد (شبیه‌ساز کارت‌ها جایش را گرفت)؛ فقط
+   آینهٔ بیت‌های خطا و تازه‌سازی دوره‌ای اعداد کارت‌ها مانده است. */
 function uview(){
- const R=$('ulR'),Y=$('ulY'),G=$('ulG'),B=$('ulB'),sc=$('uscn'),tm=$('utim');
- if(!R)return;
  const now=performance.now();
- if(ASB&&ASB.bits&&D&&D.t){const m=D.t[19]||0,ph=(now%500)<250;ASB.bits.forEach((e,bit)=>{if(e)e.className='bit'+(((m&(1<<bit))!=0&&ph)?' on':'');});}
- const allOff=why=>{R.className='led r';Y.className='led y';G.className='led g';B.className='bz off';if(sc)sc.textContent=why;if(tm)tm.textContent='—';};
- if(!D||!D.t||!D.p||D.on!=1){allOff(!D?'در انتظار داده…':'لینک قطع است — آینه خاموش');if(ASB&&ASB.bits)ASB.bits.forEach(e=>{if(e)e.className='bit';});return;}
- const t=D.t,pp=D.p;
- const g=(id,fb)=>pp[id]!=null?pp[id]:fb;
- const vin=t[14],vbat=t[15];/* v_bat24 مثل برد */
- if(!(vin>0||vbat>0)){allOff('داده نامعتبر — همه خاموش (حالت امن برد)');return;}
- const lo=g(74,21000),hi=g(75,29000);
- /* v1.46: کف‌گیری مثل تقسیم صحیح برد (func__Ui_BatteryVoltageToPercent)، نه گرد کردن */
- let raw=hi>lo?Math.floor((Math.min(vbat,hi)-lo)*100/(hi-lo)):0;raw=Math.max(0,Math.min(100,raw));
- if(vin>=21000)UV.inP=true;else if(vin<=20000)UV.inP=false;
- const ovT=g(70,28000),ovH=g(71,1000);
- if(!UV.ov&&vin>ovT)UV.ov=true;else if(UV.ov&&vin<=ovT-ovH)UV.ov=false;
- if(vbat<g(72,21000))UV.bat=true;else if(vbat>=g(73,21200))UV.bat=false;
- if(UV.pct<0)UV.pct=raw;else if(!(UV.pct===0&&raw<g(81,2))&&Math.abs(raw-UV.pct)>=g(80,2))UV.pct=raw;
- if(UV.cpct<0)UV.cpct=raw;else if(Math.abs(raw-UV.cpct)>=g(79,5))UV.cpct=raw;
- if(raw>=g(77,100))UV.full=true;else if(raw<g(78,95))UV.full=false;
- const mute=g(76,0)===1;
- const blink=(per,onMs)=>per>0&&onMs>0&&(now%per)<onMs;
- const beepNow=(per,dur,cnt,gap)=>{if(!per||!dur||!cnt)return false;const w=dur*cnt+(cnt>1?gap*(cnt-1):0);return w>0&&w<=per&&(now%per)<w;};
- let r=false,y=false,gr=false,bz=false,cap='',tim='—';
- const loW=UV.bat?' · ⚠ باتری کم':'';
- if(UV.ov){
-  const per=g(38,1000);
-  r=blink(per,Math.floor(per*g(39,50)/100));gr=true;bz=beepNow(g(40,10000),g(41,1000),g(42,1),g(43,0));
-  tim='قرمز '+per+'ms/'+g(39,50)+'٪ · '+(g(40,10000)&&g(42,1)?('بوق هر '+g(40,10000)+'ms ('+g(42,1)+'×'+g(41,1000)+'ms)'):'بوق خاموش')+' · سقف '+ovT+'mV';
-  cap='⚠ اضافه‌ولتاژ ورودی — قرمز چشمک + بوق'+loW;
- }else if((t[19]&64)!=0){
-  const per=g(44,1000);
-  r=blink(per,Math.floor(per*g(45,50)/100));gr=true;bz=beepNow(g(46,3000),g(47,233),g(48,3),g(49,100));
-  tim='قرمز '+per+'ms/'+g(45,50)+'٪ · '+(g(46,3000)&&g(48,3)?('بوق هر '+g(46,3000)+'ms ('+g(48,3)+'×'+g(47,233)+'ms)'):'بوق خاموش');
-  cap='⚠ قطع باتری — قرمز چشمک + بوق'+loW;
- }else if(UV.inP){
-  const act=[t[6],t[13]].some(s=>s===1||s===2);/* فعال = BULK/ABSORB در حال پمپ (مثل برد) */
-  /* v1.17b: فول شارژر = هر کانالِ فعال‌شده در FLOAT (مثل IsChargeComplete برد) */
-  const en1=g(11,1)===1,en2=g(12,1)===1;
-  const done=(en1||en2)&&(!en1||t[6]===3)&&(!en2||t[13]===3);
-  gr=true;
-  tim='سبز ثابت';
-  if(UV.full||done)cap='✅ ورودی وصل · فول — سبز ثابت'+loW;
-  else if(!act)cap='✅ ورودی وصل — سبز ثابت'+loW;
-  else{
-   const st=UV.cpct,per=g(68,1000);
-   tim='زرد '+per+'ms · سبز ثابت';
-   if(st<=0)y=true;
-   else if(st<100){y=blink(per,Math.max(g(69,150),Math.min(per,(100-st)*Math.floor(per/100))));}
-   cap='🔋 در حال شارژ '+raw+'٪ — زرد با مانده تا فول'+loW;
-  }
- }else{
-  const st=UV.pct;
-  if(st<g(53,1)){
-   if(!UV.critT)UV.critT=now;
-   const cp=g(56,10000);
-   tim='بوق یک‌باره '+g(61,10000)+'ms · LED خاموش';
-   bz=cp>0&&g(58,1)>0&&(now-UV.critT)<g(61,10000)&&(now%cp)<cp*g(57,100)/100;
-   cap=(now-UV.critT)<g(61,10000)?'🪫 بحرانی — بوق یک‌bاره (LEDها خاموش)'+loW:'🪫 بحرانی — LEDها خاموش · بوق یک‌بار زده شد'+loW;
-  }else{
-   UV.critT=0;
-   const per=g(66,1000);
-   gr=blink(per,per-Math.max(g(67,10),(100-st)*Math.floor(per/100)));
-   tim='سبز '+per+'ms';
-   let bi='';
-   if(st>=g(50,40)){bz=false;tim+=' · بی‌صدا';}
-   else if(st>=g(51,20)){bz=beepNow(g(54,60000),g(59,1000),g(62,1),g(65,100));bi=' · بوق تکی';tim+=' · بوق هر '+g(54,60000)+'ms ('+g(62,1)+'×'+g(59,1000)+'ms)';}
-   else if(st>=g(52,10)){bz=beepNow(g(54,60000),g(59,1000),g(63,2),g(65,100));bi=' · دو بوق';tim+=' · بوق هر '+g(54,60000)+'ms ('+g(63,2)+'×'+g(59,1000)+'ms)';}
-   else{bz=beepNow(g(55,20000),g(60,2000),g(64,3),g(65,100));bi=' · سه بوق';tim+=' · بوق هر '+g(55,20000)+'ms ('+g(64,3)+'×'+g(60,2000)+'ms)';}
-   cap='🔋 دشارژ '+st+'٪ — سبز چشمک'+bi+loW;
-  }
- }
- R.className='led r'+(r?' on':'');Y.className='led y'+(y?' on':'');G.className='led g'+(gr?' on':'');
- B.className=mute?'bz muted':(bz?'bz':'bz off');
- if(sc)sc.textContent=cap+(mute?' · 🔇 میوت':'');
- if(tm)tm.textContent=tim;
+ if(ASB&&ASB.bits&&D&&D.t){const m=D.t[19]||0,ph=(now%500)<250;
+  ASB.bits.forEach((e,bit)=>{if(e)e.className='bit'+(((m&(1<<bit))!==0&&ph)?' on':'');});}
  try{c4();sall();}catch(e){}
 }
 /* ==================== سناریو ۴ — اعداد زندهٔ کارت شارژ ==================== */
@@ -2306,5 +2229,5 @@ function mview(d){const man=(d.fl&32)!=0,sup=d.p[19]!=null&&d.on==1;
   a.disabled=m.disabled=!sup;a.classList.toggle('on',sup&&!man);m.classList.toggle('on',sup&&man);const f=$('fx'+n);if(f){f.disabled=!sup||d.p[13+2*n]==null;f.classList.toggle('on',d.p[13+2*n]===1);}});}
 pexp(); /* v1.25: متن پارامترها را یک‌بار به «!» هر بخش می‌چسباند */
 poll();
-setInterval(uview,50); /* v1.16: آینهٔ LED با ۵۰ms — چشمک هم‌سرعت برد */
+setInterval(uview,250); /* v1.16: آینهٔ LED با ۵۰ms — چشمک هم‌سرعت برد */
 </script></body></html>)HTML";

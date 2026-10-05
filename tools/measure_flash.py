@@ -45,6 +45,10 @@ INCLUDES = [
     "Firmware/Modules/Ui", "Firmware/Modules/Measurement", "Firmware/Modules/Protection",
     "Firmware/Modules/Changeover", "Firmware/Modules/Charger", "Firmware/Modules/Jitter",
     "Firmware/Modules/Fault", "Firmware/Modules/EspLink", "Firmware/Modules/McuPowerPath",
+    # [EN] v1.53: the Imbalance module was missing, so five translation units
+    #      failed and the "total" silently excluded them.
+    # [FA] ماژول Imbalance جا افتاده بود و پنج فایل بی‌صدا از مجموع می‌افتادند.
+    "Firmware/Modules/Imbalance",
 ]
 
 
@@ -56,8 +60,10 @@ def sources():
     frt = ROOT / "CubeIDE/Middlewares/Third_Party/FreeRTOS/Source"
     out += sorted(frt.glob("*.c"))
     out += sorted((frt / "CMSIS_RTOS_V2").glob("*.c"))
-    out += [frt / "portable/GCC/ARM_CM3/port.c", frt / "portable/MemMang/heap_4.c"]
-    out += sorted((ROOT / "Firmware").rglob("*.c"))
+    out += [frt / "portable/GCC/ARM_CM3/port.c"]  # static allocation only: no heap_4
+    out += sorted(f for f in (ROOT / "Firmware").rglob("*.c")
+                  if "Tester" not in f.parts)   # [EN] host tests are not flashed
+                                                # [FA] تست‌های هاست روی برد نمی‌روند
     return [p for p in out if p.is_file()]
 
 
