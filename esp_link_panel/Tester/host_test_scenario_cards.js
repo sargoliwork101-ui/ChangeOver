@@ -315,9 +315,9 @@ function testDischarge(win, doc) {
        [FA] «پایداری درصد» باید با اعداد زنده توضیح داده شود. */
     typeInto(win, doc, 'q80', 2);
     const hy = textOf(doc, 's3hy');
-    check(hy.includes('hysteresis') && hy.includes('34') && hy.includes('36'),
+    check(hy.includes('درصد پایدار') && hy.includes('34') && hy.includes('36'),
         'the stability text explains the band around the stable percent', hy);
-    check(hy.includes('خروج از ۰٪') && hy.includes('خروج از ۱٪'),
+    check(hy.includes('بیرون آمدن از ۰٪') && hy.includes('بیرون آمدن از ۱٪'),
         'and explains both zero/one exit thresholds', hy);
 }
 
