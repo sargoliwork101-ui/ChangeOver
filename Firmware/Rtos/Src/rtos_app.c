@@ -21,32 +21,32 @@
 #include "fault.h"
 #endif
 
-static rtos_stack_word_t STACKTYPE_T__G__UiStack[TASK_STACK_UI];
-static rtos_thread_control_block_t STATICTASK_T__G__UiTcb;
+static rtos_stack_word_t RTOS_STACK_WORD_T__G__UiStack[TASK_STACK_UI];
+static rtos_thread_control_block_t RTOS_THREAD_CONTROL_BLOCK_T__G__UiTcb;
 static const osThreadAttr_t OS_THREAD_ATTR_T__G__Ui =
 {
     .name = "ui",
     .attr_bits = 0u,
-    .cb_mem = &STATICTASK_T__G__UiTcb,
-    .cb_size = sizeof(STATICTASK_T__G__UiTcb),
-    .stack_mem = STACKTYPE_T__G__UiStack,
-    .stack_size = sizeof(STACKTYPE_T__G__UiStack),
+    .cb_mem = &RTOS_THREAD_CONTROL_BLOCK_T__G__UiTcb,
+    .cb_size = sizeof(RTOS_THREAD_CONTROL_BLOCK_T__G__UiTcb),
+    .stack_mem = RTOS_STACK_WORD_T__G__UiStack,
+    .stack_size = sizeof(RTOS_STACK_WORD_T__G__UiStack),
     .priority = TASK_PRIO_UI,
     .tz_module = 0u,
     .reserved = 0u
 };
 
 #if MODULE_MEASUREMENT
-static rtos_stack_word_t STACKTYPE_T__G__MeasStack[TASK_STACK_MEASUREMENT];
-static rtos_thread_control_block_t STATICTASK_T__G__MeasTcb;
+static rtos_stack_word_t RTOS_STACK_WORD_T__G__MeasStack[TASK_STACK_MEASUREMENT];
+static rtos_thread_control_block_t RTOS_THREAD_CONTROL_BLOCK_T__G__MeasTcb;
 static const osThreadAttr_t OS_THREAD_ATTR_T__G__Measurement =
 {
     .name = "meas",
     .attr_bits = 0u,
-    .cb_mem = &STATICTASK_T__G__MeasTcb,
-    .cb_size = sizeof(STATICTASK_T__G__MeasTcb),
-    .stack_mem = STACKTYPE_T__G__MeasStack,
-    .stack_size = sizeof(STACKTYPE_T__G__MeasStack),
+    .cb_mem = &RTOS_THREAD_CONTROL_BLOCK_T__G__MeasTcb,
+    .cb_size = sizeof(RTOS_THREAD_CONTROL_BLOCK_T__G__MeasTcb),
+    .stack_mem = RTOS_STACK_WORD_T__G__MeasStack,
+    .stack_size = sizeof(RTOS_STACK_WORD_T__G__MeasStack),
     .priority = TASK_PRIO_MEASUREMENT,
     .tz_module = 0u,
     .reserved = 0u
@@ -54,16 +54,16 @@ static const osThreadAttr_t OS_THREAD_ATTR_T__G__Measurement =
 #endif
 
 #if MODULE_PROTECTION
-static rtos_stack_word_t STACKTYPE_T__G__ProtStack[TASK_STACK_PROTECTION];
-static rtos_thread_control_block_t STATICTASK_T__G__ProtTcb;
+static rtos_stack_word_t RTOS_STACK_WORD_T__G__ProtStack[TASK_STACK_PROTECTION];
+static rtos_thread_control_block_t RTOS_THREAD_CONTROL_BLOCK_T__G__ProtTcb;
 static const osThreadAttr_t OS_THREAD_ATTR_T__G__Protection =
 {
     .name = "prot",
     .attr_bits = 0u,
-    .cb_mem = &STATICTASK_T__G__ProtTcb,
-    .cb_size = sizeof(STATICTASK_T__G__ProtTcb),
-    .stack_mem = STACKTYPE_T__G__ProtStack,
-    .stack_size = sizeof(STACKTYPE_T__G__ProtStack),
+    .cb_mem = &RTOS_THREAD_CONTROL_BLOCK_T__G__ProtTcb,
+    .cb_size = sizeof(RTOS_THREAD_CONTROL_BLOCK_T__G__ProtTcb),
+    .stack_mem = RTOS_STACK_WORD_T__G__ProtStack,
+    .stack_size = sizeof(RTOS_STACK_WORD_T__G__ProtStack),
     .priority = TASK_PRIO_PROTECTION,
     .tz_module = 0u,
     .reserved = 0u
@@ -71,16 +71,16 @@ static const osThreadAttr_t OS_THREAD_ATTR_T__G__Protection =
 #endif
 
 #if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER || MODULE_MCU_POWER_PATH)
-static rtos_stack_word_t STACKTYPE_T__G__CtrlStack[TASK_STACK_CONTROL];
-static rtos_thread_control_block_t STATICTASK_T__G__CtrlTcb;
+static rtos_stack_word_t RTOS_STACK_WORD_T__G__CtrlStack[TASK_STACK_CONTROL];
+static rtos_thread_control_block_t RTOS_THREAD_CONTROL_BLOCK_T__G__CtrlTcb;
 static const osThreadAttr_t OS_THREAD_ATTR_T__G__Control =
 {
     .name = "ctrl",
     .attr_bits = 0u,
-    .cb_mem = &STATICTASK_T__G__CtrlTcb,
-    .cb_size = sizeof(STATICTASK_T__G__CtrlTcb),
-    .stack_mem = STACKTYPE_T__G__CtrlStack,
-    .stack_size = sizeof(STACKTYPE_T__G__CtrlStack),
+    .cb_mem = &RTOS_THREAD_CONTROL_BLOCK_T__G__CtrlTcb,
+    .cb_size = sizeof(RTOS_THREAD_CONTROL_BLOCK_T__G__CtrlTcb),
+    .stack_mem = RTOS_STACK_WORD_T__G__CtrlStack,
+    .stack_size = sizeof(RTOS_STACK_WORD_T__G__CtrlStack),
     .priority = TASK_PRIO_CONTROL,
     .tz_module = 0u,
     .reserved = 0u
@@ -88,16 +88,16 @@ static const osThreadAttr_t OS_THREAD_ATTR_T__G__Control =
 #endif
 
 #if MODULE_ESP
-static rtos_stack_word_t STACKTYPE_T__G__CommStack[TASK_STACK_COMM];
-static rtos_thread_control_block_t STATICTASK_T__G__CommTcb;
+static rtos_stack_word_t RTOS_STACK_WORD_T__G__CommStack[TASK_STACK_COMM];
+static rtos_thread_control_block_t RTOS_THREAD_CONTROL_BLOCK_T__G__CommTcb;
 static const osThreadAttr_t OS_THREAD_ATTR_T__G__Comm =
 {
     .name = "comm",
     .attr_bits = 0u,
-    .cb_mem = &STATICTASK_T__G__CommTcb,
-    .cb_size = sizeof(STATICTASK_T__G__CommTcb),
-    .stack_mem = STACKTYPE_T__G__CommStack,
-    .stack_size = sizeof(STACKTYPE_T__G__CommStack),
+    .cb_mem = &RTOS_THREAD_CONTROL_BLOCK_T__G__CommTcb,
+    .cb_size = sizeof(RTOS_THREAD_CONTROL_BLOCK_T__G__CommTcb),
+    .stack_mem = RTOS_STACK_WORD_T__G__CommStack,
+    .stack_size = sizeof(RTOS_STACK_WORD_T__G__CommStack),
     .priority = TASK_PRIO_COMM,
     .tz_module = 0u,
     .reserved = 0u

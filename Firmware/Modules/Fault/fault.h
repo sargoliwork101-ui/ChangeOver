@@ -1,7 +1,22 @@
 /**
  * @file    fault.h
- * @brief   [EN] Bit-mask of latched faults (placeholder). Full type naming, func__ prefix.
- *          [FA] بیت‌ماسک خطاهای قفل‌شده (اسکلت). نام تایپ کامل.
+ * @brief   [EN] Public interface of the latched-fault bit mask: the bit
+ *               definitions themselves, the set/clear/query API, the
+ *               battery-lost detection constants and the supervision hook
+ *               the charger calls when an alarm threshold moves. A latched
+ *               bit forces the application into FAULT and keeps it there
+ *               until something explicitly clears it.
+ *          [FA] رابط عمومی بیت‌ماسک خطاهای قفل‌شده: خودِ تعریف بیت‌ها، ای‌پی‌آیِ
+ *               ست/پاک/پرسش، ثابت‌های تشخیص قطع باتری و قلابِ نظارتی که شارژر
+ *               هنگام جابه‌جایی آستانهٔ آلارم صدا می‌زند. هر بیت قفل‌شده برنامه
+ *               را به حالت FAULT می‌برد و تا پاک‌شدن صریح همان‌جا نگه می‌دارد.
+ * @note    [EN] Full-program audit 2026-10-05: the old header line called
+ *               this file a placeholder/skeleton. It has not been one for a
+ *               long time - the module carries the battery-lost detector and
+ *               the supervision cascade - so the stale label was removed.
+ *          [FA] ممیزی ۲۰۲۶-۱۰-۰۵: سرخط قبلی این فایل را «اسکلت» می‌نامید. مدت‌هاست
+ *               که اسکلت نیست (آشکارسازِ قطع باتری و آبشار نظارتی اینجاست)، پس
+ *               آن برچسب کهنه برداشته شد.
  */
 
 #ifndef FAULT_H

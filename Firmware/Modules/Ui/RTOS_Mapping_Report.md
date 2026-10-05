@@ -43,11 +43,11 @@ Mapping word→byte: sizeof(stack) bytes in osThreadAttr_t (مثال UI 128*4=51
 
 ### تخصیص استاتیک (rtos_app.c)
 ```c
-static rtos_stack_word_t STACKTYPE_T__G__UiStack[TASK_STACK_UI];
-static rtos_thread_control_block_t STATICTASK_T__G__UiTcb;
+static rtos_stack_word_t RTOS_STACK_WORD_T__G__UiStack[TASK_STACK_UI];
+static rtos_thread_control_block_t RTOS_THREAD_CONTROL_BLOCK_T__G__UiTcb;
 static const osThreadAttr_t OS_THREAD_ATTR_T__G__Ui = {
-  .cb_mem=&STATICTASK_T__G__UiTcb, .cb_size=sizeof(...),
-  .stack_mem=STACKTYPE_T__G__UiStack, .stack_size=sizeof(STACKTYPE_T__G__UiStack),
+  .cb_mem=&RTOS_THREAD_CONTROL_BLOCK_T__G__UiTcb, .cb_size=sizeof(...),
+  .stack_mem=RTOS_STACK_WORD_T__G__UiStack, .stack_size=sizeof(RTOS_STACK_WORD_T__G__UiStack),
   .priority=TASK_PRIO_UI
 };
 osThreadNew(func__TaskUi,NULL,&OS_THREAD_ATTR_T__G__Ui);

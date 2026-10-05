@@ -467,12 +467,12 @@ void USART1_IRQHandler(void)
  *              ‎transmit-complete‎ ی UART صدا می‌زند): گارد در-پرواز آزاد و
  *              بلافاصله قطعهٔ بعدی پمپ می‌شود تا فریم‌های پشت‌سرهم
  *              (تله‌متری + پاسخ‌ها) بدون دخالت تسک خالی شوند.
- * @param  uart_handle_t__huart [EN] Handle of the UART that completed /
+ * @param  UART_HandleTypeDef__huart [EN] Handle of the UART that completed /
  *                                  هندل UART ای که کامل شد
  */
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *uart_handle_t__huart)
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *UART_HandleTypeDef__huart)
 {
-    if (uart_handle_t__huart == UART_HANDLETYPEDEF__G__EspLink)
+    if (UART_HandleTypeDef__huart == UART_HANDLETYPEDEF__G__EspLink)
     {
         BOOL__G__TxDmaActive = false;
         func__BspUart_PumpTx();

@@ -3449,7 +3449,18 @@ static void func__Charger_ClampProfile(void)
        [FA] نسخهٔ ۱.۲۲ به همین آبشار می‌پیوندد: مرز مرحلهٔ PID نسبت به
        ست‌پوینت ابزورب تعریف شده، پس اینجا هم دوباره گیره می‌خورد. */
     func__Charger_ClampPid();
+    /* [EN] Full-program audit 2026-10-05: every other func__Fault_* call in
+       this file is wrapped, this one and its twin in SetAlarmParam were not,
+       so MODULE_FAULT 0 produced an implicit-declaration error under the
+       -Werror gate. With the Fault module off there are no fault alarms to
+       re-clamp, so dropping the call is the correct behaviour.
+       [FA] ممیزی ۲۰۲۶-۱۰-۰۵: بقیهٔ فراخوانی‌های ‎func__Fault_*‎ این فایل گارد
+       دارند و فقط این یکی و همزادش در SetAlarmParam نداشتند، پس خاموش‌کردن
+       MODULE_FAULT زیر دروازهٔ ‎-Werror‎ خطای implicit-declaration می‌داد. با
+       ماژول خاموش، آلارم فالتی برای گیرهٔ دوباره وجود ندارد. */
+#if MODULE_FAULT
     func__Fault_OnSupervisionChange();
+#endif
 }
 
 /* [EN] Layout contract for the indexed Set/GetProfileParam below (flash
@@ -3563,7 +3574,9 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
      * [FA] همان آبشار مسیر پروفایل: اول آلارم‌های شارژر، بعد آلارم‌های
      *      فالت سوار می‌شوند (قطع زیر OV می‌ماند). */
     func__Charger_ClampAlarms();
+#if MODULE_FAULT
     func__Fault_OnSupervisionChange();
+#endif
 
     if (int32_t__savedKernelLock >= 0)
     {

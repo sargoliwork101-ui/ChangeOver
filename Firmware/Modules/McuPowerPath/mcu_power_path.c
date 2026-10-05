@@ -22,15 +22,28 @@
 /* ==================== Internal state / وضعیت داخلی ==================== */
 /* ISR-safe: accessed from both ISR (OnInputIrq) and task (Run). */
 static volatile bool     BOOL__G__McuPowerTimerActive = false;
-static volatile uint32_t TICK_T__G__McuPowerStartTick  = 0u;
+static volatile uint32_t UINT32_T__G__McuPowerStartTick  = 0u;
 static volatile bool     BOOL__G__BatteryConnected     = true;
 
 /* ==================== Functions ==================== */
 
+/* ==================== McuPowerPath_Init ==================== */
+
 /**
- * @brief  [EN] || func__McuPowerPath_Init || Initialize Q1 to battery-connected (PB5 Low) and reset timer.
- *              Call once before product tasks. Keeps PB11 independent.
- *         [FA] || func__McuPowerPath_Init || Q1 را وصل (PB5 Low) و تایمر را صفر می‌کند.
+ * @brief  [EN] Put the MCU self-supply path into its safe boot state: the
+ *              battery switch is driven to CONNECTED and the qualification
+ *              timer is cleared. Connected is the only correct power-on
+ *              state, because the board has to be able to run from the
+ *              battery before anyone has proved that the DC input is
+ *              present and healthy. Call this once before the product
+ *              tasks start. It deliberately never touches PB11, which
+ *              belongs to Changeover alone.
+ *         [FA] مسیر خودتغذیهٔ MCU را به حالت امن بوت می‌برد: کلید باتری روی
+ *              «وصل» رانده می‌شود و تایمر احراز صفر می‌شود. «وصل» تنها حالت
+ *              درست روشن‌شدن است، چون برد باید بتواند پیش از آنکه کسی حاضر و
+ *              سالم‌بودن ورودی DC را ثابت کند از باتری کار کند. این تابع
+ *              یک‌بار پیش از شروع تسک‌های محصول صدا زده می‌شود و عمداً هرگز به
+ *              PB11 دست نمی‌زند که فقط مال Changeover است.
  */
 void func__McuPowerPath_Init(void)
 {
@@ -38,23 +51,38 @@ void func__McuPowerPath_Init(void)
      * [FA] برای بوت بدون ورودی DC، مسیر باتری باید وصل باشد. */
     BOOL__G__BatteryConnected     = true;
     BOOL__G__McuPowerTimerActive = false;
-    TICK_T__G__McuPowerStartTick   = 0u;
+    UINT32_T__G__McuPowerStartTick   = 0u;
     func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, true); /* active-low -> Low = on */
 }
 
+/* ==================== McuPowerPath_OnInputIrq ==================== */
+
 /**
- * @brief  [EN] || func__McuPowerPath_OnInputIrq || ISR-safe handler for PB4 edges.
- *              If PB4 indicates input lost, immediately drive PB5 Low and cancel timer.
- *              Only GPIO write + volatile flags, no RTOS/ADC/mutex/delay.
- *         [FA] || func__McuPowerPath_OnInputIrq || تابع امن وقفه برای PB4.
+ * @brief  [EN] Interrupt-context handler for the PB4 input-present edges.
+ *              When PB4 says the DC input is gone, the battery path is
+ *              reconnected immediately and any pending disconnect timer is
+ *              cancelled - waiting for the next periodic pass could brown
+ *              the MCU out. The body is restricted to one GPIO write and
+ *              two volatile flags: no RTOS call, no ADC, no mutex and no
+ *              delay, so it is safe from an ISR. A rising edge does NOT
+ *              disconnect here; that decision needs the 5 s qualification
+ *              and the hysteresis band, which only the periodic Run owns.
+ *         [FA] مدیریت‌کنندهٔ لبه‌های حضور ورودی روی PB4 در بافت وقفه. وقتی PB4
+ *              می‌گوید ورودی DC رفته، مسیر باتری فوراً وصل و هر تایمر قطعِ
+ *              در انتظار لغو می‌شود؛ منتظرماندن تا پاس دوره‌ای بعدی می‌تواند
+ *              MCU را بی‌برق کند. بدنه به یک نوشتن GPIO و دو پرچم volatile
+ *              محدود است: بدون فراخوانی RTOS، بدون ADC، بدون میوتکس و بدون
+ *              تأخیر، پس از داخل وقفه امن است. لبهٔ صعودی اینجا قطع نمی‌کند؛
+ *              آن تصمیم به احراز ۵ ثانیه و باند هیسترزیس نیاز دارد که فقط
+ *              مال Run دوره‌ای است.
  */
 void func__McuPowerPath_OnInputIrq(void)
 {
     /* [EN] PB4 is BSP_GPIO_INPUT_24V_PRESENT; level low means input absent.
      * [FA] PB4 حضور ورودی را نشان می‌دهد؛ سطح پایین یعنی قطع ورودی. */
-    bool input_present = func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT);
+    bool bool__inputPresent = func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT);
 
-    if (!input_present)
+    if (bool__inputPresent == false)
     {
         /* [EN] Emergency reconnect: battery must be on immediately, timer cancelled.
          *      Order matters: PB5 Low first, then flag, so even if task preempts after this,
@@ -69,6 +97,8 @@ void func__McuPowerPath_OnInputIrq(void)
     /* [EN] On rising edge (input present) do NOT disconnect here; let Run qualify 5 s and apply hysteresis.
      * [FA] در لبه صعودی قطع نکن؛ Run باید 5 ثانیه و هیسترزیس را بسنجد. */
 }
+
+/* ==================== McuPowerPath_Run ==================== */
 
 /**
  * @brief  [EN] Periodic qualification (~10 ms): v_in >= 22000 for 5 s =>
@@ -86,27 +116,33 @@ void func__McuPowerPath_Run(void)
 #else
     /* [EN] Determine DC input band via measured bus voltage with hysteresis.
      * [FA] باند ورودی DC را با ولتاژ باس و هیسترزیس تعیین می‌کنیم. */
-    bool input_qualify = false;   /* v_in >= QUALIFY (22000) */
-    bool input_low     = false;   /* v_in < RECONNECT (21500) */
+    bool bool__inputQualify = false;   /* v_in >= QUALIFY (22000) */
+    bool bool__inputLow     = false;   /* v_in < RECONNECT (21500) */
 
 #if MODULE_MEASUREMENT
-    measurement_snapshot_t snap;
-    if (func__Measurement_GetSnapshot(&snap) && snap.valid)
+    measurement_snapshot_t measurement_snapshot_t__snap;
+    bool                   bool__snapshotUsable;
+
+    bool__snapshotUsable =
+        ((func__Measurement_GetSnapshot(&measurement_snapshot_t__snap) != false) &&
+         (measurement_snapshot_t__snap.valid != false));
+
+    if (bool__snapshotUsable != false)
     {
-        if (snap.v_in_mv >= MCU_POWER_INPUT_QUALIFY_MV)
+        if (measurement_snapshot_t__snap.v_in_mv >= MCU_POWER_INPUT_QUALIFY_MV)
         {
-            input_qualify = true;
+            bool__inputQualify = true;
         }
-        else if (snap.v_in_mv < MCU_POWER_INPUT_RECONNECT_MV)
+        else if (measurement_snapshot_t__snap.v_in_mv < MCU_POWER_INPUT_RECONNECT_MV)
         {
-            input_low = true;
+            bool__inputLow = true;
         }
         else
         {
             /* [EN] Hysteresis dead-band 21500..21999: preserve current Q1, cancel pending timer.
              * [FA] ناحیه هیسترزیس ‎21500..21999‎: تایمر لغو و وضعیت Q1 حفظ شود. */
-            input_qualify = false;
-            input_low     = false;
+            bool__inputQualify = false;
+            bool__inputLow     = false;
         }
     }
     else
@@ -114,31 +150,31 @@ void func__McuPowerPath_Run(void)
         /* [EN] Snapshot invalid: cannot qualify nor reconnect by voltage; preserve Q1, cancel pending timer.
          *      Timer is not counted while invalid (like Changeover snapshot-first).
          * [FA] snapshot نامعتبر: نه احراز و نه اتصال مجدد ولتاژی؛ Q1 حفظ و تایمر لغو. */
-        input_qualify = false;
-        input_low     = false;
+        bool__inputQualify = false;
+        bool__inputLow     = false;
     }
 #else
     /* [EN] Fallback when measurement is off: use PB4 level directly (no voltage hysteresis).
      *      PB4 High → qualify band; PB4 Low → low band (should already be handled in ISR).
      * [FA] اگر اندازه‌گیری خاموش است، از سطح PB4 استفاده می‌کنیم. */
-    if (func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT))
+    if (func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT) != false)
     {
-        input_qualify = true;
+        bool__inputQualify = true;
     }
     else
     {
-        input_low = true;
+        bool__inputLow = true;
     }
 #endif
 
-    uint32_t now_tick = osKernelGetTickCount();
+    uint32_t uint32_t__nowTick = osKernelGetTickCount();
 
     /* ==================== Hysteresis band handling ==================== */
-    if (input_qualify)
+    if (bool__inputQualify != false)
     {
         /* [EN] Band >=22000: qualify for 5s disconnect.
          * [FA] باند >=22000: واجد شرایط 5 ثانیه برای قطع. */
-        if (!BOOL__G__BatteryConnected)
+        if (BOOL__G__BatteryConnected == false)
         {
             /* [EN] Already disconnected after prior qualification; stay off, no timer (hysteresis prevents 21.9V reconnect).
              * [FA] قبلاً قطع شده؛ قطع بماند و تایمر نچرخد. */
@@ -146,20 +182,22 @@ void func__McuPowerPath_Run(void)
             return;
         }
 
-        if (!BOOL__G__McuPowerTimerActive)
+        if (BOOL__G__McuPowerTimerActive == false)
         {
             /* [EN] Arrival of qualifying input starts 5 s qualification.
              *      Also covers boot-with-input-present (no missing rising edge).
              * [FA] ورود ورودی واجد شرایط، احراز 5 ثانیه‌ای را آغاز می‌کند. */
             BOOL__G__McuPowerTimerActive = true;
-            TICK_T__G__McuPowerStartTick  = now_tick;
+            UINT32_T__G__McuPowerStartTick  = uint32_t__nowTick;
         }
         else
         {
-            uint32_t elapsed_ticks = now_tick - TICK_T__G__McuPowerStartTick;
-            uint32_t elapsed_ms    = func__Rtos_TicksToMilliseconds(elapsed_ticks);
+            uint32_t uint32_t__elapsedTicks =
+                uint32_t__nowTick - UINT32_T__G__McuPowerStartTick;
+            uint32_t uint32_t__elapsedMs =
+                func__Rtos_TicksToMilliseconds(uint32_t__elapsedTicks);
 
-            if (elapsed_ms >= MCU_POWER_INPUT_STABLE_MS)
+            if (uint32_t__elapsedMs >= MCU_POWER_INPUT_STABLE_MS)
             {
                 /* [EN] Stable 5 s achieved -> disconnect MCU battery path (Q1 off = PB5 High).
                  *      Must not touch PB11/Q17.
@@ -189,17 +227,17 @@ void func__McuPowerPath_Run(void)
             }
         }
     }
-    else if (input_low)
+    else if (bool__inputLow != false)
     {
         /* [EN] Band <21500: reconnect battery (also covers falling PB4 via ISR, but ADC path needs it too).
          *      Cancel pending disconnect timer.
          * [FA] باند <21500: باتری دوباره وصل و تایمر لغو. */
-        if (BOOL__G__McuPowerTimerActive)
+        if (BOOL__G__McuPowerTimerActive != false)
         {
             BOOL__G__McuPowerTimerActive = false;
         }
 
-        if (!BOOL__G__BatteryConnected)
+        if (BOOL__G__BatteryConnected == false)
         {
             func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, true); /* Low = battery on */
             BOOL__G__BatteryConnected = true;
@@ -212,7 +250,7 @@ void func__McuPowerPath_Run(void)
         /* [EN] Hysteresis dead-band 21500..21999 or invalid snapshot: cancel pending timer, preserve Q1.
          *      Important: do NOT reconnect merely because voltage fell from 22000 to 21900.
          * [FA] ناحیه مرده هیسترزیس یا snapshot نامعتبر: تایمر لغو و Q1 حفظ؛ 21.9V به‌تنهایی reconnect نکند. */
-        if (BOOL__G__McuPowerTimerActive)
+        if (BOOL__G__McuPowerTimerActive != false)
         {
             BOOL__G__McuPowerTimerActive = false;
         }
