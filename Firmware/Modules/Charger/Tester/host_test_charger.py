@@ -3904,8 +3904,17 @@ def test_direct_lut_push_v166():
           "the three LUT handlers must exist in the sketch")
     check('"{\\"ok\\":0,\\"e\\":\\"handshake\\"}"' in plink_http,
           "the reset route must refuse unless the commit handshake succeeded - a reboot is not a retry button")
-    check("func__Esp_SendLutTable" in plink_link and "func__Esp_SendLutReset" in plink_link,
+    check("func__Esp_LutTxStart" in plink_link and "func__Esp_SendLutReset" in plink_link,
           "the ESP link layer must be able to send the table and the reset request")
+    # v1.67 finding L1: the board receives on a 256-byte DMA ring, so the four
+    # frames of a push must be paced one per ACK, never written back to back.
+    check("func__Esp_LutTxPump" in plink_link and
+          "ESP_LUT_TX_ACK_TIMEOUT_MS" in plink_link and
+          "ESP_LUT_TX_RETRY_MAX" in plink_link,
+          "the push must be paced one frame per ACK, with a timeout and retries")
+    check("func__Esp_LutTxPump()" in plink_link.split("func__Esp_PumpTx")[-1] or
+          "if (func__Esp_LutTxPump())" in plink_link,
+          "the paced sender must actually be driven from the link pump")
 
     # ---------- one CRC32, three implementations ----------
     import zlib
