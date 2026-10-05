@@ -4028,9 +4028,19 @@ def test_direct_lut_push_v166():
     check(re.search(r"CAL_LUT_PAGE_A_ADDR\s+0x0800F000u", cal_lut_h) and
           re.search(r"CAL_LUT_PAGE_B_ADDR\s+0x0800F400u", cal_lut_h),
           "the LUT block must be its own two 1 KiB pages at 0x0800F000/0x0800F400, below the parameter records")
-    check("CalLut pages must stay below the parameter NVM pages" in cal_lut_c and
+    # [EN] 2026-10-05: the LUT no longer sits BELOW the parameter block - v1.80
+    #      moved the parameter banks down to 0x0800E000, so the old wording was
+    #      wrong AND its assert compared against a dead address. The LUT must
+    #      now prove it is inside the window the flash driver may write
+    #      (bsp_flash.h); the no-overlap half became a cross-file invariant in
+    #      tools/audit_consistency.py, because cal_lut.c must not reference the
+    #      parameter module (separate storage was the order, checked below).
+    # [FA] جدول دیگر «زیر» بلوک پارامترها نیست؛ v1.80 آن بلوک را پایین برد.
+    #      حالا جدول باید اثبات کند داخل پنجرهٔ مجاز نوشتن است و بررسی
+    #      هم‌پوشانی به ممیزی بین‌فایلی منتقل شده است.
+    check("CalLut pages must sit inside the writable flash window" in cal_lut_c and
           "CalLut record must fit inside one flash page" in cal_lut_c,
-          "a static assert must prove the LUT record fits its page AND that the block never reaches the parameter pages")
+          "a static assert must prove the LUT record fits its page AND that the block stays inside the writable flash window")
     check("esp_link_nvm" not in cal_lut_c,
           "the LUT path must not reuse the parameter NVM module - separate storage was the point of the order")
     check(re.search(r"CAL_LUT_POINTS_MAX\s+24u", cal_lut_h) and

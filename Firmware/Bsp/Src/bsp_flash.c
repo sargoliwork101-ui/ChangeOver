@@ -34,6 +34,11 @@
  *      نمی‌چرخد. */
 #define BSP_FLASH_SPIN_LIMIT           5000000u
 
+/* [EN] Largest single program burst accepted, in halfwords: one 2 KiB NVM
+ *      bank. Bigger requests are a caller bug, not a long write.
+ * [FA] بزرگ‌ترین نوشتن مجاز بر حسب نیم‌کلمه: یک بانک ۲KB. */
+#define BSP_FLASH_PROGRAM_MAX_HALFWORDS 1024u
+
 /* ==================== BspFlash private helpers ==================== */
 
 /**
@@ -99,18 +104,20 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
     /* [EN] Main-flash 1 KiB page granularity, whole 64 KiB bank.
        [FA] اندازهٔ صفحهٔ فلش اصلی ۱KB است، کل بنک ۶۴KB. */
     /* [EN] Range + alignment guards (full-program audits 2026-09-26/27):
-       only the last two 1 KiB pages (0x0800F800/0x0800FC00, esp_link_nvm.h)
-       belong to NVM and the address must be page-aligned - F1 erases by AR
+       only the data window BSP_FLASH_STORAGE_BASE_ADDR..END (bsp_flash.h,
+       the single source of truth) may be erased and the address must be
+       page-aligned - F1 erases by AR
        content, not by masking, so an unaligned or out-of-range address
        would erase an unintended page. A caller bug must never erase the
        application area.
-       [FA] گارد بازه و تراز (ممیزی ۲۰۲۶-۰۹-۲۶/۲۷): فقط دو صفحهٔ آخر ۱KB
-       مال NVM است و آدرس باید تراز باشد - F1 با محتوای AR پاک می‌کند نه
+       [FA] گارد بازه و تراز: فقط پنجرهٔ دادهٔ ‎bsp_flash.h‎ پاک می‌شود و
+       آدرس باید تراز باشد - F1 با محتوای AR پاک می‌کند نه
        با ماسک‌کردن، پس آدرس ناتراز یا خارج از بازه صفحهٔ اشتباه را پاک
        می‌کرد و باگ فراخواننده هرگز نباید برنامه را پاک کند. */
-    if ((uint32_t__pageAddress < 0x0800F800u) ||
-        (uint32_t__pageAddress > 0x0800FC00u) ||
-        ((uint32_t__pageAddress & 0x3FFu) != 0u))
+    if ((uint32_t__pageAddress < BSP_FLASH_STORAGE_BASE_ADDR) ||
+        (uint32_t__pageAddress >
+         (BSP_FLASH_STORAGE_END_ADDR - BSP_FLASH_PAGE_SIZE_BYTES)) ||
+        ((uint32_t__pageAddress & (BSP_FLASH_PAGE_SIZE_BYTES - 1u)) != 0u))
     {
         return false;
     }
@@ -139,17 +146,16 @@ bool func__BspFlash_ProgramHalfWords(uint32_t uint32_t__address,
     bool bool__ok = true;
 
     /* [EN] Range guard (full-program audit 2026-09-27): the NVM layout
-       owns 0x0800F800..0x0800FFFF (last two 1 KiB pages, see
-       esp_link_nvm.h) - a caller bug must never program the application
-       area. The end address cannot wrap: count is bounded by the NVM
+       owns BSP_FLASH_STORAGE_BASE_ADDR..END (bsp_flash.h) - a caller bug
+       must never program the application area. The end address cannot wrap: count is bounded by the NVM
        record size (<< 2^31 halfwords).
-       [FA] گارد بازه (ممیزی کل برنامه): چیدمان NVM مالک
-       ‎0x0800F800..0x0800FFFF‎ است (دو صفحهٔ ۱KB آخر) - باگ فراخواننده
-       هرگز نباید ناحیهٔ برنامه را بنویسد. */
+       [FA] گارد بازه: چیدمان NVM مالک پنجرهٔ دادهٔ ‎bsp_flash.h‎ است - باگ
+       فراخواننده هرگز نباید ناحیهٔ برنامه را بنویسد. */
     if ((uint16_t__A__Data == NULL) || ((uint32_t__address & 1u) != 0u) ||
-        (uint32_t__count > 1024u) ||
-        (uint32_t__address < 0x0800F800u) ||
-        ((uint32_t__address + (uint32_t__count * 2u)) > 0x08010000u))
+        (uint32_t__count > BSP_FLASH_PROGRAM_MAX_HALFWORDS) ||
+        (uint32_t__address < BSP_FLASH_STORAGE_BASE_ADDR) ||
+        ((uint32_t__address + (uint32_t__count * 2u)) >
+         BSP_FLASH_STORAGE_END_ADDR))
     {
         return false;
     }

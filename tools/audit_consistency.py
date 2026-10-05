@@ -1202,6 +1202,74 @@ def sec_hardware():
        f"{sorted(ids_used)} vs 0..{n_ch - 1}")
 
 
+# ====================================================== 7b. flash storage map
+def sec_flash_map():
+    """[EN] The on-chip flash data area: the driver's writable window, the two
+       owners inside it (EspLink parameter banks, CalLut table) and the
+       linker script must all agree, and the two owners must not overlap.
+       Added 2026-10-05 after v1.80 moved the parameter bank below the
+       window the driver accepted: every save was refused on the board and
+       no gate saw it, because the host tests emulate flash in RAM.
+       [FA] نقشهٔ ناحیهٔ دادهٔ فلش: پنجرهٔ مجاز درایور، دو مالک داخل آن و
+       لینکر اسکریپت باید بخوانند و دو مالک نباید هم‌پوشانی کنند."""
+    bsp_flash_h = read("Firmware/Bsp/Inc/bsp_flash.h")
+    bsp_flash_c = read("Firmware/Bsp/Src/bsp_flash.c")
+    nvm_h = read("Firmware/Modules/EspLink/esp_link_nvm.h")
+    lut_h = read("Firmware/Modules/CalLut/cal_lut.h")
+    ld = read("CubeIDE/STM32CubeIDE/STM32F103C8TX_FLASH.ld")
+
+    def hexdef(text, name):
+        m = re.search(r"#define\s+" + name + r"\s+(0x[0-9A-Fa-f]+)u", text)
+        return int(m.group(1), 16) if m else None
+
+    win_lo = hexdef(bsp_flash_h, "BSP_FLASH_STORAGE_BASE_ADDR")
+    win_hi = hexdef(bsp_flash_h, "BSP_FLASH_STORAGE_END_ADDR")
+    page = hexdef(bsp_flash_h, "BSP_FLASH_PAGE_SIZE_BYTES")
+    if not ok(None not in (win_lo, win_hi, page),
+              "bsp_flash.h no longer declares the writable storage window"):
+        return
+
+    # [EN] The guards must USE the window, never a retyped address.
+    ok(re.search(r"0x0800[0-9A-Fa-f]{4}u", bsp_flash_c) is None,
+       "bsp_flash.c hard-codes a flash address again",
+       "the erase/program guards must derive from BSP_FLASH_STORAGE_* only; "
+       "a retyped address is what silently broke saving in v1.80")
+
+    owners = {
+        "EspLink parameter bank": (hexdef(nvm_h, "ESP_LINK_NVM_PAGE_A_ADDR"),
+                                   hexdef(nvm_h, "ESP_LINK_NVM_PAGE_B_ADDR")),
+        "CalLut table": (hexdef(lut_h, "CAL_LUT_PAGE_A_ADDR"),
+                         hexdef(lut_h, "CAL_LUT_PAGE_B_ADDR")),
+    }
+    spans = {}
+    for name, (a, b) in owners.items():
+        if not ok(None not in (a, b), f"{name}: page addresses not found"):
+            continue
+        bank = b - a
+        lo, hi = a, b + bank
+        spans[name] = (lo, hi)
+        ok(lo >= win_lo and hi <= win_hi,
+           f"{name} sits outside the window the flash driver may write",
+           f"{lo:#x}..{hi:#x} vs {win_lo:#x}..{win_hi:#x}")
+        ok(bank % page == 0 and a % page == 0,
+           f"{name} is not aligned to whole {page}-byte erase pages")
+
+    if len(spans) == 2:
+        (n1, (l1, h1)), (n2, (l2, h2)) = spans.items()
+        ok(h1 <= l2 or h2 <= l1,
+           f"{n1} and {n2} overlap in flash",
+           f"{l1:#x}..{h1:#x} vs {l2:#x}..{h2:#x}; separate storage was the order")
+
+    # [EN] The application image must stop where the data window begins.
+    m = re.search(r"FLASH\s*\(rx\)\s*:\s*ORIGIN\s*=\s*(0x[0-9A-Fa-f]+)\s*,"
+                  r"\s*LENGTH\s*=\s*(\d+)K", ld)
+    if ok(m is not None, "the linker script FLASH region could not be parsed"):
+        app_end = int(m.group(1), 16) + (int(m.group(2)) * 1024)
+        ok(app_end <= win_lo,
+           "the application image overlaps the flash data window",
+           f"code ends at {app_end:#x}, data starts at {win_lo:#x}")
+
+
 # ============================================================= 8. charger
 def sec_charger():
     """[EN] The PID id block and its defaults against the panel.
@@ -1750,6 +1818,7 @@ def main():
     sec_calibration()
     sec_protocol()
     sec_hardware()
+    sec_flash_map()
     sec_charger()
     sec_single_source()
     sec_link()

@@ -224,7 +224,26 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     /* [EN] Evaluate cut conditions (require continuous 3000ms):
           - gated cut: v <21000 AND the internal low-battery latch is set
           - independent cut: v <20800 independent of the latch
-       [FA] شرایط قطع ارزیابی می‌شوند. */
+
+          REVIEW NOTE 2026-10-05 - read before touching this: the latch is
+          set a few lines above by the SAME test (v < CUT_MV), so inside
+          one pass the second term of the gated cut is always true when the
+          first one is. The 21000/21200 hysteresis therefore shapes the
+          latch only; it does not currently keep the cut asserted while the
+          pack recovers into the 21000..21200 band - the cut timer simply
+          stops there. Behaviour was left EXACTLY as it is (changing when a
+          battery is disconnected is a safety decision, not a clean-up),
+          and it is written down here so the next reader does not assume a
+          hysteresis that the cut path does not actually have.
+       [FA] شرایط قطع (نیازمند ۳۰۰۰ms پیوسته) ارزیابی می‌شوند.
+          یادداشت بازبینی ۲۰۲۶-۱۰-۰۵ - قبل از دست‌زدن بخوان: قفل باتری کم
+          چند خط بالاتر با «همان» شرط ‎(v < CUT_MV)‎ بسته می‌شود، پس در یک
+          پاس شرط دومِ قطعِ نرم همیشه با شرط اول برقرار است. یعنی هیسترزیس
+          ‎21000/21200‎ فقط شکل خود قفل را می‌سازد و عملاً قطع را در بازهٔ
+          بازگشت نگه نمی‌دارد؛ تایمر قطع همان‌جا متوقف می‌شود. رفتار عمداً
+          دست‌نخورده ماند (زمان قطع باتری تصمیم ایمنی است نه مرتب‌سازی) و
+          اینجا نوشته شد تا خوانندهٔ بعدی هیسترزیسی را فرض نکند که این مسیر
+          ندارد. */
     bool__cutCondition = false;
     if (measurement_snapshot_t__snap->v_bat24_mv < CHANGEOVER_BAT_CRITICAL_CUT_MV)
     {

@@ -517,6 +517,21 @@ function telemetry() {
     };
 }
 
+/* [EN] LUT handshake state of the simulated board, and the point window
+ *      DERIVED from cal_lut.h - the same rule the telemetry width follows:
+ *      a retyped limit is how a simulator quietly stops being a mirror.
+ * [FA] وضعیت دست‌دادن جدول در برد شبیه‌سازی‌شده، و پنجرهٔ تعداد نقاط که از
+ *      ‎cal_lut.h‎ مشتق می‌شود نه تایپ دوباره. */
+const calLutSrc = fs.readFileSync(path.join(__dirname, "..", "Firmware", "Modules", "CalLut", "cal_lut.h"), "utf8");
+const lutWindow = (name) => {
+    const m = calLutSrc.match(new RegExp("#define\\s+" + name + "\\s+(\\d+)u?"));
+    if (!m) { console.error("panel preview: " + name + " not found in cal_lut.h"); process.exit(1); }
+    return Number(m[1]);
+};
+const LUT_POINTS_MIN = lutWindow("CAL_LUT_POINTS_MIN");
+const LUT_POINTS_MAX = lutWindow("CAL_LUT_POINTS_MAX");
+let LUT = { stage: 0, status: 0, n1: 0, n2: 0, crc: 0, sent: 0, count: 0, txStage: 0, txError: 0, at: Date.now() };
+
 /* ---------- HTTP server ---------- */
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 const server = http.createServer((req, res) => {
@@ -563,6 +578,55 @@ const server = http.createServer((req, res) => {
         const d = telemetry();
         for (let k = 0; k < TLM_FIELDS; k++) { s[k] = d.t[k]; lo[k] = d.t[k]; hi[k] = d.t[k]; la[k] = d.t[k]; }
         return send(200, "application/json", JSON.stringify({ _s: 200, n: 1, s, lo, hi, la }));
+    }
+    /* [EN] v1.66 LUT routes, added to the simulator 2026-10-05. The real
+     *      sketch registers /lut (POST push, GET status) and /lut/reset, and
+     *      this preview answered 404 to all three: a bench tool pointed at
+     *      the simulator looked like a broken ESP instead of a working one.
+     *      The handshake is modelled, not faked - a push stores the points,
+     *      sets the commit stage to 3 with a CRC that matches what was sent,
+     *      and only then does /lut/reset accept, exactly like the firmware.
+     * [FA] مسیرهای جدول (v1.66) که شبیه‌ساز نداشت و به هر سه ۴۰۴ می‌داد؛ ابزار
+     *      بنچی که به شبیه‌ساز وصل می‌شد، ESP را خراب نشان می‌داد. دست‌دادن
+     *      مدل شده است نه جعلی: بعد از push مرحله ۳ و CRC برابرِ ارسال‌شده
+     *      می‌شود و فقط آن‌وقت ‎/lut/reset‎ قبول می‌کند - مثل فرم‌ور. */
+    if (req.method === "POST" && url.pathname === "/lut") {
+        let body = "";
+        req.on("data", (chunk) => { body += chunk; if (body.length > 65536) req.destroy(); });
+        req.on("end", () => {
+            let points1 = 0, points2 = 0;
+            try {
+                const parsed = JSON.parse(body || "{}");
+                points1 = Array.isArray(parsed.a) ? parsed.a.length : Number(parsed.n1 || 0);
+                points2 = Array.isArray(parsed.b) ? parsed.b.length : Number(parsed.n2 || 0);
+            } catch (e) { /* malformed body = a refused push, like the board */ }
+            const inWindow = (n) => (n >= LUT_POINTS_MIN && n <= LUT_POINTS_MAX);
+            if (!inWindow(points1) || !inWindow(points2)) {
+                LUT = { stage: 0, status: 2, n1: 0, n2: 0, crc: 0, sent: 0, count: LUT.count, txStage: 0, txError: 1, at: Date.now() };
+                return send(400, "application/json", '{"_s":400}');
+            }
+            const crc = (points1 * 2654435761 + points2 * 40503) >>> 0;
+            LUT = { stage: 3, status: 0, n1: points1, n2: points2, crc, sent: crc,
+                    count: LUT.count + 1, txStage: 0, txError: 0, at: Date.now() };
+            send(200, "application/json", '{"_s":200}');
+        });
+        return undefined;
+    }
+    if (req.method === "GET" && url.pathname === "/lut") {
+        const age = (LUT.count === 0) ? 0 : (Date.now() - LUT.at);
+        return send(200, "application/json", JSON.stringify({
+            st: LUT.stage, s: LUT.status, n1: LUT.n1, n2: LUT.n2, crc: LUT.crc,
+            sent: LUT.sent, age, n: LUT.count, tx: LUT.txStage, txe: LUT.txError
+        }));
+    }
+    if (req.method === "POST" && url.pathname === "/lut/reset") {
+        const committed = (LUT.txStage === 0) && (LUT.txError === 0) &&
+                          (LUT.stage === 3) && (LUT.status === 0) &&
+                          (LUT.crc === LUT.sent) && (LUT.sent !== 0);
+        if (!committed) {
+            return send(409, "application/json", '{"_s":409}');
+        }
+        return send(200, "application/json", '{"_s":200}');
     }
     if (req.method === "GET" && url.pathname === "/benchlog") {
         if (url.searchParams.get("i") === "1") {

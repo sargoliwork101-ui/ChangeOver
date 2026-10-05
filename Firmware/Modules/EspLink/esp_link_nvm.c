@@ -64,6 +64,27 @@ _Static_assert(((ESP_LINK_NVM_PAGE_B_ADDR - ESP_LINK_NVM_PAGE_A_ADDR) %
                 ESP_LINK_NVM_FLASH_PAGE_SIZE) == 0u,
                "NVM bank must be a whole number of erase pages");
 
+/* [EN] 2026-10-05: the banks must sit inside the window the flash driver is
+   allowed to touch (bsp_flash.h). Until today nothing tied the two together
+   and v1.80 moved the banks out of the driver's range: every save was
+   refused on the board while the RAM-emulated host test stayed green. Now a
+   future move breaks the build instead.
+   [FA] بانک‌ها باید داخل پنجره‌ای باشند که درایور فلش حق نوشتن دارد؛ تا امروز
+   چیزی این دو را به هم گره نمی‌زد و v1.80 بانک‌ها را بیرون آن برد، پس ذخیره
+   روی برد رد می‌شد و تست هاست سبز می‌ماند. حالا جابه‌جایی بعدی بیلد را
+   می‌شکند. */
+/* [EN] Target build only: the host harness stubs the flash driver, so the
+   macro below does not exist there and the banks are RAM addresses.
+   [FA] فقط بیلد هدف: هارنس هاست درایور فلش را استاب می‌کند. */
+#ifdef BSP_FLASH_STORAGE_BASE_ADDR
+_Static_assert(ESP_LINK_NVM_PAGE_A_ADDR >= BSP_FLASH_STORAGE_BASE_ADDR,
+               "NVM bank A must sit inside the writable flash window");
+_Static_assert((ESP_LINK_NVM_PAGE_B_ADDR +
+                (ESP_LINK_NVM_PAGE_B_ADDR - ESP_LINK_NVM_PAGE_A_ADDR)) <=
+                   BSP_FLASH_STORAGE_END_ADDR,
+               "NVM bank B must end inside the writable flash window");
+#endif
+
 _Static_assert(sizeof(esp_link_nvm_record_t) <=
                    (ESP_LINK_NVM_PAGE_B_ADDR - ESP_LINK_NVM_PAGE_A_ADDR),
                "NVM record must fit inside one flash page");
