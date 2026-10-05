@@ -793,7 +793,7 @@ function testBackupAndCal(win, doc) {
     win.D = { p: { 0: 0, 1: 0, 2: 1000, 3: 1000, 4: 0, 5: 0, 6: 0 }, t: [] };
     win.eval('calrun')();
     const prop = {};
-    win.CALP.forEach(c => { prop[c[0]] = c[1]; });
+    win.CALR.forEach((r, i) => { prop[r[1]] = +doc.getElementById('calv' + i).value; });
     check(prop[2] === gain, 'the fit recovers the current gain of channel 1 exactly');
     check(prop[3] === gain, 'the fit recovers the current gain of channel 2 exactly');
     check(prop[0] === off, 'the fit recovers the zero-current offset of channel 1');
@@ -802,8 +802,24 @@ function testBackupAndCal(win, doc) {
     check(prop[6] === 200, 'the 12 V node offset uses the lower half');
     check(doc.getElementById('caltb').innerHTML.indexOf('1200') >= 0,
           'the preview table shows the proposed number before anything is written');
-    check(doc.getElementById('calst').textContent.indexOf('آمادهٔ اعمال') >= 0,
+    check(doc.getElementById('calst').textContent.indexOf('تیک‌خورده') >= 0,
           'nothing is written until the user presses apply');
+    /* --- v1.58: every proposal is editable and tickable --- */
+    check(doc.getElementById('calv0') && doc.getElementById('calv0').tagName === 'INPUT',
+          'each proposed number is an input box the user can correct');
+    check(doc.getElementById('calk0') && doc.getElementById('calk0').type === 'checkbox',
+          'each line has its own apply tick');
+    check(doc.querySelectorAll('#caltb th')[2].textContent.indexOf('الان روی برد') >= 0,
+          'the board value sits in its own column next to the new one');
+    doc.getElementById('calv0').value = 1500;
+    win.eval('caldiff')(0);
+    check(doc.getElementById('cald0').textContent.indexOf('+500') >= 0,
+          'editing a number updates the difference against the board value');
+    doc.getElementById('calv0').value = 99999;
+    win.eval('caldiff')(0);
+    check(doc.getElementById('cald0').innerHTML.indexOf('خارج از بازهٔ مجاز') >= 0,
+          'an impossible hand-typed number is flagged before it is sent');
+
 
     /* --- noisy / too few samples must be refused, not applied --- */
     win.CALS = [{ r1: 100, r2: 100, vin: 24000, v24: 25000, v12: 12500, vlo: 12500, vhi: 12500,

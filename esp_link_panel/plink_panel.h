@@ -280,7 +280,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 7e0e182</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 8811f86</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2429,7 +2429,7 @@ function calfit(xs,ys){const n=xs.length;let sx=0,sy=0,sxx=0,sxy=0;
  let ss=0,sr=0,mx=0;for(let i=0;i<n;i++){const e=ys[i]-(a*xs[i]+b);sr+=e*e;ss+=(ys[i]-my)*(ys[i]-my);
   if(Math.abs(e)>mx)mx=Math.abs(e);}
  return {a,b,r2:ss>0?(1-sr/ss):1,n,mx,span:Math.max(...xs)-Math.min(...xs)};}
-var CALP=[];
+var CALP=[],CALR=[];
 function calrun(){
  const cur=id=>(D&&D.p&&D.p[id]!=null)?D.p[id]:null;
  if(!D||!D.p){stxt('calst','⚠ هنوز داده‌ای از برد نرسیده — لینک برقرار نیست.');return;}
@@ -2450,31 +2450,53 @@ function calrun(){
   if(f.mx>150)w.push('خطای باقیمانده تا '+Math.round(f.mx)+' mA');
   if(g!==gc||o!==oc)w.push('عدد خام خارج از بازهٔ مجاز بود و محدود شد');
   const bad=w.length>0&&(f.n<4||f.r2<0.9);
-  rows.push([ttl+' — گین (‰)',cur(ch[4]),gc,w.length?'⚠ '+w.join(' · '):'✅ برازش خوب ('+f.n+' نقطه، R²='+f.r2.toFixed(4)+')',bad?0:1]);
-  rows.push([ttl+' — آفست (count)',cur(ch[3]),oc,'از همان خط به‌دست آمد (جریان صفر در raw='+oc+')',bad?0:1]);
-  if(!bad){CALP.push([ch[4],gc]);CALP.push([ch[3],oc]);}});
+  rows.push([ttl+' — گین (‰)',ch[4],cur(ch[4]),gc,w.length?'⚠ '+w.join(' · '):'✅ برازش خوب ('+f.n+' نقطه، R²='+f.r2.toFixed(4)+')',bad?0:1]);
+  rows.push([ttl+' — آفست (count)',ch[3],cur(ch[3]),oc,'از همان خط به‌دست آمد (جریان صفر در raw='+oc+')',bad?0:1]);});
  /* --- سه آفست ولتاژ: میانگین اختلاف مولتی‌متر با برد --- */
  const voff=(ttl,id,get)=>{const d=[];CALS.forEach(z=>{const x=get(z);if(x!=null&&Number.isFinite(x))d.push(x);});
-  if(d.length<2){rows.push([ttl,cur(id),'—','⛔ عدد مولتی‌متر برای این ولتاژ ثبت نشده',0]);return;}
+  if(d.length<2){rows.push([ttl,id,cur(id),cur(id),'⛔ عدد مولتی‌متر برای این ولتاژ ثبت نشده — می‌توانید دستی بنویسید',0]);return;}
   const mean=d.reduce((a,b)=>a+b,0)/d.length;
   let sd=0;d.forEach(x=>sd+=(x-mean)*(x-mean));sd=Math.sqrt(sd/d.length);
   const nv=Math.round(xclamp(id,(cur(id)||0)+mean));const w=[];
   if(d.length<3)w.push('فقط '+d.length+' نقطه');
   if(sd>120)w.push('پراکندگی اندازه‌ها بالاست (±'+Math.round(sd)+' mV)');
   if(Math.abs(mean)>2000)w.push('اختلاف '+Math.round(mean)+' mV غیرعادی بزرگ است — سیم مولتی‌متر را چک کنید');
-  const bad=Math.abs(mean)>2000||d.length<2;
-  rows.push([ttl,cur(id),nv,(w.length?'⚠ '+w.join(' · '):'✅ اختلاف میانگین '+Math.round(mean)+' mV')+' ('+d.length+' نقطه)',bad?0:1]);
-  if(!bad)CALP.push([id,nv]);};
+  const bad=Math.abs(mean)>2000;
+  rows.push([ttl,id,cur(id),nv,(w.length?'⚠ '+w.join(' · '):'✅ اختلاف میانگین '+Math.round(mean)+' mV')+' ('+d.length+' نقطه)',bad?0:1]);};
  voff('آفست ولتاژ ورودی (mV)',4,z=>(z.dvi!=null)?(z.dvi-z.vin):null);
  voff('آفست ولتاژ پک ۲۴V (mV)',5,z=>(z.dv1!=null&&z.dv2!=null)?((z.dv1+z.dv2)-z.v24):null);
  voff('آفست نود ۱۲V (mV)',6,z=>(z.dv2!=null)?(z.dv2-z.vlo):null);
- stxt('caltb','<div class="tw"><table class="bt2"><tr><th>عدد</th><th>الان روی برد</th><th>پیشنهاد</th><th>کیفیت</th></tr>'+
-  rows.map(r=>'<tr><td>'+r[0]+'</td><td>'+(r[1]==null?'—':r[1])+'</td><td><b>'+r[2]+'</b></td><td>'+r[3]+'</td></tr>').join('')+'</table></div>');
- stxt('calst',CALP.length?('✅ '+CALP.length+' عدد آمادهٔ اعمال است (از '+CALS.length+' نمونه) — پیش از نوشتن، یک پشتیبان کامل دانلود می‌شود.'):
-  '⛔ هیچ عددی قابل اعتماد نبود؛ مرحله‌های بیشتری با duty پخش‌شده بگیرید.');}
+ /* [EN] v1.58 (user order): nothing here is take-it-or-leave-it. Every
+    proposed number is an input box the user can correct, the board's
+    CURRENT number sits next to it, and a tick box decides whether that
+    line is written at all. A line the fit refused is simply unticked -
+    the user can still fix the number by hand and tick it.
+    [FA] هیچ عددی اجباری نیست: هر پیشنهاد یک کادر قابل ویرایش است، عدد
+    فعلی برد کنارش نوشته شده و تیک هر ردیف تعیین می‌کند نوشته بشود یا نه.
+    ردیفی که برازشش مردود شده فقط تیکش برداشته می‌شود. */
+ CALR=rows;
+ stxt('caltb','<div class="tw"><table class="bt2"><tr><th>اعمال</th><th>عدد</th><th>الان روی برد</th><th>مقدار جدید (قابل ویرایش)</th><th>تفاوت</th><th>کیفیت</th></tr>'+
+  rows.map((r,i)=>'<tr><td><input type="checkbox" id="calk'+i+'"'+(r[5]?' checked':'')+'></td>'+
+   '<td>'+r[0]+'</td><td><b>'+(r[2]==null?'—':r[2])+'</b></td>'+
+   '<td><input type="number" style="width:110px" id="calv'+i+'" value="'+r[3]+'" oninput="caldiff('+i+')"></td>'+
+   '<td id="cald'+i+'" class="lb">—</td><td>'+r[4]+'</td></tr>').join('')+'</table></div>');
+ rows.forEach((r,i)=>caldiff(i));
+ const n=rows.filter(r=>r[5]).length;
+ stxt('calst',(n?'✅ ':'⚠ ')+n+' عدد از '+rows.length+' تیک‌خورده است (از '+CALS.length+' نمونه). '+
+  'هر عدد را می‌توانید دستی اصلاح کنید یا تیکش را بردارید؛ پیش از نوشتن یک پشتیبان کامل دانلود می‌شود.');}
+/* [EN] Show how far the (possibly hand-edited) number is from the board's
+   current one. [FA] فاصلهٔ عدد جدید با عدد فعلی برد. */
+function caldiff(i){const r=CALR[i];if(!r)return;const e=$('calv'+i),d=$('cald'+i);if(!e||!d)return;
+ const nv=+e.value,cu=r[2];
+ if(!Number.isFinite(nv)||cu==null){d.textContent='—';return;}
+ const cl=xclamp(r[1],nv);
+ d.innerHTML=(nv>cu?'+':'')+(nv-cu)+(cl!==nv?' <b class="erc">خارج از بازهٔ مجاز — به '+cl+' محدود می‌شود</b>':'');}
 async function calapply(){
- if(!CALP.length){stxt('calst','اول «محاسبه» را بزنید.');return;}
- const txt=CALP.map(c=>c[0]+': '+((D&&D.p)?D.p[c[0]]:'?')+' → '+c[1]).join('\n');
+ CALP=[];
+ CALR.forEach((r,i)=>{const k=$('calk'+i),e=$('calv'+i);if(!k||!e||!k.checked)return;
+  const nv=+e.value;if(!Number.isFinite(nv))return;CALP.push([r[1],xclamp(r[1],Math.round(nv)),r[0]]);});
+ if(!CALP.length){stxt('calst','هیچ ردیفی تیک نخورده است — اول «محاسبه» را بزنید و ردیف‌های موردنظر را تیک بزنید.');return;}
+ const txt=CALP.map(c=>c[2]+': '+((D&&D.p&&D.p[c[0]]!=null)?D.p[c[0]]:'?')+' → '+c[1]).join('\n');
  if(!confirm(CALP.length+' عدد کالیبراسیون روی برد نوشته شود؟\n\n'+txt+
   '\n\nیک فایل پشتیبان از تنظیمات فعلی دانلود می‌شود تا در صورت نیاز برگردانید.'))return;
  xexp();
