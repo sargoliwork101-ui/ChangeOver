@@ -2195,7 +2195,9 @@ def test_ui_mirror_v116():
           "the fault-bit refresh and the mute toggle must exist")
     check("ulR" not in ino and "function simrun()" in ino and "function simbz(" in ino,
           "the board-driven LED strip is gone and the per-card simulator is in")
-    check(ino.count('id="uleds"') == 1 and 'leds stick' not in ino
+    # v1.55 (user order): the leftover notice row and the mute button went too.
+    # v1.55: ردیف باقی‌مانده و دکمهٔ میوت هم برداشته شدند.
+    check('id="uleds"' not in ino and 'leds stick' not in ino
           and all(f'id="sl{n}r"' in ino and f'id="sl{n}z"' in ino for n in range(1, 7)),
           "no sticky board mirror left; every scenario card carries its own simulated LEDs and buzzer")
     check(all(f'id="asbb{k}"' in ino for k in range(7)),
@@ -2253,7 +2255,7 @@ def test_ui_mirror_v116():
     s3part = ino.split('id="s0"')[1].split('id="s1"')[0]
     bkpart = ino.split('id="s4"')[1].split("</main>")[0]
     p0part = ino.split('id="p0"')[1].split('id="p1"')[0]
-    check("ucard1" in s1part and "ucard6" in s1part and "uleds" in s1part and 'id="aw2"' in s1part
+    check("ucard1" in s1part and "ucard6" in s1part and 'id="sim1"' in s1part and 'id="aw2"' in s1part
           and 'id="aw"' in s1part and 'id="ib117"' in s1part
           and "sdef()" in s1part and "bdef()" in s1part and "ibdef()" in s1part
           and "<b>نظارت باتری</b>" not in s1part

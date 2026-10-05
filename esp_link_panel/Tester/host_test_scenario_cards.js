@@ -570,10 +570,49 @@ function testSimulator(win, doc) {
     check(doc.getElementById('sl5t').textContent.indexOf('ضدلرزش') >= 0,
           'inside the window the card says the state is held');
 
-    /* Card 6: latched imbalance is red solid. */
+    /* Card 6 (v1.55): the two half-battery knobs count events and latch. */
+    win.simrst6();
+    doc.getElementById('simp6a').value = 12000;
+    doc.getElementById('simp6b').value = 12000;
+    win.simrun();
+    check(!on('sl6r') && on('sl6g'),
+          'two balanced halves leave card 6 healthy');
+    check(doc.getElementById('sl6t').textContent.indexOf('0 از') >= 0,
+          'with no imbalance no event has been counted');
+    typeInto(win, doc, 'q109', 500);
+    doc.getElementById('simp6b').value = 11000;   /* 1000 mV apart */
+    win.simrun();
+    check(doc.getElementById('sl6t').textContent.indexOf('1000 mV') >= 0,
+          'the gap between the two knobs is measured against the limit');
+    typeInto(win, doc, 'q114', 3);
+    typeInto(win, doc, 'q112', 1000);
+    win.S6 = { n: 2, ht: win.performance.now() - 60000, lock: false, lt: 0 };
     win.simrun();
     check(on('sl6r') && !on('sl6g') && !on('sl6y'),
-          'the imbalance lock is a solid red with no other lamp');
+          'the last event latches the lock: solid red, nothing else');
+    win.simrst6();
+    win.simrun();
+    check(!on('sl6r'), 'the restart button clears the simulated lock');
+
+    /* v1.55: a gap box is dead while its band asks for a single beep. */
+    typeInto(win, doc, 'q42', 1);
+    win.simrun();
+    check(doc.getElementById('q43').disabled === true,
+          'one beep per round switches that gap box off');
+    typeInto(win, doc, 'q42', 3);
+    win.simrun();
+    check(doc.getElementById('q43').disabled === false,
+          'and three beeps bring it back');
+    typeInto(win, doc, 'q62', 1);
+    typeInto(win, doc, 'q64', 1);
+    typeInto(win, doc, 'q58', 1);
+    win.simrun();
+    check(doc.getElementById('q65').disabled === true,
+          'the shared gap dies only when every band that uses it wants one beep');
+    typeInto(win, doc, 'q64', 3);
+    win.simrun();
+    check(doc.getElementById('q65').disabled === false,
+          'one band asking for three beeps keeps the shared gap alive');
 
     /* Stop button freezes the phase. / دکمهٔ توقف فاز را نگه می‌دارد. */
     win.simtog(1);
