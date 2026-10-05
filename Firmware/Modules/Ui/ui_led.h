@@ -675,8 +675,21 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
    چون فضای شناسه‌ها سراسری است و ۸۳..۱۱۸ گرفته‌اند. */
 #define UI_ALARM_PARAM_CHG_PCT_VMIN_MV    119u  /* mV, 15000..25000, <= 120-100 */
 #define UI_ALARM_PARAM_CHG_PCT_VMAX_MV    120u  /* mV, 25000..32000, >= 119+100 */
+
+/* ==================== Band 2 Own Beep Shape (v1.50) / شکل بوق مخصوص باند ۲ ==================== */
+/* [EN] v1.50 (user order 2026-10-05: "band 2 is the only one that repeats
+   band 1 - separate those two as well"): the 2-beep band used to borrow the
+   1-beep band's per-beep duration (59) and the all-band gap (65). It now has
+   its own pair, so shaping the double beep cannot change the single beep.
+   Still shared on purpose: the repeat interval (54) - the user named only
+   these two. Bands 3 and critical keep the common gap 65.
+   [FA] (دستور کاربر): باند دو-بوق تا الان «مدت هر بوق» را از باند ۱ و «گپ» را
+   از همهٔ باندها قرض می‌گرفت. حالا جفت خودش را دارد، پس تغییر شکل بوق دوتایی
+   روی بوق تکی اثر نمی‌گذارد. عمداً هنوز مشترک: فاصلهٔ تکرار (۵۴). */
+#define UI_ALARM_PARAM_RUN_DOUBLE_DUR_MS  121u  /* ms per beep, 0..fit vs 54/63/122 */
+#define UI_ALARM_PARAM_RUN_DOUBLE_GAP_MS  122u  /* ms, 0..5000, >=100 when 63>1 */
 #define UI_ALARM_PARAM_EXT_MIN_ID         119u
-#define UI_ALARM_PARAM_EXT_MAX_ID         120u
+#define UI_ALARM_PARAM_EXT_MAX_ID         122u
 
 /**
  * @brief  [EN] Live UI cadence set (one struct, like the fault alarms).
@@ -738,6 +751,11 @@ typedef struct
        را آرایه‌ای ایندکس می‌کنند و افست‌های بلوک ۳۸..۸۲ نباید جابه‌جا شود. */
     uint32_t uint32_t__chgPctVminMv;
     uint32_t uint32_t__chgPctVmaxMv;
+    /* [EN] v1.50: band 2's own per-beep duration and gap (ids 121/122),
+       appended after the charge map for the same indexing reason.
+       [FA] مدت هر بوق و گپ مخصوص باند ۲ (۱۲۱/۱۲۲). */
+    uint32_t uint32_t__runDoubleDurMs;
+    uint32_t uint32_t__runDoubleGapMs;
 } ui_alarm_t;
 
 /**

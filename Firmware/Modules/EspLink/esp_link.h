@@ -346,7 +346,14 @@
 #define ESPLINK_PARAM_UI_CHG_PCT_VMIN_MV       119u  /* u32, mV, def 21000, 15000..25000, <= 120-100 */
 #define ESPLINK_PARAM_UI_CHG_PCT_VMAX_MV       120u  /* u32, mV, def 29000, 25000..32000, >= 119+100 */
 
-#define ESPLINK_PARAM_COUNT               121u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28), 108..118 = imbalance scenario 6 (v1.43), 119..120 = charge-side percent map (v1.49). Runtime slots 200..202 are persisted but NOT parameters: they stay outside this count and the GET_PARAMS bulk on purpose. [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای، حدها/گین‌های پشتیبان، سناریوی ۶ و نگاشت درصد سمت شارژ (۱۱۹..۱۲۰)؛ اسلات‌های ۲۰۰..۲۰۲ پارامتر نیستند */
+/* ==================== Band 2 own beep shape / شکل بوق مخصوص باند ۲ ==================== */
+/* [EN] v1.50 (user order): the 2-beep discharge band no longer borrows band
+   1's per-beep duration and the all-band gap.
+   [FA] باند دو-بوقِ دشارژ دیگر مدت و گپ را قرض نمی‌گیرد. */
+#define ESPLINK_PARAM_UI_RUN_DOUBLE_DUR_MS     121u  /* u32, ms, def 1000, 0..fit vs 54/63/122 */
+#define ESPLINK_PARAM_UI_RUN_DOUBLE_GAP_MS     122u  /* u32, ms, def 100,  0..5000 */
+
+#define ESPLINK_PARAM_COUNT               123u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28), 108..118 = imbalance scenario 6 (v1.43), 119..120 = charge-side percent map (v1.49), 121..122 = band-2 own beep shape (v1.50). Runtime slots 200..202 are persisted but NOT parameters: they stay outside this count and the GET_PARAMS bulk on purpose. [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای، حدها/گین‌های پشتیبان، سناریوی ۶ و نگاشت درصد سمت شارژ (۱۱۹..۱۲۰) و شکل بوق باند ۲ (۱۲۱..۱۲۲)؛ اسلات‌های ۲۰۰..۲۰۲ پارامتر نیستند */
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

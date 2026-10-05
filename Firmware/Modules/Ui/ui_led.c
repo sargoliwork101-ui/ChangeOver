@@ -126,7 +126,12 @@ static volatile ui_alarm_t UI_ALARM_T__G__Alarm =
        [FA] نگاشت درصد سمت شارژ با همان اعداد کارخانه‌ای نگاشت دشارژ شروع
        می‌شود، پس بردِ دست‌نخورده دقیقاً مثل قبل رفتار می‌کند. */
     UI_BAT_V_MIN_MV,
-    UI_BAT_V_MAX_MV
+    UI_BAT_V_MAX_MV,
+    /* [EN] v1.50: band 2 boots with exactly what it used to borrow, so the
+       split is invisible until somebody shapes the double beep on purpose.
+       [FA] باند ۲ با همان چیزی بالا می‌آید که قبلاً قرض می‌گرفت. */
+    UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS,
+    UI_BATTERY_RUN_BEEP_GAP_MS
 };
 
 /**
@@ -311,27 +316,33 @@ static void func__Ui_ClampAlarms(void)
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runTriCount, 0u, 10u);
     UI_ALARM_T__G__Alarm.uint32_t__runGapMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runGapMs, 0u, 5000u);
+    /* [EN] v1.50: band 2 has its own gap now, so the common gap answers only
+       to the bands that still use it (1, 3, critical).
+       [FA] باند ۲ گپ خودش را دارد، پس گپ مشترک فقط به باندهای ۱، ۳ و بحرانی
+       پاسخ می‌دهد. */
     if (((UI_ALARM_T__G__Alarm.uint32_t__runCritCount > 1u) ||
          (UI_ALARM_T__G__Alarm.uint32_t__runStdCount > 1u) ||
-         (UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount > 1u) ||
          (UI_ALARM_T__G__Alarm.uint32_t__runTriCount > 1u)) &&
         (UI_ALARM_T__G__Alarm.uint32_t__runGapMs < UI_BUZZER_MIN_GAP_MS))
     {
         UI_ALARM_T__G__Alarm.uint32_t__runGapMs = UI_BUZZER_MIN_GAP_MS;
     }
+    UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs, 0u, 5000u);
+    if ((UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount > 1u) &&
+        (UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs < UI_BUZZER_MIN_GAP_MS))
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs = UI_BUZZER_MIN_GAP_MS;
+    }
     UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs, 0u, 600000u);
     if (UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs != 0u)
     {
-        /* [EN] The standard duration is shared by the 1-beep and 2-beep
-           bands, so it must fit the WIDER count of the two.
-           [FA] مدت استاندارد بین باند ۱-بوق و ۲-بوق مشترک است پس باید
-           در تعداد بیشتر جا شود. */
+        /* [EN] v1.50: the standard duration now belongs to band 1 alone, so
+           it only has to fit band 1's own count and the common gap.
+           [FA] مدت استاندارد از این پس فقط مال باند ۱ است، پس فقط باید در
+           تعداد خودِ باند ۱ و گپ مشترک جا شود. */
         uint32_t__maxCount = UI_ALARM_T__G__Alarm.uint32_t__runStdCount;
-        if (UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount > uint32_t__maxCount)
-        {
-            uint32_t__maxCount = UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount;
-        }
         uint32_t__maxDurMs = func__Ui_MaxBeepDurMs(
             UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs,
             uint32_t__maxCount,
@@ -339,6 +350,23 @@ static void func__Ui_ClampAlarms(void)
         if (UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs > uint32_t__maxDurMs)
         {
             UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs = uint32_t__maxDurMs;
+        }
+    }
+    /* [EN] v1.50: band 2's own duration must fit band 2's own window - same
+       interval (54, still shared), its own count (63) and its own gap (122).
+       [FA] مدت مخصوص باند ۲ باید در پنجرهٔ خودش جا شود: همان فاصلهٔ مشترک،
+       تعداد خودش و گپ خودش. */
+    UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs, 0u, 600000u);
+    if (UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs != 0u)
+    {
+        uint32_t__maxDurMs = func__Ui_MaxBeepDurMs(
+            UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs,
+            UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount,
+            UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs);
+        if (UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs > uint32_t__maxDurMs)
+        {
+            UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs = uint32_t__maxDurMs;
         }
     }
     UI_ALARM_T__G__Alarm.uint32_t__runTriDurMs =
@@ -1794,14 +1822,16 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     }
     else if (uint8_t__stablePercent >= (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct)
     {
+        /* [EN] v1.50: band 2 plays its OWN duration (121) and gap (122).
+           [FA] باند ۲ با مدت و گپ خودش پخش می‌شود. */
         (void)func__Ui_Buzzer_Gated(
             UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs,
             func__Ui_BeepDutyPercent(UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs,
-                                     UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs,
+                                     UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs,
                                      UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount,
-                                     UI_ALARM_T__G__Alarm.uint32_t__runGapMs),
+                                     UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs),
             (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount,
-            UI_ALARM_T__G__Alarm.uint32_t__runGapMs);
+            UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs);
     }
     else
     {

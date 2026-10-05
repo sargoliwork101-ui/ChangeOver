@@ -601,14 +601,27 @@ def run_ui_alarm_tests():
     #      modules, so it could not simply be appended).
     # [FA] بلوک متراکم همان ۳۸..۸۲ است؛ نگاشت درصد سمت شارژ بازهٔ کوچک خودش
     #      (۱۱۹..۱۲۰) را دارد چون ۸۳..۱۱۸ مال ماژول‌های دیگر است.
-    assert_equal(ids, list(range(38, 83)) + [119, 120],
-                 "UI alarm ids contiguous 38..82 plus the charge map 119..120")
+    assert_equal(ids, list(range(38, 83)) + [119, 120, 121, 122],
+                 "UI alarm ids contiguous 38..82 plus the ext range 119..122")
     assert_equal(defines.get("UI_ALARM_PARAM_MIN_ID"), 38, "MIN_ID 38")
     assert_equal(defines.get("UI_ALARM_PARAM_MAX_ID"), 82, "MAX_ID 82")
     assert_equal(defines.get("UI_ALARM_PARAM_EXT_MIN_ID"), 119, "EXT_MIN_ID 119")
-    assert_equal(defines.get("UI_ALARM_PARAM_EXT_MAX_ID"), 120, "EXT_MAX_ID 120")
+    assert_equal(defines.get("UI_ALARM_PARAM_EXT_MAX_ID"), 122, "EXT_MAX_ID 122")
     assert_equal(defines.get("UI_ALARM_PARAM_CHG_PCT_VMIN_MV"), 119, "charge Vmin id 119")
     assert_equal(defines.get("UI_ALARM_PARAM_CHG_PCT_VMAX_MV"), 120, "charge Vmax id 120")
+    assert_equal(defines.get("UI_ALARM_PARAM_RUN_DOUBLE_DUR_MS"), 121, "band 2 duration id 121")
+    assert_equal(defines.get("UI_ALARM_PARAM_RUN_DOUBLE_GAP_MS"), 122, "band 2 gap id 122")
+    assert_true("uint32_t uint32_t__runDoubleDurMs;" in ui_led_h
+                and "uint32_t uint32_t__runDoubleGapMs;" in ui_led_h,
+                "band 2 owns two words of its own")
+    # [EN] v1.50: band 2 must play ITS duration and gap, and the common gap
+    #      floor must no longer answer to band 2's count.
+    # [FA] باند ۲ با مدت و گپ خودش پخش می‌شود و کف گپ مشترک دیگر به تعداد
+    #      باند ۲ پاسخ نمی‌دهد.
+    assert_equal(ui_led_c.count("uint32_t__runDoubleDurMs"), 5,
+                 "band 2 duration: init + clamp (x3) + tick")
+    assert_true("(UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount > 1u) &&\n        (UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs < UI_BUZZER_MIN_GAP_MS)" in ui_led_c,
+                "band 2's own gap has its own minimum-gap rule")
     assert_true("uint32_t uint32_t__chgPctVminMv;" in ui_led_h
                 and "uint32_t uint32_t__chgPctVmaxMv;" in ui_led_h,
                 "the two charge-map words are appended to ui_alarm_t")
@@ -623,7 +636,7 @@ def run_ui_alarm_tests():
     body = re.sub(r"/\*.*?\*/", "", m.group(1), flags=re.S)
     inits = [x.strip().rstrip(",").strip() for x in body.strip().split("\n")]
     inits = [x for x in inits if x]
-    assert_equal(len(inits), 47, "45 dense init entries + the 2 charge-map words")
+    assert_equal(len(inits), 49, "45 dense init entries + charge map + band 2 shape")
     expected_macros = ["UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS", "UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT",
         "UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS", "UI_INPUT_OVERVOLTAGE_BEEP_DURATION_MS",
         "UI_INPUT_OVERVOLTAGE_BEEP_COUNT", "UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS",
@@ -646,7 +659,9 @@ def run_ui_alarm_tests():
         "UI_BATTERY_ZERO_EXIT_THRESHOLD", "UI_BATTERY_ONE_EXIT_THRESHOLD",
         # [EN] v1.49: the charge-side map boots with the same factory numbers
         #      as the discharge map, so an untouched board does not change.
-        "UI_BAT_V_MIN_MV", "UI_BAT_V_MAX_MV"]
+        "UI_BAT_V_MIN_MV", "UI_BAT_V_MAX_MV",
+        # [EN] v1.50: band 2 boots with what it used to borrow from band 1.
+        "UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS", "UI_BATTERY_RUN_BEEP_GAP_MS"]
     assert_equal(inits, expected_macros, "init order == id order (positional!)")
     print("IDs + boot defaults PASS")
 

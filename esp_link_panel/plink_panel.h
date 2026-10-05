@@ -259,7 +259,7 @@ input:disabled{opacity:.38;cursor:not-allowed}
 .srv .sb{min-height:30px;padding:3px 10px}
 tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr.rbd{background:rgba(251,94,106,.08)}
 </style></head><body>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 9b0151a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 8dc574e</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -432,7 +432,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 
 </div>
 <div class="cd" id="ucard3" style="display:none">
-<div class="hd"><b>سناریو ۳ — دشارژ، بی‌ورودی (سبز + باندهای بوق)</b> <button class="ib" data-p="50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,74,75,80,81,82" onclick="this.classList.toggle('o')">!<span class="it">روند: بالای «شروع بوق» بی‌صدا (سبز چشمک با درصد) ← هر باند بوق خودش با فاصله/مدت/تعداد خودش ← زیر «باند بحرانی»: LEDها خاموش و الگوی بحرانی فقط یک‌بار به‌اندازهٔ «طول یک‌باره» پخش و بعد سکوت تا برگشت باتری. گپ (۶۵) مشترک همهٔ باندهاست.</span></button><span class="lb">· ۷۴/۷۵ حد ولتاژ · ۶۶/۶۷ سبز · ۵۰..۶۵ باندها · ۸۰..۸۲ پایداری</span></div>
+<div class="hd"><b>سناریو ۳ — دشارژ، بی‌ورودی (سبز + باندهای بوق)</b> <button class="ib" data-p="50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,74,75,80,81,82,121,122" onclick="this.classList.toggle('o')">!<span class="it">روند: بالای «شروع بوق» بی‌صدا (سبز چشمک با درصد) ← هر باند بوق خودش با فاصله/مدت/تعداد خودش ← زیر «باند بحرانی»: LEDها خاموش و الگوی بحرانی فقط یک‌بار به‌اندازهٔ «طول یک‌باره» پخش و بعد سکوت تا برگشت باتری. گپ (۶۵) مشترک همهٔ باندهاست.</span></button><span class="lb">· ۷۴/۷۵ حد ولتاژ · ۶۶/۶۷ سبز · ۵۰..۶۵ باندها · ۸۰..۸۲ پایداری</span></div>
 
 <div class="ds c4ds">
 <b>این سناریو کِی می‌آید؟</b> وقتی ورودی قطع است و بار روی باتری می‌رود (پایین‌ترین اولویت؛ هر آلارمی آن را کنار می‌زند).
@@ -461,22 +461,16 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 <div class="sec">۳) باندها — همهٔ متغیرهای هر باند کنار هم <span class="lb">(از بالا به پایین؛ «مشترک» یعنی همان عدد در باند دیگری هم به‌کار می‌رود و با هم عوض می‌شوند)</span></div>
 
 <div class="bnd">
-<div class="bnh"><b>باند بی‌صدا</b><span class="lb" id="s3r0">—</span></div>
-<div class="bqr">
-<label>شروع بوق — سقف باند پایینی (٪)<input type="number" id="q50" step="1" min="0" max="100"><span class="lb" id="a50">—</span></label>
-</div>
-<div class="c4n" id="s3n0">—</div>
-</div>
-
-<div class="bnd">
 <div class="bnh"><b>باند ۱ — یک بوق</b><span class="lb" id="s3r1">—</span></div>
 <div class="bqr">
+<label>شروع بوق — بالاتر از این درصد سکوت است (٪)<input type="number" id="q50" step="1" min="0" max="100"><span class="lb" id="a50">—</span></label>
 <label>سقف این باند (٪)<input type="number" id="q51" step="1" min="0" max="100"><span class="lb" id="a51">—</span></label>
 <label>تعداد بوق<input type="number" id="q62" step="1" min="0" max="10"><span class="lb" id="a62">—</span></label>
-<label>مدت هر بوق (ms)<input type="number" id="q59" step="50" min="0" max="600000"><span class="lb" id="a59">— · مشترک با باند ۲</span></label>
-<label>فاصلهٔ تکرار (ms)<input type="number" id="q54" step="1000" min="0" max="600000"><span class="lb" id="a54">— · مشترک با باند ۲</span></label>
-<label>گپ بین بوق‌ها (ms)<input type="number" id="q65" step="10" min="0" max="5000"><span class="lb" id="a65">— · مشترک همهٔ باندها</span></label>
+<label>مدت هر بوق (ms)<input type="number" id="q59" step="50" min="0" max="600000"><span class="lb" id="a59">—</span></label>
+<label>فاصلهٔ تکرار (ms)<input type="number" id="q54" step="1000" min="0" max="600000"><span class="lb" id="a54">—</span></label>
+<label>گپ بین بوق‌ها (ms)<input type="number" id="q65" step="10" min="0" max="5000"><span class="lb" id="a65">—</span></label>
 </div>
+<div class="c4n" id="s3q">—</div>
 <div class="c4n" id="s3n1">—</div>
 </div>
 
@@ -485,9 +479,9 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 <div class="bqr">
 <label>سقف این باند (٪)<input type="number" id="q52" step="1" min="0" max="100"><span class="lb" id="a52">—</span></label>
 <label>تعداد بوق<input type="number" id="q63" step="1" min="0" max="10"><span class="lb" id="a63">—</span></label>
-<div class="shv"><span class="t">مدت هر بوق (ms)</span><b class="qmv" data-q="59">—</b><span class="ow">مشترک · ویرایش در باند ۱</span></div>
+<label>مدت هر بوق (ms)<input type="number" id="q121" step="50" min="0" max="600000"><span class="lb" id="a121">—</span></label>
+<label>گپ بین بوق‌ها (ms)<input type="number" id="q122" step="10" min="0" max="5000"><span class="lb" id="a122">—</span></label>
 <div class="shv"><span class="t">فاصلهٔ تکرار (ms)</span><b class="qmv" data-q="54">—</b><span class="ow">مشترک · ویرایش در باند ۱</span></div>
-<div class="shv"><span class="t">گپ بین بوق‌ها (ms)</span><b class="qmv" data-q="65">—</b><span class="ow">مشترک · ویرایش در باند ۱</span></div>
 </div>
 <div class="c4n" id="s3n2">—</div>
 </div>
@@ -927,6 +921,8 @@ const PX={
  75:['ولتاژ ۱۰۰٪ — سمت دشارژ','سقف نردبان درصدِ دشارژ: ولتاژی که صد درصد حساب می‌شود. باندهای بوق و چشمک سبز بین این و حد پایین تقسیم می‌شوند (سمت شارژ جفت جدا دارد: ۱۱۹/۱۲۰).'],
  119:['ولتاژ ۰٪ — سمت شارژ','نردبان درصدِ شارژ، مستقل از نردبان دشارژ (۷۴/۷۵). درصدی که حین شارژ نشان داده می‌شود و نقطهٔ فول از این حساب می‌شوند.'],
  120:['ولتاژ ۱۰۰٪ — سمت شارژ','سقف نردبان درصدِ شارژ. جابه‌جاکردن آن، باندهای دشارژ را تکان نمی‌دهد.'],
+ 121:['مدت هر بوق — باند ۲','طول تک‌تک بوق‌های باند دو-بوق. از v1.50 مستقل از باند ۱ است، پس شکل‌دادن بوق دوتایی، بوق تکی را عوض نمی‌کند.'],
+ 122:['گپ بین بوق‌ها — باند ۲','سکوت بین دو بوقِ همین باند. مستقل از گپ مشترک باندهای ۱، ۳ و بحرانی است؛ وقتی تعداد بیش از یک باشد، برد آن را دست‌کم ۱۰۰ms می‌کند.'],
  83:['Kp جریان','واکنش فوری حلقهٔ جریان به خطا. زیاد یعنی تند و لرزان.'],
  84:['Ki جریان','خطای انباشته را جمع می‌کند؛ همان چیزی که در نهایت جریان را دقیقاً روی هدف می‌نشاند.'],
  85:['Kd جریان','واکنش به سرعت تغییر. صفر است چون اندازه‌گیری نویز دارد و D نویز را تقویت می‌کند.'],
@@ -1282,14 +1278,14 @@ for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>
 /* v1.28: ids 93..107 (charger limits + backstop gains) join the generic
    fill/validate/send machinery, so they need no bespoke handlers. */
 /* v1.49: ۱۱۹/۱۲۰ (نردبان سمت شارژ) هم مثل بقیه خوانده و نوشته می‌شود */
-const AIDS=[];for(let _i=27;_i<=120;_i++)AIDS.push(_i);
+const AIDS=[];for(let _i=27;_i<=122;_i++)AIDS.push(_i);
 const LDEF=[3600000,100,600000,60000,8,700,32,14800,100,500,10,15000,3000,3000,500];
 const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
 /* [EN] v1.49: factory defaults of the charge-side percent map (ids 119/120),
    the same numbers as the discharge pair so the split changes nothing until
    somebody moves one side on purpose.
    [FA] پیش‌فرض کارخانهٔ نردبان سمت شارژ (۱۱۹/۱۲۰) - همان اعداد جفت دشارژ. */
-const CDEF=[21000,29000];
+const CDEF=[21000,29000,1000,100];
 const ADEF=[14800,150,6000,7000,1000,1000,21000,28000,950,14850,2000,1000,50,10000,1000,1,0,1000,50,3000,233,3,100,40,20,10,1,60000,20000,10000,100,1,1000,2000,10000,1,2,3,100,1000,10,1000,150,28000,1000,21000,21200,21000,29000,0,100,95,5,2,2,3];
 function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:(id>=119?CDEF[id-119]:id>=108?IDEF[id-108]:id>=93?LDEF[id-93]:id>=83?PDEF[id-83]:ADEF[id-27]);
  if(e&&e.value!==''){const v=parseInt(e.value,10);if(!isNaN(v))return{v,d};}
@@ -1379,7 +1375,18 @@ function afresh(){const w=achk();
  try{c4();sall();}catch(e){}
  const ms=$('xmuteS');if(ms)ms.textContent=(D&&D.p&&D.p[76]===1)?'🔇 میوت روشن — موقتی، با ریست برد پاک می‌شود؛ LEDها همچنان چشمک می‌زنند':'🔊 بوق روشن';}
 function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id-32))):id<96?((D.q3||0)&(1<<(id-64))):((D.q4||0)&(1<<(id-96)));}
-function afill(){if(!D||!D.p)return;for(const id of AIDS){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!apend(id))a.textContent=D.p[id]==null?'—':D.p[id];}}
+/* [EN] v1.50 (user order: "you wrote the factory default AND the same number
+   again - drop the extra"): the chip beside a field used to repeat the board
+   value even when the box already showed it. It now says something only when
+   it DISAGREES with the box - that is the only case where it carries news.
+   [FA] (دستور کاربر) چیپ کنار هر فیلد قبلاً عدد برد را تکرار می‌کرد حتی وقتی
+   خود کادر همان را نشان می‌داد. حالا فقط وقتی حرف می‌زند که با کادر فرق داشته
+   باشد - تنها حالتی که خبری دارد. */
+function afill(){if(!D||!D.p)return;
+ for(const id of AIDS){const e=$('q'+id),a=$('a'+id);if(!e)continue;
+  if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];
+  if(a&&!apend(id)){const bv=D.p[id],tv=e.value===''?null:parseInt(e.value,10);
+   a.textContent=(bv==null||(tv!=null&&tv===bv))?'':'روی برد: '+bv;}}}
 function adef(){ADEF.slice(6,11).forEach((v,k)=>{const id=33+k;$('q'+id).value=v;send(id,v);});afresh();}
 /* v1.22: پیش‌فرض کارخانهٔ PID سه‌مرحله‌ای — همان اعداد CHG_PID_* در charger.h */
 const PDEF=[12,1600,0,1000,1000,50,18000,0,10,1000];
@@ -1809,7 +1816,7 @@ function qmfill(){
    می‌خوانند - یک منبع، پس پیش‌فرض از دکمه‌اش جدا نمی‌افتد. */
 function pdflt(id){
  id=+id;
- if(id>=119&&id<=120)return CDEF[id-119];
+ if(id>=119&&id<=122)return CDEF[id-119];
  if(id>=108&&id<=118)return IDEF[id-108];
  if(id>=93&&id<=107)return LDEF[id-93];
  if(id>=83&&id<=92)return PDEF[id-83];
@@ -1862,17 +1869,20 @@ function sall(){
    gb=p=>{let off=(100-p)*step;if(off<minOff)off=minOff;if(off>per)off=per;return {onMs:per-off,offMs:off};},
    b1=c4v(50,40),b2=c4v(51,20),b3=c4v(52,10),bc=c4v(53,1),gap=c4v(65,100),
    /* هر باند: سقف، کف، تعداد، مدت، فاصله */
-   bands=[[b1,100,0,0,0],[b2,b1,c4v(62,1),c4v(59,1000),c4v(54,60000)],
-          [b3,b2,c4v(63,2),c4v(59,1000),c4v(54,60000)],[bc,b3,c4v(64,3),c4v(60,2000),c4v(55,20000)]];
+   /* v1.50: باند ۲ مدت و گپ خودش را دارد (۱۲۱/۱۲۲)؛ گپ هر باند ستون ششم است */
+   bands=[[b1,100,0,0,0,gap],[b2,b1,c4v(62,1),c4v(59,1000),c4v(54,60000),gap],
+          [b3,b2,c4v(63,2),c4v(121,1000),c4v(54,60000),c4v(122,100)],
+          [bc,b3,c4v(64,3),c4v(60,2000),c4v(55,20000),gap]];
   stxt('s3m',hi>lo?('۰٪ = <span class="n">'+lo+'</span> mV · ۱۰۰٪ = <span class="n">'+hi+'</span> mV · هر ۱٪ ≈ <span class="n">'+Math.round((hi-lo)/100)+'</span> mV · همین دو عدد درصد باندهای زیر را می‌سازند')
    :'⚠ حد بالا باید دست‌کم ۱۰۰mV بالاتر از حد پایین باشد.');
   bands.forEach((b,k)=>{
    const g=gb(Math.max(0,Math.min(100,Math.round((b[0]+b[1])/2))));
    stxt('s3r'+k,'از <span class="n">'+b[0]+'</span>٪ تا <span class="n">'+b[1]+'</span>٪ · <span class="n">'+pmv(b[0])+'</span>..<span class="n">'+pmv(b[1])+'</span> mV');
    let txt='سبز در میانهٔ باند: <span class="n">'+g.onMs+'</span> ms روشن / <span class="n">'+g.offMs+'</span> ms خاموش · ';
-   if(k===0){txt+='بدون بوق — این باند فقط سبز دارد.';}
-   else{const w=swin(b[4],b[3],b[2],gap);
-    txt+='بوق: <span class="n">'+b[2]+'</span> × <span class="n">'+b[3]+'</span> ms + <span class="n">'+(b[2]>1?gap*(b[2]-1):0)+'</span> ms گپ = پنجرهٔ <span class="n">'+w.winMs+'</span> ms، تکرار هر '+sms(b[4])+' · ';
+   /* v1.50 (دستور کاربر): باند بی‌صدا بلوک جدا ندارد؛ حرفش یک خط زیر باند ۱ است */
+   if(k===0){stxt('s3q','بالاتر از <span class="n">'+b1+'</span>٪ هیچ بوقی نیست، فقط سبز چشمک می‌زند (سبز در میانهٔ آن بازه: <span class="n">'+g.onMs+'</span> ms روشن / <span class="n">'+g.offMs+'</span> ms خاموش).');return;}
+   else{const bg=b[5],w=swin(b[4],b[3],b[2],bg);
+    txt+='بوق: <span class="n">'+b[2]+'</span> × <span class="n">'+b[3]+'</span> ms + <span class="n">'+(b[2]>1?bg*(b[2]-1):0)+'</span> ms گپ = پنجرهٔ <span class="n">'+w.winMs+'</span> ms، تکرار هر '+sms(b[4])+' · ';
     txt+=w.fits?('<span class="okc">در فاصله جا می‌شود</span> · سکوت بین دو الگو '+sms(w.sil)):(b[4]===0||b[2]===0?'<span class="lb">خاموش (فاصله یا تعداد صفر است)</span>':'<span class="erc">⚠ در فاصله جا نمی‌شود — برد این باند را بی‌صدا می‌گذارد</span>');}
    stxt('s3n'+k,txt);});
   {const cw=Math.floor(c4v(56,10000)*c4v(57,100)/100),cnt=c4v(58,1),one=c4v(61,10000),cfit=c4v(56,10000)>0&&cnt>0&&gap*(cnt-1)<cw;
@@ -1886,12 +1896,11 @@ function sall(){
    sdot('s3led',(now%per)<g.onMs);}
   else{stxt('s3b',stp<0?'— در انتظار داده از برد (اعداد باندها با مقادیر فعلی محاسبه شده‌اند)':'الان: باند بحرانی — LEDها خاموش‌اند');sdot('s3led',false);}}
  /* --- سناریو ۳: معنی پایداری درصد --- */
- {const hyst=c4v(80,2),z=c4v(81,2),o=c4v(82,3),ex=35;
+ {const hyst=c4v(80,2),z=c4v(81,2),ex=35;
   stxt('s3hy','<b>ساده بگوییم:</b> عدد درصد از روی ولتاژ حساب می‌شود و ولتاژ باتری مدام کمی بالا-پایین می‌پرد (موتور روشن شود، بار وصل شود...). پس درصدِ لحظه‌ای هم می‌لرزد. برد برای چشمک سبز و بوق‌ها از عدد لرزان استفاده نمی‌کند؛ یک عدد آرام نگه می‌دارد که فقط وقتی عدد لرزان واقعاً دور شد، تکان می‌خورد. اسم آن عدد آرام «درصد پایدار» است. '
    +'<b>۱) حدِ تکان خوردن (<span class="n">'+hyst+'</span>)</b> — فرض کنید عدد آرام <span class="n">'+ex+'</span>٪ است. تا وقتی عدد لرزان بین <span class="n">'+(ex-hyst+1)+'</span> و <span class="n">'+(ex+hyst-1)+'</span> بالا-پایین می‌رود، نمایش و بوق‌ها همان <span class="n">'+ex+'</span> می‌مانند؛ به <span class="n">'+(ex+hyst)+'</span> (یا <span class="n">'+(ex-hyst)+'</span>) که برسد، عدد آرام می‌پرد روی همان. هرچه این عدد بزرگ‌تر، آرام‌تر و دیرتر؛ صفر یعنی بدون آرام‌سازی. '
    +'<b>۲) بیرون آمدن از ۰٪ (<span class="n">'+z+'</span>)</b> — وقتی روی ۰٪ ایستاده‌ایم، با یک جرقهٔ ولتاژ از ۰ بیرون نمی‌آید؛ باید عدد لرزان دست‌کم <span class="n">'+z+'</span> شود، و آن‌وقت فقط یک پله به ۱٪ می‌رود. '
-   +'<b>۳) بیرون آمدن از ۱٪ (<span class="n">'+o+'</span>)</b> — وقتی روی ۱٪ ایستاده‌ایم، فقط عدد لرزانِ ۰ ما را به ۰٪ برمی‌گرداند و <span class="n">'+o+'</span> به بالا ما را به ۲٪ می‌برد؛ بینشان ۱٪ می‌ماند. '
-   +'<b>چرا مهم است؟</b> بوق بحرانی زیر <span class="n">'+c4v(50,40)+'</span>٪... دقیقاً سرِ مرز، بدون این سه عدد، بوق هر چند ثانیه شروع و قطع می‌شد. با این سه عدد یک‌بار تصمیم گرفته می‌شود و پای آن می‌ماند.');}
+   +'<b>چرا مهم است؟</b> دقیقاً سرِ مرزِ باندها، بدون این اعداد بوق هر چند ثانیه شروع و قطع می‌شد. با این‌ها یک‌بار تصمیم گرفته می‌شود و پای آن می‌ماند.');}
  /* --- سناریو ۵: آلارم باتری کم --- */
  {const al=c4v(72,21000),cl=c4v(73,21200);
   stxt('s5v','ورود: زیر <span class="n">'+al+'</span> mV (≈ <span class="n">'+mvp(al)+'</span>٪) · خروج: <span class="n">'+cl+'</span> mV یا بالاتر (≈ <span class="n">'+mvp(cl)+'</span>٪) · پهنای ضدلرزش <span class="n">'+(cl-al)+'</span> mV'+(cl<al?' · <span class="erc">⚠ پاک‌شدن زیر آستانه است</span>':''));}
@@ -2037,7 +2046,7 @@ function wlive(act){if(!D||D.on!=1)return['-','-','-',undefined,'-','-','-',unde
    stuck at 99 (the v1.22 count) while the real count is 93, so every row wrote 6
    extra columns and everything after the parameter block landed under the wrong
    heading. It now derives the bound so it cannot go stale again. */
-const PN=121;
+const PN=123;
 /* v1.26 (دستور کاربر ۲۰۲۶-۰۹-۲۹): ۹۳ ستون از ۱۴۹ ستونِ هر ردیف، «تنظیمات» بودند
    که در طول یک سوییپ اصلاً عوض نمی‌شوند — یعنی ۶۲٪ هر ردیف تکرار بی‌فایده. حالا
    تنظیمات یک‌بار به‌صورت خط «# settings:» نوشته می‌شود و ردیف‌ها فقط ۵۶ ستون

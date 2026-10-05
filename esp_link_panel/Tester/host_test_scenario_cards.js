@@ -268,27 +268,56 @@ function testDischarge(win, doc) {
 
     /* [EN] One block per band; shared values echoed, never re-offered.
        [FA] هر باند یک بلوک؛ مقدار مشترک بازتاب می‌شود نه دوباره پیشنهاد. */
+    /* [EN] v1.50 (user orders): the silent band is no longer a block of its
+       own - its single number lives in band 1 and its sentence is one line
+       under band 1. Band 2 owns its per-beep duration and gap now.
+       [FA] باند بی‌صدا بلوک جدا ندارد؛ عددش در باند ۱ و جمله‌اش یک خط زیر آن
+       است. باند ۲ مدت و گپ خودش را دارد. */
     const blocks = card.querySelectorAll('.bnd');
-    check(blocks.length === 5, 'there is one block per band', 'blocks=' + blocks.length);
+    check(blocks.length === 4, 'the silent band no longer takes a block of its own',
+        'blocks=' + blocks.length);
     const owns = (k, id) => blocks[k].querySelector('#q' + id) !== null;
     const echoes = (k, id) => blocks[k].querySelector('.qmv[data-q="' + id + '"]') !== null;
-    check(owns(1, 51) && owns(1, 62) && owns(1, 59) && owns(1, 54) && owns(1, 65),
+    check(owns(0, 50), 'the silent threshold moved into band 1');
+    check(textOf(doc, 's3q').includes('40') && textOf(doc, 's3q').includes('بوق'),
+        'and its sentence is one line under band 1', textOf(doc, 's3q'));
+    check(doc.getElementById('s3n0') === null && doc.getElementById('s3r0') === null,
+        'the old silent-band lines are gone');
+    check(owns(0, 51) && owns(0, 62) && owns(0, 59) && owns(0, 54) && owns(0, 65),
         'band 1 owns its percent, count, duration, interval and gap');
-    check(owns(2, 52) && owns(2, 63) && echoes(2, 59) && echoes(2, 54) && echoes(2, 65),
-        'band 2 owns what is its own and echoes the three shared values');
-    check(owns(3, 53) && owns(3, 64) && owns(3, 60) && owns(3, 55) && echoes(3, 65),
+    check(owns(1, 52) && owns(1, 63) && owns(1, 121) && owns(1, 122) && echoes(1, 54),
+        'band 2 owns its duration and gap, and echoes only the shared interval');
+    check(!echoes(1, 59) && !echoes(1, 65),
+        'band 2 no longer borrows band 1 duration or the common gap');
+    check(owns(2, 53) && owns(2, 64) && owns(2, 60) && owns(2, 55) && echoes(2, 65),
         'band 3 owns its duration and interval, echoes only the gap');
-    check(owns(4, 56) && owns(4, 57) && owns(4, 58) && owns(4, 61) && echoes(4, 65),
+    check(owns(3, 56) && owns(3, 57) && owns(3, 58) && owns(3, 61) && echoes(3, 65),
         'the critical block owns its four values and echoes the gap');
     check(card.querySelectorAll('input#q65').length === 1,
-        'the shared gap has exactly one writable field');
+        'the shared gap still has exactly one writable field');
+
+    /* [EN] Shaping band 2 must not move band 1's line, and vice versa.
+       [FA] شکل‌دادن باند ۲ نباید خط باند ۱ را تکان بدهد و برعکس. */
+    typeInto(win, doc, 'q121', 1000);
+    typeInto(win, doc, 'q122', 100);
+    const band1Line = textOf(doc, 's3n1');
+    typeInto(win, doc, 'q121', 3000);
+    typeInto(win, doc, 'q122', 400);
+    check(textOf(doc, 's3n1') === band1Line,
+        'band 1 is untouched when band 2 is reshaped');
+    check(textOf(doc, 's3n2').includes('3000') && textOf(doc, 's3n2').includes('400'),
+        'band 2 reports its own duration and gap', textOf(doc, 's3n2'));
+    typeInto(win, doc, 'q121', 1000);
+    typeInto(win, doc, 'q122', 100);
 
     typeInto(win, doc, 'q65', 250);
     win.qmfill();
     const gapEchoes = [...card.querySelectorAll('.qmv[data-q="65"]')];
-    check(gapEchoes.length === 3 && gapEchoes.every(e => e.textContent === '250'),
-        'every echo of the gap follows the single writable field',
+    check(gapEchoes.length === 2 && gapEchoes.every(e => e.textContent === '250'),
+        'the common gap is echoed by band 3 and the critical block only',
         gapEchoes.map(e => e.textContent).join(','));
+    check(!textOf(doc, 's3n2').includes('250'),
+        'and it no longer reaches band 2');
     typeInto(win, doc, 'q65', 100);
     win.qmfill();
 
@@ -304,6 +333,23 @@ function testDischarge(win, doc) {
         });
     }
     check(noDefault.length === 0, 'every scenario field prints its factory default', noDefault.join(','));
+    /* [EN] v1.50 (user order: "you wrote the default and the same number
+       again"): the chip beside a field must stay silent while it agrees with
+       the box, and speak only when the board holds something else.
+       [FA] چیپ کنار فیلد تا وقتی با کادر هم‌نظر است ساکت می‌ماند. */
+    win.D = { p: { 65: 100, 66: 1000 } };
+    win.afill();
+    check(doc.getElementById('a65').textContent === '',
+        'no second copy of a number the box already shows',
+        doc.getElementById('a65').textContent);
+    win.D = { p: { 65: 250, 66: 1000 } };
+    win.afill();
+    check(doc.getElementById('a65').textContent.includes('250')
+        && doc.getElementById('a65').textContent.includes('روی برد'),
+        'but a board value that disagrees is still reported',
+        doc.getElementById('a65').textContent);
+    win.D = null;
+
     const gapLabel = card.querySelector('#q65').closest('label');
     check(gapLabel.querySelector('.dflt').textContent.includes('100'),
         'the printed default is the real factory value (gap = 100)',
@@ -320,8 +366,7 @@ function testDischarge(win, doc) {
     check(/150 ms.*850 ms/.test(textOf(doc, 's3n2')),
         'green at the 15% mid-band is 150/850 ms', textOf(doc, 's3n2'));
     check(textOf(doc, 's3n2').includes('2100'),
-        'band 2 beep window is 2 x 1000 + 100 = 2100 ms', textOf(doc, 's3n2'));
-    check(textOf(doc, 's3n0').includes('بدون بوق'), 'the silent band says it has no beep', textOf(doc, 's3n0'));
+        'band 2 beep window is 2 x 1000 + its own 100 ms gap = 2100 ms', textOf(doc, 's3n2'));
     check(textOf(doc, 's3n4').includes('خاموش') && /یک‌بار/.test(textOf(doc, 's3n4')),
         'the critical block says LEDs off and one-shot', textOf(doc, 's3n4'));
 
@@ -340,8 +385,11 @@ function testDischarge(win, doc) {
     const hy = textOf(doc, 's3hy');
     check(hy.includes('درصد پایدار') && hy.includes('34') && hy.includes('36'),
         'the stability text explains the band around the stable percent', hy);
-    check(hy.includes('بیرون آمدن از ۰٪') && hy.includes('بیرون آمدن از ۱٪'),
-        'and explains both zero/one exit thresholds', hy);
+    /* [EN] v1.50 (user order): the 1% paragraph was dropped as noise; the
+       0% one stays, and the text must not grow it back.
+       [FA] بند ۱٪ به دستور کاربر حذف شد؛ بند ۰٪ می‌ماند. */
+    check(hy.includes('بیرون آمدن از ۰٪') && !hy.includes('بیرون آمدن از ۱٪'),
+        'the zero-exit paragraph stays and the one-exit paragraph is gone', hy);
 }
 
 /* ==================== Scenario 4 - charging / full ==================== */

@@ -173,7 +173,9 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            300, 500, 600000, 600000, 30000, 100, 10, 3600000, 200, 1, 20,
            /* v1.49 ids 119..120 = charge-side percent map (ui_led.h): same
               factory numbers as the discharge map 74/75, separate register. */
-           21000, 29000];
+           21000, 29000,
+           /* v1.50 ids 121..122 = band 2's own per-beep duration and gap */
+           1000, 100];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -241,6 +243,10 @@ function clampParam(id, v) {
         /* v1.49: charge-side percent map - same window rules as 74/75, own pair */
         case 119: return clampW(v, 15000, 25000);
         case 120: return Math.max(P[119] + 100, clampW(v, 25000, 32000));
+        /* v1.50: band 2 beep shape - gap floor only when its own count > 1 */
+        case 121: return clampW(v, 0, 600000);
+        case 122: { const g = clampW(v, 0, 5000);
+                    return (P[63] > 1 && g < 100) ? 100 : g; }
         /* v1.15 alarms: mirror of Fault_ClampAlarms / Charger_ClampAlarms */
         case 27: { let lo = Math.max(14000, over + 50), hi = Math.min(15000, ov - 100);
                    if (lo > hi) hi = lo; return Math.min(hi, Math.max(lo, v)); }

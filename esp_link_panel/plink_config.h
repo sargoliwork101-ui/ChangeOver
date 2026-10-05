@@ -55,8 +55,9 @@
          پشتیبان و تایمرهای مرحله‌ای شارژر (v1.28، دستور کاربر ۲۰۲۶-۱۰-۰۳)،
          شناسه‌های ۱۰۸..۱۱۸ = سناریوی ۶ عدم‌توازن (v1.43)، شناسه‌های ۱۱۹..۱۲۰ =
          نردبان درصد سمت شارژ، جدا از نردبان دشارژ ۷۴/۷۵ (v1.49، دستور کاربر
-         ۲۰۲۶-۱۰-۰۵). */
-#define ESP_PARAM_COUNT            121u
+         ۲۰۲۶-۱۰-۰۵)، شناسه‌های ۱۲۱..۱۲۲ = مدت و گپ مخصوص باند ۲ دشارژ
+         (v1.50، دستور کاربر ۲۰۲۶-۱۰-۰۵). */
+#define ESP_PARAM_COUNT            123u
 #define ESP_PARAM_CHG1_ENABLE       11u
 #define ESP_PARAM_CHG2_ENABLE       12u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
@@ -137,7 +138,7 @@
     "#  [settings7] imb_rest_mv,imb_disch_mv,imb_rest_wait_ms,imb_chg_wait_ms,\n" \
     "#            imb_event_ms,imb_event_hys_mv,imb_event_max,imb_beep_per_ms,\n" \
     "#            imb_beep_ms,imb_block_out,imb_chg_cycles\n" \
-    "#  [settings8] ui_chg_pct_vmin,ui_chg_pct_vmax\n" \
+    "#  [settings8] ui_chg_pct_vmin,ui_chg_pct_vmax,ui_run_dbl_dur,ui_run_dbl_gap\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \

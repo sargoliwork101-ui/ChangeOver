@@ -96,7 +96,12 @@
  *      عدم‌توازن + ۲۰۰..۲۰۲ اسلات زمان‌اجرا؛ ۷۶ گذرا). سقف ۱۲۲ یعنی رکورد
  *      ۹۹۲ بایت، باز هم داخل یک صفحهٔ ۱KB با ۳۲ بایت حاشیه - گزارهٔ داخل
  *      فایل .c این را «اثبات» می‌کند. هارنس C را هم‌روز نگه دارید. */
-#define ESP_LINK_NVM_ENTRY_MAX         122u
+/* [EN] v1.50: 124 slots (12 + 124 x 8 + 4 = 1008 B, inside one 1 KiB page
+ *      with 16 B to spare). The record stores its own entry count, so an
+ *      older, shorter record still replays correctly - no version bump.
+ * [FA] ۱۲۴ جا (۱۰۰۸ بایت، داخل یک صفحهٔ ۱ کیلوبایتی). رکورد تعداد خودش را
+ *      ذخیره می‌کند پس رکورد کوتاه‌تر قدیمی هم درست پخش می‌شود. */
+#define ESP_LINK_NVM_ENTRY_MAX         124u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
  *      change; a shorter window would rewrite flash on every keystroke burst).
@@ -114,7 +119,7 @@
 /* [EN] Persisted id ranges: ALL settable configuration (0..14 = offsets,
  *      gains, filters, eta, charger enables, duty ceilings; 20..26 =
  *      charge profile; 27..37 = alarms; 38..75 = UI cadence; 77..82 =
- *      full/hysteresis; 83..92 = two-loop PID; 119..120 = charge-side percent map, v1.49) EXCEPT the transient
+ *      full/hysteresis; 83..92 = two-loop PID; 119..120 = charge-side percent map, v1.49; 121..122 = band-2 beep shape, v1.50) EXCEPT the transient
  *      test modes 15..18 (fixed duty), 19 (manual test) and 76
  *      (panel-session mute) - those must never survive a reboot. Id 76
  *      sits INSIDE the high range, so the predicate excludes it
@@ -129,7 +134,7 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   120u
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   122u
 #define ESP_LINK_NVM_TRANSIENT_ID_MUTE        76u
 /* [EN] Imbalance runtime slots (scenario 6, v10): persisted but NEVER user
  *      parameters - the module itself writes them; the panel never draws and
