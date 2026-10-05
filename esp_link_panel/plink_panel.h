@@ -280,7 +280,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 8ef2ad8</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 208f762</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2531,6 +2531,33 @@ function calpick(on){CALS.forEach(z=>{z.use=on?1:0;});calsave();calsmp();}
    channel. [FA] فقط ردیف‌های تیک‌خورده، و فقط ردیف‌هایی که همان کانال در
    آن سناریو واقعاً کار می‌کرده. */
 function calsel(n){return CALS.filter(z=>z.use!==0&&(n==null||z.sc==null||WSC[z.sc]==null||WSC[z.sc].indexOf(n)>=0));}
+/* ==================== Voltage slope / شیب ولتاژ ====================
+   [EN] v1.62 (user question: "how do we know the battery voltage is read
+   right? shouldn't that have a table too?"). It must NOT have a table: a
+   resistive divider is a straight line, so two numbers describe it fully -
+   a slope (the divider ratio) and an offset. The board today lets the panel
+   tune the OFFSET only (ids 4/5/6); the slope lives in the divider resistor
+   constants in bsp_measurement.c. So the honest thing is to MEASURE the
+   slope from the same bench samples and say it out loud: if it is 1.000 the
+   offset is enough, if it is not, an offset can never fix it (the error
+   grows with voltage) and the divider constant itself has to be corrected
+   in the firmware - which the code generator now prints.
+   [FA] ولتاژ جدول نمی‌خواهد چون مقسم مقاومتی یک خط صاف است: فقط «شیب»
+   (نسبت مقسم) و «آفست». برد فقط آفست را قابل تنظیم کرده؛ شیب داخل
+   مقدار مقاومت‌هاست. پس شیب را از همین نمونه‌ها اندازه می‌گیریم و صریح
+   می‌گوییم: اگر ۱٫۰۰۰ بود آفست کافی است، اگر نبود آفست هرگز درستش
+   نمی‌کند (خطا با ولتاژ بزرگ می‌شود) و باید مقاومت مقسم در فرم‌ور اصلاح
+   شود - که تولیدکنندهٔ کد همان را چاپ می‌کند. */
+const VDIV=[['ولتاژ ورودی',4,'BSP_MEASUREMENT_SENSE_TOP_24V_OHMS',68000,6800,z=>z.dvi,z=>z.vin],
+            ['ولتاژ پک ۲۴V',5,'BSP_MEASUREMENT_SENSE_TOP_24V_OHMS',68000,6800,
+             z=>(z.dv1!=null&&z.dv2!=null)?(z.dv1+z.dv2):null,z=>z.v24],
+            ['نود ۱۲V',6,'BSP_MEASUREMENT_DIV12_TOP_OHMS',34398,6800,z=>z.dv2,z=>z.vlo]];
+function calvfit(k){const xs=[],ys=[];
+ calsel(null).forEach(z=>{const y=k[5](z),x=k[6](z);
+  if(y!=null&&Number.isFinite(y)&&x!=null&&Number.isFinite(x)){xs.push(x);ys.push(y);}});
+ if(xs.length<3||(Math.max(...xs)-Math.min(...xs))<1000)return null;   /* شیب بدون بازهٔ ولتاژ معنا ندارد */
+ return calfit(xs,ys);}
+
 /* ==================== Rules shown to the user / شرط‌ها روی خود صفحه ====================
    [EN] v1.61 (user order: "put your conditions in the panel and TELL the user
    when he broke one"). Until now the quality rules lived inside calrun() and
@@ -2571,7 +2598,15 @@ function calchk(){
  else no('ولتاژ ورودی فقط در '+nv+' مرحله ثبت شده.','بدون حداقل ۳ عدد، آفست ولتاژ ورودی محاسبه نمی‌شود.');
  if(nb>=3)ok('ولتاژ هر دو نیم‌باتری در '+nb+' مرحله ثبت شده.');
  else no('ولتاژ نیم‌باتری‌ها فقط در '+nb+' مرحله ثبت شده.','آفست پک ۲۴V و نود ۱۲V به عدد هر دو نیم‌باتری نیاز دارد.');
- /* ۶) جریان منفی/صفر در همهٔ نقاط */
+ /* ۶) شیب ولتاژ: آیا آفست تنهایی کافی است؟ */
+ VDIV.forEach(k=>{const f=calvfit(k);
+  if(!f){no(k[0]+': شیب قابل اندازه‌گیری نیست.',
+   'برای سنجش شیب لازم است همین ولتاژ در چند مرحله با اختلاف حداقل ۱ ولت ثبت شود (مثلاً باتری خالی و پر).');return;}
+  const err=Math.abs(f.a-1)*100;
+  if(err<0.5)ok(k[0]+': شیب '+f.a.toFixed(4)+' است (تقریباً ۱)، پس فقط آفست لازم است.');
+  else no(k[0]+': شیب '+f.a.toFixed(4)+' است، یعنی '+err.toFixed(1)+'٪ خطای ضریبی.',
+   'این را آفست درست نمی‌کند چون خطا با بالارفتن ولتاژ بزرگ‌تر می‌شود؛ باید مقاومت مقسم در فرم‌ور اصلاح شود — در «ساخت کد برای میکرو» عدد اصلاح‌شده چاپ می‌شود.');});
+ /* ۷) جریان منفی/صفر در همهٔ نقاط */
  if(S.some(z=>Number.isFinite(z.b1)&&z.b1>0)||S.some(z=>Number.isFinite(z.b2)&&z.b2>0))
   ok('حداقل در بعضی مرحله‌ها جریان واقعی شارژ ثبت شده.');
  else no('هیچ مرحله‌ای جریان شارژ مثبت ندارد.','با duty بالاتر یا باتری خالی‌تر تست کنید؛ از روی جریان صفر چیزی درنمی‌آید.');
@@ -2616,6 +2651,11 @@ function calcode(){
   out+='/* table '+n+' - battery '+n+', '+X.length+' points */\n'+
    'static const uint32_t CAL_Current'+n+'LutChainMa[] =\n    { '+X.map(q=>q+'u').join(', ')+' };\n'+
    'static const uint32_t CAL_Current'+n+'LutBatteryMw[] =\n    { '+Y.map(q=>q+'u').join(', ')+' };\n\n';});
+ VDIV.forEach(k=>{const f=calvfit(k);if(!f)return;
+  const nt=Math.round(f.a*k[3]+(f.a-1)*k[4]);
+  out+='/* '+k[0]+': measured slope '+f.a.toFixed(4)+' ('+((f.a-1)*100).toFixed(2)+'% scale error)\n'+
+   ' *   '+(Math.abs(f.a-1)<0.005?'within 0.5% - keep the constant, the offset is enough.':
+    'the offset cannot fix a scale error - in bsp_measurement.c set\n *   #define '+k[2]+'  '+nt+'u   (was '+k[3]+'u)')+' */\n';});
  out+='/* defaults that belong WITH the tables above (esp_link.h / plink_params.h):\n'+
   ' *   current offset ch1 = '+off[0]+' counts, ch2 = '+off[1]+' counts\n'+
   ' *   current gain   ch1 = '+gn[0]+' permille, ch2 = '+gn[1]+' permille\n'+

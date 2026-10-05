@@ -875,6 +875,32 @@ function testBackupAndCal(win, doc) {
     check(doc.getElementById('calcd').style.display === 'block',
           'the snippet is shown on the page, ready to copy');
 
+    /* --- v1.62: the voltage SLOPE is measured and reported --- */
+    /* two voltage levels 2 V apart, board reading 2% low: offset cannot fix it */
+    const vs = [];
+    for (let i = 0; i < 6; i += 1) {
+        const board = 12000 + i * 400;
+        vs.push({ sc: 'BOTH', d: 2 + i, use: 1, r1: 100 + i * 50, r2: 100 + i * 50,
+                  vin: board * 2, v24: board * 2, v12: board, vlo: board, vhi: board,
+                  b1: 50 + i * 20, b2: 50 + i * 20,
+                  dvi: Math.round(board * 2 * 1.02), dv1: Math.round(board * 1.02),
+                  dv2: Math.round(board * 1.02), ts: 1 });
+    }
+    const keepS = win.CALS;
+    win.CALS = vs;
+    win.eval('calchk')();
+    check(doc.getElementById('calck').innerHTML.indexOf('خطای ضریبی') >= 0,
+          'a 2% scale error on the voltage is reported as a slope problem, not an offset');
+    win.eval('calrun')();
+    win.eval('calcode')();
+    const vcode = doc.getElementById('calcd').value;
+    check(vcode.indexOf('BSP_MEASUREMENT_SENSE_TOP_24V_OHMS') >= 0 &&
+          vcode.indexOf('scale error') >= 0,
+          'the snippet prints the corrected divider constant for the firmware');
+    win.CALS = keepS;
+    win.eval('calchk')();
+    win.eval('calrun')();
+
     /* --- v1.59: the raw bench samples can be saved and restored --- */
     const sbl = [];
     const OldBlob2 = win.Blob;
