@@ -147,6 +147,21 @@ void func__TaskControl(void *void_ptr__argument)
 #else
                     false;
 #endif
+                /* [EN] v1.72: per-channel state, so imbalance only compares
+                   halves that are in the same state.
+                   [FA] حالت هر کانال برای مقایسهٔ هم‌حالت. */
+                imbalance_inputs_t__imbalanceInputs.bool__chargingCh1 =
+#if MODULE_CHARGER
+                    func__Charger_IsChannelActive(0u);
+#else
+                    false;
+#endif
+                imbalance_inputs_t__imbalanceInputs.bool__chargingCh2 =
+#if MODULE_CHARGER
+                    func__Charger_IsChannelActive(1u);
+#else
+                    false;
+#endif
                 imbalance_inputs_t__imbalanceInputs.bool__onBattery =
                     (APP_STATE_T__G__ImbalancePrevState == APP_STATE_BATTERY);
 
@@ -182,6 +197,16 @@ void func__TaskControl(void *void_ptr__argument)
 #endif
 #if MODULE_CHARGER
             func__Charger_Evaluate(&measurement_snapshot_t__snap, app_state_t__state);
+            /* [EN] v1.72 scenario 7: the dead-battery latch changed, so slot
+               203 must reach NVM (survives power cycles exactly like the
+               imbalance latch; only a battery swap clears it).
+               [FA] قفل باتری خراب تغییر کرد: اسلات ۲۰۳ ذخیره شود. */
+            if (func__Charger_DeadTakePersistFlag() != false)
+            {
+#if MODULE_ESP
+                func__EspLink_NvmMarkDirty(CHG_DEAD_SLOT_MASK_ID);
+#endif
+            }
 #endif
             (void)app_state_t__state;
         }

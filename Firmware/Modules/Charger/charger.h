@@ -1607,4 +1607,122 @@ bool func__Charger_SetLimitParam(uint8_t uint8_t__paramId,
 bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value);
 
+/* ==================== Scenario 7: dead battery / سناریوی ۷: باتری خراب ====================
+ *
+ * [EN] User order (2026-10-05): "a battery may never charge; it must not sit
+ *      under the charger forever. After about 24 hours of continuous
+ *      charging without reaching FLOAT, declare the battery dead: red LED,
+ *      stop charging, and keep it stopped until the battery is replaced -
+ *      like the imbalance latch."
+ *
+ *      The timer is PER CHANNEL, because each half has its own charger and
+ *      only one of them may be the dead one. It counts the time a channel
+ *      spends actively charging (BULK or ABSORB). Reaching FLOAT - the
+ *      definition of "it charged" - clears it. A charge that merely pauses
+ *      (input lost, JIT retry, a short OFF) does NOT clear it: the pause has
+ *      to last longer than the reset gap (id 126), otherwise a battery that
+ *      flickers in and out of charge would reset the clock forever and the
+ *      24 h would never be reached.
+ *
+ *      The verdict is latched and persisted (slot 203, one bit per channel)
+ *      and only a real battery swap clears it, exactly like scenario 6:
+ *      the channel must report battery-absent continuously for 3 s.
+ *
+ * [FA] دستور کاربر: «شاید یک باتری هیچ‌وقت شارژ نشود؛ نباید دائم زیر شارژ
+ *      بماند. اگر حدود ۲۴ ساعت پیوسته شارژ شد و پر نشد، باتری خراب است:
+ *      LED قرمز، قطع شارژ، و تا تعویض باتری هم قطع بماند - مثل عدم‌توازن.»
+ *
+ *      تایمر برای هر کانال جداست، چون هر نیم شارژر خودش را دارد و ممکن است
+ *      فقط یکی خراب باشد. زمانِ «در حال شارژ بودن» شمرده می‌شود و رسیدن به
+ *      FLOAT (یعنی واقعاً پر شد) صفرش می‌کند. مکث کوتاه شارژ آن را صفر
+ *      نمی‌کند؛ مکث باید از فاصلهٔ ریست (شناسهٔ ۱۲۶) بلندتر باشد، وگرنه
+ *      باتری‌ای که مدام قطع و وصل می‌شود هرگز به ۲۴ ساعت نمی‌رسد.
+ */
+
+/** [EN] Continuous charge time after which the battery is declared dead
+ *  (ms, 0 = scenario off), default 86400000 = 24 h.
+ *  [FA] مدت شارژ پیوسته‌ای که پس از آن باتری خراب اعلام می‌شود (صفر = خاموش). */
+#define CHG_DEAD_PARAM_TIMEOUT_MS          125u
+
+/** [EN] A charge pause shorter than this does NOT restart the timer (ms),
+ *  default 600000 = 10 min.
+ *  [FA] مکث کوتاه‌تر از این، تایمر را از نو شروع نمی‌کند. */
+#define CHG_DEAD_PARAM_RESET_GAP_MS        126u
+
+/** [EN] 1 = also keep the pack off the output while the dead verdict is
+ *  latched (mirror of the imbalance checkbox, id 117), default 0.
+ *  [FA] یک یعنی در حالت قفلِ «باتری خراب»، باتری روی خروجی هم نرود. */
+#define CHG_DEAD_PARAM_BLOCK_OUTPUT        127u
+
+#define CHG_DEAD_PARAM_FIRST_ID            CHG_DEAD_PARAM_TIMEOUT_MS
+#define CHG_DEAD_PARAM_LAST_ID             CHG_DEAD_PARAM_BLOCK_OUTPUT
+#define CHG_DEAD_PARAM_OWNS(id) \
+    (((id) >= CHG_DEAD_PARAM_FIRST_ID) && ((id) <= CHG_DEAD_PARAM_LAST_ID))
+
+/** [EN] Persisted runtime slot (never a user parameter, never in a backup):
+ *  bit 0 = charger 1 dead, bit 1 = charger 2 dead.
+ *  [FA] اسلات ماندگار زمان‌اجرا: بیت ۰ شارژر ۱، بیت ۱ شارژر ۲. */
+#define CHG_DEAD_SLOT_MASK_ID              203u
+
+/** [EN] Battery-absent time that clears the verdict (ms) - same 3 s the
+ *  imbalance scenario uses, for the same reason: a swap takes minutes.
+ *  [FA] مدت نبود باتری که قفل را پاک می‌کند. */
+#define CHG_DEAD_ABSENT_RESET_MS           3000u
+
+/**
+ * @brief  [EN] Write one scenario-7 parameter (ids 125..127) or replay the
+ *              persisted verdict slot 203 at boot. Clamped like every other
+ *              block; the applied value is returned.
+ *         [FA] نوشتن پارامتر سناریوی ۷ یا پخش اسلات ۲۰۳ هنگام بوت.
+ * @‎param  uint8_t__paramId [EN] 125..127 or 203‎ / شناسه
+ * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
+ * @param  uint32_t__appliedValue [EN] Applied value out, may be NULL / مقدار اعمال‌شده
+ * @return bool [EN] true when the id belongs here / شناسه متعلق است
+ */
+bool func__Charger_SetDeadParam(uint8_t uint8_t__paramId,
+                                uint32_t uint32_t__value,
+                                uint32_t *uint32_t__appliedValue);
+
+/**
+ * @brief  [EN] Read one scenario-7 parameter or the verdict slot.
+ *         [FA] خواندن پارامتر سناریوی ۷ یا اسلات قضاوت.
+ * @‎param  uint8_t__paramId [EN] 125..127 or 203‎ / شناسه
+ * @param  uint32_t__value [EN] Live value out / مقدار زنده
+ * @return bool [EN] true when the id belongs here / شناسه متعلق است
+ */
+bool func__Charger_GetDeadParam(uint8_t uint8_t__paramId,
+                                uint32_t *uint32_t__value);
+
+/**
+ * @brief  [EN] Latched dead-battery verdict, bit 0 = charger 1, bit 1 = charger 2.
+ *         [FA] قضاوت قفل‌شده: بیت ۰ شارژر ۱، بیت ۱ شارژر ۲.
+ * @‎return uint8_t [EN] 0..3‎ / ماسک
+ */
+uint8_t func__Charger_DeadMask(void);
+
+/**
+ * @brief  [EN] Longest continuous charge time of the two channels right now,
+ *              in seconds - what the panel shows as progress toward the
+ *              24 h verdict.
+ *         [FA] بلندترین زمان شارژ پیوستهٔ فعلی بین دو کانال، بر حسب ثانیه.
+ * @return uint32_t [EN] seconds / ثانیه
+ */
+uint32_t func__Charger_DeadElapsedSeconds(void);
+
+/**
+ * @brief  [EN] True when a latched dead verdict must also keep the battery
+ *              off the output (param 127).
+ *         [FA] آیا قفلِ باتری خراب باید خروجی را هم ببندد.
+ * @‎return bool [EN] true = keep battery off the output‎ / وتوی خروجی
+ */
+bool func__Charger_DeadBlocksOutput(void);
+
+/**
+ * @brief  [EN] Take-and-clear flag: a persisted verdict changed, so the
+ *              caller should mark NVM slot 203 dirty.
+ *         [FA] پرچم «قضاوت ماندگار عوض شد» را می‌گیرد و پاک می‌کند.
+ * @‎return bool [EN] true = slot 203 needs saving‎ / نیاز به ذخیره
+ */
+bool func__Charger_DeadTakePersistFlag(void);
+
 #endif /* CHARGER_H */

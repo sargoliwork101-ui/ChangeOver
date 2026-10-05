@@ -24,6 +24,7 @@
 #include "rtos_time.h"
 
 #include <stddef.h>
+#include <stdint.h>
 
 #if MODULE_JITTER
 #include "jitter.h"
@@ -1596,6 +1597,20 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     }
 #endif
 
+    /* [EN] Scenario 7 gate (user order 2026-10-05): a channel whose dead
+       verdict is latched never charges again until the battery is replaced.
+       It sits above the fixed-duty and manual paths on purpose - "do not
+       charge it any more" must not be defeatable from a panel switch.
+       [FA] گیت سناریوی ۷: کانالی که قفل «باتری خراب» خورده تا تعویض باتری
+       دیگر شارژ نمی‌شود، و این گیت بالاتر از مود duty فیکس است تا با یک
+       کلید در پنل دور زده نشود. */
+    if ((func__Charger_DeadMask() & (uint8_t)(1u << uint8_t__channelIndex)) != 0u)
+    {
+        func__Charger_StopOneChannel(uint8_t__channelIndex);
+        charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_OFF;
+        return;
+    }
+
     /* [EN] Runtime fixed-duty mode (user order 2026-09-22): mirrors the
        compile-time bench-test block below - switching stops above
        CHG_ABSORB_MV (no overcharge with regulation off), state shows BULK,
@@ -2333,6 +2348,276 @@ static void func__Charger_CaptureDiag(const measurement_snapshot_t *measurement_
 }
 
 
+/* ==================== Scenario 7: dead battery / سناریوی ۷: باتری خراب ==================== */
+
+/* [EN] One row per channel. The accumulator counts only the ticks the
+       channel really charged (BULK/ABSORB); the pause timer decides when a
+       stop is long enough to call it a new charge.
+   [FA] یک ردیف برای هر کانال: انباشتگر فقط زمان واقعی شارژ را می‌شمارد و
+       تایمر مکث تصمیم می‌گیرد کِی یک توقف، «شارژ تازه» حساب می‌شود. */
+static uint32_t UINT32_T__G__DeadChargeMs[2]   = { 0u, 0u };
+static uint32_t UINT32_T__G__DeadLastTick[2]   = { 0u, 0u };
+static bool     BOOL__G__DeadWasCharging[2]    = { false, false };
+static uint32_t UINT32_T__G__DeadPauseTick[2]  = { 0u, 0u };
+static uint32_t UINT32_T__G__DeadAbsentTick[2] = { 0u, 0u };
+static bool     BOOL__G__DeadAbsentTiming[2]   = { false, false };
+static volatile uint32_t UINT32_T__G__DeadMask = 0u;
+static volatile bool     BOOL__G__DeadPersist  = false;
+
+/* [EN] Scenario-7 parameter windows: {min, max, boot default}. Same shape as
+       the limit block above, so a default can never sit outside its window.
+   [FA] پنجرهٔ پارامترهای سناریوی ۷ با همان قالب بلوک حدها. */
+typedef struct
+{
+    uint32_t uint32_t__min;
+    uint32_t uint32_t__max;
+    uint32_t uint32_t__def;
+} charger_dead_def_t;
+
+static const charger_dead_def_t CHARGER_DEAD_DEF_T__A__DeadDefs[3] =
+{
+    {      0u, 172800000u, 86400000u },  /* 125: timeout, 24 h of 48 h max */
+    {      0u,   3600000u,   600000u },  /* 126: pause that restarts it     */
+    {      0u,         1u,        0u }   /* 127: also block the output      */
+};
+
+static volatile uint32_t UINT32_T__G__DeadParam[3] =
+{
+    86400000u, 600000u, 0u
+};
+
+/**
+ * @brief  [EN] One scenario-7 pass for one channel: accumulate charge time,
+ *              clear it on FLOAT or on a long enough pause, latch the dead
+ *              verdict at the timeout, and clear the verdict when the
+ *              battery is physically gone.
+ *         [FA] یک پاس سناریوی ۷ برای یک کانال.
+ * @param  uint8_t__channelIndex [EN] 0 or 1 / شمارهٔ کانال
+ * @param  uint32_t__nowTick [EN] Current tick / تیک فعلی
+ */
+static void func__Charger_DeadBatteryTick(uint8_t uint8_t__channelIndex,
+                                          uint32_t uint32_t__nowTick)
+{
+    const charger_channel_state_t *charger_channel_state_t__channel;
+    uint32_t uint32_t__timeoutMs;
+    uint32_t uint32_t__gapMs;
+    uint32_t uint32_t__stepMs;
+    bool     bool__charging;
+
+    charger_channel_state_t__channel = &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
+    uint32_t__timeoutMs = UINT32_T__G__DeadParam[0];
+    uint32_t__gapMs     = UINT32_T__G__DeadParam[1];
+
+    /* [EN] Step 1: a real battery swap wipes the verdict - the latch belongs
+           to the battery, not to the board (same rule as scenario 6).
+       [FA] گام ۱: تعویض واقعی باتری، قفل را پاک می‌کند. */
+    if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_BAT_LOST)
+    {
+        if (BOOL__G__DeadAbsentTiming[uint8_t__channelIndex] == false)
+        {
+            BOOL__G__DeadAbsentTiming[uint8_t__channelIndex]  = true;
+            UINT32_T__G__DeadAbsentTick[uint8_t__channelIndex] = uint32_t__nowTick;
+        }
+        else if (func__Rtos_TicksToMilliseconds(
+                     uint32_t__nowTick - UINT32_T__G__DeadAbsentTick[uint8_t__channelIndex]) >=
+                 CHG_DEAD_ABSENT_RESET_MS)
+        {
+            uint32_t uint32_t__bit = (uint32_t)1u << uint8_t__channelIndex;
+
+            if ((UINT32_T__G__DeadMask & uint32_t__bit) != 0u)
+            {
+                UINT32_T__G__DeadMask &= ~uint32_t__bit;
+                BOOL__G__DeadPersist   = true;
+            }
+            UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;
+        }
+        else
+        {
+            /* [EN] Absent, still inside the qualifier. / هنوز داخل مهلت. */
+        }
+    }
+    else
+    {
+        BOOL__G__DeadAbsentTiming[uint8_t__channelIndex] = false;
+    }
+
+    /* [EN] Step 2: scenario off, or the channel reached FLOAT - which is the
+           definition of "this battery does charge". Clock back to zero.
+       [FA] گام ۲: سناریو خاموش است یا کانال به FLOAT رسیده؛ یعنی باتری
+           واقعاً شارژ می‌شود، پس ساعت صفر می‌شود. */
+    if ((uint32_t__timeoutMs == 0u) ||
+        (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_FLOAT))
+    {
+        UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;
+        BOOL__G__DeadWasCharging[uint8_t__channelIndex]  = false;
+        return;
+    }
+
+    bool__charging = func__Charger_IsChannelActive(uint8_t__channelIndex);
+
+    /* [EN] Step 3: not charging. A short pause keeps the clock; a pause
+           longer than the gap means the next charge starts from zero.
+       [FA] گام ۳: شارژ نیست. مکث کوتاه ساعت را نگه می‌دارد و مکث بلند
+           ساعت را صفر می‌کند. */
+    if (bool__charging == false)
+    {
+        if (BOOL__G__DeadWasCharging[uint8_t__channelIndex] != false)
+        {
+            BOOL__G__DeadWasCharging[uint8_t__channelIndex] = false;
+            UINT32_T__G__DeadPauseTick[uint8_t__channelIndex] = uint32_t__nowTick;
+        }
+        else if (func__Rtos_TicksToMilliseconds(
+                     uint32_t__nowTick - UINT32_T__G__DeadPauseTick[uint8_t__channelIndex]) >=
+                 uint32_t__gapMs)
+        {
+            UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = 0u;
+        }
+        else
+        {
+            /* [EN] Short pause: hold the clock. / مکث کوتاه: ساعت می‌ماند. */
+        }
+        return;
+    }
+
+    /* [EN] Step 4: charging. Add the time since the previous charging pass.
+       [FA] گام ۴: در حال شارژ؛ زمان از پاس قبلی اضافه می‌شود. */
+    if (BOOL__G__DeadWasCharging[uint8_t__channelIndex] == false)
+    {
+        BOOL__G__DeadWasCharging[uint8_t__channelIndex] = true;
+        UINT32_T__G__DeadLastTick[uint8_t__channelIndex] = uint32_t__nowTick;
+        return;
+    }
+
+    uint32_t__stepMs = func__Rtos_TicksToMilliseconds(
+        uint32_t__nowTick - UINT32_T__G__DeadLastTick[uint8_t__channelIndex]);
+    UINT32_T__G__DeadLastTick[uint8_t__channelIndex] = uint32_t__nowTick;
+
+    if ((UINT32_MAX - UINT32_T__G__DeadChargeMs[uint8_t__channelIndex]) > uint32_t__stepMs)
+    {
+        UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] += uint32_t__stepMs;
+    }
+
+    /* [EN] Step 5: the verdict. 24 h of charging without one FLOAT is a
+           battery that will not take a charge any more.
+       [FA] گام ۵: قضاوت؛ ۲۴ ساعت شارژ بدون یک‌بار رسیدن به FLOAT یعنی
+           باتری دیگر شارژ نمی‌پذیرد. */
+    if (UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] >= uint32_t__timeoutMs)
+    {
+        uint32_t uint32_t__bit = (uint32_t)1u << uint8_t__channelIndex;
+
+        if ((UINT32_T__G__DeadMask & uint32_t__bit) == 0u)
+        {
+            UINT32_T__G__DeadMask |= uint32_t__bit;
+            BOOL__G__DeadPersist   = true;
+        }
+    }
+}
+
+uint8_t func__Charger_DeadMask(void)
+{
+    return (uint8_t)(UINT32_T__G__DeadMask & 0x03u);
+}
+
+uint32_t func__Charger_DeadElapsedSeconds(void)
+{
+    uint32_t uint32_t__longestMs;
+
+    uint32_t__longestMs = UINT32_T__G__DeadChargeMs[0];
+    if (UINT32_T__G__DeadChargeMs[1] > uint32_t__longestMs)
+    {
+        uint32_t__longestMs = UINT32_T__G__DeadChargeMs[1];
+    }
+
+    return (uint32_t__longestMs / 1000u);
+}
+
+bool func__Charger_DeadBlocksOutput(void)
+{
+    return ((UINT32_T__G__DeadParam[2] != 0u) &&
+            ((UINT32_T__G__DeadMask & 0x03u) != 0u));
+}
+
+bool func__Charger_DeadTakePersistFlag(void)
+{
+    bool bool__pending;
+
+    bool__pending = BOOL__G__DeadPersist;
+    BOOL__G__DeadPersist = false;
+
+    return bool__pending;
+}
+
+bool func__Charger_SetDeadParam(uint8_t uint8_t__paramId,
+                                uint32_t uint32_t__value,
+                                uint32_t *uint32_t__appliedValue)
+{
+    uint32_t uint32_t__applied;
+    uint8_t  uint8_t__index;
+
+    if (uint8_t__paramId == CHG_DEAD_SLOT_MASK_ID)
+    {
+        /* [EN] NVM boot replay of the latched verdict. [FA] پخش قفل از NVM. */
+        uint32_t__applied = (uint32_t__value & 0x03u);
+        UINT32_T__G__DeadMask = uint32_t__applied;
+        if (uint32_t__appliedValue != NULL)
+        {
+            *uint32_t__appliedValue = uint32_t__applied;
+        }
+        return true;
+    }
+
+    if (CHG_DEAD_PARAM_OWNS(uint8_t__paramId) == false)
+    {
+        return false;
+    }
+
+    uint8_t__index = (uint8_t)(uint8_t__paramId - CHG_DEAD_PARAM_FIRST_ID);
+    uint32_t__applied = uint32_t__value;
+
+    if (uint32_t__applied < CHARGER_DEAD_DEF_T__A__DeadDefs[uint8_t__index].uint32_t__min)
+    {
+        uint32_t__applied = CHARGER_DEAD_DEF_T__A__DeadDefs[uint8_t__index].uint32_t__min;
+    }
+    if (uint32_t__applied > CHARGER_DEAD_DEF_T__A__DeadDefs[uint8_t__index].uint32_t__max)
+    {
+        uint32_t__applied = CHARGER_DEAD_DEF_T__A__DeadDefs[uint8_t__index].uint32_t__max;
+    }
+
+    UINT32_T__G__DeadParam[uint8_t__index] = uint32_t__applied;
+
+    if (uint32_t__appliedValue != NULL)
+    {
+        *uint32_t__appliedValue = uint32_t__applied;
+    }
+
+    return true;
+}
+
+bool func__Charger_GetDeadParam(uint8_t uint8_t__paramId,
+                                uint32_t *uint32_t__value)
+{
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
+    if (uint8_t__paramId == CHG_DEAD_SLOT_MASK_ID)
+    {
+        *uint32_t__value = (UINT32_T__G__DeadMask & 0x03u);
+        return true;
+    }
+
+    if (CHG_DEAD_PARAM_OWNS(uint8_t__paramId) == false)
+    {
+        return false;
+    }
+
+    *uint32_t__value =
+        UINT32_T__G__DeadParam[(uint8_t)(uint8_t__paramId - CHG_DEAD_PARAM_FIRST_ID)];
+
+    return true;
+}
+
 void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap,
                             app_state_t app_state_t__state)
 {
@@ -2685,6 +2970,11 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                     continue;
                 }
             }
+
+            /* [EN] Scenario 7 runs before the drive of this pass so the
+               verdict of this very tick is visible to the gate below.
+               [FA] سناریوی ۷ قبل از درایو همین پاس اجرا می‌شود. */
+            func__Charger_DeadBatteryTick(uint8_t__channelIndex, uint32_t__nowTick);
 
             if (BOOL__G__ChargerManualModeActive != false)
             {

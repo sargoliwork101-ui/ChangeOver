@@ -197,6 +197,7 @@ void func__Imbalance_Init(void)
     IMBAL_OUTPUTS_T__G__Last.bool__blockOutput      = false;
     IMBAL_OUTPUTS_T__G__Last.bool__chargingAllowed  = true;
     IMBAL_OUTPUTS_T__G__Last.bool__beepDue          = false;
+    IMBAL_OUTPUTS_T__G__Last.bool__halvesMismatch   = false;
 }
 
 void func__Imbalance_GetOutputs(imbalance_outputs_t *imbalance_outputs_t__outputs)
@@ -216,6 +217,7 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
     bool     bool__windowOpen;
     uint32_t uint32_t__activeLimitMv;
     bool     bool__charging;
+    bool     bool__sameState;
     bool     bool__justLatched;
 
     bool__persistChanged = false;
@@ -260,6 +262,13 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
 
     /* ---- charge-session edges (start/end + latched cycle counting) ---- */
     bool__charging = imbalance_inputs_t__inputs->bool__charging;
+
+    /* [EN] v1.72 (user order): comparable only when both halves are in the
+           same state. One charging and one resting is a charger-made
+           difference, never an imbalance verdict.
+       [FA] فقط وقتی قابل مقایسه‌اند که هر دو نیم هم‌حالت باشند. */
+    bool__sameState = (imbalance_inputs_t__inputs->bool__chargingCh1 ==
+                       imbalance_inputs_t__inputs->bool__chargingCh2);
 
     if ((bool__charging == true) && (BOOL__G__PrevCharging == false))
     {
@@ -381,6 +390,15 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
         }
     }
 
+    /* [EN] v1.72: halves out of step - shut the window and drop the
+           stability timer, so nothing counts while they are incomparable.
+       [FA] دو نیم هم‌حالت نیستند: پنجره بسته و تایمر پایداری صفر. */
+    if (bool__sameState == false)
+    {
+        bool__windowOpen = false;
+        BOOL__G__OverTiming = false;
+    }
+
     /* ---- episode detection (stability + hysteresis) ---- */
     if (bool__windowOpen == true)
     {
@@ -485,6 +503,7 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
     }
 
     /* ---- outputs / خروجی‌ها ---- */
+    IMBAL_OUTPUTS_T__G__Last.bool__halvesMismatch    = (bool__sameState == false);
     IMBAL_OUTPUTS_T__G__Last.uint32_t__imbalanceMv   = uint32_t__imbalanceMv;
     IMBAL_OUTPUTS_T__G__Last.bool__episode           = BOOL__G__Episode;
     IMBAL_OUTPUTS_T__G__Last.uint32_t__events        = UINT32_T__G__Events;

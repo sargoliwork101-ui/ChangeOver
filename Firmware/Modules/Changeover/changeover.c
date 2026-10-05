@@ -21,6 +21,10 @@
 #include "imbalance.h"
 #endif
 
+#if MODULE_CHARGER
+#include "charger.h"
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -164,6 +168,27 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     }
 #endif
 
+#if MODULE_CHARGER
+    /* [EN] v1.72 scenario 7 output veto (user order: "declare the battery
+          faulty ... and charge it no more until the battery is replaced,
+          like the imbalance case"): with the dead-battery verdict latched
+          AND param 127 on, a condemned pack never reaches the output
+          either - same handling as the imbalance veto right above.
+       [FA] وتوی خروجی سناریوی ۷: باتری خرابِ قفل‌شده با تیک ۱۲۷ هرگز روی
+          خروجی نمی‌رود؛ دقیقاً مثل وتوی عدم‌توازن بالا. */
+    if (func__Charger_DeadBlocksOutput() != false)
+    {
+        if (BOOL__G__ChangeoverProtectAsserted == false)
+        {
+            func__BspGpio_Write(BSP_GPIO_PROTECT_BATTERY, true);
+            BOOL__G__ChangeoverProtectAsserted = true;
+        }
+        APP_STATE_T__G__State = APP_STATE_SAFE;
+        BOOL__G__CutTimerActive = false;
+        BOOL__G__ReconnectTimerActive = false;
+        return APP_STATE_T__G__State;
+    }
+#endif
 
     /* [EN] Guard: if Rtos tick conversion yields zero ticks (e.g., tick freq 0),
           do not perform immediate cut/reconnect; preserve state and PB11, reset timers.

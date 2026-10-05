@@ -378,6 +378,18 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                                                 uint32_t__appliedValue);
             }
 #endif
+#if MODULE_CHARGER
+            /* [EN] v1.72 scenario 7 (dead battery), ids 125..127 + runtime
+                    slot 203 (NVM boot replay of the latch mask).
+               [FA] سناریوی ۷ باتری خراب، ۱۲۵..۱۲۷ + اسلات ۲۰۳. */
+            if (CHG_DEAD_PARAM_OWNS(uint8_t__paramId) ||
+                (uint8_t__paramId == CHG_DEAD_SLOT_MASK_ID))
+            {
+                return func__Charger_SetDeadParam(uint8_t__paramId,
+                                                  uint32_t__value,
+                                                  uint32_t__appliedValue);
+            }
+#endif
             return false;
     }
 }
@@ -557,6 +569,16 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
             {
                 return func__Imbalance_GetParam(uint8_t__paramId,
                                                 uint32_t__value);
+            }
+#endif
+#if MODULE_CHARGER
+            /* [EN] v1.72 scenario 7 live read, ids 125..127 + slot 203.
+               [FA] خواندن زندهٔ سناریوی ۷ + اسلات ۲۰۳. */
+            if (CHG_DEAD_PARAM_OWNS(uint8_t__paramId) ||
+                (uint8_t__paramId == CHG_DEAD_SLOT_MASK_ID))
+            {
+                return func__Charger_GetDeadParam(uint8_t__paramId,
+                                                  uint32_t__value);
             }
 #endif
             return false;
@@ -1041,6 +1063,23 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
     }
 #else
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
+#endif
+
+    /* [EN] v1.72 scenario 7 live block (appended after the imbalance block,
+     *      again at the very end so no earlier index moves): the latched
+     *      dead-battery channel mask (bit0 = ch1, bit1 = ch2) and the longest
+     *      continuous charge time in seconds, which the panel draws as the
+     *      progress toward the 24 h verdict.
+     * [FA] بلوک زندهٔ سناریوی ۷: ماسک قفل باتری خراب و بیشینهٔ زمان شارژ
+     *      پیوسته برحسب ثانیه (نمایش پیشرفت تا ۲۴ ساعت در پنل). */
+#if MODULE_CHARGER
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         func__Charger_DeadMask());
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         func__Charger_DeadElapsedSeconds());
+#else
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
 #endif

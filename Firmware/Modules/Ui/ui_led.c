@@ -1400,6 +1400,58 @@ void func__Ui_ScenarioImbalance_Tick(void)
 }
 #endif
 
+/* ==================== Scenario DeadBattery / سناریوی باتری خراب ==================== */
+
+#if MODULE_CHARGER
+/**
+ * @brief  [EN] v1.72 scenario 7 face (user order: "if it has not charged
+ *              after 24 continuous hours we must raise an error that the
+ *              battery is faulty, with a red LED, and charge it no more
+ *              until the battery is replaced"). SOLID red - unlike the
+ *              imbalance latch this verdict is deliberately not blinking,
+ *              so the two condemned-battery faces stay distinguishable on
+ *              the same single red lamp. The audible side reuses the
+ *              imbalance latch beep shape (ids 115/116) so there is one
+ *              "condemned battery" sound in the product, not two.
+ *         [FA] چهرهٔ سناریوی ۷: قرمزِ ثابت (برخلاف چشمکِ قفل عدم‌توازن تا دو
+ *              چهره روی یک لامپ قرمز قابل تفکیک بمانند) و بوقِ همان قفل.
+ */
+void func__Ui_ScenarioDeadBattery_Tick(void)
+{
+    uint32_t uint32_t__beepPeriodMs = 0u;
+
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
+    func__Ui_ResetChargingYellowBlink();
+
+    func__green(false);
+    func__yellow(false);
+    func__red(true);
+
+#if MODULE_IMBALANCE
+    (void)func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_PERIOD_MS, &uint32_t__beepPeriodMs);
+#endif
+    if (uint32_t__beepPeriodMs != 0u)
+    {
+        uint32_t uint32_t__beepLenMs = 0u;
+
+#if MODULE_IMBALANCE
+        uint32_t__beepLenMs = IMBAL_DEF_BEEP_LEN_MS;
+        (void)func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_LEN_MS, &uint32_t__beepLenMs);
+#endif
+        (void)func__Ui_Buzzer_Gated(
+            uint32_t__beepPeriodMs,
+            func__Ui_BeepDutyPercent(uint32_t__beepPeriodMs, uint32_t__beepLenMs, 1u, 0u),
+            1u,
+            0u);
+    }
+    else
+    {
+        (void)func__Ui_Buzzer_Tick(0u, 0u, 0u, 0u);
+    }
+}
+#endif
+
 /* ==================== Scenario InputOk / سناریوی ورودی عادی ==================== */
 
 /**
@@ -1750,6 +1802,18 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
     if ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)
     {
         func__Ui_ScenarioBatLost_Tick();
+        return;
+    }
+#endif
+
+#if MODULE_CHARGER
+    /* [EN] v1.72 dead-battery latch, priority 3 (just above the imbalance
+          latch: a pack that never takes charge is the harder verdict and
+          must own the lamp). Solid red until the battery is swapped.
+       [FA] قفل باتری خراب، اولویت سوم - قرمز ثابت تا تعویض باتری. */
+    if (func__Charger_DeadMask() != 0u)
+    {
+        func__Ui_ScenarioDeadBattery_Tick();
         return;
     }
 #endif

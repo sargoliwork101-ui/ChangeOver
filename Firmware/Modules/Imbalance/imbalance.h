@@ -236,6 +236,16 @@ typedef struct
     bool     bool__valid;            /* [EN] Measurements trustworthy / نمونه معتبر */
     bool     bool__batAbsent;        /* [EN] Battery absent / باتری نیست */
     bool     bool__charging;         /* [EN] Any charger channel active / در شارژ */
+    /* [EN] v1.72 (user order): the two halves may only be compared when they
+       are in the SAME state. One half charging while the other rests lifts
+       the charging half by its own charge voltage, and that difference is
+       the charger talking, not an imbalance. The caller passes the state of
+       each channel; when they disagree the evaluation window stays shut.
+       [FA] دو نیم فقط وقتی قابل مقایسه‌اند که در یک حالت باشند. اگر یکی
+       شارژ شود و دیگری استراحت کند، اختلافِ دیده‌شده کارِ شارژر است نه
+       عدم‌توازن؛ پس پنجرهٔ ارزیابی بسته می‌ماند. */
+    bool     bool__chargingCh1;      /* [EN] Charger 1 active / شارژ کانال ۱ */
+    bool     bool__chargingCh2;      /* [EN] Charger 2 active / شارژ کانال ۲ */
     bool     bool__onBattery;        /* [EN] Output runs on battery / خروجی روی باتری */
 } imbalance_inputs_t;
 
@@ -251,6 +261,7 @@ typedef struct
     bool     bool__blockOutput;      /* [EN] Changeover veto: keep battery off / وتوی خروجی */
     bool     bool__chargingAllowed;  /* [EN] Charger gate: false = no charge / گیت شارژ */
     bool     bool__beepDue;          /* [EN] One-shot pulse: beep now / پالس بوق */
+    bool     bool__halvesMismatch;   /* [EN] v1.72: halves in different states, not comparable / دو نیم هم‌حالت نیستند */
 } imbalance_outputs_t;
 
 /* ==================== Functions / توابع ==================== */

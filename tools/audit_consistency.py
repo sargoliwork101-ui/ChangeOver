@@ -221,9 +221,26 @@ def sec_counts():
     ok(not re.search(r"id < \d", prev_live),
        "preview server still has a hard-coded id bound")
 
-    ok(define(NVM_H, "ESP_LINK_NVM_ENTRY_MAX") >= COUNT,
-       "NVM ENTRY_MAX smaller than COUNT",
-       f"{define(NVM_H, 'ESP_LINK_NVM_ENTRY_MAX')} < {COUNT}")
+    # [EN] v1.72: the cap no longer has to beat COUNT - it has to beat the
+    #      set that is actually persisted, which is what the _Static_assert in
+    #      esp_link_nvm.c computes: 0..MAX_LOW, MIN_HIGH..MAX_HIGH minus the
+    #      transient mute id, plus the runtime slots. With scenario 7 the two
+    #      numbers finally differ (126 persisted vs COUNT 128, because ids
+    #      15..19 and 76 never survive a reboot), so comparing against COUNT
+    #      would demand a second flash page for entries nothing writes.
+    # [FA] سقف باید از «مجموعهٔ واقعاً ذخیره‌شونده» بزرگ‌تر باشد نه از COUNT؛
+    #      شناسه‌های گذرا (۱۵..۱۹ و ۷۶) هرگز ذخیره نمی‌شوند.
+    persisted = ((define(NVM_H, "ESP_LINK_NVM_PERSISTED_ID_MAX_LOW") + 1) +
+                 (define(NVM_H, "ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH") -
+                  define(NVM_H, "ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH") + 1 - 1) +
+                 (define(NVM_H, "ESP_LINK_NVM_SLOT_MAX_ID") -
+                  define(NVM_H, "ESP_LINK_NVM_SLOT_MIN_ID") + 1))
+    ok(define(NVM_H, "ESP_LINK_NVM_ENTRY_MAX") >= persisted,
+       "NVM ENTRY_MAX smaller than the persisted id set",
+       f"{define(NVM_H, 'ESP_LINK_NVM_ENTRY_MAX')} < {persisted}")
+    ok(define(NVM_H, "ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH") == COUNT - 1,
+       "the persisted id window does not reach the last parameter",
+       f"{define(NVM_H, 'ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH')} vs {COUNT - 1}")
 
     # [EN] v1.28: PARAMS_BULK no longer has to fit in ONE frame - 108 params
     #      would need 541 bytes against a 512-byte ceiling. It is chunked, so
@@ -800,9 +817,10 @@ def sec_panel(ids):
         ok(chg_base == imb_base + len(idef),
            "CDEF does not start where IDEF ends",
            f"charge map starts at {chg_base}, imbalance block ends at {imb_base + len(idef) - 1}")
-        ok(len(cdef) == 6,
+        ok(len(cdef) == 9,
            "CDEF must cover the charge map (119/120), band 2's beep shape "
-           "(121/122) and the imbalance latch blink (123/124, v1.68)",
+           "(121/122), the imbalance latch blink (123/124, v1.68) and the "
+           "dead-battery scenario 7 (125..127, v1.72)",
            f"CDEF has {len(cdef)} entries")
         top = chg_base + len(cdef) - 1
         ok(hi == top, "AIDS upper bound != the top real id",

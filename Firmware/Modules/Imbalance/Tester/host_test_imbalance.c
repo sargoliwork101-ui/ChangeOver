@@ -262,6 +262,37 @@ int main(void)
     func__Run(631000u, true);                           /* +30 s stability: count */
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
 
+    /* ---- v1.72: halves in different states are NOT comparable ----
+       [EN] User order: "in the imbalance error both batteries must be in the
+            same state - if one is charging and the other is resting they must
+            not be compared". Same scenario as the block right above, but with
+            channel 1 charging and channel 2 resting: the window must stay shut
+            for ever, so no event is ever counted.
+       [FA] دستور کاربر: دو نیم باید هم‌حالت باشند؛ یکی در شارژ و یکی در
+            استراحت هرگز مقایسه نمی‌شوند - پس هیچ رویدادی شمرده نمی‌شود. */
+    func__Imbalance_Init();
+    CHECK(func__Imbalance_SetParam(200u, 0u, NULL));
+    IMBAL_INPUTS_T__G__In.bool__onBattery   = false;
+    IMBAL_INPUTS_T__G__In.bool__charging    = true;
+    IMBAL_INPUTS_T__G__In.bool__chargingCh1 = true;
+    IMBAL_INPUTS_T__G__In.bool__chargingCh2 = false;
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 13000u;   /* 1000 mV, far over the limit */
+    for (uint32_t__t = 1000u; uint32_t__t <= 1200000u; uint32_t__t += 1000u)
+    {
+        func__Run(uint32_t__t, false);
+        CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
+        CHECK(IMBAL_OUTPUTS_T__G__Out.bool__halvesMismatch == true);
+    }
+    /* [EN] The moment both halves charge again the window behaves normally:
+            the in-charge wait (600 s) then the 30 s stability still apply.
+       [FA] به‌محض هم‌حالت شدن، همان گیت‌های همیشگی برقرارند. */
+    IMBAL_INPUTS_T__G__In.bool__chargingCh2 = true;
+    func__Run(1201000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__halvesMismatch == false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
+    func__Run(1231000u, true);                          /* +30 s stability: count */
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
+
     printf("checks: %d, fails: %d\n", INT32_T__G__Checks, INT32_T__G__Fails);
     return (INT32_T__G__Fails == 0) ? 0 : 1;
 }

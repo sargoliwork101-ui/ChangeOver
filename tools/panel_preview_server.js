@@ -181,7 +181,11 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            1000, 60000,
            /* v1.68 ids 123..124 = the latched imbalance red lamp's blink
               (user order: the red lamp must blink, not sit solid) */
-           1000, 50];
+           1000, 50,
+           /* v1.72 ids 125..127 = dead-battery scenario 7 (charger.h):
+              continuous-charge deadline, the pause that zeroes the clock,
+              and the output-disconnect checkbox. */
+           86400000, 600000, 0];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -249,6 +253,11 @@ function clampParam(id, v) {
         /* v1.68: latched imbalance red-lamp blink - 0 keeps the old solid red */
         case 123: return v === 0 ? 0 : clampW(v, 100, 10000);
         case 124: return clampW(v, 5, 95);
+        /* v1.72 scenario 7: continuous-charge deadline (0 = off, max 48 h),
+           the pause that zeroes the clock, the output-disconnect checkbox */
+        case 125: return v === 0 ? 0 : clampW(v, 3600000, 172800000);
+        case 126: return clampW(v, 0, 3600000);
+        case 127: return clampW(v, 0, 1);
         /* v1.15 alarms: mirror of Fault_ClampAlarms / Charger_ClampAlarms */
         case 27: { let lo = Math.max(14000, over + 50), hi = Math.min(15000, ov - 100);
                    if (lo > hi) hi = lo; return Math.min(hi, Math.max(lo, v)); }
