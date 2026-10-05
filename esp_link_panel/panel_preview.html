@@ -25,7 +25,7 @@ h1{font-size:17px;font-weight:800;letter-spacing:-.2px;display:flex;align-items:
 h1::before{content:"";width:11px;height:22px;border-radius:6px;background:linear-gradient(180deg,var(--ac2),var(--ac));box-shadow:0 0 12px rgba(91,157,255,.55)}
 .lk{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mu);background:var(--cd);border:1px solid var(--ln);border-radius:999px;padding:5px 12px 5px 8px}
 .lk i{width:9px;height:9px;border-radius:50%;background:var(--er);box-shadow:0 0 8px var(--er)}.lk.on i{background:var(--ok);box-shadow:0 0 8px var(--ok)}
-nav{display:flex;gap:4px;background:var(--cd);border:1px solid var(--ln);border-radius:14px;padding:5px;position:sticky;top:55px;z-index:55;margin-bottom:14px;box-shadow:var(--sh)}
+nav{display:flex;gap:4px;background:var(--cd);border:1px solid var(--ln);border-radius:14px;padding:5px;position:sticky;top:var(--t-nav,55px);z-index:55;margin-bottom:14px;box-shadow:var(--sh)}
 nav button{flex:1;border:0;background:none;border-radius:10px;padding:9px 8px;color:var(--mu);font-weight:600;transition:background .15s,color .15s}
 nav button:hover{color:var(--tx);background:rgba(255,255,255,.04)}
 nav button.a{background:linear-gradient(180deg,#24406e,#1b3358);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 2px 8px rgba(0,0,0,.4)}
@@ -140,7 +140,7 @@ canvas{width:100%;height:160px;display:block;background:var(--in);border:1px sol
 .cb.lo{background:var(--in);color:var(--mu);border-color:var(--ln)}.cb:disabled{opacity:.45;cursor:default}
 .cm{margin-top:10px;min-height:1.6em}.cm.g{color:var(--ok)}.cm.r{color:var(--er)}.wr{color:var(--wa)}
 body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
-.bsb{position:sticky;top:113px;z-index:54;border-color:#6b5206}.bqr2{display:flex;gap:8px;margin-top:12px}
+.bsb{position:sticky;top:var(--t-sub,113px);z-index:54;border-color:#6b5206}.bqr2{display:flex;gap:8px;margin-top:12px}
 .bctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
 .tw{overflow:auto;max-height:420px;margin:6px 0 10px;border:1px solid var(--ln);border-radius:12px}.bt2{font-size:12px;direction:ltr;white-space:nowrap}.bt2 th{position:sticky;top:0;background:var(--rs);color:var(--mu);font-weight:600;text-align:left;padding:6px 8px}.bt2 td{padding:5px 8px;text-align:left}
 .bt3{width:auto;font-size:13px}.bt3 th{color:var(--mu);font-weight:600;text-align:right;padding:5px 8px;white-space:nowrap}.bt3 td{padding:5px 8px;text-align:right}.bt3 input[type=number]{padding:6px 8px}
@@ -190,8 +190,11 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 /* [EN] v1.57 (user order): the scenario bar sticks right under the top bar
    and stays visible while scrolling. [FA] نوار سناریوها زیر نوار بالایی
    می‌چسبد و هنگام اسکرول همیشه دیده می‌شود. */
-.sbt{position:sticky;top:113px;z-index:54;flex-wrap:wrap;display:flex;gap:4px;background:var(--bg,#090c12);border:1px solid var(--ln);border-radius:12px;padding:4px;margin-bottom:12px}
-#sbt{position:sticky;top:113px;z-index:53}
+.sbt{position:sticky;top:var(--t-sub,113px);z-index:54;flex-wrap:wrap;display:flex;gap:4px;background:var(--bg,#090c12);border:1px solid var(--ln);border-radius:12px;padding:4px;margin-bottom:12px}
+#sbt{position:sticky;top:var(--t-sub,113px);z-index:54}
+/* [FA] نوار کارت‌های سناریو یک طبقه پایین‌تر از نوار «شارژ و PID…» می‌چسبد،
+   نه رویش: قبلاً هر دو روی ۱۱۳px بودند و این یکی آن یکی را می‌پوشاند. */
+#usel{position:sticky;top:var(--t-sub2,160px);z-index:52}
 .sbt button{flex:1;border:0;background:none;border-radius:8px;padding:8px 6px;color:var(--mu);font-weight:700;transition:background .15s,color .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sbt button:hover{color:var(--tx)}.sbt button.a{background:linear-gradient(180deg,#24406e,#1b3358);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
 .sgx{display:none}.sgx.a{display:block}
@@ -375,7 +378,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build ebfbb1c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 178cc15</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -804,7 +807,7 @@ window.addEventListener('DOMContentLoaded', function(){
 </div>
 <div class="sgx" id="s4">
 <div class="cd">
-<div class="hd"><b>پشتیبان‌گیری همهٔ تنظیمات</b> <button class="ib" data-p="76" onclick="this.classList.toggle('o')">!<span class="it">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد (کالیبراسیون، فیلتر، فعال‌سازی/سقف‌ها، profile، آلارم‌ها، سناریوها) را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). گذراها (۱۵..۱۹ و میوت ۷۶) جزو پشتیبان نیستند. ضرایب PID دوحلقه‌ای (۸۳..۹۲) و از v1.28 حدها و گین‌های پشتیبان (۹۳..۱۰۷) هم در همین فایل می‌آیند — فهرست از خود شناسه‌ها ساخته می‌شود، پس هر پارامتر تازه‌ای خودبه‌خود پشتیبان می‌گیرد.</span></button><span class="lb">· یک بکاپ برای کل بخش تنظیمات — خروجی/ورودی JSON ۱۱۳ مقدار ماندگار (۰..۱۴، ۲۰..۷۵، ۷۷..۱۱۸) — شامل PID، حدها و عدم‌توازن</span></div>
+<div class="hd"><b>پشتیبان‌گیری همهٔ تنظیمات</b> <button class="ib" data-p="76" onclick="this.classList.toggle('o')">!<span class="it">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد (کالیبراسیون، فیلتر، فعال‌سازی/سقف‌ها، profile، آلارم‌ها، سناریوها) را در یک فایل JSON ذخیره می‌کند. ورودی همان فایل را می‌خواند و مقدارها را یکی‌یکی روی برد اعمال می‌کند (با تأیید شما؛ برد هر مقدار را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). گذراها (۱۵..۱۹ و میوت ۷۶) جزو پشتیبان نیستند. ضرایب PID دوحلقه‌ای (۸۳..۹۲) و از v1.28 حدها و گین‌های پشتیبان (۹۳..۱۰۷) هم در همین فایل می‌آیند — فهرست از خود شناسه‌ها ساخته می‌شود، پس هر پارامتر تازه‌ای خودبه‌خود پشتیبان می‌گیرد.</span></button></div>
 <div class="bqr">
 <button class="sb sb2" onclick="xexp()">⬇ خروجی (دانلود JSON)</button>
 <label class="sb" style="cursor:pointer">⬆ ورودی (انتخاب فایل)<input type="file" id="xim" accept=".json,application/json" style="display:none"></label>
@@ -994,10 +997,27 @@ function chart(){[0,1].forEach(ci=>{const c=$('cv'+(ci+1)),w=c.clientWidth,h=c.c
  x.fillStyle='#96a1b8';x.font='11px Vazirmatn,sans-serif';x.fillText(Math.round(hi)+' mA',8,16);x.fillText(Math.round(lo)+' mA',8,h-10);
  ln(s.u,'#6b7691',1);ln(s.f,'#63a2ff',2);const pp=A=>{const B=A.slice(-50);return Math.max(...B)-Math.min(...B);};$('pu'+(ci+1)).textContent=pp(s.u);$('pf'+(ci+1)).textContent=pp(s.f);});}
 /* تعویض تب: پنل و داده‌برداری بنچ */
-let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=+b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i==TAB));if(D)draw(D);});
+/* [EN] The sticky bars used to carry hard-coded offsets (55px / 113px), so the
+   scenario-card bar landed on the SAME line as the section bar above it and
+   hid it, and any line wrap (narrow phone, bigger font) broke the rest. The
+   offsets are now measured from the real elements and published as CSS
+   variables, so every bar parks right under the one above it.
+   [FA] نوارهای چسبان قبلاً عدد ثابت داشتند (۵۵ و ۱۱۳ پیکسل)؛ برای همین نوار
+   کارت‌های سناریو دقیقاً روی نوار بالایی می‌نشست و قایمش می‌کرد، و با شکستن
+   خط در صفحهٔ باریک همه‌چیز به‌هم می‌ریخت. حالا ارتفاع واقعی اندازه گرفته و
+   در متغیرهای CSS گذاشته می‌شود تا هر نوار درست زیر نوار بالایی بچسبد. */
+function stickfit(){
+ const r=document.documentElement.style,
+  h=document.querySelector('header'),n=document.querySelector('nav'),
+  sb=$('sbt'),H=h?h.offsetHeight:0,N=n?n.offsetHeight:0,S=sb?sb.offsetHeight:0;
+ r.setProperty('--t-nav',H+'px');
+ r.setProperty('--t-sub',(H+N+6)+'px');
+ r.setProperty('--t-sub2',(H+N+S+10)+'px');}
+addEventListener('resize',stickfit);addEventListener('load',stickfit);
+let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=+b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i==TAB));stickfit();if(D)draw(D);});
 /* v1.15b: زیرتب داخل تنظیمات — v1.42 (دستور کاربر: پشتیبان‌گیری آخرین زیرتب): ۰=شارژ و PID، ۱=سناریوها، ۲=نظارت و ایمنی، ۳=کالیبراسیون و فیلتر جریان، ۴=پشتیبان‌گیری */
-let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{STAB=+b.dataset.s;document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i==STAB));if(D)draw(D);});
-let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=6;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));}
+let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{STAB=+b.dataset.s;document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i==STAB));stickfit();if(D)draw(D);});
+let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=6;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();}
 document.querySelectorAll('#usel button').forEach(b=>b.onclick=()=>usel(+b.dataset.u));
 $('mx').onclick=()=>send(19,0);
 {const b6=$('ib117');if(b6)b6.onclick=()=>{const v=(D&&D.p[117]===0)?1:0;send(117,v);};}
@@ -1484,11 +1504,12 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
    grp('۲ · ترمز اضطراری و حاشیهٔ امن — نگهبان‌هایی بالای PID، عمداً از او جدا',EVCG.slice(3))+
    grp('۳ · تصمیم‌های زمانی — چه زمانی چه اتفاقی بیفتد',EVCT);});
 
- /* نگهبان: هشدار بالای نمودار + قرمزکردن فیلد مقصر */
+ /* [FA] v1.69 (دستور کاربر): بنر «ترکیب نامعتبر — برد این‌ها را گیره می‌زند»
+    حذف شد. از v1.56 برد اصلاً ترکیب‌ها را بررسی نمی‌کند؛ خود پنل پیش از ارسال
+    اعداد را جور می‌کند و هر تغییری را در خط وضعیت گزارش می‌دهد، پس آن بنر هم
+    نادرست بود و هم فقط شلوغی. فقط حاشیهٔ قرمز فیلد مقصر می‌ماند. */
  const w=qchk();
- document.querySelectorAll('.qwm').forEach(we=>{
-  we.innerHTML=w.length?('⚠ ترکیب نامعتبر — برد این‌ها را گیره می‌زند: '+w.map(x=>x.msg).join('؛ ')):'';
-  we.style.cssText=w.length?'margin:2px 0 6px;color:#fc8086;font-size:12.5px;line-height:1.9':'margin:2px 0 0';});
+ document.querySelectorAll('.qwm').forEach(we=>{we.innerHTML='';we.style.cssText='margin:2px 0 0';});
 }
 /* [EN] bind the profile inputs: on change, POST /s (fire-and-forget; the ack span next to the field shows the APPLIED value reported by the STM32). v1.14d: a typed value that breaks the profile rules asks for confirmation first, because the board will clamp it. / اتصال ورودی‌های profile: با تغییر، POST /s؛ نشانگر کنار فیلد مقدار «اعمال‌شده» را از STM32 نشان می‌دهد. v1.14d: مقدار ناسازگار قبل از ارسال تأیید می‌خواهد چون برد گیره‌اش می‌زند. */
 for(const id of [7,8]){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;
@@ -1598,8 +1619,9 @@ function achk(){const a=ap(),w=[],bad=(v,lo,hi)=>!(v>=lo&&v<=hi);
  if(bad(a.u82,0,100))w.push({ids:[82],msg:'خروج از ۱٪ باید ۰..۱۰۰ باشد'});
  return w;}
 function afresh(){const w=achk();
- const wset=(el,l)=>{if(!el)return;el.innerHTML=l.length?('⚠ ترکیب نامعتبر — برد این‌ها را گیره می‌زند: '+l.map(x=>x.msg).join('؛ ')):'';el.style.cssText=l.length?'margin:2px 0 6px;color:#fc8086;font-size:12.5px;line-height:1.9':'margin:2px 0 0';};
- wset($('aw'),w.filter(x=>x.ids.some(i=>i<38)));wset($('aw2'),w.filter(x=>x.ids.some(i=>i>=38)));
+ /* [FA] v1.69 (دستور کاربر): همان بنر در تب تنظیمات هم حذف شد؛ دلیلش بالاتر
+    در qchk آمده. فقط فیلد مقصر قرمز می‌شود. */
+ [$('aw'),$('aw2')].forEach(el=>{if(el){el.innerHTML='';el.style.cssText='margin:2px 0 0';}});
  for(const id of AIDS){const ne=$('q'+id);if(ne)ne.style.borderColor=w.some(x=>x.ids.includes(id))?'#e5484d':'';}
  try{c4();sall();}catch(e){}
  const ms=$('xmuteS');if(ms)ms.textContent=(D&&D.p&&D.p[76]===1)?'🔇 میوت روشن — موقتی، با ریست برد پاک می‌شود؛ LEDها همچنان چشمک می‌زنند':'🔊 بوق روشن';}

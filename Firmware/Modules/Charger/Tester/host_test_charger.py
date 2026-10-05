@@ -1492,9 +1492,29 @@ def test_charger_persistence_v114():
           "document.querySelectorAll('.qwm').forEach" in ino and
           'function qchk()' in ino and
           'q.o.d' in ino and 'q.r.d' in ino and 'pvln(q.o' in ino and
-          'const LL=[],PL=[]' in ino and 'ترکیب نامعتبر' in ino and
+          'const LL=[],PL=[]' in ino and
           'باز هم ارسال شود؟' in ino and 'نگهبان ترکیب' in ino,
-          "v1.14d (user order 2026-09-26, 'stretch the graph downward, the zone borders are cramped; zones must follow the profile numbers and never overlap'): zones drawn from APPLIED values with dashed preview lines for typed values, anti-collision label pass (ZL/LL; v1.39 moved the zone names out of the chart into an external legend, so v1.41 pruned the now-empty ZL list - the pass is PL/LL), and a qchk() guard mirroring Charger_ClampProfile - red warning + red field + confirm-before-send on invalid combos")
+          "v1.14d (user order 2026-09-26, 'stretch the graph downward, the zone borders are cramped; zones must follow the profile numbers and never overlap'): zones drawn from APPLIED values with dashed preview lines for typed values, anti-collision label pass (ZL/LL; v1.39 moved the zone names out of the chart into an external legend, so v1.41 pruned the now-empty ZL list - the pass is PL/LL), and a qchk() guard - red field + confirm-before-send on invalid combos (v1.69 user order: the red BANNER is gone, it claimed the board clamps combinations and the board has not done that since v1.56)")
+
+    # [EN] v1.69 (user order: "what is this message? why should it be there?
+    #      delete this junk"): the cross-field banner must stay deleted. It
+    #      told the operator "the board will clamp these", which stopped
+    #      being true in v1.56 when the joint rules moved into the panel.
+    # [FA] بنر ترکیب نامعتبر حذف شد و باید حذف بماند.
+    for junk in ("ترکیب نامعتبر — برد این‌ها را گیره می‌زند",
+                 "۱۱۳ مقدار ماندگار"):
+        check(junk not in re.sub(r"/\*.*?\*/", " ", ino, flags=re.S),
+              f"the panel must no longer print the deleted text: {junk}")
+
+    # [EN] v1.69: the sticky bars are measured, not hard-coded, and the
+    #      scenario-card bar parks BELOW the section bar instead of on top of
+    #      it (that is what hid the "charger / scenarios / ..." row).
+    # [FA] نوارهای چسبان اندازه‌گیری می‌شوند و نوار کارت‌های سناریو زیر نوار
+    #      بخش‌ها می‌چسبد نه رویش.
+    check("function stickfit()" in ino and "--t-sub2" in ino
+          and "#usel{position:sticky;top:var(--t-sub2" in ino
+          and "top:113px" not in ino,
+          "the scenario bar must stick below the section bar, from measured heights")
     # [EN] The 2026-09-26 order was "at least 50 % taller" (H 560 -> 840); the
     #      2026-09-29 order REVERSES it ("make the height 50 % less, and the
     #      text smaller so it stops overlapping"), so H is 420. What still
@@ -2227,7 +2247,16 @@ def test_ui_mirror_v116():
           "ids 96..107 exist as of v1.28 and the catch-all arm they used to land in did "
           "1UL << (id - 64), which is undefined behaviour past id 95 - the panel's "
           "modulo-32 shift made it look like a mere off-by-one")
-    check("(۰..۱۴، ۲۰..۷۵، ۷۷..۱۱۸)" in ino and "XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26]" in ino,
+    # [EN] v1.69 (user order: "delete this junk"): the human-readable blurb
+    #      that spelled the id ranges out is gone - it had been wrong since
+    #      v1.24 and was stale again at v1.68 (it still said 113 values and
+    #      77..118). What must stay true is the MACHINERY: XIDS derives the
+    #      backup set from AIDS, so a new parameter joins the backup by
+    #      itself and there is no label left to go stale.
+    # [FA] خط توضیح بازه‌ها حذف شد (باز هم کهنه شده بود)؛ آنچه باید بماند خود
+    #      ساز و کار است: XIDS فهرست را از AIDS می‌سازد.
+    check("XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26]" in ino
+          and "AIDS.forEach(id=>{if(id!==76)XIDS.push(id);});" in ino,
           "v1.16c (user order: ONE backup for the whole settings): all persisted ids "
           "0..14 + 20..75 + 77..118 (113 params; slots 200..202 stay board-only). "
           "XIDS extends itself from AIDS, so the limits block "
