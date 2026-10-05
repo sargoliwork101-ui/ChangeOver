@@ -1069,17 +1069,22 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
 
     /* [EN] v1.72 scenario 6 live block (appended after the imbalance block,
      *      again at the very end so no earlier index moves): the latched
-     *      dead-battery channel mask (bit0 = ch1, bit1 = ch2) and the longest
-     *      continuous charge time in seconds, which the panel draws as the
-     *      progress toward the 24 h verdict.
-     * [FA] بلوک زندهٔ سناریوی ۶: ماسک قفل باتری خراب و بیشینهٔ زمان شارژ
-     *      پیوسته برحسب ثانیه (نمایش پیشرفت تا ۲۴ ساعت در پنل). */
+     *      dead-battery channel mask (bit0 = ch1, bit1 = ch2) and the
+     *      continuous charge time of EACH channel in seconds, which the panel
+     *      draws as that battery's progress toward the 24 h verdict.
+     *      v1.76 (user order: "this timer must be counted separately for each
+     *      battery"): the second channel used to be hidden behind a max().
+     * [FA] بلوک زندهٔ سناریوی ۶: ماسک قفل باتری خراب و زمان شارژ پیوستهٔ
+     *      هر کانال به‌صورت جداگانه. */
 #if MODULE_CHARGER
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
                          func__Charger_DeadMask());
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
-                         func__Charger_DeadElapsedSeconds());
+                         func__Charger_DeadElapsedSeconds(0u));
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         func__Charger_DeadElapsedSeconds(1u));
 #else
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
 #endif

@@ -917,8 +917,38 @@ def sec_panel(ids):
                "the C++ sketch uses _Static_assert, which no C++ dialect accepts",
                f"{esp_file}: write static_assert; the board cannot build this")
 
-    sd = re.search(r"function sdef\(\)\{AIDS\.forEach\(\(id,k\)=>\{if\(id<(\d+)\|\|id>(\d+)\)return;", P_PAN)
-    ok(sd is not None, "sdef() lost its id guard")
+    # [EN] v1.76 (user order: one factory key per scenario, the all-in-one key
+    #      removed): every id listed in UDEF must be a real parameter that
+    #      pdflt() can answer for, and no id may sit in two scenarios - a key
+    #      that writes a default nobody printed is exactly the drift this
+    #      audit exists to catch.
+    # [FA] هر شناسهٔ UDEF باید پیش‌فرض داشته باشد و در دو سناریو تکرار نشود.
+    ok("function sdef(" not in P_PAN,
+       "the all-in-one scenario reset button came back",
+       "the user asked for one key per scenario instead")
+    udef = re.search(r"const UDEF=\{(.*?)\};", P_PAN, re.S)
+    ok(udef is not None, "the per-scenario factory key table UDEF is missing")
+    if udef:
+        seen = {}
+        dup = []
+        for card, body in re.findall(r"(\d+):\[([0-9,\s]*)\]", udef.group(1)):
+            for raw in body.split(","):
+                if not raw.strip():
+                    continue
+                pid = int(raw)
+                if pid in seen:
+                    dup.append((pid, seen[pid], card))
+                seen[pid] = card
+        ok(not dup, "one parameter is reset by two scenario keys", str(dup))
+        ok(all(p < COUNT for p in seen),
+           "a scenario key resets an id beyond the parameter count",
+           str(sorted(p for p in seen if p >= COUNT)))
+        ok(not (RETIRED_IDS & set(seen)),
+           "a scenario key still resets a retired id",
+           str(sorted(RETIRED_IDS & set(seen))))
+        for card in ("1", "2", "3", "4", "5", "6"):
+            ok(card in set(seen.values()),
+               f"scenario {card} has no factory key of its own")
 
 
 # ================================================== 5. calibration mirrors

@@ -447,7 +447,11 @@
  *      فیلد انتهایی (۱۰۴/۱۵۸/۱۱۲) بلوک زندهٔ آن. کانال ۱ = Trans1 / باتری
  *      بالا و کانال ۲ = Trans2 / باتری پایین. وضعیت شارژر: 0 OFF تا 8
  *      BAT_LOST. */
-#define ESPLINK_TLM_PAYLOAD_SIZE     124u
+/* [EN] v1.76 (user order: the dead-battery timer must be counted per
+   battery): one more u32 at the end carries charger 2's continuous charge
+   time, so 4 + 31 x 4 = 128 B.
+   [FA] از v1.76 یک u32 دیگر در انتها زمان شارژ کانال ۲ را می‌برد: ۱۲۸ بایت. */
+#define ESPLINK_TLM_PAYLOAD_SIZE     128u
 
 /* ==================== Functions ==================== */
 

@@ -1701,13 +1701,20 @@ bool func__Charger_GetDeadParam(uint8_t uint8_t__paramId,
 uint8_t func__Charger_DeadMask(void);
 
 /**
- * @brief  [EN] Longest continuous charge time of the two channels right now,
- *              in seconds - what the panel shows as progress toward the
- *              24 h verdict.
- *         [FA] بلندترین زمان شارژ پیوستهٔ فعلی بین دو کانال، بر حسب ثانیه.
- * @return uint32_t [EN] seconds / ثانیه
+ * @brief  [EN] Continuous charge time of ONE channel right now, in seconds -
+ *              what the panel shows as that battery's progress toward the
+ *              24 h verdict. v1.76 (user order: "this timer has to be counted
+ *              separately for each battery"): the clock was always per channel
+ *              inside this module, but only the larger of the two left the
+ *              board, so the panel could not tell the two batteries apart.
+ *              Each channel is now reported on its own.
+ *         [FA] زمان شارژ پیوستهٔ همین کانال بر حسب ثانیه. شمارش از ابتدا هم
+ *              جداگانه بود، ولی فقط بزرگ‌ترین مقدار از برد بیرون می‌رفت؛
+ *              حالا هر کانال جدا گزارش می‌شود.
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / شمارهٔ کانال
+ * @return uint32_t [EN] seconds, 0 when the index is out of range / ثانیه
  */
-uint32_t func__Charger_DeadElapsedSeconds(void);
+uint32_t func__Charger_DeadElapsedSeconds(uint8_t uint8_t__channelIndex);
 
 /**
  * @brief  [EN] True when a latched dead verdict must also keep the battery

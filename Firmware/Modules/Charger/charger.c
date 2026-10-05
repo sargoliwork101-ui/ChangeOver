@@ -2518,17 +2518,15 @@ uint8_t func__Charger_DeadMask(void)
     return (uint8_t)(UINT32_T__G__DeadMask & 0x03u);
 }
 
-uint32_t func__Charger_DeadElapsedSeconds(void)
+uint32_t func__Charger_DeadElapsedSeconds(uint8_t uint8_t__channelIndex)
 {
-    uint32_t uint32_t__longestMs;
-
-    uint32_t__longestMs = UINT32_T__G__DeadChargeMs[0];
-    if (UINT32_T__G__DeadChargeMs[1] > uint32_t__longestMs)
+    if (uint8_t__channelIndex >=
+        (uint8_t)(sizeof(UINT32_T__G__DeadChargeMs) / sizeof(UINT32_T__G__DeadChargeMs[0])))
     {
-        uint32_t__longestMs = UINT32_T__G__DeadChargeMs[1];
+        return 0u;
     }
 
-    return (uint32_t__longestMs / 1000u);
+    return (UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] / 1000u);
 }
 
 bool func__Charger_DeadBlocksOutput(void)

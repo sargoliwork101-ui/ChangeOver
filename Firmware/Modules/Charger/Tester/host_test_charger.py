@@ -2070,9 +2070,9 @@ def test_alarms_tab_v115():
           and all(f'id="a{i}"' in ino for i in range(27, 38)),
           "the supervision sub-tab (s2) must hold the eleven alarm inputs q27..q37 with applied-value spans")
     check("function achk()" in ino and "function afill()" in ino and "function adef()" in ino
-          and "function sdef()" in ino and 'id="aw2"' in ino
+          and "function odef(ids)" in ino and 'id="aw2"' in ino
           and "function astat()" in ino and "apend(id)" in ino and "STAB==0" in ino,
-          "the alarm sub-tabs need their guard (achk), fill/defaults (afill/adef/sdef), split guards (aw/aw2), live status+bars (astat) and the STAB hook")
+          "the alarm sub-tabs need their guard (achk), fill/defaults (afill/adef/odef), split guards (aw/aw2), live status+bars (astat) and the STAB hook")
     check("FEXP=" in ino and "آستانهٔ قطع (۲۷)" in ino and "ASB=" in ino,
           "v1.15b (user order: grouped status + fault explanations, no flicker): per-bit fault explanations and a build-once status skeleton")
     check("function xexp()" in ino and "function ximp(f)" in ino and 'id="xim"' in ino
@@ -2364,7 +2364,7 @@ def test_ui_mirror_v116():
     p0part = ino.split('id="p0"')[1].split('id="p1"')[0]
     check("ucard1" in s1part and "ucard5" in s1part and 'id="sim1"' in s1part and 'id="aw2"' in s1part
           and 'id="aw"' in s1part and 'id="ib117"' in s1part
-          and "sdef()" in s1part and "bdef()" in s1part and "ibdef()" in s1part
+          and all(f + "()" in s1part for f in ("ovdef", "bdef", "dsdef", "chdef", "ibdef", "dbdef"))
           and "<b>نظارت باتری</b>" not in s1part
           and "<b>پنجرهٔ ورودی سالم</b>" not in s1part and "<b>سقف‌های ایمنی شارژر</b>" not in s1part
           and "وضعیت آلارم‌ها" not in s1part and "پشتیبان‌گیری" not in s1part
@@ -2742,19 +2742,20 @@ def test_telemetry_frame_pins_v116c():
     body = link[start:link.index("(uint16_t)ESPLINK_TLM_PAYLOAD_SIZE);", start)]
     check(body.count("func__EspLink_PutU16(") == 1,
           "SendTelemetry must write exactly one u16 (the sequence number)")
-    # [EN] 30 live u32 writes fill the WHOLE field table (4+30x4 = 124 B,
-    #      including the v1.43 imbalance trio at t[24..26] and the v1.72
-    #      dead-battery pair at t[28..29]), and 24 #else zero-fillers cover
-    #      the same fields when a module is compiled out.
-    # [FA] ۳۰ رایت زندهٔ u32 کل جدول را پر می‌کند (۴+۳۰×۴=۱۲۴ بایت، با جفت
-    #      تازهٔ سناریوی ۶ در t[28..29]) و ۲۴ صفرِ #else جایگزین‌اند.
-    expected_writes = 30 + 24
+    # [EN] 31 live u32 writes fill the WHOLE field table (4+31x4 = 128 B,
+    #      including the v1.43 imbalance trio at t[24..26] and the v1.76
+    #      dead-battery trio at t[28..30]: mask, charger-1 clock, charger-2
+    #      clock), and 25 #else zero-fillers cover the same fields when a
+    #      module is compiled out.
+    # [FA] ۳۱ رایت زندهٔ u32 کل جدول را پر می‌کند (۴+۳۱×۴=۱۲۸ بایت، با سه‌تاییِ
+    #      سناریوی ۶ در t[28..30]) و ۲۵ صفرِ #else جایگزین‌اند.
+    expected_writes = 31 + 25
     check(body.count("func__EspLink_PutU32(") == expected_writes,
           f"SendTelemetry must carry {expected_writes} textual u32 writes "
-          "(30 live + 24 #else fillers); the 30 live ones exactly fill "
+          "(31 live + 25 #else fillers); the 31 live ones exactly fill "
           "ESP_LINK_TLM_FIELD_COUNT fields")
-    check(body.count("func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);") == 24,
-          "SendTelemetry must carry exactly 24 zero-filler u32 writes")
+    check(body.count("func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);") == 25,
+          "SendTelemetry must carry exactly 25 zero-filler u32 writes")
     check(body.count("#else") == 9,
           "SendTelemetry must keep its 9 conditional filler blocks (v1.72 added the scenario-6 pair)")
 
@@ -3175,9 +3176,14 @@ def test_two_loop_pid_v124():
     check("۱۴۰۸" in ino and "۷۰۷" in ino,
           "the panel must explain WHY one PID is not enough (shared row = mV compared with "
           "mA = duty hunting; voltage-only + backstop = 707 mA because a backstop is reactive)")
-    check("if(id<38||id>82)return;" in ino,
-          "sdef() must stop at id 82: ADEF only covers 27..82, so without the guard "
-          "the scenario-default button sends undefined to every PID id")
+    # [EN] v1.76: the all-in-one sdef() is gone; the six per-scenario keys all
+    #      go through odef(), which skips any id pdflt() cannot answer for -
+    #      so an undefined can no longer be sent to a PID id.
+    # [FA] کلید همه‌باهم حذف شد و شش کلید جداگانه از odef() رد می‌شوند.
+    check("function sdef(" not in ino and "function odef(ids)" in ino
+          and "const v=pdflt(id);if(v==null)return;" in ino,
+          "every scenario key must go through odef()+pdflt(), which refuses an id "
+          "with no printed factory default")
 
 
 def test_min_select_handover_v124():
@@ -3641,7 +3647,7 @@ def test_benchlog_row_matches_header_v125():
     for col in ("vin_counts", "v24_counts", "v12_counts", "vrefint_counts", "vdda_mv"):
         check(col in cfg,
               f"the bench header must carry the raw calibration column {col}")
-    check("ESP_LINK_TLM_FIELD_COUNT    30u" in cfg and "ESP_LINK_TLM_SIZE          124u" in cfg,
+    check("ESP_LINK_TLM_FIELD_COUNT    31u" in cfg and "ESP_LINK_TLM_SIZE          128u" in cfg,
           "the ESP telemetry window must match the firmware payload (v1.72: 30 fields / 124 bytes, including the scenario-6 pair)")
     # [EN] The header naming a column proves nothing if the firmware never sends
     #      the value - the slot would just carry a zero and the calibration would

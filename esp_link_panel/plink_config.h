@@ -22,9 +22,9 @@
          = ۱ + ۸۳ × ۵ = ۴۱۶ بایت payload (قبلاً ۳۸۶ برای ۷۷ در v1.16).
          فیلد طول u16 لیتل‌اندین است. هر دو برد باید با هم فلش شوند. */
 #define ESP_LINK_MAX_PAYLOAD        512u
-#define ESP_LINK_TLM_SIZE          124u
+#define ESP_LINK_TLM_SIZE          128u
 #define ESP_LINK_TLM_FIELD_OFFSET   4u
-#define ESP_LINK_TLM_FIELD_COUNT    30u
+#define ESP_LINK_TLM_FIELD_COUNT    31u
 #define ESP_LINK_PARAM_ITEM_SIZE    5u
 #define ESP_LINK_TIMEOUT_MS         1000u
 #define ESP_LINK_TX_INTERVAL_MS     120u
