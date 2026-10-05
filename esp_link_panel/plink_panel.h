@@ -280,7 +280,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 2ad7f4e</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build a6377d2</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2162,6 +2162,8 @@ function xclamp(id,n){const e=$('q'+id);
  return Math.min(+pr[3],Math.max(+pr[2],n));}
 async function ximp(f){const x=$('xst');let o;try{o=JSON.parse(await f.text());}catch(e){if(x)x.textContent='⚠ فایل JSON معتبر نیست';return;}
  if(!o||o.app!=='ChangeOver-settings'){if(x)x.textContent='⚠ این فایل پشتیبان پنل ChangeOver نیست';return;}
+ /* v1.64: وسط داده‌برداری چیزی روی برد نوشته نشود */
+ if(typeof W!=='undefined'&&W&&W.run){if(x)x.textContent='⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.';return;}
  const ps=o.params?o.params:{};
  /* --- شناسنامه: اگر فایل مال بیلد دیگری است، صریح بپرس --- */
  const warn=[];
@@ -2608,7 +2610,12 @@ function calchk(){
  else no('ولتاژ ورودی فقط در '+nv+' مرحله ثبت شده.','بدون حداقل ۳ عدد، آفست ولتاژ ورودی محاسبه نمی‌شود.');
  if(nb>=3)ok('ولتاژ هر دو نیم‌باتری در '+nb+' مرحله ثبت شده.');
  else no('ولتاژ نیم‌باتری‌ها فقط در '+nb+' مرحله ثبت شده.','آفست پک ۲۴V و نود ۱۲V به عدد هر دو نیم‌باتری نیاز دارد.');
- /* ۶) شیب ولتاژ: آیا آفست تنهایی کافی است؟ */
+ /* ۶) قانونی‌بودن جدولی که ساخته می‌شود */
+ [1,2].forEach(n=>{const t=calbuild(n,(D&&D.p&&D.p[n-1]!=null)?D.p[n-1]:0,(D&&D.p&&D.p[n+1]!=null)?D.p[n+1]:1000);
+  if(t.bad)no('جدول باتری '+fa(n)+': '+t.bad+'.','جدول ساخته نمی‌شود تا چیز نادرستی وارد کد میکرو نشود.');
+  else ok('جدول باتری '+fa(n)+': '+t.X.length+' نقطه، دو محور هم‌طول، جریان صعودی و توان بدون نزول.'+
+   (t.note.length?' ('+t.note.join(' · ')+')':''));});
+ /* ۷) شیب ولتاژ: آیا آفست تنهایی کافی است؟ */
  VDIV.forEach(k=>{const f=calvfit(k);
   if(!f){no(k[0]+': شیب قابل اندازه‌گیری نیست.',
    'برای سنجش شیب لازم است همین ولتاژ در چند مرحله با اختلاف حداقل ۱ ولت ثبت شود (مثلاً باتری خالی و پر).');return;}
@@ -2620,7 +2627,7 @@ function calchk(){
   if(err<2)ok(k[0]+': شیب '+f.a.toFixed(4)+' است ('+err.toFixed(1)+'٪) — در حد تلرانس ۱٪ مقاومت‌ها، کاری لازم نیست.');
   else no(k[0]+': شیب '+f.a.toFixed(4)+' است، یعنی '+err.toFixed(1)+'٪ خطای ضریبی.',
    'این بیشتر از تلرانس ۱٪ مقاومت‌هاست، پس احتمالاً قطعهٔ اشتباه یا اتصال بد است؛ آفست درستش نمی‌کند. در «ساخت کد برای میکرو» عدد اصلاح‌شدهٔ مقسم چاپ می‌شود.');});
- /* ۷) جریان منفی/صفر در همهٔ نقاط */
+ /* ۸) جریان منفی/صفر در همهٔ نقاط */
  if(S.some(z=>Number.isFinite(z.b1)&&z.b1>0)||S.some(z=>Number.isFinite(z.b2)&&z.b2>0))
   ok('حداقل در بعضی مرحله‌ها جریان واقعی شارژ ثبت شده.');
  else no('هیچ مرحله‌ای جریان شارژ مثبت ندارد.','با duty بالاتر یا باتری خالی‌تر تست کنید؛ از روی جریان صفر چیزی درنمی‌آید.');
@@ -2643,38 +2650,63 @@ function calchk(){
    ولتاژ زندهٔ باتری تقسیم می‌کند تا جریان دربیاید. این خروجی دقیقاً همان را
    می‌سازد و دو آرایهٔ C به‌علاوهٔ آفست و گین پیش‌فرض را چاپ می‌کند تا داخل
    calibration.h کپی کنید. */
+/* [EN] v1.64 (user order: "the panel must guarantee a battery's two axes
+   come out the same length - the MCU must not spend time on it"). This
+   builder is now the single place that proves a table is legal before it
+   ever reaches the firmware, and it returns the proof instead of printing
+   it in three different places:
+     - both axes identical length (they are built as one list of pairs)
+     - at least two points (the firmware extends the last segment's slope)
+     - chain axis strictly increasing (the interpolation divides by the gap)
+     - power axis NEVER decreasing. This one matters most: the firmware
+       computes (yHigh - yLow) in UNSIGNED arithmetic, so one noisy point
+       that dips would wrap around to a gigantic number instead of a small
+       negative one. A dipping point is dropped here and reported.
+   [FA] این سازنده تنها جایی است که قانونی‌بودن جدول را پیش از رسیدن به
+   فرم‌ور ثابت می‌کند: هم‌طولی دو محور، حداقل دو نقطه، صعودی‌بودن محور
+   جریان، و هرگز نزول‌نکردن محور توان - چون فرم‌ور تفریق را بدون علامت
+   انجام می‌دهد و یک نقطهٔ نویزیِ نزولی به عددی غول‌پیکر تبدیل می‌شد. */
+function calbuild(n,off,gn){
+ const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'dv1':'dv2',note=[];
+ const pts=[];
+ calsel(n).forEach(z=>{if(!Number.isFinite(z[r])||!Number.isFinite(z[b]))return;
+  const vb=(z[v]!=null)?z[v]:(n===1?z.vhi:z.vlo);if(!vb)return;
+  const chain=Math.max(0,Math.round((z[r]-off)*K_MA*gn/1000));
+  pts.push([chain,Math.max(0,Math.round(z[b]*vb/1000))]);});
+ pts.sort((a,c)=>a[0]-c[0]);
+ const X=[],Y=[];let dup=0,dip=0;
+ pts.forEach(q=>{
+  if(X.length&&q[0]===X[X.length-1]){dup++;return;}      /* جریان تکراری */
+  if(Y.length&&q[1]<Y[Y.length-1]){dip++;return;}        /* توان نزولی */
+  X.push(q[0]);Y.push(q[1]);});
+ if(X.length&&X[0]!==0){X.unshift(0);Y.unshift(0);}
+ if(dup)note.push(dup+' نقطه با جریان تکراری کنار گذاشته شد');
+ if(dip)note.push(dip+' نقطهٔ نویزی که توانش پایین‌تر از نقطهٔ قبل بود کنار گذاشته شد');
+ let bad='';
+ if(X.length!==Y.length)bad='دو محور هم‌طول نشدند';                 /* نباید رخ دهد */
+ else if(X.length<2)bad='کمتر از ۲ نقطه ('+X.length+') — حداقل ۲ لازم است';
+ else{for(let i=1;i<X.length;i++){if(X[i]<=X[i-1])bad='محور جریان صعودی نیست';
+   if(Y[i]<Y[i-1])bad='محور توان نزول دارد';}}
+ return {X:X,Y:Y,note:note,bad:bad};}
 function calcode(){
  const get=id=>{const r=CALR.filter(x=>x[1]===id)[0];if(!r)return (D&&D.p&&D.p[id]!=null)?D.p[id]:0;
   const e=$('calv'+CALR.indexOf(r));return e?Math.round(+e.value):r[3];};
- const off=[get(0),get(1)],gn=[get(2),get(3)];
+ const off=[get(0),get(1)],gn=[get(2),get(3)],msg=[];
  let out='/* [EN] Generated by the ChangeOver panel on '+new Date().toISOString()+
-  '\n *      from '+calsel(null).length+' accepted bench samples.\n'+
+  '\n *      from '+calsel(null).length+' accepted bench samples. The panel has\n'+
+  ' *      already checked: equal axis lengths, >= 2 points, increasing chain\n'+
+  ' *      axis, non-decreasing power axis.\n'+
   ' *      Paste into Firmware/Modules/Measurement/calibration.h.\n'+
-  ' * [FA] ساختهٔ پنل ChangeOver از روی نمونه‌های پذیرفته‌شدهٔ بنچ. */\n\n';
- [1,2].forEach(n=>{
-  const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'dv1':'dv2';
-  const pts=[];
-  calsel(n).forEach(z=>{if(!Number.isFinite(z[r])||!Number.isFinite(z[b]))return;
-   const vb=(z[v]!=null)?z[v]:(n===1?z.vhi:z.vlo);if(!vb)return;
-   const chain=Math.max(0,Math.round((z[r]-off[n-1])*K_MA*gn[n-1]/1000));
-   const mw=Math.round(z[b]*vb/1000);
-   pts.push([chain,Math.max(0,mw)]);});
-  pts.sort((a,c)=>a[0]-c[0]);
-  const X=[],Y=[];pts.forEach(q=>{if(X.length&&q[0]===X[X.length-1])return;X.push(q[0]);Y.push(q[1]);});
-  if(X.length&&X[0]!==0){X.unshift(0);Y.unshift(0);}
-  /* [EN] v1.63: the firmware accepts any point count but needs at least two
-     (the tail slope is built from the last two) and both axes equal length.
-     Fewer than two points is refused here instead of producing a header that
-     will not compile; a very long table is allowed but flagged.
-     [FA] فرم‌ور هر تعدادی را قبول می‌کند ولی حداقل دو نقطه لازم دارد. */
-  if(X.length<2){out+='/* table '+n+' - battery '+n+': NOT ENOUGH POINTS ('+X.length+
-    ') - at least 2 are needed; take more bench steps for this battery. */\n\n';
-   stxt('calst','⛔ باتری '+fa(n)+': برای ساختن جدول حداقل ۲ نقطه لازم است.');return;}
-  if(X.length>24)stxt('calst','⚠ جدول باتری '+fa(n)+' با '+X.length+
-   ' نقطه ساخته شد؛ تعدادش محدودیتی ندارد ولی هر نقطه ۸ بایت فلش می‌برد.');
-  out+='/* table '+n+' - battery '+n+', '+X.length+' points (any count is valid) */\n'+
-   'static const uint32_t CAL_Current'+n+'LutChainMa[] =\n    { '+X.map(q=>q+'u').join(', ')+' };\n'+
-   'static const uint32_t CAL_Current'+n+'LutBatteryMw[] =\n    { '+Y.map(q=>q+'u').join(', ')+' };\n\n';});
+  ' * [FA] ساختهٔ پنل ChangeOver؛ هم‌طولی، حداقل دو نقطه، صعودی‌بودن محور\n'+
+  ' *      جریان و نزول‌نکردن محور توان همین‌جا بررسی شده است. */\n\n';
+ [1,2].forEach(n=>{const t=calbuild(n,off[n-1],gn[n-1]);
+  t.note.forEach(x=>msg.push('باتری '+fa(n)+': '+x));
+  if(t.bad){msg.push('⛔ باتری '+fa(n)+': '+t.bad);
+   out+='/* table '+n+' - battery '+n+' NOT GENERATED: '+t.bad+' */\n\n';return;}
+  if(t.X.length>24)msg.push('باتری '+fa(n)+': جدول '+t.X.length+' نقطه‌ای شد (هر نقطه ۸ بایت فلش)');
+  out+='/* table '+n+' - battery '+n+', '+t.X.length+' points, axes equal length (any count is valid) */\n'+
+   'static const uint32_t CAL_Current'+n+'LutChainMa[] =\n    { '+t.X.map(q=>q+'u').join(', ')+' };\n'+
+   'static const uint32_t CAL_Current'+n+'LutBatteryMw[] =\n    { '+t.Y.map(q=>q+'u').join(', ')+' };\n\n';});
  {const f0=calvfit(VDIV[0]),f1=calvfit(VDIV[1]);
   if(f0&&f1&&Math.abs(f0.a-f1.a)>0.005)
    out+='/* WARNING: the input rail and the pack rail measure DIFFERENT slopes ('+
@@ -2691,7 +2723,8 @@ function calcode(){
   ' *   voltage offsets: input = '+get(4)+' mV, 24V pack = '+get(5)+' mV, 12V node = '+get(6)+' mV\n'+
   ' * A table fitted with one gain/offset pair is only valid with that pair. */\n';
  const t=$('calcd');if(t){t.value=out;t.style.display='block';}
- stxt('calst','کد آماده است — متن زیر را کپی کنید یا فایل را دانلود کنید. با همان بیلد، هر برد این جدول را از قبل دارد.');}
+ stxt('calst',(msg.length?('⚠ '+msg.join(' · ')+' — '):'')+
+  'کد آماده است؛ متن زیر را کپی یا دانلود کنید. هم‌طولی و صعودی‌بودن جدول‌ها همین‌جا بررسی شد.');}
 function calcdl(){const t=$('calcd');if(!t||!t.value)return;
  const u=URL.createObjectURL(new Blob([t.value],{type:'text/plain'}));
  const a=document.createElement('a');a.href=u;a.download='calibration_generated.h';a.click();
@@ -2715,6 +2748,13 @@ async function calimp(f){let o;try{o=JSON.parse(await f.text());}catch(e){stxt('
  stxt('calst','⬆ '+add.length+' نمونه بازخوانی شد (مجموع '+CALS.length+'). حالا «محاسبه» را بزنید.');
  const e=$('calf');if(e)e.value='';}
 async function calapply(){
+ /* [EN] v1.64 line-by-line audit finding: the bench wizard owns the board
+    while it runs (manual mode, duty, channel enables). Writing calibration
+    in the middle of it would change the numbers under a measurement that is
+    already in progress and silently poison the row being recorded.
+    [FA] تا وقتی ویزارد بنچ در حال اجراست برد در اختیار اوست؛ نوشتن وسط کار
+    همان ردیفی را که دارد ثبت می‌شود خراب می‌کند. */
+ if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
  CALP=[];
  CALR.forEach((r,i)=>{const k=$('calk'+i),e=$('calv'+i);if(!k||!e||!k.checked)return;
   const nv=+e.value;if(!Number.isFinite(nv))return;CALP.push([r[1],xclamp(r[1],Math.round(nv)),r[0]]);});

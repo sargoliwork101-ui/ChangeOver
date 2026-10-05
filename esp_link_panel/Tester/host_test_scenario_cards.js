@@ -913,14 +913,42 @@ function testBackupAndCal(win, doc) {
                   dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 }];
     win.eval('calrun')();
     win.eval('calcode')();
-    check(doc.getElementById('calcd').value.indexOf('NOT ENOUGH POINTS') >= 0 ||
-          doc.getElementById('calst').textContent.indexOf('حداقل ۲ نقطه') >= 0,
+    check(doc.getElementById('calcd').value.indexOf('NOT GENERATED') >= 0 &&
+          doc.getElementById('calst').textContent.indexOf('کمتر از ۲ نقطه') >= 0,
           'a table with fewer than two points is refused, not emitted');
     win.CALS = keepP;
     win.eval('calrun')();
     win.eval('calcode')();
     check(doc.getElementById('calcd').value.indexOf('any count is valid') >= 0,
           'the generated header states that the point count is free');
+
+    /* --- v1.64: the panel proves the table is legal before emitting it --- */
+    const keepN = win.CALS;
+    const noisy = keepN.map(z => Object.assign({}, z));
+    noisy[3].b1 = 1;            /* one point whose power dips below the previous */
+    win.CALS = noisy;
+    const built = win.eval('calbuild')(1, 7, 1200);
+    check(built.X.length === built.Y.length,
+          'the two axes of one battery always come out the same length');
+    check(built.Y.every((v, i) => i === 0 || v >= built.Y[i - 1]),
+          'a dipping power point is dropped, never emitted');
+    check(built.note.join(' ').indexOf('نویزی') >= 0,
+          'and the user is told that a noisy point was dropped');
+    check(built.X.every((v, i) => i === 0 || v > built.X[i - 1]),
+          'the chain axis comes out strictly increasing');
+    win.eval('calcode')();
+    check(doc.getElementById('calst').textContent.indexOf('نویزی') >= 0,
+          'the warning survives to the status line instead of being overwritten');
+    win.CALS = keepN;
+    win.eval('calrun')();
+
+    /* --- v1.64: nothing may be written while the bench wizard owns the board --- */
+    const Wv = win.eval('W'); Wv.run = true;
+    win.eval('calapply')();
+    check(doc.getElementById('calst').textContent.indexOf('داده‌برداری بنچ در جریان') >= 0,
+          'applying calibration is refused while the bench wizard is running');
+    win.eval('ximp')({ text: async () => JSON.stringify({ app: 'ChangeOver-settings', v: 2, params: { 0: 1 } }) });
+    Wv.run = false;
 
     /* --- v1.59: the raw bench samples can be saved and restored --- */
     const sbl = [];

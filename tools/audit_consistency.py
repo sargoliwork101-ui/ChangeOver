@@ -904,6 +904,19 @@ def sec_calibration():
                f"{lbl} LUT chain axis is not strictly increasing",
                "interpolation divides by the gap, so a repeat or a step "
                "backwards is a divide-by-zero or a sign flip")
+            # [EN] v1.64 line-by-line audit finding: the firmware computes
+            #      (yHigh - yLow) in UNSIGNED arithmetic. A power axis that
+            #      dips - one noisy bench point is enough - wraps around to
+            #      ~4 billion instead of a small negative number, so the
+            #      reported battery current explodes. The panel refuses to
+            #      emit such a table; this catches a hand-edited one.
+            # [FA] تفریق محور توان در فرم‌ور بدون علامت است؛ یک نقطهٔ نزولی
+            #      به‌جای عدد منفی کوچک، به ~۴ میلیارد می‌پیچد.
+            ays = [int(v.rstrip("uU")) for v in ay] if ay else []
+            ok(all(ays[i] >= ays[i - 1] for i in range(1, len(ays))),
+               f"{lbl} LUT power axis dips",
+               "the firmware subtracts these as unsigned, so a dip wraps to "
+               "a gigantic number instead of a negative one")
 
     # the two 24 V sense nets are the same physical network
     ok("#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS   BSP_MEASUREMENT_DIV24_TOP_OHMS" in BSP_M,
