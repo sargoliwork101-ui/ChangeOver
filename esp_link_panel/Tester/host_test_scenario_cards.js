@@ -950,6 +950,22 @@ function testBackupAndCal(win, doc) {
     win.eval('ximp')({ text: async () => JSON.stringify({ app: 'ChangeOver-settings', v: 2, params: { 0: 1 } }) });
     Wv.run = false;
 
+    /* --- v1.65: the live table shows only what the user needs --- */
+    const heads = Array.from(doc.querySelectorAll('#wT th')).map(h => h.textContent);
+    if (heads.length) {
+        check(heads.join('|').indexOf('raw') < 0 && heads.join('|').indexOf('iest') < 0,
+              'raw counts and estimated current are no longer shown during the test');
+    }
+    check(win.eval('WH').join('|').indexOf('raw') < 0 &&
+          win.eval('WH').join('|').indexOf('iest') < 0,
+          'the column set itself drops the extra fields');
+    check(win.eval('WH').filter(h => h.indexOf('(شما)') >= 0).length === 6,
+          'the six numbers the user types each have their own column');
+    check(win.eval('WH').filter(h => h.indexOf('(برد)') >= 0).length === 5,
+          'the board readings the user needs are shown: input, both batteries, both currents');
+    check(win.eval('WSTC') === win.eval('WH').length - 1,
+          'the status column index follows the header list instead of a hard-coded 12');
+
     /* --- v1.59: the raw bench samples can be saved and restored --- */
     const sbl = [];
     const OldBlob2 = win.Blob;

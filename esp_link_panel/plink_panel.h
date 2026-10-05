@@ -280,7 +280,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build a6377d2</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build eca10f3</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2300,7 +2300,23 @@ function wlist(){const a=$('wL').value.split(/[,، ]+/).filter(x=>x!=='').map(Nu
 async function wopen(){const j=await req('/m','POST');if(j._s!=200)throw 'پنجرهٔ آمار ESP پاسخ نداد';W.winMs=Date.now();}
 async function wlatch(){const j=await req('/m');if(!j.n||!j.s||j.s.length<25)throw 'در این بازه TLM نرسید';j.a=i=>j.s[i]/j.n;return j;}
 /* خانه‌های زندهٔ ردیف فعال از آخرین /t — فقط نمایش؛ ردیف فایل از /m لحظهٔ ثبت ساخته می‌شود */
-function wlive(act){if(!D||D.on!=1)return['-','-','-',undefined,'-','-','-',undefined,undefined];const M=(n,b)=>act.includes(n)?[D.t[b],D.t[b+3],D.t[b+4]]:['قطع','-','-'];const a=M(1,0),b=M(2,7);return[a[0],a[1],a[2],undefined,b[0],b[1],b[2],undefined,undefined];}
+/* [EN] v1.65 (user order: "during the test do not show me the extra stuff -
+   only the duty, the voltages and currents the board reads, and the numbers
+   I have to type; keep everything else behind the scenes"). The table now
+   shows exactly those columns. The CSV behind it is unchanged: raw counts,
+   filtered and estimated currents, min/max of every field, flags and the
+   whole settings block still go to the file.
+   [FA] جدول فقط duty، ولتاژها و جریان‌هایی که برد می‌خواند و عددهایی که شما
+   وارد می‌کنید را نشان می‌دهد. فایل CSV پشت صحنه بدون تغییر همه‌چیز را
+   ثبت می‌کند: شمارش خام، جریان فیلترشده و تخمینی، کمینه/بیشینه و تنظیمات. */
+function wlive(act){
+ if(!D||D.on!=1)return['-','-','-','-','-'];
+ const cur=n=>act.includes(n)?D.t[n===1?3:10]:'قطع';
+ return [v2(D.t[14]),v2(D.t[18]),v2(D.t[17]),cur(1),cur(2)];}
+function wmeas(m,act){
+ const cur=n=>act.includes(n)?r0(m.a(n===1?3:10)):'قطع';
+ return [v2(r0(m.a(14))),v2(r0(m.a(18))),v2(r0(m.a(17))),cur(1),cur(2)];}
+
 /* ردیف CSV (۱۴۹ ستون، ترتیب دقیق بخش 5.6، مولتی‌متر نسخه ۴).
    v1.25 رفع باگ: شمارندهٔ پارامترها روی ۹۹ (تعداد v1.22) جا مانده بود در حالی که
    تعداد واقعی ۹۳ است، پس هر ردیف ۶ ستون اضافه می‌نوشت و همهٔ ستون‌های بعد از بلوک
@@ -2332,11 +2348,14 @@ function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x;
  const C=b=>[m.a(b).toFixed(1),m.lo[b],m.hi[b],r0(m.a(b+1)),r0(m.a(b+2)),m.lo[b+2],m.hi[b+2],r0(m.a(b+3)),m.lo[b+3],m.hi[b+3],r0(m.a(b+4)),m.lo[b+4],m.hi[b+4],m.la[b+5],m.la[b+6]];
  return [sc,i+1,pm,se,sa,iso,...C(0),...C(7),m.seq,m.fl,...[14,15,16,17,18].map(k=>r0(m.a(k))),m.or,...[20,21,22,23,24].map(k=>m.la[k]),q(v.ii),q(v.vi),q(v.b1),q(v.v1),q(v.b2),q(v.v2),v.note||'-'].join(',')+'\n';}
 /* جدول واحد: هر مرحلهٔ هر سناریو یک ردیف؛ ردیف فعال ورودی‌ها و دکمه‌ها را دارد */
-const WH=['سناریو','#','duty %','raw ۱','filt ۱ mA','iest ۱ mA','جریان باتری ۱ mA','raw ۲','filt ۲ mA','iest ۲ mA','جریان باتری ۲ mA','جریان ورودی کل mA','وضعیت'];
+const WH=['سناریو','#','duty ٪',
+ 'ورودی V (برد)','باتری ۱ V (برد)','باتری ۲ V (برد)','جریان ۱ mA (برد)','جریان ۲ mA (برد)',
+ 'جریان ۱ mA (شما)','جریان ۲ mA (شما)','جریان ورودی mA (شما)','ورودی V (شما)','باتری ۱ V (شما)','باتری ۲ V (شما)',
+ 'وضعیت'];
+const WSTC=WH.length-1;   /* ستون وضعیت / status column */
 function wbuild(SC,L){W.K=[];SC.forEach(sc=>L.forEach((d,i)=>W.K.push({sc,i,d})));
- $('wT').innerHTML=`<div class="tw"><table class="bt2 wt"><tr>${WH.map(h=>`<th>${h}</th>`).join('')}</tr>${W.K.map((k,x)=>`<tr id="wr${x}"><td>${WSN[k.sc]||k.sc}</td><td>${k.i+1}</td><td>${k.d}</td>${'<td>·</td>'.repeat(9)}<td class="lb">در صف</td></tr>`).join('')}</table></div>`;}
-function wcell(x,A,st,cl){const r=$('wr'+x);if(!r)return;const c=r.children;A.forEach((v,i)=>{if(v!==undefined)c[3+i].innerHTML=v;});if(st!=null){c[12].textContent=st;c[12].className=cl||'lb';}}
-function wmeas(m,act){const M=(n,b)=>act.includes(n)?[m.a(b).toFixed(1),r0(m.a(b+3)),r0(m.a(b+4))]:['قطع','-','-'];const a=M(1,0),b=M(2,7);return [a[0],a[1],a[2],undefined,b[0],b[1],b[2],undefined,undefined];}
+ $('wT').innerHTML=`<div class="tw"><table class="bt2 wt"><tr>${WH.map(h=>`<th>${h}</th>`).join('')}</tr>${W.K.map((k,x)=>`<tr id="wr${x}"><td>${WSN[k.sc]||k.sc}</td><td>${k.i+1}</td><td>${k.d}</td>${'<td>·</td>'.repeat(WH.length-4)}<td class="lb">در صف</td></tr>`).join('')}</table></div>`;}
+function wcell(x,A,st,cl){const r=$('wr'+x);if(!r)return;const c=r.children;A.forEach((v,i)=>{if(v!==undefined)c[3+i].innerHTML=v;});if(st!=null){c[WSTC].textContent=st;c[WSTC].className=cl||'lb';}}
 /* اسکرول خودکار فقط داخل کادر جدول (v1.17b: خود صفحه تکان نمی‌خورد) / auto-scroll inside the table box only (the page never jumps) */
 function wsee(x){const tw=$('wT').firstChild,r=$('wr'+x);if(!tw||!r||!tw.getBoundingClientRect)return;const rt=r.getBoundingClientRect(),tt=tw.getBoundingClientRect();if(rt.top<tt.top-2)tw.scrollTop-=(tt.top-rt.top);else if(rt.bottom>tt.bottom+2)tw.scrollTop+=(rt.bottom-tt.bottom);}
 /* فرم ورود عدد (v1.17b، مولتی‌متر نسخه ۴): بیرون جدول، بالای آن — ورود داده دیگر اسکرول افقی نمی‌خواهد و جدول فقط برای مرور می‌ماند
@@ -2348,7 +2367,7 @@ function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const k=W.K[x];
  const F=n=>act.includes(n)?`<label class="lb">جریان باتری ${n} mA ${N('wB'+n)}</label>`:'';
  let WVI=window.WVI||'';/* [EN] input voltage is quasi-static: carry the last submitted DMM reading into the next step (user order 2026-09-25: no need to retype it every step) / ولتاژ ورودی تقریباً ثابت است: آخرین عدد ثبت‌شده در مرحلهٔ بعد پیش‌پر می‌شود */
  const box=$('wF0');
- box.innerHTML=`<div class="bq"><div class="hd"><b>${WSN[k.sc]||k.sc} · مرحلهٔ ${k.i+1} · duty ${k.d}٪ — عددهای مولتی‌متر</b></div><div class="bctl">${F(1)}${F(2)}<label class="lb">جریان ورودی کل mA ${N('wIi')}</label>${L('wVi','ولتاژ ورودی V',WVI)}${L('wV1','ولتاژ باتری ۱ V')}${L('wV2','ولتاژ باتری ۲ V')}<label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label><button class="sb" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2" id="wRe">تکرار همین مرحله</button><button class="sb stp2" id="wEn">پایان</button></div><div class="lb">اجباری: جریان ورودی کل + جریان هر باتری روشن (<b>منفی هم مجاز</b> — تخلیهٔ باتری با شارژر خاموش، مثل بار زنر). جریان باتری باید نزدیک عدد پنل باشد؛ ورودی کل به ولتاژ/جریان باتری وابسته است (فرمول توان: ~۲٫۵ برابر در جریان کم تا ~۰٫۹ برابر در بالای بازه — مصرف ثابت برد در جریان کم برجسته می‌شود). ولتاژها (V) و یادداشت اختیاری.</div></div>`;
+ box.innerHTML=`<div class="bq"><div class="hd"><b>${WSN[k.sc]||k.sc} · مرحلهٔ ${k.i+1} · duty ${k.d}٪ — عددهای مولتی‌متر</b> <span class="lb">· Tab: خانهٔ بعدی · Enter: ثبت و رفتن به duty بعدی · Esc: بستن جدول و رفتن به ساخت جدول میکرو</span></div><div class="bctl">${F(1)}${F(2)}<label class="lb">جریان ورودی کل mA ${N('wIi')}</label>${L('wVi','ولتاژ ورودی V',WVI)}${L('wV1','ولتاژ باتری ۱ V')}${L('wV2','ولتاژ باتری ۲ V')}<label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label><button class="sb" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2" id="wRe">تکرار همین مرحله</button><button class="sb stp2" id="wEn">پایان</button></div><div class="lb">اجباری: جریان ورودی کل + جریان هر باتری روشن (<b>منفی هم مجاز</b> — تخلیهٔ باتری با شارژر خاموش، مثل بار زنر). جریان باتری باید نزدیک عدد پنل باشد؛ ورودی کل به ولتاژ/جریان باتری وابسته است (فرمول توان: ~۲٫۵ برابر در جریان کم تا ~۰٫۹ برابر در بالای بازه — مصرف ثابت برد در جریان کم برجسته می‌شود). ولتاژها (V) و یادداشت اختیاری.</div></div>`;
  const f=$('wB'+act[0]);if(f)f.focus();
  const lv=setInterval(()=>wcell(x,wlive(act)),400);
  return new Promise(res=>{$('wGo').onclick=()=>{const v={},ok=id=>gv(id);/* v1.9 (user order 2026-09-25): negative currents are VALID - with the charger off the battery itself discharges into other loads (e.g. the zener), the DMM then reads minus */
@@ -2356,8 +2375,20 @@ function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const k=W.K[x];
    for(const n of act){v['b'+n]=ok('wB'+n);if(v['b'+n]==null)return alert('جریان باتری '+n+' اجباری است (کانال '+n+' روشن است).');}
    [['vi','wVi'],['v1','wV1'],['v2','wV2']].forEach(k=>{const y=gv(k[1]);v[k[0]]=y==null?null:r0(y*1000);});WVI=window.WVI=(v.vi==null)?'':(v.vi/1000);v.note=asc($('wN').value);res({a:'next',v,iso:new Date().toISOString()});};
   $('wRe').onclick=()=>res({a:'repeat'});$('wEn').onclick=()=>res({a:'end'});
-  box.onkeydown=ev=>{if(ev.key=='Enter'&&ev.target.tagName=='INPUT')$('wGo').click();};
-  W.ft=setInterval(()=>{try{wchk();}catch(er){clearInterval(W.ft);res({a:'err',e:er});}},200);}).finally(()=>{clearInterval(W.ft);clearInterval(lv);box.innerHTML='';box.onkeydown=null;r.classList.remove('wa');});}
+   /* [EN] v1.65 (user order): Tab walks the boxes of the row being filled (the
+     browser already does that, the boxes are simply in reading order), Enter
+     submits and moves to the next duty step, Escape closes the table and
+     goes on to the "build the firmware table" step. The same sentence is
+     printed above the boxes so nobody has to be told twice.
+     [FA] Tab بین خانه‌های همین ردیف، Enter ثبت و رفتن به duty بعدی، Esc
+     بستن جدول و رفتن به مرحلهٔ ساخت جدول میکرو. همین راهنما بالای کادرها
+     هم نوشته شده است. */
+  box.onkeydown=ev=>{
+   if(ev.key=='Enter'&&ev.target.tagName=='INPUT'){ev.preventDefault();$('wGo').click();return;}
+   if(ev.key=='Escape'){ev.preventDefault();$('wEn').click();}};
+  W.esc=ev=>{if(ev.key=='Escape'){ev.preventDefault();$('wEn').click();}};
+  document.addEventListener('keydown',W.esc);
+  W.ft=setInterval(()=>{try{wchk();}catch(er){clearInterval(W.ft);res({a:'err',e:er});}},200);}).finally(()=>{clearInterval(W.ft);clearInterval(lv);if(W.esc){document.removeEventListener('keydown',W.esc);W.esc=null;}box.innerHTML='';box.onkeydown=null;r.classList.remove('wa');});}
 async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');let L;
  try{try{localStorage.setItem('wsw',$('wSw').checked?'1':'0');}catch(e){}L=$('wSw').checked?wsweep():wlist();}catch(e){return alert(e);}
  const SC=Object.keys(WSC).filter(k=>$('wc'+k).checked);if(!SC.length)return alert('حداقل یک سناریو را انتخاب کنید.');
@@ -2380,19 +2411,30 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
      for(const n of act){const c=D.p[12+n],v=Math.min(pm,c==null?500:c,500);await setv(14+2*n,v);}
      await wopen();
      wst(lb+': عددهای مولتی‌متر را در ردیف رنگی جدول بنویسید','cm wr');const f=await wform(x,act);
-     if(f.a=='err')throw f.e;if(f.a=='end'){W.abort=true;throw 'پایان توسط کاربر';}if(f.a=='repeat'){wcell(x,Array(9).fill('·'),'تکرار');continue;}
+     if(f.a=='err')throw f.e;if(f.a=='end'){W.abort=true;throw 'پایان توسط کاربر';}if(f.a=='repeat'){wcell(x,Array(WH.length-3).fill('·'),'تکرار');continue;}
      const m=await wlatch();
      await wsync();  /* اگر تنظیمی عوض شده، پیش از این ردیف ثبتش کن */
      await wlog(wrow(sc,i,pm,0,r0(Date.now()-W.winMs),m,f.v,f.iso));
      calpush(m,f.v,act,sc,L[i]);
-     const A=wmeas(m,act);A[3]=f.v.b1??'-';A[7]=f.v.b2??'-';A[8]=f.v.ii;wcell(x,A,'ثبت شد','okc');
+     const mv=x=>x==null?'-':v2(x);
+     const A=wmeas(m,act).concat([f.v.b1??'-',f.v.b2??'-',f.v.ii??'-',
+      mv(f.v.vi),mv(f.v.v1),mv(f.v.v2)]);
+     wcell(x,A,'ثبت شد','okc');
      i++;x++;}}
    finally{await wrestore(o);}}}
  catch(e){err=e;}
- W.K.forEach((k,y)=>{const c=$('wr'+y);if(c&&c.children[12].textContent!='ثبت شد')wcell(y,[],'ثبت نشد');});
+ W.K.forEach((k,y)=>{const c=$('wr'+y);if(c&&c.children[WSTC].textContent!='ثبت شد')wcell(y,[],'ثبت نشد');});
  W.run=false;W.act=null;W.man=false;document.body.classList.remove('br');
  if(err&&err!=='پایان توسط کاربر')wst('متوقف شد: '+err+' · تنظیمات قبلی برگشت. ردیف‌های ثبت‌شده در فایل مانده‌اند.','cm r');else wst(err?'با دکمهٔ پایان تمام شد؛ تنظیمات قبلی برگشت.':'همهٔ مرحله‌ها ثبت شد؛ تنظیمات قبلی برگشت.','cm g');
- $('wDone').classList.add('v');winfo();}
+ $('wDone').classList.add('v');winfo();
+ /* [EN] v1.65: the table is finished, so put the next step in front of the
+    user instead of leaving him to find it. [FA] پس از پایان جدول، مرحلهٔ
+    بعد (ساخت جدول میکرو) جلوی چشم کاربر می‌آید. */
+ caln();calsmp();calchk();
+ /* [EN] No auto-scroll on purpose: a jumping page during bench work was a
+    reported bug (v1.17b), so the next step is announced in place.
+    [FA] عمداً صفحه را جابه‌جا نمی‌کنیم؛ پرش صفحه قبلاً باگ گزارش‌شده بود. */
+ stxt('calst','جدول بسته شد. مرحلهٔ بعد پایین همین صفحه است: «محاسبه از نمونه‌ها» و بعد «ساخت کد برای میکرو».');}
 
 /* ==================== Bench Calibration / کالیبراسیون از جدول بنچ ====================
    [EN] v1.57 (user order: "take the bench capture straight onto the board with
