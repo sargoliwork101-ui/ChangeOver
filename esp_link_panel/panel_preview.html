@@ -372,7 +372,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 915b95b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 893799d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -467,7 +467,7 @@ window.addEventListener('DOMContentLoaded', function(){
 </ul>
 </div>
 
-<div class="sim" id="sim1"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><button class="sb sb2" id="simb1" onclick="simtog(1)">توقف</button></div><div class="simb"><span class="sl r" id="sl1r"></span><span class="sl g" id="sl1g"></span><span class="sl y" id="sl1y"></span><span class="szz" id="sl1z">🔇</span><span class="simt" id="sl1t">—</span></div></div>
+<div class="sim" id="sim1"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims1" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb1" onclick="simtog(1)">توقف</button></div><div class="simb"><span class="sl r" id="sl1r"></span><span class="sl g" id="sl1g"></span><span class="sl y" id="sl1y"></span><span class="szz" id="sl1z">🔇</span><span class="simt" id="sl1t">—</span></div></div>
 <div class="sec">۱) آستانهٔ ولتاژ ورودی <span class="lb">(mV)</span></div>
 <div class="bqr">
 <label>آستانه اضافه‌ولتاژ ورودی (mV)<input type="number" id="q70" step="100" min="24000" max="32000"><span class="lb" id="a70">—</span></label>
@@ -505,7 +505,7 @@ window.addEventListener('DOMContentLoaded', function(){
 </ul>
 </div>
 
-<div class="sim" id="sim2"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><button class="sb sb2" id="simb2" onclick="simtog(2)">توقف</button></div><div class="simb"><span class="sl r" id="sl2r"></span><span class="sl g" id="sl2g"></span><span class="sl y" id="sl2y"></span><span class="szz" id="sl2z">🔇</span><span class="simt" id="sl2t">—</span></div></div>
+<div class="sim" id="sim2"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims2" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb2" onclick="simtog(2)">توقف</button></div><div class="simb"><span class="sl r" id="sl2r"></span><span class="sl g" id="sl2g"></span><span class="sl y" id="sl2y"></span><span class="szz" id="sl2z">🔇</span><span class="simt" id="sl2t">—</span></div></div>
 <div class="sec">۱) تشخیص قطع حین شارژ <span class="lb">(mV / ms)</span></div>
 <div class="bqr">
 <label>آستانهٔ قطع باتری (mV)<input type="number" id="q27" step="50" min="14000" max="15000"><span class="lb" id="a27">—</span></label>
@@ -552,7 +552,7 @@ window.addEventListener('DOMContentLoaded', function(){
 </ul>
 </div>
 
-<div class="sim" id="sim3"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><button class="sb sb2" id="simb3" onclick="simtog(3)">توقف</button></div><div class="simb"><span class="sl r" id="sl3r"></span><span class="sl g" id="sl3g"></span><span class="sl y" id="sl3y"></span><span class="szz" id="sl3z">🔇</span><span class="simt" id="sl3t">—</span></div><div class="simc"><label>درصد باتری برای شبیه‌سازی<input type="range" id="simp3" min="0" max="100" value="50" oninput="simlbl(3)"><b id="simv3">50٪</b></label></div></div>
+<div class="sim" id="sim3"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims3" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb3" onclick="simtog(3)">توقف</button></div><div class="simb"><span class="sl r" id="sl3r"></span><span class="sl g" id="sl3g"></span><span class="sl y" id="sl3y"></span><span class="szz" id="sl3z">🔇</span><span class="simt" id="sl3t">—</span></div><div class="simc"><label>درصد باتری برای شبیه‌سازی<input type="range" id="simp3" min="0" max="100" value="50" oninput="simlbl(3)"><b id="simv3">50٪</b></label></div></div>
 <div class="sec">۱) حد ولتاژ باتری — نردبانی که درصد این سناریو از آن می‌آید <span class="lb">(mV؛ همان ۷۴/۷۵ کارت ۴ — هر جا عوض شود، هر دو جا عوض می‌شود)</span></div>
 <div class="bqr">
 <label>حد پایین — ۰٪ (mV)<input type="number" id="q74" step="100" min="15000" max="25000"><span class="lb" id="a74">—</span></label>
@@ -643,7 +643,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <b>خروج فول (٪)</b> = تا وقتی «فول» روشن است، فقط با <b>افتادن درصد زیر این عدد</b> دوباره به «در حال شارژ» برمی‌گردد. این فاصله hysteresis (فاصلهٔ ضدلرزش) است و نمی‌گذارد LED روی مرز بلرزد؛ برد همیشه خروج را دست‌کم یک واحد زیر ورود گیره می‌زند.
 </div>
 
-<div class="sim" id="sim4"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><button class="sb sb2" id="simb4" onclick="simtog(4)">توقف</button></div><div class="simb"><span class="sl r" id="sl4r"></span><span class="sl g" id="sl4g"></span><span class="sl y" id="sl4y"></span><span class="szz" id="sl4z">🔇</span><span class="simt" id="sl4t">—</span></div><div class="simc"><label>درصد باتری برای شبیه‌سازی<input type="range" id="simp4" min="0" max="100" value="50" oninput="simlbl(4)"><b id="simv4">50٪</b></label></div></div>
+<div class="sim" id="sim4"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims4" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb4" onclick="simtog(4)">توقف</button></div><div class="simb"><span class="sl r" id="sl4r"></span><span class="sl g" id="sl4g"></span><span class="sl y" id="sl4y"></span><span class="szz" id="sl4z">🔇</span><span class="simt" id="sl4t">—</span></div><div class="simc"><label>درصد باتری برای شبیه‌سازی<input type="range" id="simp4" min="0" max="100" value="50" oninput="simlbl(4)"><b id="simv4">50٪</b></label></div></div>
 <div class="sec">۱) حد ولتاژ باتری — نردبان درصدِ شارژ <span class="lb">(mV؛ مستقل از نردبان دشارژ — v1.49)</span></div>
 <div class="ds">از نسخهٔ ۱٫۴۹ (دستور کاربر) این دو عدد <b>فقط مال سمت شارژ</b>اند: درصدی که حین شارژ نشان داده می‌شود و نقطهٔ «فول» (۷۷/۷۸) از همین‌ها ساخته می‌شود. نردبان <b>دشارژ</b> جفت جداگانهٔ خودش را دارد (کارت ۳ · شناسه‌های ۷۴/۷۵) و دیگر با این دو تکان نمی‌خورد. پیش‌فرض هر دو جفت یکی است، پس تا وقتی خودتان عوض نکنید هیچ رفتاری تغییر نمی‌کند.</div>
 <div class="bqr">
@@ -684,7 +684,7 @@ window.addEventListener('DOMContentLoaded', function(){
 </ul>
 </div>
 
-<div class="sim" id="sim5"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><button class="sb sb2" id="simb5" onclick="simtog(5)">توقف</button></div><div class="simb"><span class="sl r" id="sl5r"></span><span class="sl g" id="sl5g"></span><span class="sl y" id="sl5y"></span><span class="szz" id="sl5z">🔇</span><span class="simt" id="sl5t">—</span></div><div class="simc"><label>ولتاژ باتری برای شبیه‌سازی (mV)<input type="range" id="simp5" min="15000" max="32000" value="21500" oninput="simlbl(5)"><b id="simv5">21500 mV</b></label></div></div>
+<div class="sim" id="sim5"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims5" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb5" onclick="simtog(5)">توقف</button></div><div class="simb"><span class="sl r" id="sl5r"></span><span class="sl g" id="sl5g"></span><span class="sl y" id="sl5y"></span><span class="szz" id="sl5z">🔇</span><span class="simt" id="sl5t">—</span></div><div class="simc"><label>ولتاژ باتری برای شبیه‌سازی (mV)<input type="range" id="simp5" min="15000" max="32000" value="21500" oninput="simlbl(5)"><b id="simv5">21500 mV</b></label></div></div>
 <div class="sec">۱) آستانهٔ آلارم <span class="lb">(mV)</span></div>
 <div class="bqr">
 <label>آستانه آلارم باتری کم (mV)<input type="number" id="q72" step="100" min="15000" max="24000"><span class="lb" id="a72">—</span></label>
@@ -716,7 +716,7 @@ window.addEventListener('DOMContentLoaded', function(){
 
 <div class="prod">اختلاف الان: <b id="imbv">—</b> <span class="lb">mV</span> · رویدادها: <b id="imbev">—</b> <span id="imbmx" class="lb">از ۱۰</span> · وضعیت: <b id="imbst">—</b></div>
 
-<div class="sim" id="sim6"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><button class="sb sb2" id="simb6" onclick="simtog(6)">توقف</button></div><div class="simb"><span class="sl r" id="sl6r"></span><span class="sl g" id="sl6g"></span><span class="sl y" id="sl6y"></span><span class="szz" id="sl6z">🔇</span><span class="simt" id="sl6t">—</span></div><div class="simc"><label>نیم‌باتری بالا (mV)<input type="range" id="simp6a" min="9000" max="15000" value="12000" oninput="simlbl6()"><b id="simv6a">12000 mV</b></label></div><div class="simc"><label>نیم‌باتری پایین (mV)<input type="range" id="simp6b" min="9000" max="15000" value="12000" oninput="simlbl6()"><b id="simv6b">12000 mV</b></label> <button class="sb sb2" onclick="simrst6()">شروع دوبارهٔ شمارش</button></div></div>
+<div class="sim" id="sim6"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims6" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb6" onclick="simtog(6)">توقف</button></div><div class="simb"><span class="sl r" id="sl6r"></span><span class="sl g" id="sl6g"></span><span class="sl y" id="sl6y"></span><span class="szz" id="sl6z">🔇</span><span class="simt" id="sl6t">—</span></div><div class="simc"><label>حالت کاری <select id="sim6m" onchange="sim6mode()"><option value="c">در حال شارژ</option><option value="r" selected>استراحت (بعد از شارژ)</option><option value="d">دشارژ روی باتری</option></select></label> <span class="lb" id="sim6w">—</span></div><div class="simc"><label>نیم‌باتری بالا (mV)<input type="range" id="simp6a" min="9000" max="15000" value="12000" oninput="simlbl6()"><b id="simv6a">12000 mV</b></label></div><div class="simc"><label>نیم‌باتری پایین (mV)<input type="range" id="simp6b" min="9000" max="15000" value="12000" oninput="simlbl6()"><b id="simv6b">12000 mV</b></label> <button class="sb sb2" onclick="simrst6()">شروع دوبارهٔ شمارش</button></div></div>
 <div class="sec">۱) حد اختلاف <span class="lb">(mV)</span></div>
 <div class="bqr">
 <label>حد استراحت عدم‌توازن<input type="number" id="q108" step="50" min="0" max="2000"><span class="lb" id="a108">—</span></label>
@@ -1924,10 +1924,23 @@ function c4(){
    [FA] سه LED و بازر هر کارت فقط از روی اعداد همان کارت ساخته می‌شوند و با
    ساعت خود پنل پخش می‌شوند؛ چیزی از برد خوانده نمی‌شود. پس آنچه می‌بینید
    «کاری است که برد با این اعداد خواهد کرد»، نه وضعیت فعلی برد. */
-var SIMON=[0,1,1,1,1,1,1],SIMT=[0,0,0,0,0,0,0],SIMC={b:-1,t:0};
+/* [EN] v1.57 (user order: "the simulator does not really work"): each card
+   now owns a VIRTUAL clock instead of reading the wall clock. It only
+   advances while that card is running, and it advances by the chosen speed,
+   so a 30 s stability timer or a one-hour beep period can actually be seen.
+   Stop really stops, and restart really restarts.
+   [FA] هر کارت ساعت مجازی خودش را دارد: فقط وقتی کارت در حال اجراست جلو
+   می‌رود و با ضریب سرعت انتخابی جلو می‌رود، پس تایمر ۳۰ ثانیه‌ای یا بوق
+   ساعتی هم دیده می‌شود. «توقف» واقعاً متوقف می‌کند. */
+var SIMON=[0,1,1,1,1,1,1],SIMT=[0,0,0,0,0,0,0],SIMC={b:-1,t:0},SIMSPD=1,SIMLAST=0;
+function simspd(v){SIMSPD=parseInt(v,10)||1;
+ [1,2,3,4,5,6].forEach(n=>{const e=$('sims'+n);if(e)e.value=String(SIMSPD);});}
 function simtog(n){SIMON[n]=SIMON[n]?0:1;const b=$('simb'+n);
- if(b)b.textContent=SIMON[n]?'توقف':'ادامه';
- if(SIMON[n])SIMT[n]=performance.now();}
+ if(b)b.textContent=SIMON[n]?'توقف':'ادامه';}
+/* [EN] Advance the virtual clocks once per frame. [FA] جلو بردن ساعت‌ها. */
+function simclk(){const r=performance.now();
+ const dt=SIMLAST?Math.min(500,r-SIMLAST):0;SIMLAST=r;
+ for(let n=1;n<=6;n++)if(SIMON[n])SIMT[n]+=dt*SIMSPD;}
 function simlbl(n){const r=$('simp'+n),v=$('simv'+n);if(r&&v)v.textContent=r.value+(n===5?' mV':'٪');}
 function simval(n,d){const r=$('simp'+n);return r?parseInt(r.value,10):d;}
 /* [EN] One LED trio. [FA] یک سه‌تایی LED. */
@@ -1957,8 +1970,9 @@ function gapen(){GAPOF.forEach(g=>{const e=$('q'+g[0]);if(!e)return;
  e.disabled=!need;e.title=need?'':'با یک بوق در هر دور، فاصلهٔ بین بوق‌ها معنا ندارد';
  const l=e.closest('label');if(l)l.style.opacity=need?'':'0.45';});}
 function simrun(){
- const now=performance.now();
- const ph=n=>SIMON[n]?(now-SIMT[n]):0;
+ simclk();
+ const now=SIMT[3];
+ const ph=n=>SIMT[n];
  /* ۱) اضافه‌ولتاژ ورودی: سبز ثابت، قرمز با دوره/duty، بوق دوره‌ای */
  {const per=c4v(38,1000),p=ph(1);
   simset(1,simblink(p,per,c4v(39,50)),true,false,
@@ -1990,8 +2004,8 @@ function simrun(){
  simrest();}
 /* [EN] Cards 4..6 kept apart from the critical early-return. [FA] کارت‌های ۴ تا ۶. */
 function simrest(){
- const now=performance.now();
- const ph=n=>SIMON[n]?(now-SIMT[n]):0;
+ const now=SIMT[6];
+ const ph=n=>SIMT[n];
  /* ۴) شارژ: سبز ثابت، زرد با «مانده تا فول»، فول = زرد خاموش */
  {const pct=simval(4,50),p=ph(4),per=c4v(68,1000),minOn=c4v(69,150),en=c4v(77,100);
   if(pct>=en)simset(4,false,true,false,false,'فول: سبز ثابت، زرد خاموش (درصد ≥ ورود فول '+en+'٪).');
@@ -2004,34 +2018,47 @@ function simrest(){
   const on=mv<al?true:(mv>=cl?false:null);
   const st=on===null?'داخل بازهٔ ضدلرزش: هرچه بود همان می‌ماند':(on?'پرچم آلارم روشن':'پرچم آلارم خاموش');
   simset(5,on===true,false,false,false,st+' · این سناریو چهرهٔ LED یا بوق جدا ندارد؛ فقط یک پرچم است (قرمز اینجا فقط نشانهٔ پرچم است).');}
- /* ۶) عدم‌توازن: اختلاف دو ولوم را می‌سنجد، رویداد می‌شمارد و در حد شمارش قفل می‌کند */
- {const a=sv6('a'),b=sv6('b'),d=Math.abs(a-b),lim=c4v(109,500),st=c4v(112,30000),ev=c4v(114,10),
-   drop=c4v(113,100),per=c4v(115,3600000),len=c4v(116,200);
-  /* اول می‌شماریم، بعد چهره را می‌کشیم تا قفلِ همین لحظه فوراً دیده شود */
-  if(!S6.lock){
-   if(d>=lim){if(!S6.ht)S6.ht=now;
-    if((now-S6.ht)>=st){S6.n++;S6.ht=now;if(S6.n>=ev){S6.lock=true;S6.lt=now;}}
-   }else{if(S6.ht&&d<=(lim-drop))S6.ht=0;}}
+ /* ۶) عدم‌توازن: حالت کاری (شارژ/استراحت/دشارژ) پنجره و حد را تعیین می‌کند */
+ {const a=sv6('a'),bb=sv6('b'),d=Math.abs(a-bb),md=$('sim6m')?$('sim6m').value:'r',
+   lim=(md==='d')?c4v(109,500):c4v(108,300),
+   st=c4v(112,30000),ev=c4v(114,10),drop=c4v(113,100),
+   wc=c4v(111,600000),wr=c4v(110,600000),
+   per=c4v(115,3600000),len=c4v(116,200);
+  const el=now-S6.t0;           /* زمان سپری‌شده از شروع همین حالت */
+  /* پنجره: دشارژ فوری · شارژ بعد از ۱۱۱ (صفر=هرگز) · استراحت بعد از ۱۱۰ (صفر=خاموش) */
+  let open=false,why='';
+  if(md==='d'){open=true;why='دشارژ روی باتری: پنجره از همان لحظه باز است · حد دشارژ '+lim+' mV';}
+  else if(md==='c'){if(wc===0){why='در حال شارژ: گیت صفر است، یعنی حین شارژ هرگز اندازه گرفته نمی‌شود';}
+   else if(el>=wc){open=true;why='در حال شارژ: '+sms(wc)+' از شروع شارژ گذشته، پنجره باز است · حد استراحت '+lim+' mV';}
+   else{why='در حال شارژ: تا باز شدن پنجره '+sms(wc-el)+' مانده (ولتاژ هنوز ننشسته)';}}
+  else{if(wr===0){why='استراحت: گیت صفر است، یعنی حین استراحت اندازه گرفته نمی‌شود';}
+   else if(el>=wr){open=true;why='استراحت: '+sms(wr)+' از پایان شارژ گذشته، پنجره باز است · حد استراحت '+lim+' mV';}
+   else{why='استراحت: تا باز شدن پنجره '+sms(wr-el)+' مانده (ولتاژ هنوز ننشسته)';}}
+  stxt('sim6w',why);
+  if(!S6.lock&&open){
+   if(d>lim){if(!S6.ht)S6.ht=now;
+    if((now-S6.ht)>=st){S6.n++;S6.ht=0;S6.ep=true;if(S6.n>=ev){S6.lock=true;S6.lt=now;}}
+   }else{S6.ht=0;if(S6.ep&&d<=(lim-drop))S6.ep=false;}
+  }else if(!open){S6.ht=0;}
   if(S6.lock){
    simset(6,true,false,false,simbz(now-S6.lt,per,len,1,0),
-    'قفل شد (رویداد '+ev+' ام) · قرمز ثابت · '+(per===0?'بوق خاموش':'یک بوق '+len+' ms هر '+sms(per))+
-    ' · اختلاف اکنون '+d+' mV — قفل با اختلاف کم هم باز نمی‌شود.');
+    'قفل شد (رویداد '+ev+' اُم) · قرمز ثابت · '+(per===0?'بوق خاموش':'یک بوق '+len+' ms هر '+sms(per))+
+    ' · قفل با متوازن شدن باتری هم باز نمی‌شود.');
   }else{
-   const left=S6.ht?Math.max(0,st-(now-S6.ht)):st;
    simset(6,false,true,false,false,
-    'اختلاف '+d+' mV از حد '+lim+' mV '+(d>=lim?'بالاتر است':'پایین‌تر است')+
-    ' · رویدادهای شمرده‌شده: '+S6.n+' از '+ev+
-    (S6.ht?(' · تا رویداد بعدی '+sms(left)):' · شمارش پایداری شروع نشده')+
-    ' · افت لازم برای بستن اپیزود: '+drop+' mV');}
+    'اختلاف '+d+' mV '+(d>lim?'بالاتر':'پایین‌تر')+' از حد '+lim+' mV · '+
+    (open?(S6.ht?('در حال شمارش پایداری، تا رویداد بعدی '+sms(Math.max(0,st-(now-S6.ht)))):'شمارش پایداری شروع نشده'):'پنجره بسته است، پس شمارشی نیست')+
+    ' · رویدادها: '+S6.n+' از '+ev+' · افت لازم برای بستن اپیزود: '+drop+' mV');}
  }
  gapen();
 }
 /* [EN] The two imbalance knobs plus the counter they feed.
    [FA] دو ولوم عدم‌توازن و شمارنده‌ای که تغذیه می‌کنند. */
-var S6={n:0,ht:0,lock:false,lt:0};
+var S6={n:0,ht:0,lock:false,lt:0,ep:false,t0:0};
+function sim6mode(){S6.t0=SIMT[6];S6.ht=0;S6.ep=false;}
 function sv6(k){const r=$('simp6'+k);return r?parseInt(r.value,10):12000;}
 function simlbl6(){['a','b'].forEach(k=>{const v=$('simv6'+k);if(v)v.textContent=sv6(k)+' mV';});}
-function simrst6(){S6={n:0,ht:0,lock:false,lt:0};}
+function simrst6(){S6={n:0,ht:0,lock:false,lt:0,ep:false,t0:SIMT[6]};}
 setInterval(simrun,60);
 
 /* ==================== سناریوهای ۱،۲،۳،۵،۶ — اعداد زنده ==================== */

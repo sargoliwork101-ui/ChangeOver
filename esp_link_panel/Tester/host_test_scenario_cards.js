@@ -570,29 +570,58 @@ function testSimulator(win, doc) {
     check(doc.getElementById('sl5t').textContent.indexOf('ضدلرزش') >= 0,
           'inside the window the card says the state is held');
 
-    /* Card 6 (v1.55): the two half-battery knobs count events and latch. */
+    /* Card 6 (v1.57): mode decides the window, the virtual clock decides time. */
+    win.simspd(1);
     win.simrst6();
     doc.getElementById('simp6a').value = 12000;
     doc.getElementById('simp6b').value = 12000;
-    win.simrun();
-    check(!on('sl6r') && on('sl6g'),
-          'two balanced halves leave card 6 healthy');
-    check(doc.getElementById('sl6t').textContent.indexOf('0 از') >= 0,
-          'with no imbalance no event has been counted');
+    doc.getElementById('sim6m').value = 'r';
+    typeInto(win, doc, 'q108', 300);
     typeInto(win, doc, 'q109', 500);
-    doc.getElementById('simp6b').value = 11000;   /* 1000 mV apart */
-    win.simrun();
-    check(doc.getElementById('sl6t').textContent.indexOf('1000 mV') >= 0,
-          'the gap between the two knobs is measured against the limit');
+    typeInto(win, doc, 'q110', 600000);
+    typeInto(win, doc, 'q111', 600000);
+    typeInto(win, doc, 'q112', 30000);
     typeInto(win, doc, 'q114', 3);
-    typeInto(win, doc, 'q112', 1000);
-    win.S6 = { n: 2, ht: win.performance.now() - 60000, lock: false, lt: 0 };
+    win.sim6mode();
     win.simrun();
-    check(on('sl6r') && !on('sl6g') && !on('sl6y'),
-          'the last event latches the lock: solid red, nothing else');
+    check(doc.getElementById('sim6w').textContent.indexOf('تا باز شدن پنجره') >= 0,
+          'at rest the window is still shut right after a charge');
+    check(doc.getElementById('sl6t').textContent.indexOf('پنجره بسته') >= 0,
+          'and nothing is counted while it is shut');
+
+    doc.getElementById('sim6m').value = 'd';
+    win.sim6mode();
+    win.simrun();
+    check(doc.getElementById('sim6w').textContent.indexOf('دشارژ') >= 0 &&
+          doc.getElementById('sim6w').textContent.indexOf('500 mV') >= 0,
+          'on battery the window is open at once and uses the discharge limit');
+
+    doc.getElementById('sim6m').value = 'c';
+    win.sim6mode();
+    typeInto(win, doc, 'q111', 0);
+    win.simrun();
+    check(doc.getElementById('sim6w').textContent.indexOf('هرگز') >= 0,
+          'a zero charge gate means no measurement while charging');
+    typeInto(win, doc, 'q111', 600000);
+
+    /* virtual clock: only runs while the card runs, and honours the speed */
+    const t0 = win.SIMT[6];
+    win.SIMON[6] = 0;
+    win.simrun();
+    check(win.SIMT[6] === t0, 'a stopped card freezes its own clock');
+    win.SIMON[6] = 1;
+
+    /* three events on the discharge window latch the lock */
+    doc.getElementById('sim6m').value = 'd';
+    win.sim6mode();
+    doc.getElementById('simp6b').value = 11000;    /* 1000 mV apart */
+    for (let i = 0; i < 6; i += 1) { win.SIMT[6] += 30000; win.simrun(); }
+    check(win.S6.lock === true && on('sl6r'),
+          'three stable over-limit events latch the lock: solid red');
     win.simrst6();
+    doc.getElementById('simp6b').value = 12000;
     win.simrun();
-    check(!on('sl6r'), 'the restart button clears the simulated lock');
+    check(!on('sl6r') && win.S6.n === 0, 'the restart button clears the simulated lock');
 
     /* v1.55: a gap box is dead while its band asks for a single beep. */
     typeInto(win, doc, 'q42', 1);
