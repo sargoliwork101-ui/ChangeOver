@@ -2374,16 +2374,23 @@ typedef struct
     uint32_t uint32_t__def;
 } charger_dead_def_t;
 
-static const charger_dead_def_t CHARGER_DEAD_DEF_T__A__DeadDefs[3] =
+static const charger_dead_def_t CHARGER_DEAD_DEF_T__A__DeadDefs[7] =
 {
     {      0u, 172800000u, 86400000u },  /* 125: timeout, 24 h of 48 h max */
     {      0u,   3600000u,   600000u },  /* 126: pause that restarts it     */
-    {      0u,         1u,        0u }   /* 127: also block the output      */
+    {      0u,         1u,        0u },  /* 127: also block the output      */
+    /* [EN] v1.80 own face: the defaults reproduce the borrowed behaviour
+           exactly (beep like the imbalance latch, solid red).
+       [FA] پیش‌فرض‌ها دقیقاً رفتار قبلیِ قرض‌گرفته‌شده را بازتولید می‌کنند. */
+    {      0u,  86400000u,   600000u },  /* 128: beep period, 0 = silent    */
+    {     20u,      2000u,      120u },  /* 129: one beep length            */
+    {      0u,     10000u,        0u },  /* 130: blink period, 0 = solid    */
+    {      5u,        95u,       50u }   /* 131: blink on-share percent     */
 };
 
-static volatile uint32_t UINT32_T__G__DeadParam[3] =
+static volatile uint32_t UINT32_T__G__DeadParam[7] =
 {
-    86400000u, 600000u, 0u
+    86400000u, 600000u, 0u, 600000u, 120u, 0u, 50u
 };
 
 /**
@@ -2589,6 +2596,45 @@ bool func__Charger_SetDeadParam(uint8_t uint8_t__paramId,
     }
 
     return true;
+}
+
+/**
+ * @brief  [EN] v1.80: hand the scenario-6 face shape to the UI module.
+ *         [FA] شکل چهرهٔ سناریوی ۶ را به ماژول UI می‌دهد.
+ * @param  uint32_t__beepPeriodMs [EN] out, may be NULL / دورهٔ بوق
+ * @param  uint32_t__beepLenMs [EN] out, may be NULL / طول بوق
+ * @param  uint32_t__blinkPeriodMs [EN] out, may be NULL / دورهٔ چشمک
+ * @param  uint32_t__blinkDutyPct [EN] out, may be NULL / سهم روشنی
+ */
+void func__Charger_DeadFaceShape(uint32_t *uint32_t__beepPeriodMs,
+                                 uint32_t *uint32_t__beepLenMs,
+                                 uint32_t *uint32_t__blinkPeriodMs,
+                                 uint32_t *uint32_t__blinkDutyPct)
+{
+    if (uint32_t__beepPeriodMs != NULL)
+    {
+        *uint32_t__beepPeriodMs =
+            UINT32_T__G__DeadParam[CHG_DEAD_PARAM_BEEP_PERIOD_MS -
+                                   CHG_DEAD_PARAM_FIRST_ID];
+    }
+    if (uint32_t__beepLenMs != NULL)
+    {
+        *uint32_t__beepLenMs =
+            UINT32_T__G__DeadParam[CHG_DEAD_PARAM_BEEP_LEN_MS -
+                                   CHG_DEAD_PARAM_FIRST_ID];
+    }
+    if (uint32_t__blinkPeriodMs != NULL)
+    {
+        *uint32_t__blinkPeriodMs =
+            UINT32_T__G__DeadParam[CHG_DEAD_PARAM_BLINK_PERIOD_MS -
+                                   CHG_DEAD_PARAM_FIRST_ID];
+    }
+    if (uint32_t__blinkDutyPct != NULL)
+    {
+        *uint32_t__blinkDutyPct =
+            UINT32_T__G__DeadParam[CHG_DEAD_PARAM_BLINK_DUTY_PCT -
+                                   CHG_DEAD_PARAM_FIRST_ID];
+    }
 }
 
 bool func__Charger_GetDeadParam(uint8_t uint8_t__paramId,

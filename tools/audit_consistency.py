@@ -846,7 +846,7 @@ def sec_panel(ids):
         ok(chg_base == imb_base + len(idef),
            "CDEF does not start where IDEF ends",
            f"charge map starts at {chg_base}, imbalance block ends at {imb_base + len(idef) - 1}")
-        ok(len(cdef) == 9,
+        ok(len(cdef) == 13,
            "CDEF must cover the charge map (119/120), band 2's beep shape "
            "(121/122), the imbalance latch blink (123/124, v1.68) and the "
            "dead-battery scenario 6 (125..127, v1.72)",
@@ -885,7 +885,8 @@ def sec_panel(ids):
         #      پیکسل غلط: پیش از v1.28 هر شناسهٔ ۶۴ به بالا در کلمهٔ سوم
         #      می‌رفت، یعنی شناسهٔ ۹۶ می‌شد 1UL << 32. شیفت مدولو-۳۲ پنل آن را
         #      پنهان می‌کرد.
-        words = 4
+        # v1.80: ids 128..131 needed a fifth word on both sides.
+        words = 5
         ok(hi < words * 32, "pending-mask has no word for the top id",
            f"id {hi} needs word {hi // 32 + 1} of {words}")
         p_http = read("esp_link_panel/plink_http.h")
@@ -899,7 +900,7 @@ def sec_panel(ids):
             ok(f"(1<<(id-{lo_b}))" in P_PAN,
                "the panel pending-mask has no arm for this word",
                f"apend() must handle ids {lo_b}..{lo_b + 31}")
-        ok("static_assert(ESP_PARAM_COUNT <= 128" in p_http,
+        ok("static_assert(ESP_PARAM_COUNT <= 160" in p_http,
            "nothing stops the next parameter block from overflowing the masks")
 
         # [EN] The sketch is C++, so _Static_assert (a C11 keyword) does not
