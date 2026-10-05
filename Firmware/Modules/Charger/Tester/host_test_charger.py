@@ -1293,9 +1293,15 @@ def test_charger_persistence_v114():
           "bool func__EspLink_GetParam(uint8_t uint8_t__paramId, uint32_t *uint32_t__value);" in esph_txt,
           "ApplyParam/GetParam must be public since v1.14 - the flash load/save replays through the SAME clamped setters as the panel")
 
-    check(re.search(r"FLASH\s+\(rx\)\s*: ORIGIN = 0x8000000,\s*LENGTH = 62K", ld) and
+    # [EN] v1.66: application FLASH is 60K now - the bench-LUT block took two
+    #      more pages at 0x0800F000. Both reserved regions must be declared, or
+    #      the image could grow into them without the linker saying a word.
+    # [FA] v1.66: فلش برنامه ۶۰K شد - بلوک جدول بنچ دو صفحهٔ دیگر گرفت. هر دو
+    #      ناحیهٔ رزرو باید اعلام شوند وگرنه تصویر بی‌صدا داخلشان رشد می‌کند.
+    check(re.search(r"FLASH\s+\(rx\)\s*: ORIGIN = 0x8000000,\s*LENGTH = 60K", ld) and
+          re.search(r"LUTNVM\s+\(r\)\s*: ORIGIN = 0x800F000,\s*LENGTH = 2K", ld) and
           re.search(r"NVM\s+\(r\)\s*: ORIGIN = 0x800F800,\s*LENGTH = 2K", ld),
-          "the linker must shrink application FLASH to 62K and reserve the 2K NVM region at 0x0800F800 (build-time collision guard)")
+          "the linker must shrink application FLASH to 60K and reserve BOTH 2K regions: the LUT block at 0x0800F000 (v1.66) and the parameter records at 0x0800F800 (v1.14)")
     check("0x0800F800u" in nvm_h and "0x0800FC00u" in nvm_h,
           "the persistence pages must be the last two 1 KiB pages of the 64 KiB bank")
     # [EN] Matched by regex, not by exact spacing: these #defines are column
@@ -3810,6 +3816,282 @@ def test_stage_graph_is_current_vs_voltage_v3():
           "fixed fraction of the width, which carried no information")
 
 
+def test_direct_lut_push_v166():
+    """v1.66 (user order 2026-10-05): "do I really have to paste the table into
+    the micro's code and build? push it straight into the micro's table area -
+    and keep the current way too. Because it moves a lot of data, give this
+    part its own storage path, separate from the other variables; it can even
+    reset the micro after it has received, stored and handshaken the data, so
+    every setting comes up on the new table."
+
+    What is proven here: the separate flash block exists and cannot collide
+    with the parameter records; the link carries the table as its OWN messages;
+    the measurement path prefers the stored table but falls back to the
+    compiled one; the build-time route (option "c") is still wired in the
+    panel; the browser, the ESP and the STM32 all agree on one CRC32; and the
+    commit state machine is run compiled against a RAM-emulated flash with
+    faults injected."""
+    import subprocess
+    import tempfile
+    import shutil
+
+    cal_lut_h = (ROOT / "Firmware/Modules/CalLut/cal_lut.h").read_text(encoding="utf-8")
+    cal_lut_c = (ROOT / "Firmware/Modules/CalLut/cal_lut.c").read_text(encoding="utf-8")
+    esp_h = ESP_LINK_H.read_text(encoding="utf-8")
+    esp_c = ESP_LINK_C.read_text(encoding="utf-8")
+    meas_c = MEASUREMENT_C.read_text(encoding="utf-8")
+    app_c = (ROOT / "Firmware/App/Src/app.c").read_text(encoding="utf-8")
+    ino = (ROOT / "esp_link_panel/plink_panel.h").read_text(encoding="utf-8")
+    sketch = (ROOT / "esp_link_panel/esp_link_panel.ino").read_text(encoding="utf-8")
+    plink_http = (ROOT / "esp_link_panel/plink_http.h").read_text(encoding="utf-8")
+    plink_link = (ROOT / "esp_link_panel/plink_link.h").read_text(encoding="utf-8")
+
+    # ---------- the storage path is SEPARATE, which is the actual order ----------
+    check(re.search(r"CAL_LUT_PAGE_A_ADDR\s+0x0800F000u", cal_lut_h) and
+          re.search(r"CAL_LUT_PAGE_B_ADDR\s+0x0800F400u", cal_lut_h),
+          "the LUT block must be its own two 1 KiB pages at 0x0800F000/0x0800F400, below the parameter records")
+    check("CalLut pages must stay below the parameter NVM pages" in cal_lut_c and
+          "CalLut record must fit inside one flash page" in cal_lut_c,
+          "a static assert must prove the LUT record fits its page AND that the block never reaches the parameter pages")
+    check("esp_link_nvm" not in cal_lut_c,
+          "the LUT path must not reuse the parameter NVM module - separate storage was the point of the order")
+    check(re.search(r"CAL_LUT_POINTS_MAX\s+24u", cal_lut_h) and
+          re.search(r"CAL_LUT_POINTS_MIN\s+2u", cal_lut_h),
+          "the per-channel point window (2..24) must be declared where both sides can mirror it")
+    check(re.search(r"ESP_LUT_POINTS_MAX\s+24u",
+                    (ROOT / "esp_link_panel/plink_config.h").read_text(encoding="utf-8")),
+          "the ESP must mirror the board's 24-point cap, or it would send a table the board refuses")
+
+    # ---------- the table travels as its own messages, never as parameters ----------
+    for name, value in (("LUT_BEGIN", "0x04u"), ("LUT_CHUNK", "0x05u"),
+                        ("LUT_COMMIT", "0x06u"), ("LUT_RESET", "0x07u"),
+                        ("LUT_ACK", "0x13u")):
+        check(re.search(r"ESPLINK_MSG_%s\s+%s" % (name, value), esp_h),
+              "message %s must be defined on the STM32 side" % name)
+        check(re.search(r"ESP_MSG_%s\s+%s" % (name, value),
+                        (ROOT / "esp_link_panel/plink_config.h").read_text(encoding="utf-8")),
+              "message %s must be mirrored on the ESP side with the SAME id" % name)
+    check("func__EspLink_HandleLutFrame" in esp_c and "func__EspLink_SendLutAck" in esp_c,
+          "the STM32 must handle the LUT frames and acknowledge every one of them")
+    check("func__CalLut_Tick();" in esp_c and "func__CalLut_Init();" in app_c,
+          "the LUT module must be initialised at boot and ticked by the comm task (the armed reboot lives there)")
+    check("(uint8_t)'R'" in esp_c and "(uint8_t)'S'" in esp_c and "(uint8_t)'T'" in esp_c,
+          "LUT_RESET must carry a literal magic: a stray frame must never be able to reboot a charging board")
+
+    # ---------- measurement prefers the stored table, falls back to the compiled one ----------
+    check("func__Measurement_BenchLutInterp" in meas_c,
+          "both channels and both table sources must share ONE interpolation function")
+    for ch in ("1", "2"):
+        check(("func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_%s)" % ch) in meas_c and
+              ("CAL_Current%sLutChainMa" % ch) in meas_c,
+              "channel %s must use the pushed table when it is active and the compiled table otherwise" % ch)
+    check("CAL_CURRENT1_LUT_POINTS" in meas_c and "CAL_CURRENT2_LUT_POINTS" in meas_c,
+          "the compile-time tables must remain the fallback (the user asked to KEEP the current capability)")
+
+    # ---------- the panel keeps BOTH routes and drives the handshake ----------
+    check("calcode()" in ino and "calcdl()" in ino,
+          "option (c), generating calibration.h for a rebuild, must still be offered")
+    check("lsend()" in ino and "lrst()" in ino and "function lcrc(" in ino,
+          "the panel must offer the direct push, the post-handshake reset, and compute the CRC32 itself")
+    check("a.crc>>>0!==p.crc>>>0" in ino,
+          "the panel must compare the board's CRC with its own before calling the push a success")
+    check("جدول قبلی بدون تغییر ماند" in ino,
+          "a refused push must say, in plain Persian, that the previous table is untouched")
+    check('/lut' in sketch and '/lut/reset' in sketch,
+          "the ESP must expose the push, status and reset routes")
+    check("func__Esp_HttpLutPush" in plink_http and "func__Esp_HttpLutStatus" in plink_http and
+          "func__Esp_HttpLutReset" in plink_http,
+          "the three LUT handlers must exist in the sketch")
+    check('"{\\"ok\\":0,\\"e\\":\\"handshake\\"}"' in plink_http,
+          "the reset route must refuse unless the commit handshake succeeded - a reboot is not a retry button")
+    check("func__Esp_SendLutTable" in plink_link and "func__Esp_SendLutReset" in plink_link,
+          "the ESP link layer must be able to send the table and the reset request")
+
+    # ---------- one CRC32, three implementations ----------
+    import zlib
+    table1 = [(0, 0), (48, 703), (130, 1914), (268, 3886)]
+    table2 = [(0, 0), (37, 111), (106, 766)]
+    content = bytearray()
+    for tab in (table1, table2):
+        content.append(len(tab))
+        for chain, power in tab:
+            content += chain.to_bytes(4, "little") + power.to_bytes(4, "little")
+    py_crc = zlib.crc32(bytes(content)) & 0xFFFFFFFF
+
+    node = shutil.which("node")
+    if node is not None:
+        src = re.search(r"function lcrc\(b\)\{.*?>>>0;\}", ino, re.S).group(0)
+        js = src + "const b=[%s];console.log(lcrc(b)>>>0);" % ",".join(str(b) for b in content)
+        r = subprocess.run([node, "-e", js], capture_output=True, text=True)
+        check(r.returncode == 0 and int(r.stdout.strip()) == py_crc,
+              "the panel's JavaScript CRC32 must be the standard reflected CRC32 the board computes (got %r)" % r.stdout)
+
+    # ---------- compiled fault-injection run of the EXACT commit state machine ----------
+    gcc = shutil.which("gcc")
+    if gcc is None:
+        print("  SKIP: gcc not found - the compiled LUT harness was not executed (static checks above still ran)")
+        return
+    tmp = tempfile.mkdtemp(prefix="callut_harness_")
+    try:
+        harness = r"""
+#include <stdio.h>
+#include <string.h>
+#include <assert.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <sys/mman.h>
+#define EMU_FLASH_BASE 0x11000000u
+#define CAL_LUT_PAGE_A_ADDR (EMU_FLASH_BASE)
+#define CAL_LUT_PAGE_B_ADDR (EMU_FLASH_BASE + 1024u)
+#define CAL_LUT_HOST_TEST 1
+static int g_reset = 0;
+#define CAL_LUT_HOST_RESET_HOOK() (g_reset++)
+static int g_cut_after = -1;
+static int g_erase_fail = 0;
+bool func__BspFlash_ErasePage(uint32_t p){
+    if (p != CAL_LUT_PAGE_A_ADDR && p != CAL_LUT_PAGE_B_ADDR) return false;
+    if (g_erase_fail) return false;
+    memset((void *)(uintptr_t)p, 0xFF, 1024);
+    return true;
+}
+bool func__BspFlash_ProgramHalfWords(uint32_t a, const uint16_t *d, uint32_t c){
+    volatile uint16_t *dst = (volatile uint16_t *)(uintptr_t)a;
+    for (uint32_t i = 0; i < c; i++) {
+        if (g_cut_after >= 0 && (int)i >= g_cut_after) return false;
+        dst[i] = d[i];
+    }
+    return true;
+}
+#include "cal_lut.c"
+
+/* mirror of the panel's content CRC: [n][8 B per point] per channel */
+static uint32_t content_crc(const uint32_t *x1, const uint32_t *y1, uint32_t n1,
+                            const uint32_t *x2, const uint32_t *y2, uint32_t n2){
+    uint32_t crc = 0xFFFFFFFFu;
+    const uint32_t *xs[2] = { x1, x2 }, *ys[2] = { y1, y2 };
+    uint32_t ns[2] = { n1, n2 };
+    for (int ch = 0; ch < 2; ch++) {
+        crc = func__CalLut_Crc32Byte(crc, (uint8_t)ns[ch]);
+        for (uint32_t i = 0; i < ns[ch]; i++) {
+            uint32_t pair[2] = { xs[ch][i], ys[ch][i] };
+            for (int b = 0; b < 8; b++)
+                crc = func__CalLut_Crc32Byte(crc, (uint8_t)((pair[b / 4] >> (8 * (b % 4))) & 0xFFu));
+        }
+    }
+    return crc ^ 0xFFFFFFFFu;
+}
+static uint32_t X1[4] = { 0, 48, 130, 268 }, Y1[4] = { 0, 703, 1914, 3886 };
+static uint32_t X2[3] = { 0, 37, 106 },      Y2[3] = { 0, 111, 766 };
+static void stage(uint32_t n1, uint32_t n2, int skip_last){
+    assert(func__CalLut_StageBegin(n1, n2));
+    for (uint32_t i = 0; i < n1; i++) assert(func__CalLut_StagePoint(1, i, X1[i], Y1[i]));
+    for (uint32_t i = 0; i < n2; i++) {
+        if (skip_last && i + 1u == n2) break;
+        assert(func__CalLut_StagePoint(2, i, X2[i], Y2[i]));
+    }
+}
+
+int main(void){
+    uint32_t board = 0;
+    void *m = mmap((void *)EMU_FLASH_BASE, 4096, PROT_READ | PROT_WRITE,
+                   MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    assert(m == (void *)EMU_FLASH_BASE);
+    memset(m, 0xFF, 4096);
+
+    /* T1 fresh board: no table, the compiled one stays in charge */
+    func__CalLut_Init();
+    assert(!func__CalLut_Active(1) && !func__CalLut_Active(2));
+    assert(func__CalLut_Points(1) == 0 && func__CalLut_ChainMa(1) == NULL);
+
+    /* T2 a good push lands and is readable */
+    uint32_t crc = content_crc(X1, Y1, 4, X2, Y2, 3);
+    stage(4, 3, 0);
+    assert(func__CalLut_Commit(crc, &board) == CAL_LUT_ST_OK);
+    assert(board == crc);
+    assert(func__CalLut_Active(1) && func__CalLut_Points(1) == 4);
+    assert(func__CalLut_ChainMa(1)[3] == 268 && func__CalLut_PowerMw(1)[3] == 3886);
+    assert(func__CalLut_Active(2) && func__CalLut_Points(2) == 3);
+    uint16_t seq_after_first = ((const cal_lut_record_t *)CAL_LUT_PAGE_B_ADDR)->uint16_t__seq;
+    assert(seq_after_first == 1u);
+
+    /* T3 it survives a reboot */
+    func__CalLut_Init();
+    assert(func__CalLut_Active(1) && func__CalLut_Points(1) == 4);
+
+    /* T4 a corrupted push (CRC mismatch) is refused and changes nothing */
+    stage(4, 3, 0);
+    assert(func__CalLut_Commit(crc ^ 0x1u, &board) == CAL_LUT_ST_CRC);
+    func__CalLut_Init();
+    assert(func__CalLut_Points(1) == 4);
+
+    /* T5 a dipping power axis is refused (it would wrap the unsigned slope) */
+    uint32_t YD[4] = { 0, 703, 400, 3886 };
+    assert(func__CalLut_StageBegin(4, 0));
+    for (uint32_t i = 0; i < 4; i++) assert(func__CalLut_StagePoint(1, i, X1[i], YD[i]));
+    assert(func__CalLut_Commit(0u, &board) == CAL_LUT_ST_POWER);
+
+    /* T6 a non-increasing chain axis is refused */
+    uint32_t XB[4] = { 0, 48, 48, 268 };
+    assert(func__CalLut_StageBegin(4, 0));
+    for (uint32_t i = 0; i < 4; i++) assert(func__CalLut_StagePoint(1, i, XB[i], Y1[i]));
+    assert(func__CalLut_Commit(0u, &board) == CAL_LUT_ST_CHAIN);
+
+    /* T7 a chunk lost on the wire fails the commit instead of writing half a table */
+    stage(4, 3, 1);
+    assert(func__CalLut_Commit(crc, &board) == CAL_LUT_ST_MISSING);
+
+    /* T8 counts out of range never even open a staging buffer */
+    assert(!func__CalLut_StageBegin(25, 0));
+    assert(!func__CalLut_StageBegin(1, 0));
+    assert(!func__CalLut_StageBegin(0, 0));
+    assert(func__CalLut_Commit(crc, &board) == CAL_LUT_ST_NO_STAGE);
+
+    /* T9 power cut mid-write: the commit fails and the previous table survives */
+    stage(4, 3, 0);
+    g_cut_after = 20;
+    assert(func__CalLut_Commit(crc, &board) == CAL_LUT_ST_FLASH);
+    g_cut_after = -1;
+    func__CalLut_Init();
+    assert(func__CalLut_Active(1) && func__CalLut_Points(1) == 4);
+
+    /* T10 ping-pong: the second good push goes to the OTHER page */
+    uint32_t crc2 = content_crc(X1, Y1, 3, X2, Y2, 3);
+    assert(func__CalLut_StageBegin(3, 3));
+    for (uint32_t i = 0; i < 3; i++) assert(func__CalLut_StagePoint(1, i, X1[i], Y1[i]));
+    for (uint32_t i = 0; i < 3; i++) assert(func__CalLut_StagePoint(2, i, X2[i], Y2[i]));
+    assert(func__CalLut_Commit(crc2, &board) == CAL_LUT_ST_OK);
+    assert(func__CalLut_Points(1) == 3);
+    assert(func__CalLut_RecordValidate((const cal_lut_record_t *)CAL_LUT_PAGE_A_ADDR));
+    assert(((const cal_lut_record_t *)CAL_LUT_PAGE_A_ADDR)->uint16_t__seq == 2u);
+
+    /* T11 the reboot is armed, not immediate: the ACK frame must leave first */
+    func__CalLut_RequestReset();
+    func__CalLut_Tick();
+    assert(g_reset == 0);
+    func__CalLut_Tick();
+    func__CalLut_Tick();
+    assert(g_reset == 1);
+    func__CalLut_Tick();
+    assert(g_reset == 1);
+
+    printf("LUT harness OK\n");
+    return 0;
+}
+"""
+        (Path(tmp) / "harness.c").write_text(harness, encoding="utf-8")
+        binary = str(Path(tmp) / "harness")
+        r = subprocess.run([gcc, "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-O1",
+                            "-I", str(ROOT / "Firmware/Modules/CalLut"),
+                            str(Path(tmp) / "harness.c"), "-o", binary],
+                           capture_output=True, text=True)
+        check(r.returncode == 0, "the LUT harness must compile:\n" + r.stderr)
+        r = subprocess.run([binary], capture_output=True, text=True)
+        check(r.returncode == 0 and "LUT harness OK" in r.stdout,
+              "the LUT commit state machine must survive the injected faults:\n" + r.stdout + r.stderr)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -3841,6 +4123,7 @@ def main():
         test_ch2_lut_refit_v118,
         test_ch1_lut_v119,
         test_charger_persistence_v114,
+        test_direct_lut_push_v166,
         test_alarms_tab_v115,
         test_ui_mirror_v116,
         test_ui_mirror_v117,

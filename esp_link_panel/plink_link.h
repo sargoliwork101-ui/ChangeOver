@@ -112,6 +112,114 @@ static void func__Esp_WriteFrame(uint8_t uint8_t__type, const uint8_t *uint8_t__
     UINT32_T__G__LastKeepaliveMs = UINT32_T__G__LastTxMs;
 }
 
+/* ==================== v1.66 direct LUT push / ارسال مستقیم جدول ==================== */
+
+/* [EN] Last LUT_ACK the board sent, exposed to the browser by GET /lut. The
+   push is a HANDSHAKE, not a fire-and-forget: the panel only offers the
+   reboot after the board has echoed the same CRC32 back.
+   [FA] آخرین LUT_ACK برد که با GET /lut به مرورگر می‌رسد. ارسال یک
+   «دست‌دادن» است نه رهاکردن: پنل فقط وقتی ریست را پیشنهاد می‌دهد که برد
+   همان CRC32 را پس داده باشد. */
+static uint8_t  UINT8_T__G__LutAckStage = 0u;
+static uint8_t  UINT8_T__G__LutAckStatus = 0u;
+static uint8_t  UINT8_T__G__LutAckPoints1 = 0u;
+static uint8_t  UINT8_T__G__LutAckPoints2 = 0u;
+static uint32_t UINT32_T__G__LutAckCrc32 = 0u;
+static uint32_t UINT32_T__G__LutAckMs = 0u;
+static uint32_t UINT32_T__G__LutAckCount = 0u;
+static uint32_t UINT32_T__G__LutSentCrc32 = 0u;
+
+/**
+ * @brief  [EN] Append one little-endian u32 to a payload buffer.
+ *         [FA] افزودن یک u32 لیتل‌اندین به بافر payload.
+ */
+static uint16_t func__Esp_PutU32(uint8_t *uint8_t__ptr_buffer, uint16_t uint16_t__offset, uint32_t uint32_t__value)
+{
+    uint8_t__ptr_buffer[uint16_t__offset] = (uint8_t)(uint32_t__value & 0xFFu);
+    uint8_t__ptr_buffer[uint16_t__offset + 1u] = (uint8_t)((uint32_t__value >> 8) & 0xFFu);
+    uint8_t__ptr_buffer[uint16_t__offset + 2u] = (uint8_t)((uint32_t__value >> 16) & 0xFFu);
+    uint8_t__ptr_buffer[uint16_t__offset + 3u] = (uint8_t)((uint32_t__value >> 24) & 0xFFu);
+    return (uint16_t)(uint16_t__offset + 4u);
+}
+
+/**
+ * @brief  [EN] Send one channel's staged points as a single LUT_CHUNK
+ *              (3 + 8 x N bytes; N <= 24 keeps it at 195 bytes, well inside
+ *              the 512-byte frame ceiling).
+ *         [FA] ارسال نقاط یک کانال در یک LUT_CHUNK.
+ */
+static void func__Esp_SendLutChunk(uint8_t uint8_t__channel, const uint32_t *uint32_t__ptr_chainMa,
+                                   const uint32_t *uint32_t__ptr_powerMw, uint8_t uint8_t__count)
+{
+    uint8_t UINT8_T__A__Payload[3u + (8u * ESP_LUT_POINTS_MAX)];
+    uint16_t uint16_t__used = 3u;
+    uint8_t uint8_t__index;
+
+    if ((uint8_t__count == 0u) || (uint8_t__count > (uint8_t)ESP_LUT_POINTS_MAX))
+    {
+        return;
+    }
+
+    UINT8_T__A__Payload[0] = uint8_t__channel;
+    UINT8_T__A__Payload[1] = 0u;   /* [EN] first index / اندیس شروع */
+    UINT8_T__A__Payload[2] = uint8_t__count;
+
+    for (uint8_t__index = 0u; uint8_t__index < uint8_t__count; uint8_t__index++)
+    {
+        uint16_t__used = func__Esp_PutU32(UINT8_T__A__Payload, uint16_t__used, uint32_t__ptr_chainMa[uint8_t__index]);
+        uint16_t__used = func__Esp_PutU32(UINT8_T__A__Payload, uint16_t__used, uint32_t__ptr_powerMw[uint8_t__index]);
+    }
+
+    func__Esp_WriteFrame(ESP_MSG_LUT_CHUNK, UINT8_T__A__Payload, uint16_t__used);
+}
+
+/**
+ * @brief  [EN] Push a whole table: BEGIN, one CHUNK per non-empty channel,
+ *              then COMMIT carrying the CRC32 the browser computed over the
+ *              same bytes. The board answers each step with LUT_ACK.
+ *         [FA] ارسال کل جدول: BEGIN، یک CHUNK برای هر کانال غیرخالی و بعد
+ *              COMMIT با CRC32 که مرورگر روی همان بایت‌ها حساب کرده. برد به
+ *              هر مرحله با LUT_ACK پاسخ می‌دهد.
+ */
+static void func__Esp_SendLutTable(const uint32_t *uint32_t__ptr_chain1, const uint32_t *uint32_t__ptr_power1, uint8_t uint8_t__count1,
+                                   const uint32_t *uint32_t__ptr_chain2, const uint32_t *uint32_t__ptr_power2, uint8_t uint8_t__count2,
+                                   uint32_t uint32_t__crc32)
+{
+    uint8_t UINT8_T__A__Begin[2];
+    uint8_t UINT8_T__A__Commit[4];
+
+    UINT8_T__A__Begin[0] = uint8_t__count1;
+    UINT8_T__A__Begin[1] = uint8_t__count2;
+    func__Esp_WriteFrame(ESP_MSG_LUT_BEGIN, UINT8_T__A__Begin, 2u);
+
+    if (uint8_t__count1 > 0u)
+    {
+        func__Esp_SendLutChunk(1u, uint32_t__ptr_chain1, uint32_t__ptr_power1, uint8_t__count1);
+    }
+    if (uint8_t__count2 > 0u)
+    {
+        func__Esp_SendLutChunk(2u, uint32_t__ptr_chain2, uint32_t__ptr_power2, uint8_t__count2);
+    }
+
+    (void)func__Esp_PutU32(UINT8_T__A__Commit, 0u, uint32_t__crc32);
+    func__Esp_WriteFrame(ESP_MSG_LUT_COMMIT, UINT8_T__A__Commit, 4u);
+    UINT32_T__G__LutSentCrc32 = uint32_t__crc32;
+}
+
+/**
+ * @brief  [EN] Ask the board to reboot so every module starts from the new
+ *              table. The literal 'R','S','T','!' magic means a stray frame
+ *              can never restart a charging board by accident.
+ *         [FA] درخواست ریست برد تا همهٔ ماژول‌ها با جدول جدید شروع کنند.
+ *              مجیک متنی یعنی فریم سرگردان نمی‌تواند تصادفی برد در حال شارژ
+ *              را ریست کند.
+ */
+static void func__Esp_SendLutReset(void)
+{
+    uint8_t UINT8_T__A__Payload[4] = { (uint8_t)'R', (uint8_t)'S', (uint8_t)'T', (uint8_t)'!' };
+    func__Esp_WriteFrame(ESP_MSG_LUT_RESET, UINT8_T__A__Payload, 4u);
+}
+
 /**
  * @brief  [EN] Send SET_PARAM [id:u8][value:u32 LE].
  *         [FA] ارسال SET_PARAM با قالب [id:u8][value:u32 LE].
@@ -379,6 +487,21 @@ static void func__Esp_HandleFrame(void)
             }
             func__Esp_StoreParamItem(&uint8_t__ptr_payload[uint16_t__offset]);
         }
+    }
+    else if ((UINT8_T__G__RxType == ESP_MSG_LUT_ACK) && (UINT16_T__G__RxLen == 8u))
+    {
+        /* [EN] v1.66: the board's answer to one LUT push step. Stored, not
+           acted on: the browser polls GET /lut and decides, because only it
+           knows which table it asked for.
+           [FA] پاسخ برد به یک مرحلهٔ ارسال جدول. فقط ذخیره می‌شود؛ تصمیم با
+           مرورگر است چون فقط او می‌داند چه جدولی خواسته. */
+        UINT8_T__G__LutAckStage = uint8_t__ptr_payload[0];
+        UINT8_T__G__LutAckStatus = uint8_t__ptr_payload[1];
+        UINT8_T__G__LutAckPoints1 = uint8_t__ptr_payload[2];
+        UINT8_T__G__LutAckPoints2 = uint8_t__ptr_payload[3];
+        UINT32_T__G__LutAckCrc32 = func__Esp_ReadU32(uint8_t__ptr_payload, 4u);
+        UINT32_T__G__LutAckMs = (uint32_t)millis();
+        UINT32_T__G__LutAckCount++;
     }
     else
     {

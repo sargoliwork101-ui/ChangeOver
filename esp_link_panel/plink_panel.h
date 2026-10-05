@@ -280,7 +280,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build eca10f3</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e3ec44d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2813,6 +2813,73 @@ async function calapply(){
   (bad.length?' · برد '+bad.length+' عدد را به بازهٔ خودش گیره زد':' · برد همه را عیناً پذیرفت')+
   ' · پشتیبان قبلی در فایل دانلودشده است.');}
 
+/* ---------- v1.66: ارسال مستقیم جدول به حافظهٔ خود میکرو (دستور کاربر ۲۰۲۶-۱۰-۰۵) ----------
+   [FA] «حتماً باید جدول را در کد میکرو بچسبانیم و بیلد کنیم؟» نه. برد از این
+   نسخه یک بلوک فلش «جدا از بقیهٔ متغیرها» دارد (دو صفحهٔ ۱ کیلوبایتی،
+   پینگ‌پنگ، CRC مخصوص خودش) که فقط جدول بنچ در آن می‌نشیند. مسیر قدیمی هم
+   دست‌نخورده ماند: «ساخت کد برای میکرو» همچنان فایل calibration.h را می‌دهد.
+   سه مرحله: چیدن (BEGIN+CHUNK) ← کامیت با CRC32 ← دست‌دادن؛ و فقط بعد از
+   دست‌دادنِ موفق، دکمهٔ ریست برد فعال می‌شود تا همهٔ ماژول‌ها با جدول نو
+   شروع کنند.
+   [EN] The push is content-addressed: the browser CRC32s the exact bytes it
+   sends, the board CRC32s what it received, and the commit is refused unless
+   they match. */
+const LUTMAX=24;
+const LUTST={0:'موفق',1:'برد مرحلهٔ شروع را ندیده بود',2:'تعداد نقاط برای برد نامعتبر بود',
+ 3:'یکی از تکه‌های جدول به برد نرسید',4:'محور جریان روی برد صعودی نبود',
+ 5:'محور توان روی برد افت داشت',6:'CRC برد با CRC پنل نخواند (داده در راه خراب شد)',
+ 7:'نوشتن روی فلش برد شکست خورد'};
+function lcrc(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++){c^=b[i];
+ for(let k=0;k<8;k++)c=(c>>>1)^(0xEDB88320&-(c&1));}return (c^0xFFFFFFFF)>>>0;}
+function lpack(){
+ const get=id=>{const r=CALR.filter(x=>x[1]===id)[0];if(!r)return (D&&D.p&&D.p[id]!=null)?D.p[id]:0;
+  const e=$('calv'+CALR.indexOf(r));return e?Math.round(+e.value):r[3];};
+ const off=[get(0),get(1)],gn=[get(2),get(3)],msg=[],T=[];
+ [1,2].forEach(n=>{const t=calbuild(n,off[n-1],gn[n-1]);
+  t.note.forEach(x=>msg.push('باتری '+fa(n)+': '+x));
+  if(t.bad){msg.push('⛔ باتری '+fa(n)+': '+t.bad+' — این کانال فرستاده نمی‌شود');T.push({X:[],Y:[]});return;}
+  if(t.X.length>LUTMAX){msg.push('⛔ باتری '+fa(n)+': '+t.X.length+' نقطه از سقف '+fa(LUTMAX)+
+   ' نقطهٔ حافظهٔ برد بیشتر است؛ این کانال فرستاده نمی‌شود (ساخت کد و بیلد همچنان کار می‌کند)');
+   T.push({X:[],Y:[]});return;}
+  T.push(t);});
+ if(!T[0].X.length&&!T[1].X.length)return {bad:'هیچ کانالی جدول قابل‌ارسال ندارد',msg:msg};
+ const by=[],cs=[T[0].X.length,T[1].X.length];
+ T.forEach(t=>{by.push(t.X.length&255);
+  for(let i=0;i<t.X.length;i++){[t.X[i],t.Y[i]].forEach(v=>{
+   by.push(v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255);});}});
+ T.forEach(t=>{for(let i=0;i<t.X.length;i++){cs.push(t.X[i],t.Y[i]);}});
+ const crc=lcrc(by);cs.push(crc);
+ return {T:T,crc:crc,body:cs.join(','),msg:msg};}
+async function lsend(){
+ if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
+ if(!D||D.on!=1){stxt('calst','⛔ لینک STM32 برقرار نیست؛ جدول فرستاده نمی‌شود.');return;}
+ const p=lpack();
+ if(p.bad){stxt('calst','⛔ '+p.bad+(p.msg.length?' · '+p.msg.join(' · '):''));return;}
+ if(!confirm('جدول مستقیماً در حافظهٔ خود میکرو نوشته شود؟\n\n'+
+  'باتری ۱: '+p.T[0].X.length+' نقطه · باتری ۲: '+p.T[1].X.length+' نقطه\n'+
+  'محل ذخیره: بلوک فلش مخصوص جدول، جدا از بقیهٔ تنظیمات.\n'+
+  'اگر داده درست نرسد، برد کامیت را رد می‌کند و جدول قبلی سر جایش می‌ماند.'))return;
+ stxt('calst','… جدول در حال ارسال به برد');
+ let r;try{r=await req('/lut','POST',p.body);}catch(e){stxt('calst','⚠ ارسال به ESP نرسید');return;}
+ if(!r||r.ok!==1){stxt('calst','⚠ ESP جدول را نپذیرفت ('+((r&&r.e)||'?')+')');return;}
+ let a=null;
+ for(let i=0;i<20;i++){await sl(250);
+  try{a=await req('/lut','GET');}catch(e){a=null;}
+  if(a&&a.st===3)break;}
+ if(!a||a.st!==3){stxt('calst','⚠ برد پاسخ کامیت را نداد؛ جدول قبلی بدون تغییر ماند.');return;}
+ if(a.s!==0){stxt('calst','⛔ برد جدول را رد کرد: '+(LUTST[a.s]||('کد '+a.s))+
+  ' · جدول قبلی بدون تغییر ماند.');return;}
+ if(a.crc>>>0!==p.crc>>>0){stxt('calst','⛔ دست‌دادن نخواند (CRC برد '+a.crc+' ≠ CRC پنل '+p.crc+
+  ') · جدول قبلی بدون تغییر ماند.');return;}
+ stxt('calst','✅ جدول در فلش برد نوشته و دست‌دادن تأیید شد (باتری ۱: '+a.n1+' نقطه، باتری ۲: '+a.n2+
+  ' نقطه، CRC '+a.crc+'). برای اینکه همهٔ ماژول‌ها با جدول جدید شروع کنند، «ریست برد» را بزنید.');
+ if(confirm('جدول با موفقیت ذخیره شد.\n\nبرد همین حالا ریست شود تا همهٔ تنظیمات با جدول جدید بالا بیایند؟\n'+
+  '(شارژ چند ثانیه قطع می‌شود؛ پارامترهای ذخیره‌شده دست‌نخورده برمی‌گردند.)'))await lrst();}
+async function lrst(){
+ let r;try{r=await req('/lut/reset','POST');}catch(e){stxt('calst','⚠ درخواست ریست به ESP نرسید');return;}
+ if(!r||r.ok!==1){stxt('calst','⛔ ریست رد شد: اول باید یک ارسال موفق با دست‌دادن تأییدشده انجام شود.');return;}
+ stxt('calst','… فرمان ریست فرستاده شد؛ برد چند ثانیهٔ دیگر با جدول جدید بالا می‌آید.');}
+
 /* ---------- ساخت تب‌ها ---------- */
 /* تب ۱: داده‌برداری بنچ */
 $('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty را می‌گذارد، جدول همان ردیف را نشان می‌دهد و عدد مولتی‌متر را در فرم بالای جدول بنویس و <b>ثبت</b> کن — آمار همان لحظهٔ ثبت قفل می‌شود. <b>SOLO1</b>: کانال ۱ · <b>SOLO2</b>: کانال ۲ · <b>BOTH</b>: هر دو. آمپرمتر: یکی در تغذیهٔ کل برد + سری با سیم شارژ هر باتری روشن. هیچ ضریبی خودکار اعمال نمی‌شود.</div>
@@ -2825,7 +2892,7 @@ ${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" 
 <div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div></div><div class="cd"><div class="hd"><b>کالیبراسیون خودکار از همین جدول</b><span class="lb">· نمونه‌های ثبت‌شده: <b id="caln">0</b> · عددها فقط با تأیید شما روی برد نوشته می‌شوند</span></div>
 <div class="ds">هر مرحله‌ای که در ویزارد «ثبت» می‌کنید یک نمونه هم اینجا می‌ماند. «محاسبه» از روی همین نمونه‌ها گین و آفست جریان هر دو کانال و سه آفست ولتاژ را درمی‌آورد، مقدار فعلی برد را کنار پیشنهاد می‌گذارد و کیفیت هر برازش را می‌گوید. برای نتیجهٔ خوب حداقل ۴ مرحله با duty پخش‌شده (مثلاً ۲ تا ۲۰٪) بگیرید.</div>
 <div class="bqr2"><button class="sb sb2" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb brun" onclick="calapply()">اعمال روی برد (با تأیید)</button><button class="sb sb2" onclick="calexp()">⬇ ذخیرهٔ نمونه‌ها</button><label class="sb" style="cursor:pointer">⬆ بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2" onclick="calclr()">پاک کردن نمونه‌ها</button></div>
-<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="bqr2"><button class="sb sb2" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb" onclick="calcopy()">کپی کد</button><button class="sb" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" style="display:none;width:100%;height:220px;direction:ltr;font-family:monospace;font-size:12px" readonly></textarea><div class="cm lb" id="calst">—</div><div id="caltb"></div></div>
+<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="ds">دو راه برای رساندن جدول به میکرو هست و هر دو فعال‌اند: <b>۱) ارسال مستقیم</b> — جدول همین حالا در یک بلوک فلشِ مخصوص خودش روی برد نوشته می‌شود (جدا از بقیهٔ تنظیمات)، برد CRC آن را پس می‌فرستد و فقط در صورت تطابق پذیرفته می‌شود؛ بعد می‌توانید برد را ریست کنید تا همه چیز با جدول نو شروع کند. سقف این راه <b>۲۴ نقطه برای هر باتری</b> است. <b>۲) ساخت کد</b> — همان روش قبلی: فایل calibration.h ساخته می‌شود تا در پروژه بچسبانید و بیلد کنید (بدون محدودیت نقطه). اگر رکورد فلش خالی یا خراب باشد، برد خودبه‌خود به جدول کامپایل‌شده برمی‌گردد.</div><div class="bqr2"><button class="sb sb2" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb" onclick="calcopy()">کپی کد</button><button class="sb" onclick="calcdl()">دانلود calibration_generated.h</button></div><div class="bqr2"><button class="sb brun" onclick="lsend()">⇪ ارسال مستقیم جدول به برد</button><button class="sb sb2" onclick="lrst()">↻ ریست برد (بعد از ارسال موفق)</button></div><textarea id="calcd" style="display:none;width:100%;height:220px;direction:ltr;font-family:monospace;font-size:12px" readonly></textarea><div class="cm lb" id="calst">—</div><div id="caltb"></div></div>
 `;
 caln();calsmp();calchk();bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{const s=$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB');if(L)L.disabled=s;if(A)A.disabled=!s;if(B)B.disabled=!s;};$('wSw').onchange();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
 /* ---------- کنترل دستی duty دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کنترلها داخل کارت هر شارژر (از v1.16p)؛

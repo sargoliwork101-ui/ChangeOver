@@ -50,10 +50,23 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
    0x0800FC00) برای رکوردهای پینگ‌پنگ ماندگاری پارامترها (esp_link_nvm.c)
    رزرو شده‌اند؛ فلش برنامه از 64K به 62K کوچک شد تا خود لینکر اگر روزی
    تصویر برنامه با رکوردها تصادم کند خطا بدهد. */
+/* [EN] v1.66 (user order 2026-10-05: push the calibration table straight into
+   the micro, on a storage path SEPARATE from the other variables): two MORE
+   1 KiB pages (0x0800F000, 0x0800F400) are reserved, directly below the
+   parameter records, for the bench-LUT ping-pong block (cal_lut.c).
+   Application FLASH therefore shrinks 62K -> 60K. The image is ~40 KB, so the
+   room exists; and because the two blocks are separate, a LUT push can never
+   damage a parameter record (that is what the extra 1 KiB buys).
+   [FA] v1.66 (دستور کاربر ۲۰۲۶-۱۰-۰۵: جدول مستقیم به میکرو، روی مسیر ذخیره‌سازی
+   «جدا» از بقیهٔ متغیرها): دو صفحهٔ ۱KB دیگر (0x0800F000 و 0x0800F400) درست
+   زیر رکوردهای پارامتر برای بلوک پینگ‌پنگ جدول بنچ رزرو شد، پس فلش برنامه از
+   62K به 60K کوچک می‌شود. تصویر برنامه ~۴۰KB است، پس جا هست؛ و چون دو بلوک
+   جدا هستند، ارسال جدول هرگز رکورد پارامترها را خراب نمی‌کند. */
 MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 20K
-  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 62K
+  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 60K
+  LUTNVM   (r)     : ORIGIN = 0x800F000,   LENGTH = 2K
   NVM      (r)     : ORIGIN = 0x800F800,   LENGTH = 2K
 }
 

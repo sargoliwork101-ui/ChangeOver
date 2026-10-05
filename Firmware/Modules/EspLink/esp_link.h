@@ -111,6 +111,35 @@
  *      می‌شوند و با SET_PARAM معمولی برمی‌گردند.
  *      شناسه رزرو می‌ماند: آزادکردنش از هدردادنش بدتر است، چون پنل قدیمی‌ای که
  *      هنوز ۰x۰۳ می‌فرستد به‌جای نادیده‌گرفته‌شدن، بد تفسیر می‌شود. */
+/* [EN] v1.66 LUT PUSH (user order 2026-10-05: "do I really have to paste the
+ *      table into the code and rebuild? push it straight into the micro - and
+ *      keep the current way too"). Four ESP -> STM messages and one answer:
+ *        0x04 LUT_BEGIN  [n1:u8][n2:u8]                 open a staging buffer
+ *        0x05 LUT_CHUNK  [ch:u8][first:u8][count:u8]
+ *                        + count x (chainMa:u32, powerMw:u32)
+ *        0x06 LUT_COMMIT [crc32:u32 of the staged CONTENT]
+ *        0x07 LUT_RESET  ['R','S','T','!']              reboot after handshake
+ *        0x13 LUT_ACK    [stage:u8][status:u8][n1:u8][n2:u8][crc32:u32]
+ *      The table NEVER travels as parameters: it has its own messages and its
+ *      own flash block (cal_lut.c), so a push can neither disturb the
+ *      parameter record nor be mistaken for one. LUT_RESET carries a literal
+ *      magic because a reboot must be impossible to trigger by accident, and
+ *      the board only honours it after a LUT_ACK that said OK.
+ * [FA] ارسال مستقیم جدول (v1.66، دستور کاربر ۲۰۲۶-۱۰-۰۵): چهار پیام از ESP به
+ *      STM و یک پاسخ. جدول هرگز به شکل «پارامتر» سفر نمی‌کند: پیام‌های خودش و
+ *      بلوک فلش خودش را دارد، پس نه رکورد پارامترها را خراب می‌کند نه با آن
+ *      اشتباه گرفته می‌شود. LUT_RESET مجیک متنی دارد چون ریست نباید تصادفی
+ *      ممکن باشد، و برد فقط بعد از ACKِ موفق آن را می‌پذیرد. */
+#define ESPLINK_MSG_LUT_BEGIN         0x04u
+#define ESPLINK_MSG_LUT_CHUNK         0x05u
+#define ESPLINK_MSG_LUT_COMMIT        0x06u
+#define ESPLINK_MSG_LUT_RESET         0x07u
+#define ESPLINK_MSG_LUT_ACK           0x13u
+#define ESPLINK_LUT_ACK_STAGE_BEGIN   1u
+#define ESPLINK_LUT_ACK_STAGE_CHUNK   2u
+#define ESPLINK_LUT_ACK_STAGE_COMMIT  3u
+#define ESPLINK_LUT_ACK_STAGE_RESET   4u
+
 #define ESPLINK_MSG_TLM_LIVE          0x10u
 #define ESPLINK_MSG_PARAM_REPORT      0x11u
 #define ESPLINK_MSG_PARAMS_BULK       0x12u

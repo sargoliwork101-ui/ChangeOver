@@ -918,6 +918,35 @@ def sec_calibration():
                "the firmware subtracts these as unsigned, so a dip wraps to "
                "a gigantic number instead of a negative one")
 
+    # ---------- v1.66: the direct-push path must agree in three places ----------
+    # [EN] The board stores at most CAL_LUT_POINTS_MAX points per channel, the
+    #      ESP mirrors that cap before it even opens the link, and the browser
+    #      refuses to offer a bigger table. Three hand-typed numbers - exactly
+    #      the shape of drift this audit exists for.
+    # [FA] سقف نقاط در سه جای دست‌نویس تکرار شده: برد، ESP و مرورگر. دقیقاً
+    #      همان نوع واگراییِ خاموشی که این ممیزی برای آن نوشته شده.
+    lut_h = read("Firmware/Modules/CalLut/cal_lut.h")
+    m_board = re.search(r"CAL_LUT_POINTS_MAX\s+(\d+)u", lut_h)
+    m_esp = re.search(r"ESP_LUT_POINTS_MAX\s+(\d+)u", P_CFG)
+    m_js = re.search(r"const LUTMAX=(\d+);", P_PAN)
+    ok(bool(m_board and m_esp and m_js),
+       "the LUT point cap is missing on one of the three sides",
+       "board cal_lut.h / ESP plink_config.h / browser plink_panel.h")
+    if m_board and m_esp and m_js:
+        ok(m_board.group(1) == m_esp.group(1) == m_js.group(1),
+           "the LUT point cap disagrees between the board, the ESP and the browser",
+           f"board {m_board.group(1)} / ESP {m_esp.group(1)} / browser {m_js.group(1)}")
+    # [EN] The LUT block and the parameter block must not be the same pages:
+    #      the user asked for a SEPARATE storage path precisely so a big table
+    #      transfer can never endanger the saved settings.
+    # [FA] بلوک جدول و بلوک پارامترها نباید یکی باشند: کاربر «مسیر جدا» خواست
+    #      تا انتقال حجیم جدول هرگز تنظیمات ذخیره‌شده را به خطر نیندازد.
+    lut_pages = set(re.findall(r"CAL_LUT_PAGE_[AB]_ADDR\s+(0x[0-9A-Fa-f]+)u", lut_h))
+    nvm_pages = set(re.findall(r"ESP_LINK_NVM_PAGE_[AB]_ADDR\s+(0x[0-9A-Fa-f]+)u", NVM_H))
+    ok(lut_pages and nvm_pages and not (lut_pages & nvm_pages),
+       "the bench-LUT flash block overlaps the parameter record block",
+       f"LUT {sorted(lut_pages)} vs parameters {sorted(nvm_pages)}")
+
     # the two 24 V sense nets are the same physical network
     ok("#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS   BSP_MEASUREMENT_DIV24_TOP_OHMS" in BSP_M,
        "the pack divider is not defined as the input divider",

@@ -38,6 +38,21 @@
 #define ESP_MSG_TLM_LIVE            0x10u
 #define ESP_MSG_PARAM_REPORT        0x11u
 #define ESP_MSG_PARAMS_BULK         0x12u
+/* [EN] v1.66 direct LUT push (user order 2026-10-05). Mirror of the STM32
+   ESPLINK_MSG_LUT_* ids - the table gets its OWN messages and its OWN flash
+   block on the board, so it never travels as parameters and never touches
+   the parameter record.
+   [FA] ارسال مستقیم جدول (v1.66): آینهٔ شناسه‌های STM32. جدول پیام‌های خودش و
+   بلوک فلش خودش را دارد، پس هرگز به شکل پارامتر سفر نمی‌کند و رکورد
+   پارامترها را دست نمی‌زند. */
+#define ESP_MSG_LUT_BEGIN           0x04u
+#define ESP_MSG_LUT_CHUNK           0x05u
+#define ESP_MSG_LUT_COMMIT          0x06u
+#define ESP_MSG_LUT_RESET           0x07u
+#define ESP_MSG_LUT_ACK             0x13u
+/* [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
+   [FA] سقف نقاط هر کانال، برابر CAL_LUT_POINTS_MAX روی برد. */
+#define ESP_LUT_POINTS_MAX          24u
 
 /* ==================== Parameter Constants ==================== */
 /* [EN] 77 since v1.16 (user order 2026-09-26): ids 20..26 = the shared

@@ -1164,8 +1164,17 @@ since v1.16). The fixed-duty ids
 are NEVER persisted: after any reboot the charger is guaranteed to be in
 its automatic mode and the buzzer unmuted.
 
+- v1.66 (user order 2026-10-05): a SECOND, independent block of two 1 KiB
+  pages (0x0800F000 / 0x0800F400) holds the bench calibration LUT pushed
+  from the panel (module `Firmware/Modules/CalLut`, messages 0x04..0x07 and
+  the 0x13 acknowledgement). It shares nothing with the parameter records
+  but the flash driver, so a table transfer can never endanger the saved
+  settings; application FLASH is 60K from that release on. A valid record
+  overrides the compiled tables in calibration.h, which remain the fallback
+  and remain pasteable by hand - both routes stay supported.
 - Layout: the last two 1 KiB flash pages of the STM32F103C8 (0x0800F800 /
-  0x0800FC00); the linker script shrinks application FLASH 64K -> 62K and
+  0x0800FC00); the linker script shrinks application FLASH 64K -> 60K (62K
+  before v1.66) and
   adds an NVM region, so an oversized image fails AT BUILD, not by
   overwriting records. Driver: `Firmware/Bsp/Src/bsp_flash.c` (direct
   RM0008 FPEC register sequences - no HAL flash sources needed).

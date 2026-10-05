@@ -365,6 +365,207 @@ static void func__Esp_HttpBenchLogGet(void)
     file__log.close();
 }
 
+/* ==================== v1.66 direct LUT push / ارسال مستقیم جدول ==================== */
+
+/* [EN] Staging arrays for one push. They live here (not on the stack) because
+   a 2 x 24-point table is 400 bytes and the ESP8266 handler stack is small.
+   [FA] آرایه‌های چیدن یک ارسال. اینجا هستند نه روی پشته، چون جدول ۲×۲۴
+   نقطه‌ای ۴۰۰ بایت است و پشتهٔ هندلر ESP8266 کوچک است. */
+static uint32_t UINT32_T__G__LutChain1[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutPower1[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutChain2[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutPower2[ESP_LUT_POINTS_MAX];
+
+/**
+ * @brief  [EN] POST /lut : push one bench table to the STM32.
+ *              Body is plain CSV of unsigned integers, in this exact order:
+ *                n1, n2, (chain,power) x n1, (chain,power) x n2, crc32
+ *              where crc32 is the browser's reflected CRC32 over
+ *              [n1][8 bytes LE per ch1 point][n2][8 bytes LE per ch2 point].
+ *              The board recomputes that CRC from what it actually received
+ *              and refuses the commit when it differs - so a corrupted push
+ *              is rejected instead of silently calibrating the charger
+ *              wrongly. A channel may be sent as 0 points (left alone).
+ *         [FA] مسیر POST /lut : ارسال یک جدول بنچ به STM32. بدنه CSV عددی با
+ *              همین ترتیب است و crc32 همان CRC32 بازتابیدهٔ مرورگر روی
+ *              بایت‌های جدول. برد همان CRC را از «آنچه واقعاً گرفته» دوباره
+ *              حساب می‌کند و اگر فرق داشت کامیت را رد می‌کند - پس ارسال خراب
+ *              رد می‌شود نه اینکه بی‌صدا شارژر را غلط کالیبره کند.
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__Esp_HttpLutPush(void)
+{
+    const String string__body = ESP_WEB_SERVER_T__G__Server.arg("plain");
+    const uint32_t uint32_t__len = (uint32_t)string__body.length();
+    uint32_t uint32_t__cursor = 0u;
+    uint32_t UINT32_T__A__Head[2] = { 0u, 0u };
+    uint32_t uint32_t__crc32 = 0u;
+    uint8_t uint8_t__channel;
+    uint8_t uint8_t__head;
+
+    /* [EN] Strict CSV scanner: digits and separators only, every field a
+       u32. String::toInt() would turn garbage into a silent zero, which on
+       a calibration table is the worst possible failure mode.
+       [FA] اسکنر سخت‌گیر CSV: فقط رقم و جداکننده. toInt() ورودی خراب را
+       بی‌صدا صفر می‌کند و روی جدول کالیبراسیون بدترین حالت ممکن است. */
+    struct Scan
+    {
+        const String *s;
+        uint32_t len;
+        uint32_t *cur;
+        bool next(uint32_t *out)
+        {
+            uint32_t value = 0u;
+            uint32_t digits = 0u;
+            while ((*cur < len) && (((*s)[*cur] == ',') || ((*s)[*cur] == ' ') ||
+                                    ((*s)[*cur] == '\n') || ((*s)[*cur] == '\r')))
+            {
+                (*cur)++;
+            }
+            while ((*cur < len) && ((*s)[*cur] >= '0') && ((*s)[*cur] <= '9'))
+            {
+                if (digits >= 10u)
+                {
+                    return false;
+                }
+                value = (value * 10u) + (uint32_t)((*s)[*cur] - '0');
+                digits++;
+                (*cur)++;
+            }
+            if (digits == 0u)
+            {
+                return false;
+            }
+            *out = value;
+            return true;
+        }
+    };
+    Scan scan = { &string__body, uint32_t__len, &uint32_t__cursor };
+
+    if ((uint32_t__len == 0u) || (uint32_t__len > 1600u))
+    {
+        ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"len\"}");
+        return;
+    }
+
+    for (uint8_t__head = 0u; uint8_t__head < 2u; uint8_t__head++)
+    {
+        if ((!scan.next(&UINT32_T__A__Head[uint8_t__head])) ||
+            (UINT32_T__A__Head[uint8_t__head] > (uint32_t)ESP_LUT_POINTS_MAX) ||
+            (UINT32_T__A__Head[uint8_t__head] == 1u))
+        {
+            ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"n\"}");
+            return;
+        }
+    }
+    if ((UINT32_T__A__Head[0] == 0u) && (UINT32_T__A__Head[1] == 0u))
+    {
+        ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"empty\"}");
+        return;
+    }
+
+    for (uint8_t__channel = 0u; uint8_t__channel < 2u; uint8_t__channel++)
+    {
+        uint32_t *uint32_t__ptr_chain = (uint8_t__channel == 0u) ? UINT32_T__G__LutChain1 : UINT32_T__G__LutChain2;
+        uint32_t *uint32_t__ptr_power = (uint8_t__channel == 0u) ? UINT32_T__G__LutPower1 : UINT32_T__G__LutPower2;
+        uint32_t uint32_t__index;
+
+        for (uint32_t__index = 0u; uint32_t__index < UINT32_T__A__Head[uint8_t__channel]; uint32_t__index++)
+        {
+            if ((!scan.next(&uint32_t__ptr_chain[uint32_t__index])) ||
+                (!scan.next(&uint32_t__ptr_power[uint32_t__index])))
+            {
+                ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"pt\"}");
+                return;
+            }
+            /* [EN] Same legality the board enforces, checked here too so the
+               operator sees the reason immediately instead of a status code.
+               [FA] همان قانونی که برد اجرا می‌کند، اینجا هم بررسی می‌شود تا
+               کاربر دلیل را فوری ببیند نه یک کد وضعیت. */
+            if (uint32_t__index > 0u)
+            {
+                if ((uint32_t__ptr_chain[uint32_t__index] <= uint32_t__ptr_chain[uint32_t__index - 1u]) ||
+                    (uint32_t__ptr_power[uint32_t__index] < uint32_t__ptr_power[uint32_t__index - 1u]))
+                {
+                    ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"mono\"}");
+                    return;
+                }
+            }
+        }
+    }
+
+    if (!scan.next(&uint32_t__crc32))
+    {
+        ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"crc\"}");
+        return;
+    }
+
+    /* [EN] Clear the previous handshake BEFORE sending, so the browser can
+       never read a stale ACK as the answer to this push.
+       [FA] پاک‌کردن دست‌دادن قبلی «قبل از» ارسال، تا مرورگر ACK کهنه را پاسخ
+       این ارسال نخواند. */
+    UINT8_T__G__LutAckStage = 0u;
+    UINT8_T__G__LutAckStatus = 0u;
+    UINT32_T__G__LutAckCrc32 = 0u;
+    UINT32_T__G__LutAckCount = 0u;
+
+    func__Esp_SendLutTable(UINT32_T__G__LutChain1, UINT32_T__G__LutPower1, (uint8_t)UINT32_T__A__Head[0],
+                           UINT32_T__G__LutChain2, UINT32_T__G__LutPower2, (uint8_t)UINT32_T__A__Head[1],
+                           uint32_t__crc32);
+
+    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
+                   "{\"ok\":1,\"n1\":%lu,\"n2\":%lu,\"crc\":%lu}",
+                   (unsigned long)UINT32_T__A__Head[0], (unsigned long)UINT32_T__A__Head[1],
+                   (unsigned long)uint32_t__crc32);
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+}
+
+/**
+ * @brief  [EN] GET /lut : the last handshake the board sent.
+ *              {st: stage 1..4, s: status 0=OK, n1, n2: points now active on
+ *              the board, crc: CRC32 the board stored, sent: CRC32 we asked
+ *              for, age: ms since the ACK, n: ACK count since the push}.
+ *         [FA] مسیر GET /lut : آخرین دست‌دادن برد.
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__Esp_HttpLutStatus(void)
+{
+    uint32_t uint32_t__ageMs = (uint32_t)millis() - UINT32_T__G__LutAckMs;
+
+    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
+                   "{\"st\":%u,\"s\":%u,\"n1\":%u,\"n2\":%u,\"crc\":%lu,\"sent\":%lu,\"age\":%lu,\"n\":%lu}",
+                   (unsigned int)UINT8_T__G__LutAckStage, (unsigned int)UINT8_T__G__LutAckStatus,
+                   (unsigned int)UINT8_T__G__LutAckPoints1, (unsigned int)UINT8_T__G__LutAckPoints2,
+                   (unsigned long)UINT32_T__G__LutAckCrc32, (unsigned long)UINT32_T__G__LutSentCrc32,
+                   (unsigned long)((UINT32_T__G__LutAckCount == 0u) ? 0u : uint32_t__ageMs),
+                   (unsigned long)UINT32_T__G__LutAckCount);
+    ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
+}
+
+/**
+ * @brief  [EN] POST /lut/reset : ask the board to reboot so every module
+ *              starts from the table it just stored. Refused unless the last
+ *              commit handshake actually succeeded - a reboot is never
+ *              offered as a way to "try again".
+ *         [FA] مسیر POST /lut/reset : درخواست ریست برد تا همهٔ ماژول‌ها با
+ *              جدول تازه شروع کنند. تا وقتی دست‌دادن کامیت موفق نبوده رد
+ *              می‌شود - ریست هرگز راهِ «دوباره امتحان کن» نیست.
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__Esp_HttpLutReset(void)
+{
+    if ((UINT8_T__G__LutAckStage != 3u) || (UINT8_T__G__LutAckStatus != 0u) ||
+        (UINT32_T__G__LutAckCrc32 != UINT32_T__G__LutSentCrc32) || (UINT32_T__G__LutSentCrc32 == 0u))
+    {
+        ESP_WEB_SERVER_T__G__Server.send(409, "application/json", "{\"ok\":0,\"e\":\"handshake\"}");
+        return;
+    }
+
+    func__Esp_SendLutReset();
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
+}
+
 /**
  * @brief  [EN] POST /benchlog/add (text/plain body): append panel-built CSV line(s).
  *              400 = empty/too long/not newline-terminated/non-printable, 503 = no file system,

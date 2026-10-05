@@ -25,6 +25,7 @@
 
 #include "measurement.h"
 #include "calibration.h"
+#include "cal_lut.h"
 #include "bsp_adc.h"
 #include "bsp_measurement.h"
 #include "bsp_gpio.h"
@@ -631,6 +632,80 @@ _Static_assert(sizeof(CAL_Current1LutChainMa) ==
                sizeof(CAL_Current1LutBatteryMw),
                "ch1 LUT axes must hold the same number of points");
 
+/* ==================== Measurement bench LUT interpolation (v1.66) ==================== */
+
+#if ((CAL_CURRENT1_LUT_ENABLE != 0u) || (CAL_CURRENT2_LUT_ENABLE != 0u))
+/**
+ * @brief  [EN] Piecewise-linear interpolation over ONE bench table: chain
+ *              mA -> battery POWER mW. Both channels and BOTH sources (the
+ *              compile-time table in calibration.h and the flash table a
+ *              panel push stored, v1.66) go through this one function, so
+ *              a pushed table can never behave differently from a pasted
+ *              one - the only thing that changes is which array is read.
+ *              Linear between anchors, the last slope extends above the
+ *              last anchor, and a degenerate (equal-x) segment returns the
+ *              point value instead of dividing by zero.
+ *         [FA] درون‌یابی خطی-تکه‌ای روی یک جدول بنچ: mA زنجیره ← توان
+ *              باتری. هر دو کانال و «هر دو منبع» (جدول کامپایل‌تایم در
+ *              calibration.h و جدول فلش که ارسال پنل ذخیره کرده - v1.66)
+ *              از همین یک تابع می‌گذرند، پس جدول ارسال‌شده هرگز نمی‌تواند
+ *              رفتار متفاوتی از جدول چسبانده‌شده داشته باشد؛ تنها تفاوت
+ *              این است که کدام آرایه خوانده می‌شود.
+ * @param  UINT32_T__A__ChainMa [EN] Chain axis / محور زنجیره
+ * @param  UINT32_T__A__PowerMw [EN] Power axis / محور توان
+ * @param  uint32_t__points [EN] Point count, >= 2 / تعداد نقاط
+ * @param  uint32_t__chainMa [EN] Chain current / جریان زنجیره
+ * @return uint32_t [EN] Battery power in mW / توان باتری بر حسب mW
+ */
+static uint32_t func__Measurement_BenchLutInterp(
+    const uint32_t *UINT32_T__A__ChainMa,
+    const uint32_t *UINT32_T__A__PowerMw,
+    uint32_t uint32_t__points,
+    uint32_t uint32_t__chainMa)
+{
+    uint32_t uint32_t__index;
+
+    for (uint32_t__index = 1u; uint32_t__index < uint32_t__points;
+         uint32_t__index++)
+    {
+        uint32_t uint32_t__xHigh = UINT32_T__A__ChainMa[uint32_t__index];
+
+        if (uint32_t__chainMa <= uint32_t__xHigh)
+        {
+            uint32_t uint32_t__xLow = UINT32_T__A__ChainMa[uint32_t__index - 1u];
+            uint32_t uint32_t__yLow = UINT32_T__A__PowerMw[uint32_t__index - 1u];
+            uint32_t uint32_t__yHigh = UINT32_T__A__PowerMw[uint32_t__index];
+
+            /* [EN] Degenerate-segment guard (tables are hand-edited and now
+               also uploaded): equal anchors would divide by zero.
+               [FA] گارد بازهٔ تباه‌شده: لنگرهای برابر تقسیم‌برصفر می‌کردند. */
+            if (uint32_t__xHigh == uint32_t__xLow)
+            {
+                return uint32_t__yHigh;
+            }
+            return uint32_t__yLow +
+                   (((uint32_t__chainMa - uint32_t__xLow) *
+                     (uint32_t__yHigh - uint32_t__yLow)) /
+                    (uint32_t__xHigh - uint32_t__xLow));
+        }
+    }
+
+    /* [EN] Above the last anchor: extend the last segment's slope.
+       [FA] بالای آخرین لنگر: شیب آخرین بازه ادامه می‌یابد. */
+    if (UINT32_T__A__ChainMa[uint32_t__points - 1u] ==
+        UINT32_T__A__ChainMa[uint32_t__points - 2u])
+    {
+        return UINT32_T__A__PowerMw[uint32_t__points - 1u];
+    }
+    return UINT32_T__A__PowerMw[uint32_t__points - 1u] +
+           (((uint32_t__chainMa - UINT32_T__A__ChainMa[uint32_t__points - 1u]) *
+             (UINT32_T__A__PowerMw[uint32_t__points - 1u] -
+              UINT32_T__A__PowerMw[uint32_t__points - 2u])) /
+            (UINT32_T__A__ChainMa[uint32_t__points - 1u] -
+             UINT32_T__A__ChainMa[uint32_t__points - 2u]));
+}
+#endif
+
 #if (CAL_CURRENT1_LUT_ENABLE != 0u)
 /**
  * @brief  [EN] Piecewise-linear bench correction: ADC chain mA of channel
@@ -649,54 +724,27 @@ _Static_assert(sizeof(CAL_Current1LutChainMa) ==
  */
 static uint32_t func__Measurement_Current1BenchLut(uint32_t uint32_t__chainMa)
 {
-    uint32_t uint32_t__index;
-
-    for (uint32_t__index = 1u;
-         uint32_t__index < CAL_CURRENT1_LUT_POINTS;
-         uint32_t__index++)
+    /* [EN] v1.66 (user order 2026-10-05): a table pushed from the panel and
+       stored in its own flash block WINS over the compiled table; a fresh
+       board, a corrupt record or a format bump falls straight back to
+       calibration.h, so the board always measures with something sane.
+       [FA] v1.66 (دستور کاربر): جدولی که از پنل فرستاده و در بلوک فلش خودش
+       ذخیره شده بر جدول کامپایل‌شده مقدم است؛ برد نو، رکورد خراب یا تغییر
+       قالب مستقیماً به calibration.h برمی‌گردد تا برد همیشه با چیزی سالم
+       اندازه بگیرد. */
+    if (func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_1) != false)
     {
-        uint32_t uint32_t__xHigh =
-            CAL_Current1LutChainMa[uint32_t__index];
-        if (uint32_t__chainMa <= uint32_t__xHigh)
-        {
-            uint32_t uint32_t__xLow =
-                CAL_Current1LutChainMa[uint32_t__index - 1u];
-            uint32_t uint32_t__yLow =
-                CAL_Current1LutBatteryMw[uint32_t__index - 1u];
-            uint32_t uint32_t__yHigh =
-                CAL_Current1LutBatteryMw[uint32_t__index];
-            /* [EN] Degenerate-segment guard (the table is hand-edited):
-               equal anchors would divide by zero - return the point value.
-               No effect on a strictly increasing table.
-               [FA] گارد بازهٔ تباه‌شده (جدول دستی ویرایش می‌شود): لنگرهای
-               برابر تقسیم‌برصفر می‌کردند - مقدار نقطه برگردد. روی جدول
-               سالم بی‌اثر است. */
-            if (uint32_t__xHigh == uint32_t__xLow)
-            {
-                return uint32_t__yHigh;
-            }
-            return uint32_t__yLow +
-                   (((uint32_t__chainMa - uint32_t__xLow) *
-                     (uint32_t__yHigh - uint32_t__yLow)) /
-                    (uint32_t__xHigh - uint32_t__xLow));
-        }
+        return func__Measurement_BenchLutInterp(
+            func__CalLut_ChainMa((uint8_t)CAL_LUT_CHANNEL_1),
+            func__CalLut_PowerMw((uint8_t)CAL_LUT_CHANNEL_1),
+            func__CalLut_Points((uint8_t)CAL_LUT_CHANNEL_1),
+            uint32_t__chainMa);
     }
 
-    /* [EN] Above the last anchor: extend the last segment's slope.
-       [FA] بالای آخرین لنگر: شیب آخرین بازه ادامه می‌یابد. */
-    /* [EN] Same degenerate guard for the extrapolated tail slope. */
-    if (CAL_Current1LutChainMa[CAL_CURRENT1_LUT_POINTS - 1u] ==
-        CAL_Current1LutChainMa[CAL_CURRENT1_LUT_POINTS - 2u])
-    {
-        return CAL_Current1LutBatteryMw[CAL_CURRENT1_LUT_POINTS - 1u];
-    }
-    return CAL_Current1LutBatteryMw[CAL_CURRENT1_LUT_POINTS - 1u] +
-           (((uint32_t__chainMa -
-              CAL_Current1LutChainMa[CAL_CURRENT1_LUT_POINTS - 1u]) *
-             (CAL_Current1LutBatteryMw[CAL_CURRENT1_LUT_POINTS - 1u] -
-              CAL_Current1LutBatteryMw[CAL_CURRENT1_LUT_POINTS - 2u])) /
-            (CAL_Current1LutChainMa[CAL_CURRENT1_LUT_POINTS - 1u] -
-             CAL_Current1LutChainMa[CAL_CURRENT1_LUT_POINTS - 2u]));
+    return func__Measurement_BenchLutInterp(CAL_Current1LutChainMa,
+                                            CAL_Current1LutBatteryMw,
+                                            CAL_CURRENT1_LUT_POINTS,
+                                            uint32_t__chainMa);
 }
 #endif
 
@@ -792,54 +840,27 @@ _Static_assert(sizeof(CAL_Current2LutChainMa) ==
 
 static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
 {
-    uint32_t uint32_t__index;
-
-    for (uint32_t__index = 1u;
-         uint32_t__index < CAL_CURRENT2_LUT_POINTS;
-         uint32_t__index++)
+    /* [EN] v1.66 (user order 2026-10-05): a table pushed from the panel and
+       stored in its own flash block WINS over the compiled table; a fresh
+       board, a corrupt record or a format bump falls straight back to
+       calibration.h, so the board always measures with something sane.
+       [FA] v1.66 (دستور کاربر): جدولی که از پنل فرستاده و در بلوک فلش خودش
+       ذخیره شده بر جدول کامپایل‌شده مقدم است؛ برد نو، رکورد خراب یا تغییر
+       قالب مستقیماً به calibration.h برمی‌گردد تا برد همیشه با چیزی سالم
+       اندازه بگیرد. */
+    if (func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_2) != false)
     {
-        uint32_t uint32_t__xHigh =
-            CAL_Current2LutChainMa[uint32_t__index];
-        if (uint32_t__chainMa <= uint32_t__xHigh)
-        {
-            uint32_t uint32_t__xLow =
-                CAL_Current2LutChainMa[uint32_t__index - 1u];
-            uint32_t uint32_t__yLow =
-                CAL_Current2LutBatteryMw[uint32_t__index - 1u];
-            uint32_t uint32_t__yHigh =
-                CAL_Current2LutBatteryMw[uint32_t__index];
-            /* [EN] Degenerate-segment guard (the table is hand-edited since
-               v1.12): equal anchors would divide by zero - return the point
-               value. No effect on a strictly increasing table.
-               [FA] گارد بازهٔ تباه‌شده (جدول دستی ویرایش می‌شود): لنگرهای
-               برابر تقسیم‌برصفر می‌کردند - مقدار نقطه برگردد. روی جدول
-               سالم بی‌اثر است. */
-            if (uint32_t__xHigh == uint32_t__xLow)
-            {
-                return uint32_t__yHigh;
-            }
-            return uint32_t__yLow +
-                   (((uint32_t__chainMa - uint32_t__xLow) *
-                     (uint32_t__yHigh - uint32_t__yLow)) /
-                    (uint32_t__xHigh - uint32_t__xLow));
-        }
+        return func__Measurement_BenchLutInterp(
+            func__CalLut_ChainMa((uint8_t)CAL_LUT_CHANNEL_2),
+            func__CalLut_PowerMw((uint8_t)CAL_LUT_CHANNEL_2),
+            func__CalLut_Points((uint8_t)CAL_LUT_CHANNEL_2),
+            uint32_t__chainMa);
     }
 
-    /* [EN] Above the last anchor: extend the last segment's slope.
-       [FA] بالای آخرین لنگر: شیب آخرین بازه ادامه می‌یابد. */
-    /* [EN] Same degenerate guard for the extrapolated tail slope. */
-    if (CAL_Current2LutChainMa[CAL_CURRENT2_LUT_POINTS - 1u] ==
-        CAL_Current2LutChainMa[CAL_CURRENT2_LUT_POINTS - 2u])
-    {
-        return CAL_Current2LutBatteryMw[CAL_CURRENT2_LUT_POINTS - 1u];
-    }
-    return CAL_Current2LutBatteryMw[CAL_CURRENT2_LUT_POINTS - 1u] +
-           (((uint32_t__chainMa -
-              CAL_Current2LutChainMa[CAL_CURRENT2_LUT_POINTS - 1u]) *
-             (CAL_Current2LutBatteryMw[CAL_CURRENT2_LUT_POINTS - 1u] -
-              CAL_Current2LutBatteryMw[CAL_CURRENT2_LUT_POINTS - 2u])) /
-            (CAL_Current2LutChainMa[CAL_CURRENT2_LUT_POINTS - 1u] -
-             CAL_Current2LutChainMa[CAL_CURRENT2_LUT_POINTS - 2u]));
+    return func__Measurement_BenchLutInterp(CAL_Current2LutChainMa,
+                                            CAL_Current2LutBatteryMw,
+                                            CAL_CURRENT2_LUT_POINTS,
+                                            uint32_t__chainMa);
 }
 #endif
 

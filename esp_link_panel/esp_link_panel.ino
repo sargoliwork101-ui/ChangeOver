@@ -145,6 +145,13 @@ void setup(void)
     ESP_WEB_SERVER_T__G__Server.on("/s", HTTP_POST, func__Esp_HttpSetParam);
     ESP_WEB_SERVER_T__G__Server.on("/m", HTTP_POST, func__Esp_HttpStatReset);
     ESP_WEB_SERVER_T__G__Server.on("/m", HTTP_GET, func__Esp_HttpStatRead);
+    /* [EN] v1.66: the direct LUT push lives on its own routes, exactly as it
+       lives in its own flash block on the board.
+       [FA] v1.66: ارسال مستقیم جدول مسیرهای خودش را دارد، همان‌طور که روی برد
+       بلوک فلش خودش را دارد. */
+    ESP_WEB_SERVER_T__G__Server.on("/lut", HTTP_POST, func__Esp_HttpLutPush);
+    ESP_WEB_SERVER_T__G__Server.on("/lut", HTTP_GET, func__Esp_HttpLutStatus);
+    ESP_WEB_SERVER_T__G__Server.on("/lut/reset", HTTP_POST, func__Esp_HttpLutReset);
     ESP_WEB_SERVER_T__G__Server.on("/benchlog", HTTP_GET, func__Esp_HttpBenchLogGet);
     ESP_WEB_SERVER_T__G__Server.on("/benchlog/add", HTTP_POST, func__Esp_HttpBenchLogAdd);
     ESP_WEB_SERVER_T__G__Server.on("/benchlog/clear", HTTP_POST, func__Esp_HttpBenchLogClear);

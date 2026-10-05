@@ -17,6 +17,7 @@
 #include "bsp_uart.h"
 #include "bsp_measurement.h"
 #include "esp_link_nvm.h"
+#include "cal_lut.h"
 
 #include <stddef.h>
 
@@ -1052,6 +1053,144 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
  * @param  uint16_t__payloadLength [EN] Payload length (v1.16 u16) / طول payload
  * @param  const uint8_t *uint8_t__payload [EN] Payload / payload
  */
+/**
+ * @brief  [EN] Answer one LUT stage (v1.66). Every single LUT frame is
+ *              acknowledged - the panel can therefore say WHERE a push
+ *              failed instead of only that it did.
+ *         [FA] پاسخ به یک مرحلهٔ ارسال جدول: هر فریم ACK می‌گیرد تا پنل
+ *              بتواند بگوید «کجا» شکست، نه فقط «شکست».
+ */
+static void func__EspLink_SendLutAck(uint8_t uint8_t__stage,
+                                     uint8_t uint8_t__status,
+                                     uint32_t uint32_t__crc32)
+{
+    uint8_t UINT8_T__A__Payload[8u];
+
+    UINT8_T__A__Payload[0] = uint8_t__stage;
+    UINT8_T__A__Payload[1] = uint8_t__status;
+    UINT8_T__A__Payload[2] = (uint8_t)func__CalLut_Points(CAL_LUT_CHANNEL_1);
+    UINT8_T__A__Payload[3] = (uint8_t)func__CalLut_Points(CAL_LUT_CHANNEL_2);
+    UINT8_T__A__Payload[4] = (uint8_t)(uint32_t__crc32 & 0xFFu);
+    UINT8_T__A__Payload[5] = (uint8_t)((uint32_t__crc32 >> 8) & 0xFFu);
+    UINT8_T__A__Payload[6] = (uint8_t)((uint32_t__crc32 >> 16) & 0xFFu);
+    UINT8_T__A__Payload[7] = (uint8_t)((uint32_t__crc32 >> 24) & 0xFFu);
+
+    func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_LUT_ACK,
+                            UINT8_T__A__Payload, 8u);
+}
+
+/**
+ * @brief  [EN] The four LUT-push frames (v1.66). Kept out of HandleFrame so
+ *              the hot parameter path stays as short as it was.
+ *         [FA] چهار فریم ارسال جدول، جدا از HandleFrame تا مسیر داغ
+ *              پارامترها به همان کوتاهی بماند.
+ * @return bool [EN] true = this type was a LUT frame / این نوع، فریم جدول بود
+ */
+static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
+                                         uint16_t uint16_t__payloadLength,
+                                         const uint8_t *uint8_t__payload)
+{
+    if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_BEGIN)
+    {
+        uint8_t uint8_t__status = (uint8_t)CAL_LUT_ST_COUNT;
+
+        if (uint16_t__payloadLength == 2u)
+        {
+            if (func__CalLut_StageBegin((uint32_t)uint8_t__payload[0],
+                                        (uint32_t)uint8_t__payload[1]) != false)
+            {
+                uint8_t__status = (uint8_t)CAL_LUT_ST_OK;
+            }
+        }
+        func__EspLink_SendLutAck((uint8_t)ESPLINK_LUT_ACK_STAGE_BEGIN,
+                                 uint8_t__status, 0u);
+        return true;
+    }
+
+    if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_CHUNK)
+    {
+        uint8_t uint8_t__status = (uint8_t)CAL_LUT_ST_MISSING;
+
+        if (uint16_t__payloadLength >= 3u)
+        {
+            uint8_t uint8_t__channel = uint8_t__payload[0];
+            uint8_t uint8_t__first = uint8_t__payload[1];
+            uint8_t uint8_t__count = uint8_t__payload[2];
+
+            if ((uint16_t__payloadLength ==
+                 (uint16_t)(3u + (8u * (uint16_t)uint8_t__count))) &&
+                (uint8_t__count > 0u))
+            {
+                uint8_t uint8_t__i;
+
+                uint8_t__status = (uint8_t)CAL_LUT_ST_OK;
+                for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
+                {
+                    uint16_t uint16_t__offset = (uint16_t)(3u + (8u * (uint16_t)uint8_t__i));
+                    uint32_t uint32_t__chainMa =
+                        func__EspLink_GetU32(uint8_t__payload, uint16_t__offset);
+                    uint32_t uint32_t__powerMw =
+                        func__EspLink_GetU32(uint8_t__payload,
+                                             (uint16_t)(uint16_t__offset + 4u));
+
+                    if (func__CalLut_StagePoint(uint8_t__channel,
+                                                (uint32_t)(uint8_t__first + uint8_t__i),
+                                                uint32_t__chainMa,
+                                                uint32_t__powerMw) == false)
+                    {
+                        uint8_t__status = (uint8_t)CAL_LUT_ST_MISSING;
+                        break;
+                    }
+                }
+            }
+        }
+        func__EspLink_SendLutAck((uint8_t)ESPLINK_LUT_ACK_STAGE_CHUNK,
+                                 uint8_t__status, 0u);
+        return true;
+    }
+
+    if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_COMMIT)
+    {
+        uint8_t uint8_t__status = (uint8_t)CAL_LUT_ST_NO_STAGE;
+        uint32_t uint32_t__boardCrc = 0u;
+
+        if (uint16_t__payloadLength == 4u)
+        {
+            uint8_t__status = func__CalLut_Commit(
+                func__EspLink_GetU32(uint8_t__payload, 0u), &uint32_t__boardCrc);
+        }
+        func__EspLink_SendLutAck((uint8_t)ESPLINK_LUT_ACK_STAGE_COMMIT,
+                                 uint8_t__status, uint32_t__boardCrc);
+        return true;
+    }
+
+    if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_RESET)
+    {
+        uint8_t uint8_t__status = (uint8_t)CAL_LUT_ST_NO_STAGE;
+
+        /* [EN] Literal 'R','S','T','!' and a table that is actually active:
+           a stray or replayed frame must never be able to reboot a charging
+           board. [FA] مجیک متنی و وجود جدول فعال: فریم سرگردان یا تکرارشده
+           هرگز نباید بردِ در حال شارژ را ریست کند. */
+        if ((uint16_t__payloadLength == 4u) &&
+            (uint8_t__payload[0] == (uint8_t)'R') &&
+            (uint8_t__payload[1] == (uint8_t)'S') &&
+            (uint8_t__payload[2] == (uint8_t)'T') &&
+            (uint8_t__payload[3] == (uint8_t)'!') &&
+            ((func__CalLut_Active(CAL_LUT_CHANNEL_1) != false) ||
+             (func__CalLut_Active(CAL_LUT_CHANNEL_2) != false)))
+        {
+            func__CalLut_RequestReset();
+            uint8_t__status = (uint8_t)CAL_LUT_ST_OK;
+        }
+        func__EspLink_SendLutAck((uint8_t)ESPLINK_LUT_ACK_STAGE_RESET,
+                                 uint8_t__status, func__CalLut_ActiveCrc32());
+        return true;
+    }
+
+    return false;
+}
+
 static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
                                       uint16_t uint16_t__payloadLength,
                                       const uint8_t *uint8_t__payload)
@@ -1099,6 +1238,16 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
 #endif /* MODULE_CHARGER */
             func__EspLink_SendParamsBulk();
         }
+    }
+    else if (func__EspLink_HandleLutFrame(uint8_t__messageType,
+                                          uint16_t__payloadLength,
+                                          uint8_t__payload) != false)
+    {
+        /* [EN] v1.66 LUT push handled (and acknowledged) above.
+           [FA] ارسال جدول v1.66 بالا رسیدگی و پاسخ داده شد. */
+#if MODULE_CHARGER
+        func__Charger_NotifyEspLinkActivity();
+#endif /* MODULE_CHARGER */
     }
     else
     {
@@ -1313,4 +1462,10 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
        همین تسک. شارژر دور ذخیره معلق می‌شود (گیت‌ها صفر) تا سوییچینگی
        داخل پنجرهٔ کور نباشد؛ خود تأخیر ذاتیِ چیپ است. */
     func__EspLink_NvmTick();
+
+    /* [EN] v1.66: performs the reboot the panel armed AFTER a verified LUT
+       push (the ACK frame has already left the UART by now).
+       [FA] v1.66: ریستی که پنل بعد از ارسال تأییدشدهٔ جدول مسلح کرده را
+       انجام می‌دهد (فریم ACK تا اینجا از UART خارج شده است). */
+    func__CalLut_Tick();
 }

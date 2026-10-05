@@ -1061,6 +1061,127 @@ function testFixRules(win, doc) {
 const dom = loadPanel();
 const win = dom.window;
 
+/* ==================== v1.66 direct LUT push / ارسال مستقیم جدول ==================== */
+
+/**
+ * [EN] The push is a handshake, not a hope: the panel CRC32s exactly what it
+ *      sends, refuses to call a mismatched or rejected push a success, and
+ *      never offers the reboot unless the board echoed the same CRC. The
+ *      build-time route must still be there - the user asked to keep it.
+ * [FA] ارسال یک «دست‌دادن» است نه امید: پنل دقیقاً همان بایت‌هایی را که
+ *      می‌فرستد CRC می‌گیرد، ارسال ردشده یا ناهمخوان را موفق اعلام نمی‌کند و
+ *      تا وقتی برد همان CRC را پس نداده دکمهٔ ریست را پیشنهاد نمی‌دهد. راه
+ *      بیلد هم باید سر جایش بماند - خواستهٔ کاربر.
+ */
+async function testLutPush(win, doc) {
+    console.log('\nv1.66 direct LUT push / ارسال مستقیم جدول به برد');
+
+    const K = win.eval('K_MA');
+    const gain = 1200, off = 7;
+    win.CALS = [];
+    for (let duty = 2; duty <= 20; duty += 2) {
+        const raw = off + duty * 25;
+        const mA = (raw - off) * K * gain / 1000;
+        win.CALS.push({ sc: 'BOTH', d: duty, use: 1, r1: raw, r2: raw, vin: 24000, v24: 25000,
+                        v12: 12500, vlo: 12500, vhi: 12500,
+                        b1: mA, b2: mA, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });
+    }
+    win.D = { p: { 0: off, 1: off, 2: gain, 3: gain, 4: 0, 5: 0, 6: 0 }, t: [], on: 1 };
+    win.eval('calrun')();
+
+    const packed = win.eval('lpack')();
+    check(!packed.bad, 'a clean sample set packs into a sendable table');
+    const nums = packed.body.split(',').map(Number);
+    check(nums[0] === packed.T[0].X.length && nums[1] === packed.T[1].X.length,
+          'the body starts with the two point counts');
+    check(nums.length === 2 + 2 * (nums[0] + nums[1]) + 1,
+          'the body carries every point pair exactly once, then the CRC');
+    check(nums[nums.length - 1] === packed.crc,
+          'the CRC the board will check is the last field of the body');
+    check(packed.T[0].X.length <= 24 && packed.T[1].X.length <= 24,
+          'the panel never offers to send more points than the board can store');
+
+    /* The CRC must be the standard reflected CRC32 of [n][8 B per point]. */
+    const bytes = [];
+    packed.T.forEach(t => {
+        bytes.push(t.X.length & 255);
+        for (let i = 0; i < t.X.length; i++) {
+            [t.X[i], t.Y[i]].forEach(v => bytes.push(v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255));
+        }
+    });
+    check(win.eval('lcrc')(bytes) === packed.crc,
+          'the CRC covers the point bytes in the order the board rebuilds them');
+
+    /* --- a matching handshake is a success and offers the reboot --- */
+    const calls = [];
+    const stub = (ack) => (u, o) => {
+        calls.push((o && o.method ? o.method : 'GET') + ' ' + u);
+        if (String(u).indexOf('/lut') === 0 && o && o.method === 'POST' && String(u).indexOf('reset') < 0) {
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: 1 }) });
+        }
+        if (String(u) === '/lut') {
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(ack) });
+        }
+        if (String(u).indexOf('/lut/reset') === 0) {
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: 1 }) });
+        }
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(win.D) });
+    };
+    const oldConfirm = win.confirm;
+    const ackOk = { st: 3, s: 0, n1: packed.T[0].X.length, n2: packed.T[1].X.length,
+                    crc: packed.crc, sent: packed.crc, age: 10, n: 3 };
+
+    /* The operator accepts the push but declines the reboot for now. */
+    win.confirm = (m) => String(m).indexOf('ریست شود') < 0;
+    win.fetch = stub(ackOk);
+    await win.eval('lsend')();
+    check(doc.getElementById('calst').textContent.indexOf('✅') >= 0,
+          'a matching CRC is reported as a real success');
+    check(calls.filter(c => c.indexOf('/lut/reset') >= 0).length === 0,
+          'declining the reboot leaves the board running on the table it just stored');
+
+    /* Same push, reboot accepted. */
+    calls.length = 0;
+    win.confirm = () => true;
+    win.fetch = stub(ackOk);
+    await win.eval('lsend')();
+    check(calls.filter(c => c.indexOf('POST /lut/reset') >= 0).length === 1,
+          'the confirmed reboot is sent so every module starts on the new table');
+
+    /* --- a CRC that does not match is NOT a success and reboots nothing --- */
+    calls.length = 0;
+    win.fetch = stub({ st: 3, s: 0, n1: 4, n2: 3, crc: (packed.crc ^ 1) >>> 0, sent: packed.crc, age: 10, n: 3 });
+    await win.eval('lsend')();
+    check(doc.getElementById('calst').textContent.indexOf('دست‌دادن نخواند') >= 0,
+          'a CRC mismatch is called out instead of being hidden');
+    check(doc.getElementById('calst').textContent.indexOf('جدول قبلی بدون تغییر ماند') >= 0,
+          'and the user is told the previous table is untouched');
+    check(calls.filter(c => c.indexOf('/lut/reset') >= 0).length === 0,
+          'nothing reboots the board after a failed push');
+
+    /* --- a board-side refusal is reported with its reason --- */
+    win.fetch = stub({ st: 3, s: 5, n1: 0, n2: 0, crc: 0, sent: packed.crc, age: 10, n: 3 });
+    await win.eval('lsend')();
+    check(doc.getElementById('calst').textContent.indexOf('محور توان') >= 0,
+          'the board status code is translated into a plain reason');
+
+    /* --- the wizard still owns the board while it runs --- */
+    const Wv = win.eval('W'); Wv.run = true;
+    await win.eval('lsend')();
+    check(doc.getElementById('calst').textContent.indexOf('داده‌برداری بنچ در جریان') >= 0,
+          'pushing a table is refused while the bench wizard owns the board');
+    Wv.run = false;
+    win.confirm = oldConfirm;
+
+    /* --- option (c) is still there: generate the header and rebuild --- */
+    win.eval('calcode')();
+    check(doc.getElementById('calcd').value.indexOf('CAL_Current1LutChainMa') >= 0,
+          'the build-time route still produces calibration.h - the user asked to keep it');
+    check(win.eval('document').body.innerHTML.indexOf('ارسال مستقیم جدول به برد') >= 0,
+          'both routes are offered as buttons in the calibration card');
+}
+
+
 setTimeout(async () => {
     const doc = win.document;
     console.log('ESP panel scenario-card tests - the real generated page in a DOM');
@@ -1077,6 +1198,7 @@ setTimeout(async () => {
         await testSendQueue(win, doc);
         testFixRules(win, doc);
         testBackupAndCal(win, doc);
+        await testLutPush(win, doc);
     } catch (err) {
         failed += 1;
         console.log('  FAIL threw: ' + err.message);

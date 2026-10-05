@@ -49,6 +49,12 @@ INCLUDES = [
     #      failed and the "total" silently excluded them.
     # [FA] ماژول Imbalance جا افتاده بود و پنج فایل بی‌صدا از مجموع می‌افتادند.
     "Firmware/Modules/Imbalance",
+    # [EN] v1.66: the CalLut module (its own flash block for the pushed bench
+    #      table) joins the build; without this include path its translation
+    #      unit would fail and drop out of the total silently.
+    # [FA] v1.66: ماژول CalLut به بیلد اضافه شد؛ بدون این مسیر، فایل آن
+    #      بی‌صدا از مجموع می‌افتاد.
+    "Firmware/Modules/CalLut",
 ]
 
 

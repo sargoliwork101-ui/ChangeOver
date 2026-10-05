@@ -8,6 +8,7 @@
 #include "rtos_app.h"
 #include "modules_enable.h"
 #include "esp_link_nvm.h"
+#include "cal_lut.h"
 
 /**
  * @brief  [EN] Application initialization hook; thread-owned module init runs in its thread.
@@ -31,6 +32,14 @@ void func__App_Init(void)
        جان سالم به در می‌برند. رکورد گم یا خراب هیچ چیزی را عوض نمی‌کند
        (پیش‌فرض کامپایل می‌ماند). */
     func__EspLink_NvmInit();
+    /* [EN] v1.66 (user order 2026-10-05: push the calibration table straight
+       into the micro, on its OWN storage path): load the bench LUT from its
+       dedicated flash block. No valid record = the compiled tables in
+       calibration.h stay in charge, exactly as before.
+       [FA] v1.66 (دستور کاربر: جدول مستقیم به میکرو، روی «مسیر ذخیره‌سازی
+       جدا»): جدول بنچ از بلوک فلش اختصاصی‌اش بار می‌شود. نبودِ رکورد معتبر
+       یعنی همان جدول‌های کامپایل‌شده سر کارند. */
+    func__CalLut_Init();
 #endif
 }
 
