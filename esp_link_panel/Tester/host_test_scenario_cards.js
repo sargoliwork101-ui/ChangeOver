@@ -255,6 +255,24 @@ function testDischarge(win, doc) {
     win.qmfill();
     check(mir[1].value === '100', 'a primary edit pushes back into the mirrors');
 
+    /* [EN] Guard refused -> the primary clears, so the mirror must clear too.
+       A mirror still showing the refused number is the "two fields, one
+       register" failure the mirror design exists to prevent.
+       [FA] اگر کاربر تأیید گیره را رد کند ورودی اصلی خالی می‌شود، پس آینه هم
+       باید خالی شود؛ وگرنه دو فیلد سر یک رجیستر اختلاف پیدا می‌کنند. */
+    const confirmWas = win.confirm;
+    win.confirm = () => false;
+    typeInto(win, doc, 'q62', 3);
+    mir[1].value = '10';
+    mir[1].onchange();
+    check(doc.getElementById('q65').value === '' && mir[1].value === '',
+        'a refused clamp confirmation clears the mirror as well as the primary',
+        'primary=' + doc.getElementById('q65').value + ' mirror=' + mir[1].value);
+    win.confirm = confirmWas;
+    typeInto(win, doc, 'q65', 100);
+    typeInto(win, doc, 'q62', 1);
+    win.qmfill();
+
     /* [EN] Band lines: range in percent and mV, green at the mid band and
        the beep window against the interval.
        [FA] خط هر باند: بازه بر حسب درصد و mV، سبز میانه و پنجرهٔ بوق. */
@@ -322,6 +340,15 @@ function testLowBattery(win, doc) {
     const line = textOf(doc, 's5v');
     check(line.includes('22600') && line.includes('23400'), 'both alarm levels are shown', line);
     check(line.includes('20٪') && line.includes('30٪'), 'both are translated to percent on the 74/75 ladder', line);
+    /* [EN] The board divides integers: 21200 on a 21000..29000 ladder is 2%,
+       not the 3% a rounding panel would print.
+       [FA] برد تقسیم صحیح می‌کند: ۲۱۲۰۰ روی نردبان ۲۱..۲۹ ولت می‌شود ۲٪. */
+    typeInto(win, doc, 'q72', 21200);
+    typeInto(win, doc, 'q73', 21400);
+    check(textOf(doc, 's5v').includes('2٪') && !textOf(doc, 's5v').includes('3٪'),
+        'percent is floored exactly like the board, not rounded', textOf(doc, 's5v'));
+    typeInto(win, doc, 'q72', 22600);
+    typeInto(win, doc, 'q73', 23400);
     check(line.includes('800'), 'the anti-chatter width is computed', line);
 
     typeInto(win, doc, 'q73', 22000);

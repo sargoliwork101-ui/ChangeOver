@@ -328,7 +328,7 @@ window.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 </head><body>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e7f50af</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build bf2f56b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1702,7 +1702,8 @@ function uview(){
  const vin=t[14],vbat=t[15];/* v_bat24 مثل برد */
  if(!(vin>0||vbat>0)){allOff('داده نامعتبر — همه خاموش (حالت امن برد)');return;}
  const lo=g(74,21000),hi=g(75,29000);
- let raw=hi>lo?Math.round((Math.min(vbat,hi)-lo)/(hi-lo)*100):0;raw=Math.max(0,Math.min(100,raw));
+ /* v1.46: کف‌گیری مثل تقسیم صحیح برد (func__Ui_BatteryVoltageToPercent)، نه گرد کردن */
+ let raw=hi>lo?Math.floor((Math.min(vbat,hi)-lo)*100/(hi-lo)):0;raw=Math.max(0,Math.min(100,raw));
  if(vin>=21000)UV.inP=true;else if(vin<=20000)UV.inP=false;
  const ovT=g(70,28000),ovH=g(71,1000);
  if(!UV.ov&&vin>ovT)UV.ov=true;else if(UV.ov&&vin<=ovT-ovH)UV.ov=false;
@@ -1779,7 +1780,7 @@ function uview(){
 const C4={sig:'',pct:[0,10,25,50,75,90,98,100]};
 function c4v(id,fb){const e=$('q'+id);if(e&&e.value!==''){const n=parseInt(e.value,10);if(!isNaN(n))return n;}
  return (D&&D.p&&D.p[id]!=null)?D.p[id]:fb;}
-function c4mv(p,lo,hi){const span=hi-lo;if(span<=0)return lo;const off=Math.round(span*p/100);return lo+off;}
+function c4mv(p,lo,hi){const span=hi-lo;if(span<=0)return lo;const off=Math.ceil(span*p/100);return lo+off;}
 function c4blink(pct,per,minOn){
  let remaining=pct>=100?0:100-pct;
  if(remaining<2)remaining=2;                       /* کف ۲٪ مثل برد */
@@ -1856,15 +1857,16 @@ function qmbind(){document.querySelectorAll('input.qm').forEach(e=>{const id=e.d
  if(!pr)return;
  e.value=pr.value;
  e.oninput=()=>{pr.value=e.value;qmpush(id,e);if(pr.oninput)pr.oninput();};
- e.onchange=()=>{pr.value=e.value;pr.dispatchEvent(new Event('change'));qmpush(id,e);};});}
+ e.onchange=()=>{pr.value=e.value;pr.dispatchEvent(new Event('change'));e.value=pr.value;qmpush(id,e);};});}
 qmbind();
 function sall(){
  if(!$('s1v'))return;
  qmfill();
  const now=performance.now(),live=!!(D&&D.t&&D.on==1);
  const lo=c4v(74,21000),hi=c4v(75,29000);
- const pmv=p=>hi>lo?lo+Math.round((hi-lo)*p/100):lo;
- const mvp=mv=>hi>lo?Math.max(0,Math.min(100,Math.round((mv-lo)*100/(hi-lo)))):0;
+ /* v1.46: درصد با کف‌گیری (مثل برد) و ولتاژ با سقف‌گیری (اولین mV که برد همان درصد را گزارش می‌کند) */
+ const pmv=p=>hi>lo?lo+Math.ceil((hi-lo)*p/100):lo;
+ const mvp=mv=>hi>lo?Math.max(0,Math.min(100,Math.floor((mv-lo)*100/(hi-lo)))):0;
  /* --- سناریو ۱: اضافه‌ولتاژ ورودی --- */
  {const t=c4v(70,28000),h=c4v(71,1000),per=c4v(38,1000),d=sduty(per,c4v(39,50)),
    b=swin(c4v(40,10000),c4v(41,1000),c4v(42,1),c4v(43,0));
