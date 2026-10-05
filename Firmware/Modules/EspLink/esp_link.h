@@ -407,7 +407,17 @@
 #define ESPLINK_PARAM_DEAD_RESET_GAP_MS        126u  /* u32, ms, def 600000 (10 min), pause longer than this zeroes the clock */
 #define ESPLINK_PARAM_DEAD_BLOCK_OUTPUT        127u  /* u8,  0/1, def 0, also keep the condemned pack off the output */
 
-#define ESPLINK_PARAM_COUNT               128u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28), 108..118 = imbalance scenario 5 (v1.43), 119..120 = charge-side percent map (v1.49), 121..122 = band-2 own beep shape (v1.50), 123..124 = imbalance latched red-lamp blink (v1.68, user order: the red lamp must blink), 125..127 = dead-battery scenario 6 (v1.72, user order: a battery must never stay under charge forever). Runtime slots 200..202 are persisted but NOT parameters: they stay outside this count and the GET_PARAMS bulk on purpose. [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای، حدها/گین‌های پشتیبان، سناریوی ۵ و نگاشت درصد سمت شارژ (۱۱۹..۱۲۰) و شکل بوق باند ۲ (۱۲۱..۱۲۲) و چشمک قرمز قفل عدم‌توازن (۱۲۳..۱۲۴)؛ ۱۲۵..۱۲۷ سناریوی ۶ باتری خراب؛ اسلات‌های ۲۰۰..۲۰۳ پارامتر نیستند */
+/* [EN] v1.80 (user question: "scenario 6 has a lamp and a beep - why is there
+   no box for them in the panel?"): the dead-battery face used to borrow the
+   imbalance latch beep and a hard-coded solid red. It owns both now, with
+   defaults that reproduce the old behaviour exactly.
+   [FA] چهرهٔ سناریوی ۶ دیگر قرضی نیست؛ چهار عدد خودش را دارد. */
+#define ESPLINK_PARAM_DEAD_BEEP_PERIOD_MS      128u  /* u32, ms, def 600000, 0 = silent */
+#define ESPLINK_PARAM_DEAD_BEEP_LEN_MS         129u  /* u32, ms, def 120, 20..2000 */
+#define ESPLINK_PARAM_DEAD_BLINK_PERIOD_MS     130u  /* u32, ms, def 0 = SOLID red, else up to 10000 */
+#define ESPLINK_PARAM_DEAD_BLINK_DUTY_PCT      131u  /* u8,  %,  def 50, 5..95 */
+
+#define ESPLINK_PARAM_COUNT               132u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28), 108..118 = imbalance scenario 5 (v1.43), 119..120 = charge-side percent map (v1.49), 121..122 = band-2 own beep shape (v1.50), 123..124 = imbalance latched red-lamp blink (v1.68, user order: the red lamp must blink), 125..127 = dead-battery scenario 6 (v1.72, user order: a battery must never stay under charge forever), 128..131 = the scenario-6 OWN lamp and buzzer shape (v1.80, user question: "scenario 6 has a lamp and a beep, why are there no boxes for them?" - it used to borrow the imbalance beep and a hard-coded solid red). Runtime slots 200..202 are persisted but NOT parameters: they stay outside this count and the GET_PARAMS bulk on purpose. [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای، حدها/گین‌های پشتیبان، سناریوی ۵ و نگاشت درصد سمت شارژ (۱۱۹..۱۲۰) و شکل بوق باند ۲ (۱۲۱..۱۲۲) و چشمک قرمز قفل عدم‌توازن (۱۲۳..۱۲۴)؛ ۱۲۵..۱۲۷ سناریوی ۶ باتری خراب و ۱۲۸..۱۳۱ چراغ و بوقِ مخصوص خودش (v1.80)؛ اسلات‌های ۲۰۰..۲۰۳ پارامتر نیستند */
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

@@ -846,7 +846,7 @@ def sec_panel(ids):
         ok(chg_base == imb_base + len(idef),
            "CDEF does not start where IDEF ends",
            f"charge map starts at {chg_base}, imbalance block ends at {imb_base + len(idef) - 1}")
-        ok(len(cdef) == 9,
+        ok(len(cdef) == 13,
            "CDEF must cover the charge map (119/120), band 2's beep shape "
            "(121/122), the imbalance latch blink (123/124, v1.68) and the "
            "dead-battery scenario 6 (125..127, v1.72)",
@@ -885,7 +885,8 @@ def sec_panel(ids):
         #      پیکسل غلط: پیش از v1.28 هر شناسهٔ ۶۴ به بالا در کلمهٔ سوم
         #      می‌رفت، یعنی شناسهٔ ۹۶ می‌شد 1UL << 32. شیفت مدولو-۳۲ پنل آن را
         #      پنهان می‌کرد.
-        words = 4
+        # v1.80: ids 128..131 needed a fifth word on both sides.
+        words = 5
         ok(hi < words * 32, "pending-mask has no word for the top id",
            f"id {hi} needs word {hi // 32 + 1} of {words}")
         p_http = read("esp_link_panel/plink_http.h")
@@ -899,7 +900,7 @@ def sec_panel(ids):
             ok(f"(1<<(id-{lo_b}))" in P_PAN,
                "the panel pending-mask has no arm for this word",
                f"apend() must handle ids {lo_b}..{lo_b + 31}")
-        ok("static_assert(ESP_PARAM_COUNT <= 128" in p_http,
+        ok("static_assert(ESP_PARAM_COUNT <= 160" in p_http,
            "nothing stops the next parameter block from overflowing the masks")
 
         # [EN] The sketch is C++, so _Static_assert (a C11 keyword) does not
@@ -923,6 +924,60 @@ def sec_panel(ids):
     #      that writes a default nobody printed is exactly the drift this
     #      audit exists to catch.
     # [FA] هر شناسهٔ UDEF باید پیش‌فرض داشته باشد و در دو سناریو تکرار نشود.
+    # [EN] v1.79 (user: "what is this? there used to be a LED behind it" - the
+    #      .bit LEDs had markup but no CSS rule at all, so they were invisible):
+    #      every class that appears in the panel markup must have a stylesheet
+    #      rule, unless it is a pure JavaScript hook listed below.
+    # [FA] هر کلاسی که در مارک‌آپ پنل هست باید قاعدهٔ CSS داشته باشد، مگر
+    #      کلاس‌هایی که فقط قلّاب جاوااسکریپت‌اند.
+    JS_HOOK_CLASSES = {"qmv", "qgm", "qgcm", "qglm", "qwm", "dl", "c3"}
+    style = P_PAN.split("</style>")[0]
+    styled = set(re.findall(r"\.([A-Za-z][\w-]*)", style))
+    marked = set()
+    for grp in re.findall(r'class=\\?"([^"\\]+)', P_PAN):
+        for cl in grp.split():
+            if re.fullmatch(r"[A-Za-z][\w-]*", cl):
+                marked.add(cl)
+    unstyled = sorted(marked - styled - JS_HOOK_CLASSES)
+    ok(not unstyled,
+       "a class used in the panel markup has no CSS rule (it renders unstyled)",
+       f"unstyled: {unstyled}")
+    ok(".bit.set" in P_PAN and ".bit.set.on" in P_PAN,
+       "a latched fault bit must be visible at all times, not only on the blink phase")
+
+    # [EN] v1.78 (user order): the two "after the lock, drop the battery from
+    #      the output too" switches are stored yes/no settings, so they must be
+    #      checkboxes - never buttons, which read as "press to act now".
+    # [FA] دو کلید مسدودی خروجی باید چک‌باکس باشند، نه دکمه.
+    for cid, pid in (("ib117", 117), ("db127", 127)):
+        ok(f'<input type="checkbox" id="{cid}">' in P_PAN,
+           f"the output-block switch {cid} (param {pid}) is not a checkbox")
+        ok(f'id="{cid}">' not in P_PAN.replace(f'<input type="checkbox" id="{cid}">', ""),
+           f"{cid} still exists as a button as well")
+        ok(f"$('{cid}')" in P_PAN and f"send({pid}," in P_PAN,
+           f"{cid} does not write param {pid} back to the board")
+
+    # [EN] v1.77 (user question: "with one beep, what does a gap even mean?"
+    #      and "do it everywhere, not just in some sections"): every writable
+    #      "gap between beeps" field must be listed in GAPOF so it switches
+    #      itself off when its band asks for a single beep - and nothing that
+    #      is not a gap may be listed there.
+    # [FA] هر کادر «گپ بین بوق‌ها» باید در GAPOF باشد و فقط گپ‌ها آنجا باشند.
+    gaps = set(re.findall(r'گپ بین بوق‌ها[^<]*<input type="number" id="q(\d+)"', P_PAN))
+    gapof = re.search(r"const GAPOF=\[(.*?)\];", P_PAN)
+    ok(gapof is not None, "the GAPOF table that disables a meaningless gap is missing")
+    if gapof:
+        listed = set(re.findall(r"\[(\d+),\[", gapof.group(1)))
+        ok(gaps <= listed,
+           "a gap field can still be typed into while its band asks for one beep",
+           f"not in GAPOF: {sorted(gaps - listed)}")
+        ok(listed <= gaps,
+           "GAPOF disables a field that is not a gap between beeps",
+           f"listed but not a gap: {sorted(listed - gaps)}")
+        for key, users in re.findall(r"\[(\d+),\[([0-9,]+)\]\]", gapof.group(1)):
+            ok(all(u.strip() for u in users.split(",")),
+               f"gap {key} has an empty user list")
+
     ok("function sdef(" not in P_PAN,
        "the all-in-one scenario reset button came back",
        "the user asked for one key per scenario instead")

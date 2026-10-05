@@ -25,7 +25,7 @@ static volatile bool     BOOL__G__McuPowerTimerActive = false;
 static volatile uint32_t UINT32_T__G__McuPowerStartTick  = 0u;
 static volatile bool     BOOL__G__BatteryConnected     = true;
 
-/* ==================== Functions ==================== */
+/* ==================== McuPowerPath Init / مقداردهی اولیه ==================== */
 
 /* ==================== McuPowerPath_Init ==================== */
 
@@ -55,7 +55,7 @@ void func__McuPowerPath_Init(void)
     func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, true); /* active-low -> Low = on */
 }
 
-/* ==================== McuPowerPath_OnInputIrq ==================== */
+/* ==================== McuPowerPath OnInputIrq / وقفهٔ ورودی ==================== */
 
 /**
  * @brief  [EN] Interrupt-context handler for the PB4 input-present edges.
@@ -98,7 +98,7 @@ void func__McuPowerPath_OnInputIrq(void)
      * [FA] در لبه صعودی قطع نکن؛ Run باید 5 ثانیه و هیسترزیس را بسنجد. */
 }
 
-/* ==================== McuPowerPath_Run ==================== */
+/* ==================== McuPowerPath Run / ارزیابی دوره‌ای ==================== */
 
 /**
  * @brief  [EN] Periodic qualification (~10 ms): v_in >= 22000 for 5 s =>
@@ -192,10 +192,8 @@ void func__McuPowerPath_Run(void)
         }
         else
         {
-            uint32_t uint32_t__elapsedTicks =
-                uint32_t__nowTick - UINT32_T__G__McuPowerStartTick;
-            uint32_t uint32_t__elapsedMs =
-                func__Rtos_TicksToMilliseconds(uint32_t__elapsedTicks);
+            uint32_t uint32_t__elapsedTicks = uint32_t__nowTick - UINT32_T__G__McuPowerStartTick;
+            uint32_t uint32_t__elapsedMs    = func__Rtos_TicksToMilliseconds(uint32_t__elapsedTicks);
 
             if (uint32_t__elapsedMs >= MCU_POWER_INPUT_STABLE_MS)
             {

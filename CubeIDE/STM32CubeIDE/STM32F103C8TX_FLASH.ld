@@ -62,12 +62,24 @@ _Min_Stack_Size = 0x400; /* required amount of stack */
    زیر رکوردهای پارامتر برای بلوک پینگ‌پنگ جدول بنچ رزرو شد، پس فلش برنامه از
    62K به 60K کوچک می‌شود. تصویر برنامه ~۴۰KB است، پس جا هست؛ و چون دو بلوک
    جدا هستند، ارسال جدول هرگز رکورد پارامترها را خراب نمی‌کند. */
+/* [EN] v1.80 (user order: scenario 6 gets its own lamp/buzzer ids 128..131):
+   the parameter record outgrew a single 1 KiB page, so each ping-pong bank is
+   two pages now and the whole record block moved DOWN to 0x0800E000..0x0800EFFF
+   (4 KiB, two 2 KiB banks). Application FLASH shrinks 60K -> 56K; the image is
+   ~40 KB, so the room exists. The old record pages at 0x0800F800..0x0800FFFF
+   are kept out of FLASH as SPARE rather than handed back to the application:
+   a board upgraded in the field still has stale records there, and reusing
+   those 2 KiB for code would be the one change that could not be undone.
+   [FA] رکورد پارامترها از یک صفحهٔ ۱KB بزرگ‌تر شد؛ هر بانک دو صفحه شد و کل
+   بلوک به 0x0800E000 منتقل شد (۴KB). فلش برنامه از 60K به 56K می‌رسد و دو
+   صفحهٔ قدیمی بالا به‌عنوان یدک کنار گذاشته می‌شود. */
 MEMORY
 {
   RAM    (xrw)    : ORIGIN = 0x20000000,   LENGTH = 20K
-  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 60K
+  FLASH    (rx)    : ORIGIN = 0x8000000,   LENGTH = 56K
+  NVM      (r)     : ORIGIN = 0x800E000,   LENGTH = 4K
   LUTNVM   (r)     : ORIGIN = 0x800F000,   LENGTH = 2K
-  NVM      (r)     : ORIGIN = 0x800F800,   LENGTH = 2K
+  SPARE    (r)     : ORIGIN = 0x800F800,   LENGTH = 2K
 }
 
 /* Sections */

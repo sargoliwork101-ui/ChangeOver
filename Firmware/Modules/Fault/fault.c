@@ -1,14 +1,16 @@
 /**
  * @file    fault.c
  * @brief   [EN] Implementation of the latched-fault store: one static bit
- *               mask with set/clear/query access, plus the battery-lost
- *               detector that watches a pumping charger channel whose pack
- *               voltage does not answer, and the supervision hook that
- *               re-evaluates alarms after a threshold change.
+ *               mask with set/clear/query access, the battery-lost detector
+ *               that watches a pumping charger channel whose pack voltage
+ *               does not answer, the runtime alarm thresholds (parameter
+ *               ids 27..34) with their interdependency clamps, and the
+ *               supervision hook that re-evaluates them after a change.
  *          [FA] پیاده‌سازی انبارهٔ خطاهای قفل‌شده: یک بیت‌ماسک ایستا با دسترسی
- *               ست/پاک/پرسش، به‌علاوهٔ آشکارسازِ قطع باتری که کانال در حال پمپِ
- *               شارژر را می‌پاید تا ببیند ولتاژ پک جواب می‌دهد یا نه، و قلاب
- *               نظارتی که پس از تغییر آستانه آلارم‌ها را دوباره می‌سنجد.
+ *               ست/پاک/پرسش، آشکارسازِ قطع باتری که کانال در حال پمپِ شارژر
+ *               را می‌پاید تا ببیند ولتاژ پک جواب می‌دهد یا نه، آستانه‌های
+ *               آلارم زمان اجرا (شناسه‌های ۲۷ تا ۳۴) با گیره‌های وابستگی‌شان،
+ *               و قلاب نظارتی که پس از تغییر دوباره آن‌ها را می‌سنجد.
  * @note    [EN] Full-program audit 2026-10-05: the stale "placeholder"
  *               label of the old header line was removed (see fault.h).
  *          [FA] ممیزی ۲۰۲۶-۱۰-۰۵: برچسب کهنهٔ «اسکلت» از سرخط قبلی برداشته شد.

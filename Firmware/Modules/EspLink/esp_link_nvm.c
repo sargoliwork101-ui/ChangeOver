@@ -60,6 +60,10 @@ _Static_assert((((ESP_LINK_NVM_PERSISTED_ID_MAX_LOW + 1u) +
    و رکورد از ۷۶۰ به ۸۸۰ بایت در برابر صفحهٔ ۱KB - راحت، ولی کامنتی که این
    را می‌گفت حساب دستی کسی بود، همان نوع ادعایی که در این پروژه کهنه شده.
    اندازهٔ صفحه از فاصلهٔ دو آدرس صفحه مشتق می‌شود نه تایپ دوباره. */
+_Static_assert(((ESP_LINK_NVM_PAGE_B_ADDR - ESP_LINK_NVM_PAGE_A_ADDR) %
+                ESP_LINK_NVM_FLASH_PAGE_SIZE) == 0u,
+               "NVM bank must be a whole number of erase pages");
+
 _Static_assert(sizeof(esp_link_nvm_record_t) <=
                    (ESP_LINK_NVM_PAGE_B_ADDR - ESP_LINK_NVM_PAGE_A_ADDR),
                "NVM record must fit inside one flash page");
@@ -505,10 +509,25 @@ static bool func__EspLink_NvmSaveNow(void)
        هر خروجی پایین اول ادامه می‌دهد. */
     bool__chargerSuspended = func__EspLink_NvmSuspendCharger();
 
-    if (func__BspFlash_ErasePage(uint32_t__pageAddress) == false)
+    /* [EN] v1.80: a bank is two 1 KiB pages, so erase every page it spans -
+       the record is programmed across the whole bank as one blob.
+       [FA] هر بانک دو صفحهٔ ۱KB است، پس همهٔ صفحه‌هایش پاک می‌شود. */
     {
-        func__EspLink_NvmResumeCharger(bool__chargerSuspended);
-        return false;
+        uint32_t uint32_t__bankSpan =
+            (uint32_t)(ESP_LINK_NVM_PAGE_B_ADDR - ESP_LINK_NVM_PAGE_A_ADDR);
+        uint32_t uint32_t__offset;
+
+        for (uint32_t__offset = 0u;
+             uint32_t__offset < uint32_t__bankSpan;
+             uint32_t__offset += (uint32_t)ESP_LINK_NVM_FLASH_PAGE_SIZE)
+        {
+            if (func__BspFlash_ErasePage(uint32_t__pageAddress +
+                                         uint32_t__offset) == false)
+            {
+                func__EspLink_NvmResumeCharger(bool__chargerSuspended);
+                return false;
+            }
+        }
     }
 
     if (func__BspFlash_ProgramHalfWords(

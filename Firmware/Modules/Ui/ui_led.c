@@ -1423,27 +1423,47 @@ void func__Ui_ScenarioImbalance_Tick(void)
  */
 void func__Ui_ScenarioDeadBattery_Tick(void)
 {
-    uint32_t uint32_t__beepPeriodMs = 0u;
+    uint32_t uint32_t__beepPeriodMs  = 0u;
+    uint32_t uint32_t__beepLenMs     = 0u;
+    uint32_t uint32_t__blinkPeriodMs = 0u;
+    uint32_t uint32_t__blinkDutyPct  = 0u;
 
     func__Ui_ResetBatteryCriticalBeep();
     func__Ui_ResetBatteryRunGreenBlink();
     func__Ui_ResetChargingYellowBlink();
 
+    /* [EN] v1.80 (user order: scenario 6 gets its own four boxes): the face
+           is drawn from the scenario's OWN numbers now - no more borrowing
+           the imbalance latch beep, and the red may blink if the installer
+           asks for it (period 0 keeps the historical solid red).
+       [FA] چهرهٔ سناریو از عددهای خودش ساخته می‌شود؛ دیگر بوق قفل عدم‌توازن
+           قرض گرفته نمی‌شود و قرمز می‌تواند چشمک بزند (دورهٔ ۰ = ثابت). */
     func__green(false);
     func__yellow(false);
-    func__red(true);
 
-#if MODULE_IMBALANCE
-    (void)func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_PERIOD_MS, &uint32_t__beepPeriodMs);
-#endif
+    func__Charger_DeadFaceShape(&uint32_t__beepPeriodMs,
+                                &uint32_t__beepLenMs,
+                                &uint32_t__blinkPeriodMs,
+                                &uint32_t__blinkDutyPct);
+
+    if (uint32_t__blinkPeriodMs == 0u)
+    {
+        func__red(true);
+    }
+    else
+    {
+        uint32_t uint32_t__onMs =
+            (uint32_t__blinkPeriodMs * uint32_t__blinkDutyPct) / UI_PERCENT_SCALE;
+        uint32_t uint32_t__elapsedMs =
+            func__Rtos_TicksToMilliseconds(osKernelGetTickCount());
+        uint32_t uint32_t__phaseMs =
+            uint32_t__elapsedMs % uint32_t__blinkPeriodMs;
+
+        func__red(uint32_t__phaseMs < uint32_t__onMs);
+    }
+
     if (uint32_t__beepPeriodMs != 0u)
     {
-        uint32_t uint32_t__beepLenMs = 0u;
-
-#if MODULE_IMBALANCE
-        uint32_t__beepLenMs = IMBAL_DEF_BEEP_LEN_MS;
-        (void)func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_LEN_MS, &uint32_t__beepLenMs);
-#endif
         (void)func__Ui_Buzzer_Gated(
             uint32_t__beepPeriodMs,
             func__Ui_BeepDutyPercent(uint32_t__beepPeriodMs, uint32_t__beepLenMs, 1u, 0u),
