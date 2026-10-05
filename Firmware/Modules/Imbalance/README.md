@@ -1,12 +1,12 @@
 /**
  * @file    README.md
- * @brief   [EN] Imbalance module sheet: scenario 6, two-half battery
+ * @brief   [EN] Imbalance module sheet: scenario 5, two-half battery
  *              imbalance verdict with persisted episode counting.
- *          [FA] برگه ماژول Imbalance: سناریوی ۶، پایش و قضاوت عدم‌توازن دو
+ *          [FA] برگه ماژول Imbalance: سناریوی ۵، پایش و قضاوت عدم‌توازن دو
  *              نیم‌باتری با شمارش ماندگار رویداد.
  */
 
-# ماژول Imbalance (سناریوی ۶)
+# ماژول Imbalance (سناریوی ۵)
 
 ## وضعیت
 

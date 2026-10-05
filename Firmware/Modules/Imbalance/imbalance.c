@@ -1,8 +1,8 @@
 /**
  * @file    imbalance.c
- * @brief   [EN] Scenario 6 - battery imbalance monitor. Pure logic; see
+ * @brief   [EN] Scenario 5 - battery imbalance monitor. Pure logic; see
  *              imbalance.h for the full behaviour contract.
- *          [FA] سناریوی ۶ - پایش عدم‌توازن باتری؛ قرارداد رفتار در imbalance.h.
+ *          [FA] سناریوی ۵ - پایش عدم‌توازن باتری؛ قرارداد رفتار در imbalance.h.
  *
  * @note    [EN] Persistence: events / latched cycles / latch are stored in
  *              EspLink NVM as slots 200..202. A slot is written ONLY on a

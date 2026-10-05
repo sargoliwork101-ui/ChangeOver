@@ -1607,7 +1607,7 @@ bool func__Charger_SetLimitParam(uint8_t uint8_t__paramId,
 bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value);
 
-/* ==================== Scenario 7: dead battery / سناریوی ۷: باتری خراب ====================
+/* ==================== Scenario 6: dead battery / سناریوی ۶: باتری خراب ====================
  *
  * [EN] User order (2026-10-05): "a battery may never charge; it must not sit
  *      under the charger forever. After about 24 hours of continuous
@@ -1625,7 +1625,7 @@ bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
  *      24 h would never be reached.
  *
  *      The verdict is latched and persisted (slot 203, one bit per channel)
- *      and only a real battery swap clears it, exactly like scenario 6:
+ *      and only a real battery swap clears it, exactly like scenario 5:
  *      the channel must report battery-absent continuously for 3 s.
  *
  * [FA] دستور کاربر: «شاید یک باتری هیچ‌وقت شارژ نشود؛ نباید دائم زیر شارژ
@@ -1670,10 +1670,10 @@ bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
 #define CHG_DEAD_ABSENT_RESET_MS           3000u
 
 /**
- * @brief  [EN] Write one scenario-7 parameter (ids 125..127) or replay the
+ * @brief  [EN] Write one scenario-6 parameter (ids 125..127) or replay the
  *              persisted verdict slot 203 at boot. Clamped like every other
  *              block; the applied value is returned.
- *         [FA] نوشتن پارامتر سناریوی ۷ یا پخش اسلات ۲۰۳ هنگام بوت.
+ *         [FA] نوشتن پارامتر سناریوی ۶ یا پخش اسلات ۲۰۳ هنگام بوت.
  * @‎param  uint8_t__paramId [EN] 125..127 or 203‎ / شناسه
  * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
  * @param  uint32_t__appliedValue [EN] Applied value out, may be NULL / مقدار اعمال‌شده
@@ -1684,8 +1684,8 @@ bool func__Charger_SetDeadParam(uint8_t uint8_t__paramId,
                                 uint32_t *uint32_t__appliedValue);
 
 /**
- * @brief  [EN] Read one scenario-7 parameter or the verdict slot.
- *         [FA] خواندن پارامتر سناریوی ۷ یا اسلات قضاوت.
+ * @brief  [EN] Read one scenario-6 parameter or the verdict slot.
+ *         [FA] خواندن پارامتر سناریوی ۶ یا اسلات قضاوت.
  * @‎param  uint8_t__paramId [EN] 125..127 or 203‎ / شناسه
  * @param  uint32_t__value [EN] Live value out / مقدار زنده
  * @return bool [EN] true when the id belongs here / شناسه متعلق است

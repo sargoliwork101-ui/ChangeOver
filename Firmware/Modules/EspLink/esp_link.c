@@ -82,9 +82,9 @@ static uint16_t UINT16_T__G__TelemetrySeq = 0u;
  * [FA] v1.2 (دستور کاربر): مود تست دستی روی برد فعال است. */
 #define ESPLINK_TLM_FLAG_MANUAL_MODE    0x20u
 
-/* [EN] TLM byte 3 (formerly "reserved") since v1.43: imbalance scenario 6
+/* [EN] TLM byte 3 (formerly "reserved") since v1.43: imbalance scenario 5
  *      status bits so the panel can draw the live face without a GET.
- * [FA] بایت ۳ فریم TLM از نسخهٔ ۱٫۴۳: بیت‌های وضعیت سناریوی ۶. */
+ * [FA] بایت ۳ فریم TLM از نسخهٔ ۱٫۴۳: بیت‌های وضعیت سناریوی ۵. */
 #define ESPLINK_TLM_FLAG2_IMBAL_EPISODE   0x01u
 #define ESPLINK_TLM_FLAG2_IMBAL_LATCHED   0x02u
 #define ESPLINK_TLM_FLAG2_IMBAL_BLOCK_OUT 0x04u
@@ -364,10 +364,10 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
             }
 #endif
 #if MODULE_IMBALANCE
-            /* [EN] Imbalance scenario 6, ids 108..118 (v1.43) + runtime
+            /* [EN] Imbalance scenario 5, ids 108..118 (v1.43) + runtime
                     slots 200..202 (NVM boot replay only; the panel never
                     sends those, and they are never part of a backup).
-               [FA] سناریوی ۶ عدم‌توازن، ۱۰۸..۱۱۸ + اسلات‌های ۲۰۰..۲۰۲
+               [FA] سناریوی ۵ عدم‌توازن، ۱۰۸..۱۱۸ + اسلات‌های ۲۰۰..۲۰۲
                     (فقط پخش NVM هنگام بوت). */
             if (IMBAL_PARAM_OWNS(uint8_t__paramId) ||
                 ((uint8_t__paramId >= IMBAL_SLOT_FIRST_ID) &&
@@ -379,9 +379,9 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
             }
 #endif
 #if MODULE_CHARGER
-            /* [EN] v1.72 scenario 7 (dead battery), ids 125..127 + runtime
+            /* [EN] v1.72 scenario 6 (dead battery), ids 125..127 + runtime
                     slot 203 (NVM boot replay of the latch mask).
-               [FA] سناریوی ۷ باتری خراب، ۱۲۵..۱۲۷ + اسلات ۲۰۳. */
+               [FA] سناریوی ۶ باتری خراب، ۱۲۵..۱۲۷ + اسلات ۲۰۳. */
             if (CHG_DEAD_PARAM_OWNS(uint8_t__paramId) ||
                 (uint8_t__paramId == CHG_DEAD_SLOT_MASK_ID))
             {
@@ -572,8 +572,8 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
             }
 #endif
 #if MODULE_CHARGER
-            /* [EN] v1.72 scenario 7 live read, ids 125..127 + slot 203.
-               [FA] خواندن زندهٔ سناریوی ۷ + اسلات ۲۰۳. */
+            /* [EN] v1.72 scenario 6 live read, ids 125..127 + slot 203.
+               [FA] خواندن زندهٔ سناریوی ۶ + اسلات ۲۰۳. */
             if (CHG_DEAD_PARAM_OWNS(uint8_t__paramId) ||
                 (uint8_t__paramId == CHG_DEAD_SLOT_MASK_ID))
             {
@@ -898,9 +898,9 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
     UINT16_T__G__TelemetrySeq = (uint16_t)(UINT16_T__G__TelemetrySeq + 1u);
     UINT8_T__A__Payload[uint16_t__cursor] = uint8_t__flags;
     uint16_t__cursor = (uint16_t)(uint16_t__cursor + 1u);
-    /* [EN] v1.43: the old reserved byte now carries the imbalance scenario 6
+    /* [EN] v1.43: the old reserved byte now carries the imbalance scenario 5
      *      status bits (episode / latched / output-blocked / charge-halted).
-     * [FA] بایت رزرو قدیمی حالا بیت‌های وضعیت سناریوی ۶ را حمل می‌کند. */
+     * [FA] بایت رزرو قدیمی حالا بیت‌های وضعیت سناریوی ۵ را حمل می‌کند. */
     {
         uint8_t uint8_t__imbalanceFlags = 0u;
 
@@ -1067,12 +1067,12 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
 #endif
 
-    /* [EN] v1.72 scenario 7 live block (appended after the imbalance block,
+    /* [EN] v1.72 scenario 6 live block (appended after the imbalance block,
      *      again at the very end so no earlier index moves): the latched
      *      dead-battery channel mask (bit0 = ch1, bit1 = ch2) and the longest
      *      continuous charge time in seconds, which the panel draws as the
      *      progress toward the 24 h verdict.
-     * [FA] بلوک زندهٔ سناریوی ۷: ماسک قفل باتری خراب و بیشینهٔ زمان شارژ
+     * [FA] بلوک زندهٔ سناریوی ۶: ماسک قفل باتری خراب و بیشینهٔ زمان شارژ
      *      پیوسته برحسب ثانیه (نمایش پیشرفت تا ۲۴ ساعت در پنل). */
 #if MODULE_CHARGER
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,

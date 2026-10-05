@@ -142,7 +142,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     }
 
 #if MODULE_IMBALANCE
-    /* [EN] Scenario 6 output veto (user order 2026-10-04): while the
+    /* [EN] Scenario 5 output veto (user order 2026-10-04): while the
           imbalance verdict is latched AND the block checkbox (param 117) is
           on, the battery must NEVER be switched onto the output - behave
           like the critical cut: assert the protect line, sit in SAFE, reset
@@ -150,7 +150,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
           battery is a degraded asset, above every normal threshold logic).
           Charging is NOT affected here (the charger has its own gate and
           imbalance charging stays allowed until the cycle budget is spent).
-       [FA] وتوی خروجی سناریوی ۶: در قفل + تیک ۱۱۷، باتری هرگز روی خروجی
+       [FA] وتوی خروجی سناریوی ۵: در قفل + تیک ۱۱۷، باتری هرگز روی خروجی
           سوئیچ نمی‌شود؛ مثل قطع بحرانی رفتار می‌کنیم (محافظ فعال + SAFE). */
     {
         imbalance_outputs_t imbalance_outputs_t__imbalance;
@@ -172,12 +172,12 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
 #endif
 
 #if MODULE_CHARGER
-    /* [EN] v1.72 scenario 7 output veto (user order: "declare the battery
+    /* [EN] v1.72 scenario 6 output veto (user order: "declare the battery
           faulty ... and charge it no more until the battery is replaced,
           like the imbalance case"): with the dead-battery verdict latched
           AND param 127 on, a condemned pack never reaches the output
           either - same handling as the imbalance veto right above.
-       [FA] وتوی خروجی سناریوی ۷: باتری خرابِ قفل‌شده با تیک ۱۲۷ هرگز روی
+       [FA] وتوی خروجی سناریوی ۶: باتری خرابِ قفل‌شده با تیک ۱۲۷ هرگز روی
           خروجی نمی‌رود؛ دقیقاً مثل وتوی عدم‌توازن بالا. */
     if (func__Charger_DeadBlocksOutput() != false)
     {

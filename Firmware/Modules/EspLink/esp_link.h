@@ -352,13 +352,13 @@
 #define ESPLINK_PARAM_CHG_MANUAL_WATCHDOG_MS   106u  /* u32, ms, def 3000,    500..60000 */
 #define ESPLINK_PARAM_CHG_RAMP_DOWN_INT_MS     107u  /* u32, ms, def 500,     50..5000 */
 
-/* [EN] v1.43 - battery-imbalance scenario 6 (Imbalance): rest/discharge
+/* [EN] v1.43 - battery-imbalance scenario 5 (Imbalance): rest/discharge
  *      absolute-delta thresholds, the two charge-window gates, episode
  *      stability + hysteresis, event budget to latch, latch beep cadence,
  *      the output-block checkbox and the charge-cycle budget. The matching
  *      persisted runtime slots (events / latched cycles / latch) are
  *      ESP_LINK_NVM_SLOT_* ids 200..202 - NOT parameters.
- * [FA] سناریوی ۶ (عدم‌توازن باتری): حدها، گیت‌های پنجره، دم، بودجهٔ رویداد
+ * [FA] سناریوی ۵ (عدم‌توازن باتری): حدها، گیت‌های پنجره، دم، بودجهٔ رویداد
  *      تا قفل، بوق قفل، تیک مسدودی و بودجهٔ سیکل شارژ. اسلات‌های شمارندهٔ
  *      ماندگار ۲۰۰..۲۰۲ پارامتر نیستند. */
 #define ESPLINK_PARAM_IMBAL_REST_LIMIT_MV      108u  /* u32, mV, def 300,    0..2000 */
@@ -397,17 +397,17 @@
 
 #define ESPLINK_PARAM_IMBAL_BLINK_PERIOD_MS    123u  /* u32, ms, def 1000, 0 = solid red, else 100..10000 (v1.68) */
 #define ESPLINK_PARAM_IMBAL_BLINK_DUTY_PCT     124u  /* u8,  %,  def 50,   5..95 (v1.68) */
-/* [EN] v1.72 scenario 7 (dead battery), user order: a battery must never sit
+/* [EN] v1.72 scenario 6 (dead battery), user order: a battery must never sit
    under charge for ever - after ~24 h of continuous charging without reaching
    Float the pack is condemned (solid red, charging stopped until it is
    replaced). The charger module owns the registers; these are the link ids.
-   [FA] سناریوی ۷ (باتری خراب): پس از ۲۴ ساعت شارژ پیوسته و بی‌نتیجه، حکم
+   [FA] سناریوی ۶ (باتری خراب): پس از ۲۴ ساعت شارژ پیوسته و بی‌نتیجه، حکم
    خرابی - قرمز ثابت و قطع شارژ تا تعویض باتری. */
 #define ESPLINK_PARAM_DEAD_TIMEOUT_MS          125u  /* u32, ms, def 86400000 (24 h), 0 = off, max 172800000 */
 #define ESPLINK_PARAM_DEAD_RESET_GAP_MS        126u  /* u32, ms, def 600000 (10 min), pause longer than this zeroes the clock */
 #define ESPLINK_PARAM_DEAD_BLOCK_OUTPUT        127u  /* u8,  0/1, def 0, also keep the condemned pack off the output */
 
-#define ESPLINK_PARAM_COUNT               128u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28), 108..118 = imbalance scenario 6 (v1.43), 119..120 = charge-side percent map (v1.49), 121..122 = band-2 own beep shape (v1.50), 123..124 = imbalance latched red-lamp blink (v1.68, user order: the red lamp must blink), 125..127 = dead-battery scenario 7 (v1.72, user order: a battery must never stay under charge forever). Runtime slots 200..202 are persisted but NOT parameters: they stay outside this count and the GET_PARAMS bulk on purpose. [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای، حدها/گین‌های پشتیبان، سناریوی ۶ و نگاشت درصد سمت شارژ (۱۱۹..۱۲۰) و شکل بوق باند ۲ (۱۲۱..۱۲۲) و چشمک قرمز قفل عدم‌توازن (۱۲۳..۱۲۴)؛ ۱۲۵..۱۲۷ سناریوی ۷ باتری خراب؛ اسلات‌های ۲۰۰..۲۰۳ پارامتر نیستند */
+#define ESPLINK_PARAM_COUNT               128u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28), 108..118 = imbalance scenario 5 (v1.43), 119..120 = charge-side percent map (v1.49), 121..122 = band-2 own beep shape (v1.50), 123..124 = imbalance latched red-lamp blink (v1.68, user order: the red lamp must blink), 125..127 = dead-battery scenario 6 (v1.72, user order: a battery must never stay under charge forever). Runtime slots 200..202 are persisted but NOT parameters: they stay outside this count and the GET_PARAMS bulk on purpose. [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای، حدها/گین‌های پشتیبان، سناریوی ۵ و نگاشت درصد سمت شارژ (۱۱۹..۱۲۰) و شکل بوق باند ۲ (۱۲۱..۱۲۲) و چشمک قرمز قفل عدم‌توازن (۱۲۳..۱۲۴)؛ ۱۲۵..۱۲۷ سناریوی ۶ باتری خراب؛ اسلات‌های ۲۰۰..۲۰۳ پارامتر نیستند */
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

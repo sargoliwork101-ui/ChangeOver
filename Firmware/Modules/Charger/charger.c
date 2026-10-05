@@ -1577,12 +1577,12 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     }
 
 #if MODULE_IMBALANCE
-    /* [EN] Scenario 6 gate (user order 2026-10-04): while the imbalance
+    /* [EN] Scenario 5 gate (user order 2026-10-04): while the imbalance
        verdict is latched, charging stays ALLOWED only as long as the
        latched-cycle budget (param 118) is not spent; once spent, both
        halves of THIS pack (both channels) are held OFF - the battery is
        beyond service, the hourly beep needs no charger anyway.
-       [FA] گیت سناریوی ۶ (دستور کاربر): تا قبل از پر شدن بودجهٔ سیکل قفل
+       [FA] گیت سناریوی ۵ (دستور کاربر): تا قبل از پر شدن بودجهٔ سیکل قفل
        (پارامتر ۱۱۸) شارژ آزاد است؛ پس از آن هر دو کانال همین پک OFF می‌مانند. */
     {
         imbalance_outputs_t imbalance_outputs_t__imbalance;
@@ -1597,11 +1597,11 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     }
 #endif
 
-    /* [EN] Scenario 7 gate (user order 2026-10-05): a channel whose dead
+    /* [EN] Scenario 6 gate (user order 2026-10-05): a channel whose dead
        verdict is latched never charges again until the battery is replaced.
        It sits above the fixed-duty and manual paths on purpose - "do not
        charge it any more" must not be defeatable from a panel switch.
-       [FA] گیت سناریوی ۷: کانالی که قفل «باتری خراب» خورده تا تعویض باتری
+       [FA] گیت سناریوی ۶: کانالی که قفل «باتری خراب» خورده تا تعویض باتری
        دیگر شارژ نمی‌شود، و این گیت بالاتر از مود duty فیکس است تا با یک
        کلید در پنل دور زده نشود. */
     if ((func__Charger_DeadMask() & (uint8_t)(1u << uint8_t__channelIndex)) != 0u)
@@ -2348,7 +2348,7 @@ static void func__Charger_CaptureDiag(const measurement_snapshot_t *measurement_
 }
 
 
-/* ==================== Scenario 7: dead battery / سناریوی ۷: باتری خراب ==================== */
+/* ==================== Scenario 6: dead battery / سناریوی ۶: باتری خراب ==================== */
 
 /* [EN] One row per channel. The accumulator counts only the ticks the
        channel really charged (BULK/ABSORB); the pause timer decides when a
@@ -2366,7 +2366,7 @@ static volatile bool     BOOL__G__DeadPersist  = false;
 
 /* [EN] Scenario-7 parameter windows: {min, max, boot default}. Same shape as
        the limit block above, so a default can never sit outside its window.
-   [FA] پنجرهٔ پارامترهای سناریوی ۷ با همان قالب بلوک حدها. */
+   [FA] پنجرهٔ پارامترهای سناریوی ۶ با همان قالب بلوک حدها. */
 typedef struct
 {
     uint32_t uint32_t__min;
@@ -2387,11 +2387,11 @@ static volatile uint32_t UINT32_T__G__DeadParam[3] =
 };
 
 /**
- * @brief  [EN] One scenario-7 pass for one channel: accumulate charge time,
+ * @brief  [EN] One scenario-6 pass for one channel: accumulate charge time,
  *              clear it on FLOAT or on a long enough pause, latch the dead
  *              verdict at the timeout, and clear the verdict when the
  *              battery is physically gone.
- *         [FA] یک پاس سناریوی ۷ برای یک کانال.
+ *         [FA] یک پاس سناریوی ۶ برای یک کانال.
  * @param  uint8_t__channelIndex [EN] 0 or 1 / شمارهٔ کانال
  * @param  uint32_t__nowTick [EN] Current tick / تیک فعلی
  */
@@ -2409,7 +2409,7 @@ static void func__Charger_DeadBatteryTick(uint8_t uint8_t__channelIndex,
     uint32_t__gapMs     = UINT32_T__G__DeadParam[1];
 
     /* [EN] Step 1: a real battery swap wipes the verdict - the latch belongs
-           to the battery, not to the board (same rule as scenario 6).
+           to the battery, not to the board (same rule as scenario 5).
        [FA] گام ۱: تعویض واقعی باتری، قفل را پاک می‌کند. */
     if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_BAT_LOST)
     {
@@ -2971,9 +2971,9 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                 }
             }
 
-            /* [EN] Scenario 7 runs before the drive of this pass so the
+            /* [EN] Scenario 6 runs before the drive of this pass so the
                verdict of this very tick is visible to the gate below.
-               [FA] سناریوی ۷ قبل از درایو همین پاس اجرا می‌شود. */
+               [FA] سناریوی ۶ قبل از درایو همین پاس اجرا می‌شود. */
             func__Charger_DeadBatteryTick(uint8_t__channelIndex, uint32_t__nowTick);
 
             if (BOOL__G__ChargerManualModeActive != false)

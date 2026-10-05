@@ -111,7 +111,9 @@ function testStructure(win, doc) {
     /* [EN] 27..118 are the alarm ids. 93..107 are edited in the chart and
        117 is a toggle button, so only the rest own a numeric input.
        [FA] شناسه‌های ۹۳..۱۰۷ در نمودار ویرایش می‌شوند و ۱۱۷ دکمه است. */
-    const noInput = new Set([76, 117]);
+    /* v1.74: 72/73 are retired - the low-battery window is a Changeover
+       constant now, so the panel must NOT offer a field for them. */
+    const noInput = new Set([72, 73, 76, 117]);
     for (let id = 93; id <= 107; id += 1) {
         noInput.add(id);
     }
@@ -251,9 +253,9 @@ function testDischarge(win, doc) {
     typeInto(win, doc, 'q119', 21000);
     win.c4();
 
-    check(doc.querySelectorAll('#ucard4 .qmv[data-q="74"]').length === 1 &&
-          doc.querySelectorAll('#ucard5 .qmv[data-q="75"]').length === 1,
-        'the charge and low-battery cards echo it read-only');
+    /* v1.74: the low-battery card is gone, so only the charge card echoes. */
+    check(doc.querySelectorAll('#ucard4 .qmv[data-q="74"]').length === 1,
+        'the charge card echoes the discharge ladder read-only');
     win.qmfill();
     check(doc.querySelector('#ucard4 .qmv[data-q="74"]').textContent === '21000',
         'the echo carries the owner value', doc.querySelector('#ucard4 .qmv[data-q="74"]').textContent);
@@ -285,10 +287,12 @@ function testDischarge(win, doc) {
         'the old silent-band lines are gone');
     check(owns(0, 51) && owns(0, 62) && owns(0, 59) && owns(0, 54) && owns(0, 65),
         'band 1 owns its percent, count, duration, interval and gap');
-    check(owns(1, 52) && owns(1, 63) && owns(1, 121) && owns(1, 122) && echoes(1, 54),
-        'band 2 owns its duration and gap, and echoes only the shared interval');
-    check(!echoes(1, 59) && !echoes(1, 65),
-        'band 2 no longer borrows band 1 duration or the common gap');
+    /* v1.71: band 2 owns percent, count, per-beep duration AND its own repeat
+       interval; the only shared number it echoes is the gap (65). */
+    check(owns(1, 52) && owns(1, 63) && owns(1, 121) && owns(1, 122) && echoes(1, 65),
+        'band 2 owns its shape and echoes only the shared gap');
+    check(!echoes(1, 59) && !echoes(1, 54),
+        'band 2 no longer borrows band 1 duration or band 1 interval');
     check(owns(2, 53) && owns(2, 64) && owns(2, 60) && owns(2, 55) && echoes(2, 65),
         'band 3 owns its duration and interval, echoes only the gap');
     check(owns(3, 56) && owns(3, 57) && owns(3, 58) && owns(3, 61) && echoes(3, 65),
@@ -307,17 +311,21 @@ function testDischarge(win, doc) {
         'band 1 is untouched when band 2 is reshaped');
     check(textOf(doc, 's3n2').includes('3000') && textOf(doc, 's3n2').includes('400'),
         'band 2 reports its own duration and gap', textOf(doc, 's3n2'));
+    /* v1.75: restore the FACTORY pair (1000 ms beep in a 60 s interval). The
+       old restore left 1000 ms inside a 100 ms interval - a pattern the panel
+       is right to repair, which then leaked id 121 into the next batch. */
     typeInto(win, doc, 'q121', 1000);
-    typeInto(win, doc, 'q122', 100);
+    typeInto(win, doc, 'q122', 60000);
 
     typeInto(win, doc, 'q65', 250);
     win.qmfill();
+    /* v1.71: bands 2, 3 and the critical block all echo the shared gap. */
     const gapEchoes = [...card.querySelectorAll('.qmv[data-q="65"]')];
-    check(gapEchoes.length === 2 && gapEchoes.every(e => e.textContent === '250'),
-        'the common gap is echoed by band 3 and the critical block only',
+    check(gapEchoes.length === 3 && gapEchoes.every(e => e.textContent === '250'),
+        'the common gap is echoed by bands 2, 3 and the critical block',
         gapEchoes.map(e => e.textContent).join(','));
-    check(!textOf(doc, 's3n2').includes('250'),
-        'and it no longer reaches band 2');
+    check(card.querySelectorAll('input#q65').length === 1,
+        'and it is still writable in exactly one place');
     typeInto(win, doc, 'q65', 100);
     win.qmfill();
 
@@ -342,11 +350,12 @@ function testDischarge(win, doc) {
     check(doc.getElementById('a65').textContent === '',
         'no second copy of a number the box already shows',
         doc.getElementById('a65').textContent);
+    /* v1.70 (user order): the "روی برد: ..." chip was deleted on purpose, so
+       the span must stay empty even when the board disagrees. */
     win.D = { p: { 65: 250, 66: 1000 } };
     win.afill();
-    check(doc.getElementById('a65').textContent.includes('250')
-        && doc.getElementById('a65').textContent.includes('روی برد'),
-        'but a board value that disagrees is still reported',
+    check(doc.getElementById('a65').textContent === '',
+        'and the deleted board-value chip never comes back',
         doc.getElementById('a65').textContent);
     win.D = null;
 
@@ -422,46 +431,10 @@ function testCharging(win, doc) {
     typeInto(win, doc, 'q68', 1000);
 }
 
-/* ==================== Scenario 5 - low battery alarm ==================== */
-
-function testLowBattery(win, doc) {
-    console.log('\nscenario 5 - low battery / باتری کم');
-
-    typeInto(win, doc, 'q74', 21000);
-    typeInto(win, doc, 'q75', 29000);
-    typeInto(win, doc, 'q72', 22600);
-    typeInto(win, doc, 'q73', 23400);
-    const line = textOf(doc, 's5v');
-    check(line.includes('22600') && line.includes('23400'), 'both alarm levels are shown', line);
-    check(line.includes('20٪') && line.includes('30٪'), 'both are translated to percent on the 74/75 ladder', line);
-    /* [EN] The board divides integers: 21200 on a 21000..29000 ladder is 2%,
-       not the 3% a rounding panel would print.
-       [FA] برد تقسیم صحیح می‌کند: ۲۱۲۰۰ روی نردبان ۲۱..۲۹ ولت می‌شود ۲٪. */
-    typeInto(win, doc, 'q72', 21200);
-    typeInto(win, doc, 'q73', 21400);
-    check(textOf(doc, 's5v').includes('2٪') && !textOf(doc, 's5v').includes('3٪'),
-        'percent is floored exactly like the board, not rounded', textOf(doc, 's5v'));
-    typeInto(win, doc, 'q72', 22600);
-    typeInto(win, doc, 'q73', 23400);
-    check(line.includes('800'), 'the anti-chatter width is computed', line);
-
-    typeInto(win, doc, 'q73', 22000);
-    check(/⚠/.test(textOf(doc, 's5v')), 'a clear level below the alarm level is called out', textOf(doc, 's5v'));
-    typeInto(win, doc, 'q73', 21200);
-    typeInto(win, doc, 'q72', 21000);
-
-    /* [EN] The ladder itself lives on card 4 now - card 5 must say so.
-       [FA] خود نردبان حالا در کارت ۴ است و کارت ۵ باید همین را بگوید. */
-    const card5 = doc.getElementById('ucard5');
-    check(doc.querySelectorAll('#ucard5 input#q74').length === 0, 'the ladder is not duplicated on card 5');
-    check(/کارت/.test(card5.textContent) && card5.querySelector('button[onclick="usel(3)"]') !== null,
-        'card 5 points at the card that owns the ladder (card 3)');
-}
-
-/* ==================== Scenario 6 - imbalance ==================== */
+/* ==================== Scenario 5 - imbalance ==================== */
 
 function testImbalance(win, doc) {
-    console.log('\nscenario 6 - imbalance / عدم‌توازن');
+    console.log('\nscenario 5 - imbalance / عدم‌توازن');
 
     typeInto(win, doc, 'q112', 30000);
     typeInto(win, doc, 'q114', 10);
@@ -469,18 +442,18 @@ function testImbalance(win, doc) {
     typeInto(win, doc, 'q116', 200);
     typeInto(win, doc, 'q118', 20);
 
-    const lock = textOf(doc, 's6z');
+    const lock = textOf(doc, 's5z');
     check(lock.includes('10'), 'the lock event count is shown', lock);
     check(/5 دقیقه/.test(lock), '10 events x 30 s is a 5 minute floor to the lock', lock);
     check(lock.includes('20'), 'the post-lock charge-cycle budget is shown', lock);
 
     typeInto(win, doc, 'q111', 0);
-    check(/بدون گیت/.test(textOf(doc, 's6v')), 'a zero charge gate reads as "no gate"', textOf(doc, 's6v'));
+    check(/بدون گیت/.test(textOf(doc, 's5v')), 'a zero charge gate reads as "no gate"', textOf(doc, 's5v'));
     typeInto(win, doc, 'q111', 600000);
-    check(/10 دقیقه/.test(textOf(doc, 's6v')), 'the charge gate is printed in minutes', textOf(doc, 's6v'));
+    check(/10 دقیقه/.test(textOf(doc, 's5v')), 'the charge gate is printed in minutes', textOf(doc, 's5v'));
 
     typeInto(win, doc, 'q115', 0);
-    check(/بوق خاموش/.test(textOf(doc, 's6z')), 'a zero lock-beep period reads as off', textOf(doc, 's6z'));
+    check(/بوق خاموش/.test(textOf(doc, 's5z')), 'a zero lock-beep period reads as off', textOf(doc, 's5z'));
 }
 
 
@@ -556,19 +529,11 @@ function testSimulator(win, doc) {
     win.simrun();
     check(on('sl4y'), 'zero percent holds the yellow solid on');
 
-    /* Card 5: flag only, with the hysteresis window honoured. */
-    typeInto(win, doc, 'q72', 21000);
-    typeInto(win, doc, 'q73', 21200);
-    doc.getElementById('simp5').value = 20000;
-    win.simrun();
-    check(on('sl5r'), 'below the alarm level card 5 raises the flag');
-    doc.getElementById('simp5').value = 22000;
-    win.simrun();
-    check(!on('sl5r'), 'above the clear level the flag drops');
-    doc.getElementById('simp5').value = 21100;
-    win.simrun();
-    check(doc.getElementById('sl5t').textContent.indexOf('ضدلرزش') >= 0,
-          'inside the window the card says the state is held');
+    /* v1.74: the low-battery card is gone; its window lives in Changeover,
+       so no simulator may claim an anti-chatter band any more. */
+    check(doc.getElementById('simp5') === null
+          || doc.getElementById('simp5').type === 'range',
+          'no leftover low-battery voltage slider on card 5');
 
     /* Card 1 (v1.57): the over-voltage alarm follows threshold 70 / hyst 71. */
     typeInto(win, doc, 'q70', 29000);
@@ -594,56 +559,56 @@ function testSimulator(win, doc) {
 
     /* Card 6 (v1.57): mode decides the window, the virtual clock decides time. */
     win.simspd(1);
-    win.simrst6();
-    doc.getElementById('simp6a').value = 12000;
-    doc.getElementById('simp6b').value = 12000;
-    doc.getElementById('sim6m').value = 'r';
+    win.simrst5();
+    doc.getElementById('simp5a').value = 12000;
+    doc.getElementById('simp5b').value = 12000;
+    doc.getElementById('sim5m').value = 'r';
     typeInto(win, doc, 'q108', 300);
     typeInto(win, doc, 'q109', 500);
     typeInto(win, doc, 'q110', 600000);
     typeInto(win, doc, 'q111', 600000);
     typeInto(win, doc, 'q112', 30000);
     typeInto(win, doc, 'q114', 3);
-    win.sim6mode();
+    win.sim5mode();
     win.simrun();
-    check(doc.getElementById('sim6w').textContent.indexOf('تا باز شدن پنجره') >= 0,
+    check(doc.getElementById('sim5w').textContent.indexOf('تا باز شدن پنجره') >= 0,
           'at rest the window is still shut right after a charge');
-    check(doc.getElementById('sl6t').textContent.indexOf('پنجره بسته') >= 0,
+    check(doc.getElementById('sl5t').textContent.indexOf('پنجره بسته') >= 0,
           'and nothing is counted while it is shut');
 
-    doc.getElementById('sim6m').value = 'd';
-    win.sim6mode();
+    doc.getElementById('sim5m').value = 'd';
+    win.sim5mode();
     win.simrun();
-    check(doc.getElementById('sim6w').textContent.indexOf('دشارژ') >= 0 &&
-          doc.getElementById('sim6w').textContent.indexOf('500 mV') >= 0,
+    check(doc.getElementById('sim5w').textContent.indexOf('دشارژ') >= 0 &&
+          doc.getElementById('sim5w').textContent.indexOf('500 mV') >= 0,
           'on battery the window is open at once and uses the discharge limit');
 
-    doc.getElementById('sim6m').value = 'c';
-    win.sim6mode();
+    doc.getElementById('sim5m').value = 'c';
+    win.sim5mode();
     typeInto(win, doc, 'q111', 0);
     win.simrun();
-    check(doc.getElementById('sim6w').textContent.indexOf('هرگز') >= 0,
+    check(doc.getElementById('sim5w').textContent.indexOf('هرگز') >= 0,
           'a zero charge gate means no measurement while charging');
     typeInto(win, doc, 'q111', 600000);
 
     /* virtual clock: only runs while the card runs, and honours the speed */
-    const t0 = win.SIMT[6];
-    win.SIMON[6] = 0;
+    const t0 = win.SIMT[5];
+    win.SIMON[5] = 0;
     win.simrun();
-    check(win.SIMT[6] === t0, 'a stopped card freezes its own clock');
-    win.SIMON[6] = 1;
+    check(win.SIMT[5] === t0, 'a stopped card freezes its own clock');
+    win.SIMON[5] = 1;
 
     /* three events on the discharge window latch the lock */
-    doc.getElementById('sim6m').value = 'd';
-    win.sim6mode();
-    doc.getElementById('simp6b').value = 11000;    /* 1000 mV apart */
-    for (let i = 0; i < 6; i += 1) { win.SIMT[6] += 30000; win.simrun(); }
-    check(win.S6.lock === true && on('sl6r'),
+    doc.getElementById('sim5m').value = 'd';
+    win.sim5mode();
+    doc.getElementById('simp5b').value = 11000;    /* 1000 mV apart */
+    for (let i = 0; i < 6; i += 1) { win.SIMT[5] += 30000; win.simrun(); }
+    check(win.S5.lock === true && on('sl5r'),
           'three stable over-limit events latch the lock: solid red');
-    win.simrst6();
-    doc.getElementById('simp6b').value = 12000;
+    win.simrst5();
+    doc.getElementById('simp5b').value = 12000;
     win.simrun();
-    check(!on('sl6r') && win.S6.n === 0, 'the restart button clears the simulated lock');
+    check(!on('sl5r') && win.S5.n === 0, 'the restart button clears the simulated lock');
 
     /* v1.55: a gap box is dead while its band asks for a single beep. */
     typeInto(win, doc, 'q42', 1);
@@ -724,7 +689,8 @@ async function testSendQueue(win, doc) {
     check(posts.length === 2 &&
           posts.at(0).indexOf('/s?id=38&v=2000') >= 0 &&
           posts.at(1).indexOf('/s?id=39&v=60') >= 0,
-          'one press posts every staged edit once');
+          'one press posts every staged edit once',
+          all.filter(u => u.indexOf('/s?') >= 0).join(' '));
     check(Object.keys(win.PEND).length === 0, 'an accepted batch leaves the queue empty');
     const st = doc.getElementById('sbst').textContent;
     check(st.indexOf('گیره') >= 0 && st.indexOf('39: 60→50') >= 0,
@@ -1006,7 +972,7 @@ function testFixRules(win, doc) {
 
     const base = {};
     [40,41,42,43,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,62,63,64,65,66,67,68,69,
-     72,73,74,75,77,78,119,120,121,122].forEach(id => { base[id] = 0; });
+     74,75,77,78,119,120,121,122].forEach(id => { base[id] = 0; });
     const run = (over) => {
         const v = Object.assign({}, base, over);
         const fx = win.fixrules(v);
@@ -1032,8 +998,23 @@ function testFixRules(win, doc) {
     check(r.v[51] === 40 && r.v[52] === 40 && r.v[53] === 40,
           'the bands are pulled back into order, band 1 authoritative');
 
+    /* v1.71: id 57 is milliseconds per beep, so 3 x 10 ms + 2 x 100 ms gap
+       fits a 1000 ms window easily - the shrink has to be provoked with a
+       window that really is too short. */
     r = run({ 56: 1000, 57: 10, 58: 3, 65: 100 });
-    check(r.v[58] === 1, 'the critical count shrinks until its own window fits');
+    check(r.v[58] === 3, 'a critical pattern that fits its window is left alone');
+    /* v1.71: the repair shrinks the per-beep DURATION (57), never the count -
+       the count is what the user asked for, the duration is what has to give. */
+    r = run({ 56: 2000, 57: 1000, 58: 5, 65: 100 });
+    check(r.v[58] === 5 && (r.v[58] * r.v[57] + (r.v[58] - 1) * 100) <= 2000,
+          'the critical per-beep duration shrinks until its window fits',
+          'count=' + r.v[58] + ' dur=' + r.v[57]);
+    /* v1.75 audit: when the GAPS alone overrun the window, shrinking the
+       duration cannot save the pattern - the duration bottoms out at 0 and it
+       is achk() that must warn before anything is sent. */
+    r = run({ 56: 200, 57: 1000, 58: 5, 65: 100 });
+    check(r.v[57] === 0, 'an impossible critical pattern bottoms the duration out',
+          String(r.v[57]));
     r = run({ 56: 10000, 57: 100, 58: 3, 65: 100 });
     check(r.v[58] === 3, 'a fitting critical pattern is untouched');
 
@@ -1042,8 +1023,6 @@ function testFixRules(win, doc) {
     r = run({ 68: 1000, 69: 5000 });
     check(r.v[69] === 1000, 'the minimum on time cannot exceed the period');
 
-    r = run({ 72: 21000, 73: 20000 });
-    check(r.v[73] === 21000, 'the clear level is pulled up to the alarm level');
     r = run({ 74: 21000, 75: 20000 });
     check(r.v[75] === 21100, 'the percent ladder keeps at least 100 mV of span');
     r = run({ 119: 21000, 120: 21000 });
@@ -1192,8 +1171,7 @@ setTimeout(async () => {
         testDisconnect(win, doc);
         testDischarge(win, doc);
         testCharging(win, doc);
-        testLowBattery(win, doc);
-        testImbalance(win, doc);
+            testImbalance(win, doc);
         testSimulator(win, doc);
         await testSendQueue(win, doc);
         testFixRules(win, doc);

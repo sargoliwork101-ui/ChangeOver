@@ -292,7 +292,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e3eb29c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build bf72133</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -386,7 +386,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 <div class="hd" style="margin-top:10px"><b>سناریوهای LED و بازر</b><span class="lb">· یک سناریو را انتخاب کنید · همه روی فلش برد ذخیره می‌شوند</span></div>
 <div id="aw2" style="margin:2px 0 0"></div>
-<div class="sbt" id="usel"><button class="a" data-u="1">۱ · اضافه‌ولتاژ</button><button data-u="2">۲ · قطع باتری</button><button data-u="3">۳ · دشارژ</button><button data-u="4">۴ · شارژ عادی</button><button data-u="6">۶ · عدم‌توازن</button><button data-u="7">۷ · باتری خراب (۲۴ ساعت شارژ)</button></div>
+<div class="sbt" id="usel"><button class="a" data-u="1">۱ · اضافه‌ولتاژ</button><button data-u="2">۲ · قطع باتری</button><button data-u="3">۳ · دشارژ</button><button data-u="4">۴ · شارژ عادی</button><button data-u="5">۵ · عدم‌توازن</button><button data-u="6">۶ · باتری خراب (۲۴ ساعت شارژ)</button></div>
 <div class="cd" id="ucard1">
 <div class="hd"><b>سناریو ۱ — اضافه‌ولتاژ ورودی (قرمز + بوق)</b><span class="lb">· ۷۰/۷۱ آستانه · ۳۸/۳۹ چشمک · ۴۰..۴۳ بوق · اولویت اول برد</span></div>
 <div class="sx"><b>روند:</b> عبور ورودی از سقف ← قرمز چشمک + بوق دوره‌ای (سبز ثابت می‌ماند) ← افت تا سقف−hysteresis ← پاک‌شدن و بازگشت به سناریوی قبلی. پیش‌فرض: چشمک ۱۰۰۰/۵۰٪ + یک بوق ۱ثانیه‌ای هر ۱۰ ثانیه.</div>
@@ -623,8 +623,8 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="srvw"><table class="srv c4tb"><thead><tr><th>درصد پایدار</th><th>ولتاژ تقریبی</th><th>مانده تا فول</th><th>زرد روشن</th><th>زرد خاموش</th><th>رفتار</th></tr></thead><tbody id="c4tb"></tbody></table></div>
 
 </div>
-<div class="cd" id="ucard6" style="display:none">
-<div class="hd"><b>سناریو ۶ — عدم‌توازن دو نیم‌باتری (قفل دائمی)</b><span class="lb">· ۱۰۸..۱۱۸ و ۱۲۳..۱۲۴ + شمارندهٔ ۲۰۰..۲۰۲ · اولویت سوم</span></div>
+<div class="cd" id="ucard5" style="display:none">
+<div class="hd"><b>سناریو ۵ — عدم‌توازن دو نیم‌باتری (قفل دائمی)</b><span class="lb">· ۱۰۸..۱۱۸ و ۱۲۳..۱۲۴ + شمارندهٔ ۲۰۰..۲۰۲ · اولویت سوم</span></div>
 <div class="sx"><b>روند:</b> قدرمطلق اختلاف دو نیم ← حین استراحت (پس از ۱۱۰) و شارژ (پس از ۱۱۱) با حد ۱۰۸، حین دشارژ فوراً با ۱۰۹ ← بالای حد برای ۱۱۲ = رویداد (اپیزود با ۱۱۳ می‌میرد؛ شمارش ماندگار روی فلش برد) ← از ۱۱۴ رویداد: قفل دائمی = قرمز چشمک‌زن (دوره ۱۲۳، سهم روشنی ۱۲۴) + بوق هر ۱۱۵ به طول ۱۱۶ و با تیک ۱۱۷ جدایی از خروجی. شارژ در قفل آزاد ولی سیکل می‌شمارد؛ از ۱۱۸ سیکل شارژش هم قطع می‌شود. ریست فقط خودکار با تعویض باتری (۳ ثانیه).</div>
 
 <div class="ds c4ds">
@@ -640,7 +640,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 <div class="prod">اختلاف الان: <b id="imbv">—</b> <span class="lb">mV</span> · رویدادها: <b id="imbev">—</b> <span id="imbmx" class="lb">از ۱۰</span> · وضعیت: <b id="imbst">—</b></div>
 
-<div class="sim" id="sim6"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims6" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb6" onclick="simtog(6)">توقف</button></div><div class="simb"><span class="sl r" id="sl6r"></span><span class="sl g" id="sl6g"></span><span class="sl y" id="sl6y"></span><span class="szz" id="sl6z">🔇</span><span class="simt" id="sl6t">—</span></div><div class="simc"><label>حالت کاری <select id="sim6m" onchange="sim6mode()"><option value="c">در حال شارژ</option><option value="r" selected>استراحت (بعد از شارژ)</option><option value="d">دشارژ روی باتری</option></select></label> <span class="lb" id="sim6w">—</span></div><div class="simc"><label>نیم‌باتری بالا (mV)<input type="range" id="simp6a" min="9000" max="15000" value="12000" oninput="simlbl6()"><b id="simv6a">12000 mV</b></label></div><div class="simc"><label>نیم‌باتری پایین (mV)<input type="range" id="simp6b" min="9000" max="15000" value="12000" oninput="simlbl6()"><b id="simv6b">12000 mV</b></label> <button class="sb sb2" onclick="simrst6()">شروع دوبارهٔ شمارش</button></div></div>
+<div class="sim" id="sim5"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims5" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb5" onclick="simtog(5)">توقف</button></div><div class="simb"><span class="sl r" id="sl5r"></span><span class="sl g" id="sl5g"></span><span class="sl y" id="sl5y"></span><span class="szz" id="sl5z">🔇</span><span class="simt" id="sl5t">—</span></div><div class="simc"><label>حالت کاری <select id="sim5m" onchange="sim5mode()"><option value="c">در حال شارژ</option><option value="r" selected>استراحت (بعد از شارژ)</option><option value="d">دشارژ روی باتری</option></select></label> <span class="lb" id="sim5w">—</span></div><div class="simc"><label>نیم‌باتری بالا (mV)<input type="range" id="simp5a" min="9000" max="15000" value="12000" oninput="simlbl5()"><b id="simv5a">12000 mV</b></label></div><div class="simc"><label>نیم‌باتری پایین (mV)<input type="range" id="simp5b" min="9000" max="15000" value="12000" oninput="simlbl5()"><b id="simv5b">12000 mV</b></label> <button class="sb sb2" onclick="simrst5()">شروع دوبارهٔ شمارش</button></div></div>
 <div class="sec">۱) حد اختلاف <span class="lb">(mV)</span></div>
 <div class="sx">معیارِ سنجش، قدرمطلق اختلاف ولتاژ دو نیم‌باتری است. <b>حد استراحت</b> = حدِ مجاز وقتی دستگاه در استراحت یا شارژ است (ولتاژ نشسته، پس حد سخت‌گیرانه‌تر). <b>حد دشارژ</b> = همان حد وقتی روی بار کار می‌کند؛ چون افت روی بار طبیعی است، این عدد معمولاً بزرگ‌تر است. از نسخهٔ ۱٫۷۲ مقایسه فقط وقتی انجام می‌شود که هر دو نیم در یک حالت باشند.</div>
 <div class="bqr">
@@ -656,7 +656,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <label>پایداری رویداد (ms)<input type="number" id="q112" step="1000" min="1000" max="600000"><span class="lb" id="a112">—</span></label>
 <label>Hysteresis رویداد (mV)<input type="number" id="q113" step="50" min="0" max="1000"><span class="lb" id="a113">—</span></label>
 </div>
-<div class="c4n" id="s6v">—</div>
+<div class="c4n" id="s5v">—</div>
 
 <div class="sec">۳) قضاوت، هشدار و رفتار پس از قفل</div>
 <div class="sx">اینجا تصمیم نهایی و چهرهٔ آن ساخته می‌شود. <b>سقف رویداد تا قفل</b> = با رسیدن شمارندهٔ ماندگار به این عدد، باتری محکوم و قفل می‌شود. <b>دورهٔ بوق</b> و <b>طول بوق</b> = صدای دوره‌ای همان قفل (۰ = بی‌صدا). <b>دورهٔ چشمک</b> و <b>سهم روشنی</b> = شکل چشمک چراغ قرمز در قفل (دورهٔ ۰ = قرمز ثابت). <b>سیکل‌های شارژ پس از قفل</b> = بعد از قفل این‌قدر سیکل شارژ هنوز مجاز است و بعد شارژ هم می‌ایستد. <b>تیک مسدودی خروجی</b> = باتریِ محکوم از خروجی هم جدا شود یا نه.</div>
@@ -669,12 +669,12 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <label>سیکل‌های شارژ پس از قفل تا مسدودی<input type="number" id="q118" step="1" min="1" max="255"><span class="lb" id="a118">—</span></label>
 </div>
 <div class="bqr"><button class="bt run" id="ib117">مسدودی خروجی در قفل: فعال</button><span class="lb" id="a117">—</span></div>
-<div class="c4n" id="s6z">—</div>
+<div class="c4n" id="s5z">—</div>
 
-<div class="bqr"><button class="sb sb2" onclick="ibdef()">پیش‌فرض کارخانهٔ سناریو ۶</button></div>
+<div class="bqr"><button class="sb sb2" onclick="ibdef()">پیش‌فرض کارخانهٔ سناریو ۵</button></div>
 </div>
-<div class="cd" id="ucard7" style="display:none">
-<div class="hd"><b>سناریو ۷ — باتریِ شارژنشدنی (قفل دائمی پس از ۲۴ ساعت شارژ پیوسته)</b><span class="lb">· شناسه‌های ۱۲۵..۱۲۷ + ماسک ۲۰۳ · اولویت سوم (بالاتر از عدم‌توازن)</span></div>
+<div class="cd" id="ucard6" style="display:none">
+<div class="hd"><b>سناریو ۶ — باتریِ شارژنشدنی (قفل دائمی پس از ۲۴ ساعت شارژ پیوسته)</b><span class="lb">· شناسه‌های ۱۲۵..۱۲۷ + ماسک ۲۰۳ · اولویت سوم (بالاتر از عدم‌توازن)</span></div>
 <div class="sx"><b>روند:</b> هر کانال زمانِ شارژِ پیوستهٔ خودش را می‌شمارد (فقط مرحلهٔ Bulk/Absorb شمرده می‌شود) ← رسیدن به Float یعنی شارژ تمام شد و ساعت صفر می‌شود ← وقفهٔ کوتاه‌تر از «مهلت وقفه» ساعت را نگه می‌دارد، وقفهٔ بلندتر آن را صفر می‌کند ← رسیدن به «مهلت شارژ» = حکم «باتری خراب»: قرمز ثابت، شارژ همان کانال برای همیشه قطع و با تیک ۱۲۷ باتری از خروجی هم جدا می‌شود. قفل روی فلش برد (اسلات ۲۰۳) می‌ماند و با ریست پاک نمی‌شود؛ تنها راه خروج، تعویض باتری (۳ ثانیه بی‌باتری) است.</div>
 
 <div class="ds c4ds">
@@ -689,7 +689,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 <div class="prod">بیشترین شارژ پیوسته: <b id="dbel">—</b> · وضعیت: <b id="dbst">—</b></div>
 
-<div class="sim" id="sim7"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims7" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb7" onclick="simtog(7)">توقف</button></div><div class="simb"><span class="sl r" id="sl7r"></span><span class="sl g" id="sl7g"></span><span class="sl y" id="sl7y"></span><span class="szz" id="sl7z">🔇</span><span class="simt" id="sl7t">—</span></div><div class="simc"><label>حالت کانال <select id="sim7m"><option value="c" selected>در حال شارژ (Bulk/Absorb)</option><option value="p">وقفهٔ شارژ</option><option value="f">رسید به Float (شارژ کامل)</option></select></label> <button class="sb sb2" onclick="simrst7()">شروع دوبارهٔ شمارش</button></div></div>
+<div class="sim" id="sim6"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims6" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb6" onclick="simtog(6)">توقف</button></div><div class="simb"><span class="sl r" id="sl6r"></span><span class="sl g" id="sl6g"></span><span class="sl y" id="sl6y"></span><span class="szz" id="sl6z">🔇</span><span class="simt" id="sl6t">—</span></div><div class="simc"><label>حالت کانال <select id="sim6m"><option value="c" selected>در حال شارژ (Bulk/Absorb)</option><option value="p">وقفهٔ شارژ</option><option value="f">رسید به Float (شارژ کامل)</option></select></label> <button class="sb sb2" onclick="simrst6()">شروع دوبارهٔ شمارش</button></div></div>
 
 <div class="sec">۱) مهلت‌ها <span class="lb">(ms)</span></div>
 <div class="sx"><b>مهلت شارژ پیوسته</b> = اگر یک کانال این‌قدر پیوسته شارژ کند و هرگز به پایان شارژ (Float) نرسد، حکم «باتری خراب» صادر می‌شود؛ پیش‌فرض ۲۴ ساعت و ۰ یعنی این حکم خاموش. <b>مهلت وقفه</b> = وقفهٔ کوتاه‌تر از این مقدار ساعت را فقط نگه می‌دارد و وقفهٔ بلندتر آن را صفر می‌کند؛ بدون این عدد، باتریِ لرزان با روشن/خاموش‌شدن مدام برای همیشه از حکم فرار می‌کرد.</div>
@@ -697,13 +697,13 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <label>مهلت شارژ پیوسته تا حکم خرابی (ms، ۰=خاموش)<input type="number" id="q125" step="3600000" min="0" max="172800000"><span class="lb" id="a125">—</span></label>
 <label>مهلت وقفه‌ای که ساعت را صفر می‌کند (ms)<input type="number" id="q126" step="60000" min="0" max="3600000"><span class="lb" id="a126">—</span></label>
 </div>
-<div class="c4n" id="s7v">—</div>
+<div class="c4n" id="s6v">—</div>
 
 <div class="sec">۲) رفتار پس از قفل</div>
-<div class="sx">پس از قفل، شارژ آن کانال در هر حالت قطع می‌ماند. این تیک فقط می‌گوید باتریِ محکوم از <b>خروجی</b> هم جدا شود یا نه — دقیقاً مثل تیک همتایش در سناریو ۶.</div>
+<div class="sx">پس از قفل، شارژ آن کانال در هر حالت قطع می‌ماند. این تیک فقط می‌گوید باتریِ محکوم از <b>خروجی</b> هم جدا شود یا نه — دقیقاً مثل تیک همتایش در سناریو ۵.</div>
 <div class="bqr"><button class="bt run" id="db127">جداسازی باتری از خروجی در قفل: فعال</button><span class="lb" id="a127">—</span></div>
 
-<div class="bqr"><button class="sb sb2" onclick="dbdef()">پیش‌فرض کارخانهٔ سناریو ۷</button></div>
+<div class="bqr"><button class="sb sb2" onclick="dbdef()">پیش‌فرض کارخانهٔ سناریو ۶</button></div>
 </div>
 <input type="hidden" id="q76" value="">
 <div class="bqr"><button class="sb sb2" onclick="sdef()">بازگردانی پیش‌فرض کارخانهٔ سناریوها</button></div>
@@ -874,8 +874,22 @@ function fixrules(v){
    one, else the box, else what the board reported.
    [FA] عکس لحظه‌ای هر شناسه: مقدار صف‌شده، وگرنه کادر، وگرنه مقدار برد. */
 const RIDS=[40,41,42,43,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,62,63,64,65,66,67,68,69,74,75,77,78,119,120,121,122];
+/* [EN] v1.75 audit finding: an id nobody has touched - no pending edit, no
+   board frame, an empty box - used to read as ZERO here. The joint rules then
+   "repaired" that zero and sendall() shipped parameters the user never typed
+   (one of them as -1). The fallback is the factory default now, and sendall()
+   only applies a repair to an id it actually knows something about.
+   [FA] شناسه‌ای که هیچ خبری از آن نداریم قبلاً صفر خوانده می‌شد و قانون‌های
+   مشترک همان صفر را «درست» می‌کردند و ارسال می‌شد؛ حالا پیش‌فرض کارخانه
+   خوانده می‌شود و فقط شناسه‌های معلوم اصلاح و ارسال می‌شوند. */
+function rknown(id){
+ if(id in PEND)return true;
+ if(D&&D.p&&D.p[id]!=null)return true;
+ const e=$('q'+id);
+ return !!(e&&e.value!=='');}
 function rsnap(){const v={};RIDS.forEach(id=>{
- v[id]=(id in PEND)?PEND[id]:c4v(id,(D&&D.p&&D.p[id]!=null)?D.p[id]:0);});return v;}
+ const d=pdflt(id);
+ v[id]=(id in PEND)?PEND[id]:c4v(id,(D&&D.p&&D.p[id]!=null)?D.p[id]:(d!=null?d:0));});return v;}
 /* v1.70: نمایش نتیجهٔ ارسال؛ ‎retry=1‎ یعنی چیزی نرسیده و هنوز در PEND است. */
 const esc=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function sdlgx(){const w=$('sres');if(w)w.className='';}
@@ -887,7 +901,7 @@ const sdlgl=a=>'<ul>'+a.map(x=>'<li><code>'+esc(x)+'</code></li>').join('')+'</u
 async function sendall(){
  if(!Object.keys(PEND).length)return;
  /* v1.56: قوانین مشترک اینجا اعمال می‌شوند، نه روی برد */
- const v=rsnap(),fixed=fixrules(v),fixtxt=[];
+ const v=rsnap(),fixed=fixrules(v).filter(f=>rknown(f[0])),fixtxt=[];
  fixed.forEach(f=>{const id=f[0];qput(id,v[id]);const e=$('q'+id);if(e)e.value=v[id];
   fixtxt.push(id+': '+f[1]+'→'+f[2]);});
  const ids=Object.keys(PEND);
@@ -994,7 +1008,7 @@ addEventListener('resize',stickfit);addEventListener('load',stickfit);
 let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=+b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i==TAB));stickfit();if(D)draw(D);});
 /* v1.15b: زیرتب داخل تنظیمات — v1.42 (دستور کاربر: پشتیبان‌گیری آخرین زیرتب): ۰=شارژ و PID، ۱=سناریوها، ۲=نظارت و ایمنی، ۳=کالیبراسیون و فیلتر جریان، ۴=پشتیبان‌گیری */
 let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{STAB=+b.dataset.s;document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i==STAB));stickfit();if(D)draw(D);});
-let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=7;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();}
+let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=6;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();}
 document.querySelectorAll('#usel button').forEach(b=>b.onclick=()=>usel(+b.dataset.u));
 $('mx').onclick=()=>send(19,0);
 {const b6=$('ib117');if(b6)b6.onclick=()=>{const v=(D&&D.p[117]===0)?1:0;send(117,v);};}
@@ -1149,7 +1163,7 @@ const PX={
  124:['سهم روشنی چشمک — قفل عدم‌توازن','چند درصد از هر دوره چراغ روشن باشد. پیش‌فرض ۵۰٪ یعنی روشن و خاموش برابر؛ ۲۰٪ یعنی تک‌تک کوتاه روی زمینهٔ خاموش.'],
  125:['مهلت شارژ پیوسته تا حکم خرابی','اگر کانال این‌قدر پیوسته شارژ کند و هرگز به پایان شارژ (Float) نرسد، باتری خراب اعلام می‌شود: قرمز ثابت و قطع شارژ تا تعویض باتری. پیش‌فرض ۸۶٬۴۰۰٬۰۰۰ms = ۲۴ ساعت. صفر یعنی این حکم خاموش است.'],
  126:['مهلت وقفه‌ای که ساعت را صفر می‌کند','وقفهٔ کوتاه‌تر از این مقدار ساعتِ شارژ را فقط نگه می‌دارد، وقفهٔ بلندتر آن را صفر می‌کند. پیش‌فرض ۶۰۰٬۰۰۰ms = ۱۰ دقیقه؛ بدون این عدد، باتریِ لرزان با روشن/خاموش‌شدن مدام برای همیشه از حکم فرار می‌کرد.'],
- 127:['جداسازی باتری از خروجی در قفل سناریو ۷','مثل تیک ۱۱۷ در عدم‌توازن: در قفلِ «باتری خراب» باتری از خروجی هم جدا شود یا فقط شارژش قطع بماند. پیش‌فرض: خاموش.'],
+ 127:['جداسازی باتری از خروجی در قفل سناریو ۶','مثل تیک ۱۱۷ در عدم‌توازن: در قفلِ «باتری خراب» باتری از خروجی هم جدا شود یا فقط شارژش قطع بماند. پیش‌فرض: خاموش.'],
  122:['فاصلهٔ تکرار — باند ۲','هر چند وقت یک‌بار الگوی دو-بوقِ همین باند تکرار شود (ms). از نسخهٔ ۱٫۷۱ باند ۲ هم مثل بقیه فاصلهٔ خودش را دارد و فقط گپ (۶۵) مشترک است.'],
  83:['Kp جریان','واکنش فوری حلقهٔ جریان به خطا. زیاد یعنی تند و لرزان.'],
  84:['Ki جریان','خطای انباشته را جمع می‌کند؛ همان چیزی که در نهایت جریان را دقیقاً روی هدف می‌نشاند.'],
@@ -1640,8 +1654,8 @@ function bdef(){[0,1,2,3,4,5,17,18,19,20,21,22].forEach(k=>{const id=27+k,e=$('q
 function ibdef(){IDEF.forEach((v,k)=>{const id=108+k,e=$('q'+id);if(e)e.value=v;qput(id,v);});
  /* ۱۲۳/۱۲۴ در CDEF زندگی می‌کنند چون کنار ۱۰۸..۱۱۸ جا نبود */
  [123,124].forEach(id=>{const v=CDEF[id-119],e=$('q'+id);if(e)e.value=v;qput(id,v);});afresh();}
-/* [EN] v1.72 scenario 7 factory defaults (ids 125..127 live in CDEF).
-   [FA] پیش‌فرض کارخانهٔ سناریو ۷. */
+/* [EN] v1.72 scenario 6 factory defaults (ids 125..127 live in CDEF).
+   [FA] پیش‌فرض کارخانهٔ سناریو ۶. */
 function dbdef(){[125,126,127].forEach(id=>{const v=CDEF[id-119],e=$('q'+id);if(e)e.value=v;qput(id,v);});afresh();}
 /* v1.15b: کارت وضعیت گروه‌بندی‌شده — اسکلت یک‌بار ساخته می‌شود و هر poll فقط متن/رنگ به‌روز می‌شود (بدون پر/خالی شدن و چشمک) */
 const FEXP=[
@@ -1939,16 +1953,16 @@ function c4(){
    [FA] هر کارت ساعت مجازی خودش را دارد: فقط وقتی کارت در حال اجراست جلو
    می‌رود و با ضریب سرعت انتخابی جلو می‌رود، پس تایمر ۳۰ ثانیه‌ای یا بوق
    ساعتی هم دیده می‌شود. «توقف» واقعاً متوقف می‌کند. */
-var SIMON=[0,1,1,1,1,1,1,1],SIMT=[0,0,0,0,0,0,0,0],SIMC={b:-1,t:0},SIMSPD=1,SIMLAST=0;
+var SIMON=[0,1,1,1,1,1,1],SIMT=[0,0,0,0,0,0,0],SIMC={b:-1,t:0},SIMSPD=1,SIMLAST=0;
 function simspd(v){SIMSPD=parseInt(v,10)||1;
- [1,2,3,4,5,6,7].forEach(n=>{const e=$('sims'+n);if(e)e.value=String(SIMSPD);});}
+ [1,2,3,4,5,6].forEach(n=>{const e=$('sims'+n);if(e)e.value=String(SIMSPD);});}
 function simtog(n){SIMON[n]=SIMON[n]?0:1;const b=$('simb'+n);
  if(b)b.textContent=SIMON[n]?'توقف':'ادامه';}
 /* [EN] Advance the virtual clocks once per frame. [FA] جلو بردن ساعت‌ها. */
 function simclk(){const r=performance.now();
  const dt=SIMLAST?Math.min(500,r-SIMLAST):0;SIMLAST=r;
- for(let n=1;n<=7;n++)if(SIMON[n])SIMT[n]+=dt*SIMSPD;}
-function simlbl(n){const r=$('simp'+n),v=$('simv'+n);if(r&&v)v.textContent=r.value+(n===5?' mV':'٪');}
+ for(let n=1;n<=6;n++)if(SIMON[n])SIMT[n]+=dt*SIMSPD;}
+function simlbl(n){const r=$('simp'+n),v=$('simv'+n);if(r&&v)v.textContent=r.value+'٪';}
 function simval(n,d){const r=$('simp'+n);return r?parseInt(r.value,10):d;}
 /* [EN] One LED trio. [FA] یک سه‌تایی LED. */
 function simset(n,r,g,y,z,t){
@@ -2026,7 +2040,7 @@ function simrun(){
  simrest();}
 /* [‎EN] Cards 4..6 kept apart from the critical early-return. [FA]‎ کارت‌های ۴ تا ۶. */
 function simrest(){
- const now=SIMT[6];
+ const now=SIMT[5];
  const ph=n=>SIMT[n];
  /* ۴) شارژ: سبز ثابت، زرد با «مانده تا فول»، فول = زرد خاموش */
  {const pct=simval(4,50),p=ph(4),per=c4v(68,1000),minOn=c4v(69,150),en=c4v(77,100);
@@ -2036,12 +2050,12 @@ function simrest(){
    let on=rem*Math.floor(per/100);if(on<minOn)on=minOn;if(on>per)on=per;
    simset(4,false,true,(p%per)<on,false,'در حال شارژ: زرد '+on+' ms روشن / '+(per-on)+' ms خاموش · بوقی ندارد.');}}
  /* ۶) عدم‌توازن: حالت کاری (شارژ/استراحت/دشارژ) پنجره و حد را تعیین می‌کند */
- {const a=sv6('a'),bb=sv6('b'),d=Math.abs(a-bb),md=$('sim6m')?$('sim6m').value:'r',
+ {const a=sv5('a'),bb=sv5('b'),d=Math.abs(a-bb),md=$('sim5m')?$('sim5m').value:'r',
    lim=(md==='d')?c4v(109,500):c4v(108,300),
    st=c4v(112,30000),ev=c4v(114,10),drop=c4v(113,100),
    wc=c4v(111,600000),wr=c4v(110,600000),
    per=c4v(115,3600000),len=c4v(116,200);
-  const el=now-S6.t0;           /* زمان سپری‌شده از شروع همین حالت */
+  const el=now-S5.t0;           /* زمان سپری‌شده از شروع همین حالت */
   /* پنجره: دشارژ فوری · شارژ بعد از ۱۱۱ (صفر=هرگز) · استراحت بعد از ۱۱۰ (صفر=خاموش) */
   let open=false,why='';
   if(md==='d'){open=true;why='دشارژ روی باتری: پنجره از همان لحظه باز است · حد دشارژ '+lim+' mV';}
@@ -2051,54 +2065,54 @@ function simrest(){
   else{if(wr===0){why='استراحت: گیت صفر است، یعنی حین استراحت اندازه گرفته نمی‌شود';}
    else if(el>=wr){open=true;why='استراحت: '+sms(wr)+' از پایان شارژ گذشته، پنجره باز است · حد استراحت '+lim+' mV';}
    else{why='استراحت: تا باز شدن پنجره '+sms(wr-el)+' مانده (ولتاژ هنوز ننشسته)';}}
-  stxt('sim6w',why);
-  if(!S6.lock&&open){
-   if(d>lim){if(!S6.ht)S6.ht=now;
-    if((now-S6.ht)>=st){S6.n++;S6.ht=0;S6.ep=true;if(S6.n>=ev){S6.lock=true;S6.lt=now;}}
-   }else{S6.ht=0;if(S6.ep&&d<=(lim-drop))S6.ep=false;}
-  }else if(!open){S6.ht=0;}
-  if(S6.lock){
+  stxt('sim5w',why);
+  if(!S5.lock&&open){
+   if(d>lim){if(!S5.ht)S5.ht=now;
+    if((now-S5.ht)>=st){S5.n++;S5.ht=0;S5.ep=true;if(S5.n>=ev){S5.lock=true;S5.lt=now;}}
+   }else{S5.ht=0;if(S5.ep&&d<=(lim-drop))S5.ep=false;}
+  }else if(!open){S5.ht=0;}
+  if(S5.lock){
    /* چشمک قرمز با دوره و duty ۱۲۳/۱۲۴ — دقیقاً همان چیزی که برد می‌سازد (دورهٔ صفر = ثابت) */
    const bper=c4v(123,1000),bdt=c4v(124,50),ron=(bper===0)?true:simblink(now,bper,bdt);
-   simset(6,ron,false,false,simbz(now-S6.lt,per,len,1,0),
+   simset(5,ron,false,false,simbz(now-S5.lt,per,len,1,0),
     'قفل شد (رویداد '+ev+' اُم) · '+(bper===0?'قرمز ثابت':'چشمک قرمز '+Math.round(bper*bdt/100)+'/'+Math.round(bper*(100-bdt)/100)+' ms')+' · '+(per===0?'بوق خاموش':'یک بوق '+len+' ms هر '+sms(per))+
     ' · قفل با متوازن شدن باتری هم باز نمی‌شود.');
   }else{
-   simset(6,false,true,false,false,
+   simset(5,false,true,false,false,
     'اختلاف '+d+' mV '+(d>lim?'بالاتر':'پایین‌تر')+' از حد '+lim+' mV · '+
-    (open?(S6.ht?('در حال شمارش پایداری، تا رویداد بعدی '+sms(Math.max(0,st-(now-S6.ht)))):'شمارش پایداری شروع نشده'):'پنجره بسته است، پس شمارشی نیست')+
-    ' · رویدادها: '+S6.n+' از '+ev+' · افت لازم برای بستن اپیزود: '+drop+' mV');}
+    (open?(S5.ht?('در حال شمارش پایداری، تا رویداد بعدی '+sms(Math.max(0,st-(now-S5.ht)))):'شمارش پایداری شروع نشده'):'پنجره بسته است، پس شمارشی نیست')+
+    ' · رویدادها: '+S5.n+' از '+ev+' · افت لازم برای بستن اپیزود: '+drop+' mV');}
  }
  /* ۷) باتری خراب: ساعتِ شارژِ پیوسته، وقفه، و حکم ۲۴ ساعته */
- {const n7=SIMT[7],md=$('sim7m')?$('sim7m').value:'c',
+ {const n6=SIMT[6],md=$('sim6m')?$('sim6m').value:'c',
    lim=c4v(125,86400000),gap=c4v(126,600000),blk=c4v(127,0),
    per=c4v(115,3600000),len=c4v(116,200);
-  const dt=S7.l?Math.max(0,n7-S7.l):0;S7.l=n7;
-  if(!S7.lock){
-   if(md==='f'){S7.acc=0;S7.pa=0;}
-   else if(md==='c'){S7.acc+=dt;S7.pa=0;if(lim>0&&S7.acc>=lim){S7.lock=true;S7.lt=n7;}}
-   else{S7.pa+=dt;if(S7.pa>=gap){S7.acc=0;}}
+  const dt=S6.l?Math.max(0,n6-S6.l):0;S6.l=n6;
+  if(!S6.lock){
+   if(md==='f'){S6.acc=0;S6.pa=0;}
+   else if(md==='c'){S6.acc+=dt;S6.pa=0;if(lim>0&&S6.acc>=lim){S6.lock=true;S6.lt=n6;}}
+   else{S6.pa+=dt;if(S6.pa>=gap){S6.acc=0;}}
   }
-  if(S7.lock){
-   simset(7,true,false,false,simbz(n7-S7.lt,per,len,1,0),
+  if(S6.lock){
+   simset(6,true,false,false,simbz(n6-S6.lt,per,len,1,0),
     'حکم صادر شد: باتری پس از '+sms(lim)+' شارژ پیوسته شارژ نشد · قرمز ثابت · '+(per===0?'بوق خاموش':'یک بوق '+len+' ms هر '+sms(per))+' · شارژ این کانال قطع'+(blk?' و باتری از خروجی هم جدا شد':' (خروجی دست‌نخورده)')+' · فقط با تعویض باتری پاک می‌شود.');
   }else{
-   simset(7,false,true,md==='c',false,
-    (md==='f'?'رسید به Float: شارژ کامل شد و ساعت صفر شد.':md==='c'?('در حال شارژ · '+sms(Math.round(S7.acc))+' از '+(lim>0?sms(lim):'مهلت خاموش')+(lim>0?(' · تا حکم '+sms(Math.max(0,lim-Math.round(S7.acc)))+' مانده'):'')):('وقفهٔ شارژ · ساعت روی '+sms(Math.round(S7.acc))+' نگه داشته شده · اگر وقفه از '+sms(gap)+' بگذرد صفر می‌شود (مانده '+sms(Math.max(0,gap-Math.round(S7.pa)))+')')));}
+   simset(6,false,true,md==='c',false,
+    (md==='f'?'رسید به Float: شارژ کامل شد و ساعت صفر شد.':md==='c'?('در حال شارژ · '+sms(Math.round(S6.acc))+' از '+(lim>0?sms(lim):'مهلت خاموش')+(lim>0?(' · تا حکم '+sms(Math.max(0,lim-Math.round(S6.acc)))+' مانده'):'')):('وقفهٔ شارژ · ساعت روی '+sms(Math.round(S6.acc))+' نگه داشته شده · اگر وقفه از '+sms(gap)+' بگذرد صفر می‌شود (مانده '+sms(Math.max(0,gap-Math.round(S6.pa)))+')')));}
  }
  gapen();
 }
-var S7={acc:0,pa:0,lock:false,lt:0,l:0};
-function simrst7(){S7={acc:0,pa:0,lock:false,lt:0,l:SIMT[7]};}
+var S6={acc:0,pa:0,lock:false,lt:0,l:0};
+function simrst6(){S6={acc:0,pa:0,lock:false,lt:0,l:SIMT[6]};}
 /* [EN] The two imbalance knobs plus the counter they feed.
    [FA] دو ولوم عدم‌توازن و شمارنده‌ای که تغذیه می‌کنند. */
 var S1={al:false};
 function simlbl1(){const r=$('simp1'),v=$('simv1');if(r&&v)v.textContent=r.value+' mV';}
-var S6={n:0,ht:0,lock:false,lt:0,ep:false,t0:0};
-function sim6mode(){S6.t0=SIMT[6];S6.ht=0;S6.ep=false;}
-function sv6(k){const r=$('simp6'+k);return r?parseInt(r.value,10):12000;}
-function simlbl6(){['a','b'].forEach(k=>{const v=$('simv6'+k);if(v)v.textContent=sv6(k)+' mV';});}
-function simrst6(){S6={n:0,ht:0,lock:false,lt:0,ep:false,t0:SIMT[6]};}
+var S5={n:0,ht:0,lock:false,lt:0,ep:false,t0:0};
+function sim5mode(){S5.t0=SIMT[5];S5.ht=0;S5.ep=false;}
+function sv5(k){const r=$('simp5'+k);return r?parseInt(r.value,10):12000;}
+function simlbl5(){['a','b'].forEach(k=>{const v=$('simv5'+k);if(v)v.textContent=sv5(k)+' mV';});}
+function simrst5(){S5={n:0,ht:0,lock:false,lt:0,ep:false,t0:SIMT[5]};}
 setInterval(simrun,60);
 
 /* ==================== سناریوهای ۱،۲،۳،۵،۶ — اعداد زنده ==================== */
@@ -2145,7 +2159,9 @@ function qmfill(){
    می‌خوانند - یک منبع، پس پیش‌فرض از دکمه‌اش جدا نمی‌افتد. */
 function pdflt(id){
  id=+id;
- if(id>=119&&id<=124)return CDEF[id-119];
+ /* v1.75 audit: CDEF grew to 119..127 with scenario 6 (ids 125..127) but this
+    window still said 124, so the dead-battery fields printed no factory default. */
+ if(id>=119&&id<=127)return CDEF[id-119];
  if(id>=108&&id<=118)return IDEF[id-108];
  if(id>=93&&id<=107)return LDEF[id-93];
  if(id>=83&&id<=92)return PDEF[id-83];
@@ -2226,10 +2242,10 @@ function sall(){
    +'<b>۱) حدِ تکان خوردن (<span class="n">'+hyst+'</span>)</b> — فرض کنید عدد آرام <span class="n">'+ex+'</span>٪ است. تا وقتی عدد لرزان بین <span class="n">'+(ex-hyst+1)+'</span> و <span class="n">'+(ex+hyst-1)+'</span> بالا-پایین می‌رود، نمایش و بوق‌ها همان <span class="n">'+ex+'</span> می‌مانند؛ به <span class="n">'+(ex+hyst)+'</span> (یا <span class="n">'+(ex-hyst)+'</span>) که برسد، عدد آرام می‌پرد روی همان. هرچه این عدد بزرگ‌تر، آرام‌تر و دیرتر؛ صفر یعنی بدون آرام‌سازی. '
    +'<b>۲) بیرون آمدن از ۰٪ (<span class="n">'+z+'</span>)</b> — وقتی روی ۰٪ ایستاده‌ایم، با یک جرقهٔ ولتاژ از ۰ بیرون نمی‌آید؛ باید عدد لرزان دست‌کم <span class="n">'+z+'</span> شود، و آن‌وقت فقط یک پله به ۱٪ می‌رود. '
    +'<b>چرا مهم است؟</b> دقیقاً سرِ مرزِ باندها، بدون این اعداد بوق هر چند ثانیه شروع و قطع می‌شد. با این‌ها یک‌بار تصمیم گرفته می‌شود و پای آن می‌ماند.');}
- /* --- سناریو ۶: عدم‌توازن --- */
+ /* --- سناریو ۵: عدم‌توازن --- */
  {const ev=c4v(114,10),st=c4v(112,30000),wr=c4v(110,600000),wc=c4v(111,600000);
-  stxt('s6v','شمارش فقط پس از '+sms(wr)+' از پایان شارژ و '+(wc===0?'<b>بدون گیت</b> حین شارژ':sms(wc)+' از شروع شارژ')+' · حین دشارژ بدون گیت با حد <span class="n">'+c4v(109,500)+'</span> mV · هر رویداد = ماندن بالای حد به مدت '+sms(st)+' · اپیزود با افت <span class="n">'+c4v(113,100)+'</span> mV زیر حد بسته می‌شود');
-  stxt('s6z','قفل در رویداد شمارهٔ <span class="n">'+ev+'</span> · کمترین زمان ممکن تا قفل ≈ '+sms(ev*st)+' (اگر اختلاف پشت‌سرهم بالای حد بماند) · در قفل: '+(c4v(123,1000)===0?'<span class=\"n\">قرمز ثابت</span>':'چشمک قرمز <span class=\"n\">'+Math.round(c4v(123,1000)*c4v(124,50)/100)+'</span> ms روشن / <span class=\"n\">'+Math.round(c4v(123,1000)*(100-c4v(124,50))/100)+'</span> ms خاموش')+' + '+(c4v(115,3600000)===0?'بوق خاموش':'بوق <span class="n">'+c4v(116,200)+'</span> ms هر '+sms(c4v(115,3600000)))+' · پس از قفل تا <span class="n">'+c4v(118,20)+'</span> سیکل شارژ مجاز است، بعد شارژ هم قطع می‌شود · خروج فقط با تعویض باتری (۳ ثانیه)');}
+  stxt('s5v','شمارش فقط پس از '+sms(wr)+' از پایان شارژ و '+(wc===0?'<b>بدون گیت</b> حین شارژ':sms(wc)+' از شروع شارژ')+' · حین دشارژ بدون گیت با حد <span class="n">'+c4v(109,500)+'</span> mV · هر رویداد = ماندن بالای حد به مدت '+sms(st)+' · اپیزود با افت <span class="n">'+c4v(113,100)+'</span> mV زیر حد بسته می‌شود');
+  stxt('s5z','قفل در رویداد شمارهٔ <span class="n">'+ev+'</span> · کمترین زمان ممکن تا قفل ≈ '+sms(ev*st)+' (اگر اختلاف پشت‌سرهم بالای حد بماند) · در قفل: '+(c4v(123,1000)===0?'<span class=\"n\">قرمز ثابت</span>':'چشمک قرمز <span class=\"n\">'+Math.round(c4v(123,1000)*c4v(124,50)/100)+'</span> ms روشن / <span class=\"n\">'+Math.round(c4v(123,1000)*(100-c4v(124,50))/100)+'</span> ms خاموش')+' + '+(c4v(115,3600000)===0?'بوق خاموش':'بوق <span class="n">'+c4v(116,200)+'</span> ms هر '+sms(c4v(115,3600000)))+' · پس از قفل تا <span class="n">'+c4v(118,20)+'</span> سیکل شارژ مجاز است، بعد شارژ هم قطع می‌شود · خروج فقط با تعویض باتری (۳ ثانیه)');}
 }
 function xmute(){const v=(D&&D.p&&D.p[76]===1)?0:1;const f=$('q76');if(f)f.value=v;send(76,v);}
 /* اتصال ورودی‌های آلارم (۲۷..۸۲): مثل profile + نگهبان + ‎q2/q3‎ برای شناسه‌های ۳۲..۸۲ */
@@ -2345,7 +2361,7 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   [0,1,2,3,4].forEach(k=>$('c'+n+k).textContent=t[b+k]);
   const g=$('tg'+n);g.textContent=en===0?'وصل مجدد شارژر '+n:'قطع شارژر '+n;g.className='bt '+(en===0?'run':'cut');
 });
- /* v1.43 scenario-6 live face: q/ep-|Δ MV| over half-pack, events, latched cycles + fl2 bits */
+ /* v1.43 scenario-5 live face: q/ep-|Δ MV| over half-pack, events, latched cycles + fl2 bits */
  if($('imbv')){const ibmx=p[114]==null?10:p[114],f2=d.fl2||0;
   $('imbv').textContent=t[25]==null?'—':t[25];
   $('imbev').textContent=t[26]==null?'—':t[26];
@@ -2355,7 +2371,7 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   const b117=p[117]==null?1:p[117],bt=document.getElementById('ib117');
   if(bt){bt.textContent=b117?'مسدودی خروجی در قفل: فعال':'مسدودی خروجی در قفل: غیرفعال (ریسک با شما)';bt.className='bt '+(b117?'run':'cut');}
   if($('a117'))$('a117').textContent=b117?'روشن':'خاموش';}
- /* ‎v1.72 scenario-7 live face: t[28]‎=ماسک قفل باتری خراب، t[29]=بیشترین شارژ پیوسته (ثانیه) */
+ /* ‎v1.72 scenario-6 live face: t[28]‎=ماسک قفل باتری خراب، t[29]=بیشترین شارژ پیوسته (ثانیه) */
  if($('dbst')){const dm=t[28]==null?0:t[28],el=t[29]==null?null:t[29],lim=p[125]==null?86400000:p[125];
   $('dbel').textContent=el==null?'—':(sms(el*1000)+(lim>0?(' از '+sms(lim)):' (مهلت خاموش است)'));
   const ds=dm?('قفل دائمی — باتری '+((dm&3)===3?'هر دو کانال':(dm&1)?'کانال ۱':'کانال ۲')+' خراب است، تعویضش کنید'):'سالم';

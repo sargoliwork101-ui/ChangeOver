@@ -167,7 +167,7 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
               are the ones that had been called out by name. */
            3600000, 100, 600000, 60000, 8, 700, 32,
            14800, 100, 500, 10, 15000, 3000, 3000, 500,
-           /* v1.43 ids 108..118 = imbalance scenario 6 boot defaults
+           /* v1.43 ids 108..118 = imbalance scenario 5 boot defaults
               (imbalance.h): rest limit, discharge limit, post-charge wait,
               in-charge wait, episode stability, hysteresis, event budget,
               latch beep period, beep length, block-output checkbox,
@@ -182,7 +182,7 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            /* v1.68 ids 123..124 = the latched imbalance red lamp's blink
               (user order: the red lamp must blink, not sit solid) */
            1000, 50,
-           /* v1.72 ids 125..127 = dead-battery scenario 7 (charger.h):
+           /* v1.72 ids 125..127 = dead-battery scenario 6 (charger.h):
               continuous-charge deadline, the pause that zeroes the clock,
               and the output-disconnect checkbox. */
            86400000, 600000, 0];
@@ -234,7 +234,7 @@ function clampParam(id, v) {
         case 105: return Math.min(60000, Math.max(0, v));
         case 106: return Math.min(60000, Math.max(500, v));
         case 107: return Math.min(5000, Math.max(50, v));
-        /* v1.43 imbalance scenario 6 (IMBAL_* clamp windows in imbalance.c) */
+        /* v1.43 imbalance scenario 5 (IMBAL_* clamp windows in imbalance.c) */
         case 108: case 109: return Math.min(2000, Math.max(0, v));
         case 110: case 111: return Math.min(3600000, Math.max(0, v));
         case 112: return Math.min(600000, Math.max(1000, v));
@@ -253,7 +253,7 @@ function clampParam(id, v) {
         /* v1.68: latched imbalance red-lamp blink - 0 keeps the old solid red */
         case 123: return v === 0 ? 0 : clampW(v, 100, 10000);
         case 124: return clampW(v, 5, 95);
-        /* v1.72 scenario 7: continuous-charge deadline (0 = off, max 48 h),
+        /* v1.72 scenario 6: continuous-charge deadline (0 = off, max 48 h),
            the pause that zeroes the clock, the output-disconnect checkbox */
         case 125: return v === 0 ? 0 : clampW(v, 3600000, 172800000);
         case 126: return clampW(v, 0, 3600000);
@@ -399,7 +399,7 @@ function rawFromCurrent(iBat, vMv) {
 }
 
 let SNAP = null;
-let imbFl2 = 0;  /* [EN] scenario 6 demo flags (byte 3 of TLM) / [FA] بیت‌های وضعیت سناریوی ۶ (بایت ۳) */
+let imbFl2 = 0;  /* [EN] scenario 5 demo flags (byte 3 of TLM) / [FA] بیت‌های وضعیت سناریوی ۵ (بایت ۳) */
 
 /* [EN] The sim runs on a REAL 100 ms ticker (like the STM32 measurement
  *      task), independent of browser polling; /t just snapshots it.
@@ -472,12 +472,12 @@ function telemetry() {
     t[23] = VREFINT_COUNTS;
     t[24] = VREF_MV;
 
-    /* [EN] v1.43 imbalance scenario 6 live block. The demo owes the operator
+    /* [EN] v1.43 imbalance scenario 5 live block. The demo owes the operator
      *      every face, so it cycles a condemned battery: |imbalance| sweeps
      *      with the same 30 s episodes the board would see; events ramp to
      *      the budget, latch holds for a window with one simulated episode
      *      showing, then an automatic battery-swap resets everything.
-     * [FA] بلوک زندهٔ سناریوی ۶: دموی چرخه‌ای - ارزیابی، رشد شمارش، قفل و
+     * [FA] بلوک زندهٔ سناریوی ۵: دموی چرخه‌ای - ارزیابی، رشد شمارش، قفل و
      *      ریست خودکار با تعویض باتری. */
     {
         const imbCyc = ms % 120000;

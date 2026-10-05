@@ -111,7 +111,7 @@
  *      ۹۹۲ بایت، باز هم داخل یک صفحهٔ ۱KB با ۳۲ بایت حاشیه - گزارهٔ داخل
  *      فایل .c این را «اثبات» می‌کند. هارنس C را هم‌روز نگه دارید. */
 /* [EN] v1.50: 126 slots (12 + 126 x 8 + 4 = 1024 B = exactly one 1 KiB page).
- *      v1.72 spends the last of that headroom: the three scenario-7 ids
+ *      v1.72 spends the last of that headroom: the three scenario-6 ids
  *      (125..127) and slot 203 bring the persisted set to exactly 126, so
  *      the cap and the real set now meet. Anything further needs a second
  *      page, and the _Static_assert in the .c is what will say so. The record stores its own entry count, so an
@@ -162,12 +162,12 @@
 #define ESP_LINK_NVM_RETIRED_ID_FIRST        72u
 #define ESP_LINK_NVM_RETIRED_ID_LAST         73u
 #define ESP_LINK_NVM_TRANSIENT_ID_MUTE        76u
-/* [EN] Imbalance runtime slots (scenario 6, v10): persisted but NEVER user
+/* [EN] Imbalance runtime slots (scenario 5, v10): persisted but NEVER user
  *      parameters - the module itself writes them; the panel never draws and
  *      never backs them up.
  * [FA] اسلات‌های زمان‌اجرا عدم‌توازن: فقط خود ماژول می‌نویسد. */
 #define ESP_LINK_NVM_SLOT_MIN_ID            200u
-/* [EN] v1.72: 203 = dead-battery latch mask (scenario 7). Same rule - the
+/* [EN] v1.72: 203 = dead-battery latch mask (scenario 6). Same rule - the
  *      module writes it, the panel never backs it up, and it must survive a
  *      power cycle so a faulty battery stays condemned until it is replaced.
  * [FA] ۲۰۳ = ماسک قفل باتری خراب؛ تا تعویض باتری باید بماند. */

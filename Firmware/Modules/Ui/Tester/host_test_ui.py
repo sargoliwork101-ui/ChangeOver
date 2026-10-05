@@ -473,7 +473,8 @@ UI_ALARM_DEFAULTS = {
     66: ("greenPeriodMs", 1000), 67: ("greenMinOffMs", 10),
     68: ("yellowPeriodMs", 1000), 69: ("yellowMinOnMs", 150),
     70: ("ovThreshMv", 28000), 71: ("ovHystMv", 1000),
-    72: ("lowBatThreshMv", 21000), 73: ("lowBatClearMv", 21200),
+    # v1.74: 72/73 retired - reserved words, no owner, default 0.
+    72: ("retiredLowBatThreshMv", 0), 73: ("retiredLowBatClearMv", 0),
     74: ("pctVminMv", 21000), 75: ("pctVmaxMv", 29000),
     76: ("buzzerMute", 0),
     # v1.17: full latch + stable hysteresis + 0%/1% exits
@@ -509,7 +510,7 @@ def ui_clamp_mirror(s):
          "greenPeriodMs": (100, 10000), "greenMinOffMs": (0, 10000),
          "yellowPeriodMs": (100, 10000), "yellowMinOnMs": (0, 10000),
          "ovThreshMv": (24000, 32000), "ovHystMv": (0, 2000),
-         "lowBatThreshMv": (15000, 24000), "lowBatClearMv": (15000, 24000),
+         "retiredLowBatThreshMv": (0, 0), "retiredLowBatClearMv": (0, 0),
          "pctVminMv": (15000, 25000), "pctVmaxMv": (25000, 32000),
          "buzzerMute": (0, 1), "chgFullEnterPct": (1, 100), "chgFullExitPct": (0, 100),
          "chgHystPct": (0, 50), "runHystPct": (0, 50),
@@ -656,12 +657,18 @@ def run_ui_alarm_tests():
     #      the file had 13 (the imbalance scenario added a site and nobody
     #      re-ran this). Corrected, not weakened.
     # [FA] این عدد از قبل کهنه بود (سناریوی عدم‌توازن یک محل اضافه کرد).
-    assert_equal(ui_led_c.count("func__Ui_Buzzer_Gated("), 13,
-                 "12 scenario sites + 1 def use the mute gate")
+    # [EN] v1.75 audit: 13 call sites + the definition = 14. The pin was one
+    #      behind again (the dead-battery scenario added a site in v1.72).
+    # [FA] ۱۳ محل فراخوانی + خود تعریف = ۱۴.
+    assert_equal(ui_led_c.count("func__Ui_Buzzer_Gated("), 14,
+                 "13 scenario sites + 1 def use the mute gate")
     # direct Tick calls left: 2 inside Gated + 1 all_off + 1 OV-clear explicit off
     # + 2 BoardTest (mute bypass, still proves the buzzer works at boot)
-    assert_equal(ui_led_c.count("func__Ui_Buzzer_Tick("), 7,
-                 "direct Tick only in Gated/all_off/OV-clear/BoardTest")
+    # [EN] v1.75 audit: 8 now - the dead-battery lock turns the buzzer off
+    #      explicitly like the OV-clear path does.
+    # [FA] حالا ۸ مورد است.
+    assert_equal(ui_led_c.count("func__Ui_Buzzer_Tick("), 8,
+                 "direct Tick only in Gated/all_off/OV-clear/BoardTest/lock")
     assert_true("uint32_t__pctVminMv" in ui_led_c and "uint32_t__pctVmaxMv" in ui_led_c,
                 "discharge percent map reads live 74/75")
     # [EN] v1.49 separation: the discharge map feeds BatteryRun only, and the
@@ -678,8 +685,9 @@ def run_ui_alarm_tests():
                 "and clamps against the charge ceiling, not the discharge one")
     assert_true("func__Ui_VoltageToPercentMap(" in ui_led_c,
                 "both maps share one formula")
-    assert_true("uint32_t__ovThreshMv" in ui_led_c and "uint32_t__lowBatThreshMv" in ui_led_c,
-                "thresholds read live 70/72/73")
+    assert_true("uint32_t__ovThreshMv" in ui_led_c
+                and "uint32_t__lowBatThreshMv" not in ui_led_c,
+                "the OV threshold is live (70) and the retired 72/73 window is gone")
     assert_true("APP_CONFIG.ui_blink_period_ms" not in ui_led_c
                 and "APP_CONFIG.ui_charging_blink_period_ms" not in ui_led_c,
                 "no scenario reads blink periods from APP_CONFIG anymore")
@@ -717,8 +725,9 @@ def run_ui_alarm_tests():
                     label + " yellow windows")
         assert_true(24000 <= s["ovThreshMv"] <= 32000 and 0 <= s["ovHystMv"] <= 2000
                     and s["ovHystMv"] < s["ovThreshMv"], label + " OV thresh (no underflow)")
-        assert_true(15000 <= s["lowBatThreshMv"] <= 24000
-                    and 15000 <= s["lowBatClearMv"] <= 24000, label + " lowbat windows")
+        assert_true(s["retiredLowBatThreshMv"] == 0
+                    and s["retiredLowBatClearMv"] == 0,
+                    label + " retired low-battery words stay zero")
         assert_true(15000 <= s["pctVminMv"] <= 25000
                     and 25000 <= s["pctVmaxMv"] <= 32000, label + " pct map windows")
         assert_true(s["buzzerMute"] in (0, 1), label + " mute 0/1")

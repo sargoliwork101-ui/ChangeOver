@@ -1,6 +1,6 @@
 /**
  * @file    imbalance.h
- * @brief   [EN] Scenario 6 - two-half battery imbalance (unnam) monitor.
+ * @brief   [EN] Scenario 5 - two-half battery imbalance (unnam) monitor.
  *              Watches |v_bat_high - v_bat_low| (the absolute difference of
  *              the two 12 V halves of the 24 V pack) against rest and
  *              discharge limits, counts over-limit episodes with stability
@@ -23,7 +23,7 @@
  *              In discharge (output running on battery) the discharge
  *              threshold (param 109) applies immediately.
  *
- *          [FA] سناریوی ۶ - پایش عدم‌توازن (آنبالانس) دو نیم‌باتری.
+ *          [FA] سناریوی ۵ - پایش عدم‌توازن (آنبالانس) دو نیم‌باتری.
  *              قدرمطلق اختلاف دو نیم به شارژ ۱۲ ولتی پک ۲۴ ولتی
  *              (|‎v_high - v_low|)‎ با حد استراحت و حد دشارژ سنجیده می‌شود،
  *              رویدادهای فراتر از حد با زمان پایداری و هیسترزیس شمرده

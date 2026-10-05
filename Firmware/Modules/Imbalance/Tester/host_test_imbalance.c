@@ -1,6 +1,6 @@
 /**
  * @file    host_test_imbalance.c
- * @brief   [EN] Host unit test for the Imbalance module (scenario 6).
+ * @brief   [EN] Host unit test for the Imbalance module (scenario 5).
  *              Compiles the production imbalance.c directly and drives it
  *              with synthetic inputs/timestamps. No board, no RTOS.
  *          [FA] تست هاست ماژول عدم‌توازن با زمان/ورودی مصنوعی.
@@ -35,7 +35,7 @@ int main(void)
     uint32_t uint32_t__t;
     uint32_t uint32_t__value;
 
-    printf("== Imbalance host test (scenario 6) ==\n");
+    printf("== Imbalance host test (scenario 5) ==\n");
 
     func__Imbalance_Init();
 

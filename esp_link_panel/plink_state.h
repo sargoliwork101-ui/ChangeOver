@@ -11,9 +11,9 @@ static uint8_t  UINT8_T__G__RxPayload[ESP_LINK_MAX_PAYLOAD];
 /* ==================== Live Data ==================== */
 static uint32_t UINT32_T__G__TlmField[ESP_LINK_TLM_FIELD_COUNT];
 
-/* [EN] TLM byte 3 since v1.43: imbalance scenario 6 status bits (episode /
+/* [EN] TLM byte 3 since v1.43: imbalance scenario 5 status bits (episode /
  *      latched / output-veto / charge budget spent). Byte 2 stays TlmFlags.
- * [FA] بایت ۳ فریم TLM از نسخهٔ ۱٫۴۳: بیت‌های وضعیت سناریوی ۶. */
+ * [FA] بایت ۳ فریم TLM از نسخهٔ ۱٫۴۳: بیت‌های وضعیت سناریوی ۵. */
 static uint8_t UINT8_T__G__TlmFlags2 = 0u;
 static uint16_t UINT16_T__G__TlmSeq = 0u;
 static uint8_t  UINT8_T__G__TlmFlags = 0u;

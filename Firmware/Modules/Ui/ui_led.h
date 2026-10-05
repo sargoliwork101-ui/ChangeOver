@@ -533,12 +533,12 @@ void func__Ui_BoardTest_Start(void);
 void func__Ui_ScenarioInputOk(void);
 
 #if MODULE_IMBALANCE
-/* [EN] Scenario 6 latched face: solid red + periodic one-short beep (ids
+/* [EN] Scenario 5 latched face: solid red + periodic one-short beep (ids
  *      115/116). See ui_led.c for the full behaviour contract.
- * [FA] چهرهٔ قفل سناریوی ۶: قرمز ثابت + بوق کوتاه دوره‌ای (۱۱۵/۱۱۶). */
+ * [FA] چهرهٔ قفل سناریوی ۵: قرمز ثابت + بوق کوتاه دوره‌ای (۱۱۵/۱۱۶). */
 void func__Ui_ScenarioImbalance_Tick(void);
 
-/* [‎EN] v1.72 scenario 7: solid red condemned-battery face‎ / چهرهٔ باتری خراب */
+/* [‎EN] v1.72 scenario 6: solid red condemned-battery face‎ / چهرهٔ باتری خراب */
 void func__Ui_ScenarioDeadBattery_Tick(void);
 #endif
 

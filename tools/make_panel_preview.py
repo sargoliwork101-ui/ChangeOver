@@ -158,7 +158,7 @@ function tlm(){
   const cnt = (mv,sc) => Math.max(0, Math.min(__FULL__, Math.round(mv/sc)));
   t[20] = cnt(t[14], __S24__); t[21] = cnt(v24, __S24__);
   t[22] = cnt(v12, __S12__);   t[23] = __VRI__; t[24] = __VDDA__;
-  /* v1.43 imbalance scenario 6 demo (mirrors tools/panel_preview_server.js) */
+  /* v1.43 imbalance scenario 5 demo (mirrors tools/panel_preview_server.js) */
   const imb=Math.abs(t[18]-t[17]); t[25]=imb;
   const imbCyc=(Date.now()-T0)%120000; let fl2=0;
   if(imbCyc<30000){t[26]=Math.round(imbCyc/30000*10);t[27]=0;fl2=(imb>P[108])?1:0;}

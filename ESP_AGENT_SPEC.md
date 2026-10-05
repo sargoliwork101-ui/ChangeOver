@@ -1826,8 +1826,8 @@ ceiling. A table built from live values cannot drift that way.
 | 104 | u32 | imb_mv | v1.43 live |imbalance| between the two battery halves, mV |
 | 108 | u32 | imb_events | v1.43 persisted episode count (flash budget, survives power loss) |
 | 112 | u32 | imb_latched_cycles | v1.43 charge cycles counted after the latch (compares against param 118) |
-| 116 | u32 | dead_mask | v1.72 scenario 7: latched dead-battery channel mask (b0 = ch1, b1 = ch2); persisted in NVM slot 203 |
-| 120 | u32 | dead_charge_s | v1.72 scenario 7: longest continuous charge time of the two channels, seconds (progress toward param 125) |
+| 116 | u32 | dead_mask | v1.72 scenario 6: latched dead-battery channel mask (b0 = ch1, b1 = ch2); persisted in NVM slot 203 |
+| 120 | u32 | dead_charge_s | v1.72 scenario 6: longest continuous charge time of the two channels, seconds (progress toward param 125) |
 
 The last five (v1.25) are **calibration ground truth**. Counts are the only
 numbers on this board that no coefficient can distort, so logging them beside a

@@ -1327,7 +1327,7 @@ void func__Ui_ScenarioBatLost_Tick(void)
 
 #if MODULE_IMBALANCE
 /**
- * @brief  [EN] Imbalance-latched verdict (scenario 6, user order
+ * @brief  [EN] Imbalance-latched verdict (scenario 5, user order
  *         2026-10-04, cadence changed by user order 2026-10-05): RED
  *         BLINKING - the user asked for a blink, not the solid lamp the
  *         first version used, because a steady red reads as "a lamp that
@@ -1409,7 +1409,7 @@ void func__Ui_ScenarioImbalance_Tick(void)
 
 #if MODULE_CHARGER
 /**
- * @brief  [EN] v1.72 scenario 7 face (user order: "if it has not charged
+ * @brief  [EN] v1.72 scenario 6 face (user order: "if it has not charged
  *              after 24 continuous hours we must raise an error that the
  *              battery is faulty, with a red LED, and charge it no more
  *              until the battery is replaced"). SOLID red - unlike the
@@ -1418,7 +1418,7 @@ void func__Ui_ScenarioImbalance_Tick(void)
  *              the same single red lamp. The audible side reuses the
  *              imbalance latch beep shape (ids 115/116) so there is one
  *              "condemned battery" sound in the product, not two.
- *         [FA] چهرهٔ سناریوی ۷: قرمزِ ثابت (برخلاف چشمکِ قفل عدم‌توازن تا دو
+ *         [FA] چهرهٔ سناریوی ۶: قرمزِ ثابت (برخلاف چشمکِ قفل عدم‌توازن تا دو
  *              چهره روی یک لامپ قرمز قابل تفکیک بمانند) و بوقِ همان قفل.
  */
 void func__Ui_ScenarioDeadBattery_Tick(void)

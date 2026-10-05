@@ -1924,7 +1924,7 @@ def test_manual_test_mode_v12():
           "twice, once on each side of the link")
     check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
           and re.search(r"#define ESPLINK_PARAM_COUNT\s+128u", text_esph),
-          "param 19 = manual test mode; 128 params total since v1.72 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID, 93..107 = charger limits, 108..118 = imbalance scenario 6, 119..120 = charge-side percent map, 121..122 = band-2 beep shape, 123..124 = imbalance latched red-lamp blink, 125..127 = dead-battery scenario 7)")
+          "param 19 = manual test mode; 128 params total since v1.72 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID, 93..107 = charger limits, 108..118 = imbalance scenario 5, 119..120 = charge-side percent map, 121..122 = band-2 beep shape, 123..124 = imbalance latched red-lamp blink, 125..127 = dead-battery scenario 6)")
 
     manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
                     text_c.find("/* ==================== Charger_Evaluate")]
@@ -2293,8 +2293,8 @@ def test_ui_mirror_v116():
     # v1.55: ردیف باقی‌مانده و دکمهٔ میوت هم برداشته شدند.
     check('id="uleds"' not in ino and 'leds stick' not in ino
           and all(f'id="sl{n}r"' in ino and f'id="sl{n}z"' in ino
-                  for n in (1, 2, 3, 4, 6, 7))   # v1.74: card 5 retired
-          and 'id="sl5r"' not in ino,
+                  for n in range(1, 7))   # v1.75: six cards, renumbered 1..6
+          and 'id="sl7r"' not in ino,
           "no sticky board mirror left; every scenario card carries its own simulated LEDs and buzzer")
     check(all(f'id="asbb{k}"' in ino for k in range(7)),
           "one LED per fault bit (asbb0..asbb6)")
@@ -2319,9 +2319,10 @@ def test_ui_mirror_v116():
           "was covered the moment it existed - but the human-readable label was NOT, and "
           "it had already been wrong since v1.24 (it still advertised a retired 83..97)")
     check('id="usel"' in ino and "function usel(n)" in ino
-          and all(f'id="ucard{k}"' in ino for k in (1, 2, 3, 4, 6, 7)),
-          "one selectable card per scenario (v1.74: 6 cards - 1..4, 6 imbalance, "
-          "7 dead battery; card 5 retired into changeover) - no crowded wall of fields")
+          and all(f'id="ucard{k}"' in ino for k in range(1, 7))
+          and 'id="ucard7"' not in ino,
+          "one selectable card per scenario (v1.75: exactly six, numbered 1..6 "
+          "with no hole where the retired low-battery card used to be)")
     # [EN] v1.33 (user order 2026-10-03: "bring that charger PID inside this
     #      same charge-and-filter tab"). The PID sub-tab is gone as a TAB and
     #      its card now sits in sub-tab 0, so backup moves up to 3. Pinned
@@ -2361,7 +2362,7 @@ def test_ui_mirror_v116():
     s3part = ino.split('id="s0"')[1].split('id="s1"')[0]
     bkpart = ino.split('id="s4"')[1].split("</main>")[0]
     p0part = ino.split('id="p0"')[1].split('id="p1"')[0]
-    check("ucard1" in s1part and "ucard6" in s1part and 'id="sim1"' in s1part and 'id="aw2"' in s1part
+    check("ucard1" in s1part and "ucard5" in s1part and 'id="sim1"' in s1part and 'id="aw2"' in s1part
           and 'id="aw"' in s1part and 'id="ib117"' in s1part
           and "sdef()" in s1part and "bdef()" in s1part and "ibdef()" in s1part
           and "<b>نظارت باتری</b>" not in s1part
@@ -2374,7 +2375,7 @@ def test_ui_mirror_v116():
           and all(f'id="q{i}"' not in s1part for i in range(83, 99))
           and all(f'id="q{i}"' in s1part for i in range(108, 119) if i != 117),
           "s1 (scenarios): mirror + 6 scenario cards; v1.43 user order pulls the cut-battery "
-          "thresholds 27..32 INTO scenario 2 and adds scenario 6 (108..118, checkbox 117 = ib117)")
+          "thresholds 27..32 INTO scenario 2 and adds scenario 5 (108..118, checkbox 117 = ib117)")
     check("نظارت باتری" not in s2part and "پنجرهٔ ورودی سالم" in s2part and "سقف‌های ایمنی شارژر" in s2part
           and 'id="aw"' not in s2part and "adef()" in s2part and "uleds" not in s2part
           and all(f'id="q{i}"' not in s2part for i in range(27, 33))
@@ -2404,15 +2405,16 @@ def test_ui_mirror_v116():
     check("asb5" in ino and "abf0" not in ino and "abf1" not in ino and "abf2" not in ino and "جریان ۱" in ino and "جریان ۲" in ino
           and "Math.max(t[3],t[10])" not in ino,
           "v1.16c (user order: per-battery current supervision, no max() merge); v1.16k: merged table rows for both currents (fault box kept)")
-    # [EN] v1.74 (user order): card 5 (low battery) is gone from the panel -
-    #      the window is a Changeover constant now. The picker keeps the other
-    #      numbers on purpose so every older note and log still points at the
-    #      same scenario.
-    # [FA] کارت ۵ حذف شد؛ شماره‌های بقیه عمداً دست‌نخورده ماندند.
+    # [EN] v1.75 (user order: "when you delete 5 you must shift the rest down"):
+    #      the low-battery card is gone AND the two cards that followed it moved
+    #      up, so the picker reads 1..6 with no hole and no leftover "۷ ·".
+    # [FA] کارت باتری کم حذف شد و دو کارت بعدی یک شماره پایین آمدند: ۱ تا ۶ بدون حفره.
     check("۱ · اضافه‌ولتاژ" in ino and "۵ · باتری کم" not in ino
-          and 'id="ucard5"' not in ino and "سناریو ۱ ·" not in ino,
-          "v1.74 (user order: low battery belongs to changeover, not the panel): "
-          "the scenario picker has no card 5 any more")
+          and "۵ · عدم‌توازن" in ino and "۶ · باتری خراب" in ino
+          and "۷ · باتری" not in ino and 'data-u="7"' not in ino
+          and "سناریو ۱ ·" not in ino,
+          "v1.75: the scenario picker is numbered 1..6 with imbalance at 5 and "
+          "the dead-battery scenario at 6")
     # [EN] v1.71 (user order: "why is the last discharge step suddenly a duty?
     #      make them all the same shape"): the critical band is now typed like
     #      the other three - count, per-beep duration, own repeat interval,
@@ -2745,7 +2747,7 @@ def test_telemetry_frame_pins_v116c():
     #      dead-battery pair at t[28..29]), and 24 #else zero-fillers cover
     #      the same fields when a module is compiled out.
     # [FA] ۳۰ رایت زندهٔ u32 کل جدول را پر می‌کند (۴+۳۰×۴=۱۲۴ بایت، با جفت
-    #      تازهٔ سناریوی ۷ در t[28..29]) و ۲۴ صفرِ #else جایگزین‌اند.
+    #      تازهٔ سناریوی ۶ در t[28..29]) و ۲۴ صفرِ #else جایگزین‌اند.
     expected_writes = 30 + 24
     check(body.count("func__EspLink_PutU32(") == expected_writes,
           f"SendTelemetry must carry {expected_writes} textual u32 writes "
@@ -2754,7 +2756,7 @@ def test_telemetry_frame_pins_v116c():
     check(body.count("func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);") == 24,
           "SendTelemetry must carry exactly 24 zero-filler u32 writes")
     check(body.count("#else") == 9,
-          "SendTelemetry must keep its 9 conditional filler blocks (v1.72 added the scenario-7 pair)")
+          "SendTelemetry must keep its 9 conditional filler blocks (v1.72 added the scenario-6 pair)")
 
 
 def test_flash_diet_pins_v116d():
@@ -3295,7 +3297,7 @@ def test_min_select_handover_v124():
     check("IMBAL_PARAM_OWNS" in imb_h and "IMBAL_PARAM_INDEX" in imb_h,
           "the two id blocks (108..118 and 123..124) need an ownership and an index helper")
     check('id="q123"' in ino and 'id="q124"' in ino,
-          "card 6 must expose the blink period and duty inputs")
+          "card 5 must expose the blink period and duty inputs")
     check("c4v(123,1000)" in ino and "simblink(now,bper,bdt)" in ino,
           "the card-6 simulator must blink its red lamp the way the board does")
     # [EN] v1.49 appends one more block after IDEF: CDEF, the charge-side
@@ -3640,7 +3642,7 @@ def test_benchlog_row_matches_header_v125():
         check(col in cfg,
               f"the bench header must carry the raw calibration column {col}")
     check("ESP_LINK_TLM_FIELD_COUNT    30u" in cfg and "ESP_LINK_TLM_SIZE          124u" in cfg,
-          "the ESP telemetry window must match the firmware payload (v1.72: 30 fields / 124 bytes, including the scenario-7 pair)")
+          "the ESP telemetry window must match the firmware payload (v1.72: 30 fields / 124 bytes, including the scenario-6 pair)")
     # [EN] The header naming a column proves nothing if the firmware never sends
     #      the value - the slot would just carry a zero and the calibration would
     #      be built on it. Require the actual globals to be transmitted.

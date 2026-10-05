@@ -46,7 +46,7 @@
 #endif
 
 #if MODULE_IMBALANCE
-/* [EN] Scenario 6 feed: the changeover state from the PREVIOUS pass is the
+/* [EN] Scenario 5 feed: the changeover state from the PREVIOUS pass is the
  *      "on battery = discharging" qualifier (one control period of lag at
  *      100 ms is negligible against 30 s stability times).
  * [FA] حالت چنج‌اور پاس قبلی = نیرولهٔ «روی باتری» برای گیت دشارژ. */
@@ -84,9 +84,9 @@ void func__TaskControl(void *void_ptr__argument)
     func__Jitter_Init();
 #endif
 #if MODULE_IMBALANCE
-    /* [EN] Scenario 6 defaults; persisted counters arrive through the NVM
+    /* [EN] Scenario 5 defaults; persisted counters arrive through the NVM
        replay (EspLink boot) - both orders are safe by design.
-       [FA] پیش‌فرض‌های سناریوی ۶؛ شمارنده‌های ماندگار از پخش NVM می‌آیند. */
+       [FA] پیش‌فرض‌های سناریوی ۵؛ شمارنده‌های ماندگار از پخش NVM می‌آیند. */
     func__Imbalance_Init();
 #endif
 
@@ -117,12 +117,12 @@ void func__TaskControl(void *void_ptr__argument)
             func__McuPowerPath_Run();
 #endif
 #if MODULE_IMBALANCE
-            /* [EN] Scenario 6 evaluation, BEFORE Changeover so the output
+            /* [EN] Scenario 5 evaluation, BEFORE Changeover so the output
                    veto (latched + checkbox 117) and the charger gate are
                    visible to the consumers in this same pass. Time is
                    ms-from-ticks via CMSIS (no tick=1ms assumption): tick
                    count / tick frequency * 1000 with 64-bit math.
-               [FA] ارزیابی سناریوی ۶ قبل از چنج‌اور تا وتوی خروجی و گیت
+               [FA] ارزیابی سناریوی ۵ قبل از چنج‌اور تا وتوی خروجی و گیت
                    شارژ در همین پاس دیده شوند؛ زمان از فرکانس تیک CMSIS. */
             {
                 imbalance_inputs_t  imbalance_inputs_t__imbalanceInputs;
@@ -195,7 +195,7 @@ void func__TaskControl(void *void_ptr__argument)
 #endif
 #if MODULE_CHARGER
             func__Charger_Evaluate(&measurement_snapshot_t__snap, app_state_t__state);
-            /* [EN] v1.72 scenario 7: the dead-battery latch changed, so slot
+            /* [EN] v1.72 scenario 6: the dead-battery latch changed, so slot
                203 must reach NVM (survives power cycles exactly like the
                imbalance latch; only a battery swap clears it).
                [FA] قفل باتری خراب تغییر کرد: اسلات ۲۰۳ ذخیره شود. */
