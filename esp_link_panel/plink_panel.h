@@ -191,7 +191,10 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .off2{background:linear-gradient(180deg,#a02b33,#7c1f27);white-space:nowrap}
 @media(max-width:1000px){.ch,.frr,.qs{grid-template-columns:1fr}}
 @media(max-width:640px){.sbt button{font-size:12px;padding:8px 2px}.cb{font-size:12px;padding:9px 8px}.cb span{white-space:nowrap}.ch{grid-template-columns:1fr}.bg2{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}header{margin:0 -8px 10px;padding-left:8px;padding-right:8px}body{padding:0 8px 24px}}
-.sbt{display:flex;gap:4px;background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:4px;margin-bottom:12px}
+/* [EN] v1.57 (user order): the scenario bar sticks right under the top bar
+   and stays visible while scrolling. [FA] نوار سناریوها زیر نوار بالایی
+   می‌چسبد و هنگام اسکرول همیشه دیده می‌شود. */
+.sbt{position:sticky;top:113px;z-index:54;flex-wrap:wrap;display:flex;gap:4px;background:var(--bg,#090c12);border:1px solid var(--ln);border-radius:12px;padding:4px;margin-bottom:12px}
 #sbt{position:sticky;top:113px;z-index:53}
 .sbt button{flex:1;border:0;background:none;border-radius:8px;padding:8px 6px;color:var(--mu);font-weight:700;transition:background .15s,color .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sbt button:hover{color:var(--tx)}.sbt button.a{background:linear-gradient(180deg,#24406e,#1b3358);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
@@ -277,7 +280,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 893799d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 54b1b66</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -372,7 +375,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </ul>
 </div>
 
-<div class="sim" id="sim1"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims1" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb1" onclick="simtog(1)">توقف</button></div><div class="simb"><span class="sl r" id="sl1r"></span><span class="sl g" id="sl1g"></span><span class="sl y" id="sl1y"></span><span class="szz" id="sl1z">🔇</span><span class="simt" id="sl1t">—</span></div></div>
+<div class="sim" id="sim1"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims1" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb1" onclick="simtog(1)">توقف</button></div><div class="simb"><span class="sl r" id="sl1r"></span><span class="sl g" id="sl1g"></span><span class="sl y" id="sl1y"></span><span class="szz" id="sl1z">🔇</span><span class="simt" id="sl1t">—</span></div><div class="simc"><label>ولتاژ ورودی (mV)<input type="range" id="simp1" min="20000" max="34000" step="100" value="26000" oninput="simlbl1()"><b id="simv1">26000 mV</b></label> <span class="lb" id="sim1w">—</span></div></div>
 <div class="sec">۱) آستانهٔ ولتاژ ورودی <span class="lb">(mV)</span></div>
 <div class="bqr">
 <label>آستانه اضافه‌ولتاژ ورودی (mV)<input type="number" id="q70" step="100" min="24000" max="32000"><span class="lb" id="a70">—</span></label>
@@ -1879,10 +1882,25 @@ function simrun(){
  const now=SIMT[3];
  const ph=n=>SIMT[n];
  /* ۱) اضافه‌ولتاژ ورودی: سبز ثابت، قرمز با دوره/duty، بوق دوره‌ای */
- {const per=c4v(38,1000),p=ph(1);
-  simset(1,simblink(p,per,c4v(39,50)),true,false,
-   simbz(p,c4v(40,10000),c4v(41,1000),c4v(42,1),c4v(43,0)),
-   'سبز ثابت + قرمز چشمک‌زن؛ بوق طبق بخش ۳.');}
+ /* [EN] v1.57 (user question "when exactly does it beep? where is the
+    threshold?"): the card now has the input-voltage slider, so the alarm
+    only starts ABOVE threshold 70 and only clears below 70 - hysteresis 71,
+    exactly like the board. [FA] اسلایدر ولتاژ ورودی اضافه شد: آژیر فقط
+    بالای آستانه (۷۰) شروع می‌شود و فقط زیر «آستانه − hysteresis (۷۱)»
+    پاک می‌شود. */
+ {const per=c4v(38,1000),p=ph(1),mv=simval(1,26000),
+   thr=c4v(70,29000),hys=c4v(71,500),clr=thr-hys;
+  if(mv>thr)S1.al=true;else if(mv<clr)S1.al=false;
+  stxt('sim1w','بوق و قرمز از بالاتر از '+thr+' mV شروع می‌شود و تا زیر '+clr+
+   ' mV (آستانه '+thr+' − hysteresis '+hys+') پاک نمی‌شود.');
+  if(S1.al){
+   simset(1,simblink(p,per,c4v(39,50)),true,false,
+    simbz(p,c4v(40,10000),c4v(41,1000),c4v(42,1),c4v(43,0)),
+    'ورودی '+mv+' mV بالای آستانه '+thr+' mV · سبز ثابت + قرمز چشمک‌زن + بوق · تا زیر '+clr+' mV پاک نمی‌شود.');
+  }else{
+   simset(1,false,true,false,false,
+    'ورودی '+mv+' mV '+(mv>clr?'در بازهٔ hysteresis است (زیر آستانه اما بالای '+clr+' mV)':'زیر آستانه')+' · فقط سبز ثابت، بدون بوق.');}
+  simlbl1();}
  /* ۲) قطع باتری: همان چهره با اعداد خودش */
  {const per=c4v(44,1000),p=ph(2);
   simset(2,simblink(p,per,c4v(45,50)),true,false,
@@ -1959,6 +1977,8 @@ function simrest(){
 }
 /* [EN] The two imbalance knobs plus the counter they feed.
    [FA] دو ولوم عدم‌توازن و شمارنده‌ای که تغذیه می‌کنند. */
+var S1={al:false};
+function simlbl1(){const r=$('simp1'),v=$('simv1');if(r&&v)v.textContent=r.value+' mV';}
 var S6={n:0,ht:0,lock:false,lt:0,ep:false,t0:0};
 function sim6mode(){S6.t0=SIMT[6];S6.ht=0;S6.ep=false;}
 function sv6(k){const r=$('simp6'+k);return r?parseInt(r.value,10):12000;}

@@ -570,6 +570,28 @@ function testSimulator(win, doc) {
     check(doc.getElementById('sl5t').textContent.indexOf('ضدلرزش') >= 0,
           'inside the window the card says the state is held');
 
+    /* Card 1 (v1.57): the over-voltage alarm follows threshold 70 / hyst 71. */
+    typeInto(win, doc, 'q70', 29000);
+    typeInto(win, doc, 'q71', 500);
+    doc.getElementById('simp1').value = 26000;
+    win.simrun();
+    check(!on('sl1r') && !on('sl1z'), 'below the threshold card 1 stays quiet');
+    check(doc.getElementById('sim1w').textContent.indexOf('29000') >= 0 &&
+          doc.getElementById('sim1w').textContent.indexOf('28500') >= 0,
+          'the card spells out the beep-on and beep-off voltages');
+    doc.getElementById('simp1').value = 29500;
+    win.simrun();
+    check(doc.getElementById('sl1t').textContent.indexOf('بالای آستانه') >= 0,
+          'above the threshold the alarm starts');
+    doc.getElementById('simp1').value = 28700;   /* inside hysteresis */
+    win.simrun();
+    check(doc.getElementById('sl1t').textContent.indexOf('بالای آستانه') >= 0,
+          'inside the hysteresis band the alarm is held');
+    doc.getElementById('simp1').value = 28000;
+    win.simrun();
+    check(doc.getElementById('sl1t').textContent.indexOf('زیر آستانه') >= 0,
+          'below threshold minus hysteresis the alarm clears');
+
     /* Card 6 (v1.57): mode decides the window, the virtual clock decides time. */
     win.simspd(1);
     win.simrst6();
