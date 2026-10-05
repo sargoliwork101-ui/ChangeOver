@@ -5,7 +5,7 @@
  *              2026-09-22: the ESP panel monitors and retunes the
  *              measurement/calibration controls and can cut/reconnect each
  *              charger module).
- *          [FA] ESP-Link: کنترل تغذیه، پروتکل باینری فرمان و تله‌متری روی
+ *          [‎FA] ESP-Link‎: کنترل تغذیه، پروتکل باینری فرمان و تله‌متری روی
  *              پورت USART1 برد (دستور کاربر ۲۰۲۶-۰۹-۲۲: پنل ESP کنترل‌های
  *              اندازه‌گیری/کالیبراسیون را مانیتور و تنظیم می‌کند و می‌تواند
  *              هر ماژول شارژر را قطع/وصل کند).
@@ -28,7 +28,7 @@
 
 /* ==================== Frame constants / ثابت‌های فریم ==================== */
 
-/* [EN] Start-of-frame bytes and geometry. / [FA] بایت‌های شروع فریم و هندسه. */
+/* [‎EN] Start-of-frame bytes and geometry. / [FA]‎ بایت‌های شروع فریم و هندسه. */
 #define ESPLINK_SOF_BYTE0             0xAAu
 #define ESPLINK_SOF_BYTE1             0x55u
 /* [EN] Since v1.16 the length field is u16 little-endian (len_lo +
@@ -37,7 +37,7 @@
  *      len_lo len_hi payload xor; the xor covers type + both length
  *      bytes + payload. Both boards MUST flash together (a v1.15 parser
  *      reads len_hi as payload).
- * [FA] از v1.16 فیلد طول u16 لیتل‌اندین است (len_lo + len_hi) —
+ * [FA] از v1.16 فیلد طول u16 لیتل‌اندین است (‎len_lo + len_hi)‎ —
  *      PARAMS_BULK از سقف u8 قبلی رد می‌شود (v1.22: ۹۹ پارامتر = ۴۹۶ بایت
  *      payload). فریم = AA 55 نوع len_lo len_hi و xor روی نوع + دو بایت
  *      طول + payload. هر دو برد باید با هم فلش شوند (پارسر v1.15 یعنی
@@ -61,7 +61,7 @@
  *      The CRC covers VER, TYPE, both length bytes and the payload.
  * [FA] فریم نسخهٔ ۲ (۲۰۲۶-۰۹-۲۹). دو تغییر، هر دو چون این لینک قرار است یک
  *      کمپین کالیبراسیون را حمل کند و خطای بی‌صدا آنجا از نبودِ داده هم بدتر است:
- *      ۱. CRC-16/CCITT-FALSE جای XOR-8 را می‌گیرد. XOR-8 تقریباً یک از ۲۵۶ خرابی
+ *      ۱. ‎CRC-16/CCITT-FALSE‎ جای ‎XOR-8‎ را می‌گیرد. ‎XOR-8‎ تقریباً یک از ۲۵۶ خرابی
  *         تصادفی را رد می‌کند و نسبت به هر تعداد زوجِ تغییرِ بیت در یک موقعیت
  *         کاملاً کور است - دقیقاً الگویی که نویز مبدل کلیدزن روی UART می‌سازد.
  *      ۲. بایت نسخهٔ صریح. پیش از این، فلش‌کردن یک طرف و نکردن طرف دیگر هیچ خطایی
@@ -77,7 +77,7 @@
  *      (v1.3). STM -> ESP: TLM_LIVE (periodic), PARAM_REPORT (after each
  *      SET and as the CAL_REFERENCE reply), PARAMS_BULK (answer to GET).
  *      Unknown types are dropped silently.
- * [FA] انواع پیام. ESP به STM: SET_PARAM / GET_PARAMS / CAL_REFERENCE
+ * [FA] انواع پیام. ESP به ‎STM: SET_PARAM / GET_PARAMS / CAL_REFERENCE‎
  *      (v1.3). STM به ESP: TLM_LIVE (دوره‌ای)، PARAM_REPORT (بعد از هر SET
  *      و به‌عنوان پاسخ CAL_REFERENCE)، PARAMS_BULK (پاسخ GET). نوع
  *      ناشناخته و طول payload غلط بی‌صدا کنار گذاشته می‌شود. */
@@ -153,7 +153,7 @@
  *      only the transient test modes 15..19 (+76) are RAM-only. Filters
  *      carry ONE size parameter each (any median 1..15, average window
  *      1..300; size 1 = bypass, no separate on/off switch).
- * [FA] payload ی SET_PARAM = [id:u8][value:u32 LE]؛ هر مقدار در ماژول
+ * [FA] payload ی ‎SET_PARAM = [id:u8][value:u32 LE]‎؛ هر مقدار در ماژول
  *      مالکش گیره می‌شود و PARAM_REPORT مقدارِ اعمال‌شده را برمی‌گرداند.
  *      آفست‌های ولتاژ علامتدارند (متمم دو در فیلد u32). شناسه‌های ۰..۱۴ و
  *      ۲۰..۷۵ روی فلش می‌مانند؛ فقط مودهای گذرا ۱۵..۱۹ (+۷۶) فقط-RAM
@@ -182,10 +182,10 @@
  *      automatic charger is suspended, every battery condition bypassed
  *      and each channel driven directly at param 16/18; see
  *      ESP_AGENT_SPEC.md section 5.2 for the full contract (hardware
- *      floor, JIT re-arm, 3 s link dead-man). / [FA] مود تست دستی سراسری
+ *      ‎floor, JIT re-arm, 3 s link dead-man). / [FA]‎ مود تست دستی سراسری
  *      v1.2 (دستور کاربر): ۱ = شارژر خودکار تعلیق، شرط‌های باتری رد و
  *      درایو مستقیم هر کانال با پارامتر ۱۶/۱۸؛ قرارداد کامل در
- *      ESP_AGENT_SPEC.md بخش 5.2 (کف سخت‌افزاری، re-arm ی JIT، ددمن ۳
+ *      ESP_AGENT_SPEC.md بخش 5.2 (کف سخت‌افزاری، ‎re-arm‎ ی JIT، ددمن ۳
  *      ثانیه‌ای لینک). */
 #define ESPLINK_PARAM_MANUAL_TEST_MODE     19u  /* u32, 0/1,      def 0                */
 /* [EN] Charge profile (v1.12, user order 2026-09-25): shared by BOTH
@@ -257,7 +257,7 @@
 #define ESPLINK_PARAM_UI_RUN_STD_INTERVAL_MS  54u  /* u32, ms, def 60000, 0=off else 1000..600000 */
 #define ESPLINK_PARAM_UI_RUN_TRI_INTERVAL_MS  55u  /* u32, ms, def 20000, 0=off else 1000..600000 */
 #define ESPLINK_PARAM_UI_RUN_CRIT_PERIOD_MS   56u  /* u32, ms, def 10000, 0=off else 1000..600000 */
-#define ESPLINK_PARAM_UI_RUN_CRIT_DUTY_PCT    57u  /* u32, %,  def 100,   0..100 */
+#define ESPLINK_PARAM_UI_RUN_CRIT_BEEP_DUR_MS 57u  /* u32, ms, def 10000, per beep, 0..600000 (v1.71) */
 #define ESPLINK_PARAM_UI_RUN_CRIT_COUNT       58u  /* u32, n,  def 1,     0..10 */
 #define ESPLINK_PARAM_UI_RUN_STD_DUR_MS       59u  /* u32, ms, def 1000,  per beep, 0..fit */
 #define ESPLINK_PARAM_UI_RUN_TRI_DUR_MS       60u  /* u32, ms, def 2000,  per beep, 0..fit */
@@ -294,7 +294,7 @@
  *      milliamp of error, i.e. Ki = 1000 means 1 permille/s per volt; slew
  *      rates are milli-permille per second (1000 = 1 permille/s). See the
  *      regulator block in charger.h for the full derivation.
- * [FA] تنظیم‌کنندهٔ PID دوحلقه‌ای CC/CV شارژ، شناسه‌های ۸۳..۹۲ (v1.22، دستور
+ * [FA] تنظیم‌کنندهٔ PID دوحلقه‌ای ‎CC/CV‎ شارژ، شناسه‌های ۸۳..۹۲ (v1.22، دستور
  *      کاربر ۲۰۲۶-۰۹-۲۸). پشت‌سرهم و دقیقاً به ترتیب فیلدهای charger_pid_t:
  *      فعال‌سازی، سپس برای هر مرحله یک ردیف کامل (Kp، Ki، Kd، نرخ صعود،
  *      نرخ نزول). «مرحله» یعنی: مرحلهٔ ۱ حلقهٔ جریان (بالک)، مرحلهٔ ۲ حلقهٔ
@@ -376,11 +376,16 @@
 #define ESPLINK_PARAM_UI_CHG_PCT_VMAX_MV       120u  /* u32, mV, def 29000, 25000..32000, >= 119+100 */
 
 /* ==================== Band 2 own beep shape / شکل بوق مخصوص باند ۲ ==================== */
-/* [EN] v1.50 (user order): the 2-beep discharge band no longer borrows band
-   1's per-beep duration and the all-band gap.
-   [FA] باند دو-بوقِ دشارژ دیگر مدت و گپ را قرض نمی‌گیرد. */
-#define ESPLINK_PARAM_UI_RUN_DOUBLE_DUR_MS     121u  /* u32, ms, def 1000, 0..fit vs 54/63/122 */
-#define ESPLINK_PARAM_UI_RUN_DOUBLE_GAP_MS     122u  /* u32, ms, def 100,  0..5000 */
+/* [EN] v1.50 gave the 2-beep discharge band its own per-beep duration and
+   its own gap. v1.71 (user order: "in discharge only the GAP is shared,
+   everything else is per band") keeps the duration, turns the second id into
+   that band's own repeat interval, and puts every band back on the single
+   shared gap, id 65.
+   [FA] نسخهٔ ۱٫۵۰ مدت و گپ مخصوص باند دو-بوق را ساخت. نسخهٔ ۱٫۷۱ به دستور
+   کاربر فقط گپ را مشترک نگه داشت (شناسهٔ ۶۵) و شناسهٔ دوم را به فاصلهٔ تکرار
+   همان باند تبدیل کرد. */
+#define ESPLINK_PARAM_UI_RUN_DOUBLE_DUR_MS     121u  /* u32, ms, def 1000,  per beep, 0..fit vs 122/63/65 */
+#define ESPLINK_PARAM_UI_RUN_DOUBLE_INTERVAL_MS 122u /* u32, ms, def 60000, 0=off else 1000..600000 (v1.71) */
 
 #define ESPLINK_PARAM_IMBAL_BLINK_PERIOD_MS    123u  /* u32, ms, def 1000, 0 = solid red, else 100..10000 (v1.68) */
 #define ESPLINK_PARAM_IMBAL_BLINK_DUTY_PCT     124u  /* u8,  %,  def 50,   5..95 (v1.68) */
@@ -482,7 +487,7 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
 /**
  * @brief  [EN] Drive CH_PD pin.
  *         [FA] پایه CH_PD را می‌زند.
- * @param  bool__on [EN] true=on, false=off / روشن/خاموش
+ * @‎param  bool__on [EN] true=on, false=off‎ / روشن/خاموش
  */
 void func__EspLink_Power(bool bool__on);
 

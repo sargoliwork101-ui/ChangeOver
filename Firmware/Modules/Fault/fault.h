@@ -50,7 +50,7 @@
 /* [EN] Absence threshold, case 2. Recovery stays at the higher
  *      FAULT_BATTERY_BACK_MV: the 1 V gap is the set/clear hysteresis.
  * [FA] آستانهٔ غیبت (حالت ۲)؛ بازیابی روی ۷V بالاتر می‌ماند: فاصلهٔ ۱V
- *      هیسترزیس جفت Set/Clear است. */
+ *      هیسترزیس جفت ‎Set/Clear‎ است. */
 #define FAULT_BAT_ABSENT_MV                6000u
 /* [EN] Recovery threshold: >= 7 V on BOTH halves, not 6 V (a half can
  *      sit near 6 V while charging).
@@ -147,10 +147,10 @@ typedef struct
  *              set, report the applied value.
  *         [FA] نوشتن یک آستانهٔ آلارم (۲۷..۳۴): ذخیره، گیرهٔ کل مجموعه،
  *              گزارش مقدار اعمال‌شده.
- * @param  uint8_t__paramId [EN] 27..34 / شناسه
+ * @‎param  uint8_t__paramId [EN] 27..34‎ / شناسه
  * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
  * @param  uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
- * @return bool [EN] true when the id is 27..34 / شناسه معتبر بود
+ * @‎return bool [EN] true when the id is 27..34‎ / شناسه معتبر بود
  */
 bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t uint32_t__value,
@@ -159,9 +159,9 @@ bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one live alarm threshold (27..34).
  *         [FA] خواندن یک آستانهٔ زندهٔ آلارم (۲۷..۳۴).
- * @param  uint8_t__paramId [EN] 27..34 / شناسه
+ * @‎param  uint8_t__paramId [EN] 27..34‎ / شناسه
  * @param  uint32_t__value [EN] Value out / مقدار
- * @return bool [EN] true when the id is 27..34 / شناسه معتبر بود
+ * @‎return bool [EN] true when the id is 27..34‎ / شناسه معتبر بود
  */
 bool func__Fault_GetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value);

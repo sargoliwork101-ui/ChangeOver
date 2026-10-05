@@ -4,7 +4,7 @@
  *              dispatch and periodic telemetry over the logical UART port
  *              (user order 2026-09-22). Pure software, static allocation
  *              only, no RTOS call inside the parser.
- *          [FA] موتور ESP-Link: کنترل تغذیه، پارسر فریم بایتی، اعمال
+ *          [FA] موتور ‎ESP-Link‎: کنترل تغذیه، پارسر فریم بایتی، اعمال
  *              پارامترها و تله‌متری دوره‌ای روی پورت منطقی UART (دستور
  *              کاربر ۲۰۲۶-۰۹-۲۲). تماماً نرم‌افزار، فقط تخصیص ایستا، بدون
  *              فراخوانی RTOS داخل پارسر.
@@ -155,8 +155,8 @@ static uint32_t func__EspLink_GetU32(const uint8_t *uint8_t__payload,
  * @param  uint8_t__paramId [EN] Parameter id / شناسهٔ پارامتر
  * @param  uint32_t__value [EN] Raw wire value (signed fields arrive as
  *                              two's complement) / مقدار خام خط
- * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out / اعمال‌شده
- * @return bool [EN] true when the id is known / id شناخته شد
+ * @‎param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / اعمال‌شده
+ * @‎return bool [EN] true when the id is known / id‎ شناخته شد
  */
 bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                                      uint32_t uint32_t__value,
@@ -386,8 +386,8 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
  * @brief  [EN] Read the live value of one parameter for the report frames.
  *         [FA] مقدار زندهٔ یک پارامتر برای فریم‌های گزارش می‌خواند.
  * @param  uint8_t__paramId [EN] Parameter id / شناسهٔ پارامتر
- * @param  uint32_t *uint32_t__value [EN] Live value out / مقدار زنده
- * @return bool [EN] true when the id is known / id شناخته شد
+ * @‎param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
+ * @‎return bool [EN] true when the id is known / id‎ شناخته شد
  */
 bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
                                    uint32_t *uint32_t__value)
@@ -572,12 +572,12 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
  *              512 bytes of flash on a part that does not have it to spare, and
  *              these frames are at most ~470 bytes at 10 Hz, so the loop is far
  *              cheaper than the table.
- *         [FA] CRC-16/CCITT-FALSE. عمداً بیتی: جدول ۲۵۶تایی ۵۱۲ بایت فلش می‌خواهد
+ *         [‎FA] CRC-16/CCITT-FALSE‎. عمداً بیتی: جدول ۲۵۶تایی ۵۱۲ بایت فلش می‌خواهد
  *              روی قطعه‌ای که این فضا را ندارد، و این فریم‌ها حداکثر ~۴۷۰ بایت با
  *              نرخ ۱۰ هرتز‌اند، پس حلقه از جدول خیلی ارزان‌تر است.
  * @param  uint16_t__crc  [EN] Running value / مقدار جاری
  * @param  uint8_t__byte  [EN] Next byte / بایت بعدی
- * @return uint16_t [EN] Updated CRC / CRC به‌روزشده
+ * @‎return uint16_t [EN] Updated CRC / CRC‎ به‌روزشده
  */
 static uint16_t func__EspLink_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte)
 {
@@ -604,7 +604,7 @@ static uint16_t func__EspLink_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byt
  *         [FA] payload را در فریم استاندارد می‌پیچد و ارسال می‌کند.
  * @param  uint8_t__messageType [EN] Message type byte / بایت نوع پیام
  * @param  const uint8_t *uint8_t__payload [EN] Payload / payload
- * @param  uint16_t uint16_t__payloadLength [EN] Payload length, 0..512 (v1.16 u16 length) / طول payload
+ * @‎param  uint16_t uint16_t__payloadLength [EN] Payload length, 0..512 (v1.16 u16 length)‎ / طول payload
  */
 static void func__EspLink_SendFrame(uint8_t uint8_t__messageType,
                                     const uint8_t *uint8_t__payload,
@@ -623,7 +623,7 @@ static void func__EspLink_SendFrame(uint8_t uint8_t__messageType,
        .bss out of the 3.5 KiB that were free; gain: the chain drops to about
        410 bytes (40%).
        [FA] عمداً STATIC نه سلیقه‌ای (ممیزی رم نسخه ۱.۶۷، ابزار
-       tools/measure_ram.py): این بافر ۵۲۰ بایتی روی پشته، بدترین زنجیرهٔ تسک
+       ‎tools/measure_ram.py)‎: این بافر ۵۲۰ بایتی روی پشته، بدترین زنجیرهٔ تسک
        ارتباط را به ۹۳۲ از ۱۰۲۴ بایت (۹۱٪) می‌رساند؛ یک وقفهٔ تودرتو تا سرریز
        بی‌صدا به پشتهٔ تسک بعدی فاصله داشت. فقط تسک ارتباط فریم می‌فرستد و این
        تابع بازگشتی نیست، پس static بدون مسابقه است. هزینه: ۵۲۰ بایت .bss از
@@ -827,7 +827,7 @@ static void func__EspLink_SendParamsBulk(void)
  * @brief  [EN] Build and send one TLM_LIVE frame from the live globals.
  *         [FA] یک فریم TLM_LIVE از گلوبال‌های زنده می‌سازد و می‌فرستد.
  * @param  const measurement_snapshot_t *measurement_snapshot_t__snap [EN]
- *              Snapshot of this pass / snapshot همین پاس
+ *              ‎Snapshot of this pass / snapshot‎ همین پاس
  * @param  fault_mask_t fault_mask_t__faults [EN] Fault bits / بیت‌های خطا
  */
 static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measurement_snapshot_t__snap,
@@ -1100,7 +1100,7 @@ static void func__EspLink_SendLutAck(uint8_t uint8_t__stage,
  *              the hot parameter path stays as short as it was.
  *         [FA] چهار فریم ارسال جدول، جدا از HandleFrame تا مسیر داغ
  *              پارامترها به همان کوتاهی بماند.
- * @return bool [EN] true = this type was a LUT frame / این نوع، فریم جدول بود
+ * @‎return bool [EN] true = this type was a LUT frame‎ / این نوع، فریم جدول بود
  */
 static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
                                          uint16_t uint16_t__payloadLength,
@@ -1433,7 +1433,7 @@ void func__EspLink_Init(void)
 /**
  * @brief  [EN] Drive CH_PD pin.
  *         [FA] پایه CH_PD را می‌زند.
- * @param  bool__on [EN] true=ESP on (HIGH), false=off / روشن/خاموش
+ * @‎param  bool__on [EN] true=ESP on (HIGH), false=off‎ / روشن/خاموش
  */
 void func__EspLink_Power(bool bool__on)
 {

@@ -16,7 +16,7 @@
 
 /* ==================== PWM outputs / خروجی‌های PWM ==================== */
 /* [EN] Schematic MCU_PWM1 = PA0/TIM2_CH1 and MCU_PWM2 = PA6/TIM3_CH1.
- * [FA] در شماتیک MCU_PWM1 برابر PA0/TIM2_CH1 و MCU_PWM2 برابر PA6/TIM3_CH1 است. */
+ * [FA] در شماتیک MCU_PWM1 برابر ‎PA0/TIM2_CH1‎ و MCU_PWM2 برابر ‎PA6/TIM3_CH1‎ است. */
 #define PIN_PWM1_PORT           GPIOA
 #define PIN_PWM1_PIN            GPIO_PIN_0      /* PA0 TIM2_CH1 MCU_PWM1 */
 #define PIN_PWM2_PORT           GPIOA
@@ -55,7 +55,7 @@
 /* [EN] Logical output polarity is board data, not module data. BAT_SWITCH and
  *      PROTECT_BATT are active-low on the confirmed schematic.
  * [FA] قطبیت خروجی منطقی دادهٔ برد است، نه دادهٔ ماژول. BAT_SWITCH و
- *      PROTECT_BATT در شماتیک تأییدشده active-low هستند. */
+ *      PROTECT_BATT در شماتیک تأییدشده ‎active-low‎ هستند. */
 #define PIN_BUZZER_ACTIVE_HIGH       1u
 #define PIN_ESP_CHPD_ACTIVE_HIGH     1u
 #define PIN_LED_R_ACTIVE_HIGH        1u
@@ -68,7 +68,7 @@
 /* ==================== Digital inputs / ورودی‌های دیجیتال ==================== */
 /* [EN] Schematic LM393 outputs are open-collector active-low: high is the
  *      released/no-trip state and low is the over-current/JIT trip state.
- * [FA] خروجی‌های LM393 در شماتیک open-collector و active-low هستند: high حالت
+ * [FA] خروجی‌های LM393 در شماتیک ‎open-collector‎ و ‎active-low‎ هستند: high حالت
  *      آزاد/بدون تریپ و low حالت تریپ اضافه‌جریان/JIT است. */
 #define PIN_JITTER1_PORT        GPIOB
 #define PIN_JITTER1_PIN         GPIO_PIN_2      /* PB2 MCU_JITTER1 / JITT1, falling trip */
@@ -88,9 +88,9 @@
  *      is kept low to keep the MCU supplied from the battery at boot.
  *      PB11 (Changeover Q17, active-low) is kept high (safe disconnected)
  *      and remains independent from PB5.
- * [FA] بارهای active-high پایین نگه داشته می‌شوند؛ PB5 (مسیر باتری MCU با Q1،
- *      active-low) پایین نگه داشته می‌شود تا تغذیهٔ MCU از باتری در boot وصل بماند.
- *      PB11 (Changeover Q17، active-low) بالا و در وضعیت امن و مستقل از PB5 می‌ماند. */
+ * [FA] بارهای ‎active-high‎ پایین نگه داشته می‌شوند؛ PB5 (مسیر باتری MCU با Q1،
+ *      ‎active-low)‎ پایین نگه داشته می‌شود تا تغذیهٔ MCU از باتری در boot وصل بماند.
+ *      PB11 (Changeover Q17، ‎active-low)‎ بالا و در وضعیت امن و مستقل از PB5 می‌ماند. */
 #define PIN_SAFE_BUZZER_HIGH        0u
 #define PIN_SAFE_ESP_CHPD_HIGH      0u
 #define PIN_SAFE_LED_R_HIGH         0u

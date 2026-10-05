@@ -1,7 +1,7 @@
 /**
  * @file    app.c
  * @brief   [EN] Starts the application through the CMSIS-RTOS2 boundary.
- *          [FA] برنامه را از مرز CMSIS-RTOS2 راه‌اندازی می‌کند.
+ *          [FA] برنامه را از مرز ‎CMSIS-RTOS2‎ راه‌اندازی می‌کند.
  */
 
 #include "app.h"
@@ -45,7 +45,7 @@ void func__App_Init(void)
 
 /**
  * @brief  [EN] Initialize the CMSIS-RTOS2 application and start its threads.
- *         [FA] برنامهٔ CMSIS-RTOS2 را مقداردهی و تسک‌های آن را شروع می‌کند.
+ *         [FA] برنامهٔ ‎CMSIS-RTOS2‎ را مقداردهی و تسک‌های آن را شروع می‌کند.
  */
 void func__App_Start(void)
 {

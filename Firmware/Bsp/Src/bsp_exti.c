@@ -6,7 +6,7 @@
  * @note    [EN] PB2/PB6 are active-low LM393 outputs: the CubeMX/MCU EXTI
  *              trigger is falling-edge and the callback also checks the pin is
  *              low before latching. PB4 remains a rising/falling presence input.
- *          [FA] PB2/PB6 خروجی active-low از LM393 هستند: تریگر EXTI در CubeMX/MCU
+ *          [‎FA] PB2/PB6‎ خروجی ‎active-low‎ از LM393 هستند: تریگر EXTI در ‎CubeMX/MCU‎
  *              لبهٔ پایین‌رونده است و callback نیز پیش از latch پایین‌بودن پایه
  *              را چک می‌کند. PB4 همچنان ورودی حضور با هر دو لبه است.
  */

@@ -4,7 +4,7 @@
  *              completed normalized frames; this task only converts the newest
  *              frame into the shared snapshot. Simple RTOS pattern: osDelayUntil,
  *              no HAL_Delay.
- *          [FA] تسک اندازه‌گیری CMSIS-RTOS2. backend ADC برد فریم‌های کامل
+ *          [FA] تسک اندازه‌گیری ‎CMSIS-RTOS2. backend ADC‎ برد فریم‌های کامل
  *              استانداردشده را می‌دهد؛ این تسک فقط جدیدترین فریم را در snapshot
  *              مشترک تبدیل می‌کند. الگوی RTOS ساده: osDelayUntil، بدون HAL_Delay.
  *
@@ -62,7 +62,7 @@ void func__TaskMeasurement(void *void_ptr__argument)
        is idempotent-safe (calibration + DMA restart), so retrying is free.
        [FA] شروع ADC را هر ثانیه تا موفقیت تکرار کن (ممیزی کل برنامه): یک
        خطای گذرا قبلاً تسک اندازه‌گیری را برای همیشه می‌کشت (و با آن
-       شارژر را که روی snapshot نامعتبر safe-idle می‌شود). فراخوان شروع
+       شارژر را که روی snapshot نامعتبر ‎safe-idle‎ می‌شود). فراخوان شروع
        برای تکرار امن است (کالیبراسیون + شروع دوبارهٔ DMA). */
     while (func__BspAdc_Start() == false)
     {

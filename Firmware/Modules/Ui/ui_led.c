@@ -67,7 +67,7 @@ volatile bool BOOL__G__UiBatteryAlarmIssued = false;
 /* [EN] volatile: written by the EspLink task (panel edits), read by the UI
    task (scenarios) with no lock - single-word members stay atomic and no
    reader may cache a half-applied set across one pass (full-program audit
-   2026-09-26). [FA] بین دو تسک بدون قفل خوانده/نوشته می‌شود پس volatile. */
+   ‎2026-09-26). [FA]‎ بین دو تسک بدون قفل خوانده/نوشته می‌شود پس volatile. */
 static volatile ui_alarm_t UI_ALARM_T__G__Alarm =
 {
     UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS,
@@ -94,7 +94,7 @@ static volatile ui_alarm_t UI_ALARM_T__G__Alarm =
     UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS,
     UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS,
     UI_BATTERY_RUN_BEEP_CRITICAL_PERIOD_MS,
-    UI_BATTERY_RUN_BEEP_CRITICAL_DUTY_PERCENT,
+    UI_BATTERY_RUN_BEEP_CRITICAL_BEEP_DURATION_MS,
     UI_BATTERY_RUN_BEEP_CRITICAL_COUNT,
     UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS,
     UI_BATTERY_RUN_BEEP_TRIPLE_DURATION_MS,
@@ -127,11 +127,13 @@ static volatile ui_alarm_t UI_ALARM_T__G__Alarm =
        می‌شود، پس بردِ دست‌نخورده دقیقاً مثل قبل رفتار می‌کند. */
     UI_BAT_V_MIN_MV,
     UI_BAT_V_MAX_MV,
-    /* [EN] v1.50: band 2 boots with exactly what it used to borrow, so the
-       split is invisible until somebody shapes the double beep on purpose.
-       [FA] باند ۲ با همان چیزی بالا می‌آید که قبلاً قرض می‌گرفت. */
+    /* [EN] v1.50/v1.71: band 2 boots with exactly what it used to borrow
+       from band 1 - its own per-beep duration and its own repeat interval -
+       so the split is inaudible until somebody shapes it on purpose.
+       [FA] باند ۲ با همان اعدادی بالا می‌آید که قبلاً از باند ۱ قرض
+       می‌گرفت: مدت هر بوق و فاصلهٔ تکرار خودش. */
     UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS,
-    UI_BATTERY_RUN_BEEP_GAP_MS
+    UI_BATTERY_RUN_BEEP_DOUBLE_INTERVAL_MS
 };
 
 /**
@@ -236,8 +238,8 @@ static void func__Ui_ClampAlarms(void)
         func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__runTriIntervalMs);
     UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs =
         func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs);
-    UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct, 0u, 100u);
+    UI_ALARM_T__G__Alarm.uint32_t__runCritBeepDurMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runCritBeepDurMs, 0u, 600000u);
     UI_ALARM_T__G__Alarm.uint32_t__runCritCount =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runCritCount, 0u, 10u);
     UI_ALARM_T__G__Alarm.uint32_t__runStdDurMs =
@@ -294,8 +296,8 @@ static void func__Ui_ClampAlarms(void)
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv, 25000u, 32000u);
     UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs, 0u, 600000u);
-    UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs, 0u, 5000u);
+    UI_ALARM_T__G__Alarm.uint32_t__runDoubleIntervalMs =
+        func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__runDoubleIntervalMs);
 }
 
 /**
@@ -385,7 +387,7 @@ static int32_t func__Ui_Buzzer_Gated(uint32_t uint32_t__periodMs,
    2026-09-27): the wire ids MIN..MAX are dense and ui_alarm_t packs one
    uint32_t per id in the SAME order (no padding possible between u32
    words); the host test pins every wire id, these pins the struct side.
-   [FA] قرارداد چیدمان برای Set/Get نمایه‌ای: شناسه‌ها پشت‌سرهم و struct
+   [FA] قرارداد چیدمان برای ‎Set/Get‎ نمایه‌ای: شناسه‌ها پشت‌سرهم و struct
    همان فیلدها به همان ترتیب؛ تست هاست شناسه‌ها را قفل می‌کند، این‌ها سمت
    struct را. */
 _Static_assert(sizeof(ui_alarm_t) ==
@@ -500,8 +502,8 @@ bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Battery voltage to percent 0..100. Non-linear formula broken into 4 steps: range, offset, scaled, percent.
  *         [FA] ولتاژ باتری به درصد - فرمول غیرخطی ۴ گام: بازه، فاصله، مقیاس، درصد.
- * @param  uint32_t__batteryMv [EN] Battery voltage in mV, 0..40000mV, 21000=0% 29000=100% / ولتاژ باتری میلی‌ولت
- * @return uint8_t [EN] Percent 0..100 / درصد
+ * @‎param  uint32_t__batteryMv [EN] Battery voltage in mV, 0..40000mV, 21000=0% 29000=100%‎ / ولتاژ باتری میلی‌ولت
+ * @‎return uint8_t [EN] Percent 0..100‎ / درصد
  */
 /**
  * @brief  [EN] One voltage-to-percent map, used by both pairs. Non-linear
@@ -515,7 +517,7 @@ bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
  * @param  uint32_t__batteryMv [EN] Battery voltage in mV / ولتاژ باتری
  * @param  uint32_t__vminMv [EN] Voltage of 0% / ولتاژ صفر درصد
  * @param  uint32_t__vmaxMv [EN] Voltage of 100% / ولتاژ صد درصد
- * @return uint8_t [EN] Percent 0..100 / درصد
+ * @‎return uint8_t [EN] Percent 0..100‎ / درصد
  */
 static uint8_t func__Ui_VoltageToPercentMap(uint32_t uint32_t__batteryMv,
                                             uint32_t uint32_t__vminMv,
@@ -571,7 +573,7 @@ static uint8_t func__Ui_VoltageToPercentMap(uint32_t uint32_t__batteryMv,
  *         [FA] تبدیل ولتاژ به درصد سمت «دشارژ» از نگاشت ۷۴/۷۵ (از نسخهٔ
  *              ۱.۴۹ این جفت فقط مال دشارژ است).
  * @param  uint32_t__batteryMv [EN] Battery voltage in mV / ولتاژ باتری
- * @return uint8_t [EN] Percent 0..100 / درصد
+ * @‎return uint8_t [EN] Percent 0..100‎ / درصد
  */
 uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
 {
@@ -587,7 +589,7 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
  *         [FA] تبدیل ولتاژ به درصد سمت «شارژ» از نگاشت ۱۱۹/۱۲۰ (دستور کاربر:
  *              تکان‌دادن حدهای دشارژ نباید سمت شارژ را تکان بدهد).
  * @param  uint32_t__batteryMv [EN] Battery voltage in mV / ولتاژ باتری
- * @return uint8_t [EN] Percent 0..100 / درصد
+ * @‎return uint8_t [EN] Percent 0..100‎ / درصد
  */
 uint8_t func__Ui_ChargeVoltageToPercent(uint32_t uint32_t__batteryMv)
 {
@@ -601,7 +603,7 @@ uint8_t func__Ui_ChargeVoltageToPercent(uint32_t uint32_t__batteryMv)
 /**
  * @brief  [EN] Drive green LED on/off. Low-level wrapper around BSP GPIO.
  *         [FA] ال‌ای‌دی سبز را روشن/خاموش می‌کند - سطح پایین.
- * @param  bool__greenOn [EN] true=on, false=off / روشن یا خاموش
+ * @‎param  bool__greenOn [EN] true=on, false=off‎ / روشن یا خاموش
  */
 static void func__green(bool bool__greenOn)
 {
@@ -613,7 +615,7 @@ static void func__green(bool bool__greenOn)
 /**
  * @brief  [EN] Drive red LED on/off. Low-level.
  *         [FA] ال‌ای‌دی قرمز را روشن/خاموش می‌کند.
- * @param  bool__redOn [EN] true=on, false=off / روشن یا خاموش
+ * @‎param  bool__redOn [EN] true=on, false=off‎ / روشن یا خاموش
  */
 static void func__red(bool bool__redOn)
 {
@@ -625,7 +627,7 @@ static void func__red(bool bool__redOn)
 /**
  * @brief  [EN] Drive yellow LED on/off. Low-level.
  *         [FA] ال‌ای‌دی زرد را روشن/خاموش می‌کند.
- * @param  bool__yellowOn [EN] true=on, false=off / روشن یا خاموش
+ * @‎param  bool__yellowOn [EN] true=on, false=off‎ / روشن یا خاموش
  */
 static void func__yellow(bool bool__yellowOn)
 {
@@ -847,7 +849,7 @@ static void func__Ui_ResetBatteryStablePercent(void)
  * @brief  [EN] Update stable battery percent from raw percent with 2% hysteresis and special 0/1 handling.
  *         General: |raw-stable| <2 → keep stable; >=2 → stable = raw. Special: stable 0 stays 0 until raw>=2 then →1; stable 1: raw==0→0, raw>=3→2, else keep 1.
  *         [FA] درصد پایدار را از درصد خام با هیسترزیس ۲٪ و رفتار خاص ۰/۱ به‌روز می‌کند.
- * @param  uint8_t__rawPercent [EN] Raw percent 0..100 / درصد خام
+ * @‎param  uint8_t__rawPercent [EN] Raw percent 0..100‎ / درصد خام
  * @return uint8_t [EN] Stable percent after hysteresis / درصد پایدار
  */
 static uint8_t func__Ui_UpdateBatteryStablePercent(uint8_t uint8_t__rawPercent)
@@ -1435,7 +1437,7 @@ void func__Ui_ScenarioInputOk(void)
  *         UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT می‌نشیند و درصد ۱۰۰ دیگر
  *         زرد را خاموش نمی‌کند - این سناریو فقط با پمپِ کانال شارژر اجرا
  *         می‌شود پس تا قطع شارژر حداقل یک چشمکِ مرئی در هر دوره می‌ماند.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV, charge percent map 119/120 (v1.49) / ولتاژ باتری
+ * @‎param  uint32_t__batteryMv [EN] Battery voltage mV, charge percent map 119/120 (v1.49)‎ / ولتاژ باتری
  */
 void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 {
@@ -1515,7 +1517,7 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
  *         بوق بر اساس چهار بازه درصدی (۵۰..۵۳) اجرا می‌شود.
  *         زیر باند بحرانی (۵۳) همهٔ LEDها خاموش و الگوی بحرانی (۵۶/۵۷/۵۸/۶۵) فقط یک‌بار
  *         به‌اندازهٔ طول یک‌باره (۶۱) پخش می‌شود، بعد سکوت تا برگشت باتری.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV, percent map 74/75 / ولتاژ باتری
+ * @‎param  uint32_t__batteryMv [EN] Battery voltage mV, percent map 74/75‎ / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 {
@@ -1572,9 +1574,17 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
             return;
         }
 
+        /* [EN] v1.71: the critical band is shaped like every other band -
+           period, per-beep duration, count, shared gap - and the duty handed
+           to the buzzer is derived, not typed.
+           [FA] باند بحرانی هم مثل بقیه با دوره، مدت هر بوق، تعداد و گپ
+           مشترک ساخته می‌شود و دیوتی محاسبه می‌شود نه تایپ. */
         (void)func__Ui_Buzzer_Gated(
             UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs,
-            (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runCritDutyPct,
+            func__Ui_BeepDutyPercent(UI_ALARM_T__G__Alarm.uint32_t__runCritPeriodMs,
+                                     UI_ALARM_T__G__Alarm.uint32_t__runCritBeepDurMs,
+                                     UI_ALARM_T__G__Alarm.uint32_t__runCritCount,
+                                     UI_ALARM_T__G__Alarm.uint32_t__runGapMs),
             (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runCritCount,
             UI_ALARM_T__G__Alarm.uint32_t__runGapMs);
         return;
@@ -1615,16 +1625,18 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     }
     else if (uint8_t__stablePercent >= (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runBeepTriplePct)
     {
-        /* [EN] v1.50: band 2 plays its OWN duration (121) and gap (122).
-           [FA] باند ۲ با مدت و گپ خودش پخش می‌شود. */
+        /* [EN] v1.71: band 2 plays its OWN duration (121), its OWN repeat
+           interval (122) and the ONE shared gap (65).
+           [FA] باند ۲ با مدت (۱۲۱) و فاصلهٔ تکرار (۱۲۲) خودش و گپ مشترک
+           (۶۵) پخش می‌شود. */
         (void)func__Ui_Buzzer_Gated(
-            UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs,
-            func__Ui_BeepDutyPercent(UI_ALARM_T__G__Alarm.uint32_t__runStdIntervalMs,
+            UI_ALARM_T__G__Alarm.uint32_t__runDoubleIntervalMs,
+            func__Ui_BeepDutyPercent(UI_ALARM_T__G__Alarm.uint32_t__runDoubleIntervalMs,
                                      UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs,
                                      UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount,
-                                     UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs),
+                                     UI_ALARM_T__G__Alarm.uint32_t__runGapMs),
             (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runDoubleCount,
-            UI_ALARM_T__G__Alarm.uint32_t__runDoubleGapMs);
+            UI_ALARM_T__G__Alarm.uint32_t__runGapMs);
     }
     else
     {

@@ -7,7 +7,7 @@
  *          thresholds) remain enforced whenever control is allowed.
  *          [FA] دو کانال مستقل شارژر فلای‌بک ۱۲ ولت. CHG_MASTER_ENABLE تنها
  *          کلید فعال‌سازی کلی است؛ با مقدار ۰ کل Charger صرف‌نظر از پرچم‌های
- *          زمان اجرا safe-off می‌ماند. با فعال‌بودن کنترل، همه حفاظت‌های عددی
+ *          زمان اجرا ‎safe-off‎ می‌ماند. با فعال‌بودن کنترل، همه حفاظت‌های عددی
  *          (ولتاژ، جریان، JIT و آستانه باتری) همچنان اجرا می‌شوند.
  */
 
@@ -31,7 +31,7 @@
  *       channel, Vin ADC >= 22000 mV, valid battery sense, current
  *       limits, JIT policy).
  * [FA] تنها کلید فعال‌سازی کلی Charger.
- *   ۰ = فقط اسکلت safe-off: PWM متوقف، رله NC بسته (safe-idle)، سیاست
+ *   ۰ = فقط اسکلت ‎safe-off: PWM‎ متوقف، رله NC بسته (‎safe-idle)‎، سیاست
  *       JIT/رله غیرفعال. پرچم‌های زمان اجرا دروازهٔ پنهان نیستند؛
  *       حفاظت‌های عددی هیچ‌وقت bypass نمی‌شوند.
  *   ۱ = حلقهٔ کنترل هر کانال فقط با برقراری همهٔ شرایط صریح سخت‌افزاری
@@ -53,10 +53,10 @@
  *               or missing-battery condition for CH2.
  * [FA] تنها دو ثابتی که با عوض‌شدن ترانس مونتاژشده تغییر می‌کنند؛ هر دو
  *      نصب‌اند: کانال ۱ = ۱ (دستور راه‌اندازی ۲۰۲۶-۰۹-۲۰) → PWM1 PA0 /
- *      Current1 / JIT1 (تأیید بنچ در چک‌لیست برد)؛ کانال ۲ = ۱ → PWM2 PA6
- *      / Current2 PA7 / JIT2 PB6. Trans2 به باتری ۱۲V مستقل روی VLOW وصل
+ *      ‎Current1 / JIT1 (‎تأیید بنچ در چک‌لیست برد)؛ کانال ۲ = ۱ → PWM2 PA6
+ *      / ‎Current2 PA7 / JIT2 PB6. Trans2‎ به باتری ۱۲V مستقل روی VLOW وصل
  *      است؛ پک ۲۴V فقط مانیتور است و هیچ‌گاه setpoint شارژ یا شرط
- *      battery-missing برای CH2 نیست.
+ *      ‎battery-missing‎ برای CH2 نیست.
  */
 #define CHG_CHANNEL_1_INSTALLED       1u
 #define CHG_CHANNEL_2_INSTALLED       1u
@@ -74,8 +74,8 @@
  * shunt reading physically consistent with a 23.5 V / 12.55 V energy audit).
  * Normal Bulk/Absorb/Float control below now runs. It is still a separate
  * compile-time safety gate from CHG_MASTER_ENABLE.
- * [FA] CHG_TRANSFORMER_KNOWN = 1: داده ترانس و زنجیره سنجش جریان روی برد
- * تأیید شده‌اند. کنترل عادی Bulk/Absorb/Float حالا اجرا می‌شود. این دروازه
+ * [‎FA] CHG_TRANSFORMER_KNOWN = 1‎: داده ترانس و زنجیره سنجش جریان روی برد
+ * تأیید شده‌اند. کنترل عادی ‎Bulk/Absorb/Float‎ حالا اجرا می‌شود. این دروازه
  * همچنان جدا از CHG_MASTER_ENABLE است. */
 #define CHG_TRANSFORMER_KNOWN         1u
 
@@ -93,14 +93,14 @@
  * CHG_MASTER_ENABLE=1, Vin >= 22000 mV and all numeric protections.
  * (With CHG_BRINGUP_TEST_ENABLE=1: gate/shunt waveforms scope-verified at
  * the 10% stage with a calibrated current path.)
- * [FA] مود صریح فقط-bring-up و تنها راه سوئیچینگ با CHG_TRANSFORMER_KNOWN=0:
+ * [FA] مود صریح فقط-‎bring-up‎ و تنها راه سوئیچینگ با ‎CHG_TRANSFORMER_KNOWN=0‎:
  *      فقط Trans2 (CH2)، بدون باتری واقعی، منبع خارجی محدود، فقط
  *      اعتبارسنجی شکل‌موج - کنترل عادی اجرا نمی‌شود. حدود: فقط CH2 (CH1
  *      صفر)؛ شروع ۱٪، گام معمول ولی گیرهٔ CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE
  *      - مرحلهٔ فعلی حداکثر ۱۰٪ duty با حد ۱۰۰mA منبع خارجی؛ تا اندازه‌گیری
- *      ترانس و یک‌شدن CHG_TRANSFORMER_KNOWN بالاتر نرو. هرگز Absorb/Float و
- *      setpoint پک ۲۴V نه؛ همچنان گیت CHG_MASTER_ENABLE=1، Vin >= ۲۲۰۰۰mV و
- *      همهٔ حفاظت‌های عددی. (شکل‌موج‌های gate/shunt در مرحلهٔ ۱۰٪ با اسکوپ
+ *      ترانس و یک‌شدن CHG_TRANSFORMER_KNOWN بالاتر نرو. هرگز ‎Absorb/Float‎ و
+ *      setpoint پک ۲۴V نه؛ همچنان گیت ‎CHG_MASTER_ENABLE=1‎، Vin >= ۲۲۰۰۰mV و
+ *      همهٔ حفاظت‌های عددی. (شکل‌موج‌های ‎gate/shunt‎ در مرحلهٔ ۱۰٪ با اسکوپ
  *      تأیید و مسیر جریان کالیبره شده است.)
  */
 #define CHG_BRINGUP_TEST_ENABLE                0u   /* [EN] bring-up finished; normal charge active / bring-up تمام شد، شارژ نرمال فعال است */
@@ -318,15 +318,15 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
  * [FA] معماری تخمین جریان باتری v1.3 (دستور ۲۰۲۶-۰۹-۲۴): زنجیرهٔ sense سمت
  *      باتری است، پس با گین‌های کالیبره-باتری عدد فیلترشده خودش جریان
  *      باتری است. تبدیل قدیمی اولیه→خروجی به‌جای حذف، مرحلهٔ صریحِ
- *      قابل‌کالیبره ماند: ETA1/ETA2 (پارامتر ۹/۱۰) ضریب هر کانال با
- *      پیش‌فرض ۰ = همانی (ریفلش عددی را عوض نمی‌کند). غیرصفر: iest = I ×
+ *      قابل‌کالیبره ماند: ‎ETA1/ETA2 (‎پارامتر ۹/۱۰) ضریب هر کانال با
+ *      پیش‌فرض ۰ = همانی (ریفلش عددی را عوض نمی‌کند). غیرصفر: ‎iest = I‎ ×
  *      Vin × η ÷ (۱۰۰۰ × Vbat) با ولتاژهای زنده تا خوانش با حرکت Vbat
  *      درست بماند. کالیبراسیون یک فرمان ESP (CAL_REFERENCE): کاربر عدد
  *      مولتی‌متر سمت باتری را می‌دهد و فریم‌ور η را از snapshot خودش
  *      می‌سازد؛ با گین‌های جدید نزدیک ۱۰۰۰×Vbat÷Vin (~۵۳۷) می‌افتد.
  *      مقادیر قدیمی ۷۵۸/۲۴۲ (فرض اشتباه شانت-در-سورس) در هیچ محاسبه‌ای
  *      نیستند - فقط پیش‌فرض بی‌اثر برای خوانده‌شدن پارامتر؛ ۲۴۲ کانال ۲
- *      خطای over-read زنجیرهٔ sense (~۲٫۹×) را هم جذب کرده - ثابت فیزیکی
+ *      خطای ‎over-read‎ زنجیرهٔ sense (~۲٫۹×) را هم جذب کرده - ثابت فیزیکی
  *      نیست. */
 #define CHG_FLYBACK_ETA1_PERMILLE            0u
 #define CHG_FLYBACK_ETA2_PERMILLE            0u
@@ -336,7 +336,7 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
  *      Vin/Vbat conversion. The panel may zero it to return to the raw
  *      filtered reading at any time.
  * [FA] حدود گیرهٔ ضریب تبدیل زمان اجرای قابل‌تنظیم از ESP (v1.3): صفر =
- *      همانی/گذر (پیش‌فرض کامپایل)، ۱..۹۹۹ = تبدیل زندهٔ Vin/Vbat. پنل
+ *      همانی/گذر (پیش‌فرض کامپایل)، ۱..۹۹۹ = تبدیل زندهٔ ‎Vin/Vbat‎. پنل
  *      می‌تواند هر وقت خواست صفرش کند تا به خوانش فیلترشدهٔ خام برگردد. */
 /* [EN] ETA vs the ch2 bench LUT (full-program audit 2026-09-27): ch2
  *      already yields true battery current through the power LUT in
@@ -416,7 +416,7 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
  *      این همه پیچیدگی یک PID دوحلقه‌ای بنویس - اولش یک سری ضریب، وسطش
  *      یک سری، ناحیهٔ آخرش هم یک سری دیگر - و این تنظیمات در ESP هم بیاید.»
  *      این بلوک زنجیرهٔ پله‌ثابت (۰٫۵٪/۰٫۱٪ روی تایمرهای ۵۰۰/۱۰۰۰/۲۰۰۰ms) را
- *      با یک هستهٔ PID موقعیتی جایگزین می‌کند که کمینه‌گیری کلاسیک CC/CV
+ *      با یک هستهٔ PID موقعیتی جایگزین می‌کند که کمینه‌گیری کلاسیک ‎CC/CV‎
  *      انجام می‌دهد: شاخهٔ جریان (خطا = ست‌پوینت جریان منهای جریان اندازه‌گیری
  *      شده) همیشه ردیف ضریب مرحلهٔ ۱ را می‌خواند؛ شاخهٔ ولتاژ (خطا = ست‌پوینت
  *      ابزورب منهای ولتاژ) وقتی ولتاژ زیر ست‌پوینت است ردیف مرحلهٔ ۲ و وقتی
@@ -475,8 +475,8 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
  *      as the error closes instead of stepping over the setpoint.
  * [FA] واحد ضرایب (فقط عدد صحیح، بدون ممیز شناور در فریم‌ور). هر جمله
  *      تقسیم‌کنندهٔ خودش را دارد تا ضرایب عددهای گرد و انسانی بمانند:
- *      جملهٔ P = Kp×خطا÷CHG_PID_KP_DIV، نرخ I = Ki×خطا÷CHG_PID_KI_DIV،
- *      جملهٔ D = Kd×تغییر خطا÷CHG_PID_KD_DIV. خطا در شاخهٔ ولتاژ mV و در
+ *      جملهٔ ‎P = Kp‎×خطا÷CHG_PID_KP_DIV، نرخ ‎I = Ki‎×خطا÷CHG_PID_KI_DIV،
+ *      جملهٔ ‎D = Kd‎×تغییر خطا÷CHG_PID_KD_DIV. خطا در شاخهٔ ولتاژ mV و در
  *      شاخهٔ جریان mA است، پس با KP_DIV=۱ واحد خواندنی Kp می‌شود «پرمیل
  *      دیوتی به ازای هر ولت خطا» (شاخهٔ ولتاژ) یا «پرمیل به ازای هر آمپر»
  *      (شاخهٔ جریان)، و با KI_DIV=۱۰۰۰ واحد Ki می‌شود «میلی‌پرمیل بر ثانیه
@@ -652,7 +652,7 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
  *        یک ردیف ولتاژ + پشتیبان ۶۵۰ به‌عنوان تنها محدودکنندهٔ جریان: شکست،
  *          آن هم روی خودِ خواستهٔ ایمنی: پشتیبان واکنشی است، پس جریان چرخهٔ
  *          حدی می‌زند و به‌جای ۶۴۰ تا ۷۰۷ میلی‌آمپر می‌رود.
- *        دو ردیف: درست. یک PI برای جریان، یک PI برای ولتاژ - همان CC/CV
+ *        دو ردیف: درست. یک PI برای جریان، یک PI برای ولتاژ - همان ‎CC/CV‎
  *          کتابی و ساده‌ترین چیزی که واقعاً هر دو را تنظیم می‌کند.
  *        سه ردیف: بهتر نبود. ردیف اضافهٔ «روی ست‌پوینت» وقتی مدل نویز از
  *          تک‌تن به پهن‌باند تغییر کرد، هیچ سودی نشان نداد و حذف شد.
@@ -807,7 +807,7 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
  *      protection reads the raw sample so a real over-voltage is never
  *      delayed by a filter.
  * [FA] پیش‌فیلتر ولتاژ برای ورودی PID به‌صورت مقسوم‌علیهِ انتگرال‌گیر نشتی:
- *      S += V - S/N و حلقه S/N را می‌خواند. چرا لازم است: جریان شارژ
+ *      ‎S += V - S/N‎ و حلقه ‎S/N‎ را می‌خواند. چرا لازم است: جریان شارژ
  *      بالادست فیلتر می‌شود (میانهٔ ۳ + میانگین متحرک در measurement.c) ولی
  *      ولتاژ باتری نه، و یک پلهٔ ADC روی مقسم پک حدود ۷ میلی‌ولت است، پس
  *      خواندن خام تقریباً ±۱۵ میلی‌ولت نویز دارد. این نویز مستقیم روی جملهٔ
@@ -879,7 +879,7 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
  *      absorb at the CHG_ABSORB_MAX_MS = 1 hour ceiling (forced FLOAT), so
  *      the pump cannot stay awake forever.
  * [FA] پایان‌دهی ابزورب به روش زیرجریان (تیپر) - معیار کلاسیک سرب-اسیدی و
- *      دستور بنچ کاربر (پک ۴٫۵ آمپرساعت =C/90 روچنار): ابزورب فقط وقتی
+ *      دستور بنچ کاربر (پک ۴٫۵ آمپرساعت =‎C/90‎ روچنار): ابزورب فقط وقتی
  *      FLOAT می‌شود که حداقل ۱۰ دقیقه شستشو گذشته باشد **و** زیرجریان <۵۰mA
  *      به‌مدت پایدار ۶۰ ثانیه بماند؛ سقف امن ۱ ساعت در هرحال FLOAT اجباری
  *      می‌کند تا باتری هرگز-تیپر‌نشده پمپ را بیدار نگه ندارد. */
@@ -938,7 +938,7 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
  * a valid battery simulator; only an electronic load with voltage clamp or a
  * battery simulator is allowed for no-battery tests.
  * [FA] ۲۰۰۰ میلی‌ولت آستانه اعتبار sense باتری همان کانال است، نه setpoint
- * شارژ. برای Trans2 این مقدار روی VLOW = MID-GND بررسی می‌شود. مقاومت آزاد
+ * شارژ. برای Trans2 این مقدار روی ‎VLOW = MID-GND‎ بررسی می‌شود. مقاومت آزاد
  * به‌تنهایی شبیه‌ساز باتری نیست؛ برای تست بدون باتری فقط electronic load با
  * voltage clamp یا battery simulator مجاز است. */
 #define CHG_MIN_VALID_BATTERY_MV      2000u
@@ -961,7 +961,7 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
  *      it. Raise the early margin to act sooner; never re-scale a reading to
  *      fake it.
  * [FA] زودتر تصمیم بگیر، مقیاس را خم نکن (دستور کاربر ۲۰۲۶-۰۹-۲۹).
- *      مقسم پک قبلاً جعل شده بود (۶۶۲۰۰ به‌جای 68K+1.2K واقعی) تا از جمله قطع
+ *      مقسم پک قبلاً جعل شده بود (۶۶۲۰۰ به‌جای ‎68K+1.2K‎ واقعی) تا از جمله قطع
  *      اضافه‌ولتاژ حدود ۱۰۰ میلی‌ولت زودتر بزند. آن حاشیه به قیمت خراب‌شدن هر
  *      ولتاژی که محصول گزارش می‌کند خریده شده بود. مقسم دوباره صادق است، پس
  *      حاشیه جایی گرفته می‌شود که باید: سر تصمیم. */
@@ -987,13 +987,13 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
  *      شارژ روی آن‌ها گرفته می‌شود، ابتدای هر پاس Evaluate (دورهٔ کنترل)
  *      به‌روز می‌شود تا در Live Expressions با یک ورودی دیده شود.
  *      چیدمان (۵ خانه per channel + مشترک‌ها):
- *        [0..4]  کانال ۰ = نیم VHIGH: state، duty پرمیل، vbat mV،
+ *        [‎0..4]‎  کانال ۰ = نیم VHIGH: state، duty پرمیل، vbat mV،
  *                جریان اولیه mA، تخمین خروجی mA (مقدار تنظیم‌شونده)
- *        [5..9]  کانال ۱ = نیم VLOW: همان پنج‌تا
+ *        [‎5..9]‎  کانال ۱ = نیم VLOW: همان پنج‌تا
  *        [10] v_in_mv، [11] v_bat24_mv، [12] v_bat12_mv،
- *        [13] v_bat_high_mv (مشتق = V24 - V12)، [14] ماسک خطا،
+ *        [13] v_bat_high_mv (مشتق = ‎V24 - V12)‎، [14] ماسک خطا،
  *        [15] بیت اعتبار snapshot (۰/۱؛ صفر یعنی خانه‌های جریان/ولتاژ صفرند)
- *      کدهای state: 0=OFF 1=BULK 2=ABSORB 3=FLOAT 4=BRINGUP
+ *      کدهای ‎state: 0=OFF 1=BULK 2=ABSORB 3=FLOAT 4=BRINGUP‎
  *                   5=JIT_RETRY_WAIT 6=INPUT_WAIT 7=FINAL_FAULT 8=BAT_LOST */
 #define CHG_DIAG_COUNT                 16u
 #define CHG_DIAG_CHANNEL_STRIDE         5u
@@ -1029,9 +1029,9 @@ extern volatile uint32_t UINT32_T__G__ChargerDiag[CHG_DIAG_COUNT];
  *        [0] اعتبار snapshot (۰/۱)
  *        [1] v_in_mv (فریمور)  [2] v_bat24_mv (فریمور)
  *        [3] v_bat12_mv (فریمور) [4] v_bat_high_mv (فریمور، مشتق)
- *        [5..9]   کانال بالا (باتری بالا): duty، state، vbat mV،
+ *        [‎5..9]‎   کانال بالا (باتری بالا): duty، state، vbat mV،
  *                                     Ipri mA، Iout_est mA
- *        [10..14] کانال پایین (باتری پایین): همان پنج‌تا
+ *        [‎10..14]‎ کانال پایین (باتری پایین): همان پنج‌تا
  *      کدهای state مثل CHG_DIAG بالا. */
 #define CHG_CALIB_COUNT                    15u
 #define CHG_CALIB_IDX_VALID                 0u
@@ -1072,9 +1072,9 @@ extern volatile uint32_t UINT32_T__G__ChargerIest2Ma;
  *              to CHG_ETA_MIN_PERMILLE..CHG_ETA_MAX_PERMILLE;
  *              flash-persisted since v1.14, ESP panel (user order 2026-09-22).
  *         [FA] بازدهی flyback یک کانال در زمان اجرا، گیرهٔ
- *              CHG_ETA_MIN_PERMILLE..CHG_ETA_MAX_PERMILLE؛ روی فلش
+ *              ‎CHG_ETA_MIN_PERMILLE..CHG_ETA_MAX_PERMILLE‎؛ روی فلش
  *              می‌ماند از نسخهٔ ۱.۱۴، پنل ESP (دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @param  uint32_t__etaPermille [EN] Requested efficiency / بازدهی درخواستی
  * @return uint32_t [EN] Applied efficiency permille / بازدهی اعمال‌شده
  */
@@ -1084,7 +1084,7 @@ uint32_t func__Charger_SetEfficiencyPermille(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read the live flyback efficiency of one channel.
  *         [FA] بازدهی flyback زندهٔ یک کانال.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @return uint32_t [EN] Live efficiency permille / بازدهی زندهٔ پرمیل
  */
 uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex);
@@ -1094,20 +1094,20 @@ uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex);
  *              off + state OFF (FINAL_FAULT never released by this gate),
  *              true = soft BULK restart; flash-persisted since v1.14
  *              (user order 2026-09-22).
- *         [FA] گیت فعال‌سازی ESP یک کانال شارژر: false = PWM قطع + وضعیت
+ *         [FA] گیت فعال‌سازی ESP یک کانال شارژر: ‎false = PWM‎ قطع + وضعیت
  *              OFF (قفل FINAL_FAULT با این گیت آزاد نمی‌شود)، true =
  *              ری‌استارت نرم BULK؛ روی فلش می‌ماند از نسخهٔ ۱.۱۴ (دستور
  *              کاربر ۲۰۲۶-۰۹-۲۲).
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
- * @param  bool__enable [EN] true = channel allowed / کانال آزاد
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @‎param  bool__enable [EN] true = channel allowed‎ / کانال آزاد
  */
 void func__Charger_SetChannelEspEnable(uint8_t uint8_t__channelIndex, bool bool__enable);
 
 /**
  * @brief  [EN] Read the ESP enable gate of one charger channel.
  *         [FA] خواندن گیت فعال‌سازی ESP یک کانال شارژر.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
- * @return bool [EN] true = channel allowed / کانال آزاد
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @‎return bool [EN] true = channel allowed‎ / کانال آزاد
  */
 bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex);
 
@@ -1119,7 +1119,7 @@ bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex);
  *              ۰..CHG_DUTY_MAX_PERMILLE؛ هر duty اعمالی آن را رعایت
  *              می‌کند. روی فلش می‌ماند از نسخهٔ ۱.۱۴، پنل ESP (دستور
  *              کاربر ۲۰۲۶-۰۹-۲۲).
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @param  uint32_t__ceilingPermille [EN] Requested ceiling / سقف درخواستی
  * @return uint32_t [EN] Applied ceiling / سقف اعمال‌شده
  */
@@ -1129,7 +1129,7 @@ uint32_t func__Charger_SetDutyCeilingPermille(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read the live PWM duty ceiling of one channel.
  *         [FA] سقف زندهٔ duty یک کانال.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @return uint32_t [EN] Ceiling permille / سقف پرمیل
  */
 uint32_t func__Charger_GetDutyCeilingPermille(uint8_t uint8_t__channelIndex);
@@ -1144,16 +1144,16 @@ uint32_t func__Charger_GetDutyCeilingPermille(uint8_t uint8_t__channelIndex);
  *              یک عدد به‌جای حلقهٔ تنظیم، با پوشش امنیتی تست بنچ (توقف
  *              سوئیچینگ بالای CHG_ABSORB_MV؛ حفاظت‌های JIT/ورودی/باتری/
  *              ESP فعال). فقط RAM (دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
- * @param  bool__enable [EN] true = fixed mode on / مود فیکس روشن
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @‎param  bool__enable [EN] true = fixed mode on‎ / مود فیکس روشن
  */
 void func__Charger_SetDutyFixedEnable(uint8_t uint8_t__channelIndex, bool bool__enable);
 
 /**
  * @brief  [EN] Read the runtime fixed-duty switch of one channel.
  *         [FA] کلید مود duty فیکس یک کانال.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
- * @return bool [EN] true = fixed mode on / مود فیکس روشن
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @‎return bool [EN] true = fixed mode on‎ / مود فیکس روشن
  */
 bool func__Charger_GetDutyFixedEnable(uint8_t uint8_t__channelIndex);
 
@@ -1166,8 +1166,8 @@ bool func__Charger_GetDutyFixedEnable(uint8_t uint8_t__channelIndex);
  *              فقط با روشن‌بودن مود فیکس مؤثر و موقع اعمال به‌علاوه به
  *              سقف زمان اجرا گیره می‌خورد. روی فلش می‌ماند از نسخهٔ ۱.۱۴
  *              (دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
- * @param  uint32_t__dutyPermille [EN] Requested duty / duty درخواستی
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @‎param  uint32_t__dutyPermille [EN] Requested duty / duty‎ درخواستی
  * @return uint32_t [EN] Applied stored value / مقدار ذخیره‌شده
  */
 uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
@@ -1176,8 +1176,8 @@ uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read the stored fixed duty value of one channel.
  *         [FA] مقدار ذخیره‌شدهٔ duty فیکس یک کانال.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
- * @return uint32_t [EN] Duty permille / duty پرمیل
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @‎return uint32_t [EN] Duty permille / duty‎ پرمیل
  */
 uint32_t func__Charger_GetDutyFixedPermille(uint8_t uint8_t__channelIndex);
 
@@ -1202,7 +1202,7 @@ uint32_t func__Charger_GetDutyFixedPermille(uint8_t uint8_t__channelIndex);
  *         [FA] درخواست روشن/خاموش مود تست دستی (از تسک ESP صدا زده می‌شود؛
  *              تسک شارژر در پاس بعدی درخواست را برمی‌دارد و عملیات
  *              ورود/خروج را در زمینهٔ خودش انجام می‌دهد).
- * @param  bool__enable [EN] true = manual on / روشن
+ * @‎param  bool__enable [EN] true = manual on‎ / روشن
  */
 void func__Charger_SetManualTestMode(bool bool__enable);
 
@@ -1212,7 +1212,7 @@ void func__Charger_SetManualTestMode(bool bool__enable);
  *              control period).
  *         [FA] پرچم «درخواست‌شدهٔ» مود دستی (مقدار پارامتری که پنل
  *              نوشته؛ حداکثر یک دورهٔ کنترل با وضعیت فعال اختلاف دارد).
- * @return bool [EN] true = requested on / درخواست روشن
+ * @‎return bool [EN] true = requested on‎ / درخواست روشن
  */
 bool func__Charger_GetManualTestMode(void);
 
@@ -1223,7 +1223,7 @@ bool func__Charger_GetManualTestMode(void);
  *         [FA] پرچم «فعالِ» مود دستی (مالکش تسک شارژر؛ تله‌متری b5 و
  *              ماژول Fault برای فریز کردن تشخیص قطع باتری استفاده‌اش
  *              می‌کنند).
- * @return bool [EN] true = manual active / مود دستی فعال است
+ * @‎return bool [EN] true = manual active‎ / مود دستی فعال است
  */
 bool func__Charger_IsManualTestModeActive(void);
 
@@ -1251,14 +1251,14 @@ void func__Charger_NotifyEspLinkActivity(void);
  *              در تعلیق هر دو گیت صفر و پاس رد می‌شود؛ ماشین‌های حالت و
  *              شستشو دست نمی‌خورند پس ادامه یکپارچه است. فالت و چنج‌اور
  *              به ارزیابی ادامه می‌دهند. تک‌پرچم volatile بدون قفل.
- * @param  bool__suspended [EN] true = hold gates at 0 / گیت‌ها صفر نگه داشته شوند
+ * @‎param  bool__suspended [EN] true = hold gates at 0‎ / گیت‌ها صفر نگه داشته شوند
  */
 void func__Charger_SetSuspended(bool bool__suspended);
 
 /**
  * @brief  [EN] Read the NVM-save suspension flag.
  *         [FA] خواندن پرچم تعلیق ذخیرهٔ NVM.
- * @return bool [EN] true = suspension active / تعلیق فعال است
+ * @‎return bool [EN] true = suspension active‎ / تعلیق فعال است
  */
 bool func__Charger_IsSuspended(void);
 
@@ -1268,7 +1268,7 @@ bool func__Charger_IsSuspended(void);
  *              deterministic safe-idle state. With CHG_MASTER_ENABLE=0 this
  *              remains the only active behavior.
  *         [FA] state سیاست را مقداردهی اولیه می‌کند، همه PWMها را متوقف و
- *              وضعیت safe-idle قطعی را اعمال می‌کند. با CHG_MASTER_ENABLE=0
+ *              وضعیت ‎safe-idle‎ قطعی را اعمال می‌کند. با ‎CHG_MASTER_ENABLE=0‎
  *              این تنها رفتار فعال باقی می‌ماند.
  */
 void func__Charger_Init(void);
@@ -1283,7 +1283,7 @@ void func__Charger_Init(void);
  *              مستقل اجرا می‌کند. ولتاژ ورودی از مقدار واقعی ADC mV بررسی
  *              می‌شود، نه فقط سیگنال دیجیتال PB4. جریان کم درخواست افزایش
  *              duty است، نه fault.
- * @param  measurement_snapshot_t__snap [EN] Independent low/high battery snapshot / نمونه مستقل دو باتری
+ * @‎param  measurement_snapshot_t__snap [EN] Independent low/high battery snapshot‎ / نمونه مستقل دو باتری
  * @param  app_state_t__state [EN] System state / حالت سیستم
  */
 void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap,
@@ -1318,7 +1318,7 @@ bool func__Charger_IsAnyChannelActive(void);
  *         پمپ ۱۴٫۸V را «به‌ازای هر نیم» مسلح می‌کند: کانال پارک‌شده پمپی
  *         ندارد پس نیمش قضاوت نمی‌شود (رفع چرخهٔ کاذب سه‌بوق حین شارژ،
  *         دستور کاربر ۲۰۲۶-۰۹-۲۸).
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @return bool [EN] true while that channel pumps / وقتی همان کانال پمپ کند
  */
 bool func__Charger_IsChannelActive(uint8_t uint8_t__channelIndex);
@@ -1356,7 +1356,7 @@ bool func__Charger_IsChargeComplete(void);
 
 /* ==================== Charge Profile (user order 2026-09-25) ====================
  * [EN] Runtime-settable charge profile, shared by BOTH channels, written from
- *      the ESP panel tab "تنظیمات شارژ" (wire params 20..26, section 5.7 of
+ *      the ESP panel tab "تنظیمات شارژ" (‎wire params 20..26, section 5.7 of‎
  *      ESP_AGENT_SPEC.md). Boot defaults equal the old compile-time setpoints
  *      (CHG_*_MV / CHG_*_MA below); values live in RAM and reset at boot,
  *      like every other parameter. v1.15: the hard safety stack
@@ -1366,7 +1366,7 @@ bool func__Charger_IsChargeComplete(void);
  * [FA] پروفایل شارژِ قابل‌تنظیم در زمان اجرا، مشترک بین هر دو کانال، از تب
  *      «تنظیمات شارژ» پنل نوشته می‌شود (پارامترهای سیمی ۲۰..۲۶، بخش 5.7
  *      سند). پیش‌فرض بوت همان ست‌پوینت‌های کامپایل‌تایم قبلی است (ماکروهای
- *      CHG_*_MV / CHG_*_MA پایین)؛ مقادیر در RAM می‌مانند و با ریست به
+ *      ‎CHG_*_MV / CHG_*_MA‎ پایین)؛ مقادیر در RAM می‌مانند و با ریست به
  *      پیش‌فرض برمی‌گردند، مثل بقیهٔ پارامترها. v1.15: پشتهٔ ایمنی سخت
  *      از تب آلارم‌ها (شناسه‌های ۳۵..۳۷) فقط پایین‌بردنی است و هرگز بالای
  *      سقف کامپایل نمی‌رود. */
@@ -1387,10 +1387,10 @@ bool func__Charger_IsChargeComplete(void);
  *              تیپر/شناوری). مقدار گیره می‌خورد و همهٔ وابسته‌ها دوباره
  *              گیره می‌شوند تا مجموعه سازنده بماند. مقدار «اعمال‌شده» را
  *              برمی‌گرداند (SET_PARAM همان را پاس می‌دهد).
- * @param  uint8_t__paramId [EN] 20..26 / شناسهٔ پارامتر
+ * @‎param  uint8_t__paramId [EN] 20..26‎ / شناسهٔ پارامتر
  * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
- * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
- * @return bool [EN] true = id known / شناسه شناخته شده
+ * @‎param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / مقدار اعمال‌شده
+ * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t uint32_t__value,
@@ -1399,9 +1399,9 @@ bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one charge-profile parameter (ESP link GET/PARAMS_BULK).
  *         [FA] خواندن یک پارامتر پروفایل شارژ (لینک ESP).
- * @param  uint8_t__paramId [EN] 20..26 / شناسهٔ پارامتر
- * @param  uint32_t *uint32_t__value [EN] Live value out / مقدار زنده
- * @return bool [EN] true = id known / شناسه شناخته شده
+ * @‎param  uint8_t__paramId [EN] 20..26‎ / شناسهٔ پارامتر
+ * @‎param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
+ * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_GetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t *uint32_t__value);
@@ -1430,10 +1430,10 @@ bool func__Charger_GetProfileParam(uint8_t uint8_t__paramId,
  *              جهت ایمنی فقط پایین است: خطای سخت جریان هرگز بالای ۹۵۰mA و
  *              قطع OV هرگز بالای ۱۵۰۰۰mV نمی‌رود؛ هر دو بالای
  *              باند زندهٔ پروفایل فاصله نگه می‌دارند تا تنظیم سالم تریپ نکند.
- * @param  uint8_t__paramId [EN] 35..37 / شناسهٔ پارامتر
+ * @‎param  uint8_t__paramId [EN] 35..37‎ / شناسهٔ پارامتر
  * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
- * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
- * @return bool [EN] true = id known / شناسه شناخته شده
+ * @‎param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / مقدار اعمال‌شده
+ * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t uint32_t__value,
@@ -1442,9 +1442,9 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one charger alarm parameter (ESP link GET/PARAMS_BULK).
  *         [FA] خواندن یک پارامتر آلارم شارژر (لینک ESP).
- * @param  uint8_t__paramId [EN] 35..37 / شناسهٔ پارامتر
- * @param  uint32_t *uint32_t__value [EN] Live value out / مقدار زنده
- * @return bool [EN] true = id known / شناسه شناخته شده
+ * @‎param  uint8_t__paramId [EN] 35..37‎ / شناسهٔ پارامتر
+ * @‎param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
+ * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value);
@@ -1461,7 +1461,7 @@ bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
  *      VOLTAGE loop below and at the setpoint.
  * [FA] شناسه‌های سیمی PID دوحلقه‌ای (باید برابر ESPLINK_PARAM_CHG_PID_* در
  *      esp_link.h باشند؛ تست هاست همین را قفل می‌کند). ۸۳..۹۲ پشت‌سرهم و
- *      دقیقاً به ترتیب فیلدهای charger_pid_t، پس Set/Get به‌جای switch
+ *      دقیقاً به ترتیب فیلدهای charger_pid_t، پس ‎Set/Get‎ به‌جای switch
  *      نمایه می‌زنند (همان قرارداد «رژیم فلش» شناسه‌های ۲۰..۲۶). هر مرحله یک
  *      ردیف کامل پنج‌فیلدی است (Kp، Ki، Kd، نرخ صعود، نرخ نزول) تا حساب
  *      نمایه یکنواخت بماند: باقیماندهٔ (شناسه−۸۴) بر ۵ یعنی کدام فیلد، خارج
@@ -1494,10 +1494,10 @@ bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
  *              دیوتی نمی‌سازد: انتگرال‌گیر نقطهٔ کار فعلی را نگه می‌دارد و
  *              فقط نرخ تغییرش زمان‌بندی دوباره می‌شود. مقدار اعمال‌شده
  *              برگردانده می‌شود.
- * @param  uint8_t__paramId [EN] 83..98 / شناسهٔ پارامتر
+ * @‎param  uint8_t__paramId [EN] 83..98‎ / شناسهٔ پارامتر
  * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
- * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
- * @return bool [EN] true = id known / شناسه شناخته شده
+ * @‎param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / مقدار اعمال‌شده
+ * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
                                uint32_t uint32_t__value,
@@ -1506,9 +1506,9 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one two-loop CC/CV PID parameter (ESP link GET/PARAMS_BULK).
  *         [FA] خواندن یک پارامتر PID دوحلقه‌ای (لینک ESP).
- * @param  uint8_t__paramId [EN] 83..98 / شناسهٔ پارامتر
- * @param  uint32_t *uint32_t__value [EN] Live value out / مقدار زنده
- * @return bool [EN] true = id known / شناسه شناخته شده
+ * @‎param  uint8_t__paramId [EN] 83..98‎ / شناسهٔ پارامتر
+ * @‎param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
+ * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_GetPidParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value);
@@ -1588,10 +1588,10 @@ bool func__Charger_GetPidParam(uint8_t uint8_t__paramId,
  *         [FA] نوشتن یک حد یا گین پشتیبان شارژر (لینک ESP، ۹۳..۱۰۷). مقدار
  *              به پنجرهٔ کامپایل همان ردیف گیره می‌خورد و مقدار اعمال‌شده
  *              برگردانده می‌شود، دقیقاً مثل بلوک پروفایل و PID.
- * @param  uint8_t__paramId [EN] 93..107 / شناسهٔ پارامتر
+ * @‎param  uint8_t__paramId [EN] 93..107‎ / شناسهٔ پارامتر
  * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
- * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
- * @return bool [EN] true = id known / شناسه شناخته شده
+ * @‎param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / مقدار اعمال‌شده
+ * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_SetLimitParam(uint8_t uint8_t__paramId,
                                  uint32_t uint32_t__value,
@@ -1600,9 +1600,9 @@ bool func__Charger_SetLimitParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one charger limit / backstop gain (ESP link GET/BULK).
  *         [FA] خواندن یک حد یا گین پشتیبان شارژر (لینک ESP).
- * @param  uint8_t__paramId [EN] 93..107 / شناسهٔ پارامتر
- * @param  uint32_t *uint32_t__value [EN] Live value out / مقدار زنده
- * @return bool [EN] true = id known / شناسه شناخته شده
+ * @‎param  uint8_t__paramId [EN] 93..107‎ / شناسهٔ پارامتر
+ * @‎param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
+ * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value);

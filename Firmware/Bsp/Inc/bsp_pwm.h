@@ -32,7 +32,7 @@ typedef enum
  *              user order), 0u = the frozen half-period (10 us at 50 kHz)
  *              interleave of the production design.
  *         [FA] هر دو کانال تایمر را یک‌بار شروع می‌کند و گیت‌ها ابتدا
- *              پایین‌اند. شمارنده‌ها همیشه می‌چرخند و «خاموش» یعنی compare=0.
+ *              پایین‌اند. شمارنده‌ها همیشه می‌چرخند و «خاموش» یعنی ‎compare=0‎.
  *              فاز سوئیچ کامپایل است (BSP_PWM_TIM3_PHASE_OFFSET_IN_PHASE):
  *              1u = هم‌فاز (آزمایش میز از ۲۰۲۶-۰۹-۲۴، دستور کاربر)، 0u =
  *              درهم‌گذاری نیم‌دورهٔ ثابت (۱۰µs در ۵۰kHz) طرح تولید.
@@ -70,7 +70,7 @@ void func__BspPwm_StopAll(void);
  *              Used by the board ADC port to know whether a synchronized
  *              mid-ON current trigger edge will arrive; a parked gate means
  *              the primary current is zero.
- *         [FA] وقتی گیت شارژر منطقی پالس می‌زند true است (compare > 0).
+ *         [FA] وقتی گیت شارژر منطقی پالس می‌زند true است (‎compare > 0)‎.
  *              پورت ADC برد با آن می‌داند لبهٔ تریگر سنکرونِ وسط ON می‌آید
  *              یا نه؛ گیت پارک‌شده یعنی جریان اولیه صفر است.
  * @param  bsp_pwm_channel_t__channel [EN] Logical charger channel /

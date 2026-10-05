@@ -13,7 +13,7 @@
  *                chunk's callback fires from USART1_IRQHandler after the
  *                last bit leaves the shifter. Net: a couple of lightweight
  *                IRQs per frame (~20-40/s at the 100 ms telemetry rate).
- *          [FA] پورت USART1 برد برای ESP-Link: 921600 و 8-N-1 با DMA
+ *          [FA] پورت USART1 برد برای ‎ESP-Link: 921600‎ و ‎8-N-1‎ با DMA
  *              دوطرفه و بدون بار CPU (مقداردهی ۱۱۵۲۰۰ تولیدی Cube در
  *              زمان اجرا به ۹۲۱۶۰۰ تغییر می‌کند).
  *              - RX روی DMA1_Channel5 حلقوی در بافر ۲۵۶ بایتی - صفر CPU به
@@ -40,7 +40,7 @@
  *      and a rate both ESP8266 and ESP32 UARTs run reliably.
  * [FA] سرعت سیم بعد از پیکربندی مجدد زمان اجرا (دستور کاربر
  *      ۲۰۲۶-۰۹-۲۳). ۹۲۱۶۰۰ هشت برابر پیش‌فرض Cube، داخل محدودهٔ USART1
- *      روی APB2 (72MHz/16/921600 = 4.88، خطای +۰.۱۶٪) و نرخی که UART هر
+ *      روی ‎APB2 (72MHz/16/921600 = 4.88‎، خطای +۰.۱۶٪) و نرخی که UART هر
  *      دو ماژول ESP8266 و ESP32 به‌طور مطمئن اجرا می‌کنند. */
 #define BSP_UART_BAUD_RATE        921600u
 
@@ -66,7 +66,7 @@
  *      TX-DMA complete and the UART transmit-complete that this HAL arms
  *      afterwards); neither handler calls any RTOS API.
  * [FA] کمترین اولویت NVIC برای هر دو بردار وقفهٔ این پورت (کامل‌شدن DMA ی
- *      TX و transmit-complete ی UART که این HAL بعدش مسلح می‌کند)؛ هیچ‌کدام
+ *      TX و ‎transmit-complete‎ ی UART که این HAL بعدش مسلح می‌کند)؛ هیچ‌کدام
  *      از هندلرها API سیستمعاملی صدا نمی‌زنند. */
 #define BSP_UART_IRQ_PRIORITY 15u
 
@@ -77,8 +77,8 @@ static bool BOOL__G__Initialized = false;
  *      port wires them at runtime). TX = DMA1_Channel4, RX = DMA1_Channel5
  *      - fixed F103 mappings, no conflict with the ADC on Channel1.
  * [FA] هندل‌های خصوصی DMA برای USART1 (در پروژهٔ Cube نیستند: پورت برد
- *      آنها را در زمان اجرا سیم‌پیچی می‌کند). TX = DMA1_Channel4 و
- *      RX = DMA1_Channel5 - نگاشت ثابت F103، بدون تداخل با ADC روی
+ *      آنها را در زمان اجرا سیم‌پیچی می‌کند). ‎TX = DMA1_Channel4‎ و
+ *      ‎RX = DMA1_Channel5‎ - نگاشت ثابت F103، بدون تداخل با ADC روی
  *      Channel1. */
 static DMA_HandleTypeDef DMA_HANDLETYPEDEF__G__TxDma;
 static DMA_HandleTypeDef DMA_HANDLETYPEDEF__G__RxDma;
@@ -124,7 +124,7 @@ void func__BspUart_Init(void)
     /* [EN] Reconfigure only the line speed; word length, stop bits and
        parity keep the Cube values (8-N-1).
        [FA] فقط سرعت خط بازتنظیم می‌شود؛ طول کلمه، بیت توقف و پاریتی
-       مقادیر Cube (8-N-1) را نگه می‌دارند. */
+       مقادیر ‎Cube (8-N-1)‎ را نگه می‌دارند. */
     (void)HAL_UART_DeInit(UART_HANDLETYPEDEF__G__EspLink);
     UART_HANDLETYPEDEF__G__EspLink->Init.BaudRate = BSP_UART_BAUD_RATE;
     (void)HAL_UART_Init(UART_HANDLETYPEDEF__G__EspLink);
@@ -173,7 +173,7 @@ void func__BspUart_Init(void)
        NVIC enable the TX would stall forever after the very first frame
        (the in-flight guard would never be released).
        [FA] در این HAL، کامل‌شدن DMA ی مود NORMAL مستقیم callback ی UART
-       را صدا نمی‌زند: وقفهٔ transmit-complete ی UART (TCIE) را مسلح
+       را صدا نمی‌زند: وقفهٔ ‎transmit-complete‎ ی UART (TCIE) را مسلح
        می‌کند و callback از USART1_IRQHandler می‌آید. بدون فعال‌کردن این
        NVIC، TX بعد از همان اولین فریم برای همیشه می‌ایستاد (گارد
        در-پرواز هرگز آزاد نمی‌شد). */
@@ -388,8 +388,8 @@ bool func__BspUart_ReadByte(uint8_t *uint8_t__byte)
        state at the wrap point.
        [FA] باقیماندهٔ تقسیم یک آرتیفکت نادر مود حلقوی F1 را خنثی می‌کند:
        حول بارگذاری مجدد خودکار، شمارنده ممکن است لحظه‌ای 0 خوانده شود
-       که head == SIZE می‌دهد و یک بایت کهنه تحویل می‌دهد. برگرداندن به
-       بازهٔ 0..SIZE-1 همان لحظه را «خالی» می‌کند که دقیقاً وضعیت واقعی
+       که ‎head == SIZE‎ می‌دهد و یک بایت کهنه تحویل می‌دهد. برگرداندن به
+       بازهٔ ‎0..SIZE-1‎ همان لحظه را «خالی» می‌کند که دقیقاً وضعیت واقعی
        در نقطهٔ wrap است. */
     uint16_t__head =
         (uint16_t)((BSP_UART_RX_RING_SIZE -
@@ -447,7 +447,7 @@ void DMA1_Channel4_IRQHandler(void)
  *              آخرین بیت خارج شد HAL ارسال را نهایی و
  *              HAL_UART_TxCpltCallback را صدا می‌زند که قطعهٔ بعدی را پمپ
  *              می‌کند. با غیرمسلح‌بودن وقفهٔ خطا، این بردار فقط
- *              transmit-complete را می‌بیند و دریافت کاملاً روی DMA می‌ماند.
+ *              ‎transmit-complete‎ را می‌بیند و دریافت کاملاً روی DMA می‌ماند.
  */
 void USART1_IRQHandler(void)
 {
@@ -464,7 +464,7 @@ void USART1_IRQHandler(void)
  *              frames (telemetry + replies) drain without any task
  *              involvement.
  *         [FA] یک قطعهٔ فریم کاملاً روی سیم رفت (HAL از وقفهٔ
- *              transmit-complete ی UART صدا می‌زند): گارد در-پرواز آزاد و
+ *              ‎transmit-complete‎ ی UART صدا می‌زند): گارد در-پرواز آزاد و
  *              بلافاصله قطعهٔ بعدی پمپ می‌شود تا فریم‌های پشت‌سرهم
  *              (تله‌متری + پاسخ‌ها) بدون دخالت تسک خالی شوند.
  * @param  uart_handle_t__huart [EN] Handle of the UART that completed /

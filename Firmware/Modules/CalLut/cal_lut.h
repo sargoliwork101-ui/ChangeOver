@@ -183,7 +183,7 @@ const uint32_t *func__CalLut_PowerMw(uint8_t uint8_t__channel);
  *              succeeds, so an interrupted push changes nothing.
  *         [FA] شروع چیدن جدول جدید؛ جدول «فعال» تا موفقیت کامیت سر کار
  *              می‌ماند، پس ارسال نیمه‌کاره هیچ‌چیز را خراب نمی‌کند.
- * @return bool [EN] false = counts out of range / تعداد نقاط نامعتبر
+ * @‎return bool [EN] false = counts out of range‎ / تعداد نقاط نامعتبر
  */
 bool func__CalLut_StageBegin(uint32_t uint32_t__points1,
                              uint32_t uint32_t__points2);
@@ -203,7 +203,7 @@ bool func__CalLut_StagePoint(uint8_t uint8_t__channel,
  *              path uses is exactly what survived the write.
  *         [FA] اعتبارسنجی و نوشتن جدول چیده‌شده. در موفقیت، نسخهٔ RAM از
  *              «خود فلش» دوباره خوانده می‌شود.
- * @param  uint32_t__panelCrc32 [EN] CRC32 the panel computed / CRC32 پنل
+ * @‎param  uint32_t__panelCrc32 [EN] CRC32 the panel computed / CRC32‎ پنل
  * @param  uint32_t__ptr_boardCrc32 [EN] Out: CRC32 now in flash / خروجی
  * @return uint8_t [EN] CAL_LUT_ST_* / کد وضعیت
  */

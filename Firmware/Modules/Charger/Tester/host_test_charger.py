@@ -1315,7 +1315,14 @@ def test_charger_persistence_v114():
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH\s+20u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+124u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+202u", nvm_h),
           "persisted set = 0..14 + 20..75 + 77..124 + runtime slots 200..202 (122 entries, 126 slots; v1.49 added the charge map 119/120, v1.50 the band-2 beep shape 121/122, v1.68 the imbalance blink 123/124) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
-    check(re.search(r"ESP_LINK_NVM_VERSION\s+10u", nvm_h),
+    # [EN] v1.71 bumps 10 -> 11. This one is a MEANING bump, not a layout
+    #      bump: ids 57 and 122 kept their slots but changed units (critical
+    #      duty % -> critical per-beep ms, band-2 gap -> band-2 repeat
+    #      interval). A v10 record holds 100 in both, which under the new
+    #      meaning is a 100 ms beep every 100 ms - loud nonsense. Rejecting
+    #      the old record is the point.
+    # [FA] نسخهٔ ۱۱ تغییر معنی است نه چیدمان؛ رکورد قدیمی باید رد شود.
+    check(re.search(r"ESP_LINK_NVM_VERSION\s+11u", nvm_h),
           "v1.43 bumps the NVM record version to 10: a v9 record carries 108 slots, so "
           "replaying one into a 122-slot layout would leave ids 108..118 and 200..202 holding whatever "
           "the erased flash reads as. The version check must reject it and fall back to "
@@ -2383,8 +2390,26 @@ def test_ui_mirror_v116():
     # [FA] نام کارت ۵ هنگام جابه‌جایی نردبان درصد به کارت دشارژ عوض شد.
     check("۱ · اضافه‌ولتاژ" in ino and "۵ · باتری کم" in ino and "سناریو ۱ ·" not in ino,
           "v1.16c (user order: better naming): uniformly numbered scenario picker")
-    check("بوق بحرانی در پنجره جا نمی‌شود" in ino and "[56,57,58,65]" in ino,
-          "v1.16e (user order: every beep honors count+gap+range): panel guard warns when the crit window cannot fit")
+    # [EN] v1.71 (user order: "why is the last discharge step suddenly a duty?
+    #      make them all the same shape"): the critical band is now typed like
+    #      the other three - count, per-beep duration, own repeat interval,
+    #      shared gap - so its guard is the same "does it fit the interval"
+    #      sentence the other bands use, and the duty-window wording is gone.
+    # [FA] باند بحرانی هم‌شکل بقیه شد، پس نگهبانش همان جملهٔ «در فاصله جا
+    #      نمی‌شود» است و حرف پنجرهٔ duty حذف شد.
+    check("بوق باند بحرانی در فاصلهٔ خودش جا نمی‌شود" in ino
+          and "[57,56,58,65]" in ino and "دوره×duty" not in ino,
+          "v1.16e/v1.71: the critical band is guarded exactly like the other bands")
+    # [EN] Every discharge band must own count + per-beep duration + repeat
+    #      interval, and the ONLY shared number is the gap (id 65).
+    # [FA] تنها عدد مشترک گپ است (۶۵).
+    for _fit in ("fit(a.u59,a.u54,a.u62,a.u65)", "fit(a.u121,a.u122,a.u63,a.u65)",
+                 "fit(a.u60,a.u55,a.u64,a.u65)", "fit(a.u57,a.u56,a.u58,a.u65)"):
+        check(_fit in ino,
+              f"each discharge band fits against its OWN interval: {_fit}")
+    check(ino.count('data-q="65"') == 3 and 'data-q="54"><span class="ow">مشترک' not in ino,
+          "v1.71: bands 2, 3 and critical show the shared gap as read-only; "
+          "nothing else is shared")
     check(ino.count("روند:") >= 5,
           "v1.16e (user order: explain each scenario flow): every scenario card carries its روند line")
     check("با ریست برد پاک می‌شود" in ino and "روی فلش می‌ماند" not in ino,

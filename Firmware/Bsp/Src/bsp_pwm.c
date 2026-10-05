@@ -1,7 +1,7 @@
 /**
  * @file    bsp_pwm.c
  * @brief   [EN] STM32F103C8T6 PWM port for schematic MCU_PWM1/MCU_PWM2.
- *          [FA] پورت PWM برای MCU_PWM1/MCU_PWM2 شماتیک روی STM32F103C8T6.
+ *          [FA] پورت PWM برای ‎MCU_PWM1/MCU_PWM2‎ شماتیک روی STM32F103C8T6.
  *
  * @note    [EN] The .ioc initializes TIM2_CH1 on PA0 and TIM3_CH1 on PA6.
  *              Both timers RUN CONTINUOUSLY from func__BspPwm_Init with a
@@ -21,11 +21,11 @@
  *              نیم‌دوره (۱۰µs در ۵۰kHz) می‌چرخند: پالس گیت دوم دقیقاً
  *              نیم‌دوره بعد از اول بالا می‌آید، دو استیج هرگز همزمان
  *              سوییچ نمی‌کنند و چون شمارنده‌ها دیگر متوقف/بازنویسی نمی‌شوند
- *              این درهم‌گذاری نمی‌لغزد. خاموشی فقط با compare=0. هر تایمر
+ *              این درهم‌گذاری نمی‌لغزد. خاموشی فقط با ‎compare=0‎. هر تایمر
  *              یک تریگر داخلی CH2 برای ADC سنکرون جریان دارد: CH2 با PWM
- *              mode 2 و CCR2 = CCR1/2، پس لبه‌اش دقیقاً وسط پنجرهٔ ON است.
- *              TIM2_CC2 و TIM3 TRGO (MMS=OC2REF) به تریگر ADC می‌روند؛
- *              پایه‌های CH2 (PA1/PA7) آنالوگ می‌مانند.
+ *              mode 2 و ‎CCR2 = CCR1/2‎، پس لبه‌اش دقیقاً وسط پنجرهٔ ON است.
+ *              TIM2_CC2 و ‎TIM3 TRGO (MMS=OC2REF)‎ به تریگر ADC می‌روند؛
+ *              پایه‌های ‎CH2 (PA1/PA7)‎ آنالوگ می‌مانند.
  */
 
 #include "bsp_pwm.h"
@@ -44,7 +44,7 @@
    only).
    [FA] کلید کامپایل فاز گیت‌ها: آزمایش بنچ ۲۰۲۶-۰۹-۲۴ هم‌فاز (1u) اثر
    محسوسی بر کراس‌تاک نشان نداد پس درهم‌گذاری تولید برگشت. 0u (فعلی) =
-   طراحی تولید: TIM3 روی نیم‌دوره (۱۰µs در ۵۰kHz با ARR=1439) - دو گیت
+   طراحی تولید: TIM3 روی نیم‌دوره (۱۰µs در ۵۰kHz با ‎ARR=1439)‎ - دو گیت
    هرگز همزمان سوییچ نمی‌کنند. 1u = هم‌فاز (فقط آزمایش). */
 #define BSP_PWM_TIM3_PHASE_OFFSET_IN_PHASE 0u
 
@@ -97,9 +97,9 @@ static bool func__BspPwm_GetTimer(bsp_pwm_channel_t bsp_pwm_channel_t__channel,
  *              (CCR2 = CCR1/2).
  *         [FA] وظیفهٔ محدودشدهٔ یک کانال را فقط به‌صورت compare اعمال
  *              می‌کند - شمارنده دست نمی‌خورد (هر دو از Init پیوسته با آفست
- *              نیم‌دوره می‌چرخند). permille=0 یعنی compare صفر و گیت پایین.
+ *              نیم‌دوره می‌چرخند). ‎permille=0‎ یعنی compare صفر و گیت پایین.
  *              تریگر داخلی CH2 هم در همین فراخوانی به وسط پنجرهٔ ON جدید
- *              می‌رود (CCR2 = CCR1/2).
+ *              می‌رود (‎CCR2 = CCR1/2)‎.
  * @param  TIM_HandleTypeDef__timer [EN] Board timer handle / هندل تایمر برد
  * @param  uint32_t__halChannel [EN] HAL channel / کانال HAL
  * @param  uint16_t__permille [EN] Duty in 0..1000 permille /
@@ -143,10 +143,10 @@ static void func__BspPwm_SetOneDuty(TIM_HandleTypeDef *TIM_HandleTypeDef__timer,
        update event, so the half ratio is never observed split across two
        periods. compare=0 -> CCR2=0 -> CH2 stays high with no edge =
        "no synchronized sample" (gate off, primary current zero).
-       [FA] تریگر CH2 را دقیقاً وسط پنجرهٔ ON نگه می‌دارد: CCR2 = CCR1/2؛
-       حالت PWM 2 خروجی CH2 را در CNT = CCR2 بالا می‌آورد. پیش‌بارگذاری OC
+       [FA] تریگر CH2 را دقیقاً وسط پنجرهٔ ON نگه می‌دارد: ‎CCR2 = CCR1/2‎؛
+       حالت PWM 2 خروجی CH2 را در ‎CNT = CCR2‎ بالا می‌آورد. پیش‌بارگذاری OC
        دو compare را در همان update قفل می‌کند پس نسبت نیم هرگز بین دو
-       دوره شکسته دیده نمی‌شود. compare=0 -> بدون لبه = «نمونهٔ سنکرونی
+       دوره شکسته دیده نمی‌شود. ‎compare=0 ->‎ بدون لبه = «نمونهٔ سنکرونی
        نیست» (گیت خاموش، جریان اولیه صفر). */
     __HAL_TIM_SET_COMPARE(TIM_HandleTypeDef__timer,
                           TIM_CHANNEL_2,
@@ -166,7 +166,7 @@ static void func__BspPwm_SetOneDuty(TIM_HandleTypeDef *TIM_HandleTypeDef__timer,
  *         [FA] کانال داخلی CH2 یک تایمر شارژر را به‌عنوان تریگر
  *              نمونه‌برداری سنکرون تنظیم می‌کند: PWM mode 2، قطبیت high،
  *              compare صفر در بوت. مرحلهٔ خروجی فعال می‌شود تا OC2 داخلی به
- *              مالتی‌پلکس تریگر ADC برسد، اما پایه‌های CH2 (PA1/PA7) آنالوگ
+ *              مالتی‌پلکس تریگر ADC برسد، اما پایه‌های ‎CH2 (PA1/PA7)‎ آنالوگ
  *              می‌مانند. باید قبل از استارت تایمرها و وقتی شمارنده متوقف
  *              است اجرا شود.
  * @param  TIM_HandleTypeDef__timer [EN] Charger timer handle / هندل تایمر شارژر
@@ -228,8 +228,8 @@ void func__BspPwm_Init(void)
        trigger on it (MMS=100b); TIM2_CC2 is fed to the ADC directly.
        [FA] تریگرهای داخلی CH2 (لبه‌های وسط ON) را در حالت توقفِ شمارنده
        مسلح می‌کنیم؛ بعد از این func__BspPwm_SetOneDuty مقدار CCR2 را روی
-       CCR1/2 نگه می‌دارد. TIM3 همچنین OC2REF را روی TRGO آینه می‌کند تا ADC
-       بتواند روی آن تریگر شود (MMS=100b)؛ TIM2_CC2 مستقیم به ADC می‌رود. */
+       ‎CCR1/2‎ نگه می‌دارد. TIM3 همچنین OC2REF را روی TRGO آینه می‌کند تا ADC
+       بتواند روی آن تریگر شود (‎MMS=100b)‎؛ TIM2_CC2 مستقیم به ADC می‌رود. */
     func__BspPwm_InitSamplingPulse(&htim2);
     func__BspPwm_InitSamplingPulse(&htim3);
     MODIFY_REG(htim3.Instance->CR2, TIM_CR2_MMS, TIM_TRGO_OC2REF);
@@ -296,7 +296,7 @@ void func__BspPwm_StopAll(void)
     /* [EN] Also park the CH2 sampling triggers: compare 0 leaves the PWM-2
        output constant high with no edge, so no synchronized current sample
        is triggered while the gates are off (the primary current is zero).
-       [FA] تریگرهای CH2 هم پارک می‌شوند: compare صفر خروجی PWM-2 را ثابت
+       [FA] تریگرهای CH2 هم پارک می‌شوند: compare صفر خروجی ‎PWM-2‎ را ثابت
        بالا نگه می‌دارد بدون هیچ لبه، پس وقتی گیت‌ها خاموش‌اند هیچ نمونهٔ
        سنکرون جریانی تریگر نمی‌شود (جریان اولیه صفر است). */
     __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_2, 0u);
@@ -310,7 +310,7 @@ void func__BspPwm_StopAll(void)
  *              whether a mid-ON trigger edge will ever come; with the gate
  *              off the primary current is zero by definition.
  *         [FA] اعلام می‌کند گیت یک شارژر منطقی الان پالس می‌زند یا نه
- *              (compare > 0). ADC سنکرون جریان با همین می‌فهمد آیا لبهٔ
+ *              (‎compare > 0). ADC‎ سنکرون جریان با همین می‌فهمد آیا لبهٔ
  *              تریگر وسط ON می‌آید یا نه؛ با گیت خاموش، جریان اولیه بنا
  *              به تعریف صفر است.
  * @param  bsp_pwm_channel_t__channel [EN] Logical channel / کانال منطقی

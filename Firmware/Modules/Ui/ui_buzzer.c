@@ -74,10 +74,10 @@ static uint32_t TICKTYPE_T__G__BuzzerCycleStartTick = 0;
  *         The duty window is period*duty/100. Pulses and gaps fill that window;
  *         the remaining time is low until the next period starts.
  *         [FA] یک الگوی دوره‌ای بوق را بدون قفل کردن تسک اجرا می‌کند.
- *         پنجره دیوتی period*duty/100 است؛ بوق‌ها و گپ‌ها این پنجره را پر می‌کنند
+ *         پنجره دیوتی ‎period*duty/100‎ است؛ بوق‌ها و گپ‌ها این پنجره را پر می‌کنند
  *         و زمان باقی‌مانده تا دوره بعدی خاموش است.
  * @param  uint32_t__periodMs [EN] Pattern period in ms / دوره الگو بر حسب ms
- * @param  uint8_t__dutyPercent [EN] Duty window 0..100 percent / پنجره دیوتی از صفر تا صد درصد
+ * @‎param  uint8_t__dutyPercent [EN] Duty window 0..100 percent‎ / پنجره دیوتی از صفر تا صد درصد
  * @param  uint8_t__beepCount [EN] Number of pulses; zero disables / تعداد پالس؛ صفر یعنی خاموش
  * @param  uint32_t__gapMs [EN] Low gap between adjacent pulses in ms / گپ خاموش بین پالس‌های مجاور بر حسب ms
  * @return int32_t [EN] Recommended next-call delay, zero for valid off, or -1 for invalid input.

@@ -7,8 +7,8 @@
  *              LM393 JITTER1/JITTER2 as falling-edge EXTI inputs; PB4
  *              input presence stays rising/falling. Product code consumes
  *              logical events only.
- *          [FA] پورت برد JITTER1/JITTER2 مربوط به LM393 را (open-collector
- *              و active-low) روی لبهٔ پایین‌رونده تنظیم می‌کند؛ PB4 هر دو
+ *          [FA] پورت برد ‎JITTER1/JITTER2‎ مربوط به LM393 را (‎open-collector‎
+ *              و ‎active-low)‎ روی لبهٔ پایین‌رونده تنظیم می‌کند؛ PB4 هر دو
  *              لبه را ثبت می‌کند. کد محصول فقط رویداد منطقی را مصرف می‌کند.
  */
 

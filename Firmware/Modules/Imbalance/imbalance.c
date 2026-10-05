@@ -42,7 +42,7 @@ static uint32_t UINT32_T__G__LatchedCycles; /* [EN] Cycles since latch / سیک�
 static uint32_t UINT32_T__G__Latched;       /* [EN] 0/1 / قفل */
 
 /* [EN] Last outputs, refreshed every pass for TLM/UI consumers.
- * [FA] آخرین خروجی‌ها برای مصرف‌کنندگان TLM/UI. */
+ * [FA] آخرین خروجی‌ها برای مصرف‌کنندگان ‎TLM/UI‎. */
 static imbalance_outputs_t IMBAL_OUTPUTS_T__G__Last;
 
 /* [EN] Timing/episode bookkeeping (RAM only).

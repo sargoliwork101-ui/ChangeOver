@@ -1,10 +1,10 @@
 /**
  * @file    rtos_backend_memory.h
  * @brief   [EN] Static object types required by the selected CMSIS-RTOS2 backend.
- *          [FA] نوع حافظهٔ ثابت موردنیاز Backend انتخاب‌شدهٔ CMSIS-RTOS2.
+ *          [FA] نوع حافظهٔ ثابت موردنیاز Backend انتخاب‌شدهٔ ‎CMSIS-RTOS2‎.
  *
  * @note    [EN] Only this boundary knows that the current CMSIS-RTOS2 backend is FreeRTOS.
- *          [FA] فقط این مرز می‌داند که Backend فعلی CMSIS-RTOS2، FreeRTOS است.
+ *          [FA] فقط این مرز می‌داند که Backend فعلی ‎CMSIS-RTOS2‎، FreeRTOS است.
  */
 
 #ifndef RTOS_BACKEND_MEMORY_H

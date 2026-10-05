@@ -1,7 +1,7 @@
 /**
  * @file    freertos_hooks.c
  * @brief   [EN] Static allocation hooks required by FreeRTOS (Idle/Timer) and stack overflow trap.
- *          [FA] هوک تخصیص استاتیک Idle/Timer و تله سرریز استک.
+ *          [FA] هوک تخصیص استاتیک ‎Idle/Timer‎ و تله سرریز استک.
  *
  * @note    [EN] If CubeMX already generated these symbols, exclude this file from the build.
  *          [FA] اگر CubeMX همین توابع را ساخت، این فایل را از Build خارج کن.

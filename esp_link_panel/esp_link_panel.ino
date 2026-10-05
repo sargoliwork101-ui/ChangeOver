@@ -51,19 +51,19 @@
  *               The v1.6 extras (CAL card, manual tests B/C/D, correction/analysis tab, engineer mode)
  *               were removed except the manual-duty card above; nothing was ever calibrated
  *               automatically and the wire protocol (SET_PARAM / GET_PARAMS / TLM) is unchanged.
- *          [FA] پل ESP-Link سمت ESP: تبادل فریم باینری با STM32 روی UART (921600 8N1، مطابق
+ *          [FA] پل ‎ESP-Link‎ سمت ESP: تبادل فریم باینری با STM32 روی UART (921600 8N1، مطابق
  *               ESP_AGENT_SPEC.md نسخهٔ ۱.۴) و یک پنل وب دارک راست‌به‌چپ با فونت وزیرمتن و «دو» تب
  *               (کارت duty دستی از ۱.۱۰ در تب پنل؛ سقف duty، نمونه‌های نمودار، حذف صبر و مقسم پک هم در ۱.۱۰):
  *               ۱) پنل: ولتاژهای مشترک (با کالیبراسیون آفست از مولتی‌متر)، فیلتر جریان (median ۱..۱۵،
  *                  میانگین ۱..۳۰۰) و یک ستون برای هر شارژر: وضعیت زنده، زنجیرهٔ اندازه‌گیری با فرمول
  *                  زنده، نمودار فیلتر و دکمهٔ قطع شارژر.
- *               ۲) داده‌برداری بنچ (بخش 5.6): SOLO1/SOLO2/BOTH با فهرست duty دلخواه و جلو رفتن فقط
+ *               ۲) داده‌برداری بنچ (بخش ‎5.6): SOLO1/SOLO2/BOTH‎ با فهرست duty دلخواه و جلو رفتن فقط
  *                  با دکمهٔ کاربر. اصلاح ۱.۷ (دستور کاربر ۲۰۲۶-۰۹-۲۵): پنجرهٔ آمار با باز شدن فرم
  *                  مولتی‌متر صفر می‌شود و «همان لحظهٔ زدن ثبت» خوانده می‌شود تا ردیف CSV با عددهای
  *                  واردشده هم‌لحظه باشد، نه یک پنجرهٔ کهنه؛ ستون sample_ms مدت واقعی همان پنجره است.
- *                  یک ردیف ۸۹ستونی برای هر مرحله در LittleFS به نام /benchlog.csv، دانلود با GET /benchlog.
- *               اضافات نسخهٔ ۱.۶ (کارت CAL، تست‌های دستی B/C/D، تب اصلاح/تحلیل، حالت مهندس) حذف شدند؛
- *               هیچ کالیبراسیونی خودکار اعمال نمی‌شود و پروتکل سیمی (SET/GET/TLM) دست‌نخورده و دوطرفه است.
+ *                  یک ردیف ۸۹ستونی برای هر مرحله در LittleFS به نام /benchlog.csv، دانلود با ‎GET /benchlog‎.
+ *               اضافات نسخهٔ ۱.۶ (کارت CAL، تست‌های دستی ‎B/C/D‎، تب اصلاح/تحلیل، حالت مهندس) حذف شدند؛
+ *               هیچ کالیبراسیونی خودکار اعمال نمی‌شود و پروتکل سیمی (‎SET/GET/TLM)‎ دست‌نخورده و دوطرفه است.
  *
  * @note    [EN] Wiring: STM32 PA9 (TX) -> ESP RX, STM32 PA10 (RX) <- ESP TX, common GND.
  *               STM32 PA8 drives ESP CH_PD/EN; this sketch never touches that line.
@@ -76,14 +76,14 @@
  *               leaves a channel on an unregulated duty; the STM32 3 s dead-man still covers an ESP
  *               hang or a broken link.
  *          [FA] سیم‌بندی: PA9 به RX ماژول، PA10 به TX ماژول، زمین مشترک.
- *               پایه CH_PD/EN را STM32 (PA8) کنترل می‌کند؛ این برنامه به آن دست نمی‌زند.
- *               وای‌فای "ChangeOver-ESP" با رمز "123456789"، پنل در http://192.168.4.1
+ *               پایه ‎CH_PD/EN‎ را STM32 (PA8) کنترل می‌کند؛ این برنامه به آن دست نمی‌زند.
+ *               وای‌فای "‎ChangeOver-ESP‎" با رمز "123456789"، پنل در http://192.168.4.1
  *               بدون اینترنت: فقط تبادل داده بین MCU و ESP (فلش فقط برای فایل ثبت بنچ استفاده می‌شود).
  *               مود تست دستی (شناسه ۱۹): تا وقتی مود دستی فعال است (پرچم b5 یا پارامتر ۱۹) هر ۱ ثانیه
  *               یک GET_PARAMS فرستاده می‌شود، حتی با تب پس‌زمینه (بخش 5.2 سند). ایمنی: اگر ۱۰ ثانیه
  *               هیچ مرورگری /t را نخواند (یا از بوت ESP هنوز نخوانده باشد)، ESP هر ۱ ثانیه شناسهٔ ۱۹ = 0 را
  *               می‌فرستد تا STM32 خاموشی مود دستی را گزارش کند؛ پس پنل بسته هرگز کانال را روی duty بدون
- *               تنظیم رها نمی‌کند. هنگ ESP یا قطع لینک را dead-man سه‌ثانیه‌ای STM32 پوشش می‌دهد.
+ *               تنظیم رها نمی‌کند. هنگ ESP یا قطع لینک را ‎dead-man‎ سه‌ثانیه‌ای STM32 پوشش می‌دهد.
  */
 
 /* ==================== Board Includes ==================== */
@@ -116,7 +116,7 @@
 /**
  * @brief  [EN] Start UART link, Wi-Fi AP and HTTP server. CH_PD is left untouched.
  *         [FA] راه‌اندازی لینک UART، اکسس‌پوینت وای‌فای و وب‌سرور. پایه CH_PD دست‌نخورده می‌ماند.
- * @return [EN] None / [FA] ندارد
+ * @‎return [EN] None / [FA]‎ ندارد
  */
 void setup(void)
 {
@@ -161,7 +161,7 @@ void setup(void)
 /**
  * @brief  [EN] Non-blocking loop: drain UART, send queued command, serve HTTP.
  *         [FA] حلقه غیرمسدودکننده: خالی کردن UART، ارسال فرمان صف‌شده، پاسخ به HTTP.
- * @return [EN] None / [FA] ندارد
+ * @‎return [EN] None / [FA]‎ ندارد
  */
 void loop(void)
 {

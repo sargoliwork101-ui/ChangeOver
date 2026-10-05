@@ -5,9 +5,9 @@
  *              v_in >= 22000 mV for 5000 ms => Q1 off; v_in < 21500 mV =>
  *              Q1 on; 21500..21999 = dead-band (preserve Q1); PB4 falling
  *              edge reconnects immediately in ISR.
- *          [FA] مسیر تغذیهٔ خود MCU با Q1 (PB5، active-low) مستقل از
- *              Changeover (PB11): v_in >= 22000mV به‌مدت 5000ms ← قطع؛
- *              v_in < 21500mV ← وصل؛ ۲۱۵۰۰..۲۱۹۹۹ نوار مرده؛ لبهٔ نزولی PB4
+ *          [FA] مسیر تغذیهٔ خود MCU با Q1 (PB5، ‎active-low)‎ مستقل از
+ *              ‎Changeover (PB11): v_in >= 22000mV‎ به‌مدت 5000ms ← قطع؛
+ *              ‎v_in < 21500mV‎ ← وصل؛ ۲۱۵۰۰..۲۱۹۹۹ نوار مرده؛ لبهٔ نزولی PB4
  *              بلافاصله در ISR وصل می‌کند.
  *
  * @note    [EN] Owns ONLY PB5; thresholds apply to v_in only (not v_bat24);
@@ -77,8 +77,8 @@ void func__McuPowerPath_Init(void);
  *              v_in >=22000 for 5s → disconnect (PB5 High); v_in 21500..21999 → cancel timer, preserve Q1;
  *              v_in <21500 → reconnect (PB5 Low), cancel timer. Battery voltage does not affect Q1 while input valid.
  *         [FA] احراز دوره‌ای: از تسک کنترل هر حدود 10 میلی‌ثانیه صدا زده شود.
- *              v_in >=22000 برای 5 ثانیه → قطع (PB5 High)؛ 21500..21999 → لغو تایمر، حفظ Q1؛
- *              v_in <21500 → وصل (PB5 Low).
+ *              ‎v_in >=22000‎ برای 5 ثانیه → قطع (PB5 High)؛ ‎21500..21999‎ → لغو تایمر، حفظ Q1؛
+ *              ‎v_in <21500‎ → وصل (PB5 Low).
  */
 void func__McuPowerPath_Run(void);
 

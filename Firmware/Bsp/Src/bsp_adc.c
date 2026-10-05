@@ -10,7 +10,7 @@
  *              if a synchronized sample cannot be taken (gate parked,
  *              timeout, ADC2 not ready), the asynchronous scan value of
  *              that position stays as fallback.
- *          [FA] لایهٔ برد ADC+DMA: ADC1 یک‌بار کالیبره می‌شود و سخت‌افزار
+ *          [FA] لایهٔ برد ‎ADC+DMA: ADC1‎ یک‌بار کالیبره می‌شود و سخت‌افزار
  *              بافر چرخشی دو فریمی را پیوسته پر می‌کند؛ CPU فقط هنگام درخواست
  *              snapshot پیشرفت DMA را می‌خواند. فقط RAM استاتیک. دو جایگاه
  *              جریان شارژ از اسکن آزاد گرفته نمی‌شوند: ADC2 برای هر کانال
@@ -63,7 +63,7 @@
  *      12 MHz, while the sampling aperture (625 ns) stays narrow enough to
  *      sit inside a mid-ON window.
  * [FA] زمان نمونه‌برداری ADC2 برای کانال‌های جریان: ۷٫۵ کلاک ADC. خروجی
- *      LM358 پشت تقسیم R41(1k)/R42(10k) منبعی حدود ۰٫۹kΩ است، خیلی زیر
+ *      LM358 پشت تقسیم ‎R41(1k)/R42(10k)‎ منبعی حدود ۰٫۹kΩ است، خیلی زیر
  *      Rmax دیتاشیت برای این زمان نمونه‌برداری در ۱۲MHz، و دهانهٔ
  *      نمونه‌برداری (۶۲۵ns) آن‌قدر باریک می‌ماند که داخل پنجرهٔ وسط ON
  *      جا شود. */
@@ -171,7 +171,7 @@ static bool func__BspAdc_SampleCurrentSync(bsp_pwm_channel_t bsp_pwm_channel_t__
        value, so report "no synchronized sample" like a parked gate.
        [FA] رد پالس کوتاه (ممیزی کل برنامه): با compare ۱..۷ پنجرهٔ ON
        (حداکثر ۱µs) از دهانهٔ ADC (۶۲۵ns) به‌علاوهٔ نشست LM358 باریک‌تر
-       است و CCR2 = CCR1/2 روی تیک ۰..۳ می‌نشیند - یعنی روی لبهٔ سوییچ و
+       است و ‎CCR2 = CCR1/2‎ روی تیک ۰..۳ می‌نشیند - یعنی روی لبهٔ سوییچ و
        رینگش، نه وسط ON. جایگزین اسکن غیرهمزمان (حدود صفر در چنین
        duty ای) مقدار درست است، پس مثل گیت پارک «بدون نمونهٔ سنکرون»
        اعلام می‌شود. */
@@ -198,7 +198,7 @@ static bool func__BspAdc_SampleCurrentSync(bsp_pwm_channel_t bsp_pwm_channel_t__
        EOC flag is cleared with an explicit 32-bit mask: a stray late
        conversion from a previous timeout must not read as a fresh sample.
        [FA] یک تبدیل regular از کانال انتخابی روی تریگر تایمر انتخابی.
-       EXTSEL/EXTTRG در CR2 این خانواده‌اند؛ مسلح‌کردن فقط یک EXTTRG است تا
+       ‎EXTSEL/EXTTRG‎ در CR2 این خانواده‌اند؛ مسلح‌کردن فقط یک EXTTRG است تا
        لبهٔ وسط ON بعدی تبدیل را شروع کند. پرچم EOC با ماسک ۳۲بیتی صریح پاک
        می‌شود: تبدیل دیرهنگامِ جا مانده از timeout قبلی نباید نمونهٔ تازه
        حساب شود. */
@@ -276,8 +276,8 @@ void func__BspAdc_Init(void)
  *              EXTTRG bit.
  *         [FA] بک‌اند خصوصی ADC2 را بالا می‌آورد: کلاک، یک تبدیل regular
  *              تریگر-خارجی (تریگر برای هر نمونه)، زمان نمونه‌برداری کوتاه و
- *              کالیبراسیون F1 یک‌بار. پیش‌تقسیم مشترک کلاک ADC (PCLK2/6 =
- *              12MHz) از قبل در init تولیدی ADC1 تنظیم شده؛ PA1/PA7 هم
+ *              کالیبراسیون F1 یک‌بار. پیش‌تقسیم مشترک کلاک ‎ADC (PCLK2/6‎ =
+ *              12MHz) از قبل در init تولیدی ADC1 تنظیم شده؛ ‎PA1/PA7‎ هم
  *              آنالوگ‌اند. ADC2 روشن (ADON) می‌ماند - مسلح‌کردن فقط بیت
  *              EXTTRG است.
  * @return bool [EN] true when ADC2 is initialized and calibrated /
@@ -307,7 +307,7 @@ static bool func__BspAdc_StartSyncBackend(void)
        SMPR2 on this family): keeps the sampling aperture narrow around the
        mid-ON instant while staying far inside the datasheet
        source-resistance limit.
-       [FA] زمان نمونه‌برداری کوتاه برای ورودی‌های جریان IN1/IN7 (هر دو در
+       [FA] زمان نمونه‌برداری کوتاه برای ورودی‌های جریان ‎IN1/IN7 (‎هر دو در
        SMPR2 این خانواده): دهانهٔ نمونه‌برداری را حول لحظهٔ وسط ON باریک نگه
        می‌دارد و هنوز خیلی داخل حد مقاومت منبع دیتاشیت است. */
     /* [EN] MODIFY_REG's set-mask is NOT shifted for us: the raw sample-time

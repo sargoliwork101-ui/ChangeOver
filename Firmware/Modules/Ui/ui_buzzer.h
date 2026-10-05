@@ -98,13 +98,13 @@
  *         off). Valid patterns return the recommended next-call delay
          (UI_BUZZER_CHECK_PERCENT of the smallest positive segment).
  *         [FA] اجرای غیرمسدودکنندهٔ یک الگوی دوره‌ای بوق. الگو هر periodMs
- *         تکرار می‌شود؛ پنجرهٔ دیوتی = periodMs*dutyPercent/100 که beepCount
+ *         تکرار می‌شود؛ پنجرهٔ دیوتی = ‎periodMs*dutyPercent/100‎ که beepCount
  *         بوق آن را تقسیم می‌کنند و gapMs بین بوق‌های مجاور است. صفر بودن
  *         دوره/دیوتی/تعداد = خاموشی معتبر؛ دورهٔ کوتاه، دیوتی خارج از بازه،
  *         گپ کم برای چند بوق یا نبود زمان مثبت برای هر بوق = نامعتبر (بوق
  *         خاموش). الگوی معتبر زمان مراجعهٔ بعدی را برمی‌گرداند.
  * @param  uint32_t__periodMs [EN] Pattern period in ms / دوره الگو بر حسب ms
- * @param  uint8_t__dutyPercent [EN] Duty window 0..100 percent / پنجره دیوتی از صفر تا صد درصد
+ * @‎param  uint8_t__dutyPercent [EN] Duty window 0..100 percent‎ / پنجره دیوتی از صفر تا صد درصد
  * @param  uint8_t__beepCount [EN] Number of pulses; zero disables / تعداد پالس؛ صفر یعنی خاموش
  * @param  uint32_t__gapMs [EN] Low gap between adjacent pulses in ms / گپ خاموش بین پالس‌های مجاور بر حسب ms
  * @return int32_t [EN] Next-call delay, zero for valid off, or -1 for invalid configuration.

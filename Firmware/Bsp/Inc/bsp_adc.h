@@ -3,7 +3,7 @@
  * @brief   [EN] Logical board ADC+DMA interface. The port supplies five
  *              normalized analog values in a two-frame buffer; the reader
  *              copies only a completed frame.
- *          [FA] رابط منطقی ADC+DMA برد. پورت پنج مقدار آنالوگ استانداردشده
+ *          [FA] رابط منطقی ‎ADC+DMA‎ برد. پورت پنج مقدار آنالوگ استانداردشده
  *              را در بافر دو فریمی می‌دهد و خواننده فقط فریم کامل را کپی می‌کند.
  *
  * @note    [EN] The public channel order is a normalized data contract. Each
@@ -27,7 +27,7 @@
  *      asynchronous scan values remain only as fallback when a
  *      synchronized capture is impossible.
  * [FA] موقعیت‌های استاندارد فریم؛ کانال‌ها و پایه‌های فیزیکی فقط در BSP برد
- *      انتخاب می‌شوند. از ۲۰۲۶-۰۹-۲۲ (دستور کاربر) CURRENT1/CURRENT2
+ *      انتخاب می‌شوند. از ۲۰۲۶-۰۹-۲۲ (دستور کاربر) ‎CURRENT1/CURRENT2‎
  *      نمونه‌های سنکرون با PWM در وسط پنجرهٔ ON گیت را دارند (تریگر
  *      سخت‌افزاری، نمونهٔ خام)؛ اسکن غیرهمزمان فقط جایگزین است. */
 #define BSP_ADC_CHANNEL_COUNT        6u
@@ -83,7 +83,7 @@ bool func__BspAdc_Start(void);
 /**
  * @brief  [EN] Report whether ADC+DMA was started successfully. GetRaw still
  *              verifies that a complete half-frame is available before copy.
- *         [FA] اعلام می‌کند ADC+DMA با موفقیت شروع شده است. GetRaw پیش از
+ *         [FA] اعلام می‌کند ‎ADC+DMA‎ با موفقیت شروع شده است. GetRaw پیش از
  *              کپی، کامل بودن نیم‌فریم را دوباره بررسی می‌کند.
  * @return bool [EN] true after successful start / بعد از شروع موفق true
  */

@@ -32,7 +32,7 @@ static uint32_t UINT32_T__G__BatHealthySinceTick = 0u;
    [FA] هشت عدد FAULT_* در یک struct زنده - شناسه‌های ۲۷..۳۴، ماندگار در
    فلش، گیرهٔ مجموعه‌ای؛ بوت = پیش‌فرض ماکروها. */
 /* [EN] volatile: written by the EspLink task, read by the control task
-   (full-program audit 2026-09-26). [FA] بین دو تسک بدون قفل پس volatile. */
+   (‎full-program audit 2026-09-26). [FA]‎ بین دو تسک بدون قفل پس volatile. */
 static volatile fault_alarm_t FAULT_ALARM_T__G__Alarm =
 {
     FAULT_BAT_DISCONNECT_MV,
@@ -179,7 +179,7 @@ static void func__Fault_ClampAlarms(void)
 /* [EN] Layout contract for the indexed Set/GetAlarmParam below (flash diet
    2026-09-27): wire ids 27..34 dense, one packed uint32_t per id in the
    same order (host test pins every wire id).
-   [FA] قرارداد چیدمان Set/Get نمایه‌ای: شناسه‌های ۲۷..۳۴ پشت‌سرهم، یک
+   [FA] قرارداد چیدمان ‎Set/Get‎ نمایه‌ای: شناسه‌های ۲۷..۳۴ پشت‌سرهم، یک
    کلمه به همان ترتیب. */
 _Static_assert(FAULT_ALARM_PARAM_DISCONNECT_MV == 27u,
                "fault alarm id base must be 27");
@@ -257,7 +257,7 @@ void func__Fault_OnSupervisionChange(void)
  *         condition is false.
  *         [FA] دبانس مشترک: وقتی شرط به‌طور پیوسته به مدت خواسته‌شده برقرار
  *         بود true می‌دهد؛ با false‌شدن شرط، تیک شروع را صفر کنید.
- * @param  uint32_t_ptr__sinceTick [EN] Start tick storage (0 = not running) / محل نگه‌داشت تیک شروع
+ * @‎param  uint32_t_ptr__sinceTick [EN] Start tick storage (0 = not running)‎ / محل نگه‌داشت تیک شروع
  * @param  uint32_t__nowTick       [EN] Current kernel tick / تیک فعلی
  * @param  uint32_t__milliseconds  [EN] Required duration / مدت لازم
  * @return bool [EN] true when the duration elapsed / وقتی مدت گذشت true
@@ -376,7 +376,7 @@ bool func__Fault_Any(void)
  *         cases). Sets FAULT_CHARGER_BAT_LOST after the debounce of either
  *         rule and clears it after the recovery settle; only this bit is
  *         touched. Called every control pass before func__Fault_Get().
- *         [FA] ارزیابی متمرکز قطع باتری؛ فقط همین بیت را Set/Clear می‌کند.
+ *         [FA] ارزیابی متمرکز قطع باتری؛ فقط همین بیت را ‎Set/Clear‎ می‌کند.
  */
 /* ==================== Fault_Evaluate ==================== */
 

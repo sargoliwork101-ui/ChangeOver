@@ -364,7 +364,7 @@ void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
  *              بافر ~۱٫۲KB عمداً STATIC است: استک تسک ارتباط ۲۵۶ کلمه است
  *              و نسخهٔ استکی در اولین ذخیره سرریز می‌کرد. تک‌تسک و
  *              غیربازگشتی، پس بدون مسابقه.
- * @return bool [EN] true = record now on flash / رکورد روی فلش است
+ * @‎return bool [EN] true = record now on flash‎ / رکورد روی فلش است
  */
 #if MODULE_CHARGER
 /* [EN] Charger quiet-down poll: every 5 ms, up to 200 ms (the control task
@@ -387,7 +387,7 @@ void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
  *              با timeout هم ذخیره انجام می‌شود (پارامترها باید بمانند).
  *              بدون شارژر یا پیش از کرنل بلافاصله false (چیزی برای ادامه
  *              نیست).
- * @return bool [EN] true = suspend flag set, caller must resume / ادامه لازم است
+ * @‎return bool [EN] true = suspend flag set, caller must resume‎ / ادامه لازم است
  */
 static bool func__EspLink_NvmSuspendCharger(void)
 {
@@ -423,7 +423,7 @@ static bool func__EspLink_NvmSuspendCharger(void)
  * @brief  [EN] Resume the charger after a flash save (no-op unless the
  *              suspend helper set the flag).
  *         [FA] ادامهٔ شارژر بعد از ذخیرهٔ فلش (بی‌اثر اگر پرچم ست نشده).
- * @param  bool__wasSuspended [EN] Suspend-helper return / خروجی تابع تعلیق
+ * @‎param  bool__wasSuspended [EN] Suspend-helper return‎ / خروجی تابع تعلیق
  */
 static void func__EspLink_NvmResumeCharger(bool bool__wasSuspended)
 {

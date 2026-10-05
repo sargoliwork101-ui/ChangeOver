@@ -8,7 +8,7 @@
  *              first (median + moving average), converted to mA after;
  *              battery voltages keep their median-5 spike guard on the
  *              raw counts.
- *          [FA] شمارش ADC به واحد مهندسی (mV/mA) گام‌به‌گام؛ آخرین snapshot
+ *          [FA] شمارش ADC به واحد مهندسی (‎mV/mA)‎ گام‌به‌گام؛ آخرین snapshot
  *              مشترک با تسک‌های دیگر. فقط چند تبدیل + یک خواندن GPIO و بعد
  *              yield - بدون HAL_Delay. جریان شارژ = نمونهٔ سنکرون وسط ON که
  *              اول روی شمارش خام فیلتر می‌شود (مدین + میانگین متحرک) و بعد
@@ -36,13 +36,13 @@
 
 /* [EN] Shared snapshot for the other tasks (UI / protection / comm).
  *      Written only by the measurement task, read by GetSnapshot.
- *      [FA] snapshot مشترک برای تسک‌های دیگر (UI / protection / comm).
+ *      [FA] snapshot مشترک برای تسک‌های دیگر (‎UI / protection / comm)‎.
  *      فقط توسط تسک measurement نوشته و با GetSnapshot خوانده می‌شود. */
 static volatile measurement_snapshot_t MEASUREMENT_SNAPSHOT_T__G__Snap;
 
 /* [EN] Number of completed stable normalized ADC frames collected during
  *      startup warm-up. Unit: completed ADC frame.
- * [FA] تعداد فریم‌های کامل و پایدار ADC استانداردشده در warm-up شروع.
+ * [FA] تعداد فریم‌های کامل و پایدار ADC استانداردشده در ‎warm-up‎ شروع.
  *      واحد: فریم کامل ADC. */
 static uint8_t UINT8_T__G__MeasurementWarmupFrameCount;
 
@@ -176,8 +176,8 @@ static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
  *              نمی‌خورد (الگوی مدین-۵ ولتاژ).
  * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
  * @param  uint32_t__sampleCounts [EN] New raw count sample / نمونهٔ شمارش خام جدید
- * @param  uint8_t__medianSize [EN] Active median window (1..15) / پنجرهٔ فعال
- * @return uint32_t [EN] Median-filtered counts / شمارش مدین‌شده
+ * @‎param  uint8_t__medianSize [EN] Active median window (1..15)‎ / پنجرهٔ فعال
+ * @‎return uint32_t [EN] Median-filtered counts‎ / شمارش مدین‌شده
  */
 static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
                                                 uint32_t uint32_t__sampleCounts,
@@ -197,7 +197,7 @@ static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
 
     if (uint8_t__medianSize == 1u)
     {
-        /* [EN] Window of one = bypass. [FA] پنجرهٔ یک‌تایی = عبور مستقیم. */
+        /* [‎EN] Window of one = bypass. [FA]‎ پنجرهٔ یک‌تایی = عبور مستقیم. */
         return uint32_t__sampleCounts;
     }
 
@@ -247,7 +247,7 @@ static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
  *              خانه‌های خالی).
  * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
  * @param  uint32_t__sampleCounts [EN] New raw count sample / نمونهٔ شمارش خام جدید
- * @return uint32_t [EN] Moving-average counts / شمارش میانگین‌گرفته
+ * @‎return uint32_t [EN] Moving-average counts‎ / شمارش میانگین‌گرفته
  */
 static uint32_t func__Measurement_CurrentMovingAverage(uint8_t uint8_t__channelIndex,
                                                        uint32_t uint32_t__sampleCounts)
@@ -397,9 +397,9 @@ static void func__Measurement_ResetCurrentFilters(void)
  *         شمارش فیلترشده را برمی‌گرداند. شارژر و آشکارساز قطع باتری از
  *         ولتاژهای مشتق‌شده از همین تبدیل‌ها استفاده می‌کنند تا ترکیدگی
  *         کوتاه «باتری رفت» را جعل نکند.
- * @param  uint8_t__channelIndex [EN] 0 = V24_BAT raw, 1 = V12_BAT raw / شمارش خام
+ * @‎param  uint8_t__channelIndex [EN] 0 = V24_BAT raw, 1 = V12_BAT raw‎ / شمارش خام
  * @param  uint32_t__sampleCounts [EN] New raw count sample / شمارش خام جدید
- * @return uint32_t [EN] Median-of-5 filtered counts / شمارش مدین‌شده
+ * @‎return uint32_t [EN] Median-of-5 filtered counts‎ / شمارش مدین‌شده
  */
 static uint32_t func__Measurement_MedianFilterVoltageSample(uint8_t uint8_t__channelIndex,
                                                             uint32_t uint32_t__sampleCounts)
@@ -428,7 +428,7 @@ static uint32_t func__Measurement_MedianFilterVoltageSample(uint8_t uint8_t__cha
  *      them after including measurement.h. Meas* prefix avoids a link
  *      collision with the UI manual test globals (task_ui.c).
  * [FA] مقادیر مهندسی آخرین فریم، مشترک برای همهٔ تسک‌ها. فقط تسک
- *      measurement (Run/Init) می‌نویسد؛ هر ماژول بعد از include کردن
+ *      ‎measurement (Run/Init)‎ می‌نویسد؛ هر ماژول بعد از include کردن
  *      measurement.h می‌خواند. پیشوند Meas* از تداخل لینک با متغیرهای
  *      تست دستی UI (task_ui.c) جلوگیری می‌کند. */
 volatile uint32_t UINT32_T__G__MeasInputVoltageMv = 0u;
@@ -473,7 +473,7 @@ volatile uint32_t UINT32_T__G__MeasCurrent2Ma = 0u;
  *      mA before any filter, so the chain can be checked against a scope
  *      and an ammeter step by step).
  * [FA] دیاگ زندهٔ زنجیرهٔ جریان، مقادیر تک‌فریمیِ فیلترنشدهٔ آخرین فریم
- *      (دستور کاربر ۲۰۲۶-۰۹-۲۲: شمارش خام -> ولتاژ شانت uV -> mA قبل از
+ *      (دستور کاربر ۲۰۲۶-۰۹-۲۲: شمارش خام -> ولتاژ شانت ‎uV -> mA‎ قبل از
  *      هر فیلتر، تا زنجیره گام‌به‌گام با اسکوپ و آمپرمتر چک شود). */
 volatile uint32_t UINT32_T__G__MeasCurrent1RawCounts = 0u;
 volatile uint32_t UINT32_T__G__MeasCurrent1ShuntUv = 0u;
@@ -488,13 +488,13 @@ volatile bool BOOL__G__MeasDataValid = false;
 
 /**
  * @brief  [EN] Zero the last snapshot (valid = false).
- *         [FA] آخرین نمونه را صفر می‌کند (valid = false).
+ *         [FA] آخرین نمونه را صفر می‌کند (‎valid = false)‎.
  */
 void func__Measurement_Init(void)
 {
     /* [EN] Zero the warm-up counter, shared globals and snapshot; nothing is
        valid until the required number of stable frames is collected.
-       [FA] شمارندهٔ warm-up، گلوبال‌های مشترک و snapshot را صفر می‌کند؛
+       [FA] شمارندهٔ ‎warm-up‎، گلوبال‌های مشترک و snapshot را صفر می‌کند؛
        تا جمع‌شدن تعداد لازم فریم‌های پایدار چیزی معتبر نیست. */
 
     UINT8_T__G__MeasurementWarmupFrameCount = 0u;
@@ -574,8 +574,8 @@ uint32_t func__Measurement_V24CountsToMv(uint16_t uint16_t__counts)
  *              factor (2026-09-25): the pack sense path attenuates
  *              6.8k/69.2k to the pin, NOT the input net's 6.8k/76k.
  *         [FA] کانال باتری‌پک ۲۴ ولت را با ضریب مقسم «کاربر» تبدیل می‌کند
- *              (۲۰۲۶-۰۹-۲۵): مسیر سنس پک تا پایه 6.8k/69.2k تضعیف دارد،
- *              نه 6.8k/76k مثل نت ورودی.
+ *              (۲۰۲۶-۰۹-۲۵): مسیر سنس پک تا پایه ‎6.8k/69.2k‎ تضعیف دارد،
+ *              نه ‎6.8k/76k‎ مثل نت ورودی.
  * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
  * @return uint32_t [EN] Pack voltage in mV / ولتاژ پک mV
  */
@@ -607,7 +607,7 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
  *      constant). Clamped to 8.0..15.0 V so a missing/garbage voltage can
  *      never blow up the division; boot default 12.0 V.
  * [FA] کش ولتاژ زندهٔ ترمینال باتری ۱ برای LUT توانیِ کانال ۱ (v1.19):
- *      vhigh = V24 − V12، بعد از فیلتر مدین-۵ هر پاس نوشته می‌شود و یک پاس
+ *      ‎vhigh = V24‎ − V12، بعد از فیلتر مدین-۵ هر پاس نوشته می‌شود و یک پاس
  *      بعدتر خوانده می‌شود (۱ms کهنگی - ناچیز مقابل ثابت زمانی باتری).
  *      گیرهٔ ۸..۱۵V تا ولتاژ گم/خراب تقسیم را منفجر نکند؛ پیش‌فرض بوت
  *      ۱۲٫۰V. */
@@ -616,7 +616,7 @@ static uint32_t UINT32_T__G__Battery1VoltageMv = 12000u;
 
 /* [EN] The tail slope indexes POINTS-1/POINTS-2: fail the build if the
    table ever shrinks below 2 points.
-   [FA] شیب دنباله POINTS-1/POINTS-2 را می‌خواند: اگر جدول روزی زیر ۲ نقطه
+   [FA] شیب دنباله ‎POINTS-1/POINTS-2‎ را می‌خواند: اگر جدول روزی زیر ۲ نقطه
    رفت، بیلد بشکند. */
 _Static_assert(CAL_CURRENT1_LUT_POINTS >= 2u, "ch1 LUT needs >= 2 points");
 /* [EN] v1.63 (user question: "can the table have more or fewer points -
@@ -716,11 +716,11 @@ static uint32_t func__Measurement_BenchLutInterp(
  *              slope extends above the last anchor; 0 maps to 0.
  *         [FA] اصلاح خطی-تکه‌ای بنچ: mA زنجیرهٔ ADC کانال ۱ → «توان باتری
  *              ۱» بر حسب mW (انرژی هر سایکل DCM مستقل از ولتاژ باتری است؛
- *              جریان = P/Vbat، پس جدول توان را می‌دهد و صداکننده بر ولتاژ
+ *              جریان = ‎P/Vbat‎، پس جدول توان را می‌دهد و صداکننده بر ولتاژ
  *              زنده تقسیم می‌کند). بین لنگرها درون‌یابی خطی؛ بالای آخرین
  *              لنگر شیب آخر ادامه می‌یابد؛ صفر به صفر.
  * @param  uint32_t__chainMa [EN] ADC chain output in mA / خروجی زنجیرهٔ ADC بر حسب mA
- * @return uint32_t [EN] Battery-1 power in mW / توان باتری ۱ بر حسب mW
+ * @‎return uint32_t [EN] Battery-1 power in mW‎ / توان باتری ۱ بر حسب mW
  */
 static uint32_t func__Measurement_Current1BenchLut(uint32_t uint32_t__chainMa)
 {
@@ -812,7 +812,7 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
  *              زنده تقسیم می‌کند). بین لنگرها درون‌یابی خطی؛ بالای آخرین
  *              لنگر شیب آخر ادامه می‌یابد؛ صفر به صفر.
  * @param  uint32_t__chainMa [EN] ADC chain output in mA / خروجی زنجیرهٔ ADC بر حسب mA
- * @return uint32_t [EN] Battery-2 power in mW / توان باتری ۲ بر حسب mW
+ * @‎return uint32_t [EN] Battery-2 power in mW‎ / توان باتری ۲ بر حسب mW
  */
 /* [EN] Live battery-2 terminal voltage cache for the ch2 power LUT (v1.13,
  *      user order 2026-09-25): written AFTER the median-5 voltage filter each
@@ -830,7 +830,7 @@ static uint32_t UINT32_T__G__Battery2VoltageMv = 12000u;
 
 /* [EN] The tail slope indexes POINTS-1/POINTS-2: fail the build if the
    table ever shrinks below 2 points.
-   [FA] شیب دنباله POINTS-1/POINTS-2 را می‌خواند: اگر جدول روزی زیر ۲ نقطه
+   [FA] شیب دنباله ‎POINTS-1/POINTS-2‎ را می‌خواند: اگر جدول روزی زیر ۲ نقطه
    رفت، بیلد بشکند. */
 _Static_assert(CAL_CURRENT2_LUT_POINTS >= 2u, "ch2 LUT needs >= 2 points");
 /* [EN] v1.63: same length guard for channel 2. [FA] همان گارد برای کانال ۲. */
@@ -942,7 +942,7 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
         مقسم + افت مسیر شارژ متناسب جریان دارد (نقطهٔ سنس برد حین شارژ
         بالاتر از ترمینال باتری است). این جبران هر دو را کم می‌کند تا پنل
         و تصمیم‌های شارژر روی Vlow با ولتاژ واقعی ترمینال باتری ۲ کار
-        کنند؛ Vhigh = V24 − V12 به همان اندازه بالا می‌رود (جهت فیزیکی
+        کنند؛ ‎Vhigh = V24‎ − V12 به همان اندازه بالا می‌رود (جهت فیزیکی
         درست). ورودی I2 جریان اصلاح‌شدهٔ بعد از جدول است؛ با تغییر
         سیم‌بندی، ثابت‌ها دوباره ساخته شوند. */
 /* [EN] Refit from the dense 2026-09-25T18:14 run (10 DMM points,
@@ -951,7 +951,7 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
         (Full-program audit 2026-09-27: the two constants live ONLY in
         calibration.h - the identical local redefinition here is deleted.)
    [FA] برازش دوباره از اجرای متراکم ۲۰۲۶-۰۹-۲۵T18:14 (۱۰ نقطهٔ DMM،
-        0..764mA): کمینهٔ مربعات 149.8mV + 472.5mOhm - گرد به 150/470.
+        ‎0..764mA)‎: کمینهٔ مربعات ‎149.8mV + 472.5mOhm‎ - گرد به ‎150/470‎.
         خطای باقی‌مانده در کل بازه ±۲۸mV (۰٫۲۳٪).
         (ممیزی کل برنامه: این دو ثابت فقط در calibration.h هستند -
         تعریف تکراری محلی اینجا حذف شد.) */
@@ -961,9 +961,9 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
  *              error and the I2 x R charge-path wire drop, never below 0 mV.
  *         [FA] جبران V12 به باتری واقعی: کم‌کردن خطای ثابت کانال و افت
  *              مسیر I2×R؛ هرگز زیر 0mV نمی‌رود.
- * @param  uint32_t__v12Mv      [EN] Measured V12 in mV / V12 اندازه‌گیری‌شده mV
- * @param  uint32_t__current2Ma [EN] Corrected channel-2 current in mA / جریان اصلاح‌شدهٔ کانال ۲ mA
- * @return uint32_t [EN] Compensated battery-low voltage in mV / ولتاژ جبران‌شدهٔ باتری پایین mV
+ * @‎param  uint32_t__v12Mv      [EN] Measured V12 in mV / V12‎ اندازه‌گیری‌شده mV
+ * @‎param  uint32_t__current2Ma [EN] Corrected channel-2 current in mA‎ / جریان اصلاح‌شدهٔ کانال ۲ mA
+ * @‎return uint32_t [EN] Compensated battery-low voltage in mV‎ / ولتاژ جبران‌شدهٔ باتری پایین mV
  */
 static uint32_t func__Measurement_Battery12BenchCompensate(uint32_t uint32_t__v12Mv,
                                                            uint32_t uint32_t__current2Ma)
@@ -1048,7 +1048,7 @@ void func__Measurement_Run(void)
     {
         /* [EN] A missing stable frame restarts warm-up and invalidates the
            ADC result; input presence is not evaluated in this path.
-           [FA] نبود فریم پایدار warm-up را از نو شروع و نتیجهٔ ADC را
+           [FA] نبود فریم پایدار ‎warm-up‎ را از نو شروع و نتیجهٔ ADC را
            نامعتبر می‌کند؛ در این مسیر حضور ورودی ارزیابی نمی‌شود. */
         UINT8_T__G__MeasurementWarmupFrameCount = 0u;
 
@@ -1105,7 +1105,7 @@ void func__Measurement_Run(void)
        filtered counts to mA after. Voltages keep their median-5 spike
        guard, likewise on the raw counts.
        [FA] جریان‌ها: پورت برد شمارش‌های خام سنکرونِ وسط ON را در جایگاه‌های
-       CURRENT1/2 فریم می‌گذارد؛ این ماژول اول زنجیرهٔ فیلتر کلیددار را
+       ‎CURRENT1/2‎ فریم می‌گذارد؛ این ماژول اول زنجیرهٔ فیلتر کلیددار را
        روی شمارش خام اجرا می‌کند (مدین برای حذف پرش، میانگین متحرک برای
        صاف‌کردن) و بعد شمارش فیلترشده را به mA تبدیل می‌کند. ولتاژها هم
        محافظ مدین-۵ خود را روی شمارش خام نگه می‌دارند. */
@@ -1201,8 +1201,8 @@ void func__Measurement_Run(void)
        the switching node is already dead before the conversion; low/high
        derive from the filtered conversions. Real steps pass with only a
        few frames of lag, no moving average.
-       [FA] مدین اینجا دیگر نیست: مدین-۵ روی شمارش خام V24/V12 بالا اجرا شد
-       پس اسپایک تک‌فریمی پیش از تبدیل مرده است؛ low/high از تبدیل‌های
+       [FA] مدین اینجا دیگر نیست: مدین-۵ روی شمارش خام ‎V24/V12‎ بالا اجرا شد
+       پس اسپایک تک‌فریمی پیش از تبدیل مرده است؛ ‎low/high‎ از تبدیل‌های
        فیلترشده مشتق می‌شوند. */
 
 #if (CAL_CURRENT2_LUT_ENABLE != 0u)
@@ -1227,7 +1227,7 @@ void func__Measurement_Run(void)
     /* [EN] Feed the ch1 power-LUT voltage cache (v1.19): the filtered TRUE
        battery-1 terminal voltage (vhigh = V24 - V12), clamped 8.0..15.0 V.
        [FA] خوراک کشِ ولتاژ LUT توانی کانال ۱: ولتاژ فیلترشدهٔ واقعی
-            ترمینال باتری ۱ (vhigh = V24 − V12)، گیرهٔ ۸٫۰..۱۵٫۰V. */
+            ترمینال باتری ۱ (‎vhigh = V24‎ − V12)، گیرهٔ ۸٫۰..۱۵٫۰V. */
     if (uint32_t__batteryHighMv < 8000u)
     {
         UINT32_T__G__Battery1VoltageMv = 8000u;
@@ -1261,7 +1261,7 @@ void func__Measurement_Run(void)
        than an MCU-specific interrupt instruction.
        [FA] گلوبال‌ها و snapshot را هنگام قفل بودن scheduler منتشر می‌کند.
        بیت معتبر بودن snapshot در آخر نوشته می‌شود؛ این کار به‌جای دستور
-       وابسته به MCU از CMSIS-RTOS2 استفاده می‌کند. */
+       وابسته به MCU از ‎CMSIS-RTOS2‎ استفاده می‌کند. */
     int32_t__savedKernelLock = osKernelLock();
     if (int32_t__savedKernelLock < 0)
     {
@@ -1294,7 +1294,7 @@ void func__Measurement_Run(void)
        comment: counts BEFORE any processing). Now all three voltage slots
        carry the true DMA frame counts, matching Vin; the filtered copy still
        feeds the mV maths above and the control loops, which are untouched.
-       [FA] اصلاح ممیزی ۲۰۲۶-۱۰-۰۳: قبلاً جای‌های V24/V12 شمارشِ
+       [FA] اصلاح ممیزی ۲۰۲۶-۱۰-۰۳: قبلاً جای‌های ‎V24/V12‎ شمارشِ
        فیلترشدهٔ median+میانگین را با نام «RawCounts» منتشر می‌کردند، پس
        کانال مبنای کالیبراسیون حین سوییپ دروغ می‌گفت. حالا هر سه جای ولتاژ
        شمارش واقعی فریم DMA را می‌دهند (مثل Vin)؛ کپی فیلترشده همچنان به
@@ -1323,7 +1323,7 @@ void func__Measurement_Run(void)
 
     /* [EN] ADC validity depends only on the warm-up count, never on input
        voltage or input presence. Write the public flag before snapshot.valid.
-       [FA] اعتبار ADC فقط به شمارندهٔ warm-up وابسته است، نه ولتاژ یا حضور
+       [FA] اعتبار ADC فقط به شمارندهٔ ‎warm-up‎ وابسته است، نه ولتاژ یا حضور
        ورودی. پرچم عمومی پیش از snapshot.valid نوشته می‌شود. */
     if (UINT8_T__G__MeasurementWarmupFrameCount >= MEASUREMENT_WARMUP_FRAME_COUNT)
     {
@@ -1364,7 +1364,7 @@ bool func__Measurement_GetSnapshot(measurement_snapshot_t *measurement_snapshot_
     /* [EN] Prevent a task switch while copying the multi-field snapshot.
        CMSIS-RTOS2 keeps this independent of the MCU core instructions.
        [FA] هنگام کپی snapshot چندفیلدی، تعویض تسک را متوقف می‌کند.
-       CMSIS-RTOS2 این بخش را از دستورهای هستهٔ MCU مستقل نگه می‌دارد. */
+       ‎CMSIS-RTOS2‎ این بخش را از دستورهای هستهٔ MCU مستقل نگه می‌دارد. */
     int32_t__savedKernelLock = osKernelLock();
     if (int32_t__savedKernelLock < 0)
     {
@@ -1496,7 +1496,7 @@ uint16_t func__Measurement_GetFilterAverageWindow(void)
  *              ±MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV. اندیس ۰ = ورودی ۲۴V،
  *              ۱ = باتری ۲۴V، ۲ = باتری ۱۲V (نود میانی). پیش‌فرض ۰ همان
  *              رفتار فعلی؛ روی فلش می‌ماند (NVM نسخهٔ ۱.۱۴).
- * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12 / اندیس
+ * @‎param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12‎ / اندیس
  * @param  int32_t__offsetMv [EN] Requested offset, mV / آفست درخواستی
  * @return int32_t [EN] Applied offset, mV / آفست اعمال‌شده
  */
@@ -1535,7 +1535,7 @@ int32_t func__Measurement_SetVoltageOffsetMv(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read one runtime voltage calibration offset.
  *         [FA] یک آفست کالیبراسیون ولتاژ زمان اجرا را می‌خواند.
- * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12 / اندیس
+ * @‎param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12‎ / اندیس
  * @return int32_t [EN] Live offset, mV / آفست زنده
  */
 int32_t func__Measurement_GetVoltageOffsetMv(uint8_t uint8_t__channelIndex)

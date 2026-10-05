@@ -1,7 +1,7 @@
 /**
  * @file    task_ui.c
  * @brief   [EN] CMSIS-RTOS2 UI thread - selects LED scenarios from the real Measurement snapshot.
- *          [FA] تسک CMSIS-RTOS2 رابط کاربر - سناریوهای LED را از snapshot واقعی Measurement انتخاب می‌کند.
+ *          [FA] تسک ‎CMSIS-RTOS2‎ رابط کاربر - سناریوهای LED را از snapshot واقعی Measurement انتخاب می‌کند.
  *
  * @note    [EN] Production battery voltage comes ONLY from snapshot.v_bat24_mv via
  *              func__Measurement_GetSnapshot(). The snapshot.valid flag is checked
@@ -34,7 +34,7 @@
 /**
  * @brief  [EN] Run the UI task and select the scenario from the real Measurement snapshot.
  *         [FA] تسک UI را اجرا می‌کند و سناریو را از snapshot واقعی Measurement انتخاب می‌کند.
- * @param  void_ptr__argument [EN] CMSIS-RTOS2 thread argument, unused / آرگومان استفاده‌نشده
+ * @‎param  void_ptr__argument [EN] CMSIS-RTOS2 thread argument, unused‎ / آرگومان استفاده‌نشده
  */
 void func__TaskUi(void *void_ptr__argument)
 {

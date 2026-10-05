@@ -4,7 +4,7 @@
  *              PB5 (active-low): true->Low=on, false->High=off. PB11 remains Changeover-only.
  *              Hysteresis: qualify v_in >=22000 for 5000ms → Q1 off (High); reconnect v_in <21500 → Q1 on (Low);
  *              21500..21999 → cancel pending timer, preserve Q1; PB4 falling edge immediate Low in ISR.
- *          [FA] مسیر تغذیه MCU با Q1 (PB5) - مستقل از Changeover. هیسترزیس 22000/21500.
+ *          [FA] مسیر تغذیه MCU با Q1 (PB5) - مستقل از Changeover. هیسترزیس ‎22000/21500‎.
  */
 
 #include "mcu_power_path.h"
@@ -75,7 +75,7 @@ void func__McuPowerPath_OnInputIrq(void)
  *         Q1 off; 21500..21999 => cancel timer, preserve Q1; < 21500 =>
  *         Q1 on. Battery voltage is irrelevant while the input is valid;
  *         PB4 falling is still handled in the ISR.
- *         [FA] سنجش دوره‌ای (~۱۰ms) با هیسترزیس: v_in >= 22000 برای ۵s ←
+ *         [FA] سنجش دوره‌ای (~۱۰ms) با هیسترزیس: ‎v_in >= 22000‎ برای ۵s ←
  *         قطع؛ ۲۱۵۰۰..۲۱۹۹۹ ← لغو تایمر و حفظ Q1؛ < 21500 ← وصل. ولتاژ
  *         باتری بی‌اثر است و لبهٔ PB4 همچنان در ISR مدیریت می‌شود.
  */
@@ -104,7 +104,7 @@ void func__McuPowerPath_Run(void)
         else
         {
             /* [EN] Hysteresis dead-band 21500..21999: preserve current Q1, cancel pending timer.
-             * [FA] ناحیه هیسترزیس 21500..21999: تایمر لغو و وضعیت Q1 حفظ شود. */
+             * [FA] ناحیه هیسترزیس ‎21500..21999‎: تایمر لغو و وضعیت Q1 حفظ شود. */
             input_qualify = false;
             input_low     = false;
         }

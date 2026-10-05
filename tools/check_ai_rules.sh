@@ -521,6 +521,22 @@ else
   echo "  OK: No linear one-line formula (all broken into steps)"
 fi
 
+# [EN] RTL comment hygiene: a formula dropped bare into a Persian comment is
+#      re-ordered by the bidi algorithm and reads wrong. Every latin /
+#      arithmetic run inside a Persian comment must sit between LRM marks.
+#      tools/fix_rtl_comments.py rewrites them; here we only verify.
+# [FA] بهداشت کامنت راست‌به‌چپ: فرمول لخت وسط متن فارسی به‌هم می‌ریزد و باید
+#      بین دو علامت LRM بسته شود.
+echo ""
+echo "[RTL] Direction marks around formulas inside Persian comments"
+if (cd "$ROOT" && python3 tools/fix_rtl_comments.py --check >/tmp/rtl_check.txt 2>&1); then
+  echo "  OK: $(tail -n 1 /tmp/rtl_check.txt)"
+else
+  echo "  FAIL: Persian comments carry unmarked formulas - run tools/fix_rtl_comments.py"
+  sed -n '1,10p' /tmp/rtl_check.txt | sed 's/^/    /'
+  FAIL=1
+fi
+
 echo ""
 if [ $FAIL -eq 0 ]; then
   echo "ALL CHECKS PASSED"

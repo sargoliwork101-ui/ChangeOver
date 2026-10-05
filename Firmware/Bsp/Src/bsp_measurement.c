@@ -49,7 +49,7 @@
  *      self-calibrating instead of one-board-tuned. (2) needs a CubeMX
  *      regeneration (NbrOfConversion 5 -> 6), so it is the owner's call.
  * [FA] تنها مقیاس سراسری. هر ولتاژ و هر جریان این برد برابر
- *      counts x VREF / FULL_SCALE است، پس VREF تنها جملهٔ مشترک همهٔ آن‌هاست و
+ *      ‎counts x VREF / FULL_SCALE‎ است، پس VREF تنها جملهٔ مشترک همهٔ آن‌هاست و
  *      بنابراین تنها جای درست برای اصلاح خطای مقیاسِ مشترک. برای چیزی که
  *      مشترک است، تک‌تک کانال‌ها را وصله نکنید.
  *      شاهد اندازه‌گیری‌شده: در ردیف جریان صفر، ورودی نسبت ۱٫۰۱۱۸۷ و
@@ -96,11 +96,11 @@
  *      and therefore cannot distort the slope.
  * [FA] مقسم‌های حس ولتاژ - مستقیم از شماتیک خوانده شده‌اند، نه تنظیم‌شده.
  *      اصلاح به دستور کاربر ۲۰۲۶-۰۹-۲۹. هر سه نت حس یک شکل دارند: دو مقاومت
- *      سری تا پایهٔ ADC و یک مقاومت از همان پایه به زمین (R46/R47=68K و
- *      R48=33K روی شیت قدرت، به‌اضافهٔ R11/R13/R15=1.2K و R12/R14/R16=6.8K
+ *      سری تا پایهٔ ADC و یک مقاومت از همان پایه به زمین (‎R46/R47=68K‎ و
+ *      ‎R48=33K‎ روی شیت قدرت، به‌اضافهٔ ‎R11/R13/R15=1.2K‎ و ‎R12/R14/R16=6.8K‎
  *      روی شیت MCU). پس دو نت ۲۴ولت از نظر الکتریکی یکی‌اند و هیچ دلیل فیزیکی
  *      برای تفاوت ضرایبشان وجود ندارد.
- *      چرا اصلاح لازم بود: نت پک قبلاً TOP=66200 داشت که هیچ مقاومتی روی این
+ *      چرا اصلاح لازم بود: نت پک قبلاً ‎TOP=66200‎ داشت که هیچ مقاومتی روی این
  *      برد نیست؛ ساخته شده بود تا یک خواندن بنچ جور دربیاید، و دقیقاً همین
  *      دلیل کالیبره‌نشدن ولتاژ پک بود. مقسم غلط یعنی خطای گین: فقط در یک نقطه
  *      درست است و در بقیهٔ نقاط غلط، و بی‌صدا همهٔ مصرف‌کننده‌های آن عدد را
@@ -171,7 +171,7 @@
  *      10k/(1k+10k) of the LM358 output; the conversion below undoes this
  *      permanent hardware divider separately from the user calibration.
  *      [FA] تقسیم ورودی MCU روی نت‌های CURRENTx (شیت MCU): R41 برابر 1k سری
- *      و R42 برابر 10k به زمین. پایه ADC فقط 10k/(1k+10k) خروجی LM358 را
+ *      و R42 برابر 10k به زمین. پایه ADC فقط ‎10k/(1k+10k)‎ خروجی LM358 را
  *      می‌بیند؛ تبدیل پایین این تقسیم دائمی سخت‌افزاری را جدا از کالیبراسیون
  *      کاربر خنثی می‌کند. */
 #define BSP_MEASUREMENT_CURRENT_DIV_TOP_OHMS     1000u
@@ -204,10 +204,10 @@
  *      425 mA DMM true). The chain stays non-linear (D=10%: reads
  *      ~222-250 vs 185 true) - a solo hardware re-check stays on the
  *      bench list; the LUT above the chain is the real correction.
- * [FA] کانال ۲ (Trans2/Shunt2): زوج کالیبره‌شدهٔ بنچ. ران اسکوپ ۲۰۲۶-۰۹-۱۸
+ * [FA] کانال ۲ (‎Trans2/Shunt2)‎: زوج کالیبره‌شدهٔ بنچ. ران اسکوپ ۲۰۲۶-۰۹-۱۸
  *      ۱۰۸۵ پرمیل داد؛ دستور ۲۰۲۶-۰۹-۲۴ (کالیبره از همین اعداد، بدون تست
- *      بیشتر) گین را در نقطهٔ D=15% گذاشت: 1085×425÷354 = ۱۳۰۳ پرمیل.
- *      زنجیره هنوز غیرخطی است (D=10%: ~222-250 در برابر 185 واقعی) — تست
+ *      بیشتر) گین را در نقطهٔ ‎D=15%‎ گذاشت: 1085×425÷354 = ۱۳۰۳ پرمیل.
+ *      زنجیره هنوز غیرخطی است (‎D=10%: ~222-250‎ در برابر 185 واقعی) — تست
  *      تکی سخت‌افزاری در فهرست بنچ می‌ماند؛ اصلاح واقعی LUT روی زنجیره است. */
 #define BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS 8u
 #define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE 1303u
@@ -217,10 +217,10 @@
  *      436/438/442 mA, D=10% 185 vs 185/189 mA. Gain = 1085 * 423/438.7 =
  *      1046 permille, set at D=15% (closest to the ~650 mA AUTO point).
  *      Offset stays 8 counts - off-state display reads 0 mA.
- * [FA] کانال ۱ (Trans1/Shunt1): کالیبرهٔ بنچ ۲۰۲۶-۰۹-۲۴ پس از رفع افت
+ * [FA] کانال ۱ (‎Trans1/Shunt1)‎: کالیبرهٔ بنچ ۲۰۲۶-۰۹-۲۴ پس از رفع افت
  *      دوکاناله (دستور کاربر: بپز و پوش کن). مولتی‌متر سری با ورودی ۲۴V؛
- *      واقعی در برابر نمایش: D=15% → 423 در برابر 436/438/442؛ D=10% → 185
- *      در برابر 185/189. گین = 1085×423÷438.7 = ۱۰۴۶ پرمیل، تنظیم در D=15%
+ *      واقعی در برابر نمایش: ‎D=15%‎ → 423 در برابر ‎436/438/442‎؛ ‎D=10%‎ → 185
+ *      در برابر ‎185/189‎. گین = 1085×423÷438.7 = ۱۰۴۶ پرمیل، تنظیم در ‎D=15%‎
  *      (نزدیک‌ترین به نقطهٔ کار ~650mA در AUTO). آفست 8 ماند (خاموش = 0mA). */
 #define BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS 8u
 #define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE 1046u
@@ -244,7 +244,7 @@
  *      پیش‌فرض‌های بنچ بالا و نوشتن در زمان اجرا توسط لینک ESP (روی فلش
  *      می‌ماند از نسخهٔ ۱.۱۴ - ری‌استارت مجموعه را نگه می‌دارد). نوشتن از تسک EspLink و
  *      خواندن در تسک اندازه‌گیری؛ هر دو ۳۲ بیتی تراز شده‌اند و روی
- *      Cortex-M3 اتمیک‌اند. */
+ *      ‎Cortex-M3‎ اتمیک‌اند. */
 static volatile uint32_t UINT32_T__G__Current1OffsetCounts =
     BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS;
 static volatile uint32_t UINT32_T__G__Current1GainPermille =
@@ -419,7 +419,7 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
  *              and only ONE division runs at the very end (no
  *              intermediate truncation accumulates).
  *         [FA] قالب فرمول مشترک هر دو کانال، یک مرحله برای هر المان
- *              شماتیک: شمارش -> mV پایه ADC -> خنثی‌کردن تقسیم R41/R42 ->
+ *              شماتیک: شمارش -> mV پایه ADC -> خنثی‌کردن تقسیم ‎R41/R42 ->‎
  *              خنثی‌کردن گین LM358 -> خنثی‌کردن mΩ شانت -> mA، سپس آفست
  *              صفر پر-کانال و گین پرمیل بنچ. هر ضرب مرحلهٔ صورت/مخرج خودش
  *              را جابه‌جا می‌کند و فقط یک تقسیم در انتها اجرا می‌شود.
@@ -439,7 +439,7 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
  *              ۶۴بیتی ~۱KB می‌خواست). اگر مقاومتی عوض شد دوباره اشتقاق
  *              بگیر (تست هاست از همین دیفاین‌ها بازمحاسبه می‌کند).
  * @param  uint16_t__counts           [EN] ADC count / شمارش ADC
- * @param  uint32_t__offsetCounts     [EN] zero-current offset, counts / آفست صفر
+ * @‎param  uint32_t__offsetCounts     [EN] zero-current offset, counts‎ / آفست صفر
  * @param  uint32_t__gainPermille     [EN] bench gain permille / ضریب گین بنچ
  * @return uint32_t [EN] Current in mA / جریان بر حسب mA
  */
@@ -520,10 +520,10 @@ uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts)
  *              Trans1/Shunt1 chain, channel 1 = Trans2/Shunt2.
  *              Flash-persisted (NVM); a reboot keeps the tuned value.
  *         [FA] آفست جریان صفر (شمارش خام) یک کانال را در زمان اجرا تنظیم
- *              می‌کند، گیره در ۰..۲۵۵. کانال ۰ = زنجیرهٔ Trans1/Shunt1 و
- *              کانال ۱ = Trans2/Shunt2. روی فلش می‌ماند؛ ری‌استارت مقدار
+ *              می‌کند، گیره در ۰..۲۵۵. کانال ۰ = زنجیرهٔ ‎Trans1/Shunt1‎ و
+ *              کانال ۱ = ‎Trans2/Shunt2‎. روی فلش می‌ماند؛ ری‌استارت مقدار
  *              تنظیم‌شده را نگه می‌دارد.
- * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
  * @param  uint32_t__offsetCounts [EN] Requested offset in counts / آفست
  * @return uint32_t [EN] Actually applied offset / آفست اعمال‌شده
  */
@@ -554,7 +554,7 @@ uint32_t func__BspMeasurement_SetCurrentOffsetCounts(uint8_t uint8_t__channelInd
  *         [FA] ضریب گین بنچ (پرمیل) یک کانال را در زمان اجرا تنظیم می‌کند،
  *              گیره در ۱۰۰..۳۰۰۰ (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲؛ روی فلش
  *              می‌ماند از نسخهٔ ۱.۱۴).
- * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
  * @param  uint32_t__gainPermille [EN] Requested gain permille / گین پرمیل
  * @return uint32_t [EN] Actually applied gain permille / گین اعمال‌شده
  */
@@ -589,7 +589,7 @@ uint32_t func__BspMeasurement_SetCurrentGainPermille(uint8_t uint8_t__channelInd
 /**
  * @brief  [EN] Read the live zero-current offset of one current channel.
  *         [FA] آفست جریان صفرِ زندهٔ یک کانال را می‌خواند.
- * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
  * @return uint32_t [EN] Offset in counts / آفست بر حسب شمارش
  */
 uint32_t func__BspMeasurement_GetCurrentOffsetCounts(uint8_t uint8_t__channelIndex)
@@ -605,7 +605,7 @@ uint32_t func__BspMeasurement_GetCurrentOffsetCounts(uint8_t uint8_t__channelInd
 /**
  * @brief  [EN] Read the live bench gain trim of one current channel.
  *         [FA] ضریب گین بنچِ زندهٔ یک کانال را می‌خواند.
- * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
  * @return uint32_t [EN] Gain permille / گین پرمیل
  */
 uint32_t func__BspMeasurement_GetCurrentGainPermille(uint8_t uint8_t__channelIndex)
@@ -646,7 +646,7 @@ uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts)
  *         [FA] فقط زنجیرهٔ سخت‌افزاری: شمارش خام جریان هر کانال به ولتاژ
  *              دو سر شانت بر حسب میکروولت - دقیقاً سه مرحلهٔ سخت‌افزاری،
  *              عمداً بدون آفست صفر و بدون اصلاح بنچ، تا مستقیم با پروب
- *              اسکوپ روی خروجی LM358 قابل مقایسه باشد (mV = uV×101÷1000).
+ *              اسکوپ روی خروجی LM358 قابل مقایسه باشد (‎mV = uV‎×101÷1000).
  * @note   [EN] Flash diet: same fold as ConvertCurrent (one u32
  *              multiply+divide, bit-identical for all 4096 counts):
  *                num = counts x VREF(3300) x (R41+R42)(11000) x UV_PER_MV(1000)

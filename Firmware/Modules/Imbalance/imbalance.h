@@ -25,7 +25,7 @@
  *
  *          [FA] سناریوی ۶ - پایش عدم‌توازن (آنبالانس) دو نیم‌باتری.
  *              قدرمطلق اختلاف دو نیم به شارژ ۱۲ ولتی پک ۲۴ ولتی
- *              (|v_high - v_low|) با حد استراحت و حد دشارژ سنجیده می‌شود،
+ *              (|‎v_high - v_low|)‎ با حد استراحت و حد دشارژ سنجیده می‌شود،
  *              رویدادهای فراتر از حد با زمان پایداری و هیسترزیس شمرده
  *              می‌شوند (هر اپیزود فقط یک‌بار) و پس از پر شدن سقف رویدادها
  *              قضاوت دائمی (قفل) صادر می‌شود: LED قرمز ثابت + بوق کوتاه
@@ -47,7 +47,7 @@
  *              ms time; no BSP, no RTOS, no globals from other modules.
  *              Consume func__Imbalance_GetOutputs() after each call.
  *          [FA] منطق خالص: Evaluate همهٔ ورودی‌ها و زمان فعلی را می‌گیرد؛
- *              بی‌وابستگی به BSP/RTOS. خروجی‌ها را پس از هر فراخوانی بخوان.
+ *              بی‌وابستگی به ‎BSP/RTOS‎. خروجی‌ها را پس از هر فراخوانی بخوان.
  */
 
 #ifndef IMBALANCE_H
@@ -262,9 +262,9 @@ typedef struct
 void func__Imbalance_Init(void);
 
 /** [EN] One evaluation pass.
- * @param imbalance_inputs_t__inputs [EN] Mapped inputs / ورودی‌های نگاشته (non-NULL)
+ * @param imbalance_inputs_t__inputs [EN] Mapped inputs / ورودی‌های نگاشته (‎non-NULL)‎
  * @param uint32_t__nowMs [EN] Current time in milliseconds / زمان فعلی ms
- * @param imbalance_outputs_t__outputs [EN] Results out / خروجی‌ها (non-NULL)
+ * @param imbalance_outputs_t__outputs [EN] Results out / خروجی‌ها (‎non-NULL)‎
  * @return bool [EN] true if any persisted value changed (caller should mark
  *         the NVM slots dirty) / اگر مقدار ماندگاری تغییر کرده BL درست */
 bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inputs,

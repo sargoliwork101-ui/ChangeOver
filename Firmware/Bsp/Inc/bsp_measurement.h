@@ -34,7 +34,7 @@ uint32_t func__BspMeasurement_V24CountsToMv(uint16_t uint16_t__counts);
  * @brief  [EN] Convert the battery-PACK 24 V channel (user divider factor,
  *              2026-09-25: attenuation 6.8k/69.2k to the pin).
  *         [FA] کانال باتری‌پک ۲۴ ولت را تبدیل می‌کند (ضریب مقسم کاربر،
- *              ۲۰۲۶-۰۹-۲۵: تضعیف 6.8k/69.2k تا پایه).
+ *              ۲۰۲۶-۰۹-۲۵: تضعیف ‎6.8k/69.2k‎ تا پایه).
  * @param  uint16_t__counts [EN] Normalized ADC count / شمارش استاندارد ADC
  * @return uint32_t [EN] Pack voltage in mV / ولتاژ پک mV
  */
@@ -67,7 +67,7 @@ uint32_t func__BspMeasurement_Current1CountsToMa(uint16_t uint16_t__counts);
  *              ESP panel (user order 2026-09-22).
  *         [FA] آفست جریان صفر یک کانال در زمان اجرا، گیرهٔ ۰..۲۵۵؛ روی
  *              فلش می‌ماند (NVM نسخهٔ ۱.۱۴)، پنل ESP (دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
  * @param  uint32_t__offsetCounts [EN] Requested offset / آفست درخواستی
  * @return uint32_t [EN] Applied offset / آفست اعمال‌شده
  */
@@ -80,7 +80,7 @@ uint32_t func__BspMeasurement_SetCurrentOffsetCounts(uint8_t uint8_t__channelInd
  *              ESP panel (user order 2026-09-22).
  *         [FA] ضریب گین بنچ یک کانال در زمان اجرا، گیرهٔ ۱۰۰..۳۰۰۰؛ روی
  *              فلش می‌ماند (NVM نسخهٔ ۱.۱۴)، پنل ESP (دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
  * @param  uint32_t__gainPermille [EN] Requested gain permille / گین درخواستی
  * @return uint32_t [EN] Applied gain permille / گین اعمال‌شده
  */
@@ -90,7 +90,7 @@ uint32_t func__BspMeasurement_SetCurrentGainPermille(uint8_t uint8_t__channelInd
 /**
  * @brief  [EN] Read the live zero-current offset (counts) of one channel.
  *         [FA] آفست جریان صفر زندهٔ یک کانال.
- * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
  * @return uint32_t [EN] Offset in counts / آفست بر حسب شمارش
  */
 uint32_t func__BspMeasurement_GetCurrentOffsetCounts(uint8_t uint8_t__channelIndex);
@@ -98,7 +98,7 @@ uint32_t func__BspMeasurement_GetCurrentOffsetCounts(uint8_t uint8_t__channelInd
 /**
  * @brief  [EN] Read the live bench gain trim (permille) of one channel.
  *         [FA] ضریب گین بنچ زندهٔ یک کانال.
- * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
  * @return uint32_t [EN] Gain permille / گین پرمیل
  */
 uint32_t func__BspMeasurement_GetCurrentGainPermille(uint8_t uint8_t__channelIndex);
@@ -126,7 +126,7 @@ uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts);
  *              gain, no offset, no trim) from raw current counts to the
  *              sense-shunt voltage in uV - live diagnostic for the
  *              current-chain review, user order 2026-09-22.
- *         [FA] زنجیرهٔ فقط-سخت‌افزاری (مرجع + مقسم R41/R42 + گین تقویت‌کننده،
+ *         [FA] زنجیرهٔ فقط-سخت‌افزاری (مرجع + مقسم ‎R41/R42‎ + گین تقویت‌کننده،
  *              بدون آفست و اصلاح) از شمارش خام جریان به ولتاژ شانت بر حسب
  *              uV - دیاگ زندهٔ بررسی زنجیرهٔ جریان، دستور کاربر ۲۰۲۶-۰۹-۲۲.
  * @param  uint16_t__counts [EN] Raw ADC count of a current channel /

@@ -8,10 +8,10 @@
  *          share implementation only - voltage, current, duty, state,
  *          retry counter and JIT sequence are per-channel.
  *          [FA] کنترل عمومی شارژرهای مستقل ۱۲ ولت. CHG_MASTER_ENABLE تنها
- *          کلید اصلی است؛ با ۰ ماژول در safe-idle می‌ماند (PWM متوقف، رلهٔ
+ *          کلید اصلی است؛ با ۰ ماژول در ‎safe-idle‎ می‌ماند (PWM متوقف، رلهٔ
  *          NC بسته، سیاست JIT/رله غیرفعال). CHG_TRANSFORMER_KNOWN bypass
- *          نمی‌شود؛ با ۰ فقط مود محدود bring-up مجاز است. فقط پیاده‌سازی
- *          مشترک است؛ ولتاژ/جریان/duty/state/retry/JIT هر کانال جداست.
+ *          نمی‌شود؛ با ۰ فقط مود محدود ‎bring-up‎ مجاز است. فقط پیاده‌سازی
+ *          مشترک است؛ ولتاژ/جریان/‎duty/state/retry/JIT‎ هر کانال جداست.
  */
 
 /* ==================== Includes / شامل‌ها ==================== */
@@ -86,7 +86,7 @@ typedef struct
        ۰٫۰۱ پرمیل بر ثانیه در ریاضی صحیح گم نشود. pidDutyMilli دیوتی
        «آخرین‌بار اعمال‌شده» را نگه می‌دارد نه تقاضای ریز را، و همین چیزی
        است که نگهبان بذرگیری بدون پرش با سخت‌افزار مقایسه می‌کند.
-       خطا/شاخه مشتق را تغذیه و با عوض‌شدن برندهٔ CC/CV ریستش می‌کنند. */
+       خطا/شاخه مشتق را تغذیه و با عوض‌شدن برندهٔ ‎CC/CV‎ ریستش می‌کنند. */
     uint32_t uint32_t__pidDutyMilli;    /* [EN] last APPLIED duty, milli-permille / دیوتی آخرین‌بار اعمال‌شده */
     uint32_t uint32_t__pidVoltFilt;     /* [EN] N x filtered pack mV (see wire id CHG_LIMIT_PARAM_PID_VOLT_FILTER_N) / ولتاژ فیلترشدهٔ ضرب در N */
     int32_t  int32_t__pidIntegral;      /* [EN] integral term, milli-permille / جملهٔ انتگرالی */
@@ -122,7 +122,7 @@ typedef struct
 } charger_profile_t;
 
 /* [EN] volatile: written by the EspLink task, read by the control task
-   (full-program audit 2026-09-26). [FA] بین دو تسک بدون قفل پس volatile. */
+   (‎full-program audit 2026-09-26). [FA]‎ بین دو تسک بدون قفل پس volatile. */
 static volatile charger_profile_t CHARGER_PROFILE_T__G__Profile =
 {
     CHG_ABSORB_MV, CHG_ABSORB_ENTER_MV, CHG_ABSORB_OVER_MV,
@@ -227,7 +227,7 @@ volatile uint32_t UINT32_T__G__ChargerIest2Ma = 0u;
  *      32-bit values are atomic on Cortex-M3.
  * [FA] ضریب تبدیل زمان اجرای هر کانال (پروتکل v1.3، دستور ۲۰۲۶-۰۹-۲۴).
  *      صفر (پیش‌فرض) = همانی: با گین‌های کالیبره-باتری عدد فیلترشده خودش
- *      جریان باتری است. غیرصفر = تبدیل زندهٔ iest = I × Vin × η ÷ (۱۰۰۰ ×
+ *      جریان باتری است. غیرصفر = تبدیل زندهٔ ‎iest = I‎ × Vin × η ÷ (۱۰۰۰ ×
  *      Vbat)؛ ست از پارامتر ۹/۱۰ یا فرمان CAL_REFERENCE. روی فلش از v1.14
  *      (شناسه ۹/۱۰)؛ نوشتن از تسک EspLink، خواندن در کنترل؛ u32 تراز اتمیک.
  */
@@ -285,7 +285,7 @@ static volatile uint32_t UINT32_T__G__ChargerDutyFixedPermille[2] = {0u, 0u};
  * [FA] وضعیت مود تست دستی (دستور ۲۰۲۶-۰۹-۲۳، پارامتر ۱۹ v1.2). Requested
  *      را تسک ESP می‌نویسد؛ Active مالکش تسک شارژر است و در Evaluate
  *      برمی‌گردد (همهٔ عملیات ورود/خروج در زمینهٔ شارژر). مهر لینک ددمنِ
- *      CHG_MANUAL_WATCHDOG_MS را غذا می‌دهد؛ RearmRequest یعنی re-arm دستی
+ *      CHG_MANUAL_WATCHDOG_MS را غذا می‌دهد؛ RearmRequest یعنی ‎re-arm‎ دستی
  *      JIT: نوشتن duty در حالت پارک کانال را مسلح می‌کند. */
 static volatile bool BOOL__G__ChargerManualModeRequested = false;
 static volatile bool BOOL__G__ChargerManualModeActive = false;
@@ -333,9 +333,9 @@ static uint32_t func__Charger_Limit(uint8_t uint8_t__index);
  *              CHG_MASTER_ENABLE=0 JIT/relay disconnect policy is inactive,
  *              so the NC contact is closed and no coil is energized.
  *         [FA] همه خروجی‌های PWM را متوقف می‌کند، duty هر کانال را صفر و رله
- *              NC را بسته (coil خاموش) نگه می‌دارد. این وضعیت safe-idle برای
- *              master غیرفعال، ورودی کم، ترانس ناشناخته (بدون bring-up فعال)
- *              و شرایط غیرنهایی بدون شارژ است. با CHG_MASTER_ENABLE=0 سیاست
+ *              NC را بسته (coil خاموش) نگه می‌دارد. این وضعیت ‎safe-idle‎ برای
+ *              master غیرفعال، ورودی کم، ترانس ناشناخته (بدون ‎bring-up‎ فعال)
+ *              و شرایط غیرنهایی بدون شارژ است. با ‎CHG_MASTER_ENABLE=0‎ سیاست
  *              JIT/رله قطع‌کننده غیرفعال است، بنابراین کنتاکت NC بسته و کویل
  *              بدون انرژی است.
  */
@@ -532,16 +532,16 @@ static uint32_t func__Charger_ChannelCurrentMa(const measurement_snapshot_t *mea
  *              (دستور کاربر ۲۰۲۶-۰۹-۲۴). (۱) η=۰ (پیش‌فرض): همانی - با
  *              گین‌های کالیبره-باتری عدد فیلترشده خودش جریان باتری است؛
  *              ریفلش هیچ عددی را عوض نمی‌کند. (۲) η≠۰ (پارامتر ۹/۱۰ یا
- *              CAL_REFERENCE پنل): iest = I × Vin × η ÷ (۱۰۰۰ × Vbat) با
+ *              CAL_REFERENCE پنل): ‎iest = I‎ × Vin × η ÷ (۱۰۰۰ × Vbat) با
  *              ولتاژهای زنده تا خوانش با حرکت Vbat درست بماند. گارد: زیر
- *              CHG_ETA_MIN_VIN_MV / CHG_ETA_MIN_VBAT_MV برگشت به همانی
+ *              ‎CHG_ETA_MIN_VIN_MV / CHG_ETA_MIN_VBAT_MV‎ برگشت به همانی
  *              به‌جای تقسیم snapshot بی‌معنی. ترتیب ریاضی داخل ۳۲ بیت
  *              می‌ماند: (I×η÷۱۰۰۰) زیر ~1e7 و ضرب در Vin زیر ~3e8.
  *              (تاریخچهٔ تبدیل دوبارشمرِ حذف‌شده: charger.h.)
- * @param  measurement_snapshot_t__snap [EN] Live snapshot (Vin/Vbat) / snapshot زنده
- * @param  uint8_t__channelIndex [EN] 0 = ch1 (upper battery), 1 = ch2 / ۰=کانال۱، ۱=کانال۲
+ * @‎param  measurement_snapshot_t__snap [EN] Live snapshot (Vin/Vbat) / snapshot‎ زنده
+ * @‎param  uint8_t__channelIndex [EN] 0 = ch1 (upper battery), 1 = ch2‎ / ۰=کانال۱، ۱=کانال۲
  * @param  uint32_t__primaryMa [EN] Filtered chain current, mA / جریان فیلترشدهٔ زنجیره، mA
- * @return uint32_t [EN] Battery-side current estimate, mA / تخمین جریان سمت باتری، mA
+ * @‎return uint32_t [EN] Battery-side current estimate, mA‎ / تخمین جریان سمت باتری، mA
  */
 static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *measurement_snapshot_t__snap,
                                                uint8_t uint8_t__channelIndex,
@@ -572,7 +572,7 @@ static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *mea
     }
 
     /* [EN] iest = I x Vin x eta / (1000 x Vbat), 32-bit-safe order.
-       [FA] iest = I × Vin × η ÷ (۱۰۰۰ × Vbat)، ترتیب امن برای ۳۲ بیت. */
+       [‎FA] iest = I‎ × Vin × η ÷ (۱۰۰۰ × Vbat)، ترتیب امن برای ۳۲ بیت. */
     return ((((uint32_t__primaryMa * uint32_t__etaPermille) / 1000u) * uint32_t__vinMv) /
             uint32_t__vbatMv);
 }
@@ -595,7 +595,7 @@ static uint32_t func__Charger_ActiveCurrentLimitMa(void)
     }
 
     /* [EN] Derived from the profile band: limit = band + 25 mA (was the
-       compile-time 675 over the 650 band). / سقف از باند پروفایل: حد = باند + ۲۵mA. */
+       ‎compile-time 675 over the 650 band)‎. / سقف از باند پروفایل: حد = باند + ۲۵mA. */
     return (CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa + 25u);
 }
 
@@ -996,7 +996,7 @@ static void func__Charger_BringupRegulateChannel(uint8_t uint8_t__channelIndex,
  *         اجازهٔ شروع بالک می‌دهد (دستور کاربر: اول ثبات، بعد شارژ).
  * @param  uint8_t__channelIndex [EN] channel 0 or 1 / کانال ۰ یا ۱
  * @param  uint32_t__nowTick     [EN] current kernel tick / تیک فعلی کرنل
- * @return bool [EN] true = settled, bulk may start / true = ثابت شده، بالک مجاز
+ * @‎return bool [EN] true = settled, bulk may start / true‎ = ثابت شده، بالک مجاز
  */
 static bool func__Charger_BulkStartSettled(uint8_t uint8_t__channelIndex,
                                            uint32_t uint32_t__nowTick)
@@ -1305,7 +1305,7 @@ static uint16_t func__Charger_PidStep(uint8_t uint8_t__channelIndex,
        old regulation band (top - CHG_LIM(CHG_LIMIT_PARAM_PID_CUR_MARGIN_MA)), so the
        familiar ~640 mA operating point is kept and the 950 mA hard fault
        keeps its clearance.
-       [FA] کمینه‌گیری CC/CV: شاخهٔ جریان وسط باند قدیمی را هدف می‌گیرد
+       [FA] کمینه‌گیری ‎CC/CV‎: شاخهٔ جریان وسط باند قدیمی را هدف می‌گیرد
        (سقف منهای CHG_LIM(CHG_LIMIT_PARAM_PID_CUR_MARGIN_MA)) تا همان نقطهٔ کار آشنای
        ~۶۴۰mA بماند و خطای سخت ۹۵۰mA فاصله‌اش را حفظ کند. */
     uint32_t__currentTargetMa = CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa;
@@ -1812,7 +1812,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                 (charger_channel_state_t__channel->uint32_t__absorbAccumTicks >
                  uint32_t__absorbTicks))
             {
-                /* [EN] Clamp against long-soak overflow. / سقف برای اضافه‌سرریز. */
+                /* [‎EN] Clamp against long-soak overflow‎. / سقف برای اضافه‌سرریز. */
                 charger_channel_state_t__channel->uint32_t__absorbAccumTicks =
                     uint32_t__absorbTicks;
             }
@@ -2141,7 +2141,7 @@ static void func__Charger_ExitManualTestMode(void)
  *              قطع ESP کانال → صفر، قطع سخت ۱۵٫۰V (CHG_MAX_VALID_BATTERY_MV)
  *              → صفر تا افت ولتاژ، و ApplyDuty به کمینهٔ سقف کامپایل و سقف
  *              زمان اجرا گیره می‌زند. وضعیت MANUAL نشان داده می‌شود.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @param  measurement_snapshot_t__snap [EN] Snapshot / نمونه
  */
 static void func__Charger_ManualDriveChannel(uint8_t uint8_t__channelIndex,
@@ -2184,7 +2184,7 @@ static void func__Charger_ManualDriveChannel(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Set the NVM-save suspension flag (see header contract).
  *         [FA] ست‌کردن پرچم تعلیق ذخیرهٔ NVM (قرارداد هدر).
- * @param  bool__suspended [EN] true = hold gates at 0 / گیت‌ها صفر نگه داشته شوند
+ * @‎param  bool__suspended [EN] true = hold gates at 0‎ / گیت‌ها صفر نگه داشته شوند
  */
 void func__Charger_SetSuspended(bool bool__suspended)
 {
@@ -2194,7 +2194,7 @@ void func__Charger_SetSuspended(bool bool__suspended)
 /**
  * @brief  [EN] Read the NVM-save suspension flag.
  *         [FA] خواندن پرچم تعلیق ذخیرهٔ NVM.
- * @return bool [EN] true = suspension active / تعلیق فعال است
+ * @‎return bool [EN] true = suspension active‎ / تعلیق فعال است
  */
 bool func__Charger_IsSuspended(void)
 {
@@ -2463,7 +2463,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
        previous pass applied; the current/estimate slots are exactly what the
        regulation below will decide on this pass.
        [FA] آرایهٔ دیاگ قبل از هر گِیت به‌روز می‌شود تا در همهٔ مسیرها زنده
-       بماند؛ duty/state مقدار اعمال‌شدهٔ پاس قبل است و جریان/تخمین دقیقاً
+       بماند؛ ‎duty/state‎ مقدار اعمال‌شدهٔ پاس قبل است و جریان/تخمین دقیقاً
        همان چیزی است که تنظیم پایین‌تر در همین پاس رویش تصمیم می‌گیرد. */
     func__Charger_CaptureDiag(measurement_snapshot_t__snap);
 
@@ -2664,7 +2664,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                        the commanded duty in this same pass. The trip COUNT is
                        untouched, so the 3rd trip still latches FINAL_FAULT.
                        [FA] مسلح‌کردن دوبارهٔ JIT در مود دستی (بخش 5.2 ی
-                       v1.2): نوشتن دوبارهٔ duty یعنی re-arm - پارک و لچ
+                       v1.2): نوشتن دوبارهٔ duty یعنی ‎re-arm‎ - پارک و لچ
                        تریپ پاک می‌شوند و درایو دستی پایین همان پاس duty
                        فرمان‌شده را اعمال می‌کند. شمارش تریپ دست نمی‌خورد،
                        پس سومین تریپ همچنان FINAL_FAULT را قفل می‌کند. */
@@ -2726,7 +2726,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
  *         IsChargeComplete) and (b) the fault pump-window, so a transient
  *         above 14.8 V in the parked/done phase cannot catch the
  *         battery-lost buzzer.
- *         [FA] آیا کانال نصب‌شده‌ای واقعاً پمپ می‌کند؟ فقط BULK/ABSORB؛
+ *         [FA] آیا کانال نصب‌شده‌ای واقعاً پمپ می‌کند؟ فقط ‎BULK/ABSORB‎؛
  *         FLOAT پارک‌شده یعنی کار تمام است و حساب نمی‌شود (چهرهٔ فول با
  *         IsChargeComplete می‌آید) و آشکارساز قطع باتری هم آنجا مسلح نیست.
  * @return bool [EN] true if any installed channel is pumping / اگر کانالی پمپ کند true
@@ -2747,7 +2747,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
  *              پمپِ فالت هر نیم را با شارژر خودش مسلح کند: کانال
  *              پارک‌شده پمپی ندارد پس نیمش نمی‌تواند تا آستانهٔ قطع بالا
  *              پرود.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @return bool [EN] true while that channel pumps / وقتی همان کانال پمپ کند
  */
 bool func__Charger_IsChannelActive(uint8_t uint8_t__channelIndex)
@@ -2826,10 +2826,10 @@ bool func__Charger_IsChargeComplete(void)
  *              ESP panel (params 9/10) and by CAL_REFERENCE (user order
  *              2026-09-24).
  *         [FA] ضریب تبدیل زمان اجرای یک کانال، گیرهٔ ۰..۹۹۹ پرمیل (v1.3):
- *              صفر = همانی (پیش‌فرض)، غیرصفر = تبدیل زندهٔ iest = I × Vin ×
+ *              صفر = همانی (پیش‌فرض)، غیرصفر = تبدیل زندهٔ ‎iest = I‎ × Vin ×
  *              η ÷ (۱۰۰۰ × Vbat). کانال ۰ = شارژر ۱ (باتری بالا)، ۱ = شارژر
  *              ۲. روی فلش از v1.14 (شناسه ۹/۱۰)؛ از پنل ESP و CAL_REFERENCE.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @param  uint32_t__etaPermille [EN] Requested efficiency / بازدهی درخواستی
  * @return uint32_t [EN] Applied efficiency permille / بازدهی اعمال‌شده
  */
@@ -2871,7 +2871,7 @@ uint32_t func__Charger_SetEfficiencyPermille(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read the live flyback efficiency of one channel.
  *         [FA] بازدهی flyback زندهٔ یک کانال را می‌خواند.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @return uint32_t [EN] Live efficiency permille / بازدهی زندهٔ پرمیل
  */
 uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex)
@@ -2896,8 +2896,8 @@ uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex)
  *              گیت آزاد نمی‌شود)؛ true = وصل با ری‌استارت نرم BULK از duty
  *              ۱٪. روی فلش می‌ماند از نسخهٔ ۱.۱۴ - ری‌استارت گیت‌ها را
  *              نگه می‌دارد (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
- * @param  bool__enable [EN] true = channel allowed / کانال آزاد
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @‎param  bool__enable [EN] true = channel allowed‎ / کانال آزاد
  */
 void func__Charger_SetChannelEspEnable(uint8_t uint8_t__channelIndex, bool bool__enable)
 {
@@ -2910,8 +2910,8 @@ void func__Charger_SetChannelEspEnable(uint8_t uint8_t__channelIndex, bool bool_
 /**
  * @brief  [EN] Read the ESP enable gate of one charger channel.
  *         [FA] گیت فعال‌سازی ESP یک کانال شارژر را می‌خواند.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
- * @return bool [EN] true = channel allowed / کانال آزاد
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @‎return bool [EN] true = channel allowed‎ / کانال آزاد
  */
 bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex)
 {
@@ -2940,8 +2940,8 @@ bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex)
 
 /* [EN] v1.15 alarm clamps: hard >= imax+50 (never above 950),
  *      OV >= over+150 (never above 15000), floor in 0..8000.
- * [FA] گیره‌های آلارم v1.15: خطای سخت بالای imax+50 (هرگز بالای ۹۵۰)،
- *      قطع OV بالای over+150 (هرگز بالای ۱۵۰۰۰)، فلور در ۰..۸۰۰۰. */
+ * [FA] گیره‌های آلارم v1.15: خطای سخت بالای ‎imax+50 (‎هرگز بالای ۹۵۰)،
+ *      قطع OV بالای ‎over+150 (‎هرگز بالای ۱۵۰۰۰)، فلور در ۰..۸۰۰۰. */
 static void func__Charger_ClampAlarms(void)
 {
     uint32_t uint32_t__imax =
@@ -3072,7 +3072,7 @@ static void func__Charger_ClampProfile(void)
             keeps this range non-empty).
        [FA] سقف کاهش سریع را ۵۰mV زیر خطای قطع باتری ۱۴٫۸V (پیش‌فرض بوت؛
             خود آستانه از v1.15 زمان‌اجرا است، شناسهٔ ۲۷، و ClampAlarms آن
-            را بالای over+50 نگه می‌دارد) نگه می‌داریم تا تنظیم همیشه قبل
+            را بالای ‎over+50‎ نگه می‌دارد) نگه می‌داریم تا تنظیم همیشه قبل
             از خطا عمل کند (ابزورب ≤ ۱۴۶۰۰ این بازه را تهی نمی‌کند). */
     if (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv > 14750u)
     {
@@ -3167,7 +3167,7 @@ static void func__Charger_ClampProfile(void)
 /* [EN] Layout contract for the indexed Set/GetProfileParam below (flash
    diet 2026-09-27): wire ids 20..26 dense, one packed uint32_t per id in
    the same order (host test pins every wire id).
-   [FA] قرارداد چیدمان Set/Get نمایه‌ای: شناسه‌های ۲۰..۲۶ پشت‌سرهم، یک
+   [FA] قرارداد چیدمان ‎Set/Get‎ نمایه‌ای: شناسه‌های ۲۰..۲۶ پشت‌سرهم، یک
    کلمه به همان ترتیب. */
 _Static_assert(CHG_PROFILE_PARAM_ABSORB_MV == 20u,
                "profile id base must be 20");
@@ -3309,7 +3309,7 @@ bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
    map 1:1 onto charger_pid_t's 16 words in order, so Set/Get index instead
    of switching (host test pins every wire id).
    [FA] همان قرارداد شناسهٔ پشت‌سرهم و ساختار فشرده: ۸۳..۹۲ یک‌به‌یک روی ۱۰
-   کلمهٔ charger_pid_t می‌افتند، پس Set/Get نمایه می‌زنند. */
+   کلمهٔ charger_pid_t می‌افتند، پس ‎Set/Get‎ نمایه می‌زنند. */
 _Static_assert(CHG_PID_PARAM_CURRENT_KP == 83u, "PID id base must be 83");
 _Static_assert(CHG_PID_PARAM_VOLTAGE_DOWN_RATE == 92u, "PID id top must be 92");
 _Static_assert((CHG_PID_PARAM_VOLTAGE_DOWN_RATE - CHG_PID_PARAM_CURRENT_KP) == 9u,
@@ -3523,7 +3523,7 @@ _Static_assert((sizeof(UINT32_T__G__ChargerLimit) /
 /**
  * @brief  [EN] Live value of one charger limit, by table index.
  *         [FA] مقدار زندهٔ یک حد شارژر، با نمایهٔ جدول.
- * @param  uint8_t__index [EN] 0..CHG_LIMIT_COUNT-1 / نمایه
+ * @‎param  uint8_t__index [EN] 0..CHG_LIMIT_COUNT-1‎ / نمایه
  * @return uint32_t [EN] Live value / مقدار زنده
  */
 static uint32_t func__Charger_Limit(uint8_t uint8_t__index)
@@ -3609,7 +3609,7 @@ void func__Charger_NotifyEspLinkActivity(void)
  *              فیکس) داخل ApplyDuty به کمینهٔ سقف کامپایل و این سقف گیره
  *              می‌خورد. روی فلش می‌ماند از نسخهٔ ۱.۱۴ - ری‌استارت سقف‌ها
  *              را نگه می‌دارد (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @param  uint32_t__ceilingPermille [EN] Requested ceiling / سقف درخواستی
  * @return uint32_t [EN] Applied ceiling / سقف اعمال‌شده
  */
@@ -3633,7 +3633,7 @@ uint32_t func__Charger_SetDutyCeilingPermille(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read the live PWM duty ceiling of one channel.
  *         [FA] سقف زندهٔ duty ی PWM یک کانال.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @return uint32_t [EN] Ceiling permille / سقف پرمیل
  */
 uint32_t func__Charger_GetDutyCeilingPermille(uint8_t uint8_t__channelIndex)
@@ -3659,8 +3659,8 @@ uint32_t func__Charger_GetDutyCeilingPermille(uint8_t uint8_t__channelIndex)
  *              (توقف سوئیچینگ بالای CHG_ABSORB_MV؛ برش‌های JIT/ورودی/
  *              باتری/ESP فعال). عدد duty با SetDutyFixedPermille تنظیم و
  *              موقع اعمال گیره می‌خورد. فقط RAM (دستور ۲۰۲۶-۰۹-۲۲).
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
- * @param  bool__enable [EN] true = fixed mode on / مود فیکس روشن
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @‎param  bool__enable [EN] true = fixed mode on‎ / مود فیکس روشن
  */
 void func__Charger_SetDutyFixedEnable(uint8_t uint8_t__channelIndex, bool bool__enable)
 {
@@ -3673,8 +3673,8 @@ void func__Charger_SetDutyFixedEnable(uint8_t uint8_t__channelIndex, bool bool__
 /**
  * @brief  [EN] Read the runtime fixed-duty switch of one channel.
  *         [FA] کلید مود duty فیکس یک کانال.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
- * @return bool [EN] true = fixed mode on / مود فیکس روشن
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @‎return bool [EN] true = fixed mode on‎ / مود فیکس روشن
  */
 bool func__Charger_GetDutyFixedEnable(uint8_t uint8_t__channelIndex)
 {
@@ -3696,8 +3696,8 @@ bool func__Charger_GetDutyFixedEnable(uint8_t uint8_t__channelIndex)
  *              فقط وقتی مود فیکس همان کانال روشن است اثر دارد؛ ApplyDuty
  *              به‌علاوه سقف زمان اجرا را رعایت می‌کند. روی فلش می‌ماند
  *              از نسخهٔ ۱.۱۴ (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
- * @param  uint32_t__dutyPermille [EN] Requested duty / duty درخواستی
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @‎param  uint32_t__dutyPermille [EN] Requested duty / duty‎ درخواستی
  * @return uint32_t [EN] Applied stored value / مقدار ذخیره‌شده
  */
 uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
@@ -3730,8 +3730,8 @@ uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read the stored fixed duty value of one channel.
  *         [FA] مقدار ذخیره‌شدهٔ duty فیکس یک کانال.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2 / ۰ یا ۱
- * @return uint32_t [EN] Duty permille / duty پرمیل
+ * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @‎return uint32_t [EN] Duty permille / duty‎ پرمیل
  */
 uint32_t func__Charger_GetDutyFixedPermille(uint8_t uint8_t__channelIndex)
 {

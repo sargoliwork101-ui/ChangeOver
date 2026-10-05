@@ -302,10 +302,27 @@
 #define UI_BATTERY_RUN_BEEP_CRITICAL_PERIOD_MS 10000u
 
 /**
- * @brief  [EN] Duty of the continuous critical BatteryRun beep, in percent.
- *         [FA] دیوتی بوق ممتد بحرانی BatteryRun، بر حسب درصد.
+ * @brief  [EN] v1.71 (user order: every discharge band must be shaped the
+ *         same way): the critical band no longer takes a duty percent. It
+ *         takes a per-beep duration in ms, exactly like bands 1..3, and the
+ *         duty handed to the buzzer is derived from it. The default keeps the
+ *         old sound: one 10000 ms beep inside a 10000 ms period, i.e. the
+ *         former 100 percent duty.
+ *         [FA] نسخهٔ ۱٫۷۱ (دستور کاربر): باند بحرانی دیگر دیوتی نمی‌گیرد و
+ *         مثل باندهای دیگر «مدت هر بوق» بر حسب میلی‌ثانیه می‌گیرد؛ دیوتی از
+ *         روی آن ساخته می‌شود. پیش‌فرض همان صدای قبلی را می‌دهد:
+ *         یک بوق ۱۰۰۰۰ms در دورهٔ ۱۰۰۰۰ms.
  */
-#define UI_BATTERY_RUN_BEEP_CRITICAL_DUTY_PERCENT 100u
+#define UI_BATTERY_RUN_BEEP_CRITICAL_BEEP_DURATION_MS 10000u
+
+/**
+ * @brief  [EN] Repeat interval of the two-beep BatteryRun band, in ms.
+ *         v1.71 gave band 2 its own interval; before that it borrowed the
+ *         band-1 interval, so the default is that same number.
+ *         [FA] فاصلهٔ تکرار باند دو-بوق بر حسب میلی‌ثانیه. تا پیش از نسخهٔ
+ *         ۱٫۷۱ این باند فاصلهٔ باند یک را قرض می‌گرفت، پس پیش‌فرض همان است.
+ */
+#define UI_BATTERY_RUN_BEEP_DOUBLE_INTERVAL_MS UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS
 
 /**
  * @brief  [EN] Pulse count of the critical BatteryRun beep.
@@ -496,8 +513,8 @@ extern volatile bool BOOL__G__UiBatteryAlarmIssued;
 /**
  * @brief  [EN] Convert battery voltage to percent 0..100. Non-linear broken into steps: range, offset, scaled, percent.
  *         [FA] تبدیل ولتاژ باتری به درصد - غیرخطی ۴ گام.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV, range 0..40000mV, clamped / ولتاژ باتری میلی‌ولت
- * @return uint8_t [EN] Percent 0..100 / درصد
+ * @‎param  uint32_t__batteryMv [EN] Battery voltage mV, range 0..40000mV, clamped‎ / ولتاژ باتری میلی‌ولت
+ * @‎return uint8_t [EN] Percent 0..100‎ / درصد
  */
 uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv);
 
@@ -507,7 +524,7 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv);
  *         [FA] تبدیل ولتاژ به درصد سمت شارژ، از نگاشت ۱۱۹/۱۲۰ - همان ریاضی،
  *              اعداد مستقل.
  * @param  uint32_t__batteryMv [EN] Battery voltage in mV / ولتاژ باتری
- * @return uint8_t [EN] Percent 0..100 / درصد
+ * @‎return uint8_t [EN] Percent 0..100‎ / درصد
  */
 uint8_t func__Ui_ChargeVoltageToPercent(uint32_t uint32_t__batteryMv);
 
@@ -573,7 +590,7 @@ void func__Ui_ScenarioBatLost_Tick(void);
  *         [FA] دشارژ: سبز بر اساس نگاشت درصد ۷۴/۷۵ و چهار بازه بوق (۵۰..۵۳) چشمک می‌زند.
  *         زیر باند بحرانی (۵۳) همهٔ LEDها خاموش و الگوی بحرانی (۵۶/۵۷/۵۸/۶۵) فقط یک‌بار
  *         به‌اندازهٔ طول یک‌باره (۶۱) پخش می‌شود، بعد سکوت تا برگشت باتری.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 29000=100% / ولتاژ باتری
+ * @‎param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 29000=100%‎ / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv);
 
@@ -625,7 +642,7 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
 #define UI_ALARM_PARAM_RUN_STD_INTERVAL_MS 54u  /* ms, 0=off else 1000..600000 */
 #define UI_ALARM_PARAM_RUN_TRI_INTERVAL_MS 55u  /* ms, 0=off else 1000..600000 */
 #define UI_ALARM_PARAM_RUN_CRIT_PERIOD_MS  56u  /* ms, 0=off else 1000..600000 */
-#define UI_ALARM_PARAM_RUN_CRIT_DUTY_PCT   57u  /* %, 0..100 */
+#define UI_ALARM_PARAM_RUN_CRIT_BEEP_DUR_MS 57u /* ms per beep, 0..600000 (v1.71) */
 #define UI_ALARM_PARAM_RUN_CRIT_COUNT      58u  /* n, 0..10 */
 #define UI_ALARM_PARAM_RUN_STD_DUR_MS      59u  /* ms per beep, 0..fit vs 54/62/63/65 */
 #define UI_ALARM_PARAM_RUN_TRI_DUR_MS      60u  /* ms per beep, 0..fit vs 55/64/65 */
@@ -687,7 +704,7 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
    از همهٔ باندها قرض می‌گرفت. حالا جفت خودش را دارد، پس تغییر شکل بوق دوتایی
    روی بوق تکی اثر نمی‌گذارد. عمداً هنوز مشترک: فاصلهٔ تکرار (۵۴). */
 #define UI_ALARM_PARAM_RUN_DOUBLE_DUR_MS  121u  /* ms per beep, 0..fit vs 54/63/122 */
-#define UI_ALARM_PARAM_RUN_DOUBLE_GAP_MS  122u  /* ms, 0..5000, >=100 when 63>1 */
+#define UI_ALARM_PARAM_RUN_DOUBLE_INTERVAL_MS 122u /* ms, repeat interval of band 2 (v1.71) */
 #define UI_ALARM_PARAM_EXT_MIN_ID         119u
 #define UI_ALARM_PARAM_EXT_MAX_ID         122u
 
@@ -718,7 +735,7 @@ typedef struct
     uint32_t uint32_t__runStdIntervalMs;
     uint32_t uint32_t__runTriIntervalMs;
     uint32_t uint32_t__runCritPeriodMs;
-    uint32_t uint32_t__runCritDutyPct;
+    uint32_t uint32_t__runCritBeepDurMs;
     uint32_t uint32_t__runCritCount;
     uint32_t uint32_t__runStdDurMs;
     uint32_t uint32_t__runTriDurMs;
@@ -747,15 +764,20 @@ typedef struct
     /* [EN] v1.49: the charge-side percent map (ids 119/120). Appended at the
        END on purpose - Set/Get index the struct as a word array, so the dense
        38..82 block must keep its offsets.
-       [FA] نگاشت درصد سمت شارژ (۱۱۹/۱۲۰)؛ عمداً در انتها، چون Set/Get ساختار
+       [FA] نگاشت درصد سمت شارژ (۱۱۹/۱۲۰)؛ عمداً در انتها، چون ‎Set/Get‎ ساختار
        را آرایه‌ای ایندکس می‌کنند و افست‌های بلوک ۳۸..۸۲ نباید جابه‌جا شود. */
     uint32_t uint32_t__chgPctVminMv;
     uint32_t uint32_t__chgPctVmaxMv;
-    /* [EN] v1.50: band 2's own per-beep duration and gap (ids 121/122),
-       appended after the charge map for the same indexing reason.
-       [FA] مدت هر بوق و گپ مخصوص باند ۲ (۱۲۱/۱۲۲). */
+    /* [EN] v1.50 gave band 2 its own per-beep duration (id 121) and gap
+       (id 122); v1.71 (user order: "only the gap is shared, everything else
+       is per band") turns id 122 into band 2's own REPEAT INTERVAL and sends
+       every band back to the one shared gap, id 65. Appended after the
+       charge map for the same indexing reason as v1.49.
+       [FA] نسخهٔ ۱٫۵۰ مدت (۱۲۱) و گپ (۱۲۲) مخصوص باند ۲ را ساخت؛ نسخهٔ ۱٫۷۱
+       به دستور کاربر شناسهٔ ۱۲۲ را به «فاصلهٔ تکرار» همان باند تبدیل کرد و
+       گپ همهٔ باندها دوباره یکی شد (شناسهٔ ۶۵). */
     uint32_t uint32_t__runDoubleDurMs;
-    uint32_t uint32_t__runDoubleGapMs;
+    uint32_t uint32_t__runDoubleIntervalMs;
 } ui_alarm_t;
 
 /**
@@ -763,10 +785,10 @@ typedef struct
  *              whole set, report the applied value.
  *         [FA] نوشتن یک عدد UI (۳۸..۸۲): ذخیره، گیرهٔ کل مجموعه، گزارش
  *              مقدار اعمال‌شده.
- * @param  uint8_t__paramId [EN] 38..82 / شناسه
+ * @‎param  uint8_t__paramId [EN] 38..82‎ / شناسه
  * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
  * @param  uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
- * @return bool [EN] true when the id is 38..76 / شناسه معتبر بود
+ * @‎return bool [EN] true when the id is 38..76‎ / شناسه معتبر بود
  */
 bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t uint32_t__value,
@@ -775,9 +797,9 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one live UI cadence value (38..82).
  *         [FA] خواندن یک عدد زندهٔ UI (۳۸..۸۲).
- * @param  uint8_t__paramId [EN] 38..82 / شناسه
+ * @‎param  uint8_t__paramId [EN] 38..82‎ / شناسه
  * @param  uint32_t__value [EN] Value out / مقدار
- * @return bool [EN] true when the id is 38..82 / شناسه معتبر بود
+ * @‎return bool [EN] true when the id is 38..82‎ / شناسه معتبر بود
  */
 bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t *uint32_t__value);

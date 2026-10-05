@@ -10,7 +10,7 @@
  *              must survive power loss; the save runs in the comm task
  *              after the 1.5 s debounce, so one regulation hiccup is
  *              acceptable).
- *          [FA] درایور مستقیم رجیسترهای فلش F1 (KEYR/CR/SR/AR) بدون HAL.
+ *          [FA] درایور مستقیم رجیسترهای فلش ‎F1 (KEYR/CR/SR/AR)‎ بدون HAL.
  *              پاک‌کردن صفحه در F1 تک‌بانک همهٔ fetchهای کد را ~۲۰..۴۰ms نگه
  *              می‌دارد - صداکننده باید THREAD باشد نه ISR (دستور کاربر:
  *              مقادیر پنل باید بمانند؛ ذخیره بعد از دیبانس ۱٫۵ ثانیه‌ای در

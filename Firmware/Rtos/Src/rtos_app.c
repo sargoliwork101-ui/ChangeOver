@@ -1,12 +1,12 @@
 /**
  * @file    rtos_app.c
  * @brief   [EN] Creates statically allocated CMSIS-RTOS2 threads and starts the kernel.
- *          [FA] تسک‌های CMSIS-RTOS2 را با تخصیص استاتیک می‌سازد و کرنل را شروع می‌کند.
+ *          [FA] تسک‌های ‎CMSIS-RTOS2‎ را با تخصیص استاتیک می‌سازد و کرنل را شروع می‌کند.
  *
  * @note    [EN] FreeRTOS remains the current CMSIS-RTOS2 backend, but application
  *          code uses the CMSIS-RTOS2 interface and supplies all thread memory.
- *          [FA] FreeRTOS در این مرحله Backend داخلی CMSIS-RTOS2 است، اما کد برنامه
- *          از رابط CMSIS-RTOS2 استفاده می‌کند و حافظهٔ همهٔ تسک‌ها را خودش می‌دهد.
+ *          [FA] FreeRTOS در این مرحله Backend داخلی ‎CMSIS-RTOS2‎ است، اما کد برنامه
+ *          از رابط ‎CMSIS-RTOS2‎ استفاده می‌کند و حافظهٔ همهٔ تسک‌ها را خودش می‌دهد.
  */
 
 #include "rtos_app.h"
@@ -117,7 +117,7 @@ static void func__Rtos_Fatal(void)
 
 /**
  * @brief  [EN] Create enabled CMSIS-RTOS2 threads with static memory, then start the kernel.
- *         [FA] تسک‌های روشن CMSIS-RTOS2 را با حافظهٔ ثابت می‌سازد و سپس کرنل را شروع می‌کند.
+ *         [FA] تسک‌های روشن ‎CMSIS-RTOS2‎ را با حافظهٔ ثابت می‌سازد و سپس کرنل را شروع می‌کند.
  */
 void func__Rtos_Start(void)
 {

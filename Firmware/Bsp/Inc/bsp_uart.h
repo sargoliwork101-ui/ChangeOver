@@ -1,7 +1,7 @@
 /**
  * @file    bsp_uart.h
  * @brief   [EN] Logical byte-stream interface for the schematic ESP-Link UART.
- *          [FA] رابط منطقی جریان بایت برای UART ارتباط ESP-Link شماتیک.
+ *          [FA] رابط منطقی جریان بایت برای UART ارتباط ‎ESP-Link‎ شماتیک.
  *
  * @note    [EN] USART instance, pins and HAL handle are private to the board
  *              port; the port re-tunes the Cube default to 921600 baud and
@@ -16,7 +16,7 @@
  *              جهت را با DMA می‌راند (RX: بافر حلقوی ۲۵۶ بایتی، صفر CPU به
  *              ازای هر بایت، بدون هیچ وقفهٔ دریافت؛ TX: حلقهٔ نرم‌افزاری
  *              ۲۵۶ بایتی که DMA تخلیه‌اش می‌کند - به‌ازای هر فریم فقط چند
- *              وقفهٔ سبک کامل‌شدن: کامل‌شدن DMA به‌علاوهٔ transmit-complete
+ *              وقفهٔ سبک کامل‌شدن: کامل‌شدن DMA به‌علاوهٔ ‎transmit-complete‎
  *              ی UART که این HAL بعدش مسلح می‌کند). رابط حتی با
  *              خاموش‌بودن MODULE_ESP باقی می‌ماند.
  */
@@ -30,14 +30,14 @@
 /* ==================== BspUart_Init ==================== */
 /**
  * @brief  [EN] Select the initialized board UART backend for ESP-Link.
- *         [FA] backend UART مقداردهی‌شدهٔ برد را برای ESP-Link انتخاب می‌کند.
+ *         [FA] backend UART مقداردهی‌شدهٔ برد را برای ‎ESP-Link‎ انتخاب می‌کند.
  */
 void func__BspUart_Init(void);
 
 /* ==================== BspUart_Write ==================== */
 /**
  * @brief  [EN] Queue a byte buffer on the logical ESP-Link UART (non-blocking).
- *         [FA] یک بافر بایت را در UART منطقی ESP-Link صف می‌کند (غیربلوکه).
+ *         [FA] یک بافر بایت را در UART منطقی ‎ESP-Link‎ صف می‌کند (غیربلوکه).
  * @param  uint8_t__data [EN] Data buffer, not null when length is non-zero /
  *                            بافر داده، در طول غیرصفر نباید NULL باشد
  * @param  uint16_t__length [EN] Number of bytes, 0..65535 /
@@ -58,7 +58,7 @@ bool func__BspUart_Write(const uint8_t *uint8_t__data, uint16_t uint16_t__length
  * @brief  [EN] Poll one received ESP-Link byte without blocking; the byte
  *              comes from the DMA-filled circular RX ring (hardware wrote
  *              it, the CPU only copies it out).
- *         [FA] یک بایت دریافتی ESP-Link را بدون بلوکه‌کردن poll می‌کند؛
+ *         [FA] یک بایت دریافتی ‎ESP-Link‎ را بدون بلوکه‌کردن poll می‌کند؛
  *              بایت از بافر حلقوی RX که DMA پر کرده می‌آید (سخت‌افزار
  *              نوشته، CPU فقط آن را بیرون کپی می‌کند).
  * @param  uint8_t__byte [EN] Output byte pointer / اشاره‌گر بایت خروجی

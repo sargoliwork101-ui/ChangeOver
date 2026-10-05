@@ -66,7 +66,7 @@
          شناسه‌های ۲۷..۳۷ = تب آلارم‌ها (۲۷..۳۴ نظارت فالت، ۳۵..۳۷ سقف‌های
          ایمنی شارژر)، شناسه‌های ۳۸..۷۶ = اعداد UI (الگوهای LED/بوق، باندها،
          چشمک، آستانه‌ها، میوت)، شناسه‌های ۷۷..۸۲ = فول/hysteresis (v1.17)، شناسه‌های ۸۳..۹۲ = PID
-         دوحلقه‌ای CC/CV شارژ (v1.24)، شناسه‌های ۹۳..۱۰۷ = حدها، گین‌های
+         دوحلقه‌ای ‎CC/CV‎ شارژ (v1.24)، شناسه‌های ۹۳..۱۰۷ = حدها، گین‌های
          پشتیبان و تایمرهای مرحله‌ای شارژر (v1.28، دستور کاربر ۲۰۲۶-۱۰-۰۳)،
          شناسه‌های ۱۰۸..۱۱۸ = سناریوی ۶ عدم‌توازن (v1.43)، شناسه‌های ۱۱۹..۱۲۰ =
          نردبان درصد سمت شارژ، جدا از نردبان دشارژ ۷۴/۷۵ (v1.49، دستور کاربر
@@ -90,9 +90,9 @@
         ones), GET /m reads it. All 20 t[] fields are tracked (ch1 0..6, ch2 7..13, Vin 14, V24 15, V12 16,
         Vlow 17, Vhigh 18, faults 19): sum / min / max / last frame; faults are also ORed over the window;
         seq and flags are the last frame's. The count stops at 60000 frames (100 min) so u32 sums never wrap.
-   [FA] مرورگر فقط هر ۳۰۰ms /t را می‌خواند؛ پس ابزارهای بنچ تک‌تک فریم‌های TLM (۱۰ هرتز) را از این پنجره
-        می‌گیرند: POST /m آن را از نو شروع می‌کند (و یک GET_PARAMS صف می‌کند تا پارامترهای ثبت‌شده همان مقادیر
-        زنده باشند) و GET /m آن را می‌خواند. هر ۲۰ فیلد t[] دنبال می‌شود (کانال ۱ 0..6، کانال ۲ 7..13، Vin 14،
+   [FA] مرورگر فقط هر ۳۰۰‎ms /t‎ را می‌خواند؛ پس ابزارهای بنچ تک‌تک فریم‌های TLM (۱۰ هرتز) را از این پنجره
+        می‌گیرند: ‎POST /m‎ آن را از نو شروع می‌کند (و یک GET_PARAMS صف می‌کند تا پارامترهای ثبت‌شده همان مقادیر
+        زنده باشند) و ‎GET /m‎ آن را می‌خواند. هر ۲۰ فیلد t[] دنبال می‌شود (کانال ۱ ‎0..6‎، کانال ۲ ‎7..13‎، Vin 14،
         V24 15، V12 16، Vlow 17، Vhigh 18، خطاها 19): مجموع / کمینه / بیشینه / آخرین فریم؛ خطاها در کل پنجره
         OR هم می‌شوند؛ seq و flags مال آخرین فریم‌اند. شمارش در ۶۰۰۰۰ فریم (۱۰۰ دقیقه) می‌ایستد تا مجموع u32 سرریز نشود. */
 #define ESP_STAT_FAULT_FIELD        19u
@@ -105,7 +105,7 @@
         of spec 5.6; v1.26 split the 149 into 56 data columns plus 93 settings written once - v1.12: +7 charge-profile params, v1.15: +11 alarm params, v1.16: +39 UI cadence params, v1.17: +6 full/hysteresis params, v1.24: +10 two-loop PID params, v1.25: +5 raw-count calibration columns) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
         Arduino IDE: pick a flash layout WITH a file system (ESP8266 e.g. "4MB (FS:1MB)"; ESP32 default is fine).
    [FA] یک فایل CSV فقط-افزودنی روی LittleFS. پنل هر ردیف را از پنجرهٔ /m (تک‌تک فریم‌های TLM با raw)
-        و عددهای مولتی‌متر می‌سازد و به /benchlog/add می‌فرستد؛ ESP فقط بررسی (ASCII قابل چاپ، پایان با
+        و عددهای مولتی‌متر می‌سازد و به /‎benchlog/add‎ می‌فرستد؛ ESP فقط بررسی (ASCII قابل چاپ، پایان با
         خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 5.6؛ نسخهٔ ۱.۲۶ آن ۱۴۹ را به ۵۶ ستون داده به‌اضافهٔ ۹۳ تنظیم که یک‌بار نوشته می‌شود تقسیم کرد - v1.12: +۷ پارامتر profile شارژ، v1.15: +۱۱ پارامتر آلارم، v1.16: +۳۹ پارامتر UI، v1.17: +۶ پارامتر فول/hysteresis، v1.24: +۱۰ پارامتر PID دوحلقه‌ای، v1.25: +۵ ستون شمارش خام برای کالیبراسیون) را ESP هنگام ساخت فایل می‌نویسد. در سقف
         اندازه افزودن متوقف می‌شود (HTTP 507) و پنل هشدار می‌دهد.
         در Arduino IDE چیدمان فلشِ دارای فایل‌سیستم را انتخاب کنید (ESP8266 مثلاً "4MB (FS:1MB)"؛ ESP32 پیش‌فرض کافی است). */
@@ -229,8 +229,17 @@
  *      v1.61 (user order): the on-page rule check-list and the firmware
  *      snippet generator needed ~8 KiB, so the ceiling was deliberately
  *      stepped 288 KiB -> 320 KiB.
+ *
+ *      ‎v1.70/v1.71 (‎دستور کاربر ۲۰۲۶-۱۰-۰۵: «نتیجهٔ ارسال باید کامل نشان داده
+ *      شود و بپرسد دوباره بفرستم» و «باندهای دشارژ را یک‌شکل کن؛ فقط گپ
+ *      مشترک باشد») کارت ماندگار نتیجهٔ ارسال و یک‌دست‌کردن چهار باند دشارژ
+ *      حدود ۱ کیلوبایت از سقف ۳۲۰ جلو زد؛ پله یک حرکت عمدی دیگر از ۳۲۰ به
+ *      ۳۳۶ کیلوبایت.
+ *      v1.70/v1.71 (user order): the persistent send-result card and the
+ *      uniform four-band discharge form went ~1 KiB past the 320 KiB step,
+ *      so the ceiling was deliberately stepped 320 KiB -> 336 KiB.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    327680u
+#define ESP_PANEL_HTML_MAX_BYTES    344064u
 
 /* ==================== Parser States ==================== */
 typedef enum

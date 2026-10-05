@@ -10,7 +10,7 @@
  *              the code runs in any thread and pre-scheduler (record
  *              reads are plain memory reads).
  *          [FA] توالی‌های مستقیم رجیستر از فصل ۳ RM0008 (FPEC): بازکردن
- *              قفل با KEYR، پاک‌کردن صفحه با PER+AR+STRT، نوشتن نیم‌کلمه
+ *              قفل با KEYR، پاک‌کردن صفحه با ‎PER+AR+STRT‎، نوشتن نیم‌کلمه
  *              با PG و قفل مجدد. وضعیت از SR با اسپین محدود خوانده می‌شود
  *              - بدون وقفه، بدون RTOS، بدون HAL، تا در هر تسک و قبل از
  *              زمان‌بند اجرا شود (خواندن رکورد خواندن سادهٔ حافظه است).
@@ -61,7 +61,7 @@ static void func__BspFlash_ClearFlags(void)
 /**
  * @brief  [EN] Bounded wait for BSY to drop; clears EOP when it fired.
  *         [FA] انتظار محدود برای پایین‌آمدن BSY؛ EOP را اگر زده شد پاک می‌کند.
- * @return bool [EN] true = idle and clean / بی‌کار و پاک
+ * @‎return bool [EN] true = idle and clean‎ / بی‌کار و پاک
  */
 static bool func__BspFlash_WaitIdle(void)
 {
@@ -144,7 +144,7 @@ bool func__BspFlash_ProgramHalfWords(uint32_t uint32_t__address,
        area. The end address cannot wrap: count is bounded by the NVM
        record size (<< 2^31 halfwords).
        [FA] گارد بازه (ممیزی کل برنامه): چیدمان NVM مالک
-       0x0800F800..0x0800FFFF است (دو صفحهٔ ۱KB آخر) - باگ فراخواننده
+       ‎0x0800F800..0x0800FFFF‎ است (دو صفحهٔ ۱KB آخر) - باگ فراخواننده
        هرگز نباید ناحیهٔ برنامه را بنویسد. */
     if ((uint16_t__A__Data == NULL) || ((uint32_t__address & 1u) != 0u) ||
         (uint32_t__count > 1024u) ||

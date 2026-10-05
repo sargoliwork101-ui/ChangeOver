@@ -12,7 +12,7 @@
 
 /**
  * @brief  [EN] Initialize the application and start CMSIS-RTOS2. Does not return.
- *         [FA] برنامه را مقداردهی و CMSIS-RTOS2 را شروع می‌کند. برنمی‌گردد.
+ *         [FA] برنامه را مقداردهی و ‎CMSIS-RTOS2‎ را شروع می‌کند. برنمی‌گردد.
  */
 /* ==================== Functions ==================== */
 void func__App_Start(void);

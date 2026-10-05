@@ -57,7 +57,7 @@ const TLM_FIELDS = Number(tlmMatch[1]);
  *      93..107 and then dropped them - the worst possible failure, because
  *      it looks like it worked. Derived from the header instead.
  * [FA] همان درس عرض تله‌متری، همان راه‌حل. این فایل نوشتن‌های پنل را با عدد
- *      ثابت «id < 93» گارد می‌کرد؛ وقتی بلوک حدها تعداد را به ۱۰۸ رساند،
+ *      ثابت «‎id < 93‎» گارد می‌کرد؛ وقتی بلوک حدها تعداد را به ۱۰۸ رساند،
  *      پیش‌نمایش به نوشتن روی ۹۳..۱۰۷ جواب ۲۰۰ می‌داد و بعد دورشان می‌ریخت -
  *      بدترین نوع خرابی، چون شبیه «کار کرد» است. حالا از هدر مشتق می‌شود. */
 const pcMatch = configSrc.match(/#define\s+ESP_PARAM_COUNT\s+(\d+)u?/);
@@ -145,7 +145,9 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            14800, 150, 6000, 7000, 1000, 1000, 21000, 28000, 950, 14850, 2000,
            /* v1.16 ids 38..76 = firmware UI_ALARM_T__G__Alarm boot defaults */
            1000, 50, 10000, 1000, 1, 0, 1000, 50, 3000, 233, 3, 100,
-           40, 20, 10, 1, 60000, 20000, 10000, 100, 1,
+           /* v1.71: id 57 is the critical band's per-beep duration in ms
+              (10000 = the former 100 % duty of the 10 s period), not a duty */
+           40, 20, 10, 1, 60000, 20000, 10000, 10000, 1,
            1000, 2000, 10000, 1, 2, 3, 100,
            1000, 10, 1000, 150, 28000, 1000, 21000, 21200, 21000, 29000, 0,
            /* v1.17 ids 77..82 = full latch + stable hysteresis boot defaults */
@@ -174,8 +176,9 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            /* v1.49 ids 119..120 = charge-side percent map (ui_led.h): same
               factory numbers as the discharge map 74/75, separate register. */
            21000, 29000,
-           /* v1.50 ids 121..122 = band 2's own per-beep duration and gap */
-           1000, 100,
+           /* v1.50/v1.71 ids 121..122 = band 2's own per-beep duration and
+              its own repeat interval (v1.71: the gap is shared again, id 65) */
+           1000, 60000,
            /* v1.68 ids 123..124 = the latched imbalance red lamp's blink
               (user order: the red lamp must blink, not sit solid) */
            1000, 50];
@@ -240,9 +243,9 @@ function clampParam(id, v) {
         /* v1.49: charge-side percent map - same window rules as 74/75, own pair */
         case 119: return clampW(v, 15000, 25000);
         case 120: return clampW(v, 25000, 32000);
-        /* v1.50: band 2 beep shape - gap floor only when its own count > 1 */
+        /* v1.71: band 2 beep shape - own per-beep duration and own interval */
         case 121: return clampW(v, 0, 600000);
-        case 122: return clampW(v, 0, 5000);
+        case 122: return clampPeriod(v);
         /* v1.68: latched imbalance red-lamp blink - 0 keeps the old solid red */
         case 123: return v === 0 ? 0 : clampW(v, 100, 10000);
         case 124: return clampW(v, 5, 95);
@@ -280,7 +283,7 @@ function clampParam(id, v) {
         case 52: return clampW(v, 0, 100);
         case 53: return clampW(v, 0, 100);
         case 54: case 55: case 56: return clampPeriod(v);
-        case 57: return clampW(v, 0, 100);
+        case 57: return clampW(v, 0, 600000); /* v1.71: ms per beep, was duty % */
         case 62: case 63: case 64: return clampW(v, 0, 10);
         case 58: return clampW(v, 0, 10);
         case 59: return clampW(v, 0, 600000);
@@ -485,7 +488,7 @@ function telemetry() {
          *      the mismatch and noisy-harness banners without miswiring a rig.
          * [FA] سلامت لینک، همان دو شمارنده‌ای که ESP منتشر می‌کند: vm فریم‌های
          *      ردشده به‌خاطر نسخهٔ ناشناخته، ce فریم‌های ردشده به‌خاطر CRC.
-         *      پیش‌فرض صفر؛ با PLINK_DEMO_VM / PLINK_DEMO_CE می‌شود بنر
+         *      پیش‌فرض صفر؛ با ‎PLINK_DEMO_VM / PLINK_DEMO_CE‎ می‌شود بنر
          *      ناهم‌نسخگی و بنر هارنس نویزی را بدون سیم‌کشی غلط دید. */
         vm: DEMO_VM, ce: DEMO_CE,
         t, p: P.slice()

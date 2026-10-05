@@ -1,7 +1,7 @@
 /**
  * @file    rtos_config.h
  * @brief   [EN] CMSIS-RTOS2 thread priorities and stack sizes.
- *          [FA] اولویت و اندازهٔ استک تسک‌های CMSIS-RTOS2.
+ *          [FA] اولویت و اندازهٔ استک تسک‌های ‎CMSIS-RTOS2‎.
  *
  * @note    [EN] Stack sizes are expressed in words for the FreeRTOS backend;
  *          the CMSIS attributes convert them to bytes at the port boundary.

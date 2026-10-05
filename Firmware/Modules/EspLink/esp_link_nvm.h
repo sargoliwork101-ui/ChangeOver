@@ -54,6 +54,20 @@
  * [FA] هویت رکورد: «CHO1» + نسخهٔ قالب. تغییر نسخه رکوردهای قدیمی را
  *      نامعتبر می‌کند (اعتبارسنجی می‌شکنند و پیش‌فرض کامپایل می‌ماند). */
 #define ESP_LINK_NVM_MAGIC              0x43484F31u
+/* [EN] v11 (v1.71) is a MEANING bump, not a layout bump: ids 57 and 122 kept
+ *      their slots but changed units - 57 went from "critical duty percent"
+ *      to "critical per-beep duration in ms", and 122 went from "band-2 gap"
+ *      to "band-2 repeat interval in ms". A stored v10 record holds 57=100
+ *      and 122=100, which under the new meaning would mean a 100 ms beep
+ *      repeating every 100 ms. Replaying it would be wrong and loud, so the
+ *      version bump deliberately invalidates it and the compiled defaults
+ *      (which reproduce the old sound exactly) take over. Re-tune once from
+ *      the panel after this upgrade.
+ * [FA] نسخهٔ ۱۱ تغییر «معنی» است نه چیدمان: شناسه‌های ۵۷ و ۱۲۲ جایشان عوض
+ *      نشد ولی واحدشان عوض شد. رکورد قدیمی برای این دو عدد ۱۰۰ دارد که با
+ *      معنی تازه یعنی بوق ۱۰۰ms با تکرار هر ۱۰۰ms؛ پس عمداً نامعتبر می‌شود و
+ *      پیش‌فرض کامپایل (که همان صدای قبلی را می‌دهد) می‌ماند. بعد از این
+ *      ارتقا یک‌بار از پنل تنظیم‌ها را دوباره بفرستید. */
 /* [EN] Record version history: v3 = 77 slots (v1.16 LED/buzzer
  *      mirror), v4 = id 76 became a panel-session mute, never persisted
  *      (v1.16b), v5 = 83 slots incl. the six full/hysteresis ids 77..82
@@ -73,7 +87,7 @@
  *      be restored straight into the new voltage row).
  * [FA] تاریخچهٔ نسخهٔ رکورد: v3 = ۷۷ جای (آینهٔ LED/بازر v1.16)، v4 =
  *      میوت ۷۶ جلسه‌ای شد و دیگر ذخیره نمی‌شود (v1.16b)، v5 = ۸۳ جای
- *      شامل ۷۷..۸۲ (v1.17)، v6/v7 = ۹۸ جای شامل پانزده شناسهٔ PID
+ *      شامل ۷۷..۸۲ (v1.17)، ‎v6/v7‎ = ۹۸ جای شامل پانزده شناسهٔ PID
  *      سه‌مرحله‌ای ۸۳..۹۷، v8 = ۹۳ جای شامل ده شناسهٔ PID دوحلقه‌ای
  *      ۸۳..۹۲ (v1.24 ردیف سوم زائد را حذف کرد)، v9 = فعلی: ۱۰۸ جای شامل
  *      پانزده شناسهٔ ۹۳..۱۰۷ (حدها/زمان‌ها/گین‌های شارژر). رکورد قدیمی‌تر
@@ -81,7 +95,7 @@
  *      پیش‌فرض کامپایل می‌ماند - بعد از هر ارتقای چیدمان یک‌بار از پنل
  *      دوباره تنظیم کنید (v1.22 دقیقاً چنین ارتقایی است: اولین بوت پس از
  *      فلش با مقادیر کارخانه بالا می‌آید). */
-#define ESP_LINK_NVM_VERSION            10u
+#define ESP_LINK_NVM_VERSION            11u
 
 /* [EN] Slot cap: 122 persisted ids today (0..14 config + 20..26 charge
  *      profile + 27..37 alarms + 38..75 UI cadence + 77..82 full/
@@ -125,8 +139,8 @@
  *      sits INSIDE the high range, so the predicate excludes it
  *      explicitly (see the .c). The PID gains are ordinary tuning numbers,
  *      so they persist like the profile does.
- * [FA] بازه‌های شناسهٔ ذخیره‌شونده: تمام پیکربندی قابل‌تنظیم (0..14 =
- *      آفست‌ها، گین‌ها، فیلترها، eta، فعال‌بودن شارژر و سقف دیوتی؛ 20..26 =
+ * [FA] بازه‌های شناسهٔ ذخیره‌شونده: تمام پیکربندی قابل‌تنظیم (‎0..14‎ =
+ *      آفست‌ها، گین‌ها، فیلترها، eta، فعال‌بودن شارژر و سقف دیوتی؛ ‎20..26‎ =
  *      پروفایل شارژ؛ ۲۷..۳۷ = آلارم‌ها؛ ۳۸..۷۵ = اعداد UI؛ ۷۷..۸۲ =
  *      فول/هیسترزیس؛ ۸۳..۹۲ = PID دوحلقه‌ای) به‌جز مودهای گذرای ۱۵..۱۸،
  *      ۱۹ و ۷۶ - آنها هرگز از ریبوت جان به در نمی‌برند. ۷۶ داخل بازهٔ بالا

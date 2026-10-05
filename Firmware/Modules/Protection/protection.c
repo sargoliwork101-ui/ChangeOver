@@ -37,7 +37,7 @@ void func__Protection_Run(const measurement_snapshot_t *measurement_snapshot_t__
            safe states for the whole power cycle. Clears itself below as
            soon as a valid snapshot arrives.
            [FA] ADC نامعتبر = وضعیت لحظه‌ای، نه قفل: پاس‌های اول بوت قبل از
-           warm-up اجرا می‌شوند و FAULT_ADC قفل‌شده تا ابد می‌ماند و
+           ‎warm-up‎ اجرا می‌شوند و FAULT_ADC قفل‌شده تا ابد می‌ماند و
            Changeover/شارژر را در حالت امن قفل می‌کند. به‌محض snapshot
            معتبر در شاخهٔ پایین پاک می‌شود. */
         func__Fault_Set(FAULT_ADC);

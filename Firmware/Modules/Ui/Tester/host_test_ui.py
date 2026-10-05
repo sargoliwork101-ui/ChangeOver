@@ -465,7 +465,7 @@ UI_ALARM_DEFAULTS = {
     50: ("runBeepStartPct", 40), 51: ("runBeepDoublePct", 20),
     52: ("runBeepTriplePct", 10), 53: ("runBeepCritPct", 1),
     54: ("runStdIntervalMs", 60000), 55: ("runTriIntervalMs", 20000),
-    56: ("runCritPeriodMs", 10000), 57: ("runCritDutyPct", 100),
+    56: ("runCritPeriodMs", 10000), 57: ("runCritBeepDurMs", 10000),
     58: ("runCritCount", 1), 59: ("runStdDurMs", 1000),
     60: ("runTriDurMs", 2000), 61: ("runCritDurMs", 10000),
     62: ("runStdCount", 1), 63: ("runDoubleCount", 2),
@@ -502,7 +502,7 @@ def ui_clamp_mirror(s):
          "blBeepDurMs": (0, 600000), "blBeepCount": (0, 10), "blBeepGapMs": (0, 5000),
          "runBeepStartPct": (0, 100), "runBeepDoublePct": (0, 100),
          "runBeepTriplePct": (0, 100), "runBeepCritPct": (0, 100),
-         "runCritDutyPct": (0, 100), "runCritCount": (0, 10),
+         "runCritBeepDurMs": (0, 600000), "runCritCount": (0, 10),
          "runStdDurMs": (0, 600000), "runTriDurMs": (0, 600000),
          "runCritDurMs": (0, 120000), "runStdCount": (0, 10),
          "runDoubleCount": (0, 10), "runTriCount": (0, 10), "runGapMs": (0, 5000),
@@ -515,12 +515,12 @@ def ui_clamp_mirror(s):
          "chgHystPct": (0, 50), "runHystPct": (0, 50),
          "runZeroExit": (0, 100), "runOneExit": (0, 100),
          "chgPctVminMv": (15000, 25000), "chgPctVmaxMv": (25000, 32000),
-         "runDoubleDurMs": (0, 600000), "runDoubleGapMs": (0, 5000)}
+         "runDoubleDurMs": (0, 600000)}
     for k, (lo, hi) in W.items():
         if k in s:
             s[k] = _w(s[k], lo, hi)
     for k in ["ovBeepPeriodMs", "blBeepPeriodMs", "runStdIntervalMs",
-              "runTriIntervalMs", "runCritPeriodMs"]:
+              "runTriIntervalMs", "runCritPeriodMs", "runDoubleIntervalMs"]:
         if k in s:
             s[k] = _period(s[k])
     return s
@@ -560,9 +560,17 @@ def run_ui_alarm_tests():
     assert_equal(defines.get("UI_ALARM_PARAM_CHG_PCT_VMIN_MV"), 119, "charge Vmin id 119")
     assert_equal(defines.get("UI_ALARM_PARAM_CHG_PCT_VMAX_MV"), 120, "charge Vmax id 120")
     assert_equal(defines.get("UI_ALARM_PARAM_RUN_DOUBLE_DUR_MS"), 121, "band 2 duration id 121")
-    assert_equal(defines.get("UI_ALARM_PARAM_RUN_DOUBLE_GAP_MS"), 122, "band 2 gap id 122")
+    # [EN] v1.71 (user order: "in discharge only the GAP is shared"): id 122
+    #      stopped being band 2's gap and became band 2's own repeat
+    #      interval; the gap is the single shared id 65 again.
+    # [FA] شناسهٔ ۱۲۲ از «گپ باند ۲» به «فاصلهٔ تکرار باند ۲» تبدیل شد و گپ
+    #      دوباره فقط یکی است (۶۵).
+    assert_equal(defines.get("UI_ALARM_PARAM_RUN_DOUBLE_INTERVAL_MS"), 122,
+                 "band 2 repeat interval id 122")
+    assert_true("UI_ALARM_PARAM_RUN_DOUBLE_GAP_MS" not in ui_led_h,
+                "the per-band gap of band 2 is gone")
     assert_true("uint32_t uint32_t__runDoubleDurMs;" in ui_led_h
-                and "uint32_t uint32_t__runDoubleGapMs;" in ui_led_h,
+                and "uint32_t uint32_t__runDoubleIntervalMs;" in ui_led_h,
                 "band 2 owns two words of its own")
     # [EN] v1.50: band 2 must play ITS duration and gap, and the common gap
     #      floor must no longer answer to band 2's count.
@@ -573,8 +581,22 @@ def run_ui_alarm_tests():
     # [FA] از v1.56 گیره تک‌خطی است، پس مدت باند ۲ سه بار می‌آید.
     assert_equal(ui_led_c.count("uint32_t__runDoubleDurMs"), 3,
                  "band 2 duration: init + clamp + tick")
-    assert_true("uint32_t__runDoubleGapMs" in ui_led_c,
-                "band 2 keeps its own gap word")
+    # [EN] clamp writes it twice (target + argument) and the tick reads it
+    #      twice (period + duty derivation); the init uses the macro.
+    # [FA] گیره دو بار و تیک دو بار آن را می‌آورد.
+    assert_equal(ui_led_c.count("uint32_t__runDoubleIntervalMs"), 4,
+                 "band 2 interval: clamp x2 + tick x2")
+    # [EN] v1.71: every discharge band is shaped identically - count,
+    #      per-beep duration, own repeat interval - and the duty handed to
+    #      the buzzer is always DERIVED. No band may pass a typed duty.
+    # [FA] هر چهار باند یک شکل‌اند و دیوتی همیشه محاسبه می‌شود.
+    assert_true("uint32_t__runCritBeepDurMs" in ui_led_c
+                and "runCritDutyPct" not in ui_led_c,
+                "the critical band takes a per-beep duration, not a duty")
+    _crit = ui_led_c.rsplit("uint32_t__runCritBeepDurMs,", 1)
+    assert_true("func__Ui_BeepDutyPercent" in _crit[0].rsplit("(void)", 1)[-1]
+                and "runCritCount" in _crit[1].split(";", 1)[0],
+                "the critical band derives its duty like every other band")
     assert_true("uint32_t uint32_t__chgPctVminMv;" in ui_led_h
                 and "uint32_t uint32_t__chgPctVmaxMv;" in ui_led_h,
                 "the two charge-map words are appended to ui_alarm_t")
@@ -598,7 +620,7 @@ def run_ui_alarm_tests():
         "UI_BATTERY_RUN_BEEP_START_PERCENT", "UI_BATTERY_RUN_BEEP_DOUBLE_PERCENT",
         "UI_BATTERY_RUN_BEEP_TRIPLE_PERCENT", "UI_BATTERY_RUN_BEEP_CRITICAL_PERCENT",
         "UI_BATTERY_RUN_BEEP_STANDARD_INTERVAL_MS", "UI_BATTERY_RUN_BEEP_TRIPLE_INTERVAL_MS",
-        "UI_BATTERY_RUN_BEEP_CRITICAL_PERIOD_MS", "UI_BATTERY_RUN_BEEP_CRITICAL_DUTY_PERCENT",
+        "UI_BATTERY_RUN_BEEP_CRITICAL_PERIOD_MS", "UI_BATTERY_RUN_BEEP_CRITICAL_BEEP_DURATION_MS",
         "UI_BATTERY_RUN_BEEP_CRITICAL_COUNT", "UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS",
         "UI_BATTERY_RUN_BEEP_TRIPLE_DURATION_MS", "UI_BATTERY_RUN_BEEP_CRITICAL_DURATION_MS",
         "UI_BATTERY_RUN_BEEP_STANDARD_COUNT", "UI_BATTERY_RUN_BEEP_DOUBLE_COUNT",
@@ -614,7 +636,7 @@ def run_ui_alarm_tests():
         #      as the discharge map, so an untouched board does not change.
         "UI_BAT_V_MIN_MV", "UI_BAT_V_MAX_MV",
         # [EN] v1.50: band 2 boots with what it used to borrow from band 1.
-        "UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS", "UI_BATTERY_RUN_BEEP_GAP_MS"]
+        "UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS", "UI_BATTERY_RUN_BEEP_DOUBLE_INTERVAL_MS"]
     assert_equal(inits, expected_macros, "init order == id order (positional!)")
     print("IDs + boot defaults PASS")
 
@@ -680,7 +702,7 @@ def run_ui_alarm_tests():
             assert_true(0 <= s[k] <= 100, label + " " + k)
         for k in ["runStdIntervalMs", "runTriIntervalMs", "runCritPeriodMs"]:
             assert_true(s[k] == 0 or 1000 <= s[k] <= 600000, label + " " + k)
-        assert_true(0 <= s["runCritDutyPct"] <= 100, label + " 57")
+        assert_true(0 <= s["runCritBeepDurMs"] <= 600000, label + " 57")
         for k in ["runCritCount", "runStdCount", "runDoubleCount", "runTriCount",
                   "ovBeepCount", "blBeepCount"]:
             assert_true(0 <= s[k] <= 10, label + " " + k)
