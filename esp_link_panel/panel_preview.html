@@ -210,6 +210,18 @@ input:disabled{opacity:.38;cursor:not-allowed}
 .c4dot.on{background:#ffd23b;box-shadow:0 0 14px #ffd23b}
 .c4dot.r.on{background:#ff4545;box-shadow:0 0 14px #ff4545}
 .c4dot.g.on{background:#2eff8f;box-shadow:0 0 14px #2eff8f}
+/* [EN] v1.45 (user order): one block per discharge band, so every variable
+   of a band sits together. A shared value appears in more than one block
+   and is labelled - the blocks stay side by side instead of the reader
+   hopping between a thresholds row and a timings row.
+   [FA] هر باند دشارژ یک بلوک: همهٔ متغیرهای یک باند کنار هم. مقدار مشترک در
+   چند بلوک می‌آید و برچسب می‌خورد، به‌جای پریدن بین ردیف آستانه و ردیف زمان. */
+.bnd{background:var(--in);border:1px solid var(--ln);border-radius:14px;padding:10px 13px;margin:8px 0}
+.bnd.bndc{border-color:rgba(251,94,106,.45)}
+.bnh{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin-bottom:2px}
+.bnh b{font-size:13.5px}
+.bnd .bqr{margin-top:6px}
+.bnd .c4n{margin-top:8px}
 .c4tb{min-width:560px}
 .c4tb td,.c4tb th{text-align:right}
 .c4tb tr.hi td{background:rgba(99,162,255,.10)}
@@ -316,7 +328,7 @@ window.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 </head><body>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build fa2f291</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e7f50af</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -489,64 +501,99 @@ window.addEventListener('DOMContentLoaded', function(){
 
 </div>
 <div class="cd" id="ucard3" style="display:none">
-<div class="hd"><b>سناریو ۳ — دشارژ، بی‌ورودی (سبز + باندهای بوق)</b> <button class="ib" data-p="50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,80,81,82" onclick="this.classList.toggle('o')">!<span class="it">روند: بالای «شروع بوق» بی‌صدا (سبز چشمک با درصد) ← هر باند بوق خودش با فاصله/مدت/تعداد خودش ← زیر «باند بحرانی»: LEDها خاموش و الگوی بحرانی فقط یک‌بار به‌اندازهٔ «طول یک‌باره» پخش و بعد سکوت تا برگشت باتری. گپ (۶۵) مشترک همهٔ باندهاست.</span></button><span class="lb">· ۶۶/۶۷ سبز · ۵۰..۵۳ باندها · ۵۴..۶۵ بوق · ۸۰..۸۲ پایداری</span></div>
+<div class="hd"><b>سناریو ۳ — دشارژ، بی‌ورودی (سبز + باندهای بوق)</b> <button class="ib" data-p="50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,74,75,80,81,82" onclick="this.classList.toggle('o')">!<span class="it">روند: بالای «شروع بوق» بی‌صدا (سبز چشمک با درصد) ← هر باند بوق خودش با فاصله/مدت/تعداد خودش ← زیر «باند بحرانی»: LEDها خاموش و الگوی بحرانی فقط یک‌بار به‌اندازهٔ «طول یک‌باره» پخش و بعد سکوت تا برگشت باتری. گپ (۶۵) مشترک همهٔ باندهاست.</span></button><span class="lb">· ۷۴/۷۵ حد ولتاژ · ۶۶/۶۷ سبز · ۵۰..۶۵ باندها · ۸۰..۸۲ پایداری</span></div>
 
 <div class="ds c4ds">
 <b>این سناریو کِی می‌آید؟</b> وقتی ورودی قطع است و بار روی باتری می‌رود (پایین‌ترین اولویت؛ هر آلارمی آن را کنار می‌زند).
 <ul>
 <li><b>سبز چشمک‌زن</b> — خاموشیِ سبز با مانده تا فول بزرگ می‌شود: باتری خالی‌تر ← سبز کم‌تر روشن. «حداقل خاموشی» نمی‌گذارد چشمک نزدیک ۱۰۰٪ دیده‌نشدنی شود.</li>
-<li><b>چهار باند درصد</b> — هر باند <b>سقف</b> خودش است و تا باند بعدی ادامه دارد؛ برد همیشه ترتیب شروع ≥ دو-بوق ≥ سه-بوق ≥ بحرانی را نگه می‌دارد. بالای «شروع بوق» کاملاً بی‌صداست.</li>
+<li><b>چهار باند درصد</b> — هر باند با <b>سقف</b> خودش شروع می‌شود و تا سقف باند بالاتر ادامه دارد؛ برد همیشه ترتیب شروع ≥ دو-بوق ≥ سه-بوق ≥ بحرانی را نگه می‌دارد. بالای «شروع بوق» کاملاً بی‌صداست.</li>
 <li><b>باند بحرانی</b> — LEDها خاموش و الگوی بوق فقط <b>یک‌بار</b> به‌اندازهٔ «طول یک‌باره» پخش می‌شود، بعد سکوت تا برگشت باتری. این یکی تکرار نمی‌شود.</li>
 <li><b>پایداری</b> — درصد نمایش فقط وقتی حرکت می‌کند که از مقدار پایدار دست‌کم به‌اندازهٔ hysteresis دور شود؛ خروج از ۰٪ و ۱٪ آستانهٔ جدا دارند تا روی ته باتری بالا-پایین نپرد.</li>
 </ul>
 </div>
 
-<div class="sec">۱) چشمک سبز <span class="lb">(ms)</span></div>
+<div class="sec">۱) حد ولتاژ باتری — نردبانی که درصد این سناریو از آن می‌آید <span class="lb">(mV؛ همان ۷۴/۷۵ کارت ۴ — هر جا عوض شود، هر دو جا عوض می‌شود)</span></div>
+<div class="bqr">
+<label>حد پایین — ۰٪ (mV)<input type="number" class="qm" data-q="74" step="100" min="15000" max="25000"><span class="lb" id="m74">—</span></label>
+<label>حد بالا — ۱۰۰٪ (mV)<input type="number" class="qm" data-q="75" step="100" min="25000" max="32000"><span class="lb" id="m75">—</span></label>
+</div>
+<div class="c4n" id="s3m">—</div>
+
+<div class="sec">۲) چشمک سبز <span class="lb">(ms)</span></div>
 <div class="bqr">
 <label>دوره چشمک سبز (ms)<input type="number" id="q66" step="50" min="100" max="10000"><span class="lb" id="a66">—</span></label>
 <label>حداقل خاموشی سبز (ms)<input type="number" id="q67" step="5" min="0" max="10000"><span class="lb" id="a67">—</span></label>
 </div>
 <div class="c4live"><span class="c4dot g" id="s3led"></span><span id="s3b">—</span></div>
 
-<div class="sec">۲) باندهای درصد <span class="lb">(٪ باتری؛ همیشه شروع ≥ دو-بوق ≥ سه-بوق ≥ بحرانی)</span></div>
+<div class="sec">۳) باندها — همهٔ متغیرهای هر باند کنار هم <span class="lb">(از بالا به پایین؛ «مشترک» یعنی همان عدد در باند دیگری هم به‌کار می‌رود و با هم عوض می‌شوند)</span></div>
+
+<div class="bnd">
+<div class="bnh"><b>باند بی‌صدا</b><span class="lb" id="s3r0">—</span></div>
 <div class="bqr">
-<label>شروع بوق (٪)<input type="number" id="q50" step="1" min="0" max="100"><span class="lb" id="a50">—</span></label>
-<label>باند دو-بوق (٪)<input type="number" id="q51" step="1" min="0" max="100"><span class="lb" id="a51">—</span></label>
-<label>باند سه-بوق (٪)<input type="number" id="q52" step="1" min="0" max="100"><span class="lb" id="a52">—</span></label>
-<label>باند بحرانی (٪)<input type="number" id="q53" step="1" min="0" max="100"><span class="lb" id="a53">—</span></label>
+<label>شروع بوق — سقف باند پایینی (٪)<input type="number" id="q50" step="1" min="0" max="100"><span class="lb" id="a50">—</span></label>
+</div>
+<div class="c4n" id="s3n0">—</div>
 </div>
 
-<div class="sec">۳) فاصله، مدت، تعداد و گپ بوق <span class="lb">(ms / عدد؛ صفر = خاموش)</span></div>
+<div class="bnd">
+<div class="bnh"><b>باند ۱ — یک بوق</b><span class="lb" id="s3r1">—</span></div>
 <div class="bqr">
-<label>فاصله بوق ۱/۲تایی (ms)<input type="number" id="q54" step="1000" min="0" max="600000"><span class="lb" id="a54">—</span></label>
-<label>فاصله بوق ۳تایی (ms)<input type="number" id="q55" step="1000" min="0" max="600000"><span class="lb" id="a55">—</span></label>
-<label>مدت هر بوق ۱/۲تایی (ms)<input type="number" id="q59" step="50" min="0" max="600000"><span class="lb" id="a59">—</span></label>
-<label>مدت هر بوق ۳تایی (ms)<input type="number" id="q60" step="50" min="0" max="600000"><span class="lb" id="a60">—</span></label>
-<label>تعداد بوق باند ۱<input type="number" id="q62" step="1" min="0" max="10"><span class="lb" id="a62">—</span></label>
-<label>تعداد بوق باند ۲<input type="number" id="q63" step="1" min="0" max="10"><span class="lb" id="a63">—</span></label>
-<label>تعداد بوق باند ۳<input type="number" id="q64" step="1" min="0" max="10"><span class="lb" id="a64">—</span></label>
-<label>گپ بوق دشارژ (ms)<input type="number" id="q65" step="10" min="0" max="5000"><span class="lb" id="a65">—</span></label>
+<label>سقف این باند (٪)<input type="number" id="q51" step="1" min="0" max="100"><span class="lb" id="a51">—</span></label>
+<label>تعداد بوق<input type="number" id="q62" step="1" min="0" max="10"><span class="lb" id="a62">—</span></label>
+<label>مدت هر بوق (ms)<input type="number" id="q59" step="50" min="0" max="600000"><span class="lb" id="a59">— · مشترک با باند ۲</span></label>
+<label>فاصلهٔ تکرار (ms)<input type="number" id="q54" step="1000" min="0" max="600000"><span class="lb" id="a54">— · مشترک با باند ۲</span></label>
+<label>گپ بین بوق‌ها (ms)<input type="number" id="q65" step="10" min="0" max="5000"><span class="lb" id="a65">— · مشترک همهٔ باندها</span></label>
+</div>
+<div class="c4n" id="s3n1">—</div>
 </div>
 
-<div class="sec">۴) باند بحرانی — فقط یک‌بار پخش می‌شود</div>
+<div class="bnd">
+<div class="bnh"><b>باند ۲ — دو بوق</b><span class="lb" id="s3r2">—</span></div>
 <div class="bqr">
-<label>دوره بوق بحرانی (ms)<input type="number" id="q56" step="500" min="0" max="600000"><span class="lb" id="a56">—</span></label>
+<label>سقف این باند (٪)<input type="number" id="q52" step="1" min="0" max="100"><span class="lb" id="a52">—</span></label>
+<label>تعداد بوق<input type="number" id="q63" step="1" min="0" max="10"><span class="lb" id="a63">—</span></label>
+<label>مدت هر بوق (ms) <span class="lb">· مشترک با باند ۱</span><input type="number" class="qm" data-q="59" step="50" min="0" max="600000"></label>
+<label>فاصلهٔ تکرار (ms) <span class="lb">· مشترک با باند ۱</span><input type="number" class="qm" data-q="54" step="1000" min="0" max="600000"></label>
+<label>گپ بین بوق‌ها (ms) <span class="lb">· مشترک</span><input type="number" class="qm" data-q="65" step="10" min="0" max="5000"></label>
+</div>
+<div class="c4n" id="s3n2">—</div>
+</div>
+
+<div class="bnd">
+<div class="bnh"><b>باند ۳ — سه بوق</b><span class="lb" id="s3r3">—</span></div>
+<div class="bqr">
+<label>سقف این باند (٪)<input type="number" id="q53" step="1" min="0" max="100"><span class="lb" id="a53">—</span></label>
+<label>تعداد بوق<input type="number" id="q64" step="1" min="0" max="10"><span class="lb" id="a64">—</span></label>
+<label>مدت هر بوق (ms)<input type="number" id="q60" step="50" min="0" max="600000"><span class="lb" id="a60">—</span></label>
+<label>فاصلهٔ تکرار (ms)<input type="number" id="q55" step="1000" min="0" max="600000"><span class="lb" id="a55">—</span></label>
+<label>گپ بین بوق‌ها (ms) <span class="lb">· مشترک</span><input type="number" class="qm" data-q="65" step="10" min="0" max="5000"></label>
+</div>
+<div class="c4n" id="s3n3">—</div>
+</div>
+
+<div class="bnd bndc">
+<div class="bnh"><b>باند بحرانی — فقط یک‌بار پخش می‌شود</b><span class="lb" id="s3r4">—</span></div>
+<div class="bqr">
+<label>دورهٔ بوق بحرانی (ms)<input type="number" id="q56" step="500" min="0" max="600000"><span class="lb" id="a56">—</span></label>
 <label>duty بوق بحرانی (٪)<input type="number" id="q57" step="5" min="0" max="100"><span class="lb" id="a57">—</span></label>
 <label>تعداد بوق بحرانی<input type="number" id="q58" step="1" min="0" max="10"><span class="lb" id="a58">—</span></label>
-<label>طول بوق بحرانی یک‌باره (ms)<input type="number" id="q61" step="500" min="0" max="120000"><span class="lb" id="a61">—</span></label>
+<label>طول پخش یک‌باره (ms)<input type="number" id="q61" step="500" min="0" max="120000"><span class="lb" id="a61">—</span></label>
+<label>گپ بین بوق‌ها (ms) <span class="lb">· مشترک</span><input type="number" class="qm" data-q="65" step="10" min="0" max="5000"></label>
 </div>
+<div class="c4n" id="s3n4">—</div>
+</div>
+
 <div class="c4n" id="s3z">—</div>
 
-<div class="sec">۵) پایداری درصد <span class="lb">(٪؛ صفر یعنی تعقیب لحظه‌ای خام)</span></div>
+<div class="sec">۴) پایداری درصد <span class="lb">(٪؛ صفر یعنی تعقیب لحظه‌ای خام)</span></div>
 <div class="bqr">
 <label>hysteresis پایداری دشارژ (٪)<input type="number" id="q80" step="1" min="0" max="50"><span class="lb" id="a80">—</span></label>
 <label>خروج از حالت ۰٪ (٪)<input type="number" id="q81" step="1" min="0" max="100"><span class="lb" id="a81">—</span></label>
 <label>خروج از حالت ۱٪ (٪)<input type="number" id="q82" step="1" min="0" max="100"><span class="lb" id="a82">—</span></label>
 </div>
-
-<div class="sec">۶) اعداد باندها — برد با این‌ها کار می‌کند</div>
-<div class="c4f">سبز: مانده = ۱۰۰ − درصد → گام = دوره ÷ ۱۰۰ → خاموش = بیشینهٔ («حداقل خاموشی»، مانده × گام) → روشن = دوره − خاموش. بوق: پنجره = مدت × تعداد + گپ × (تعداد − ۱) و باید در «فاصله» جا شود، وگرنه برد ساکت می‌ماند. ولتاژ هر باند از همان نردبان ۷۴/۷۵ کارت شارژ می‌آید.</div>
-<div class="srvw"><table class="srv c4tb"><thead><tr><th>باند</th><th>درصد</th><th>ولتاژ تقریبی</th><th>سبز روشن/خاموش <span class="lb">(میانهٔ باند)</span></th><th>بوق</th><th>در فاصله جا می‌شود؟</th></tr></thead><tbody id="s3tb"></tbody></table></div>
+<div class="c4f">سبز: مانده = ۱۰۰ − درصد → گام = دوره ÷ ۱۰۰ → خاموش = بیشینهٔ («حداقل خاموشی»، مانده × گام) → روشن = دوره − خاموش. بوق هر باند: پنجره = مدت × تعداد + گپ × (تعداد − ۱) و باید در «فاصلهٔ تکرار» همان باند جا شود، وگرنه برد آن باند را بی‌صدا می‌گذارد.</div>
 
 </div>
 <div class="cd" id="ucard4" style="display:none">
@@ -1790,8 +1837,30 @@ function swin(per,dur,cnt,gap){
  return {winMs,fits,sil};}
 function stxt(el,html){const e=$(el);if(e)e.innerHTML=html;}
 function sdot(el,on){const e=$(el);if(e)e.className=e.className.replace(' on','')+(on?' on':'');}
+/* ==================== ورودی‌های آینه‌ای (qm) ==================== */
+/* [EN] One parameter, several inputs. A mirror never talks to the board on
+   its own: it writes the primary input and fires the primary's change
+   handler, so the existing guard, the clamp confirmation and the send path
+   stay the single route to the board - a second route is how two fields
+   start disagreeing about one register.
+   [FA] یک پارامتر، چند ورودی. آینه هرگز خودش با برد حرف نمی‌زند: مقدار را در
+   ورودی اصلی می‌نویسد و رویداد change همان را می‌زند، پس نگهبان، تأیید گیره و
+   مسیر ارسال یکی می‌ماند - مسیر دوم همان چیزی است که دو فیلد را سر یک رجیستر
+   به اختلاف می‌اندازد. */
+function qmall(id){return document.querySelectorAll('input.qm[data-q="'+id+'"]');}
+function qmpush(id,src){const pr=$('q'+id);if(!pr)return;
+ qmall(id).forEach(e=>{if(e!==src&&document.activeElement!==e)e.value=pr.value;});}
+function qmfill(){document.querySelectorAll('input.qm').forEach(e=>{const pr=$('q'+e.dataset.q);
+ if(pr&&document.activeElement!==e&&e.value!==pr.value)e.value=pr.value;});}
+function qmbind(){document.querySelectorAll('input.qm').forEach(e=>{const id=e.dataset.q,pr=$('q'+id);
+ if(!pr)return;
+ e.value=pr.value;
+ e.oninput=()=>{pr.value=e.value;qmpush(id,e);if(pr.oninput)pr.oninput();};
+ e.onchange=()=>{pr.value=e.value;pr.dispatchEvent(new Event('change'));qmpush(id,e);};});}
+qmbind();
 function sall(){
  if(!$('s1v'))return;
+ qmfill();
  const now=performance.now(),live=!!(D&&D.t&&D.on==1);
  const lo=c4v(74,21000),hi=c4v(75,29000);
  const pmv=p=>hi>lo?lo+Math.round((hi-lo)*p/100):lo;
@@ -1812,36 +1881,32 @@ function sall(){
   sdot('s2led',live&&(D.t[19]&64)!=0&&(now%per)<d.onMs);}
  /* --- سناریو ۳: دشارژ --- */
  {const per=c4v(66,1000),minOff=c4v(67,10),step=Math.floor(per/100),
-   gb=p=>{const rem=100-p;let off=rem*step;if(off<minOff)off=minOff;if(off>per)off=per;return {onMs:per-off,offMs:off};},
+   gb=p=>{let off=(100-p)*step;if(off<minOff)off=minOff;if(off>per)off=per;return {onMs:per-off,offMs:off};},
    b1=c4v(50,40),b2=c4v(51,20),b3=c4v(52,10),bc=c4v(53,1),gap=c4v(65,100),
-   rows=[['بی‌صدا',b1+'..100٪',pmv(b1)+'..'+pmv(100),0,0,0,0],
-         ['یک بوق',b2+'..'+b1+'٪',pmv(b2)+'..'+pmv(b1),c4v(54,60000),c4v(59,1000),c4v(62,1),gap],
-         ['دو بوق',b3+'..'+b2+'٪',pmv(b3)+'..'+pmv(b2),c4v(54,60000),c4v(59,1000),c4v(63,2),gap],
-         ['سه بوق',bc+'..'+b3+'٪',pmv(bc)+'..'+pmv(b3),c4v(55,20000),c4v(60,2000),c4v(64,3),gap],
-         ['بحرانی','0..'+bc+'٪',pmv(0)+'..'+pmv(bc),c4v(56,10000),0,c4v(58,1),gap]];
-  const tb=$('s3tb');
-  if(tb){let h='';
-   rows.forEach((r,k)=>{
-    const pMid=k===0?Math.round((b1+100)/2):k===1?Math.round((b2+b1)/2):k===2?Math.round((b3+b2)/2):k===3?Math.round((bc+b3)/2):Math.round(bc/2);
-    const g=gb(Math.max(0,Math.min(100,pMid)));
-    const led=k===4?'خاموش':(g.onMs+'/'+g.offMs+' ms');
-    let beep,fit;
-    if(k===0){beep='—';fit='<span class="lb">بی‌صدا</span>';}
-    else if(k===4){const cw=Math.floor(r[3]*c4v(57,100)/100);
-     beep=r[5]+' بوق در پنجرهٔ '+sms(cw)+' · فقط یک‌بار به طول '+sms(c4v(61,10000));
-     fit=(r[3]>0&&r[5]>0&&gap*(r[5]-1)<cw)?'<span class="okc">بله</span>':'<span class="erc">نه</span>';}
-    else{const w=swin(r[3],r[4],r[5],r[6]);
-     beep=r[5]+' × '+sms(r[4])+' هر '+sms(r[3]);
-     fit=w.fits?'<span class="okc">بله ('+w.winMs+' ms)</span>':'<span class="erc">نه ('+w.winMs+' ms > '+r[3]+')</span>';}
-    h+='<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td class="n">'+r[2]+' mV</td><td class="n">'+led+'</td><td>'+beep+'</td><td>'+fit+'</td></tr>';});
-   tb.innerHTML=h;}
+   /* هر باند: سقف، کف، تعداد، مدت، فاصله */
+   bands=[[b1,100,0,0,0],[b2,b1,c4v(62,1),c4v(59,1000),c4v(54,60000)],
+          [b3,b2,c4v(63,2),c4v(59,1000),c4v(54,60000)],[bc,b3,c4v(64,3),c4v(60,2000),c4v(55,20000)]];
+  stxt('s3m',hi>lo?('۰٪ = <span class="n">'+lo+'</span> mV · ۱۰۰٪ = <span class="n">'+hi+'</span> mV · هر ۱٪ ≈ <span class="n">'+Math.round((hi-lo)/100)+'</span> mV · همین دو عدد درصد باندهای زیر را می‌سازند')
+   :'⚠ حد بالا باید دست‌کم ۱۰۰mV بالاتر از حد پایین باشد.');
+  bands.forEach((b,k)=>{
+   const g=gb(Math.max(0,Math.min(100,Math.round((b[0]+b[1])/2))));
+   stxt('s3r'+k,'از <span class="n">'+b[0]+'</span>٪ تا <span class="n">'+b[1]+'</span>٪ · <span class="n">'+pmv(b[0])+'</span>..<span class="n">'+pmv(b[1])+'</span> mV');
+   let txt='سبز در میانهٔ باند: <span class="n">'+g.onMs+'</span> ms روشن / <span class="n">'+g.offMs+'</span> ms خاموش · ';
+   if(k===0){txt+='بدون بوق — این باند فقط سبز دارد.';}
+   else{const w=swin(b[4],b[3],b[2],gap);
+    txt+='بوق: <span class="n">'+b[2]+'</span> × <span class="n">'+b[3]+'</span> ms + <span class="n">'+(b[2]>1?gap*(b[2]-1):0)+'</span> ms گپ = پنجرهٔ <span class="n">'+w.winMs+'</span> ms، تکرار هر '+sms(b[4])+' · ';
+    txt+=w.fits?('<span class="okc">در فاصله جا می‌شود</span> · سکوت بین دو الگو '+sms(w.sil)):(b[4]===0||b[2]===0?'<span class="lb">خاموش (فاصله یا تعداد صفر است)</span>':'<span class="erc">⚠ در فاصله جا نمی‌شود — برد این باند را بی‌صدا می‌گذارد</span>');}
+   stxt('s3n'+k,txt);});
+  {const cw=Math.floor(c4v(56,10000)*c4v(57,100)/100),cnt=c4v(58,1),one=c4v(61,10000),cfit=c4v(56,10000)>0&&cnt>0&&gap*(cnt-1)<cw;
+   stxt('s3r4','از <span class="n">0</span>٪ تا <span class="n">'+bc+'</span>٪ · <span class="n">'+pmv(0)+'</span>..<span class="n">'+pmv(bc)+'</span> mV');
+   stxt('s3n4','LEDها خاموش · <span class="n">'+cnt+'</span> بوق در پنجرهٔ '+sms(cw)+' (دوره '+sms(c4v(56,10000))+' × duty <span class="n">'+c4v(57,100)+'</span>٪) · کل پخش فقط یک‌بار به طول '+sms(one)+'، بعد سکوت تا بالا رفتن باتری از <span class="n">'+bc+'</span>٪ · '+(cfit?'<span class="okc">الگو در پنجره جا می‌شود</span>':'<span class="erc">⚠ گپ‌ها از پنجره بزرگ‌ترند — برد تعداد را کم می‌کند</span>'));}
   const ordOk=(bc<=b3)&&(b3<=b2)&&(b2<=b1);
-  stxt('s3z',(ordOk?'':'⚠ ترتیب باندها به هم خورده — برد آن‌ها را گیره می‌زند. ')+'بحرانی: الگو فقط یک‌بار به طول '+sms(c4v(61,10000))+' پخش می‌شود (دورهٔ داخلی '+sms(c4v(56,10000))+' با duty <span class="n">'+c4v(57,100)+'</span>٪)، بعد سکوت تا برگشت باتری بالای <span class="n">'+bc+'</span>٪.');
+  stxt('s3z',ordOk?'ترتیب باندها درست است: <span class="n">'+bc+'</span> ≤ <span class="n">'+b3+'</span> ≤ <span class="n">'+b2+'</span> ≤ <span class="n">'+b1+'</span> ≤ 100٪.':'⚠ ترتیب باندها به هم خورده (باید بحرانی ≤ سه-بوق ≤ دو-بوق ≤ شروع بوق باشد) — برد آن‌ها را گیره می‌زند.');
   const stp=live&&UV.pct>=0?UV.pct:-1;
   if(stp>=0&&stp>=bc){const g=gb(stp);
    stxt('s3b','الان: درصد پایدار <span class="n">'+stp+'</span>٪ → سبز <span class="n">'+g.onMs+'</span> ms روشن / <span class="n">'+g.offMs+'</span> ms خاموش');
    sdot('s3led',(now%per)<g.onMs);}
-  else{stxt('s3b',stp<0?'— در انتظار داده از برد (جدول با مقادیر فعلی محاسبه شده است)':'الان: باند بحرانی — LEDها خاموش‌اند');sdot('s3led',false);}}
+  else{stxt('s3b',stp<0?'— در انتظار داده از برد (اعداد باندها با مقادیر فعلی محاسبه شده‌اند)':'الان: باند بحرانی — LEDها خاموش‌اند');sdot('s3led',false);}}
  /* --- سناریو ۵: آلارم باتری کم --- */
  {const al=c4v(72,21000),cl=c4v(73,21200);
   stxt('s5v','ورود: زیر <span class="n">'+al+'</span> mV (≈ <span class="n">'+mvp(al)+'</span>٪) · خروج: <span class="n">'+cl+'</span> mV یا بالاتر (≈ <span class="n">'+mvp(cl)+'</span>٪) · پهنای ضدلرزش <span class="n">'+(cl-al)+'</span> mV'+(cl<al?' · <span class="erc">⚠ پاک‌شدن زیر آستانه است</span>':''));}

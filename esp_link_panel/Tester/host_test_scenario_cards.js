@@ -210,25 +210,74 @@ function testDischarge(win, doc) {
     typeInto(win, doc, 'q53', 1);
     typeInto(win, doc, 'q66', 1000);
     typeInto(win, doc, 'q67', 10);
+    typeInto(win, doc, 'q62', 1);
+    typeInto(win, doc, 'q63', 2);
+    typeInto(win, doc, 'q64', 3);
+    typeInto(win, doc, 'q59', 1000);
+    typeInto(win, doc, 'q60', 2000);
+    typeInto(win, doc, 'q54', 60000);
+    typeInto(win, doc, 'q55', 20000);
+    typeInto(win, doc, 'q65', 100);
 
-    const rows = [...doc.getElementById('s3tb').rows].map(r => [...r.cells].map(c => c.textContent.trim()));
-    check(rows.length === 5, 'the band table has the four bands plus the silent one');
-    check(rows[0][1] === '40..100٪', 'the silent band runs from the start-beep percent to 100', rows[0][1]);
-    check(rows[4][1] === '0..1٪', 'the critical band runs from zero to the critical percent', rows[4][1]);
-    check(rows[4][3].includes('خاموش'), 'the critical band shows the LEDs off', rows[4][3]);
+    /* [EN] v1.45 (user order): the card must carry the ladder itself and
+       every variable of a band must sit in that band's own block.
+       [FA] نردبان باید داخل همین کارت باشد و متغیرهای هر باند در بلوک خودش. */
+    const card = doc.getElementById('ucard3');
+    check(card.querySelectorAll('input.qm[data-q="74"]').length === 1 &&
+          card.querySelectorAll('input.qm[data-q="75"]').length === 1,
+        'the discharge card carries the low/high voltage limits');
+    check(textOf(doc, 's3m').includes('21000') && textOf(doc, 's3m').includes('29000'),
+        'the ladder line shows both limits', textOf(doc, 's3m'));
 
-    /* [EN] Green: off = max(minOff, remaining*period/100), on = period-off.
-       Band "two beeps" mid point is 15% -> off 850, on 150.
-       [FA] سبز: خاموش = بیشینهٔ(حداقل، مانده×گام)؛ روشن = دوره − خاموش. */
-    check(rows[2][3].replace(/\s/g, '') === '150/850ms', 'green at the 15% mid-band is 150/850 ms', rows[2][3]);
+    const blocks = card.querySelectorAll('.bnd');
+    check(blocks.length === 5, 'there is one block per band (silent, 1, 2, 3, critical)', 'blocks=' + blocks.length);
+    const inBlock = (k, id) => blocks[k].querySelector('#q' + id) !== null ||
+                               blocks[k].querySelector('input.qm[data-q="' + id + '"]') !== null;
+    check(inBlock(1, 51) && inBlock(1, 62) && inBlock(1, 59) && inBlock(1, 54) && inBlock(1, 65),
+        'band 1 block holds its percent, count, duration, interval and gap');
+    check(inBlock(2, 52) && inBlock(2, 63) && inBlock(2, 59) && inBlock(2, 54) && inBlock(2, 65),
+        'band 2 block holds all five of its variables too');
+    check(inBlock(3, 53) && inBlock(3, 64) && inBlock(3, 60) && inBlock(3, 55) && inBlock(3, 65),
+        'band 3 block holds its own duration and interval');
+    check(inBlock(4, 56) && inBlock(4, 57) && inBlock(4, 58) && inBlock(4, 61) && inBlock(4, 65),
+        'the critical block holds period, duty, count, one-shot length and gap');
 
-    /* [EN] mV of a percent comes from the 74/75 ladder: 20% of 21..29 V = 22600.
-       [FA] ولتاژ هر درصد از نردبان ۷۴/۷۵ می‌آید. */
-    check(rows[2][2].includes('22600'), 'the band voltage uses the 74/75 ladder', rows[2][2]);
+    /* [EN] A shared value edited in one block must move in the other.
+       [FA] مقدار مشترک که در یک بلوک عوض شود باید در بلوک دیگر هم عوض شود. */
+    const mir = [...card.querySelectorAll('input.qm[data-q="65"]')];
+    check(mir.length >= 3, 'the shared gap appears in every band that uses it', 'copies=' + mir.length);
+    mir[1].value = '250';
+    mir[1].oninput();
+    check(doc.getElementById('q65').value === '250', 'editing a mirror writes the primary input');
+    win.sall();
+    check(mir[0].value === '250' && mir[2].value === '250', 'the other copies of a shared value follow');
+    typeInto(win, doc, 'q65', 100);
+    win.qmfill();
+    check(mir[1].value === '100', 'a primary edit pushes back into the mirrors');
+
+    /* [EN] Band lines: range in percent and mV, green at the mid band and
+       the beep window against the interval.
+       [FA] خط هر باند: بازه بر حسب درصد و mV، سبز میانه و پنجرهٔ بوق. */
+    check(textOf(doc, 's3r2').includes('10') && textOf(doc, 's3r2').includes('20'),
+        'band 2 range is 10..20 percent', textOf(doc, 's3r2'));
+    check(textOf(doc, 's3r2').includes('21800') && textOf(doc, 's3r2').includes('22600'),
+        'band 2 range in mV comes off the 74/75 ladder', textOf(doc, 's3r2'));
+    check(/150 ms.*850 ms/.test(textOf(doc, 's3n2')),
+        'green at the 15% mid-band is 150/850 ms', textOf(doc, 's3n2'));
+    check(textOf(doc, 's3n2').includes('2100'),
+        'band 2 beep window is 2 x 1000 + 100 = 2100 ms', textOf(doc, 's3n2'));
+    check(textOf(doc, 's3n0').includes('بدون بوق'), 'the silent band says it has no beep', textOf(doc, 's3n0'));
+    check(textOf(doc, 's3n4').includes('خاموش') && /یک‌بار/.test(textOf(doc, 's3n4')),
+        'the critical block says LEDs off and one-shot', textOf(doc, 's3n4'));
+
+    typeInto(win, doc, 'q59', 90000);
+    check(/⚠/.test(textOf(doc, 's3n1')), 'a 90 s beep in a 60 s interval is called out', textOf(doc, 's3n1'));
+    typeInto(win, doc, 'q59', 1000);
 
     typeInto(win, doc, 'q53', 60);
     check(/⚠/.test(textOf(doc, 's3z')), 'a broken band order is called out', textOf(doc, 's3z'));
     typeInto(win, doc, 'q53', 1);
+    check(!/⚠/.test(textOf(doc, 's3z')), 'and the warning clears when the order is restored', textOf(doc, 's3z'));
 }
 
 /* ==================== Scenario 4 - charging / full ==================== */
