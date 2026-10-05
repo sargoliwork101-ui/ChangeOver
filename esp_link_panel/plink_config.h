@@ -195,8 +195,18 @@
  *      v1.52 (user order): the global send button, its handshake report and
  *      the v1.51 per-card simulator needed ~12 KiB more, so the ceiling was
  *      deliberately stepped 256 KiB -> 272 KiB.
+ *
+ *      v1.57 (دستور کاربر ۲۰۲۶-۱۰-۰۵: «پشتیبان‌گیری را کامل کن» و
+ *      «کالیبراسیون را مستقیم از داده‌برداری بنچ با تأیید کاربر روی برد
+ *      بریز») شناسنامهٔ فایل پشتیبان، عبور دادن فایل از قوانین مشترک، و
+ *      کارت کالیبراسیون خودکار (برازش کمترین‌مربعات، پیش‌نمایش مقدار فعلی/
+ *      پیشنهادی، هشدار کیفیت و پشتیبان خودکار پیش از نوشتن) حدود ۱۳
+ *      کیلوبایت لازم داشت؛ پله یک حرکت عمدی دیگر از ۲۷۲ به ۲۸۸ کیلوبایت.
+ *      v1.57 (user order): the backup identity stamp and the bench
+ *      auto-calibration card needed ~13 KiB, so the ceiling was deliberately
+ *      stepped 272 KiB -> 288 KiB.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    278528u
+#define ESP_PANEL_HTML_MAX_BYTES    294912u
 
 /* ==================== Parser States ==================== */
 typedef enum

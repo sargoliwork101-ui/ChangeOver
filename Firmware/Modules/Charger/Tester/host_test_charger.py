@@ -2007,8 +2007,22 @@ def test_alarms_tab_v115():
     check("FEXP=" in ino and "آستانهٔ قطع (۲۷)" in ino and "ASB=" in ino,
           "v1.15b (user order: grouped status + fault explanations, no flicker): per-bit fault explanations and a build-once status skeleton")
     check("function xexp()" in ino and "function ximp(f)" in ino and 'id="xim"' in ino
-          and "changeover-settings.json" in ino and "XIDS=" in ino,
+          and "'changeover-settings-'" in ino and "XIDS=" in ino,
           "v1.15b (user order: settings import/export): JSON backup card for filter + profile + alarms")
+    # [EN] v1.57 (user order: finish the backup): the file must carry an
+    #      identity and the import must reuse the panel's joint rules.
+    # [FA] فایل پشتیبان شناسنامه دارد و ورودی از قوانین مشترک رد می‌شود.
+    check("app:'ChangeOver-settings',v:2" in ino and "build:xbuild()" in ino
+          and "pn:PN" in ino and "saved:new Date().toISOString()" in ino,
+          "v1.57: the backup file records build, parameter count and date")
+    check("const fixed=fixrules(v);" in ino and "function xclamp(id,n)" in ino,
+          "v1.57: an imported file passes through fixrules and each field's own range")
+    # [EN] v1.57 (user order: calibrate straight from the bench capture).
+    # [FA] v1.57: کالیبراسیون مستقیم از داده‌برداری بنچ با تأیید کاربر.
+    check("function calpush(" in ino and "function calfit(" in ino
+          and "function calrun()" in ino and "async function calapply()" in ino
+          and "calapply()" in ino and "xexp();" in ino,
+          "v1.57: bench samples are fitted, previewed and only written after a confirm + auto backup")
     # [EN] Stale since the scenario-card redesign and only found on 2026-10-05:
     #      the battery-supervision fields are no longer one flat group called
     #      "نظارت باتری" - they live in the six scenario cards, and the

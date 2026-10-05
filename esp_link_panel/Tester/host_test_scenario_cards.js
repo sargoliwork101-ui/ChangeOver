@@ -737,6 +737,83 @@ async function testSendQueue(win, doc) {
 }
 
 
+
+/* ==================== v1.57 backup identity + bench calibration ==================== */
+
+/**
+ * [EN] The backup file must carry an identity (build, parameter count, date)
+ *      and the bench calibration must turn a known straight line of samples
+ *      back into the exact gain/offset that produced it.
+ * [FA] فایل پشتیبان باید شناسنامه داشته باشد و کالیبراسیون بنچ باید از روی
+ *      نمونه‌های یک خط معلوم، همان گین و آفست سازندهٔ آن خط را دربیاورد.
+ */
+function testBackupAndCal(win, doc) {
+    console.log('\nv1.57 backup identity + bench calibration / شناسنامهٔ پشتیبان و کالیبراسیون');
+
+    /* --- the export payload carries the identity fields --- */
+    const blobs = [];
+    const OldBlob = win.Blob;
+    win.Blob = function (parts, opts) { blobs.push(String(parts[0])); return new OldBlob(parts, opts); };
+    win.URL.createObjectURL = () => 'blob:x';
+    win.URL.revokeObjectURL = () => {};
+    const a = doc.createElement('a');
+    const oldCreate = doc.createElement.bind(doc);
+    doc.createElement = (t) => { const e = oldCreate(t); if (t === 'a') { e.click = () => {}; } return e; };
+    win.D = { p: {}, t: [] };
+    const XIDS = win.eval('XIDS'), PN = win.eval('PN'), K = win.eval('K_MA');
+    XIDS.forEach(id => { win.D.p[id] = 1; });
+    win.eval('xexp')();
+    doc.createElement = oldCreate;
+    win.Blob = OldBlob;
+    check(blobs.length === 1, 'the export button produces exactly one file');
+    const o = JSON.parse(blobs[0]);
+    check(o.app === 'ChangeOver-settings' && o.v === 2, 'the file says what it is and which layout it uses');
+    check(typeof o.build === 'string' && o.build.length > 0, 'the file records the panel build it came from');
+    check(o.pn === PN, 'the file records how many parameters that build had');
+    check(typeof o.saved === 'string' && o.saved.indexOf('T') > 0, 'the file records when it was taken');
+    check(Object.keys(o.params).length === XIDS.length, 'every backed-up id is in the file');
+    check(o.params['76'] === undefined, 'the live-only id 76 stays out of the backup');
+    [15, 16, 17, 18, 19].forEach(id => {
+        check(o.params[String(id)] === undefined, 'the momentary id ' + id + ' stays out of the backup');
+    });
+
+    /* --- an out-of-range number from a hand-edited file is pulled back --- */
+    check(win.eval('xclamp')(2, 99999) === 3000, 'an impossible gain from a file is clamped to its maximum');
+    check(win.eval('xclamp')(0, -5) === 0, 'a negative offset from a file is clamped to zero');
+
+    /* --- calibration: feed a perfect line and demand the numbers back --- */
+    const gain = 1200, off = 7;
+    win.CALS = [];
+    for (let duty = 2; duty <= 20; duty += 2) {
+        const raw = off + duty * 25;
+        const mA = (raw - off) * K * gain / 1000;
+        win.CALS.push({ r1: raw, r2: raw, vin: 24000, v24: 25000, v12: 12500, vlo: 12500, vhi: 12500,
+                        b1: mA, b2: mA, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });
+    }
+    win.D = { p: { 0: 0, 1: 0, 2: 1000, 3: 1000, 4: 0, 5: 0, 6: 0 }, t: [] };
+    win.eval('calrun')();
+    const prop = {};
+    win.CALP.forEach(c => { prop[c[0]] = c[1]; });
+    check(prop[2] === gain, 'the fit recovers the current gain of channel 1 exactly');
+    check(prop[3] === gain, 'the fit recovers the current gain of channel 2 exactly');
+    check(prop[0] === off, 'the fit recovers the zero-current offset of channel 1');
+    check(prop[4] === 300, 'the input-voltage offset is the mean multimeter difference');
+    check(prop[5] === 300, 'the 24 V pack offset uses the sum of the two halves');
+    check(prop[6] === 200, 'the 12 V node offset uses the lower half');
+    check(doc.getElementById('caltb').innerHTML.indexOf('1200') >= 0,
+          'the preview table shows the proposed number before anything is written');
+    check(doc.getElementById('calst').textContent.indexOf('آمادهٔ اعمال') >= 0,
+          'nothing is written until the user presses apply');
+
+    /* --- noisy / too few samples must be refused, not applied --- */
+    win.CALS = [{ r1: 100, r2: 100, vin: 24000, v24: 25000, v12: 12500, vlo: 12500, vhi: 12500,
+                  b1: 50, b2: 50, dvi: 24000, dv1: 12500, dv2: 12500, ts: 1 }];
+    win.eval('calrun')();
+    check(doc.getElementById('calst').textContent.indexOf('حداقل ۳') >= 0,
+          'one sample is refused with a plain reason');
+    win.CALS = [];
+}
+
 /* ==================== v1.56 panel-side rules / قوانین سمت پنل ==================== */
 
 /**
@@ -820,6 +897,7 @@ setTimeout(async () => {
         testSimulator(win, doc);
         await testSendQueue(win, doc);
         testFixRules(win, doc);
+        testBackupAndCal(win, doc);
     } catch (err) {
         failed += 1;
         console.log('  FAIL threw: ' + err.message);
