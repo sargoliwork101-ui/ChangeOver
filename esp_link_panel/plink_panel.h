@@ -278,12 +278,23 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 #sbar.on{display:flex}
 #sbar b{color:#ffb020}
 #sbst{color:#9fb0cc}
+/* v1.70: کارت نتیجهٔ ارسال — #sbar با خالی‌شدن صف پنهان می‌شد و پیام موفقیت
+   همان لحظه گم می‌شد؛ این کارت تا بسته نشود می‌ماند. */
+#sres{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;background:rgba(5,8,14,.62)}
+#sres.on{display:flex}
+#sres .rb{max-width:560px;width:calc(100% - 28px);max-height:80vh;overflow:auto;background:#121a2c;border:1px solid #35507f;border-radius:16px;padding:16px}
+#sres.ok .rb{border-color:#1f7a5a}#sres.warn .rb{border-color:#8a6a12}#sres.bad .rb{border-color:#8a2a2d}
+#srst{display:block;font-size:15px;margin-bottom:8px}
+#sres.ok #srst{color:var(--ok)}#sres.warn #srst{color:#ffb020}#sres.bad #srst{color:#e5484d}
+#srsm{font-size:13px;color:#c7d3e6;line-height:1.9}#srsm ul{margin:6px 0;padding-inline-start:18px}#srsm code{direction:ltr;display:inline-block}
+#srsa{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 </style></head><body>
 <div id="sbar"><span>📝 <b id="sbn">0</b> تغییر هنوز روی برد ننشسته — کادرهای نارنجی</span>
 <button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 178cc15</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build a12beaa</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -830,6 +841,14 @@ function fixrules(v){
 const RIDS=[40,41,42,43,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,62,63,64,65,66,67,68,69,72,73,74,75,77,78,119,120,121,122];
 function rsnap(){const v={};RIDS.forEach(id=>{
  v[id]=(id in PEND)?PEND[id]:c4v(id,(D&&D.p&&D.p[id]!=null)?D.p[id]:0);});return v;}
+/* v1.70: نمایش نتیجهٔ ارسال؛ retry=1 یعنی چیزی نرسیده و هنوز در PEND است. */
+const esc=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function sdlgx(){const w=$('sres');if(w)w.className='';}
+function sdlg(kind,head,body,retry){const w=$('sres');if(!w)return;
+ w.className='on '+kind;$('srst').textContent=head;$('srsm').innerHTML=body;
+ $('srsa').innerHTML=(retry?'<button class="sb brun" onclick="sdlgx();sendall()">دوباره بفرست</button>':'')
+  +'<button class="sb sb2" onclick="sdlgx()">باشه، بستن</button>';}
+const sdlgl=a=>'<ul>'+a.map(x=>'<li><code>'+esc(x)+'</code></li>').join('')+'</ul>';
 async function sendall(){
  if(!Object.keys(PEND).length)return;
  /* v1.56: قوانین مشترک اینجا اعمال می‌شوند، نه روی برد */
@@ -842,7 +861,11 @@ async function sendall(){
  for(const id of ids){const v=PEND[id];
   try{const r=await fetch('/s?id='+id+'&v='+v,{method:'POST'});if(r.ok){ok++;sent[id]=v;}}catch(e){}
   await sl(60);}
- if(ok===0){stxt('sbst','⛔ هیچ‌کدام ارسال نشد — ارتباط با برد برقرار نیست.');return;}
+ if(ok===0){stxt('sbst','⛔ هیچ‌کدام ارسال نشد — ارتباط با برد برقرار نیست.');
+  sdlg('bad','⛔ هیچ‌کدام ارسال نشد',
+   'ارتباط با ESP/برد برقرار نیست، پس هیچ عددی روی برد ننشست.<br>'
+   +'هر '+ids.length+' تغییر دست‌نخورده در صف مانده و کادرها نارنجی‌اند — '
+   +'اتصال را چک کنید و دوباره بفرستید.',1);return;}
  /* دست‌دادن: منتظر فریم بعدی برد می‌مانیم و مقدار برگشتی را می‌سنجیم */
  stxt('sbst','… ارسال شد، منتظر تأیید برد');
  for(let k=0;k<25;k++){await sl(200);if(D&&D.p)break;}
@@ -850,15 +873,33 @@ async function sendall(){
  const bad=[];
  for(const id of Object.keys(sent)){
   const back=(D&&D.p)?D.p[id]:null;
+  /* v1.70: بی‌پاسخ = مدرکی نداریم؛ در صف می‌ماند تا دوباره فرستاده شود. */
   if(back==null){bad.push(id+': بی‌پاسخ');continue;}
   if(+back!==+sent[id])bad.push(id+': '+sent[id]+'→'+back);
   pclr(id);}
  pbar();
  if(typeof afresh==='function')afresh();if(typeof sall==='function')sall();
- if(ok<ids.length){stxt('sbst','⚠ '+ok+' از '+ids.length+' ارسال شد؛ بقیه در صف ماندند — دوباره بزنید.');return;}
+ if(ok<ids.length){const left=Object.keys(PEND);
+  stxt('sbst','⚠ '+ok+' از '+ids.length+' ارسال شد؛ بقیه در صف ماندند — دوباره بزنید.');
+  sdlg('warn','⚠ ارسال ناقص — '+ok+' از '+ids.length+' نشست',
+   'بقیه نرسیدند و هنوز در صف‌اند (کادرهای نارنجی). چیزی از دست نرفته؛ '
+   +'فقط باید دوباره فرستاده شوند.'
+   +(left.length?'<br>در صف مانده: '+sdlgl(left):'')
+   +(bad.length?'<br>برد این‌ها را گیره زد: '+sdlgl(bad):''),1);return;}
  const pre=fixtxt.length?(' · پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+fixtxt.join(' · ')):'';
- if(!bad.length){stxt('sbst','✅ '+ok+' تنظیم ارسال شد؛ برد همه را عیناً پذیرفت و ذخیره کرد.'+pre);return;}
- stxt('sbst','✅ '+ok+' تنظیم نشست، اما برد '+bad.length+' مقدار را به بازهٔ مجاز خودش گیره زد: '+bad.join(' · ')+pre);}
+ if(!bad.length){stxt('sbst','✅ '+ok+' تنظیم ارسال شد؛ برد همه را عیناً پذیرفت و ذخیره کرد.'+pre);
+  sdlg('ok','✅ همه نشست — '+ok+' تنظیم',
+   'برد هر '+ok+' مقدار را عیناً پس‌فرستاد و در حافظهٔ ماندگار ذخیره کرد؛ '
+   +'نیازی به ارسال دوباره نیست.'
+   +(fixtxt.length?'<br>پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+sdlgl(fixtxt):''),0);
+  return;}
+ stxt('sbst','✅ '+ok+' تنظیم نشست، اما برد '+bad.length+' مقدار را به بازهٔ مجاز خودش گیره زد: '+bad.join(' · ')+pre);
+ const mute=bad.filter(x=>x.indexOf('بی‌پاسخ')>=0).length;
+ sdlg(mute?'warn':'ok',(mute?'⚠ ':'✅ ')+ok+' تنظیم ارسال شد',
+  (mute?'برای '+mute+' شناسه هیچ تأییدی از برد نیامد — آن‌ها در صف نگه داشته شدند تا دوباره بفرستید.<br>':'')
+  +'بقیه نشست. برد این مقدارها را به بازهٔ مجاز خودش گیره زد — عددِ روی برد همان سمت راست فلش است:'
+  +sdlgl(bad)
+  +(fixtxt.length?'پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+sdlgl(fixtxt):''),mute?1:0);}
 function num(id){const e=$('i'+id),p=P[id],t=+e.value;if(e.value===''||isNaN(t))return;const w=(id===13||id===14)?Math.round(t*10):Math.round(t);send(id,Math.min(p[3],Math.max(p[2],w)));e.value='';e.blur();}
 function ctl(id){const p=P[id];
  if(id===13||id===14)return `<input type="number" id="i${id}" min="0" max="50" step="any" placeholder="0…50٪" onkeydown="if(event.key=='Enter')num(${id})"><button class="sb" onclick="num(${id})">ثبت</button>`;
@@ -902,15 +943,9 @@ function chart(){[0,1].forEach(ci=>{const c=$('cv'+(ci+1)),w=c.clientWidth,h=c.c
  x.fillStyle='#96a1b8';x.font='11px Vazirmatn,sans-serif';x.fillText(Math.round(hi)+' mA',8,16);x.fillText(Math.round(lo)+' mA',8,h-10);
  ln(s.u,'#6b7691',1);ln(s.f,'#63a2ff',2);const pp=A=>{const B=A.slice(-50);return Math.max(...B)-Math.min(...B);};$('pu'+(ci+1)).textContent=pp(s.u);$('pf'+(ci+1)).textContent=pp(s.f);});}
 /* تعویض تب: پنل و داده‌برداری بنچ */
-/* [EN] The sticky bars used to carry hard-coded offsets (55px / 113px), so the
-   scenario-card bar landed on the SAME line as the section bar above it and
-   hid it, and any line wrap (narrow phone, bigger font) broke the rest. The
-   offsets are now measured from the real elements and published as CSS
-   variables, so every bar parks right under the one above it.
-   [FA] نوارهای چسبان قبلاً عدد ثابت داشتند (۵۵ و ۱۱۳ پیکسل)؛ برای همین نوار
-   کارت‌های سناریو دقیقاً روی نوار بالایی می‌نشست و قایمش می‌کرد، و با شکستن
-   خط در صفحهٔ باریک همه‌چیز به‌هم می‌ریخت. حالا ارتفاع واقعی اندازه گرفته و
-   در متغیرهای CSS گذاشته می‌شود تا هر نوار درست زیر نوار بالایی بچسبد. */
+/* v1.69: offsetهای چسبان ثابت (۵۵/۱۱۳px) نوار کارت‌ها را روی نوار بخش‌ها
+   می‌نشاند و قایمش می‌کرد. حالا ارتفاع واقعی اندازه گرفته و در متغیرهای CSS
+   نوشته می‌شود تا هر نوار زیر نوار بالایی بچسبد. */
 function stickfit(){
  const r=document.documentElement.style,
   h=document.querySelector('header'),n=document.querySelector('nav'),
@@ -1531,18 +1566,14 @@ function afresh(){const w=achk();
  try{c4();sall();}catch(e){}
  const ms=$('xmuteS');if(ms)ms.textContent=(D&&D.p&&D.p[76]===1)?'🔇 میوت روشن — موقتی، با ریست برد پاک می‌شود؛ LEDها همچنان چشمک می‌زنند':'🔊 بوق روشن';}
 function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id-32))):id<96?((D.q3||0)&(1<<(id-64))):((D.q4||0)&(1<<(id-96)));}
-/* [EN] v1.50 (user order: "you wrote the factory default AND the same number
-   again - drop the extra"): the chip beside a field used to repeat the board
-   value even when the box already showed it. It now says something only when
-   it DISAGREES with the box - that is the only case where it carries news.
-   [FA] (دستور کاربر) چیپ کنار هر فیلد قبلاً عدد برد را تکرار می‌کرد حتی وقتی
-   خود کادر همان را نشان می‌داد. حالا فقط وقتی حرف می‌زند که با کادر فرق داشته
-   باشد - تنها حالتی که خبری دارد. */
+/* v1.70 (دستور کاربر): چیپ «روی برد: …» حذف شد — از فریم تله‌متری پر می‌شد و
+   بعد از تغییر هنوز عدد قدیمی را نشان می‌داد. خود کادر از برد پر می‌شود،
+   پیش‌فرض کارخانه کنار فیلد هست و کارت نتیجه می‌گوید برد چه را پذیرفت.
+   span های a<id> می‌مانند («در صف»/«…»/«خطا» در آن‌ها نوشته می‌شود). */
 function afill(){if(!D||!D.p)return;
  for(const id of AIDS){const e=$('q'+id),a=$('a'+id);if(!e)continue;
   if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];
-  if(a&&!apend(id)){const bv=D.p[id],tv=e.value===''?null:parseInt(e.value,10);
-   a.textContent=(bv==null||(tv!=null&&tv===bv))?'':'روی برد: '+bv;}}}
+  if(a&&!apend(id)&&!(id in PEND))a.textContent='';}}
 function adef(){ADEF.slice(6,11).forEach((v,k)=>{const id=33+k;$('q'+id).value=v;qput(id,v);});afresh();}
 /* v1.22: پیش‌فرض کارخانهٔ PID سه‌مرحله‌ای — همان اعداد CHG_PID_* در charger.h */
 const PDEF=[12,1600,0,1000,1000,50,18000,0,10,1000];

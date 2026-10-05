@@ -1511,6 +1511,38 @@ def test_charger_persistence_v114():
     #      it (that is what hid the "charger / scenarios / ..." row).
     # [FA] نوارهای چسبان اندازه‌گیری می‌شوند و نوار کارت‌های سناریو زیر نوار
     #      بخش‌ها می‌چسبد نه رویش.
+    # [EN] v1.70 (user order: "the message must be complete and tell me
+    #      whether to resend"): the verdict used to be written only into
+    #      #sbar, which hides itself as soon as the queue empties - so the
+    #      success line was erased in the same tick it was produced. There is
+    #      now a result card that stays until dismissed, and it offers a
+    #      resend button on every outcome where something did not land. An id
+    #      with no echo stays queued so that resend actually has something to
+    #      send.
+    # [FA] کارت نتیجهٔ ارسال که تا بسته نشود می‌ماند و دکمهٔ «دوباره بفرست».
+    check('id="sres"' in ino and "function sdlg(" in ino and "function sdlgx()" in ino
+          and "دوباره بفرست" in ino and "#sres.on{display:flex}" in ino
+          and "⛔ هیچ‌کدام ارسال نشد" in ino and "⚠ ارسال ناقص" in ino
+          and "✅ همه نشست" in ino,
+          "every send must end in a result card that survives the queue emptying, "
+          "with a resend button whenever part of the batch did not land")
+    # [EN] no echo must NOT clear the pending flag - otherwise the resend
+    #      button would have an empty queue and silently do nothing.
+    body = ino[ino.index("async function sendall()"):]
+    body = body[:body.index("function num(id)")]
+    check("if(back==null){bad.push(id+': بی‌پاسخ');continue;}" in body
+          and body.index("continue;") < body.index("pclr(id);"),
+          "an unanswered id must stay in PEND so that 'resend' has something to resend")
+
+    # [EN] v1.70 (user order: "the 'board value' note under some boxes never
+    #      updates after a change and is not needed - we have the factory
+    #      default"): the chip is gone. The a<id> spans stay, because the
+    #      queue/send states ("در صف", "…", "خطا") are written into them.
+    # [FA] چیپ «روی برد: …» حذف شد؛ خود span ها می‌مانند.
+    check("'روی برد: '" not in ino and "a.textContent=''" in ino
+          and "در صف" in ino,
+          "the stale 'board value' chip must be gone, while the queue state stays")
+
     check("function stickfit()" in ino and "--t-sub2" in ino
           and "#usel{position:sticky;top:var(--t-sub2" in ino
           and "top:113px" not in ino,
