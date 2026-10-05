@@ -483,6 +483,106 @@ function testImbalance(win, doc) {
     check(/بوق خاموش/.test(textOf(doc, 's6z')), 'a zero lock-beep period reads as off', textOf(doc, 's6z'));
 }
 
+
+/* ==================== v1.51 simulator / شبیه‌ساز ==================== */
+
+/**
+ * [EN] The LED/buzzer simulator must be driven ONLY by the boxes of its own
+ *      card (user order 2026-10-05), so these checks never populate D: they
+ *      type into the inputs, call the engine and assert on the lamps.
+ * [FA] شبیه‌ساز فقط از کادرهای همان کارت تغذیه می‌شود؛ این چک‌ها هیچ داده‌ای
+ *      از برد نمی‌گذارند و مستقیم روی چراغ‌ها assert می‌زنند.
+ */
+function testSimulator(win, doc) {
+    console.log('\nv1.51 simulator / شبیه‌ساز زنده');
+
+    const on = (id) => (doc.getElementById(id).className || '').indexOf(' on') >= 0;
+
+    for (let n = 1; n <= 6; n += 1) {
+        check(doc.getElementById('sim' + n) !== null &&
+              doc.getElementById('sl' + n + 'r') !== null &&
+              doc.getElementById('sl' + n + 'g') !== null &&
+              doc.getElementById('sl' + n + 'y') !== null &&
+              doc.getElementById('sl' + n + 'z') !== null,
+              'card ' + n + ' has a simulator with three LEDs and a buzzer');
+    }
+
+    check(doc.body.innerHTML.indexOf('c4dot') < 0,
+          'the old board-driven dots are gone');
+
+    /* The engine must not need any board data at all. / بدون داده برد کار کند. */
+    const keptD = win.D;
+    win.D = null;
+    let threw = false;
+    try { win.simrun(); } catch (e) { threw = true; }
+    win.D = keptD;
+    check(!threw, 'the simulator runs with no board data at all');
+
+    /* Pure helpers mirror the firmware window maths. / کمک‌تابع‌ها. */
+    check(win.simbz(0, 1000, 200, 2, 100) === true &&
+          win.simbz(250, 1000, 200, 2, 100) === false &&
+          win.simbz(350, 1000, 200, 2, 100) === true &&
+          win.simbz(600, 1000, 200, 2, 100) === false,
+          'simbz replays count x duration + gap inside the period');
+    check(win.simbz(0, 0, 200, 2, 0) === false &&
+          win.simbz(0, 1000, 200, 0, 0) === false,
+          'a zero period or zero count is silent');
+    check(win.simblink(0, 1000, 40) === true && win.simblink(500, 1000, 40) === false,
+          'simblink follows period and duty');
+
+    /* Card 1: green solid, red follows the duty the user typed. */
+    typeInto(win, doc, 'q38', 1000);
+    typeInto(win, doc, 'q39', 50);
+    win.SIMT[1] = win.performance.now();
+    win.simrun();
+    check(on('sl1g') && !on('sl1y'), 'card 1 keeps green solid and yellow off');
+
+    /* Card 3: the slider alone decides the band. */
+    doc.getElementById('simp3').value = 90;
+    win.simrun();
+    check(!on('sl3r') && !on('sl3y'), 'card 3 shows no red or yellow above band 1');
+    check(doc.getElementById('sl3t').textContent.indexOf('بدون بوق') >= 0,
+          'a full battery is announced as silent');
+    doc.getElementById('simp3').value = 0;
+    win.simrun();
+    check(!on('sl3r') && !on('sl3g') && !on('sl3y'),
+          'the critical band turns all three LEDs off');
+
+    /* Card 4: full means yellow off, zero percent means yellow solid. */
+    doc.getElementById('simp4').value = 100;
+    win.simrun();
+    check(on('sl4g') && !on('sl4y'), 'a full charge is green solid with the yellow off');
+    doc.getElementById('simp4').value = 0;
+    win.simrun();
+    check(on('sl4y'), 'zero percent holds the yellow solid on');
+
+    /* Card 5: flag only, with the hysteresis window honoured. */
+    typeInto(win, doc, 'q72', 21000);
+    typeInto(win, doc, 'q73', 21200);
+    doc.getElementById('simp5').value = 20000;
+    win.simrun();
+    check(on('sl5r'), 'below the alarm level card 5 raises the flag');
+    doc.getElementById('simp5').value = 22000;
+    win.simrun();
+    check(!on('sl5r'), 'above the clear level the flag drops');
+    doc.getElementById('simp5').value = 21100;
+    win.simrun();
+    check(doc.getElementById('sl5t').textContent.indexOf('ضدلرزش') >= 0,
+          'inside the window the card says the state is held');
+
+    /* Card 6: latched imbalance is red solid. */
+    win.simrun();
+    check(on('sl6r') && !on('sl6g') && !on('sl6y'),
+          'the imbalance lock is a solid red with no other lamp');
+
+    /* Stop button freezes the phase. / دکمهٔ توقف فاز را نگه می‌دارد. */
+    win.simtog(1);
+    check(win.SIMON[1] === 0 && doc.getElementById('simb1').textContent === 'ادامه',
+          'the stop button pauses that card only');
+    check(win.SIMON[2] === 1, 'the other cards keep running');
+    win.simtog(1);
+}
+
 /* ==================== Runner / اجراکننده ==================== */
 
 const dom = loadPanel();
@@ -500,6 +600,7 @@ setTimeout(() => {
         testCharging(win, doc);
         testLowBattery(win, doc);
         testImbalance(win, doc);
+        testSimulator(win, doc);
     } catch (err) {
         failed += 1;
         console.log('  FAIL threw: ' + err.message);
