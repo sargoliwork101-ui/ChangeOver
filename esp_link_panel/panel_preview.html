@@ -150,7 +150,33 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .qs{display:grid;grid-template-columns:1fr 1fr;gap:12px}.q{background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:12px}.q input[type=number]{width:92px}.q .cut{background:linear-gradient(180deg,#e5484d,#c62f35)}.q .run{background:linear-gradient(180deg,#2fbf8f,#1e9e73);color:#04120c}
 .eg3{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:6px}.eg3 label{display:flex;flex-direction:column;gap:4px;font-size:13px}
 .pgx{display:none}.pgx.a{display:block}body:not(.br) .wstop{display:none}body.br .brun{opacity:.4;pointer-events:none}a.lnk{text-decoration:none;display:inline-block}
-.bq{background:var(--in);border:1px solid rgba(251,191,36,.4);border-radius:12px;padding:11px;margin-top:10px}.bqr{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:flex-end;margin-top:10px}.bqr label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600}.bqr label .lb{font-weight:400}.bqr input[type=number]{width:124px}
+.bq{background:var(--in);border:1px solid rgba(251,191,36,.4);border-radius:12px;padding:11px;margin-top:10px}
+/* [EN] v1.47 (user order "they jump up and down"): the fields were a wrap
+   flex row, so a two-line caption pushed its own input below its neighbours
+   and the row lost its baseline. A grid with stretched cells and a caption
+   that grows into the free space puts every input on the same line and
+   leaves room under it for the factory default.
+   [FA] فیلدها ردیف flex بودند، پس عنوان دوخطی ورودی خودش را پایین می‌انداخت و
+   ردیف از خط مبنا می‌افتاد. گرید با خانه‌های کشیده و عنوانی که فضای خالی را
+   پر می‌کند، همهٔ ورودی‌ها را هم‌تراز می‌کند و زیرش جا برای پیش‌فرض می‌ماند. */
+.bqr{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px 14px;align-items:stretch;margin-top:10px}
+.bqr label{display:flex;flex-direction:column;gap:3px;font-size:13px;font-weight:600}
+.bqr label .t{flex:1 0 auto}
+.bqr label .lb,.bqr label .dflt{font-weight:400}
+.bqr input[type=number]{width:100%}
+.bqr>button,.bqr>.sb{align-self:end}
+.dflt{font-size:11px;color:var(--mu);opacity:.9;direction:rtl}
+.dflt b{font-weight:700;color:#aab4c8;font-variant-numeric:tabular-nums}
+/* [EN] A shared parameter is shown, not re-offered: one writable field owns
+   it and every other place echoes it read-only with a pointer to the owner.
+   Two editable copies of one register is how a panel starts lying.
+   [FA] پارامتر مشترک نمایش داده می‌شود نه دوباره پیشنهاد: یک فیلد صاحب آن است
+   و بقیه فقط بازتاب فقط-خواندنی با اشاره به صاحبش. دو فیلدِ قابل‌نوشتن روی یک
+   رجیستر، همان جایی است که پنل شروع به دروغ‌گفتن می‌کند. */
+.shv{display:flex;flex-direction:column;gap:3px;justify-content:flex-end;background:var(--cd);border:1px dashed var(--ln);border-radius:10px;padding:7px 10px;font-size:13px}
+.shv .t{flex:1 0 auto;font-weight:600;color:var(--mu)}
+.shv b{font-size:15px;font-variant-numeric:tabular-nums;direction:ltr;text-align:left}
+.shv .ow{font-size:11px;color:var(--mu)}
 .cc .ca{border-top:0;margin-top:0;padding-top:0}.stp2{background:linear-gradient(180deg,#e5484d,#c62f35);white-space:nowrap}
 .vc{justify-content:center}.vc input[type=number]{width:min(108px,100%);max-width:100%;box-sizing:border-box}
 .fl{margin-top:0;padding-top:0;border-top:0}#sh .hd{flex-wrap:wrap;gap:8px}
@@ -328,7 +354,7 @@ window.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 </head><body>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build bf2f56b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 15c63c9</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -515,8 +541,8 @@ window.addEventListener('DOMContentLoaded', function(){
 
 <div class="sec">۱) حد ولتاژ باتری — نردبانی که درصد این سناریو از آن می‌آید <span class="lb">(mV؛ همان ۷۴/۷۵ کارت ۴ — هر جا عوض شود، هر دو جا عوض می‌شود)</span></div>
 <div class="bqr">
-<label>حد پایین — ۰٪ (mV)<input type="number" class="qm" data-q="74" step="100" min="15000" max="25000"><span class="lb" id="m74">—</span></label>
-<label>حد بالا — ۱۰۰٪ (mV)<input type="number" class="qm" data-q="75" step="100" min="25000" max="32000"><span class="lb" id="m75">—</span></label>
+<label>حد پایین — ۰٪ (mV)<input type="number" id="q74" step="100" min="15000" max="25000"><span class="lb" id="a74">—</span></label>
+<label>حد بالا — ۱۰۰٪ (mV)<input type="number" id="q75" step="100" min="25000" max="32000"><span class="lb" id="a75">—</span></label>
 </div>
 <div class="c4n" id="s3m">—</div>
 
@@ -554,9 +580,9 @@ window.addEventListener('DOMContentLoaded', function(){
 <div class="bqr">
 <label>سقف این باند (٪)<input type="number" id="q52" step="1" min="0" max="100"><span class="lb" id="a52">—</span></label>
 <label>تعداد بوق<input type="number" id="q63" step="1" min="0" max="10"><span class="lb" id="a63">—</span></label>
-<label>مدت هر بوق (ms) <span class="lb">· مشترک با باند ۱</span><input type="number" class="qm" data-q="59" step="50" min="0" max="600000"></label>
-<label>فاصلهٔ تکرار (ms) <span class="lb">· مشترک با باند ۱</span><input type="number" class="qm" data-q="54" step="1000" min="0" max="600000"></label>
-<label>گپ بین بوق‌ها (ms) <span class="lb">· مشترک</span><input type="number" class="qm" data-q="65" step="10" min="0" max="5000"></label>
+<div class="shv"><span class="t">مدت هر بوق (ms)</span><b class="qmv" data-q="59">—</b><span class="ow">مشترک · ویرایش در باند ۱</span></div>
+<div class="shv"><span class="t">فاصلهٔ تکرار (ms)</span><b class="qmv" data-q="54">—</b><span class="ow">مشترک · ویرایش در باند ۱</span></div>
+<div class="shv"><span class="t">گپ بین بوق‌ها (ms)</span><b class="qmv" data-q="65">—</b><span class="ow">مشترک · ویرایش در باند ۱</span></div>
 </div>
 <div class="c4n" id="s3n2">—</div>
 </div>
@@ -568,7 +594,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <label>تعداد بوق<input type="number" id="q64" step="1" min="0" max="10"><span class="lb" id="a64">—</span></label>
 <label>مدت هر بوق (ms)<input type="number" id="q60" step="50" min="0" max="600000"><span class="lb" id="a60">—</span></label>
 <label>فاصلهٔ تکرار (ms)<input type="number" id="q55" step="1000" min="0" max="600000"><span class="lb" id="a55">—</span></label>
-<label>گپ بین بوق‌ها (ms) <span class="lb">· مشترک</span><input type="number" class="qm" data-q="65" step="10" min="0" max="5000"></label>
+<div class="shv"><span class="t">گپ بین بوق‌ها (ms)</span><b class="qmv" data-q="65">—</b><span class="ow">مشترک · ویرایش در باند ۱</span></div>
 </div>
 <div class="c4n" id="s3n3">—</div>
 </div>
@@ -580,14 +606,15 @@ window.addEventListener('DOMContentLoaded', function(){
 <label>duty بوق بحرانی (٪)<input type="number" id="q57" step="5" min="0" max="100"><span class="lb" id="a57">—</span></label>
 <label>تعداد بوق بحرانی<input type="number" id="q58" step="1" min="0" max="10"><span class="lb" id="a58">—</span></label>
 <label>طول پخش یک‌باره (ms)<input type="number" id="q61" step="500" min="0" max="120000"><span class="lb" id="a61">—</span></label>
-<label>گپ بین بوق‌ها (ms) <span class="lb">· مشترک</span><input type="number" class="qm" data-q="65" step="10" min="0" max="5000"></label>
+<div class="shv"><span class="t">گپ بین بوق‌ها (ms)</span><b class="qmv" data-q="65">—</b><span class="ow">مشترک · ویرایش در باند ۱</span></div>
 </div>
 <div class="c4n" id="s3n4">—</div>
 </div>
 
 <div class="c4n" id="s3z">—</div>
 
-<div class="sec">۴) پایداری درصد <span class="lb">(٪؛ صفر یعنی تعقیب لحظه‌ای خام)</span></div>
+<div class="sec">۴) پایداری درصد — ضدلرزشِ خودِ عدد <span class="lb">(٪)</span></div>
+<div class="c4f" id="s3hy">—</div>
 <div class="bqr">
 <label>hysteresis پایداری دشارژ (٪)<input type="number" id="q80" step="1" min="0" max="50"><span class="lb" id="a80">—</span></label>
 <label>خروج از حالت ۰٪ (٪)<input type="number" id="q81" step="1" min="0" max="100"><span class="lb" id="a81">—</span></label>
@@ -609,10 +636,11 @@ window.addEventListener('DOMContentLoaded', function(){
 <b>خروج فول (٪)</b> = تا وقتی «فول» روشن است، فقط با <b>افتادن درصد زیر این عدد</b> دوباره به «در حال شارژ» برمی‌گردد. این فاصله هیسترزیس است و نمی‌گذارد LED روی مرز بلرزد؛ برد همیشه خروج را دست‌کم یک واحد زیر ورود گیره می‌زند.
 </div>
 
-<div class="sec">۱) حد ولتاژ باتری — نردبان درصد <span class="lb">(mV؛ حد پایین = ۰٪ و حد بالا = ۱۰۰٪)</span></div>
+<div class="sec">۱) حد ولتاژ باتری — نردبان درصد <span class="lb">(mV؛ مشترک با سناریوی دشارژ — فقط نمایش)</span></div>
 <div class="bqr">
-<label>حد پایین — ۰٪ (mV)<input type="number" id="q74" step="100" min="15000" max="25000"><span class="lb" id="a74">—</span></label>
-<label>حد بالا — ۱۰۰٪ (mV)<input type="number" id="q75" step="100" min="25000" max="32000"><span class="lb" id="a75">—</span></label>
+<div class="shv"><span class="t">حد پایین — ۰٪ (mV)</span><b class="qmv" data-q="74">—</b><span class="ow">مشترک · ویرایش در کارت ۳ · دشارژ</span></div>
+<div class="shv"><span class="t">حد بالا — ۱۰۰٪ (mV)</span><b class="qmv" data-q="75">—</b><span class="ow">مشترک · ویرایش در کارت ۳ · دشارژ</span></div>
+<div class="shv"><span class="t">تغییر این دو عدد</span><button class="sb sb2" onclick="usel(3)">رفتن به کارت ۳ · دشارژ</button><span class="ow">همان‌جا هم باندهای دشارژ از همین نردبان ساخته می‌شوند</span></div>
 </div>
 <div class="c4n" id="c4map">—</div>
 
@@ -655,8 +683,12 @@ window.addEventListener('DOMContentLoaded', function(){
 </div>
 <div class="c4n" id="s5v">—</div>
 
-<div class="sec">۲) نردبان ولتاژ به درصد</div>
-<div class="c4n">حد پایین (۷۴) و حد بالا (۷۵) در کارت <button class="sb sb2" onclick="usel(4)" style="padding:2px 10px">۴ · شارژ عادی</button> تنظیم می‌شوند — همان نردبانی که درصد این آلارم، باندهای دشارژ و فول شارژ از آن می‌آید.</div>
+<div class="sec">۲) نردبان ولتاژ به درصد <span class="lb">(مشترک — فقط نمایش)</span></div>
+<div class="bqr">
+<div class="shv"><span class="t">حد پایین — ۰٪ (mV)</span><b class="qmv" data-q="74">—</b><span class="ow">مشترک · ویرایش در کارت ۳ · دشارژ</span></div>
+<div class="shv"><span class="t">حد بالا — ۱۰۰٪ (mV)</span><b class="qmv" data-q="75">—</b><span class="ow">مشترک · ویرایش در کارت ۳ · دشارژ</span></div>
+<div class="shv"><span class="t">تغییر این دو عدد</span><button class="sb sb2" onclick="usel(3)">رفتن به کارت ۳ · دشارژ</button><span class="ow">درصد این آلارم هم از همین نردبان می‌آید</span></div>
+</div>
 
 </div>
 <div class="cd" id="ucard6" style="display:none">
@@ -1838,27 +1870,55 @@ function swin(per,dur,cnt,gap){
  return {winMs,fits,sil};}
 function stxt(el,html){const e=$(el);if(e)e.innerHTML=html;}
 function sdot(el,on){const e=$(el);if(e)e.className=e.className.replace(' on','')+(on?' on':'');}
-/* ==================== ورودی‌های آینه‌ای (qm) ==================== */
-/* [EN] One parameter, several inputs. A mirror never talks to the board on
-   its own: it writes the primary input and fires the primary's change
-   handler, so the existing guard, the clamp confirmation and the send path
-   stay the single route to the board - a second route is how two fields
-   start disagreeing about one register.
-   [FA] یک پارامتر، چند ورودی. آینه هرگز خودش با برد حرف نمی‌زند: مقدار را در
-   ورودی اصلی می‌نویسد و رویداد change همان را می‌زند، پس نگهبان، تأیید گیره و
-   مسیر ارسال یکی می‌ماند - مسیر دوم همان چیزی است که دو فیلد را سر یک رجیستر
-   به اختلاف می‌اندازد. */
-function qmall(id){return document.querySelectorAll('input.qm[data-q="'+id+'"]');}
-function qmpush(id,src){const pr=$('q'+id);if(!pr)return;
- qmall(id).forEach(e=>{if(e!==src&&document.activeElement!==e)e.value=pr.value;});}
-function qmfill(){document.querySelectorAll('input.qm').forEach(e=>{const pr=$('q'+e.dataset.q);
- if(pr&&document.activeElement!==e&&e.value!==pr.value)e.value=pr.value;});}
-function qmbind(){document.querySelectorAll('input.qm').forEach(e=>{const id=e.dataset.q,pr=$('q'+id);
- if(!pr)return;
- e.value=pr.value;
- e.oninput=()=>{pr.value=e.value;qmpush(id,e);if(pr.oninput)pr.oninput();};
- e.onchange=()=>{pr.value=e.value;pr.dispatchEvent(new Event('change'));e.value=pr.value;qmpush(id,e);};});}
-qmbind();
+/* ==================== مقدار مشترک و پیش‌فرض کارخانه ==================== */
+/* [EN] A shared parameter has exactly ONE writable field. Everywhere else it
+   is echoed read-only from the SAME source the writable field uses, with a
+   pointer to the owner. Two editable copies of one register cannot be kept
+   honest: the loser of the last edit keeps showing a number the board does
+   not hold.
+   [FA] هر پارامتر مشترک دقیقاً یک فیلد قابل‌نوشتن دارد؛ جاهای دیگر فقط بازتاب
+   فقط-خواندنی از همان منبع‌اند با اشاره به صاحبش. دو نسخهٔ قابل‌ویرایش از یک
+   رجیستر صادق نمی‌مانند. */
+function qmfill(){
+ document.querySelectorAll('.qmv').forEach(e=>{
+  const id=+e.dataset.q,pr=$('q'+id);
+  const applied=(D&&D.p&&D.p[id]!=null)?D.p[id]:null;
+  const typed=(pr&&pr.value!=='')?parseInt(pr.value,10):NaN;
+  const shown=!isNaN(typed)?typed:(applied!=null?applied:pdflt(id));
+  e.textContent=shown==null?'—':shown;
+  /* عدد تایپ‌شده و هنوز اعمال‌نشده با رنگ هشدار دیده شود */
+  e.style.color=(!isNaN(typed)&&applied!=null&&typed!==applied)?'var(--wa)':'';});}
+/* [EN] Factory default of a parameter id, from the same tables the reset
+   buttons use - one source, so a default can never drift from its button.
+   [FA] پیش‌فرض کارخانهٔ هر شناسه، از همان جدولی که دکمه‌های بازگردانی
+   می‌خوانند - یک منبع، پس پیش‌فرض از دکمه‌اش جدا نمی‌افتد. */
+function pdflt(id){
+ id=+id;
+ if(id>=108&&id<=118)return IDEF[id-108];
+ if(id>=93&&id<=107)return LDEF[id-93];
+ if(id>=83&&id<=92)return PDEF[id-83];
+ if(id>=27&&id<=82)return ADEF[id-27];
+ return null;}
+/* [EN] Put the factory default under every numeric field and wrap the caption
+   so the inputs line up (the caption takes the slack, not the input).
+   [FA] پیش‌فرض کارخانه زیر هر فیلد عددی، و بسته‌بندی عنوان تا ورودی‌ها هم‌تراز
+   بمانند (فضای خالی را عنوان می‌گیرد، نه ورودی). */
+function qdeco(){
+ document.querySelectorAll('.bqr label').forEach(l=>{
+  const inp=l.querySelector('input[type=number]');
+  if(!inp||l.querySelector('.t'))return;
+  const cap=document.createElement('span');
+  cap.className='t';
+  while(l.firstChild&&l.firstChild!==inp){cap.appendChild(l.firstChild);}
+  l.insertBefore(cap,inp);
+  const id=(inp.id&&inp.id.charAt(0)==='q')?inp.id.slice(1):null;
+  const d=id?pdflt(id):null;
+  if(d==null)return;
+  const hint=document.createElement('span');
+  hint.className='dflt';
+  hint.innerHTML='پیش‌فرض کارخانه: <b>'+d+'</b>';
+  l.appendChild(hint);});}
+qdeco();
 function sall(){
  if(!$('s1v'))return;
  qmfill();
@@ -1909,6 +1969,12 @@ function sall(){
    stxt('s3b','الان: درصد پایدار <span class="n">'+stp+'</span>٪ → سبز <span class="n">'+g.onMs+'</span> ms روشن / <span class="n">'+g.offMs+'</span> ms خاموش');
    sdot('s3led',(now%per)<g.onMs);}
   else{stxt('s3b',stp<0?'— در انتظار داده از برد (اعداد باندها با مقادیر فعلی محاسبه شده‌اند)':'الان: باند بحرانی — LEDها خاموش‌اند');sdot('s3led',false);}}
+ /* --- سناریو ۳: معنی پایداری درصد --- */
+ {const hyst=c4v(80,2),z=c4v(81,2),o=c4v(82,3),ex=35;
+  stxt('s3hy','درصدِ خام هر تیک از ولتاژ حساب می‌شود و روی باتری واقعی چند واحد بالا-پایین می‌پرد؛ اگر برد مستقیم از آن استفاده کند، چشمک سبز و باندهای بوق روی مرز می‌لرزند. پس برد یک «درصد پایدار» نگه می‌دارد و همهٔ تصمیم‌ها را با آن می‌گیرد: '
+   +'<b>hysteresis</b> = پایدار فقط وقتی حرکت می‌کند که خام دست‌کم <span class="n">'+hyst+'</span> واحد از آن دور شود — مثال با همین عدد: پایدار <span class="n">'+ex+'</span>٪ است و تا وقتی خام بین <span class="n">'+(ex-hyst+1)+'</span> و <span class="n">'+(ex+hyst-1)+'</span> بماند همان <span class="n">'+ex+'</span> می‌ماند؛ خام <span class="n">'+(ex+hyst)+'</span> آن را جابه‌جا می‌کند. صفر یعنی بدون ضدلرزش (تعقیب لحظه‌ای خام). '
+   +'<b>خروج از ۰٪</b> = وقتی پایدار روی ۰ است، تا خام به <span class="n">'+z+'</span> نرسد ۰ می‌ماند و بعد اول به ۱ می‌رود، نه مستقیم بالاتر. '
+   +'<b>خروج از ۱٪</b> = وقتی پایدار ۱ است، خام ۰ آن را به ۰ می‌برد و خام <span class="n">'+o+'</span> یا بیشتر به ۲؛ بین این دو، ۱ می‌ماند. این دو عدد نمی‌گذارند ته باتری، بوق بحرانی مدام شروع و قطع شود.');}
  /* --- سناریو ۵: آلارم باتری کم --- */
  {const al=c4v(72,21000),cl=c4v(73,21200);
   stxt('s5v','ورود: زیر <span class="n">'+al+'</span> mV (≈ <span class="n">'+mvp(al)+'</span>٪) · خروج: <span class="n">'+cl+'</span> mV یا بالاتر (≈ <span class="n">'+mvp(cl)+'</span>٪) · پهنای ضدلرزش <span class="n">'+(cl-al)+'</span> mV'+(cl<al?' · <span class="erc">⚠ پاک‌شدن زیر آستانه است</span>':''));}

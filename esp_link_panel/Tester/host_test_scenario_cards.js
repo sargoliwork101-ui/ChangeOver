@@ -219,67 +219,81 @@ function testDischarge(win, doc) {
     typeInto(win, doc, 'q55', 20000);
     typeInto(win, doc, 'q65', 100);
 
-    /* [EN] v1.45 (user order): the card must carry the ladder itself and
-       every variable of a band must sit in that band's own block.
-       [FA] نردبان باید داخل همین کارت باشد و متغیرهای هر باند در بلوک خودش. */
     const card = doc.getElementById('ucard3');
-    check(card.querySelectorAll('input.qm[data-q="74"]').length === 1 &&
-          card.querySelectorAll('input.qm[data-q="75"]').length === 1,
-        'the discharge card carries the low/high voltage limits');
+
+    /* [EN] v1.47: the discharge card OWNS the ladder - one writable copy in
+       the whole page, read-only echoes elsewhere.
+       [FA] کارت دشارژ صاحب نردبان است: یک نسخهٔ قابل‌نوشتن در کل صفحه. */
+    check(card.querySelector('#q74') !== null && card.querySelector('#q75') !== null,
+        'the discharge card owns the writable voltage limits');
+    check(doc.querySelectorAll('#q74').length === 1 && doc.querySelectorAll('#q75').length === 1,
+        'the ladder has exactly one writable field in the page');
+    check(doc.querySelectorAll('#ucard4 .qmv[data-q="74"]').length === 1 &&
+          doc.querySelectorAll('#ucard5 .qmv[data-q="75"]').length === 1,
+        'the charge and low-battery cards echo it read-only');
+    win.qmfill();
+    check(doc.querySelector('#ucard4 .qmv[data-q="74"]').textContent === '21000',
+        'the echo carries the owner value', doc.querySelector('#ucard4 .qmv[data-q="74"]').textContent);
+    typeInto(win, doc, 'q74', 20500);
+    win.qmfill();
+    check(doc.querySelector('#ucard4 .qmv[data-q="74"]').textContent === '20500',
+        'editing the owner moves the echo');
+    typeInto(win, doc, 'q74', 21000);
+    win.qmfill();
     check(textOf(doc, 's3m').includes('21000') && textOf(doc, 's3m').includes('29000'),
         'the ladder line shows both limits', textOf(doc, 's3m'));
 
+    /* [EN] One block per band; shared values echoed, never re-offered.
+       [FA] هر باند یک بلوک؛ مقدار مشترک بازتاب می‌شود نه دوباره پیشنهاد. */
     const blocks = card.querySelectorAll('.bnd');
-    check(blocks.length === 5, 'there is one block per band (silent, 1, 2, 3, critical)', 'blocks=' + blocks.length);
-    const inBlock = (k, id) => blocks[k].querySelector('#q' + id) !== null ||
-                               blocks[k].querySelector('input.qm[data-q="' + id + '"]') !== null;
-    check(inBlock(1, 51) && inBlock(1, 62) && inBlock(1, 59) && inBlock(1, 54) && inBlock(1, 65),
-        'band 1 block holds its percent, count, duration, interval and gap');
-    check(inBlock(2, 52) && inBlock(2, 63) && inBlock(2, 59) && inBlock(2, 54) && inBlock(2, 65),
-        'band 2 block holds all five of its variables too');
-    check(inBlock(3, 53) && inBlock(3, 64) && inBlock(3, 60) && inBlock(3, 55) && inBlock(3, 65),
-        'band 3 block holds its own duration and interval');
-    check(inBlock(4, 56) && inBlock(4, 57) && inBlock(4, 58) && inBlock(4, 61) && inBlock(4, 65),
-        'the critical block holds period, duty, count, one-shot length and gap');
+    check(blocks.length === 5, 'there is one block per band', 'blocks=' + blocks.length);
+    const owns = (k, id) => blocks[k].querySelector('#q' + id) !== null;
+    const echoes = (k, id) => blocks[k].querySelector('.qmv[data-q="' + id + '"]') !== null;
+    check(owns(1, 51) && owns(1, 62) && owns(1, 59) && owns(1, 54) && owns(1, 65),
+        'band 1 owns its percent, count, duration, interval and gap');
+    check(owns(2, 52) && owns(2, 63) && echoes(2, 59) && echoes(2, 54) && echoes(2, 65),
+        'band 2 owns what is its own and echoes the three shared values');
+    check(owns(3, 53) && owns(3, 64) && owns(3, 60) && owns(3, 55) && echoes(3, 65),
+        'band 3 owns its duration and interval, echoes only the gap');
+    check(owns(4, 56) && owns(4, 57) && owns(4, 58) && owns(4, 61) && echoes(4, 65),
+        'the critical block owns its four values and echoes the gap');
+    check(card.querySelectorAll('input#q65').length === 1,
+        'the shared gap has exactly one writable field');
 
-    /* [EN] A shared value edited in one block must move in the other.
-       [FA] مقدار مشترک که در یک بلوک عوض شود باید در بلوک دیگر هم عوض شود. */
-    const mir = [...card.querySelectorAll('input.qm[data-q="65"]')];
-    check(mir.length >= 3, 'the shared gap appears in every band that uses it', 'copies=' + mir.length);
-    mir[1].value = '250';
-    mir[1].oninput();
-    check(doc.getElementById('q65').value === '250', 'editing a mirror writes the primary input');
-    win.sall();
-    check(mir[0].value === '250' && mir[2].value === '250', 'the other copies of a shared value follow');
+    typeInto(win, doc, 'q65', 250);
+    win.qmfill();
+    const gapEchoes = [...card.querySelectorAll('.qmv[data-q="65"]')];
+    check(gapEchoes.length === 3 && gapEchoes.every(e => e.textContent === '250'),
+        'every echo of the gap follows the single writable field',
+        gapEchoes.map(e => e.textContent).join(','));
     typeInto(win, doc, 'q65', 100);
     win.qmfill();
-    check(mir[1].value === '100', 'a primary edit pushes back into the mirrors');
 
-    /* [EN] Guard refused -> the primary clears, so the mirror must clear too.
-       A mirror still showing the refused number is the "two fields, one
-       register" failure the mirror design exists to prevent.
-       [FA] اگر کاربر تأیید گیره را رد کند ورودی اصلی خالی می‌شود، پس آینه هم
-       باید خالی شود؛ وگرنه دو فیلد سر یک رجیستر اختلاف پیدا می‌کنند. */
-    const confirmWas = win.confirm;
-    win.confirm = () => false;
-    typeInto(win, doc, 'q62', 3);
-    mir[1].value = '10';
-    mir[1].onchange();
-    check(doc.getElementById('q65').value === '' && mir[1].value === '',
-        'a refused clamp confirmation clears the mirror as well as the primary',
-        'primary=' + doc.getElementById('q65').value + ' mirror=' + mir[1].value);
-    win.confirm = confirmWas;
-    typeInto(win, doc, 'q65', 100);
-    typeInto(win, doc, 'q62', 1);
-    win.qmfill();
+    /* [EN] Factory default under every field, from the reset tables.
+       [FA] پیش‌فرض کارخانه زیر هر فیلد، از جدول دکمه‌های بازگردانی. */
+    const noDefault = [];
+    for (let k = 1; k <= 6; k += 1) {
+        doc.querySelectorAll('#ucard' + k + ' .bqr label').forEach(l => {
+            const inp = l.querySelector('input[type=number]');
+            if (inp && !l.querySelector('.dflt')) {
+                noDefault.push(inp.id || '(no id)');
+            }
+        });
+    }
+    check(noDefault.length === 0, 'every scenario field prints its factory default', noDefault.join(','));
+    const gapLabel = card.querySelector('#q65').closest('label');
+    check(gapLabel.querySelector('.dflt').textContent.includes('100'),
+        'the printed default is the real factory value (gap = 100)',
+        gapLabel.querySelector('.dflt').textContent);
+    check(card.querySelector('#q66').closest('label').querySelector('.t') !== null,
+        'the caption is wrapped so the inputs line up');
 
-    /* [EN] Band lines: range in percent and mV, green at the mid band and
-       the beep window against the interval.
-       [FA] خط هر باند: بازه بر حسب درصد و mV، سبز میانه و پنجرهٔ بوق. */
+    /* [EN] Band lines keep reporting the board numbers.
+       [FA] خط هر باند همچنان اعداد برد را گزارش می‌کند. */
     check(textOf(doc, 's3r2').includes('10') && textOf(doc, 's3r2').includes('20'),
         'band 2 range is 10..20 percent', textOf(doc, 's3r2'));
     check(textOf(doc, 's3r2').includes('21800') && textOf(doc, 's3r2').includes('22600'),
-        'band 2 range in mV comes off the 74/75 ladder', textOf(doc, 's3r2'));
+        'band 2 range in mV comes off the ladder', textOf(doc, 's3r2'));
     check(/150 ms.*850 ms/.test(textOf(doc, 's3n2')),
         'green at the 15% mid-band is 150/850 ms', textOf(doc, 's3n2'));
     check(textOf(doc, 's3n2').includes('2100'),
@@ -296,6 +310,15 @@ function testDischarge(win, doc) {
     check(/⚠/.test(textOf(doc, 's3z')), 'a broken band order is called out', textOf(doc, 's3z'));
     typeInto(win, doc, 'q53', 1);
     check(!/⚠/.test(textOf(doc, 's3z')), 'and the warning clears when the order is restored', textOf(doc, 's3z'));
+
+    /* [EN] "Percent stability" must be explained with the live numbers.
+       [FA] «پایداری درصد» باید با اعداد زنده توضیح داده شود. */
+    typeInto(win, doc, 'q80', 2);
+    const hy = textOf(doc, 's3hy');
+    check(hy.includes('hysteresis') && hy.includes('34') && hy.includes('36'),
+        'the stability text explains the band around the stable percent', hy);
+    check(hy.includes('خروج از ۰٪') && hy.includes('خروج از ۱٪'),
+        'and explains both zero/one exit thresholds', hy);
 }
 
 /* ==================== Scenario 4 - charging / full ==================== */
@@ -359,9 +382,9 @@ function testLowBattery(win, doc) {
     /* [EN] The ladder itself lives on card 4 now - card 5 must say so.
        [FA] خود نردبان حالا در کارت ۴ است و کارت ۵ باید همین را بگوید. */
     const card5 = doc.getElementById('ucard5');
-    check(doc.querySelectorAll('#ucard5 #q74').length === 0, 'the ladder is not duplicated on card 5');
-    check(/کارت/.test(card5.textContent) && card5.querySelector('button[onclick="usel(4)"]') !== null,
-        'card 5 points at the card that owns the ladder');
+    check(doc.querySelectorAll('#ucard5 input#q74').length === 0, 'the ladder is not duplicated on card 5');
+    check(/کارت/.test(card5.textContent) && card5.querySelector('button[onclick="usel(3)"]') !== null,
+        'card 5 points at the card that owns the ladder (card 3)');
 }
 
 /* ==================== Scenario 6 - imbalance ==================== */
