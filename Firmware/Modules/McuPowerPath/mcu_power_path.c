@@ -27,10 +27,23 @@ static volatile bool     BOOL__G__BatteryConnected     = true;
 
 /* ==================== McuPowerPath Init / مقداردهی اولیه ==================== */
 
+/* ==================== McuPowerPath_Init ==================== */
+
 /**
- * @brief  [EN] || func__McuPowerPath_Init || Initialize Q1 to battery-connected (PB5 Low) and reset timer.
- *              Call once before product tasks. Keeps PB11 independent.
- *         [FA] || func__McuPowerPath_Init || Q1 را وصل (PB5 Low) و تایمر را صفر می‌کند.
+ * @brief  [EN] Put the MCU self-supply path into its safe boot state: the
+ *              battery switch is driven to CONNECTED and the qualification
+ *              timer is cleared. Connected is the only correct power-on
+ *              state, because the board has to be able to run from the
+ *              battery before anyone has proved that the DC input is
+ *              present and healthy. Call this once before the product
+ *              tasks start. It deliberately never touches PB11, which
+ *              belongs to Changeover alone.
+ *         [FA] مسیر خودتغذیهٔ MCU را به حالت امن بوت می‌برد: کلید باتری روی
+ *              «وصل» رانده می‌شود و تایمر احراز صفر می‌شود. «وصل» تنها حالت
+ *              درست روشن‌شدن است، چون برد باید بتواند پیش از آنکه کسی حاضر و
+ *              سالم‌بودن ورودی DC را ثابت کند از باتری کار کند. این تابع
+ *              یک‌بار پیش از شروع تسک‌های محصول صدا زده می‌شود و عمداً هرگز به
+ *              PB11 دست نمی‌زند که فقط مال Changeover است.
  */
 void func__McuPowerPath_Init(void)
 {
@@ -45,10 +58,23 @@ void func__McuPowerPath_Init(void)
 /* ==================== McuPowerPath OnInputIrq / وقفهٔ ورودی ==================== */
 
 /**
- * @brief  [EN] || func__McuPowerPath_OnInputIrq || ISR-safe handler for PB4 edges.
- *              If PB4 indicates input lost, immediately drive PB5 Low and cancel timer.
- *              Only GPIO write + volatile flags, no RTOS/ADC/mutex/delay.
- *         [FA] || func__McuPowerPath_OnInputIrq || تابع امن وقفه برای PB4.
+ * @brief  [EN] Interrupt-context handler for the PB4 input-present edges.
+ *              When PB4 says the DC input is gone, the battery path is
+ *              reconnected immediately and any pending disconnect timer is
+ *              cancelled - waiting for the next periodic pass could brown
+ *              the MCU out. The body is restricted to one GPIO write and
+ *              two volatile flags: no RTOS call, no ADC, no mutex and no
+ *              delay, so it is safe from an ISR. A rising edge does NOT
+ *              disconnect here; that decision needs the 5 s qualification
+ *              and the hysteresis band, which only the periodic Run owns.
+ *         [FA] مدیریت‌کنندهٔ لبه‌های حضور ورودی روی PB4 در بافت وقفه. وقتی PB4
+ *              می‌گوید ورودی DC رفته، مسیر باتری فوراً وصل و هر تایمر قطعِ
+ *              در انتظار لغو می‌شود؛ منتظرماندن تا پاس دوره‌ای بعدی می‌تواند
+ *              MCU را بی‌برق کند. بدنه به یک نوشتن GPIO و دو پرچم volatile
+ *              محدود است: بدون فراخوانی RTOS، بدون ADC، بدون میوتکس و بدون
+ *              تأخیر، پس از داخل وقفه امن است. لبهٔ صعودی اینجا قطع نمی‌کند؛
+ *              آن تصمیم به احراز ۵ ثانیه و باند هیسترزیس نیاز دارد که فقط
+ *              مال Run دوره‌ای است.
  */
 void func__McuPowerPath_OnInputIrq(void)
 {
@@ -95,8 +121,13 @@ void func__McuPowerPath_Run(void)
 
 #if MODULE_MEASUREMENT
     measurement_snapshot_t measurement_snapshot_t__snap;
-    if ((func__Measurement_GetSnapshot(&measurement_snapshot_t__snap) != false) &&
-        (measurement_snapshot_t__snap.valid != false))
+    bool                   bool__snapshotUsable;
+
+    bool__snapshotUsable =
+        ((func__Measurement_GetSnapshot(&measurement_snapshot_t__snap) != false) &&
+         (measurement_snapshot_t__snap.valid != false));
+
+    if (bool__snapshotUsable != false)
     {
         if (measurement_snapshot_t__snap.v_in_mv >= MCU_POWER_INPUT_QUALIFY_MV)
         {

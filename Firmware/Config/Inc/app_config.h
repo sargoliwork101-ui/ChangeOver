@@ -11,22 +11,37 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/* [EN] Tidy-up 2026-10-05: this struct had grown 11 fields that no line of
- *      code ever read - UI timings that moved into ui_led.h / ui_buzzer.h
- *      when the UI was split, plus two enable flags and a PWM cap that were
- *      never wired to anything. A config value nobody consumes is worse
- *      than no value: it reads like a knob, and turning it does nothing.
- *      What is left is exactly what the firmware reads today: the two
- *      one-shot board-test timings and the three task periods.
- *      The Protection limits (over-current, low-battery) deliberately did
- *      NOT move here - that module is still a skeleton and its thresholds
- *      live with it; see Firmware/Modules/Protection/README.md.
- * [FA] مرتب‌سازی: این ساختار ۱۱ فیلد داشت که هیچ خطی از کد نمی‌خواند -
- *      زمان‌بندی‌های UI که موقع تفکیک UI به ‎ui_led.h/ui_buzzer.h‎ منتقل شدند،
- *      به‌علاوهٔ دو پرچم فعال‌سازی و یک سقف PWM که به جایی وصل نبودند. مقدار
- *      پیکربندیِ بی‌مصرف از نبودنش بدتر است: شبیه یک پیچ تنظیم دیده می‌شود
- *      ولی چرخاندنش هیچ اثری ندارد. آنچه مانده دقیقاً همان است که فرم‌ور
- *      امروز می‌خواند. */
+/* [EN] Clean-up 2026-10-05: this struct had grown to nineteen fields of which
+ *      the firmware read only five. The other fourteen were historical - UI
+ *      timings that moved into ui_led.h / ui_buzzer.h when the UI was split,
+ *      the legacy battery and over-current limits, two enable flags and a PWM
+ *      cap that were never wired to anything. They are gone, because a config
+ *      value nobody consumes is worse than no value: it reads like a knob,
+ *      and turning it does nothing. What is left is exactly what the firmware
+ *      reads today - the two one-shot board-test timings and the three task
+ *      periods. The removal is compile-checked: every gate, the four host
+ *      testers and the 270-invariant consistency audit run green after it.
+ *
+ *      CONTRACT from here on: do not re-add a field for a value a module
+ *      already owns. Every threshold the ESP panel can tune lives with its
+ *      module and is persisted in NVM; a second copy in APP_CONFIG is how
+ *      the panel and the firmware end up disagreeing about one quantity.
+ *      The Protection limits deliberately did not come back here - that
+ *      module is still a skeleton and its thresholds will live next to its
+ *      own functions; see Firmware/Modules/Protection/README.md.
+ * [FA] مرتب‌سازی ۲۰۲۶-۱۰-۰۵: این ساختار نوزده فیلد شده بود که فرم‌ور فقط پنج
+ *      تای آن را می‌خواند. چهارده تای دیگر تاریخی بودند - زمان‌بندی‌های UI که
+ *      هنگام تفکیک UI به ‎ui_led.h/ui_buzzer.h‎ رفتند، حدهای قدیمی باتری و
+ *      اضافه‌جریان، دو پرچم فعال‌سازی و یک سقف PWM که به جایی وصل نبودند.
+ *      حذف شدند، چون مقدار پیکربندیِ بی‌مصرف از نبودنش بدتر است: شبیه یک پیچ
+ *      تنظیم دیده می‌شود ولی چرخاندنش هیچ اثری ندارد. آنچه مانده دقیقاً همان
+ *      است که فرم‌ور امروز می‌خواند. حذف با کامپایل بررسی شده است: همهٔ
+ *      دروازه‌ها، چهار تستر هاست و ممیزی ۲۷۰ نامتغیری بعد از آن سبزند.
+ *
+ *      قرارداد از این به بعد: برای مقداری که یک ماژول خودش دارد دوباره فیلدی
+ *      اینجا اضافه نکنید. هر آستانه‌ای که پنل ESP تنظیم می‌کند پیش خود ماژول
+ *      است و در NVM می‌ماند؛ نسخهٔ دوم در ‎APP_CONFIG‎ باعث می‌شود پنل و فرم‌ور
+ *      دربارهٔ یک کمیت اختلاف پیدا کنند. */
 typedef struct
 {
     /* ==================== Board-test one-shots / تست برد ==================== */

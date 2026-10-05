@@ -2763,19 +2763,35 @@ def test_telemetry_frame_pins_v116c():
     # [EN] 31 live u32 writes fill the WHOLE field table (4+31x4 = 128 B,
     #      including the v1.43 imbalance trio at t[24..26] and the v1.76
     #      dead-battery trio at t[28..30]: mask, charger-1 clock, charger-2
-    #      clock), and 25 #else zero-fillers cover the same fields when a
+    #      clock), and 30 #else zero-fillers cover the same fields when a
     #      module is compiled out.
+    #      Full-program audit 2026-10-05: the fillers went 25 -> 30 and the
+    #      conditional blocks 9 -> 10 because the five raw-ADC-count writes
+    #      were the last unguarded ones in this function - with
+    #      MODULE_MEASUREMENT=0 they referenced a module that is not
+    #      compiled, which the -Werror gate rejects. The LIVE count is
+    #      deliberately still 31: the payload layout and length are
+    #      byte-identical in both branches, which is the property this
+    #      check exists to protect.
     # [FA] ۳۱ رایت زندهٔ u32 کل جدول را پر می‌کند (۴+۳۱×۴=۱۲۸ بایت، با سه‌تاییِ
-    #      سناریوی ۶ در t[28..30]) و ۲۵ صفرِ #else جایگزین‌اند.
-    expected_writes = 31 + 25
+    #      سناریوی ۶ در t[28..30]) و ۳۰ صفرِ #else جایگزین‌اند.
+    #      ممیزی ۲۰۲۶-۱۰-۰۵: صفرها از ۲۵ به ۳۰ و بلوک‌های شرطی از ۹ به ۱۰
+    #      رسید، چون پنج رایت شمارش خام ADC آخرین رایت‌های بدون گارد این تابع
+    #      بودند و با ‎MODULE_MEASUREMENT=0‎ به ماژولی اشاره می‌کردند که کامپایل
+    #      نشده است. تعداد «زنده» عمداً همان ۳۱ مانده: چیدمان و طول payload در
+    #      هر دو شاخه بیت‌به‌بیت یکسان است و همین خاصیت است که این چک از آن
+    #      محافظت می‌کند.
+    expected_writes = 31 + 30
     check(body.count("func__EspLink_PutU32(") == expected_writes,
           f"SendTelemetry must carry {expected_writes} textual u32 writes "
-          "(31 live + 25 #else fillers); the 31 live ones exactly fill "
+          "(31 live + 30 #else fillers); the 31 live ones exactly fill "
           "ESP_LINK_TLM_FIELD_COUNT fields")
-    check(body.count("func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);") == 25,
-          "SendTelemetry must carry exactly 25 zero-filler u32 writes")
-    check(body.count("#else") == 9,
-          "SendTelemetry must keep its 9 conditional filler blocks (v1.72 added the scenario-6 pair)")
+    check(body.count("func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);") == 30,
+          "SendTelemetry must carry exactly 30 zero-filler u32 writes")
+    check(body.count("#else") == 10,
+          "SendTelemetry must keep its 10 conditional filler blocks "
+          "(v1.72 added the scenario-6 pair, the 2026-10-05 audit added the "
+          "raw-ADC-count block)")
 
 
 def test_flash_diet_pins_v116d():

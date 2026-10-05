@@ -766,11 +766,22 @@ static void func__EspLink_SendParamReport(uint8_t uint8_t__paramId,
        دقیقاً همان خرابی‌ای که کاربر دستور حذفش را داد، پس خطای بیلد است نه
        کامنت. موتیشن‌تست این شکاف را پیدا کرد: یکی کم‌کردن ESPLINK_PARAM_COUNT
        از همهٔ چک‌های موجود سالم رد می‌شد. */
+/* [EN] Full-program audit 2026-10-05: the pair below names charger macros,
+   so it only exists when the charger header was actually included (the
+   #include above is itself inside #if MODULE_CHARGER). Without the guard,
+   MODULE_CHARGER 0 turned these two asserts into undeclared-identifier
+   errors instead of simply dropping a charger-only contract.
+   [FA] ممیزی ۲۰۲۶-۱۰-۰۵: این جفت assert ماکروهای شارژر را نام می‌برد و فقط
+   وقتی معنا دارد که هدر شارژر include شده باشد (خودِ include بالاتر داخل
+   ‎#if MODULE_CHARGER‎ است). بدون گارد، خاموش‌کردن شارژر به‌جای حذف یک قرارداد
+   مخصوص شارژر، خطای شناسهٔ تعریف‌نشده می‌داد. */
+#if MODULE_CHARGER
 _Static_assert(ESPLINK_PARAM_COUNT > CHG_LIMIT_PARAM_LAST_ID,
                "ESPLINK_PARAM_COUNT must cover the whole charger limit block");
 _Static_assert(CHG_LIMIT_PARAM_FIRST_ID + CHG_LIMIT_COUNT - 1u
                == CHG_LIMIT_PARAM_LAST_ID,
                "the charger limit block has a hole in its wire-id range");
+#endif /* MODULE_CHARGER */
 
 #define ESPLINK_BULK_ITEM_SIZE   5u
 #define ESPLINK_BULK_MAX_ITEMS   \
@@ -1033,6 +1044,16 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
        اجرا و هر جبران بنچی. شمارش تنها عددی روی این برد است که هیچ ضریبی
        خرابش نمی‌کند، پس سوییپی که این‌ها را کنار مولتی‌متر ثبت کند اجازه می‌دهد
        هر مقیاس از پایه بازساخته شود نه اینکه روی باور فعلی فرم‌ور تنظیم شود. */
+    /* [EN] Full-program audit 2026-10-05: this block read the Measurement
+       globals unguarded while every other Measurement block in this frame
+       is wrapped, so MODULE_MEASUREMENT 0 broke the build. Guarded now with
+       the same zero-fill else branch, which keeps the payload layout and
+       length identical in both configurations.
+       [FA] ممیزی ۲۰۲۶-۱۰-۰۵: این بلوک بدون گارد گلوبال‌های Measurement را
+       می‌خواند در حالی که بقیهٔ بلوک‌های همین فریم گارد دارند، پس خاموش‌کردن
+       MODULE_MEASUREMENT بیلد را می‌شکست. حالا با همان شاخهٔ صفرپرکن گارد
+       شده و چیدمان و طول payload در هر دو حالت یکسان می‌ماند. */
+#if MODULE_MEASUREMENT
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
                          UINT32_T__G__MeasVinRawCounts);
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
@@ -1043,6 +1064,13 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
                          UINT32_T__G__MeasVrefintRawCounts);
     func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
                          UINT32_T__G__MeasVddaMv);
+#else
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);
+#endif
 
     /* [EN] v1.43 imbalance live block (appended at the very end so every
      *      earlier index is untouched): |vhigh-vlow| mV, episode count,

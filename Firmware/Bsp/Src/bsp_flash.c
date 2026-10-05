@@ -97,6 +97,33 @@ static bool func__BspFlash_WaitIdle(void)
 
 /* ==================== BspFlash_ErasePage ==================== */
 
+/**
+ * @brief  [EN] Erase one 1 KiB main-flash page. The caller may pass any
+ *              address inside the page; it is rounded down to the page
+ *              boundary here. The sequence is the one the reference manual
+ *              requires: unlock, wait for idle, set PER and the page
+ *              address, strobe START, wait for the busy flag to drop, check
+ *              the error flags, then lock again - the lock is restored on
+ *              every exit path, so a failed erase can never leave the flash
+ *              controller open. An address outside the region this NVM
+ *              layout owns is refused before anything is touched.
+ *         [FA] یک صفحهٔ یک‌کیلوبایتی فلش اصلی را پاک می‌کند. فراخوان می‌تواند
+ *              هر آدرسی داخل صفحه بدهد؛ همین‌جا به مرز صفحه گرد می‌شود. ترتیب
+ *              کار همانی است که رفرنس‌منوال می‌خواهد: باز کردن قفل، انتظار
+ *              بیکاری، ست‌کردن PER و آدرس صفحه، زدن START، انتظار افتادن پرچم
+ *              مشغول، بررسی پرچم‌های خطا و بعد قفل دوباره؛ قفل در همهٔ مسیرهای
+ *              خروج برگردانده می‌شود تا پاک‌کردن ناموفق هرگز کنترلر فلش را باز
+ *              رها نکند. آدرس بیرون از ناحیه‌ای که این چیدمان NVM مالکش است،
+ *              پیش از هر دست‌زدنی رد می‌شود.
+ * @param  uint32_t__pageAddress [EN] Any address inside the target page,
+ *                                   must lie in the NVM region /
+ *                                   هر آدرسی داخل صفحهٔ هدف، باید در ناحیهٔ
+ *                                   NVM باشد
+ * @return bool [EN] true when the page was erased and no error flag was
+ *                   raised, false on a rejected address or a controller
+ *                   error / اگر صفحه پاک شد و پرچم خطایی بالا نرفت true،
+ *                   و با آدرس ردشده یا خطای کنترلر false
+ */
 bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
 {
     bool bool__ok;
@@ -139,6 +166,41 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
 
 /* ==================== BspFlash_ProgramHalfWords ==================== */
 
+/**
+ * @brief  [EN] Program a run of 16-bit halfwords into main flash. The
+ *              STM32F1 flash controller can only be written a halfword at a
+ *              time, which is why the public contract is in halfwords and
+ *              not bytes. Each write unlocks, sets PG, stores the halfword,
+ *              waits for busy to clear and checks the error flags; the
+ *              first failure aborts the loop so a half-written record is
+ *              never reported as success, and the controller is locked
+ *              again on every exit path. Writes are range-checked against
+ *              the two 1 KiB pages this NVM layout owns, so a wild address
+ *              cannot reach program code.
+ *         [FA] رشته‌ای از نیم‌کلمه‌های ۱۶ بیتی را در فلش اصلی می‌نویسد. کنترلر
+ *              فلش ‎STM32F1‎ فقط نیم‌کلمه‌ای می‌نویسد و قرارداد عمومی هم به همین
+ *              دلیل نیم‌کلمه‌ای است نه بایتی. هر نوشتن قفل را باز می‌کند، PG را
+ *              ست می‌کند، نیم‌کلمه را می‌نویسد، منتظر پاک‌شدن پرچم مشغول می‌ماند
+ *              و پرچم‌های خطا را می‌بیند؛ اولین شکست حلقه را می‌شکند تا رکورد
+ *              نیمه‌نوشته هرگز موفق گزارش نشود و قفل در همهٔ مسیرهای خروج
+ *              برمی‌گردد. آدرس در برابر دو صفحهٔ یک‌کیلوبایتیِ متعلق به این
+ *              چیدمان NVM بررسی می‌شود تا آدرس ولگرد به کد برنامه نرسد.
+ * @param  uint32_t__address   [EN] Even start address inside the NVM
+ *                                 region (halfword aligned) /
+ *                                 آدرس شروع زوج داخل ناحیهٔ NVM
+ * @param  uint16_t__A__Data   [EN] Source array of halfwords, read-only,
+ *                                 must hold at least count entries /
+ *                                 آرایهٔ مبدأ نیم‌کلمه‌ها، فقط-خواندنی، باید
+ *                                 دست‌کم به تعداد count عضو داشته باشد
+ * @param  uint32_t__count     [EN] Number of halfwords to program; 0 is a
+ *                                 valid no-op /
+ *                                 تعداد نیم‌کلمه‌ها؛ صفر معتبر و بی‌اثر است
+ * @return bool [EN] true when every halfword was programmed without an
+ *                   error flag, false on a rejected range or the first
+ *                   controller error /
+ *                   اگر همهٔ نیم‌کلمه‌ها بدون پرچم خطا نوشته شدند true، و با
+ *                   بازهٔ ردشده یا نخستین خطای کنترلر false
+ */
 bool func__BspFlash_ProgramHalfWords(uint32_t uint32_t__address,
                                      const uint16_t *uint16_t__A__Data,
                                      uint32_t uint32_t__count)

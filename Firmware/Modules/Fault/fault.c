@@ -1,9 +1,19 @@
 /**
  * @file    fault.c
- * @brief   [EN] Latched fault bits, battery-lost detection and the runtime
- *          alarm thresholds (ids 27..34). Full type naming, func__ prefix.
- *          [FA] بیت‌های خطای قفل‌شده، تشخیص قطع باتری و آستانه‌های زمان اجرا
- *          (شناسه‌های ۲۷..۳۴). نام تایپ کامل.
+ * @brief   [EN] Implementation of the latched-fault store: one static bit
+ *               mask with set/clear/query access, the battery-lost detector
+ *               that watches a pumping charger channel whose pack voltage
+ *               does not answer, the runtime alarm thresholds (parameter
+ *               ids 27..34) with their interdependency clamps, and the
+ *               supervision hook that re-evaluates them after a change.
+ *          [FA] پیاده‌سازی انبارهٔ خطاهای قفل‌شده: یک بیت‌ماسک ایستا با دسترسی
+ *               ست/پاک/پرسش، آشکارسازِ قطع باتری که کانال در حال پمپِ شارژر
+ *               را می‌پاید تا ببیند ولتاژ پک جواب می‌دهد یا نه، آستانه‌های
+ *               آلارم زمان اجرا (شناسه‌های ۲۷ تا ۳۴) با گیره‌های وابستگی‌شان،
+ *               و قلاب نظارتی که پس از تغییر دوباره آن‌ها را می‌سنجد.
+ * @note    [EN] Full-program audit 2026-10-05: the stale "placeholder"
+ *               label of the old header line was removed (see fault.h).
+ *          [FA] ممیزی ۲۰۲۶-۱۰-۰۵: برچسب کهنهٔ «اسکلت» از سرخط قبلی برداشته شد.
  */
 
 #include "fault.h"
@@ -47,16 +57,32 @@ static volatile fault_alarm_t FAULT_ALARM_T__G__Alarm =
     FAULT_INPUT_PRESENT_MAX_MV
 };
 
-/* [EN] Interdependency clamps: the disconnect threshold must sit strictly
- *      between the charge band and the OV cutoff (over+50 <= disc <= OV-100)
- *      so the pump rule can neither false-trip on legit absorb voltages nor
- *      die under the validity cut; absent/back keep >= 500 mV hysteresis and
- *      the input window >= 1000 mV. If a transient replay order empties the
- *      disconnect range, the floor wins (no false trips; the OV cutoff still
- *      protects the hardware) and the next profile/OV write re-converges it.
- * [FA] گیره‌های وابستگی: آستانهٔ قطع باید اکیداً بین باند شارژ و قطع OV
- *      باشد تا قانون پمپ نه روی ابزورب سالم فایر کند نه زیر قطع اعتبار
- *      بمیرد؛ غیبت/برگشت ≥۵۰۰mV هیسترزیس و پنجرهٔ ورودی ≥۱۰۰۰mV نگه می‌دارند. */
+/* ==================== Fault_ClampAlarms (internal) ==================== */
+
+/**
+ * @brief  [EN] Re-impose the interdependency clamps on the runtime alarm
+ *              set, so no single parameter write can leave the group in an
+ *              impossible shape. The disconnect threshold must sit strictly
+ *              between the charge band and the OV cutoff (over+50 <= disc
+ *              <= OV-100) so the pump rule can neither false-trip on a
+ *              legitimate absorb voltage nor die under the validity cut;
+ *              absent/back keep at least 500 mV of hysteresis and the input
+ *              window at least 1000 mV. If a transient replay order empties
+ *              the disconnect range, the floor wins - no false trips, and
+ *              the OV cutoff still protects the hardware - and the next
+ *              profile or OV write re-converges the set. It is safe to call
+ *              as often as you like: running it twice changes nothing.
+ *         [FA] گیره‌های وابستگی را دوباره روی مجموعهٔ آلارم زمان‌اجرا اعمال
+ *              می‌کند تا هیچ نوشتنِ تکی نتواند گروه را در شکل ناممکن رها کند.
+ *              آستانهٔ قطع باید اکیداً بین باند شارژ و قطع OV باشد
+ *              (‎over+50 <= disc <= OV-100‎) تا قانون پمپ نه روی ولتاژ ابزورب
+ *              سالم فایر کند و نه زیر قطع اعتبار بمیرد؛ غیبت/برگشت دست‌کم
+ *              ۵۰۰ میلی‌ولت هیسترزیس و پنجرهٔ ورودی دست‌کم ۱۰۰۰ میلی‌ولت نگه
+ *              می‌دارند. اگر ترتیب گذرای بازپخش بازهٔ قطع را خالی کند، کف
+ *              برنده است (بدون تریپ کاذب؛ قطع OV هنوز سخت‌افزار را حفظ
+ *              می‌کند) و نوشتن بعدیِ پروفایل یا OV دوباره همگرا می‌کند.
+ *              فراخوانی مکرر بی‌خطر است: اجرای دوباره چیزی را عوض نمی‌کند.
+ */
 static void func__Fault_ClampAlarms(void)
 {
     uint32_t uint32_t__overMv = FAULT_BAT_DISCONNECT_MV;
@@ -195,6 +221,50 @@ _Static_assert(offsetof(fault_alarm_t, uint32_t__inputMaxMv) ==
                    (7u * sizeof(uint32_t)),
                "last field must be the id-34 word");
 
+/* ==================== Fault_SetAlarmParam ==================== */
+
+/**
+ * @brief  [EN] Write one runtime alarm threshold by dense parameter id and
+ *              report back the value that actually took effect. The ids map
+ *              one-to-one onto the words of fault_alarm_t (the static
+ *              asserts above nail that layout down), so the write is a
+ *              single indexed store rather than a switch that could drift
+ *              out of sync. The whole update runs under a scheduler lock:
+ *              the comm task writes while the control task evaluates
+ *              faults, and without the lock the evaluator could preempt
+ *              mid-clamp and read a torn threshold set for one pass. After
+ *              the store the interdependency clamps run, which is why the
+ *              applied value can legitimately differ from the requested
+ *              one - the caller is told the clamped value, never a lie.
+ *         [FA] یک آستانهٔ آلارم زمان‌اجرا را با شناسهٔ فشردهٔ پارامتر می‌نویسد و
+ *              مقداری را که واقعاً اثر کرده برمی‌گرداند. شناسه‌ها یک‌به‌یک روی
+ *              کلمه‌های ‎fault_alarm_t‎ می‌افتند (همان چیدمانی که اثبات‌های
+ *              ایستای بالا میخکوبش می‌کنند)، پس نوشتن یک ذخیرهٔ نمایه‌ای ساده
+ *              است نه سوییچی که می‌تواند ناهمگام شود. کل به‌روزرسانی زیر قفل
+ *              زمان‌بند اجرا می‌شود: تسک ارتباط می‌نویسد و تسک کنترل خطاها را
+ *              می‌سنجد، و بدون قفل، سنجنده می‌توانست وسط گیره‌زدن پیشی بگیرد و
+ *              یک پاس مجموعهٔ آستانهٔ پاره بخواند. بعد از ذخیره، گیره‌های
+ *              وابستگی اجرا می‌شوند؛ به همین دلیل مقدار اعمال‌شده می‌تواند به
+ *              حق با مقدار درخواستی فرق کند و همان مقدار گیره‌خورده به
+ *              فراخوان گفته می‌شود، نه یک دروغ.
+ * @param  uint8_t__paramId       [EN] Dense alarm id, valid range
+ *                                    FAULT_ALARM_PARAM_DISCONNECT_MV (27)
+ *                                    .. FAULT_ALARM_PARAM_INPUT_MAX_MV (34) /
+ *                                    شناسهٔ فشردهٔ آلارم، بازهٔ معتبر ۲۷ تا ۳۴
+ * @param  uint32_t__value        [EN] Requested value; mV for the voltage
+ *                                    ids, ms for the debounce ids /
+ *                                    مقدار درخواستی؛ برای شناسه‌های ولتاژ
+ *                                    میلی‌ولت و برای دبانس‌ها میلی‌ثانیه
+ * @param  uint32_t__appliedValue [EN] Out: the value in force after the
+ *                                    clamps; untouched when the id is
+ *                                    rejected /
+ *                                    خروجی: مقدار جاری پس از گیره‌ها؛ وقتی
+ *                                    شناسه رد شود دست‌نخورده می‌ماند
+ * @return bool [EN] true when the id was in range and the write landed,
+ *                   false for an unknown id /
+ *                   اگر شناسه در بازه بود و نوشتن نشست true، برای شناسهٔ
+ *                   ناشناخته false
+ */
 bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t uint32_t__value,
                                uint32_t *uint32_t__appliedValue)
@@ -231,6 +301,31 @@ bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
     return func__Fault_GetAlarmParam(uint8_t__paramId, uint32_t__appliedValue);
 }
 
+/* ==================== Fault_GetAlarmParam ==================== */
+
+/**
+ * @brief  [EN] Read one runtime alarm threshold by dense parameter id. It
+ *              is the exact mirror of the setter and shares the same id to
+ *              struct-word contract, so a panel read-back always reports
+ *              the value the firmware is really using, including whatever
+ *              the interdependency clamps changed.
+ *         [FA] یک آستانهٔ آلارم زمان‌اجرا را با شناسهٔ فشردهٔ پارامتر می‌خواند.
+ *              آینهٔ دقیق تابع نوشتن است و همان قرارداد شناسه به کلمهٔ ساختار
+ *              را دارد، پس بازخوانی پنل همیشه همان مقداری را گزارش می‌کند که
+ *              فرم‌ور واقعاً دارد استفاده می‌کند، از جمله هر چیزی که گیره‌های
+ *              وابستگی عوض کرده‌اند.
+ * @param  uint8_t__paramId [EN] Dense alarm id, valid range
+ *                              FAULT_ALARM_PARAM_DISCONNECT_MV (27)
+ *                              .. FAULT_ALARM_PARAM_INPUT_MAX_MV (34) /
+ *                              شناسهٔ فشردهٔ آلارم، بازهٔ معتبر ۲۷ تا ۳۴
+ * @param  uint32_t__value  [EN] Out: current value, mV for the voltage ids
+ *                              and ms for the debounce ids; untouched when
+ *                              the id is rejected /
+ *                              خروجی: مقدار فعلی، میلی‌ولت برای شناسه‌های
+ *                              ولتاژ و میلی‌ثانیه برای دبانس‌ها؛ وقتی شناسه رد
+ *                              شود دست‌نخورده می‌ماند
+ * @return bool [EN] true when the id was in range / اگر شناسه در بازه بود true
+ */
 bool func__Fault_GetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value)
 {
@@ -247,10 +342,33 @@ bool func__Fault_GetAlarmParam(uint8_t uint8_t__paramId,
     return true;
 }
 
+/* ==================== Fault_OnSupervisionChange ==================== */
+
+/**
+ * @brief  [EN] Supervision hook the charger calls after it moves one of its
+ *              own thresholds. The fault alarms are clamped against charger
+ *              values (the disconnect level has to stay between the charge
+ *              band and the OV cutoff), so a charger-side change can push
+ *              this module's set out of range even though nothing here was
+ *              written. Re-running the clamps restores the invariant
+ *              immediately instead of waiting for the next alarm write.
+ *              Keeping it a named hook rather than an exported clamp means
+ *              the charger never reaches into this module's internals.
+ *         [FA] قلاب نظارتی که شارژر پس از جابه‌جاکردن یکی از آستانه‌های خودش
+ *              صدا می‌زند. آلارم‌های فالت در برابر مقادیر شارژر گیره می‌خورند
+ *              (سطح قطع باید بین باند شارژ و قطع OV بماند)، پس تغییری در سمت
+ *              شارژر می‌تواند مجموعهٔ این ماژول را از بازه بیرون ببرد بی‌آنکه
+ *              اینجا چیزی نوشته شده باشد. اجرای دوبارهٔ گیره‌ها همان لحظه
+ *              ناوردا را برمی‌گرداند، به‌جای انتظار برای نوشتن آلارم بعدی.
+ *              نگه‌داشتنش به شکل یک قلابِ نام‌دار به‌جای صادرکردن خود گیره یعنی
+ *              شارژر هرگز دست در درونیات این ماژول نمی‌برد.
+ */
 void func__Fault_OnSupervisionChange(void)
 {
     func__Fault_ClampAlarms();
 }
+
+/* ==================== Fault_DebounceDone (internal) ==================== */
 
 /**
  * @brief  [EN] Shared debounce helper: returns true once the condition has
