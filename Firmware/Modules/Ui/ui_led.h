@@ -501,6 +501,16 @@ extern volatile bool BOOL__G__UiBatteryAlarmIssued;
  */
 uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv);
 
+/**
+ * @brief  [EN] Charge-side voltage to percent, from the 119/120 map (v1.49).
+ *              Same maths as the discharge map, different numbers.
+ *         [FA] تبدیل ولتاژ به درصد سمت شارژ، از نگاشت ۱۱۹/۱۲۰ - همان ریاضی،
+ *              اعداد مستقل.
+ * @param  uint32_t__batteryMv [EN] Battery voltage in mV / ولتاژ باتری
+ * @return uint8_t [EN] Percent 0..100 / درصد
+ */
+uint8_t func__Ui_ChargeVoltageToPercent(uint32_t uint32_t__batteryMv);
+
 /* ==================== Ui Init / مقداردهی اولیه UI ==================== */
 
 /**
@@ -632,8 +642,8 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
 #define UI_ALARM_PARAM_OV_HYST_MV          71u  /* mV, 0..2000 */
 #define UI_ALARM_PARAM_LOWBAT_THRESH_MV    72u  /* mV, 15000..24000, <= 73 */
 #define UI_ALARM_PARAM_LOWBAT_CLEAR_MV     73u  /* mV, 15000..24000, >= 72 */
-#define UI_ALARM_PARAM_PCT_VMIN_MV         74u  /* mV, 15000..25000, <= 75-100 */
-#define UI_ALARM_PARAM_PCT_VMAX_MV         75u  /* mV, 25000..32000, >= 74+100 */
+#define UI_ALARM_PARAM_PCT_VMIN_MV         74u  /* mV, 15000..25000, <= 75-100, DISCHARGE map only since v1.49 */
+#define UI_ALARM_PARAM_PCT_VMAX_MV         75u  /* mV, 25000..32000, >= 74+100, DISCHARGE map only since v1.49 */
 #define UI_ALARM_PARAM_BUZZER_MUTE         76u  /* 0/1, panel-session only (RAM); never persisted, cleared on reboot; scenarios only */
 #define UI_ALARM_PARAM_CHG_FULL_ENTER_PCT  77u  /* %, 1..100, enter authoritative: exit pulled to enter-1 */
 #define UI_ALARM_PARAM_CHG_FULL_EXIT_PCT   78u  /* %, 0..100, < 77 after clamp */
@@ -643,6 +653,30 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
 #define UI_ALARM_PARAM_RUN_ONE_EXIT        82u  /* %, 0..100, raw needed to leave the 1% state to 2 */
 #define UI_ALARM_PARAM_MIN_ID              38u
 #define UI_ALARM_PARAM_MAX_ID              82u
+
+/* ==================== Charge-Side Percent Map (v1.49) / نگاشت درصد سمت شارژ ==================== */
+/* [EN] v1.49 (user order 2026-10-05: "the discharge limits must be separate
+   from the full-charge variable - the two sections are completely separate -
+   but the discharge percent must still be computed from this one"):
+   ids 74/75 are now the DISCHARGE percent map only. The charging side
+   (percent shown while charging and the full-charge latch 77/78) reads its
+   own pair, 119/120. Both pairs ship with the same factory defaults, so a
+   board that is never touched behaves exactly as before; the point is that
+   moving one side no longer moves the other.
+   The ids are 119/120 and not 83/84 because the parameter id space is
+   global: 83..118 already belong to the charger PID, the charger limits and
+   the imbalance scenario. They live in their own small range above the dense
+   38..82 block, and the indexed Set/Get below maps them to the two words
+   appended at the end of ui_alarm_t.
+   [FA] (دستور کاربر): ۷۴/۷۵ از این پس فقط نگاشت درصدِ «دشارژ» است. سمت شارژ
+   (درصد حین شارژ و قفل فول‌شارژ ۷۷/۷۸) جفت مستقل خودش را دارد: ۱۱۹/۱۲۰.
+   پیش‌فرض هر دو جفت یکی است، پس رفتار بردِ دست‌نخورده عوض نمی‌شود؛ فایده این
+   است که جابه‌جاکردن یک سمت دیگر سمت دیگر را تکان نمی‌دهد. شناسه ۸۳/۸۴ نشد
+   چون فضای شناسه‌ها سراسری است و ۸۳..۱۱۸ گرفته‌اند. */
+#define UI_ALARM_PARAM_CHG_PCT_VMIN_MV    119u  /* mV, 15000..25000, <= 120-100 */
+#define UI_ALARM_PARAM_CHG_PCT_VMAX_MV    120u  /* mV, 25000..32000, >= 119+100 */
+#define UI_ALARM_PARAM_EXT_MIN_ID         119u
+#define UI_ALARM_PARAM_EXT_MAX_ID         120u
 
 /**
  * @brief  [EN] Live UI cadence set (one struct, like the fault alarms).
@@ -697,6 +731,13 @@ typedef struct
     uint32_t uint32_t__runHystPct;
     uint32_t uint32_t__runZeroExit;
     uint32_t uint32_t__runOneExit;
+    /* [EN] v1.49: the charge-side percent map (ids 119/120). Appended at the
+       END on purpose - Set/Get index the struct as a word array, so the dense
+       38..82 block must keep its offsets.
+       [FA] نگاشت درصد سمت شارژ (۱۱۹/۱۲۰)؛ عمداً در انتها، چون Set/Get ساختار
+       را آرایه‌ای ایندکس می‌کنند و افست‌های بلوک ۳۸..۸۲ نباید جابه‌جا شود. */
+    uint32_t uint32_t__chgPctVminMv;
+    uint32_t uint32_t__chgPctVmaxMv;
 } ui_alarm_t;
 
 /**

@@ -245,8 +245,8 @@
 #define ESPLINK_PARAM_UI_OV_HYST_MV           71u  /* u32, mV, def 1000,  0..2000 */
 #define ESPLINK_PARAM_UI_LOWBAT_THRESH_MV     72u  /* u32, mV, def 21000, 15000..24000, <= 73 */
 #define ESPLINK_PARAM_UI_LOWBAT_CLEAR_MV      73u  /* u32, mV, def 21200, 15000..24000, >= 72 */
-#define ESPLINK_PARAM_UI_PCT_VMIN_MV          74u  /* u32, mV, def 21000, 15000..25000, <= 75-100 */
-#define ESPLINK_PARAM_UI_PCT_VMAX_MV          75u  /* u32, mV, def 29000, 25000..32000, >= 74+100 */
+#define ESPLINK_PARAM_UI_PCT_VMIN_MV          74u  /* u32, mV, def 21000, 15000..25000, <= 75-100 - DISCHARGE map (v1.49) */
+#define ESPLINK_PARAM_UI_PCT_VMAX_MV          75u  /* u32, mV, def 29000, 25000..32000, >= 74+100 - DISCHARGE map (v1.49) */
 #define ESPLINK_PARAM_UI_BUZZER_MUTE          76u  /* u32, 0/1, def 0,    panel-session only (RAM); scenarios only */
 #define ESPLINK_PARAM_UI_CHG_FULL_ENTER_PCT  77u  /* u32, %,  def 100,   1..100, enter authoritative */
 #define ESPLINK_PARAM_UI_CHG_FULL_EXIT_PCT   78u  /* u32, %,  def 95,    0..100, < 77 after clamp */
@@ -336,7 +336,17 @@
 #define ESPLINK_PARAM_IMBAL_BLOCK_OUTPUT       117u  /* bool, def 1 */
 #define ESPLINK_PARAM_IMBAL_CHG_CYCLE_MAX      118u  /* u8,  def 20,  1..255: latched charge cycles until charge halt */
 
-#define ESPLINK_PARAM_COUNT               119u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28), 108..118 = imbalance scenario 6 (v1.43). Runtime slots 200..202 are persisted but NOT parameters: they stay outside this count and the GET_PARAMS bulk on purpose. [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای، حدها/گین‌های پشتیبان و سناریوی ۶؛ اسلات‌های ۲۰۰..۲۰۲ پارامتر نیستند */
+/* ==================== Charge-side percent map / نگاشت درصد سمت شارژ ==================== */
+/* [EN] v1.49 (user order 2026-10-05): the charge side gets its own
+   voltage-to-percent pair, so the discharge limits 74/75 and the full-charge
+   latch 77/78 are no longer two uses of one register. Same factory values as
+   74/75, so nothing moves until somebody moves it on purpose.
+   [FA] سمت شارژ جفت ولتاژ-به-درصد خودش را دارد تا حد دشارژ ۷۴/۷۵ و قفل
+   فول‌شارژ ۷۷/۷۸ دو مصرف یک رجیستر نباشند. پیش‌فرض‌ها همان ۷۴/۷۵. */
+#define ESPLINK_PARAM_UI_CHG_PCT_VMIN_MV       119u  /* u32, mV, def 21000, 15000..25000, <= 120-100 */
+#define ESPLINK_PARAM_UI_CHG_PCT_VMAX_MV       120u  /* u32, mV, def 29000, 25000..32000, >= 119+100 */
+
+#define ESPLINK_PARAM_COUNT               121u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28), 108..118 = imbalance scenario 6 (v1.43), 119..120 = charge-side percent map (v1.49). Runtime slots 200..202 are persisted but NOT parameters: they stay outside this count and the GET_PARAMS bulk on purpose. [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای، حدها/گین‌های پشتیبان، سناریوی ۶ و نگاشت درصد سمت شارژ (۱۱۹..۱۲۰)؛ اسلات‌های ۲۰۰..۲۰۲ پارامتر نیستند */
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

@@ -119,7 +119,14 @@ static volatile ui_alarm_t UI_ALARM_T__G__Alarm =
     UI_CHARGING_PERCENT_HYSTERESIS_PERCENT,
     UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT,
     UI_BATTERY_ZERO_EXIT_THRESHOLD,
-    UI_BATTERY_ONE_EXIT_THRESHOLD
+    UI_BATTERY_ONE_EXIT_THRESHOLD,
+    /* [EN] v1.49: the charge-side percent map (ids 119/120) ships with the
+       same factory numbers as the discharge map, so an untouched board
+       behaves exactly as it did before the split.
+       [FA] نگاشت درصد سمت شارژ با همان اعداد کارخانه‌ای نگاشت دشارژ شروع
+       می‌شود، پس بردِ دست‌نخورده دقیقاً مثل قبل رفتار می‌کند. */
+    UI_BAT_V_MIN_MV,
+    UI_BAT_V_MAX_MV
 };
 
 /**
@@ -454,6 +461,27 @@ static void func__Ui_ClampAlarms(void)
             UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv - 100u;
     }
 
+    /* [EN] v1.49: the charge-side map (119/120) gets the SAME window rules
+       as the discharge map - one rule, two independent pairs.
+       [FA] نگاشت سمت شارژ همان قوانین پنجرهٔ نگاشت دشارژ را دارد - یک قانون،
+       دو جفت مستقل. */
+    UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv, 15000u, 25000u);
+    UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv, 25000u, 32000u);
+    if (UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv <
+        (UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv + 100u))
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv =
+            UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv + 100u;
+    }
+    if (UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv >
+        (UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv - 100u))
+    {
+        UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv =
+            UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv - 100u;
+    }
+
     UI_ALARM_T__G__Alarm.uint32_t__buzzerMute =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__buzzerMute, 0u, 1u);
 
@@ -573,15 +601,51 @@ static int32_t func__Ui_Buzzer_Gated(uint32_t uint32_t__periodMs,
    همان فیلدها به همان ترتیب؛ تست هاست شناسه‌ها را قفل می‌کند، این‌ها سمت
    struct را. */
 _Static_assert(sizeof(ui_alarm_t) ==
-                   ((UI_ALARM_PARAM_MAX_ID - UI_ALARM_PARAM_MIN_ID + 1u) *
+                   (((UI_ALARM_PARAM_MAX_ID - UI_ALARM_PARAM_MIN_ID + 1u) +
+                     (UI_ALARM_PARAM_EXT_MAX_ID - UI_ALARM_PARAM_EXT_MIN_ID + 1u)) *
                     sizeof(uint32_t)),
-               "ui_alarm_t must pack exactly one word per wire id");
+               "ui_alarm_t must pack exactly one word per wire id (dense block + ext pair)");
 _Static_assert(offsetof(ui_alarm_t, uint32_t__ovLedPeriodMs) == 0u,
                "first field must be the MIN-id word");
 _Static_assert(offsetof(ui_alarm_t, uint32_t__runOneExit) ==
                    ((UI_ALARM_PARAM_MAX_ID - UI_ALARM_PARAM_MIN_ID) *
                     sizeof(uint32_t)),
                "last field must be the MAX-id word");
+_Static_assert(offsetof(ui_alarm_t, uint32_t__chgPctVminMv) ==
+                   ((UI_ALARM_PARAM_MAX_ID - UI_ALARM_PARAM_MIN_ID + 1u) *
+                    sizeof(uint32_t)),
+               "the ext pair must start right after the dense block");
+
+/* ==================== Alarm Param Index / نمایهٔ پارامتر آلارم ==================== */
+/* [EN] v1.49: wire id -> word index inside ui_alarm_t. Two ranges now: the
+   dense 38..82 block and the charge-side map 119/120 appended after it.
+   Returning the index in one place keeps Set and Get from ever disagreeing.
+   [FA] شناسهٔ سیم به نمایهٔ کلمه در ساختار. حالا دو بازه: بلوک متراکم ۳۸..۸۲
+   و جفت نگاشت سمت شارژ ۱۱۹/۱۲۰ بعد از آن. محاسبه در یک جا، تا Set و Get
+   هرگز اختلاف پیدا نکنند. */
+#define UI_ALARM_PARAM_INDEX_INVALID   0xFFu
+
+static uint8_t func__Ui_AlarmParamIndex(uint8_t uint8_t__paramId)
+{
+    uint8_t uint8_t__denseCount;
+
+    if ((uint8_t__paramId >= UI_ALARM_PARAM_MIN_ID) &&
+        (uint8_t__paramId <= UI_ALARM_PARAM_MAX_ID))
+    {
+        return (uint8_t)(uint8_t__paramId - UI_ALARM_PARAM_MIN_ID);
+    }
+
+    if ((uint8_t__paramId >= UI_ALARM_PARAM_EXT_MIN_ID) &&
+        (uint8_t__paramId <= UI_ALARM_PARAM_EXT_MAX_ID))
+    {
+        uint8_t__denseCount =
+            (uint8_t)(UI_ALARM_PARAM_MAX_ID - UI_ALARM_PARAM_MIN_ID + 1u);
+        return (uint8_t)(uint8_t__denseCount +
+                         (uint8_t__paramId - UI_ALARM_PARAM_EXT_MIN_ID));
+    }
+
+    return UI_ALARM_PARAM_INDEX_INVALID;
+}
 
 bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t uint32_t__value,
@@ -605,8 +669,9 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
        [FA] ذخیرهٔ نمایه‌ای (رژیم فلش: سوییچ ۳۹حالته ۱٫۴KB می‌خورد که
        نداریم). شناسه‌ها پشت‌سرهم و فیلدها به همان ترتیب‌اند پس مستقیم
        ایندکس می‌زنیم - همان ذخیره، همان گیره، همان قفل. */
-    if ((uint8_t__paramId < UI_ALARM_PARAM_MIN_ID) ||
-        (uint8_t__paramId > UI_ALARM_PARAM_MAX_ID))
+    uint8_t uint8_t__wordIndex = func__Ui_AlarmParamIndex(uint8_t__paramId);
+
+    if (uint8_t__wordIndex == UI_ALARM_PARAM_INDEX_INVALID)
     {
         if (int32_t__savedKernelLock >= 0)
         {
@@ -615,7 +680,7 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
         return false;
     }
     ((volatile uint32_t *)&UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs)
-        [uint8_t__paramId - UI_ALARM_PARAM_MIN_ID] = uint32_t__value;
+        [uint8_t__wordIndex] = uint32_t__value;
 
     func__Ui_ClampAlarms();
     if (int32_t__savedKernelLock >= 0)
@@ -630,14 +695,15 @@ bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
 {
     /* [EN] Indexed read: same dense-id/struct contract as the setter.
        [FA] خواندن نمایه‌ای: همان قرارداد شناسه/ساختار. */
-    if ((uint8_t__paramId < UI_ALARM_PARAM_MIN_ID) ||
-        (uint8_t__paramId > UI_ALARM_PARAM_MAX_ID))
+    uint8_t uint8_t__wordIndex = func__Ui_AlarmParamIndex(uint8_t__paramId);
+
+    if (uint8_t__wordIndex == UI_ALARM_PARAM_INDEX_INVALID)
     {
         return false;
     }
     *uint32_t__value =
         ((volatile uint32_t *)&UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs)
-        [uint8_t__paramId - UI_ALARM_PARAM_MIN_ID];
+        [uint8_t__wordIndex];
     return true;
 }
 
@@ -649,35 +715,46 @@ bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
  * @param  uint32_t__batteryMv [EN] Battery voltage in mV, 0..40000mV, 21000=0% 29000=100% / ولتاژ باتری میلی‌ولت
  * @return uint8_t [EN] Percent 0..100 / درصد
  */
-uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
+/**
+ * @brief  [EN] One voltage-to-percent map, used by both pairs. Non-linear
+ *              formula broken into 4 steps: range, offset, scaled, percent.
+ *              v1.49: the body used to read the 74/75 globals directly; the
+ *              two maps (discharge 74/75, charge 119/120) now pass their own
+ *              numbers in, so the maths exists exactly once.
+ *         [FA] یک نگاشت ولتاژ به درصد برای هر دو جفت - فرمول ۴ گام: بازه،
+ *              فاصله، مقیاس، درصد. قبلاً مستقیم ۷۴/۷۵ را می‌خواند؛ حالا هر
+ *              نگاشت اعداد خودش را می‌دهد و ریاضی فقط یک‌بار وجود دارد.
+ * @param  uint32_t__batteryMv [EN] Battery voltage in mV / ولتاژ باتری
+ * @param  uint32_t__vminMv [EN] Voltage of 0% / ولتاژ صفر درصد
+ * @param  uint32_t__vmaxMv [EN] Voltage of 100% / ولتاژ صد درصد
+ * @return uint8_t [EN] Percent 0..100 / درصد
+ */
+static uint8_t func__Ui_VoltageToPercentMap(uint32_t uint32_t__batteryMv,
+                                            uint32_t uint32_t__vminMv,
+                                            uint32_t uint32_t__vmaxMv)
 {
     uint32_t uint32_t__voltageRangeMv;
     uint32_t uint32_t__voltageOffsetMv;
     uint32_t uint32_t__scaledOffset;
     uint8_t uint8_t__batteryPercent;
 
-    /* [EN] v1.16: the percent map is runtime (ids 74/75), clamped to a
-       strictly positive range; the range==0 guard below stays as a belt.
-       [FA] نسخه ۱.۱۶: نگاشت درصد زمان‌اجرا است (۷۴/۷۵). */
-    if (uint32_t__batteryMv <= UI_ALARM_T__G__Alarm.uint32_t__pctVminMv)
+    if (uint32_t__batteryMv <= uint32_t__vminMv)
     {
         return 0u;
     }
 
-    if (uint32_t__batteryMv >= UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv)
+    if (uint32_t__batteryMv >= uint32_t__vmaxMv)
     {
         return UI_PERCENT_FULL;
     }
 
     /* [EN] Step 1: range = Vmax - Vmin
        [FA] گام ۱: بازه ولتاژ */
-    uint32_t__voltageRangeMv = UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv -
-                               UI_ALARM_T__G__Alarm.uint32_t__pctVminMv;
+    uint32_t__voltageRangeMv = uint32_t__vmaxMv - uint32_t__vminMv;
 
     /* [EN] Step 2: offset = Vbat - Vmin
        [FA] گام ۲: فاصله از کف */
-    uint32_t__voltageOffsetMv = uint32_t__batteryMv -
-                                UI_ALARM_T__G__Alarm.uint32_t__pctVminMv;
+    uint32_t__voltageOffsetMv = uint32_t__batteryMv - uint32_t__vminMv;
 
     if (uint32_t__voltageRangeMv == 0u)
     {
@@ -698,6 +775,37 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
     }
 
     return uint8_t__batteryPercent;
+}
+
+/**
+ * @brief  [EN] DISCHARGE voltage to percent, from the runtime 74/75 map.
+ *              Since v1.49 this pair belongs to the discharge side only.
+ *         [FA] تبدیل ولتاژ به درصد سمت «دشارژ» از نگاشت ۷۴/۷۵ (از نسخهٔ
+ *              ۱.۴۹ این جفت فقط مال دشارژ است).
+ * @param  uint32_t__batteryMv [EN] Battery voltage in mV / ولتاژ باتری
+ * @return uint8_t [EN] Percent 0..100 / درصد
+ */
+uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
+{
+    return func__Ui_VoltageToPercentMap(uint32_t__batteryMv,
+                                        UI_ALARM_T__G__Alarm.uint32_t__pctVminMv,
+                                        UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv);
+}
+
+/**
+ * @brief  [EN] CHARGE voltage to percent, from the runtime 119/120 map
+ *              (v1.49 user order: the charge side must not move when the
+ *              discharge limits move).
+ *         [FA] تبدیل ولتاژ به درصد سمت «شارژ» از نگاشت ۱۱۹/۱۲۰ (دستور کاربر:
+ *              تکان‌دادن حدهای دشارژ نباید سمت شارژ را تکان بدهد).
+ * @param  uint32_t__batteryMv [EN] Battery voltage in mV / ولتاژ باتری
+ * @return uint8_t [EN] Percent 0..100 / درصد
+ */
+uint8_t func__Ui_ChargeVoltageToPercent(uint32_t uint32_t__batteryMv)
+{
+    return func__Ui_VoltageToPercentMap(uint32_t__batteryMv,
+                                        UI_ALARM_T__G__Alarm.uint32_t__chgPctVminMv,
+                                        UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv);
 }
 
 /* ==================== Green LED / LED سبز ==================== */
@@ -1506,7 +1614,7 @@ void func__Ui_ScenarioInputOk(void)
  *         UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT می‌نشیند و درصد ۱۰۰ دیگر
  *         زرد را خاموش نمی‌کند - این سناریو فقط با پمپِ کانال شارژر اجرا
  *         می‌شود پس تا قطع شارژر حداقل یک چشمکِ مرئی در هر دوره می‌ماند.
- * @param  uint32_t__batteryMv [EN] Battery voltage mV, percent map 74/75 / ولتاژ باتری
+ * @param  uint32_t__batteryMv [EN] Battery voltage mV, charge percent map 119/120 (v1.49) / ولتاژ باتری
  */
 void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 {
@@ -1523,7 +1631,9 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 
     /* [EN] Charging yellow timing uses hysteresis 5%: stable only moves when |raw-stable|>=5. v_bat is PA3 / v_bat24_mv.
        [FA] زمان‌بندی زرد شارژ با هیسترزیس ۵٪: پایدار فقط وقتی اختلاف حداقل ۵ باشد به‌روز می‌شود. */
-    uint8_t__rawPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryMv);
+    /* [EN] v1.49: the charging face reads the CHARGE map (119/120).
+       [FA] چهرهٔ شارژ از نگاشت سمت شارژ (۱۱۹/۱۲۰) می‌خواند. */
+    uint8_t__rawPercent = func__Ui_ChargeVoltageToPercent(uint32_t__batteryMv);
     uint8_t__stablePercent = func__Ui_UpdateChargingStablePercent(uint8_t__rawPercent);
 
     func__green(true);
@@ -1830,19 +1940,26 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
 #endif
 
     uint32_t__batteryClampedMv = uint32_t__batteryVoltageMv;
-    if (uint32_t__batteryClampedMv > UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv)
+    /* [EN] v1.49: the full-charge latch (77/78) is a CHARGE-side decision, so
+       it clamps against and converts with the charge map (119/120). Before
+       the split it borrowed the discharge pair, which is exactly why moving
+       a discharge limit used to move the full-charge point.
+       [FA] قفل فول‌شارژ تصمیم سمت شارژ است، پس با نگاشت ۱۱۹/۱۲۰ گیره و تبدیل
+       می‌شود. قبل از جداسازی از جفت دشارژ قرض می‌گرفت - دقیقاً دلیل اینکه
+       جابه‌جاکردن حد دشارژ نقطهٔ فول‌شارژ را جابه‌جا می‌کرد. */
+    if (uint32_t__batteryClampedMv > UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv)
     {
-        uint32_t__batteryClampedMv = UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv;
+        uint32_t__batteryClampedMv = UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv;
     }
 
-    uint8_t__rawPercent = func__Ui_BatteryVoltageToPercent(uint32_t__batteryClampedMv);
+    uint8_t__rawPercent = func__Ui_ChargeVoltageToPercent(uint32_t__batteryClampedMv);
     bool__isFull = func__Ui_UpdateChargingFullHysteresis(uint8_t__rawPercent);
 #if MODULE_CHARGER
     /* [EN] v1.17b (user order 2026-09-27: "after a full charge the blinking
        must be gone"): the charger itself declares completion - every
        relevant channel through ABSORB (taper or the 1 h ceiling). The
        voltage latch above stays as an independent second path (pack at
-       the 74/75 ceiling also means full, even mid-pump).
+       the 119/120 ceiling also means full, even mid-pump).
        v1.20 (user order 2026-09-28: "the yellow may go FULLY dark only
        when the charger is cut"): while any channel is still pumping, the
        full face yields to the Charging face - the pack can legitimately

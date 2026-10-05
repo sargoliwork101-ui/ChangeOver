@@ -791,7 +791,18 @@ def sec_panel(ids):
         ok(imb_base == lim_base + len(ldef),
            "IDEF does not start where LDEF ends",
            f"imbalance block starts at {imb_base}, limits end at {lim_base + len(ldef) - 1}")
-        top = imb_base + len(idef) - 1
+        # [EN] v1.49: a fourth block sits after the imbalance one - the
+        #      charge-side percent map (119/120), which could not be appended
+        #      to the dense UI range because 83..118 were already taken.
+        # [FA] بلوک چهارم بعد از عدم‌توازن: نگاشت درصد سمت شارژ (۱۱۹/۱۲۰).
+        cdef = js_array(P_PAN, "const CDEF") or []
+        chg_base = define(ESP_H, "ESPLINK_PARAM_UI_CHG_PCT_VMIN_MV")
+        ok(chg_base == imb_base + len(idef),
+           "CDEF does not start where IDEF ends",
+           f"charge map starts at {chg_base}, imbalance block ends at {imb_base + len(idef) - 1}")
+        ok(len(cdef) == 2, "the charge map must be exactly two ids",
+           f"CDEF has {len(cdef)} entries")
+        top = chg_base + len(cdef) - 1
         ok(hi == top, "AIDS upper bound != the top real id",
            f"AIDS stops at {hi}, the id block ends at {top}")
         ok(top == COUNT - 1, "the id blocks do not reach the last parameter",
@@ -801,7 +812,9 @@ def sec_panel(ids):
            f"ADEF has {len(adef)}, span {lo}..82 needs {82 - lo + 1}")
         # a phantom id would index past the default tables
         for pid in range(lo, hi + 1):
-            if pid >= imb_base:
+            if pid >= chg_base:
+                tbl, idx, size = "CDEF", pid - chg_base, len(cdef)
+            elif pid >= imb_base:
                 tbl, idx, size = "IDEF", pid - imb_base, len(idef)
             elif pid >= lim_base:
                 tbl, idx, size = "LDEF", pid - lim_base, len(ldef)

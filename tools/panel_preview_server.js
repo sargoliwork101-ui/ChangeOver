@@ -170,7 +170,10 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
               in-charge wait, episode stability, hysteresis, event budget,
               latch beep period, beep length, block-output checkbox,
               latched charge-cycle budget. */
-           300, 500, 600000, 600000, 30000, 100, 10, 3600000, 200, 1, 20];
+           300, 500, 600000, 600000, 30000, 100, 10, 3600000, 200, 1, 20,
+           /* v1.49 ids 119..120 = charge-side percent map (ui_led.h): same
+              factory numbers as the discharge map 74/75, separate register. */
+           21000, 29000];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -235,6 +238,9 @@ function clampParam(id, v) {
         case 116: return Math.min(2000, Math.max(20, v));
         case 117: return Math.min(1, Math.max(0, v));
         case 118: return Math.min(255, Math.max(1, v));
+        /* v1.49: charge-side percent map - same window rules as 74/75, own pair */
+        case 119: return clampW(v, 15000, 25000);
+        case 120: return Math.max(P[119] + 100, clampW(v, 25000, 32000));
         /* v1.15 alarms: mirror of Fault_ClampAlarms / Charger_ClampAlarms */
         case 27: { let lo = Math.max(14000, over + 50), hi = Math.min(15000, ov - 100);
                    if (lo > hi) hi = lo; return Math.min(hi, Math.max(lo, v)); }

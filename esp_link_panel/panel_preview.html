@@ -269,7 +269,7 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
         نمودار جریان-ولتاژ رسم می‌کند، پس نقطه‌های زنده روی آن راه می‌روند.
    ========================================================================== */
 (function(){
-const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0, 14400, 14300, 14600, 13500, 12800, 650, 50, 14800, 150, 6000, 7000, 1000, 1000, 21000, 28000, 950, 14850, 2000, 1000, 50, 10000, 1000, 1, 0, 1000, 50, 3000, 233, 3, 100, 40, 20, 10, 1, 60000, 20000, 10000, 100, 1, 1000, 2000, 10000, 1, 2, 3, 100, 1000, 10, 1000, 150, 28000, 1000, 21000, 21200, 21000, 29000, 0, 100, 95, 5, 2, 2, 3, 12, 1600, 0, 1000, 1000, 50, 18000, 0, 10, 1000, 3600000, 100, 600000, 60000, 8, 700, 32, 14800, 100, 500, 10, 15000, 3000, 3000, 500, 300, 500, 600000, 600000, 30000, 100, 10, 3600000, 200, 1, 20];
+const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0, 14400, 14300, 14600, 13500, 12800, 650, 50, 14800, 150, 6000, 7000, 1000, 1000, 21000, 28000, 950, 14850, 2000, 1000, 50, 10000, 1000, 1, 0, 1000, 50, 3000, 233, 3, 100, 40, 20, 10, 1, 60000, 20000, 10000, 100, 1, 1000, 2000, 10000, 1, 2, 3, 100, 1000, 10, 1000, 150, 28000, 1000, 21000, 21200, 21000, 29000, 0, 100, 95, 5, 2, 2, 3, 12, 1600, 0, 1000, 1000, 50, 18000, 0, 10, 1000, 3600000, 100, 600000, 60000, 8, 700, 32, 14800, 100, 500, 10, 15000, 3000, 3000, 500, 300, 500, 600000, 600000, 30000, 100, 10, 3600000, 200, 1, 20, 21000, 29000];
 const T0 = Date.now();
 let seq = 0;
 
@@ -354,7 +354,7 @@ window.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 </head><body>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 5a71c86</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 9b0151a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -624,7 +624,7 @@ window.addEventListener('DOMContentLoaded', function(){
 
 </div>
 <div class="cd" id="ucard4" style="display:none">
-<div class="hd"><b>سناریو ۴ — شارژ عادی (زرد + فول)</b> <button class="ib" data-p="68,69,74,75,77,78,79" onclick="this.classList.toggle('o')">!<span class="it">روند: حین شارژ واقعی، مدت روشن‌بودن زرد = مانده تا فول (باتری پرتر ← چشمک کوتاه‌تر) ← پایان Absorb هر کانال (Taper زیر ۵۰mA یا سقف ۱ساعت)؛ با تمام‌شدن هر دو کانال: فول ← سبز ثابت. فول ولتاژی (ورود ۷۷٪، خروج ۷۸٪) هم سر جایش است. حد ولتاژ ۷۴/۷۵ همان نردبانی است که درصد از آن ساخته می‌شود.</span></button><span class="lb">· ۶۸/۶۹ چشمک · ۷۴/۷۵ حد ولتاژ · ۷۷..۷۹ فول و پایداری</span></div>
+<div class="hd"><b>سناریو ۴ — شارژ عادی (زرد + فول)</b> <button class="ib" data-p="68,69,74,75,77,78,79,119,120" onclick="this.classList.toggle('o')">!<span class="it">روند: حین شارژ واقعی، مدت روشن‌بودن زرد = مانده تا فول (باتری پرتر ← چشمک کوتاه‌تر) ← پایان Absorb هر کانال (Taper زیر ۵۰mA یا سقف ۱ساعت)؛ با تمام‌شدن هر دو کانال: فول ← سبز ثابت. فول ولتاژی (ورود ۷۷٪، خروج ۷۸٪) هم سر جایش است. حد ولتاژ ۷۴/۷۵ همان نردبانی است که درصد از آن ساخته می‌شود.</span></button><span class="lb">· ۶۸/۶۹ چشمک · ۷۴/۷۵ حد ولتاژ · ۷۷..۷۹ فول و پایداری</span></div>
 
 <div class="ds c4ds">
 <b>فول یعنی چه؟</b> برد دو راه مستقل برای «فول» دارد و هرکدام زودتر برسد، چهرهٔ سبزِ ثابت را می‌آورد:
@@ -633,14 +633,15 @@ window.addEventListener('DOMContentLoaded', function(){
 <li><b>فول ولتاژی</b> — درصد باتری (که از حد پایین/بالای همین کارت ساخته می‌شود) به <b>ورود فول</b> برسد.</li>
 </ul>
 <b>ورود فول (٪)</b> = درصدی که با <b>رسیدن به آن یا بالاتر</b>، حالت از «در حال شارژ» به «فول» می‌پرد: زرد خاموش، سبز ثابت.<br>
-<b>خروج فول (٪)</b> = تا وقتی «فول» روشن است، فقط با <b>افتادن درصد زیر این عدد</b> دوباره به «در حال شارژ» برمی‌گردد. این فاصله هیسترزیس است و نمی‌گذارد LED روی مرز بلرزد؛ برد همیشه خروج را دست‌کم یک واحد زیر ورود گیره می‌زند.
+<b>خروج فول (٪)</b> = تا وقتی «فول» روشن است، فقط با <b>افتادن درصد زیر این عدد</b> دوباره به «در حال شارژ» برمی‌گردد. این فاصله hysteresis (فاصلهٔ ضدلرزش) است و نمی‌گذارد LED روی مرز بلرزد؛ برد همیشه خروج را دست‌کم یک واحد زیر ورود گیره می‌زند.
 </div>
 
-<div class="sec">۱) حد ولتاژ باتری — نردبان درصد <span class="lb">(mV؛ مشترک با سناریوی دشارژ — فقط نمایش)</span></div>
+<div class="sec">۱) حد ولتاژ باتری — نردبان درصدِ شارژ <span class="lb">(mV؛ مستقل از نردبان دشارژ — v1.49)</span></div>
+<div class="ds">از نسخهٔ ۱٫۴۹ (دستور کاربر) این دو عدد <b>فقط مال سمت شارژ</b>اند: درصدی که حین شارژ نشان داده می‌شود و نقطهٔ «فول» (۷۷/۷۸) از همین‌ها ساخته می‌شود. نردبان <b>دشارژ</b> جفت جداگانهٔ خودش را دارد (کارت ۳ · شناسه‌های ۷۴/۷۵) و دیگر با این دو تکان نمی‌خورد. پیش‌فرض هر دو جفت یکی است، پس تا وقتی خودتان عوض نکنید هیچ رفتاری تغییر نمی‌کند.</div>
 <div class="bqr">
-<div class="shv"><span class="t">حد پایین — ۰٪ (mV)</span><b class="qmv" data-q="74">—</b><span class="ow">مشترک · ویرایش در کارت ۳ · دشارژ</span></div>
-<div class="shv"><span class="t">حد بالا — ۱۰۰٪ (mV)</span><b class="qmv" data-q="75">—</b><span class="ow">مشترک · ویرایش در کارت ۳ · دشارژ</span></div>
-<div class="shv"><span class="t">تغییر این دو عدد</span><button class="sb sb2" onclick="usel(3)">رفتن به کارت ۳ · دشارژ</button><span class="ow">همان‌جا هم باندهای دشارژ از همین نردبان ساخته می‌شوند</span></div>
+<label>حد پایین — ۰٪ (mV)<input type="number" id="q119" step="100" min="15000" max="25000"><span class="lb" id="a119">—</span></label>
+<label>حد بالا — ۱۰۰٪ (mV)<input type="number" id="q120" step="100" min="25000" max="32000"><span class="lb" id="a120">—</span></label>
+<div class="shv"><span class="t">نردبان دشارژ (۷۴/۷۵)</span><b class="qmv" data-q="74">—</b><span class="ow">فقط برای مقایسه · ویرایش در کارت ۳ · دشارژ</span></div>
 </div>
 <div class="c4n" id="c4map">—</div>
 
@@ -685,8 +686,8 @@ window.addEventListener('DOMContentLoaded', function(){
 
 <div class="sec">۲) نردبان ولتاژ به درصد <span class="lb">(مشترک — فقط نمایش)</span></div>
 <div class="bqr">
-<div class="shv"><span class="t">حد پایین — ۰٪ (mV)</span><b class="qmv" data-q="74">—</b><span class="ow">مشترک · ویرایش در کارت ۳ · دشارژ</span></div>
-<div class="shv"><span class="t">حد بالا — ۱۰۰٪ (mV)</span><b class="qmv" data-q="75">—</b><span class="ow">مشترک · ویرایش در کارت ۳ · دشارژ</span></div>
+<div class="shv"><span class="t">حد پایین — ۰٪ (mV)</span><b class="qmv" data-q="74">—</b><span class="ow">نردبان دشارژ · ویرایش در کارت ۳ · دشارژ</span></div>
+<div class="shv"><span class="t">حد بالا — ۱۰۰٪ (mV)</span><b class="qmv" data-q="75">—</b><span class="ow">نردبان دشارژ · ویرایش در کارت ۳ · دشارژ</span></div>
 <div class="shv"><span class="t">تغییر این دو عدد</span><button class="sb sb2" onclick="usel(3)">رفتن به کارت ۳ · دشارژ</button><span class="ow">درصد این آلارم هم از همین نردبان می‌آید</span></div>
 </div>
 
@@ -1017,8 +1018,10 @@ const PX={
  71:['hysteresis اضافه‌ولتاژ','چقدر باید پایین بیاید تا هشدار برداشته شود؛ جلوی چشمک‌زدن را می‌گیرد.'],
  72:['آستانهٔ باتری کم','زیر این، هشدار باتری ضعیف.'],
  73:['پاک‌شدن باتری کم','بالای این، هشدار برداشته می‌شود.'],
- 74:['ولتاژ ۰٪','ولتاژی که روی نمایشگر صفر درصد حساب می‌شود.'],
- 75:['ولتاژ ۱۰۰٪','ولتاژی که صد درصد حساب می‌شود.'],
+ 74:['ولتاژ ۰٪ — سمت دشارژ','نردبان درصدِ دشارژ: کف آن. باندهای بوق و چشمک سبز از این ساخته می‌شوند (سمت شارژ جفت جدا دارد: ۱۱۹/۱۲۰).'],
+ 75:['ولتاژ ۱۰۰٪ — سمت دشارژ','سقف نردبان درصدِ دشارژ: ولتاژی که صد درصد حساب می‌شود. باندهای بوق و چشمک سبز بین این و حد پایین تقسیم می‌شوند (سمت شارژ جفت جدا دارد: ۱۱۹/۱۲۰).'],
+ 119:['ولتاژ ۰٪ — سمت شارژ','نردبان درصدِ شارژ، مستقل از نردبان دشارژ (۷۴/۷۵). درصدی که حین شارژ نشان داده می‌شود و نقطهٔ فول از این حساب می‌شوند.'],
+ 120:['ولتاژ ۱۰۰٪ — سمت شارژ','سقف نردبان درصدِ شارژ. جابه‌جاکردن آن، باندهای دشارژ را تکان نمی‌دهد.'],
  83:['Kp جریان','واکنش فوری حلقهٔ جریان به خطا. زیاد یعنی تند و لرزان.'],
  84:['Ki جریان','خطای انباشته را جمع می‌کند؛ همان چیزی که در نهایت جریان را دقیقاً روی هدف می‌نشاند.'],
  85:['Kd جریان','واکنش به سرعت تغییر. صفر است چون اندازه‌گیری نویز دارد و D نویز را تقویت می‌کند.'],
@@ -1373,11 +1376,17 @@ for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>
    AIDS/ADEF mismatch - a host test now pins it to the PDEF length. */
 /* v1.28: ids 93..107 (charger limits + backstop gains) join the generic
    fill/validate/send machinery, so they need no bespoke handlers. */
-const AIDS=[];for(let _i=27;_i<=118;_i++)AIDS.push(_i);
+/* v1.49: ۱۱۹/۱۲۰ (نردبان سمت شارژ) هم مثل بقیه خوانده و نوشته می‌شود */
+const AIDS=[];for(let _i=27;_i<=120;_i++)AIDS.push(_i);
 const LDEF=[3600000,100,600000,60000,8,700,32,14800,100,500,10,15000,3000,3000,500];
 const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
+/* [EN] v1.49: factory defaults of the charge-side percent map (ids 119/120),
+   the same numbers as the discharge pair so the split changes nothing until
+   somebody moves one side on purpose.
+   [FA] پیش‌فرض کارخانهٔ نردبان سمت شارژ (۱۱۹/۱۲۰) - همان اعداد جفت دشارژ. */
+const CDEF=[21000,29000];
 const ADEF=[14800,150,6000,7000,1000,1000,21000,28000,950,14850,2000,1000,50,10000,1000,1,0,1000,50,3000,233,3,100,40,20,10,1,60000,20000,10000,100,1,1000,2000,10000,1,2,3,100,1000,10,1000,150,28000,1000,21000,21200,21000,29000,0,100,95,5,2,2,3];
-function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:(id>=108?IDEF[id-108]:id>=93?LDEF[id-93]:id>=83?PDEF[id-83]:ADEF[id-27]);
+function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:(id>=119?CDEF[id-119]:id>=108?IDEF[id-108]:id>=93?LDEF[id-93]:id>=83?PDEF[id-83]:ADEF[id-27]);
  if(e&&e.value!==''){const v=parseInt(e.value,10);if(!isNaN(v))return{v,d};}
  return{v:d,d};}
 function ap(){
@@ -1823,7 +1832,8 @@ function c4blink(pct,per,minOn){
  return {remaining,onMs,offMs:per-onMs};}
 function c4(){
  const tb=$('c4tb');if(!tb)return;
- const lo=c4v(74,21000),hi=c4v(75,29000),per=c4v(68,1000),minOn=c4v(69,150),en=c4v(77,100),ex=c4v(78,95),hy=c4v(79,5);
+ /* v1.49: کارت شارژ از نردبان سمت شارژ (۱۱۹/۱۲۰) می‌خواند، نه از نردبان دشارژ */
+ const lo=c4v(119,21000),hi=c4v(120,29000),per=c4v(68,1000),minOn=c4v(69,150),en=c4v(77,100),ex=c4v(78,95),hy=c4v(79,5);
  const sig=[lo,hi,per,minOn,en,ex,hy].join(',');
  if(sig!==C4.sig){
   C4.sig=sig;
@@ -1832,7 +1842,7 @@ function c4(){
    ?('۰٪ = <span class="n">'+lo+'</span> mV · ۱۰۰٪ = <span class="n">'+hi+'</span> mV · هر ۱٪ ≈ <span class="n">'+Math.round((hi-lo)/100)+'</span> mV · ۵۰٪ ≈ <span class="n">'+c4mv(50,lo,hi)+'</span> mV')
    :'⚠ حد بالا باید دست‌کم ۱۰۰mV بالاتر از حد پایین باشد.';
   const f=$('c4full');
-  if(f)f.innerHTML='ورود فول <span class="n">'+en+'</span>٪ ≈ <span class="n">'+c4mv(en,lo,hi)+'</span> mV (سبز ثابت) · خروج فول <span class="n">'+ex+'</span>٪ ≈ <span class="n">'+c4mv(ex,lo,hi)+'</span> mV (برگشت به شارژ) · پهنای هیسترزیس <span class="n">'+(en-ex)+'</span>٪ ≈ <span class="n">'+(c4mv(en,lo,hi)-c4mv(ex,lo,hi))+'</span> mV';
+  if(f)f.innerHTML='ورود فول <span class="n">'+en+'</span>٪ ≈ <span class="n">'+c4mv(en,lo,hi)+'</span> mV (سبز ثابت) · خروج فول <span class="n">'+ex+'</span>٪ ≈ <span class="n">'+c4mv(ex,lo,hi)+'</span> mV (برگشت به شارژ) · پهنای hysteresis <span class="n">'+(en-ex)+'</span>٪ ≈ <span class="n">'+(c4mv(en,lo,hi)-c4mv(ex,lo,hi))+'</span> mV';
   let rows='';
   C4.pct.forEach(p=>{
    const b=c4blink(p,per,minOn);
@@ -1844,7 +1854,7 @@ function c4(){
  if(!nw)return;
  if(!D||!D.t||D.on!=1||UV.cpct<0){nw.textContent='— در انتظار داده از برد (اعداد جدول بالا با مقادیر فعلی محاسبه شده‌اند)';if(dot)dot.className='c4dot';return;}
  const st=UV.cpct,b=c4blink(st,per,minOn),full=UV.full||st>=en;
- nw.innerHTML='الان: درصد پایدار <span class="n">'+st+'</span>٪ (هیسترزیس '+hy+'٪) → مانده <span class="n">'+b.remaining+'</span>٪ → زرد <span class="n">'+b.onMs+'</span> ms روشن / <span class="n">'+b.offMs+'</span> ms خاموش'+(full?' · <b>فول فعال است، زرد خاموش</b>':'');
+ nw.innerHTML='الان: درصد پایدار <span class="n">'+st+'</span>٪ (hysteresis '+hy+'٪) → مانده <span class="n">'+b.remaining+'</span>٪ → زرد <span class="n">'+b.onMs+'</span> ms روشن / <span class="n">'+b.offMs+'</span> ms خاموش'+(full?' · <b>فول فعال است، زرد خاموش</b>':'');
  if(dot)dot.className='c4dot'+((!full&&(performance.now()%per)<b.onMs)?' on':'');
  const rows=$('c4tb').children;
  for(let k=0;k<rows.length;k++)rows[k].className=(C4.pct[k]===Math.round(st/5)*5)?'hi':'';
@@ -1894,6 +1904,7 @@ function qmfill(){
    می‌خوانند - یک منبع، پس پیش‌فرض از دکمه‌اش جدا نمی‌افتد. */
 function pdflt(id){
  id=+id;
+ if(id>=119&&id<=120)return CDEF[id-119];
  if(id>=108&&id<=118)return IDEF[id-108];
  if(id>=93&&id<=107)return LDEF[id-93];
  if(id>=83&&id<=92)return PDEF[id-83];
@@ -2121,7 +2132,7 @@ function wlive(act){if(!D||D.on!=1)return['-','-','-',undefined,'-','-','-',unde
    stuck at 99 (the v1.22 count) while the real count is 93, so every row wrote 6
    extra columns and everything after the parameter block landed under the wrong
    heading. It now derives the bound so it cannot go stale again. */
-const PN=119;
+const PN=121;
 /* v1.26 (دستور کاربر ۲۰۲۶-۰۹-۲۹): ۹۳ ستون از ۱۴۹ ستونِ هر ردیف، «تنظیمات» بودند
    که در طول یک سوییپ اصلاً عوض نمی‌شوند — یعنی ۶۲٪ هر ردیف تکرار بی‌فایده. حالا
    تنظیمات یک‌بار به‌صورت خط «# settings:» نوشته می‌شود و ردیف‌ها فقط ۵۶ ستون

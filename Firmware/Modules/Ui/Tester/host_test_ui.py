@@ -596,9 +596,24 @@ def run_ui_alarm_tests():
     ids = sorted(int(m.group(2)) for m in
                  re.finditer(r"#define\s+(UI_ALARM_PARAM_\w+)\s+\(?(\d+)\)?u?",
                              ui_led_h) if "MIN_ID" not in m.group(1) and "MAX_ID" not in m.group(1))
-    assert_equal(ids, list(range(38, 83)), "UI alarm ids contiguous 38..82")
+    # [EN] v1.49: the dense block is still 38..82; the charge-side percent map
+    #      lives in its own little range 119..120 (83..118 are owned by other
+    #      modules, so it could not simply be appended).
+    # [FA] بلوک متراکم همان ۳۸..۸۲ است؛ نگاشت درصد سمت شارژ بازهٔ کوچک خودش
+    #      (۱۱۹..۱۲۰) را دارد چون ۸۳..۱۱۸ مال ماژول‌های دیگر است.
+    assert_equal(ids, list(range(38, 83)) + [119, 120],
+                 "UI alarm ids contiguous 38..82 plus the charge map 119..120")
     assert_equal(defines.get("UI_ALARM_PARAM_MIN_ID"), 38, "MIN_ID 38")
     assert_equal(defines.get("UI_ALARM_PARAM_MAX_ID"), 82, "MAX_ID 82")
+    assert_equal(defines.get("UI_ALARM_PARAM_EXT_MIN_ID"), 119, "EXT_MIN_ID 119")
+    assert_equal(defines.get("UI_ALARM_PARAM_EXT_MAX_ID"), 120, "EXT_MAX_ID 120")
+    assert_equal(defines.get("UI_ALARM_PARAM_CHG_PCT_VMIN_MV"), 119, "charge Vmin id 119")
+    assert_equal(defines.get("UI_ALARM_PARAM_CHG_PCT_VMAX_MV"), 120, "charge Vmax id 120")
+    assert_true("uint32_t uint32_t__chgPctVminMv;" in ui_led_h
+                and "uint32_t uint32_t__chgPctVmaxMv;" in ui_led_h,
+                "the two charge-map words are appended to ui_alarm_t")
+    assert_true("uint8_t func__Ui_ChargeVoltageToPercent(uint32_t uint32_t__batteryMv);" in ui_led_h,
+                "charge-side converter prototype")
     assert_true("bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId," in ui_led_h, "Set prototype")
     assert_true("bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId," in ui_led_h, "Get prototype")
 
@@ -608,7 +623,7 @@ def run_ui_alarm_tests():
     body = re.sub(r"/\*.*?\*/", "", m.group(1), flags=re.S)
     inits = [x.strip().rstrip(",").strip() for x in body.strip().split("\n")]
     inits = [x for x in inits if x]
-    assert_equal(len(inits), 45, "45 init entries")
+    assert_equal(len(inits), 47, "45 dense init entries + the 2 charge-map words")
     expected_macros = ["UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS", "UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT",
         "UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS", "UI_INPUT_OVERVOLTAGE_BEEP_DURATION_MS",
         "UI_INPUT_OVERVOLTAGE_BEEP_COUNT", "UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS",
@@ -628,7 +643,10 @@ def run_ui_alarm_tests():
         "UI_LOW_BATTERY_ALARM_CLEAR_MV", "UI_BAT_V_MIN_MV", "UI_BAT_V_MAX_MV", "0u",
         "UI_CHARGING_FULL_ENTER_PERCENT", "UI_CHARGING_FULL_EXIT_PERCENT",
         "UI_CHARGING_PERCENT_HYSTERESIS_PERCENT", "UI_BATTERY_RUN_PERCENT_HYSTERESIS_PERCENT",
-        "UI_BATTERY_ZERO_EXIT_THRESHOLD", "UI_BATTERY_ONE_EXIT_THRESHOLD"]
+        "UI_BATTERY_ZERO_EXIT_THRESHOLD", "UI_BATTERY_ONE_EXIT_THRESHOLD",
+        # [EN] v1.49: the charge-side map boots with the same factory numbers
+        #      as the discharge map, so an untouched board does not change.
+        "UI_BAT_V_MIN_MV", "UI_BAT_V_MAX_MV"]
     assert_equal(inits, expected_macros, "init order == id order (positional!)")
     print("IDs + boot defaults PASS")
 
@@ -644,14 +662,32 @@ def run_ui_alarm_tests():
     print("Legacy-sound equivalence PASS")
 
     # --- read swaps: scenarios read the live struct through the mute gate ---
-    assert_equal(ui_led_c.count("func__Ui_Buzzer_Gated("), 12,
-                 "11 scenario sites + 1 prototype-free def use the mute gate")
+    # [EN] Pre-existing staleness found 2026-10-05: the count said 12 while
+    #      the file had 13 (the imbalance scenario added a site and nobody
+    #      re-ran this). Corrected, not weakened.
+    # [FA] این عدد از قبل کهنه بود (سناریوی عدم‌توازن یک محل اضافه کرد).
+    assert_equal(ui_led_c.count("func__Ui_Buzzer_Gated("), 13,
+                 "12 scenario sites + 1 def use the mute gate")
     # direct Tick calls left: 2 inside Gated + 1 all_off + 1 OV-clear explicit off
     # + 2 BoardTest (mute bypass, still proves the buzzer works at boot)
-    assert_equal(ui_led_c.count("func__Ui_Buzzer_Tick("), 6,
+    assert_equal(ui_led_c.count("func__Ui_Buzzer_Tick("), 7,
                  "direct Tick only in Gated/all_off/OV-clear/BoardTest")
     assert_true("uint32_t__pctVminMv" in ui_led_c and "uint32_t__pctVmaxMv" in ui_led_c,
-                "percent map reads live 74/75")
+                "discharge percent map reads live 74/75")
+    # [EN] v1.49 separation: the discharge map feeds BatteryRun only, and the
+    #      charging face + the full-charge latch read the charge map.
+    # [FA] جداسازی: نگاشت دشارژ فقط برای BatteryRun، و چهرهٔ شارژ و قفل
+    #      فول‌شارژ از نگاشت سمت شارژ می‌خوانند.
+    assert_equal(ui_led_c.count("func__Ui_BatteryVoltageToPercent("), 2,
+                 "the discharge map has exactly one caller (plus its own definition)")
+    assert_equal(ui_led_c.count("func__Ui_ChargeVoltageToPercent("), 3,
+                 "the charge map is used by the charging face and the full latch")
+    assert_true("func__Ui_ChargeVoltageToPercent(uint32_t__batteryClampedMv)" in ui_led_c,
+                "the full-charge latch converts with the charge map")
+    assert_true("uint32_t__batteryClampedMv > UI_ALARM_T__G__Alarm.uint32_t__chgPctVmaxMv" in ui_led_c,
+                "and clamps against the charge ceiling, not the discharge one")
+    assert_true("func__Ui_VoltageToPercentMap(" in ui_led_c,
+                "both maps share one formula")
     assert_true("uint32_t__ovThreshMv" in ui_led_c and "uint32_t__lowBatThreshMv" in ui_led_c,
                 "thresholds read live 70/72/73")
     assert_true("APP_CONFIG.ui_blink_period_ms" not in ui_led_c

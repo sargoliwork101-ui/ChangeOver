@@ -228,6 +228,29 @@ function testDischarge(win, doc) {
         'the discharge card owns the writable voltage limits');
     check(doc.querySelectorAll('#q74').length === 1 && doc.querySelectorAll('#q75').length === 1,
         'the ladder has exactly one writable field in the page');
+    /* [EN] v1.49 (user order): the charge side owns its OWN ladder (119/120).
+       Moving a discharge limit must not move the charge card.
+       [FA] سمت شارژ نردبان خودش را دارد (۱۱۹/۱۲۰)؛ جابه‌جاکردن حد دشارژ نباید
+       کارت شارژ را تکان بدهد. */
+    check(doc.querySelectorAll('#ucard4 input#q119').length === 1 &&
+          doc.querySelectorAll('#ucard4 input#q120').length === 1,
+        'the charge card owns a separate, writable percent ladder');
+    typeInto(win, doc, 'q119', 21000);
+    typeInto(win, doc, 'q120', 29000);
+    win.c4();
+    const chargeMapBefore = textOf(doc, 'c4map');
+    typeInto(win, doc, 'q74', 20000);
+    win.c4();
+    check(textOf(doc, 'c4map') === chargeMapBefore,
+        'moving the discharge limit leaves the charge ladder untouched', textOf(doc, 'c4map'));
+    typeInto(win, doc, 'q74', 21000);
+    typeInto(win, doc, 'q119', 20000);
+    win.c4();
+    check(textOf(doc, 'c4map').includes('20000'),
+        'and the charge card follows its own pair', textOf(doc, 'c4map'));
+    typeInto(win, doc, 'q119', 21000);
+    win.c4();
+
     check(doc.querySelectorAll('#ucard4 .qmv[data-q="74"]').length === 1 &&
           doc.querySelectorAll('#ucard5 .qmv[data-q="75"]').length === 1,
         'the charge and low-battery cards echo it read-only');

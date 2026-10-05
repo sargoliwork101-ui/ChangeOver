@@ -114,7 +114,7 @@
 /* [EN] Persisted id ranges: ALL settable configuration (0..14 = offsets,
  *      gains, filters, eta, charger enables, duty ceilings; 20..26 =
  *      charge profile; 27..37 = alarms; 38..75 = UI cadence; 77..82 =
- *      full/hysteresis; 83..92 = two-loop PID) EXCEPT the transient
+ *      full/hysteresis; 83..92 = two-loop PID; 119..120 = charge-side percent map, v1.49) EXCEPT the transient
  *      test modes 15..18 (fixed duty), 19 (manual test) and 76
  *      (panel-session mute) - those must never survive a reboot. Id 76
  *      sits INSIDE the high range, so the predicate excludes it
@@ -129,7 +129,7 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   118u
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   120u
 #define ESP_LINK_NVM_TRANSIENT_ID_MUTE        76u
 /* [EN] Imbalance runtime slots (scenario 6, v10): persisted but NEVER user
  *      parameters - the module itself writes them; the panel never draws and

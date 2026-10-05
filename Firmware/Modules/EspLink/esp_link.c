@@ -349,11 +349,13 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
             }
 #endif
 #if MODULE_UI
-            /* [EN] UI cadence, ids 38..82 (v1.16 + v1.17 append): range-dispatched -
+            /* [EN] UI cadence, ids 38..82 (v1.16 + v1.17 append) plus the charge-side percent map 119/120 (v1.49): range-dispatched -
                     45 case labels would drown the switch; Set re-validates.
                [FA] اعداد UI، شناسه‌های ۳۸..۸۲: دیسپچ بازه‌ای. */
-            if ((uint8_t__paramId >= UI_ALARM_PARAM_MIN_ID) &&
-                (uint8_t__paramId <= UI_ALARM_PARAM_MAX_ID))
+            if (((uint8_t__paramId >= UI_ALARM_PARAM_MIN_ID) &&
+                 (uint8_t__paramId <= UI_ALARM_PARAM_MAX_ID)) ||
+                ((uint8_t__paramId >= UI_ALARM_PARAM_EXT_MIN_ID) &&
+                 (uint8_t__paramId <= UI_ALARM_PARAM_EXT_MAX_ID)))
             {
                 return func__Ui_SetAlarmParam(uint8_t__paramId,
                                               uint32_t__value,
@@ -534,10 +536,12 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
             }
 #endif
 #if MODULE_UI
-            /* [EN] UI cadence live read, ids 38..82 (v1.16 + v1.17 append).
+            /* [EN] UI cadence live read, ids 38..82 plus the charge map 119/120 (v1.49).
                [FA] خواندن زندهٔ اعداد UI، شناسه‌های ۳۸..۸۲. */
-            if ((uint8_t__paramId >= UI_ALARM_PARAM_MIN_ID) &&
-                (uint8_t__paramId <= UI_ALARM_PARAM_MAX_ID))
+            if (((uint8_t__paramId >= UI_ALARM_PARAM_MIN_ID) &&
+                 (uint8_t__paramId <= UI_ALARM_PARAM_MAX_ID)) ||
+                ((uint8_t__paramId >= UI_ALARM_PARAM_EXT_MIN_ID) &&
+                 (uint8_t__paramId <= UI_ALARM_PARAM_EXT_MAX_ID)))
             {
                 return func__Ui_GetAlarmParam(uint8_t__paramId,
                                               uint32_t__value);
