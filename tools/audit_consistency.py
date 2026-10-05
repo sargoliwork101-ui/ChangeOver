@@ -923,6 +923,27 @@ def sec_panel(ids):
     #      that writes a default nobody printed is exactly the drift this
     #      audit exists to catch.
     # [FA] هر شناسهٔ UDEF باید پیش‌فرض داشته باشد و در دو سناریو تکرار نشود.
+    # [EN] v1.77 (user question: "with one beep, what does a gap even mean?"
+    #      and "do it everywhere, not just in some sections"): every writable
+    #      "gap between beeps" field must be listed in GAPOF so it switches
+    #      itself off when its band asks for a single beep - and nothing that
+    #      is not a gap may be listed there.
+    # [FA] هر کادر «گپ بین بوق‌ها» باید در GAPOF باشد و فقط گپ‌ها آنجا باشند.
+    gaps = set(re.findall(r'گپ بین بوق‌ها[^<]*<input type="number" id="q(\d+)"', P_PAN))
+    gapof = re.search(r"const GAPOF=\[(.*?)\];", P_PAN)
+    ok(gapof is not None, "the GAPOF table that disables a meaningless gap is missing")
+    if gapof:
+        listed = set(re.findall(r"\[(\d+),\[", gapof.group(1)))
+        ok(gaps <= listed,
+           "a gap field can still be typed into while its band asks for one beep",
+           f"not in GAPOF: {sorted(gaps - listed)}")
+        ok(listed <= gaps,
+           "GAPOF disables a field that is not a gap between beeps",
+           f"listed but not a gap: {sorted(listed - gaps)}")
+        for key, users in re.findall(r"\[(\d+),\[([0-9,]+)\]\]", gapof.group(1)):
+            ok(all(u.strip() for u in users.split(",")),
+               f"gap {key} has an empty user list")
+
     ok("function sdef(" not in P_PAN,
        "the all-in-one scenario reset button came back",
        "the user asked for one key per scenario instead")

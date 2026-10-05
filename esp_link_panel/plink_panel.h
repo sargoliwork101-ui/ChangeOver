@@ -295,7 +295,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 07a9a04</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e0174af</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -421,7 +421,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="s1b"></div>
 
 <div class="sec">۳) بوق</div>
-<div class="sx">شکل صدا، دقیقاً مثل بقیهٔ سناریوها با چهار عدد ساخته می‌شود: <b>دوره</b> = هر چند وقت یک‌بار الگو تکرار شود (۰ = بی‌صدا)، <b>مدت هر بوق</b> = طول یک بوق، <b>تعداد</b> = چند بوق در هر تکرار، <b>گپ</b> = سکوت بین آن بوق‌ها. درصدِ روشنیِ بوق خودش از این چهار عدد حساب می‌شود و جایی تایپ نمی‌شود.</div>
+<div class="sx">شکل صدا، دقیقاً مثل بقیهٔ سناریوها با چهار عدد ساخته می‌شود: <b>دوره</b> = هر چند وقت یک‌بار الگو تکرار شود (۰ = بی‌صدا)، <b>مدت هر بوق</b> = طول یک بوق، <b>تعداد</b> = چند بوق در هر تکرار، <b>گپ</b> = سکوت بین آن بوق‌ها. درصدِ روشنیِ بوق خودش از این چهار عدد حساب می‌شود و جایی تایپ نمی‌شود. <b>قانون مشترک همهٔ بوق‌ها:</b> اگر «تعداد بوق» یک باشد، «گپ بین بوق‌ها» هیچ معنایی ندارد (گپ فقط <i>بین</i> دو بوق است)، پس کادرش خودبه‌خود غیرفعال و کم‌رنگ می‌شود؛ با دو بوق یا بیشتر دوباره فعال می‌شود.</div>
 <div class="bqr">
 <label>دوره بوق (ms، صفر=خاموش)<input type="number" id="q40" step="500" min="0" max="600000"><span class="lb" id="a40"></span></label>
 <label>مدت هر بوق (ms)<input type="number" id="q41" step="50" min="0" max="600000"><span class="lb" id="a41"></span></label>
@@ -472,7 +472,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="s2b"></div>
 
 <div class="sec">۴) بوق</div>
-<div class="sx">همان چهار عددِ همیشگیِ صدا: <b>دوره</b> (۰ = بی‌صدا)، <b>مدت هر بوق</b>، <b>تعداد بوق</b> در هر تکرار و <b>گپ</b> بین آن‌ها. پیش‌فرض این سناریو سه بوق کوتاه است.</div>
+<div class="sx">همان چهار عددِ همیشگیِ صدا: <b>دوره</b> (۰ = بی‌صدا)، <b>مدت هر بوق</b>، <b>تعداد بوق</b> در هر تکرار و <b>گپ</b> بین آن‌ها. پیش‌فرض این سناریو سه بوق کوتاه است. <b>قانون مشترک همهٔ بوق‌ها:</b> اگر «تعداد بوق» یک باشد، «گپ بین بوق‌ها» هیچ معنایی ندارد (گپ فقط <i>بین</i> دو بوق است)، پس کادرش خودبه‌خود غیرفعال و کم‌رنگ می‌شود؛ با دو بوق یا بیشتر دوباره فعال می‌شود.</div>
 <div class="bqr">
 <label>دوره بوق (ms، صفر=خاموش)<input type="number" id="q46" step="500" min="0" max="600000"><span class="lb" id="a46"></span></label>
 <label>مدت هر بوق (ms)<input type="number" id="q47" step="50" min="0" max="600000"><span class="lb" id="a47"></span></label>
@@ -486,7 +486,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="cd" id="ucard3" style="display:none">
 <div class="hd"><b>سناریو ۳ — دشارژ، بی‌ورودی (سبز + باندهای بوق)</b></div>
-<div class="sx"><b>روند:</b> بالای «شروع بوق» بی‌صدا (سبز چشمک با درصد) ← هر باند بوق خودش با فاصله/مدت/تعداد خودش ← زیر «باند بحرانی»: LEDها خاموش و الگوی بحرانی فقط یک‌بار به‌اندازهٔ «طول یک‌باره» پخش و بعد سکوت تا برگشت باتری. تنها عدد مشترک، گپ بین بوق‌ها (۶۵) است؛ تعداد، مدت هر بوق و فاصلهٔ تکرارِ هر باند مال خودش است و هر چهار باند یک شکل تنظیم می‌شوند.</div>
+<div class="sx"><b>روند:</b> بالای «شروع بوق» بی‌صدا (سبز چشمک با درصد) ← هر باند بوق خودش با فاصله/مدت/تعداد خودش ← زیر «باند بحرانی»: LEDها خاموش و الگوی بحرانی فقط یک‌بار به‌اندازهٔ «طول یک‌باره» پخش و بعد سکوت تا برگشت باتری. تنها عدد مشترک، گپ بین بوق‌ها (۶۵) است؛ تعداد، مدت هر بوق و فاصلهٔ تکرارِ هر باند مال خودش است و هر چهار باند یک شکل تنظیم می‌شوند. <b>قانون مشترک همهٔ بوق‌ها:</b> گپ فقط <i>بین</i> دو بوق است، پس تا وقتی هر چهار باند یک‌بوقی باشند کادر گپ (و بازتاب‌هایش در باندهای ۲، ۳ و بحرانی) غیرفعال و کم‌رنگ می‌ماند؛ کافی است یکی از باندها دو بوق یا بیشتر بخواهد تا دوباره فعال شود. «فاصلهٔ تکرار» هر باند ربطی به این ندارد و همیشه فعال است، چون فاصلهٔ بین دورهاست نه بین بوق‌ها.</div>
 
 <div class="ds c4ds">
 <b>این سناریو کِی می‌آید؟</b> وقتی ورودی قطع است و بار روی باتری می‌رود (پایین‌ترین اولویت؛ هر آلارمی آن را کنار می‌زند).
@@ -1614,6 +1614,8 @@ function achk(){const a=ap(),w=[],bad=(v,lo,hi)=>!(v>=lo&&v<=hi);
  if(bad(a.u82,0,100))w.push({ids:[82],msg:'خروج از ۱٪ باید ۰..۱۰۰ باشد'});
  return w;}
 function afresh(){const w=achk();
+ /* v1.77: گپ‌ها بلافاصله پس از هر تغییر/پرشدن مقدار، نه فقط در فریم شبیه‌ساز */
+ if(typeof gapen==='function')gapen();
  /* [FA] v1.69 (دستور کاربر): همان بنر در تب تنظیمات هم حذف شد؛ دلیلش بالاتر
     در qchk آمده. فقط فیلد مقصر قرمز می‌شود. */
  [$('aw'),$('aw2')].forEach(el=>{if(el){el.innerHTML='';el.style.cssText='margin:2px 0 0';}});
@@ -2008,11 +2010,29 @@ function simblink(ph,per,duty){const on=Math.floor(per*duty/100);return (ph%per)
    [FA] گپ فقط «بین» بوق‌هاست؛ با یک بوق در هر دور، کادر گپ خاموش می‌شود و
    نمی‌شود رویش چیزی نوشت. گپ ۶۵ مشترک است، پس تا وقتی یکی از باندهایش بیش از
    یک بوق بخواهد روشن می‌ماند. */
-const GAPOF=[[43,[42]],[49,[48]],[122,[63]],[65,[62,64,58]]];
+/* [EN] v1.77 (user question: "with a single beep, what does the gap between
+   beeps even mean?" and "you did it for some sections, do it everywhere"):
+   the table had TWO faults. Band 2's repeat interval (122) was listed as if
+   it were a gap, so asking for one beep wrongly killed the interval - an
+   interval is the time BETWEEN ROUNDS and means something even with a single
+   beep. And the shared gap 65 did not count band 2 (63) among its users,
+   although band 2 beeps with that same gap. Every gap field in the page is
+   in this table now, and nothing that is not a gap is.
+   [FA] جدول دو ایراد داشت: «فاصلهٔ تکرارِ» باند ۲ (۱۲۲) اشتباهاً گپ حساب شده
+   بود و با یک بوق خاموش می‌شد - حال آنکه فاصلهٔ تکرار بین دورهاست و با یک
+   بوق هم معنا دارد؛ و گپ مشترک ۶۵ باند ۲ (۶۳) را جزو مصرف‌کننده‌هایش
+   نمی‌شمرد. حالا همهٔ گپ‌های صفحه اینجا هستند و فقط گپ‌ها. */
+const GAPOF=[[43,[42]],[49,[48]],[65,[62,63,64,58]]];
 function gapen(){GAPOF.forEach(g=>{const e=$('q'+g[0]);if(!e)return;
  const need=g[1].some(id=>c4v(id,1)>1);
- e.disabled=!need;e.title=need?'':'با یک بوق در هر دور، فاصلهٔ بین بوق‌ها معنا ندارد';
- const l=e.closest('label');if(l)l.style.opacity=need?'':'0.45';});}
+ const why='با یک بوق در هر دور، فاصلهٔ بین بوق‌ها معنا ندارد';
+ e.disabled=!need;e.title=need?'':why;
+ const l=e.closest('label');if(l)l.style.opacity=need?'':'0.45';
+ /* [EN] The read-only echoes of the same gap go grey with it, so a dead gap
+    looks dead in every card that shows it, not just where it is typed.
+    [FA] بازتاب‌های فقط-خواندنی همان گپ هم با آن خاکستری می‌شوند. */
+ document.querySelectorAll('.qmv[data-q="'+g[0]+'"]').forEach(m=>{
+  const h=m.closest('.shv')||m;h.style.opacity=need?'':'0.45';h.title=need?'':why;});});}
 function simrun(){
  simclk();
  const now=SIMT[3];

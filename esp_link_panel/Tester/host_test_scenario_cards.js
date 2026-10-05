@@ -610,11 +610,29 @@ function testSimulator(win, doc) {
     win.simrun();
     check(!on('sl5r') && win.S5.n === 0, 'the restart button clears the simulated lock');
 
-    /* v1.55: a gap box is dead while its band asks for a single beep. */
+    /* v1.55: a gap box is dead while its band asks for a single beep.
+       v1.77 (user question + order): EVERY gap behaves the same way, the
+       shared gap counts band 2 too, and a repeat interval is never treated
+       as a gap. */
     typeInto(win, doc, 'q42', 1);
     win.simrun();
     check(doc.getElementById('q43').disabled === true,
           'one beep per round switches that gap box off');
+    typeInto(win, doc, 'q48', 1);
+    win.simrun();
+    check(doc.getElementById('q49').disabled === true,
+          'the cut-battery gap switches off on a single beep as well');
+    ['q62', 'q63', 'q64', 'q58'].forEach(id => typeInto(win, doc, id, 1));
+    win.simrun();
+    check(doc.getElementById('q65').disabled === true,
+          'the shared gap dies when all four bands want a single beep');
+    check(doc.getElementById('q122').disabled === false,
+          'a repeat interval is NOT a gap and stays editable with one beep');
+    typeInto(win, doc, 'q63', 2);
+    win.simrun();
+    check(doc.getElementById('q65').disabled === false,
+          'band 2 alone keeps the shared gap alive');
+    typeInto(win, doc, 'q63', 1);
     typeInto(win, doc, 'q42', 3);
     win.simrun();
     check(doc.getElementById('q43').disabled === false,
