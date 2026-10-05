@@ -272,8 +272,16 @@
 #define ESPLINK_PARAM_UI_YELLOW_MIN_ON_MS    69u  /* u32, ms, def 150,   0..10000, <= 68 (v1.17: 10->150, visible end-of-charge blink) */
 #define ESPLINK_PARAM_UI_OV_THRESH_MV         70u  /* u32, mV, def 28000, 24000..32000 */
 #define ESPLINK_PARAM_UI_OV_HYST_MV           71u  /* u32, mV, def 1000,  0..2000 */
-#define ESPLINK_PARAM_UI_LOWBAT_THRESH_MV     72u  /* u32, mV, def 21000, 15000..24000, <= 73 */
-#define ESPLINK_PARAM_UI_LOWBAT_CLEAR_MV      73u  /* u32, mV, def 21200, 15000..24000, >= 72 */
+/* [EN] v1.74 (user order): ids 72/73 were the low-battery alarm window. The
+   window moved into Firmware/Modules/Changeover as fixed constants, so these
+   two ids are RETIRED: no owner accepts them, they are never persisted and the
+   panel has no field for them. They are kept as holes on purpose - renumbering
+   the ids above them would silently change the meaning of every stored NVM
+   record, backup file and bench log.
+   [FA] شناسه‌های ۷۲/۷۳ بازنشسته‌اند: پنجرهٔ باتری کم به‌صورت ثابت داخل ماژول
+   چنج‌اور رفت. عمداً به‌صورت «حفره» می‌مانند تا شماره‌های بالاتر جابه‌جا نشوند. */
+#define ESPLINK_PARAM_RETIRED_LOWBAT_FIRST    72u  /* [EN] retired v1.74 / [FA] بازنشسته */
+#define ESPLINK_PARAM_RETIRED_LOWBAT_LAST     73u  /* [EN] retired v1.74 / [FA] بازنشسته */
 #define ESPLINK_PARAM_UI_PCT_VMIN_MV          74u  /* u32, mV, def 21000, 15000..25000, <= 75-100 - DISCHARGE map (v1.49) */
 #define ESPLINK_PARAM_UI_PCT_VMAX_MV          75u  /* u32, mV, def 29000, 25000..32000, >= 74+100 - DISCHARGE map (v1.49) */
 #define ESPLINK_PARAM_UI_BUZZER_MUTE          76u  /* u32, 0/1, def 0,    panel-session only (RAM); scenarios only */

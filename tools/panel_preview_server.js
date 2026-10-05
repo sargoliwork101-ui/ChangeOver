@@ -149,7 +149,7 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
               (10000 = the former 100 % duty of the 10 s period), not a duty */
            40, 20, 10, 1, 60000, 20000, 10000, 10000, 1,
            1000, 2000, 10000, 1, 2, 3, 100,
-           1000, 10, 1000, 150, 28000, 1000, 21000, 21200, 21000, 29000, 0,
+           1000, 10, 1000, 150, 28000, 1000, 0, 0, 21000, 29000, 0,
            /* v1.17 ids 77..82 = full latch + stable hysteresis boot defaults */
            100, 95, 5, 2, 2, 3,
            /* v1.24 ids 83..92 = two-loop CC/CV charge PID boot defaults (CHG_PID_* in charger.h):
@@ -306,8 +306,10 @@ function clampParam(id, v) {
         case 69: return clampW(v, 0, 10000);
         case 70: return clampW(v, 24000, 32000);
         case 71: return clampW(v, 0, 2000);
-        case 72: return clampW(v, 15000, 24000); /* threshold authoritative; 73 pulls up in cascade */
-        case 73: return clampW(v, 15000, 24000);
+        /* v1.74: 72/73 are retired (the low-battery window is a Changeover
+         * constant now). The simulated board refuses to move them, exactly
+         * like func__Ui_AlarmParamIndex() rejecting them on the real STM32. */
+        case 72: case 73: return P[id];
         case 74: return clampW(v, 15000, 25000); /* Vmin authoritative; 75 pulls up in cascade */
         case 75: return clampW(v, 25000, 32000);
         case 76: return clampW(v, 0, 1);
@@ -535,7 +537,7 @@ const server = http.createServer((req, res) => {
                                    27, 28, 29, 30, 31, 32, 33, 34,
                                    38, 39, 40, 42, 43, 41, 44, 45, 46, 48, 49, 47,
                                    50, 51, 52, 53, 54, 55, 56, 57, 62, 63, 64, 65, 58, 59, 60, 61,
-                                   66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76,
+                                   66, 67, 68, 69, 70, 71, 74, 75, 76,
                                    77, 78, 79, 80, 81, 82]) P[pid] = clampParam(pid, P[pid]);
             }
         }

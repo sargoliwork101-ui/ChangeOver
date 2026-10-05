@@ -48,7 +48,6 @@
  *         snapshot, set when v_bat24_mv < 21000 and cleared when >=21200.
  *         [FA] فلگ سراسری در مالکیت UI: هنگام آلارم معتبر باتری کم true است.
  */
-volatile bool BOOL__G__UiBatteryAlarmIssued = false;
 
 /* ==================== Runtime UI cadence (v1.16) ==================== */
 
@@ -109,8 +108,8 @@ static volatile ui_alarm_t UI_ALARM_T__G__Alarm =
     UI_CHARGING_YELLOW_MIN_ON_MS,
     UI_INPUT_OVERVOLTAGE_THRESHOLD_MV,
     UI_INPUT_OVERVOLTAGE_HYSTERESIS_MV,
-    UI_LOW_BATTERY_ALARM_THRESHOLD_MV,
-    UI_LOW_BATTERY_ALARM_CLEAR_MV,
+    0u, /* [EN] retired id 72 (reserved word) [FA] شناسهٔ بازنشستهٔ ۷۲ */
+    0u, /* [EN] retired id 73 (reserved word) [FA] شناسهٔ بازنشستهٔ ۷۳ */
     UI_BAT_V_MIN_MV,
     UI_BAT_V_MAX_MV,
     0u,
@@ -268,10 +267,6 @@ static void func__Ui_ClampAlarms(void)
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv, 24000u, 32000u);
     UI_ALARM_T__G__Alarm.uint32_t__ovHystMv =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__ovHystMv, 0u, 2000u);
-    UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv, 15000u, 24000u);
-    UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv =
-        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv, 15000u, 24000u);
     UI_ALARM_T__G__Alarm.uint32_t__pctVminMv =
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__pctVminMv, 15000u, 25000u);
     UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv =
@@ -418,6 +413,16 @@ _Static_assert(offsetof(ui_alarm_t, uint32_t__chgPctVminMv) ==
 static uint8_t func__Ui_AlarmParamIndex(uint8_t uint8_t__paramId)
 {
     uint8_t uint8_t__denseCount;
+
+    /* [EN] v1.74: ids 72/73 are retired (the low-battery window moved into
+       Changeover as constants). They are rejected here, so a stale panel or
+       an old backup file cannot write into the reserved words.
+       [FA] شناسه‌های ۷۲/۷۳ بازنشسته‌اند و همین‌جا رد می‌شوند. */
+    if ((uint8_t__paramId >= UI_ALARM_PARAM_RETIRED_LOWBAT_FIRST) &&
+        (uint8_t__paramId <= UI_ALARM_PARAM_RETIRED_LOWBAT_LAST))
+    {
+        return UI_ALARM_PARAM_INDEX_INVALID;
+    }
 
     if ((uint8_t__paramId >= UI_ALARM_PARAM_MIN_ID) &&
         (uint8_t__paramId <= UI_ALARM_PARAM_MAX_ID))
@@ -1729,7 +1734,6 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
     if (measurement_snapshot_t__snap == NULL)
     {
         func__all_off();
-        BOOL__G__UiBatteryAlarmIssued = false;
         BOOL__G__UiInputPresent = false;
         BOOL__G__UiInputOverVoltage = false;
         TICKTYPE_T__G__UiInputOverVoltageStartTick = 0u;
@@ -1747,7 +1751,6 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
     if (bool__snapshotValid == false)
     {
         func__all_off();
-        BOOL__G__UiBatteryAlarmIssued = false;
         BOOL__G__UiInputPresent = false;
         BOOL__G__UiInputOverVoltage = false;
         TICKTYPE_T__G__UiInputOverVoltageStartTick = 0u;
@@ -1763,22 +1766,14 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
     uint32_t__inputVoltageMv = measurement_snapshot_t__snap->v_in_mv;
     uint32_t__batteryVoltageMv = measurement_snapshot_t__snap->v_bat24_mv;
 
-    /* [EN] Update global low-battery alarm flag continuously with hysteresis.
-       Threshold <21000 sets true, >=21200 clears false, otherwise hold.
-       [FA] فلگ سراسری آلارم باتری کم را به‌صورت پیوسته با هیسترزیس به‌روز کن. */
-    if (uint32_t__batteryVoltageMv < UI_ALARM_T__G__Alarm.uint32_t__lowBatThreshMv)
-    {
-        BOOL__G__UiBatteryAlarmIssued = true;
-    }
-    else if (uint32_t__batteryVoltageMv >= UI_ALARM_T__G__Alarm.uint32_t__lowBatClearMv)
-    {
-        BOOL__G__UiBatteryAlarmIssued = false;
-    }
-    else
-    {
-        /* [EN] Keep previous flag in hysteresis band 21000..21200.
-           [FA] فلگ قبلی را در بازه هیسترزیس حفظ کن. */
-    }
+    /* [EN] v1.74 (user order): the low-battery alarm is no longer a UI
+       scenario. It never had an LED face of its own - its only real consumer
+       was the changeover soft cut - so the whole decision, window and
+       hysteresis moved into the Changeover module and nothing is computed or
+       published here any more.
+       [FA] از v1.74 آلارم باتری کم دیگر سناریوی UI نیست: چهرهٔ LED نداشت و
+       تنها مصرف‌کننده‌اش قطعِ نرمِ چنج‌اور بود، پس کل تصمیم و پنجره و
+       هیسترزیس به ماژول Changeover منتقل شد. */
 
     func__Ui_UpdateInputState(uint32_t__inputVoltageMv);
 
@@ -1929,7 +1924,6 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
 void func__Ui_Init(void)
 {
     func__all_off();
-    BOOL__G__UiBatteryAlarmIssued = false;
     BOOL__G__UiInputPresent = false;
     BOOL__G__UiInputOverVoltage = false;
     TICKTYPE_T__G__UiInputOverVoltageStartTick = 0u;

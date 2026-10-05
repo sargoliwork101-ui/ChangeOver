@@ -152,6 +152,15 @@
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   127u
+
+/* [EN] v1.74: ids 72/73 are retired (the low-battery window became a fixed
+   constant inside the Changeover module), so they are carved out of the high
+   persisted range - storing a value no owner can read back would be dead
+   weight in the record. Mirrors ESPLINK_PARAM_RETIRED_LOWBAT_* in esp_link.h;
+   esp_link_nvm.c static-asserts the two pairs agree.
+   [FA] شناسه‌های بازنشستهٔ ۷۲/۷۳ از بازهٔ ذخیره‌شونده بیرون کشیده می‌شوند. */
+#define ESP_LINK_NVM_RETIRED_ID_FIRST        72u
+#define ESP_LINK_NVM_RETIRED_ID_LAST         73u
 #define ESP_LINK_NVM_TRANSIENT_ID_MUTE        76u
 /* [EN] Imbalance runtime slots (scenario 6, v10): persisted but NEVER user
  *      parameters - the module itself writes them; the panel never draws and

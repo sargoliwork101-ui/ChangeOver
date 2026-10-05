@@ -4,7 +4,7 @@
  *          [FA] ماشین حالت مسیر ورودی یا باتری - قطع/وصل با فیلتر ۳ ثانیه.
  *
  * @note    [EN] This module uses ONLY: snapshot.valid, snapshot.v_bat24_mv,
- *              snapshot.input_present, fault_mask, BOOL__G__UiBatteryAlarmIssued.
+ *              snapshot.input_present, fault_mask (the low-battery latch is internal).
  *              No board_pins.h, no HAL, no PB5/PB7, no float/queue/task.
  *              Time conversion ONLY via rtos_time.h (MillisecondsToTicks); tick=1ms assumption is forbidden.
  *              PB11 (BSP_GPIO_PROTECT_BATTERY) is the ONLY logical pin used.
@@ -27,14 +27,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-
-/* ==================== External UI Flag / فلگ خارجی UI ==================== */
-
-/**
- * @brief  [EN] UI-owned global battery alarm flag. Changeover reads only.
- *         [FA] فلگ سراسری در مالکیت UI؛ Changeover فقط می‌خواند.
- */
-extern volatile bool BOOL__G__UiBatteryAlarmIssued;
 
 /* ==================== Static State / وضعیت داخلی ==================== */
 
@@ -63,6 +55,16 @@ static uint32_t TICK_T__G__CutStartTick = 0u;
 static bool BOOL__G__CutTimerActive = false;
 
 /**
+ * @brief  [EN] Internal low-battery latch (v1.74, was the UI flag + link params 72/73).
+ *         Set while v_bat24_mv < CHANGEOVER_BAT_LOW_ALARM_CUT_MV, cleared at or above
+ *         CHANGEOVER_BAT_LOW_ALARM_CLEAR_MV, held in between so the gated cut sees a
+ *         continuous level and not a chattering edge.
+ *         [FA] قفل داخلی باتری کم: زیر ۲۱۰۰۰ میلی‌ولت بسته، در ۲۱۲۰۰ و بالاتر باز،
+ *         و در میان این دو حفظ می‌شود تا قطعِ نرم لرزش نگیرد.
+ */
+static bool BOOL__G__LowBatteryLatched = false;
+
+/**
  * @brief  [EN] Tick at which the reconnect condition became continuously true.
  *         [FA] تیکی که در آن شرط وصل مجدد به‌صورت پیوسته true شد.
  */
@@ -88,6 +90,7 @@ void func__Changeover_Init(void)
     BOOL__G__CutTimerActive = false;
     TICK_T__G__ReconnectStartTick = 0u;
     BOOL__G__ReconnectTimerActive = false;
+    BOOL__G__LowBatteryLatched = false;
 }
 
 /* ==================== Changeover_Evaluate / ارزیابی ==================== */
@@ -200,9 +203,27 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         return APP_STATE_T__G__State;
     }
 
+    /* [EN] v1.74: update the internal low-battery latch with hysteresis before
+          using it. Below 21000 mV it sets, at or above 21200 mV it clears, and in
+          between it holds its previous value.
+       [FA] ابتدا قفل داخلی باتری کم با هیسترزیس به‌روز می‌شود. */
+    if (measurement_snapshot_t__snap->v_bat24_mv < CHANGEOVER_BAT_LOW_ALARM_CUT_MV)
+    {
+        BOOL__G__LowBatteryLatched = true;
+    }
+    else if (measurement_snapshot_t__snap->v_bat24_mv >= CHANGEOVER_BAT_LOW_ALARM_CLEAR_MV)
+    {
+        BOOL__G__LowBatteryLatched = false;
+    }
+    else
+    {
+        /* [EN] Hysteresis band 21000..21200 mV: keep the previous latch value.
+           [FA] بازهٔ هیسترزیس: مقدار قبلی حفظ می‌شود. */
+    }
+
     /* [EN] Evaluate cut conditions (require continuous 3000ms):
-          - gated cut: v <21000 AND UI alarm true
-          - independent cut: v <20800 independent of UI flag
+          - gated cut: v <21000 AND the internal low-battery latch is set
+          - independent cut: v <20800 independent of the latch
        [FA] شرایط قطع ارزیابی می‌شوند. */
     bool__cutCondition = false;
     if (measurement_snapshot_t__snap->v_bat24_mv < CHANGEOVER_BAT_CRITICAL_CUT_MV)
@@ -210,7 +231,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         bool__cutCondition = true;
     }
     else if ((measurement_snapshot_t__snap->v_bat24_mv < CHANGEOVER_BAT_LOW_ALARM_CUT_MV) &&
-             (BOOL__G__UiBatteryAlarmIssued == true))
+             (BOOL__G__LowBatteryLatched == true))
     {
         bool__cutCondition = true;
     }

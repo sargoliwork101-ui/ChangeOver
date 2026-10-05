@@ -2260,11 +2260,22 @@ def test_ui_mirror_v116():
           "the Ui range must be 38..82")
 
     # --- panel: 56 edit fields, guard, mirror, per-bit LEDs, q3, backup ---
-    check(all(f'id="q{i}"' in ino for i in range(27, 83))
-          and all(f'id="a{i}"' in ino for i in list(range(27, 76)) + list(range(77, 83)))
+    # [EN] v1.74 (user order: low battery is not a LED scenario, it belongs to
+    #      changeover and not to the panel): ids 72/73 are retired, so the panel
+    #      must NOT carry fields for them any more - the check flips from
+    #      "they exist" to "they are gone".
+    # [FA] شناسه‌های ۷۲/۷۳ بازنشسته‌اند و نباید کادری در پنل داشته باشند.
+    RETIRED_IDS = (72, 73)
+    editable = [i for i in range(27, 83) if i not in RETIRED_IDS]
+    check(all(f'id="q{i}"' in ino for i in editable)
+          and all(f'id="a{i}"' in ino
+                  for i in editable if i != 76)
           and '<input type="hidden" id="q76"' in ino
-          and 'id="a76"' not in ino,
-          "the settings sub-tab must hold q27..q82 with applied-value spans (76 = hidden mute field)")
+          and 'id="a76"' not in ino
+          and all(f'id="q{i}"' not in ino and f'id="a{i}"' not in ino
+                  for i in RETIRED_IDS),
+          "the settings sub-tab must hold q27..q82 minus the retired 72/73, "
+          "with applied-value spans (76 = hidden mute field)")
     check("const AIDS=" in ino and "const ADEF=" in ino and "u76" in ino,
           "the guard needs the 27..82 id list, the 56 defaults and the u76 refs")
     adef = re.search(r"const ADEF=\[([^\]]*)\]", ino)
@@ -2281,7 +2292,9 @@ def test_ui_mirror_v116():
     # v1.55 (user order): the leftover notice row and the mute button went too.
     # v1.55: ردیف باقی‌مانده و دکمهٔ میوت هم برداشته شدند.
     check('id="uleds"' not in ino and 'leds stick' not in ino
-          and all(f'id="sl{n}r"' in ino and f'id="sl{n}z"' in ino for n in range(1, 7)),
+          and all(f'id="sl{n}r"' in ino and f'id="sl{n}z"' in ino
+                  for n in (1, 2, 3, 4, 6, 7))   # v1.74: card 5 retired
+          and 'id="sl5r"' not in ino,
           "no sticky board mirror left; every scenario card carries its own simulated LEDs and buzzer")
     check(all(f'id="asbb{k}"' in ino for k in range(7)),
           "one LED per fault bit (asbb0..asbb6)")
@@ -2306,8 +2319,9 @@ def test_ui_mirror_v116():
           "was covered the moment it existed - but the human-readable label was NOT, and "
           "it had already been wrong since v1.24 (it still advertised a retired 83..97)")
     check('id="usel"' in ino and "function usel(n)" in ino
-          and all(f'id="ucard{k}"' in ino for k in range(1, 7)),
-          "one selectable card per scenario (6 cards incl. imbalance, single-visible) - no crowded wall of fields")
+          and all(f'id="ucard{k}"' in ino for k in (1, 2, 3, 4, 6, 7)),
+          "one selectable card per scenario (v1.74: 6 cards - 1..4, 6 imbalance, "
+          "7 dead battery; card 5 retired into changeover) - no crowded wall of fields")
     # [EN] v1.33 (user order 2026-10-03: "bring that charger PID inside this
     #      same charge-and-filter tab"). The PID sub-tab is gone as a TAB and
     #      its card now sits in sub-tab 0, so backup moves up to 3. Pinned
@@ -2353,7 +2367,8 @@ def test_ui_mirror_v116():
           and "<b>نظارت باتری</b>" not in s1part
           and "<b>پنجرهٔ ورودی سالم</b>" not in s1part and "<b>سقف‌های ایمنی شارژر</b>" not in s1part
           and "وضعیت آلارم‌ها" not in s1part and "پشتیبان‌گیری" not in s1part
-          and all(f'id="q{i}"' in s1part for i in range(38, 83))
+          and all(f'id="q{i}"' in s1part
+                  for i in range(38, 83) if i not in RETIRED_IDS)
           and all(f'id="q{i}"' in s1part for i in range(27, 33))
           and all(f'id="q{i}"' not in s1part for i in range(33, 38))
           and all(f'id="q{i}"' not in s1part for i in range(83, 99))
@@ -2389,11 +2404,15 @@ def test_ui_mirror_v116():
     check("asb5" in ino and "abf0" not in ino and "abf1" not in ino and "abf2" not in ino and "جریان ۱" in ino and "جریان ۲" in ino
           and "Math.max(t[3],t[10])" not in ino,
           "v1.16c (user order: per-battery current supervision, no max() merge); v1.16k: merged table rows for both currents (fault box kept)")
-    # [EN] Card 5 was renamed "۵ · باتری کم" when the percent ladder moved into
-    #      the discharge card; the old name was pinned here and nobody re-ran it.
-    # [FA] نام کارت ۵ هنگام جابه‌جایی نردبان درصد به کارت دشارژ عوض شد.
-    check("۱ · اضافه‌ولتاژ" in ino and "۵ · باتری کم" in ino and "سناریو ۱ ·" not in ino,
-          "v1.16c (user order: better naming): uniformly numbered scenario picker")
+    # [EN] v1.74 (user order): card 5 (low battery) is gone from the panel -
+    #      the window is a Changeover constant now. The picker keeps the other
+    #      numbers on purpose so every older note and log still points at the
+    #      same scenario.
+    # [FA] کارت ۵ حذف شد؛ شماره‌های بقیه عمداً دست‌نخورده ماندند.
+    check("۱ · اضافه‌ولتاژ" in ino and "۵ · باتری کم" not in ino
+          and 'id="ucard5"' not in ino and "سناریو ۱ ·" not in ino,
+          "v1.74 (user order: low battery belongs to changeover, not the panel): "
+          "the scenario picker has no card 5 any more")
     # [EN] v1.71 (user order: "why is the last discharge step suddenly a duty?
     #      make them all the same shape"): the critical band is now typed like
     #      the other three - count, per-beep duration, own repeat interval,

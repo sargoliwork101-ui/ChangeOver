@@ -63,9 +63,9 @@ void func__TaskUi(void *void_ptr__argument)
         measurement_snapshot_t__snap.valid = false;
 #endif
 
-        /* [EN] UI owns BOOL__G__UiBatteryAlarmIssued and decides it from snapshot.valid + v_bat24_mv only.
-           Changeover reads the flag only.
-           [FA] UI مالک BOOL__G__UiBatteryAlarmIssued است و آن را فقط از valid و v_bat24_mv می‌سازد. */
+        /* [EN] v1.74: the UI no longer owns a low-battery flag - that decision
+           moved inside Changeover. func__Ui_Tick only drives LEDs and the buzzer.
+           [FA] از v1.74 فلگ باتری کم در UI نیست و داخل Changeover تصمیم‌گیری می‌شود. */
         func__Ui_Tick(&measurement_snapshot_t__snap);
 
 #if MODULE_UI

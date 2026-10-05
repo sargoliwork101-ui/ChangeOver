@@ -458,33 +458,13 @@
  */
 #define UI_CHARGING_FULL_EXIT_PERCENT         95u
 
-/* ==================== Low Battery Alarm / آلارم باتری کم ==================== */
-
-/**
- * @brief  [EN] Battery voltage below which the UI low-battery alarm becomes active, in millivolts.
- *         When snapshot is valid and v_bat24_mv is below this threshold the UI asserts
- *         BOOL__G__UiBatteryAlarmIssued continuously until the clear threshold is reached.
- *         [FA] ولتاژی که پایین‌تر از آن آلارم کم‌بود باتری UI فعال می‌شود، بر حسب میلی‌ولت.
- * @note   [EN] Production battery voltage is taken ONLY from snapshot.v_bat24_mv.
- *         [FA] ولتاژ باتری تولید فقط از snapshot.v_bat24_mv خوانده می‌شود.
- */
-#define UI_LOW_BATTERY_ALARM_THRESHOLD_MV 21000u
-
-/**
- * @brief  [EN] Battery voltage at or above which the UI low-battery alarm is cleared, in millivolts.
- *         Provides hysteresis with the threshold (21000 -> 21200) to keep the flag continuous.
- *         [FA] ولتاژی که در آن یا بالاتر از آن آلارم کم‌بود باتری پاک می‌شود، بر حسب میلی‌ولت.
- */
-#define UI_LOW_BATTERY_ALARM_CLEAR_MV   21200u
-
-/* ==================== UI Global Battery Alarm Flag / فلگ سراسری آلارم باتری UI ==================== */
-
-/**
- * @brief  [EN] Global flag owned by the UI: true while a valid low-battery alarm is active.
- *         Changeover reads it only; UI owns and updates it. Continuous level, not a pulse.
- *         [FA] فلگ سراسری در مالکیت UI: هنگام آلارم معتبر باتری کم مقدار true دارد.
- */
-extern volatile bool BOOL__G__UiBatteryAlarmIssued;
+/* [EN] v1.74 (user order): the low-battery alarm used to live here as a UI
+   scenario (threshold/clear constants, two link params and the global flag
+   BOOL__G__UiBatteryAlarmIssued). It had no LED face and its only consumer
+   was the changeover soft cut, so the whole thing moved to
+   Firmware/Modules/Changeover/changeover.h as fixed constants.
+   [FA] آلارم باتری کم از v1.74 اینجا نیست؛ کل آن (آستانه، پاک‌شدن و فلگ)
+   به‌صورت ثابت به ماژول Changeover منتقل شد. */
 
 /* ==================== Percentage constants / ثابت‌های درصد ==================== */
 
@@ -660,8 +640,21 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
 #define UI_ALARM_PARAM_YELLOW_MIN_ON_MS   69u  /* ms, 0..68 */
 #define UI_ALARM_PARAM_OV_THRESH_MV        70u  /* mV, 24000..32000 */
 #define UI_ALARM_PARAM_OV_HYST_MV          71u  /* mV, 0..2000 */
-#define UI_ALARM_PARAM_LOWBAT_THRESH_MV    72u  /* mV, 15000..24000, <= 73 */
-#define UI_ALARM_PARAM_LOWBAT_CLEAR_MV     73u  /* mV, 15000..24000, >= 72 */
+/* [EN] v1.74 (user order: "this must not sit among the LED scenarios - it
+   belongs to changeover, that is where we need it, and we do not need it in
+   the panel either"). Ids 72/73 were the low-battery alarm window. The UI
+   never had a face for them: the only consumer was the changeover soft cut,
+   so the window moved into the Changeover module as fixed constants and
+   these two ids are RETIRED - no owner, no panel field, never persisted.
+   They are deliberately NOT reused and the ids above them are deliberately
+   NOT renumbered: every stored NVM record, backup file and bench log keeps
+   its meaning across this change.
+   [FA] شناسه‌های ۷۲/۷۳ (پنجرهٔ آلارم باتری کم) بازنشسته شدند: تنها مصرف‌کننده
+   قطعِ نرمِ چنج‌اور بود، پس پنجره به‌صورت ثابت داخل ماژول Changeover رفت.
+   عمداً بازاستفاده نمی‌شوند و شناسه‌های بالاتر هم عمداً شماره‌گذاری دوباره
+   نمی‌شوند تا هر رکورد NVM و فایل پشتیبان و لاگ بنچ معنی‌اش را حفظ کند. */
+#define UI_ALARM_PARAM_RETIRED_LOWBAT_FIRST 72u
+#define UI_ALARM_PARAM_RETIRED_LOWBAT_LAST  73u
 #define UI_ALARM_PARAM_PCT_VMIN_MV         74u  /* mV, 15000..25000, <= 75-100, DISCHARGE map only since v1.49 */
 #define UI_ALARM_PARAM_PCT_VMAX_MV         75u  /* mV, 25000..32000, >= 74+100, DISCHARGE map only since v1.49 */
 #define UI_ALARM_PARAM_BUZZER_MUTE         76u  /* 0/1, panel-session only (RAM); never persisted, cleared on reboot; scenarios only */
@@ -753,8 +746,13 @@ typedef struct
     uint32_t uint32_t__yellowMinOnMs;
     uint32_t uint32_t__ovThreshMv;
     uint32_t uint32_t__ovHystMv;
-    uint32_t uint32_t__lowBatThreshMv;
-    uint32_t uint32_t__lowBatClearMv;
+    /* [EN] v1.74: the two retired low-battery words stay as reserved padding
+       so the dense id->word index (id - 38) that the whole block relies on
+       does not move. Nothing reads or writes them.
+       [FA] دو واژهٔ بازنشسته فقط به‌عنوان پرکننده می‌مانند تا نمایهٔ متراکم
+       (شناسه منهای ۳۸) جابه‌جا نشود؛ هیچ‌کس آن‌ها را نمی‌خواند. */
+    uint32_t uint32_t__retiredLowBatThreshMv;
+    uint32_t uint32_t__retiredLowBatClearMv;
     uint32_t uint32_t__pctVminMv;
     uint32_t uint32_t__pctVmaxMv;
     uint32_t uint32_t__buzzerMute;

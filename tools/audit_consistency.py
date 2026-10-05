@@ -155,6 +155,11 @@ MAIN_C = read("CubeIDE/Core/Src/main.c")
 
 COUNT = define(ESP_H, "ESPLINK_PARAM_COUNT")
 
+# [EN] v1.74: parameter ids that exist as defines but have no owner any more.
+#      The low-battery window moved into the Changeover module as constants.
+# [FA] شناسه‌های بازنشسته: تعریف می‌مانند ولی هیچ مالکی ندارند.
+RETIRED_IDS = {72, 73}
+
 
 # ================================================================ 1. ids
 def sec_ids():
@@ -176,6 +181,29 @@ def sec_ids():
     over = [i for i in ids if i >= COUNT]
     ok(not over, "parameter id at or beyond COUNT",
        f"{[(i, ids[i]) for i in over]} vs COUNT={COUNT}")
+
+    # [EN] v1.74 (user order: low battery is not a LED scenario, it belongs in
+    #      changeover and not in the panel): ids 72/73 are RETIRED. They keep
+    #      their defines - as holes, so no id above them shifts meaning - but
+    #      nothing may own them any more: no panel field, no UI acceptance, no
+    #      NVM slot. This invariant is what stops them creeping back.
+    # [FA] شناسه‌های بازنشسته باید در همه‌جا بی‌مالک بمانند.
+    retired = sorted(RETIRED_IDS)
+    panel = read("esp_link_panel/plink_panel.h")
+    ok(all(f'id="q{i}"' not in panel and f'id="a{i}"' not in panel
+           for i in retired),
+       "a retired parameter still has a field in the panel",
+       f"retired ids {retired} must not be editable from the panel")
+    uic = read("Firmware/Modules/Ui/ui_led.c")
+    ok("UI_ALARM_PARAM_RETIRED_LOWBAT_FIRST" in uic
+       and "UI_ALARM_PARAM_INDEX_INVALID" in uic,
+       "the UI module no longer rejects the retired ids",
+       "func__Ui_AlarmParamIndex() must refuse 72/73 so a stale panel or an "
+       "old backup cannot write into the reserved words")
+    nvmc = read("Firmware/Modules/EspLink/esp_link_nvm.c")
+    ok("ESP_LINK_NVM_RETIRED_ID_FIRST" in nvmc,
+       "the retired ids are still persisted",
+       "func__EspLink_NvmParamPersisted() must exclude the retired ids")
     return ids
 
 

@@ -6,10 +6,9 @@
  * @note    [EN] When MODULE_CHANGEOVER is enabled this task obtains the real
  *              Measurement snapshot via func__Measurement_GetSnapshot() and
  *              passes it with the fault bits to func__Changeover_Evaluate().
- *              The UI-owned flag BOOL__G__UiBatteryAlarmIssued is global:
- *              UI (task_ui / ui_led) owns and updates it, Changeover reads
- *              it directly - no duplicate flag or API is created here.
- *          [FA] فلگ UI به‌صورت سراسری در اختیار Changeover است؛ API تکراری ساخته نمی‌شود.
+ *              v1.74: the low-battery decision is no longer a UI flag; it is a
+ *              latch internal to Changeover, so this task passes nothing extra.
+ *          [FA] از v1.74 تصمیم باتری کم داخل خود Changeover است و این تسک چیز اضافه‌ای نمی‌فرستد.
  */
 
 #include "rtos_tasks.h"
@@ -184,10 +183,9 @@ void func__TaskControl(void *void_ptr__argument)
             }
 #endif
 #if MODULE_CHANGEOVER
-            /* [EN] UI owns BOOL__G__UiBatteryAlarmIssued and updates it in func__Ui_Tick()
-               from snapshot.v_bat24_mv. Changeover reads the same global flag directly;
-               no extra wiring is needed in this task beyond the snapshot + faults.
-               [FA] UI مالک فلگ است و Changeover همان فلگ سراسری را می‌خواند. */
+            /* [EN] v1.74: Changeover derives its own low-battery latch from
+               snapshot.v_bat24_mv, so snapshot + faults is all it needs.
+               [FA] از v1.74 خود Changeover قفل باتری کم را می‌سازد. */
             app_state_t__state = func__Changeover_Evaluate(&measurement_snapshot_t__snap, fault_mask_t__faults);
 #endif
 #if MODULE_IMBALANCE

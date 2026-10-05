@@ -139,7 +139,7 @@
     "#            ui_run_crit_cnt,ui_run_std_dur,ui_run_tri_dur,ui_run_crit_dur,\n" \
     "#            ui_run_std_cnt,ui_run_dbl_cnt,ui_run_tri_cnt,ui_run_gap,\n" \
     "#            ui_green_per,ui_green_min,ui_yellow_per,ui_yellow_min,\n" \
-    "#            ui_ov_thr,ui_ov_hyst,ui_lowbat_thr,ui_lowbat_clr,\n" \
+    "#            ui_ov_thr,ui_ov_hyst,retired_72,retired_73,\n" \
     "#            ui_pct_vmin,ui_pct_vmax,ui_mute,\n" \
     "#            ui_chg_full_enter,ui_chg_full_exit,ui_chg_hyst,\n" \
     "#            ui_run_hyst,ui_run_zero,ui_run_one\n" \

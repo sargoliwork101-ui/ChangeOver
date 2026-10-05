@@ -4,7 +4,7 @@
  *          [FA] ماشین حالت مسیر ورودی یا باتری - فقط با API منطقی BSP.
  *
  * @note    [EN] This module uses ONLY: snapshot.valid, snapshot.v_bat24_mv,
- *              snapshot.input_present, fault_mask, BOOL__G__UiBatteryAlarmIssued
+ *              snapshot.input_present, fault_mask, an internal low-battery latch
  *              and (MODULE_IMBALANCE) the func__Imbalance_GetOutputs() veto
  *              flag. Time conversion uses rtos_time.h only, tick=1ms
  *              assumption is forbidden.
@@ -36,6 +36,18 @@ void func__Changeover_Init(void);
  *         [FA] ولتاژ باتری که پایین‌تر از آن قطع با گیت آلارم UI ممکن است، بر حسب میلی‌ولت.
  */
 #define CHANGEOVER_BAT_LOW_ALARM_CUT_MV   21000u
+
+/**
+ * @brief  [EN] Battery voltage at or above which the internal low-battery latch clears, in millivolts.
+ *         Range 0..40000 mV; effect: the latch set below 21000 mV stays set until v_bat24_mv >= 21200.
+ *         v1.74: this window used to be UI link parameters 72/73; the user ordered it into
+ *         Changeover as a fixed constant because this module is its only consumer and it must
+ *         not be settable from the panel.
+ *         [FA] ولتاژی که در آن یا بالاتر از آن قفلِ داخلیِ باتری کم باز می‌شود، بر حسب میلی‌ولت.
+ *         این پنجره قبلاً پارامترهای ۷۲/۷۳ پنل بود و طبق دستور کاربر به‌صورت ثابت داخل همین
+ *         ماژول آمد، چون تنها مصرف‌کننده‌اش همین‌جاست و نباید از پنل تنظیم شود.
+ */
+#define CHANGEOVER_BAT_LOW_ALARM_CLEAR_MV 21200u
 
 /**
  * @brief  [EN] Battery voltage below which the independent cut triggers regardless of UI flag, in millivolts.

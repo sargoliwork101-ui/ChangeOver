@@ -35,6 +35,12 @@
    [FA] حلقهٔ عکس‌فوری کل فضای دوبیتی را می‌گرداند چون اسلات‌های
    زمان‌اجرا بدون پارامتر بودن ذخیره می‌شوند؛ اگر مجموعهٔ ذخیره‌شونده از
    رکورد بزرگ‌تر شد، «بیلد» بشکند نه برد. */
+#ifdef ESPLINK_PARAM_RETIRED_LOWBAT_FIRST
+_Static_assert((ESP_LINK_NVM_RETIRED_ID_FIRST == ESPLINK_PARAM_RETIRED_LOWBAT_FIRST) &&
+               (ESP_LINK_NVM_RETIRED_ID_LAST == ESPLINK_PARAM_RETIRED_LOWBAT_LAST),
+               "NVM retired id window must match the link retired id window");
+#endif
+
 _Static_assert((((ESP_LINK_NVM_PERSISTED_ID_MAX_LOW + 1u) +
                  (ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH -
                   ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH + 1u - 1u) +
@@ -105,8 +111,18 @@ bool func__EspLink_NvmParamPersisted(uint8_t uint8_t__paramId)
        v10 (v1.43): the imbalance runtime slots 200..202 persist too - the
        episode budget must survive power loss, or a power cycle would be a
        free verdict eraser.
+       v1.74: ids 72/73 are RETIRED (the low-battery window became a
+       Changeover constant). They have no owner any more, so persisting them
+       would store a value nothing can read back - they are excluded here.
        [FA] شناسهٔ ۷۶ گذرا و کنار گذاشته شده است. نسخه۱۰: اسلات‌های
-       زمان‌اجرا عدم‌توازن هم ذخیره می‌شوند تا قطع برق قضاوت را پاک نکند. */
+       زمان‌اجرا عدم‌توازن هم ذخیره می‌شوند تا قطع برق قضاوت را پاک نکند.
+       v1.74: شناسه‌های بازنشستهٔ ۷۲/۷۳ هم ذخیره نمی‌شوند. */
+    if ((uint8_t__paramId >= ESP_LINK_NVM_RETIRED_ID_FIRST) &&
+        (uint8_t__paramId <= ESP_LINK_NVM_RETIRED_ID_LAST))
+    {
+        return false;
+    }
+
     return ((uint8_t__paramId <= ESP_LINK_NVM_PERSISTED_ID_MAX_LOW) ||
             (((uint8_t__paramId >= ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH) &&
               (uint8_t__paramId <= ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH)) &&
