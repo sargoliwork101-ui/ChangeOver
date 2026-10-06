@@ -447,6 +447,11 @@ function testImbalance(win, doc) {
           c5.querySelector('#q115') && c5.querySelector('#q116') &&
           c5.querySelector('#s5b') && c5.querySelector('#s5z'),
           'scenario 5 has separate, ordered lamp and beep boxes');
+    const c5beep = c5.querySelector('#q115').closest('.bqr');
+    check(c5beep.querySelectorAll('label,.shv').length === 4 &&
+          c5beep.textContent.indexOf('تعداد بوق در هر الگو') >= 0 &&
+          c5beep.textContent.indexOf('گپ بین بوق‌ها') >= 0,
+          'scenario 5 shows all four beep characteristics, including fixed count and gap');
     check(win.getComputedStyle(doc.getElementById('s5z')).direction === 'rtl' &&
           win.getComputedStyle(doc.getElementById('s5b')).textAlign === 'right',
           'scenario 5 result messages are explicitly right-to-left');
