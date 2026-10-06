@@ -365,7 +365,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build c2af7ed</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 30318b9</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -663,7 +663,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 <div class="sim" id="sim4"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims4" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb4" onclick="simtog(4)">توقف</button></div><div class="simb"><span class="sl r" id="sl4r"></span><span class="sl g" id="sl4g"></span><span class="sl y" id="sl4y"></span><span class="szz" id="sl4z">🔇</span><span class="simt" id="sl4t"></span></div><div class="simc"><label>درصد باتری برای شبیه‌سازی<input type="range" id="simp4" min="0" max="100" value="50" oninput="simlbl(4)"><b id="simv4">50٪</b></label></div></div>
 <div class="sec">۱) حد ولتاژ باتری — نردبان درصدِ شارژ <span class="lb">(mV؛ مستقل از نردبان دشارژ — v1.49)</span></div>
-<div class="ds">از نسخهٔ ۱٫۴۹ (دستور کاربر) این دو عدد <b>فقط مال سمت شارژ</b>اند: درصدی که حین شارژ نشان داده می‌شود و نقطهٔ «فول» (۷۷/۷۸) از همین‌ها ساخته می‌شود. نردبان <b>دشارژ</b> جفت جداگانهٔ خودش را دارد (کارت ۳ · شناسه‌های ۷۴/۷۵) و دیگر با این دو تکان نمی‌خورد. پیش‌فرض هر دو جفت یکی است، پس تا وقتی خودتان عوض نکنید هیچ رفتاری تغییر نمی‌کند.</div>
+<div class="ds">در این بخش، نگاشت درصدِ سمت شارژ و آستانه‌های ورود و خروج «فول» جداگانه تنظیم می‌شوند.</div>
 <div class="bqr">
 <label>حد پایین — ۰٪ (mV)<input type="number" id="q119" step="100" min="15000" max="25000"><span class="lb" id="a119"></span></label>
 <label>حد بالا — ۱۰۰٪ (mV)<input type="number" id="q120" step="100" min="25000" max="32000"><span class="lb" id="a120"></span></label>
