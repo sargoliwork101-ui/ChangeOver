@@ -60,4 +60,22 @@ done
 echo "--- ESP sketch (C++) / اسکچ ESP ---"
 ./esp_link_panel/Tester/run_esp_tests.sh
 
+# [EN] Module host testers (tidy-up 2026-10-05): the UI, Charger and
+#      Imbalance testers existed but no gate ever ran them, so a red test
+#      could sit in the tree unnoticed. They are hardware-free, take a few
+#      seconds, and fail the gate like any compile error. They do NOT
+#      replace the real board tests recorded in each module Excel.
+# [FA] تست‌های هاست ماژول‌ها: تسترهای UI، شارژر و عدم‌توازن وجود داشتند اما
+#      هیچ دروازه‌ای اجرایشان نمی‌کرد و تست قرمز بی‌سروصدا در درخت می‌ماند.
+#      بدون سخت‌افزارند و مثل خطای کامپایل دروازه را می‌شکنند. جایگزین تست
+#      واقعی برد که در Excel هر ماژول ثبت می‌شود نیستند.
+echo "--- UI host tests / تست هاست UI ---"
+python3 Firmware/Modules/Ui/Tester/host_test_ui.py
+
+echo "--- Charger host tests / تست هاست شارژر ---"
+python3 Firmware/Modules/Charger/Tester/host_test_charger.py
+
+echo "--- Imbalance host test / تست هاست عدم‌توازن ---"
+./Firmware/Modules/Imbalance/Tester/run_host_test_imbalance.sh
+
 echo "HOST SYNTAX CHECK PASSED / بررسی syntax سمت Host موفق بود"
