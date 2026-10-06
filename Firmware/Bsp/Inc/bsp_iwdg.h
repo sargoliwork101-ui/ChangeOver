@@ -55,6 +55,8 @@ typedef enum
     BSP_IWDG_SLOT_COUNT      = 4
 } bsp_iwdg_slot_t;
 
+/* ==================== BspIwdg_Init ==================== */
+
 /**
  * @brief  [EN] Start the LSI, program /32 + reload 1250, freeze on core
  *              halt and start the watchdog. Called once from main() before
@@ -71,6 +73,8 @@ typedef enum
  */
 void func__BspIwdg_Init(void);
 
+/* ==================== BspIwdg_CheckIn ==================== */
+
 /**
  * @brief  [EN] Record one proof-of-life of a supervised task. Calls for slots
  *              that are not expected in this module combination are ignored.
@@ -81,6 +85,8 @@ void func__BspIwdg_Init(void);
  */
 void func__BspIwdg_CheckIn(bsp_iwdg_slot_t bsp_iwdg_slot_t__slot,
                            uint32_t uint32_t__nowMs);
+
+/* ==================== BspIwdg_PollKick ==================== */
 
 /**
  * @brief  [EN] Refresh the watchdog if and only if every expected slot

@@ -34,6 +34,11 @@
  *      نمی‌چرخد. */
 #define BSP_FLASH_SPIN_LIMIT           5000000u
 
+/* [EN] Largest single program burst accepted, in halfwords: one 2 KiB NVM
+ *      bank. Bigger requests are a caller bug, not a long write.
+ * [FA] بزرگ‌ترین نوشتن مجاز بر حسب نیم‌کلمه: یک بانک ۲KB. */
+#define BSP_FLASH_PROGRAM_MAX_HALFWORDS 1024u
+
 /* ==================== BspFlash private helpers ==================== */
 
 /**
@@ -92,6 +97,33 @@ static bool func__BspFlash_WaitIdle(void)
 
 /* ==================== BspFlash_ErasePage ==================== */
 
+/**
+ * @brief  [EN] Erase one 1 KiB main-flash page. The caller may pass any
+ *              address inside the page; it is rounded down to the page
+ *              boundary here. The sequence is the one the reference manual
+ *              requires: unlock, wait for idle, set PER and the page
+ *              address, strobe START, wait for the busy flag to drop, check
+ *              the error flags, then lock again - the lock is restored on
+ *              every exit path, so a failed erase can never leave the flash
+ *              controller open. An address outside the region this NVM
+ *              layout owns is refused before anything is touched.
+ *         [FA] یک صفحهٔ یک‌کیلوبایتی فلش اصلی را پاک می‌کند. فراخوان می‌تواند
+ *              هر آدرسی داخل صفحه بدهد؛ همین‌جا به مرز صفحه گرد می‌شود. ترتیب
+ *              کار همانی است که رفرنس‌منوال می‌خواهد: باز کردن قفل، انتظار
+ *              بیکاری، ست‌کردن PER و آدرس صفحه، زدن START، انتظار افتادن پرچم
+ *              مشغول، بررسی پرچم‌های خطا و بعد قفل دوباره؛ قفل در همهٔ مسیرهای
+ *              خروج برگردانده می‌شود تا پاک‌کردن ناموفق هرگز کنترلر فلش را باز
+ *              رها نکند. آدرس بیرون از ناحیه‌ای که این چیدمان NVM مالکش است،
+ *              پیش از هر دست‌زدنی رد می‌شود.
+ * @param  uint32_t__pageAddress [EN] Any address inside the target page,
+ *                                   must lie in the NVM region /
+ *                                   هر آدرسی داخل صفحهٔ هدف، باید در ناحیهٔ
+ *                                   NVM باشد
+ * @return bool [EN] true when the page was erased and no error flag was
+ *                   raised, false on a rejected address or a controller
+ *                   error / اگر صفحه پاک شد و پرچم خطایی بالا نرفت true،
+ *                   و با آدرس ردشده یا خطای کنترلر false
+ */
 bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
 {
     bool bool__ok;
@@ -99,18 +131,20 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
     /* [EN] Main-flash 1 KiB page granularity, whole 64 KiB bank.
        [FA] اندازهٔ صفحهٔ فلش اصلی ۱KB است، کل بنک ۶۴KB. */
     /* [EN] Range + alignment guards (full-program audits 2026-09-26/27):
-       only the last two 1 KiB pages (0x0800F800/0x0800FC00, esp_link_nvm.h)
-       belong to NVM and the address must be page-aligned - F1 erases by AR
+       only the data window BSP_FLASH_STORAGE_BASE_ADDR..END (bsp_flash.h,
+       the single source of truth) may be erased and the address must be
+       page-aligned - F1 erases by AR
        content, not by masking, so an unaligned or out-of-range address
        would erase an unintended page. A caller bug must never erase the
        application area.
-       [FA] گارد بازه و تراز (ممیزی ۲۰۲۶-۰۹-۲۶/۲۷): فقط دو صفحهٔ آخر ۱KB
-       مال NVM است و آدرس باید تراز باشد - F1 با محتوای AR پاک می‌کند نه
+       [FA] گارد بازه و تراز: فقط پنجرهٔ دادهٔ ‎bsp_flash.h‎ پاک می‌شود و
+       آدرس باید تراز باشد - F1 با محتوای AR پاک می‌کند نه
        با ماسک‌کردن، پس آدرس ناتراز یا خارج از بازه صفحهٔ اشتباه را پاک
        می‌کرد و باگ فراخواننده هرگز نباید برنامه را پاک کند. */
-    if ((uint32_t__pageAddress < 0x0800F800u) ||
-        (uint32_t__pageAddress > 0x0800FC00u) ||
-        ((uint32_t__pageAddress & 0x3FFu) != 0u))
+    if ((uint32_t__pageAddress < BSP_FLASH_STORAGE_BASE_ADDR) ||
+        (uint32_t__pageAddress >
+         (BSP_FLASH_STORAGE_END_ADDR - BSP_FLASH_PAGE_SIZE_BYTES)) ||
+        ((uint32_t__pageAddress & (BSP_FLASH_PAGE_SIZE_BYTES - 1u)) != 0u))
     {
         return false;
     }
@@ -132,6 +166,41 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
 
 /* ==================== BspFlash_ProgramHalfWords ==================== */
 
+/**
+ * @brief  [EN] Program a run of 16-bit halfwords into main flash. The
+ *              STM32F1 flash controller can only be written a halfword at a
+ *              time, which is why the public contract is in halfwords and
+ *              not bytes. Each write unlocks, sets PG, stores the halfword,
+ *              waits for busy to clear and checks the error flags; the
+ *              first failure aborts the loop so a half-written record is
+ *              never reported as success, and the controller is locked
+ *              again on every exit path. Writes are range-checked against
+ *              the two 1 KiB pages this NVM layout owns, so a wild address
+ *              cannot reach program code.
+ *         [FA] رشته‌ای از نیم‌کلمه‌های ۱۶ بیتی را در فلش اصلی می‌نویسد. کنترلر
+ *              فلش ‎STM32F1‎ فقط نیم‌کلمه‌ای می‌نویسد و قرارداد عمومی هم به همین
+ *              دلیل نیم‌کلمه‌ای است نه بایتی. هر نوشتن قفل را باز می‌کند، PG را
+ *              ست می‌کند، نیم‌کلمه را می‌نویسد، منتظر پاک‌شدن پرچم مشغول می‌ماند
+ *              و پرچم‌های خطا را می‌بیند؛ اولین شکست حلقه را می‌شکند تا رکورد
+ *              نیمه‌نوشته هرگز موفق گزارش نشود و قفل در همهٔ مسیرهای خروج
+ *              برمی‌گردد. آدرس در برابر دو صفحهٔ یک‌کیلوبایتیِ متعلق به این
+ *              چیدمان NVM بررسی می‌شود تا آدرس ولگرد به کد برنامه نرسد.
+ * @param  uint32_t__address   [EN] Even start address inside the NVM
+ *                                 region (halfword aligned) /
+ *                                 آدرس شروع زوج داخل ناحیهٔ NVM
+ * @param  uint16_t__A__Data   [EN] Source array of halfwords, read-only,
+ *                                 must hold at least count entries /
+ *                                 آرایهٔ مبدأ نیم‌کلمه‌ها، فقط-خواندنی، باید
+ *                                 دست‌کم به تعداد count عضو داشته باشد
+ * @param  uint32_t__count     [EN] Number of halfwords to program; 0 is a
+ *                                 valid no-op /
+ *                                 تعداد نیم‌کلمه‌ها؛ صفر معتبر و بی‌اثر است
+ * @return bool [EN] true when every halfword was programmed without an
+ *                   error flag, false on a rejected range or the first
+ *                   controller error /
+ *                   اگر همهٔ نیم‌کلمه‌ها بدون پرچم خطا نوشته شدند true، و با
+ *                   بازهٔ ردشده یا نخستین خطای کنترلر false
+ */
 bool func__BspFlash_ProgramHalfWords(uint32_t uint32_t__address,
                                      const uint16_t *uint16_t__A__Data,
                                      uint32_t uint32_t__count)
@@ -139,17 +208,16 @@ bool func__BspFlash_ProgramHalfWords(uint32_t uint32_t__address,
     bool bool__ok = true;
 
     /* [EN] Range guard (full-program audit 2026-09-27): the NVM layout
-       owns 0x0800F800..0x0800FFFF (last two 1 KiB pages, see
-       esp_link_nvm.h) - a caller bug must never program the application
-       area. The end address cannot wrap: count is bounded by the NVM
+       owns BSP_FLASH_STORAGE_BASE_ADDR..END (bsp_flash.h) - a caller bug
+       must never program the application area. The end address cannot wrap: count is bounded by the NVM
        record size (<< 2^31 halfwords).
-       [FA] گارد بازه (ممیزی کل برنامه): چیدمان NVM مالک
-       ‎0x0800F800..0x0800FFFF‎ است (دو صفحهٔ ۱KB آخر) - باگ فراخواننده
-       هرگز نباید ناحیهٔ برنامه را بنویسد. */
+       [FA] گارد بازه: چیدمان NVM مالک پنجرهٔ دادهٔ ‎bsp_flash.h‎ است - باگ
+       فراخواننده هرگز نباید ناحیهٔ برنامه را بنویسد. */
     if ((uint16_t__A__Data == NULL) || ((uint32_t__address & 1u) != 0u) ||
-        (uint32_t__count > 1024u) ||
-        (uint32_t__address < 0x0800F800u) ||
-        ((uint32_t__address + (uint32_t__count * 2u)) > 0x08010000u))
+        (uint32_t__count > BSP_FLASH_PROGRAM_MAX_HALFWORDS) ||
+        (uint32_t__address < BSP_FLASH_STORAGE_BASE_ADDR) ||
+        ((uint32_t__address + (uint32_t__count * 2u)) >
+         BSP_FLASH_STORAGE_END_ADDR))
     {
         return false;
     }

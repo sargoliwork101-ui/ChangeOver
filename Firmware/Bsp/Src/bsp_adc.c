@@ -91,8 +91,15 @@ static ADC_HandleTypeDef ADC_HANDLETYPEDEF__G__HadcSync = {0};
  *      [FA] وقتی بک‌اند سنکرون ADC2 از init + کالیبراسیون عبور کند true. */
 static bool BOOL__G__SyncReady = false;
 
-/* [EN] Hardware-filled circular DMA buffer: 2 frames x 5 channels.
- *      [FA] بافر چرخشی پرشدهٔ سخت‌افزاری: ۲ فریم x ۵ کانال. */
+/* [EN] Hardware-filled circular DMA buffer: BSP_ADC_DMA_FRAME_COUNT frames of
+ *      BSP_ADC_CHANNEL_COUNT samples each (2 x 6 today). Full-program audit
+ *      2026-10-05: this used to be written out as "2 frames x 5 channels",
+ *      left over from before the VREFINT channel was added - the size itself
+ *      was always correct because it is derived from the defines.
+ *      [FA] بافر چرخشی پرشدهٔ سخت‌افزاری: ‎BSP_ADC_DMA_FRAME_COUNT‎ فریم که هر
+ *      کدام ‎BSP_ADC_CHANNEL_COUNT‎ نمونه دارد (امروز ‎2 x 6‎). ممیزی
+ *      ۲۰۲۶-۱۰-۰۵: متن قبلی «۲ فریم × ۵ کانال» بازماندهٔ پیش از افزوده‌شدن
+ *      کانال VREFINT بود؛ خود اندازه همیشه درست بوده چون از دیفاین‌ها می‌آید. */
 static volatile uint16_t UINT16_T__G__DmaBuffer[BSP_ADC_DMA_SAMPLE_COUNT];
 
 /* [EN] Set when calibration and DMA start succeed.
@@ -436,7 +443,8 @@ bool func__BspAdc_IsFrameReady(void)
 /* ==================== BspAdc_GetRaw ==================== */
 
 /**
- * @brief  [EN] Copy the newest completed five-sample frame. DMA CNDTR
+ * @brief  [EN] Copy the newest completed frame (BSP_ADC_CHANNEL_COUNT
+ *              samples, six today). DMA CNDTR
  *              selects the half not being written; the counter is checked
  *              before and after the copy so a moving half-buffer boundary
  *              is rejected. Afterwards the two charge-current positions
@@ -446,7 +454,8 @@ bool func__BspAdc_IsFrameReady(void)
  *              both stages' switching edges and their ringing). When a
  *              synchronized sample cannot be captured, the asynchronous
  *              scan value of that position stays as fallback.
- *         [FA] جدیدترین فریم کامل پنج‌نمونه‌ای را کپی می‌کند: CNDTR نیمه‌ای
+ *         [FA] جدیدترین فریم کامل (به اندازهٔ ‎BSP_ADC_CHANNEL_COUNT‎ نمونه،
+ *              امروز شش) را کپی می‌کند: CNDTR نیمه‌ای
  *              را که نوشته نمی‌شود انتخاب می‌کند و شمارنده قبل/بعد بررسی
  *              می‌شود تا مرز متحرک رد شود. بعد دو جایگاه جریان شارژ با
  *              نمونه‌های تازهٔ سنکرون وسط ON از ADC2 جایگزین می‌شوند (هر
@@ -491,10 +500,15 @@ bool func__BspAdc_GetRaw(uint16_t uint16_t__out[BSP_ADC_CHANNEL_COUNT])
             continue;
         }
 
-        /* [EN] CNDTR > 5 means DMA writes the first half, so the second half
-           is complete. CNDTR <= 5 means the first half is complete.
-           [FA] اگر CNDTR بزرگ‌تر از ۵ باشد DMA در نیمهٔ اول می‌نویسد، پس
-           نیمهٔ دوم کامل است. اگر CNDTR <= ۵ باشد نیمهٔ اول کامل است. */
+        /* [EN] CNDTR above one frame means DMA is still writing the first
+           half, so the second half is the complete one; at or below one
+           frame the first half is complete. The threshold is the define,
+           never a hard-coded 5 (full-program audit 2026-10-05: the prose
+           said 5 while the code already compared against the define).
+           [FA] اگر CNDTR از یک فریم بیشتر باشد DMA هنوز در نیمهٔ اول
+           می‌نویسد، پس نیمهٔ دوم کامل است؛ اگر کمتر یا مساوی یک فریم باشد
+           نیمهٔ اول کامل است. آستانه همان دیفاین است نه عدد ثابت ۵ (ممیزی
+           ۲۰۲۶-۱۰-۰۵: متن ۵ می‌گفت ولی کد از قبل با دیفاین مقایسه می‌کرد). */
         if (uint32_t__dmaCounterBefore > BSP_ADC_CHANNEL_COUNT)
         {
             uint32_t__sourceOffset = BSP_ADC_CHANNEL_COUNT;

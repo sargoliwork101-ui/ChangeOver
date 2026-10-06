@@ -830,11 +830,11 @@ def test_charge_profile_v112():
           "GetParam must route all 7 profile ids to Charger_GetProfileParam")
 
     # --- ESP panel: 99 params, third tab with 7 fields + descriptions, 150-col CSV, vin carry ---
-    check(re.search(r"#define ESP_PARAM_COUNT\s+128u", ino), "panel ESP_PARAM_COUNT must be 128 (v1.72: +3 dead-battery ids 125..127)")
+    check(re.search(r"#define ESP_PARAM_COUNT\s+132u", ino), "panel ESP_PARAM_COUNT must be 132 (v1.80: +4 scenario-6 lamp/buzzer ids 128..131)")
     mn = re.search(r"INT32_T__G__ParamMin\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     mx = re.search(r"INT32_T__G__ParamMax\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(mn and mx and len(mn.group(1).split(",")) == 128 and len(mx.group(1).split(",")) == 128,
-          "panel min/max tables must carry 128 entries (outer envelope for ids 20..26, 27..82, 83..92, 93..107, 108..118, 119..124 and 125..127)")
+    check(mn and mx and len(mn.group(1).split(",")) == 132 and len(mx.group(1).split(",")) == 132,
+          "panel min/max tables must carry 128 entries (outer envelope for ids 20..26, 27..82, 83..92, 93..107, 108..118, 119..124 and 125..127 and 128..131)")
     check('<button data-t="2">تنظیمات</button>' in ino, "third nav tab must exist (v1.14b: renamed from تنظیمات شارژ when the filter windows moved in)")
     # [EN] v1.33 (user order 2026-10-03: "why is this charge profile still
     #      here when I am editing on the chart?"). The seven q20..q26 input
@@ -909,7 +909,7 @@ def test_charge_profile_v112():
           "the data row must NOT repeat the 125 settings - that was 62 percent of every "
           "row and it is what filled the file cap")
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(txo and len(txo.group(1).split(",")) == 128 and "124, 125, 126, 127 };" in ino,
+    check(txo and len(txo.group(1).split(",")) == 132 and "128, 129, 130, 131 };" in ino,
           "TxOrder must list all 128 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
     check("window.WVI=" in ino and "L('wVi','ولتاژ ورودی V',WVI)" in ino,
           "the input-voltage DMM reading must carry into the next wizard step (user order 2026-09-25: quasi-static, type once)")
@@ -1298,23 +1298,31 @@ def test_charger_persistence_v114():
     #      the image could grow into them without the linker saying a word.
     # [FA] v1.66: فلش برنامه ۶۰K شد - بلوک جدول بنچ دو صفحهٔ دیگر گرفت. هر دو
     #      ناحیهٔ رزرو باید اعلام شوند وگرنه تصویر بی‌صدا داخلشان رشد می‌کند.
-    check(re.search(r"FLASH\s+\(rx\)\s*: ORIGIN = 0x8000000,\s*LENGTH = 60K", ld) and
+    # [EN] v1.80: the parameter record outgrew one 1 KiB page (ids 128..131),
+    #      so each ping-pong bank is TWO pages and the 4 KiB record block moved
+    #      down to 0x0800E000. Application FLASH is 56K; the two old record
+    #      pages stay reserved as SPARE so stale field records are never
+    #      overwritten by code.
+    # [FA] از v1.80 بلوک رکوردها ۴K در 0x0800E000 است و فلش برنامه ۵۶K.
+    check(re.search(r"FLASH\s+\(rx\)\s*: ORIGIN = 0x8000000,\s*LENGTH = 56K", ld) and
+          re.search(r"NVM\s+\(r\)\s*: ORIGIN = 0x800E000,\s*LENGTH = 4K", ld) and
           re.search(r"LUTNVM\s+\(r\)\s*: ORIGIN = 0x800F000,\s*LENGTH = 2K", ld) and
-          re.search(r"NVM\s+\(r\)\s*: ORIGIN = 0x800F800,\s*LENGTH = 2K", ld),
-          "the linker must shrink application FLASH to 60K and reserve BOTH 2K regions: the LUT block at 0x0800F000 (v1.66) and the parameter records at 0x0800F800 (v1.14)")
-    check("0x0800F800u" in nvm_h and "0x0800FC00u" in nvm_h,
-          "the persistence pages must be the last two 1 KiB pages of the 64 KiB bank")
+          re.search(r"SPARE\s+\(r\)\s*: ORIGIN = 0x800F800,\s*LENGTH = 2K", ld),
+          "the linker must shrink application FLASH to 56K and declare all three reserved regions: the 4K parameter-record block at 0x0800E000 (v1.80), the LUT block at 0x0800F000 (v1.66) and the retired record pages at 0x0800F800 kept as SPARE")
+    check("0x0800E000u" in nvm_h and "0x0800E800u" in nvm_h
+          and re.search(r"ESP_LINK_NVM_FLASH_PAGE_SIZE\s+0x400u", nvm_h),
+          "the two persistence banks must be two 1 KiB pages each, with the erase granularity spelled out so the save loop can erase every page of a bank")
     # [EN] Matched by regex, not by exact spacing: these #defines are column
     #      aligned, so going from a 2-digit to a 3-digit id silently broke a
     #      literal-string check that had nothing to do with what it tested.
     # [FA] با regex تطبیق می‌شود نه با فاصله‌گذاری دقیق: این تعریف‌ها ستونی
     #      تراز شده‌اند و رفتن از شناسهٔ دو رقمی به سه رقمی، چکِ رشتهٔ عینی را
     #      بی‌صدا می‌شکست بدون آن‌که ربطی به چیزی که می‌سنجید داشته باشد.
-    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+126u", nvm_h) and
+    check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+144u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_LOW\s+14u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH\s+20u", nvm_h) and
-          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+127u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+203u", nvm_h),
-          "persisted set = 0..14 + 20..75 + 77..127 + runtime slots 200..203 (126 entries, 126 slots - the page is now exactly full; v1.49 added the charge map 119/120, v1.50 the band-2 beep shape 121/122, v1.68 the imbalance blink 123/124, v1.72 the dead-battery ids 125..127 and the latch slot 203) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
+          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+131u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+203u", nvm_h),
+          "persisted set = 0..14 + 20..75 + 77..131 + runtime slots 200..203 (128 entries in 144 slots - v1.80 moved the record into a TWO-page 2 KiB bank at 0x0800E000 because the scenario-6 lamp/buzzer ids 128..131 pushed it past the old single full page; v1.49 added the charge map 119/120, v1.50 the band-2 beep shape 121/122, v1.68 the imbalance blink 123/124, v1.72 the dead-battery ids 125..127 and the latch slot 203, v1.80 its lamp/buzzer 128..131) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
     # [EN] v1.71 bumps 10 -> 11. This one is a MEANING bump, not a layout
     #      bump: ids 57 and 122 kept their slots but changed units (critical
     #      duty % -> critical per-beep ms, band-2 gap -> band-2 repeat
@@ -1603,7 +1611,8 @@ def test_charger_persistence_v114():
 #define EMU_FLASH_BASE 0x10000000u
 uint8_t *EMU_FLASH;
 #define ESP_LINK_NVM_PAGE_A_ADDR (EMU_FLASH_BASE)
-#define ESP_LINK_NVM_PAGE_B_ADDR (EMU_FLASH_BASE + 1024u)
+/* v1.80: a bank is two 1 KiB pages now, so B sits 2 KiB above A */
+#define ESP_LINK_NVM_PAGE_B_ADDR (EMU_FLASH_BASE + 2048u)
 #include "esp_link_nvm.h"
 #include "stub_esp_link.h"
 #include "stub_bsp_flash.h"
@@ -1686,7 +1695,10 @@ bool func__EspLink_ApplyParam(uint8_t id, uint32_t value, uint32_t *applied){
 }
 bool func__EspLink_GetParam(uint8_t id, uint32_t *value){ if (id >= 83u) return false; *value = g_params[id]; return true; }
 bool func__BspFlash_ErasePage(uint32_t p){
-    if (p != EMU_FLASH_BASE && p != EMU_FLASH_BASE + 1024u) return false;
+    /* v1.80: four 1 KiB pages now - two per bank. Still ONE page per call,
+       exactly like the hardware: the save loop must walk the bank itself. */
+    if (p != EMU_FLASH_BASE && p != EMU_FLASH_BASE + 1024u &&
+        p != EMU_FLASH_BASE + 2048u && p != EMU_FLASH_BASE + 3072u) return false;
     memset((void *)(uintptr_t)p, 0xFF, 1024);
     return g_erase_cut ? false : true;
 }
@@ -1698,6 +1710,11 @@ bool func__BspFlash_ProgramHalfWords(uint32_t a, const uint16_t *d, uint32_t c){
         dst[i] = d[i];
     }
     return true;
+}
+/* v1.80: the tests that lay a record down by hand must erase the WHOLE bank,
+   exactly like the save path does - a 1168 B record spans both pages. */
+static bool erase_bank(uint32_t p){
+    return func__BspFlash_ErasePage(p) && func__BspFlash_ErasePage(p + 1024u);
 }
 #include "esp_link_nvm_body.c"
 
@@ -1711,11 +1728,11 @@ static void run_ticks(int n){ for (int i = 0; i < n; i++) func__EspLink_NvmTick(
 
 int main(void){
     uint32_t ap;
-    EMU_FLASH = mmap((void *)EMU_FLASH_BASE, 4096, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    EMU_FLASH = mmap((void *)EMU_FLASH_BASE, 8192, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
     assert(EMU_FLASH == (uint8_t *)EMU_FLASH_BASE);
 
     /* T1 fresh board: nothing applied, defaults stay */
-    memset(EMU_FLASH, 0xFF, 2048); reboot();
+    memset(EMU_FLASH, 0xFF, 4096); reboot();
     assert(g_apply_calls == 0);
 
     /* T2 debounce + save + reboot round-trip; burst resets the wait */
@@ -1746,25 +1763,25 @@ int main(void){
 
     /* T6 both pages damaged (flow-independent) -> nothing applied, defaults */
     EMU_FLASH[8] ^= 0x40;
-    EMU_FLASH[1024 + 8] ^= 0x40;
+    EMU_FLASH[2048 + 8] ^= 0x40;
     reboot();
     assert(g_apply_calls == 0 && g_params[20] == 0u);
 
     /* T6b clean pair: single corruption falls back to the older page */
-    memset(EMU_FLASH, 0xFF, 2048); reboot();
+    memset(EMU_FLASH, 0xFF, 4096); reboot();
     {
         esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[1];
         e[0].uint16_t__id = 20; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 14400;
         func__EspLink_NvmRecordBuild(&rec, 3, e, 1);
-        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_A_ADDR));
+        assert(erase_bank(ESP_LINK_NVM_PAGE_A_ADDR));
         assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_A_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
         e[0].uint32_t__value = 14200;
         func__EspLink_NvmRecordBuild(&rec, 4, e, 1);
-        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_B_ADDR));
+        assert(erase_bank(ESP_LINK_NVM_PAGE_B_ADDR));
         assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_B_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
         reboot();
         assert(g_params[20] == 14200);
-        EMU_FLASH[1024 + 60] ^= 0x08;
+        EMU_FLASH[2048 + 60] ^= 0x08;
         reboot();
         assert(g_params[20] == 14400);
     }
@@ -1776,7 +1793,7 @@ int main(void){
         e[1].uint16_t__id = 19; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 1;
         e[2].uint16_t__id = 23; e[2].uint16_t__pad = 0; e[2].uint32_t__value = 13600;
         func__EspLink_NvmRecordBuild(&rec, 9, e, 3);
-        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_B_ADDR));
+        assert(erase_bank(ESP_LINK_NVM_PAGE_B_ADDR));
         assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_B_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
         reboot();
         assert(g_params[20] == 14400);
@@ -1787,7 +1804,7 @@ int main(void){
         esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[1];
         e[0].uint16_t__id = 20; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 99999;
         func__EspLink_NvmRecordBuild(&rec, 10, e, 1);
-        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_B_ADDR));
+        assert(erase_bank(ESP_LINK_NVM_PAGE_B_ADDR));
         assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_B_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
         reboot();
         assert(g_params[20] == 14600);
@@ -1798,11 +1815,11 @@ int main(void){
         esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[1];
         e[0].uint16_t__id = 25; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 590;
         func__EspLink_NvmRecordBuild(&rec, 65534u, e, 1);
-        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_B_ADDR));
+        assert(erase_bank(ESP_LINK_NVM_PAGE_B_ADDR));
         assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_B_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
         e[0].uint32_t__value = 600;
         func__EspLink_NvmRecordBuild(&rec, 65535u, e, 1);
-        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_A_ADDR));
+        assert(erase_bank(ESP_LINK_NVM_PAGE_A_ADDR));
         assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_A_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
         reboot();
         assert(g_params[25] == 600);
@@ -1814,20 +1831,20 @@ int main(void){
     }
 
     /* T10 a transient MarkDirty never arms a save */
-    memset(EMU_FLASH, 0xFF, 2048); reboot();
+    memset(EMU_FLASH, 0xFF, 4096); reboot();
     func__EspLink_ApplyParam(19, 1, &ap); func__EspLink_NvmMarkDirty(19);
     run_ticks(30);
-    assert(EMU_FLASH[0] == 0xFF && EMU_FLASH[1024] == 0xFF);
+    assert(EMU_FLASH[0] == 0xFF && EMU_FLASH[2048] == 0xFF);
 
     /* T11 (v1.15): alarm ids persist round-trip; a hostile hard-current
        replays CLAMPED to the 950 ceiling (down-only safety) */
-    memset(EMU_FLASH, 0xFF, 2048); reboot();
+    memset(EMU_FLASH, 0xFF, 4096); reboot();
     {
         esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[2];
         e[0].uint16_t__id = 27; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 14700;
         e[1].uint16_t__id = 35; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 990;
         func__EspLink_NvmRecordBuild(&rec, 11, e, 2);
-        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_A_ADDR));
+        assert(erase_bank(ESP_LINK_NVM_PAGE_A_ADDR));
         assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_A_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
         reboot();
         assert(g_params[27] == 14700 && g_params[35] == 950);
@@ -1835,13 +1852,13 @@ int main(void){
 
     /* T12 (v1.16b): UI ids persist round-trip; a hostile red-duty
        replays CLAMPED to the 100 ceiling */
-    memset(EMU_FLASH, 0xFF, 2048); reboot();
+    memset(EMU_FLASH, 0xFF, 4096); reboot();
     {
         esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[2];
         e[0].uint16_t__id = 39; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 999;
         e[1].uint16_t__id = 38; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 5000;
         func__EspLink_NvmRecordBuild(&rec, 12, e, 2);
-        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_A_ADDR));
+        assert(erase_bank(ESP_LINK_NVM_PAGE_A_ADDR));
         assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_A_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
         reboot();
         assert(g_params[76] == 0 && g_params[39] == 100 && g_params[38] == 5000);
@@ -1849,13 +1866,13 @@ int main(void){
 
     /* T13 (v1.16b): a record carrying the panel-session mute (76) is
        rejected WHOLE - nothing applied, compiled defaults stay */
-    memset(EMU_FLASH, 0xFF, 2048); reboot();
+    memset(EMU_FLASH, 0xFF, 4096); reboot();
     {
         esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[2];
         e[0].uint16_t__id = 38; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 5000;
         e[1].uint16_t__id = 76; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 1;
         func__EspLink_NvmRecordBuild(&rec, 13, e, 2);
-        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_A_ADDR));
+        assert(erase_bank(ESP_LINK_NVM_PAGE_A_ADDR));
         assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_A_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
         reboot();
         assert(g_apply_calls == 0 && g_params[38] == 0 && g_params[76] == 0);
@@ -1863,14 +1880,14 @@ int main(void){
 
     /* T14 (v1.17): the six full/hysteresis ids persist round-trip; a
        hostile full-exit replays CLAMPED to the 100 ceiling */
-    memset(EMU_FLASH, 0xFF, 2048); reboot();
+    memset(EMU_FLASH, 0xFF, 4096); reboot();
     {
         esp_link_nvm_record_t rec; esp_link_nvm_entry_t e[3];
         e[0].uint16_t__id = 77; e[0].uint16_t__pad = 0; e[0].uint32_t__value = 90;
         e[1].uint16_t__id = 78; e[1].uint16_t__pad = 0; e[1].uint32_t__value = 999;
         e[2].uint16_t__id = 82; e[2].uint16_t__pad = 0; e[2].uint32_t__value = 4;
         func__EspLink_NvmRecordBuild(&rec, 14, e, 3);
-        assert(func__BspFlash_ErasePage(ESP_LINK_NVM_PAGE_A_ADDR));
+        assert(erase_bank(ESP_LINK_NVM_PAGE_A_ADDR));
         assert(func__BspFlash_ProgramHalfWords(ESP_LINK_NVM_PAGE_A_ADDR, (const uint16_t *)&rec, sizeof rec / 2));
         reboot();
         assert(g_params[77] == 90 && g_params[78] == 100 && g_params[82] == 4);
@@ -1923,8 +1940,8 @@ def test_manual_test_mode_v12():
           "instead of raising the ceiling - on a 20 KB part that buffer is charged "
           "twice, once on each side of the link")
     check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
-          and re.search(r"#define ESPLINK_PARAM_COUNT\s+128u", text_esph),
-          "param 19 = manual test mode; 128 params total since v1.72 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID, 93..107 = charger limits, 108..118 = imbalance scenario 5, 119..120 = charge-side percent map, 121..122 = band-2 beep shape, 123..124 = imbalance latched red-lamp blink, 125..127 = dead-battery scenario 6)")
+          and re.search(r"#define ESPLINK_PARAM_COUNT\s+132u", text_esph),
+          "param 19 = manual test mode; 132 params total since v1.80 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID, 93..107 = charger limits, 108..118 = imbalance scenario 5, 119..120 = charge-side percent map, 121..122 = band-2 beep shape, 123..124 = imbalance latched red-lamp blink, 125..127 = dead-battery scenario 6, 128..131 = its own lamp and buzzer)")
 
     manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
                     text_c.find("/* ==================== Charger_Evaluate")]
@@ -2106,7 +2123,7 @@ def test_alarms_tab_v115():
     check('\\"q2\\":%lu' in ino and "pendingMask2" in ino,
           "the /t JSON must carry the q2 pending mask for ids 32..37 (one u32 no longer fits 38 params)")
     tx = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(tx and len(tx.group(1).split(",")) == 128, "TxOrder must carry all 128 ids")
+    check(tx and len(tx.group(1).split(",")) == 132, "TxOrder must carry all 132 ids")
     # [EN] The literal "134 columns" used to be asserted here. That is the third
     #      hard-coded column count found in this suite, and every one of them was
     #      stale - they defend whatever number was true when they were written.
@@ -2435,8 +2452,19 @@ def test_ui_mirror_v116():
     check(ino.count('data-q="65"') == 3 and 'data-q="54"><span class="ow">مشترک' not in ino,
           "v1.71: bands 2, 3 and critical show the shared gap as read-only; "
           "nothing else is shared")
-    check(ino.count("روند:") >= 5,
-          "v1.16e (user order: explain each scenario flow): every scenario card carries its روند line")
+    # [EN] 2026-10-06 (user order): scenarios 1, 2 and 3 carried a روند
+    #      one-liner that repeated, word for word, the "این سناریو کِی
+    #      می‌آید؟" block printed right under it, so the card said the same
+    #      thing twice. Those three were removed; scenarios 4, 5 and 6 keep
+    #      theirs because their flow line is NOT a duplicate of the block
+    #      below it. The floor therefore drops from 5 to 3 - it still catches
+    #      a card that loses its flow text entirely.
+    # [FA] به دستور کاربر، خط «روند» سناریوهای ۱، ۲ و ۳ که عیناً همان بلوک
+    #      زیرش را تکرار می‌کرد حذف شد؛ سناریوهای ۴، ۵ و ۶ خط خودشان را
+    #      نگه می‌دارند چون تکراری نیست. کف از ۵ به ۳ می‌آید و هنوز نبودِ
+    #      کامل متن روند را می‌گیرد.
+    check(ino.count("روند:") >= 3,
+          "every scenario card that needs a روند line still carries it (1..3 dropped it as a duplicate)")
     check("با ریست برد پاک می‌شود" in ino and "روی فلش می‌ماند" not in ino,
           "v1.16b (user order: mute lives only for the panel session): no stale persisted-mute text")
 
@@ -2513,9 +2541,10 @@ def test_ui_mirror_v117():
           and "50, 18000, 0, 10, 1000," in prev
           and "14800, 100, 500, 10, 15000, 3000, 3000, 500," in prev
           and "300, 500, 600000, 600000, 30000, 100, 10, 3600000, 200, 1, 20," in prev
-          and "21000, 29000," in prev and "86400000, 600000, 0];" in prev
+          and "21000, 29000," in prev and "600000, 120, 0, 50];" in prev
           and "case 118:" in prev and "case 122:" in prev and "case 124:" in prev
-          and "case 125:" in prev and "case 126:" in prev and "case 127:" in prev,
+          and "case 125:" in prev and "case 126:" in prev and "case 127:" in prev
+          and "case 128:" in prev and "case 131:" in prev,
           "the offline preview must serve the v1.17 defaults with the enter-authoritative "
           "clamp, the calibrated PID rows after them, the v1.28 limits block, "
           "the v1.43 imbalance scenario block, and the v1.49 charge-side percent map plus the v1.68 imbalance blink last")
@@ -2745,19 +2774,35 @@ def test_telemetry_frame_pins_v116c():
     # [EN] 31 live u32 writes fill the WHOLE field table (4+31x4 = 128 B,
     #      including the v1.43 imbalance trio at t[24..26] and the v1.76
     #      dead-battery trio at t[28..30]: mask, charger-1 clock, charger-2
-    #      clock), and 25 #else zero-fillers cover the same fields when a
+    #      clock), and 30 #else zero-fillers cover the same fields when a
     #      module is compiled out.
+    #      Full-program audit 2026-10-05: the fillers went 25 -> 30 and the
+    #      conditional blocks 9 -> 10 because the five raw-ADC-count writes
+    #      were the last unguarded ones in this function - with
+    #      MODULE_MEASUREMENT=0 they referenced a module that is not
+    #      compiled, which the -Werror gate rejects. The LIVE count is
+    #      deliberately still 31: the payload layout and length are
+    #      byte-identical in both branches, which is the property this
+    #      check exists to protect.
     # [FA] ۳۱ رایت زندهٔ u32 کل جدول را پر می‌کند (۴+۳۱×۴=۱۲۸ بایت، با سه‌تاییِ
-    #      سناریوی ۶ در t[28..30]) و ۲۵ صفرِ #else جایگزین‌اند.
-    expected_writes = 31 + 25
+    #      سناریوی ۶ در t[28..30]) و ۳۰ صفرِ #else جایگزین‌اند.
+    #      ممیزی ۲۰۲۶-۱۰-۰۵: صفرها از ۲۵ به ۳۰ و بلوک‌های شرطی از ۹ به ۱۰
+    #      رسید، چون پنج رایت شمارش خام ADC آخرین رایت‌های بدون گارد این تابع
+    #      بودند و با ‎MODULE_MEASUREMENT=0‎ به ماژولی اشاره می‌کردند که کامپایل
+    #      نشده است. تعداد «زنده» عمداً همان ۳۱ مانده: چیدمان و طول payload در
+    #      هر دو شاخه بیت‌به‌بیت یکسان است و همین خاصیت است که این چک از آن
+    #      محافظت می‌کند.
+    expected_writes = 31 + 30
     check(body.count("func__EspLink_PutU32(") == expected_writes,
           f"SendTelemetry must carry {expected_writes} textual u32 writes "
-          "(31 live + 25 #else fillers); the 31 live ones exactly fill "
+          "(31 live + 30 #else fillers); the 31 live ones exactly fill "
           "ESP_LINK_TLM_FIELD_COUNT fields")
-    check(body.count("func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);") == 25,
-          "SendTelemetry must carry exactly 25 zero-filler u32 writes")
-    check(body.count("#else") == 9,
-          "SendTelemetry must keep its 9 conditional filler blocks (v1.72 added the scenario-6 pair)")
+    check(body.count("func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor, 0u);") == 30,
+          "SendTelemetry must carry exactly 30 zero-filler u32 writes")
+    check(body.count("#else") == 10,
+          "SendTelemetry must keep its 10 conditional filler blocks "
+          "(v1.72 added the scenario-6 pair, the 2026-10-05 audit added the "
+          "raw-ADC-count block)")
 
 
 def test_flash_diet_pins_v116d():
@@ -2898,8 +2943,8 @@ def test_two_loop_pid_v124():
               f"charger.h must map CHG_PID_PARAM_{nm} to id {wid}")
         check(re.search(rf"#define ESPLINK_PARAM_CHG_PID_{nm}\s+{wid}u", text_esph),
               f"esp_link.h must map ESPLINK_PARAM_CHG_PID_{nm} to the SAME id {wid}")
-    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+128u", text_esph),
-          "ESPLINK_PARAM_COUNT must be 128 (last dead-battery id 127 + 1, v1.72)")
+    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+132u", text_esph),
+          "ESPLINK_PARAM_COUNT must be 132 (last scenario-6 face id 131 + 1, v1.80)")
     check("STAGE1" not in text_h and "STAGE3" not in text_h and "stage3" not in text_c,
           "the retired third gain row must leave NOTHING behind (it was measured to "
           "buy nothing and it cost five panel numbers)")
@@ -3313,7 +3358,7 @@ def test_min_select_handover_v124():
     cdef_m = re.search(r"const CDEF=\[([^\]]*)\]", ino)
     check(cdef_m, "the panel must define CDEF for the charge-side percent map")
     cdef = [x for x in cdef_m.group(1).split(",") if x.strip()]
-    check(len(cdef) == 9, f"CDEF must hold 9 ext defaults (charge map + band 2 shape + v1.68 imbalance blink + v1.72 dead-battery 125..127), got {len(cdef)}")
+    check(len(cdef) == 13, f"CDEF must hold 13 ext defaults (charge map + band 2 shape + v1.68 imbalance blink + v1.72 dead-battery 125..127 + v1.80 its lamp/buzzer 128..131), got {len(cdef)}")
     top = 83 + len(pdef) - 1 + len(ldef) + len(idef) + len(cdef)
     # --- 6. the PARAMS_BULK reply must be proven to fit the protocol payload
     #        ceiling. The buffer auto-sizes from the count so it cannot be
@@ -4010,9 +4055,19 @@ def test_direct_lut_push_v166():
     check(re.search(r"CAL_LUT_PAGE_A_ADDR\s+0x0800F000u", cal_lut_h) and
           re.search(r"CAL_LUT_PAGE_B_ADDR\s+0x0800F400u", cal_lut_h),
           "the LUT block must be its own two 1 KiB pages at 0x0800F000/0x0800F400, below the parameter records")
-    check("CalLut pages must stay below the parameter NVM pages" in cal_lut_c and
+    # [EN] 2026-10-05: the LUT no longer sits BELOW the parameter block - v1.80
+    #      moved the parameter banks down to 0x0800E000, so the old wording was
+    #      wrong AND its assert compared against a dead address. The LUT must
+    #      now prove it is inside the window the flash driver may write
+    #      (bsp_flash.h); the no-overlap half became a cross-file invariant in
+    #      tools/audit_consistency.py, because cal_lut.c must not reference the
+    #      parameter module (separate storage was the order, checked below).
+    # [FA] جدول دیگر «زیر» بلوک پارامترها نیست؛ v1.80 آن بلوک را پایین برد.
+    #      حالا جدول باید اثبات کند داخل پنجرهٔ مجاز نوشتن است و بررسی
+    #      هم‌پوشانی به ممیزی بین‌فایلی منتقل شده است.
+    check("CalLut pages must sit inside the writable flash window" in cal_lut_c and
           "CalLut record must fit inside one flash page" in cal_lut_c,
-          "a static assert must prove the LUT record fits its page AND that the block never reaches the parameter pages")
+          "a static assert must prove the LUT record fits its page AND that the block stays inside the writable flash window")
     check("esp_link_nvm" not in cal_lut_c,
           "the LUT path must not reuse the parameter NVM module - separate storage was the point of the order")
     check(re.search(r"CAL_LUT_POINTS_MAX\s+24u", cal_lut_h) and
