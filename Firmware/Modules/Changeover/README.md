@@ -100,3 +100,10 @@ changeover.c
 snapshot از Measurement می‌آید، faults از Fault، flag از UI؛ Changeover آن‌ها را include نمی‌کند جز flag به‌صورت extern. فقط BOARD_PINS/HAL ممنوع.
 ```
 ```
+
+## تستر
+
+`Tester/` — تست هاست ماشین حالت با ساعت و GPIO بدلی (۱۱۴ بررسی، شامل رگرسیون
+قفل باتری‌ضعیف v1.81 و سرریز تیک). اجرا با
+`Tester/run_host_test_changeover.sh`؛ داخل `tools/check_firmware_syntax.sh` هم
+اجرا می‌شود. توضیح کامل در `Tester/README.md`.

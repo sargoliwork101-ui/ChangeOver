@@ -124,3 +124,9 @@ mcu_power_path.c
   ├── rtos_time.h → func__Rtos_TicksToMilliseconds(elapsed_ticks) + osKernelGetTickCount()
   └── cmsis_os2.h → osKernelGetTickCount()
 ```
+
+## تستر
+
+`Tester/` — تست هاست مسیر تغذیهٔ MCU با ساعت و GPIO بدلی (۴۹ بررسی). اجرا با
+`Tester/run_host_test_mcu_power_path.sh`؛ داخل `tools/check_firmware_syntax.sh` هم اجرا
+می‌شود. توضیح کامل در `Tester/README.md`.

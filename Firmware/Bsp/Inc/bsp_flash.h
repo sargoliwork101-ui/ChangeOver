@@ -23,6 +23,40 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/* ==================== Writable storage window / پنجرهٔ مجاز نوشتن ==================== */
+/* [EN] SINGLE SOURCE OF TRUTH for every byte of flash this driver is allowed
+ *      to erase or program: the data area above the application image, i.e.
+ *      0x0800E000..0x0800FFFF (the last 8 KiB of the 64 KiB part, matching
+ *      the NVM + LUTNVM + SPARE regions of STM32F103C8TX_FLASH.ld). The two
+ *      owners - EspLink parameter records and the CalLut bench table - sit
+ *      inside it and each one _Static_asserts that it does, so moving a bank
+ *      without widening this window breaks the BUILD.
+ *      Bug fixed 2026-10-05: the guard used to be the hard-coded pair
+ *      0x0800F800/0x0800FC00. When v1.80 moved the parameter bank down to
+ *      0x0800E000 the guard stayed put, so every erase was refused and the
+ *      save silently failed on the board - invisible to the host tests,
+ *      which emulate flash in RAM. Deriving the window instead of retyping
+ *      an address is what makes that class of drift impossible.
+ * [FA] تنها مرجع آدرس‌هایی که این درایور حق پاک‌کردن یا نوشتن دارد: ناحیهٔ
+ *      دادهٔ بالای تصویر برنامه، یعنی ‎0x0800E000..0x0800FFFF‎ (۸ کیلوبایت
+ *      آخر، همان ناحیه‌های NVM و LUTNVM و SPARE در لینکر اسکریپت). هر دو
+ *      مالک - رکورد پارامترهای EspLink و جدول بنچ CalLut - داخل آن‌اند و هر
+ *      کدام با ‎_Static_assert‎ همین را اثبات می‌کند، پس جابه‌جایی یک بانک
+ *      بدون گشادکردن این پنجره «بیلد» را می‌شکند.
+ *      ایراد رفع‌شده ۲۰۲۶-۱۰-۰۵: گارد قبلی دو آدرس ثابت ‎0x0800F800/0x0800FC00‎
+ *      بود؛ وقتی v1.80 بانک پارامترها را به ‎0x0800E000‎ برد، گارد سر جایش
+ *      ماند و هر پاک‌کردن رد می‌شد - یعنی ذخیره روی برد بی‌صدا شکست می‌خورد
+ *      و تست هاست هم چون فلش را در RAM شبیه‌سازی می‌کند آن را نمی‌دید. */
+#define BSP_FLASH_STORAGE_BASE_ADDR    0x0800E000u
+
+/* [EN] One past the last writable byte (end of the 64 KiB part).
+ * [FA] یک بایت بعد از آخرین بایت قابل نوشتن (پایان قطعهٔ ۶۴KB). */
+#define BSP_FLASH_STORAGE_END_ADDR     0x08010000u
+
+/* [EN] Hardware erase granularity of the F1 medium-density part: 1 KiB.
+ * [FA] دانهٔ پاک‌کردن سخت‌افزار در F1 چگالی متوسط: ۱KB. */
+#define BSP_FLASH_PAGE_SIZE_BYTES      0x400u
+
 /**
  * @brief  [EN] Erase one 1 KiB flash page (page-aligned address inside the
  *         64 KiB bank). Blocking; thread context only.

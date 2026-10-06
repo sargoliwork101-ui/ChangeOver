@@ -1,9 +1,11 @@
 /**
  * @file    bsp_adc.h
- * @brief   [EN] Logical board ADC+DMA interface. The port supplies five
- *              normalized analog values in a two-frame buffer; the reader
- *              copies only a completed frame.
- *          [FA] رابط منطقی ‎ADC+DMA‎ برد. پورت پنج مقدار آنالوگ استانداردشده
+ * @brief   [EN] Logical board ADC+DMA interface. The port supplies
+ *              BSP_ADC_CHANNEL_COUNT normalized analog values (six today)
+ *              in a two-frame buffer; the reader copies only a completed
+ *              frame.
+ *          [FA] رابط منطقی ‎ADC+DMA‎ برد. پورت به تعداد
+ *              ‎BSP_ADC_CHANNEL_COUNT‎ مقدار آنالوگ استانداردشده (امروز شش)
  *              را در بافر دو فریمی می‌دهد و خواننده فقط فریم کامل را کپی می‌کند.
  *
  * @note    [EN] The public channel order is a normalized data contract. Each
@@ -92,13 +94,15 @@ bool func__BspAdc_IsFrameReady(void);
 /* ==================== BspAdc_GetRaw ==================== */
 
 /**
- * @brief  [EN] Copy the newest completed five-sample frame into out[]. The
+ * @brief  [EN] Copy the newest completed frame (BSP_ADC_CHANNEL_COUNT
+ *              samples, six today) into out[]. The
  *              DMA counter selects the half DMA is not writing; a
  *              before/after counter check rejects a boundary-crossing copy.
  *              Current positions carry PWM mid-ON synchronized samples
  *              (see the channel map note); voltages come from the
  *              continuous scan.
- *         [FA] جدیدترین فریم کامل پنج‌نمونه‌ای را در out[] کپی می‌کند.
+ *         [FA] جدیدترین فریم کامل (به اندازهٔ ‎BSP_ADC_CHANNEL_COUNT‎ نمونه،
+ *              امروز شش) را در ‎out[]‎ کپی می‌کند.
  *              شمارندهٔ DMA نیمه‌ای را انتخاب می‌کند که DMA در آن نمی‌نویسد؛
  *              چک قبل/بعد کپیِ عبوری از مرز را رد می‌کند. جایگاه‌های جریان
  *              نمونهٔ سنکرون وسط ON را دارند؛ ولتاژها از اسکن مداوم.
