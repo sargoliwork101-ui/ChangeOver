@@ -333,7 +333,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build bbc6d5a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 6b32d2f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -886,11 +886,16 @@ var PEND={};
 function pbar(){const n=Object.keys(PEND).length,b=$('sbar');if(!b)return;
  b.className=n?'on':'';$('sbn').textContent=n;
  document.body.style.paddingBottom=n?'52px':'';}
-function qput(id,v){PEND[id]=v;const e=$('q'+id);if(e)e.classList.add('pq');
+/* [EN] q117/q127 are real checkboxes, not q-inputs. They still belong to the
+   same pending queue and must receive the same yellow affordance.
+   [‎FA] q117/q127‎ واقعاً checkbox هستند نه ‎q-input‎؛ اما آن‌ها هم عضو همین صف
+   معلق‌اند و باید همان نشانهٔ زرد را بگیرند. */
+function pctrl(id){const e=$('q'+id);if(e)return e;return id===117?$('ib117'):id===127?$('db127'):null;}
+function qput(id,v){PEND[id]=v;const e=pctrl(id);if(e){e.classList.add('pq');if(e.type==='checkbox')e.checked=!!v;else e.value=v;}
  const a=$('a'+id);if(a)a.textContent='در صف';pbar();}
-function pclr(id){delete PEND[id];const e=$('q'+id);if(e)e.classList.remove('pq');pbar();}
-function pundo(){for(const id of Object.keys(PEND)){const e=$('q'+id);
-  if(e){e.classList.remove('pq');e.value=(D&&D.p&&D.p[id]!=null)?D.p[id]:'';}}
+function pclr(id){delete PEND[id];const e=pctrl(id);if(e)e.classList.remove('pq');pbar();}
+function pundo(){for(const id of Object.keys(PEND)){const e=pctrl(+id);
+  if(e){e.classList.remove('pq');const v=(D&&D.p&&D.p[id]!=null)?D.p[id]:'';if(e.type==='checkbox')e.checked=!!v;else e.value=v;}}
  PEND={};pbar();stxt('sbst','تغییرات محلی پاک شد؛ کادرها دوباره مقدار برد را نشان می‌دهند.');
  if(typeof afresh==='function')afresh();if(typeof sall==='function')sall();}
 
@@ -2483,11 +2488,32 @@ async function ximp(f){const x=$('xst');let o;try{o=JSON.parse(await f.text());}
   (warn.length?'\n\n⚠ '+warn.join('\n⚠ '):'')+
   (outr.length?'\n\n'+outr.length+' عدد به بازهٔ مجاز خودش محدود شد.':'')+
   (fixed.length?'\n\n'+fixed.length+' عدد برای سازگاری با بقیه جور شد: '+fixed.map(z=>z[0]+': '+z[1]+'→'+z[2]).join(' · '):'');
- if(!confirm(msg))  {if(x)x.textContent='بازخوانی لغو شد';return;}
- let ok=0;for(const j of jobs){try{const r=await fetch('/s?id='+j[0]+'&v='+j[1],{method:'POST'});if(r.ok)ok++;}catch(e){}if(x)x.textContent='… '+ok+'/'+jobs.length;await sl(60);}
- if(x)x.textContent=(ok===jobs.length?'✅ ':'⚠ ')+ok+'/'+jobs.length+' روی برد نوشته شد'+
-  (fixed.length?' · '+fixed.length+' عدد پیش از نوشتن جور شد':'')+
-  (warn.length?' · هشدار: '+warn.join(' · '):'');
+ if(!confirm(msg.replace('روی برد نوشته شود؟','روی پنل آماده شود؟'))){if(x)x.textContent='بازخوانی لغو شد';return;}
+ /* [EN] Import is a local staging operation only. Do not call /s here:
+    the user must see the pending values in yellow and explicitly press the
+    global send button. sendall() is the only path that writes to the board,
+    waits for the applied echo and reports success, clamp or link failure.
+    [FA] بازگردانی فقط در صف محلی پنل انجام می‌شود و اینجا /s صدا زده نمی‌شود:
+    کاربر باید مقدارهای زرد را ببیند و خودش دکمهٔ ارسال سراسری را بزند. تنها
+    sendall به برد می‌نویسد، echo اعمال‌شده را می‌سنجد و موفقیت، گیره یا خطای
+    ارتباط را گزارش می‌کند. */
+ const staged=jobs.filter(j=>!(D&&D.p&&D.p[j[0]]!=null&&+D.p[j[0]]===+j[1]));
+ staged.forEach(j=>{
+  const id=j[0],value=j[1];
+  qput(id,value);
+  const e=$('q'+id);if(e)e.value=value;
+  if(typeof EVB!=='undefined'&&EVB[id])EVWANT[id]=value;
+ });
+ qgraph();
+ if(typeof afresh==='function')afresh();
+ if(typeof pchk==='function')pchk();
+ if(x){
+  const same=jobs.length-staged.length;
+  x.textContent=staged.length?
+   '✅ '+staged.length+' تغییر روی پنل آماده شد؛ زردها هنوز روی برد ننشسته‌اند. دکمهٔ «ارسال همهٔ تغییرات به برد» را بزنید.'+
+   (same?' '+same+' مقدار از قبل با برد یکی بود.':''):
+   'ℹ همهٔ مقدارهای فایل از قبل با برد یکی بودند؛ چیزی برای ارسال نیست.';
+ }
  const xi=$('xim');if(xi)xi.value='';}
 $('xim').onchange=e=>{if(e.target.files[0])ximp(e.target.files[0]);};
 /* v1.27: سلامت لینک. تا پیش از این، اگر STM32 و ESP ناهماهنگ فلش می‌شدند پنل

@@ -785,7 +785,7 @@ async function testSendQueue(win, doc) {
  *      نه مهر مبهم بیلد را. بازگردانی باید تغییر دقیق هویت پارامتر را گزارش
  *      کند و کالیبراسیون بنچ نیز همان گین و آفست خط معلوم را برگرداند.
  */
-function testBackupAndCal(win, doc) {
+async function testBackupAndCal(win, doc) {
     console.log('\nv1.81 parameter schema + bench calibration / شمای پارامتر و کالیبراسیون');
 
     /* --- the export payload carries the identity fields --- */
@@ -997,8 +997,31 @@ function testBackupAndCal(win, doc) {
     win.eval('calapply')();
     check(doc.getElementById('calst').textContent.indexOf('داده‌برداری بنچ در جریان') >= 0,
           'applying calibration is refused while the bench wizard is running');
-    win.eval('ximp')({ text: async () => JSON.stringify({ app: 'ChangeOver-settings', v: 2, params: { 0: 1 } }) });
+    await win.eval('ximp')({ text: async () => JSON.stringify({ app: 'ChangeOver-settings', v: 2, params: { 0: 1 } }) });
     Wv.run = false;
+
+    /* v1.81: importing a settings file must stage locally, never call /s. */
+    const importUrls = [];
+    win.fetch = (u) => { importUrls.push(String(u)); return Promise.resolve({ ok: true }); };
+    win.confirm = () => true;
+    win.D = { p: { 25: 650, 26: 50, 127: 0 }, t: [] };
+    win.PEND = {};
+    const importSchema = win.eval('xschema()');
+    await win.eval('ximp')({ text: async () => JSON.stringify({
+        app: 'ChangeOver-settings', v: 3, schema: importSchema,
+        params: { 25: 700, 26: 60, 127: 1 }
+    }) });
+    check(importUrls.filter(u => u.indexOf('/s?') >= 0).length === 0,
+          'restoring a backup does not write to the board immediately');
+    check(win.PEND[25] === 700 && win.PEND[26] === 60 && win.PEND[127] === 1 &&
+          doc.getElementById('db127').checked === true &&
+          doc.getElementById('db127').className.indexOf('pq') >= 0 &&
+          doc.getElementById('sbar').className === 'on',
+          'restored changes are staged in the yellow global queue, including checkboxes');
+    check(doc.getElementById('xst').textContent.indexOf('روی پنل آماده شد') >= 0,
+          'restore tells the user that values are staged, not written');
+    win.PEND = {};
+    win.pbar();
 
     /* --- v1.65: the live table shows only what the user needs --- */
     const heads = Array.from(doc.querySelectorAll('#wT th')).map(h => h.textContent);
@@ -1259,7 +1282,7 @@ setTimeout(async () => {
         testSimulator(win, doc);
         await testSendQueue(win, doc);
         testFixRules(win, doc);
-        testBackupAndCal(win, doc);
+        await testBackupAndCal(win, doc);
         await testLutPush(win, doc);
     } catch (err) {
         failed += 1;
