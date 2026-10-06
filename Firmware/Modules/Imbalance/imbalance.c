@@ -28,6 +28,7 @@
 _Static_assert(IMBAL_PARAM_LAST_ID >= IMBAL_PARAM_FIRST_ID, "param range");
 _Static_assert(IMBAL_PARAM_TABLE_SIZE <= 32u, "table size");
 _Static_assert(IMBAL_PARAM_FIRST_ID2 > IMBAL_PARAM_LAST_ID, "the two id blocks must not overlap");
+_Static_assert(IMBAL_PARAM_FIRST_ID3 > IMBAL_PARAM_LAST_ID2, "the three id blocks must not overlap");
 
 /* ==================== Parameter table / جدول پارامترها ==================== */
 
@@ -81,6 +82,8 @@ static uint32_t func__Imbalance_ParamDefault(uint8_t uint8_t__paramId)
         case IMBAL_PARAM_MAX_LATCHED_CYCLES:   uint32_t__ret = IMBAL_DEF_MAX_LATCHED_CYCLES;   break;
         case IMBAL_PARAM_LATCH_BLINK_PERIOD_MS: uint32_t__ret = IMBAL_DEF_LATCH_BLINK_PERIOD_MS; break;
         case IMBAL_PARAM_LATCH_BLINK_DUTY_PCT:  uint32_t__ret = IMBAL_DEF_LATCH_BLINK_DUTY_PCT;  break;
+        case IMBAL_PARAM_LATCH_BEEP_COUNT:      uint32_t__ret = IMBAL_DEF_LATCH_BEEP_COUNT;      break;
+        case IMBAL_PARAM_LATCH_BEEP_GAP_MS:     uint32_t__ret = IMBAL_DEF_LATCH_BEEP_GAP_MS;     break;
         default:                               uint32_t__ret = 0u;                             break;
     }
 
@@ -121,6 +124,13 @@ static uint32_t func__Imbalance_ParamClamp(uint8_t uint8_t__paramId, uint32_t ui
         case IMBAL_PARAM_LATCH_BEEP_LEN_MS:
             if (uint32_t__ret < IMBAL_MIN_BEEP_LEN_MS) { uint32_t__ret = IMBAL_MIN_BEEP_LEN_MS; }
             if (uint32_t__ret > IMBAL_MAX_BEEP_LEN_MS) { uint32_t__ret = IMBAL_MAX_BEEP_LEN_MS; }
+            break;
+        case IMBAL_PARAM_LATCH_BEEP_COUNT:
+            if (uint32_t__ret < 1u) { uint32_t__ret = 1u; }
+            if (uint32_t__ret > IMBAL_MAX_BEEP_COUNT) { uint32_t__ret = IMBAL_MAX_BEEP_COUNT; }
+            break;
+        case IMBAL_PARAM_LATCH_BEEP_GAP_MS:
+            if (uint32_t__ret > IMBAL_MAX_BEEP_GAP_MS) { uint32_t__ret = IMBAL_MAX_BEEP_GAP_MS; }
             break;
         case IMBAL_PARAM_BLOCK_OUTPUT_EN:
             if (uint32_t__ret > 1u) { uint32_t__ret = 1u; }
@@ -173,7 +183,7 @@ static void func__Imbalance_SeedDefaultsOnce(void)
 
     BOOL__G__ParamsSeeded = true;
 
-    for (uint8_t__id = IMBAL_PARAM_FIRST_ID; uint8_t__id <= IMBAL_PARAM_LAST_ID2; uint8_t__id++)
+    for (uint8_t__id = IMBAL_PARAM_FIRST_ID; uint8_t__id <= IMBAL_PARAM_LAST_ID3; uint8_t__id++)
     {
         if (IMBAL_PARAM_OWNS(uint8_t__id))
         {

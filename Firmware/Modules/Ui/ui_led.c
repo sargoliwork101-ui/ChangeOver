@@ -1349,6 +1349,8 @@ void func__Ui_ScenarioBatLost_Tick(void)
 void func__Ui_ScenarioImbalance_Tick(void)
 {
     uint32_t uint32_t__beepPeriodMs;
+    uint32_t uint32_t__beepCount = IMBAL_DEF_LATCH_BEEP_COUNT;
+    uint32_t uint32_t__beepGapMs = IMBAL_DEF_LATCH_BEEP_GAP_MS;
     uint32_t uint32_t__blinkPeriodMs = IMBAL_DEF_LATCH_BLINK_PERIOD_MS;
     uint32_t uint32_t__blinkDutyPct = IMBAL_DEF_LATCH_BLINK_DUTY_PCT;
     bool     bool__redOn;
@@ -1392,11 +1394,14 @@ void func__Ui_ScenarioImbalance_Tick(void)
         uint32_t uint32_t__beepLenMs = IMBAL_DEF_BEEP_LEN_MS;
 
         (void)func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_LEN_MS, &uint32_t__beepLenMs);
+        (void)func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_COUNT, &uint32_t__beepCount);
+        (void)func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_GAP_MS, &uint32_t__beepGapMs);
         (void)func__Ui_Buzzer_Gated(
             uint32_t__beepPeriodMs,
-            func__Ui_BeepDutyPercent(uint32_t__beepPeriodMs, uint32_t__beepLenMs, 1u, 0u),
-            1u,
-            0u);
+            func__Ui_BeepDutyPercent(uint32_t__beepPeriodMs, uint32_t__beepLenMs,
+                                     (uint8_t)uint32_t__beepCount, uint32_t__beepGapMs),
+            (uint8_t)uint32_t__beepCount,
+            uint32_t__beepGapMs);
     }
     else
     {
@@ -1598,6 +1603,20 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 {
+#if MODULE_FAULT
+    /* [EN] Defensive priority guard: if a battery-lost fault reaches this
+       helper directly, it must replace BatteryRun before the one-shot empty
+       battery beep can start. Fault clear is the battery-return boundary.
+       [FA] نگهبان اولویت: اگر این helper مستقیم با فالت قطع باتری صدا زده
+       شد، پیش از شروع بوق باتری خالی همان سناریو را جایگزین کن؛ پاک‌شدن
+       فالت مرز برگشت باتری است. */
+    if ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)
+    {
+        func__Ui_ScenarioBatLost_Tick();
+        return;
+    }
+#endif
+
     uint8_t uint8_t__rawPercent;
     uint8_t uint8_t__stablePercent;
     uint32_t uint32_t__remainingPercent;

@@ -72,7 +72,7 @@
          نردبان درصد سمت شارژ، جدا از نردبان دشارژ ۷۴/۷۵ (v1.49، دستور کاربر
          ۲۰۲۶-۱۰-۰۵)، شناسه‌های ۱۲۱..۱۲۲ = مدت و گپ مخصوص باند ۲ دشارژ
          (v1.50، دستور کاربر ۲۰۲۶-۱۰-۰۵). */
-#define ESP_PARAM_COUNT            132u
+#define ESP_PARAM_COUNT            134u /* [EN] v1.81 includes imbalance beep count/gap 132..133. / [FA] نسخه ۱٫۸۱ تعداد/گپ بوق عدم‌توازن ۱۳۲..۱۳۳ را هم دارد. */
 #define ESP_PARAM_CHG1_ENABLE       11u
 #define ESP_PARAM_CHG2_ENABLE       12u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
@@ -156,7 +156,8 @@
     "#  [settings8] ui_chg_pct_vmin,ui_chg_pct_vmax,ui_run_dbl_dur,ui_run_dbl_gap,\n" \
     "#            imb_blink_per_ms,imb_blink_duty,\n" \
     "#            dead_timeout_ms,dead_reset_gap_ms,dead_block_out,\n" \
-    "#            dead_beep_per_ms,dead_beep_ms,dead_blink_per_ms,dead_blink_duty\n" \
+    "#            dead_beep_per_ms,dead_beep_ms,dead_blink_per_ms,dead_blink_duty,\n" \
+    "#            imb_beep_count,imb_beep_gap_ms\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \

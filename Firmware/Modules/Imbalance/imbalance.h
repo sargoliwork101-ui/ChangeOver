@@ -129,36 +129,51 @@ extern "C" {
 #define IMBAL_PARAM_LATCH_BLINK_PERIOD_MS    123u
 #define IMBAL_PARAM_LATCH_BLINK_DUTY_PCT     124u
 
-/* [EN] The module owns TWO id ranges: the original 108..118 block and the
- *      v1.68 blink pair at the end of the parameter space (119..122 belong
- *      to other modules, so the range could not simply be widened).
- * [FA] ماژول دو بازهٔ شناسه دارد: بلوک اصلی ۱۰۸..۱۱۸ و جفت چشمک ۱۲۳..۱۲۴
- *      (۱۱۹..۱۲۲ مال ماژول‌های دیگر است، پس بازه را نمی‌شد کش داد). */
+/** [EN] v1.81: independent per-pattern beep count and inter-beep gap for the
+ *  latched imbalance alarm. Defaults preserve the existing one-beep shape.
+ *  [FA] نسخهٔ ۱٫۸۱: تعداد بوق و گپ مستقل الگوی بوق قفل عدم‌توازن؛ پیش‌فرض‌ها
+ *  شکل قبلیِ یک بوق را حفظ می‌کنند. */
+#define IMBAL_PARAM_LATCH_BEEP_COUNT         132u
+#define IMBAL_PARAM_LATCH_BEEP_GAP_MS        133u
+
+/* [EN] The module owns THREE id ranges: 108..118, the 123..124 blink pair,
+ *      and the new 132..133 beep-shape pair. Gaps belong to other modules.
+ * [FA] ماژول سه بازهٔ شناسه دارد: ۱۰۸..۱۱۸، جفت چشمک ۱۲۳..۱۲۴، و جفت شکل
+ *      بوق جدید ۱۳۲..۱۳۳؛ فاصله‌ها متعلق به ماژول‌های دیگرند. */
 #define IMBAL_PARAM_FIRST_ID                 IMBAL_PARAM_REST_LIMIT_MV   /* 108 */
 #define IMBAL_PARAM_LAST_ID                  IMBAL_PARAM_MAX_LATCHED_CYCLES /* 118 */
 #define IMBAL_PARAM_FIRST_ID2                IMBAL_PARAM_LATCH_BLINK_PERIOD_MS /* 123 */
 #define IMBAL_PARAM_LAST_ID2                 IMBAL_PARAM_LATCH_BLINK_DUTY_PCT  /* 124 */
+#define IMBAL_PARAM_FIRST_ID3                IMBAL_PARAM_LATCH_BEEP_COUNT /* 132 */
+#define IMBAL_PARAM_LAST_ID3                 IMBAL_PARAM_LATCH_BEEP_GAP_MS /* 133 */
 
 #define IMBAL_PARAM_BLOCK1_COUNT \
     ((uint32_t)IMBAL_PARAM_LAST_ID - (uint32_t)IMBAL_PARAM_FIRST_ID + 1u)
 #define IMBAL_PARAM_BLOCK2_COUNT \
     ((uint32_t)IMBAL_PARAM_LAST_ID2 - (uint32_t)IMBAL_PARAM_FIRST_ID2 + 1u)
+#define IMBAL_PARAM_BLOCK3_COUNT \
+    ((uint32_t)IMBAL_PARAM_LAST_ID3 - (uint32_t)IMBAL_PARAM_FIRST_ID3 + 1u)
 #define IMBAL_PARAM_TABLE_SIZE \
-    (IMBAL_PARAM_BLOCK1_COUNT + IMBAL_PARAM_BLOCK2_COUNT)
+    (IMBAL_PARAM_BLOCK1_COUNT + IMBAL_PARAM_BLOCK2_COUNT + IMBAL_PARAM_BLOCK3_COUNT)
 
 /** [EN] Is this id a parameter of the imbalance module? / [FA] آیا این شناسه مال این ماژول است؟ */
 #define IMBAL_PARAM_OWNS(id) \
     (((((uint32_t)(id)) >= (uint32_t)IMBAL_PARAM_FIRST_ID) && \
       (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID)) || \
      ((((uint32_t)(id)) >= (uint32_t)IMBAL_PARAM_FIRST_ID2) && \
-      (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID2)))
+      (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID2)) || \
+     ((((uint32_t)(id)) >= (uint32_t)IMBAL_PARAM_FIRST_ID3) && \
+      (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID3)))
 
 /** [EN] Table index of an owned id (undefined for ids the module does not own).
  *  [FA] اندیس جدول برای شناسهٔ متعلق به ماژول. */
 #define IMBAL_PARAM_INDEX(id) \
     ((((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID) \
         ? (((uint32_t)(id)) - (uint32_t)IMBAL_PARAM_FIRST_ID) \
-        : (IMBAL_PARAM_BLOCK1_COUNT + (((uint32_t)(id)) - (uint32_t)IMBAL_PARAM_FIRST_ID2)))
+        : ((((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID2) \
+            ? (IMBAL_PARAM_BLOCK1_COUNT + (((uint32_t)(id)) - (uint32_t)IMBAL_PARAM_FIRST_ID2)) \
+            : (IMBAL_PARAM_BLOCK1_COUNT + IMBAL_PARAM_BLOCK2_COUNT + \
+               (((uint32_t)(id)) - (uint32_t)IMBAL_PARAM_FIRST_ID3))))
 
 /* [EN] NVM-only runtime slots (ids 200..202): persisted through the same
  *      EspLink NVM machinery as parameters but never drawn on the panel and
@@ -185,12 +200,14 @@ extern "C" {
 #define IMBAL_DEF_MAX_LATCHED_CYCLES         20u
 #define IMBAL_DEF_LATCH_BLINK_PERIOD_MS      1000u
 #define IMBAL_DEF_LATCH_BLINK_DUTY_PCT       50u
+#define IMBAL_DEF_LATCH_BEEP_COUNT           1u
+#define IMBAL_DEF_LATCH_BEEP_GAP_MS          0u
 
 /* [EN] Clamp windows (min..max per id, applied by Set): wide enough for a
  *      workshop, tight enough that a typo cannot create a dead monitor.
  * [FA] پنجره‌های گیره برای هر شناسه. */
 #define IMBAL_MAX_LIMIT_MV                   2000u     /* [EN] ids 108/109 / برای ۱۰۸/۱۰۹ */
-#define IMBAL_MAX_WAIT_MS                    3600000u  /* [EN] ids 110/111، تا ۱ ساعت */
+#define IMBAL_MAX_WAIT_MS                    18000000u /* [EN] ids 110/111، تا ۵ ساعت */
 #define IMBAL_MIN_STABILITY_MS               1000u     /* [EN] id 112, at least 1 s */
 #define IMBAL_MAX_STABILITY_MS               600000u
 #define IMBAL_MAX_HYSTERESIS_MV              1000u     /* [EN] id 113 */
@@ -198,6 +215,8 @@ extern "C" {
 #define IMBAL_MAX_BEEP_PERIOD_MS             86400000u /* [EN] id 115، تا ۲۴ ساعت */
 #define IMBAL_MIN_BEEP_LEN_MS                20u       /* [EN] id 116 */
 #define IMBAL_MAX_BEEP_LEN_MS                2000u
+#define IMBAL_MAX_BEEP_COUNT                 10u       /* [EN] id 132 / شناسه ۱۳۲ */
+#define IMBAL_MAX_BEEP_GAP_MS                5000u     /* [EN] id 133 / شناسه ۱۳۳ */
 /* [EN] id 123: 0 = solid red (opt-out), otherwise 100 ms..10 s so the lamp
  *      is always visibly a BLINK and never a flicker nobody can see.
  * [FA] شناسهٔ ۱۲۳: صفر یعنی قرمز ثابت، وگرنه ۱۰۰ms تا ۱۰s تا چشمک واقعاً
@@ -286,8 +305,13 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
  * [FA] خواندن آخرین خروجی‌ها بدون ارزیابی. */
 void func__Imbalance_GetOutputs(imbalance_outputs_t *imbalance_outputs_t__outputs);
 
-/** [EN] Parameter set with clamp (ids 108..118) and runtime-slot set
- *      (ids 200..202, NVM boot replay only). Returns applied value.
+/** [EN] Parameter set with clamp (ids 108..118, 123..124, 132..133) and
+ *      runtime-slot set (ids 200..202, NVM boot replay only). Returns applied value.
+ *      The new beep-shape values are normal persisted parameters, not packed
+ *      into the legacy period/length words.
+ * [FA] تنظیم پارامتر با گیره (شناسه‌های ۱۰۸..۱۱۸، ۱۲۳..۱۲۴ و ۱۳۲..۱۳۳) و
+ *      تنظیم اسلات زمان‌اجرا (۲۰۰..۲۰۲، فقط بازپخش NVM). مقدار اعمال‌شده را
+ *      برمی‌گرداند؛ شکل بوق جدید پارامتر مستقل و ماندگار است.
  * @param uint32_t__appliedValue [EN] out, may be NULL / مقدار اعمال‌شده
  * @return bool [EN] true when the id belongs to this module / شناسه متعلق است */
 bool func__Imbalance_SetParam(uint8_t uint8_t__paramId,

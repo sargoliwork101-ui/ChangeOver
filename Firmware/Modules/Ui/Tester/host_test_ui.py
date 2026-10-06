@@ -450,8 +450,15 @@ def run_batlost_tests():
     assert_true("func__Charger_IsAnyChannelActive()" in ui_led_c, "charging yellow must be gated by the charger being active (user directive)")
     assert_true('#include "charger.h"' in ui_led_c, "ui must include charger.h for the activity query")
     ov_idx = ui_led_c.find("func__Ui_ScenarioInputOverVoltage_Tick();\n        return;")
-    bl_idx = ui_led_c.find("func__Ui_ScenarioBatLost_Tick();")
+    ui_tick_idx = ui_led_c.find("void func__Ui_Tick")
+    bl_idx = ui_led_c.find("func__Ui_ScenarioBatLost_Tick();", ui_tick_idx)
     assert_true(ov_idx != -1 and bl_idx != -1 and ov_idx < bl_idx, "batlost has priority right after overvoltage")
+    run_idx = ui_led_c.find("void func__Ui_ScenarioBatteryRun_Tick")
+    run_end = ui_led_c.find("/* ==================== Ui Tick", run_idx)
+    run_body = ui_led_c[run_idx:run_end]
+    assert_true("func__Fault_Get() & FAULT_CHARGER_BAT_LOST" in run_body and
+                "func__Ui_ScenarioBatLost_Tick();" in run_body,
+                "BatteryRun cannot start its critical beep while BatLost is latched")
     print("BatLost scenario PASS")
 
 UI_ALARM_DEFAULTS = {
@@ -662,6 +669,12 @@ def run_ui_alarm_tests():
     # [FA] ۱۳ محل فراخوانی + خود تعریف = ۱۴.
     assert_equal(ui_led_c.count("func__Ui_Buzzer_Gated("), 14,
                  "13 scenario sites + 1 def use the mute gate")
+    assert_true("IMBAL_PARAM_LATCH_BEEP_COUNT" in ui_led_c and
+                "IMBAL_PARAM_LATCH_BEEP_GAP_MS" in ui_led_c,
+                "imbalance latch reads the independent count and gap parameters")
+    assert_true("uint32_t__beepGapMs" in ui_led_c and
+                "uint32_t__beepCount" in ui_led_c,
+                "imbalance latch passes live count/gap into the beep pattern")
     # direct Tick calls left: 2 inside Gated + 1 all_off + 1 OV-clear explicit off
     # + 2 BoardTest (mute bypass, still proves the buzzer works at boot)
     # [EN] v1.75 audit: 8 now - the dead-battery lock turns the buzzer off

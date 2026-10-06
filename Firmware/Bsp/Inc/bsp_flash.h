@@ -59,23 +59,27 @@
 
 /**
  * @brief  [EN] Erase one 1 KiB flash page (page-aligned address inside the
- *         64 KiB bank). Blocking; thread context only.
- *         [FA] پاک‌کردن یک صفحهٔ ۱کیلوبایتی فلش (آدرس هم‌خطِ صفحه داخل بنک
- *         ۶۴کیلوبایتی). مسدودکننده؛ فقط بافت تسک.
- * @param  uint32_t__pageAddress [EN] Any address inside the target page /
- *         هر آدرسی داخل صفحهٔ هدف
+ *         writable NVM window). Blocking; thread context only.
+ *         [FA] پاک‌کردن یک صفحهٔ ۱کیلوبایتی فلش (آدرس هم‌تراز صفحه داخل
+ *         پنجرهٔ قابل‌نوشتن NVM). مسدودکننده؛ فقط بافت تسک.
+ * @param  uint32_t__pageAddress [EN] Page-aligned address inside the target
+ *         page and NVM window / آدرس هم‌تراز صفحه داخل صفحهٔ هدف و پنجرهٔ NVM
  * @return bool [EN] true on success / موفقیت
  */
 bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress);
 
 /**
- * @brief  [EN] Program an even count of halfwords to main flash. The whole
- *         range must sit in one erased page; unaligned addresses are refused.
- *         [FA] نوشتن تعداد زوج نیم‌کلمه به فلش اصلی. کل بازه باید داخل یک
- *         صفحهٔ پاک‌شده باشد؛ آدرس فرد رد می‌شود.
+ * @brief  [EN] Program a run of halfwords to main flash. The complete range
+ *         must stay inside the writable NVM window; the caller owns page
+ *         erase ordering and unaligned addresses are refused.
+ *         [FA] یک رشته نیم‌کلمه را در فلش اصلی می‌نویسد. کل بازه باید داخل
+ *         پنجرهٔ قابل‌نوشتن NVM بماند؛ ترتیب پاک‌کردن صفحه با فراخواننده است
+ *         و آدرس فرد رد می‌شود.
  * @param  uint32_t__address [EN] Even start address / آدرس شروع زوج
  * @param  uint16_t__A__Data [EN] Halfword source array / آرایهٔ نیم‌کلمه‌ها
- * @param  uint32_t__count [EN] Halfword count / تعداد نیم‌کلمه‌ها
+ * @param  uint32_t__count [EN] Halfword count; zero performs no write, but
+ *         ‎the source pointer must still be non-NULL‎ / تعداد نیم‌کلمه‌ها؛ صفر
+ *         بدون نوشتن است، اما اشاره‌گر مبدأ همچنان نباید NULL باشد
  * @return bool [EN] true on success / موفقیت
  */
 bool func__BspFlash_ProgramHalfWords(uint32_t uint32_t__address,

@@ -417,7 +417,18 @@
 #define ESPLINK_PARAM_DEAD_BLINK_PERIOD_MS     130u  /* u32, ms, def 0 = SOLID red, else up to 10000 */
 #define ESPLINK_PARAM_DEAD_BLINK_DUTY_PCT      131u  /* u8,  %,  def 50, 5..95 */
 
-#define ESPLINK_PARAM_COUNT               132u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28), 108..118 = imbalance scenario 5 (v1.43), 119..120 = charge-side percent map (v1.49), 121..122 = band-2 own beep shape (v1.50), 123..124 = imbalance latched red-lamp blink (v1.68, user order: the red lamp must blink), 125..127 = dead-battery scenario 6 (v1.72, user order: a battery must never stay under charge forever), 128..131 = the scenario-6 OWN lamp and buzzer shape (v1.80, user question: "scenario 6 has a lamp and a beep, why are there no boxes for them?" - it used to borrow the imbalance beep and a hard-coded solid red). Runtime slots 200..202 are persisted but NOT parameters: they stay outside this count and the GET_PARAMS bulk on purpose. [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای، حدها/گین‌های پشتیبان، سناریوی ۵ و نگاشت درصد سمت شارژ (۱۱۹..۱۲۰) و شکل بوق باند ۲ (۱۲۱..۱۲۲) و چشمک قرمز قفل عدم‌توازن (۱۲۳..۱۲۴)؛ ۱۲۵..۱۲۷ سناریوی ۶ باتری خراب و ۱۲۸..۱۳۱ چراغ و بوقِ مخصوص خودش (v1.80)؛ اسلات‌های ۲۰۰..۲۰۳ پارامتر نیستند */
+/* [EN] v1.81: the latched imbalance alarm owns these independent pattern
+   controls; defaults 1 beep and 0 ms gap preserve the old sound.
+   [FA] نسخهٔ ۱٫۸۱: هشدار قفل عدم‌توازن این کنترل‌های مستقل الگو را دارد؛
+   پیش‌فرض یک بوق و گپ صفر صدای قبلی را حفظ می‌کند. */
+#define ESPLINK_PARAM_IMBAL_BEEP_COUNT         132u  /* u8, count, def 1, 1..10 */
+#define ESPLINK_PARAM_IMBAL_BEEP_GAP_MS        133u  /* u32, ms, def 0, 0..5000 */
+
+/* [EN] ids 0..133 are ordinary parameters; 132 is imbalance beep count and
+   133 is its inter-beep gap. Runtime slots 200..202 stay outside this count.
+   [FA] شناسه‌های ۰..۱۳۳ پارامتر عادی‌اند؛ ۱۳۲ تعداد بوق عدم‌توازن و ۱۳۳ گپ
+   آن است. اسلات‌های ۲۰۰..۲۰۲ بیرون از این تعداد باقی می‌مانند. */
+#define ESPLINK_PARAM_COUNT               134u
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 
