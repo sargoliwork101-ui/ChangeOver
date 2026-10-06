@@ -765,6 +765,8 @@ async function testSendQueue(win, doc) {
     const st = doc.getElementById('sbst').textContent;
     check(st.indexOf('گیره') >= 0 && st.indexOf('39: 60→50') >= 0,
           'the report names the value the board clamped', st);
+    check(st.indexOf('38: 2000→2000') >= 0 && st.indexOf('39: 60→50') >= 0,
+          'the report lists every value in a multi-edit batch', st);
     win.qput(38, 2000);
     win.D.p[38] = 2000;
     await win.sendall();

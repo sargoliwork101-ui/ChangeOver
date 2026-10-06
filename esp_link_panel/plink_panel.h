@@ -365,7 +365,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build eff4be9</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build c2af7ed</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -539,7 +539,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="s2b"></div>
 
 <div class="sec">۴) بوق</div>
-<div class="sx">همان چهار عدد همیشگی، این‌بار برای این سناریو:<br><br><b>دوره</b> = فاصلهٔ تکرار الگو (۰ = بی‌صدا).<br><b>مدت هر بوق</b> = طول یک بوق.<br><b>تعداد بوق</b> = چند بوق در هر تکرار.<br><b>گپ</b> = سکوت بین آن بوق‌ها.<br><b>پیش‌فرض:</b> سه بوق کوتاه.<br><b>قانون مشترک بوق‌ها:</b> گپ فقط <i>بین</i> دو بوق معنی دارد، پس با «تعداد بوق = ۱» کادر گپ خودکار غیرفعال می‌شود و با دو بوق به بالا دوباره فعال.</div>
+<div class="sx"><b>دوره</b> = فاصلهٔ تکرار الگو (۰ = بی‌صدا).<br><b>مدت هر بوق</b> = طول یک بوق.<br><b>تعداد بوق</b> = چند بوق در هر تکرار.<br><b>گپ</b> = سکوت بین آن بوق‌ها.<br><b>پیش‌فرض:</b> سه بوق کوتاه.<br><b>قانون مشترک بوق‌ها:</b> گپ فقط <i>بین</i> دو بوق معنی دارد، پس با «تعداد بوق = ۱» کادر گپ خودکار غیرفعال می‌شود و با دو بوق به بالا دوباره فعال.</div>
 <div class="bqr">
 <label>دوره بوق (ms، صفر=خاموش)<input type="number" id="q46" step="500" min="0" max="600000"><span class="lb" id="a46"></span></label>
 <label>مدت هر بوق (ms)<input type="number" id="q47" step="50" min="0" max="600000"><span class="lb" id="a47"></span></label>
@@ -1022,7 +1022,8 @@ async function sendall(){
  fixed.forEach(f=>{const id=f[0];qput(id,v[id]);const e=$('q'+id);if(e)e.value=v[id];
   fixtxt.push(id+': '+f[1]+'→'+f[2]);});
  const ids=Object.keys(PEND);
- const sent={};let ok=0;
+ const sent={},sentReport=[];let ok=0;
+ const seqBefore=(D&&Number.isFinite(+D.seq))?+D.seq:null;
  stxt('sbst','… در حال ارسال');
  for(const id of ids){const v=PEND[id];
   try{const r=await fetch('/s?id='+id+'&v='+v,{method:'POST'});if(r.ok){ok++;sent[id]=v;}}catch(e){}
@@ -1032,16 +1033,33 @@ async function sendall(){
    'ارتباط با ESP/برد برقرار نیست، پس هیچ عددی روی برد ننشست.<br>'
    +'هر '+ids.length+' تغییر دست‌نخورده در صف مانده و کادرها نارنجی‌اند — '
    +'اتصال را چک کنید و دوباره بفرستید.',1);return;}
- /* دست‌دادن: منتظر فریم بعدی برد می‌مانیم و مقدار برگشتی را می‌سنجیم */
+ /* [EN] Do not inspect the old telemetry frame: wait for a newer seq so a
+    multi-parameter batch is judged against one real board echo.
+    [FA] فریم قدیمی را بررسی نکن؛ تا seq تازه صبر کن تا کل دسته با یک echo
+    واقعی برد سنجیده شود. */
  stxt('sbst','… ارسال شد، منتظر تأیید برد');
- for(let k=0;k<25;k++){await sl(200);if(D&&D.p)break;}
+ let fresh=false;
+ for(let k=0;k<25;k++){await sl(200);if(D&&D.p&&(seqBefore==null||+D.seq!==seqBefore)){fresh=true;break;}}
+ if(!fresh&&seqBefore!==null){
+  const noEcho=Object.keys(sent).map(id=>id+': بی‌پاسخ');
+  stxt('sbst','⚠ ارسال شد اما فریم تازهٔ تأیید از برد نرسید؛ همهٔ تغییرها در صف ماندند.');
+  sdlg('warn','⚠ تأیید برد نرسید',
+   'هیچ فریم تازه‌ای بعد از ارسال نرسید؛ هیچ تغییری از صف پاک نشد و باید دوباره ارسال کنید.'
+   +'<br>گزارش همهٔ مقدارهای فرستاده‌شده: '+sdlgl(noEcho),1);
+  return;
+ }
  await sl(600);
+ /* [EN] Keep one report row for EVERY sent id, not just the first clamp.
+    [FA] برای تک‌تک شناسه‌های فرستاده‌شده یک ردیف گزارش نگه می‌داریم، نه فقط اولی. */
  const bad=[];
  for(const id of Object.keys(sent)){
   const back=(D&&D.p)?D.p[id]:null;
   /* v1.70: بی‌پاسخ = مدرکی نداریم؛ در صف می‌ماند تا دوباره فرستاده شود. */
-  if(back==null){bad.push(id+': بی‌پاسخ');continue;}
-  if(+back!==+sent[id])bad.push(id+': '+sent[id]+'→'+back);
+  const report=id+': '+sent[id]+'→'+(back==null?'بی‌پاسخ':back);
+  if(back==null){bad.push(report);sentReport.push(report);continue;}
+  const clamped=+back!==+sent[id];
+  if(clamped)bad.push(report);
+  sentReport.push(report+(clamped?' — گیره زد':' — پذیرفت'));
   pclr(id);}
  pbar();
  if(typeof afresh==='function')afresh();if(typeof sall==='function')sall();
@@ -1050,22 +1068,27 @@ async function sendall(){
   sdlg('warn','⚠ ارسال ناقص — '+ok+' از '+ids.length+' نشست',
    'بقیه نرسیدند و هنوز در صف‌اند (کادرهای نارنجی). چیزی از دست نرفته؛ '
    +'فقط باید دوباره فرستاده شوند.'
+   +(sentReport.length?'<br>گزارش همهٔ مقدارهای ارسال‌شده: '+sdlgl(sentReport):'')
    +(left.length?'<br>در صف مانده: '+sdlgl(left):'')
    +(bad.length?'<br>برد این‌ها را گیره زد: '+sdlgl(bad):''),1);return;}
  const pre=fixtxt.length?(' · پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+fixtxt.join(' · ')):'';
- if(!bad.length){stxt('sbst','✅ '+ok+' تنظیم ارسال شد؛ برد همه را عیناً پذیرفت و ذخیره کرد.'+pre);
+ if(!bad.length){stxt('sbst','✅ '+ok+' تنظیم ارسال شد؛ برد همه را عیناً پذیرفت و ذخیره کرد.'
+  +(sentReport.length?' · '+sentReport.join(' · '):'')+pre);
   sdlg('ok','✅ همه نشست — '+ok+' تنظیم',
    'برد هر '+ok+' مقدار را عیناً پس‌فرستاد و در حافظهٔ ماندگار ذخیره کرد؛ '
    +'نیازی به ارسال دوباره نیست.'
+   +(sentReport.length?'<br>گزارش همهٔ مقدارها: '+sdlgl(sentReport):'')
    +(fixtxt.length?'<br>پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+sdlgl(fixtxt):''),0);
   return;}
- stxt('sbst','✅ '+ok+' تنظیم نشست، اما برد '+bad.length+' مقدار را به بازهٔ مجاز خودش گیره زد: '+bad.join(' · ')+pre);
+ stxt('sbst','✅ '+ok+' تنظیم نشست، اما برد '+bad.length+' مقدار را به بازهٔ مجاز خودش گیره زد: '
+  +(sentReport.length?sentReport.join(' · '):bad.join(' · '))+pre);
  const mute=bad.filter(x=>x.indexOf('بی‌پاسخ')>=0).length;
  sdlg(mute?'warn':'ok',(mute?'⚠ ':'✅ ')+ok+' تنظیم ارسال شد',
   (mute?'برای '+mute+' شناسه هیچ تأییدی از برد نیامد — آن‌ها در صف نگه داشته شدند تا دوباره بفرستید.<br>':'')
-  +'بقیه نشست. برد این مقدارها را به بازهٔ مجاز خودش گیره زد — عددِ روی برد همان سمت راست فلش است:'
-  +sdlgl(bad)
-  +(fixtxt.length?'پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+sdlgl(fixtxt):''),mute?1:0);}
+  +'بقیه نشست. گزارش همهٔ مقدارهای ارسال‌شده:'
+  +sdlgl(sentReport)
+  +(bad.length?'<br>جزئیات مقدارهای گیره‌خورده یا بی‌پاسخ: '+sdlgl(bad):'')
+  +(fixtxt.length?'<br>پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+sdlgl(fixtxt):''),mute?1:0);}
 /* ---------- ساخت صفحه: ولتاژها و وضعیت ---------- */
 /* v1.16k: merged voltages+alarm table - fixed layout, each value once, pills inline */
 const SR=[['ورودی',0],['پک ۲۴ ولت',1],['نود ۱۲ ولت',2],['باتری بالا',3],['باتری پایین',4],['جریان ۱ (بالا)',5],['جریان ۲ (پایین)',6]];
@@ -3237,9 +3260,19 @@ async function calapply(){
  let ok=0;for(const c of CALP){try{const r=await fetch('/s?id='+c[0]+'&v='+c[1],{method:'POST'});if(r.ok)ok++;}catch(e){}
   stxt('calst','… '+ok+'/'+CALP.length);await sl(80);}
  await sl(800);
- const bad=CALP.filter(c=>D&&D.p&&D.p[c[0]]!=null&&+D.p[c[0]]!==+c[1]);
+ /* [EN] Calibration writes also report every id/value echo in the batch.
+    [FA] ارسال‌های کالیبراسیون هم echo تک‌تک مقدارهای همان دسته را گزارش می‌کنند. */
+ const bad=[],calReport=[];
+ CALP.forEach(c=>{
+  const back=(D&&D.p)?D.p[c[0]]:null;
+  const report=c[2]+': '+c[1]+'→'+(back==null?'بی‌پاسخ':back);
+  if(back==null){bad.push(c);calReport.push(report+' — بی‌پاسخ');}
+  else if(+back!==+c[1]){bad.push(c);calReport.push(report+' — گیره زد');}
+  else calReport.push(report+' — پذیرفت');
+ });
  stxt('calst',(ok===CALP.length?'✅ ':'⚠ ')+ok+'/'+CALP.length+' روی برد نوشته شد'+
-  (bad.length?' · برد '+bad.length+' عدد را به بازهٔ خودش گیره زد':' · برد همه را عیناً پذیرفت')+
+  (bad.length?' · echo '+bad.length+' مقدار با درخواست فرق داشت':' · برد همه را عیناً پذیرفت')+
+  '<br>گزارش همهٔ مقدارها: '+calReport.join(' · ')+
   ' · پشتیبان قبلی در فایل دانلودشده است.');}
 
 /* ---------- v1.66: ارسال مستقیم جدول به حافظهٔ خود میکرو (دستور کاربر ۲۰۲۶-۱۰-۰۵) ----------
