@@ -270,17 +270,18 @@ int main(void)
             const std::string body = ESP_WEB_SERVER_T__G__Server.lastBody;
 
             /* the word this id must land in, and the bit inside it */
-            const int word = id / 32;                       /* 0..3 */
+            /* v1.80: ids 128..131 (scenario-6 lamp/buzzer) added a fifth word */
+            const int word = id / 32;                       /* 0..4 */
             const unsigned bit = (unsigned)(id % 32);
-            static const char *keys[4] = { "\"q\":", "\"q2\":", "\"q3\":", "\"q4\":" };
+            static const char *keys[5] = { "\"q\":", "\"q2\":", "\"q3\":", "\"q4\":", "\"q5\":" };
             bool found = true;
-            unsigned long seen[4] = { 0, 0, 0, 0 };
-            for (int w = 0; w < 4; w++) {
+            unsigned long seen[5] = { 0, 0, 0, 0, 0 };
+            for (int w = 0; w < 5; w++) {
                 const size_t at = body.find(keys[w]);
                 if (at == std::string::npos) { found = false; break; }
                 seen[w] = strtoul(body.c_str() + at + strlen(keys[w]), NULL, 10);
             }
-            check(found, "the telemetry JSON carries all four pending masks");
+            check(found, "the telemetry JSON carries all five pending masks");
             if (!found) break;
             check(seen[word] == (1UL << bit),
                   "parameter " + std::to_string(id) + " sets exactly its own bit, in word " +
@@ -288,9 +289,9 @@ int main(void)
                   "got " + std::to_string(seen[word]) + ", expected " +
                       std::to_string(1UL << bit));
             unsigned long others = 0;
-            for (int w = 0; w < 4; w++) if (w != word) others |= seen[w];
+            for (int w = 0; w < 5; w++) if (w != word) others |= seen[w];
             check(others == 0uL,
-                  "parameter " + std::to_string(id) + " leaves the other three words clear",
+                  "parameter " + std::to_string(id) + " leaves the other four words clear",
                   "a spilled bit makes the panel wait forever on a parameter nobody sent");
         }
         for (uint16_t i = 0u; i < ESP_PARAM_COUNT; i++) BOOL__G__TxParamPending[i] = false;
