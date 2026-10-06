@@ -774,17 +774,19 @@ async function testSendQueue(win, doc) {
 
 
 
-/* ==================== v1.57 backup identity + bench calibration ==================== */
+/* ==================== v1.81 parameter schema + bench calibration ==================== */
 
 /**
- * [EN] The backup file must carry an identity (build, parameter count, date)
- *      and the bench calibration must turn a known straight line of samples
- *      back into the exact gain/offset that produced it.
- * [FA] فایل پشتیبان باید شناسنامه داشته باشد و کالیبراسیون بنچ باید از روی
- *      نمونه‌های یک خط معلوم، همان گین و آفست سازندهٔ آن خط را دربیاورد.
+ * [EN] The backup file must carry the parameter schema (id, name, unit and
+ *      limits), not an opaque build stamp. Restore must report a changed
+ *      parameter identity precisely, and bench calibration must turn a known
+ *      straight line of samples back into the exact gain/offset that produced it.
+ * [FA] فایل پشتیبان باید شمای پارامتر (شناسه، نام، واحد و محدوده) را نگه دارد،
+ *      نه مهر مبهم بیلد را. بازگردانی باید تغییر دقیق هویت پارامتر را گزارش
+ *      کند و کالیبراسیون بنچ نیز همان گین و آفست خط معلوم را برگرداند.
  */
 function testBackupAndCal(win, doc) {
-    console.log('\nv1.57 backup identity + bench calibration / شناسنامهٔ پشتیبان و کالیبراسیون');
+    console.log('\nv1.81 parameter schema + bench calibration / شمای پارامتر و کالیبراسیون');
 
     /* --- the export payload carries the identity fields --- */
     const blobs = [];
@@ -796,19 +798,31 @@ function testBackupAndCal(win, doc) {
     const oldCreate = doc.createElement.bind(doc);
     doc.createElement = (t) => { const e = oldCreate(t); if (t === 'a') { e.click = () => {}; } return e; };
     win.D = { p: {}, t: [] };
-    const XIDS = win.eval('XIDS'), PN = win.eval('PN'), K = win.eval('K_MA');
+    const XIDS = win.eval('XIDS'), K = win.eval('K_MA');
     XIDS.forEach(id => { win.D.p[id] = 1; });
     win.eval('xexp')();
     doc.createElement = oldCreate;
     win.Blob = OldBlob;
     check(blobs.length === 1, 'the export button produces exactly one file');
     const o = JSON.parse(blobs[0]);
-    check(o.app === 'ChangeOver-settings' && o.v === 2, 'the file says what it is and which layout it uses');
-    check(typeof o.build === 'string' && o.build.length > 0, 'the file records the panel build it came from');
-    check(o.pn === PN, 'the file records how many parameters that build had');
+    check(o.app === 'ChangeOver-settings' && o.v === 3, 'the file says what it is and uses the parameter-schema format');
+    check(o.build === undefined, 'the backup does not use the panel build as its compatibility identity');
     check(typeof o.saved === 'string' && o.saved.indexOf('T') > 0, 'the file records when it was taken');
+    check(Array.isArray(o.schema) && o.schema.length === XIDS.length, 'the file records one schema entry for every backed-up id');
+    check(o.schema.every(s => s.id != null && typeof s.name === 'string' && 'unit' in s && 'min' in s && 'max' in s),
+          'each schema entry carries the id, readable name, unit and limits');
     check(Object.keys(o.params).length === XIDS.length, 'every backed-up id is in the file');
     check(o.params['76'] === undefined, 'the live-only id 76 stays out of the backup');
+    check(o.params['72'] === undefined && o.params['73'] === undefined,
+          'retired ids 72 and 73 stay out of the backup');
+    const changedSchema = o.schema.map(s => Object.assign({}, s));
+    changedSchema.find(s => s.id === 25).name = 'نام قدیمی جریان';
+    changedSchema.find(s => s.id === 26).max = 123;
+    const schemaDiff = win.eval('xdiff')(changedSchema).join('\n');
+    check(schemaDiff.indexOf('شناسهٔ 25') >= 0 && schemaDiff.indexOf('نام از') >= 0,
+          'restore identifies a changed parameter name by id');
+    check(schemaDiff.indexOf('شناسهٔ 26') >= 0 && schemaDiff.indexOf('max') >= 0,
+          'restore identifies a changed parameter limit by id');
     [15, 16, 17, 18, 19].forEach(id => {
         check(o.params[String(id)] === undefined, 'the momentary id ' + id + ' stays out of the backup');
     });

@@ -333,7 +333,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 5ccc105</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build bbc6d5a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -838,7 +838,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <label class="sb" style="cursor:pointer">⬆ ورودی (انتخاب فایل)<input type="file" id="xim" accept=".json,application/json" style="display:none"></label>
 <span class="lb" id="xst"></span>
 </div>
-<div class="sx">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد را در یک فایل JSON می‌ریزد و ورودی همان فایل را یکی‌یکی روی برد اعمال می‌کند (برد هر عدد را گیره می‌زند و نتیجه کنار همان فیلد دیده می‌شود). گذراها (۱۵..۱۹ و میوت ۷۶) جزو پشتیبان نیستند؛ فهرست از خود شناسه‌ها ساخته می‌شود، پس هر پارامتر تازه خودبه‌خود پشتیبان گرفته می‌شود.</div>
+<div class="sx">خروجی، همهٔ مقادیر «اعمال‌شدهٔ» برد را همراه با شناسنامهٔ هر پارامتر (شناسه، نام، واحد و محدوده) در یک فایل JSON می‌ریزد و ورودی همان فایل را یکی‌یکی روی برد اعمال می‌کند. اگر جای یک پارامتر، نام، واحد، نوع یا محدوده‌اش در نسخهٔ فعلی عوض شده باشد، پیام دقیق همان تغییر را می‌گوید؛ دیگر اختلاف بیلد به‌عنوان دلیل اصلی نمایش داده نمی‌شود. گذراها (۱۵..۱۹ و میوت ۷۶) و شناسه‌های بازنشستهٔ ۷۲/۷۳ جزو پشتیبان نیستند.</div>
 
 </div>
 </div>
@@ -1791,7 +1791,7 @@ const EVB={
  102:[0,2000,10,'n'],        103:[0,100,5,'ma'],     104:[0,120000,1000,'ms'],
  105:[0,60000,500,'ms'],     106:[500,60000,500,'ms'], 107:[50,5000,50,'ms']};
 
-const EVU={mv:'mV',ma:'mA',ms:'ms',pm:'‰',n:''};
+const EVU={mv:'mV',ma:'mA',ms:'ms',pm:'‰',mpm:'m‰',n:''};
 
 /* [EN] Where the bench LUTs stop being fitted data and start extending their
    last slope (calibration.h: chain 640 mA on ch1 = 631 mA of battery current
@@ -2365,30 +2365,87 @@ for(const id of AIDS){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=p
  if(m.length&&!confirm('⚠ '+m.map(x=>x.msg).join('\n')+'\n\nبرد مقدار را گیره می‌زند تا مجموعه سازنده بماند. باز هم ارسال شود؟')){e.value='';afresh();return;}
  qput(id,v);};e.oninput=(id>=83?pchk:afresh);}
 /* ===== v1.15b: پشتیبان‌گیری JSON تنظیمات (فیلتر + profile + آلارم‌ها) =====
-   [EN] v1.57 (user order "add whatever the backup still needs"): the file now
-   carries an identity - panel build stamp, parameter count, the id list it was
-   taken from and a timestamp - so restoring it onto a board that was flashed
-   with a DIFFERENT firmware can be noticed instead of silently writing a
-   number into an id that now means something else. On the way back in the
-   values go through the SAME fixrules() the send key uses (v1.56), and
-   through each parameter's own min/max, so an old or hand-edited file can
-   never push an impossible combination onto the board.
-   [FA] فایل پشتیبان حالا شناسنامه دارد: مهر بیلد پنل، تعداد پارامترها، فهرست
-   شناسه‌ها و تاریخ. پس اگر روی بردی با فرم‌ور دیگر بازخوانی شود، به‌جای
-   نوشتن بی‌صدای عدد در شناسه‌ای که معنایش عوض شده، هشدار می‌گیرید. موقع
-   بازخوانی هم مقادیر از همان قوانین fixrules و از بازهٔ مجاز هر پارامتر
-   رد می‌شوند. */
-const XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26];AIDS.forEach(id=>{if(id!==76)XIDS.push(id);});
+   [EN] v1.81: the file carries a parameter schema, not a build identity.
+   Each backed-up id records its user-facing name, unit, type and limits.
+   Restore compares that schema with the current panel and reports the exact
+   changed parameter, instead of presenting an opaque build-stamp mismatch.
+   Values still pass through the same fixrules() and per-field limits before
+   they are sent, so an old or hand-edited file cannot push an impossible
+   combination onto the board.
+   [FA] نسخهٔ ۱٫۸۱: فایل شناسنامهٔ پارامترها را نگه می‌دارد، نه هویت بیلد را.
+   برای هر شناسه نام قابل‌خواندن، واحد، نوع و محدوده ذخیره می‌شود. هنگام
+   بازگردانی همین شناسنامه با پنل فعلی مقایسه و تغییر دقیق پارامتر گزارش می‌شود؛
+   دیگر یک پیام مبهم دربارهٔ اختلاف بیلد دلیل اصلی نیست. مقدارها همچنان از
+   همان fixrules و محدودهٔ هر فیلد رد می‌شوند تا فایل قدیمی یا دستی ترکیب
+   ناممکن به برد نفرستد. */
+const XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26];AIDS.forEach(id=>{if(id!==72&&id!==73&&id!==76)XIDS.push(id);});
+/* [EN] Bench sample files retain their build stamp for traceability; settings
+   backups below deliberately do not use it as a compatibility decision.
+   [FA] فایل نمونه‌های بنچ برای ردیابی مهر بیلد را نگه می‌دارند؛ پشتیبان تنظیمات
+   در ادامه عمداً از آن برای تصمیم سازگاری استفاده نمی‌کند. */
 const xbuild=()=>{const e=$('bs');return e?e.textContent.replace('build ','').trim():'?';};
+/* [EN] v1.81: the backup schema is built from the same user-facing tables
+   that render the controls. PX covers the settings whose controls are drawn
+   dynamically; EVB/P provide the mechanical unit and limits. The DOM label is
+   the final fallback for a newly added ordinary input. This keeps a moved or
+   renamed control visible in the restore report instead of silently pairing
+   its old number with a new meaning.
+   [FA] نسخهٔ ۱٫۸۱: شمای پشتیبان از همان جدول‌های قابل‌مشاهدهٔ کاربر ساخته
+   می‌شود. برای کنترل‌های پویا از PX و برای واحد و محدوده از ‎EVB/P‎ استفاده
+   می‌شود؛ برچسب DOM هم پشتیبان کنترل تازه‌اضافه‌شده است. بنابراین جابه‌جایی یا
+   تغییرنام در گزارش بازگردانی دیده می‌شود و عدد قدیمی بی‌صدا معنای تازه نمی‌گیرد. */
+function xlabel(id){
+ const e=$('q'+id),l=e&&e.closest?e.closest('label'):null;
+ if(!l)return '';
+ return Array.from(l.childNodes).filter(n=>n.nodeType===3).map(n=>n.textContent.trim()).filter(Boolean).join(' ');
+}
+/* [EN] Some signed calibration offsets and enable bits are intentionally
+   rendered by a specialised control rather than a q-input, so their limits
+   cannot be read from the DOM. Keep this small authoritative bridge beside
+   the identity builder; without it a changed offset range would be invisible
+   during restore.
+   [FA] چند آفست کالیبراسیون علامت‌دار و بیت فعال‌سازی عمداً با کنترل تخصصی
+   رسم می‌شوند نه ‎q-input‎، پس محدوده‌شان از DOM خوانده نمی‌شود. این پل کوچک
+   کنار سازندهٔ شناسنامه نگه داشته می‌شود تا تغییر محدودهٔ آفست در بازگردانی
+   نامرئی نماند. */
+const XBOUND={4:[-5000,5000,1,'mV','signed'],5:[-5000,5000,1,'mV','signed'],
+ 6:[-5000,5000,1,'mV','signed'],11:[0,1,1,'','boolean'],12:[0,1,1,'','boolean'],
+ 117:[0,1,1,'','boolean'],127:[0,1,1,'','boolean']};
+function xmeta(id){
+ const e=$('q'+id),px=PX[id],pp=P[id],eb=EVB[id],xb=XBOUND[id];
+ const name=px?px[0]:(eb&&EVN[id]?EVN[id]:xlabel(id))||('شناسهٔ '+id);
+ const unit=pp?pp[1]:(eb?EVU[eb[3]]:(xb?xb[3]:''));
+ const min=e&&e.min!==''?+e.min:(pp?pp[2]:(eb?eb[0]:(xb?xb[0]:null)));
+ const max=e&&e.max!==''?+e.max:(pp?pp[3]:(eb?eb[1]:(xb?xb[1]:null)));
+ const step=e&&e.step!==''?e.step:(pp?'':(eb?eb[2]:(xb?xb[2]:'')));
+ const type=e&&e.type?e.type:(pp?pp[4]:(xb?xb[4]:'number'));
+ return {id:id,name:name,unit:unit,type:type,min:Number.isFinite(min)?min:null,
+         max:Number.isFinite(max)?max:null,step:step};
+}
+function xschema(){return XIDS.map(id=>xmeta(id));}
+function xdiff(schema){
+ if(!Array.isArray(schema)||!schema.length)return ['فایل مشخصات پارامترها را ندارد؛ تطبیق نام و محدوده ممکن نیست'];
+ const current=xschema(),oldBy=new Map(schema.map(s=>[+s.id,s])),nowBy=new Map(current.map(s=>[s.id,s])),out=[];
+ schema.forEach(s=>{if(!nowBy.has(+s.id))out.push('شناسهٔ '+s.id+' («'+(s.name||'بدون نام')+'») در پنل فعلی وجود ندارد');});
+ current.forEach(s=>{if(!oldBy.has(s.id))out.push('پارامتر جدید با شناسهٔ '+s.id+' («'+s.name+'») در فایل پشتیبان نیست');});
+ current.forEach(s=>{
+  const o=oldBy.get(s.id);if(!o)return;
+  if(String(o.name||'')!==String(s.name||''))out.push('شناسهٔ '+s.id+': نام از «'+(o.name||'بدون نام')+'» به «'+s.name+'» تغییر کرده');
+  if(String(o.unit||'')!==String(s.unit||''))out.push('شناسهٔ '+s.id+' («'+s.name+'»): واحد از «'+(o.unit||'بدون واحد')+'» به «'+(s.unit||'بدون واحد')+'» تغییر کرده');
+  ['type','min','max','step'].forEach(k=>{if(String(o[k]??'')!==String(s[k]??''))out.push('شناسهٔ '+s.id+' («'+s.name+'»): '+k+' از «'+(o[k]??'—')+'» به «'+(s[k]??'—')+'» تغییر کرده');});
+ });
+ const oldOrder=schema.map(s=>+s.id).join(','),newOrder=current.map(s=>s.id).join(',');
+ if(oldOrder!==newOrder)out.push('ترتیب/جای پارامترها در فهرست پشتیبان تغییر کرده است');
+ return out;
+}
 function xexp(){const x=$('xst');if(!D||!D.p){if(x)x.textContent='هنوز داده‌ای از برد نرسیده';return;}
- const o={app:'ChangeOver-settings',v:2,build:xbuild(),pn:PN,ids:XIDS.length,
-  saved:new Date().toISOString(),params:{}};
+ const o={app:'ChangeOver-settings',v:3,ids:XIDS.length,saved:new Date().toISOString(),schema:xschema(),params:{}};
  XIDS.forEach(id=>{o.params[id]=D.p[id];});
  const u=URL.createObjectURL(new Blob([JSON.stringify(o,null,1)],{type:'application/json'}));
  const a=document.createElement('a');a.href=u;
- a.download='changeover-settings-'+o.build+'-'+o.saved.slice(0,10)+'.json';a.click();
+ a.download='changeover-settings-'+o.saved.slice(0,10)+'.json';a.click();
  setTimeout(()=>URL.revokeObjectURL(u),2000);
- if(x)x.textContent='⬇ خروجی گرفته شد ('+XIDS.filter(id=>D.p[id]!=null).length+' مقدار اعمال‌شده · بیلد '+o.build+')';}
+ if(x)x.textContent='⬇ خروجی گرفته شد ('+XIDS.filter(id=>D.p[id]!=null).length+' مقدار اعمال‌شده · شمای '+o.schema.length+' پارامتر بررسی شد)';}
 /* [EN] Clamp one imported number to that parameter's own range.
    [FA] محدودکردن یک عدد واردشده به بازهٔ خود همان پارامتر. */
 function xclamp(id,n){const e=$('q'+id);
@@ -2404,13 +2461,17 @@ async function ximp(f){const x=$('xst');let o;try{o=JSON.parse(await f.text());}
  /* v1.64: وسط داده‌برداری چیزی روی برد نوشته نشود */
  if(typeof W!=='undefined'&&W&&W.run){if(x)x.textContent='⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.';return;}
  const ps=o.params?o.params:{};
- /* --- شناسنامه: اگر فایل مال بیلد دیگری است، صریح بپرس --- */
+ /* --- شناسنامهٔ واقعی پارامترها: اختلاف دقیق را گزارش کن --- */
  const warn=[];
- if(o.build&&o.build!==xbuild())warn.push('فایل از بیلد '+o.build+' گرفته شده و پنل فعلی بیلد '+xbuild()+' است');
- if(o.pn&&o.pn!==PN)warn.push('تعداد پارامترها فرق دارد ('+o.pn+' در فایل، '+PN+' در این نسخه)');
- if(!o.v||o.v<2)warn.push('فایل قدیمی است و شناسنامهٔ نسخه ندارد');
- const outs=Object.keys(ps).filter(k=>+k>=PN);
- if(outs.length)warn.push(outs.length+' شناسه در این نسخه وجود ندارد و نادیده گرفته می‌شود');
+ const schemaWarnings=Array.isArray(o.schema)?xdiff(o.schema):[];
+ if(!o.v||o.v<3||!Array.isArray(o.schema))warn.push('این فایل قدیمی است و شمای نام/واحد/محدودهٔ پارامترها را ندارد؛ مقدارها فقط با شناسه خوانده می‌شوند');
+ if(schemaWarnings.length){
+  const shown=schemaWarnings.slice(0,12);
+  warn.push('مشخصات پارامترها با پنل فعلی یکسان نیست:\n'+shown.join('\n')+
+    (schemaWarnings.length>shown.length?'\n… و '+(schemaWarnings.length-shown.length)+' تغییر دیگر':'') );
+ }
+ const outs=Object.keys(ps).filter(k=>!XIDS.includes(+k));
+ if(outs.length)warn.push(outs.length+' پارامتر/شناسه در این پنل پشتیبانی نمی‌شود و نادیده گرفته می‌شود: '+outs.join('، '));
  let jobs=XIDS.filter(id=>Number.isFinite(+ps[id])).map(id=>[id,xclamp(id,Math.round(+ps[id]))]);
  if(!jobs.length){if(x)x.textContent='⚠ هیچ مقدار معتبری در فایل نیست';return;}
  const outr=jobs.filter(j=>Math.round(+ps[j[0]])!==j[1]);
