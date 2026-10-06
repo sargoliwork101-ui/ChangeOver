@@ -70,6 +70,19 @@ static uint8_t  UINT8_T__G__RxCrcLow;
    [FA] شمارنده‌های سلامت لینک. قبلاً خطای CRC از لینک ساکت قابل تشخیص نبود. */
 static uint32_t UINT32_T__G__RxCrcError;
 static uint32_t UINT32_T__G__RxVersionMismatch;
+/* [EN] A reset is authorized only by the immediately preceding successful
+   LUT_COMMIT acknowledgment. A table being active is not enough: it may be
+   an old table, and a replayed LUT_RESET must not reboot a live charger.
+   BEGIN/CHUNK/failed COMMIT invalidate the authorization; accepting RESET
+   consumes it, so the same reset frame cannot be replayed.
+   [FA] ریست فقط با آخرین ACK موفق LUT_COMMIT مجاز است. فعال‌بودن جدول به‌تنهایی
+   کافی نیست چون ممکن است جدول قدیمی باشد و replay شدن LUT_RESET نباید شارژر
+   زنده را ریبوت کند. ‎BEGIN/CHUNK/COMMIT‎ ناموفق مجوز را باطل می‌کنند و پذیرش
+   RESET آن را مصرف می‌کند تا همان فریم دوباره قابل استفاده نباشد. */
+static bool BOOL__G__LutResetAuthorized = false;
+#ifdef ESPLINK_HOST_TEST
+static uint32_t UINT32_T__G__HostAcceptedFrames = 0u;
+#endif
 static uint16_t UINT16_T__G__TelemetrySeq = 0u;
 
 /* [EN] TLM_LIVE flag bits (payload offset 2). / [FA] بیت‌های پرچم TLM_LIVE. */
@@ -172,6 +185,11 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                                      uint32_t uint32_t__value,
                                      uint32_t *uint32_t__appliedValue)
 {
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
+
     switch (uint8_t__paramId)
     {
         case ESPLINK_PARAM_CUR1_OFFSET_COUNTS:
@@ -365,8 +383,10 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                [FA] اعداد UI، شناسه‌های ۳۸..۸۲: دیسپچ بازه‌ای. */
             if (((uint8_t__paramId >= UI_ALARM_PARAM_MIN_ID) &&
                  (uint8_t__paramId <= UI_ALARM_PARAM_MAX_ID)) ||
-                ((uint8_t__paramId >= UI_ALARM_PARAM_EXT_MIN_ID) &&
-                 (uint8_t__paramId <= UI_ALARM_PARAM_EXT_MAX_ID)))
+                 ((uint8_t__paramId >= UI_ALARM_PARAM_EXT_MIN_ID) &&
+                 (uint8_t__paramId <= UI_ALARM_PARAM_EXT_MAX_ID)) ||
+                ((uint8_t__paramId >= UI_ALARM_PARAM_TECH_EXT_MIN_ID) &&
+                 (uint8_t__paramId <= UI_ALARM_PARAM_TECH_EXT_MAX_ID)))
             {
                 return func__Ui_SetAlarmParam(uint8_t__paramId,
                                               uint32_t__value,
@@ -374,11 +394,13 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
             }
 #endif
 #if MODULE_IMBALANCE
-            /* [EN] Imbalance scenario 5, ids 108..118 (v1.43) + runtime
-                    slots 200..202 (NVM boot replay only; the panel never
-                    sends those, and they are never part of a backup).
-               [FA] سناریوی ۵ عدم‌توازن، ۱۰۸..۱۱۸ + اسلات‌های ۲۰۰..۲۰۲
-                    (فقط پخش NVM هنگام بوت). */
+            /* [EN] Imbalance scenario 5, ids 108..118, 123..124, 132..133
+                    and clean-FLOAT-cycle threshold 136 + runtime slots
+                    200..202 (NVM boot replay only; the panel never sends
+                    those slots, and they are never part of a backup).
+               [FA] سناریوی ۵ عدم‌توازن، ۱۰۸..۱۱۸، ۱۲۳..۱۲۴، ۱۳۲..۱۳۳ و
+                    آستانهٔ سیکل پاک ۱۳۶ + اسلات‌های ۲۰۰..۲۰۲ (فقط پخش NVM
+                    هنگام بوت). */
             if (IMBAL_PARAM_OWNS(uint8_t__paramId) ||
                 ((uint8_t__paramId >= IMBAL_SLOT_FIRST_ID) &&
                  (uint8_t__paramId <= IMBAL_SLOT_LAST_ID)))
@@ -389,9 +411,9 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
             }
 #endif
 #if MODULE_CHARGER
-            /* [EN] v1.72 scenario 6 (dead battery), ids 125..127 + runtime
-                    slot 203 (NVM boot replay of the latch mask).
-               [FA] سناریوی ۶ باتری خراب، ۱۲۵..۱۲۷ + اسلات ۲۰۳. */
+            /* [EN] v1.82 scenario 6 (dead battery), ids 125..131 and 134..135 +
+                    runtime slot 203 (NVM boot replay of the latch mask).
+               [FA] سناریوی ۶ باتری خراب، ۱۲۵..۱۳۱ و ۱۳۴..۱۳۵ + اسلات ۲۰۳. */
             if (CHG_DEAD_PARAM_OWNS(uint8_t__paramId) ||
                 (uint8_t__paramId == CHG_DEAD_SLOT_MASK_ID))
             {
@@ -414,6 +436,11 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
 bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
                                    uint32_t *uint32_t__value)
 {
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     switch (uint8_t__paramId)
     {
         case ESPLINK_PARAM_CUR1_OFFSET_COUNTS:
@@ -562,8 +589,10 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
                [FA] خواندن زندهٔ اعداد UI، شناسه‌های ۳۸..۸۲. */
             if (((uint8_t__paramId >= UI_ALARM_PARAM_MIN_ID) &&
                  (uint8_t__paramId <= UI_ALARM_PARAM_MAX_ID)) ||
-                ((uint8_t__paramId >= UI_ALARM_PARAM_EXT_MIN_ID) &&
-                 (uint8_t__paramId <= UI_ALARM_PARAM_EXT_MAX_ID)))
+                 ((uint8_t__paramId >= UI_ALARM_PARAM_EXT_MIN_ID) &&
+                 (uint8_t__paramId <= UI_ALARM_PARAM_EXT_MAX_ID)) ||
+                ((uint8_t__paramId >= UI_ALARM_PARAM_TECH_EXT_MIN_ID) &&
+                 (uint8_t__paramId <= UI_ALARM_PARAM_TECH_EXT_MAX_ID)))
             {
                 return func__Ui_GetAlarmParam(uint8_t__paramId,
                                               uint32_t__value);
@@ -582,8 +611,8 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
             }
 #endif
 #if MODULE_CHARGER
-            /* [EN] v1.72 scenario 6 live read, ids 125..127 + slot 203.
-               [FA] خواندن زندهٔ سناریوی ۶ + اسلات ۲۰۳. */
+            /* [EN] v1.82 scenario 6 live read, ids 125..131 and 134..135 + slot 203.
+               [FA] خواندن زندهٔ سناریوی ۶، ۱۲۵..۱۳۱ و ۱۳۴..۱۳۵ + اسلات ۲۰۳. */
             if (CHG_DEAD_PARAM_OWNS(uint8_t__paramId) ||
                 (uint8_t__paramId == CHG_DEAD_SLOT_MASK_ID))
             {
@@ -1177,6 +1206,31 @@ static void func__EspLink_SendLutAck(uint8_t uint8_t__stage,
                             UINT8_T__A__Payload, 8u);
 }
 
+/* [EN] Keep the handshake policy as a small stateful predicate so it is
+   testable without a UART or flash model. The handler supplies the facts it
+   already knows: whether the magic and active-table checks passed.
+   [FA] سیاست دست‌دادن را به‌صورت یک predicate کوچک و stateful نگه می‌داریم
+   تا بدون مدل UART یا فلش تست‌پذیر باشد. هندلر واقعیت‌هایی را که خودش دارد
+   می‌دهد: معتبر بودن مجیک و فعال بودن جدول. */
+static void func__EspLink_RecordLutCommitAck(bool bool__success)
+{
+    BOOL__G__LutResetAuthorized = bool__success;
+}
+
+static bool func__EspLink_ConsumeLutResetAuthorization(bool bool__magicValid,
+                                                        bool bool__tableActive)
+{
+    if ((bool__magicValid == false) ||
+        (bool__tableActive == false) ||
+        (BOOL__G__LutResetAuthorized == false))
+    {
+        return false;
+    }
+
+    BOOL__G__LutResetAuthorized = false;
+    return true;
+}
+
 /**
  * @brief  [EN] The four LUT-push frames (v1.66). Kept out of HandleFrame so
  *              the hot parameter path stays as short as it was.
@@ -1190,6 +1244,10 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
 {
     if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_BEGIN)
     {
+        /* [EN] The latest LUT ACK is no longer the successful commit once a
+           new staging transaction begins.
+           [FA] با شروع تراکنش جدید، آخرین ACK دیگر ACK موفق commit نیست. */
+        func__EspLink_RecordLutCommitAck(false);
         uint8_t uint8_t__status = (uint8_t)CAL_LUT_ST_COUNT;
 
         if (uint16_t__payloadLength == 2u)
@@ -1207,6 +1265,11 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
 
     if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_CHUNK)
     {
+        /* [EN] A chunk ACK supersedes a commit ACK; reset must wait for a
+           fresh successful commit after this transaction step.
+           [FA] ACK تکه جای ACK commit را می‌گیرد؛ بعد از این مرحله ریست باید
+           منتظر commit موفق تازه بماند. */
+        func__EspLink_RecordLutCommitAck(false);
         uint8_t uint8_t__status = (uint8_t)CAL_LUT_ST_MISSING;
 
         if (uint16_t__payloadLength >= 3u)
@@ -1257,6 +1320,8 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
             uint8_t__status = func__CalLut_Commit(
                 func__EspLink_GetU32(uint8_t__payload, 0u), &uint32_t__boardCrc);
         }
+        func__EspLink_RecordLutCommitAck(
+            uint8_t__status == (uint8_t)CAL_LUT_ST_OK);
         func__EspLink_SendLutAck((uint8_t)ESPLINK_LUT_ACK_STAGE_COMMIT,
                                  uint8_t__status, uint32_t__boardCrc);
         return true;
@@ -1265,18 +1330,30 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
     if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_RESET)
     {
         uint8_t uint8_t__status = (uint8_t)CAL_LUT_ST_NO_STAGE;
+        bool bool__magicValid = false;
+        bool bool__tableActive;
 
         /* [EN] Literal 'R','S','T','!' and a table that is actually active:
            a stray or replayed frame must never be able to reboot a charging
-           board. [FA] مجیک متنی و وجود جدول فعال: فریم سرگردان یا تکرارشده
-           هرگز نباید بردِ در حال شارژ را ریست کند. */
+           board. The stateful predicate additionally requires the last
+           LUT_ACK to have been a successful COMMIT and consumes that grant.
+           [FA] مجیک متنی و وجود جدول فعال: فریم سرگردان یا تکرارشده هرگز
+           نباید بردِ در حال شارژ را ریست کند. predicate علاوه بر این، ACK
+           آخر را باید commit موفق بداند و مجوز را مصرف می‌کند. */
         if ((uint16_t__payloadLength == 4u) &&
             (uint8_t__payload[0] == (uint8_t)'R') &&
             (uint8_t__payload[1] == (uint8_t)'S') &&
             (uint8_t__payload[2] == (uint8_t)'T') &&
-            (uint8_t__payload[3] == (uint8_t)'!') &&
-            ((func__CalLut_Active(CAL_LUT_CHANNEL_1) != false) ||
-             (func__CalLut_Active(CAL_LUT_CHANNEL_2) != false)))
+            (uint8_t__payload[3] == (uint8_t)'!'))
+        {
+            bool__magicValid = true;
+        }
+        bool__tableActive =
+            (func__CalLut_Active(CAL_LUT_CHANNEL_1) != false) ||
+            (func__CalLut_Active(CAL_LUT_CHANNEL_2) != false);
+
+        if (func__EspLink_ConsumeLutResetAuthorization(bool__magicValid,
+                                                        bool__tableActive) != false)
         {
             func__CalLut_RequestReset();
             uint8_t__status = (uint8_t)CAL_LUT_ST_OK;
@@ -1354,6 +1431,22 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
     }
 }
 
+/* [EN] Return to the earliest state that can still recognize the current
+   byte as the start of the next frame. Error bytes are data already consumed
+   by the failing frame, but AA itself may be the next SOF0; dropping it loses
+   an immediately following AA 55 and leaves the link blind until another
+   frame happens to arrive.
+   [FA] به ابتدایی‌ترین حالتی برگرد که هنوز می‌تواند همین بایت را شروع
+   فریم بعد بداند. بایت خطا قبلاً در فریم خراب مصرف شده، اما خود AA می‌تواند
+   SOF0 بعدی باشد؛ دور انداختنش جفت AA 55 بلافاصله بعد را گم می‌کند. */
+static void func__EspLink_ResyncFromByte(uint8_t uint8_t__byte)
+{
+    ESP_LINK_PARSE_STATE_T__G__State =
+        (uint8_t__byte == (uint8_t)ESPLINK_SOF_BYTE0)
+            ? ESP_LINK_PARSE_WAIT_SOF1
+            : ESP_LINK_PARSE_WAIT_SOF0;
+}
+
 /**
  * @brief  [EN] Feed one received byte into the parser state machine.
  *         [FA] یک بایت دریافتی را به ماشین حالت پارسر می‌دهد.
@@ -1403,7 +1496,7 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
             if (uint8_t__byte != (uint8_t)ESPLINK_PROTOCOL_VERSION)
             {
                 UINT32_T__G__RxVersionMismatch++;
-                ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;
+                func__EspLink_ResyncFromByte(uint8_t__byte);
             }
             else
             {
@@ -1434,9 +1527,11 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
             UINT16_T__G__Crc = func__EspLink_Crc16(UINT16_T__G__Crc, uint8_t__byte);
             if (UINT16_T__G__FrameLen > (uint16_t)ESPLINK_FRAME_MAX_PAYLOAD)
             {
-                /* [EN] Impossible length: resynchronize.
-                   [FA] طول ناممکن: همگام‌سازی دوباره. */
-                ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;
+                /* [EN] Impossible length: resynchronize, retaining AA as
+                   SOF0 when the failing high byte is itself AA.
+                   [FA] طول ناممکن: همگام‌سازی دوباره؛ اگر بایت بالای خطا
+                   خودش AA است، آن را به‌عنوان SOF0 نگه می‌داریم. */
+                func__EspLink_ResyncFromByte(uint8_t__byte);
             }
             else
             {
@@ -1471,9 +1566,15 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
             if (((uint16_t)(((uint16_t)uint8_t__byte << 8) |
                             (uint16_t)UINT8_T__G__RxCrcLow)) == UINT16_T__G__Crc)
             {
+#ifdef ESPLINK_HOST_TEST
+                /* [EN] Host parser tests deliberately avoid the product
+                   dispatch graph; acceptance itself is the observable. */
+                UINT32_T__G__HostAcceptedFrames++;
+#else
                 func__EspLink_HandleFrame(UINT8_T__G__FrameType,
                                           UINT16_T__G__FrameLen,
                                           UINT8_T__G__PayloadBuffer);
+#endif
             }
             else
             {
@@ -1482,14 +1583,63 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
                    اندازه‌گیری باشد نه فقط «به نظر بی‌اعتماد». */
                 UINT32_T__G__RxCrcError++;
             }
-            ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;
+            /* [EN] CRC-HI may be AA, which is already the next frame's
+               SOF0. Preserve it instead of requiring a third frame to
+               recover after AA 55.
+               [FA] ممکن است ‎CRC-HI‎ برابر AA باشد و همان SOF0 فریم بعدی
+               باشد؛ آن را نگه می‌داریم تا بعد از AA 55 به فریم بعد برسیم. */
+            func__EspLink_ResyncFromByte(uint8_t__byte);
             break;
 
         default:
-            ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;
+            func__EspLink_ResyncFromByte(uint8_t__byte);
             break;
     }
 }
+
+#ifdef ESPLINK_HOST_TEST
+/** [EN] Host-only parser and handshake probes; never part of the firmware API. */
+void func__EspLink_HostTest_Reset(void)
+{
+    ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;
+    UINT32_T__G__RxCrcError = 0u;
+    UINT32_T__G__RxVersionMismatch = 0u;
+    UINT32_T__G__HostAcceptedFrames = 0u;
+    BOOL__G__LutResetAuthorized = false;
+}
+
+void func__EspLink_HostTest_FeedByte(uint8_t uint8_t__byte)
+{
+    func__EspLink_ParseByte(uint8_t__byte);
+}
+
+uint32_t func__EspLink_HostTest_CrcErrors(void)
+{
+    return UINT32_T__G__RxCrcError;
+}
+
+uint32_t func__EspLink_HostTest_VersionErrors(void)
+{
+    return UINT32_T__G__RxVersionMismatch;
+}
+
+uint32_t func__EspLink_HostTest_AcceptedFrames(void)
+{
+    return UINT32_T__G__HostAcceptedFrames;
+}
+
+void func__EspLink_HostTest_RecordCommitAck(bool bool__success)
+{
+    func__EspLink_RecordLutCommitAck(bool__success);
+}
+
+bool func__EspLink_HostTest_TryReset(bool bool__magicValid,
+                                     bool bool__tableActive)
+{
+    return func__EspLink_ConsumeLutResetAuthorization(bool__magicValid,
+                                                       bool__tableActive);
+}
+#endif
 
 /* ==================== EspLink_Init ==================== */
 
@@ -1506,6 +1656,7 @@ void func__EspLink_Init(void)
 {
     func__BspUart_Init();
     ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;
+    BOOL__G__LutResetAuthorized = false;
     UINT16_T__G__TelemetrySeq = 0u;
     func__EspLink_Power(true);
 }

@@ -31,17 +31,16 @@
 /* [‎EN] Start-of-frame bytes and geometry. / [FA]‎ بایت‌های شروع فریم و هندسه. */
 #define ESPLINK_SOF_BYTE0             0xAAu
 #define ESPLINK_SOF_BYTE1             0x55u
-/* [EN] Since v1.16 the length field is u16 little-endian (len_lo +
- *      len_hi) - PARAMS_BULK grows past the old u8 ceiling of 255 (v1.22:
- *      99 params = 1 + 99 x 5 = 496 payload bytes). Frame = AA 55 type
- *      len_lo len_hi payload xor; the xor covers type + both length
- *      bytes + payload. Both boards MUST flash together (a v1.15 parser
- *      reads len_hi as payload).
- * [FA] از v1.16 فیلد طول u16 لیتل‌اندین است (‎len_lo + len_hi)‎ —
- *      PARAMS_BULK از سقف u8 قبلی رد می‌شود (v1.22: ۹۹ پارامتر = ۴۹۶ بایت
- *      payload). فریم = AA 55 نوع len_lo len_hi و xor روی نوع + دو بایت
- *      طول + payload. هر دو برد باید با هم فلش شوند (پارسر v1.15 یعنی
- *      len_hi را payload می‌خواند). */
+/* [EN] Since v2 the length field is u16 little-endian and the frame carries
+ *      an explicit version plus CRC-16/CCITT-FALSE. PARAMS_BULK is chunked:
+ *      the 512-byte payload ceiling holds at most 102 id/value items per
+ *      frame, so the current 143-id parameter space is sent in multiple frames.
+ *      Both boards MUST flash together because a v1 parser reads the version
+ *      byte as the old payload geometry.
+ * [FA] از v2 طول فریم u16 لیتل‌اندین، نسخهٔ صریح و ‎CRC-16/CCITT-FALSE‎ دارد.
+ *      PARAMS_BULK تکه‌تکه است: سقف payload برابر ۵۱۲ بایت است و هر فریم حداکثر
+ *      ۱۰۲ جفت شناسه/مقدار می‌برد؛ فضای ۱۴۳شناسه‌ای فعلی در چند فریم ارسال می‌شود.
+ *      هر دو برد باید با هم فلش شوند چون پارسر قدیمی بایت نسخه را payload می‌خواند. */
 /* [EN] v2 FRAME (2026-09-29). Two changes, both because this link is about to
  *      carry a calibration campaign and a silent error there is worse than no
  *      data at all:
@@ -214,7 +213,7 @@
  *      (شناسه‌ها باید برابر FAULT_ALARM_PARAM_* در fault.h باشند)، ۳۵..۳۷
  *      در ماژول شارژر (برابر CHG_ALARM_PARAM_* در charger.h). هر نوشتن،
  *      کل مجموعه را دوباره گیره می‌زند. */
-#define ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_MV      27u  /* u32, mV, def 14800, over+50..OV-100 */
+#define ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_MV      27u  /* u32, mV, def 14800, 14000..15000 independent */
 #define ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_DEB_MS  28u  /* u32, ms, def 150,   50..1000 */
 #define ESPLINK_PARAM_FAULT_ALARM_ABSENT_MV          29u  /* u32, mV, def 6000,  3000..8000, < back-500 */
 #define ESPLINK_PARAM_FAULT_ALARM_BACK_MV            30u  /* u32, mV, def 7000,  4000..9000, > absent+500 */
@@ -363,8 +362,8 @@
  *      ماندگار ۲۰۰..۲۰۲ پارامتر نیستند. */
 #define ESPLINK_PARAM_IMBAL_REST_LIMIT_MV      108u  /* u32, mV, def 300,    0..2000 */
 #define ESPLINK_PARAM_IMBAL_DISCH_LIMIT_MV     109u  /* u32, mV, def 500,    0..2000 */
-#define ESPLINK_PARAM_IMBAL_REST_WAIT_MS       110u  /* u32, ms, def 600000, 0..3600000 (0 = rest check off) */
-#define ESPLINK_PARAM_IMBAL_CHG_WAIT_MS        111u  /* u32, ms, def 600000, 0..3600000 (0 = during-charge check off) */
+#define ESPLINK_PARAM_IMBAL_REST_WAIT_MS       110u  /* u32, ms, def 600000, 0..18000000 (0 = rest check off; max 5 h) */
+#define ESPLINK_PARAM_IMBAL_CHG_WAIT_MS        111u  /* u32, ms, def 600000, 0..18000000 (0 = during-charge check off; max 5 h) */
 #define ESPLINK_PARAM_IMBAL_EVENT_STABLE_MS    112u  /* u32, ms, def 30000,  1000..600000 */
 #define ESPLINK_PARAM_IMBAL_EVENT_HYST_MV      113u  /* u32, mV, def 100,    0..1000 */
 #define ESPLINK_PARAM_IMBAL_EVENT_MAX          114u  /* u8,  def 10,  1..255: latch after N episodes */
@@ -416,8 +415,37 @@
 #define ESPLINK_PARAM_DEAD_BEEP_LEN_MS         129u  /* u32, ms, def 120, 20..2000 */
 #define ESPLINK_PARAM_DEAD_BLINK_PERIOD_MS     130u  /* u32, ms, def 0 = SOLID red, else up to 10000 */
 #define ESPLINK_PARAM_DEAD_BLINK_DUTY_PCT      131u  /* u8,  %,  def 50, 5..95 */
+#define ESPLINK_PARAM_DEAD_BEEP_COUNT         134u  /* u8, count, def 1, 1..10 */
+#define ESPLINK_PARAM_DEAD_BEEP_GAP_MS        135u  /* u32, ms, def 0, 0..5000 */
 
-#define ESPLINK_PARAM_COUNT               132u  /* [EN] 20..26 = profile (v1.12), 27..37 = alarms (v1.15), 38..76 = UI cadence (v1.16), 77..82 = full/hysteresis (v1.17), 83..92 = two-loop CC/CV PID (v1.24), 93..107 = charger limits & backstop gains (v1.28), 108..118 = imbalance scenario 5 (v1.43), 119..120 = charge-side percent map (v1.49), 121..122 = band-2 own beep shape (v1.50), 123..124 = imbalance latched red-lamp blink (v1.68, user order: the red lamp must blink), 125..127 = dead-battery scenario 6 (v1.72, user order: a battery must never stay under charge forever), 128..131 = the scenario-6 OWN lamp and buzzer shape (v1.80, user question: "scenario 6 has a lamp and a beep, why are there no boxes for them?" - it used to borrow the imbalance beep and a hard-coded solid red). Runtime slots 200..202 are persisted but NOT parameters: they stay outside this count and the GET_PARAMS bulk on purpose. [FA] پروفایل، آلارم‌ها، اعداد UI، PID دوحلقه‌ای، حدها/گین‌های پشتیبان، سناریوی ۵ و نگاشت درصد سمت شارژ (۱۱۹..۱۲۰) و شکل بوق باند ۲ (۱۲۱..۱۲۲) و چشمک قرمز قفل عدم‌توازن (۱۲۳..۱۲۴)؛ ۱۲۵..۱۲۷ سناریوی ۶ باتری خراب و ۱۲۸..۱۳۱ چراغ و بوقِ مخصوص خودش (v1.80)؛ اسلات‌های ۲۰۰..۲۰۳ پارامتر نیستند */
+/* [EN] v1.81: the latched imbalance alarm owns these independent pattern
+   controls; defaults 1 beep and 0 ms gap preserve the old sound.
+   [FA] نسخهٔ ۱٫۸۱: هشدار قفل عدم‌توازن این کنترل‌های مستقل الگو را دارد؛
+   پیش‌فرض یک بوق و گپ صفر صدای قبلی را حفظ می‌کند. */
+#define ESPLINK_PARAM_IMBAL_BEEP_COUNT         132u  /* u8, count, def 1, 1..10 */
+#define ESPLINK_PARAM_IMBAL_BEEP_GAP_MS        133u  /* u32, ms, def 0, 0..5000 */
+#define ESPLINK_PARAM_IMBAL_CLEAN_FULL_CYCLES  136u  /* u8, count, def 3, 1..255 */
+
+/* ==================== Scenario 7: technical board fault ==================== */
+/* [EN] Six independent controls: the four buzzer fields do not reuse the
+ *      scenario-5/6 count and gap ids, and the last two shape the one shared
+ *      phase of all three LEDs. [FA] شش کنترل مستقل سناریوی ۷؛ تعداد و گپ
+ *      بوق از سناریوهای ۵ و ۶ جداست و دو عدد آخر فاز مشترک سه LED را می‌سازند. */
+#define ESPLINK_PARAM_TECH_BEEP_PERIOD_MS  137u  /* u32, ms, def 3000, 0 = silent */
+#define ESPLINK_PARAM_TECH_BEEP_LEN_MS     138u  /* u32, ms, def 200, 0..600000 */
+#define ESPLINK_PARAM_TECH_BEEP_COUNT      139u  /* u8, count, def 3, 0..10 */
+#define ESPLINK_PARAM_TECH_BEEP_GAP_MS     140u  /* u32, ms, def 100, 0..5000 */
+#define ESPLINK_PARAM_TECH_LED_PERIOD_MS   141u  /* u32, ms, def 1000, 100..10000 */
+#define ESPLINK_PARAM_TECH_LED_DUTY_PCT    142u  /* u8, %, def 50, 0..100 */
+
+/* [EN] ids 0..142 are ordinary parameters; 132/133 shape the imbalance
+   beep, 134/135 shape the dead-battery beep and 136 controls the number of
+   clean FLOAT-qualified cycles before the imbalance event counter is cleared.
+   Runtime slots stay outside.
+   [FA] شناسه‌های ۰..۱۳۶ پارامتر عادی‌اند؛ ۱۳۲/۱۳۳ شکل بوق عدم‌توازن،
+   ۱۳۴/۱۳۵ شکل بوق باتری خراب و ۱۳۶ تعداد سیکل‌های کامل پاک برای صفرکردن
+   شمارندهٔ عدم‌توازن را می‌سازند؛ اسلات‌های زمان‌اجرا بیرون‌اند. */
+#define ESPLINK_PARAM_COUNT               143u
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 
@@ -493,9 +521,11 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
 
 /**
  * @brief  [EN] Read the live value of one parameter id. Public since v1.14:
- *              the flash save snapshot (esp_link_nvm.c) uses it.
+ *              the flash save snapshot (esp_link_nvm.c) uses it. A NULL
+ *              output pointer is rejected before dispatch.
  *         [FA] خواندن مقدار زندهٔ یک شناسهٔ پارامتر. عمومی از v1.14: عکس
- *              ذخیرهٔ فلش (esp_link_nvm.c) از آن استفاده می‌کند.
+ *              ذخیرهٔ فلش (esp_link_nvm.c) از آن استفاده می‌کند؛ خروجی NULL
+ *              پیش از dispatch رد می‌شود.
  */
 bool func__EspLink_GetParam(uint8_t uint8_t__paramId, uint32_t *uint32_t__value);
 
@@ -521,5 +551,17 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
  * @‎param  bool__on [EN] true=on, false=off‎ / روشن/خاموش
  */
 void func__EspLink_Power(bool bool__on);
+
+#ifdef ESPLINK_HOST_TEST
+/* [EN] Host-only probes for the production parser and LUT-reset handshake. */
+void func__EspLink_HostTest_Reset(void);
+void func__EspLink_HostTest_FeedByte(uint8_t uint8_t__byte);
+uint32_t func__EspLink_HostTest_CrcErrors(void);
+uint32_t func__EspLink_HostTest_VersionErrors(void);
+uint32_t func__EspLink_HostTest_AcceptedFrames(void);
+void func__EspLink_HostTest_RecordCommitAck(bool bool__success);
+bool func__EspLink_HostTest_TryReset(bool bool__magicValid,
+                                     bool bool__tableActive);
+#endif
 
 #endif /* ESP_LINK_H */

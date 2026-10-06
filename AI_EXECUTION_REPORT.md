@@ -1,9 +1,68 @@
 # گزارش اجرای AI
 
-**آخرین به‌روزرسانی:** 2026-09-28 (فرم‌ور v1.19، پروتکل v1.17b؛ همگام‌سازی مستندات)<br>
-**شاخه:** `arena/01a0c744-changeover`<br>
+**آخرین به‌روزرسانی:** 2026-10-06 (ممیزی نهایی فرم‌ور/پنل/اسناد/ماشین‌حالت)<br>
+**شاخه:** `arena/1d08b4cb-changeover`<br>
 **مالک گزارش:** Agent ارشد پروژه<br>
 **قوانین مرجع:** `AI_AGENT_RULES.md`
+
+> **یادداشت اعتبار:** این فایل تاریخچهٔ اجرای پاس‌های قبلی را نگه می‌دارد؛ هر
+> عدد/وضعیت قدیمی در بخش‌های تاریخی با «الحاقیهٔ جاری ۲۰۲۶-۱۰-۰۶» در انتهای
+> گزارش superseded است. مرجع یگانهٔ شمارش و نتیجه، جدول همان الحاقیه و خروجی
+> فرمان‌های قابل تکرار است.
+
+## خلاصهٔ جاری — الحاقیهٔ ۲۰۲۶-۱۰-۰۶
+
+این الحاقیه پس از اجرای واقعی gateها روی شاخهٔ جاری نوشته شد و بر ادعاهای
+قدیمیِ این گزارش مقدم است:
+
+- قرارداد فعلی ESP: `ESPLINK_PARAM_COUNT = ESP_PARAM_COUNT = 143`، شناسه‌های
+  عادی `0..142`، NVM نسخهٔ ۱۲ با ۱۴۴ جای و `PARAMS_BULK` حداکثر ۱۰۲ آیتم در
+  payload پنج‌صدودوازده‌بایتی. جزئیات جاری در `ESP_AGENT_SPEC.md` بخش 1.1 است؛
+  بخش‌های تاریخی آن سند صریحاً historical علامت خورده‌اند.
+- سناریوی ۷ در کد و پنل نهایی است: اتصال‌کوتاه فقط با رلهٔ باز + PWM واقعی صفر
+  + JIT ثبت‌شده؛ قطع‌شدن فقط با PWM واقعی بیشتر از ۲۰٪ + جریان همان کانال صفر؛
+  lockout تا reset/power-cycle آزاد نمی‌شود؛ هر سه LED فاز مشترک دارند و
+  q137..q142 مستقل از q132..q135 هستند.
+- `python3 tools/audit_consistency.py`: **441 invariant، 0 finding**.
+- `bash tools/check_ai_rules.sh`: **ALL CHECKS PASSED**؛
+  `python3 tools/fix_rtl_comments.py --check`: **PASS**؛ `git diff --check`:
+  **PASS**.
+- `bash tools/check_firmware_syntax.sh`: **PASS** — ESP `97/97`، Charger
+  `52/52`، Imbalance `3805/3805`، Changeover `114/114`، Fault `44/44`،
+  Protection `61/61`، Jitter `24/24`، McuPowerPath `49/49`، CalLut
+  `125/125`، Measurement `2346/2346`، EspLink parser `15/15` و NVM PASS.
+- `node esp_link_panel/Tester/host_test_panel_click.js`: **129/129 PASS**؛
+  `node esp_link_panel/Tester/host_test_scenario_cards.js`: **288/288 PASS**.
+  jsdom در این پاس نصب و واقعاً اجرا شد؛ این دو suite SKIP نشده‌اند.
+- `python3 tools/make_state_machine_xlsx.py` و
+  `python3 tools/make_module_state_machines.py`: workbook سیستمی، ۱۱ workbook
+  ماژول و لینک‌های validation بازتولید شدند؛ شیت سناریوی ۷/قفل فنی در مرجع
+  سیستمی و Charger/Fault/UI اضافه/همگام شد.
+- یک regression واقعی در `formulas()` پنل پیدا و اصلاح شد: پس از حذف خلاصهٔ
+  قدیمی، renderer هنوز به `fv3..fv5` حذف‌شده دست می‌زد و redraw با خطای
+  `Cannot set properties of null` پنل را به حالت offline می‌برد. پس از guard،
+  تست click کامل سبز شد. اندازهٔ literal پنل `380794` بایت و سقف اعلامی
+  `ESP_PANEL_HTML_MAX_BYTES=384000` است.
+
+### فرمان‌های تکرارپذیر اصلی
+
+```text
+python3 tools/audit_consistency.py
+bash tools/check_ai_rules.sh
+python3 tools/fix_rtl_comments.py --check
+bash tools/check_firmware_syntax.sh
+node esp_link_panel/Tester/host_test_panel_click.js
+node esp_link_panel/Tester/host_test_scenario_cards.js
+python3 tools/make_state_machine_xlsx.py
+python3 tools/make_module_state_machines.py
+```
+
+### خارج از پوشش
+
+هیچ تست فیزیکی رله، PWM، JIT، جریان، ترانزیستور، باتری، UART واقعی، WiFi،
+LittleFS یا power-cycle روی برد انجام نشده است؛ ARM compile/link و map نهایی نیز
+به‌دلیل نبود `arm-none-eabi-gcc` اجرا نشد. PASSهای بالا host/static/DOM هستند و
+جای validation سخت‌افزار واقعی را نمی‌گیرند.
 
 ## خلاصهٔ وضعیت
 
@@ -519,3 +578,39 @@ IWDG نامی ۱ ثانیه در برابر توقف ~۴۰ms پاک‌کردن �
 - تست‌ها: هارنس NVM روی چهار صفحهٔ شبیه‌سازی‌شده و بانکِ دوصفحه‌ای به‌روز شد؛ `host_test_esp_link.cpp` پنج ماسک را می‌سنجد؛ ۱۳ تست تازهٔ پنل برای چهار کادر تازه و کلید کارخانه.
 
 دروازه‌ها: ممیزی ۲۵۹ ناوردا / ۰ یافته · شارژر ۵۰/۵۰ · ۹۳ تست ESP · قوانین AI سبز · عدم‌توازن ۵۰۳۴/۰ · تست UI · کلیک پنل ۱۲۹/۱۲۹ · کارت‌های سناریو ۲۴۲/۲۴۲.
+
+---
+
+## الحاقیهٔ نهایی و مرجع جاری — ۲۰۲۶-۱۰-۰۶
+
+این بخش آخرین وضعیت قابل استناد این گزارش است و اعداد تاریخی بالا را supersede
+می‌کند. همهٔ فرمان‌ها در checkout شاخهٔ `arena/1d08b4cb-changeover` اجرا شدند.
+
+### نتیجه‌های قطعی
+
+| حوزه | نتیجه |
+|---|---|
+| consistency | `441 invariant / 0 finding` |
+| AI rules و RTL | `check_ai_rules.sh`: **ALL CHECKS PASSED**؛ `fix_rtl_comments.py --check`: **PASS** |
+| ESP host | **97/97 PASS**، با compile و sanitizerهای ASan/UBSan |
+| Charger host | **52/52 PASS** |
+| DOM پنل | click **129/129 PASS**؛ scenario cards **288/288 PASS**؛ jsdom واقعاً نصب و اجرا شد |
+| host module suites | Imbalance **3805/3805**، Changeover **114/114**، Fault **44/44**، Protection **61/61**، Jitter **24/24**، McuPowerPath **49/49**، CalLut **125/125**، Measurement **2346/2346**، EspLink parser **15/15** و NVM PASS |
+| state-machine generators | workbook سیستمی + ۱۱ workbook ماژول تولید شد؛ validation links در generator به‌روزرسانی شد |
+
+### دامنهٔ فنی سناریوی ۷
+
+Firmware و پنل یک قرارداد واحد دارند: امضای اتصال‌کوتاه/سوختن برابر رلهٔ باز،
+PWM واقعی صفر و JIT ثبت‌شده است؛ امضای قطع‌شدن/سوختن برابر PWM واقعی بیشتر از
+۲۰٪ و جریان همان کانال صفر است. پس از latch، Charger هر دو PWM و رله را در
+همان نشست برق قفل نگه می‌دارد و فقط reset/power-cycle از مسیر `Init` آن را آزاد
+می‌کند. Fault بیت ۷ را منتشر می‌کند و UI پیش از OverVoltage آن را نمایش می‌دهد.
+LEDهای سه‌گانه یک phase دارند و بوق/چرخهٔ آن با ids `137..142` از سناریوهای
+۵/۶ مستقل است.
+
+### موارد خارج از پوشش
+
+برد واقعی، رله، PWM، JIT، سنسور جریان، ترانزیستور شارژر، باتری، power-cycle،
+UART/WiFi/LittleFS واقعی، build/link ARM و map نهایی اجرا نشده‌اند. این گزارش
+فقط host/static/DOM evidence را PASS می‌داند و hardware validation را NOT RUN
+نگه می‌دارد.

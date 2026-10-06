@@ -10,6 +10,7 @@ cd "$(dirname "$0")"
 ROOT="$(cd ../../../.. && pwd)"
 
 gcc -std=c11 -Wall -Wextra -Wpedantic -Werror -O0 \
+    -DMEASUREMENT_HOST_TEST \
     -I "${ROOT}/Firmware/App/Inc" \
     -I "${ROOT}/Firmware/Bsp/Inc" \
     -I "${ROOT}/Firmware/Config/Inc" \

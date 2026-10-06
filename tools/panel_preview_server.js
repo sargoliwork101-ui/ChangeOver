@@ -28,6 +28,21 @@ const path = require("path");
 /* ---------- extract the real panel HTML from the panel module ---------- */
 const panelPath = path.join(__dirname, "..", "esp_link_panel", "plink_panel.h");
 const panelSrc = fs.readFileSync(panelPath, "utf8");
+/* [EN] Serve the real embedded Vazirmatn CSS in the preview too. Returning
+ *      system fonts made a laptop preview look different from the ESP.
+ *      [FA] پیش‌نمایش هم باید همان CSS وزیرمتن جاسازی‌شده را بدهد؛ فونت سیستم
+ *      باعث می‌شد ظاهر لپ‌تاپ با خود ESP فرق کند. */
+const fontPath = path.join(__dirname, "..", "esp_link_panel", "plink_font.h");
+const fontSrc = fs.readFileSync(fontPath, "utf8");
+const fontStart = fontSrc.indexOf("static const char ESP_PANEL_FONT_CSS");
+const fontEq = fontSrc.indexOf("=", fontStart) + 1;
+const fontEnd = fontSrc.indexOf(";\n", fontEq);
+const fontLiterals = fontSrc.slice(fontEq, fontEnd).match(/"(?:\\.|[^"\\])*"/g) || [];
+const FONT_CSS = fontLiterals.map((x) => JSON.parse(x)).join("");
+if (!FONT_CSS) {
+    console.error("panel preview: embedded Vazirmatn CSS not found in " + fontPath);
+    process.exit(1);
+}
 
 /* [EN] v1.28: the telemetry width is DERIVED from the firmware header, never
  *      retyped here. This file used to hardcode 20 while the link carried 25
@@ -131,7 +146,7 @@ const HARD_MAX = Number(
         که هر دو را دارد. */
 const inject = `<script>(function(){
 var b=document.createElement('div');
-b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99;background:#3a2b06;color:#ffd970;font:13px Vazirmatn,sans-serif;padding:6px 12px;text-align:center;border-bottom:1px solid #6b5206;direction:rtl';
+b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99;background:#3a2b06;color:#ffd970;font:13px Vazirmatn;padding:6px 12px;text-align:center;border-bottom:1px solid #6b5206;direction:rtl';
 b.textContent='پیش‌نمایش آفلاین — شبیه‌ساز STM32 + چرخه نمایشی سناریوها (شارژ/اضافه‌ولتاژ/قطع‌باتری/دشارژ). روی هر عدد آبی‌رنگ روی نمودار کلیک کنید تا همان‌جا ویرایش شود.';
 document.body.appendChild(b);document.body.style.paddingTop='32px';
 var t0=document.querySelector('nav button[data-t="0"]');if(t0)t0.click();
@@ -189,8 +204,17 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            /* v1.80 ids 128..131 = scenario 6's OWN lamp and buzzer (user
               question: "it has a lamp and a beep, why no boxes?"): beep
               period, beep length, red blink period (0 = solid) and its
-              on-share. Defaults reproduce the old borrowed behaviour. */
-           600000, 120, 0, 50];
+              on-share. Defaults preserve the independent one-beep, solid-red behaviour. */
+           600000, 120, 0, 50,
+           /* v1.81 ids 132..133 = independent imbalance latch beep count/gap */
+           1, 0,
+           /* v1.82 ids 134..135 = independent dead-battery beep count/gap */
+           1, 0,
+           /* v1.83 id 136 = clean FLOAT-qualified cycles before imbalance reset */
+           3,
+           /* v1.84 ids 137..142 = scenario 7's independent buzzer and
+              synchronized three-LED cadence. */
+           3000, 200, 3, 100, 1000, 50];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -241,7 +265,7 @@ function clampParam(id, v) {
         case 107: return Math.min(5000, Math.max(50, v));
         /* v1.43 imbalance scenario 5 (IMBAL_* clamp windows in imbalance.c) */
         case 108: case 109: return Math.min(2000, Math.max(0, v));
-        case 110: case 111: return Math.min(3600000, Math.max(0, v));
+        case 110: case 111: return Math.min(18000000, Math.max(0, v));
         case 112: return Math.min(600000, Math.max(1000, v));
         case 113: return Math.min(1000, Math.max(0, v));
         case 114: return Math.min(255, Math.max(1, v));
@@ -278,9 +302,26 @@ function clampParam(id, v) {
         case 129: return clampW(v, 20, 2000);
         case 130: return clampW(v, 0, 10000);
         case 131: return clampW(v, 5, 95);
-        /* v1.15 alarms: mirror of Fault_ClampAlarms / Charger_ClampAlarms */
-        case 27: { let lo = Math.max(14000, over + 50), hi = Math.min(15000, ov - 100);
-                   if (lo > hi) hi = lo; return Math.min(hi, Math.max(lo, v)); }
+        /* v1.81: independent imbalance latch beep shape (ids 132..133). */
+        case 132: return clampW(v, 1, 10);
+        case 133: return clampW(v, 0, 5000);
+        /* v1.82: independent dead-battery latch beep shape (ids 134..135). */
+        case 134: return clampW(v, 1, 10);
+        case 135: return clampW(v, 0, 5000);
+        /* v1.83: configurable number of clean FLOAT-qualified cycles before
+           the imbalance event counter is cleared. */
+        case 136: return clampW(v, 1, 255);
+        /* v1.84 scenario 7: four independent buzzer fields and the shared
+           three-LED cadence. No q132..q135 dependency is allowed here. */
+        case 137: return clampPeriod(v);
+        case 138: return clampW(v, 0, 600000);
+        case 139: return clampW(v, 0, 10);
+        case 140: return clampW(v, 0, 5000);
+        case 141: return clampW(v, 100, 10000);
+        case 142: return clampW(v, 0, 100);
+        /* v1.15 alarms: q27 has the Fault module's independent hard window;
+           q36 remains the Charger module's profile-relative OV clamp. */
+        case 27: return clampW(v, 14000, 15000);
         case 28: return Math.min(1000, Math.max(50, v));
         case 29: return Math.min(P[30] - 500, Math.min(8000, Math.max(3000, v)));
         case 30: return Math.max(P[29] + 500, Math.min(9000, Math.max(4000, v)));
@@ -553,7 +594,7 @@ const server = http.createServer((req, res) => {
         return send(200, "text/html; charset=utf-8", page);
     }
     if (req.method === "GET" && url.pathname === "/f.css") {
-        return send(200, "text/css", "/* preview: system fonts */\n");
+        return send(200, "text/css; charset=utf-8", FONT_CSS);
     }
     if (req.method === "GET" && url.pathname === "/t") {
         return send(200, "application/json", JSON.stringify(SNAP || telemetry()));

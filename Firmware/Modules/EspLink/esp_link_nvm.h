@@ -88,48 +88,29 @@
  *      معنی تازه یعنی بوق ۱۰۰ms با تکرار هر ۱۰۰ms؛ پس عمداً نامعتبر می‌شود و
  *      پیش‌فرض کامپایل (که همان صدای قبلی را می‌دهد) می‌ماند. بعد از این
  *      ارتقا یک‌بار از پنل تنظیم‌ها را دوباره بفرستید. */
-/* [EN] Record version history: v3 = 77 slots (v1.16 LED/buzzer
- *      mirror), v4 = id 76 became a panel-session mute, never persisted
- *      (v1.16b), v5 = 83 slots incl. the six full/hysteresis ids 77..82
- *      (v1.17), v6/v7 = 98 slots incl. the fifteen three-stage PID ids
- *      83..97 (v1.22/v1.23), v8 = 93 slots incl. the ten
- *      two-loop CC/CV PID ids 83..92 (v1.24 deleted the redundant third
- *      gain row), v9 = 108 slots incl. the fifteen charger
- *      limits/timer/gain ids 93..107 (v1.28),
+/* [EN] Record version history: v3/v4/v5/v6/v7/v8/v9 are historical layouts;
+ *      v10 added imbalance ids 108..118 and runtime slots 200..202, v11
+ *      invalidated the old meanings of ids 57 and 122, and v12 is the current
+ *      format after the non-contiguous scenario-5/6 additions plus scenario-7
+ *      controls 137..142. Any older version fails validation and falls back to
+ *      compiled defaults; the user must resend desired settings after upgrade.
+ * [FA] نسخه‌های v3 تا v9 قدیمی‌اند؛ v10 شناسه‌های عدم‌توازن ۱۰۸..۱۱۸ و
+ *      اسلات‌های ۲۰۰..۲۰۲ را آورد، v11 معنی شناسه‌های ۵۷ و ۱۲۲ را تغییر داد
+ *      و v12 قالب فعلی پس از افزودن بلوک‌های غیرپیوستهٔ سناریوهای ۵/۶ و کنترل‌های
+ *      سناریوی ۷ یعنی ۱۳۷..۱۴۲ است. نسخهٔ قدیمی نامعتبر می‌شود و پیش‌فرض کامپایل
+ *      می‌ماند؛ پس از ارتقا تنظیم‌های مطلوب باید دوباره فرستاده شوند. */
+#define ESP_LINK_NVM_VERSION            12u
 
- *      v10 = CURRENT: 122 slots incl. the eleven imbalance scenario ids
- *      108..118 (v1.43) and the three imbalance runtime slots 200..202
- *      (events/cycles/latch; never user parameters). A record with an older version fails the version check
- *      and falls back to the compiled defaults - after any upgrade that
- *      changes the record layout, re-tune from the panel once (v8 IS such
- *      an upgrade, and the bump is mandatory rather than cosmetic: a v7
- *      record's slots 88..92 hold the OLD third row, which would otherwise
- *      be restored straight into the new voltage row).
- * [FA] تاریخچهٔ نسخهٔ رکورد: v3 = ۷۷ جای (آینهٔ LED/بازر v1.16)، v4 =
- *      میوت ۷۶ جلسه‌ای شد و دیگر ذخیره نمی‌شود (v1.16b)، v5 = ۸۳ جای
- *      شامل ۷۷..۸۲ (v1.17)، ‎v6/v7‎ = ۹۸ جای شامل پانزده شناسهٔ PID
- *      سه‌مرحله‌ای ۸۳..۹۷، v8 = ۹۳ جای شامل ده شناسهٔ PID دوحلقه‌ای
- *      ۸۳..۹۲ (v1.24 ردیف سوم زائد را حذف کرد)، v9 = فعلی: ۱۰۸ جای شامل
- *      پانزده شناسهٔ ۹۳..۱۰۷ (حدها/زمان‌ها/گین‌های شارژر). رکورد قدیمی‌تر
- *      می‌افتد و
- *      پیش‌فرض کامپایل می‌ماند - بعد از هر ارتقای چیدمان یک‌بار از پنل
- *      دوباره تنظیم کنید (v1.22 دقیقاً چنین ارتقایی است: اولین بوت پس از
- *      فلش با مقادیر کارخانه بالا می‌آید). */
-#define ESP_LINK_NVM_VERSION            11u
-
-/* [EN] Slot cap: 122 persisted ids today (0..14 config + 20..26 charge
- *      profile + 27..37 alarms + 38..75 UI cadence + 77..82 full/
- *      hysteresis + 83..92 two-loop PID + 93..107 charger limits and
- *      backstop gains + 108..118 imbalance scenario + 200..202 imbalance
- *      runtime slots; id 76 = panel-session mute, transient like 15..19).
- *      Cap 122 -> record = 12 + 122 x 8 + 4 = 992 B, still inside one 1 KiB
- *      page with 32 B to spare - the assert in the .c proves it rather
- *      than trusting this arithmetic. Keep the C harness in sync (it once
- *      caught a wrong count as a silent early-return).
- * [FA] سقف جای‌ها: امروز ۱۲۲ شناسهٔ ذخیره‌شونده (… + ۱۰۸..۱۱۸ سناریوی
- *      عدم‌توازن + ۲۰۰..۲۰۲ اسلات زمان‌اجرا؛ ۷۶ گذرا). سقف ۱۲۲ یعنی رکورد
- *      ۹۹۲ بایت، باز هم داخل یک صفحهٔ ۱KB با ۳۲ بایت حاشیه - گزارهٔ داخل
- *      فایل .c این را «اثبات» می‌کند. هارنس C را هم‌روز نگه دارید. */
+/* [EN] Current capacity: ESP_LINK_NVM_ENTRY_MAX is 144 entries. The active
+ *      persisted set is ids 0..14, 20..142 except retired 72/73 and transient
+ *      76, plus runtime slots 200..203. The current record has 144 slots (12 + 144 x 8 + 4 = 1168 B)
+ *      and fits inside the two-page 2 KiB ping-pong bank; the
+ *      static assertions in esp_link_nvm.c prove the size and entry count.
+ * [FA] ظرفیت فعلی: ESP_LINK_NVM_ENTRY_MAX برابر ۱۴۴ جای است. مجموعهٔ فعال
+ *      شناسه‌های ۰..۱۴ و ۲۰..۱۴۲ است، به‌جز ۷۲/۷۳ بازنشسته و ۷۶ گذرا، به‌علاوهٔ
+ *      اسلات‌های زمان‌اجرا ۲۰۰..۲۰۳. رکورد ۱۲ + ۱۴۴×۸ + ۴ = ۱۱۶۸ بایت است و
+ *      داخل بانک پینگ‌پنگ دوصفحه‌ای ۲KB جا می‌شود؛ static assertهای فایل c اندازه
+ *      و تعداد را اثبات می‌کنند. */
 /* [EN] v1.50: 126 slots (12 + 126 x 8 + 4 = 1024 B = exactly one 1 KiB page).
  *      v1.72 spends the last of that headroom: the three scenario-6 ids
  *      (125..127) and slot 203 bring the persisted set to exactly 126, so
@@ -138,12 +119,13 @@
  *      older, shorter record still replays correctly - no version bump.
  * [FA] ۱۲۶ جا (۱۰۲۴ بایت، دقیقاً یک صفحه). رکورد تعداد خودش را
  *      ذخیره می‌کند پس رکورد کوتاه‌تر قدیمی هم درست پخش می‌شود. */
-/* [EN] v1.80: 144 slots (12 + 144 x 8 + 4 = 1168 B) inside a 2 KiB bank. The
- *      real persisted set is 128 ids today (the four scenario-6 face ids
- *      pushed it past the old 126-slot single page), so there are 16 spare
- *      slots and ~880 B of page left - the _Static_assert in the .c proves
- *      both rather than trusting this arithmetic.
- * [FA] ۱۴۴ جا (۱۱۶۸ بایت) داخل بانک ۲KB؛ امروز ۱۲۸ شناسه ذخیره می‌شود. */
+/* [EN] Historical v1.80 note: moving from the old 126-entry single-page
+ *      layout to a 144-entry two-page bank made room for the scenario-6 face
+ *      controls. The current v12 format subsequently uses the same capacity
+ *      for scenario-5/6 extensions and scenario-7 ids 137..142.
+ * [FA] یادداشت تاریخی v1.80: انتقال از چیدمان تک‌صفحه‌ای ۱۲۶جایی به بانک
+ *      دوصفحه‌ای ۱۴۴جایی برای کنترل‌های چهرهٔ سناریوی ۶ فضا ساخت؛ قالب فعلی v12
+ *      همین ظرفیت را برای توسعهٔ سناریوهای ۵/۶ و شناسه‌های ۱۳۷..۱۴۲ سناریوی ۷ نگه می‌دارد. */
 #define ESP_LINK_NVM_ENTRY_MAX         144u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
@@ -162,7 +144,7 @@
 /* [EN] Persisted id ranges: ALL settable configuration (0..14 = offsets,
  *      gains, filters, eta, charger enables, duty ceilings; 20..26 =
  *      charge profile; 27..37 = alarms; 38..75 = UI cadence; 77..82 =
- *      full/hysteresis; 83..92 = two-loop PID; 119..120 = charge-side percent map, v1.49; 121..122 = band-2 beep shape, v1.50) EXCEPT the transient
+ *      full/hysteresis; 83..92 = two-loop PID; 119..120 = charge-side percent map, v1.49; 121..122 = band-2 beep shape, v1.50; 132..133 = imbalance beep count/gap, v1.81; 134..135 = dead-battery beep count/gap, v1.82; 136 = imbalance clean-FLOAT-cycle threshold, v1.83) EXCEPT the transient
  *      test modes 15..18 (fixed duty), 19 (manual test) and 76
  *      (panel-session mute) - those must never survive a reboot. Id 76
  *      sits INSIDE the high range, so the predicate excludes it
@@ -177,7 +159,7 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   131u
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   142u /* [EN] v1.84 adds scenario-7 UI controls 137..142. / [FA] نسخهٔ ۱٫۸۴ کنترل‌های سناریوی ۷ را اضافه می‌کند. */
 
 /* [EN] v1.74: ids 72/73 are retired (the low-battery window became a fixed
    constant inside the Changeover module), so they are carved out of the high

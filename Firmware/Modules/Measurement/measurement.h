@@ -258,6 +258,21 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts);
  */
 uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts);
 uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts);
+
+#ifdef MEASUREMENT_HOST_TEST
+/**
+ * @brief  [EN] Host-only exact arithmetic probe for the runtime LUT math.
+ *         [FA] probeٔ دقیق arithmetic LUT، فقط برای تست هاست.
+ * @param  uint32_t__a [EN] Multiplicand / عامل اول
+ * @param  uint32_t__b [EN] Multiplicand / عامل دوم
+ * @param  uint32_t__divisor [EN] Nonzero divisor / مقسوم‌علیه ناصفر
+ * @return uint32_t [EN] Saturated quotient / خارج‌قسمت اشباع‌شده
+ */
+uint32_t func__Measurement_HostTest_MulDivU32(uint32_t uint32_t__a,
+                                              uint32_t uint32_t__b,
+                                              uint32_t uint32_t__divisor);
+#endif
+
 /* [EN] Legacy generic wrapper = channel-2 calibration (kept for old callers;
  *      new code must pick the per-channel wrapper above).
  * [FA] wrapper عمومی قدیمی = کانال ۲؛ کد جدید wrapper پر-کانال. */

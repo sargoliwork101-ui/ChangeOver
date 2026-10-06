@@ -131,4 +131,9 @@ echo "--- CalLut host test / تست هاست CalLut ---"
 echo "--- Measurement host test / تست هاست Measurement ---"
 ./Firmware/Modules/Measurement/Tester/run_host_test_measurement.sh
 
+echo "--- EspLink NVM host test / تست هاست NVM لینک ESP ---"
+./Firmware/Modules/EspLink/Tester/run_host_test_nvm.sh
+echo "--- EspLink parser host test / تست هاست پارسر لینک ESP ---"
+./Firmware/Modules/EspLink/Tester/run_host_test_parser.sh
+
 echo "HOST SYNTAX CHECK PASSED / بررسی syntax سمت Host موفق بود"

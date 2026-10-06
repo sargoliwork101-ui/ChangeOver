@@ -200,6 +200,59 @@ int main(void)
               "a parser that wedges needs a power cycle to come back");
     }
 
+    /* ---- 5b. every error path keeps an AA that may be SOF0 -------------- */
+    {
+        const std::vector<uint8_t> good = build_frame(ESP_MSG_TLM_LIVE,
+                                                       tlm_payload(11u));
+
+        /* Version mismatch followed immediately by AA 55. */
+        ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
+        BOOL__G__TlmSeen = false;
+        func__Esp_ParseByte(ESP_LINK_SOF_BYTE0);
+        func__Esp_ParseByte(ESP_LINK_SOF_BYTE1);
+        func__Esp_ParseByte((uint8_t)(ESP_LINK_PROTOCOL_VERSION + 1u));
+        feed(good);
+        check(UINT32_T__G__RxVersionMismatch > 0u && BOOL__G__TlmSeen,
+              "version mismatch resync keeps the next AA 55 frame");
+
+        /* Invalid high length byte is AA, followed by 55 and the remainder
+           of a valid frame (the retained AA is its SOF0). */
+        ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
+        BOOL__G__TlmSeen = false;
+        const uint8_t badLength[] = { ESP_LINK_SOF_BYTE0,
+                                      ESP_LINK_SOF_BYTE1,
+                                      ESP_LINK_PROTOCOL_VERSION,
+                                      ESP_MSG_TLM_LIVE, 0x00u,
+                                      ESP_LINK_SOF_BYTE0 };
+        feed(std::vector<uint8_t>(badLength,
+                                  badLength + sizeof(badLength)));
+        feed(std::vector<uint8_t>(good.begin() + 1u, good.end()));
+        check(BOOL__G__TlmSeen,
+              "an impossible length with high byte AA retains the next frame");
+
+        /* CRC error whose CRC-HI is AA, followed by 55 and a valid frame. */
+        std::vector<uint8_t> crcBoundary;
+        uint8_t oneBytePayload = 0u;
+        for (uint16_t type = 0u; type < 256u; type++) {
+            std::vector<uint8_t> candidate = build_frame((uint8_t)type,
+                                                          std::vector<uint8_t>(1u, oneBytePayload));
+            if (candidate.back() == ESP_LINK_SOF_BYTE0) {
+                crcBoundary = candidate;
+                break;
+            }
+        }
+        check(!crcBoundary.empty(), "the test found a CRC-HI AA boundary case");
+        if (!crcBoundary.empty()) {
+            crcBoundary[crcBoundary.size() - 2u] ^= 0x01u;
+            ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
+            BOOL__G__TlmSeen = false;
+            feed(crcBoundary);
+            feed(std::vector<uint8_t>(good.begin() + 1u, good.end()));
+            check(UINT32_T__G__RxCrcError > 0u && BOOL__G__TlmSeen,
+                  "CRC-HI AA is retained so AA 55 immediately recovers");
+        }
+    }
+
     /* ---- 6. outgoing frames are well formed ----------------------------- */
     {
         Serial.tx.clear();

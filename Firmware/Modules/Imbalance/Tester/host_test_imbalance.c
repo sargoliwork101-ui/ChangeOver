@@ -48,17 +48,23 @@ int main(void)
             مقدار ذخیره‌شده باید از ‎Init‎ جان سالم به‌در ببرد؛ قبلاً هر بار
             روشن‌شدن پاک می‌شد. پارامتر غایب در رکورد باید پیش‌فرض بگیرد. */
     CHECK(func__Imbalance_SetParam(108u, 777u, &uint32_t__value) && (uint32_t__value == 777u));
+    CHECK(func__Imbalance_SetParam(110u, 18000000u, &uint32_t__value) && (uint32_t__value == 18000000u));
+    CHECK(func__Imbalance_SetParam(111u, 18000000u, &uint32_t__value) && (uint32_t__value == 18000000u));
     CHECK(func__Imbalance_SetParam(113u, 250u, &uint32_t__value) && (uint32_t__value == 250u));
 
     func__Imbalance_Init();
 
     CHECK(func__Imbalance_GetParam(108u, &uint32_t__value) && (uint32_t__value == 777u));
+    CHECK(func__Imbalance_GetParam(110u, &uint32_t__value) && (uint32_t__value == 18000000u));
+    CHECK(func__Imbalance_GetParam(111u, &uint32_t__value) && (uint32_t__value == 18000000u));
     CHECK(func__Imbalance_GetParam(113u, &uint32_t__value) && (uint32_t__value == 250u));
     CHECK(func__Imbalance_GetParam(109u, &uint32_t__value) && (uint32_t__value == 500u));
 
     /* [EN] Back to the compiled defaults for the checks that follow.
        [FA] بازگشت به پیش‌فرض‌ها برای بررسی‌های بعدی. */
     CHECK(func__Imbalance_SetParam(108u, 300u, &uint32_t__value) && (uint32_t__value == 300u));
+    CHECK(func__Imbalance_SetParam(110u, 600000u, &uint32_t__value) && (uint32_t__value == 600000u));
+    CHECK(func__Imbalance_SetParam(111u, 600000u, &uint32_t__value) && (uint32_t__value == 600000u));
     CHECK(func__Imbalance_SetParam(113u, 100u, &uint32_t__value) && (uint32_t__value == 100u));
 
     /* ---- defaults ---- */
@@ -73,6 +79,12 @@ int main(void)
     CHECK(func__Imbalance_GetParam(116u, &uint32_t__value) && (uint32_t__value == 200u));
     CHECK(func__Imbalance_GetParam(117u, &uint32_t__value) && (uint32_t__value == 1u));
     CHECK(func__Imbalance_GetParam(118u, &uint32_t__value) && (uint32_t__value == 20u));
+    CHECK(func__Imbalance_GetParam(132u, &uint32_t__value) && (uint32_t__value == 1u));
+    CHECK(func__Imbalance_GetParam(133u, &uint32_t__value) && (uint32_t__value == 0u));
+    CHECK(func__Imbalance_GetParam(136u, &uint32_t__value) && (uint32_t__value == 3u));
+    CHECK(func__Imbalance_SetParam(136u, 0u, &uint32_t__value) && (uint32_t__value == 1u));
+    CHECK(func__Imbalance_SetParam(136u, 999u, &uint32_t__value) && (uint32_t__value == 255u));
+    CHECK(func__Imbalance_SetParam(136u, 3u, &uint32_t__value) && (uint32_t__value == 3u));
     CHECK(!func__Imbalance_GetParam(107u, &uint32_t__value));
     CHECK(!func__Imbalance_GetParam(119u, &uint32_t__value));
 
@@ -97,243 +109,254 @@ int main(void)
     CHECK(func__Imbalance_SetParam(123u, 1000u, &uint32_t__value) && (uint32_t__value == 1000u));
     CHECK(func__Imbalance_SetParam(124u, 50u, &uint32_t__value) && (uint32_t__value == 50u));
 
+    /* ---- v1.81 independent beep shape: clamp and boot-order persistence ----
+       [EN] Count and gap must have their own table slots; changing one must
+            not alter the legacy period/length or the other new slot.
+       [FA] تعداد و گپ باید خانهٔ مستقل داشته باشند؛ تغییر یکی نباید دوره/طول
+            قدیمی یا خانهٔ جدید دیگر را تغییر دهد. */
+    CHECK(func__Imbalance_SetParam(132u, 4u, &uint32_t__value) && (uint32_t__value == 4u));
+    CHECK(func__Imbalance_SetParam(133u, 250u, &uint32_t__value) && (uint32_t__value == 250u));
+    CHECK(func__Imbalance_GetParam(132u, &uint32_t__value) && (uint32_t__value == 4u));
+    CHECK(func__Imbalance_GetParam(133u, &uint32_t__value) && (uint32_t__value == 250u));
+    CHECK(func__Imbalance_SetParam(132u, 0u, &uint32_t__value) && (uint32_t__value == 1u));
+    CHECK(func__Imbalance_SetParam(132u, 99u, &uint32_t__value) && (uint32_t__value == 10u));
+    CHECK(func__Imbalance_SetParam(133u, 6000u, &uint32_t__value) && (uint32_t__value == 5000u));
+    CHECK(func__Imbalance_SetParam(133u, 0u, &uint32_t__value) && (uint32_t__value == 0u));
+    CHECK(func__Imbalance_SetParam(132u, 4u, &uint32_t__value) && (uint32_t__value == 4u));
+    CHECK(func__Imbalance_SetParam(133u, 250u, &uint32_t__value) && (uint32_t__value == 250u));
+    func__Imbalance_Init();
+    CHECK(func__Imbalance_GetParam(132u, &uint32_t__value) && (uint32_t__value == 4u));
+    CHECK(func__Imbalance_GetParam(133u, &uint32_t__value) && (uint32_t__value == 250u));
+
     /* ---- clamp ---- */
     uint32_t__value = 0u;
     CHECK(func__Imbalance_SetParam(108u, 99999u, &uint32_t__value) && (uint32_t__value == 2000u));
+    CHECK(func__Imbalance_SetParam(111u, 18000001u, &uint32_t__value) && (uint32_t__value == 18000000u));
     CHECK(func__Imbalance_SetParam(112u, 0u, &uint32_t__value) && (uint32_t__value == 1000u));
     CHECK(func__Imbalance_SetParam(114u, 0u, &uint32_t__value) && (uint32_t__value == 1u));
     CHECK(func__Imbalance_SetParam(117u, 7u, &uint32_t__value) && (uint32_t__value == 1u));
     CHECK(!func__Imbalance_SetParam(119u, 1u, &uint32_t__value));
     /* [EN] Restore defaults after clamp checks. */
     CHECK(func__Imbalance_SetParam(108u, 300u, &uint32_t__value) && (uint32_t__value == 300u));
+    CHECK(func__Imbalance_SetParam(111u, 600000u, &uint32_t__value) && (uint32_t__value == 600000u));
     CHECK(func__Imbalance_SetParam(112u, 30000u, &uint32_t__value) && (uint32_t__value == 30000u));
     CHECK(func__Imbalance_SetParam(114u, 10u, &uint32_t__value) && (uint32_t__value == 10u));
 
-    /* ---- baseline inputs: at rest, balanced, valid ---- */
-    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv  = 12000u;
-    IMBAL_INPUTS_T__G__In.uint32_t__vLowMv   = 12000u;
-    IMBAL_INPUTS_T__G__In.bool__inputPresent = true;
-    IMBAL_INPUTS_T__G__In.bool__valid        = true;
-    IMBAL_INPUTS_T__G__In.bool__batAbsent    = false;
-    IMBAL_INPUTS_T__G__In.bool__charging     = false;
-    IMBAL_INPUTS_T__G__In.bool__onBattery    = false;
+    /* ---- baseline inputs: valid, but not full yet ---- */
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv   = 12000u;
+    IMBAL_INPUTS_T__G__In.uint32_t__vLowMv    = 12000u;
+    IMBAL_INPUTS_T__G__In.bool__inputPresent  = true;
+    IMBAL_INPUTS_T__G__In.bool__valid         = true;
+    IMBAL_INPUTS_T__G__In.bool__batAbsent     = false;
+    IMBAL_INPUTS_T__G__In.bool__charging      = false;
+    IMBAL_INPUTS_T__G__In.bool__chargeComplete = false;
+    IMBAL_INPUTS_T__G__In.bool__chargingCh1   = false;
+    IMBAL_INPUTS_T__G__In.bool__chargingCh2   = false;
+    IMBAL_INPUTS_T__G__In.bool__onBattery     = false;
 
-    /* [EN] Before the 10-minute boot-anchored rest window opens, a big
-     *      imbalance must NOT count (time gating, user spec).
-     * [FA] پیش از باز شدن پنجرهٔ ۱۰ دقیقه‌ای، عدم‌توازن بزرگ نباید بشمارد. */
-    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 13000u;   /* imbalance 1000 mV */
-    for (uint32_t__t = 1000u; uint32_t__t <= 599000u; uint32_t__t += 1000u)
-    {
-        func__Run(uint32_t__t, false);
-        CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
-    }
-
-    /* [EN] t=600000 (10 min): window opens; 30 s stability still required. */
-    func__Run(600000u, false);
+    /* [EN] A partial charge may reach the imbalance numbers, but it must not
+       register an event. The stable condition is only a deferred candidate.
+       [FA] شارژ ناقص می‌تواند به عدد عدم‌توازن برسد، اما رویداد ثبت نمی‌شود؛
+       شرط پایدار فقط نامزد معوق است. */
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 13000u;
+    IMBAL_INPUTS_T__G__In.bool__charging = true;
+    func__Run(1000u, false);              /* charge starts */
+    func__Run(601000u, false);            /* in-charge wait opens */
+    func__Run(631000u, false);            /* stability elapsed: candidate only */
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
-    /* stability elapsed: 600000 + 30000 = 630000 */
-    func__Run(630000u, true);           /* events: 0 -> 1, persist changed */
-    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
     CHECK(IMBAL_OUTPUTS_T__G__Out.bool__episode == true);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__imbalanceMv == 1000u);
 
-    /* [EN] Same episode does NOT count again even after long time. */
-    for (uint32_t__t = 631000u; uint32_t__t <= 690000u; uint32_t__t += 5000u)
-    {
-        func__Run(uint32_t__t, false);
-        CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
-    }
-
-    /* [EN] Hysteresis: drop to 250 mV (> 300-100=200) keeps the episode. */
-    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12250u;   /* imbalance 250 */
-    func__Run(695000u, false);
-    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__episode == true);
-    func__Run(700000u, false);
-    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__episode == true);
-
-    /* [EN] Drop to 200 mV (<= 300-100): episode ends. */
-    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12200u;   /* imbalance 200 */
-    func__Run(705000u, false);
+    /* [EN] Stopping before FLOAT discards the candidate, still with no event.
+       [FA] توقف پیش از FLOAT نامزد را دور می‌ریزد و هنوز رویدادی نیست. */
+    IMBAL_INPUTS_T__G__In.bool__charging = false;
+    func__Run(632000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
     CHECK(IMBAL_OUTPUTS_T__G__Out.bool__episode == false);
 
-    /* [EN] 29 s of excess is NOT enough (stability), no second count. */
-    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 13000u;
-    func__Run(706000u, false);
-    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12000u;   /* clears before 30 s */
-    func__Run(734999u, false);
+    /* [EN] One complete cycle can add exactly one event. Repeated passes in
+       the same completed cycle cannot add another one.
+       [FA] هر سیکل کامل دقیقاً حداکثر یک رویداد اضافه می‌کند و پاس‌های تکراری
+       همان سیکل رویداد دوم نمی‌سازند. */
+    IMBAL_INPUTS_T__G__In.bool__charging = true;
+    IMBAL_INPUTS_T__G__In.bool__chargeComplete = false;
+    func__Run(700000u, false);
+    func__Run(1300001u, false);
+    func__Run(1330001u, false);            /* candidate during this cycle */
+    IMBAL_INPUTS_T__G__In.bool__charging = false;
+    IMBAL_INPUTS_T__G__In.bool__chargeComplete = true; /* FLOAT */
+    func__Run(1331001u, true);              /* commit exactly one */
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
+    func__Run(1332001u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
 
-    /* [EN] 30+ s of excess after the clear counts the second episode. */
-    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 13000u;
-    func__Run(740000u, false);
-    func__Run(770000u, true);
-    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 2u);
-    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12000u;
-    func__Run(771000u, false);          /* episode ends */
+    /* [EN] Hysteresis still closes the live episode, but does not affect the
+       ‎one-event-per-cycle rule. [FA]‎ هیسترزیس اپیزود زنده را می‌بندد. */
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12200u;
+    func__Run(1340000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__episode == false);
 
     /* ---- persistence via runtime slots (NVM round trip) ---- */
     {
         uint32_t uint32_t__ev, uint32_t__cy, uint32_t__la;
 
-        CHECK(func__Imbalance_GetParam(200u, &uint32_t__ev) && (uint32_t__ev == 2u));
+        CHECK(func__Imbalance_GetParam(200u, &uint32_t__ev) && (uint32_t__ev == 1u));
         CHECK(func__Imbalance_GetParam(201u, &uint32_t__cy) && (uint32_t__cy == 0u));
         CHECK(func__Imbalance_GetParam(202u, &uint32_t__la) && (uint32_t__la == 0u));
 
-        /* [EN] Simulate power loss: RAM zeroes on a real power cycle (Init
-         *      keeps persisted fields by design), then the NVM replay of
-         *      slots 200..202 restores the counters. */
+        /* [EN] Simulate power loss and NVM replay. */
         func__Imbalance_Init();
-        CHECK(func__Imbalance_SetParam(200u, 0u, NULL));   /* [EN] = fresh RAM after power loss */
+        CHECK(func__Imbalance_SetParam(200u, 0u, NULL));
         CHECK(func__Imbalance_GetParam(200u, &uint32_t__ev) && (uint32_t__ev == 0u));
-        CHECK(func__Imbalance_SetParam(200u, 2u, NULL));   /* [EN] NVM replay */
+        CHECK(func__Imbalance_SetParam(200u, 1u, NULL));
         CHECK(func__Imbalance_SetParam(201u, 0u, NULL));
         CHECK(func__Imbalance_SetParam(202u, 0u, NULL));
-        func__Run(800000u, false);
-        CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 2u);
+        IMBAL_INPUTS_T__G__In.bool__chargeComplete = true;
+        func__Run(1400000u, false);
+        CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
     }
 
-    /* ---- fast-forward to latch: 8 more episodes -> 10 total ---- */
-    uint32_t__t = 800000u;
-    for (int i = 0; i < 8; i++)
+    /* ---- fast-forward to latch: each new event needs a new cycle ---- */
+    uint32_t__t = 1400000u;
+    for (int i = 0; i < 9; i++)
     {
-        uint32_t__t += 1000u;
+        IMBAL_INPUTS_T__G__In.bool__charging = true;
+        IMBAL_INPUTS_T__G__In.bool__chargeComplete = false;
         IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 13000u;
-        func__Run(uint32_t__t, false);
-        uint32_t__t += 30000u;
-        func__Run(uint32_t__t, true);   /* every episode count changes persisted state */
-        CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == (uint32_t)(3u + i));
-        if (i == 7)
-        {
-            /* [EN] The 10th episode spends the budget: latch fires in the
-             *      SAME pass, with its confirmation beep pulse.
-             * [FA] رویداد دهم: قفل و بوق تأیید در همان پاس. */
-            CHECK(IMBAL_OUTPUTS_T__G__Out.bool__beepDue == true);
-        }
-        IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12000u;
         uint32_t__t += 1000u;
-        func__Run(uint32_t__t, false);
+        func__Run(uint32_t__t, false);       /* new cycle */
+        func__Run(uint32_t__t + 600000u, false); /* q111 opens */
+        func__Run(uint32_t__t + 630000u, false); /* candidate, not registered yet */
+        IMBAL_INPUTS_T__G__In.bool__charging = false;
+        IMBAL_INPUTS_T__G__In.bool__chargeComplete = true;
+        uint32_t__t += 631000u;
+        func__Run(uint32_t__t, true);        /* full: commit one */
+        CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == (uint32_t)(2u + i));
+        IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12000u;
+        func__Run(uint32_t__t + 1000u, false);
     }
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 10u);
-
-    /* [EN] 10th count latched the verdict: solid outputs. */
     CHECK(IMBAL_OUTPUTS_T__G__Out.bool__latched == true);
-    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__blockOutput == true);    /* id 117 = 1 */
-    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__chargingAllowed == true);/* 0 of 20 cycles spent */
+    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__blockOutput == true);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__chargingAllowed == true);
 
-    /* [EN] Beep repeats after one period, not before. */
-    uint32_t__t++;                                    /* beep fired at nowMs = uint32_t__t-1 */
-    func__Run(uint32_t__t, false);
+    /* [EN] Latch confirmation and hourly beep remain intact. */
+    func__Run(uint32_t__t + 1001u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.bool__beepDue == false);
-    func__Run(uint32_t__t + 3000000u, false);         /* 50 min in: inside the hourly period */
+    func__Run(uint32_t__t + 3000000u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.bool__beepDue == false);
-    /* next beep at/after +3600000 ms from the latch beep */
     func__Run(uint32_t__t + 3600000u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.bool__beepDue == true);
 
-    /* ---- charge cycles while latched spend the charge budget ---- */
-    uint32_t__t += 3600001u;
-    for (int cyc = 1; cyc <= 20; cyc++)
+    /* [EN] Three complete cycles with no new imbalance clear only the
+       persisted event counter. The latch and its budget remain; an incomplete
+       cycle does not count as clean.
+       [FA] سه سیکل کامل بدون عدم‌توازن جدید فقط شمارندهٔ ماندگار را پاک
+       می‌کنند؛ قفل و بودجهٔ آن می‌مانند و سیکل ناقص پاک محسوب نمی‌شود. */
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12000u;
+    for (int clean = 0; clean < 4; clean++)
     {
         IMBAL_INPUTS_T__G__In.bool__charging = true;
-        func__Run(uint32_t__t, true);                 /* cycle counted */
-        CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__latchedCycles == (uint32_t)cyc);
-        CHECK(IMBAL_OUTPUTS_T__G__Out.bool__chargingAllowed == (cyc < 20));
-        uint32_t__t += 5000u;
-        IMBAL_INPUTS_T__G__In.bool__charging = false;
-        func__Run(uint32_t__t + 5000u, false);
+        IMBAL_INPUTS_T__G__In.bool__chargeComplete = false;
         uint32_t__t += 10000u;
+        func__Run(uint32_t__t, true);
+        IMBAL_INPUTS_T__G__In.bool__charging = false;
+        IMBAL_INPUTS_T__G__In.bool__chargeComplete = true;
+        uint32_t__t += 10000u;
+        func__Run(uint32_t__t, false);
+        if (clean < 2)
+        {
+            CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 10u);
+            CHECK(IMBAL_OUTPUTS_T__G__Out.bool__latched == true);
+        }
     }
-    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__chargingAllowed == false);
-
-    /* [EN] Uncheck the block checkbox (user risk): veto lifts, latch stays. */
-    CHECK(func__Imbalance_SetParam(117u, 0u, NULL));
-    func__Run(uint32_t__t, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
+    /* [EN] Clean cycles clear only the imbalance counter; the old latch and
+       its cycle budget remain until the battery-absence reset path.
+       [FA] سیکل‌های پاک فقط شمارنده را صفر می‌کنند؛ قفل و بودجهٔ آن تا مسیر
+       نبود باتری حفظ می‌شوند. */
     CHECK(IMBAL_OUTPUTS_T__G__Out.bool__latched == true);
-    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__blockOutput == false);
-    CHECK(func__Imbalance_SetParam(117u, 1u, NULL));
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__latchedCycles == 4u);
 
-    /* ---- battery absent 3 s -> automatic full reset ---- */
+    /* ---- battery absent 3 s -> automatic full reset remains a second path ---- */
+    CHECK(func__Imbalance_SetParam(200u, 4u, NULL));
+    CHECK(func__Imbalance_SetParam(202u, 1u, NULL));
     IMBAL_INPUTS_T__G__In.bool__batAbsent = true;
     func__Run(uint32_t__t + 1u, false);
-    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__latched == true);   /* not yet */
-    /* [EN] Absent hiccup < 3 s, then battery "returns": no reset. */
     IMBAL_INPUTS_T__G__In.bool__batAbsent = false;
-    func__Run(uint32_t__t + 2999u, false);
-    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__latched == true);
-    /* [EN] Continuous 3000 ms absence -> reset everything. */
+    func__Run(uint32_t__t + 1000u, false);
     IMBAL_INPUTS_T__G__In.bool__batAbsent = true;
-    func__Run(uint32_t__t + 3001u, false);            /* timer starts */
-    func__Run(uint32_t__t + 6001u, true);             /* 3000 reached: reset, persist */
+    func__Run(uint32_t__t + 2000u, false);
+    func__Run(uint32_t__t + 5000u, true);
     CHECK(IMBAL_OUTPUTS_T__G__Out.bool__latched == false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__latchedCycles == 0u);
-    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__blockOutput == false);
-    CHECK(IMBAL_OUTPUTS_T__G__Out.bool__chargingAllowed == true);
 
     /* ---- invalid snapshot freezes progress ---- */
     IMBAL_INPUTS_T__G__In.bool__batAbsent = false;
-    IMBAL_INPUTS_T__G__In.bool__valid     = false;
+    IMBAL_INPUTS_T__G__In.bool__valid = false;
     IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 15000u;
-    func__Imbalance_Init();      /* [EN] fresh module, fresh window from boot=0 anchored */
+    func__Imbalance_Init();
     CHECK(func__Imbalance_SetParam(200u, 0u, NULL));
     func__Run(700000u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
 
-    /* ---- discharge window uses its own limit immediately ---- */
+    /* ---- discharge window uses its own limit, but only after a full charge ---- */
     func__Imbalance_Init();
-    IMBAL_INPUTS_T__G__In.bool__valid     = true;
-    IMBAL_INPUTS_T__G__In.bool__onBattery = true;    /* output on battery = discharge */
-    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12400u; /* imbalance 400: > rest 300 but < discharge 500 */
+    IMBAL_INPUTS_T__G__In.bool__valid = true;
+    IMBAL_INPUTS_T__G__In.bool__chargeComplete = true;
+    IMBAL_INPUTS_T__G__In.bool__onBattery = true;
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12400u; /* 400 < discharge 500 */
     func__Run(1000u, false);
     func__Run(40000u, false);
-    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);   /* 400 < 500: no count */
-    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12600u;        /* 600 > 500 */
-    func__Run(41000u, false);
-    func__Run(71000u, true);                                 /* 30 s later: count */
-    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
-
-    /* ---- during-charge window only after id 111 ---- */
-    func__Imbalance_Init();
-    CHECK(func__Imbalance_SetParam(200u, 0u, NULL));   /* [EN] fresh counters for this scenario */
-    IMBAL_INPUTS_T__G__In.bool__onBattery = false;
-    IMBAL_INPUTS_T__G__In.bool__charging  = true;
-    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 13000u;   /* 1000 mV, over rest limit */
-    func__Run(1000u, false);                            /* session starts; unlatched: no persist */
-    func__Run(599000u, false);                          /* 598 s of charge: window closed */
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
-    func__Run(601000u, false);                          /* 600 s: window opens */
-    func__Run(631000u, true);                           /* +30 s stability: count */
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12600u;
+    func__Run(41000u, false);
+    func__Run(71000u, true);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
 
-    /* ---- v1.72: halves in different states are NOT comparable ----
-       [EN] User order: "in the imbalance error both batteries must be in the
-            same state - if one is charging and the other is resting they must
-            not be compared". Same scenario as the block right above, but with
-            channel 1 charging and channel 2 resting: the window must stay shut
-            for ever, so no event is ever counted.
-       [FA] دستور کاربر: دو نیم باید هم‌حالت باشند؛ یکی در شارژ و یکی در
-            استراحت هرگز مقایسه نمی‌شوند - پس هیچ رویدادی شمرده نمی‌شود. */
+    /* ---- during-charge condition is deferred until FLOAT ---- */
     func__Imbalance_Init();
     CHECK(func__Imbalance_SetParam(200u, 0u, NULL));
-    IMBAL_INPUTS_T__G__In.bool__onBattery   = false;
-    IMBAL_INPUTS_T__G__In.bool__charging    = true;
+    IMBAL_INPUTS_T__G__In.bool__onBattery = false;
+    IMBAL_INPUTS_T__G__In.bool__charging = true;
+    IMBAL_INPUTS_T__G__In.bool__chargeComplete = false;
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 13000u;
+    func__Run(1000u, false);
+    func__Run(601000u, false);
+    func__Run(631000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
+    IMBAL_INPUTS_T__G__In.bool__charging = false;
+    IMBAL_INPUTS_T__G__In.bool__chargeComplete = true;
+    func__Run(632000u, true);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
+
+    /* ---- halves in different states are NOT comparable ---- */
+    func__Imbalance_Init();
+    CHECK(func__Imbalance_SetParam(200u, 0u, NULL));
+    IMBAL_INPUTS_T__G__In.bool__onBattery = false;
+    IMBAL_INPUTS_T__G__In.bool__charging = true;
+    IMBAL_INPUTS_T__G__In.bool__chargeComplete = false;
     IMBAL_INPUTS_T__G__In.bool__chargingCh1 = true;
     IMBAL_INPUTS_T__G__In.bool__chargingCh2 = false;
-    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 13000u;   /* 1000 mV, far over the limit */
+    IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 13000u;
     for (uint32_t__t = 1000u; uint32_t__t <= 1200000u; uint32_t__t += 1000u)
     {
         func__Run(uint32_t__t, false);
         CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
         CHECK(IMBAL_OUTPUTS_T__G__Out.bool__halvesMismatch == true);
     }
-    /* [EN] The moment both halves charge again the window behaves normally:
-            the in-charge wait (600 s) then the 30 s stability still apply.
-       [FA] به‌محض هم‌حالت شدن، همان گیت‌های همیشگی برقرارند. */
     IMBAL_INPUTS_T__G__In.bool__chargingCh2 = true;
     func__Run(1201000u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.bool__halvesMismatch == false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
-    func__Run(1231000u, true);                          /* +30 s stability: count */
+    IMBAL_INPUTS_T__G__In.bool__charging = true;
+    IMBAL_INPUTS_T__G__In.bool__chargeComplete = false;
+    func__Run(1231000u, false);
+    CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 0u);
+    IMBAL_INPUTS_T__G__In.bool__charging = false;
+    IMBAL_INPUTS_T__G__In.bool__chargeComplete = true;
+    func__Run(1232000u, true);
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
 
     printf("checks: %d, fails: %d\n", INT32_T__G__Checks, INT32_T__G__Fails);

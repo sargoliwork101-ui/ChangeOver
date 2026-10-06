@@ -1,5 +1,5 @@
 /**
- * [EN] Behavioural test for the six scenario cards of the ESP panel.
+ * [EN] Behavioural test for the seven scenario cards of the ESP panel.
  *
  *      The text checks elsewhere in this repository prove a field EXISTS.
  *      They cannot prove that the derived lines under those fields are the
@@ -23,7 +23,7 @@
  *          npm install --no-save jsdom
  *          node esp_link_panel/Tester/host_test_scenario_cards.js
  *
- * [FA] تست رفتاری شش کارت سناریوی پنل ESP.
+ * [FA] تست رفتاری هفت کارت سناریوی پنل ESP.
  *
  *      چک‌های متنی دیگرِ این مخزن فقط ثابت می‌کنند یک فیلد «هست». نمی‌توانند
  *      ثابت کنند خط‌های محاسبه‌شدهٔ زیر آن فیلدها همان عددی‌اند که برد واقعاً
@@ -96,6 +96,12 @@ function textOf(doc, id) {
     return el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
 }
 
+/* The page deliberately uses Persian unit names for operators; older checks
+   used the firmware shorthand "ms". Compare the value, not its localization. */
+function msCell(text, value) {
+    return String(text).replace(/میلی[‌ ]?ثانیه/g, 'ms').replace(/\s+/g, '') === String(value) + 'ms';
+}
+
 function typeInto(win, doc, id, value) {
     const el = doc.getElementById(id);
     el.value = String(value);
@@ -133,7 +139,7 @@ function testStructure(win, doc) {
     check(missing.length === 0, 'every scenario id has an input', 'missing: ' + missing.join(','));
     check(duplicated.length === 0, 'no scenario id is duplicated', 'duplicated: ' + duplicated.join(','));
 
-    for (let card = 1; card <= 6; card += 1) {
+    for (let card = 1; card <= 7; card += 1) {
         doc.querySelector('#usel button[data-u="' + card + '"]').click();
         check(doc.getElementById('ucard' + card).style.display === '', 'card ' + card + ' opens');
     }
@@ -141,11 +147,24 @@ function testStructure(win, doc) {
     /* [EN] Each card must carry the "when does this come?" block and the
        numbered sections - that is the shape the user asked for.
        [FA] هر کارت باید جعبهٔ «کِی می‌آید؟» و بخش‌های شماره‌دار را داشته باشد. */
-    for (let card = 1; card <= 6; card += 1) {
+    for (let card = 1; card <= 7; card += 1) {
         const el = doc.getElementById('ucard' + card);
         check(el.querySelector('.c4ds') !== null, 'card ' + card + ' explains when it triggers');
         check(el.querySelectorAll('.sec').length >= 2, 'card ' + card + ' is split into numbered sections');
     }
+
+    /* [EN] A browser min/max attribute is not a visible instruction. Every
+       numeric scenario box must print the same range immediately below it.
+       [FA] min/max اچِی‌تی‌ام‌ال به‌تنهایی راهنمای دیداری نیست؛ هر کادر عددی
+       سناریو باید همان بازه را درست زیر خودش چاپ کند. */
+    const numeric = [...doc.querySelectorAll('.bqr input[type="number"][id^="q"]')];
+    const missingRanges = numeric.filter(el => {
+        const r = el.closest('label').querySelector('.qrng');
+        return !r || !r.textContent.includes(el.min) || !r.textContent.includes(el.max);
+    });
+    check(numeric.length > 0 && missingRanges.length === 0,
+        'every numeric scenario box prints its min/max range below the box',
+        missingRanges.map(el => el.id).join(','));
 }
 
 /* ==================== Scenario 1 - input overvoltage ==================== */
@@ -163,9 +182,13 @@ function testOvervoltage(win, doc) {
        [FA] چشمک قرمز: روشن = دوره × duty ÷ ۱۰۰. */
     typeInto(win, doc, 'q38', 1000);
     typeInto(win, doc, 'q39', 50);
-    check(/500ms/.test(textOf(doc, 's1b')), 'red blink at 50% duty is 500/500 ms', textOf(doc, 's1b'));
+    check(textOf(doc, 's1b').includes('500') &&
+          (textOf(doc, 's1b').includes('ms') || textOf(doc, 's1b').includes('میلی‌ثانیه')),
+          'red blink at 50% duty is 500/500 ms', textOf(doc, 's1b'));
     typeInto(win, doc, 'q39', 20);
-    check(/200ms/.test(textOf(doc, 's1b')), 'red blink follows the duty down to 200 ms', textOf(doc, 's1b'));
+    check(textOf(doc, 's1b').includes('200') &&
+          (textOf(doc, 's1b').includes('ms') || textOf(doc, 's1b').includes('میلی‌ثانیه')),
+          'red blink follows the duty down to 200 ms', textOf(doc, 's1b'));
 
     /* [EN] Beep window = duration*count + gap*(count-1); must fit the period.
        [FA] پنجرهٔ بوق = مدت×تعداد + گپ×(تعداد−۱) و باید در دوره جا شود. */
@@ -332,7 +355,7 @@ function testDischarge(win, doc) {
     /* [EN] Factory default under every field, from the reset tables.
        [FA] پیش‌فرض کارخانه زیر هر فیلد، از جدول دکمه‌های بازگردانی. */
     const noDefault = [];
-    for (let k = 1; k <= 6; k += 1) {
+    for (let k = 1; k <= 7; k += 1) {
         doc.querySelectorAll('#ucard' + k + ' .bqr label').forEach(l => {
             const inp = l.querySelector('input[type=number]');
             if (inp && !l.querySelector('.dflt')) {
@@ -372,7 +395,9 @@ function testDischarge(win, doc) {
         'band 2 range is 10..20 percent', textOf(doc, 's3r2'));
     check(textOf(doc, 's3r2').includes('21800') && textOf(doc, 's3r2').includes('22600'),
         'band 2 range in mV comes off the ladder', textOf(doc, 's3r2'));
-    check(/150ms.*850ms/.test(textOf(doc, 's3n2')),
+    const band2Timing = textOf(doc, 's3n2')
+        .replace(/میلی[‌ ]?ثانیه/g, 'ms').replace(/\s+/g, '');
+    check(/150ms.*850ms/.test(band2Timing),
         'green at the 15% mid-band is 150/850 ms', textOf(doc, 's3n2'));
     check(textOf(doc, 's3n2').includes('2100'),
         'band 2 beep window is 2 x 1000 + its own 100 ms gap = 2100 ms', textOf(doc, 's3n2'));
@@ -420,14 +445,32 @@ function testCharging(win, doc) {
 
     const rows = [...doc.getElementById('c4tb').rows].map(r => [...r.cells].map(c => c.textContent.trim()));
     const at = p => rows.find(r => r[0] === p + '٪');
-    check(at(50)[3] === '500ms' && at(50)[4] === '500ms', 'at 50% the yellow is 500/500 ms', JSON.stringify(at(50)));
-    check(at(90)[3] === '150ms', 'at 90% the minimum-on floor takes over (100 -> 150 ms)', JSON.stringify(at(90)));
+    check(msCell(at(50)[3], 500) && msCell(at(50)[4], 500),
+          'at 50% the yellow is 500/500 ms', JSON.stringify(at(50)));
+    check(msCell(at(90)[3], 150),
+          'at 90% the minimum-on floor takes over (100 -> 150 ms)', JSON.stringify(at(90)));
     check(at(100)[2] === '2٪', 'the remaining-to-full floor of 2% is applied at 100%', JSON.stringify(at(100)));
-    check(at(0)[3] === '1000ms' && at(0)[4] === '0ms', 'zero percent means the yellow is solid', JSON.stringify(at(0)));
+    check(msCell(at(0)[3], 1000) && msCell(at(0)[4], 0),
+          'zero percent means the yellow is solid', JSON.stringify(at(0)));
+
+    /* q69 is a valid independent clamp, but the firmware also guarantees a
+       visible 2% remainder. At a 1000 ms period that physical floor is 20 ms,
+       so q69=5 must be accepted and the panel must explain why the table stays
+       at 20 ms rather than pretending the parameter is invalid.
+       q69 یک کف مستقل معتبر است؛ کف ۲٪ فرم‌ور در دورهٔ ۱۰۰۰ میلی‌ثانیه
+       برابر ۲۰ است، پس پنل باید تفاوت «پذیرفته‌شده» و «اثر واقعی» را بگوید. */
+    typeInto(win, doc, 'q69', 5);
+    const floorText = textOf(doc, 'c4formula');
+    check(floorText.includes('20ms') && floorText.includes('5ms') && floorText.includes('معتبر'),
+        'charging explains a valid 5 ms clamp whose effective floor remains 20 ms', floorText);
+    check(doc.getElementById('q69').closest('label').querySelector('.qrng').textContent.includes('0') &&
+          doc.getElementById('q69').closest('label').querySelector('.qrng').textContent.includes('10000'),
+        'yellow minimum-on box visibly prints its firmware range 0..10000');
 
     typeInto(win, doc, 'q68', 2000);
     const rows2 = [...doc.getElementById('c4tb').rows].map(r => [...r.cells].map(c => c.textContent.trim()));
-    check(rows2.find(r => r[0] === '50٪')[3] === '1000ms', 'doubling the period doubles the on time', JSON.stringify(rows2[3]));
+    check(msCell(rows2.find(r => r[0] === '50٪')[3], 1000),
+          'doubling the period doubles the on time', JSON.stringify(rows2[3]));
     typeInto(win, doc, 'q68', 1000);
 }
 
@@ -436,19 +479,59 @@ function testCharging(win, doc) {
 function testImbalance(win, doc) {
     console.log('\nscenario 5 - imbalance / عدم‌توازن');
 
+    check(doc.getElementById('q110').getAttribute('max') === '18000000' &&
+          doc.getElementById('q111').getAttribute('max') === '18000000',
+          'the imbalance wait editors allow the requested five hours');
+    const c5 = doc.getElementById('ucard5');
+    const c5secs = [...c5.querySelectorAll('.sec')].map(e => e.textContent.trim());
+    check(c5secs.findIndex(x => x.indexOf('چشمک قرمز') >= 0) <
+          c5secs.findIndex(x => x.indexOf('بوق در قفل') >= 0),
+          'scenario 5 keeps the lamp section before the beep section');
+    check(c5.querySelector('#q123') && c5.querySelector('#q124') &&
+          c5.querySelector('#q115') && c5.querySelector('#q116') &&
+          c5.querySelector('#q132') && c5.querySelector('#q133') &&
+          c5.querySelector('#q136') &&
+          c5.querySelector('#s5b') && c5.querySelector('#s5z'),
+          'scenario 5 has separate, ordered lamp, clean-cycle and beep boxes');
+    const c5beep = c5.querySelector('#q115').closest('.bqr');
+    check(c5beep.querySelectorAll('label').length === 4 &&
+          c5beep.querySelector('#q132').type === 'number' &&
+          c5beep.querySelector('#q133').type === 'number',
+          'scenario 5 exposes editable count and gap parameters');
+    check(win.pdflt(132) === 1 && win.pdflt(133) === 0 && win.pdflt(136) === 3,
+          'scenario 5 count/gap and clean-cycle factory defaults are correct');
+    check(win.eval('XIDS').indexOf(132) >= 0 && win.eval('XIDS').indexOf(133) >= 0 &&
+          win.eval('XIDS').indexOf(136) >= 0,
+          'count, gap and clean-cycle threshold are included in JSON backup/import ids');
+    check(win.getComputedStyle(doc.getElementById('s5z')).direction === 'rtl' &&
+          win.getComputedStyle(doc.getElementById('s5b')).textAlign === 'right',
+          'scenario 5 result messages are explicitly right-to-left');
     typeInto(win, doc, 'q112', 30000);
     typeInto(win, doc, 'q114', 10);
     typeInto(win, doc, 'q115', 3600000);
     typeInto(win, doc, 'q116', 200);
+    typeInto(win, doc, 'q132', 1);
+    win.simrun();
+    check(doc.getElementById('q133').disabled === true,
+          'the imbalance gap editor is disabled when its beep count is one');
+    typeInto(win, doc, 'q132', 3);
+    win.simrun();
+    check(doc.getElementById('q133').disabled === false,
+          'the imbalance gap editor is enabled when its beep count is greater than one');
+    typeInto(win, doc, 'q133', 100);
+    typeInto(win, doc, 'q136', 3);
     typeInto(win, doc, 'q118', 20);
 
     const lock = textOf(doc, 's5z');
     check(lock.includes('10'), 'the lock event count is shown', lock);
-    check(/5 دقیقه/.test(lock), '10 events x 30 s is a 5 minute floor to the lock', lock);
+    check(lock.includes('3') && lock.includes('200') && lock.includes('گپ'),
+          'the simulator follows the editable clean-cycle, count and total gap settings', lock);
+    check(lock.includes('FLOAT') || lock.includes('رویداد کامل'),
+          'the lock explanation requires a complete FLOAT-qualified event', lock);
     check(lock.includes('20'), 'the post-lock charge-cycle budget is shown', lock);
 
     typeInto(win, doc, 'q111', 0);
-    check(/بدون گیت/.test(textOf(doc, 's5v')), 'a zero charge gate reads as "no gate"', textOf(doc, 's5v'));
+    check(/خاموش/.test(textOf(doc, 's5v')), 'a zero charge gate reads as off', textOf(doc, 's5v'));
     typeInto(win, doc, 'q111', 600000);
     check(/10 دقیقه/.test(textOf(doc, 's5v')), 'the charge gate is printed in minutes', textOf(doc, 's5v'));
 
@@ -471,7 +554,7 @@ function testSimulator(win, doc) {
 
     const on = (id) => (doc.getElementById(id).className || '').indexOf(' on') >= 0;
 
-    for (let n = 1; n <= 6; n += 1) {
+    for (let n = 1; n <= 7; n += 1) {
         check(doc.getElementById('sim' + n) !== null &&
               doc.getElementById('sl' + n + 'r') !== null &&
               doc.getElementById('sl' + n + 'g') !== null &&
@@ -580,7 +663,9 @@ function testSimulator(win, doc) {
     win.sim5mode();
     win.simrun();
     check(doc.getElementById('sim5w').textContent.indexOf('دشارژ') >= 0 &&
-          doc.getElementById('sim5w').textContent.indexOf('500mV') >= 0,
+          doc.getElementById('sim5w').textContent.indexOf('500') >= 0 &&
+          (doc.getElementById('sim5w').textContent.indexOf('mV') >= 0 ||
+           doc.getElementById('sim5w').textContent.indexOf('میلی‌ولت') >= 0),
           'on battery the window is open at once and uses the discharge limit');
 
     doc.getElementById('sim5m').value = 'c';
@@ -598,13 +683,28 @@ function testSimulator(win, doc) {
     check(win.SIMT[5] === t0, 'a stopped card freezes its own clock');
     win.SIMON[5] = 1;
 
-    /* three events on the discharge window latch the lock */
-    doc.getElementById('sim5m').value = 'd';
-    win.sim5mode();
+    /* Three stable candidates latch only when each candidate reaches a real
+       FLOAT/Full boundary. A merely stable discharge episode must remain a
+       pending candidate; this mirrors the firmware's cycle qualification. */
     doc.getElementById('simp5b').value = 11000;    /* 1000 mV apart */
-    for (let i = 0; i < 6; i += 1) { win.SIMT[5] += 30000; win.simrun(); }
+    const full5 = doc.getElementById('sim5full');
+    for (let i = 0; i < 3; i += 1) {
+        doc.getElementById('sim5m').value = 'd';
+        win.sim5mode();
+        win.SIMT[5] += 30000; win.simrun();
+        win.SIMT[5] += 30000; win.simrun();
+        doc.getElementById('sim5m').value = 'r';
+        full5.checked = true;
+        win.sim5mode();
+        win.simrun();
+        full5.checked = false;
+        if (i < 2) {
+            doc.getElementById('sim5m').value = 'c';
+            win.sim5mode();
+        }
+    }
     check(win.S5.lock === true && on('sl5r'),
-          'three stable over-limit events latch the lock: solid red');
+          'three FLOAT-qualified over-limit events latch the lock: solid red');
     win.simrst5();
     doc.getElementById('simp5b').value = 12000;
     win.simrun();
@@ -653,10 +753,9 @@ function testSimulator(win, doc) {
     check(doc.getElementById('a117') && doc.getElementById('a127'),
           'each output-block checkbox keeps its own plain-language state line');
 
-    /* v1.80 (user question: "scenario 6 has a lamp and a beep - why no boxes
-       for them?"): the four own-face ids exist, are editable, print their
-       factory defaults and belong to scenario 6's factory key. */
-    [[128, 600000], [129, 120], [130, 0], [131, 50]].forEach(([id, def]) => {
+    /* v1.82: scenario 6 owns its lamp/beep fields plus an independent
+       count/gap pair; all are editable and belong to its factory key. */
+    [[128, 600000], [129, 120], [130, 0], [131, 50], [134, 1], [135, 0]].forEach(([id, def]) => {
       const el = doc.getElementById('q' + id);
       check(el && el.tagName === 'INPUT' && el.type === 'number',
             'scenario 6 owns a box for parameter ' + id);
@@ -665,8 +764,91 @@ function testSimulator(win, doc) {
       check(win.eval('UDEF[6]').indexOf(id) >= 0,
             'parameter ' + id + " is reset by scenario 6's own factory key");
     });
-    check(win.eval('UDEF[5]').indexOf(128) < 0 && win.eval('UDEF[5]').indexOf(115) >= 0,
-          'the imbalance key keeps 115/116 and does not touch the scenario-6 face');
+    check(win.eval('UDEF[5]').indexOf(128) < 0 && win.eval('UDEF[5]').indexOf(115) >= 0 &&
+          win.eval('UDEF[6]').indexOf(134) >= 0 && win.eval('UDEF[6]').indexOf(135) >= 0,
+          'the imbalance key keeps 115/116 and scenario 6 owns its 134/135 pair');
+    typeInto(win, doc, 'q134', 1);
+    win.simrun();
+    check(doc.getElementById('q135').disabled === true,
+          'the dead-battery gap editor is disabled when its beep count is one');
+    typeInto(win, doc, 'q134', 3);
+    win.simrun();
+    check(doc.getElementById('q135').disabled === false,
+          'the dead-battery gap editor is enabled when its beep count is greater than one');
+    typeInto(win, doc, 'q134', 1);
+    typeInto(win, doc, 'q135', 0);
+
+    /* [EN] Scenario 6 must present the red lamp and its independent buzzer as
+       two sections, not as one combined control block.
+       [FA] سناریوی ۶ باید چراغ قرمز و بوق مستقلش را در دو بخش جدا نشان دهد،
+       نه در یک بلوک ترکیبی. */
+    const c6 = doc.getElementById('ucard6');
+    const c6secs = [...c6.querySelectorAll('.sec')].map(e => e.textContent.trim());
+    const lampSection = c6secs.findIndex(x => x.indexOf('چراغ قرمز مستقل') >= 0);
+    const beepSection = c6secs.findIndex(x => x.indexOf('بوق مستقل') >= 0);
+    check(lampSection >= 0 && beepSection > lampSection,
+          'scenario 6 orders an independent lamp section before an independent beep section',
+          c6secs.join(' | '));
+    check(!c6secs.some(x => x.indexOf('چراغ و بوق') >= 0) &&
+          c6.querySelector('#s6lamp') && c6.querySelector('#s6z'),
+          'scenario 6 has separate lamp/beep result lines and no combined heading');
+    check(c6.querySelector('#q130').closest('.bqr') !== c6.querySelector('#q128').closest('.bqr') &&
+          c6.querySelector('#q130').closest('.bqr').textContent.indexOf('بوق') < 0 &&
+          c6.querySelector('#q128').closest('.bqr').textContent.indexOf('چراغ') < 0,
+          'scenario 6 lamp inputs and buzzer inputs are physically separated');
+
+    /* Scenario 7: the technical-fault card is a real, independently driven
+       state machine. It must not silently borrow scenario 5/6 beep settings,
+       and one phase must drive all three LEDs. */
+    const c7 = doc.getElementById('ucard7');
+    const c7text = c7.textContent;
+    check(c7text.indexOf('ترانزیستور شارژر') >= 0 &&
+          c7text.indexOf('رلهٔ شارژر باز') >= 0 &&
+          c7text.indexOf('PWM واقعی صفر') >= 0 && c7text.indexOf('JIT') >= 0 &&
+          c7text.indexOf('بیشتر از ۲۰٪') >= 0 && c7text.indexOf('جریان شارژ دقیقاً صفر') >= 0,
+          'scenario 7 documents both transistor-fault signatures and their gates');
+    check([137, 138, 139, 140, 141, 142].every(id =>
+          win.eval('UDEF[7]').indexOf(id) >= 0),
+          'scenario 7 owns its six independent alarm parameters');
+    check(c7.querySelector('#q137') && c7.querySelector('#q142') &&
+          c7.querySelector('#s7v'),
+          'scenario 7 exposes its own beep and synchronized-LED controls');
+
+    typeInto(win, doc, 'q137', 3000);
+    typeInto(win, doc, 'q138', 200);
+    typeInto(win, doc, 'q139', 3);
+    typeInto(win, doc, 'q140', 100);
+    typeInto(win, doc, 'q141', 1000);
+    typeInto(win, doc, 'q142', 50);
+    const s7v = textOf(doc, 's7v');
+    check(s7v.indexOf('3000') >= 0 && s7v.indexOf('200') >= 0 &&
+          s7v.indexOf('3') >= 0 && s7v.indexOf('100') >= 0 &&
+          s7v.indexOf('1000') >= 0 && s7v.indexOf('50') >= 0,
+          'scenario 7 summary follows all six typed settings', s7v);
+
+    const sameLedState = () => ['r', 'g', 'y'].map(c => on('sl7' + c));
+    win.SIMON[7] = 0;
+    win.SIMT[7] = 0;
+    doc.getElementById('sim7m').value = 's';
+    win.simrun();
+    const ledOn = sameLedState();
+    check(ledOn[0] === ledOn[1] && ledOn[1] === ledOn[2] && ledOn[0] === true && on('sl7z'),
+          'scenario 7 JIT signature turns all three LEDs on together with its beep');
+    win.SIMT[7] = 600;
+    win.simrun();
+    const ledOff = sameLedState();
+    check(ledOff[0] === ledOff[1] && ledOff[1] === ledOff[2] && ledOff[0] === false,
+          'scenario 7 turns all three LEDs off together');
+    doc.getElementById('sim7m').value = 'o';
+    win.SIMT[7] = 0;
+    win.simrun();
+    check(sameLedState().every(Boolean) &&
+          doc.getElementById('sl7t').textContent.indexOf('PWM بیشتر از ۲۰٪') >= 0,
+          'scenario 7 open-fault signature keeps the shared LED phase and text');
+    doc.getElementById('sim7m').value = 'n';
+    win.simrun();
+    check(sameLedState().every(v => !v) && !on('sl7z'),
+          'scenario 7 no-fault mode clears all LEDs and the buzzer');
 
     /* v1.79 (user: "there used to be a LED behind it"): the latched-fault
        bits are real LEDs again - styled, and visible between blinks. */
@@ -741,6 +923,24 @@ async function testSendQueue(win, doc) {
           doc.getElementById('sbn').textContent === '1',
           'the global bar appears and counts the pending edit');
 
+    /* An out-of-range pending value is rejected locally: no /s is sent and
+       the report names the exact id, name, value and board-side consequence.
+       / مقدار خارج از بازه پیش از هر POST محلی رد می‌شود. */
+    win.qput(111, 18000001);
+    await win.sendall();
+    check(posts.length === 0 && win.PEND['111'] === 18000001,
+          'an out-of-range pending value blocks the whole batch before POST');
+    const rangeReport = doc.getElementById('srsm').textContent;
+    check(rangeReport.indexOf('شناسهٔ 111') >= 0 &&
+          rangeReport.indexOf('صبر پس از شروع شارژ') >= 0 &&
+          rangeReport.indexOf('18000001') >= 0 &&
+          rangeReport.indexOf('18000000') >= 0 &&
+          rangeReport.indexOf('نمی‌پذیرد') >= 0 &&
+          rangeReport.indexOf('clamp') >= 0,
+          'the blocked report explains id, name, value, range and board clamp/reject',
+          rangeReport);
+    win.pclr(111);
+
     /* Undo puts the board value back and empties the queue. */
     win.D = { p: { 38: 1000 }, t: new Array(25).fill(0), q: 0, q2: 0, q3: 0, q4: 0, fl: 0, on: 1 };
     win.pundo();
@@ -765,6 +965,8 @@ async function testSendQueue(win, doc) {
     const st = doc.getElementById('sbst').textContent;
     check(st.indexOf('گیره') >= 0 && st.indexOf('39: 60→50') >= 0,
           'the report names the value the board clamped', st);
+    check(st.indexOf('38: 2000→2000') >= 0 && st.indexOf('39: 60→50') >= 0,
+          'the report lists every value in a multi-edit batch', st);
     win.qput(38, 2000);
     win.D.p[38] = 2000;
     await win.sendall();
@@ -774,17 +976,19 @@ async function testSendQueue(win, doc) {
 
 
 
-/* ==================== v1.57 backup identity + bench calibration ==================== */
+/* ==================== v1.81 parameter schema + bench calibration ==================== */
 
 /**
- * [EN] The backup file must carry an identity (build, parameter count, date)
- *      and the bench calibration must turn a known straight line of samples
- *      back into the exact gain/offset that produced it.
- * [FA] فایل پشتیبان باید شناسنامه داشته باشد و کالیبراسیون بنچ باید از روی
- *      نمونه‌های یک خط معلوم، همان گین و آفست سازندهٔ آن خط را دربیاورد.
+ * [EN] The backup file must carry the parameter schema (id, name, unit and
+ *      limits), not an opaque build stamp. Restore must report a changed
+ *      parameter identity precisely, and bench calibration must turn a known
+ *      straight line of samples back into the exact gain/offset that produced it.
+ * [FA] فایل پشتیبان باید شمای پارامتر (شناسه، نام، واحد و محدوده) را نگه دارد،
+ *      نه مهر مبهم بیلد را. بازگردانی باید تغییر دقیق هویت پارامتر را گزارش
+ *      کند و کالیبراسیون بنچ نیز همان گین و آفست خط معلوم را برگرداند.
  */
-function testBackupAndCal(win, doc) {
-    console.log('\nv1.57 backup identity + bench calibration / شناسنامهٔ پشتیبان و کالیبراسیون');
+async function testBackupAndCal(win, doc) {
+    console.log('\nv1.81 parameter schema + bench calibration / شمای پارامتر و کالیبراسیون');
 
     /* --- the export payload carries the identity fields --- */
     const blobs = [];
@@ -796,19 +1000,31 @@ function testBackupAndCal(win, doc) {
     const oldCreate = doc.createElement.bind(doc);
     doc.createElement = (t) => { const e = oldCreate(t); if (t === 'a') { e.click = () => {}; } return e; };
     win.D = { p: {}, t: [] };
-    const XIDS = win.eval('XIDS'), PN = win.eval('PN'), K = win.eval('K_MA');
+    const XIDS = win.eval('XIDS'), K = win.eval('K_MA');
     XIDS.forEach(id => { win.D.p[id] = 1; });
     win.eval('xexp')();
     doc.createElement = oldCreate;
     win.Blob = OldBlob;
     check(blobs.length === 1, 'the export button produces exactly one file');
     const o = JSON.parse(blobs[0]);
-    check(o.app === 'ChangeOver-settings' && o.v === 2, 'the file says what it is and which layout it uses');
-    check(typeof o.build === 'string' && o.build.length > 0, 'the file records the panel build it came from');
-    check(o.pn === PN, 'the file records how many parameters that build had');
+    check(o.app === 'ChangeOver-settings' && o.v === 3, 'the file says what it is and uses the parameter-schema format');
+    check(o.build === undefined, 'the backup does not use the panel build as its compatibility identity');
     check(typeof o.saved === 'string' && o.saved.indexOf('T') > 0, 'the file records when it was taken');
+    check(Array.isArray(o.schema) && o.schema.length === XIDS.length, 'the file records one schema entry for every backed-up id');
+    check(o.schema.every(s => s.id != null && typeof s.name === 'string' && 'unit' in s && 'min' in s && 'max' in s),
+          'each schema entry carries the id, readable name, unit and limits');
     check(Object.keys(o.params).length === XIDS.length, 'every backed-up id is in the file');
     check(o.params['76'] === undefined, 'the live-only id 76 stays out of the backup');
+    check(o.params['72'] === undefined && o.params['73'] === undefined,
+          'retired ids 72 and 73 stay out of the backup');
+    const changedSchema = o.schema.map(s => Object.assign({}, s));
+    changedSchema.find(s => s.id === 25).name = 'نام قدیمی جریان';
+    changedSchema.find(s => s.id === 26).max = 123;
+    const schemaDiff = win.eval('xdiff')(changedSchema).join('\n');
+    check(schemaDiff.indexOf('شناسهٔ 25') >= 0 && schemaDiff.indexOf('نام از') >= 0,
+          'restore identifies a changed parameter name by id');
+    check(schemaDiff.indexOf('شناسهٔ 26') >= 0 && schemaDiff.indexOf('max') >= 0,
+          'restore identifies a changed parameter limit by id');
     [15, 16, 17, 18, 19].forEach(id => {
         check(o.params[String(id)] === undefined, 'the momentary id ' + id + ' stays out of the backup');
     });
@@ -983,8 +1199,31 @@ function testBackupAndCal(win, doc) {
     win.eval('calapply')();
     check(doc.getElementById('calst').textContent.indexOf('داده‌برداری بنچ در جریان') >= 0,
           'applying calibration is refused while the bench wizard is running');
-    win.eval('ximp')({ text: async () => JSON.stringify({ app: 'ChangeOver-settings', v: 2, params: { 0: 1 } }) });
+    await win.eval('ximp')({ text: async () => JSON.stringify({ app: 'ChangeOver-settings', v: 2, params: { 0: 1 } }) });
     Wv.run = false;
+
+    /* v1.81: importing a settings file must stage locally, never call /s. */
+    const importUrls = [];
+    win.fetch = (u) => { importUrls.push(String(u)); return Promise.resolve({ ok: true }); };
+    win.confirm = () => true;
+    win.D = { p: { 25: 650, 26: 50, 127: 0 }, t: [] };
+    win.PEND = {};
+    const importSchema = win.eval('xschema()');
+    await win.eval('ximp')({ text: async () => JSON.stringify({
+        app: 'ChangeOver-settings', v: 3, schema: importSchema,
+        params: { 25: 700, 26: 60, 127: 1 }
+    }) });
+    check(importUrls.filter(u => u.indexOf('/s?') >= 0).length === 0,
+          'restoring a backup does not write to the board immediately');
+    check(win.PEND[25] === 700 && win.PEND[26] === 60 && win.PEND[127] === 1 &&
+          doc.getElementById('db127').checked === true &&
+          doc.getElementById('db127').className.indexOf('pq') >= 0 &&
+          doc.getElementById('sbar').className === 'on',
+          'restored changes are staged in the yellow global queue, including checkboxes');
+    check(doc.getElementById('xst').textContent.indexOf('روی پنل آماده شد') >= 0,
+          'restore tells the user that values are staged, not written');
+    win.PEND = {};
+    win.pbar();
 
     /* --- v1.65: the live table shows only what the user needs --- */
     const heads = Array.from(doc.querySelectorAll('#wT th')).map(h => h.textContent);
@@ -1032,77 +1271,64 @@ function testBackupAndCal(win, doc) {
 /* ==================== v1.56 panel-side rules / قوانین سمت پنل ==================== */
 
 /**
- * [EN] The MCU now guards only each field's own min/max, so every JOINT rule
- *      must hold here or a nonsense pattern would reach the board silently.
- * [FA] میکرو فقط بازهٔ تک‌فیلدی را نگه می‌دارد، پس قوانین مشترک باید اینجا
- *      درست باشند وگرنه الگوی بی‌معنا بی‌صدا روی برد می‌نشیند.
+ * [EN] Cross-field relationships are safety advice, not a second firmware
+ *      setter. The panel must preserve every typed value until POST and let
+ *      the owning MCU setter clamp/reject it; a later readback is the source
+ *      of truth. This test deliberately keeps the old adversarial combinations
+ *      and proves that fixrules() neither mutates them nor invents a repair.
+ * [FA] رابطه‌های بین‌فیلدی توصیهٔ ایمنی‌اند، نه setter دوم فرم‌افزار. پنل باید
+ *      مقدار تایپ‌شده را تا POST نگه دارد و clamp/reject را به setter برد بسپارد؛
+ *      مقدار readback بعدی مرجع است. ترکیب‌های قدیمی عمداً آزمایش می‌شوند تا
+ *      معلوم شود fixrules نه مقدار را تغییر می‌دهد و نه اصلاح ساختگی می‌سازد.
  */
 function testFixRules(win, doc) {
-    console.log('\nv1.56 cross-field rules in the panel / قوانین مشترک در پنل');
+    console.log('\nv1.56 advisory cross-field rules / قوانین توصیه‌ای بین‌فیلدی');
 
     const base = {};
     [40,41,42,43,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,62,63,64,65,66,67,68,69,
      74,75,77,78,119,120,121,122].forEach(id => { base[id] = 0; });
-    const run = (over) => {
+    const cases = [
+        { 40: 10000, 42: 3, 43: 0 },
+        { 40: 10000, 42: 1, 43: 0 },
+        { 62: 1, 64: 1, 58: 1, 65: 0 },
+        { 64: 2, 65: 0 },
+        { 40: 1000, 42: 2, 43: 100, 41: 999999 },
+        { 40: 0, 41: 999999 },
+        { 50: 40, 51: 90, 52: 95, 53: 99 },
+        { 56: 1000, 57: 10, 58: 3, 65: 100 },
+        { 56: 2000, 57: 1000, 58: 5, 65: 100 },
+        { 56: 200, 57: 1000, 58: 5, 65: 100 },
+        { 66: 1000, 67: 5000 },
+        { 68: 1000, 69: 5000 },
+        { 74: 21000, 75: 20000 },
+        { 119: 21000, 120: 21000 },
+        { 77: 90, 78: 95 }
+    ];
+    cases.forEach((over, i) => {
         const v = Object.assign({}, base, over);
+        const before = JSON.stringify(v);
         const fx = win.fixrules(v);
-        return { v: v, fx: fx };
-    };
+        check(JSON.stringify(v) === before && fx.length === 0,
+              'cross-field case ' + (i + 1) + ' remains typed and has no panel repair');
+    });
 
-    let r = run({ 40: 10000, 42: 3, 43: 0 });
-    check(r.v[43] === 100, 'more than one beep forces the 100 ms gap floor');
-    r = run({ 40: 10000, 42: 1, 43: 0 });
-    check(r.v[43] === 0, 'a single beep leaves the gap alone');
-    r = run({ 62: 1, 64: 1, 58: 1, 65: 0 });
-    check(r.v[65] === 0, 'the shared gap is untouched while every band wants one beep');
-    r = run({ 64: 2, 65: 0 });
-    check(r.v[65] === 100, 'one band with two beeps raises the shared gap');
-
-    r = run({ 40: 1000, 42: 2, 43: 100, 41: 999999 });
-    check(r.v[41] === 450, 'a beep duration is cut to what the window can hold',
-          String(r.v[41]));
-    r = run({ 40: 0, 41: 999999 });
-    check(r.v[41] === 999999, 'a silent period leaves the duration alone');
-
-    r = run({ 50: 40, 51: 90, 52: 95, 53: 99 });
-    check(r.v[51] === 40 && r.v[52] === 40 && r.v[53] === 40,
-          'the bands are pulled back into order, band 1 authoritative');
-
-    /* v1.71: id 57 is milliseconds per beep, so 3 x 10 ms + 2 x 100 ms gap
-       fits a 1000 ms window easily - the shrink has to be provoked with a
-       window that really is too short. */
-    r = run({ 56: 1000, 57: 10, 58: 3, 65: 100 });
-    check(r.v[58] === 3, 'a critical pattern that fits its window is left alone');
-    /* v1.71: the repair shrinks the per-beep DURATION (57), never the count -
-       the count is what the user asked for, the duration is what has to give. */
-    r = run({ 56: 2000, 57: 1000, 58: 5, 65: 100 });
-    check(r.v[58] === 5 && (r.v[58] * r.v[57] + (r.v[58] - 1) * 100) <= 2000,
-          'the critical per-beep duration shrinks until its window fits',
-          'count=' + r.v[58] + ' dur=' + r.v[57]);
-    /* v1.75 audit: when the GAPS alone overrun the window, shrinking the
-       duration cannot save the pattern - the duration bottoms out at 0 and it
-       is achk() that must warn before anything is sent. */
-    r = run({ 56: 200, 57: 1000, 58: 5, 65: 100 });
-    check(r.v[57] === 0, 'an impossible critical pattern bottoms the duration out',
-          String(r.v[57]));
-    r = run({ 56: 10000, 57: 100, 58: 3, 65: 100 });
-    check(r.v[58] === 3, 'a fitting critical pattern is untouched');
-
-    r = run({ 66: 1000, 67: 5000 });
-    check(r.v[67] === 1000, 'the minimum off time cannot exceed the period');
-    r = run({ 68: 1000, 69: 5000 });
-    check(r.v[69] === 1000, 'the minimum on time cannot exceed the period');
-
-    r = run({ 74: 21000, 75: 20000 });
-    check(r.v[75] === 21100, 'the percent ladder keeps at least 100 mV of span');
-    r = run({ 119: 21000, 120: 21000 });
-    check(r.v[120] === 21100, 'the charge ladder gets the same 100 mV rule');
-    r = run({ 77: 90, 78: 95 });
-    check(r.v[78] === 89, 'the full exit is pulled below the full entry');
-
-    r = run({});
-    check(r.fx.length === 0 || r.fx.every(f => f[1] !== f[2]),
-          'a fix is only reported when the value really moved');
+    /* q27 is independent of absorbOver and OV cutoff. Both firmware hard-edge
+       values must pass the panel preflight, including the requested 14.8 V. */
+    win.PEND = {};
+    win.qput(27, 14800);
+    check(win.pvalidate(['27']).length === 0,
+          'q27 accepts 14800 mV on its independent firmware range');
+    win.pclr(27);
+    win.qput(27, 15000);
+    check(win.pvalidate(['27']).length === 0,
+          'q27 accepts the firmware upper edge at 15000 mV');
+    win.pclr(27);
+    doc.getElementById('q27').value = '14800';
+    doc.getElementById('q36').value = '15000';
+    const advisories = win.achk();
+    check(!advisories.some(w => w.ids.indexOf(27) >= 0),
+          'q27 has no cross-field veto when absorbOver or OV cutoff differs');
+    win.PEND = {};
 }
 
 /* ==================== Runner / اجراکننده ==================== */
@@ -1245,7 +1471,7 @@ setTimeout(async () => {
         testSimulator(win, doc);
         await testSendQueue(win, doc);
         testFixRules(win, doc);
-        testBackupAndCal(win, doc);
+        await testBackupAndCal(win, doc);
         await testLutPush(win, doc);
     } catch (err) {
         failed += 1;

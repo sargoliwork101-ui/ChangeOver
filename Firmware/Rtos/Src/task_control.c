@@ -130,7 +130,8 @@ void func__TaskControl(void *void_ptr__argument)
 
     for (;;)
     {
-#if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER)
+#if (MODULE_CHANGEOVER || MODULE_CHARGER || MODULE_JITTER || MODULE_FAULT || \
+     MODULE_IMBALANCE || MODULE_MCU_POWER_PATH)
         {
             measurement_snapshot_t measurement_snapshot_t__snap;
             fault_mask_t fault_mask_t__faults = FAULT_NONE;
@@ -151,6 +152,28 @@ void func__TaskControl(void *void_ptr__argument)
 #if MODULE_JITTER
             func__Jitter_Run();
 #endif
+#if MODULE_CHARGER
+            /* [EN] Scenario 7 is evaluated after JIT has latched this pass
+               and before Changeover/Charger are allowed to continue. Refresh
+               the fault mask immediately so the same pass enters APP_FAULT.
+               [FA] سناریوی ۷ بعد از ثبت JIT و پیش از ادامهٔ شارژ ارزیابی
+               می‌شود؛ ماسک همان پاس تازه می‌شود تا بلافاصله به FAULT برویم. */
+            func__Charger_EvaluateTechnicalFault(&measurement_snapshot_t__snap);
+#if MODULE_FAULT
+            fault_mask_t__faults = func__Fault_Get();
+#endif
+#endif
+#if (MODULE_FAULT && !MODULE_CHANGEOVER)
+            /* [EN] Without Changeover there is no state mapper to turn the
+               central fault mask into APP_STATE_FAULT. Keep the charger-safe
+               contract intact for reduced module builds.
+               [FA] در بیلد بدون Changeover، نگاشتی برای تبدیل ماسک خطا به
+               APP_STATE_FAULT نیست؛ برای بیلد حداقلی، شارژر را امن نگه دار. */
+            if (fault_mask_t__faults != FAULT_NONE)
+            {
+                app_state_t__state = APP_STATE_FAULT;
+            }
+#endif
 #if MODULE_MCU_POWER_PATH
             func__McuPowerPath_Run();
 #endif
@@ -166,9 +189,28 @@ void func__TaskControl(void *void_ptr__argument)
                 imbalance_inputs_t  imbalance_inputs_t__imbalanceInputs;
                 imbalance_outputs_t imbalance_outputs_t__imbalanceOutputs;
                 uint64_t            uint64_t__nowMs64;
+                uint32_t            uint32_t__tickFrequency;
+                bool                bool__timeValid;
 
-                uint64_t__nowMs64 = ((uint64_t)osKernelGetTickCount() *
-                                    (uint64_t)1000u) / (uint64_t)osKernelGetTickFreq();
+                uint32_t__tickFrequency = osKernelGetTickFreq();
+                if (uint32_t__tickFrequency == 0u)
+                {
+                    /* [EN] A broken/host kernel clock must not turn this
+                       conversion into a divide-by-zero fault. Freeze timing
+                       at zero; the pure module will simply wait for a valid
+                       clock on a later pass.
+                       [FA] ساعت کرنل خراب نباید تقسیم بر صفر بسازد؛ زمان را
+                       صفر نگه دار تا پاس بعدی با ساعت معتبر ادامه دهد. */
+                    uint64_t__nowMs64 = 0u;
+                    bool__timeValid = false;
+                }
+                else
+                {
+                    bool__timeValid = true;
+                    uint64_t__nowMs64 = ((uint64_t)osKernelGetTickCount() *
+                                        (uint64_t)1000u) /
+                                       (uint64_t)uint32_t__tickFrequency;
+                }
 
                 imbalance_inputs_t__imbalanceInputs.uint32_t__vHighMv = measurement_snapshot_t__snap.v_bat_high_mv;
                 imbalance_inputs_t__imbalanceInputs.uint32_t__vLowMv  = measurement_snapshot_t__snap.v_bat_low_mv;
@@ -181,6 +223,12 @@ void func__TaskControl(void *void_ptr__argument)
                 imbalance_inputs_t__imbalanceInputs.bool__charging =
 #if MODULE_CHARGER
                     func__Charger_IsAnyChannelActive();
+#else
+                    false;
+#endif
+                imbalance_inputs_t__imbalanceInputs.bool__chargeComplete =
+#if MODULE_CHARGER
+                    func__Charger_IsChargeComplete();
 #else
                     false;
 #endif
@@ -202,9 +250,10 @@ void func__TaskControl(void *void_ptr__argument)
                 imbalance_inputs_t__imbalanceInputs.bool__onBattery =
                     (APP_STATE_T__G__ImbalancePrevState == APP_STATE_BATTERY);
 
-                if (func__Imbalance_Evaluate(&imbalance_inputs_t__imbalanceInputs,
+                if ((bool__timeValid != false) &&
+                    (func__Imbalance_Evaluate(&imbalance_inputs_t__imbalanceInputs,
                                              (uint32_t)uint64_t__nowMs64,
-                                             &imbalance_outputs_t__imbalanceOutputs) != false)
+                                             &imbalance_outputs_t__imbalanceOutputs) != false))
                 {
 #if MODULE_ESP
                     /* [EN] A counter or the latch moved: mark slots 200..202

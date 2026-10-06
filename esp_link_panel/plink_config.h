@@ -14,13 +14,14 @@
 #define ESP_LINK_CRC_SIZE           2u
 #define ESP_LINK_CRC16_INIT         0xFFFFu
 #define ESP_LINK_CRC16_POLY         0x1021u
-/* [EN] 512 since v1.16 (user order 2026-09-26): PARAMS_BULK with 83
-         parameters = 1 + 83 x 5 = 416 payload bytes (was 386 for 77 in
-         v1.16, 191 for 38 in v1.15). The length field is u16
-         little-endian. Both boards MUST flash together.
-         / [FA] از v1.16 (دستور کاربر ۲۰۲۶-۰۹-۲۶): PARAMS_BULK با ۸۳ پارامتر
-         = ۱ + ۸۳ × ۵ = ۴۱۶ بایت payload (قبلاً ۳۸۶ برای ۷۷ در v1.16).
-         فیلد طول u16 لیتل‌اندین است. هر دو برد باید با هم فلش شوند. */
+/* [EN] Current v2 link: PARAMS_BULK uses a u16 length and a 512-byte
+         payload ceiling. Each chunk carries at most 102 id/value items
+         (`1 + 102 x 5 = 511` payload bytes); the 143-id parameter space is
+         therefore sent in multiple chunks. Both boards MUST flash together.
+         / [FA] لینک v2 فعلی: طول PARAMS_BULK شانزده‌بیتی و سقف payload برابر
+         ۵۱۲ بایت است. هر تکه حداکثر ۱۰۲ جفت شناسه/مقدار می‌برد (۱ + ۱۰۲×۵ =
+         ۵۱۱ بایت) و فضای ۱۴۳شناسه‌ای در چند تکه ارسال می‌شود. هر دو برد باید
+         با هم فلش شوند. */
 #define ESP_LINK_MAX_PAYLOAD        512u
 #define ESP_LINK_TLM_SIZE          128u
 #define ESP_LINK_TLM_FIELD_OFFSET   4u
@@ -55,24 +56,19 @@
 #define ESP_LUT_POINTS_MAX          24u
 
 /* ==================== Parameter Constants ==================== */
-/* [EN] 77 since v1.16 (user order 2026-09-26): ids 20..26 = the shared
-         charge profile (section 5.7), ids 27..37 = the alarms tab (27..34
-         fault supervision, 35..37 charger safety ceilings), ids 38..76 =
-         UI cadence (LED/beep patterns, bands, blink, thresholds, mute),
-         ids 77..82 = full/hysteresis (v1.17), ids 83..92 = two-loop CC/CV charge
-         PID (v1.24: five ids fewer than v1.23, whose third gain row was
-         measured to buy nothing).
-         / [FA] از v1.16: شناسه‌های ۲۰..۲۶ = profile شارژ مشترک (بخش 5.7)،
-         شناسه‌های ۲۷..۳۷ = تب آلارم‌ها (۲۷..۳۴ نظارت فالت، ۳۵..۳۷ سقف‌های
-         ایمنی شارژر)، شناسه‌های ۳۸..۷۶ = اعداد UI (الگوهای LED/بوق، باندها،
-         چشمک، آستانه‌ها، میوت)، شناسه‌های ۷۷..۸۲ = فول/hysteresis (v1.17)، شناسه‌های ۸۳..۹۲ = PID
-         دوحلقه‌ای ‎CC/CV‎ شارژ (v1.24)، شناسه‌های ۹۳..۱۰۷ = حدها، گین‌های
-         پشتیبان و تایمرهای مرحله‌ای شارژر (v1.28، دستور کاربر ۲۰۲۶-۱۰-۰۳)،
-         شناسه‌های ۱۰۸..۱۱۸ = سناریوی ۵ عدم‌توازن (v1.43)، شناسه‌های ۱۱۹..۱۲۰ =
-         نردبان درصد سمت شارژ، جدا از نردبان دشارژ ۷۴/۷۵ (v1.49، دستور کاربر
-         ۲۰۲۶-۱۰-۰۵)، شناسه‌های ۱۲۱..۱۲۲ = مدت و گپ مخصوص باند ۲ دشارژ
-         (v1.50، دستور کاربر ۲۰۲۶-۱۰-۰۵). */
-#define ESP_PARAM_COUNT            132u
+/* [EN] Current parameter map: ids 20..26 = shared charge profile; 27..37 =
+         Fault/Charger supervision; 38..82 = UI cadence and hysteresis;
+         83..92 = two-loop CC/CV PID; 93..107 = charger limits; 108..118 =
+         imbalance scenario 5; 119..120 = charge-side percent map;
+         121..122 = band-2 beep shape; 123..124 = imbalance LED cadence;
+         125..131 and 134..135 = dead-battery scenario 6; 132..133 and 136
+         = imbalance extensions; and 137..142 = technical board fault scenario 7.
+         / [FA] نقشهٔ فعلی پارامترها: ۲۰..۲۶ پروفایل شارژ، ۲۷..۳۷ نظارت ‎Fault/Charger‎،
+         ۳۸..۸۲ cadence و hysteresis رابط، ۸۳..۹۲ PID دوحلقه‌ای، ۹۳..۱۰۷ حدهای
+         شارژر، ۱۰۸..۱۱۸ سناریوی ۵، ۱۱۹..۱۲۰ نگاشت درصد سمت شارژ، ۱۲۱..۱۲۲
+         شکل بوق باند ۲، ۱۲۳..۱۲۴ cadence چراغ عدم‌توازن، ۱۲۵..۱۳۱ و ۱۳۴..۱۳۵
+         سناریوی ۶، ۱۳۲..۱۳۳ و ۱۳۶ توسعهٔ سناریوی ۵ و ۱۳۷..۱۴۲ سناریوی ۷ خطای فنی برد. */
+#define ESP_PARAM_COUNT            143u /* [EN] v1.84 ends at technical-fault id 142; ids 137..142 own scenario 7. / [FA] نسخه ۱٫۸۴ با شناسهٔ ۱۴۲ سناریوی خطای فنی تمام می‌شود؛ ۱۳۷..۱۴۲ متعلق به سناریوی ۷ است. */
 #define ESP_PARAM_CHG1_ENABLE       11u
 #define ESP_PARAM_CHG2_ENABLE       12u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
@@ -156,7 +152,10 @@
     "#  [settings8] ui_chg_pct_vmin,ui_chg_pct_vmax,ui_run_dbl_dur,ui_run_dbl_gap,\n" \
     "#            imb_blink_per_ms,imb_blink_duty,\n" \
     "#            dead_timeout_ms,dead_reset_gap_ms,dead_block_out,\n" \
-    "#            dead_beep_per_ms,dead_beep_ms,dead_blink_per_ms,dead_blink_duty\n" \
+    "#            dead_beep_per_ms,dead_beep_ms,dead_blink_per_ms,dead_blink_duty,\n" \
+    "#            imb_beep_count,imb_beep_gap_ms,dead_beep_count,dead_beep_gap_ms,\n" \
+    "#            imb_clean_full_cycles,tech_beep_per_ms,tech_beep_len_ms,\n" \
+    "#            tech_beep_count,tech_beep_gap_ms,tech_led_per_ms,tech_led_duty\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \
@@ -241,15 +240,16 @@
  *      uniform four-band discharge form went ~1 KiB past the 320 KiB step,
  *      so the ceiling was deliberately stepped 320 KiB -> 336 KiB.
  *
- *      v1.78..v1.80 (user orders: a six-step checklist for scenario 6, real
- *      checkboxes with plain-language state lines, and scenario 6's own lamp
- *      and buzzer boxes with the text explaining what they replace) added
- *      ~4 KiB of markup and went past the 336 KiB step, so the ceiling is
- *      deliberately stepped 336 KiB -> 352 KiB.
- *      [FA] چک‌لیست سناریو ۶، چک‌باکس‌ها و بخش چراغ و بوقِ سناریو ۶ حدود ۴
- *      کیلوبایت اضافه کرد؛ پله یک حرکت عمدی دیگر از ۳۳۶ به ۳۵۲ کیلوبایت.
+ *      v1.78..v1.84 (user orders: scenario 6's checklist, real checkboxes,
+ *      independent lamp/beep controls, and the complete scenario-7 card)
+ *      expanded the markup beyond the old 352 KiB step. The transfer budget
+ *      is now an explicit 384000-byte ceiling, with headroom for the generated
+ *      page while keeping the source/audit stamp mandatory.
+ *      [FA] چک‌لیست سناریوی ۶، چک‌باکس‌های واقعی، تنظیم مستقل چراغ/بوق و
+ *      کارت کامل سناریوی ۷ از سقف قدیمی ۳۵۲ کیلوبایت عبور کردند؛ سقف انتقال
+ *      اکنون صریحاً ۳۸۴۰۰۰ بایت است و ممیزی stamp و اندازه همچنان اجباری است.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    360448u
+#define ESP_PANEL_HTML_MAX_BYTES    384000u
 
 /* ==================== Parser States ==================== */
 typedef enum

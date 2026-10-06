@@ -37,6 +37,7 @@ static uint32_t UINT32_T__G__FakeTick       = 0u;
 static bool     BOOL__G__Ch0Active          = false;
 static bool     BOOL__G__Ch1Active          = false;
 static bool     BOOL__G__ManualTestActive   = false;
+static uint32_t UINT32_T__G__FakeOvCutoffMv = 15000u;
 
 uint32_t osKernelGetTickCount(void);
 uint32_t osKernelGetTickCount(void)
@@ -96,7 +97,7 @@ bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId, uint32_t *uint32_t__v
     {
         return false;
     }
-    *uint32_t__value = 15000u;
+    *uint32_t__value = UINT32_T__G__FakeOvCutoffMv;
     (void)uint8_t__paramId;
     return true;
 }
@@ -296,6 +297,16 @@ int main(void)
     func__Reset(60000u);
     CHECK(func__Fault_GetAlarmParam(FAULT_ALARM_PARAM_DISCONNECT_MV, &uint32_t__value));
     CHECK(uint32_t__value == FAULT_BAT_DISCONNECT_MV);
+
+    /* q27 is an independent hard window. Even when the OV setting is below
+       the requested disconnect level, the Fault setter must accept the
+       contract values 14.8 V and 15.0 V and report them unchanged. */
+    UINT32_T__G__FakeOvCutoffMv = 14500u;
+    CHECK(func__Fault_SetAlarmParam(FAULT_ALARM_PARAM_DISCONNECT_MV, 14800u, &uint32_t__value));
+    CHECK(uint32_t__value == 14800u);
+    CHECK(func__Fault_SetAlarmParam(FAULT_ALARM_PARAM_DISCONNECT_MV, 15000u, &uint32_t__value));
+    CHECK(uint32_t__value == 15000u);
+    UINT32_T__G__FakeOvCutoffMv = 15000u;
 
     CHECK(func__Fault_SetAlarmParam(FAULT_ALARM_PARAM_DISCONNECT_DEB_MS, 0u, &uint32_t__value));
     CHECK(uint32_t__value >= 50u);                 /* [EN] clamped up to the floor */

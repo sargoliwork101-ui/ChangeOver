@@ -584,16 +584,16 @@ def test_setpoints_and_timing():
           lut1_chain_n == lut1_batt_n and lut1_chain_n == 17,
           f"channel-2 bench LUT must be ON as a chain->POWER table (v1.13, user order 2026-09-25 'voltages are fixed but the currents are wrong'; v1.17/v1.18 refit 2026-09-27 SOLO2 sweep duty 1..19): the DCM invariant is battery POWER, the current is P/Vbat - the old chain->current table embedded the calibration run's battery voltage (12.0..13.65V) and overread ~7 percent per volt as the battery filled; anchors = DMM_I2 x DMM_V2 of the dense 2026-09-25T18:14 run (10 points, duty 2..20%) plus the 2026-09-27 SOLO2 refit points, fitted end-to-end against the exact integer pipeline (v1.18: the integer chain sits ~1.5 mA left of the float chain, so float-fitted anchors drifted -4..-8 mA on the steep slopes); the axis stays the ADC chain current (raw-off2)*K*gain, NEVER duty; the tables size themselves from the initializers and both lists must stay the same length (got chain={lut_chain_n} power={lut_batt_n}); v1.19 (user order 2026-09-27, SOLO1 sweep duty 1..18): channel 1 gets the SAME chain->POWER architecture (TABLE 1, 17 anchors, gate (5,0), ceil-fitted so every DMM point replays EXACTLY - got chain={lut1_chain_n} power={lut1_batt_n}); USER-ORDERED 2026-09-29: TABLE 1 was REFITTED when the pack divider was corrected to the schematic - power is V x I, so the table had silently absorbed the divider error and I = P/V only looked right because BOTH terms were wrong by the same factor")
     check("uint32_t uint32_t__batteryPowerMw = func__Measurement_Current2BenchLut(\n        func__BspMeasurement_Current2CountsToMa(uint16_t__counts));" in meas_c_raw and
-          "(uint32_t__batteryPowerMw * 1000u) /\n           UINT32_T__G__Battery2VoltageMv" in meas_c_raw,
-          "the ch2 LUT must wrap the BSP conversion inside func__Measurement_Current2CountsToMa (unfiltered, filtered and iest all become true battery mA; raw counts and shunt uV untouched) and v1.13 DIVIDES the table's POWER output by the live cached battery-2 voltage (user order: the currents were wrong as the battery filled)")
+          "return func__Measurement_PowerMwToMa(uint32_t__batteryPowerMw,\n                                          UINT32_T__G__Battery2VoltageMv);" in meas_c_raw,
+          "the ch2 LUT must wrap the BSP conversion inside func__Measurement_Current2CountsToMa (unfiltered, filtered and iest all become true battery mA; raw counts and shunt uV untouched) and v1.13 must divide the table's POWER output through the overflow-safe helper using the live cached battery-2 voltage (user order: the currents were wrong as the battery filled)")
     check("static uint32_t UINT32_T__G__Battery2VoltageMv = 12000u;" in meas_c_raw and
           meas_c_raw.count("UINT32_T__G__Battery2VoltageMv") >= 5 and
           "if (uint32_t__batteryLowMv < 8000u)\n    {\n        UINT32_T__G__Battery2VoltageMv = 8000u;" in meas_c_raw and
           "UINT32_T__G__Battery2VoltageMv = 15000u;" in meas_c_raw,
           "the ch2 power LUT needs the live battery-2 voltage cache: static default 12.0 V, written each pass after the median-5 filter, clamped 8.0..15.0 V so a missing battery can never blow up the division")
     check("uint32_t uint32_t__batteryPowerMw = func__Measurement_Current1BenchLut(\n        func__BspMeasurement_Current1CountsToMa(uint16_t__counts));" in meas_c_raw and
-          "(uint32_t__batteryPowerMw * 1000u) /\n           UINT32_T__G__Battery1VoltageMv" in meas_c_raw,
-          "v1.19: the ch1 LUT must wrap the BSP conversion inside func__Measurement_Current1CountsToMa (unfiltered, filtered and iest all become true battery mA; raw counts and shunt uV untouched) and DIVIDE the table's POWER output by the live cached battery-1 voltage (same architecture as ch2)")
+          "return func__Measurement_PowerMwToMa(uint32_t__batteryPowerMw,\n                                          UINT32_T__G__Battery1VoltageMv);" in meas_c_raw,
+          "v1.19: the ch1 LUT must wrap the BSP conversion inside func__Measurement_Current1CountsToMa (unfiltered, filtered and iest all become true battery mA; raw counts and shunt uV untouched) and divide the table's POWER output through the overflow-safe helper by the live cached battery-1 voltage (same architecture as ch2)")
     check("static uint32_t UINT32_T__G__Battery1VoltageMv = 12000u;" in meas_c_raw and
           meas_c_raw.count("UINT32_T__G__Battery1VoltageMv") >= 5 and
           "if (uint32_t__batteryHighMv < 8000u)\n    {\n        UINT32_T__G__Battery1VoltageMv = 8000u;" in meas_c_raw and
@@ -830,11 +830,11 @@ def test_charge_profile_v112():
           "GetParam must route all 7 profile ids to Charger_GetProfileParam")
 
     # --- ESP panel: 99 params, third tab with 7 fields + descriptions, 150-col CSV, vin carry ---
-    check(re.search(r"#define ESP_PARAM_COUNT\s+132u", ino), "panel ESP_PARAM_COUNT must be 132 (v1.80: +4 scenario-6 lamp/buzzer ids 128..131)")
+    check(re.search(r"#define ESP_PARAM_COUNT\s+143u", ino), "panel ESP_PARAM_COUNT must be 143 (scenario 7 ids 137..142)")
     mn = re.search(r"INT32_T__G__ParamMin\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     mx = re.search(r"INT32_T__G__ParamMax\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(mn and mx and len(mn.group(1).split(",")) == 132 and len(mx.group(1).split(",")) == 132,
-          "panel min/max tables must carry 128 entries (outer envelope for ids 20..26, 27..82, 83..92, 93..107, 108..118, 119..124 and 125..127 and 128..131)")
+    check(mn and mx and len(mn.group(1).split(",")) == 143 and len(mx.group(1).split(",")) == 143,
+          "panel min/max tables must carry 143 entries (through scenario 7 id 142)")
     check('<button data-t="2">تنظیمات</button>' in ino, "third nav tab must exist (v1.14b: renamed from تنظیمات شارژ when the filter windows moved in)")
     # [EN] v1.33 (user order 2026-10-03: "why is this charge profile still
     #      here when I am editing on the chart?"). The seven q20..q26 input
@@ -909,8 +909,8 @@ def test_charge_profile_v112():
           "the data row must NOT repeat the 125 settings - that was 62 percent of every "
           "row and it is what filled the file cap")
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(txo and len(txo.group(1).split(",")) == 132 and "128, 129, 130, 131 };" in ino,
-          "TxOrder must list all 128 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
+    check(txo and len(txo.group(1).split(",")) == 143 and "139, 140, 141, 142 };" in ino,
+          "TxOrder must list all 143 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
     check("window.WVI=" in ino and "L('wVi','ولتاژ ورودی V',WVI)" in ino,
           "the input-voltage DMM reading must carry into the next wizard step (user order 2026-09-25: quasi-static, type once)")
 
@@ -1048,8 +1048,9 @@ def test_ch2_power_lut_v113():
           f"voltage behaviour: at chain 556 the current must fall as the battery fills (12.2V:{i_122} 13.0V:{i_130} 14.0V:{i_140} 14.4V:{i_144} mA) - the old current-current table answered 658 mA at EVERY voltage")
 
     check("UINT32_T__G__Battery2VoltageMv = 12000u" in meas_c_raw and
-          "(uint32_t__batteryPowerMw * 1000u)" in meas_c_raw,
-          "the division must run with the cached clamped voltage (boot default 12.0 V); flash diet 2026-09-27: u32 is exact (power x 1000 < 2^32), the u64 only pulled __aeabi_uldivmod")
+          "func__Measurement_MulDivU32Saturating(uint32_t__powerMw,\n                                                  1000u," in meas_c_raw and
+          "func__Measurement_InterpU32Increasing" in meas_c_raw,
+          "the division must use the cached clamped voltage (boot default 12.0 V) and the overflow-safe split-word arithmetic for both runtime LUT interpolation and power x 1000")
 
 
 def test_ch2_lut_refit_v118():
@@ -1321,8 +1322,8 @@ def test_charger_persistence_v114():
     check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+144u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_LOW\s+14u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH\s+20u", nvm_h) and
-          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+131u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+203u", nvm_h),
-          "persisted set = 0..14 + 20..75 + 77..131 + runtime slots 200..203 (128 entries in 144 slots - v1.80 moved the record into a TWO-page 2 KiB bank at 0x0800E000 because the scenario-6 lamp/buzzer ids 128..131 pushed it past the old single full page; v1.49 added the charge map 119/120, v1.50 the band-2 beep shape 121/122, v1.68 the imbalance blink 123/124, v1.72 the dead-battery ids 125..127 and the latch slot 203, v1.80 its lamp/buzzer 128..131) - the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
+          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+142u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+203u", nvm_h),
+          "persisted set = 0..14 + 20..75 + 77..136 + runtime slots 200..203 (131 entries in 144 slots; v1.83 adds the imbalance clean-FLOAT-cycle threshold 136; the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
     # [EN] v1.71 bumps 10 -> 11. This one is a MEANING bump, not a layout
     #      bump: ids 57 and 122 kept their slots but changed units (critical
     #      duty % -> critical per-beep ms, band-2 gap -> band-2 repeat
@@ -1330,15 +1331,15 @@ def test_charger_persistence_v114():
     #      meaning is a 100 ms beep every 100 ms - loud nonsense. Rejecting
     #      the old record is the point.
     # [FA] نسخهٔ ۱۱ تغییر معنی است نه چیدمان؛ رکورد قدیمی باید رد شود.
-    check(re.search(r"ESP_LINK_NVM_VERSION\s+11u", nvm_h),
+    check(re.search(r"ESP_LINK_NVM_VERSION\s+12u", nvm_h),
           "v1.43 bumps the NVM record version to 10: a v9 record carries 108 slots, so "
           "replaying one into a 122-slot layout would leave ids 108..118 and 200..202 holding whatever "
           "the erased flash reads as. The version check must reject it and fall back to "
           "compiled defaults - the first boot after this upgrade is a factory-default boot")
 
     # the persisted-id predicate in C, replicated and cross-checked
-    persisted = {i for i in range(256) if i <= 14 or (20 <= i <= 122 and i != 76) or 200 <= i <= 202}
-    check(persisted == set(range(15)) | set(range(20, 76)) | set(range(77, 123)) | {200, 201, 202} and 19 not in persisted and 15 not in persisted and 76 not in persisted,
+    persisted = {i for i in range(256) if i <= 14 or (20 <= i <= 142 and i not in (72, 73, 76)) or 200 <= i <= 203}
+    check(persisted == set(range(15)) | (set(range(20, 143)) - {72, 73, 76}) | {200, 201, 202, 203} and 19 not in persisted and 15 not in persisted and 76 not in persisted,
           f"persisted id set must exclude 15..19 and 76 (got {len(persisted)} ids)")
 
     tab2 = ino.split('id="p2"', 2)[1]
@@ -1512,7 +1513,8 @@ def test_charger_persistence_v114():
           'function qchk()' in ino and
           'q.o.d' in ino and 'q.r.d' in ino and 'pvln(q.o' in ino and
           'const LL=[],PL=[]' in ino and
-          'باز هم ارسال شود؟' in ino and 'نگهبان ترکیب' in ino,
+          'باز هم ارسال شود؟' not in ino and 'نگهبان ترکیب' in ino and
+          'قطع باتری باید ۱۴۰۰۰..۱۵۰۰۰ باشد' in ino,
           "v1.14d (user order 2026-09-26, 'stretch the graph downward, the zone borders are cramped; zones must follow the profile numbers and never overlap'): zones drawn from APPLIED values with dashed preview lines for typed values, anti-collision label pass (ZL/LL; v1.39 moved the zone names out of the chart into an external legend, so v1.41 pruned the now-empty ZL list - the pass is PL/LL), and a qchk() guard - red field + confirm-before-send on invalid combos (v1.69 user order: the red BANNER is gone, it claimed the board clamps combinations and the board has not done that since v1.56)")
 
     # [EN] v1.69 (user order: "what is this message? why should it be there?
@@ -1548,10 +1550,12 @@ def test_charger_persistence_v114():
     # [EN] no echo must NOT clear the pending flag - otherwise the resend
     #      button would have an empty queue and silently do nothing.
     body = ino[ino.index("async function sendall()"):]
-    body = body[:body.index("function num(id)")]
-    check("if(back==null){bad.push(id+': بی‌پاسخ');continue;}" in body
-          and body.index("continue;") < body.index("pclr(id);"),
+    body = body[:body.index("function xlabel(id)")]
+    check("if(back==null){bad.push(report);sentReport.push(report);continue;}" in body
+          and body.index("continue;") < body.index("pclr(id,+back);"),
           "an unanswered id must stay in PEND so that 'resend' has something to resend")
+    check("pclr(id,+back)" in body and "function pclr(id,applied)" in ino,
+          "a clamped/read-back value must replace the pending request in the visible editor")
 
     # [EN] v1.70 (user order: "the 'board value' note under some boxes never
     #      updates after a change and is not needed - we have the factory
@@ -1940,8 +1944,8 @@ def test_manual_test_mode_v12():
           "instead of raising the ceiling - on a 20 KB part that buffer is charged "
           "twice, once on each side of the link")
     check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
-          and re.search(r"#define ESPLINK_PARAM_COUNT\s+132u", text_esph),
-          "param 19 = manual test mode; 132 params total since v1.80 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID, 93..107 = charger limits, 108..118 = imbalance scenario 5, 119..120 = charge-side percent map, 121..122 = band-2 beep shape, 123..124 = imbalance latched red-lamp blink, 125..127 = dead-battery scenario 6, 128..131 = its own lamp and buzzer)")
+          and re.search(r"#define ESPLINK_PARAM_COUNT\s+143u", text_esph),
+          "param 19 = manual test mode; 142 params total since v1.84 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID, 93..107 = charger limits, 108..118 = imbalance scenario 5, 119..120 = charge-side percent map, 121..122 = band-2 beep shape, 123..124 = imbalance latched red-lamp blink, 125..127 = dead-battery scenario 6, 128..131 = its own lamp and buzzer, 132..133 = imbalance beep count/gap, 134..135 = dead-battery beep count/gap)")
 
     manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
                     text_c.find("/* ==================== Charger_Evaluate")]
@@ -2042,7 +2046,7 @@ def test_alarms_tab_v115():
           and "func__Charger_GetAlarmParam" in text_cc,
           "charger.c must implement clamp + set/get alarm API")
     check(text_cc.count("func__Fault_OnSupervisionChange();") >= 2,
-          "both the profile path and the alarm path must cascade into the fault re-clamp (disconnect stays < OV)")
+          "both the profile path and the alarm path must cascade into the fault re-clamp, while q27 keeps its independent hard window")
     cbody = re.sub(r"/\*.*?\*/", "", text_cc, flags=re.S)
     cbody = re.sub(r"static (?:volatile )?uint32_t UINT32_T__G__Charger(HardFaultMa|OvCutoffMv|ValidFloorMv) = [A-Z_0-9]+;", "", cbody)
     cbody = "\n".join(ln for ln in cbody.split("\n")
@@ -2098,9 +2102,9 @@ def test_alarms_tab_v115():
     # [EN] v1.57 (user order: finish the backup): the file must carry an
     #      identity and the import must reuse the panel's joint rules.
     # [FA] فایل پشتیبان شناسنامه دارد و ورودی از قوانین مشترک رد می‌شود.
-    check("app:'ChangeOver-settings',v:2" in ino and "build:xbuild()" in ino
-          and "pn:PN" in ino and "saved:new Date().toISOString()" in ino,
-          "v1.57: the backup file records build, parameter count and date")
+    check("app:'ChangeOver-settings',v:3" in ino and "schema:xschema()" in ino
+          and "saved:new Date().toISOString()" in ino,
+          "v1.81: the backup file records a parameter schema and date")
     check("const fixed=fixrules(v);" in ino and "function xclamp(id,n)" in ino,
           "v1.57: an imported file passes through fixrules and each field's own range")
     # [EN] v1.57 (user order: calibrate straight from the bench capture).
@@ -2123,7 +2127,7 @@ def test_alarms_tab_v115():
     check('\\"q2\\":%lu' in ino and "pendingMask2" in ino,
           "the /t JSON must carry the q2 pending mask for ids 32..37 (one u32 no longer fits 38 params)")
     tx = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(tx and len(tx.group(1).split(",")) == 132, "TxOrder must carry all 132 ids")
+    check(tx and len(tx.group(1).split(",")) == 143, "TxOrder must carry all 143 ids")
     # [EN] The literal "134 columns" used to be asserted here. That is the third
     #      hard-coded column count found in this suite, and every one of them was
     #      stale - they defend whatever number was true when they were written.
@@ -2142,10 +2146,9 @@ def test_alarms_tab_v115():
     # --- python models of both clamp sets: fixed point + random invariants ---
     def fclamp(a, over=14600, ov=15000):
         a = dict(a)
-        lo, hi = max(14000, over + 50), min(15000, ov - 100)
-        if lo > hi:
-            hi = lo
-        a[27] = min(max(a[27], lo), hi)
+        # q27 is an independent Fault-module hard window. The charger-side
+        # absorb/OV values are separate controls; only q36 uses the OV floor.
+        a[27] = min(max(a[27], 14000), 15000)
         a[28] = min(max(a[28], 50), 1000)
         a[29] = min(max(a[29], 3000), 8000)
         a[30] = min(max(a[30], 4000), 9000)
@@ -2187,10 +2190,7 @@ def test_alarms_tab_v115():
              30: rng.randint(0, 12000), 31: rng.randint(0, 20000), 32: rng.randint(0, 20000),
              33: rng.randint(0, 40000), 34: rng.randint(0, 40000)}
         c = fclamp(w, over, ov)
-        lo, hi = max(14000, over + 50), min(15000, ov - 100)
-        if lo > hi:
-            hi = lo
-        if not (lo <= c[27] <= hi and 50 <= c[28] <= 1000
+        if not (14000 <= c[27] <= 15000 and 50 <= c[28] <= 1000
                 and 3000 <= c[29] <= c[30] - 500 and c[29] + 500 <= c[30] <= 9000
                 and 100 <= c[31] <= 5000 and 100 <= c[32] <= 5000
                 and 18000 <= c[33] <= c[34] - 1000 and c[33] + 1000 <= c[34] <= 30000):
@@ -2310,11 +2310,11 @@ def test_ui_mirror_v116():
     # v1.55: ردیف باقی‌مانده و دکمهٔ میوت هم برداشته شدند.
     check('id="uleds"' not in ino and 'leds stick' not in ino
           and all(f'id="sl{n}r"' in ino and f'id="sl{n}z"' in ino
-                  for n in range(1, 7))   # v1.75: six cards, renumbered 1..6
-          and 'id="sl7r"' not in ino,
+                  for n in range(1, 8))   # scenario 7 adds its own simulator card
+          and 'id="sl7r"' in ino,
           "no sticky board mirror left; every scenario card carries its own simulated LEDs and buzzer")
-    check(all(f'id="asbb{k}"' in ino for k in range(7)),
-          "one LED per fault bit (asbb0..asbb6)")
+    check(all(f'id="asbb{k}"' in ino for k in range(8)),
+          "one LED per fault bit (asbb0..asbb7)")
     check("pendingMask3" in ino and "pendingMask4" in ino and "64..95" in ino,
           "the /t JSON must carry all FOUR pending masks. The fourth is not decoration: "
           "ids 96..107 exist as of v1.28 and the catch-all arm they used to land in did "
@@ -2329,17 +2329,16 @@ def test_ui_mirror_v116():
     # [FA] خط توضیح بازه‌ها حذف شد (باز هم کهنه شده بود)؛ آنچه باید بماند خود
     #      ساز و کار است: XIDS فهرست را از AIDS می‌سازد.
     check("XIDS=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,20,21,22,23,24,25,26]" in ino
-          and "AIDS.forEach(id=>{if(id!==76)XIDS.push(id);});" in ino,
+          and "AIDS.forEach(id=>{if(id!==72&&id!==73&&id!==76)XIDS.push(id);});" in ino,
           "v1.16c (user order: ONE backup for the whole settings): all persisted ids "
-          "0..14 + 20..75 + 77..118 (113 params; slots 200..202 stay board-only). "
+          "0..14 + 20..75 + 77..136 (with 132/133 imbalance beep, 134/135 dead-battery beep and 136 clean-FLOAT-cycle threshold; slots 200..203 stay board-only). "
           "XIDS extends itself from AIDS, so the limits block "
           "was covered the moment it existed - but the human-readable label was NOT, and "
           "it had already been wrong since v1.24 (it still advertised a retired 83..97)")
     check('id="usel"' in ino and "function usel(n)" in ino
-          and all(f'id="ucard{k}"' in ino for k in range(1, 7))
-          and 'id="ucard7"' not in ino,
-          "one selectable card per scenario (v1.75: exactly six, numbered 1..6 "
-          "with no hole where the retired low-battery card used to be)")
+          and all(f'id="ucard{k}"' in ino for k in range(1, 8))
+          and 'id="ucard7"' in ino,
+          "one selectable card per scenario (scenario 7 adds card 7 with no hole)")
     # [EN] v1.33 (user order 2026-10-03: "bring that charger PID inside this
     #      same charge-and-filter tab"). The PID sub-tab is gone as a TAB and
     #      its card now sits in sub-tab 0, so backup moves up to 3. Pinned
@@ -2428,10 +2427,9 @@ def test_ui_mirror_v116():
     # [FA] کارت باتری کم حذف شد و دو کارت بعدی یک شماره پایین آمدند: ۱ تا ۶ بدون حفره.
     check("۱ · اضافه‌ولتاژ" in ino and "۵ · باتری کم" not in ino
           and "۵ · عدم‌توازن" in ino and "۶ · باتری خراب" in ino
-          and "۷ · باتری" not in ino and 'data-u="7"' not in ino
+          and "۷ · خطای فنی برد" in ino and 'data-u="7"' in ino
           and "سناریو ۱ ·" not in ino,
-          "v1.75: the scenario picker is numbered 1..6 with imbalance at 5 and "
-          "the dead-battery scenario at 6")
+          "scenario picker is numbered 1..7 with technical board fault at 7")
     # [EN] v1.71 (user order: "why is the last discharge step suddenly a duty?
     #      make them all the same shape"): the critical band is now typed like
     #      the other three - count, per-beep duration, own repeat interval,
@@ -2500,18 +2498,17 @@ def test_ui_mirror_v117():
         check(re.search(rf"#define {name}\s+{val}", text_uih),
               f"boot default {name} must be {val} (v1.17: 69 rises 10 -> 150)")
 
-    # --- v1.56 (user order): the board keeps only the per-field windows;
-    #     "exit below enter" moved into the panel's fixrules().
-    # --- v1.56: فقط بازهٔ تک‌فیلدی روی برد ماند؛ قانون مشترک در پنل است.
+    # --- the board keeps only per-field windows; cross-field relationships are
+    #     advisory in the panel and the firmware/read-back owns any clamp.
     check("uint32_t__chgFullEnterPct, 1u, 100u" in text_uic
           and "uint32_t__chgFullExitPct, 0u, 100u" in text_uic
           and "uint32_t__chgFullEnterPct - 1u" not in text_uic
-          and "if(v[78]>=v[77])set(78,v[77]-1);" in ino
+          and "function fixrules(v)" in ino and "return [];" in ino
           and "uint32_t__chgHystPct, 0u, 50u" in text_uic
           and "uint32_t__runHystPct, 0u, 50u" in text_uic
           and "uint32_t__runZeroExit, 0u, 100u" in text_uic
           and "uint32_t__runOneExit, 0u, 100u" in text_uic,
-          "ClampAlarms must clamp 77..82 to 1..100/0..100/0..50/0..50/0..100/0..100 with exit pulled to enter-1")
+          "ClampAlarms keeps the real per-field windows and the panel does not mutate dependent fields")
 
     # --- panel: ADEF tail + the 150 fallback for 69 ---
     adef = re.search(r"const ADEF=\[([^\]]*)\]", ino)
@@ -2540,10 +2537,11 @@ def test_ui_mirror_v117():
           and "50, 18000, 0, 10, 1000," in prev
           and "14800, 100, 500, 10, 15000, 3000, 3000, 500," in prev
           and "300, 500, 600000, 600000, 30000, 100, 10, 3600000, 200, 1, 20," in prev
-          and "21000, 29000," in prev and "600000, 120, 0, 50];" in prev
+          and "21000, 29000," in prev and "600000, 120, 0, 50," in prev
           and "case 118:" in prev and "case 122:" in prev and "case 124:" in prev
           and "case 125:" in prev and "case 126:" in prev and "case 127:" in prev
-          and "case 128:" in prev and "case 131:" in prev,
+          and "case 128:" in prev and "case 131:" in prev and "case 132:" in prev
+          and "case 133:" in prev and "case 134:" in prev and "case 135:" in prev,
           "the offline preview must serve the v1.17 defaults with the enter-authoritative "
           "clamp, the calibrated PID rows after them, the v1.28 limits block, "
           "the v1.43 imbalance scenario block, and the v1.49 charge-side percent map plus the v1.68 imbalance blink last")
@@ -2710,8 +2708,8 @@ def test_audit_batch_v116b():
           "bulk payload must be static (comm stack is 1 KiB) and sized to one chunk")
     check("NVM record too small for the persisted id set" in nvmc,
           "NVM must statically assert the record fits the WHOLE persisted id set (params + runtime slots)")
-    check("992 B for 122 entries" in nvmh,
-          "NVM record comment must state the true record size for 122 entries")
+    check("144 slots (12 + 144 x 8 + 4 = 1168 B)" in nvmh,
+          "NVM record comment must state the true record capacity for the expanded scenario-7 set")
 
     # --- LUT hardening + dead-clamp cleanup ---
     check("uint32_t__xHigh == uint32_t__xLow" in meas,
@@ -2829,11 +2827,11 @@ def test_flash_diet_pins_v116d():
     # [EN] v1.49: the dense UI block is still 38..82; the charge-side percent
     #      map had to take 119/120 because 83..118 belong to other modules.
     # [FA] بلوک متراکم همان ۳۸..۸۲؛ نگاشت درصد سمت شارژ ۱۱۹/۱۲۰ را گرفت.
-    ui_ids = sorted(int(v) for v in re.findall(
+    ui_ids = sorted(set(int(v) for v in re.findall(
         r"#define UI_ALARM_PARAM_(?!MIN_ID|MAX_ID|EXT_MIN_ID|EXT_MAX_ID)[A-Z_0-9]+\s+(\d+)u",
-        UI_LED_H.read_text()))
-    check(ui_ids == list(range(38, 83)) + [119, 120, 121, 122],
-          f"UI-alarm ids must be dense 38..82 plus the ext range 119..122, got {len(ui_ids)} ids")
+        UI_LED_H.read_text())))
+    check(ui_ids == list(range(38, 83)) + [119, 120, 121, 122, 137, 138, 139, 140, 141, 142],
+          f"UI-alarm ids must include dense 38..82 plus ext ranges 119..122 and 137..142, got {len(ui_ids)} ids")
     for src, base, name in (
             (CHARGER_C, 20, "SetProfileParam"),
             (FAULT_C, 27, "SetAlarmParam")):
@@ -2948,8 +2946,8 @@ def test_two_loop_pid_v124():
               f"charger.h must map CHG_PID_PARAM_{nm} to id {wid}")
         check(re.search(rf"#define ESPLINK_PARAM_CHG_PID_{nm}\s+{wid}u", text_esph),
               f"esp_link.h must map ESPLINK_PARAM_CHG_PID_{nm} to the SAME id {wid}")
-    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+132u", text_esph),
-          "ESPLINK_PARAM_COUNT must be 132 (last scenario-6 face id 131 + 1, v1.80)")
+    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+143u", text_esph),
+          "ESPLINK_PARAM_COUNT must be 143 (scenario 7 ids 137..142 + 1)")
     check("STAGE1" not in text_h and "STAGE3" not in text_h and "stage3" not in text_c,
           "the retired third gain row must leave NOTHING behind (it was measured to "
           "buy nothing and it cost five panel numbers)")
@@ -3363,7 +3361,7 @@ def test_min_select_handover_v124():
     cdef_m = re.search(r"const CDEF=\[([^\]]*)\]", ino)
     check(cdef_m, "the panel must define CDEF for the charge-side percent map")
     cdef = [x for x in cdef_m.group(1).split(",") if x.strip()]
-    check(len(cdef) == 13, f"CDEF must hold 13 ext defaults (charge map + band 2 shape + v1.68 imbalance blink + v1.72 dead-battery 125..127 + v1.80 its lamp/buzzer 128..131), got {len(cdef)}")
+    check(len(cdef) == 24, f"CDEF must hold 24 ext defaults through scenario 7 ids 137..142, got {len(cdef)}")
     top = 83 + len(pdef) - 1 + len(ldef) + len(idef) + len(cdef)
     # --- 6. the PARAMS_BULK reply must be proven to fit the protocol payload
     #        ceiling. The buffer auto-sizes from the count so it cannot be
@@ -3987,19 +3985,19 @@ def test_stage_graph_is_current_vs_voltage_v3():
     poly = re.search(r"<polyline points=\"([^\"]*)\"", body)
     check(poly, "the CC/CV charge path must be drawn")
     pts = poly.group(1)
-    check("${X(im.d)},${Y(lo)} ${X(im.d)},${Y(q.e.d)}" in pts,
-          "the bulk leg must be VERTICAL at the current limit - same x, rising "
+    check("${X(im.v)},${Y(lo)} ${X(im.v)},${Y(q.e.v)}" in pts,
+          "the bulk leg must be VERTICAL at the preview-aware current limit - same x, rising "
           "voltage")
-    check("${X(im.d)},${Y(q.a.d)} ${X(tp.d)},${Y(q.a.d)}" in pts,
-          "the absorb leg must be HORIZONTAL at the absorb voltage - same y, "
+    check("${X(im.v)},${Y(q.a.v)} ${X(tp.v)},${Y(q.a.v)}" in pts,
+          "the absorb leg must be HORIZONTAL at the preview-aware absorb voltage - same y, "
           "falling current")
 
     # --- the current limit and taper are vertical now, not horizontal ---
     # [EN] v1.30 draws every current threshold through one EVI loop so they
     #      can all be clicked, so the literal per-line markup is gone. The
     #      property still has to hold: same x at both ends, spanning y. The
-    #      mapping of 25/26 onto the preview-aware im.d/tp.d is checked too -
-    #      reading those from D.p instead would quietly drop the dashed
+    #      mapping of 25/26 onto the preview-aware im.v/tp.v is checked too -
+    #      reading only the applied d values would quietly drop the dashed
     #      "typed but not applied yet" preview.
     # [FA] حالا همهٔ آستانه‌های جریان از یک حلقهٔ EVI رسم می‌شوند تا همه
     #      کلیک‌پذیر باشند، پس مارک‌آپ جداگانهٔ هر خط رفته است. ولی همان خاصیت
@@ -4013,8 +4011,8 @@ def test_stage_graph_is_current_vs_voltage_v3():
     check({25, 26} <= evi_ids,
           "the bulk ceiling and the taper threshold must still be on the current "
           "axis, got " + str(sorted(evi_ids)))
-    check("(id===25)?im.d:(id===26)?tp.d:evval(id)" in body,
-          "ids 25/26 must keep reading the preview-aware values, or the dashed "
+    check("(id===25)?im:(id===26)?tp:evp(id)" in body,
+          "ids 25/26 must keep their preview-aware state, or the dashed "
           "'typed but not applied yet' preview silently disappears")
     check("evat(id)" in body,
           "the current-axis labels must be clickable, not decoration")
@@ -4321,6 +4319,122 @@ int main(void){
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_scenario7_technical_fault_lockout():
+    """Scenario 7 contract: detect either transistor failure signature,
+    latch a MCU-session lockout, and drive one synchronized three-LED face
+    with its own buzzer controls. This is a source contract test; it cannot
+    replace oscilloscope/current-probe validation on the real board.
+    """
+    charger_c = CHARGER_C.read_text()
+    task_c = TASK_CONTROL_C.read_text()
+    ui_h = UI_LED_H.read_text()
+    ui_c = UI_LED_C.read_text()
+    esp_h = ESP_LINK_H.read_text()
+    esp_c = ESP_LINK_C.read_text()
+    app_types = APP_TYPES_H.read_text()
+
+    check(re.search(r"#define FAULT_CHARGER_TECHNICAL\s+\(1u << 7\)", app_types),
+          "scenario 7 must own a new central fault bit 7")
+    check("static bool BOOL__G__TechnicalFaultLockout;" in charger_c,
+          "scenario 7 lockout must be MCU-RAM state, not a panel/NVM setting")
+    check("BOOL__G__TechnicalFaultLockout = false;" in charger_c.split("void func__Charger_Init", 1)[1].split("BOOL__G__ChargerInitialized", 1)[0],
+          "only charger init/reset may release the technical lockout")
+
+    eval_body = charger_c.split("void func__Charger_EvaluateTechnicalFault", 1)[1].split("bool func__Charger_IsAnyChannelActive", 1)[0]
+    check("BOOL__G__RelayOpen" in eval_body and
+          "func__Charger_GetAppliedDutyPermille" in eval_body and
+          "== 0u" in eval_body and
+          "func__Jitter_ChannelTripped" in eval_body,
+          "short/burned signature must require open relay, zero applied PWM and recorded JIT")
+    check("> 200u" in eval_body and "i_ch1_ma" in eval_body and "i_ch2_ma" in eval_body and "== 0u" in eval_body,
+          "open/burned signature must require applied PWM over 20 percent and zero measured current")
+    check("BOOL__G__TechnicalFaultLockout = true;" in eval_body and
+          "func__Fault_Set(FAULT_CHARGER_TECHNICAL)" in eval_body,
+          "either signature must latch the technical bit and output lockout")
+    check("if (BOOL__G__TechnicalFaultLockout != false)" in charger_c and
+          "func__Charger_FinalDisconnect();" in charger_c,
+          "the charger must keep both PWM paths stopped and the relay open while locked")
+
+    jit_pos = task_c.find("func__Jitter_Run();")
+    technical_pos = task_c.find("func__Charger_EvaluateTechnicalFault(")
+    charger_pos = task_c.find("func__Charger_Evaluate(&measurement_snapshot_t__snap")
+    check(0 <= jit_pos < technical_pos < charger_pos,
+          "technical evaluation must run after JIT capture and before normal charger control")
+
+    tech_face = ui_c.split("static void func__Ui_ScenarioTechnicalFault_Tick", 1)[1].split("/* ==================== Scenario Imbalance", 1)[0]
+    check("func__red(bool__on)" in tech_face and
+          "func__green(bool__on)" in tech_face and
+          "func__yellow(bool__on)" in tech_face,
+          "scenario 7 must drive all three LEDs from one shared phase")
+    check(all(token in tech_face for token in ("uint32_t__techBeepPeriodMs", "uint32_t__techBeepDurMs",
+                                               "uint32_t__techBeepCount", "uint32_t__techBeepGapMs",
+                                               "uint32_t__techLedPeriodMs", "uint32_t__techLedDutyPct")),
+          "scenario 7 buzzer and LED cadence must use its six independent live values")
+    check(all(re.search(rf"#define UI_ALARM_PARAM_TECH_{name}\s+{value}u", ui_h)
+              for name, value in (("EXT_MIN_ID", 137), ("EXT_MAX_ID", 142),
+                                  ("BEEP_PERIOD_MS", 137), ("BEEP_LEN_MS", 138),
+                                  ("BEEP_COUNT", 139), ("BEEP_GAP_MS", 140),
+                                  ("LED_PERIOD_MS", 141), ("LED_DUTY_PCT", 142))),
+          "scenario 7 controls must be separate wire ids 137..142")
+    check("UI_ALARM_PARAM_TECH_EXT_MIN_ID" in esp_c and
+          "UI_ALARM_PARAM_TECH_EXT_MAX_ID" in esp_c and
+          "ESPLINK_PARAM_TECH_BEEP_COUNT" in esp_h and
+          "ESPLINK_PARAM_TECH_LED_DUTY_PCT" in esp_h,
+          "ESP protocol must route and name all scenario 7 controls")
+
+
+def test_boundary_concurrency_hardening_v126():
+    """Static host checks for the cross-module edge cases not exercised by
+    the pure charger model: flash address arithmetic, NVM id width, UART
+    publication ordering/status handling, and indexed API output contracts.
+    """
+    flash = (ROOT / "Firmware/Bsp/Src/bsp_flash.c").read_text()
+    uart = BSP_UART_C.read_text()
+    nvm = ESP_LINK_NVM_C.read_text()
+    task = TASK_CONTROL_C.read_text()
+    charger = CHARGER_C.read_text()
+    fault = FAULT_C.read_text()
+    ui = UI_LED_C.read_text()
+    imbalance = (ROOT / "Firmware/Modules/Imbalance/imbalance.c").read_text()
+    esp = ESP_LINK_C.read_text()
+
+    check("BSP_FLASH_STORAGE_END_ADDR - (uint32_t__count * 2u)" in flash and
+          "uint32_t__address + (uint32_t__count * 2u)" not in flash,
+          "flash program bounds must subtract the byte count, never add and wrap")
+    check(flash.count("func__BspFlash_WaitIdle()") >= 4,
+          "flash erase/program must wait before starting and after each operation")
+    check("uint16_t__id > (uint16_t)UINT8_MAX" in nvm and
+          "func__EspLink_NvmParamPersisted((uint8_t)uint16_t__id)" in nvm,
+          "NVM validation must reject a halfword id before narrowing to the wire byte")
+    check("static volatile bool BOOL__G__TxWriteActive;" in uart and
+          "(BOOL__G__TxWriteActive != false)" in uart and
+          "BOOL__G__TxWriteActive = true;" in uart and
+          "BOOL__G__TxWriteActive = false;" in uart,
+          "UART TX must hide an in-progress frame from the completion ISR")
+    check(all(token in uart for token in (
+        "HAL_UART_DeInit(UART_HANDLETYPEDEF__G__EspLink) != HAL_OK",
+        "HAL_UART_Init(UART_HANDLETYPEDEF__G__EspLink) != HAL_OK",
+        "HAL_DMA_Init(&DMA_HANDLETYPEDEF__G__TxDma) != HAL_OK",
+        "HAL_DMA_Init(&DMA_HANDLETYPEDEF__G__RxDma) != HAL_OK",
+        "HAL_UART_Receive_DMA(UART_HANDLETYPEDEF__G__EspLink,")),
+          "UART init must stop on every HAL setup failure")
+    check("MODULE_FAULT ||" in task and "MODULE_IMBALANCE ||" in task and
+          "MODULE_MCU_POWER_PATH" in task and
+          "uint32_t__tickFrequency == 0u" in task and
+          "bool__timeValid" in task,
+          "control-task reduced builds need all producer modules and a zero-frequency guard")
+    check("uint32_t__appliedValue == NULL" in charger and
+          "uint32_t__value == NULL" in charger and
+          "uint32_t__appliedValue == NULL" in fault and
+          "uint32_t__value == NULL" in ui and
+          "uint32_t__value == NULL" in imbalance and
+          "uint32_t__appliedValue == NULL" in esp,
+          "indexed APIs must reject NULL output pointers before dereference")
+    check("uint32_t__stepMs >=" in charger and
+          "= UINT32_MAX;" in charger,
+          "dead-charge elapsed time must saturate at the exact UINT32_MAX boundary")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -4373,6 +4487,8 @@ def main():
         test_stage_graph_is_current_vs_voltage_v3,
         test_section_parameter_help_v125,
         test_theme_contrast_and_param_coverage_v125,
+        test_scenario7_technical_fault_lockout,
+        test_boundary_concurrency_hardening_v126,
     ]
     for test in tests:
         test()

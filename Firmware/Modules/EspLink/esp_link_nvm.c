@@ -181,19 +181,21 @@ int8_t func__EspLink_NvmSeqCompare(uint16_t uint16_t__a, uint16_t uint16_t__b)
 }
 
 /**
- * @brief  [EN] Full record check: magic, version, entry count, every entry a
- *              persisted id, and the CRC over all bytes before the CRC
- *              field. A record with any transient id (15..19 test modes,
- *              76 panel-session mute) is REJECTED on purpose.
- *         [FA] بررسی کامل رکورد: جادو، نسخه، تعداد ورودی، persisted بودن
- *              شناسهٔ هر ورودی و CRC روی همهٔ بایت‌های قبل از فیلد CRC.
- *              رکوردی با هر شناسهٔ گذرا (مودهای تست ۱۵..۱۹ و میوت
- *              جلسه‌ای ۷۶) عمداً رد می‌شود.
+ * @brief  [EN] Full record check: magic, version, zero reserved field, entry
+ *              count, every entry a UNIQUE persisted id, and the CRC over all
+ *              bytes before the CRC field. A record with any transient id
+ *              (15..19 test modes, 76 panel-session mute) is REJECTED on
+ *              purpose.
+ *         [FA] بررسی کامل رکورد: جادو، نسخه، فیلد reserved صفر، تعداد
+ *              ورودی، persisted بودن و یکتایی شناسهٔ هر ورودی و CRC روی همهٔ
+ *              بایت‌های قبل از فیلد CRC. رکوردی با هر شناسهٔ گذرا (مودهای
+ *              تست ۱۵..۱۹ و میوت جلسه‌ای ۷۶) عمداً رد می‌شود.
  */
 bool func__EspLink_NvmRecordValidate(const esp_link_nvm_record_t
                                      *esp_link_nvm_record_t__record)
 {
     uint32_t uint32_t__crc;
+    uint32_t uint32_t__seenIds[8u] = {0u};
     uint16_t uint16_t__i;
 
     if (esp_link_nvm_record_t__record == NULL)
@@ -203,7 +205,8 @@ bool func__EspLink_NvmRecordValidate(const esp_link_nvm_record_t
 
     if ((esp_link_nvm_record_t__record->uint32_t__magic != ESP_LINK_NVM_MAGIC) ||
         (esp_link_nvm_record_t__record->uint16_t__version != ESP_LINK_NVM_VERSION) ||
-        (esp_link_nvm_record_t__record->uint16_t__count > ESP_LINK_NVM_ENTRY_MAX))
+        (esp_link_nvm_record_t__record->uint16_t__count > ESP_LINK_NVM_ENTRY_MAX) ||
+        (esp_link_nvm_record_t__record->uint16_t__reserved != 0u))
     {
         return false;
     }
@@ -212,12 +215,41 @@ bool func__EspLink_NvmRecordValidate(const esp_link_nvm_record_t
          uint16_t__i < esp_link_nvm_record_t__record->uint16_t__count;
          uint16_t__i++)
     {
-        if (func__EspLink_NvmParamPersisted(
-                (uint8_t)esp_link_nvm_record_t__record
-                    ->ESP_LINK_NVM_ENTRY_T__A__Entry[uint16_t__i].uint16_t__id) ==
-            false)
+        uint16_t uint16_t__id =
+            esp_link_nvm_record_t__record
+                ->ESP_LINK_NVM_ENTRY_T__A__Entry[uint16_t__i].uint16_t__id;
+
+        /* [EN] The wire id is one byte. Check the stored halfword BEFORE the
+           narrowing cast: 256 must not alias id 0 (or any other valid id).
+           [FA] شناسهٔ روی سیم یک‌بایتی است؛ نیم‌کلمهٔ ذخیره‌شده را پیش از
+           cast بررسی کن تا ۲۵۶ به شناسهٔ معتبر دیگری alias نشود. */
+        if ((uint16_t__id > (uint16_t)UINT8_MAX) ||
+            (func__EspLink_NvmParamPersisted((uint8_t)uint16_t__id) == false))
         {
             return false;
+        }
+
+        /* [EN] Records represent a map from id to applied value. The builder
+           emits each persisted id once, so a CRC-valid duplicate is not a
+           second value for the same setting; it is an ambiguous/corrupt
+           record and must not be replayed. Eight words cover the full
+           one-byte id space without a 256-byte boot stack allocation.
+           [FA] رکورد نگاشت شناسه به مقدار اعمال‌شده است. سازنده هر شناسهٔ
+           ماندگار را یک‌بار می‌نویسد؛ بنابراین duplicate حتی با CRC درست
+           رکورد مبهم/خراب است و نباید replay شود. هشت کلمه کل فضای شناسهٔ
+           یک‌بایتی را بدون تخصیص ۲۵۶ بایت روی استک بوت پوشش می‌دهد. */
+        {
+            uint8_t uint8_t__id = (uint8_t)uint16_t__id;
+            uint32_t uint32_t__idMask = (uint32_t)1u <<
+                                        (uint8_t__id & 31u);
+            uint32_t *uint32_t__seenWord =
+                &uint32_t__seenIds[uint8_t__id >> 5u];
+
+            if ((*uint32_t__seenWord & uint32_t__idMask) != 0u)
+            {
+                return false;
+            }
+            *uint32_t__seenWord |= uint32_t__idMask;
         }
     }
 
@@ -388,7 +420,16 @@ void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
 {
     if (func__EspLink_NvmParamPersisted(uint8_t__paramId) != false)
     {
+        /* [EN] A new change starts a fresh save budget. Without resetting
+           retries here, a record that exhausted its previous retry budget
+           gets only one attempt after the next edit and is then abandoned
+           immediately; a healthy later edit could therefore never persist.
+           [FA] هر تغییر جدید باید بودجهٔ ذخیره را از نو شروع کند. اگر اینجا
+           retry ریست نشود، رکوردی که بودجهٔ قبلی‌اش تمام شده پس از ویرایش
+           بعدی فقط یک بار امتحان می‌شود و فوراً کنار گذاشته می‌شود؛ بنابراین
+           ویرایش سالم بعدی هم ممکن است هرگز ذخیره نشود. */
         UINT16_T__G__NvmDirtyRuns = 1u;
+        UINT8_T__G__NvmSaveRetries = 0u;
     }
 }
 

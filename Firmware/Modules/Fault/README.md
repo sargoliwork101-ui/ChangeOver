@@ -47,10 +47,19 @@
 دیوایدر آرام خالی می‌شود و تشخیص حالت دوم ~۲۰-۴۰ ثانیه طول می‌کشد (حین شارژ
 همان ۱۵۰ms قاعده اول است). با نبودِ snapshot معتبر هیچ Set/Clear رخ نمی‌دهد.
 
+## بیت ۷ — خطای فنی برد / Scenario 7
+
+ماژول Fault فقط مالک بیت مرکزی `FAULT_CHARGER_TECHNICAL` است:
+`(1u << 7)`. تشخیص امضای ترانزیستور در `Charger` انجام می‌شود، سپس
+`func__Fault_Set()` این بیت را latch می‌کند تا UI و Changeover همان fault را
+ببینند. این بیت در NVM ذخیره نمی‌شود و `func__Fault_Init()` آن را مثل تمام
+بیت‌های دیگر در reset پاک می‌کند؛ قفل فیزیکی PWM/رله را خود Charger نگه می‌دارد.
+
 ## تاریخچه
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-10-06 | افزودن بیت ۷ `FAULT_CHARGER_TECHNICAL` برای سناریوی خطای فنی برد؛ Charger تشخیص و lockout فیزیکی را مالک است و Fault فقط latch مرکزی را منتشر می‌کند. |
 | 2026-09-23 | فریز کامل `func__Fault_Evaluate` حین مود تست دستی شارژر (v1.2): بدون Set/Clear، تمپ‌های دبانس صفر — پمپ عمدی مود دستی نباید BAT_LOST را قفل کند |
 | 2026-09-19 | **قاعدهٔ دوم: «هرکدام < ۷V» به‌جای «هر دو < ۶V» (دستور کاربر):** تشخیص با شارژرِ پارک‌شده/تک‌سیم‌قطع ممکن شد؛ قبلی با نیمِ سالم ~۱۳V هیچ‌وقت فایر نمی‌شد و سکوت کامل می‌داد |
 | 2026-09-19 | **پاکسازی آلارم فقط با بازگشت واقعی باتری:** تست سلامت قبلی («فقط هردو نیم‌باتری نباشند») با یک سیمِ قطع فری می‌خورد - نیمِ سالم ~۱۳V است و آلارم پس از یک بوق پاک می‌شد و چون گیت ۱۵ثانیه‌ای شارژر بازمسلح نمی‌کند، سکوتِ ابدی؛ حالا سالم یعنی: نه پمپ روی هیچ‌کدام + **هر دو نیم‌باتری >= ۷V** (`FAULT_BATTERY_BACK_MV`؛ دستور کاربر: ۶V ممکن است حین شارژ باشد) برای `FAULT_BAT_RECOVER_MS` - تا باتری وصل نشده بوقِ یادآوری تکرار می‌ماند |
@@ -64,8 +73,8 @@
 | فایل | نقش |
 |---|---|
 | `fault.h` / `fault.c` | ماسک خطای قفل‌شده (`FAULT_MASK_T__G__Mask`) و `func__Fault_Evaluate` |
-| `../../Config/Inc/app_types.h` | `FAULT_*` |
-| `../Charger/charger.c` | خواندن `IsManualTestModeActive` برای فریز؛ آینهٔ بیت ۶ به `CHG_STATE_BAT_LOST` |
+| `../../Config/Inc/app_types.h` | `FAULT_*`، شامل بیت ۷ `FAULT_CHARGER_TECHNICAL` |
+| `../Charger/charger.c` | تشخیص امضای سناریوی ۷ و فراخوانی `func__Fault_Set`; آینهٔ بیت ۶ به `CHG_STATE_BAT_LOST` |
 
 به بیلد LED لازم نیست.
 
@@ -80,7 +89,8 @@
 | `func__Fault_Any` | اگر چیزی غیر از NONE باشد true |
 | `func__Fault_Evaluate` | هر پاس از `task_control` (قبل از Get): تشخیص/پاک‌سازی متمرکز `FAULT_CHARGER_BAT_LOST` از snapshot |
 
-بیت‌ها: `FAULT_ADC`، `FAULT_OVERCURRENT_1`، `FAULT_OVERCURRENT_2`، `FAULT_LOW_BATTERY`، `FAULT_JITTER_1`، `FAULT_JITTER_2`، `FAULT_CHARGER_BAT_LOST`.
+بیت‌ها: `FAULT_ADC`، بیت‌های رزرو جریان/جیتر، `FAULT_CHARGER_BAT_LOST` (بیت ۶) و
+`FAULT_CHARGER_TECHNICAL` (بیت ۷، سناریوی خطای فنی برد).
 
 ## پایه‌ها
 
@@ -98,8 +108,8 @@ Init همه بیت‌ها را صفر می‌کند.
 protection.c      func__Fault_Set
 task_control.c    func__Fault_Evaluate + func__Fault_Get
 task_comm.c       func__Fault_Get
-charger.c         func__Fault_Get (آینهٔ CHG_STATE_BAT_LOST)
-ui_led.c          func__Fault_Get (سناریو ۵ BatLost)
+charger.c         func__Fault_Set (سناریوی ۷) + func__Fault_Get (آینهٔ CHG_STATE_BAT_LOST)
+ui_led.c          func__Fault_Get (سناریو ۵ و سناریو ۷)
 changeover.c      مقدار faults را از آرگومان می‌گیرد (خودش func__Fault_Get نمی‌زند)
 ```
 

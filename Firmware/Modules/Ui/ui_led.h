@@ -194,6 +194,19 @@
  */
 #define UI_BAT_LOST_BEEP_GAP_MS 100u
 
+/* ==================== Technical board fault / خطای فنی برد (scenario 7) ==================== */
+/* [EN] Scenario 7 is deliberately its own alarm family. It never borrows
+ *      the count/gap of scenario 5 (132/133) or scenario 6 (134/135).
+ *      All three LEDs share one phase, so they turn on and off together.
+ * [FA] سناریوی ۷ خانوادهٔ بوق و چراغ مستقل خودش را دارد؛ تعداد/گپ را از
+ *      سناریوی ۵ یا ۶ قرض نمی‌گیرد. هر سه LED یک فاز مشترک دارند. */
+#define UI_TECH_FAULT_LED_PERIOD_MS       1000u
+#define UI_TECH_FAULT_LED_DUTY_PERCENT    50u
+#define UI_TECH_FAULT_BEEP_PERIOD_MS      3000u
+#define UI_TECH_FAULT_BEEP_DURATION_MS    200u
+#define UI_TECH_FAULT_BEEP_COUNT          3u
+#define UI_TECH_FAULT_BEEP_GAP_MS         100u
+
 /**
  * @brief  [EN] Delay used while InputOk holds the green LED steady.
  *         [FA] تأخیر سناریوی InputOk هنگام ثابت نگه‌داشتن LED سبز.
@@ -537,8 +550,11 @@ void func__Ui_ScenarioInputOk(void);
  *      115/116). See ui_led.c for the full behaviour contract.
  * [FA] چهرهٔ قفل سناریوی ۵: قرمز ثابت + بوق کوتاه دوره‌ای (۱۱۵/۱۱۶). */
 void func__Ui_ScenarioImbalance_Tick(void);
+#endif
 
-/* [‎EN] v1.72 scenario 6: solid red condemned-battery face‎ / چهرهٔ باتری خراب */
+#if MODULE_CHARGER
+/* [EN] v1.72 scenario 6: condemned-battery face owned by Charger /
+ *      چهرهٔ باتری خراب در مالکیت Charger. */
 void func__Ui_ScenarioDeadBattery_Tick(void);
 #endif
 
@@ -704,6 +720,19 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap);
 #define UI_ALARM_PARAM_EXT_MIN_ID         119u
 #define UI_ALARM_PARAM_EXT_MAX_ID         122u
 
+/* [EN] Scenario 7 extension is non-contiguous because ids 123..136 belong
+   to scenarios 5 and 6. Keep a separate range instead of claiming their
+   wire ids in the UI module. [FA] بازهٔ سناریوی ۷ جداست چون ۱۲۳..۱۳۶ متعلق
+   به سناریوهای ۵ و ۶ است. */
+#define UI_ALARM_PARAM_TECH_EXT_MIN_ID    137u
+#define UI_ALARM_PARAM_TECH_EXT_MAX_ID    142u
+#define UI_ALARM_PARAM_TECH_BEEP_PERIOD_MS 137u
+#define UI_ALARM_PARAM_TECH_BEEP_LEN_MS    138u
+#define UI_ALARM_PARAM_TECH_BEEP_COUNT     139u
+#define UI_ALARM_PARAM_TECH_BEEP_GAP_MS    140u
+#define UI_ALARM_PARAM_TECH_LED_PERIOD_MS  141u
+#define UI_ALARM_PARAM_TECH_LED_DUTY_PCT   142u
+
 /**
  * @brief  [EN] Live UI cadence set (one struct, like the fault alarms).
  *              Scenarios read these, never the macros.
@@ -779,6 +808,16 @@ typedef struct
        گپ همهٔ باندها دوباره یکی شد (شناسهٔ ۶۵). */
     uint32_t uint32_t__runDoubleDurMs;
     uint32_t uint32_t__runDoubleIntervalMs;
+    /* [EN] Scenario 7 owns six appended words: beep period, per-beep
+       duration, count, gap, and the synchronized three-LED period/duty.
+       [FA] سناریوی ۷ شش کلمهٔ مستقل در انتها دارد: دوره/مدت/تعداد/گپ بوق
+       و دوره/دیوتی چشمک هم‌زمان سه LED. */
+    uint32_t uint32_t__techBeepPeriodMs;
+    uint32_t uint32_t__techBeepDurMs;
+    uint32_t uint32_t__techBeepCount;
+    uint32_t uint32_t__techBeepGapMs;
+    uint32_t uint32_t__techLedPeriodMs;
+    uint32_t uint32_t__techLedDutyPct;
 } ui_alarm_t;
 
 /**
@@ -788,7 +827,7 @@ typedef struct
  *              مقدار اعمال‌شده.
  * @‎param  uint8_t__paramId [EN] 38..82‎ / شناسه
  * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
- * @param  uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
+ * @param  uint32_t__appliedValue [EN] Required applied value out; NULL rejects the write / خروجی الزامی؛ NULL نوشتن را رد می‌کند
  * @‎return bool [EN] true when the id is 38..76‎ / شناسه معتبر بود
  */
 bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,

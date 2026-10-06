@@ -450,8 +450,27 @@ def run_batlost_tests():
     assert_true("func__Charger_IsAnyChannelActive()" in ui_led_c, "charging yellow must be gated by the charger being active (user directive)")
     assert_true('#include "charger.h"' in ui_led_c, "ui must include charger.h for the activity query")
     ov_idx = ui_led_c.find("func__Ui_ScenarioInputOverVoltage_Tick();\n        return;")
-    bl_idx = ui_led_c.find("func__Ui_ScenarioBatLost_Tick();")
-    assert_true(ov_idx != -1 and bl_idx != -1 and ov_idx < bl_idx, "batlost has priority right after overvoltage")
+    ui_tick_idx = ui_led_c.find("void func__Ui_Tick")
+    tech_idx = ui_led_c.find("func__Ui_ScenarioTechnicalFault_Tick();", ui_tick_idx)
+    bl_idx = ui_led_c.find("func__Ui_ScenarioBatLost_Tick();", ui_tick_idx)
+    assert_true(tech_idx != -1 and ov_idx != -1 and bl_idx != -1 and
+                tech_idx < ov_idx < bl_idx,
+                "technical board fault owns the highest visible-fault priority; "
+                "overvoltage remains ahead of BatLost")
+    tech_face = ui_led_c[ui_led_c.find("static void func__Ui_ScenarioTechnicalFault_Tick"):]
+    assert_true(all(call in tech_face for call in
+                    ("func__red(bool__on)", "func__green(bool__on)", "func__yellow(bool__on)")),
+                "technical fault face drives all three LEDs from one shared boolean")
+    assert_true("uint32_t__techBeepCount" in tech_face and
+                "uint32_t__techBeepGapMs" in tech_face and
+                "UI_ALARM_PARAM_TECH_EXT_MIN_ID" in ui_led_h,
+                "technical fault has independent buzzer fields and wire range")
+    run_idx = ui_led_c.find("void func__Ui_ScenarioBatteryRun_Tick")
+    run_end = ui_led_c.find("/* ==================== Ui Tick", run_idx)
+    run_body = ui_led_c[run_idx:run_end]
+    assert_true("func__Fault_Get() & FAULT_CHARGER_BAT_LOST" in run_body and
+                "func__Ui_ScenarioBatLost_Tick();" in run_body,
+                "BatteryRun cannot start its critical beep while BatLost is latched")
     print("BatLost scenario PASS")
 
 UI_ALARM_DEFAULTS = {
@@ -552,12 +571,14 @@ def run_ui_alarm_tests():
     #      modules, so it could not simply be appended).
     # [FA] بلوک متراکم همان ۳۸..۸۲ است؛ نگاشت درصد سمت شارژ بازهٔ کوچک خودش
     #      (۱۱۹..۱۲۰) را دارد چون ۸۳..۱۱۸ مال ماژول‌های دیگر است.
-    assert_equal(ids, list(range(38, 83)) + [119, 120, 121, 122],
-                 "UI alarm ids contiguous 38..82 plus the ext range 119..122")
+    assert_equal(ids, list(range(38, 83)) + [119, 120, 121, 122, 137, 138, 139, 140, 141, 142],
+                 "UI alarm ids 38..82 plus ext ranges 119..122 and 137..142")
     assert_equal(defines.get("UI_ALARM_PARAM_MIN_ID"), 38, "MIN_ID 38")
     assert_equal(defines.get("UI_ALARM_PARAM_MAX_ID"), 82, "MAX_ID 82")
     assert_equal(defines.get("UI_ALARM_PARAM_EXT_MIN_ID"), 119, "EXT_MIN_ID 119")
     assert_equal(defines.get("UI_ALARM_PARAM_EXT_MAX_ID"), 122, "EXT_MAX_ID 122")
+    assert_equal(defines.get("UI_ALARM_PARAM_TECH_EXT_MIN_ID"), 137, "TECH_EXT_MIN_ID 137")
+    assert_equal(defines.get("UI_ALARM_PARAM_TECH_EXT_MAX_ID"), 142, "TECH_EXT_MAX_ID 142")
     assert_equal(defines.get("UI_ALARM_PARAM_CHG_PCT_VMIN_MV"), 119, "charge Vmin id 119")
     assert_equal(defines.get("UI_ALARM_PARAM_CHG_PCT_VMAX_MV"), 120, "charge Vmax id 120")
     assert_equal(defines.get("UI_ALARM_PARAM_RUN_DOUBLE_DUR_MS"), 121, "band 2 duration id 121")
@@ -612,7 +633,7 @@ def run_ui_alarm_tests():
     body = re.sub(r"/\*.*?\*/", "", m.group(1), flags=re.S)
     inits = [x.strip().rstrip(",").strip() for x in body.strip().split("\n")]
     inits = [x for x in inits if x]
-    assert_equal(len(inits), 49, "45 dense init entries + charge map + band 2 shape")
+    assert_equal(len(inits), 55, "45 dense init entries + charge map + band 2 shape + scenario 7")
     expected_macros = ["UI_INPUT_OVERVOLTAGE_LED_PERIOD_MS", "UI_INPUT_OVERVOLTAGE_LED_DUTY_PERCENT",
         "UI_INPUT_OVERVOLTAGE_BEEP_PERIOD_MS", "UI_INPUT_OVERVOLTAGE_BEEP_DURATION_MS",
         "UI_INPUT_OVERVOLTAGE_BEEP_COUNT", "UI_INPUT_OVERVOLTAGE_BEEP_GAP_MS",
@@ -637,7 +658,10 @@ def run_ui_alarm_tests():
         #      as the discharge map, so an untouched board does not change.
         "UI_BAT_V_MIN_MV", "UI_BAT_V_MAX_MV",
         # [EN] v1.50: band 2 boots with what it used to borrow from band 1.
-        "UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS", "UI_BATTERY_RUN_BEEP_DOUBLE_INTERVAL_MS"]
+        "UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS", "UI_BATTERY_RUN_BEEP_DOUBLE_INTERVAL_MS",
+        "UI_TECH_FAULT_BEEP_PERIOD_MS", "UI_TECH_FAULT_BEEP_DURATION_MS",
+        "UI_TECH_FAULT_BEEP_COUNT", "UI_TECH_FAULT_BEEP_GAP_MS",
+        "UI_TECH_FAULT_LED_PERIOD_MS", "UI_TECH_FAULT_LED_DUTY_PERCENT"]
     assert_equal(inits, expected_macros, "init order == id order (positional!)")
     print("IDs + boot defaults PASS")
 
@@ -660,8 +684,14 @@ def run_ui_alarm_tests():
     # [EN] v1.75 audit: 13 call sites + the definition = 14. The pin was one
     #      behind again (the dead-battery scenario added a site in v1.72).
     # [FA] ۱۳ محل فراخوانی + خود تعریف = ۱۴.
-    assert_equal(ui_led_c.count("func__Ui_Buzzer_Gated("), 14,
-                 "13 scenario sites + 1 def use the mute gate")
+    assert_equal(ui_led_c.count("func__Ui_Buzzer_Gated("), 15,
+                 "14 scenario sites + 1 def use the mute gate")
+    assert_true("IMBAL_PARAM_LATCH_BEEP_COUNT" in ui_led_c and
+                "IMBAL_PARAM_LATCH_BEEP_GAP_MS" in ui_led_c,
+                "imbalance latch reads the independent count and gap parameters")
+    assert_true("uint32_t__beepGapMs" in ui_led_c and
+                "uint32_t__beepCount" in ui_led_c,
+                "imbalance latch passes live count/gap into the beep pattern")
     # direct Tick calls left: 2 inside Gated + 1 all_off + 1 OV-clear explicit off
     # + 2 BoardTest (mute bypass, still proves the buzzer works at boot)
     # [EN] v1.75 audit: 8 now - the dead-battery lock turns the buzzer off

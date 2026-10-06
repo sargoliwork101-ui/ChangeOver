@@ -252,6 +252,26 @@ int main(void)
     CHECK(uint8_t__status == CAL_LUT_ST_MISSING);
     CHECK(UINT32_T__G__EraseCalls == 0u);
 
+    /* ---- 4b. duplicate delivery is idempotent and cannot hide a hole ----
+       [EN] A lost ACK makes the sender retry an already received index. The
+            duplicate must not consume another missing-point slot; otherwise
+            repeated delivery can make an incomplete table look complete.
+       [FA] گم‌شدن ACK باعث ارسال دوبارهٔ اندیسی می‌شود که قبلاً رسیده است.
+            duplicate نباید یک خانهٔ گمشدهٔ دیگر را مصرف کند؛ وگرنه جدول
+            ناقص با تکرار ارسال کامل به نظر می‌رسد. */
+    CHECK(func__CalLut_StageBegin(4u, 4u) == true);
+    CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 0u, 100u, 0u) == true);
+    CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 1u, 200u, 1000u) == true);
+    CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 1u, 201u, 1001u) == true);
+    CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 1u, 202u, 1002u) == true);
+    CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_2, 0u, 100u, 0u) == true);
+    CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_2, 1u, 200u, 1000u) == true);
+    CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_2, 1u, 201u, 1001u) == true);
+    CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_2, 1u, 202u, 1002u) == true);
+    uint8_t__status = func__CalLut_Commit(0u, &uint32_t__boardCrc);
+    CHECK(uint8_t__status == CAL_LUT_ST_MISSING);
+    CHECK(UINT32_T__G__EraseCalls == 0u);
+
     /* ---- 5. a point index outside the staged count is refused ---- */
     CHECK(func__CalLut_StageBegin(4u, 4u) == true);
     CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 4u, 100u, 0u) == false);

@@ -75,4 +75,13 @@ typedef uint32_t fault_mask_t;
  *      شارژر فقط بیت را به CHG_STATE_BAT_LOST آینه می‌کند. */
 #define FAULT_CHARGER_BAT_LOST  (1u << 6)
 
+/* [EN] Scenario 7: charger power-stage technical fault. This is a RAM-only
+ *      safety latch: it is intentionally cleared by func__Fault_Init() on
+ *      reset and is never persisted as a user setting. The charger owns the
+ *      physical lockout; UI owns the alarm face.
+ * [FA] سناریوی ۷: خطای فنی طبقهٔ قدرت شارژر. این لچ ایمنی فقط در RAM است و
+ *      عمداً با ریست در func__Fault_Init پاک می‌شود و تنظیم پنل نیست؛ شارژر
+ *      قفل فیزیکی را نگه می‌دارد و UI چهرهٔ هشدار را نمایش می‌دهد. */
+#define FAULT_CHARGER_TECHNICAL (1u << 7)
+
 #endif /* APP_TYPES_H */

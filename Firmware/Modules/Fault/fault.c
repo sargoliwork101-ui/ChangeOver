@@ -4,13 +4,13 @@
  *               mask with set/clear/query access, the battery-lost detector
  *               that watches a pumping charger channel whose pack voltage
  *               does not answer, the runtime alarm thresholds (parameter
- *               ids 27..34) with their interdependency clamps, and the
- *               supervision hook that re-evaluates them after a change.
+ *               ids 27..34) with their hard per-field clamps, and the
+ *               supervision hook that re-applies those clamps after a change.
  *          [FA] پیاده‌سازی انبارهٔ خطاهای قفل‌شده: یک بیت‌ماسک ایستا با دسترسی
  *               ست/پاک/پرسش، آشکارسازِ قطع باتری که کانال در حال پمپِ شارژر
  *               را می‌پاید تا ببیند ولتاژ پک جواب می‌دهد یا نه، آستانه‌های
- *               آلارم زمان اجرا (شناسه‌های ۲۷ تا ۳۴) با گیره‌های وابستگی‌شان،
- *               و قلاب نظارتی که پس از تغییر دوباره آن‌ها را می‌سنجد.
+ *               آلارم زمان اجرا (شناسه‌های ۲۷ تا ۳۴) با گیره‌های سختِ هر فیلد،
+ *               و قلاب نظارتی که پس از تغییر همان گیره‌ها را دوباره اعمال می‌کند.
  * @note    [EN] Full-program audit 2026-10-05: the stale "placeholder"
  *               label of the old header line was removed (see fault.h).
  *          [FA] ممیزی ۲۰۲۶-۱۰-۰۵: برچسب کهنهٔ «اسکلت» از سرخط قبلی برداشته شد.
@@ -60,63 +60,35 @@ static volatile fault_alarm_t FAULT_ALARM_T__G__Alarm =
 /* ==================== Fault_ClampAlarms (internal) ==================== */
 
 /**
- * @brief  [EN] Re-impose the interdependency clamps on the runtime alarm
- *              set, so no single parameter write can leave the group in an
- *              impossible shape. The disconnect threshold must sit strictly
- *              between the charge band and the OV cutoff (over+50 <= disc
- *              <= OV-100) so the pump rule can neither false-trip on a
- *              legitimate absorb voltage nor die under the validity cut;
- *              absent/back keep at least 500 mV of hysteresis and the input
- *              window at least 1000 mV. If a transient replay order empties
- *              the disconnect range, the floor wins - no false trips, and
- *              the OV cutoff still protects the hardware - and the next
- *              profile or OV write re-converges the set. It is safe to call
- *              as often as you like: running it twice changes nothing.
- *         [FA] گیره‌های وابستگی را دوباره روی مجموعهٔ آلارم زمان‌اجرا اعمال
- *              می‌کند تا هیچ نوشتنِ تکی نتواند گروه را در شکل ناممکن رها کند.
- *              آستانهٔ قطع باید اکیداً بین باند شارژ و قطع OV باشد
- *              (‎over+50 <= disc <= OV-100‎) تا قانون پمپ نه روی ولتاژ ابزورب
- *              سالم فایر کند و نه زیر قطع اعتبار بمیرد؛ غیبت/برگشت دست‌کم
- *              ۵۰۰ میلی‌ولت هیسترزیس و پنجرهٔ ورودی دست‌کم ۱۰۰۰ میلی‌ولت نگه
- *              می‌دارند. اگر ترتیب گذرای بازپخش بازهٔ قطع را خالی کند، کف
- *              برنده است (بدون تریپ کاذب؛ قطع OV هنوز سخت‌افزار را حفظ
- *              می‌کند) و نوشتن بعدیِ پروفایل یا OV دوباره همگرا می‌کند.
- *              فراخوانی مکرر بی‌خطر است: اجرای دوباره چیزی را عوض نمی‌کند.
+ * @brief  [EN] Re-impose the hard per-parameter windows on the runtime
+ *              alarm set. The ESP/Firmware contract owns the raw range of
+ *              every field; the battery-disconnect threshold is independently
+ *              writable at 14000..15000 mV. It is intentionally not derived
+ *              from absorbOver or OV cutoff: those are separate controls and
+ *              an operator may choose a disconnect level that the OV path will
+ *              reach first. The applied/read-back value is therefore the
+ *              firmware's own 14000..15000 clamp. The remaining fault fields
+ *              keep their real 500 mV absence/back hysteresis and 1000 mV
+ *              input-window clamps. It is safe to call this function repeatedly.
+ *         [FA] گیره‌های سختِ تک‌پارامتری را دوباره روی مجموعهٔ آلارم زمان‌اجرا
+ *              اعمال می‌کند. قرارداد ESP/فرم‌ور بازهٔ خام هر فیلد را مالک است؛
+ *              آستانهٔ قطع باتری مستقل و در بازهٔ ۱۴۰۰۰..۱۵۰۰۰ میلی‌ولت قابل
+ *              نوشتن است. این مقدار عمداً از absorbOver یا قطع OV مشتق نمی‌شود:
+ *              آن‌ها کنترل‌های جدا هستند و ممکن است اپراتور سطح قطعی انتخاب کند
+ *              که مسیر OV زودتر به آن برسد. بنابراین مقدار اعمال‌شده/بازخوانی
+ *              همان گیرهٔ ۱۴۰۰۰..۱۵۰۰۰ فرم‌ور است. بقیهٔ فیلدهای فالت همچنان
+ *              هیسترزیس واقعی ۵۰۰ میلی‌ولتِ غیبت/برگشت و پنجرهٔ ورودی ۱۰۰۰
+ *              میلی‌ولت را نگه می‌دارند. اجرای تکراری بی‌خطر است.
  */
 static void func__Fault_ClampAlarms(void)
 {
-    uint32_t uint32_t__overMv = FAULT_BAT_DISCONNECT_MV;
-    uint32_t uint32_t__ovCutMv = CHG_MAX_VALID_BATTERY_MV;
-    uint32_t uint32_t__floorMv;
-    uint32_t uint32_t__ceilMv;
-
-    (void)func__Charger_GetProfileParam(CHG_PROFILE_PARAM_ABSORB_OVER_MV,
-                                       &uint32_t__overMv);
-    (void)func__Charger_GetAlarmParam(CHG_ALARM_PARAM_OV_CUTOFF_MV,
-                                      &uint32_t__ovCutMv);
-
-    uint32_t__floorMv = 14000u;
-    if ((uint32_t__overMv + 50u) > uint32_t__floorMv)
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv < 14000u)
     {
-        uint32_t__floorMv = uint32_t__overMv + 50u;
+        FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv = 14000u;
     }
-    uint32_t__ceilMv = 15000u;
-    if ((uint32_t__ovCutMv > 100u) &&
-        ((uint32_t__ovCutMv - 100u) < uint32_t__ceilMv))
+    if (FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv > 15000u)
     {
-        uint32_t__ceilMv = uint32_t__ovCutMv - 100u;
-    }
-    if (uint32_t__floorMv > uint32_t__ceilMv)
-    {
-        uint32_t__ceilMv = uint32_t__floorMv;
-    }
-    if (FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv < uint32_t__floorMv)
-    {
-        FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv = uint32_t__floorMv;
-    }
-    if (FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv > uint32_t__ceilMv)
-    {
-        FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv = uint32_t__ceilMv;
+        FAULT_ALARM_T__G__Alarm.uint32_t__disconnectMv = 15000u;
     }
 
     if (FAULT_ALARM_T__G__Alarm.uint32_t__disconnectDebMs < 50u)
@@ -269,6 +241,11 @@ bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t uint32_t__value,
                                uint32_t *uint32_t__appliedValue)
 {
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Writer-side scheduler lock (v1.16 audit C11): the comm task
        writes, the control task (fault eval) preempts mid-clamp and would
        read a torn threshold set for one pass. Pre-kernel the plain path
@@ -329,6 +306,11 @@ bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
 bool func__Fault_GetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value)
 {
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Indexed read: same dense-id/struct contract as the setter.
        [FA] خواندن نمایه‌ای: همان قرارداد شناسه/ساختار. */
     if ((uint8_t__paramId < FAULT_ALARM_PARAM_DISCONNECT_MV) ||
@@ -346,22 +328,17 @@ bool func__Fault_GetAlarmParam(uint8_t uint8_t__paramId,
 
 /**
  * @brief  [EN] Supervision hook the charger calls after it moves one of its
- *              own thresholds. The fault alarms are clamped against charger
- *              values (the disconnect level has to stay between the charge
- *              band and the OV cutoff), so a charger-side change can push
- *              this module's set out of range even though nothing here was
- *              written. Re-running the clamps restores the invariant
- *              immediately instead of waiting for the next alarm write.
- *              Keeping it a named hook rather than an exported clamp means
- *              the charger never reaches into this module's internals.
+ *              own thresholds. The fault fields have their own hard windows;
+ *              this hook re-applies those windows after a profile or alarm
+ *              replay without coupling q27 to absorbOver or OV cutoff.
+ *              Keeping it named rather than exporting the clamp means the
+ *              charger never reaches into this module's internals.
  *         [FA] قلاب نظارتی که شارژر پس از جابه‌جاکردن یکی از آستانه‌های خودش
- *              صدا می‌زند. آلارم‌های فالت در برابر مقادیر شارژر گیره می‌خورند
- *              (سطح قطع باید بین باند شارژ و قطع OV بماند)، پس تغییری در سمت
- *              شارژر می‌تواند مجموعهٔ این ماژول را از بازه بیرون ببرد بی‌آنکه
- *              اینجا چیزی نوشته شده باشد. اجرای دوبارهٔ گیره‌ها همان لحظه
- *              ناوردا را برمی‌گرداند، به‌جای انتظار برای نوشتن آلارم بعدی.
- *              نگه‌داشتنش به شکل یک قلابِ نام‌دار به‌جای صادرکردن خود گیره یعنی
- *              شارژر هرگز دست در درونیات این ماژول نمی‌برد.
+ *              صدا می‌زند. فیلدهای فالت پنجرهٔ سختِ خودشان را دارند؛ این قلاب
+ *              پس از بازپخش پروفایل یا آلارم همان پنجره‌ها را دوباره اعمال
+ *              می‌کند، بدون وابسته‌کردن q27 به absorbOver یا قطع OV. نام‌دار
+ *              بودن قلاب به‌جای صادرکردن گیره باعث می‌شود شارژر هرگز به
+ *              درونیات این ماژول دست نزند.
  */
 void func__Fault_OnSupervisionChange(void)
 {

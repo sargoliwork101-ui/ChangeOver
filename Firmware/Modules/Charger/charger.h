@@ -1334,6 +1334,38 @@ bool func__Charger_IsAnyChannelActive(void);
 bool func__Charger_IsChannelActive(uint8_t uint8_t__channelIndex);
 
 /**
+ * @brief [EN] Read the PWM duty actually applied to one charger channel,
+ *        in permille. This is deliberately not the requested PID duty: the
+ *        technical-fault detector must judge the hardware-facing output.
+ *        [FA] duty واقعی اعمال‌شده به یک کانال را بر حسب پرمیل می‌خواند؛
+ *        آشکارساز خطای فنی باید خروجیِ رسیده به سخت‌افزار را ببیند.
+ */
+uint32_t func__Charger_GetAppliedDutyPermille(uint8_t uint8_t__channelIndex);
+
+/**
+ * @brief [EN] True when the shared charger relay contact is open.
+ *        [FA] آیا کنتاکت رلهٔ مشترک شارژر باز است؟
+ */
+bool func__Charger_IsRelayOpen(void);
+
+/**
+ * @brief [EN] Evaluate scenario-7 charger power-stage faults from the fresh
+ *        ADC snapshot and the already-run JIT latch. On a match this sets
+ *        FAULT_CHARGER_TECHNICAL and permanently blocks charger output until
+ *        the next charger init/reset.
+ *        [FA] خطای فنی سناریوی ۷ را از snapshot تازه و JIT اجراشده ارزیابی
+ *        می‌کند؛ پس از تشخیص بیت خطا و قفل خروجی را تا ریست نگه می‌دارد.
+ */
+void func__Charger_EvaluateTechnicalFault(
+    const measurement_snapshot_t *measurement_snapshot_t__snap);
+
+/**
+ * @brief  [EN] True while scenario-7 output lockout is held.
+ *         [FA] آیا قفل خروجی سناریوی ۷ برقرار است؟
+ */
+bool func__Charger_IsTechnicalFaultLocked(void);
+
+/**
  * @brief  [EN] True when every relevant channel finished its charge: at
  *         least one installed+enabled channel exists and ALL of them sit
  *         in FLOAT. FLOAT is entered from one place only (ABSORB done:
@@ -1399,8 +1431,9 @@ bool func__Charger_IsChargeComplete(void);
  *              برمی‌گرداند (SET_PARAM همان را پاس می‌دهد).
  * @‎param  uint8_t__paramId [EN] 20..26‎ / شناسهٔ پارامتر
  * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
- * @‎param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / مقدار اعمال‌شده
- * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
+ * @‎param  uint32_t *uint32_t__appliedValue [EN] Required applied-value out;
+ *                                      NULL rejects the write / خروجی الزامی؛ NULL رد می‌شود
+ * @‎return bool [EN] true = id known and output supplied‎ / شناسه معتبر و خروجی موجود
  */
 bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t uint32_t__value,
@@ -1460,7 +1493,7 @@ bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value);
 
 /* [EN] Two-loop CC/CV PID wire ids (MUST equal ESPLINK_PARAM_CHG_PID_* in
- *      esp_link.h; the host test enforces the match). Dense 83..98 in the
+ *      esp_link.h; the host test enforces the match). Dense 83..92 in the
  *      same order as charger_pid_t packs them, so Set/Get index instead of
  *      switching (same "flash diet" contract as the profile ids 20..26).
  *      Each stage is a complete five-field row (Kp, Ki, Kd, up-rate,
@@ -1504,7 +1537,7 @@ bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
  *              دیوتی نمی‌سازد: انتگرال‌گیر نقطهٔ کار فعلی را نگه می‌دارد و
  *              فقط نرخ تغییرش زمان‌بندی دوباره می‌شود. مقدار اعمال‌شده
  *              برگردانده می‌شود.
- * @‎param  uint8_t__paramId [EN] 83..98‎ / شناسهٔ پارامتر
+ * @‎param  uint8_t__paramId [EN] 83..92‎ / شناسهٔ پارامتر
  * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
  * @‎param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / مقدار اعمال‌شده
  * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
@@ -1516,7 +1549,7 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one two-loop CC/CV PID parameter (ESP link GET/PARAMS_BULK).
  *         [FA] خواندن یک پارامتر PID دوحلقه‌ای (لینک ESP).
- * @‎param  uint8_t__paramId [EN] 83..98‎ / شناسهٔ پارامتر
+ * @‎param  uint8_t__paramId [EN] 83..92‎ / شناسهٔ پارامتر
  * @‎param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
  * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
  */
@@ -1664,19 +1697,14 @@ bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
  *  [FA] یک یعنی در حالت قفلِ «باتری خراب»، باتری روی خروجی هم نرود. */
 #define CHG_DEAD_PARAM_BLOCK_OUTPUT        127u
 
-/* [EN] v1.80 (user order: "scenario 6 has a lamp and a buzzer, so why has the
- *      panel no boxes for them?" - answered "four independent boxes for
- *      scenario 6"): until now the dead-battery face borrowed the imbalance
- *      latch beep (ids 115/116) and its red was hard-coded solid, so nothing
- *      about it could be tuned. These four ids give scenario 6 its own voice
- *      and its own lamp shape, defaulting to exactly what it used to do
- *      (same beep as the imbalance latch, solid red = blink period 0).
- * [FA] سناریوی ۶ تا امروز بوقش را از قفل عدم‌توازن قرض می‌گرفت و قرمزش در کد
- *      ثابت بود؛ این چهار شناسه چراغ و بوقِ مخصوص خودش را می‌دهند و پیش‌فرضشان
- *      دقیقاً همان رفتار قبلی است. */
+/* [EN] Scenario 6 owns its complete lamp and beep shape: period, length,
+ *      count, gap, blink period and blink duty. Factory values preserve the
+ *      established one-beep, solid-red behaviour.
+ * [FA] سناریوی ۶ شکل کامل چراغ و بوق خودش را دارد: دوره، طول، تعداد، گپ،
+ *      دورهٔ چشمک و سهم روشنی. پیش‌فرض‌ها رفتار یک‌بوق و قرمز ثابت را حفظ می‌کنند. */
 
 /** [EN] Beep period of the dead-battery latch (ms, 0 = silent), default
- *  600000 = one beep every 10 min, the old borrowed value.
+ *  600000 = one beep every 10 min.
  *  [FA] دورهٔ بوق قفلِ باتری خراب (۰ = بی‌صدا). */
 #define CHG_DEAD_PARAM_BEEP_PERIOD_MS      128u
 
@@ -1694,26 +1722,36 @@ bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
  *  [FA] سهم روشنی چشمک (٪). */
 #define CHG_DEAD_PARAM_BLINK_DUTY_PCT      131u
 
-#define CHG_DEAD_PARAM_FIRST_ID            CHG_DEAD_PARAM_TIMEOUT_MS
-#define CHG_DEAD_PARAM_LAST_ID             CHG_DEAD_PARAM_BLINK_DUTY_PCT
-/* [EN] Number of ids the scenario-6 block owns, DERIVED from its own first
- *      and last id. Audit 2026-10-06: the two tables in charger.c carried a
- *      literal 7 with no compile-time tie to this range, so appending an id
- *      to the block would have made func__Charger_SetDeadParam index one
- *      past the end of both arrays - a silent out-of-bounds write into
- *      whatever the linker placed next. The sibling limit table (93..107)
- *      already had that guard; this block did not.
- * [FA] تعداد شناسه‌های بلوک سناریوی ۶، «مشتق» از اولین و آخرین شناسهٔ خودش.
- *      ممیزی ۲۰۲۶-۱۰-۰۶: دو جدول در ‎charger.c‎ عدد ۷ را ثابت نوشته بودند و
- *      هیچ گره‌ای با این بازه نداشتند، پس افزودن یک شناسه به بلوک باعث
- *      می‌شد نوشتن پارامتر یک خانه بیرون از هر دو آرایه بیفتد؛ نوشتنی بی‌صدا
- *      روی هرچه لینکر آنجا گذاشته است. جدول خواهرش (۹۳..۱۰۷) این نگهبان را
- *      داشت و این بلوک نداشت. */
-#define CHG_DEAD_PARAM_COUNT \
-    ((uint32_t)(CHG_DEAD_PARAM_LAST_ID - CHG_DEAD_PARAM_FIRST_ID) + 1u)
+/** [EN] Independent per-pattern beep shape, matching scenario 5: count
+ *  defaults to one and the inter-beep gap defaults to zero.
+ *  [FA] شکل مستقل الگوی بوق، همتای سناریوی ۵: تعداد پیش‌فرض ۱ و گپ پیش‌فرض صفر. */
+#define CHG_DEAD_PARAM_BEEP_COUNT          134u
+#define CHG_DEAD_PARAM_BEEP_GAP_MS         135u
+#define CHG_DEAD_DEF_BEEP_COUNT            1u
+#define CHG_DEAD_DEF_BEEP_GAP_MS           0u
 
+#define CHG_DEAD_PARAM_FIRST_ID            CHG_DEAD_PARAM_TIMEOUT_MS
+#define CHG_DEAD_PARAM_LAST_ID             CHG_DEAD_PARAM_BEEP_GAP_MS
+/* [EN] Scenario 6 has nine dense storage slots for its non-contiguous wire
+ *      ids 125..131 and 134..135. The explicit count and index helper below
+ *      keep the 132..133 imbalance hole from becoming an out-of-bounds slot.
+ * [FA] سناریوی ۶ برای شناسه‌های غیرپیوستهٔ ۱۲۵..۱۳۱ و ۱۳۴..۱۳۵ نه خانهٔ
+ *      فشرده دارد. تعداد و نگاشت صریح پایین، شکاف ۱۳۲..۱۳۳ عدم‌توازن را از
+ *      تبدیل‌شدن به خانهٔ خارج از آرایه جلوگیری می‌کند. */
+/* [EN] The wire ids have a deliberate 132..133 hole: those two ids belong
+ *      to imbalance scenario 5. Keep the storage dense without claiming the
+ *      other module's ids in the ESP router.
+ * [FA] بین شناسه‌های سیمی ۱۳۲..۱۳۳ عمداً شکاف است؛ این دو شناسه متعلق به
+ *      سناریوی ۵ هستند. ذخیره‌سازی را فشرده نگه می‌داریم و شناسهٔ ماژول دیگر
+ *      را در مسیریاب ESP به نام خودمان نمی‌گیریم. */
+#define CHG_DEAD_PARAM_COUNT              9u
 #define CHG_DEAD_PARAM_OWNS(id) \
-    (((id) >= CHG_DEAD_PARAM_FIRST_ID) && ((id) <= CHG_DEAD_PARAM_LAST_ID))
+    ((((id) >= CHG_DEAD_PARAM_FIRST_ID) && ((id) <= CHG_DEAD_PARAM_BLINK_DUTY_PCT)) || \
+     ((id) == CHG_DEAD_PARAM_BEEP_COUNT) || ((id) == CHG_DEAD_PARAM_BEEP_GAP_MS))
+#define CHG_DEAD_PARAM_INDEX(id) \
+    (((id) <= CHG_DEAD_PARAM_BLINK_DUTY_PCT) ? \
+        ((uint8_t)(id) - CHG_DEAD_PARAM_FIRST_ID) : \
+        ((uint8_t)(id) - CHG_DEAD_PARAM_BEEP_COUNT + 7u))
 
 /** [EN] Persisted runtime slot (never a user parameter, never in a backup):
  *  bit 0 = charger 1 dead, bit 1 = charger 2 dead.
@@ -1726,11 +1764,12 @@ bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
 #define CHG_DEAD_ABSENT_RESET_MS           3000u
 
 /**
- * @brief  [EN] Write one scenario-6 parameter (ids 125..127) or replay the
- *              persisted verdict slot 203 at boot. Clamped like every other
- *              block; the applied value is returned.
- *         [FA] نوشتن پارامتر سناریوی ۶ یا پخش اسلات ۲۰۳ هنگام بوت.
- * @‎param  uint8_t__paramId [EN] 125..127 or 203‎ / شناسه
+ * @brief  [EN] Write one scenario-6 parameter (ids 125..131 or 134..135)
+ *              or replay the persisted verdict slot 203 at boot. Clamped like
+ *              every other block; the applied value is returned.
+ *         [FA] نوشتن پارامتر سناریوی ۶ (۱۲۵..۱۳۱ یا ۱۳۴..۱۳۵) یا پخش اسلات
+ *              ۲۰۳ هنگام بوت؛ مقدار اعمال‌شده برگردانده می‌شود.
+ * @‎param  uint8_t__paramId [EN] 125..131, 134..135 or 203‎ / شناسه
  * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
  * @param  uint32_t__appliedValue [EN] Applied value out, may be NULL / مقدار اعمال‌شده
  * @return bool [EN] true when the id belongs here / شناسه متعلق است
@@ -1794,6 +1833,11 @@ void func__Charger_DeadFaceShape(uint32_t *uint32_t__beepPeriodMs,
                                  uint32_t *uint32_t__beepLenMs,
                                  uint32_t *uint32_t__blinkPeriodMs,
                                  uint32_t *uint32_t__blinkDutyPct);
+
+/** [EN] Read scenario 6's independent beep count and inter-beep gap.
+ *  [FA] تعداد بوق و گپ مستقل سناریوی ۶ را می‌خواند. */
+void func__Charger_DeadBeepPattern(uint32_t *uint32_t__beepCount,
+                                   uint32_t *uint32_t__beepGapMs);
 
 /**
  * @brief  [EN] Take-and-clear flag: a persisted verdict changed, so the

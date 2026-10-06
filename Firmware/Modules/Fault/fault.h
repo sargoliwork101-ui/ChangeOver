@@ -167,7 +167,7 @@ typedef struct
  *              گزارش مقدار اعمال‌شده.
  * @‎param  uint8_t__paramId [EN] 27..34‎ / شناسه
  * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
- * @param  uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
+ * @param  uint32_t__appliedValue [EN] Required applied value out; NULL rejects the write / خروجی الزامی؛ NULL نوشتن را رد می‌کند
  * @‎return bool [EN] true when the id is 27..34‎ / شناسه معتبر بود
  */
 bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
@@ -185,12 +185,12 @@ bool func__Fault_GetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value);
 
 /**
- * @brief  [EN] Re-clamp the disconnect threshold after a profile/OV change
- *         (called from Charger_ClampProfile so the pump rule never strands
- *         above the OV cutoff or inside the charge band).
- *         [FA] گیرهٔ دوبارهٔ آستانهٔ قطع بعد از تغییر پروفایل/OV (از
- *              ClampProfile؛ قانون پمپ بالای قطع OV یا داخل باند شارژ گیر
- *              نمی‌کند).
+ * @brief  [EN] Re-apply the fault module's own hard windows after a
+ *         profile/OV replay. q27 remains an independent 14000..15000 mV
+ *         setting; this hook does not impose a charger-side relationship.
+ *         [FA] اعمال دوبارهٔ پنجره‌های سختِ خود ماژول فالت پس از بازپخش
+ *              پروفایل/OV. q27 همچنان تنظیم مستقل ۱۴۰۰۰..۱۵۰۰۰ میلی‌ولت است
+ *              و این قلاب رابطه‌ای از سمت شارژر تحمیل نمی‌کند.
  */
 void func__Fault_OnSupervisionChange(void);
 

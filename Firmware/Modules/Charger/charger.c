@@ -295,6 +295,11 @@ static volatile bool BOOL__G__ChargerManualRearmRequest[CHG_CHANNEL_COUNT] = {fa
 
 static bool BOOL__G__ChargerInitialized;
 static bool BOOL__G__RelayOpen;
+/* [EN] Scenario 7 is a RAM-only safety latch. No normal charger path is
+   allowed to clear it; only func__Charger_Init(), called after reset, does.
+   [FA] قفل ایمنی سناریوی ۷ فقط در RAM است و هیچ مسیر عادی شارژ حق پاک‌کردنش
+   را ندارد؛ تنها Init پس از ریست آن را پاک می‌کند. */
+static bool BOOL__G__TechnicalFaultLockout;
 static uint32_t UINT32_T__G__RelaySettleDeadline;
 
 #define CHG_NO_CHANNEL 0xFFu
@@ -2056,6 +2061,10 @@ void func__Charger_Init(void)
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__pidLastWasVoltage = true;
     }
 
+    /* [EN] A technical power-stage verdict is deliberately reset only here,
+       ‎which is reached after a MCU reset/power-cycle. [FA]‎ حکم فنی طبقهٔ
+       قدرت عمداً فقط اینجا، یعنی پس از reset/روشن‌شدن دوباره، پاک می‌شود. */
+    BOOL__G__TechnicalFaultLockout = false;
     BOOL__G__ChargerInitialized = true;
     BOOL__G__RelayOpen = false;
     UINT32_T__G__RelaySettleDeadline = 0u;
@@ -2396,7 +2405,9 @@ typedef struct
     X(BEEP_PERIOD_MS,    0u,  86400000u,   600000u)   /* 128 beep, 0 = silent   */ \
     X(BEEP_LEN_MS,      20u,      2000u,      120u)   /* 129 one beep length    */ \
     X(BLINK_PERIOD_MS,   0u,     10000u,        0u)   /* 130 blink, 0 = solid   */ \
-    X(BLINK_DUTY_PCT,    5u,        95u,       50u)   /* 131 blink on-share %   */
+    X(BLINK_DUTY_PCT,    5u,        95u,       50u)   /* 131 blink on-share %   */ \
+    X(BEEP_COUNT,        1u,        10u, CHG_DEAD_DEF_BEEP_COUNT) /* 134 count */ \
+    X(BEEP_GAP_MS,       0u,      5000u, CHG_DEAD_DEF_BEEP_GAP_MS) /* 135 gap */
 
 #define CHG_DEAD_ROW_DEF(name, lo, hi, def)  { (lo), (hi), (def) },
 #define CHG_DEAD_ROW_VAL(name, lo, hi, def)  (def),
@@ -2424,10 +2435,10 @@ CHG_DEAD_ROWS(CHG_DEAD_ROW_CHK)
 
 _Static_assert((sizeof(CHARGER_DEAD_DEF_T__A__DeadDefs) /
                 sizeof(CHARGER_DEAD_DEF_T__A__DeadDefs[0])) == CHG_DEAD_PARAM_COUNT,
-               "scenario-6 window table must have exactly one row per wire id 125..131");
+               "scenario-6 window table must have exactly one row per owned wire id");
 _Static_assert((sizeof(UINT32_T__G__DeadParam) /
                 sizeof(UINT32_T__G__DeadParam[0])) == CHG_DEAD_PARAM_COUNT,
-               "scenario-6 live array must have exactly one slot per wire id");
+               "scenario-6 live array must have exactly one slot per owned wire id");
 
 /**
  * @brief  [EN] One scenario-6 pass for one channel: accumulate charge time,
@@ -2535,7 +2546,17 @@ static void func__Charger_DeadBatteryTick(uint8_t uint8_t__channelIndex,
         uint32_t__nowTick - UINT32_T__G__DeadLastTick[uint8_t__channelIndex]);
     UINT32_T__G__DeadLastTick[uint8_t__channelIndex] = uint32_t__nowTick;
 
-    if ((UINT32_MAX - UINT32_T__G__DeadChargeMs[uint8_t__channelIndex]) > uint32_t__stepMs)
+    if (uint32_t__stepMs >=
+        (UINT32_MAX - UINT32_T__G__DeadChargeMs[uint8_t__channelIndex]))
+    {
+        /* [EN] Saturate both the exact-boundary and the overshoot case. The
+           old strict comparison left UINT32_MAX - step stuck one tick below
+           the intended ceiling.
+           [FA] هم حالت مرزی و هم عبور را اشباع کن؛ مقایسهٔ strict قبلی
+           مقدار دقیقاً یک گام مانده به سقف را یک گام کم نگه می‌داشت. */
+        UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = UINT32_MAX;
+    }
+    else
     {
         UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] += uint32_t__stepMs;
     }
@@ -2612,7 +2633,7 @@ bool func__Charger_SetDeadParam(uint8_t uint8_t__paramId,
         return false;
     }
 
-    uint8_t__index = (uint8_t)(uint8_t__paramId - CHG_DEAD_PARAM_FIRST_ID);
+    uint8_t__index = CHG_DEAD_PARAM_INDEX(uint8_t__paramId);
     uint32_t__applied = uint32_t__value;
 
     if (uint32_t__applied < CHARGER_DEAD_DEF_T__A__DeadDefs[uint8_t__index].uint32_t__min)
@@ -2673,6 +2694,23 @@ void func__Charger_DeadFaceShape(uint32_t *uint32_t__beepPeriodMs,
     }
 }
 
+/** [EN] Read scenario 6's independent multi-beep shape.
+ *  [FA] شکل مستقل چندبوق سناریوی ۶ را می‌خواند. */
+void func__Charger_DeadBeepPattern(uint32_t *uint32_t__beepCount,
+                                   uint32_t *uint32_t__beepGapMs)
+{
+    if (uint32_t__beepCount != NULL)
+    {
+        *uint32_t__beepCount =
+            UINT32_T__G__DeadParam[CHG_DEAD_PARAM_INDEX(CHG_DEAD_PARAM_BEEP_COUNT)];
+    }
+    if (uint32_t__beepGapMs != NULL)
+    {
+        *uint32_t__beepGapMs =
+            UINT32_T__G__DeadParam[CHG_DEAD_PARAM_INDEX(CHG_DEAD_PARAM_BEEP_GAP_MS)];
+    }
+}
+
 bool func__Charger_GetDeadParam(uint8_t uint8_t__paramId,
                                 uint32_t *uint32_t__value)
 {
@@ -2693,7 +2731,7 @@ bool func__Charger_GetDeadParam(uint8_t uint8_t__paramId,
     }
 
     *uint32_t__value =
-        UINT32_T__G__DeadParam[(uint8_t)(uint8_t__paramId - CHG_DEAD_PARAM_FIRST_ID)];
+        UINT32_T__G__DeadParam[CHG_DEAD_PARAM_INDEX(uint8_t__paramId)];
 
     return true;
 }
@@ -2728,6 +2766,18 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     }
 
     uint32_t__nowTick = osKernelGetTickCount();
+
+    /* [EN] Scenario 7 owns the final safety gate. Keep the relay physically
+       open and both PWM paths at zero for the rest of this power session;
+       app-state changes, panel writes, JIT retries and NVM saves cannot
+       release this latch. [FA] سناریوی ۷ گیت نهایی ایمنی است: رله باز و هر
+       دو PWM صفر بمانند تا همین نشست برق تمام شود؛ هیچ تغییر حالت یا تنظیمی
+       آن را آزاد نمی‌کند. */
+    if (BOOL__G__TechnicalFaultLockout != false)
+    {
+        func__Charger_FinalDisconnect();
+        return;
+    }
 
     /* [EN] Manual test mode transitions (user order 2026-09-23, protocol
        v1.2 param 19): the ESP link task only writes the REQUEST; every
@@ -3134,6 +3184,97 @@ bool func__Charger_IsChannelActive(uint8_t uint8_t__channelIndex)
               CHG_STATE_ABSORB)));
 }
 
+uint32_t func__Charger_GetAppliedDutyPermille(uint8_t uint8_t__channelIndex)
+{
+    if (uint8_t__channelIndex >= CHG_CHANNEL_COUNT)
+    {
+        return 0u;
+    }
+    return CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille;
+}
+
+bool func__Charger_IsRelayOpen(void)
+{
+    return BOOL__G__RelayOpen;
+}
+
+bool func__Charger_IsTechnicalFaultLocked(void)
+{
+    return BOOL__G__TechnicalFaultLockout;
+}
+
+void func__Charger_EvaluateTechnicalFault(
+    const measurement_snapshot_t *measurement_snapshot_t__snap)
+{
+    bool bool__shortFault = false;
+    bool bool__openFault = false;
+    uint8_t uint8_t__channelIndex;
+
+    /* [EN] This latch is intentionally edge-free: once set, the evaluator
+       ‎never re-arms during the same power session. [FA]‎ پس از ست‌شدن، در همین
+       نشست برق هرگز دوباره مسلح نمی‌شود. */
+    if (BOOL__G__TechnicalFaultLockout != false)
+    {
+        return;
+    }
+
+    if (measurement_snapshot_t__snap == NULL ||
+        measurement_snapshot_t__snap->valid == false)
+    {
+        return;
+    }
+
+#if MODULE_JITTER
+    /* [EN] Short/burned transistor signature: relay already disconnected,
+       applied PWM is zero, and the JIT latch is present. The conjunction is
+       intentional; a relay opening without JIT is not enough.
+       [FA] امضای اتصال‌کوتاه/سوختن: رله از قبل باز، PWM واقعی صفر و JIT
+       ثبت‌شده؛ بازشدن تنها رله به‌تنهایی خطا نیست. */
+    if (BOOL__G__RelayOpen != false)
+    {
+        for (uint8_t__channelIndex = 0u;
+             uint8_t__channelIndex < CHG_CHANNEL_COUNT;
+             uint8_t__channelIndex++)
+        {
+            if ((func__Charger_GetAppliedDutyPermille(uint8_t__channelIndex) == 0u) &&
+                (func__Jitter_ChannelTripped((uint8_t)(uint8_t__channelIndex + 1u)) != false))
+            {
+                bool__shortFault = true;
+            }
+        }
+    }
+#endif
+
+    /* [EN] Open/burned transistor signature: more than 20% applied PWM and
+       an exact zero measured charge current. The rule is evaluated per
+       channel so one good half cannot hide one failed power stage.
+       [FA] امضای قطع‌شده/سوختن: duty واقعی بیشتر از ۲۰٪ و جریان اندازه‌گیری
+       شدهٔ همان کانال دقیقاً صفر؛ ارزیابی به‌ازای کانال است. */
+    for (uint8_t__channelIndex = 0u;
+         uint8_t__channelIndex < CHG_CHANNEL_COUNT;
+         uint8_t__channelIndex++)
+    {
+        uint32_t uint32_t__currentMa =
+            (uint8_t__channelIndex == 0u)
+                ? measurement_snapshot_t__snap->i_ch1_ma
+                : measurement_snapshot_t__snap->i_ch2_ma;
+
+        if ((func__Charger_GetAppliedDutyPermille(uint8_t__channelIndex) > 200u) &&
+            (uint32_t__currentMa == 0u))
+        {
+            bool__openFault = true;
+        }
+    }
+
+    if ((bool__shortFault != false) || (bool__openFault != false))
+    {
+        BOOL__G__TechnicalFaultLockout = true;
+#if MODULE_FAULT
+        func__Fault_Set(FAULT_CHARGER_TECHNICAL);
+#endif
+    }
+}
+
 bool func__Charger_IsAnyChannelActive(void)
 {
     uint8_t uint8_t__channelIndex;
@@ -3435,15 +3576,12 @@ static void func__Charger_ClampProfile(void)
         CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv =
             CHARGER_PROFILE_T__G__Profile.uint32_t__absorbMv + 400u;
     }
-    /* [EN] Keep the coarse-step ceiling 50 mV under the 14.8 V
-            battery-disconnect fault (boot default; the threshold itself is
-            runtime since v1.15, id 27, and ClampAlarms keeps it >= over+50)
-            so regulation always acts before the fault does (absorb <= 14600
-            keeps this range non-empty).
-       [FA] سقف کاهش سریع را ۵۰mV زیر خطای قطع باتری ۱۴٫۸V (پیش‌فرض بوت؛
-            خود آستانه از v1.15 زمان‌اجرا است، شناسهٔ ۲۷، و ClampAlarms آن
-            را بالای ‎over+50‎ نگه می‌دارد) نگه می‌داریم تا تنظیم همیشه قبل
-            از خطا عمل کند (ابزورب ≤ ۱۴۶۰۰ این بازه را تهی نمی‌کند). */
+    /* [EN] The profile's own coarse-step ceiling is 14750 mV. This is the
+            compiled hard range of absorbOver (id 22), not a UI-imposed q27
+            relationship; q27 is independently writable by the Fault module.
+       [FA] سقف مستقلِ ‎absorbOver‎ در profile برابر ۱۴۷۵۰ میلی‌ولت است. این
+            بازهٔ سختِ کامپایلِ خود پارامتر ۲۲ است، نه رابطه‌ای که پنل برای q27
+            تحمیل کند؛ q27 در ماژول Fault مستقل قابل نوشتن است. */
     if (CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv > 14750u)
     {
         CHARGER_PROFILE_T__G__Profile.uint32_t__absorbOverMv = 14750u;
@@ -3518,13 +3656,14 @@ static void func__Charger_ClampProfile(void)
             CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa;
     }
 
-    /* [EN] v1.15: cascade - the charger alarms ride on the profile band
-     *      (hard >= imax+50, OV >= over+150) and the fault alarms ride on
-     *      the charger alarms (disconnect < OV). Order: profile -> charger
-     *      alarms -> fault alarms.
-     * [FA] آبشار v1.15: آلارم‌های شارژر سوار باند پروفایل‌اند و آلارم‌های
-     *      فالت سوار آلارم‌های شارژر (قطع زیر OV). ترتیب: پروفایل، آلارم
-     *      شارژر، آلارم فالت. */
+    /* [EN] v1.15: cascade - charger alarms ride on the profile band
+     *      (hard >= imax+50, OV >= over+150). Fault alarms are re-applied
+     *      afterwards, but q27 keeps its independent 14000..15000 window.
+     *      Order: profile -> charger alarms -> fault alarms.
+     * [FA] آبشار v1.15: آلارم‌های شارژر سوار باند پروفایل‌اند
+     *      (خطای سخت >= imax+50 و OV >= over+150). آلارم‌های فالت بعد از آن
+     *      دوباره اعمال می‌شوند، اما q27 پنجرهٔ مستقل ۱۴۰۰۰..۱۵۰۰۰ را نگه
+     *      می‌دارد. ترتیب: پروفایل، آلارم شارژر، آلارم فالت. */
     func__Charger_ClampAlarms();
     /* [EN] v1.22 joins the same cascade: the PID stage border is expressed
        relative to the absorb setpoint, so it is re-clamped here too.
@@ -3566,6 +3705,11 @@ bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t uint32_t__value,
                                    uint32_t *uint32_t__appliedValue)
 {
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Writer-side scheduler lock (v1.16 audit C11): the comm task
        (Low1) writes, the control task (Low2) preempts mid-clamp and would
        read a torn set for one pass (fresh absorb vs stale reentry). Store
@@ -3605,6 +3749,11 @@ bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
 bool func__Charger_GetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t *uint32_t__value)
 {
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Indexed read: same dense-id/struct contract as the setter.
        [FA] خواندن نمایه‌ای: همان قرارداد شناسه/ساختار. */
     if ((uint8_t__paramId < CHG_PROFILE_PARAM_ABSORB_MV) ||
@@ -3624,6 +3773,11 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t uint32_t__value,
                                  uint32_t *uint32_t__appliedValue)
 {
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Writer-side scheduler lock (v1.16 audit C11): same torn-set
        closure as the profile path; the supervision cascade below is pure
        computation, lock-safe. Pre-kernel the plain path runs (NVM replay).
@@ -3651,10 +3805,11 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
     }
 
     /* [EN] Same cascade as the profile path: charger alarms first (a
-     *      lowered OV floor re-floats here), then the fault alarms ride
-     *      along (disconnect stays < OV).
-     * [FA] همان آبشار مسیر پروفایل: اول آلارم‌های شارژر، بعد آلارم‌های
-     *      فالت سوار می‌شوند (قطع زیر OV می‌ماند). */
+     *      lowered OV floor re-floats here), then the fault module reapplies
+     *      its own windows; q27 is not coupled to the charger values.
+     * [FA] همان آبشار مسیر پروفایل: اول آلارم‌های شارژر (کف OV پایین‌آمده
+     *      دوباره گیره می‌خورد)، بعد ماژول فالت پنجره‌های خودش را اعمال می‌کند؛
+     *      q27 به مقادیر شارژر وابسته نیست. */
     func__Charger_ClampAlarms();
 #if MODULE_FAULT
     func__Fault_OnSupervisionChange();
@@ -3670,6 +3825,11 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
 bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value)
 {
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     switch (uint8_t__paramId)
     {
         case CHG_ALARM_PARAM_HARD_CURRENT_MA:
@@ -3770,6 +3930,11 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
                                uint32_t uint32_t__value,
                                uint32_t *uint32_t__appliedValue)
 {
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Writer-side scheduler lock, same reason as the profile setter:
        the comm task writes while the control task may be mid-PID-update
        and would otherwise read a half-applied gain row.
@@ -3802,6 +3967,11 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
 bool func__Charger_GetPidParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value)
 {
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     if ((uint8_t__paramId < CHG_PID_PARAM_CURRENT_KP) ||
         (uint8_t__paramId > CHG_PID_PARAM_VOLTAGE_DOWN_RATE))
     {
@@ -3919,6 +4089,11 @@ bool func__Charger_SetLimitParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__appliedValue)
 {
     uint8_t uint8_t__index;
+
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
     uint32_t uint32_t__applied;
 
     if ((uint8_t__paramId < CHG_LIMIT_PARAM_FIRST_ID) ||
@@ -3951,6 +4126,11 @@ bool func__Charger_SetLimitParam(uint8_t uint8_t__paramId,
 bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value)
 {
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     if ((uint8_t__paramId < CHG_LIMIT_PARAM_FIRST_ID) ||
         (uint8_t__paramId > CHG_LIMIT_PARAM_LAST_ID))
     {

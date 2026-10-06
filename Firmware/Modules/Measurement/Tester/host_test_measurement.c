@@ -119,30 +119,33 @@ uint32_t func__BspMeasurement_VddaMv(uint16_t uint16_t__vrefintCounts,
     return 3300u;
 }
 
-/* [EN] No flash LUT in this test: the compiled tables stay in charge.
-   [FA] در این تست جدول فلش فعال نیست و جدول کامپایل سر کار است. */
+/* [EN] Flash LUT is off for the ordinary behavioural checks. The small
+   runtime table below is enabled only by the arithmetic adversarial case.
+   [FA] برای چک‌های رفتاری معمول LUT فلش خاموش است. جدول کوچک زمان اجرا فقط
+   در تست خصمانهٔ arithmetic فعال می‌شود. */
+static bool BOOL__G__FlashLutActive[3] = { false, false, false };
+static uint32_t UINT32_T__G__FlashLutPoints[3] = { 0u, 0u, 0u };
+static const uint32_t *UINT32_T__G__FlashLutChain[3] = { NULL, NULL, NULL };
+static const uint32_t *UINT32_T__G__FlashLutPower[3] = { NULL, NULL, NULL };
+
 bool func__CalLut_Active(uint8_t uint8_t__channel)
 {
-    (void)uint8_t__channel;
-    return false;
+    return (uint8_t__channel <= 2u) ? BOOL__G__FlashLutActive[uint8_t__channel] : false;
 }
 
 uint32_t func__CalLut_Points(uint8_t uint8_t__channel)
 {
-    (void)uint8_t__channel;
-    return 0u;
+    return (uint8_t__channel <= 2u) ? UINT32_T__G__FlashLutPoints[uint8_t__channel] : 0u;
 }
 
 const uint32_t *func__CalLut_ChainMa(uint8_t uint8_t__channel)
 {
-    (void)uint8_t__channel;
-    return NULL;
+    return (uint8_t__channel <= 2u) ? UINT32_T__G__FlashLutChain[uint8_t__channel] : NULL;
 }
 
 const uint32_t *func__CalLut_PowerMw(uint8_t uint8_t__channel)
 {
-    (void)uint8_t__channel;
-    return NULL;
+    return (uint8_t__channel <= 2u) ? UINT32_T__G__FlashLutPower[uint8_t__channel] : NULL;
 }
 
 int32_t osKernelLock(void);
@@ -361,6 +364,95 @@ int main(void)
     CHECK(func__Measurement_CountsToMv(1000u) == 10000u);
     CHECK(func__Measurement_CurrentCountsToShuntUv(1234u) == 1234u);
     CHECK(func__Measurement_CountsToMv(0u) == 0u);
+
+    /* ---- 9b. runtime LUT arithmetic cannot wrap at u32 boundaries ----
+       [EN] The first table makes interpolation multiply two large u32
+            deltas while the requested chain value is small. The second makes
+            power x 1000 exceed u32. Both are valid monotonic records; the
+            result must match wide arithmetic, with the final current
+            saturating when it cannot fit the public u32 API.
+       [FA] جدول اول درون‌یابی را مجبور می‌کند دو delta بزرگ u32 را ضرب کند
+            در حالی که ورودی کوچک است. جدول دوم توان×۱۰۰۰ را از u32 بیرون
+            می‌برد. هر دو رکورد یکنواخت و معتبرند؛ نتیجه باید برابر حساب
+            پهن باشد و وقتی جریان در u32 جا نمی‌گیرد، در سقف اشباع شود. */
+    {
+        static const uint32_t UINT32_T__A__WideChain[] = { 0u, UINT32_MAX };
+        static const uint32_t UINT32_T__A__WidePower[] = { 0u, UINT32_MAX };
+        static const uint32_t UINT32_T__A__UnitChain[] = { 0u, 1u };
+        static const uint32_t UINT32_T__A__MaxPower[] = { 0u, UINT32_MAX };
+        uint32_t uint32_t__expected;
+        uint32_t uint32_t__expectedMax;
+
+        /* Establish the cache at 12.5 V, independently of preceding cases. */
+        func__SetFrame(2400u, 2500u, 1250u, 0u, 0u);
+        func__Measurement_Init();
+        func__RunFrames(MEASUREMENT_WARMUP_FRAME_COUNT + 2u);
+
+        BOOL__G__FlashLutActive[1] = true;
+        BOOL__G__FlashLutActive[2] = true;
+        UINT32_T__G__FlashLutPoints[1] = 2u;
+        UINT32_T__G__FlashLutPoints[2] = 2u;
+        UINT32_T__G__FlashLutChain[1] = UINT32_T__A__WideChain;
+        UINT32_T__G__FlashLutChain[2] = UINT32_T__A__WideChain;
+        UINT32_T__G__FlashLutPower[1] = UINT32_T__A__WidePower;
+        UINT32_T__G__FlashLutPower[2] = UINT32_T__A__WidePower;
+
+        uint32_t__expected = (uint32_t)(((uint64_t)65535u * 1000u) / 12500u);
+        uint32_t__expectedMax = (uint32_t)(((uint64_t)UINT32_MAX * 1000u) / 12500u);
+        CHECK(func__Measurement_Current1CountsToMa(65535u) == uint32_t__expected);
+        CHECK(func__Measurement_Current2CountsToMa(65535u) == uint32_t__expected);
+
+        UINT32_T__G__FlashLutChain[1] = UINT32_T__A__UnitChain;
+        UINT32_T__G__FlashLutChain[2] = UINT32_T__A__UnitChain;
+        UINT32_T__G__FlashLutPower[1] = UINT32_T__A__MaxPower;
+        UINT32_T__G__FlashLutPower[2] = UINT32_T__A__MaxPower;
+        CHECK(func__Measurement_Current1CountsToMa(1u) == uint32_t__expectedMax);
+        CHECK(func__Measurement_Current2CountsToMa(1u) == uint32_t__expectedMax);
+        CHECK(func__Measurement_Current1CountsToMa(65535u) == uint32_t__expectedMax);
+        CHECK(func__Measurement_Current2CountsToMa(65535u) == uint32_t__expectedMax);
+
+        BOOL__G__FlashLutActive[1] = false;
+        BOOL__G__FlashLutActive[2] = false;
+    }
+
+    /* ---- 9c. randomized exact oracle for split-word mul/div ------------
+       [EN] Exercise the production helper directly against a host u64 oracle
+            over adversarial full-range operands. This catches a carry or
+            restoring-division boundary that a handful of LUT fixtures could
+            miss, while the firmware itself remains u64-free.
+       [FA] helper تولیدی را مستقیماً با oracle شانزده‌بیتی هاست روی operandهای
+            تمام‌بازه و خصمانه می‌سنجیم. این تست خطای carry یا مرز تقسیم
+            restoring را که چند fixture نمی‌بیند پیدا می‌کند، در حالی که خود
+            فرم‌ور همچنان بدون u64 می‌ماند. */
+    {
+        uint32_t uint32_t__seed = 0x13579BDFu;
+        uint32_t uint32_t__i;
+
+        CHECK(func__Measurement_HostTest_MulDivU32(1u, 1u, 0u) == 0u);
+        for (uint32_t__i = 0u; uint32_t__i < 2048u; uint32_t__i++)
+        {
+            uint32_t uint32_t__a;
+            uint32_t uint32_t__b;
+            uint32_t uint32_t__divisor;
+            uint64_t uint64_t__oracle;
+            uint32_t uint32_t__expected;
+
+            uint32_t__seed = (uint32_t)(uint32_t__seed * 1664525u + 1013904223u);
+            uint32_t__a = uint32_t__seed;
+            uint32_t__seed = (uint32_t)(uint32_t__seed * 1664525u + 1013904223u);
+            uint32_t__b = uint32_t__seed;
+            uint32_t__seed = (uint32_t)(uint32_t__seed * 1664525u + 1013904223u);
+            uint32_t__divisor = uint32_t__seed | 1u;
+            uint64_t__oracle = ((uint64_t)uint32_t__a *
+                                (uint64_t)uint32_t__b) /
+                               (uint64_t)uint32_t__divisor;
+            uint32_t__expected = (uint64_t__oracle > (uint64_t)UINT32_MAX)
+                ? UINT32_MAX : (uint32_t)uint64_t__oracle;
+            CHECK(func__Measurement_HostTest_MulDivU32(
+                      uint32_t__a, uint32_t__b, uint32_t__divisor) ==
+                  uint32_t__expected);
+        }
+    }
 
     /* ---- 10. Init really restarts the module ----
        [EN] After Init the snapshot must be invalid again even though the

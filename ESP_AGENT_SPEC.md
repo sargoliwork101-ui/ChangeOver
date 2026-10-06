@@ -223,26 +223,19 @@
 > the last region - and expose it on the ESP panel"): the fixed-step
 > bang-bang duty chain (0.5%/0.1% steps on 500/1000/2000 ms timers) is
 > replaced by ONE positional PID doing a textbook CC/CV min-select.
-> SIXTEEN new ids 83..98: enable (83) plus one complete
-> (Kp, Ki, Kd, up-rate, down-rate) row per stage. A "stage" is a LOOP,
-> not a voltage window: stage 1 = the current/bulk loop, stage 2 = the
-> voltage loop below the absorb setpoint, stage 3 = the voltage loop on
-> it and above. Each loop needs its own row because a volt of voltage
-> error and an amp of current error are different units - with one
-> shared Kp the min-select degenerates and the pack sails past 14.6 V.
-> The slew limit sits on the INTEGRAL, not the output: an output limiter
-> rectifies the P-term ripple that whole-permille duty quantisation
-> creates into a downward ratchet (simulated, the loop stalled at 268 mA
-> and never reached the 640 mA bulk band). Setting id 83 = 0 restores
-> the legacy chain byte-for-byte. Every protection is untouched (OV
-> cutoff, 950 mA hard fault, JIT, battery-valid, 500 permille DCM
-> ceiling, FLOAT parks at zero) - the PID only picks the duty number
-> inside the window they already allow. PARAMS_BULK 416 -> 496 bytes
-> (still < 512); a FOURTH pending mask q4 carries ids 96..98; NVM record
-> v5 -> v6 (93 persisted ids, 99 slots, 808 B - v5 records fall back to
-> compiled defaults, so RE-TUNE ONCE after flashing); the bench CSV
-> grows to 150 columns with a [pid] block; the panel gains a "PID شارژ"
-> sub-tab with all 16 coefficients and its own combination guard.
+> The first v1.22 draft described SIXTEEN ids 83..98: an enable plus one
+> complete row per stage. That draft was never the shipped wire contract.
+> v1.23 removed the redundant enable and third voltage row, and v1.24
+> reduced the live PID block to TEN ids, 83..92: current Kp/Ki/Kd/up/down
+> (83..87) and voltage Kp/Ki/Kd/up/down (88..92). The remaining charger
+> controls begin at id 93; id 98 is the PID output-hysteresis limit, not a
+> PID coefficient. The two physical loops remain separate because a volt of
+> voltage error and an amp of current error have different units. The slew
+> limit sits on the integral, not the output, so whole-permille duty
+> quantisation cannot be rectified into a downward ratchet. Every protection
+> remains in force (OV cutoff, 950 mA hard fault, JIT, battery-valid, 500
+> permille DCM ceiling, FLOAT parks at zero); the PID only selects a duty
+> inside that protected window.
 > Panel v1.22. STM32 + ESP flash together.
 >
 > v1.20 (2026-09-27, eighteenth order - "the charge-scenario numbers must
@@ -267,22 +260,59 @@
 
 ---
 
-## 1. What exists already (STM32 side — DONE)
+## 1. Historical protocol snapshot (superseded by §1.1)
+
+> **CURRENT-CONTRACT RULE:** the parameter count, wire id range, NVM layout and
+> scenario-7 controls in §1.1 are authoritative. This section and the later
+> historical release notes retain earlier implementation snapshots only; their
+> old counts must not be used to configure the current firmware/panel.
+
+### What existed in the earlier STM32 snapshot
 
 - Binary command protocol + periodic telemetry over **USART1, 921600 8N1**.
 - DMA transport in both directions on the STM32 (circular 256-byte RX ring,
   zero CPU per byte; DMA-drained TX ring) - user order 2026-09-23.
-- 20 runtime parameters (current-chain calibration, voltage offsets,
-  current-filter sizes, per-channel ETA conversion factors (v1.3,
-  CAL_REFERENCE-calibratable), per-channel
-  charger enable/cut, per-channel PWM duty ceiling, fixed-duty mode, and
-  the v1.2 global manual test mode - ID 19, section 5.2).
+- **Historical snapshot only (not the current count):** 20 runtime parameters
+  (current-chain calibration, voltage offsets, current-filter sizes,
+  per-channel ETA conversion factors, charger enable/cut, PWM ceilings,
+  fixed-duty mode and the v1.2 manual-test mode ID 19). The current firmware
+  has 143 ordinary wire ids; see §1.1.
 - Charger module cut/reconnect commands (param IDs 11/12).
 - All parameter values are **clamped** by the STM32; the reply always returns
   the **actually applied** value.
 - Parameters are **RAM-only on the STM32**: after an STM32 reset everything
   returns to the compiled defaults. The ESP must re-apply its tuned set
   (recommended: on link-up and whenever a PARAMS_BULK shows defaults).
+
+## 1.1 Current authoritative parameter/NVM overlay — 2026-10-06
+
+The historical sections below preserve earlier protocol decisions. For the current
+firmware/panel pair, use this overlay as the authoritative endpoint contract:
+
+- `ESPLINK_PARAM_COUNT = ESP_PARAM_COUNT = 143`; ordinary wire ids are `0..142`.
+- `PARAMS_BULK` is chunked at the 512-byte payload ceiling: at most 102
+  `[id:u8][value:u32 LE]` items per frame. The receiver merges chunks by id.
+- NVM format is version `12`, with capacity `144` entries. Persisted settings are
+  ids `0..14`, `20..142` except retired `72/73` and transient session mute `76`,
+  plus runtime slots `200..203`. The scenario-7 fault latch itself is RAM-only
+  and is not an NVM setting.
+- Scenario 7 is the technical board/power-stage fault face. Its controls are:
+
+| ID | Name | Type | Unit | Default | Range | Meaning |
+|---:|---|---|---|---:|---|---|
+| 137 | `TECH_BEEP_PERIOD_MS` | u32 | ms | 3000 | 0 or 1000..600000 | Scenario-7 beep pattern period; 0 disables sound |
+| 138 | `TECH_BEEP_LEN_MS` | u32 | ms | 200 | 0..600000 | Length of each beep |
+| 139 | `TECH_BEEP_COUNT` | u32 | n | 3 | 0..10 | Beeps per pattern |
+| 140 | `TECH_BEEP_GAP_MS` | u32 | ms | 100 | 0..5000 | Gap between beeps |
+| 141 | `TECH_LED_PERIOD_MS` | u32 | ms | 1000 | 100..10000 | Shared period for all three LEDs |
+| 142 | `TECH_LED_DUTY_PCT` | u32 | % | 50 | 0..100 | Shared ON share for all three LEDs |
+
+Scenario-7 detection is not performed by the ESP. The STM32 detects either
+`relay open + applied PWM 0 + recorded JIT`, or `applied PWM > 200 permille +
+measured channel current 0 mA`. After detection the Charger keeps both PWM paths
+stopped and the relay open until reset/power-cycle; only the three-LED face and
+its six settings are exposed to the panel. This is the single current contract;
+all older parameter tables and release notes below are historical context.
 
 ## 2. Wiring / physical
 
@@ -395,7 +425,12 @@ PARAM_REPORT reply for id=2, applied=1200:
 AA 55 11 05 00 02 B0 04 00 00 A2
 ```
 
-## 5. Parameter table (IDs 0..18 = protocol v1.1, ID 19 = v1.2, IDs 20..26 = v1.12 append, IDs 27..37 = v1.15 append, IDs 38..76 = v1.16 append, IDs 77..82 = v1.17 append, IDs 83..92 = v1.24, IDs 93..107 = v1.28 charger limits & backstop gains — IDs are final, never renumbered)
+## 5. Historical parameter tables and explanations (superseded by §1.1)
+
+> The detailed tables in this section document how the append-only protocol grew.
+> They stop at the historical 107-id snapshot and are retained for traceability;
+> they are **not** a current 143-id schema. Use §1.1 and the generated firmware
+> schema for current names, ranges, defaults and persistence.
 
 | ID | Name | Type | Unit | Default | Range | What it changes |
 |---|---|---|---|---|---|---|
@@ -1817,7 +1852,7 @@ ceiling. A table built from live values cannot drift that way.
 | 68 | u32 | v_bat12_mv | 12 V (middle node) battery, mV |
 | 72 | u32 | v_bat_low_mv | Lower battery = V12, mV |
 | 76 | u32 | v_bat_high_mv | Upper battery = V24 − V12, mV |
-| 80 | u32 | fault_mask | b0 ADC, b1 overcurrent-1, b2 overcurrent-2, b3 low battery, b4 jitter-1, b5 jitter-2, b6 FAULT_CHARGER_BAT_LOST (see `app_types.h`); b7+ = 0 |
+| 80 | u32 | fault_mask | b0 ADC, b1 overcurrent-1, b2 overcurrent-2, b3 low battery, b4 jitter-1, b5 jitter-2, b6 FAULT_CHARGER_BAT_LOST, b7 FAULT_CHARGER_TECHNICAL (see `app_types.h`) |
 | 84 | u32 | vin_raw_counts | **Raw** ADC counts, input net — before the divider maths, the runtime offsets and any compensation |
 | 88 | u32 | v24_raw_counts | **Raw** ADC counts, pack net |
 | 92 | u32 | v12_raw_counts | **Raw** ADC counts, mid node |
@@ -1850,45 +1885,28 @@ Reference values from the 2026-09-22 bench point (use as sanity check for the
 panel): raw1 ≈ 310 ↔ shunt1 ≈ 2720 µV ↔ ma1_unfiltered ≈ 287 ↔ iest1 ≈ 287 (identity since 2026-09-24; ≈364 was the retired conversion);
 raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
 
-## 7. Recommended ESP behavior
+## 7. Recommended ESP/panel behavior — current contract
 
-1. Boot, open UART at 921600 8N1, start a 100 ms RX pump.
-2. Wait for the first TLM_LIVE (proves the link; the STM32 powers the ESP
-   enable line only when its comm task runs).
-3. Send `GET_PARAMS`, parse `PARAMS_BULK`, show a live dashboard of all
-   parameters (19 in the current firmware, 20 from v1.2).
-4. UI controls (sliders/toggles) send `SET_PARAM` per change and wait for the
-   matching `PARAM_REPORT`; display the **applied** value (it may differ from
-   the requested value when clamped).
-5. Keep the last known parameter set in ESP NVRAM/flash and re-apply it after
-   an STM32 reboot (detect: PARAMS_BULK returns defaults, or telemetry seq
-   restarts at 0).
-6. Provide two prominent buttons: charger 1 ON/OFF and charger 2 ON/OFF
-   (IDs 11/12). OFF is the safe direction: PWM stops immediately.
-7. **Tab layout (user order 2026-09-23: manual mode is a SEPARATE tab,
-   not part of the general settings):**
-   - **Tab 1 - Status/telemetry:** the live dashboard (TLM chain, states,
-     voltages, fault mask, ON/OFF buttons for IDs 11/12).
-   - **Tab 2 - Settings/calibration:** every parameter control with its
-     section 5.1 description under it: current-chain calibration (0..6),
-     filters (7/8), efficiency (9/10), duty ceilings (13/14) and the
-     v1.1 fixed-duty hold (15..18, regulation-off but still auto-gated).
-   - **Tab 3 - Manual test (its own tab):** the ID 19 master switch behind
-     a confirmation dialog ("the automatic charger and all battery
-     protections stop - continue?"), per-channel duty slider + numeric
-     field (0..min(500, ceiling), step 1 permille, writes ID 16/18 and
-     shows the applied value from PARAM_REPORT), a big ALL-OFF button
-     (both duties to 0), a keepalive indicator (link watched / dead-man
-     countdown), and a live strip per channel: duty, ipri, iest, channel
-     voltage, state (incl. MANUAL/JIT/INPUT_WAIT/15 V cutoff), plus a
-     permanent warning banner that battery protections are bypassed.
-8. Display telemetry continuously; the current-chain numbers (raw → shunt →
-   unfiltered → filtered) exist exactly so the panel can show the chain
-   step-by-step and help find the correct calibration numbers - this is
-   exactly what the manual test tab is for. Render the section 5.3 formulas
-   in the UI next to each chain step with the live parameter values
-   substituted (user order 2026-09-23: the formulas must be visible in the
-   panel appearance).
+1. Boot UART at 921600 8N1 and wait for the first `TLM_LIVE` frame.
+2. Send `GET_PARAMS`, merge all `PARAMS_BULK` chunks, and expose the current
+   **143** ordinary parameters (`0..142`); never display the historical 19/20
+   count as the active schema.
+3. For every numeric control, show the exact firmware min/max directly below
+   the input. Import values are clamped/reported; invalid ids, retired ids and
+   transient id 76 follow the current schema rules.
+4. Stage edits locally. Do **not** POST automatically: only the global send
+   button may transmit the staged batch. Show an explicit success/error result
+   and the applied values returned by the board.
+5. Keep scenario 7 visible as the technical-board fault face: detect neither
+   signature in the ESP; show the STM32-reported fault, three synchronized LEDs,
+   and independent beep/cadence controls `137..142`. These controls must not
+   borrow `132..135`.
+6. Keep the Charger/Fault lockout semantics visible: short/burned requires
+   relay open + applied PWM zero + JIT; open/burned requires applied PWM above
+   20% + measured current zero; reset/power-cycle is the only release.
+7. Render telemetry and current-chain formulas from applied board values. The
+   panel is an operator UI, not a second charger controller; loss of telemetry
+   must be reported without pretending that a physical-board test passed.
 
 ## 8. Safety rules for the ESP implementation
 
@@ -1919,24 +1937,21 @@ raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
   - The panel may re-apply ID 19 + duties after an STM32 reboot (same
     policy as the other parameters), but only together with the keepalive.
 
-## 9. Current activation state (STM32 side)
+## 9. Current activation state (STM32 side) — 2026-10-06
 
-Everything of protocol v1.1 is implemented and pushed, but the STM32 build
-keeps `MODULE_ESP = 0` in `Firmware/Config/Inc/modules_enable.h` because the
-repo rule-check (`tools/check_ai_rules.sh`) currently requires it. Flipping
-it to `1` (one line) activates TaskComm → EspLink_Init → ESP power +
-protocol. That flip is intentionally left to the project owner.
+`MODULE_ESP = 1` is enabled in `Firmware/Config/Inc/modules_enable.h`; the
+current EspLink build therefore includes the 143-id map, v2 frames, chunked
+`PARAMS_BULK`, NVM v12 and the scenario-7 controls. The host ESP suite compiles
+this path with sanitizers and reports **97/97 PASS**. This is a host result, not
+an assertion that UART, WiFi, flash or a physical board was exercised.
 
-**v1.2 firmware status (2026-09-23): IMPLEMENTED and pushed.** Manual
-test mode (ID 19, section 5.2), charger state 9 = MANUAL, TLM flags bit
-5, the 3 s link dead-man with manual JIT re-arm, the 15.0 V manual
-overvoltage cutoff, the frozen battery-lost detection during manual, and
-the payload limit 512 (PARAMS_BULK is chunked since v1.28: 108 params = 2 frames of at most 102 items) are
-all in the firmware. The ESP-side constraints that come with it are
-documented in `Firmware/Modules/EspLink/README.md` - most importantly the
-1 s keepalive while ID 19 = 1.
+Manual mode ID 19, charger state `MANUAL`, telemetry flags and the 3-second
+link dead-man remain implemented. The current panel deliberately stages edits
+and sends only from its global send action; a reset may restore STM32 defaults,
+so an operator must import/re-send the intended settings explicitly according
+to the current panel workflow.
 
-## 10. Protocol version
+## 10. Protocol and release history (historical; current contract is §1.1)
 
 v1.16e (2026-09-26, user order of the same day): every scenario beep
 provably carries count + gap + period/duration on BOTH sides - new
