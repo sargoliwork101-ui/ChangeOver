@@ -69,7 +69,22 @@ Technical fault -> OverVoltage -> BatLost -> سایر سناریوها
 - stamp پنل با markup برابر است، markup متوازن است و سقف انتقال فعلی
   `380000` بایت است.
 
-### A4 — ممیزی مستندات و hygiene
+### A4 — اصلاحات مرزی، هم‌زمانی و API
+
+- گارد برنامه‌ریزی فلش اکنون به‌جای جمعِ قابل‌سرریز، `END - byte_count` را
+  مقایسه می‌کند و Erase/Program پیش از شروع و در پایان عملیات `WaitIdle` دارند.
+- اعتبارسنجی NVM شناسهٔ ذخیره‌شده را پیش از cast به `uint8_t` بررسی می‌کند؛
+  شناسهٔ نیم‌کلمه‌ای بیرون از فضای wire دیگر به شناسهٔ معتبر دیگری alias نمی‌شود.
+- UART مقدارهای HAL را در تمام مراحل init بررسی می‌کند و پس از failure
+  initialized اعلام نمی‌شود. پرچم producer، pump وقفه را تا کپی کامل فریم TX
+  متوقف می‌کند.
+- زمان RTOS در نرخ تیک صفر به تقسیم بر صفر نمی‌رسد و ارزیابی زمان‌محور
+  عدم‌توازن در همان پاس متوقف می‌شود؛ شمارندهٔ باتری خراب نیز در مرز دقیق
+  `UINT32_MAX` saturate می‌شود.
+- getter/setterهای indexed که خروجی الزامی دارند، `NULL` را پیش از dereference
+  رد می‌کنند؛ قرارداد setterهای replay-only که خروجی اختیاری دارند حفظ شده است.
+
+### A5 — ممیزی مستندات و hygiene
 
 این موارد به‌روزرسانی شدند:
 
@@ -91,7 +106,7 @@ Technical fault -> OverVoltage -> BatLost -> سایر سناریوها
 | `python3 tools/audit_consistency.py` | **PASS — 436 invariant، 0 finding** |
 | `bash tools/check_ai_rules.sh` | **PASS — ALL CHECKS PASSED؛ RTL comment check passed** |
 | `bash tools/check_firmware_syntax.sh` | **PASS — syntax، ESP، UI و همهٔ Host suites موفق** |
-| `python3 Firmware/Modules/Charger/Tester/host_test_charger.py` | **PASS — 51 تست، شامل سناریوی ۷ و lockout** |
+| `python3 Firmware/Modules/Charger/Tester/host_test_charger.py` | **PASS — 52 تست، شامل سناریوی ۷، lockout و edge-hardening contracts** |
 | Host تست‌های واقعی برد | جایگزین نرم‌افزاری؛ برد فیزیکی تست نشده |
 | Build ARM/CubeIDE | در این محیط انجام نشده؛ `arm-none-eabi-gcc` موجود نیست |
 | DOM تست پنل | در صورت نبود `jsdom`، SKIP اختیاری است |

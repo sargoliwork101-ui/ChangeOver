@@ -172,6 +172,11 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                                      uint32_t uint32_t__value,
                                      uint32_t *uint32_t__appliedValue)
 {
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
+
     switch (uint8_t__paramId)
     {
         case ESPLINK_PARAM_CUR1_OFFSET_COUNTS:
@@ -418,6 +423,11 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
 bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
                                    uint32_t *uint32_t__value)
 {
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     switch (uint8_t__paramId)
     {
         case ESPLINK_PARAM_CUR1_OFFSET_COUNTS:

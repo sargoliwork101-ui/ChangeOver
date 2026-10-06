@@ -712,6 +712,11 @@ bool func__Imbalance_GetParam(uint8_t uint8_t__paramId,
 {
     bool bool__ret = false;
 
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Make sure defaults exist before any panel/NVM write or read.
      * [FA] پیش از هر نوشتن/خواندن پنل یا ‎NVM‎، وجود پیش‌فرض‌ها تضمین می‌شود. */
     func__Imbalance_SeedDefaultsOnce();

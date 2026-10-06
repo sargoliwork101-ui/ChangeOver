@@ -152,6 +152,16 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
     }
 
     func__BspFlash_Unlock();
+    /* [EN] Do not start an erase while an earlier flash operation is still
+       busy. This driver normally waits on every exit, but a bounded preflight
+       also protects against a caller or boot-time operation outside this API.
+       [FA] پاک‌کردن را تا وقتی عملیات قبلی مشغول است شروع نکن؛ هرچند این
+       درایور در خروج منتظر می‌ماند، پیش‌بررسی در برابر عملیات بیرونی هم امن است. */
+    if (func__BspFlash_WaitIdle() == false)
+    {
+        FLASH->CR |= FLASH_CR_LOCK;
+        return false;
+    }
     func__BspFlash_ClearFlags();
 
     FLASH->CR |= FLASH_CR_PER;
@@ -213,20 +223,32 @@ bool func__BspFlash_ProgramHalfWords(uint32_t uint32_t__address,
 
     /* [EN] Range guard (full-program audit 2026-09-27): the NVM layout
        owns BSP_FLASH_STORAGE_BASE_ADDR..END (bsp_flash.h) - a caller bug
-       must never program the application area. The end address cannot wrap: count is bounded by the NVM
-       record size (<< 2^31 halfwords).
+       must never program the application area. The upper-bound check is
+       written as END - byte_count, not address + byte_count, so a wild
+       address cannot wrap through zero and pass the guard.
        [FA] گارد بازه: چیدمان NVM مالک پنجرهٔ دادهٔ ‎bsp_flash.h‎ است - باگ
-       فراخواننده هرگز نباید ناحیهٔ برنامه را بنویسد. */
+       فراخواننده هرگز نباید ناحیهٔ برنامه را بنویسد. حد بالایی به‌شکل
+       END - تعدادبایت نوشته شده تا آدرس ولگرد با سرریز از صفر عبور نکند. */
     if ((uint16_t__A__Data == NULL) || ((uint32_t__address & 1u) != 0u) ||
         (uint32_t__count > BSP_FLASH_PROGRAM_MAX_HALFWORDS) ||
         (uint32_t__address < BSP_FLASH_STORAGE_BASE_ADDR) ||
-        ((uint32_t__address + (uint32_t__count * 2u)) >
-         BSP_FLASH_STORAGE_END_ADDR))
+        (uint32_t__address >
+         (BSP_FLASH_STORAGE_END_ADDR - (uint32_t__count * 2u))))
     {
         return false;
     }
 
     func__BspFlash_Unlock();
+    /* [EN] Refuse to queue a program operation behind an already-busy FPEC;
+       the bounded wait keeps this path finite and makes the initial status
+       check match the erase path.
+       [FA] برنامه‌نویسی را پشت عملیات مشغول FPEC صف نکن؛ انتظار محدود هم
+       مسیر را متناهی نگه می‌دارد و هم بررسی اولیه را با پاک‌کردن یکسان می‌کند. */
+    if (func__BspFlash_WaitIdle() == false)
+    {
+        FLASH->CR |= FLASH_CR_LOCK;
+        return false;
+    }
     func__BspFlash_ClearFlags();
 
     for (uint32_t uint32_t__i = 0u; uint32_t__i < uint32_t__count; uint32_t__i++)

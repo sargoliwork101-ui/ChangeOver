@@ -4384,6 +4384,58 @@ def test_scenario7_technical_fault_lockout():
           "ESP protocol must route and name all scenario 7 controls")
 
 
+def test_boundary_concurrency_hardening_v126():
+    """Static host checks for the cross-module edge cases not exercised by
+    the pure charger model: flash address arithmetic, NVM id width, UART
+    publication ordering/status handling, and indexed API output contracts.
+    """
+    flash = (ROOT / "Firmware/Bsp/Src/bsp_flash.c").read_text()
+    uart = BSP_UART_C.read_text()
+    nvm = ESP_LINK_NVM_C.read_text()
+    task = TASK_CONTROL_C.read_text()
+    charger = CHARGER_C.read_text()
+    fault = FAULT_C.read_text()
+    ui = UI_LED_C.read_text()
+    imbalance = (ROOT / "Firmware/Modules/Imbalance/imbalance.c").read_text()
+    esp = ESP_LINK_C.read_text()
+
+    check("BSP_FLASH_STORAGE_END_ADDR - (uint32_t__count * 2u)" in flash and
+          "uint32_t__address + (uint32_t__count * 2u)" not in flash,
+          "flash program bounds must subtract the byte count, never add and wrap")
+    check(flash.count("func__BspFlash_WaitIdle()") >= 4,
+          "flash erase/program must wait before starting and after each operation")
+    check("uint16_t__id > (uint16_t)UINT8_MAX" in nvm and
+          "func__EspLink_NvmParamPersisted((uint8_t)uint16_t__id)" in nvm,
+          "NVM validation must reject a halfword id before narrowing to the wire byte")
+    check("static volatile bool BOOL__G__TxWriteActive;" in uart and
+          "(BOOL__G__TxWriteActive != false)" in uart and
+          "BOOL__G__TxWriteActive = true;" in uart and
+          "BOOL__G__TxWriteActive = false;" in uart,
+          "UART TX must hide an in-progress frame from the completion ISR")
+    check(all(token in uart for token in (
+        "HAL_UART_DeInit(UART_HANDLETYPEDEF__G__EspLink) != HAL_OK",
+        "HAL_UART_Init(UART_HANDLETYPEDEF__G__EspLink) != HAL_OK",
+        "HAL_DMA_Init(&DMA_HANDLETYPEDEF__G__TxDma) != HAL_OK",
+        "HAL_DMA_Init(&DMA_HANDLETYPEDEF__G__RxDma) != HAL_OK",
+        "HAL_UART_Receive_DMA(UART_HANDLETYPEDEF__G__EspLink,")),
+          "UART init must stop on every HAL setup failure")
+    check("MODULE_FAULT ||" in task and "MODULE_IMBALANCE ||" in task and
+          "MODULE_MCU_POWER_PATH" in task and
+          "uint32_t__tickFrequency == 0u" in task and
+          "bool__timeValid" in task,
+          "control-task reduced builds need all producer modules and a zero-frequency guard")
+    check("uint32_t__appliedValue == NULL" in charger and
+          "uint32_t__value == NULL" in charger and
+          "uint32_t__appliedValue == NULL" in fault and
+          "uint32_t__value == NULL" in ui and
+          "uint32_t__value == NULL" in imbalance and
+          "uint32_t__appliedValue == NULL" in esp,
+          "indexed APIs must reject NULL output pointers before dereference")
+    check("uint32_t__stepMs >=" in charger and
+          "= UINT32_MAX;" in charger,
+          "dead-charge elapsed time must saturate at the exact UINT32_MAX boundary")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -4437,6 +4489,7 @@ def main():
         test_section_parameter_help_v125,
         test_theme_contrast_and_param_coverage_v125,
         test_scenario7_technical_fault_lockout,
+        test_boundary_concurrency_hardening_v126,
     ]
     for test in tests:
         test()

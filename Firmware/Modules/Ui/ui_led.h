@@ -827,7 +827,7 @@ typedef struct
  *              مقدار اعمال‌شده.
  * @‎param  uint8_t__paramId [EN] 38..82‎ / شناسه
  * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
- * @param  uint32_t__appliedValue [EN] Applied value out / مقدار اعمال‌شده
+ * @param  uint32_t__appliedValue [EN] Required applied value out; NULL rejects the write / خروجی الزامی؛ NULL نوشتن را رد می‌کند
  * @‎return bool [EN] true when the id is 38..76‎ / شناسه معتبر بود
  */
 bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,

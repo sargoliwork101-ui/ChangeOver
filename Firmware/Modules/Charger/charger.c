@@ -2546,7 +2546,17 @@ static void func__Charger_DeadBatteryTick(uint8_t uint8_t__channelIndex,
         uint32_t__nowTick - UINT32_T__G__DeadLastTick[uint8_t__channelIndex]);
     UINT32_T__G__DeadLastTick[uint8_t__channelIndex] = uint32_t__nowTick;
 
-    if ((UINT32_MAX - UINT32_T__G__DeadChargeMs[uint8_t__channelIndex]) > uint32_t__stepMs)
+    if (uint32_t__stepMs >=
+        (UINT32_MAX - UINT32_T__G__DeadChargeMs[uint8_t__channelIndex]))
+    {
+        /* [EN] Saturate both the exact-boundary and the overshoot case. The
+           old strict comparison left UINT32_MAX - step stuck one tick below
+           the intended ceiling.
+           [FA] هم حالت مرزی و هم عبور را اشباع کن؛ مقایسهٔ strict قبلی
+           مقدار دقیقاً یک گام مانده به سقف را یک گام کم نگه می‌داشت. */
+        UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] = UINT32_MAX;
+    }
+    else
     {
         UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] += uint32_t__stepMs;
     }
@@ -3697,6 +3707,11 @@ bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t uint32_t__value,
                                    uint32_t *uint32_t__appliedValue)
 {
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Writer-side scheduler lock (v1.16 audit C11): the comm task
        (Low1) writes, the control task (Low2) preempts mid-clamp and would
        read a torn set for one pass (fresh absorb vs stale reentry). Store
@@ -3736,6 +3751,11 @@ bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
 bool func__Charger_GetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t *uint32_t__value)
 {
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Indexed read: same dense-id/struct contract as the setter.
        [FA] خواندن نمایه‌ای: همان قرارداد شناسه/ساختار. */
     if ((uint8_t__paramId < CHG_PROFILE_PARAM_ABSORB_MV) ||
@@ -3755,6 +3775,11 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t uint32_t__value,
                                  uint32_t *uint32_t__appliedValue)
 {
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Writer-side scheduler lock (v1.16 audit C11): same torn-set
        closure as the profile path; the supervision cascade below is pure
        computation, lock-safe. Pre-kernel the plain path runs (NVM replay).
@@ -3801,6 +3826,11 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
 bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value)
 {
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     switch (uint8_t__paramId)
     {
         case CHG_ALARM_PARAM_HARD_CURRENT_MA:
@@ -3901,6 +3931,11 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
                                uint32_t uint32_t__value,
                                uint32_t *uint32_t__appliedValue)
 {
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Writer-side scheduler lock, same reason as the profile setter:
        the comm task writes while the control task may be mid-PID-update
        and would otherwise read a half-applied gain row.
@@ -3933,6 +3968,11 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
 bool func__Charger_GetPidParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value)
 {
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     if ((uint8_t__paramId < CHG_PID_PARAM_CURRENT_KP) ||
         (uint8_t__paramId > CHG_PID_PARAM_VOLTAGE_DOWN_RATE))
     {
@@ -4050,6 +4090,11 @@ bool func__Charger_SetLimitParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__appliedValue)
 {
     uint8_t uint8_t__index;
+
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
     uint32_t uint32_t__applied;
 
     if ((uint8_t__paramId < CHG_LIMIT_PARAM_FIRST_ID) ||
@@ -4082,6 +4127,11 @@ bool func__Charger_SetLimitParam(uint8_t uint8_t__paramId,
 bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value)
 {
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     if ((uint8_t__paramId < CHG_LIMIT_PARAM_FIRST_ID) ||
         (uint8_t__paramId > CHG_LIMIT_PARAM_LAST_ID))
     {

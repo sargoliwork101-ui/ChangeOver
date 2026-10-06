@@ -24,7 +24,7 @@ uint32_t func__Rtos_MillisecondsToTicks(uint32_t uint32_t__milliseconds)
     uint32_t uint32_t__fractionalTicks;
 
     uint32_t__tickFrequency = osKernelGetTickFreq();
-    if (uint32_t__tickFrequency == 0u)
+    if ((uint32_t__milliseconds == 0u) || (uint32_t__tickFrequency == 0u))
     {
         return 0u;
     }
@@ -83,7 +83,7 @@ uint32_t func__Rtos_TicksToMilliseconds(uint32_t uint32_t__ticks)
     uint32_t uint32_t__remainderMilliseconds;
 
     uint32_t__tickFrequency = osKernelGetTickFreq();
-    if (uint32_t__tickFrequency == 0u)
+    if ((uint32_t__ticks == 0u) || (uint32_t__tickFrequency == 0u))
     {
         return 0u;
     }

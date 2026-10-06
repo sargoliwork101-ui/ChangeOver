@@ -29,6 +29,9 @@ It covers firmware/panel contracts; no physical board test was performed.
   ۱۴۴ entry و رکورد `12 + 144 x 8 + 4 = 1168 B`.
 - قوانین پنل، از جمله عدم POST خودکار، صف staged و ارسال فقط با دکمهٔ سراسری،
   clamp/import/export، reset factory و گزارش موفقیت/خطا حفظ شده‌اند.
+- گاردهای مرزی جدید Flash/NVM، statusهای HAL در UART، انتشار atomic فریم TX،
+  guard نرخ تیک صفر، saturation شمارندهٔ dead-battery و قراردادهای NULL برای
+  APIهای indexed نیز در همین پاس اصلاح و با ۵۲ تست Charger pin شدند.
 
 ### خروج ابزارها / Tool output
 
@@ -37,7 +40,7 @@ It covers firmware/panel contracts; no physical board test was performed.
 | `python3 tools/audit_consistency.py` | **PASS — 436 invariant، 0 finding** |
 | `bash tools/check_ai_rules.sh` | **PASS — ALL CHECKS PASSED**؛ شامل RTL comment check |
 | `python3 tools/fix_rtl_comments.py --check` | **PASS** |
-| `bash tools/check_firmware_syntax.sh` | **PASS**؛ ESP 93، Charger 51، Imbalance 3805، و همهٔ testerهای Changeover/Fault/Protection/Jitter/McuPowerPath/CalLut/Measurement سبز |
+| `bash tools/check_firmware_syntax.sh` | **PASS**؛ ESP 93، Charger 52، Imbalance 3805، و همهٔ testerهای Changeover/Fault/Protection/Jitter/McuPowerPath/CalLut/Measurement سبز |
 | Panel simulator matrix | **PASS**؛ `/`، `/f.css`، `/t`، `/m` با HTTP 200؛ telemetry=31، params=143، clamp/write مستقل `137..142` و `/lut` status |
 | `host_test_panel_click.js` | **SKIP اختیاری**؛ `jsdom` نصب نیست |
 | `host_test_scenario_cards.js` | **SKIP اختیاری**؛ `jsdom` نصب نیست |

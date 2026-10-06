@@ -521,9 +521,11 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
 
 /**
  * @brief  [EN] Read the live value of one parameter id. Public since v1.14:
- *              the flash save snapshot (esp_link_nvm.c) uses it.
+ *              the flash save snapshot (esp_link_nvm.c) uses it. A NULL
+ *              output pointer is rejected before dispatch.
  *         [FA] خواندن مقدار زندهٔ یک شناسهٔ پارامتر. عمومی از v1.14: عکس
- *              ذخیرهٔ فلش (esp_link_nvm.c) از آن استفاده می‌کند.
+ *              ذخیرهٔ فلش (esp_link_nvm.c) از آن استفاده می‌کند؛ خروجی NULL
+ *              پیش از dispatch رد می‌شود.
  */
 bool func__EspLink_GetParam(uint8_t uint8_t__paramId, uint32_t *uint32_t__value);
 

@@ -105,6 +105,11 @@ static volatile uint16_t UINT16_T__G__TxHeadIndex;
 static volatile uint16_t UINT16_T__G__TxTailIndex;
 static uint8_t UINT8_T__G__TxDmaChunk[BSP_UART_TX_CHUNK_SIZE];
 static volatile bool BOOL__G__TxDmaActive;
+/* [EN] The producer must not expose a partially copied frame to the
+   completion ISR. The ISR defers its next pump while this flag is set.
+   [FA] تولیدکننده نباید فریم نیمه‌کپی را به ISR کامل‌شدن نشان دهد؛ ISR تا
+   وقتی این پرچم ست است پمپ بعدی را عقب می‌اندازد. */
+static volatile bool BOOL__G__TxWriteActive;
 
 /* ==================== BspUart_Init ==================== */
 /**
@@ -139,9 +144,15 @@ void func__BspUart_Init(void)
        parity keep the Cube values (8-N-1).
        [FA] فقط سرعت خط بازتنظیم می‌شود؛ طول کلمه، بیت توقف و پاریتی
        مقادیر ‎Cube (8-N-1)‎ را نگه می‌دارند. */
-    (void)HAL_UART_DeInit(UART_HANDLETYPEDEF__G__EspLink);
+    if (HAL_UART_DeInit(UART_HANDLETYPEDEF__G__EspLink) != HAL_OK)
+    {
+        return;
+    }
     UART_HANDLETYPEDEF__G__EspLink->Init.BaudRate = BSP_UART_BAUD_RATE;
-    (void)HAL_UART_Init(UART_HANDLETYPEDEF__G__EspLink);
+    if (HAL_UART_Init(UART_HANDLETYPEDEF__G__EspLink) != HAL_OK)
+    {
+        return;
+    }
 
     __HAL_RCC_DMA1_CLK_ENABLE();
 
@@ -157,7 +168,10 @@ void func__BspUart_Init(void)
     DMA_HANDLETYPEDEF__G__TxDma.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
     DMA_HANDLETYPEDEF__G__TxDma.Init.Mode = DMA_NORMAL;
     DMA_HANDLETYPEDEF__G__TxDma.Init.Priority = DMA_PRIORITY_LOW;
-    (void)HAL_DMA_Init(&DMA_HANDLETYPEDEF__G__TxDma);
+    if (HAL_DMA_Init(&DMA_HANDLETYPEDEF__G__TxDma) != HAL_OK)
+    {
+        return;
+    }
 
     /* [EN] RX DMA: peripheral-to-memory, increment memory only, circular
        mode - the engine refills the ring forever without any CPU or IRQ.
@@ -171,7 +185,10 @@ void func__BspUart_Init(void)
     DMA_HANDLETYPEDEF__G__RxDma.Init.MemDataAlignment = DMA_MDATAALIGN_BYTE;
     DMA_HANDLETYPEDEF__G__RxDma.Init.Mode = DMA_CIRCULAR;
     DMA_HANDLETYPEDEF__G__RxDma.Init.Priority = DMA_PRIORITY_HIGH;
-    (void)HAL_DMA_Init(&DMA_HANDLETYPEDEF__G__RxDma);
+    if (HAL_DMA_Init(&DMA_HANDLETYPEDEF__G__RxDma) != HAL_OK)
+    {
+        return;
+    }
 
     __HAL_LINKDMA(UART_HANDLETYPEDEF__G__EspLink, hdmatx,
                   DMA_HANDLETYPEDEF__G__TxDma);
@@ -198,10 +215,14 @@ void func__BspUart_Init(void)
     UINT16_T__G__TxHeadIndex = 0u;
     UINT16_T__G__TxTailIndex = 0u;
     BOOL__G__TxDmaActive = false;
+    BOOL__G__TxWriteActive = false;
 
-    (void)HAL_UART_Receive_DMA(UART_HANDLETYPEDEF__G__EspLink,
-                               UINT8_T__G__RxDmaBuffer,
-                               BSP_UART_RX_RING_SIZE);
+    if (HAL_UART_Receive_DMA(UART_HANDLETYPEDEF__G__EspLink,
+                             UINT8_T__G__RxDmaBuffer,
+                             BSP_UART_RX_RING_SIZE) != HAL_OK)
+    {
+        return;
+    }
 
     /* [EN] Disarm the error interrupt HAL armed for DMA RX: the first
        framing/noise/overrun flag (guaranteed real-world case: an ESP8266
@@ -243,6 +264,7 @@ static void func__BspUart_PumpTx(void)
     uint16_t uint16_t__nextTail;
 
     if ((BOOL__G__TxDmaActive != false) ||
+        (BOOL__G__TxWriteActive != false) ||
         (UART_HANDLETYPEDEF__G__EspLink == NULL) ||
         (BOOL__G__Initialized == false))
     {
@@ -344,12 +366,21 @@ bool func__BspUart_Write(const uint8_t *uint8_t__data, uint16_t uint16_t__length
        بایت‌به‌بایت ممکن «نصف فریم» روی سیم بگذارد که فریم بعدی را هم خراب
        می‌کند. tail فقط جلو می‌رود (پمپ DMA) که فقط فضا را بیشتر می‌کند، پس
        چک برای کل کپی معتبر می‌ماند. */
+    /* [EN] Hide the producer's in-progress head updates from the DMA pump.
+       An ISR may complete the previous DMA transfer at any point in this
+       loop; it must see the frame as unavailable until the final byte is
+       present. [FA] تغییرات head در حال کپی از پمپ DMA پنهان می‌ماند. ISR
+       ممکن است هر لحظه انتقال قبلی را کامل کند؛ تا حضور آخرین بایت، فریم
+       در دسترس نیست. */
+    BOOL__G__TxWriteActive = true;
+
     uint16_t__freeSlots =
         (uint16_t)((UINT16_T__G__TxTailIndex + BSP_UART_TX_RING_SIZE -
                     UINT16_T__G__TxHeadIndex - 1u) % BSP_UART_TX_RING_SIZE);
 
     if (uint16_t__freeSlots < uint16_t__length)
     {
+        BOOL__G__TxWriteActive = false;
         return false;
     }
 
@@ -360,6 +391,7 @@ bool func__BspUart_Write(const uint8_t *uint8_t__data, uint16_t uint16_t__length
             (uint16_t)((UINT16_T__G__TxHeadIndex + 1u) % BSP_UART_TX_RING_SIZE);
     }
 
+    BOOL__G__TxWriteActive = false;
     func__BspUart_PumpTx();
     return true;
 }

@@ -223,26 +223,19 @@
 > the last region - and expose it on the ESP panel"): the fixed-step
 > bang-bang duty chain (0.5%/0.1% steps on 500/1000/2000 ms timers) is
 > replaced by ONE positional PID doing a textbook CC/CV min-select.
-> SIXTEEN new ids 83..98: enable (83) plus one complete
-> (Kp, Ki, Kd, up-rate, down-rate) row per stage. A "stage" is a LOOP,
-> not a voltage window: stage 1 = the current/bulk loop, stage 2 = the
-> voltage loop below the absorb setpoint, stage 3 = the voltage loop on
-> it and above. Each loop needs its own row because a volt of voltage
-> error and an amp of current error are different units - with one
-> shared Kp the min-select degenerates and the pack sails past 14.6 V.
-> The slew limit sits on the INTEGRAL, not the output: an output limiter
-> rectifies the P-term ripple that whole-permille duty quantisation
-> creates into a downward ratchet (simulated, the loop stalled at 268 mA
-> and never reached the 640 mA bulk band). Setting id 83 = 0 restores
-> the legacy chain byte-for-byte. Every protection is untouched (OV
-> cutoff, 950 mA hard fault, JIT, battery-valid, 500 permille DCM
-> ceiling, FLOAT parks at zero) - the PID only picks the duty number
-> inside the window they already allow. PARAMS_BULK 416 -> 496 bytes
-> (still < 512); a FOURTH pending mask q4 carries ids 96..98; NVM record
-> v5 -> v6 (93 persisted ids, 99 slots, 808 B - v5 records fall back to
-> compiled defaults, so RE-TUNE ONCE after flashing); the bench CSV
-> grows to 150 columns with a [pid] block; the panel gains a "PID شارژ"
-> sub-tab with all 16 coefficients and its own combination guard.
+> The first v1.22 draft described SIXTEEN ids 83..98: an enable plus one
+> complete row per stage. That draft was never the shipped wire contract.
+> v1.23 removed the redundant enable and third voltage row, and v1.24
+> reduced the live PID block to TEN ids, 83..92: current Kp/Ki/Kd/up/down
+> (83..87) and voltage Kp/Ki/Kd/up/down (88..92). The remaining charger
+> controls begin at id 93; id 98 is the PID output-hysteresis limit, not a
+> PID coefficient. The two physical loops remain separate because a volt of
+> voltage error and an amp of current error have different units. The slew
+> limit sits on the integral, not the output, so whole-permille duty
+> quantisation cannot be rectified into a downward ratchet. Every protection
+> remains in force (OV cutoff, 950 mA hard fault, JIT, battery-valid, 500
+> permille DCM ceiling, FLOAT parks at zero); the PID only selects a duty
+> inside that protected window.
 > Panel v1.22. STM32 + ESP flash together.
 >
 > v1.20 (2026-09-27, eighteenth order - "the charge-scenario numbers must

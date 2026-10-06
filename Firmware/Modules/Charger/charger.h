@@ -1431,8 +1431,9 @@ bool func__Charger_IsChargeComplete(void);
  *              برمی‌گرداند (SET_PARAM همان را پاس می‌دهد).
  * @‎param  uint8_t__paramId [EN] 20..26‎ / شناسهٔ پارامتر
  * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
- * @‎param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / مقدار اعمال‌شده
- * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
+ * @‎param  uint32_t *uint32_t__appliedValue [EN] Required applied-value out;
+ *                                      NULL rejects the write / خروجی الزامی؛ NULL رد می‌شود
+ * @‎return bool [EN] true = id known and output supplied‎ / شناسه معتبر و خروجی موجود
  */
 bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t uint32_t__value,
@@ -1492,7 +1493,7 @@ bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value);
 
 /* [EN] Two-loop CC/CV PID wire ids (MUST equal ESPLINK_PARAM_CHG_PID_* in
- *      esp_link.h; the host test enforces the match). Dense 83..98 in the
+ *      esp_link.h; the host test enforces the match). Dense 83..92 in the
  *      same order as charger_pid_t packs them, so Set/Get index instead of
  *      switching (same "flash diet" contract as the profile ids 20..26).
  *      Each stage is a complete five-field row (Kp, Ki, Kd, up-rate,
@@ -1536,7 +1537,7 @@ bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
  *              دیوتی نمی‌سازد: انتگرال‌گیر نقطهٔ کار فعلی را نگه می‌دارد و
  *              فقط نرخ تغییرش زمان‌بندی دوباره می‌شود. مقدار اعمال‌شده
  *              برگردانده می‌شود.
- * @‎param  uint8_t__paramId [EN] 83..98‎ / شناسهٔ پارامتر
+ * @‎param  uint8_t__paramId [EN] 83..92‎ / شناسهٔ پارامتر
  * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
  * @‎param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / مقدار اعمال‌شده
  * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
@@ -1548,7 +1549,7 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one two-loop CC/CV PID parameter (ESP link GET/PARAMS_BULK).
  *         [FA] خواندن یک پارامتر PID دوحلقه‌ای (لینک ESP).
- * @‎param  uint8_t__paramId [EN] 83..98‎ / شناسهٔ پارامتر
+ * @‎param  uint8_t__paramId [EN] 83..92‎ / شناسهٔ پارامتر
  * @‎param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
  * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
  */

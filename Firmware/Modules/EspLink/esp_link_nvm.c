@@ -212,10 +212,16 @@ bool func__EspLink_NvmRecordValidate(const esp_link_nvm_record_t
          uint16_t__i < esp_link_nvm_record_t__record->uint16_t__count;
          uint16_t__i++)
     {
-        if (func__EspLink_NvmParamPersisted(
-                (uint8_t)esp_link_nvm_record_t__record
-                    ->ESP_LINK_NVM_ENTRY_T__A__Entry[uint16_t__i].uint16_t__id) ==
-            false)
+        uint16_t uint16_t__id =
+            esp_link_nvm_record_t__record
+                ->ESP_LINK_NVM_ENTRY_T__A__Entry[uint16_t__i].uint16_t__id;
+
+        /* [EN] The wire id is one byte. Check the stored halfword BEFORE the
+           narrowing cast: 256 must not alias id 0 (or any other valid id).
+           [FA] شناسهٔ روی سیم یک‌بایتی است؛ نیم‌کلمهٔ ذخیره‌شده را پیش از
+           cast بررسی کن تا ۲۵۶ به شناسهٔ معتبر دیگری alias نشود. */
+        if ((uint16_t__id > (uint16_t)UINT8_MAX) ||
+            (func__EspLink_NvmParamPersisted((uint8_t)uint16_t__id) == false))
         {
             return false;
         }

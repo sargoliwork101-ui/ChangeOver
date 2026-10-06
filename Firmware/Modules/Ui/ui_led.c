@@ -478,6 +478,15 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t uint32_t__value,
                             uint32_t *uint32_t__appliedValue)
 {
+    if (uint32_t__appliedValue == NULL)
+    {
+        /* [EN] The API promises the applied value on success; reject a write
+           that cannot report that value rather than applying it silently.
+           [FA] چون قرارداد موفقیت گزارش مقدار اعمال‌شده است، نوشتن بدون
+           خروجی را رد کن تا مقدار بی‌صدا اعمال نشود. */
+        return false;
+    }
+
     /* [EN] Writer-side scheduler lock (v1.16 audit C11): strictly redundant
        today (the UI reader runs BELOW the comm writer, so no preemption),
        but it closes the 46-field set against future priority moves for a
@@ -520,6 +529,11 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
 bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t *uint32_t__value)
 {
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Indexed read: same dense-id/struct contract as the setter.
        [FA] خواندن نمایه‌ای: همان قرارداد شناسه/ساختار. */
     uint8_t uint8_t__wordIndex = func__Ui_AlarmParamIndex(uint8_t__paramId);

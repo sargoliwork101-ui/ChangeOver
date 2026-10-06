@@ -15,7 +15,7 @@ substitute here, not a physical-board result.
 
 | لایه | شواهد و نتیجه |
 |---|---|
-| Charger detector | `host_test_charger.py`: **51 تست PASS**؛ هر دو امضای transistor short/open، JIT، duty/current boundary و reset-only lockout را پوشش می‌دهد. |
+| Charger detector | `host_test_charger.py`: **52 تست PASS**؛ هر دو امضای transistor short/open، JIT، duty/current boundary، reset-only lockout و edge-hardening contracts را پوشش می‌دهد. |
 | Fault ownership | `host_test_fault.c`: **44/44 PASS**؛ بیت ۷ و مسیر set/clear بررسی شد. |
 | UI | UI host suite در syntax gate **PASS**؛ technical fault قبل از overvoltage/BatLost و هم‌فازی سه LED و استقلال تنظیمات بوق بررسی می‌شود. |
 | Protocol/NVM | ESP host suite: **93 تست PASS**؛ current map با 143 پارامتر، bulk chunk، import/export/reset و NVM contract بررسی شد. |
@@ -36,6 +36,10 @@ substitute here, not a physical-board result.
   هیچ borrow از `q132..q135` وجود ندارد.
 - import/export و factory reset از همان schema فعلی 143-id استفاده می‌کنند؛
   ارسال تغییرات فقط با global send انجام می‌شود و POST خودکار وجود ندارد.
+- تست source-contract جدید، overflow گارد فلش، WaitIdle، reject شناسهٔ NVM
+  خارج از byte، HAL failure، atomicity صف TX، نرخ تیک صفر، saturation مرزی و
+  NULL APIها را نیز pin کرد؛ این موارد نیازمند تست روی برد نیستند اما جای
+  validation واقعی سخت‌افزار را نمی‌گیرند.
 
 ## تست‌های اجرا نشده / Not run
 

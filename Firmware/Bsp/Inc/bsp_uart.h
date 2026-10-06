@@ -7,7 +7,7 @@
  *              port; the port re-tunes the Cube default to 921600 baud and
  *              drives both directions with DMA (RX: circular 256-byte ring,
  *              zero CPU per byte, no reception interrupt at all; TX:
- *              256-byte software ring drained by DMA - per frame only a
+ *              1024-byte software ring drained by DMA - per frame only a
  *              couple of lightweight completion interrupts: DMA-complete
  *              plus the UART transmit-complete this HAL arms afterwards).
  *              The interface remains available while MODULE_ESP is disabled.
@@ -15,7 +15,7 @@
  *              پورت baud پیش‌فرض Cube را به 921600 بازتنظیم می‌کند و هر دو
  *              جهت را با DMA می‌راند (RX: بافر حلقوی ۲۵۶ بایتی، صفر CPU به
  *              ازای هر بایت، بدون هیچ وقفهٔ دریافت؛ TX: حلقهٔ نرم‌افزاری
- *              ۲۵۶ بایتی که DMA تخلیه‌اش می‌کند - به‌ازای هر فریم فقط چند
+ *              ۱۰۲۴ بایتی که DMA تخلیه‌اش می‌کند - به‌ازای هر فریم فقط چند
  *              وقفهٔ سبک کامل‌شدن: کامل‌شدن DMA به‌علاوهٔ ‎transmit-complete‎
  *              ی UART که این HAL بعدش مسلح می‌کند). رابط حتی با
  *              خاموش‌بودن MODULE_ESP باقی می‌ماند.
