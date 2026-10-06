@@ -44,10 +44,19 @@
  *      HIGH is the safe direction, so the nominal 3300 stays until VDDA is
  *      measured directly.
  *      TO FIX IT PROPERLY: (1) put a DMM on VDDA and set this constant, or
- *      better (2) enable the STM32F103 internal reference (VREFINT, ADC
- *      channel 17) and compute VDDA at runtime, which makes every board
- *      self-calibrating instead of one-board-tuned. (2) needs a CubeMX
- *      regeneration (NbrOfConversion 5 -> 6), so it is the owner's call.
+ *      better (2) let the STM32F103 internal reference (VREFINT) compute VDDA
+ *      at runtime, which makes every board self-calibrating instead of
+ *      one-board-tuned.
+ *      STATUS OF (2), corrected by the full-program audit 2026-10-05: the
+ *      CubeMX side is ALREADY DONE - CubeIDE.ioc carries NbrOfConversion 6
+ *      with Channel-6 = ADC_CHANNEL_VREFINT, bsp_adc.h exposes it as
+ *      BSP_ADC_CHANNEL_VREFINT and func__BspMeasurement_VddaMv above turns it
+ *      into millivolts. This comment used to say a regeneration was still
+ *      pending; it is not. What is still open is purely a bench step: measure
+ *      VDDA on the board with a DMM, set CAL_VREFINT_MV to the value that
+ *      makes the two agree, then switch CAL_VDDA_TRACKING_ENABLE on. Until
+ *      that measurement exists the raw 1.16..1.24 V datasheet spread would be
+ *      worse than the error it corrects, so the flag ships OFF on purpose.
  * [FA] تنها مقیاس سراسری. هر ولتاژ و هر جریان این برد برابر
  *      ‎counts x VREF / FULL_SCALE‎ است، پس VREF تنها جملهٔ مشترک همهٔ آن‌هاست و
  *      بنابراین تنها جای درست برای اصلاح خطای مقیاسِ مشترک. برای چیزی که
@@ -62,8 +71,19 @@
  *      عمداً اینجا تغییر داده نشد: پایین‌آوردن به ۳۲۶۱ همهٔ خوانش‌ها را ۱٫۲٪ کم
  *      می‌کند و قطع اضافه‌ولتاژ را دیرتر می‌اندازد - پس‌رفت ایمنی. خواندنِ کمی
  *      بالا جهت امن است. راه درست: یا VDDA را با مولتی‌متر اندازه بگیرید و همین
- *      ثابت را بگذارید، یا بهتر، مرجع داخلی VREFINT را فعال کنید تا هر برد
- *      خودش را کالیبره کند (نیازمند بازتولید CubeMX، تصمیم با مالک پروژه). */
+ *      ثابت را بگذارید، یا بهتر، بگذارید مرجع داخلی VREFINT زمان اجرا VDDA را
+ *      حساب کند تا هر برد خودش را کالیبره کند.
+ *      وضعیت راه دوم، اصلاح‌شده در ممیزی ۲۰۲۶-۱۰-۰۵: سمت CubeMX از قبل انجام
+ *      شده است؛ فایل ‎CubeIDE.ioc‎ با ‎NbrOfConversion 6‎ و
+ *      ‎Channel-6 = ADC_CHANNEL_VREFINT‎ پیکربندی شده، ‎bsp_adc.h‎ آن را با نام
+ *      ‎BSP_ADC_CHANNEL_VREFINT‎ بیرون می‌دهد و تابع
+ *      ‎func__BspMeasurement_VddaMv‎ بالا آن را به میلی‌ولت تبدیل می‌کند. این
+ *      توضیح قبلاً می‌گفت بازتولید CubeMX هنوز لازم است؛ لازم نیست. چیزی که
+ *      باقی مانده فقط یک گام بنچ است: VDDA را روی برد با مولتی‌متر بخوانید،
+ *      ‎CAL_VREFINT_MV‎ را طوری بگذارید که این دو بخوانند، سپس
+ *      ‎CAL_VDDA_TRACKING_ENABLE‎ را روشن کنید. تا وقتی آن اندازه‌گیری نباشد،
+ *      پراکندگی خام ۱٫۱۶ تا ۱٫۲۴ ولت دیتاشیت از خطایی که اصلاح می‌کند بدتر
+ *      است، پس این پرچم عمداً خاموش عرضه می‌شود. */
 #define BSP_MEASUREMENT_VREF_MV             3300u
 #define BSP_MEASUREMENT_VDDA_MIN_MV         3000u
 #define BSP_MEASUREMENT_VDDA_MAX_MV         3600u
@@ -254,12 +274,6 @@ static volatile uint32_t UINT32_T__G__Current2OffsetCounts =
 static volatile uint32_t UINT32_T__G__Current2GainPermille =
     BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE;
 
-/**
- * @brief  [EN] Convert raw ADC counts to millivolts at the ADC pin.
- *         [FA] شمارش خام ADC را به میلی‌ولت روی پایهٔ ADC تبدیل می‌کند.
- * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Pin voltage in mV / ولتاژ پایه بر حسب mV
- */
 /* ==================== VDDA from the internal reference ==================== */
 /**
  * @brief  [EN] Work out the real VDDA (= ADC reference) from the internal
@@ -326,6 +340,12 @@ uint32_t func__BspMeasurement_VddaMv(uint16_t uint16_t__vrefintCounts,
     return uint32_t__vddaMv;
 }
 
+/**
+ * @brief  [EN] Convert raw ADC counts to millivolts at the ADC pin.
+ *         [FA] شمارش خام ADC را به میلی‌ولت روی پایهٔ ADC تبدیل می‌کند.
+ * @param  uint16_t__counts [EN] ADC count / شمارش ADC
+ * @return uint32_t [EN] Pin voltage in mV / ولتاژ پایه بر حسب mV
+ */
 /* ==================== BspMeasurement_CountsToMv ==================== */
 uint32_t func__BspMeasurement_CountsToMv(uint16_t uint16_t__counts)
 {
@@ -358,12 +378,6 @@ uint32_t func__BspMeasurement_V24CountsToMv(uint16_t uint16_t__counts)
     return uint32_t__scaledMv / BSP_MEASUREMENT_DIV24_BOTTOM_OHMS;
 }
 
-/**
- * @brief  [EN] Undo the board divider for a 12 V source channel.
- *         [FA] تقسیم برد را برای کانال منبع ۱۲ ولت برمی‌گرداند.
- * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Source voltage in mV / ولتاژ منبع بر حسب mV
- */
 /* ==================== BspMeasurement_Battery24CountsToMv ==================== */
 
 /**
@@ -386,6 +400,12 @@ uint32_t func__BspMeasurement_Battery24CountsToMv(uint16_t uint16_t__counts)
     return uint32_t__scaledMv / BSP_MEASUREMENT_DIV24BAT_BOTTOM_OHMS;
 }
 
+/**
+ * @brief  [EN] Undo the board divider for a 12 V source channel.
+ *         [FA] تقسیم برد را برای کانال منبع ۱۲ ولت برمی‌گرداند.
+ * @param  uint16_t__counts [EN] ADC count / شمارش ADC
+ * @return uint32_t [EN] Source voltage in mV / ولتاژ منبع بر حسب mV
+ */
 /* ==================== BspMeasurement_V12CountsToMv ==================== */
 uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
 {
@@ -401,12 +421,6 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
     return uint32_t__scaledMv / BSP_MEASUREMENT_DIV12_BOTTOM_OHMS;
 }
 
-/**
- * @brief  [EN] Convert board current-sense voltage to milliamps.
- *         [FA] ولتاژ مدار سنجش جریان برد را به میلی‌آمپر تبدیل می‌کند.
- * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Current in mA / جریان بر حسب mA
- */
 /* ==================== BspMeasurement_ConvertCurrent (internal) ==================== */
 
 /**

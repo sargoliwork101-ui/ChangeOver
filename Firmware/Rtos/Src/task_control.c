@@ -41,20 +41,58 @@
 #if MODULE_IMBALANCE
 #include "imbalance.h"
 #endif
-#if (MODULE_IMBALANCE && MODULE_ESP)
+/* [EN] Full-program audit 2026-10-05: this include used to require
+   MODULE_IMBALANCE, but there are TWO dirty-marking call sites below - the
+   imbalance slots 200..202 and the charger dead-battery slot 203. With the
+   imbalance module off the charger call lost its prototype and the -Werror
+   gate rejected the build. The condition now mirrors both call sites.
+   [FA] ممیزی ۲۰۲۶-۱۰-۰۵: این include قبلاً به MODULE_IMBALANCE گره خورده بود،
+   در حالی که دو جای پایین علامت‌گذاری می‌کنند: اسلات‌های ۲۰۰..۲۰۲ عدم‌توازن و
+   اسلات ۲۰۳ باتری خراب شارژر. با خاموش‌بودن عدم‌توازن، فراخوانی شارژر پروتوتایپ
+   نداشت و دروازهٔ ‎-Werror‎ بیلد را رد می‌کرد. شرط حالا هر دو را پوشش می‌دهد. */
+#if (MODULE_ESP && (MODULE_IMBALANCE || MODULE_CHARGER))
 #include "esp_link_nvm.h"   /* [EN] persisted-slot dirty marking / علامت‌گذاری اسلات‌ها */
 #endif
 
 #if MODULE_IMBALANCE
 /* [EN] Scenario 5 feed: the changeover state from the PREVIOUS pass is the
- *      "on battery = discharging" qualifier (one control period of lag at
- *      100 ms is negligible against 30 s stability times).
+ *      "on battery = discharging" qualifier (one control period of lag -
+ *      APP_CONFIG.control_period_ms, 10 ms today - is negligible against
+ *      the 30 s stability times).
  * [FA] حالت چنج‌اور پاس قبلی = نیرولهٔ «روی باتری» برای گیت دشارژ. */
 static app_state_t APP_STATE_T__G__ImbalancePrevState = APP_STATE_BOOT;
 #endif
 
 /* ==================== Task Control ==================== */
 
+/**
+ * @brief  [EN] Control thread entry point - the decision layer of the
+ *              product. Every control period it takes one measurement
+ *              snapshot and runs the enabled modules over it in a fixed
+ *              order: imbalance first (it needs the previous pass's
+ *              changeover state), then changeover, which produces the
+ *              application state, then the charger, which is told that
+ *              state. Persistent counters and latches that moved during the
+ *              pass are marked dirty so the debounced NVM save picks them
+ *              up. The pass ends with the watchdog pump, which refreshes
+ *              the IWDG only when every supervised task checked in fresh -
+ *              this task is the only kicker in the system. The loop uses
+ *              the CMSIS-RTOS2 delay helper and never returns.
+ *         [FA] نقطهٔ ورود نخ کنترل؛ لایهٔ تصمیم محصول. در هر دورهٔ کنترل یک
+ *              اسنپ‌شات اندازه‌گیری می‌گیرد و ماژول‌های فعال را با ترتیب ثابت
+ *              روی آن اجرا می‌کند: اول عدم‌توازن (چون به حالت چنج‌اور پاس قبل
+ *              نیاز دارد)، بعد چنج‌اور که حالت برنامه را می‌سازد، و بعد شارژر
+ *              که همان حالت به او داده می‌شود. شمارنده‌ها و قفل‌های ماندگاری که
+ *              در این پاس جابه‌جا شده‌اند علامت‌دار می‌شوند تا ذخیرهٔ تأخیردارِ
+ *              NVM برشان دارد. پاس با پمپ واچ‌داگ تمام می‌شود که فقط وقتی همهٔ
+ *              تسک‌های تحت‌نظر تازه اعلام حضور کرده باشند IWDG را تازه می‌کند؛
+ *              این تسک تنها kick‌زنندهٔ سیستم است. حلقه از کمکیِ تأخیر
+ *              ‎CMSIS-RTOS2‎ استفاده می‌کند و هرگز برنمی‌گردد.
+ * @param  void_ptr__argument [EN] CMSIS-RTOS2 thread argument, unused here
+ *                                and deliberately cast to void /
+ *                                آرگومان نخ ‎CMSIS-RTOS2‎ که اینجا استفاده
+ *                                نمی‌شود و عمداً به void ریخته می‌شود
+ */
 void func__TaskControl(void *void_ptr__argument)
 {
     (void)void_ptr__argument;

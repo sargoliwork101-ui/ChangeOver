@@ -67,3 +67,17 @@ rtos_app.c → TaskControl → task_control.c
 jitter.c
   bsp_exti.h / bsp_exti.c    BspExti_Init ، BspExti_TakeEvent
 ```
+
+## تستر
+
+`Tester/` — تست هاست آشکارساز جیتر با EXTI بدلی (۲۴ بررسی). اجرا با
+`Tester/run_host_test_jitter.sh`؛ داخل `tools/check_firmware_syntax.sh` هم اجرا
+می‌شود. توضیح کامل در `Tester/README.md`.
+
+## ماشین حالت
+
+`Jitter_State_Machine.xlsx` — حالت‌ها و گذارهای همین ماژول، رنگی و
+راست‌به‌چپ با فونت وزیرمتن. از برگهٔ «ماشین حالت» در فایل اعتبارسنجی همین
+پوشه هم به آن لینک هست و خودش به نمای سیستمی
+(`Documentation/System_State_Machine.xlsx`) برمی‌گردد. بازتولید:
+`python3 tools/make_module_state_machines.py`.
