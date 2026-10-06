@@ -243,13 +243,13 @@
  *      v1.78..v1.84 (user orders: scenario 6's checklist, real checkboxes,
  *      independent lamp/beep controls, and the complete scenario-7 card)
  *      expanded the markup beyond the old 352 KiB step. The transfer budget
- *      is now an explicit 380000-byte ceiling, with headroom for the generated
+ *      is now an explicit 384000-byte ceiling, with headroom for the generated
  *      page while keeping the source/audit stamp mandatory.
  *      [FA] چک‌لیست سناریوی ۶، چک‌باکس‌های واقعی، تنظیم مستقل چراغ/بوق و
  *      کارت کامل سناریوی ۷ از سقف قدیمی ۳۵۲ کیلوبایت عبور کردند؛ سقف انتقال
- *      اکنون صریحاً ۳۸۰۰۰۰ بایت است و ممیزی stamp و اندازه همچنان اجباری است.
+ *      اکنون صریحاً ۳۸۴۰۰۰ بایت است و ممیزی stamp و اندازه همچنان اجباری است.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    380000u
+#define ESP_PANEL_HTML_MAX_BYTES    384000u
 
 /* ==================== Parser States ==================== */
 typedef enum

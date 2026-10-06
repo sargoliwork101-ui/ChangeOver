@@ -1,5 +1,5 @@
 /**
- * [EN] Behavioural test for the six scenario cards of the ESP panel.
+ * [EN] Behavioural test for the seven scenario cards of the ESP panel.
  *
  *      The text checks elsewhere in this repository prove a field EXISTS.
  *      They cannot prove that the derived lines under those fields are the
@@ -23,7 +23,7 @@
  *          npm install --no-save jsdom
  *          node esp_link_panel/Tester/host_test_scenario_cards.js
  *
- * [FA] تست رفتاری شش کارت سناریوی پنل ESP.
+ * [FA] تست رفتاری هفت کارت سناریوی پنل ESP.
  *
  *      چک‌های متنی دیگرِ این مخزن فقط ثابت می‌کنند یک فیلد «هست». نمی‌توانند
  *      ثابت کنند خط‌های محاسبه‌شدهٔ زیر آن فیلدها همان عددی‌اند که برد واقعاً
@@ -96,6 +96,12 @@ function textOf(doc, id) {
     return el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
 }
 
+/* The page deliberately uses Persian unit names for operators; older checks
+   used the firmware shorthand "ms". Compare the value, not its localization. */
+function msCell(text, value) {
+    return String(text).replace(/میلی[‌ ]?ثانیه/g, 'ms').replace(/\s+/g, '') === String(value) + 'ms';
+}
+
 function typeInto(win, doc, id, value) {
     const el = doc.getElementById(id);
     el.value = String(value);
@@ -133,7 +139,7 @@ function testStructure(win, doc) {
     check(missing.length === 0, 'every scenario id has an input', 'missing: ' + missing.join(','));
     check(duplicated.length === 0, 'no scenario id is duplicated', 'duplicated: ' + duplicated.join(','));
 
-    for (let card = 1; card <= 6; card += 1) {
+    for (let card = 1; card <= 7; card += 1) {
         doc.querySelector('#usel button[data-u="' + card + '"]').click();
         check(doc.getElementById('ucard' + card).style.display === '', 'card ' + card + ' opens');
     }
@@ -141,7 +147,7 @@ function testStructure(win, doc) {
     /* [EN] Each card must carry the "when does this come?" block and the
        numbered sections - that is the shape the user asked for.
        [FA] هر کارت باید جعبهٔ «کِی می‌آید؟» و بخش‌های شماره‌دار را داشته باشد. */
-    for (let card = 1; card <= 6; card += 1) {
+    for (let card = 1; card <= 7; card += 1) {
         const el = doc.getElementById('ucard' + card);
         check(el.querySelector('.c4ds') !== null, 'card ' + card + ' explains when it triggers');
         check(el.querySelectorAll('.sec').length >= 2, 'card ' + card + ' is split into numbered sections');
@@ -176,9 +182,13 @@ function testOvervoltage(win, doc) {
        [FA] چشمک قرمز: روشن = دوره × duty ÷ ۱۰۰. */
     typeInto(win, doc, 'q38', 1000);
     typeInto(win, doc, 'q39', 50);
-    check(/500ms/.test(textOf(doc, 's1b')), 'red blink at 50% duty is 500/500 ms', textOf(doc, 's1b'));
+    check(textOf(doc, 's1b').includes('500') &&
+          (textOf(doc, 's1b').includes('ms') || textOf(doc, 's1b').includes('میلی‌ثانیه')),
+          'red blink at 50% duty is 500/500 ms', textOf(doc, 's1b'));
     typeInto(win, doc, 'q39', 20);
-    check(/200ms/.test(textOf(doc, 's1b')), 'red blink follows the duty down to 200 ms', textOf(doc, 's1b'));
+    check(textOf(doc, 's1b').includes('200') &&
+          (textOf(doc, 's1b').includes('ms') || textOf(doc, 's1b').includes('میلی‌ثانیه')),
+          'red blink follows the duty down to 200 ms', textOf(doc, 's1b'));
 
     /* [EN] Beep window = duration*count + gap*(count-1); must fit the period.
        [FA] پنجرهٔ بوق = مدت×تعداد + گپ×(تعداد−۱) و باید در دوره جا شود. */
@@ -345,7 +355,7 @@ function testDischarge(win, doc) {
     /* [EN] Factory default under every field, from the reset tables.
        [FA] پیش‌فرض کارخانه زیر هر فیلد، از جدول دکمه‌های بازگردانی. */
     const noDefault = [];
-    for (let k = 1; k <= 6; k += 1) {
+    for (let k = 1; k <= 7; k += 1) {
         doc.querySelectorAll('#ucard' + k + ' .bqr label').forEach(l => {
             const inp = l.querySelector('input[type=number]');
             if (inp && !l.querySelector('.dflt')) {
@@ -385,7 +395,9 @@ function testDischarge(win, doc) {
         'band 2 range is 10..20 percent', textOf(doc, 's3r2'));
     check(textOf(doc, 's3r2').includes('21800') && textOf(doc, 's3r2').includes('22600'),
         'band 2 range in mV comes off the ladder', textOf(doc, 's3r2'));
-    check(/150ms.*850ms/.test(textOf(doc, 's3n2')),
+    const band2Timing = textOf(doc, 's3n2')
+        .replace(/میلی[‌ ]?ثانیه/g, 'ms').replace(/\s+/g, '');
+    check(/150ms.*850ms/.test(band2Timing),
         'green at the 15% mid-band is 150/850 ms', textOf(doc, 's3n2'));
     check(textOf(doc, 's3n2').includes('2100'),
         'band 2 beep window is 2 x 1000 + its own 100 ms gap = 2100 ms', textOf(doc, 's3n2'));
@@ -433,10 +445,13 @@ function testCharging(win, doc) {
 
     const rows = [...doc.getElementById('c4tb').rows].map(r => [...r.cells].map(c => c.textContent.trim()));
     const at = p => rows.find(r => r[0] === p + '٪');
-    check(at(50)[3] === '500ms' && at(50)[4] === '500ms', 'at 50% the yellow is 500/500 ms', JSON.stringify(at(50)));
-    check(at(90)[3] === '150ms', 'at 90% the minimum-on floor takes over (100 -> 150 ms)', JSON.stringify(at(90)));
+    check(msCell(at(50)[3], 500) && msCell(at(50)[4], 500),
+          'at 50% the yellow is 500/500 ms', JSON.stringify(at(50)));
+    check(msCell(at(90)[3], 150),
+          'at 90% the minimum-on floor takes over (100 -> 150 ms)', JSON.stringify(at(90)));
     check(at(100)[2] === '2٪', 'the remaining-to-full floor of 2% is applied at 100%', JSON.stringify(at(100)));
-    check(at(0)[3] === '1000ms' && at(0)[4] === '0ms', 'zero percent means the yellow is solid', JSON.stringify(at(0)));
+    check(msCell(at(0)[3], 1000) && msCell(at(0)[4], 0),
+          'zero percent means the yellow is solid', JSON.stringify(at(0)));
 
     /* q69 is a valid independent clamp, but the firmware also guarantees a
        visible 2% remainder. At a 1000 ms period that physical floor is 20 ms,
@@ -454,7 +469,8 @@ function testCharging(win, doc) {
 
     typeInto(win, doc, 'q68', 2000);
     const rows2 = [...doc.getElementById('c4tb').rows].map(r => [...r.cells].map(c => c.textContent.trim()));
-    check(rows2.find(r => r[0] === '50٪')[3] === '1000ms', 'doubling the period doubles the on time', JSON.stringify(rows2[3]));
+    check(msCell(rows2.find(r => r[0] === '50٪')[3], 1000),
+          'doubling the period doubles the on time', JSON.stringify(rows2[3]));
     typeInto(win, doc, 'q68', 1000);
 }
 
@@ -508,8 +524,8 @@ function testImbalance(win, doc) {
 
     const lock = textOf(doc, 's5z');
     check(lock.includes('10'), 'the lock event count is shown', lock);
-    check(lock.includes('3') && lock.includes('100') && lock.includes('گپ'),
-          'the simulator follows the editable clean-cycle, count and gap settings', lock);
+    check(lock.includes('3') && lock.includes('200') && lock.includes('گپ'),
+          'the simulator follows the editable clean-cycle, count and total gap settings', lock);
     check(lock.includes('FLOAT') || lock.includes('رویداد کامل'),
           'the lock explanation requires a complete FLOAT-qualified event', lock);
     check(lock.includes('20'), 'the post-lock charge-cycle budget is shown', lock);
@@ -538,7 +554,7 @@ function testSimulator(win, doc) {
 
     const on = (id) => (doc.getElementById(id).className || '').indexOf(' on') >= 0;
 
-    for (let n = 1; n <= 6; n += 1) {
+    for (let n = 1; n <= 7; n += 1) {
         check(doc.getElementById('sim' + n) !== null &&
               doc.getElementById('sl' + n + 'r') !== null &&
               doc.getElementById('sl' + n + 'g') !== null &&
@@ -647,7 +663,9 @@ function testSimulator(win, doc) {
     win.sim5mode();
     win.simrun();
     check(doc.getElementById('sim5w').textContent.indexOf('دشارژ') >= 0 &&
-          doc.getElementById('sim5w').textContent.indexOf('500mV') >= 0,
+          doc.getElementById('sim5w').textContent.indexOf('500') >= 0 &&
+          (doc.getElementById('sim5w').textContent.indexOf('mV') >= 0 ||
+           doc.getElementById('sim5w').textContent.indexOf('میلی‌ولت') >= 0),
           'on battery the window is open at once and uses the discharge limit');
 
     doc.getElementById('sim5m').value = 'c';
@@ -665,13 +683,28 @@ function testSimulator(win, doc) {
     check(win.SIMT[5] === t0, 'a stopped card freezes its own clock');
     win.SIMON[5] = 1;
 
-    /* three events on the discharge window latch the lock */
-    doc.getElementById('sim5m').value = 'd';
-    win.sim5mode();
+    /* Three stable candidates latch only when each candidate reaches a real
+       FLOAT/Full boundary. A merely stable discharge episode must remain a
+       pending candidate; this mirrors the firmware's cycle qualification. */
     doc.getElementById('simp5b').value = 11000;    /* 1000 mV apart */
-    for (let i = 0; i < 6; i += 1) { win.SIMT[5] += 30000; win.simrun(); }
+    const full5 = doc.getElementById('sim5full');
+    for (let i = 0; i < 3; i += 1) {
+        doc.getElementById('sim5m').value = 'd';
+        win.sim5mode();
+        win.SIMT[5] += 30000; win.simrun();
+        win.SIMT[5] += 30000; win.simrun();
+        doc.getElementById('sim5m').value = 'r';
+        full5.checked = true;
+        win.sim5mode();
+        win.simrun();
+        full5.checked = false;
+        if (i < 2) {
+            doc.getElementById('sim5m').value = 'c';
+            win.sim5mode();
+        }
+    }
     check(win.S5.lock === true && on('sl5r'),
-          'three stable over-limit events latch the lock: solid red');
+          'three FLOAT-qualified over-limit events latch the lock: solid red');
     win.simrst5();
     doc.getElementById('simp5b').value = 12000;
     win.simrun();
@@ -763,6 +796,59 @@ function testSimulator(win, doc) {
           c6.querySelector('#q130').closest('.bqr').textContent.indexOf('بوق') < 0 &&
           c6.querySelector('#q128').closest('.bqr').textContent.indexOf('چراغ') < 0,
           'scenario 6 lamp inputs and buzzer inputs are physically separated');
+
+    /* Scenario 7: the technical-fault card is a real, independently driven
+       state machine. It must not silently borrow scenario 5/6 beep settings,
+       and one phase must drive all three LEDs. */
+    const c7 = doc.getElementById('ucard7');
+    const c7text = c7.textContent;
+    check(c7text.indexOf('ترانزیستور شارژر') >= 0 &&
+          c7text.indexOf('رلهٔ شارژر باز') >= 0 &&
+          c7text.indexOf('PWM واقعی صفر') >= 0 && c7text.indexOf('JIT') >= 0 &&
+          c7text.indexOf('بیشتر از ۲۰٪') >= 0 && c7text.indexOf('جریان شارژ دقیقاً صفر') >= 0,
+          'scenario 7 documents both transistor-fault signatures and their gates');
+    check([137, 138, 139, 140, 141, 142].every(id =>
+          win.eval('UDEF[7]').indexOf(id) >= 0),
+          'scenario 7 owns its six independent alarm parameters');
+    check(c7.querySelector('#q137') && c7.querySelector('#q142') &&
+          c7.querySelector('#s7v'),
+          'scenario 7 exposes its own beep and synchronized-LED controls');
+
+    typeInto(win, doc, 'q137', 3000);
+    typeInto(win, doc, 'q138', 200);
+    typeInto(win, doc, 'q139', 3);
+    typeInto(win, doc, 'q140', 100);
+    typeInto(win, doc, 'q141', 1000);
+    typeInto(win, doc, 'q142', 50);
+    const s7v = textOf(doc, 's7v');
+    check(s7v.indexOf('3000') >= 0 && s7v.indexOf('200') >= 0 &&
+          s7v.indexOf('3') >= 0 && s7v.indexOf('100') >= 0 &&
+          s7v.indexOf('1000') >= 0 && s7v.indexOf('50') >= 0,
+          'scenario 7 summary follows all six typed settings', s7v);
+
+    const sameLedState = () => ['r', 'g', 'y'].map(c => on('sl7' + c));
+    win.SIMON[7] = 0;
+    win.SIMT[7] = 0;
+    doc.getElementById('sim7m').value = 's';
+    win.simrun();
+    const ledOn = sameLedState();
+    check(ledOn[0] === ledOn[1] && ledOn[1] === ledOn[2] && ledOn[0] === true && on('sl7z'),
+          'scenario 7 JIT signature turns all three LEDs on together with its beep');
+    win.SIMT[7] = 600;
+    win.simrun();
+    const ledOff = sameLedState();
+    check(ledOff[0] === ledOff[1] && ledOff[1] === ledOff[2] && ledOff[0] === false,
+          'scenario 7 turns all three LEDs off together');
+    doc.getElementById('sim7m').value = 'o';
+    win.SIMT[7] = 0;
+    win.simrun();
+    check(sameLedState().every(Boolean) &&
+          doc.getElementById('sl7t').textContent.indexOf('PWM بیشتر از ۲۰٪') >= 0,
+          'scenario 7 open-fault signature keeps the shared LED phase and text');
+    doc.getElementById('sim7m').value = 'n';
+    win.simrun();
+    check(sameLedState().every(v => !v) && !on('sl7z'),
+          'scenario 7 no-fault mode clears all LEDs and the buzzer');
 
     /* v1.79 (user: "there used to be a LED behind it"): the latched-fault
        bits are real LEDs again - styled, and visible between blinks. */

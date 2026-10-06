@@ -37,13 +37,13 @@ It covers firmware/panel contracts; no physical board test was performed.
 
 | ابزار | نتیجهٔ واقعی پس از آخرین ویرایش |
 |---|---|
-| `python3 tools/audit_consistency.py` | **PASS — 438 invariant، 0 finding** |
+| `python3 tools/audit_consistency.py` | **PASS — 441 invariant، 0 finding** |
 | `bash tools/check_ai_rules.sh` | **PASS — ALL CHECKS PASSED**؛ شامل RTL comment check |
 | `python3 tools/fix_rtl_comments.py --check` | **PASS** |
-| `bash tools/check_firmware_syntax.sh` | **PASS**؛ ESP 93، Charger 52، Imbalance 3805، و همهٔ testerهای Changeover/Fault/Protection/Jitter/McuPowerPath/CalLut/Measurement سبز |
+| `bash tools/check_firmware_syntax.sh` | **PASS**؛ ESP 97، Charger 52، Imbalance 3805، و همهٔ testerهای Changeover/Fault/Protection/Jitter/McuPowerPath/CalLut/Measurement سبز |
 | Panel simulator matrix | **PASS**؛ `/`، `/f.css`، `/t`، `/m` با HTTP 200؛ telemetry=31، params=143، clamp/write مستقل `137..142` و `/lut` status |
-| `host_test_panel_click.js` | **SKIP اختیاری**؛ `jsdom` نصب نیست |
-| `host_test_scenario_cards.js` | **SKIP اختیاری**؛ `jsdom` نصب نیست |
+| `host_test_panel_click.js` | **PASS — 129/129**؛ با jsdom اجرا شد |
+| `host_test_scenario_cards.js` | **PASS — 288/288**؛ با jsdom اجرا شد |
 
 ## موارد خارج از محیط / Not verifiable here
 
@@ -51,8 +51,8 @@ It covers firmware/panel contracts; no physical board test was performed.
    دارد؛ این toolchain در محیط حاضر موجود نیست.
 2. تست رله، PWM، JIT، سنسور جریان، باتری و power-cycle روی برد واقعی انجام
    نشده است. Host tests جایگزین فیزیکی هستند، نه ادعای validation سخت‌افزار.
-3. دو تست DOM به دلیل نبود `jsdom` اجرا نشدند؛ تست parser جاوااسکریپت و تست
-   متنی/سازگاری پنل اجرا و موفق شدند.
+3. تست DOM با نصب `jsdom` در این پاس اجرا شد و هر دو suite سبز شدند؛ این
+   نتیجه همچنان فقط host/DOM است و جای تست فیزیکی برد را نمی‌گیرد.
 
 ## نتیجه / Conclusion
 
@@ -74,7 +74,7 @@ It covers firmware/panel contracts; no physical board test was performed.
 import/clamp، ارسال فقط با global send، گزارش موفقیت/خطا و تنظیم مستقل سناریوی ۷
 دست‌نخورده باقی مانده‌اند.
 
-آخرین gate واقعی: `audit_consistency.py` با **438 invariant و 0 finding**،
-`check_ai_rules.sh` با **ALL CHECKS PASSED**، syntax/host با **ESP 93 و Charger 52**
-و سایر suiteها سبز؛ suite DOM به‌دلیل نبود `jsdom` با قرارداد پروژه SKIP شد و
-تست فیزیکی برد انجام نشده است.
+آخرین gate واقعی: `audit_consistency.py` با **441 invariant و 0 finding**،
+`check_ai_rules.sh` با **ALL CHECKS PASSED**، syntax/host با **ESP 97 و Charger 52**
+و suiteهای DOM با **129/129** و **288/288** سبز شدند. تست فیزیکی برد انجام نشده
+است.

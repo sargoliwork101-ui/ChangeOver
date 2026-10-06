@@ -67,7 +67,7 @@ Technical fault -> OverVoltage -> BatLost -> سایر سناریوها
 - import/export بر اساس شمای پارامتر انجام می‌شود؛ factory reset مقدارها را
   در صف محلی می‌نشاند و POST فقط با دکمهٔ global انجام می‌شود.
 - stamp پنل با markup برابر است، markup متوازن است و سقف انتقال فعلی
-  `380000` بایت است.
+  `384000` بایت است.
 
 ### A4 — اصلاحات مرزی، هم‌زمانی و API
 
@@ -103,21 +103,21 @@ Technical fault -> OverVoltage -> BatLost -> سایر سناریوها
 
 | بررسی | نتیجه |
 |---|---|
-| `python3 tools/audit_consistency.py` | **PASS — 436 invariant، 0 finding** |
+| `python3 tools/audit_consistency.py` | **PASS — 441 invariant، 0 finding** |
 | `bash tools/check_ai_rules.sh` | **PASS — ALL CHECKS PASSED؛ RTL comment check passed** |
 | `bash tools/check_firmware_syntax.sh` | **PASS — syntax، ESP، UI و همهٔ Host suites موفق** |
 | `python3 Firmware/Modules/Charger/Tester/host_test_charger.py` | **PASS — 52 تست، شامل سناریوی ۷، lockout و edge-hardening contracts** |
 | Host تست‌های واقعی برد | جایگزین نرم‌افزاری؛ برد فیزیکی تست نشده |
 | Build ARM/CubeIDE | در این محیط انجام نشده؛ `arm-none-eabi-gcc` موجود نیست |
-| DOM تست پنل | در صورت نبود `jsdom`، SKIP اختیاری است |
+| DOM تست پنل | **PASS**؛ click `129/129` و scenario cards `288/288` با jsdom |
 
 ## محدودیت‌های باقی‌مانده
 
 1. تست واقعی رله، PWM، LM393/JIT، جریان صفر و هم‌زمانی LED با اسیلوسکوپ و
    current probe هنوز باید روی برد و در Excel اعتبارسنجی ماژول ثبت شود.
 2. build نهایی CubeIDE به toolchain `arm-none-eabi-gcc` یا محیط CubeIDE نیاز دارد.
-3. تست‌های DOM پنل به نصب اختیاری `jsdom` نیاز دارند؛ تست متنی، simulator server
-   و audit مستقل از آن اجرا می‌شوند.
+3. تست‌های DOM پنل در این پاس با `jsdom` نصب‌شده اجرا و سبز شدند؛ این نتیجه
+   همچنان host/DOM است و جای تست واقعی برد را نمی‌گیرد.
 
 این گزارش ادعای تست سخت‌افزاری ندارد؛ Host tests فقط قرارداد و منطق قابل‌آزمون
 بدون برد را اثبات می‌کنند.

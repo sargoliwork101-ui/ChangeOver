@@ -41,8 +41,8 @@ EspLink as documented.
 |---|---|
 | `bash tools/check_ai_rules.sh` | **ALL CHECKS PASSED** |
 | `python3 tools/fix_rtl_comments.py --check` | **PASS** |
-| `bash tools/check_firmware_syntax.sh` | **PASS**؛ ESP 93، Charger 52، Imbalance 3805، Changeover 114، Fault 44، Protection 61، Jitter 24، McuPowerPath 49، CalLut 114، Measurement 286 |
-| `python3 tools/audit_consistency.py` | **PASS — 438 invariant، 0 finding** |
+| `bash tools/check_firmware_syntax.sh` | **PASS**؛ ESP 97، Charger 52، Imbalance 3805، Changeover 114، Fault 44، Protection 61، Jitter 24، McuPowerPath 49، CalLut 125، Measurement 2346 |
+| `python3 tools/audit_consistency.py` | **PASS — 441 invariant، 0 finding** |
 | `git diff --check` | **PASS** |
 | panel simulator matrix | **PASS**؛ current HTML/protocol/NVM map، endpoints و ids `137..142` بررسی شدند |
 
@@ -51,8 +51,8 @@ EspLink as documented.
 - `arm-none-eabi-gcc` در محیط موجود نیست؛ بنابراین این گزارش ادعای build/link
   واقعی ARM یا اندازهٔ نهایی Flash/RAM ندارد.
 - دو suite رفتاری DOM (`host_test_panel_click.js` و
-  `host_test_scenario_cards.js`) به‌دلیل نبود `jsdom` با قرارداد پروژه SKIP
-  شدند؛ parser و تست‌های متنی/host همچنان اجرا شدند.
+  `host_test_scenario_cards.js`) با `jsdom` اجرا شدند و به‌ترتیب **129/129** و
+  **288/288** PASS دادند؛ parser و تست‌های host نیز سبز هستند.
 - هیچ تست فیزیکی روی رله، PWM، JIT، سنسور جریان یا باتری انجام نشده است.
 - چند تابع اصلی فرم‌ور طولانی هستند، اما شکستن آن‌ها در این پاس به‌دلیل ریسک
   تغییر رفتار انجام نشد؛ این مورد کیفیت ساختاریِ باز است، نه failure در gate.

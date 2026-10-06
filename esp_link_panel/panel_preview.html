@@ -475,7 +475,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 71fd74c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e5094dc</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1407,7 +1407,7 @@ function formulas(t,p){
   $('f'+n+'2').textContent=off==null||g==null?'':`(${raw} − ${off}) × 0.8777 × ${g}/1000 ≈ ${f1(Math.max(raw-off,0)*K_MA*g/1000)}${n==2?lutTap(Math.max(raw-off,0)*K_MA*g/1000,vb):lut1Tap(Math.max(raw-off,0)*K_MA*g/1000,vb)}`;
   $('f'+n+'3').textContent=`convert( average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( raw ) ) ) = ${fl}`;
   $('f'+n+'4').textContent=eta==null?'':eta==0?`eta = 0 → Iest = I = ${fl}`:`${fl} × ${V_(vin)} × ${eta}‰ / ${V_(vb)} ≈ ${ie(fl,vin,eta,vb)}`;});
- V.forEach((v,i)=>{const e=$('fv'+i);if(i<3){const o=p[v[2]]==null?0:p[v[2]],c=Math.round((t[v[1]]-o+(i==2?150+Math.floor(t[9]*470/1000):0))/v[3]);e.textContent=`${c} × ${v[3].toFixed(3)} ${o<0?'−':'+'} ${Math.abs(o)}${i==2?' − (150 + '+t[9]+'×470/1000)':''}`;}
+ V.forEach((v,i)=>{const e=$('fv'+i);if(!e)return;/* The summary now exposes only the three shared rails; the two battery-voltage formulas are rendered in their charger cards. */if(i<3){const o=p[v[2]]==null?0:p[v[2]],c=Math.round((t[v[1]]-o+(i==2?150+Math.floor(t[9]*470/1000):0))/v[3]);e.textContent=`${c} × ${v[3].toFixed(3)} ${o<0?'−':'+'} ${Math.abs(o)}${i==2?' − (150 + '+t[9]+'×470/1000)':''}`;}
   else e.textContent=i==3?'V24 − V12':'= V12';});
 }
 function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>hn(c)){s.u.shift();s.f.shift();}});}}
@@ -2770,13 +2770,19 @@ function sall(){
   const lp=c4v(123,1000),ld=c4v(124,50);
   stxt('s5b',lp===0?'قرمز ثابت در قفل':'قرمز: <span class="n">'+Math.round(lp*ld/100)+'</span> میلی‌ثانیه روشن / <span class="n">'+Math.round(lp*(100-ld)/100)+'</span> میلی‌ثانیه خاموش — هر دوره <span class="n">'+lp+'</span> میلی‌ثانیه');
   {const bp=c4v(115,3600000),bl=c4v(116,200),bc=c4v(132,1),bg=c4v(133,0),bw=swin(bp,bl,bc,bg);
-   stxt('s5z','قفل پس از ثبت رویداد کامل شمارهٔ <span class="n">'+ev+'</span> · هر سیکل کامل حداکثر یک ثبت دارد و <span class="n">'+c4v(136,3)+'</span> سیکل کاملِ بدون رویداد فقط شمارنده را صفر می‌کند؛ قفل تا تعویض باتری می‌ماند · در قفل: '+(lp===0?'<span class=\"n\">قرمز ثابت</span>':'چشمک قرمز <span class="n">'+Math.round(lp*ld/100)+'</span> میلی‌ثانیه روشن / <span class="n">'+Math.round(lp*(100-ld)/100)+'</span> میلی‌ثانیه خاموش')+' + '+(bp===0?'بوق خاموش':(bw.fits?'بوق <span class="n">'+bc+'</span> × <span class="n">'+bl+'</span> میلی‌ثانیه + <span class="n">'+(bc>1?bg*(bc-1):0)+'</span> میلی‌ثانیه گپ، هر '+sms(bp):'⚠ الگوی بوق <span class="n">'+bw.winMs+'</span> میلی‌ثانیه است و در دورهٔ <span class="n">'+bp+'</span> جا نمی‌شود — برد بی‌صدا می‌ماند'))+' · پس از قفل تا <span class="n">'+c4v(118,20)+'</span> سیکل شارژ مجاز است، بعد شارژ هم قطع می‌شود · خروج فقط با تعویض باتری (۳ ثانیه)');}
+   stxt('s5z','قفل پس از ثبت رویداد کامل شمارهٔ <span class="n">'+ev+'</span> · هر سیکل کامل حداکثر یک ثبت دارد و <span class="n">'+c4v(136,3)+'</span> سیکل کاملِ بدون رویداد فقط شمارنده را صفر می‌کند؛ قفل تا تعویض باتری می‌ماند · در قفل: '+(lp===0?'<span class=\"n\">قرمز ثابت</span>':'چشمک قرمز <span class="n">'+Math.round(lp*ld/100)+'</span> میلی‌ثانیه روشن / <span class="n">'+Math.round(lp*(100-ld)/100)+'</span> میلی‌ثانیه خاموش')+' + '+(bp===0?'بوق خاموش':(bw.fits?'بوق <span class="n">'+bc+'</span> × <span class="n">'+bl+'</span> میلی‌ثانیه + <span class="n">'+(bc>1?bg*(bc-1):0)+'</span> میلی‌ثانیه مجموع گپ‌ها (<span class="n">'+bg+'</span> بین هر بوق)، هر '+sms(bp):'⚠ الگوی بوق <span class="n">'+bw.winMs+'</span> میلی‌ثانیه است و در دورهٔ <span class="n">'+bp+'</span> جا نمی‌شود — برد بی‌صدا می‌ماند'))+' · پس از قفل تا <span class="n">'+c4v(118,20)+'</span> سیکل شارژ مجاز است، بعد شارژ هم قطع می‌شود · خروج فقط با تعویض باتری (۳ ثانیه)');}
 }
  /* --- سناریو ۶: نمایش جداگانهٔ چراغ و بوق --- */
  {const rp=c4v(130,0),rd=c4v(131,50),bp=c4v(128,600000),bl=c4v(129,120),bc=c4v(134,1),bg=c4v(135,0),bw=swin(bp,bl,bc,bg);
   stxt('s6v','مهلت شارژ پیوسته تا حکم: '+sms(c4v(125,86400000))+' · مهلت صفرشدن ساعت در وقفه: '+sms(c4v(126,600000)));
   stxt('s6lamp',rp===0?'چراغ قرمز مستقل: ثابت':'چراغ قرمز مستقل: <span class="n">'+Math.round(rp*rd/100)+'</span> میلی‌ثانیه روشن / <span class="n">'+Math.round(rp*(100-rd)/100)+'</span> میلی‌ثانیه خاموش — هر دوره <span class="n">'+rp+'</span> میلی‌ثانیه');
-  stxt('s6z',bp===0?'بوق مستقل: خاموش است (دوره = ۰).':(bw.fits?'بوق مستقل: <span class="n">'+bc+'</span> بوق × <span class="n">'+bl+'</span> میلی‌ثانیه + <span class="n">'+(bc>1?bg*(bc-1):0)+'</span> میلی‌ثانیه گپ، تکرار هر '+sms(bp):'⚠ بوق مستقل در دوره جا نمی‌شود — پنجره <span class="n">'+bw.winMs+'</span> میلی‌ثانیه و دوره <span class="n">'+bp+'</span> میلی‌ثانیه است.'));
+  stxt('s6z',bp===0?'بوق مستقل: خاموش است (دوره = ۰).':(bw.fits?'بوق مستقل: <span class="n">'+bc+'</span> بوق × <span class="n">'+bl+'</span> میلی‌ثانیه + <span class="n">'+(bc>1?bg*(bc-1):0)+'</span> میلی‌ثانیه مجموع گپ‌ها (<span class="n">'+bg+'</span> بین هر بوق)، تکرار هر '+sms(bp):'⚠ بوق مستقل در دوره جا نمی‌شود — پنجره <span class="n">'+bw.winMs+'</span> میلی‌ثانیه و دوره <span class="n">'+bp+'</span> میلی‌ثانیه است.'));
+ }
+ /* Scenario 7 keeps its alarm face independent from scenarios 5 and 6. */
+ {const bp=c4v(137,3000),bl=c4v(138,200),bc=c4v(139,3),bg=c4v(140,100),
+       bw=swin(bp,bl,bc,bg),lp=c4v(141,1000),ld=c4v(142,50);
+   stxt('s7v','بوق مستقل خطای فنی: '+(bp===0?'خاموش':(bw.fits?bc+' بوق × '+bl+' میلی‌ثانیه + '+(bc>1?bg*(bc-1):0)+' میلی‌ثانیه مجموع گپ‌ها ('+bg+' بین هر بوق)، هر '+sms(bp)+' ('+bp+' میلی‌ثانیه)': '⚠ الگو در دوره جا نمی‌شود'))+
+   ' · سه LED هم‌زمان: '+Math.round(lp*ld/100)+' میلی‌ثانیه روشن / '+Math.round(lp*(100-ld)/100)+' میلی‌ثانیه خاموش، هر '+lp+' میلی‌ثانیه ('+ld+'٪ duty) · q137..q142 مستقل از سناریوهای ۵ و ۶.');
  }
 }
 function xmute(){const v=(D&&D.p&&D.p[76]===1)?0:1;const f=$('q76');if(f)f.value=v;send(76,v);}

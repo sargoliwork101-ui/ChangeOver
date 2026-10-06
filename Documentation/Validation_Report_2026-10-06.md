@@ -18,11 +18,11 @@ substitute here, not a physical-board result.
 | Charger detector | `host_test_charger.py`: **52 تست PASS**؛ هر دو امضای transistor short/open، JIT، duty/current boundary، reset-only lockout و edge-hardening contracts را پوشش می‌دهد. |
 | Fault ownership | `host_test_fault.c`: **44/44 PASS**؛ بیت ۷ و مسیر set/clear بررسی شد. |
 | UI | UI host suite در syntax gate **PASS**؛ technical fault قبل از overvoltage/BatLost و هم‌فازی سه LED و استقلال تنظیمات بوق بررسی می‌شود. |
-| Protocol/NVM | ESP host suite: **93 تست PASS**؛ current map با 143 پارامتر، bulk chunk، import/export/reset و NVM contract بررسی شد. |
+| Protocol/NVM | ESP host suite: **97/97 PASS**؛ current map با 143 پارامتر، bulk chunk، import/export/reset و NVM contract بررسی شد. |
 | Panel simulator | matrix اجرایی **PASS**: `/`، `/f.css`، `/t`، `/m`، `/lut`؛ آرایهٔ telemetry دارای 31 فیلد و `p` دارای 143 مقدار بود؛ ids `137..142` با clamp و write مستقل بررسی شدند. |
-| Static consistency | `audit_consistency.py`: **438 invariant، 0 finding**. |
+| Static consistency | `audit_consistency.py`: **441 invariant، 0 finding**. |
 | Rules/RTL hygiene | `check_ai_rules.sh`: **ALL CHECKS PASSED**؛ `fix_rtl_comments.py --check`: **PASS**. |
-| سایر Host testerها | Imbalance **3805/3805**، Changeover **114/114**، Protection **61/61**، Jitter **24/24**، McuPowerPath **49/49**، CalLut **114/114**، Measurement **286/286** — همه PASS. |
+| سایر Host testerها | Imbalance **3805/3805**، Changeover **114/114**، Protection **61/61**، Jitter **24/24**، McuPowerPath **49/49**، CalLut **125/125**، Measurement **2346/2346** — همه PASS. |
 
 ## رفتارهای مورد قبول / Acceptance checks
 
@@ -45,16 +45,15 @@ substitute here, not a physical-board result.
 
 | مورد | وضعیت | دلیل |
 |---|---|---|
-| DOM interaction suites | **SKIP** | `jsdom` در محیط نصب نیست؛ خود تست‌ها طبق قرارداد با exit code صفر skip می‌شوند. |
+| DOM interaction suites | **PASS** | `host_test_panel_click.js` = 129/129 و `host_test_scenario_cards.js` = 288/288 با jsdom. |
 | ARM compile/link و اندازهٔ Flash/RAM | **NOT RUN** | `arm-none-eabi-gcc` و `.map` تولید CubeIDE موجود نیست. |
 | تست رله/PWM/JIT/جریان/باتری واقعی | **NOT RUN** | برد و بار واقعی در محیط در دسترس نیست؛ Host test جایگزین نرم‌افزاری است. |
 
 ## نتیجه / Conclusion
 
 تمام شواهد قابل اجرای Host، simulator و consistency برای سناریوی ۷ سبز هستند.
-تنها محدودیت‌های واقعی، DOM اختیاری، toolchain ARM و validation فیزیکی هستند؛
-این موارد در گزارش به‌عنوان محدودیت باقی مانده‌اند و به‌اشتباه PASS اعلام
-نشده‌اند.
+تنها محدودیت‌های واقعی، toolchain ARM و validation فیزیکی هستند؛ DOM در این
+پاس با jsdom اجرا و سبز شد و hardware به‌اشتباه PASS اعلام نشده است.
 
 ## پاس تکمیلی پنل — ۲۰۲۶-۱۰-۰۶ / Panel hardening follow-up
 
@@ -74,13 +73,14 @@ substitute here, not a physical-board result.
 
 | ابزار | نتیجه |
 |---|---|
-| `python3 tools/audit_consistency.py` | **PASS — 438 invariant، 0 finding** |
+| `python3 tools/audit_consistency.py` | **PASS — 441 invariant، 0 finding** |
 | `bash tools/check_ai_rules.sh` | **PASS — ALL CHECKS PASSED** |
-| `bash tools/check_firmware_syntax.sh` | **PASS — ESP 93، Charger 52 و همهٔ host suiteها سبز** |
+| `bash tools/check_firmware_syntax.sh` | **PASS — ESP 97، Charger 52 و همهٔ host suiteها سبز** |
 | `python3 tools/fix_rtl_comments.py --check` | **PASS** |
 | `git diff --check` | **PASS** |
-| `node esp_link_panel/Tester/host_test_scenario_cards.js` | **SKIP با exit 0**؛ `jsdom` نصب نیست |
+| `node esp_link_panel/Tester/host_test_panel_click.js` | **PASS — 129/129** |
+| `node esp_link_panel/Tester/host_test_scenario_cards.js` | **PASS — 288/288** |
 
-تست DOM سناریو شامل بازهٔ visible، توضیح `q69=5` و جداسازی چراغ/بوق است؛ به‌علت
-نبود `jsdom` اجرای رفتاری آن در این محیط انجام نشد. این محدودیت و نبود تست واقعی
-برد (رله، PWM، JIT، جریان و ترانزیستور) ادعای PASS سخت‌افزاری ایجاد نمی‌کند.
+تست DOM سناریو شامل بازهٔ visible، توضیح `q69=5`، سناریوی فنی ۷، هم‌فازی
+سه LED و جداسازی چراغ/بوق است؛ با jsdom واقعاً اجرا شد. این نتیجه ادعای تست
+واقعی برد (رله، PWM، JIT، جریان و ترانزیستور) ایجاد نمی‌کند.
