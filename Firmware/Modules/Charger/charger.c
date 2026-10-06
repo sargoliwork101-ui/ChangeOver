@@ -100,7 +100,7 @@ typedef struct
 
 /* ==================== Static state / وضعیت داخلی ==================== */
 
-static charger_channel_state_t CHARGER_CHANNEL_T__G__State[2];
+static charger_channel_state_t CHARGER_CHANNEL_T__G__State[CHG_CHANNEL_COUNT];
 
 /* [EN] Runtime charge profile, shared by both channels (user order
  *      2026-09-25: settable from the ESP panel tab, wire ids 20..26). Boot
@@ -248,7 +248,7 @@ static volatile uint32_t UINT32_T__G__ChargerEta2Permille =
  *      پیش‌فرض true = رفتار فعلی. تا وقتی false است PWM آن کانال قطع و
  *      وضعیت روی OFF نگه داشته می‌شود؛ کانال FINAL_FAULT هرگز با این
  *      گیت آزاد نمی‌شود. روی فلش می‌ماند از نسخهٔ ۱.۱۴ (شناسه‌های ۱۱/۱۲). */
-static volatile bool BOOL__G__ChargerEspEnableCh[2] = {true, true};
+static volatile bool BOOL__G__ChargerEspEnableCh[CHG_CHANNEL_COUNT] = {true, true};
 
 /* [EN] Runtime per-channel PWM duty ceiling (user order 2026-09-22: the
  *      ESP panel sets the cap). Default CHG_DUTY_MAX_PERMILLE = today's
@@ -260,7 +260,7 @@ static volatile bool BOOL__G__ChargerEspEnableCh[2] = {true, true};
  *      رفتار فعلی؛ ApplyDuty هر duty درخواستی (رمپ، تنظیم، مود فیکس)
  *      را به min(سقف کامپایل، این سقف) گیره می‌زند. روی فلش می‌ماند از
  *      نسخهٔ ۱.۱۴ (شناسه‌های ۱۳/۱۴). */
-static volatile uint32_t UINT32_T__G__ChargerDutyCeilingPermille[2] =
+static volatile uint32_t UINT32_T__G__ChargerDutyCeilingPermille[CHG_CHANNEL_COUNT] =
     {CHG_DUTY_MAX_PERMILLE, CHG_DUTY_MAX_PERMILLE};
 
 /* [EN] Runtime fixed-duty mode per channel (user order 2026-09-22: hold
@@ -272,8 +272,8 @@ static volatile uint32_t UINT32_T__G__ChargerDutyCeilingPermille[2] =
  *      حلقهٔ تنظیم، با همان پوشش امنیتی مود بنچ کامپایل‌تایم: بالای
  *      CHG_ABSORB_MV توقف سوئیچینگ و همهٔ گیت‌های JIT/ورودی/باتری/ESP
  *      فعال. پیش‌فرض خاموش. فقط RAM. */
-static volatile bool BOOL__G__ChargerDutyFixedEnable[2] = {false, false};
-static volatile uint32_t UINT32_T__G__ChargerDutyFixedPermille[2] = {0u, 0u};
+static volatile bool BOOL__G__ChargerDutyFixedEnable[CHG_CHANNEL_COUNT] = {false, false};
+static volatile uint32_t UINT32_T__G__ChargerDutyFixedPermille[CHG_CHANNEL_COUNT] = {0u, 0u};
 
 /* [EN] Manual test mode state (user order 2026-09-23, protocol v1.2
  *      param 19). Requested is written by the ESP link task; Active is
@@ -291,7 +291,7 @@ static volatile uint32_t UINT32_T__G__ChargerDutyFixedPermille[2] = {0u, 0u};
 static volatile bool BOOL__G__ChargerManualModeRequested = false;
 static volatile bool BOOL__G__ChargerManualModeActive = false;
 static volatile uint32_t UINT32_T__G__ManualLastLinkTick = 0u;
-static volatile bool BOOL__G__ChargerManualRearmRequest[2] = {false, false};
+static volatile bool BOOL__G__ChargerManualRearmRequest[CHG_CHANNEL_COUNT] = {false, false};
 
 static bool BOOL__G__ChargerInitialized;
 static bool BOOL__G__RelayOpen;
@@ -390,7 +390,7 @@ static void func__Charger_SafeIdle(void)
     UINT32_T__G__RelaySettleDeadline = 0u;
     UINT8_T__G__RetryChannel = CHG_NO_CHANNEL;
 
-    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
     {
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyBeforeTripPermille = 0u;
@@ -430,7 +430,7 @@ static void func__Charger_FinalDisconnect(void)
     BOOL__G__RelayOpen = true;
     UINT32_T__G__RelaySettleDeadline = 0u;
 
-    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
     {
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
         func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
@@ -459,7 +459,7 @@ static void func__Charger_FinalDisconnectIdle(void)
     /* [EN] BOOL__G__RelayOpen intentionally NOT cleared: the final fault
        stays latched. / [FA] قفل خطا دست‌نخورده می‌ماند. */
 
-    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
     {
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
         func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
@@ -472,7 +472,7 @@ static bool func__Charger_IsChannelInstalled(uint8_t uint8_t__channelIndex)
 {
     uint32_t uint32_t__channelMask;
 
-    if (uint8_t__channelIndex >= 2u)
+    if (uint8_t__channelIndex >= CHG_CHANNEL_COUNT)
     {
         return false;
     }
@@ -614,7 +614,7 @@ static void func__Charger_ApplyDuty(uint8_t uint8_t__channelIndex,
     uint16_t uint16_t__maxDuty;
     uint16_t uint16_t__clampedDuty;
 
-    if (uint8_t__channelIndex >= 2u)
+    if (uint8_t__channelIndex >= CHG_CHANNEL_COUNT)
     {
         return;
     }
@@ -672,7 +672,7 @@ static void func__Charger_ApplyDuty(uint8_t uint8_t__channelIndex,
 
 static void func__Charger_StopOneChannel(uint8_t uint8_t__channelIndex)
 {
-    if (uint8_t__channelIndex >= 2u)
+    if (uint8_t__channelIndex >= CHG_CHANNEL_COUNT)
     {
         return;
     }
@@ -708,7 +708,7 @@ static void func__Charger_ResetChannelToOff(uint8_t uint8_t__channelIndex)
 {
     charger_channel_state_t *charger_channel_state_t__channel;
 
-    if (uint8_t__channelIndex >= 2u)
+    if (uint8_t__channelIndex >= CHG_CHANNEL_COUNT)
     {
         return;
     }
@@ -730,7 +730,7 @@ static void func__Charger_ResetChannelToOff(uint8_t uint8_t__channelIndex)
 
 static void func__Charger_LatchFinalFault(uint8_t uint8_t__channelIndex)
 {
-    if (uint8_t__channelIndex < 2u)
+    if (uint8_t__channelIndex < CHG_CHANNEL_COUNT)
     {
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
             CHG_STATE_FINAL_FAULT;
@@ -749,7 +749,7 @@ static void func__Charger_HandleJitTrip(uint8_t uint8_t__channelIndex,
     charger_channel_state_t *charger_channel_state_t__channel;
     uint16_t uint16_t__dutyBeforeTripPermille;
 
-    if (uint8_t__channelIndex >= 2u)
+    if (uint8_t__channelIndex >= CHG_CHANNEL_COUNT)
     {
         return;
     }
@@ -859,7 +859,7 @@ static void func__Charger_ServiceRetry(uint32_t uint32_t__nowTick)
     {
         uint8_t uint8_t__waitIndex;
 
-        for (uint8_t__waitIndex = 0u; uint8_t__waitIndex < 2u; uint8_t__waitIndex++)
+        for (uint8_t__waitIndex = 0u; uint8_t__waitIndex < CHG_CHANNEL_COUNT; uint8_t__waitIndex++)
         {
             if (CHARGER_CHANNEL_T__G__State[uint8_t__waitIndex].charger_state_t__state ==
                 CHG_STATE_JIT_RETRY_WAIT)
@@ -876,7 +876,7 @@ static void func__Charger_ServiceRetry(uint32_t uint32_t__nowTick)
         return;
     }
 
-    if (uint8_t__retryChannel >= 2u)
+    if (uint8_t__retryChannel >= CHG_CHANNEL_COUNT)
     {
         UINT8_T__G__RetryChannel = CHG_NO_CHANNEL;
         return;
@@ -2028,7 +2028,7 @@ void func__Charger_Init(void)
 {
     uint8_t uint8_t__channelIndex;
 
-    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
     {
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed =
             func__Charger_IsChannelInstalled(uint8_t__channelIndex);
@@ -2110,7 +2110,7 @@ static void func__Charger_ExitManualTestMode(void)
     BOOL__G__ChargerManualModeRequested = false;
     BOOL__G__ChargerManualModeActive = false;
 
-    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
     {
         charger_channel_state_t__channel =
             &CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex];
@@ -2237,7 +2237,7 @@ static void func__Charger_CaptureDiag(const measurement_snapshot_t *measurement_
         ((measurement_snapshot_t__snap != NULL) &&
          (measurement_snapshot_t__snap->valid == true));
 
-    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
     {
         uint32_t__base =
             (uint32_t)uint8_t__channelIndex * CHG_DIAG_CHANNEL_STRIDE;
@@ -2355,10 +2355,10 @@ static void func__Charger_CaptureDiag(const measurement_snapshot_t *measurement_
        stop is long enough to call it a new charge.
    [FA] یک ردیف برای هر کانال: انباشتگر فقط زمان واقعی شارژ را می‌شمارد و
        تایمر مکث تصمیم می‌گیرد کِی یک توقف، «شارژ تازه» حساب می‌شود. */
-static uint32_t UINT32_T__G__DeadChargeMs[2]   = { 0u, 0u };
-static uint32_t UINT32_T__G__DeadLastTick[2]   = { 0u, 0u };
-static bool     BOOL__G__DeadWasCharging[2]    = { false, false };
-static uint32_t UINT32_T__G__DeadPauseTick[2]  = { 0u, 0u };
+static uint32_t UINT32_T__G__DeadChargeMs[CHG_CHANNEL_COUNT]   = { 0u, 0u };
+static uint32_t UINT32_T__G__DeadLastTick[CHG_CHANNEL_COUNT]   = { 0u, 0u };
+static bool     BOOL__G__DeadWasCharging[CHG_CHANNEL_COUNT]    = { false, false };
+static uint32_t UINT32_T__G__DeadPauseTick[CHG_CHANNEL_COUNT]  = { 0u, 0u };
 static uint32_t UINT32_T__G__DeadAbsentTick[2] = { 0u, 0u };
 static bool     BOOL__G__DeadAbsentTiming[2]   = { false, false };
 static volatile uint32_t UINT32_T__G__DeadMask = 0u;
@@ -2374,16 +2374,23 @@ typedef struct
     uint32_t uint32_t__def;
 } charger_dead_def_t;
 
-static const charger_dead_def_t CHARGER_DEAD_DEF_T__A__DeadDefs[3] =
+static const charger_dead_def_t CHARGER_DEAD_DEF_T__A__DeadDefs[7] =
 {
     {      0u, 172800000u, 86400000u },  /* 125: timeout, 24 h of 48 h max */
     {      0u,   3600000u,   600000u },  /* 126: pause that restarts it     */
-    {      0u,         1u,        0u }   /* 127: also block the output      */
+    {      0u,         1u,        0u },  /* 127: also block the output      */
+    /* [EN] v1.80 own face: the defaults reproduce the borrowed behaviour
+           exactly (beep like the imbalance latch, solid red).
+       [FA] پیش‌فرض‌ها دقیقاً رفتار قبلیِ قرض‌گرفته‌شده را بازتولید می‌کنند. */
+    {      0u,  86400000u,   600000u },  /* 128: beep period, 0 = silent    */
+    {     20u,      2000u,      120u },  /* 129: one beep length            */
+    {      0u,     10000u,        0u },  /* 130: blink period, 0 = solid    */
+    {      5u,        95u,       50u }   /* 131: blink on-share percent     */
 };
 
-static volatile uint32_t UINT32_T__G__DeadParam[3] =
+static volatile uint32_t UINT32_T__G__DeadParam[7] =
 {
-    86400000u, 600000u, 0u
+    86400000u, 600000u, 0u, 600000u, 120u, 0u, 50u
 };
 
 /**
@@ -2591,6 +2598,45 @@ bool func__Charger_SetDeadParam(uint8_t uint8_t__paramId,
     return true;
 }
 
+/**
+ * @brief  [EN] v1.80: hand the scenario-6 face shape to the UI module.
+ *         [FA] شکل چهرهٔ سناریوی ۶ را به ماژول UI می‌دهد.
+ * @param  uint32_t__beepPeriodMs [EN] out, may be NULL / دورهٔ بوق
+ * @param  uint32_t__beepLenMs [EN] out, may be NULL / طول بوق
+ * @param  uint32_t__blinkPeriodMs [EN] out, may be NULL / دورهٔ چشمک
+ * @param  uint32_t__blinkDutyPct [EN] out, may be NULL / سهم روشنی
+ */
+void func__Charger_DeadFaceShape(uint32_t *uint32_t__beepPeriodMs,
+                                 uint32_t *uint32_t__beepLenMs,
+                                 uint32_t *uint32_t__blinkPeriodMs,
+                                 uint32_t *uint32_t__blinkDutyPct)
+{
+    if (uint32_t__beepPeriodMs != NULL)
+    {
+        *uint32_t__beepPeriodMs =
+            UINT32_T__G__DeadParam[CHG_DEAD_PARAM_BEEP_PERIOD_MS -
+                                   CHG_DEAD_PARAM_FIRST_ID];
+    }
+    if (uint32_t__beepLenMs != NULL)
+    {
+        *uint32_t__beepLenMs =
+            UINT32_T__G__DeadParam[CHG_DEAD_PARAM_BEEP_LEN_MS -
+                                   CHG_DEAD_PARAM_FIRST_ID];
+    }
+    if (uint32_t__blinkPeriodMs != NULL)
+    {
+        *uint32_t__blinkPeriodMs =
+            UINT32_T__G__DeadParam[CHG_DEAD_PARAM_BLINK_PERIOD_MS -
+                                   CHG_DEAD_PARAM_FIRST_ID];
+    }
+    if (uint32_t__blinkDutyPct != NULL)
+    {
+        *uint32_t__blinkDutyPct =
+            UINT32_T__G__DeadParam[CHG_DEAD_PARAM_BLINK_DUTY_PCT -
+                                   CHG_DEAD_PARAM_FIRST_ID];
+    }
+}
+
 bool func__Charger_GetDeadParam(uint8_t uint8_t__paramId,
                                 uint32_t *uint32_t__value)
 {
@@ -2703,7 +2749,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         bool__batLostLatched =
             ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE);
 
-        for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+        for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
         {
             /* [EN] A FINAL_FAULT latch is never overwritten by the mirror
                (full-program audit 2026-09-26): bat-lost arriving AFTER the
@@ -2798,7 +2844,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
        پس باتری‌ای که از قبل وصل است با برگشت برق تقریباً بلافاصله شارژ
        می‌شود. */
     {
-        for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+        for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
         {
             bool bool__readyNow;
 
@@ -2824,7 +2870,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     }
 
     bool__anyFinalFault = false;
-    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
     {
         if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
             CHG_STATE_FINAL_FAULT)
@@ -2861,7 +2907,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
            برمی‌گرداند، پس حالت هرگز دیده نمی‌شد. BAT_LOST اینجا ممکن
            نیست (بیتش FAULT می‌آورد و گیت قبلی می‌گیرد)، فقط FINAL رد می‌شود. */
         func__Charger_SafeIdle();
-        for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+        for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
         {
             if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
                 CHG_STATE_FINAL_FAULT)
@@ -2874,7 +2920,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
     }
 
 #if MODULE_JITTER
-    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
     {
         if ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed == true) &&
             (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
@@ -2920,7 +2966,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         return;
     }
 
-    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
     {
         if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed == true)
         {
@@ -3040,7 +3086,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
  */
 bool func__Charger_IsChannelActive(uint8_t uint8_t__channelIndex)
 {
-    if (uint8_t__channelIndex >= 2u)
+    if (uint8_t__channelIndex >= CHG_CHANNEL_COUNT)
     {
         return false;
     }
@@ -3056,7 +3102,7 @@ bool func__Charger_IsAnyChannelActive(void)
 {
     uint8_t uint8_t__channelIndex;
 
-    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
     {
         if (func__Charger_IsChannelActive(uint8_t__channelIndex) == true)
         {
@@ -3086,7 +3132,7 @@ bool func__Charger_IsChargeComplete(void)
     uint8_t uint8_t__channelIndex;
     uint8_t uint8_t__relevantCount = 0u;
 
-    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < 2u; uint8_t__channelIndex++)
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
     {
         if ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__installed == true) &&
             (func__Charger_GetChannelEspEnable(uint8_t__channelIndex) != false))
@@ -3189,7 +3235,7 @@ uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex)
  */
 void func__Charger_SetChannelEspEnable(uint8_t uint8_t__channelIndex, bool bool__enable)
 {
-    if (uint8_t__channelIndex < 2u)
+    if (uint8_t__channelIndex < CHG_CHANNEL_COUNT)
     {
         BOOL__G__ChargerEspEnableCh[uint8_t__channelIndex] = bool__enable;
     }
@@ -3203,7 +3249,7 @@ void func__Charger_SetChannelEspEnable(uint8_t uint8_t__channelIndex, bool bool_
  */
 bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex)
 {
-    if (uint8_t__channelIndex < 2u)
+    if (uint8_t__channelIndex < CHG_CHANNEL_COUNT)
     {
         return BOOL__G__ChargerEspEnableCh[uint8_t__channelIndex];
     }
@@ -3449,7 +3495,18 @@ static void func__Charger_ClampProfile(void)
        [FA] نسخهٔ ۱.۲۲ به همین آبشار می‌پیوندد: مرز مرحلهٔ PID نسبت به
        ست‌پوینت ابزورب تعریف شده، پس اینجا هم دوباره گیره می‌خورد. */
     func__Charger_ClampPid();
+    /* [EN] Full-program audit 2026-10-05: every other func__Fault_* call in
+       this file is wrapped, this one and its twin in SetAlarmParam were not,
+       so MODULE_FAULT 0 produced an implicit-declaration error under the
+       -Werror gate. With the Fault module off there are no fault alarms to
+       re-clamp, so dropping the call is the correct behaviour.
+       [FA] ممیزی ۲۰۲۶-۱۰-۰۵: بقیهٔ فراخوانی‌های ‎func__Fault_*‎ این فایل گارد
+       دارند و فقط این یکی و همزادش در SetAlarmParam نداشتند، پس خاموش‌کردن
+       MODULE_FAULT زیر دروازهٔ ‎-Werror‎ خطای implicit-declaration می‌داد. با
+       ماژول خاموش، آلارم فالتی برای گیرهٔ دوباره وجود ندارد. */
+#if MODULE_FAULT
     func__Fault_OnSupervisionChange();
+#endif
 }
 
 /* [EN] Layout contract for the indexed Set/GetProfileParam below (flash
@@ -3563,7 +3620,9 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
      * [FA] همان آبشار مسیر پروفایل: اول آلارم‌های شارژر، بعد آلارم‌های
      *      فالت سوار می‌شوند (قطع زیر OV می‌ماند). */
     func__Charger_ClampAlarms();
+#if MODULE_FAULT
     func__Fault_OnSupervisionChange();
+#endif
 
     if (int32_t__savedKernelLock >= 0)
     {
@@ -3909,7 +3968,7 @@ uint32_t func__Charger_SetDutyCeilingPermille(uint8_t uint8_t__channelIndex,
         uint32_t__ceilingPermille = CHG_DUTY_MAX_PERMILLE;
     }
 
-    if (uint8_t__channelIndex < 2u)
+    if (uint8_t__channelIndex < CHG_CHANNEL_COUNT)
     {
         UINT32_T__G__ChargerDutyCeilingPermille[uint8_t__channelIndex] =
             uint32_t__ceilingPermille;
@@ -3926,7 +3985,7 @@ uint32_t func__Charger_SetDutyCeilingPermille(uint8_t uint8_t__channelIndex,
  */
 uint32_t func__Charger_GetDutyCeilingPermille(uint8_t uint8_t__channelIndex)
 {
-    if (uint8_t__channelIndex < 2u)
+    if (uint8_t__channelIndex < CHG_CHANNEL_COUNT)
     {
         return UINT32_T__G__ChargerDutyCeilingPermille[uint8_t__channelIndex];
     }
@@ -3952,7 +4011,7 @@ uint32_t func__Charger_GetDutyCeilingPermille(uint8_t uint8_t__channelIndex)
  */
 void func__Charger_SetDutyFixedEnable(uint8_t uint8_t__channelIndex, bool bool__enable)
 {
-    if (uint8_t__channelIndex < 2u)
+    if (uint8_t__channelIndex < CHG_CHANNEL_COUNT)
     {
         BOOL__G__ChargerDutyFixedEnable[uint8_t__channelIndex] = bool__enable;
     }
@@ -3966,7 +4025,7 @@ void func__Charger_SetDutyFixedEnable(uint8_t uint8_t__channelIndex, bool bool__
  */
 bool func__Charger_GetDutyFixedEnable(uint8_t uint8_t__channelIndex)
 {
-    if (uint8_t__channelIndex < 2u)
+    if (uint8_t__channelIndex < CHG_CHANNEL_COUNT)
     {
         return BOOL__G__ChargerDutyFixedEnable[uint8_t__channelIndex];
     }
@@ -3996,7 +4055,7 @@ uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
         uint32_t__dutyPermille = CHG_DUTY_MAX_PERMILLE;
     }
 
-    if (uint8_t__channelIndex < 2u)
+    if (uint8_t__channelIndex < CHG_CHANNEL_COUNT)
     {
         UINT32_T__G__ChargerDutyFixedPermille[uint8_t__channelIndex] =
             uint32_t__dutyPermille;
@@ -4023,7 +4082,7 @@ uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
  */
 uint32_t func__Charger_GetDutyFixedPermille(uint8_t uint8_t__channelIndex)
 {
-    if (uint8_t__channelIndex < 2u)
+    if (uint8_t__channelIndex < CHG_CHANNEL_COUNT)
     {
         return UINT32_T__G__ChargerDutyFixedPermille[uint8_t__channelIndex];
     }

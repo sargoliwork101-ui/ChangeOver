@@ -677,7 +677,7 @@ static bool BOOL__G__UiInputOverVoltage = false;
  * @brief  [EN] CMSIS-RTOS2 tick at which the current input overvoltage display started.
  *         [FA] تیک RTOS در زمان شروع نمایش خطای اضافه‌ولتاژ ورودی.
  */
-static uint32_t TICKTYPE_T__G__UiInputOverVoltageStartTick = 0;
+static uint32_t UINT32_T__G__UiInputOverVoltageStartTick = 0;
 
 /* ==================== BatteryRun critical beep state / وضعیت بوق بحرانی BatteryRun ==================== */
 
@@ -697,7 +697,7 @@ static bool BOOL__G__UiBatteryCriticalBeepCompleted = false;
  * @brief  [EN] RTOS tick at which the critical BatteryRun beep started.
  *         [FA] تیک RTOS در زمان شروع بوق بحرانی BatteryRun.
  */
-static uint32_t TICKTYPE_T__G__UiBatteryCriticalBeepStartTick = 0;
+static uint32_t UINT32_T__G__UiBatteryCriticalBeepStartTick = 0;
 
 /* ==================== BatteryRun green blink state / وضعیت چشمک سبز BatteryRun ==================== */
 
@@ -717,7 +717,7 @@ static bool BOOL__G__UiBatteryGreenBlinkInitialized = false;
  * @brief  [EN] RTOS tick at which the current BatteryRun green phase started.
  *         [FA] تیک RTOS در زمان شروع فاز فعلی LED سبز BatteryRun.
  */
-static uint32_t TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = 0;
+static uint32_t UINT32_T__G__UiBatteryGreenPhaseStartTick = 0;
 
 /**
  * @brief  [EN] Stored BatteryRun green ON duration used to restart phase timing when percentage changes.
@@ -796,7 +796,7 @@ static bool BOOL__G__UiChargingYellowBlinkInitialized = false;
  * @brief  [EN] RTOS tick at which the current Charging yellow phase started.
  *         [FA] تیک RTOS در زمان شروع فاز فعلی LED زرد شارژ.
  */
-static uint32_t TICK_T__G__UiChargingYellowPhaseStartTick = 0u;
+static uint32_t UINT32_T__G__UiChargingYellowPhaseStartTick = 0u;
 
 /**
  * @brief  [EN] Stored Charging yellow ON duration.
@@ -820,7 +820,7 @@ static void func__Ui_ResetBatteryCriticalBeep(void)
 {
     BOOL__G__UiBatteryCriticalBeepActive = false;
     BOOL__G__UiBatteryCriticalBeepCompleted = false;
-    TICKTYPE_T__G__UiBatteryCriticalBeepStartTick = 0;
+    UINT32_T__G__UiBatteryCriticalBeepStartTick = 0;
 }
 
 /* ==================== BatteryRun green blink reset / بازنشانی چشمک سبز BatteryRun ==================== */
@@ -833,7 +833,7 @@ static void func__Ui_ResetBatteryRunGreenBlink(void)
 {
     BOOL__G__UiBatteryGreenOn = false;
     BOOL__G__UiBatteryGreenBlinkInitialized = false;
-    TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = 0;
+    UINT32_T__G__UiBatteryGreenPhaseStartTick = 0;
     UINT32_T__G__UiBatteryGreenOnMs = 0u;
     UINT32_T__G__UiBatteryGreenOffMs = 0u;
 }
@@ -1039,7 +1039,7 @@ static void func__Ui_ResetChargingYellowBlink(void)
 {
     BOOL__G__UiChargingYellowOn = false;
     BOOL__G__UiChargingYellowBlinkInitialized = false;
-    TICK_T__G__UiChargingYellowPhaseStartTick = 0u;
+    UINT32_T__G__UiChargingYellowPhaseStartTick = 0u;
     UINT32_T__G__UiChargingYellowOnMs = 0u;
     UINT32_T__G__UiChargingYellowOffMs = 0u;
 }
@@ -1052,16 +1052,16 @@ static void func__Ui_ResetChargingYellowBlink(void)
  */
 static void func__Ui_UpdateChargingYellowBlink(uint32_t uint32_t__yellowOnMs, uint32_t uint32_t__yellowOffMs)
 {
-    uint32_t ticktype__nowTick;
+    uint32_t uint32_t__nowTick;
     uint32_t uint32_t__currentPhaseMs;
 
-    ticktype__nowTick = osKernelGetTickCount();
+    uint32_t__nowTick = osKernelGetTickCount();
 
     if (BOOL__G__UiChargingYellowBlinkInitialized == false)
     {
         BOOL__G__UiChargingYellowBlinkInitialized = true;
         BOOL__G__UiChargingYellowOn = true;
-        TICK_T__G__UiChargingYellowPhaseStartTick = ticktype__nowTick;
+        UINT32_T__G__UiChargingYellowPhaseStartTick = uint32_t__nowTick;
         UINT32_T__G__UiChargingYellowOnMs = uint32_t__yellowOnMs;
         UINT32_T__G__UiChargingYellowOffMs = uint32_t__yellowOffMs;
     }
@@ -1076,19 +1076,19 @@ static void func__Ui_UpdateChargingYellowBlink(uint32_t uint32_t__yellowOnMs, ui
     }
     else
     {
-        uint32_t__currentPhaseMs = func__Rtos_TicksToMilliseconds(ticktype__nowTick - TICK_T__G__UiChargingYellowPhaseStartTick);
+        uint32_t__currentPhaseMs = func__Rtos_TicksToMilliseconds(uint32_t__nowTick - UINT32_T__G__UiChargingYellowPhaseStartTick);
 
         if ((BOOL__G__UiChargingYellowOn == true) &&
             (uint32_t__currentPhaseMs >= uint32_t__yellowOnMs))
         {
             BOOL__G__UiChargingYellowOn = false;
-            TICK_T__G__UiChargingYellowPhaseStartTick = ticktype__nowTick;
+            UINT32_T__G__UiChargingYellowPhaseStartTick = uint32_t__nowTick;
         }
         else if ((BOOL__G__UiChargingYellowOn == false) &&
                  (uint32_t__currentPhaseMs >= uint32_t__yellowOffMs))
         {
             BOOL__G__UiChargingYellowOn = true;
-            TICK_T__G__UiChargingYellowPhaseStartTick = ticktype__nowTick;
+            UINT32_T__G__UiChargingYellowPhaseStartTick = uint32_t__nowTick;
         }
         else
         {
@@ -1110,16 +1110,16 @@ static void func__Ui_UpdateChargingYellowBlink(uint32_t uint32_t__yellowOnMs, ui
  */
 static void func__Ui_UpdateBatteryRunGreenBlink(uint32_t uint32_t__greenOnMs, uint32_t uint32_t__greenOffMs)
 {
-    uint32_t ticktype__nowTick;
+    uint32_t uint32_t__nowTick;
     uint32_t uint32_t__currentPhaseMs;
 
-    ticktype__nowTick = osKernelGetTickCount();
+    uint32_t__nowTick = osKernelGetTickCount();
 
     if (BOOL__G__UiBatteryGreenBlinkInitialized == false)
     {
         BOOL__G__UiBatteryGreenBlinkInitialized = true;
         BOOL__G__UiBatteryGreenOn = true;
-        TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = ticktype__nowTick;
+        UINT32_T__G__UiBatteryGreenPhaseStartTick = uint32_t__nowTick;
         UINT32_T__G__UiBatteryGreenOnMs = uint32_t__greenOnMs;
         UINT32_T__G__UiBatteryGreenOffMs = uint32_t__greenOffMs;
     }
@@ -1134,19 +1134,19 @@ static void func__Ui_UpdateBatteryRunGreenBlink(uint32_t uint32_t__greenOnMs, ui
     }
     else
     {
-        uint32_t__currentPhaseMs = func__Rtos_TicksToMilliseconds(ticktype__nowTick - TICKTYPE_T__G__UiBatteryGreenPhaseStartTick);
+        uint32_t__currentPhaseMs = func__Rtos_TicksToMilliseconds(uint32_t__nowTick - UINT32_T__G__UiBatteryGreenPhaseStartTick);
 
         if ((BOOL__G__UiBatteryGreenOn == true) &&
             (uint32_t__currentPhaseMs >= uint32_t__greenOnMs))
         {
             BOOL__G__UiBatteryGreenOn = false;
-            TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = ticktype__nowTick;
+            UINT32_T__G__UiBatteryGreenPhaseStartTick = uint32_t__nowTick;
         }
         else if ((BOOL__G__UiBatteryGreenOn == false) &&
                  (uint32_t__currentPhaseMs >= uint32_t__greenOffMs))
         {
             BOOL__G__UiBatteryGreenOn = true;
-            TICKTYPE_T__G__UiBatteryGreenPhaseStartTick = ticktype__nowTick;
+            UINT32_T__G__UiBatteryGreenPhaseStartTick = uint32_t__nowTick;
         }
         else
         {
@@ -1182,7 +1182,7 @@ static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
         if (uint32_t__inputVoltageMv > UI_ALARM_T__G__Alarm.uint32_t__ovThreshMv)
         {
             BOOL__G__UiInputOverVoltage = true;
-            TICKTYPE_T__G__UiInputOverVoltageStartTick = osKernelGetTickCount();
+            UINT32_T__G__UiInputOverVoltageStartTick = osKernelGetTickCount();
         }
     }
     else if (uint32_t__inputVoltageMv <=
@@ -1228,7 +1228,7 @@ static void func__Ui_UpdateInputState(uint32_t uint32_t__inputVoltageMv)
  */
 static void func__Ui_ScenarioInputOverVoltage_Tick(void)
 {
-    uint32_t ticktype__nowTick;
+    uint32_t uint32_t__nowTick;
     uint32_t uint32_t__elapsedMs;
     uint32_t uint32_t__phaseMs;
     uint32_t uint32_t__redOnMs;
@@ -1239,8 +1239,8 @@ static void func__Ui_ScenarioInputOverVoltage_Tick(void)
     func__Ui_ResetBatteryRunGreenBlink();
     func__Ui_ResetChargingYellowBlink();
 
-    ticktype__nowTick = osKernelGetTickCount();
-    uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(ticktype__nowTick - TICKTYPE_T__G__UiInputOverVoltageStartTick);
+    uint32_t__nowTick = osKernelGetTickCount();
+    uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(uint32_t__nowTick - UINT32_T__G__UiInputOverVoltageStartTick);
     uint32_t__phaseMs = uint32_t__elapsedMs % UI_ALARM_T__G__Alarm.uint32_t__ovLedPeriodMs;
 
     /* [EN] Flash diet 2026-09-27: u32 is exact - period <= 10000 x duty
@@ -1423,27 +1423,47 @@ void func__Ui_ScenarioImbalance_Tick(void)
  */
 void func__Ui_ScenarioDeadBattery_Tick(void)
 {
-    uint32_t uint32_t__beepPeriodMs = 0u;
+    uint32_t uint32_t__beepPeriodMs  = 0u;
+    uint32_t uint32_t__beepLenMs     = 0u;
+    uint32_t uint32_t__blinkPeriodMs = 0u;
+    uint32_t uint32_t__blinkDutyPct  = 0u;
 
     func__Ui_ResetBatteryCriticalBeep();
     func__Ui_ResetBatteryRunGreenBlink();
     func__Ui_ResetChargingYellowBlink();
 
+    /* [EN] v1.80 (user order: scenario 6 gets its own four boxes): the face
+           is drawn from the scenario's OWN numbers now - no more borrowing
+           the imbalance latch beep, and the red may blink if the installer
+           asks for it (period 0 keeps the historical solid red).
+       [FA] چهرهٔ سناریو از عددهای خودش ساخته می‌شود؛ دیگر بوق قفل عدم‌توازن
+           قرض گرفته نمی‌شود و قرمز می‌تواند چشمک بزند (دورهٔ ۰ = ثابت). */
     func__green(false);
     func__yellow(false);
-    func__red(true);
 
-#if MODULE_IMBALANCE
-    (void)func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_PERIOD_MS, &uint32_t__beepPeriodMs);
-#endif
+    func__Charger_DeadFaceShape(&uint32_t__beepPeriodMs,
+                                &uint32_t__beepLenMs,
+                                &uint32_t__blinkPeriodMs,
+                                &uint32_t__blinkDutyPct);
+
+    if (uint32_t__blinkPeriodMs == 0u)
+    {
+        func__red(true);
+    }
+    else
+    {
+        uint32_t uint32_t__onMs =
+            (uint32_t__blinkPeriodMs * uint32_t__blinkDutyPct) / UI_PERCENT_SCALE;
+        uint32_t uint32_t__elapsedMs =
+            func__Rtos_TicksToMilliseconds(osKernelGetTickCount());
+        uint32_t uint32_t__phaseMs =
+            uint32_t__elapsedMs % uint32_t__blinkPeriodMs;
+
+        func__red(uint32_t__phaseMs < uint32_t__onMs);
+    }
+
     if (uint32_t__beepPeriodMs != 0u)
     {
-        uint32_t uint32_t__beepLenMs = 0u;
-
-#if MODULE_IMBALANCE
-        uint32_t__beepLenMs = IMBAL_DEF_BEEP_LEN_MS;
-        (void)func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_LEN_MS, &uint32_t__beepLenMs);
-#endif
         (void)func__Ui_Buzzer_Gated(
             uint32_t__beepPeriodMs,
             func__Ui_BeepDutyPercent(uint32_t__beepPeriodMs, uint32_t__beepLenMs, 1u, 0u),
@@ -1584,7 +1604,7 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
     uint32_t uint32_t__periodPerPercent;
     uint32_t uint32_t__greenOffMs;
     uint32_t uint32_t__greenOnMs;
-    uint32_t ticktype__nowTick;
+    uint32_t uint32_t__nowTick;
     uint32_t uint32_t__criticalElapsedMs;
 
     func__Ui_ResetChargingYellowBlink();
@@ -1617,11 +1637,11 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
         if (BOOL__G__UiBatteryCriticalBeepActive == false)
         {
             BOOL__G__UiBatteryCriticalBeepActive = true;
-            TICKTYPE_T__G__UiBatteryCriticalBeepStartTick = osKernelGetTickCount();
+            UINT32_T__G__UiBatteryCriticalBeepStartTick = osKernelGetTickCount();
         }
 
-        ticktype__nowTick = osKernelGetTickCount();
-        uint32_t__criticalElapsedMs = func__Rtos_TicksToMilliseconds(ticktype__nowTick - TICKTYPE_T__G__UiBatteryCriticalBeepStartTick);
+        uint32_t__nowTick = osKernelGetTickCount();
+        uint32_t__criticalElapsedMs = func__Rtos_TicksToMilliseconds(uint32_t__nowTick - UINT32_T__G__UiBatteryCriticalBeepStartTick);
 
         if (uint32_t__criticalElapsedMs >= UI_ALARM_T__G__Alarm.uint32_t__runCritDurMs)
         {
@@ -1736,7 +1756,7 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
         func__all_off();
         BOOL__G__UiInputPresent = false;
         BOOL__G__UiInputOverVoltage = false;
-        TICKTYPE_T__G__UiInputOverVoltageStartTick = 0u;
+        UINT32_T__G__UiInputOverVoltageStartTick = 0u;
         func__Ui_ResetBatteryCriticalBeep();
         func__Ui_ResetBatteryRunGreenBlink();
         func__Ui_ResetChargingYellowBlink();
@@ -1753,7 +1773,7 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
         func__all_off();
         BOOL__G__UiInputPresent = false;
         BOOL__G__UiInputOverVoltage = false;
-        TICKTYPE_T__G__UiInputOverVoltageStartTick = 0u;
+        UINT32_T__G__UiInputOverVoltageStartTick = 0u;
         func__Ui_ResetBatteryCriticalBeep();
         func__Ui_ResetBatteryRunGreenBlink();
         func__Ui_ResetChargingYellowBlink();
@@ -1814,13 +1834,13 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
 #endif
 
 #if MODULE_IMBALANCE
-    /* [EN] Imbalance latch, priority 3 (after overvoltage, after
-          battery-lost, before every normal scenario): while the verdict
+    /* [EN] Imbalance latch, priority 4 (after overvoltage, battery-lost
+          and the dead-battery verdict, before every normal scenario): while the verdict
           holds, the condemned-battery face (solid red + periodic one-short
           beep, ids 115/116) is the ONLY face shown. It ends only with the
           automatic reset on battery replacement.
-       [FA] قفل عدم‌توازن با اولویت سوم؛ چهرهٔ «باتری محکوم» تنها چهره است
-          تا ریست خودکار هنگام تعویض باتری. */
+       [FA] قفل عدم‌توازن با اولویت چهارم (بعد از حکم باتری خراب)؛ چهرهٔ
+          «باتری محکوم» تنها چهره است تا ریست خودکار هنگام تعویض باتری. */
     {
         imbalance_outputs_t imbalance_outputs_t__imbalance;
 
@@ -1926,7 +1946,7 @@ void func__Ui_Init(void)
     func__all_off();
     BOOL__G__UiInputPresent = false;
     BOOL__G__UiInputOverVoltage = false;
-    TICKTYPE_T__G__UiInputOverVoltageStartTick = 0u;
+    UINT32_T__G__UiInputOverVoltageStartTick = 0u;
     func__Ui_ResetBatteryCriticalBeep();
     func__Ui_ResetBatteryRunGreenBlink();
     func__Ui_ResetChargingYellowBlink();
