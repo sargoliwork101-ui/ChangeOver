@@ -146,16 +146,32 @@ static uint32_t func__Imbalance_ParamClamp(uint8_t uint8_t__paramId, uint32_t ui
     return uint32_t__ret;
 }
 
-static uint32_t func__Imbalance_ReadParam(uint8_t uint8_t__paramId)
-{
-    return UINT32_T__G__A__Param[IMBAL_PARAM_INDEX(uint8_t__paramId)];
-}
+/* [EN] Audit fix 2026-10-06: seed the compiled defaults exactly once, on the
+ *      first touch of the table. func__EspLink_NvmInit() replays the stored
+ *      panel values before the scheduler starts, while func__Imbalance_Init()
+ *      runs later inside the control thread; the old unconditional default
+ *      loop therefore overwrote every restored scenario-5 setting on each
+ *      power-up. Seeding once keeps the documented rule "a module Init never
+ *      undoes a panel/flash value" and changes nothing for a fresh board.
+ * [FA] اصلاح ممیزی ۲۰۲۶-۱۰-۰۶: پیش‌فرض‌های کامپایل فقط یک‌بار و در نخستین
+ *      دسترسی به جدول نوشته می‌شوند. ‎func__EspLink_NvmInit()‎ مقادیر ذخیره‌شدهٔ
+ *      پنل را پیش از شروع ‎scheduler‎ بازپخش می‌کند، ولی ‎func__Imbalance_Init()‎
+ *      بعداً داخل نخ کنترل اجرا می‌شود؛ پس حلقهٔ پیش‌فرضِ بی‌قیدِ قبلی هر بار
+ *      با روشن‌شدن، تنظیم‌های بازیابی‌شدهٔ سناریو ۵ را پاک می‌کرد. یک‌بار
+ *      مقداردهی، قانون مستند «‎Init‎ ماژول هیچ‌وقت مقدار پنل/فلش را برنمی‌گرداند»
+ *      را حفظ می‌کند و برای برد نو هیچ تغییری ندارد. */
+static bool BOOL__G__ParamsSeeded;
 
-/* ==================== Public API / API عمومی ==================== */
-
-void func__Imbalance_Init(void)
+static void func__Imbalance_SeedDefaultsOnce(void)
 {
     uint8_t uint8_t__id;
+
+    if (BOOL__G__ParamsSeeded != false)
+    {
+        return;
+    }
+
+    BOOL__G__ParamsSeeded = true;
 
     for (uint8_t__id = IMBAL_PARAM_FIRST_ID; uint8_t__id <= IMBAL_PARAM_LAST_ID2; uint8_t__id++)
     {
@@ -165,6 +181,23 @@ void func__Imbalance_Init(void)
                 func__Imbalance_ParamDefault(uint8_t__id);
         }
     }
+}
+
+static uint32_t func__Imbalance_ReadParam(uint8_t uint8_t__paramId)
+{
+    func__Imbalance_SeedDefaultsOnce();
+    return UINT32_T__G__A__Param[IMBAL_PARAM_INDEX(uint8_t__paramId)];
+}
+
+/* ==================== Public API / API عمومی ==================== */
+
+void func__Imbalance_Init(void)
+{
+    /* [EN] Defaults are seeded once (see func__Imbalance_SeedDefaultsOnce);
+     *      a value already applied by the panel or the NVM replay survives.
+     * [FA] پیش‌فرض‌ها یک‌بار نوشته می‌شوند (به ‎func__Imbalance_SeedDefaultsOnce‎
+     *      نگاه کنید)؛ مقداری که پنل یا بازپخش ‎NVM‎ اعمال کرده باقی می‌ماند. */
+    func__Imbalance_SeedDefaultsOnce();
 
     /* [EN] Persisted fields are NOT reset here: EspLink NVM replay may run
      *      before or after Init, and both orders must land on the stored
@@ -530,6 +563,10 @@ bool func__Imbalance_SetParam(uint8_t uint8_t__paramId,
 {
     bool bool__ret = false;
 
+    /* [EN] Make sure defaults exist before any panel/NVM write or read.
+     * [FA] پیش از هر نوشتن/خواندن پنل یا ‎NVM‎، وجود پیش‌فرض‌ها تضمین می‌شود. */
+    func__Imbalance_SeedDefaultsOnce();
+
     if (IMBAL_PARAM_OWNS(uint8_t__paramId))
     {
         uint32_t uint32_t__clamped = func__Imbalance_ParamClamp(uint8_t__paramId, uint32_t__value);
@@ -574,6 +611,10 @@ bool func__Imbalance_GetParam(uint8_t uint8_t__paramId,
                               uint32_t *uint32_t__value)
 {
     bool bool__ret = false;
+
+    /* [EN] Make sure defaults exist before any panel/NVM write or read.
+     * [FA] پیش از هر نوشتن/خواندن پنل یا ‎NVM‎، وجود پیش‌فرض‌ها تضمین می‌شود. */
+    func__Imbalance_SeedDefaultsOnce();
 
     if (IMBAL_PARAM_OWNS(uint8_t__paramId))
     {

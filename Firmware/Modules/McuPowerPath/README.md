@@ -124,3 +124,17 @@ mcu_power_path.c
   ├── rtos_time.h → func__Rtos_TicksToMilliseconds(elapsed_ticks) + osKernelGetTickCount()
   └── cmsis_os2.h → osKernelGetTickCount()
 ```
+
+## تستر
+
+`Tester/` — تست هاست مسیر تغذیهٔ MCU با ساعت و GPIO بدلی (۴۹ بررسی). اجرا با
+`Tester/run_host_test_mcu_power_path.sh`؛ داخل `tools/check_firmware_syntax.sh` هم اجرا
+می‌شود. توضیح کامل در `Tester/README.md`.
+
+## ماشین حالت
+
+`McuPowerPath_State_Machine.xlsx` — حالت‌ها و گذارهای همین ماژول، رنگی و
+راست‌به‌چپ با فونت وزیرمتن. از برگهٔ «ماشین حالت» در فایل اعتبارسنجی همین
+پوشه هم به آن لینک هست و خودش به نمای سیستمی
+(`Documentation/System_State_Machine.xlsx`) برمی‌گردد. بازتولید:
+`python3 tools/make_module_state_machines.py`.
