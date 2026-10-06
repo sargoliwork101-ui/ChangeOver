@@ -28,6 +28,21 @@ const path = require("path");
 /* ---------- extract the real panel HTML from the panel module ---------- */
 const panelPath = path.join(__dirname, "..", "esp_link_panel", "plink_panel.h");
 const panelSrc = fs.readFileSync(panelPath, "utf8");
+/* [EN] Serve the real embedded Vazirmatn CSS in the preview too. Returning
+ *      system fonts made a laptop preview look different from the ESP.
+ *      [FA] پیش‌نمایش هم باید همان CSS وزیرمتن جاسازی‌شده را بدهد؛ فونت سیستم
+ *      باعث می‌شد ظاهر لپ‌تاپ با خود ESP فرق کند. */
+const fontPath = path.join(__dirname, "..", "esp_link_panel", "plink_font.h");
+const fontSrc = fs.readFileSync(fontPath, "utf8");
+const fontStart = fontSrc.indexOf("static const char ESP_PANEL_FONT_CSS");
+const fontEq = fontSrc.indexOf("=", fontStart) + 1;
+const fontEnd = fontSrc.indexOf(";\n", fontEq);
+const fontLiterals = fontSrc.slice(fontEq, fontEnd).match(/"(?:\\.|[^"\\])*"/g) || [];
+const FONT_CSS = fontLiterals.map((x) => JSON.parse(x)).join("");
+if (!FONT_CSS) {
+    console.error("panel preview: embedded Vazirmatn CSS not found in " + fontPath);
+    process.exit(1);
+}
 
 /* [EN] v1.28: the telemetry width is DERIVED from the firmware header, never
  *      retyped here. This file used to hardcode 20 while the link carried 25
@@ -131,7 +146,7 @@ const HARD_MAX = Number(
         که هر دو را دارد. */
 const inject = `<script>(function(){
 var b=document.createElement('div');
-b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99;background:#3a2b06;color:#ffd970;font:13px Vazirmatn,sans-serif;padding:6px 12px;text-align:center;border-bottom:1px solid #6b5206;direction:rtl';
+b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99;background:#3a2b06;color:#ffd970;font:13px Vazirmatn;padding:6px 12px;text-align:center;border-bottom:1px solid #6b5206;direction:rtl';
 b.textContent='پیش‌نمایش آفلاین — شبیه‌ساز STM32 + چرخه نمایشی سناریوها (شارژ/اضافه‌ولتاژ/قطع‌باتری/دشارژ). روی هر عدد آبی‌رنگ روی نمودار کلیک کنید تا همان‌جا ویرایش شود.';
 document.body.appendChild(b);document.body.style.paddingTop='32px';
 var t0=document.querySelector('nav button[data-t="0"]');if(t0)t0.click();
@@ -553,7 +568,7 @@ const server = http.createServer((req, res) => {
         return send(200, "text/html; charset=utf-8", page);
     }
     if (req.method === "GET" && url.pathname === "/f.css") {
-        return send(200, "text/css", "/* preview: system fonts */\n");
+        return send(200, "text/css; charset=utf-8", FONT_CSS);
     }
     if (req.method === "GET" && url.pathname === "/t") {
         return send(200, "application/json", JSON.stringify(SNAP || telemetry()));

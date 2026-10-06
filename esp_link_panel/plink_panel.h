@@ -19,8 +19,8 @@ static const char ESP_PANEL_HTML[] PROGMEM = R"HTML(<!doctype html><html lang="f
 :root{--bg:#0b0f18;--cd:#161d2b;--in:#080b12;--rs:#232d40;--ln:#38455e;--tx:#e9eef6;--mu:#96a1b8;--ac:#63a2ff;--ac2:#9ac8ff;--ok:#35d6a0;--wa:#f7c13c;--er:#ff6873;--ring:rgba(99,162,255,.38);--sh:0 10px 30px rgba(0,0,0,.45)}
 *{box-sizing:border-box;margin:0}
 ::selection{background:rgba(99,162,255,.38)}
-body{background:radial-gradient(1200px 300px at 50% -80px,rgba(99,162,255,.09),transparent),var(--bg);color:var(--tx);font:clamp(13px,.28vw + 12.1px,15.3px)/1.65 Vazirmatn,Tahoma,sans-serif;max-width:1480px;margin:auto;padding:0 14px 28px;scrollbar-color:#3a4767 transparent}
-button,input,select,textarea{font:inherit;color:inherit}
+body{background:radial-gradient(1200px 300px at 50% -80px,rgba(99,162,255,.09),transparent),var(--bg);color:var(--tx);font:clamp(13px,.28vw + 12.1px,15.3px)/1.65 Vazirmatn;max-width:1480px;margin:auto;padding:0 14px 28px;scrollbar-color:#3a4767 transparent}
+button,input,select,textarea,code,pre{font-family:Vazirmatn;font-size:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:8px}
 .n{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums}
@@ -163,7 +163,7 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .tw{overflow:auto;max-height:420px;margin:6px 0 10px;border:1px solid var(--ln);border-radius:12px}.bt2{font-size:12px;direction:ltr;white-space:nowrap}.bt2 th{position:sticky;top:0;background:var(--rs);color:var(--mu);font-weight:600;text-align:center;padding:6px 8px}.bt2 td{padding:5px 8px;text-align:center}
 .bt3{width:auto;font-size:13px}.bt3 th{color:var(--mu);font-weight:600;text-align:center;padding:5px 8px;white-space:nowrap}.bt3 td{padding:5px 8px;text-align:center}.bt3 input[type=number]{padding:6px 8px}
 .bsum{font-size:12px;direction:ltr;text-align:left;line-height:1.9;margin-bottom:8px}.okc{color:var(--ok)}.erc{color:var(--er)}
-.bxw textarea{width:100%;height:150px;background:var(--in);color:#a7b0c4;border:1px solid var(--ln);border-radius:12px;padding:9px;font:11px/1.5 monospace;direction:ltr;margin-top:6px}
+.bxw textarea{width:100%;height:150px;background:var(--in);color:#a7b0c4;border:1px solid var(--ln);border-radius:12px;padding:9px;font:11px/1.5 Vazirmatn;direction:ltr;margin-top:6px}
 .sx{font-size:12.5px;line-height:1.95;color:#aab3c5;margin:2px 0 6px;padding:0 2px}.sx b{color:var(--tx);font-weight:700}
 .ds{font-size:13px;line-height:2;color:#c9d0df;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:11px 15px}.ds ul{padding-right:18px}.ds b{color:var(--tx)}
 .qs{display:grid;grid-template-columns:1fr 1fr;gap:12px}.q{background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:12px}.q input[type=number]{width:92px}.q .cut{background:linear-gradient(180deg,#e5484d,#c62f35)}.q .run{background:linear-gradient(180deg,#2fbf8f,#1e9e73);color:#04120c}
@@ -208,6 +208,27 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .kc{font-size:12px;margin-top:6px}.cr{margin-top:10px;flex-wrap:wrap}.cr .cb{flex:1 1 120px}.cr input[type=number]{width:124px}
 .off2{background:linear-gradient(180deg,#a02b33,#7c1f27);white-space:nowrap}
 @media(max-width:1000px){.ch,.qs{grid-template-columns:1fr}}
+/* [EN] v1.84 laptop viewport pass: 760px-wide browsers need one charger
+   column, shorter sticky bars and controls that wrap before they overflow.
+   [FA] ممیزی نمایشگر لپ‌تاپ: در عرض ۷۶۰ پیکسل کارت شارژر تک‌ستونه، نوارهای
+   چسبان کوتاه‌تر و کنترل‌ها پیش از بیرون‌زدن به سطر بعد می‌روند. */
+@media(max-width:800px){
+ body{padding:0 10px 24px;font-size:14px}
+ header{margin:0 -10px 10px;padding-left:10px;padding-right:10px}
+ .bs{display:none}
+ nav{top:var(--t-nav,52px);margin-bottom:10px}
+ nav button{font-size:13px;padding:8px 4px}
+ .cd{padding:12px;border-radius:13px;margin-bottom:10px}
+ .big b,.big .biglabel{font-size:22px}
+ .bctl{gap:6px;padding:8px;margin-top:8px}
+ .modepick .sw{min-width:64px;padding:6px 8px}
+ .dutyctl{flex:1 1 170px}
+ .sbt{top:var(--t-sub,104px);gap:3px}
+ .sbt button{font-size:12px;padding:8px 3px}
+ .srv{min-width:650px;font-size:12px}
+ .srv col.c5{width:170px}
+ .evpop{max-width:calc(100vw - 16px)}
+}
 @media(max-width:640px){.sbt button{font-size:12px;padding:8px 2px}.cb{font-size:12px;padding:9px 8px}.cb span{white-space:nowrap}.ch{grid-template-columns:1fr}.bg2{grid-template-columns:1fr}.ms{grid-template-columns:repeat(3,1fr)}header{margin:0 -8px 10px;padding-left:8px;padding-right:8px}body{padding:0 8px 24px}}
 /* [EN] v1.57 (user order): the scenario bar sticks right under the top bar
    and stays visible while scrolling. [FA] نوار سناریوها زیر نوار بالایی
@@ -344,7 +365,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 7e12cba</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build eff4be9</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -890,6 +911,8 @@ function send(id,v){const a=$('a'+id);if(a)a.textContent='…';fetch('/s?id='+id
    مقدار برگشتی را با مقدار فرستاده‌شده مقایسه می‌کند تا بگوید «نشست» یا
    «برد گیره زد». */
 var PEND={};
+const PEND_KEY='changeover-panel-pending-v1';
+function pendSave(){try{localStorage.setItem(PEND_KEY,JSON.stringify(PEND));}catch(e){}}
 function pbar(){const n=Object.keys(PEND).length,b=$('sbar');if(!b)return;
  b.className=n?'on':'';$('sbn').textContent=n;
  document.body.style.paddingBottom=n?'52px':'';}
@@ -898,13 +921,27 @@ function pbar(){const n=Object.keys(PEND).length,b=$('sbar');if(!b)return;
    [‎FA] q117/q127‎ واقعاً checkbox هستند نه ‎q-input‎؛ اما آن‌ها هم عضو همین صف
    معلق‌اند و باید همان نشانهٔ زرد را بگیرند. */
 function pctrl(id){const e=$('q'+id);if(e)return e;return id===117?$('ib117'):id===127?$('db127'):null;}
+function pendRestore(){
+ try{
+  const saved=JSON.parse(localStorage.getItem(PEND_KEY)||'{}');
+  if(!saved||typeof saved!=='object'||Array.isArray(saved))return;
+  for(const id of Object.keys(saved)){
+   if(!/^\\d+$/.test(id)||!Number.isFinite(+saved[id]))continue;
+   const n=+id;if(n<0||n>131)continue;PEND[n]=saved[id];
+   const e=pctrl(n);if(e){e.classList.add('pq');if(e.type==='checkbox')e.checked=!!saved[id];else e.value=saved[id];}
+   const a=$('a'+n);if(a)a.textContent='در صف';
+  }
+ }catch(e){}
+ pbar();
+}
 function qput(id,v){PEND[id]=v;const e=pctrl(id);if(e){e.classList.add('pq');if(e.type==='checkbox')e.checked=!!v;else e.value=v;}
- const a=$('a'+id);if(a)a.textContent='در صف';pbar();}
-function pclr(id){delete PEND[id];const e=pctrl(id);if(e)e.classList.remove('pq');pbar();}
+ const a=$('a'+id);if(a)a.textContent='در صف';pendSave();pbar();}
+function pclr(id){delete PEND[id];const e=pctrl(id);if(e)e.classList.remove('pq');pendSave();pbar();}
 function pundo(){for(const id of Object.keys(PEND)){const e=pctrl(+id);
   if(e){e.classList.remove('pq');const v=(D&&D.p&&D.p[id]!=null)?D.p[id]:'';if(e.type==='checkbox')e.checked=!!v;else e.value=v;}}
- PEND={};pbar();stxt('sbst','تغییرات محلی پاک شد؛ کادرها دوباره مقدار برد را نشان می‌دهند.');
+ PEND={};pendSave();pbar();stxt('sbst','تغییرات محلی پاک شد؛ کادرها دوباره مقدار برد را نشان می‌دهند.');
  if(typeof afresh==='function')afresh();if(typeof sall==='function')sall();}
+pendRestore();
 
 /* ==================== قوانین بین‌فیلدی / Cross-field rules ==================== */
 /* [EN] v1.56 (user order): the MCU no longer checks how these numbers fit
@@ -1063,7 +1100,7 @@ function chart(){[0,1].forEach(ci=>{const c=$('cv'+(ci+1)),w=c.clientWidth,h=c.c
  let lo=Math.min(...s.u,...s.f),hi=Math.max(...s.u,...s.f);if(hi-lo<10){const m=(hi+lo)/2;lo=m-5;hi=m+5;}const pd=(hi-lo)*.12,a=lo-pd,z=hi+pd;
  const X=i=>w-8-(s.u.length-1-i)*(w-16)/(hn(ci)-1),Y=v=>h-8-(v-a)/(z-a)*(h-16);
  const ln=(A,col,lw)=>{x.beginPath();A.forEach((v,i)=>i?x.lineTo(X(i),Y(v)):x.moveTo(X(i),Y(v)));x.strokeStyle=col;x.lineWidth=lw;x.stroke();};
- x.fillStyle='#96a1b8';x.font='11px Vazirmatn,sans-serif';x.fillText(Math.round(hi)+'mA',8,16);x.fillText(Math.round(lo)+'mA',8,h-10);
+ x.fillStyle='#96a1b8';x.font='11px Vazirmatn';x.fillText(Math.round(hi)+'mA',8,16);x.fillText(Math.round(lo)+'mA',8,h-10);
  ln(s.u,'#6b7691',1);ln(s.f,'#63a2ff',2);const pp=A=>{const B=A.slice(-50);return Math.max(...B)-Math.min(...B);};$('pu'+(ci+1)).textContent=pp(s.u);$('pf'+(ci+1)).textContent=pp(s.f);});}
 /* تعویض تب: پنل و داده‌برداری بنچ */
 /* v1.69: offsetهای چسبان ثابت (۵۵/۱۱۳px) نوار کارت‌ها را روی نوار بخش‌ها
@@ -1077,11 +1114,30 @@ function stickfit(){
  r.setProperty('--t-sub',(H+N+6)+'px');
  r.setProperty('--t-sub2',(H+N+S+10)+'px');}
 addEventListener('resize',stickfit);addEventListener('load',stickfit);
-let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=+b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i==TAB));stickfit();if(D)draw(D);});
+let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=+b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i==TAB));stickfit();panelViewSave();if(D)draw(D);});
 /* v1.15b: زیرتب داخل تنظیمات — v1.42 (دستور کاربر: پشتیبان‌گیری آخرین زیرتب): ۰=شارژ و PID، ۱=سناریوها، ۲=نظارت و ایمنی، ۳=کالیبراسیون و فیلتر جریان، ۴=پشتیبان‌گیری */
-let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{STAB=+b.dataset.s;document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i==STAB));stickfit();if(D)draw(D);});
-let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=6;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();}
+let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{STAB=+b.dataset.s;document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i==STAB));stickfit();panelViewSave();if(D)draw(D);});
+let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=6;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();panelViewSave();}
 document.querySelectorAll('#usel button').forEach(b=>b.onclick=()=>usel(+b.dataset.u));
+/* [EN] v1.84: keep the user's place across a browser refresh. The panel is a
+   tool, not a landing page: tab, sub-tab, scenario card and scroll position
+   are part of the current task. / [FA] جای کاربر پس از refresh حفظ می‌شود. */
+const PANEL_VIEW_KEY='changeover-panel-view-v1';let panelViewTimer=0;
+function panelViewSave(){try{localStorage.setItem(PANEL_VIEW_KEY,JSON.stringify({tab:TAB,stab:STAB,ucard:UCARD,y:window.scrollY||0}));}catch(e){}}
+function panelViewRestore(){let s={};try{s=JSON.parse(localStorage.getItem(PANEL_VIEW_KEY)||'{}');}catch(e){}
+ if(Number.isInteger(s.tab)&&s.tab>=0&&s.tab<3)TAB=s.tab;
+ if(Number.isInteger(s.stab)&&s.stab>=0&&s.stab<5)STAB=s.stab;
+ if(Number.isInteger(s.ucard)&&s.ucard>=1&&s.ucard<=6)UCARD=s.ucard;
+ document.querySelectorAll('nav button').forEach((x,i)=>x.classList.toggle('a',i===TAB));
+ document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i===TAB));
+ document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',+x.dataset.s===STAB));
+ document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i===STAB));
+ usel(UCARD);stickfit();
+ const y=Number.isFinite(+s.y)?Math.max(0,+s.y):0;
+ requestAnimationFrame(()=>{window.scrollTo(0,y);setTimeout(()=>window.scrollTo(0,y),120);});}
+try{history.scrollRestoration='manual';}catch(e){}
+addEventListener('scroll',()=>{clearTimeout(panelViewTimer);panelViewTimer=setTimeout(panelViewSave,150);},{passive:true});
+addEventListener('pagehide',panelViewSave);addEventListener('beforeunload',panelViewSave);setTimeout(panelViewRestore,0);
 $('mx').onclick=()=>send(19,0);
 {const b6=$('ib117');if(b6)b6.onchange=()=>{send(117,b6.checked?1:0);};}
 {const b7=$('db127');if(b7)b7.onchange=()=>{send(127,b7.checked?1:0);};}
@@ -3275,7 +3331,7 @@ ${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" 
 <div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div></div><div class="cd"><div class="hd"><b>کالیبراسیون خودکار از همین جدول</b><span class="lb">· نمونه‌های ثبت‌شده: <b id="caln">0</b> · عددها فقط با تأیید شما روی برد نوشته می‌شوند</span></div>
 <div class="ds">هر مرحله‌ای که در ویزارد «ثبت» می‌کنید یک نمونه هم اینجا می‌ماند. «محاسبه» از روی همین نمونه‌ها گین و آفست جریان هر دو کانال و سه آفست ولتاژ را درمی‌آورد، مقدار فعلی برد را کنار پیشنهاد می‌گذارد و کیفیت هر برازش را می‌گوید. برای نتیجهٔ خوب حداقل ۴ مرحله با duty پخش‌شده (مثلاً ۲ تا ۲۰٪) بگیرید.</div>
 <div class="bqr2"><button class="sb sb2" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb brun" onclick="calapply()">اعمال روی برد (با تأیید)</button><button class="sb sb2" onclick="calexp()">⬇ ذخیرهٔ نمونه‌ها</button><label class="sb" style="cursor:pointer">⬆ بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2" onclick="calclr()">پاک کردن نمونه‌ها</button></div>
-<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="ds">دو راه برای رساندن جدول به میکرو هست و هر دو فعال‌اند: <b>۱) ارسال مستقیم</b> — جدول همین حالا در یک بلوک فلشِ مخصوص خودش روی برد نوشته می‌شود (جدا از بقیهٔ تنظیمات)، برد CRC آن را پس می‌فرستد و فقط در صورت تطابق پذیرفته می‌شود؛ بعد می‌توانید برد را ریست کنید تا همه چیز با جدول نو شروع کند. سقف این راه <b>۲۴ نقطه برای هر باتری</b> است. <b>۲) ساخت کد</b> — همان روش قبلی: فایل calibration.h ساخته می‌شود تا در پروژه بچسبانید و بیلد کنید (بدون محدودیت نقطه). اگر رکورد فلش خالی یا خراب باشد، برد خودبه‌خود به جدول کامپایل‌شده برمی‌گردد.</div><div class="bqr2"><button class="sb sb2" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb" onclick="calcopy()">کپی کد</button><button class="sb" onclick="calcdl()">دانلود calibration_generated.h</button></div><div class="bqr2"><button class="sb brun" onclick="lsend()">⇪ ارسال مستقیم جدول به برد</button><button class="sb sb2" onclick="lrst()">↻ ریست برد (بعد از ارسال موفق)</button></div><textarea id="calcd" style="display:none;width:100%;height:220px;direction:ltr;font-family:monospace;font-size:12px" readonly></textarea><div class="cm lb" id="calst"></div><div id="caltb"></div></div>
+<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="ds">دو راه برای رساندن جدول به میکرو هست و هر دو فعال‌اند: <b>۱) ارسال مستقیم</b> — جدول همین حالا در یک بلوک فلشِ مخصوص خودش روی برد نوشته می‌شود (جدا از بقیهٔ تنظیمات)، برد CRC آن را پس می‌فرستد و فقط در صورت تطابق پذیرفته می‌شود؛ بعد می‌توانید برد را ریست کنید تا همه چیز با جدول نو شروع کند. سقف این راه <b>۲۴ نقطه برای هر باتری</b> است. <b>۲) ساخت کد</b> — همان روش قبلی: فایل calibration.h ساخته می‌شود تا در پروژه بچسبانید و بیلد کنید (بدون محدودیت نقطه). اگر رکورد فلش خالی یا خراب باشد، برد خودبه‌خود به جدول کامپایل‌شده برمی‌گردد.</div><div class="bqr2"><button class="sb sb2" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb" onclick="calcopy()">کپی کد</button><button class="sb" onclick="calcdl()">دانلود calibration_generated.h</button></div><div class="bqr2"><button class="sb brun" onclick="lsend()">⇪ ارسال مستقیم جدول به برد</button><button class="sb sb2" onclick="lrst()">↻ ریست برد (بعد از ارسال موفق)</button></div><textarea id="calcd" style="display:none;width:100%;height:220px;direction:ltr;font-family:Vazirmatn;font-size:12px" readonly></textarea><div class="cm lb" id="calst"></div><div id="caltb"></div></div>
 `;
 caln();calsmp();calchk();bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{const s=$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB');if(L)L.disabled=s;if(A)A.disabled=!s;if(B)B.disabled=!s;};$('wSw').onchange();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
 /* ---------- کنترل دستی duty دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کنترلها داخل کارت هر شارژر (از v1.16p)؛

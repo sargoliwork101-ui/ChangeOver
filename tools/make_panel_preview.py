@@ -34,12 +34,14 @@ Run: python3 tools/make_panel_preview.py
 Out: esp_link_panel/panel_preview.html
 """
 
+import json
 import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "esp_link_panel" / "plink_panel.h"
+FONT = ROOT / "esp_link_panel" / "plink_font.h"
 PREV = ROOT / "tools" / "panel_preview_server.js"
 CFG = ROOT / "esp_link_panel" / "plink_config.h"
 BSP = ROOT / "Firmware" / "Bsp" / "Src" / "bsp_measurement.c"
@@ -90,6 +92,18 @@ def panel_html():
     a = s.index('R"HTML(') + len('R"HTML(')
     b = s.rindex(')HTML"')
     return s[a:b]
+
+
+def font_css():
+    """[EN] Extract the same embedded Vazirmatn CSS served by the ESP.
+       [FA] همان CSS فونت وزیرمتن جاسازی‌شده در ESP را بیرون می‌کشد."""
+    s = FONT.read_text(encoding="utf-8")
+    start = s.index("static const char ESP_PANEL_FONT_CSS")
+    eq = s.index("=", start) + 1
+    end = s.index(";\n", eq)
+    block = s[eq:end]
+    literals = re.findall(r'"(?:\\.|[^"\\])*"', block)
+    return "".join(json.loads(x) for x in literals)
 
 
 def factory_params():
@@ -209,6 +223,13 @@ window.addEventListener('DOMContentLoaded', function(){
 
 def main():
     html = panel_html()
+    css_font = font_css()
+    link = '<link rel="stylesheet" href="/f.css?v=2">'
+    if link not in html:
+        sys.exit("panel markup has no /f.css link")
+    # Keep the standalone preview truly standalone: it gets the exact font
+    # CSS that the ESP serves, not a machine-dependent fallback font.
+    html = html.replace(link, '<style>' + css_font + '</style>', 1)
     s24, s12, vrefint, vdda = divider_scales()
     shim = (SHIM.replace("__PARAMS__", repr(factory_params()))
                 .replace("__TLMN__", str(tlm_fields()))
