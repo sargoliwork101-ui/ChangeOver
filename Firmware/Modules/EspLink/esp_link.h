@@ -31,17 +31,16 @@
 /* [‎EN] Start-of-frame bytes and geometry. / [FA]‎ بایت‌های شروع فریم و هندسه. */
 #define ESPLINK_SOF_BYTE0             0xAAu
 #define ESPLINK_SOF_BYTE1             0x55u
-/* [EN] Since v1.16 the length field is u16 little-endian (len_lo +
- *      len_hi) - PARAMS_BULK grows past the old u8 ceiling of 255 (v1.22:
- *      99 params = 1 + 99 x 5 = 496 payload bytes). Frame = AA 55 type
- *      len_lo len_hi payload xor; the xor covers type + both length
- *      bytes + payload. Both boards MUST flash together (a v1.15 parser
- *      reads len_hi as payload).
- * [FA] از v1.16 فیلد طول u16 لیتل‌اندین است (‎len_lo + len_hi)‎ —
- *      PARAMS_BULK از سقف u8 قبلی رد می‌شود (v1.22: ۹۹ پارامتر = ۴۹۶ بایت
- *      payload). فریم = AA 55 نوع len_lo len_hi و xor روی نوع + دو بایت
- *      طول + payload. هر دو برد باید با هم فلش شوند (پارسر v1.15 یعنی
- *      len_hi را payload می‌خواند). */
+/* [EN] Since v2 the length field is u16 little-endian and the frame carries
+ *      an explicit version plus CRC-16/CCITT-FALSE. PARAMS_BULK is chunked:
+ *      the 512-byte payload ceiling holds at most 102 id/value items per
+ *      frame, so the current 143-id parameter space is sent in multiple frames.
+ *      Both boards MUST flash together because a v1 parser reads the version
+ *      byte as the old payload geometry.
+ * [FA] از v2 طول فریم u16 لیتل‌اندین، نسخهٔ صریح و ‎CRC-16/CCITT-FALSE‎ دارد.
+ *      PARAMS_BULK تکه‌تکه است: سقف payload برابر ۵۱۲ بایت است و هر فریم حداکثر
+ *      ۱۰۲ جفت شناسه/مقدار می‌برد؛ فضای ۱۴۳شناسه‌ای فعلی در چند فریم ارسال می‌شود.
+ *      هر دو برد باید با هم فلش شوند چون پارسر قدیمی بایت نسخه را payload می‌خواند. */
 /* [EN] v2 FRAME (2026-09-29). Two changes, both because this link is about to
  *      carry a calibration campaign and a silent error there is worse than no
  *      data at all:

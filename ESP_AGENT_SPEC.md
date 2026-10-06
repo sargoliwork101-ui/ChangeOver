@@ -284,6 +284,35 @@
   returns to the compiled defaults. The ESP must re-apply its tuned set
   (recommended: on link-up and whenever a PARAMS_BULK shows defaults).
 
+## 1.1 Current authoritative parameter/NVM overlay — 2026-10-06
+
+The historical sections below preserve earlier protocol decisions. For the current
+firmware/panel pair, use this overlay as the authoritative endpoint contract:
+
+- `ESPLINK_PARAM_COUNT = ESP_PARAM_COUNT = 143`; ordinary wire ids are `0..142`.
+- `PARAMS_BULK` is chunked at the 512-byte payload ceiling: at most 102
+  `[id:u8][value:u32 LE]` items per frame. The receiver merges chunks by id.
+- NVM format is version `12`, with capacity `144` entries. Persisted settings are
+  ids `0..14`, `20..142` except retired `72/73` and transient session mute `76`,
+  plus runtime slots `200..203`. The scenario-7 fault latch itself is RAM-only
+  and is not an NVM setting.
+- Scenario 7 is the technical board/power-stage fault face. Its controls are:
+
+| ID | Name | Type | Unit | Default | Range | Meaning |
+|---:|---|---|---|---:|---|---|
+| 137 | `TECH_BEEP_PERIOD_MS` | u32 | ms | 3000 | 0 or 1000..600000 | Scenario-7 beep pattern period; 0 disables sound |
+| 138 | `TECH_BEEP_LEN_MS` | u32 | ms | 200 | 0..600000 | Length of each beep |
+| 139 | `TECH_BEEP_COUNT` | u32 | n | 3 | 0..10 | Beeps per pattern |
+| 140 | `TECH_BEEP_GAP_MS` | u32 | ms | 100 | 0..5000 | Gap between beeps |
+| 141 | `TECH_LED_PERIOD_MS` | u32 | ms | 1000 | 100..10000 | Shared period for all three LEDs |
+| 142 | `TECH_LED_DUTY_PCT` | u32 | % | 50 | 0..100 | Shared ON share for all three LEDs |
+
+Scenario-7 detection is not performed by the ESP. The STM32 detects either
+`relay open + applied PWM 0 + recorded JIT`, or `applied PWM > 200 permille +
+measured channel current 0 mA`. After detection the Charger keeps both PWM paths
+stopped and the relay open until reset/power-cycle; only the three-LED face and
+its six settings are exposed to the panel.
+
 ## 2. Wiring / physical
 
 | STM32 pin | Label | Connect to ESP | Notes |

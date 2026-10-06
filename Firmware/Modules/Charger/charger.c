@@ -2062,7 +2062,7 @@ void func__Charger_Init(void)
     }
 
     /* [EN] A technical power-stage verdict is deliberately reset only here,
-       which is reached after a MCU reset/power-cycle. [FA] حکم فنی طبقهٔ
+       ‎which is reached after a MCU reset/power-cycle. [FA]‎ حکم فنی طبقهٔ
        قدرت عمداً فقط اینجا، یعنی پس از reset/روشن‌شدن دوباره، پاک می‌شود. */
     BOOL__G__TechnicalFaultLockout = false;
     BOOL__G__ChargerInitialized = true;
@@ -3201,7 +3201,7 @@ void func__Charger_EvaluateTechnicalFault(
     uint8_t uint8_t__channelIndex;
 
     /* [EN] This latch is intentionally edge-free: once set, the evaluator
-       never re-arms during the same power session. [FA] پس از ست‌شدن، در همین
+       ‎never re-arms during the same power session. [FA]‎ پس از ست‌شدن، در همین
        نشست برق هرگز دوباره مسلح نمی‌شود. */
     if (BOOL__G__TechnicalFaultLockout != false)
     {

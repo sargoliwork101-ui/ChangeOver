@@ -1,111 +1,53 @@
-# گزارش اعتبارسنجی (Validation) — ۲۰۲۶-۱۰-۰۶
-# Validation report — 2026-10-06
+# گزارش اعتبارسنجی نهایی — سناریوی ۷ — ۲۰۲۶-۱۰-۰۶
+# Final validation report — scenario 7 — 2026-10-06
 
-نقش: مهندس اعتبارسنجی. سؤال این پاس «آیا کد کار می‌کند؟» نبود، بلکه
-«**چه چیزی اثبات شده است؟**» بود: پوشش تست، مدرک، قابلیت ردیابی، و اینکه آیا
-ایرادهای اصلاح‌شده دوباره می‌توانند برگردند یا نه.
+## پرسش اعتبارسنجی / Validation question
 
-Role: validation engineer. The question in this pass was not "does it work?"
-but "**what is proven?**": coverage, evidence, traceability, and whether a
-fixed defect can silently come back.
+هدف این پاس ثبت شواهد قابل تکرار برای سناریوی خطای فنی برد است، نه ادعای
+تست روی سخت‌افزار واقعی. Host test جایگزین اجرای برد در این محیط است و این
+دو موضوع نباید با هم اشتباه شوند.
 
----
+The goal is to record repeatable evidence for the technical-board fault
+scenario, not to claim a real-board run. Host testing is the available
+substitute here, not a physical-board result.
 
-## ۱) شکاف‌های اعتبارسنجی که پیدا و بسته شد
-## 1) Validation gaps found and closed
+## پوشش end-to-end / End-to-end coverage
 
-### V1 — ایراد بحرانی دیروز هیچ تستی نداشت
-ایراد `DEF-IM-001` (پاک‌شدن تنظیم‌های سناریو ۵ با هر بار روشن‌شدن) اصلاح شده بود
-ولی **هیچ تستی آن را نمی‌گرفت**؛ یعنی اگر کسی فردا دوباره حلقهٔ پیش‌فرض را به
-`Init` برگرداند، همهٔ گیت‌ها سبز می‌ماندند.
+| لایه | شواهد و نتیجه |
+|---|---|
+| Charger detector | `host_test_charger.py`: **51 تست PASS**؛ هر دو امضای transistor short/open، JIT، duty/current boundary و reset-only lockout را پوشش می‌دهد. |
+| Fault ownership | `host_test_fault.c`: **44/44 PASS**؛ بیت ۷ و مسیر set/clear بررسی شد. |
+| UI | UI host suite در syntax gate **PASS**؛ technical fault قبل از overvoltage/BatLost و هم‌فازی سه LED و استقلال تنظیمات بوق بررسی می‌شود. |
+| Protocol/NVM | ESP host suite: **93 تست PASS**؛ current map با 143 پارامتر، bulk chunk، import/export/reset و NVM contract بررسی شد. |
+| Panel simulator | matrix اجرایی **PASS**: `/`، `/f.css`، `/t`، `/m`، `/lut`؛ آرایهٔ telemetry دارای 31 فیلد و `p` دارای 143 مقدار بود؛ ids `137..142` با clamp و write مستقل بررسی شدند. |
+| Static consistency | `audit_consistency.py`: **436 invariant، 0 finding**. |
+| Rules/RTL hygiene | `check_ai_rules.sh`: **ALL CHECKS PASSED**؛ `fix_rtl_comments.py --check`: **PASS**. |
+| سایر Host testerها | Imbalance **3805/3805**، Changeover **114/114**، Protection **61/61**، Jitter **24/24**، McuPowerPath **49/49**، CalLut **114/114**، Measurement **286/286** — همه PASS. |
 
-سه لایه مدرک اضافه شد:
+## رفتارهای مورد قبول / Acceptance checks
 
-1. **تست هاست (رگرسیون اجرایی):** بلوک تازه در
-   `Firmware/Modules/Imbalance/Tester/host_test_imbalance.c` ترتیب واقعی بوت را
-   بازسازی می‌کند — ابتدا بازپخش `SetParam` (مثل `func__EspLink_NvmInit()` پیش از
-   scheduler)، سپس `func__Imbalance_Init()` (مثل نخ کنترل) — و بررسی می‌کند که
-   مقدار ذخیره‌شده زنده مانده و پارامتر غایب از رکورد همچنان پیش‌فرض خودش را دارد.
-2. **نامتغیر ایستا (رگرسیون ساختاری):** بخش تازهٔ `sec_validation()` در
-   `tools/audit_consistency.py` هر `func__*_Init()` را بدنه‌خوانی می‌کند و اگر
-   جدول پارامتر قابل‌تنظیمِ همان ماژول را بنویسد، ممیزی **رد** می‌شود. این
-   نامتغیر با تزریق عمدی باگ آزموده شد: بدون اصلاح → `AUDIT FAILED`، با اصلاح →
-   `AUDIT PASSED`.
-3. **مدرک تست برد:** دو ردیف `IM-016` (ماندگاری تنظیم‌ها پس از قطع برق) و
-   `IM-017` (ماندگاری شمارنده/قفل) به برگهٔ «برنامه تست» و یک ردیف
-   `DEF-IM-001` به برگهٔ «ثبت ایراد» در `Imbalance_Validation.xlsx` افزوده شد.
+- شرط short/burned فقط با relay open + applied PWM `0‰` + JIT ثبت‌شده فعال
+  می‌شود.
+- شرط open/burned فقط با applied PWM `>200‰` + current `0mA` فعال می‌شود.
+- بعد از latch، هر دو مسیر شارژ/PWM متوقف می‌مانند؛ پنل یا NVM قفل را آزاد
+  نمی‌کند و reset/power-cycle لازم است.
+- سه LED سناریوی ۷ یک phase مشترک دارند.
+- `TECH_BEEP_PERIOD/LEN/COUNT/GAP` و cadence LED در ids `137..142` مستقل‌اند؛
+  هیچ borrow از `q132..q135` وجود ندارد.
+- import/export و factory reset از همان schema فعلی 143-id استفاده می‌کنند؛
+  ارسال تغییرات فقط با global send انجام می‌شود و POST خودکار وجود ندارد.
 
-### V2 — پارامترهای چشمک قفل (۱۲۳/۱۲۴) هیچ پوششی نداشتند
-این دو شناسه در **بلوک دوم** جدول پارامتر هستند و نگاشت دو-بلوکی
-`IMBAL_PARAM_INDEX()` را هم می‌سنجند، ولی تست هاست اصلاً لمس‌شان نمی‌کرد.
-بررسی‌های تازه: پیش‌فرض‌ها (۱۰۰۰ms / ۵۰٪)، رد شناسه‌های همسایه (۱۲۲ و ۱۲۵)،
-مجاز بودن «صفر = چشمک خاموش»، و گیرهٔ ۱۰۰..۱۰۰۰۰ms و ۵..۹۵٪.
-علاوه بر آن یک نامتغیر اضافه شد که **هر شناسهٔ تحت مالکیت ماژول باید در تست هاست
-ظاهر شود** — پس شناسهٔ بعدی‌ای که اضافه شود و تست نگیرد، ممیزی را رد می‌کند.
+## تست‌های اجرا نشده / Not run
 
-### V3 — مدرک هر ماژول دیگر اختیاری نیست
-نامتغیرهای تازه بررسی می‌کنند که هر پوشهٔ ماژول یک `README.md` و دست‌کم یک
-`*Validation*.xlsx` داشته باشد، و هر اجراکنندهٔ تستی که `check_firmware_syntax.sh`
-صدا می‌زند واقعاً وجود داشته باشد. امروز هر ۱۱ ماژول قبول‌اند.
-
----
-
-## ۲) وضعیت پوشش پس از این پاس / Coverage after this pass
-
-| گیت | پیش از پاس | پس از پاس |
+| مورد | وضعیت | دلیل |
 |---|---|---|
-| `tools/audit_consistency.py` | ۲۷۰ نامتغیر / ۰ یافته | **۳۰۸ نامتغیر / ۰ یافته** |
-| `host_test_imbalance` | ۵۰۳۴ بررسی | **۵۰۵۲ بررسی / ۰ خطا** |
-| `host_test_charger.py` | ۵۰ تست | ۵۰ تست (بدون تغییر) |
-| `check_ai_rules.sh` | PASSED | PASSED |
-| `Imbalance_Validation.xlsx` | ۱۵ ردیف تست | **۱۷ ردیف + ۱ ایراد ثبت‌شده** |
+| DOM interaction suites | **SKIP** | `jsdom` در محیط نصب نیست؛ خود تست‌ها طبق قرارداد با exit code صفر skip می‌شوند. |
+| ARM compile/link و اندازهٔ Flash/RAM | **NOT RUN** | `arm-none-eabi-gcc` و `.map` تولید CubeIDE موجود نیست. |
+| تست رله/PWM/JIT/جریان/باتری واقعی | **NOT RUN** | برد و بار واقعی در محیط در دسترس نیست؛ Host test جایگزین نرم‌افزاری است. |
 
----
+## نتیجه / Conclusion
 
-## ۳) شکاف‌های باقی‌مانده (گزارش، بدون اقدام)
-## 3) Remaining gaps — reported, not actioned
-
-| # | شکاف | چرا هنوز باز است |
-|---|---|---|
-| G1 | ماژول‌های `Changeover`, `Fault`, `Protection`, `McuPowerPath`, `CalLut`, `Jitter`, `Measurement` تست هاست کامپایلی ندارند | این فایل‌ها به `bsp_*` و `cmsis_os2` وابسته‌اند و هر کدام یک هارنس stub جدا می‌خواهند؛ ساختش تغییر ساختار تست است و نیاز به تأیید شما دارد |
-| G2 | اصلاح قفل باتری‌ضعیف (ج-۱ دور اول) فقط با بازبینی کد تأیید شده، نه تست خودکار | زیرمجموعهٔ G1 است (ماژول Changeover) |
-| G3 | گیرهٔ تازهٔ `func__Measurement_BenchLutInterp` تست خودکار ندارد | تابع `static` داخل `measurement.c` است و بدون هارنس ماژول Measurement (G1) قابل فراخوانی نیست |
-| G4 | دو سوییت `jsdom` پنل همچنان SKIP می‌شوند | `node_modules` نصب نیست |
-| G5 | بودجهٔ فلش/RAM پس از نسخه‌های اخیر | به `.map` از CubeIDE نیاز دارد |
-| G6 | همهٔ ردیف‌های برگه‌های اعتبارسنجی هنوز «در انتظار» هستند | تست روی برد واقعی انجام نشده؛ تست هاست جایگزین تست برد نیست |
-
-**پرسش برای شما:** آیا می‌خواهید هارنس تست هاست برای ماژول‌های G1 (به‌ویژه
-`Changeover` و `Fault`) ساخته شود؟ این کار فایل کد محصول را تغییر نمی‌دهد و فقط
-پوشهٔ `Tester/` اضافه می‌کند، ولی چون ساختار تست پروژه را گسترش می‌دهد، بدون
-تأیید شما انجام نشد.
-
----
-
-## ۴) پیوست — تسترهای هاست ساخته‌شده (به دستور کاربر، همان روز)
-## 4) Addendum — host testers built on user request
-
-شکاف G1 (و با آن G2 و بخشی از G3) بسته شد: برای هر ماژول منطقی یک پوشهٔ
-`Tester/` ساخته شد که **کد محصول را بدون هیچ تغییری** کامپایل می‌کند و با
-«دنیای بدلی» می‌راند. هیچ خطی از فرم‌ور برای تست‌پذیری عوض نشد.
-
-| ماژول | بررسی | بدل‌ها | نکتهٔ کلیدی پوشش |
-|---|---|---|---|
-| Changeover | ۱۱۴ | ساعت، GPIO، دو وتو | رگرسیون قفل باتری‌ضعیف v1.81، فیلتر ۳ ثانیه، سرریز تیک |
-| Fault | ۴۴ | ساعت، قفل کرنل، شارژر | دو آشکارساز با دبانس، بازیابی ۷ ولت، فریز مود تست |
-| Protection | ۶۱ | ماژول فالت | «زنده بودن» بیت `FAULT_ADC` |
-| Jitter | ۲۴ | لایهٔ EXTI | قفل تریپ، یک‌بارمصرف بودن رویداد، جدایی دو کانال |
-| McuPowerPath | ۴۹ | ساعت، GPIO، snapshot | پنجرهٔ ۵ ثانیه، نوار هیسترزیس، وتوی پایهٔ حضور |
-| CalLut | ۱۱۴ | فلش `mmap` در آدرس واقعی، شارژر، PWM | CRC سرتاسری، تناوب دو صفحه، رکورد خراب، سکتور مرده |
-| Measurement | ۲۸۶ | ADC، GPIO، تبدیل‌های برد، CalLut | گرم‌شدن، فیلتر میانه، آفست، نامعتبرشدن با DMA مرده |
-
-**اعتبار خود تست‌ها:** با تزریق عمدی باگ سنجیده شد — برگرداندن منطق قفل به
-حالت پیش از v1.81 تست Changeover را قرمز کرد، برداشتن شرط «کانال خودش پمپ
-کند» تست Fault را، و بی‌اثر کردن مقایسهٔ CRC تست CalLut را. بدون تزریق، همه سبز.
-
-**وضعیت دروازه‌ها پس از این کار:** `check_ai_rules.sh` قبول · تست‌ها: ۵۰ شارژر +
-۹۳ ESP + ۵۰۵۲ عدم‌توازن + ۶۹۲ تازه، همه ۰ خطا · ممیزی سازگاری **۳۲۲ نامتغیر /
-۰ یافته**.
-
-**آنچه هنوز باز است:** G4 (دو سوییت `jsdom` بدون `node_modules`)، G5 (بودجهٔ
-فلش از `.map`)، G6 (ردیف‌های تست برد هنوز «در انتظار») و تست خودکار برای
-`func__Measurement_BenchLutInterp` که `static` است و از بیرون صدا زده نمی‌شود.
+تمام شواهد قابل اجرای Host، simulator و consistency برای سناریوی ۷ سبز هستند.
+تنها محدودیت‌های واقعی، DOM اختیاری، toolchain ARM و validation فیزیکی هستند؛
+این موارد در گزارش به‌عنوان محدودیت باقی مانده‌اند و به‌اشتباه PASS اعلام
+نشده‌اند.

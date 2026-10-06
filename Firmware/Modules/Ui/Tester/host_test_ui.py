@@ -451,8 +451,20 @@ def run_batlost_tests():
     assert_true('#include "charger.h"' in ui_led_c, "ui must include charger.h for the activity query")
     ov_idx = ui_led_c.find("func__Ui_ScenarioInputOverVoltage_Tick();\n        return;")
     ui_tick_idx = ui_led_c.find("void func__Ui_Tick")
+    tech_idx = ui_led_c.find("func__Ui_ScenarioTechnicalFault_Tick();", ui_tick_idx)
     bl_idx = ui_led_c.find("func__Ui_ScenarioBatLost_Tick();", ui_tick_idx)
-    assert_true(ov_idx != -1 and bl_idx != -1 and ov_idx < bl_idx, "batlost has priority right after overvoltage")
+    assert_true(tech_idx != -1 and ov_idx != -1 and bl_idx != -1 and
+                tech_idx < ov_idx < bl_idx,
+                "technical board fault owns the highest visible-fault priority; "
+                "overvoltage remains ahead of BatLost")
+    tech_face = ui_led_c[ui_led_c.find("static void func__Ui_ScenarioTechnicalFault_Tick"):]
+    assert_true(all(call in tech_face for call in
+                    ("func__red(bool__on)", "func__green(bool__on)", "func__yellow(bool__on)")),
+                "technical fault face drives all three LEDs from one shared boolean")
+    assert_true("uint32_t__techBeepCount" in tech_face and
+                "uint32_t__techBeepGapMs" in tech_face and
+                "UI_ALARM_PARAM_TECH_EXT_MIN_ID" in ui_led_h,
+                "technical fault has independent buzzer fields and wire range")
     run_idx = ui_led_c.find("void func__Ui_ScenarioBatteryRun_Tick")
     run_end = ui_led_c.find("/* ==================== Ui Tick", run_idx)
     run_body = ui_led_c[run_idx:run_end]

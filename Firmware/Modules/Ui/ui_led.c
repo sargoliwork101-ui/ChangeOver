@@ -1364,7 +1364,7 @@ void func__Ui_ScenarioBatLost_Tick(void)
  *        7's six live words; it never uses q132..q135.
  *        [FA] چهرهٔ خطای فنی برد: هر سه LED از یک فاز مطلق استفاده می‌کنند
  *        و دقیقاً هم‌زمان روشن/خاموش می‌شوند؛ بوق فقط اعداد زندهٔ خودش را
- *        می‌خواند و هرگز از q132..q135 استفاده نمی‌کند.
+ *        می‌خواند و هرگز از ‎q132..q135‎ استفاده نمی‌کند.
  */
 static void func__Ui_ScenarioTechnicalFault_Tick(void)
 {
@@ -1898,6 +1898,21 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
 
     func__Ui_UpdateInputState(uint32_t__inputVoltageMv);
 
+#if MODULE_FAULT
+    /* [EN] Scenario 7 is the highest-priority visible fault face: when the
+       technical latch is active, all three LEDs must show its synchronized
+       phase even if input overvoltage is also present. The bit is latched by
+       the control task and cleared only by reset. [FA] سناریوی ۷ بالاترین
+       اولویت نمایشی خطا است؛ وقتی قفل فنی فعال است هر سه LED باید فاز مشترک
+       خودش را نشان دهند، حتی اگر اضافه‌ولتاژ ورودی هم حاضر باشد. بیت فقط با
+       ریست پاک می‌شود. */
+    if ((func__Fault_Get() & FAULT_CHARGER_TECHNICAL) != FAULT_NONE)
+    {
+        func__Ui_ScenarioTechnicalFault_Tick();
+        return;
+    }
+#endif
+
     if (BOOL__G__UiInputOverVoltage == true)
     {
         func__Ui_ScenarioInputOverVoltage_Tick();
@@ -1905,27 +1920,13 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
     }
 
 #if MODULE_FAULT
-    /* [EN] Scenario 7 is the board-level power-stage fault and owns the
-       highest fault priority after input overvoltage. Its bit is latched by
-       the control task and cleared only on reset. [FA] سناریوی ۷ خطای سطح
-       برد است و پس از اضافه‌ولتاژ بالاترین اولویت را دارد؛ بیت فقط با ریست
-       پاک می‌شود. */
-    if ((func__Fault_Get() & FAULT_CHARGER_TECHNICAL) != FAULT_NONE)
-    {
-        func__Ui_ScenarioTechnicalFault_Tick();
-        return;
-    }
-
-    /* [EN] Battery-lost, priority 2 (overvoltage first, this second, normal
-       scenarios after). The Fault module latches and clears the bit; while it
-       is set we a) show this scenario and b) return, so the BatteryRun
-       critical beep (input-absent world) can never overlap with this pattern
-       (input-present world). When the battery is back and the settle time
-       passed, the bit clears and the previous scenario resumes by itself.
-       [FA] قطع باتری با اولویت دوم (بعد از اضافه‌ولتاژ، قبل از سناریوهای
-       نرمال). فقط تا وقتی پرچم متمرکز قفل است نشان می‌دهیم و return می‌کنیم
-       تا هرگز با بوق بحرانی دشارژ قاطی نشود؛ با پاک‌شدن پرچم، سناریوی قبلی
-       خودبه‌خود برمی‌گردد. */
+    /* [EN] Battery-lost, after technical fault and overvoltage, before normal
+       scenarios. The Fault module latches and clears the bit; while it is set
+       we show this scenario and return, so the BatteryRun critical beep
+       (input-absent world) cannot overlap with this pattern (input-present
+       world). [FA] قطع باتری بعد از خطای فنی و اضافه‌ولتاژ، پیش از
+       سناریوهای نرمال است؛ تا وقتی پرچم متمرکز قفل است نمایش می‌دهیم و
+       return می‌کنیم تا بوق بحرانی دشارژ با آن قاطی نشود. */
     if ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)
     {
         func__Ui_ScenarioBatLost_Tick();

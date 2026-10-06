@@ -191,7 +191,7 @@ int main(void)
     CHECK(IMBAL_OUTPUTS_T__G__Out.uint32_t__events == 1u);
 
     /* [EN] Hysteresis still closes the live episode, but does not affect the
-       one-event-per-cycle rule. [FA] هیسترزیس اپیزود زنده را می‌بندد. */
+       ‎one-event-per-cycle rule. [FA]‎ هیسترزیس اپیزود زنده را می‌بندد. */
     IMBAL_INPUTS_T__G__In.uint32_t__vHighMv = 12200u;
     func__Run(1340000u, false);
     CHECK(IMBAL_OUTPUTS_T__G__Out.bool__episode == false);
