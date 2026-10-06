@@ -163,9 +163,9 @@ function testOvervoltage(win, doc) {
        [FA] چشمک قرمز: روشن = دوره × duty ÷ ۱۰۰. */
     typeInto(win, doc, 'q38', 1000);
     typeInto(win, doc, 'q39', 50);
-    check(/500 ms/.test(textOf(doc, 's1b')), 'red blink at 50% duty is 500/500 ms', textOf(doc, 's1b'));
+    check(/500ms/.test(textOf(doc, 's1b')), 'red blink at 50% duty is 500/500 ms', textOf(doc, 's1b'));
     typeInto(win, doc, 'q39', 20);
-    check(/200 ms/.test(textOf(doc, 's1b')), 'red blink follows the duty down to 200 ms', textOf(doc, 's1b'));
+    check(/200ms/.test(textOf(doc, 's1b')), 'red blink follows the duty down to 200 ms', textOf(doc, 's1b'));
 
     /* [EN] Beep window = duration*count + gap*(count-1); must fit the period.
        [FA] پنجرهٔ بوق = مدت×تعداد + گپ×(تعداد−۱) و باید در دوره جا شود. */
@@ -372,7 +372,7 @@ function testDischarge(win, doc) {
         'band 2 range is 10..20 percent', textOf(doc, 's3r2'));
     check(textOf(doc, 's3r2').includes('21800') && textOf(doc, 's3r2').includes('22600'),
         'band 2 range in mV comes off the ladder', textOf(doc, 's3r2'));
-    check(/150 ms.*850 ms/.test(textOf(doc, 's3n2')),
+    check(/150ms.*850ms/.test(textOf(doc, 's3n2')),
         'green at the 15% mid-band is 150/850 ms', textOf(doc, 's3n2'));
     check(textOf(doc, 's3n2').includes('2100'),
         'band 2 beep window is 2 x 1000 + its own 100 ms gap = 2100 ms', textOf(doc, 's3n2'));
@@ -420,14 +420,14 @@ function testCharging(win, doc) {
 
     const rows = [...doc.getElementById('c4tb').rows].map(r => [...r.cells].map(c => c.textContent.trim()));
     const at = p => rows.find(r => r[0] === p + '٪');
-    check(at(50)[3] === '500 ms' && at(50)[4] === '500 ms', 'at 50% the yellow is 500/500 ms', JSON.stringify(at(50)));
-    check(at(90)[3] === '150 ms', 'at 90% the minimum-on floor takes over (100 -> 150 ms)', JSON.stringify(at(90)));
+    check(at(50)[3] === '500ms' && at(50)[4] === '500ms', 'at 50% the yellow is 500/500 ms', JSON.stringify(at(50)));
+    check(at(90)[3] === '150ms', 'at 90% the minimum-on floor takes over (100 -> 150 ms)', JSON.stringify(at(90)));
     check(at(100)[2] === '2٪', 'the remaining-to-full floor of 2% is applied at 100%', JSON.stringify(at(100)));
-    check(at(0)[3] === '1000 ms' && at(0)[4] === '0 ms', 'zero percent means the yellow is solid', JSON.stringify(at(0)));
+    check(at(0)[3] === '1000ms' && at(0)[4] === '0ms', 'zero percent means the yellow is solid', JSON.stringify(at(0)));
 
     typeInto(win, doc, 'q68', 2000);
     const rows2 = [...doc.getElementById('c4tb').rows].map(r => [...r.cells].map(c => c.textContent.trim()));
-    check(rows2.find(r => r[0] === '50٪')[3] === '1000 ms', 'doubling the period doubles the on time', JSON.stringify(rows2[3]));
+    check(rows2.find(r => r[0] === '50٪')[3] === '1000ms', 'doubling the period doubles the on time', JSON.stringify(rows2[3]));
     typeInto(win, doc, 'q68', 1000);
 }
 
@@ -580,7 +580,7 @@ function testSimulator(win, doc) {
     win.sim5mode();
     win.simrun();
     check(doc.getElementById('sim5w').textContent.indexOf('دشارژ') >= 0 &&
-          doc.getElementById('sim5w').textContent.indexOf('500 mV') >= 0,
+          doc.getElementById('sim5w').textContent.indexOf('500mV') >= 0,
           'on battery the window is open at once and uses the discharge limit');
 
     doc.getElementById('sim5m').value = 'c';
@@ -610,11 +610,81 @@ function testSimulator(win, doc) {
     win.simrun();
     check(!on('sl5r') && win.S5.n === 0, 'the restart button clears the simulated lock');
 
-    /* v1.55: a gap box is dead while its band asks for a single beep. */
+    /* v1.55: a gap box is dead while its band asks for a single beep.
+       v1.77 (user question + order): EVERY gap behaves the same way, the
+       shared gap counts band 2 too, and a repeat interval is never treated
+       as a gap. */
     typeInto(win, doc, 'q42', 1);
     win.simrun();
     check(doc.getElementById('q43').disabled === true,
           'one beep per round switches that gap box off');
+    typeInto(win, doc, 'q48', 1);
+    win.simrun();
+    check(doc.getElementById('q49').disabled === true,
+          'the cut-battery gap switches off on a single beep as well');
+    ['q62', 'q63', 'q64', 'q58'].forEach(id => typeInto(win, doc, id, 1));
+    win.simrun();
+    check(doc.getElementById('q65').disabled === true,
+          'the shared gap dies when all four bands want a single beep');
+    check(doc.getElementById('q122').disabled === false,
+          'a repeat interval is NOT a gap and stays editable with one beep');
+    typeInto(win, doc, 'q63', 2);
+    win.simrun();
+    check(doc.getElementById('q65').disabled === false,
+          'band 2 alone keeps the shared gap alive');
+    typeInto(win, doc, 'q63', 1);
+
+    /* v1.78 (user order): the two output-block switches are checkboxes that
+       mirror the stored parameter and write it back on change. */
+    [['ib117', 117], ['db127', 127]].forEach(([cid, pid]) => {
+      const el = doc.getElementById(cid);
+      check(el && el.type === 'checkbox', cid + ' is a checkbox, not a button');
+      const sent = [];
+      const old = win.send;
+      win.send = (id, v) => sent.push([id, v]);
+      el.checked = true; el.onchange();
+      check(sent.length === 1 && sent[0][0] === pid && sent[0][1] === 1,
+            'ticking ' + cid + ' writes 1 to param ' + pid);
+      el.checked = false; el.onchange();
+      check(sent.length === 2 && sent[1][1] === 0,
+            'unticking ' + cid + ' writes 0 to param ' + pid);
+      win.send = old;
+    });
+    check(doc.getElementById('a117') && doc.getElementById('a127'),
+          'each output-block checkbox keeps its own plain-language state line');
+
+    /* v1.80 (user question: "scenario 6 has a lamp and a beep - why no boxes
+       for them?"): the four own-face ids exist, are editable, print their
+       factory defaults and belong to scenario 6's factory key. */
+    [[128, 600000], [129, 120], [130, 0], [131, 50]].forEach(([id, def]) => {
+      const el = doc.getElementById('q' + id);
+      check(el && el.tagName === 'INPUT' && el.type === 'number',
+            'scenario 6 owns a box for parameter ' + id);
+      check(win.pdflt(id) === def,
+            'parameter ' + id + ' prints its factory default ' + def);
+      check(win.eval('UDEF[6]').indexOf(id) >= 0,
+            'parameter ' + id + " is reset by scenario 6's own factory key");
+    });
+    check(win.eval('UDEF[5]').indexOf(128) < 0 && win.eval('UDEF[5]').indexOf(115) >= 0,
+          'the imbalance key keeps 115/116 and does not touch the scenario-6 face');
+
+    /* v1.79 (user: "there used to be a LED behind it"): the latched-fault
+       bits are real LEDs again - styled, and visible between blinks. */
+    if (typeof win.uview === 'function' && win.ASB && win.ASB.bits && win.ASB.bits[0]) {
+      win.D = win.D || {};
+      win.D.t = win.D.t || [];
+      win.D.t[19] = 0b0000101;
+      win.uview();
+      const cls = i => win.ASB.bits[i].className;
+      check(/\bset\b/.test(cls(0)) && /\bset\b/.test(cls(2)),
+            'a latched fault bit is marked set no matter the blink phase');
+      check(!/\bset\b/.test(cls(1)), 'a clear fault bit stays dark');
+      win.D.t[19] = 0;
+      win.uview();
+      check(!/\bset\b/.test(cls(0)), 'clearing the mask turns the LED off again');
+    }
+    check(/\.bit\s*\{/.test(doc.documentElement.innerHTML) || /\.bit\{/.test(doc.documentElement.innerHTML),
+          'the fault-bit LEDs have a stylesheet rule');
     typeInto(win, doc, 'q42', 3);
     win.simrun();
     check(doc.getElementById('q43').disabled === false,
