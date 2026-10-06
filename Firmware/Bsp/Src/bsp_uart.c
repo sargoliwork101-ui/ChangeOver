@@ -112,13 +112,27 @@ static volatile bool BOOL__G__TxDmaActive;
  *              BSP_UART_BAUD_RATE (Cube stays at 115200; the generated
  *              code is deliberately untouched), wire both DMA channels,
  *              start the circular DMA reception and reset the TX path.
+ *              Repeated calls are ignored after the first setup.
  *         [FA] هندل USART1 برد را انتخاب، آن را به BSP_UART_BAUD_RATE
  *              بازتنظیم می‌کند (Cube روی ۱۱۵۲۰۰ می‌ماند؛ کد تولیدشده
  *              عمداً دست نمی‌خورد)، هر دو کانال DMA را سیم‌پیچی، دریافت
- *              DMA حلقوی را شروع و مسیر TX را ریست می‌کند.
+ *              DMA حلقوی را شروع و مسیر TX را ریست می‌کند. پس از اولین
+ *              راه‌اندازی، فراخوانی‌های تکراری نادیده گرفته می‌شوند.
  */
 void func__BspUart_Init(void)
 {
+    /* [EN] main.c initializes the board backend before the scheduler and
+       EspLink_Init may request the same service from TaskComm. Keep the
+       public Init API idempotent so that the second call cannot deinitialize
+       a live UART/DMA path.
+       [FA] main.c بک‌اند برد را پیش از زمان‌بند راه می‌اندازد و
+       EspLink_Init ممکن است همان سرویس را از TaskComm بخواهد. API عمومی Init
+       همانی است تا فراخوانی دوم مسیر زندهٔ ‎UART/DMA‎ را DeInit نکند. */
+    if (BOOL__G__Initialized != false)
+    {
+        return;
+    }
+
     UART_HANDLETYPEDEF__G__EspLink = &huart1;
 
     /* [EN] Reconfigure only the line speed; word length, stop bits and

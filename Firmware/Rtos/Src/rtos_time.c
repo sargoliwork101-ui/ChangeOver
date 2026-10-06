@@ -20,6 +20,8 @@ uint32_t func__Rtos_MillisecondsToTicks(uint32_t uint32_t__milliseconds)
     uint32_t uint32_t__tickFrequency;
     uint32_t uint32_t__wholeSeconds;
     uint32_t uint32_t__leftoverMs;
+    uint32_t uint32_t__wholeTicks;
+    uint32_t uint32_t__fractionalTicks;
 
     uint32_t__tickFrequency = osKernelGetTickFreq();
     if (uint32_t__tickFrequency == 0u)
@@ -32,9 +34,9 @@ uint32_t func__Rtos_MillisecondsToTicks(uint32_t uint32_t__milliseconds)
        the identical quotient (whole*freq*1000 is divisible by 1000) and no
        product can overflow: leftover <= 999 and rates above 1 MHz (1000x
        any real RTOS tick) saturate. The old >UINT32_MAX trip is kept as
-       the whole-seconds guard; only its far-overflow boundary for
-       hypothetical rates above 1 kHz may differ by one tick (the live rate
-       is 1000 Hz, where this is bit-exact). The u64 division pulled
+       the whole-seconds guard; the final addition is checked separately so
+       the result saturates instead of wrapping at UINT32_MAX. The u64
+       division pulled
        __aeabi_uldivmod (~1 KiB).
        [FA] رژیم فلش: همان خارج‌قسمت بدون ۶۴بیت؛ برای نرخ واقعی ۱kHz
        بیت‌به‌بیت یکسان. */
@@ -48,8 +50,22 @@ uint32_t func__Rtos_MillisecondsToTicks(uint32_t uint32_t__milliseconds)
     {
         return UINT32_MAX;
     }
-    return (uint32_t__wholeSeconds * uint32_t__tickFrequency) +
-           (((uint32_t__leftoverMs * uint32_t__tickFrequency) + 999u) / 1000u);
+
+    uint32_t__wholeTicks = uint32_t__wholeSeconds * uint32_t__tickFrequency;
+    uint32_t__fractionalTicks =
+        ((uint32_t__leftoverMs * uint32_t__tickFrequency) + 999u) / 1000u;
+
+    /* [EN] The two individually safe terms can still overflow when added at
+       the upper boundary. Saturate instead of wrapping to a short delay.
+       [FA] دو جملهٔ جداگانه ممکن است در جمع مرز نهایی سرریز کنند؛ به‌جای
+       تبدیل زمان به تأخیر کوتاه، اشباع کن. */
+    if (uint32_t__fractionalTicks >
+        (UINT32_MAX - uint32_t__wholeTicks))
+    {
+        return UINT32_MAX;
+    }
+
+    return uint32_t__wholeTicks + uint32_t__fractionalTicks;
 }
 
 /**
@@ -63,6 +79,8 @@ uint32_t func__Rtos_TicksToMilliseconds(uint32_t uint32_t__ticks)
     uint32_t uint32_t__tickFrequency;
     uint32_t uint32_t__wholeQuotient;
     uint32_t uint32_t__remainderTicks;
+    uint32_t uint32_t__wholeMilliseconds;
+    uint32_t uint32_t__remainderMilliseconds;
 
     uint32_t__tickFrequency = osKernelGetTickFreq();
     if (uint32_t__tickFrequency == 0u)
@@ -85,8 +103,20 @@ uint32_t func__Rtos_TicksToMilliseconds(uint32_t uint32_t__ticks)
     {
         return UINT32_MAX;
     }
-    return (uint32_t__wholeQuotient * 1000u) +
-           ((uint32_t__remainderTicks * 1000u) / uint32_t__tickFrequency);
+
+    uint32_t__wholeMilliseconds = uint32_t__wholeQuotient * 1000u;
+    uint32_t__remainderMilliseconds =
+        (uint32_t__remainderTicks * 1000u) / uint32_t__tickFrequency;
+
+    /* [EN] Protect the final addition from wrapping at UINT32_MAX.
+       [FA] از جمع نهایی در مرز ‎UINT32_MAX‎ در برابر چرخش محافظت کن. */
+    if (uint32_t__remainderMilliseconds >
+        (UINT32_MAX - uint32_t__wholeMilliseconds))
+    {
+        return UINT32_MAX;
+    }
+
+    return uint32_t__wholeMilliseconds + uint32_t__remainderMilliseconds;
 }
 
 /**

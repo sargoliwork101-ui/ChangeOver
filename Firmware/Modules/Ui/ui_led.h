@@ -537,8 +537,11 @@ void func__Ui_ScenarioInputOk(void);
  *      115/116). See ui_led.c for the full behaviour contract.
  * [FA] چهرهٔ قفل سناریوی ۵: قرمز ثابت + بوق کوتاه دوره‌ای (۱۱۵/۱۱۶). */
 void func__Ui_ScenarioImbalance_Tick(void);
+#endif
 
-/* [‎EN] v1.72 scenario 6: solid red condemned-battery face‎ / چهرهٔ باتری خراب */
+#if MODULE_CHARGER
+/* [EN] v1.72 scenario 6: condemned-battery face owned by Charger /
+ *      چهرهٔ باتری خراب در مالکیت Charger. */
 void func__Ui_ScenarioDeadBattery_Tick(void);
 #endif
 
