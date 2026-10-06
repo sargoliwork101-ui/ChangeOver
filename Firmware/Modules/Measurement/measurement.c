@@ -88,8 +88,27 @@ static uint32_t UINT32_T__G__CurrentMedianHistoryCounts[2][MEASUREMENT_CURRENT_M
  *      پرشدن برای شیب شروع و اندیس خانهٔ بعدی. فقط وقتی کلید فیلتر روشن
  *      است وجود دارد. */
 static uint32_t UINT32_T__G__CurrentAverageWindowCounts[2][MEASUREMENT_CURRENT_AVERAGE_WINDOW];
+static uint16_t UINT16_T__G__CurrentAverageFillCount[2];
+static uint16_t UINT16_T__G__CurrentAverageNextIndex[2];
+#endif
 
 /* ==================== Runtime filter config / voltage offsets (ESP panel) ==================== */
+
+/* [EN] Full-program audit 2026-10-05: this whole group used to sit INSIDE
+ *      the MEASUREMENT_CURRENT_AVERAGE_ENABLE block above, although none of
+ *      it belongs to the moving-average filter - the runtime median size and
+ *      the three voltage offsets are read unconditionally by
+ *      func__Measurement_Run, func__Measurement_Init and the public
+ *      setters and getters. Setting that switch to 0u therefore broke the
+ *      build with eight "undeclared" errors. The
+ *      declarations are unconditional now; behaviour with the switch at 1u
+ *      is bit-for-bit identical.
+ * [FA] ممیزی کل برنامه ۲۰۲۶-۱۰-۰۵: این گروه قبلاً داخل بلوک
+ *      MEASUREMENT_CURRENT_AVERAGE_ENABLE بود، در حالی‌که هیچ‌کدامشان به
+ *      فیلتر میانگین متحرک ربط ندارند؛ اندازهٔ مدین زمان اجرا و سه آفست
+ *      ولتاژ بدون شرط خوانده می‌شوند. پس صفرکردن آن کلید بیلد را با هشت
+ *      خطای undeclared می‌شکست. حالا بدون شرط‌اند و با کلید ۱ رفتار دقیقاً
+ *      همان است. */
 
 /* [EN] Runtime copies of the current-filter configuration (resizable
  *      live from the ESP panel; size 1 = bypass, no separate on/off
@@ -122,9 +141,6 @@ static uint16_t UINT16_T__G__FilterAverageWindowApplied =
 static volatile int32_t INT32_T__G__VoltageInOffsetMv = 0;
 static volatile int32_t INT32_T__G__Voltage24OffsetMv = 0;
 static volatile int32_t INT32_T__G__Voltage12OffsetMv = 0;
-static uint16_t UINT16_T__G__CurrentAverageFillCount[2];
-static uint16_t UINT16_T__G__CurrentAverageNextIndex[2];
-#endif
 
 /* [EN] Median-of-5 for the battery voltage channel prefilter: plain
    insertion sort of a LOCAL copy keeps the live history untouched; the
@@ -612,12 +628,17 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
  *      گیرهٔ ۸..۱۵V تا ولتاژ گم/خراب تقسیم را منفجر نکند؛ پیش‌فرض بوت
  *      ۱۲٫۰V. */
 static uint32_t UINT32_T__G__Battery1VoltageMv = 12000u;
-#endif
 
 /* [EN] The tail slope indexes POINTS-1/POINTS-2: fail the build if the
    table ever shrinks below 2 points.
+   Full-program audit 2026-10-05: the two asserts below used to sit AFTER
+   the #endif of this guard, so they referenced CAL_CURRENT1_LUT_POINTS and
+   the ch1 axes even when CAL_CURRENT1_LUT_ENABLE was 0u - which broke the
+   build. They now live inside the guard, exactly like the channel-2 pair.
    [FA] شیب دنباله ‎POINTS-1/POINTS-2‎ را می‌خواند: اگر جدول روزی زیر ۲ نقطه
-   رفت، بیلد بشکند. */
+   رفت، بیلد بشکند. ممیزی ۲۰۲۶-۱۰-۰۵: این دو assert قبلاً بعد از endif این
+   گارد بودند و با خاموش‌بودن کلید کانال ۱ بیلد را می‌شکستند؛ حالا مثل جفتِ
+   کانال ۲ داخل گاردند. */
 _Static_assert(CAL_CURRENT1_LUT_POINTS >= 2u, "ch1 LUT needs >= 2 points");
 /* [EN] v1.63 (user question: "can the table have more or fewer points -
    does it break anything?"). The point COUNT is free: every loop here is
@@ -631,6 +652,7 @@ _Static_assert(CAL_CURRENT1_LUT_POINTS >= 2u, "ch1 LUT needs >= 2 points");
 _Static_assert(sizeof(CAL_Current1LutChainMa) ==
                sizeof(CAL_Current1LutBatteryMw),
                "ch1 LUT axes must hold the same number of points");
+#endif
 
 /* ==================== Measurement bench LUT interpolation (v1.66) ==================== */
 

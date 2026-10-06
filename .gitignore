@@ -29,3 +29,6 @@ esp_link_panel/Tester/build/
 
 # [EN] host flash-measurement objects / [FA] آبجکت‌های اندازه‌گیری فلش روی هاست
 /tmp/flashmeasure/
+
+# [EN] host test binaries built by the module testers / [FA] باینری تست‌های هاست ماژول‌ها
+Firmware/Modules/Imbalance/Tester/host_test_imbalance

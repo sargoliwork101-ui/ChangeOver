@@ -220,7 +220,7 @@ void func__BspGpio_Write(bsp_gpio_id_t bsp_gpio_id_t__id, bool bool__asserted)
 {
     GPIO_TypeDef *GPIO_TypeDef__port = NULL;
     uint16_t uint16_t__pin = 0u;
-    GPIO_PinState GPIO_PinState_level;
+    GPIO_PinState GPIO_PinState__level;
     bool bool__activeHigh;
     bool bool__physicalHigh;
 
@@ -238,8 +238,8 @@ void func__BspGpio_Write(bsp_gpio_id_t bsp_gpio_id_t__id, bool bool__asserted)
 
     bool__activeHigh = func__BspGpio_IsActiveHigh(bsp_gpio_id_t__id);
     bool__physicalHigh = (bool__asserted == bool__activeHigh);
-    GPIO_PinState_level = (bool__physicalHigh == true) ? GPIO_PIN_SET : GPIO_PIN_RESET;
-    HAL_GPIO_WritePin(GPIO_TypeDef__port, uint16_t__pin, GPIO_PinState_level);
+    GPIO_PinState__level = (bool__physicalHigh == true) ? GPIO_PIN_SET : GPIO_PIN_RESET;
+    HAL_GPIO_WritePin(GPIO_TypeDef__port, uint16_t__pin, GPIO_PinState__level);
 }
 
 /* ==================== BspGpio_Read ==================== */
