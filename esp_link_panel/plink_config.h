@@ -72,7 +72,7 @@
          نردبان درصد سمت شارژ، جدا از نردبان دشارژ ۷۴/۷۵ (v1.49، دستور کاربر
          ۲۰۲۶-۱۰-۰۵)، شناسه‌های ۱۲۱..۱۲۲ = مدت و گپ مخصوص باند ۲ دشارژ
          (v1.50، دستور کاربر ۲۰۲۶-۱۰-۰۵). */
-#define ESP_PARAM_COUNT            137u /* [EN] v1.83 adds imbalance clean-FLOAT-cycle threshold 136 to the 132..135 beep pairs. / [FA] نسخه ۱٫۸۳ آستانهٔ سیکل کامل پاک ۱۳۶ را به جفت‌های بوق ۱۳۲..۱۳۵ اضافه می‌کند. */
+#define ESP_PARAM_COUNT            143u /* [EN] v1.83 adds imbalance clean-FLOAT-cycle threshold 136 to the 132..135 beep pairs. / [FA] نسخه ۱٫۸۳ آستانهٔ سیکل کامل پاک ۱۳۶ را به جفت‌های بوق ۱۳۲..۱۳۵ اضافه می‌کند. */
 #define ESP_PARAM_CHG1_ENABLE       11u
 #define ESP_PARAM_CHG2_ENABLE       12u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
@@ -158,7 +158,8 @@
     "#            dead_timeout_ms,dead_reset_gap_ms,dead_block_out,\n" \
     "#            dead_beep_per_ms,dead_beep_ms,dead_blink_per_ms,dead_blink_duty,\n" \
     "#            imb_beep_count,imb_beep_gap_ms,dead_beep_count,dead_beep_gap_ms,\n" \
-    "#            imb_clean_full_cycles\n" \
+    "#            imb_clean_full_cycles,tech_beep_per_ms,tech_beep_len_ms,\n" \
+    "#            tech_beep_count,tech_beep_gap_ms,tech_led_per_ms,tech_led_duty\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \
@@ -243,16 +244,16 @@
  *      uniform four-band discharge form went ~1 KiB past the 320 KiB step,
  *      so the ceiling was deliberately stepped 320 KiB -> 336 KiB.
  *
- *      v1.78..v1.80 (user orders: a six-step checklist for scenario 6, real
- *      checkboxes with plain-language state lines, and scenario 6's own lamp
- *      and buzzer boxes with the text explaining what they replace) added
- *      ~4 KiB of markup and went past the 336 KiB step, so the ceiling is
- *      deliberately stepped 336 KiB -> 352 KiB.
- *      [FA] چک‌لیست سناریو ۶، چک‌باکس‌ها، بخش چراغ و بوقِ سناریو ۶ و دو
- *      تنظیم مستقل تعداد/گپ حدود ۴ کیلوبایت اضافه کرد؛ سقف به پلهٔ ۳۶۰
- *      کیلوبایت رفت.
+ *      v1.78..v1.84 (user orders: scenario 6's checklist, real checkboxes,
+ *      independent lamp/beep controls, and the complete scenario-7 card)
+ *      expanded the markup beyond the old 352 KiB step. The transfer budget
+ *      is now an explicit 380000-byte ceiling, with headroom for the generated
+ *      page while keeping the source/audit stamp mandatory.
+ *      [FA] چک‌لیست سناریوی ۶، چک‌باکس‌های واقعی، تنظیم مستقل چراغ/بوق و
+ *      کارت کامل سناریوی ۷ از سقف قدیمی ۳۵۲ کیلوبایت عبور کردند؛ سقف انتقال
+ *      اکنون صریحاً ۳۸۰۰۰۰ بایت است و ممیزی stamp و اندازه همچنان اجباری است.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    368640u
+#define ESP_PANEL_HTML_MAX_BYTES    380000u
 
 /* ==================== Parser States ==================== */
 typedef enum

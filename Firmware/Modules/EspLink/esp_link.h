@@ -427,14 +427,26 @@
 #define ESPLINK_PARAM_IMBAL_BEEP_GAP_MS        133u  /* u32, ms, def 0, 0..5000 */
 #define ESPLINK_PARAM_IMBAL_CLEAN_FULL_CYCLES  136u  /* u8, count, def 3, 1..255 */
 
-/* [EN] ids 0..136 are ordinary parameters; 132/133 shape the imbalance
+/* ==================== Scenario 7: technical board fault ==================== */
+/* [EN] Six independent controls: the four buzzer fields do not reuse the
+ *      scenario-5/6 count and gap ids, and the last two shape the one shared
+ *      phase of all three LEDs. [FA] شش کنترل مستقل سناریوی ۷؛ تعداد و گپ
+ *      بوق از سناریوهای ۵ و ۶ جداست و دو عدد آخر فاز مشترک سه LED را می‌سازند. */
+#define ESPLINK_PARAM_TECH_BEEP_PERIOD_MS  137u  /* u32, ms, def 3000, 0 = silent */
+#define ESPLINK_PARAM_TECH_BEEP_LEN_MS     138u  /* u32, ms, def 200, 0..600000 */
+#define ESPLINK_PARAM_TECH_BEEP_COUNT      139u  /* u8, count, def 3, 0..10 */
+#define ESPLINK_PARAM_TECH_BEEP_GAP_MS     140u  /* u32, ms, def 100, 0..5000 */
+#define ESPLINK_PARAM_TECH_LED_PERIOD_MS   141u  /* u32, ms, def 1000, 100..10000 */
+#define ESPLINK_PARAM_TECH_LED_DUTY_PCT    142u  /* u8, %, def 50, 0..100 */
+
+/* [EN] ids 0..142 are ordinary parameters; 132/133 shape the imbalance
    beep, 134/135 shape the dead-battery beep and 136 controls the number of
    clean FLOAT-qualified cycles before the imbalance event counter is cleared.
    Runtime slots stay outside.
    [FA] شناسه‌های ۰..۱۳۶ پارامتر عادی‌اند؛ ۱۳۲/۱۳۳ شکل بوق عدم‌توازن،
    ۱۳۴/۱۳۵ شکل بوق باتری خراب و ۱۳۶ تعداد سیکل‌های کامل پاک برای صفرکردن
    شمارندهٔ عدم‌توازن را می‌سازند؛ اسلات‌های زمان‌اجرا بیرون‌اند. */
-#define ESPLINK_PARAM_COUNT               137u
+#define ESPLINK_PARAM_COUNT               143u
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

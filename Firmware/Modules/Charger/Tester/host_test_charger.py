@@ -830,11 +830,11 @@ def test_charge_profile_v112():
           "GetParam must route all 7 profile ids to Charger_GetProfileParam")
 
     # --- ESP panel: 99 params, third tab with 7 fields + descriptions, 150-col CSV, vin carry ---
-    check(re.search(r"#define ESP_PARAM_COUNT\s+137u", ino), "panel ESP_PARAM_COUNT must be 137 (v1.83: +imbalance clean-FLOAT-cycle threshold id 136)")
+    check(re.search(r"#define ESP_PARAM_COUNT\s+143u", ino), "panel ESP_PARAM_COUNT must be 143 (scenario 7 ids 137..142)")
     mn = re.search(r"INT32_T__G__ParamMin\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     mx = re.search(r"INT32_T__G__ParamMax\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(mn and mx and len(mn.group(1).split(",")) == 137 and len(mx.group(1).split(",")) == 137,
-          "panel min/max tables must carry 137 entries (through imbalance clean-FLOAT-cycle threshold id 136)")
+    check(mn and mx and len(mn.group(1).split(",")) == 143 and len(mx.group(1).split(",")) == 143,
+          "panel min/max tables must carry 143 entries (through scenario 7 id 142)")
     check('<button data-t="2">تنظیمات</button>' in ino, "third nav tab must exist (v1.14b: renamed from تنظیمات شارژ when the filter windows moved in)")
     # [EN] v1.33 (user order 2026-10-03: "why is this charge profile still
     #      here when I am editing on the chart?"). The seven q20..q26 input
@@ -909,8 +909,8 @@ def test_charge_profile_v112():
           "the data row must NOT repeat the 125 settings - that was 62 percent of every "
           "row and it is what filled the file cap")
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(txo and len(txo.group(1).split(",")) == 137 and "133, 134, 135, 136 };" in ino,
-          "TxOrder must list all 137 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
+    check(txo and len(txo.group(1).split(",")) == 143 and "139, 140, 141, 142 };" in ino,
+          "TxOrder must list all 143 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
     check("window.WVI=" in ino and "L('wVi','ولتاژ ورودی V',WVI)" in ino,
           "the input-voltage DMM reading must carry into the next wizard step (user order 2026-09-25: quasi-static, type once)")
 
@@ -1321,7 +1321,7 @@ def test_charger_persistence_v114():
     check(re.search(r"ESP_LINK_NVM_ENTRY_MAX\s+144u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_LOW\s+14u", nvm_h) and
           re.search(r"ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH\s+20u", nvm_h) and
-          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+136u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+203u", nvm_h),
+          re.search(r"ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH\s+142u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MIN_ID\s+200u", nvm_h) and re.search(r"ESP_LINK_NVM_SLOT_MAX_ID\s+203u", nvm_h),
           "persisted set = 0..14 + 20..75 + 77..136 + runtime slots 200..203 (131 entries in 144 slots; v1.83 adds the imbalance clean-FLOAT-cycle threshold 136; the transient test modes 15..19 and the panel-session mute 76 must NEVER survive a reboot, but the imbalance verdict budget MUST")
     # [EN] v1.71 bumps 10 -> 11. This one is a MEANING bump, not a layout
     #      bump: ids 57 and 122 kept their slots but changed units (critical
@@ -1330,15 +1330,15 @@ def test_charger_persistence_v114():
     #      meaning is a 100 ms beep every 100 ms - loud nonsense. Rejecting
     #      the old record is the point.
     # [FA] نسخهٔ ۱۱ تغییر معنی است نه چیدمان؛ رکورد قدیمی باید رد شود.
-    check(re.search(r"ESP_LINK_NVM_VERSION\s+11u", nvm_h),
+    check(re.search(r"ESP_LINK_NVM_VERSION\s+12u", nvm_h),
           "v1.43 bumps the NVM record version to 10: a v9 record carries 108 slots, so "
           "replaying one into a 122-slot layout would leave ids 108..118 and 200..202 holding whatever "
           "the erased flash reads as. The version check must reject it and fall back to "
           "compiled defaults - the first boot after this upgrade is a factory-default boot")
 
     # the persisted-id predicate in C, replicated and cross-checked
-    persisted = {i for i in range(256) if i <= 14 or (20 <= i <= 136 and i != 76) or 200 <= i <= 203}
-    check(persisted == set(range(15)) | set(range(20, 76)) | set(range(77, 137)) | {200, 201, 202, 203} and 19 not in persisted and 15 not in persisted and 76 not in persisted,
+    persisted = {i for i in range(256) if i <= 14 or (20 <= i <= 142 and i not in (72, 73, 76)) or 200 <= i <= 203}
+    check(persisted == set(range(15)) | (set(range(20, 143)) - {72, 73, 76}) | {200, 201, 202, 203} and 19 not in persisted and 15 not in persisted and 76 not in persisted,
           f"persisted id set must exclude 15..19 and 76 (got {len(persisted)} ids)")
 
     tab2 = ino.split('id="p2"', 2)[1]
@@ -1940,8 +1940,8 @@ def test_manual_test_mode_v12():
           "instead of raising the ceiling - on a 20 KB part that buffer is charged "
           "twice, once on each side of the link")
     check(re.search(r"#define ESPLINK_PARAM_MANUAL_TEST_MODE\s+19u", text_esph)
-          and re.search(r"#define ESPLINK_PARAM_COUNT\s+137u", text_esph),
-          "param 19 = manual test mode; 136 params total since v1.82 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID, 93..107 = charger limits, 108..118 = imbalance scenario 5, 119..120 = charge-side percent map, 121..122 = band-2 beep shape, 123..124 = imbalance latched red-lamp blink, 125..127 = dead-battery scenario 6, 128..131 = its own lamp and buzzer, 132..133 = imbalance beep count/gap, 134..135 = dead-battery beep count/gap)")
+          and re.search(r"#define ESPLINK_PARAM_COUNT\s+143u", text_esph),
+          "param 19 = manual test mode; 142 params total since v1.84 (20..26 = charge profile, 27..37 = alarms, 38..82 = UI cadence, 83..92 = two-loop CC/CV PID, 93..107 = charger limits, 108..118 = imbalance scenario 5, 119..120 = charge-side percent map, 121..122 = band-2 beep shape, 123..124 = imbalance latched red-lamp blink, 125..127 = dead-battery scenario 6, 128..131 = its own lamp and buzzer, 132..133 = imbalance beep count/gap, 134..135 = dead-battery beep count/gap)")
 
     manual = text_c[text_c.find("static void func__Charger_ManualDriveChannel"):
                     text_c.find("/* ==================== Charger_Evaluate")]
@@ -2123,7 +2123,7 @@ def test_alarms_tab_v115():
     check('\\"q2\\":%lu' in ino and "pendingMask2" in ino,
           "the /t JSON must carry the q2 pending mask for ids 32..37 (one u32 no longer fits 38 params)")
     tx = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
-    check(tx and len(tx.group(1).split(",")) == 137, "TxOrder must carry all 137 ids")
+    check(tx and len(tx.group(1).split(",")) == 143, "TxOrder must carry all 143 ids")
     # [EN] The literal "134 columns" used to be asserted here. That is the third
     #      hard-coded column count found in this suite, and every one of them was
     #      stale - they defend whatever number was true when they were written.
@@ -2310,11 +2310,11 @@ def test_ui_mirror_v116():
     # v1.55: ردیف باقی‌مانده و دکمهٔ میوت هم برداشته شدند.
     check('id="uleds"' not in ino and 'leds stick' not in ino
           and all(f'id="sl{n}r"' in ino and f'id="sl{n}z"' in ino
-                  for n in range(1, 7))   # v1.75: six cards, renumbered 1..6
-          and 'id="sl7r"' not in ino,
+                  for n in range(1, 8))   # scenario 7 adds its own simulator card
+          and 'id="sl7r"' in ino,
           "no sticky board mirror left; every scenario card carries its own simulated LEDs and buzzer")
-    check(all(f'id="asbb{k}"' in ino for k in range(7)),
-          "one LED per fault bit (asbb0..asbb6)")
+    check(all(f'id="asbb{k}"' in ino for k in range(8)),
+          "one LED per fault bit (asbb0..asbb7)")
     check("pendingMask3" in ino and "pendingMask4" in ino and "64..95" in ino,
           "the /t JSON must carry all FOUR pending masks. The fourth is not decoration: "
           "ids 96..107 exist as of v1.28 and the catch-all arm they used to land in did "
@@ -2336,10 +2336,9 @@ def test_ui_mirror_v116():
           "was covered the moment it existed - but the human-readable label was NOT, and "
           "it had already been wrong since v1.24 (it still advertised a retired 83..97)")
     check('id="usel"' in ino and "function usel(n)" in ino
-          and all(f'id="ucard{k}"' in ino for k in range(1, 7))
-          and 'id="ucard7"' not in ino,
-          "one selectable card per scenario (v1.75: exactly six, numbered 1..6 "
-          "with no hole where the retired low-battery card used to be)")
+          and all(f'id="ucard{k}"' in ino for k in range(1, 8))
+          and 'id="ucard7"' in ino,
+          "one selectable card per scenario (scenario 7 adds card 7 with no hole)")
     # [EN] v1.33 (user order 2026-10-03: "bring that charger PID inside this
     #      same charge-and-filter tab"). The PID sub-tab is gone as a TAB and
     #      its card now sits in sub-tab 0, so backup moves up to 3. Pinned
@@ -2428,10 +2427,9 @@ def test_ui_mirror_v116():
     # [FA] کارت باتری کم حذف شد و دو کارت بعدی یک شماره پایین آمدند: ۱ تا ۶ بدون حفره.
     check("۱ · اضافه‌ولتاژ" in ino and "۵ · باتری کم" not in ino
           and "۵ · عدم‌توازن" in ino and "۶ · باتری خراب" in ino
-          and "۷ · باتری" not in ino and 'data-u="7"' not in ino
+          and "۷ · خطای فنی برد" in ino and 'data-u="7"' in ino
           and "سناریو ۱ ·" not in ino,
-          "v1.75: the scenario picker is numbered 1..6 with imbalance at 5 and "
-          "the dead-battery scenario at 6")
+          "scenario picker is numbered 1..7 with technical board fault at 7")
     # [EN] v1.71 (user order: "why is the last discharge step suddenly a duty?
     #      make them all the same shape"): the critical band is now typed like
     #      the other three - count, per-beep duration, own repeat interval,
@@ -2711,8 +2709,8 @@ def test_audit_batch_v116b():
           "bulk payload must be static (comm stack is 1 KiB) and sized to one chunk")
     check("NVM record too small for the persisted id set" in nvmc,
           "NVM must statically assert the record fits the WHOLE persisted id set (params + runtime slots)")
-    check("992 B for 122 entries" in nvmh,
-          "NVM record comment must state the true record size for 122 entries")
+    check("144 slots (12 + 144 x 8 + 4 = 1168 B)" in nvmh,
+          "NVM record comment must state the true record capacity for the expanded scenario-7 set")
 
     # --- LUT hardening + dead-clamp cleanup ---
     check("uint32_t__xHigh == uint32_t__xLow" in meas,
@@ -2830,11 +2828,11 @@ def test_flash_diet_pins_v116d():
     # [EN] v1.49: the dense UI block is still 38..82; the charge-side percent
     #      map had to take 119/120 because 83..118 belong to other modules.
     # [FA] بلوک متراکم همان ۳۸..۸۲؛ نگاشت درصد سمت شارژ ۱۱۹/۱۲۰ را گرفت.
-    ui_ids = sorted(int(v) for v in re.findall(
+    ui_ids = sorted(set(int(v) for v in re.findall(
         r"#define UI_ALARM_PARAM_(?!MIN_ID|MAX_ID|EXT_MIN_ID|EXT_MAX_ID)[A-Z_0-9]+\s+(\d+)u",
-        UI_LED_H.read_text()))
-    check(ui_ids == list(range(38, 83)) + [119, 120, 121, 122],
-          f"UI-alarm ids must be dense 38..82 plus the ext range 119..122, got {len(ui_ids)} ids")
+        UI_LED_H.read_text())))
+    check(ui_ids == list(range(38, 83)) + [119, 120, 121, 122, 137, 138, 139, 140, 141, 142],
+          f"UI-alarm ids must include dense 38..82 plus ext ranges 119..122 and 137..142, got {len(ui_ids)} ids")
     for src, base, name in (
             (CHARGER_C, 20, "SetProfileParam"),
             (FAULT_C, 27, "SetAlarmParam")):
@@ -2949,8 +2947,8 @@ def test_two_loop_pid_v124():
               f"charger.h must map CHG_PID_PARAM_{nm} to id {wid}")
         check(re.search(rf"#define ESPLINK_PARAM_CHG_PID_{nm}\s+{wid}u", text_esph),
               f"esp_link.h must map ESPLINK_PARAM_CHG_PID_{nm} to the SAME id {wid}")
-    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+137u", text_esph),
-          "ESPLINK_PARAM_COUNT must be 137 (imbalance clean-FLOAT-cycle threshold id 136 + 1, v1.83)")
+    check(re.search(r"#define ESPLINK_PARAM_COUNT\s+143u", text_esph),
+          "ESPLINK_PARAM_COUNT must be 143 (scenario 7 ids 137..142 + 1)")
     check("STAGE1" not in text_h and "STAGE3" not in text_h and "stage3" not in text_c,
           "the retired third gain row must leave NOTHING behind (it was measured to "
           "buy nothing and it cost five panel numbers)")
@@ -3364,7 +3362,7 @@ def test_min_select_handover_v124():
     cdef_m = re.search(r"const CDEF=\[([^\]]*)\]", ino)
     check(cdef_m, "the panel must define CDEF for the charge-side percent map")
     cdef = [x for x in cdef_m.group(1).split(",") if x.strip()]
-    check(len(cdef) == 18, f"CDEF must hold 18 ext defaults (charge map + band 2 shape + imbalance blink + dead-battery 125..131/134..135 + imbalance beep count/gap 132..133 + clean-FLOAT-cycle threshold 136), got {len(cdef)}")
+    check(len(cdef) == 24, f"CDEF must hold 24 ext defaults through scenario 7 ids 137..142, got {len(cdef)}")
     top = 83 + len(pdef) - 1 + len(ldef) + len(idef) + len(cdef)
     # --- 6. the PARAMS_BULK reply must be proven to fit the protocol payload
     #        ceiling. The buffer auto-sizes from the count so it cannot be
@@ -4322,6 +4320,70 @@ int main(void){
         shutil.rmtree(tmp, ignore_errors=True)
 
 
+def test_scenario7_technical_fault_lockout():
+    """Scenario 7 contract: detect either transistor failure signature,
+    latch a MCU-session lockout, and drive one synchronized three-LED face
+    with its own buzzer controls. This is a source contract test; it cannot
+    replace oscilloscope/current-probe validation on the real board.
+    """
+    charger_c = CHARGER_C.read_text()
+    task_c = TASK_CONTROL_C.read_text()
+    ui_h = UI_LED_H.read_text()
+    ui_c = UI_LED_C.read_text()
+    esp_h = ESP_LINK_H.read_text()
+    esp_c = ESP_LINK_C.read_text()
+    app_types = APP_TYPES_H.read_text()
+
+    check(re.search(r"#define FAULT_CHARGER_TECHNICAL\s+\(1u << 7\)", app_types),
+          "scenario 7 must own a new central fault bit 7")
+    check("static bool BOOL__G__TechnicalFaultLockout;" in charger_c,
+          "scenario 7 lockout must be MCU-RAM state, not a panel/NVM setting")
+    check("BOOL__G__TechnicalFaultLockout = false;" in charger_c.split("void func__Charger_Init", 1)[1].split("BOOL__G__ChargerInitialized", 1)[0],
+          "only charger init/reset may release the technical lockout")
+
+    eval_body = charger_c.split("void func__Charger_EvaluateTechnicalFault", 1)[1].split("bool func__Charger_IsAnyChannelActive", 1)[0]
+    check("BOOL__G__RelayOpen" in eval_body and
+          "func__Charger_GetAppliedDutyPermille" in eval_body and
+          "== 0u" in eval_body and
+          "func__Jitter_ChannelTripped" in eval_body,
+          "short/burned signature must require open relay, zero applied PWM and recorded JIT")
+    check("> 200u" in eval_body and "i_ch1_ma" in eval_body and "i_ch2_ma" in eval_body and "== 0u" in eval_body,
+          "open/burned signature must require applied PWM over 20 percent and zero measured current")
+    check("BOOL__G__TechnicalFaultLockout = true;" in eval_body and
+          "func__Fault_Set(FAULT_CHARGER_TECHNICAL)" in eval_body,
+          "either signature must latch the technical bit and output lockout")
+    check("if (BOOL__G__TechnicalFaultLockout != false)" in charger_c and
+          "func__Charger_FinalDisconnect();" in charger_c,
+          "the charger must keep both PWM paths stopped and the relay open while locked")
+
+    jit_pos = task_c.find("func__Jitter_Run();")
+    technical_pos = task_c.find("func__Charger_EvaluateTechnicalFault(")
+    charger_pos = task_c.find("func__Charger_Evaluate(&measurement_snapshot_t__snap")
+    check(0 <= jit_pos < technical_pos < charger_pos,
+          "technical evaluation must run after JIT capture and before normal charger control")
+
+    tech_face = ui_c.split("static void func__Ui_ScenarioTechnicalFault_Tick", 1)[1].split("/* ==================== Scenario Imbalance", 1)[0]
+    check("func__red(bool__on)" in tech_face and
+          "func__green(bool__on)" in tech_face and
+          "func__yellow(bool__on)" in tech_face,
+          "scenario 7 must drive all three LEDs from one shared phase")
+    check(all(token in tech_face for token in ("uint32_t__techBeepPeriodMs", "uint32_t__techBeepDurMs",
+                                               "uint32_t__techBeepCount", "uint32_t__techBeepGapMs",
+                                               "uint32_t__techLedPeriodMs", "uint32_t__techLedDutyPct")),
+          "scenario 7 buzzer and LED cadence must use its six independent live values")
+    check(all(re.search(rf"#define UI_ALARM_PARAM_TECH_{name}\s+{value}u", ui_h)
+              for name, value in (("EXT_MIN_ID", 137), ("EXT_MAX_ID", 142),
+                                  ("BEEP_PERIOD_MS", 137), ("BEEP_LEN_MS", 138),
+                                  ("BEEP_COUNT", 139), ("BEEP_GAP_MS", 140),
+                                  ("LED_PERIOD_MS", 141), ("LED_DUTY_PCT", 142))),
+          "scenario 7 controls must be separate wire ids 137..142")
+    check("UI_ALARM_PARAM_TECH_EXT_MIN_ID" in esp_c and
+          "UI_ALARM_PARAM_TECH_EXT_MAX_ID" in esp_c and
+          "ESPLINK_PARAM_TECH_BEEP_COUNT" in esp_h and
+          "ESPLINK_PARAM_TECH_LED_DUTY_PCT" in esp_h,
+          "ESP protocol must route and name all scenario 7 controls")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
@@ -4374,6 +4436,7 @@ def main():
         test_stage_graph_is_current_vs_voltage_v3,
         test_section_parameter_help_v125,
         test_theme_contrast_and_param_coverage_v125,
+        test_scenario7_technical_fault_lockout,
     ]
     for test in tests:
         test()

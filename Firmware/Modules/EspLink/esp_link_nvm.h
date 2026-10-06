@@ -115,7 +115,7 @@
  *      پیش‌فرض کامپایل می‌ماند - بعد از هر ارتقای چیدمان یک‌بار از پنل
  *      دوباره تنظیم کنید (v1.22 دقیقاً چنین ارتقایی است: اولین بوت پس از
  *      فلش با مقادیر کارخانه بالا می‌آید). */
-#define ESP_LINK_NVM_VERSION            11u
+#define ESP_LINK_NVM_VERSION            12u
 
 /* [EN] Slot cap: 122 persisted ids today (0..14 config + 20..26 charge
  *      profile + 27..37 alarms + 38..75 UI cadence + 77..82 full/
@@ -178,7 +178,7 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   136u /* [EN] v1.83 adds the imbalance clean-FLOAT-cycle threshold. / [FA] نسخهٔ ۱٫۸۳ آستانهٔ سیکل کامل پاک عدم‌توازن را اضافه می‌کند. */
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   142u /* [EN] v1.84 adds scenario-7 UI controls 137..142. / [FA] نسخهٔ ۱٫۸۴ کنترل‌های سناریوی ۷ را اضافه می‌کند. */
 
 /* [EN] v1.74: ids 72/73 are retired (the low-battery window became a fixed
    constant inside the Changeover module), so they are carved out of the high

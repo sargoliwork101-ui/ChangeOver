@@ -211,7 +211,10 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            /* v1.82 ids 134..135 = independent dead-battery beep count/gap */
            1, 0,
            /* v1.83 id 136 = clean FLOAT-qualified cycles before imbalance reset */
-           3];
+           3,
+           /* v1.84 ids 137..142 = scenario 7's independent buzzer and
+              synchronized three-LED cadence. */
+           3000, 200, 3, 100, 1000, 50];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampPeriod = v => v === 0 ? 0 : clampW(v, 1000, 600000); /* v1.16: 0=off else 1000..600000 */
@@ -308,6 +311,14 @@ function clampParam(id, v) {
         /* v1.83: configurable number of clean FLOAT-qualified cycles before
            the imbalance event counter is cleared. */
         case 136: return clampW(v, 1, 255);
+        /* v1.84 scenario 7: four independent buzzer fields and the shared
+           three-LED cadence. No q132..q135 dependency is allowed here. */
+        case 137: return clampPeriod(v);
+        case 138: return clampW(v, 0, 600000);
+        case 139: return clampW(v, 0, 10);
+        case 140: return clampW(v, 0, 5000);
+        case 141: return clampW(v, 100, 10000);
+        case 142: return clampW(v, 0, 100);
         /* v1.15 alarms: mirror of Fault_ClampAlarms / Charger_ClampAlarms */
         case 27: { let lo = Math.max(14000, over + 50), hi = Math.min(15000, ov - 100);
                    if (lo > hi) hi = lo; return Math.min(hi, Math.max(lo, v)); }

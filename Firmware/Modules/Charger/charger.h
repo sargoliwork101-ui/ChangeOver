@@ -1334,6 +1334,38 @@ bool func__Charger_IsAnyChannelActive(void);
 bool func__Charger_IsChannelActive(uint8_t uint8_t__channelIndex);
 
 /**
+ * @brief [EN] Read the PWM duty actually applied to one charger channel,
+ *        in permille. This is deliberately not the requested PID duty: the
+ *        technical-fault detector must judge the hardware-facing output.
+ *        [FA] duty واقعی اعمال‌شده به یک کانال را بر حسب پرمیل می‌خواند؛
+ *        آشکارساز خطای فنی باید خروجیِ رسیده به سخت‌افزار را ببیند.
+ */
+uint32_t func__Charger_GetAppliedDutyPermille(uint8_t uint8_t__channelIndex);
+
+/**
+ * @brief [EN] True when the shared charger relay contact is open.
+ *        [FA] آیا کنتاکت رلهٔ مشترک شارژر باز است؟
+ */
+bool func__Charger_IsRelayOpen(void);
+
+/**
+ * @brief [EN] Evaluate scenario-7 charger power-stage faults from the fresh
+ *        ADC snapshot and the already-run JIT latch. On a match this sets
+ *        FAULT_CHARGER_TECHNICAL and permanently blocks charger output until
+ *        the next charger init/reset.
+ *        [FA] خطای فنی سناریوی ۷ را از snapshot تازه و JIT اجراشده ارزیابی
+ *        می‌کند؛ پس از تشخیص بیت خطا و قفل خروجی را تا ریست نگه می‌دارد.
+ */
+void func__Charger_EvaluateTechnicalFault(
+    const measurement_snapshot_t *measurement_snapshot_t__snap);
+
+/**
+ * @brief  [EN] True while scenario-7 output lockout is held.
+ *         [FA] آیا قفل خروجی سناریوی ۷ برقرار است؟
+ */
+bool func__Charger_IsTechnicalFaultLocked(void);
+
+/**
  * @brief  [EN] True when every relevant channel finished its charge: at
  *         least one installed+enabled channel exists and ALL of them sit
  *         in FLOAT. FLOAT is entered from one place only (ABSORB done:

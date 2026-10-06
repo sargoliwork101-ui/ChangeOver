@@ -365,8 +365,10 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                [FA] اعداد UI، شناسه‌های ۳۸..۸۲: دیسپچ بازه‌ای. */
             if (((uint8_t__paramId >= UI_ALARM_PARAM_MIN_ID) &&
                  (uint8_t__paramId <= UI_ALARM_PARAM_MAX_ID)) ||
-                ((uint8_t__paramId >= UI_ALARM_PARAM_EXT_MIN_ID) &&
-                 (uint8_t__paramId <= UI_ALARM_PARAM_EXT_MAX_ID)))
+                 ((uint8_t__paramId >= UI_ALARM_PARAM_EXT_MIN_ID) &&
+                 (uint8_t__paramId <= UI_ALARM_PARAM_EXT_MAX_ID)) ||
+                ((uint8_t__paramId >= UI_ALARM_PARAM_TECH_EXT_MIN_ID) &&
+                 (uint8_t__paramId <= UI_ALARM_PARAM_TECH_EXT_MAX_ID)))
             {
                 return func__Ui_SetAlarmParam(uint8_t__paramId,
                                               uint32_t__value,
@@ -564,8 +566,10 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
                [FA] خواندن زندهٔ اعداد UI، شناسه‌های ۳۸..۸۲. */
             if (((uint8_t__paramId >= UI_ALARM_PARAM_MIN_ID) &&
                  (uint8_t__paramId <= UI_ALARM_PARAM_MAX_ID)) ||
-                ((uint8_t__paramId >= UI_ALARM_PARAM_EXT_MIN_ID) &&
-                 (uint8_t__paramId <= UI_ALARM_PARAM_EXT_MAX_ID)))
+                 ((uint8_t__paramId >= UI_ALARM_PARAM_EXT_MIN_ID) &&
+                 (uint8_t__paramId <= UI_ALARM_PARAM_EXT_MAX_ID)) ||
+                ((uint8_t__paramId >= UI_ALARM_PARAM_TECH_EXT_MIN_ID) &&
+                 (uint8_t__paramId <= UI_ALARM_PARAM_TECH_EXT_MAX_ID)))
             {
                 return func__Ui_GetAlarmParam(uint8_t__paramId,
                                               uint32_t__value);

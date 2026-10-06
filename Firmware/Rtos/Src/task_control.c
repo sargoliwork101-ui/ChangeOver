@@ -151,6 +151,17 @@ void func__TaskControl(void *void_ptr__argument)
 #if MODULE_JITTER
             func__Jitter_Run();
 #endif
+#if MODULE_CHARGER
+            /* [EN] Scenario 7 is evaluated after JIT has latched this pass
+               and before Changeover/Charger are allowed to continue. Refresh
+               the fault mask immediately so the same pass enters APP_FAULT.
+               [FA] سناریوی ۷ بعد از ثبت JIT و پیش از ادامهٔ شارژ ارزیابی
+               می‌شود؛ ماسک همان پاس تازه می‌شود تا بلافاصله به FAULT برویم. */
+            func__Charger_EvaluateTechnicalFault(&measurement_snapshot_t__snap);
+#if MODULE_FAULT
+            fault_mask_t__faults = func__Fault_Get();
+#endif
+#endif
 #if MODULE_MCU_POWER_PATH
             func__McuPowerPath_Run();
 #endif

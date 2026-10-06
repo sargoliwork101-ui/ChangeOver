@@ -295,6 +295,11 @@ static volatile bool BOOL__G__ChargerManualRearmRequest[CHG_CHANNEL_COUNT] = {fa
 
 static bool BOOL__G__ChargerInitialized;
 static bool BOOL__G__RelayOpen;
+/* [EN] Scenario 7 is a RAM-only safety latch. No normal charger path is
+   allowed to clear it; only func__Charger_Init(), called after reset, does.
+   [FA] قفل ایمنی سناریوی ۷ فقط در RAM است و هیچ مسیر عادی شارژ حق پاک‌کردنش
+   را ندارد؛ تنها Init پس از ریست آن را پاک می‌کند. */
+static bool BOOL__G__TechnicalFaultLockout;
 static uint32_t UINT32_T__G__RelaySettleDeadline;
 
 #define CHG_NO_CHANNEL 0xFFu
@@ -2056,6 +2061,10 @@ void func__Charger_Init(void)
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].bool__pidLastWasVoltage = true;
     }
 
+    /* [EN] A technical power-stage verdict is deliberately reset only here,
+       which is reached after a MCU reset/power-cycle. [FA] حکم فنی طبقهٔ
+       قدرت عمداً فقط اینجا، یعنی پس از reset/روشن‌شدن دوباره، پاک می‌شود. */
+    BOOL__G__TechnicalFaultLockout = false;
     BOOL__G__ChargerInitialized = true;
     BOOL__G__RelayOpen = false;
     UINT32_T__G__RelaySettleDeadline = 0u;
@@ -2748,6 +2757,18 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
 
     uint32_t__nowTick = osKernelGetTickCount();
 
+    /* [EN] Scenario 7 owns the final safety gate. Keep the relay physically
+       open and both PWM paths at zero for the rest of this power session;
+       app-state changes, panel writes, JIT retries and NVM saves cannot
+       release this latch. [FA] سناریوی ۷ گیت نهایی ایمنی است: رله باز و هر
+       دو PWM صفر بمانند تا همین نشست برق تمام شود؛ هیچ تغییر حالت یا تنظیمی
+       آن را آزاد نمی‌کند. */
+    if (BOOL__G__TechnicalFaultLockout != false)
+    {
+        func__Charger_FinalDisconnect();
+        return;
+    }
+
     /* [EN] Manual test mode transitions (user order 2026-09-23, protocol
        v1.2 param 19): the ESP link task only writes the REQUEST; every
        enter/exit action runs here in the charger context, so no PWM or
@@ -3151,6 +3172,97 @@ bool func__Charger_IsChannelActive(uint8_t uint8_t__channelIndex)
               CHG_STATE_BULK) ||
              (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
               CHG_STATE_ABSORB)));
+}
+
+uint32_t func__Charger_GetAppliedDutyPermille(uint8_t uint8_t__channelIndex)
+{
+    if (uint8_t__channelIndex >= CHG_CHANNEL_COUNT)
+    {
+        return 0u;
+    }
+    return CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille;
+}
+
+bool func__Charger_IsRelayOpen(void)
+{
+    return BOOL__G__RelayOpen;
+}
+
+bool func__Charger_IsTechnicalFaultLocked(void)
+{
+    return BOOL__G__TechnicalFaultLockout;
+}
+
+void func__Charger_EvaluateTechnicalFault(
+    const measurement_snapshot_t *measurement_snapshot_t__snap)
+{
+    bool bool__shortFault = false;
+    bool bool__openFault = false;
+    uint8_t uint8_t__channelIndex;
+
+    /* [EN] This latch is intentionally edge-free: once set, the evaluator
+       never re-arms during the same power session. [FA] پس از ست‌شدن، در همین
+       نشست برق هرگز دوباره مسلح نمی‌شود. */
+    if (BOOL__G__TechnicalFaultLockout != false)
+    {
+        return;
+    }
+
+    if (measurement_snapshot_t__snap == NULL ||
+        measurement_snapshot_t__snap->valid == false)
+    {
+        return;
+    }
+
+#if MODULE_JITTER
+    /* [EN] Short/burned transistor signature: relay already disconnected,
+       applied PWM is zero, and the JIT latch is present. The conjunction is
+       intentional; a relay opening without JIT is not enough.
+       [FA] امضای اتصال‌کوتاه/سوختن: رله از قبل باز، PWM واقعی صفر و JIT
+       ثبت‌شده؛ بازشدن تنها رله به‌تنهایی خطا نیست. */
+    if (BOOL__G__RelayOpen != false)
+    {
+        for (uint8_t__channelIndex = 0u;
+             uint8_t__channelIndex < CHG_CHANNEL_COUNT;
+             uint8_t__channelIndex++)
+        {
+            if ((func__Charger_GetAppliedDutyPermille(uint8_t__channelIndex) == 0u) &&
+                (func__Jitter_ChannelTripped((uint8_t)(uint8_t__channelIndex + 1u)) != false))
+            {
+                bool__shortFault = true;
+            }
+        }
+    }
+#endif
+
+    /* [EN] Open/burned transistor signature: more than 20% applied PWM and
+       an exact zero measured charge current. The rule is evaluated per
+       channel so one good half cannot hide one failed power stage.
+       [FA] امضای قطع‌شده/سوختن: duty واقعی بیشتر از ۲۰٪ و جریان اندازه‌گیری
+       شدهٔ همان کانال دقیقاً صفر؛ ارزیابی به‌ازای کانال است. */
+    for (uint8_t__channelIndex = 0u;
+         uint8_t__channelIndex < CHG_CHANNEL_COUNT;
+         uint8_t__channelIndex++)
+    {
+        uint32_t uint32_t__currentMa =
+            (uint8_t__channelIndex == 0u)
+                ? measurement_snapshot_t__snap->i_ch1_ma
+                : measurement_snapshot_t__snap->i_ch2_ma;
+
+        if ((func__Charger_GetAppliedDutyPermille(uint8_t__channelIndex) > 200u) &&
+            (uint32_t__currentMa == 0u))
+        {
+            bool__openFault = true;
+        }
+    }
+
+    if ((bool__shortFault != false) || (bool__openFault != false))
+    {
+        BOOL__G__TechnicalFaultLockout = true;
+#if MODULE_FAULT
+        func__Fault_Set(FAULT_CHARGER_TECHNICAL);
+#endif
+    }
 }
 
 bool func__Charger_IsAnyChannelActive(void)
