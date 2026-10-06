@@ -42,11 +42,31 @@
  *      two pages into a RAM emulation and compile the EXACT flash-state code.
  * [FA] ماکروهای آدرس گارد دارند تا تست هاست بتواند دو صفحه را به شبیه‌سازی
  *      RAM ببرد و دقیقاً همین کدِ ماشین حالت فلش را کامپایل کند. */
+/* [EN] v1.80: each bank is TWO 1 KiB pages now (A = 0x0800E000..E7FF,
+ *      B = 0x0800E800..EFFF). The scenario-6 lamp/buzzer ids 128..131 took
+ *      the persisted set past the 126 entries that fitted in a single page,
+ *      and the record is written whole, so the bank - not the entry - had to
+ *      grow. A save erases every 1 KiB page of the target bank before
+ *      programming (ESP_LINK_NVM_FLASH_PAGE_SIZE below); ping-pong is
+ *      unchanged, so a power cut mid-write still leaves the other bank
+ *      intact. The old top pages 0x0800F800/FC00 are left reserved-unused:
+ *      a record written there by an older firmware simply never validates.
+ * [FA] از v1.80 هر بانک دو صفحهٔ ۱KB است، چون با شناسه‌های ۱۲۸..۱۳۱
+ *      مجموعهٔ ذخیره‌شونده از ۱۲۶ جای یک صفحه گذشت. هر ذخیره همهٔ صفحه‌های
+ *      بانک مقصد را پاک می‌کند و پینگ‌پنگ دست‌نخورده است. */
 #ifndef ESP_LINK_NVM_PAGE_A_ADDR
-#define ESP_LINK_NVM_PAGE_A_ADDR        0x0800F800u
+#define ESP_LINK_NVM_PAGE_A_ADDR        0x0800E000u
 #endif
 #ifndef ESP_LINK_NVM_PAGE_B_ADDR
-#define ESP_LINK_NVM_PAGE_B_ADDR        0x0800FC00u
+#define ESP_LINK_NVM_PAGE_B_ADDR        0x0800E800u
+#endif
+/* [EN] Hardware erase granularity (STM32F103 medium density = 1 KiB). A bank
+ *      spans ESP_LINK_NVM_PAGE_B_ADDR - ESP_LINK_NVM_PAGE_A_ADDR bytes, i.e.
+ *      an exact number of these pages; the save loop erases them all.
+ * [FA] دانهٔ پاک‌کردن سخت‌افزار ۱KB است؛ حلقهٔ ذخیره همهٔ صفحه‌های بانک را
+ *      پاک می‌کند. */
+#ifndef ESP_LINK_NVM_FLASH_PAGE_SIZE
+#define ESP_LINK_NVM_FLASH_PAGE_SIZE    0x400u
 #endif
 
 /* [EN] Record identity: "CHO1" + format version. A bump invalidates old
@@ -118,7 +138,13 @@
  *      older, shorter record still replays correctly - no version bump.
  * [FA] ۱۲۶ جا (۱۰۲۴ بایت، دقیقاً یک صفحه). رکورد تعداد خودش را
  *      ذخیره می‌کند پس رکورد کوتاه‌تر قدیمی هم درست پخش می‌شود. */
-#define ESP_LINK_NVM_ENTRY_MAX         126u
+/* [EN] v1.80: 144 slots (12 + 144 x 8 + 4 = 1168 B) inside a 2 KiB bank. The
+ *      real persisted set is 128 ids today (the four scenario-6 face ids
+ *      pushed it past the old 126-slot single page), so there are 16 spare
+ *      slots and ~880 B of page left - the _Static_assert in the .c proves
+ *      both rather than trusting this arithmetic.
+ * [FA] ۱۴۴ جا (۱۱۶۸ بایت) داخل بانک ۲KB؛ امروز ۱۲۸ شناسه ذخیره می‌شود. */
+#define ESP_LINK_NVM_ENTRY_MAX         144u
 
 /* [EN] Save debounce in comm-task runs (period 100 ms -> 1.5 s after the last
  *      change; a shorter window would rewrite flash on every keystroke burst).
@@ -151,7 +177,7 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   127u
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   131u
 
 /* [EN] v1.74: ids 72/73 are retired (the low-battery window became a fixed
    constant inside the Changeover module), so they are carved out of the high
