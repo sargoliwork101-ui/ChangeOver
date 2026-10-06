@@ -79,7 +79,7 @@ Measurement) — بعد به mA زنجیره تبدیل و با LUT توانی �
 
 | فایل | نقش |
 |---|---|
-| `charger.h` / `charger.c` | policy عمومی روی state مستقل هر کانال |
+| `charger.h` / `charger.c` | policy عمومی روی state مستقل هر کانال؛ تعداد کانال‌ها تنها در `CHG_CHANNEL_COUNT` (در `charger.h`) تعریف شده و همهٔ حلقه‌ها، بررسی‌های مرزی و ابعاد آرایه‌ها از همان یک ثابت می‌آیند (پاک‌سازی ۲۰۲۶-۱۰-۰۶) |
 | `../../Config/Inc/app_types.h` | `VLOW` و `VHIGH` مستقل در snapshot |
 | `../../Modules/Measurement/measurement.c` | محاسبهٔ `VLOW = MID-GND` و `VHIGH = V24-MID` |
 | `../../Bsp/Src/bsp_pwm.c` | اعمال duty به PWM منطقی انتخاب‌شده |

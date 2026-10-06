@@ -71,7 +71,7 @@
 | `func__EspLink_Run` | همهٔ بایت‌های RX را به پارسر می‌دهد (SET_PARAM/GET_PARAMS فوری اعمال/پاسخ می‌شوند)، هر ۱۰۰ms یک فریم `TLM_LIVE` می‌فرستد و ذخیرهٔ دیبانس‌شدهٔ NVM را پیش می‌برد |
 | `TaskComm` | یک‌بار `EspLink_Init`، بعد هر ۱۰۰ms `EspLink_Run` (`MODULE_ESP=1`) |
 
-`MODULE_ESP` ساخت تسک و لینک را روشن می‌کند. فیلد `APP_CONFIG.esp_link_enabled` در کد مصرف نمی‌شود (مقدارش بی‌اثر است).
+`MODULE_ESP` ساخت تسک و لینک را روشن می‌کند. (فیلد `APP_CONFIG.esp_link_enabled` در مرتب‌سازی ۲۰۲۶-۱۰-۰۵ حذف شد؛ هیچ‌جا خوانده نمی‌شد و فقط شبیه یک کلید تنظیم به نظر می‌رسید.)
 
 ## پایه‌ها
 
@@ -105,7 +105,7 @@ esp_link.c
   bsp_gpio.h / bsp_gpio.c     BspGpio_Write(BSP_GPIO_ESP_CHPD)
   bsp_uart.h / bsp_uart.c     BspUart_Write / BspUart_ReadByte / BspUart_Init (USART1 پورت برد)
   board-specific BSP          نگاشت CH_PD و TX/RX در لایهٔ برد
-  app_config.h / app_config.c APP_CONFIG.esp_link_enabled ، comm_period_ms
+  app_config.h / app_config.c APP_CONFIG.comm_period_ms
   app_types.h                 measurement_snapshot_t ، app_state_t ، fault_mask_t
 ```
 

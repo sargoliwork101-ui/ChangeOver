@@ -48,17 +48,30 @@ _Static_assert(sizeof(cal_lut_record_t) <=
                    (CAL_LUT_PAGE_B_ADDR - CAL_LUT_PAGE_A_ADDR),
                "CalLut record must fit inside one flash page");
 
-/* [EN] The LUT block must NEVER overlap the parameter block (0x0800F800 /
-   0x0800FC00) - that is the whole point of the separate storage path the
-   user asked for. 0x0800F000 + 2 KiB = 0x0800F800, i.e. they end exactly where the parameter block begins.
-   [FA] بلوک جدول هرگز نباید با بلوک پارامترها هم‌پوشانی کند - هدفِ همین
-   «مسیر ذخیره‌سازی جدا» که کاربر خواست. */
-_Static_assert((CAL_LUT_PAGE_A_ADDR < 0x08000000u) ||
-                   (CAL_LUT_PAGE_A_ADDR > 0x0800FFFFu) ||
+/* [EN] 2026-10-05: two facts are now proved by the compiler instead of by a
+   comment. (1) The LUT pages sit inside the window the flash driver may
+   erase (bsp_flash.h) - the driver's old hard-coded range excluded them, so
+   a LUT save was refused on the board. The second fact - that the LUT block
+   never collides with the EspLink parameter banks - CANNOT be asserted here,
+   because this module must not reference the parameter module at all
+   (separate storage was the whole point of the order). It is a cross-file
+   invariant in tools/audit_consistency.py instead of the hand-written
+   address the old assert used, which went stale the moment v1.80 moved the
+   parameter bank.
+   [FA] از امروز کامپایلر اثبات می‌کند که صفحه‌های جدول داخل پنجرهٔ مجاز
+   درایور فلش‌اند - بازهٔ ثابت قبلیِ درایور آن‌ها را بیرون می‌گذاشت و ذخیرهٔ
+   جدول روی برد رد می‌شد. بررسی دوم، یعنی برخورد‌نکردن با بانک‌های پارامتر،
+   نمی‌تواند اینجا باشد چون این ماژول نباید به ماژول پارامترها ارجاع دهد
+   (جدا‌بودن مسیر ذخیره‌سازی اصل دستور بود)؛ پس به‌شکل invariant بین‌فایلی در
+   ‎tools/audit_consistency.py‎ آمده، نه آدرس دستی‌ای که با جابه‌جایی بانک در
+   v1.80 کهنه شد. */
+#ifdef BSP_FLASH_STORAGE_BASE_ADDR
+_Static_assert((CAL_LUT_PAGE_A_ADDR >= BSP_FLASH_STORAGE_BASE_ADDR) &&
                    ((CAL_LUT_PAGE_B_ADDR +
                      (CAL_LUT_PAGE_B_ADDR - CAL_LUT_PAGE_A_ADDR)) <=
-                    0x0800F800u),
-               "CalLut pages must stay below the parameter NVM pages");
+                    BSP_FLASH_STORAGE_END_ADDR),
+               "CalLut pages must sit inside the writable flash window");
+#endif
 
 /* [EN] Flash programming is halfword-wide: an odd-sized record would leave
    the last byte unwritten.  [FA] نوشتن فلش نیم‌کلمه‌ای است. */
