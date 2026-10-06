@@ -98,6 +98,16 @@ section{margin-top:12px}
 .hd b{font-size:15px;display:flex;align-items:center;gap:8px}
 .hd b::before{content:"";width:4px;height:18px;border-radius:4px;background:linear-gradient(180deg,var(--ac2),var(--ac))}
 .big{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:6px 0}.big b,.big .biglabel{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.25}.big .biglabel{color:var(--tx);display:inline-flex;align-items:baseline;min-width:0}.big .dutybig{cursor:pointer}.big .dutybig:hover{color:var(--ac2)}.big .dutybig:focus-visible{outline:2px solid var(--ac);outline-offset:3px;border-radius:6px}.ceval{color:var(--ac2);border-bottom:1px dashed currentColor;white-space:nowrap}
+/* [EN] Charger-card current and duty labels/values are intentionally 20%
+   smaller so the new battery-voltage line fits below current without making
+   either card taller than the other. [FA] نوشته و عدد جریان و duty در کارت
+   شارژر عمداً ۲۰٪ کوچک‌ترند تا خط ولتاژ باتری زیر جریان جا بگیرد و ارتفاع
+   دو کارت برابر بماند. */
+.ch .big b,.ch .big .biglabel{font-size:22.4px}
+.bmetric{min-width:0}.bsub{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0 0 8px;padding:3px 0 5px;border-bottom:1px solid var(--ln);color:var(--mu);font-size:13px}.bsub b{color:var(--tx);font-size:16px;font-variant-numeric:tabular-nums}.bsub .unit{font-size:11px;color:var(--mu);white-space:nowrap}
+/* [EN] Scenario switch stays usable while the scenario body is disabled.
+   [FA] کلید سناریو هنگام غیرفعال‌بودن بدنه همچنان فعال می‌ماند. */
+.scenctl{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--ln);border-radius:999px;background:var(--in);color:var(--mu);font-size:11px;white-space:nowrap;cursor:pointer}.scenctl input{accent-color:var(--ac2);width:15px;height:15px;margin:0}.scenario-off>.hd>b,.scenario-off>:not(.hd){opacity:.34;filter:grayscale(1)}.scenario-off>:not(.hd){pointer-events:none;user-select:none}.scenario-off .scenctl{opacity:1;filter:none;pointer-events:auto;user-select:auto}.scenario-off .scenctl input{cursor:pointer}.scenario-off{border-style:dashed}
 .bg2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));gap:0 14px}
 .ch table td.n{text-align:center;white-space:nowrap}
 .bar{height:8px;background:var(--in);border:1px solid var(--ln);border-radius:8px;overflow:hidden;position:relative;margin:5px 0 12px}
@@ -370,7 +380,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build eb364aa</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 71fd74c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -465,7 +475,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div id="aw2" style="margin:2px 0 0"></div>
 <div class="sbt" id="usel"><button class="a" data-u="1">۱ · اضافه‌ولتاژ</button><button data-u="2">۲ · قطع باتری</button><button data-u="3">۳ · دشارژ</button><button data-u="4">۴ · شارژ عادی</button><button data-u="5">۵ · عدم‌توازن</button><button data-u="6">۶ · باتری خراب</button><button data-u="7">۷ · خطای فنی برد</button></div>
 <div class="cd" id="ucard1">
-<div class="hd"><b>سناریو ۱ — اضافه‌ولتاژ ورودی (قرمز + بوق)</b></div>
+<div class="hd"><b>سناریو ۱ — اضافه‌ولتاژ ورودی (قرمز + بوق)</b><label class="scenctl" title="فعال یا غیرفعال کردن محتوای سناریو"><input type="checkbox" id="sen1" checked onchange="scenarioToggle(1,this.checked)"><span>فعال</span></label></div>
 
 <div class="ds c4ds">
 <b>این سناریو کِی می‌آید؟</b> بالاترین اولویت برد است و روی هر سناریوی دیگری می‌نشیند.
@@ -506,7 +516,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="bqr"><button class="sb sb2 fwb" onclick="ovdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۱</button></div>
 </div>
 <div class="cd" id="ucard2" style="display:none">
-<div class="hd"><b>سناریو ۲ — قطع باتری (قرمز + بوق)</b></div>
+<div class="hd"><b>سناریو ۲ — قطع باتری (قرمز + بوق)</b><label class="scenctl" title="فعال یا غیرفعال کردن محتوای سناریو"><input type="checkbox" id="sen2" checked onchange="scenarioToggle(2,this.checked)"><span>فعال</span></label></div>
 <div id="aw" style="margin:2px 0 0"></div>
 
 <div class="ds c4ds">
@@ -557,7 +567,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 </div>
 <div class="cd" id="ucard3" style="display:none">
-<div class="hd"><b>سناریو ۳ — دشارژ، بی‌ورودی (سبز + باندهای بوق)</b></div>
+<div class="hd"><b>سناریو ۳ — دشارژ، بی‌ورودی (سبز + باندهای بوق)</b><label class="scenctl" title="فعال یا غیرفعال کردن محتوای سناریو"><input type="checkbox" id="sen3" checked onchange="scenarioToggle(3,this.checked)"><span>فعال</span></label></div>
 
 <div class="ds c4ds">
 <b>این سناریو کِی می‌آید؟</b> وقتی ورودی قطع است و بار روی باتری می‌رود (پایین‌ترین اولویت؛ هر آلارمی آن را کنار می‌زند).
@@ -654,7 +664,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="bqr"><button class="sb sb2 fwb" onclick="dsdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۳</button></div>
 </div>
 <div class="cd" id="ucard4" style="display:none">
-<div class="hd"><b>سناریو ۴ — شارژ عادی (زرد + فول)</b></div>
+<div class="hd"><b>سناریو ۴ — شارژ عادی (زرد + فول)</b><label class="scenctl" title="فعال یا غیرفعال کردن محتوای سناریو"><input type="checkbox" id="sen4" checked onchange="scenarioToggle(4,this.checked)"><span>فعال</span></label></div>
 
 <div class="ds c4ds">
 <b>فول یعنی چه؟</b> برد دو راه مستقل برای «فول» دارد و هرکدام زودتر برسد، چهرهٔ سبزِ ثابت را می‌آورد:
@@ -700,7 +710,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="bqr"><button class="sb sb2 fwb" onclick="chdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۴</button></div>
 </div>
 <div class="cd" id="ucard5" style="display:none">
-<div class="hd"><b>سناریو ۵ — عدم‌توازن دو نیم‌باتری (قفل با حافظه)</b></div>
+<div class="hd"><b>سناریو ۵ — عدم‌توازن دو نیم‌باتری (قفل با حافظه)</b><label class="scenctl" title="فعال یا غیرفعال کردن محتوای سناریو"><input type="checkbox" id="sen5" checked onchange="scenarioToggle(5,this.checked)"><span>فعال</span></label></div>
 
 <div class="ds c4ds">
 <b>این سناریو کِی می‌آید؟</b> وقتی اختلاف دو نیم‌باتری بارها بالا برود — یعنی یکی از دو نیم دارد خراب می‌شود. پنج گام پشت سر هم:
@@ -773,7 +783,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="bqr"><button class="sb sb2 fwb" onclick="ibdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۵</button></div>
 </div>
 <div class="cd" id="ucard6" style="display:none">
-<div class="hd"><b>سناریو ۶ — باتری خراب</b></div>
+<div class="hd"><b>سناریو ۶ — باتری خراب</b><label class="scenctl" title="فعال یا غیرفعال کردن محتوای سناریو"><input type="checkbox" id="sen6" checked onchange="scenarioToggle(6,this.checked)"><span>فعال</span></label></div>
 
 <div class="ds c4ds">
 <b>این سناریو کِی می‌آید؟</b> وقتی باتری ساعت‌ها جریان می‌گیرد ولی هرگز به پایان شارژ نمی‌رسد — یعنی سلول مرده یا اتصالی داخلی. دستور کاربر: «باتری نباید دائم زیر شارژ بماند.»
@@ -838,7 +848,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="bqr"><button class="sb sb2 fwb" onclick="dbdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۶</button></div>
 </div>
 <div class="cd" id="ucard7" style="display:none">
-<div class="hd"><b>سناریو ۷ — خطای فنی برد (ترانزیستور شارژر)</b></div>
+<div class="hd"><b>سناریو ۷ — خطای فنی برد (ترانزیستور شارژر)</b><label class="scenctl" title="فعال یا غیرفعال کردن محتوای سناریو"><input type="checkbox" id="sen7" checked onchange="scenarioToggle(7,this.checked)"><span>فعال</span></label></div>
 <div class="ds c4ds"><b>این سناریو کِی می‌آید؟</b> خرابی طبقهٔ قدرت شارژر تشخیص داده شده است:
 <ul>
 <li><b>اتصال‌کوتاه/سوختن</b> — رلهٔ شارژر باز است، PWM واقعی صفر است و JIT ثبت شده.</li>
@@ -1186,19 +1196,25 @@ async function sendall(){
   +(fixtxt.length?'<br>پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+sdlgl(fixtxt):''),mute?1:0);}
 /* ---------- ساخت صفحه: ولتاژها و وضعیت ---------- */
 /* v1.16k: merged voltages+alarm table - fixed layout, each value once, pills inline */
-const SR=[['ورودی',0],['پک ۲۴ ولت',1],['نود ۱۲ ولت',2],['باتری بالا',3],['باتری پایین',4],['جریان ۱ (بالا)',5],['جریان ۲ (پایین)',6]];
+/* [EN] The top summary keeps only the three shared rail readings. Battery
+   voltages and battery currents live in their charger cards directly below,
+   so duplicating the last four rows here made the page repeat itself.
+   [FA] خلاصهٔ بالای صفحه فقط سه خوانش مشترک ریل را نگه می‌دارد. ولتاژ و
+   جریان باتری‌ها مستقیماً در کارت شارژر خودشان زیر جریان آمده‌اند و تکرار
+   چهار ردیف آخر در اینجا فقط صفحه را شلوغ می‌کرد. */
+const SR=[['ورودی',0],['پک ۲۴ ولت',1],['نود ۱۲ ولت',2]];
 $('ast').innerHTML=`<div class="srvw"><table class="srv"><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"></colgroup><tr><th>سیگنال</th><th>مقدار</th><th>فرمول / بازه</th><th>وضعیت</th><th>کالیبره با مولتی‌متر</th></tr>${SR.map(r=>{const k=r[1];
  const cal=k<3?`<input type="number" step="any" id="vm${k}" placeholder="مولتی‌متر V" onkeydown="if(event.key=='Enter')vcal(${k})"> <button class="sb sb2" onclick="vcal(${k})">اعمال</button> <span class="lb">±<span class="ap n" id="a${[4,5,6][k]}"></span></span>`:'';
  return `<tr id="sr${k}"><td>${r[0]}</td><td class="n" id="v${k}"></td><td><div class="fx" id="fv${k}"></div></td><td><span class="tg" id="sp${k}"></span></td><td>${cal}</td></tr>`;}).join('')}</table></div>`+'<div class="ab" id="asb5" style="margin-top:8px;min-height:0"><small>خطاهای قفل‌شده (fault) — LED جدا برای هر بیت</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit" id="asbb6"><i></i><small>قطع‌باتری</small></span><span class="bit" id="asbb7"><i></i><small>فنی برد</small></span></div><div class="fx2" id="asf"></div></div>';
 let ASB=null;
-ASB={sp:[0,1,2,3,4,5,6,7].map(k=>$('sp'+k)),sr:[0,1,2,3,4,5,6,7].map(k=>$('sr'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6,7].map(k=>$('asbb'+k)),box5:$('asb5'),mask:-1,live:$('aslive'),tick:false};
+ASB={sp:[0,1,2].map(k=>$('sp'+k)),sr:[0,1,2].map(k=>$('sr'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6,7].map(k=>$('asbb'+k)),box5:$('asb5'),mask:-1,live:$('aslive'),tick:false};
 /* [EN] Median/average controls live in Settings; the main panel keeps only the useful voltage/status table and channel charts.
    [FA] کنترل median/میانگین در تنظیمات است؛ صفحهٔ اصلی فقط جدول کاربردی ولتاژ/وضعیت و نمودار کانال‌ها را نگه می‌دارد. */
 
 /* ---------- دو ستون جدا: شارژر ۱ و شارژر ۲ ---------- */
 $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}"></span></div>
 
-<div class="bg2"><div class="big"><span class="biglabel">جریان باتری (iest)</span><b class="n" id="ie${n}"></b></div>
+<div class="bg2"><div class="bmetric"><div class="big"><span class="biglabel">جریان باتری (iest)</span><b class="n" id="ie${n}"></b></div><div class="bsub"><span>ولتاژ باتری ${n==1?'بالا':'پایین'}</span><span><b class="n" id="vb${n}"></b> <span class="unit">V</span></span></div></div>
 <div class="big"><span class="biglabel dutybig" id="dutyedit${n}" role="button" tabindex="0" title="برای تغییر سقف duty کلیک کنید" onclick="dutyedit(${n})" onkeydown="if(event.key==='Enter'||event.key===' ')dutyedit(${n})">duty <span class="ceval" id="dc${n}"></span></span><b class="n" id="du${n}"></b></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
 <div class="bctl"><span class="ctlcap">حالت کار</span><div class="modepick"><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button></div><label class="dutyctl"><span>Duty دستی (%)</span><input type="number" step="any" id="qm${n}" data-s></label><div class="dutyactions"><button class="sb bapply" onclick="qset(${n})">اعمال</button><button class="sb bzero" onclick="qzero(${n})">صفر</button></div></div>
 <div class="lb">بستن پنل: ۱۰ ثانیه بعد مود دستی خاموش و duty صفر می‌شود؛ بعد از تریپ JIT همان duty را دوباره اعمال کنید.</div>
@@ -1237,6 +1253,24 @@ let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=
 let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{STAB=+b.dataset.s;document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i==STAB));stickfit();panelViewSave();if(D)draw(D);});
 let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=7;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();panelViewSave();}
 document.querySelectorAll('#usel button').forEach(b=>b.onclick=()=>usel(+b.dataset.u));
+/* [EN] Each scenario can be disabled without hiding its card: the title and
+   switch remain available, while every other control becomes disabled and the
+   whole scenario is visibly muted. The choice is local to this browser.
+   [FA] هر سناریو بدون مخفی‌شدن کارت قابل غیرفعال‌کردن است: عنوان و کلید باقی
+   می‌مانند، ولی همهٔ کنترل‌های دیگر واقعاً غیرفعال و کل سناریو کم‌رنگ می‌شود.
+   انتخاب در همین مرورگر پس از refresh حفظ می‌شود. */
+const SCENARIO_KEY='changeover-scenario-enabled-v1';
+function scenarioToggle(n,on,save=true){
+ const c=$('ucard'+n),sw=$('sen'+n);if(!c)return;
+ on=!!on;c.classList.toggle('scenario-off',!on);c.setAttribute('aria-disabled',on?'false':'true');
+ if(sw&&sw.checked!==on)sw.checked=on;
+ c.querySelectorAll('input,select,button,textarea').forEach(e=>{if(e!==sw)e.disabled=!on;});
+ if(save)try{const a=JSON.parse(localStorage.getItem(SCENARIO_KEY)||'{}');a[n]=on;localStorage.setItem(SCENARIO_KEY,JSON.stringify(a));}catch(e){}
+}
+function scenarioInit(){let a={};try{a=JSON.parse(localStorage.getItem(SCENARIO_KEY)||'{}');}catch(e){}
+ for(let n=1;n<=7;n++)scenarioToggle(n,typeof a[n]==='boolean'?a[n]:true,false);
+}
+scenarioInit();
 /* [EN] v1.84: keep the user's place across a browser refresh. The panel is a
    tool, not a landing page: tab, sub-tab, scenario card and scroll position
    are part of the current task. / [FA] جای کاربر پس از refresh حفظ می‌شود. */
@@ -2194,20 +2228,13 @@ document.addEventListener('click',e=>{
 function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
  const t=D.t,p=D.p;
  const g=(id,fb)=>p[id]!=null?p[id]:fb;
- const vin=t[14],vl=t[17],vh=t[18],i1=t[3],i2=t[10];
- const mn=g(33,21000),mx=g(34,28000),dc=g(27,14800),ab=g(29,6000),hd=g(35,950),ov=g(36,15000),fl=g(37,2000);
+ const vin=t[14];
+ const mn=g(33,21000),mx=g(34,28000);
  $('v0').textContent=v2(vin);$('v1').textContent=v2(t[15]);$('v2').textContent=v2(t[16]);
- $('v3').textContent=v2(vh);$('v4').textContent=v2(vl);
- $('v5').textContent=i1+'mA';$('v6').textContent=i2+'mA';
- $('fv5').textContent='Hard fault '+hd+'mA';$('fv6').textContent='Hard fault '+hd+'mA';
  const set=(k,txt,cls)=>{ASB.sp[k].textContent=txt;ASB.sp[k].className='tg '+cls;ASB.sr[k].className=cls==='g'?'rok':cls==='y'?'rwr':'rbd';};
  const vinOk=vin>=mn&&vin<=mx;
  set(0,vinOk?'سالم':'خارج از بازه',vinOk?'g':'r');
  set(1,'سالم','g');set(2,'سالم','g');
- [[vh,3],[vl,4]].forEach(B=>{const v=B[0],over=v>=dc,lost=v<ab,inv=v<fl||v>=ov,bad=over||lost||inv;
-  set(B[1],bad?(over?'بالای قطع':lost?'غایب':'نامعتبر'):'سالم',bad?'r':'g');});
- [[i1,5],[i2,6]].forEach(C=>{const v=C[0];
-  set(C[1],v>=hd?'تریپ':v>=hd-100?'نزدیک تریپ':'سالم',v>=hd?'r':v>=hd-100?'y':'g');});
  if(t[19]!==ASB.mask){ASB.mask=t[19];
   if(!t[19]){ASB.flt.textContent='✅ بدون خطای قفل‌شده';ASB.box5.className='ab good';}
   else{let h='';for(let bit=0;bit<7;bit++)if(t[19]&(1<<bit))h+=`<div>⚠ <b>${FEXP[bit][0]}</b> — ${FEXP[bit][1]}</div>`;
@@ -2846,7 +2873,9 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   (t[19]&~64?`<span class="tg r n">fault 0x${t[19].toString(16)}</span>`:'')+(man?'<span class="tg y">مود دستی</span>':'');
  [1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=p[10+n],ce=(PEND[12+n]!=null?PEND[12+n]:p[12+n]);
   const st=$('st'+n);st.textContent=ST[s]||'#'+s;st.className='tg '+(SC[s]||'');
-  $('ie'+n).innerHTML=t[b+4]+' <span class="lb">mA</span>';$('du'+n).textContent=pc(t[b+5]);$('dc'+n).textContent=ce==null?'':'· سقف '+pc(ce);
+  $('ie'+n).innerHTML=t[b+4]+' <span class="lb">mA</span>';
+  const bv=n==1?t[18]:t[17];$('vb'+n).textContent=bv==null?'--':v2(bv);
+  $('du'+n).textContent=pc(t[b+5]);$('dc'+n).textContent=ce==null?'':'· سقف '+pc(ce);
   $('db'+n).style.width=Math.min(100,t[b+5]/10)+'%';$('cl'+n).style.left=(100-Math.min(100,(ce==null?1000:ce)/10))+'%';
   [0,1,2,3,4].forEach(k=>$('c'+n+k).textContent=t[b+k]);
   const g=$('tg'+n);g.textContent=en===0?'وصل مجدد شارژر '+n:'قطع شارژر '+n;g.className='bt '+(en===0?'run':'cut');
