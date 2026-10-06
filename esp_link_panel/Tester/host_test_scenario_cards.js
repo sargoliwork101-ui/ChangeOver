@@ -438,6 +438,18 @@ function testImbalance(win, doc) {
 
     check(doc.getElementById('q111').getAttribute('max') === '18000000',
           'the in-charge wait editor allows the requested five hours');
+    const c5 = doc.getElementById('ucard5');
+    const c5secs = [...c5.querySelectorAll('.sec')].map(e => e.textContent.trim());
+    check(c5secs.findIndex(x => x.indexOf('چشمک قرمز') >= 0) <
+          c5secs.findIndex(x => x.indexOf('بوق در قفل') >= 0),
+          'scenario 5 keeps the lamp section before the beep section');
+    check(c5.querySelector('#q123') && c5.querySelector('#q124') &&
+          c5.querySelector('#q115') && c5.querySelector('#q116') &&
+          c5.querySelector('#s5b') && c5.querySelector('#s5z'),
+          'scenario 5 has separate, ordered lamp and beep boxes');
+    check(win.getComputedStyle(doc.getElementById('s5z')).direction === 'rtl' &&
+          win.getComputedStyle(doc.getElementById('s5b')).textAlign === 'right',
+          'scenario 5 result messages are explicitly right-to-left');
     typeInto(win, doc, 'q112', 30000);
     typeInto(win, doc, 'q114', 10);
     typeInto(win, doc, 'q115', 3600000);

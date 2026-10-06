@@ -306,8 +306,8 @@ input:disabled{opacity:.38;cursor:not-allowed}
 .c4ds{margin:2px 0 4px}
 .c4ds ul{margin:4px 0 6px}
 .c4ds li{margin:2px 0}
-.c4n{font-size:12.5px;line-height:2;color:var(--ac2);background:var(--in);border:1px solid var(--rs);border-radius:12px;padding:8px 12px;margin-top:8px}
-.c4f{font-size:12.5px;line-height:2;color:#c9d0df;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:9px 12px;margin:2px 0 8px}
+.c4n{font-size:12.5px;line-height:2;color:var(--ac2);background:var(--in);border:1px solid var(--rs);border-radius:12px;padding:8px 12px;margin-top:8px;direction:rtl;text-align:right}
+.c4f{font-size:12.5px;line-height:2;color:#c9d0df;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:9px 12px;margin:2px 0 8px;direction:rtl;text-align:right}
 /* v1.51: شبیه‌ساز زندهٔ سناریو - سه LED و بازر، فقط از روی کادرهای همین صفحه */
 .sim{border:1px solid #2c3550;border-radius:10px;padding:8px 10px;margin:0 0 10px;background:#141a28}
 .simh{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;margin-bottom:8px}
@@ -348,12 +348,12 @@ tr.rok{background:rgba(52,211,153,.05)}tr.rwr{background:rgba(251,191,36,.07)}tr
 padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6px 18px rgba(0,0,0,.45);font-size:13px}
 #sbar.on{display:flex}
 #sbar b{color:#ffb020}
-#sbst{color:#9fb0cc}
+#sbst{color:#9fb0cc;direction:rtl;text-align:right}
 /* v1.70: کارت نتیجهٔ ارسال — #sbar با خالی‌شدن صف پنهان می‌شد و پیام موفقیت
    همان لحظه گم می‌شد؛ این کارت تا بسته نشود می‌ماند. */
 #sres{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;background:rgba(5,8,14,.62)}
 #sres.on{display:flex}
-#sres .rb{max-width:560px;width:calc(100% - 28px);max-height:80vh;overflow:auto;background:#121a2c;border:1px solid #35507f;border-radius:16px;padding:16px}
+#sres .rb{max-width:560px;width:calc(100% - 28px);max-height:80vh;overflow:auto;background:#121a2c;border:1px solid #35507f;border-radius:16px;padding:16px;direction:rtl;text-align:right}
 #sres.ok .rb{border-color:#1f7a5a}#sres.warn .rb{border-color:#8a6a12}#sres.bad .rb{border-color:#8a2a2d}
 #srst{display:block;font-size:15px;margin-bottom:8px}
 #sres.ok #srst{color:var(--ok)}#sres.warn #srst{color:#ffb020}#sres.bad #srst{color:#e5484d}
@@ -365,7 +365,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build feeb611</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e4a6495</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -736,13 +736,19 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="bqr"><label class="ckr"><input type="checkbox" id="ib117"><span><span class="ckt">پس از قفل، باتریِ محکوم از خروجی هم جدا شود (مسدودی خروجی)</span><span class="cks" id="a117"></span></span></label></div>
 
-<div class="sec">۴) چراغ و بوقِ هشدار در قفل</div>
-<div class="sx">چهرهٔ هشدار بعد از قفل فقط از همین چهار عدد ساخته می‌شود.<br><br><b>دورهٔ بوق</b> = هر چند وقت یک‌بار بوق تکرار شود (۰ = بی‌صدا) و <b>طول بوق</b> = طول همان بوق.<br><b>دورهٔ چشمک قرمز</b> = یک دور کامل روشن و خاموش (۰ = قرمز ثابت) و <b>سهم روشنی</b> = چند درصد از آن دوره چراغ روشن باشد (با دورهٔ ۰ بی‌اثر است). سناریو ۶ اعداد جدای خودش را دارد، پس این چهار عدد فقط به قفلِ عدم‌توازن مربوط‌اند.</div>
+<div class="sec">۴) چشمک قرمز در قفل <span class="lb">(دوره / duty)</span></div>
+<div class="sx">شکل چراغ قرمز بعد از قفل. <b>دوره</b> = طول چرخهٔ روشن و خاموش (۰ = قرمز ثابت). <b>duty</b> = سهم روشنی چراغ از چرخه.</div>
+<div class="bqr">
+<label>دورهٔ چشمک قرمز در قفل (ms، ۰=ثابت)<input type="number" id="q123" step="100" min="0" max="10000"><span class="lb" id="a123"></span></label>
+<label>سهم روشنی چشمک (٪)<input type="number" id="q124" step="5" min="5" max="95"><span class="lb" id="a124"></span></label>
+</div>
+<div class="c4n" id="s5b"></div>
+
+<div class="sec">۵) بوق در قفل</div>
+<div class="sx"><b>دوره</b> = فاصلهٔ تکرار بوق (۰ = بی‌صدا). <b>طول بوق</b> = مدت هر بوق. سناریو ۶ اعداد چراغ و بوق جدای خودش را دارد.</div>
 <div class="bqr">
 <label>دورهٔ بوق در قفل (ms، ۰=خاموش)<input type="number" id="q115" step="60000" min="0" max="86400000"><span class="lb" id="a115"></span></label>
 <label>طول بوق (ms)<input type="number" id="q116" step="10" min="20" max="2000"><span class="lb" id="a116"></span></label>
-<label>دورهٔ چشمک قرمز در قفل (ms، ۰=ثابت)<input type="number" id="q123" step="100" min="0" max="10000"><span class="lb" id="a123"></span></label>
-<label>سهم روشنی چشمک (٪)<input type="number" id="q124" step="5" min="5" max="95"><span class="lb" id="a124"></span></label>
 </div>
 <div class="c4n" id="s5z"></div>
 
@@ -2505,7 +2511,9 @@ function sall(){
  /* --- سناریو ۵: عدم‌توازن --- */
  {const ev=c4v(114,10),st=c4v(112,30000),wr=c4v(110,600000),wc=c4v(111,600000);
   stxt('s5v','شمارش فقط پس از '+sms(wr)+' از پایان شارژ و '+(wc===0?'<b>بدون گیت</b> حین شارژ':sms(wc)+' از شروع شارژ')+' · حین دشارژ بدون گیت با حد <span class="n">'+c4v(109,500)+'</span> میلی‌ولت · هر رویداد = ماندن بالای حد به مدت '+sms(st)+' · اپیزود با افت <span class="n">'+c4v(113,100)+'</span> میلی‌ولت زیر حد بسته می‌شود');
-  stxt('s5z','قفل در رویداد شمارهٔ <span class="n">'+ev+'</span> · کمترین زمان ممکن تا قفل ≈ '+sms(ev*st)+' (اگر اختلاف پشت‌سرهم بالای حد بماند) · در قفل: '+(c4v(123,1000)===0?'<span class=\"n\">قرمز ثابت</span>':'چشمک قرمز <span class=\"n\">'+Math.round(c4v(123,1000)*c4v(124,50)/100)+'</span> میلی‌ثانیه روشن / <span class=\"n\">'+Math.round(c4v(123,1000)*(100-c4v(124,50))/100)+'</span> میلی‌ثانیه خاموش')+' + '+(c4v(115,3600000)===0?'بوق خاموش':'بوق <span class="n">'+c4v(116,200)+'</span> میلی‌ثانیه هر '+sms(c4v(115,3600000)))+' · پس از قفل تا <span class="n">'+c4v(118,20)+'</span> سیکل شارژ مجاز است، بعد شارژ هم قطع می‌شود · خروج فقط با تعویض باتری (۳ ثانیه)');}
+  const lp=c4v(123,1000),ld=c4v(124,50);
+  stxt('s5b',lp===0?'قرمز ثابت در قفل':'قرمز: <span class="n">'+Math.round(lp*ld/100)+'</span> میلی‌ثانیه روشن / <span class="n">'+Math.round(lp*(100-ld)/100)+'</span> میلی‌ثانیه خاموش — هر دوره <span class="n">'+lp+'</span> میلی‌ثانیه');
+  stxt('s5z','قفل در رویداد شمارهٔ <span class="n">'+ev+'</span> · کمترین زمان ممکن تا قفل ≈ '+sms(ev*st)+' (اگر اختلاف پشت‌سرهم بالای حد بماند) · در قفل: '+(lp===0?'<span class=\"n\">قرمز ثابت</span>':'چشمک قرمز <span class=\"n\">'+Math.round(lp*ld/100)+'</span> میلی‌ثانیه روشن / <span class=\"n\">'+Math.round(lp*(100-ld)/100)+'</span> میلی‌ثانیه خاموش')+' + '+(c4v(115,3600000)===0?'بوق خاموش':'بوق <span class="n">'+c4v(116,200)+'</span> میلی‌ثانیه هر '+sms(c4v(115,3600000)))+' · پس از قفل تا <span class="n">'+c4v(118,20)+'</span> سیکل شارژ مجاز است، بعد شارژ هم قطع می‌شود · خروج فقط با تعویض باتری (۳ ثانیه)');}
 }
 function xmute(){const v=(D&&D.p&&D.p[76]===1)?0:1;const f=$('q76');if(f)f.value=v;send(76,v);}
 /* اتصال ورودی‌های آلارم (۲۷..۸۲): مثل profile + نگهبان + ‎q2/q3‎ برای شناسه‌های ۳۲..۸۲ */
