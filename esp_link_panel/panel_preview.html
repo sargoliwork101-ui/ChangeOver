@@ -460,7 +460,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build e1324cf</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build f95f2ed</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2348,16 +2348,16 @@ function simbz(ph,per,dur,cnt,gap){
  return false;}
 function simblink(ph,per,duty){const on=Math.floor(per*duty/100);return (ph%per)<on;}
 
-/* [EN] v1.55 (user order): a gap only exists BETWEEN beeps, so with one beep
-   per round the gap box is switched off and cannot be typed into. Gap 65 is
-   shared by band 1, band 3 and the critical band, so it stays alive while any
-   of those still asks for more than one beep. The imbalance latch gap (133)
-   is an independent persisted setting, so it remains editable even at count 1.
-   [FA] گپ فقط «بین» بوق‌هاست؛ گپ ۶۵ مشترک است و تا وقتی یکی از باندهایش بیش
-   از یک بوق بخواهد روشن می‌ماند. گپ مستقل قفل عدم‌توازن (۱۳۳) ماندگار است و
-   حتی با تعداد ۱ هم قابل ویرایش می‌ماند. */
+/* [EN] A gap exists only BETWEEN beeps, so every gap box is disabled while
+   its associated count is one and becomes editable as soon as the count is
+   greater than one. Gap 65 is shared by the discharge bands; q133 and q135
+   apply the same rule to the imbalance and dead-battery patterns.
+   [FA] گپ فقط «بین» بوق‌ها معنا دارد؛ بنابراین وقتی تعداد بوق یک است، کادر
+   گپ همان الگو غیرفعال می‌شود و با بیشترشدن تعداد فعال می‌گردد. گپ ۶۵ بین
+   باندهای دشارژ مشترک است و q133/q135 همین قانون را برای الگوی عدم‌توازن و
+   باتری خراب اجرا می‌کنند. */
 
-const GAPOF=[[43,[42],1],[49,[48],1],[65,[62,63,64,58],1],[133,[132],0],[135,[134],0]];
+const GAPOF=[[43,[42],1],[49,[48],1],[65,[62,63,64,58],1],[133,[132],1],[135,[134],1]];
 function gapen(){GAPOF.forEach(g=>{const e=$('q'+g[0]);if(!e)return;
  const independent=g[2]===0;
  const need=independent||g[1].some(id=>c4v(id,1)>1);

@@ -467,7 +467,14 @@ function testImbalance(win, doc) {
     typeInto(win, doc, 'q114', 10);
     typeInto(win, doc, 'q115', 3600000);
     typeInto(win, doc, 'q116', 200);
+    typeInto(win, doc, 'q132', 1);
+    win.simrun();
+    check(doc.getElementById('q133').disabled === true,
+          'the imbalance gap editor is disabled when its beep count is one');
     typeInto(win, doc, 'q132', 3);
+    win.simrun();
+    check(doc.getElementById('q133').disabled === false,
+          'the imbalance gap editor is enabled when its beep count is greater than one');
     typeInto(win, doc, 'q133', 100);
     typeInto(win, doc, 'q136', 3);
     typeInto(win, doc, 'q118', 20);
@@ -700,6 +707,16 @@ function testSimulator(win, doc) {
     check(win.eval('UDEF[5]').indexOf(128) < 0 && win.eval('UDEF[5]').indexOf(115) >= 0 &&
           win.eval('UDEF[6]').indexOf(134) >= 0 && win.eval('UDEF[6]').indexOf(135) >= 0,
           'the imbalance key keeps 115/116 and scenario 6 owns its 134/135 pair');
+    typeInto(win, doc, 'q134', 1);
+    win.simrun();
+    check(doc.getElementById('q135').disabled === true,
+          'the dead-battery gap editor is disabled when its beep count is one');
+    typeInto(win, doc, 'q134', 3);
+    win.simrun();
+    check(doc.getElementById('q135').disabled === false,
+          'the dead-battery gap editor is enabled when its beep count is greater than one');
+    typeInto(win, doc, 'q134', 1);
+    typeInto(win, doc, 'q135', 0);
 
     /* v1.79 (user: "there used to be a LED behind it"): the latched-fault
        bits are real LEDs again - styled, and visible between blinks. */
