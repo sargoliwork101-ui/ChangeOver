@@ -42,7 +42,7 @@ EspLink as documented.
 | `bash tools/check_ai_rules.sh` | **ALL CHECKS PASSED** |
 | `python3 tools/fix_rtl_comments.py --check` | **PASS** |
 | `bash tools/check_firmware_syntax.sh` | **PASS**؛ ESP 93، Charger 52، Imbalance 3805، Changeover 114، Fault 44، Protection 61، Jitter 24، McuPowerPath 49، CalLut 114، Measurement 286 |
-| `python3 tools/audit_consistency.py` | **PASS — 436 invariant، 0 finding** |
+| `python3 tools/audit_consistency.py` | **PASS — 438 invariant، 0 finding** |
 | `git diff --check` | **PASS** |
 | panel simulator matrix | **PASS**؛ current HTML/protocol/NVM map، endpoints و ids `137..142` بررسی شدند |
 

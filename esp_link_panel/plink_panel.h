@@ -181,7 +181,12 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .bqr{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px 14px;align-items:stretch;margin-top:10px}
 .bqr label{display:flex;flex-direction:column;gap:3px;font-size:13px;font-weight:600}
 .bqr label .t{flex:1 0 auto}
-.bqr label .lb,.bqr label .dflt{font-weight:400}
+.bqr label .lb,.bqr label .dflt,.bqr label .qrng{font-weight:400}
+/* [EN] Every editable numeric parameter prints its firmware range directly
+   below the box; the HTML min/max alone is too easy to miss on touch screens.
+   [FA] بازهٔ فرم‌ور زیر خود کادر دیده می‌شود؛ دیدن ‎min/max‎ صرفاً در HTML
+   برای کاربر لمسی کافی نیست. */
+.bqr label .qrng{display:block;color:var(--mu);font-size:.82em;line-height:1.35;font-variant-numeric:tabular-nums}
 .bqr input[type=number]{width:100%}
 .bqr>button,.bqr>.sb{align-self:end}
 /* [EN] v1.76 (user order): one full-width factory key per scenario.
@@ -365,7 +370,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build fce9442</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build eb364aa</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -689,7 +694,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 <div class="sec">۴) اعداد چشمک — زرد با این اعداد می‌زند</div>
 <div class="sx">این بخش عدد تنظیمی ندارد؛ فقط نشان می‌دهد برد با همان اعداد بالا در هر درصد چه روشن/خاموشی‌ای می‌سازد — برای مچ‌کردن حس چراغ با عددها پیش از ثبت.</div>
-<div class="c4f">مانده تا فول = ۱۰۰ − درصد پایدار (کف ۲٪) → گام = دوره ÷ ۱۰۰ → روشن = مانده × گام (کف «حداقل روشنی»، سقف دوره) → خاموش = دوره − روشن. یعنی باتری هرچه پرتر، چشمکِ زرد کوتاه‌تر.</div>
+<div class="c4f" id="c4formula">مانده تا فول = ۱۰۰ − درصد پایدار (کف ۲٪) → گام = کفِ دوره ÷ ۱۰۰ → روشن = مانده × گام (کف «حداقل روشنی»، سقف دوره) → خاموش = دوره − روشن. «حداقل روشنی زرد» یک کفِ قابل‌تنظیمِ مستقل است؛ پس کف واقعی = بیشینهٔ (۲٪ دوره، مقدار کادر) و ممکن است مقدار کادرِ کوچک‌تری مثل ۵ پذیرفته شود اما اثر خروجی را از کف ۲٪ پایین‌تر نبرد.</div>
 <div class="srvw"><table class="srv c4tb"><thead><tr><th>درصد پایدار</th><th>ولتاژ تقریبی</th><th>مانده تا فول</th><th>زرد روشن</th><th>زرد خاموش</th><th>رفتار</th></tr></thead><tbody id="c4tb"></tbody></table></div>
 
 <div class="bqr"><button class="sb sb2 fwb" onclick="chdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۴</button></div>
@@ -775,7 +780,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <ul>
 <li><b>چه چیزی شمرده می‌شود</b> — فقط زمانی که کانال واقعاً در حال پمپ‌کردن است (Bulk/Absorb). خاموشیِ شارژر زمان اضافه نمی‌کند.</li>
 <li><b>چه چیزی ساعت را صفر می‌کند</b> — رسیدن به Float (شارژ کامل شد) یا یک وقفهٔ بلندتر از «مهلت وقفه». وقفهٔ کوتاه ساعت را نگه می‌دارد تا باتریِ لرزان با روشن/خاموش‌شدن مدام از حکم فرار نکند.</li>
-<li><b>حکم</b> — با رسیدن به «مهلت شارژ» (پیش‌فرض ۲۴ ساعت): قرمز <b>ثابت</b> (عمداً ثابت، تا با چشمکِ قفل عدم‌توازن اشتباه نشود) + همان بوق قفل، و شارژ آن کانال قطعِ قطع.</li>
+<li><b>حکم</b> — با رسیدن به «مهلت شارژ» (پیش‌فرض ۲۴ ساعت)، شارژ آن کانال قطعِ قطع می‌شود. <b>چراغ قرمز</b> طبق دوره و سهم روشنی مستقل خودش (q130/q131) نمایش داده می‌شود و <b>بوق مستقل</b> طبق دوره، مدت، تعداد و گپ خودش (q128/q129/q134/q135) پخش می‌شود؛ این دو تنظیم از هم استفاده نمی‌کنند.</li>
 <li><b>تفاوتش با قطعِ باتری کم</b> — قطعِ باتری کم (داخل چنج‌اور، ثابت ۲۱۰۰۰/۲۱۲۰۰ میلی‌ولت) یک واکنشِ لحظه‌ای به ولتاژ است و با شارژ شدن خودبه‌خود برمی‌گردد؛ این یکی یک حکمِ ماندگار دربارهٔ سلامتِ خودِ باتری است و فقط با تعویض باتری پاک می‌شود.</li>
 </ul>
 </div>
@@ -793,23 +798,29 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="c4n" id="s6v"></div>
 
-<div class="sec">۲) چراغ و بوقِ این سناریو</div>
-<div class="sx"><b>دورهٔ بوق</b> = فاصلهٔ تکرار الگو (۰ = بی‌صدا). <b>طول هر بوق</b> = مدت بوق. <b>تعداد</b> و <b>گپ</b> الگوی چندبوقه را می‌سازند. <b>دورهٔ چشمک</b> = چرخهٔ چراغ قرمز (۰ = ثابت) و <b>سهم روشنی</b> مدت روشن‌بودن آن است.</div>
+<div class="sec">۲) چراغ قرمز مستقل این سناریو <span class="lb">(دوره / سهم روشنی)</span></div>
+<div class="sx"><b>دورهٔ چشمک</b> = طول چرخهٔ چراغ قرمز (۰ = قرمز ثابت). <b>سهم روشنی</b> = درصد زمانی که چراغ در همان چرخه روشن است. این دو عدد فقط چراغ را تنظیم می‌کنند.</div>
+<div class="bqr">
+<label>دورهٔ چشمک قرمز (ms، ۰=ثابت)<input type="number" id="q130" step="100" min="0" max="10000"><span class="lb" id="a130"></span></label>
+<label>سهم روشنی چشمک (٪)<input type="number" id="q131" step="5" min="5" max="95"><span class="lb" id="a131"></span></label>
+</div>
+<div class="c4n" id="s6lamp"></div>
+
+<div class="sec">۳) بوق مستقل این سناریو <span class="lb">(دوره / الگو)</span></div>
+<div class="sx"><b>دورهٔ بوق</b> = فاصلهٔ تکرار الگوی بوق (۰ = خاموش). <b>طول هر بوق</b> = مدت هر بوق. <b>تعداد</b> و <b>گپ</b> = شکل همان الگوی بوق. این چهار عدد فقط بوق را تنظیم می‌کنند و از تنظیمات چراغ قرمز یا سناریوی ۵ قرض گرفته نمی‌شوند.</div>
 <div class="bqr">
 <label>دورهٔ بوق پس از حکم (ms، ۰=خاموش)<input type="number" id="q128" step="60000" min="0" max="86400000"><span class="lb" id="a128"></span></label>
 <label>طول هر بوق (ms)<input type="number" id="q129" step="10" min="20" max="2000"><span class="lb" id="a129"></span></label>
 <label>تعداد بوق در هر الگو<input type="number" id="q134" step="1" min="1" max="10"><span class="lb" id="a134"></span></label>
 <label>گپ بین بوق‌ها (ms)<input type="number" id="q135" step="10" min="0" max="5000"><span class="lb" id="a135"></span></label>
-<label>دورهٔ چشمک قرمز (ms، ۰=ثابت)<input type="number" id="q130" step="100" min="0" max="10000"><span class="lb" id="a130"></span></label>
-<label>سهم روشنی چشمک (٪)<input type="number" id="q131" step="5" min="5" max="95"><span class="lb" id="a131"></span></label>
 </div>
-<div class="c4n" id="s6b"></div>
+<div class="c4n" id="s6z"></div>
 
-<div class="sec">۳) رفتار پس از حکم خرابی</div>
+<div class="sec">۴) رفتار پس از حکم خرابی</div>
 <div class="sx"><b>«جداسازی باتری از خروجی» یعنی چه؟</b> هر باتری دو مسیر دارد: مسیرِ <b>شارژ</b> (برق به باتری می‌رود) و مسیرِ <b>خروجی</b> (باتری به بار برق می‌دهد). وقتی حکم «باتری خراب» صادر شد، مسیر شارژِ آن کانال در هر حالت و برای همیشه قطع است — این قابل انتخاب نیست. تنها چیزی که این چک‌باکس تعیین می‌کند، تکلیفِ مسیر <b>خروجی</b> است:
 <ul>
 <li><b>تیک‌دار (پیش‌فرض خاموش است، خودتان روشن می‌کنید)</b> — باتریِ محکوم از خروجی هم برداشته می‌شود: نه شارژ می‌گیرد و نه به بار برق می‌دهد. انگار از مدار درآمده و فقط منتظر تعویض است. امن‌ترین حالت برای باتریِ مشکوک به اتصالیِ داخلی، ولی اگر همان یک باتری تنها منبع بار باشد، بار از دست می‌رود.</li>
-<li><b>بدون تیک (پیش‌فرض)</b> — فقط شارژ قطع می‌شود؛ باتری سرِ جایش می‌ماند و تا وقتی ولتاژ دارد به بار برق می‌دهد و بعد خالی می‌شود. هشدار (قرمز ثابت + بوق) در هر دو حالت یکسان است.</li>
+<li><b>بدون تیک (پیش‌فرض)</b> — فقط شارژ قطع می‌شود؛ باتری سرِ جایش می‌ماند و تا وقتی ولتاژ دارد به بار برق می‌دهد و بعد خالی می‌شود. هشدار در هر دو حالت یکسان است: چراغ از q130/q131 و بوق مستقل از q128/q129/q134/q135 می‌آید.</li>
 </ul>
 این تیک روی فلش برد ذخیره می‌شود و دقیقاً همتای «مسدودی خروجی» در سناریو ۵ است.</div>
 <div class="bqr"><label class="ckr"><input type="checkbox" id="db127"><span><span class="ckt">پس از حکم خرابی، باتری از خروجی هم جدا شود (نه شارژ، نه تغذیهٔ بار)</span><span class="cks" id="a127"></span></span></label></div>
@@ -2244,6 +2255,9 @@ function c4(){
  const sig=[lo,hi,per,minOn,en,ex,hy].join(',');
  if(sig!==C4.sig){
   C4.sig=sig;
+  const cf=$('c4formula');
+  if(cf){const pctFloor=2*Math.floor(per/100),effective=Math.max(pctFloor,minOn);
+   cf.innerHTML='مانده تا فول = ۱۰۰ − درصد پایدار (کف ۲٪) → گام = کفِ دوره ÷ ۱۰۰ → روشن = مانده × گام (سقف دوره). حداقل روشن واقعی = بیشینهٔ <span class="n">'+pctFloor+'ms</span> (کف ۲٪ دورهٔ <span class="n">'+per+'ms</span>) و مقدار کادر <span class="n">'+minOn+'ms</span>؛ بنابراین این مقدار ورودی معتبر است، اما کف خروجی فعلی <span class="n">'+effective+'ms</span> است. خاموش = دوره − روشن.';}
   const m=$('c4map');
   if(m)m.innerHTML=hi>lo
    ?('۰٪ = <span class="n">'+lo+'</span> میلی‌ولت · ۱۰۰٪ = <span class="n">'+hi+'</span> میلی‌ولت · هر ۱٪ ≈ <span class="n">'+Math.round((hi-lo)/100)+'</span> میلی‌ولت · ۵۰٪ ≈ <span class="n">'+c4mv(50,lo,hi)+'</span> میلی‌ولت')
@@ -2438,13 +2452,15 @@ function simrest(){
    else{S6.pa+=dt;if(S6.pa>=gap){S6.acc=0;}}
   }
   if(S6.lock){
-   const redOn=bper===0?true:simblink(n6,bper,bduty);
-   simset(6,redOn,false,false,simbz(n6-S6.lt,per,len,cnt,bgap),
-    'حکم صادر شد: باتری پس از '+sms(lim)+' شارژ پیوسته شارژ نشد · '+(bper===0?'قرمز ثابت':'چشمک قرمز '+Math.round(bper*bduty/100)+'/'+Math.round(bper*(100-bduty)/100)+' میلی‌ثانیه')+' · '+(per===0?'بوق خاموش':cnt+' بوق '+len+' میلی‌ثانیه با گپ '+bgap+' میلی‌ثانیه هر '+sms(per))+' · شارژ این کانال قطع'+(blk?' و باتری از خروجی هم جدا شد':' (خروجی دست‌نخورده)')+' · فقط با تعویض باتری پاک می‌شود.');
+   const redOn=bper===0?true:simblink(n6,bper,bduty),beepOn=simbz(n6-S6.lt,per,len,cnt,bgap);
+   const lampText=bper===0?'چراغ قرمز مستقل: ثابت':'چراغ قرمز مستقل: چشمک '+Math.round(bper*bduty/100)+'/'+Math.round(bper*(100-bduty)/100)+' میلی‌ثانیه';
+   const beepText=per===0?'بوق مستقل: خاموش':('بوق مستقل: '+cnt+' بوق '+len+' میلی‌ثانیه با گپ '+bgap+' میلی‌ثانیه، هر '+sms(per));
+   simset(6,redOn,false,false,beepOn,
+    'حکم صادر شد: باتری پس از '+sms(lim)+' شارژ پیوسته شارژ نشد · '+lampText+' · '+beepText+' · شارژ این کانال قطع'+(blk?' و باتری از خروجی هم جدا شد':' (خروجی دست‌نخورده)')+' · فقط با تعویض باتری پاک می‌شود.');
   }else{
    simset(6,false,true,md==='c',false,
-    (md==='f'?'رسید به Float: شارژ کامل شد و ساعت صفر شد.':md==='c'?('در حال شارژ · '+sms(Math.round(S6.acc))+' از '+(lim>0?sms(lim):'مهلت خاموش')+(lim>0?(' · تا حکم '+sms(Math.max(0,lim-Math.round(S6.acc)))+' مانده'):'')):('وقفهٔ شارژ · ساعت روی '+sms(Math.round(S6.acc))+' نگه داشته شده · اگر وقفه از '+sms(gap)+' بگذرد صفر می‌شود (مانده '+sms(Math.max(0,gap-Math.round(S6.pa)))+')')));}
- }
+    (md==='f'?'رسید به Float: شارژ کامل شد و ساعت صفر شد؛ چراغ و بوق مستقل پس از حکم خاموش‌اند.':md==='c'?('در حال شارژ · '+sms(Math.round(S6.acc))+' از '+(lim>0?sms(lim):'مهلت خاموش')+(lim>0?(' · تا حکم '+sms(Math.max(0,lim-Math.round(S6.acc)))+' مانده'):'')):('وقفهٔ شارژ · ساعت روی '+sms(Math.round(S6.acc))+' نگه داشته شده · اگر وقفه از '+sms(gap)+' بگذرد صفر می‌شود (مانده '+sms(Math.max(0,gap-Math.round(S6.pa)))+')')));}
+  }
  /* ۷) خطای فنی برد: هر سه LED از یک فاز و یک bool استفاده می‌کنند */
  {const p=ph(7),mode=$('sim7m')?$('sim7m').value:'s',
    per=c4v(141,1000),duty=c4v(142,50),
@@ -2554,6 +2570,16 @@ function qdeco(){
   while(l.firstChild&&l.firstChild!==inp){cap.appendChild(l.firstChild);}
   l.insertBefore(cap,inp);
   const id=(inp.id&&inp.id.charAt(0)==='q')?inp.id.slice(1):null;
+  /* [EN] The range is rendered from the same min/max attributes that the
+     browser and the panel validator use. It is deliberately a separate line
+     under the box, not hidden in a title or a validation error.
+     [FA] بازه از همان ‎min/max‎ می‌آید و عمداً خطی جدا زیر کادر است، نه پنهان
+     در title یا فقط در پیام خطا. */
+  const range=document.createElement('span');
+  range.className='qrng';
+  range.dataset.rangeFor=id||'';
+  range.textContent='بازهٔ مجاز: '+inp.min+' تا '+inp.max;
+  l.appendChild(range);
   const d=id?pdflt(id):null;
   if(d==null)return;
   const hint=document.createElement('span');
@@ -2624,6 +2650,12 @@ function sall(){
   {const bp=c4v(115,3600000),bl=c4v(116,200),bc=c4v(132,1),bg=c4v(133,0),bw=swin(bp,bl,bc,bg);
    stxt('s5z','قفل پس از ثبت رویداد کامل شمارهٔ <span class="n">'+ev+'</span> · هر سیکل کامل حداکثر یک ثبت دارد و <span class="n">'+c4v(136,3)+'</span> سیکل کاملِ بدون رویداد فقط شمارنده را صفر می‌کند؛ قفل تا تعویض باتری می‌ماند · در قفل: '+(lp===0?'<span class=\"n\">قرمز ثابت</span>':'چشمک قرمز <span class="n">'+Math.round(lp*ld/100)+'</span> میلی‌ثانیه روشن / <span class="n">'+Math.round(lp*(100-ld)/100)+'</span> میلی‌ثانیه خاموش')+' + '+(bp===0?'بوق خاموش':(bw.fits?'بوق <span class="n">'+bc+'</span> × <span class="n">'+bl+'</span> میلی‌ثانیه + <span class="n">'+(bc>1?bg*(bc-1):0)+'</span> میلی‌ثانیه گپ، هر '+sms(bp):'⚠ الگوی بوق <span class="n">'+bw.winMs+'</span> میلی‌ثانیه است و در دورهٔ <span class="n">'+bp+'</span> جا نمی‌شود — برد بی‌صدا می‌ماند'))+' · پس از قفل تا <span class="n">'+c4v(118,20)+'</span> سیکل شارژ مجاز است، بعد شارژ هم قطع می‌شود · خروج فقط با تعویض باتری (۳ ثانیه)');}
 }
+ /* --- سناریو ۶: نمایش جداگانهٔ چراغ و بوق --- */
+ {const rp=c4v(130,0),rd=c4v(131,50),bp=c4v(128,600000),bl=c4v(129,120),bc=c4v(134,1),bg=c4v(135,0),bw=swin(bp,bl,bc,bg);
+  stxt('s6v','مهلت شارژ پیوسته تا حکم: '+sms(c4v(125,86400000))+' · مهلت صفرشدن ساعت در وقفه: '+sms(c4v(126,600000)));
+  stxt('s6lamp',rp===0?'چراغ قرمز مستقل: ثابت':'چراغ قرمز مستقل: <span class="n">'+Math.round(rp*rd/100)+'</span> میلی‌ثانیه روشن / <span class="n">'+Math.round(rp*(100-rd)/100)+'</span> میلی‌ثانیه خاموش — هر دوره <span class="n">'+rp+'</span> میلی‌ثانیه');
+  stxt('s6z',bp===0?'بوق مستقل: خاموش است (دوره = ۰).':(bw.fits?'بوق مستقل: <span class="n">'+bc+'</span> بوق × <span class="n">'+bl+'</span> میلی‌ثانیه + <span class="n">'+(bc>1?bg*(bc-1):0)+'</span> میلی‌ثانیه گپ، تکرار هر '+sms(bp):'⚠ بوق مستقل در دوره جا نمی‌شود — پنجره <span class="n">'+bw.winMs+'</span> میلی‌ثانیه و دوره <span class="n">'+bp+'</span> میلی‌ثانیه است.'));
+ }
 }
 function xmute(){const v=(D&&D.p&&D.p[76]===1)?0:1;const f=$('q76');if(f)f.value=v;send(76,v);}
 /* اتصال ورودی‌های آلارم (۲۷..۸۲): مثل profile + نگهبان + ‎q2/q3‎ برای شناسه‌های ۳۲..۸۲ */

@@ -20,7 +20,7 @@ substitute here, not a physical-board result.
 | UI | UI host suite در syntax gate **PASS**؛ technical fault قبل از overvoltage/BatLost و هم‌فازی سه LED و استقلال تنظیمات بوق بررسی می‌شود. |
 | Protocol/NVM | ESP host suite: **93 تست PASS**؛ current map با 143 پارامتر، bulk chunk، import/export/reset و NVM contract بررسی شد. |
 | Panel simulator | matrix اجرایی **PASS**: `/`، `/f.css`، `/t`، `/m`، `/lut`؛ آرایهٔ telemetry دارای 31 فیلد و `p` دارای 143 مقدار بود؛ ids `137..142` با clamp و write مستقل بررسی شدند. |
-| Static consistency | `audit_consistency.py`: **436 invariant، 0 finding**. |
+| Static consistency | `audit_consistency.py`: **438 invariant، 0 finding**. |
 | Rules/RTL hygiene | `check_ai_rules.sh`: **ALL CHECKS PASSED**؛ `fix_rtl_comments.py --check`: **PASS**. |
 | سایر Host testerها | Imbalance **3805/3805**، Changeover **114/114**، Protection **61/61**، Jitter **24/24**، McuPowerPath **49/49**، CalLut **114/114**، Measurement **286/286** — همه PASS. |
 
@@ -55,3 +55,32 @@ substitute here, not a physical-board result.
 تنها محدودیت‌های واقعی، DOM اختیاری، toolchain ARM و validation فیزیکی هستند؛
 این موارد در گزارش به‌عنوان محدودیت باقی مانده‌اند و به‌اشتباه PASS اعلام
 نشده‌اند.
+
+## پاس تکمیلی پنل — ۲۰۲۶-۱۰-۰۶ / Panel hardening follow-up
+
+- زیر هر کادر عددی تنظیمات سناریو، `qrng` بازهٔ حداقل/حداکثر همان فیلد را
+  به‌صورت visible چاپ می‌کند؛ `panel_preview.html` از `plink_panel.h` دوباره
+  تولید شد و اسکریپت inline آن parse شد.
+- در سناریوی ۴، بازهٔ Firmware برای `q69` همان `۰..۱۰۰۰۰ ms` است و مقدار کمتر
+  از ۲۰ ذاتاً نامعتبر نیست. علت تفاوت با جدول این است که Firmware ماندهٔ شارژ را
+  روی ۲٪ کف می‌گیرد: با دورهٔ ۱۰۰۰ ms، این کف `۲۰ ms` است و خروجی برابر
+  `max(20, q69)` می‌شود؛ بنابراین `q69=5` پذیرفته می‌شود ولی جدول عمداً زیر
+  `۲۰ ms` نمی‌رود. همین توضیح به‌صورت زنده در کارت و تست سناریو pin شده است.
+- در سناریوی ۶، کنترل‌ها و متن چراغ قرمز (`q130/q131`) از بوق مستقل
+  (`q128/q129/q134/q135`) جدا شدند؛ simulator نیز هر دو را با برچسب مستقل
+  گزارش می‌کند و دیگر بوق را بخشی از تنظیم چراغ معرفی نمی‌کند.
+
+### خروج واقعی ابزارها / Actual tool results
+
+| ابزار | نتیجه |
+|---|---|
+| `python3 tools/audit_consistency.py` | **PASS — 438 invariant، 0 finding** |
+| `bash tools/check_ai_rules.sh` | **PASS — ALL CHECKS PASSED** |
+| `bash tools/check_firmware_syntax.sh` | **PASS — ESP 93، Charger 52 و همهٔ host suiteها سبز** |
+| `python3 tools/fix_rtl_comments.py --check` | **PASS** |
+| `git diff --check` | **PASS** |
+| `node esp_link_panel/Tester/host_test_scenario_cards.js` | **SKIP با exit 0**؛ `jsdom` نصب نیست |
+
+تست DOM سناریو شامل بازهٔ visible، توضیح `q69=5` و جداسازی چراغ/بوق است؛ به‌علت
+نبود `jsdom` اجرای رفتاری آن در این محیط انجام نشد. این محدودیت و نبود تست واقعی
+برد (رله، PWM، JIT، جریان و ترانزیستور) ادعای PASS سخت‌افزاری ایجاد نمی‌کند.

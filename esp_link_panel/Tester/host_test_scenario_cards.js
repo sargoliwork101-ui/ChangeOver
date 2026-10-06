@@ -146,6 +146,19 @@ function testStructure(win, doc) {
         check(el.querySelector('.c4ds') !== null, 'card ' + card + ' explains when it triggers');
         check(el.querySelectorAll('.sec').length >= 2, 'card ' + card + ' is split into numbered sections');
     }
+
+    /* [EN] A browser min/max attribute is not a visible instruction. Every
+       numeric scenario box must print the same range immediately below it.
+       [FA] min/max اچِی‌تی‌ام‌ال به‌تنهایی راهنمای دیداری نیست؛ هر کادر عددی
+       سناریو باید همان بازه را درست زیر خودش چاپ کند. */
+    const numeric = [...doc.querySelectorAll('.bqr input[type="number"][id^="q"]')];
+    const missingRanges = numeric.filter(el => {
+        const r = el.closest('label').querySelector('.qrng');
+        return !r || !r.textContent.includes(el.min) || !r.textContent.includes(el.max);
+    });
+    check(numeric.length > 0 && missingRanges.length === 0,
+        'every numeric scenario box prints its min/max range below the box',
+        missingRanges.map(el => el.id).join(','));
 }
 
 /* ==================== Scenario 1 - input overvoltage ==================== */
@@ -424,6 +437,20 @@ function testCharging(win, doc) {
     check(at(90)[3] === '150ms', 'at 90% the minimum-on floor takes over (100 -> 150 ms)', JSON.stringify(at(90)));
     check(at(100)[2] === '2٪', 'the remaining-to-full floor of 2% is applied at 100%', JSON.stringify(at(100)));
     check(at(0)[3] === '1000ms' && at(0)[4] === '0ms', 'zero percent means the yellow is solid', JSON.stringify(at(0)));
+
+    /* q69 is a valid independent clamp, but the firmware also guarantees a
+       visible 2% remainder. At a 1000 ms period that physical floor is 20 ms,
+       so q69=5 must be accepted and the panel must explain why the table stays
+       at 20 ms rather than pretending the parameter is invalid.
+       q69 یک کف مستقل معتبر است؛ کف ۲٪ فرم‌ور در دورهٔ ۱۰۰۰ میلی‌ثانیه
+       برابر ۲۰ است، پس پنل باید تفاوت «پذیرفته‌شده» و «اثر واقعی» را بگوید. */
+    typeInto(win, doc, 'q69', 5);
+    const floorText = textOf(doc, 'c4formula');
+    check(floorText.includes('20ms') && floorText.includes('5ms') && floorText.includes('معتبر'),
+        'charging explains a valid 5 ms clamp whose effective floor remains 20 ms', floorText);
+    check(doc.getElementById('q69').closest('label').querySelector('.qrng').textContent.includes('0') &&
+          doc.getElementById('q69').closest('label').querySelector('.qrng').textContent.includes('10000'),
+        'yellow minimum-on box visibly prints its firmware range 0..10000');
 
     typeInto(win, doc, 'q68', 2000);
     const rows2 = [...doc.getElementById('c4tb').rows].map(r => [...r.cells].map(c => c.textContent.trim()));
@@ -717,6 +744,25 @@ function testSimulator(win, doc) {
           'the dead-battery gap editor is enabled when its beep count is greater than one');
     typeInto(win, doc, 'q134', 1);
     typeInto(win, doc, 'q135', 0);
+
+    /* [EN] Scenario 6 must present the red lamp and its independent buzzer as
+       two sections, not as one combined control block.
+       [FA] سناریوی ۶ باید چراغ قرمز و بوق مستقلش را در دو بخش جدا نشان دهد،
+       نه در یک بلوک ترکیبی. */
+    const c6 = doc.getElementById('ucard6');
+    const c6secs = [...c6.querySelectorAll('.sec')].map(e => e.textContent.trim());
+    const lampSection = c6secs.findIndex(x => x.indexOf('چراغ قرمز مستقل') >= 0);
+    const beepSection = c6secs.findIndex(x => x.indexOf('بوق مستقل') >= 0);
+    check(lampSection >= 0 && beepSection > lampSection,
+          'scenario 6 orders an independent lamp section before an independent beep section',
+          c6secs.join(' | '));
+    check(!c6secs.some(x => x.indexOf('چراغ و بوق') >= 0) &&
+          c6.querySelector('#s6lamp') && c6.querySelector('#s6z'),
+          'scenario 6 has separate lamp/beep result lines and no combined heading');
+    check(c6.querySelector('#q130').closest('.bqr') !== c6.querySelector('#q128').closest('.bqr') &&
+          c6.querySelector('#q130').closest('.bqr').textContent.indexOf('بوق') < 0 &&
+          c6.querySelector('#q128').closest('.bqr').textContent.indexOf('چراغ') < 0,
+          'scenario 6 lamp inputs and buzzer inputs are physically separated');
 
     /* v1.79 (user: "there used to be a LED behind it"): the latched-fault
        bits are real LEDs again - styled, and visible between blinks. */

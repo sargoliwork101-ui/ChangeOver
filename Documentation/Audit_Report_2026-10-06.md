@@ -37,7 +37,7 @@ It covers firmware/panel contracts; no physical board test was performed.
 
 | ابزار | نتیجهٔ واقعی پس از آخرین ویرایش |
 |---|---|
-| `python3 tools/audit_consistency.py` | **PASS — 436 invariant، 0 finding** |
+| `python3 tools/audit_consistency.py` | **PASS — 438 invariant، 0 finding** |
 | `bash tools/check_ai_rules.sh` | **PASS — ALL CHECKS PASSED**؛ شامل RTL comment check |
 | `python3 tools/fix_rtl_comments.py --check` | **PASS** |
 | `bash tools/check_firmware_syntax.sh` | **PASS**؛ ESP 93، Charger 52، Imbalance 3805، و همهٔ testerهای Changeover/Fault/Protection/Jitter/McuPowerPath/CalLut/Measurement سبز |
@@ -59,3 +59,22 @@ It covers firmware/panel contracts; no physical board test was performed.
 ممیزی سازگاری و دروازهٔ قوانین پس از آخرین اصلاحات **قبول** است و stale claim
 شناخته‌شده‌ای در قرارداد سناریوی ۷، protocol/NVM یا simulator باقی نمانده است.
 محدودیت‌های ARM، DOM و سخت‌افزار واقعی صریحاً باز نگه داشته شده‌اند.
+
+## پیگیری hardening پنل — ۲۰۲۶-۱۰-۰۶ / Panel hardening follow-up
+
+بازهٔ عددی هر کنترل سناریو اکنون در خطی visible زیر همان کادر نمایش داده می‌شود؛
+این خط از `min/max` همان ورودی ساخته می‌شود و preview تولیدشده نیز همین رفتار را
+دارد. بررسی `q69` نشان داد `۰..۱۰۰۰۰ ms` بازهٔ معتبر پارامتر Firmware است؛ مقدار
+`۵ ms` پذیرفتنی است اما به‌دلیل کف رفتاری ۲٪، در دورهٔ ۱۰۰۰ ms اثر واقعی کمتر از
+`۲۰ ms` نمی‌شود. این تفاوت در کارت شارژ و simulator صریح شده است، نه اینکه
+ورودی به‌غلط به حد ۲۰ تغییر داده شود.
+
+سناریوی ۶ اکنون دو بخش مستقل دارد: چراغ قرمز با `q130/q131` و بوق با
+`q128/q129/q134/q135`. خلاصهٔ simulator هم این دو را جدا برچسب می‌زند. صف staged،
+import/clamp، ارسال فقط با global send، گزارش موفقیت/خطا و تنظیم مستقل سناریوی ۷
+دست‌نخورده باقی مانده‌اند.
+
+آخرین gate واقعی: `audit_consistency.py` با **438 invariant و 0 finding**،
+`check_ai_rules.sh` با **ALL CHECKS PASSED**، syntax/host با **ESP 93 و Charger 52**
+و سایر suiteها سبز؛ suite DOM به‌دلیل نبود `jsdom` با قرارداد پروژه SKIP شد و
+تست فیزیکی برد انجام نشده است.
