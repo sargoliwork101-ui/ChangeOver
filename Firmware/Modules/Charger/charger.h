@@ -58,6 +58,16 @@
  *      است؛ پک ۲۴V فقط مانیتور است و هیچ‌گاه setpoint شارژ یا شرط
  *      ‎battery-missing‎ برای CH2 نیست.
  */
+/* [EN] Number of charger channels the module carries. Hardware fits two
+ *      independent chains; the literal 2 used to be repeated in every loop
+ *      bound and every bounds check, which is exactly the kind of duplicated
+ *      constant this project forbids (clean-up 2026-10-06, no behaviour
+ *      change).
+ * [FA] تعداد کانال‌های شارژر. سخت‌افزار دو زنجیرهٔ مستقل دارد؛ پیش از این
+ *      عدد ۲ در همهٔ حلقه‌ها و همهٔ بررسی‌های مرزی تکرار می‌شد که همان تکرار
+ *      ثابتِ ممنوع در این پروژه است (پاک‌سازی ۲۰۲۶-۱۰-۰۶، بدون تغییر رفتار). */
+#define CHG_CHANNEL_COUNT             2u
+
 #define CHG_CHANNEL_1_INSTALLED       1u
 #define CHG_CHANNEL_2_INSTALLED       1u
 
@@ -1654,8 +1664,54 @@ bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
  *  [FA] یک یعنی در حالت قفلِ «باتری خراب»، باتری روی خروجی هم نرود. */
 #define CHG_DEAD_PARAM_BLOCK_OUTPUT        127u
 
+/* [EN] v1.80 (user order: "scenario 6 has a lamp and a buzzer, so why has the
+ *      panel no boxes for them?" - answered "four independent boxes for
+ *      scenario 6"): until now the dead-battery face borrowed the imbalance
+ *      latch beep (ids 115/116) and its red was hard-coded solid, so nothing
+ *      about it could be tuned. These four ids give scenario 6 its own voice
+ *      and its own lamp shape, defaulting to exactly what it used to do
+ *      (same beep as the imbalance latch, solid red = blink period 0).
+ * [FA] سناریوی ۶ تا امروز بوقش را از قفل عدم‌توازن قرض می‌گرفت و قرمزش در کد
+ *      ثابت بود؛ این چهار شناسه چراغ و بوقِ مخصوص خودش را می‌دهند و پیش‌فرضشان
+ *      دقیقاً همان رفتار قبلی است. */
+
+/** [EN] Beep period of the dead-battery latch (ms, 0 = silent), default
+ *  600000 = one beep every 10 min, the old borrowed value.
+ *  [FA] دورهٔ بوق قفلِ باتری خراب (۰ = بی‌صدا). */
+#define CHG_DEAD_PARAM_BEEP_PERIOD_MS      128u
+
+/** [EN] Length of one beep (ms), default 120.
+ *  [FA] طول هر بوق. */
+#define CHG_DEAD_PARAM_BEEP_LEN_MS         129u
+
+/** [EN] Red-lamp blink period in the latch (ms, 0 = SOLID red), default 0 -
+ *  scenario 6 stays solid out of the box so it still reads differently from
+ *  the blinking imbalance latch, but the installer may now change it.
+ *  [FA] دورهٔ چشمک قرمز در قفل (۰ = قرمز ثابت)، پیش‌فرض ۰. */
+#define CHG_DEAD_PARAM_BLINK_PERIOD_MS     130u
+
+/** [EN] On-share of that blink (%), default 50; ignored while the period is 0.
+ *  [FA] سهم روشنی چشمک (٪). */
+#define CHG_DEAD_PARAM_BLINK_DUTY_PCT      131u
+
 #define CHG_DEAD_PARAM_FIRST_ID            CHG_DEAD_PARAM_TIMEOUT_MS
-#define CHG_DEAD_PARAM_LAST_ID             CHG_DEAD_PARAM_BLOCK_OUTPUT
+#define CHG_DEAD_PARAM_LAST_ID             CHG_DEAD_PARAM_BLINK_DUTY_PCT
+/* [EN] Number of ids the scenario-6 block owns, DERIVED from its own first
+ *      and last id. Audit 2026-10-06: the two tables in charger.c carried a
+ *      literal 7 with no compile-time tie to this range, so appending an id
+ *      to the block would have made func__Charger_SetDeadParam index one
+ *      past the end of both arrays - a silent out-of-bounds write into
+ *      whatever the linker placed next. The sibling limit table (93..107)
+ *      already had that guard; this block did not.
+ * [FA] تعداد شناسه‌های بلوک سناریوی ۶، «مشتق» از اولین و آخرین شناسهٔ خودش.
+ *      ممیزی ۲۰۲۶-۱۰-۰۶: دو جدول در ‎charger.c‎ عدد ۷ را ثابت نوشته بودند و
+ *      هیچ گره‌ای با این بازه نداشتند، پس افزودن یک شناسه به بلوک باعث
+ *      می‌شد نوشتن پارامتر یک خانه بیرون از هر دو آرایه بیفتد؛ نوشتنی بی‌صدا
+ *      روی هرچه لینکر آنجا گذاشته است. جدول خواهرش (۹۳..۱۰۷) این نگهبان را
+ *      داشت و این بلوک نداشت. */
+#define CHG_DEAD_PARAM_COUNT \
+    ((uint32_t)(CHG_DEAD_PARAM_LAST_ID - CHG_DEAD_PARAM_FIRST_ID) + 1u)
+
 #define CHG_DEAD_PARAM_OWNS(id) \
     (((id) >= CHG_DEAD_PARAM_FIRST_ID) && ((id) <= CHG_DEAD_PARAM_LAST_ID))
 
@@ -1723,6 +1779,21 @@ uint32_t func__Charger_DeadElapsedSeconds(uint8_t uint8_t__channelIndex);
  * @‎return bool [EN] true = keep battery off the output‎ / وتوی خروجی
  */
 bool func__Charger_DeadBlocksOutput(void);
+
+/**
+ * @brief  [EN] v1.80: the scenario-6 lamp and buzzer shape, read by the UI
+ *              module so the face is drawn from the user's own numbers
+ *              instead of borrowed ones. Any pointer may be NULL.
+ *         [FA] شکل چراغ و بوق سناریوی ۶ برای ماژول UI.
+ * @‎param  uint32_t__beepPeriodMs [EN] out, 0 = silent‎ / دورهٔ بوق
+ * @param  uint32_t__beepLenMs [EN] out / طول بوق
+ * @‎param  uint32_t__blinkPeriodMs [EN] out, 0 = solid red‎ / دورهٔ چشمک
+ * @param  uint32_t__blinkDutyPct [EN] out / سهم روشنی
+ */
+void func__Charger_DeadFaceShape(uint32_t *uint32_t__beepPeriodMs,
+                                 uint32_t *uint32_t__beepLenMs,
+                                 uint32_t *uint32_t__blinkPeriodMs,
+                                 uint32_t *uint32_t__blinkDutyPct);
 
 /**
  * @brief  [EN] Take-and-clear flag: a persisted verdict changed, so the
