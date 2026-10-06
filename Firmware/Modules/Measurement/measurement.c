@@ -657,6 +657,146 @@ _Static_assert(sizeof(CAL_Current1LutChainMa) ==
 /* ==================== Measurement bench LUT interpolation (v1.66) ==================== */
 
 #if ((CAL_CURRENT1_LUT_ENABLE != 0u) || (CAL_CURRENT2_LUT_ENABLE != 0u))
+/* [EN] Exact saturating (a*b)/div without a compiler u64 helper. The
+   product is accumulated in two u32 words and divided with restoring binary
+   division. This keeps the firmware flash diet while preventing the old u32
+   wrap in both interpolation and power-to-current conversion.
+   [FA] محاسبهٔ دقیق و اشباع‌شوندهٔ ‎(a*b)/div‎ بدون helper شانزده‌بیتی
+   کامپایلر: حاصل‌ضرب در دو کلمهٔ u32 جمع و با تقسیم دودویی restoring تقسیم
+   می‌شود. رژیم فلش حفظ می‌شود و wrap قدیمی در interpolation و توان‌به‌جریان
+   از بین می‌رود. */
+static uint32_t func__Measurement_MulDivU32Saturating(uint32_t uint32_t__a,
+                                                      uint32_t uint32_t__b,
+                                                      uint32_t uint32_t__divisor)
+{
+    uint32_t uint32_t__productLow = 0u;
+    uint32_t uint32_t__productHigh = 0u;
+    uint32_t uint32_t__addLow = uint32_t__a;
+    uint32_t uint32_t__addHigh = 0u;
+    uint32_t uint32_t__multiplier = uint32_t__b;
+    uint32_t uint32_t__remainder = 0u;
+    uint32_t uint32_t__quotient = 0u;
+    uint8_t uint8_t__bit;
+
+    if ((uint32_t__divisor == 0u) || (uint32_t__a == 0u) ||
+        (uint32_t__b == 0u))
+    {
+        return 0u;
+    }
+
+    /* Shift-and-add multiplication into a 64-bit value represented as
+       high/low u32 words. The mathematical product of two u32 values fits. */
+    for (uint8_t__bit = 0u; uint8_t__bit < 32u; uint8_t__bit++)
+    {
+        if ((uint32_t__multiplier & 1u) != 0u)
+        {
+            uint32_t uint32_t__oldLow = uint32_t__productLow;
+            uint32_t__productLow += uint32_t__addLow;
+            uint32_t__productHigh += uint32_t__addHigh;
+            if (uint32_t__productLow < uint32_t__oldLow)
+            {
+                uint32_t__productHigh++;
+            }
+        }
+        uint32_t__addHigh = (uint32_t)((uint32_t__addHigh << 1) |
+                                       (uint32_t__addLow >> 31));
+        uint32_t__addLow <<= 1;
+        uint32_t__multiplier >>= 1;
+    }
+
+    /* Divide the 64-bit product from MSB to LSB. A quotient bit above bit 31
+       proves the public u32 result must saturate. */
+    for (uint8_t__bit = 64u; uint8_t__bit > 0u; uint8_t__bit--)
+    {
+        uint8_t uint8_t__productBitIndex = (uint8_t)(uint8_t__bit - 1u);
+        uint32_t uint32_t__productBit =
+            (uint8_t__productBitIndex >= 32u)
+                ? ((uint32_t__productHigh >>
+                    (uint8_t__productBitIndex - 32u)) & 1u)
+                : ((uint32_t__productLow >> uint8_t__productBitIndex) & 1u);
+        uint32_t uint32_t__complement = uint32_t__divisor -
+                                         uint32_t__remainder;
+        bool bool__subtract = false;
+
+        /* Compare 2*remainder+bit with divisor without overflowing u32. */
+        if (uint32_t__remainder >= uint32_t__complement)
+        {
+            uint32_t__remainder -= uint32_t__complement;
+            if (uint32_t__productBit != 0u)
+            {
+                uint32_t__remainder++;
+            }
+            bool__subtract = true;
+        }
+        else if ((uint32_t__productBit != 0u) &&
+                 (uint32_t__remainder == (uint32_t__complement - 1u)))
+        {
+            uint32_t__remainder = 0u;
+            bool__subtract = true;
+        }
+        else
+        {
+            uint32_t__remainder = (uint32_t)((uint32_t__remainder << 1) |
+                                              uint32_t__productBit);
+        }
+
+        if (bool__subtract != false)
+        {
+            if (uint8_t__productBitIndex >= 32u)
+            {
+                return UINT32_MAX;
+            }
+            uint32_t__quotient = (uint32_t)((uint32_t__quotient << 1) | 1u);
+        }
+        else if (uint8_t__productBitIndex < 32u)
+        {
+            uint32_t__quotient <<= 1;
+        }
+    }
+    return uint32_t__quotient;
+}
+
+static uint32_t func__Measurement_InterpU32Increasing(uint32_t uint32_t__yLow,
+                                                      uint32_t uint32_t__deltaX,
+                                                      uint32_t uint32_t__deltaY,
+                                                      uint32_t uint32_t__spanX)
+{
+    uint32_t uint32_t__deltaYScaled;
+    uint32_t uint32_t__result;
+
+    if (uint32_t__spanX == 0u)
+    {
+        return uint32_t__yLow;
+    }
+    uint32_t__deltaYScaled = func__Measurement_MulDivU32Saturating(
+        uint32_t__deltaX, uint32_t__deltaY, uint32_t__spanX);
+    uint32_t__result = uint32_t__yLow + uint32_t__deltaYScaled;
+    if (uint32_t__result < uint32_t__yLow)
+    {
+        return UINT32_MAX;
+    }
+    return uint32_t__result;
+}
+
+static uint32_t func__Measurement_PowerMwToMa(uint32_t uint32_t__powerMw,
+                                               uint32_t uint32_t__voltageMv)
+{
+    return func__Measurement_MulDivU32Saturating(uint32_t__powerMw,
+                                                  1000u,
+                                                  uint32_t__voltageMv);
+}
+
+#ifdef MEASUREMENT_HOST_TEST
+uint32_t func__Measurement_HostTest_MulDivU32(uint32_t uint32_t__a,
+                                              uint32_t uint32_t__b,
+                                              uint32_t uint32_t__divisor)
+{
+    return func__Measurement_MulDivU32Saturating(uint32_t__a,
+                                                  uint32_t__b,
+                                                  uint32_t__divisor);
+}
+#endif
+
 /**
  * @brief  [EN] Piecewise-linear interpolation over ONE bench table: chain
  *              mA -> battery POWER mW. Both channels and BOTH sources (the
@@ -719,10 +859,11 @@ static uint32_t func__Measurement_BenchLutInterp(
             {
                 return uint32_t__yHigh;
             }
-            return uint32_t__yLow +
-                   (((uint32_t__chainMa - uint32_t__xLow) *
-                     (uint32_t__yHigh - uint32_t__yLow)) /
-                    (uint32_t__xHigh - uint32_t__xLow));
+            return func__Measurement_InterpU32Increasing(
+                uint32_t__yLow,
+                uint32_t__chainMa - uint32_t__xLow,
+                uint32_t__yHigh - uint32_t__yLow,
+                uint32_t__xHigh - uint32_t__xLow);
         }
     }
 
@@ -733,12 +874,13 @@ static uint32_t func__Measurement_BenchLutInterp(
     {
         return UINT32_T__A__PowerMw[uint32_t__points - 1u];
     }
-    return UINT32_T__A__PowerMw[uint32_t__points - 1u] +
-           (((uint32_t__chainMa - UINT32_T__A__ChainMa[uint32_t__points - 1u]) *
-             (UINT32_T__A__PowerMw[uint32_t__points - 1u] -
-              UINT32_T__A__PowerMw[uint32_t__points - 2u])) /
-            (UINT32_T__A__ChainMa[uint32_t__points - 1u] -
-             UINT32_T__A__ChainMa[uint32_t__points - 2u]));
+    return func__Measurement_InterpU32Increasing(
+        UINT32_T__A__PowerMw[uint32_t__points - 1u],
+        uint32_t__chainMa - UINT32_T__A__ChainMa[uint32_t__points - 1u],
+        UINT32_T__A__PowerMw[uint32_t__points - 1u] -
+            UINT32_T__A__PowerMw[uint32_t__points - 2u],
+        UINT32_T__A__ChainMa[uint32_t__points - 1u] -
+            UINT32_T__A__ChainMa[uint32_t__points - 2u]);
 }
 #endif
 
@@ -806,16 +948,18 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
 #if (CAL_CURRENT1_LUT_ENABLE != 0u)
     /* [EN] The LUT maps the ADC chain current to battery-1 POWER (the DCM
        invariant); dividing by the LIVE battery-1 terminal voltage (vhigh,
-       previous 1 ms pass, clamped 8.0..15.0 V) yields the CURRENT. u32
-       intermediate (flash diet): power x 1000 peaks near 135M < 2^32.
+       previous 1 ms pass, clamped 8.0..15.0 V) yields the CURRENT. The
+       multiply/divide uses exact split-word u32 arithmetic because panel LUT
+       data is runtime; the public result saturates to u32.
        [FA] جدول جریان زنجیرهٔ ADC را به «توان باتری ۱» می‌برد (ناوردای
        DCM)؛ تقسیم بر ولتاژ زندهٔ ترمینال باتری ۱ (vhigh، پاس ۱ms قبل،
-       گیرهٔ ۸..۱۵V) جریان باتری را می‌دهد. میانی u32 (رژیم فلش): توان×۱۰۰۰
-       سقف ~۱۳۵M < ۲^۳². */
+       گیرهٔ ۸..۱۵V) جریان باتری را می‌دهد. ضرب/تقسیم با arithmetic دقیق
+       ‎split-word‎ انجام می‌شود چون LUT پنل دادهٔ زمان اجراست و خروجی عمومی
+       به u32 اشباع می‌شود. */
     uint32_t uint32_t__batteryPowerMw = func__Measurement_Current1BenchLut(
         func__BspMeasurement_Current1CountsToMa(uint16_t__counts));
-    return (uint32_t__batteryPowerMw * 1000u) /
-           UINT32_T__G__Battery1VoltageMv;
+    return func__Measurement_PowerMwToMa(uint32_t__batteryPowerMw,
+                                          UINT32_T__G__Battery1VoltageMv);
 #else
     return func__BspMeasurement_Current1CountsToMa(uint16_t__counts);
 #endif
@@ -919,19 +1063,21 @@ uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
 #if (CAL_CURRENT2_LUT_ENABLE != 0u)
     /* [EN] The LUT maps the ADC chain current to battery-2 POWER (the DCM
        invariant); dividing by the LIVE battery-2 terminal voltage (previous
-       1 ms pass, clamped 8.0..15.0 V) yields the battery CURRENT. u32
-       intermediate (flash diet): power x 1000 peaks near 135M < 2^32.
+       1 ms pass, clamped 8.0..15.0 V) yields the battery CURRENT. The exact
+       split-word u32 helper prevents runtime-table multiplication from
+       wrapping and saturates only when the public result cannot fit.
        [FA] جدول جریان زنجیرهٔ ADC را به «توان باتری ۲» می‌برد (ناوردای
        DCM)؛ تقسیم بر ولتاژ زندهٔ ترمینال باتری ۲ (پاس ۱ms قبل، گیرهٔ
-       ۸..۱۵V) جریان باتری را می‌دهد. میانی u32: توان×۱۰۰۰ سقف ~۱۳۵M < ۲^۳². */
+       ۸..۱۵V) جریان باتری را می‌دهد. helper دقیق ‎split-word‎ از wrap ضرب
+       جدول زمان اجرا جلوگیری می‌کند و فقط در خروجی خارج از u32 اشباع می‌شود. */
     uint32_t uint32_t__batteryPowerMw = func__Measurement_Current2BenchLut(
         func__BspMeasurement_Current2CountsToMa(uint16_t__counts));
-    /* [EN] Flash diet 2026-09-27: u32 is exact - power x 1000 stays below
-       2^32 even for a pathological full-u16 count (chain gain is clamped,
-       LUT tail slope is fixed), so the u64 only pulled __aeabi_uldivmod.
-       [FA] رژیم فلش: ضرب ۳۲بیتی حتی برای ورودی بیمارگون دقیق است. */
-    return (uint32_t__batteryPowerMw * 1000u) /
-           UINT32_T__G__Battery2VoltageMv;
+    /* [EN] Runtime LUT values are not limited to the compiled table's small
+       range; the split-word conversion helper prevents wrap and saturates.
+       [FA] مقادیر LUT زمان اجرا به بازهٔ کوچک جدول کامپایل محدود نیستند؛
+       کمک‌کنندهٔ ‎split-word‎ از wrap جلوگیری و اشباع می‌کند. */
+    return func__Measurement_PowerMwToMa(uint32_t__batteryPowerMw,
+                                          UINT32_T__G__Battery2VoltageMv);
 #else
     return func__BspMeasurement_Current2CountsToMa(uint16_t__counts);
 #endif

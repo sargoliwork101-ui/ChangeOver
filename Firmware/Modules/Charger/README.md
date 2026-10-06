@@ -53,10 +53,34 @@ Measurement) — بعد به mA زنجیره تبدیل و با LUT توانی �
 آستانه یا تایمری دیگر در این ماژول برای قطع باتری نیست. UI هم همان بیت را با
 سناریوی BatLost نشان می‌دهد.
 
+## سناریو ۷ — خطای فنی برد / Technical board fault
+
+این سناریو مخصوص خرابی طبقهٔ قدرت و به‌ویژه سوختن ترانزیستور شارژر است. تشخیص
+در `func__Charger_EvaluateTechnicalFault()` انجام می‌شود و به‌ازای هر کانال
+روی duty واقعی اعمال‌شده و جریان همان کانال تصمیم می‌گیرد:
+
+| امضای خرابی | شرط دقیق |
+|---|---|
+| اتصال‌کوتاه/سوختن ترانزیستور | رلهٔ شارژر باز (`func__Charger_IsRelayOpen()`)، duty واقعی برابر `0‰` و JIT همان کانال ثبت شده باشد |
+| قطع‌شدن/سوختن ترانزیستور | duty واقعی **بیشتر از `200‰`** (`>20%`) و جریان اندازه‌گیری‌شدهٔ همان کانال دقیقاً `0mA` باشد |
+
+با اولین تطبیق، `FAULT_CHARGER_TECHNICAL` (بیت ۷) در ماژول Fault ست و
+`BOOL__G__TechnicalFaultLockout` در Charger قفل می‌شود. از آن لحظه:
+
+- `func__Charger_FinalDisconnect()` در هر پاس هر دو PWM را صفر و رله را باز نگه می‌دارد؛
+- تغییر تنظیمات پنل، retry JIT، مود دستی، NVM یا تغییر `app_state` قفل را آزاد نمی‌کند؛
+- فقط `func__Charger_Init()` در بوت بعدی، یعنی reset یا power-cycle، قفل RAM را پاک می‌کند؛
+- ارزیابی بعد از `func__Jitter_Run()` و پیش از ادامهٔ Changeover/Charger انجام می‌شود تا
+  همان پاس وارد مسیر خطا شود.
+
+این fault در NVM ذخیره نمی‌شود؛ بیت Fault نیز با `func__Fault_Init()` در reset
+پاک می‌شود، بنابراین بعد از راه‌اندازی مجدد شرایط اندازه‌گیری دوباره بررسی می‌شوند.
+
 ## تاریخچه
 
 | تاریخ | تغییر |
 |---|---|
+| 2026-10-06 | **سناریوی ۷ خطای فنی برد:** تشخیص دوگانهٔ اتصال‌کوتاه/سوختن (`رله باز + PWM=0 + JIT`) و قطع‌شدن/سوختن (`PWM>20% + جریان=0`)، قفل RAM تا reset/power-cycle، fault bit 7 و اولویت نمایشی سه LED هم‌زمان؛ Host test جدید و پروتکل/پنل ids 137..142 ممیزی شد. |
 | 2026-09-27 | **v1.19 (خوانش‌ها، بدون تغییر منطق شارژ):** جدول LUT کانال ۱ (mA واقعی باتری) + تاپ مقسم پک 66200 — قطع سخت ۱۵V کانال بالایی که با مقسم قدیمی کور بود (باتری تا ~۱۶٫۴V بدون قطع) دوباره بینا شد؛ تست هاست ۳۴/۳۴ |
 | 2026-09-27 | **v1.17/v1.18 (خوانش‌ها):** بازفیت LUT کانال ۲ (کف ±3mA) — باند ۶۳۰..۶۵۰mA و تیپر ۵۰mA حالا روی mA واقعی باتری می‌نشینند |
 | 2026-09-27 | ممیزی AI بچ ۲: تعلیق NVM (دستور کاربر «بیکار کن، ذخیره کن، راه بینداز») — `SetSuspended/IsSuspended`؛ در تعلیق هر دو گیت صفر و پاس رد می‌شود، حالت/شستشو/ستل دست‌نخورده و ادامه یکپارچه؛ قفل زمان‌بند در سترهای پروفایل/آلارم؛ volatile سه سقف آلارم؛ حذف شاخهٔ مردهٔ کف ETA |
@@ -93,6 +117,9 @@ Measurement) — بعد به mA زنجیره تبدیل و با LUT توانی �
 | `func__Charger_Init` | صفرکردن هر دو PWM، بازکردن NC و صفرکردن stateهای مستقل |
 | `func__Charger_Evaluate` | اجرای یک policy عمومی برای هر کانال نصب‌شده با duty جدا |
 | `func__Charger_RegulateChannel` | Bulk/Absorb/Float، current limit و افزایش duty در جریان کم برای یک کانال |
+| `func__Charger_EvaluateTechnicalFault` | ارزیابی دو امضای خرابی ترانزیستور سناریوی ۷ از snapshot/JIT و ست‌کردن قفل فنی |
+| `func__Charger_GetAppliedDutyPermille` / `func__Charger_IsRelayOpen` | خواندن duty واقعی و وضعیت رله برای تشخیص سخت‌افزار، نه duty درخواستی PID |
+| `func__Charger_IsTechnicalFaultLocked` | خواندن وضعیت قفل فنی سناریوی ۷ برای diagnostic |
 | `func__Charger_HandleJitTrip` | PWM صفر، relay باز، lockout و برنامه‌ریزی retry کانال تریپ‌کرده (در مود دستی: پارک بدون ریتری؛ شمارش تریپ جمع می‌شود) |
 | `func__Charger_ServiceRetry` | relay خاموش/NC بسته، settle و سپس PWM فقط کانال retry (فقط مود خودکار) |
 | `func__Jitter_ClearChannel` | arm مجدد ورودی JIT همان کانال بعد از safe sequence |
@@ -151,14 +178,16 @@ firmware نیست. افزایش به `100mA` یا `10%` تا تأیید شکل�
 rtos_app.c → TaskControl → task_control.c
   func__Charger_Init() قبل از اولین Evaluate
   func__Jitter_Run() در هر دوره، وقتی JITTER فعال باشد
+  func__Charger_EvaluateTechnicalFault(&snapshot)  ← سناریوی ۷، بعد از JIT
   func__Charger_Evaluate(&snapshot, app_state)
+      ├─ اگر technical lockout: هر دو PWM=0 و relay open
       ├─ snapshot.v_bat_low_mv  ← MID-GND   (Trans2)
       ├─ snapshot.v_bat_high_mv ← V24-MID   (Trans1)
       ├─ snapshot.i_ch1_ma / i_ch2_ma ← ADC+DMA + LM358 filter
       └─ bsp_pwm / bsp_gpio
 ```
 
-`Tester/host_test_charger.py` فقط policy و source contract را بررسی می‌کند (۴۰ تست، شامل قرارداد مود دستی و پین‌های LUT). PASS شدن
+`Tester/host_test_charger.py` فقط policy و source contract را بررسی می‌کند (۵۱ تست، شامل تشخیص و lockout سناریوی ۷، قرارداد مود دستی و پین‌های LUT). PASS شدن
 host یا syntax به‌تنهایی مجوز اتصال باتری، اثبات waveform واقعی MCU یا تأیید
 LM393/رله نیست. شارژر اکنون با `CHG_MASTER_ENABLE=1` فعال است (تصمیم کاربر
 ۲۰۲۶-۰۹-۲۲)؛ تست‌های سخت‌افزاری جدید باید با منبع ورودی محدودشده، پایش جریان و

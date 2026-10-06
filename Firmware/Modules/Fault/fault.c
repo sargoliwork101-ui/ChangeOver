@@ -269,6 +269,11 @@ bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t uint32_t__value,
                                uint32_t *uint32_t__appliedValue)
 {
+    if (uint32_t__appliedValue == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Writer-side scheduler lock (v1.16 audit C11): the comm task
        writes, the control task (fault eval) preempts mid-clamp and would
        read a torn threshold set for one pass. Pre-kernel the plain path
@@ -329,6 +334,11 @@ bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
 bool func__Fault_GetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value)
 {
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Indexed read: same dense-id/struct contract as the setter.
        [FA] خواندن نمایه‌ای: همان قرارداد شناسه/ساختار. */
     if ((uint8_t__paramId < FAULT_ALARM_PARAM_DISCONNECT_MV) ||

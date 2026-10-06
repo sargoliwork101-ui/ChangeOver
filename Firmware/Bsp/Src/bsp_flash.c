@@ -98,27 +98,27 @@ static bool func__BspFlash_WaitIdle(void)
 /* ==================== BspFlash_ErasePage ==================== */
 
 /**
- * @brief  [EN] Erase one 1 KiB main-flash page. The caller may pass any
- *              address inside the page; it is rounded down to the page
- *              boundary here. The sequence is the one the reference manual
+ * @brief  [EN] Erase one 1 KiB main-flash page. The caller must pass a
+ *              page-aligned address inside the writable NVM window. The
+ *              sequence is the one the reference manual
  *              requires: unlock, wait for idle, set PER and the page
  *              address, strobe START, wait for the busy flag to drop, check
  *              the error flags, then lock again - the lock is restored on
  *              every exit path, so a failed erase can never leave the flash
  *              controller open. An address outside the region this NVM
  *              layout owns is refused before anything is touched.
- *         [FA] یک صفحهٔ یک‌کیلوبایتی فلش اصلی را پاک می‌کند. فراخوان می‌تواند
- *              هر آدرسی داخل صفحه بدهد؛ همین‌جا به مرز صفحه گرد می‌شود. ترتیب
+ *         [FA] یک صفحهٔ یک‌کیلوبایتی فلش اصلی را پاک می‌کند. فراخواننده باید
+ *              آدرس هم‌تراز صفحه را داخل پنجرهٔ قابل‌نوشتن NVM بدهد. ترتیب
  *              کار همانی است که رفرنس‌منوال می‌خواهد: باز کردن قفل، انتظار
  *              بیکاری، ست‌کردن PER و آدرس صفحه، زدن START، انتظار افتادن پرچم
  *              مشغول، بررسی پرچم‌های خطا و بعد قفل دوباره؛ قفل در همهٔ مسیرهای
  *              خروج برگردانده می‌شود تا پاک‌کردن ناموفق هرگز کنترلر فلش را باز
  *              رها نکند. آدرس بیرون از ناحیه‌ای که این چیدمان NVM مالکش است،
  *              پیش از هر دست‌زدنی رد می‌شود.
- * @param  uint32_t__pageAddress [EN] Any address inside the target page,
- *                                   must lie in the NVM region /
- *                                   هر آدرسی داخل صفحهٔ هدف، باید در ناحیهٔ
- *                                   NVM باشد
+ * @param  uint32_t__pageAddress [EN] Page-aligned address inside the target
+ *                                   page and NVM region /
+ *                                   آدرس هم‌تراز صفحه داخل صفحهٔ هدف و ناحیهٔ
+ *                                   NVM
  * @return bool [EN] true when the page was erased and no error flag was
  *                   raised, false on a rejected address or a controller
  *                   error / اگر صفحه پاک شد و پرچم خطایی بالا نرفت true،
@@ -128,8 +128,10 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
 {
     bool bool__ok;
 
-    /* [EN] Main-flash 1 KiB page granularity, whole 64 KiB bank.
-       [FA] اندازهٔ صفحهٔ فلش اصلی ۱KB است، کل بنک ۶۴KB. */
+    /* [EN] Main-flash 1 KiB page granularity; this guard is intentionally
+       narrower than the whole 64 KiB bank and covers only the NVM window.
+       [FA] دانهٔ صفحهٔ فلش اصلی ۱KB است؛ این گارد عمداً از کل بنک ۶۴KB
+       محدودتر است و فقط پنجرهٔ NVM را پوشش می‌دهد. */
     /* [EN] Range + alignment guards (full-program audits 2026-09-26/27):
        only the data window BSP_FLASH_STORAGE_BASE_ADDR..END (bsp_flash.h,
        the single source of truth) may be erased and the address must be
@@ -150,6 +152,16 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
     }
 
     func__BspFlash_Unlock();
+    /* [EN] Do not start an erase while an earlier flash operation is still
+       busy. This driver normally waits on every exit, but a bounded preflight
+       also protects against a caller or boot-time operation outside this API.
+       [FA] پاک‌کردن را تا وقتی عملیات قبلی مشغول است شروع نکن؛ هرچند این
+       درایور در خروج منتظر می‌ماند، پیش‌بررسی در برابر عملیات بیرونی هم امن است. */
+    if (func__BspFlash_WaitIdle() == false)
+    {
+        FLASH->CR |= FLASH_CR_LOCK;
+        return false;
+    }
     func__BspFlash_ClearFlags();
 
     FLASH->CR |= FLASH_CR_PER;
@@ -175,7 +187,7 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
  *              first failure aborts the loop so a half-written record is
  *              never reported as success, and the controller is locked
  *              again on every exit path. Writes are range-checked against
- *              the two 1 KiB pages this NVM layout owns, so a wild address
+ *              the writable NVM window this layout owns, so a wild address
  *              cannot reach program code.
  *         [FA] رشته‌ای از نیم‌کلمه‌های ۱۶ بیتی را در فلش اصلی می‌نویسد. کنترلر
  *              فلش ‎STM32F1‎ فقط نیم‌کلمه‌ای می‌نویسد و قرارداد عمومی هم به همین
@@ -183,8 +195,8 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
  *              ست می‌کند، نیم‌کلمه را می‌نویسد، منتظر پاک‌شدن پرچم مشغول می‌ماند
  *              و پرچم‌های خطا را می‌بیند؛ اولین شکست حلقه را می‌شکند تا رکورد
  *              نیمه‌نوشته هرگز موفق گزارش نشود و قفل در همهٔ مسیرهای خروج
- *              برمی‌گردد. آدرس در برابر دو صفحهٔ یک‌کیلوبایتیِ متعلق به این
- *              چیدمان NVM بررسی می‌شود تا آدرس ولگرد به کد برنامه نرسد.
+ *              برمی‌گردد. آدرس در برابر پنجرهٔ قابل‌نوشتن NVM متعلق به این
+ *              چیدمان بررسی می‌شود تا آدرس ولگرد به کد برنامه نرسد.
  * @param  uint32_t__address   [EN] Even start address inside the NVM
  *                                 region (halfword aligned) /
  *                                 آدرس شروع زوج داخل ناحیهٔ NVM
@@ -192,9 +204,11 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
  *                                 must hold at least count entries /
  *                                 آرایهٔ مبدأ نیم‌کلمه‌ها، فقط-خواندنی، باید
  *                                 دست‌کم به تعداد count عضو داشته باشد
- * @param  uint32_t__count     [EN] Number of halfwords to program; 0 is a
- *                                 valid no-op /
- *                                 تعداد نیم‌کلمه‌ها؛ صفر معتبر و بی‌اثر است
+ * @param  uint32_t__count     [EN] Number of halfwords to program; zero
+ *                                 performs no flash write but still requires
+ *                                 a non-NULL source pointer /
+ *                                 تعداد نیم‌کلمه‌ها؛ صفر هیچ نوشتنی انجام
+ *                                 نمی‌دهد اما اشاره‌گر مبدأ باید NULL نباشد
  * @return bool [EN] true when every halfword was programmed without an
  *                   error flag, false on a rejected range or the first
  *                   controller error /
@@ -209,20 +223,32 @@ bool func__BspFlash_ProgramHalfWords(uint32_t uint32_t__address,
 
     /* [EN] Range guard (full-program audit 2026-09-27): the NVM layout
        owns BSP_FLASH_STORAGE_BASE_ADDR..END (bsp_flash.h) - a caller bug
-       must never program the application area. The end address cannot wrap: count is bounded by the NVM
-       record size (<< 2^31 halfwords).
+       must never program the application area. The upper-bound check is
+       written as END - byte_count, not address + byte_count, so a wild
+       address cannot wrap through zero and pass the guard.
        [FA] گارد بازه: چیدمان NVM مالک پنجرهٔ دادهٔ ‎bsp_flash.h‎ است - باگ
-       فراخواننده هرگز نباید ناحیهٔ برنامه را بنویسد. */
+       فراخواننده هرگز نباید ناحیهٔ برنامه را بنویسد. حد بالایی به‌شکل
+       END - تعدادبایت نوشته شده تا آدرس ولگرد با سرریز از صفر عبور نکند. */
     if ((uint16_t__A__Data == NULL) || ((uint32_t__address & 1u) != 0u) ||
         (uint32_t__count > BSP_FLASH_PROGRAM_MAX_HALFWORDS) ||
         (uint32_t__address < BSP_FLASH_STORAGE_BASE_ADDR) ||
-        ((uint32_t__address + (uint32_t__count * 2u)) >
-         BSP_FLASH_STORAGE_END_ADDR))
+        (uint32_t__address >
+         (BSP_FLASH_STORAGE_END_ADDR - (uint32_t__count * 2u))))
     {
         return false;
     }
 
     func__BspFlash_Unlock();
+    /* [EN] Refuse to queue a program operation behind an already-busy FPEC;
+       the bounded wait keeps this path finite and makes the initial status
+       check match the erase path.
+       [FA] برنامه‌نویسی را پشت عملیات مشغول FPEC صف نکن؛ انتظار محدود هم
+       مسیر را متناهی نگه می‌دارد و هم بررسی اولیه را با پاک‌کردن یکسان می‌کند. */
+    if (func__BspFlash_WaitIdle() == false)
+    {
+        FLASH->CR |= FLASH_CR_LOCK;
+        return false;
+    }
     func__BspFlash_ClearFlags();
 
     for (uint32_t uint32_t__i = 0u; uint32_t__i < uint32_t__count; uint32_t__i++)

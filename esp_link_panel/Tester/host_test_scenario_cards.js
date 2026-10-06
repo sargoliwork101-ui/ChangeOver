@@ -146,6 +146,19 @@ function testStructure(win, doc) {
         check(el.querySelector('.c4ds') !== null, 'card ' + card + ' explains when it triggers');
         check(el.querySelectorAll('.sec').length >= 2, 'card ' + card + ' is split into numbered sections');
     }
+
+    /* [EN] A browser min/max attribute is not a visible instruction. Every
+       numeric scenario box must print the same range immediately below it.
+       [FA] min/max اچِی‌تی‌ام‌ال به‌تنهایی راهنمای دیداری نیست؛ هر کادر عددی
+       سناریو باید همان بازه را درست زیر خودش چاپ کند. */
+    const numeric = [...doc.querySelectorAll('.bqr input[type="number"][id^="q"]')];
+    const missingRanges = numeric.filter(el => {
+        const r = el.closest('label').querySelector('.qrng');
+        return !r || !r.textContent.includes(el.min) || !r.textContent.includes(el.max);
+    });
+    check(numeric.length > 0 && missingRanges.length === 0,
+        'every numeric scenario box prints its min/max range below the box',
+        missingRanges.map(el => el.id).join(','));
 }
 
 /* ==================== Scenario 1 - input overvoltage ==================== */
@@ -425,6 +438,20 @@ function testCharging(win, doc) {
     check(at(100)[2] === '2٪', 'the remaining-to-full floor of 2% is applied at 100%', JSON.stringify(at(100)));
     check(at(0)[3] === '1000ms' && at(0)[4] === '0ms', 'zero percent means the yellow is solid', JSON.stringify(at(0)));
 
+    /* q69 is a valid independent clamp, but the firmware also guarantees a
+       visible 2% remainder. At a 1000 ms period that physical floor is 20 ms,
+       so q69=5 must be accepted and the panel must explain why the table stays
+       at 20 ms rather than pretending the parameter is invalid.
+       q69 یک کف مستقل معتبر است؛ کف ۲٪ فرم‌ور در دورهٔ ۱۰۰۰ میلی‌ثانیه
+       برابر ۲۰ است، پس پنل باید تفاوت «پذیرفته‌شده» و «اثر واقعی» را بگوید. */
+    typeInto(win, doc, 'q69', 5);
+    const floorText = textOf(doc, 'c4formula');
+    check(floorText.includes('20ms') && floorText.includes('5ms') && floorText.includes('معتبر'),
+        'charging explains a valid 5 ms clamp whose effective floor remains 20 ms', floorText);
+    check(doc.getElementById('q69').closest('label').querySelector('.qrng').textContent.includes('0') &&
+          doc.getElementById('q69').closest('label').querySelector('.qrng').textContent.includes('10000'),
+        'yellow minimum-on box visibly prints its firmware range 0..10000');
+
     typeInto(win, doc, 'q68', 2000);
     const rows2 = [...doc.getElementById('c4tb').rows].map(r => [...r.cells].map(c => c.textContent.trim()));
     check(rows2.find(r => r[0] === '50٪')[3] === '1000ms', 'doubling the period doubles the on time', JSON.stringify(rows2[3]));
@@ -436,19 +463,59 @@ function testCharging(win, doc) {
 function testImbalance(win, doc) {
     console.log('\nscenario 5 - imbalance / عدم‌توازن');
 
+    check(doc.getElementById('q110').getAttribute('max') === '18000000' &&
+          doc.getElementById('q111').getAttribute('max') === '18000000',
+          'the imbalance wait editors allow the requested five hours');
+    const c5 = doc.getElementById('ucard5');
+    const c5secs = [...c5.querySelectorAll('.sec')].map(e => e.textContent.trim());
+    check(c5secs.findIndex(x => x.indexOf('چشمک قرمز') >= 0) <
+          c5secs.findIndex(x => x.indexOf('بوق در قفل') >= 0),
+          'scenario 5 keeps the lamp section before the beep section');
+    check(c5.querySelector('#q123') && c5.querySelector('#q124') &&
+          c5.querySelector('#q115') && c5.querySelector('#q116') &&
+          c5.querySelector('#q132') && c5.querySelector('#q133') &&
+          c5.querySelector('#q136') &&
+          c5.querySelector('#s5b') && c5.querySelector('#s5z'),
+          'scenario 5 has separate, ordered lamp, clean-cycle and beep boxes');
+    const c5beep = c5.querySelector('#q115').closest('.bqr');
+    check(c5beep.querySelectorAll('label').length === 4 &&
+          c5beep.querySelector('#q132').type === 'number' &&
+          c5beep.querySelector('#q133').type === 'number',
+          'scenario 5 exposes editable count and gap parameters');
+    check(win.pdflt(132) === 1 && win.pdflt(133) === 0 && win.pdflt(136) === 3,
+          'scenario 5 count/gap and clean-cycle factory defaults are correct');
+    check(win.eval('XIDS').indexOf(132) >= 0 && win.eval('XIDS').indexOf(133) >= 0 &&
+          win.eval('XIDS').indexOf(136) >= 0,
+          'count, gap and clean-cycle threshold are included in JSON backup/import ids');
+    check(win.getComputedStyle(doc.getElementById('s5z')).direction === 'rtl' &&
+          win.getComputedStyle(doc.getElementById('s5b')).textAlign === 'right',
+          'scenario 5 result messages are explicitly right-to-left');
     typeInto(win, doc, 'q112', 30000);
     typeInto(win, doc, 'q114', 10);
     typeInto(win, doc, 'q115', 3600000);
     typeInto(win, doc, 'q116', 200);
+    typeInto(win, doc, 'q132', 1);
+    win.simrun();
+    check(doc.getElementById('q133').disabled === true,
+          'the imbalance gap editor is disabled when its beep count is one');
+    typeInto(win, doc, 'q132', 3);
+    win.simrun();
+    check(doc.getElementById('q133').disabled === false,
+          'the imbalance gap editor is enabled when its beep count is greater than one');
+    typeInto(win, doc, 'q133', 100);
+    typeInto(win, doc, 'q136', 3);
     typeInto(win, doc, 'q118', 20);
 
     const lock = textOf(doc, 's5z');
     check(lock.includes('10'), 'the lock event count is shown', lock);
-    check(/5 دقیقه/.test(lock), '10 events x 30 s is a 5 minute floor to the lock', lock);
+    check(lock.includes('3') && lock.includes('100') && lock.includes('گپ'),
+          'the simulator follows the editable clean-cycle, count and gap settings', lock);
+    check(lock.includes('FLOAT') || lock.includes('رویداد کامل'),
+          'the lock explanation requires a complete FLOAT-qualified event', lock);
     check(lock.includes('20'), 'the post-lock charge-cycle budget is shown', lock);
 
     typeInto(win, doc, 'q111', 0);
-    check(/بدون گیت/.test(textOf(doc, 's5v')), 'a zero charge gate reads as "no gate"', textOf(doc, 's5v'));
+    check(/خاموش/.test(textOf(doc, 's5v')), 'a zero charge gate reads as off', textOf(doc, 's5v'));
     typeInto(win, doc, 'q111', 600000);
     check(/10 دقیقه/.test(textOf(doc, 's5v')), 'the charge gate is printed in minutes', textOf(doc, 's5v'));
 
@@ -653,10 +720,9 @@ function testSimulator(win, doc) {
     check(doc.getElementById('a117') && doc.getElementById('a127'),
           'each output-block checkbox keeps its own plain-language state line');
 
-    /* v1.80 (user question: "scenario 6 has a lamp and a beep - why no boxes
-       for them?"): the four own-face ids exist, are editable, print their
-       factory defaults and belong to scenario 6's factory key. */
-    [[128, 600000], [129, 120], [130, 0], [131, 50]].forEach(([id, def]) => {
+    /* v1.82: scenario 6 owns its lamp/beep fields plus an independent
+       count/gap pair; all are editable and belong to its factory key. */
+    [[128, 600000], [129, 120], [130, 0], [131, 50], [134, 1], [135, 0]].forEach(([id, def]) => {
       const el = doc.getElementById('q' + id);
       check(el && el.tagName === 'INPUT' && el.type === 'number',
             'scenario 6 owns a box for parameter ' + id);
@@ -665,8 +731,38 @@ function testSimulator(win, doc) {
       check(win.eval('UDEF[6]').indexOf(id) >= 0,
             'parameter ' + id + " is reset by scenario 6's own factory key");
     });
-    check(win.eval('UDEF[5]').indexOf(128) < 0 && win.eval('UDEF[5]').indexOf(115) >= 0,
-          'the imbalance key keeps 115/116 and does not touch the scenario-6 face');
+    check(win.eval('UDEF[5]').indexOf(128) < 0 && win.eval('UDEF[5]').indexOf(115) >= 0 &&
+          win.eval('UDEF[6]').indexOf(134) >= 0 && win.eval('UDEF[6]').indexOf(135) >= 0,
+          'the imbalance key keeps 115/116 and scenario 6 owns its 134/135 pair');
+    typeInto(win, doc, 'q134', 1);
+    win.simrun();
+    check(doc.getElementById('q135').disabled === true,
+          'the dead-battery gap editor is disabled when its beep count is one');
+    typeInto(win, doc, 'q134', 3);
+    win.simrun();
+    check(doc.getElementById('q135').disabled === false,
+          'the dead-battery gap editor is enabled when its beep count is greater than one');
+    typeInto(win, doc, 'q134', 1);
+    typeInto(win, doc, 'q135', 0);
+
+    /* [EN] Scenario 6 must present the red lamp and its independent buzzer as
+       two sections, not as one combined control block.
+       [FA] سناریوی ۶ باید چراغ قرمز و بوق مستقلش را در دو بخش جدا نشان دهد،
+       نه در یک بلوک ترکیبی. */
+    const c6 = doc.getElementById('ucard6');
+    const c6secs = [...c6.querySelectorAll('.sec')].map(e => e.textContent.trim());
+    const lampSection = c6secs.findIndex(x => x.indexOf('چراغ قرمز مستقل') >= 0);
+    const beepSection = c6secs.findIndex(x => x.indexOf('بوق مستقل') >= 0);
+    check(lampSection >= 0 && beepSection > lampSection,
+          'scenario 6 orders an independent lamp section before an independent beep section',
+          c6secs.join(' | '));
+    check(!c6secs.some(x => x.indexOf('چراغ و بوق') >= 0) &&
+          c6.querySelector('#s6lamp') && c6.querySelector('#s6z'),
+          'scenario 6 has separate lamp/beep result lines and no combined heading');
+    check(c6.querySelector('#q130').closest('.bqr') !== c6.querySelector('#q128').closest('.bqr') &&
+          c6.querySelector('#q130').closest('.bqr').textContent.indexOf('بوق') < 0 &&
+          c6.querySelector('#q128').closest('.bqr').textContent.indexOf('چراغ') < 0,
+          'scenario 6 lamp inputs and buzzer inputs are physically separated');
 
     /* v1.79 (user: "there used to be a LED behind it"): the latched-fault
        bits are real LEDs again - styled, and visible between blinks. */
@@ -741,6 +837,24 @@ async function testSendQueue(win, doc) {
           doc.getElementById('sbn').textContent === '1',
           'the global bar appears and counts the pending edit');
 
+    /* An out-of-range pending value is rejected locally: no /s is sent and
+       the report names the exact id, name, value and board-side consequence.
+       / مقدار خارج از بازه پیش از هر POST محلی رد می‌شود. */
+    win.qput(111, 18000001);
+    await win.sendall();
+    check(posts.length === 0 && win.PEND['111'] === 18000001,
+          'an out-of-range pending value blocks the whole batch before POST');
+    const rangeReport = doc.getElementById('srsm').textContent;
+    check(rangeReport.indexOf('شناسهٔ 111') >= 0 &&
+          rangeReport.indexOf('صبر پس از شروع شارژ') >= 0 &&
+          rangeReport.indexOf('18000001') >= 0 &&
+          rangeReport.indexOf('18000000') >= 0 &&
+          rangeReport.indexOf('نمی‌پذیرد') >= 0 &&
+          rangeReport.indexOf('clamp') >= 0,
+          'the blocked report explains id, name, value, range and board clamp/reject',
+          rangeReport);
+    win.pclr(111);
+
     /* Undo puts the board value back and empties the queue. */
     win.D = { p: { 38: 1000 }, t: new Array(25).fill(0), q: 0, q2: 0, q3: 0, q4: 0, fl: 0, on: 1 };
     win.pundo();
@@ -765,6 +879,8 @@ async function testSendQueue(win, doc) {
     const st = doc.getElementById('sbst').textContent;
     check(st.indexOf('گیره') >= 0 && st.indexOf('39: 60→50') >= 0,
           'the report names the value the board clamped', st);
+    check(st.indexOf('38: 2000→2000') >= 0 && st.indexOf('39: 60→50') >= 0,
+          'the report lists every value in a multi-edit batch', st);
     win.qput(38, 2000);
     win.D.p[38] = 2000;
     await win.sendall();
@@ -774,17 +890,19 @@ async function testSendQueue(win, doc) {
 
 
 
-/* ==================== v1.57 backup identity + bench calibration ==================== */
+/* ==================== v1.81 parameter schema + bench calibration ==================== */
 
 /**
- * [EN] The backup file must carry an identity (build, parameter count, date)
- *      and the bench calibration must turn a known straight line of samples
- *      back into the exact gain/offset that produced it.
- * [FA] فایل پشتیبان باید شناسنامه داشته باشد و کالیبراسیون بنچ باید از روی
- *      نمونه‌های یک خط معلوم، همان گین و آفست سازندهٔ آن خط را دربیاورد.
+ * [EN] The backup file must carry the parameter schema (id, name, unit and
+ *      limits), not an opaque build stamp. Restore must report a changed
+ *      parameter identity precisely, and bench calibration must turn a known
+ *      straight line of samples back into the exact gain/offset that produced it.
+ * [FA] فایل پشتیبان باید شمای پارامتر (شناسه، نام، واحد و محدوده) را نگه دارد،
+ *      نه مهر مبهم بیلد را. بازگردانی باید تغییر دقیق هویت پارامتر را گزارش
+ *      کند و کالیبراسیون بنچ نیز همان گین و آفست خط معلوم را برگرداند.
  */
-function testBackupAndCal(win, doc) {
-    console.log('\nv1.57 backup identity + bench calibration / شناسنامهٔ پشتیبان و کالیبراسیون');
+async function testBackupAndCal(win, doc) {
+    console.log('\nv1.81 parameter schema + bench calibration / شمای پارامتر و کالیبراسیون');
 
     /* --- the export payload carries the identity fields --- */
     const blobs = [];
@@ -796,19 +914,31 @@ function testBackupAndCal(win, doc) {
     const oldCreate = doc.createElement.bind(doc);
     doc.createElement = (t) => { const e = oldCreate(t); if (t === 'a') { e.click = () => {}; } return e; };
     win.D = { p: {}, t: [] };
-    const XIDS = win.eval('XIDS'), PN = win.eval('PN'), K = win.eval('K_MA');
+    const XIDS = win.eval('XIDS'), K = win.eval('K_MA');
     XIDS.forEach(id => { win.D.p[id] = 1; });
     win.eval('xexp')();
     doc.createElement = oldCreate;
     win.Blob = OldBlob;
     check(blobs.length === 1, 'the export button produces exactly one file');
     const o = JSON.parse(blobs[0]);
-    check(o.app === 'ChangeOver-settings' && o.v === 2, 'the file says what it is and which layout it uses');
-    check(typeof o.build === 'string' && o.build.length > 0, 'the file records the panel build it came from');
-    check(o.pn === PN, 'the file records how many parameters that build had');
+    check(o.app === 'ChangeOver-settings' && o.v === 3, 'the file says what it is and uses the parameter-schema format');
+    check(o.build === undefined, 'the backup does not use the panel build as its compatibility identity');
     check(typeof o.saved === 'string' && o.saved.indexOf('T') > 0, 'the file records when it was taken');
+    check(Array.isArray(o.schema) && o.schema.length === XIDS.length, 'the file records one schema entry for every backed-up id');
+    check(o.schema.every(s => s.id != null && typeof s.name === 'string' && 'unit' in s && 'min' in s && 'max' in s),
+          'each schema entry carries the id, readable name, unit and limits');
     check(Object.keys(o.params).length === XIDS.length, 'every backed-up id is in the file');
     check(o.params['76'] === undefined, 'the live-only id 76 stays out of the backup');
+    check(o.params['72'] === undefined && o.params['73'] === undefined,
+          'retired ids 72 and 73 stay out of the backup');
+    const changedSchema = o.schema.map(s => Object.assign({}, s));
+    changedSchema.find(s => s.id === 25).name = 'نام قدیمی جریان';
+    changedSchema.find(s => s.id === 26).max = 123;
+    const schemaDiff = win.eval('xdiff')(changedSchema).join('\n');
+    check(schemaDiff.indexOf('شناسهٔ 25') >= 0 && schemaDiff.indexOf('نام از') >= 0,
+          'restore identifies a changed parameter name by id');
+    check(schemaDiff.indexOf('شناسهٔ 26') >= 0 && schemaDiff.indexOf('max') >= 0,
+          'restore identifies a changed parameter limit by id');
     [15, 16, 17, 18, 19].forEach(id => {
         check(o.params[String(id)] === undefined, 'the momentary id ' + id + ' stays out of the backup');
     });
@@ -983,8 +1113,31 @@ function testBackupAndCal(win, doc) {
     win.eval('calapply')();
     check(doc.getElementById('calst').textContent.indexOf('داده‌برداری بنچ در جریان') >= 0,
           'applying calibration is refused while the bench wizard is running');
-    win.eval('ximp')({ text: async () => JSON.stringify({ app: 'ChangeOver-settings', v: 2, params: { 0: 1 } }) });
+    await win.eval('ximp')({ text: async () => JSON.stringify({ app: 'ChangeOver-settings', v: 2, params: { 0: 1 } }) });
     Wv.run = false;
+
+    /* v1.81: importing a settings file must stage locally, never call /s. */
+    const importUrls = [];
+    win.fetch = (u) => { importUrls.push(String(u)); return Promise.resolve({ ok: true }); };
+    win.confirm = () => true;
+    win.D = { p: { 25: 650, 26: 50, 127: 0 }, t: [] };
+    win.PEND = {};
+    const importSchema = win.eval('xschema()');
+    await win.eval('ximp')({ text: async () => JSON.stringify({
+        app: 'ChangeOver-settings', v: 3, schema: importSchema,
+        params: { 25: 700, 26: 60, 127: 1 }
+    }) });
+    check(importUrls.filter(u => u.indexOf('/s?') >= 0).length === 0,
+          'restoring a backup does not write to the board immediately');
+    check(win.PEND[25] === 700 && win.PEND[26] === 60 && win.PEND[127] === 1 &&
+          doc.getElementById('db127').checked === true &&
+          doc.getElementById('db127').className.indexOf('pq') >= 0 &&
+          doc.getElementById('sbar').className === 'on',
+          'restored changes are staged in the yellow global queue, including checkboxes');
+    check(doc.getElementById('xst').textContent.indexOf('روی پنل آماده شد') >= 0,
+          'restore tells the user that values are staged, not written');
+    win.PEND = {};
+    win.pbar();
 
     /* --- v1.65: the live table shows only what the user needs --- */
     const heads = Array.from(doc.querySelectorAll('#wT th')).map(h => h.textContent);
@@ -1245,7 +1398,7 @@ setTimeout(async () => {
         testSimulator(win, doc);
         await testSendQueue(win, doc);
         testFixRules(win, doc);
-        testBackupAndCal(win, doc);
+        await testBackupAndCal(win, doc);
         await testLutPush(win, doc);
     } catch (err) {
         failed += 1;

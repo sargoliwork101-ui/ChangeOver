@@ -3,45 +3,48 @@
  * @brief   [EN] Scenario 5 - two-half battery imbalance (unnam) monitor.
  *              Watches |v_bat_high - v_bat_low| (the absolute difference of
  *              the two 12 V halves of the 24 V pack) against rest and
- *              discharge limits, counts over-limit episodes with stability
- *              time + hysteresis (each episode counts ONCE), and latches a
- *              permanent verdict when the episode budget is spent:
- *              solid red LED + hourly short beep + (checkbox) battery never
- *              switched onto the output. Charging stays allowed while
- *              latched so the hourly beep keeps working, but after a
- *              configurable number of further charge cycles charging is
- *              blocked too. All counters and the latch survive power loss
- *              through EspLink NVM and reset automatically only when the
- *              battery goes absent (battery really replaced).
+ *              discharge limits. A stable over-limit episode is a candidate
+ *              during a partial charge, but it becomes one persisted event
+ *              only after that charge reaches FLOAT; each completed charge
+ *              cycle can add at most one event. Three consecutive complete
+ *              cycles without a new event clear the persisted imbalance event
+ *              counter; the existing latch and its cycle budget remain intact.
+ *              The episode budget then latches the verdict:
+ *              red LED + hourly short beep + (checkbox) battery never
+ *              switched onto the output. All persisted state survives power
+ *              loss; battery absence remains an immediate full reset path.
  *
  *              [EN] Evaluation time-gating (user spec): thresholds apply
- *              only (a) at rest, 10 minutes after the end of a charge
- *              session (param 110), and (b) during an ongoing charge,
- *              10 minutes after charge start (param 111, 0 disables).
+ *              only (a) at rest, after param 110 from the end of a full
+ *              charge cycle, and (b) during an ongoing charge, after param
+ *              111 from charge start (0 disables).
  *              During charge the REST threshold is used - no separate
  *              charge threshold exists by design.
  *              In discharge (output running on battery) the discharge
- *              threshold (param 109) applies immediately.
+ *              threshold (param 109) applies immediately, but the event is
+ *              still committed only for a cycle that has reached FLOAT.
+ *              The post-charge wait and in-charge wait accept up to 5 hours.
  *
  *          [FA] سناریوی ۵ - پایش عدم‌توازن (آنبالانس) دو نیم‌باتری.
  *              قدرمطلق اختلاف دو نیم به شارژ ۱۲ ولتی پک ۲۴ ولتی
  *              (|‎v_high - v_low|)‎ با حد استراحت و حد دشارژ سنجیده می‌شود،
- *              رویدادهای فراتر از حد با زمان پایداری و هیسترزیس شمرده
- *              می‌شوند (هر اپیزود فقط یک‌بار) و پس از پر شدن سقف رویدادها
- *              قضاوت دائمی (قفل) صادر می‌شود: LED قرمز ثابت + بوق کوتاه
- *              ساعتی + (با تیک کاربر) ممنوعیت سوئیچ شدن باتری روی خروجی.
+ *              شرط فراتر از حد با زمان پایداری و هیسترزیس به نامزد تبدیل
+ *              می‌شود و پس از FLOAT واقعی ثبت می‌گردد (هر سیکل حداکثر یک‌بار).
+ *              پس از پر شدن سقف رویدادها قفل صادر می‌شود: LED قرمز چشمک‌زن
+ *              + بوق کوتاه ساعتی + (با تیک کاربر) ممنوعیت سوئیچ شدن باتری
+ *              روی خروجی.
  *              شارژ در حالت قفل آزاد می‌ماند تا بوق ساعتی کار کند، ولی پس
  *              از تعداد قابل‌تنظیم سیکل شارژ در حالت قفل، شارژ هم بسته
- *              می‌شود. شمارنده‌ها و قفل در NVM ماندگارند و فقط با نبود
- *              باتری (تعویض واقعی) به‌صورت خودکار صفر می‌شوند.
+ *              می‌شود. سه سیکل کامل بدون رویداد جدید، فقط شمارندهٔ عدم‌توازن
+ *              را صفر می‌کند؛ قفل و بودجهٔ آن حفظ می‌شوند. نبود باتری
+ *              (تعویض واقعی) مسیر ریست فوری همهٔ این مقادیر است.
  *
- *              گیت زمانی ارزیابی (مشخصات کاربر): آستانه‌ها فقط (الف) در
- *              استراحت و پس از ۱۰ دقیقه از پایان یک سیکل شارژ (پارامتر ۱۱۰)
- *              و (ب) در حین شارژ و پس از ۱۰ دقیقه از شروع آن (پارامتر ۱۱۱،
- *              صفر یعنی غیرفعال) اعمال می‌شوند. حین شارژ همان آستانهٔ
- *              استراحت استفاده می‌شود - آستانهٔ مجزای شارژ نداریم.
- *              در دشارژ (خروجی روی باتری) آستانهٔ دشارژ (پارامتر ۱۰۹)
- *              بلافاصله اعمال می‌شود.
+ *              گیت زمانی ارزیابی: آستانه‌ها فقط (الف) در استراحت و پس از
+ *              زمان پارامتر ۱۱۰ از پایان سیکل کامل و (ب) در حین شارژ پس از
+ *              زمان پارامتر ۱۱۱ اعمال می‌شوند؛ هر دو زمان تا ۵ ساعت قابل
+ *              تنظیم‌اند. حین شارژ همان آستانهٔ استراحت استفاده می‌شود.
+ *              در دشارژ حد پارامتر ۱۰۹ بلافاصله دیده می‌شود، اما ثبت رویداد
+ *              همچنان به کامل‌شدن سیکل و رسیدن به FLOAT وابسته است.
  *
  * @note    [EN] Pure logic: Evaluate() receives every input and the current
  *              ms time; no BSP, no RTOS, no globals from other modules.
@@ -71,15 +74,16 @@ extern "C" {
  *  [FA] حد عدم‌توازن در دشارژ (میلی‌ولت)، پیش‌فرض ۵۰۰. */
 #define IMBAL_PARAM_DISCHARGE_LIMIT_MV       109u
 
-/** [EN] Wait after charge session end before rest evaluation begins (ms),
- *  default 600000 (10 min); 0 disables rest evaluation entirely.
- *  [FA] مکث پس از پایان شارژ تا شروع ارزیابی در استراحت (ms)، پیش‌فرض
- *  ۶۰۰۰۰۰ (۱۰ دقیقه)؛ صفر یعنی ارزیابی استراحت کلاً خاموش. */
+/** [EN] Wait after a full charge session end before rest evaluation (ms),
+ *  default 600000 (10 min), max 18000000 (5 h); 0 disables rest evaluation.
+ *  [FA] مکث پس از پایان سیکل کامل تا ارزیابی در استراحت (ms)، پیش‌فرض
+ *  ۶۰۰۰۰۰، سقف ۱۸۰۰۰۰۰۰ (۵ ساعت)؛ صفر یعنی ارزیابی استراحت خاموش. */
 #define IMBAL_PARAM_POST_CHARGE_WAIT_MS      110u
 
-/** [EN] Wait after charge start before during-charge evaluation begins (ms),
- *  default 600000 (10 min); 0 disables during-charge evaluation.
- *  [FA] مکث پس از شروع شارژ تا شروع ارزیابی حین شارژ (ms)؛ صفر یعنی خاموش. */
+/** [EN] Wait after charge start before during-charge evaluation (ms),
+ *  default 600000 (10 min), max 18000000 (5 h); 0 disables it.
+ *  [FA] مکث پس از شروع شارژ تا ارزیابی حین شارژ (ms)، پیش‌فرض ۶۰۰۰۰۰،
+ *  سقف ۱۸۰۰۰۰۰۰ (۵ ساعت)؛ صفر یعنی خاموش. */
 #define IMBAL_PARAM_IN_CHARGE_WAIT_MS        111u
 
 /** [EN] Episode stability time (ms): imbalance must stay over the limit
@@ -129,36 +133,68 @@ extern "C" {
 #define IMBAL_PARAM_LATCH_BLINK_PERIOD_MS    123u
 #define IMBAL_PARAM_LATCH_BLINK_DUTY_PCT     124u
 
-/* [EN] The module owns TWO id ranges: the original 108..118 block and the
- *      v1.68 blink pair at the end of the parameter space (119..122 belong
- *      to other modules, so the range could not simply be widened).
- * [FA] ماژول دو بازهٔ شناسه دارد: بلوک اصلی ۱۰۸..۱۱۸ و جفت چشمک ۱۲۳..۱۲۴
- *      (۱۱۹..۱۲۲ مال ماژول‌های دیگر است، پس بازه را نمی‌شد کش داد). */
+/** [EN] v1.81: independent per-pattern beep count and inter-beep gap for the
+ *  latched imbalance alarm. Defaults preserve the existing one-beep shape.
+ *  [FA] نسخهٔ ۱٫۸۱: تعداد بوق و گپ مستقل الگوی بوق قفل عدم‌توازن؛ پیش‌فرض‌ها
+ *  شکل قبلیِ یک بوق را حفظ می‌کنند. */
+#define IMBAL_PARAM_LATCH_BEEP_COUNT         132u
+#define IMBAL_PARAM_LATCH_BEEP_GAP_MS        133u
+
+/** [EN] Number of complete FLOAT-qualified charge cycles without a new
+ *  imbalance event before the event counter is cleared; default 3.
+ *  [FA] تعداد سیکل‌های شارژ کامل و تأییدشده در FLOAT، بدون رویداد جدید،
+ *  برای صفرکردن شمارندهٔ عدم‌توازن؛ پیش‌فرض ۳. */
+#define IMBAL_PARAM_CLEAN_FULL_CYCLES        136u
+
+/* [EN] The module owns FOUR id ranges: 108..118, 123..124, 132..133 and
+ *      136. Gaps belong to other modules.
+ * [FA] ماژول چهار بازهٔ شناسه دارد: ۱۰۸..۱۱۸، ۱۲۳..۱۲۴، ۱۳۲..۱۳۳ و ۱۳۶؛
+ *      فاصله‌ها متعلق به ماژول‌های دیگرند. */
 #define IMBAL_PARAM_FIRST_ID                 IMBAL_PARAM_REST_LIMIT_MV   /* 108 */
 #define IMBAL_PARAM_LAST_ID                  IMBAL_PARAM_MAX_LATCHED_CYCLES /* 118 */
 #define IMBAL_PARAM_FIRST_ID2                IMBAL_PARAM_LATCH_BLINK_PERIOD_MS /* 123 */
 #define IMBAL_PARAM_LAST_ID2                 IMBAL_PARAM_LATCH_BLINK_DUTY_PCT  /* 124 */
+#define IMBAL_PARAM_FIRST_ID3                IMBAL_PARAM_LATCH_BEEP_COUNT /* 132 */
+#define IMBAL_PARAM_LAST_ID3                 IMBAL_PARAM_LATCH_BEEP_GAP_MS /* 133 */
+#define IMBAL_PARAM_FIRST_ID4                IMBAL_PARAM_CLEAN_FULL_CYCLES /* 136 */
+#define IMBAL_PARAM_LAST_ID4                 IMBAL_PARAM_CLEAN_FULL_CYCLES /* 136 */
 
 #define IMBAL_PARAM_BLOCK1_COUNT \
     ((uint32_t)IMBAL_PARAM_LAST_ID - (uint32_t)IMBAL_PARAM_FIRST_ID + 1u)
 #define IMBAL_PARAM_BLOCK2_COUNT \
     ((uint32_t)IMBAL_PARAM_LAST_ID2 - (uint32_t)IMBAL_PARAM_FIRST_ID2 + 1u)
+#define IMBAL_PARAM_BLOCK3_COUNT \
+    ((uint32_t)IMBAL_PARAM_LAST_ID3 - (uint32_t)IMBAL_PARAM_FIRST_ID3 + 1u)
+#define IMBAL_PARAM_BLOCK4_COUNT \
+    ((uint32_t)IMBAL_PARAM_LAST_ID4 - (uint32_t)IMBAL_PARAM_FIRST_ID4 + 1u)
 #define IMBAL_PARAM_TABLE_SIZE \
-    (IMBAL_PARAM_BLOCK1_COUNT + IMBAL_PARAM_BLOCK2_COUNT)
+    (IMBAL_PARAM_BLOCK1_COUNT + IMBAL_PARAM_BLOCK2_COUNT + \
+     IMBAL_PARAM_BLOCK3_COUNT + IMBAL_PARAM_BLOCK4_COUNT)
 
 /** [EN] Is this id a parameter of the imbalance module? / [FA] آیا این شناسه مال این ماژول است؟ */
 #define IMBAL_PARAM_OWNS(id) \
     (((((uint32_t)(id)) >= (uint32_t)IMBAL_PARAM_FIRST_ID) && \
       (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID)) || \
      ((((uint32_t)(id)) >= (uint32_t)IMBAL_PARAM_FIRST_ID2) && \
-      (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID2)))
+      (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID2)) || \
+     ((((uint32_t)(id)) >= (uint32_t)IMBAL_PARAM_FIRST_ID3) && \
+      (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID3)) || \
+     ((((uint32_t)(id)) >= (uint32_t)IMBAL_PARAM_FIRST_ID4) && \
+      (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID4)))
 
 /** [EN] Table index of an owned id (undefined for ids the module does not own).
  *  [FA] اندیس جدول برای شناسهٔ متعلق به ماژول. */
 #define IMBAL_PARAM_INDEX(id) \
     ((((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID) \
         ? (((uint32_t)(id)) - (uint32_t)IMBAL_PARAM_FIRST_ID) \
-        : (IMBAL_PARAM_BLOCK1_COUNT + (((uint32_t)(id)) - (uint32_t)IMBAL_PARAM_FIRST_ID2)))
+        : ((((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID2) \
+            ? (IMBAL_PARAM_BLOCK1_COUNT + (((uint32_t)(id)) - (uint32_t)IMBAL_PARAM_FIRST_ID2)) \
+            : ((((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID3) \
+                ? (IMBAL_PARAM_BLOCK1_COUNT + IMBAL_PARAM_BLOCK2_COUNT + \
+                   (((uint32_t)(id)) - (uint32_t)IMBAL_PARAM_FIRST_ID3)) \
+                : (IMBAL_PARAM_BLOCK1_COUNT + IMBAL_PARAM_BLOCK2_COUNT + \
+                   IMBAL_PARAM_BLOCK3_COUNT + (((uint32_t)(id)) - \
+                   (uint32_t)IMBAL_PARAM_FIRST_ID4)))))
 
 /* [EN] NVM-only runtime slots (ids 200..202): persisted through the same
  *      EspLink NVM machinery as parameters but never drawn on the panel and
@@ -185,12 +221,15 @@ extern "C" {
 #define IMBAL_DEF_MAX_LATCHED_CYCLES         20u
 #define IMBAL_DEF_LATCH_BLINK_PERIOD_MS      1000u
 #define IMBAL_DEF_LATCH_BLINK_DUTY_PCT       50u
+#define IMBAL_DEF_LATCH_BEEP_COUNT           1u
+#define IMBAL_DEF_LATCH_BEEP_GAP_MS          0u
+#define IMBAL_DEF_CLEAN_FULL_CYCLES          3u
 
 /* [EN] Clamp windows (min..max per id, applied by Set): wide enough for a
  *      workshop, tight enough that a typo cannot create a dead monitor.
  * [FA] پنجره‌های گیره برای هر شناسه. */
 #define IMBAL_MAX_LIMIT_MV                   2000u     /* [EN] ids 108/109 / برای ۱۰۸/۱۰۹ */
-#define IMBAL_MAX_WAIT_MS                    3600000u  /* [EN] ids 110/111، تا ۱ ساعت */
+#define IMBAL_MAX_WAIT_MS                    18000000u /* [EN] ids 110/111، تا ۵ ساعت */
 #define IMBAL_MIN_STABILITY_MS               1000u     /* [EN] id 112, at least 1 s */
 #define IMBAL_MAX_STABILITY_MS               600000u
 #define IMBAL_MAX_HYSTERESIS_MV              1000u     /* [EN] id 113 */
@@ -198,6 +237,8 @@ extern "C" {
 #define IMBAL_MAX_BEEP_PERIOD_MS             86400000u /* [EN] id 115، تا ۲۴ ساعت */
 #define IMBAL_MIN_BEEP_LEN_MS                20u       /* [EN] id 116 */
 #define IMBAL_MAX_BEEP_LEN_MS                2000u
+#define IMBAL_MAX_BEEP_COUNT                 10u       /* [EN] id 132 / شناسه ۱۳۲ */
+#define IMBAL_MAX_BEEP_GAP_MS                5000u     /* [EN] id 133 / شناسه ۱۳۳ */
 /* [EN] id 123: 0 = solid red (opt-out), otherwise 100 ms..10 s so the lamp
  *      is always visibly a BLINK and never a flicker nobody can see.
  * [FA] شناسهٔ ۱۲۳: صفر یعنی قرمز ثابت، وگرنه ۱۰۰ms تا ۱۰s تا چشمک واقعاً
@@ -236,6 +277,12 @@ typedef struct
     bool     bool__valid;            /* [EN] Measurements trustworthy / نمونه معتبر */
     bool     bool__batAbsent;        /* [EN] Battery absent / باتری نیست */
     bool     bool__charging;         /* [EN] Any charger channel active / در شارژ */
+    bool     bool__chargeComplete;   /* [EN] All relevant channels reached FLOAT / شارژ کامل */
+    /* [EN] A charge cycle may qualify at most one imbalance event. Before
+       chargeComplete is true, a stable over-limit condition is only a
+       candidate; it is never added to the persisted event counter.
+       [FA] هر سیکل شارژ حداکثر یک رویداد عدم‌توازن دارد. پیش از درست‌شدن
+       chargeComplete، شرط پایدار فقط نامزد است و به شمارندهٔ ماندگار اضافه نمی‌شود. */
     /* [EN] v1.72 (user order): the two halves may only be compared when they
        are in the SAME state. One half charging while the other rests lifts
        the charging half by its own charge voltage, and that difference is
@@ -255,8 +302,8 @@ typedef struct
 {
     uint32_t uint32_t__imbalanceMv;  /* [EN] |v_high - v_low|, live / اختلاف زنده */
     bool     bool__episode;          /* [EN] Over-limit episode in progress / اپیزود جاری */
-    uint32_t uint32_t__events;       /* [EN] Counted episodes, persisted / رویدادها */
-    bool     bool__latched;          /* [EN] Permanent verdict / قفل */
+    uint32_t uint32_t__events;       /* [EN] Committed full-cycle events / رویدادهای سیکل کامل */
+    bool     bool__latched;          /* [EN] Persisted verdict until clean cycles / قفل ماندگار تا سیکل‌های پاک */
     uint32_t uint32_t__latchedCycles;/* [EN] Charge cycles since latch / سیکل‌های قفل */
     bool     bool__blockOutput;      /* [EN] Changeover veto: keep battery off / وتوی خروجی */
     bool     bool__chargingAllowed;  /* [EN] Charger gate: false = no charge / گیت شارژ */
@@ -286,8 +333,13 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
  * [FA] خواندن آخرین خروجی‌ها بدون ارزیابی. */
 void func__Imbalance_GetOutputs(imbalance_outputs_t *imbalance_outputs_t__outputs);
 
-/** [EN] Parameter set with clamp (ids 108..118) and runtime-slot set
- *      (ids 200..202, NVM boot replay only). Returns applied value.
+/** [EN] Parameter set with clamp (ids 108..118, 123..124, 132..133, 136) and
+ *      runtime-slot set (ids 200..202, NVM boot replay only). Returns applied value.
+ *      The new beep-shape and clean-cycle values are normal persisted
+ *      parameters, not packed into legacy words.
+ * [FA] تنظیم پارامتر با گیره (شناسه‌های ۱۰۸..۱۱۸، ۱۲۳..۱۲۴، ۱۳۲..۱۳۳ و ۱۳۶) و
+ *      تنظیم اسلات زمان‌اجرا (۲۰۰..۲۰۲، فقط بازپخش NVM). مقدار اعمال‌شده را
+ *      برمی‌گرداند؛ شکل بوق جدید پارامتر مستقل و ماندگار است.
  * @param uint32_t__appliedValue [EN] out, may be NULL / مقدار اعمال‌شده
  * @return bool [EN] true when the id belongs to this module / شناسه متعلق است */
 bool func__Imbalance_SetParam(uint8_t uint8_t__paramId,

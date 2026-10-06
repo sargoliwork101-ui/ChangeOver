@@ -241,6 +241,15 @@ static bool BOOL__G__NewestIsPageB = false;
    [FA] نقاط نرسیدهٔ هر کانال: گم‌شدن یک تکه باید کامیت را بشکند نه اینکه
    نصف جدول نوشته شود. */
 static uint32_t UINT32_T__G__StageMissing[2];
+/* [EN] One bit per staged point makes StagePoint idempotent: retransmitting
+   a chunk after a lost ACK updates the value but cannot make the missing-point
+   count reach zero while holes remain. CAL_LUT_POINTS_MAX is 24, so one u32
+   covers each channel without another allocation.
+   [FA] برای هر نقطهٔ چیده‌شده یک بیت داریم تا StagePoint idempotent باشد:
+   ارسال دوبارهٔ تکه بعد از ACK گمشده مقدار را به‌روز می‌کند، اما شمارندهٔ
+   نقاط گمشده را تا وقتی سوراخی هست صفر نمی‌کند. سقف ۲۴ نقطه است، پس یک u32
+   برای هر کانال کافی است. */
+static uint32_t UINT32_T__G__StageReceivedMask[2];
 /* [EN] Armed reboot countdown in comm runs (0 = disarmed). The reset is
    deliberately NOT taken inside the link handler: the ACK frame has to
    leave the UART first, otherwise the panel sees a dead board and cannot
@@ -440,6 +449,8 @@ bool func__CalLut_StageBegin(uint32_t uint32_t__points1,
         .uint32_t__points = uint32_t__points2;
     UINT32_T__G__StageMissing[0] = uint32_t__points1;
     UINT32_T__G__StageMissing[1] = uint32_t__points2;
+    UINT32_T__G__StageReceivedMask[0] = 0u;
+    UINT32_T__G__StageReceivedMask[1] = 0u;
 
     BOOL__G__StageOpen = true;
     return true;
@@ -468,9 +479,25 @@ bool func__CalLut_StagePoint(uint8_t uint8_t__channel,
     CAL_LUT_RECORD_T__G__Stage.CAL_LUT_CHANNEL_T__A__Channel[uint8_t__slot]
         .UINT32_T__A__PowerMw[uint32_t__index] = uint32_t__powerMw;
 
-    if (UINT32_T__G__StageMissing[uint8_t__slot] > 0u)
+    /* [EN] A chunk may be retransmitted after its ACK was lost. Only the
+       first receipt of this index consumes one missing point; every receipt
+       still replaces the staged value above, which is the useful idempotent
+       retry behaviour.
+       [FA] یک تکه ممکن است بعد از گم‌شدن ACK دوباره برسد. فقط دریافت اولِ
+       این اندیس یک نقطهٔ گمشده را کم می‌کند؛ هر دریافت همچنان مقدار چیده‌شده
+       را جایگزین می‌کند تا retry واقعاً idempotent باشد. */
     {
-        UINT32_T__G__StageMissing[uint8_t__slot]--;
+        uint32_t uint32_t__pointMask = (uint32_t)1u << uint32_t__index;
+
+        if ((UINT32_T__G__StageReceivedMask[uint8_t__slot] &
+             uint32_t__pointMask) == 0u)
+        {
+            UINT32_T__G__StageReceivedMask[uint8_t__slot] |= uint32_t__pointMask;
+            if (UINT32_T__G__StageMissing[uint8_t__slot] > 0u)
+            {
+                UINT32_T__G__StageMissing[uint8_t__slot]--;
+            }
+        }
     }
     return true;
 }

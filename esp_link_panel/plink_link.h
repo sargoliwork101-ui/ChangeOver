@@ -686,6 +686,18 @@ static void func__Esp_HandleFrame(void)
     }
 }
 
+/* [EN] Preserve AA as a possible SOF0 on every parser error. This mirrors
+   the firmware parser: if an error byte is AA, the next 55 can complete a
+   frame immediately; discarding AA would lose that frame.
+   [FA] در هر خطای پارسر AA را به‌عنوان SOF0 احتمالی حفظ می‌کنیم. این با
+   پارسر firmware یکسان است: اگر بایت خطا AA باشد، 55 بعدی می‌تواند فوراً
+   فریم بسازد؛ دور انداختن AA آن فریم را گم می‌کند. */
+static void func__Esp_ResyncFromByte(uint8_t uint8_t__byte)
+{
+    ESP_RX_STATE_T__G__RxState =
+        (uint8_t__byte == ESP_LINK_SOF_BYTE0) ? ESP_RX_WAIT_SOF1 : ESP_RX_WAIT_SOF0;
+}
+
 /**
  * @brief  [EN] Feed one received byte to the frame parser; resyncs on AA 55.
  *         [FA] دادن یک بایت دریافتی به پارسر فریم؛ با AA 55 همگام‌سازی مجدد می‌کند.
@@ -727,7 +739,7 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
             if (uint8_t__byte != (uint8_t)ESP_LINK_PROTOCOL_VERSION)
             {
                 UINT32_T__G__RxVersionMismatch++;
-                ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
+                func__Esp_ResyncFromByte(uint8_t__byte);
             }
             else
             {
@@ -753,7 +765,9 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
             UINT16_T__G__RxCrc = func__Esp_Crc16(UINT16_T__G__RxCrc, uint8_t__byte);
             if (UINT16_T__G__RxLen > ESP_LINK_MAX_PAYLOAD)
             {
-                ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
+                /* [EN] Keep an AA high length byte as the next SOF0.
+                   [FA] بایت high طول اگر AA است، SOF0 بعدی نگه داشته شود. */
+                func__Esp_ResyncFromByte(uint8_t__byte);
             }
             else
             {
@@ -786,11 +800,13 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
             {
                 UINT32_T__G__RxCrcError++;
             }
-            ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
+            /* [EN] CRC-HI can itself be AA, so retain it for AA 55 recovery.
+               [‎FA] CRC-HI‎ ممکن است خود AA باشد؛ برای بازیابی AA 55 نگهش دار. */
+            func__Esp_ResyncFromByte(uint8_t__byte);
             break;
 
         default:
-            ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
+            func__Esp_ResyncFromByte(uint8_t__byte);
             break;
     }
 }

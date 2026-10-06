@@ -132,7 +132,13 @@ static volatile ui_alarm_t UI_ALARM_T__G__Alarm =
        [FA] باند ۲ با همان اعدادی بالا می‌آید که قبلاً از باند ۱ قرض
        می‌گرفت: مدت هر بوق و فاصلهٔ تکرار خودش. */
     UI_BATTERY_RUN_BEEP_STANDARD_DURATION_MS,
-    UI_BATTERY_RUN_BEEP_DOUBLE_INTERVAL_MS
+    UI_BATTERY_RUN_BEEP_DOUBLE_INTERVAL_MS,
+    UI_TECH_FAULT_BEEP_PERIOD_MS,
+    UI_TECH_FAULT_BEEP_DURATION_MS,
+    UI_TECH_FAULT_BEEP_COUNT,
+    UI_TECH_FAULT_BEEP_GAP_MS,
+    UI_TECH_FAULT_LED_PERIOD_MS,
+    UI_TECH_FAULT_LED_DUTY_PERCENT
 };
 
 /**
@@ -293,6 +299,21 @@ static void func__Ui_ClampAlarms(void)
         func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__runDoubleDurMs, 0u, 600000u);
     UI_ALARM_T__G__Alarm.uint32_t__runDoubleIntervalMs =
         func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__runDoubleIntervalMs);
+    /* [EN] Scenario 7 has no dependency on ids 132..135: its four buzzer
+       words are clamped independently and its LED cadence is independent.
+       [FA] چهار عدد بوق سناریوی ۷ و cadence سه LED کاملاً مستقل گیره می‌خورند. */
+    UI_ALARM_T__G__Alarm.uint32_t__techBeepPeriodMs =
+        func__Ui_ClampPeriod(UI_ALARM_T__G__Alarm.uint32_t__techBeepPeriodMs);
+    UI_ALARM_T__G__Alarm.uint32_t__techBeepDurMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__techBeepDurMs, 0u, 600000u);
+    UI_ALARM_T__G__Alarm.uint32_t__techBeepCount =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__techBeepCount, 0u, 10u);
+    UI_ALARM_T__G__Alarm.uint32_t__techBeepGapMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__techBeepGapMs, 0u, 5000u);
+    UI_ALARM_T__G__Alarm.uint32_t__techLedPeriodMs =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__techLedPeriodMs, 100u, 10000u);
+    UI_ALARM_T__G__Alarm.uint32_t__techLedDutyPct =
+        func__Ui_ClampWindow(UI_ALARM_T__G__Alarm.uint32_t__techLedDutyPct, 0u, 100u);
 }
 
 /**
@@ -387,7 +408,8 @@ static int32_t func__Ui_Buzzer_Gated(uint32_t uint32_t__periodMs,
    struct را. */
 _Static_assert(sizeof(ui_alarm_t) ==
                    (((UI_ALARM_PARAM_MAX_ID - UI_ALARM_PARAM_MIN_ID + 1u) +
-                     (UI_ALARM_PARAM_EXT_MAX_ID - UI_ALARM_PARAM_EXT_MIN_ID + 1u)) *
+                     (UI_ALARM_PARAM_EXT_MAX_ID - UI_ALARM_PARAM_EXT_MIN_ID + 1u) +
+                     (UI_ALARM_PARAM_TECH_EXT_MAX_ID - UI_ALARM_PARAM_TECH_EXT_MIN_ID + 1u)) *
                     sizeof(uint32_t)),
                "ui_alarm_t must pack exactly one word per wire id (dense block + ext pair)");
 _Static_assert(offsetof(ui_alarm_t, uint32_t__ovLedPeriodMs) == 0u,
@@ -439,6 +461,16 @@ static uint8_t func__Ui_AlarmParamIndex(uint8_t uint8_t__paramId)
                          (uint8_t__paramId - UI_ALARM_PARAM_EXT_MIN_ID));
     }
 
+    if ((uint8_t__paramId >= UI_ALARM_PARAM_TECH_EXT_MIN_ID) &&
+        (uint8_t__paramId <= UI_ALARM_PARAM_TECH_EXT_MAX_ID))
+    {
+        uint8_t__denseCount =
+            (uint8_t)(UI_ALARM_PARAM_MAX_ID - UI_ALARM_PARAM_MIN_ID + 1u);
+        return (uint8_t)(uint8_t__denseCount +
+                         (UI_ALARM_PARAM_EXT_MAX_ID - UI_ALARM_PARAM_EXT_MIN_ID + 1u) +
+                         (uint8_t__paramId - UI_ALARM_PARAM_TECH_EXT_MIN_ID));
+    }
+
     return UI_ALARM_PARAM_INDEX_INVALID;
 }
 
@@ -446,6 +478,15 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t uint32_t__value,
                             uint32_t *uint32_t__appliedValue)
 {
+    if (uint32_t__appliedValue == NULL)
+    {
+        /* [EN] The API promises the applied value on success; reject a write
+           that cannot report that value rather than applying it silently.
+           [FA] چون قرارداد موفقیت گزارش مقدار اعمال‌شده است، نوشتن بدون
+           خروجی را رد کن تا مقدار بی‌صدا اعمال نشود. */
+        return false;
+    }
+
     /* [EN] Writer-side scheduler lock (v1.16 audit C11): strictly redundant
        today (the UI reader runs BELOW the comm writer, so no preemption),
        but it closes the 46-field set against future priority moves for a
@@ -488,6 +529,11 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
 bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t *uint32_t__value)
 {
+    if (uint32_t__value == NULL)
+    {
+        return false;
+    }
+
     /* [EN] Indexed read: same dense-id/struct contract as the setter.
        [FA] خواندن نمایه‌ای: همان قرارداد شناسه/ساختار. */
     uint8_t uint8_t__wordIndex = func__Ui_AlarmParamIndex(uint8_t__paramId);
@@ -1323,6 +1369,55 @@ void func__Ui_ScenarioBatLost_Tick(void)
         UI_ALARM_T__G__Alarm.uint32_t__blBeepGapMs);
 }
 
+/* ==================== Scenario 7: technical board fault / سناریوی ۷ ==================== */
+
+#if MODULE_FAULT
+/**
+ * @brief [EN] Technical board fault face: all three LEDs use one absolute
+ *        phase and therefore blink together. The buzzer reads only scenario
+ *        7's six live words; it never uses q132..q135.
+ *        [FA] چهرهٔ خطای فنی برد: هر سه LED از یک فاز مطلق استفاده می‌کنند
+ *        و دقیقاً هم‌زمان روشن/خاموش می‌شوند؛ بوق فقط اعداد زندهٔ خودش را
+ *        می‌خواند و هرگز از ‎q132..q135‎ استفاده نمی‌کند.
+ */
+static void func__Ui_ScenarioTechnicalFault_Tick(void)
+{
+    uint32_t uint32_t__elapsedMs;
+    uint32_t uint32_t__phaseMs;
+    uint32_t uint32_t__onMs;
+    bool bool__on;
+
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
+    func__Ui_ResetChargingYellowBlink();
+
+    uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(osKernelGetTickCount());
+    uint32_t__phaseMs = uint32_t__elapsedMs %
+                        UI_ALARM_T__G__Alarm.uint32_t__techLedPeriodMs;
+    uint32_t__onMs =
+        (UI_ALARM_T__G__Alarm.uint32_t__techLedPeriodMs *
+         UI_ALARM_T__G__Alarm.uint32_t__techLedDutyPct) /
+        UI_PERCENT_SCALE;
+    bool__on = (uint32_t__phaseMs < uint32_t__onMs);
+
+    /* [EN] One boolean drives all outputs: simultaneous LED blink is a
+       contract, not three independent approximations. [FA] یک bool هر سه
+       خروجی را می‌راند تا هم‌زمانی قرارداد بماند. */
+    func__red(bool__on);
+    func__green(bool__on);
+    func__yellow(bool__on);
+
+    (void)func__Ui_Buzzer_Gated(
+        UI_ALARM_T__G__Alarm.uint32_t__techBeepPeriodMs,
+        func__Ui_BeepDutyPercent(UI_ALARM_T__G__Alarm.uint32_t__techBeepPeriodMs,
+                                 UI_ALARM_T__G__Alarm.uint32_t__techBeepDurMs,
+                                 UI_ALARM_T__G__Alarm.uint32_t__techBeepCount,
+                                 UI_ALARM_T__G__Alarm.uint32_t__techBeepGapMs),
+        (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__techBeepCount,
+        UI_ALARM_T__G__Alarm.uint32_t__techBeepGapMs);
+}
+#endif
+
 /* ==================== Scenario Imbalance Latch / سناریوی قفل عدم‌توازن ==================== */
 
 #if MODULE_IMBALANCE
@@ -1349,6 +1444,8 @@ void func__Ui_ScenarioBatLost_Tick(void)
 void func__Ui_ScenarioImbalance_Tick(void)
 {
     uint32_t uint32_t__beepPeriodMs;
+    uint32_t uint32_t__beepCount = IMBAL_DEF_LATCH_BEEP_COUNT;
+    uint32_t uint32_t__beepGapMs = IMBAL_DEF_LATCH_BEEP_GAP_MS;
     uint32_t uint32_t__blinkPeriodMs = IMBAL_DEF_LATCH_BLINK_PERIOD_MS;
     uint32_t uint32_t__blinkDutyPct = IMBAL_DEF_LATCH_BLINK_DUTY_PCT;
     bool     bool__redOn;
@@ -1392,11 +1489,14 @@ void func__Ui_ScenarioImbalance_Tick(void)
         uint32_t uint32_t__beepLenMs = IMBAL_DEF_BEEP_LEN_MS;
 
         (void)func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_LEN_MS, &uint32_t__beepLenMs);
+        (void)func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_COUNT, &uint32_t__beepCount);
+        (void)func__Imbalance_GetParam(IMBAL_PARAM_LATCH_BEEP_GAP_MS, &uint32_t__beepGapMs);
         (void)func__Ui_Buzzer_Gated(
             uint32_t__beepPeriodMs,
-            func__Ui_BeepDutyPercent(uint32_t__beepPeriodMs, uint32_t__beepLenMs, 1u, 0u),
-            1u,
-            0u);
+            func__Ui_BeepDutyPercent(uint32_t__beepPeriodMs, uint32_t__beepLenMs,
+                                     (uint8_t)uint32_t__beepCount, uint32_t__beepGapMs),
+            (uint8_t)uint32_t__beepCount,
+            uint32_t__beepGapMs);
     }
     else
     {
@@ -1415,16 +1515,17 @@ void func__Ui_ScenarioImbalance_Tick(void)
  *              until the battery is replaced"). SOLID red - unlike the
  *              imbalance latch this verdict is deliberately not blinking,
  *              so the two condemned-battery faces stay distinguishable on
- *              the same single red lamp. The audible side reuses the
- *              imbalance latch beep shape (ids 115/116) so there is one
- *              "condemned battery" sound in the product, not two.
+ *              the same single red lamp. Its beep shape is independently
+ *              configurable through the scenario-6 parameters.
  *         [FA] چهرهٔ سناریوی ۶: قرمزِ ثابت (برخلاف چشمکِ قفل عدم‌توازن تا دو
- *              چهره روی یک لامپ قرمز قابل تفکیک بمانند) و بوقِ همان قفل.
+ *              چهره روی یک لامپ قرمز قابل تفکیک بمانند) و شکل بوق مستقل خودش.
  */
 void func__Ui_ScenarioDeadBattery_Tick(void)
 {
     uint32_t uint32_t__beepPeriodMs  = 0u;
     uint32_t uint32_t__beepLenMs     = 0u;
+    uint32_t uint32_t__beepCount     = CHG_DEAD_DEF_BEEP_COUNT;
+    uint32_t uint32_t__beepGapMs     = CHG_DEAD_DEF_BEEP_GAP_MS;
     uint32_t uint32_t__blinkPeriodMs = 0u;
     uint32_t uint32_t__blinkDutyPct  = 0u;
 
@@ -1432,12 +1533,10 @@ void func__Ui_ScenarioDeadBattery_Tick(void)
     func__Ui_ResetBatteryRunGreenBlink();
     func__Ui_ResetChargingYellowBlink();
 
-    /* [EN] v1.80 (user order: scenario 6 gets its own four boxes): the face
-           is drawn from the scenario's OWN numbers now - no more borrowing
-           the imbalance latch beep, and the red may blink if the installer
-           asks for it (period 0 keeps the historical solid red).
-       [FA] چهرهٔ سناریو از عددهای خودش ساخته می‌شود؛ دیگر بوق قفل عدم‌توازن
-           قرض گرفته نمی‌شود و قرمز می‌تواند چشمک بزند (دورهٔ ۰ = ثابت). */
+    /* [EN] Scenario 6 uses its own six shape parameters; period 0 keeps the
+           historical solid-red option.
+       [FA] سناریوی ۶ از شش پارامتر شکل مستقل خودش استفاده می‌کند؛ دورهٔ صفر
+           گزینهٔ قرمز ثابت قبلی را حفظ می‌کند. */
     func__green(false);
     func__yellow(false);
 
@@ -1445,6 +1544,7 @@ void func__Ui_ScenarioDeadBattery_Tick(void)
                                 &uint32_t__beepLenMs,
                                 &uint32_t__blinkPeriodMs,
                                 &uint32_t__blinkDutyPct);
+    func__Charger_DeadBeepPattern(&uint32_t__beepCount, &uint32_t__beepGapMs);
 
     if (uint32_t__blinkPeriodMs == 0u)
     {
@@ -1466,9 +1566,10 @@ void func__Ui_ScenarioDeadBattery_Tick(void)
     {
         (void)func__Ui_Buzzer_Gated(
             uint32_t__beepPeriodMs,
-            func__Ui_BeepDutyPercent(uint32_t__beepPeriodMs, uint32_t__beepLenMs, 1u, 0u),
-            1u,
-            0u);
+            func__Ui_BeepDutyPercent(uint32_t__beepPeriodMs, uint32_t__beepLenMs,
+                                     (uint8_t)uint32_t__beepCount, uint32_t__beepGapMs),
+            (uint8_t)uint32_t__beepCount,
+            uint32_t__beepGapMs);
     }
     else
     {
@@ -1598,6 +1699,20 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 {
+#if MODULE_FAULT
+    /* [EN] Defensive priority guard: if a battery-lost fault reaches this
+       helper directly, it must replace BatteryRun before the one-shot empty
+       battery beep can start. Fault clear is the battery-return boundary.
+       [FA] نگهبان اولویت: اگر این helper مستقیم با فالت قطع باتری صدا زده
+       شد، پیش از شروع بوق باتری خالی همان سناریو را جایگزین کن؛ پاک‌شدن
+       فالت مرز برگشت باتری است. */
+    if ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)
+    {
+        func__Ui_ScenarioBatLost_Tick();
+        return;
+    }
+#endif
+
     uint8_t uint8_t__rawPercent;
     uint8_t uint8_t__stablePercent;
     uint32_t uint32_t__remainingPercent;
@@ -1797,6 +1912,21 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
 
     func__Ui_UpdateInputState(uint32_t__inputVoltageMv);
 
+#if MODULE_FAULT
+    /* [EN] Scenario 7 is the highest-priority visible fault face: when the
+       technical latch is active, all three LEDs must show its synchronized
+       phase even if input overvoltage is also present. The bit is latched by
+       the control task and cleared only by reset. [FA] سناریوی ۷ بالاترین
+       اولویت نمایشی خطا است؛ وقتی قفل فنی فعال است هر سه LED باید فاز مشترک
+       خودش را نشان دهند، حتی اگر اضافه‌ولتاژ ورودی هم حاضر باشد. بیت فقط با
+       ریست پاک می‌شود. */
+    if ((func__Fault_Get() & FAULT_CHARGER_TECHNICAL) != FAULT_NONE)
+    {
+        func__Ui_ScenarioTechnicalFault_Tick();
+        return;
+    }
+#endif
+
     if (BOOL__G__UiInputOverVoltage == true)
     {
         func__Ui_ScenarioInputOverVoltage_Tick();
@@ -1804,16 +1934,13 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
     }
 
 #if MODULE_FAULT
-    /* [EN] Battery-lost, priority 2 (overvoltage first, this second, normal
-       scenarios after). The Fault module latches and clears the bit; while it
-       is set we a) show this scenario and b) return, so the BatteryRun
-       critical beep (input-absent world) can never overlap with this pattern
-       (input-present world). When the battery is back and the settle time
-       passed, the bit clears and the previous scenario resumes by itself.
-       [FA] قطع باتری با اولویت دوم (بعد از اضافه‌ولتاژ، قبل از سناریوهای
-       نرمال). فقط تا وقتی پرچم متمرکز قفل است نشان می‌دهیم و return می‌کنیم
-       تا هرگز با بوق بحرانی دشارژ قاطی نشود؛ با پاک‌شدن پرچم، سناریوی قبلی
-       خودبه‌خود برمی‌گردد. */
+    /* [EN] Battery-lost, after technical fault and overvoltage, before normal
+       scenarios. The Fault module latches and clears the bit; while it is set
+       we show this scenario and return, so the BatteryRun critical beep
+       (input-absent world) cannot overlap with this pattern (input-present
+       world). [FA] قطع باتری بعد از خطای فنی و اضافه‌ولتاژ، پیش از
+       سناریوهای نرمال است؛ تا وقتی پرچم متمرکز قفل است نمایش می‌دهیم و
+       return می‌کنیم تا بوق بحرانی دشارژ با آن قاطی نشود. */
     if ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)
     {
         func__Ui_ScenarioBatLost_Tick();

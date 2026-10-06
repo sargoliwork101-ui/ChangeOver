@@ -223,26 +223,19 @@
 > the last region - and expose it on the ESP panel"): the fixed-step
 > bang-bang duty chain (0.5%/0.1% steps on 500/1000/2000 ms timers) is
 > replaced by ONE positional PID doing a textbook CC/CV min-select.
-> SIXTEEN new ids 83..98: enable (83) plus one complete
-> (Kp, Ki, Kd, up-rate, down-rate) row per stage. A "stage" is a LOOP,
-> not a voltage window: stage 1 = the current/bulk loop, stage 2 = the
-> voltage loop below the absorb setpoint, stage 3 = the voltage loop on
-> it and above. Each loop needs its own row because a volt of voltage
-> error and an amp of current error are different units - with one
-> shared Kp the min-select degenerates and the pack sails past 14.6 V.
-> The slew limit sits on the INTEGRAL, not the output: an output limiter
-> rectifies the P-term ripple that whole-permille duty quantisation
-> creates into a downward ratchet (simulated, the loop stalled at 268 mA
-> and never reached the 640 mA bulk band). Setting id 83 = 0 restores
-> the legacy chain byte-for-byte. Every protection is untouched (OV
-> cutoff, 950 mA hard fault, JIT, battery-valid, 500 permille DCM
-> ceiling, FLOAT parks at zero) - the PID only picks the duty number
-> inside the window they already allow. PARAMS_BULK 416 -> 496 bytes
-> (still < 512); a FOURTH pending mask q4 carries ids 96..98; NVM record
-> v5 -> v6 (93 persisted ids, 99 slots, 808 B - v5 records fall back to
-> compiled defaults, so RE-TUNE ONCE after flashing); the bench CSV
-> grows to 150 columns with a [pid] block; the panel gains a "PID شارژ"
-> sub-tab with all 16 coefficients and its own combination guard.
+> The first v1.22 draft described SIXTEEN ids 83..98: an enable plus one
+> complete row per stage. That draft was never the shipped wire contract.
+> v1.23 removed the redundant enable and third voltage row, and v1.24
+> reduced the live PID block to TEN ids, 83..92: current Kp/Ki/Kd/up/down
+> (83..87) and voltage Kp/Ki/Kd/up/down (88..92). The remaining charger
+> controls begin at id 93; id 98 is the PID output-hysteresis limit, not a
+> PID coefficient. The two physical loops remain separate because a volt of
+> voltage error and an amp of current error have different units. The slew
+> limit sits on the integral, not the output, so whole-permille duty
+> quantisation cannot be rectified into a downward ratchet. Every protection
+> remains in force (OV cutoff, 950 mA hard fault, JIT, battery-valid, 500
+> permille DCM ceiling, FLOAT parks at zero); the PID only selects a duty
+> inside that protected window.
 > Panel v1.22. STM32 + ESP flash together.
 >
 > v1.20 (2026-09-27, eighteenth order - "the charge-scenario numbers must
@@ -283,6 +276,35 @@
 - Parameters are **RAM-only on the STM32**: after an STM32 reset everything
   returns to the compiled defaults. The ESP must re-apply its tuned set
   (recommended: on link-up and whenever a PARAMS_BULK shows defaults).
+
+## 1.1 Current authoritative parameter/NVM overlay — 2026-10-06
+
+The historical sections below preserve earlier protocol decisions. For the current
+firmware/panel pair, use this overlay as the authoritative endpoint contract:
+
+- `ESPLINK_PARAM_COUNT = ESP_PARAM_COUNT = 143`; ordinary wire ids are `0..142`.
+- `PARAMS_BULK` is chunked at the 512-byte payload ceiling: at most 102
+  `[id:u8][value:u32 LE]` items per frame. The receiver merges chunks by id.
+- NVM format is version `12`, with capacity `144` entries. Persisted settings are
+  ids `0..14`, `20..142` except retired `72/73` and transient session mute `76`,
+  plus runtime slots `200..203`. The scenario-7 fault latch itself is RAM-only
+  and is not an NVM setting.
+- Scenario 7 is the technical board/power-stage fault face. Its controls are:
+
+| ID | Name | Type | Unit | Default | Range | Meaning |
+|---:|---|---|---|---:|---|---|
+| 137 | `TECH_BEEP_PERIOD_MS` | u32 | ms | 3000 | 0 or 1000..600000 | Scenario-7 beep pattern period; 0 disables sound |
+| 138 | `TECH_BEEP_LEN_MS` | u32 | ms | 200 | 0..600000 | Length of each beep |
+| 139 | `TECH_BEEP_COUNT` | u32 | n | 3 | 0..10 | Beeps per pattern |
+| 140 | `TECH_BEEP_GAP_MS` | u32 | ms | 100 | 0..5000 | Gap between beeps |
+| 141 | `TECH_LED_PERIOD_MS` | u32 | ms | 1000 | 100..10000 | Shared period for all three LEDs |
+| 142 | `TECH_LED_DUTY_PCT` | u32 | % | 50 | 0..100 | Shared ON share for all three LEDs |
+
+Scenario-7 detection is not performed by the ESP. The STM32 detects either
+`relay open + applied PWM 0 + recorded JIT`, or `applied PWM > 200 permille +
+measured channel current 0 mA`. After detection the Charger keeps both PWM paths
+stopped and the relay open until reset/power-cycle; only the three-LED face and
+its six settings are exposed to the panel.
 
 ## 2. Wiring / physical
 

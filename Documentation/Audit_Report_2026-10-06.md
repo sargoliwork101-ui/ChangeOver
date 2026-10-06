@@ -1,92 +1,80 @@
-# گزارش ممیزی دور دوم — ۲۰۲۶-۱۰-۰۶
-# Audit report, round 2 — 2026-10-06
+# گزارش ممیزی نهایی — سناریوی ۷ — ۲۰۲۶-۱۰-۰۶
+# Final consistency audit — scenario 7 — 2026-10-06
 
-نقش: برنامه‌نویس فرم‌ور امبدد. روش: خواندن خط‌به‌خط فایل‌ها (نه فقط grep)، بررسی
-سرریز صحیح، گیره‌ها، مرزهای آرایه، بخش‌های بحرانی و ترتیب مقداردهی اولیه.
+## دامنه / Scope
 
-Role: embedded firmware engineer. Method: line-by-line reading (not grep-only),
-checking integer overflow, clamps, array bounds, critical sections and
-initialisation order.
+این گزارش وضعیت نهایی ممیزی پس از افزودن خطای فنی برد، هماهنگ‌سازی
+مستندات پروتکل/NVM، پنل و اصلاح کامنت‌های RTL را ثبت می‌کند. ممیزی هم
+زنجیرهٔ فرم‌ور و هم قرارداد پنل را بررسی می‌کند؛ تست فیزیکی برد در این محیط
+انجام نشده است.
 
----
+This is the final post-edit audit for the technical-board fault scenario,
+the protocol/NVM documentation sync, the ESP panel and RTL-comment cleanup.
+It covers firmware/panel contracts; no physical board test was performed.
 
-## الف) ایرادهای یافته‌شده و اصلاح‌شده (بدون تغییر منطق اصلی)
-## A) Defects found and fixed (no change to the main logic)
+## یافته‌ها و نتیجه / Findings and result
 
-### A1 — بحرانی: تنظیم‌های سناریو ۵ (عدم‌توازن) با هر بار روشن‌شدن پاک می‌شد
-**فایل:** `Firmware/Modules/Imbalance/imbalance.c`
+- detector اتصال‌کوتاه/سوختن: رلهٔ شارژر باز، duty اعمالی `0‰` و JIT همان
+  کانال ثبت‌شده؛ detector قطع‌شدن/سوختن: duty اعمالی `>200‰` و جریان همان
+  کانال دقیقاً `0mA`.
+- پس از تشخیص، lockout در RAM در هر دو مسیر PWM/شارژ باقی می‌ماند و فقط
+  `Charger_Init()` در reset/power-cycle آن را آزاد می‌کند؛ پنل، retry، app state
+  و NVM این قفل را آزاد نمی‌کنند.
+- `FAULT_CHARGER_TECHNICAL` بیت ۷ است و UI آن را پیش از overvoltage و BatLost
+  انتخاب می‌کند. سه LED از phase مشترک استفاده می‌کنند.
+- تنظیمات مستقل سناریوی ۷ شناسه‌های `137..142` هستند؛ count/gap از
+  `q132..q135` یا سناریوهای ۵/۶ borrow نمی‌شود.
+- قرارداد لینک فعلی: `ESP_PARAM_COUNT=143`، شناسه‌های `0..142`، سقف payload
+  برابر ۵۱۲ بایت و حداکثر ۱۰۲ جفت id/value در هر chunk؛ NVM نسخهٔ ۱۲ با ظرفیت
+  ۱۴۴ entry و رکورد `12 + 144 x 8 + 4 = 1168 B`.
+- قوانین پنل، از جمله عدم POST خودکار، صف staged و ارسال فقط با دکمهٔ سراسری،
+  clamp/import/export، reset factory و گزارش موفقیت/خطا حفظ شده‌اند.
+- گاردهای مرزی جدید Flash/NVM، statusهای HAL در UART، انتشار atomic فریم TX،
+  guard نرخ تیک صفر، saturation شمارندهٔ dead-battery و قراردادهای NULL برای
+  APIهای indexed نیز در همین پاس اصلاح و با ۵۲ تست Charger pin شدند.
 
-- `func__EspLink_NvmInit()` پیش از شروع scheduler مقادیر ذخیره‌شدهٔ پنل
-  (شناسه‌های ۱۰۸ به بعد) را با `func__Imbalance_SetParam()` بازپخش می‌کرد.
-- `func__Imbalance_Init()` بعداً داخل نخ کنترل اجرا می‌شد و با یک حلقهٔ
-  بی‌قید، **کل جدول پارامتر را به پیش‌فرض کامپایل برمی‌گرداند**.
-- نتیجه: هر تنظیم عدم‌توازنی که کاربر از پنل ذخیره کرده بود، با هر
-  power-cycle از بین می‌رفت — خلاف قاعدهٔ مستند پروژه که در
-  `func__Charger_Init()` صریحاً نوشته شده: «Init ماژول هیچ‌وقت مقدار
-  پنل/فلش را برنمی‌گرداند».
+### خروج ابزارها / Tool output
 
-**اصلاح:** تابع `func__Imbalance_SeedDefaultsOnce()` اضافه شد؛ پیش‌فرض‌ها فقط
-یک‌بار و در نخستین دسترسی به جدول نوشته می‌شوند. این تابع در ابتدای
-`Init` / `SetParam` / `GetParam` / `ReadParam` فراخوانی می‌شود. برای بردِ نو
-(بدون رکورد NVM) رفتار دقیقاً مثل قبل است؛ فقط مقدار بازیابی‌شده دیگر پاک
-نمی‌شود. منطق خود سناریو ۵ دست نخورده است.
-
-EN: the unconditional default loop in `func__Imbalance_Init()` wiped every
-panel/NVM-restored scenario-5 parameter on each boot, because the NVM replay
-runs before the scheduler and Init runs after. Defaults are now seeded exactly
-once on first touch of the table. Fresh boards behave identically.
-
-### A2 — سخت‌سازی: نبود گیرهٔ «حداقل دو نقطه» در درون‌یابی جدول بنچ
-**فایل:** `Firmware/Modules/Measurement/measurement.c`،
-`func__Measurement_BenchLutInterp()`
-
-قرارداد تابع `points >= 2` است ولی خودش آن را بررسی نمی‌کرد؛ شاخهٔ انتهایی
-`[points - 2]` را می‌خواند و با `points` برابر ۰ یا ۱ کم‌ریزی بدون‌علامت
-رخ می‌داد و حافظه‌ای بسیار بیرون از جدول خوانده می‌شد. امروز از بیرون
-غیرقابل‌دسترس است (`func__CalLut_Active()` با `CAL_LUT_POINTS_MIN == 2`
-نگهبانی می‌کند) ولی گیره اضافه شد: `if (points < 2u) return 0u;`
-خروجی ورودی‌های معتبر بیت‌به‌بیت بدون تغییر است.
-
----
-
-## ب) فایل‌ها و توابعی که خط‌به‌خط خوانده شد و سالم بود
-## B) Read line-by-line, verified clean
-
-| فایل / تابع | نتیجه |
+| ابزار | نتیجهٔ واقعی پس از آخرین ویرایش |
 |---|---|
-| `bsp_exti.c` | take-and-clear با محافظت PRIMASK، شاخص منبع مرزبندی‌شده — سالم |
-| `freertos_hooks.c` | idle task استاتیک، hook سرریز پشته متوقف‌کننده — سالم |
-| `bsp_pwm.c` | CCR2 = CCR1/2 فقط زیر ~۲ شمارش duty تباه می‌شود؛ زیر کف ۱٪ شارژر غیرقابل‌دسترس |
-| `bsp_uart.c` | حلقهٔ DMA درست؛ «نبود ذخیرهٔ بایت» هشدار کاذب بود (خط ۴۱۲ موجود است) |
-| `bsp_flash.c` | پاک/برنامه هر دو به بازهٔ storage مقید، هم‌ترازی‌شده، سقف ۱۰۲۴ هاف‌ورد، spin محدود، قفل دوباره در همهٔ مسیرها |
-| `bsp_iwdg.c` | وتوی reload با کهنه‌بودن هر اسلات، `last == 0` همان مهلت بوت، ماسک از همان `MODULE_*` |
-| `bsp_adc.c` (`GetRaw`, `Start`) | انتخاب نیمهٔ DMA با CNDTR، بررسی قبل/بعد، کپی داخل PRIMASK، نمونهٔ سنکرون بیرون از بخش بحرانی — سالم |
-| `charger.c :: func__Charger_PidStep` | کل حساب صحیح/گیره‌ها بررسی شد؛ `appliedPermille` اثباتاً منفی نمی‌شود |
-| `measurement.c :: func__Measurement_GetSnapshot` | کپی زیر `osKernelLock`، NULL-check، بازگرداندن قفل — سالم |
-| `measurement.c :: func__Measurement_Publish` (~۱۲۸۷) | انتشار زیر قفل، `valid` آخر از همه نوشته می‌شود — سالم |
-| `measurement.c :: func__Measurement_Init` | فقط وضعیت زمان‌اجرا را صفر می‌کند، هیچ استاتیک قابل‌تنظیمی را نه — سالم |
-| `charger.c :: func__Charger_Init` | قاعدهٔ «Init مقدار پنل را برنمی‌گرداند» را درست رعایت می‌کند — سالم |
+| `python3 tools/audit_consistency.py` | **PASS — 438 invariant، 0 finding** |
+| `bash tools/check_ai_rules.sh` | **PASS — ALL CHECKS PASSED**؛ شامل RTL comment check |
+| `python3 tools/fix_rtl_comments.py --check` | **PASS** |
+| `bash tools/check_firmware_syntax.sh` | **PASS**؛ ESP 93، Charger 52، Imbalance 3805، و همهٔ testerهای Changeover/Fault/Protection/Jitter/McuPowerPath/CalLut/Measurement سبز |
+| Panel simulator matrix | **PASS**؛ `/`، `/f.css`، `/t`، `/m` با HTTP 200؛ telemetry=31، params=143، clamp/write مستقل `137..142` و `/lut` status |
+| `host_test_panel_click.js` | **SKIP اختیاری**؛ `jsdom` نصب نیست |
+| `host_test_scenario_cards.js` | **SKIP اختیاری**؛ `jsdom` نصب نیست |
 
----
+## موارد خارج از محیط / Not verifiable here
 
-## ج) موارد باز از دور اول (بدون تغییر)
-## C) Still-open items from round 1
+1. build واقعی STM32/ARM به `arm-none-eabi-gcc` و خروجی `.map` از CubeIDE نیاز
+   دارد؛ این toolchain در محیط حاضر موجود نیست.
+2. تست رله، PWM، JIT، سنسور جریان، باتری و power-cycle روی برد واقعی انجام
+   نشده است. Host tests جایگزین فیزیکی هستند، نه ادعای validation سخت‌افزار.
+3. دو تست DOM به دلیل نبود `jsdom` اجرا نشدند؛ تست parser جاوااسکریپت و تست
+   متنی/سازگاری پنل اجرا و موفق شدند.
 
-- **ج-۵:** یک پاس شارژر حین ذخیرهٔ ~۱۰۰ms در NVM از دست می‌رود — اولویت پایین.
-- **ج-۶:** `func__Fault_DebounceDone` تیک `0` را «تایمر خاموش» می‌گیرد؛ یک دورهٔ
-  کنترل، یک‌بار در هر ۴۹٫۷ روز — آرایشی.
-- تصمیم‌های کاربر ۲۰۲۶-۱۰-۰۵: ج-۱ اصلاح شد، ج-۲ و ج-۴ همین‌طور بماند،
-  ج-۳ بیت‌های رزرو با برچسب «رزرو» نگه داشته شد.
+## نتیجه / Conclusion
 
-## د) قابل بررسی نیست در این محیط
-## D) Not verifiable here
+ممیزی سازگاری و دروازهٔ قوانین پس از آخرین اصلاحات **قبول** است و stale claim
+شناخته‌شده‌ای در قرارداد سناریوی ۷، protocol/NVM یا simulator باقی نمانده است.
+محدودیت‌های ARM، DOM و سخت‌افزار واقعی صریحاً باز نگه داشته شده‌اند.
 
-بودجهٔ فلش (نیاز به `.map` از CubeIDE)، دو سوییت `jsdom`، آنالیزور استاتیک بیرونی.
+## پیگیری hardening پنل — ۲۰۲۶-۱۰-۰۶ / Panel hardening follow-up
 
----
+بازهٔ عددی هر کنترل سناریو اکنون در خطی visible زیر همان کادر نمایش داده می‌شود؛
+این خط از `min/max` همان ورودی ساخته می‌شود و preview تولیدشده نیز همین رفتار را
+دارد. بررسی `q69` نشان داد `۰..۱۰۰۰۰ ms` بازهٔ معتبر پارامتر Firmware است؛ مقدار
+`۵ ms` پذیرفتنی است اما به‌دلیل کف رفتاری ۲٪، در دورهٔ ۱۰۰۰ ms اثر واقعی کمتر از
+`۲۰ ms` نمی‌شود. این تفاوت در کارت شارژ و simulator صریح شده است، نه اینکه
+ورودی به‌غلط به حد ۲۰ تغییر داده شود.
 
-## نتیجهٔ ابزارها پس از اصلاح‌ها / Tooling after the fixes
+سناریوی ۶ اکنون دو بخش مستقل دارد: چراغ قرمز با `q130/q131` و بوق با
+`q128/q129/q134/q135`. خلاصهٔ simulator هم این دو را جدا برچسب می‌زند. صف staged،
+import/clamp، ارسال فقط با global send، گزارش موفقیت/خطا و تنظیم مستقل سناریوی ۷
+دست‌نخورده باقی مانده‌اند.
 
-- `tools/check_ai_rules.sh` → **ALL CHECKS PASSED**
-- `tools/check_firmware_syntax.sh` → **ALL HOST TESTS PASSED** (۵۰ تست شارژر، تست عدم‌توازن ۵۰۳۴ بررسی / ۰ خطا)
-- `tools/audit_consistency.py` → ۲۷۰ ناوردا، **۰ یافته**
+آخرین gate واقعی: `audit_consistency.py` با **438 invariant و 0 finding**،
+`check_ai_rules.sh` با **ALL CHECKS PASSED**، syntax/host با **ESP 93 و Charger 52**
+و سایر suiteها سبز؛ suite DOM به‌دلیل نبود `jsdom` با قرارداد پروژه SKIP شد و
+تست فیزیکی برد انجام نشده است.
