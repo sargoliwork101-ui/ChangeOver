@@ -184,6 +184,12 @@ void func__TaskControl(void *void_ptr__argument)
 #else
                     false;
 #endif
+                imbalance_inputs_t__imbalanceInputs.bool__chargeComplete =
+#if MODULE_CHARGER
+                    func__Charger_IsChargeComplete();
+#else
+                    false;
+#endif
                 /* [EN] v1.72: per-channel state, so imbalance only compares
                    halves that are in the same state.
                    [FA] حالت هر کانال برای مقایسهٔ هم‌حالت. */

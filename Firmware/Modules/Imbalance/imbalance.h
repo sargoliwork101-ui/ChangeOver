@@ -3,45 +3,48 @@
  * @brief   [EN] Scenario 5 - two-half battery imbalance (unnam) monitor.
  *              Watches |v_bat_high - v_bat_low| (the absolute difference of
  *              the two 12 V halves of the 24 V pack) against rest and
- *              discharge limits, counts over-limit episodes with stability
- *              time + hysteresis (each episode counts ONCE), and latches a
- *              permanent verdict when the episode budget is spent:
- *              solid red LED + hourly short beep + (checkbox) battery never
- *              switched onto the output. Charging stays allowed while
- *              latched so the hourly beep keeps working, but after a
- *              configurable number of further charge cycles charging is
- *              blocked too. All counters and the latch survive power loss
- *              through EspLink NVM and reset automatically only when the
- *              battery goes absent (battery really replaced).
+ *              discharge limits. A stable over-limit episode is a candidate
+ *              during a partial charge, but it becomes one persisted event
+ *              only after that charge reaches FLOAT; each completed charge
+ *              cycle can add at most one event. Three consecutive complete
+ *              cycles without a new event clear the persisted imbalance event
+ *              counter; the existing latch and its cycle budget remain intact.
+ *              The episode budget then latches the verdict:
+ *              red LED + hourly short beep + (checkbox) battery never
+ *              switched onto the output. All persisted state survives power
+ *              loss; battery absence remains an immediate full reset path.
  *
  *              [EN] Evaluation time-gating (user spec): thresholds apply
- *              only (a) at rest, 10 minutes after the end of a charge
- *              session (param 110), and (b) during an ongoing charge,
- *              10 minutes after charge start (param 111, 0 disables).
+ *              only (a) at rest, after param 110 from the end of a full
+ *              charge cycle, and (b) during an ongoing charge, after param
+ *              111 from charge start (0 disables).
  *              During charge the REST threshold is used - no separate
  *              charge threshold exists by design.
  *              In discharge (output running on battery) the discharge
- *              threshold (param 109) applies immediately.
+ *              threshold (param 109) applies immediately, but the event is
+ *              still committed only for a cycle that has reached FLOAT.
+ *              The post-charge wait and in-charge wait accept up to 5 hours.
  *
  *          [FA] سناریوی ۵ - پایش عدم‌توازن (آنبالانس) دو نیم‌باتری.
  *              قدرمطلق اختلاف دو نیم به شارژ ۱۲ ولتی پک ۲۴ ولتی
  *              (|‎v_high - v_low|)‎ با حد استراحت و حد دشارژ سنجیده می‌شود،
- *              رویدادهای فراتر از حد با زمان پایداری و هیسترزیس شمرده
- *              می‌شوند (هر اپیزود فقط یک‌بار) و پس از پر شدن سقف رویدادها
- *              قضاوت دائمی (قفل) صادر می‌شود: LED قرمز ثابت + بوق کوتاه
- *              ساعتی + (با تیک کاربر) ممنوعیت سوئیچ شدن باتری روی خروجی.
+ *              شرط فراتر از حد با زمان پایداری و هیسترزیس به نامزد تبدیل
+ *              می‌شود و پس از FLOAT واقعی ثبت می‌گردد (هر سیکل حداکثر یک‌بار).
+ *              پس از پر شدن سقف رویدادها قفل صادر می‌شود: LED قرمز چشمک‌زن
+ *              + بوق کوتاه ساعتی + (با تیک کاربر) ممنوعیت سوئیچ شدن باتری
+ *              روی خروجی.
  *              شارژ در حالت قفل آزاد می‌ماند تا بوق ساعتی کار کند، ولی پس
  *              از تعداد قابل‌تنظیم سیکل شارژ در حالت قفل، شارژ هم بسته
- *              می‌شود. شمارنده‌ها و قفل در NVM ماندگارند و فقط با نبود
- *              باتری (تعویض واقعی) به‌صورت خودکار صفر می‌شوند.
+ *              می‌شود. سه سیکل کامل بدون رویداد جدید، فقط شمارندهٔ عدم‌توازن
+ *              را صفر می‌کند؛ قفل و بودجهٔ آن حفظ می‌شوند. نبود باتری
+ *              (تعویض واقعی) مسیر ریست فوری همهٔ این مقادیر است.
  *
- *              گیت زمانی ارزیابی (مشخصات کاربر): آستانه‌ها فقط (الف) در
- *              استراحت و پس از ۱۰ دقیقه از پایان یک سیکل شارژ (پارامتر ۱۱۰)
- *              و (ب) در حین شارژ و پس از ۱۰ دقیقه از شروع آن (پارامتر ۱۱۱،
- *              صفر یعنی غیرفعال) اعمال می‌شوند. حین شارژ همان آستانهٔ
- *              استراحت استفاده می‌شود - آستانهٔ مجزای شارژ نداریم.
- *              در دشارژ (خروجی روی باتری) آستانهٔ دشارژ (پارامتر ۱۰۹)
- *              بلافاصله اعمال می‌شود.
+ *              گیت زمانی ارزیابی: آستانه‌ها فقط (الف) در استراحت و پس از
+ *              زمان پارامتر ۱۱۰ از پایان سیکل کامل و (ب) در حین شارژ پس از
+ *              زمان پارامتر ۱۱۱ اعمال می‌شوند؛ هر دو زمان تا ۵ ساعت قابل
+ *              تنظیم‌اند. حین شارژ همان آستانهٔ استراحت استفاده می‌شود.
+ *              در دشارژ حد پارامتر ۱۰۹ بلافاصله دیده می‌شود، اما ثبت رویداد
+ *              همچنان به کامل‌شدن سیکل و رسیدن به FLOAT وابسته است.
  *
  * @note    [EN] Pure logic: Evaluate() receives every input and the current
  *              ms time; no BSP, no RTOS, no globals from other modules.
@@ -71,15 +74,16 @@ extern "C" {
  *  [FA] حد عدم‌توازن در دشارژ (میلی‌ولت)، پیش‌فرض ۵۰۰. */
 #define IMBAL_PARAM_DISCHARGE_LIMIT_MV       109u
 
-/** [EN] Wait after charge session end before rest evaluation begins (ms),
- *  default 600000 (10 min); 0 disables rest evaluation entirely.
- *  [FA] مکث پس از پایان شارژ تا شروع ارزیابی در استراحت (ms)، پیش‌فرض
- *  ۶۰۰۰۰۰ (۱۰ دقیقه)؛ صفر یعنی ارزیابی استراحت کلاً خاموش. */
+/** [EN] Wait after a full charge session end before rest evaluation (ms),
+ *  default 600000 (10 min), max 18000000 (5 h); 0 disables rest evaluation.
+ *  [FA] مکث پس از پایان سیکل کامل تا ارزیابی در استراحت (ms)، پیش‌فرض
+ *  ۶۰۰۰۰۰، سقف ۱۸۰۰۰۰۰۰ (۵ ساعت)؛ صفر یعنی ارزیابی استراحت خاموش. */
 #define IMBAL_PARAM_POST_CHARGE_WAIT_MS      110u
 
-/** [EN] Wait after charge start before during-charge evaluation begins (ms),
- *  default 600000 (10 min); 0 disables during-charge evaluation.
- *  [FA] مکث پس از شروع شارژ تا شروع ارزیابی حین شارژ (ms)؛ صفر یعنی خاموش. */
+/** [EN] Wait after charge start before during-charge evaluation (ms),
+ *  default 600000 (10 min), max 18000000 (5 h); 0 disables it.
+ *  [FA] مکث پس از شروع شارژ تا ارزیابی حین شارژ (ms)، پیش‌فرض ۶۰۰۰۰۰،
+ *  سقف ۱۸۰۰۰۰۰۰ (۵ ساعت)؛ صفر یعنی خاموش. */
 #define IMBAL_PARAM_IN_CHARGE_WAIT_MS        111u
 
 /** [EN] Episode stability time (ms): imbalance must stay over the limit
@@ -255,6 +259,12 @@ typedef struct
     bool     bool__valid;            /* [EN] Measurements trustworthy / نمونه معتبر */
     bool     bool__batAbsent;        /* [EN] Battery absent / باتری نیست */
     bool     bool__charging;         /* [EN] Any charger channel active / در شارژ */
+    bool     bool__chargeComplete;   /* [EN] All relevant channels reached FLOAT / شارژ کامل */
+    /* [EN] A charge cycle may qualify at most one imbalance event. Before
+       chargeComplete is true, a stable over-limit condition is only a
+       candidate; it is never added to the persisted event counter.
+       [FA] هر سیکل شارژ حداکثر یک رویداد عدم‌توازن دارد. پیش از درست‌شدن
+       chargeComplete، شرط پایدار فقط نامزد است و به شمارندهٔ ماندگار اضافه نمی‌شود. */
     /* [EN] v1.72 (user order): the two halves may only be compared when they
        are in the SAME state. One half charging while the other rests lifts
        the charging half by its own charge voltage, and that difference is
@@ -274,8 +284,8 @@ typedef struct
 {
     uint32_t uint32_t__imbalanceMv;  /* [EN] |v_high - v_low|, live / اختلاف زنده */
     bool     bool__episode;          /* [EN] Over-limit episode in progress / اپیزود جاری */
-    uint32_t uint32_t__events;       /* [EN] Counted episodes, persisted / رویدادها */
-    bool     bool__latched;          /* [EN] Permanent verdict / قفل */
+    uint32_t uint32_t__events;       /* [EN] Committed full-cycle events / رویدادهای سیکل کامل */
+    bool     bool__latched;          /* [EN] Persisted verdict until clean cycles / قفل ماندگار تا سیکل‌های پاک */
     uint32_t uint32_t__latchedCycles;/* [EN] Charge cycles since latch / سیکل‌های قفل */
     bool     bool__blockOutput;      /* [EN] Changeover veto: keep battery off / وتوی خروجی */
     bool     bool__chargingAllowed;  /* [EN] Charger gate: false = no charge / گیت شارژ */

@@ -6,14 +6,13 @@
  *
  * @note    [EN] Persistence: events / latched cycles / latch are stored in
  *              EspLink NVM as slots 200..202. A slot is written ONLY on a
- *              genuine transition (evaluate returns true after a counter or
- *              the latch moved): once per over-limit episode (each episode
- *              is >= stability ms long by construction), once per charge
- *              session while latched, once per latch, and once per automatic
- *              reset. With the defaults that means at most a handful of
- *              flash writes per DAY on a severely degraded battery - against
- *              ~10k erase cycles this is decades of wear margin, so debounced
- *              on-move persistence is justified here (no periodic write).
+ *              genuine transition (evaluate returns true after a committed
+ *              full-cycle event, latch, post-latch cycle, or automatic reset).
+ *              Stable partial-charge candidates never write NVM. With the
+ *              defaults that means at most a handful of flash writes per DAY
+ *              on a severely degraded battery - against ~10k erase cycles
+ *              this is decades of wear margin, so on-move persistence is
+ *              justified here (no periodic write).
  *          [FA] ماندگاری: اسلات‌های ۲۰۰..۲۰۲ فقط هنگام تغییر واقعی میزبان
  *              ذخیرهٔ فلش می‌شوند (بارها در روز با باتریِ خیلی خراب)؛ با
  *              تحمل ~۱۰٬۰۰۰ بار پاک‌سازی، حاشیهٔ فرسودگی دهه‌هاست - پس حتی
@@ -53,6 +52,10 @@ static uint32_t UINT32_T__G__RestAnchorMs;  /* [EN] Rest window anchor: last cha
 static bool     BOOL__G__ChargingEdge;      /* [EN] charging seen at startup? / تشخیص لبهٔ اول */
 static uint32_t UINT32_T__G__ChargeStartMs; /* [EN] This session's start / شروع این سیکل */
 static bool     BOOL__G__PrevCharging;      /* [EN] Edge memory / حافظهٔ لبه */
+static bool     BOOL__G__CycleFullSeen;      /* [EN] This cycle reached FLOAT / این سیکل به فول رسید */
+static bool     BOOL__G__CycleHasImbalance;  /* [EN] Deferred candidate / نامزدِ معوق */
+static bool     BOOL__G__CycleEventRecorded; /* [EN] One event already committed / رویداد ثبت‌شدهٔ همین سیکل */
+static uint8_t  UINT8_T__G__CleanFullCycles; /* [EN] Consecutive full cycles without event / سیکل‌های کامل پاک */
 static bool     BOOL__G__Episode;           /* [EN] Episode in progress / اپیزود جاری */
 static uint32_t UINT32_T__G__EpisodeLimitMv;/* [EN] Limit that armed the episode / حد لحظهٔ شروع اپیزود */
 static uint32_t UINT32_T__G__OverSinceMs;   /* [EN] Over-limit continuous start / شروع دویش فراتر از حد */
@@ -217,10 +220,14 @@ void func__Imbalance_Init(void)
 
     BOOL__G__HasChargeEnd     = false;
     UINT32_T__G__RestAnchorMs = 0u;      /* [EN] 0 = anchored at boot / صفر یعنی از بوت */
-    BOOL__G__ChargingEdge     = false;
+    BOOL__G__ChargingEdge      = false;
     UINT32_T__G__ChargeStartMs = 0u;
-    BOOL__G__PrevCharging     = false;
-    BOOL__G__Episode          = false;
+    BOOL__G__PrevCharging      = false;
+    BOOL__G__CycleFullSeen     = false;
+    BOOL__G__CycleHasImbalance = false;
+    BOOL__G__CycleEventRecorded = false;
+    UINT8_T__G__CleanFullCycles = 0u;
+    BOOL__G__Episode           = false;
     UINT32_T__G__EpisodeLimitMv = 0u;
     UINT32_T__G__OverSinceMs  = 0u;
     BOOL__G__OverTiming       = false;
@@ -260,6 +267,7 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
     bool     bool__windowOpen;
     uint32_t uint32_t__activeLimitMv;
     bool     bool__charging;
+    bool     bool__chargeComplete;
     bool     bool__sameState;
     bool     bool__justLatched;
 
@@ -303,8 +311,9 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
         return false;
     }
 
-    /* ---- charge-session edges (start/end + latched cycle counting) ---- */
-    bool__charging = imbalance_inputs_t__inputs->bool__charging;
+    /* ---- charge-session edges and full-charge qualification ---- */
+    bool__charging      = imbalance_inputs_t__inputs->bool__charging;
+    bool__chargeComplete = imbalance_inputs_t__inputs->bool__chargeComplete;
 
     /* [EN] v1.72 (user order): comparable only when both halves are in the
            same state. One charging and one resting is a charger-made
@@ -315,11 +324,51 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
 
     if ((bool__charging == true) && (BOOL__G__PrevCharging == false))
     {
-        /* [EN] Rising edge: session start. Count it when latched - this is
-         *      the "20 more cycles then no charge" budget spending.
-         * [FA] لبهٔ صعودی: شروع سیکل؛ در حالت قفل به شمارندهٔ سیکل اضافه. */
-        BOOL__G__ChargingEdge   = true;
-        UINT32_T__G__ChargeStartMs = uint32_t__nowMs;
+        /* [EN] A new cycle starts here. Only a PREVIOUS cycle that reached
+           FLOAT can be clean; an interrupted charge is neither clean nor an
+           imbalance event. Three consecutive full cycles with no committed
+           event clear the stored imbalance state.
+           [FA] سیکل جدید از اینجا شروع می‌شود. فقط سیکلی که قبلاً به FLOAT
+           رسیده «پاک» است؛ شارژ نیمه‌کاره نه پاک است نه رویداد. سه سیکل کامل
+           پشت‌سرهم بدون رویداد، وضعیت ماندگار عدم‌توازن را پاک می‌کند. */
+        if (BOOL__G__CycleFullSeen == true)
+        {
+            if (BOOL__G__CycleEventRecorded == true)
+            {
+                UINT8_T__G__CleanFullCycles = 0u;
+            }
+            else if (UINT8_T__G__CleanFullCycles < 3u)
+            {
+                UINT8_T__G__CleanFullCycles++;
+            }
+
+            if (UINT8_T__G__CleanFullCycles >= 3u)
+            {
+                /* [EN] The three-clean-cycle rule clears only the imbalance
+                   event counter. The existing latch and its post-latch-cycle
+                   budget are deliberately preserved; battery absence remains
+                   the reset path for those values.
+                   [FA] قانون سه سیکل پاک فقط شمارندهٔ عدم‌توازن را پاک می‌کند؛
+                   قفل و بودجهٔ سیکلِ قفل طبق قرارداد قبلی حفظ می‌شوند و مسیر
+                   ریست آن‌ها نبود واقعی باتری است. */
+                if (UINT32_T__G__Events != 0u)
+                {
+                    UINT32_T__G__Events  = 0u;
+                    bool__persistChanged = true;
+                }
+                UINT8_T__G__CleanFullCycles = 0u;
+            }
+        }
+
+        BOOL__G__CycleFullSeen      = false;
+        BOOL__G__CycleHasImbalance  = false;
+        BOOL__G__CycleEventRecorded = false;
+        BOOL__G__ChargingEdge       = true;
+        UINT32_T__G__ChargeStartMs  = uint32_t__nowMs;
+
+        /* [EN] Count a post-latch charging cycle only if the clean-cycle rule
+           above did not already clear the latch. [FA] شمارش سیکل قفل فقط اگر
+           قانون سه سیکل پاک، قفل را همین‌جا پاک نکرده باشد. */
         if (UINT32_T__G__Latched != 0u)
         {
             if (UINT32_T__G__LatchedCycles < IMBAL_MAX_COUNT)
@@ -331,10 +380,27 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
     }
     if ((bool__charging == false) && (BOOL__G__PrevCharging == true))
     {
-        /* [EN] Falling edge: anchor the rest window at the charge end.
-         * [FA] لبهٔ نزولی: لنگر پنجرهٔ استراحت = پایان شارژ. */
-        BOOL__G__HasChargeEnd  = true;
+        /* [EN] Falling edge: anchor the rest window. If FLOAT was not reached,
+           discard the candidate and do not register an event.
+           [FA] لبهٔ نزولی: لنگر استراحت. اگر FLOAT نرسیده، نامزد دور ریخته
+           می‌شود و هیچ رویدادی ثبت نمی‌شود. */
+        BOOL__G__HasChargeEnd     = true;
         UINT32_T__G__RestAnchorMs = uint32_t__nowMs;
+        if (bool__chargeComplete == false)
+        {
+            BOOL__G__CycleHasImbalance  = false;
+            BOOL__G__CycleEventRecorded = false;
+            BOOL__G__Episode            = false;
+            BOOL__G__OverTiming         = false;
+        }
+    }
+
+    /* [EN] IsChargeComplete is sampled after the charger has parked in FLOAT.
+       It qualifies this cycle, but it does not by itself create an event.
+       [FA] کامل‌شدن فقط سیکل را معتبر می‌کند و به‌تنهایی رویداد نمی‌سازد. */
+    if (bool__chargeComplete == true)
+    {
+        BOOL__G__CycleFullSeen = true;
     }
     BOOL__G__PrevCharging = bool__charging;
 
@@ -381,13 +447,11 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
      *      the user wants measured), rest limit; 0 = rest eval off.
      * [FA] دشارژ: فوری با حد دشارژ. حین شارژ: پس از ۱۱۱ با حد استراحت.
      *      استراحت: پس از ۱۱۰ از پایان آخرین شارژ (یا از بوت). */
-    if (imbalance_inputs_t__inputs->bool__onBattery == true)
+    if ((imbalance_inputs_t__inputs->bool__onBattery == true) &&
+        (bool__charging == false) && (BOOL__G__CycleFullSeen == true))
     {
-        if (bool__charging == false)
-        {
-            bool__windowOpen    = true;
-            uint32_t__activeLimitMv = func__Imbalance_ReadParam(IMBAL_PARAM_DISCHARGE_LIMIT_MV);
-        }
+        bool__windowOpen    = true;
+        uint32_t__activeLimitMv = func__Imbalance_ReadParam(IMBAL_PARAM_DISCHARGE_LIMIT_MV);
     }
 
     if (bool__windowOpen == false)
@@ -403,7 +467,7 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
                 uint32_t__activeLimitMv = func__Imbalance_ReadParam(IMBAL_PARAM_REST_LIMIT_MV);
             }
         }
-        else
+        else if (BOOL__G__CycleFullSeen == true)
         {
             uint32_t uint32_t__waitMs = func__Imbalance_ReadParam(IMBAL_PARAM_POST_CHARGE_WAIT_MS);
 
@@ -457,14 +521,12 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
                 else if ((uint32_t__nowMs - UINT32_T__G__OverSinceMs) >=
                          func__Imbalance_ReadParam(IMBAL_PARAM_STABILITY_MS))
                 {
-                    /* [EN] Count ONCE per episode; the hysteresis below defines
-                     *      when this episode ends and the next may count.
-                     * [FA] هر اپیزود یک‌بار می‌شمارد؛ پایان با هیسترزیس. */
-                    if (UINT32_T__G__Events < IMBAL_MAX_COUNT)
-                    {
-                        UINT32_T__G__Events++;
-                        bool__persistChanged = true;
-                    }
+                    /* [EN] A stable condition is only a candidate until the
+                       cycle reaches FLOAT. This prevents partial-charge
+                       numbers from becoming persisted imbalance events.
+                       [FA] شرط پایدار تا رسیدن سیکل به FLOAT فقط نامزد است؛
+                       بنابراین عددِ شارژ ناقص رویداد ماندگار نمی‌شود. */
+                    BOOL__G__CycleHasImbalance = true;
                     BOOL__G__Episode          = true;
                     UINT32_T__G__EpisodeLimitMv = uint32_t__activeLimitMv;
                     BOOL__G__OverTiming       = false;
@@ -503,6 +565,24 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
         {
             BOOL__G__Episode = false;
         }
+    }
+
+    /* [EN] Commit at most one event for this cycle, and only after FLOAT.
+       A candidate raised during charging becomes real here; a candidate from
+       a cycle that never reached FLOAT was discarded at its falling edge.
+       [FA] حداکثر یک رویداد برای هر سیکل و فقط بعد از FLOAT ثبت می‌شود.
+       نامزد شارژ هنگام کامل‌شدن واقعی ثبت و نامزد شارژ ناقص دور ریخته شد. */
+    if ((BOOL__G__CycleFullSeen == true) &&
+        (BOOL__G__CycleHasImbalance == true) &&
+        (BOOL__G__CycleEventRecorded == false))
+    {
+        if (UINT32_T__G__Events < IMBAL_MAX_COUNT)
+        {
+            UINT32_T__G__Events++;
+            bool__persistChanged = true;
+        }
+        BOOL__G__CycleEventRecorded = true;
+        UINT8_T__G__CleanFullCycles = 0u;
     }
 
     /* ---- latch on budget exhausted ----
