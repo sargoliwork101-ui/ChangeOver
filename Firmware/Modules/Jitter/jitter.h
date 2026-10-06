@@ -1,7 +1,18 @@
 /**
  * @file    jitter.h
- * @brief   [EN] LM393 jitter trip flags (placeholder). Full type naming, func__ prefix.
- *          [FA] پرچم تریپ جیتر LM393 (اسکلت). نام تایپ کامل.
+ * @brief   [EN] Public interface of the LM393 over-current comparator trip
+ *               flags. The two comparators are open-collector with pull-ups,
+ *               so a trip is a FALLING edge captured by EXTI in hardware;
+ *               this module only latches the software flag per channel and
+ *               hands it to the charger, which owns the reaction.
+ *          [FA] رابط عمومی پرچم‌های تریپِ مقایسه‌گرِ اضافه‌جریان LM393. دو
+ *               مقایسه‌گر کلکتور-باز با مقاومت بالاکش‌اند، پس تریپ یک لبهٔ
+ *               پایین‌رونده است که EXTI سخت‌افزاری می‌گیرد؛ این ماژول فقط پرچم
+ *               نرم‌افزاری هر کانال را قفل می‌کند و به شارژر می‌دهد که صاحب
+ *               واکنش است.
+ * @note    [EN] Full-program audit 2026-10-05: the stale "placeholder"
+ *               label of the old header line was removed.
+ *          [FA] ممیزی ۲۰۲۶-۱۰-۰۵: برچسب کهنهٔ «اسکلت» از سرخط قبلی برداشته شد.
  */
 
 #ifndef JITTER_H

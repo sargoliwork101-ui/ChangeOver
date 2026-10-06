@@ -210,6 +210,26 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .wbx.bad{border-color:var(--er);background:rgba(255,104,115,.12);color:var(--er)}
 .wbx.warn{border-color:var(--wa);background:rgba(247,193,60,.10);color:var(--wa)}
 .ab.bad{border-color:rgba(251,94,106,.55);box-shadow:0 0 0 1px rgba(251,94,106,.2)}.ab.warn{border-color:rgba(251,191,36,.5)}.ab.good{border-color:rgba(52,211,153,.4)}
+/* [EN] v1.79 (user: "what is this? there used to be a LED behind it"): the
+   .bit class had markup (<i> dot + <small> label) but NO stylesheet rule at
+   all, so the dots were invisible and the labels ran together as
+   "ADCOC1OC2باتری...". ‎The LEDs are needed - they are the only per-bit view‎
+   of the latched fault mask - so they are drawn properly instead of removed.
+   A latched bit stays dim red at all times and brightens on the blink phase,
+   so a fault is never invisible between blinks.
+   [FA] کلاس .bit هیچ استایلی نداشت؛ پس نقطه‌ها دیده نمی‌شدند و برچسب‌ها به هم
+   چسبیده بودند. حالا هر بیت یک LED واقعی با برچسب زیرش دارد: بیتِ قفل‌شده
+   همیشه قرمزِ کم‌رنگ است و در فاز چشمک پررنگ می‌شود. */
+.bit{display:inline-flex;flex-direction:column;align-items:center;gap:5px;min-width:54px}
+.bit i{width:14px;height:14px;border-radius:50%;background:#28303f;border:1px solid var(--ln);box-shadow:inset 0 1px 2px #0009;transition:background .12s,box-shadow .12s}
+.bit small{font-size:11px;line-height:1;color:var(--mu);white-space:nowrap}
+.bit.set i{background:#8d2a2e;border-color:#b13b40}
+.bit.set small{color:#ffbdbf}
+.bit.set.on i{background:#ff5a5f;border-color:#ff5a5f;box-shadow:0 0 9px #ff5a5f,inset 0 1px 2px #0005}
+/* [EN] v1.79: .prod (the live readout strip of scenarios 5 and 6) had no rule
+   either and rendered as loose text. [FA] نوار مقدارهای زنده هم استایل نداشت. */
+.prod{background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:8px 12px;margin:2px 0 10px;font-size:13px;line-height:1.9}
+.prod b{font-variant-numeric:tabular-nums}
 .leds{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--in);border:1px solid var(--ln);border-radius:14px;padding:10px 14px;margin:2px 0 12px}
 .fx2{font-size:12px;color:#c9d0df;line-height:1.9;margin-top:4px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -220,6 +240,14 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .mod h3{font-size:16px;margin-bottom:8px}
 .mod .sb{width:100%;margin-top:10px}
 input:disabled{opacity:.38;cursor:not-allowed}
+/* [EN] v1.78: the two lock-behaviour switches are real checkboxes now, not
+   buttons - a button looked like "press me to do it", while this is a stored
+   yes/no setting. The row spans the card and carries its own answer line.
+   [FA] دو کلید رفتارِ قفل حالا چک‌باکس واقعی‌اند، نه دکمه. */
+.ckr{grid-column:1/-1;display:flex;align-items:flex-start;gap:10px;background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:10px 12px}
+.ckr input[type="checkbox"]{width:20px;height:20px;margin:2px 0 0;accent-color:#e5484d;flex:0 0 auto;cursor:pointer}
+.ckr .ckt{display:block;font-weight:700}
+.ckr .cks{display:block;color:var(--mu);font-size:12px;margin-top:3px;line-height:1.7}
 .srvw{overflow-x:auto;border:1px solid var(--ln);border-radius:12px}
 
 .srv{width:100%;min-width:680px;border-collapse:collapse;font-size:13px;table-layout:fixed}
@@ -295,7 +323,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 07a9a04</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 405c388</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -331,7 +359,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <br><b>۱ · رسیدن نرم به هدف</b> — <b>duty step</b> سقفِ سرعت حرکت duty به‌سمت هدفِ PID، <b>hyst</b> نادیده‌گرفتن جنبش‌های ریزِ خروجی PID تا PWM نلرزد، <b>V filter</b> نرم‌کردن عدد ولتاژ پیش از PID.
 <br><b>۲ · ترمز اضطراری و حاشیهٔ امن</b> — <b>Backstop gain I</b> و <b>Backstop gain V</b> برشِ تناسبیِ سقف duty هنگام تجاوز از حد جریان یا ولتاژ (صفر = خاموش؛ این‌ها PID نیستند، بالای آن می‌ایستند) و <b>margin</b> فاصلهٔ ایمن از لبهٔ سقف جریان.
 <br><b>۳ · تصمیم‌های زمانی</b> — <b>Absorb max</b> سقف زمان Absorb، <b>Absorb hold</b> حداقل ماندن در Absorb، <b>Taper sustain</b> مدتی که جریان باید زیر Taper بماند تا «شارژ کامل» اعلام شود، <b>settle</b> صبر بعد از وصل باتری، <b>JIT lockout</b> خاموشی اجباری بعد از هر تریپ، <b>manual deadman</b> انقضای duty دستی با سکوت پنل، <b>ramp down</b> فاصلهٔ پله‌های خاموشی نرم.
-<br><b>قاعدهٔ تنظیم:</b> هر بار یک عدد را عوض کنید و یک چرخهٔ کامل را ببینید؛ برای آرام‌کردن حلقه اول duty step، بعد hyst و در آخر V filter. <b>ماندگاری:</b> هر مقداری که ثبت کنید روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند؛ برد هر عدد را به بازهٔ مجازش گیره می‌زند و اگر نتیجه با آنچه تایپ کردید فرق داشت، برچسبش زرد می‌شود.</div>
+<br><b>قاعدهٔ تنظیم:</b> هر بار یک عدد را عوض کنید و یک چرخهٔ کامل را ببینید؛ برای آرام‌کردن حلقه اول duty step، بعد hyst و در آخر V filter.<br><b>ماندگاری:</b> هر مقداری که ثبت کنید روی فلش برد ذخیره می‌شود و با قطع برق می‌ماند؛ برد هر عدد را به بازهٔ مجازش گیره می‌زند و اگر نتیجه با آنچه تایپ کردید فرق داشت، برچسبش زرد می‌شود.</div>
 <div class="qwm" style="margin:2px 0 0"></div>
 <div class="qgm" style="direction:ltr;overflow-x:auto"></div>
 <div class="qglg lb"></div>
@@ -341,11 +369,11 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 <div class="cd">
 <div class="hd"><b>PID دوحلقه‌ای شارژ (CC/CV)</b><span class="lb">· شناسه‌های ۸۳..۹۲ · روی فلش برد ذخیره می‌شود (~۱٫۵ ثانیه پس از آخرین تغییر)</span></div>
-<div class="sx">duty را PID تعیین می‌کند، با <b>دو</b> حلقه، چون شارژ باتری باید هم‌زمان دو چیز را محدود کند: <b>حلقهٔ جریان (CC)</b> تا وقتی باتری خالی است جریان را ثابت نگه می‌دارد و <b>حلقهٔ ولتاژ (CV)</b> نزدیک پرشدن، ولتاژ را روی هدف می‌نشاند. <b>دو حلقه چطور یک duty را می‌رانند؟</b> دو خروجی وجود ندارد — یک duty، یک انتگرال‌گیرِ مشترک، و دو حلقه که نوبتی آن را می‌رانند: هر لحظه هرکدام عدد کمتری بخواهد ولوم دست اوست (min-select) و دیگری آن پاس کاملاً نادیده گرفته می‌شود. چون انتگرال‌گیر یکی است، سر همان پاسِ تحویل انتگرال روی ۱۹۹۵۱۱ می‌ماند و duty ثابت است: صفر پرش.
-<br><b>چرا یک PID کافی نیست؟</b> امتحان شد و مردود شد: یک ردیف ضریبِ مشترک یعنی مقایسهٔ میلی‌ولت با میلی‌آمپر و لرزش duty (<b>۱۴۰۸</b> تا ۸۴۶۶۰ تغییر جهت در ۱۰ ساعت، در برابر ۴ تای الان)؛ و PID فقط-ولتاژ با پشتیبانِ جریان به‌عنوان تنها ترمز، جریان را تا <b>۷۰۷</b> میلی‌آمپر بالا می‌برد، چون پشتیبان فقط <i>بعد از</i> رد شدن از حد جواب می‌دهد.</div>
+<div class="sx"><span class="n">duty</span> را <span class="n">PID</span> می‌سازد، آن هم با <b>دو</b> حلقه، چون شارژ باید دو چیز را با هم محدود کند:<br><br><b>حلقهٔ جریان (<span class="n">CC</span>)</b> = وقتی باتری خالی است، جریان را ثابت نگه می‌دارد.<br><b>حلقهٔ ولتاژ (<span class="n">CV</span>)</b> = نزدیک پرشدن، ولتاژ را روی هدف می‌نشاند.<br><br><b>دو حلقه چطور یک duty را می‌رانند؟</b> خروجی یکی است: هر لحظه هر حلقه که عدد کمتری بخواهد، فرمان دست اوست و دیگری آن لحظه نادیده گرفته می‌شود. انتگرال‌گیر هم مشترک است، پس در لحظهٔ تحویل انتگرال روی <span class="n">۱۹۹۵۱۱</span> می‌ماند و <span class="n">duty</span> نمی‌پرد: صفر پرش.
+<br><b>چرا یک حلقه کافی نبود؟</b> امتحان شد و جواب نداد: با یک ردیف ضریب، میلی‌ولت و میلی‌آمپر با هم مقایسه می‌شوند و <span class="n">duty</span> می‌لرزد (در ۱۰ ساعت <span class="n">۱۴۰۸</span> تا <span class="n">۸۴۶۶۰</span> بار تغییر جهت، در برابر ۴ بار الان). با حلقهٔ فقط‌ولتاژ هم جریان تا <span class="n">۷۰۷mA</span> بالا می‌رفت، چون ترمزِ جریان تنها <i>بعد از</i> عبور از حد وارد می‌شود.</div>
 <div class="sec">حلقهٔ جریان — CC (Bulk)
  <span class="lb">· پیش‌فرض ۱۲ / ۱۶۰۰ / ۰ / ۱۰۰۰ / ۱۰۰۰ · کالیبرهٔ کارخانه</span></div>
-<div class="sx">ردیف ضرایب حلقه‌ای که <b>جریان</b> را روی هدف نگه می‌دارد. <b>Kp</b> واکنش فوری به خطا، <b>Ki</b> جمع‌کنندهٔ خطا که در نهایت جریان را دقیق روی هدف می‌نشاند، <b>Kd</b> واکنش به سرعت تغییر (پیش‌فرض صفر چون نویز را بزرگ می‌کند)، و <b>نرخ صعود/نزول</b> سقفِ سرعت حرکت نقطهٔ کار.</div>
+<div class="sx">ردیف ضرایب حلقه‌ای که <b>جریان</b> را روی هدف نگه می‌دارد:<br><br><b>Kp</b> = واکنش فوری به خطا.<br><b>Ki</b> = جمع‌کنندهٔ خطا؛ همین است که در نهایت جریان را دقیق روی هدف می‌نشاند.<br><b>Kd</b> = واکنش به سرعت تغییر (پیش‌فرض صفر، چون نویز را بزرگ می‌کند).<br><b>نرخ صعود/نزول</b> = سقفِ سرعت حرکت نقطهٔ کار.</div>
 <div class="bqr">
 <label>Kp (‰ بر آمپر)<input type="number" id="q83" step="5" min="0" max="20000"><span class="lb" id="a83"></span></label>
 <label>Ki<input type="number" id="q84" step="50" min="0" max="20000"><span class="lb" id="a84"></span></label>
@@ -392,7 +420,6 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="sbt" id="usel"><button class="a" data-u="1">۱ · اضافه‌ولتاژ</button><button data-u="2">۲ · قطع باتری</button><button data-u="3">۳ · دشارژ</button><button data-u="4">۴ · شارژ عادی</button><button data-u="5">۵ · عدم‌توازن</button><button data-u="6">۶ · باتری خراب</button></div>
 <div class="cd" id="ucard1">
 <div class="hd"><b>سناریو ۱ — اضافه‌ولتاژ ورودی (قرمز + بوق)</b></div>
-<div class="sx"><b>روند:</b> عبور ورودی از سقف ← قرمز چشمک + بوق دوره‌ای (سبز ثابت می‌ماند) ← افت تا سقف−hysteresis ← پاک‌شدن و بازگشت به سناریوی قبلی. پیش‌فرض: چشمک ۱۰۰۰/۵۰٪ + یک بوق ۱ثانیه‌ای هر ۱۰ ثانیه.</div>
 
 <div class="ds c4ds">
 <b>این سناریو کِی می‌آید؟</b> بالاترین اولویت برد است و روی هر سناریوی دیگری می‌نشیند.
@@ -403,9 +430,9 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </ul>
 </div>
 
-<div class="sim" id="sim1"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims1" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb1" onclick="simtog(1)">توقف</button></div><div class="simb"><span class="sl r" id="sl1r"></span><span class="sl g" id="sl1g"></span><span class="sl y" id="sl1y"></span><span class="szz" id="sl1z">🔇</span><span class="simt" id="sl1t"></span></div><div class="simc"><label>ولتاژ ورودی (mV)<input type="range" id="simp1" min="20000" max="34000" step="100" value="26000" oninput="simlbl1()"><b id="simv1">26000 mV</b></label> <span class="lb" id="sim1w"></span></div></div>
+<div class="sim" id="sim1"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims1" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb1" onclick="simtog(1)">توقف</button></div><div class="simb"><span class="sl r" id="sl1r"></span><span class="sl g" id="sl1g"></span><span class="sl y" id="sl1y"></span><span class="szz" id="sl1z">🔇</span><span class="simt" id="sl1t"></span></div><div class="simc"><label>ولتاژ ورودی (mV)<input type="range" id="simp1" min="20000" max="34000" step="100" value="26000" oninput="simlbl1()"><b id="simv1">26000mV</b></label> <span class="lb" id="sim1w"></span></div></div>
 <div class="sec">۱) آستانهٔ ولتاژ ورودی <span class="lb">(mV)</span></div>
-<div class="sx">این دو عدد تعیین می‌کنند «اضافه‌ولتاژ» از کجا شروع و کجا تمام می‌شود. <b>آستانه</b> = ولتاژی که بالاتر از آن سناریو روشن می‌شود. <b>hysteresis</b> = چقدر باید پایین‌تر از آستانه بیاید تا خاموش شود؛ بدون آن، ولتاژِ دقیقاً روی مرز، سناریو را پشت‌سرهم روشن‌وخاموش می‌کند.</div>
+<div class="sx">این دو عدد تعیین می‌کنند «اضافه‌ولتاژ» از کجا شروع و کجا تمام می‌شود.<br><br><b>آستانه</b> = ولتاژی که بالاتر از آن سناریو روشن می‌شود.<br><b>hysteresis</b> = چقدر باید پایین‌تر از آستانه بیاید تا خاموش شود.<br><b>دلیل:</b> بدون آن، ولتاژِ دقیقاً روی مرز، سناریو را پشت‌سرهم روشن‌وخاموش می‌کند.</div>
 <div class="bqr">
 <label>آستانه اضافه‌ولتاژ ورودی (mV)<input type="number" id="q70" step="100" min="24000" max="32000"><span class="lb" id="a70"></span></label>
 <label>hysteresis اضافه‌ولتاژ (mV)<input type="number" id="q71" step="100" min="0" max="2000"><span class="lb" id="a71"></span></label>
@@ -413,7 +440,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="s1v"></div>
 
 <div class="sec">۲) چشمک قرمز <span class="lb">(دوره / duty)</span></div>
-<div class="sx">شکل چشمک چراغ قرمز در این سناریو. <b>دوره</b> = طول یک چرخهٔ کاملِ روشن+خاموش. <b>duty</b> = چند درصد از آن چرخه چراغ روشن باشد (۵۰٪ یعنی روشن و خاموش برابر).</div>
+<div class="sx">شکل چشمک چراغ قرمز در این سناریو.<br><br><b>دوره</b> = طول یک چرخهٔ کاملِ روشن+خاموش.<br><b>duty</b> = چند درصد از آن چرخه چراغ روشن باشد (۵۰٪ یعنی روشن و خاموش برابر).</div>
 <div class="bqr">
 <label>دوره چشمک قرمز (ms)<input type="number" id="q38" step="50" min="100" max="10000"><span class="lb" id="a38"></span></label>
 <label>duty قرمز (٪)<input type="number" id="q39" step="5" min="0" max="100"><span class="lb" id="a39"></span></label>
@@ -421,7 +448,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="s1b"></div>
 
 <div class="sec">۳) بوق</div>
-<div class="sx">شکل صدا، دقیقاً مثل بقیهٔ سناریوها با چهار عدد ساخته می‌شود: <b>دوره</b> = هر چند وقت یک‌بار الگو تکرار شود (۰ = بی‌صدا)، <b>مدت هر بوق</b> = طول یک بوق، <b>تعداد</b> = چند بوق در هر تکرار، <b>گپ</b> = سکوت بین آن بوق‌ها. درصدِ روشنیِ بوق خودش از این چهار عدد حساب می‌شود و جایی تایپ نمی‌شود.</div>
+<div class="sx">صدا با چهار عدد ساخته می‌شود:<br><br><b>دوره</b> = هر چند وقت یک‌بار الگو تکرار شود (۰ = بی‌صدا).<br><b>مدت هر بوق</b> = طول خودِ یک بوق.<br><b>تعداد بوق</b> = چند بوق در هر تکرار پخش شود.<br><b>گپ</b> = سکوت بین آن بوق‌ها.<br><b>نکته:</b> درصد روشنیِ بوق جایی تایپ نمی‌شود و خودش از همین چهار عدد درمی‌آید.<br><b>قانون مشترک بوق‌ها:</b> گپ فقط <i>بین</i> دو بوق معنی دارد، پس با «تعداد بوق = ۱» کادر گپ خودکار غیرفعال می‌شود و با دو بوق به بالا دوباره فعال.</div>
 <div class="bqr">
 <label>دوره بوق (ms، صفر=خاموش)<input type="number" id="q40" step="500" min="0" max="600000"><span class="lb" id="a40"></span></label>
 <label>مدت هر بوق (ms)<input type="number" id="q41" step="50" min="0" max="600000"><span class="lb" id="a41"></span></label>
@@ -434,7 +461,6 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="cd" id="ucard2" style="display:none">
 <div class="hd"><b>سناریو ۲ — قطع باتری (قرمز + بوق)</b></div>
-<div class="sx"><b>روند:</b> قفل‌شدن پرچم قطع‌باتری ← قرمز چشمک + بوق دوره‌ای (سبز ثابت) ← پاک‌شدن پرچم ← بازگشت به سناریوی قبلی. پیش‌فرض: سه بوق کوتاه. آستانه‌های تشخیص قطع/برگشت همین کارت‌اند (۲۷..۳۲).</div>
 <div id="aw" style="margin:2px 0 0"></div>
 
 <div class="ds c4ds">
@@ -448,13 +474,13 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 <div class="sim" id="sim2"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims2" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb2" onclick="simtog(2)">توقف</button></div><div class="simb"><span class="sl r" id="sl2r"></span><span class="sl g" id="sl2g"></span><span class="sl y" id="sl2y"></span><span class="szz" id="sl2z">🔇</span><span class="simt" id="sl2t"></span></div></div>
 <div class="sec">۱) تشخیص قطع حین شارژ <span class="lb">(mV / ms)</span></div>
-<div class="sx">وقتی شارژر در حال کار است، باتریِ جداشده باعث می‌شود ولتاژ خروجی بپرد بالا. <b>آستانهٔ قطع</b> = ولتاژی که عبور از آن یعنی «باتری نیست». <b>دبانس قطع</b> = این حالت چقدر پیوسته بماند تا باور شود (ضدنویز).</div>
+<div class="sx">وقتی شارژر در حال کار است، باتریِ جداشده باعث می‌شود ولتاژ خروجی بپرد بالا.<br><br><b>آستانهٔ قطع</b> = ولتاژی که عبور از آن یعنی «باتری نیست».<br><b>دبانس قطع</b> = این حالت چقدر پیوسته بماند تا باور شود (ضدنویز).</div>
 <div class="bqr">
 <label>آستانهٔ قطع باتری (mV)<input type="number" id="q27" step="50" min="14000" max="15000"><span class="lb" id="a27"></span></label>
 <label>دبانس قطع (ms)<input type="number" id="q28" step="10" min="50" max="1000"><span class="lb" id="a28"></span></label>
 </div>
 <div class="sec">۲) غیبت و بازگشت باتری <span class="lb">(mV / ms)</span></div>
-<div class="sx">تشخیص دوم، از سمت ولتاژِ پایین: <b>آستانهٔ غیبت</b> = زیر این ولتاژ یعنی باتری سر جایش نیست، <b>آستانهٔ بازگشت</b> = تنها راه پاک‌شدن پرچم، بالا رفتن از این عدد است (همیشه بالاتر از آستانهٔ غیبت تا پرچم نلرزد). دو <b>دبانس</b> هم می‌گویند هر کدام چقدر پیوسته بماند تا پذیرفته شود.</div>
+<div class="sx">تشخیص دوم، از سمت ولتاژِ پایین:<br><br><b>آستانهٔ غیبت</b> = زیر این ولتاژ یعنی باتری سر جایش نیست<br><b>آستانهٔ بازگشت</b> = تنها راه پاک‌شدن پرچم، بالا رفتن از این عدد است (همیشه بالاتر از آستانهٔ غیبت تا پرچم نلرزد). دو <b>دبانس</b> هم می‌گویند هر کدام چقدر پیوسته بماند تا پذیرفته شود.</div>
 <div class="bqr">
 <label>آستانهٔ غیبت (mV)<input type="number" id="q29" step="100" min="3000" max="8000"><span class="lb" id="a29"></span></label>
 <label>آستانهٔ بازگشت (mV)<input type="number" id="q30" step="100" min="4000" max="9000"><span class="lb" id="a30"></span></label>
@@ -464,7 +490,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="s2v"></div>
 
 <div class="sec">۳) چشمک قرمز <span class="lb">(دوره / duty)</span></div>
-<div class="sx">شکل چشمک قرمز همین سناریو. <b>دوره</b> = طول یک چرخهٔ روشن+خاموش، <b>duty</b> = سهم روشنی از آن چرخه. عمداً از سناریو ۱ تندتر تنظیم شده تا دو خطا از روی چراغ قابل تشخیص باشند.</div>
+<div class="sx">شکل چشمک قرمز همین سناریو.<br><br><b>دوره</b> = طول یک چرخهٔ روشن+خاموش<br><b>duty</b> = سهم روشنی از آن چرخه. عمداً از سناریو ۱ تندتر تنظیم شده تا دو خطا از روی چراغ قابل تشخیص باشند.</div>
 <div class="bqr">
 <label>دوره چشمک قرمز (ms)<input type="number" id="q44" step="50" min="100" max="10000"><span class="lb" id="a44"></span></label>
 <label>duty قرمز (٪)<input type="number" id="q45" step="5" min="0" max="100"><span class="lb" id="a45"></span></label>
@@ -472,7 +498,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="s2b"></div>
 
 <div class="sec">۴) بوق</div>
-<div class="sx">همان چهار عددِ همیشگیِ صدا: <b>دوره</b> (۰ = بی‌صدا)، <b>مدت هر بوق</b>، <b>تعداد بوق</b> در هر تکرار و <b>گپ</b> بین آن‌ها. پیش‌فرض این سناریو سه بوق کوتاه است.</div>
+<div class="sx">همان چهار عدد همیشگی، این‌بار برای این سناریو:<br><br><b>دوره</b> = فاصلهٔ تکرار الگو (۰ = بی‌صدا).<br><b>مدت هر بوق</b> = طول یک بوق.<br><b>تعداد بوق</b> = چند بوق در هر تکرار.<br><b>گپ</b> = سکوت بین آن بوق‌ها.<br><b>پیش‌فرض:</b> سه بوق کوتاه.<br><b>قانون مشترک بوق‌ها:</b> گپ فقط <i>بین</i> دو بوق معنی دارد، پس با «تعداد بوق = ۱» کادر گپ خودکار غیرفعال می‌شود و با دو بوق به بالا دوباره فعال.</div>
 <div class="bqr">
 <label>دوره بوق (ms، صفر=خاموش)<input type="number" id="q46" step="500" min="0" max="600000"><span class="lb" id="a46"></span></label>
 <label>مدت هر بوق (ms)<input type="number" id="q47" step="50" min="0" max="600000"><span class="lb" id="a47"></span></label>
@@ -486,7 +512,6 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="cd" id="ucard3" style="display:none">
 <div class="hd"><b>سناریو ۳ — دشارژ، بی‌ورودی (سبز + باندهای بوق)</b></div>
-<div class="sx"><b>روند:</b> بالای «شروع بوق» بی‌صدا (سبز چشمک با درصد) ← هر باند بوق خودش با فاصله/مدت/تعداد خودش ← زیر «باند بحرانی»: LEDها خاموش و الگوی بحرانی فقط یک‌بار به‌اندازهٔ «طول یک‌باره» پخش و بعد سکوت تا برگشت باتری. تنها عدد مشترک، گپ بین بوق‌ها (۶۵) است؛ تعداد، مدت هر بوق و فاصلهٔ تکرارِ هر باند مال خودش است و هر چهار باند یک شکل تنظیم می‌شوند.</div>
 
 <div class="ds c4ds">
 <b>این سناریو کِی می‌آید؟</b> وقتی ورودی قطع است و بار روی باتری می‌رود (پایین‌ترین اولویت؛ هر آلارمی آن را کنار می‌زند).
@@ -499,8 +524,8 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 
 <div class="sim" id="sim3"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims3" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb3" onclick="simtog(3)">توقف</button></div><div class="simb"><span class="sl r" id="sl3r"></span><span class="sl g" id="sl3g"></span><span class="sl y" id="sl3y"></span><span class="szz" id="sl3z">🔇</span><span class="simt" id="sl3t"></span></div><div class="simc"><label>درصد باتری برای شبیه‌سازی<input type="range" id="simp3" min="0" max="100" value="50" oninput="simlbl(3)"><b id="simv3">50٪</b></label></div></div>
-<div class="sec">۱) حد ولتاژ باتری — نردبانی که درصد این سناریو از آن می‌آید
-<div class="sx">درصدِ باتری عددِ خوانده‌شده نیست؛ از یک نردبان ساخته می‌شود. <b>حد پایین</b> = ولتاژی که ۰٪ حساب می‌شود و <b>حد بالا</b> = ولتاژی که ۱۰۰٪ است؛ بین این دو خطی تقسیم می‌شود. همهٔ باندهای بوق و چشمک سبزِ این کارت روی همین نردبان سوارند، پس جابه‌جاکردنش همهٔ آن‌ها را جابه‌جا می‌کند.</div> <span class="lb">(mV؛ همان ۷۴/۷۵ کارت ۴ — هر جا عوض شود، هر دو جا عوض می‌شود)</span></div>
+<div class="sec">۱) حد ولتاژ باتری — نردبانی که درصد این سناریو از آن می‌آید <span class="lb">(<span class="n">mV</span>؛ همان ۷۴/۷۵ کارت ۴ — هر جا عوض شود، هر دو جا عوض می‌شود)</span></div>
+<div class="sx">درصد باتری مستقیم خوانده نمی‌شود؛ از یک نردبان ساده درمی‌آید:<br><br><b>حد پایین</b> = ولتاژی که ۰٪ حساب می‌شود.<br><b>حد بالا</b> = ولتاژی که ۱۰۰٪ حساب می‌شود.<br>بین این دو، درصد خطی تقسیم می‌شود.<br><b>توجه:</b> همهٔ باندهای بوق و چشمک سبز روی همین نردبان سوارند، پس تغییر آن همه را با هم جابه‌جا می‌کند.</div>
 <div class="bqr">
 <label>حد پایین — ۰٪ (mV)<input type="number" id="q74" step="100" min="15000" max="25000"><span class="lb" id="a74"></span></label>
 <label>حد بالا — ۱۰۰٪ (mV)<input type="number" id="q75" step="100" min="25000" max="32000"><span class="lb" id="a75"></span></label>
@@ -508,7 +533,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="s3m"></div>
 
 <div class="sec">۲) چشمک سبز <span class="lb">(ms)</span></div>
-<div class="sx">چراغ سبز در دشارژ، درصد باتری را نشان می‌دهد: هرچه باتری خالی‌تر، خاموشی بلندتر. <b>دوره</b> = طول یک چرخهٔ کامل، <b>حداقل خاموشی</b> = کفِ زمان خاموشی تا در باتریِ پر هم یک چشمکِ دیدنی بماند.</div>
+<div class="sx">چراغ سبز در دشارژ، درصد باتری را نشان می‌دهد: هرچه باتری خالی‌تر، خاموشی بلندتر.<br><br><b>دوره</b> = طول یک چرخهٔ کامل<br><b>حداقل خاموشی</b> = کفِ زمان خاموشی تا در باتریِ پر هم یک چشمکِ دیدنی بماند.</div>
 <div class="bqr">
 <label>دوره چشمک سبز (ms)<input type="number" id="q66" step="50" min="100" max="10000"><span class="lb" id="a66"></span></label>
 <label>حداقل خاموشی سبز (ms)<input type="number" id="q67" step="5" min="0" max="10000"><span class="lb" id="a67"></span></label>
@@ -516,7 +541,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 <div class="sec">۳) باندها — همهٔ متغیرهای هر باند کنار هم
  <span class="lb">(از بالا به پایین؛ «مشترک» یعنی همان عدد در باند دیگری هم به‌کار می‌رود و با هم عوض می‌شوند)</span></div>
-<div class="sx">چهار باندِ صدا، از پر به خالی. هر باند <b>یک شکل واحد</b> دارد و دقیقاً با همان چهار عدد ساخته می‌شود: <b>سقف باند</b> (درصدی که از آن پایین‌تر این باند حاکم است)، <b>تعداد بوق</b>، <b>مدت هر بوق</b> و <b>فاصلهٔ تکرار</b>؛ <b>گپ</b> بین بوق‌ها تنها عدد مشترک هر چهار باند است و در باند ۱ ویرایش می‌شود. هیچ باندی «درصدِ روشنی» تایپی ندارد — برد آن را از همین اعداد حساب می‌کند (باند بحرانی هم از نسخهٔ ۱٫۷۱ دقیقاً هم‌شکل بقیه است و فقط یک چیز اضافه دارد: <b>طول پخش یک‌باره</b>، چون این باند یک‌بار پخش می‌شود و بعد سکوت تا برگشت باتری).</div>
+<div class="sx">چهار باند صدا، از پر به خالی. هر باند با چهار عدد خودش ساخته می‌شود:<br><br><b>سقف باند</b> = از این درصد پایین‌تر، این باند حاکم است.<br><b>تعداد بوق</b> = چند بوق در هر تکرار.<br><b>مدت هر بوق</b> = طول یک بوق.<br><b>فاصلهٔ تکرار</b> = هر چند وقت یک‌بار الگوی همین باند پخش شود.<br><b>گپ</b> = سکوت بین بوق‌ها؛ تنها عدد مشترک چهار باند است و در باند ۱ ویرایش می‌شود.<br><b>باند بحرانی</b> = هم‌شکل بقیه، فقط یک عدد اضافه دارد: <b>طول پخش یک‌باره</b>، چون یک‌بار پخش می‌شود و بعد تا برگشت باتری ساکت می‌ماند.<br><b>نکته:</b> هیچ باندی «درصد روشنی» دستی ندارد؛ برد خودش حساب می‌کند.</div>
 
 <div class="bnd">
 <div class="bnh"><b>باند ۱ — یک بوق</b><span class="lb" id="s3r1"></span></div>
@@ -571,7 +596,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="s3z"></div>
 
 <div class="sec">۴) پایداری درصد — ضدلرزشِ خودِ عدد <span class="lb">(٪)</span></div>
-<div class="sx">این سه عدد روی خودِ «درصد» کار می‌کنند نه روی چراغ: <b>hysteresis</b> = درصد تا این اندازه تکان نخورد، عدد نمایش‌داده‌شده عوض نمی‌شود؛ <b>خروج از ۰٪</b> و <b>خروج از ۱٪</b> = برای بیرون‌آمدن از این دو حالت خاص، درصد باید دست‌کم به این عدد برسد. بدون این‌ها نویزِ یک‌درصدی، باند بوق و چشمک را مدام عوض می‌کرد.</div>
+<div class="sx">این سه عدد روی خودِ «درصد» کار می‌کنند نه روی چراغ:<br><br><b>hysteresis</b> = تا درصد این اندازه تکان نخورد، عدد نمایش‌داده‌شده عوض نمی‌شود.<br><b>خروج از ۰٪</b> = برای بیرون‌آمدن از حالت صفر، درصد باید دست‌کم به این عدد برسد.<br><b>خروج از ۱٪</b> = همان قاعده برای حالت یک‌درصد.<br><b>دلیل:</b> بدون این‌ها نویزِ یک‌درصدی، باند بوق و چشمک را مدام عوض می‌کرد.</div>
 <div class="c4f" id="s3hy"></div>
 <div class="bqr">
 <label>hysteresis پایداری دشارژ (٪)<input type="number" id="q80" step="1" min="0" max="50"><span class="lb" id="a80"></span></label>
@@ -584,7 +609,6 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="cd" id="ucard4" style="display:none">
 <div class="hd"><b>سناریو ۴ — شارژ عادی (زرد + فول)</b></div>
-<div class="sx"><b>روند:</b> حین شارژ واقعی، مدت روشن‌بودن زرد = مانده تا فول (باتری پرتر ← چشمک کوتاه‌تر) ← پایان Absorb هر کانال (Taper زیر ۵۰mA یا سقف ۱ساعت)؛ با تمام‌شدن هر دو کانال: فول ← سبز ثابت. فول ولتاژی (ورود ۷۷٪، خروج ۷۸٪) هم سر جایش است. حد ولتاژ ۷۴/۷۵ همان نردبانی است که درصد از آن ساخته می‌شود.</div>
 
 <div class="ds c4ds">
 <b>فول یعنی چه؟</b> برد دو راه مستقل برای «فول» دارد و هرکدام زودتر برسد، چهرهٔ سبزِ ثابت را می‌آورد:
@@ -607,7 +631,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="c4map"></div>
 
 <div class="sec">۲) فول <span class="lb">(٪؛ ورود همیشه بالای خروج)</span></div>
-<div class="sx"><b>ورود فول</b> = با رسیدن درصد به این عدد، چهرهٔ «فول» می‌آید (زرد خاموش، سبز ثابت). <b>خروج فول</b> = تا درصد زیر این عدد نیفتد، از حالت فول بیرون نمی‌آید. فاصلهٔ این دو همان ضدلرزشِ فول است.</div>
+<div class="sx"><b>ورود فول</b> = با رسیدن درصد به این عدد، چهرهٔ «فول» می‌آید (زرد خاموش، سبز ثابت).<br><b>خروج فول</b> = تا درصد زیر این عدد نیفتد، از حالت فول بیرون نمی‌آید.<br><b>دلیل:</b> فاصلهٔ این دو عدد همان ضدلرزشِ فول است.</div>
 <div class="bqr">
 <label>ورود فول (٪)<input type="number" id="q77" step="1" min="1" max="100"><span class="lb" id="a77"></span></label>
 <label>خروج فول (٪)<input type="number" id="q78" step="1" min="0" max="100"><span class="lb" id="a78"></span></label>
@@ -615,7 +639,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="c4n" id="c4full"></div>
 
 <div class="sec">۳) چشمک زرد و پایداری <span class="lb">(ms / ٪)</span></div>
-<div class="sx"><b>دوره چشمک زرد</b> = طول یک چرخهٔ کامل چشمک حین شارژ. <b>حداقل روشنی</b> = کفِ زمان روشنی تا نزدیک فول هم یک چشمک دیده شود. <b>hysteresis پایداری شارژ</b> = درصد سمت شارژ تا این اندازه تکان نخورد، نمایش عوض نمی‌شود.</div>
+<div class="sx"><b>دوره چشمک زرد</b> = طول یک چرخهٔ کامل چشمک حین شارژ.<br><b>حداقل روشنی</b> = کفِ زمان روشنی تا نزدیک فول هم یک چشمک دیده شود.<br><b>hysteresis پایداری شارژ</b> = درصد سمت شارژ تا این اندازه تکان نخورد، نمایش عوض نمی‌شود.</div>
 <div class="bqr">
 <label>دوره چشمک زرد (ms)<input type="number" id="q68" step="50" min="100" max="10000"><span class="lb" id="a68"></span></label>
 <label>حداقل روشنی زرد (ms)<input type="number" id="q69" step="5" min="0" max="10000"><span class="lb" id="a69"></span></label>
@@ -631,7 +655,6 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="cd" id="ucard5" style="display:none">
 <div class="hd"><b>سناریو ۵ — عدم‌توازن دو نیم‌باتری (قفل دائمی)</b></div>
-<div class="sx"><b>روند:</b> قدرمطلق اختلاف دو نیم ← حین استراحت (پس از ۱۱۰) و شارژ (پس از ۱۱۱) با حد ۱۰۸، حین دشارژ فوراً با ۱۰۹ ← بالای حد برای ۱۱۲ = رویداد (اپیزود با ۱۱۳ می‌میرد؛ شمارش ماندگار روی فلش برد) ← از ۱۱۴ رویداد: قفل دائمی = قرمز چشمک‌زن (دوره ۱۲۳، سهم روشنی ۱۲۴) + بوق هر ۱۱۵ به طول ۱۱۶ و با تیک ۱۱۷ جدایی از خروجی. شارژ در قفل آزاد ولی سیکل می‌شمارد؛ از ۱۱۸ سیکل شارژش هم قطع می‌شود. ریست فقط خودکار با تعویض باتری (۳ ثانیه).</div>
 
 <div class="ds c4ds">
 <b>این سناریو کِی می‌آید؟</b> وقتی اختلاف دو نیم‌باتری بارها بالا برود — یعنی یکی از دو نیم دارد خراب می‌شود. پنج گام پشت سر هم:
@@ -646,16 +669,16 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 
 <div class="prod">اختلاف الان: <b id="imbv"></b> <span class="lb">mV</span> · رویدادها: <b id="imbev"></b> <span id="imbmx" class="lb">از ۱۰</span> · وضعیت: <b id="imbst"></b></div>
 
-<div class="sim" id="sim5"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims5" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb5" onclick="simtog(5)">توقف</button></div><div class="simb"><span class="sl r" id="sl5r"></span><span class="sl g" id="sl5g"></span><span class="sl y" id="sl5y"></span><span class="szz" id="sl5z">🔇</span><span class="simt" id="sl5t"></span></div><div class="simc"><label>حالت کاری <select id="sim5m" onchange="sim5mode()"><option value="c">در حال شارژ</option><option value="r" selected>استراحت (بعد از شارژ)</option><option value="d">دشارژ روی باتری</option></select></label> <span class="lb" id="sim5w"></span></div><div class="simc"><label>نیم‌باتری بالا (mV)<input type="range" id="simp5a" min="9000" max="15000" value="12000" oninput="simlbl5()"><b id="simv5a">12000 mV</b></label></div><div class="simc"><label>نیم‌باتری پایین (mV)<input type="range" id="simp5b" min="9000" max="15000" value="12000" oninput="simlbl5()"><b id="simv5b">12000 mV</b></label> <button class="sb sb2" onclick="simrst5()">شروع دوبارهٔ شمارش</button></div></div>
+<div class="sim" id="sim5"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims5" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb5" onclick="simtog(5)">توقف</button></div><div class="simb"><span class="sl r" id="sl5r"></span><span class="sl g" id="sl5g"></span><span class="sl y" id="sl5y"></span><span class="szz" id="sl5z">🔇</span><span class="simt" id="sl5t"></span></div><div class="simc"><label>حالت کاری <select id="sim5m" onchange="sim5mode()"><option value="c">در حال شارژ</option><option value="r" selected>استراحت (بعد از شارژ)</option><option value="d">دشارژ روی باتری</option></select></label> <span class="lb" id="sim5w"></span></div><div class="simc"><label>نیم‌باتری بالا (mV)<input type="range" id="simp5a" min="9000" max="15000" value="12000" oninput="simlbl5()"><b id="simv5a">12000mV</b></label></div><div class="simc"><label>نیم‌باتری پایین (mV)<input type="range" id="simp5b" min="9000" max="15000" value="12000" oninput="simlbl5()"><b id="simv5b">12000mV</b></label> <button class="sb sb2" onclick="simrst5()">شروع دوبارهٔ شمارش</button></div></div>
 <div class="sec">۱) حد اختلاف <span class="lb">(mV)</span></div>
-<div class="sx">معیارِ سنجش، قدرمطلق اختلاف ولتاژ دو نیم‌باتری است. <b>حد استراحت</b> = حدِ مجاز وقتی دستگاه در استراحت یا شارژ است (ولتاژ نشسته، پس حد سخت‌گیرانه‌تر). <b>حد دشارژ</b> = همان حد وقتی روی بار کار می‌کند؛ چون افت روی بار طبیعی است، این عدد معمولاً بزرگ‌تر است. از نسخهٔ ۱٫۷۲ مقایسه فقط وقتی انجام می‌شود که هر دو نیم در یک حالت باشند.</div>
+<div class="sx">معیارِ سنجش، قدرمطلق اختلاف ولتاژ دو نیم‌باتری است.<br><br><b>حد استراحت</b> = حدِ مجاز وقتی دستگاه در استراحت یا شارژ است (ولتاژ نشسته، پس حد سخت‌گیرانه‌تر).<br><b>حد دشارژ</b> = همان حد وقتی روی بار کار می‌کند.<br><b>دلیل:</b> چون افت روی بار طبیعی است، این عدد معمولاً بزرگ‌تر است. از نسخهٔ ۱٫۷۲ مقایسه فقط وقتی انجام می‌شود که هر دو نیم در یک حالت باشند.</div>
 <div class="bqr">
 <label>حد استراحت عدم‌توازن<input type="number" id="q108" step="50" min="0" max="2000"><span class="lb" id="a108"></span></label>
 <label>حد دشارژ عدم‌توازن<input type="number" id="q109" step="50" min="0" max="2000"><span class="lb" id="a109"></span></label>
 </div>
 
 <div class="sec">۲) گیت زمانی و پایداری <span class="lb">(ms / mV)</span></div>
-<div class="sx">این چهار عدد جلوی قضاوتِ زودهنگام را می‌گیرند. <b>صبر پس از پایان شارژ</b> و <b>صبر پس از شروع شارژ</b> = تا این مدت نگذرد اصلاً اندازه‌گیری نمی‌شود، چون ولتاژ تازه تکان خورده و هنوز ننشسته (۰ = آن حالت اصلاً سنجیده نشود). <b>پایداری رویداد</b> = اختلاف باید این‌قدر پیوسته بالای حد بماند تا یک «رویداد» ثبت شود. <b>Hysteresis</b> = اپیزود تا وقتی اختلاف به‌اندازهٔ این عدد پایین نیاید تمام‌شده حساب نمی‌شود، پس یک خرابیِ طولانی چندبار شمرده نمی‌شود.</div>
+<div class="sx">این چهار عدد جلوی قضاوت زودهنگام را می‌گیرند:<br><br><b>صبر پس از پایان شارژ</b> = تا این مدت نگذرد، سنجش انجام نمی‌شود (۰ = این حالت اصلاً سنجیده نشود).<br><b>صبر پس از شروع شارژ</b> = همان قاعده برای ابتدای شارژ.<br><b>دلیل:</b> درست بعد از شارژ یا دشارژ، ولتاژ هنوز ننشسته و اختلافِ دیده‌شده واقعی نیست.<br><b>پایداری رویداد</b> = اختلاف باید این‌قدر پیوسته بالای حد بماند تا یک رویداد ثبت شود.<br><b>بازگشت (<span class="n">hysteresis</span>)</b> = رویداد تا وقتی اختلاف این‌قدر پایین نیاید بسته نمی‌شود، تا یک خرابی طولانی چندبار شمرده نشود.</div>
 <div class="bqr">
 <label>صبر پس از پایان شارژ (ms)<input type="number" id="q110" step="60000" min="0" max="3600000"><span class="lb" id="a110"></span></label>
 <label>صبر پس از شروع شارژ (ms، ۰=خاموش)<input type="number" id="q111" step="60000" min="0" max="3600000"><span class="lb" id="a111"></span></label>
@@ -664,24 +687,28 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="c4n" id="s5v"></div>
 
-<div class="sec">۳) قضاوت، هشدار و رفتار پس از قفل</div>
-<div class="sx">اینجا تصمیم نهایی و چهرهٔ آن ساخته می‌شود. <b>سقف رویداد تا قفل</b> = با رسیدن شمارندهٔ ماندگار به این عدد، باتری محکوم و قفل می‌شود. <b>دورهٔ بوق</b> و <b>طول بوق</b> = صدای دوره‌ای همان قفل (۰ = بی‌صدا). <b>دورهٔ چشمک</b> و <b>سهم روشنی</b> = شکل چشمک چراغ قرمز در قفل (دورهٔ ۰ = قرمز ثابت). <b>سیکل‌های شارژ پس از قفل</b> = بعد از قفل این‌قدر سیکل شارژ هنوز مجاز است و بعد شارژ هم می‌ایستد. <b>تیک مسدودی خروجی</b> = باتریِ محکوم از خروجی هم جدا شود یا نه.</div>
+<div class="sec">۳) قضاوت و رفتار پس از قفل</div>
+<div class="sx"><b>سقف رویداد تا قفل</b> = با رسیدن شمارندهٔ ماندگار به این عدد، باتری محکوم و قفل می‌شود.<br><b>سیکل‌های شارژ پس از قفل</b> = بعد از قفل این‌قدر سیکل شارژ هنوز مجاز است و بعد شارژ هم می‌ایستد.<br><b>مسدودی خروجی</b> = چک‌باکسِ پایین این بخش.<br><b>تیک‌دار یعنی:</b> باتریِ قفل‌شده علاوه بر شارژ، از مسیر خروجی هم برداشته می‌شود و بار دیگر از آن تغذیه نمی‌کند.</div>
 <div class="bqr">
 <label>سقف رویداد تا قفل<input type="number" id="q114" step="1" min="1" max="255"><span class="lb" id="a114"></span></label>
+<label>سیکل‌های شارژ پس از قفل تا مسدودی<input type="number" id="q118" step="1" min="1" max="255"><span class="lb" id="a118"></span></label>
+</div>
+<div class="bqr"><label class="ckr"><input type="checkbox" id="ib117"><span><span class="ckt">پس از قفل، باتریِ محکوم از خروجی هم جدا شود (مسدودی خروجی)</span><span class="cks" id="a117"></span></span></label></div>
+
+<div class="sec">۴) چراغ و بوقِ هشدار در قفل</div>
+<div class="sx">چهرهٔ هشدار بعد از قفل فقط از همین چهار عدد ساخته می‌شود.<br><br><b>دورهٔ بوق</b> = هر چند وقت یک‌بار بوق تکرار شود (۰ = بی‌صدا) و <b>طول بوق</b> = طول همان بوق.<br><b>دورهٔ چشمک قرمز</b> = یک دور کامل روشن و خاموش (۰ = قرمز ثابت) و <b>سهم روشنی</b> = چند درصد از آن دوره چراغ روشن باشد (با دورهٔ ۰ بی‌اثر است). سناریو ۶ اعداد جدای خودش را دارد، پس این چهار عدد فقط به قفلِ عدم‌توازن مربوط‌اند.</div>
+<div class="bqr">
 <label>دورهٔ بوق در قفل (ms، ۰=خاموش)<input type="number" id="q115" step="60000" min="0" max="86400000"><span class="lb" id="a115"></span></label>
 <label>طول بوق (ms)<input type="number" id="q116" step="10" min="20" max="2000"><span class="lb" id="a116"></span></label>
 <label>دورهٔ چشمک قرمز در قفل (ms، ۰=ثابت)<input type="number" id="q123" step="100" min="0" max="10000"><span class="lb" id="a123"></span></label>
 <label>سهم روشنی چشمک (٪)<input type="number" id="q124" step="5" min="5" max="95"><span class="lb" id="a124"></span></label>
-<label>سیکل‌های شارژ پس از قفل تا مسدودی<input type="number" id="q118" step="1" min="1" max="255"><span class="lb" id="a118"></span></label>
 </div>
-<div class="bqr"><button class="bt run" id="ib117">مسدودی خروجی در قفل: فعال</button><span class="lb" id="a117"></span></div>
 <div class="c4n" id="s5z"></div>
 
 <div class="bqr"><button class="sb sb2 fwb" onclick="ibdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۵</button></div>
 </div>
 <div class="cd" id="ucard6" style="display:none">
 <div class="hd"><b>سناریو ۶ — باتری خراب</b></div>
-<div class="sx"><b>روند:</b> هر کانال زمانِ شارژِ پیوستهٔ خودش را می‌شمارد (فقط مرحلهٔ Bulk/Absorb شمرده می‌شود) ← رسیدن به Float یعنی شارژ تمام شد و ساعت صفر می‌شود ← وقفهٔ کوتاه‌تر از «مهلت وقفه» ساعت را نگه می‌دارد، وقفهٔ بلندتر آن را صفر می‌کند ← رسیدن به «مهلت شارژ» = حکم «باتری خراب»: قرمز ثابت، شارژ همان کانال برای همیشه قطع و با تیک ۱۲۷ باتری از خروجی هم جدا می‌شود. قفل روی فلش برد (اسلات ۲۰۳) می‌ماند و با ریست پاک نمی‌شود؛ تنها راه خروج، تعویض باتری (۳ ثانیه بی‌باتری) است.</div>
 
 <div class="ds c4ds">
 <b>این سناریو کِی می‌آید؟</b> وقتی باتری ساعت‌ها جریان می‌گیرد ولی هرگز به پایان شارژ نمی‌رسد — یعنی سلول مرده یا اتصالی داخلی. دستور کاربر: «باتری نباید دائم زیر شارژ بماند.»
@@ -699,16 +726,41 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="sim" id="sim6"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims6" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb6" onclick="simtog(6)">توقف</button></div><div class="simb"><span class="sl r" id="sl6r"></span><span class="sl g" id="sl6g"></span><span class="sl y" id="sl6y"></span><span class="szz" id="sl6z">🔇</span><span class="simt" id="sl6t"></span></div><div class="simc"><label>حالت کانال <select id="sim6m"><option value="c" selected>در حال شارژ (Bulk/Absorb)</option><option value="p">وقفهٔ شارژ</option><option value="f">رسید به Float (شارژ کامل)</option></select></label> <button class="sb sb2" onclick="simrst6()">شروع دوبارهٔ شمارش</button></div></div>
 
 <div class="sec">۱) مهلت‌ها <span class="lb">(ms)</span></div>
-<div class="sx"><b>مهلت شارژ پیوسته</b> = اگر یک کانال این‌قدر پیوسته شارژ کند و هرگز به پایان شارژ (Float) نرسد، حکم «باتری خراب» صادر می‌شود؛ پیش‌فرض ۲۴ ساعت و ۰ یعنی این حکم خاموش. <b>مهلت وقفه</b> = وقفهٔ کوتاه‌تر از این مقدار ساعت را فقط نگه می‌دارد و وقفهٔ بلندتر آن را صفر می‌کند؛ بدون این عدد، باتریِ لرزان با روشن/خاموش‌شدن مدام برای همیشه از حکم فرار می‌کرد.</div>
+<div class="sx"><b>مهلت شارژ پیوسته</b> = اگر یک کانال این‌قدر پیوسته شارژ کند و هرگز به پایان شارژ (Float) نرسد، حکم «باتری خراب» صادر می‌شود.<br><b>پیش‌فرض:</b> ۲۴ ساعت · <b>۰ یعنی:</b> این حکم خاموش.<br><b>مهلت وقفه</b> = وقفهٔ کوتاه‌تر از این مقدار، ساعت را فقط نگه می‌دارد؛ وقفهٔ بلندتر آن را صفر می‌کند.<br><b>دلیل:</b> بدون این عدد، باتریِ لرزان با روشن/خاموش‌شدن مدام برای همیشه از حکم فرار می‌کرد.</div>
 <div class="bqr">
 <label>مهلت شارژ پیوسته تا حکم خرابی (ms، ۰=خاموش)<input type="number" id="q125" step="3600000" min="0" max="172800000"><span class="lb" id="a125"></span></label>
 <label>مهلت وقفه‌ای که ساعت را صفر می‌کند (ms)<input type="number" id="q126" step="60000" min="0" max="3600000"><span class="lb" id="a126"></span></label>
 </div>
 <div class="c4n" id="s6v"></div>
 
-<div class="sec">۲) رفتار پس از قفل</div>
-<div class="sx">پس از قفل، شارژ آن کانال در هر حالت قطع می‌ماند. این تیک فقط می‌گوید باتریِ محکوم از <b>خروجی</b> هم جدا شود یا نه — دقیقاً مثل تیک همتایش در سناریو ۵.</div>
-<div class="bqr"><button class="bt run" id="db127">جداسازی باتری از خروجی در قفل: فعال</button><span class="lb" id="a127"></span></div>
+<div class="sec">۲) چراغ و بوقِ این سناریو</div>
+<div class="sx">تا نسخهٔ ۱٫۷۹ این سناریو چهرهٔ خودش را نداشت: قرمزش در کد ثابت بود و بوقش را از قفلِ عدم‌توازن (۱۱۵/۱۱۶) قرض می‌گرفت. از <span class="n">v1.80</span> چهار عدد مستقل دارد:<br><br><b>دورهٔ بوق</b> = فاصلهٔ تکرار بوق (۰ = بی‌صدا).<br><b>طول هر بوق</b> = مدت خودِ بوق.<br><b>دورهٔ چشمک قرمز</b> = طول یک چرخهٔ روشن+خاموش (۰ = قرمز ثابت).<br><b>سهم روشنی</b> = چند درصد از آن چرخه چراغ روشن باشد.<br><b>پیش‌فرض:</b> همان رفتار قبلی — بوق هر ۱۰ دقیقه به طول <span class="n">۱۲۰ms</span> و قرمز ثابت؛ تا دست نزنید چیزی عوض نمی‌شود.<br><b>توجه:</b> همین قرمزِ ثابت است که این حکم را از چشمکِ قفلِ عدم‌توازن جدا می‌کند؛ اگر چشمک را روشن کنید، دو هشدار شبیه هم می‌شوند.</div>
+<div class="bqr">
+<label>دورهٔ بوق پس از حکم (ms، ۰=خاموش)<input type="number" id="q128" step="60000" min="0" max="86400000"><span class="lb" id="a128"></span></label>
+<label>طول هر بوق (ms)<input type="number" id="q129" step="10" min="20" max="2000"><span class="lb" id="a129"></span></label>
+<label>دورهٔ چشمک قرمز (ms، ۰=ثابت)<input type="number" id="q130" step="100" min="0" max="10000"><span class="lb" id="a130"></span></label>
+<label>سهم روشنی چشمک (٪)<input type="number" id="q131" step="5" min="5" max="95"><span class="lb" id="a131"></span></label>
+</div>
+<div class="c4n" id="s6b"></div>
+
+<div class="sec">۳) رفتار پس از حکم خرابی</div>
+<div class="sx"><b>«جداسازی باتری از خروجی» یعنی چه؟</b> هر باتری دو مسیر دارد: مسیرِ <b>شارژ</b> (برق به باتری می‌رود) و مسیرِ <b>خروجی</b> (باتری به بار برق می‌دهد). وقتی حکم «باتری خراب» صادر شد، مسیر شارژِ آن کانال در هر حالت و برای همیشه قطع است — این قابل انتخاب نیست. تنها چیزی که این چک‌باکس تعیین می‌کند، تکلیفِ مسیر <b>خروجی</b> است:
+<ul>
+<li><b>تیک‌دار (پیش‌فرض خاموش است، خودتان روشن می‌کنید)</b> — باتریِ محکوم از خروجی هم برداشته می‌شود: نه شارژ می‌گیرد و نه به بار برق می‌دهد. انگار از مدار درآمده و فقط منتظر تعویض است. امن‌ترین حالت برای باتریِ مشکوک به اتصالیِ داخلی، ولی اگر همان یک باتری تنها منبع بار باشد، بار از دست می‌رود.</li>
+<li><b>بدون تیک (پیش‌فرض)</b> — فقط شارژ قطع می‌شود؛ باتری سرِ جایش می‌ماند و تا وقتی ولتاژ دارد به بار برق می‌دهد و بعد خالی می‌شود. هشدار (قرمز ثابت + بوق) در هر دو حالت یکسان است.</li>
+</ul>
+این تیک روی فلش برد ذخیره می‌شود و دقیقاً همتای «مسدودی خروجی» در سناریو ۵ است.</div>
+<div class="bqr"><label class="ckr"><input type="checkbox" id="db127"><span><span class="ckt">پس از حکم خرابی، باتری از خروجی هم جدا شود (نه شارژ، نه تغذیهٔ بار)</span><span class="cks" id="a127"></span></span></label></div>
+<div class="ds c4ds"><b>چک‌لیست — لحظه‌به‌لحظه چه اتفاقی می‌افتد؟</b>
+<ul>
+<li><b>۱ · شمارش</b> — تا کانال در حال شارژ (Bulk یا Absorb) است، ساعتِ همان کانال جلو می‌رود. هر باتری ساعت خودش را دارد.</li>
+<li><b>۲ · صفر شدن</b> — شارژ به Float رسید؟ یعنی باتری پر شد و سالم است: ساعتِ همان کانال صفر می‌شود. وقفهٔ بلندتر از «مهلت وقفه» هم ساعت را صفر می‌کند؛ وقفهٔ کوتاه فقط نگهش می‌دارد.</li>
+<li><b>۳ · حکم</b> — ساعت به «مهلت شارژ پیوسته» (پیش‌فرض ۲۴ ساعت) رسید بدون اینکه هیچ‌وقت پر شود: باتری خراب اعلام می‌شود.</li>
+<li><b>۴ · واکنش</b> — چراغ قرمز <b>ثابت</b> + بوق دوره‌ای، و شارژِ همان کانال برای همیشه قطع. کانال دیگر دست‌نخورده کار می‌کند.</li>
+<li><b>۵ · خروجی</b> — فقط اگر چک‌باکسِ بالا تیک داشته باشد، باتری از خروجی هم جدا می‌شود؛ وگرنه همچنان بار را تغذیه می‌کند.</li>
+<li><b>۶ · خروج از حکم</b> — با ریست، قطع برق یا تغییر تنظیمات پاک نمی‌شود (روی فلش برد، اسلات ۲۰۳). تنها راه: برداشتن باتری به مدت ۳ ثانیه و گذاشتن باتری نو.</li>
+</ul>
+</div>
 
 <div class="bqr"><button class="sb sb2 fwb" onclick="dbdef()">بازگردانی پیش‌فرض کارخانهٔ سناریو ۶</button></div>
 </div>
@@ -717,7 +769,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="sgx" id="s2">
 <div class="cd">
 <div class="hd"><b>پنجرهٔ ورودی سالم</b><span class="lb">· شناسه‌های ۳۳..۳۴ · روی فلش برد ذخیره می‌شود</span></div>
-<div class="sx">تشخیص «ورودی حاضر» فقط داخل این پنجره انجام می‌شود: <b>کف</b> و <b>سقف</b> مرزهای ولتاژ ورودیِ قابل‌قبول‌اند (پیش‌فرض ۲۱۰۰۰..۲۸۰۰۰ و همیشه دست‌کم ۱۰۰۰mV از هم فاصله دارند). بیرون این پنجره، شارژر منتظر ورودی می‌ماند.</div>
+<div class="sx">تشخیص «ورودی حاضر» فقط داخل این پنجره انجام می‌شود:<br><br><b>کف</b> = پایین‌ترین ولتاژ ورودیِ قابل‌قبول (پیش‌فرض ۲۱۰۰۰mV).<br><b>سقف</b> = بالاترین ولتاژ ورودیِ قابل‌قبول (پیش‌فرض ۲۸۰۰۰mV).<br>این دو همیشه دست‌کم ۱۰۰۰mV از هم فاصله دارند.<br><b>بیرون پنجره:</b> شارژر کار نمی‌کند و منتظر ورودی می‌ماند.</div>
 <div class="bqr">
 <label>کف ورودی سالم (mV)<input type="number" id="q33" step="100" min="18000" max="24000"><span class="lb" id="a33"></span></label>
 <label>سقف ورودی سالم (mV)<input type="number" id="q34" step="100" min="24000" max="30000"><span class="lb" id="a34"></span></label>
@@ -726,7 +778,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="cd">
 <div class="hd"><b>سقف‌های ایمنی شارژر</b><span class="lb">· شناسه‌های ۳۵..۳۷ · فقط پایین‌بردنی — هرگز بالای سقف کارخانه نمی‌روند · روی فلش برد ذخیره می‌شود</span></div>
-<div class="sx"><b>Hard fault جریان</b> = بالای این مقدار کانال فوراً متوقف می‌شود (همیشه بالای جریان Bulk+۵۰ نگه داشته می‌شود تا تنظیم سالم تریپ نکند). <b>قطع OV</b> = بالای این ولتاژ، باتری نامعتبر و سوئیچینگ متوقف می‌شود. <b>کف اعتبار</b> = زیر این ولتاژ، عدد باتری اصلاً معتبر شمرده نمی‌شود. هر سه فقط پایین‌بردنی‌اند و هرگز از سقف کارخانه بالاتر نمی‌روند.</div>
+<div class="sx"><b>Hard fault جریان</b> = بالای این مقدار کانال فوراً متوقف می‌شود (همیشه بالای جریان Bulk+۵۰ نگه داشته می‌شود تا تنظیم سالم تریپ نکند).<br><b>قطع OV</b> = بالای این ولتاژ، باتری نامعتبر و سوئیچینگ متوقف می‌شود.<br><b>کف اعتبار</b> = زیر این ولتاژ، عدد باتری اصلاً معتبر شمرده نمی‌شود.<br><b>قانون مشترک:</b> هر سه فقط پایین‌بردنی‌اند و هرگز از سقف کارخانه بالاتر نمی‌روند.</div>
 <div class="bqr">
 <label>Hard fault جریان (mA)<input type="number" id="q35" step="10" min="150" max="950"><span class="lb" id="a35"></span></label>
 <label>قطع اضافه‌ولتاژ OV (mV)<input type="number" id="q36" step="50" min="14000" max="15000"><span class="lb" id="a36"></span></label>
@@ -748,7 +800,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
      پشتیبان‌گیری آخرین زیرتب) این بلوک را به اندیس ۳، قبل از s4، منتقل کرد. -->
 <div class="cd">
 <div class="hd"><b>فیلتر جریان</b><span class="lb">· مشترک هر دو کانال · Median + Average · مثل بقیه روی فلش برد ذخیره می‌شود</span></div>
-<div class="sx">دو مرحلهٔ پشت‌سرهم روی عدد جریان: <b>پنجرهٔ median</b> (۱..۱۵؛ ۱ و ۲ = خاموش) پالس‌های تکیِ پرت را حذف می‌کند و <b>پنجرهٔ میانگین</b> (۱..۳۰۰؛ ۱ = خاموش) خروجی آن را صاف می‌کند. هر نمونه ۱ms است، پس مجموع این دو عدد یعنی چند میلی‌ثانیه تاریخچه. در مود خودکارِ شارژر مجموع را بالای ~۵۰ نبرید؛ حلقهٔ تنظیم کند می‌شود.</div>
+<div class="sx">دو مرحلهٔ پشت‌سرهم روی عدد جریان:<br><br><b>پنجرهٔ median</b> = پالس‌های تکیِ پرت را حذف می‌کند (۱..۱۵؛ ۱ و ۲ = خاموش).<br><b>پنجرهٔ میانگین</b> = خروجی مرحلهٔ قبل را صاف می‌کند (۱..۳۰۰؛ ۱ = خاموش).<br>هر نمونه ۱ms است، پس مجموع این دو عدد یعنی چند میلی‌ثانیه تاریخچه.<br><b>هشدار:</b> در مود خودکارِ شارژر مجموع را بالای ~۵۰ نبرید؛ حلقهٔ تنظیم کند می‌شود.</div>
 <div class="bqr">
 <label>پنجرهٔ median<input type="number" id="q7" step="1" min="1" max="15"><span class="lb" id="a7"></span></label>
 <label>پنجرهٔ میانگین (average)<input type="number" id="q8" step="1" min="1" max="300"><span class="lb" id="a8"></span></label>
@@ -757,7 +809,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 </div>
 <div class="cd">
 <div class="hd"><b>کالیبراسیون جریان</b><span class="lb">· شناسه ۰..۳ و ۹..۱۰ · روی فلش برد ذخیره می‌شود</span></div>
-<div class="sx"><b>آفست</b> = عدد ADC در جریان صفر که از هر نمونه کم می‌شود. <b>گین</b> = ضریب تبدیل شمارش به جریان. <b>ETA</b> = ضریب تبدیل جریان ورودی به جریان سمت باتری (صفر = بدون تبدیل). کانال ۲ جدول بنچ دارد، پس ETA آن صفر بماند؛ تغییر آفست یا گینِ کانال ۲ یعنی جدول بنچ باید دوباره ساخته شود.</div>
+<div class="sx"><b>آفست</b> = عدد ADC در جریان صفر که از هر نمونه کم می‌شود.<br><b>گین</b> = ضریب تبدیل شمارش به جریان.<br><b>ETA</b> = ضریب تبدیل جریان ورودی به جریان سمت باتری (صفر = بدون تبدیل).<br><b>هشدار کانال ۲:</b> این کانال جدول بنچ دارد، پس ETA آن صفر بماند؛ تغییر آفست یا گینِ کانال ۲ یعنی جدول بنچ باید دوباره ساخته شود.</div>
 <div class="bqr">
 <label>آفست کانال ۱ (count)<input type="number" id="q0" step="1" min="0" max="255"><span class="lb" id="a0"></span></label>
 <label>آفست کانال ۲ (count)<input type="number" id="q1" step="1" min="0" max="255"><span class="lb" id="a1"></span></label>
@@ -852,7 +904,7 @@ function fitdur(per,cnt,gap){/* بیشترین مدت هر بوق که در پن
    list of fixes as [id, from, to]. [FA] فهرست اصلاح‌ها را برمی‌گرداند. */
 function fixrules(v){
  const fx=[],set=(id,nv)=>{if(v[id]!==nv){fx.push([id,v[id],nv]);v[id]=nv;}};
- /* ۱) گپ: با بیش از یک بوق، دست‌کم ۱۰۰ ms */
+ /* ۱) گپ: با بیش از یک بوق، دست‌کم ۱۰۰ms */
  if(v[42]>1&&v[40]!==0&&v[43]<MINGAP)set(43,MINGAP);
  if(v[48]>1&&v[46]!==0&&v[49]<MINGAP)set(49,MINGAP);
  if((v[62]>1||v[63]>1||v[64]>1||v[58]>1)&&v[65]<MINGAP)set(65,MINGAP);
@@ -870,7 +922,7 @@ function fixrules(v){
  /* ۵) کمینهٔ خاموشی/روشنی بیشتر از دوره نشود */
  if(v[67]>v[66])set(67,v[66]);
  if(v[69]>v[68])set(69,v[68]);
- /* ۷) نردبان درصد دست‌کم ۱۰۰ mV پهنا داشته باشد (حد پایین مرجع) */
+ /* ۷) نردبان درصد دست‌کم ۱۰۰mV پهنا داشته باشد (حد پایین مرجع) */
  if(v[75]<v[74]+100)set(75,v[74]+100);
  if(v[120]<v[119]+100)set(120,v[119]+100);
  /* ۸) خروج فول باید زیر ورود فول بماند */
@@ -1017,8 +1069,8 @@ let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{ST
 let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=6;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();}
 document.querySelectorAll('#usel button').forEach(b=>b.onclick=()=>usel(+b.dataset.u));
 $('mx').onclick=()=>send(19,0);
-{const b6=$('ib117');if(b6)b6.onclick=()=>{const v=(D&&D.p[117]===0)?1:0;send(117,v);};}
-{const b7=$('db127');if(b7)b7.onclick=()=>{const v=(D&&D.p[127])?0:1;send(127,v);};}
+{const b6=$('ib117');if(b6)b6.onchange=()=>{send(117,b6.checked?1:0);};}
+{const b7=$('db127');if(b7)b7.onchange=()=>{send(127,b7.checked?1:0);};}
 
 /* ---------- به‌روزرسانی: فرمول‌های بخش 5.3 با مقادیر زنده ---------- */
 const f1=x=>x.toFixed(1),V_=mv=>(mv/1000).toFixed(2)+'V',nz=v=>v==null?'?':v;
@@ -1033,7 +1085,7 @@ const lut1Pow=c=>{for(let i=1;i<LUT1X.length;i++){if(c<=LUT1X[i]){const x0=LUT1X
 const lut1Tap=(ch,vb)=>{const pw=lut1Pow(Math.round(ch)),v=Math.min(15000,Math.max(8000,vb));return ' => LUT:'+pw+'mW/'+v+'='+Math.floor(pw*1000/v)+'mA';};
 function formulas(t,p){
  [1,2].forEach(n=>{const b=n==1?0:7,raw=t[b],off=p[n-1],g=p[n+1],eta=p[8+n],vb=n==1?t[18]:t[17],vin=t[14],fl=t[b+3];
-  $('f'+n+'0').textContent='12-bit ADC · Vref 3300 mV';
+  $('f'+n+'0').textContent='12-bit ADC · Vref 3300mV';
   $('f'+n+'1').textContent=`${raw} × 3300/4095 × 11/10 × 1000/101 = ${raw} × 8.7767 ≈ ${Math.round(raw*K_UV)}`;
   $('f'+n+'2').textContent=off==null||g==null?'':`(${raw} − ${off}) × 0.8777 × ${g}/1000 ≈ ${f1(Math.max(raw-off,0)*K_MA*g/1000)}${n==2?lutTap(Math.max(raw-off,0)*K_MA*g/1000,vb):lut1Tap(Math.max(raw-off,0)*K_MA*g/1000,vb)}`;
   $('f'+n+'3').textContent=`convert( average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( raw ) ) ) = ${fl}`;
@@ -1169,6 +1221,10 @@ const PX={
  124:['سهم روشنی چشمک — قفل عدم‌توازن','چند درصد از هر دوره چراغ روشن باشد. پیش‌فرض ۵۰٪ یعنی روشن و خاموش برابر؛ ۲۰٪ یعنی تک‌تک کوتاه روی زمینهٔ خاموش.'],
  125:['مهلت شارژ پیوسته تا حکم خرابی','اگر کانال این‌قدر پیوسته شارژ کند و هرگز به پایان شارژ (Float) نرسد، باتری خراب اعلام می‌شود: قرمز ثابت و قطع شارژ تا تعویض باتری. پیش‌فرض ۸۶٬۴۰۰٬۰۰۰ms = ۲۴ ساعت. صفر یعنی این حکم خاموش است.'],
  126:['مهلت وقفه‌ای که ساعت را صفر می‌کند','وقفهٔ کوتاه‌تر از این مقدار ساعتِ شارژ را فقط نگه می‌دارد، وقفهٔ بلندتر آن را صفر می‌کند. پیش‌فرض ۶۰۰٬۰۰۰ms = ۱۰ دقیقه؛ بدون این عدد، باتریِ لرزان با روشن/خاموش‌شدن مدام برای همیشه از حکم فرار می‌کرد.'],
+ 128:['دورهٔ بوق — حکم باتری خراب','هر چند وقت یک‌بار بوقِ هشدارِ «باتری خراب» تکرار شود (ms). پیش‌فرض ۶۰۰٬۰۰۰ms = هر ۱۰ دقیقه؛ صفر یعنی این سناریو بی‌صدا باشد. تا v1.79 این عدد از قفل عدم‌توازن (۱۱۵) قرض گرفته می‌شد و قابل تنظیم نبود.'],
+ 129:['طول هر بوق — حکم باتری خراب','طول تک‌بوقی که در هر دوره پخش می‌شود (ms). پیش‌فرض ۱۲۰ms.'],
+ 130:['دورهٔ چشمک قرمز — حکم باتری خراب','یک دور کامل خاموش/روشن چراغ قرمز پس از حکم (ms). پیش‌فرض ۰ یعنی قرمزِ ثابت — همان چیزی که این سناریو را از چشمکِ قفل عدم‌توازن جدا می‌کند؛ اگر عوضش کنید این تمایز از بین می‌رود.'],
+ 131:['سهم روشنی چشمک — حکم باتری خراب','چند درصد از هر دورهٔ چشمک، چراغ روشن باشد. وقتی دورهٔ چشمک صفر (ثابت) است، این عدد بی‌اثر است.'],
  127:['جداسازی باتری از خروجی در قفل سناریو ۶','مثل تیک ۱۱۷ در عدم‌توازن: در قفلِ «باتری خراب» باتری از خروجی هم جدا شود یا فقط شارژش قطع بماند. پیش‌فرض: خاموش.'],
  122:['فاصلهٔ تکرار — باند ۲','هر چند وقت یک‌بار الگوی دو-بوقِ همین باند تکرار شود (ms). از نسخهٔ ۱٫۷۱ باند ۲ هم مثل بقیه فاصلهٔ خودش را دارد و فقط گپ (۶۵) مشترک است.'],
  83:['Kp جریان','واکنش فوری حلقهٔ جریان به خطا. زیاد یعنی تند و لرزان.'],
@@ -1232,32 +1288,32 @@ const PX={
 //   عددی با همان اعداد کارخانه + اثر بیشتر/کمتر. PID مقصد را تعیین می‌کند؛
 //   این پارامترها فقط نگهبانِ «چطوری امن و نرم برسیم»‌اند.
 const PXT={
- 93:'سقف زمان Absorb، تور ایمنی وقتی پایان طبیعی (Taper) هر دلیلی اتفاق نیفتد. مثال عددی: پیش‌فرض ۶۰ دقیقه؛ اگر جریان در Absorb روی ۳۰mA گیر کند و زیر «جریان پایانی» نیاید، شارژ بعد از ۶۰ دقیقه تمام اعلام می‌شود. شمارش از نقطهٔ «شروع شمارش» (پارامتر ۹۴) آغاز می‌شود. صفر = بدون سقف زمانی. بیشتر = شارژ کامل‌تر ولی طولانی‌تر.',
- 94:'نقطهٔ شروع شمارش سقف زمانی (فرمور: Arm). ساعت سقفِ پارامترِ ۹۳ تا وقتی جریان بالای این حد است اصلاً شروع نمی‌شود. مثال عددی: آستانه ۱۰۰mA - جریان ۱۲۰mA یعنی ساعت هنوز می‌خوابد؛ جریان ۹۵mA یعنی ساعت شروع به تیک‌خوردن می‌کند.',
- 95:'تعهد حداقلی ماندن در Absorb: هر چه اتفاق بیفتد، Absorb دست‌کم این مدت ادامه می‌یابد. مثال عددی: پیش‌فرض ۱۰ دقیقه؛ اگر در دقیقهٔ ۳ جریان ناگهان به ۲۰mA افتاد (باتری سرد/ظرفیت کم)، باز هم تا دقیقهٔ ۱۰ ادامه می‌دهد تا باتری نیمه‌کاره رها نشود. صفر = بدون تعهد. بیشتر = پرشارژتر مطمئن ولی بیشتر روی ولتاژ بالا.',
- 96:'شرط اعلام «شارژ کامل»: جریان باید این مدتِ پیوسته زیر «جریان پایانی» بماند. مثال عددی: پیش‌فرض ۶۰ ثانیه؛ اگر در ثانیهٔ ۴۰ یک پرش لحظه‌ای به ۶۰mA بیاید، شمارش صفر می‌شود و باید از اول ۶۰ ثانیهٔ آرام بگذرد. کمتر = تمام‌کردن زودتر ولی حساس به نوسان؛ بیشتر = دیرتر ولی مطمئن‌تر.',
- 97:'سرعت مجاز حرکت duty به‌سمت هدفی که PID تعیین کرده. PID مقصد را می‌گوید، این عدد می‌گوید با چه شتابی برویم. مثال عددی: پیش‌فرض ۸ پرمیل در هر تیک ۵۰ میلی‌ثانیه؛ اگر PID ناگهان بخواهد duty را ۱۰۰ پرمیل (۱۰٪) بیشتر کند، با ۸ حدود ۱۳ تیک (۰٫۶ ثانیه) راه است، با ۴ دو برابر طول می‌کشد، با ۴۰ در ۲ تا ۳ تیک می‌رسد. بیشتر = تعقیب تندتر ولی احتمال جهش؛ کمتر = نرم‌تر و پایدارتر.',
- 98:'نادیده‌گرفتن جنبش‌های ریز خروجی PID تا PWM لرزش نگیرد (واحد: میلی‌پرمیل). مثال عددی: پیش‌فرض ۷۰۰ یعنی اگر duty الان ۲۰۰ پرمیل است و PID عدد ۲۰۰٫۴ حساب کند (فاصله ۰٫۴ < ۰٫۷) هیچ اتفاقی نمی‌افتد؛ اگر ۲۰۱٫۲ بخواهد (فاصله ۱٫۲ > ۰٫۷) حرکت انجام می‌شود. باقی‌مانده درون حلقه جمع می‌شود، چیزی گم نمی‌شود. بیشتر = سکون بیشتر و دقت کمتر؛ کمتر = دقیق‌تر ولی لرزان‌تر. کمی بالاتر از نویز اندازه‌گیری بگذارید.',
- 99:'نرم‌کردن عدد ولتاژ باتری پیش از رسیدن به PID، تا PID به پرش‌های نویزی جواب ندهد. مثال عددی: پیش‌فرض ۳۲ یعنی میانگینِ نماییِ ۳۲ نمونهٔ اخیر ≈ پنجرهٔ ۱٫۶ ثانیه؛ اگر مصرف ناگهان وصل شود و ولتاژ واقعی ۵۰mV بیفتد، خوانش به‌آرامی طی چند ثانیه می‌رسد (و PID تکان نمی‌خورد). با عدد ۱ فیلتر خاموش است: همان لحظه می‌رسد ولی duty می‌لرزد. بیشتر = آرام‌تر ولی دیرتر.',
- 100:'آستانه‌ای که از آن بالاتر ترمز اضطراری ولتاژ وارد می‌شود. مثال عددی: پیش‌فرض ۱۴۸۰۰mV؛ تا ۱۴٫۷ ولت پشتیبان کاملاً بی‌خبر است، در ۱۴٫۸۵ برش سقف duty شروع می‌شود و شدتش را گینِ ۱۰۲ تعیین می‌کند. این آستانه خودش هم قابل تنظیم است (۱۳۰۰۰ تا ۱۴۸۰۰).',
- 101:'گین ترمز اضطراری جریان (بخشی از PID نیست؛ ترمز اضطراری است که بالای او ایستاده). مثال عددی: پیش‌فرض ۱۰۰ یعنی هر ۱mA تجاوز از سقف Bulk، سقف duty را ۰٫۱ پرمیل پایین می‌کشد؛ پس اگر جریان به ۷۵۰mA برسد (۱۰۰mA تجاوز)، سقف duty فوری ۱۰ پرمیل (۱٪) پایین می‌آید و تا برگشتن ادامه دارد. صفر = این تریپ‌نما کاملاً خاموش. بیشتر = ترمز محکم‌تر.',
- 102:'گین ترمز اضطراری ولتاژ. مثال عددی: پیش‌فرض ۵۰۰ یعنی هر ۱mV بالاتر از آستانهٔ ۱۴٫۸ (پارامترِ قبلی)، سقف duty ۰٫۵ پرمیل پایین می‌آید؛ پس اگر ولتاژ به ۱۴٫۹ برسد (۱۰۰mV تجاوز)، سقف duty فوری ۵۰ پرمیل (۵٪) پایین می‌آید. صفر = خاموش. این‌ها دفاع آخرند، نه جایگزین PID.',
- 103:'فاصلهٔ ایمن از لبهٔ سقف جریان. هدف واقعی حلقهٔ جریان = Bulk max منهای این عدد. مثال عددی: با سقف ۶۵۰mA و margin ۱۰، PID روی ۶۴۰mA قفل می‌کند؛ موج ناگهانی ۵mA دیگر به لبه نمی‌رسد و ترمز اضطراری (۱۰۱) الکی وارد نمی‌شود. بیشتر = اطمینان بیشتر و متوسط جریان کمی کمتر؛ صفر = دقیقاً روی مرز کار می‌کند.',
- 104:'صبر بعد از وصل باتری تا اتصال و ولتاژ بنشیند، بعد شروع Bulk. مثال عددی: پیش‌فرض ۱۵ ثانیه؛ اگر باتری را دست می‌زنید و لحظه‌ای لق می‌زند، شارژ روی نمونهٔ نامطمئن شروع نمی‌شود. واحد: میلی‌ثانیه. کمتر = شروع سریع‌تر ولی ریسکی‌تر.',
- 105:'خاموشی اجباری بعد از هر تریپ پیش از وصلِ دوباره. مثال عددی: پیش‌فرض ۳ ثانیه؛ اگر اتصال خرابی‌دار مدام فتح و قطع شود، خروجی پشت‌سرهم نمی‌تواند فتح/قطع کند و هر بار ۳ ثانیه سکون می‌گیرد. صفر = بدون قفل (ریسکی). واحد: میلی‌ثانیه.',
- 106:'واچ‌داگ مود دستی: اگر پنل این مدت سکوت کند، دستور دستی منقضی می‌شود. مثال عددی: پیش‌فرض ۳ ثانیه؛ اگر با duty=۳۰٪ دستی لینک/مرورگر قطع شود، خروجی بعد از ۳ ثانیه خودبه‌خود صفر می‌شود تا کلیدی در دستِ هیچ‌کس رها نماند. بیشتر = آزادی بیشتر برای آزمایش، کمتر = امن‌تر. واحد: میلی‌ثانیه.',
- 107:'پله‌های خاموشی نرم: هنگام خاموش‌شدن، duty هر این‌قدر میلی‌ثانیه یک پلهٔ کوچک پایین می‌آید تا جریان آنی صفر نشود. مثال عددی: پیش‌فرض ۵۰۰ms؛ پایین‌آمدن از ۲۰٪ تا صفر چند ثانیه نرم طول می‌کشد؛ با ۱۰۰ms پنج‌برابر تندتر. واحد: میلی‌ثانیه بین پله‌ها.',
-108:'قدرمطلق اختلاف دو نیم در استراحت و حین شارژ. پیش‌فرض ۳۰۰mV - ۱۳٫۱۰/۱۲٫۷۵V یعنی ۳۵۰mV بالای حد؛ ۱۲٫۹/۱۲٫۷۵ یعنی سالم. واحد: mV.',
-109:'همان حد حین دشارژ (روی بار)، معمولاً بزرگ‌تر. پیش‌فرض ۵۰۰mV - ۳۵۰ سالم، ۶۰۰ با ۳۰ ثانیه ماندن رویداد. واحد: mV.',
-110:'سنجش استراحت فقط این‌قدر بعد از پایان شارژ. پیش‌فرض ۶۰۰۰۰۰ms=۱۰ دقیقه؛ ۰=خاموش. واحد: میلی‌ثانیه.',
-111:'سنجش حین شارژ فقط این‌قدر بعد از شروع، با حد ۱۰۸. پیش‌فرض ۱۰ دقیقه؛ ۰=خاموش. واحد: میلی‌ثانیه.',
-112:'دم: بالا بودن باید این‌قدر پیوسته بماند. پیش‌فرض ۳۰۰۰۰ms=۳۰ ثانیه. واحد: میلی‌ثانیه.',
-113:'اپیزود وقتی بسته می‌شود که اختلاف به حد منهای این مقدار برسد. با ۳۰۰/۱۰۰ یعنی ۲۰۰mV. واحد: mV.',
-114:'از این‌قدر رویداد ماندگار، باتری محکوم (قفل). با قطع برق هم پاک نمی‌شود. پیش‌فرض ۱۰.',
-115:'در قفل هر این‌قدر یک بوق کوتاه. پیش‌فرض ۳۶۰۰۰۰۰ms=یک ساعت؛ ۰=بی‌صدا. واحد: میلی‌ثانیه.',
-116:'طول هر بوق در قفل. پیش‌فرض ۲۰۰ms. واحد: میلی‌ثانیه.',
-117:'تیک: در قفل باتری از خروجی جدا شود؟ پیش‌فرض روشن؛ برداشتن تیک = ریسک با شما.',
-118:'بعد از قفل تا این‌قدر سیکل شارژ مجاز است، بعد شارژش هم می‌ایستد. پیش‌فرض ۲۰.'};
+ 93:'سقف زمان ‎Absorb‎. اگر شارژ خودش تمام نشد، بعد از این مدت «تمام» اعلام می‌شود. مثال: سقف ۶۰ دقیقه؛ جریان روی ‎۳۰mA‎ گیر کرده و پایین نمی‌آید، پس سر دقیقهٔ ۶۰ بسته می‌شود. شمارش از پارامتر ۹۴ شروع می‌شود. ۰ یعنی بدون سقف.',
+ 94:'شمارشِ سقفِ پارامتر ۹۳ تا وقتی جریان بالای این حد است شروع نمی‌شود. مثال: حد ‎۱۰۰mA‎؛ با جریان ‎۱۲۰mA‎ هنوز شروع نمی‌شود؛ با ‎۹۵mA‎ شروع می‌شود.',
+ 95:'کف زمان ‎Absorb‎: دست‌کم این مدت ادامه می‌دهد. مثال: کف ۱۰ دقیقه؛ اگر دقیقهٔ ۳ جریان به ‎۲۰mA‎ بیفتد، باز تا دقیقهٔ ۱۰ ادامه دارد. ۰ یعنی بدون کف.',
+ 96:'برای اعلام «شارژ کامل»، جریان باید این مدت پیوسته زیر «جریان پایانی» بماند. مثال: ۶۰ ثانیه؛ یک پرش لحظه‌ای به ‎۶۰mA‎ شمارش را صفر می‌کند. کمتر = زودتر، بیشتر = مطمئن‌تر.',
+ 97:'سرعت حرکت ‎duty‎ به‌سوی هدفِ ‎PID‎. مثال: ۸ پرمیل در هر تیک ۵۰ میلی‌ثانیه؛ برای ۱۰۰ پرمیل تغییر حدود ۱۳ تیک (≈۰٫۶ ثانیه) لازم است. بیشتر = تندتر ولی پرشی، کمتر = نرم‌تر.',
+ 98:'تکان‌های خیلی ریزِ ‎PID‎ نادیده گرفته می‌شود تا ‎PWM‎ نلرزد. واحد: میلی‌پرمیل. مثال: ۷۰۰ یعنی تغییر کمتر از ۰٫۷ پرمیل اعمال نمی‌شود؛ باقی‌مانده گم نمی‌شود و جمع می‌شود.',
+ 99:'نرم‌کردن عدد ولتاژ باتری پیش از ‎PID‎. مثال: ۳۲ یعنی میانگین ۳۲ نمونهٔ آخر، حدود ۱٫۶ ثانیه؛ یک افت واقعی ‎۵۰mV‎ چند ثانیه طول می‌کشد تا دیده شود. ۱ یعنی فیلتر خاموش.',
+ 100:'از این ولتاژ بالاتر، ترمز اضطراری ولتاژ وارد می‌شود. مثال: ‎۱۴۸۰۰mV‎؛ زیر آن خبری نیست، بالای آن سقف ‎duty‎ بریده می‌شود و شدتش با پارامتر ۱۰۲ تنظیم می‌شود.',
+ 101:'شدت ترمز اضطراری جریان. مثال: ۱۰۰ یعنی هر ‎۱mA‎ عبور از سقف ‎Bulk‎، سقف ‎duty‎ را ۰٫۱ پرمیل پایین می‌کشد؛ پس ‎۱۰۰mA‎ تجاوز یعنی ۱۰ پرمیل پایین. ۰ یعنی خاموش.',
+ 102:'شدت ترمز اضطراری ولتاژ. مثال: ۵۰۰ یعنی هر ‎۱mV‎ بالاتر از آستانهٔ ۱۰۰، سقف ‎duty‎ را ۰٫۵ پرمیل پایین می‌آورد؛ ‎۱۰۰mV‎ تجاوز یعنی ۵۰ پرمیل پایین. ۰ یعنی خاموش.',
+ 103:'فاصلهٔ ایمن تا سقف جریان. هدف حلقه = سقف ‎Bulk‎ منهای این عدد. مثال: سقف ‎۶۵۰mA‎ و فاصلهٔ ۱۰ یعنی قفل روی ‎۶۴۰mA‎، تا موج کوچک ترمز ۱۰۱ را بی‌دلیل روشن نکند.',
+ 104:'بعد از وصل باتری این‌قدر صبر می‌کند تا ولتاژ بنشیند، بعد ‎Bulk‎ شروع می‌شود. مثال: ۱۵ ثانیه. واحد: میلی‌ثانیه. کمتر = شروع سریع‌تر ولی پرریسک‌تر.',
+ 105:'بعد از هر تریپ، این مدت خاموش می‌ماند و بعد وصل می‌شود. مثال: ۳ ثانیه؛ جلوی وصل و قطع پشت‌سرهم را می‌گیرد. ۰ یعنی بدون قفل. واحد: میلی‌ثانیه.',
+ 106:'نگهبان مود دستی: اگر پنل این مدت ساکت بماند، فرمان دستی باطل می‌شود. مثال: ۳ ثانیه؛ با قطع مرورگر خروجی خودبه‌خود صفر می‌شود. واحد: میلی‌ثانیه.',
+ 107:'خاموشی نرم: ‎duty‎ هر این‌قدر میلی‌ثانیه یک پله پایین می‌آید تا جریان یک‌باره صفر نشود. مثال: ‎۵۰۰ms‎ آرام، ‎۱۰۰ms‎ پنج برابر تندتر.',
+ 108:'بیشترین اختلاف مجاز دو نیمِ باتری، در استراحت و حین شارژ. مثال: حد ‎۳۰۰mV‎؛ ‎۱۳٫۱۰‎ و ‎۱۲٫۷۵‎ ولت یعنی ‎۳۵۰mV‎ و خارج از حد. واحد: ‎mV‎.',
+ 109:'همان حد ولی روی بار (دشارژ) که معمولاً بزرگ‌تر است. مثال: حد ‎۵۰۰mV‎؛ ‎۳۵۰‎ سالم است، ‎۶۰۰‎ اگر ۳۰ ثانیه بماند رویداد می‌سازد. واحد: ‎mV‎.',
+ 110:'اندازه‌گیری استراحت فقط تا این مدت بعد از پایان شارژ انجام می‌شود. مثال: ۱۰ دقیقه. ۰ یعنی خاموش. واحد: میلی‌ثانیه.',
+ 111:'اندازه‌گیری حین شارژ فقط تا این مدت بعد از شروع انجام می‌شود، با حد پارامتر ۱۰۸. مثال: ۱۰ دقیقه. ۰ یعنی خاموش. واحد: میلی‌ثانیه.',
+ 112:'اختلاف باید این مدت پیوسته بالا بماند تا جدی گرفته شود. مثال: ۳۰ ثانیه. واحد: میلی‌ثانیه.',
+ 113:'رویداد وقتی بسته می‌شود که اختلاف به «حد منهای این عدد» برسد. مثال: حد ۳۰۰ و این عدد ۱۰۰ یعنی بسته‌شدن در ‎۲۰۰mV‎. واحد: ‎mV‎.',
+ 114:'با این تعداد رویداد ماندگار، باتری قفل می‌شود. قطع برق هم پاکش نمی‌کند. مثال: ۱۰.',
+ 115:'در حالت قفل، هر این‌قدر یک بوق کوتاه زده می‌شود. مثال: یک ساعت. ۰ یعنی بی‌صدا. واحد: میلی‌ثانیه.',
+ 116:'طول هر بوق در حالت قفل. مثال: ‎۲۰۰ms‎. واحد: میلی‌ثانیه.',
+ 117:'اگر تیک بخورد، در حالت قفل باتری از خروجی جدا می‌شود. پیش‌فرض: روشن. برداشتن تیک یعنی پذیرفتن ریسک.',
+ 118:'بعد از قفل، فقط این تعداد سیکل شارژ مجاز است و بعد شارژ هم می‌ایستد. مثال: ۲۰.'};
 
 /* [EN] v1.36: the fuller v1.36 text (PXT) wins, else the classic PX row,
    so help bubbles and chips always agree.
@@ -1519,7 +1575,7 @@ for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>
 /* v1.28: ids 93..107 (charger limits + backstop gains) join the generic
    fill/validate/send machinery, so they need no bespoke handlers. */
 /* v1.49: ۱۱۹/۱۲۰ (نردبان سمت شارژ) هم مثل بقیه خوانده و نوشته می‌شود */
-const AIDS=[];for(let _i=27;_i<=127;_i++)AIDS.push(_i);
+const AIDS=[];for(let _i=27;_i<=131;_i++)AIDS.push(_i);
 const LDEF=[3600000,100,600000,60000,8,700,32,14800,100,500,10,15000,3000,3000,500];
 const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
 
@@ -1530,7 +1586,8 @@ const IDEF=[300,500,600000,600000,30000,100,10,3600000,200,1,20];
 /* ۱۱۹..۱۲۴: نگاشت درصد شارژ، شکل بوق باند ۲ و (v1.68) چشمک قرمز قفل عدم‌توازن */
 /* v1.71: ۱۲۲ = فاصلهٔ تکرار باند ۲ (همان ۶۰۰۰۰ که قبلاً از باند ۱ قرض می‌گرفت) */
 /* v1.72: ۱۲۵..۱۲۷ هم به همین آرایه اضافه شد (۲۴ ساعت، ۱۰ دقیقه، قطع خروجی خاموش) */
-const CDEF=[21000,29000,1000,60000,1000,50,86400000,600000,0];
+/* v1.80: ۱۲۸..۱۳۱ چراغ و بوقِ خودِ سناریو ۶ (پیش‌فرض = همان رفتار قبلی: بوق هر ۱۰ دقیقه، قرمز ثابت) */
+const CDEF=[21000,29000,1000,60000,1000,50,86400000,600000,0,600000,120,0,50];
 /* v1.71: شناسهٔ ۵۷ دیگر درصد نیست؛ مدت هر بوق بحرانی بر حسب ms است (۱۰۰۰۰ = همان صدای قبلی) */
 const ADEF=[14800,150,6000,7000,1000,1000,21000,28000,950,14850,2000,1000,50,10000,1000,1,0,1000,50,3000,233,3,100,40,20,10,1,60000,20000,10000,10000,1,1000,2000,10000,1,2,3,100,1000,10,1000,150,28000,1000,21000,21200,21000,29000,0,100,95,5,2,2,3];
 function av(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:(id>=119?CDEF[id-119]:id>=108?IDEF[id-108]:id>=93?LDEF[id-93]:id>=83?PDEF[id-83]:ADEF[id-27]);
@@ -1614,13 +1671,15 @@ function achk(){const a=ap(),w=[],bad=(v,lo,hi)=>!(v>=lo&&v<=hi);
  if(bad(a.u82,0,100))w.push({ids:[82],msg:'خروج از ۱٪ باید ۰..۱۰۰ باشد'});
  return w;}
 function afresh(){const w=achk();
+ /* v1.77: گپ‌ها بلافاصله پس از هر تغییر/پرشدن مقدار، نه فقط در فریم شبیه‌ساز */
+ if(typeof gapen==='function')gapen();
  /* [FA] v1.69 (دستور کاربر): همان بنر در تب تنظیمات هم حذف شد؛ دلیلش بالاتر
     در qchk آمده. فقط فیلد مقصر قرمز می‌شود. */
  [$('aw'),$('aw2')].forEach(el=>{if(el){el.innerHTML='';el.style.cssText='margin:2px 0 0';}});
  for(const id of AIDS){const ne=$('q'+id);if(ne)ne.style.borderColor=w.some(x=>x.ids.includes(id))?'#e5484d':'';}
  try{c4();sall();}catch(e){}
  const ms=$('xmuteS');if(ms)ms.textContent=(D&&D.p&&D.p[76]===1)?'🔇 میوت روشن — موقتی، با ریست برد پاک می‌شود؛ LEDها همچنان چشمک می‌زنند':'🔊 بوق روشن';}
-function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id-32))):id<96?((D.q3||0)&(1<<(id-64))):((D.q4||0)&(1<<(id-96)));}
+function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id-32))):id<96?((D.q3||0)&(1<<(id-64))):id<128?((D.q4||0)&(1<<(id-96))):((D.q5||0)&(1<<(id-128)));}
 /* v1.70 (دستور کاربر): چیپ «روی برد: …» حذف شد — از فریم تله‌متری پر می‌شد و
    بعد از تغییر هنوز عدد قدیمی را نشان می‌داد. خود کادر از برد پر می‌شود،
    پیش‌فرض کارخانه کنار فیلد هست و کارت نتیجه می‌گوید برد چه را پذیرفت.
@@ -1639,12 +1698,12 @@ function pv(id){const e=$('q'+id),d=D&&D.p&&D.p[id]!=null?D.p[id]:PDEF[id-83];
  return d;}
 function pchk(){const w=[];
  for(let id=83;id<=92;id++){const v=pv(id),rate=((id-83)%5)>=3;
-  if(rate&&(v<10||v>20000))w.push({ids:[id],msg:'نرخ شیب باید ۱۰ تا ۲۰۰۰۰ میلی‌پرمیل بر ثانیه باشد'});
+  if(rate&&(v<10||v>20000))w.push({ids:[id],msg:'نرخ شیب باید بین ۱۰ تا ۲۰۰۰۰ <span class=\"n\">m‰/s</span> باشد'});
   if(!rate&&(v<0||v>20000))w.push({ids:[id],msg:'ضریب باید ۰ تا ۲۰۰۰۰ باشد'});}
- if(pv(91)>=pv(86))w.push({ids:[91,86],msg:'نرخ صعود حلقهٔ ولتاژ باید کمتر از حلقهٔ جریان بماند، وگرنه duty در Absorb تندتر از Bulk رشد می‌کند (همان چیزی که قرار بود کم شود)'});
- if(pv(88)>300)w.push({ids:[88],msg:'Kp حلقهٔ ولتاژ بالای ۳۰۰ از مرز پایداری رد می‌شود'});
- else if(pv(88)>100)w.push({ids:[88],msg:'Kp حلقهٔ ولتاژ بالای ۱۰۰ نویز را تقویت می‌کند: ولتاژ پک فیلتر بالادست ندارد، پس Kp مستقیم روی نویز خام ADC ضرب می‌شود. اندازه‌گیری: با نویز ±۷ میلی‌ولت، Kp=۱۵۰ حدود ۷۴۴ تغییر جهت duty در ۱۰ ساعت می‌دهد و Kp=۵۰ فقط ۶۲ — با اورشوت یکسان، خطای تثبیت یکسان (۰٫۵ میلی‌ولت) و همان ۱۱۳ دقیقه تا ۱۴٫۴ ولت. یعنی هزینه می‌دهید بدون اینکه دقت بخرید'});
- if(pv(83)>150)w.push({ids:[83],msg:'Kp حلقهٔ جریان بالای ۱۵۰ ریسک لرزش دارد: هر یک پرمیل تغییر duty حدود ۷ میلی‌آمپر جریان جابه‌جا می‌کند، پس Kp بزرگ باعث می‌شود حلقه بین دو عدد صحیح پرمیل گیر کند و بالا نرود'});
+ if(pv(91)>=pv(86))w.push({ids:[91,86],msg:'نرخ صعود حلقهٔ ولتاژ باید کمتر از حلقهٔ جریان بماند؛ وگرنه <span class=\"n\">duty</span> در <span class=\"n\">Absorb</span> تندتر از <span class=\"n\">Bulk</span> بالا می‌رود'});
+ if(pv(88)>300)w.push({ids:[88],msg:'<span class=\"n\">Kp</span> حلقهٔ ولتاژ بالای ۳۰۰ ناپایدار می‌شود'});
+ else if(pv(88)>100)w.push({ids:[88],msg:'<span class=\"n\">Kp</span> حلقهٔ ولتاژ بالای ۱۰۰ نویز را بزرگ می‌کند، چون ولتاژ پک فیلتر ندارد. در آزمایش با نویز <span class=\"n\">±۷mV</span>: <span class=\"n\">Kp=۱۵۰</span> حدود ۷۴۴ بار تغییر جهت <span class=\"n\">duty</span> در ۱۰ ساعت، ولی <span class=\"n\">Kp=۵۰</span> فقط ۶۲ بار — با همان دقت و همان زمان شارژ. یعنی سایش بیشتر، بدون سود'});
+ if(pv(83)>150)w.push({ids:[83],msg:'<span class=\"n\">Kp</span> حلقهٔ جریان بالای ۱۵۰ لرزش می‌آورد: هر یک پرمیل <span class=\"n\">duty</span> حدود <span class=\"n\">۷mA</span> جریان را جابه‌جا می‌کند، پس حلقه بین دو پرمیل مجاور بالا-پایین می‌پرد'});
  const box=$('pw');if(box)box.innerHTML=!w.length?'<span class="lb">✅ ترکیب PID سالم است · پشتیبان‌های ۶۵۰ میلی‌آمپر و ۱۴٫۸ ولت همیشه فعال‌اند</span>':w.map(x=>'<div class="wn">⚠ '+x.msg+'</div>').join('');
  return w;}
 function pdef(){PDEF.forEach((v,k)=>{const id=83+k,e=$('q'+id);if(e)e.value=v;qput(id,v);});pchk();}
@@ -1671,7 +1730,7 @@ const UDEF={
  3:[50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,74,75,80,81,82,121,122],
  4:[68,69,77,78,79],
  5:[108,109,110,111,112,113,114,115,116,117,118,123,124],
- 6:[125,126,127]};
+ 6:[125,126,127,128,129,130,131]};
 function ovdef(){odef(UDEF[1]);}
 function bdef(){odef(UDEF[2]);}
 function dsdef(){odef(UDEF[3]);}
@@ -1725,8 +1784,8 @@ const EVB={
 const EVU={mv:'mV',ma:'mA',ms:'ms',pm:'‰',n:''};
 
 /* [EN] Where the bench LUTs stop being fitted data and start extending their
-   last slope (calibration.h: chain 640 mA on ch1 = 631 mA of battery current
-   at 14.4 V). The current ceilings were opened on 2026-10-03 so paralleled
+   last slope (calibration.h: chain 640mA on ch1 = 631mA of battery current
+   at 14.4V). The current ceilings were opened on 2026-10-03 so paralleled
    packs can be charged, and above this line the current reading is
    extrapolated rather than measured. Drawing it is the honest way to open a
    range: the user's hand is free AND the user can see where the evidence
@@ -1907,7 +1966,7 @@ function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
  ASB.tick=!ASB.tick;if(ASB.live)ASB.live.style.opacity=ASB.tick?1:.3;}
 /* ===== v1.16: آینهٔ LED و بازر برد — همان اولویت Ui_Tick با مقادیر اعمال‌شده؛ چشمک با همان دوره/duty برد (فاز محلی، هم‌سرعت) ===== */
 /* [EN] v1.53 (user order): the board-driven LED/buzzer mirror is gone - the
-   per-card simulators replaced it, and dropping it also drops the 50 ms
+   per-card simulators replaced it, and dropping it also drops the 50ms
    telemetry-replay maths. What is left is the fault-bit mirror plus the
    periodic refresh of the derived card numbers.
    [FA] آینهٔ LED و بازرِ برد حذف شد (شبیه‌ساز کارت‌ها جایش را گرفت)؛ فقط
@@ -1915,7 +1974,8 @@ function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
 function uview(){
  const now=performance.now();
  if(ASB&&ASB.bits&&D&&D.t){const m=D.t[19]||0,ph=(now%500)<250;
-  ASB.bits.forEach((e,bit)=>{if(e)e.className='bit'+(((m&(1<<bit))!==0&&ph)?' on':'');});}
+  /* v1.79: بیتِ قفل‌شده همیشه دیده می‌شود (set) و فقط روشنی‌اش چشمک می‌زند (on) */
+  ASB.bits.forEach((e,bit)=>{const on=(m&(1<<bit))!==0;if(e)e.className='bit'+(on?' set':'')+((on&&ph)?' on':'');});}
  try{c4();sall();}catch(e){}
 }
 /* ==================== سناریو ۴ — اعداد زندهٔ کارت شارژ ==================== */
@@ -2008,11 +2068,29 @@ function simblink(ph,per,duty){const on=Math.floor(per*duty/100);return (ph%per)
    [FA] گپ فقط «بین» بوق‌هاست؛ با یک بوق در هر دور، کادر گپ خاموش می‌شود و
    نمی‌شود رویش چیزی نوشت. گپ ۶۵ مشترک است، پس تا وقتی یکی از باندهایش بیش از
    یک بوق بخواهد روشن می‌ماند. */
-const GAPOF=[[43,[42]],[49,[48]],[122,[63]],[65,[62,64,58]]];
+/* [EN] v1.77 (user question: "with a single beep, what does the gap between
+   beeps even mean?" and "you did it for some sections, do it everywhere"):
+   the table had TWO faults. Band 2's repeat interval (122) was listed as if
+   it were a gap, so asking for one beep wrongly killed the interval - an
+   interval is the time BETWEEN ROUNDS and means something even with a single
+   beep. And the shared gap 65 did not count band 2 (63) among its users,
+   although band 2 beeps with that same gap. Every gap field in the page is
+   in this table now, and nothing that is not a gap is.
+   [FA] جدول دو ایراد داشت: «فاصلهٔ تکرارِ» باند ۲ (۱۲۲) اشتباهاً گپ حساب شده
+   بود و با یک بوق خاموش می‌شد - حال آنکه فاصلهٔ تکرار بین دورهاست و با یک
+   بوق هم معنا دارد؛ و گپ مشترک ۶۵ باند ۲ (۶۳) را جزو مصرف‌کننده‌هایش
+   نمی‌شمرد. حالا همهٔ گپ‌های صفحه اینجا هستند و فقط گپ‌ها. */
+const GAPOF=[[43,[42]],[49,[48]],[65,[62,63,64,58]]];
 function gapen(){GAPOF.forEach(g=>{const e=$('q'+g[0]);if(!e)return;
  const need=g[1].some(id=>c4v(id,1)>1);
- e.disabled=!need;e.title=need?'':'با یک بوق در هر دور، فاصلهٔ بین بوق‌ها معنا ندارد';
- const l=e.closest('label');if(l)l.style.opacity=need?'':'0.45';});}
+ const why='با یک بوق در هر دور، فاصلهٔ بین بوق‌ها معنا ندارد';
+ e.disabled=!need;e.title=need?'':why;
+ const l=e.closest('label');if(l)l.style.opacity=need?'':'0.45';
+ /* [EN] The read-only echoes of the same gap go grey with it, so a dead gap
+    looks dead in every card that shows it, not just where it is typed.
+    [FA] بازتاب‌های فقط-خواندنی همان گپ هم با آن خاکستری می‌شوند. */
+ document.querySelectorAll('.qmv[data-q="'+g[0]+'"]').forEach(m=>{
+  const h=m.closest('.shv')||m;h.style.opacity=need?'':'0.45';h.title=need?'':why;});});}
 function simrun(){
  simclk();
  const now=SIMT[3];
@@ -2184,7 +2262,7 @@ function pdflt(id){
  id=+id;
  /* v1.75 audit: CDEF grew to 119..127 with scenario 6 (ids 125..127) but this
     window still said 124, so the dead-battery fields printed no factory default. */
- if(id>=119&&id<=127)return CDEF[id-119];
+ if(id>=119&&id<=131)return CDEF[id-119];
  if(id>=108&&id<=118)return IDEF[id-108];
  if(id>=93&&id<=107)return LDEF[id-93];
  if(id>=83&&id<=92)return PDEF[id-83];
@@ -2392,8 +2470,8 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   const f2s=(f2&2)?'قفل دائمی - باتری را تعویض کنید':(f2&1)?'اپیزود جاری':'سالم';
   $('imbst').textContent=f2s;$('imbst').className='tg '+((f2&2)?'r':(f2&1)?'y':'g');
   const b117=p[117]==null?1:p[117],bt=document.getElementById('ib117');
-  if(bt){bt.textContent=b117?'مسدودی خروجی در قفل: فعال':'مسدودی خروجی در قفل: غیرفعال (ریسک با شما)';bt.className='bt '+(b117?'run':'cut');}
-  if($('a117'))$('a117').textContent=b117?'روشن':'خاموش';}
+  if(bt&&document.activeElement!==bt)bt.checked=!!b117;
+  if($('a117'))$('a117').textContent=b117?'الان روشن است: باتریِ قفل‌شده نه شارژ می‌شود و نه به بار برق می‌دهد.':'الان خاموش است: فقط شارژ قطع می‌شود و باتریِ قفل‌شده همچنان بار را تغذیه می‌کند (ریسکش با شماست).';}
  /* ‎v1.72 scenario-6 live face: t[28]‎=ماسک قفل باتری خراب، t[29]=بیشترین شارژ پیوسته (ثانیه) */
  if($('dbst')){const dm=t[28]==null?0:t[28],lim=p[125]==null?86400000:p[125];
   /* v1.76: t[29] = شارژ پیوستهٔ کانال ۱ و t[30] = کانال ۲ (ثانیه) — هر باتری ساعت خودش */
@@ -2403,8 +2481,8 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   const ds=dm?('قفل دائمی — باتری '+((dm&3)===3?'هر دو کانال':(dm&1)?'کانال ۱':'کانال ۲')+' خراب است، تعویضش کنید'):'سالم';
   $('dbst').textContent=ds;$('dbst').className='tg '+(dm?'r':'g');
   const b127=p[127]==null?0:p[127],bt7=document.getElementById('db127');
-  if(bt7){bt7.textContent=b127?'جداسازی باتری از خروجی در قفل: فعال':'جداسازی باتری از خروجی در قفل: غیرفعال (فقط شارژ قطع می‌شود)';bt7.className='bt '+(b127?'run':'cut');}
-  if($('a127'))$('a127').textContent=b127?'روشن':'خاموش';}
+  if(bt7&&document.activeElement!==bt7)bt7.checked=!!b127;
+  if($('a127'))$('a127').textContent=b127?'الان روشن است: باتریِ محکوم از خروجی هم برداشته می‌شود — نه شارژ می‌گیرد و نه به بار برق می‌دهد.':'الان خاموش است: فقط شارژِ آن کانال قطع است و باتری تا وقتی ولتاژ دارد به بار برق می‌دهد.';}
 
  for(let id=0;id<20;id++){const a=$('a'+id);if(a&&!(d.q&(1<<id)))a.textContent=p[id]==null?'':(id===13||id===14)?pc(p[id]):p[id];}
  const fe=$('fspan');if(fe){const mn=p[7]==null?null:(p[7]>=3?p[7]:0),av=p[8]==null?null:(p[8]>=2?p[8]:0);
@@ -2488,7 +2566,7 @@ function wmeas(m,act){
    stuck at 99 (the v1.22 count) while the real count is 93, so every row wrote 6
    extra columns and everything after the parameter block landed under the wrong
    heading. It now derives the bound so it cannot go stale again. */
-const PN=128;
+const PN=132;
 /* v1.26 (دستور کاربر ۲۰۲۶-۰۹-۲۹): ۹۳ ستون از ۱۴۹ ستونِ هر ردیف، «تنظیمات» بودند
    که در طول یک سوییپ اصلاً عوض نمی‌شوند — یعنی ۶۲٪ هر ردیف تکرار بی‌فایده. حالا
    تنظیمات یک‌بار به‌صورت خط «# settings:» نوشته می‌شود و ردیف‌ها فقط ۵۶ ستون
@@ -2497,7 +2575,7 @@ const PN=128;
    سنجیده می‌شود و در صورت تغییر، خط «# settings:» تازه پیش از آن ردیف نوشته
    می‌شود — پس فایل هنوز کامل است و هر ردیف می‌داند با چه تنظیماتی گرفته شده.
    v1.26: 93 of the 149 columns were SETTINGS that never change during a sweep -
-   62 % of every row repeated for nothing. They are now written once as a
+   62% of every row repeated for nothing. They are now written once as a
    "# settings:" line and the rows carry only the 56 varying columns, which is
    ~2.7x more sweep points inside the ~100 KB file cap. If a setting DOES change
    mid-run it must not be lost, so the signature is checked per row and a fresh
@@ -2511,8 +2589,8 @@ function wrow(sc,i,pm,se,sa,m,v,iso){const q=x=>x==null?'-':x;
  return [sc,i+1,pm,se,sa,iso,...C(0),...C(7),m.seq,m.fl,...[14,15,16,17,18].map(k=>r0(m.a(k))),m.or,...[20,21,22,23,24].map(k=>m.la[k]),q(v.ii),q(v.vi),q(v.b1),q(v.v1),q(v.b2),q(v.v2),v.note||'-'].join(',')+'\n';}
 /* جدول واحد: هر مرحلهٔ هر سناریو یک ردیف؛ ردیف فعال ورودی‌ها و دکمه‌ها را دارد */
 const WH=['سناریو','#','duty ٪',
- 'ورودی V (برد)','باتری ۱ V (برد)','باتری ۲ V (برد)','جریان ۱ mA (برد)','جریان ۲ mA (برد)',
- 'جریان ۱ mA (شما)','جریان ۲ mA (شما)','جریان ورودی mA (شما)','ورودی V (شما)','باتری ۱ V (شما)','باتری ۲ V (شما)',
+ 'ورودی V (برد)','باتری ۱V (برد)','باتری ۲V (برد)','جریان ۱mA (برد)','جریان ۲mA (برد)',
+ 'جریان ۱mA (شما)','جریان ۲mA (شما)','جریان ورودی mA (شما)','ورودی V (شما)','باتری ۱V (شما)','باتری ۲V (شما)',
  'وضعیت'];
 const WSTC=WH.length-1;   /* ستون وضعیت / status column */
 function wbuild(SC,L){W.K=[];SC.forEach(sc=>L.forEach((d,i)=>W.K.push({sc,i,d})));
@@ -2529,7 +2607,7 @@ function wform(x,act){const r=$('wr'+x);r.classList.add('wa');const k=W.K[x];
  const F=n=>act.includes(n)?`<label class="lb">جریان باتری ${n} mA ${N('wB'+n)}</label>`:'';
  let WVI=window.WVI||'';/* [EN] input voltage is quasi-static: carry the last submitted DMM reading into the next step (user order 2026-09-25: no need to retype it every step) / ولتاژ ورودی تقریباً ثابت است: آخرین عدد ثبت‌شده در مرحلهٔ بعد پیش‌پر می‌شود */
  const box=$('wF0');
- box.innerHTML=`<div class="bq"><div class="hd"><b>${WSN[k.sc]||k.sc} · مرحلهٔ ${k.i+1} · duty ${k.d}٪ — عددهای مولتی‌متر</b> <span class="lb">· Tab: خانهٔ بعدی · Enter: ثبت و رفتن به duty بعدی · Esc: بستن جدول و رفتن به ساخت جدول میکرو</span></div><div class="bctl">${F(1)}${F(2)}<label class="lb">جریان ورودی کل mA ${N('wIi')}</label>${L('wVi','ولتاژ ورودی V',WVI)}${L('wV1','ولتاژ باتری ۱ V')}${L('wV2','ولتاژ باتری ۲ V')}<label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label><button class="sb" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2" id="wRe">تکرار همین مرحله</button><button class="sb stp2" id="wEn">پایان</button></div><div class="lb">اجباری: جریان ورودی کل + جریان هر باتری روشن (<b>منفی هم مجاز</b> — تخلیهٔ باتری با شارژر خاموش، مثل بار زنر). جریان باتری باید نزدیک عدد پنل باشد؛ ورودی کل به ولتاژ/جریان باتری وابسته است (فرمول توان: ~۲٫۵ برابر در جریان کم تا ~۰٫۹ برابر در بالای بازه — مصرف ثابت برد در جریان کم برجسته می‌شود). ولتاژها (V) و یادداشت اختیاری.</div></div>`;
+ box.innerHTML=`<div class="bq"><div class="hd"><b>${WSN[k.sc]||k.sc} · مرحلهٔ ${k.i+1} · duty ${k.d}٪ — عددهای مولتی‌متر</b> <span class="lb">· Tab: خانهٔ بعدی · Enter: ثبت و رفتن به duty بعدی · Esc: بستن جدول و رفتن به ساخت جدول میکرو</span></div><div class="bctl">${F(1)}${F(2)}<label class="lb">جریان ورودی کل mA ${N('wIi')}</label>${L('wVi','ولتاژ ورودی V',WVI)}${L('wV1','ولتاژ باتری ۱V')}${L('wV2','ولتاژ باتری ۲V')}<label class="lb">یادداشت <input type="text" id="wN" class="dl" style="width:150px"></label><button class="sb" id="wGo">ثبت و مرحلهٔ بعد</button><button class="sb sb2" id="wRe">تکرار همین مرحله</button><button class="sb stp2" id="wEn">پایان</button></div><div class="lb">اجباری: جریان ورودی کل + جریان هر باتری روشن (<b>منفی هم مجاز</b> — تخلیهٔ باتری با شارژر خاموش، مثل بار زنر). جریان باتری باید نزدیک عدد پنل باشد؛ ورودی کل به ولتاژ/جریان باتری وابسته است (فرمول توان: ~۲٫۵ برابر در جریان کم تا ~۰٫۹ برابر در بالای بازه — مصرف ثابت برد در جریان کم برجسته می‌شود). ولتاژها (V) و یادداشت اختیاری.</div></div>`;
  const f=$('wB'+act[0]);if(f)f.focus();
  const lv=setInterval(()=>wcell(x,wlive(act)),400);
  return new Promise(res=>{$('wGo').onclick=()=>{const v={},ok=id=>gv(id);/* v1.9 (user order 2026-09-25): negative currents are VALID - with the charger off the battery itself discharges into other loads (e.g. the zener), the DMM then reads minus */
@@ -2607,7 +2685,7 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
 
      id 0 / id 1  current offset ch1 / ch2 (ADC counts at zero current)
      id 2 / id 3  current gain   ch1 / ch2 (per-mille)
-     id 4 / 5 / 6 input, 24 V pack and 12 V node offsets (mV)
+     id 4 / 5 / 6 input, 24V pack and 12V node offsets (mV)
 
    The board's own formula is  I_mA = (raw - offset) * 0.8777 * gain/1000, so a
    straight least-squares line  dmm = slope*raw + intercept  gives both numbers
@@ -2725,7 +2803,7 @@ function caldiff(i){const r=CALR[i];if(!r)return;const e=$('calv'+i),d=$('cald'+
 function calsmp(){const b=$('calsl');if(!b)return;
  if(!CALS.length){b.innerHTML='<span class="lb">هنوز نمونه‌ای ثبت نشده است.</span>';return;}
  b.innerHTML='<div class="tw"><table class="bt2"><tr><th>استفاده</th><th>#</th><th>سناریو</th><th>duty ٪</th>'+
-  '<th>raw باتری ۱</th><th>جریان مولتی‌متر ۱ mA</th><th>raw باتری ۲</th><th>جریان مولتی‌متر ۲ mA</th><th>ولتاژ ورودی mV</th></tr>'+
+  '<th>raw باتری ۱</th><th>جریان مولتی‌متر ۱mA</th><th>raw باتری ۲</th><th>جریان مولتی‌متر ۲mA</th><th>ولتاژ ورودی mV</th></tr>'+
   CALS.map((z,i)=>'<tr><td><input type="checkbox" id="calu'+i+'"'+(z.use===0?'':' checked')+' onchange="caluse('+i+',this.checked)"></td>'+
    '<td>'+(i+1)+'</td><td>'+(WSN[z.sc]||z.sc||'')+'</td><td>'+(z.d==null?'':z.d)+'</td>'+
    '<td>'+(z.r1==null?'':Math.round(z.r1))+'</td><td>'+(z.b1==null?'':Math.round(z.b1))+'</td>'+
