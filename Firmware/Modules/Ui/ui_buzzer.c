@@ -65,7 +65,7 @@ static uint32_t UINT32_T__G__BuzzerGapMs = 0u;
  *         [FA] تیک شروع چرخهٔ فعلی؛ سرویس غیرمسدودکننده زمان سپری‌شده
  *         (بوق/گپ/انتهای دوره) را از آن حساب می‌کند.
  */
-static uint32_t TICKTYPE_T__G__BuzzerCycleStartTick = 0;
+static uint32_t UINT32_T__G__BuzzerCycleStartTick = 0;
 
 /* ==================== Buzzer service / سرویس بازر ==================== */
 
@@ -85,7 +85,7 @@ static uint32_t TICKTYPE_T__G__BuzzerCycleStartTick = 0;
  */
 int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyPercent, uint8_t uint8_t__beepCount, uint32_t uint32_t__gapMs)
 {
-    uint32_t ticktype__nowTick;
+    uint32_t uint32_t__nowTick;
     uint32_t uint32_t__dutyWindowMs;
     uint32_t uint32_t__gapCount;
     uint32_t uint32_t__effectiveGapMs;
@@ -222,21 +222,21 @@ int32_t func__Ui_Buzzer_Tick(uint32_t uint32_t__periodMs, uint8_t uint8_t__dutyP
         bool__configurationChanged = true;
     }
 
-    ticktype__nowTick = osKernelGetTickCount();
+    uint32_t__nowTick = osKernelGetTickCount();
     if (bool__configurationChanged == true)
     {
         UINT32_T__G__BuzzerPeriodMs = uint32_t__periodMs;
         UINT8_T__G__BuzzerDutyPercent = uint8_t__dutyPercent;
         UINT8_T__G__BuzzerCount = uint8_t__beepCount;
         UINT32_T__G__BuzzerGapMs = uint32_t__effectiveGapMs;
-        TICKTYPE_T__G__BuzzerCycleStartTick = ticktype__nowTick;
+        UINT32_T__G__BuzzerCycleStartTick = uint32_t__nowTick;
         BOOL__G__BuzzerPatternValid = true;
     }
 
-    uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(ticktype__nowTick - TICKTYPE_T__G__BuzzerCycleStartTick);
+    uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(uint32_t__nowTick - UINT32_T__G__BuzzerCycleStartTick);
     if (uint32_t__elapsedMs >= uint32_t__periodMs)
     {
-        TICKTYPE_T__G__BuzzerCycleStartTick = ticktype__nowTick;
+        UINT32_T__G__BuzzerCycleStartTick = uint32_t__nowTick;
         uint32_t__elapsedMs = 0u;
     }
 

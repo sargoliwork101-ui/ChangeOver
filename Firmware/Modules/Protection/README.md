@@ -37,7 +37,7 @@
 | `func__Protection_Run` | `FAULT_ADC` را به‌صورت **وضعیت لحظه‌ای** می‌نویسد: snap تهی/نامعتبر → Set، snap معتبر → Clear (ممیزی کل برنامه ۲۰۲۶-۰۹-۲۲؛ قبلاً فقط Set بود و چون هیچ‌جا پاک نمی‌شد، با روشن‌شدن آیندهٔ این ماژول بیت در بوت قفل و شارژر برای همیشه safe-idle می‌شد). مقایسه جریان هنوز نیست |
 | `TaskProtection` | تسک فقط با `MODULE_PROTECTION=1` ساخته می‌شود؛ فعلاً `MODULE_PROTECTION=0` است و تسک/این ماژول در بیلد فعلی اجرا نمی‌شود |
 
-حدهای بعدی در `APP_CONFIG`: `overcurrent1_ma`، `overcurrent2_ma`، `low_battery_mv`، `low_battery_recover_mv`.
+حدهای بعدی (اضافه‌جریان و باتری کم) هنوز تعریف نشده‌اند. در مرتب‌سازی ۲۰۲۶-۱۰-۰۵ فیلدهای بی‌مصرف `overcurrent1_ma`، `overcurrent2_ma`، `low_battery_mv` و `low_battery_recover_mv` از `APP_CONFIG` حذف شدند؛ وقتی این ماژول واقعاً پیاده شد، آستانه‌هایش طبق قانون «جایگذاری ثابت‌های مرتبط با تابع» در `protection.h` و بالای همان تابع تعریف می‌شوند، نه در پیکربندی سراسری.
 
 ## پایه‌ها
 
@@ -65,3 +65,17 @@ protection.c
   app_config.h                              حدها
   app_types.h                               snapshot ، FAULT_*
 ```
+
+## تستر
+
+`Tester/` — تست هاست نگهبان اعتبار اندازه‌گیری (۶۱ بررسی). اجرا با
+`Tester/run_host_test_protection.sh`؛ داخل `tools/check_firmware_syntax.sh` هم اجرا
+می‌شود. توضیح کامل در `Tester/README.md`.
+
+## ماشین حالت
+
+`Protection_State_Machine.xlsx` — حالت‌ها و گذارهای همین ماژول، رنگی و
+راست‌به‌چپ با فونت وزیرمتن. از برگهٔ «ماشین حالت» در فایل اعتبارسنجی همین
+پوشه هم به آن لینک هست و خودش به نمای سیستمی
+(`Documentation/System_State_Machine.xlsx`) برمی‌گردد. بازتولید:
+`python3 tools/make_module_state_machines.py`.
