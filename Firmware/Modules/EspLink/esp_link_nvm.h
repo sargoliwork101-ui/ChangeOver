@@ -162,7 +162,7 @@
 /* [EN] Persisted id ranges: ALL settable configuration (0..14 = offsets,
  *      gains, filters, eta, charger enables, duty ceilings; 20..26 =
  *      charge profile; 27..37 = alarms; 38..75 = UI cadence; 77..82 =
- *      full/hysteresis; 83..92 = two-loop PID; 119..120 = charge-side percent map, v1.49; 121..122 = band-2 beep shape, v1.50; 132..133 = imbalance beep count/gap, v1.81) EXCEPT the transient
+ *      full/hysteresis; 83..92 = two-loop PID; 119..120 = charge-side percent map, v1.49; 121..122 = band-2 beep shape, v1.50; 132..133 = imbalance beep count/gap, v1.81; 134..135 = dead-battery beep count/gap, v1.82) EXCEPT the transient
  *      test modes 15..18 (fixed duty), 19 (manual test) and 76
  *      (panel-session mute) - those must never survive a reboot. Id 76
  *      sits INSIDE the high range, so the predicate excludes it
@@ -177,7 +177,7 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   133u /* [EN] v1.81 adds imbalance beep count/gap. / [FA] نسخهٔ ۱٫۸۱ تعداد/گپ بوق عدم‌توازن را ماندگار می‌کند. */
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   135u /* [EN] v1.82 adds both scenario beep count/gap pairs. / [FA] نسخهٔ ۱٫۸۲ جفت تعداد/گپ هر دو سناریو را ماندگار می‌کند. */
 
 /* [EN] v1.74: ids 72/73 are retired (the low-battery window became a fixed
    constant inside the Changeover module), so they are carved out of the high

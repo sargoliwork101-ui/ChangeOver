@@ -389,9 +389,9 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
             }
 #endif
 #if MODULE_CHARGER
-            /* [EN] v1.72 scenario 6 (dead battery), ids 125..127 + runtime
-                    slot 203 (NVM boot replay of the latch mask).
-               [FA] سناریوی ۶ باتری خراب، ۱۲۵..۱۲۷ + اسلات ۲۰۳. */
+            /* [EN] v1.82 scenario 6 (dead battery), ids 125..131 and 134..135 +
+                    runtime slot 203 (NVM boot replay of the latch mask).
+               [FA] سناریوی ۶ باتری خراب، ۱۲۵..۱۳۱ و ۱۳۴..۱۳۵ + اسلات ۲۰۳. */
             if (CHG_DEAD_PARAM_OWNS(uint8_t__paramId) ||
                 (uint8_t__paramId == CHG_DEAD_SLOT_MASK_ID))
             {
@@ -582,8 +582,8 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
             }
 #endif
 #if MODULE_CHARGER
-            /* [EN] v1.72 scenario 6 live read, ids 125..127 + slot 203.
-               [FA] خواندن زندهٔ سناریوی ۶ + اسلات ۲۰۳. */
+            /* [EN] v1.82 scenario 6 live read, ids 125..131 and 134..135 + slot 203.
+               [FA] خواندن زندهٔ سناریوی ۶، ۱۲۵..۱۳۱ و ۱۳۴..۱۳۵ + اسلات ۲۰۳. */
             if (CHG_DEAD_PARAM_OWNS(uint8_t__paramId) ||
                 (uint8_t__paramId == CHG_DEAD_SLOT_MASK_ID))
             {

@@ -72,7 +72,7 @@
          نردبان درصد سمت شارژ، جدا از نردبان دشارژ ۷۴/۷۵ (v1.49، دستور کاربر
          ۲۰۲۶-۱۰-۰۵)، شناسه‌های ۱۲۱..۱۲۲ = مدت و گپ مخصوص باند ۲ دشارژ
          (v1.50، دستور کاربر ۲۰۲۶-۱۰-۰۵). */
-#define ESP_PARAM_COUNT            134u /* [EN] v1.81 includes imbalance beep count/gap 132..133. / [FA] نسخه ۱٫۸۱ تعداد/گپ بوق عدم‌توازن ۱۳۲..۱۳۳ را هم دارد. */
+#define ESP_PARAM_COUNT            136u /* [EN] v1.82 includes both scenario beep count/gap pairs 132..135. / [FA] نسخه ۱٫۸۲ جفت تعداد/گپ هر دو سناریو ۱۳۲..۱۳۵ را دارد. */
 #define ESP_PARAM_CHG1_ENABLE       11u
 #define ESP_PARAM_CHG2_ENABLE       12u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
@@ -157,7 +157,7 @@
     "#            imb_blink_per_ms,imb_blink_duty,\n" \
     "#            dead_timeout_ms,dead_reset_gap_ms,dead_block_out,\n" \
     "#            dead_beep_per_ms,dead_beep_ms,dead_blink_per_ms,dead_blink_duty,\n" \
-    "#            imb_beep_count,imb_beep_gap_ms\n" \
+    "#            imb_beep_count,imb_beep_gap_ms,dead_beep_count,dead_beep_gap_ms\n" \
     "#  [ch1]    raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,\n" \
     "#           filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1\n" \
     "#  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,\n" \
@@ -247,10 +247,11 @@
  *      and buzzer boxes with the text explaining what they replace) added
  *      ~4 KiB of markup and went past the 336 KiB step, so the ceiling is
  *      deliberately stepped 336 KiB -> 352 KiB.
- *      [FA] چک‌لیست سناریو ۶، چک‌باکس‌ها و بخش چراغ و بوقِ سناریو ۶ حدود ۴
- *      کیلوبایت اضافه کرد؛ پله یک حرکت عمدی دیگر از ۳۳۶ به ۳۵۲ کیلوبایت.
+ *      [FA] چک‌لیست سناریو ۶، چک‌باکس‌ها، بخش چراغ و بوقِ سناریو ۶ و دو
+ *      تنظیم مستقل تعداد/گپ حدود ۴ کیلوبایت اضافه کرد؛ سقف به پلهٔ ۳۶۰
+ *      کیلوبایت رفت.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    360448u
+#define ESP_PANEL_HTML_MAX_BYTES    368640u
 
 /* ==================== Parser States ==================== */
 typedef enum

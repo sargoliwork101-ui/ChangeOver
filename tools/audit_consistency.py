@@ -846,10 +846,10 @@ def sec_panel(ids):
         ok(chg_base == imb_base + len(idef),
            "CDEF does not start where IDEF ends",
            f"charge map starts at {chg_base}, imbalance block ends at {imb_base + len(idef) - 1}")
-        ok(len(cdef) == 15,
+        ok(len(cdef) == 17,
            "CDEF must cover the charge map (119/120), band 2's beep shape "
            "(121/122), the imbalance latch blink (123/124), dead-battery "
-           "scenario 6 (125..131) and the imbalance beep shape (132/133)",
+           "scenario 6 (125..131, 134/135) and the imbalance beep shape (132/133)",
            f"CDEF has {len(cdef)} entries")
         top = chg_base + len(cdef) - 1
         ok(hi == top, "AIDS upper bound != the top real id",
@@ -1954,16 +1954,19 @@ def sec_simulator_mirror():
     chg = read(ROOT / "Firmware" / "Modules" / "Charger" / "charger.c")
     sim = read(ROOT / "tools" / "panel_preview_server.js")
 
-    # [EN] Firmware side: one X-macro row per scenario-6 wire id 125..131.
-    rows = re.findall(r"X\((\w+),\s*(\d+)u,\s*(\d+)u,\s*(\d+)u\)", chg)
-    dead_names = ["TIMEOUT_MS", "RESET_GAP_MS", "BLOCK_OUTPUT", "BEEP_PERIOD_MS",
-                  "BEEP_LEN_MS", "BLINK_PERIOD_MS", "BLINK_DUTY_PCT"]
+    # [EN] Firmware side: one X-macro row per scenario-6 wire id 125..131
+    #      and 134..135; 132..133 are intentionally owned by scenario 5.
+    rows = re.findall(r"X\((\w+),\s*(\d+)u,\s*(\d+)u,", chg)
+    dead_ids = {"TIMEOUT_MS": 125, "RESET_GAP_MS": 126, "BLOCK_OUTPUT": 127,
+                "BEEP_PERIOD_MS": 128, "BEEP_LEN_MS": 129,
+                "BLINK_PERIOD_MS": 130, "BLINK_DUTY_PCT": 131,
+                "BEEP_COUNT": 134, "BEEP_GAP_MS": 135}
     windows = {}
-    for name, lo, hi, _def in rows:
-        if name in dead_names:
-            windows[125 + dead_names.index(name)] = (int(lo), int(hi))
+    for name, lo, hi in rows:
+        if name in dead_ids:
+            windows[dead_ids[name]] = (int(lo), int(hi))
 
-    ok(len(windows) == len(dead_names),
+    ok(len(windows) == len(dead_ids),
        "could not parse the scenario-6 window table (CHG_DEAD_ROWS) from charger.c",
        str(sorted(windows)))
 

@@ -416,6 +416,8 @@
 #define ESPLINK_PARAM_DEAD_BEEP_LEN_MS         129u  /* u32, ms, def 120, 20..2000 */
 #define ESPLINK_PARAM_DEAD_BLINK_PERIOD_MS     130u  /* u32, ms, def 0 = SOLID red, else up to 10000 */
 #define ESPLINK_PARAM_DEAD_BLINK_DUTY_PCT      131u  /* u8,  %,  def 50, 5..95 */
+#define ESPLINK_PARAM_DEAD_BEEP_COUNT         134u  /* u8, count, def 1, 1..10 */
+#define ESPLINK_PARAM_DEAD_BEEP_GAP_MS        135u  /* u32, ms, def 0, 0..5000 */
 
 /* [EN] v1.81: the latched imbalance alarm owns these independent pattern
    controls; defaults 1 beep and 0 ms gap preserve the old sound.
@@ -424,11 +426,11 @@
 #define ESPLINK_PARAM_IMBAL_BEEP_COUNT         132u  /* u8, count, def 1, 1..10 */
 #define ESPLINK_PARAM_IMBAL_BEEP_GAP_MS        133u  /* u32, ms, def 0, 0..5000 */
 
-/* [EN] ids 0..133 are ordinary parameters; 132 is imbalance beep count and
-   133 is its inter-beep gap. Runtime slots 200..202 stay outside this count.
-   [FA] شناسه‌های ۰..۱۳۳ پارامتر عادی‌اند؛ ۱۳۲ تعداد بوق عدم‌توازن و ۱۳۳ گپ
-   آن است. اسلات‌های ۲۰۰..۲۰۲ بیرون از این تعداد باقی می‌مانند. */
-#define ESPLINK_PARAM_COUNT               134u
+/* [EN] ids 0..135 are ordinary parameters; 132/133 shape the imbalance
+   beep and 134/135 shape the dead-battery beep. Runtime slots stay outside.
+   [FA] شناسه‌های ۰..۱۳۵ پارامتر عادی‌اند؛ ۱۳۲/۱۳۳ شکل بوق عدم‌توازن و
+   ۱۳۴/۱۳۵ شکل بوق باتری خراب را می‌سازند؛ اسلات‌های زمان‌اجرا بیرون‌اند. */
+#define ESPLINK_PARAM_COUNT               136u
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

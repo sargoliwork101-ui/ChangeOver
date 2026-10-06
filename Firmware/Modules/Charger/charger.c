@@ -2396,7 +2396,9 @@ typedef struct
     X(BEEP_PERIOD_MS,    0u,  86400000u,   600000u)   /* 128 beep, 0 = silent   */ \
     X(BEEP_LEN_MS,      20u,      2000u,      120u)   /* 129 one beep length    */ \
     X(BLINK_PERIOD_MS,   0u,     10000u,        0u)   /* 130 blink, 0 = solid   */ \
-    X(BLINK_DUTY_PCT,    5u,        95u,       50u)   /* 131 blink on-share %   */
+    X(BLINK_DUTY_PCT,    5u,        95u,       50u)   /* 131 blink on-share %   */ \
+    X(BEEP_COUNT,        1u,        10u, CHG_DEAD_DEF_BEEP_COUNT) /* 134 count */ \
+    X(BEEP_GAP_MS,       0u,      5000u, CHG_DEAD_DEF_BEEP_GAP_MS) /* 135 gap */
 
 #define CHG_DEAD_ROW_DEF(name, lo, hi, def)  { (lo), (hi), (def) },
 #define CHG_DEAD_ROW_VAL(name, lo, hi, def)  (def),
@@ -2424,10 +2426,10 @@ CHG_DEAD_ROWS(CHG_DEAD_ROW_CHK)
 
 _Static_assert((sizeof(CHARGER_DEAD_DEF_T__A__DeadDefs) /
                 sizeof(CHARGER_DEAD_DEF_T__A__DeadDefs[0])) == CHG_DEAD_PARAM_COUNT,
-               "scenario-6 window table must have exactly one row per wire id 125..131");
+               "scenario-6 window table must have exactly one row per owned wire id");
 _Static_assert((sizeof(UINT32_T__G__DeadParam) /
                 sizeof(UINT32_T__G__DeadParam[0])) == CHG_DEAD_PARAM_COUNT,
-               "scenario-6 live array must have exactly one slot per wire id");
+               "scenario-6 live array must have exactly one slot per owned wire id");
 
 /**
  * @brief  [EN] One scenario-6 pass for one channel: accumulate charge time,
@@ -2612,7 +2614,7 @@ bool func__Charger_SetDeadParam(uint8_t uint8_t__paramId,
         return false;
     }
 
-    uint8_t__index = (uint8_t)(uint8_t__paramId - CHG_DEAD_PARAM_FIRST_ID);
+    uint8_t__index = CHG_DEAD_PARAM_INDEX(uint8_t__paramId);
     uint32_t__applied = uint32_t__value;
 
     if (uint32_t__applied < CHARGER_DEAD_DEF_T__A__DeadDefs[uint8_t__index].uint32_t__min)
@@ -2673,6 +2675,23 @@ void func__Charger_DeadFaceShape(uint32_t *uint32_t__beepPeriodMs,
     }
 }
 
+/** [EN] Read scenario 6's independent multi-beep shape.
+ *  [FA] شکل مستقل چندبوق سناریوی ۶ را می‌خواند. */
+void func__Charger_DeadBeepPattern(uint32_t *uint32_t__beepCount,
+                                   uint32_t *uint32_t__beepGapMs)
+{
+    if (uint32_t__beepCount != NULL)
+    {
+        *uint32_t__beepCount =
+            UINT32_T__G__DeadParam[CHG_DEAD_PARAM_INDEX(CHG_DEAD_PARAM_BEEP_COUNT)];
+    }
+    if (uint32_t__beepGapMs != NULL)
+    {
+        *uint32_t__beepGapMs =
+            UINT32_T__G__DeadParam[CHG_DEAD_PARAM_INDEX(CHG_DEAD_PARAM_BEEP_GAP_MS)];
+    }
+}
+
 bool func__Charger_GetDeadParam(uint8_t uint8_t__paramId,
                                 uint32_t *uint32_t__value)
 {
@@ -2693,7 +2712,7 @@ bool func__Charger_GetDeadParam(uint8_t uint8_t__paramId,
     }
 
     *uint32_t__value =
-        UINT32_T__G__DeadParam[(uint8_t)(uint8_t__paramId - CHG_DEAD_PARAM_FIRST_ID)];
+        UINT32_T__G__DeadParam[CHG_DEAD_PARAM_INDEX(uint8_t__paramId)];
 
     return true;
 }

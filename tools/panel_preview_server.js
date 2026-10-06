@@ -204,9 +204,11 @@ const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            /* v1.80 ids 128..131 = scenario 6's OWN lamp and buzzer (user
               question: "it has a lamp and a beep, why no boxes?"): beep
               period, beep length, red blink period (0 = solid) and its
-              on-share. Defaults reproduce the old borrowed behaviour. */
+              on-share. Defaults preserve the independent one-beep, solid-red behaviour. */
            600000, 120, 0, 50,
            /* v1.81 ids 132..133 = independent imbalance latch beep count/gap */
+           1, 0,
+           /* v1.82 ids 134..135 = independent dead-battery beep count/gap */
            1, 0];
 
 const clampW = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -298,6 +300,9 @@ function clampParam(id, v) {
         /* v1.81: independent imbalance latch beep shape (ids 132..133). */
         case 132: return clampW(v, 1, 10);
         case 133: return clampW(v, 0, 5000);
+        /* v1.82: independent dead-battery latch beep shape (ids 134..135). */
+        case 134: return clampW(v, 1, 10);
+        case 135: return clampW(v, 0, 5000);
         /* v1.15 alarms: mirror of Fault_ClampAlarms / Charger_ClampAlarms */
         case 27: { let lo = Math.max(14000, over + 50), hi = Math.min(15000, ov - 100);
                    if (lo > hi) hi = lo; return Math.min(hi, Math.max(lo, v)); }

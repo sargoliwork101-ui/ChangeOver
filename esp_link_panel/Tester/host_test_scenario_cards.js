@@ -681,10 +681,9 @@ function testSimulator(win, doc) {
     check(doc.getElementById('a117') && doc.getElementById('a127'),
           'each output-block checkbox keeps its own plain-language state line');
 
-    /* v1.80 (user question: "scenario 6 has a lamp and a beep - why no boxes
-       for them?"): the four own-face ids exist, are editable, print their
-       factory defaults and belong to scenario 6's factory key. */
-    [[128, 600000], [129, 120], [130, 0], [131, 50]].forEach(([id, def]) => {
+    /* v1.82: scenario 6 owns its lamp/beep fields plus an independent
+       count/gap pair; all are editable and belong to its factory key. */
+    [[128, 600000], [129, 120], [130, 0], [131, 50], [134, 1], [135, 0]].forEach(([id, def]) => {
       const el = doc.getElementById('q' + id);
       check(el && el.tagName === 'INPUT' && el.type === 'number',
             'scenario 6 owns a box for parameter ' + id);
@@ -693,8 +692,9 @@ function testSimulator(win, doc) {
       check(win.eval('UDEF[6]').indexOf(id) >= 0,
             'parameter ' + id + " is reset by scenario 6's own factory key");
     });
-    check(win.eval('UDEF[5]').indexOf(128) < 0 && win.eval('UDEF[5]').indexOf(115) >= 0,
-          'the imbalance key keeps 115/116 and does not touch the scenario-6 face');
+    check(win.eval('UDEF[5]').indexOf(128) < 0 && win.eval('UDEF[5]').indexOf(115) >= 0 &&
+          win.eval('UDEF[6]').indexOf(134) >= 0 && win.eval('UDEF[6]').indexOf(135) >= 0,
+          'the imbalance key keeps 115/116 and scenario 6 owns its 134/135 pair');
 
     /* v1.79 (user: "there used to be a LED behind it"): the latched-fault
        bits are real LEDs again - styled, and visible between blinks. */
