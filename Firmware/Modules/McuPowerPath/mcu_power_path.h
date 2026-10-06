@@ -64,13 +64,15 @@
  */
 #define MCU_POWER_INPUT_VALID_MV        MCU_POWER_INPUT_QUALIFY_MV
 
-/* ==================== Functions ==================== */
+/* ==================== McuPowerPath Init / مقداردهی اولیه ==================== */
 
 /**
  * @brief  [EN] Initialize Q1 path: battery connected (PB5 Low), timer inactive.
  *         [FA] مسیر Q1 را مقداردهی می‌کند: باتری وصل (PB5 Low)، تایمر غیرفعال.
  */
 void func__McuPowerPath_Init(void);
+
+/* ==================== McuPowerPath Run / ارزیابی دوره‌ای ==================== */
 
 /**
  * @brief  [EN] Periodic qualification: call from the control task every ~10 ms.
@@ -81,6 +83,8 @@ void func__McuPowerPath_Init(void);
  *              ‎v_in <21500‎ → وصل (PB5 Low).
  */
 void func__McuPowerPath_Run(void);
+
+/* ==================== McuPowerPath OnInputIrq / وقفهٔ ورودی ==================== */
 
 /**
  * @brief  [EN] ISR-safe handler for PB4 input-detect edges. Call from the EXTI callback in ISR context.

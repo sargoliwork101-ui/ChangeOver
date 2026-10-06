@@ -14,6 +14,8 @@
 
 #include <stdint.h>
 
+/* ==================== BspMeasurement Counts To Mv ==================== */
+
 /**
  * @brief  [EN] Convert normalized ADC counts to voltage at the ADC pin.
  *         [FA] شمارش استاندارد ADC را به ولتاژ روی پایهٔ ADC تبدیل می‌کند.
@@ -22,6 +24,8 @@
  */
 uint32_t func__BspMeasurement_CountsToMv(uint16_t uint16_t__counts);
 
+/* ==================== BspMeasurement V24 Counts To Mv ==================== */
+
 /**
  * @brief  [EN] Convert the normalized 24 V channel to source voltage.
  *         [FA] کانال استاندارد ۲۴ ولت را به ولتاژ منبع تبدیل می‌کند.
@@ -29,6 +33,8 @@ uint32_t func__BspMeasurement_CountsToMv(uint16_t uint16_t__counts);
  * @return uint32_t [EN] Source voltage in mV / ولتاژ منبع بر حسب mV
  */
 uint32_t func__BspMeasurement_V24CountsToMv(uint16_t uint16_t__counts);
+
+/* ==================== BspMeasurement Battery24 Counts To Mv ==================== */
 
 /**
  * @brief  [EN] Convert the battery-PACK 24 V channel (user divider factor,
@@ -39,6 +45,8 @@ uint32_t func__BspMeasurement_V24CountsToMv(uint16_t uint16_t__counts);
  * @return uint32_t [EN] Pack voltage in mV / ولتاژ پک mV
  */
 uint32_t func__BspMeasurement_Battery24CountsToMv(uint16_t uint16_t__counts);
+
+/* ==================== BspMeasurement V12 Counts To Mv ==================== */
 
 /**
  * @brief  [EN] Convert the normalized 12 V channel to source voltage.
@@ -113,10 +121,25 @@ uint32_t func__BspMeasurement_GetCurrentGainPermille(uint8_t uint8_t__channelInd
  * @return uint32_t [EN] Current in mA / جریان بر حسب mA
  */
 uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts);
-/* [EN] Legacy generic converter = channel-2 calibration; new code must pick
- *      the per-channel function above (user order 2026-09-20: charger 1 no
- *      longer rides on charger 2's calibration).
- * [FA] مبدل عمومی قدیمی = کالیبراسیون کاnal ۲؛ کد جدید از تابع پر-کانال. */
+
+/* ==================== BspMeasurement Current Counts To Ma (legacy) ==================== */
+
+/**
+ * @brief  [EN] Legacy generic converter, identical to the channel-2
+ *              function above because it uses the channel-2 calibration
+ *              pair. Kept only so older callers keep linking; new code must
+ *              pick the per-channel function (user order 2026-09-20:
+ *              charger 1 no longer rides on charger 2's calibration).
+ *         [FA] مبدل عمومی قدیمی که دقیقاً همان تابع کانال ۲ است، چون از جفت
+ *              کالیبراسیون کانال ۲ استفاده می‌کند. فقط برای این نگه داشته
+ *              شده که فراخوان‌های قدیمی لینک شوند؛ کد جدید باید تابع
+ *              پر-کانال را بردارد (دستور کاربر ۲۰۲۶-۰۹-۲۰: شارژر ۱ دیگر روی
+ *              کالیبراسیون شارژر ۲ سوار نیست).
+ * @param  uint16_t__counts [EN] Normalized ADC count of a current channel /
+ *                              شمارش استاندارد ADC یک کانال جریان
+ * @return uint32_t [EN] Current in mA, channel-2 calibration /
+ *                      جریان بر حسب mA با کالیبراسیون کانال ۲
+ */
 uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts);
 
 /* ==================== BspMeasurement Current Counts To Shunt Uv ==================== */
@@ -135,6 +158,40 @@ uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts);
  */
 uint32_t func__BspMeasurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts);
 
+/* ==================== BspMeasurement Vdda Mv ==================== */
+
+/**
+ * @brief  [EN] Measure the real ADC reference (VDDA) from the internal
+ *              1.20 V VREFINT channel: VREFINT sits at a known voltage, so
+ *              the count it produces says what full scale is worth. The
+ *              reference value is passed IN, which keeps this board layer
+ *              free of bench-calibration headers. The result is rejected
+ *              (0 returned) when it falls outside what a 3.3 V rail can
+ *              physically be, so a stuck or un-enabled VREFINT channel can
+ *              never silently rescale every reading on the product.
+ *         [FA] مرجع واقعی ADC یعنی VDDA را از کانال داخلی ۱٫۲۰ ولتی VREFINT
+ *              اندازه می‌گیرد: چون ولتاژ VREFINT معلوم است، شمارشی که تولید
+ *              می‌کند می‌گوید مقیاس کامل چقدر می‌ارزد. مقدار مرجع از بیرون
+ *              داده می‌شود تا این لایهٔ برد به هدرهای کالیبراسیون بنچ وابسته
+ *              نشود. اگر نتیجه بیرون از چیزی باشد که یک ریل ۳٫۳ ولت فیزیکاً
+ *              می‌تواند باشد، صفر برمی‌گردد تا کانال گیرکرده یا فعال‌نشده
+ *              هرگز بی‌صدا همهٔ خوانش‌های محصول را بازمقیاس نکند.
+ * @param  uint16_t__vrefintCounts [EN] Raw counts of the VREFINT channel,
+ *                                     range 0..BSP_ADC_FULL_SCALE; 0 means
+ *                                     "not sampled" and returns 0 /
+ *                                     شمارش خام کانال VREFINT، بازهٔ ۰ تا
+ *                                     مقیاس کامل؛ صفر یعنی نمونه‌برداری نشده
+ * @param  uint32_t__vrefintMv     [EN] Reference voltage of that channel in
+ *                                     mV, typically CAL_VREFINT_MV around
+ *                                     1200 (datasheet spread 1160..1240) /
+ *                                     ولتاژ مرجع همان کانال بر حسب mV،
+ *                                     معمولاً حدود ۱۲۰۰ (۱۱۶۰ تا ۱۲۴۰)
+ * @return uint32_t [EN] Measured VDDA in mV inside
+ *                      BSP_MEASUREMENT_VDDA_MIN_MV..MAX_MV, or 0 when the
+ *                      reading is implausible /
+ *                      VDDA اندازه‌گیری‌شده بر حسب mV در بازهٔ مجاز، یا صفر
+ *                      اگر خوانش نامعقول باشد
+ */
 uint32_t func__BspMeasurement_VddaMv(uint16_t uint16_t__vrefintCounts,
                                     uint32_t uint32_t__vrefintMv);
 
