@@ -256,7 +256,7 @@ function clampParam(id, v) {
         case 107: return Math.min(5000, Math.max(50, v));
         /* v1.43 imbalance scenario 5 (IMBAL_* clamp windows in imbalance.c) */
         case 108: case 109: return Math.min(2000, Math.max(0, v));
-        case 110: case 111: return Math.min(3600000, Math.max(0, v));
+        case 110: case 111: return Math.min(18000000, Math.max(0, v));
         case 112: return Math.min(600000, Math.max(1000, v));
         case 113: return Math.min(1000, Math.max(0, v));
         case 114: return Math.min(255, Math.max(1, v));

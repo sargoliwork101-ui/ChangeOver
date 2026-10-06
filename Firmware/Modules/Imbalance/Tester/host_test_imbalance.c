@@ -48,17 +48,20 @@ int main(void)
             مقدار ذخیره‌شده باید از ‎Init‎ جان سالم به‌در ببرد؛ قبلاً هر بار
             روشن‌شدن پاک می‌شد. پارامتر غایب در رکورد باید پیش‌فرض بگیرد. */
     CHECK(func__Imbalance_SetParam(108u, 777u, &uint32_t__value) && (uint32_t__value == 777u));
+    CHECK(func__Imbalance_SetParam(111u, 18000000u, &uint32_t__value) && (uint32_t__value == 18000000u));
     CHECK(func__Imbalance_SetParam(113u, 250u, &uint32_t__value) && (uint32_t__value == 250u));
 
     func__Imbalance_Init();
 
     CHECK(func__Imbalance_GetParam(108u, &uint32_t__value) && (uint32_t__value == 777u));
+    CHECK(func__Imbalance_GetParam(111u, &uint32_t__value) && (uint32_t__value == 18000000u));
     CHECK(func__Imbalance_GetParam(113u, &uint32_t__value) && (uint32_t__value == 250u));
     CHECK(func__Imbalance_GetParam(109u, &uint32_t__value) && (uint32_t__value == 500u));
 
     /* [EN] Back to the compiled defaults for the checks that follow.
        [FA] بازگشت به پیش‌فرض‌ها برای بررسی‌های بعدی. */
     CHECK(func__Imbalance_SetParam(108u, 300u, &uint32_t__value) && (uint32_t__value == 300u));
+    CHECK(func__Imbalance_SetParam(111u, 600000u, &uint32_t__value) && (uint32_t__value == 600000u));
     CHECK(func__Imbalance_SetParam(113u, 100u, &uint32_t__value) && (uint32_t__value == 100u));
 
     /* ---- defaults ---- */
@@ -100,12 +103,14 @@ int main(void)
     /* ---- clamp ---- */
     uint32_t__value = 0u;
     CHECK(func__Imbalance_SetParam(108u, 99999u, &uint32_t__value) && (uint32_t__value == 2000u));
+    CHECK(func__Imbalance_SetParam(111u, 18000001u, &uint32_t__value) && (uint32_t__value == 18000000u));
     CHECK(func__Imbalance_SetParam(112u, 0u, &uint32_t__value) && (uint32_t__value == 1000u));
     CHECK(func__Imbalance_SetParam(114u, 0u, &uint32_t__value) && (uint32_t__value == 1u));
     CHECK(func__Imbalance_SetParam(117u, 7u, &uint32_t__value) && (uint32_t__value == 1u));
     CHECK(!func__Imbalance_SetParam(119u, 1u, &uint32_t__value));
     /* [EN] Restore defaults after clamp checks. */
     CHECK(func__Imbalance_SetParam(108u, 300u, &uint32_t__value) && (uint32_t__value == 300u));
+    CHECK(func__Imbalance_SetParam(111u, 600000u, &uint32_t__value) && (uint32_t__value == 600000u));
     CHECK(func__Imbalance_SetParam(112u, 30000u, &uint32_t__value) && (uint32_t__value == 30000u));
     CHECK(func__Imbalance_SetParam(114u, 10u, &uint32_t__value) && (uint32_t__value == 10u));
 

@@ -436,6 +436,8 @@ function testCharging(win, doc) {
 function testImbalance(win, doc) {
     console.log('\nscenario 5 - imbalance / عدم‌توازن');
 
+    check(doc.getElementById('q111').getAttribute('max') === '18000000',
+          'the in-charge wait editor allows the requested five hours');
     typeInto(win, doc, 'q112', 30000);
     typeInto(win, doc, 'q114', 10);
     typeInto(win, doc, 'q115', 3600000);
@@ -740,6 +742,24 @@ async function testSendQueue(win, doc) {
     check(doc.getElementById('sbar').className === 'on' &&
           doc.getElementById('sbn').textContent === '1',
           'the global bar appears and counts the pending edit');
+
+    /* An out-of-range pending value is rejected locally: no /s is sent and
+       the report names the exact id, name, value and board-side consequence.
+       / مقدار خارج از بازه پیش از هر POST محلی رد می‌شود. */
+    win.qput(111, 18000001);
+    await win.sendall();
+    check(posts.length === 0 && win.PEND['111'] === 18000001,
+          'an out-of-range pending value blocks the whole batch before POST');
+    const rangeReport = doc.getElementById('srsm').textContent;
+    check(rangeReport.indexOf('شناسهٔ 111') >= 0 &&
+          rangeReport.indexOf('صبر پس از شروع شارژ') >= 0 &&
+          rangeReport.indexOf('18000001') >= 0 &&
+          rangeReport.indexOf('18000000') >= 0 &&
+          rangeReport.indexOf('نمی‌پذیرد') >= 0 &&
+          rangeReport.indexOf('clamp') >= 0,
+          'the blocked report explains id, name, value, range and board clamp/reject',
+          rangeReport);
+    win.pclr(111);
 
     /* Undo puts the board value back and empties the queue. */
     win.D = { p: { 38: 1000 }, t: new Array(25).fill(0), q: 0, q2: 0, q3: 0, q4: 0, fl: 0, on: 1 };

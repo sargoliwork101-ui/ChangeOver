@@ -190,7 +190,7 @@ extern "C" {
  *      workshop, tight enough that a typo cannot create a dead monitor.
  * [FA] پنجره‌های گیره برای هر شناسه. */
 #define IMBAL_MAX_LIMIT_MV                   2000u     /* [EN] ids 108/109 / برای ۱۰۸/۱۰۹ */
-#define IMBAL_MAX_WAIT_MS                    3600000u  /* [EN] ids 110/111، تا ۱ ساعت */
+#define IMBAL_MAX_WAIT_MS                    18000000u /* [EN] ids 110/111، تا ۵ ساعت */
 #define IMBAL_MIN_STABILITY_MS               1000u     /* [EN] id 112, at least 1 s */
 #define IMBAL_MAX_STABILITY_MS               600000u
 #define IMBAL_MAX_HYSTERESIS_MV              1000u     /* [EN] id 113 */

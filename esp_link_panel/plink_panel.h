@@ -365,7 +365,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 30318b9</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build feeb611</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -722,7 +722,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <div class="sx">این چهار عدد جلوی قضاوت زودهنگام را می‌گیرند:<br><br><b>صبر پس از پایان شارژ</b> = تا این مدت نگذرد، سنجش انجام نمی‌شود (۰ = این حالت اصلاً سنجیده نشود).<br><b>صبر پس از شروع شارژ</b> = همان قاعده برای ابتدای شارژ.<br><b>دلیل:</b> درست بعد از شارژ یا دشارژ، ولتاژ هنوز ننشسته و اختلافِ دیده‌شده واقعی نیست.<br><b>پایداری رویداد</b> = اختلاف باید این‌قدر پیوسته بالای حد بماند تا یک رویداد ثبت شود.<br><b>بازگشت (<span class="n">hysteresis</span>)</b> = رویداد تا وقتی اختلاف این‌قدر پایین نیاید بسته نمی‌شود، تا یک خرابی طولانی چندبار شمرده نشود.</div>
 <div class="bqr">
 <label>صبر پس از پایان شارژ (ms)<input type="number" id="q110" step="60000" min="0" max="3600000"><span class="lb" id="a110"></span></label>
-<label>صبر پس از شروع شارژ (ms، ۰=خاموش)<input type="number" id="q111" step="60000" min="0" max="3600000"><span class="lb" id="a111"></span></label>
+<label>صبر پس از شروع شارژ (ms، ۰=خاموش)<input type="number" id="q111" step="60000" min="0" max="18000000"><span class="lb" id="a111"></span></label>
 <label>پایداری رویداد (ms)<input type="number" id="q112" step="1000" min="1000" max="600000"><span class="lb" id="a112"></span></label>
 <label>Hysteresis رویداد (mV)<input type="number" id="q113" step="50" min="0" max="1000"><span class="lb" id="a113"></span></label>
 </div>
@@ -1015,8 +1015,42 @@ function sdlg(kind,head,body,retry){const w=$('sres');if(!w)return;
  $('srsa').innerHTML=(retry?'<button class="sb brun" onclick="sdlgx();sendall()">دوباره بفرست</button>':'')
   +'<button class="sb sb2" onclick="sdlgx()">باشه، بستن</button>';}
 const sdlgl=a=>'<ul>'+a.map(x=>'<li><code>'+esc(x)+'</code></li>').join('')+'</ul>';
+/* [EN] Shared min/max contract for manual/import pending values; metadata
+   only, never a board write. [FA] قرارداد مشترک ‎min/max‎ برای تغییر دستی و
+   import صف‌شده؛ فقط شناسنامه، بدون نوشتن روی برد. */
+function pmeta(id){
+ const n=+id,e=pctrl(n),schema=(typeof P!=='undefined'&&P[n])?P[n]:null;
+ let lo=null,hi=null,unit=schema?schema[1]:'';
+ if(e&&e.type==='checkbox'){lo=0;hi=1;unit='';}
+ else if(e&&e.min!==''&&e.max!==''){lo=+e.min;hi=+e.max;}
+ else if(schema&&Number.isFinite(+schema[2])&&Number.isFinite(+schema[3])){lo=+schema[2];hi=+schema[3];}
+ if(!Number.isFinite(lo)||!Number.isFinite(hi))return null;
+ let name='پارامتر '+n;
+ if(typeof PX!=='undefined'&&PX[n])name=PX[n][0];
+ else if(n===111)name='صبر پس از شروع شارژ';
+ else if(e&&e.closest){const l=e.closest('label');if(l)name=l.textContent.replace(/\s+/g,' ').trim().replace(/در صف$|…$|خطا$/,'').trim();}
+ if(!unit&&e&&e.closest){const l=e.closest('label'),m=l&&l.textContent.match(/\((ms|mV|mA|٪|‰)/);if(m)unit=m[1];}
+ return {id:n,name,unit,lo,hi};}
+function prange(v){return (Number.isFinite(v.lo)?v.lo:'؟')+' تا '+(Number.isFinite(v.hi)?v.hi:'؟')+(v.unit?' '+v.unit:'');}
+/* [EN] Block the first POST /s and report the raw pending value.
+   [FA] پیش از اولین ‎POST /s‎ متوقف کن و مقدار خام صف را گزارش بده. */
+function pvalidate(ids){return ids.map(id=>{
+ const m=pmeta(id),raw=PEND[id],n=Number(raw);
+ if(!m)return null;
+ if(!Number.isFinite(n)||n<m.lo||n>m.hi)
+  return 'شناسهٔ '+id+' — '+m.name+'؛ مقدار واردشده: '+String(raw)+'؛ بازهٔ مجاز: '+prange(m)+'؛ برد این مقدار خارج از بازه را نمی‌پذیرد و روی برد نمی‌نشیند (ممکن است آن را clamp کند یا اصلاً اعمال نکند).';
+ return null;}).filter(Boolean);}
 async function sendall(){
  if(!Object.keys(PEND).length)return;
+ const queued=Object.keys(PEND);
+ const rangeErrors=pvalidate(queued);
+ if(rangeErrors.length){
+  const head='⛔ ارسال متوقف شد — مقدار خارج از بازهٔ مجاز است';
+  const body='هیچ POST /s برای این دسته ارسال نشد. مقدارهای زیر را اصلاح کنید؛ سپس همین دکمهٔ ارسال سراسری را بزنید.'+
+   sdlgl(rangeErrors)+'<br>تا اصلاح همهٔ موارد، کل صف دست‌نخورده می‌ماند و چیزی خودکار روی برد نوشته نمی‌شود.';
+  stxt('sbst',head+' · '+rangeErrors.length+' مورد نیاز به اصلاح دارد');
+  sdlg('bad',head,body,0);return;
+ }
  /* v1.56: قوانین مشترک اینجا اعمال می‌شوند، نه روی برد */
  const v=rsnap(),fixed=fixrules(v).filter(f=>rknown(f[0])),fixtxt=[];
  fixed.forEach(f=>{const id=f[0];qput(id,v[id]);const e=$('q'+id);if(e)e.value=v[id];
