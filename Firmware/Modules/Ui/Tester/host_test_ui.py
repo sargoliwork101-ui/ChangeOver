@@ -450,8 +450,15 @@ def run_batlost_tests():
     assert_true("func__Charger_IsAnyChannelActive()" in ui_led_c, "charging yellow must be gated by the charger being active (user directive)")
     assert_true('#include "charger.h"' in ui_led_c, "ui must include charger.h for the activity query")
     ov_idx = ui_led_c.find("func__Ui_ScenarioInputOverVoltage_Tick();\n        return;")
-    bl_idx = ui_led_c.find("func__Ui_ScenarioBatLost_Tick();")
+    ui_tick_idx = ui_led_c.find("void func__Ui_Tick")
+    bl_idx = ui_led_c.find("func__Ui_ScenarioBatLost_Tick();", ui_tick_idx)
     assert_true(ov_idx != -1 and bl_idx != -1 and ov_idx < bl_idx, "batlost has priority right after overvoltage")
+    run_idx = ui_led_c.find("void func__Ui_ScenarioBatteryRun_Tick")
+    run_end = ui_led_c.find("/* ==================== Ui Tick", run_idx)
+    run_body = ui_led_c[run_idx:run_end]
+    assert_true("func__Fault_Get() & FAULT_CHARGER_BAT_LOST" in run_body and
+                "func__Ui_ScenarioBatLost_Tick();" in run_body,
+                "BatteryRun cannot start its critical beep while BatLost is latched")
     print("BatLost scenario PASS")
 
 UI_ALARM_DEFAULTS = {

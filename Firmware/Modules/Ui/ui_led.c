@@ -1598,6 +1598,20 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 {
+#if MODULE_FAULT
+    /* [EN] Defensive priority guard: if a battery-lost fault reaches this
+       helper directly, it must replace BatteryRun before the one-shot empty
+       battery beep can start. Fault clear is the battery-return boundary.
+       [FA] نگهبان اولویت: اگر این helper مستقیم با فالت قطع باتری صدا زده
+       شد، پیش از شروع بوق باتری خالی همان سناریو را جایگزین کن؛ پاک‌شدن
+       فالت مرز برگشت باتری است. */
+    if ((func__Fault_Get() & FAULT_CHARGER_BAT_LOST) != FAULT_NONE)
+    {
+        func__Ui_ScenarioBatLost_Tick();
+        return;
+    }
+#endif
+
     uint8_t uint8_t__rawPercent;
     uint8_t uint8_t__stablePercent;
     uint32_t uint32_t__remainingPercent;
