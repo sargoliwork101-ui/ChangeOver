@@ -46,7 +46,7 @@ static bool BOOL__G__ChangeoverProtectAsserted = false;
  * @brief  [EN] Tick at which the current cut condition became continuously true.
  *         [FA] تیکی که در آن شرط قطع به‌صورت پیوسته true شد.
  */
-static uint32_t TICK_T__G__CutStartTick = 0u;
+static uint32_t UINT32_T__G__CutStartTick = 0u;
 
 /**
  * @brief  [EN] Whether a cut condition is currently being timed.
@@ -68,7 +68,7 @@ static bool BOOL__G__LowBatteryLatched = false;
  * @brief  [EN] Tick at which the reconnect condition became continuously true.
  *         [FA] تیکی که در آن شرط وصل مجدد به‌صورت پیوسته true شد.
  */
-static uint32_t TICK_T__G__ReconnectStartTick = 0u;
+static uint32_t UINT32_T__G__ReconnectStartTick = 0u;
 
 /**
  * @brief  [EN] Whether a reconnect condition is currently being timed.
@@ -86,9 +86,9 @@ void func__Changeover_Init(void)
 {
     APP_STATE_T__G__State = APP_STATE_BOOT;
     BOOL__G__ChangeoverProtectAsserted = false;
-    TICK_T__G__CutStartTick = 0u;
+    UINT32_T__G__CutStartTick = 0u;
     BOOL__G__CutTimerActive = false;
-    TICK_T__G__ReconnectStartTick = 0u;
+    UINT32_T__G__ReconnectStartTick = 0u;
     BOOL__G__ReconnectTimerActive = false;
     BOOL__G__LowBatteryLatched = false;
 }
@@ -222,16 +222,34 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     }
 
     /* [EN] Evaluate cut conditions (require continuous 3000ms):
-          - gated cut: v <21000 AND the internal low-battery latch is set
+          - gated cut: the internal low-battery latch is set (closes below
+            21000 mV, opens only at or above 21200 mV)
           - independent cut: v <20800 independent of the latch
-       [FA] شرایط قطع ارزیابی می‌شوند. */
+
+          v1.81 (user order 2026-10-06, after the 2026-10-05 review): the
+          gated cut now tests the LATCH ALONE. Before, the second term
+          repeated the very comparison that had just set the latch, so the
+          21000/21200 hysteresis shaped the latch and nothing else: a pack
+          that climbed to 21100 mV on second 2 of the 3 s window simply
+          froze the cut timer and kept feeding the load while still weak.
+          With the latch as the only term, the countdown keeps running
+          until the pack really passes CLEAR_MV (21200) and opens the
+          latch. The critical cut below CRITICAL_CUT_MV is untouched, the
+          3 s filter is untouched, and reconnect is untouched.
+       [FA] نسخهٔ ۱٫۸۱ (دستور کاربر ۲۰۲۶-۱۰-۰۶، پس از بازبینی ۲۰۲۶-۱۰-۰۵):
+          قطعِ نرم حالا فقط به «قفل» نگاه می‌کند. قبلاً شرط دوم همان
+          مقایسه‌ای را تکرار می‌کرد که یک لحظه پیش قفل را بسته بود، پس
+          هیسترزیس ‎21000/21200‎ تنها شکل قفل را می‌ساخت: باتری‌ای که در
+          ثانیهٔ دوم به ۲۱۱۰۰ میلی‌ولت می‌رسید، تایمر قطع را می‌خواباند و
+          با وجود ضعف همچنان بار را تغذیه می‌کرد. حالا شمارش تا وقتی ولتاژ
+          واقعاً از ‎CLEAR_MV‎ (۲۱۲۰۰) رد نشود ادامه دارد. قطع بحرانی زیر
+          ‎CRITICAL_CUT_MV‎، فیلتر ۳ ثانیه و مسیر وصل مجدد دست‌نخورده‌اند. */
     bool__cutCondition = false;
     if (measurement_snapshot_t__snap->v_bat24_mv < CHANGEOVER_BAT_CRITICAL_CUT_MV)
     {
         bool__cutCondition = true;
     }
-    else if ((measurement_snapshot_t__snap->v_bat24_mv < CHANGEOVER_BAT_LOW_ALARM_CUT_MV) &&
-             (BOOL__G__LowBatteryLatched == true))
+    else if (BOOL__G__LowBatteryLatched == true)
     {
         bool__cutCondition = true;
     }
@@ -245,13 +263,13 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         if (BOOL__G__CutTimerActive == false)
         {
             BOOL__G__CutTimerActive = true;
-            TICK_T__G__CutStartTick = uint32_t__nowTick;
+            UINT32_T__G__CutStartTick = uint32_t__nowTick;
         }
         else
         {
             uint32_t uint32_t__elapsedTicks;
 
-            uint32_t__elapsedTicks = uint32_t__nowTick - TICK_T__G__CutStartTick;
+            uint32_t__elapsedTicks = uint32_t__nowTick - UINT32_T__G__CutStartTick;
             if (uint32_t__elapsedTicks >= uint32_t__durationTicks)
             {
                 if (BOOL__G__ChangeoverProtectAsserted == false)
@@ -335,7 +353,17 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     }
 
     /* [EN] Evaluate reconnect: input_present true AND v >=21200 for 3000ms continuous.
-       [FA] وصل مجدد فقط وقتی ورودی حاضر و ولتاژ باتری >=21200 به مدت 3 ثانیه. */
+          CONFIRMED 2026-10-06 (user decision): requiring the input is
+          DELIBERATE. After a low-battery cut the pack voltage recovers on
+          its own once the load is gone; reconnecting without mains would
+          just put the load back on a weak pack and start a cut/reconnect
+          cycle. The battery stays parked until a real charging source is
+          present. Do not "fix" this.
+       [FA] وصل مجدد فقط وقتی ورودی حاضر و ولتاژ باتری >=21200 به مدت ۳ ثانیه.
+          تأییدشده ۲۰۲۶-۱۰-۰۶ (تصمیم کاربر): شرطِ حضور ورودی عمدی است. پس از
+          قطعِ باتری ضعیف، با برداشته‌شدن بار ولتاژ خودبه‌خود بالا می‌آید؛ وصل
+          بدون برق فقط بار را دوباره روی باتری ضعیف می‌گذارد و چرخهٔ
+          قطع/وصل می‌سازد. این را «اصلاح» نکنید. */
     bool__reconnectCondition = false;
     if ((measurement_snapshot_t__snap->input_present == true) &&
         (measurement_snapshot_t__snap->v_bat24_mv >= CHANGEOVER_BAT_RECONNECT_MV))
@@ -352,7 +380,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         if (BOOL__G__ReconnectTimerActive == false)
         {
             BOOL__G__ReconnectTimerActive = true;
-            TICK_T__G__ReconnectStartTick = uint32_t__nowTick;
+            UINT32_T__G__ReconnectStartTick = uint32_t__nowTick;
             /* [EN] While waiting for reconnect duration, keep SAFE if already cut,
                   otherwise report INPUT.
                [FA] در انتظار reconnect، اگر قبلاً قطع شده SAFE بماند. */
@@ -369,7 +397,7 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         {
             uint32_t uint32_t__elapsedTicks;
 
-            uint32_t__elapsedTicks = uint32_t__nowTick - TICK_T__G__ReconnectStartTick;
+            uint32_t__elapsedTicks = uint32_t__nowTick - UINT32_T__G__ReconnectStartTick;
             if (uint32_t__elapsedTicks >= uint32_t__durationTicks)
             {
                 if (BOOL__G__ChangeoverProtectAsserted == true)

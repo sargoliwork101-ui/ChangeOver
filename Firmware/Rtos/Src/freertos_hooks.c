@@ -41,8 +41,24 @@
    استفاده نکرده است. */
 #pragma message("ChangeOver flash diet 2026-10-03 ACTIVE: configUSE_TIMERS=0, timers.c and queue.c are out (~3 KB)")
 
-static StaticTask_t s_idle_tcb;
-static StackType_t s_idle_stack[configMINIMAL_STACK_SIZE];
+/* [EN] Clean-up 2026-10-06: these four statics were the only ones in the
+ *      firmware still using the FreeRTOS "s_" style instead of the project's
+ *      TYPE__G__Name rule. Renamed only - same storage, same linkage.
+ * [FA] پاک‌سازی ۲۰۲۶-۱۰-۰۶: این چهار استاتیک تنها جاهایی بودند که به‌جای
+ *      قاعدهٔ ‎TYPE__G__Name‎ پروژه از سبک ‎"s_"‎ فری‌آرتوس استفاده می‌کردند.
+ *      فقط نام عوض شده؛ حافظه و لینکیج یکی است. */
+static StaticTask_t STATICTASK_T__G__IdleTcb;
+static StackType_t  STACKTYPE_T__G__A__IdleStack[configMINIMAL_STACK_SIZE];
+
+/* [EN] Vector-table and kernel callback entry points have no header of their
+ *      own in this tree; declaring them here documents the external linkage
+ *      and keeps -Wmissing-prototypes quiet.
+ * [FA] این نقاط ورود هدر اختصاصی ندارند؛ اعلان اینجا لینکیج بیرونی را مستند
+ *      می‌کند و هشدار ‎-Wmissing-prototypes‎ را می‌بندد. */
+void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer,
+                                   StackType_t **ppxIdleTaskStackBuffer,
+                                   uint32_t *pulIdleTaskStackSize);
+void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName);
 
 /**
  * @brief  [EN] Provide RAM for the Idle task (static allocation).
@@ -52,14 +68,18 @@ void vApplicationGetIdleTaskMemory(StaticTask_t **ppxIdleTaskTCBBuffer,
                                    StackType_t **ppxIdleTaskStackBuffer,
                                    uint32_t *pulIdleTaskStackSize)
 {
-    *ppxIdleTaskTCBBuffer = &s_idle_tcb;
-    *ppxIdleTaskStackBuffer = s_idle_stack;
+    *ppxIdleTaskTCBBuffer = &STATICTASK_T__G__IdleTcb;
+    *ppxIdleTaskStackBuffer = STACKTYPE_T__G__A__IdleStack;
     *pulIdleTaskStackSize = (uint32_t)configMINIMAL_STACK_SIZE;
 }
 
 #if (configUSE_TIMERS == 1)
-static StaticTask_t s_timer_tcb;
-static StackType_t s_timer_stack[configTIMER_TASK_STACK_DEPTH];
+static StaticTask_t STATICTASK_T__G__TimerTcb;
+static StackType_t  STACKTYPE_T__G__A__TimerStack[configTIMER_TASK_STACK_DEPTH];
+
+void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
+                                    StackType_t **ppxTimerTaskStackBuffer,
+                                    uint32_t *pulTimerTaskStackSize);
 
 /**
  * @brief  [EN] Provide RAM for the Timer service task.
@@ -69,8 +89,8 @@ void vApplicationGetTimerTaskMemory(StaticTask_t **ppxTimerTaskTCBBuffer,
                                     StackType_t **ppxTimerTaskStackBuffer,
                                     uint32_t *pulTimerTaskStackSize)
 {
-    *ppxTimerTaskTCBBuffer = &s_timer_tcb;
-    *ppxTimerTaskStackBuffer = s_timer_stack;
+    *ppxTimerTaskTCBBuffer = &STATICTASK_T__G__TimerTcb;
+    *ppxTimerTaskStackBuffer = STACKTYPE_T__G__A__TimerStack;
     *pulTimerTaskStackSize = (uint32_t)configTIMER_TASK_STACK_DEPTH;
 }
 #endif

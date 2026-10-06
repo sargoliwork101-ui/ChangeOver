@@ -79,7 +79,7 @@ Measurement) — بعد به mA زنجیره تبدیل و با LUT توانی �
 
 | فایل | نقش |
 |---|---|
-| `charger.h` / `charger.c` | policy عمومی روی state مستقل هر کانال |
+| `charger.h` / `charger.c` | policy عمومی روی state مستقل هر کانال؛ تعداد کانال‌ها تنها در `CHG_CHANNEL_COUNT` (در `charger.h`) تعریف شده و همهٔ حلقه‌ها، بررسی‌های مرزی و ابعاد آرایه‌ها از همان یک ثابت می‌آیند (پاک‌سازی ۲۰۲۶-۱۰-۰۶) |
 | `../../Config/Inc/app_types.h` | `VLOW` و `VHIGH` مستقل در snapshot |
 | `../../Modules/Measurement/measurement.c` | محاسبهٔ `VLOW = MID-GND` و `VHIGH = V24-MID` |
 | `../../Bsp/Src/bsp_pwm.c` | اعمال duty به PWM منطقی انتخاب‌شده |
@@ -166,3 +166,11 @@ LM393/رله نیست. شارژر اکنون با `CHG_MASTER_ENABLE=1` فعال
 electronic load با voltage clamp (مقاومت آزاد شبیه‌ساز باتری نیست —
 `CHG_MIN_VALID_BATTERY_MV` در `charger.h`).
 current-limit ورودی جای current-limit خروجی firmware را نمی‌گیرد.
+
+## ماشین حالت
+
+`Charger_State_Machine.xlsx` — حالت‌ها و گذارهای همین ماژول، رنگی و
+راست‌به‌چپ با فونت وزیرمتن. از برگهٔ «ماشین حالت» در فایل اعتبارسنجی همین
+پوشه هم به آن لینک هست و خودش به نمای سیستمی
+(`Documentation/System_State_Machine.xlsx`) برمی‌گردد. بازتولید:
+`python3 tools/make_module_state_machines.py`.

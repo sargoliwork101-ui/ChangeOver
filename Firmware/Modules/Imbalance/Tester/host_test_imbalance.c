@@ -37,7 +37,29 @@ int main(void)
 
     printf("== Imbalance host test (scenario 5) ==\n");
 
+    /* ---- v1.81 regression: boot order "NVM replay -> Init" ----
+       [EN] func__EspLink_NvmInit() replays the stored panel values BEFORE the
+            scheduler starts, while func__Imbalance_Init() runs later inside
+            the control thread. A stored setting must therefore survive Init;
+            the old unconditional default loop wiped it on every power-up
+            (audit 2026-10-06). Params not present in the record must still
+            come up with their compiled default.
+       [FA] بازپخش ‎NVM‎ پیش از ‎scheduler‎ و ‎Init‎ بعد از آن اجرا می‌شود، پس
+            مقدار ذخیره‌شده باید از ‎Init‎ جان سالم به‌در ببرد؛ قبلاً هر بار
+            روشن‌شدن پاک می‌شد. پارامتر غایب در رکورد باید پیش‌فرض بگیرد. */
+    CHECK(func__Imbalance_SetParam(108u, 777u, &uint32_t__value) && (uint32_t__value == 777u));
+    CHECK(func__Imbalance_SetParam(113u, 250u, &uint32_t__value) && (uint32_t__value == 250u));
+
     func__Imbalance_Init();
+
+    CHECK(func__Imbalance_GetParam(108u, &uint32_t__value) && (uint32_t__value == 777u));
+    CHECK(func__Imbalance_GetParam(113u, &uint32_t__value) && (uint32_t__value == 250u));
+    CHECK(func__Imbalance_GetParam(109u, &uint32_t__value) && (uint32_t__value == 500u));
+
+    /* [EN] Back to the compiled defaults for the checks that follow.
+       [FA] بازگشت به پیش‌فرض‌ها برای بررسی‌های بعدی. */
+    CHECK(func__Imbalance_SetParam(108u, 300u, &uint32_t__value) && (uint32_t__value == 300u));
+    CHECK(func__Imbalance_SetParam(113u, 100u, &uint32_t__value) && (uint32_t__value == 100u));
 
     /* ---- defaults ---- */
     CHECK(func__Imbalance_GetParam(108u, &uint32_t__value) && (uint32_t__value == 300u));
@@ -53,6 +75,27 @@ int main(void)
     CHECK(func__Imbalance_GetParam(118u, &uint32_t__value) && (uint32_t__value == 20u));
     CHECK(!func__Imbalance_GetParam(107u, &uint32_t__value));
     CHECK(!func__Imbalance_GetParam(119u, &uint32_t__value));
+
+    /* ---- v1.81 validation gap: the latch-blink block (123/124) ----
+       [EN] These two ids live in the SECOND owned block, so they also check
+            IMBAL_PARAM_INDEX()'s two-block mapping. Period 0 is a legal
+            "blink off" value; any other value is clamped into
+            100..10000 ms, and the duty into 5..95 %.
+       [FA] این دو شناسه در بلوک دوم جدول‌اند و نگاشت دو-بلوکی را هم می‌سنجند.
+            دورهٔ صفر یعنی «چشمک خاموش» و مجاز است؛ باقی مقادیر به
+            ۱۰۰..۱۰۰۰۰ms و وظیفه به ۵..۹۵٪ گیره می‌شوند. */
+    CHECK(func__Imbalance_GetParam(123u, &uint32_t__value) && (uint32_t__value == 1000u));
+    CHECK(func__Imbalance_GetParam(124u, &uint32_t__value) && (uint32_t__value == 50u));
+    CHECK(!func__Imbalance_GetParam(122u, &uint32_t__value));
+    CHECK(!func__Imbalance_GetParam(125u, &uint32_t__value));
+    CHECK(func__Imbalance_SetParam(123u, 0u, &uint32_t__value) && (uint32_t__value == 0u));
+    CHECK(func__Imbalance_SetParam(123u, 1u, &uint32_t__value) && (uint32_t__value == 100u));
+    CHECK(func__Imbalance_SetParam(123u, 99999u, &uint32_t__value) && (uint32_t__value == 10000u));
+    CHECK(func__Imbalance_SetParam(124u, 0u, &uint32_t__value) && (uint32_t__value == 5u));
+    CHECK(func__Imbalance_SetParam(124u, 100u, &uint32_t__value) && (uint32_t__value == 95u));
+    /* [EN] Back to the compiled defaults. / [FA] بازگشت به پیش‌فرض. */
+    CHECK(func__Imbalance_SetParam(123u, 1000u, &uint32_t__value) && (uint32_t__value == 1000u));
+    CHECK(func__Imbalance_SetParam(124u, 50u, &uint32_t__value) && (uint32_t__value == 50u));
 
     /* ---- clamp ---- */
     uint32_t__value = 0u;

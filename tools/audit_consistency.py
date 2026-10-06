@@ -846,7 +846,7 @@ def sec_panel(ids):
         ok(chg_base == imb_base + len(idef),
            "CDEF does not start where IDEF ends",
            f"charge map starts at {chg_base}, imbalance block ends at {imb_base + len(idef) - 1}")
-        ok(len(cdef) == 9,
+        ok(len(cdef) == 13,
            "CDEF must cover the charge map (119/120), band 2's beep shape "
            "(121/122), the imbalance latch blink (123/124, v1.68) and the "
            "dead-battery scenario 6 (125..127, v1.72)",
@@ -885,7 +885,8 @@ def sec_panel(ids):
         #      پیکسل غلط: پیش از v1.28 هر شناسهٔ ۶۴ به بالا در کلمهٔ سوم
         #      می‌رفت، یعنی شناسهٔ ۹۶ می‌شد 1UL << 32. شیفت مدولو-۳۲ پنل آن را
         #      پنهان می‌کرد.
-        words = 4
+        # v1.80: ids 128..131 needed a fifth word on both sides.
+        words = 5
         ok(hi < words * 32, "pending-mask has no word for the top id",
            f"id {hi} needs word {hi // 32 + 1} of {words}")
         p_http = read("esp_link_panel/plink_http.h")
@@ -899,7 +900,7 @@ def sec_panel(ids):
             ok(f"(1<<(id-{lo_b}))" in P_PAN,
                "the panel pending-mask has no arm for this word",
                f"apend() must handle ids {lo_b}..{lo_b + 31}")
-        ok("static_assert(ESP_PARAM_COUNT <= 128" in p_http,
+        ok("static_assert(ESP_PARAM_COUNT <= 160" in p_http,
            "nothing stops the next parameter block from overflowing the masks")
 
         # [EN] The sketch is C++, so _Static_assert (a C11 keyword) does not
@@ -923,6 +924,60 @@ def sec_panel(ids):
     #      that writes a default nobody printed is exactly the drift this
     #      audit exists to catch.
     # [FA] هر شناسهٔ UDEF باید پیش‌فرض داشته باشد و در دو سناریو تکرار نشود.
+    # [EN] v1.79 (user: "what is this? there used to be a LED behind it" - the
+    #      .bit LEDs had markup but no CSS rule at all, so they were invisible):
+    #      every class that appears in the panel markup must have a stylesheet
+    #      rule, unless it is a pure JavaScript hook listed below.
+    # [FA] هر کلاسی که در مارک‌آپ پنل هست باید قاعدهٔ CSS داشته باشد، مگر
+    #      کلاس‌هایی که فقط قلّاب جاوااسکریپت‌اند.
+    JS_HOOK_CLASSES = {"qmv", "qgm", "qgcm", "qglm", "qwm", "dl", "c3"}
+    style = P_PAN.split("</style>")[0]
+    styled = set(re.findall(r"\.([A-Za-z][\w-]*)", style))
+    marked = set()
+    for grp in re.findall(r'class=\\?"([^"\\]+)', P_PAN):
+        for cl in grp.split():
+            if re.fullmatch(r"[A-Za-z][\w-]*", cl):
+                marked.add(cl)
+    unstyled = sorted(marked - styled - JS_HOOK_CLASSES)
+    ok(not unstyled,
+       "a class used in the panel markup has no CSS rule (it renders unstyled)",
+       f"unstyled: {unstyled}")
+    ok(".bit.set" in P_PAN and ".bit.set.on" in P_PAN,
+       "a latched fault bit must be visible at all times, not only on the blink phase")
+
+    # [EN] v1.78 (user order): the two "after the lock, drop the battery from
+    #      the output too" switches are stored yes/no settings, so they must be
+    #      checkboxes - never buttons, which read as "press to act now".
+    # [FA] دو کلید مسدودی خروجی باید چک‌باکس باشند، نه دکمه.
+    for cid, pid in (("ib117", 117), ("db127", 127)):
+        ok(f'<input type="checkbox" id="{cid}">' in P_PAN,
+           f"the output-block switch {cid} (param {pid}) is not a checkbox")
+        ok(f'id="{cid}">' not in P_PAN.replace(f'<input type="checkbox" id="{cid}">', ""),
+           f"{cid} still exists as a button as well")
+        ok(f"$('{cid}')" in P_PAN and f"send({pid}," in P_PAN,
+           f"{cid} does not write param {pid} back to the board")
+
+    # [EN] v1.77 (user question: "with one beep, what does a gap even mean?"
+    #      and "do it everywhere, not just in some sections"): every writable
+    #      "gap between beeps" field must be listed in GAPOF so it switches
+    #      itself off when its band asks for a single beep - and nothing that
+    #      is not a gap may be listed there.
+    # [FA] هر کادر «گپ بین بوق‌ها» باید در GAPOF باشد و فقط گپ‌ها آنجا باشند.
+    gaps = set(re.findall(r'گپ بین بوق‌ها[^<]*<input type="number" id="q(\d+)"', P_PAN))
+    gapof = re.search(r"const GAPOF=\[(.*?)\];", P_PAN)
+    ok(gapof is not None, "the GAPOF table that disables a meaningless gap is missing")
+    if gapof:
+        listed = set(re.findall(r"\[(\d+),\[", gapof.group(1)))
+        ok(gaps <= listed,
+           "a gap field can still be typed into while its band asks for one beep",
+           f"not in GAPOF: {sorted(gaps - listed)}")
+        ok(listed <= gaps,
+           "GAPOF disables a field that is not a gap between beeps",
+           f"listed but not a gap: {sorted(listed - gaps)}")
+        for key, users in re.findall(r"\[(\d+),\[([0-9,]+)\]\]", gapof.group(1)):
+            ok(all(u.strip() for u in users.split(",")),
+               f"gap {key} has an empty user list")
+
     ok("function sdef(" not in P_PAN,
        "the all-in-one scenario reset button came back",
        "the user asked for one key per scenario instead")
@@ -1145,6 +1200,74 @@ def sec_hardware():
     ok(ids_used == set(range(n_ch)),
        "BSP ADC channel indices are not 0..COUNT-1",
        f"{sorted(ids_used)} vs 0..{n_ch - 1}")
+
+
+# ====================================================== 7b. flash storage map
+def sec_flash_map():
+    """[EN] The on-chip flash data area: the driver's writable window, the two
+       owners inside it (EspLink parameter banks, CalLut table) and the
+       linker script must all agree, and the two owners must not overlap.
+       Added 2026-10-05 after v1.80 moved the parameter bank below the
+       window the driver accepted: every save was refused on the board and
+       no gate saw it, because the host tests emulate flash in RAM.
+       [FA] نقشهٔ ناحیهٔ دادهٔ فلش: پنجرهٔ مجاز درایور، دو مالک داخل آن و
+       لینکر اسکریپت باید بخوانند و دو مالک نباید هم‌پوشانی کنند."""
+    bsp_flash_h = read("Firmware/Bsp/Inc/bsp_flash.h")
+    bsp_flash_c = read("Firmware/Bsp/Src/bsp_flash.c")
+    nvm_h = read("Firmware/Modules/EspLink/esp_link_nvm.h")
+    lut_h = read("Firmware/Modules/CalLut/cal_lut.h")
+    ld = read("CubeIDE/STM32CubeIDE/STM32F103C8TX_FLASH.ld")
+
+    def hexdef(text, name):
+        m = re.search(r"#define\s+" + name + r"\s+(0x[0-9A-Fa-f]+)u", text)
+        return int(m.group(1), 16) if m else None
+
+    win_lo = hexdef(bsp_flash_h, "BSP_FLASH_STORAGE_BASE_ADDR")
+    win_hi = hexdef(bsp_flash_h, "BSP_FLASH_STORAGE_END_ADDR")
+    page = hexdef(bsp_flash_h, "BSP_FLASH_PAGE_SIZE_BYTES")
+    if not ok(None not in (win_lo, win_hi, page),
+              "bsp_flash.h no longer declares the writable storage window"):
+        return
+
+    # [EN] The guards must USE the window, never a retyped address.
+    ok(re.search(r"0x0800[0-9A-Fa-f]{4}u", bsp_flash_c) is None,
+       "bsp_flash.c hard-codes a flash address again",
+       "the erase/program guards must derive from BSP_FLASH_STORAGE_* only; "
+       "a retyped address is what silently broke saving in v1.80")
+
+    owners = {
+        "EspLink parameter bank": (hexdef(nvm_h, "ESP_LINK_NVM_PAGE_A_ADDR"),
+                                   hexdef(nvm_h, "ESP_LINK_NVM_PAGE_B_ADDR")),
+        "CalLut table": (hexdef(lut_h, "CAL_LUT_PAGE_A_ADDR"),
+                         hexdef(lut_h, "CAL_LUT_PAGE_B_ADDR")),
+    }
+    spans = {}
+    for name, (a, b) in owners.items():
+        if not ok(None not in (a, b), f"{name}: page addresses not found"):
+            continue
+        bank = b - a
+        lo, hi = a, b + bank
+        spans[name] = (lo, hi)
+        ok(lo >= win_lo and hi <= win_hi,
+           f"{name} sits outside the window the flash driver may write",
+           f"{lo:#x}..{hi:#x} vs {win_lo:#x}..{win_hi:#x}")
+        ok(bank % page == 0 and a % page == 0,
+           f"{name} is not aligned to whole {page}-byte erase pages")
+
+    if len(spans) == 2:
+        (n1, (l1, h1)), (n2, (l2, h2)) = spans.items()
+        ok(h1 <= l2 or h2 <= l1,
+           f"{n1} and {n2} overlap in flash",
+           f"{l1:#x}..{h1:#x} vs {l2:#x}..{h2:#x}; separate storage was the order")
+
+    # [EN] The application image must stop where the data window begins.
+    m = re.search(r"FLASH\s*\(rx\)\s*:\s*ORIGIN\s*=\s*(0x[0-9A-Fa-f]+)\s*,"
+                  r"\s*LENGTH\s*=\s*(\d+)K", ld)
+    if ok(m is not None, "the linker script FLASH region could not be parsed"):
+        app_end = int(m.group(1), 16) + (int(m.group(2)) * 1024)
+        ok(app_end <= win_lo,
+           "the application image overlaps the flash data window",
+           f"code ends at {app_end:#x}, data starts at {win_lo:#x}")
 
 
 # ============================================================= 8. charger
@@ -1660,7 +1783,16 @@ def sec_cubeide_includes():
         if not host_src:
             continue
         rel = tester.relative_to(ROOT).as_posix()
-        ok(cproj.count(f'excluding="{rel}"') >= 2,
+        # [EN] CDT stores several excluded folders in ONE attribute, pipe
+        #      separated (excluding="a|b|c"). Count the entries that list this
+        #      folder anywhere inside their list, not only the single-entry
+        #      spelling (fixed 2026-10-06, when the Changeover and Fault host
+        #      testers joined the Imbalance one).
+        # [FA] CDT چند پوشهٔ حذف‌شده را در یک صفت و جداشده با «|» می‌نویسد؛
+        #      پس وجود این پوشه داخل همان فهرست شمرده می‌شود نه فقط حالت تکی.
+        excluded_lists = re.findall(r'excluding="([^"]*)"', cproj)
+        hits = sum(1 for lst in excluded_lists if rel in lst.split("|"))
+        ok(hits >= 2,
            f"host tester {rel} is not excluded from the CubeIDE build (both configs)",
            str([c.name for c in host_src]))
 
@@ -1687,6 +1819,197 @@ def sec_cubeide_includes():
        str(opt_values))
 
 
+# ====================================== 13. validation coverage (2026-10-06)
+
+def sec_state_machine_docs():
+    """
+    [EN] Section 15 - every module carries its own state-machine workbook and
+         its validation workbook points at it. Added 2026-10-06 on user order
+         ("the one big book is too crowded - split it per module and link it
+         from each module's Excel"): a split that nothing enforces drifts
+         back into one stale file plus ten forgotten ones.
+    [FA] بخش ۱۵ - هر ماژول کتاب ماشین حالت خودش را دارد و فایل اعتبارسنجی‌اش
+         به آن اشاره می‌کند. به دستور کاربر اضافه شد؛ تقسیمی که هیچ‌چیز
+         نگهش ندارد، دوباره به یک فایل کهنه و ده فایل فراموش‌شده برمی‌گردد.
+    """
+    import zipfile
+
+    gen = read(ROOT / "tools" / "make_module_state_machines.py")
+    listed = set(re.findall(r'MODULES\["(\w+)"\]', gen))
+
+    ok(len(listed) >= 10,
+       "the module state-machine generator lost its module list",
+       str(sorted(listed)))
+
+    for folder in sorted((ROOT / "Firmware" / "Modules").glob("*")):
+        if not folder.is_dir() or not list(folder.glob("*.c")):
+            continue
+        module = folder.name
+        book = folder / f"{module}_State_Machine.xlsx"
+
+        ok(module in listed,
+           f"module {module} is missing from tools/make_module_state_machines.py",
+           "every module with code needs its own state-machine workbook")
+        ok(book.exists(),
+           f"module {module} has no {module}_State_Machine.xlsx",
+           "regenerate with python3 tools/make_module_state_machines.py")
+
+        # [EN] The validation workbook must link to it: look for the file
+        #      name inside the sheet XML of the workbook archive.
+        # [FA] فایل اعتبارسنجی باید به آن لینک بدهد.
+        vbooks = [v for v in folder.glob("*Validation*.xlsx")]
+        if not vbooks or not book.exists():
+            continue
+        linked = False
+        for v in vbooks:
+            with zipfile.ZipFile(v) as z:
+                for entry in z.namelist():
+                    if entry.endswith(".xml") or entry.endswith(".rels"):
+                        if book.name.encode() in z.read(entry):
+                            linked = True
+                            break
+            if linked:
+                break
+        ok(linked,
+           f"no validation workbook in {module} links to {book.name}",
+           "the «ماشین حالت» sheet is added by tools/make_module_state_machines.py")
+
+
+def sec_simulator_mirror():
+    """
+    [EN] Section 14 - the offline simulator must not invent rules.
+         tools/panel_preview_server.js advertises itself as a mirror of the
+         real clamp windows, and an installer tries numbers there before
+         touching a board. Audit 2026-10-06 found it imposing floors the
+         firmware does not have on the scenario-6 ids (a 30-minute deadline
+         was silently raised to an hour), so the preview disagreed with the
+         very board it previews. These invariants pin the mirror to the
+         firmware tables it mirrors.
+    [FA] بخش ۱۴ - شبیه‌ساز حق ندارد قانون از خودش بسازد. پیش‌نمایش، آینهٔ
+         پنجره‌های واقعی اعلام شده و نصاب پیش از دست‌زدن به برد اعداد را
+         آنجا می‌آزماید. این نامتغیرها آینه را به جدول‌های فرم‌ور میخ می‌کنند.
+    """
+    chg = read(ROOT / "Firmware" / "Modules" / "Charger" / "charger.c")
+    sim = read(ROOT / "tools" / "panel_preview_server.js")
+
+    # [EN] Firmware side: one X-macro row per scenario-6 wire id 125..131.
+    rows = re.findall(r"X\((\w+),\s*(\d+)u,\s*(\d+)u,\s*(\d+)u\)", chg)
+    dead_names = ["TIMEOUT_MS", "RESET_GAP_MS", "BLOCK_OUTPUT", "BEEP_PERIOD_MS",
+                  "BEEP_LEN_MS", "BLINK_PERIOD_MS", "BLINK_DUTY_PCT"]
+    windows = {}
+    for name, lo, hi, _def in rows:
+        if name in dead_names:
+            windows[125 + dead_names.index(name)] = (int(lo), int(hi))
+
+    ok(len(windows) == len(dead_names),
+       "could not parse the scenario-6 window table (CHG_DEAD_ROWS) from charger.c",
+       str(sorted(windows)))
+
+    for wire_id, (lo, hi) in sorted(windows.items()):
+        m = re.search(r"case %d: return clampW\(v, (\d+), (\d+)\);" % wire_id, sim)
+        if m is None:
+            ok(False,
+               f"simulator has no plain clampW mirror for scenario-6 id {wire_id}",
+               "the preview must copy the board window, not invent a 0-or-floor rule")
+            continue
+        ok((int(m.group(1)) == lo) and (int(m.group(2)) == hi),
+           f"simulator clamp window for id {wire_id} does not match charger.c",
+           f"firmware {lo}..{hi}, simulator {m.group(1)}..{m.group(2)}")
+
+    # [EN] Imbalance side: the blink pair 123/124 DOES carry a 0-or-window
+    #      rule in the firmware, so the mirror must keep it - the point is
+    #      that each block is copied as it really is.
+    imb = read(ROOT / "Firmware" / "Modules" / "Imbalance" / "imbalance.h")
+
+    def imb_const(name):
+        m = re.search(r"#define\s+%s\s+(\d+)u" % name, imb)
+        return int(m.group(1)) if m else None
+
+    blink_lo = imb_const("IMBAL_MIN_BLINK_PERIOD_MS")
+    blink_hi = imb_const("IMBAL_MAX_BLINK_PERIOD_MS")
+    duty_lo = imb_const("IMBAL_MIN_BLINK_DUTY_PCT")
+    duty_hi = imb_const("IMBAL_MAX_BLINK_DUTY_PCT")
+
+    m = re.search(r"case 123: return v === 0 \? 0 : clampW\(v, (\d+), (\d+)\);", sim)
+    ok((m is not None) and (int(m.group(1)) == blink_lo) and (int(m.group(2)) == blink_hi),
+       "simulator clamp window for id 123 does not match imbalance.h",
+       f"firmware 0 or {blink_lo}..{blink_hi}")
+
+    m = re.search(r"case 124: return clampW\(v, (\d+), (\d+)\);", sim)
+    ok((m is not None) and (int(m.group(1)) == duty_lo) and (int(m.group(2)) == duty_hi),
+       "simulator clamp window for id 124 does not match imbalance.h",
+       f"firmware {duty_lo}..{duty_hi}")
+
+
+def sec_validation():
+    """[EN] Validation-engineer invariants: every module must carry its own
+       evidence (README + validation workbook), no module Init may undo a
+       stored panel value, and the host tests must actually touch every
+       settable id they claim to validate.
+       [FA] نامتغیرهای نقش اعتبارسنجی: هر ماژول مدرک خودش را دارد
+       (README و کاربرگ اعتبارسنجی)، هیچ ‎Init‎ ماژولی مقدار ذخیره‌شدهٔ پنل را
+       برنمی‌گرداند، و تست‌های هاست واقعاً همهٔ شناسه‌های قابل‌تنظیم را لمس
+       می‌کنند."""
+
+    mod_root = ROOT / "Firmware" / "Modules"
+    for mod in sorted(d for d in mod_root.iterdir() if d.is_dir()):
+        ok((mod / "README.md").exists(),
+           f"module {mod.name} has no README.md",
+           "every module documents itself inside its own folder")
+        ok(any(mod.glob("*Validation*.xlsx")),
+           f"module {mod.name} has no validation workbook",
+           "each module needs a *_Validation.xlsx next to its sources")
+
+    # [EN] Regression guard for the 2026-10-06 defect: func__EspLink_NvmInit()
+    #      replays the stored panel values BEFORE the scheduler starts, while
+    #      the per-module Init runs later inside its thread. A module Init
+    #      that writes its settable-parameter table therefore erases every
+    #      saved setting on each power-up (this is exactly what Imbalance did).
+    # [FA] نگهبان رگرسیون ایراد ۲۰۲۶-۱۰-۰۶: بازپخش NVM پیش از scheduler و
+    #      Init ماژول پس از آن اجرا می‌شود، پس نوشتن جدول پارامتر در Init
+    #      یعنی پاک‌شدن تنظیم‌های ذخیره‌شده با هر بار روشن‌شدن.
+    for src in sorted(mod_root.glob("*/*.c")):
+        text = src.read_text(encoding="utf-8", errors="ignore")
+        # [EN] Strip comments first: a doc block naming the function would
+        #      otherwise anchor the brace matcher inside prose.
+        # [FA] اول کامنت‌ها حذف می‌شوند تا تطبیق آکولاد داخل متن گیر نکند.
+        text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+        text = re.sub(r"//[^\n]*", "", text)
+        tables = set(re.findall(r"static\s+uint32_t\s+(\w*__A__Param)\s*\[", text))
+        if not tables:
+            continue
+        for m in re.finditer(r"\bvoid\s+(func__\w+_Init)\s*\(", text):
+            body = block(text, m.group(0))
+            for tab in tables:
+                ok(not re.search(re.escape(tab) + r"\s*\[[^\]]*\]\s*=", body),
+                   f"{src.name}: {m.group(1)} writes the settable table {tab}",
+                   "the NVM replay runs before the scheduler and this Init runs "
+                   "after it, so every stored panel value would be wiped at boot")
+
+    # [EN] Every id the Imbalance module owns must appear in its host test.
+    # [FA] هر شناسه‌ای که ماژول عدم‌توازن مالک آن است باید در تست هاست بیاید.
+    imb_h = read("Firmware/Modules/Imbalance/imbalance.h")
+    imb_t = read("Firmware/Modules/Imbalance/Tester/host_test_imbalance.c")
+    owned = []
+    first1 = define(imb_h, "IMBAL_PARAM_REST_LIMIT_MV")
+    last1 = define(imb_h, "IMBAL_PARAM_MAX_LATCHED_CYCLES")
+    first2 = define(imb_h, "IMBAL_PARAM_LATCH_BLINK_PERIOD_MS")
+    last2 = define(imb_h, "IMBAL_PARAM_LATCH_BLINK_DUTY_PCT")
+    if None not in (first1, last1, first2, last2):
+        owned = list(range(first1, last1 + 1)) + list(range(first2, last2 + 1))
+    ok(bool(owned), "the Imbalance owned-id range could not be parsed")
+    for pid in owned:
+        ok(re.search(r"\b%du\b" % pid, imb_t) is not None,
+           f"host_test_imbalance.c never touches imbalance param id {pid}",
+           "a settable id with no host coverage is an untested parameter")
+
+    # [EN] The test runners the syntax gate advertises must exist.
+    # [FA] اجراکننده‌های تستی که گیت syntax اعلام می‌کند باید موجود باشند.
+    gate = read("tools/check_firmware_syntax.sh")
+    for runner in re.findall(r"(Firmware/[\w/]+\.sh)", gate):
+        ok((ROOT / runner).exists(), f"the syntax gate calls a missing runner: {runner}")
+
+
 def main():
     ids = sec_ids()
     sec_counts()
@@ -1695,12 +2018,16 @@ def main():
     sec_calibration()
     sec_protocol()
     sec_hardware()
+    sec_flash_map()
     sec_charger()
     sec_single_source()
     sec_link()
     sec_docs()
     sec_preview()
     sec_cubeide_includes()
+    sec_validation()
+    sec_simulator_mirror()
+    sec_state_machine_docs()
 
     print("whole-program consistency audit")
     print("=" * 72)
