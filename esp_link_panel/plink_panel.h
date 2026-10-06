@@ -97,7 +97,7 @@ section{margin-top:12px}
 .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .hd b{font-size:15px;display:flex;align-items:center;gap:8px}
 .hd b::before{content:"";width:4px;height:18px;border-radius:4px;background:linear-gradient(180deg,var(--ac2),var(--ac))}
-.big{display:flex;justify-content:space-between;align-items:baseline;margin:6px 0}.big b{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums}
+.big{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:6px 0}.big b,.big .biglabel{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.25}.big .biglabel{color:var(--tx);display:inline-flex;align-items:baseline;min-width:0}.big .dutybig{cursor:pointer}.big .dutybig:hover{color:var(--ac2)}.big .dutybig:focus-visible{outline:2px solid var(--ac);outline-offset:3px;border-radius:6px}.ceval{color:var(--ac2);border-bottom:1px dashed currentColor;white-space:nowrap}
 .bg2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));gap:0 14px}
 .ch table td.n{text-align:center;white-space:nowrap}
 .bar{height:8px;background:var(--in);border:1px solid var(--ln);border-radius:8px;overflow:hidden;position:relative;margin:5px 0 12px}
@@ -107,12 +107,9 @@ table{width:100%;border-collapse:collapse;font-size:.93em}td{padding:6px 2px;bor
 .bt{width:100%;border:0;border-radius:12px;padding:12px;margin-top:12px;font-weight:700;color:#fff;min-height:44px;transition:filter .15s,transform .05s}
 .bt:active{transform:scale(.99)}
 .cut{background:linear-gradient(180deg,#e5484d,#c62f35)}.run{background:linear-gradient(180deg,#2fbf8f,#1e9e73);color:#04120c}
-.rw{display:grid;grid-template-columns:1fr auto;gap:2px 12px;align-items:center;padding:10px 0;border-top:1px solid var(--ln)}.rw:first-of-type{border-top:0}
-
-.ap{font-size:12px;color:var(--ac2);margin-right:6px}
-.ct{display:flex;align-items:center;gap:6px}
 input[type=number],select{background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:7px 9px;direction:ltr;min-height:36px;transition:border-color .15s,box-shadow .15s}
 input[type=number]{width:min(108px,100%);max-width:100%;box-sizing:border-box}
+.ap{font-size:12px;color:var(--ac2);margin-right:6px}
 input[type=number]:hover,select:hover{border-color:#2c3850}
 input[type=number]:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ring);outline:none}
 select{direction:rtl}
@@ -155,17 +152,6 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .bctl .bapply{background:#263d62;border-color:#4775b5;color:#dcecff}
 .bctl .bzero{background:rgba(229,72,77,.14);border-color:rgba(255,104,115,.55);color:#ffbfc4}
 .bctl .bapply:hover,.bctl .bzero:hover{filter:brightness(1.15)}
-.ct .sb{min-width:56px;padding:7px 11px;background:var(--rs);border-color:#385781;color:var(--ac2);box-shadow:none}
-.ct .sb:hover{background:#263652;filter:none}
-/* [EN] The duty ceiling belongs to the same operating-control box, after
-   the mode, manual duty and action buttons. It must not look like a second
-   unrelated card.
-   [FA] سقف duty هم‌کادر با کنترل حالت کار است و بعد از حالت، duty دستی و
-   دکمه‌های اعمال/صفر می‌آید؛ نباید مثل کارت جدا دیده شود. */
-.bctl>.rw{flex:1 1 260px;min-width:250px;display:flex;align-items:center;gap:8px;padding:0;border-top:0}
-.bctl>.rw>div:first-child{flex:0 0 auto;color:var(--mu);font-size:12px;white-space:nowrap}
-.bctl>.rw>.ct{flex:1 1 auto;justify-content:flex-end;min-width:0}
-.bctl>.rw>.ct input[type=number]{width:82px;min-width:82px;text-align:center}
 /* [EN] Inside a control row the caption belongs BESIDE its box, not
    stacked above it: "از [ ۱ ]  تا [ ۵۰ ]" reads as one sentence.
    The global label rule stacks captions, which is right for the
@@ -237,9 +223,11 @@ body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .ag{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:8px 0}
 .ab{background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:10px 12px;min-height:92px;transition:border-color .2s}
 .ab small{color:var(--mu)}.ab b{font-size:19px;display:block;margin:2px 0;font-variant-numeric:tabular-nums}.ab .lb{display:block;min-height:20px}.ab .tg{margin-top:4px;display:inline-flex}
-.wbx:empty{display:none}.wbx{margin:10px 0;padding:10px 12px;border-radius:12px;border:1px solid var(--ln);background:var(--rs);font-size:13px;line-height:1.9}
+.wbx:empty{display:none}.wbx{position:relative;margin:10px 0;padding:10px 42px 10px 12px;border-radius:12px;border:1px solid var(--ln);background:var(--rs);font-size:13px;line-height:1.9}
 .wbx.bad{border-color:var(--er);background:rgba(255,104,115,.12);color:var(--er)}
 .wbx.warn{border-color:var(--wa);background:rgba(247,193,60,.10);color:var(--wa)}
+.wclose{position:absolute;top:6px;left:8px;width:28px;height:28px;padding:0;border:1px solid currentColor;border-radius:8px;background:transparent;color:inherit;font-size:20px;line-height:24px;cursor:pointer;opacity:.85}
+.wclose:hover{opacity:1;background:rgba(255,255,255,.08)}
 .ab.bad{border-color:rgba(251,94,106,.55);box-shadow:0 0 0 1px rgba(251,94,106,.2)}.ab.warn{border-color:rgba(251,191,36,.5)}.ab.good{border-color:rgba(52,211,153,.4)}
 /* [EN] v1.79 (user: "what is this? there used to be a LED behind it"): the
    .bit class had markup (<i> dot + <small> label) but NO stylesheet rule at
@@ -356,7 +344,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 933a7ed</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 7e12cba</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -875,15 +863,12 @@ const SC=['','g','g','g','y','r','y','r','r','y'];
 /* ثابت‌های بخش 5.3 سند */
 const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*76000/6800,K24B=3300/4095*69200/6800,K12=3300/4095*41000/6800;
 /* شناسه: [عنوان, واحد, کمینه, بیشینه, نوع(n عدد، b کلید), توضیح] */
-/* [EN] v1.39 (user order: show duty as REAL percent everywhere). These two
-   rows now READ and ACCEPT percent (0..50); only the wire value stays
-   permille (x10 at num(), /10 when the applied value is printed). Every
-   other duty display - live value, ceiling note, manual input, blink
-   duties - already spoke percent, so the panel is now uniform.
-   [FA] v1.39 (دستور کاربر: همه‌جا درصد واقعی duty) - این دو ردیف حالا درصد
-   می‌خوانند و درصد قبول می‌کنند (۰..۵۰)؛ فقط مقدار سیمی پرمیل می‌ماند.
-   همهٔ نمایش‌های دیگر duty از قبل درصد بودند. */
-const PUN=id=>(id===13||id===14)?'٪':P[id][1];
+/* [EN] v1.83: ids 13/14 keep their parameter-schema metadata here, while
+   the visible ceiling editor lives on the large duty label in each charger
+   card. The user sees real percent (0..50); only the wire value is permille.
+   [FA] از v1.83 شناسنامهٔ پارامترهای ۱۳/۱۴ اینجا می‌ماند، اما ویرایش سقف
+   روی برچسب بزرگ duty هر کارت انجام می‌شود. کاربر درصد واقعی (۰..۵۰) می‌بیند
+   و فقط مقدار سیمی پرمیل است. */
 const P={
 13:['سقف duty','٪',0,500,'n','سقف duty همین کانال؛ عدد را به درصد واقعی بنویسید (حداکثر ۵۰٪) — روی سیم به‌صورت پرمیل ذخیره می‌شود. هر duty بالاتر، چه خودکار و چه دستی، به همین سقف محدود می‌شود.'],
 14:['سقف duty','٪',0,500,'n','سقف duty همین کانال؛ عدد را به درصد واقعی بنویسید (حداکثر ۵۰٪) — روی سیم به‌صورت پرمیل ذخیره می‌شود. هر duty بالاتر، چه خودکار و چه دستی، به همین سقف محدود می‌شود.']};
@@ -1044,12 +1029,6 @@ async function sendall(){
   +'بقیه نشست. برد این مقدارها را به بازهٔ مجاز خودش گیره زد — عددِ روی برد همان سمت راست فلش است:'
   +sdlgl(bad)
   +(fixtxt.length?'پنل پیش از ارسال '+fixtxt.length+' عدد را جور کرد: '+sdlgl(fixtxt):''),mute?1:0);}
-function num(id){const e=$('i'+id),p=P[id],t=+e.value;if(e.value===''||isNaN(t))return;const w=(id===13||id===14)?Math.round(t*10):Math.round(t);send(id,Math.min(p[3],Math.max(p[2],w)));e.value='';e.blur();}
-function ctl(id){const p=P[id];
- if(id===13||id===14)return `<input type="number" id="i${id}" min="0" max="50" step="any" placeholder="0…50٪" onkeydown="if(event.key=='Enter')num(${id})"><button class="sb" onclick="num(${id})">ثبت</button>`;
- return `<input type="number" id="i${id}" min="${p[2]}" max="${p[3]}" placeholder="${p[2]<0?'±'+p[3]:p[2]+'…'+p[3]}" onkeydown="if(event.key=='Enter')num(${id})"><button class="sb" onclick="num(${id})">ثبت</button>`;}
-const row=(id,x)=>`<div class="rw" title="${P[id][5].replace(/<[^>]*>/g,' ').replace(/"/g,'&quot;')}"><div>${P[id][0]} <span class="lb">${PUN(id)}</span><span class="ap n" id="a${id}"></span></div><div class="ct">${x||''}${ctl(id)}</div></div>`;
-
 /* ---------- ساخت صفحه: ولتاژها و وضعیت ---------- */
 /* v1.16k: merged voltages+alarm table - fixed layout, each value once, pills inline */
 const SR=[['ورودی',0],['پک ۲۴ ولت',1],['نود ۱۲ ولت',2],['باتری بالا',3],['باتری پایین',4],['جریان ۱ (بالا)',5],['جریان ۲ (پایین)',6]];
@@ -1064,9 +1043,9 @@ ASB={sp:[0,1,2,3,4,5,6].map(k=>$('sp'+k)),sr:[0,1,2,3,4,5,6].map(k=>$('sr'+k)),f
 /* ---------- دو ستون جدا: شارژر ۱ و شارژر ۲ ---------- */
 $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}"></span></div>
 
-<div class="bg2"><div class="big"><span class="lb">جریان باتری (iest)</span><b class="n" id="ie${n}"></b></div>
-<div class="big"><span class="lb">duty <span id="dc${n}"></span></span><b class="n" id="du${n}"></b></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
-<div class="bctl"><span class="ctlcap">حالت کار</span><div class="modepick"><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button></div><label class="dutyctl"><span>Duty دستی (%)</span><input type="number" step="any" id="qm${n}" data-s></label><div class="dutyactions"><button class="sb bapply" onclick="qset(${n})">اعمال</button><button class="sb bzero" onclick="qzero(${n})">صفر</button></div>${row(12+n)}</div>
+<div class="bg2"><div class="big"><span class="biglabel">جریان باتری (iest)</span><b class="n" id="ie${n}"></b></div>
+<div class="big"><span class="biglabel dutybig" id="dutyedit${n}" role="button" tabindex="0" title="برای تغییر سقف duty کلیک کنید" onclick="dutyedit(${n})" onkeydown="if(event.key==='Enter'||event.key===' ')dutyedit(${n})">duty <span class="ceval" id="dc${n}"></span></span><b class="n" id="du${n}"></b></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
+<div class="bctl"><span class="ctlcap">حالت کار</span><div class="modepick"><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button></div><label class="dutyctl"><span>Duty دستی (%)</span><input type="number" step="any" id="qm${n}" data-s></label><div class="dutyactions"><button class="sb bapply" onclick="qset(${n})">اعمال</button><button class="sb bzero" onclick="qzero(${n})">صفر</button></div></div>
 <div class="lb">بستن پنل: ۱۰ ثانیه بعد مود دستی خاموش و duty صفر می‌شود؛ بعد از تریپ JIT همان duty را دوباره اعمال کنید.</div>
 <table>${[['ADC خام','count',0],['ولتاژ شنت',' میکروولت',1],['جریان بدون فیلتر',' میلی‌آمپر',2],['جریان فیلترشده',' میلی‌آمپر',3],['تخمین باتری (iest)',' میلی‌آمپر',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}"></b></td><td class="lb">${r[1]}</td></tr>`).join('')}</table>
 <div class="lb kc">ثابت‌ها: ADC دوازده‌بیتی، ۳۳۰۰ میلی‌ولت، R41/R42 = 1k/10k، LM358 × 101، شنت 10 mOhm</div>
@@ -1948,6 +1927,38 @@ function evedit(el){
                    else if(e.key==='Escape'){e.preventDefault();close(false);}};
  inp.onblur=()=>close(true);}
 
+/* [EN] The channel duty ceiling is edited from the large operating label.
+   It uses the same local pending queue as every other panel edit; clicking
+   never writes to the board by itself.
+   [FA] سقف duty هر کانال از روی برچسب بزرگ همان کارت ویرایش می‌شود. این
+   ویرایش هم مثل بقیه در صف محلی می‌نشیند و با کلیک به‌تنهایی روی برد نوشته
+   نمی‌شود. */
+function dutyedit(n){
+ const id=12+n,anchor=$('dutyedit'+n);if(!anchor||!D||!D.p)return;
+ evclose();
+ const applied=D.p[id]==null?0:D.p[id],current=PEND[id]!=null?PEND[id]:applied;
+ const pop=document.createElement('div');pop.id='evpop';pop.className='evpop';
+ pop.innerHTML='<div class="evpt">سقف duty کانال '+n+'</div>'+
+  '<div class="evpr"><input type="number" class="evi" min="0" max="50" step="0.1"> <span class="evu">٪</span></div>'+
+  '<div class="evph">مجاز: ۰ تا ۵۰٪ · Enter ثبت · Esc لغو</div>';
+ document.body.appendChild(pop);
+ const r=anchor.getBoundingClientRect(),pw=pop.offsetWidth||210;
+ const sx=window.pageXOffset||0,sy=window.pageYOffset||0;
+ pop.style.left=Math.max(8,Math.min((window.innerWidth||900)-pw-8,r.left+sx))+'px';
+ pop.style.top=(r.bottom+sy+6)+'px';
+ const inp=pop.querySelector('input');inp.value=(current/10).toFixed(1);inp.focus();inp.select();
+ let done=false;
+ const close=save=>{if(done)return;done=true;
+  if(save){const typed=Number(inp.value);
+   if(Number.isFinite(typed)){
+    const pct=Math.max(0,Math.min(50,typed)),wire=Math.round(pct*10);
+    if(wire!==current){qput(id,wire);if(typeof afresh==='function')afresh();}
+   }}
+  evclose();if(D&&typeof draw==='function')draw(D);};
+ inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();close(true);}
+                   else if(e.key==='Escape'){e.preventDefault();close(false);}};
+ inp.onblur=()=>close(true);}
+
 /* [EN] One delegated listener for every editable value, wherever it is drawn.
    [FA] یک شنوندهٔ واگذارشده برای هر مقدار ویرایش‌پذیر، هر جا که رسم شده باشد. */
 document.addEventListener('click',e=>{
@@ -2542,12 +2553,19 @@ $('xim').onchange=e=>{if(e.target.files[0])ximp(e.target.files[0]);};
    چه اتفاقی افتاده. خطاهای CRC هم نمایش داده می‌شوند تا هارنس نویزی دیده شود.
    v1.27: link health. A version-mismatched flash used to show an empty panel
    with no explanation - identical in appearance to an unplugged cable. */
+let LINK_WARN_KEY='';
+let LINK_WARN_DISMISS='';
+function lnkDismiss(){const e=$('lnkw');if(!e)return;LINK_WARN_DISMISS=LINK_WARN_KEY;e.className='wbx';e.innerHTML='';}
 function lnkhealth(d){const e=$('lnkw');if(!e)return;
  const vm=d.vm|0,ce=d.ce|0;
- if(vm>0){e.className='wbx bad';e.innerHTML='⛔ <b>نسخهٔ فرم‌ور و پنل یکی نیست</b> — '+vm+
-  ' فریم با نسخهٔ ناشناخته رد شد. برد و ESP باید <b>با هم</b> دوباره فلش شوند (Clean + Rebuild کامل).';return;}
- if(ce>0){e.className='wbx warn';e.innerHTML='⚠ <b>'+ce+'</b> فریم به‌خاطر خطای CRC رد شد — اتصال سیم و زمین لینک را بررسی کنید. داده‌ها معتبرند؛ فقط بخشی از قاب‌ها رسیده‌اند.';return;}
- e.className='wbx';e.innerHTML='';}
+ let key='',kind='',body='';
+ if(vm>0){key='version:'+vm;kind='bad';body='⛔ <b>نسخهٔ فرم‌ور و پنل یکی نیست</b> — '+vm+
+  ' فریم با نسخهٔ ناشناخته رد شد. برد و ESP باید <b>با هم</b> دوباره فلش شوند (Clean + Rebuild کامل).';}
+ else if(ce>0){key='crc:'+ce;kind='warn';body='⚠ <b>'+ce+'</b> فریم به‌خاطر خطای CRC رد شد — اتصال سیم و زمین لینک را بررسی کنید. داده‌ها معتبرند؛ فقط بخشی از قاب‌ها رسیده‌اند.';}
+ else{LINK_WARN_KEY='';LINK_WARN_DISMISS='';e.className='wbx';e.innerHTML='';return;}
+ LINK_WARN_KEY=key;
+ if(LINK_WARN_DISMISS===key){e.className='wbx';e.innerHTML='';return;}
+ e.className='wbx '+kind;e.innerHTML='<button class="wclose" type="button" aria-label="بستن پیام" title="بستن" onclick="lnkDismiss()">×</button>'+body;}
 function draw(d){D=d;const t=d.t,p=d.p,on=d.on==1,man=(d.fl&32)!=0;lnkhealth(d);qfill();cfill();afill();
 /* [EN] The chart is mounted twice again (user order 2026-10-03: "why did you
    take the chart away entirely? go back to the previous version") - on the
@@ -2572,7 +2590,7 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
  const F=[['snapshot',d.fl&1],['ورودی ۲۴ ولت',d.fl&2],['اندازه‌گیری معتبر',d.fl&4]];
  $('fl').innerHTML=F.map(f=>`<span class="tg ${f[1]?'g':'r'}">${f[0]}</span>`).join('')+(t[19]&64?'<span class="tg r">خطا: باتری قطع</span>':'')+
   (t[19]&~64?`<span class="tg r n">fault 0x${t[19].toString(16)}</span>`:'')+(man?'<span class="tg y">مود دستی</span>':'');
- [1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=p[10+n],ce=p[12+n];
+ [1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=p[10+n],ce=(PEND[12+n]!=null?PEND[12+n]:p[12+n]);
   const st=$('st'+n);st.textContent=ST[s]||'#'+s;st.className='tg '+(SC[s]||'');
   $('ie'+n).innerHTML=t[b+4]+' <span class="lb">mA</span>';$('du'+n).textContent=pc(t[b+5]);$('dc'+n).textContent=ce==null?'':'· سقف '+pc(ce);
   $('db'+n).style.width=Math.min(100,t[b+5]/10)+'%';$('cl'+n).style.left=(100-Math.min(100,(ce==null?1000:ce)/10))+'%';
