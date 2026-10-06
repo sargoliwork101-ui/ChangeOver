@@ -374,11 +374,13 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
             }
 #endif
 #if MODULE_IMBALANCE
-            /* [EN] Imbalance scenario 5, ids 108..118 (v1.43) + runtime
-                    slots 200..202 (NVM boot replay only; the panel never
-                    sends those, and they are never part of a backup).
-               [FA] سناریوی ۵ عدم‌توازن، ۱۰۸..۱۱۸ + اسلات‌های ۲۰۰..۲۰۲
-                    (فقط پخش NVM هنگام بوت). */
+            /* [EN] Imbalance scenario 5, ids 108..118, 123..124, 132..133
+                    and clean-FLOAT-cycle threshold 136 + runtime slots
+                    200..202 (NVM boot replay only; the panel never sends
+                    those slots, and they are never part of a backup).
+               [FA] سناریوی ۵ عدم‌توازن، ۱۰۸..۱۱۸، ۱۲۳..۱۲۴، ۱۳۲..۱۳۳ و
+                    آستانهٔ سیکل پاک ۱۳۶ + اسلات‌های ۲۰۰..۲۰۲ (فقط پخش NVM
+                    هنگام بوت). */
             if (IMBAL_PARAM_OWNS(uint8_t__paramId) ||
                 ((uint8_t__paramId >= IMBAL_SLOT_FIRST_ID) &&
                  (uint8_t__paramId <= IMBAL_SLOT_LAST_ID)))

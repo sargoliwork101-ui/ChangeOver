@@ -140,16 +140,24 @@ extern "C" {
 #define IMBAL_PARAM_LATCH_BEEP_COUNT         132u
 #define IMBAL_PARAM_LATCH_BEEP_GAP_MS        133u
 
-/* [EN] The module owns THREE id ranges: 108..118, the 123..124 blink pair,
- *      and the new 132..133 beep-shape pair. Gaps belong to other modules.
- * [FA] ماژول سه بازهٔ شناسه دارد: ۱۰۸..۱۱۸، جفت چشمک ۱۲۳..۱۲۴، و جفت شکل
- *      بوق جدید ۱۳۲..۱۳۳؛ فاصله‌ها متعلق به ماژول‌های دیگرند. */
+/** [EN] Number of complete FLOAT-qualified charge cycles without a new
+ *  imbalance event before the event counter is cleared; default 3.
+ *  [FA] تعداد سیکل‌های شارژ کامل و تأییدشده در FLOAT، بدون رویداد جدید،
+ *  برای صفرکردن شمارندهٔ عدم‌توازن؛ پیش‌فرض ۳. */
+#define IMBAL_PARAM_CLEAN_FULL_CYCLES        136u
+
+/* [EN] The module owns FOUR id ranges: 108..118, 123..124, 132..133 and
+ *      136. Gaps belong to other modules.
+ * [FA] ماژول چهار بازهٔ شناسه دارد: ۱۰۸..۱۱۸، ۱۲۳..۱۲۴، ۱۳۲..۱۳۳ و ۱۳۶؛
+ *      فاصله‌ها متعلق به ماژول‌های دیگرند. */
 #define IMBAL_PARAM_FIRST_ID                 IMBAL_PARAM_REST_LIMIT_MV   /* 108 */
 #define IMBAL_PARAM_LAST_ID                  IMBAL_PARAM_MAX_LATCHED_CYCLES /* 118 */
 #define IMBAL_PARAM_FIRST_ID2                IMBAL_PARAM_LATCH_BLINK_PERIOD_MS /* 123 */
 #define IMBAL_PARAM_LAST_ID2                 IMBAL_PARAM_LATCH_BLINK_DUTY_PCT  /* 124 */
 #define IMBAL_PARAM_FIRST_ID3                IMBAL_PARAM_LATCH_BEEP_COUNT /* 132 */
 #define IMBAL_PARAM_LAST_ID3                 IMBAL_PARAM_LATCH_BEEP_GAP_MS /* 133 */
+#define IMBAL_PARAM_FIRST_ID4                IMBAL_PARAM_CLEAN_FULL_CYCLES /* 136 */
+#define IMBAL_PARAM_LAST_ID4                 IMBAL_PARAM_CLEAN_FULL_CYCLES /* 136 */
 
 #define IMBAL_PARAM_BLOCK1_COUNT \
     ((uint32_t)IMBAL_PARAM_LAST_ID - (uint32_t)IMBAL_PARAM_FIRST_ID + 1u)
@@ -157,8 +165,11 @@ extern "C" {
     ((uint32_t)IMBAL_PARAM_LAST_ID2 - (uint32_t)IMBAL_PARAM_FIRST_ID2 + 1u)
 #define IMBAL_PARAM_BLOCK3_COUNT \
     ((uint32_t)IMBAL_PARAM_LAST_ID3 - (uint32_t)IMBAL_PARAM_FIRST_ID3 + 1u)
+#define IMBAL_PARAM_BLOCK4_COUNT \
+    ((uint32_t)IMBAL_PARAM_LAST_ID4 - (uint32_t)IMBAL_PARAM_FIRST_ID4 + 1u)
 #define IMBAL_PARAM_TABLE_SIZE \
-    (IMBAL_PARAM_BLOCK1_COUNT + IMBAL_PARAM_BLOCK2_COUNT + IMBAL_PARAM_BLOCK3_COUNT)
+    (IMBAL_PARAM_BLOCK1_COUNT + IMBAL_PARAM_BLOCK2_COUNT + \
+     IMBAL_PARAM_BLOCK3_COUNT + IMBAL_PARAM_BLOCK4_COUNT)
 
 /** [EN] Is this id a parameter of the imbalance module? / [FA] آیا این شناسه مال این ماژول است؟ */
 #define IMBAL_PARAM_OWNS(id) \
@@ -167,7 +178,9 @@ extern "C" {
      ((((uint32_t)(id)) >= (uint32_t)IMBAL_PARAM_FIRST_ID2) && \
       (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID2)) || \
      ((((uint32_t)(id)) >= (uint32_t)IMBAL_PARAM_FIRST_ID3) && \
-      (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID3)))
+      (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID3)) || \
+     ((((uint32_t)(id)) >= (uint32_t)IMBAL_PARAM_FIRST_ID4) && \
+      (((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID4)))
 
 /** [EN] Table index of an owned id (undefined for ids the module does not own).
  *  [FA] اندیس جدول برای شناسهٔ متعلق به ماژول. */
@@ -176,8 +189,12 @@ extern "C" {
         ? (((uint32_t)(id)) - (uint32_t)IMBAL_PARAM_FIRST_ID) \
         : ((((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID2) \
             ? (IMBAL_PARAM_BLOCK1_COUNT + (((uint32_t)(id)) - (uint32_t)IMBAL_PARAM_FIRST_ID2)) \
-            : (IMBAL_PARAM_BLOCK1_COUNT + IMBAL_PARAM_BLOCK2_COUNT + \
-               (((uint32_t)(id)) - (uint32_t)IMBAL_PARAM_FIRST_ID3))))
+            : ((((uint32_t)(id)) <= (uint32_t)IMBAL_PARAM_LAST_ID3) \
+                ? (IMBAL_PARAM_BLOCK1_COUNT + IMBAL_PARAM_BLOCK2_COUNT + \
+                   (((uint32_t)(id)) - (uint32_t)IMBAL_PARAM_FIRST_ID3)) \
+                : (IMBAL_PARAM_BLOCK1_COUNT + IMBAL_PARAM_BLOCK2_COUNT + \
+                   IMBAL_PARAM_BLOCK3_COUNT + (((uint32_t)(id)) - \
+                   (uint32_t)IMBAL_PARAM_FIRST_ID4)))))
 
 /* [EN] NVM-only runtime slots (ids 200..202): persisted through the same
  *      EspLink NVM machinery as parameters but never drawn on the panel and
@@ -206,6 +223,7 @@ extern "C" {
 #define IMBAL_DEF_LATCH_BLINK_DUTY_PCT       50u
 #define IMBAL_DEF_LATCH_BEEP_COUNT           1u
 #define IMBAL_DEF_LATCH_BEEP_GAP_MS          0u
+#define IMBAL_DEF_CLEAN_FULL_CYCLES          3u
 
 /* [EN] Clamp windows (min..max per id, applied by Set): wide enough for a
  *      workshop, tight enough that a typo cannot create a dead monitor.
@@ -315,11 +333,11 @@ bool func__Imbalance_Evaluate(const imbalance_inputs_t *imbalance_inputs_t__inpu
  * [FA] خواندن آخرین خروجی‌ها بدون ارزیابی. */
 void func__Imbalance_GetOutputs(imbalance_outputs_t *imbalance_outputs_t__outputs);
 
-/** [EN] Parameter set with clamp (ids 108..118, 123..124, 132..133) and
+/** [EN] Parameter set with clamp (ids 108..118, 123..124, 132..133, 136) and
  *      runtime-slot set (ids 200..202, NVM boot replay only). Returns applied value.
- *      The new beep-shape values are normal persisted parameters, not packed
- *      into the legacy period/length words.
- * [FA] تنظیم پارامتر با گیره (شناسه‌های ۱۰۸..۱۱۸، ۱۲۳..۱۲۴ و ۱۳۲..۱۳۳) و
+ *      The new beep-shape and clean-cycle values are normal persisted
+ *      parameters, not packed into legacy words.
+ * [FA] تنظیم پارامتر با گیره (شناسه‌های ۱۰۸..۱۱۸، ۱۲۳..۱۲۴، ۱۳۲..۱۳۳ و ۱۳۶) و
  *      تنظیم اسلات زمان‌اجرا (۲۰۰..۲۰۲، فقط بازپخش NVM). مقدار اعمال‌شده را
  *      برمی‌گرداند؛ شکل بوق جدید پارامتر مستقل و ماندگار است.
  * @param uint32_t__appliedValue [EN] out, may be NULL / مقدار اعمال‌شده

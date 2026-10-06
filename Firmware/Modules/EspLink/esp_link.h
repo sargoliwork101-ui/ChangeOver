@@ -425,12 +425,16 @@
    پیش‌فرض یک بوق و گپ صفر صدای قبلی را حفظ می‌کند. */
 #define ESPLINK_PARAM_IMBAL_BEEP_COUNT         132u  /* u8, count, def 1, 1..10 */
 #define ESPLINK_PARAM_IMBAL_BEEP_GAP_MS        133u  /* u32, ms, def 0, 0..5000 */
+#define ESPLINK_PARAM_IMBAL_CLEAN_FULL_CYCLES  136u  /* u8, count, def 3, 1..255 */
 
-/* [EN] ids 0..135 are ordinary parameters; 132/133 shape the imbalance
-   beep and 134/135 shape the dead-battery beep. Runtime slots stay outside.
-   [FA] شناسه‌های ۰..۱۳۵ پارامتر عادی‌اند؛ ۱۳۲/۱۳۳ شکل بوق عدم‌توازن و
-   ۱۳۴/۱۳۵ شکل بوق باتری خراب را می‌سازند؛ اسلات‌های زمان‌اجرا بیرون‌اند. */
-#define ESPLINK_PARAM_COUNT               136u
+/* [EN] ids 0..136 are ordinary parameters; 132/133 shape the imbalance
+   beep, 134/135 shape the dead-battery beep and 136 controls the number of
+   clean FLOAT-qualified cycles before the imbalance event counter is cleared.
+   Runtime slots stay outside.
+   [FA] شناسه‌های ۰..۱۳۶ پارامتر عادی‌اند؛ ۱۳۲/۱۳۳ شکل بوق عدم‌توازن،
+   ۱۳۴/۱۳۵ شکل بوق باتری خراب و ۱۳۶ تعداد سیکل‌های کامل پاک برای صفرکردن
+   شمارندهٔ عدم‌توازن را می‌سازند؛ اسلات‌های زمان‌اجرا بیرون‌اند. */
+#define ESPLINK_PARAM_COUNT               137u
 
 /* ==================== Telemetry layout / چیدمان تله‌متری ==================== */
 

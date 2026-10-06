@@ -436,8 +436,9 @@ function testCharging(win, doc) {
 function testImbalance(win, doc) {
     console.log('\nscenario 5 - imbalance / عدم‌توازن');
 
-    check(doc.getElementById('q111').getAttribute('max') === '18000000',
-          'the in-charge wait editor allows the requested five hours');
+    check(doc.getElementById('q110').getAttribute('max') === '18000000' &&
+          doc.getElementById('q111').getAttribute('max') === '18000000',
+          'the imbalance wait editors allow the requested five hours');
     const c5 = doc.getElementById('ucard5');
     const c5secs = [...c5.querySelectorAll('.sec')].map(e => e.textContent.trim());
     check(c5secs.findIndex(x => x.indexOf('چشمک قرمز') >= 0) <
@@ -446,17 +447,19 @@ function testImbalance(win, doc) {
     check(c5.querySelector('#q123') && c5.querySelector('#q124') &&
           c5.querySelector('#q115') && c5.querySelector('#q116') &&
           c5.querySelector('#q132') && c5.querySelector('#q133') &&
+          c5.querySelector('#q136') &&
           c5.querySelector('#s5b') && c5.querySelector('#s5z'),
-          'scenario 5 has separate, ordered lamp and beep boxes');
+          'scenario 5 has separate, ordered lamp, clean-cycle and beep boxes');
     const c5beep = c5.querySelector('#q115').closest('.bqr');
     check(c5beep.querySelectorAll('label').length === 4 &&
           c5beep.querySelector('#q132').type === 'number' &&
           c5beep.querySelector('#q133').type === 'number',
           'scenario 5 exposes editable count and gap parameters');
-    check(win.pdflt(132) === 1 && win.pdflt(133) === 0,
-          'scenario 5 count/gap factory defaults are one beep and zero milliseconds');
-    check(win.eval('XIDS').indexOf(132) >= 0 && win.eval('XIDS').indexOf(133) >= 0,
-          'count and gap are included in JSON backup/import ids');
+    check(win.pdflt(132) === 1 && win.pdflt(133) === 0 && win.pdflt(136) === 3,
+          'scenario 5 count/gap and clean-cycle factory defaults are correct');
+    check(win.eval('XIDS').indexOf(132) >= 0 && win.eval('XIDS').indexOf(133) >= 0 &&
+          win.eval('XIDS').indexOf(136) >= 0,
+          'count, gap and clean-cycle threshold are included in JSON backup/import ids');
     check(win.getComputedStyle(doc.getElementById('s5z')).direction === 'rtl' &&
           win.getComputedStyle(doc.getElementById('s5b')).textAlign === 'right',
           'scenario 5 result messages are explicitly right-to-left');
@@ -466,17 +469,19 @@ function testImbalance(win, doc) {
     typeInto(win, doc, 'q116', 200);
     typeInto(win, doc, 'q132', 3);
     typeInto(win, doc, 'q133', 100);
+    typeInto(win, doc, 'q136', 3);
     typeInto(win, doc, 'q118', 20);
 
     const lock = textOf(doc, 's5z');
     check(lock.includes('10'), 'the lock event count is shown', lock);
-    check(/5 دقیقه/.test(lock), '10 events x 30 s is a 5 minute floor to the lock', lock);
-    check(lock.includes('20'), 'the post-lock charge-cycle budget is shown', lock);
     check(lock.includes('3') && lock.includes('100') && lock.includes('گپ'),
-          'the simulator follows the editable count and inter-beep gap', lock);
+          'the simulator follows the editable clean-cycle, count and gap settings', lock);
+    check(lock.includes('FLOAT') || lock.includes('رویداد کامل'),
+          'the lock explanation requires a complete FLOAT-qualified event', lock);
+    check(lock.includes('20'), 'the post-lock charge-cycle budget is shown', lock);
 
     typeInto(win, doc, 'q111', 0);
-    check(/بدون گیت/.test(textOf(doc, 's5v')), 'a zero charge gate reads as "no gate"', textOf(doc, 's5v'));
+    check(/خاموش/.test(textOf(doc, 's5v')), 'a zero charge gate reads as off', textOf(doc, 's5v'));
     typeInto(win, doc, 'q111', 600000);
     check(/10 دقیقه/.test(textOf(doc, 's5v')), 'the charge gate is printed in minutes', textOf(doc, 's5v'));
 

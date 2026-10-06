@@ -139,9 +139,10 @@
  * [FA] ۱۲۶ جا (۱۰۲۴ بایت، دقیقاً یک صفحه). رکورد تعداد خودش را
  *      ذخیره می‌کند پس رکورد کوتاه‌تر قدیمی هم درست پخش می‌شود. */
 /* [EN] v1.80: 144 slots (12 + 144 x 8 + 4 = 1168 B) inside a 2 KiB bank. The
- *      real persisted set is 130 ids today (the four scenario-6 face ids and
- *      imbalance beep count/gap pushed it past the old 126-slot single page),
- *      so there are 14 spare slots and ~880 B of page left - the _Static_assert
+ *      real persisted set is 131 ids today (the four scenario-6 face ids,
+ *      imbalance beep count/gap and clean-cycle threshold pushed it past the
+ *      old 126-slot single page), so there are 13 spare slots and ~872 B of
+ *      page left - the _Static_assert
  *      in the .c proves both rather than trusting this arithmetic.
  * [FA] ۱۴۴ جا (۱۱۶۸ بایت) داخل بانک ۲KB؛ امروز ۱۳۰ شناسه ذخیره می‌شود. */
 #define ESP_LINK_NVM_ENTRY_MAX         144u
@@ -162,7 +163,7 @@
 /* [EN] Persisted id ranges: ALL settable configuration (0..14 = offsets,
  *      gains, filters, eta, charger enables, duty ceilings; 20..26 =
  *      charge profile; 27..37 = alarms; 38..75 = UI cadence; 77..82 =
- *      full/hysteresis; 83..92 = two-loop PID; 119..120 = charge-side percent map, v1.49; 121..122 = band-2 beep shape, v1.50; 132..133 = imbalance beep count/gap, v1.81; 134..135 = dead-battery beep count/gap, v1.82) EXCEPT the transient
+ *      full/hysteresis; 83..92 = two-loop PID; 119..120 = charge-side percent map, v1.49; 121..122 = band-2 beep shape, v1.50; 132..133 = imbalance beep count/gap, v1.81; 134..135 = dead-battery beep count/gap, v1.82; 136 = imbalance clean-FLOAT-cycle threshold, v1.83) EXCEPT the transient
  *      test modes 15..18 (fixed duty), 19 (manual test) and 76
  *      (panel-session mute) - those must never survive a reboot. Id 76
  *      sits INSIDE the high range, so the predicate excludes it
@@ -177,7 +178,7 @@
  *      مثل پروفایل ماندگارند. */
 #define ESP_LINK_NVM_PERSISTED_ID_MAX_LOW     14u
 #define ESP_LINK_NVM_PERSISTED_ID_MIN_HIGH    20u
-#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   135u /* [EN] v1.82 adds both scenario beep count/gap pairs. / [FA] نسخهٔ ۱٫۸۲ جفت تعداد/گپ هر دو سناریو را ماندگار می‌کند. */
+#define ESP_LINK_NVM_PERSISTED_ID_MAX_HIGH   136u /* [EN] v1.83 adds the imbalance clean-FLOAT-cycle threshold. / [FA] نسخهٔ ۱٫۸۳ آستانهٔ سیکل کامل پاک عدم‌توازن را اضافه می‌کند. */
 
 /* [EN] v1.74: ids 72/73 are retired (the low-battery window became a fixed
    constant inside the Changeover module), so they are carved out of the high

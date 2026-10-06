@@ -81,6 +81,10 @@ int main(void)
     CHECK(func__Imbalance_GetParam(118u, &uint32_t__value) && (uint32_t__value == 20u));
     CHECK(func__Imbalance_GetParam(132u, &uint32_t__value) && (uint32_t__value == 1u));
     CHECK(func__Imbalance_GetParam(133u, &uint32_t__value) && (uint32_t__value == 0u));
+    CHECK(func__Imbalance_GetParam(136u, &uint32_t__value) && (uint32_t__value == 3u));
+    CHECK(func__Imbalance_SetParam(136u, 0u, &uint32_t__value) && (uint32_t__value == 1u));
+    CHECK(func__Imbalance_SetParam(136u, 999u, &uint32_t__value) && (uint32_t__value == 255u));
+    CHECK(func__Imbalance_SetParam(136u, 3u, &uint32_t__value) && (uint32_t__value == 3u));
     CHECK(!func__Imbalance_GetParam(107u, &uint32_t__value));
     CHECK(!func__Imbalance_GetParam(119u, &uint32_t__value));
 
