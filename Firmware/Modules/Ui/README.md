@@ -184,3 +184,11 @@ task_ui 10ms → GetSnapshot → Ui_Tick
  └─ InputPresent + !FullActive→Charging stable5%→green+Yellow preserve
       └── Buzzer_Tick → BspGpio_Write
 ```
+
+## ماشین حالت
+
+`Ui_State_Machine.xlsx` — حالت‌ها و گذارهای همین ماژول، رنگی و
+راست‌به‌چپ با فونت وزیرمتن. از برگهٔ «ماشین حالت» در فایل اعتبارسنجی همین
+پوشه هم به آن لینک هست و خودش به نمای سیستمی
+(`Documentation/System_State_Machine.xlsx`) برمی‌گردد. بازتولید:
+`python3 tools/make_module_state_machines.py`.
