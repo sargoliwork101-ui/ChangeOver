@@ -138,7 +138,21 @@ canvas{width:100%;height:160px;display:block;background:var(--in);border:1px sol
 .cm{margin-top:10px;min-height:1.6em}.cm.g{color:var(--ok)}.cm.r{color:var(--er)}.wr{color:var(--wa)}
 body.dn #sh,body.dn #ch{opacity:.45;filter:grayscale(1)}
 .bsb{position:sticky;top:var(--t-sub,113px);z-index:54;border-color:#6b5206}.bqr2{display:flex;gap:8px;margin-top:12px}
-.bctl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+.bctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px;padding:10px;background:rgba(8,11,18,.42);border:1px solid var(--ln);border-radius:12px}
+.bctl .ctlcap{font-size:12px;color:var(--mu);font-weight:700;white-space:nowrap}
+.modepick{display:inline-flex;gap:3px;padding:3px;background:var(--in);border:1px solid var(--ln);border-radius:11px}
+.modepick .sw{width:auto;min-width:72px;padding:6px 12px;border:0;border-radius:8px;background:transparent;color:var(--mu)}
+.modepick .sw.on{background:rgba(53,214,160,.16);color:var(--ok);border:1px solid rgba(53,214,160,.55)}
+.modepick .sw.w.on{background:rgba(247,193,60,.16);color:var(--wa);border-color:rgba(247,193,60,.6)}
+.bctl .dutyctl{display:inline-flex!important;align-items:center;gap:6px;white-space:nowrap;color:var(--mu);font-size:12px}
+.bctl .dutyctl input[type=number]{width:82px;min-width:82px;text-align:center}
+.dutyactions{display:inline-flex;gap:6px}
+.bctl .bapply,.bctl .bzero{min-width:62px;padding:7px 12px;box-shadow:none}
+.bctl .bapply{background:#263d62;border-color:#4775b5;color:#dcecff}
+.bctl .bzero{background:rgba(229,72,77,.14);border-color:rgba(255,104,115,.55);color:#ffbfc4}
+.bctl .bapply:hover,.bctl .bzero:hover{filter:brightness(1.15)}
+.ct .sb{min-width:56px;padding:7px 11px;background:var(--rs);border-color:#385781;color:var(--ac2);box-shadow:none}
+.ct .sb:hover{background:#263652;filter:none}
 /* [EN] Inside a control row the caption belongs BESIDE its box, not
    stacked above it: "از [ ۱ ]  تا [ ۵۰ ]" reads as one sentence.
    The global label rule stacks captions, which is right for the
@@ -428,7 +442,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 1c93d70</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 9641c4a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -957,8 +971,8 @@ const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*76000/6800,K24B=3
    همهٔ نمایش‌های دیگر duty از قبل درصد بودند. */
 const PUN=id=>(id===13||id===14)?'٪':P[id][1];
 const P={
-13:['سقف duty','٪',0,500,'n','سقف duty همین کانال؛ عدد را به درصد واقعی بنویسید (حداکثر ۵۰٪) — روی سیم به‌صورت پرمیل ذخیره می‌شود. هر duty بالاتر — خودکار، فیکس یا دستی — محدود به همین سقف است.'],
-14:['سقف duty','٪',0,500,'n','سقف duty همین کانال؛ عدد را به درصد واقعی بنویسید (حداکثر ۵۰٪) — روی سیم به‌صورت پرمیل ذخیره می‌شود. هر duty بالاتر — خودکار، فیکس یا دستی — محدود به همین سقف است.']};
+13:['سقف duty','٪',0,500,'n','سقف duty همین کانال؛ عدد را به درصد واقعی بنویسید (حداکثر ۵۰٪) — روی سیم به‌صورت پرمیل ذخیره می‌شود. هر duty بالاتر، چه خودکار و چه دستی، به همین سقف محدود می‌شود.'],
+14:['سقف duty','٪',0,500,'n','سقف duty همین کانال؛ عدد را به درصد واقعی بنویسید (حداکثر ۵۰٪) — روی سیم به‌صورت پرمیل ذخیره می‌شود. هر duty بالاتر، چه خودکار و چه دستی، به همین سقف محدود می‌شود.']};
 /* ولتاژها: [عنوان, اندیس t, شناسهٔ آفست, ضریب مقسم] */
 const V=[['ورودی',14,4,K24],['پک ۲۴ ولت',15,5,K24B],['نود ۱۲ ولت',16,6,K12],['باتری بالا',18],['باتری پایین',17]];
 var D=null;/* var (نه let) تا در تست هاست هم قابل‌نوشتن باشد */
@@ -1138,11 +1152,9 @@ $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${
 
 <div class="bg2"><div class="big"><span class="lb">جریان باتری (iest)</span><b class="n" id="ie${n}"></b></div>
 <div class="big"><span class="lb">duty <span id="dc${n}"></span></span><b class="n" id="du${n}"></b></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
-<div class="bctl"><span class="lb">مود</span><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button><span class="lb">·</span><span class="lb">duty دستی ٪</span><input type="number" step="any" id="qm${n}" data-s style="width:76px"><button class="sb" onclick="qset(${n})">اعمال</button><button class="sb off2" onclick="qzero(${n})">صفر</button><button class="sw" id="fx${n}" title="duty ثابت همین کانال با حفاظتها؛ مود دستی سراسری اولویت دارد">فیکس</button></div>
+<div class="bctl"><span class="ctlcap">حالت کار</span><div class="modepick"><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button></div><label class="dutyctl"><span>Duty دستی (%)</span><input type="number" step="any" id="qm${n}" data-s></label><div class="dutyactions"><button class="sb bapply" onclick="qset(${n})">اعمال</button><button class="sb bzero" onclick="qzero(${n})">صفر</button></div></div>
 ${row(12+n)}
 <div class="lb">بستن پنل: ۱۰ ثانیه بعد مود دستی خاموش و duty صفر می‌شود؛ بعد از تریپ JIT همان duty را دوباره اعمال کنید.</div>
-<div class="sec">زنجیرهٔ اندازه‌گیری و محاسبه</div>
-<div class="sx">این بخش تنظیمی ندارد: مسیر یک عدد را از شمارش خام ADC تا جریان/ولتاژ نهایی نشان می‌دهد تا معلوم باشد هر ضریب و فیلتر کجای زنجیره اثر می‌گذارد.</div>
 <table>${[['ADC خام','count',0],['ولتاژ شنت',' میکروولت',1],['جریان بدون فیلتر',' میلی‌آمپر',2],['جریان فیلترشده',' میلی‌آمپر',3],['تخمین باتری (iest)',' میلی‌آمپر',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}"></b></td><td class="lb">${r[1]}</td></tr>`).join('')}</table>
 <div class="lb kc">ثابت‌ها: ADC دوازده‌بیتی، ۳۳۰۰ میلی‌ولت، R41/R42 = 1k/10k، LM358 × 101، شنت 10 mOhm</div>
 <canvas id="cv${n}"></canvas><div class="lg"><span><i style="background:#78849f"></i>بدون فیلتر · نوسان <b class="n" id="pu${n}"></b> mA</span><span><i style="background:#63a2ff"></i>فیلترشده · نوسان <b class="n" id="pf${n}"></b> mA</span><span class="hnl">نقاط <input type="number" id="hN${n}" data-s min="10" max="600" value="100"> از <b class="n" id="hC${n}">--</b></span></div>
@@ -2647,8 +2659,8 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
  const F=[['snapshot',d.fl&1],['ورودی ۲۴ ولت',d.fl&2],['اندازه‌گیری معتبر',d.fl&4]];
  $('fl').innerHTML=F.map(f=>`<span class="tg ${f[1]?'g':'r'}">${f[0]}</span>`).join('')+(t[19]&64?'<span class="tg r">خطا: باتری قطع</span>':'')+
   (t[19]&~64?`<span class="tg r n">fault 0x${t[19].toString(16)}</span>`:'')+(man?'<span class="tg y">مود دستی</span>':'');
- [1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=p[10+n],ce=p[12+n],fx=p[13+2*n];
-  const st=$('st'+n);st.textContent=(ST[s]||'#'+s)+(fx===1&&!man?' · فیکس':'');st.className='tg '+(SC[s]||'');
+ [1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=p[10+n],ce=p[12+n];
+  const st=$('st'+n);st.textContent=ST[s]||'#'+s;st.className='tg '+(SC[s]||'');
   $('ie'+n).innerHTML=t[b+4]+' <span class="lb">mA</span>';$('du'+n).textContent=pc(t[b+5]);$('dc'+n).textContent=ce==null?'':'· سقف '+pc(ce);
   $('db'+n).style.width=Math.min(100,t[b+5]/10)+'%';$('cl'+n).style.left=(100-Math.min(100,(ce==null?1000:ce)/10))+'%';
   [0,1,2,3,4].forEach(k=>$('c'+n+k).textContent=t[b+k]);
@@ -3350,16 +3362,14 @@ async function qzero(n){if(W.run)return alert('داده‌برداری ویزا�
  if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');
  const man=manOn(),fx=D&&D.p[13+2*n]===1;if(!man&&!fx&&!confirm('مود دستی خاموش است؛ روشن شود و duty صفر گردد؟'))return;
  try{if(!man&&!fx)await setv(19,1);await setv(14+2*n,0);}catch(e){alert(e);}}
-async function fset(n){if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');const on=D&&D.p[13+2*n]===1;try{await setv(13+2*n,on?0:1);}catch(e){alert(e);}}
 async function mset(v){if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');
  if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');const man=manOn();if((man?1:0)===v)return;
  if(v&&!man&&!confirm('شارژر خودکار و محافظت‌های باتری متوقف می‌شوند و duty را خودتان تعیین می‌کنید. ادامه؟'))return;
  try{await setv(19,v);}catch(e){alert(e);}}
 [1,2].forEach(n=>{const a=$('ma'+n),m=$('mm'+n);if(a)a.onclick=()=>mset(0);if(m)m.onclick=()=>mset(1);});
-[1,2].forEach(n=>{const f=$('fx'+n);if(f)f.onclick=()=>fset(n);});
 function mview(d){const man=(d.fl&32)!=0,sup=d.p[19]!=null&&d.on==1;
  [1,2].forEach(n=>{const a=$('ma'+n),m=$('mm'+n);if(!a||!m)return;
-  a.disabled=m.disabled=!sup;a.classList.toggle('on',sup&&!man);m.classList.toggle('on',sup&&man);const f=$('fx'+n);if(f){f.disabled=!sup||d.p[13+2*n]==null;f.classList.toggle('on',d.p[13+2*n]===1);}});}
+  a.disabled=m.disabled=!sup;a.classList.toggle('on',sup&&!man);m.classList.toggle('on',sup&&man);});}
 poll();
 setInterval(uview,250); /* v1.16: آینهٔ LED با ۵۰ میلی‌ثانیه — چشمک هم‌سرعت برد */
 </script></body></html>
