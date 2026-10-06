@@ -428,15 +428,14 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 6b32d2f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 1c93d70</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
 <div class="pgx a" id="p0">
 <div id="lnkw" class="wbx"></div>
 <div class="cd" id="sh"><div class="hd"><b>ولتاژها و وضعیت آلارم‌ها <span class="lb">· عدد مولتی‌متر (V) را کنار هر ولتاژ وارد کنید تا آفست آن کالیبره شود</span> <span class="ldon" id="aslive"></span></b><div class="fl" id="fl"></div></div><div id="ast"></div>
-<div class="sec">فیلتر جریان <span class="lb">(مشترک هر دو کانال)</span></div>
-<div class="sx">وضعیت زندهٔ دو مرحلهٔ فیلتر جریان (median و میانگین) که هر دو کانال از آن‌ها استفاده می‌کنند؛ ویرایش خود اعداد در زیرتب «فیلتر و کالیبراسیون» است.</div><div class="frr" id="fg"></div><div class="fx fxw" id="ff"></div></div>
+</div>
 
 <div class="ch" id="ch"></div>
 <!-- [EN] The charge-stages chart was mounted here as well as in
@@ -1123,7 +1122,7 @@ function ctl(id){const p=P[id];
  return `<input type="number" id="i${id}" min="${p[2]}" max="${p[3]}" placeholder="${p[2]<0?'±'+p[3]:p[2]+'…'+p[3]}" onkeydown="if(event.key=='Enter')num(${id})"><button class="sb" onclick="num(${id})">ثبت</button>`;}
 const row=(id,x)=>`<div class="rw" title="${P[id][5].replace(/<[^>]*>/g,' ').replace(/"/g,'&quot;')}"><div>${P[id][0]} <span class="lb">${PUN(id)}</span><span class="ap n" id="a${id}"></span></div><div class="ct">${x||''}${ctl(id)}</div></div>`;
 
-/* ---------- ساخت صفحه: ولتاژها + فیلتر (مشترک) ---------- */
+/* ---------- ساخت صفحه: ولتاژها و وضعیت ---------- */
 /* v1.16k: merged voltages+alarm table - fixed layout, each value once, pills inline */
 const SR=[['ورودی',0],['پک ۲۴ ولت',1],['نود ۱۲ ولت',2],['باتری بالا',3],['باتری پایین',4],['جریان ۱ (بالا)',5],['جریان ۲ (پایین)',6]];
 $('ast').innerHTML=`<div class="srvw"><table class="srv"><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"></colgroup><tr><th>سیگنال</th><th>مقدار</th><th>فرمول / بازه</th><th>وضعیت</th><th>کالیبره با مولتی‌متر</th></tr>${SR.map(r=>{const k=r[1];
@@ -1131,11 +1130,12 @@ $('ast').innerHTML=`<div class="srvw"><table class="srv"><colgroup><col class="c
  return `<tr id="sr${k}"><td>${r[0]}</td><td class="n" id="v${k}"></td><td><div class="fx" id="fv${k}"></div></td><td><span class="tg" id="sp${k}"></span></td><td>${cal}</td></tr>`;}).join('')}</table></div>`+'<div class="ab" id="asb5" style="margin-top:8px;min-height:0"><small>خطاهای قفل‌شده (fault) — LED جدا برای هر بیت</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit" id="asbb6"><i></i><small>قطع‌باتری</small></span></div><div class="fx2" id="asf"></div></div>';
 let ASB=null;
 ASB={sp:[0,1,2,3,4,5,6].map(k=>$('sp'+k)),sr:[0,1,2,3,4,5,6].map(k=>$('sr'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6].map(k=>$('asbb'+k)),box5:$('asb5'),mask:-1,live:$('aslive'),tick:false};
-/* ‎v1.14b (user order 2026-09-26)‎: پنجرهٔ median/میانگین به تب «تنظیمات» رفت؛ اینجا فقط وضعیت زندهٔ فیلتر و نمونه‌های نمودار می‌مانند */
-$('fg').innerHTML='<div class="lb" id="fspan" style="margin-top:6px"></div>';
+/* [EN] Median/average controls live in Settings; the main panel keeps only the useful voltage/status table and channel charts.
+   [FA] کنترل median/میانگین در تنظیمات است؛ صفحهٔ اصلی فقط جدول کاربردی ولتاژ/وضعیت و نمودار کانال‌ها را نگه می‌دارد. */
+
 /* ---------- دو ستون جدا: شارژر ۱ و شارژر ۲ ---------- */
 $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}"></span></div>
-<div class="sx">کارت زندهٔ همین کانال: جریان تخمینی باتری، duty فعلی و وضعیت ماشین حالت. مود «دستی» حلقهٔ کنترل را کنار می‌گذارد و duty را به شما می‌دهد — ولی حدهای سخت (Hard fault جریان، قطع OV و سقف duty) همچنان فعال می‌مانند.</div>
+
 <div class="bg2"><div class="big"><span class="lb">جریان باتری (iest)</span><b class="n" id="ie${n}"></b></div>
 <div class="big"><span class="lb">duty <span id="dc${n}"></span></span><b class="n" id="du${n}"></b></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
 <div class="bctl"><span class="lb">مود</span><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button><span class="lb">·</span><span class="lb">duty دستی ٪</span><input type="number" step="any" id="qm${n}" data-s style="width:76px"><button class="sb" onclick="qset(${n})">اعمال</button><button class="sb off2" onclick="qzero(${n})">صفر</button><button class="sw" id="fx${n}" title="duty ثابت همین کانال با حفاظتها؛ مود دستی سراسری اولویت دارد">فیکس</button></div>
@@ -1202,7 +1202,7 @@ function formulas(t,p){
   $('f'+n+'4').textContent=eta==null?'':eta==0?`eta = 0 → Iest = I = ${fl}`:`${fl} × ${V_(vin)} × ${eta}‰ / ${V_(vb)} ≈ ${ie(fl,vin,eta,vb)}`;});
  V.forEach((v,i)=>{const e=$('fv'+i);if(i<3){const o=p[v[2]]==null?0:p[v[2]],c=Math.round((t[v[1]]-o+(i==2?150+Math.floor(t[9]*470/1000):0))/v[3]);e.textContent=`${c} × ${v[3].toFixed(3)} ${o<0?'−':'+'} ${Math.abs(o)}${i==2?' − (150 + '+t[9]+'×470/1000)':''}`;}
   else e.textContent=i==3?'V24 − V12':'= V12';});
- $('ff').textContent=`I_filtered = convert( average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( raw counts ) ) )`;}
+}
 function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>hn(c)){s.u.shift();s.f.shift();}});}}
 function qfill(){if(!D||!D.p)return;for(const id of [7,8]){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!(D.q&(1<<id)))a.textContent=D.p[id]==null?'':D.p[id];}}
 function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{const e=$('q'+x[0]);if(e)e.value=x[1];qput(x[0],x[1]);});pdef();ldef();qgraph();}
@@ -2062,8 +2062,8 @@ function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
  $('fv5').textContent='Hard fault '+hd+'mA';$('fv6').textContent='Hard fault '+hd+'mA';
  const set=(k,txt,cls)=>{ASB.sp[k].textContent=txt;ASB.sp[k].className='tg '+cls;ASB.sr[k].className=cls==='g'?'rok':cls==='y'?'rwr':'rbd';};
  const vinOk=vin>=mn&&vin<=mx;
- set(0,vinOk?'داخل بازه':'خارج بازه',vinOk?'g':'r');
- set(1,'','g');set(2,'','g');
+ set(0,vinOk?'سالم':'خارج از بازه',vinOk?'g':'r');
+ set(1,'سالم','g');set(2,'سالم','g');
  [[vh,3],[vl,4]].forEach(B=>{const v=B[0],over=v>=dc,lost=v<ab,inv=v<fl||v>=ov,bad=over||lost||inv;
   set(B[1],bad?(over?'بالای قطع':lost?'غایب':'نامعتبر'):'سالم',bad?'r':'g');});
  [[i1,5],[i2,6]].forEach(C=>{const v=C[0];
@@ -2677,8 +2677,6 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   if($('a127'))$('a127').textContent=b127?'الان روشن است: باتریِ محکوم از خروجی هم برداشته می‌شود — نه شارژ می‌گیرد و نه به بار برق می‌دهد.':'الان خاموش است: فقط شارژِ آن کانال قطع است و باتری تا وقتی ولتاژ دارد به بار برق می‌دهد.';}
 
  for(let id=0;id<20;id++){const a=$('a'+id);if(a&&!(d.q&(1<<id)))a.textContent=p[id]==null?'':(id===13||id===14)?pc(p[id]):p[id];}
- const fe=$('fspan');if(fe){const mn=p[7]==null?null:(p[7]>=3?p[7]:0),av=p[8]==null?null:(p[8]>=2?p[8]:0);
-  fe.innerHTML=(mn==null||av==null)?'':'فیلتر فعال: median '+(p[7]>=3?p[7]+'×1 میلی‌ثانیه':'خاموش (۱..۲)')+' + میانگین '+(p[8]>=2?p[8]+'×1 میلی‌ثانیه':'خاموش (۱)')+' ≈ <b>'+((mn||0)+(av||0))+' میلی‌ثانیه</b> تاریخچه در کادانس ۱ کیلوهرتز — پنل هر ۱۰۰ میلی‌ثانیه فریم TLM می‌گیرد؛ برای صاف‌شدنِ قابل‌مشاهده مجموع را بالای ~۲۰۰ میلی‌ثانیه ببرید (در مود خودکار ≤۵۰).';}
  formulas(t,p);chart();mview(d);
  $('mb').classList.toggle('v',man);$('ka').innerHTML=man?(d.ka<1500?`پایش لینک فعال · <span class="n">keepalive ${d.ka} </span> میلی‌ثانیه`:'<b>keepalive متوقف است</b>'):'';}
 async function poll(){const c=new AbortController(),k=setTimeout(()=>c.abort(),2000);try{const r=await fetch('/t',{cache:'no-store',signal:c.signal});const d=await r.json();clearTimeout(k);if(document.hidden){D=d;hist(d);}else draw(d);}catch(e){clearTimeout(k);document.body.classList.add('dn');$('lk').classList.remove('on');$('lt').textContent='ESP در دسترس نیست';}
