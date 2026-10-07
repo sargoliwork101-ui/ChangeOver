@@ -384,7 +384,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build fdfb1c3</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 00accd6</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3306,6 +3306,13 @@ function calvfit(k){const xs=[],ys=[];
    ندارد و دقیقاً می‌گوید چرا و چه‌کار کنی. */
 function calchk(){
  const box=$('calck');if(!box)return;
+ /* [EN] User order 2026-10-07: with zero samples this checklist is nothing
+    but a wall of red rows, so while the sample list is still empty show one
+    short line; the full table appears from the first registered sample on.
+    [FA] به دستور کاربر: تا هیچ نمونه‌ای ثبت نشده، این فهرست چیزی جز
+    دیواری از سطرهای قرمز نیست؛ پس تا فهرست نمونه خالی است فقط یک خط کوتاه
+    نشان می‌دهد و جدول کامل از اولین نمونهٔ ثبت‌شده به بعد ظاهر می‌شود. */
+ if(!CALS.length){box.innerHTML='<span class="lb">فهرست آماده‌سازی داده‌ها: بعد از اولین «ثبت مرحله» اینجا نشان می‌دهد چه چیزی کم است.</span>';return 0;}
  const R=[],ok=(t)=>R.push([1,t]),no=(t,f)=>R.push([0,t,f]);
  const S=calsel(null);
  /* ۱) لینک */
