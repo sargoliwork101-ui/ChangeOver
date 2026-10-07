@@ -732,7 +732,7 @@ const server = http.createServer((req, res) => {
      *      answers from its simulated committed table so the new read-only
      *      and before/after panel flow is usable without hardware.
      * [FA] ESP واقعی هر دو فریم فعال را از STM32 می‌خواهد؛ پیش‌نمایش از جدول
-     *      کامیت‌شدهٔ شبیه‌سازی‌شده پاسخ می‌دهد تا مسیر read-only و before/after
+     *      کامیت‌شدهٔ شبیه‌سازی‌شده پاسخ می‌دهد تا مسیر ‎read-only‎ و ‎before/after‎
      *      بدون سخت‌افزار هم واقعاً قابل اجرا باشد. */
     if (req.method === "POST" && url.pathname === "/lut/read") {
         const pair = (tab) => tab.map((point) => [point[0], point[1]]);
