@@ -496,7 +496,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 55caeb9</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 7674a96</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3605,23 +3605,24 @@ async function calapply(){
  if(!confirm(CALP.length+' عدد کالیبراسیون روی برد نوشته شود؟\n\n'+txt+
   '\n\nیک فایل پشتیبان از تنظیمات فعلی دانلود می‌شود تا در صورت نیاز برگردانید.'))return;
  xexp();
- let ok=0;for(const c of CALP){try{const r=await fetch('/s?id='+c[0]+'&v='+c[1],{method:'POST'});if(r.ok)ok++;}catch(e){}
-  stxt('calst','… '+ok+'/'+CALP.length);await sl(80);}
- await sl(800);
- /* [EN] Calibration writes also report every id/value echo in the batch.
-    [FA] ارسال‌های کالیبراسیون هم echo تک‌تک مقدارهای همان دسته را گزارش می‌کنند. */
- const bad=[],calReport=[];
- CALP.forEach(c=>{
-  const back=(D&&D.p)?D.p[c[0]]:null;
-  const report=c[2]+': '+c[1]+'→'+(back==null?'بی‌پاسخ':back);
-  if(back==null){bad.push(c);calReport.push(report+' — بی‌پاسخ');}
-  else if(+back!==+c[1]){bad.push(c);calReport.push(report+' — گیره زد');}
-  else calReport.push(report+' — پذیرفت');
- });
- stxt('calst',(ok===CALP.length?'✅ ':'⚠ ')+ok+'/'+CALP.length+' روی برد اعمال شد'+
-  (bad.length?' · echo '+bad.length+' مقدار با درخواست فرق داشت':' · برد همه را عیناً پذیرفت')+
-  '<br>ثبت فلش ~۲ ثانیه بعد کامل می‌شود؛ تا آن موقع برد را خاموش نکنید (ریست پنل امن است).'+
-  '<br>گزارش: '+calReport.join(' · ')+' · پشتیبان قبلی دانلود شد.');}
+ /* [EN] /s=200 only queues; setv() waits for PARAM_REPORT/PARAMS_BULK
+    read-back. [FA] ۲۰۰ ‎/s‎ فقط صف است؛ setv() بازخوانی مطابق می‌گیرد؛
+    ارسال‌ها سریالی می‌مانند. */
+ let ok=0,fail=0,C=[];
+ for(const c of CALP){
+  try{
+   await setv(c[0],c[1]);
+   const back=(D&&D.p)?D.p[c[0]]:null;
+   const report=c[2]+': '+c[1]+'→'+(back==null?'بی‌پاسخ':back);
+   if(back==null||+back!==+c[1]){fail++;C.push(report+' — بازخوانی متفاوت');}
+   else{ok++;C.push(report+' — پذیرفت');}
+  }catch(e){fail++;C.push(c[2]+': '+c[1]+'→خطا: '+e);}
+  stxt('calst','… '+ok+'/'+CALP.length);
+ }
+ stxt('calst',(fail===0?'✅ ':'⚠ ')+ok+'/'+CALP.length+' مقدار با بازخوانی برد تأیید شد'+
+  (fail?' · '+fail+' مقدار تأیید نشد':' · برد همه را عیناً پذیرفت')+
+  (ok?'<br>ثبت فلش مقدارهای تأییدشده حدود ۲ ثانیه بعد کامل می‌شود؛ تا آن موقع برد را خاموش نکنید (ریست پنل امن است).':'<br>تا دریافت بازخوانی معتبر، هیچ مقدار ناموفق را اعمال‌شده فرض نکنید.')+
+  '<br>گزارش: '+C.join(' · '));}
 
 /* ---------- v1.66: ارسال مستقیم جدول به حافظهٔ خود میکرو (دستور کاربر ۲۰۲۶-۱۰-۰۵) ----------
    [FA] «حتماً باید جدول را در کد میکرو بچسبانیم و بیلد کنیم؟» نه. برد از این

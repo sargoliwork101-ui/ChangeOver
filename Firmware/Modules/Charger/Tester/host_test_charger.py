@@ -4383,6 +4383,31 @@ def test_scenario7_technical_fault_lockout():
           "ESP protocol must route and name all scenario 7 controls")
 
 
+def test_panel_calibration_requires_readback_v127():
+    """[EN] The calibration card must distinguish an HTTP queue response from
+    a board acknowledgement. A successful /s request is not proof that the
+    STM32 accepted the value; calapply() must use the existing serial setv()
+    helper and wait for the matching telemetry read-back.
+    [FA] کارت کالیبراسیون باید پاسخ صف‌شدن HTTP را از تأیید برد جدا کند.
+    موفقیت /s ثابت نمی‌کند STM32 مقدار را پذیرفته است؛ calapply() باید از
+    setv() سریالی استفاده کند و بازخوانی متناظر تله‌متری را ببیند.
+    """
+    panel = (ROOT / "esp_link_panel/plink_panel.h").read_text(encoding="utf-8")
+    check("async function calapply()" in panel,
+          "the panel must keep the explicit calibration apply function")
+    body = panel.split("async function calapply()", 1)[1].split("/* ---------- v1.66", 1)[0]
+    check(re.search(r"await\s+setv\(c\[0\],c\[1\]\)", body),
+          "calapply must wait for setv() to observe each board read-back")
+    check("PARAM_REPORT/PARAMS_BULK" in body and "/s=200" in body,
+          "calapply must document and implement the queue-vs-ack distinction")
+    check("fetch('/s?id='+c[0]+'&v='+c[1]" not in body,
+          "calapply must not count a direct HTTP /s response as an applied value")
+    check("await sl(800)" not in body and "ok++" in body,
+          "calapply must use per-value acknowledgement rather than a fixed batch wait")
+    check("بازخوانی برد تأیید شد" in body and "تأیید نشد" in body,
+          "the panel must show confirmed and unconfirmed calibration values separately")
+
+
 def test_boundary_concurrency_hardening_v126():
     """Static host checks for the cross-module edge cases not exercised by
     the pure charger model: flash address arithmetic, NVM id width, UART
@@ -4488,6 +4513,7 @@ def main():
         test_section_parameter_help_v125,
         test_theme_contrast_and_param_coverage_v125,
         test_scenario7_technical_fault_lockout,
+        test_panel_calibration_requires_readback_v127,
         test_boundary_concurrency_hardening_v126,
     ]
     for test in tests:
