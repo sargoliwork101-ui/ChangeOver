@@ -152,6 +152,8 @@ function testStructure(win, doc) {
         check(el.querySelector('.c4ds') !== null, 'card ' + card + ' explains when it triggers');
         check(el.querySelectorAll('.sec').length >= 2, 'card ' + card + ' is split into numbered sections');
     }
+    check(doc.getElementById('simopen') && typeof win.opensim === 'function',
+        'the operating page provides a direct route to the simulator');
 
     /* [EN] A browser min/max attribute is not a visible instruction. Every
        numeric scenario box must print the same range immediately below it.

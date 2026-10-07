@@ -478,12 +478,13 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 3324a00</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 4c35cf5</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
 <div class="pgx a" id="p0">
 <div id="lnkw" class="wbx"></div>
+<div class="cd" id="simlaunch"><div class="hd"><b>شبیه‌ساز سناریوها</b><button class="sb sb2" id="simopen" onclick="opensim()">باز کردن شبیه‌ساز</button></div><div class="sx">شبیه‌ساز از روی همین تنظیمات اجرا می‌شود و به برد یا دادهٔ تله‌متری نیاز ندارد. اگر دنبال چراغ‌ها، بوق و حالت‌های سناریو هستید، این دکمه مستقیماً تب سناریوها را باز می‌کند.</div></div>
 <div class="cd" id="sh"><div class="hd"><b>ولتاژها و وضعیت آلارم‌ها <span class="lb">· عدد مولتی‌متر (V) را کنار هر ولتاژ وارد کنید تا آفست آن کالیبره شود</span> <span class="ldon" id="aslive"></span></b><div class="fl" id="fl"></div></div><div id="ast"></div>
 </div>
 
@@ -1342,6 +1343,20 @@ let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=
 let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{STAB=+b.dataset.s;document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i==STAB));stickfit();panelViewSave();if(D)draw(D);});
 let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=7;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();panelViewSave();}
 document.querySelectorAll('#usel button').forEach(b=>b.onclick=()=>usel(+b.dataset.u));
+/* [EN] The simulator lives in Settings > Scenarios, but the operating page is
+   the first page on purpose. Keep that page useful and give it one explicit
+   route into the simulator instead of making users guess the tab sequence.
+   [FA] شبیه‌ساز عمداً در تنظیمات > سناریوهاست، اما صفحهٔ عملیاتی باید صفحهٔ
+   اول بماند. یک مسیر روشن به شبیه‌ساز بده تا کاربر مجبور نباشد تب‌ها را حدس بزند. */
+function opensim(){
+ TAB=2;STAB=1;
+ document.querySelectorAll('nav button').forEach((x,i)=>x.classList.toggle('a',i===TAB));
+ document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i===TAB));
+ document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',+x.dataset.s===STAB));
+ document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i===STAB));
+ usel(UCARD);stickfit();panelViewSave();
+ window.scrollTo(0,0);
+}
 /* [EN] Each scenario can be disabled without hiding its card: the title and
    switch remain available, while every other control becomes disabled and the
    whole scenario is visibly muted. The choice is local to this browser.
