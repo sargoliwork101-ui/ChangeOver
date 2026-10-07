@@ -1464,12 +1464,16 @@ async function testLutPush(win, doc) {
 
     /* --- a matching handshake is a success and offers the reboot --- */
     const calls = [];
-    const readBefore = packed.T.map(t => ({ X: t.X.map(v => v + 10), Y: t.Y.map(v => v + 100) }));
+    const postedBodies = [];
+    let calFail = false;
+    let readBefore = packed.T.map(t => ({ X: t.X.map(v => v + 10), Y: t.Y.map(v => v + 100) }));
+    let activeRows = packed.T;
     let readPhase = 0;
+    let readAfterTransaction = false;
     let readMode = 'good';
     const readJson = () => {
-        if (readMode === 'unavailable') return { ready: 0, pending: 0, error: 1 };
-        const rows = readPhase ? packed.T : readBefore;
+        if (readMode === 'unavailable' && readPhase) return { ready: 0, pending: 0, error: 1 };
+        const rows = readPhase ? activeRows : readBefore;
         return { ready: 1, pending: 0, error: 0,
                  n1: rows[0].X.length, n2: rows[1].X.length,
                  r1: rows[0].X.map((v, i) => [v, rows[0].Y[i]]),
@@ -1478,10 +1482,20 @@ async function testLutPush(win, doc) {
     const stub = (ack) => (u, o) => {
         calls.push((o && o.method ? o.method : 'GET') + ' ' + u);
         if (String(u) === '/lut/read' && o && o.method === 'POST') {
+            readPhase = readAfterTransaction ? 1 : 0;
+            readAfterTransaction = false;
             return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: 1, pending: 1 }) });
         }
+        if (String(u).indexOf('/s?id=') === 0 && o && o.method === 'POST') {
+            if (calFail) return Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({}) });
+            const q = new URL('http://panel' + String(u)).searchParams;
+            const id = Number(q.get('id')), value = Number(q.get('v'));
+            win.D.p[id] = value;
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: 1 }) });
+        }
         if (String(u) === '/lut' && o && o.method === 'POST') {
-            readPhase = 1;
+            postedBodies.push(o.body);
+            readAfterTransaction = true;
             return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: 1 }) });
         }
         if (String(u) === '/lut') {
@@ -1489,6 +1503,7 @@ async function testLutPush(win, doc) {
             return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(answer) });
         }
         if (String(u).indexOf('/lut/reset') === 0) {
+            readAfterTransaction = true;
             return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: 1 }) });
         }
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(win.D) });
@@ -1520,6 +1535,21 @@ async function testLutPush(win, doc) {
     await win.eval('lsend')();
     check(calls.filter(c => c.indexOf('POST /lut/reset') >= 0).length === 1,
           'the confirmed reboot is sent so every module starts on the new table');
+    check(calls.filter(c => c === 'GET /t').length >= 1,
+          'after reset the panel gets a fresh calibration telemetry readback before declaring persistence');
+
+    /* --- the read-only board view is useful on its own ------------------- */
+    calls.length = 0;
+    readPhase = 0;
+    readMode = 'good';
+    win.fetch = stub(ackOk);
+    await win.eval('lreadnow')();
+    check(doc.getElementById('lutcmp').textContent.indexOf('جدول فعال واقعی روی برد') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('chainMa') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('powerMw') >= 0,
+          'a standalone board readback shows clear chainMa/powerMw tables');
+    check(doc.getElementById('lutcmp').textContent.indexOf('پیشنهادی برای ارسال') < 0,
+          'the standalone board view does not mix empty audit columns into the actual values');
 
     /* --- a CRC that does not match is NOT a success and reboots nothing --- */
     calls.length = 0;
@@ -1540,6 +1570,10 @@ async function testLutPush(win, doc) {
 
     /* A successful ACK without a value readback is not promoted to success. */
     readMode = 'unavailable';
+    /* A rejected previous transaction did not perform its post-commit read,
+       so do not let the stub leak that one-shot after flag into this new
+       transaction's required before-read. */
+    readAfterTransaction = false;
     win.fetch = stub(ackOk);
     win.confirm = () => true;
     await win.eval('lsend')();
@@ -1585,6 +1619,70 @@ async function testLutPush(win, doc) {
               'the DOM audit shows the non-zero to zero-point transition as confirmed');
     }
 
+    /* --- one battery update carries the other battery unchanged ---------
+       [EN] This is the regression the original all-table sender missed:
+            changing battery 1 must send its proposed gain/offset and LUT,
+            while battery 2 is copied from the fresh board readback.
+       [FA] این رگرسیون مسیر قبلی است: تغییر باتری ۱ باید گین/آفست و LUT
+            پیشنهادی خودش را بفرستد، اما باتری ۲ از readback تازه بدون تغییر
+            حمل شود. */
+    {
+        const savedSamples = win.CALS;
+        win.CALS = savedSamples.map(z => Object.assign({}, z, { sc: 'BAT1' }));
+        win.eval('calrun')();
+        const idxOff1 = win.CALR.findIndex(r => r[1] === 0);
+        const idxGain1 = win.CALR.findIndex(r => r[1] === 2);
+        doc.getElementById('calv' + idxOff1).value = Number(win.D.p[0]) + 1;
+        doc.getElementById('calv' + idxGain1).value = Number(win.D.p[2]) + 1;
+        readBefore = [
+            { X: packed.T[0].X.map(v => v + 20), Y: packed.T[0].Y.map(v => v + 200) },
+            { X: [900, 1000], Y: [1800, 2200] }
+        ];
+        readPhase = 0;
+        readMode = 'good';
+        const onePreview = win.eval('lpack')(1, { ready: true, T: readBefore });
+        activeRows = onePreview.T;
+        const ackOne = { st: 3, s: 0, n1: onePreview.T[0].X.length,
+                         n2: onePreview.T[1].X.length, crc: onePreview.crc,
+                         sent: onePreview.crc, age: 10, n: 3 };
+        calls.length = 0;
+        postedBodies.length = 0;
+        win.confirm = (m) => String(m).indexOf('ریست شود') < 0;
+        win.fetch = stub(ackOne);
+        await win.eval('lsend')(1);
+        check(doc.getElementById('calst').textContent.indexOf('✅') >= 0,
+              'a single-battery update completes with calibration and LUT readback');
+        check(calls.some(c => c.indexOf('/s?id=0&') >= 0) && calls.some(c => c.indexOf('/s?id=2&') >= 0) &&
+              !calls.some(c => c.indexOf('/s?id=1&') >= 0) && !calls.some(c => c.indexOf('/s?id=3&') >= 0),
+              'battery 1 sends only its own offset and gain');
+        const oneBody = postedBodies[postedBodies.length - 1].split(',').map(Number);
+        check(oneBody[0] === onePreview.T[0].X.length &&
+              oneBody[1] === readBefore[1].X.length,
+              'battery 2 stays in the transaction with exactly its fresh readback point count');
+        check(doc.getElementById('lutcmp').textContent.indexOf('unchanged') >= 0,
+              'the unchanged battery is visibly marked unchanged in the audit');
+
+        /* A calibration endpoint failure is a hard stop: no LUT POST may
+           follow a missing/mismatched gain or offset readback. */
+        doc.getElementById('calv' + idxOff1).value = Number(win.D.p[0]) + 1;
+        calFail = true;
+        readAfterTransaction = false;
+        calls.length = 0;
+        postedBodies.length = 0;
+        win.confirm = () => true;
+        await win.eval('lsend')(1);
+        check(doc.getElementById('calst').textContent.indexOf('گین/آفست') >= 0 &&
+              doc.getElementById('calst').textContent.indexOf('جدول LUT ارسال نشد') >= 0,
+              'a calibration readback failure is reported before LUT commit');
+        check(!calls.some(c => c === 'POST /lut'),
+              'a failed calibration readback sends no LUT frame');
+        calFail = false;
+        win.CALS = savedSamples;
+        activeRows = packed.T;
+        readBefore = packed.T.map(t => ({ X: t.X.slice(), Y: t.Y.slice() }));
+        readPhase = 0;
+    }
+
     /* --- the wizard still owns the board while it runs --- */
     const Wv = win.eval('W'); Wv.run = true;
     await win.eval('lsend')();
@@ -1597,10 +1695,9 @@ async function testLutPush(win, doc) {
     win.eval('calcode')();
     check(doc.getElementById('calcd').value.indexOf('CAL_Current1LutChainMa') >= 0,
           'the build-time route still produces calibration.h - the user asked to keep it');
-    check(doc.getElementById('lbtnS') &&
-          doc.querySelector('button[onclick="calcode()"]') &&
-          doc.getElementById('lbtnS').textContent.indexOf('ارسال جدول به برد') >= 0,
-          'both calibration routes are offered as buttons in the calibration card');
+    check(doc.getElementById('lbtnS1') && doc.getElementById('lbtnS2') &&
+          doc.getElementById('lbtnRead') && doc.querySelector('button[onclick="calcode()"]'),
+          'the calibration card offers readback plus separate battery update buttons');
 }
 
 

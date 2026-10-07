@@ -4109,8 +4109,13 @@ def test_direct_lut_push_v166():
     # ---------- the panel keeps BOTH routes and drives the handshake ----------
     check("calcode()" in ino and "calcdl()" in ino,
           "option (c), generating calibration.h for a rebuild, must still be offered")
-    check("lsend()" in ino and "lrst()" in ino and "function lcrc(" in ino,
+    check("async function lsend(target)" in ino and "async function lrst()" in ino and
+          "function lcrc(" in ino,
           "the panel must offer the direct push, the post-handshake reset, and compute the CRC32 itself")
+    check("async function lapplycal(target,p)" in ino and "await lapplycal(targetId,p)" in ino and
+          "id=\"lbtnS1\"" in ino and "id=\"lbtnS2\"" in ino and
+          "id=\"lbtnRead\"" in ino,
+          "each LUT push must apply/read back calibration first and expose independent battery/read buttons")
     check("a.crc>>>0!==p.crc>>>0" in ino,
           "the panel must compare the board's CRC with its own before calling the push a success")
     check("جدول قبلی بدون تغییر ماند" in ino,

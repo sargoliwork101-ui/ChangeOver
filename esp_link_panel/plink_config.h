@@ -274,13 +274,13 @@
  *      مهر/اندازه بدون تغییر است.
  *
  *      2026-10-07 active-LUT readback and point-by-point audit add served
- *      markup; the measured document is 394655 bytes and the 400000-byte guard
- *      keeps the same transfer contract with explicit headroom.
- *      [FA] در ۲۰۲۶-۱۰-۰۷ بازخوانی جدول فعال و ممیزی عددبه‌عدد کمی به مارک‌آپ
- *      افزود؛ اندازهٔ اندازه‌گیری‌شده ۳۹۴۶۵۵ بایت است و نگهبان ۴۰۰۰۰۰بایتی
- *      همان قرارداد انتقال را با حاشیهٔ صریح حفظ می‌کند.
+ *      markup; the per-battery calibration/readback controls now measure
+ *      about 402.5 KB, so the deliberate guard is 410000 bytes.
+ *      [FA] در ۲۰۲۶-۱۰-۰۷ کنترل مستقل کالیبراسیون/بازخوانی هر باتری به
+ *      مارک‌آپ افزوده شد؛ اندازه حدود ۴۰۲٫۵ کیلوبایت است، پس سقف عمدی
+ *      ۴۱۰۰۰۰ بایت با حاشیهٔ روشن است.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    400000u
+#define ESP_PANEL_HTML_MAX_BYTES    410000u
 
 /* ==================== Parser States ==================== */
 typedef enum
