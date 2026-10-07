@@ -625,13 +625,17 @@ readback failure است؛ summary و modal هر دو ناحیهٔ scrollable د�
 را با یک تأیید اعمال می‌کند، سپس برای هر مقدار `setv()` و readback واقعی را کامل
 می‌کند و بعد از تأیید modal بسته می‌شود. مسیر LUT نیز همهٔ پارامترهای معتبرِ قابل‌اعمال
 تراکنش را پیش از LUT می‌نویسد و ماندگاری هر هفت مقدار calibration را پس از reset
-دوباره می‌خواند؛ battery 2 همچنان مستقل از gain/offset باتری 1 است.
+دوباره می‌خواند؛ battery 2 همچنان مستقل از gain/offset باتری 1 است. در ابزار
+داده‌برداری بنچ نیز کنترل `SWEEP` از فهرست دستی جدا شد: با روشن بودن آن فقط
+از/تا/گام دیده می‌شود و با خاموش بودن فقط فهرست دستی دیده می‌شود؛ تم ردیف کلیدها
+با تم خود پنل یکسان شد.
 
 مدرک اجرای همین checkout:
 
-- `node esp_link_panel/Tester/host_test_scenario_cards.js`: **319/319 PASS**؛ شامل
-  summary نام‌محور، checkbox انتخاب همهٔ نمونه‌ها، حذف جدول/کنترل‌های ردیفی، modal
-  یک‌تأییدی، اعمال همهٔ مقادیر معتبر و بسته‌شدن modal.
+- `node esp_link_panel/Tester/host_test_scenario_cards.js`: **322/322 PASS**؛ شامل
+  summary نام‌محور، checkbox انتخاب همهٔ نمونه‌ها، انتخاب انحصاری SWEEP/فهرست دستی
+  با گام قابل‌تنظیم، حذف جدول/کنترل‌های ردیفی، modal یک‌تأییدی، اعمال همهٔ مقادیر
+  معتبر و بسته‌شدن modal.
 - `node esp_link_panel/Tester/host_test_panel_click.js`: **129/129 PASS**.
 - `./Firmware/Modules/CalLut/Tester/run_host_test_cal_lut.sh`: **159/159 PASS**.
 - `./esp_link_panel/Tester/run_esp_tests.sh`: **112/112 PASS**.

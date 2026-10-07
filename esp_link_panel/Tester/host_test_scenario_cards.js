@@ -1328,6 +1328,36 @@ async function testBackupAndCal(win, doc) {
     check(win.eval('WSTC') === win.eval('WH').length - 1,
           'the status column index follows the header list instead of a hard-coded 12');
 
+    /* --- v1.66 bench input mode: SWEEP and manual duty are exclusive ----- */
+    const sweepToggle = doc.getElementById('wSw');
+    const manualDuty = doc.getElementById('wManual');
+    const sweepFields = doc.getElementById('wSweep');
+    const sweepStep = doc.getElementById('wStep');
+    sweepToggle.checked = true;
+    sweepToggle.onchange();
+    check(manualDuty.className.indexOf('wmode-hidden') >= 0 &&
+          sweepFields.className.indexOf('wmode-hidden') < 0 &&
+          doc.getElementById('wA').disabled === false &&
+          doc.getElementById('wB').disabled === false &&
+          sweepStep && sweepStep.disabled === false,
+          'SWEEP shows only its start, end and step controls');
+    sweepToggle.checked = false;
+    sweepToggle.onchange();
+    check(manualDuty.className.indexOf('wmode-hidden') < 0 &&
+          sweepFields.className.indexOf('wmode-hidden') >= 0 &&
+          doc.getElementById('wL').disabled === false &&
+          doc.getElementById('wA').disabled === true &&
+          doc.getElementById('wB').disabled === true &&
+          sweepStep.disabled === true,
+          'turning SWEEP off shows only the manual duty list');
+    sweepToggle.checked = true;
+    doc.getElementById('wA').value = '2';
+    doc.getElementById('wB').value = '6';
+    sweepStep.value = '2';
+    sweepToggle.onchange();
+    check(JSON.stringify(win.eval('wsweep')()) === JSON.stringify([2, 4, 6]),
+          'the SWEEP step field controls the generated duty sequence');
+
     /* --- v1.59: the raw bench samples can be saved and restored --- */
     const sbl = [];
     const OldBlob2 = win.Blob;
