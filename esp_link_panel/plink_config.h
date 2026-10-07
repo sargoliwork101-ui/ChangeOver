@@ -60,7 +60,9 @@
 #define ESP_MSG_LUT_CHUNK           0x05u
 #define ESP_MSG_LUT_COMMIT          0x06u
 #define ESP_MSG_LUT_RESET           0x07u
+#define ESP_MSG_LUT_READ            0x08u
 #define ESP_MSG_LUT_ACK             0x13u
+#define ESP_MSG_LUT_DATA            0x14u
 /* [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
    [FA] سقف نقاط هر کانال، برابر CAL_LUT_POINTS_MAX روی برد. */
 #define ESP_LUT_POINTS_MAX          24u
@@ -271,14 +273,14 @@
  *      کیلوبایت (۳۸۴۰۰۰ به ۳۸۵۰۲۴) پله خورد؛ رفتار، انتقال تکه‌ای و ممیزی
  *      مهر/اندازه بدون تغییر است.
  *
- *      2026-10-07 calibration read-back and LUT transaction guards add a small
- *      amount of served markup; the next 1 KiB step keeps the same transfer
- *      contract with measured headroom (377 KiB = 386048 bytes).
- *      [FA] در ۲۰۲۶-۱۰-۰۷ همگام‌سازی ‎read-back‎ کالیبراسیون و نگهبان تراکنش LUT
- *      کمی به مارک‌آپ افزود؛ پلهٔ بعدی همان قرارداد انتقال را با حاشیهٔ اندازه
- *      حفظ می‌کند (۳۷۷ کیلوبایت = ۳۸۶۰۴۸ بایت).
+ *      2026-10-07 active-LUT readback and point-by-point audit add served
+ *      markup; the measured document is 394655 bytes and the 400000-byte guard
+ *      keeps the same transfer contract with explicit headroom.
+ *      [FA] در ۲۰۲۶-۱۰-۰۷ بازخوانی جدول فعال و ممیزی عددبه‌عدد کمی به مارک‌آپ
+ *      افزود؛ اندازهٔ اندازه‌گیری‌شده ۳۹۴۶۵۵ بایت است و نگهبان ۴۰۰۰۰۰بایتی
+ *      همان قرارداد انتقال را با حاشیهٔ صریح حفظ می‌کند.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    386048u
+#define ESP_PANEL_HTML_MAX_BYTES    400000u
 
 /* ==================== Parser States ==================== */
 typedef enum

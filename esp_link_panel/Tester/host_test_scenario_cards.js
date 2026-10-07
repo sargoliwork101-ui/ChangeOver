@@ -1464,13 +1464,29 @@ async function testLutPush(win, doc) {
 
     /* --- a matching handshake is a success and offers the reboot --- */
     const calls = [];
+    const readBefore = packed.T.map(t => ({ X: t.X.map(v => v + 10), Y: t.Y.map(v => v + 100) }));
+    let readPhase = 0;
+    let readMode = 'good';
+    const readJson = () => {
+        if (readMode === 'unavailable') return { ready: 0, pending: 0, error: 1 };
+        const rows = readPhase ? packed.T : readBefore;
+        return { ready: 1, pending: 0, error: 0,
+                 n1: rows[0].X.length, n2: rows[1].X.length,
+                 r1: rows[0].X.map((v, i) => [v, rows[0].Y[i]]),
+                 r2: rows[1].X.map((v, i) => [v, rows[1].Y[i]]) };
+    };
     const stub = (ack) => (u, o) => {
         calls.push((o && o.method ? o.method : 'GET') + ' ' + u);
-        if (String(u).indexOf('/lut') === 0 && o && o.method === 'POST' && String(u).indexOf('reset') < 0) {
+        if (String(u) === '/lut/read' && o && o.method === 'POST') {
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: 1, pending: 1 }) });
+        }
+        if (String(u) === '/lut' && o && o.method === 'POST') {
+            readPhase = 1;
             return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: 1 }) });
         }
         if (String(u) === '/lut') {
-            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(ack) });
+            const answer = Object.assign({}, ack, { read: readJson() });
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(answer) });
         }
         if (String(u).indexOf('/lut/reset') === 0) {
             return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: 1 }) });
@@ -1486,7 +1502,14 @@ async function testLutPush(win, doc) {
     win.fetch = stub(ackOk);
     await win.eval('lsend')();
     check(doc.getElementById('calst').textContent.indexOf('✅') >= 0,
-          'a matching CRC is reported as a real success');
+          'a matching CRC and point-by-point readback are reported as a real success');
+    check(doc.getElementById('lutcmp').textContent.indexOf('فعلی روی برد') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('پیشنهادی برای ارسال') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('پس از commit') >= 0,
+          'the LUT audit keeps current, proposed and post-commit columns visible');
+    check(doc.getElementById('lutcmp').textContent.indexOf('باتری ۲') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('تغییر کرد و تأیید شد') >= 0,
+          'battery 2 is compared point by point and a changed row is marked');
     check(calls.filter(c => c.indexOf('/lut/reset') >= 0).length === 0,
           'declining the reboot leaves the board running on the table it just stored');
 
@@ -1514,6 +1537,17 @@ async function testLutPush(win, doc) {
     await win.eval('lsend')();
     check(doc.getElementById('calst').textContent.indexOf('محور توان') >= 0,
           'the board status code is translated into a plain reason');
+
+    /* A successful ACK without a value readback is not promoted to success. */
+    readMode = 'unavailable';
+    win.fetch = stub(ackOk);
+    win.confirm = () => true;
+    await win.eval('lsend')();
+    check(doc.getElementById('calst').textContent.indexOf('بازخوانی عددبه‌عدد بعد از commit ناموفق') >= 0,
+          'a missing active-table readback is shown as a failure, not hidden by CRC');
+    check(doc.getElementById('lutcmp').textContent.indexOf('بازخوانی ناموفق') >= 0,
+          'the table marks unavailable post-commit values visibly');
+    readMode = 'good';
 
     /* --- the wizard still owns the board while it runs --- */
     const Wv = win.eval('W'); Wv.run = true;

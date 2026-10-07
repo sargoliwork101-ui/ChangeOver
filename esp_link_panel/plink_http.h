@@ -547,46 +547,102 @@ static void func__Esp_HttpLutPush(void)
 }
 
 /**
- * @brief  [EN] GET /lut : the last handshake the board sent.
- *              {st: stage 1..4, s: status 0=OK, n1, n2: points now active on
- *              the board, crc: CRC32 the board stored, sent: CRC32 we asked
- *              for, age: ms since the ACK, n: ACK count since the push,
- *              tx: step still being sent (0 = sender idle), txe: 0 none,
- *              1 = no answer after the retries, 2 = the board refused a step}.
- *         [FA] مسیر ‎GET /lut‎ : آخرین دست‌دادن برد.
- * @return [EN] None / [FA]‎ ندارد
+ * @brief  [EN] GET /lut : return the push handshake and the point-by-point
+ *              active-table readback. The readback arrays are emitted only
+ *              after both channels arrive; CRC/count fields remain metadata.
+ *         [FA] مسیر ‎GET /lut‎ دست‌دادن ارسال و بازخوانی عددبه‌عدد جدول فعال
+ *              را برمی‌گرداند. آرایه‌ها فقط پس از رسیدن هر دو کانال می‌آیند؛
+ *              CRC/تعداد فقط metadata هستند.
+ * @‎return [EN] None / [FA]‎ ندارد
  */
 static void func__Esp_HttpLutStatus(void)
 {
-    uint32_t uint32_t__ageMs = (uint32_t)millis() - UINT32_T__G__LutAckMs;
+    uint32_t uint32_t__ackAgeMs = (uint32_t)millis() - UINT32_T__G__LutAckMs;
+    uint32_t uint32_t__readAgeMs = (uint32_t)millis() - UINT32_T__G__LutReadMs;
+    uint8_t uint8_t__count1 = BOOL__G__LutReadReady ? UINT8_T__G__LutReadCount1 : 0u;
+    uint8_t uint8_t__count2 = BOOL__G__LutReadReady ? UINT8_T__G__LutReadCount2 : 0u;
+    size_t size_t__used;
+    uint8_t uint8_t__index;
 
-    (void)snprintf(CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
-                   "{\"st\":%u,\"s\":%u,\"n1\":%u,\"n2\":%u,\"crc\":%lu,\"sent\":%lu,\"age\":%lu,\"n\":%lu,\"tx\":%u,\"txe\":%u}",
-                   (unsigned int)UINT8_T__G__LutAckStage, (unsigned int)UINT8_T__G__LutAckStatus,
-                   (unsigned int)UINT8_T__G__LutAckPoints1, (unsigned int)UINT8_T__G__LutAckPoints2,
-                   (unsigned long)UINT32_T__G__LutAckCrc32, (unsigned long)UINT32_T__G__LutSentCrc32,
-                   (unsigned long)((UINT32_T__G__LutAckCount == 0u) ? 0u : uint32_t__ageMs),
-                   (unsigned long)UINT32_T__G__LutAckCount,
-                   (unsigned int)UINT8_T__G__LutTxStage, (unsigned int)UINT8_T__G__LutTxError);
+    size_t__used = (size_t)snprintf(
+        CHAR__G__JsonBuffer, ESP_JSON_BUFFER_SIZE,
+        "{\"st\":%u,\"s\":%u,\"n1\":%u,\"n2\":%u,\"crc\":%lu,\"sent\":%lu,\"age\":%lu,\"n\":%lu,\"tx\":%u,\"txe\":%u,\"read\":{\"ready\":%u,\"pending\":%u,\"error\":%u,\"age\":%lu,\"n1\":%u,\"n2\":%u,\"r1\":[",
+        (unsigned int)UINT8_T__G__LutAckStage, (unsigned int)UINT8_T__G__LutAckStatus,
+        (unsigned int)UINT8_T__G__LutAckPoints1, (unsigned int)UINT8_T__G__LutAckPoints2,
+        (unsigned long)UINT32_T__G__LutAckCrc32, (unsigned long)UINT32_T__G__LutSentCrc32,
+        (unsigned long)((UINT32_T__G__LutAckCount == 0u) ? 0u : uint32_t__ackAgeMs),
+        (unsigned long)UINT32_T__G__LutAckCount,
+        (unsigned int)UINT8_T__G__LutTxStage, (unsigned int)UINT8_T__G__LutTxError,
+        BOOL__G__LutReadReady ? 1u : 0u, BOOL__G__LutReadPending ? 1u : 0u,
+        (unsigned int)UINT8_T__G__LutReadError,
+        (unsigned long)(BOOL__G__LutReadReady ? uint32_t__readAgeMs : 0u),
+        (unsigned int)uint8_t__count1, (unsigned int)uint8_t__count2);
+
+    for (uint8_t__index = 0u; uint8_t__index < uint8_t__count1; uint8_t__index++)
+    {
+        const char *char__ptr_separator = (uint8_t__index == 0u) ? "" : ",";
+        size_t__used += (size_t)snprintf(
+            &CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used,
+            "%s[%lu,%lu]", char__ptr_separator,
+            (unsigned long)UINT32_T__G__LutReadChain1[uint8_t__index],
+            (unsigned long)UINT32_T__G__LutReadPower1[uint8_t__index]);
+    }
+
+    size_t__used += (size_t)snprintf(
+        &CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used,
+        "],\"r2\":[");
+    for (uint8_t__index = 0u; uint8_t__index < uint8_t__count2; uint8_t__index++)
+    {
+        const char *char__ptr_separator = (uint8_t__index == 0u) ? "" : ",";
+        size_t__used += (size_t)snprintf(
+            &CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used,
+            "%s[%lu,%lu]", char__ptr_separator,
+            (unsigned long)UINT32_T__G__LutReadChain2[uint8_t__index],
+            (unsigned long)UINT32_T__G__LutReadPower2[uint8_t__index]);
+    }
+
+    (void)snprintf(&CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used,
+                   "]}}");
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", CHAR__G__JsonBuffer);
 }
 
 /**
+ * @brief  [EN] POST /lut/read : ask STM32 for the active point values.
+ *         [FA] مسیر ‎POST /lut/read‎ مقدار واقعی نقاط فعال را از STM32 می‌خواهد.
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_HttpLutRead(void)
+{
+    if (UINT8_T__G__LutTxStage != 0u)
+    {
+        ESP_WEB_SERVER_T__G__Server.send(409, "application/json", "{\"ok\":0,\"e\":\"busy\"}");
+        return;
+    }
+
+    if (!BOOL__G__LutReadPending)
+    {
+        (void)func__Esp_LutReadStart();
+    }
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1,\"pending\":1}");
+}
+
+/**
  * @brief  [EN] POST /lut/reset : ask the board to reboot so every module
  *              starts from the table it just stored. Refused unless the last
- *              commit handshake actually succeeded - a reboot is never
- *              offered as a way to "try again".
+ *              commit handshake and exact point-by-point readback both passed
+ *              - a reboot is never offered as a way to "try again".
  *         [FA] مسیر ‎POST /lut/reset‎ : درخواست ریست برد تا همهٔ ماژول‌ها با
- *              جدول تازه شروع کنند. تا وقتی دست‌دادن کامیت موفق نبوده رد
- *              می‌شود - ریست هرگز راهِ «دوباره امتحان کن» نیست.
+ *              جدول تازه شروع کنند. تا وقتی دست‌دادن کامیت و بازخوانی دقیق
+ *              عددبه‌عدد موفق نباشد رد می‌شود - ریست راهِ «دوباره امتحان کن» نیست.
  * @return [EN] None / [FA]‎ ندارد
  */
 static void func__Esp_HttpLutReset(void)
 {
     if ((UINT8_T__G__LutTxStage != 0u) || (UINT8_T__G__LutTxError != 0u) ||
         (UINT8_T__G__LutAckStage != 3u) || (UINT8_T__G__LutAckStatus != 0u) ||
-        (UINT32_T__G__LutAckCrc32 != UINT32_T__G__LutSentCrc32) || (UINT32_T__G__LutSentCrc32 == 0u))
+        (UINT32_T__G__LutAckCrc32 != UINT32_T__G__LutSentCrc32) ||
+        (UINT32_T__G__LutSentCrc32 == 0u) || (!func__Esp_LutReadMatchesStaged()))
     {
         ESP_WEB_SERVER_T__G__Server.send(409, "application/json", "{\"ok\":0,\"e\":\"handshake\"}");
         return;

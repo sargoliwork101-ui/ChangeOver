@@ -178,6 +178,11 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .bctl label>.t{flex:0 0 auto;order:-1}
 .bctl label input[type=number]{width:84px;min-width:84px}
 .tw{overflow:auto;max-height:420px;margin:6px 0 10px;border:1px solid var(--ln);border-radius:12px}.bt2{font-size:12px;direction:ltr;white-space:nowrap}.bt2 th{position:sticky;top:0;background:var(--rs);color:var(--mu);font-weight:600;text-align:center;padding:6px 8px}.bt2 td{padding:5px 8px;text-align:center}
+/* [EN] LUT audit table: every row keeps the board value, proposed value and
+   post-commit value together. The status colour describes values, not CRC.
+   [FA] جدول ممیزی LUT: مقدار برد، پیشنهاد و مقدار پس از commit در هر ردیف
+   کنار هم می‌مانند؛ رنگ وضعیت از خود عددها می‌آید، نه از CRC. */
+.lutbox{margin-top:10px;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:10px}.luthead{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;color:var(--tx);font-weight:700}.luttag{font-size:11px;color:var(--mu);font-weight:400}.lutt{width:100%;font-size:12px;direction:ltr;white-space:nowrap}.lutt th{position:sticky;top:0;background:var(--rs);color:var(--mu);padding:6px 8px;text-align:center;font-weight:600}.lutt td{padding:5px 8px;text-align:center;border-top:1px solid rgba(56,69,94,.45)}.lutt .pair{font-variant-numeric:tabular-nums}.lutst{font-weight:700;border-radius:999px;padding:2px 8px;display:inline-block}.lutst.same{color:var(--mu);background:rgba(150,161,184,.12)}.lutst.changed{color:var(--ok);background:rgba(53,214,160,.12)}.lutst.diff{color:var(--wa);background:rgba(247,193,60,.12)}.lutst.bad{color:var(--er);background:rgba(255,104,115,.12)}
 .bt3{width:auto;font-size:13px}.bt3 th{color:var(--mu);font-weight:600;text-align:center;padding:5px 8px;white-space:nowrap}.bt3 td{padding:5px 8px;text-align:center}.bt3 input[type=number]{padding:6px 8px}
 .bsum{font-size:12px;direction:ltr;text-align:left;line-height:1.9;margin-bottom:8px}.okc{color:var(--ok)}.erc{color:var(--er)}
 /* [EN] Colour checklist: green ready / yellow warning / red blocker.
@@ -401,7 +406,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 1ae71dc</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 20556f3</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3572,33 +3577,91 @@ function lpack(){
  return {T:T,crc:crc,body:cs.join(','),msg:msg};}
 /* [EN] Gate both board buttons on readiness; the reason goes in title.
    [FA] مشروط‌کردن دو دکمهٔ برد به آمادگی؛ دلیل در title. */
-let LSNT=0;
+let LSNT=0,LBT={ready:false,error:'هنوز خوانده نشده',T:[{X:[],Y:[]},{X:[],Y:[]}]},LAT=null,LUTVIEW='',LUTREADSEQ=0;
+function lnewread(ok,e,t){return {ready:!!ok,error:e||'',T:t||[{X:[],Y:[]},{X:[],Y:[]}],stamp:++LUTREADSEQ};}
+function lreadtable(a){
+ const v=Array.isArray(a)?a:[],X=[],Y=[];v.forEach(q=>{if(Array.isArray(q)&&q.length===2&&Number.isFinite(+q[0])&&Number.isFinite(+q[1])){X.push(+q[0]);Y.push(+q[1]);}});
+ return {X:X,Y:Y};}
+function lpair(t,i){return t&&t.X&&t.Y&&i<t.X.length&&i<t.Y.length?[+t.X[i],+t.Y[i]]:null;}
+function leq(a,b){return !!a&&!!b&&a[0]===b[0]&&a[1]===b[1];}
+function lval(q){return q?'<span class="pair">'+q[0]+' / '+q[1]+'</span>':'<span class="lb">—</span>';}
+function lpost(b,p,a,br,ar,ae){
+ if(!ar)return {c:'bad',t:ae?'بازخوانی ناموفق':'در انتظار بازخوانی بعد'};
+ if(!p&&!a)return {c:'same',t:'بدون نقطه'};
+ if(!p&&!leq(a,p))return {c:'bad',t:'نقطهٔ اضافه روی برد'};
+ if(!leq(a,p))return {c:'bad',t:'mismatch — با پیشنهاد یکی نیست'};
+ if(!br)return {c:'changed',t:'مطابق پیشنهاد؛ قبل نامعلوم'};
+ if(leq(b,a))return {c:leq(b,p)?'same':'bad',t:leq(b,p)?'unchanged':'unchanged — تغییر مورد انتظار رخ نداد'};
+ return {c:'changed',t:'تغییر کرد و تأیید شد'};
+}
+function lrender(p,b,a){
+ const e=$('lutcmp');if(!e)return;
+ if(!p||p.bad){e.innerHTML='<div class="lutbox"><div class="luthead">ممیزی عددبه‌عدد جدول LUT</div><div class="lb">پس از ساخت جدول پیشنهادی، مقدار فعلی برد و مقدار پیشنهادی اینجا نمایش داده می‌شود.</div></div>';return;}
+ const br=!!(b&&b.ready),ar=!!(a&&a.ready),bt=br?b.T:[{X:[],Y:[]},{X:[],Y:[]}],at=ar?a.T:[{X:[],Y:[]},{X:[],Y:[]}];
+ let h='<div class="lutbox"><div class="luthead"><span>ممیزی عددبه‌عدد جدول LUT</span><span class="luttag">فعلی برد ← پیشنهادی ← پس از commit</span></div>';
+ h+='<div class="lb" style="margin:5px 0">'+(br?'✅ جدول واقعی قبل از ارسال خوانده شد. اختلاف‌های فعلی با رنگ زرد مشخص‌اند.':'⚠ جدول واقعی قبل از ارسال در دسترس نیست؛ مقدار «فعلی» حدس زده نمی‌شود و با — نشان داده می‌شود.')+'</div>';
+ [1,2].forEach(n=>{
+  const p0=p.T[n-1]||{X:[],Y:[]},b0=bt[n-1],a0=at[n-1],m=Math.max(p0.X.length,b0.X.length,a0.X.length);
+  h+='<div class="luthead" style="margin-top:9px"><span>باتری '+fa(n)+'</span><span class="luttag">'+m+' ردیف قابل مقایسه</span></div>';
+  if(!m){h+='<div class="lb">برای این باتری نقطه‌ای در جدول پیشنهادی یا بازخوانی‌شده نیست.</div>';return;}
+  h+='<div class="tw"><table class="lutt"><tr><th>#</th><th>فعلی روی برد</th><th>پیشنهادی برای ارسال</th><th>پس از commit</th><th>نتیجه</th></tr>';
+  for(let i=0;i<m;i++){
+   const old=lpair(b0,i),want=lpair(p0,i),now=lpair(a0,i),pre=!br?{c:'bad',t:'فعلی نامعلوم'}:(!old&&want?{c:'changed',t:'نقطهٔ جدید'}:(!want&&old?{c:'bad',t:'نقطهٔ فعلی اضافه'}:{c:leq(old,want)?'same':'diff',t:leq(old,want)?'بدون اختلاف':'اختلاف'}));
+   const post=lpost(old,want,now,br,ar,a&&a.error);
+   h+='<tr><td>'+(i+1)+'</td><td>'+lval(old)+'</td><td>'+lval(want)+'</td><td>'+lval(now)+'</td><td><span class="lutst '+post.c+'">'+post.t+'</span>'+(br&&pre.c==='diff'?' <span class="luttag">(قبل: اختلاف)</span>':'')+'</td></tr>';
+  }
+  h+='</table></div>';
+ });
+ h+='<div class="luttag">ملاک موفقیت، تطبیق chain و power هر ردیف با پیشنهاد است؛ CRC و تعداد فقط سلامت handshake را توضیح می‌دهند.</div></div>';
+ e.innerHTML=h;
+}
+function lview(p,b,a){const k=(p&&!p.bad?p.body:'none')+'|'+(b?b.stamp:0)+'|'+(a?a.stamp:0);if(k===LUTVIEW)return;LUTVIEW=k;lrender(p,b,a);}
+function ldecode(j){
+ const r=j&&j.read;
+ if(!r||r.ready!==1)return lnewread(false,(r&&r.error)?'دادهٔ بازخوانی ناقص بود':'پاسخ بازخوانی نرسید');
+ return lnewread(true,'',[lreadtable(r.r1),lreadtable(r.r2)]);
+}
+async function lread(){
+ let q;try{q=await req('/lut/read','POST');}catch(e){return lnewread(false,'درخواست بازخوانی به ESP نرسید');}
+ if(!q||q._s!==200||q.ok!==1)return lnewread(false,'ESP درخواست بازخوانی را نپذیرفت');
+ for(let i=0;i<30;i++){
+  await sl(150);let a;try{a=await req('/lut','GET');}catch(e){continue;}
+  if(a&&a.read&&a.read.error)return lnewread(false,'STM32 بازخوانی ناقص فرستاد');
+  if(a&&a.read&&a.read.ready===1)return ldecode(a);
+ }
+ return lnewread(false,'مهلت بازخوانی جدول تمام شد');
+}
+function lmatch(a,p){if(!a||!a.ready)return false;for(let n=0;n<2;n++){const x=a.T[n],y=p.T[n];if(x.X.length!==y.X.length)return false;for(let i=0;i<x.X.length;i++){if(x.X[i]!==y.X[i]||x.Y[i]!==y.Y[i])return false;}}return true;}
+let LREAD_IN_PROGRESS=false;
 function lupd(){
  const b=$('lbtnS'),r=$('lbtnR');if(!b)return;
+ if(CALR.length){const p=lpack();lview(p,LBT,LAT);}
  let why='';
  if(W&&W.run)why='داده‌برداری بنچ در جریان است';
  else if(!D||D.on!=1)why='لینک STM32 برقرار نیست';
  else{const p=lpack();if(p.bad)why='جدول قابل‌ارسالی آماده نیست — '+p.bad;}
- b.disabled=!!why;b.title=why||'نوشتن جدول در فلش برد';
- if(r){const off=!LSNT;r.disabled=off;r.title=off?'بعد از ارسال موفق فعال می‌شود':'بالا آوردن برد با جدول جدید';}}
+ b.disabled=!!why||LREAD_IN_PROGRESS;b.title=why||'خواندن جدول فعلی، مقایسه و نوشتن جدول';
+ if(r){const off=!LSNT||LREAD_IN_PROGRESS;r.disabled=off;r.title=off?'بعد از بازخوانی موفقِ جدول جدید فعال می‌شود':'بالا آوردن برد با جدول جدید';}}
 async function lsend(){
  if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
  if(!D||D.on!=1){stxt('calst','⛔ لینک STM32 برقرار نیست.');return;}
  const p=lpack();
  if(p.bad){stxt('calst','⛔ '+p.bad+(p.msg.length?' · '+p.msg.join(' · '):''));return;}
+ LREAD_IN_PROGRESS=true;LSNT=0;lupd();lview(p,LBT,null);
+ stxt('calst','… اول جدول واقعی فعلی برد خوانده می‌شود؛ مقدارها حدس زده نمی‌شوند.');
+ const before=await lread();LBT=before;LAT=null;LREAD_IN_PROGRESS=false;lupd();lview(p,LBT,null);
  const dn=t=>t.X.length?t.X.length+' نقطه':'داده ندارد — دست نمی‌خورد';
- if(!confirm('جدول مستقیماً در حافظهٔ خود میکرو نوشته شود؟\n\n'+
-  'باتری ۱: '+dn(p.T[0])+' · باتری ۲: '+dn(p.T[1])+'\n'+
-  'اگر داده درست نرسد، برد کامیت را رد می‌کند و جدول قبلی سر جایش می‌ماند.'))return;
- LSNT=0;lupd();
+ const bn=before.ready?'جدول فعلی برای هر دو باتری در بالا دیده می‌شود.':'بازخوانی فعلی ناموفق بود؛ قبل از ارسال مقدار نامعلوم با — می‌ماند.';
+ if(!confirm('جدول مستقیماً در حافظهٔ خود میکرو نوشته شود؟\n\n'+bn+'\nباتری ۱: '+dn(p.T[0])+' · باتری ۲: '+dn(p.T[1])+'\nاگر داده درست نرسد، بعد از commit بازخوانی عددبه‌عدد خطا را نشان می‌دهد.'))return;
+ LREAD_IN_PROGRESS=true;LSNT=0;lupd();
  stxt('calst','… جدول در حال ارسال به برد');
- let r;try{r=await req('/lut','POST',p.body);}catch(e){stxt('calst','⚠ ارسال به ESP نرسید');return;}
+ let r;try{r=await req('/lut','POST',p.body);}catch(e){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⚠ ارسال به ESP نرسید');return;}
  /* [EN] The sketch's own reason codes (plink_http.h), in Persian.
     [FA] کدهای دلیل خود اسکچ، به فارسی. */
  const LE={len:'بدنهٔ ارسال خراب/بزرگ',n:'تعداد نقاط نامجاز',
   empty:'هر دو کانال خالی‌اند',pt:'بدنهٔ نقاط ناقص رسید',
   mono:'نقاط یک کانال صعودی نیستند',crc:'CRC بدنه پیدا نشد'};
- if(!r||r.ok!==1){stxt('calst','⛔ ESP جدول را نپذیرفت — دلیل: '+((r&&r.e&&LE[r.e])||('کد ناشناختهٔ '+((r&&r.e)||'?')))+' · جدول قبلی بدون تغییر ماند.');return;}
+ if(!r||r.ok!==1){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ ESP جدول را نپذیرفت — دلیل: '+((r&&r.e&&LE[r.e])||('کد ناشناختهٔ '+((r&&r.e)||'?')))+' · جدول قبلی بدون تغییر ماند.');return;}
  /* [EN] Staged send: ESP releases one frame per ACK (no RX-ring overrun),
     so wait up to 10 s and show the stage. [FA] ارسال گام‌به‌گام با تأیید هر
     فریم؛ تا ۱۰ ثانیه صبر و نمایش مرحله. */
@@ -3609,22 +3672,31 @@ async function lsend(){
   if(a&&a.txe){break;}
   if(a&&a.tx){stxt('calst','… ارسال جدول: '+(LSTG[a.tx]||a.tx));continue;}
   if(a&&a.st===3)break;}
- if(a&&a.txe===1){stxt('calst','⛔ برد به مرحلهٔ «'+(LSTG[a.tx]||('کد '+a.tx))+'» پاسخ نداد (STM32 فریم را تأیید نکرد). '+
+ if(a&&a.txe===1){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ برد به مرحلهٔ «'+(LSTG[a.tx]||('کد '+a.tx))+'» پاسخ نداد (STM32 فریم را تأیید نکرد). '+
   'رایج‌ترین دلیل: قطعی/نویز سیم لینک یا ریست وسط ارسال. جدول قبلی سالم ماند؛ لینک را چک کنید.');return;}
- if(a&&a.txe===2){stxt('calst','⛔ برد یکی از مرحله‌های ارسال را رد کرد: '+
+ if(a&&a.txe===2){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ برد یکی از مرحله‌های ارسال را رد کرد: '+
   (LUTST[a.s]||('کد '+a.s))+' · جدول قبلی بدون تغییر ماند.');return;}
- if(!a||a.st!==3){stxt('calst','⚠ برد پاسخ کامیت را نداد؛ جدول قبلی بدون تغییر ماند.');return;}
- if(a.s!==0){stxt('calst','⛔ برد جدول را رد کرد: '+(LUTST[a.s]||('کد '+a.s))+
+ if(!a||a.st!==3){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⚠ برد پاسخ کامیت را نداد؛ جدول قبلی بدون تغییر ماند.');return;}
+ if(a.s!==0){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ برد جدول را رد کرد: '+(LUTST[a.s]||('کد '+a.s))+
   ' · جدول قبلی بدون تغییر ماند.');return;}
- if(a.crc>>>0!==p.crc>>>0){stxt('calst','⛔ دست‌دادن نخواند (CRC برد '+a.crc+' ≠ CRC پنل '+p.crc+
+ if(a.crc>>>0!==p.crc>>>0){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ دست‌دادن نخواند (CRC برد '+a.crc+' ≠ CRC پنل '+p.crc+
   ') · جدول قبلی بدون تغییر ماند.');return;}
+ stxt('calst','… commit موفق بود؛ حالا جدول فعال STM32 دوباره خوانده می‌شود.');
+ const after=await lread();LREAD_IN_PROGRESS=false;LAT=after;lupd();lview(p,LBT,LAT);
+ if(!after.ready){LSNT=0;lupd();stxt('calst','⚠ commit با handshake تأیید شد، اما بازخوانی عددبه‌عدد بعد از commit ناموفق بود؛ تغییرات اعمال‌شده فرض نمی‌شوند و ریست پیشنهاد نمی‌شود.');return;}
+ if(!lmatch(after,p)){LSNT=0;lupd();stxt('calst','⛔ mismatch: commit پاسخ موفق داد، اما حداقل یک chain/power بازخوانی‌شده با پیشنهاد فرق دارد؛ ریست انجام نشد. جدول بالا ردیف خطادار را نشان می‌دهد.');return;}
  LSNT=1;lupd();
- stxt('calst','✅ جدول در فلش برد نوشته و تأیید شد (باتری ۱: '+a.n1+'، باتری ۲: '+a.n2+' نقطه، CRC '+a.crc+'). برای شروع با جدول نو «ریست برد» را بزنید.');
- if(confirm('جدول ذخیره شد.\n\nبرد ریست شود تا با جدول جدید بالا بیاید؟\n'+'(شارژ چند ثانیه قطع می‌شود؛ تنظیمات دست‌نخورده برمی‌گردند.)'))await lrst();}
+ stxt('calst','✅ commit و بازخوانی عددبه‌عدد موفق است؛ مقدار واقعی هر ردیف با پیشنهاد یکی است (باتری ۱: '+after.T[0].X.length+'، باتری ۲: '+after.T[1].X.length+' نقطه). CRC فقط metadata است. برای شروع با جدول نو «ریست برد» را بزنید.');
+ if(confirm('جدول ذخیره شد و عددهای واقعی برد با پیشنهاد یکی هستند.\n\nبرد ریست شود تا با جدول جدید بالا بیاید؟\n(شارژ چند ثانیه قطع می‌شود؛ تنظیمات دست‌نخورده برمی‌گردند.)'))await lrst();}
 async function lrst(){
+ if(!LSNT){stxt('calst','⛔ اول یک ارسال و بازخوانی موفق لازم است.');return;}
  let r;try{r=await req('/lut/reset','POST');}catch(e){stxt('calst','⚠ درخواست ریست به ESP نرسید');return;}
- if(!r||r.ok!==1){stxt('calst','⛔ ریست رد شد: اول یک ارسال موفق لازم است.');return;}
- stxt('calst','… فرمان ریست رفت؛ برد چند ثانیهٔ دیگر با جدول نو بالا می‌آید.');}
+ if(!r||r.ok!==1){stxt('calst','⛔ ریست رد شد: اول یک ارسال و بازخوانی موفق لازم است.');return;}
+ LSNT=0;LREAD_IN_PROGRESS=true;lupd();stxt('calst','… فرمان ریست رفت؛ پس از بالا آمدن STM32 جدول دوباره خوانده می‌شود.');
+ await sl(1200);const p=lpack(),after=await lread();LREAD_IN_PROGRESS=false;LAT=after;LBT=after;lupd();lview(p,LBT,LAT);
+ if(!after.ready){stxt('calst','⚠ برد ریست شد، اما بازخوانی پس از ریست ناموفق بود؛ ماندگاری جدول تأیید نشده است.');return;}
+ if(!lmatch(after,p)){stxt('calst','⛔ پس از ریست mismatch: جدول فعال برد با پیشنهاد یکی نیست؛ مقدارهای واقعی بالا دیده می‌شوند.');return;}
+ LSNT=1;lupd();stxt('calst','✅ پس از ریست هم بازخوانی عددبه‌عدد با جدول پیشنهادی یکی است؛ جدول باتری ۱ و ۲ واقعاً روی برد مانده است.');}
 
 /* ---------- ساخت تب‌ها ---------- */
 /* تب ۱: داده‌برداری بنچ */
@@ -3636,7 +3708,7 @@ $('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty 
 <div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div></div><div class="cd"><div class="hd"><b>کالیبراسیون خودکار از همین جدول</b><span class="lb">· نمونه‌های ثبت‌شده: <b id="caln">0</b> · عددها فقط با تأیید شما روی برد نوشته می‌شوند</span></div>
 <div class="ds">هر مرحله‌ای که در ویزارد «ثبت» می‌کنید یک نمونه هم اینجا می‌ماند. «محاسبه» از روی همین نمونه‌ها گین و آفست جریان هر دو کانال و سه آفست ولتاژ را درمی‌آورد، مقدار فعلی برد را کنار پیشنهاد می‌گذارد و کیفیت هر برازش را می‌گوید. برای نتیجهٔ خوب حداقل ۴ مرحله با duty پخش‌شده (مثلاً ۲ تا ۲۰٪) بگیرید.</div>
 <div class="bqr2"><button class="sb sb2" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb brun" onclick="calapply()">اعمال روی برد (با تأیید)</button><button class="sb sb2" onclick="calexp()">⬇ ذخیرهٔ نمونه‌ها</button><label class="sb" style="cursor:pointer">⬆ بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2" onclick="calclr()">پاک کردن نمونه‌ها</button></div>
-<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">۱) ارسال مستقیم به برد (سقف ۲۴ نقطه)</div><div class="bqr2"><button class="sb brun" id="lbtnS" onclick="lsend()" disabled>⇪ ارسال جدول به برد</button><button class="sb sb2" id="lbtnR" onclick="lrst()" disabled>↻ ریست برد</button></div><div class="lgrp">۲) ساخت calibration.h</div><div class="bqr2"><button class="sb sb2" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb" onclick="calcopy()">کپی کد</button><button class="sb" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" class="calcd" readonly></textarea><div class="cm lb" id="calst"></div><div id="caltb"></div></div>
+<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">۱) خواندن، مقایسه و ارسال مستقیم به برد (سقف ۲۴ نقطه)</div><div class="bqr2"><button class="sb brun" id="lbtnS" onclick="lsend()" disabled>⇪ خواندن، مقایسه و ارسال جدول به برد</button><button class="sb sb2" id="lbtnR" onclick="lrst()" disabled>↻ ریست و بازخوانی دوباره</button></div><div id="lutcmp"></div><div class="lgrp">۲) ساخت calibration.h</div><div class="bqr2"><button class="sb sb2" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb" onclick="calcopy()">کپی کد</button><button class="sb" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" class="calcd" readonly></textarea><div class="cm lb" id="calst"></div><div id="caltb"></div></div>
 `;
 caln();calsmp();calchk();bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{const s=$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB');if(L)L.disabled=s;if(A)A.disabled=!s;if(B)B.disabled=!s;};$('wSw').onchange();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
 /* ---------- کنترل دستی duty دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کنترلها داخل کارت هر شارژر (از v1.16p)؛

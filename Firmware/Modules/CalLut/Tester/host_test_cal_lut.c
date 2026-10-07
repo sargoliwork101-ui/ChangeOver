@@ -179,6 +179,24 @@ static uint32_t UINT32_T__G__A__Points[2];
 static uint32_t UINT32_T__G__A__Chain[2][CAL_LUT_POINTS_MAX];
 static uint32_t UINT32_T__G__A__Power[2][CAL_LUT_POINTS_MAX];
 
+/* ==================== Host u32 reader / خواندن u32 در تست هاست ==================== */
+
+/**
+ * @brief  [EN] Read one little-endian u32 from a captured link frame.
+ *         [FA] یک u32 لیتل‌اندین را از فریم ضبط‌شدهٔ لینک می‌خواند.
+ * @‎param  uint8_t__ptr_data [EN] Capture buffer / [FA]‎ بافر ضبط‌شده
+ * @‎param  uint16_t__offset [EN] Byte offset / [FA]‎ آفست بایتی
+ * @‎return uint32_t [EN] Decoded value / [FA]‎ مقدار رمزگشایی‌شده
+ */
+static uint32_t func__HostReadU32(const uint8_t *uint8_t__ptr_data,
+                                  uint16_t uint16_t__offset)
+{
+    return ((uint32_t)uint8_t__ptr_data[uint16_t__offset] |
+            ((uint32_t)uint8_t__ptr_data[uint16_t__offset + 1u] << 8) |
+            ((uint32_t)uint8_t__ptr_data[uint16_t__offset + 2u] << 16) |
+            ((uint32_t)uint8_t__ptr_data[uint16_t__offset + 3u] << 24));
+}
+
 static uint32_t func__HostPanelCrc(void)
 {
     uint32_t uint32_t__crc = 0xFFFFFFFFu;
@@ -396,6 +414,37 @@ int main(void)
     func__CalLut_Init();
     CHECK(func__CalLut_ActiveCrc32() == uint32_t__secondCrc);
     CHECK(func__CalLut_Points(CAL_LUT_CHANNEL_1) == 6u);
+
+    /* ---- 10b. LUT_READ returns the active values, including channel 2 ----
+       [EN] This is deliberately checked against the captured DATA frames,
+            not merely against counts or the record CRC: the panel's before /
+            after comparison needs the actual chain and power numbers.
+       [FA] این بخش عمداً خود فریم‌های DATA را بررسی می‌کند، نه فقط تعداد یا
+            CRC رکورد؛ مقایسهٔ قبل/بعد پنل به عدد واقعی chain و power نیاز دارد. */
+    {
+        const uint16_t uint16_t__framePayloadLength =
+            (uint16_t)(3u + (8u * 6u));
+        const uint16_t uint16_t__frameLength =
+            (uint16_t)(6u + uint16_t__framePayloadLength + 2u);
+        const uint16_t uint16_t__secondFrame = uint16_t__frameLength;
+
+        func__EspLink_HostTest_Reset();
+        UINT16_T__G__TxCapLen = 0u;
+        CHECK(func__EspLink_HostTest_HandleLutFrame(0x08u, NULL, 0u) == true);
+        CHECK(UINT16_T__G__TxCapLen == (uint16_t)(2u * uint16_t__frameLength));
+        CHECK(UINT8_T__G__TxCap[3] == 0x14u && UINT8_T__G__TxCap[6] == 1u);
+        CHECK(UINT8_T__G__TxCap[8] == 6u &&
+              func__HostReadU32(UINT8_T__G__TxCap, 9u) == 100u &&
+              func__HostReadU32(UINT8_T__G__TxCap, 13u) == 0u);
+        CHECK(UINT8_T__G__TxCap[uint16_t__secondFrame + 6u] == 2u &&
+              UINT8_T__G__TxCap[uint16_t__secondFrame + 8u] == 6u &&
+              func__HostReadU32(UINT8_T__G__TxCap,
+                                (uint16_t)(uint16_t__secondFrame + 9u)) == 100u &&
+              func__HostReadU32(UINT8_T__G__TxCap,
+                                (uint16_t)(uint16_t__secondFrame + 13u)) == 0u);
+        CHECK(func__HostReadU32(UINT8_T__G__TxCap, 49u) == 600u &&
+              func__HostReadU32(UINT8_T__G__TxCap, 53u) == 10000u);
+    }
 
     /* ---- 11. a corrupted newest record falls back to the older one ----
        [EN] Flip one payload byte of whichever page is newest; validation

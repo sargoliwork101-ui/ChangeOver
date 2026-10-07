@@ -112,31 +112,38 @@
  *      هنوز ۰x۰۳ می‌فرستد به‌جای نادیده‌گرفته‌شدن، بد تفسیر می‌شود. */
 /* [EN] v1.66 LUT PUSH (user order 2026-10-05: "do I really have to paste the
  *      table into the code and rebuild? push it straight into the micro - and
- *      keep the current way too"). Four ESP -> STM messages and one answer:
+ *      keep the current way too"). Four ESP -> STM push messages and staged
+ *      ACKs; the active-table readback adds one request and two replies:
  *        0x04 LUT_BEGIN  [n1:u8][n2:u8]                 open a staging buffer
  *        0x05 LUT_CHUNK  [ch:u8][first:u8][count:u8]
  *                        + count x (chainMa:u32, powerMw:u32)
  *        0x06 LUT_COMMIT [crc32:u32 of the staged CONTENT]
  *        0x07 LUT_RESET  ['R','S','T','!']              reboot after handshake
+ *        0x08 LUT_READ   []                             read the active points
  *        0x13 LUT_ACK    [stage:u8][status:u8][n1:u8][n2:u8][crc32:u32]
- *                        n1/n2 echo the point counts the CURRENT BEGIN
- *                        declared (NOT the active table), so the sender
- *                        can match each ACK against its own push.
- *      The table NEVER travels as parameters: it has its own messages and its
- *      own flash block (cal_lut.c), so a push can neither disturb the
- *      parameter record nor be mistaken for one. LUT_RESET carries a literal
- *      magic because a reboot must be impossible to trigger by accident, and
- *      the board only honours it after a LUT_ACK that said OK.
- * [FA] ارسال مستقیم جدول (v1.66، دستور کاربر ۲۰۲۶-۱۰-۰۵): چهار پیام از ESP به
- *      STM و یک پاسخ. جدول هرگز به شکل «پارامتر» سفر نمی‌کند: پیام‌های خودش و
- *      بلوک فلش خودش را دارد، پس نه رکورد پارامترها را خراب می‌کند نه با آن
- *      اشتباه گرفته می‌شود. LUT_RESET مجیک متنی دارد چون ریست نباید تصادفی
- *      ممکن باشد، و برد فقط بعد از ACKِ موفق آن را می‌پذیرد. */
+ *        0x14 LUT_DATA   [ch:u8][first:u8][count:u8]
+ *                       + count x (chainMa:u32, powerMw:u32)
+ *      ACK n1/n2 echo the point counts the CURRENT BEGIN declared (NOT the
+ *      active table), so the sender can match each ACK against its own push.
+ *      LUT_DATA is the diagnostic readback of the active RAM/flash table; the
+ *      panel compares every returned pair and never treats CRC/count as a
+ *      substitute for the values. The table NEVER travels as parameters: it
+ *      has its own messages and its own flash block (cal_lut.c), so a push can
+ *      neither disturb the parameter record nor be mistaken for one.
+ * [FA] ارسال مستقیم جدول (v1.66، دستور کاربر ۲۰۲۶-۱۰-۰۵): چهار پیام push از ESP
+ *      به STM و ACKهای مرحله‌ای. در v1.85 یک درخواست خواندن و دو پاسخ مستقل
+ *      برای خواندن واقعی نقاط فعال اضافه شده‌اند. ACK تعداد نقاط BEGIN همین
+ *      تراکنش را بازمی‌گرداند؛ LUT_DATA نقاط فعال RAM/فلش را عددبه‌عدد به پنل
+ *      می‌دهد و پنل مقدارها را مقایسه می‌کند، نه اینکه CRC/تعداد را جایگزین
+ *      عددها بداند. جدول هرگز به شکل «پارامتر» سفر نمی‌کند و بلوک فلش جداگانهٔ
+ *      خودش را دارد. */
 #define ESPLINK_MSG_LUT_BEGIN         0x04u
 #define ESPLINK_MSG_LUT_CHUNK         0x05u
 #define ESPLINK_MSG_LUT_COMMIT        0x06u
 #define ESPLINK_MSG_LUT_RESET         0x07u
+#define ESPLINK_MSG_LUT_READ          0x08u
 #define ESPLINK_MSG_LUT_ACK           0x13u
+#define ESPLINK_MSG_LUT_DATA          0x14u
 #define ESPLINK_LUT_ACK_STAGE_BEGIN   1u
 #define ESPLINK_LUT_ACK_STAGE_CHUNK   2u
 #define ESPLINK_LUT_ACK_STAGE_COMMIT  3u

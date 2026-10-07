@@ -1224,6 +1224,73 @@ static void func__EspLink_SendLutAck(uint8_t uint8_t__stage,
                             UINT8_T__A__Payload, 8u);
 }
 
+/* ==================== LUT active readback / بازخوانی جدول فعال ==================== */
+
+/**
+ * @brief  [EN] Send one channel of the active LUT as point pairs. A zero-count
+ *              frame is intentional: it tells the panel that this channel has
+ *              no active flash override, rather than leaving stale values.
+ *         [FA] نقاط فعال یک کانال را به شکل جفت‌مقدار می‌فرستد. فریم با تعداد
+ *              صفر عمدی است تا پنل بداند برای این کانال override فلش فعال نیست
+ *              و مقدارهای قدیمی را نگه ندارد.
+ * @‎param  uint8_t__channel [EN] Channel 1 or 2 / [FA]‎ کانال ۱ یا ۲
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLink_SendLutData(uint8_t uint8_t__channel)
+{
+    static uint8_t UINT8_T__A__Payload[3u + (8u * CAL_LUT_POINTS_MAX)];
+    const uint32_t *uint32_t__ptr_chain = func__CalLut_ChainMa(uint8_t__channel);
+    const uint32_t *uint32_t__ptr_power = func__CalLut_PowerMw(uint8_t__channel);
+    uint32_t uint32_t__points = func__CalLut_Points(uint8_t__channel);
+    uint8_t uint8_t__count = (uint8_t)uint32_t__points;
+    uint16_t uint16_t__cursor = 3u;
+    uint8_t uint8_t__index;
+
+    UINT8_T__A__Payload[0] = uint8_t__channel;
+    UINT8_T__A__Payload[1] = 0u;
+    UINT8_T__A__Payload[2] = uint8_t__count;
+
+    if ((uint8_t__count > 0u) &&
+        ((uint32_t__ptr_chain != NULL) && (uint32_t__ptr_power != NULL)))
+    {
+        for (uint8_t__index = 0u; uint8_t__index < uint8_t__count; uint8_t__index++)
+        {
+            func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                                 uint32_t__ptr_chain[uint8_t__index]);
+            func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                                 uint32_t__ptr_power[uint8_t__index]);
+        }
+    }
+    else
+    {
+        /* [EN] An inactive channel must produce a clean zero-point frame.
+           [FA] کانال غیرفعال باید فریم تمیزِ صفرنقطه‌ای تولید کند. */
+        UINT8_T__A__Payload[2] = 0u;
+        uint16_t__cursor = 3u;
+    }
+
+    func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_LUT_DATA,
+                            UINT8_T__A__Payload, uint16_t__cursor);
+}
+
+/**
+ * @brief  [EN] Answer a zero-payload LUT_READ with both active channels.
+ *         [FA] به LUT_READ بدون payload با هر دو کانال فعال پاسخ می‌دهد.
+ * @‎param  uint16_t__payloadLength [EN] Must be zero / [FA]‎ باید صفر باشد
+ * @‎return bool [EN] true when this was a LUT read request / [FA]‎ درست اگر درخواست خواندن جدول بود
+ */
+static bool func__EspLink_HandleLutRead(uint16_t uint16_t__payloadLength)
+{
+    if (uint16_t__payloadLength != 0u)
+    {
+        return false;
+    }
+
+    func__EspLink_SendLutData((uint8_t)CAL_LUT_CHANNEL_1);
+    func__EspLink_SendLutData((uint8_t)CAL_LUT_CHANNEL_2);
+    return true;
+}
+
 /* [EN] Keep the handshake policy as a small stateful predicate so it is
    testable without a UART or flash model. The handler supplies the facts it
    already knows: whether the magic and active-table checks passed.
@@ -1250,16 +1317,21 @@ static bool func__EspLink_ConsumeLutResetAuthorization(bool bool__magicValid,
 }
 
 /**
- * @brief  [EN] The four LUT-push frames (v1.66). Kept out of HandleFrame so
- *              the hot parameter path stays as short as it was.
- *         [FA] چهار فریم ارسال جدول، جدا از HandleFrame تا مسیر داغ
- *              پارامترها به همان کوتاهی بماند.
+ * @brief  [EN] Handle the LUT push and active-read messages. Kept out of
+ *              HandleFrame so the hot parameter path stays as short as it was.
+ *         [FA] پیام‌های ارسال و بازخوانی جدول را رسیدگی می‌کند و از
+ *              HandleFrame جداست تا مسیر داغ پارامترها کوتاه بماند.
  * @return bool [EN] true = this type was a LUT frame‎ / این نوع، فریم جدول بود
  */
 static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
                                          uint16_t uint16_t__payloadLength,
                                          const uint8_t *uint8_t__payload)
 {
+    if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_READ)
+    {
+        return func__EspLink_HandleLutRead(uint16_t__payloadLength);
+    }
+
     if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_BEGIN)
     {
         /* [EN] The latest LUT ACK is no longer the successful commit once a

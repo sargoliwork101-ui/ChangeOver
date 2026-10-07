@@ -116,10 +116,11 @@ static void func__Esp_WriteFrame(uint8_t uint8_t__type, const uint8_t *uint8_t__
 
 /* [EN] Last LUT_ACK the board sent, exposed to the browser by GET /lut. The
    push is a HANDSHAKE, not a fire-and-forget: the panel only offers the
-   reboot after the board has echoed the same CRC32 back.
+   reboot after the board has echoed the same CRC32 and the active point pairs
+   have matched the staged table.
    [FA] آخرین LUT_ACK برد که با ‎GET /lut‎ به مرورگر می‌رسد. ارسال یک
-   «دست‌دادن» است نه رهاکردن: پنل فقط وقتی ریست را پیشنهاد می‌دهد که برد
-   همان CRC32 را پس داده باشد. */
+   «دست‌دادن» است نه رهاکردن: پنل فقط پس از CRC یکسان و تطبیق جفت‌مقدارهای
+   فعال با جدول چیده‌شده ریست را پیشنهاد می‌دهد. */
 static uint8_t  UINT8_T__G__LutAckStage = 0u;
 static uint8_t  UINT8_T__G__LutAckStatus = 0u;
 static uint8_t  UINT8_T__G__LutAckPoints1 = 0u;
@@ -173,6 +174,24 @@ static uint32_t UINT32_T__G__LutTxAckMark = 0u;
    [FA] ۰ بدون خطا، ۱ بی‌پاسخ، ۲ رد شده توسط برد. */
 static uint8_t  UINT8_T__G__LutTxError = 0u;
 
+/* [EN] Active-table readback requested by POST /lut/read. The arrays hold
+   values returned by STM32, never values reconstructed from the panel's
+   proposal; this distinction is what makes the before/after comparison real.
+   [FA] بازخوانی جدول فعال که ‎/lut/read‎ درخواست می‌کند. آرایه‌ها مقدارهایی
+   هستند که STM32 برگردانده، نه مقدار بازسازی‌شده از پیشنهاد پنل؛ همین تفاوت
+   مقایسهٔ واقعی قبل/بعد را ممکن می‌کند. */
+static uint32_t UINT32_T__G__LutReadChain1[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutReadPower1[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutReadChain2[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutReadPower2[ESP_LUT_POINTS_MAX];
+static uint8_t  UINT8_T__G__LutReadCount1 = 0u;
+static uint8_t  UINT8_T__G__LutReadCount2 = 0u;
+static uint8_t  UINT8_T__G__LutReadMask = 0u;
+static bool     BOOL__G__LutReadPending = false;
+static bool     BOOL__G__LutReadReady = false;
+static uint8_t  UINT8_T__G__LutReadError = 0u;
+static uint32_t UINT32_T__G__LutReadMs = 0u;
+
 /**
  * @brief  [EN] Append one little-endian u32 to a payload buffer.
  *         [FA] افزودن یک u32 لیتل‌اندین به بافر payload.
@@ -184,6 +203,164 @@ static uint16_t func__Esp_PutU32(uint8_t *uint8_t__ptr_buffer, uint16_t uint16_t
     uint8_t__ptr_buffer[uint16_t__offset + 2u] = (uint8_t)((uint32_t__value >> 16) & 0xFFu);
     uint8_t__ptr_buffer[uint16_t__offset + 3u] = (uint8_t)((uint32_t__value >> 24) & 0xFFu);
     return (uint16_t)(uint16_t__offset + 4u);
+}
+
+/* ==================== LUT read request / درخواست بازخوانی LUT ==================== */
+
+/**
+ * @brief  [EN] Start one active-table readback request. It owns no staged
+ *              table and is refused while a push is in flight.
+ *         [FA] یک درخواست بازخوانی جدول فعال را شروع می‌کند. این درخواست
+ *              جدول چیده‌شده را دست نمی‌زند و هنگام ارسال push رد می‌شود.
+ * @‎return [EN] true when the request was sent / [FA]‎ درست اگر درخواست ارسال شد
+ */
+static bool func__Esp_LutReadStart(void)
+{
+    if (UINT8_T__G__LutTxStage != 0u)
+    {
+        return false;
+    }
+
+    UINT8_T__G__LutReadCount1 = 0u;
+    UINT8_T__G__LutReadCount2 = 0u;
+    UINT8_T__G__LutReadMask = 0u;
+    BOOL__G__LutReadPending = true;
+    BOOL__G__LutReadReady = false;
+    UINT8_T__G__LutReadError = 0u;
+    UINT32_T__G__LutReadMs = 0u;
+    func__Esp_WriteFrame(ESP_MSG_LUT_READ, NULL, 0u);
+    return true;
+}
+
+/**
+ * @brief  [EN] Store one STM32 LUT_DATA frame and mark readback ready after
+ *              both channels have arrived.
+ *         [FA] یک فریم ‎LUT_DATA‎ از STM32 را ذخیره می‌کند و بعد از رسیدن هر
+ *              دو کانال، بازخوانی را آماده اعلام می‌کند.
+ * @‎param  uint8_t__ptr_payload [EN] Data payload / [FA] payload‎ داده
+ * @‎param  uint16_t__length [EN] Payload length in bytes / [FA]‎ طول payload برحسب بایت
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_StoreLutData(const uint8_t *uint8_t__ptr_payload,
+                                   uint16_t uint16_t__length)
+{
+    uint8_t uint8_t__channel;
+    uint8_t uint8_t__first;
+    uint8_t uint8_t__count;
+    uint16_t uint16_t__expected;
+    uint16_t uint16_t__offset;
+    uint8_t uint8_t__index;
+    uint32_t *uint32_t__ptr_chain;
+    uint32_t *uint32_t__ptr_power;
+    uint8_t uint8_t__mask;
+
+    if (!BOOL__G__LutReadPending)
+    {
+        /* [EN] Do not let an unsolicited/stale response overwrite a complete
+           readback; only a response to the current request is authoritative.
+           [FA] پاسخ ناخواسته/کهنه نباید بازخوانی کامل را overwrite کند؛ فقط
+           پاسخِ درخواست جاری معتبر است. */
+        return;
+    }
+
+    if (uint16_t__length < 3u)
+    {
+        UINT8_T__G__LutReadError = 1u;
+        BOOL__G__LutReadPending = false;
+        return;
+    }
+
+    uint8_t__channel = uint8_t__ptr_payload[0];
+    uint8_t__first = uint8_t__ptr_payload[1];
+    uint8_t__count = uint8_t__ptr_payload[2];
+    uint16_t__expected = (uint16_t)(3u + (8u * (uint16_t)uint8_t__count));
+
+    if ((uint8_t__channel < 1u) || (uint8_t__channel > 2u) ||
+        (uint8_t__first != 0u) ||
+        (uint8_t__count > (uint8_t)ESP_LUT_POINTS_MAX) ||
+        (uint16_t__length != uint16_t__expected))
+    {
+        UINT8_T__G__LutReadError = 1u;
+        BOOL__G__LutReadPending = false;
+        return;
+    }
+
+    if (uint8_t__channel == 1u)
+    {
+        uint32_t__ptr_chain = UINT32_T__G__LutReadChain1;
+        uint32_t__ptr_power = UINT32_T__G__LutReadPower1;
+    }
+    else
+    {
+        uint32_t__ptr_chain = UINT32_T__G__LutReadChain2;
+        uint32_t__ptr_power = UINT32_T__G__LutReadPower2;
+    }
+
+    uint16_t__offset = 3u;
+    for (uint8_t__index = 0u; uint8_t__index < uint8_t__count; uint8_t__index++)
+    {
+        uint32_t__ptr_chain[uint8_t__index] = func__Esp_ReadU32(
+            uint8_t__ptr_payload, (uint8_t)uint16_t__offset);
+        uint32_t__ptr_power[uint8_t__index] = func__Esp_ReadU32(
+            uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 4u));
+        uint16_t__offset = (uint16_t)(uint16_t__offset + 8u);
+    }
+
+    if (uint8_t__channel == 1u)
+    {
+        UINT8_T__G__LutReadCount1 = uint8_t__count;
+        uint8_t__mask = 1u;
+    }
+    else
+    {
+        UINT8_T__G__LutReadCount2 = uint8_t__count;
+        uint8_t__mask = 2u;
+    }
+    UINT8_T__G__LutReadMask = (uint8_t)(UINT8_T__G__LutReadMask | uint8_t__mask);
+
+    if (UINT8_T__G__LutReadMask == 3u)
+    {
+        BOOL__G__LutReadPending = false;
+        BOOL__G__LutReadReady = true;
+        UINT32_T__G__LutReadMs = (uint32_t)millis();
+    }
+}
+
+/**
+ * @brief  [EN] Confirm that the latest readback is the exact point table that
+ *              the last push staged, not merely a matching count or CRC.
+ *         [FA] تأیید می‌کند که آخرین بازخوانی دقیقاً جدول نقطه‌ایِ آخرین ارسال
+ *              است، نه فقط جدول با تعداد یا CRC مشابه.
+ * @‎return [EN] true on a complete point-by-point match / [FA]‎ درست برای تطبیق کامل
+ */
+static bool func__Esp_LutReadMatchesStaged(void)
+{
+    uint8_t uint8_t__index;
+
+    if ((!BOOL__G__LutReadReady) ||
+        (UINT8_T__G__LutReadCount1 != UINT8_T__G__LutTxCount1) ||
+        (UINT8_T__G__LutReadCount2 != UINT8_T__G__LutTxCount2))
+    {
+        return false;
+    }
+
+    for (uint8_t__index = 0u; uint8_t__index < UINT8_T__G__LutTxCount1; uint8_t__index++)
+    {
+        if ((UINT32_T__G__LutReadChain1[uint8_t__index] != UINT32_T__G__LutChain1[uint8_t__index]) ||
+            (UINT32_T__G__LutReadPower1[uint8_t__index] != UINT32_T__G__LutPower1[uint8_t__index]))
+        {
+            return false;
+        }
+    }
+    for (uint8_t__index = 0u; uint8_t__index < UINT8_T__G__LutTxCount2; uint8_t__index++)
+    {
+        if ((UINT32_T__G__LutReadChain2[uint8_t__index] != UINT32_T__G__LutChain2[uint8_t__index]) ||
+            (UINT32_T__G__LutReadPower2[uint8_t__index] != UINT32_T__G__LutPower2[uint8_t__index]))
+        {
+            return false;
+        }
+    }
+    return true;
 }
 
 /**
@@ -242,6 +419,17 @@ static void func__Esp_LutTxStart(uint8_t uint8_t__count1, uint8_t uint8_t__count
     UINT8_T__G__LutTxError = 0u;
     BOOL__G__LutTxWaiting = false;
     UINT32_T__G__LutTxAckMark = UINT32_T__G__LutAckCount;
+    /* [EN] A new push invalidates the previous readback; reset may only use
+       data that belongs to this transaction.
+       [FA] ارسال تازه بازخوانی قبلی را نامعتبر می‌کند؛ ریست فقط باید از دادهٔ
+       همین تراکنش استفاده کند. */
+    UINT8_T__G__LutReadCount1 = 0u;
+    UINT8_T__G__LutReadCount2 = 0u;
+    UINT8_T__G__LutReadMask = 0u;
+    BOOL__G__LutReadPending = false;
+    BOOL__G__LutReadReady = false;
+    UINT8_T__G__LutReadError = 0u;
+    UINT32_T__G__LutReadMs = 0u;
 }
 
 /**
@@ -679,6 +867,17 @@ static void func__Esp_HandleFrame(void)
         UINT32_T__G__LutAckCrc32 = func__Esp_ReadU32(uint8_t__ptr_payload, 4u);
         UINT32_T__G__LutAckMs = (uint32_t)millis();
         UINT32_T__G__LutAckCount++;
+    }
+    else if (UINT8_T__G__RxType == ESP_MSG_LUT_DATA)
+    {
+        /* [EN] Active values are stored separately from the push ACK. The
+           browser must compare these pairs; a point count or CRC alone is not
+           a value readback. Store also sees short frames so truncation becomes
+           an explicit readback error instead of a silent timeout.
+           [FA] مقدارهای فعال جدا از ACK ارسال ذخیره می‌شوند. پنل باید همین
+           جفت‌مقدارها را مقایسه کند؛ تعداد یا CRC به‌تنهایی بازخوانی مقدار نیست.
+           فریم کوتاه هم به Store می‌رسد تا خطای صریح باشد نه timeout خاموش. */
+        func__Esp_StoreLutData(uint8_t__ptr_payload, UINT16_T__G__RxLen);
     }
     else
     {
