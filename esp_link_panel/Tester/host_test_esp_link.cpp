@@ -671,6 +671,36 @@ int main(void)
               "and a failed push can never be followed by a reboot");
     }
 
+    /* ---- 16. the page stream itself keeps the link lossless -------------
+       [EN] User report 2026-10-07: the yellow "rejected by CRC" warning came
+            back after every page load. Root cause: func__Esp_HttpRoot streams
+            the ~375 KB panel inside ONE handleClient call, and while that
+            runs nothing empties the RX ring - the STM32 streams telemetry
+            every 100 ms, the ring overflows, bytes die mid-frame. The fix
+            drains the UART after every 2 KB slice. This test is the proof
+            that the fix loses nothing: frames already waiting when the page
+            streams are ALL parsed during the stream - none dropped, none
+            CRC-rejected.
+       [FA] اثبات بی‌اتلاف‌بودن اصلاحِ هشدار CRC: پنج فریم تله‌متری که هنگام
+            ارسال صفحه در بافر منتظرند، همگی حین خودِ ارسال پارس می‌شوند -
+            هیچ‌کدام نمی‌افتد و خطای CRC تازه‌ای ساخته نمی‌شود. */
+    {
+        BOOL__G__TlmSeen = false;
+        UINT32_T__G__TlmField[0] = 0u;
+        const uint32_t uint32_t__crcBefore = UINT32_T__G__RxCrcError;
+        for (uint16_t uint16_t__seq = 200u; uint16_t__seq < 205u; uint16_t__seq++) {
+            Serial.feed(build_frame(ESP_MSG_TLM_LIVE, tlm_payload(uint16_t__seq)));
+        }
+        func__Esp_HttpRoot();
+        check(BOOL__G__TlmSeen, "the page stream parses the frames waiting on the UART");
+        check(UINT16_T__G__TlmSeq == 204u,
+              "ALL five telemetry frames survive the page stream (no loss)",
+              "last parsed seq is " + std::to_string(UINT16_T__G__TlmSeq) + ", expected 204");
+        check(UINT32_T__G__RxCrcError == uint32_t__crcBefore,
+              "the in-handler drain adds no CRC error of its own");
+        check(Serial.rx.empty(), "and the ring is empty when the stream ends");
+    }
+
     std::cout << std::string(70, '=') << "\n";
     if (failures == 0) {
         std::cout << "ALL " << checks << " ESP HOST TESTS PASSED\n";

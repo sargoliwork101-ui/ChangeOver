@@ -218,3 +218,29 @@ The ce counter is cumulative on the ESP, so the warning persists - and every ref
 شروع می‌شود. اگر بعد از آن هم هشدار دیده شد، آن‌وقت واقعاً نویز سیم/زمین است.**
 **[EN] Note: the old count stays in the ESP's RAM until power-cycle; after flashing the fixed sketch it starts from
 zero. If the warning ever appears again afterwards, THEN it is genuine wire/ground noise.**
+
+---
+
+## Panel UX pass + lossless-drain proof / مرور UX پنل و اثبات بی‌اتلافی ۲۰۲۶-۱۰-۰۷ / 2026-10-07
+
+**[EN] 1) Data-loss question answered with a test, not words.** The user asked whether the in-handler UART drain
+(CRC-warning fix) itself loses data. It does not: the drain calls the exact same parser path loop() used, and
+`func__Esp_HandleFrame` contains zero HTTP calls (no re-entrancy). New host-test section 16 proves it end-to-end:
+five TLM frames waiting on the UART while `func__Esp_HttpRoot()` streams the panel are ALL parsed (seq reaches
+204), zero new CRC errors, ring empty afterwards. Suite: 98 -> 102 checks, all pass. The pre-fix code was the
+one losing data (ring overflow); reverting would restore the loss, so the fix stays.
+**[FA] سؤال «آیا داده از دست می‌رود؟» با تست پاسخ داده شد نه با حرف: پنج فریم منتظر حین ارسال صفحه همگی پارس
+می‌شوند (تست ۱۶، سوئیت ۹۸→۱۰۲). کد قبلی داده از دست می‌داد؛ اصلاح ماندنی است.
+
+**[EN] 2) Panel changes by user order (plink_panel.h; stamp 96317bb -> d225ed8, preview regenerated, server
+restarted):** removed the «شبیه‌ساز سناریوها» launch card and its `opensim()`; centered the fault-LED strip
+(`justify-content:center`) and its title; charger-card current & duty fonts another -20% (22.4 -> 17.92px) and
+the battery-voltage line (label + number) now uses that same font (unit 11 -> 12px); bench tab: manual-duty list
+and SWEEP controls merged onto ONE row with duty first (note text «فهرست دستی بالا» -> «کنارش»); removed the four
+card-header hint spans (ids 33..34 / 35..37 / median+average / 0..3+9..10).
+**[FA] تغییرات پنل به دستور کاربر: حذف کارت شبیه‌ساز سناریوها، وسط‌چین LED های فالت، ۲۰٪ کوچک‌تر شدن فونت جریان
+و duty و هم‌فونت‌شدن ولتاژ باتری، یکی‌شدن ردیف duty دستی و SWEEP در تب بنچ (duty اول)، و حذف چهار راهنمای
+سربرگ کارت‌ها. مهر پنل نو شد، پیش‌نمایش بازتولید و سرور restart شد.
+
+**[EN] Gates:** check_ai_rules ALL PASSED (RTL fixer added one direction mark); check_firmware_syntax: 102 ESP +
+52 charger + UI/buzzer ALL PASSED; audit_consistency 443 checks PASSED; preview spot-checks confirm every edit.

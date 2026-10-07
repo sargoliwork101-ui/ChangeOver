@@ -94,13 +94,14 @@ section{margin-top:12px}
 .hd b{font-size:15px;display:flex;align-items:center;gap:8px}
 .hd b::before{content:"";width:4px;height:18px;border-radius:4px;background:linear-gradient(180deg,var(--ac2),var(--ac))}
 .big{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:6px 0}.big b,.big .biglabel{font-size:28px;font-weight:800;font-variant-numeric:tabular-nums;line-height:1.25}.big .biglabel{color:var(--tx);display:inline-flex;align-items:baseline;min-width:0}.big .dutybig{cursor:pointer}.big .dutybig:hover{color:var(--ac2)}.big .dutybig:focus-visible{outline:2px solid var(--ac);outline-offset:3px;border-radius:6px}.ceval{color:var(--ac2);border-bottom:1px dashed currentColor;white-space:nowrap}
-/* [EN] Charger-card current and duty labels/values are intentionally 20%
-   smaller so the new battery-voltage line fits below current without making
-   either card taller than the other. [FA] نوشته و عدد جریان و duty در کارت
-   شارژر عمداً ۲۰٪ کوچک‌ترند تا خط ولتاژ باتری زیر جریان جا بگیرد و ارتفاع
-   دو کارت برابر بماند. */
-.ch .big b,.ch .big .biglabel{font-size:22.4px}
-.bmetric{min-width:0}.bsub{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0 0 8px;padding:3px 0 5px;border-bottom:1px solid var(--ln);color:var(--mu);font-size:13px}.bsub b{color:var(--tx);font-size:16px;font-variant-numeric:tabular-nums}.bsub .unit{font-size:11px;color:var(--mu);white-space:nowrap}
+/* [EN] User order ۲۰۲۶-۱۰-۰۷: ‎the charger-card current and duty fonts are‎
+   20% smaller than they were, and the battery-voltage line right below
+   uses the very same font for both its label and its number, so the three
+   read as one family. [FA] دستور کاربر ۲۰۲۶-۱۰-۰۷: فونت جریان و duty کارت
+   شارژر ۲۰٪ کوچک‌تر شد و خط ولتاژ باتری درست زیر آن، هم برچسب و هم عددش،
+   دقیقاً همان فونت را گرفت تا هر سه هم‌خانواده خوانده شوند. */
+.ch .big b,.ch .big .biglabel{font-size:17.92px}
+.bmetric{min-width:0}.bsub{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0 0 8px;padding:3px 0 5px;border-bottom:1px solid var(--ln);color:var(--mu);font-size:17.92px}.bsub b{color:var(--tx);font-size:17.92px;font-variant-numeric:tabular-nums}.bsub .unit{font-size:12px;color:var(--mu);white-space:nowrap}
 /* [EN] Scenario switch stays usable while the scenario body is disabled.
    [FA] کلید سناریو هنگام غیرفعال‌بودن بدنه همچنان فعال می‌ماند. */
 .scenctl{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--ln);border-radius:999px;background:var(--in);color:var(--mu);font-size:11px;white-space:nowrap;cursor:pointer}.scenctl input{accent-color:var(--ac2);width:15px;height:15px;margin:0}.scenario-off>.hd>b,.scenario-off>:not(.hd){opacity:.34;filter:grayscale(1)}.scenario-off>:not(.hd){pointer-events:none;user-select:none}.scenario-off .scenctl{opacity:1;filter:none;pointer-events:auto;user-select:auto}.scenario-off .scenctl input{cursor:pointer}.scenario-off{border-style:dashed}
@@ -284,7 +285,7 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
    either and rendered as loose text. [FA] نوار مقدارهای زنده هم استایل نداشت. */
 .prod{background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:8px 12px;margin:2px 0 10px;font-size:13px;line-height:1.9}
 .prod b{font-variant-numeric:tabular-nums}
-.leds{display:flex;gap:14px;align-items:center;flex-wrap:wrap;background:var(--in);border:1px solid var(--ln);border-radius:14px;padding:10px 14px;margin:2px 0 12px}
+.leds{display:flex;justify-content:center;gap:14px;align-items:center;flex-wrap:wrap;background:var(--in);border:1px solid var(--ln);border-radius:14px;padding:10px 14px;margin:2px 0 12px}
 .fx2{font-size:12px;color:#c9d0df;line-height:1.9;margin-top:4px}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 .ldon{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);margin-right:8px}
@@ -478,13 +479,12 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 96317bb</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d225ed8</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
 <div class="pgx a" id="p0">
 <div id="lnkw" class="wbx"></div>
-<div class="cd" id="simlaunch"><div class="hd"><b>شبیه‌ساز سناریوها</b><button class="sb sb2" id="simopen" onclick="opensim()">باز کردن شبیه‌ساز</button></div><div class="sx">شبیه‌ساز از روی همین تنظیمات اجرا می‌شود و به برد یا دادهٔ تله‌متری نیاز ندارد. اگر دنبال چراغ‌ها، بوق و حالت‌های سناریو هستید، این دکمه مستقیماً تب سناریوها را باز می‌کند.</div></div>
 <div class="cd" id="sh"><div class="hd"><b>ولتاژها و وضعیت آلارم‌ها <span class="lb">· عدد مولتی‌متر (V) را کنار هر ولتاژ وارد کنید تا آفست آن کالیبره شود</span> <span class="ldon" id="aslive"></span></b><div class="fl" id="fl"></div></div><div id="ast"></div>
 </div>
 
@@ -976,7 +976,7 @@ window.addEventListener('DOMContentLoaded', function(){
 </div>
 <div class="sgx" id="s2">
 <div class="cd">
-<div class="hd"><b>پنجرهٔ ورودی سالم</b><span class="lb">· شناسه‌های ۳۳..۳۴ · روی فلش برد ذخیره می‌شود</span></div>
+<div class="hd"><b>پنجرهٔ ورودی سالم</b></div>
 <div class="sx">تشخیص «ورودی حاضر» فقط داخل این پنجره انجام می‌شود:<br><br><b>کف</b> = پایین‌ترین ولتاژ ورودیِ قابل‌قبول (پیش‌فرض ۲۱۰۰۰ میلی‌ولت).<br><b>سقف</b> = بالاترین ولتاژ ورودیِ قابل‌قبول (پیش‌فرض ۲۸۰۰۰ میلی‌ولت).<br>این دو همیشه دست‌کم ۱۰۰۰ میلی‌ولت از هم فاصله دارند.<br><b>بیرون پنجره:</b> شارژر کار نمی‌کند و منتظر ورودی می‌ماند.</div>
 <div class="bqr">
 <label>کف ورودی سالم (mV)<input type="number" id="q33" step="100" min="18000" max="24000"><span class="lb" id="a33"></span></label>
@@ -985,7 +985,7 @@ window.addEventListener('DOMContentLoaded', function(){
 
 </div>
 <div class="cd">
-<div class="hd"><b>سقف‌های ایمنی شارژر</b><span class="lb">· شناسه‌های ۳۵..۳۷ · فقط پایین‌بردنی — هرگز بالای سقف کارخانه نمی‌روند · روی فلش برد ذخیره می‌شود</span></div>
+<div class="hd"><b>سقف‌های ایمنی شارژر</b></div>
 <div class="sx"><b>Hard fault جریان</b> = بالای این مقدار کانال فوراً متوقف می‌شود (همیشه بالای جریان Bulk+۵۰ نگه داشته می‌شود تا تنظیم سالم تریپ نکند).<br><b>قطع OV</b> = بالای این ولتاژ، باتری نامعتبر و سوئیچینگ متوقف می‌شود.<br><b>کف اعتبار</b> = زیر این ولتاژ، عدد باتری اصلاً معتبر شمرده نمی‌شود.<br><b>قانون مشترک:</b> هر سه فقط پایین‌بردنی‌اند و هرگز از سقف کارخانه بالاتر نمی‌روند.</div>
 <div class="bqr">
 <label>Hard fault جریان (mA)<input type="number" id="q35" step="10" min="150" max="950"><span class="lb" id="a35"></span></label>
@@ -1007,7 +1007,7 @@ window.addEventListener('DOMContentLoaded', function(){
      شنوندهٔ STAB با ترتیب DOM سوییچ می‌کند: v1.42 (دستور کاربر:
      پشتیبان‌گیری آخرین زیرتب) این بلوک را به اندیس ۳، قبل از s4، منتقل کرد. -->
 <div class="cd">
-<div class="hd"><b>فیلتر جریان</b><span class="lb">· مشترک هر دو کانال · Median + Average · مثل بقیه روی فلش برد ذخیره می‌شود</span></div>
+<div class="hd"><b>فیلتر جریان</b></div>
 <div class="sx">دو مرحلهٔ پشت‌سرهم روی عدد جریان:<br><br><b>پنجرهٔ median</b> = پالس‌های تکیِ پرت را حذف می‌کند (۱..۱۵؛ ۱ و ۲ = خاموش).<br><b>پنجرهٔ میانگین</b> = خروجی مرحلهٔ قبل را صاف می‌کند (۱..۳۰۰؛ ۱ = خاموش).<br>هر نمونه ۱ میلی‌ثانیه است، پس مجموع این دو عدد یعنی چند میلی‌ثانیه تاریخچه.<br><b>هشدار:</b> در مود خودکارِ شارژر مجموع را بالای ~۵۰ نبرید؛ حلقهٔ تنظیم کند می‌شود.</div>
 <div class="bqr">
 <label>پنجرهٔ median<input type="number" id="q7" step="1" min="1" max="15"><span class="lb" id="a7"></span></label>
@@ -1016,7 +1016,7 @@ window.addEventListener('DOMContentLoaded', function(){
 
 </div>
 <div class="cd">
-<div class="hd"><b>کالیبراسیون جریان</b><span class="lb">· شناسه ۰..۳ و ۹..۱۰ · روی فلش برد ذخیره می‌شود</span></div>
+<div class="hd"><b>کالیبراسیون جریان</b></div>
 <div class="sx"><b>آفست</b> = عدد ADC در جریان صفر که از هر نمونه کم می‌شود.<br><b>گین</b> = ضریب تبدیل شمارش به جریان.<br><b>ETA</b> = ضریب تبدیل جریان ورودی به جریان سمت باتری (صفر = بدون تبدیل).<br><b>هشدار کانال ۲:</b> این کانال جدول بنچ دارد، پس ETA آن صفر بماند؛ تغییر آفست یا گینِ کانال ۲ یعنی جدول بنچ باید دوباره ساخته شود.</div>
 <div class="bqr">
 <label>آفست کانال ۱ (count)<input type="number" id="q0" step="1" min="0" max="255"><span class="lb" id="a0"></span></label>
@@ -1295,7 +1295,7 @@ async function sendall(){
 const SR=[['ورودی',0],['پک ۲۴ ولت',1],['نود ۱۲ ولت',2]];
 $('ast').innerHTML=`<div class="srvw"><table class="srv"><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"></colgroup><tr><th>سیگنال</th><th>مقدار</th><th>فرمول / بازه</th><th>وضعیت</th><th>کالیبره با مولتی‌متر</th></tr>${SR.map(r=>{const k=r[1];
  const cal=k<3?`<input type="number" step="any" id="vm${k}" placeholder="مولتی‌متر V" onkeydown="if(event.key=='Enter')vcal(${k})"> <button class="sb sb2" onclick="vcal(${k})">اعمال</button> <span class="lb">±<span class="ap n" id="a${[4,5,6][k]}"></span></span>`:'';
- return `<tr id="sr${k}"><td>${r[0]}</td><td class="n" id="v${k}"></td><td><div class="fx" id="fv${k}"></div></td><td><span class="tg" id="sp${k}"></span></td><td>${cal}</td></tr>`;}).join('')}</table></div>`+'<div class="ab" id="asb5" style="margin-top:8px;min-height:0"><small>خطاهای قفل‌شده (fault) — LED جدا برای هر بیت</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit" id="asbb6"><i></i><small>قطع‌باتری</small></span><span class="bit" id="asbb7"><i></i><small>فنی برد</small></span></div><div class="fx2" id="asf"></div></div>';
+ return `<tr id="sr${k}"><td>${r[0]}</td><td class="n" id="v${k}"></td><td><div class="fx" id="fv${k}"></div></td><td><span class="tg" id="sp${k}"></span></td><td>${cal}</td></tr>`;}).join('')}</table></div>`+'<div class="ab" id="asb5" style="margin-top:8px;min-height:0"><small style="display:block;text-align:center">خطاهای قفل‌شده (fault) — LED جدا برای هر بیت</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit" id="asbb6"><i></i><small>قطع‌باتری</small></span><span class="bit" id="asbb7"><i></i><small>فنی برد</small></span></div><div class="fx2" id="asf"></div></div>';
 let ASB=null;
 ASB={sp:[0,1,2].map(k=>$('sp'+k)),sr:[0,1,2].map(k=>$('sr'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6,7].map(k=>$('asbb'+k)),box5:$('asb5'),mask:-1,live:$('aslive'),tick:false};
 /* [EN] Median/average controls live in Settings; the main panel keeps only the useful voltage/status table and channel charts.
@@ -1343,20 +1343,6 @@ let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=
 let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{STAB=+b.dataset.s;document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i==STAB));stickfit();panelViewSave();if(D)draw(D);});
 let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=7;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();panelViewSave();}
 document.querySelectorAll('#usel button').forEach(b=>b.onclick=()=>usel(+b.dataset.u));
-/* [EN] The simulator lives in Settings > Scenarios, but the operating page is
-   the first page on purpose. Keep that page useful and give it one explicit
-   route into the simulator instead of making users guess the tab sequence.
-   [FA] شبیه‌ساز عمداً در تنظیمات > سناریوهاست، اما صفحهٔ عملیاتی باید صفحهٔ
-   اول بماند. یک مسیر روشن به شبیه‌ساز بده تا کاربر مجبور نباشد تب‌ها را حدس بزند. */
-function opensim(){
- TAB=2;STAB=1;
- document.querySelectorAll('nav button').forEach((x,i)=>x.classList.toggle('a',i===TAB));
- document.querySelectorAll('.pgx').forEach((x,i)=>x.classList.toggle('a',i===TAB));
- document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',+x.dataset.s===STAB));
- document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i===STAB));
- usel(UCARD);stickfit();panelViewSave();
- window.scrollTo(0,0);
-}
 /* [EN] Each scenario can be disabled without hiding its card: the title and
    switch remain available, while every other control becomes disabled and the
    whole scenario is visibly muted. The choice is local to this browser.
@@ -3694,9 +3680,7 @@ async function lrst(){
 /* ---------- ساخت تب‌ها ---------- */
 /* تب ۱: داده‌برداری بنچ */
 $('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty را می‌گذارد، جدول همان ردیف را نشان می‌دهد و عدد مولتی‌متر را در فرم بالای جدول بنویس و <b>ثبت</b> کن — آمار همان لحظهٔ ثبت قفل می‌شود. <b>SOLO1</b>: کانال ۱ · <b>SOLO2</b>: کانال ۲ · <b>BOTH</b>: هر دو. آمپرمتر: یکی در تغذیهٔ کل برد + سری با سیم شارژ هر باتری روشن. هیچ ضریبی خودکار اعمال نمی‌شود.</div>
-<div class="bctl"><label class="lb">duty % <input type="text" id="wL" data-s class="dl" value="2,4,6,8,10,12,14,16,18,20" style="width:160px"></label>
-${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${WSN[k]}</label>`).join('')}</div>
-<div class="bctl"><label class="lb"><input type="checkbox" id="wSw" checked> sweep خودکار با گام ۱٪</label><label class="lb"><span class="t">از</span><input type="number" id="wA" data-s value="1" min="0" max="50"></label><label class="lb"><span class="t">تا</span><input type="number" id="wB" data-s value="50" min="0" max="50"></label><span class="lb">خاموش = فهرست دستی بالا</span></div>
+<div class="bctl"><label class="lb">duty % <input type="text" id="wL" data-s class="dl" value="2,4,6,8,10,12,14,16,18,20" style="width:160px"></label><label class="lb"><input type="checkbox" id="wSw" checked> sweep خودکار با گام ۱٪</label><label class="lb"><span class="t">از</span><input type="number" id="wA" data-s value="1" min="0" max="50"></label><label class="lb"><span class="t">تا</span><input type="number" id="wB" data-s value="50" min="0" max="50"></label><span class="lb">خاموش = فهرست دستی کنارش</span>${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${WSN[k]}</label>`).join('')}</div>
 <div class="movl" id="wEx" style="display:none"><div class="mod" id="wExB"></div></div>
 <div class="bctl"><button class="sb brun" onclick="wStart()">شروع</button><button class="sb stp2 wstop" onclick="W.abort=true">پایان</button><span class="lb">فایل: <b id="wF"></b></span><a class="sb sb2 lnk" href="/benchlog" download="benchlog.csv">دانلود فایل</a><button class="sb sb2 brun" onclick="wclear()">پاک کردن فایل</button></div>
 <div class="cm lb" id="wS0"></div><div id="wF0"></div><div id="wT"></div>
