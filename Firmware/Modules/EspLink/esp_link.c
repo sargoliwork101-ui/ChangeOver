@@ -80,6 +80,20 @@ static uint32_t UINT32_T__G__RxVersionMismatch;
    زنده را ریبوت کند. ‎BEGIN/CHUNK/COMMIT‎ ناموفق مجوز را باطل می‌کنند و پذیرش
    RESET آن را مصرف می‌کند تا همان فریم دوباره قابل استفاده نباشد. */
 static bool BOOL__G__LutResetAuthorized = false;
+/* [EN] Point counts declared by the BEGIN of the current transaction,
+   echoed in EVERY LUT_ACK so the ESP can match each ACK against the push
+   it just sent. User board bug 2026-10-07: the ACK echoed
+   func__CalLut_Points() - the ACTIVE table - which is 0 on a fresh board,
+   so the ESP rejected the first push's perfectly good ACKs, retried three
+   times and reported "board did not answer the send stage" although the
+   board answered every frame.
+   [FA] تعداد نقاطی که BEGIN همین تراکنش اعلام کرده و در هر LUT_ACK
+   بازپس داده می‌شود تا ESP تأیید را با ارسال خودش مطابقت دهد. باگ برد
+   کاربر ۲۰۲۶-۱۰-۰۷: ACK قبلاً تعداد جدول «فعال» را می‌گفت که در برد نو
+   صفر است؛ ESP تأیید سالم اولین ارسال را رد می‌کرد و با سه تلاش مجدد،
+   «برد به مرحلهٔ ارسال پاسخ نداد» گزارش می‌شد درحالی‌که برد پاسخ داده بود. */
+static uint8_t UINT8_T__G__LutStageN1 = 0u;
+static uint8_t UINT8_T__G__LutStageN2 = 0u;
 #ifdef ESPLINK_HOST_TEST
 static uint32_t UINT32_T__G__HostAcceptedFrames = 0u;
 #endif
@@ -1195,8 +1209,12 @@ static void func__EspLink_SendLutAck(uint8_t uint8_t__stage,
 
     UINT8_T__A__Payload[0] = uint8_t__stage;
     UINT8_T__A__Payload[1] = uint8_t__status;
-    UINT8_T__A__Payload[2] = (uint8_t)func__CalLut_Points(CAL_LUT_CHANNEL_1);
-    UINT8_T__A__Payload[3] = (uint8_t)func__CalLut_Points(CAL_LUT_CHANNEL_2);
+    /* [EN] Staged counts of THIS transaction, not the active table - the
+       sender matches them against its own push (see the statics above).
+       [FA] تعداد چیده‌شدهٔ همین تراکنش، نه جدول فعال - فرستنده آنها را با
+       ارسال خودش مطابقت می‌دهد (توضیح متغیرهای بالا). */
+    UINT8_T__A__Payload[2] = UINT8_T__G__LutStageN1;
+    UINT8_T__A__Payload[3] = UINT8_T__G__LutStageN2;
     UINT8_T__A__Payload[4] = (uint8_t)(uint32_t__crc32 & 0xFFu);
     UINT8_T__A__Payload[5] = (uint8_t)((uint32_t__crc32 >> 8) & 0xFFu);
     UINT8_T__A__Payload[6] = (uint8_t)((uint32_t__crc32 >> 16) & 0xFFu);
@@ -1256,6 +1274,13 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
                                         (uint32_t)uint8_t__payload[1]) != false)
             {
                 uint8_t__status = (uint8_t)CAL_LUT_ST_OK;
+                UINT8_T__G__LutStageN1 = uint8_t__payload[0];
+                UINT8_T__G__LutStageN2 = uint8_t__payload[1];
+            }
+            else
+            {
+                UINT8_T__G__LutStageN1 = 0u;
+                UINT8_T__G__LutStageN2 = 0u;
             }
         }
         func__EspLink_SendLutAck((uint8_t)ESPLINK_LUT_ACK_STAGE_BEGIN,
@@ -1606,6 +1631,8 @@ void func__EspLink_HostTest_Reset(void)
     UINT32_T__G__RxVersionMismatch = 0u;
     UINT32_T__G__HostAcceptedFrames = 0u;
     BOOL__G__LutResetAuthorized = false;
+    UINT8_T__G__LutStageN1 = 0u;
+    UINT8_T__G__LutStageN2 = 0u;
 }
 
 void func__EspLink_HostTest_FeedByte(uint8_t uint8_t__byte)
@@ -1639,6 +1666,15 @@ bool func__EspLink_HostTest_TryReset(bool bool__magicValid,
     return func__EspLink_ConsumeLutResetAuthorization(bool__magicValid,
                                                        bool__tableActive);
 }
+
+bool func__EspLink_HostTest_HandleLutFrame(uint8_t uint8_t__messageType,
+                                           const uint8_t *uint8_t__payload,
+                                           uint16_t uint16_t__payloadLength)
+{
+    return func__EspLink_HandleLutFrame(uint8_t__messageType,
+                                        uint16_t__payloadLength,
+                                        uint8_t__payload);
+}
 #endif
 
 /* ==================== EspLink_Init ==================== */
@@ -1657,6 +1693,8 @@ void func__EspLink_Init(void)
     func__BspUart_Init();
     ESP_LINK_PARSE_STATE_T__G__State = ESP_LINK_PARSE_WAIT_SOF0;
     BOOL__G__LutResetAuthorized = false;
+    UINT8_T__G__LutStageN1 = 0u;
+    UINT8_T__G__LutStageN2 = 0u;
     UINT16_T__G__TelemetrySeq = 0u;
     func__EspLink_Power(true);
 }

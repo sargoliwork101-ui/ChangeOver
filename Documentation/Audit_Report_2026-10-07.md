@@ -329,3 +329,39 @@ Yes - one battery alone has always been legal on the panel and the firmware
 Panel budget: additions broke the 385024 ceiling twice (386852, 385739);
 trimmed ~1850 bytes of comments/strings, final stamp c2be30d, AUDIT PASSED.
 Gates: rules ALL PASSED, host syntax ALL PASSED, simulator restarted.
+
+## REAL-BOARD root cause: "board did not answer the send stage" (user report, 2026-10-07)
+
+The user reproduced the LUT-push failure ON THE BOARD, proving the simulator
+protocol drift (fixed earlier today) was only half the story.
+
+### Root cause (STM32, esp_link.c)
+func__EspLink_SendLutAck filled the ACK's n1/n2 echo fields with
+func__CalLut_Points() - the ACTIVE flash table - instead of the counts of
+the transaction being staged. On a fresh board the active table is empty, so
+every ACK said n1=0, n2=0. The ESP's freshness check (plink_link.h,
+func__Esp_LutTxPump) deliberately matches the echoed counts against the push
+it just sent (so a duplicate retry-ACK can never be mistaken for the next
+step's answer); with 0 != sent-count it rejected the board's perfectly good
+ACKs, retried 3 times per stage and finally reported txe=1 - "board did not
+answer" - although the board had answered every frame. A push could only
+succeed when the new table's point counts happened to equal the old table's.
+
+### Fix
+esp_link.c now stores the counts declared by LUT_BEGIN (LutStageN1/N2) and
+echoes THOSE in every LUT_ACK of the transaction (zeroed on a failed BEGIN,
+in Init and in the host reset). esp_link.h documents the semantics. The
+panel/ESP side is unchanged - its strict match was the correct behaviour.
+
+### Why no test caught it
+In host mode ParseByte deliberately bypasses the dispatch graph (acceptance
+counter only), so the whole LUT handler chain was gc-sectioned out of the
+parser test. Fix: new host probe func__EspLink_HostTest_HandleLutFrame +
+UART capture double; the CalLut host test now links esp_link.c and asserts
+BEGIN/CHUNK ACKs echo the STAGED counts, using active+1 as the staged count
+so a regression can never pass by coincidence. Mutation-verified: reverting
+the echo to CalLut_Points makes the test fail (2 checks).
+
+CalLut host test: 138 checks, 0 failures (was 124). Gates: host syntax ALL
+PASSED, rules ALL PASSED, audit PASSED. The board must be re-flashed with
+this build for the fix to take effect.

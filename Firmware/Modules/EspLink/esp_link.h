@@ -119,6 +119,9 @@
  *        0x06 LUT_COMMIT [crc32:u32 of the staged CONTENT]
  *        0x07 LUT_RESET  ['R','S','T','!']              reboot after handshake
  *        0x13 LUT_ACK    [stage:u8][status:u8][n1:u8][n2:u8][crc32:u32]
+ *                        n1/n2 echo the point counts the CURRENT BEGIN
+ *                        declared (NOT the active table), so the sender
+ *                        can match each ACK against its own push.
  *      The table NEVER travels as parameters: it has its own messages and its
  *      own flash block (cal_lut.c), so a push can neither disturb the
  *      parameter record nor be mistaken for one. LUT_RESET carries a literal
@@ -562,6 +565,9 @@ uint32_t func__EspLink_HostTest_AcceptedFrames(void);
 void func__EspLink_HostTest_RecordCommitAck(bool bool__success);
 bool func__EspLink_HostTest_TryReset(bool bool__magicValid,
                                      bool bool__tableActive);
+bool func__EspLink_HostTest_HandleLutFrame(uint8_t uint8_t__messageType,
+                                           const uint8_t *uint8_t__payload,
+                                           uint16_t uint16_t__payloadLength);
 #endif
 
 #endif /* ESP_LINK_H */

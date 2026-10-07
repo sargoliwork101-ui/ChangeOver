@@ -31,6 +31,7 @@
 #include "cal_lut.h"
 #include "bsp_flash.h"
 #include "bsp_pwm.h"
+#include "esp_link.h"
 
 /* ==================== Check helper / کمک‌کنندهٔ بررسی ==================== */
 
@@ -88,6 +89,37 @@ bool func__BspPwm_IsGatePulsing(bsp_pwm_channel_t bsp_pwm_channel_t__channel)
 {
     (void)bsp_pwm_channel_t__channel;
     return BOOL__G__GatePulsing;
+}
+
+/* [EN] ESP-Link UART double: captures every transmitted frame byte so the
+   LUT_ACK regression below can read the real ACK the module emits.
+   [FA] بدل UART لینک ESP: بایت‌های ارسالی را نگه می‌دارد تا واپس‌آزمون
+   LUT_ACK بتواند همان فریم واقعی را بخواند. */
+static uint8_t  UINT8_T__G__TxCap[600];
+static uint16_t UINT16_T__G__TxCapLen = 0u;
+
+bool func__BspUart_Write(const uint8_t *uint8_t__data,
+                         uint16_t uint16_t__length)
+{
+    if (((uint32_t)UINT16_T__G__TxCapLen + (uint32_t)uint16_t__length) <=
+        sizeof(UINT8_T__G__TxCap))
+    {
+        memcpy(&UINT8_T__G__TxCap[UINT16_T__G__TxCapLen],
+               uint8_t__data, (size_t)uint16_t__length);
+        UINT16_T__G__TxCapLen = (uint16_t)(UINT16_T__G__TxCapLen +
+                                           uint16_t__length);
+    }
+    return true;
+}
+
+bool func__BspUart_ReadByte(uint8_t *uint8_t__byte)
+{
+    (void)uint8_t__byte;
+    return false;
+}
+
+void func__BspUart_Init(void)
+{
 }
 
 void func__Charger_SetSuspended(bool bool__suspended)
@@ -403,6 +435,77 @@ int main(void)
     func__CalLut_Tick();
     func__CalLut_Tick();
     CHECK(UINT32_T__G__SuspendCalls == 0u);
+
+    /* ---- 15. LUT_ACK echoes the STAGED counts, not the active table ----
+       [EN] User board bug 2026-10-07: the ACK used to carry
+            func__CalLut_Points() (the ACTIVE table). On a fresh board that
+            is 0, the ESP rejected its own first push's good ACKs and the
+            panel said "board did not answer the send stage". The staged
+            count here is deliberately active+1 so a regression to the old
+            echo can never pass by coincidence.
+       [FA] باگ برد کاربر ۲۰۲۶-۱۰-۰۷: ACK قبلاً تعداد جدول فعال را
+            می‌گفت که در برد نو صفر است و ESP تأیید سالم اولین ارسال را رد
+            می‌کرد. تعداد چیده‌شده عمداً «فعال+۱» است تا بازگشت باگ تصادفی
+            قبول نشود. */
+    {
+        uint8_t uint8_t__n1 =
+            (uint8_t)(func__CalLut_Points(CAL_LUT_CHANNEL_1) + 1u);
+        uint8_t UINT8_T__A__Begin[2];
+        uint8_t UINT8_T__A__Chunk[3u + (8u * 24u)];
+        uint16_t uint16_t__len = 3u;
+        uint32_t uint32_t__i;
+
+        if ((uint8_t__n1 < (uint8_t)CAL_LUT_POINTS_MIN) ||
+            (uint8_t__n1 > (uint8_t)CAL_LUT_POINTS_MAX))
+        {
+            /* [EN] Empty active table (0+1 < MIN) or full one: fall back to
+               MIN, which still differs from the active count in both cases.
+               [FA] جدول فعال خالی (۰+۱ کمتر از MIN) یا پر: MIN که در هر دو
+               حالت با تعداد فعال فرق دارد. */
+            uint8_t__n1 = (uint8_t)CAL_LUT_POINTS_MIN;
+        }
+        UINT8_T__A__Begin[0] = uint8_t__n1;
+        UINT8_T__A__Begin[1] = 0u;
+        UINT8_T__A__Chunk[0] = 1u;   /* [EN] channel 1 / کانال ۱ */
+        UINT8_T__A__Chunk[1] = 0u;   /* [EN] first index / اندیس شروع */
+        UINT8_T__A__Chunk[2] = uint8_t__n1;
+        for (uint32_t__i = 0u; uint32_t__i < (uint32_t)uint8_t__n1;
+             uint32_t__i++)
+        {
+            uint32_t uint32_t__pair[2];
+            uint8_t uint8_t__b;
+
+            uint32_t__pair[0] = 100u + (100u * uint32_t__i);
+            uint32_t__pair[1] = 1000u + (1000u * uint32_t__i);
+            for (uint8_t__b = 0u; uint8_t__b < 8u; uint8_t__b++)
+            {
+                UINT8_T__A__Chunk[uint16_t__len] =
+                    (uint8_t)((uint32_t__pair[uint8_t__b / 4u] >>
+                               (8u * (uint8_t__b % 4u))) & 0xFFu);
+                uint16_t__len++;
+            }
+        }
+
+        func__EspLink_HostTest_Reset();
+        UINT16_T__G__TxCapLen = 0u;
+        CHECK(func__EspLink_HostTest_HandleLutFrame(0x04u, UINT8_T__A__Begin,
+                                                    2u) == true);
+        CHECK(UINT16_T__G__TxCapLen == 16u);   /* SOF2 ver type len2 pl8 crc2 */
+        CHECK(UINT8_T__G__TxCap[3] == 0x13u);  /* LUT_ACK */
+        CHECK(UINT8_T__G__TxCap[6] == 1u);     /* stage = BEGIN */
+        CHECK(UINT8_T__G__TxCap[7] == 0u);     /* status = OK */
+        CHECK(UINT8_T__G__TxCap[8] == uint8_t__n1); /* staged n1, not active */
+        CHECK(UINT8_T__G__TxCap[9] == 0u);     /* staged n2 */
+
+        UINT16_T__G__TxCapLen = 0u;
+        CHECK(func__EspLink_HostTest_HandleLutFrame(0x05u, UINT8_T__A__Chunk,
+                                                    uint16_t__len) == true);
+        CHECK(UINT16_T__G__TxCapLen == 16u);
+        CHECK(UINT8_T__G__TxCap[6] == 2u);     /* stage = CHUNK */
+        CHECK(UINT8_T__G__TxCap[7] == 0u);     /* status = OK */
+        CHECK(UINT8_T__G__TxCap[8] == uint8_t__n1);
+        CHECK(UINT8_T__G__TxCap[9] == 0u);
+    }
 
     printf("checks: %d, fails: %d\n", INT32_T__G__Checks, INT32_T__G__Fails);
     return (INT32_T__G__Fails == 0) ? 0 : 1;
