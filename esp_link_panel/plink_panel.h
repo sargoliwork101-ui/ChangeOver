@@ -401,7 +401,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 2d3a301</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 1ae71dc</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2491,7 +2491,7 @@ function simrest(){
   const cycle='سیکل '+(S5.full?'به FLOAT رسیده / کامل':'هنوز کامل نشده')+
    (S5.has?(S5.recorded?' · رویداد این سیکل ثبت شد':' · نامزد معوق دارد'):' · بدون نامزد');
   if(S5.lock){
-   const bper=c4v(123,1000),bdt=c4v(124,50),ron=(bper===0)?true:simblink(now,bper,bdt);
+   const bper=c4v(123,1000),bdt=c4v(124,50),ron=(bper===0)?true:simblink(now-S5.lt,bper,bdt);
    simset(5,ron,false,false,simbz(now-S5.lt,per,len,cnt,gap),
     'قفل شد (رویداد '+ev+' اُم) · '+cycle+' · '+(bper===0?'قرمز ثابت':'چشمک قرمز '+Math.round(bper*bdt/100)+'/'+Math.round(bper*(100-bdt)/100)+' میلی‌ثانیه')+' · '+(per===0?'بوق خاموش':cnt+' بوق '+len+' میلی‌ثانیه با گپ '+gap+' میلی‌ثانیه هر '+sms(per))+
     ' · '+cleanNeed+' سیکل کاملِ بدون رویداد جدید فقط شمارنده را صفر می‌کند؛ قفل تا تعویض باتری باقی است.');

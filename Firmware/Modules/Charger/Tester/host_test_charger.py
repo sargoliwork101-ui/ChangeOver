@@ -3352,8 +3352,8 @@ def test_min_select_handover_v124():
           "the two id blocks (108..118 and 123..124) need an ownership and an index helper")
     check('id="q123"' in ino and 'id="q124"' in ino,
           "card 5 must expose the blink period and duty inputs")
-    check("c4v(123,1000)" in ino and "simblink(now,bper,bdt)" in ino,
-          "the card-6 simulator must blink its red lamp the way the board does")
+    check("c4v(123,1000)" in ino and "simblink(now-S5.lt,bper,bdt)" in ino,
+          "the card-6 simulator must blink its red lamp from the lock-start phase")
     # [EN] v1.49 appends one more block after IDEF: CDEF, the charge-side
     #      percent map (119..120). Derive the top from every table so the next
     #      block keeps this check honest too.
