@@ -152,8 +152,10 @@ function testStructure(win, doc) {
         check(el.querySelector('.c4ds') !== null, 'card ' + card + ' explains when it triggers');
         check(el.querySelectorAll('.sec').length >= 2, 'card ' + card + ' is split into numbered sections');
     }
-    check(doc.getElementById('simopen') && typeof win.opensim === 'function',
-        'the operating page provides a direct route to the simulator');
+    /* The standalone simulator launch card was intentionally removed; the
+       operating page must not advertise a dead route. */
+    check(!doc.getElementById('simopen') && typeof win.opensim !== 'function',
+        'the removed standalone simulator route is not advertised on the operating page');
 
     /* [EN] A browser min/max attribute is not a visible instruction. Every
        numeric scenario box must print the same range immediately below it.
@@ -1035,6 +1037,40 @@ async function testBackupAndCal(win, doc) {
     check(win.eval('xclamp')(2, 99999) === 3000, 'an impossible gain from a file is clamped to its maximum');
     check(win.eval('xclamp')(0, -5) === 0, 'a negative offset from a file is clamped to zero');
 
+    /* --- applied values must replace stale visible calibration/filter boxes ---
+       [FA] مقدار اعمال‌شده باید کادرهای قدیمی کالیبراسیون/فیلتر را جایگزین کند. */
+    win.D = { p: { 0: 17, 1: 19, 2: 1200, 3: 1300, 7: 5, 8: 20, 27: 14800 }, t: [] };
+    win.PEND = {};
+    /* The previous scenario may leave its last input focused. The production
+       rule intentionally preserves a focused field, so blur it before testing
+       an incoming telemetry refresh. */
+    if (doc.activeElement && typeof doc.activeElement.blur === 'function') {
+        doc.activeElement.blur();
+    }
+    doc.getElementById('q0').value = '7';
+    doc.getElementById('q7').value = '3';
+    doc.getElementById('q27').value = '14000';
+    win.eval('cfill')();
+    win.eval('qfill')();
+    win.eval('afill')();
+    check(doc.getElementById('q0').value === '17' &&
+          doc.getElementById('q2').value === '1200',
+          'refresh replaces stale current offset/gain boxes with applied board values');
+    check(doc.getElementById('q7').value === '5',
+          'refresh replaces a stale median-filter value with the applied board value');
+    check(doc.getElementById('q27').value === '14800',
+          'refresh replaces a stale alarm value with the applied board value');
+    check(Math.abs(win.eval('K24') - (3300 / 4095 * 68000 / 6800)) < 1e-9 &&
+          Math.abs(win.eval('K24B') - (3300 / 4095 * 68000 / 6800)) < 1e-9 &&
+          Math.abs(win.eval('K12') - (3300 / 4095 * 34398 / 6800)) < 1e-9,
+          'the panel uses the live BSP divider constants, not historical voltage factors');
+    win.PEND[0] = 99;
+    doc.getElementById('q0').value = '99';
+    win.eval('cfill')();
+    check(doc.getElementById('q0').value === '99',
+          'an explicitly queued local edit is not overwritten by telemetry');
+    win.PEND = {};
+
     /* --- calibration: feed a perfect line and demand the numbers back --- */
     const gain = 1200, off = 7;
     win.CALS = [];
@@ -1105,12 +1141,14 @@ async function testBackupAndCal(win, doc) {
 
     /* --- v1.61: the conditions are on the page, and a firmware snippet --- */
     win.eval('calchk')();
-    check(doc.getElementById('calck').innerHTML.indexOf('✅') >= 0,
+    const ruleRows = doc.querySelectorAll('#calck .ckr');
+    check(ruleRows.length >= 10 &&
+          [...ruleRows].every(row => row.querySelector('i') && row.textContent.trim().length > 1),
           'the rule check-list is rendered with a result for each rule');
     const keepAll = win.CALS;
     win.CALS = [keepAll[0]];
     win.eval('calchk')();
-    check(doc.getElementById('calck').innerHTML.indexOf('⛔') >= 0 &&
+    check(doc.querySelectorAll('#calck .ckr.no').length >= 2 &&
           doc.getElementById('calck').innerHTML.indexOf('حداقل ۴') >= 0,
           'too few points is shown as a failed rule with what to do about it');
     win.CALS = keepAll;
@@ -1203,6 +1241,41 @@ async function testBackupAndCal(win, doc) {
           'applying calibration is refused while the bench wizard is running');
     await win.eval('ximp')({ text: async () => JSON.stringify({ app: 'ChangeOver-settings', v: 2, params: { 0: 1 } }) });
     Wv.run = false;
+
+    /* The successful path must reconcile every local owner with the value the
+       setter read back. This is the regression that a visible table-only check
+       misses: CALR, calcN, calvN and qN all have to agree afterwards. */
+    const applyId = 2;
+    const applyRow = win.CALR.findIndex(r => r[1] === applyId);
+    const oldSetv = win.eval('setv');
+    const oldXexp = win.eval('xexp');
+    const oldApplyConfirm = win.confirm;
+    win.confirm = () => true;
+    win.eval('xexp = () => {}');
+    win.eval('setv = async (id, value) => { D.p[id] = value; }');
+    win.PEND = {};
+    win.CALR.forEach((r, i) => {
+        doc.getElementById('calk' + i).checked = r[1] === applyId;
+    });
+    doc.getElementById('calv' + applyRow).value = '1234';
+    doc.getElementById('q' + applyId).value = '1000';
+    if (doc.activeElement && typeof doc.activeElement.blur === 'function') {
+        doc.activeElement.blur();
+    }
+    await win.eval('calapply')();
+    check(win.D.p[applyId] === 1234 && win.CALR[applyRow][2] === 1234,
+          'calibration apply keeps the board readback in its local row snapshot');
+    check(doc.getElementById('calc' + applyRow).textContent === '1234' &&
+          doc.getElementById('calv' + applyRow).value === '1234' &&
+          doc.getElementById('q' + applyId).value === '1234',
+          'calibration apply refreshes the live cell, proposal and owning filter control');
+    check(doc.getElementById('calst').textContent.indexOf('✅') >= 0 &&
+          doc.getElementById('calst').textContent.indexOf('بازخوانی برد') >= 0,
+          'calibration apply reports a successful board readback');
+    win.setv = oldSetv;
+    win.xexp = oldXexp;
+    win.confirm = oldApplyConfirm;
+    win.PEND = {};
 
     /* v1.81: importing a settings file must stage locally, never call /s. */
     const importUrls = [];
@@ -1454,8 +1527,10 @@ async function testLutPush(win, doc) {
     win.eval('calcode')();
     check(doc.getElementById('calcd').value.indexOf('CAL_Current1LutChainMa') >= 0,
           'the build-time route still produces calibration.h - the user asked to keep it');
-    check(win.eval('document').body.innerHTML.indexOf('ارسال مستقیم جدول به برد') >= 0,
-          'both routes are offered as buttons in the calibration card');
+    check(doc.getElementById('lbtnS') &&
+          doc.querySelector('button[onclick="calcode()"]') &&
+          doc.getElementById('lbtnS').textContent.indexOf('ارسال جدول به برد') >= 0,
+          'both calibration routes are offered as buttons in the calibration card');
 }
 
 

@@ -496,7 +496,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 7674a96</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 2d3a301</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1066,7 +1066,7 @@ const $=i=>document.getElementById(i);
 const ST=['خاموش','Bulk','Absorb','Float','راه‌اندازی','JIT wait','Input wait','Final fault','باتری قطع','دستی'];
 const SC=['','g','g','g','y','r','y','r','r','y'];
 /* ثابت‌های بخش 5.3 سند */
-const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*76000/6800,K24B=3300/4095*69200/6800,K12=3300/4095*41000/6800;
+const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*68000/6800,K24B=K24,K12=3300/4095*34398/6800;
 /* شناسه: [عنوان, واحد, کمینه, بیشینه, نوع(n عدد، b کلید), توضیح] */
 /* [EN] v1.83: ids 13/14 keep their parameter-schema metadata here, while
    the visible ceiling editor lives on the large duty label in each charger
@@ -1423,7 +1423,7 @@ function formulas(t,p){
   else e.textContent=i==3?'V24 − V12':'= V12';});
 }
 function hist(d){const t=d.t;if(d.on==1&&d.seq!==LS){LS=d.seq;[0,1].forEach(c=>{const b=c*7,s=H[c];s.u.push(t[b+2]);s.f.push(t[b+3]);if(s.u.length>hn(c)){s.u.shift();s.f.shift();}});}}
-function qfill(){if(!D||!D.p)return;for(const id of [7,8]){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];if(a&&!(D.q&(1<<id)))a.textContent=D.p[id]==null?'':D.p[id];}}
+function qfill(){if(!D||!D.p)return;for(const id of [7,8]){const e=$('q'+id),a=$('a'+id);if(!e)continue;if(document.activeElement!==e&&!(id in PEND)&&D.p[id]!=null)e.value=D.p[id];if(a&&!(D.q&(1<<id)))a.textContent=D.p[id]==null?'':D.p[id];}}
 function qdef(){[[20,14400],[21,14300],[22,14600],[23,13500],[24,12800],[25,650],[26,50]].forEach(x=>{const e=$('q'+x[0]);if(e)e.value=x[1];qput(x[0],x[1]);});pdef();ldef();qgraph();}
 /* ===== v1.14: نمودار مراحل شارژ — مقدار هر خط از فیلد تایپ‌نشده/متفاوت با مقدار اعمال‌شده می‌آید (پیش‌نمایش خط‌چین) ===== */
 const QDEF=[14400,14300,14600,13500,12800,650,50];
@@ -1926,7 +1926,7 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
    می‌فرستد و بازخوانی اعمال‌شده مشخص می‌کند برد پذیرفته یا گیره زده است. */
 for(const id of [7,8]){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;
  qput(id,v);};if(id>=20)e.oninput=qgraph;}
-function cfill(){if(!D||!D.p)return;for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];}}
+function cfill(){if(!D||!D.p)return;for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;if(document.activeElement!==e&&!(id in PEND)&&D.p[id]!=null)e.value=D.p[id];}}
 for(const id of [0,1,2,3,9,10]){const e=$('q'+id);if(!e)continue;e.onchange=()=>{const v=parseInt(e.value,10);if(isNaN(v))return;qput(id,v);};}
 /* ===== v1.15: تب آلارم‌ها — آینهٔ قوانین Fault_ClampAlarms/Charger_ClampAlarms روی برد ===== */
 /* v1.24: upper bound MUST track the top real id. It was left at 97 when the
@@ -2061,7 +2061,7 @@ function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id
    span های ‎a<id>‎ می‌مانند («در صف»/«…»/«خطا» در آن‌ها نوشته می‌شود). */
 function afill(){if(!D||!D.p)return;
  for(const id of AIDS){const e=$('q'+id),a=$('a'+id);if(!e)continue;
-  if(document.activeElement!==e&&e.value==='')e.value=D.p[id]==null?'':D.p[id];
+  if(document.activeElement!==e&&!(id in PEND)&&D.p[id]!=null)e.value=D.p[id];
   if(a&&!apend(id)&&!(id in PEND))a.textContent='';}}
 function adef(){ADEF.slice(6,11).forEach((v,k)=>{const id=33+k;$('q'+id).value=v;qput(id,v);});afresh();}
 /* v1.22: پیش‌فرض کارخانهٔ PID سه‌مرحله‌ای — همان اعداد CHG_PID_* در charger.h */
@@ -3048,7 +3048,7 @@ async function poll(){const c=new AbortController(),k=setTimeout(()=>c.abort(),2
 /* ---------- ابزار بنچ (بخش 5.5 و 5.6 نسخه ۲؛ همه دستی، هیچ ضریبی خودکار ارسال نمی‌شود) ----------
  * Bench tools (spec 5.5 / 5.6 v2): manual only; no coefficient is ever sent automatically. */
 const gv=id=>{const e=$(id);if(!e||e.value==='')return null;const v=+e.value;return isNaN(v)?null:v;};
-const fa=n=>'۱۲'[n-1],r0=Math.round;
+const fa=n=>n<3?'۱۲'[n-1]:n,r0=Math.round;
 /* ذخیرهٔ خودکار ورودی‌ها در همین مرورگر (با بستن صفحه پاک نمی‌شوند) */
 let BDS={};try{BDS=JSON.parse(localStorage.getItem('bd')||'{}');}catch(e){}
 function bsave(){document.querySelectorAll('[data-s]').forEach(e=>{if(e.value==='')delete BDS[e.id];else BDS[e.id]=e.value;});try{localStorage.setItem('bd',JSON.stringify(BDS));}catch(e){}}
@@ -3322,7 +3322,7 @@ function calrun(){
  CALR=rows;
  stxt('caltb','<div class="tw"><table class="bt2"><tr><th>اعمال</th><th>عدد</th><th>الان روی برد</th><th>مقدار جدید (قابل ویرایش)</th><th>تفاوت</th><th>کیفیت</th></tr>'+
   rows.map((r,i)=>'<tr><td><input type="checkbox" id="calk'+i+'"'+(r[5]?' checked':'')+'></td>'+
-   '<td>'+r[0]+'</td><td dir="ltr"><b>'+(r[2]==null?'':r[2])+'</b></td>'+
+   '<td>'+r[0]+'</td><td dir="ltr"><b id="calc'+i+'">'+(r[2]==null?'':r[2])+'</b></td>'+
    '<td><input type="number" style="width:110px" id="calv'+i+'" value="'+r[3]+'" oninput="caldiff('+i+')"></td>'+
    '<td id="cald'+i+'" class="lb"></td><td>'+r[4]+'</td></tr>').join('')+'</table></div>');
  rows.forEach((r,i)=>caldiff(i));
@@ -3616,6 +3616,10 @@ async function calapply(){
    const report=c[2]+': '+c[1]+'→'+(back==null?'بی‌پاسخ':back);
    if(back==null||+back!==+c[1]){fail++;C.push(report+' — بازخوانی متفاوت');}
    else{ok++;C.push(report+' — پذیرفت');}
+   if(back!=null){const ri=CALR.findIndex(r=>r[1]===c[0]);
+    if(ri>=0){CALR[ri][2]=+back;const l=$('calc'+ri),e=$('calv'+ri);
+     if(l)l.textContent=back;if(e&&document.activeElement!==e)e.value=back;caldiff(ri);}
+    const e=$('q'+c[0]);if(e&&document.activeElement!==e&&!(c[0] in PEND))e.value=back;}
   }catch(e){fail++;C.push(c[2]+': '+c[1]+'→خطا: '+e);}
   stxt('calst','… '+ok+'/'+CALP.length);
  }
@@ -3681,6 +3685,7 @@ async function lsend(){
  if(!confirm('جدول مستقیماً در حافظهٔ خود میکرو نوشته شود؟\n\n'+
   'باتری ۱: '+dn(p.T[0])+' · باتری ۲: '+dn(p.T[1])+'\n'+
   'اگر داده درست نرسد، برد کامیت را رد می‌کند و جدول قبلی سر جایش می‌ماند.'))return;
+ LSNT=0;lupd();
  stxt('calst','… جدول در حال ارسال به برد');
  let r;try{r=await req('/lut','POST',p.body);}catch(e){stxt('calst','⚠ ارسال به ESP نرسید');return;}
  /* [EN] The sketch's own reason codes (plink_http.h), in Persian.
@@ -3706,9 +3711,9 @@ async function lsend(){
  if(!a||a.st!==3){stxt('calst','⚠ برد پاسخ کامیت را نداد؛ جدول قبلی بدون تغییر ماند.');return;}
  if(a.s!==0){stxt('calst','⛔ برد جدول را رد کرد: '+(LUTST[a.s]||('کد '+a.s))+
   ' · جدول قبلی بدون تغییر ماند.');return;}
- LSNT=1;lupd();
  if(a.crc>>>0!==p.crc>>>0){stxt('calst','⛔ دست‌دادن نخواند (CRC برد '+a.crc+' ≠ CRC پنل '+p.crc+
   ') · جدول قبلی بدون تغییر ماند.');return;}
+ LSNT=1;lupd();
  stxt('calst','✅ جدول در فلش برد نوشته و تأیید شد (باتری ۱: '+a.n1+'، باتری ۲: '+a.n2+' نقطه، CRC '+a.crc+'). برای شروع با جدول نو «ریست برد» را بزنید.');
  if(confirm('جدول ذخیره شد.\n\nبرد ریست شود تا با جدول جدید بالا بیاید؟\n'+'(شارژ چند ثانیه قطع می‌شود؛ تنظیمات دست‌نخورده برمی‌گردند.)'))await lrst();}
 async function lrst(){

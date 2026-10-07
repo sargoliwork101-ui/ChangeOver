@@ -264,13 +264,21 @@
  *      bytes past the 375 KiB step (384008). The ceiling is deliberately
  *      stepped 375 KiB to 376 KiB (384000 to 385024); behaviour, chunked
  *      transfer and the stamp/size audit are unchanged.
+ *
  *      [FA] ۲۰۲۶-۱۰-۰۷ (پاس برنامه‌نویس: بهداشت کامنت راست‌به‌چپ با خود ابزار
  *      پروژه احیا شد): علامت‌های جهت اجباری داخل متن توضیح فارسی، مارک‌آپ را
  *      ۸ بایت از پلهٔ ۳۷۵ کیلوبایت جلو زد (۳۸۴۰۰۸). سقف عمداً از ۳۷۵ به ۳۷۶
  *      کیلوبایت (۳۸۴۰۰۰ به ۳۸۵۰۲۴) پله خورد؛ رفتار، انتقال تکه‌ای و ممیزی
  *      مهر/اندازه بدون تغییر است.
+ *
+ *      2026-10-07 calibration read-back and LUT transaction guards add a small
+ *      amount of served markup; the next 1 KiB step keeps the same transfer
+ *      contract with measured headroom (377 KiB = 386048 bytes).
+ *      [FA] در ۲۰۲۶-۱۰-۰۷ همگام‌سازی ‎read-back‎ کالیبراسیون و نگهبان تراکنش LUT
+ *      کمی به مارک‌آپ افزود؛ پلهٔ بعدی همان قرارداد انتقال را با حاشیهٔ اندازه
+ *      حفظ می‌کند (۳۷۷ کیلوبایت = ۳۸۶۰۴۸ بایت).
  */
-#define ESP_PANEL_HTML_MAX_BYTES    385024u
+#define ESP_PANEL_HTML_MAX_BYTES    386048u
 
 /* ==================== Parser States ==================== */
 typedef enum
