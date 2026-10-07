@@ -165,14 +165,11 @@ void setup(void)
  */
 void loop(void)
 {
-    while (Serial.available() > 0)
-    {
-        int32_t int32_t__byte = (int32_t)Serial.read();
-        if (int32_t__byte >= 0)
-        {
-            func__Esp_ParseByte((uint8_t)int32_t__byte);
-        }
-    }
+    /* [EN] Same drain the HTTP send paths call - one implementation, two
+       callers, so the parser sees every byte exactly once.
+       [FA] همان تخلیه‌ای که مسیرهای ارسال HTTP هم صدا می‌زنند - یک پیاده‌سازی،
+       دو فراخوان؛ پارسر هر بایت را دقیقاً یک‌بار می‌بیند. */
+    func__Esp_DrainSerial();
 
     func__Esp_PumpTx();
     ESP_WEB_SERVER_T__G__Server.handleClient();

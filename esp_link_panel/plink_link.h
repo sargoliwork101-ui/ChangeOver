@@ -810,3 +810,34 @@ static void func__Esp_ParseByte(uint8_t uint8_t__byte)
             break;
     }
 }
+
+/**
+ * @brief  [EN] Drain every pending UART byte into the frame parser without
+ *              blocking. Called from loop() AND from the long HTTP send
+ *              paths: the STM32 streams telemetry every 100 ms no matter
+ *              what, so while a multi-second response (the ~375 KB panel
+ *              page, a bench-log download) keeps the handler busy, nobody
+ *              would otherwise empty the RX ring - it overflows, bytes are
+ *              lost mid-frame and every lost frame lands in the panel's
+ *              yellow "rejected by CRC" counter. Draining inside the send
+ *              loop keeps the ring empty and the link lossless.
+ *         [FA] تخلیهٔ همهٔ بایت‌های منتظر UART در پارسر، بدون بلوکه‌شدن.
+ *              از ‎loop()‎ و «همچنین» از مسیرهای طولانی ارسال HTTP صدا
+ *              می‌شود: STM32 هر ‎100ms‎ تله‌متری می‌فرستد، پس وقتی یک پاسخ
+ *              چندثانیه‌ای (صفحهٔ ‎~375KB‎ یا دانلود لاگ بنچ) هندلر را مشغول
+ *              نگه داشته، حلقهٔ RX پر و بایت‌ها وسط فریم گم می‌شوند و هر فریم
+ *              گم‌شده در شمارندهٔ زرد «رد شده با CRC» پنل می‌نشیند. تخلیه داخل
+ *              حلقهٔ ارسال، حلقهٔ RX را خالی و لینک را بی‌اتلاف نگه می‌دارد.
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Esp_DrainSerial(void)
+{
+    while (Serial.available() > 0)
+    {
+        int32_t int32_t__byte = (int32_t)Serial.read();
+        if (int32_t__byte >= 0)
+        {
+            func__Esp_ParseByte((uint8_t)int32_t__byte);
+        }
+    }
+}

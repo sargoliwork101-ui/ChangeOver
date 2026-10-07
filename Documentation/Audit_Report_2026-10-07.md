@@ -182,3 +182,39 @@ CubeIDE include set is what produced findings 1-3 - a reminder that a warning sw
 `check_firmware_syntax.sh`: ۹۸ تست ESP + ۵۲ تست شارژر + UI/buzzer ALL PASSED؛ `audit_consistency.py` ۴۴۳ بررسی PASSED؛
 هر ۱۱ سوئیت هاست (CalLut/Changeover/NVM/parser/Fault/Imbalance/Jitter/McuPowerPath/Measurement/Protection) PASS؛
 جاروب `-Wall -Wextra` و `-Wconversion -Wsign-conversion` با include کامل: صفر هشدار کد خودی.
+
+---
+
+## Panel CRC-warning fix / رفع هشدار CRC پنل ۲۰۲۶-۱۰-۰۷ / 2026-10-07
+
+**[FA] گزارش کاربر: هشدار زرد «N فریم به‌خاطر خطای CRC رد شد» در پنل، که با بستن و رفرش هم برمی‌گشت.**
+**[EN] User report: the yellow "N frames rejected by CRC" panel warning, which came back after closing/refreshing.**
+
+**[FA] ریشهٔ ایراد (نه نویز سیم، نه پروتکل):** STM32 هر ‎100ms‎ بی‌قید تله‌متری می‌فرستد و ESP بایت‌ها را فقط در
+‎loop()‎ تخلیه می‌کند. هندلر صفحهٔ اصلی ‎~375KB‎ را در ‎~188‎ تکهٔ ‎2KB‎ داخل یک فراخوانی ‎handleClient‎ می‌فرستد؛
+روی کلاینت کند این چند ثانیه طول می‌کشد و در این مدت هیچ‌کس حلقهٔ RX را خالی نمی‌کند. حلقهٔ ‎1024‎ بایتی فقط
+‎~1s‎ حاشیه دارد، پس سرریز می‌کند، بایت‌ها وسط فریم گم می‌شوند و پارسر ESP هر فریم ناقص را با CRC رد می‌کند.
+شمارندهٔ ‎ce‎ سمت ESP تجمعی و بدون ریست است، پس هشدار همیشه می‌ماند و «رفرش» خودش خطای تازه اضافه می‌کند.
+**[EN] Root cause (not wire noise, not the protocol):** the STM32 streams telemetry every 100 ms unconditionally
+and the ESP drained UART only in loop(). The root handler streams the ~375 KB page as ~188 x 2 KB slices inside a
+single handleClient call; on slow clients that takes seconds during which nothing empties the 1024-byte RX ring
+(~1 s of headroom), so it overflows, bytes are lost mid-frame and the ESP parser rejects each broken frame on CRC.
+The ce counter is cumulative on the ESP, so the warning persists - and every refresh adds fresh errors.
+
+**[FA] اصلاحات (فقط سمت ESP، پروتکل و STM32 دست‌نخورده):**
+**[EN] Fixes (ESP side only; protocol and STM32 untouched):**
+
+| فایل / File | تغییر / Change |
+|---|---|
+| `esp_link_panel/plink_link.h` | تابع ‎func__Esp_DrainSerial()‎ اضافه شد (تخلیهٔ بی‌بلوکهٔ UART در پارسر) / new non-blocking drain helper |
+| `esp_link_panel/plink_http.h` | در حلقهٔ تکه‌های صفحه، بعد از هر ‎sendContent_P‎ تخلیه انجام می‌شود / drain after every 2 KB slice |
+| `esp_link_panel/esp_link_panel.ino` | ‎loop()‎ همان تابع مشترک را صدا می‌کند (یک پیاده‌سازی، دو فراخوان) / loop() now shares the helper |
+| `esp_link_panel/plink_config.h` | حلقهٔ RX از ‎1024‎ به ‎2048‎ (حاشیهٔ ‎~2s‎ برای ‎streamFile‎ و مسیرهای داخلی وب‌سرور که از بیرون تخلیه‌پذیر نیستند) / RX ring 1024->2048 |
+
+**[EN] Verification / اعتبارسنجی:** `check_ai_rules.sh` ALL PASSED؛ `check_firmware_syntax.sh`: ۹۸ تست ESP (اسکچ واقعی
+کامپایل‌شده) + ۵۲ تست شارژر + UI/buzzer ALL PASSED؛ `audit_consistency.py` ۴۴۳ بررسی PASSED؛
+`make_panel_preview.py` دوباره تولید شد (محتوای پنل تغییر نکرد - فایل بایت‌به‌بایت یکسان) و سرور شبیه‌ساز restart شد.
+**[FA] نکتهٔ عملی برای کاربر: شمارندهٔ قدیمی در RAM ی ESP تا ریست برق می‌ماند؛ بعد از فلش‌کردن نسخهٔ اصلاح‌شده از صفر
+شروع می‌شود. اگر بعد از آن هم هشدار دیده شد، آن‌وقت واقعاً نویز سیم/زمین است.**
+**[EN] Note: the old count stays in the ESP's RAM until power-cycle; after flashing the fixed sketch it starts from
+zero. If the warning ever appears again afterwards, THEN it is genuine wire/ground noise.**

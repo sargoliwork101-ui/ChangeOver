@@ -3,7 +3,17 @@
    No include guard on purpose: including twice would redefine everything. */
 /* ==================== Link Constants ==================== */
 #define ESP_LINK_BAUD_RATE          921600u
-#define ESP_LINK_RX_BUFFER_SIZE     1024u
+/* [EN] RX ring headroom. The panel page/bench-log handlers drain the ring
+       from inside their send loops (func__Esp_DrainSerial), but streamFile
+       and other WebServer internals cannot be drained from; 2048 gives
+       ~2 s of telemetry headroom at the 100 ms cadence, so a blocking
+       stretch no longer costs frames (1024 overflowed on slow clients and
+       every lost frame showed up as the panel's yellow CRC warning).
+   [FA] حاشیهٔ حلقهٔ RX. هندلرهای صفحه/لاگ بنچ حلقه را از داخل حلقهٔ ارسال
+       تخلیه می‌کنند ‎(func__Esp_DrainSerial)‎، ولی ‎streamFile‎ و بخش‌های
+       داخلی وب‌سرور از بیرون قابل تخلیه نیستند؛ ‎2048‎ حدود ‎2s‎ حاشیه با
+       کادانس ‎100ms‎ می‌دهد تا یک کشیدگی بلوکه‌کننده دیگر فریم هزینه نکند. */
+#define ESP_LINK_RX_BUFFER_SIZE     2048u
 #define ESP_LINK_SOF_BYTE0          0xAAu
 #define ESP_LINK_SOF_BYTE1          0x55u
 /* [EN] v2 frame, must stay byte-identical to the firmware's esp_link.h:

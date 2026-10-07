@@ -85,6 +85,13 @@ static void func__Esp_HttpRoot(void)
                                    ? SIZE_T__REMAINING : SIZE_T__PANEL_CHUNK;
         ESP_WEB_SERVER_T__G__Server.sendContent_P(ESP_PANEL_HTML + SIZE_T__OFFSET,
                                                    SIZE_T__COUNT);
+        /* [EN] Keep the UART parser fed while the page streams: without this
+           the RX ring overflows on slow clients and the panel shows the
+           yellow "rejected by CRC" warning after every page load.
+           [FA] حین ارسال صفحه، پارسر UART را تغذیه نگه دار: بدون این، روی
+           کلاینت کند حلقهٔ RX سرریز می‌کند و پنل بعد از هر بارگذاری صفحه
+           هشدار زرد «رد شده با CRC» می‌دهد. */
+        func__Esp_DrainSerial();
     }
 }
 
