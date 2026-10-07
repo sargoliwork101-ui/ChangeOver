@@ -117,20 +117,20 @@ section{margin-top:12px}
 table{width:100%;border-collapse:collapse;font-size:.93em}td{padding:6px 2px;border-top:1px solid var(--ln)}td:last-child{text-align:center}
 .bt{width:100%;border:0;border-radius:12px;padding:12px;margin-top:12px;font-weight:700;color:#fff;min-height:44px;transition:filter .15s,transform .05s}
 .bt:active{transform:scale(.99)}
-.cut{background:linear-gradient(180deg,#e5484d,#c62f35)}.run{background:linear-gradient(180deg,#2fbf8f,#1e9e73);color:#04120c}
+.cut{background:rgba(229,72,77,.14);border:1px solid rgba(255,104,115,.55);color:#ffbfc4}.run{background:#263d62;border:1px solid #4775b5;color:#dcecff}
 input[type=number],select{background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:7px 9px;direction:ltr;min-height:36px;transition:border-color .15s,box-shadow .15s}
 input[type=number]{width:min(108px,100%);max-width:100%;box-sizing:border-box}
 .ap{font-size:12px;color:var(--ac2);margin-right:6px}
 input[type=number]:hover,select:hover{border-color:#2c3850}
 input[type=number]:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ring);outline:none}
 select{direction:rtl}
-.sb{border:1px solid transparent;border-radius:10px;padding:7px 14px;background:linear-gradient(180deg,#3d7ef0,#2f68d8);color:#fff;font-weight:600;min-height:36px;transition:filter .15s,transform .05s;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+.sb{border:1px solid #4775b5;border-radius:10px;padding:7px 14px;background:#263d62;color:#dcecff;font-weight:600;min-height:36px;transition:filter .15s,transform .05s;box-shadow:none}
 /* [EN] Gated buttons, groups, dark code view. [FA] دکمهٔ مشروط، گروه، کد تیره. */
 .sb:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.4)}
 .lgrp{font-size:11.5px;color:var(--mu);font-weight:600;margin:10px 0 5px}
 .sb:hover{filter:brightness(1.1)}.sb:active{transform:scale(.98)}
 .sw{border:1px solid var(--ln);border-radius:10px;padding:7px 0;width:68px;min-height:36px;background:var(--rs);color:var(--mu);font-weight:600;transition:background .15s}
-.sw.on{background:linear-gradient(180deg,#2fbf8f,#1e9e73);color:#04120c;border-color:transparent}.sw.w.on{background:linear-gradient(180deg,#fbbf24,#dd9a12);color:#231600}
+.sw.on{background:#263d62;color:#dcecff;border-color:#4775b5}.sw.w.on{background:rgba(229,72,77,.14);color:#ffbfc4;border-color:rgba(255,104,115,.55)}
 .sg{display:flex;background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:3px}.sg button{border:0;background:none;min-width:36px;padding:5px 8px;border-radius:7px;color:var(--mu);font-weight:600}.sg button.on{background:var(--ac);color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.4)}
 .wn{background:rgba(251,94,106,.1);border:1px solid rgba(251,94,106,.35);color:#ffc2c7;border-radius:14px;padding:11px 13px;margin-top:12px;font-size:13px}
 .wn b{color:var(--er)}.gb{display:none}.gb.v{display:block}
@@ -140,7 +140,7 @@ select{direction:rtl}
 .fx{direction:ltr;text-align:right;unicode-bidi:isolate;font-size:11px;color:#7c86a0;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fb{background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:9px 11px;margin-bottom:6px}.fb .fx{font-size:12px;color:#a7b0c4;line-height:1.9;white-space:normal}.fb .lb{font-size:11px}
 .as{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:10px 0;border-top:1px solid var(--ln)}.as .nm{flex:1 1 180px}.as .lv{font-weight:700;margin-left:4px;font-variant-numeric:tabular-nums}
-.sb2{background:linear-gradient(180deg,#2a3a5c,#22304c);color:#d7e5ff;border-color:#31436a}.brun{background:linear-gradient(180deg,#2fbf8f,#1e9e73);color:#04120c;border-color:transparent}.brun:hover{filter:brightness(1.08)}.qr{background:linear-gradient(180deg,#2a3a5c,#22304c);color:#d7e5ff;border-color:#31436a}.qr.j{background:linear-gradient(180deg,#e5484d,#c62f35);color:#fff;border-color:transparent}.qr:disabled{opacity:.4;cursor:default}
+.sb2,.brun{background:#263d62;color:#dcecff;border-color:#4775b5}.brun:hover{filter:brightness(1.08)}.qr{background:#263d62;color:#dcecff;border-color:#4775b5}.qr.j{background:rgba(229,72,77,.14);color:#ffbfc4;border-color:rgba(255,104,115,.55)}.qr:disabled{opacity:.4;cursor:default}
 .wt tr.wa td{background:rgba(251,191,36,.08)}.wt .wi{width:76px}
 canvas{width:100%;height:160px;display:block;background:var(--in);border:1px solid var(--ln);border-radius:12px;margin-top:10px;direction:ltr}
 .lg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mu);margin-top:8px}.lg i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-left:5px;vertical-align:middle}
@@ -160,8 +160,8 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .bctl .ctlcap{font-size:12px;color:var(--mu);font-weight:700;white-space:nowrap}
 .modepick{display:inline-flex;gap:3px;padding:3px;background:var(--in);border:1px solid var(--ln);border-radius:11px}
 .modepick .sw{width:auto;min-width:72px;padding:6px 12px;border:0;border-radius:8px;background:transparent;color:var(--mu)}
-.modepick .sw.on{background:rgba(53,214,160,.16);color:var(--ok);border:1px solid rgba(53,214,160,.55)}
-.modepick .sw.w.on{background:rgba(247,193,60,.16);color:var(--wa);border-color:rgba(247,193,60,.6)}
+.modepick .sw.on{background:#263d62;color:#dcecff;border:1px solid #4775b5}
+.modepick .sw.w.on{background:rgba(229,72,77,.14);color:#ffbfc4;border-color:rgba(255,104,115,.55)}
 .bctl .dutyctl{display:inline-flex!important;align-items:center;gap:6px;white-space:nowrap;color:var(--mu);font-size:12px}
 .bctl .dutyctl input[type=number]{width:82px;min-width:82px;text-align:center}
 .dutyactions{display:inline-flex;gap:6px}
@@ -169,9 +169,6 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .bctl .bapply{background:#263d62;border-color:#4775b5;color:#dcecff}
 .bctl .bzero{background:rgba(229,72,77,.14);border-color:rgba(255,104,115,.55);color:#ffbfc4}
 .bctl .bapply:hover,.bctl .bzero:hover{filter:brightness(1.15)}
-#p1 .sb{min-width:62px;padding:7px 12px;box-shadow:none;background:#263d62;border-color:#4775b5;color:#dcecff}
-#p1 .sb:hover{filter:brightness(1.15)}
-#p1 .sb.stp2{background:rgba(229,72,77,.14);border-color:rgba(255,104,115,.55);color:#ffbfc4}
 /* [EN] Inside a control row the caption belongs BESIDE its box, not
    stacked above it: "از [ ۱ ]  تا [ ۵۰ ]" reads as one sentence.
    The global label rule stacks captions, which is right for the
@@ -243,7 +240,7 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .shv .t{flex:1 0 auto;font-weight:600;color:var(--mu)}
 .shv b{font-size:15px;font-variant-numeric:tabular-nums;direction:ltr;text-align:left}
 .shv .ow{font-size:11px;color:var(--mu)}
-.cc .ca{border-top:0;margin-top:0;padding-top:0}.stp2{background:linear-gradient(180deg,#e5484d,#c62f35);white-space:nowrap}
+.cc .ca{border-top:0;margin-top:0;padding-top:0}.stp2{background:rgba(229,72,77,.14);border-color:rgba(255,104,115,.55);color:#ffbfc4;white-space:nowrap}
 .vc{justify-content:center}.vc input[type=number]{width:min(108px,100%);max-width:100%;box-sizing:border-box}
 .fl{margin-top:0;padding-top:0;border-top:0}#sh .hd{flex-wrap:wrap;gap:8px}
 .sec{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--tx);margin:16px 0 8px;padding-top:13px;border-top:1px solid var(--ln)}
@@ -409,7 +406,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 23e32b7</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 56f9688</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
