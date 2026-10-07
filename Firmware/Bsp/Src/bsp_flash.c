@@ -20,6 +20,8 @@
 
 #include "stm32f1xx.h"
 
+#include <stdint.h>   /* [EN] uintptr_t for the portable address->pointer cast. */
+
 /* ==================== BspFlash private constants ==================== */
 
 /* [EN] FPEC unlock keys (RM0008 3.5.2). / کلیدهای بازکردن FPEC. */
@@ -254,8 +256,15 @@ bool func__BspFlash_ProgramHalfWords(uint32_t uint32_t__address,
     for (uint32_t uint32_t__i = 0u; uint32_t__i < uint32_t__count; uint32_t__i++)
     {
         FLASH->CR |= FLASH_CR_PG;
-        *(volatile uint16_t *)(uint32_t__address +
-                               (uint32_t__i * 2u)) = uint16_t__A__Data[uint32_t__i];
+        /* [EN] uintptr_t keeps the flash-address -> pointer cast exact on
+           every width (32-bit target: identical code; wider host builds for
+           the module test suites: no size-mismatch warning).
+           [FA] ‎uintptr_t‎ تبدیل «نشانی فلش به اشاره‌گر» را در هر پهنایی دقیق
+           نگه می‌دارد (هدف ۳۲ بیتی: کد یکسان؛ ساخت هاست برای سوئیت‌های تست:
+           بدون هشدار ناهم‌اندازه‌بودن). */
+        *(volatile uint16_t *)(uintptr_t)(uint32_t__address +
+                                          (uint32_t__i * 2u)) =
+            uint16_t__A__Data[uint32_t__i];
 
         if (func__BspFlash_WaitIdle() == false)
         {

@@ -2633,7 +2633,13 @@ bool func__Charger_SetDeadParam(uint8_t uint8_t__paramId,
         return false;
     }
 
-    uint8_t__index = CHG_DEAD_PARAM_INDEX(uint8_t__paramId);
+    /* [EN] The OWNS guard above confines the id to 125..131/134..135, so the
+       index expression is provably 0..8; the explicit cast states that
+       intended narrowing (MISRA style) and keeps -Wconversion silent.
+       [FA] گارد ‎OWNS‎ بالا شناسه را به ‎125..131/134..135‎ محدود می‌کند، پس
+       عبارت اندیس قطعاً ‎0..8‎ است؛ cast صریح همین باریک‌کردنِ مقصوددار را
+       اعلام می‌کند (سبک ‎MISRA)‎ و ‎-Wconversion‎ را ساکت نگه می‌دارد. */
+    uint8_t__index = (uint8_t)(CHG_DEAD_PARAM_INDEX(uint8_t__paramId));
     uint32_t__applied = uint32_t__value;
 
     if (uint32_t__applied < CHARGER_DEAD_DEF_T__A__DeadDefs[uint8_t__index].uint32_t__min)

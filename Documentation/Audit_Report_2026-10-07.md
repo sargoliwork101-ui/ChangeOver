@@ -157,3 +157,28 @@ McuPowerPath 49/0، Measurement 2346/0، Protection 61/0، ESP panel (داخل �
 and the four classic embedded defect classes (ring/DMA, protocol parser, overflow/unsigned, ISR races) have been
 systematically hunted. No known open functional defect remains; only real radio/flash/board behaviour stays
 uncovered here and belongs in the module Validation Excel files.
+
+---
+
+## Professional-review pass / مرور حرفه‌ای ۲۰۲۶-۱۰-۰۷ (اصلاحات بدون تغییر منطق) / 2026-10-07 professional pass (non-logic fixes)
+
+**[FA] مرور به سبک برنامه‌نویس حرفه‌ای: ابزارهای هشدار روی کل کد، سپس اصلاح یافته‌ها. هیچ منطقی تغییر نکرد؛ رفتار روی هدف ۳۲ بیتی بیت‌به‌بیت یکسان است.**
+**[EN] Professional-style review: warning tooling over the whole tree, then the findings fixed. No logic changed; target behaviour is bit-identical.**
+
+| # | فایل / File | اصلاح / Fix |
+|---|---|---|
+| 1 | `Firmware/Bsp/Src/bsp_flash.c` | تبدیل «نشانی فلش → اشاره‌گر» از `(uintptr_t)` می‌گذرد + `#include <stdint.h>`؛ هشدار ناهم‌اندازه‌بودن در ساخت هاست رفع شد (ARM32: کد یکسان) / portable address->pointer cast |
+| 2 | `Firmware/Modules/EspLink/esp_link_nvm.c` | همان الگو در دو نقطه: `func__EspLink_NvmPageRecord` و حلقهٔ بازخوانیِ پس از نوشتن + `#include <stdint.h>` / two uintptr_t casts |
+| 3 | `Firmware/Modules/Charger/charger.c` | تنها هشدار `-Wconversion` باقی‌ماندهٔ کد خودی (`CHG_DEAD_PARAM_INDEX` در `func__Charger_SetDeadParam`): cast صریح `(uint8_t)` در انتساب + یادداشت «گارد OWNS پیش از این، بازه را به ۰..۸ محدود کرده». سبک MISRA برای باریک‌کردنِ مقصوددار / explicit intended narrowing |
+| 4 | `Firmware/Modules/Protection/protection.h` و `.c` | رفع **تناقض مستند با پیاده‌سازی**: برچسب کهنهٔ «(placeholder)/اسکلت» برداشته شد و عبارت «latch faults» اصلاح شد - پیاده‌سازی عمداً `FAULT_ADC` را زنده (بدون قفل) نگه می‌دارد؛ خلاصهٔ دقیق دوزبانه + `@note` ممیزی اضافه شد. `Init` خالی هم مستند شد (ماژول بی‌حالت است) / stale "placeholder" removed, "latch faults" wording corrected to the deliberate LIVE-not-latched design |
+
+**[EN] Method note / یادداشت روش:** the first quick sweep falsely reported "clean" because `charger.c` never compiled
+(`cmsis_os2.h` missing from the include set and the fatal error filtered out). The corrected sweep with the full
+CubeIDE include set is what produced findings 1-3 - a reminder that a warning sweep must prove the files compiled. /
+جاروب اول به‌غلط «پاک» گزارش کرد چون `charger.c` اصلاً کامپایل نشده بود (فقدان `cmsis_os2.h` و فیلترشدن خطای مهلک)؛
+جاروب اصلاح‌شده با مجموعهٔ کامل include های CubeIDE یافته‌های ۱ تا ۳ را داد.
+
+**[EN] Verification / اعتبارسنجی:** `check_ai_rules.sh` ALL PASSED (RTL fixer دو نشانهٔ جهت به خطوط `@note` جدید افزود)؛
+`check_firmware_syntax.sh`: ۹۸ تست ESP + ۵۲ تست شارژر + UI/buzzer ALL PASSED؛ `audit_consistency.py` ۴۴۳ بررسی PASSED؛
+هر ۱۱ سوئیت هاست (CalLut/Changeover/NVM/parser/Fault/Imbalance/Jitter/McuPowerPath/Measurement/Protection) PASS؛
+جاروب `-Wall -Wextra` و `-Wconversion -Wsign-conversion` با include کامل: صفر هشدار کد خودی.

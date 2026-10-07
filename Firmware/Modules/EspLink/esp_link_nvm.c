@@ -26,6 +26,7 @@
 #endif
 
 #include <stddef.h>
+#include <stdint.h>   /* [EN] uintptr_t for the portable address->pointer cast. */
 
 /* [EN] The save snapshot loop scans the WHOLE id space 0..255 because the
    imbalance runtime slots 200..202 (v10) persist without being parameters:
@@ -331,13 +332,18 @@ static uint16_t UINT16_T__G__NvmNewestSeq = 0u;
 static bool BOOL__G__NvmNewestIsPageB = false;
 
 /**
- * @brief  [EN] Read one page as a record candidate.
- *         [FA] خواندن یک صفحه به‌عنوان نامزد رکورد.
+ * @brief  [EN] Read one page as a record candidate. The uintptr_t step keeps
+ *              the flash-address -> pointer cast exact on every width
+ *              (32-bit target: identical code; 64-bit host test builds: no
+ *              size-mismatch warning).
+ *         [FA] خواندن یک صفحه به‌عنوان نامزد رکورد. پلهٔ ‎uintptr_t‎ تبدیل
+ *              «نشانی فلش به اشاره‌گر» را در هر پهنایی دقیق نگه می‌دارد
+ *              (هدف ۳۲ بیتی: کد یکسان؛ ساخت تست هاست ۶۴ بیتی: بدون هشدار).
  */
 static const esp_link_nvm_record_t *func__EspLink_NvmPageRecord(
     uint32_t uint32_t__pageAddress)
 {
-    return (const esp_link_nvm_record_t *)uint32_t__pageAddress;
+    return (const esp_link_nvm_record_t *)(uintptr_t)uint32_t__pageAddress;
 }
 
 /**
@@ -607,7 +613,12 @@ static bool func__EspLink_NvmSaveNow(void)
                                   sizeof(uint16_t));
          uint16_t__i++)
     {
-        if (((const volatile uint16_t *)uint32_t__pageAddress)[uint16_t__i] !=
+        /* [EN] uintptr_t keeps the read-back cast exact on every width
+           (identical code on the 32-bit target).
+           [FA] ‎uintptr_t‎ تبدیل بازخوانی را در هر پهنایی دقیق نگه می‌دارد
+           (کد یکسان روی هدف ۳۲ بیتی). */
+        if (((const volatile uint16_t *)(uintptr_t)
+             uint32_t__pageAddress)[uint16_t__i] !=
             ((const uint16_t *)&esp_link_nvm_record_t__record)[uint16_t__i])
         {
             func__EspLink_NvmResumeCharger(bool__chargerSuspended);
