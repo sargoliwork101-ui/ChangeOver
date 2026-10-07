@@ -477,9 +477,26 @@ function telemetry() {
         const b = k === 0 ? 0 : 7, c = ch[k];
         t[b + 0] = rawFromCurrent(c.i, k === 0 ? vhigh : vlow);
         t[b + 1] = Math.round(t[b + 0] * 8.7767);
-        t[b + 2] = c.i;
-        t[b + 3] = c.i;
-        t[b + 4] = c.i;
+        /* [EN] User calibration ids 0..3 change what the board REPORTS:
+         *      chain mA = (raw − offset) × K × gain/1000, exactly like
+         *      measurement.c. The sim physics built `raw` for the default
+         *      offset (8) and the default gains (1046/1303), so reporting
+         *      the physical current scaled by the reported/physical chain
+         *      ratio mirrors the board. With defaults the ratio is exactly
+         *      1 and the demo looks unchanged; after the panel applies a
+         *      calibration the numbers move here too (user report
+         *      2026-10-07: "applying the calibration does nothing").
+         * [FA] کالیبراسیون کاربر (شناسه‌های ۰..۳) عدد گزارشِ برد را عوض
+         *      می‌کند؛ با پیش‌فرض‌ها نسبت دقیقاً ۱ است و دمو تغییری
+         *      نمی‌کند، ولی بعد از «اعمال روی برد» اینجا هم اعداد تکان
+         *      می‌خورند (گزارش کاربر ۲۰۲۶-۱۰-۰۷: کالیبراسیون بی‌اثر بود). */
+        const gDef = k === 0 ? 1046 : 1303, oDef = 8, rawK = 1.144096;
+        const phys = Math.max(t[b + 0] - oDef, 0) * rawK * gDef / 1000;
+        const rep = Math.max(t[b + 0] - P[k], 0) * rawK * P[2 + k] / 1000;
+        const iCal = phys > 0 ? Math.round(c.i * rep / phys) : c.i;
+        t[b + 2] = iCal;
+        t[b + 3] = iCal;
+        t[b + 4] = iCal;
         t[b + 5] = c.duty;
         t[b + 6] = c.state;
     }
@@ -532,6 +549,20 @@ function telemetry() {
     t[22] = counts(t[16], MV_PER_COUNT_12);
     t[23] = VREFINT_COUNTS;
     t[24] = VREF_MV;
+
+    /* [EN] Voltage offset calibration (ids 4/5/6) lands AFTER the raw
+     *      counts were derived above, exactly like the firmware adds its
+     *      offsets after the counts->mV conversion: input += off4, the
+     *      12 V node (= battery low) += off6, and battery high =
+     *      (v24 + off5) − (v12 + off6). The invariants are re-imposed.
+     * [FA] آفست‌های ولتاژ (شناسه‌های ۴/۵/۶) بعد از مشتق‌شدن شمارش‌های خام
+     *      اعمال می‌شوند - دقیقاً مثل فرم‌ور که آفست را بعد از تبدیل
+     *      شمارش→mV جمع می‌کند؛ بعد دو ناوردای ولتاژ دوباره برقرار می‌شود. */
+    t[14] += P[4] | 0;
+    t[17] += P[6] | 0;
+    t[18] += (P[5] | 0) - (P[6] | 0);
+    t[16] = t[17];
+    t[15] = t[17] + t[18];
 
     /* [EN] v1.43 imbalance scenario 5 live block. The demo owes the operator
      *      every face, so it cycles a condemned battery: |imbalance| sweeps

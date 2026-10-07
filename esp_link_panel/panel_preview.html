@@ -479,7 +479,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d225ed8</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build fdfb1c3</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1304,7 +1304,7 @@ ASB={sp:[0,1,2].map(k=>$('sp'+k)),sr:[0,1,2].map(k=>$('sr'+k)),flt:$('asf'),bits
 /* ---------- دو ستون جدا: شارژر ۱ و شارژر ۲ ---------- */
 $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}"></span></div>
 
-<div class="bg2"><div class="bmetric"><div class="big"><span class="biglabel">جریان باتری (iest)</span><b class="n" id="ie${n}"></b></div><div class="bsub"><span>ولتاژ باتری ${n==1?'بالا':'پایین'}</span><span><b class="n" id="vb${n}"></b> <span class="unit">V</span></span></div></div>
+<div class="bg2"><div class="bmetric"><div class="big"><span class="biglabel">جریان باتری (iest)</span><b class="n" id="ie${n}"></b></div><div class="bsub"><span>ولتاژ باتری ${n==1?'بالا':'پایین'}</span><span dir="ltr"><b class="n" id="vb${n}"></b> <span class="unit">V</span></span></div></div>
 <div class="big"><span class="biglabel dutybig" id="dutyedit${n}" role="button" tabindex="0" title="برای تغییر سقف duty کلیک کنید" onclick="dutyedit(${n})" onkeydown="if(event.key==='Enter'||event.key===' ')dutyedit(${n})">duty <span class="ceval" id="dc${n}"></span></span><b class="n" id="du${n}"></b></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
 <div class="bctl"><span class="ctlcap">حالت کار</span><div class="modepick"><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button></div><label class="dutyctl"><span>Duty دستی (%)</span><input type="number" step="any" id="qm${n}" data-s></label><div class="dutyactions"><button class="sb bapply" onclick="qset(${n})">اعمال</button><button class="sb bzero" onclick="qzero(${n})">صفر</button></div></div>
 <div class="lb">بستن پنل: ۱۰ ثانیه بعد مود دستی خاموش و duty صفر می‌شود؛ بعد از تریپ JIT همان duty را دوباره اعمال کنید.</div>
@@ -3273,11 +3273,11 @@ function calrun(){
   const w=[];
   if(f.n<4)w.push('فقط '+f.n+' نقطه');
   if(f.span<20)w.push('بازهٔ duty خیلی باریک است');
-  if(f.r2<0.98)w.push('نقاط پراکنده‌اند (R²='+f.r2.toFixed(3)+')');
-  if(f.mx>150)w.push('خطای باقیمانده تا '+Math.round(f.mx)+' میلی‌آمپر');
+  if(f.r2<0.98)w.push('نقاط پراکنده‌اند (R²=<span dir="ltr">'+f.r2.toFixed(3)+'</span>)');
+  if(f.mx>150)w.push('خطای باقیمانده تا <span dir="ltr">'+Math.round(f.mx)+'</span> میلی‌آمپر');
   if(g!==gc||o!==oc)w.push('عدد خام خارج از بازهٔ مجاز بود و محدود شد');
   const bad=w.length>0&&(f.n<4||f.r2<0.9);
-  rows.push([ttl+' — گین (‰)',ch[4],cur(ch[4]),gc,w.length?'⚠ '+w.join(' · '):'✅ برازش خوب ('+f.n+' نقطه، R²='+f.r2.toFixed(4)+')',bad?0:1]);
+  rows.push([ttl+' — گین (‰)',ch[4],cur(ch[4]),gc,w.length?'⚠ '+w.join(' · '):'✅ برازش خوب ('+f.n+' نقطه، R²=<span dir="ltr">'+f.r2.toFixed(4)+'</span>)',bad?0:1]);
   rows.push([ttl+' — آفست (count)',ch[3],cur(ch[3]),oc,'از همان خط به‌دست آمد (جریان صفر در raw='+oc+')',bad?0:1]);});
  /* --- سه آفست ولتاژ: میانگین اختلاف مولتی‌متر با برد --- */
  const voff=(ttl,id,get)=>{const d=[];calsel(null).forEach(z=>{const x=get(z);if(x!=null&&Number.isFinite(x))d.push(x);});
@@ -3305,7 +3305,7 @@ function calrun(){
  CALR=rows;
  stxt('caltb','<div class="tw"><table class="bt2"><tr><th>اعمال</th><th>عدد</th><th>الان روی برد</th><th>مقدار جدید (قابل ویرایش)</th><th>تفاوت</th><th>کیفیت</th></tr>'+
   rows.map((r,i)=>'<tr><td><input type="checkbox" id="calk'+i+'"'+(r[5]?' checked':'')+'></td>'+
-   '<td>'+r[0]+'</td><td><b>'+(r[2]==null?'':r[2])+'</b></td>'+
+   '<td>'+r[0]+'</td><td dir="ltr"><b>'+(r[2]==null?'':r[2])+'</b></td>'+
    '<td><input type="number" style="width:110px" id="calv'+i+'" value="'+r[3]+'" oninput="caldiff('+i+')"></td>'+
    '<td id="cald'+i+'" class="lb"></td><td>'+r[4]+'</td></tr>').join('')+'</table></div>');
  rows.forEach((r,i)=>caldiff(i));
@@ -3318,7 +3318,7 @@ function caldiff(i){const r=CALR[i];if(!r)return;const e=$('calv'+i),d=$('cald'+
  const nv=+e.value,cu=r[2];
  if(!Number.isFinite(nv)||cu==null){d.textContent='—';return;}
  const cl=xclamp(r[1],nv);
- d.innerHTML=(nv>cu?'+':'')+(nv-cu)+(cl!==nv?' <b class="erc">خارج از بازهٔ مجاز — به '+cl+' محدود می‌شود</b>':'');}
+ d.innerHTML='<span dir="ltr">'+((nv>cu?'+':'')+(nv-cu))+'</span>'+(cl!==nv?' <b class="erc">خارج از بازهٔ مجاز — به <span dir="ltr">'+cl+'</span> محدود می‌شود</b>':'');}
 /* [EN] v1.59 (user order: "these calibration numbers must be saveable and
    restorable so I do not have to repeat the whole test every time"). Two
    things are saved now: the FINISHED numbers already travel in the settings
@@ -3342,10 +3342,10 @@ function calsmp(){const b=$('calsl');if(!b)return;
  b.innerHTML='<div class="tw"><table class="bt2 cals"><tr><th>استفاده</th><th>#</th><th>سناریو</th><th>duty ٪</th>'+
   '<th>raw باتری ۱</th><th>جریان مولتی‌متر ۱ mA</th><th>raw باتری ۲</th><th>جریان مولتی‌متر ۲ mA</th><th>ولتاژ ورودی mV</th></tr>'+
   CALS.map((z,i)=>'<tr><td><input type="checkbox" id="calu'+i+'"'+(z.use===0?'':' checked')+' onchange="caluse('+i+',this.checked)"></td>'+
-   '<td>'+(i+1)+'</td><td>'+(WSN[z.sc]||z.sc||'')+'</td><td>'+(z.d==null?'':z.d)+'</td>'+
-   '<td>'+(z.r1==null?'':Math.round(z.r1))+'</td><td>'+(z.b1==null?'':Math.round(z.b1))+'</td>'+
-   '<td>'+(z.r2==null?'':Math.round(z.r2))+'</td><td>'+(z.b2==null?'':Math.round(z.b2))+'</td>'+
-   '<td>'+(z.dvi==null?'':z.dvi)+'</td></tr>').join('')+'</table></div>';}
+   '<td>'+(i+1)+'</td><td>'+(WSN[z.sc]||z.sc||'')+'</td><td dir="ltr">'+(z.d==null?'':z.d)+'</td>'+
+   '<td dir="ltr">'+(z.r1==null?'':Math.round(z.r1))+'</td><td dir="ltr">'+(z.b1==null?'':Math.round(z.b1))+'</td>'+
+   '<td dir="ltr">'+(z.r2==null?'':Math.round(z.r2))+'</td><td dir="ltr">'+(z.b2==null?'':Math.round(z.b2))+'</td>'+
+   '<td dir="ltr">'+(z.dvi==null?'':z.dvi)+'</td></tr>').join('')+'</table></div>';}
 function caluse(i,on){if(CALS[i]){CALS[i].use=on?1:0;calsave();}}
 function calpick(on){CALS.forEach(z=>{z.use=on?1:0;});calsave();calsmp();}
 /* [EN] Only ticked rows, and only rows whose scenario really drove that

@@ -244,3 +244,52 @@ card-header hint spans (ids 33..34 / 35..37 / median+average / 0..3+9..10).
 
 **[EN] Gates:** check_ai_rules ALL PASSED (RTL fixer added one direction mark); check_firmware_syntax: 102 ESP +
 52 charger + UI/buzzer ALL PASSED; audit_consistency 443 checks PASSED; preview spot-checks confirm every edit.
+
+## Calibration-card follow-up (user report, 2026-10-07)
+
+Four user reports on the «کالیبراسیون خودکار از همین جدول» card; findings and
+fixes. Panel stamp after this pass: fdfb1c3.
+
+### 1) Numbers rendered RTL in the calibration tables — FIXED
+The calibration result table (caltb), the live difference column (caldiff) and
+the bench sample list (calsl) put numbers into RTL table cells with no
+direction override, so decimal points and +/- signs jumped to the wrong end of
+the line. Fix: every numeric fragment is now wrapped in `<span dir="ltr">` or
+rendered inside a `dir="ltr"` cell — current-board values, signed diffs, clamp
+notices, R² figures, residual maxima, and the duty/raw/mA/mV sample columns.
+
+### 2) "Calibration settings are not sent to the board / do nothing" — ROOT CAUSE: simulator display gap, NOT a broken send path
+Evidence the send path works: (a) host suite drives the real sketch HTTP
+handler — POST /s emits a PLINK_CMD_SET_PARAM frame on the wire (tests 102);
+(b) live simulator test — POST /s?id=0&v=77 then GET /t returns p[0]=77.
+What was broken: the simulator telemetry ignored the calibration parameters
+entirely (t[2..4] = raw simulated current, voltages uncorrected), so applying
+a calibration produced no visible change anywhere on the panel — the effect
+the user described. Fix in tools/panel_preview_server.js telemetry(): currents
+now follow chain mA = (raw − offset) × K × gain/1000 relative to the sim's
+default offset/gain (ids 0..3), and voltages take the additive offsets after
+the raw-count derivation (ids 4..6), with the v24 = low + high invariants
+re-imposed. Defaults leave the demo unchanged; live test: gain 1046→1200
+moved 52→60 mA (+14.7%), vin offset +300 mV moved 24100→24400, pack offset
+−500 mV moved vhigh −500, invariant held, defaults restored afterwards.
+
+### 3) Calibration mathematics — VERIFIED CORRECT
+calfit() is a textbook ordinary least-squares fit (slope, intercept, R²,
+max residual, span all correct). The gain/offset derivation matches the
+firmware chain exactly: firmware computes mA = (raw − off) × K_MA × g/1000,
+the panel solves g = round(a×1000/K_MA) and o = round(−b/a) from the fit
+y(DMM mA) ~ x(raw counts) — substituting reproduces the DMM line. Voltage
+offsets use the additive rule off_new = off_now + mean(DMM − board), which is
+exact for additive mV offsets. Bench samples r1/r2 are raw ADC counts (same
+axis as firmware off), confirmed at the sample-build site. Warnings (≥4 pts,
+spread ≥20 counts, R² ≥0.98, residual ≤150 mA, zero-current sanity) are sound
+guardrails, not maths errors.
+
+### 4) "V" rendered before the number — FIXED
+The battery-voltage line in the panel page rendered `<b>number</b> <span>V</span>`
+loosely inside an RTL span, so bidi put V ahead of the number. Fix: number and
+unit are now inside ONE `<span dir="ltr">`.
+
+Gates: check_ai_rules ALL PASSED · host syntax ALL PASSED (ESP 102, charger 52) ·
+audit_consistency PASSED · preview regenerated (stamp fdfb1c3) · simulator
+restarted and calibration effect verified live.
