@@ -762,6 +762,7 @@ const API = {
   users:    '/api/admin/users',
   userOp:   '/api/admin/user',
   action:   '/api/admin/action',
+  network:  '/api/admin/network',
   audit:    '/api/admin/audit',
   report:   '/api/admin/report.xlsx',
   export:   '/api/export'
@@ -979,11 +980,19 @@ function fa(s) {
   if (LATIN_DIGITS) { return t; }
   return t.replace(/[0-9]/g, (d) => FA_DIGITS[+d]);
 }
+/* [EN] Volts, amps, percent and counts are written in LATIN digits (owner's
+   instruction): they are numbers a technician may copy into another tool, and
+   only dates and clocks are Persian. The digit setting below therefore applies
+   to time, not to measurements.
+   [FA] ولت، آمپر، درصد و شمارنده‌ها با رقم لاتین نوشته می‌شوند (دستور مالک):
+   اعدادی‌اند که ممکن است تکنسین در ابزار دیگری کپی کند؛ فقط تاریخ و ساعت
+   فارسی‌اند. پس تنظیم «نمایش اعداد» پایین صفحه به زمان مربوط است، نه به
+   اندازه‌گیری‌ها. */
 function num(v, digits) {
   const n = Number(v);
   if (!isFinite(n)) { return '—'; }
   const d = (digits === undefined) ? 0 : digits;
-  return fa(n.toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g, '٬'));
+  return n.toFixed(d).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 function esc(s) {
   return String(s === undefined || s === null ? '' : s)
@@ -1082,14 +1091,21 @@ function panelClockStr(unixSec, tzMin) {
   return fa(pad2(p.h)) + ':' + fa(pad2(p.mi));
 }
 
-function jalaliStr(unixSec) {
-  const d = new Date(unixSec * 1000);
-  const j = jalaliOf(d.getFullYear(), d.getMonth() + 1, d.getDate());
+/* [EN] The panel's own offset, not the browser's: the machine is in Iran and
+   the date it stamps on its own records is Iran's date. A viewer in another
+   country used to see their own midnight roll over in the middle of the
+   machine's day; now every date and clock on this page is the panel's.
+   [FA] اختلاف ساعت خود پنل، نه مرورگر: ماشین در ایران است و تاریخی که روی
+   رکوردهای خودش می‌زند تاریخ ایران است. پیش‌تر بینندهٔ کشوری دیگر نیمه‌شب خودش
+   را وسط روز ماشین می‌دید؛ حالا هر تاریخ و ساعتی در این صفحه مال پنل است. */
+function jalaliStr(unixSec, tzMin) {
+  const p = panelParts(unixSec, (tzMin === undefined) ? S.nowTzMin : tzMin);
+  const j = jalaliOf(p.y, p.mo, p.d);
   return fa(j.d) + ' ' + J_MONTH[j.m - 1] + ' ' + fa(j.y);
 }
-function clockStr(unixSec) {
-  const d = new Date(unixSec * 1000);
-  return fa(pad2(d.getHours())) + ':' + fa(pad2(d.getMinutes())) + ':' + fa(pad2(d.getSeconds()));
+function clockStr(unixSec, tzMin) {
+  const p = panelParts(unixSec, (tzMin === undefined) ? S.nowTzMin : tzMin);
+  return fa(pad2(p.h)) + ':' + fa(pad2(p.mi)) + ':' + fa(pad2(p.s));
 }
 function stampStr(unixSec, uptimeSec) {
   if (S.live && S.live.now && S.live.now.wallValid && unixSec > 1600000000) {
@@ -1548,8 +1564,8 @@ function renderDash() {
         '</div></div>' +
       '</div>' +
       '<div class="hero-facts">' +
-        fact('ورودی ۲۴ ولت', num(vin / 1000, 1) + ' V', L.flags.input ? 'ok' : 'wa') +
-        fact('پک باتری', num(v24 / 1000, 1) + ' V', '') +
+        fact('باتری بالایی', num(vHigh / 1000, 2) + ' V', pct1 >= 60 ? 'ok' : (pct1 >= 30 ? '' : 'wa')) +
+        fact('باتری پایینی', num(vLow / 1000, 2) + ' V', pct2 >= 60 ? 'ok' : (pct2 >= 30 ? '' : 'wa')) +
         fact('شارژ امروز', num(eToday.charges || 0) + ' بار', 'ac') +
         fact('زمان روی باتری امروز', durShort(eToday.runS || 0), 'wa') +
       '</div>' +
@@ -1574,7 +1590,7 @@ function renderDash() {
       '<div class="head"><span class="t">' + ICO.chart + '<span>روند ۲۴ ساعت گذشته</span></span>' +
       '<span class="s" id="trend-sum">—</span></div>' +
       '<div id="ch-trend"><div class="sk tile"></div></div>' +
-      '<div class="legend"><span><i class="ln" style="background:#5b9dff"></i> پک ۲۴ ولت</span>' +
+      '<div class="legend"><span><i class="ln" style="background:#5b9dff"></i> باتری بالایی</span>' +
       '<span><i class="ln" style="background:#2fd6a3"></i> باتری پایینی</span>' +
       '<span><i class="ln" style="background:#f7c33c"></i> ورودی</span>' +
       '<span><i style="background:rgba(47,214,163,.16)"></i> بازهٔ وصل بودن ورودی</span></div>' +
@@ -1616,9 +1632,7 @@ function batteryCard(title, ch, mv, pct, state, duty, current) {
         '<div class="bat-v n">' + num(mv / 1000, 2) + ' <small style="font-size:.5em">ولت</small></div>' +
         '<div class="bar" style="margin:8px 0 6px"><i class="' + (kind === 'ok' ? 'ok' : (kind === 'mid' ? 'wa' : 'er')) + '" style="width:' + pct + '%"></i></div>' +
         '<div class="bat-row"><span>شارژ: <b>' + num(pct) + '٪</b></span>' +
-        '<span>جریان: <b>' + num(current) + ' mA</b></span>' +
-        '<span>توان: <b>' + num((mv * current) / 1000000, 1) + ' W</b></span></div>' +
-        '<div class="bat-row"><span>وضعیت PWM: <b>' + (duty > 0 ? num(duty / 10, 1) + '٪' : 'خاموش') + '</b></span></div>' +
+        '<span><b>' + (st.s === 'ac' ? 'در حال شارژ' : (st.s === 'ok' ? 'شارژ کامل' : (st.s === 'er' ? 'خطای شارژ' : 'شارژ قطع است'))) + '</b></span></div>' +
       '</div>' +
     '</div>', { cls: 'flat' });
 }
@@ -1659,7 +1673,7 @@ function drawTrend() {
   const labels = se.label || [];
   chartLine(host, {
     h: 210, series: [
-      { name: 'پک ۲۴ ولت', color: '#5b9dff', data: v24, fill: true },
+      { name: 'باتری بالایی', color: '#5b9dff', data: v24.map((v, i) => v - v12[i]), fill: true },
       { name: 'باتری پایینی', color: '#2fd6a3', data: v12 },
       { name: 'ورودی', color: '#f7c33c', data: vin, dash: '4 3' }
     ],
@@ -1679,7 +1693,7 @@ function drawLiveCharts(ring) {
   chartLine(hv, {
     h: 168, series: [
       { name: 'ورودی', color: '#f7c33c', data: ring.vin.map(v => v / 1000) },
-      { name: 'پک ۲۴', color: '#5b9dff', data: ring.v24.map(v => v / 1000) },
+      { name: 'بالایی', color: '#5b9dff', data: ring.v24.map((v, i) => (v - ring.v12[i]) / 1000) },
       { name: 'پایینی', color: '#2fd6a3', data: ring.v12.map(v => v / 1000), fill: true }
     ], xLabels: vLabels
   });
@@ -1889,6 +1903,31 @@ function kpi(title, value, desc, kind, icon) {
 }
 
 /* ==================== Diagnostics view / صفحهٔ دیاگ ==================== */
+/* [EN] The raw numbers the owner asked NOT to see: pack voltage, charging
+   current and PWM duty. They are not secret, they are noise, so they live on
+   the diagnostics page and only for an operator or an admin - the two people
+   who are actually diagnosing something.
+   [FA] اعداد خامی که مالک خواست نبیند: ولتاژ پک، جریان شارژ و دیوتی PWM. اینها
+   راز نیستند، شلوغی‌اند، پس در صفحهٔ دیاگ و فقط برای اپراتور یا مدیر می‌مانند -
+   همان دو نفری که واقعاً چیزی را عیب‌یابی می‌کنند. */
+function rawDiagHTML() {
+  const L = S.live, t = (L && L.t) ? L.t : [];
+  const g = (i) => (t[i] === undefined ? 0 : t[i]);
+  return '<section class="card flat">' +
+    '<div class="head"><span class="t">' + ICO.info + '<span>دادهٔ خام (مدیر و اپراتور)</span></span>' +
+    '<span class="s">برای عیب‌یابی</span></div>' +
+    '<div class="grid tight">' +
+      factKV('ولتاژ ورودی', num(g(TI.vin) / 1000, 1) + ' V') +
+      factKV('ولتاژ پک ۲۴', num(g(TI.v24) / 1000, 2) + ' V') +
+      factKV('باتری بالایی', num(g(TI.vhigh) / 1000, 2) + ' V') +
+      factKV('باتری پایینی', num(g(TI.vlow) / 1000, 2) + ' V') +
+      factKV('جریان بالا', num(g(TI.iest1)) + ' mA') +
+      factKV('جریان پایین', num(g(TI.iest2)) + ' mA') +
+      factKV('دیوتی PWM بالا', num(g(TI.duty1) / 10, 1) + '٪') +
+      factKV('دیوتی PWM پایین', num(g(TI.duty2) / 10, 1) + '٪') +
+    '</div></section>';
+}
+
 function renderDiag() {
   const L = S.live;
   const active = L ? L.faultCodes.slice() : [];
@@ -1928,6 +1967,8 @@ function renderDiag() {
         '<div class="check ' + c.kind + '">' + c.icon + '<div><div class="ck-t">' + c.t + '</div><div class="ck-s">' + c.s + '</div></div></div>').join('') +
       '</div>' +
     '</section>' +
+
+    (can('operator') ? rawDiagHTML() : '') +
 
     '<section class="card">' +
       '<div class="head"><span class="t">' + ICO.info + '<span>فهرست کامل خطاهای ممکن (دیاگ)</span></span>' +
@@ -2089,6 +2130,8 @@ function renderAdmin() {
       resetGuideHTML() +
     '</section>' +
 
+    networkCard() +
+
     '<section class="grid wide">' +
       card('کاربران', ICO.user,
         '<div class="tw"><table><thead><tr><th>کاربر</th><th>نقش</th><th>آخرین ورود</th><th></th></tr></thead><tbody>' +
@@ -2122,7 +2165,7 @@ function renderAdmin() {
     '<section class="card flat">' +
       '<div class="head"><span class="t">' + ICO.info + '<span>تنظیمات نمایش</span></span></div>' +
       '<div class="grid tight">' +
-        '<div class="field" style="margin:0"><label>نمایش اعداد</label><select class="inp" id="set-digits">' +
+        '<div class="field" style="margin:0"><label>نمایش رقم‌های تاریخ و ساعت</label><select class="inp" id="set-digits">' +
           '<option value="fa">فارسی (۱۲۳)</option><option value="lat">لاتین (123)</option></select></div>' +
         '<div class="field" style="margin:0"><label>سرعت تازه‌سازی داشبورد</label><select class="inp" id="set-rate">' +
           '<option value="1000">سریع (۱ ثانیه)</option><option value="2000">معمولی (۲ ثانیه)</option>' +
@@ -2131,6 +2174,49 @@ function renderAdmin() {
     '</section>';
   bindAdmin();
 }
+/* [EN] The Network card. A company with several machines has several boards,
+   each with its own access point, and this is where the admin keeps them: up to
+   four saved networks, one active. Passwords are never shown - the panel does
+   not send them back - so the password box means "replace it" and an empty box
+   means "leave it alone".
+   [FA] کارت شبکه. شرکتی که چند ماشین دارد چند برد دارد و هر برد اکسس‌پوینت
+   خودش را؛ اینجا مدیر آن‌ها را نگه می‌دارد: تا چهار شبکهٔ ذخیره‌شده که یکی فعال
+   است. رمزها هرگز نشان داده نمی‌شوند - پنل برشان نمی‌گرداند - پس کادر رمز یعنی
+   «عوضش کن» و کادر خالی یعنی «دست نزن». */
+function networkCard() {
+  const n = S.network || {};
+  const cur = n.cur || {};
+  const items = n.items || [];
+  const rows = items.filter(it => it.s).map(it => {
+    const used = it.u ? jalaliStr(it.u) : '—';
+    return '<tr><td><b>' + esc(it.s) + '</b>' + (it.a ? ' ' + badge('فعال', 'ok') : '') + '</td>' +
+      '<td class="sub">' + (it.p ? 'رمز دارد' : 'شبکهٔ باز') + '</td>' +
+      '<td class="sub" style="white-space:nowrap">' + used + '</td>' +
+      '<td style="white-space:nowrap">' +
+        (it.a ? '' : '<button class="btn ghost sm" data-n-use="' + it.i + '" type="button">اتصال به این برد</button> ') +
+        (it.a ? '' : '<button class="btn ghost sm" data-n-del="' + it.i + '" type="button">حذف</button>') +
+      '</td></tr>';
+  }).join('');
+  const free = items.filter(it => !it.s).length;
+  return card('شبکهٔ بردها', ICO.plug,
+    '<div class="grid tight">' +
+      factKV('شبکهٔ فعلی', cur.online ? (esc(cur.ssid || '—') + ' (' + num(cur.rssi || 0) + ' dBm)') : 'وصل نیست') +
+      factKV('آدرس پنل روی آن شبکه', esc(cur.ip || '—')) +
+      factKV('شبکه‌های ذخیره‌شده', num(n.count || 0) + ' از ۴') +
+    '</div>' +
+    '<div class="hr"></div>' +
+    (rows ? '<div class="tw"><table><thead><tr><th>نام شبکه</th><th>رمز</th><th>آخرین اتصال</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+          : emptyBox('هنوز شبکه‌ای ذخیره نشده است')) +
+    '<div class="hr"></div>' +
+    '<div class="grid tight">' +
+      '<div class="field" style="margin:0"><label>نام شبکهٔ برد (SSID)</label><input class="inp" id="net-ssid" placeholder="مثلاً ChangeOver-ESP"></div>' +
+      '<div class="field" style="margin:0"><label>رمز شبکهٔ برد</label><input class="inp" id="net-pass" type="password" placeholder="خالی = رمز فعلی دست‌نخورده بماند"></div>' +
+    '</div>' +
+    '<div class="row" style="margin-top:10px"><button class="btn" id="net-save" type="button">ذخیره در فهرست</button>' +
+    '<span class="sub">' + (free ? (num(free) + ' جای خالی مانده است.') : 'فهرست پر است؛ ذخیرهٔ شبکهٔ تازه، قدیمی‌ترین شبکهٔ بی‌استفاده را جای خودش می‌نشاند.') + '</span></div>' +
+    '<div class="sub" style="margin-top:8px">با «اتصال به این برد»، پنل بی‌درنگ به آن شبکه می‌رود و اگر آن شبکه در دسترس نباشد، همین صفحه می‌گوید «وصل نیست» تا بتوانید شبکهٔ قبلی را برگردانید. رمزها روی فلش خود پنل می‌مانند و به مرورگر برگردانده نمی‌شوند.</div>', { cls: 'flat' });
+}
+
 function opBtn(action, label, kind, icon) {
   return '<button class="btn ' + (kind === 'er' ? 'er' : (kind === 'ok' ? 'ok' : 'ghost')) + '" data-op="' + action + '">' +
     (icon || '') + ' ' + label + '</button>';
@@ -2181,6 +2267,30 @@ function bindAdmin() {
     await userOp({ action: 'add', u: n, p: p, r: r });
     toast('کاربر افزوده شد', 'ok'); loadAdmin();
   }); }
+  const ns = $('#net-save');
+  if (ns) { ns.addEventListener('click', async () => {
+    const ssid = $('#net-ssid').value.trim();
+    const pass = $('#net-pass').value;
+    if (ssid.length < 1) { toast('نام شبکه را بنویسید', 'er'); return; }
+    const body = { action: 'save', ssid: ssid };
+    if (pass.length > 0) { body.pass = pass; }
+    const r = await apiPost(API.network, body);
+    if (r.ok) { toast('ذخیره شد', 'ok'); $('#net-ssid').value = ''; $('#net-pass').value = ''; loadAdmin(); }
+    else { toast(r.err || 'ذخیره نشد', 'er'); }
+  }); }
+  $$('#view [data-n-use]').forEach(b => b.addEventListener('click', async () => {
+    const i = b.getAttribute('data-n-use');
+    const r = await apiPost(API.network, { action: 'use', i: i });
+    if (r.ok) { toast('در حال اتصال به برد تازه…', 'ok'); loadAdmin(); loadSlow(true); }
+    else { toast(r.err || 'انجام نشد', 'er'); }
+  }));
+  $$('#view [data-n-del]').forEach(b => b.addEventListener('click', () => {
+    const i = b.getAttribute('data-n-del');
+    confirmBox('حذف شبکه', '<p>این شبکه از فهرست پنل حذف شود؟</p><p class="sub">اگر بعداً لازمش داشته باشید باید نام و رمزش را دوباره بنویسید.</p>', 'حذف کن', async () => {
+      const r = await apiPost(API.network, { action: 'del', i: i });
+      if (r.ok) { toast('حذف شد', 'ok'); loadAdmin(); } else { toast(r.err || 'حذف نشد', 'er'); }
+    });
+  }));
   const sd = $('#set-digits'), sr = $('#set-rate');
   if (sd) { sd.value = LATIN_DIGITS ? 'lat' : 'fa'; sd.addEventListener('change', () => { LATIN_DIGITS = (sd.value === 'lat'); localStorage.setItem('up_digits', sd.value); render(); }); }
   if (sr) { sr.value = String(REFRESH.liveMs); sr.addEventListener('change', () => { localStorage.setItem('up_rate', sr.value); location.reload(); }); }
@@ -2215,8 +2325,8 @@ function adminAction(action) {
 async function loadAdmin() {
   if (!can('admin')) { return; }
   try {
-    const [u, a, c] = await Promise.all([api(API.users), api(API.audit + '?limit=40'), api(API.adminClock)]);
-    S.users = { list: u.u || [] }; S.audit = { list: a.a || [] }; S.clock = c || {};
+    const [u, a, c, n] = await Promise.all([api(API.users), api(API.audit + '?limit=40'), api(API.adminClock), api(API.network)]);
+    S.users = { list: u.u || [] }; S.audit = { list: a.a || [] }; S.clock = c || {}; S.network = n || {};
     if (S.view === 'admin') { renderAdmin(); }
   } catch (e) { /* [EN] keep the last view / [FA] نمای قبلی می‌ماند */ }
 }

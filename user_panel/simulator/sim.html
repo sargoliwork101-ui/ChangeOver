@@ -1,236 +1,269 @@
 <!DOCTYPE html>
+<!--
+  sim.html - the simulator's control page / صفحهٔ کنترل شبیه‌ساز
+
+  [EN] This page exists on the laptop and NOWHERE else: the board has no /sim.
+       Its job is to be a hand on the machine - open the mains switch, pull a
+       battery wire, cut a charger, inject a fault, jump the clock a day forward
+       - while the panel itself keeps running unmodified in the frame below.
+       Every number here comes from /sim/state, which reads the machine model and
+       the panel's own state side by side, so a mismatch is visible instead of
+       guessed.
+  [FA] این صفحه فقط روی لپ‌تاپ وجود دارد و جای دیگری نه: برد مسیری به نام /sim
+       ندارد. کارش این است که دستی روی ماشین باشد - کلید برق را باز کن، سیم
+       باتری را بکش، شارژر را قطع کن، خطا تزریق کن، ساعت را یک روز جلو ببر -
+       در حالی که خود پنل، دست‌نخورده، در قاب پایین در حال دویدن است. هر عددی
+       اینجا از /sim/state می‌آید که مدل ماشین و وضعیت خود پنل را کنار هم
+       می‌خواند، تا ناسازگاری دیده شود نه حدس زده.
+-->
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>شبیه‌ساز پنل کاربر ChangeOver</title>
-<!--
-  [EN] The simulator's control page. It talks to two things on the same port:
-       the simulator's own /sim/state and /sim/cmd, and - lower down, in the
-       frame - the REAL panel page served by the REAL firmware code. Every
-       button here touches the machine, never the panel: the panel is what is
-       under test and must react by itself.
-  [FA] صفحهٔ کنترل شبیه‌ساز. با دو چیز روی همان پورت حرف می‌زند: /sim/state و
-       /sim/cmd خود شبیه‌ساز، و پایین‌تر در قاب، صفحهٔ «خودِ» پنل که کدِ واقعی
-       فرم‌ور سرو می‌کند. هر دکمهٔ اینجا به ماشین دست می‌زند و نه به پنل: پنل
-       چیزی است که آزمایش می‌شود و باید خودش واکنش بدهد.
--->
+<title>شبیه‌ساز پنل — کنترل</title>
 <style>
-  :root{
-    --bg:#0a0f18;--card:#111926;--card2:#182233;--line:#22304a;--line2:#2c3d5c;
-    --tx:#e8eef8;--tx2:#b8c6dd;--mu:#7e8fa9;--ac:#3f7dd6;--ac2:#6aa6ff;
-    --ok:#2fd6a3;--wa:#f7c33c;--er:#ff6577;--sh:0 6px 22px rgba(0,0,0,.35);
-  }
+  :root{--bg:#0d1017;--card:#151a24;--line:#232a37;--ink:#e8edf6;--mu:#8b96a8;
+        --ac:#5b9dff;--ok:#2fd6a3;--wa:#f7c33c;--er:#ff6577;--vi:#a78bfa}
   *{box-sizing:border-box}
-  body{margin:0;background:radial-gradient(1200px 700px at 50% -10%,#152238,#0a0f18 60%);color:var(--tx);
-       font-family:system-ui,"Segoe UI",Tahoma,sans-serif;line-height:1.7}
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;
-         border-bottom:1px solid var(--line);background:rgba(10,15,24,.72);position:sticky;top:0;backdrop-filter:blur(8px);z-index:5}
-  h1{font-size:1.05em;margin:0;font-weight:800}
-  h1 small{display:block;font-weight:600;color:var(--mu);font-size:.8em}
-  main{padding:18px 20px 40px;display:flex;flex-direction:column;gap:16px;max-width:1180px;margin:0 auto}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
-  .card{background:linear-gradient(180deg,var(--card),#0f1724);border:1px solid var(--line);border-radius:16px;
-        padding:14px 16px;box-shadow:var(--sh)}
-  .card h2{margin:0 0 10px;font-size:.95em;display:flex;align-items:center;gap:8px}
-  .kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed var(--line)}
-  .kv:last-child{border-bottom:0}
-  .kv b{font-variant-numeric:tabular-nums}
-  .mu{color:var(--mu)}
-  .ok{color:var(--ok)}.wa{color:var(--wa)}.er{color:var(--er)}
-  button{font:inherit;font-weight:700;color:#fff;background:linear-gradient(180deg,#2a4a80,#1d3660);
-         border:1px solid #3a6ba8;border-radius:11px;padding:8px 12px;cursor:pointer;transition:filter .15s}
-  button:hover{filter:brightness(1.14)}
-  button.ghost{background:var(--card2);border-color:var(--line2);color:var(--tx2)}
-  button.er{background:linear-gradient(180deg,#a8323f,#7d222c);border-color:#c33b4c}
-  button.wa{background:linear-gradient(180deg,#a8801c,#7d5f13);border-color:#c99a17}
-  button.ok{background:linear-gradient(180deg,#1f8f6d,#146a50);border-color:#23a67d}
-  .row{display:flex;flex-wrap:wrap;gap:8px}
-  .pill{display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--line2);
-        border-radius:999px;padding:4px 10px;font-size:.82em;color:var(--tx2)}
-  .dot{width:9px;height:9px;border-radius:50%;background:var(--mu)}
-  .dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(47,214,163,.16)}
-  .dot.er{background:var(--er);box-shadow:0 0 0 3px rgba(255,101,119,.16)}
-  a{color:var(--ac2)}
-  iframe{width:100%;height:720px;border:1px solid var(--line);border-radius:16px;background:#0a0f18}
-  .note{color:var(--mu);font-size:.85em}
-  .toast{position:fixed;inset-inline-start:20px;bottom:20px;background:#16233a;border:1px solid var(--line2);
-         border-radius:12px;padding:10px 14px;box-shadow:var(--sh);opacity:0;transition:opacity .2s}
-  .toast.on{opacity:1}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font-family:Tahoma,Vazirmatn,system-ui,sans-serif;font-size:14px}
+  header{padding:14px 18px;border-bottom:1px solid var(--line);
+         display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+         position:sticky;top:0;background:rgba(13,16,23,.92);backdrop-filter:blur(6px);z-index:5}
+  h1{font-size:16px;margin:0;font-weight:700}
+  .pill{border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--mu);font-size:12px}
+  .pill b{color:var(--ink)}
+  main{padding:16px;display:grid;gap:14px;grid-template-columns:1fr;max-width:1500px;margin:0 auto}
+  @media(min-width:1100px){main{grid-template-columns:420px 1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .card h2{font-size:14px;margin:0 0 10px;display:flex;gap:8px;align-items:center;color:var(--ink)}
+  .card h2 span{color:var(--mu);font-weight:400;font-size:12px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+  .kv{background:#111722;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+  .kv i{display:block;color:var(--mu);font-size:11px;font-style:normal;margin-bottom:3px}
+  .kv b{font-size:15px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  button{background:#1d2532;color:var(--ink);border:1px solid var(--line);border-radius:10px;
+         padding:9px 12px;font:inherit;cursor:pointer}
+  button:hover{border-color:#38455c}
+  button.on{border-color:var(--ok);color:var(--ok)}
+  button.off{border-color:var(--er);color:var(--er)}
+  button.go{background:#1b2740;border-color:#2b4570}
+  button.warn{border-color:var(--wa);color:var(--wa)}
+  .hr{height:1px;background:var(--line);margin:12px 0}
+  iframe{width:100%;height:78vh;border:1px solid var(--line);border-radius:14px;background:#fff}
+  .sub{color:var(--mu);font-size:12px;line-height:1.7}
+  code{background:#111722;border:1px solid var(--line);border-radius:6px;padding:1px 5px;color:var(--vi)}
+  .ok{color:var(--ok)}.er{color:var(--er)}.wa{color:var(--wa)}
 </style>
 </head>
 <body>
 <header>
-  <h1>شبیه‌ساز پنل کاربر ChangeOver
-    <small>کدِ واقعی پنل روی کامپیوتر شما اجرا می‌شود؛ این صفحه فقط ماشین را کنترل می‌کند.</small>
-  </h1>
-  <div class="row">
-    <span class="pill"><span class="dot" id="dot-link"></span><span id="txt-link">اتصال شبیه‌ساز</span></span>
-    <a class="pill" href="/" target="_blank">باز کردن پنل در پنجرهٔ تازه</a>
-  </div>
+  <h1>شبیه‌ساز پنل کاربر</h1>
+  <span class="pill">پک <b id="h-v24">—</b></span>
+  <span class="pill">بالایی <b id="h-vh">—</b></span>
+  <span class="pill">پایینی <b id="h-vl">—</b></span>
+  <span class="pill">شارژرها <b id="h-st">—</b></span>
+  <span class="pill">خطاها <b id="h-fl">—</b></span>
+  <span class="pill">قفل عدم‌توازن <b id="h-latch">—</b></span>
+  <span class="pill">لینک پنل <b id="h-link">—</b></span>
+  <span class="pill">زمان مجازی <b id="h-up">—</b></span>
+  <span class="pill">رادیو <b id="h-wifi">—</b></span>
 </header>
 
 <main>
-  <section class="grid">
-    <div class="card">
-      <h2>وضعیت ماشین</h2>
-      <div class="kv"><span class="mu">ورودی ۲۴ ولت</span><b id="s-vin">—</b></div>
-      <div class="kv"><span class="mu">پک باتری</span><b id="s-v24">—</b></div>
-      <div class="kv"><span class="mu">باتری پایینی</span><b id="s-v12">—</b></div>
-      <div class="kv"><span class="mu">نیمهٔ بالا / پایین</span><b id="s-halves">—</b></div>
-      <div class="kv"><span class="mu">عدم‌توازن</span><b id="s-imb">—</b></div>
-    </div>
-    <div class="card">
-      <h2>شارژرها</h2>
-      <div class="kv"><span class="mu">کانال ۱ — حالت</span><b id="s-st1">—</b></div>
-      <div class="kv"><span class="mu">کانال ۱ — جریان</span><b id="s-i1">—</b></div>
-      <div class="kv"><span class="mu">کانال ۲ — حالت</span><b id="s-st2">—</b></div>
-      <div class="kv"><span class="mu">کانال ۲ — جریان</span><b id="s-i2">—</b></div>
-      <div class="kv"><span class="mu">قفل / مسدود</span><b id="s-imbstate">—</b></div>
-    </div>
-    <div class="card">
-      <h2>خطاها و زمان</h2>
-      <div class="kv"><span class="mu">ماسک خطا</span><b id="s-fl">—</b></div>
-      <div class="kv"><span class="mu">ساعت مجازی</span><b id="s-now">—</b></div>
-      <div class="kv"><span class="mu">سقوط جهش</span><b id="s-trips">—</b></div>
-      <div class="kv"><span class="mu">ری‌استارت برد</span><b id="s-boards">—</b></div>
-      <div class="kv"><span class="mu">اتصال به برد</span><b id="s-link">—</b></div>
-    </div>
-  </section>
+  <div>
+    <section class="card">
+      <h2>ماشین <span>همان چیزی که برد گزارش می‌کند</span></h2>
+      <div class="grid">
+        <div class="kv"><i>پک ۲۴ ولت</i><b id="v24">—</b></div>
+        <div class="kv"><i>باتری بالایی</i><b id="vh">—</b></div>
+        <div class="kv"><i>باتری پایینی</i><b id="vl">—</b></div>
+        <div class="kv"><i>ورودی برق</i><b id="vin">—</b></div>
+        <div class="kv"><i>جریان ۱ / ۲</i><b id="cur">—</b></div>
+        <div class="kv"><i>حالت شارژر ۱</i><b id="st1">—</b></div>
+        <div class="kv"><i>حالت شارژر ۲</i><b id="st2">—</b></div>
+        <div class="kv"><i>عدم‌توازن</i><b id="imb">—</b></div>
+        <div class="kv"><i>خطاها (fl)</i><b id="fl">—</b></div>
+        <div class="kv"><i>قفل / مسدود</i><b id="latch">—</b></div>
+        <div class="kv"><i>پنل: پک خوانده‌شده</i><b id="pv24">—</b></div>
+        <div class="kv"><i>پنل: خطاها</i><b id="pfl">—</b></div>
+      </div>
+      <div class="hr"></div>
+      <div class="row">
+        <button class="go" data-c="input" data-v="1">ورودی برق: وصل</button>
+        <button class="warn" data-c="input" data-v="0">برق: قطع (روی باتری)</button>
+        <button data-c="chg" data-ch="1" data-v="1">شارژر ۱ وصل</button>
+        <button data-c="chg" data-ch="1" data-v="0">شارژر ۱ قطع</button>
+        <button data-c="chg" data-ch="2" data-v="1">شارژر ۲ وصل</button>
+        <button data-c="chg" data-ch="2" data-v="0">شارژر ۲ قطع</button>
+      </div>
+    </section>
 
-  <section class="card">
-    <h2>ورودی و شارژر — همان دو فرمانی که پنل می‌فرستد</h2>
-    <div class="row">
-      <button class="ok" data-cmd="input&v=1">وصل‌کردن ورودی</button>
-      <button class="er" data-cmd="input&v=0">قطع ورودی</button>
-      <button class="ghost" data-cmd="ch&n=1&v=1">وصل شارژر ۱ (برد)</button>
-      <button class="ghost" data-cmd="ch&n=1&v=0">قطع شارژر ۱ (برد)</button>
-      <button class="ghost" data-cmd="ch&n=2&v=1">وصل شارژر ۲ (برد)</button>
-      <button class="ghost" data-cmd="ch&n=2&v=0">قطع شارژر ۲ (برد)</button>
-      <button class="ghost" data-cmd="manual&v=1">مود تعمیرات روشن</button>
-      <button class="ghost" data-cmd="manual&v=0">مود تعمیرات خاموش</button>
-    </div>
-    <p class="note">این دکمه‌ها بیت‌های ماشین را عوض می‌کنند، درست مانند کاری که برد می‌کند.
-      برای آزمودن مسیر فرمان پنل، از خود پنل (پایین یا پنجرهٔ تازه) استفاده کنید.</p>
-  </section>
+    <section class="card" style="margin-top:14px">
+      <h2>باتری و عدم‌توازن <span>قاعدهٔ سه ثانیه و قفل، واقعاً اجرا می‌شوند</span></h2>
+      <div class="row">
+        <button class="warn" data-c="imb" data-v="1200">تزریق عدم‌توازن</button>
+        <button data-c="imb" data-v="0">برداشتن عدم‌توازن (۳ ثانیه تا آزادی قفل)</button>
+      </div>
+      <div class="row">
+        <button data-c="pack" data-v="28800">پک را پر کن</button>
+        <button data-c="pack" data-v="23200">پک را نزدیک خالی کن</button>
+        <button class="go" data-c="reset">ری‌استارت برد (خاموش/روشن)</button>
+      </div>
+      <p class="sub">قفل عدم‌توازن روی ماشین واقعی با هیچ فرمانی پاک نمی‌شود؛ پنل هم برایش دکمه ندارد و
+        به‌جایش همین دو راه را توضیح می‌دهد. این دو دکمه همان دو راه‌اند: برداشتن باتری برای سه ثانیه،
+        یا خاموش‌روشن برد.</p>
+    </section>
 
-  <section class="card">
-    <h2>تزریق خطا</h2>
-    <div class="row">
-      <button class="ghost" data-cmd="fault&bit=0&v=1">خطای اندازه‌گیری</button>
-      <button class="ghost" data-cmd="fault&bit=1&v=1">اضافه‌جریان کانال ۱</button>
-      <button class="ghost" data-cmd="fault&bit=2&v=1">اضافه‌جریان کانال ۲</button>
-      <button class="ghost" data-cmd="fault&bit=3&v=1">باتری ضعیف</button>
-      <button class="wa" data-cmd="jitter">جهش (بار سوم = خطای نهایی)</button>
-      <button class="ghost" data-cmd="fault&bit=0&v=0">پاک‌کردن خطای اندازه‌گیری</button>
-      <button class="er" data-cmd="board">ری‌استارت برد (تنها راه خطای نهایی)</button>
-    </div>
-    <p class="note">جهش بار سوم کانال را به <b>FINAL_FAULT</b> می‌برد؛ هیچ فرمانی آن را آزاد نمی‌کند و
-      فقط ری‌استارت برد پاکش می‌کند — همان چیزی که صفحهٔ دیاگ پنل می‌گوید.</p>
-  </section>
+    <section class="card" style="margin-top:14px">
+      <h2>تزریق خطا <span>برای دیدن صفحهٔ دیاگ</span></h2>
+      <div class="row">
+        <button class="warn" data-c="fault" data-b="0" data-v="1">خطای ADC (b0)</button>
+        <button class="warn" data-c="fault" data-b="1" data-v="1">اضافه‌جریان ۱ (b1)</button>
+        <button class="warn" data-c="fault" data-b="2" data-v="1">اضافه‌جریان ۲ (b2)</button>
+        <button class="warn" data-c="fault" data-b="3" data-v="1">باتری ضعیف (b3)</button>
+        <button class="warn" data-c="fault" data-b="4" data-v="1">جهش ۱ (b4)</button>
+        <button class="warn" data-c="fault" data-b="5" data-v="1">جهش ۲ (b5)</button>
+        <button class="er" data-c="fault" data-b="6" data-v="1">بار سوم جهش → خطای نهایی</button>
+        <button data-c="fault" data-b="0" data-v="0">پاک‌کردن b0</button>
+      </div>
+      <p class="sub">بار سوم «جهش» روی برد واقعی <b>FINAL_FAULT</b> می‌سازد و شارژ تا خاموش‌روشن برد
+        برنمی‌گردد؛ صفحهٔ دیاگ پنل باید همان راهنما را نشان دهد.</p>
+    </section>
 
-  <section class="card">
-    <h2>عدم‌توازن و باتری</h2>
-    <div class="row">
-      <button class="wa" data-cmd="imb">شروع رخداد عدم‌توازن</button>
-      <button class="ok" data-cmd="swap">جداکردن و برگرداندن باتری (تعویض)</button>
-      <button class="ghost" data-cmd="absent&v=1">باتری جدا شود</button>
-      <button class="ghost" data-cmd="absent&v=0">باتری برگردد</button>
-    </div>
-    <p class="note">قفل عدم‌توازن با <b>هیچ شناسه‌ای</b> از راه /s پاک نمی‌شود: ESP پنل مهندسی شناسه‌های
-      بالای ۱۱۸ را با خطای ۴۰۰ رد می‌کند. تنها راه‌ها جداکردن واقعی باتری (سه ثانیه) یا خاموش‌روشن برد است.</p>
-  </section>
+    <section class="card" style="margin-top:14px">
+      <h2>زمان <span>جلو بردن ساعت مجازی</span></h2>
+      <div class="row">
+        <button data-c="advance" data-v="60">۱ دقیقه</button>
+        <button data-c="advance" data-v="3600">۱ ساعت</button>
+        <button data-c="advance" data-v="21600">۶ ساعت</button>
+        <button class="go" data-c="advance" data-v="86400">۱ روز</button>
+      </div>
+      <p class="sub">جلو بردن زمان، نمونه‌برداری، جمع‌های روزانه و نقشهٔ حرارتی پنل را پر می‌کند؛
+        ساعت و تاریخ پنل را از بخش مدیر در خود پنل تنظیم کنید تا مرز روز معنا پیدا کند.</p>
+    </section>
 
-  <section class="card">
-    <h2>شبکه و زمان</h2>
-    <div class="row">
-      <button class="er" data-cmd="link&v=0">قطع ارتباط با برد</button>
-      <button class="ok" data-cmd="link&v=1">وصل‌کردن ارتباط با برد</button>
-      <button class="ghost" data-cmd="advance&s=60">۶۰ ثانیه جلو</button>
-      <button class="ghost" data-cmd="advance&s=3600">۱ ساعت جلو</button>
-      <button class="ghost" data-cmd="advance&s=21600">۶ ساعت جلو</button>
-      <button class="ghost" data-cmd="advance&s=86400">۱ روز جلو</button>
-      <button class="ghost" data-cmd="speed&v=1">سرعت ×۱</button>
-      <button class="ghost" data-cmd="speed&v=30">سرعت ×۳۰</button>
-      <button class="ghost" data-cmd="reset">شبیه‌ساز از نو</button>
-    </div>
-    <p class="note">جلو بردن زمان، نمونه‌برداری و جمع‌های روزانهٔ پنل را هم جلو می‌برد؛ با «۱ روز جلو»
-      می‌توانید نقشهٔ حرارتی و گزارش روزانه را پر ببینید.</p>
-  </section>
+    <section class="card" style="margin-top:14px">
+      <h2>شبکهٔ پنل <span>آنچه به رادیو گفته شده، نه آنچه در جدول نشسته</span></h2>
+      <div class="grid">
+        <div class="kv"><i>شبکهٔ فعال در حافظه</i><b id="n-active">—</b></div>
+        <div class="kv"><i>نامی که رادیو باید بپیوندد</i><b id="n-ssid">—</b></div>
+        <div class="kv"><i>رمزی که رادیو گرفت</i><b id="n-pass">—</b></div>
+        <div class="kv"><i>پیوند رادیو</i><b id="n-radio">—</b></div>
+      </div>
+      <div class="row">
+        <button class="warn" data-c="radio" data-v="0">قطع رادیو (شبکه پیدا نمی‌شود)</button>
+        <button class="ok" data-c="radio" data-v="1">وصل رادیو</button>
+        <button data-c="nothing" data-v="1">بی‌کاری (فقط برای اطمینان از زنده بودن)</button>
+      </div>
+      <p class="sub">از کادر مدیر در خود پنل، یک شبکهٔ ذخیره‌شدهٔ دوم بسازید و روی «اتصال به این برد»
+        بزنید: همین دو سطر بالا باید عوض شوند. اگر جدول عوض شد و این‌ها نه، پنل فقط حافظه را
+        نوشته و واقعاً نپیوسته — دقیقاً همان ایرادی که این صفحه برای دیدنش هست. رمز به‌صورت
+        پیش‌فرض پوشیده است؛ این صفحه فقط روی لپ‌تاپ است و روی برد وجود ندارد.</p>
+    </section>
 
-  <section class="card">
-    <h2>خودِ پنل (کد واقعی، روی همین پورت)</h2>
-    <iframe src="/" title="user panel"></iframe>
-  </section>
+    <section class="card" style="margin-top:14px">
+      <h2>آدرس‌ها</h2>
+      <p class="sub">
+        خود پنل: <code><a href="/" target="_blank">/</a></code> — همان صفحه‌ای که برد سرو می‌کند،
+        با ورود <code>admin/admin</code> و <code>user/user</code>.<br>
+        وضعیت ماشین: <code>/sim/state</code> — فرمان: <code>/sim/cmd?c=…&amp;v=…</code><br>
+        گزارش اکسل واقعی: <code>/api/admin/report.xlsx?days=7</code> (پس از ورود با نقش مدیر).
+      </p>
+    </section>
+  </div>
+
+  <div>
+    <iframe src="/" title="خود پنل"></iframe>
+  </div>
 </main>
 
-<div class="toast" id="toast"></div>
-
 <script>
-/* ==================== helpers / کمکی‌ها ==================== */
-const $ = (id) => document.getElementById(id);
-function fa(text) { return String(text).replace(/[0-9]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]); }
-function toast(text) {
-  const t = $('toast');
-  t.textContent = text;
-  t.classList.add('on');
-  clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => t.classList.remove('on'), 1600);
-}
-const STATE_NAMES = { 0: 'خاموش', 1: 'شارژ سریع', 2: 'شارژ جذبی', 3: 'پر', 7: 'خطای نهایی' };
+const $ = (s) => document.querySelector(s);
+const stateWord = {0:'خاموش', 1:'شارژ سریع', 2:'تثبیت ولتاژ', 3:'شارژ کامل', 4:'آماده‌سازی',
+                   5:'تلاش مجدد', 6:'انتظار ورودی', 7:'خطای نهایی'};
 
-/* ==================== state / حالت ==================== */
-function render(s) {
-  $('s-vin').textContent = fa((s.vin / 1000).toFixed(2)) + ' V';
-  $('s-v24').textContent = fa((s.v24 / 1000).toFixed(3)) + ' V';
-  $('s-v12').textContent = fa((s.v12 / 1000).toFixed(3)) + ' V';
-  $('s-halves').textContent = fa((s.vhigh / 1000).toFixed(2)) + ' / ' + fa((s.vlow / 1000).toFixed(2)) + ' V';
-  $('s-imb').textContent = fa(s.imb) + ' mV';
-  $('s-st1').textContent = STATE_NAMES[s.st1] || fa(s.st1);
-  $('s-st2').textContent = STATE_NAMES[s.st2] || fa(s.st2);
-  $('s-i1').textContent = fa((s.i1 / 1000).toFixed(2)) + ' A';
-  $('s-i2').textContent = fa((s.i2 / 1000).toFixed(2)) + ' A';
-  $('s-imbstate').textContent = (s.latched ? 'قفل‌شده' : 'آزاد') + ' / ' + (s.blocked ? 'شارژ مسدود' : 'شارژ آزاد') +
-    ' — ' + fa(s.imbCycles) + ' از ۲۰ سیکل';
-  $('s-fl').textContent = '0x' + Number(s.fl).toString(16).padStart(2, '0');
-  $('s-now').textContent = fa(Math.floor(s.nowMs / 1000)) + ' ثانیه';
-  $('s-trips').textContent = fa(s.trips);
-  $('s-boards').textContent = fa(s.boards);
-  $('s-link').textContent = s.link ? 'وصل' : 'قطع';
+/* [EN] One click = one command sent to the machine model; the page never talks
+   to the panel itself, so nothing here can be mistaken for a panel feature.
+   [FA] یک کلیک = یک فرمان به مدل ماشین؛ این صفحه هرگز با خود پنل حرف نمی‌زند،
+   پس هیچ‌چیز اینجا با قابلیت‌های پنل اشتباه گرفته نمی‌شود. */
+async function cmd(c, v, extra) {
+  const q = new URLSearchParams(Object.assign({c: c, v: v}, extra || {}));
+  try { await fetch('/sim/cmd?' + q.toString(), {cache: 'no-store'}); } catch (e) {}
+  refresh();
 }
-
-async function poll() {
-  try {
-    const r = await fetch('/sim/state', { cache: 'no-store' });
-    const s = await r.json();
-    render(s);
-    $('dot-link').className = 'dot on';
-    $('txt-link').textContent = 'شبیه‌ساز فعال';
-  } catch (e) {
-    $('dot-link').className = 'dot er';
-    $('txt-link').textContent = 'شبیه‌ساز پاسخ نمی‌دهد';
-  }
-}
-
-/* ==================== commands / فرمان‌ها ==================== */
-document.addEventListener('click', async (event) => {
-  const button = event.target.closest('button[data-cmd]');
-  if (!button) { return; }
-  const command = button.getAttribute('data-cmd');
-  button.disabled = true;
-  try {
-    const r = await fetch('/sim/cmd?c=' + command, { cache: 'no-store' });
-    const answer = await r.json();
-    toast('انجام شد: ' + (answer.did || command));
-  } catch (e) {
-    toast('فرمان انجام نشد');
-  }
-  button.disabled = false;
-  poll();
+document.querySelectorAll('button[data-c]').forEach(b => {
+  b.addEventListener('click', () => {
+    const c = b.getAttribute('data-c'), v = b.getAttribute('data-v') || '1';
+    const extra = {};
+    if (b.getAttribute('data-ch')) { extra.ch = b.getAttribute('data-ch'); }
+    if (b.getAttribute('data-b')) { extra.b = b.getAttribute('data-b'); }
+    cmd(c, v, extra);
+  });
 });
 
-poll();
-setInterval(poll, 1000);
+function fmt(sec) {
+  const s = Math.max(0, Math.round(sec || 0));
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  if (s < 3600) { return m + ' دقیقه'; }
+  if (h < 24) { return h + ' ساعت و ' + m + ' دقیقه'; }
+  return Math.floor(h / 24) + ' روز و ' + (h % 24) + ' ساعت';
+}
+
+/* [EN] The password the radio was handed is shown masked by default: this page
+   runs on a laptop and a screenshot of it should not be a credential. Clicking
+   the field reveals it, because proving the NEW password reached the radio is the
+   reason the field exists.
+   [FA] رمزی که به رادیو داده شده پیش‌فرض پوشیده است: این صفحه روی لپ‌تاپ است و
+   عکس‌گرفتن از آن نباید مدرک یک رمز باشد. با کلیک دیده می‌شود، چون دلیل وجود
+   همین فیلد این است که ثابت شود رمز جدید به رادیو رسیده. */
+let revealPass = false;
+function passText(p) {
+  if (!p) { return '—'; }
+  return revealPass ? p : '•'.repeat(p.length) + '  (' + p.length + ' رقم)';
+}
+
+async function refresh() {
+  let s;
+  try { s = await (await fetch('/sim/state', {cache: 'no-store'})).json(); }
+  catch (e) { return; }
+  const v = (mv) => (mv / 1000).toFixed(2) + ' V';
+  $('#v24').textContent = v(s.v24);
+  $('#vh').textContent = v(s.vhigh);
+  $('#vl').textContent = v(s.vlow);
+  $('#vin').textContent = v(s.vin);
+  $('#cur').textContent = s.i1 + ' / ' + s.i2 + ' mA';
+  $('#st1').textContent = stateWord[s.st1] || s.st1;
+  $('#st2').textContent = stateWord[s.st2] || s.st2;
+  $('#imb').textContent = (s.imb / 1000).toFixed(2) + ' V';
+  $('#fl').textContent = '0x' + s.fl.toString(16);
+  $('#latch').textContent = (s.latched ? 'قفل' : 'آزاد') + (s.blocked ? ' — شارژ مسدود' : '');
+  $('#pv24').textContent = v(s.panelV24);
+  $('#pfl').textContent = s.panelFaults;
+  $('#h-v24').textContent = v(s.v24);
+  $('#h-vh').textContent = v(s.vhigh);
+  $('#h-vl').textContent = v(s.vlow);
+  $('#h-st').textContent = (stateWord[s.st1] || s.st1) + ' / ' + (stateWord[s.st2] || s.st2);
+  $('#h-fl').textContent = '0x' + s.fl.toString(16) + (s.fl2 ? ' — 0x' + s.fl2.toString(16) : '');
+  $('#h-latch').textContent = s.latched ? (s.blocked ? 'قفل + مسدود' : 'قفل') : (s.cleared ? 'تازه آزاد شد' : 'آزاد');
+  $('#h-link').textContent = (s.linkUp ? 'وصل' : 'قطع') + (s.clockSet ? '، ساعت تنظیم' : '، ساعت تنظیم نشده');
+  $('#h-up').textContent = fmt(s.uptimeS);
+  $('#h-wifi').textContent = (s.wSsid || '—') + (s.linkUp ? '' : ' (قطع)');
+  $('#n-active').textContent = s.ssid || '—';
+  $('#n-ssid').textContent = s.wSsid || '—';
+  $('#n-pass').textContent = passText(s.wPass);
+  $('#n-radio').textContent = s.linkUp ? 'وصل' : 'قطع';
+  if (!$('#n-pass').dataset.hint) {
+    $('#n-pass').dataset.hint = '1';
+    $('#n-pass').title = 'برای دیدن رمز کلیک کنید';
+    $('#n-pass').style.cursor = 'pointer';
+    $('#n-pass').addEventListener('click', () => { revealPass = !revealPass; refresh(); });
+  }
+}
+$('#h-link').title = 'وضعیت لینک از دید خود پنل خوانده می‌شود';
+refresh();
+setInterval(refresh, 1000);
 </script>
 </body>
 </html>

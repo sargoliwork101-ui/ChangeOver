@@ -1789,6 +1789,232 @@ static void func__UpHttp_AdminUserPost(void)
     func__UpHttp_JsonSend(200);
 }
 
+/* ============ Admin: saved networks / مدیر: شبکه‌های ذخیره‌شده ============ */
+/**
+ * @brief  [EN] GET /api/admin/network - the four saved networks, which one is
+ *              active, and what the radio is doing right now. Passwords are NOT
+ *              in this reply: the page needs to know whether one is set, and a
+ *              password that can be read back is a password that leaks through
+ *              every screenshot, every support call and every browser cache.
+ *         [FA] مسیر GET /api/admin/network - چهار شبکهٔ ذخیره‌شده، اینکه کدام
+ *              فعال است و رادیو همین حالا چه می‌کند. رمزها در این پاسخ نیستند:
+ *              صفحه فقط باید بداند رمزی تنظیم شده یا نه، و رمزی که قابل خواندن
+ *              باشد از هر اسکرین‌شات، هر تماس پشتیبانی و هر کش مرورگر بیرون
+ *              می‌ریزد.
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__UpHttp_AdminNetworkGet(void)
+{
+    if (!func__UpHttp_RequireRole(UP_ROLE_ADMIN))
+    {
+        return;
+    }
+
+    String up_string_t__nowSsid = WiFi.SSID();
+    String up_string_t__nowIp = WiFi.localIP().toString();
+
+    func__UpHttp_JsonReset();
+    func__UpHttp_JsonAdd("{\"ok\":1,\"active\":%u,\"count\":%u,",
+                         (unsigned)func__UpSettings_ActiveIndex(),
+                         (unsigned)func__UpSettings_Count());
+    func__UpHttp_JsonAdd("\"cur\":{\"online\":%u,\"ssid\":\"%s\",\"ip\":\"%s\",\"rssi\":%d},",
+                         (UPPANEL_STATE_T__G__State.bool__staUp ? 1u : 0u),
+                         up_string_t__nowSsid.c_str(),
+                         up_string_t__nowIp.c_str(),
+                         (int)WiFi.RSSI());
+    func__UpHttp_JsonAdd("\"items\":[");
+
+    for (uint8_t uint8_t__i = 0u; uint8_t__i < UP_NET_PROFILE_MAX; uint8_t__i++)
+    {
+        up_net_profile_t *up_net_profile_t__row = func__UpSettings_Profile(uint8_t__i);
+
+        if (uint8_t__i > 0u)
+        {
+            func__UpHttp_JsonAdd(",");
+        }
+        if (up_net_profile_t__row == NULL)
+        {
+            func__UpHttp_JsonAdd("{\"i\":%u,\"s\":\"\",\"a\":0,\"p\":0,\"u\":0}",
+                                 (unsigned)uint8_t__i);
+            continue;
+        }
+
+        func__UpHttp_JsonAdd("{\"i\":%u,\"s\":\"%s\",\"a\":%u,\"p\":%u,\"u\":%lu}",
+                             (unsigned)uint8_t__i,
+                             up_net_profile_t__row->char__ssid,
+                             (uint8_t__i == func__UpSettings_ActiveIndex()) ? 1u : 0u,
+                             (up_net_profile_t__row->char__pass[0] != '\0') ? 1u : 0u,
+                             (unsigned long)up_net_profile_t__row->uint32_t__lastUsedS);
+    }
+
+    func__UpHttp_JsonAdd("]}");
+    func__UpHttp_JsonSend(200);
+}
+
+/**
+ * @brief  [EN] POST /api/admin/network - the admin changes which board this
+ *              panel looks at. Admin only, no exception: the network card is
+ *              the one screen that can make the panel leave the machine it is
+ *              supposed to be watching.
+ *              `action=save` with `ssid` (and `pass`, omitted to keep the
+ *              stored one), `action=use` with `i`, `action=del` with `i`.
+ *              The active row is never deletable, and saving into the active
+ *              row reconnects immediately - the whole point of editing an SSID
+ *              is that the panel then joins it.
+ *         [FA] مسیر POST /api/admin/network - مدیر عوض می‌کند که این پنل کدام
+ *              برد را ببیند. فقط مدیر، بدون استثنا: کارت شبکه همان صفحه‌ای است
+ *              که می‌تواند پنل را از ماشینی که باید تماشا کند جدا کند.
+ *              `action=save` با `ssid` (و `pass` که اگر نیاید رمز ذخیره‌شده
+ *              می‌ماند)، `action=use` با `i` و `action=del` با `i`.
+ *              ردیف فعال هرگز حذف‌شدنی نیست و ذخیره روی ردیف فعال بلافاصله
+ *              اتصال را نو می‌کند - تمام هدف ویرایش یک نام شبکه همین است که پنل
+ *              بعدش به آن بپیوندد.
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__UpHttp_AdminNetworkPost(void)
+{
+    uint8_t uint8_t__index = 0u;
+
+    if (!func__UpHttp_RequireRole(UP_ROLE_ADMIN))
+    {
+        return;
+    }
+    if (!UP_WEBSERVER_T__G__Server.hasArg("action"))
+    {
+        func__UpHttp_SendErr(200, "missing");
+        return;
+    }
+
+    String up_string_t__action = UP_WEBSERVER_T__G__Server.arg("action");
+
+    if (up_string_t__action == "save")
+    {
+        bool bool__activeRow = false;
+        int8_t int8_t__row = 0;
+
+        if (!UP_WEBSERVER_T__G__Server.hasArg("ssid"))
+        {
+            func__UpHttp_SendErr(200, "missing");
+            return;
+        }
+
+        /* [EN] Both arguments are copied into named objects first. Reading
+                c_str() straight out of arg() gives a pointer into a temporary
+                that dies at the end of the expression - the panel would then
+                validate a name that no longer exists. This exact bug was
+                caught by the host test's AddressSanitizer build, which is the
+                whole reason that build exists.
+           [FA] هر دو ورودی اول در شیء نام‌دار کپی می‌شوند. خواندن c_str() مستقیم
+                از arg() اشاره‌گری به یک موقت می‌دهد که در پایان عبارت می‌میرد -
+                آن‌وقت پنل نامی را بررسی می‌کند که دیگر وجود ندارد. همین اشکال
+                دقیقاً با بیلد AddressSanitizer تست میزبان گرفته شد، که تمام دلیل
+                وجود آن بیلد است. */
+        String up_string_t__ssid = UP_WEBSERVER_T__G__Server.arg("ssid");
+        String up_string_t__pass = UP_WEBSERVER_T__G__Server.arg("pass");
+        const char *char__ssid = up_string_t__ssid.c_str();
+        const char *char__pass = up_string_t__pass.c_str();
+        bool bool__keepPass = (UP_WEBSERVER_T__G__Server.hasArg("pass") == false);
+
+        if (!func__UpSettings_SsidOk(char__ssid))
+        {
+            func__UpHttp_SendErr(200, "bad network name");
+            return;
+        }
+        if ((!bool__keepPass) && (!func__UpSettings_PassOk(char__pass)))
+        {
+            func__UpHttp_SendErr(200, "bad password");
+            return;
+        }
+
+        int8_t__row = func__UpSettings_Put(char__ssid, char__pass, bool__keepPass);
+        if (int8_t__row < 0)
+        {
+            func__UpHttp_SendErr(200, "table full");
+            return;
+        }
+
+        bool__activeRow = ((uint8_t)int8_t__row == func__UpSettings_ActiveIndex());
+
+        if (!func__UpSettings_Save())
+        {
+            func__UpHttp_SendErr(200, "flash write failed");
+            return;
+        }
+
+        func__UpAuth_LogAction(func__UpHttp_CurrentUserName(), "net_save");
+
+        if (bool__activeRow)
+        {
+            func__UpLink_Reconnect();
+        }
+
+        func__UpHttp_JsonReset();
+        func__UpHttp_JsonAdd("{\"ok\":1,\"i\":%d}", (int)int8_t__row);
+        func__UpHttp_JsonSend(200);
+        return;
+    }
+
+    /* [EN] The other two actions both name a row, so both are parsed and bounds
+            checked in one place instead of twice.
+       [FA] دو اقدام دیگر هر دو یک ردیف را نام می‌برند، پس هر دو یک‌جا و یک‌بار
+            خوانده و کران‌بررسی می‌شوند، نه دو بار. */
+    if (!UP_WEBSERVER_T__G__Server.hasArg("i"))
+    {
+        func__UpHttp_SendErr(200, "missing");
+        return;
+    }
+
+    int int__row = UP_WEBSERVER_T__G__Server.arg("i").toInt();
+
+    if ((int__row < 0) || (int__row >= (int)UP_NET_PROFILE_MAX))
+    {
+        func__UpHttp_SendErr(200, "bad index");
+        return;
+    }
+    uint8_t__index = (uint8_t)int__row;
+
+    if (up_string_t__action == "use")
+    {
+        if (func__UpSettings_Profile(uint8_t__index) == NULL)
+        {
+            func__UpHttp_SendErr(200, "empty slot");
+            return;
+        }
+        if (!func__UpSettings_SetActive(uint8_t__index))
+        {
+            func__UpHttp_SendErr(200, "flash write failed");
+            return;
+        }
+
+        func__UpAuth_LogAction(func__UpHttp_CurrentUserName(), "net_use");
+        func__UpLink_Reconnect();
+    }
+    else if (up_string_t__action == "del")
+    {
+        if (uint8_t__index == func__UpSettings_ActiveIndex())
+        {
+            func__UpHttp_SendErr(200, "the active network cannot be deleted");
+            return;
+        }
+        if (!func__UpSettings_Delete(uint8_t__index))
+        {
+            func__UpHttp_SendErr(200, "nothing to delete");
+            return;
+        }
+
+        func__UpAuth_LogAction(func__UpHttp_CurrentUserName(), "net_del");
+    }
+    else
+    {
+        func__UpHttp_SendErr(200, "unknown action");
+        return;
+    }
+
+    func__UpHttp_JsonReset();
+    func__UpHttp_JsonAdd("{\"ok\":1}");
+    func__UpHttp_JsonSend(200);
+}
+
 /* ==================== Admin: the only writes / مدیر: تنها نوشتنی‌ها ==================== */
 /**
  * @brief  [EN] POST /api/admin/action (a) - the ONLY route in this program that
@@ -2166,6 +2392,8 @@ static void func__UpHttp_Begin(void)
     UP_WEBSERVER_T__G__Server.on("/api/admin/clock", HTTP_GET, func__UpHttp_AdminClockGet);
     UP_WEBSERVER_T__G__Server.on("/api/admin/users", HTTP_GET, func__UpHttp_AdminUsers);
     UP_WEBSERVER_T__G__Server.on("/api/admin/user", HTTP_POST, func__UpHttp_AdminUserPost);
+    UP_WEBSERVER_T__G__Server.on("/api/admin/network", HTTP_GET, func__UpHttp_AdminNetworkGet);
+    UP_WEBSERVER_T__G__Server.on("/api/admin/network", HTTP_POST, func__UpHttp_AdminNetworkPost);
     UP_WEBSERVER_T__G__Server.on("/api/admin/action", HTTP_POST, func__UpHttp_AdminActionPost);
     UP_WEBSERVER_T__G__Server.on("/api/admin/audit", HTTP_GET, func__UpHttp_AdminAudit);
 

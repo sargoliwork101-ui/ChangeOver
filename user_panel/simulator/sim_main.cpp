@@ -1,71 +1,55 @@
-/* ==========================================================================
-   sim_main.cpp - run the REAL user panel on a laptop, with a fake machine
-   ==========================================================================
-
-   [EN] WHY THIS EXISTS
-        Flashing an ESP8266 to find out whether a screen shows the right number
-        is a slow way to debug. This program compiles the panel's OWN code - the
-        same user_panel.ino, the same up_*.h, the same single translation unit
-        the board uses - against a fake ESP (the stubs in ../tools) and a fake
-        machine (sim_machine.h), and then serves the panel on
-        http://localhost:8090 exactly as the board would, chunked Excel report
-        and all.
-
-        What it catches before a board is ever plugged in:
-          - a screen that reads the wrong telemetry word (the numbers arrive
-            through the real parser, from a model you control),
-          - the role gates (log in as admin, operator, viewer),
-          - a charger cut that never reaches /s, or reaches it with the wrong id,
-          - the report's range selector, sheet by sheet,
-          - the imbalance latch and FINAL_FAULT conversations, in seconds
-            instead of days.
-
-        What it CANNOT catch, and says so on the control page:
-          - a wrong pin, a wrong divider, a weak antenna, a slow flash chip,
-          - anything about timing that only exists on real silicon.
-
-        Control page: http://localhost:8090/sim     Panel: http://localhost:8090/
-
-   [FA] چرا این وجود دارد
-        فلش‌کردن ESP8266 برای فهمیدن اینکه صفحهٔ درستی عدد را نشان می‌دهد یا نه،
-        راه کندی برای اشکال‌زدایی است. این برنامه کدِ «خودِ» پنل را کامپایل
-        می‌کند - همان user_panel.ino، همان up_*.h، همان یک واحد ترجمه‌ای که برد
-        استفاده می‌کند - در کنار یک ESP جعلی (استاب‌های tools) و یک ماشین جعلی
-        (sim_machine.h)، و پنل را روی http://localhost:8090 دقیقاً مثل برد سرو
-        می‌کند، با گزارش اکسل جریانی و همه‌چیز.
-
-        چه چیزهایی را پیش از وصل‌کردن برد می‌گیرد: صفحه‌ای که کلمهٔ تلمتری غلط
-        را می‌خواند (اعداد از دل پارسر واقعی و از مدلی که خودتان کنترل می‌کنید
-        می‌آیند)، دروازه‌های نقش، فرمانی که به /s نمی‌رسد یا با شناسهٔ غلط
-        می‌رسد، انتخاب بازهٔ گزارش برگه‌به‌برگه، و گفت‌وگوی قفل عدم‌توازن و
-        FINAL_FAULT در چند ثانیه به‌جای چند روز.
-
-        چه چیزهایی را نمی‌گیرد و روی صفحهٔ کنترل هم همین را می‌گوید: پایهٔ غلط،
-        تقسیم‌کنندهٔ غلط، آنتن ضعیف، فلش کند، و هر زمان‌بندی‌ای که فقط روی
-        سیلیکون واقعی وجود دارد.
-
-   Build / ساخت:   bash user_panel/simulator/run_sim.sh
-   Selftest / خودآزمایی (no sockets, used by the gate):
-                   bash user_panel/simulator/run_sim.sh --selftest
-*/
-
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/select.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <ctime>
-#include <map>
-#include <string>
-#include <vector>
+/**
+ * @file    sim_main.cpp
+ * @brief   [EN] The desktop simulator: the REAL panel, compiled and run on a
+ *               laptop, next to a model of the machine, with a control page.
+ *
+ *          WHY IT EXISTS
+ *            The host tests check pieces. This program checks the whole thing the
+ *            way a person will: it serves the real page over a real socket to a
+ *            real browser while the real link state machine reads telemetry from
+ *            the machine model once a second, and the real Excel writer streams
+ *            a workbook when somebody clicks the button. The first screen this
+ *            panel is ever seen on is a laptop, not the cabinet.
+ *
+ *          WHAT IS REAL AND WHAT IS NOT
+ *            REAL: every up_*.h of the panel, the routes, the cookies, the
+ *            roles, the request handlers, the workbook writer and the page.
+ *            NOT REAL: the ESP8266 (tools/stub_esp.h), the STM32 and the machine
+ *            (sim_machine.h), and time - the clock can be advanced by days in a
+ *            second, because a daily rollup cannot be tested by waiting.
+ *
+ *          HOW TO RUN
+ *            bash user_panel/simulator/run_sim.sh             # build and serve
+ *            bash user_panel/simulator/run_sim.sh --selftest   # no sockets
+ *            Then open http://localhost:8090/sim (control) and / (the panel).
+ *
+ * @brief   [FA] شبیه‌ساز رومیزی: خودِ پنل واقعی، کامپایل‌شده و در حال اجرا روی
+ *               لپ‌تاپ، در کنار مدلی از ماشین و یک صفحهٔ کنترل.
+ *
+ *          چرا وجود دارد
+ *            تست‌های میزبان تکه‌تکه را می‌سنجند. این برنامه کل ماجرا را همان‌طور
+ *            می‌سنجد که یک آدم می‌بیند: صفحهٔ واقعی را روی سوکت واقعی به مرورگر
+ *            واقعی می‌دهد، در حالی که ماشین حالت واقعیِ لینک هر ثانیه تلمتری را از
+ *            مدل ماشین می‌خواند و نویسندهٔ واقعی اکسل وقتی کسی دکمه را می‌زند یک
+ *            کتاب کار جریانی می‌فرستد. اولین صفحه‌ای که این پنل رویش دیده می‌شود
+ *            لپ‌تاپ است، نه تابلو.
+ *
+ *          چه چیزی واقعی است و چه چیزی نه
+ *            واقعی: تک‌تک up_*.hهای پنل، مسیرها، کوکی‌ها، نقش‌ها، هندلرها،
+ *            نویسندهٔ اکسل و خود صفحه.
+ *            غیرواقعی: خود ESP8266 (tools/stub_esp.h)، STM32 و ماشین
+ *            (sim_machine.h) و خود زمان - ساعت را می‌توان در یک ثانیه چند روز
+ *            جلو برد، چون جمع روزانه با انتظار کشیدن آزمایش نمی‌شود.
+ *
+ *          طرز اجرا
+ *            bash user_panel/simulator/run_sim.sh             # ساخت و اجرا
+ *            bash user_panel/simulator/run_sim.sh --selftest    # بدون سوکت
+ *            بعد http://localhost:8090/sim (کنترل) و / (خود پنل) را باز کنید.
+ */
 
 #include "stub_esp.h"
 
-/* the globals the stubs declare extern */
+/* [EN] the globals the stubs declare extern / [FA] متغیرهای جهانی که استاب‌ها extern کرده‌اند */
 std::map<uint8_t, int> G_StubGpio;
 StubSerial Serial;
 StubWiFi WiFi;
@@ -75,829 +59,996 @@ std::string WiFiClient::G_LastRequest;
 int WiFiClient::G_ConnectFails = 0;
 
 /* [EN] The REAL panel, unmodified: one translation unit, ESP8266 branch. */
+/* [FA] خودِ پنل، دست‌نخورده: یک واحد ترجمه، شاخهٔ ESP8266. */
+#define ESP8266 1
 #include "../user_panel.ino"
+
 #include "sim_machine.h"
 
-#define SIM_DEFAULT_PORT 8090
-#define SIM_REQUEST_MAX  16384u
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
-/* ==================== Result counters / شمارنده‌های نتیجه ==================== */
-static unsigned SIM_UINT__G__Passed = 0u;
-static unsigned SIM_UINT__G__Failed = 0u;
+#include <cstdlib>
+#include <cstring>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
 
-/* ==================== Check / بررسی ==================== */
+#define SIM_TICK_MS        100u      /* [EN] one machine tick / [FA] یک تیک ماشین */
+#define SIM_LOOP_MS        20u       /* [EN] server wait between visits / [FA] مکث سرور بین سرکشی‌ها */
+#define SIM_RAW_MAX        262144u   /* [EN] an xlsx report fits many times over / [FA] چند برابر یک گزارش اکسل */
+#define SIM_TRANSCRIPT_MAX 8192u     /* [EN] trim the wire transcript here / [FA] کوتاه‌کردن متن سیم از اینجا */
+
+static size_t SIM_SIZE_T__G__SeenRequest = 0u;
+static uint32_t SIM_UINT32_T__G__VirtualMs = 0u;
+static std::string SIM_STRING__G__LastSetBody;
+static std::string SIM_STRING__G__Cookie;
+static int SIM_INT__G__Checks = 0;
+static int SIM_INT__G__Fails = 0;
+
+/* ==================== Small helpers / کمک‌های کوچک ==================== */
 /**
- * @brief  [EN] Print one self-test result and count it. The wording is the same
- *              as the host tests on purpose: two tools that say "ok" and "FAIL"
- *              the same way are easier to trust than two that do not.
- *         [FA] چاپ یک نتیجهٔ خودآزمایی و شمردنش. عمداً همان واژه‌های تست‌های
- *              میزبان: دو ابزاری که یک‌جور «ok» و «FAIL» می‌گویند از دو ابزاری
- *              که یک‌جور نمی‌گویند قابل‌اعتمادترند.
- * @param  bool__ok [EN] result / [FA] نتیجه
- * @param  char__what [EN] what was checked / [FA] آنچه بررسی شد
- * @param  char__detail [EN] extra text or NULL / [FA] متن اضافه یا NULL
+ * @brief  [EN] One line of the simulator's own checklist. Deliberately the same
+ *              shape as the host tests' so a failure reads the same way in both.
+ *         [FA] یک خط از چک‌لیست خود شبیه‌ساز. عمداً هم‌شکل تست‌های میزبان تا یک
+ *              خطا در هر دو یک‌جور خوانده شود.
+ * @param  bool__ok [EN] the result / [FA] نتیجه
+ * @param  std_string__what [EN] what was checked / [FA] چه چیزی بررسی شد
+ * @param  std_string__detail [EN] optional evidence / [FA] شاهد اختیاری
  * @return [EN] None / [FA] ندارد
  */
-static void func__UpSimCheck(bool bool__ok, const char *char__what, const char *char__detail = NULL)
+static void func__UpSimCheck(bool bool__ok, const std::string &std_string__what,
+                             const std::string &std_string__detail = "")
 {
-    if (bool__ok) { SIM_UINT__G__Passed++; }
-    else          { SIM_UINT__G__Failed++; }
-    printf("  %s %s%s%s\n", bool__ok ? "ok  " : "FAIL", char__what,
-           (char__detail != NULL) ? " - " : "", (char__detail != NULL) ? char__detail : "");
+    SIM_INT__G__Checks++;
+    if (bool__ok)
+    {
+        std::cout << "  ok   " << std_string__what << "\n";
+        return;
+    }
+    SIM_INT__G__Fails++;
+    std::cout << "  FAIL " << std_string__what;
+    if (!std_string__detail.empty())
+    {
+        std::cout << "   [" << std_string__detail << "]";
+    }
+    std::cout << "\n";
 }
 
-/* ==================== URL decoding / بازکردن نشانی ==================== */
-/**
- * @brief  [EN] Percent-decode one query value in place-safe fashion: '+' is a
- *              space, %XX is a byte. The panel's page posts plain ASCII
- *              usernames and digits, but a password may hold anything.
- *         [FA] بازکردن یک مقدار نشانی: '+' فاصله است و %XX یک بایت. صفحهٔ پنل
- *              نام‌کاربری و ارقام ساده می‌فرستد، ولی گذرواژه می‌تواند هر چیزی
- *              داشته باشد.
- */
-static std::string func__UpSimUrlDecode(const std::string &std_string__in)
+static void func__UpSimWriteAll(int int__fd, const std::string &std_string__text)
 {
-    std::string std_string__out;
-    for (size_t i = 0u; i < std_string__in.size(); i++)
+    size_t size_t__sent = 0u;
+
+    while (size_t__sent < std_string__text.size())
     {
-        char char__c = std_string__in[i];
-        if ((char__c == '%') && ((i + 2u) < std_string__in.size()))
+        ssize_t ssize_t__n = send(int__fd, std_string__text.data() + size_t__sent,
+                                  std_string__text.size() - size_t__sent, 0);
+
+        if (ssize_t__n <= 0)
         {
-            char char__hex[3] = { std_string__in[i + 1u], std_string__in[i + 2u], '\0' };
-            std_string__out += (char)strtol(char__hex, NULL, 16);
-            i += 2u;
+            return;
         }
-        else if (char__c == '+')
+        size_t__sent += (size_t)ssize_t__n;
+    }
+}
+
+/* ==================== Virtual time / زمان مجازی ==================== */
+/**
+ * @brief  [EN] Answer whatever the panel just asked the machine over the stub
+ *              socket. The stub records every byte the panel writes; this looks
+ *              for new text and answers it - `/t` with live telemetry, `/m` with
+ *              the peak window, and `POST /s` by handing the body to the model,
+ *              which answers the same refusal the engineering ESP gives for an
+ *              id the protocol does not carry.
+ *         [FA] پاسخ به هر چیزی که پنل همین حالا از ماشین پرسید، روی سوکت جعلی.
+ *              استاب هر بایتی که پنل می‌نویسد را ثبت می‌کند؛ این تابع متن تازه را
+ *              می‌بیند و جواب می‌دهد - `/t` با تلمتری زنده، `/m` با پنجرهٔ اوج و
+ *              `POST /s` با دادن بدنه به مدل، که همان ردی را می‌دهد که ESP
+ *              مهندسی برای شناسهٔ بیرون از پروتکل می‌دهد.
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__UpSimFeedLink(void)
+{
+    size_t size_t__total = WiFiClient::G_LastRequest.size();
+
+    if (size_t__total > SIM_SIZE_T__G__SeenRequest)
+    {
+        std::string std_string__fresh = WiFiClient::G_LastRequest.substr(SIM_SIZE_T__G__SeenRequest);
+
+        SIM_SIZE_T__G__SeenRequest = size_t__total;
+
+        if (std_string__fresh.find("POST /s") != std::string::npos)
         {
-            std_string__out += ' ';
+            size_t size_t__at = std_string__fresh.find("\r\n\r\n");
+            std::string std_string__body = (size_t__at != std::string::npos)
+                                         ? std_string__fresh.substr(size_t__at + 4u) : std::string();
+
+            SIM_STRING__G__LastSetBody = std_string__body;
+            WiFiClient::G_NextResponse =
+                std::string("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n") +
+                func__UpSim_SetParam(std_string__body);
         }
-        else
+        else if (std_string__fresh.find("GET /m") != std::string::npos)
         {
-            std_string__out += char__c;
+            std::string std_string__body = func__UpSim_PeaksBody();
+
+            WiFiClient::G_NextResponse =
+                std::string("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ") +
+                std::to_string(std_string__body.size()) + "\r\n\r\n" + std_string__body;
+        }
+        else if (std_string__fresh.find("GET /t") != std::string::npos)
+        {
+            std::string std_string__body = func__UpSim_TelemetryBody();
+
+            WiFiClient::G_NextResponse =
+                std::string("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: ") +
+                std::to_string(std_string__body.size()) + "\r\n\r\n" + std_string__body;
         }
     }
-    return std_string__out;
+
+    if (WiFiClient::G_LastRequest.size() > SIM_TRANSCRIPT_MAX)
+    {
+        WiFiClient::G_LastRequest.clear();
+        SIM_SIZE_T__G__SeenRequest = 0u;
+    }
 }
 
 /**
- * @brief  [EN] Split "a=1&b=2" into a map. Used for the query string and for a
- *              form body, because the panel reads both through the same
- *              has-arg/arg pair.
- *         [FA] شکستن «a=1&b=2» به یک نگاشت. برای رشتهٔ پرس‌وجو و بدنهٔ فرم، چون
- *              پنل هر دو را از همان یک جفت hasArg/arg می‌خواند.
+ * @brief  [EN] Push the panel's millisecond clock and the machine forward by
+ *              `ms` of VIRTUAL time. Everything the panel does - the one-second
+ *              telemetry read, the fifteen-second sample, the daily rollup - is
+ *              driven by `millis()`, so this one function is what makes "advance
+ *              one day" instant.
+ *         [FA] جلو بردن ساعت میلی‌ثانیهٔ پنل و ماشین به اندازهٔ `ms` زمان
+ *              **مجازی**. هر کاری که پنل می‌کند - خواندن یک‌ثانیه‌ای تلمتری،
+ *              نمونهٔ پانزده‌ثانیه‌ای، جمع روزانه - با `millis()` کار می‌کند، پس
+ *              همین یک تابع است که «یک روز جلو برو» را لحظه‌ای می‌کند.
+ * @param  uint32_t uint32_t__ms [EN] virtual ms / [FA] میلی‌ثانیهٔ مجازی
+ * @return [EN] None / [FA] ندارد
  */
-static void func__UpSimParsePairs(const std::string &std_string__text, std::map<std::string, std::string> &map_out)
+static void func__UpSimAdvanceMs(uint32_t uint32_t__ms)
 {
+    uint32_t uint32_t__left = uint32_t__ms;
+
+    while (uint32_t__left > 0u)
+    {
+        uint32_t uint32_t__step = (uint32_t__left > SIM_TICK_MS) ? SIM_TICK_MS : uint32_t__left;
+
+        stub_millis_ref() += (unsigned long)uint32_t__step;
+        stub_micros_ref() += (unsigned long)uint32_t__step * 1000ul;
+        SIM_UINT32_T__G__VirtualMs += uint32_t__step;
+        func__UpSim_Tick(uint32_t__step);
+        func__UpSimFeedLink();
+        loop();
+        uint32_t__left -= uint32_t__step;
+    }
+}
+
+/* ==================== The panel's own routes / مسیرهای خود پنل ==================== */
+/**
+ * @brief  [EN] Call one of the panel's routes the way the ESP8266WebServer would,
+ *              with the query string or the form body already split into
+ *              arguments, and return what the handler produced.
+ *         [FA] صدا زدن یکی از مسیرهای پنل همان‌طور که ESP8266WebServer می‌کند،
+ *              با رشتهٔ پرس‌وجو یا بدنهٔ فرم که از قبل به آرگومان شکسته شده، و
+ *              برگرداندن چیزی که هندلر ساخت.
+ * @param  std_string__method [EN] GET or POST / [FA] GET یا POST
+ * @param  std_string__path [EN] route / [FA] مسیر
+ * @param  std_string__query [EN] query string / [FA] رشتهٔ پرس‌وجو
+ * @param  std_string__body [EN] form body / [FA] بدنهٔ فرم
+ * @param  std_string__cookie [EN] Cookie header, may be empty / [FA] هدر کوکی
+ * @param  int__codeOut [EN] status the handler sent / [FA] کدی که هندلر فرستاد
+ * @return [EN] the reply body / [FA] بدنهٔ پاسخ
+ */
+static std::string func__UpSimCallRoute(const std::string &std_string__method, const std::string &std_string__path,
+                                        const std::string &std_string__query, const std::string &std_string__body,
+                                        const std::string &std_string__cookie, int *int__codeOut)
+{
+    std::string std_string__pairs = (std_string__method == "POST") ? std_string__body : std_string__query;
     size_t size_t__at = 0u;
 
-    while (size_t__at < std_string__text.size())
+    UP_WEBSERVER_T__G__Server.clearArgs();
+    UP_WEBSERVER_T__G__Server.clearHeaders();
+    UP_WEBSERVER_T__G__Server.clearResponse();
+
+    if (!std_string__cookie.empty())
     {
-        size_t size_t__end = std_string__text.find('&', size_t__at);
-        if (size_t__end == std::string::npos) { size_t__end = std_string__text.size(); }
-
-        std::string std_string__pair = std_string__text.substr(size_t__at, size_t__end - size_t__at);
-        size_t size_t__equals = std_string__pair.find('=');
-        if (size_t__equals != std::string::npos)
-        {
-            map_out[func__UpSimUrlDecode(std_string__pair.substr(0u, size_t__equals))] =
-                func__UpSimUrlDecode(std_string__pair.substr(size_t__equals + 1u));
-        }
-        else if (!std_string__pair.empty())
-        {
-            map_out[func__UpSimUrlDecode(std_string__pair)] = "";
-        }
-
-        size_t__at = size_t__end + 1u;
+        UP_WEBSERVER_T__G__Server.setHeader("Cookie", std_string__cookie.c_str());
     }
+
+    while (size_t__at < std_string__pairs.size())
+    {
+        size_t size_t__amp = std_string__pairs.find('&', size_t__at);
+        size_t size_t__eq;
+
+        if (size_t__amp == std::string::npos)
+        {
+            size_t__amp = std_string__pairs.size();
+        }
+
+        std::string std_string__pair = std_string__pairs.substr(size_t__at, size_t__amp - size_t__at);
+
+        size_t__eq = std_string__pair.find('=');
+        if (size_t__eq != std::string::npos)
+        {
+            UP_WEBSERVER_T__G__Server.setArg(std_string__pair.substr(0u, size_t__eq).c_str(),
+                                             std_string__pair.substr(size_t__eq + 1u).c_str());
+        }
+        size_t__at = size_t__amp + 1u;
+    }
+
+    if (!UP_WEBSERVER_T__G__Server.call(std_string__path.c_str(),
+                                        (std_string__method == "POST") ? HTTP_POST : HTTP_GET))
+    {
+        if (int__codeOut != NULL)
+        {
+            *int__codeOut = 404;
+        }
+        return std::string("not found");
+    }
+
+    if (int__codeOut != NULL)
+    {
+        *int__codeOut = (UP_WEBSERVER_T__G__Server.lastCode != 0) ? UP_WEBSERVER_T__G__Server.lastCode : 200;
+    }
+
+    return UP_WEBSERVER_T__G__Server.lastBody;
 }
 
-/* ==================== HTTP request / درخواست ==================== */
+/**
+ * @brief  [EN] Log in through the REAL login route and keep the cookie it sets,
+ *              exactly as a browser would.
+ *         [FA] ورود از همان مسیر واقعی ورود و نگه‌داشتن کوکی‌ای که می‌گذارد،
+ *              دقیقاً همان‌طور که یک مرورگر می‌کند.
+ * @param  char__user [EN] user name / [FA] نام کاربری
+ * @param  char__pass [EN] password / [FA] گذرواژه
+ * @return [EN] the cookie, empty when it failed / [FA] کوکی، خالی اگر نشد
+ */
+static std::string func__UpSimLogin(const char *char__user, const char *char__pass)
+{
+    int int__code = 0;
+    std::string std_string__body = func__UpSimCallRoute("POST", "/api/login", std::string(),
+                                                        std::string("u=") + char__user + "&p=" + char__pass,
+                                                        std::string(), &int__code);
+    std::string std_string__header = UP_WEBSERVER_T__G__Server.sentHeaders["Set-Cookie"];
+    size_t size_t__end;
+
+    if ((int__code != 200) || (std_string__body.find("\"ok\":1") == std::string::npos))
+    {
+        return std::string();
+    }
+
+    size_t__end = std_string__header.find(';');
+    return std_string__header.substr(0u, size_t__end);
+}
+
+/* ==================== The control page's data / دادهٔ صفحهٔ کنترل ==================== */
+/**
+ * @brief  [EN] How many fault bits are set right now. The control page shows the
+ *              number the panel shows, computed the same way: by counting bits,
+ *              not by trusting a counter.
+ *         [FA] همین حالا چند بیت خطا روشن است. صفحهٔ کنترل همان عددی را نشان
+ *              می‌دهد که پنل نشان می‌دهد و همان‌طور حسابش می‌کند: با شمردن بیت‌ها،
+ *              نه با اعتماد به یک شمارنده.
+ * @return [EN] number of set bits / [FA] تعداد بیت‌های روشن
+ */
+static uint8_t func__UpSim_FaultCount(void)
+{
+    uint32_t uint32_t__bits = UP_SIM_T__G__Plant.uint32_t__flags;
+    uint8_t uint8_t__count = 0u;
+
+    while (uint32_t__bits != 0u)
+    {
+        uint8_t__count += (uint8_t)(uint32_t__bits & 1u);
+        uint32_t__bits >>= 1;
+    }
+
+    return uint8_t__count;
+}
+
+/**
+ * @brief  [EN] The machine and the panel as one object for the control page. It
+ *              reports the panel's own view too (link up, clock set) because the
+ *              page's job is to explain what the panel is showing and why.
+ *         [FA] ماشین و پنل در یک شیء برای صفحهٔ کنترل. دید خود پنل را هم گزارش
+ *              می‌کند (وصل بودن لینک، تنظیم بودن ساعت) چون کار آن صفحه توضیح
+ *              این است که پنل چه چیزی و چرا نشان می‌دهد.
+ * @return [EN] JSON / [FA] JSON
+ */
+static uint8_t func__UpSim_FaultCount(void);
+
+static std::string func__UpSim_StateJson(void)
+{
+    up_sim_t *up_sim_t__p = &UP_SIM_T__G__Plant;
+    char char__json[1024];
+
+    snprintf(char__json, sizeof(char__json),
+             "{\"vin\":%lu,\"v24\":%lu,\"v12\":%lu,\"vhigh\":%lu,\"vlow\":%lu,"
+             "\"i1\":%lu,\"i2\":%lu,\"duty1\":%lu,\"duty2\":%lu,\"st1\":%lu,\"st2\":%lu,"
+             "\"fl\":%lu,\"fl2\":%lu,\"imb\":%lu,\"latched\":%u,\"cleared\":%u,"
+             "\"manual\":%u,\"chg1\":%u,\"chg2\":%u,\"frames\":%lu,\"seq\":%lu,"
+             "\"linkUp\":%u,\"clockSet\":%u,\"ssid\":\"%s\",\"uptimeS\":%lu,"
+             "\"wSsid\":\"%s\",\"wPass\":\"%s\","
+             "\"panelV24\":%lu,\"panelFaults\":%u}",
+             (unsigned long)up_sim_t__p->uint32_t__vinMv,
+             (unsigned long)up_sim_t__p->uint32_t__v24Mv,
+             (unsigned long)up_sim_t__p->uint32_t__v12Mv,
+             (unsigned long)(up_sim_t__p->uint32_t__v24Mv - up_sim_t__p->uint32_t__v12Mv),
+             (unsigned long)up_sim_t__p->uint32_t__v12Mv,
+             (unsigned long)up_sim_t__p->uint32_t__i1Ma,
+             (unsigned long)up_sim_t__p->uint32_t__i2Ma,
+             (unsigned long)up_sim_t__p->uint32_t__duty1,
+             (unsigned long)up_sim_t__p->uint32_t__duty2,
+             (unsigned long)up_sim_t__p->uint32_t__st1,
+             (unsigned long)up_sim_t__p->uint32_t__st2,
+             (unsigned long)up_sim_t__p->uint32_t__flags,
+             (unsigned long)up_sim_t__p->uint32_t__flags2,
+             (unsigned long)up_sim_t__p->uint32_t__imbOffsetMv,
+             (unsigned)up_sim_t__p->uint8_t__latched,
+             (unsigned)up_sim_t__p->uint8_t__imbCleared,
+             (unsigned)up_sim_t__p->uint8_t__manual,
+             (unsigned)up_sim_t__p->uint8_t__chg1Enable,
+             (unsigned)up_sim_t__p->uint8_t__chg2Enable,
+             (unsigned long)up_sim_t__p->uint32_t__frames,
+             (unsigned long)up_sim_t__p->uint32_t__seq,
+             (UPPANEL_STATE_T__G__State.bool__staUp ? 1u : 0u),
+             (func__UpState_NowEpochS() != 0u) ? 1u : 0u,
+             func__UpSettings_Active()->char__ssid,
+             (unsigned long)(SIM_UINT32_T__G__VirtualMs / 1000u),
+             WiFi.staSsid.c_str(),
+             WiFi.staPass.c_str(),
+             (unsigned long)func__UpState_TlmWord(UP_TLM_V24),
+             (unsigned)func__UpSim_FaultCount());
+
+    return std::string(char__json);
+}
+
+/* ==================== A request, parsed / یک درخواست، تجزیه‌شده ==================== */
 typedef struct
 {
     std::string std_string__method;
     std::string std_string__path;
     std::string std_string__query;
-    std::map<std::string, std::string> map__args;
-    std::map<std::string, std::string> map__headers;
     std::string std_string__body;
+    std::string std_string__cookie;
 } sim_request_t;
 
-typedef struct
-{
-    int int__code;
-    std::string std_string__type;
-    std::string std_string__body;
-    std::map<std::string, std::string> map__headers;
-} sim_response_t;
+static std::string SIM_STRING__G__Page;
 
 /**
- * @brief  [EN] Read one request from a socket: the request line, the headers,
- *              and the body when the headers promise one. A browser request is
- *              a few hundred bytes; the cap is there so a wrong port or a
- *              probe cannot make the simulator allocate without end.
- *         [FA] خواندن یک درخواست از سوکت: خط درخواست، سرصفحه‌ها و بدنه، اگر
- *              سرصفحه‌ها وعده‌اش را داده باشند. درخواست مرورگر چند صد بایت است؛
- *              سقف گذاشته شده تا پورت اشتباه یا یک کاوشگر نتواند شبیه‌ساز را
- *              بی‌نهایت حافظه‌خوار کند.
- * @return [EN] true when a request was read / [FA] در صورت خواندن true
+ * @brief  [EN] One value out of a form/query string, or an empty string.
+ *         [FA] یک مقدار از رشتهٔ فرم یا پرس‌وجو، یا رشتهٔ خالی.
+ * @param  std_string__pairs [EN] "a=1&b=2" / [FA] همان
+ * @param  char__name [EN] key / [FA] کلید
+ * @return [EN] the value / [FA] مقدار
  */
-static bool func__UpSimReadRequest(int int__fd, sim_request_t *sim_request_t__request)
+static std::string func__UpSim_Arg(const std::string &std_string__pairs, const char *char__name)
 {
-    std::string std_string__raw;
-    char char__buffer[2048];
-    size_t size_t__headerEnd = std::string::npos;
+    std::string std_string__needle = std::string(char__name) + "=";
+    size_t size_t__at = std_string__pairs.find(std_string__needle);
 
-    while (std_string__raw.size() < SIM_REQUEST_MAX)
+    if (size_t__at == std::string::npos)
     {
-        ssize_t ssize_t__got = recv(int__fd, char__buffer, sizeof(char__buffer), 0);
-        if (ssize_t__got <= 0) { return false; }
-        std_string__raw.append(char__buffer, (size_t)ssize_t__got);
-        size_t__headerEnd = std_string__raw.find("\r\n\r\n");
-        if (size_t__headerEnd != std::string::npos)
+        return std::string();
+    }
+    if ((size_t__at > 0u) && (std_string__pairs[size_t__at - 1u] != '&'))
+    {
+        return std::string();
+    }
+
+    size_t size_t__from = size_t__at + std_string__needle.size();
+    size_t size_t__end = std_string__pairs.find('&', size_t__from);
+
+    return (size_t__end == std::string::npos) ? std_string__pairs.substr(size_t__from)
+                                              : std_string__pairs.substr(size_t__from, size_t__end - size_t__from);
+}
+
+/**
+ * @brief  [EN] The control endpoints. Nothing here exists on the board: `/sim`
+ *              is the page, `/sim/state` is what the model is doing and
+ *              `/sim/cmd` is a hand on the machine (open the mains switch, pull
+ *              a battery wire, inject a fault, jump the clock forward). Keeping
+ *              them in one function is what makes the promise checkable - the
+ *              panel's own routes are never faked, they are the real ones.
+ *         [FA] نقاط پایانی کنترل. هیچ‌کدام روی برد وجود ندارند: `/sim` صفحه است،
+ *              `/sim/state` کارِ مدل و `/sim/cmd` دستِ آدم روی ماشین (کلید برق را
+ *              باز کن، سیم باتری را بکش، خطا تزریق کن، ساعت را جلو ببر). بودنشان
+ *              در یک تابع همان چیزی است که آن وعده را قابل بررسی می‌کند: مسیرهای
+ *              خود پنل هرگز جعل نمی‌شوند، همان‌های واقعی‌اند.
+ * @param  sim_request_t__req [EN] the request / [FA] درخواست
+ * @param  std_string__type [EN] out: content type / [FA] خروجی: نوع محتوا
+ * @param  std_string__body [EN] out: body / [FA] خروجی: بدنه
+ * @param  int__code [EN] out: status / [FA] خروجی: کد وضعیت
+ * @return [EN] true when this was a control request / [FA] اگر درخواست کنترل بود
+ */
+static bool func__UpSim_Control(const sim_request_t &sim_request_t__req, std::string &std_string__type,
+                                std::string &std_string__body, int &int__code)
+{
+    up_sim_t *up_sim_t__p = &UP_SIM_T__G__Plant;
+
+    if ((sim_request_t__req.std_string__path == "/sim") || (sim_request_t__req.std_string__path == "/sim.html"))
+    {
+        std_string__type = "text/html; charset=utf-8";
+        std_string__body = SIM_STRING__G__Page;
+        int__code = 200;
+        return true;
+    }
+
+    if (sim_request_t__req.std_string__path == "/sim/state")
+    {
+        std_string__type = "application/json; charset=utf-8";
+        std_string__body = func__UpSim_StateJson();
+        int__code = 200;
+        return true;
+    }
+
+    if (sim_request_t__req.std_string__path == "/sim/cmd")
+    {
+        std::string std_string__cmd = func__UpSim_Arg(sim_request_t__req.std_string__query, "c");
+        std::string std_string__value = func__UpSim_Arg(sim_request_t__req.std_string__query, "v");
+
+        if (std_string__cmd == "input")
         {
-            size_t size_t__head = size_t__headerEnd + 4u;
-            size_t size_t__want = 0u;
-            size_t size_t__at = std_string__raw.find("\r\nContent-Length:");
-            if (size_t__at != std::string::npos)
+            up_sim_t__p->uint32_t__vinMv = (std_string__value == "1") ? SIM_INPUT_MV : 0u;
+        }
+        else if (std_string__cmd == "chg")
+        {
+            std::string std_string__ch = func__UpSim_Arg(sim_request_t__req.std_string__query, "ch");
+            uint8_t uint8_t__on = (std_string__value == "1") ? 1u : 0u;
+
+            if (std_string__ch == "2")
             {
-                size_t__want = (size_t)strtoul(std_string__raw.c_str() + size_t__at + 17u, NULL, 10);
+                up_sim_t__p->uint8_t__chg2Enable = uint8_t__on;
             }
-            if (std_string__raw.size() >= (size_t__head + size_t__want)) { break; }
-        }
-    }
-    if (size_t__headerEnd == std::string::npos) { return false; }
-
-    size_t size_t__lineEnd = std_string__raw.find("\r\n");
-    std::string std_string__line = std_string__raw.substr(0u, size_t__lineEnd);
-    size_t size_t__firstSpace = std_string__line.find(' ');
-    size_t size_t__secondSpace = std_string__line.find(' ', size_t__firstSpace + 1u);
-    if ((size_t__firstSpace == std::string::npos) || (size_t__secondSpace == std::string::npos)) { return false; }
-
-    sim_request_t__request->std_string__method = std_string__line.substr(0u, size_t__firstSpace);
-    std::string std_string__target = std_string__line.substr(size_t__firstSpace + 1u, size_t__secondSpace - size_t__firstSpace - 1u);
-
-    size_t size_t__question = std_string__target.find('?');
-    if (size_t__question == std::string::npos)
-    {
-        sim_request_t__request->std_string__path = std_string__target;
-    }
-    else
-    {
-        sim_request_t__request->std_string__path = std_string__target.substr(0u, size_t__question);
-        sim_request_t__request->std_string__query = std_string__target.substr(size_t__question + 1u);
-    }
-
-    size_t size_t__at = size_t__lineEnd + 2u;
-    while (size_t__at < size_t__headerEnd)
-    {
-        size_t size_t__end = std_string__raw.find("\r\n", size_t__at);
-        if (size_t__end == std::string::npos) { break; }
-        std::string std_string__header = std_string__raw.substr(size_t__at, size_t__end - size_t__at);
-        size_t size_t__colon = std_string__header.find(':');
-        if (size_t__colon != std::string::npos)
-        {
-            std::string std_string__key = std_string__header.substr(0u, size_t__colon);
-            std::string std_string__value = std_string__header.substr(size_t__colon + 1u);
-            while (!std_string__value.empty() && (std_string__value[0] == ' ')) { std_string__value.erase(0u, 1u); }
-            sim_request_t__request->map__headers[std_string__key] = std_string__value;
-        }
-        size_t__at = size_t__end + 2u;
-    }
-
-    sim_request_t__request->std_string__body = std_string__raw.substr(size_t__headerEnd + 4u);
-    func__UpSimParsePairs(sim_request_t__request->std_string__query, sim_request_t__request->map__args);
-    func__UpSimParsePairs(sim_request_t__request->std_string__body, sim_request_t__request->map__args);
-
-    return true;
-}
-
-/**
- * @brief  [EN] Write one response. Content-Length is always declared, even for
- *              the streamed report: this HTTP server already holds the whole
- *              body in memory (the fake ESP's socket is a std::string), so a
- *              chunked encoding here would model nothing and confuse a read of
- *              the logs.
- *         [FA] نوشتن یک پاسخ. طول محتوا همیشه اعلام می‌شود، حتی برای گزارش
- *              جریانی: این سرور HTTP کل بدنه را در حافظه دارد (سوکت ESP جعلی
- *              یک std::string است)، پس کدگذاری تکه‌ای اینجا چیزی را مدل نمی‌کند
- *              و فقط خواندن گزارش‌ها را گیج می‌کند.
- */
-static void func__UpSimWriteResponse(int int__fd, const sim_response_t &sim_response_t__response)
-{
-    std::string std_string__head = "HTTP/1.1 " + std::to_string(sim_response_t__response.int__code) + " " +
-        ((sim_response_t__response.int__code == 200) ? "OK" : "Error") + "\r\n";
-    std_string__head += "Content-Type: " + sim_response_t__response.std_string__type + "\r\n";
-    std_string__head += "Content-Length: " + std::to_string(sim_response_t__response.std_string__body.size()) + "\r\n";
-    std_string__head += "Connection: close\r\n";
-    std_string__head += "Cache-Control: no-store\r\n";
-
-    for (std::map<std::string, std::string>::const_iterator it = sim_response_t__response.map__headers.begin();
-         it != sim_response_t__response.map__headers.end(); ++it)
-    {
-        std_string__head += it->first + ": " + it->second + "\r\n";
-    }
-    std_string__head += "\r\n";
-
-    std::string std_string__all = std_string__head + sim_response_t__response.std_string__body;
-    size_t size_t__sent = 0u;
-    while (size_t__sent < std_string__all.size())
-    {
-        ssize_t ssize_t__wrote = send(int__fd, std_string__all.data() + size_t__sent, std_string__all.size() - size_t__sent, 0);
-        if (ssize_t__wrote <= 0) { break; }
-        size_t__sent += (size_t)ssize_t__wrote;
-    }
-}
-
-/* ==================== Reading a file / خواندن فایل ==================== */
-/**
- * @brief  [EN] Read a whole file into a string; returns false when it is not
- *              there. Used for the control page, which is a real file next to
- *              this program - editing it does not require a rebuild, which is
- *              the point.
- *         [FA] خواندن کل یک فایل به رشته؛ اگر نباشد false. برای صفحهٔ کنترل
- *              استفاده می‌شود که فایلی واقعی کنار همین برنامه است - ویرایشش
- *              کامپایل دوباره نمی‌خواهد و همین هدف است.
- */
-static bool func__UpSimReadFile(const std::string &std_string__path, std::string &std_string__out)
-{
-    FILE *file = fopen(std_string__path.c_str(), "rb");
-    if (file == NULL) { return false; }
-    char char__buffer[4096];
-    size_t size_t__got;
-    std_string__out.clear();
-    while ((size_t__got = fread(char__buffer, 1u, sizeof(char__buffer), file)) > 0u)
-    {
-        std_string__out.append(char__buffer, size_t__got);
-    }
-    fclose(file);
-    return true;
-}
-
-/* ==================== Commands / فرمان‌ها ==================== */
-/**
- * @brief  [EN] The control page's commands, in one place. Every one of them
- *              changes the MACHINE, never the panel: the panel is the thing
- *              under test and must react on its own.
- *         [FA] فرمان‌های صفحهٔ کنترل، همه در یک جا. هیچ‌کدام پنل را تغییر
- *              نمی‌دهد، همه ماشین را: پنل چیزی است که آزمایش می‌شود و باید
- *              خودش واکنش بدهد.
- * @param  sim_request_t__request [EN] the request / [FA] درخواست
- * @return [EN] a short status string / [FA] یک متن وضعیت کوتاه
- */
-static std::string func__UpSimCommand(const sim_request_t &sim_request_t__request)
-{
-    const std::map<std::string, std::string> &map__args = sim_request_t__request.map__args;
-    std::string std_string__command = map__args.count("c") ? map__args.at("c") : "";
-    long long__value = map__args.count("v") ? strtol(map__args.at("v").c_str(), NULL, 10) : 0L;
-    up_sim_t *up_sim_t__sim = &UP_SIM_T__G__Sim;
-
-    if (std_string__command == "reset")
-    {
-        func__UpSim_Reset();
-        WiFi.currentStatus = WL_CONNECTED;
-        return "machine reset";
-    }
-    if (std_string__command == "input")
-    {
-        up_sim_t__sim->uint8_t__inputPresent = (long__value != 0L) ? 1u : 0u;
-        return "input set";
-    }
-    if (std_string__command == "ch")
-    {
-        long long__channel = map__args.count("n") ? strtol(map__args.at("n").c_str(), NULL, 10) : 1L;
-        if (long__channel == 1L) { up_sim_t__sim->uint8_t__ch1Enabled = (long__value != 0L) ? 1u : 0u; }
-        else                     { up_sim_t__sim->uint8_t__ch2Enabled = (long__value != 0L) ? 1u : 0u; }
-        return "charger set";
-    }
-    if (std_string__command == "fault")
-    {
-        long long__bit = map__args.count("bit") ? strtol(map__args.at("bit").c_str(), NULL, 10) : 0L;
-        func__UpSim_FaultSet((uint8_t)long__bit, (long__value != 0L) ? 1u : 0u);
-        return "fault set";
-    }
-    if (std_string__command == "jitter")
-    {
-        func__UpSim_JitterTrip();
-        return "jitter trip";
-    }
-    if (std_string__command == "board")
-    {
-        func__UpSim_BoardReset();
-        return "board reset";
-    }
-    if (std_string__command == "swap")
-    {
-        func__UpSim_BatterySwap();
-        return "battery swapped";
-    }
-    if (std_string__command == "imb")
-    {
-        func__UpSim_ImbalanceEpisode();
-        return "imbalance started";
-    }
-    if (std_string__command == "link")
-    {
-        up_sim_t__sim->uint8_t__linkUp = (long__value != 0L) ? 1u : 0u;
-        WiFi.currentStatus = (up_sim_t__sim->uint8_t__linkUp != 0u) ? WL_CONNECTED : WL_DISCONNECTED;
-        return "link set";
-    }
-    if (std_string__command == "absent")
-    {
-        up_sim_t__sim->uint8_t__batteryAbsent = (long__value != 0L) ? 1u : 0u;
-        return "battery absence set";
-    }
-    if (std_string__command == "manual")
-    {
-        up_sim_t__sim->uint8_t__manualMode = (long__value != 0L) ? 1u : 0u;
-        return "manual mode set";
-    }
-    return "unknown command";
-}
-
-/* ==================== Panel dispatch / رساندن به پنل ==================== */
-/**
- * @brief  [EN] Hand a request to the REAL panel: its own route table decides
- *              what happens, its own session check decides who may do it. The
- *              simulator only carries the bytes - which is exactly what makes
- *              the result worth reading.
- *         [FA] رساندن درخواست به «خودِ» پنل: جدول مسیرهای خودش تصمیم می‌گیرد و
- *              بررسی نشست خودش تصمیم می‌گیرد چه کسی مجاز است. شبیه‌ساز فقط
- *              بایت‌ها را می‌برد - و همین است که نتیجه را خواندنی می‌کند.
- * @return [EN] true when a route answered / [FA] در صورت پاسخ یک مسیر true
- */
-static bool func__UpSimDispatchPanel(const sim_request_t &sim_request_t__request, sim_response_t *sim_response_t__response)
-{
-    int int__method = HTTP_GET;
-
-    if (sim_request_t__request.std_string__method == "POST") { int__method = HTTP_POST; }
-
-    UP_WEBSERVER_T__G__Server.clearArgs();
-    UP_WEBSERVER_T__G__Server.clearResponse();
-
-    for (std::map<std::string, std::string>::const_iterator it = sim_request_t__request.map__args.begin();
-         it != sim_request_t__request.map__args.end(); ++it)
-    {
-        UP_WEBSERVER_T__G__Server.setArg(it->first.c_str(), it->second.c_str());
-    }
-    for (std::map<std::string, std::string>::const_iterator it = sim_request_t__request.map__headers.begin();
-         it != sim_request_t__request.map__headers.end(); ++it)
-    {
-        UP_WEBSERVER_T__G__Server.setHeader(it->first.c_str(), it->second.c_str());
-    }
-
-    if (!UP_WEBSERVER_T__G__Server.call(sim_request_t__request.std_string__path.c_str(), int__method))
-    {
-        return false;
-    }
-
-    sim_response_t__response->int__code = UP_WEBSERVER_T__G__Server.lastCode;
-    sim_response_t__response->std_string__type = UP_WEBSERVER_T__G__Server.lastType;
-    sim_response_t__response->std_string__body = UP_WEBSERVER_T__G__Server.lastBody;
-
-    /* [EN] Only the headers the panel actually set travel on: an empty map
-            keeps a "Cache-Control: " line out of the answer. */
-    for (std::map<std::string, std::string>::const_iterator it = UP_WEBSERVER_T__G__Server.sentHeaders.begin();
-         it != UP_WEBSERVER_T__G__Server.sentHeaders.end(); ++it)
-    {
-        if (!it->second.empty()) { sim_response_t__response->map__headers[it->first] = it->second; }
-    }
-    return true;
-}
-
-/* ==================== Time / زمان ==================== */
-/**
- * @brief  [EN] The virtual clock, in milliseconds, shared by the fake firmware
- *              (millis()) and the model. Advancing them together is the whole
- *              trick: the panel's own timers, its 1 s sampling and the machine's
- *              physics then all agree on what "now" is.
- *         [FA] ساعت مجازی، به میلی‌ثانیه، مشترک بین فرم‌ور جعلی (millis()) و
- *              مدل. جلو بردن هم‌زمانشان تمام ترفند است: تایمرهای خود پنل،
- *              نمونه‌برداری یک‌ثانیه‌ای و فیزیک ماشین همه روی «حالا» توافق
- *              می‌کنند.
- */
-static uint32_t SIM_UINT32_T__G__VirtualMs = 100000u;   /* [EN] start at t=100 s / [FA] شروع از ۱۰۰ ثانیه */
-static uint32_t SIM_UINT32_T__G__Speed = 1u;
-static std::string SIM_STRING__G__Body;   /* [EN] current telemetry body / [FA] بدنهٔ تلمتری جاری */
-
-/**
- * @brief  [EN] Rebuild the body from the model. Called once per logical second
- *              (and after every change to the model), because building it walks
- *              128 parameters and no screen needs that sixty times a second.
- *         [FA] ساخت دوبارهٔ بدنه از مدل. هر ثانیهٔ منطقی (و بعد از هر تغییر
- *              مدل) صدا زده می‌شود، چون ساختنش یعنی گذر از ۱۲۸ پارامتر و هیچ
- *              صفحه‌ای این را شصت بار در ثانیه لازم ندارد.
- * @return [EN] None / [FA] ندارد
- */
-static void func__UpSimRefreshBody(void)
-{
-    func__UpSim_Body(SIM_STRING__G__Body);
-}
-
-/**
- * @brief  [EN] Feed the link its next answer. The panel opens a connection, the
- *              fake socket hands it this body, and the panel's own parser turns
- *              it into the numbers on the screen.
- *         [FA] دادن پاسخ بعدی به لینک. پنل اتصال را باز می‌کند، سوکت جعلی این
- *              بدنه را می‌دهد و پارسر خود پنل آن را به اعداد روی صفحه تبدیل
- *              می‌کند.
- * @return [EN] None / [FA] ندارد
- */
-static void func__UpSimFeedLink(void)
-{
-    WiFiClient::G_NextResponse = std::string("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n") +
-                                 SIM_STRING__G__Body;
-}
-
-/**
- * @brief  [EN] Advance the shared clock and the model together.
- *         [FA] جلو بردن هم‌زمان ساعت مشترک و مدل.
- * @param  uint32_t__deltaMs [EN] milliseconds to add / [FA] میلی‌ثانیهٔ افزودنی
- * @return [EN] None / [FA] ندارد
- */
-static void func__UpSimAdvanceMs(uint32_t uint32_t__deltaMs)
-{
-    SIM_UINT32_T__G__VirtualMs += uint32_t__deltaMs;
-    stub_millis_ref() = SIM_UINT32_T__G__VirtualMs;
-    stub_micros_ref() = SIM_UINT32_T__G__VirtualMs * 1000u;
-    func__UpSim_Tick(SIM_UINT32_T__G__VirtualMs);
-    func__UpSimRefreshBody();
-}
-
-
-
-static std::string SIM_STRING__G__LastSetBody;   /* [EN] last write the panel sent / [FA] آخرین نوشتن پنل */
-
-/**
- * @brief  [EN] Take whatever the panel wrote to the fake ESP and give it to the
- *              machine. Without this step the simulator would be a machine that
- *              ignores every command - and the panel's charger-cut path would
- *              look like it worked while nothing happened.
- *         [FA] برداشتن آنچه پنل به ESP جعلی نوشته و دادنش به ماشین. بدون این
- *              گام، شبیه‌ساز ماشینی است که هر فرمانی را نادیده می‌گیرد - و مسیر
- *              قطع شارژر پنل سالم به نظر می‌رسد در حالی که هیچ اتفاقی نمی‌افتد.
- * @return [EN] None / [FA] ندارد
- */
-static void func__UpSimDrainRequests(void)
-{
-    std::string &std_string__request = WiFiClient::G_LastRequest;
-
-    if (std_string__request.empty()) { return; }
-
-    size_t size_t__at = std_string__request.find("POST /s");
-    if (size_t__at != std::string::npos)
-    {
-        size_t size_t__body = std_string__request.find("\r\n\r\n", size_t__at);
-        size_t size_t__length = 0u;
-
-        /* [EN] The captured socket text is a transcript of EVERYTHING the panel
-           wrote since the last drain - the header of this write and the next
-           request behind it. The body is therefore cut to the length the header
-           promised, exactly as a real server cuts it.
-           [FA] متن سوکت، رونوشت «همهٔ» چیزی است که پنل از آخرین تخلیه نوشته -
-           سرصفحهٔ این نوشتن و درخواست بعدی پشتش. پس بدنه به همان طولی بریده
-           می‌شود که سرصفحه وعده داده، دقیقاً مثل یک سرور واقعی. */
-        size_t size_t__header = std_string__request.find("Content-Length:", size_t__at);
-        if ((size_t__header != std::string::npos) && (size_t__header < size_t__body))
-        {
-            size_t__length = (size_t)strtoul(std_string__request.c_str() + size_t__header + 15u, NULL, 10);
-        }
-        if (size_t__body != std::string::npos)
-        {
-            std::map<std::string, std::string> map__args;
-            func__UpSimParsePairs(std_string__request.substr(size_t__body + 4u, size_t__length), map__args);
-            if ((map__args.count("id") != 0u) && (map__args.count("v") != 0u))
+            else
             {
-                int int__code = 200;
-                std::string std_string__answer;
-                (void)func__UpSim_SetParam(map__args["id"].c_str(), map__args["v"].c_str(), &int__code, std_string__answer);
-                SIM_STRING__G__LastSetBody = "id=" + map__args["id"] + "&v=" + map__args["v"];
+                up_sim_t__p->uint8_t__chg1Enable = uint8_t__on;
             }
         }
-    }
-    std_string__request.clear();
-}
-
-/**
- * @brief  [EN] Run the panel's loop the way the board does: a handful of
- *              iterations per millisecond of virtual time, reading and writing
- *              through the fake sockets, and hand the board whatever the panel
- *              wrote.
- *         [FA] اجرای حلقهٔ پنل همان‌طور که برد اجرا می‌کند: چند دور در هر
- *              میلی‌ثانیهٔ مجازی، با خواندن و نوشتن از سوکت‌های جعلی، و دادن
- *              آنچه پنل نوشته به برد.
- * @return [EN] None / [FA] ندارد
- */
-static void func__UpSimLoopTimes(uint32_t uint32_t__times)
-{
-    for (uint32_t i = 0u; i < uint32_t__times; i++)
-    {
-        loop();
-    }
-    func__UpSimDrainRequests();
-}
-
-/* ==================== Selftest / خودآزمایی ==================== */
-static bool func__UpSimRoute(const char *char__path, int int__method, const char *char__cookie)
-{
-    UP_WEBSERVER_T__G__Server.clearArgs();
-    UP_WEBSERVER_T__G__Server.clearResponse();
-    if (char__cookie != NULL)
-    {
-        UP_WEBSERVER_T__G__Server.setHeader("Cookie", char__cookie);
-    }
-    else
-    {
-        UP_WEBSERVER_T__G__Server.setHeader("Cookie", "");
-    }
-    return UP_WEBSERVER_T__G__Server.call(char__path, int__method);
-}
-
-static bool func__UpSimLogin(const char *char__user, const char *char__password, std::string &std_string__cookie)
-{
-    UP_WEBSERVER_T__G__Server.clearArgs();
-    UP_WEBSERVER_T__G__Server.clearResponse();
-    UP_WEBSERVER_T__G__Server.setArg("u", char__user);
-    UP_WEBSERVER_T__G__Server.setArg("p", char__password);
-    (void)UP_WEBSERVER_T__G__Server.call("/api/login", HTTP_POST);
-
-    std::string std_string__header = UP_WEBSERVER_T__G__Server.sentHeaders["Set-Cookie"];
-    size_t size_t__end = std_string__header.find(';');
-    std_string__cookie = std_string__header.substr(0u, size_t__end);
-    return (UP_WEBSERVER_T__G__Server.lastBody.find("\"ok\":1") != std::string::npos) && (std_string__cookie.size() > 8u);
-}
-
-/**
- * @brief  [EN] The no-sockets check the gate runs: boot the panel against the
- *              model, feed it a few frames, and make it answer the questions a
- *              bench would ask - as each role. It is deliberately short; the
- *              deep checks live in the host tests, and duplicating them here
- *              would only create a second place to update.
- *         [FA] همان بررسی بی‌سوکتی که گیت اجرا می‌کند: بالا آوردن پنل در برابر
- *              مدل، خوراندن چند فریم و وادارکردنش به پاسخ‌دادن به پرسش‌های میز
- *              آزمایش - با هر نقش. عمداً کوتاه است؛ بررسی‌های عمیق در تست‌های
- *              میزبان‌اند و تکرارشان اینجا فقط یک جای دوم برای به‌روزرسانی
- *              می‌سازد.
- * @return [EN] process exit code / [FA] کد خروج فرآیند
- */
-/* ==================== The third trip, named / سقوط سوم، نام‌دار ==================== */
-/**
- * @brief  [EN] The third trip on its own, so the selftest reads as the rule it
- *              is checking: two trips warn, the third latches the channel.
- *         [FA] سقوط سوم جدا، تا خودآزمایی همان قاعده‌ای را بخواند که بررسی
- *              می‌کند: دو سقوط هشدار، سومی قفل کانال.
- * @return [EN] None / [FA] ندارد
- */
-static void func__UpSimJitterCheck(void)
-{
-    func__UpSim_JitterTrip();
-    func__UpSimRefreshBody();
-    func__UpSimFeedLink();
-    func__UpSimLoopTimes(40u);
-}
-
-static int func__UpSimSelftest(void)
-{
-    std::string std_string__admin;
-    std::string std_string__viewer;
-
-    printf("user panel simulator - selftest / خودآزمایی شبیه‌ساز\n");
-    printf("=================================================\n");
-
-    printf("\n-- boot / راه‌اندازی\n");
-    func__UpSimCheck(UPPANEL_STATE_T__G__State.bool__storageOk, "the panel mounted its flash");
-    func__UpSimCheck(UINT8_T__G__UserCount >= 2u, "the seeded accounts exist");
-
-    printf("\n-- the model reaches the screen / رسیدن مدل به صفحه\n");
-    UP_SIM_T__G__Sim.uint16_t__v24Mv = 26800u;
-    UP_SIM_T__G__Sim.uint16_t__vinMv = 24100u;
-    func__UpSimRefreshBody();
-    func__UpSimFeedLink();
-    func__UpSimAdvanceMs(1100u);
-    func__UpSimLoopTimes(60u);
-    func__UpSimCheck(func__UpSimLogin("admin", "admin", std_string__admin), "the admin can log in with the seeded password");
-    (void)func__UpSimRoute("/api/live", HTTP_GET, std_string__admin.c_str());
-    /* [EN] The live reply carries the raw telemetry words in t[]; the pack
-       voltage is word 15. A named key would have been easier to assert and
-       would have proved less: this way the number travelled through the real
-       parser and the real index map.
-       [FA] پاسخ زنده کلمه‌های خام تلمتری را در t[] می‌برد؛ ولتاژ پک کلمهٔ ۱۵
-       است. یک کلید نام‌دار تأییدش آسان‌تر بود و کمتر ثابت می‌کرد: این‌طور عدد
-       از دل پارسر واقعی و نقشهٔ واقعی اندیس‌ها گذشته است. */
-    func__UpSimCheck(UP_WEBSERVER_T__G__Server.lastBody.find(",26800") != std::string::npos,
-                     "the pack voltage on the screen is the model's, through the real parser");
-    func__UpSimCheck(UP_WEBSERVER_T__G__Server.lastBody.find("\"online\":1") != std::string::npos,
-                     "the link reads online while frames arrive");
-
-    printf("\n-- roles / نقش‌ها\n");
-    func__UpSimCheck(func__UpSimLogin("user", "user", std_string__viewer), "the seeded viewer can log in");
-    (void)func__UpSimRoute("/api/admin/report.xlsx", HTTP_GET, std_string__viewer.c_str());
-    func__UpSimCheck(UP_WEBSERVER_T__G__Server.lastCode == 403, "and is refused the Excel report");
-
-    printf("\n-- the only write the panel makes / تنها نوشتن پنل\n");
-    UP_WEBSERVER_T__G__Server.clearArgs();
-    UP_WEBSERVER_T__G__Server.setHeader("Cookie", std_string__admin.c_str());
-    UP_WEBSERVER_T__G__Server.setArg("a", "charger1_off");
-    UP_WEBSERVER_T__G__Server.setArg("cs", "sim-selftest-1");
-    (void)UP_WEBSERVER_T__G__Server.call("/api/admin/action", HTTP_POST);
-    SIM_STRING__G__LastSetBody.clear();
-    func__UpSimAdvanceMs(1100u);
-    func__UpSimLoopTimes(80u);
-    func__UpSimCheck(SIM_STRING__G__LastSetBody == "id=11&v=0",
-                     "cutting charger 1 really reaches /s as id=11&v=0", SIM_STRING__G__LastSetBody.c_str());
-    func__UpSimCheck(UP_SIM_T__G__Sim.uint8_t__ch1Enabled == 0u, "and the model obeyed it");
-
-    printf("\n-- the report / گزارش\n");
-    (void)func__UpSimRoute("/api/admin/report.xlsx", HTTP_GET, std_string__admin.c_str());
-    func__UpSimCheck((UP_WEBSERVER_T__G__Server.lastBody.size() > 4000u) &&
-                     (UP_WEBSERVER_T__G__Server.lastBody.compare(0u, 2u, "PK") == 0),
-                     "the admin's Excel report streams out as a real zip",
-                     std::to_string(UP_WEBSERVER_T__G__Server.lastBody.size()).c_str());
-
-    printf("\n-- faults and the truth about clearing them / خطاها و حقیقت پاک‌کردن\n");
-    func__UpSim_JitterTrip();
-    func__UpSim_JitterTrip();
-    func__UpSimJitterCheck();
-    func__UpSimCheck(UP_SIM_T__G__Sim.uint16_t__st2 == 7u, "the third jitter trip lands in FINAL_FAULT on the board");
-    func__UpSim_BoardReset();
-    func__UpSimRefreshBody();
-    func__UpSimFeedLink();
-    func__UpSimAdvanceMs(1100u);
-    func__UpSimLoopTimes(60u);
-    func__UpSimCheck(UP_SIM_T__G__Sim.uint16_t__st2 == 1u, "and only a board reset clears it");
-    func__UpSim_ImbalanceEpisode();
-    func__UpSimAdvanceMs(3000u);
-    func__UpSimRefreshBody();
-    func__UpSimFeedLink();
-    func__UpSimLoopTimes(60u);
-    (void)func__UpSimRoute("/api/live", HTTP_GET, std_string__admin.c_str());
-    func__UpSimCheck(UP_WEBSERVER_T__G__Server.lastBody.find("\"latched\":1") != std::string::npos,
-                     "a lasting imbalance latches, and the screen says so");
-    func__UpSim_BatterySwap();
-    func__UpSimRefreshBody();
-    func__UpSimFeedLink();
-    func__UpSimAdvanceMs(1100u);
-    func__UpSimLoopTimes(60u);
-    (void)func__UpSimRoute("/api/live", HTTP_GET, std_string__admin.c_str());
-    func__UpSimCheck(UP_WEBSERVER_T__G__Server.lastBody.find("\"latched\":0") != std::string::npos,
-                     "a real battery swap clears the latch - the only way that works");
-
-    printf("\n=================================================\n");
-    printf("%u checks, %u failures\n", SIM_UINT__G__Passed, SIM_UINT__G__Failed);
-    return (SIM_UINT__G__Failed == 0u) ? 0 : 1;
-}
-
-/* ==================== Main / اصلی ==================== */
-int main(int int__argc, char **char__argv)
-{
-    int int__port = SIM_DEFAULT_PORT;
-    bool bool__selftest = false;
-    std::string std_string__here = "user_panel/simulator/sim.html";
-
-    for (int int__index = 1; int__index < int__argc; int__index++)
-    {
-        std::string std_string__argument = char__argv[int__index];
-        if (std_string__argument == "--selftest") { bool__selftest = true; }
-        else if ((std_string__argument == "--port") && (int__index + 1 < int__argc)) { int__port = atoi(char__argv[++int__index]); }
-        else if ((std_string__argument == "--page") && (int__index + 1 < int__argc)) { std_string__here = char__argv[++int__index]; }
-        else if ((std_string__argument == "--speed") && (int__index + 1 < int__argc)) { SIM_UINT32_T__G__Speed = (uint32_t)atoi(char__argv[++int__index]); }
-    }
-    if (SIM_UINT32_T__G__Speed == 0u) { SIM_UINT32_T__G__Speed = 1u; }
-
-    /* [EN] Settle the model's own "now" before the panel boots, so the first
-       physics step is one step and not a leap from zero.
-       [FA] «حالا»ی خود مدل پیش از بوت پنل جا بیفتد، تا گام اول فیزیک یک گام
-       باشد و نه جهشی از صفر. */
-    func__UpSim_Reset();
-    stub_millis_ref() = SIM_UINT32_T__G__VirtualMs;
-    stub_micros_ref() = SIM_UINT32_T__G__VirtualMs * 1000u;
-    func__UpSim_Tick(SIM_UINT32_T__G__VirtualMs);
-    func__UpSimRefreshBody();
-    setup();
-
-    /* [EN] The fake ESP is joined to the engineering network, exactly as a real
-       one is by the time the panel starts polling. The control page's link
-       button drops it on purpose, to see the panel's "no data" screens.
-       [FA] ESP جعلی به شبکهٔ مهندسی وصل است، همان‌طور که یک ESP واقعی تا وقتی
-       پنل پایش را شروع کند وصل شده است. دکمهٔ ارتباط در صفحهٔ کنترل عمداً
-       قطعش می‌کند تا صفحه‌های «بدون داده» پنل دیده شوند. */
-    WiFi.currentStatus = WL_CONNECTED;
-    func__UpSimFeedLink();
-
-    if (bool__selftest) { return func__UpSimSelftest(); }
-
-    int int__server = socket(AF_INET, SOCK_STREAM, 0);
-    int int__reuse = 1;
-    setsockopt(int__server, SOL_SOCKET, SO_REUSEADDR, &int__reuse, sizeof(int__reuse));
-    struct sockaddr_in struct__address;
-    memset(&struct__address, 0, sizeof(struct__address));
-    struct__address.sin_family = AF_INET;
-    struct__address.sin_addr.s_addr = htonl(INADDR_ANY);
-    struct__address.sin_port = htons((uint16_t)int__port);
-    if (bind(int__server, (struct sockaddr *)&struct__address, sizeof(struct__address)) != 0)
-    {
-        fprintf(stderr, "cannot bind port %d\n", int__port);
-        return 2;
-    }
-    listen(int__server, 8);
-
-    printf("user panel simulator / شبیه‌ساز پنل کاربر\n");
-    printf("  panel   : http://localhost:%d/\n", int__port);
-    printf("  control : http://localhost:%d/sim\n", int__port);
-    printf("  speed   : x%u of real time\n", SIM_UINT32_T__G__Speed);
-    printf("  stop with Ctrl-C\n");
-    fflush(stdout);
-
-    struct timespec struct__last;
-    clock_gettime(CLOCK_MONOTONIC, &struct__last);
-    bool bool__running = true;
-
-    while (bool__running)
-    {
-        struct timeval struct__wait;
-        struct__wait.tv_sec = 0;
-        struct__wait.tv_usec = 5000;
-        fd_set set__read;
-        FD_ZERO(&set__read);
-        FD_SET(int__server, &set__read);
-        if (select(int__server + 1, &set__read, NULL, NULL, &struct__wait) > 0)
+        else if (std_string__cmd == "imb")
         {
-            int int__client = accept(int__server, NULL, NULL);
-            if (int__client > 0)
-            {
-                sim_request_t sim_request_t__request;
-                sim_response_t sim_response_t__response;
-                sim_response_t__response.int__code = 200;
-                sim_response_t__response.std_string__type = "application/json";
+            long long__mv = strtol(std_string__value.c_str(), NULL, 10);
 
-                if (func__UpSimReadRequest(int__client, &sim_request_t__request))
+            up_sim_t__p->uint32_t__imbOffsetMv = (long__mv > 0) ? (uint32_t)long__mv : 0u;
+            if (long__mv <= 0)
+            {
+                up_sim_t__p->uint32_t__ageMs = 0u;   /* [EN] the battery-off clock starts / [FA] ساعت باتری‌جدا شروع می‌شود */
+            }
+        }
+        else if (std_string__cmd == "fault")
+        {
+            std::string std_string__bit = func__UpSim_Arg(sim_request_t__req.std_string__query, "b");
+            uint32_t uint32_t__bit = 1u << (uint32_t)strtoul(std_string__bit.c_str(), NULL, 10);
+
+            if (std_string__value == "1")
+            {
+                up_sim_t__p->uint32_t__flags |= uint32_t__bit;
+                if (uint32_t__bit == SIM_FAULT_CHG_LOST)
                 {
-                    if (sim_request_t__request.std_string__path == "/sim")
+                    up_sim_t__p->uint32_t__jitterCount++;
+                    if (up_sim_t__p->uint32_t__jitterCount >= SIM_JITTER_LIMIT)
                     {
-                        if (!func__UpSimReadFile(std_string__here, sim_response_t__response.std_string__body))
-                        {
-                            sim_response_t__response.int__code = 404;
-                            sim_response_t__response.std_string__body = "sim.html not found";
-                        }
-                        sim_response_t__response.std_string__type = "text/html; charset=utf-8";
-                    }
-                    else if (sim_request_t__request.std_string__path == "/sim/state")
-                    {
-                        sim_response_t__response.std_string__body = func__UpSim_StateJson();
-                    }
-                    else if (sim_request_t__request.std_string__path == "/sim/cmd")
-                    {
-                        std::string std_string__command = sim_request_t__request.map__args.count("c") ? sim_request_t__request.map__args.at("c") : "";
-
-                        if (std_string__command == "advance")
-                        {
-                            long long__seconds = sim_request_t__request.map__args.count("s") ? strtol(sim_request_t__request.map__args.at("s").c_str(), NULL, 10) : 60L;
-                            if (long__seconds > 86400L) { long__seconds = 86400L; }
-                            for (long step = 0L; step < long__seconds; step++)
-                            {
-                                func__UpSimFeedLink();
-                                func__UpSimAdvanceMs(1000u);
-                                func__UpSimLoopTimes(4u);
-                            }
-                            sim_response_t__response.std_string__body = "{\"ok\":1,\"advanced\":" + std::to_string(long__seconds) + "}";
-                        }
-                        else if (std_string__command == "speed")
-                        {
-                            SIM_UINT32_T__G__Speed = (uint32_t)(sim_request_t__request.map__args.count("v") ? strtoul(sim_request_t__request.map__args.at("v").c_str(), NULL, 10) : 1u);
-                            if (SIM_UINT32_T__G__Speed == 0u) { SIM_UINT32_T__G__Speed = 1u; }
-                            sim_response_t__response.std_string__body = "{\"ok\":1,\"speed\":" + std::to_string(SIM_UINT32_T__G__Speed) + "}";
-                        }
-                        else
-                        {
-                            std::string std_string__status = func__UpSimCommand(sim_request_t__request);
-                            func__UpSimRefreshBody();
-                            sim_response_t__response.std_string__body = "{\"ok\":1,\"did\":\"" + std_string__status + "\"}";
-                        }
-                    }
-                    else if (!func__UpSimDispatchPanel(sim_request_t__request, &sim_response_t__response))
-                    {
-                        sim_response_t__response.int__code = 404;
-                        sim_response_t__response.std_string__type = "text/plain; charset=utf-8";
-                        sim_response_t__response.std_string__body = "no such route on the panel";
+                        up_sim_t__p->uint32_t__flags2 |= 0x01u;   /* [EN] FINAL_FAULT / [FA] خطای نهایی */
                     }
                 }
-                func__UpSimWriteResponse(int__client, sim_response_t__response);
-                close(int__client);
+            }
+            else
+            {
+                up_sim_t__p->uint32_t__flags &= ~uint32_t__bit;
             }
         }
-
-        struct timespec struct__now;
-        clock_gettime(CLOCK_MONOTONIC, &struct__now);
-        uint32_t uint32_t__elapsedMs = (uint32_t)(((struct__now.tv_sec - struct__last.tv_sec) * 1000) +
-                                                  ((struct__now.tv_nsec - struct__last.tv_nsec) / 1000000));
-        struct__last = struct__now;
-        if (uint32_t__elapsedMs > 0u)
+        else if (std_string__cmd == "pack")
         {
-            func__UpSimAdvanceMs(uint32_t__elapsedMs * SIM_UINT32_T__G__Speed);
-            func__UpSimFeedLink();
-            func__UpSimLoopTimes(8u);
+            long long__mv = strtol(std_string__value.c_str(), NULL, 10);
+
+            up_sim_t__p->uint32_t__v24Mv = (long__mv > 0) ? (uint32_t)long__mv : 26500u;
+        }
+        else if (std_string__cmd == "reset")
+        {
+            uint32_t uint32_t__v24 = up_sim_t__p->uint32_t__v24Mv;
+
+            func__UpSim_Begin();
+            up_sim_t__p->uint32_t__v24Mv = uint32_t__v24;
+            up_sim_t__p->uint32_t__v12Mv = uint32_t__v24 / 2u;
+        }
+        else if (std_string__cmd == "advance")
+        {
+            long long__seconds = strtol(std_string__value.c_str(), NULL, 10);
+            uint32_t uint32_t__ms = (long__seconds > 0) ? (uint32_t)((long)long__seconds * 1000L) : 0u;
+
+            if (uint32_t__ms > 0u)
+            {
+                func__UpSimAdvanceMs(uint32_t__ms);
+            }
+        }
+        else if (std_string__cmd == "radio")
+        {
+            /* [EN] The board's network going away is the one failure a laptop
+                    cannot produce by unplugging anything, and it is exactly the
+                    failure the panel must explain calmly instead of showing
+                    stale numbers. Off = the same state the firmware reaches
+                    when the join fails.
+               [FA] رفتنِ شبکهٔ برد تنها خرابی‌ای است که با کشیدن هیچ سیمی روی
+                    لپ‌تاپ ساخته نمی‌شود، و دقیقاً همان خرابی‌ای است که پنل باید
+                    آرام توضیحش بدهد و نه عدد کهنه نشان بدهد. خاموش = همان حالتی
+                    که فرم‌ور وقتی پیوستن شکست می‌خورد می‌رسد. */
+            if (std_string__value == "1")
+            {
+                WiFi.currentStatus = WL_CONNECTED;
+            }
+            else
+            {
+                WiFi.currentStatus = WL_DISCONNECTED;
+            }
+        }
+        else if (std_string__cmd == "nothing")
+        {
+            /* [EN] a no-op the page can send to prove the link is alive / [FA] بی‌کاری برای اثبات زنده بودن */
+        }
+        else
+        {
+            std_string__type = "application/json; charset=utf-8";
+            std_string__body = "{\"ok\":0,\"err\":\"unknown command\"}";
+            int__code = 200;
+            return true;
+        }
+
+        std_string__type = "application/json; charset=utf-8";
+        std_string__body = "{\"ok\":1}";
+        int__code = 200;
+        return true;
+    }
+
+    return false;
+}
+
+/* ==================== Serving / سرو کردن ==================== */
+/**
+ * @brief  [EN] Read one HTTP request off the socket and answer it. The panel's
+ *              routes are the ONLY ones that serve `/api/...`: this function
+ *              decides between the control endpoints and the real ones, and
+ *              nothing else. The reply carries whatever headers the handler set
+ *              - which is how the login cookie reaches the browser.
+ *         [FA] خواندن یک درخواست HTTP از سوکت و جواب دادنش. مسیرهای پنل تنها
+ *              مسیرهایی هستند که `/api/...` را سرو می‌کنند: این تابع بین نقاط
+ *              پایانی کنترل و مسیرهای واقعی تصمیم می‌گیرد و بس. پاسخ هر هدری را
+ *              می‌برد که هندلر گذاشته - و کوکی ورود همین‌طور به مرورگر می‌رسد.
+ * @param  int int__fd [EN] accepted socket / [FA] سوکت پذیرفته‌شده
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__UpSim_Serve(int int__fd)
+{
+    std::string std_string__raw;
+    char char__chunk[2048];
+    ssize_t ssize_t__got = 0;
+    size_t size_t__headEnd = std::string::npos;
+
+    while (std_string__raw.size() < SIM_RAW_MAX)
+    {
+        ssize_t__got = recv(int__fd, char__chunk, sizeof(char__chunk), 0);
+        if (ssize_t__got <= 0)
+        {
+            break;
+        }
+
+        std_string__raw.append(char__chunk, (size_t)ssize_t__got);
+
+        size_t__headEnd = std_string__raw.find("\r\n\r\n");
+        if (size_t__headEnd != std::string::npos)
+        {
+            size_t size_t__clAt = std_string__raw.find("Content-Length:");
+            size_t size_t__want = 0u;
+
+            if (size_t__clAt != std::string::npos)
+            {
+                size_t__want = (size_t)strtoul(std_string__raw.c_str() + size_t__clAt + 15u, NULL, 10);
+            }
+            if (std_string__raw.size() >= (size_t__headEnd + 4u + size_t__want))
+            {
+                break;
+            }
         }
     }
 
-    close(int__server);
+    size_t size_t__lineEnd = std_string__raw.find("\r\n");
+
+    if (size_t__lineEnd == std::string::npos)
+    {
+        close(int__fd);
+        return;
+    }
+
+    std::string std_string__line = std_string__raw.substr(0u, size_t__lineEnd);
+    sim_request_t sim_request_t__req;
+
+    sim_request_t__req.std_string__method = std_string__line.substr(0u, std_string__line.find(' '));
+
+    std::string std_string__target = std_string__line.substr(std_string__line.find(' ') + 1u);
+    std_string__target = std_string__target.substr(0u, std_string__target.find(' '));
+    sim_request_t__req.std_string__path = std_string__target.substr(0u, std_string__target.find('?'));
+    sim_request_t__req.std_string__query = (std_string__target.find('?') != std::string::npos)
+                                         ? std_string__target.substr(std_string__target.find('?') + 1u)
+                                         : std::string();
+
+    size_t size_t__ck = std_string__raw.find("Cookie: ");
+    if (size_t__ck != std::string::npos)
+    {
+        size_t size_t__ckEnd = std_string__raw.find("\r\n", size_t__ck);
+
+        sim_request_t__req.std_string__cookie =
+            std_string__raw.substr(size_t__ck + 8u, size_t__ckEnd - size_t__ck - 8u);
+    }
+
+    sim_request_t__req.std_string__body = (size_t__headEnd != std::string::npos)
+                                        ? std_string__raw.substr(size_t__headEnd + 4u) : std::string();
+
+    std::string std_string__type = "text/plain; charset=utf-8";
+    std::string std_string__body;
+    int int__code = 200;
+    bool bool__control;
+
+    /* [EN] The stub still holds the headers of whatever route answered last, so
+            a control reply is built on a clean slate: otherwise a Set-Cookie
+            from an earlier login would ride along with /sim/state.
+       [FA] استاب هنوز هدرهای آخرین مسیری که جواب داده را نگه داشته، پس پاسخ
+            کنترل روی صفحة تمیز ساخته می‌شود: وگرنه یک Set-Cookie از ورود قبلی
+            همراه /sim/state می‌رود. */
+    UP_WEBSERVER_T__G__Server.clearResponse();
+
+    bool__control = func__UpSim_Control(sim_request_t__req, std_string__type, std_string__body, int__code);
+
+    if (!bool__control)
+    {
+        std_string__body = func__UpSimCallRoute(sim_request_t__req.std_string__method, sim_request_t__req.std_string__path,
+                                                sim_request_t__req.std_string__query, sim_request_t__req.std_string__body,
+                                                sim_request_t__req.std_string__cookie, &int__code);
+        if (int__code == 404)
+        {
+            std_string__type = "text/plain; charset=utf-8";
+        }
+        else
+        {
+            std_string__type = UP_WEBSERVER_T__G__Server.lastType;
+        }
+    }
+
+    std::string std_string__head = "HTTP/1.1 " + std::to_string(int__code) + " " +
+                                   ((int__code == 200) ? "OK" : ((int__code == 401) ? "Unauthorized" : "Error")) + "\r\n" +
+                                   "Content-Type: " + std_string__type + "\r\n" +
+                                   "Content-Length: " + std::to_string(std_string__body.size()) + "\r\n" +
+                                   "Cache-Control: no-store\r\n";
+
+    for (std::map<std::string, std::string>::const_iterator std_map__it = UP_WEBSERVER_T__G__Server.sentHeaders.begin();
+         std_map__it != UP_WEBSERVER_T__G__Server.sentHeaders.end(); ++std_map__it)
+    {
+        std_string__head += std_map__it->first + ": " + std_map__it->second + "\r\n";
+    }
+    std_string__head += "Connection: close\r\n\r\n";
+
+    func__UpSimWriteAll(int__fd, std_string__head + std_string__body);
+    close(int__fd);
+}
+
+/* ==================== Self test / خودآزمایی ==================== */
+/**
+ * @brief  [EN] The simulator's own checks, run without opening a socket: boot
+ *              the real panel, let the real link read the model, log in through
+ *              the real login route, cut a charger through the real action route
+ *              and watch it arrive on the wire as parameter 11, and stream the
+ *              real workbook. A green run says the panel and the model still
+ *              agree; it says nothing about the machine, and the gate's output
+ *              says so on every run.
+ *         [FA] چک‌های خود شبیه‌ساز، بدون باز کردن سوکت: بالا آوردن پنل واقعی،
+ *              خواندن مدل با لینک واقعی، ورود از مسیر واقعی ورود، قطع شارژر از
+ *              مسیر واقعی اقدام و دیدن رسیدنش روی سیم به‌صورت پارامتر ۱۱، و
+ *              فرستادن کتاب کار واقعی. اجرای سبز یعنی پنل و مدل هنوز هم‌نظرند؛
+ *              دربارهٔ ماشین چیزی نمی‌گوید و خروجی گیت در هر اجرا همین را می‌گوید.
+ * @return [EN] 0 when everything passed / [FA] صفر یعنی همه قبول شدند
+ */
+static int func__UpSim_Selftest(void)
+{
+    int int__code = 0;
+    std::string std_string__cookie;
+
+    std::cout << "ChangeOver user panel - simulator self test\n";
+    std::cout << "==========================================\n";
+
+    func__UpSim_Begin();
+    WiFi.currentStatus = WL_CONNECTED;
+    setup();
+    func__UpSimAdvanceMs(1500u);
+
+    func__UpSimCheck(UPPANEL_STATE_T__G__State.bool__storageOk, "the panel mounted its flash");
+    func__UpSimCheck(UINT8_T__G__UserCount >= 2u, "the seeded accounts exist");
+    func__UpSimCheck(UP_SIM_T__G__Plant.uint32_t__v12Mv == (UP_SIM_T__G__Plant.uint32_t__v24Mv / 2u),
+                     "the lower half follows the pack instead of being pinned",
+                     std::to_string((unsigned long)UP_SIM_T__G__Plant.uint32_t__v12Mv));
+
+    {
+        uint32_t uint32_t__before = UP_SIM_T__G__Plant.uint32_t__v24Mv;
+
+        func__UpSimAdvanceMs(60000u);
+        func__UpSimCheck((UP_SIM_T__G__Plant.uint32_t__v24Mv > uint32_t__before) &&
+                         (UP_SIM_T__G__Plant.uint32_t__v24Mv <= SIM_PACK_FULL_MV),
+                         "with the mains connected the model charges and stops at full",
+                         std::to_string((unsigned long)uint32_t__before) + " -> " +
+                         std::to_string((unsigned long)UP_SIM_T__G__Plant.uint32_t__v24Mv));
+    }
+
+    {
+        /* [EN] Freeze the machine - mains on, chargers off - so the panel's next
+                read has an exact number to be compared with. A moving machine
+                can only be compared with a tolerance, and a tolerance is how a
+                wrong word survives a test.
+           [FA] ماشین را ثابت کن - برق هست، شارژرها خاموش - تا خواندن بعدی پنل
+                عدد دقیقی برای مقایسه داشته باشد. ماشین متحرک را فقط با رواداری
+                می‌توان مقایسه کرد، و رواداری همان چیزی است که یک کلمهٔ اشتباه را
+                از تست زنده بیرون می‌آورد. */
+        UP_SIM_T__G__Plant.uint8_t__chg1Enable = 0u;
+        UP_SIM_T__G__Plant.uint8_t__chg2Enable = 0u;
+        func__UpSimAdvanceMs(2000u);
+
+        func__UpSimCheck(func__UpState_TlmWord(UP_TLM_V24) == UP_SIM_T__G__Plant.uint32_t__v24Mv,
+                         "the panel read the machine's own pack voltage through the real parser",
+                         std::to_string((unsigned long)func__UpState_TlmWord(UP_TLM_V24)) + " vs " +
+                         std::to_string((unsigned long)UP_SIM_T__G__Plant.uint32_t__v24Mv));
+        func__UpSimCheck(func__UpState_TlmWord(UP_TLM_VHIGH) ==
+                         (UP_SIM_T__G__Plant.uint32_t__v24Mv - UP_SIM_T__G__Plant.uint32_t__v12Mv),
+                         "and the upper battery is the pack minus the lower one, as the page assumes");
+
+        UP_SIM_T__G__Plant.uint8_t__chg1Enable = 1u;
+        UP_SIM_T__G__Plant.uint8_t__chg2Enable = 1u;
+    }
+
+    {
+        std::string std_string__cookie = func__UpSimLogin("admin", "admin");
+
+        func__UpSimCheck(!std_string__cookie.empty(), "the real login route set a session cookie");
+        SIM_STRING__G__Cookie = std_string__cookie;
+    }
+
+    (void)func__UpSimCallRoute("GET", "/api/live", std::string(), std::string(), std::string(), &int__code);
+    func__UpSimCheck(int__code == 401, "an anonymous browser is refused", std::to_string(int__code));
+
+    {
+        std::string std_string__live = func__UpSimCallRoute("GET", "/api/live", std::string(), std::string(),
+                                                            SIM_STRING__G__Cookie, &int__code);
+
+        func__UpSimCheck((int__code == 200) && (std_string__live.find("\"faultCodes\":[") != std::string::npos),
+                         "a logged-in browser gets the live view", std::to_string(int__code));
+    }
+
+    {
+        std::string std_string__reply = func__UpSimCallRoute("POST", "/api/admin/action", std::string(),
+                                                             "a=charger1_off&cs=sim-1", SIM_STRING__G__Cookie,
+                                                             &int__code);
+
+        func__UpSimAdvanceMs(3000u);
+
+        func__UpSimCheck(UP_SIM_T__G__Plant.uint8_t__chg1Enable == 0u,
+                         "the panel's cut reached the machine (parameter 11 = 0)",
+                         SIM_STRING__G__LastSetBody + "  " + std_string__reply);
+    }
+
+    func__UpSimCheck(func__UpSim_SetParam("id=200&v=0").find("range") != std::string::npos,
+                     "the simulator refuses an id the engineering ESP refuses");
+
+    {
+        std::string std_string__live;
+
+        UP_SIM_T__G__Plant.uint32_t__flags |= SIM_FAULT_ADC;
+        func__UpSimAdvanceMs(1500u);
+        std_string__live = func__UpSimCallRoute("GET", "/api/live", std::string(), std::string(),
+                                                SIM_STRING__G__Cookie, &int__code);
+        func__UpSimCheck(std_string__live.find("\"faultCodes\":[]") == std::string::npos,
+                         "an injected fault shows up in the panel's fault list");
+        UP_SIM_T__G__Plant.uint32_t__flags &= ~SIM_FAULT_ADC;
+    }
+
+    {
+        std::string std_string__live;
+
+        UP_SIM_T__G__Plant.uint32_t__imbOffsetMv = 1200u;
+        func__UpSimAdvanceMs(2000u);
+        std_string__live = func__UpSimCallRoute("GET", "/api/live", std::string(), std::string(),
+                                                SIM_STRING__G__Cookie, &int__code);
+        func__UpSimCheck((std_string__live.find("\"latched\":1") != std::string::npos) &&
+                         (std_string__live.find("\"blocked\":") != std::string::npos),
+                         "an injected imbalance latches, and the panel reports it as the board does");
+
+        UP_SIM_T__G__Plant.uint32_t__imbOffsetMv = 0u;
+        func__UpSimAdvanceMs(3500u);
+        std_string__live = func__UpSimCallRoute("GET", "/api/live", std::string(), std::string(),
+                                                SIM_STRING__G__Cookie, &int__code);
+        func__UpSimCheck((std_string__live.find("\"latched\":0") != std::string::npos) &&
+                         (UP_SIM_T__G__Plant.uint8_t__imbCleared == 1u),
+                         "and the three-second battery-off rule frees it, as the panel's text promises");
+    }
+
+    {
+        /* [EN] The whole point of the network card: after the admin stores a
+                second Wi-Fi network and switches to it, the RADIO must be told
+                the new name AND the new password. Reading the table back would
+                only prove the table.
+           [FA] تمام هدف کارت شبکه: بعد از اینکه مدیر شبکهٔ وای‌فای دومی را ذخیره
+                و به آن سوئیچ کرد، باید به رادیو هم نام جدید و هم رمز جدید گفته
+                شود. خواندن دوبارهٔ جدول فقط خودِ جدول را ثابت می‌کند. */
+        (void)func__UpSimCallRoute("POST", "/api/admin/network", std::string(),
+                                   "action=save&ssid=Lab-Net&pass=Lab-Pass-2", SIM_STRING__G__Cookie, &int__code);
+        (void)func__UpSimCallRoute("POST", "/api/admin/network", std::string(),
+                                   "action=use&i=1", SIM_STRING__G__Cookie, &int__code);
+        func__UpSimCheck((WiFi.staSsid == "Lab-Net") && (WiFi.staPass == "Lab-Pass-2"),
+                         "the admin's new Wi-Fi name and password reach the radio",
+                         WiFi.staSsid + " / " + std::to_string(WiFi.staPass.size()) + " chars");
+
+        (void)func__UpSimCallRoute("POST", "/api/admin/network", std::string(),
+                                   "action=use&i=0", SIM_STRING__G__Cookie, &int__code);
+        func__UpSimCheck(WiFi.staSsid == UP_STA_SSID,
+                         "and switching back returns the radio to the factory network",
+                         WiFi.staSsid);
+    }
+
+    {
+        std::string std_string__book = func__UpSimCallRoute("GET", "/api/admin/report.xlsx", "days=1", std::string(),
+                                                            SIM_STRING__G__Cookie, &int__code);
+
+        func__UpSimCheck((int__code == 200) && (std_string__book.size() > 2u) && (std_string__book[0] == 'P') &&
+                         (std_string__book[1] == 'K'),
+                         "the real Excel writer streamed a workbook",
+                         std::to_string(std_string__book.size()) + " bytes");
+    }
+
+    {
+        std::string std_string__card;
+
+        (void)func__UpSimCallRoute("POST", "/api/clock", std::string(), "t=1791331200&tz=210",
+                                   SIM_STRING__G__Cookie, &int__code);
+        std_string__card = func__UpSimCallRoute("GET", "/api/admin/clock", std::string(), std::string(),
+                                                SIM_STRING__G__Cookie, &int__code);
+        func__UpSimCheck(std_string__card.find("1405/07/15") != std::string::npos,
+                         "the clock route reads back an Iran date", std_string__card);
+    }
+
+    std::cout << "==========================================\n";
+    std::cout << SIM_INT__G__Checks << " checks, " << SIM_INT__G__Fails << " failures\n";
+
+    return (SIM_INT__G__Fails == 0) ? 0 : 1;
+}
+
+/* ==================== Entry / ورود ==================== */
+/**
+ * @brief  [EN] `--selftest` runs the checks and exits; otherwise the simulator
+ *              serves HTTP on `--port` (8090 by default) and drives the panel's
+ *              runtime in a loop: advance the virtual clock by the real time
+ *              that passed, answer whatever the link asked the machine, run one
+ *              pass of the panel's own loop.
+ *         [FA] `--selftest` چک‌ها را اجرا و خارج می‌شود؛ در غیر این صورت
+ *              شبیه‌ساز روی `--port` (پیش‌فرض ۸۰۹۰) سرو می‌کند و زمان اجرای پنل را
+ *              در یک حلقه می‌چرخاند: ساعت مجازی را به اندازهٔ زمان واقعیِ گذشته
+ *              جلو می‌برد، هر چه لینک از ماشین پرسید جواب می‌دهد و یک دور از حلقهٔ
+ *              خود پنل را اجرا می‌کند.
+ * @param  int__argc [EN] count / [FA] تعداد
+ * @param  char__argv [EN] arguments / [FA] آرگومان‌ها
+ * @return [EN] 0 on a clean exit / [FA] صفر در خروج سالم
+ */
+int main(int int__argc, char **char__argv)
+{
+    int int__port = 8090;
+    bool bool__selftest = false;
+    std::string std_string__pagePath = "sim.html";
+    int int__listen = -1;
+    struct timespec int__lastWall;
+    int int__index;
+
+    for (int__index = 1; int__index < int__argc; int__index++)
+    {
+        if (strcmp(char__argv[int__index], "--selftest") == 0)
+        {
+            bool__selftest = true;
+        }
+        else if ((strcmp(char__argv[int__index], "--port") == 0) && ((int__index + 1) < int__argc))
+        {
+            int__port = (int)strtol(char__argv[++int__index], NULL, 10);
+        }
+        else if ((strcmp(char__argv[int__index], "--page") == 0) && ((int__index + 1) < int__argc))
+        {
+            std_string__pagePath = char__argv[++int__index];
+        }
+    }
+
+    if (bool__selftest)
+    {
+        return func__UpSim_Selftest();
+    }
+
+    {
+        std::ifstream std_ifstream__page(std_string__pagePath.c_str());
+
+        if (std_ifstream__page)
+        {
+            std::stringstream std_stringstream__buffer;
+
+            std_stringstream__buffer << std_ifstream__page.rdbuf();
+            SIM_STRING__G__Page = std_stringstream__buffer.str();
+        }
+        else
+        {
+            SIM_STRING__G__Page = "<html><body style=\"font-family:sans-serif\"><h2>/sim is not available</h2>"
+                                  "<p>The control page file was not found. Start the simulator with "
+                                  "<code>bash user_panel/simulator/run_sim.sh</code>, which passes its path.</p>"
+                                  "</body></html>";
+        }
+    }
+
+    func__UpSim_Begin();
+    WiFi.currentStatus = WL_CONNECTED;
+    setup();
+
+    {
+        struct sockaddr_in sockaddr_in__addr;
+
+        int__listen = socket(AF_INET, SOCK_STREAM, 0);
+        int int__one = 1;
+
+        (void)setsockopt(int__listen, SOL_SOCKET, SO_REUSEADDR, &int__one, sizeof(int__one));
+        memset(&sockaddr_in__addr, 0, sizeof(sockaddr_in__addr));
+        sockaddr_in__addr.sin_family = AF_INET;
+        sockaddr_in__addr.sin_addr.s_addr = htonl(INADDR_ANY);
+        sockaddr_in__addr.sin_port = htons((uint16_t)int__port);
+
+        if ((int__listen < 0) || (bind(int__listen, (struct sockaddr *)&sockaddr_in__addr, sizeof(sockaddr_in__addr)) != 0) ||
+            (listen(int__listen, 8) != 0))
+        {
+            std::cout << "cannot listen on port " << int__port << "\n";
+            return 1;
+        }
+    }
+
+    clock_gettime(CLOCK_MONOTONIC, &int__lastWall);
+
+    std::cout << "user panel simulator / شبیه‌ساز پنل کاربر\n";
+    std::cout << "  panel   : http://localhost:" << int__port << "/\n";
+    std::cout << "  control : http://localhost:" << int__port << "/sim\n";
+    std::cout << "  machine : 24 V pack, mains present, both chargers enabled\n";
+    std::cout << "  stop    : Ctrl-C\n";
+
+    for (;;)
+    {
+        fd_set fd_set__read;
+        struct timeval struct_timeval__wait;
+        struct timespec int__nowWall;
+
+        FD_ZERO(&fd_set__read);
+        FD_SET(int__listen, &fd_set__read);
+        struct_timeval__wait.tv_sec = 0;
+        struct_timeval__wait.tv_usec = (long)SIM_LOOP_MS * 1000L;
+
+        if (select(int__listen + 1, &fd_set__read, NULL, NULL, &struct_timeval__wait) > 0)
+        {
+            int int__client = accept(int__listen, NULL, NULL);
+
+            if (int__client >= 0)
+            {
+                func__UpSim_Serve(int__client);
+            }
+        }
+
+        clock_gettime(CLOCK_MONOTONIC, &int__nowWall);
+        {
+            long long__ms = (long)((int__nowWall.tv_sec - int__lastWall.tv_sec) * 1000L) +
+                            (long)((int__nowWall.tv_nsec - int__lastWall.tv_nsec) / 1000000L);
+
+            int__lastWall = int__nowWall;
+            if ((long__ms > 0) && (long__ms < 5000))
+            {
+                func__UpSimAdvanceMs((uint32_t)long__ms);
+            }
+        }
+    }
+
     return 0;
 }

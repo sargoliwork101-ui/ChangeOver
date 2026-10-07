@@ -10,6 +10,14 @@
 #        2. the page's JavaScript parses,
 #        3. the sketch compiles and its behaviour tests pass under
 #           AddressSanitizer + UndefinedBehaviorSanitizer,
+#        3b. the Excel workbook the tests wrote is re-read by a third reader,
+#        3c. the simulator (the real sketch against a model of the machine) builds
+#           and passes its own checks - including a charger cut that really reaches
+#           the board, and an admin Wi-Fi switch that really reaches the radio,
+#        3d. the PAGE's own Persian calendar (web/app.js, lifted out by name and
+#           run in node) agrees with an independent oracle for thirty thousand
+#           days, and prints the same date the board prints for the panel's own
+#           clock anchor,
 #        4. the page's API map and the sketch's route table agree,
 #        5. every source file carries its bilingual header and the request path
 #           stays allocation-free.
@@ -24,6 +32,9 @@
 #        ۲. جاوااسکریپت صفحه پارس شود،
 #        ۳. اسکچ کامپایل و تست‌های رفتاری‌اش زیر AddressSanitizer و
 #           UndefinedBehaviorSanitizer سبز شوند،
+#        ۳ب. کتاب اکسل نوشته‌شده با خوانندهٔ سومی بازخوانی شود،
+#        ۳پ. شبیه‌ساز (اسکچ واقعی در کنار مدلی از ماشین) ساخته شود و چک‌های
+#           خودش را بگذراند،
 #        ۴. نگاشت API صفحه و جدول مسیرهای اسکچ با هم بخوانند،
 #        ۵. هر فایل منبع سرصفحهٔ دوزبانه داشته باشد و مسیر درخواست بدون
 #           تخصیص حافظه بماند.
@@ -174,6 +185,27 @@ else
     bad "simulator/run_sim.sh is missing - the panel cannot be exercised without a board"
 fi
 
+# ---------------------------------- 3d. the page's own calendar, versus an oracle --
+# [EN] The date a viewer reads is computed in the browser, not on the board, so a
+#      second calendar lives in web/app.js. Verifying only the C one would have
+#      left the date on the screen unproven - and a screen that is one day off
+#      looks exactly like a screen that is right. The script lifts the page's own
+#      functions out by name, runs them in node and re-derives every answer with
+#      jdatetime, the oracle the workbook check already trusts.
+# [FA] تاریخی که بیننده می‌خواند در مرورگر حساب می‌شود نه روی برد، پس تقویم دومی
+#      در web/app.js هست. اگر فقط تقویم C بررسی می‌شد، تاریخ روی صفحه بی‌مدرک
+#      می‌ماند - و صفحه‌ای که یک روز جابه‌جاست دقیقاً مثل صفحهٔ درست دیده می‌شود.
+#      اسکریپت توابع خود صفحه را با نام بیرون می‌کشد، در node می‌دواند و هر پاسخ
+#      را با jdatetime بازمی‌سازد؛ همان مرجعی که بررسی کتاب اکسل هم به آن اعتماد
+#      دارد.
+step "the page's calendar / تقویم صفحه"
+if python3 "$MODULE/tools/verify_page_calendar.py" >/tmp/up_page_cal.log 2>&1; then
+    ok "page calendar: $(grep -E '^[0-9]+ passed' /tmp/up_page_cal.log | tail -1)"
+else
+    bad "the page's calendar disagrees with the oracle:"
+    grep -E '^  FAIL|^       ' /tmp/up_page_cal.log | sed 's/^/       /' | head -12
+fi
+
 # ------------------------------------------------- 4. routes vs the page map --
 step "routes and the page's API map / مسیرها و نگاشت API صفحه"
 MISMATCH=0
@@ -203,7 +235,7 @@ step "house rules / قواعد پروژه"
 #      کدی زیر کنار گذاشته شده‌اند: آن‌ها صفحهٔ جاسازی‌شده و قلم جاسازی‌شده‌اند،
 #      پس جست‌وجوی «new Date» یا «String» در آن‌ها یعنی خواندن جاوااسکریپت و
 #      CSS، نه C.
-C_SOURCES="up_config.h up_state.h up_store.h up_auth.h up_history.h up_link.h up_http.h up_sha256.h up_calendar.h up_xlsx.h up_report.h user_panel.ino"
+C_SOURCES="up_config.h up_state.h up_store.h up_auth.h up_history.h up_settings.h up_link.h up_http.h up_sha256.h up_calendar.h up_xlsx.h up_report.h user_panel.ino"
 
 for file in "$MODULE"/up_*.h "$MODULE"/user_panel.ino; do
     name="$(basename "$file")"

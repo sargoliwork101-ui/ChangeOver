@@ -1,643 +1,588 @@
-/* ==========================================================================
-   sim_machine.h - the plant and the engineering board, as a model
-   ==========================================================================
+/**
+ * @file    sim_machine.h
+ * @brief   [EN] A model of the MACHINE, for the desktop simulator. It is not
+ *               firmware and never runs on the board: it is host code, written
+ *               with the C++ standard library, and its only job is to answer the
+ *               questions the real STM32 answers - what is the pack voltage, is
+ *               charger 1 in bulk or done, which fault bits are set - so that
+ *               the REAL panel code (up_link.h, up_state.h, up_http.h, the page)
+ *               can be exercised on a laptop before anything is flashed.
+ *
+ *          WHAT IS MODELLED
+ *            - a 24 V pack made of two 12 V halves, with the lower half
+ *              tracking the pack (the two halves are the same string measured
+ *              mid-way, so they must not drift apart on their own),
+ *            - two charger channels with the firmware's states (off, bulk,
+ *              absorption, full, waiting for input),
+ *            - the mains input coming and going, and the pack discharging when
+ *              it is gone,
+ *            - the fault word, including the imbalance latch that only a human
+ *              can clear on the real machine,
+ *            - the param surface: ids 11 and 12 are the charger enables (the
+ *              only thing the panel may write), everything above 118 is refused
+ *              with the same 400 the engineering ESP sends.
+ *
+ *          WHAT IS NOT MODELLED
+ *            Physics. There is no thermal model, no cell chemistry, no wire
+ *            resistance and no timing that matters at a microsecond scale. A
+ *            green simulator run means the panel's logic and screens survived a
+ *            plausible machine; it says nothing about a real one, and the
+ *            module README says so in the simulator's own section.
+ *
+ * @brief   [FA] مدلی از ماشین، برای شبیه‌ساز رومیزی. این فرم‌ور نیست و هرگز روی
+ *               برد اجرا نمی‌شود: کد میزبان است، با کتابخانهٔ استاندارد C++
+ *               نوشته شده، و تنها کارش پاسخ‌دادن به همان پرسش‌هایی است که STM32
+ *               واقعی پاسخ می‌دهد - ولتاژ پک چقدر است، شارژر ۱ در حال شارژ است یا
+ *               تمام کرده، کدام بیت خطا روشن است - تا کد **واقعی** پنل
+ *               (up_link.h، up_state.h، up_http.h و صفحه) پیش از فلش‌کردن هر
+ *               چیزی روی لپ‌تاپ آزمایش شود.
+ *
+ *          چه چیزی مدل شده است
+ *            - پک ۲۴ ولتی از دو نیمهٔ ۱۲ ولتی، که نیمهٔ پایینی پک را دنبال
+ *              می‌کند (هر دو نیمه همان رشته‌اند که وسط اندازه گرفته می‌شود، پس
+ *              نباید خودبه‌خود از هم جدا شوند)،
+ *            - دو کانال شارژر با حالت‌های خود فرم‌ور (خاموش، شارژ، تثبیت،
+ *              کامل، انتظار ورودی)،
+ *            - آمدن و رفتن ورودی برق و تخلیهٔ پک وقتی برق نیست،
+ *            - کلمهٔ خطا، شامل قفل عدم‌توازنی که روی ماشین واقعی فقط آدم
+ *              می‌تواند پاکش کند،
+ *            - سطح پارامترها: شناسه‌های ۱۱ و ۱۲ فعال‌ساز شارژرند (تنها چیزی
+ *              که پنل اجازهٔ نوشتنش را دارد) و هر شناسهٔ بالای ۱۱۸ با همان ۴۰۰
+ *              رد می‌شود که ESP مهندسی می‌فرستد.
+ *
+ *          چه چیزی مدل نشده است
+ *            فیزیک. نه مدل حرارتی هست، نه شیمی سلول، نه مقاومت سیم و نه
+ *            زمان‌بندی‌ای که در مقیاس میکروثانیه مهم باشد. سبز بودن شبیه‌ساز یعنی
+ *            منطق و صفحه‌های پنل یک ماشین محتمل را از سر گذرانده‌اند؛ دربارهٔ
+ *            ماشین واقعی هیچ نمی‌گوید، و README ماژول در بخش خود شبیه‌ساز همین را
+ *            می‌نویسد.
+ */
 
-   [EN] WHAT THIS IS
-        The user panel is a display for a machine it does not own: it reads the
-        engineering panel's /t once a second and writes to /s when the operator
-        cuts or connects a charger. Everything interesting about it therefore
-        happens at the seam between the panel and the board - and this file is
-        the other half of that seam, on a laptop.
+#ifndef SIM_MACHINE_H
+#define SIM_MACHINE_H
 
-        It is NOT a physics simulator. It is a model faithful enough to be
-        useful before a board exists:
-          - the pack charges when the input is present and a charger is enabled,
-            and runs down when it is not,
-          - the two chargers have their own state codes and currents,
-          - the fault mask, the imbalance latch and the 20-cycle budget behave
-            the way the firmware's documentation says they behave,
-          - a battery that physically leaves for three seconds clears the
-            imbalance counters - the ONE mechanism the real board uses to
-            release that latch without a power cycle,
-          - the third jitter trip lands in FINAL_FAULT, which only a board
-            reset clears,
-          - /s answers like the engineering panel's ESP does: it clamps to the
-            id's envelope and ACKs, and it refuses an id it does not know.
-
-   [FA] این چیست
-        پنل کاربر نمایشگر ماشینی است که مالکش نیست: هر ثانیه /t پنل مهندسی را
-        می‌خواند و هنگام قطع/وصل شارژر به /s می‌نویسد. پس هر چیز مهم دربارهٔ
-        آن، درزِ بین پنل و برد اتفاق می‌افتد - و این فایل نیمهٔ دیگر همان درز
-        است، روی یک لپ‌تاپ.
-
-        شبیه‌ساز فیزیک نیست؛ مدلی است به‌قدر کافی وفادار تا پیش از وجود برد
-        به‌کار بیاید: شارژ و دشارژ پک، حالت و جریان دو شارژر، ماسک خطا، قفل
-        عدم‌توازن و بودجهٔ ۲۰ سیکل، پاک‌شدن خودکار با جدا شدن فیزیکی باتری
-        (تنها راه آزادکردن قفل بدون خاموش‌روشن)، سقوط سومین جهش در
-        FINAL_FAULT که فقط ری‌استارت برد پاکش می‌کند، و /s که مثل ESP پنل
-        مهندسی گیره می‌زند، تأیید می‌دهد و شناسهٔ ناشناس را رد می‌کند.
-
-   This is host code: it may use std::string freely. The no-allocation rule
-   belongs to the sketch, not to the tool that pretends to be the board.
-   این کد میزبان است و می‌تواند آزادانه از std::string استفاده کند؛ قانون
-   «بدون تخصیص پویا» مال اسکچ است، نه ابزاری که نقش برد را بازی می‌کند.
-*/
-#ifndef UP_SIM_MACHINE_H
-#define UP_SIM_MACHINE_H
-
-#include <cstdint>
+#include <string>
 #include <cstdio>
 #include <cstring>
-#include <string>
 
-/* ==================== Model constants / ثابت‌های مدل ==================== */
-#define SIM_TICK_MS              200u     /* [EN] physics step / [FA] گام فیزیک */
-#define SIM_VIN_MV               24000u    /* [EN] nominal 24 V input / [FA] ورودی اسمی */
-#define SIM_SRC_MV               26400u    /* [EN] charger source / [FA] منبع شارژر */
-#define SIM_FULL_MV              29200u    /* [EN] "full" threshold / [FA] آستانهٔ پر */
-#define SIM_ABSORB_MV            28600u    /* [EN] absorb threshold / [FA] آستانهٔ جذبی */
-#define SIM_EMPTY_MV             20000u    /* [EN] low-battery threshold / [FA] آستانهٔ باتری ضعیف */
-#define SIM_LOAD_MA              400u      /* [EN] house load on the pack / [FA] مصرف داخلی */
-#define SIM_CC_MA                1500u     /* [EN] bulk current / [FA] جریان شارژ اصلی */
-#define SIM_ABSORB_MA            400u
-#define SIM_FLOAT_MA             60u
-#define SIM_PACK_MV_PER_MA_S     1440u     /* [EN] 1 mV per 1.44 A·s / [FA] ۱ mV به ازای هر ۱٫۴۴ آمپرسانیه */
-#define SIM_IMB_LIMIT_MV         300u      /* [EN] the panel's warning line / [FA] خط هشدار پنل */
-#define SIM_LATCH_CYCLES         20u       /* [EN] budget before charging blocks / [FA] بودجهٔ قفل */
-#define SIM_ABSENT_RESET_MS      3000u     /* [EN] battery-swap qualifier / [FA] مهلت تشخیص تعویض باتری */
-#define SIM_EPISODE_HOLD_MS      2000u     /* [EN] how long an imbalance must last / [FA] دوام لازم عدم‌توازن */
-#define SIM_RIPPLE_MV            120u      /* [EN] measurement wobble / [FA] لرزش اندازه‌گیری */
+/* [EN] Fault bits, the same layout the host panel reports in `fl`. / [FA] بیت‌های خطا، همان چیدمانی که پنل میزبان در `fl` می‌فرستد. */
+#define SIM_FAULT_ADC         (1u << 0)
+#define SIM_FAULT_OC1         (1u << 1)
+#define SIM_FAULT_OC2         (1u << 2)
+#define SIM_FAULT_LOWBAT      (1u << 3)
+#define SIM_FAULT_JIT1        (1u << 4)
+#define SIM_FAULT_JIT2        (1u << 5)
+#define SIM_FAULT_CHG_LOST    (1u << 6)
 
-/* ==================== The model / مدل ==================== */
+/* [EN] Charger states, as the firmware numbers them (spec 6). / [FA] حالت‌های شارژر با شمارهٔ خود فرم‌ور. */
+#define SIM_ST_OFF            0u
+#define SIM_ST_BULK           1u
+#define SIM_ST_ABSORB         2u
+#define SIM_ST_FULL           3u
+#define SIM_ST_WAIT_INPUT     6u
+#define SIM_ST_FINAL_FAULT    7u
+
+/* [EN] Voltages in millivolts. One 12 V half of a healthy 24 V pack is about
+   13.6 V; the model keeps both halves moving together unless an imbalance is
+   injected on purpose. / [FA] ولتاژها به میلی‌ولت. یک نیمهٔ ۱۲ ولتی سالم حدود
+   ۱۳.۶ ولت است؛ مدل هر دو نیمه را با هم حرکت می‌دهد مگر اینکه عدم‌توازن عمداً
+   تزریق شود. */
+#define SIM_HALF_EMPTY_MV     21800u
+#define SIM_PACK_FULL_MV      28800u
+#define SIM_INPUT_MV          24000u
+#define SIM_BULK_MA           3000u
+#define SIM_ABSORB_MA         1400u
+#define SIM_FLOAT_MA          250u
+
+/**
+ * [EN] The whole machine as one structure. Every field is a number the real
+ *      board would report; the `cmd` fields are what a human does to it (press
+ *      a button on the simulator's control page), which is how the states a
+ *      machine only reaches after hours are reached in seconds.
+ * [FA] کل ماشین در یک ساختار. هر فیلد عددی است که برد واقعی گزارش می‌کرد؛
+ *      فیلدهای `cmd` همان کاری است که آدم با ماشین می‌کند (زدن دکمه در صفحهٔ
+ *      کنترل شبیه‌ساز)، و همین‌طور حالت‌هایی که ماشین فقط بعد از ساعت‌ها به آن‌ها
+ *      می‌رسد در چند ثانیه گرفته می‌شوند.
+ */
 typedef struct
 {
-    uint8_t  uint8_t__inputPresent;   /* [EN] 24 V input present / [FA] ورودی وصل */
-    uint8_t  uint8_t__ch1Enabled;     /* [EN] id 11 / [FA] شناسهٔ ۱۱ */
-    uint8_t  uint8_t__ch2Enabled;     /* [EN] id 12 / [FA] شناسهٔ ۱۲ */
-    uint8_t  uint8_t__manualMode;     /* [EN] id 19 / [FA] شناسهٔ ۱۹ */
-    uint8_t  uint8_t__batteryAbsent;  /* [EN] the pack is physically out / [FA] باتری جدا شده */
-    uint8_t  uint8_t__imbLatched;     /* [EN] fl2 bit 1 / [FA] بیت ۱ fl2 */
-    uint8_t  uint8_t__imbBlocked;     /* [EN] fl2 bit 2 / [FA] بیت ۲ fl2 */
-    uint8_t  uint8_t__linkUp;         /* [EN] the network switch / [FA] کلید شبکه */
-    uint8_t  uint8_t__faultMask;      /* [EN] low 7 bits / [FA] هفت بیت پایین */
-    uint16_t uint16_t__seq;           /* [EN] frame counter / [FA] شمارندهٔ فریم */
-    uint16_t uint16_t__duty1;
-    uint16_t uint16_t__duty2;
-    uint16_t uint16_t__i1Ma;
-    uint16_t uint16_t__i2Ma;
-    uint16_t uint16_t__st1;           /* [EN] UP_ST_* / [FA] کد حالت */
-    uint16_t uint16_t__st2;
-    uint16_t uint16_t__vinMv;
-    uint16_t uint16_t__v24Mv;
-    uint16_t uint16_t__v12Mv;
-    uint16_t uint16_t__vlowMv;
-    uint16_t uint16_t__vhighMv;
-    uint16_t uint16_t__paramA[128];   /* [EN] last written params / [FA] آخرین پارامترها */
-    uint8_t  uint8_t__paramKnown[128];
-    uint16_t uint16_t__imbOffsetMv;   /* [EN] injected half difference / [FA] اختلاف تزریق‌شدهٔ دو نیمه */
-    uint8_t  uint8_t__wasCharging;    /* [EN] previous charging state / [FA] حالت شارژ پیشین */
-    uint32_t uint32_t__imbMv;
-    uint32_t uint32_t__imbEvents;
-    uint32_t uint32_t__imbCycles;
-    uint32_t uint32_t__imbSinceMs;
-    uint32_t uint32_t__absentSinceMs;
-    uint32_t uint32_t__boots;
-    uint32_t uint32_t__boards;        /* [EN] board resets / [FA] ری‌استارت برد */
-    uint32_t uint32_t__jitterTrips;
-    uint32_t uint32_t__nowMs;
-    uint32_t uint32_t__chargeStartMs; /* [EN] for the charge-session demo / [FA] برای سیکل شارژ */
+    uint32_t uint32_t__vinMv;        /* [EN] mains input / [FA] ورودی برق    */
+    uint32_t uint32_t__v24Mv;        /* [EN] whole pack / [FA] کل پک          */
+    uint32_t uint32_t__v12Mv;        /* [EN] lower half / [FA] نیمهٔ پایینی   */
+    uint32_t uint32_t__imbOffsetMv;  /* [EN] injected imbalance / [FA] عدم‌توازن تزریقی */
+    uint32_t uint32_t__i1Ma;
+    uint32_t uint32_t__i2Ma;
+    uint32_t uint32_t__duty1;
+    uint32_t uint32_t__duty2;
+    uint32_t uint32_t__st1;
+    uint32_t uint32_t__st2;
+    uint32_t uint32_t__flags;
+    uint32_t uint32_t__flags2;
+    uint32_t uint32_t__seq;
+    uint32_t uint32_t__frames;
+    uint32_t uint32_t__chargeCount;  /* [EN] completed charges / [FA] شارژهای کامل‌شده */
+    uint32_t uint32_t__jitterCount;  /* [EN] the board counts restarts itself / [FA] شمارندهٔ ری‌استارت‌ها */
+    uint32_t uint32_t__crcErrors;
+    uint32_t uint32_t__ageMs;
+    uint8_t  uint8_t__manual;
+    uint8_t  uint8_t__chg1Enable;
+    uint8_t  uint8_t__chg2Enable;
+    uint8_t  uint8_t__latched;       /* [EN] imbalance latch / [FA] قفل عدم‌توازن */
+    uint8_t  uint8_t__imbSessions;   /* [EN] charge sessions while latched / [FA] سیکل‌های شارژ در حال قفل */
+    uint8_t  uint8_t__imbCleared;    /* [EN] freed by the 3 s rule / [FA] با قاعدهٔ ۳ ثانیه آزاد شد */
+    uint8_t  uint8_t__blocked;       /* [EN] charging blocked by the latch / [FA] شارژ مسدودشده با قفل */
+    uint8_t  uint8_t__wasCharging;   /* [EN] last tick's charging state / [FA] حالت شارژ تیک قبل */
+    uint32_t uint32_t__tickMs;
 } up_sim_t;
 
-static up_sim_t UP_SIM_T__G__Sim;
+static up_sim_t UP_SIM_T__G__Plant;
 
-/* ==================== Reset / بازنشانی ==================== */
+/* [EN] 3000 ms of "the battery wire is off" is how the real machine frees the
+   imbalance latch; the simulator keeps the same number so a tester can watch it
+   happen in three seconds instead of reading about it. */
+#define SIM_LATCH_RELEASE_MS  3000u
+/* [EN] A third jitter event is the firmware's FINAL_FAULT: no more charging
+   until a human power-cycles the board. The simulator counts them so the
+   panel's reset guide has something real to point at. */
+#define SIM_JITTER_LIMIT      3u
+/* [EN] After this many restarts of charging on a machine that is still
+   unbalanced, the firmware blocks charging altogether; the count and the block
+   bit are what the panel's diagnostics page explains to the owner. */
+#define SIM_IMB_BLOCK_SESSIONS 2u
+
+/* ==================== Life / چرخهٔ ماشین ==================== */
 /**
- * @brief  [EN] Put the model in the state a machine has on a bench: input
- *              present, both chargers enabled by the board, a half-full pack,
- *              no faults, no latched imbalance. It is also what "reset the
- *              simulator" does, and it is deliberately NOT the same as
- *              func__UpSim_BoardReset() - that one models a power cycle on the
- *              STM32 side, this one models a fresh machine.
- *         [FA] مدل را در حالتی می‌گذارد که یک دستگاه روی میز آزمایش دارد.
- *              عمداً با func__UpSim_BoardReset() یکی نیست: آن یکی خاموش‌روشن سمت
- *              STM32 را مدل می‌کند و این یکی یک دستگاه تازه.
+ * @brief  [EN] Put the machine on the bench: mains present, pack half charged,
+ *              both chargers enabled, no faults. This is the state a person
+ *              would find a working machine in, so it is where the simulator
+ *              starts.
+ *         [FA] گذاشتن ماشین روی میز: برق هست، پک نیمه‌شارژ، هر دو شارژر فعال و
+ *              بی‌خطا. این همان حالتی است که آدم یک ماشین سالم را در آن پیدا
+ *              می‌کند، پس شبیه‌ساز هم از همان‌جا شروع می‌کند.
  * @return [EN] None / [FA] ندارد
  */
-static void func__UpSim_Reset(void)
+static void func__UpSim_Begin(void)
 {
-    memset(&UP_SIM_T__G__Sim, 0, sizeof(UP_SIM_T__G__Sim));
+    memset(&UP_SIM_T__G__Plant, 0, sizeof(UP_SIM_T__G__Plant));
 
-    UP_SIM_T__G__Sim.uint8_t__inputPresent = 1u;
-    UP_SIM_T__G__Sim.uint8_t__ch1Enabled = 1u;
-    UP_SIM_T__G__Sim.uint8_t__ch2Enabled = 1u;
-    UP_SIM_T__G__Sim.uint8_t__linkUp = 1u;
-    UP_SIM_T__G__Sim.uint16_t__vinMv = SIM_VIN_MV;
-    UP_SIM_T__G__Sim.uint16_t__v24Mv = 24500u;
-    UP_SIM_T__G__Sim.uint16_t__v12Mv = 12200u;
-    UP_SIM_T__G__Sim.uint16_t__vhighMv = 12300u;
-    UP_SIM_T__G__Sim.uint16_t__vlowMv = 12200u;
-    UP_SIM_T__G__Sim.uint16_t__st1 = 1u;
-    UP_SIM_T__G__Sim.uint16_t__st2 = 3u;
-    UP_SIM_T__G__Sim.uint8_t__paramKnown[11u] = 1u;
-    UP_SIM_T__G__Sim.uint16_t__paramA[11u] = 1u;
-    UP_SIM_T__G__Sim.uint8_t__paramKnown[12u] = 1u;
-    UP_SIM_T__G__Sim.uint16_t__paramA[12u] = 1u;
-}
-
-/* ==================== Small helpers / کمکی‌های کوچک ==================== */
-/**
- * @brief  [EN] Move a value towards a target by at most one step - the whole of
- *              "physics" this model needs, written once instead of three times.
- *         [FA] حرکت یک مقدار به‌سوی هدف، حداکثر یک پله - تمام «فیزیک»ی که این
- *              مدل لازم دارد، یک‌بار نوشته‌شده و نه سه‌بار.
- */
-static uint16_t func__UpSim_Approach(uint16_t uint16_t__now, uint16_t uint16_t__target, uint16_t uint16_t__step)
-{
-    if (uint16_t__now < uint16_t__target)
-    {
-        uint16_t uint16_t__next = (uint16_t)(uint16_t__now + uint16_t__step);
-        return (uint16_t__next > uint16_t__target) ? uint16_t__target : uint16_t__next;
-    }
-    uint16_t uint16_t__next = (uint16_t)((uint16_t__now > uint16_t__step) ? (uint16_t__now - uint16_t__step) : 0u);
-    return (uint16_t__next < uint16_t__target) ? uint16_t__target : uint16_t__next;
-}
-
-/* ==================== Faults / خطاها ==================== */
-/**
- * @brief  [EN] Set or clear one fault bit the way the board reports it. The
- *              model keeps them independent on purpose: on the bench an
- *              injector sets exactly one bit and the panel must react to that
- *              bit alone.
- *         [FA] نشاندن یا پاک‌کردن یک بیت خطا. مدل عمداً مستقل نگهشان می‌دارد:
- *              روی میز، تزریق‌کننده دقیقاً یک بیت می‌نشاند و پنل باید به همان
- *              یک بیت واکنش بدهد.
- */
-static void func__UpSim_FaultSet(uint8_t uint8_t__bit, uint8_t uint8_t__on)
-{
-    uint8_t uint8_t__mask = (uint8_t)(1u << uint8_t__bit);
-
-    if (uint8_t__on != 0u) { UP_SIM_T__G__Sim.uint8_t__faultMask = (uint8_t)(UP_SIM_T__G__Sim.uint8_t__faultMask | uint8_t__mask); }
-    else                   { UP_SIM_T__G__Sim.uint8_t__faultMask = (uint8_t)(UP_SIM_T__G__Sim.uint8_t__faultMask & (uint8_t)~uint8_t__mask); }
+    UP_SIM_T__G__Plant.uint32_t__vinMv = SIM_INPUT_MV;
+    UP_SIM_T__G__Plant.uint32_t__v24Mv = 26400u;
+    UP_SIM_T__G__Plant.uint32_t__v12Mv = 13200u;
+    UP_SIM_T__G__Plant.uint8_t__chg1Enable = 1u;
+    UP_SIM_T__G__Plant.uint8_t__chg2Enable = 1u;
+    UP_SIM_T__G__Plant.uint32_t__st1 = SIM_ST_BULK;
+    UP_SIM_T__G__Plant.uint32_t__st2 = SIM_ST_BULK;
+    UP_SIM_T__G__Plant.uint32_t__seq = 1000u;
 }
 
 /**
- * @brief  [EN] One more jitter trip. The firmware's rule, modelled: the first
- *              two trips raise JITTER_1 and JITTER_2, the third puts the
- *              channel into FINAL_FAULT - and FINAL_FAULT is not released by
- *              any command, only by a board reset, which is why the panel tells
- *              the operator to power-cycle the board instead of pretending it
- *              has a "clear" button.
- *         [FA] یک بار دیگر جهش. قاعدهٔ فرم‌ور، مدل‌شده: دو بار اول JITTER_1 و
- *              JITTER_2، بار سوم کانال را به FINAL_FAULT می‌برد - و
- *              FINAL_FAULT با هیچ فرمانی آزاد نمی‌شود، فقط با ری‌استارت برد؛
- *              همین است که پنل به اپراتور می‌گوید برد را خاموش‌روشن کند و
- *              ادعا نمی‌کند دکمهٔ «پاک‌کردن» دارد.
+ * @brief  [EN] Which charger channel is actually pushing current: enabled, mains
+ *              present and not already full. Both channels charge the same pack,
+ *              which is why the pack is what the user sees and not each channel
+ *              separately.
+ *         [FA] کدام کانال شارژر واقعاً جریان می‌دهد: فعال، برق موجود و هنوز
+ *              کامل نشده. هر دو کانال یک پک را شارژ می‌کنند، و همین دلیل دیدن پک
+ *              است و نه هر کانال به‌تنهایی.
+ * @param  uint8_t uint8_t__ch [EN] 1 or 2 / [FA] ۱ یا ۲
  * @return [EN] None / [FA] ندارد
  */
-static void func__UpSim_JitterTrip(void)
+static void func__UpSim_ChannelStep(uint8_t uint8_t__ch)
 {
-    up_sim_t *up_sim_t__sim = &UP_SIM_T__G__Sim;
+    up_sim_t *up_sim_t__p = &UP_SIM_T__G__Plant;
+    uint8_t uint8_t__enabled = (uint8_t__ch == 1u) ? up_sim_t__p->uint8_t__chg1Enable : up_sim_t__p->uint8_t__chg2Enable;
+    bool bool__finalFault = ((up_sim_t__p->uint32_t__flags2 & 0x01u) != 0u);
+    uint32_t *uint32_t__st = (uint8_t__ch == 1u) ? &up_sim_t__p->uint32_t__st1 : &up_sim_t__p->uint32_t__st2;
+    uint32_t *uint32_t__duty = (uint8_t__ch == 1u) ? &up_sim_t__p->uint32_t__duty1 : &up_sim_t__p->uint32_t__duty2;
 
-    up_sim_t__sim->uint32_t__jitterTrips++;
-    if (up_sim_t__sim->uint32_t__jitterTrips == 1u)
+    if (bool__finalFault)
     {
-        func__UpSim_FaultSet(4u, 1u);   /* UP_FAULT_JITTER_1 */
+        *uint32_t__st = SIM_ST_FINAL_FAULT;
+        *uint32_t__duty = 0u;
+        return;
     }
-    else if (up_sim_t__sim->uint32_t__jitterTrips == 2u)
+    if (up_sim_t__p->uint8_t__blocked != 0u)
     {
-        func__UpSim_FaultSet(5u, 1u);   /* UP_FAULT_JITTER_2 */
+        /* [EN] The firmware stops charging while the imbalance latch is
+                blocking; that is exactly the state the panel's diagnostics page
+                tells a human how to end.
+           [FA] فرم‌ور تا وقتی قفل عدم‌توازن مانع است شارژ را متوقف می‌کند؛ همان
+                حالتی که صفحهٔ دیاگ پنل به آدم می‌گوید چطور تمامش کند. */
+        *uint32_t__st = SIM_ST_OFF;
+        *uint32_t__duty = 0u;
+        return;
+    }
+    if (uint8_t__enabled == 0u)
+    {
+        *uint32_t__st = SIM_ST_OFF;
+        *uint32_t__duty = 0u;
+        return;
+    }
+    if (up_sim_t__p->uint32_t__vinMv == 0u)
+    {
+        *uint32_t__st = SIM_ST_WAIT_INPUT;
+        *uint32_t__duty = 0u;
+        return;
+    }
+
+    if (up_sim_t__p->uint32_t__v24Mv >= SIM_PACK_FULL_MV)
+    {
+        *uint32_t__st = SIM_ST_FULL;
+        *uint32_t__duty = 120u;                     /* [EN] a light top-up / [FA] سرکشی سبک */
+    }
+    else if (up_sim_t__p->uint32_t__v24Mv > (SIM_PACK_FULL_MV - 900u))
+    {
+        *uint32_t__st = SIM_ST_ABSORB;
+        *uint32_t__duty = 700u;
     }
     else
     {
-        func__UpSim_FaultSet(4u, 1u);
-        func__UpSim_FaultSet(5u, 1u);
-        up_sim_t__sim->uint16_t__st1 = 7u;   /* UP_ST_FINAL_FAULT */
-        up_sim_t__sim->uint16_t__st2 = 7u;
+        *uint32_t__st = SIM_ST_BULK;
+        *uint32_t__duty = 1000u;
     }
 }
 
 /**
- * @brief  [EN] A power cycle on the board: the only thing that releases a
- *              FINAL_FAULT. Counters survive (they live in the battery's
- *              memory, not the board's), which is exactly why the panel's
- *              diagnostics page says what it says.
- *         [FA] خاموش‌روشن برد: تنها چیزی که FINAL_FAULT را آزاد می‌کند.
- *              شمارنده‌ها می‌مانند (حافظهٔ باتری‌اند نه برد)، و دقیقاً همین است
- *              که صفحهٔ دیاگ پنل همان حرف را می‌زند.
- */
-static void func__UpSim_BoardReset(void)
-{
-    up_sim_t *up_sim_t__sim = &UP_SIM_T__G__Sim;
-
-    up_sim_t__sim->uint8_t__faultMask = 0u;
-    up_sim_t__sim->uint16_t__st1 = 1u;
-    up_sim_t__sim->uint16_t__st2 = 1u;
-    up_sim_t__sim->uint32_t__jitterTrips = 0u;
-    up_sim_t__sim->uint32_t__boards++;
-}
-
-/**
- * @brief  [EN] A real battery swap: the pack leaves for longer than the
- *              three-second qualifier, so the imbalance counters and the latch
- *              clear themselves - the board's own rule. The panel never sends
- *              id 202 to do this (the engineering ESP refuses ids past 118), and
- *              this function is how a simulator tells that story.
- *         [FA] تعویض واقعی باتری: پک بیشتر از مهلت سه‌ثانیه‌ای جدا می‌ماند، پس
- *              شمارنده‌های عدم‌توازن و قفل خودشان پاک می‌شوند - قاعدهٔ خود برد.
- *              پنل هرگز شناسهٔ ۲۰۲ را برای این کار نمی‌فرستد (ESP مهندسی
- *              شناسه‌های بالای ۱۱۸ را رد می‌کند) و این تابع راهی است که شبیه‌ساز
- *              این داستان را تعریف می‌کند.
- */
-static void func__UpSim_BatterySwap(void)
-{
-    up_sim_t *up_sim_t__sim = &UP_SIM_T__G__Sim;
-
-    up_sim_t__sim->uint8_t__imbLatched = 0u;
-    up_sim_t__sim->uint8_t__imbBlocked = 0u;
-    up_sim_t__sim->uint32_t__imbMv = 0u;
-    up_sim_t__sim->uint32_t__imbEvents = 0u;
-    up_sim_t__sim->uint32_t__imbCycles = 0u;
-    up_sim_t__sim->uint32_t__imbSinceMs = 0u;
-    up_sim_t__sim->uint16_t__imbOffsetMv = 0u;
-    up_sim_t__sim->uint8_t__wasCharging = 0u;
-    up_sim_t__sim->uint16_t__vlowMv = up_sim_t__sim->uint16_t__v12Mv;
-    up_sim_t__sim->uint16_t__vhighMv = (uint16_t)(up_sim_t__sim->uint16_t__v24Mv - up_sim_t__sim->uint16_t__v12Mv);
-}
-
-/**
- * @brief  [EN] Start an imbalance episode: make the two halves disagree by more
- *              than the panel's line and keep them there long enough to be
- *              noticed. The model does not decide what "long enough" means
- *              beyond the documented hold time - the point of the simulator is
- *              to drive the PANEL, not to be a second opinion about the pack.
- *         [FA] شروع یک رخداد عدم‌توازن: دو نیمه را بیشتر از خط پنل از هم دور
- *              کن و به‌قدر دوام مستندشده نگه دار. مدل بیش از آن زمان مستند،
- *              تصمیم نمی‌گیرد: هدف شبیه‌ساز به‌کار انداختن پنل است، نه نظر دوم
- *              دربارهٔ باتری.
- */
-static void func__UpSim_ImbalanceEpisode(void)
-{
-    up_sim_t *up_sim_t__sim = &UP_SIM_T__G__Sim;
-
-    /* [EN] The offset is what the tick keeps re-applying; without it the two
-       halves would be pulled back together on the very next step and the
-       episode would last one tick.
-       [FA] همان اختلافی است که تیک مدام دوباره اعمالش می‌کند؛ بی آن، دو نیمه
-       در همان گام بعدی به هم کشیده می‌شوند و رخداد یک تیک طول می‌کشد. */
-    up_sim_t__sim->uint16_t__imbOffsetMv = SIM_IMB_LIMIT_MV + 220u;
-    up_sim_t__sim->uint16_t__vlowMv = up_sim_t__sim->uint16_t__v12Mv;
-    up_sim_t__sim->uint16_t__vhighMv = (uint16_t)(up_sim_t__sim->uint16_t__v12Mv + up_sim_t__sim->uint16_t__imbOffsetMv);
-    up_sim_t__sim->uint32_t__imbMv = SIM_IMB_LIMIT_MV + 220u;
-    up_sim_t__sim->uint32_t__imbEvents++;
-    up_sim_t__sim->uint32_t__imbSinceMs = 0u;
-}
-
-/* ==================== Physics / فیزیک ==================== */
-/**
- * @brief  [EN] Advance the machine by one physics step and refresh everything
- *              the telemetry frame carries. Charging is blocked by a FINAL_FAULT
- *              on the channel - which is what makes the simulator useful: the
- *              panel's own screens then show a charger that will not come back
- *              until the board is power-cycled.
- *         [FA] یک گام فیزیک جلو و تازه‌سازی هر چیزی که فریم تلمتری می‌برد.
- *              شارژ با FINAL_FAULT روی کانال مسدود است - و همین شبیه‌ساز را
- *              سودمند می‌کند: صفحه‌های پنل شارژری را نشان می‌دهند که تا
- *              خاموش‌روشن‌کردن برد برنمی‌گردد.
- * @param  uint32_t__nowMs [EN] virtual milliseconds / [FA] میلی‌ثانیهٔ مجازی
+ * @brief  [EN] One tick of the machine: mains or battery, charging or
+ *              discharging, and the numbers that follow from that. Called every
+ *              `SIM_TICK_MS` of virtual time, so fast-forwarding the clock
+ *              fast-forwards the machine with it.
+ *         [FA] یک تیک ماشین: برق یا باتری، شارژ یا تخلیه، و اعدادي که از آن
+ *              نتیجه می‌شود. هر `SIM_TICK_MS` زمان مجازی صدا زده می‌شود، پس
+ *              جلو بردن سریع ساعت، ماشین را هم با خودش جلو می‌برد.
+ * @param  uint32_t uint32_t__elapsedMs [EN] virtual ms since the last tick / [FA] میلی‌ثانیهٔ مجازی از تیک قبل
  * @return [EN] None / [FA] ندارد
  */
-static void func__UpSim_Tick(uint32_t uint32_t__nowMs)
+static void func__UpSim_Tick(uint32_t uint32_t__elapsedMs)
 {
-    up_sim_t *up_sim_t__sim = &UP_SIM_T__G__Sim;
-    uint32_t uint32_t__stepMs = uint32_t__nowMs - up_sim_t__sim->uint32_t__nowMs;
+    up_sim_t *up_sim_t__p = &UP_SIM_T__G__Plant;
+    uint32_t uint32_t__mvGained;
+    uint32_t uint32_t__mvLost = 0u;
 
-    if (uint32_t__stepMs == 0u) { return; }
-    up_sim_t__sim->uint32_t__nowMs = uint32_t__nowMs;
-    if (uint32_t__stepMs > 4u * SIM_TICK_MS) { uint32_t__stepMs = 4u * SIM_TICK_MS; }
-    up_sim_t__sim->uint16_t__seq++;
+    up_sim_t__p->uint32_t__tickMs += uint32_t__elapsedMs;
+    func__UpSim_ChannelStep(1u);
+    func__UpSim_ChannelStep(2u);
 
-    /* [EN] Input and pack voltage. */
-    uint16_t uint16_t__vinTarget = (up_sim_t__sim->uint8_t__inputPresent != 0u) ? (uint16_t)SIM_VIN_MV : 0u;
-    up_sim_t__sim->uint16_t__vinMv = func__UpSim_Approach(up_sim_t__sim->uint16_t__vinMv, uint16_t__vinTarget, 900u);
+    /* [EN] Currents follow the states; both channels push into the SAME pack, so
+            the pack rises with their sum and not twice as fast as one of them.
+       [FA] جریان‌ها از حالت‌ها می‌آیند؛ هر دو کانال به یک پک فشار می‌آورند، پس پک
+            با مجموعشان بالا می‌رود و نه دو برابر یکی. */
+    up_sim_t__p->uint32_t__i1Ma = (up_sim_t__p->uint32_t__st1 == SIM_ST_BULK) ? SIM_BULK_MA
+                                : (up_sim_t__p->uint32_t__st1 == SIM_ST_ABSORB) ? SIM_ABSORB_MA
+                                : (up_sim_t__p->uint32_t__st1 == SIM_ST_FULL) ? SIM_FLOAT_MA : 0u;
+    up_sim_t__p->uint32_t__i2Ma = (up_sim_t__p->uint32_t__st2 == SIM_ST_BULK) ? SIM_BULK_MA
+                                : (up_sim_t__p->uint32_t__st2 == SIM_ST_ABSORB) ? SIM_ABSORB_MA
+                                : (up_sim_t__p->uint32_t__st2 == SIM_ST_FULL) ? SIM_FLOAT_MA : 0u;
 
-    uint16_t uint16_t__packRise = (uint16_t)((SIM_CC_MA * uint32_t__stepMs) / SIM_PACK_MV_PER_MA_S);
-    uint16_t uint16_t__packFall = (uint16_t)((SIM_LOAD_MA * uint32_t__stepMs) / SIM_PACK_MV_PER_MA_S);
+    /* [EN] 3000 mA into a 24 V pack for one minute is about 25 mV per second at
+            this model's scale - slow enough that a human can watch it, fast
+            enough that fast-forward finishes a charge.
+       [FA] ۳۰۰۰ میلی‌آمپر در پک ۲۴ ولتی، در این مقیاس حدود ۲۵ میلی‌ولت بر ثانیه
+            است - به‌قدری کند که آدم ببیندش و به‌قدری سریع که جلو بردن سریع،
+            یک شارژ را تمام کند. */
+    uint32_t__mvGained = ((up_sim_t__p->uint32_t__i1Ma + up_sim_t__p->uint32_t__i2Ma) * uint32_t__elapsedMs) / 40000u;
 
-    if (up_sim_t__sim->uint8_t__batteryAbsent != 0u)
+    if ((up_sim_t__p->uint32_t__vinMv == 0u) && (up_sim_t__p->uint32_t__v24Mv > SIM_HALF_EMPTY_MV * 2u))
     {
-        up_sim_t__sim->uint16_t__v24Mv = func__UpSim_Approach(up_sim_t__sim->uint16_t__v24Mv, 0u, 4000u);
-        up_sim_t__sim->uint16_t__v12Mv = func__UpSim_Approach(up_sim_t__sim->uint16_t__v12Mv, 0u, 4000u);
-        up_sim_t__sim->uint16_t__i1Ma = 0u;
-        up_sim_t__sim->uint16_t__i2Ma = 0u;
-        up_sim_t__sim->uint16_t__st1 = 0u;
-        up_sim_t__sim->uint16_t__st2 = 0u;
-        func__UpSim_FaultSet(6u, 1u);   /* UP_FAULT_BAT_LOST */
+        uint32_t__mvLost = (uint32_t__elapsedMs * 8u) / 1000u;
     }
-    else
-    {
-        bool bool__can1 = (up_sim_t__sim->uint8_t__inputPresent != 0u) && (up_sim_t__sim->uint8_t__ch1Enabled != 0u) &&
-                          (up_sim_t__sim->uint16_t__st1 != 7u) && (up_sim_t__sim->uint8_t__imbBlocked == 0u);
-        bool bool__can2 = (up_sim_t__sim->uint8_t__inputPresent != 0u) && (up_sim_t__sim->uint8_t__ch2Enabled != 0u) &&
-                          (up_sim_t__sim->uint16_t__st2 != 7u) && (up_sim_t__sim->uint8_t__imbBlocked == 0u);
 
-        if (up_sim_t__sim->uint16_t__st1 != 7u)
+    if (uint32_t__mvGained > 0u)
+    {
+        uint32_t uint32_t__room = (SIM_PACK_FULL_MV > up_sim_t__p->uint32_t__v24Mv)
+                                ? (SIM_PACK_FULL_MV - up_sim_t__p->uint32_t__v24Mv) : 0u;
+
+        up_sim_t__p->uint32_t__v24Mv += (uint32_t__mvGained < uint32_t__room) ? uint32_t__mvGained : uint32_t__room;
+    }
+    if (uint32_t__mvLost > 0u)
+    {
+        up_sim_t__p->uint32_t__v24Mv -= (uint32_t__mvLost < (up_sim_t__p->uint32_t__v24Mv - SIM_HALF_EMPTY_MV))
+                                      ? uint32_t__mvLost : 0u;
+    }
+
+    /* [EN] The lower half is the pack measured mid-way: it follows, it does not
+            lead. Any imbalance is an offset ON TOP of that, which is what the
+            real wiring does when one half is weaker than the other.
+       [FA] نیمهٔ پایینی همان پک است که وسط اندازه گرفته شده: دنبال می‌کند و
+            پیش نمی‌افتد. عدم‌توازن یک آفست روی همان است، و سیم‌کشی واقعی وقتی یک
+            نیمه ضعیف‌تر باشد همین کار را می‌کند. */
+    up_sim_t__p->uint32_t__v12Mv = (up_sim_t__p->uint32_t__v24Mv / 2u) + (up_sim_t__p->uint32_t__imbOffsetMv / 2u);
+
+    /* [EN] The latch: the firmware latches the imbalance warning and keeps it
+            until the battery has been off for three seconds or somebody powers
+            the board down. `imbCleared` is only ever set by that rule, which is
+            the point of modelling it at all - the panel's text tells a human
+            what will free it, and here it actually does.
+       [FA] قفل: فرم‌ور هشدار عدم‌توازن را قفل می‌کند و تا وقتی باتری سه ثانیه جدا
+            نماند یا کسی برد را خاموش نکند باز نمی‌شود. `imbCleared` فقط با همان
+            قاعده ست می‌شود، و همین دلیل مدل‌کردنش است - متن پنل به آدم می‌گوید چه
+            چیزی آزادش می‌کند، و اینجا واقعاً همان می‌کند. */
+    if (up_sim_t__p->uint32_t__imbOffsetMv >= 300u)
+    {
+        up_sim_t__p->uint8_t__latched = 1u;
+        up_sim_t__p->uint8_t__imbCleared = 0u;
+    }
+    else if (up_sim_t__p->uint8_t__latched != 0u)
+    {
+        up_sim_t__p->uint32_t__ageMs += uint32_t__elapsedMs;   /* [EN] battery-off clock / [FA] ساعت باتری‌جدا */
+        if (up_sim_t__p->uint32_t__ageMs >= SIM_LATCH_RELEASE_MS)
         {
-            if (bool__can1)
+            up_sim_t__p->uint8_t__latched = 0u;
+            up_sim_t__p->uint8_t__imbCleared = 1u;
+            up_sim_t__p->uint8_t__blocked = 0u;
+            up_sim_t__p->uint8_t__imbSessions = 0u;
+            up_sim_t__p->uint32_t__ageMs = 0u;
+        }
+    }
+
+    /* [EN] The two latch bits the panel's page reads out of `fl2`: latched while
+            the imbalance is there, blocked once charging has been restarted
+            often enough on a machine that never got its halves balanced. And
+            like the real firmware, a human ends it - the three-second rule
+            above, or a power cycle - never a command from the panel.
+       [FA] همان دو بیت قفلی که صفحهٔ پنل از `fl2` می‌خواند: تا وقتی عدم‌توازن
+            هست قفل، و وقتی شارژ به‌قدر کافی روی ماشینی که نیمه‌هایش هرگز
+            متوازن نشده دوباره شروع شده باشد مسدود. و مثل فرم‌ور واقعی، آدم
+            تمامش می‌کند - قاعدهٔ سه ثانیهٔ بالا یا خاموش‌روشن برد - و هرگز
+            فرمانی از پنل. */
+    {
+        uint8_t uint8_t__charging = ((up_sim_t__p->uint32_t__st1 == SIM_ST_BULK) ||
+                                     (up_sim_t__p->uint32_t__st1 == SIM_ST_ABSORB) ||
+                                     (up_sim_t__p->uint32_t__st2 == SIM_ST_BULK) ||
+                                     (up_sim_t__p->uint32_t__st2 == SIM_ST_ABSORB)) ? 1u : 0u;
+
+        if ((uint8_t__charging != 0u) && (up_sim_t__p->uint8_t__wasCharging == 0u) &&
+            (up_sim_t__p->uint8_t__latched != 0u))
+        {
+            up_sim_t__p->uint8_t__imbSessions++;
+            if (up_sim_t__p->uint8_t__imbSessions >= SIM_IMB_BLOCK_SESSIONS)
             {
-                uint16_t uint16_t__next = up_sim_t__sim->uint16_t__v24Mv;
-                if (uint16_t__next < SIM_ABSORB_MV)
-                {
-                    up_sim_t__sim->uint16_t__st1 = 1u;
-                    up_sim_t__sim->uint16_t__i1Ma = SIM_CC_MA;
-                    uint16_t__next = func__UpSim_Approach(uint16_t__next, (uint16_t)(SIM_FULL_MV + 400u), uint16_t__packRise);
-                }
-                else if (uint16_t__next < SIM_FULL_MV)
-                {
-                    up_sim_t__sim->uint16_t__st1 = 2u;
-                    up_sim_t__sim->uint16_t__i1Ma = SIM_ABSORB_MA;
-                    uint16_t__next = func__UpSim_Approach(uint16_t__next, (uint16_t)(SIM_FULL_MV + 100u), uint16_t__packRise);
-                }
-                else
-                {
-                    up_sim_t__sim->uint16_t__st1 = 3u;
-                    up_sim_t__sim->uint16_t__i1Ma = SIM_FLOAT_MA;
-                }
-                up_sim_t__sim->uint16_t__v24Mv = uint16_t__next;
-                up_sim_t__sim->uint16_t__duty1 = (uint16_t)(700u + (up_sim_t__sim->uint16_t__i1Ma / 10u));
-            }
-            else
-            {
-                up_sim_t__sim->uint16_t__st1 = 0u;
-                up_sim_t__sim->uint16_t__i1Ma = 0u;
-                up_sim_t__sim->uint16_t__duty1 = 0u;
+                up_sim_t__p->uint8_t__blocked = 1u;
             }
         }
+        up_sim_t__p->uint8_t__wasCharging = uint8_t__charging;
 
-        /* [EN] The lower half is the same string of cells, measured at its
-           mid-point: it sits near half the pack and moves WITH it. A model that
-           let the pack climb to 29 V while the lower half stayed at 13.9 V would
-           report a two-volt imbalance on a perfectly healthy machine - and a
-           simulator that cries wolf is worse than no simulator.
-           [FA] نیمهٔ پایینی همان رشتهٔ سلول‌هاست که در نقطهٔ میانی اندازه‌گیری
-           می‌شود: نزدیک نصف پک می‌نشیند و «با» آن حرکت می‌کند. مدلی که بگذارد پک
-           به ۲۹ ولت برسد و نیمهٔ پایینی روی ۱۳٫۹ بماند، روی دستگاهی کاملاً سالم
-           عدم‌توازن دوولتی گزارش می‌کند - و شبیه‌سازی که بی‌دلیل هشدار بدهد از
-           نبودنش بدتر است. */
-        uint16_t uint16_t__lowerTarget = (uint16_t)((up_sim_t__sim->uint16_t__v24Mv / 2u) + (up_sim_t__sim->uint16_t__imbOffsetMv / 2u));
-        up_sim_t__sim->uint16_t__v12Mv = func__UpSim_Approach(up_sim_t__sim->uint16_t__v12Mv, uint16_t__lowerTarget,
-                                                             (uint16_t)((uint16_t__packRise / 2u) + 1u));
-
-        if (up_sim_t__sim->uint16_t__st2 != 7u)
+        if (up_sim_t__p->uint8_t__latched != 0u)
         {
-            up_sim_t__sim->uint16_t__st2 = (bool__can2) ? (uint16_t)((up_sim_t__sim->uint16_t__v12Mv < (uint16_t)(SIM_FULL_MV / 2u)) ? 1u : 3u) : 0u;
-            up_sim_t__sim->uint16_t__i2Ma = (bool__can2 && (up_sim_t__sim->uint16_t__st2 == 1u)) ? (uint16_t)(SIM_CC_MA / 2u) : 0u;
-            up_sim_t__sim->uint16_t__duty2 = (uint16_t)((up_sim_t__sim->uint16_t__i2Ma != 0u) ? 660u : 0u);
-        }
-
-        if ((bool__can1 == false) && (bool__can2 == false))
-        {
-            up_sim_t__sim->uint16_t__v24Mv = func__UpSim_Approach(up_sim_t__sim->uint16_t__v24Mv, 0u, (uint16_t)(uint16_t__packFall * 2u));
-        }
-        func__UpSim_FaultSet(6u, 0u);
-        if (up_sim_t__sim->uint16_t__v24Mv < SIM_EMPTY_MV) { func__UpSim_FaultSet(3u, 1u); }   /* LOW_BATTERY */
-    }
-
-    /* [EN] Imbalance: the two halves, the episode and the 20-cycle budget.
-            Nothing here is clever - it is the documented behaviour, written
-            down where a developer can watch it happen in ten seconds. */
-    up_sim_t__sim->uint16_t__vlowMv = up_sim_t__sim->uint16_t__v12Mv;
-    if (up_sim_t__sim->uint16_t__imbOffsetMv != 0u)
-    {
-        up_sim_t__sim->uint16_t__vhighMv = (uint16_t)(up_sim_t__sim->uint16_t__v12Mv + up_sim_t__sim->uint16_t__imbOffsetMv);
-    }
-    else
-    {
-        up_sim_t__sim->uint16_t__vhighMv = (uint16_t)(up_sim_t__sim->uint16_t__v24Mv - up_sim_t__sim->uint16_t__v12Mv);
-    }
-
-    uint16_t uint16_t__half = up_sim_t__sim->uint16_t__vhighMv;
-    uint16_t uint16_t__other = up_sim_t__sim->uint16_t__vlowMv;
-    up_sim_t__sim->uint32_t__imbMv = (uint16_t__half > uint16_t__other) ? (uint16_t__half - uint16_t__other) : (uint16_t__other - uint16_t__half);
-
-    if (up_sim_t__sim->uint32_t__imbMv > SIM_IMB_LIMIT_MV)
-    {
-        if (up_sim_t__sim->uint32_t__imbSinceMs == 0u) { up_sim_t__sim->uint32_t__imbSinceMs = uint32_t__nowMs; }
-        if ((uint32_t__nowMs - up_sim_t__sim->uint32_t__imbSinceMs) >= SIM_EPISODE_HOLD_MS)
-        {
-            up_sim_t__sim->uint8_t__imbLatched = 1u;
-        }
-    }
-    else if (up_sim_t__sim->uint32_t__imbSinceMs != 0u)
-    {
-        up_sim_t__sim->uint32_t__imbSinceMs = 0u;
-        up_sim_t__sim->uint16_t__imbOffsetMv = 0u;
-    }
-
-    /* [EN] A "cycle" is a charge SESSION, not a tick: the board counts one more
-       spend of the twenty-cycle budget when charging starts again while the
-       latch is set. Counting ticks would reach twenty in four seconds and make
-       the whole budget meaningless.
-       [FA] «سیکل» یک «سیکل شارژ» است و نه یک تیک: برد با شروع دوبارهٔ شارژ در
-       حالتی که قفل نشسته باشد، یک خرج دیگر از بودجهٔ بیست‌سیکلی می‌شمارد.
-       شمردن تیک‌ها در چهار ثانیه به بیست می‌رسید و کل بودجه را بی‌معنا می‌کرد. */
-    uint8_t uint8_t__charging = (((up_sim_t__sim->uint16_t__st1 == 1u) || (up_sim_t__sim->uint16_t__st1 == 2u) ||
-                                  (up_sim_t__sim->uint16_t__st2 == 1u) || (up_sim_t__sim->uint16_t__st2 == 2u)) ? 1u : 0u);
-    if ((uint8_t__charging != 0u) && (up_sim_t__sim->uint8_t__wasCharging == 0u))
-    {
-        if ((up_sim_t__sim->uint8_t__imbLatched != 0u) && (up_sim_t__sim->uint32_t__imbCycles < SIM_LATCH_CYCLES))
-        {
-            up_sim_t__sim->uint32_t__imbCycles++;
-            if (up_sim_t__sim->uint32_t__imbCycles >= SIM_LATCH_CYCLES) { up_sim_t__sim->uint8_t__imbBlocked = 1u; }
-        }
-    }
-    up_sim_t__sim->uint8_t__wasCharging = uint8_t__charging;
-}
-
-/* ==================== /t and /m together / و /t و /m با هم ==================== */
-/**
- * @brief  [EN] One body that answers BOTH jobs. The panel asks for /t once a
- *              second and /m occasionally, and a simulator that has to guess
- *              which request is in flight would be a simulator with a bug in
- *              it; carrying the telemetry array and the peak arrays in one
- *              document sidesteps the whole question. The panel looks keys up
- *              by name, so extra keys cost nothing but bytes.
- *         [FA] یک بدنه که به «هر دو» کار جواب می‌دهد. پنل هر ثانیه /t و گاهی
- *              /m می‌خواهد و شبیه‌سازی که باید حدس بزند کدام درخواست در راه
- *              است، خودش یک باگ دارد؛ آوردن آرایهٔ تلمتری و آرایه‌های پنجره در
- *              یک سند، کل مسئله را دور می‌زند. پنل کلیدها را با نام پیدا می‌کند،
- *              پس کلید اضافه فقط بایت است.
- * @param  std_string__out [EN] destination body / [FA] بدنهٔ مقصد
- * @return [EN] None / [FA] ندارد
- */
-static void func__UpSim_Body(std::string &std_string__out)
-{
-    up_sim_t *up_sim_t__sim = &UP_SIM_T__G__Sim;
-    uint32_t uint32_t__t[32];
-    char char__number[24];
-    uint8_t uint8_t__flags = 0u;
-    uint8_t uint8_t__flags2 = 0u;
-
-    memset(uint32_t__t, 0, sizeof(uint32_t__t));
-
-    /* [EN] The flag byte the page reads: snapshot valid, input present,
-            measurements valid, channel-1 and channel-2 charging, manual mode.
-       [FA] بایت فلگی که صفحه می‌خواند. */
-    if (up_sim_t__sim->uint16_t__st1 != 0u) { uint8_t__flags |= 0x08u; }
-    if (up_sim_t__sim->uint16_t__st2 != 0u) { uint8_t__flags |= 0x10u; }
-    if (up_sim_t__sim->uint8_t__manualMode != 0u) { uint8_t__flags |= 0x20u; }
-    uint8_t__flags |= 0x01u;                                       /* snapshot */
-    uint8_t__flags |= 0x04u;                                       /* measurements valid */
-    if ((up_sim_t__sim->uint8_t__inputPresent != 0u) && (up_sim_t__sim->uint16_t__vinMv > 18000u)) { uint8_t__flags |= 0x02u; }
-
-    if (up_sim_t__sim->uint8_t__imbLatched != 0u) { uint8_t__flags2 |= 0x02u; }
-    if (up_sim_t__sim->uint8_t__imbBlocked != 0u) { uint8_t__flags2 |= 0x04u; }
-
-    uint32_t__t[0] = 310u;                                  /* UP_TLM_RAW1 */
-    uint32_t__t[4] = up_sim_t__sim->uint16_t__i1Ma;          /* UP_TLM_MA1_IEST */
-    uint32_t__t[5] = up_sim_t__sim->uint16_t__duty1;
-    uint32_t__t[6] = up_sim_t__sim->uint16_t__st1;
-    uint32_t__t[11] = up_sim_t__sim->uint16_t__i2Ma;         /* UP_TLM_MA2_IEST = 11 */
-    uint32_t__t[12] = up_sim_t__sim->uint16_t__duty2;
-    uint32_t__t[13] = up_sim_t__sim->uint16_t__st2;
-    uint32_t__t[14] = up_sim_t__sim->uint16_t__vinMv;
-    uint32_t__t[15] = up_sim_t__sim->uint16_t__v24Mv;
-    uint32_t__t[16] = up_sim_t__sim->uint16_t__v12Mv;
-    uint32_t__t[17] = up_sim_t__sim->uint16_t__vlowMv;
-    uint32_t__t[18] = up_sim_t__sim->uint16_t__vhighMv;
-    uint32_t__t[19] = up_sim_t__sim->uint8_t__faultMask;
-    uint32_t__t[23] = 3300u;                                 /* UP_TLM_VDDA */
-    uint32_t__t[24] = up_sim_t__sim->uint32_t__imbMv;
-    uint32_t__t[25] = up_sim_t__sim->uint32_t__imbEvents;
-    uint32_t__t[26] = up_sim_t__sim->uint32_t__imbCycles;
-
-    std_string__out = "{\"on\":1,\"age\":40,\"seq\":" + std::to_string(up_sim_t__sim->uint16_t__seq) +
-                       ",\"fl\":" + std::to_string((unsigned)uint8_t__flags) +
-                       ",\"fl2\":" + std::to_string((unsigned)uint8_t__flags2) +
-                       ",\"n\":1234,\"q\":0,\"q2\":0,\"q3\":0,\"q4\":0,\"ka\":120,\"vm\":0,\"ce\":0,\"or\":" +
-                       std::to_string((unsigned)up_sim_t__sim->uint8_t__faultMask) + ",\"t\":[";
-
-    for (uint32_t i = 0u; i < 28u; i++)
-    {
-        snprintf(char__number, sizeof(char__number), "%lu", (unsigned long)uint32_t__t[i]);
-        if (i != 0u) { std_string__out += ","; }
-        std_string__out += char__number;
-    }
-    std_string__out += "],\"lo\":[";
-    for (uint32_t i = 0u; i < 32u; i++)
-    {
-        snprintf(char__number, sizeof(char__number), "%lu", (unsigned long)((i < 28u) ? uint32_t__t[i] : 0u));
-        if (i != 0u) { std_string__out += ","; }
-        std_string__out += char__number;
-    }
-    std_string__out += "],\"hi\":[";
-    for (uint32_t i = 0u; i < 32u; i++)
-    {
-        snprintf(char__number, sizeof(char__number), "%lu", (unsigned long)((i < 28u) ? uint32_t__t[i] : 0u));
-        if (i != 0u) { std_string__out += ","; }
-        std_string__out += char__number;
-    }
-    std_string__out += "],\"p\":[";
-    for (uint32_t id = 0u; id < 128u; id++)
-    {
-        if (id != 0u) { std_string__out += ","; }
-        if (up_sim_t__sim->uint8_t__paramKnown[id] != 0u)
-        {
-            std_string__out += std::to_string((unsigned)up_sim_t__sim->uint16_t__paramA[id]);
+            up_sim_t__p->uint32_t__flags2 |= 0x02u;
         }
         else
         {
-            std_string__out += "null";
+            up_sim_t__p->uint32_t__flags2 &= ~0x02u;
+            up_sim_t__p->uint8_t__imbSessions = 0u;
+        }
+        if (up_sim_t__p->uint8_t__blocked != 0u)
+        {
+            up_sim_t__p->uint32_t__flags2 |= 0x04u;
+        }
+        else
+        {
+            up_sim_t__p->uint32_t__flags2 &= ~0x04u;
         }
     }
-    std_string__out += "]}";
+
+    up_sim_t__p->uint32_t__seq++;
+    up_sim_t__p->uint32_t__frames++;
 }
 
-/* ==================== /s / نوشتن ==================== */
+/* ==================== The wire / روی سیم ==================== */
 /**
- * @brief  [EN] The engineering panel's write route, with its real behaviour:
- *              an id outside 0..118 is refused with a 400, an id inside is
- *              clamped to that id's envelope and ACKed. Modelling the refusal
- *              matters more than it looks: it is the reason the panel has no
- *              "clear the imbalance latch" button to offer.
- *         [FA] مسیر نوشتن پنل مهندسی، با همان رفتار واقعی: شناسهٔ بیرون از
- *              ۰..۱۱۸ با ۴۰۰ رد می‌شود و شناسهٔ داخل، به پاکت خودش گیره
- *              می‌خورد و تأیید می‌شود. مدل‌کردن همان رد شدن مهم‌تر از ظاهرش
- *              است: همین دلیلِ آن است که پنل دکمهٔ «پاک‌کردن قفل عدم‌توازن»
- *              ندارد.
- * @param  char__id [EN] id text / [FA] متن شناسه
- * @param  char__value [EN] value text / [FA] متن مقدار
- * @param  int__codeOut [EN] HTTP code to answer / [FA] کد پاسخ
- * @param  std_string__bodyOut [EN] body to answer / [FA] بدنهٔ پاسخ
- * @return [EN] true when the write was accepted / [FA] در صورت پذیرش true
+ * @brief  [EN] The `/t` body, built word for word the way the board builds it.
+ *              This is the ONLY thing the panel reads, so getting its shape
+ *              right here is what makes the simulator worth running: the panel's
+ *              parser, its history detectors and the page all see real numbers
+ *              in the real layout.
+ *         [FA] بدنهٔ `/t`، کلمه‌به‌کلمه همان‌طور که برد می‌سازد. این تنها چیزی
+ *              است که پنل می‌خواند، پس درست بودن شکلش اینجا همان چیزی است که
+ *              شبیه‌ساز را ارزشمند می‌کند: پارسر پنل، آشکارسازهای تاریخچه و صفحه
+ *              همه اعداد واقعی را در چیدمان واقعی می‌بینند.
+ * @return [EN] the JSON body / [FA] بدنهٔ JSON
  */
-static bool func__UpSim_SetParam(const char *char__id, const char *char__value, int *int__codeOut, std::string &std_string__bodyOut)
+static std::string func__UpSim_TelemetryBody(void)
 {
-    long long__id = strtol(char__id, NULL, 10);
-    long long__value = strtol(char__value, NULL, 10);
+    up_sim_t *up_sim_t__p = &UP_SIM_T__G__Plant;
+    uint32_t uint32_t__values[UP_TLM_FIELDS];
+    std::string std_string__body;
+    char char__scratch[32];
 
-    if ((long__id < 0L) || (long__id >= 119L))
+    memset(uint32_t__values, 0, sizeof(uint32_t__values));
+
+    uint32_t__values[UP_TLM_RAW1] = 300u;
+    uint32_t__values[UP_TLM_MA1_IEST] = up_sim_t__p->uint32_t__i1Ma;
+    uint32_t__values[UP_TLM_MA2_IEST] = up_sim_t__p->uint32_t__i2Ma;
+    uint32_t__values[UP_TLM_DUTY1] = up_sim_t__p->uint32_t__duty1;
+    uint32_t__values[UP_TLM_DUTY2] = up_sim_t__p->uint32_t__duty2;
+    uint32_t__values[UP_TLM_STATE1] = up_sim_t__p->uint32_t__st1;
+    uint32_t__values[UP_TLM_STATE2] = up_sim_t__p->uint32_t__st2;
+    uint32_t__values[UP_TLM_VIN] = up_sim_t__p->uint32_t__vinMv;
+    uint32_t__values[UP_TLM_V24] = up_sim_t__p->uint32_t__v24Mv;
+    uint32_t__values[UP_TLM_V12] = up_sim_t__p->uint32_t__v12Mv;
+    uint32_t__values[UP_TLM_VLOW] = up_sim_t__p->uint32_t__v12Mv;
+    uint32_t__values[UP_TLM_VHIGH] = up_sim_t__p->uint32_t__v24Mv - up_sim_t__p->uint32_t__v12Mv;
+    uint32_t__values[UP_TLM_VDDA] = 3300u;
+    uint32_t__values[UP_TLM_IMB_EVENTS] = up_sim_t__p->uint8_t__imbSessions;
+    uint32_t__values[UP_TLM_IMB_CYCLES] = up_sim_t__p->uint8_t__imbSessions;
+    uint32_t__values[UP_TLM_IMB_MV] = (uint32_t__values[UP_TLM_VHIGH] > uint32_t__values[UP_TLM_VLOW])
+                                    ? (uint32_t__values[UP_TLM_VHIGH] - uint32_t__values[UP_TLM_VLOW])
+                                    : (uint32_t__values[UP_TLM_VLOW] - uint32_t__values[UP_TLM_VHIGH]);
+
+    char char__head[256];
+    snprintf(char__head, sizeof(char__head),
+             "{\"on\":1,\"age\":%lu,\"seq\":%lu,\"fl\":%lu,\"fl2\":%lu,\"n\":%lu,"
+             "\"q\":0,\"q2\":0,\"q3\":0,\"q4\":0,\"ka\":120,\"vm\":0,\"ce\":%lu,\"t\":[",
+             (unsigned long)100u,
+             (unsigned long)up_sim_t__p->uint32_t__seq,
+             (unsigned long)up_sim_t__p->uint32_t__flags,
+             (unsigned long)up_sim_t__p->uint32_t__flags2,
+             (unsigned long)up_sim_t__p->uint32_t__frames,
+             (unsigned long)up_sim_t__p->uint32_t__crcErrors);
+    std_string__body = char__head;
+
+    for (uint32_t uint32_t__i = 0u; uint32_t__i < UP_TLM_FIELDS; uint32_t__i++)
     {
-        *int__codeOut = 400;
-        std_string__bodyOut = "{\"ok\":0,\"err\":\"unknown param\"}";
-        return false;
+        snprintf(char__scratch, sizeof(char__scratch), "%lu", (unsigned long)uint32_t__values[uint32_t__i]);
+        if (uint32_t__i > 0u)
+        {
+            std_string__body += ",";
+        }
+        std_string__body += char__scratch;
+    }
+    std_string__body += "],\"p\":[";
+
+    for (uint32_t uint32_t__id = 0u; uint32_t__id < UP_PARAM_COUNT; uint32_t__id++)
+    {
+        if (uint32_t__id > 0u)
+        {
+            std_string__body += ",";
+        }
+        if (uint32_t__id == UP_PARAM_PCT_VMIN)
+        {
+            std_string__body += "21000";
+        }
+        else if (uint32_t__id == UP_PARAM_PCT_VMAX)
+        {
+            std_string__body += "29000";
+        }
+        else if (uint32_t__id == UP_PARAM_CHG1_ENABLE)
+        {
+            std_string__body += (up_sim_t__p->uint8_t__chg1Enable != 0u) ? "1" : "0";
+        }
+        else if (uint32_t__id == UP_PARAM_CHG2_ENABLE)
+        {
+            std_string__body += (up_sim_t__p->uint8_t__chg2Enable != 0u) ? "1" : "0";
+        }
+        else
+        {
+            std_string__body += "null";
+        }
+    }
+    std_string__body += "]}";
+
+    return std_string__body;
+}
+
+/**
+ * @brief  [EN] The `/m` body: the peak window the panel reads every ten
+ *              seconds. The model reports its worst numbers since the last call
+ *              and then forgets them, exactly like the board's window.
+ *         [FA] بدنهٔ `/m`: پنجرهٔ اوجی که پنل هر ده ثانیه می‌خواند. مدل بدترین
+ *              اعدادش را از فراخوانی قبل گزارش می‌کند و بعد فراموششان می‌کند،
+ *              دقیقاً مثل پنجرهٔ برد.
+ * @return [EN] the JSON body / [FA] بدنهٔ JSON
+ */
+static std::string func__UpSim_PeaksBody(void)
+{
+    up_sim_t *up_sim_t__p = &UP_SIM_T__G__Plant;
+    uint32_t uint32_t__hi[UP_TLM_FIELDS];
+    uint32_t uint32_t__lo[UP_TLM_FIELDS];
+    std::string std_string__body = "{\"n\":";
+    char char__scratch[80];
+
+    memset(uint32_t__hi, 0, sizeof(uint32_t__hi));
+    memset(uint32_t__lo, 0, sizeof(uint32_t__lo));
+    uint32_t__hi[UP_TLM_MA1_IEST] = up_sim_t__p->uint32_t__i1Ma;
+    uint32_t__hi[UP_TLM_MA2_IEST] = up_sim_t__p->uint32_t__i2Ma;
+    uint32_t__hi[UP_TLM_DUTY1] = up_sim_t__p->uint32_t__duty1;
+    uint32_t__hi[UP_TLM_DUTY2] = up_sim_t__p->uint32_t__duty2;
+    uint32_t__lo[UP_TLM_MA1_IEST] = up_sim_t__p->uint32_t__i1Ma;
+    uint32_t__lo[UP_TLM_MA2_IEST] = up_sim_t__p->uint32_t__i2Ma;
+
+    snprintf(char__scratch, sizeof(char__scratch), "%lu,\"or\":%lu,\"hi\":[",
+             (unsigned long)up_sim_t__p->uint32_t__frames,
+             (unsigned long)up_sim_t__p->uint32_t__flags);
+    std_string__body += char__scratch;
+
+    for (uint32_t uint32_t__i = 0u; uint32_t__i < UP_TLM_FIELDS; uint32_t__i++)
+    {
+        snprintf(char__scratch, sizeof(char__scratch), "%s%lu", (uint32_t__i > 0u) ? "," : "",
+                 (unsigned long)uint32_t__hi[uint32_t__i]);
+        std_string__body += char__scratch;
+    }
+    std_string__body += "],\"lo\":[";
+    for (uint32_t uint32_t__i = 0u; uint32_t__i < UP_TLM_FIELDS; uint32_t__i++)
+    {
+        snprintf(char__scratch, sizeof(char__scratch), "%s%lu", (uint32_t__i > 0u) ? "," : "",
+                 (unsigned long)uint32_t__lo[uint32_t__i]);
+        std_string__body += char__scratch;
+    }
+    std_string__body += "]}";
+
+    return std_string__body;
+}
+
+/* ==================== The panel's writes / نوشتنی‌های پنل ==================== */
+/**
+ * @brief  [EN] Handle one `POST /s` the way the engineering ESP would: ids 0..118
+ *              are accepted and clamped into the model, anything above is
+ *              REFUSED with the same 400 the real ESP sends. The bar is
+ *              deliberately the same one the real firmware has, because a
+ *              simulator that accepts a write the machine would reject is worse
+ *              than no simulator: it would let somebody build a button that can
+ *              never work.
+ *         [FA] پردازش یک `POST /s` همان‌طور که ESP مهندسی می‌کند: شناسه‌های ۰ تا
+ *              ۱۱۸ پذیرفته و در مدل اعمال می‌شوند و هر بالاتر از آن با همان ۴۰۰
+ *              رد می‌شود که ESP واقعی می‌فرستد. این مرز عمداً همان مرز فرم‌ور
+ *              واقعی است، چون شبیه‌سازی که نوشتنی‌ای را بپذیرد که ماشین رد
+ *              می‌کند از نبودنش بدتر است: می‌گذارد کسی دکمه‌ای بسازد که هرگز
+ *              نمی‌تواند کار کند.
+ * @param  char__body [EN] form body, e.g. "id=11&v=0" / [FA] بدنهٔ فرم
+ * @return [EN] the reply body / [FA] بدنهٔ پاسخ
+ */
+static std::string func__UpSim_SetParam(const std::string &char__body)
+{
+    up_sim_t *up_sim_t__p = &UP_SIM_T__G__Plant;
+    long long__id = -1;
+    long long__value = 0;
+    size_t size_t__at;
+
+    size_t__at = char__body.find("id=");
+    if (size_t__at == std::string::npos)
+    {
+        return "{\"ok\":0,\"err\":\"json\"}";
+    }
+    long__id = strtol(char__body.c_str() + size_t__at + 3u, NULL, 10);
+
+    size_t__at = char__body.find("&v=");
+    if (size_t__at == std::string::npos)
+    {
+        return "{\"ok\":0,\"err\":\"json\"}";
+    }
+    long__value = strtol(char__body.c_str() + size_t__at + 3u, NULL, 10);
+
+    if ((long__id < 0) || (long__id >= (long)UP_PARAM_COUNT))
+    {
+        return "{\"ok\":0,\"err\":\"range\"}";
     }
 
-    /* [EN] The envelopes the panel can actually use. Everything else is stored
-            as it arrives, because no part of the panel writes it today. */
-    long long__min = 0L;
-    long long__max = 65535L;
-    if (long__id == 11L || long__id == 12L || long__id == 19L) { long__max = 1L; }
-    if (long__id == 13L || long__id == 14L) { long__max = 500L; }
+    if (long__id == (long)UP_PARAM_CHG1_ENABLE)
+    {
+        up_sim_t__p->uint8_t__chg1Enable = (long__value != 0) ? 1u : 0u;
+    }
+    else if (long__id == (long)UP_PARAM_CHG2_ENABLE)
+    {
+        up_sim_t__p->uint8_t__chg2Enable = (long__value != 0) ? 1u : 0u;
+    }
 
-    long long__clamped = (long__value < long__min) ? long__min : ((long__value > long__max) ? long__max : long__value);
-
-    UP_SIM_T__G__Sim.uint8_t__paramKnown[(uint32_t)long__id] = 1u;
-    UP_SIM_T__G__Sim.uint16_t__paramA[(uint32_t)long__id] = (uint16_t)long__clamped;
-
-    if (long__id == 11L) { UP_SIM_T__G__Sim.uint8_t__ch1Enabled = (uint8_t)long__clamped; }
-    if (long__id == 12L) { UP_SIM_T__G__Sim.uint8_t__ch2Enabled = (uint8_t)long__clamped; }
-    if (long__id == 19L) { UP_SIM_T__G__Sim.uint8_t__manualMode = (uint8_t)long__clamped; }
-
-    *int__codeOut = 200;
-    std_string__bodyOut = "{\"ok\":1}";
-    return true;
+    return "{\"ok\":1}";
 }
 
-/* ==================== State as JSON / حالت به‌صورت JSON ==================== */
-/**
- * @brief  [EN] The model as one JSON object, for the control page: everything a
- *              bench operator would otherwise read off a multimeter.
- *         [FA] مدل به‌صورت یک شیء JSON برای صفحهٔ کنترل: هر چیزی که اپراتور
- *              میز آزمایش وگرنه از مولتی‌متر می‌خواند.
- */
-static std::string func__UpSim_StateJson(void)
-{
-    up_sim_t *up_sim_t__sim = &UP_SIM_T__G__Sim;
-    char char__text[1024];
-
-    snprintf(char__text, sizeof(char__text),
-             "{\"vin\":%u,\"v24\":%u,\"v12\":%u,\"vhigh\":%u,\"vlow\":%u,"
-             "\"i1\":%u,\"i2\":%u,\"duty1\":%u,\"duty2\":%u,\"st1\":%u,\"st2\":%u,"
-             "\"fl\":%u,\"imb\":%lu,\"imbEvents\":%lu,\"imbCycles\":%lu,\"latched\":%u,\"blocked\":%u,"
-             "\"input\":%u,\"ch1\":%u,\"ch2\":%u,\"manual\":%u,\"absent\":%u,\"link\":%u,"
-             "\"seq\":%u,\"boots\":%lu,\"boards\":%lu,\"trips\":%lu,\"nowMs\":%lu,\"batteryAbsent\":%u}",
-             (unsigned)up_sim_t__sim->uint16_t__vinMv, (unsigned)up_sim_t__sim->uint16_t__v24Mv,
-             (unsigned)up_sim_t__sim->uint16_t__v12Mv, (unsigned)up_sim_t__sim->uint16_t__vhighMv,
-             (unsigned)up_sim_t__sim->uint16_t__vlowMv, (unsigned)up_sim_t__sim->uint16_t__i1Ma,
-             (unsigned)up_sim_t__sim->uint16_t__i2Ma, (unsigned)up_sim_t__sim->uint16_t__duty1,
-             (unsigned)up_sim_t__sim->uint16_t__duty2, (unsigned)up_sim_t__sim->uint16_t__st1,
-             (unsigned)up_sim_t__sim->uint16_t__st2, (unsigned)up_sim_t__sim->uint8_t__faultMask,
-             (unsigned long)up_sim_t__sim->uint32_t__imbMv, (unsigned long)up_sim_t__sim->uint32_t__imbEvents,
-             (unsigned long)up_sim_t__sim->uint32_t__imbCycles, (unsigned)up_sim_t__sim->uint8_t__imbLatched,
-             (unsigned)up_sim_t__sim->uint8_t__imbBlocked, (unsigned)up_sim_t__sim->uint8_t__inputPresent,
-             (unsigned)up_sim_t__sim->uint8_t__ch1Enabled, (unsigned)up_sim_t__sim->uint8_t__ch2Enabled,
-             (unsigned)up_sim_t__sim->uint8_t__manualMode, (unsigned)up_sim_t__sim->uint8_t__batteryAbsent,
-             (unsigned)up_sim_t__sim->uint8_t__linkUp, (unsigned)up_sim_t__sim->uint16_t__seq,
-             (unsigned long)up_sim_t__sim->uint32_t__boots, (unsigned long)up_sim_t__sim->uint32_t__boards,
-             (unsigned long)up_sim_t__sim->uint32_t__jitterTrips, (unsigned long)up_sim_t__sim->uint32_t__nowMs,
-             (unsigned)up_sim_t__sim->uint8_t__batteryAbsent);
-
-    return std::string(char__text);
-}
-
-#endif /* UP_SIM_MACHINE_H */
+#endif /* SIM_MACHINE_H */

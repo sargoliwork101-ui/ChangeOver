@@ -18,7 +18,7 @@
 
 /* ==================== Identity / شناسه ==================== */
 #define UP_PANEL_NAME        "user panel"      /* [EN] shown in /version / [FA] در /version دیده می‌شود */
-#define UP_PANEL_VERSION     "1.1"
+#define UP_PANEL_VERSION     "1.2"
 /* [EN] Compiled in by the Arduino builder: which binary is actually in
    the box. Shown in /version and in the page footer, because "did my
    upload land?" is asked on every bench visit.
@@ -56,6 +56,21 @@
 #define UP_SRC_TLM_PATH      "/t"               /* [EN] compact telemetry JSON / [FA] خلاصهٔ JSON تلمتری */
 #define UP_SRC_STAT_PATH     "/m"               /* [EN] live min/max window / [FA] پنجرهٔ کمینه/بیشینه */
 #define UP_SRC_SET_PATH      "/s"               /* [EN] the ONLY write we ever send / [FA] تنها نوشتنی ما */
+
+/* ==================== Saved networks / شبکه‌های ذخیره‌شده ==================== */
+/* [EN] A company with several machines has several boards, and each board
+   brings its own access point. The admin keeps up to four of them on the panel
+   and switches between them from the page - no re-flashing, no serial cable.
+   UP_STA_SSID / UP_STA_PASS above are the FACTORY DEFAULT: they seed the first
+   slot on a panel whose flash has never held a table (up_settings.h).
+   [FA] شرکتی که چند ماشین دارد چند برد دارد و هر برد اکسس‌پوینت خودش را
+   می‌آورد. مدیر تا چهار مورد را روی پنل نگه می‌دارد و از صفحه بینشان جابه‌جا
+   می‌شود - بدون فلش دوباره و بدون کابل سریال. دو ثابت بالا مقدار کارخانه‌ای‌اند:
+   روی پنلی که فلشش هرگز جدولی نداشته، اسلات اول را همان‌ها پر می‌کنند. */
+#define UP_NET_PROFILE_MAX   4u                 /* [EN] slots in the table / [FA] اسلات‌های جدول */
+#define UP_NET_SSID_MAX      32u                /* [EN] 802.11 limit / [FA] سقف استاندارد */
+#define UP_NET_PASS_MAX      63u                /* [EN] WPA2 passphrase limit / [FA] سقف عبارت عبور */
+#define UP_NET_NAME_MAX      40u                /* [EN] label room for the page / [FA] جای برچسب برای صفحه */
 
 /* ==================== Cadence / بازه‌ها (ms) ==================== */
 #define UP_TLM_POLL_MS       1000u              /* [EN] read /t once a second / [FA] هر ثانیه یک‌بار /t */
@@ -103,6 +118,7 @@
 #define UP_F_TOTALS          "/up_tot.bin"
 #define UP_F_USERS           "/up_users.bin"
 #define UP_F_AUDIT           "/up_audit.bin"   /* [EN] who did what / [FA] چه کسی چه کرد */
+#define UP_F_NETWORK         "/up_net.bin"     /* [EN] saved networks (up_settings.h) / [FA] شبکه‌های ذخیره‌شده */
 
 #define UP_FS_SAMPLE_SHARE   42u                /* [EN] percent of used budget / [FA] درصد سهمیه */
 #define UP_FS_EVENT_SHARE    22u

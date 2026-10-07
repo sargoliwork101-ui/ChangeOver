@@ -43,8 +43,11 @@
  *            1. Arduino IDE, board "Generic ESP8266 Module" (or LOLIN/Wemos D1
  *               mini), CPU 80 MHz, flash size 4 MB (1 MB SPIFFS + 1 MB OTA is
  *               comfortable), upload speed 115200.
- *            2. Change UP_STA_SSID / UP_STA_PASS in up_config.h if the machine's
- *               engineering network is not the default.
+ *            2. The machine's engineering network. A factory-fresh panel joins
+ *               UP_STA_SSID / UP_STA_PASS from up_config.h; after that the admin
+ *               changes it from the page (Network card) and up to four networks
+ *               live on the panel's own flash, so one panel can look at any of
+ *               the company's boards without being re-flashed.
  *            3. Upload. The panel then opens its own network:
  *               SSID ChangeOver-User, password 123456789, at 192.168.5.1
  *               (deliberately NOT 192.168.4.1 - that is the address of the
@@ -54,7 +57,8 @@
  *
  *          LAYERING (include order is load-bearing, keep it)
  *            1 config  2 sha256  3 calendar  4 state  5 store  6 auth
- *            7 font  8 history  9 link  10 web assets  11 http (the server)
+ *            7 font  8 history  9 settings (saved networks)  10 xlsx
+ *            11 report  12 link  13 web assets  14 http (the server)
  *
  * @brief   [FA] ChangeOver - پنل کاربر. نمایشگر فقط-خواندنی ماشین، روی برد
  *               مستقل ESP8266 خودش، کنار تابلو.
@@ -118,11 +122,12 @@
 #include "up_auth.h"      /* 6: users, sessions, action log                  */
 #include "up_font.h"      /* 7: the embedded Persian font                    */
 #include "up_history.h"   /* 8: turns telemetry into history and statistics  */
-#include "up_xlsx.h"      /* 9: a streaming .xlsx writer (ZIP + SpreadsheetML) */
-#include "up_report.h"    /* 10: what goes INTO that workbook                */
-#include "up_link.h"      /* 11: Wi-Fi + the reads from the engineering board */
-#include "up_web.h"       /* 12: the page itself, in PROGMEM (data, no code) */
-#include "up_http.h"      /* 13: the web server, which serves number 12      */
+#include "up_settings.h"  /* 9: the networks the admin saved, on flash        */
+#include "up_xlsx.h"      /* 10: a streaming .xlsx writer (ZIP + SpreadsheetML) */
+#include "up_report.h"    /* 11: what goes INTO that workbook                */
+#include "up_link.h"      /* 12: Wi-Fi + the reads from the engineering board */
+#include "up_web.h"       /* 13: the page itself, in PROGMEM (data, no code) */
+#include "up_http.h"      /* 14: the web server, which serves number 13      */
 
 /* ==================== Panel state / وضعیت پنل ==================== */
 static uint32_t UINT32_T__G__LastLedMs = 0u;   /* [EN] last LED flip / [FA] آخرین تغییر LED */
@@ -185,7 +190,7 @@ static void func__UpPanel_ReportStartup(bool bool__storageOk, bool bool__authOk)
     Serial.print(F("board:  "));
     Serial.print(F(UP_SRC_HOST));
     Serial.print(F(" ("));
-    Serial.print(F(UP_STA_SSID));
+    Serial.print(func__UpSettings_Active()->char__ssid);
     Serial.println(F(")"));
 }
 
@@ -216,6 +221,7 @@ void setup(void)
     func__UpState_ClockRestore();              /* time of day, from the last flush */
     bool__authOk = func__UpAuth_Begin();       /* user table, seeded on first run */
     func__UpHistory_Begin();                   /* baselines for the edge detectors */
+    (void)func__UpSettings_Begin();            /* saved networks, before the radio */
     func__UpLink_Begin();                      /* Wi-Fi: user AP + engineering STA */
     func__UpHttp_Begin();                      /* routes, then the server itself   */
 

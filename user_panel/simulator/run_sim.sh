@@ -1,53 +1,60 @@
 #!/usr/bin/env bash
 #
-# run_sim.sh - build the simulator and run it, or run its selftest.
+# run_sim.sh - build and run the user panel simulator.
 #
-# [EN] WHY A SCRIPT
-#      The simulator compiles the panel's own sketch with the host stubs, which
-#      means three include paths and one translation unit. Nobody should have to
-#      remember them, and a stale binary pretending to be the current panel is
-#      worse than no binary at all - so this script always rebuilds.
+# [EN] WHY THIS EXISTS
+#      The panel is normally compiled by the Arduino IDE and first seen on the
+#      cabinet's screen. This script builds the SAME sketch - the same up_*.h,
+#      the same page, the same Excel writer - against the host stubs plus a model
+#      of the machine, and serves it on a port so a browser can look at it. Two
+#      ways to run:
+#        bash user_panel/simulator/run_sim.sh             # serve on port 8090
+#        bash user_panel/simulator/run_sim.sh --selftest  # checks, no sockets
+#      A green run is not a bench test: it cannot see a wrong pin, a weak
+#      antenna or a flash chip that is slower than the model assumes.
 #
-#      [FA] چرا اسکریپت
-#      شبیه‌ساز، خودِ اسکچ پنل را با استاب‌های میزبان کامپایل می‌کند: سه مسیر
-#      include و یک واحد ترجمه. هیچ‌کس نباید مجبور باشد آن‌ها را به خاطر بسپارد،
-#      و باینریِ کهنه‌ای که خودش را پنل امروز جا بزند از نبودنش بدتر است - پس این
-#      اسکریپت همیشه از نو می‌سازد.
+#      [FA] چرا این وجود دارد
+#      پنل معمولاً با Arduino IDE کامپایل می‌شود و اولین بار روی صفحهٔ تابلو دیده
+#      می‌شود. این اسکریپت همان اسکچ را - همان up_*.hها، همان صفحه، همان
+#      نویسندهٔ اکسل - در کنار استاب‌های میزبان و مدلی از ماشین می‌سازد و روی یک
+#      پورت سرو می‌کند تا مرورگر ببیندش. دو حالت اجرا:
+#        bash user_panel/simulator/run_sim.sh             # سرو روی پورت ۸۰۹۰
+#        bash user_panel/simulator/run_sim.sh --selftest   # چک‌ها، بدون سوکت
+#      اجرای سبز، تست میز نیست: پایهٔ اشتباه، آنتن ضعیف یا فلشی که از فرض مدل
+#      کندتر است را نمی‌بیند.
 #
 # Usage / طرز استفاده:
-#     bash user_panel/simulator/run_sim.sh                 (panel on :8090)
-#     bash user_panel/simulator/run_sim.sh --selftest      (no sockets)
-#     bash user_panel/simulator/run_sim.sh --port 9000 --speed 30
-#
-# Exit codes / کدهای خروج: 0 = ok, 1 = the selftest failed, 2 = build failed.
+#     bash user_panel/simulator/run_sim.sh [--port 8090] [--selftest]
+#     (from anywhere; the paths are resolved from this file)
 
 set -u
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 MODULE="$(cd "$HERE/.." && pwd)"
+BUILD="$HERE/build"
+BINARY="$BUILD/up_sim"
 CXX="${CXX:-g++}"
-OUT="$HERE/build/up_sim"
 
-mkdir -p "$HERE/build"
-
-if ! "$CXX" -std=gnu++17 -Wall -Wextra -Werror -Wno-unused-parameter \
-        -I "$MODULE/tools" -I "$MODULE/tools/stubinc" \
-        -g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer \
-        "$HERE/sim_main.cpp" -o "$OUT" 2>"$HERE/build/build.log"; then
-    echo "simulator build failed / ساخت شبیه‌ساز شکست خورد:"
-    sed 's/^/  /' "$HERE/build/build.log" | head -40
+if ! command -v "$CXX" >/dev/null 2>&1; then
+    printf 'no C++ compiler found (set CXX)\n' >&2
     exit 2
 fi
 
-# [EN] The leak checker is off: the panel is one static translation unit and the
-#      process lives until Ctrl-C, so a "leak" here is the program still running.
-# [FA] بررسی نشت خاموش است: پنل یک واحد ترجمهٔ کاملاً ایستا است و فرآیند تا
-#      Ctrl-C زنده می‌ماند، پس «نشت» یعنی برنامه هنوز در حال اجراست.
+mkdir -p "$BUILD"
+
+# [EN] Always rebuild: a simulator that quietly runs yesterday's binary is worse
+#      than none, because it makes a fixed bug look unfixed and vice versa.
+# [FA] همیشه از نو بساز: شبیه‌سازی که بی‌صدا باینری دیروز را اجرا کند از نبودنش
+#      بدتر است، چون اشکال رفع‌شده را رفع‌نشده نشان می‌دهد و برعکس.
+if ! "$CXX" -std=gnu++17 -Wall -Wextra -Werror -Wno-unused-parameter \
+        -I "$MODULE/tools" -I "$MODULE/tools/stubinc" \
+        -g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer \
+        "$HERE/sim_main.cpp" -o "$BINARY"; then
+    printf 'build failed / ساخت نشد\n' >&2
+    exit 1
+fi
+
 export ASAN_OPTIONS="detect_leaks=0"
 export UBSAN_OPTIONS="halt_on_error=1"
 
-if [ "${1:-}" = "--selftest" ]; then
-    exec "$OUT" --selftest --page "$HERE/sim.html"
-fi
-
-exec "$OUT" --page "$HERE/sim.html" "$@"
+exec "$BINARY" --page "$HERE/sim.html" "$@"

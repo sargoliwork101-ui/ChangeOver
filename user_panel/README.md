@@ -13,14 +13,14 @@ It runs on its **own ESP8266 board** and reads the existing engineering panel's 
 
 | | [EN] | [FA] |
 |---|---|---|
-| Version | 1.1 (build stamp in `up_config.h`) | ۱٫۱ |
+| Version | 1.2 (build stamp in `up_config.h`) | ۱٫۲ |
 | Target | ESP8266 (Arduino core 3.x), 4 MB flash | ESP8266 با فلش ۴ مگابایت |
 | Language | C++17, static allocation only | ++C۱۷، فقط تخصیص ثابت |
 | Firmware touched | **none** — the STM32 side is untouched | **هیچ** — سمت STM32 دست‌نخورده |
 | Host tests | 237 checks, 0 failures (ASAN + UBSAN) | ۲۳۷ بررسی، ۰ خطا |
-| Gate | `bash user_panel/tools/check_user_panel.sh` → 29 checks, 0 failures | گیت همین اسکریپت |
+| Gate | `bash user_panel/tools/check_user_panel.sh` → 31 checks, 0 failures | گیت همین اسکریپت |
 | Workbook, read by Python | `verify_report_xlsx.py` → 24 checks, 0 failures (zipfile + openpyxl + jdatetime) | ۲۴ بررسی، ۰ خطا |
-| Simulator | `bash user_panel/simulator/run_sim.sh --selftest` → 14 checks, 0 failures | ۱۴ بررسی، ۰ خطا |
+| Simulator | `bash user_panel/simulator/run_sim.sh --selftest` → 18 checks, 0 failures | ۱۸ بررسی، ۰ خطا |
 | Board tests | **not run yet** — no ESP8266 was flashed for this deliverable | هنوز اجرا نشده |
 
 [EN] The headers are larger than their code suggests: every file carries the bilingual
@@ -50,6 +50,10 @@ would collide with it if left at the ESP8266 default. The panel therefore serves
 | 2026-10-07 | v1.1: 17 dated anchors found a 32-bit time overflow - every epoch past 2038 printed a date in 1902 | لنگرهای تاریخی، سرریز ۲۰۳۸ را گرفتند |
 | 2026-10-07 | v1.1: the simulator (`simulator/`) runs the real sketch against a model of the machine | شبیه‌ساز با کد واقعی |
 | 2026-10-07 | v1.1: checked whether a "clear the imbalance latch" command is possible at all - it is not, and this README says why instead of shipping a dead button | امکان‌سنجی پاک‌کردن قفل عدم‌توازن |
+| 2026-10-07 | v1.2: the admin can store up to four Wi-Fi networks and switch between boards in one company (`up_settings.h`, `/api/admin/network`) | چند شبکه در یک شرکت |
+| 2026-10-07 | v1.2: date and time in Persian, on Iran's calendar, at the panel timezone - and Persian digits **only** for the date and clock, never for technical numbers | تاریخ و ساعت فارسی |
+| 2026-10-07 | v1.2: the user's view lost the pack voltage and both currents and gained the two battery voltages ("باتری بالایی" = pack minus lower, "باتری پایینی"); the raw numbers stayed, for operators and admins, in the diagnostics page | دید کاربر ساده‌تر شد |
+| 2026-10-07 | v1.2: the simulator now proves the network switch reaches the radio - a table that changes without a re-join is the bug the page exists to catch | اثبات رسیدن رمز به رادیو |
 
 ---
 
@@ -62,6 +66,7 @@ would collide with it if left at the ESP8266 default. The panel therefore serves
 | `up_calendar.h` | Jalali + Gregorian conversion, pure integer, verified against 17 dated anchors | 29 KB |
 | `up_xlsx.h` | the streaming `.xlsx` writer: stored ZIP, own CRC32, RTL sheets, frozen headers | 66 KB |
 | `up_report.h` | the workbook itself: summary, daily, charges, events, samples + the range filter | 85 KB |
+| `up_settings.h` | saved Wi-Fi networks: four rows, CRC-protected, stale-row replacement, password never leaves the board | 34 KB |
 | `up_state.h` | RAM model, link health, clock, battery-percent mapping | 35 KB |
 | `up_store.h` | LittleFS rings, "drop the oldest", daily rows, lifetime totals, CSV row | 44 KB |
 | `up_auth.h` | salted+iterated SHA-256 users, sessions, cookie, action log | 34 KB |
@@ -129,6 +134,47 @@ releases `FINAL_FAULT`. The simulator can demonstrate both in ten seconds
 سه ثانیه جدا بودن پک، که ماژول عدم‌توازن آن را «رفتن حافظه با باتری» می‌شمارد - یا
 (ب) خاموش‌روشن برد آزاد می‌شود؛ که تنها راه آزادکردن `FINAL_FAULT` هم هست.
 شبیه‌ساز هر دو را در ده ثانیه نشان می‌دهد (`swap` و `board` در صفحهٔ کنترل).
+
+---
+
+## ۴ب) ۱٫۲ چه چیزی را عوض کرد — What 1.2 changed
+
+چهار خواسته بود؛ هر کدام اینجا به محل پاسخش وصل است:
+
+**FA**
+1. **نام و رمز وای‌فای را مدیر عوض کند** (تا چند برد در یک شرکت هر کدام دیده شود):
+   `up_settings.h` تا **چهار** شبکه را در `/up_net.bin` نگه می‌دارد؛ کارت «شبکه‌های
+   ذخیره‌شده» در کادر مدیر شبکهٔ دوم را ذخیره می‌کند و دکمهٔ «اتصال به این برد»
+   بی‌درنگ `WiFi.begin` را با نام و رمز آن شبکه صدا می‌زند. رمز هیچ‌گاه به مرورگر
+   برگردانده نمی‌شود و فقط «رمز دارد / شبکهٔ باز» گزارش می‌شود.
+2. **ساعت و تاریخ فارسی و بر تقویم ایران**: تاریخ‌ها از `up_calendar.h` می‌آیند و
+   همه‌جا با ساعت منطقهٔ پنل («تهران»، همان عددی که مدیر تنظیم می‌کند) نشان داده
+   می‌شوند، نه ساعت مرورگر بیننده. رقم‌های تاریخ و ساعت فارسی‌اند؛ عددهای فنی
+   (ولت، میلی‌آمپر، درصد) لاتین مانده‌اند تا مهندس بتواند بخواند. تقویم خود صفحهٔ وب (`web/app.js`) هم
+   جداگانه سنجیده می‌شود: `tools/verify_page_calendar.py` کد خودِ صفحه را با نام
+   بیرون می‌کشد، در node می‌دواند و روی سی‌هزار روز با یک مرجع مستقل مقایسه
+   می‌کند، و روی لنگر ساعت خود برد هم باید همان تاریخ را بدهد (گام ۳دِ گیت).
+3. **جریان لازم نیست؛ «در حال شارژ یا قطع» کافی است**: دید کاربر به یک جملهٔ
+   وضعیت شارژ رسید (شارژ می‌شود / روی باتری / برق هست و شارژر خاموش / قطع) و
+   جریان‌ها از دید کاربر برداشته شدند.
+4. **ولتاژ پک لازم نیست؛ ولتاژ باتری ۱ و ۲ کافی است**: در دید کاربر فقط
+   «باتری بالایی» و «باتری پایینی» می‌آید (بالایی = پک منهای پایینی). ولتاژ پک و
+   جریان‌ها در صفحهٔ **دیاگ** برای اپراتور و مدیر مانده‌اند و جایی حذف نشده‌اند.
+
+**EN** 1. The admin stores up to four networks and switches the board with one button
+(`up_settings.h` + the network card); the password never travels back to a browser.
+2. Every date and clock is Iran's calendar at the panel's own set timezone, not the
+viewer's browser, with Persian digits for the date and clock only.
+3. The user's view states *charging / on battery / mains but charger off / no link*
+instead of showing a current.
+4. The user's view shows the upper and lower battery voltages; the pack voltage and
+the currents live on in the diagnostics page for operators and admins.
+
+**مرزها — the boundaries that were kept:** these are still *display* changes plus the
+one admin write that already existed; no user-facing setting was added, and the
+firmware of neither board was touched. The network write is **STA only** - the panel
+joins the board's network; the panel's own AP credentials are not editable from the
+network card, by decision.
 
 ---
 
@@ -257,5 +303,6 @@ fourteen checks without opening a socket; the gate runs it on every pass.
 در کنار مدلی از ماشین و استاب‌های میزبان اجرا می‌کند و روی
 **http://localhost:8090** با صفحهٔ کنترل در `/sim` سرو می‌کند: تزریق خطا، سه بار
 جهش، شروع رخداد عدم‌توازن، تعویض باتری، قطع شبکه، یک ساعت یا یک روز جلو، و تماشای
-واکنش صفحهٔ واقعی. `--selftest` چهارده بررسی را بدون بازکردن سوکت اجرا می‌کند و
-گیت در هر گذر آن را می‌دواند.
+واکنش صفحهٔ واقعی. `--selftest` هجده بررسی را بدون بازکردن سوکت اجرا می‌کند و
+گیت در هر گذر آن را می‌دواند؛ دو تای تازه همین دو مرز را می‌سنجند: فرمانی که باید
+واقعاً به برد برسد، و رمزی که بعد از سوئیچ شبکه باید واقعاً به رادیو داده شود.

@@ -1235,6 +1235,129 @@ static void seedReportData(void)
     func__UpStore_DailyMarkDirty();
 }
 
+/* [EN] The saved networks: one panel, several boards. Everything an admin can
+   do from the Network card is exercised here against the real handlers, and the
+   two rules that keep a mis-tap from needing a serial cable - the active row
+   cannot be deleted, a damaged file falls back to the factory network - are
+   asserted rather than trusted.
+   [FA] شبکه‌های ذخیره‌شده: یک پنل، چند برد. هر کاری که مدیر از کارت شبکه
+   می‌تواند بکند اینجا روی هندلرهای واقعی آزمایش می‌شود و آن دو قاعده‌ای که
+   یک اشتباه کوچک را از نیاز به کابل سریال نجات می‌دهد - ردیف فعال حذف‌شدنی
+   نیست و فایل خراب به شبکهٔ کارخانه برمی‌گردد - اثبات می‌شوند، نه فرض. */
+static void testAdminNetwork(void)
+{
+    std::cout << "\n-- saved networks / شبکه‌های ذخیره‌شده\n";
+
+    check(loginAs("view1", "viewpass1"), "viewer logs in again");
+    useCookie();
+    callRoute("/api/admin/network");
+    check(UP_WEBSERVER_T__G__Server.lastCode == 403, "a viewer cannot read the network card");
+    UP_WEBSERVER_T__G__Server.clearArgs();
+    UP_WEBSERVER_T__G__Server.setArg("action", "use");
+    UP_WEBSERVER_T__G__Server.setArg("i", "0");
+    callRoute("/api/admin/network", HTTP_POST);
+    check(UP_WEBSERVER_T__G__Server.lastCode == 403, "a viewer cannot switch the panel's network");
+
+    check(loginAs("op1", "oppass11"), "operator logs in again");
+    useCookie();
+    UP_WEBSERVER_T__G__Server.clearArgs();
+    UP_WEBSERVER_T__G__Server.setArg("action", "use");
+    UP_WEBSERVER_T__G__Server.setArg("i", "0");
+    callRoute("/api/admin/network", HTTP_POST);
+    check(UP_WEBSERVER_T__G__Server.lastCode == 403, "and an operator cannot either");
+
+    check(loginAs("admin", "newsecret1"), "admin logs in for the network card");
+    useCookie();
+    UP_WEBSERVER_T__G__Server.clearArgs();
+    callRoute("/api/admin/network");
+    check(bodyHas("\"ok\":1"), "the admin reads the network card");
+    check(bodyHas("\"s\":\"ChangeOver-ESP\""), "the factory network is the first saved row");
+    check(bodyHas("\"active\":0") && bodyHas("\"count\":1"), "and it is the active one");
+    check(!bodyHas("123456789"), "the password is never sent back to the browser",
+          UP_WEBSERVER_T__G__Server.lastBody);
+    check(bodyHas("\"p\":1"), "the page is told that a password IS set, and no more");
+
+    UP_WEBSERVER_T__G__Server.clearArgs();
+    UP_WEBSERVER_T__G__Server.setArg("action", "save");
+    UP_WEBSERVER_T__G__Server.setArg("ssid", "Line2-ESP");
+    UP_WEBSERVER_T__G__Server.setArg("pass", "line2pass1");
+    callRoute("/api/admin/network", HTTP_POST);
+    check(bodyHas("\"i\":1"), "a second board's network is saved in the next row");
+
+    UP_WEBSERVER_T__G__Server.clearArgs();
+    UP_WEBSERVER_T__G__Server.setArg("action", "save");
+    UP_WEBSERVER_T__G__Server.setArg("ssid", "bad\"name");
+    UP_WEBSERVER_T__G__Server.setArg("pass", "goodpass1");
+    callRoute("/api/admin/network", HTTP_POST);
+    check(bodyHas("bad network name"), "a name that would break the reply is refused");
+
+    UP_WEBSERVER_T__G__Server.clearArgs();
+    UP_WEBSERVER_T__G__Server.setArg("action", "save");
+    UP_WEBSERVER_T__G__Server.setArg("ssid", "Line2-ESP");
+    UP_WEBSERVER_T__G__Server.setArg("pass", "short");
+    callRoute("/api/admin/network", HTTP_POST);
+    check(bodyHas("bad password"), "a WPA passphrase that cannot work is refused");
+
+    UP_WEBSERVER_T__G__Server.clearArgs();
+    UP_WEBSERVER_T__G__Server.setArg("action", "save");
+    UP_WEBSERVER_T__G__Server.setArg("ssid", "Line2-ESP");
+    callRoute("/api/admin/network", HTTP_POST);
+    check(bodyHas("\"i\":1"), "saving the same name again updates it in place");
+    check(func__UpSettings_Profile(1u)->char__pass[0] == 'l',
+          "and keeps the stored password when none was typed");
+
+    UP_WEBSERVER_T__G__Server.clearArgs();
+    UP_WEBSERVER_T__G__Server.setArg("action", "use");
+    UP_WEBSERVER_T__G__Server.setArg("i", "1");
+    callRoute("/api/admin/network", HTTP_POST);
+    check(bodyHas("\"ok\":1"), "the admin switches to the second board");
+    check(func__UpSettings_ActiveIndex() == 1u, "the active row follows the switch");
+    check(WiFi.staSsid == "Line2-ESP", "and the radio is told to join that network", WiFi.staSsid);
+
+    UP_WEBSERVER_T__G__Server.clearArgs();
+    UP_WEBSERVER_T__G__Server.setArg("action", "del");
+    UP_WEBSERVER_T__G__Server.setArg("i", "1");
+    callRoute("/api/admin/network", HTTP_POST);
+    check(bodyHas("active network cannot be deleted"),
+          "the active network cannot be deleted - it is the way back");
+    check(UP_WEBSERVER_T__G__Server.lastCode == 200, "and the refusal is an answer, not a crash");
+
+    check(LittleFS.exists("/up_net.bin"), "the table is on the panel's own flash");
+    check(func__UpSettings_Begin(), "and it is read back after a restart");
+    check(func__UpSettings_ActiveIndex() == 1u, "with the same network still active");
+
+    std::string kept = LittleFS.files["/up_net.bin"];
+    LittleFS.files["/up_net.bin"][8] = (char)(kept[8] ^ 0x5A);
+    check(!func__UpSettings_Begin(), "a damaged table is detected, not believed");
+    check(func__UpSettings_ActiveIndex() == 0u, "and the panel falls back to the factory network");
+    check(strcmp(func__UpSettings_Active()->char__ssid, "ChangeOver-ESP") == 0,
+          "which is the one it shipped with", func__UpSettings_Active()->char__ssid);
+
+    UP_WEBSERVER_T__G__Server.clearArgs();
+    UP_WEBSERVER_T__G__Server.setArg("action", "save");
+    UP_WEBSERVER_T__G__Server.setArg("ssid", "Line3-ESP");
+    UP_WEBSERVER_T__G__Server.setArg("pass", "line3pass1");
+    callRoute("/api/admin/network", HTTP_POST);
+    UP_WEBSERVER_T__G__Server.clearArgs();
+    UP_WEBSERVER_T__G__Server.setArg("action", "del");
+    UP_WEBSERVER_T__G__Server.setArg("i", "1");
+    callRoute("/api/admin/network", HTTP_POST);
+    check(bodyHas("\"ok\":1"), "a row that is not active is deleted");
+    check(func__UpSettings_Profile(1u) == NULL, "and its slot is free again");
+
+    UP_WEBSERVER_T__G__Server.clearArgs();
+    callRoute("/api/admin/audit");
+    check(bodyHas("net_save") && bodyHas("net_del"),
+          "the action log records who changed the network, never the password");
+    check(!bodyHas("line3pass1"), "and the log holds no passwords either");
+
+    WiFi.staSsid = "ChangeOver-ESP";
+    WiFi.lastSsid = "ChangeOver-ESP";
+    WiFi.currentStatus = WL_CONNECTED;
+    func__UpLink_Reconnect();
+    check(WiFi.staSsid == "ChangeOver-ESP", "the test leaves the panel on the factory network");
+}
+
 static void testExcelReport(void)
 {
     std::cout << "\n-- Excel report / گزارش اکسل\n";
@@ -1405,6 +1528,7 @@ int main(void)
     testCryptoAndClock();
     testCalendar();
     testAdminClock();
+    testAdminNetwork();
     testExcelReport();
 
     std::cout << "\n=================================\n";

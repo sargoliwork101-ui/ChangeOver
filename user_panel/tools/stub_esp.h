@@ -209,11 +209,20 @@ inline void StubSerial::println(const IPAddress &address) { println(address.toSt
 struct StubWiFi {
     int currentStatus = WL_DISCONNECTED;
     IPAddress apIp;
+    IPAddress staIp{192, 168, 4, 50};
     bool apConfigured = false;
     bool apStarted = false;
     bool staStarted = false;
     std::string lastSsid;
     std::string lastPass;
+    /* [EN] What the STATION was told to join, kept apart from lastSsid because
+            softAP() writes that one too: a panel that offers its own network and
+            joins somebody else's must not confuse the two.
+       [FA] آنچه به کلاینت گفته شد بپیوندد، جدا از lastSsid چون softAP() آن یکی
+            را هم می‌نویسد: پنلی که شبکهٔ خودش را عرضه می‌کند و به شبکهٔ دیگری
+            می‌پیوندد نباید این دو را قاطی کند. */
+    std::string staSsid;
+    std::string staPass;
 
     void mode(int) {}
     void setSleepMode(int) {}
@@ -236,10 +245,23 @@ struct StubWiFi {
     {
         lastSsid = (ssid != NULL) ? ssid : "";
         lastPass = (pass != NULL) ? pass : "";
+        staSsid = lastSsid;
+        staPass = lastPass;
         staStarted = true;
     }
+    void disconnect(void) { currentStatus = WL_DISCONNECTED; }
     int status(void) { return currentStatus; }
-    IPAddress localIP(void) { return apIp; }
+    /* [EN] On the real ESP8266 localIP() is the STATION address (this panel on
+            the board's network) and softAPIP() is the panel's own AP. Keeping
+            that distinction here matters: the network card shows the address the
+            panel got from the board, which is how the admin knows the join
+            actually worked.
+       [FA] روی ESP8266 واقعی localIP() آدرس کلاینت است (این پنل روی شبکهٔ برد) و
+            softAPIP() آدرس اکسس‌پوینت خود پنل. نگه‌داشتن این تفاوت اینجا مهم
+            است: کارت شبکه همان آدرسی را نشان می‌دهد که پنل از برد گرفته، و مدیر
+            از همان می‌فهمد پیوستن واقعاً انجام شده. */
+    IPAddress localIP(void) { return (currentStatus == WL_CONNECTED) ? staIp : IPAddress(0u, 0u, 0u, 0u); }
+    IPAddress softAPIP(void) { return apIp; }
     int softAPgetStationNum(void) { return 1; }
     std::string SSID(void) const { return lastSsid; }
     int RSSI(void) { return -60; }

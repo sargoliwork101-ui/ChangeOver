@@ -562,13 +562,19 @@ static bool func__UpLink_PumpJob(void)
  *              هم‌زمان ارائهٔ شبکهٔ کاربر روی زیرشبکه‌ای متفاوت، چون آدرس
  *              پیش‌فرض سافت‌اپ ESP8266 (۱۹۲.۱۶۸.۴.۱) دقیقاً همان آدرسی است که
  *              این پنل باید در شبکهٔ دیگر بگیرد و دو زیرشبکهٔ پیش‌فرض روی یک
- *              دستگاه جمع نمی‌شوند.
+ *              دستگاه جمع نمی‌شوند. The engineering network it joins is the one
+ *              the admin saved (up_settings.h), which on a factory-fresh panel
+ *              is UP_STA_SSID from up_config.h.
+ *              [FA] شبکهٔ مهندسی‌ای که به آن می‌پیوندد همان است که مدیر ذخیره
+ *              کرده (up_settings.h) و روی پنل تازه از کارخانه همان UP_STA_SSID
+ *              در up_config.h است.
  * @return [EN] None / [FA] ندارد
  */
 static void func__UpLink_Begin(void)
 {
     IPAddress up_ipaddress_t__apIp(192, 168, 5, 1);
     IPAddress up_ipaddress_t__apMask(255, 255, 255, 0);
+    up_net_profile_t *up_net_profile_t__net = func__UpSettings_Active();
 
     WiFi.mode(WIFI_AP_STA);
 #if defined(ESP8266)
@@ -579,7 +585,7 @@ static void func__UpLink_Begin(void)
 
     (void)WiFi.softAPConfig(up_ipaddress_t__apIp, up_ipaddress_t__apIp, up_ipaddress_t__apMask);
     (void)WiFi.softAP(UP_AP_SSID, UP_AP_PASS, UP_AP_CHANNEL);
-    WiFi.begin(UP_STA_SSID, UP_STA_PASS);
+    WiFi.begin(up_net_profile_t__net->char__ssid, up_net_profile_t__net->char__pass);
 
     memset(BOOL__G__UpParamPending, 0, sizeof(BOOL__G__UpParamPending));
     memset(INT32_T__G__UpParamValue, 0, sizeof(INT32_T__G__UpParamValue));
@@ -589,6 +595,45 @@ static void func__UpLink_Begin(void)
     UINT8_T__G__UpState = UP_LINK_ST_IDLE;
     BOOL__G__UpWifiStarted = true;
     UPPANEL_STATE_T__G__State.bool__staUp = false;
+}
+
+/**
+ * @brief  [EN] Follow a different saved network RIGHT NOW. Called after an
+ *              admin switches or edits the active network: the old association
+ *              is dropped, the radio is told to join the new SSID, and every
+ *              piece of link state is reset so the first read of the new board
+ *              is not measured against the retry delay of the old one.
+ *              The LED and the page keep working throughout: this function
+ *              never blocks and never waits for the join to finish - the join
+ *              is asynchronous in this SDK, and the page must stay answerable
+ *              while it happens, because the person watching it is the person
+ *              who just changed the setting.
+ *         [FA] دنبال‌کردن شبکهٔ ذخیره‌شدهٔ دیگری در همین لحظه. پس از اینکه مدیر
+ *              شبکهٔ فعال را عوض یا ویرایش می‌کند صدا زده می‌شود: پیوند قدیمی
+ *              رها می‌شود، رادیو مأمور پیوستن به نام تازه می‌شود و هر تکه‌ای از
+ *              حالت لینک صفر می‌شود تا اولین خواندن از برد تازه با تأخیر تلاش
+ *              دوبارهٔ برد قبلی سنجیده نشود. LED و صفحه در تمام مدت کار می‌کنند:
+ *              این تابع نه بلوکه می‌شود و نه منتظر تمام‌شدن پیوستن می‌ماند -
+ *              پیوستن در این SDK ناهم‌زمان است و صفحه باید در همان حین جواب
+ *              بدهد، چون همان کسی به آن نگاه می‌کند که تنظیم را عوض کرده است.
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__UpLink_Reconnect(void)
+{
+    up_net_profile_t *up_net_profile_t__net = func__UpSettings_Active();
+    uint32_t uint32_t__nowMs = (uint32_t)millis();
+
+    UP_WIFICLIENT_T__G__Client.stop();
+    UINT8_T__G__UpState = UP_LINK_ST_IDLE;
+    UINT32_T__G__UpResponseLen = 0u;
+    BOOL__G__UpHeaderDone = false;
+    UINT32_T__G__UpRetryDelayMs = UP_RETRY_MIN_MS;
+    UINT32_T__G__UpNextTelemetryMs = uint32_t__nowMs;
+    UINT32_T__G__UpNextPeaksMs = uint32_t__nowMs + 3000u;
+    UPPANEL_STATE_T__G__State.bool__staUp = false;
+
+    WiFi.disconnect();
+    WiFi.begin(up_net_profile_t__net->char__ssid, up_net_profile_t__net->char__pass);
 }
 
 /**
@@ -603,6 +648,22 @@ static void func__UpLink_Loop(void)
     uint32_t uint32_t__nowMs = (uint32_t)millis();
 
     UPPANEL_STATE_T__G__State.bool__staUp = (WiFi.status() == WL_CONNECTED);
+
+    /* [EN] Once the panel is actually ON a network, stamp that saved row: when
+            the table later fills up, the row that gets sacrificed is the one
+            nobody has used, and this is the only place that knows which row is
+            earning its keep. It writes at most once an hour (see
+            func__UpSettings_NoteUsed), and it does nothing at all while the
+            clock is unset - an unstamped row is better than a wrong stamp.
+       [FA] وقتی پنل واقعاً روی یک شبکه است، همان ردیف ذخیره‌شده را مهر می‌زند:
+            وقتی جدول بعداً پر شود، ردیفی قربانی می‌شود که کسی استفاده‌اش
+            نکرده، و این تنها جایی است که می‌داند کدام ردیف ارزش نگه‌داشتن دارد.
+            حداکثر ساعتی یک‌بار می‌نویسد (تابع NoteUsed را ببینید) و تا وقتی ساعت
+            تنظیم نشده هیچ کاری نمی‌کند - ردیف بی‌مهر از مهر غلط بهتر است. */
+    if (UPPANEL_STATE_T__G__State.bool__staUp)
+    {
+        (void)func__UpSettings_NoteUsed(func__UpSettings_ActiveIndex(), func__UpState_NowEpochS());
+    }
 
     /* [EN] A queued charger command goes out BEFORE the next read: the operator
             pressed a button and is watching the screen, while the read only
