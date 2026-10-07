@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>شبیه‌ساز پنل کاربر ChangeOver</title>
+<!--
+  [EN] The simulator's control page. It talks to two things on the same port:
+       the simulator's own /sim/state and /sim/cmd, and - lower down, in the
+       frame - the REAL panel page served by the REAL firmware code. Every
+       button here touches the machine, never the panel: the panel is what is
+       under test and must react by itself.
+  [FA] صفحهٔ کنترل شبیه‌ساز. با دو چیز روی همان پورت حرف می‌زند: /sim/state و
+       /sim/cmd خود شبیه‌ساز، و پایین‌تر در قاب، صفحهٔ «خودِ» پنل که کدِ واقعی
+       فرم‌ور سرو می‌کند. هر دکمهٔ اینجا به ماشین دست می‌زند و نه به پنل: پنل
+       چیزی است که آزمایش می‌شود و باید خودش واکنش بدهد.
+-->
+<style>
+  :root{
+    --bg:#0a0f18;--card:#111926;--card2:#182233;--line:#22304a;--line2:#2c3d5c;
+    --tx:#e8eef8;--tx2:#b8c6dd;--mu:#7e8fa9;--ac:#3f7dd6;--ac2:#6aa6ff;
+    --ok:#2fd6a3;--wa:#f7c33c;--er:#ff6577;--sh:0 6px 22px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 700px at 50% -10%,#152238,#0a0f18 60%);color:var(--tx);
+       font-family:system-ui,"Segoe UI",Tahoma,sans-serif;line-height:1.7}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 20px;
+         border-bottom:1px solid var(--line);background:rgba(10,15,24,.72);position:sticky;top:0;backdrop-filter:blur(8px);z-index:5}
+  h1{font-size:1.05em;margin:0;font-weight:800}
+  h1 small{display:block;font-weight:600;color:var(--mu);font-size:.8em}
+  main{padding:18px 20px 40px;display:flex;flex-direction:column;gap:16px;max-width:1180px;margin:0 auto}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+  .card{background:linear-gradient(180deg,var(--card),#0f1724);border:1px solid var(--line);border-radius:16px;
+        padding:14px 16px;box-shadow:var(--sh)}
+  .card h2{margin:0 0 10px;font-size:.95em;display:flex;align-items:center;gap:8px}
+  .kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed var(--line)}
+  .kv:last-child{border-bottom:0}
+  .kv b{font-variant-numeric:tabular-nums}
+  .mu{color:var(--mu)}
+  .ok{color:var(--ok)}.wa{color:var(--wa)}.er{color:var(--er)}
+  button{font:inherit;font-weight:700;color:#fff;background:linear-gradient(180deg,#2a4a80,#1d3660);
+         border:1px solid #3a6ba8;border-radius:11px;padding:8px 12px;cursor:pointer;transition:filter .15s}
+  button:hover{filter:brightness(1.14)}
+  button.ghost{background:var(--card2);border-color:var(--line2);color:var(--tx2)}
+  button.er{background:linear-gradient(180deg,#a8323f,#7d222c);border-color:#c33b4c}
+  button.wa{background:linear-gradient(180deg,#a8801c,#7d5f13);border-color:#c99a17}
+  button.ok{background:linear-gradient(180deg,#1f8f6d,#146a50);border-color:#23a67d}
+  .row{display:flex;flex-wrap:wrap;gap:8px}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--line2);
+        border-radius:999px;padding:4px 10px;font-size:.82em;color:var(--tx2)}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--mu)}
+  .dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(47,214,163,.16)}
+  .dot.er{background:var(--er);box-shadow:0 0 0 3px rgba(255,101,119,.16)}
+  a{color:var(--ac2)}
+  iframe{width:100%;height:720px;border:1px solid var(--line);border-radius:16px;background:#0a0f18}
+  .note{color:var(--mu);font-size:.85em}
+  .toast{position:fixed;inset-inline-start:20px;bottom:20px;background:#16233a;border:1px solid var(--line2);
+         border-radius:12px;padding:10px 14px;box-shadow:var(--sh);opacity:0;transition:opacity .2s}
+  .toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <h1>شبیه‌ساز پنل کاربر ChangeOver
+    <small>کدِ واقعی پنل روی کامپیوتر شما اجرا می‌شود؛ این صفحه فقط ماشین را کنترل می‌کند.</small>
+  </h1>
+  <div class="row">
+    <span class="pill"><span class="dot" id="dot-link"></span><span id="txt-link">اتصال شبیه‌ساز</span></span>
+    <a class="pill" href="/" target="_blank">باز کردن پنل در پنجرهٔ تازه</a>
+  </div>
+</header>
+
+<main>
+  <section class="grid">
+    <div class="card">
+      <h2>وضعیت ماشین</h2>
+      <div class="kv"><span class="mu">ورودی ۲۴ ولت</span><b id="s-vin">—</b></div>
+      <div class="kv"><span class="mu">پک باتری</span><b id="s-v24">—</b></div>
+      <div class="kv"><span class="mu">باتری پایینی</span><b id="s-v12">—</b></div>
+      <div class="kv"><span class="mu">نیمهٔ بالا / پایین</span><b id="s-halves">—</b></div>
+      <div class="kv"><span class="mu">عدم‌توازن</span><b id="s-imb">—</b></div>
+    </div>
+    <div class="card">
+      <h2>شارژرها</h2>
+      <div class="kv"><span class="mu">کانال ۱ — حالت</span><b id="s-st1">—</b></div>
+      <div class="kv"><span class="mu">کانال ۱ — جریان</span><b id="s-i1">—</b></div>
+      <div class="kv"><span class="mu">کانال ۲ — حالت</span><b id="s-st2">—</b></div>
+      <div class="kv"><span class="mu">کانال ۲ — جریان</span><b id="s-i2">—</b></div>
+      <div class="kv"><span class="mu">قفل / مسدود</span><b id="s-imbstate">—</b></div>
+    </div>
+    <div class="card">
+      <h2>خطاها و زمان</h2>
+      <div class="kv"><span class="mu">ماسک خطا</span><b id="s-fl">—</b></div>
+      <div class="kv"><span class="mu">ساعت مجازی</span><b id="s-now">—</b></div>
+      <div class="kv"><span class="mu">سقوط جهش</span><b id="s-trips">—</b></div>
+      <div class="kv"><span class="mu">ری‌استارت برد</span><b id="s-boards">—</b></div>
+      <div class="kv"><span class="mu">اتصال به برد</span><b id="s-link">—</b></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>ورودی و شارژر — همان دو فرمانی که پنل می‌فرستد</h2>
+    <div class="row">
+      <button class="ok" data-cmd="input&v=1">وصل‌کردن ورودی</button>
+      <button class="er" data-cmd="input&v=0">قطع ورودی</button>
+      <button class="ghost" data-cmd="ch&n=1&v=1">وصل شارژر ۱ (برد)</button>
+      <button class="ghost" data-cmd="ch&n=1&v=0">قطع شارژر ۱ (برد)</button>
+      <button class="ghost" data-cmd="ch&n=2&v=1">وصل شارژر ۲ (برد)</button>
+      <button class="ghost" data-cmd="ch&n=2&v=0">قطع شارژر ۲ (برد)</button>
+      <button class="ghost" data-cmd="manual&v=1">مود تعمیرات روشن</button>
+      <button class="ghost" data-cmd="manual&v=0">مود تعمیرات خاموش</button>
+    </div>
+    <p class="note">این دکمه‌ها بیت‌های ماشین را عوض می‌کنند، درست مانند کاری که برد می‌کند.
+      برای آزمودن مسیر فرمان پنل، از خود پنل (پایین یا پنجرهٔ تازه) استفاده کنید.</p>
+  </section>
+
+  <section class="card">
+    <h2>تزریق خطا</h2>
+    <div class="row">
+      <button class="ghost" data-cmd="fault&bit=0&v=1">خطای اندازه‌گیری</button>
+      <button class="ghost" data-cmd="fault&bit=1&v=1">اضافه‌جریان کانال ۱</button>
+      <button class="ghost" data-cmd="fault&bit=2&v=1">اضافه‌جریان کانال ۲</button>
+      <button class="ghost" data-cmd="fault&bit=3&v=1">باتری ضعیف</button>
+      <button class="wa" data-cmd="jitter">جهش (بار سوم = خطای نهایی)</button>
+      <button class="ghost" data-cmd="fault&bit=0&v=0">پاک‌کردن خطای اندازه‌گیری</button>
+      <button class="er" data-cmd="board">ری‌استارت برد (تنها راه خطای نهایی)</button>
+    </div>
+    <p class="note">جهش بار سوم کانال را به <b>FINAL_FAULT</b> می‌برد؛ هیچ فرمانی آن را آزاد نمی‌کند و
+      فقط ری‌استارت برد پاکش می‌کند — همان چیزی که صفحهٔ دیاگ پنل می‌گوید.</p>
+  </section>
+
+  <section class="card">
+    <h2>عدم‌توازن و باتری</h2>
+    <div class="row">
+      <button class="wa" data-cmd="imb">شروع رخداد عدم‌توازن</button>
+      <button class="ok" data-cmd="swap">جداکردن و برگرداندن باتری (تعویض)</button>
+      <button class="ghost" data-cmd="absent&v=1">باتری جدا شود</button>
+      <button class="ghost" data-cmd="absent&v=0">باتری برگردد</button>
+    </div>
+    <p class="note">قفل عدم‌توازن با <b>هیچ شناسه‌ای</b> از راه /s پاک نمی‌شود: ESP پنل مهندسی شناسه‌های
+      بالای ۱۱۸ را با خطای ۴۰۰ رد می‌کند. تنها راه‌ها جداکردن واقعی باتری (سه ثانیه) یا خاموش‌روشن برد است.</p>
+  </section>
+
+  <section class="card">
+    <h2>شبکه و زمان</h2>
+    <div class="row">
+      <button class="er" data-cmd="link&v=0">قطع ارتباط با برد</button>
+      <button class="ok" data-cmd="link&v=1">وصل‌کردن ارتباط با برد</button>
+      <button class="ghost" data-cmd="advance&s=60">۶۰ ثانیه جلو</button>
+      <button class="ghost" data-cmd="advance&s=3600">۱ ساعت جلو</button>
+      <button class="ghost" data-cmd="advance&s=21600">۶ ساعت جلو</button>
+      <button class="ghost" data-cmd="advance&s=86400">۱ روز جلو</button>
+      <button class="ghost" data-cmd="speed&v=1">سرعت ×۱</button>
+      <button class="ghost" data-cmd="speed&v=30">سرعت ×۳۰</button>
+      <button class="ghost" data-cmd="reset">شبیه‌ساز از نو</button>
+    </div>
+    <p class="note">جلو بردن زمان، نمونه‌برداری و جمع‌های روزانهٔ پنل را هم جلو می‌برد؛ با «۱ روز جلو»
+      می‌توانید نقشهٔ حرارتی و گزارش روزانه را پر ببینید.</p>
+  </section>
+
+  <section class="card">
+    <h2>خودِ پنل (کد واقعی، روی همین پورت)</h2>
+    <iframe src="/" title="user panel"></iframe>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==================== helpers / کمکی‌ها ==================== */
+const $ = (id) => document.getElementById(id);
+function fa(text) { return String(text).replace(/[0-9]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]); }
+function toast(text) {
+  const t = $('toast');
+  t.textContent = text;
+  t.classList.add('on');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove('on'), 1600);
+}
+const STATE_NAMES = { 0: 'خاموش', 1: 'شارژ سریع', 2: 'شارژ جذبی', 3: 'پر', 7: 'خطای نهایی' };
+
+/* ==================== state / حالت ==================== */
+function render(s) {
+  $('s-vin').textContent = fa((s.vin / 1000).toFixed(2)) + ' V';
+  $('s-v24').textContent = fa((s.v24 / 1000).toFixed(3)) + ' V';
+  $('s-v12').textContent = fa((s.v12 / 1000).toFixed(3)) + ' V';
+  $('s-halves').textContent = fa((s.vhigh / 1000).toFixed(2)) + ' / ' + fa((s.vlow / 1000).toFixed(2)) + ' V';
+  $('s-imb').textContent = fa(s.imb) + ' mV';
+  $('s-st1').textContent = STATE_NAMES[s.st1] || fa(s.st1);
+  $('s-st2').textContent = STATE_NAMES[s.st2] || fa(s.st2);
+  $('s-i1').textContent = fa((s.i1 / 1000).toFixed(2)) + ' A';
+  $('s-i2').textContent = fa((s.i2 / 1000).toFixed(2)) + ' A';
+  $('s-imbstate').textContent = (s.latched ? 'قفل‌شده' : 'آزاد') + ' / ' + (s.blocked ? 'شارژ مسدود' : 'شارژ آزاد') +
+    ' — ' + fa(s.imbCycles) + ' از ۲۰ سیکل';
+  $('s-fl').textContent = '0x' + Number(s.fl).toString(16).padStart(2, '0');
+  $('s-now').textContent = fa(Math.floor(s.nowMs / 1000)) + ' ثانیه';
+  $('s-trips').textContent = fa(s.trips);
+  $('s-boards').textContent = fa(s.boards);
+  $('s-link').textContent = s.link ? 'وصل' : 'قطع';
+}
+
+async function poll() {
+  try {
+    const r = await fetch('/sim/state', { cache: 'no-store' });
+    const s = await r.json();
+    render(s);
+    $('dot-link').className = 'dot on';
+    $('txt-link').textContent = 'شبیه‌ساز فعال';
+  } catch (e) {
+    $('dot-link').className = 'dot er';
+    $('txt-link').textContent = 'شبیه‌ساز پاسخ نمی‌دهد';
+  }
+}
+
+/* ==================== commands / فرمان‌ها ==================== */
+document.addEventListener('click', async (event) => {
+  const button = event.target.closest('button[data-cmd]');
+  if (!button) { return; }
+  const command = button.getAttribute('data-cmd');
+  button.disabled = true;
+  try {
+    const r = await fetch('/sim/cmd?c=' + command, { cache: 'no-store' });
+    const answer = await r.json();
+    toast('انجام شد: ' + (answer.did || command));
+  } catch (e) {
+    toast('فرمان انجام نشد');
+  }
+  button.disabled = false;
+  poll();
+});
+
+poll();
+setInterval(poll, 1000);
+</script>
+</body>
+</html>

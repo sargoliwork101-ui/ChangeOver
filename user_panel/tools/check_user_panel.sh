@@ -153,6 +153,27 @@ else
     skip_check "no workbook on disk (the host test writes them)"
 fi
 
+# ------------------------------------------ 3c. the simulator, real code -----
+# [EN] The simulator compiles the panel's own sketch against the host stubs and
+#      a model of the machine, then drives it as an admin, an operator and a
+#      viewer. Building it here is half the value: a simulator that stopped
+#      compiling is worse than none, because it lies about being usable.
+# [FA] شبیه‌ساز خودِ اسکچ پنل را در کنار استاب‌های میزبان و مدلی از ماشین
+#      کامپایل می‌کند و آن را به‌عنوان مدیر، اپراتور و بیننده به‌کار می‌اندازد.
+#      همین ساختنش نیمی از ارزش است: شبیه‌سازی که دیگر کامپایل نمی‌شود از
+#      نبودنش بدتر است، چون دروغ می‌گوید که به‌کار می‌آید.
+step "the simulator / شبیه‌ساز"
+if [ -f "$MODULE/simulator/run_sim.sh" ]; then
+    if bash "$MODULE/simulator/run_sim.sh" --selftest >/tmp/up_sim.log 2>&1; then
+        ok "simulator selftest: $(tail -1 /tmp/up_sim.log)"
+    else
+        bad "the simulator failed:"
+        grep -E '^  FAIL|error:' /tmp/up_sim.log | sed 's/^/       /' | head -10
+    fi
+else
+    bad "simulator/run_sim.sh is missing - the panel cannot be exercised without a board"
+fi
+
 # ------------------------------------------------- 4. routes vs the page map --
 step "routes and the page's API map / مسیرها و نگاشت API صفحه"
 MISMATCH=0
