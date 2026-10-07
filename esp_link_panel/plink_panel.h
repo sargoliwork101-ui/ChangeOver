@@ -177,6 +177,20 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .tw{overflow:auto;max-height:420px;margin:6px 0 10px;border:1px solid var(--ln);border-radius:12px}.bt2{font-size:12px;direction:ltr;white-space:nowrap}.bt2 th{position:sticky;top:0;background:var(--rs);color:var(--mu);font-weight:600;text-align:center;padding:6px 8px}.bt2 td{padding:5px 8px;text-align:center}
 .bt3{width:auto;font-size:13px}.bt3 th{color:var(--mu);font-weight:600;text-align:center;padding:5px 8px;white-space:nowrap}.bt3 td{padding:5px 8px;text-align:center}.bt3 input[type=number]{padding:6px 8px}
 .bsum{font-size:12px;direction:ltr;text-align:left;line-height:1.9;margin-bottom:8px}.okc{color:var(--ok)}.erc{color:var(--er)}
+/* [EN] Colour checklist: green ready / yellow warning / red blocker.
+   [FA] فهرست رنگی: سبز آماده / زرد هشدار / قرمز مانع. */
+.wak{color:var(--wa)}
+.cksum{display:flex;gap:16px;font-size:12.5px;margin:8px 0 2px}
+.ckl{display:flex;flex-direction:column;gap:6px;margin:8px 0 10px}
+.ckr{display:flex;gap:9px;align-items:flex-start;direction:rtl;text-align:right;background:var(--in);border:1px solid var(--ln);border-right:4px solid var(--ln);border-radius:10px;padding:8px 11px;font-size:12.5px;line-height:1.9}
+.ckr.ok{border-right-color:var(--ok);background:rgba(53,214,160,.06)}
+.ckr.wa{border-right-color:var(--wa);background:rgba(247,193,60,.07)}
+.ckr.no{border-right-color:var(--er);background:rgba(255,104,115,.07)}
+.ckr i{flex:none;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-style:normal;font-weight:700;font-size:11px;margin-top:3px}
+.ckr.ok i{background:var(--ok);color:#04120c}
+.ckr.wa i{background:var(--wa);color:#231a02}
+.ckr.no i{background:var(--er);color:#2b0508}
+.ckr .fx{color:var(--mu);font-size:11.5px;display:block;margin-top:2px}
 .bxw textarea{width:100%;height:150px;background:var(--in);color:#a7b0c4;border:1px solid var(--ln);border-radius:12px;padding:9px;font:11px/1.5 Vazirmatn;direction:ltr;margin-top:6px}
 .sx{font-size:12.5px;line-height:1.95;color:#aab3c5;margin:2px 0 6px;padding:0 2px}.sx b{color:var(--tx);font-weight:700}
 .ds{font-size:13px;line-height:2;color:#c9d0df;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:11px 15px}.ds ul{padding-right:18px}.ds b{color:var(--tx)}
@@ -384,7 +398,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 00accd6</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build cbad9f7</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3306,14 +3320,12 @@ function calvfit(k){const xs=[],ys=[];
    ندارد و دقیقاً می‌گوید چرا و چه‌کار کنی. */
 function calchk(){
  const box=$('calck');if(!box)return;
- /* [EN] User order 2026-10-07: with zero samples this checklist is nothing
-    but a wall of red rows, so while the sample list is still empty show one
-    short line; the full table appears from the first registered sample on.
-    [FA] به دستور کاربر: تا هیچ نمونه‌ای ثبت نشده، این فهرست چیزی جز
-    دیواری از سطرهای قرمز نیست؛ پس تا فهرست نمونه خالی است فقط یک خط کوتاه
-    نشان می‌دهد و جدول کامل از اولین نمونهٔ ثبت‌شده به بعد ظاهر می‌شود. */
+ /* [EN] Zero samples: one short line instead of a wall of red rows.
+    [FA] با صفر نمونه فقط یک خط کوتاه، نه دیوار سطرهای قرمز. */
  if(!CALS.length){box.innerHTML='<span class="lb">فهرست آماده‌سازی داده‌ها: بعد از اولین «ثبت مرحله» اینجا نشان می‌دهد چه چیزی کم است.</span>';return 0;}
- const R=[],ok=(t)=>R.push([1,t]),no=(t,f)=>R.push([0,t,f]);
+ /* [EN] ok=green, wa=yellow (runs anyway), no=red blocker; RTL list.
+    [FA] سبز آماده، زرد هشدار (انجام می‌شود)، قرمز مانع؛ فهرست راست‌به‌چپ. */
+ const R=[],ok=(t)=>R.push(['ok',t,'']),wn=(t,f)=>R.push(['wa',t,f||'']),no=(t,f)=>R.push(['no',t,f||'']);
  const S=calsel(null);
  /* ۱) لینک */
  if(D&&D.p)ok('ارتباط با برد برقرار است و عددهای فعلی خوانده شدند.');
@@ -3331,16 +3343,16 @@ function calchk(){
     'از duty کم تا زیاد بروید (مثلاً ۲ تا ۲۰ درصد)؛ با نقاط چسبیده شیب قابل محاسبه نیست.');
    /* ۴) تکراری نبودن duty */
    const ds=c.map(z=>z.d).filter(x=>x!=null),u=new Set(ds);
-   if(ds.length&&u.size<ds.length)no('باتری '+fa(n)+': '+(ds.length-u.size)+' مرحله با duty تکراری ثبت شده.',
+   if(ds.length&&u.size<ds.length)wn('باتری '+fa(n)+': '+(ds.length-u.size)+' مرحله با duty تکراری ثبت شده.',
     'تکراری‌ها را یا تیک بردارید یا نگه دارید؛ تکرار وزن آن نقطه را بی‌دلیل بالا می‌برد.');
    else ok('باتری '+fa(n)+': duty مرحله‌ها تکراری نیست.');}
  });
  /* ۵) عددهای ولتاژ */
  const nv=S.filter(z=>z.dvi!=null).length,nb=S.filter(z=>z.dv1!=null&&z.dv2!=null).length;
  if(nv>=3)ok('ولتاژ ورودی در '+nv+' مرحله با مولتی‌متر ثبت شده.');
- else no('ولتاژ ورودی فقط در '+nv+' مرحله ثبت شده.','بدون حداقل ۳ عدد، آفست ولتاژ ورودی محاسبه نمی‌شود.');
+ else wn('ولتاژ ورودی فقط در '+nv+' مرحله ثبت شده.','بدون حداقل ۳ عدد، آفست ولتاژ ورودی محاسبه نمی‌شود.');
  if(nb>=3)ok('ولتاژ هر دو نیم‌باتری در '+nb+' مرحله ثبت شده.');
- else no('ولتاژ نیم‌باتری‌ها فقط در '+nb+' مرحله ثبت شده.','آفست پک ۲۴ ولت و نود ۱۲ ولت به عدد هر دو نیم‌باتری نیاز دارد.');
+ else wn('ولتاژ نیم‌باتری‌ها فقط در '+nb+' مرحله ثبت شده.','آفست پک ۲۴ ولت و نود ۱۲ ولت به عدد هر دو نیم‌باتری نیاز دارد.');
  /* ۶) قانونی‌بودن جدولی که ساخته می‌شود */
  [1,2].forEach(n=>{const t=calbuild(n,(D&&D.p&&D.p[n-1]!=null)?D.p[n-1]:0,(D&&D.p&&D.p[n+1]!=null)?D.p[n+1]:1000);
   if(t.bad)no('جدول باتری '+fa(n)+': '+t.bad+'.','جدول ساخته نمی‌شود تا چیز نادرستی وارد کد میکرو نشود.');
@@ -3348,23 +3360,24 @@ function calchk(){
    (t.note.length?' ('+t.note.join(' · ')+')':''));});
  /* ۷) شیب ولتاژ: آیا آفست تنهایی کافی است؟ */
  VDIV.forEach(k=>{const f=calvfit(k);
-  if(!f){no(k[0]+': شیب قابل اندازه‌گیری نیست.',
+  if(!f){wn(k[0]+': شیب قابل اندازه‌گیری نیست.',
    'برای سنجش شیب لازم است همین ولتاژ در چند مرحله با اختلاف حداقل ۱ ولت ثبت شود (مثلاً باتری خالی و پر).');return;}
   const err=Math.abs(f.a-1)*100;
   /* [EN] v1.63 (user decision): the dividers are 1% parts, so a scale error
      inside ~2% is just part tolerance and is deliberately ignored.
      [FA] مقاومت‌ها ۱٪ هستند، پس خطای ضریبی تا حدود ۲٪ تلرانس قطعه است و
      عمداً نادیده گرفته می‌شود. */
-  if(err<2)ok(k[0]+': شیب '+f.a.toFixed(4)+' است ('+err.toFixed(1)+'٪) — در حد تلرانس ۱٪ مقاومت‌ها، کاری لازم نیست.');
-  else no(k[0]+': شیب '+f.a.toFixed(4)+' است، یعنی '+err.toFixed(1)+'٪ خطای ضریبی.',
+  if(err<2)ok(k[0]+': شیب <span dir="ltr">'+f.a.toFixed(4)+'</span> است (<span dir="ltr">'+err.toFixed(1)+'٪</span>) — در حد تلرانس ۱٪ مقاومت‌ها، کاری لازم نیست.');
+  else wn(k[0]+': شیب <span dir="ltr">'+f.a.toFixed(4)+'</span> است، یعنی <span dir="ltr">'+err.toFixed(1)+'٪</span> خطای ضریبی.',
    'این بیشتر از تلرانس ۱٪ مقاومت‌هاست، پس احتمالاً قطعهٔ اشتباه یا اتصال بد است؛ آفست درستش نمی‌کند. در «ساخت کد برای میکرو» عدد اصلاح‌شدهٔ مقسم چاپ می‌شود.');});
  /* ۸) جریان منفی/صفر در همهٔ نقاط */
  if(S.some(z=>Number.isFinite(z.b1)&&z.b1>0)||S.some(z=>Number.isFinite(z.b2)&&z.b2>0))
   ok('حداقل در بعضی مرحله‌ها جریان واقعی شارژ ثبت شده.');
  else no('هیچ مرحله‌ای جریان شارژ مثبت ندارد.','با duty بالاتر یا باتری خالی‌تر تست کنید؛ از روی جریان صفر چیزی درنمی‌آید.');
- box.innerHTML='<table class="bt2"><tr><th>شرط</th><th>نتیجه</th></tr>'+
-  R.map(r=>'<tr><td>'+(r[0]?'✅ ':'⛔ ')+r[1]+'</td><td class="lb">'+(r[0]?'':r[2])+'</td></tr>').join('')+'</table>';
- return R.filter(r=>!r[0]).length;}
+  const cO=R.filter(x=>x[0]==='ok').length,cW=R.filter(x=>x[0]==='wa').length,cN=R.filter(x=>x[0]==='no').length;
+ box.innerHTML='<div class="cksum"><b class="okc">✔ '+fa(cO)+' آماده</b><b class="wak">⚠ '+fa(cW)+' هشدار</b><b class="erc">✕ '+fa(cN)+' مانده</b></div>'+
+  '<div class="ckl">'+R.map(x=>'<div class="ckr '+x[0]+'"><i>'+(x[0]==='ok'?'✔':x[0]==='wa'?'!':'✕')+'</i><div>'+x[1]+(x[2]?'<span class="fx">'+x[2]+'</span>':'')+'</div></div>').join('')+'</div>';
+ return cN+cW;}
 
 /* ==================== Firmware snippet / خروجی برای کد میکرو ====================
    [EN] v1.61 (user order: "give me something I can paste into the firmware so
