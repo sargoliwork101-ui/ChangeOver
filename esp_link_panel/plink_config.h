@@ -174,11 +174,10 @@
 #define ESP_JSON_BUFFER_SIZE        2624u   /* v1.16: p[77] needs the headroom (~950 B worst case); v1.17: p[83] adds ~70 B; v1.24: p[93] adds 10 PID values, ~1.1 KB; v1.28: p[108] limits; v1.43: p[119] + t[28] + fl2 adds ~120 B */
 #define ESP_HTTP_FONT_CACHE         "public, max-age=31536000"
 /* [EN] Ceiling for the web panel, checked by a static_assert in plink_http.h.
- *      The panel is served as one send_P and was 118 KB when this project
- *      started; it is 194 KB now and nothing ever stopped it growing. On an
- *      ESP8266 that is ~140 back-to-back TCP writes, and a stalled link cuts
- *      the transfer wherever it happens to be - the browser then shows a page
- *      missing its tail, which is the settings sub-pages and the scripts.
+ *      The panel is streamed from PROGMEM in small HTTP chunks and was 118 KB
+ *      when this project started; it is 194 KB now and nothing ever stopped
+ *      it growing. Chunking keeps a stalled ESP8266 client from losing the
+ *      tail, which contains the settings sub-pages and the scripts.
  *      The ceiling turns the next large addition into a compile error that
  *      has to be answered on purpose. v1.43 (user order 2026-10-04, charge
  *      scenario rebuilt into one usable page: definition of full, the mV
@@ -188,9 +187,9 @@
  *      settings and the derived numbers the board will actually use): the
  *      page needed ~16 KB more, so the step went 208 -> 224 -> 256 KB in two
  *      deliberate moves, each tied to a named user order, not a drift.
- *      248 KB of markup is still ~170 back-to-back TCP writes, well inside
- *      what send_P does in one call, and PROGMEM is not the scarce resource
- *      here (the sketch uses a fraction of the 1 MB image).
+ *      248 KB of markup is still safe in PROGMEM (the sketch uses a fraction
+ *      of the 1 MB image); the HTTP response is chunked so transfer size is
+ *      not confused with one giant socket write.
  * [FA] سقف پنل وب، با static_assert در plink_http.h بررسی می‌شود. پنل با یک
  *      send_P می‌رود و اول کار ۱۱۸ کیلوبایت بود؛ حالا ۱۹۴ است و هیچ‌چیز جلوی
  *      رشدش را نگرفته بود. روی ESP8266 یعنی حدود ۱۴۰ نوشتن پیاپی TCP، و لینکِ

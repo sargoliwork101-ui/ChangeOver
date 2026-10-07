@@ -366,8 +366,12 @@ int main(void)
        [EN] Checked on the bytes the BOARD sends, not on the preview file.
        [FA] روی همان بایت‌هایی که «برد» می‌فرستد، نه روی فایل پیش‌نمایش. */
     {
+        ESP_WEB_SERVER_T__G__Server.sendCount = 0;
         ESP_WEB_SERVER_T__G__Server.call("/", HTTP_GET);
         check(ESP_WEB_SERVER_T__G__Server.lastCode == 200, "GET / answers 200");
+        check(ESP_WEB_SERVER_T__G__Server.sendCount > 100,
+              "GET / streams the panel in many small chunks, not one giant write",
+              std::to_string(ESP_WEB_SERVER_T__G__Server.sendCount) + " writes");
         check(ESP_WEB_SERVER_T__G__Server.lastHeaderKey == "Cache-Control" &&
               ESP_WEB_SERVER_T__G__Server.lastHeaderVal == "no-store",
               "GET / forbids caching, so a panel update reaches every browser",

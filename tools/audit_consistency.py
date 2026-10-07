@@ -690,8 +690,16 @@ def sec_defaults(ids):
                f"header says {_st.group(1)}, markup hashes to {_want} - run "
                "tools/stamp_panel.py")
 
-        # [EN] The panel is served in one send_P; keep it under the ceiling.
-        # [FA] پنل با یک send_P می‌رود؛ زیر سقف نگهش دار.
+        # [EN] The panel is served with chunked PROGMEM slices; keep it under
+        #      the ceiling and make sure the ESP path cannot regress to one
+        #      giant send that loses the tail on a slow client.
+        # [FA] پنل با تکه‌های chunked از PROGMEM فرستاده می‌شود؛ هم زیر سقف
+        #      بماند و هم مسیر ESP دوباره به یک ارسال غول‌پیکر برنگردد.
+        _http = read("esp_link_panel/plink_http.h")
+        ok("setContentLength(CONTENT_LENGTH_UNKNOWN)" in _http and
+           "sendContent_P(ESP_PANEL_HTML +" in _http,
+           "the panel HTTP route must stream PROGMEM chunks",
+           "a single giant send can truncate the settings/scripts tail")
         _lit = P_PAN.split('R"HTML(', 1)[1].split(')HTML"', 1)[0]
         _sz = len(_lit.encode("utf-8")) + 1
         _cap = re.search(r"#define ESP_PANEL_HTML_MAX_BYTES\s+(\d+)u", P_CFG)

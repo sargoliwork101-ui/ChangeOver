@@ -56,6 +56,7 @@
 #define snprintf_P snprintf
 #define F(x) (x)
 #define SERIAL_8N1 0
+#define CONTENT_LENGTH_UNKNOWN ((size_t)-1)
 
 /* ---------------- a monotonic clock the test drives --------------------- */
 extern unsigned long G_StubMillis;
@@ -143,6 +144,7 @@ struct StubWebServer {
     void on(const char *path, int method, handler_t h) { routes[std::make_pair(std::string(path), method)] = h; }
     void onNotFound(handler_t) {}
     void sendHeader(const char *k, const char *v) { lastHeaderKey = k; lastHeaderVal = v; }
+    void setContentLength(size_t) {}
     void send(int code, const char *type, const String &body) {
         lastCode = code; lastType = type ? type : ""; lastBody = body.s; sendCount++;
     }
@@ -151,6 +153,10 @@ struct StubWebServer {
     }
     void send_P(int code, PGM_P type, PGM_P body) {
         lastCode = code; lastType = type ? type : ""; lastBody = body ? body : ""; sendCount++;
+    }
+    void sendContent_P(PGM_P body, size_t n) {
+        if (body && n) lastBody.append(body, n);
+        sendCount++;
     }
     bool hasArg(const char *n) { return args.count(n) != 0; }
     String arg(const char *n) {

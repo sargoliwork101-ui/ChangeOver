@@ -51,29 +51,41 @@ static bool func__Esp_ParseInt(const char *char__ptr_text, int32_t *int32_t__ptr
  */
 static void func__Esp_HttpRoot(void)
 {
-    /* [EN] The whole panel leaves in one send_P. It has grown from 118 KB to
-     *      roughly 160 KB with no ceiling anywhere, and on an ESP8266 a page
-     *      this size is sent as ~110 consecutive TCP writes: if the link
-     *      stalls, the transfer is cut and the browser renders whatever
-     *      arrived. The document ends with the settings sub-pages and then
-     *      the scripts, so a cut tail looks exactly like "the scenarios
-     *      section does not come up" while the earlier cards still show.
-     *      This ceiling makes that growth a build error instead of a field
-     *      report. Raising it is a deliberate act, not an accident.
-     * [FA] کل پنل با یک send_P می‌رود. از ۱۱۸ کیلوبایت به حدود ۱۶۰ رسیده و
-     *      هیچ سقفی نداشت؛ روی ESP8266 چنین صفحه‌ای با حدود ۱۱۰ نوشتن پشت سر
-     *      هم TCP می‌رود و اگر لینک گیر کند، انتقال بریده می‌شود و مرورگر هر
-     *      چه رسیده را نشان می‌دهد. انتهای سند زیرصفحه‌های تنظیمات و بعد
-     *      اسکریپت‌هاست، پس بریدگی دقیقاً شبیه «سناریوها بالا نمی‌آید» دیده
-     *      می‌شود در حالی که کارت‌های قبلی هستند. این سقف چنین رشدی را به
-     *      خطای بیلد تبدیل می‌کند نه گزارش میدانی.
+    /* [EN] Do not hand the whole ~384 KiB document to one send_P call. The
+     *      ESP8266 can write that PROGMEM string, but a stalled client then
+     *      loses the tail of the response; the tail contains the settings
+     *      cards and scripts, so the symptom is exactly "the simulator/ESP
+     *      panel never comes up" while the first cards may still appear.
+     *      Use HTTP chunked streaming with small PROGMEM slices. This keeps
+     *      the loop/yield path in the WebServer implementation active and
+     *      makes a slow phone/browser recover instead of receiving a partial
+     *      document. The ceiling remains a compile-time guard on flash size.
+     * [FA] کل سند حدود ۳۸۴ کیلوبایت است و نباید با یک فراخوانی send_P فرستاده
+     *      شود. اگر کلاینت کند یا لینک گیر کند، انتهای پاسخ که کارت‌های
+     *      تنظیمات و اسکریپت‌ها را دارد از بین می‌رود و نتیجه دقیقاً شبیه
+     *      «شبیه‌ساز/پنل روی ESP بالا نمی‌آید» دیده می‌شود. حالا پاسخ با HTTP
+     *      chunked و تکه‌های کوچک از PROGMEM فرستاده می‌شود تا مسیر yield وب‌سرور
+     *      فعال بماند و سند ناقص تحویل نشود. سقف اندازه همچنان نگهبان بیلد است.
      */
     static_assert(sizeof(ESP_PANEL_HTML) <= ESP_PANEL_HTML_MAX_BYTES,
                    "panel HTML exceeds the transfer budget - split it or raise "
                    "ESP_PANEL_HTML_MAX_BYTES on purpose");
 
     ESP_WEB_SERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
-    ESP_WEB_SERVER_T__G__Server.send_P(200, "text/html", ESP_PANEL_HTML);
+    ESP_WEB_SERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    ESP_WEB_SERVER_T__G__Server.send(200, "text/html", "");
+    static const size_t SIZE_T__PANEL_CHUNK = 2048u;
+    const size_t SIZE_T__PANEL_BYTES = sizeof(ESP_PANEL_HTML) - 1u;
+    for (size_t SIZE_T__OFFSET = 0u;
+         SIZE_T__OFFSET < SIZE_T__PANEL_BYTES;
+         SIZE_T__OFFSET += SIZE_T__PANEL_CHUNK)
+    {
+        const size_t SIZE_T__REMAINING = SIZE_T__PANEL_BYTES - SIZE_T__OFFSET;
+        const size_t SIZE_T__COUNT = (SIZE_T__REMAINING < SIZE_T__PANEL_CHUNK)
+                                   ? SIZE_T__REMAINING : SIZE_T__PANEL_CHUNK;
+        ESP_WEB_SERVER_T__G__Server.sendContent_P(ESP_PANEL_HTML + SIZE_T__OFFSET,
+                                                   SIZE_T__COUNT);
+    }
 }
 
 /**
