@@ -105,3 +105,28 @@ turning the tags into plain text; the rules gate showed it silently
 (`rtos_tasks.h: funcs=5 @param=0`). Only the tag characters were cleaned (no
 logic touched); the legitimate RTL marks inside Persian comments remain. After
 the fix the gate reports `rtos_tasks.h @param=5`.
+
+---
+
+## Pass 3 addendum / پیوست ۲۰۲۶-۱۰-۰۷ (مرور سوم، بدون یافتهٔ جدید) / 2026-10-07 pass-3 addendum (no new finding)
+
+**[FA] مرور سوم خط‌به‌خط (دستور کاربر). این بار بدون هیچ تغییر کد؛ نتیجهٔ خالص: ایراد کارکردی جدیدی پیدا نشد.**
+**[EN] Third line-by-line pass (user order). No code changed this pass; net result: no new functional defect.**
+
+| حوزه / Area | نتیجه / Result |
+|---|---|
+| `measurement.c` — کل `func__Measurement_Run` (median-5، آفست‌ها قبل از تفاضل، گارد `V24>=V12`، تغییر فیلتر، قفل کرنل روی snapshot) | سالم / clean |
+| `esp_link_nvm.c` — زنجیرهٔ static_assert (۲ رکورد در صفحه، banks روی NVM/LUTNVM/SPARE، پنجرهٔ id بازنشستهٔ ۷۲/۷۳/۷۶) | سالم / clean |
+| `app_config.c` + `rtos_config.h` (۱۰/۵/۱۰۰ میلی‌ثانیه؛ اولویت‌ها؛ پشته‌ها ۱۲۸/۱۹۲/۱۹۲/۲۵۶/۲۵۶) | هم‌راستا / consistent |
+| `jitter.c`، `protection.c` (FAULT_ADC زنده، نه چسبنده)، `ClampAlarms/ClampPid` شارژر (کف imax+50، سقف‌های CHG_*) | سالم / clean |
+| `plink_link.h` — ماشین ارسال گام‌به‌گام LUT (v1.67 finding L1: یک فریم در هر ACK، مهلت ۶۰۰/۲۵۰۰ ms، retry=3، خطای ۱/۲) | سالم / clean |
+| تقسیم متغیر در کل Firmware (grep) | فقط ۳ مورد، هر سه گارددار (قبلاً بررسی شد) / 3 guarded hits |
+| جاروب `-Wconversion -Wsign-conversion` روی همهٔ `Firmware/*.c` | تنها هشدار کد خودی: `CHG_DEAD_PARAM_INDEX` در `charger.h:1752` (ریختن id u16 به u8) — به‌دلیل گارد قبلی `CHG_DEAD_PARAM_OWNS` پیچش ناممکن است؛ **عمدی، بدون ریسک** / benign, guarded, intentional |
+| سیم‌کشی وقفه‌ها: EXTI2(PB2)/EXTI4(PB4)/EXTI9_5(PB6) در `stm32f1xx_it.c`، `DMA1_Channel4`/`USART1` در `bsp_uart.c`، TIM1_UP | تطبیق با نقشهٔ صفحهٔ ۴ / matches schematic page 4 |
+| دروازه‌ها (اجرای تازه) / gates (fresh run) | `check_ai_rules.sh` ALL PASSED؛ `check_firmware_syntax.sh`: ۹۸ تست ESP + buzzer + UI + ۵۲ تست شارژر ALL PASSED؛ `audit_consistency.py` ۴۴۳ بررسی PASSED |
+
+**[EN] Coverage note / یادداشت پوشش:** across the three passes every firmware source file has been read at least
+once and the ESP sketch plus its shared headers have been reviewed; what no host check can cover remains the
+radio/flash/board behaviour, which belongs in the module Validation Excel files. / در سه مرور هر فایل منبع
+Firmware حداقل یک بار کامل خوانده شده و اسکچ ESP و هدرهای مشترکش بررسی شده‌اند؛ آنچه هیچ تست هاستی پوشش
+نمی‌دهد رفتار رادیو/فلش/برد واقعی است که جای آن در فایل‌های Validation ماژول‌هاست.
