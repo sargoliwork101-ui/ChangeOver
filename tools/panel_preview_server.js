@@ -660,36 +660,63 @@ const server = http.createServer((req, res) => {
         for (let k = 0; k < TLM_FIELDS; k++) { s[k] = d.t[k]; lo[k] = d.t[k]; hi[k] = d.t[k]; la[k] = d.t[k]; }
         return send(200, "application/json", JSON.stringify({ _s: 200, n: 1, s, lo, hi, la }));
     }
-    /* [EN] v1.66 LUT routes, added to the simulator 2026-10-05. The real
-     *      sketch registers /lut (POST push, GET status) and /lut/reset, and
-     *      this preview answered 404 to all three: a bench tool pointed at
-     *      the simulator looked like a broken ESP instead of a working one.
-     *      The handshake is modelled, not faked - a push stores the points,
-     *      sets the commit stage to 3 with a CRC that matches what was sent,
-     *      and only then does /lut/reset accept, exactly like the firmware.
-     * [FA] مسیرهای جدول (v1.66) که شبیه‌ساز نداشت و به هر سه ۴۰۴ می‌داد؛ ابزار
-     *      بنچی که به شبیه‌ساز وصل می‌شد، ESP را خراب نشان می‌داد. دست‌دادن
-     *      مدل شده است نه جعلی: بعد از push مرحله ۳ و CRC برابرِ ارسال‌شده
-     *      می‌شود و فقط آن‌وقت ‎/lut/reset‎ قبول می‌کند - مثل فرم‌ور. */
+    /* [EN] v1.66 LUT routes; v1.68 the push handler mirrors the firmware
+     *      protocol exactly (see the comment inside).
+     * [FA] مسیرهای جدول (v1.66)؛ از v1.68 هندلر push دقیقاً آینهٔ پروتکل
+     *      فرم‌ور است (توضیح داخلش). */
     if (req.method === "POST" && url.pathname === "/lut") {
         let body = "";
         req.on("data", (chunk) => { body += chunk; if (body.length > 65536) req.destroy(); });
         req.on("end", () => {
-            let points1 = 0, points2 = 0;
-            try {
-                const parsed = JSON.parse(body || "{}");
-                points1 = Array.isArray(parsed.a) ? parsed.a.length : Number(parsed.n1 || 0);
-                points2 = Array.isArray(parsed.b) ? parsed.b.length : Number(parsed.n2 || 0);
-            } catch (e) { /* malformed body = a refused push, like the board */ }
-            const inWindow = (n) => (n >= LUT_POINTS_MIN && n <= LUT_POINTS_MAX);
-            if (!inWindow(points1) || !inWindow(points2)) {
-                LUT = { stage: 0, status: 2, n1: 0, n2: 0, crc: 0, sent: 0, count: LUT.count, txStage: 0, txError: 1, at: Date.now() };
-                return send(400, "application/json", '{"_s":400}');
+            /* [EN] v1.68 mirror of func__Esp_HttpLutPush (plink_http.h):
+             *      strict CSV body n1,n2,(chain,power)*n1,(chain,power)*n2,crc32;
+             *      same refusals with the SAME reason codes (len/n/empty/pt/
+             *      mono/crc); 0 points = channel left alone, so a single-
+             *      battery push is legal exactly like on the real board; the
+             *      received CRC is echoed back so the panel handshake can
+             *      complete. The old model refused 0-point channels, invented
+             *      a CRC the panel could never match and answered {"_s":200}
+             *      instead of {"ok":1}, so every legitimate push failed in the
+             *      preview with a misleading "board did not answer" error
+             *      (user report 2026-10-07).
+             * [FA] آینهٔ دقیق func__Esp_HttpLutPush: همان بدنهٔ CSV، همان رد
+             *      شدنها با همان کدهای دلیل، کانال ۰-نقطه‌ای یعنی «دست نخورد»
+             *      (ارسال تک‌باتری قانونی است) و CRC دریافتی بازپس داده می‌شود
+             *      تا دست‌دادن پنل کامل شود. مدل قبلی کانال خالی را رد می‌کرد،
+             *      CRC جعلی می‌ساخت و ok:1 نمی‌داد، پس هر ارسال سالمی در
+             *      پیش‌نمایش با خطای گمراه‌کننده شکست می‌خورد. */
+            const refuse = (e) => {
+                LUT = { stage: 0, status: 2, n1: 0, n2: 0, crc: 0, sent: 0,
+                        count: LUT.count, txStage: 0, txError: 0, at: Date.now() };
+                return send(400, "application/json", '{"ok":0,"e":"' + e + '"}');
+            };
+            if (!body.length || body.length > 1600) return refuse("len");
+            const fields = body.split(",");
+            if (fields.length < 3 || fields.some((x) => !/^\s*\d+\s*$/.test(x))) return refuse("pt");
+            const vals = fields.map((x) => Number(x));
+            let i = 0;
+            const n1 = vals[i++], n2 = vals[i++];
+            if (n1 === 1 || n1 > LUT_POINTS_MAX || n2 === 1 || n2 > LUT_POINTS_MAX) return refuse("n");
+            if (n1 === 0 && n2 === 0) return refuse("empty");
+            const pts = [[], []];
+            for (let ch = 0; ch < 2; ch++) {
+                const n = (ch === 0) ? n1 : n2;
+                for (let k = 0; k < n; k++) {
+                    if (i + 1 >= vals.length) return refuse("pt");
+                    const x = vals[i++], y = vals[i++];
+                    if (k > 0) {
+                        const prev = pts[ch][k - 1];
+                        if (x <= prev[0] || y < prev[1]) return refuse("mono");
+                    }
+                    pts[ch].push([x, y]);
+                }
             }
-            const crc = (points1 * 2654435761 + points2 * 40503) >>> 0;
-            LUT = { stage: 3, status: 0, n1: points1, n2: points2, crc, sent: crc,
+            if (i >= vals.length) return refuse("crc");
+            const crc = vals[i] >>> 0;
+            LUT = { stage: 3, status: 0, n1, n2, crc, sent: crc,
                     count: LUT.count + 1, txStage: 0, txError: 0, at: Date.now() };
-            send(200, "application/json", '{"_s":200}');
+            return send(200, "application/json",
+                '{"ok":1,"n1":' + n1 + ',"n2":' + n2 + ',"crc":' + crc + '}');
         });
         return undefined;
     }

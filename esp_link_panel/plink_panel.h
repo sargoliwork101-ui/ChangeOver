@@ -125,6 +125,9 @@ input[type=number]:hover,select:hover{border-color:#2c3850}
 input[type=number]:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--ring);outline:none}
 select{direction:rtl}
 .sb{border:1px solid transparent;border-radius:10px;padding:7px 14px;background:linear-gradient(180deg,#3d7ef0,#2f68d8);color:#fff;font-weight:600;min-height:36px;transition:filter .15s,transform .05s;box-shadow:inset 0 1px 0 rgba(255,255,255,.18)}
+/* [EN] Gated buttons, groups, dark code view. [FA] دکمهٔ مشروط، گروه، کد تیره. */
+.sb:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.4)}
+.lgrp{font-size:11.5px;color:var(--mu);font-weight:600;margin:10px 0 5px}
 .sb:hover{filter:brightness(1.1)}.sb:active{transform:scale(.98)}
 .sw{border:1px solid var(--ln);border-radius:10px;padding:7px 0;width:68px;min-height:36px;background:var(--rs);color:var(--mu);font-weight:600;transition:background .15s}
 .sw.on{background:linear-gradient(180deg,#2fbf8f,#1e9e73);color:#04120c;border-color:transparent}.sw.w.on{background:linear-gradient(180deg,#fbbf24,#dd9a12);color:#231600}
@@ -191,7 +194,7 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .ckr.wa i{background:var(--wa);color:#231a02}
 .ckr.no i{background:var(--er);color:#2b0508}
 .ckr .fx{color:var(--mu);font-size:11.5px;display:block;margin-top:2px}
-.bxw textarea{width:100%;height:150px;background:var(--in);color:#a7b0c4;border:1px solid var(--ln);border-radius:12px;padding:9px;font:11px/1.5 Vazirmatn;direction:ltr;margin-top:6px}
+.bxw textarea,.calcd{width:100%;height:150px;background:var(--in);color:#a7b0c4;border:1px solid var(--ln);border-radius:12px;padding:9px;font:11px/1.5 Vazirmatn;direction:ltr;margin-top:6px}.calcd{display:none;height:220px;font-size:12px}
 .sx{font-size:12.5px;line-height:1.95;color:#aab3c5;margin:2px 0 6px;padding:0 2px}.sx b{color:var(--tx);font-weight:700}
 .ds{font-size:13px;line-height:2;color:#c9d0df;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:11px 15px}.ds ul{padding-right:18px}.ds b{color:var(--tx)}
 .qs{display:grid;grid-template-columns:1fr 1fr;gap:12px}.q{background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:12px}.q input[type=number]{width:92px}.q .cut{background:linear-gradient(180deg,#e5484d,#c62f35)}.q .run{background:linear-gradient(180deg,#2fbf8f,#1e9e73);color:#04120c}
@@ -398,7 +401,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build cbad9f7</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build c2be30d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2946,7 +2949,7 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
  formulas(t,p);chart();mview(d);
  $('mb').classList.toggle('v',man);$('ka').innerHTML=man?(d.ka<1500?`پایش لینک فعال · <span class="n">keepalive ${d.ka} </span> میلی‌ثانیه`:'<b>keepalive متوقف است</b>'):'';}
 async function poll(){const c=new AbortController(),k=setTimeout(()=>c.abort(),2000);try{const r=await fetch('/t',{cache:'no-store',signal:c.signal});const d=await r.json();clearTimeout(k);if(document.hidden){D=d;hist(d);}else draw(d);}catch(e){clearTimeout(k);document.body.classList.add('dn');$('lk').classList.remove('on');$('lt').textContent='ESP در دسترس نیست';}
- setTimeout(poll,300);}
+ lupd();setTimeout(poll,300);}
 /* ---------- ابزار بنچ (بخش 5.5 و 5.6 نسخه ۲؛ همه دستی، هیچ ضریبی خودکار ارسال نمی‌شود) ----------
  * Bench tools (spec 5.5 / 5.6 v2): manual only; no coefficient is ever sent automatically. */
 const gv=id=>{const e=$(id);if(!e||e.value==='')return null;const v=+e.value;return isNaN(v)?null:v;};
@@ -3498,7 +3501,7 @@ async function calapply(){
     already in progress and silently poison the row being recorded.
     [FA] تا وقتی ویزارد بنچ در حال اجراست برد در اختیار اوست؛ نوشتن وسط کار
     همان ردیفی را که دارد ثبت می‌شود خراب می‌کند. */
- if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
+ if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است.');return;}
  CALP=[];
  CALR.forEach((r,i)=>{const k=$('calk'+i),e=$('calv'+i);if(!k||!e||!k.checked)return;
   const nv=+e.value;if(!Number.isFinite(nv))return;CALP.push([r[1],xclamp(r[1],Math.round(nv)),r[0]]);});
@@ -3562,21 +3565,37 @@ function lpack(){
  T.forEach(t=>{for(let i=0;i<t.X.length;i++){cs.push(t.X[i],t.Y[i]);}});
  const crc=lcrc(by);cs.push(crc);
  return {T:T,crc:crc,body:cs.join(','),msg:msg};}
+/* [EN] Gate both board buttons on readiness; the reason goes in title.
+   [FA] مشروط‌کردن دو دکمهٔ برد به آمادگی؛ دلیل در title. */
+let LSNT=0;
+function lupd(){
+ const b=$('lbtnS'),r=$('lbtnR');if(!b)return;
+ let why='';
+ if(W&&W.run)why='داده‌برداری بنچ در جریان است';
+ else if(!D||D.on!=1)why='لینک STM32 برقرار نیست';
+ else{const p=lpack();if(p.bad)why='جدول قابل‌ارسالی آماده نیست — '+p.bad;}
+ b.disabled=!!why;b.title=why||'نوشتن جدول در فلش برد';
+ if(r){const off=!LSNT;r.disabled=off;r.title=off?'بعد از ارسال موفق فعال می‌شود':'بالا آوردن برد با جدول جدید';}}
 async function lsend(){
  if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
- if(!D||D.on!=1){stxt('calst','⛔ لینک STM32 برقرار نیست؛ جدول فرستاده نمی‌شود.');return;}
+ if(!D||D.on!=1){stxt('calst','⛔ لینک STM32 برقرار نیست.');return;}
  const p=lpack();
  if(p.bad){stxt('calst','⛔ '+p.bad+(p.msg.length?' · '+p.msg.join(' · '):''));return;}
+ const dn=t=>t.X.length?t.X.length+' نقطه':'داده ندارد — دست نمی‌خورد';
  if(!confirm('جدول مستقیماً در حافظهٔ خود میکرو نوشته شود؟\n\n'+
-  'باتری ۱: '+p.T[0].X.length+' نقطه · باتری ۲: '+p.T[1].X.length+' نقطه\n'+
-  'محل ذخیره: بلوک فلش مخصوص جدول، جدا از بقیهٔ تنظیمات.\n'+
+  'باتری ۱: '+dn(p.T[0])+' · باتری ۲: '+dn(p.T[1])+'\n'+
   'اگر داده درست نرسد، برد کامیت را رد می‌کند و جدول قبلی سر جایش می‌ماند.'))return;
  stxt('calst','… جدول در حال ارسال به برد');
  let r;try{r=await req('/lut','POST',p.body);}catch(e){stxt('calst','⚠ ارسال به ESP نرسید');return;}
- if(!r||r.ok!==1){stxt('calst','⚠ ESP جدول را نپذیرفت ('+((r&&r.e)||'?')+')');return;}
- /* ارسال گام‌به‌گام است: ESP هر فریم را فقط بعد از تأیید فریم قبلی می‌فرستد
-    (تا حلقهٔ گیرندهٔ برد سرریز نکند)، پس تا ۱۰ ثانیه منتظر می‌مانیم و مرحله را
-    به کاربر نشان می‌دهیم. */
+ /* [EN] The sketch's own reason codes (plink_http.h), in Persian.
+    [FA] کدهای دلیل خود اسکچ، به فارسی. */
+ const LE={len:'بدنهٔ ارسال خراب یا بیش از حد بزرگ',n:'تعداد نقاط نامجاز',
+  empty:'هر دو کانال خالی‌اند',pt:'بدنهٔ نقاط ناقص رسید',
+  mono:'نقاط یک کانال صعودی نیستند',crc:'CRC بدنه پیدا نشد'};
+ if(!r||r.ok!==1){stxt('calst','⛔ ESP جدول را نپذیرفت — دلیل: '+((r&&r.e&&LE[r.e])||('کد ناشناختهٔ '+((r&&r.e)||'?')))+' · جدول قبلی بدون تغییر ماند.');return;}
+ /* [EN] Staged send: ESP releases one frame per ACK (no RX-ring overrun),
+    so wait up to 10 s and show the stage. [FA] ارسال گام‌به‌گام با تأیید هر
+    فریم؛ تا ۱۰ ثانیه صبر و نمایش مرحله. */
  const LSTG=['','شروع','نقاط باتری ۱','نقاط باتری ۲','ثبت در فلش'];
  let a=null;
  for(let i=0;i<40;i++){await sl(250);
@@ -3584,23 +3603,22 @@ async function lsend(){
   if(a&&a.txe){break;}
   if(a&&a.tx){stxt('calst','… ارسال جدول: '+(LSTG[a.tx]||a.tx));continue;}
   if(a&&a.st===3)break;}
- if(a&&a.txe===1){stxt('calst','⚠ برد به مرحلهٔ ارسال پاسخ نداد (سیم یا نویز لینک)؛ '+
-  'جدول قبلی بدون تغییر ماند — دوباره بزنید.');return;}
+ if(a&&a.txe===1){stxt('calst','⛔ برد به مرحلهٔ «'+(LSTG[a.tx]||('کد '+a.tx))+'» پاسخ نداد (STM32 فریم را تأیید نکرد). '+
+  'رایج‌ترین دلیل: قطعی/نویز سیم لینک یا ریست برد وسط ارسال. جدول قبلی سالم ماند — لینک را چک و دوباره امتحان کنید.');return;}
  if(a&&a.txe===2){stxt('calst','⛔ برد یکی از مرحله‌های ارسال را رد کرد: '+
   (LUTST[a.s]||('کد '+a.s))+' · جدول قبلی بدون تغییر ماند.');return;}
  if(!a||a.st!==3){stxt('calst','⚠ برد پاسخ کامیت را نداد؛ جدول قبلی بدون تغییر ماند.');return;}
  if(a.s!==0){stxt('calst','⛔ برد جدول را رد کرد: '+(LUTST[a.s]||('کد '+a.s))+
   ' · جدول قبلی بدون تغییر ماند.');return;}
+ LSNT=1;lupd();
  if(a.crc>>>0!==p.crc>>>0){stxt('calst','⛔ دست‌دادن نخواند (CRC برد '+a.crc+' ≠ CRC پنل '+p.crc+
   ') · جدول قبلی بدون تغییر ماند.');return;}
- stxt('calst','✅ جدول در فلش برد نوشته و دست‌دادن تأیید شد (باتری ۱: '+a.n1+' نقطه، باتری ۲: '+a.n2+
-  ' نقطه، CRC '+a.crc+'). برای اینکه همهٔ ماژول‌ها با جدول جدید شروع کنند، «ریست برد» را بزنید.');
- if(confirm('جدول با موفقیت ذخیره شد.\n\nبرد همین حالا ریست شود تا همهٔ تنظیمات با جدول جدید بالا بیایند؟\n'+
-  '(شارژ چند ثانیه قطع می‌شود؛ پارامترهای ذخیره‌شده دست‌نخورده برمی‌گردند.)'))await lrst();}
+ stxt('calst','✅ جدول در فلش برد نوشته و تأیید شد (باتری ۱: '+a.n1+'، باتری ۲: '+a.n2+' نقطه، CRC '+a.crc+'). برای شروع با جدول نو «ریست برد» را بزنید.');
+ if(confirm('جدول ذخیره شد.\n\nبرد ریست شود تا با جدول جدید بالا بیاید؟\n'+'(شارژ چند ثانیه قطع می‌شود؛ تنظیمات دست‌نخورده برمی‌گردند.)'))await lrst();}
 async function lrst(){
  let r;try{r=await req('/lut/reset','POST');}catch(e){stxt('calst','⚠ درخواست ریست به ESP نرسید');return;}
- if(!r||r.ok!==1){stxt('calst','⛔ ریست رد شد: اول باید یک ارسال موفق با دست‌دادن تأییدشده انجام شود.');return;}
- stxt('calst','… فرمان ریست فرستاده شد؛ برد چند ثانیهٔ دیگر با جدول جدید بالا می‌آید.');}
+ if(!r||r.ok!==1){stxt('calst','⛔ ریست رد شد: اول یک ارسال موفق لازم است.');return;}
+ stxt('calst','… فرمان ریست رفت؛ برد چند ثانیهٔ دیگر با جدول نو بالا می‌آید.');}
 
 /* ---------- ساخت تب‌ها ---------- */
 /* تب ۱: داده‌برداری بنچ */
@@ -3612,7 +3630,7 @@ $('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty 
 <div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div></div><div class="cd"><div class="hd"><b>کالیبراسیون خودکار از همین جدول</b><span class="lb">· نمونه‌های ثبت‌شده: <b id="caln">0</b> · عددها فقط با تأیید شما روی برد نوشته می‌شوند</span></div>
 <div class="ds">هر مرحله‌ای که در ویزارد «ثبت» می‌کنید یک نمونه هم اینجا می‌ماند. «محاسبه» از روی همین نمونه‌ها گین و آفست جریان هر دو کانال و سه آفست ولتاژ را درمی‌آورد، مقدار فعلی برد را کنار پیشنهاد می‌گذارد و کیفیت هر برازش را می‌گوید. برای نتیجهٔ خوب حداقل ۴ مرحله با duty پخش‌شده (مثلاً ۲ تا ۲۰٪) بگیرید.</div>
 <div class="bqr2"><button class="sb sb2" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb brun" onclick="calapply()">اعمال روی برد (با تأیید)</button><button class="sb sb2" onclick="calexp()">⬇ ذخیرهٔ نمونه‌ها</button><label class="sb" style="cursor:pointer">⬆ بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2" onclick="calclr()">پاک کردن نمونه‌ها</button></div>
-<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="ds">دو راه برای رساندن جدول به میکرو هست و هر دو فعال‌اند: <b>۱) ارسال مستقیم</b> — جدول همین حالا در یک بلوک فلشِ مخصوص خودش روی برد نوشته می‌شود (جدا از بقیهٔ تنظیمات)، برد CRC آن را پس می‌فرستد و فقط در صورت تطابق پذیرفته می‌شود؛ بعد می‌توانید برد را ریست کنید تا همه چیز با جدول نو شروع کند. سقف این راه <b>۲۴ نقطه برای هر باتری</b> است. <b>۲) ساخت کد</b> — همان روش قبلی: فایل calibration.h ساخته می‌شود تا در پروژه بچسبانید و بیلد کنید (بدون محدودیت نقطه). اگر رکورد فلش خالی یا خراب باشد، برد خودبه‌خود به جدول کامپایل‌شده برمی‌گردد.</div><div class="bqr2"><button class="sb sb2" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb" onclick="calcopy()">کپی کد</button><button class="sb" onclick="calcdl()">دانلود calibration_generated.h</button></div><div class="bqr2"><button class="sb brun" onclick="lsend()">⇪ ارسال مستقیم جدول به برد</button><button class="sb sb2" onclick="lrst()">↻ ریست برد (بعد از ارسال موفق)</button></div><textarea id="calcd" style="display:none;width:100%;height:220px;direction:ltr;font-family:Vazirmatn;font-size:12px" readonly></textarea><div class="cm lb" id="calst"></div><div id="caltb"></div></div>
+<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">۱) ارسال مستقیم به برد (فلش مخصوص جدول، سقف ۲۴ نقطه)</div><div class="bqr2"><button class="sb brun" id="lbtnS" onclick="lsend()" disabled>⇪ ارسال جدول به برد</button><button class="sb sb2" id="lbtnR" onclick="lrst()" disabled>↻ ریست برد</button></div><div class="lgrp">۲) ساخت calibration.h (بدون محدودیت نقطه)</div><div class="bqr2"><button class="sb sb2" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb" onclick="calcopy()">کپی کد</button><button class="sb" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" class="calcd" readonly></textarea><div class="cm lb" id="calst"></div><div id="caltb"></div></div>
 `;
 caln();calsmp();calchk();bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{const s=$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB');if(L)L.disabled=s;if(A)A.disabled=!s;if(B)B.disabled=!s;};$('wSw').onchange();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
 /* ---------- کنترل دستی duty دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کنترلها داخل کارت هر شارژر (از v1.16p)؛

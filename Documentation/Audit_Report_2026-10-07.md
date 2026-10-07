@@ -293,3 +293,39 @@ unit are now inside ONE `<span dir="ltr">`.
 Gates: check_ai_rules ALL PASSED · host syntax ALL PASSED (ESP 102, charger 52) ·
 audit_consistency PASSED · preview regenerated (stamp fdfb1c3) · simulator
 restarted and calibration effect verified live.
+
+## LUT send path + calibration card UX (user report, 2026-10-07)
+
+### "Board did not answer the send stage" - ROOT CAUSE: simulator protocol drift, FIXED
+The preview's POST /lut violated the real protocol (plink_http.h
+func__Esp_HttpLutPush) in three ways: it refused 0-point channels (a legal
+"leave this battery alone" push), invented a CRC the panel could never match
+(handshake could never complete), and answered {"_s":200} instead of
+{"ok":1,...} - so every legitimate push failed with a misleading error and no
+reason. The handler is now an exact mirror: strict CSV scan, same refusals
+with the SAME reason codes (len/n/empty/pt/mono/crc), 0 points accepted per
+channel, received CRC echoed. Live-tested: single-battery push (n1=3,n2=0)
+commits, CRC round-trips, reset accepted; 8 refusal cases all return the
+right code.
+
+### Panel: reasons on every failure
+POST refusals map the firmware's e-codes to Persian; the txe=1 message now
+names the exact stage (LSTG[tx]) and lists the common causes (link
+wire/noise, board reset mid-send, board busy).
+
+### Buttons gated on real readiness (user order)
+New lupd() (runs every poll + on data change): "ارسال جدول به برد" is
+disabled until a sendable table exists AND the link is up AND no bench
+capture is running; "ریست برد" is disabled until one confirmed commit
+happened this session (LSNT). The reason is carried in the title attribute.
+Buttons regrouped under two short labels (direct flash send / calibration.h
+build output); the long explanation paragraph removed; generated-code
+textarea now uses the dark skin (.calcd shares .bxw textarea).
+
+### Single-battery answer
+Yes - one battery alone has always been legal on the panel and the firmware
+(0 points = channel untouched); only the simulator blocked it. Fixed above.
+
+Panel budget: additions broke the 385024 ceiling twice (386852, 385739);
+trimmed ~1850 bytes of comments/strings, final stamp c2be30d, AUDIT PASSED.
+Gates: rules ALL PASSED, host syntax ALL PASSED, simulator restarted.
