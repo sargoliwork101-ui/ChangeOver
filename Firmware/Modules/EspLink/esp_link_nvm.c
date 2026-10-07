@@ -639,6 +639,26 @@ static bool func__EspLink_NvmSaveNow(void)
  * @brief  [EN] Comm-task housekeeping (see header contract).
  *         [FA] نگهداری تسک ارتباط (قرارداد هدر).
  */
+void func__EspLink_NvmFlushForReset(void)
+{
+    if (UINT16_T__G__NvmDirtyRuns == 0u)
+    {
+        return;
+    }
+
+    if (func__EspLink_NvmSaveNow() != false)
+    {
+        UINT16_T__G__NvmDirtyRuns = 0u;
+        UINT8_T__G__NvmSaveRetries = 0u;
+    }
+    /* [EN] A failed flush leaves the state untouched; the reboot is armed
+       anyway (the panel asked for it), so the retry machine simply will not
+       get another chance - the same outcome as losing power here.
+       [FA] فلاش ناموفق وضعیت را دست‌نخورده می‌گذارد؛ ریست به هر حال مسلح
+       است (پنل خواسته)، پس ماشین تلاش مجدد فرصت دیگری نمی‌یابد - همان
+       نتیجهٔ قطع برق در همین لحظه. */
+}
+
 void func__EspLink_NvmTick(void)
 {
     if (UINT16_T__G__NvmDirtyRuns == 0u)

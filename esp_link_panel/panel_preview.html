@@ -496,7 +496,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build c2be30d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 55caeb9</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3618,10 +3618,10 @@ async function calapply(){
   else if(+back!==+c[1]){bad.push(c);calReport.push(report+' — گیره زد');}
   else calReport.push(report+' — پذیرفت');
  });
- stxt('calst',(ok===CALP.length?'✅ ':'⚠ ')+ok+'/'+CALP.length+' روی برد نوشته شد'+
+ stxt('calst',(ok===CALP.length?'✅ ':'⚠ ')+ok+'/'+CALP.length+' روی برد اعمال شد'+
   (bad.length?' · echo '+bad.length+' مقدار با درخواست فرق داشت':' · برد همه را عیناً پذیرفت')+
-  '<br>گزارش همهٔ مقدارها: '+calReport.join(' · ')+
-  ' · پشتیبان قبلی در فایل دانلودشده است.');}
+  '<br>ثبت فلش ~۲ ثانیه بعد کامل می‌شود؛ تا آن موقع برد را خاموش نکنید (ریست پنل امن است).'+
+  '<br>گزارش: '+calReport.join(' · ')+' · پشتیبان قبلی دانلود شد.');}
 
 /* ---------- v1.66: ارسال مستقیم جدول به حافظهٔ خود میکرو (دستور کاربر ۲۰۲۶-۱۰-۰۵) ----------
    [FA] «حتماً باید جدول را در کد میکرو بچسبانیم و بیلد کنیم؟» نه. برد از این
@@ -3684,7 +3684,7 @@ async function lsend(){
  let r;try{r=await req('/lut','POST',p.body);}catch(e){stxt('calst','⚠ ارسال به ESP نرسید');return;}
  /* [EN] The sketch's own reason codes (plink_http.h), in Persian.
     [FA] کدهای دلیل خود اسکچ، به فارسی. */
- const LE={len:'بدنهٔ ارسال خراب یا بیش از حد بزرگ',n:'تعداد نقاط نامجاز',
+ const LE={len:'بدنهٔ ارسال خراب/بزرگ',n:'تعداد نقاط نامجاز',
   empty:'هر دو کانال خالی‌اند',pt:'بدنهٔ نقاط ناقص رسید',
   mono:'نقاط یک کانال صعودی نیستند',crc:'CRC بدنه پیدا نشد'};
  if(!r||r.ok!==1){stxt('calst','⛔ ESP جدول را نپذیرفت — دلیل: '+((r&&r.e&&LE[r.e])||('کد ناشناختهٔ '+((r&&r.e)||'?')))+' · جدول قبلی بدون تغییر ماند.');return;}
@@ -3699,7 +3699,7 @@ async function lsend(){
   if(a&&a.tx){stxt('calst','… ارسال جدول: '+(LSTG[a.tx]||a.tx));continue;}
   if(a&&a.st===3)break;}
  if(a&&a.txe===1){stxt('calst','⛔ برد به مرحلهٔ «'+(LSTG[a.tx]||('کد '+a.tx))+'» پاسخ نداد (STM32 فریم را تأیید نکرد). '+
-  'رایج‌ترین دلیل: قطعی/نویز سیم لینک یا ریست برد وسط ارسال. جدول قبلی سالم ماند — لینک را چک و دوباره امتحان کنید.');return;}
+  'رایج‌ترین دلیل: قطعی/نویز سیم لینک یا ریست وسط ارسال. جدول قبلی سالم ماند؛ لینک را چک کنید.');return;}
  if(a&&a.txe===2){stxt('calst','⛔ برد یکی از مرحله‌های ارسال را رد کرد: '+
   (LUTST[a.s]||('کد '+a.s))+' · جدول قبلی بدون تغییر ماند.');return;}
  if(!a||a.st!==3){stxt('calst','⚠ برد پاسخ کامیت را نداد؛ جدول قبلی بدون تغییر ماند.');return;}
@@ -3725,7 +3725,7 @@ $('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty 
 <div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div></div><div class="cd"><div class="hd"><b>کالیبراسیون خودکار از همین جدول</b><span class="lb">· نمونه‌های ثبت‌شده: <b id="caln">0</b> · عددها فقط با تأیید شما روی برد نوشته می‌شوند</span></div>
 <div class="ds">هر مرحله‌ای که در ویزارد «ثبت» می‌کنید یک نمونه هم اینجا می‌ماند. «محاسبه» از روی همین نمونه‌ها گین و آفست جریان هر دو کانال و سه آفست ولتاژ را درمی‌آورد، مقدار فعلی برد را کنار پیشنهاد می‌گذارد و کیفیت هر برازش را می‌گوید. برای نتیجهٔ خوب حداقل ۴ مرحله با duty پخش‌شده (مثلاً ۲ تا ۲۰٪) بگیرید.</div>
 <div class="bqr2"><button class="sb sb2" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb brun" onclick="calapply()">اعمال روی برد (با تأیید)</button><button class="sb sb2" onclick="calexp()">⬇ ذخیرهٔ نمونه‌ها</button><label class="sb" style="cursor:pointer">⬆ بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2" onclick="calclr()">پاک کردن نمونه‌ها</button></div>
-<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">۱) ارسال مستقیم به برد (فلش مخصوص جدول، سقف ۲۴ نقطه)</div><div class="bqr2"><button class="sb brun" id="lbtnS" onclick="lsend()" disabled>⇪ ارسال جدول به برد</button><button class="sb sb2" id="lbtnR" onclick="lrst()" disabled>↻ ریست برد</button></div><div class="lgrp">۲) ساخت calibration.h (بدون محدودیت نقطه)</div><div class="bqr2"><button class="sb sb2" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb" onclick="calcopy()">کپی کد</button><button class="sb" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" class="calcd" readonly></textarea><div class="cm lb" id="calst"></div><div id="caltb"></div></div>
+<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">۱) ارسال مستقیم به برد (سقف ۲۴ نقطه)</div><div class="bqr2"><button class="sb brun" id="lbtnS" onclick="lsend()" disabled>⇪ ارسال جدول به برد</button><button class="sb sb2" id="lbtnR" onclick="lrst()" disabled>↻ ریست برد</button></div><div class="lgrp">۲) ساخت calibration.h</div><div class="bqr2"><button class="sb sb2" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb" onclick="calcopy()">کپی کد</button><button class="sb" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" class="calcd" readonly></textarea><div class="cm lb" id="calst"></div><div id="caltb"></div></div>
 `;
 caln();calsmp();calchk();bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{const s=$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB');if(L)L.disabled=s;if(A)A.disabled=!s;if(B)B.disabled=!s;};$('wSw').onchange();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
 /* ---------- کنترل دستی duty دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کنترلها داخل کارت هر شارژر (از v1.16p)؛

@@ -1380,6 +1380,13 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
         if (func__EspLink_ConsumeLutResetAuthorization(bool__magicValid,
                                                         bool__tableActive) != false)
         {
+            /* [EN] User bug 2026-10-07: the reboot must not outrun the
+               debounced save - flush a pending record BEFORE arming, so a
+               reset right after a settings edit keeps the new values.
+               [FA] باگ کاربر ۲۰۲۶-۱۰-۰۷: ریست نباید از ذخیرهٔ دیبانس‌شده
+               جلو بزند - رکورد معلق «قبل از» مسلح‌کردن فلاش می‌شود تا ریستِ
+               بلافاصله بعد از ویرایش تنظیمات، مقادیر نو را نگه دارد. */
+            func__EspLink_NvmFlushForReset();
             func__CalLut_RequestReset();
             uint8_t__status = (uint8_t)CAL_LUT_ST_OK;
         }

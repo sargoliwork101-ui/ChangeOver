@@ -365,3 +365,40 @@ the echo to CalLut_Points makes the test fail (2 checks).
 CalLut host test: 138 checks, 0 failures (was 124). Gates: host syntax ALL
 PASSED, rules ALL PASSED, audit PASSED. The board must be re-flashed with
 this build for the fix to take effect.
+
+## "Settings falsely reported as saved" (user report, 2026-10-07)
+
+Symptom: calibration coefficients applied, panel says they are on the board,
+but after a board reset the old values are back.
+
+### Investigation (evidence, not assumption)
+A new FULL-CYCLE host test (host_test_nvm.c, mmap at the real NVM bank
+addresses 0x0800E000/E800, working flash model) proves the board's
+save/restore path is CORRECT: ids 0..6 (incl. a two's-complement negative
+offset) survive a simulated reboot, ping-pong to the newest bank works,
+untouched ids ride along (11 new checks, all PASS). The restore path had
+never been tested before - the old NVM test stubbed flash as always failing.
+
+### Root cause: reset outruns the debounced flash save
+SET_PARAM applies to RAM immediately (the echoed PARAM_REPORT is what the
+panel shows as "written"), but the flash save is debounced ~1.5 s after the
+last edit (ESP_LINK_NVM_SAVE_DELAY_RUNS=15 × 100 ms comm period). The panel
+offers «ریست برد» right after a successful operation, and the armed reboot
+(NVIC_SystemReset in CalLut_Tick) fired BEFORE the pending save ran - so the
+new coefficients were lost while the panel had already claimed success.
+
+### Fixes
+1. Firmware: new func__EspLink_NvmFlushForReset() (esp_link_nvm.c/.h) saves
+   a pending record synchronously; the LUT_RESET handler calls it BEFORE
+   func__CalLut_RequestReset(), so a panel-initiated reset can never outrun
+   the save. A failed flush leaves the retry state untouched (same outcome
+   as power loss at that instant - documented).
+2. Panel: the calibration-apply success message no longer claims flash
+   persistence - it states the flash record completes ~2 s after the last
+   change and not to power off before then (panel reset is safe).
+
+Gates: rules ALL PASSED (after fix_rtl_comments on the new test comment),
+host syntax ALL PASSED (CalLut 138, NVM +11, ESP 102, charger 52),
+audit PASSED (budget: additions broke the ceiling once at 385206; trimmed
+218 bytes, final stamp 55caeb9). Simulator restarted. The STM32 must be
+re-flashed for fix 1 to take effect on the board.

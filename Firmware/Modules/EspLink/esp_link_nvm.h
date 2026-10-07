@@ -281,4 +281,20 @@ void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId);
  */
 void func__EspLink_NvmTick(void);
 
+/* ==================== EspLink_NvmFlushForReset ==================== */
+/**
+ * @brief  [EN] Save a pending (debounced) record immediately - called before
+ *              an armed reboot so a panel reset can never outrun the save
+ *              that the last edit scheduled (user bug 2026-10-07: reset
+ *              inside the ~1.5 s debounce window lost the new values while
+ *              the panel had already echoed them as applied).
+ *         [FA] ذخیرهٔ فوری رکورد معلق (دیبانس‌نشده) - قبل از ریست مسلح‌شده
+ *              صدا زده می‌شود تا ریست پنل هرگز از ذخیرهٔ زمان‌بندی‌شدهٔ آخرین
+ *              ویرایش جلو نزند (باگ کاربر ۲۰۲۶-۱۰-۰۷: ریست داخل پنجرهٔ
+ *              ~۱٫۵ ثانیه‌ای دیبانس، مقادیر نو را می‌پرد درحالی‌که پنل آنها
+ *              را اعمال‌شده نشان داده بود).
+ * @return [EN] None / [FA]‎ ندارد
+ */
+void func__EspLink_NvmFlushForReset(void);
+
 #endif /* ESP_LINK_NVM_H */
