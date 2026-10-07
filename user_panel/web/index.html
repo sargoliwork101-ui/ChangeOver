@@ -1,0 +1,86 @@
+<!doctype html>
+<!--
+  user_panel/web/index.html - [EN] User dashboard shell (view-only panel).
+      This file is NOT served to the ESP as-is: tools/build_panel_header.py
+      embeds index.html + app.css + app.js into up_web.h (PROGMEM) so the
+      sketch and the browser always render the SAME page. Hand-editing a copy
+      inside the header is forbidden - the gate fails if it disagrees.
+  [FA] پوستهٔ پنل کاربر (فقط نمایش). این فایل عیناً روی ESP نمی‌رود:
+      tools/build_panel_header.py هر سه فایل را داخل up_web.h (PROGMEM)
+      جاسازی می‌کند تا اسکچ و مرورگر همیشه یک صفحهٔ واحد ببینند.
+      ویرایش دستی کپی داخل هدر ممنوع است؛ گیت در صورت ناسازگاری شکست می‌دهد.
+-->
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#070b12">
+<title>پنل کاربر — ChangeOver</title>
+<!-- [EN] The embedded Persian font first: the panel must look the same on a
+     phone that has never seen this alphabet.
+     [FA] اول فونت فارسی جاسازی‌شده: پنل باید روی گوشی‌ای که هرگز این حروف را
+     ندیده هم یک‌شکل باشد. -->
+<link rel="stylesheet" href="/f.css">
+<link rel="stylesheet" href="/app.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%235b9dff'/><path d='M9 20h6l2-8h6' stroke='%23070b12' stroke-width='3' fill='none' stroke-linecap='round'/></svg>">
+</head>
+<body>
+<!-- [EN] Live region for screen readers: every status change is announced here.
+     [FA] ناحیهٔ زنده برای صفحه‌خوان‌ها: هر تغییر وضعیت اینجا اعلام می‌شود. -->
+<div id="sr-live" class="sr" aria-live="polite" aria-atomic="true"></div>
+
+<header id="hdr" hidden>
+  <div class="brand">
+    <span class="logo" aria-hidden="true"></span>
+    <span class="brand-text"><b>ChangeOver</b><i>پنل کاربر</i></span>
+  </div>
+  <div class="hdr-side">
+    <span class="chip" id="clock-chip" title="زمان پنل">
+      <svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span id="clock-text">—</span>
+    </span>
+    <span class="chip link" id="link-chip" title="وضعیت دریافت داده از برد">
+      <i class="dot"></i><span id="link-text">در حال اتصال…</span>
+    </span>
+    <button class="usr" id="user-chip" type="button" title="حساب کاربری">
+      <svg viewBox="0 0 24 24" class="ic"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c1.2-4 4-6 7-6s5.8 2 7 6"/></svg>
+      <span id="user-name">—</span><span class="role" id="user-role"></span>
+    </button>
+  </div>
+</header>
+
+<nav id="nav" hidden aria-label="بخش‌ها">
+  <button data-view="dash" class="a" type="button">داشبورد</button>
+  <button data-view="stats" type="button">آمار و ارقام</button>
+  <button data-view="diag" type="button">دیاگ خطاها</button>
+  <button data-view="admin" type="button" data-admin>مدیریت</button>
+  <button data-view="help" type="button">راهنما</button>
+</nav>
+
+<main id="view" aria-live="polite"></main>
+
+<footer id="ftr" hidden>
+  <span id="ftr-build">—</span>
+  <span class="sep">•</span>
+  <span id="ftr-link">—</span>
+  <span class="sep">•</span>
+  <button type="button" class="lnk" id="ftr-logout">خروج از حساب</button>
+</footer>
+
+<div id="modal" class="modal" hidden role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-box">
+    <h3 id="modal-title">—</h3>
+    <div id="modal-body"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" id="modal-no" type="button">انصراف</button>
+      <button class="btn" id="modal-yes" type="button">تأیید</button>
+    </div>
+  </div>
+</div>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+
+<script src="/app.js"></script>
+</body>
+</html>

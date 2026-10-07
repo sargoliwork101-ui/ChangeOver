@@ -1,0 +1,399 @@
+/* ==========================================================================
+   user_panel/web/app.css - [EN] User dashboard theme (dark, RTL, no CDN).
+       Served by the ESP from PROGMEM as /app.css. Everything is hand-rolled so
+       the page works on an access point with no internet at all.
+       Design rules kept from the project's own v1.25 lesson: surfaces must be
+       DISTINGUISHABLE (page < card < raised < border), never one flat sheet.
+   [FA] تم پنل کاربر (تیره، راست‌به‌چپ، بدون CDN). توسط ESP از PROGMEM سرو
+       می‌شود تا روی یک اکسس‌پوینت بدون اینترنت هم کامل کار کند.
+       قاعدهٔ طراحی از درس v1.25 خود پروژه: سطح‌ها باید از هم تشخیص داده شوند.
+   ========================================================================== */
+
+/* ==================== Design tokens / توکن‌های طراحی ==================== */
+:root{
+  --bg:#070b12; --bg2:#0b1120;
+  --card:#101827; --card2:#131d2e; --raise:#1a2740; --input:#080d17;
+  --line:#26344d; --line2:#33456a;
+  --tx:#e9eff8; --tx2:#c3cfe4; --mu:#8e9cb8; --mu2:#6f7d99;
+  --ac:#5b9dff; --ac2:#9cc7ff; --ac3:#2f6bd4;
+  --ok:#2fd6a3; --wa:#f7c33c; --er:#ff6577; --vi:#a78bfa; --cy:#48d1e8;
+  --ok-bg:rgba(47,214,163,.12); --wa-bg:rgba(247,195,60,.12);
+  --er-bg:rgba(255,101,119,.13); --ac-bg:rgba(91,157,255,.13);
+  --sh1:0 1px 2px rgba(0,0,0,.4);
+  --sh2:0 8px 26px rgba(0,0,0,.45);
+  --sh3:0 18px 50px rgba(0,0,0,.55);
+  --r:16px; --r2:12px; --r3:9px;
+  --fs:clamp(13px,.22vw + 12.4px,15px);
+  --ff:Vazirmatn,"Vazirmatn RD","IRANSans",Tahoma,"Segoe UI",system-ui,-apple-system,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Consolas,monospace;
+  --speed:.18s;
+}
+*,*::before,*::after{box-sizing:border-box}
+::selection{background:rgba(91,157,255,.35)}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1100px 340px at 78% -140px,rgba(91,157,255,.16),transparent 70%),
+    radial-gradient(900px 300px at 8% -180px,rgba(167,139,250,.12),transparent 70%),
+    var(--bg);
+  color:var(--tx); font:var(--fs)/1.7 var(--ff);
+  min-height:100dvh; padding:0 clamp(10px,1.6vw,26px) 40px;
+  max-width:1360px; margin:0 auto;
+  -webkit-text-size-adjust:100%;
+  scrollbar-color:#33456a transparent;
+}
+h1,h2,h3,h4{margin:0;font-weight:800;line-height:1.4}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+table{border-collapse:collapse;width:100%}
+th,td{padding:9px 10px;text-align:right;border-bottom:1px solid var(--line);font-size:.94em}
+th{color:var(--mu);font-weight:700;font-size:.84em;white-space:nowrap}
+tbody tr:hover{background:rgba(255,255,255,.022)}
+a{color:var(--ac2)}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:8px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.n{font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+.mono{font-family:var(--mono);font-size:.86em}
+[hidden]{display:none !important}
+
+/* ==================== Header / سربرگ ==================== */
+header{
+  position:sticky;top:0;z-index:70;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;padding:12px 0;margin:0 calc(-1 * clamp(10px,1.6vw,26px)) 14px;
+  padding-inline:clamp(10px,1.6vw,26px);
+  background:linear-gradient(180deg,rgba(7,11,18,.94),rgba(7,11,18,.72));
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
+.logo{
+  width:38px;height:38px;border-radius:12px;flex:0 0 auto;position:relative;
+  background:linear-gradient(150deg,var(--ac2),var(--ac3));
+  box-shadow:0 0 0 1px rgba(255,255,255,.10) inset,0 8px 20px rgba(47,107,212,.42);
+}
+.logo::after{
+  content:"";position:absolute;inset:9px;border-radius:3px;
+  background:linear-gradient(90deg,transparent 42%,#08101f 42% 58%,transparent 58%),
+             linear-gradient(180deg,transparent 42%,#08101f 42% 58%,transparent 58%);
+}
+.brand-text{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.brand-text b{font-size:1.06em;letter-spacing:-.2px}
+.brand-text i{font-style:normal;font-size:.74em;color:var(--mu)}
+.hdr-side{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-start}
+.chip{
+  display:inline-flex;align-items:center;gap:7px;padding:6px 11px;border-radius:999px;
+  background:var(--card);border:1px solid var(--line);color:var(--tx2);font-size:.82em;font-weight:600;
+  box-shadow:var(--sh1);white-space:nowrap
+}
+.chip .ic{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;opacity:.85}
+.chip.link .dot{width:9px;height:9px;border-radius:50%;background:var(--er);box-shadow:0 0 0 3px rgba(255,101,119,.15)}
+.chip.link.on .dot{background:var(--ok);box-shadow:0 0 0 3px rgba(47,214,163,.15)}
+.chip.link.warn .dot{background:var(--wa);box-shadow:0 0 0 3px rgba(247,195,60,.15)}
+.chip.link .dot{animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.42}}
+.usr{
+  display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;
+  background:var(--raise);border:1px solid var(--line2);font-size:.82em;font-weight:700;box-shadow:var(--sh1)
+}
+.usr:hover{border-color:var(--ac)}
+.usr .ic{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.9}
+.usr .role{color:var(--ac2);font-size:.82em;font-weight:600}
+
+/* ==================== Nav / ناوبری ==================== */
+nav{
+  display:flex;gap:4px;padding:5px;margin-bottom:16px;border-radius:14px;
+  background:var(--card);border:1px solid var(--line);box-shadow:var(--sh1);
+  position:sticky;top:64px;z-index:65;overflow-x:auto;scrollbar-width:none
+}
+nav::-webkit-scrollbar{display:none}
+nav button{
+  flex:1 1 0;min-width:96px;padding:10px 12px;border-radius:10px;color:var(--mu);
+  font-weight:700;font-size:.92em;transition:background var(--speed),color var(--speed);white-space:nowrap
+}
+nav button:hover{color:var(--tx);background:rgba(255,255,255,.04)}
+nav button.a{background:linear-gradient(180deg,#274574,#1b3157);color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 3px 10px rgba(0,0,0,.35)}
+nav button[data-admin]{position:relative}
+nav button[data-admin].hot::after{
+  content:"";position:absolute;top:6px;left:8px;width:7px;height:7px;border-radius:50%;
+  background:var(--er);box-shadow:0 0 8px var(--er)
+}
+
+/* ==================== Layout / چیدمان ==================== */
+section{margin-bottom:16px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(272px,1fr))}
+.grid.tight{gap:11px;grid-template-columns:repeat(auto-fit,minmax(196px,1fr))}
+.grid.wide{grid-template-columns:repeat(auto-fit,minmax(392px,1fr))}
+.col-2{display:grid;gap:14px;grid-template-columns:minmax(0,1.55fr) minmax(0,1fr)}
+@media (max-width:900px){.col-2{grid-template-columns:1fr}}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.between{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.push{margin-inline-start:auto}
+
+/* ==================== Card / کارت ==================== */
+.card{
+  background:linear-gradient(180deg,rgba(255,255,255,.028),transparent 34%),var(--card);
+  border:1px solid var(--line);border-radius:var(--r);padding:16px;box-shadow:var(--sh2);
+  position:relative;min-width:0
+}
+.card.flat{box-shadow:var(--sh1);background:var(--card2)}
+.card.raise{background:linear-gradient(180deg,rgba(255,255,255,.04),transparent 40%),var(--raise)}
+.card.pad-0{padding:0;overflow:hidden}
+.head{display:flex;align-items:center;gap:9px;margin-bottom:13px;justify-content:space-between}
+.head .t{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.95em;min-width:0}
+.head .t .ic{width:17px;height:17px;stroke:var(--ac);fill:none;stroke-width:1.9;stroke-linecap:round;flex:0 0 auto}
+.head .s{font-size:.78em;color:var(--mu);font-weight:600}
+.sub{color:var(--mu);font-size:.84em;line-height:1.65}
+.hr{height:1px;background:var(--line);margin:13px calc(-1 * 16px)}
+.spark{display:flex;align-items:flex-end;gap:3px;height:34px}
+.spark i{flex:1;background:linear-gradient(180deg,var(--ac),rgba(91,157,255,.25));border-radius:3px 3px 1px 1px;min-height:3px}
+
+/* ==================== Hero / هیرو وضعیت ==================== */
+.hero{
+  display:grid;gap:14px;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);
+  border-radius:18px;padding:18px;border:1px solid var(--line2);box-shadow:var(--sh3);
+  background:linear-gradient(135deg,rgba(91,157,255,.16),transparent 46%),var(--card);
+  position:relative;overflow:hidden
+}
+@media (max-width:860px){.hero{grid-template-columns:1fr}}
+.hero::before{
+  content:"";position:absolute;inset-inline-end:-60px;top:-70px;width:260px;height:260px;border-radius:50%;
+  background:radial-gradient(circle,rgba(91,157,255,.20),transparent 65%);pointer-events:none
+}
+.hero-state{display:flex;align-items:center;gap:14px;min-width:0}
+.hero-badge{
+  width:64px;height:64px;border-radius:20px;display:grid;place-items:center;flex:0 0 auto;
+  background:var(--raise);border:1px solid var(--line2);box-shadow:var(--sh1)
+}
+.hero-badge svg{width:32px;height:32px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hero-badge.ok{color:var(--ok);background:var(--ok-bg);border-color:rgba(47,214,163,.35)}
+.hero-badge.run{color:var(--wa);background:var(--wa-bg);border-color:rgba(247,195,60,.35)}
+.hero-badge.err{color:var(--er);background:var(--er-bg);border-color:rgba(255,101,119,.35)}
+.hero-title{font-size:clamp(19px,2.6vw,27px);font-weight:800;letter-spacing:-.4px;margin-bottom:2px}
+.hero-note{color:var(--mu);font-size:.88em}
+.hero-facts{display:grid;gap:9px;grid-template-columns:repeat(auto-fit,minmax(132px,1fr))}
+.fact{background:var(--card2);border:1px solid var(--line);border-radius:var(--r2);padding:10px 12px}
+.fact .k{color:var(--mu);font-size:.76em;font-weight:600;margin-bottom:3px}
+.fact .v{font-weight:800;font-size:1.06em;font-variant-numeric:tabular-nums}
+
+/* ==================== KPI / شاخص‌ها ==================== */
+.kpi{
+  background:linear-gradient(180deg,rgba(255,255,255,.03),transparent 40%),var(--card);
+  border:1px solid var(--line);border-radius:var(--r2);padding:13px 14px;box-shadow:var(--sh1);
+  display:flex;flex-direction:column;gap:5px;min-width:0
+}
+.kpi .k{display:flex;align-items:center;gap:7px;color:var(--mu);font-size:.79em;font-weight:700}
+.kpi .k .ic{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.9;opacity:.9}
+.kpi .v{font-size:clamp(19px,2.4vw,25px);font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+.kpi .v small{font-size:.5em;font-weight:700;color:var(--mu);margin-inline-start:4px}
+.kpi .d{font-size:.78em;color:var(--mu2)}
+.kpi.ok{border-color:rgba(47,214,163,.28)}.kpi.ok .v{color:var(--ok)}
+.kpi.wa{border-color:rgba(247,195,60,.28)}.kpi.wa .v{color:var(--wa)}
+.kpi.er{border-color:rgba(255,101,119,.30)}.kpi.er .v{color:var(--er)}
+.kpi.ac{border-color:rgba(91,157,255,.28)}.kpi.ac .v{color:var(--ac2)}
+.kpi.vi{border-color:rgba(167,139,250,.28)}.kpi.vi .v{color:var(--vi)}
+
+/* ==================== Battery / باتری ==================== */
+.bat{display:flex;gap:13px;align-items:center}
+.bat-vis{width:60px;flex:0 0 auto}
+.bat-shell{
+  width:52px;height:96px;border-radius:9px;border:2px solid var(--line2);
+  padding:4px;display:flex;flex-direction:column;justify-content:flex-end;background:var(--input);
+  position:relative
+}
+.bat-shell::before{
+  content:"";position:absolute;top:-7px;inset-inline-start:50%;transform:translateX(50%);
+  width:16px;height:5px;border-radius:3px 3px 0 0;background:var(--line2)
+}
+.bat-fill{
+  border-radius:5px;background:linear-gradient(180deg,var(--ok),#1ea87f);
+  transition:height .5s cubic-bezier(.22,.9,.3,1),background .3s
+}
+.bat-fill.mid{background:linear-gradient(180deg,var(--wa),#c99a17)}
+.bat-fill.low{background:linear-gradient(180deg,var(--er),#c3364a)}
+.bat-info{flex:1;min-width:0}
+.bat-title{font-weight:800;margin-bottom:3px;display:flex;align-items:center;gap:7px}
+.bat-v{font-size:1.32em;font-weight:800;font-variant-numeric:tabular-nums}
+.bat-row{display:flex;gap:14px;flex-wrap:wrap;color:var(--mu);font-size:.83em;margin-top:4px}
+.bat-row b{color:var(--tx2);font-weight:700;font-variant-numeric:tabular-nums}
+
+/* ==================== Badge / نشان ==================== */
+.badge{
+  display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;
+  font-size:.76em;font-weight:700;background:var(--raise);border:1px solid var(--line2);white-space:nowrap
+}
+.badge.ok{background:var(--ok-bg);border-color:rgba(47,214,163,.32);color:var(--ok)}
+.badge.wa{background:var(--wa-bg);border-color:rgba(247,195,60,.32);color:var(--wa)}
+.badge.er{background:var(--er-bg);border-color:rgba(255,101,119,.34);color:var(--er)}
+.badge.ac{background:var(--ac-bg);border-color:rgba(91,157,255,.32);color:var(--ac2)}
+.badge.vi{background:rgba(167,139,250,.13);border-color:rgba(167,139,250,.32);color:var(--vi)}
+.badge.mu{color:var(--mu)}
+
+/* ==================== Bar / نوار پیشرفت ==================== */
+.bar{height:8px;border-radius:999px;background:var(--input);overflow:hidden;border:1px solid var(--line)}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--ac3),var(--ac));transition:width .4s ease}
+.bar i.ok{background:linear-gradient(90deg,#1ea87f,var(--ok))}
+.bar i.wa{background:linear-gradient(90deg,#c99a17,var(--wa))}
+.bar i.er{background:linear-gradient(90deg,#c3364a,var(--er))}
+
+/* ==================== Buttons / دکمه‌ها ==================== */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 15px;border-radius:11px;
+  background:linear-gradient(180deg,#2a4a80,#1d3660);border:1px solid var(--ac3);color:#fff;font-weight:700;
+  box-shadow:var(--sh1);transition:filter var(--speed),transform var(--speed)
+}
+.btn:hover{filter:brightness(1.12)}
+.btn:active{transform:translateY(1px)}
+.btn .ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round}
+.btn.ghost{background:var(--card2);border-color:var(--line2);color:var(--tx2)}
+.btn.ghost:hover{border-color:var(--ac);color:#fff;filter:none}
+.btn.ok{background:linear-gradient(180deg,#1f8f6d,#146a50);border-color:#23a67d}
+.btn.er{background:linear-gradient(180deg,#a8323f,#7d222c);border-color:#c33b4c}
+.btn.wa{background:linear-gradient(180deg,#a8801c,#7d5f13);border-color:#c99a17}
+.btn.sm{padding:6px 11px;border-radius:9px;font-size:.86em}
+.btn.wide{width:100%}
+.btn[disabled]{opacity:.5;cursor:not-allowed;filter:none}
+.btn.link{background:none;border:0;color:var(--ac2);padding:4px;box-shadow:none}
+.lnk{color:var(--ac2);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+
+/* ==================== Form / فرم ==================== */
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.field label{font-size:.84em;color:var(--mu);font-weight:700}
+.inp{
+  width:100%;padding:10px 12px;border-radius:11px;background:var(--input);
+  border:1px solid var(--line2);transition:border-color var(--speed),box-shadow var(--speed)
+}
+.inp:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 3px var(--ring,rgba(91,157,255,.20))}
+.inp.err{border-color:var(--er)}
+select.inp{appearance:none;padding-inline-end:32px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--mu) 50%),linear-gradient(135deg,var(--mu) 50%,transparent 50%);
+  background-position:calc(0% + 14px) 50%,calc(0% + 19px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.hint{font-size:.78em;color:var(--mu2)}
+.err-text{font-size:.8em;color:var(--er)}
+
+/* ==================== Login / ورود ==================== */
+.login-wrap{min-height:82dvh;display:grid;place-items:center;padding:20px 0}
+.login{
+  width:min(432px,100%);border-radius:20px;padding:26px 24px 22px;border:1px solid var(--line2);
+  background:linear-gradient(180deg,rgba(255,255,255,.04),transparent 32%),var(--card);
+  box-shadow:var(--sh3);position:relative;overflow:hidden
+}
+.login::before{
+  content:"";position:absolute;inset-inline-end:-70px;top:-90px;width:250px;height:250px;border-radius:50%;
+  background:radial-gradient(circle,rgba(91,157,255,.18),transparent 65%)
+}
+.login-brand{display:flex;flex-direction:column;align-items:center;gap:11px;margin-bottom:20px;text-align:center}
+.login-brand .logo{width:52px;height:52px;border-radius:16px}
+.login-brand .logo::after{inset:12px}
+.login-brand h1{font-size:1.24em}
+.login-brand p{color:var(--mu);font-size:.86em;margin:0}
+.login-foot{margin-top:14px;padding-top:13px;border-top:1px solid var(--line);color:var(--mu2);font-size:.78em;text-align:center}
+
+/* ==================== Table wrapper ==================== */
+.tw{overflow-x:auto;border-radius:var(--r2);border:1px solid var(--line);background:var(--input)}
+.tw table{min-width:100%}
+.tw th{background:var(--card2);position:sticky;top:0}
+
+/* ==================== Charts / نمودارها ==================== */
+.chart{width:100%;display:block;overflow:visible}
+.chart text{fill:var(--mu);font-size:9.5px;font-family:var(--ff)}
+.chart .grid-line{stroke:var(--line);stroke-width:1;stroke-dasharray:2 4;opacity:.7}
+.chart .axis{stroke:var(--line2);stroke-width:1}
+.chart .lbl{fill:var(--tx2);font-weight:700}
+.chart .area{opacity:.9}
+.chart .ln{fill:none;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.chart .bar{transition:opacity .15s}
+.chart .bar:hover{opacity:.75}
+.legend{display:flex;gap:13px;flex-wrap:wrap;margin-top:9px;font-size:.8em;color:var(--mu)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+.legend i.ln{height:3px;border-radius:2px}
+.tip{
+  position:fixed;z-index:200;pointer-events:none;background:rgba(9,14,24,.97);border:1px solid var(--line2);
+  border-radius:10px;padding:7px 10px;font-size:.8em;box-shadow:var(--sh2);direction:rtl;max-width:230px
+}
+.tip b{color:var(--ac2)}
+
+/* ==================== Timeline ribbon / روبان زمانی ==================== */
+.ribbon{width:100%;height:34px;border-radius:9px;overflow:hidden;display:flex;border:1px solid var(--line)}
+.ribbon i{height:100%;transition:opacity .15s}
+.ribbon i:hover{opacity:.75}
+.rib-split{display:flex;gap:16px;flex-wrap:wrap;color:var(--mu);font-size:.78em;margin-top:7px}
+
+/* ==================== Fault cards / کارت خطا ==================== */
+.fault{
+  border-radius:var(--r2);border:1px solid var(--line);background:var(--card2);padding:13px;
+  display:flex;gap:12px;align-items:flex-start
+}
+.fault.er{border-color:rgba(255,101,119,.36);background:linear-gradient(180deg,var(--er-bg),transparent 60%)}
+.fault.wa{border-color:rgba(247,195,60,.34);background:linear-gradient(180deg,var(--wa-bg),transparent 60%)}
+.fault.ok{border-color:rgba(47,214,163,.30)}
+.fault.mu{opacity:.92}
+.fault-code{
+  font-family:var(--mono);font-weight:700;font-size:.82em;padding:4px 8px;border-radius:8px;
+  background:var(--input);border:1px solid var(--line2);flex:0 0 auto;direction:ltr
+}
+.fault-body{flex:1;min-width:0}
+.fault-title{font-weight:800;margin-bottom:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fault-say{color:var(--tx2);font-size:.9em;line-height:1.75}
+.fault-meta{display:flex;gap:12px;flex-wrap:wrap;color:var(--mu2);font-size:.78em;margin-top:7px}
+.steps{margin:9px 0 0;padding-inline-start:19px;color:var(--tx2);font-size:.88em;line-height:1.9}
+.steps li::marker{color:var(--ac);font-weight:700}
+
+/* ==================== Health checks / بررسی سلامت ==================== */
+.check{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:10px;background:var(--card2);border:1px solid var(--line)}
+.check .ic{width:17px;height:17px;flex:0 0 auto;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+.check.ok .ic{stroke:var(--ok)}.check.wa .ic{stroke:var(--wa)}.check.er .ic{stroke:var(--er)}
+.check .ck-t{font-weight:700;font-size:.9em}
+.check .ck-s{color:var(--mu);font-size:.78em}
+
+/* ==================== Modal / پنجرهٔ تأیید ==================== */
+.modal{position:fixed;inset:0;z-index:300;background:rgba(3,6,11,.72);backdrop-filter:blur(3px);display:grid;place-items:center;padding:18px}
+.modal-box{width:min(492px,100%);background:var(--card);border:1px solid var(--line2);border-radius:16px;padding:20px;box-shadow:var(--sh3)}
+.modal-box h3{font-size:1.08em;margin-bottom:10px}
+.modal-actions{display:flex;gap:9px;justify-content:flex-start;margin-top:18px}
+
+/* ==================== Toasts / پیام‌ها ==================== */
+.toasts{position:fixed;bottom:16px;inset-inline-start:16px;z-index:400;display:flex;flex-direction:column;gap:9px;max-width:340px}
+.toast{
+  background:var(--raise);border:1px solid var(--line2);border-radius:12px;padding:11px 13px;
+  box-shadow:var(--sh3);display:flex;gap:9px;align-items:flex-start;animation:slideIn .22s ease
+}
+.toast.ok{border-color:rgba(47,214,163,.4)}.toast.er{border-color:rgba(255,101,119,.45)}
+.toast .ic{width:17px;height:17px;stroke-width:2;fill:none;flex:0 0 auto;margin-top:2px;stroke-linecap:round;stroke-linejoin:round}
+.toast.ok .ic{stroke:var(--ok)}.toast.er .ic{stroke:var(--er)}.toast.wa .ic{stroke:var(--wa)}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ==================== Skeleton / اسکلت بارگذاری ==================== */
+.sk{background:linear-gradient(100deg,var(--card2) 30%,var(--raise) 50%,var(--card2) 70%);background-size:220% 100%;animation:sk 1.3s linear infinite;border-radius:9px}
+@keyframes sk{from{background-position:120% 0}to{background-position:-120% 0}}
+.sk.line{height:12px;margin-bottom:9px}
+.sk.tile{height:82px}
+
+/* ==================== Footer / پاصفحه ==================== */
+footer{
+  margin-top:22px;padding-top:14px;border-top:1px solid var(--line);color:var(--mu2);
+  font-size:.79em;display:flex;gap:9px;align-items:center;flex-wrap:wrap
+}
+footer .sep{opacity:.5}
+
+/* ==================== Print / چاپ ==================== */
+@media print{
+  body{background:#fff;color:#000}
+  header,nav,footer,.toasts,.btn{display:none !important}
+  .card{border-color:#ccc;box-shadow:none}
+}
+
+/* ==================== Small screens / صفحه‌های کوچک ==================== */
+@media (max-width:640px){
+  header{flex-wrap:wrap;gap:8px;padding-block:10px}
+  .hdr-side{gap:6px}
+  .chip{font-size:.78em;padding:5px 9px}
+  .hero{padding:14px}
+  .hero-badge{width:54px;height:54px;border-radius:16px}
+  .kpi .v{font-size:1.34em}
+  nav button{min-width:82px;font-size:.86em;padding:9px 8px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:.001ms !important;transition-duration:.001ms !important}
+}
