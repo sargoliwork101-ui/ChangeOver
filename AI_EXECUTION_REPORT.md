@@ -629,9 +629,9 @@ readback failure است؛ summary و modal هر دو ناحیهٔ scrollable د�
 
 مدرک اجرای همین checkout:
 
-- `node esp_link_panel/Tester/host_test_scenario_cards.js`: **316/316 PASS**؛ شامل
-  summary نام‌محور، حذف جدول/کنترل‌های ردیفی، modal یک‌تأییدی، اعمال همهٔ مقادیر معتبر
-  و بسته‌شدن modal.
+- `node esp_link_panel/Tester/host_test_scenario_cards.js`: **319/319 PASS**؛ شامل
+  summary نام‌محور، checkbox انتخاب همهٔ نمونه‌ها، حذف جدول/کنترل‌های ردیفی، modal
+  یک‌تأییدی، اعمال همهٔ مقادیر معتبر و بسته‌شدن modal.
 - `node esp_link_panel/Tester/host_test_panel_click.js`: **129/129 PASS**.
 - `./Firmware/Modules/CalLut/Tester/run_host_test_cal_lut.sh`: **159/159 PASS**.
 - `./esp_link_panel/Tester/run_esp_tests.sh`: **112/112 PASS**.

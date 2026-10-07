@@ -1114,6 +1114,15 @@ async function testBackupAndCal(win, doc) {
           'the sample list names the scenario in plain words, not SOLO');
     check(doc.getElementById('calsl').innerHTML.indexOf('SOLO') < 0,
           'the word SOLO is gone from what the user reads');
+    check(doc.getElementById('calall') && doc.getElementById('calall').type === 'checkbox' &&
+          doc.querySelectorAll('#calsl button').length === 0,
+          'the sample list has one master checkbox above the rows and no select-all buttons');
+    win.eval('calpick')(0);
+    check(win.CALS.every(z => z.use === 0) && doc.getElementById('calall').checked === false,
+          'unchecking the master sample checkbox excludes every row');
+    win.eval('calpick')(1);
+    check(win.CALS.every(z => z.use !== 0) && doc.getElementById('calall').checked === true,
+          'checking the master sample checkbox includes every row again');
     win.CALS.push({ sc: 'BAT1', d: 30, use: 1, r1: 900, r2: 900, vin: 24000, v24: 25000,
                     v12: 12500, vlo: 12500, vhi: 12500, b1: 10, b2: 10,
                     dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });   /* an obvious outlier */
