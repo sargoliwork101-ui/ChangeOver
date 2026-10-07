@@ -130,3 +130,30 @@ once and the ESP sketch plus its shared headers have been reviewed; what no host
 radio/flash/board behaviour, which belongs in the module Validation Excel files. / در سه مرور هر فایل منبع
 Firmware حداقل یک بار کامل خوانده شده و اسکچ ESP و هدرهای مشترکش بررسی شده‌اند؛ آنچه هیچ تست هاستی پوشش
 نمی‌دهد رفتار رادیو/فلش/برد واقعی است که جای آن در فایل‌های Validation ماژول‌هاست.
+
+---
+
+## Pass 4 addendum / پیوست ۲۰۲۶-۱۰-۰۷ (مرور چهارم - شکار دسته‌ای) / 2026-10-07 pass-4 addendum (class-based hunt)
+
+**[FA] مرور چهارم به‌جای خواندن ترتیبی، چهار «دستهٔ ایراد» را سیستماتیک شکار کرد. هیچ ایراد کارکردی تازه‌ای پیدا نشد؛ کد تغییر نکرد.**
+**[EN] The fourth pass hunted four defect CLASSES systematically instead of reading sequentially. No new functional defect; no code changed.**
+
+| دسته / Class | روش / Method | نتیجه / Result |
+|---|---|---|
+| حلقهٔ بافر و DMA ی UART | خواندن کامل `bsp_uart.c` | سالم: نوشتن اتمیک کل-فریم، گارد `-1u` پرنشدن حلقه، `TxWriteActive`، مدولوی آرتیفکت `CNDTR=0`، commit-first در پمپ / clean |
+| پارسر فریم و مسیریابی پارامتر | خواندن کامل `ParseByte`/`ResyncFromByte`/`HandleFrame`/`HandleLutFrame`/`ApplyParam` | سالم: resync روی `AA AA 55` و `AA` در نسخه/طول/CRC-HI، گارد طول، `StagePoint` با بررسی اندیس / clean |
+| سرریز و بی‌علامتی | grep شیب‌دار روی `* 1000`/`<< 8`/`<< 16` و تایمرهای u16؛ بررسی `yHigh - yLow` بدون‌علامت در درون‌یابی LUT | سالم: تفریق بدون‌علامت درون‌یابی با سه لایه محافظت می‌شود - `ChannelCheck` در `Commit` پیش از نوشتن، `RecordValidate` هنگام بوت/پس از نوشتن، جدول‌های کامپایل صعودی؛ تست هاست CalLut هر دو رد `ST_CHAIN`/`ST_POWER` را پوشش می‌دهد / triple-guarded, tested |
+| اشتراک ISR/تسک | ممیزی همهٔ متغیرهای نوشته‌شده در وقفه | سالم: `bsp_exti.c` با `__disable_irq`/PRIMASK اتمیک، پرچم‌های `mcu_power_path` و `bsp_uart` همگی `volatile` / clean |
+
+**[EN] Full-suite verification run this pass / اجرای کامل همهٔ سوئیت‌ها در این مرور:**
+CalLut 125/0، Changeover 114/0، EspLink NVM PASS، EspLink parser 15/0، Fault 48/0، Imbalance 3805/0، Jitter 24/0،
+McuPowerPath 49/0، Measurement 2346/0، Protection 61/0، ESP panel (داخل گیت) 98 تست + charger 52 تست + UI/buzzer PASS،
+`audit_consistency.py` 443 بررسی PASS، `check_ai_rules.sh` ALL PASSED. / بیش از ۶٬۶۰۰ بررسی، صفر خطا.
+
+**[FA] جمع‌بندی چهار مرور:** هر فایل منبع Firmware و اسکچ ESP حداقل یک‌بار کامل خوانده شده و چهار دستهٔ ایراد
+کلاسیک امبدد (بافر/DMA، پارسر پروتکل، سرریز/بی‌علامتی، مسابقهٔ ISR) شکار سیستماتیک شده‌اند. ایراد کارکردی
+بازِ شناخته‌شده‌ای در کد باقی نمانده است؛ تنها پوشش‌نداده، رفتار واقعی رادیو/فلش/برد است (فایل‌های Validation).
+**[EN] Four-pass bottom line:** every firmware source file and the ESP sketch have been read in full at least once,
+and the four classic embedded defect classes (ring/DMA, protocol parser, overflow/unsigned, ISR races) have been
+systematically hunted. No known open functional defect remains; only real radio/flash/board behaviour stays
+uncovered here and belongs in the module Validation Excel files.
