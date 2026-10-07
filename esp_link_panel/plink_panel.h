@@ -406,7 +406,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 08daf99</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build b15169b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -484,7 +484,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
      [FA] v1.38 (دستور کاربر: «چرا دو تا کلید؟») - کلید جداگانهٔ PID رفت؛
      همین یکی کل محدودهٔ شارژر را برمی‌گرداند. -->
 <div class="hd"><b>بازگردانی پیش‌فرض کارخانه</b><span class="lb">· مقادیر پروفایل شارژ (۲۰-۲۶)، ضرایب PID (۸۳-۹۲) و حدهای شارژر (۹۳-۱۰۷) را به کارخانه برمی‌گرداند؛ به آلارم‌ها، فیلترها و سناریوها دست نمی‌زند</span></div>
-<div class="bqr"><button class="sb sb2" onclick="qdef()">بازگردانی پیش‌فرض کارخانه</button></div>
+<div class="bqr"><button class="sb sb2 fwb" onclick="qdef()">بازگردانی پیش‌فرض کارخانه</button></div>
 </div>
 </div>
 <!-- [EN] This closing tag was dropped in 0593f7c, when the profile card
@@ -920,7 +920,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <label>کف اعتبار باتری (mV)<input type="number" id="q37" step="100" min="0" max="8000"><span class="lb" id="a37"></span></label>
 </div>
 
-<div class="bqr"><button class="sb sb2" onclick="adef()">بازگردانی پیش‌فرض کارخانهٔ نظارت و ایمنی</button></div>
+<div class="bqr"><button class="sb sb2 fwb" onclick="adef()">بازگردانی پیش‌فرض کارخانهٔ نظارت و ایمنی</button></div>
 </div>
 </div>
 <div class="sgx" id="s3">

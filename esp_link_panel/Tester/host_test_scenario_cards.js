@@ -152,6 +152,12 @@ function testStructure(win, doc) {
         check(el.querySelector('.c4ds') !== null, 'card ' + card + ' explains when it triggers');
         check(el.querySelectorAll('.sec').length >= 2, 'card ' + card + ' is split into numbered sections');
     }
+    const factoryButtons = Array.from(doc.querySelectorAll('button')).filter(b =>
+        b.textContent.indexOf('بازگردانی پیش‌فرض کارخانه') >= 0);
+    check(factoryButtons.length === 9 && factoryButtons.every(b => b.classList.contains('fwb')),
+          'every settings section gives its factory-reset key the same full-width panel layout');
+    check(factoryButtons.every(b => b.classList.contains('sb2')),
+          'all factory-reset keys use the panel secondary-button theme');
     /* The standalone simulator launch card was intentionally removed; the
        operating page must not advertise a dead route. */
     check(!doc.getElementById('simopen') && typeof win.opensim !== 'function',

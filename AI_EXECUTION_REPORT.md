@@ -628,14 +628,14 @@ readback failure است؛ summary و modal هر دو ناحیهٔ scrollable د�
 دوباره می‌خواند؛ battery 2 همچنان مستقل از gain/offset باتری 1 است. در ابزار
 داده‌برداری بنچ نیز کنترل `SWEEP` از فهرست دستی جدا شد: با روشن بودن آن فقط
 از/تا/گام دیده می‌شود و با خاموش بودن فقط فهرست دستی دیده می‌شود؛ تم همهٔ کلیدهای داده‌برداری، از شروع/پایان تا ثبت، دانلود، پاک‌کردن، LUT و کالیبراسیون،
-با تم خود پنل یکسان شد.
+با تم خود پنل یکسان شد. کلیدهای بازگردانی کارخانه در همهٔ بخش‌های تنظیمات نیز full-width و با تم ثانویهٔ پنل شدند.
 
 مدرک اجرای همین checkout:
 
-- `node esp_link_panel/Tester/host_test_scenario_cards.js`: **322/322 PASS**؛ شامل
+- `node esp_link_panel/Tester/host_test_scenario_cards.js`: **324/324 PASS**؛ شامل
   summary نام‌محور، checkbox انتخاب همهٔ نمونه‌ها، انتخاب انحصاری SWEEP/فهرست دستی
-  با گام قابل‌تنظیم، حذف جدول/کنترل‌های ردیفی، modal یک‌تأییدی، اعمال همهٔ مقادیر
-  معتبر و بسته‌شدن modal.
+  با گام قابل‌تنظیم، کلیدهای factory-reset یکدست در همهٔ تنظیمات، حذف جدول/کنترل‌های
+  ردیفی، modal یک‌تأییدی، اعمال همهٔ مقادیر معتبر و بسته‌شدن modal.
 - `node esp_link_panel/Tester/host_test_panel_click.js`: **129/129 PASS**.
 - `./Firmware/Modules/CalLut/Tester/run_host_test_cal_lut.sh`: **159/159 PASS**.
 - `./esp_link_panel/Tester/run_esp_tests.sh`: **112/112 PASS**.
