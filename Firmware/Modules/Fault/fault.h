@@ -165,10 +165,10 @@ typedef struct
  *              set, report the applied value.
  *         [FA] نوشتن یک آستانهٔ آلارم (۲۷..۳۴): ذخیره، گیرهٔ کل مجموعه،
  *              گزارش مقدار اعمال‌شده.
- * @‎param  uint8_t__paramId [EN] 27..34‎ / شناسه
+ * @param  uint8_t__paramId [EN] 27..34‎ / شناسه
  * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
  * @param  uint32_t__appliedValue [EN] Required applied value out; NULL rejects the write / خروجی الزامی؛ NULL نوشتن را رد می‌کند
- * @‎return bool [EN] true when the id is 27..34‎ / شناسه معتبر بود
+ * @return bool [EN] true when the id is 27..34‎ / شناسه معتبر بود
  */
 bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t uint32_t__value,
@@ -177,9 +177,9 @@ bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one live alarm threshold (27..34).
  *         [FA] خواندن یک آستانهٔ زندهٔ آلارم (۲۷..۳۴).
- * @‎param  uint8_t__paramId [EN] 27..34‎ / شناسه
+ * @param  uint8_t__paramId [EN] 27..34‎ / شناسه
  * @param  uint32_t__value [EN] Value out / مقدار
- * @‎return bool [EN] true when the id is 27..34‎ / شناسه معتبر بود
+ * @return bool [EN] true when the id is 27..34‎ / شناسه معتبر بود
  */
 bool func__Fault_GetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value);

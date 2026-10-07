@@ -72,3 +72,36 @@ logic.
 
 بیلد ARM واقعی (`arm-none-eabi-gcc`/CubeIDE) و تست فیزیکی برد در این محیط
 نیست؛ بررسی شماتیک از متن/وکتور خود PDF استخراج شده، نه چشم‌انداز ابزار CAD.
+
+## پاس دوم — بررسی خط‌به‌خط کل برنامه / Second pass - whole-program line-by-line
+
+در پاس دوم همهٔ فایل‌های BSP/Rtos/Config/Core و ماژول‌ها بازخوانی شدند
+(bsp_adc، bsp_measurement، bsp_flash، bsp_pwm، bsp_uart، mcu_power_path،
+ui_buzzer، changeover، fault، cal_lut، بردارهای وقفه، FreeRTOSConfig و
+لینکر). تقسیم‌های متغیره همگی نگهبان صفر دارند و حلقه‌ها کران‌دارند.
+
+ایراد واقعی یافته‌شده و رفع‌شده: **۲۰۵ تگ Doxygen شکسته** — یک نویسهٔ نامرئی
+LRM بین `@` و `param`/`return` (۱۲۵ `@param` و ۷۸ `@return` در ۲۶ فایل) که
+تگ‌ها را عملاً متنی عادی می‌کرد؛ خود دروازهٔ قوانین هم آن را بی‌صدا نشان می‌داد
+(`rtos_tasks.h: funcs=5 @param=0`). نویسه‌ها فقط از تگ‌ها حذف شدند (بدون هیچ
+تغییر منطقی) و علامت‌های جهت مجازِ کامنت‌های فارسی دست‌نخورده ماندند؛ بعد از
+اصلاح، `rtos_tasks.h` در خروجی دروازه `@param=5` گزارش می‌شود.
+
+| ابزار | نتیجهٔ پس از پاس دوم |
+|---|---|
+| `bash tools/check_ai_rules.sh` | ALL CHECKS PASSED |
+| `bash tools/check_firmware_syntax.sh` | PASSED (همهٔ تست‌های هاست و ESP) |
+| `python3 tools/audit_consistency.py` | 443 invariant، 0 finding |
+
+The second pass re-read every BSP/Rtos/Config/Core file and module
+(bsp_adc, bsp_measurement, bsp_flash, bsp_pwm, bsp_uart, mcu_power_path,
+ui_buzzer, changeover, fault, cal_lut, the IRQ vectors, FreeRTOSConfig and
+the linker script). All variable divisors carry zero guards and all spins are
+bounded.
+
+Real defect found and fixed: **205 broken Doxygen tags** - an invisible LRM
+sat between `@` and `param`/`return` (125 `@param`, 78 `@return`, 26 files),
+turning the tags into plain text; the rules gate showed it silently
+(`rtos_tasks.h: funcs=5 @param=0`). Only the tag characters were cleaned (no
+logic touched); the legitimate RTL marks inside Persian comments remain. After
+the fix the gate reports `rtos_tasks.h @param=5`.

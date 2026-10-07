@@ -544,10 +544,10 @@ static uint32_t func__Charger_ChannelCurrentMa(const measurement_snapshot_t *mea
  *              به‌جای تقسیم snapshot بی‌معنی. ترتیب ریاضی داخل ۳۲ بیت
  *              می‌ماند: (I×η÷۱۰۰۰) زیر ~1e7 و ضرب در Vin زیر ~3e8.
  *              (تاریخچهٔ تبدیل دوبارشمرِ حذف‌شده: charger.h.)
- * @‎param  measurement_snapshot_t__snap [EN] Live snapshot (Vin/Vbat) / snapshot‎ زنده
- * @‎param  uint8_t__channelIndex [EN] 0 = ch1 (upper battery), 1 = ch2‎ / ۰=کانال۱، ۱=کانال۲
+ * @param  measurement_snapshot_t__snap [EN] Live snapshot (Vin/Vbat) / snapshot‎ زنده
+ * @param  uint8_t__channelIndex [EN] 0 = ch1 (upper battery), 1 = ch2‎ / ۰=کانال۱، ۱=کانال۲
  * @param  uint32_t__primaryMa [EN] Filtered chain current, mA / جریان فیلترشدهٔ زنجیره، mA
- * @‎return uint32_t [EN] Battery-side current estimate, mA‎ / تخمین جریان سمت باتری، mA
+ * @return uint32_t [EN] Battery-side current estimate, mA‎ / تخمین جریان سمت باتری، mA
  */
 static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *measurement_snapshot_t__snap,
                                                uint8_t uint8_t__channelIndex,
@@ -1002,7 +1002,7 @@ static void func__Charger_BringupRegulateChannel(uint8_t uint8_t__channelIndex,
  *         اجازهٔ شروع بالک می‌دهد (دستور کاربر: اول ثبات، بعد شارژ).
  * @param  uint8_t__channelIndex [EN] channel 0 or 1 / کانال ۰ یا ۱
  * @param  uint32_t__nowTick     [EN] current kernel tick / تیک فعلی کرنل
- * @‎return bool [EN] true = settled, bulk may start / true‎ = ثابت شده، بالک مجاز
+ * @return bool [EN] true = settled, bulk may start / true‎ = ثابت شده، بالک مجاز
  */
 static bool func__Charger_BulkStartSettled(uint8_t uint8_t__channelIndex,
                                            uint32_t uint32_t__nowTick)
@@ -2165,7 +2165,7 @@ static void func__Charger_ExitManualTestMode(void)
  *              قطع ESP کانال → صفر، قطع سخت ۱۵٫۰V (CHG_MAX_VALID_BATTERY_MV)
  *              → صفر تا افت ولتاژ، و ApplyDuty به کمینهٔ سقف کامپایل و سقف
  *              زمان اجرا گیره می‌زند. وضعیت MANUAL نشان داده می‌شود.
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @param  measurement_snapshot_t__snap [EN] Snapshot / نمونه
  */
 static void func__Charger_ManualDriveChannel(uint8_t uint8_t__channelIndex,
@@ -2208,7 +2208,7 @@ static void func__Charger_ManualDriveChannel(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Set the NVM-save suspension flag (see header contract).
  *         [FA] ست‌کردن پرچم تعلیق ذخیرهٔ NVM (قرارداد هدر).
- * @‎param  bool__suspended [EN] true = hold gates at 0‎ / گیت‌ها صفر نگه داشته شوند
+ * @param  bool__suspended [EN] true = hold gates at 0‎ / گیت‌ها صفر نگه داشته شوند
  */
 void func__Charger_SetSuspended(bool bool__suspended)
 {
@@ -2218,7 +2218,7 @@ void func__Charger_SetSuspended(bool bool__suspended)
 /**
  * @brief  [EN] Read the NVM-save suspension flag.
  *         [FA] خواندن پرچم تعلیق ذخیرهٔ NVM.
- * @‎return bool [EN] true = suspension active‎ / تعلیق فعال است
+ * @return bool [EN] true = suspension active‎ / تعلیق فعال است
  */
 bool func__Charger_IsSuspended(void)
 {
@@ -3167,7 +3167,7 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
  *              پمپِ فالت هر نیم را با شارژر خودش مسلح کند: کانال
  *              پارک‌شده پمپی ندارد پس نیمش نمی‌تواند تا آستانهٔ قطع بالا
  *              پرود.
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @return bool [EN] true while that channel pumps / وقتی همان کانال پمپ کند
  */
 bool func__Charger_IsChannelActive(uint8_t uint8_t__channelIndex)
@@ -3340,7 +3340,7 @@ bool func__Charger_IsChargeComplete(void)
  *              صفر = همانی (پیش‌فرض)، غیرصفر = تبدیل زندهٔ ‎iest = I‎ × Vin ×
  *              η ÷ (۱۰۰۰ × Vbat). کانال ۰ = شارژر ۱ (باتری بالا)، ۱ = شارژر
  *              ۲. روی فلش از v1.14 (شناسه ۹/۱۰)؛ از پنل ESP و CAL_REFERENCE.
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @param  uint32_t__etaPermille [EN] Requested efficiency / بازدهی درخواستی
  * @return uint32_t [EN] Applied efficiency permille / بازدهی اعمال‌شده
  */
@@ -3382,7 +3382,7 @@ uint32_t func__Charger_SetEfficiencyPermille(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read the live flyback efficiency of one channel.
  *         [FA] بازدهی flyback زندهٔ یک کانال را می‌خواند.
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @return uint32_t [EN] Live efficiency permille / بازدهی زندهٔ پرمیل
  */
 uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex)
@@ -3407,8 +3407,8 @@ uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex)
  *              گیت آزاد نمی‌شود)؛ true = وصل با ری‌استارت نرم BULK از duty
  *              ۱٪. روی فلش می‌ماند از نسخهٔ ۱.۱۴ - ری‌استارت گیت‌ها را
  *              نگه می‌دارد (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @‎param  bool__enable [EN] true = channel allowed‎ / کانال آزاد
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  bool__enable [EN] true = channel allowed‎ / کانال آزاد
  */
 void func__Charger_SetChannelEspEnable(uint8_t uint8_t__channelIndex, bool bool__enable)
 {
@@ -3421,8 +3421,8 @@ void func__Charger_SetChannelEspEnable(uint8_t uint8_t__channelIndex, bool bool_
 /**
  * @brief  [EN] Read the ESP enable gate of one charger channel.
  *         [FA] گیت فعال‌سازی ESP یک کانال شارژر را می‌خواند.
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @‎return bool [EN] true = channel allowed‎ / کانال آزاد
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @return bool [EN] true = channel allowed‎ / کانال آزاد
  */
 bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex)
 {
@@ -4076,7 +4076,7 @@ _Static_assert((sizeof(UINT32_T__G__ChargerLimit) /
 /**
  * @brief  [EN] Live value of one charger limit, by table index.
  *         [FA] مقدار زندهٔ یک حد شارژر، با نمایهٔ جدول.
- * @‎param  uint8_t__index [EN] 0..CHG_LIMIT_COUNT-1‎ / نمایه
+ * @param  uint8_t__index [EN] 0..CHG_LIMIT_COUNT-1‎ / نمایه
  * @return uint32_t [EN] Live value / مقدار زنده
  */
 static uint32_t func__Charger_Limit(uint8_t uint8_t__index)
@@ -4172,7 +4172,7 @@ void func__Charger_NotifyEspLinkActivity(void)
  *              فیکس) داخل ApplyDuty به کمینهٔ سقف کامپایل و این سقف گیره
  *              می‌خورد. روی فلش می‌ماند از نسخهٔ ۱.۱۴ - ری‌استارت سقف‌ها
  *              را نگه می‌دارد (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @param  uint32_t__ceilingPermille [EN] Requested ceiling / سقف درخواستی
  * @return uint32_t [EN] Applied ceiling / سقف اعمال‌شده
  */
@@ -4196,7 +4196,7 @@ uint32_t func__Charger_SetDutyCeilingPermille(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read the live PWM duty ceiling of one channel.
  *         [FA] سقف زندهٔ duty ی PWM یک کانال.
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @return uint32_t [EN] Ceiling permille / سقف پرمیل
  */
 uint32_t func__Charger_GetDutyCeilingPermille(uint8_t uint8_t__channelIndex)
@@ -4222,8 +4222,8 @@ uint32_t func__Charger_GetDutyCeilingPermille(uint8_t uint8_t__channelIndex)
  *              (توقف سوئیچینگ بالای CHG_ABSORB_MV؛ برش‌های JIT/ورودی/
  *              باتری/ESP فعال). عدد duty با SetDutyFixedPermille تنظیم و
  *              موقع اعمال گیره می‌خورد. فقط RAM (دستور ۲۰۲۶-۰۹-۲۲).
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @‎param  bool__enable [EN] true = fixed mode on‎ / مود فیکس روشن
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  bool__enable [EN] true = fixed mode on‎ / مود فیکس روشن
  */
 void func__Charger_SetDutyFixedEnable(uint8_t uint8_t__channelIndex, bool bool__enable)
 {
@@ -4236,8 +4236,8 @@ void func__Charger_SetDutyFixedEnable(uint8_t uint8_t__channelIndex, bool bool__
 /**
  * @brief  [EN] Read the runtime fixed-duty switch of one channel.
  *         [FA] کلید مود duty فیکس یک کانال.
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @‎return bool [EN] true = fixed mode on‎ / مود فیکس روشن
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @return bool [EN] true = fixed mode on‎ / مود فیکس روشن
  */
 bool func__Charger_GetDutyFixedEnable(uint8_t uint8_t__channelIndex)
 {
@@ -4259,8 +4259,8 @@ bool func__Charger_GetDutyFixedEnable(uint8_t uint8_t__channelIndex)
  *              فقط وقتی مود فیکس همان کانال روشن است اثر دارد؛ ApplyDuty
  *              به‌علاوه سقف زمان اجرا را رعایت می‌کند. روی فلش می‌ماند
  *              از نسخهٔ ۱.۱۴ (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @‎param  uint32_t__dutyPermille [EN] Requested duty / duty‎ درخواستی
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  uint32_t__dutyPermille [EN] Requested duty / duty‎ درخواستی
  * @return uint32_t [EN] Applied stored value / مقدار ذخیره‌شده
  */
 uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
@@ -4293,8 +4293,8 @@ uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read the stored fixed duty value of one channel.
  *         [FA] مقدار ذخیره‌شدهٔ duty فیکس یک کانال.
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @‎return uint32_t [EN] Duty permille / duty‎ پرمیل
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @return uint32_t [EN] Duty permille / duty‎ پرمیل
  */
 uint32_t func__Charger_GetDutyFixedPermille(uint8_t uint8_t__channelIndex)
 {

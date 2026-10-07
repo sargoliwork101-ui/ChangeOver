@@ -13,7 +13,7 @@
  * @brief  [EN] Convert milliseconds to the active CMSIS-RTOS2 tick count.
  *         [FA] میلی‌ثانیه را به تعداد تیک فعال ‎CMSIS-RTOS2‎ تبدیل می‌کند.
  * @param  uint32_t__milliseconds [EN] Duration in milliseconds / مدت بر حسب میلی‌ثانیه
- * @‎return uint32_t [EN] Rounded-up kernel ticks‎ / تیک کرنل با گردکردن رو به بالا
+ * @return uint32_t [EN] Rounded-up kernel ticks‎ / تیک کرنل با گردکردن رو به بالا
  */
 uint32_t func__Rtos_MillisecondsToTicks(uint32_t uint32_t__milliseconds);
 

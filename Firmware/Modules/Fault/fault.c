@@ -354,7 +354,7 @@ void func__Fault_OnSupervisionChange(void)
  *         condition is false.
  *         [FA] دبانس مشترک: وقتی شرط به‌طور پیوسته به مدت خواسته‌شده برقرار
  *         بود true می‌دهد؛ با false‌شدن شرط، تیک شروع را صفر کنید.
- * @‎param  uint32_t_ptr__sinceTick [EN] Start tick storage (0 = not running)‎ / محل نگه‌داشت تیک شروع
+ * @param  uint32_t_ptr__sinceTick [EN] Start tick storage (0 = not running)‎ / محل نگه‌داشت تیک شروع
  * @param  uint32_t__nowTick       [EN] Current kernel tick / تیک فعلی
  * @param  uint32_t__milliseconds  [EN] Required duration / مدت لازم
  * @return bool [EN] true when the duration elapsed / وقتی مدت گذشت true

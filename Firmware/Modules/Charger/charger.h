@@ -1084,7 +1084,7 @@ extern volatile uint32_t UINT32_T__G__ChargerIest2Ma;
  *         [FA] بازدهی flyback یک کانال در زمان اجرا، گیرهٔ
  *              ‎CHG_ETA_MIN_PERMILLE..CHG_ETA_MAX_PERMILLE‎؛ روی فلش
  *              می‌ماند از نسخهٔ ۱.۱۴، پنل ESP (دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @param  uint32_t__etaPermille [EN] Requested efficiency / بازدهی درخواستی
  * @return uint32_t [EN] Applied efficiency permille / بازدهی اعمال‌شده
  */
@@ -1094,7 +1094,7 @@ uint32_t func__Charger_SetEfficiencyPermille(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read the live flyback efficiency of one channel.
  *         [FA] بازدهی flyback زندهٔ یک کانال.
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @return uint32_t [EN] Live efficiency permille / بازدهی زندهٔ پرمیل
  */
 uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex);
@@ -1108,16 +1108,16 @@ uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex);
  *              OFF (قفل FINAL_FAULT با این گیت آزاد نمی‌شود)، true =
  *              ری‌استارت نرم BULK؛ روی فلش می‌ماند از نسخهٔ ۱.۱۴ (دستور
  *              کاربر ۲۰۲۶-۰۹-۲۲).
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @‎param  bool__enable [EN] true = channel allowed‎ / کانال آزاد
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  bool__enable [EN] true = channel allowed‎ / کانال آزاد
  */
 void func__Charger_SetChannelEspEnable(uint8_t uint8_t__channelIndex, bool bool__enable);
 
 /**
  * @brief  [EN] Read the ESP enable gate of one charger channel.
  *         [FA] خواندن گیت فعال‌سازی ESP یک کانال شارژر.
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @‎return bool [EN] true = channel allowed‎ / کانال آزاد
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @return bool [EN] true = channel allowed‎ / کانال آزاد
  */
 bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex);
 
@@ -1129,7 +1129,7 @@ bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex);
  *              ۰..CHG_DUTY_MAX_PERMILLE؛ هر duty اعمالی آن را رعایت
  *              می‌کند. روی فلش می‌ماند از نسخهٔ ۱.۱۴، پنل ESP (دستور
  *              کاربر ۲۰۲۶-۰۹-۲۲).
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @param  uint32_t__ceilingPermille [EN] Requested ceiling / سقف درخواستی
  * @return uint32_t [EN] Applied ceiling / سقف اعمال‌شده
  */
@@ -1139,7 +1139,7 @@ uint32_t func__Charger_SetDutyCeilingPermille(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read the live PWM duty ceiling of one channel.
  *         [FA] سقف زندهٔ duty یک کانال.
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @return uint32_t [EN] Ceiling permille / سقف پرمیل
  */
 uint32_t func__Charger_GetDutyCeilingPermille(uint8_t uint8_t__channelIndex);
@@ -1154,16 +1154,16 @@ uint32_t func__Charger_GetDutyCeilingPermille(uint8_t uint8_t__channelIndex);
  *              یک عدد به‌جای حلقهٔ تنظیم، با پوشش امنیتی تست بنچ (توقف
  *              سوئیچینگ بالای CHG_ABSORB_MV؛ حفاظت‌های JIT/ورودی/باتری/
  *              ESP فعال). فقط RAM (دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @‎param  bool__enable [EN] true = fixed mode on‎ / مود فیکس روشن
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  bool__enable [EN] true = fixed mode on‎ / مود فیکس روشن
  */
 void func__Charger_SetDutyFixedEnable(uint8_t uint8_t__channelIndex, bool bool__enable);
 
 /**
  * @brief  [EN] Read the runtime fixed-duty switch of one channel.
  *         [FA] کلید مود duty فیکس یک کانال.
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @‎return bool [EN] true = fixed mode on‎ / مود فیکس روشن
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @return bool [EN] true = fixed mode on‎ / مود فیکس روشن
  */
 bool func__Charger_GetDutyFixedEnable(uint8_t uint8_t__channelIndex);
 
@@ -1176,8 +1176,8 @@ bool func__Charger_GetDutyFixedEnable(uint8_t uint8_t__channelIndex);
  *              فقط با روشن‌بودن مود فیکس مؤثر و موقع اعمال به‌علاوه به
  *              سقف زمان اجرا گیره می‌خورد. روی فلش می‌ماند از نسخهٔ ۱.۱۴
  *              (دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @‎param  uint32_t__dutyPermille [EN] Requested duty / duty‎ درخواستی
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  uint32_t__dutyPermille [EN] Requested duty / duty‎ درخواستی
  * @return uint32_t [EN] Applied stored value / مقدار ذخیره‌شده
  */
 uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
@@ -1186,8 +1186,8 @@ uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read the stored fixed duty value of one channel.
  *         [FA] مقدار ذخیره‌شدهٔ duty فیکس یک کانال.
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @‎return uint32_t [EN] Duty permille / duty‎ پرمیل
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @return uint32_t [EN] Duty permille / duty‎ پرمیل
  */
 uint32_t func__Charger_GetDutyFixedPermille(uint8_t uint8_t__channelIndex);
 
@@ -1212,7 +1212,7 @@ uint32_t func__Charger_GetDutyFixedPermille(uint8_t uint8_t__channelIndex);
  *         [FA] درخواست روشن/خاموش مود تست دستی (از تسک ESP صدا زده می‌شود؛
  *              تسک شارژر در پاس بعدی درخواست را برمی‌دارد و عملیات
  *              ورود/خروج را در زمینهٔ خودش انجام می‌دهد).
- * @‎param  bool__enable [EN] true = manual on‎ / روشن
+ * @param  bool__enable [EN] true = manual on‎ / روشن
  */
 void func__Charger_SetManualTestMode(bool bool__enable);
 
@@ -1222,7 +1222,7 @@ void func__Charger_SetManualTestMode(bool bool__enable);
  *              control period).
  *         [FA] پرچم «درخواست‌شدهٔ» مود دستی (مقدار پارامتری که پنل
  *              نوشته؛ حداکثر یک دورهٔ کنترل با وضعیت فعال اختلاف دارد).
- * @‎return bool [EN] true = requested on‎ / درخواست روشن
+ * @return bool [EN] true = requested on‎ / درخواست روشن
  */
 bool func__Charger_GetManualTestMode(void);
 
@@ -1233,7 +1233,7 @@ bool func__Charger_GetManualTestMode(void);
  *         [FA] پرچم «فعالِ» مود دستی (مالکش تسک شارژر؛ تله‌متری b5 و
  *              ماژول Fault برای فریز کردن تشخیص قطع باتری استفاده‌اش
  *              می‌کنند).
- * @‎return bool [EN] true = manual active‎ / مود دستی فعال است
+ * @return bool [EN] true = manual active‎ / مود دستی فعال است
  */
 bool func__Charger_IsManualTestModeActive(void);
 
@@ -1261,14 +1261,14 @@ void func__Charger_NotifyEspLinkActivity(void);
  *              در تعلیق هر دو گیت صفر و پاس رد می‌شود؛ ماشین‌های حالت و
  *              شستشو دست نمی‌خورند پس ادامه یکپارچه است. فالت و چنج‌اور
  *              به ارزیابی ادامه می‌دهند. تک‌پرچم volatile بدون قفل.
- * @‎param  bool__suspended [EN] true = hold gates at 0‎ / گیت‌ها صفر نگه داشته شوند
+ * @param  bool__suspended [EN] true = hold gates at 0‎ / گیت‌ها صفر نگه داشته شوند
  */
 void func__Charger_SetSuspended(bool bool__suspended);
 
 /**
  * @brief  [EN] Read the NVM-save suspension flag.
  *         [FA] خواندن پرچم تعلیق ذخیرهٔ NVM.
- * @‎return bool [EN] true = suspension active‎ / تعلیق فعال است
+ * @return bool [EN] true = suspension active‎ / تعلیق فعال است
  */
 bool func__Charger_IsSuspended(void);
 
@@ -1293,7 +1293,7 @@ void func__Charger_Init(void);
  *              مستقل اجرا می‌کند. ولتاژ ورودی از مقدار واقعی ADC mV بررسی
  *              می‌شود، نه فقط سیگنال دیجیتال PB4. جریان کم درخواست افزایش
  *              duty است، نه fault.
- * @‎param  measurement_snapshot_t__snap [EN] Independent low/high battery snapshot‎ / نمونه مستقل دو باتری
+ * @param  measurement_snapshot_t__snap [EN] Independent low/high battery snapshot‎ / نمونه مستقل دو باتری
  * @param  app_state_t__state [EN] System state / حالت سیستم
  */
 void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__snap,
@@ -1328,7 +1328,7 @@ bool func__Charger_IsAnyChannelActive(void);
  *         پمپ ۱۴٫۸V را «به‌ازای هر نیم» مسلح می‌کند: کانال پارک‌شده پمپی
  *         ندارد پس نیمش قضاوت نمی‌شود (رفع چرخهٔ کاذب سه‌بوق حین شارژ،
  *         دستور کاربر ۲۰۲۶-۰۹-۲۸).
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
  * @return bool [EN] true while that channel pumps / وقتی همان کانال پمپ کند
  */
 bool func__Charger_IsChannelActive(uint8_t uint8_t__channelIndex);
@@ -1429,11 +1429,11 @@ bool func__Charger_IsChargeComplete(void);
  *              تیپر/شناوری). مقدار گیره می‌خورد و همهٔ وابسته‌ها دوباره
  *              گیره می‌شوند تا مجموعه سازنده بماند. مقدار «اعمال‌شده» را
  *              برمی‌گرداند (SET_PARAM همان را پاس می‌دهد).
- * @‎param  uint8_t__paramId [EN] 20..26‎ / شناسهٔ پارامتر
+ * @param  uint8_t__paramId [EN] 20..26‎ / شناسهٔ پارامتر
  * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
- * @‎param  uint32_t *uint32_t__appliedValue [EN] Required applied-value out;
+ * @param  uint32_t *uint32_t__appliedValue [EN] Required applied-value out;
  *                                      NULL rejects the write / خروجی الزامی؛ NULL رد می‌شود
- * @‎return bool [EN] true = id known and output supplied‎ / شناسه معتبر و خروجی موجود
+ * @return bool [EN] true = id known and output supplied‎ / شناسه معتبر و خروجی موجود
  */
 bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t uint32_t__value,
@@ -1442,9 +1442,9 @@ bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one charge-profile parameter (ESP link GET/PARAMS_BULK).
  *         [FA] خواندن یک پارامتر پروفایل شارژ (لینک ESP).
- * @‎param  uint8_t__paramId [EN] 20..26‎ / شناسهٔ پارامتر
- * @‎param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
- * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
+ * @param  uint8_t__paramId [EN] 20..26‎ / شناسهٔ پارامتر
+ * @param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
+ * @return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_GetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t *uint32_t__value);
@@ -1473,10 +1473,10 @@ bool func__Charger_GetProfileParam(uint8_t uint8_t__paramId,
  *              جهت ایمنی فقط پایین است: خطای سخت جریان هرگز بالای ۹۵۰mA و
  *              قطع OV هرگز بالای ۱۵۰۰۰mV نمی‌رود؛ هر دو بالای
  *              باند زندهٔ پروفایل فاصله نگه می‌دارند تا تنظیم سالم تریپ نکند.
- * @‎param  uint8_t__paramId [EN] 35..37‎ / شناسهٔ پارامتر
+ * @param  uint8_t__paramId [EN] 35..37‎ / شناسهٔ پارامتر
  * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
- * @‎param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / مقدار اعمال‌شده
- * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
+ * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / مقدار اعمال‌شده
+ * @return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t uint32_t__value,
@@ -1485,9 +1485,9 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one charger alarm parameter (ESP link GET/PARAMS_BULK).
  *         [FA] خواندن یک پارامتر آلارم شارژر (لینک ESP).
- * @‎param  uint8_t__paramId [EN] 35..37‎ / شناسهٔ پارامتر
- * @‎param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
- * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
+ * @param  uint8_t__paramId [EN] 35..37‎ / شناسهٔ پارامتر
+ * @param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
+ * @return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value);
@@ -1537,10 +1537,10 @@ bool func__Charger_GetAlarmParam(uint8_t uint8_t__paramId,
  *              دیوتی نمی‌سازد: انتگرال‌گیر نقطهٔ کار فعلی را نگه می‌دارد و
  *              فقط نرخ تغییرش زمان‌بندی دوباره می‌شود. مقدار اعمال‌شده
  *              برگردانده می‌شود.
- * @‎param  uint8_t__paramId [EN] 83..92‎ / شناسهٔ پارامتر
+ * @param  uint8_t__paramId [EN] 83..92‎ / شناسهٔ پارامتر
  * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
- * @‎param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / مقدار اعمال‌شده
- * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
+ * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / مقدار اعمال‌شده
+ * @return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
                                uint32_t uint32_t__value,
@@ -1549,9 +1549,9 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one two-loop CC/CV PID parameter (ESP link GET/PARAMS_BULK).
  *         [FA] خواندن یک پارامتر PID دوحلقه‌ای (لینک ESP).
- * @‎param  uint8_t__paramId [EN] 83..92‎ / شناسهٔ پارامتر
- * @‎param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
- * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
+ * @param  uint8_t__paramId [EN] 83..92‎ / شناسهٔ پارامتر
+ * @param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
+ * @return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_GetPidParam(uint8_t uint8_t__paramId,
                                uint32_t *uint32_t__value);
@@ -1631,10 +1631,10 @@ bool func__Charger_GetPidParam(uint8_t uint8_t__paramId,
  *         [FA] نوشتن یک حد یا گین پشتیبان شارژر (لینک ESP، ۹۳..۱۰۷). مقدار
  *              به پنجرهٔ کامپایل همان ردیف گیره می‌خورد و مقدار اعمال‌شده
  *              برگردانده می‌شود، دقیقاً مثل بلوک پروفایل و PID.
- * @‎param  uint8_t__paramId [EN] 93..107‎ / شناسهٔ پارامتر
+ * @param  uint8_t__paramId [EN] 93..107‎ / شناسهٔ پارامتر
  * @param  uint32_t__value [EN] Raw requested value / مقدار درخواستی خام
- * @‎param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / مقدار اعمال‌شده
- * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
+ * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / مقدار اعمال‌شده
+ * @return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_SetLimitParam(uint8_t uint8_t__paramId,
                                  uint32_t uint32_t__value,
@@ -1643,9 +1643,9 @@ bool func__Charger_SetLimitParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one charger limit / backstop gain (ESP link GET/BULK).
  *         [FA] خواندن یک حد یا گین پشتیبان شارژر (لینک ESP).
- * @‎param  uint8_t__paramId [EN] 93..107‎ / شناسهٔ پارامتر
- * @‎param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
- * @‎return bool [EN] true = id known‎ / شناسه شناخته شده
+ * @param  uint8_t__paramId [EN] 93..107‎ / شناسهٔ پارامتر
+ * @param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
+ * @return bool [EN] true = id known‎ / شناسه شناخته شده
  */
 bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__value);
@@ -1769,7 +1769,7 @@ bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
  *              every other block; the applied value is returned.
  *         [FA] نوشتن پارامتر سناریوی ۶ (۱۲۵..۱۳۱ یا ۱۳۴..۱۳۵) یا پخش اسلات
  *              ۲۰۳ هنگام بوت؛ مقدار اعمال‌شده برگردانده می‌شود.
- * @‎param  uint8_t__paramId [EN] 125..131, 134..135 or 203‎ / شناسه
+ * @param  uint8_t__paramId [EN] 125..131, 134..135 or 203‎ / شناسه
  * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
  * @param  uint32_t__appliedValue [EN] Applied value out, may be NULL / مقدار اعمال‌شده
  * @return bool [EN] true when the id belongs here / شناسه متعلق است
@@ -1781,7 +1781,7 @@ bool func__Charger_SetDeadParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one scenario-6 parameter or the verdict slot.
  *         [FA] خواندن پارامتر سناریوی ۶ یا اسلات قضاوت.
- * @‎param  uint8_t__paramId [EN] 125..127 or 203‎ / شناسه
+ * @param  uint8_t__paramId [EN] 125..127 or 203‎ / شناسه
  * @param  uint32_t__value [EN] Live value out / مقدار زنده
  * @return bool [EN] true when the id belongs here / شناسه متعلق است
  */
@@ -1791,7 +1791,7 @@ bool func__Charger_GetDeadParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Latched dead-battery verdict, bit 0 = charger 1, bit 1 = charger 2.
  *         [FA] قضاوت قفل‌شده: بیت ۰ شارژر ۱، بیت ۱ شارژر ۲.
- * @‎return uint8_t [EN] 0..3‎ / ماسک
+ * @return uint8_t [EN] 0..3‎ / ماسک
  */
 uint8_t func__Charger_DeadMask(void);
 
@@ -1806,7 +1806,7 @@ uint8_t func__Charger_DeadMask(void);
  *         [FA] زمان شارژ پیوستهٔ همین کانال بر حسب ثانیه. شمارش از ابتدا هم
  *              جداگانه بود، ولی فقط بزرگ‌ترین مقدار از برد بیرون می‌رفت؛
  *              حالا هر کانال جدا گزارش می‌شود.
- * @‎param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / شمارهٔ کانال
+ * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / شمارهٔ کانال
  * @return uint32_t [EN] seconds, 0 when the index is out of range / ثانیه
  */
 uint32_t func__Charger_DeadElapsedSeconds(uint8_t uint8_t__channelIndex);
@@ -1815,7 +1815,7 @@ uint32_t func__Charger_DeadElapsedSeconds(uint8_t uint8_t__channelIndex);
  * @brief  [EN] True when a latched dead verdict must also keep the battery
  *              off the output (param 127).
  *         [FA] آیا قفلِ باتری خراب باید خروجی را هم ببندد.
- * @‎return bool [EN] true = keep battery off the output‎ / وتوی خروجی
+ * @return bool [EN] true = keep battery off the output‎ / وتوی خروجی
  */
 bool func__Charger_DeadBlocksOutput(void);
 
@@ -1824,9 +1824,9 @@ bool func__Charger_DeadBlocksOutput(void);
  *              module so the face is drawn from the user's own numbers
  *              instead of borrowed ones. Any pointer may be NULL.
  *         [FA] شکل چراغ و بوق سناریوی ۶ برای ماژول UI.
- * @‎param  uint32_t__beepPeriodMs [EN] out, 0 = silent‎ / دورهٔ بوق
+ * @param  uint32_t__beepPeriodMs [EN] out, 0 = silent‎ / دورهٔ بوق
  * @param  uint32_t__beepLenMs [EN] out / طول بوق
- * @‎param  uint32_t__blinkPeriodMs [EN] out, 0 = solid red‎ / دورهٔ چشمک
+ * @param  uint32_t__blinkPeriodMs [EN] out, 0 = solid red‎ / دورهٔ چشمک
  * @param  uint32_t__blinkDutyPct [EN] out / سهم روشنی
  */
 void func__Charger_DeadFaceShape(uint32_t *uint32_t__beepPeriodMs,
@@ -1843,7 +1843,7 @@ void func__Charger_DeadBeepPattern(uint32_t *uint32_t__beepCount,
  * @brief  [EN] Take-and-clear flag: a persisted verdict changed, so the
  *              caller should mark NVM slot 203 dirty.
  *         [FA] پرچم «قضاوت ماندگار عوض شد» را می‌گیرد و پاک می‌کند.
- * @‎return bool [EN] true = slot 203 needs saving‎ / نیاز به ذخیره
+ * @return bool [EN] true = slot 203 needs saving‎ / نیاز به ذخیره
  */
 bool func__Charger_DeadTakePersistFlag(void);
 

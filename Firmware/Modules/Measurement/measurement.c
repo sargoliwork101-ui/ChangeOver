@@ -192,8 +192,8 @@ static uint32_t func__Measurement_Median5(uint32_t *uint32_t__samples)
  *              نمی‌خورد (الگوی مدین-۵ ولتاژ).
  * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
  * @param  uint32_t__sampleCounts [EN] New raw count sample / نمونهٔ شمارش خام جدید
- * @‎param  uint8_t__medianSize [EN] Active median window (1..15)‎ / پنجرهٔ فعال
- * @‎return uint32_t [EN] Median-filtered counts‎ / شمارش مدین‌شده
+ * @param  uint8_t__medianSize [EN] Active median window (1..15)‎ / پنجرهٔ فعال
+ * @return uint32_t [EN] Median-filtered counts‎ / شمارش مدین‌شده
  */
 static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
                                                 uint32_t uint32_t__sampleCounts,
@@ -263,7 +263,7 @@ static uint32_t func__Measurement_CurrentMedian(uint8_t uint8_t__channelIndex,
  *              خانه‌های خالی).
  * @param  uint8_t__channelIndex [EN] Current channel 0 or 1 / کانال جریان ۰ یا ۱
  * @param  uint32_t__sampleCounts [EN] New raw count sample / نمونهٔ شمارش خام جدید
- * @‎return uint32_t [EN] Moving-average counts‎ / شمارش میانگین‌گرفته
+ * @return uint32_t [EN] Moving-average counts‎ / شمارش میانگین‌گرفته
  */
 static uint32_t func__Measurement_CurrentMovingAverage(uint8_t uint8_t__channelIndex,
                                                        uint32_t uint32_t__sampleCounts)
@@ -413,9 +413,9 @@ static void func__Measurement_ResetCurrentFilters(void)
  *         شمارش فیلترشده را برمی‌گرداند. شارژر و آشکارساز قطع باتری از
  *         ولتاژهای مشتق‌شده از همین تبدیل‌ها استفاده می‌کنند تا ترکیدگی
  *         کوتاه «باتری رفت» را جعل نکند.
- * @‎param  uint8_t__channelIndex [EN] 0 = V24_BAT raw, 1 = V12_BAT raw‎ / شمارش خام
+ * @param  uint8_t__channelIndex [EN] 0 = V24_BAT raw, 1 = V12_BAT raw‎ / شمارش خام
  * @param  uint32_t__sampleCounts [EN] New raw count sample / شمارش خام جدید
- * @‎return uint32_t [EN] Median-of-5 filtered counts‎ / شمارش مدین‌شده
+ * @return uint32_t [EN] Median-of-5 filtered counts‎ / شمارش مدین‌شده
  */
 static uint32_t func__Measurement_MedianFilterVoltageSample(uint8_t uint8_t__channelIndex,
                                                             uint32_t uint32_t__sampleCounts)
@@ -898,7 +898,7 @@ static uint32_t func__Measurement_BenchLutInterp(
  *              زنده تقسیم می‌کند). بین لنگرها درون‌یابی خطی؛ بالای آخرین
  *              لنگر شیب آخر ادامه می‌یابد؛ صفر به صفر.
  * @param  uint32_t__chainMa [EN] ADC chain output in mA / خروجی زنجیرهٔ ADC بر حسب mA
- * @‎return uint32_t [EN] Battery-1 power in mW‎ / توان باتری ۱ بر حسب mW
+ * @return uint32_t [EN] Battery-1 power in mW‎ / توان باتری ۱ بر حسب mW
  */
 static uint32_t func__Measurement_Current1BenchLut(uint32_t uint32_t__chainMa)
 {
@@ -992,7 +992,7 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
  *              زنده تقسیم می‌کند). بین لنگرها درون‌یابی خطی؛ بالای آخرین
  *              لنگر شیب آخر ادامه می‌یابد؛ صفر به صفر.
  * @param  uint32_t__chainMa [EN] ADC chain output in mA / خروجی زنجیرهٔ ADC بر حسب mA
- * @‎return uint32_t [EN] Battery-2 power in mW‎ / توان باتری ۲ بر حسب mW
+ * @return uint32_t [EN] Battery-2 power in mW‎ / توان باتری ۲ بر حسب mW
  */
 /* [EN] Live battery-2 terminal voltage cache for the ch2 power LUT (v1.13,
  *      user order 2026-09-25): written AFTER the median-5 voltage filter each
@@ -1143,9 +1143,9 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
  *              error and the I2 x R charge-path wire drop, never below 0 mV.
  *         [FA] جبران V12 به باتری واقعی: کم‌کردن خطای ثابت کانال و افت
  *              مسیر I2×R؛ هرگز زیر 0mV نمی‌رود.
- * @‎param  uint32_t__v12Mv      [EN] Measured V12 in mV / V12‎ اندازه‌گیری‌شده mV
- * @‎param  uint32_t__current2Ma [EN] Corrected channel-2 current in mA‎ / جریان اصلاح‌شدهٔ کانال ۲ mA
- * @‎return uint32_t [EN] Compensated battery-low voltage in mV‎ / ولتاژ جبران‌شدهٔ باتری پایین mV
+ * @param  uint32_t__v12Mv      [EN] Measured V12 in mV / V12‎ اندازه‌گیری‌شده mV
+ * @param  uint32_t__current2Ma [EN] Corrected channel-2 current in mA‎ / جریان اصلاح‌شدهٔ کانال ۲ mA
+ * @return uint32_t [EN] Compensated battery-low voltage in mV‎ / ولتاژ جبران‌شدهٔ باتری پایین mV
  */
 static uint32_t func__Measurement_Battery12BenchCompensate(uint32_t uint32_t__v12Mv,
                                                            uint32_t uint32_t__current2Ma)
@@ -1678,7 +1678,7 @@ uint16_t func__Measurement_GetFilterAverageWindow(void)
  *              ±MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV. اندیس ۰ = ورودی ۲۴V،
  *              ۱ = باتری ۲۴V، ۲ = باتری ۱۲V (نود میانی). پیش‌فرض ۰ همان
  *              رفتار فعلی؛ روی فلش می‌ماند (NVM نسخهٔ ۱.۱۴).
- * @‎param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12‎ / اندیس
+ * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12‎ / اندیس
  * @param  int32_t__offsetMv [EN] Requested offset, mV / آفست درخواستی
  * @return int32_t [EN] Applied offset, mV / آفست اعمال‌شده
  */
@@ -1717,7 +1717,7 @@ int32_t func__Measurement_SetVoltageOffsetMv(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read one runtime voltage calibration offset.
  *         [FA] یک آفست کالیبراسیون ولتاژ زمان اجرا را می‌خواند.
- * @‎param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12‎ / اندیس
+ * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12‎ / اندیس
  * @return int32_t [EN] Live offset, mV / آفست زنده
  */
 int32_t func__Measurement_GetVoltageOffsetMv(uint8_t uint8_t__channelIndex)

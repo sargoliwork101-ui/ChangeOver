@@ -34,7 +34,7 @@
 /**
  * @brief  [EN] Run the UI task and select the scenario from the real Measurement snapshot.
  *         [FA] تسک UI را اجرا می‌کند و سناریو را از snapshot واقعی Measurement انتخاب می‌کند.
- * @‎param  void_ptr__argument [EN] CMSIS-RTOS2 thread argument, unused‎ / آرگومان استفاده‌نشده
+ * @param  void_ptr__argument [EN] CMSIS-RTOS2 thread argument, unused‎ / آرگومان استفاده‌نشده
  */
 void func__TaskUi(void *void_ptr__argument)
 {

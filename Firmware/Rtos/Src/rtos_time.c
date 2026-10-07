@@ -13,7 +13,7 @@
  * @brief  [EN] Convert milliseconds to active kernel ticks without assuming a 1 kHz tick.
  *         [FA] میلی‌ثانیه را بدون فرض نرخ یک کیلوهرتز به تیک کرنل تبدیل می‌کند.
  * @param  uint32_t__milliseconds [EN] Duration in milliseconds / مدت بر حسب میلی‌ثانیه
- * @‎return uint32_t [EN] Rounded-up kernel ticks‎ / تیک کرنل با گردکردن رو به بالا
+ * @return uint32_t [EN] Rounded-up kernel ticks‎ / تیک کرنل با گردکردن رو به بالا
  */
 uint32_t func__Rtos_MillisecondsToTicks(uint32_t uint32_t__milliseconds)
 {

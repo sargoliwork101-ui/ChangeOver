@@ -6,9 +6,9 @@
 /**
  * @brief  [EN] Read a little-endian u32 from a byte buffer.
  *         [FA] خواندن عدد u32 اندیان‌کوچک از بافر بایتی.
- * @‎param  uint8_t__ptr_buffer [EN] Source buffer, at least offset+4 bytes / [FA]‎ بافر مبدا، حداقل ‎offset+4‎ بایت
- * @‎param  uint8_t__offset     [EN] Byte offset, 0..108 (payload max 112) / [FA]‎ آفست بایتی، ۰ تا ۱۰۸ (حداکثر payload ۱۱۲)
- * @‎return [EN] Decoded value / [FA]‎ مقدار رمزگشایی‌شده
+ * @param  uint8_t__ptr_buffer [EN] Source buffer, at least offset+4 bytes / [FA]‎ بافر مبدا، حداقل ‎offset+4‎ بایت
+ * @param  uint8_t__offset     [EN] Byte offset, 0..108 (payload max 112) / [FA]‎ آفست بایتی، ۰ تا ۱۰۸ (حداکثر payload ۱۱۲)
+ * @return [EN] Decoded value / [FA]‎ مقدار رمزگشایی‌شده
  */
 static uint32_t func__Esp_ReadU32(const uint8_t *uint8_t__ptr_buffer, uint8_t uint8_t__offset)
 {
@@ -30,7 +30,7 @@ static uint32_t func__Esp_ReadU32(const uint8_t *uint8_t__ptr_buffer, uint8_t ui
  *              بیت‌به‌بیت یکی باشند وگرنه هر فریمی رد می‌شود.
  * @param  uint16_t__crc  [EN] Running value / مقدار جاری
  * @param  uint8_t__byte  [EN] Next byte / بایت بعدی
- * @‎return uint16_t [EN] Updated CRC / CRC‎ به‌روزشده
+ * @return uint16_t [EN] Updated CRC / CRC‎ به‌روزشده
  */
 static uint16_t func__Esp_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte)
 {
@@ -64,10 +64,10 @@ static uint8_t  UINT8_T__G__RxCrcLow = 0u;
 /**
  * @brief  [EN] Build and write one frame: AA 55 type len payload xor.
  *         [FA] ساخت و ارسال یک فریم: AA 55 type len payload xor.
- * @‎param  uint8_t__type        [EN] Message type (0x01 SET_PARAM / 0x02 GET_PARAMS) / [FA]‎ نوع پیام (0x01 یا 0x02)
- * @‎param  uint8_t__ptr_payload [EN] Payload bytes, may be NULL when len = 0 / [FA]‎ بایت‌های payload؛ برای طول صفر می‌تواند NULL باشد
- * @‎param  uint16_t__len        [EN] Payload length, 0..512 bytes, u16 LE on the wire (SET frames use 5) / [FA]‎ طول payload، ۰ تا ۵۱۲ بایت (فریم SET پنج بایت است)
- * @‎return [EN] None / [FA]‎ ندارد
+ * @param  uint8_t__type        [EN] Message type (0x01 SET_PARAM / 0x02 GET_PARAMS) / [FA]‎ نوع پیام (0x01 یا 0x02)
+ * @param  uint8_t__ptr_payload [EN] Payload bytes, may be NULL when len = 0 / [FA]‎ بایت‌های payload؛ برای طول صفر می‌تواند NULL باشد
+ * @param  uint16_t__len        [EN] Payload length, 0..512 bytes, u16 LE on the wire (SET frames use 5) / [FA]‎ طول payload، ۰ تا ۵۱۲ بایت (فریم SET پنج بایت است)
+ * @return [EN] None / [FA]‎ ندارد
  */
 static void func__Esp_WriteFrame(uint8_t uint8_t__type, const uint8_t *uint8_t__ptr_payload, uint16_t uint16_t__len)
 {
@@ -225,10 +225,10 @@ static void func__Esp_SendLutChunk(uint8_t uint8_t__channel, const uint32_t *uin
  *         [FA] چیدن کل جدول برای ارسال. اینجا چیزی فرستاده نمی‌شود؛ فریم‌ها
  *              را pump یکی‌یکی و پس از تأیید برد می‌فرستد (یافتهٔ L1 بالا).
  *              اگر ارسالی در جریان باشد جایش را می‌گیرد.
- * @‎param  uint8_t__count1 [EN] Points staged for channel 1, 0..24 / [FA]‎ نقاط کانال ۱
- * @‎param  uint8_t__count2 [EN] Points staged for channel 2, 0..24 / [FA]‎ نقاط کانال ۲
- * @‎param  uint32_t__crc32 [EN] CRC32 the browser computed / [FA] CRC32‎ مرورگر
- * @‎return [EN] None / [FA]‎ ندارد
+ * @param  uint8_t__count1 [EN] Points staged for channel 1, 0..24 / [FA]‎ نقاط کانال ۱
+ * @param  uint8_t__count2 [EN] Points staged for channel 2, 0..24 / [FA]‎ نقاط کانال ۲
+ * @param  uint32_t__crc32 [EN] CRC32 the browser computed / [FA] CRC32‎ مرورگر
+ * @return [EN] None / [FA]‎ ندارد
  */
 static void func__Esp_LutTxStart(uint8_t uint8_t__count1, uint8_t uint8_t__count2,
                                  uint32_t uint32_t__crc32)
@@ -257,7 +257,7 @@ static void func__Esp_LutTxStart(uint8_t uint8_t__count1, uint8_t uint8_t__count
  *              ESP_LUT_TX_RETRY_MAX بار تکرار و سپس با خطای ۱ متوقف می‌شود
  *              تا پنل بتواند خطا را بگوید نه اینکه بچرخد. مرحلهٔ ردشده
  *              (status غیر صفر) با خطای ۲ متوقف می‌شود.
- * @‎return [EN] true while a push owns the link / [FA]‎ تا وقتی ارسال جدول لینک را در اختیار دارد
+ * @return [EN] true while a push owns the link / [FA]‎ تا وقتی ارسال جدول لینک را در اختیار دارد
  */
 static bool func__Esp_LutTxPump(void)
 {
@@ -387,9 +387,9 @@ static void func__Esp_SendLutReset(void)
 /**
  * @brief  [EN] Send SET_PARAM [id:u8][value:u32 LE].
  *         [FA] ارسال SET_PARAM با قالب [id:u8][value:u32 LE].
- * @‎param  uint8_t__id     [EN] Parameter ID, 0..82 (83 params since v1.17) / [FA]‎ شناسه پارامتر، ۰ تا ۸۲ (۸۳ پارامتر از نسخه ۱.۱۷)
- * @‎param  uint32_t__value [EN] Raw wire value (signed IDs as two's complement) / [FA]‎ مقدار خام (شناسه‌های علامت‌دار به صورت مکمل دو)
- * @‎return [EN] None / [FA]‎ ندارد
+ * @param  uint8_t__id     [EN] Parameter ID, 0..82 (83 params since v1.17) / [FA]‎ شناسه پارامتر، ۰ تا ۸۲ (۸۳ پارامتر از نسخه ۱.۱۷)
+ * @param  uint32_t__value [EN] Raw wire value (signed IDs as two's complement) / [FA]‎ مقدار خام (شناسه‌های علامت‌دار به صورت مکمل دو)
+ * @return [EN] None / [FA]‎ ندارد
  */
 static void func__Esp_SendSetParam(uint8_t uint8_t__id, uint32_t uint32_t__value)
 {
@@ -409,7 +409,7 @@ static void func__Esp_SendSetParam(uint8_t uint8_t__id, uint32_t uint32_t__value
  *         [FA] ارسال حداکثر یک فرمان صف‌شده در هر ESP_LINK_TX_INTERVAL_MS
  *              (به ترتیب اولویت UINT8_T__G__TxOrder) و keepalive مود دستی یا، بدون مرورگر، درخواست
  *              خروج از مود دستی (‎ID 19 = 0)‎. هیچ‌وقت مسدود نمی‌کند.
- * @‎return [EN] None / [FA]‎ ندارد
+ * @return [EN] None / [FA]‎ ندارد
  */
 static void func__Esp_PumpTx(void)
 {
@@ -532,8 +532,8 @@ static void func__Esp_PumpTx(void)
 /**
  * @brief  [EN] Store one parameter value reported by the STM32 (applied value).
  *         [FA] ذخیره مقدار اعمال‌شده یک پارامتر که STM32 گزارش داده است.
- * @‎param  uint8_t__ptr_item [EN] 5-byte item [id][value LE] / [FA]‎ آیتم ۵ بایتی [id][value LE]
- * @‎return [EN] None / [FA]‎ ندارد
+ * @param  uint8_t__ptr_item [EN] 5-byte item [id][value LE] / [FA]‎ آیتم ۵ بایتی [id][value LE]
+ * @return [EN] None / [FA]‎ ندارد
  */
 static void func__Esp_StoreParamItem(const uint8_t *uint8_t__ptr_item)
 {
@@ -548,7 +548,7 @@ static void func__Esp_StoreParamItem(const uint8_t *uint8_t__ptr_item)
 /**
  * @brief  [EN] Add the just-stored TLM frame to the bench statistics window.
  *         [FA] افزودن فریم TLM تازه ذخیره‌شده به پنجرهٔ آمار بنچ.
- * @‎return [EN] None / [FA]‎ ندارد
+ * @return [EN] None / [FA]‎ ندارد
  */
 static void func__Esp_StatAccumulate(void)
 {
@@ -584,7 +584,7 @@ static void func__Esp_StatAccumulate(void)
 /**
  * @brief  [EN] Dispatch one checksum-valid frame from the STM32.
  *         [FA] پردازش یک فریم معتبر (checksum درست) دریافتی از STM32.
- * @‎return [EN] None / [FA]‎ ندارد
+ * @return [EN] None / [FA]‎ ندارد
  */
 static void func__Esp_HandleFrame(void)
 {
@@ -701,8 +701,8 @@ static void func__Esp_ResyncFromByte(uint8_t uint8_t__byte)
 /**
  * @brief  [EN] Feed one received byte to the frame parser; resyncs on AA 55.
  *         [FA] دادن یک بایت دریافتی به پارسر فریم؛ با AA 55 همگام‌سازی مجدد می‌کند.
- * @‎param  uint8_t__byte [EN] Received byte, 0..255 / [FA]‎ بایت دریافتی، ۰ تا ۲۵۵
- * @‎return [EN] None / [FA]‎ ندارد
+ * @param  uint8_t__byte [EN] Received byte, 0..255 / [FA]‎ بایت دریافتی، ۰ تا ۲۵۵
+ * @return [EN] None / [FA]‎ ندارد
  */
 static void func__Esp_ParseByte(uint8_t uint8_t__byte)
 {

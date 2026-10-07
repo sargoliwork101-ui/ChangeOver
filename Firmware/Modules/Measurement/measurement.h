@@ -206,8 +206,8 @@ bool func__Measurement_GetSnapshot(measurement_snapshot_t *measurement_snapshot_
  *              calibration port.
  *         [FA] شمارش استاندارد ADC را با استفاده از پورت کالیبراسیون برد
  *              به میلی‌ولت تبدیل می‌کند.
- * @‎param  uint16_t__counts [EN] Raw ADC count, 0..4095‎ / شمارش خام ADC
- * @‎return uint32_t [EN] Voltage in mV, 0..3300‎ / ولتاژ بر حسب mV
+ * @param  uint16_t__counts [EN] Raw ADC count, 0..4095‎ / شمارش خام ADC
+ * @return uint32_t [EN] Voltage in mV, 0..3300‎ / ولتاژ بر حسب mV
  */
 uint32_t func__Measurement_CountsToMv(uint16_t uint16_t__counts);
 
@@ -218,8 +218,8 @@ uint32_t func__Measurement_CountsToMv(uint16_t uint16_t__counts);
  *              board calibration port.
  *         [FA] کانال‌های استاندارد ۲۴ ولت را از طریق پورت کالیبراسیون برد
  *              به میلی‌ولت منبع تبدیل می‌کند.
- * @‎param  uint16_t__counts [EN] Raw ADC count, 0..4095‎ / شمارش خام ADC
- * @‎return uint32_t [EN] Source voltage in mV, 0..~37000‎ / ولتاژ منبع mV
+ * @param  uint16_t__counts [EN] Raw ADC count, 0..4095‎ / شمارش خام ADC
+ * @return uint32_t [EN] Source voltage in mV, 0..~37000‎ / ولتاژ منبع mV
  */
 uint32_t func__Measurement_V24CountsToMv(uint16_t uint16_t__counts);
 
@@ -241,8 +241,8 @@ uint32_t func__Measurement_Battery24CountsToMv(uint16_t uint16_t__counts);
  *              through the board calibration port.
  *         [FA] کانال استاندارد باتری ۱۲ ولت را از طریق پورت کالیبراسیون برد
  *              به میلی‌ولت منبع تبدیل می‌کند.
- * @‎param  uint16_t__counts [EN] Raw ADC count, 0..4095‎ / شمارش خام ADC
- * @‎return uint32_t [EN] Source voltage in mV, 0..~20000‎ / ولتاژ منبع mV
+ * @param  uint16_t__counts [EN] Raw ADC count, 0..4095‎ / شمارش خام ADC
+ * @return uint32_t [EN] Source voltage in mV, 0..~20000‎ / ولتاژ منبع mV
  */
 uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts);
 
@@ -253,8 +253,8 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts);
  *              board calibration port.
  *         [FA] کانال استاندارد جریان را از طریق پورت کالیبراسیون برد به
  *              میلی‌آمپر تبدیل می‌کند.
- * @‎param  uint16_t__counts [EN] Raw ADC count, 0..4095‎ / شمارش خام ADC
- * @‎return uint32_t [EN] Current in mA, 0..~3300‎ / جریان بر حسب mA
+ * @param  uint16_t__counts [EN] Raw ADC count, 0..4095‎ / شمارش خام ADC
+ * @return uint32_t [EN] Current in mA, 0..~3300‎ / جریان بر حسب mA
  */
 uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts);
 uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts);
@@ -311,7 +311,7 @@ uint8_t func__Measurement_SetFilterMedianSize(uint8_t uint8_t__medianSize);
  *         [FA] پنجرهٔ میانگین متحرک در زمان اجرا، گیرهٔ
  *              ۱..MEASUREMENT_CURRENT_AVERAGE_WINDOW؛ تسک اندازه‌گیری بعد
  *              از تغییر وضعیت فیلتر را ریست می‌کند.
- * @‎param  uint32_t__windowSamples [EN] Requested window, clamped before narrowing (u8 storage would slice 256..300 to 0..44)‎ / پنجرهٔ درخواستی
+ * @param  uint32_t__windowSamples [EN] Requested window, clamped before narrowing (u8 storage would slice 256..300 to 0..44)‎ / پنجرهٔ درخواستی
  * @return uint16_t [EN] Applied window / پنجرهٔ اعمال‌شده
  */
 uint16_t func__Measurement_SetFilterAverageWindow(uint32_t uint32_t__windowSamples);
@@ -337,7 +337,7 @@ uint16_t func__Measurement_GetFilterAverageWindow(void);
  *         [FA] یک آفست کالیبراسیون ولتاژ زمان اجرا، گیرهٔ
  *              ±MEASUREMENT_VOLTAGE_OFFSET_LIMIT_MV؛ روی فلش می‌ماند
  *              (شناسه‌های NVM ۴/۵/۶). پیش‌فرض ۰ همان رفتار فعلی است.
- * @‎param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12‎ / اندیس
+ * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12‎ / اندیس
  * @param  int32_t__offsetMv [EN] Requested offset, mV / آفست درخواستی
  * @return int32_t [EN] Applied offset, mV / آفست اعمال‌شده
  */
@@ -347,7 +347,7 @@ int32_t func__Measurement_SetVoltageOffsetMv(uint8_t uint8_t__channelIndex,
 /**
  * @brief  [EN] Read one runtime voltage calibration offset.
  *         [FA] خواندن یک آفست کالیبراسیون ولتاژ زمان اجرا.
- * @‎param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12‎ / اندیس
+ * @param  uint8_t__channelIndex [EN] 0 = VIN, 1 = V24, 2 = V12‎ / اندیس
  * @return int32_t [EN] Live offset, mV / آفست زنده
  */
 int32_t func__Measurement_GetVoltageOffsetMv(uint8_t uint8_t__channelIndex);

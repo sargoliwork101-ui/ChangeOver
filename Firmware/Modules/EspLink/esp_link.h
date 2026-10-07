@@ -548,7 +548,7 @@ void func__EspLink_Run(const measurement_snapshot_t *measurement_snapshot_t__sna
 /**
  * @brief  [EN] Drive CH_PD pin.
  *         [FA] پایه CH_PD را می‌زند.
- * @‎param  bool__on [EN] true=on, false=off‎ / روشن/خاموش
+ * @param  bool__on [EN] true=on, false=off‎ / روشن/خاموش
  */
 void func__EspLink_Power(bool bool__on);
 

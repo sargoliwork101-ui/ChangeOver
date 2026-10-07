@@ -506,8 +506,8 @@
 /**
  * @brief  [EN] Convert battery voltage to percent 0..100. Non-linear broken into steps: range, offset, scaled, percent.
  *         [FA] تبدیل ولتاژ باتری به درصد - غیرخطی ۴ گام.
- * @‎param  uint32_t__batteryMv [EN] Battery voltage mV, range 0..40000mV, clamped‎ / ولتاژ باتری میلی‌ولت
- * @‎return uint8_t [EN] Percent 0..100‎ / درصد
+ * @param  uint32_t__batteryMv [EN] Battery voltage mV, range 0..40000mV, clamped‎ / ولتاژ باتری میلی‌ولت
+ * @return uint8_t [EN] Percent 0..100‎ / درصد
  */
 uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv);
 
@@ -517,7 +517,7 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv);
  *         [FA] تبدیل ولتاژ به درصد سمت شارژ، از نگاشت ۱۱۹/۱۲۰ - همان ریاضی،
  *              اعداد مستقل.
  * @param  uint32_t__batteryMv [EN] Battery voltage in mV / ولتاژ باتری
- * @‎return uint8_t [EN] Percent 0..100‎ / درصد
+ * @return uint8_t [EN] Percent 0..100‎ / درصد
  */
 uint8_t func__Ui_ChargeVoltageToPercent(uint32_t uint32_t__batteryMv);
 
@@ -589,7 +589,7 @@ void func__Ui_ScenarioBatLost_Tick(void);
  *         [FA] دشارژ: سبز بر اساس نگاشت درصد ۷۴/۷۵ و چهار بازه بوق (۵۰..۵۳) چشمک می‌زند.
  *         زیر باند بحرانی (۵۳) همهٔ LEDها خاموش و الگوی بحرانی (۵۶/۵۷/۵۸/۶۵) فقط یک‌بار
  *         به‌اندازهٔ طول یک‌باره (۶۱) پخش می‌شود، بعد سکوت تا برگشت باتری.
- * @‎param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 29000=100%‎ / ولتاژ باتری
+ * @param  uint32_t__batteryMv [EN] Battery voltage mV, 21000=0% 29000=100%‎ / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv);
 
@@ -825,10 +825,10 @@ typedef struct
  *              whole set, report the applied value.
  *         [FA] نوشتن یک عدد UI (۳۸..۸۲): ذخیره، گیرهٔ کل مجموعه، گزارش
  *              مقدار اعمال‌شده.
- * @‎param  uint8_t__paramId [EN] 38..82‎ / شناسه
+ * @param  uint8_t__paramId [EN] 38..82‎ / شناسه
  * @param  uint32_t__value [EN] Requested value / مقدار درخواستی
  * @param  uint32_t__appliedValue [EN] Required applied value out; NULL rejects the write / خروجی الزامی؛ NULL نوشتن را رد می‌کند
- * @‎return bool [EN] true when the id is 38..76‎ / شناسه معتبر بود
+ * @return bool [EN] true when the id is 38..76‎ / شناسه معتبر بود
  */
 bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t uint32_t__value,
@@ -837,9 +837,9 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Read one live UI cadence value (38..82).
  *         [FA] خواندن یک عدد زندهٔ UI (۳۸..۸۲).
- * @‎param  uint8_t__paramId [EN] 38..82‎ / شناسه
+ * @param  uint8_t__paramId [EN] 38..82‎ / شناسه
  * @param  uint32_t__value [EN] Value out / مقدار
- * @‎return bool [EN] true when the id is 38..82‎ / شناسه معتبر بود
+ * @return bool [EN] true when the id is 38..82‎ / شناسه معتبر بود
  */
 bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t *uint32_t__value);

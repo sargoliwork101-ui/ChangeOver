@@ -553,8 +553,8 @@ bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
 /**
  * @brief  [EN] Battery voltage to percent 0..100. Non-linear formula broken into 4 steps: range, offset, scaled, percent.
  *         [FA] ولتاژ باتری به درصد - فرمول غیرخطی ۴ گام: بازه، فاصله، مقیاس، درصد.
- * @‎param  uint32_t__batteryMv [EN] Battery voltage in mV, 0..40000mV, 21000=0% 29000=100%‎ / ولتاژ باتری میلی‌ولت
- * @‎return uint8_t [EN] Percent 0..100‎ / درصد
+ * @param  uint32_t__batteryMv [EN] Battery voltage in mV, 0..40000mV, 21000=0% 29000=100%‎ / ولتاژ باتری میلی‌ولت
+ * @return uint8_t [EN] Percent 0..100‎ / درصد
  */
 /**
  * @brief  [EN] One voltage-to-percent map, used by both pairs. Non-linear
@@ -568,7 +568,7 @@ bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
  * @param  uint32_t__batteryMv [EN] Battery voltage in mV / ولتاژ باتری
  * @param  uint32_t__vminMv [EN] Voltage of 0% / ولتاژ صفر درصد
  * @param  uint32_t__vmaxMv [EN] Voltage of 100% / ولتاژ صد درصد
- * @‎return uint8_t [EN] Percent 0..100‎ / درصد
+ * @return uint8_t [EN] Percent 0..100‎ / درصد
  */
 static uint8_t func__Ui_VoltageToPercentMap(uint32_t uint32_t__batteryMv,
                                             uint32_t uint32_t__vminMv,
@@ -624,7 +624,7 @@ static uint8_t func__Ui_VoltageToPercentMap(uint32_t uint32_t__batteryMv,
  *         [FA] تبدیل ولتاژ به درصد سمت «دشارژ» از نگاشت ۷۴/۷۵ (از نسخهٔ
  *              ۱.۴۹ این جفت فقط مال دشارژ است).
  * @param  uint32_t__batteryMv [EN] Battery voltage in mV / ولتاژ باتری
- * @‎return uint8_t [EN] Percent 0..100‎ / درصد
+ * @return uint8_t [EN] Percent 0..100‎ / درصد
  */
 uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
 {
@@ -640,7 +640,7 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
  *         [FA] تبدیل ولتاژ به درصد سمت «شارژ» از نگاشت ۱۱۹/۱۲۰ (دستور کاربر:
  *              تکان‌دادن حدهای دشارژ نباید سمت شارژ را تکان بدهد).
  * @param  uint32_t__batteryMv [EN] Battery voltage in mV / ولتاژ باتری
- * @‎return uint8_t [EN] Percent 0..100‎ / درصد
+ * @return uint8_t [EN] Percent 0..100‎ / درصد
  */
 uint8_t func__Ui_ChargeVoltageToPercent(uint32_t uint32_t__batteryMv)
 {
@@ -654,7 +654,7 @@ uint8_t func__Ui_ChargeVoltageToPercent(uint32_t uint32_t__batteryMv)
 /**
  * @brief  [EN] Drive green LED on/off. Low-level wrapper around BSP GPIO.
  *         [FA] ال‌ای‌دی سبز را روشن/خاموش می‌کند - سطح پایین.
- * @‎param  bool__greenOn [EN] true=on, false=off‎ / روشن یا خاموش
+ * @param  bool__greenOn [EN] true=on, false=off‎ / روشن یا خاموش
  */
 static void func__green(bool bool__greenOn)
 {
@@ -666,7 +666,7 @@ static void func__green(bool bool__greenOn)
 /**
  * @brief  [EN] Drive red LED on/off. Low-level.
  *         [FA] ال‌ای‌دی قرمز را روشن/خاموش می‌کند.
- * @‎param  bool__redOn [EN] true=on, false=off‎ / روشن یا خاموش
+ * @param  bool__redOn [EN] true=on, false=off‎ / روشن یا خاموش
  */
 static void func__red(bool bool__redOn)
 {
@@ -678,7 +678,7 @@ static void func__red(bool bool__redOn)
 /**
  * @brief  [EN] Drive yellow LED on/off. Low-level.
  *         [FA] ال‌ای‌دی زرد را روشن/خاموش می‌کند.
- * @‎param  bool__yellowOn [EN] true=on, false=off‎ / روشن یا خاموش
+ * @param  bool__yellowOn [EN] true=on, false=off‎ / روشن یا خاموش
  */
 static void func__yellow(bool bool__yellowOn)
 {
@@ -900,7 +900,7 @@ static void func__Ui_ResetBatteryStablePercent(void)
  * @brief  [EN] Update stable battery percent from raw percent with 2% hysteresis and special 0/1 handling.
  *         General: |raw-stable| <2 → keep stable; >=2 → stable = raw. Special: stable 0 stays 0 until raw>=2 then →1; stable 1: raw==0→0, raw>=3→2, else keep 1.
  *         [FA] درصد پایدار را از درصد خام با هیسترزیس ۲٪ و رفتار خاص ۰/۱ به‌روز می‌کند.
- * @‎param  uint8_t__rawPercent [EN] Raw percent 0..100‎ / درصد خام
+ * @param  uint8_t__rawPercent [EN] Raw percent 0..100‎ / درصد خام
  * @return uint8_t [EN] Stable percent after hysteresis / درصد پایدار
  */
 static uint8_t func__Ui_UpdateBatteryStablePercent(uint8_t uint8_t__rawPercent)
@@ -1615,7 +1615,7 @@ void func__Ui_ScenarioInputOk(void)
  *         UI_CHARGING_YELLOW_MIN_REMAINING_PERCENT می‌نشیند و درصد ۱۰۰ دیگر
  *         زرد را خاموش نمی‌کند - این سناریو فقط با پمپِ کانال شارژر اجرا
  *         می‌شود پس تا قطع شارژر حداقل یک چشمکِ مرئی در هر دوره می‌ماند.
- * @‎param  uint32_t__batteryMv [EN] Battery voltage mV, charge percent map 119/120 (v1.49)‎ / ولتاژ باتری
+ * @param  uint32_t__batteryMv [EN] Battery voltage mV, charge percent map 119/120 (v1.49)‎ / ولتاژ باتری
  */
 void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
 {
@@ -1695,7 +1695,7 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
  *         بوق بر اساس چهار بازه درصدی (۵۰..۵۳) اجرا می‌شود.
  *         زیر باند بحرانی (۵۳) همهٔ LEDها خاموش و الگوی بحرانی (۵۶/۵۷/۵۸/۶۵) فقط یک‌بار
  *         به‌اندازهٔ طول یک‌باره (۶۱) پخش می‌شود، بعد سکوت تا برگشت باتری.
- * @‎param  uint32_t__batteryMv [EN] Battery voltage mV, percent map 74/75‎ / ولتاژ باتری
+ * @param  uint32_t__batteryMv [EN] Battery voltage mV, percent map 74/75‎ / ولتاژ باتری
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 {

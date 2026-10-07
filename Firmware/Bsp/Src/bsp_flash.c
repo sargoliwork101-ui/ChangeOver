@@ -66,7 +66,7 @@ static void func__BspFlash_ClearFlags(void)
 /**
  * @brief  [EN] Bounded wait for BSY to drop; clears EOP when it fired.
  *         [FA] انتظار محدود برای پایین‌آمدن BSY؛ EOP را اگر زده شد پاک می‌کند.
- * @‎return bool [EN] true = idle and clean‎ / بی‌کار و پاک
+ * @return bool [EN] true = idle and clean‎ / بی‌کار و پاک
  */
 static bool func__BspFlash_WaitIdle(void)
 {

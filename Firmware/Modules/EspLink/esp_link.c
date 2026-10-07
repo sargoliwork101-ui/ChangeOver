@@ -143,7 +143,7 @@ static void func__EspLink_PutU32(uint8_t *uint8_t__buffer,
  * @brief  [EN] Read one little-endian u32 from a payload buffer.
  *         [FA] یک u32 اندیان‌کوچک از بافر payload می‌خواند.
  * @param  uint8_t__payload [EN] Payload buffer / بافر payload
- * @‎param  uint8_t__offset [EN] Byte offset, 0..ESPLINK_FRAME_MAX_PAYLOAD-4‎ / آفست بایتی
+ * @param  uint8_t__offset [EN] Byte offset, 0..ESPLINK_FRAME_MAX_PAYLOAD-4‎ / آفست بایتی
  * @note   [EN] AUDIT 2026-10-05: the offset was uint8_t while the LUT_CHUNK
  *         loop computes 3 + 8*i against a 512-byte payload ceiling, so a
  *         frame claiming more than 31 points wrapped the offset and read the
@@ -178,8 +178,8 @@ static uint32_t func__EspLink_GetU32(const uint8_t *uint8_t__payload,
  * @param  uint8_t__paramId [EN] Parameter id / شناسهٔ پارامتر
  * @param  uint32_t__value [EN] Raw wire value (signed fields arrive as
  *                              two's complement) / مقدار خام خط
- * @‎param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / اعمال‌شده
- * @‎return bool [EN] true when the id is known / id‎ شناخته شد
+ * @param  uint32_t *uint32_t__appliedValue [EN] Applied value out‎ / اعمال‌شده
+ * @return bool [EN] true when the id is known / id‎ شناخته شد
  */
 bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
                                      uint32_t uint32_t__value,
@@ -430,8 +430,8 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
  * @brief  [EN] Read the live value of one parameter for the report frames.
  *         [FA] مقدار زندهٔ یک پارامتر برای فریم‌های گزارش می‌خواند.
  * @param  uint8_t__paramId [EN] Parameter id / شناسهٔ پارامتر
- * @‎param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
- * @‎return bool [EN] true when the id is known / id‎ شناخته شد
+ * @param  uint32_t *uint32_t__value [EN] Live value out‎ / مقدار زنده
+ * @return bool [EN] true when the id is known / id‎ شناخته شد
  */
 bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
                                    uint32_t *uint32_t__value)
@@ -638,7 +638,7 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
  *              نرخ ۱۰ هرتز‌اند، پس حلقه از جدول خیلی ارزان‌تر است.
  * @param  uint16_t__crc  [EN] Running value / مقدار جاری
  * @param  uint8_t__byte  [EN] Next byte / بایت بعدی
- * @‎return uint16_t [EN] Updated CRC / CRC‎ به‌روزشده
+ * @return uint16_t [EN] Updated CRC / CRC‎ به‌روزشده
  */
 static uint16_t func__EspLink_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte)
 {
@@ -665,7 +665,7 @@ static uint16_t func__EspLink_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byt
  *         [FA] payload را در فریم استاندارد می‌پیچد و ارسال می‌کند.
  * @param  uint8_t__messageType [EN] Message type byte / بایت نوع پیام
  * @param  const uint8_t *uint8_t__payload [EN] Payload / payload
- * @‎param  uint16_t uint16_t__payloadLength [EN] Payload length, 0..512 (v1.16 u16 length)‎ / طول payload
+ * @param  uint16_t uint16_t__payloadLength [EN] Payload length, 0..512 (v1.16 u16 length)‎ / طول payload
  */
 static void func__EspLink_SendFrame(uint8_t uint8_t__messageType,
                                     const uint8_t *uint8_t__payload,
@@ -1236,7 +1236,7 @@ static bool func__EspLink_ConsumeLutResetAuthorization(bool bool__magicValid,
  *              the hot parameter path stays as short as it was.
  *         [FA] چهار فریم ارسال جدول، جدا از HandleFrame تا مسیر داغ
  *              پارامترها به همان کوتاهی بماند.
- * @‎return bool [EN] true = this type was a LUT frame‎ / این نوع، فریم جدول بود
+ * @return bool [EN] true = this type was a LUT frame‎ / این نوع، فریم جدول بود
  */
 static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
                                          uint16_t uint16_t__payloadLength,
@@ -1666,7 +1666,7 @@ void func__EspLink_Init(void)
 /**
  * @brief  [EN] Drive CH_PD pin.
  *         [FA] پایه CH_PD را می‌زند.
- * @‎param  bool__on [EN] true=ESP on (HIGH), false=off‎ / روشن/خاموش
+ * @param  bool__on [EN] true=ESP on (HIGH), false=off‎ / روشن/خاموش
  */
 void func__EspLink_Power(bool bool__on)
 {

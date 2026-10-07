@@ -116,7 +116,7 @@
 /**
  * @brief  [EN] Start UART link, Wi-Fi AP and HTTP server. CH_PD is left untouched.
  *         [FA] راه‌اندازی لینک UART، اکسس‌پوینت وای‌فای و وب‌سرور. پایه CH_PD دست‌نخورده می‌ماند.
- * @‎return [EN] None / [FA]‎ ندارد
+ * @return [EN] None / [FA]‎ ندارد
  */
 void setup(void)
 {
@@ -161,7 +161,7 @@ void setup(void)
 /**
  * @brief  [EN] Non-blocking loop: drain UART, send queued command, serve HTTP.
  *         [FA] حلقه غیرمسدودکننده: خالی کردن UART، ارسال فرمان صف‌شده، پاسخ به HTTP.
- * @‎return [EN] None / [FA]‎ ندارد
+ * @return [EN] None / [FA]‎ ندارد
  */
 void loop(void)
 {

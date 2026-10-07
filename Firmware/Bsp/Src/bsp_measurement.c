@@ -453,7 +453,7 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
  *              ۶۴بیتی ~۱KB می‌خواست). اگر مقاومتی عوض شد دوباره اشتقاق
  *              بگیر (تست هاست از همین دیفاین‌ها بازمحاسبه می‌کند).
  * @param  uint16_t__counts           [EN] ADC count / شمارش ADC
- * @‎param  uint32_t__offsetCounts     [EN] zero-current offset, counts‎ / آفست صفر
+ * @param  uint32_t__offsetCounts     [EN] zero-current offset, counts‎ / آفست صفر
  * @param  uint32_t__gainPermille     [EN] bench gain permille / ضریب گین بنچ
  * @return uint32_t [EN] Current in mA / جریان بر حسب mA
  */
@@ -537,7 +537,7 @@ uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts)
  *              می‌کند، گیره در ۰..۲۵۵. کانال ۰ = زنجیرهٔ ‎Trans1/Shunt1‎ و
  *              کانال ۱ = ‎Trans2/Shunt2‎. روی فلش می‌ماند؛ ری‌استارت مقدار
  *              تنظیم‌شده را نگه می‌دارد.
- * @‎param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
  * @param  uint32_t__offsetCounts [EN] Requested offset in counts / آفست
  * @return uint32_t [EN] Actually applied offset / آفست اعمال‌شده
  */
@@ -568,7 +568,7 @@ uint32_t func__BspMeasurement_SetCurrentOffsetCounts(uint8_t uint8_t__channelInd
  *         [FA] ضریب گین بنچ (پرمیل) یک کانال را در زمان اجرا تنظیم می‌کند،
  *              گیره در ۱۰۰..۳۰۰۰ (پنل ESP، دستور کاربر ۲۰۲۶-۰۹-۲۲؛ روی فلش
  *              می‌ماند از نسخهٔ ۱.۱۴).
- * @‎param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
  * @param  uint32_t__gainPermille [EN] Requested gain permille / گین پرمیل
  * @return uint32_t [EN] Actually applied gain permille / گین اعمال‌شده
  */
@@ -603,7 +603,7 @@ uint32_t func__BspMeasurement_SetCurrentGainPermille(uint8_t uint8_t__channelInd
 /**
  * @brief  [EN] Read the live zero-current offset of one current channel.
  *         [FA] آفست جریان صفرِ زندهٔ یک کانال را می‌خواند.
- * @‎param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
  * @return uint32_t [EN] Offset in counts / آفست بر حسب شمارش
  */
 uint32_t func__BspMeasurement_GetCurrentOffsetCounts(uint8_t uint8_t__channelIndex)
@@ -619,7 +619,7 @@ uint32_t func__BspMeasurement_GetCurrentOffsetCounts(uint8_t uint8_t__channelInd
 /**
  * @brief  [EN] Read the live bench gain trim of one current channel.
  *         [FA] ضریب گین بنچِ زندهٔ یک کانال را می‌خواند.
- * @‎param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
+ * @param  uint8_t__channelIndex [EN] 0 = channel 1, 1 = channel 2‎ / ۰ یا ۱
  * @return uint32_t [EN] Gain permille / گین پرمیل
  */
 uint32_t func__BspMeasurement_GetCurrentGainPermille(uint8_t uint8_t__channelIndex)

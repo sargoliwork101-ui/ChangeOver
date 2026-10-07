@@ -81,7 +81,7 @@ void func__BspIwdg_Init(void);
  *         [FA] ثبت یک اعلام حضور تسک تحت‌نظر. فراخوانی برای شکاف‌های
  *              ناموردانتظار این ترکیب نادیده گرفته می‌شود.
  * @param  bsp_iwdg_slot_t__slot [EN] Which task checks in / کدام تسک
- * @‎param  uint32_t__nowMs [EN] FreeRTOS tick (1 kHz = ms)‎ / تیک فری‌آرتاس
+ * @param  uint32_t__nowMs [EN] FreeRTOS tick (1 kHz = ms)‎ / تیک فری‌آرتاس
  */
 void func__BspIwdg_CheckIn(bsp_iwdg_slot_t bsp_iwdg_slot_t__slot,
                            uint32_t uint32_t__nowMs);
@@ -95,7 +95,7 @@ void func__BspIwdg_CheckIn(bsp_iwdg_slot_t bsp_iwdg_slot_t__slot,
  *         [FA] تازه‌کردن واچ‌داگ اگر و فقط اگر همهٔ شکاف‌های موردانتظار داخل
  *              BSP_IWDG_STALE_MS اعلام حضور کرده باشند. تسک کنترل هر پاس صدا
  *              می‌زند (زنده‌بودن خودش همان صدازدن است).
- * @‎param  uint32_t__nowMs [EN] FreeRTOS tick (1 kHz = ms)‎ / تیک فری‌آرتاس
+ * @param  uint32_t__nowMs [EN] FreeRTOS tick (1 kHz = ms)‎ / تیک فری‌آرتاس
  */
 void func__BspIwdg_PollKick(uint32_t uint32_t__nowMs);
 
