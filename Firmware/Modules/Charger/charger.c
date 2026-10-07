@@ -3661,7 +3661,7 @@ static void func__Charger_ClampProfile(void)
      *      afterwards, but q27 keeps its independent 14000..15000 window.
      *      Order: profile -> charger alarms -> fault alarms.
      * [FA] آبشار v1.15: آلارم‌های شارژر سوار باند پروفایل‌اند
-     *      (خطای سخت >= imax+50 و OV >= over+150). آلارم‌های فالت بعد از آن
+     *      (خطای سخت >= ‎imax+50‎ و ‎OV >= over+150)‎. آلارم‌های فالت بعد از آن
      *      دوباره اعمال می‌شوند، اما q27 پنجرهٔ مستقل ۱۴۰۰۰..۱۵۰۰۰ را نگه
      *      می‌دارد. ترتیب: پروفایل، آلارم شارژر، آلارم فالت. */
     func__Charger_ClampAlarms();

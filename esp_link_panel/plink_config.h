@@ -247,8 +247,20 @@
  *      [FA] چک‌لیست سناریوی ۶، چک‌باکس‌های واقعی، تنظیم مستقل چراغ/بوق و
  *      کارت کامل سناریوی ۷ از سقف قدیمی ۳۵۲ کیلوبایت عبور کردند؛ سقف انتقال
  *      اکنون صریحاً ۳۸۴۰۰۰ بایت است و ممیزی stamp و اندازه همچنان اجباری است.
+ *
+ *      2026-10-07 (programmer pass: RTL comment hygiene restored by the
+ *      project's own fix_rtl_comments.py): the mandatory U+200E direction
+ *      marks inside the Persian explanation text pushed the served markup 8
+ *      bytes past the 375 KiB step (384008). The ceiling is deliberately
+ *      stepped 375 KiB to 376 KiB (384000 to 385024); behaviour, chunked
+ *      transfer and the stamp/size audit are unchanged.
+ *      [FA] ۲۰۲۶-۱۰-۰۷ (پاس برنامه‌نویس: بهداشت کامنت راست‌به‌چپ با خود ابزار
+ *      پروژه احیا شد): علامت‌های جهت اجباری داخل متن توضیح فارسی، مارک‌آپ را
+ *      ۸ بایت از پلهٔ ۳۷۵ کیلوبایت جلو زد (۳۸۴۰۰۸). سقف عمداً از ۳۷۵ به ۳۷۶
+ *      کیلوبایت (۳۸۴۰۰۰ به ۳۸۵۰۲۴) پله خورد؛ رفتار، انتقال تکه‌ای و ممیزی
+ *      مهر/اندازه بدون تغییر است.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    384000u
+#define ESP_PANEL_HTML_MAX_BYTES    385024u
 
 /* ==================== Parser States ==================== */
 typedef enum

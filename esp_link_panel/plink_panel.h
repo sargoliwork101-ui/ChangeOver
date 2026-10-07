@@ -383,7 +383,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 4c35cf5</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 96317bb</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1033,7 +1033,7 @@ pendRestore();
    validation.
    [FA] رابطه‌های بین‌فیلدی فقط به‌صورت توصیه نمایش داده می‌شوند. مرورگر آن‌ها
    را اصلاح یا وتو نمی‌کند: setter ماژول مالک اجازه دارد وابسته‌های خودش را
-   clamp کند و مقدار اعمال‌شده/بازخوانی‌شده مرجع است. فقط بازهٔ مستقل HTML/EVB
+   clamp کند و مقدار اعمال‌شده/بازخوانی‌شده مرجع است. فقط بازهٔ مستقل ‎HTML/EVB‎
    پیش از POST اعتبارسنجی سخت است. */
 const MINGAP=100;
 function fitdur(per,cnt,gap){/* بیشترین مدت هر بوق که در پنجره جا می‌شود */
@@ -1116,7 +1116,7 @@ async function sendall(){
   sdlg('bad',head,body,0);return;
  }
  /* v1.56: رابطه‌های مشترک فقط توصیه‌اند؛ هیچ repair پیش از POST انجام نمی‌شود.
-    مقدار ارسال‌شده همان PEND است و setter/readback برد مرجع نهایی است. */
+    مقدار ارسال‌شده همان PEND است و ‎setter/readback‎ برد مرجع نهایی است. */
  const v=rsnap(),fixed=fixrules(v).filter(f=>rknown(f[0])),fixtxt=[];
  fixed.forEach(f=>{const id=f[0];qput(id,v[id]);const e=$('q'+id);if(e)e.value=v[id];
   fixtxt.push(id+': '+f[1]+'→'+f[2]);});
@@ -1344,7 +1344,7 @@ const QDEF=[14400,14300,14600,13500,12800,650,50];
    read-back accepts or clamps the write.
    [FA] وضعیت profile نمودار: d آخرین مقدار اعمال‌شدهٔ برد است و v هنگام صف
    بودن، مقدار درخواستی محلی است. رندرکننده فوراً v را برای ست‌پوینت و هندسهٔ
-   ناحیه می‌گیرد و پس از read-back پذیرفته‌شده یا clamp به d برمی‌گردد. */
+   ناحیه می‌گیرد و پس از ‎read-back‎ پذیرفته‌شده یا clamp به d برمی‌گردد. */
 function qv(id){const d=D&&D.p&&D.p[id]!=null?D.p[id]:QDEF[id-20];
  const v=(PEND[id]!=null)?Number(PEND[id]):d;
  return{v,d,p:Number.isFinite(v)&&Number.isFinite(d)&&v!==d};}
@@ -1602,7 +1602,7 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
     path is now visible as what it is - a vertical leg at the current limit
     and a horizontal leg at the absorb voltage - and each battery's live dot
     sits at its true (I, V), so one look says where it is on that path.
-    ناحیه‌ها از مقدار نمایشی v می‌آیند؛ مقدار اعمال‌شده d پایهٔ خط و read-back است و
+    ناحیه‌ها از مقدار نمایشی v می‌آیند؛ مقدار اعمال‌شده d پایهٔ خط و ‎read-back‎ است و
     درخواستِ هنوز-اعمال‌نشده با خط‌چین دیده می‌شود. */
  const lo=Math.max(7600,Math.min(q.r.v,12000)-500),hi=15060,W=760,H=420,X0=48,X1=742;
  const LBL_GAP=11;
