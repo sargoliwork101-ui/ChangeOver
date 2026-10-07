@@ -53,8 +53,8 @@
  *               password. The first login is forced to do that.
  *
  *          LAYERING (include order is load-bearing, keep it)
- *            1 config  2 sha256  3 state  4 store  5 auth  6 font
- *            7 history  8 link  9 web assets (data only)  10 http (the server)
+ *            1 config  2 sha256  3 calendar  4 state  5 store  6 auth
+ *            7 font  8 history  9 link  10 web assets  11 http (the server)
  *
  * @brief   [FA] ChangeOver - پنل کاربر. نمایشگر فقط-خواندنی ماشین، روی برد
  *               مستقل ESP8266 خودش، کنار تابلو.
@@ -105,20 +105,24 @@
  *               گذرواژه را عوض کنید. اولین ورود به این کار مجبور می‌کند.
  *
  *          لایه‌بندی (ترتیب include بار دارد، حفظش کنید)
- *            ۱ config  ۲ sha256  ۳ state  ۴ store  ۵ auth  ۶ font
- *            ۷ history  ۸ link  ۹ دارایی‌های وب (فقط داده)  ۱۰ http (خود سرور)
+ *            ۱ config  ۲ sha256  ۳ calendar  ۴ state  ۵ store  ۶ auth
+ *            ۷ font  ۸ history  ۹ xlsx  ۱۰ گزارش اکسل  ۱۱ link
+ *            ۱۲ دارایی‌های وب  ۱۳ http (خود سرور)
  */
 
 #include "up_config.h"    /* 1: every constant the rest of the panel obeys  */
 #include "up_sha256.h"    /* 2: salted, iterated digests for the login       */
-#include "up_state.h"     /* 3: what the panel knows right now               */
-#include "up_store.h"     /* 4: the rings on flash + "drop the oldest"       */
-#include "up_auth.h"      /* 5: users, sessions, action log                  */
-#include "up_font.h"      /* 6: the embedded Persian font                    */
-#include "up_history.h"   /* 7: turns telemetry into history and statistics  */
-#include "up_link.h"      /* 8: Wi-Fi + the reads from the engineering board */
-#include "up_web.h"       /* 9: the page itself, in PROGMEM (data, no code)  */
-#include "up_http.h"      /* 10: the web server, which serves number 9       */
+#include "up_calendar.h"  /* 3: Jalali dates + "which local day/hour is it"  */
+#include "up_state.h"     /* 4: what the panel knows right now               */
+#include "up_store.h"     /* 5: the rings on flash + "drop the oldest"       */
+#include "up_auth.h"      /* 6: users, sessions, action log                  */
+#include "up_font.h"      /* 7: the embedded Persian font                    */
+#include "up_history.h"   /* 8: turns telemetry into history and statistics  */
+#include "up_xlsx.h"      /* 9: a streaming .xlsx writer (ZIP + SpreadsheetML) */
+#include "up_report.h"    /* 10: what goes INTO that workbook                */
+#include "up_link.h"      /* 11: Wi-Fi + the reads from the engineering board */
+#include "up_web.h"       /* 12: the page itself, in PROGMEM (data, no code) */
+#include "up_http.h"      /* 13: the web server, which serves number 12      */
 
 /* ==================== Panel state / وضعیت پنل ==================== */
 static uint32_t UINT32_T__G__LastLedMs = 0u;   /* [EN] last LED flip / [FA] آخرین تغییر LED */

@@ -24,12 +24,22 @@ const API = {
   series:   '/api/series',
   events:   '/api/events',
   stats:    '/api/stats',
+  adminClock: '/api/admin/clock',
   users:    '/api/admin/users',
   userOp:   '/api/admin/user',
   action:   '/api/admin/action',
   audit:    '/api/admin/audit',
+  report:   '/api/admin/report.xlsx',
   export:   '/api/export'
 };
+
+/* [EN] The Excel report's range, in days: 0 means "everything". It lives
+   outside the DOM on purpose - the stats view is rebuilt every few seconds and
+   a refresh must not throw the admin's choice away.
+   [FA] بازهٔ گزارش اکسل، به روز: صفر یعنی «همه». عمداً بیرون DOM نگه داشته
+   می‌شود - بخش آمار هر چند ثانیه از نو ساخته می‌شود و تازه‌سازی نباید انتخاب
+   مدیر را دور بریزد. */
+let REPORT_DAYS = 0;
 
 /* ==================== Display constants / ثابت‌های نمایش ==================== */
 const REFRESH = {
@@ -219,6 +229,12 @@ const CATALOG = {
 const $  = (s, r) => (r || document).querySelector(s);
 const $$ = (s, r) => Array.prototype.slice.call((r || document).querySelectorAll(s));
 const pad2 = (v) => (v < 10 ? '0' : '') + v;
+/* [EN] "‎+۳:۳۰" from an offset in minutes. / [FA] «‎+۳:۳۰» از اختلاف به دقیقه. */
+function tzLabel(tzMin) {
+  const sign = (tzMin < 0) ? '−' : '+';
+  const a = Math.abs(tzMin);
+  return sign + fa(Math.floor(a / 60)) + ':' + fa(pad2(a % 60));
+}
 
 /* [EN] Persian digits for everything the USER reads; codes and IDs stay Latin.
    [FA] اعداد فارسی برای هر چیزی که کاربر می‌خواند؛ کدها لاتین می‌مانند. */
@@ -279,6 +295,59 @@ function jalaliOf(gy, gm, gd) {
 }
 const J_MONTH = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
                  'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+/* [EN] The inverse of jalaliOf: a date the admin TYPES in Persian comes back as
+   a Gregorian day so it can become an epoch second. Both directions live next to
+   each other on purpose - a pair that drifts apart is a date that jumps a day.
+   [FA] عکس jalaliOf: تاریخی که مدیر به فارسی «تایپ» می‌کند، به روز میلادی
+   برمی‌گردد تا به ثانیهٔ مطلق تبدیل شود. هر دو جهت عمداً کنار هم‌اند - جفتی که
+   از هم جدا بیفتد، تاریخی است که یک روز می‌پرد. */
+function gregorianOfJalali(jy, jm, jd) {
+  let days = -355668 + (365 * (jy + 1595)) + (Math.floor((jy + 1595) / 33) * 8)
+    + Math.floor((((jy + 1595) % 33) + 3) / 4) + jd
+    + ((jm < 7) ? ((jm - 1) * 31) : (((jm - 7) * 30) + 186));
+  let gy = 400 * Math.floor(days / 146097);
+  days %= 146097;
+  if (days > 36524) { days--; gy += 100 * Math.floor(days / 36524); days %= 36524; if (days >= 365) { days++; } }
+  gy += 4 * Math.floor(days / 1461);
+  days %= 1461;
+  if (days > 365) { gy += Math.floor((days - 1) / 365); days = (days - 1) % 365; }
+  let gd = days + 1;
+  const leap = ((gy % 4 === 0 && gy % 100 !== 0) || (gy % 400 === 0));
+  const sal = [0, 31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  let gm = 1;
+  while (gm <= 12 && gd > sal[gm]) { gd -= sal[gm]; gm++; }
+  return { y: gy, m: gm, d: gd };
+}
+
+/* [EN] A Jalali date + local time + the panel's own offset → epoch seconds.
+   [FA] تاریخ شمسی + ساعت محلی + اختلاف خود پنل ← ثانیهٔ مطلق. */
+function epochFromJalali(jy, jm, jd, hh, mi, tzMin) {
+  const g = gregorianOfJalali(jy, jm, jd);
+  return Math.floor(Date.UTC(g.y, g.m - 1, g.d, hh, mi, 0) / 1000) - (tzMin * 60);
+}
+
+/* [EN] The panel's own wall clock, independent of the viewer's timezone: shift
+   the epoch by the PANEL's offset and read it back in UTC. A viewer in another
+   country then sees the machine's time, not their own - which is the only
+   useful clock on this page.
+   [FA] ساعت دیواری خود پنل، مستقل از منطقهٔ مرورگر: ثانیهٔ مطلق را با اختلاف
+   «پنل» جابه‌جا کن و با UTC بخوان. بینندهٔ کشوری دیگر آن‌وقت ساعت ماشین را
+   می‌بیند نه ساعت خودش - و این تنها ساعت مفید این صفحه است. */
+function panelParts(unixSec, tzMin) {
+  const d = new Date((unixSec + ((tzMin || 0) * 60)) * 1000);
+  return { y: d.getUTCFullYear(), mo: d.getUTCMonth() + 1, d: d.getUTCDate(),
+           h: d.getUTCHours(), mi: d.getUTCMinutes(), s: d.getUTCSeconds() };
+}
+function panelJalaliStr(unixSec, tzMin) {
+  const p = panelParts(unixSec, tzMin);
+  const j = jalaliOf(p.y, p.mo, p.d);
+  return fa(j.d) + ' ' + J_MONTH[j.m - 1] + ' ' + fa(j.y);
+}
+function panelClockStr(unixSec, tzMin) {
+  const p = panelParts(unixSec, tzMin);
+  return fa(pad2(p.h)) + ':' + fa(pad2(p.mi));
+}
+
 function jalaliStr(unixSec) {
   const d = new Date(unixSec * 1000);
   const j = jalaliOf(d.getFullYear(), d.getMonth() + 1, d.getDate());
@@ -351,7 +420,7 @@ async function apiPost(path, obj) {
 /* ==================== App state / وضعیت برنامه ==================== */
 const S = {
   me: null, live: null, series: null, events: null, stats: null,
-  view: 'dash', ring: [], timer: null, slowTimer: null, nowEpoch: Math.floor(Date.now() / 1000),
+  view: 'dash', ring: [], timer: null, slowTimer: null, nowEpoch: 0, nowTzMin: 0,
   hw: { storage: {}, version: {} }, busy: false
 };
 const can = (what) => {
@@ -673,7 +742,10 @@ function showLogin(msg) {
       if (!r.ok) { err.textContent = r.err || 'نام کاربری یا گذرواژه درست نیست'; btn.disabled = false; btn.textContent = 'ورود به پنل'; return; }
       AUTH_FAILED = false;
       S.me = { user: r.user, role: r.role, mustChange: !!r.must };
-      pushClock();
+      /* [EN] The clock is NOT pushed from here any more: only an admin sets the
+         time (owner's instruction). See the clock card in the admin view.
+         [FA] ساعت دیگر از اینجا فرستاده نمی‌شود: فقط مدیر وقت را ست می‌کند
+         (دستور صاحب دستگاه). کارت ساعت در بخش مدیریت را ببینید. */
       await boot();
       if (r.must) { setTimeout(() => askChangePassword(true), 450); }
     } catch (e) {
@@ -907,6 +979,57 @@ function skeletonView() {
 }
 
 /* ==================== Stats view / صفحهٔ آمار ==================== */
+/* ==================== Excel report / گزارش اکسل ====================
+   [EN] A dedicated section, not a button hidden in a menu: the whole history of
+   the panel as ONE real .xlsx file with five sheets (summary, daily, charges,
+   events, samples). The file is built on the panel itself, sheet by sheet, so
+   there is no cloud, no internet and no computer in the middle. The range is
+   chosen here and travels as ?days=N; "everything" sends no parameter at all.
+   [FA] یک بخش جداگانه، نه دکمه‌ای پنهان در منو: کل تاریخچهٔ پنل به‌صورت یک فایل
+   xlsx واقعی با پنج برگه (خلاصه، روزانه، شارژها، رویدادها، نمونه‌ها). فایل روی
+   خود پنل و برگه‌به‌برگه ساخته می‌شود؛ نه ابر، نه اینترنت، نه کامپیوتر وسط. بازه
+   همین‌جا انتخاب و در ?days=N فرستاده می‌شود؛ «همه» هیچ پارامتری نمی‌فرستد. */
+function reportHref() {
+  return API.report + (REPORT_DAYS ? '?days=' + REPORT_DAYS : '');
+}
+function reportRangeText() {
+  return REPORT_DAYS ? 'بازهٔ ' + num(REPORT_DAYS) + ' روز گذشته' : 'همهٔ تاریخچهٔ ذخیره‌شده';
+}
+function reportSectionHTML() {
+  if (!can('admin')) {
+    return card('گزارش اکسل', ICO.dl,
+      '<div class="sub">فایل اکسل با پنج برگه (خلاصه، روزانه، شارژها، رویدادها، نمونه‌ها) با حساب <b>مدیر</b> گرفته می‌شود؛ ' +
+      'اگر به حساب مدیر دسترسی ندارید، از خروجی CSV و JSON همین صفحه استفاده کنید.</div>');
+  }
+  const choices = [[0, 'همه'], [7, '۷ روز'], [30, '۳۰ روز'], [90, '۹۰ روز']];
+  let buttons = '';
+  for (let i = 0; i < choices.length; i++) {
+    buttons += '<button type="button" data-report-days="' + choices[i][0] + '"' +
+      (REPORT_DAYS === choices[i][0] ? ' class="on"' : '') + '>' + choices[i][1] + '</button>';
+  }
+  return card('گزارش اکسل', ICO.dl,
+    '<div class="sub">پنل خودش یک فایل <b>xlsx</b> واقعی می‌سازد - باز کردنی در اکسل، لیبره‌آفیس و گوگل‌شیت - با پنج برگه: ' +
+    '<b>خلاصه</b>، <b>روزانه</b>، <b>شارژها</b>، <b>رویدادها</b> و <b>نمونه‌ها</b>. تاریخ‌ها شمسی‌اند، اعداد عدد واقعی‌اند ' +
+    '(فرمول و نمودار روی‌شان کار می‌کند) و برگه‌ها از راست به چپ باز می‌شوند.</div>' +
+    '<div class="row" style="margin:13px 0"><span class="seg" id="rep-seg">' + buttons + '</span>' +
+    '<span class="s" id="rep-range">' + reportRangeText() + '</span></div>' +
+    '<div class="row"><a class="btn" id="rep-dl" href="' + reportHref() + '" download="user_panel_report.xlsx">' +
+    ICO.dl + ' دریافت فایل اکسل</a>' +
+    '<a class="btn ghost" href="' + API.export + '?what=csv" download="user_panel_history.csv">خروجی CSV</a></div>' +
+    '<div class="hr"></div>' +
+    '<div class="sub">برگهٔ «نمونه‌ها» برای آنکه فایل روی موبایل هم باز شود تا ۴۰۰۰ ردیف آخرِ بازه را می‌آورد؛ ' +
+    'بقیهٔ برگه‌ها کامل‌اند. ساخت فایل چند ثانیه طول می‌کشد و در گزارش اقدامات ثبت می‌شود.</div>');
+}
+function bindReport() {
+  if (!$('#rep-seg')) { return; }
+  $$('#rep-seg button').forEach(b => b.addEventListener('click', () => {
+    REPORT_DAYS = Number(b.getAttribute('data-report-days')) || 0;
+    $$('#rep-seg button').forEach(x => x.classList.toggle('on', x === b));
+    const link = $('#rep-dl'), label = $('#rep-range');
+    if (link) { link.setAttribute('href', reportHref()); }
+    if (label) { label.textContent = reportRangeText(); }
+  }));
+}
 function renderStats() {
   const k = (S.stats && S.stats.kpi) ? S.stats.kpi : null;
   if (!k) { $('#view').innerHTML = skeletonView(); return; }
@@ -993,7 +1116,8 @@ function renderStats() {
       '<div class="row"><button class="btn ghost sm" id="btn-refresh-stats" type="button">تازه‌سازی</button>' +
       (can('admin') ? '<a class="btn ghost sm" href="' + API.export + '?what=csv" download="user_panel_history.csv">خروجی CSV</a>' : '') +
       '</div>' +
-    '</section>';
+    '</section>' +
+    reportSectionHTML();
 
   chartBars($('#ch-days'), dayBars.length ? dayBars : [{ label: '', value: 0 }], { h: 200, yMax: Math.max(1, niceMax(Math.max.apply(null, dayBars.map(b => b.value).concat([1])))) });
   chartDonut($('#ch-donut'), [
@@ -1017,6 +1141,7 @@ function renderStats() {
   } else { $('#ch-long').innerHTML = emptyBox('دادهٔ کافی نیست'); }
   const rf = $('#btn-refresh-stats');
   if (rf) { rf.addEventListener('click', () => { loadSlow(true); toast('در حال تازه‌سازی…'); }); }
+  bindReport();
 }
 function sampleEvery(arr, step) {
   if (step <= 1) { return arr; }
@@ -1064,7 +1189,7 @@ function renderDiag() {
 
     '<section class="card">' +
       '<div class="head"><span class="t">' + ICO.ok + '<span>بررسی سلامت بخش‌ها</span></span>' +
-      '<span class="s">' + (L ? 'آخرین به‌روزرسانی: ' + agoStr(S.nowEpoch - 1) : '—') + '</span></div>' +
+      '<span class="s">' + (L ? 'آخرین به‌روزرسانی: ' + agoStr((S.nowEpoch || Math.floor(Date.now() / 1000)) - 1) : '—') + '</span></div>' +
       '<div class="grid tight">' + checks.map(c =>
         '<div class="check ' + c.kind + '">' + c.icon + '<div><div class="ck-t">' + c.t + '</div><div class="ck-s">' + c.s + '</div></div></div>').join('') +
       '</div>' +
@@ -1146,7 +1271,7 @@ function healthChecks() {
   out.push({ kind: (used / total) > 0.92 ? 'er' : (used / total) > 0.75 ? 'wa' : 'ok', icon: ICO.info,
     t: 'حافظهٔ پنل', s: num(Math.round((used / total) * 100)) + '٪ پر شده' + (st.purging ? ' — پاک‌سازی خودکار فعال' : '') });
   out.push(L.now && L.now.wallValid
-    ? { kind: 'ok', icon: ICO.clock, t: 'ساعت پنل', s: 'تنظیم است (' + jalaliStr(S.nowEpoch) + ')' }
+    ? { kind: 'ok', icon: ICO.clock, t: 'ساعت پنل', s: 'تنظیم است (' + panelJalaliStr(S.nowEpoch, S.nowTzMin) + ' — ' + panelClockStr(S.nowEpoch, S.nowTzMin) + ')' }
     : { kind: 'wa', icon: ICO.clock, t: 'ساعت پنل', s: 'با مرورگر تنظیم می‌شود؛ الان زمان نسبی است' });
   return out;
 }
@@ -1156,7 +1281,59 @@ function renderAdmin() {
   if (!can('admin')) { $('#view').innerHTML = card('دسترسی', ICO.warn, '<div class="sub">این بخش فقط برای مدیر است.</div>'); return; }
   const users = (S.users && S.users.list) ? S.users.list : [];
   const audit = (S.audit && S.audit.list) ? S.audit.list : [];
+  const clock = S.clock || {};
+  const ck = (clock.set && clock.epoch) ? clock : null;
+  const now = deviceNow();
+  /* [EN] If the clock is already set, the form starts from the PANEL's own date
+     and time so the admin only tunes it; otherwise it starts from this device.
+     [FA] اگر ساعت از قبل تنظیم شده باشد، فرم با تاریخ و ساعت «خود پنل» پر
+     می‌شود تا مدیر فقط تنظیمش کند؛ وگرنه با ساعت این دستگاه. */
+  const ckDP = (ck && ck.date && ck.date.indexOf('/') > 0) ? ck.date.split('/') : null;
+  const ckTP = (ck && ck.time && ck.time.indexOf(':') > 0) ? ck.time.split(':') : null;
+  const ckPre = {
+    y: ckDP ? String(parseInt(ckDP[0], 10)) : String(now.jy),
+    m: ckDP ? String(parseInt(ckDP[1], 10)) : String(now.jm),
+    d: ckDP ? String(parseInt(ckDP[2], 10)) : String(now.jd),
+    h: ckTP ? String(parseInt(ckTP[0], 10)) : String(now.h),
+    i: ckTP ? String(parseInt(ckTP[1], 10)) : String(now.mi)
+  };
   $('#view').innerHTML =
+
+    '<section class="card">' +
+      '<div class="head"><span class="t">' + ICO.clock + '<span>ساعت پنل</span></span>' +
+      '<span class="s">فقط مدیر تنظیم می‌کند</span></div>' +
+      (ck
+        ? '<div class="row" style="margin-bottom:10px">' + badge('تنظیم است', 'ok') +
+          '<b>' + esc(ck.date) + '</b><span class="sub">— ' + esc(ck.time) + '</span>' +
+          '<span class="sub">منطقهٔ ' + tzLabel(ck.tzMin) + '</span>' +
+          '<span class="sub">(میلادی ' + esc(ck.gregorian) + ')</span></div>'
+        : '<div class="row" style="margin-bottom:10px">' + badge('تنظیم نشده', 'wa') +
+          '<span class="sub">تا وقتی ساعت ست نشود، تاریخ رویدادها و گزارش روزانه معنا ندارد.</span></div>') +
+      '<div class="sub" style="margin-bottom:10px">پنل ساعت را از مرورگر نمی‌گیرد؛ ' +
+        'تاریخ و ساعت را همین‌جا وارد کنید (یا با دکمهٔ اول از ساعت دستگاه خودتان پر کنید) و «ثبت» را بزنید. ' +
+        'اختلاف ساعت، مرز «روز» و نمودار ساعت‌های شبانه‌روز را تعیین می‌کند. دقت تنظیم یک دقیقه است.</div>' +
+      '<div class="grid tight">' +
+        '<div class="field" style="margin:0"><label>سال شمسی</label><input class="inp" id="ck-y" type="number" min="1390" max="1420" value="' + ckPre.y + '"></div>' +
+        '<div class="field" style="margin:0"><label>ماه</label><input class="inp" id="ck-m" type="number" min="1" max="12" value="' + ckPre.m + '"></div>' +
+        '<div class="field" style="margin:0"><label>روز</label><input class="inp" id="ck-d" type="number" min="1" max="31" value="' + ckPre.d + '"></div>' +
+        '<div class="field" style="margin:0"><label>ساعت</label><input class="inp" id="ck-h" type="number" min="0" max="23" value="' + ckPre.h + '"></div>' +
+        '<div class="field" style="margin:0"><label>دقیقه</label><input class="inp" id="ck-i" type="number" min="0" max="59" value="' + ckPre.i + '"></div>' +
+      '</div>' +
+      '<div class="grid tight" style="margin-top:10px">' +
+        '<div class="field" style="margin:0"><label>منطقهٔ زمانی</label><select class="inp" id="ck-tz">' +
+          [[210, 'تهران ‎+۳:۳۰'], [240, 'دبی ‎+۴:۰۰'], [180, 'بغداد/استانبول ‎+۳:۰۰'], [270, 'کابل ‎+۴:۳۰'],
+           [300, 'کراچی ‎+۵:۰۰'], [0, 'UTC ‎+۰:۰۰'], [-300, 'نیویورک ‎−۵:۰۰'], [-480, 'لس‌آنجلس ‎−۸:۰۰'],
+           [600, 'سیدنی ‎+۱۰:۰۰']]
+            .map(([v, t]) => '<option value="' + v + '"' + (((ck ? ck.tzMin : now.tzMin) === v) ? ' selected' : '') + '>' + t + '</option>').join('') +
+        '</select></div>' +
+        '<div class="field" style="margin:0"><label>یا اختلاف دستی (دقیقه، مثلاً 210)</label><input class="inp" id="ck-tz-manual" type="number" min="-720" max="840" placeholder="خالی = از فهرست"></div>' +
+      '</div>' +
+      '<div class="row" style="margin-top:12px">' +
+        '<button class="btn ghost" id="ck-fill" type="button">' + ICO.clock + ' ساعت این دستگاه را بگذار</button>' +
+        '<button class="btn" id="ck-save" type="button">ثبت ساعت پنل</button>' +
+      '</div>' +
+    '</section>' +
+
     '<section class="card">' +
       '<div class="head"><span class="t">' + ICO.gear + '<span>عملیات مجاز</span></span>' +
       '<span class="s">فقط کارهایی که این ارتباط واقعاً پشتیبانی می‌کند</span></div>' +
@@ -1172,6 +1349,7 @@ function renderAdmin() {
         opBtn('purge', 'پاک‌کردن تاریخچهٔ پنل', 'wa', ICO.trash) +
         '<a class="btn ghost" href="' + API.export + '?what=csv" download="user_panel_history.csv">' + ICO.dl + ' خروجی CSV</a>' +
         '<a class="btn ghost" href="' + API.export + '?what=json" download="user_panel_history.json">' + ICO.dl + ' خروجی JSON</a>' +
+        '<a class="btn ghost" href="' + API.report + '" download="user_panel_report.xlsx">' + ICO.dl + ' گزارش اکسل</a>' +
       '</div>' +
       '<div class="hr"></div>' +
       resetGuideHTML() +
@@ -1229,6 +1407,10 @@ function roleBadge(role) {
 }
 function bindAdmin() {
   $$('#view [data-op]').forEach(b => b.addEventListener('click', () => adminAction(b.getAttribute('data-op'))));
+  const ckFill = $('#ck-fill');
+  if (ckFill) { ckFill.addEventListener('click', fillClockFromDevice); }
+  const ckSave = $('#ck-save');
+  if (ckSave) { ckSave.addEventListener('click', saveClock); }
   $$('#view [data-u-del]').forEach(b => b.addEventListener('click', () => {
     const u = b.getAttribute('data-u-del');
     confirmDanger('حذف کاربر', '<p>کاربر <b>' + esc(u) + '</b> حذف شود؟</p>', 'حذف کن', async () => {
@@ -1299,8 +1481,8 @@ function adminAction(action) {
 async function loadAdmin() {
   if (!can('admin')) { return; }
   try {
-    const [u, a] = await Promise.all([api(API.users), api(API.audit + '?limit=40')]);
-    S.users = { list: u.u || [] }; S.audit = { list: a.a || [] };
+    const [u, a, c] = await Promise.all([api(API.users), api(API.audit + '?limit=40'), api(API.adminClock)]);
+    S.users = { list: u.u || [] }; S.audit = { list: a.a || [] }; S.clock = c || {};
     if (S.view === 'admin') { renderAdmin(); }
   } catch (e) { /* [EN] keep the last view / [FA] نمای قبلی می‌ماند */ }
 }
@@ -1398,7 +1580,14 @@ async function loadLive() {
      اعداد در /api/live می‌آیند، پس همین‌جا کپی می‌شوند تا هر نما منبع
      دیگری حدس نزند. */
   S.hw.storage = (L && L.store) ? L.store : {};
-  S.nowEpoch = (L.now && L.now.wallValid) ? (L.now.wall + Math.round((Date.now() % 1000) / 1000)) : Math.floor(Date.now() / 1000);
+  /* [EN] `nowEpoch` is the PANEL's time (it is used to say how long ago an
+     event happened), and it is only meaningful once the admin has set the
+     clock; `nowTzMin` is the panel's own offset. Neither comes from the viewer.
+     [FA] `nowEpoch` ساعت «پنل» است (برای گفتن اینکه رویداد چند وقت پیش رخ
+     داده) و فقط وقتی معنا دارد که مدیر ساعت را ست کرده باشد؛ `nowTzMin` هم
+     اختلاف خود پنل است. هیچ‌کدام از دستگاه بیننده نمی‌آید. */
+  S.nowEpoch = (L.now && L.now.wallValid) ? L.now.wall : 0;
+  S.nowTzMin = (L.now && L.now.tzMin !== undefined) ? L.now.tzMin : 0;
   const t = L.t || [];
   const tw = (i) => (t[i] === undefined ? 0 : t[i]);
   S.ring.push({
@@ -1428,12 +1617,77 @@ function paintHeader(L) {
   chip.classList.toggle('on', online && !stale);
   chip.classList.toggle('warn', online && stale);
   txt.textContent = !online ? 'ارتباط با برد قطع' : (stale ? 'داده‌ها دیر می‌رسند' : 'داده زنده');
-  $('#clock-text').textContent = (L.now && L.now.wallValid) ? jalaliStr(S.nowEpoch) + ' — ' + clockStr(S.nowEpoch) : 'ساعت نامعلوم';
-  $('#clock-text').title = (L.now && L.now.wallValid) ? '' : 'پنل ساعت را از مرورگر می‌گیرد';
+  $('#clock-text').textContent = (L.now && L.now.wallValid)
+    ? panelJalaliStr(S.nowEpoch, S.nowTzMin) + ' — ' + panelClockStr(S.nowEpoch, S.nowTzMin)
+    : 'ساعت تنظیم نشده';
+  $('#clock-text').title = (L.now && L.now.wallValid)
+    ? 'ساعت خود پنل (منطقهٔ ' + tzLabel(S.nowTzMin) + ')'
+    : 'مدیر باید از بخش مدیریت ساعت پنل را تنظیم کند';
 }
-async function pushClock() {
-  const secs = Math.floor(Date.now() / 1000);
-  try { await apiPost(API.clock, { t: secs }); } catch (e) { /* [EN] not fatal / [FA] حیاتی نیست */ }
+/* [EN] Every error the panel can answer with, in words. The device sends a
+   short ASCII token and the page translates it, so the firmware never carries
+   Persian text for an error path.
+   [FA] هر خطایی که پنل می‌تواند برگرداند، با کلمات. دستگاه یک توکن کوتاه
+   ASCII می‌فرستد و صفحه ترجمه‌اش می‌کند، تا فرم‌ور هیچ‌وقت برای مسیر خطا متن
+   فارسی حمل نکند. */
+function errFa(err) {
+  return ({
+    'missing': 'فیلدهای لازم پر نشده است',
+    'implausible': 'تاریخ بیرون از محدودهٔ معقول است (۲۰۲۰ تا ۲۰۳۳)',
+    'bad tz': 'اختلاف ساعت نامعتبر است',
+    'auth': 'ابتدا وارد شوید',
+    'forbidden': 'اجازهٔ این کار را ندارید',
+    'change password': 'اول گذرواژهٔ خود را عوض کنید',
+    'already done': 'این عمل همین حالا انجام شده بود',
+    'unknown action': 'این عمل شناخته نشد',
+    'unknown user': 'کاربر پیدا نشد',
+    'exists': 'چنین کاربری از قبل هست',
+    'bad name': 'نام کاربری نامعتبر است (۳ تا ۱۲ نویسه: حرف، رقم، نقطه، خط تیره)',
+    'bad role': 'نقش نامعتبر است',
+    'password too short': 'گذرواژه باید دست‌کم ۶ نویسه باشد',
+    'wrong password': 'گذرواژهٔ فعلی درست نیست',
+    'table full': 'ظرفیت کاربران پر است (۸ نفر)',
+    'cannot delete yourself': 'حساب خودتان را نمی‌توانید حذف کنید',
+    'last admin': 'آخرین مدیر را نمی‌توان حذف یا تنزل داد',
+    'delete failed': 'حذف انجام نشد',
+    'bad login': 'نام کاربری یا گذرواژه درست نیست',
+    'range': 'بازهٔ درخواستی نامعتبر است',
+    'reply too big': 'پاسخ از حافظهٔ پنل بزرگ‌تر شد'
+  })[err] || ('خطای ' + err);
+}
+
+/* ==================== The panel's clock (admin) / ساعت پنل (مدیر) ==================== */
+/* [EN] The admin's own device time, offered as a convenient starting point for
+   the form - never applied on its own.
+   [FA] ساعت دستگاه خود مدیر، به‌عنوان نقطهٔ شروع راحت برای فرم - هرگز خودش
+   اعمال نمی‌شود. */
+function deviceNow() {
+  const d = new Date();
+  const j = jalaliOf(d.getFullYear(), d.getMonth() + 1, d.getDate());
+  return { jy: j.y, jm: j.m, jd: j.d, h: d.getHours(), mi: d.getMinutes(), tzMin: -d.getTimezoneOffset() };
+}
+async function saveClock() {
+  const jy = parseInt($('#ck-y').value, 10), jm = parseInt($('#ck-m').value, 10), jd = parseInt($('#ck-d').value, 10);
+  const hh = parseInt($('#ck-h').value, 10), mi = parseInt($('#ck-i').value, 10);
+  const manual = $('#ck-tz-manual').value;
+  const tzMin = (manual !== '') ? parseInt(manual, 10) : parseInt($('#ck-tz').value, 10);
+  if (!jy || !jm || !jd || isNaN(hh) || isNaN(mi)) { toast('تاریخ و ساعت را کامل وارد کنید', 'er'); return; }
+  if (jm < 1 || jm > 12 || jd < 1 || jd > 31 || hh < 0 || hh > 23 || mi < 0 || mi > 59) { toast('تاریخ یا ساعت بیرون از محدوده است', 'er'); return; }
+  if (isNaN(tzMin) || tzMin < -720 || tzMin > 840) { toast('اختلاف ساعت باید بین ‎-۷۲۰ و ‎+۸۴۰ دقیقه باشد', 'er'); return; }
+  try {
+    const r = await apiPost(API.clock, { t: epochFromJalali(jy, jm, jd, hh, mi, tzMin), tz: tzMin });
+    if (r.ok) { toast('ساعت پنل ثبت شد: ' + r.date + ' ' + r.time, 'ok'); loadLive().catch(() => {}); loadAdmin(); }
+    else { toast(errFa(r.err), 'er'); }
+  } catch (e) { toast(e.message, 'er'); }
+}
+function fillClockFromDevice() {
+  const n = deviceNow();
+  $('#ck-y').value = n.jy; $('#ck-m').value = n.jm; $('#ck-d').value = n.jd;
+  $('#ck-h').value = n.h; $('#ck-i').value = n.mi;
+  const opt = Array.prototype.slice.call($('#ck-tz').options).filter(o => parseInt(o.value, 10) === n.tzMin)[0];
+  if (opt) { opt.selected = true; $('#ck-tz-manual').value = ''; }
+  else { $('#ck-tz-manual').value = n.tzMin; }
+  toast('تاریخ و ساعت این دستگاه در فرم گذاشته شد — حالا «ثبت» را بزنید', 'ok');
 }
 function startPolling() {
   stopPolling();
@@ -1479,7 +1733,8 @@ async function main() {
     const v = (location.hash || '#dash').slice(1);
     if (v && v !== S.view) { S.view = v; render(); }
   });
-  setInterval(() => { if (S.me) { pushClock(); } }, 300000);
+  /* [EN] No clock heartbeat any more - see saveClock().
+     [FA] دیگر ضربان ساعت نداریم - saveClock() را ببینید. */
 
   try {
     const me = await api(API.me);

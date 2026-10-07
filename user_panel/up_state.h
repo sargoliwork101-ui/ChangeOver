@@ -219,8 +219,15 @@ typedef struct
     uint32_t uint32_t__coverageS;     /* [EN] seconds actually recorded / [FA] ثانیه‌های ثبت‌شده */
     uint32_t uint32_t__clockBaseS;    /* [EN] monotonic seconds since the first boot / [FA] ثانیهٔ یکنوا از اولین بوت */
     uint32_t uint32_t__clockEpochS;   /* [EN] wall clock captured at that same moment / [FA] ساعت مطلق همان لحظه */
+    int32_t  int32_t__tzOffsetS;      /* [EN] local offset the owner set / [FA] اختلاف محلی که صاحب دستگاه ست کرده */
 } up_totals_t;
-#define UP_TOTALS_MAGIC 0x55505431u   /* [EN] "UPT1" / [FA] «UPT1» */
+/* [EN] "UPT2": the record grew a timezone field next to the clock pair. The
+   stamp is bumped rather than pretending the old layout still fits - a panel
+   that reads a shorter record would keep whatever happened to be in RAM.
+   [FA] «UPT2»: رکورد کنار جفت ساعت، فیلد منطقهٔ زمانی گرفت. مهر عوض می‌شود
+   نه اینکه ادعا کنیم چیدمان قبلی هنوز جا می‌شود - پنلی که رکورد کوتاه‌تر
+   بخواند، هر چه در RAM بوده نگه می‌داشت. */
+#define UP_TOTALS_MAGIC 0x55505432u
 
 /* ==================== Live telemetry / تلمتری زنده ==================== */
 /* [EN] What the last good /t frame contained. `ageMs` is how long ago it
@@ -318,6 +325,9 @@ uint16_t func__UpState_BatteryPercent(uint16_t uint16_t__mv);
 uint8_t  func__UpState_InputPresent(void);
 uint32_t func__UpState_EpochFromAbs(uint32_t uint32_t__absS);
 void     func__UpState_ClockRestore(void);
+int32_t  func__UpState_TzOffsetS(void);
+bool     func__UpState_TzIsValid(int32_t int32_t__tzOffsetS);
+void     func__UpState_SetClock(uint32_t uint32_t__epochS, int32_t int32_t__tzOffsetS);
 
 /* ==================== Implementation / پیاده‌سازی ====================
    [EN] Included by user_panel.ino (a single translation unit), so the small
@@ -409,7 +419,18 @@ uint32_t func__UpState_DayIndex(void)
 
     if (uint32_t__epoch != 0u)
     {
-        uint32_t__day = uint32_t__epoch / 86400u;
+        /* [EN] The LOCAL day, not the UTC one: with a UTC boundary the panel
+           would roll its day over at 03:30 in Tehran and every daily bar would
+           belong to the wrong date.
+           [FA] روز محلی، نه UTC: با مرز UTC پنل ساعت ۳:۳۰ بامداد در تهران روزش
+           عوض می‌شد و هر میلهٔ روزانه به تاریخ اشتباه می‌چسبید. */
+        int32_t int32_t__localDay = func__UpCal_LocalDay(uint32_t__epoch, func__UpState_TzOffsetS());
+
+        if (int32_t__localDay <= 0)
+        {
+            return 1u;
+        }
+        uint32_t__day = (uint32_t)int32_t__localDay;
         return uint32_t__day;
     }
 
@@ -440,7 +461,75 @@ uint32_t func__UpState_ClockHour(void)
         return 0u;
     }
 
-    return ((uint32_t__epoch % 86400u) / 3600u);
+    /* [EN] The hour the owner's clock shows, not the UTC hour.
+       [FA] ساعتی که ساعت صاحب دستگاه نشان می‌دهد، نه ساعت UTC. */
+    return (func__UpCal_LocalSecondOfDay(uint32_t__epoch, func__UpState_TzOffsetS()) / 3600u);
+}
+
+/**
+ * @brief  [EN] The stored local offset, with the default substituted when the
+ *              flash carries something outside the real world (-12h..+14h) -
+ *              a corrupted byte must not move the panel to a timezone that does
+ *              not exist.
+ *         [FA] اختلاف محلی ذخیره‌شده، و اگر فلش چیزی بیرون از دنیای واقعی
+ *              (‎−۱۲ تا ‎+۱۴ ساعت) داشت، پیش‌فرض جایگزین می‌شود - یک بایت خراب
+ *              نباید پنل را به منطقه‌ای ببرد که وجود ندارد.
+ * @return [EN] offset in seconds / [FA] اختلاف به ثانیه
+ */
+int32_t func__UpState_TzOffsetS(void)
+{
+    int32_t int32_t__tz = UPPANEL_STATE_T__G__State.up_totals_t__totals.int32_t__tzOffsetS;
+
+    if (!func__UpState_TzIsValid(int32_t__tz))
+    {
+        return (int32_t)UP_TZ_DEFAULT_OFFSET_S;
+    }
+
+    return int32_t__tz;
+}
+
+/**
+ * @brief  [EN] Is an offset a real place's offset? (Whole minutes between -12
+ *              and +14 hours; a value with seconds in it means the bytes are not
+ *              an offset at all.)
+ *         [FA] آیا این اختلاف، اختلاف جایی واقعی است؟ (دقیقهٔ کامل بین ‎−۱۲ و
+ *              ‎+۱۴ ساعت؛ مقداری که ثانیه داشته باشد اصلاً اختلاف نیست.)
+ * @param  int32_t__tzOffsetS [EN] candidate / [FA] نامزد
+ * @return [EN] true when acceptable / [FA] در صورت قبول true
+ */
+bool func__UpState_TzIsValid(int32_t int32_t__tzOffsetS)
+{
+    if ((int32_t__tzOffsetS < (int32_t)UP_TZ_MIN_OFFSET_S) ||
+        (int32_t__tzOffsetS > (int32_t)UP_TZ_MAX_OFFSET_S))
+    {
+        return false;
+    }
+
+    return ((int32_t__tzOffsetS % 60) == 0);
+}
+
+/**
+ * @brief  [EN] Set the panel clock and its local offset together, from the
+ *              admin's form. The offset is validated here rather than at the
+ *              call site so no future route can store an impossible one.
+ *         [FA] ست کردن ساعت پنل و اختلاف محلی‌اش با هم، از فرم مدیر. اعتبارسنجی
+ *              اینجا انجام می‌شود نه در محل فراخوان، تا هیچ مسیر آینده‌ای نتواند
+ *              مقدار غیرممکن ذخیره کند.
+ * @param  uint32_t__epochS [EN] epoch seconds / [FA] ثانیهٔ مطلق
+ * @param  int32_t__tzOffsetS [EN] local offset; an invalid one falls back to the
+ *              default / [FA] اختلاف محلی؛ مقدار نامعتبر به پیش‌فرض برمی‌گردد
+ * @return [EN] None / [FA] ندارد
+ */
+void func__UpState_SetClock(uint32_t uint32_t__epochS, int32_t int32_t__tzOffsetS)
+{
+    up_clock_t *up_clock_t__clock = &UPPANEL_STATE_T__G__State.up_clock_t__clock;
+
+    up_clock_t__clock->bool__valid = true;
+    up_clock_t__clock->uint32_t__baseEpochS = uint32_t__epochS;
+    up_clock_t__clock->uint32_t__baseMs = (uint32_t)millis();
+
+    UPPANEL_STATE_T__G__State.up_totals_t__totals.int32_t__tzOffsetS =
+        func__UpState_TzIsValid(int32_t__tzOffsetS) ? int32_t__tzOffsetS : (int32_t)UP_TZ_DEFAULT_OFFSET_S;
 }
 
 /**
@@ -516,6 +605,15 @@ void func__UpState_ClockRestore(void)
     up_clock_t__clock->bool__valid = true;
     up_clock_t__clock->uint32_t__baseEpochS = up_totals_t__totals->uint32_t__clockEpochS + uint32_t__offset;
     up_clock_t__clock->uint32_t__baseMs = (uint32_t)millis();
+
+    /* [EN] The offset rides along in the same record, so the first daily row
+       after a reboot is already keyed on the owner's midnight.
+       [FA] اختلاف ساعت در همان رکورد می‌آید، پس اولین ردیف روزانه پس از
+       ری‌استارت هم از همان ابتدا بر نیمه‌شب صاحب دستگاه کلید می‌خورد. */
+    if (!func__UpState_TzIsValid(up_totals_t__totals->int32_t__tzOffsetS))
+    {
+        up_totals_t__totals->int32_t__tzOffsetS = (int32_t)UP_TZ_DEFAULT_OFFSET_S;
+    }
 }
 
 /**

@@ -267,7 +267,11 @@ static void func__UpHttp_PersianUint(char *char__out, uint32_t uint32_t__outRoom
  */
 static void func__UpHttp_ClockLabel(uint32_t uint32_t__epoch, char *char__out)
 {
-    uint32_t uint32_t__daySecond = uint32_t__epoch % 86400u;
+    /* [EN] Local hour, not UTC: an axis that says "03:00" while the sun is
+       overhead is worse than no axis at all.
+       [FA] ساعت محلی، نه UTC: محوری که وقتی خورشید بالای سر است «۰۳:۰۰» بگوید،
+       از محور نداشتن بدتر است. */
+    uint32_t uint32_t__daySecond = func__UpCal_LocalSecondOfDay(uint32_t__epoch, func__UpState_TzOffsetS());
     uint32_t uint32_t__hour = uint32_t__daySecond / 3600u;
     uint32_t uint32_t__minute = (uint32_t__daySecond % 3600u) / 60u;
     char char__hourText[8];
@@ -635,7 +639,22 @@ static void func__UpHttp_Pass(void)
  */
 static void func__UpHttp_ClockPost(void)
 {
-    if (!func__UpHttp_RequireRole(UP_ROLE_VIEWER))
+    char char__date[12];
+    char char__time[10];
+    char char__gregorian[12];
+    int32_t int32_t__tz;
+
+    /* [EN] ADMIN ONLY, on the owner's instruction: the panel does not take its
+       time from whatever browser happens to open the page. A browser clock can
+       be wrong by hours, and every daily row, every event stamp and the whole
+       Excel report would quietly follow it. The admin decides the time; the page
+       only helps with a "copy this device's time into the form" button.
+       [FA] فقط مدیر، به دستور صاحب دستگاه: پنل ساعتش را از هر مرورگری که صفحه
+       را باز کند نمی‌گیرد. ساعت یک مرورگر می‌تواند ساعت‌ها غلط باشد و آن‌وقت هر
+       ردیف روزانه، هر مهر رویداد و کل گزارش اکسل بی‌صدا همراهش می‌روند. مدیر
+       وقت را تعیین می‌کند؛ صفحه فقط با دکمهٔ «ساعت این دستگاه را بگذار» کمک
+       می‌کند. */
+    if (!func__UpHttp_RequireRole(UP_ROLE_ADMIN))
     {
         return;
     }
@@ -654,13 +673,91 @@ static void func__UpHttp_ClockPost(void)
         return;
     }
 
-    UPPANEL_STATE_T__G__State.up_clock_t__clock.bool__valid = true;
-    UPPANEL_STATE_T__G__State.up_clock_t__clock.uint32_t__baseEpochS = (uint32_t)long__parsed;
-    UPPANEL_STATE_T__G__State.up_clock_t__clock.uint32_t__baseMs = (uint32_t)millis();
+    /* [EN] The offset arrives in MINUTES because that is what a human and a form
+       think in (Tehran = 210). Seconds would make the form a calculator.
+       [FA] اختلاف به‌صورت «دقیقه» می‌آید چون انسان و فرم با دقیقه فکر می‌کنند
+       (تهران = ۲۱۰). ثانیه، فرم را به ماشین‌حساب تبدیل می‌کرد. */
+    int32_t__tz = func__UpState_TzOffsetS();
+    if (UP_WEBSERVER_T__G__Server.hasArg("tz"))
+    {
+        long long__tzMinutes = strtol(UP_WEBSERVER_T__G__Server.arg("tz").c_str(), NULL, 10);
+
+        if ((long__tzMinutes < ((long)UP_TZ_MIN_OFFSET_S / 60L)) ||
+            (long__tzMinutes > ((long)UP_TZ_MAX_OFFSET_S / 60L)))
+        {
+            func__UpHttp_SendErr(200, "bad tz");
+            return;
+        }
+        int32_t__tz = (int32_t)(long__tzMinutes * 60L);
+    }
+
+    func__UpState_SetClock((uint32_t)long__parsed, int32_t__tz);
     func__UpStore_ClockBaseSet(func__UpHistory_AbsoluteS(), (uint32_t)long__parsed);
 
+    /* [EN] Answer with what the panel BELIEVES it was told - the date it will
+       write into every row from now on. If that does not match the wall clock in
+       the room, the admin sees it immediately instead of a week later in a
+       report.
+       [FA] پاسخ می‌گوید پنل چه فهمیده - تاریخی که از این لحظه در هر ردیف
+       می‌نویسد. اگر با ساعت دیواری اتاق نمی‌خواند، مدیر همان لحظه می‌بیند نه یک
+       هفته بعد در گزارش. */
+    (void)func__UpCal_DateText((uint32_t)long__parsed, int32_t__tz, char__date);
+    (void)func__UpCal_TimeText((uint32_t)long__parsed, int32_t__tz, char__time);
+    (void)func__UpCal_GregorianText((uint32_t)long__parsed, int32_t__tz, char__gregorian);
+
+    func__UpAuth_LogAction(func__UpHttp_CurrentUserName(), "clock_set");
+
     func__UpHttp_JsonReset();
-    func__UpHttp_JsonAdd("{\"ok\":1,\"epoch\":%lu}", (unsigned long)long__parsed);
+    func__UpHttp_JsonAdd("{\"ok\":1,\"epoch\":%lu,\"tz\":%ld,\"date\":\"%s\",\"time\":\"%s\",\"gregorian\":\"%s\"}",
+                         (unsigned long)long__parsed, (long)int32_t__tz, char__date, char__time, char__gregorian);
+    func__UpHttp_JsonSend(200);
+}
+
+/**
+ * @brief  [EN] GET /api/admin/clock - what the panel thinks the time is, so the
+ *              admin's form opens on the truth instead of a blank field.
+ *         [FA] مسیر GET /api/admin/clock - پنل فکر می‌کند ساعت چند است، تا فرم
+ *              مدیر روی واقعیت باز شود نه روی فیلد خالی.
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__UpHttp_AdminClockGet(void)
+{
+    uint32_t uint32_t__epoch;
+    int32_t int32_t__tz;
+    char char__date[12];
+    char char__time[10];
+    char char__gregorian[12];
+    bool bool__set;
+
+    if (!func__UpHttp_RequireRole(UP_ROLE_ADMIN))
+    {
+        return;
+    }
+
+    uint32_t__epoch = func__UpState_NowEpochS();
+    int32_t__tz = func__UpState_TzOffsetS();
+    bool__set = (uint32_t__epoch != 0u);
+
+    if (bool__set)
+    {
+        (void)func__UpCal_DateText(uint32_t__epoch, int32_t__tz, char__date);
+        (void)func__UpCal_TimeText(uint32_t__epoch, int32_t__tz, char__time);
+        (void)func__UpCal_GregorianText(uint32_t__epoch, int32_t__tz, char__gregorian);
+    }
+    else
+    {
+        (void)snprintf(char__date, sizeof(char__date), "-");
+        (void)snprintf(char__time, sizeof(char__time), "-");
+        (void)snprintf(char__gregorian, sizeof(char__gregorian), "-");
+    }
+
+    func__UpHttp_JsonReset();
+    func__UpHttp_JsonAdd("{\"set\":%u,\"epoch\":%lu,\"tz\":%ld,\"tzMin\":%ld,"
+                         "\"date\":\"%s\",\"time\":\"%s\",\"gregorian\":\"%s\",\"uptimeS\":%lu}",
+                         bool__set ? 1u : 0u, (unsigned long)uint32_t__epoch,
+                         (long)int32_t__tz, (long)(int32_t__tz / 60),
+                         char__date, char__time, char__gregorian,
+                         (unsigned long)func__UpState_UptimeS());
     func__UpHttp_JsonSend(200);
 }
 
@@ -1263,7 +1360,15 @@ static void func__UpHttp_Stats(void)
             continue;
         }
 
-        UINT32_T__A__DayEpoch[uint32_t__dailyCount] = bool__clock ? ((uint32_t__todayIndex - uint32_t__back) * 86400u) : 0u;
+        /* [EN] The epoch of that day's LOCAL midnight: the day number is local,
+           so subtracting the offset turns it back into an epoch second the
+           browser draws at the right date.
+           [FA] ثانیهٔ مطلقِ نیمه‌شب محلی آن روز: شمارهٔ روز محلی است، پس کسر
+           کردن اختلاف، آن را به ثانیهٔ مطلقی برمی‌گرداند که مرورگر در تاریخ
+           درست می‌کشد. */
+        UINT32_T__A__DayEpoch[uint32_t__dailyCount] = bool__clock
+            ? (((uint32_t__todayIndex - uint32_t__back) * 86400u) - (uint32_t)func__UpState_TzOffsetS())
+            : 0u;
         UINT32_T__A__DayCharges[uint32_t__dailyCount] = (uint32_t)up_daily_t__row.uint16_t__charges;
         UINT32_T__A__DayRunS[uint32_t__dailyCount] = up_daily_t__row.uint32_t__runSeconds;
 
@@ -1925,6 +2030,104 @@ static void func__UpHttp_Export(void)
     func__UpAuth_LogAction(func__UpHttp_CurrentUserName(), bool__csv ? "export_csv" : "export_json");
 }
 
+/* ==================== GET /api/admin/report.xlsx / گزارش اکسل ==================== */
+/* ==================== Report sink ==================== */
+/**
+ * @brief  [EN] Where the workbook writer pushes bytes: straight into the HTTP
+ *              client. The writer knows nothing about HTTP, so this tiny
+ *              function is the whole bridge between the two.
+ *         [FA] جایی که نویسندهٔ کتاب بایت‌ها را به آن می‌راند: مستقیم به کلاینت
+ *              HTTP. نویسنده هیچ‌چیز از HTTP نمی‌داند، پس همین تابع کوچک تمام
+ *              پل میان این دو است.
+ * @param  char__data [EN] bytes / [FA] بایت‌ها
+ * @param  uint32_t__len [EN] how many / [FA] چند تا
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__UpHttp_ReportSink(const char *char__data, uint32_t uint32_t__len)
+{
+    /* [EN] The two-argument form of sendContent is the binary-safe one: the zip
+       bytes contain NULs, and strlen would stop at the first one.
+       [FA] شکل دو آرگومانی sendContent همان شکل ایمن برای دادهٔ دودویی است:
+       بایت‌های زیپ صفر بایت دارند و strlen روی اولین‌شان می‌ایستد. */
+    (void)UP_WEBSERVER_T__G__Server.sendContent(char__data, (size_t)uint32_t__len);
+}
+
+/* ==================== Report range ==================== */
+/**
+ * @brief  [EN] Read "?days=" and tell the report what range to write. Anything
+ *              missing, zero or unparseable means "everything": the operator
+ *              asked for no filter, not for an error page.
+ *         [FA] خواندن «?days=» و گفتن بازه به گزارش. هر چیز غایب، صفر یا
+ *              ناخوانا یعنی «همه‌چیز»: اپراتور فیلتری نخواسته، نه صفحهٔ خطا.
+ * @return [EN] days, 0 = everything / [FA] تعداد روز، صفر = همه
+ */
+static uint32_t func__UpHttp_ReportDays(void)
+{
+    if (!UP_WEBSERVER_T__G__Server.hasArg("days"))
+    {
+        return UP_REPORT_DAYS_ALL;
+    }
+
+    long long__days = strtol(UP_WEBSERVER_T__G__Server.arg("days").c_str(), NULL, 10);
+    if ((long__days < 1L) || (long__days > (long)UP_REPORT_MAX_DAYS))
+    {
+        return UP_REPORT_DAYS_ALL;
+    }
+
+    return (uint32_t)long__days;
+}
+
+/* ==================== Report handler ==================== */
+/**
+ * @brief  [EN] GET /api/admin/report.xlsx?days=N - stream a real Excel workbook
+ *              of the stored history. Admin only: this is every number the panel
+ *              has, and a viewer's account is read-only by design.
+ *         [FA] مسیر GET /api/admin/report.xlsx?days=N - بیرون دادن یک کتاب اکسل
+ *              واقعی از تاریخچهٔ ذخیره‌شده. فقط مدیر: این همهٔ اعداد پنل است و
+ *              حساب بیننده عمداً فقط-خواندنی است.
+ * @return [EN] None / [FA] ندارد
+ */
+static void func__UpHttp_Report(void)
+{
+    if (!func__UpHttp_RequireRole(UP_ROLE_ADMIN))
+    {
+        return;
+    }
+
+    uint32_t uint32_t__days = func__UpHttp_ReportDays();
+
+    /* [EN] The clock is read once, here, so every sheet of one report agrees on
+       what "now" is even when the report takes a few seconds to stream.
+       [FA] ساعت یک‌بار همین‌جا خوانده می‌شود تا همهٔ برگه‌های یک گزارش روی
+       «حالا» توافق داشته باشند، حتی اگر بیرون‌دادن گزارش چند ثانیه طول بکشد. */
+    func__UpHttp_RefreshCounters((uint32_t)millis());
+    func__UpReport_RangeSet(uint32_t__days);
+
+    UP_WEBSERVER_T__G__Server.sendHeader("Content-Disposition",
+                                         "attachment; filename=user_panel_report.xlsx");
+    UP_WEBSERVER_T__G__Server.sendHeader("Cache-Control", "no-store");
+    UP_WEBSERVER_T__G__Server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    UP_WEBSERVER_T__G__Server.send(200,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "");
+
+    (void)func__UpReport_Write(func__UpHttp_ReportSink);
+
+    /* [EN] Chunked transfer ends with an empty chunk - without it the browser
+       keeps the connection open waiting for the file that already ended.
+       [FA] انتقال تکه‌ای با یک تکهٔ خالی تمام می‌شود - بدون آن مرورگر اتصال را
+       باز نگه می‌دارد و منتظر فایلی می‌ماند که تمام شده است. */
+    UP_WEBSERVER_T__G__Server.sendContent("");
+
+    if (uint32_t__days == UP_REPORT_DAYS_ALL)
+    {
+        func__UpAuth_LogAction(func__UpHttp_CurrentUserName(), "report_all");
+    }
+    else
+    {
+        func__UpAuth_LogAction(func__UpHttp_CurrentUserName(), "report_days");
+    }
+}
+
 /* ==================== Routes / مسیرها ==================== */
 /**
  * @brief  [EN] Register every route, and tell the server which request header
@@ -1960,12 +2163,14 @@ static void func__UpHttp_Begin(void)
     UP_WEBSERVER_T__G__Server.on("/api/events", HTTP_GET, func__UpHttp_Events);
     UP_WEBSERVER_T__G__Server.on("/api/stats", HTTP_GET, func__UpHttp_Stats);
 
+    UP_WEBSERVER_T__G__Server.on("/api/admin/clock", HTTP_GET, func__UpHttp_AdminClockGet);
     UP_WEBSERVER_T__G__Server.on("/api/admin/users", HTTP_GET, func__UpHttp_AdminUsers);
     UP_WEBSERVER_T__G__Server.on("/api/admin/user", HTTP_POST, func__UpHttp_AdminUserPost);
     UP_WEBSERVER_T__G__Server.on("/api/admin/action", HTTP_POST, func__UpHttp_AdminActionPost);
     UP_WEBSERVER_T__G__Server.on("/api/admin/audit", HTTP_GET, func__UpHttp_AdminAudit);
 
     UP_WEBSERVER_T__G__Server.on("/api/export", HTTP_GET, func__UpHttp_Export);
+    UP_WEBSERVER_T__G__Server.on("/api/admin/report.xlsx", HTTP_GET, func__UpHttp_Report);
 
     UP_WEBSERVER_T__G__Server.begin();
 }

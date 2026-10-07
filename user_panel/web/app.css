@@ -385,6 +385,19 @@ footer .sep{opacity:.5}
 }
 
 /* ==================== Small screens / صفحه‌های کوچک ==================== */
+/* ==================== Range selector / انتخاب بازه ====================
+   [EN] A segmented control for the Excel report's range. It is deliberately the
+   same shape as a button row so it reads as one piece with the cards around it,
+   and the chosen range is the one that looks pressed.
+   [FA] کنترل چندتکه برای بازهٔ گزارش اکسل. عمداً هم‌شکل ردیف دکمه‌هاست تا با
+   کارت‌های اطرافش یک‌تکه خوانده شود، و بازهٔ انتخاب‌شده همان است که فشرده
+   به نظر می‌رسد. */
+.seg{display:inline-flex;background:var(--card2);border:1px solid var(--line2);border-radius:12px;padding:3px;gap:3px}
+.seg button{background:none;border:0;color:var(--tx2);font-weight:700;padding:7px 14px;border-radius:9px;
+  transition:background var(--speed),color var(--speed)}
+.seg button:hover{color:#fff}
+.seg button.on{background:linear-gradient(180deg,#2a4a80,#1d3660);color:#fff;box-shadow:var(--sh1)}
+
 @media (max-width:640px){
   header{flex-wrap:wrap;gap:8px;padding-block:10px}
   .hdr-side{gap:6px}

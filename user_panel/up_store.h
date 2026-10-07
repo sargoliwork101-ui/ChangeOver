@@ -515,6 +515,7 @@ static bool func__UpStore_TotalsLoad(void)
         memset(&UPPANEL_STATE_T__G__State.up_totals_t__totals, 0, sizeof(up_totals_t));
         UPPANEL_STATE_T__G__State.up_totals_t__totals.uint32_t__magic = UP_TOTALS_MAGIC;
         UPPANEL_STATE_T__G__State.up_totals_t__totals.uint16_t__minV = 0xFFFFu;
+        UPPANEL_STATE_T__G__State.up_totals_t__totals.int32_t__tzOffsetS = (int32_t)UP_TZ_DEFAULT_OFFSET_S;
     }
 
     BOOL__G__TotalsDirty = false;
@@ -845,6 +846,10 @@ static bool func__UpStore_FlushIfDue(void)
             ذخیره‌شده به زمان واقعی کافی است، حتی بعد از ری‌استارتی که می‌آید. */
     UPPANEL_STATE_T__G__State.up_totals_t__totals.uint32_t__clockEpochS =
         func__UpState_NowEpochS();
+
+    /* [EN] The offset travels with the clock: one record, one meaning of "when".
+       [FA] اختلاف ساعت همراه ساعت می‌رود: یک رکورد، یک معنا برای «کِی». */
+    UPPANEL_STATE_T__G__State.up_totals_t__totals.int32_t__tzOffsetS = func__UpState_TzOffsetS();
     BOOL__G__TotalsDirty = true;
 
     if (BOOL__G__TotalsDirty)
@@ -937,6 +942,7 @@ static bool func__UpStore_PurgeAll(void)
     memset(&UPPANEL_STATE_T__G__State.up_totals_t__totals, 0, sizeof(up_totals_t));
     UPPANEL_STATE_T__G__State.up_totals_t__totals.uint32_t__magic = UP_TOTALS_MAGIC;
     UPPANEL_STATE_T__G__State.up_totals_t__totals.uint16_t__minV = 0xFFFFu;
+    UPPANEL_STATE_T__G__State.up_totals_t__totals.int32_t__tzOffsetS = (int32_t)UP_TZ_DEFAULT_OFFSET_S;
     BOOL__G__TotalsDirty = false;
 
     (void)func__UpStore_EnsureRing(UP_F_SAMPLES, (uint32_t)sizeof(up_sample_t));

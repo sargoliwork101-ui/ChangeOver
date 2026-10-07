@@ -148,7 +148,32 @@
                                                     سه آرایهٔ ۱۲۰ نقطه‌ای */
 #define UP_HTTP_BUF          3200u              /* [EN] one HTTP body line / [FA] یک خط بدنهٔ HTTP */
 #define UP_SERIES_POINTS     120u               /* [EN] chart decimation target / [FA] هدف کاهش نمونه‌های نمودار */
-#define UP_DAY_HOURS         24u                /* [EN] hour buckets inside one day / [FA] سبدهای ساعت در یک روز */
+#define UP_DAY_HOURS         24u
+
+/* [EN] Local time offset. The clock itself is UTC (an epoch second has no
+   timezone) but the panel's OWNER does: the day boundary, the hour histogram and
+   the dates in the Excel report are all local. Tehran is +3:30, and the default
+   below is the one the panel boots with - an admin changes it with the clock,
+   because a panel that guesses the region from the browser is a panel that
+   trusts a browser.
+   [FA] اختلاف ساعت محلی. خودِ ساعت UTC است (ثانیهٔ مطلق منطقهٔ زمانی ندارد) ولی
+   صاحب پنل منطقه دارد: مرز روز، نمودار ساعتی و تاریخ‌های گزارش اکسل همه محلی‌اند.
+   تهران ‎+۳:۳۰ است و پیش‌فرض زیر همان چیزی است که پنل با آن بالا می‌آید - مدیر
+   همراه تنظیم ساعت عوضش می‌کند، چون پنلی که منطقه را از مرورگر حدس بزند، پنلی
+   است که به مرورگر اعتماد کرده. */
+#define UP_TZ_DEFAULT_OFFSET_S  12600            /* [EN] +03:30 / [FA] ‎+۳:۳۰ */
+#define UP_TZ_MIN_OFFSET_S     (-43200)          /* [EN] -12:00 / [FA] ‎−۱۲:۰۰ */
+#define UP_TZ_MAX_OFFSET_S      50400            /* [EN] +14:00 / [FA] ‎+۱۴:۰۰ */
+
+/* [EN] Excel report: the widest range the page may ask for, and the ceiling on
+   the per-second sheet. A full sample ring is a megabyte of XML, which would
+   take minutes to pull over the panel's own access point; the summary, daily,
+   session and event sheets carry the story anyway.
+   [FA] گزارش اکسل: وسیع‌ترین بازه‌ای که صفحه می‌تواند بخواهد و سقف برگهٔ
+   ثانیه‌ای. حلقهٔ کامل نمونه‌ها یک مگابایت XML است که روی AP خود پنل دقیقه‌ها
+   طول می‌کشد؛ برگه‌های خلاصه، روزانه، شارژها و رویدادها روایت را می‌برند. */
+#define UP_REPORT_MAX_DAYS      365u
+#define UP_XLSX_SAMPLE_ROWS     4000u                /* [EN] hour buckets inside one day / [FA] سبدهای ساعت در یک روز */
 #define UP_HEAT_DAYS         7u                 /* [EN] heat-map rows / [FA] ردیف‌های نقشهٔ حرارتی */
 #define UP_SESSIONS_LIST     24u                /* [EN] sessions in the stats reply / [FA] شارژهای فهرست آمار */
 

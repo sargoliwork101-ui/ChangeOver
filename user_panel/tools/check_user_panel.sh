@@ -42,6 +42,7 @@ PASSED=0
 
 ok()   { PASSED=$((PASSED + 1)); printf '  ok   %s\n' "$1"; }
 bad()  { FAILED=$((FAILED + 1)); printf '  FAIL %s\n' "$1"; }
+skip_check() { printf '  ..   %s\n' "$1"; }
 step() { printf '\n== %s\n' "$1"; }
 
 # ---------------------------------------------------------------- 1. assets --
@@ -129,6 +130,29 @@ else
     bad "no C++ compiler found (set CXX)"
 fi
 
+# ---------------------------------------- 3b. the workbook, read by Python ----
+# [EN] The host test writes two real workbooks (one with no range filter, one
+#      with the one-day filter). A third reader - Python's zipfile, openpyxl and
+#      jdatetime - then re-derives every sample's date from its monotonic stamp
+#      and proves the range selector dropped rows instead of relabelling them.
+#      Three readers agreeing is the whole point: the panel's own writer is not
+#      the judge of its own output.
+# [FA] تست میزبان دو کتاب واقعی می‌نویسد (یکی بدون فیلتر و یکی با فیلتر
+#      یک‌روزه). خوانندهٔ سومی - zipfile و openpyxl و jdatetime پایتون - تاریخ
+#      هر نمونه را از مهر یکنوایش بازمی‌سازد و ثابت می‌کند انتخاب بازه ردیف
+#      انداخته و فقط برچسب را عوض نکرده است.
+step "the workbook, read by Python / کتاب اکسل، خوانده‌شده با پایتون"
+if [ -f /tmp/up_report.xlsx ] && [ -f /tmp/up_report_1day.xlsx ]; then
+    if python3 "$HERE/verify_report_xlsx.py" >/tmp/up_xlsx.log 2>&1; then
+        ok "$(tail -1 /tmp/up_xlsx.log)"
+    else
+        bad "the workbook failed the independent Python reading:"
+        grep -E '^  FAIL|Error|Traceback' /tmp/up_xlsx.log | sed 's/^/       /'
+    fi
+else
+    skip_check "no workbook on disk (the host test writes them)"
+fi
+
 # ------------------------------------------------- 4. routes vs the page map --
 step "routes and the page's API map / مسیرها و نگاشت API صفحه"
 MISMATCH=0
@@ -158,7 +182,7 @@ step "house rules / قواعد پروژه"
 #      کدی زیر کنار گذاشته شده‌اند: آن‌ها صفحهٔ جاسازی‌شده و قلم جاسازی‌شده‌اند،
 #      پس جست‌وجوی «new Date» یا «String» در آن‌ها یعنی خواندن جاوااسکریپت و
 #      CSS، نه C.
-C_SOURCES="up_config.h up_state.h up_store.h up_auth.h up_history.h up_link.h up_http.h up_sha256.h user_panel.ino"
+C_SOURCES="up_config.h up_state.h up_store.h up_auth.h up_history.h up_link.h up_http.h up_sha256.h up_calendar.h up_xlsx.h up_report.h user_panel.ino"
 
 for file in "$MODULE"/up_*.h "$MODULE"/user_panel.ino; do
     name="$(basename "$file")"

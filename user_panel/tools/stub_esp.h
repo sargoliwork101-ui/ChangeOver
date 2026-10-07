@@ -500,6 +500,19 @@ struct StubWebServer {
         if (chunk != NULL) { lastBody += chunk; }
         return (chunk != NULL) ? strlen(chunk) : 0u;
     }
+    /* [EN] The binary-safe form, exactly like the real ESP8266 core's
+       sendContent(const char*, size_t): the Excel report is a zip and its bytes
+       contain NULs, so the length-taking overload is the only one that can carry
+       it. It also lets a test compare the whole workbook byte for byte.
+       [FA] همان شکل ایمن برای دادهٔ دودویی که در هستهٔ واقعی ESP8266 هم وجود
+       دارد: گزارش اکسل یک زیپ است و بایت‌هایش صفر دارند، پس تنها همین شکل
+       طول‌دار می‌تواند حملش کند. همچنین به تست اجازه می‌دهد کل کتاب را بایت‌به‌بایت
+       مقایسه کند. */
+    size_t sendContent(const char *chunk, size_t length)
+    {
+        if (chunk != NULL) { lastBody.append(chunk, length); }
+        return length;
+    }
     size_t sendContent(const String &chunk) { lastBody += chunk.value; return chunk.value.size(); }
     size_t sendContent_P(PGM_P chunk)
     {
