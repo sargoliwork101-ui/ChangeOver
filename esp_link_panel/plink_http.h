@@ -408,12 +408,16 @@ static void func__Esp_HttpBenchLogGet(void)
  *              The board recomputes that CRC from what it actually received
  *              and refuses the commit when it differs - so a corrupted push
  *              is rejected instead of silently calibrating the charger
- *              wrongly. A channel may be sent as 0 points (left alone).
+ *              wrongly. A channel may be sent as 0 points; that is a valid
+ *              command which removes that channel's flash override and
+ *              returns it to the compiled table.
  *         [FA] مسیر ‎POST /lut‎ : ارسال یک جدول بنچ به STM32. بدنه CSV عددی با
  *              همین ترتیب است و crc32 همان CRC32 بازتابیدهٔ مرورگر روی
  *              بایت‌های جدول. برد همان CRC را از «آنچه واقعاً گرفته» دوباره
  *              حساب می‌کند و اگر فرق داشت کامیت را رد می‌کند - پس ارسال خراب
- *              رد می‌شود نه اینکه بی‌صدا شارژر را غلط کالیبره کند.
+ *              رد می‌شود نه اینکه بی‌صدا شارژر را غلط کالیبره کند. صفر نقطه
+ *              نیز معتبر است و override فلش آن کانال را حذف می‌کند تا جدول
+ *              کامپایل‌شده دوباره مرجع شود.
  * @return [EN] None / [FA]‎ ندارد
  */
 static void func__Esp_HttpLutPush(void)

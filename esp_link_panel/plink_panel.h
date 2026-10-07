@@ -406,7 +406,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 20556f3</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build aec2967</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3562,9 +3562,9 @@ function lpack(){
  const off=[get(0),get(1)],gn=[get(2),get(3)],msg=[],T=[];
  [1,2].forEach(n=>{const t=calbuild(n,off[n-1],gn[n-1]);
   t.note.forEach(x=>msg.push('باتری '+fa(n)+': '+x));
-  if(t.bad){msg.push('⛔ باتری '+fa(n)+': '+t.bad+' — این کانال فرستاده نمی‌شود');T.push({X:[],Y:[]});return;}
+  if(t.bad){msg.push('⛔ باتری '+fa(n)+': '+t.bad+' — این کانال به‌صورت صفرنقطه‌ای ارسال می‌شود و override قبلی را حذف می‌کند');T.push({X:[],Y:[]});return;}
   if(t.X.length>LUTMAX){msg.push('⛔ باتری '+fa(n)+': '+t.X.length+' نقطه از سقف '+fa(LUTMAX)+
-   ' نقطهٔ حافظهٔ برد بیشتر است؛ این کانال فرستاده نمی‌شود (ساخت کد و بیلد همچنان کار می‌کند)');
+   ' نقطهٔ حافظهٔ برد بیشتر است؛ این کانال به‌صورت صفرنقطه‌ای ارسال می‌شود و override قبلی را حذف می‌کند (ساخت کد و بیلد همچنان کار می‌کند)');
    T.push({X:[],Y:[]});return;}
   T.push(t);});
  if(!T[0].X.length&&!T[1].X.length)return {bad:'هیچ کانالی جدول قابل‌ارسال ندارد',msg:msg};
@@ -3587,8 +3587,18 @@ function leq(a,b){return !!a&&!!b&&a[0]===b[0]&&a[1]===b[1];}
 function lval(q){return q?'<span class="pair">'+q[0]+' / '+q[1]+'</span>':'<span class="lb">—</span>';}
 function lpost(b,p,a,br,ar,ae){
  if(!ar)return {c:'bad',t:ae?'بازخوانی ناموفق':'در انتظار بازخوانی بعد'};
- if(!p&&!a)return {c:'same',t:'بدون نقطه'};
- if(!p&&!leq(a,p))return {c:'bad',t:'نقطهٔ اضافه روی برد'};
+ /* [EN] A zero-point proposal is a real command: it removes the flash
+    override and returns that channel to the compiled table. Therefore an
+    old non-zero pair followed by zero points is a CONFIRMED CHANGE, not
+    "unchanged". [FA] پیشنهاد صفرنقطه‌ای یک فرمان واقعی است: override فلش
+    را حذف می‌کند و کانال را به جدول کامپایل‌شده برمی‌گرداند؛ پس حذف نقطهٔ
+    قبلی باید «تغییر کرد و تأیید شد» باشد، نه «بدون تغییر». */
+ if(!p){
+  if(a)return {c:'bad',t:'نقطهٔ اضافه روی برد'};
+  if(br&&b)return {c:'changed',t:'تغییر کرد و تأیید شد'};
+  return {c:'same',t:'unchanged'};
+ }
+ if(!a)return {c:'bad',t:'بازخوانی نقطهٔ پیشنهادی ناموفق بود'};
  if(!leq(a,p))return {c:'bad',t:'mismatch — با پیشنهاد یکی نیست'};
  if(!br)return {c:'changed',t:'مطابق پیشنهاد؛ قبل نامعلوم'};
  if(leq(b,a))return {c:leq(b,p)?'same':'bad',t:leq(b,p)?'unchanged':'unchanged — تغییر مورد انتظار رخ نداد'};
@@ -3650,7 +3660,7 @@ async function lsend(){
  LREAD_IN_PROGRESS=true;LSNT=0;lupd();lview(p,LBT,null);
  stxt('calst','… اول جدول واقعی فعلی برد خوانده می‌شود؛ مقدارها حدس زده نمی‌شوند.');
  const before=await lread();LBT=before;LAT=null;LREAD_IN_PROGRESS=false;lupd();lview(p,LBT,null);
- const dn=t=>t.X.length?t.X.length+' نقطه':'داده ندارد — دست نمی‌خورد';
+ const dn=t=>t.X.length?t.X.length+' نقطه':'صفرنقطه‌ای — override قبلی حذف می‌شود';
  const bn=before.ready?'جدول فعلی برای هر دو باتری در بالا دیده می‌شود.':'بازخوانی فعلی ناموفق بود؛ قبل از ارسال مقدار نامعلوم با — می‌ماند.';
  if(!confirm('جدول مستقیماً در حافظهٔ خود میکرو نوشته شود؟\n\n'+bn+'\nباتری ۱: '+dn(p.T[0])+' · باتری ۲: '+dn(p.T[1])+'\nاگر داده درست نرسد، بعد از commit بازخوانی عددبه‌عدد خطا را نشان می‌دهد.'))return;
  LREAD_IN_PROGRESS=true;LSNT=0;lupd();

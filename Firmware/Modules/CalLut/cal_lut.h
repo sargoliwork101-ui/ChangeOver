@@ -180,9 +180,13 @@ const uint32_t *func__CalLut_PowerMw(uint8_t uint8_t__channel);
 /**
  * @brief  [EN] Start staging a new table (LUT_BEGIN). Clears the staging
  *              buffer; the ACTIVE table keeps working until the commit
- *              succeeds, so an interrupted push changes nothing.
+ *              succeeds, so an interrupted push changes nothing. A zero
+ *              count is legal and a successful commit removes that channel's
+ *              previous flash override.
  *         [FA] شروع چیدن جدول جدید؛ جدول «فعال» تا موفقیت کامیت سر کار
- *              می‌ماند، پس ارسال نیمه‌کاره هیچ‌چیز را خراب نمی‌کند.
+ *              می‌ماند، پس ارسال نیمه‌کاره هیچ‌چیز را خراب نمی‌کند. تعداد
+ *              صفر مجاز است و کامیت موفق override فلش قبلی همان کانال را حذف
+ *              می‌کند.
  * @return bool [EN] false = counts out of range‎ / تعداد نقاط نامعتبر
  */
 bool func__CalLut_StageBegin(uint32_t uint32_t__points1,

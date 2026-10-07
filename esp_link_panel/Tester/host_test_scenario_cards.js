@@ -1549,6 +1549,42 @@ async function testLutPush(win, doc) {
           'the table marks unavailable post-commit values visibly');
     readMode = 'good';
 
+    /* --- zero points are a valid clear, not an unchanged result ---------
+       [EN] A non-zero active override followed by a zero-point readback is
+            a real deletion of that override. A malformed/empty source table
+            is also intentionally encoded as zero points for that channel;
+            this test makes the destructive meaning visible instead of
+            claiming that the channel was not sent.
+       [FA] بازخوانی صفرنقطه‌ای پس از override غیرصفر، حذف واقعی override
+            است و نباید «بدون تغییر» نمایش داده شود. جدول نامعتبر/خالی نیز
+            عمداً برای آن کانال صفرنقطه‌ای رمز می‌شود؛ تست معنای حذف را
+            آشکار می‌کند تا پیام دروغین «فرستاده نشد» برنگردد. */
+    {
+        const clear = win.eval('lpost')([100, 200], null, null, true, true, '');
+        check(clear.c === 'changed' && clear.t.indexOf('تغییر کرد و تأیید شد') >= 0,
+              'before non-zero, proposed zero and after zero are marked changed/confirmed');
+        const extra = win.eval('lpost')([100, 200], null, [100, 200], true, true, '');
+        check(extra.c === 'bad' && extra.t.indexOf('اضافه') >= 0,
+              'a zero-point proposal with a non-zero post-readback is a mismatch');
+
+        const savedSamples = win.CALS;
+        win.CALS = savedSamples.map(z => Object.assign({}, z, { sc: 'BAT1' }));
+        const partial = win.eval('lpack')();
+        const partialNumbers = partial.body.split(',').map(Number);
+        check(!partial.bad && partial.T[1].X.length === 0 && partialNumbers[1] === 0,
+              'an unusable battery-2 source is encoded as a valid zero-point channel');
+        check(partial.msg.join(' ').indexOf('override قبلی را حذف می‌کند') >= 0,
+              'the invalid-channel warning says zero points remove the old override');
+        win.CALS = savedSamples;
+
+        const proposed = { bad: false, T: [{ X: [], Y: [] }, { X: [], Y: [] }], body: 'zero' };
+        const before = { ready: true, T: [{ X: [100], Y: [200] }, { X: [300], Y: [400] }] };
+        const after = { ready: true, T: [{ X: [], Y: [] }, { X: [], Y: [] }] };
+        win.eval('lrender')(proposed, before, after);
+        check(doc.getElementById('lutcmp').textContent.indexOf('تغییر کرد و تأیید شد') >= 0,
+              'the DOM audit shows the non-zero to zero-point transition as confirmed');
+    }
+
     /* --- the wizard still owns the board while it runs --- */
     const Wv = win.eval('W'); Wv.run = true;
     await win.eval('lsend')();

@@ -469,6 +469,51 @@ int main(void)
         CHECK(func__CalLut_Points(CAL_LUT_CHANNEL_1) == 5u);
     }
 
+    /* ---- 11b. zero points are a real override deletion -----------------
+       [EN] Start from the surviving record where both channels have points,
+            then commit a valid channel 1 and zero points for channel 2. The
+            new record must remain valid, keep channel 1, and remove channel
+            2's flash override; zero is not a missing-frame error.
+       [FA] از رکورد سالمی که هر دو کانال نقطه دارند شروع می‌کنیم و کانال ۱
+            معتبر را همراه صفر نقطه برای کانال ۲ کامیت می‌کنیم. رکورد جدید
+            باید معتبر بماند، کانال ۱ را نگه دارد و override فلش کانال ۲ را
+            حذف کند؛ صفر خطای فریم ناقص نیست. */
+    CHECK(func__CalLut_StageBegin(5u, 0u) == true);
+    UINT32_T__G__A__Points[0] = 5u;
+    UINT32_T__G__A__Points[1] = 0u;
+    for (uint32_t uint32_t__i = 0u; uint32_t__i < 5u; uint32_t__i++)
+    {
+        UINT32_T__G__A__Chain[0][uint32_t__i] = 100u + (100u * uint32_t__i);
+        UINT32_T__G__A__Power[0][uint32_t__i] = 1000u * uint32_t__i;
+        CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, uint32_t__i,
+                                      UINT32_T__G__A__Chain[0][uint32_t__i],
+                                      UINT32_T__G__A__Power[0][uint32_t__i]) == true);
+    }
+    uint32_t__crc = func__HostPanelCrc();
+    uint8_t__status = func__CalLut_Commit(uint32_t__crc, &uint32_t__boardCrc);
+    CHECK(uint8_t__status == CAL_LUT_ST_OK);
+    CHECK(func__CalLut_Points(CAL_LUT_CHANNEL_1) == 5u);
+    CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_2) == false);
+    CHECK(func__CalLut_Points(CAL_LUT_CHANNEL_2) == 0u);
+    func__CalLut_Init();
+    CHECK(func__CalLut_Points(CAL_LUT_CHANNEL_1) == 5u);
+    CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_2) == false);
+
+    /* [EN] The wire contract is also checked after the deletion: channel 2
+            still gets its own independent LUT_DATA frame, with count zero.
+       [FA] قرارداد سیم هم بعد از حذف بررسی می‌شود: کانال ۲ هنوز فریم مستقل
+            LUT_DATA خودش را با تعداد صفر می‌گیرد. */
+    {
+        const uint16_t uint16_t__frame1 = (uint16_t)(6u + 3u + (8u * 5u) + 2u);
+        const uint16_t uint16_t__frame2 = (uint16_t)(6u + 3u + 2u);
+        func__EspLink_HostTest_Reset();
+        UINT16_T__G__TxCapLen = 0u;
+        CHECK(func__EspLink_HostTest_HandleLutFrame(0x08u, NULL, 0u) == true);
+        CHECK(UINT16_T__G__TxCapLen == (uint16_t)(uint16_t__frame1 + uint16_t__frame2));
+        CHECK(UINT8_T__G__TxCap[uint16_t__frame1 + 6u] == 2u &&
+              UINT8_T__G__TxCap[uint16_t__frame1 + 8u] == 0u);
+    }
+
     /* ---- 12. both pages unreadable: back to the compiled tables ---- */
     memset(void_ptr__map, 0xFF, HOST_MAP_SIZE);
     func__CalLut_Init();
