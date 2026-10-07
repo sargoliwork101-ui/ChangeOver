@@ -18,7 +18,7 @@
 
 /* ==================== Identity / شناسه ==================== */
 #define UP_PANEL_NAME        "user panel"      /* [EN] shown in /version / [FA] در /version دیده می‌شود */
-#define UP_PANEL_VERSION     "1.0"
+#define UP_PANEL_VERSION     "1.1"
 /* [EN] Compiled in by the Arduino builder: which binary is actually in
    the box. Shown in /version and in the page footer, because "did my
    upload land?" is asked on every bench visit.

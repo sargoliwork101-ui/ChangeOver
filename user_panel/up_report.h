@@ -952,21 +952,31 @@ static void func__UpReport_IdentityBlock(void)
     func__UpReport_RangeText(char__range);
     func__UpReport_TextRow(CHAR__A__Labels[1], char__range);
 
+    /* [EN] An unset clock is said once, in words: "-" and "- -" are what a
+       machine writes when it has nothing to say, and this row is the first thing
+       the reader looks at. The admin sets the clock by hand, so this line is the
+       report telling them it has not happened yet.
+       [FA] ساعت تنظیم‌نشده یک‌بار و با کلمه گفته می‌شود: «-» و «- -» همانی است که
+       ماشین وقتی حرفی ندارد می‌نویسد، و این ردیف اولین چیزی است که خواننده
+       می‌بیند. ساعت را مدیر دستی می‌گذارد، پس این خط گزارش می‌گوید هنوز این کار
+       انجام نشده است. */
     func__UpReport_DateText(uint32_t__now, char__date);
     func__UpReport_ClockText(uint32_t__now, char__clock);
+    func__UpReport_GregText(uint32_t__now, char__greg);
+
     if ((uint32_t__now == 0u) || (char__clock[0] == '-'))
     {
-        (void)snprintf(char__both, sizeof(char__both), "%s", char__date);
+        func__UpReport_TextRow(CHAR__A__Labels[2], "ساعت پنل تنظیم نشده است");
+        func__UpReport_TextRow(CHAR__A__Labels[3], "ساعت پنل تنظیم نشده است");
     }
     else
     {
         (void)snprintf(char__both, sizeof(char__both), "%s %s", char__date, char__clock);
-    }
-    func__UpReport_TextRow(CHAR__A__Labels[2], char__both);
+        func__UpReport_TextRow(CHAR__A__Labels[2], char__both);
 
-    func__UpReport_GregText(uint32_t__now, char__greg);
-    (void)snprintf(char__both, sizeof(char__both), "%s %s", char__greg, char__clock);
-    func__UpReport_TextRow(CHAR__A__Labels[3], char__both);
+        (void)snprintf(char__both, sizeof(char__both), "%s %s", char__greg, char__clock);
+        func__UpReport_TextRow(CHAR__A__Labels[3], char__both);
+    }
 
     /* [EN] The offset is shown the way a human writes it: +3:30, not 210.
        [FA] اختلاف به همان شکلی که آدم می‌نویسد دیده می‌شود: +3:30 و نه ۲۱۰. */
