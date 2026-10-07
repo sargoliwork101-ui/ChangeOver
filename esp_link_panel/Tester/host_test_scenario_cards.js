@@ -1071,7 +1071,7 @@ async function testBackupAndCal(win, doc) {
           'an explicitly queued local edit is not overwritten by telemetry');
     win.PEND = {};
 
-    /* --- calibration: feed a perfect line and demand the numbers back --- */
+    /* --- calibration: fit once, then show a named batch summary --------- */
     const gain = 1200, off = 7;
     win.CALS = [];
     for (let duty = 2; duty <= 20; duty += 2) {
@@ -1084,33 +1084,29 @@ async function testBackupAndCal(win, doc) {
     win.D = { p: { 0: 0, 1: 0, 2: 1000, 3: 1000, 4: 0, 5: 0, 6: 0 }, t: [] };
     win.eval('calrun')();
     const prop = {};
-    win.CALR.forEach((r, i) => { prop[r[1]] = +doc.getElementById('calv' + i).value; });
+    win.CALR.forEach(r => { prop[Number(r[1])] = Number(r[3]); });
     check(prop[2] === gain, 'the fit recovers the current gain of channel 1 exactly');
     check(prop[3] === gain, 'the fit recovers the current gain of channel 2 exactly');
     check(prop[0] === off, 'the fit recovers the zero-current offset of channel 1');
     check(prop[4] === 300, 'the input-voltage offset is the mean multimeter difference');
     check(prop[5] === 300, 'the 24 V pack offset uses the sum of the two halves');
     check(prop[6] === 200, 'the 12 V node offset uses the lower half');
-    check(doc.getElementById('caltb').innerHTML.indexOf('1200') >= 0,
-          'the preview table shows the proposed number before anything is written');
-    check(doc.getElementById('calst').textContent.indexOf('تیک‌خورده') >= 0,
-          'nothing is written until the user presses apply');
-    /* --- v1.58: every proposal is editable and tickable --- */
-    check(doc.getElementById('calv0') && doc.getElementById('calv0').tagName === 'INPUT',
-          'each proposed number is an input box the user can correct');
-    check(doc.getElementById('calk0') && doc.getElementById('calk0').type === 'checkbox',
-          'each line has its own apply tick');
-    check(doc.querySelectorAll('#caltb th')[2].textContent.indexOf('الان روی برد') >= 0,
-          'the board value sits in its own column next to the new one');
-    doc.getElementById('calv0').value = 1500;
-    win.eval('caldiff')(0);
-    check(doc.getElementById('cald0').textContent.indexOf('+500') >= 0,
-          'editing a number updates the difference against the board value');
-    doc.getElementById('calv0').value = 99999;
-    win.eval('caldiff')(0);
-    check(doc.getElementById('cald0').innerHTML.indexOf('خارج از بازهٔ مجاز') >= 0,
-          'an impossible hand-typed number is flagged before it is sent');
+    check(doc.querySelectorAll('#calst .calsummaryrow').length === 7 &&
+          doc.getElementById('calst').textContent.indexOf('گین') >= 0 &&
+          doc.getElementById('calst').textContent.indexOf('ولتاژ ورودی') >= 0,
+          'the result is a named status summary containing every calibration parameter');
+    check(!doc.getElementById('caltb') && !doc.querySelector('#calst input'),
+          'the old calibration result table and its per-row editors are gone');
+    check(doc.getElementById('calst').textContent.indexOf('در انتظار تأیید کاربر') >= 0,
+          'nothing is written until the user confirms the complete batch');
 
+    /* --- v1.58: one confirmation, no per-parameter ticks --------------- */
+    check(!doc.querySelector('[id^="calv"]') && !doc.querySelector('[id^="calk"]') &&
+          !doc.querySelector('[id^="cald"]'),
+          'the calibration result no longer exposes per-parameter inputs, ticks or diffs');
+    check(doc.getElementById('calmodal') && doc.getElementById('calmodalBody') &&
+          doc.getElementById('calmodalBody').className.indexOf('calmodalbody') >= 0,
+          'the one-shot confirmation dialog has a dedicated scrollable body');
 
     /* --- v1.60: a sample knows its scenario and can be excluded by hand --- */
     win.eval('calsmp')();
@@ -1122,10 +1118,10 @@ async function testBackupAndCal(win, doc) {
                     v12: 12500, vlo: 12500, vhi: 12500, b1: 10, b2: 10,
                     dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });   /* an obvious outlier */
     win.eval('calrun')();
-    const spoiled = +doc.getElementById('calv0').value;
+    const spoiled = Number(win.CALR.find(r => Number(r[1]) === 2)[3]);
     win.eval('caluse')(win.CALS.length - 1, false);
     win.eval('calrun')();
-    check(spoiled !== gain && +doc.getElementById('calv0').value === gain,
+    check(spoiled !== gain && Number(win.CALR.find(r => Number(r[1]) === 2)[3]) === gain,
           'unticking a bad row takes it straight out of the maths');
     check(win.CALS[win.CALS.length - 1].use === 0,
           'an unticked row is kept in the file, only excluded from the fit');
@@ -1134,7 +1130,7 @@ async function testBackupAndCal(win, doc) {
         vin: 24000, v24: 25000, v12: 12500, vlo: 12500, vhi: 12500, b1: 10, b2: null,
         dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 };
     win.eval('calrun')();
-    check(+doc.getElementById('calv0').value === gain,
+    check(Number(win.CALR.find(r => Number(r[1]) === 2)[3]) === gain,
           'a battery-2-only row is ignored when fitting battery 1');
     win.CALS.pop();
     win.eval('calrun')();
@@ -1242,39 +1238,46 @@ async function testBackupAndCal(win, doc) {
     await win.eval('ximp')({ text: async () => JSON.stringify({ app: 'ChangeOver-settings', v: 2, params: { 0: 1 } }) });
     Wv.run = false;
 
-    /* The successful path must reconcile every local owner with the value the
-       setter read back. This is the regression that a visible table-only check
-       misses: CALR, calcN, calvN and qN all have to agree afterwards. */
+    /* The successful path applies every valid calibration parameter in one
+       confirmation, then reconciles each local owner with board readback.
+       [FA] مسیر موفق باید همهٔ پارامترهای معتبر را با یک تأیید اعمال کند و
+       بعد هر مالک محلی را با readback برد هماهنگ کند. */
     const applyId = 2;
-    const applyRow = win.CALR.findIndex(r => r[1] === applyId);
+    const applyRow = win.CALR.findIndex(r => Number(r[1]) === applyId);
     const oldSetv = win.eval('setv');
     const oldXexp = win.eval('xexp');
-    const oldApplyConfirm = win.confirm;
-    win.confirm = () => true;
     win.eval('xexp = () => {}');
     win.eval('setv = async (id, value) => { D.p[id] = value; }');
     win.PEND = {};
-    win.CALR.forEach((r, i) => {
-        doc.getElementById('calk' + i).checked = r[1] === applyId;
+    const expected = {};
+    win.CALR.forEach(r => {
+        if (Number(r[1]) === applyId) r[3] = 1234;
+        if (Number.isFinite(Number(r[1])) && r[5] === 1 && Number.isFinite(Number(r[3]))) {
+            expected[Number(r[1])] = Number(r[3]);
+        }
     });
-    doc.getElementById('calv' + applyRow).value = '1234';
     doc.getElementById('q' + applyId).value = '1000';
     if (doc.activeElement && typeof doc.activeElement.blur === 'function') {
         doc.activeElement.blur();
     }
     await win.eval('calapply')();
+    check(doc.getElementById('calmodal').className.indexOf('on') >= 0 &&
+          doc.getElementById('calmodalBody').textContent.indexOf('گین') >= 0 &&
+          doc.getElementById('calmodalBody').textContent.indexOf('شناسه') < 0,
+          'one confirmation modal lists named calibration values without internal ids');
+    await win.eval('calmodalApply')();
+    check(Object.keys(expected).every(id => win.D.p[id] === expected[id]),
+          'one confirmed operation writes every valid calibration parameter');
     check(win.D.p[applyId] === 1234 && win.CALR[applyRow][2] === 1234,
           'calibration apply keeps the board readback in its local row snapshot');
-    check(doc.getElementById('calc' + applyRow).textContent === '1234' &&
-          doc.getElementById('calv' + applyRow).value === '1234' &&
-          doc.getElementById('q' + applyId).value === '1234',
-          'calibration apply refreshes the live cell, proposal and owning filter control');
+    check(doc.getElementById('q' + applyId).value === '1234' &&
+          doc.getElementById('calmodal').className.indexOf('on') < 0,
+          'calibration apply refreshes the owning filter control and closes the modal');
     check(doc.getElementById('calst').textContent.indexOf('✅') >= 0 &&
-          doc.getElementById('calst').textContent.indexOf('بازخوانی برد') >= 0,
-          'calibration apply reports a successful board readback');
+          doc.getElementById('calst').textContent.indexOf('readback') >= 0,
+          'calibration apply reports successful board readback for the batch');
     win.setv = oldSetv;
     win.xexp = oldXexp;
-    win.confirm = oldApplyConfirm;
     win.PEND = {};
 
     /* v1.81: importing a settings file must stage locally, never call /s. */
@@ -1630,10 +1633,10 @@ async function testLutPush(win, doc) {
         const savedSamples = win.CALS;
         win.CALS = savedSamples.map(z => Object.assign({}, z, { sc: 'BAT1' }));
         win.eval('calrun')();
-        const idxOff1 = win.CALR.findIndex(r => r[1] === 0);
-        const idxGain1 = win.CALR.findIndex(r => r[1] === 2);
-        doc.getElementById('calv' + idxOff1).value = Number(win.D.p[0]) + 1;
-        doc.getElementById('calv' + idxGain1).value = Number(win.D.p[2]) + 1;
+        const idxOff1 = win.CALR.findIndex(r => Number(r[1]) === 0);
+        const idxGain1 = win.CALR.findIndex(r => Number(r[1]) === 2);
+        win.CALR[idxOff1][3] = Number(win.D.p[0]) + 1;
+        win.CALR[idxGain1][3] = Number(win.D.p[2]) + 1;
         readBefore = [
             { X: packed.T[0].X.map(v => v + 20), Y: packed.T[0].Y.map(v => v + 200) },
             { X: [900, 1000], Y: [1800, 2200] }
@@ -1653,8 +1656,9 @@ async function testLutPush(win, doc) {
         check(doc.getElementById('calst').textContent.indexOf('✅') >= 0,
               'a single-battery update completes with calibration and LUT readback');
         check(calls.some(c => c.indexOf('/s?id=0&') >= 0) && calls.some(c => c.indexOf('/s?id=2&') >= 0) &&
+              [4, 5, 6].every(id => calls.some(c => c.indexOf('/s?id=' + id + '&') >= 0)) &&
               !calls.some(c => c.indexOf('/s?id=1&') >= 0) && !calls.some(c => c.indexOf('/s?id=3&') >= 0),
-              'battery 1 sends only its own offset and gain');
+              'battery 1 sends its own offset/gain plus every valid global voltage offset');
         const oneBody = postedBodies[postedBodies.length - 1].split(',').map(Number);
         check(oneBody[0] === onePreview.T[0].X.length &&
               oneBody[1] === readBefore[1].X.length,
@@ -1664,14 +1668,14 @@ async function testLutPush(win, doc) {
 
         /* A calibration endpoint failure is a hard stop: no LUT POST may
            follow a missing/mismatched gain or offset readback. */
-        doc.getElementById('calv' + idxOff1).value = Number(win.D.p[0]) + 1;
+        win.CALR[idxOff1][3] = Number(win.D.p[0]) + 1;
         calFail = true;
         readAfterTransaction = false;
         calls.length = 0;
         postedBodies.length = 0;
         win.confirm = () => true;
         await win.eval('lsend')(1);
-        check(doc.getElementById('calst').textContent.indexOf('گین/آفست') >= 0 &&
+        check(doc.getElementById('calst').textContent.indexOf('پارامترهای کالیبراسیون') >= 0 &&
               doc.getElementById('calst').textContent.indexOf('جدول LUT ارسال نشد') >= 0,
               'a calibration readback failure is reported before LUT commit');
         check(!calls.some(c => c === 'POST /lut'),

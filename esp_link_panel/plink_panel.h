@@ -182,7 +182,7 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
    post-commit value together. The status colour describes values, not CRC.
    [FA] جدول ممیزی LUT: مقدار برد، پیشنهاد و مقدار پس از commit در هر ردیف
    کنار هم می‌مانند؛ رنگ وضعیت از خود عددها می‌آید، نه از CRC. */
-.lutbox{margin-top:10px;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:10px}.luthead{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;color:var(--tx);font-weight:700}.luttag{font-size:11px;color:var(--mu);font-weight:400}.lutreadnote{margin:7px 0;padding:7px 9px;border-radius:8px;background:rgba(80,150,255,.08);color:var(--mu);font-size:12px}.lutreadcard{margin-top:9px;border:1px solid var(--ln);border-radius:9px;padding:8px;background:rgba(0,0,0,.08)}.lutcal{display:grid;gap:4px;margin:7px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:9px;background:rgba(247,193,60,.08);font-size:12px}.lutbox.badread{border-color:rgba(255,104,115,.6)}.lutt{width:100%;font-size:12px;direction:ltr;white-space:nowrap}.lutt th{position:sticky;top:0;background:var(--rs);color:var(--mu);padding:6px 8px;text-align:center;font-weight:600}.lutt td{padding:5px 8px;text-align:center;border-top:1px solid rgba(56,69,94,.45)}.lutt .pair{font-variant-numeric:tabular-nums}.lutst{font-weight:700;border-radius:999px;padding:2px 8px;display:inline-block}.lutst.same{color:var(--mu);background:rgba(150,161,184,.12)}.lutst.changed{color:var(--ok);background:rgba(53,214,160,.12)}.lutst.diff{color:var(--wa);background:rgba(247,193,60,.12)}.lutst.bad{color:var(--er);background:rgba(255,104,115,.12)}
+.lutbox{margin-top:10px;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:10px}.luthead{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;color:var(--tx);font-weight:700}.luttag{font-size:11px;color:var(--mu);font-weight:400}.lutreadnote{margin:7px 0;padding:7px 9px;border-radius:8px;background:rgba(80,150,255,.08);color:var(--mu);font-size:12px}.lutreadcard{margin-top:9px;border:1px solid var(--ln);border-radius:9px;padding:8px;background:rgba(0,0,0,.08)}.lutcal{display:grid;gap:4px;margin:7px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:9px;background:rgba(247,193,60,.08);font-size:12px}.lutbox.badread{border-color:rgba(255,104,115,.6)}.lutt{width:100%;font-size:12px;direction:ltr;white-space:nowrap}.lutt th{position:sticky;top:0;background:var(--rs);color:var(--mu);padding:6px 8px;text-align:center;font-weight:600}.lutt td{padding:5px 8px;text-align:center;border-top:1px solid rgba(56,69,94,.45)}.lutt .pair{font-variant-numeric:tabular-nums}.lutst{font-weight:700;border-radius:999px;padding:2px 8px;display:inline-block}.lutst.same{color:var(--mu);background:rgba(150,161,184,.12)}.lutst.changed{color:var(--ok);background:rgba(53,214,160,.12)}.lutst.diff{color:var(--wa);background:rgba(247,193,60,.12)}.lutst.bad{color:var(--er);background:rgba(255,104,115,.12)}.calsummary{margin:8px 0;padding:9px;border:1px solid var(--ln);border-radius:10px;background:var(--in)}.calsummaryhead{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;font-weight:700}.calsummarybody{max-height:280px;overflow-y:auto;margin-top:7px;display:grid;gap:5px;padding-right:2px}.calsummaryrow{display:grid;grid-template-columns:minmax(150px,1fr) minmax(170px,2fr);gap:8px;align-items:center;padding:7px 8px;border:1px solid rgba(56,69,94,.55);border-radius:8px;background:rgba(0,0,0,.08)}.calsummaryrow .calname{font-weight:700}.calsummaryrow .calvalue{direction:ltr;text-align:left;font-variant-numeric:tabular-nums}.calsummaryrow .calstate{grid-column:1/-1;color:var(--mu);font-size:12px}.calmodal{display:none;position:fixed;inset:0;z-index:120;background:rgba(2,6,23,.72);padding:16px;align-items:center;justify-content:center}.calmodal.on{display:flex}.calmodalbox{width:min(700px,100%);max-height:82vh;display:flex;flex-direction:column;background:var(--rs);border:1px solid var(--ln);border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.45);padding:12px}.calmodalhead{display:flex;justify-content:space-between;gap:10px;align-items:center}.calmodalbody{overflow-y:auto;max-height:min(58vh,460px);margin:10px 0}.calmodalfoot{display:flex;justify-content:flex-start;gap:8px;flex-wrap:wrap;border-top:1px solid var(--ln);padding-top:10px}.calmodalclose{border:0;background:transparent;color:var(--mu);font-size:24px;cursor:pointer;padding:0 6px}.calmodal .calsummary{margin:0;background:var(--in)}
 .bt3{width:auto;font-size:13px}.bt3 th{color:var(--mu);font-weight:600;text-align:center;padding:5px 8px;white-space:nowrap}.bt3 td{padding:5px 8px;text-align:center}.bt3 input[type=number]{padding:6px 8px}
 .bsum{font-size:12px;direction:ltr;text-align:left;line-height:1.9;margin-bottom:8px}.okc{color:var(--ok)}.erc{color:var(--er)}
 /* [EN] Colour checklist: green ready / yellow warning / red blocker.
@@ -406,7 +406,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build a20d629</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 85af2dc</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3144,7 +3144,7 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
    [EN] v1.57 (user order: "take the bench capture straight onto the board with
    the user's confirmation, so I do not have to hand the file to an AI every
    time"). Every recorded wizard step now also lands in a small sample list,
-   and this block turns that list into the SIX calibration numbers the board
+   and this block turns that list into the SEVEN calibration numbers the board
    actually stores:
 
      id 0 / id 1  current offset ch1 / ch2 (ADC counts at zero current)
@@ -3157,14 +3157,13 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
    offsets are simply the average of (multimeter - board), added to whatever
    offset the board is using now.
 
-   Nothing is written silently: the panel shows the current value, the proposed
-   value, how many points it used and how good the fit is, refuses obviously
-   bad data, and before writing it downloads a full settings backup so one
-   click can undo the whole thing.
+   Nothing is written silently: the panel shows a named before/after/status
+   summary, refuses obviously bad data, and before writing it downloads a full
+   settings backup so one click can undo the whole thing.
    [FA] هر مرحلهٔ ثبت‌شدهٔ ویزارد یک نمونه هم اینجا ذخیره می‌کند. این بخش از
-   روی همان نمونه‌ها با «کمترین مربعات» شش عدد کالیبراسیون را حساب می‌کند،
-   مقدار فعلی و پیشنهادی و کیفیت برازش را نشان می‌دهد، دادهٔ بد را رد می‌کند و
-   پیش از نوشتن روی برد، یک پشتیبان کامل دانلود می‌کند. */
+   روی همان نمونه‌ها با «کمترین مربعات» هفت عدد کالیبراسیون را حساب می‌کند،
+   خلاصهٔ نام‌محورِ مقدار قبلی/جدید و وضعیت را نشان می‌دهد، دادهٔ بد را رد
+   می‌کند و پیش از نوشتن روی برد، یک پشتیبان کامل دانلود می‌کند. */
 var CALS=[];try{CALS=JSON.parse(localStorage.getItem('calsmp')||'[]')||[];}catch(e){CALS=[];}
 function calsave(){try{localStorage.setItem('calsmp',JSON.stringify(CALS.slice(-400)));}catch(e){}}
 function calpush(m,v,act,sc,duty){
@@ -3173,7 +3172,7 @@ function calpush(m,v,act,sc,duty){
   dvi:v.vi,dv1:v.v1,dv2:v.v2,ts:Date.now()});
  calsave();caln();calsmp();calchk();}
 function calclr(){if(!confirm('همهٔ نمونه‌های جمع‌شده پاک شوند؟'))return;CALS=[];calsave();caln();calsmp();
- stxt('caltb','');stxt('calst','نمونه‌ها پاک شدند.');CALP=[];}
+ stxt('calst','نمونه‌ها پاک شدند.');CALP=[];CALR=[];calmodalClose();}
 function caln(){stxt('caln',String(CALS.length));}
 /* [‎EN] least squares y = a*x + b, plus R‎². [FA] برازش خطی + کیفیت. */
 function calfit(xs,ys){const n=xs.length;let sx=0,sy=0,sxx=0,sxy=0;
@@ -3185,10 +3184,11 @@ function calfit(xs,ys){const n=xs.length;let sx=0,sy=0,sxx=0,sxy=0;
  return {a,b,r2:ss>0?(1-sr/ss):1,n,mx,span:Math.max(...xs)-Math.min(...xs)};}
 var CALP=[],CALR=[];
 function calrun(){
+ CALR=[];CALP=[];
  const cur=id=>(D&&D.p&&D.p[id]!=null)?D.p[id]:null;
  if(!D||!D.p){stxt('calst','⚠ هنوز داده‌ای از برد نرسیده — لینک برقرار نیست.');return;}
  if(calsel(null).length<3){stxt('calst','⚠ فقط '+calsel(null).length+' نمونهٔ تیک‌خورده هست؛ برای کالیبره حداقل ۳ مرحله لازم است.');return;}
- CALP=[];const rows=[];
+ const rows=[];
  /* --- جریان دو کانال: شیب و آفست با هم از یک خط --- */
  [[1,'r1','b1',0,2],[2,'r2','b2',1,3]].forEach(ch=>{
   const S=calsel(ch[0]).filter(z=>Number.isFinite(z[ch[2]])&&Number.isFinite(z[ch[1]]));
@@ -3220,32 +3220,43 @@ function calrun(){
  voff('آفست ولتاژ ورودی (mV)',4,z=>(z.dvi!=null)?(z.dvi-z.vin):null);
  voff('آفست ولتاژ پک ۲۴ ولت (mV)',5,z=>(z.dv1!=null&&z.dv2!=null)?((z.dv1+z.dv2)-z.v24):null);
  voff('آفست نود ۱۲ ولت (mV)',6,z=>(z.dv2!=null)?(z.dv2-z.vlo):null);
- /* [EN] v1.58 (user order): nothing here is take-it-or-leave-it. Every
-    proposed number is an input box the user can correct, the board's
-    CURRENT number sits next to it, and a tick box decides whether that
-    line is written at all. A line the fit refused is simply unticked -
-    the user can still fix the number by hand and tick it.
-    [FA] هیچ عددی اجباری نیست: هر پیشنهاد یک کادر قابل ویرایش است، عدد
-    فعلی برد کنارش نوشته شده و تیک هر ردیف تعیین می‌کند نوشته بشود یا نه.
-    ردیفی که برازشش مردود شده فقط تیکش برداشته می‌شود. */
+ /* [EN] The result is a compact status summary, not a second editor/table.
+    Every valid calculated calibration value is included in one batch; the
+    user confirms the whole batch in the scrollable dialog below.
+    [FA] نتیجه فقط یک خلاصهٔ وضعیت است، نه جدول و نه ویرایشگر دوم. هر مقدار
+    معتبر محاسبه‌شده در یک batch می‌آید و کاربر همان batch را در پنجرهٔ قابل
+    اسکرول تأیید می‌کند. */
  calchk();
  CALR=rows;
- stxt('caltb','<div class="tw"><table class="bt2"><tr><th>اعمال</th><th>عدد</th><th>الان روی برد</th><th>مقدار جدید (قابل ویرایش)</th><th>تفاوت</th><th>کیفیت</th></tr>'+
-  rows.map((r,i)=>'<tr><td><input type="checkbox" id="calk'+i+'"'+(r[5]?' checked':'')+'></td>'+
-   '<td>'+r[0]+'</td><td dir="ltr"><b id="calc'+i+'">'+(r[2]==null?'':r[2])+'</b></td>'+
-   '<td><input type="number" style="width:110px" id="calv'+i+'" value="'+r[3]+'" oninput="caldiff('+i+')"></td>'+
-   '<td id="cald'+i+'" class="lb"></td><td>'+r[4]+'</td></tr>').join('')+'</table></div>');
- rows.forEach((r,i)=>caldiff(i));
- const n=rows.filter(r=>r[5]).length;
- stxt('calst',(n?'✅ ':'⚠ ')+n+' عدد از '+rows.length+' تیک‌خورده است (از '+calsel(null).length+' نمونهٔ انتخاب‌شده). '+
-  'هر عدد را می‌توانید دستی اصلاح کنید یا تیکش را بردارید؛ پیش از نوشتن یک پشتیبان کامل دانلود می‌شود.');}
-/* [EN] Show how far the (possibly hand-edited) number is from the board's
-   current one. [FA] فاصلهٔ عدد جدید با عدد فعلی برد. */
-function caldiff(i){const r=CALR[i];if(!r)return;const e=$('calv'+i),d=$('cald'+i);if(!e||!d)return;
- const nv=+e.value,cu=r[2];
- if(!Number.isFinite(nv)||cu==null){d.textContent='—';return;}
- const cl=xclamp(r[1],nv);
- d.innerHTML='<span dir="ltr">'+((nv>cu?'+':'')+(nv-cu))+'</span>'+(cl!==nv?' <b class="erc">خارج از بازهٔ مجاز — به <span dir="ltr">'+cl+'</span> محدود می‌شود</b>':'');}
+ stxt('calst',calsummary(rows,null,'خلاصهٔ تغییرهای محاسبه‌شده')+
+  '<div class="lb">برای نوشتن همهٔ مقدارهای معتبر روی برد، «اعمال همهٔ تغییرها روی برد» را بزنید.</div>');
+}
+function calnumber(v){return v==null||v===''?'—':String(v);}
+function calsummary(rows,status,heading){
+ const list=(rows||[]).filter(r=>r&&r[0]);
+ if(!list.length)return '<div class="calsummary"><div class="calsummaryhead">'+heading+'</div><div class="lb">تغییری برای نمایش وجود ندارد.</div></div>';
+ const h='<div class="calsummary"><div class="calsummaryhead"><span>'+heading+'</span><span class="luttag">نام پارامتر · مقدار قبلی ← مقدار جدید</span></div><div class="calsummarybody">';
+ const body=list.map(r=>{
+  const id=Number(r[1]),valid=Number.isFinite(id)&&r[5]===1&&Number.isFinite(Number(r[3]));
+  const state=status&&status[id]?status[id]:(valid?(Number(r[2])===Number(r[3])?'بدون تغییر — مقدار روی برد همین است':'در انتظار تأیید کاربر'):'این مقدار به‌دلیل کیفیت داده آمادهٔ اعمال نیست');
+  const val=valid?calnumber(r[2])+' ← '+calnumber(r[3]):calnumber(r[4]);
+  return '<div class="calsummaryrow"><span class="calname">'+r[0]+'</span><span class="calvalue">'+val+'</span><span class="calstate">'+state+'</span></div>';
+ }).join('');
+ return h+body+'</div></div>';
+}
+function caljobs(){
+ return CALR.filter(r=>Number.isFinite(Number(r[1]))&&r[5]===1&&Number.isFinite(Number(r[3])))
+  .map(r=>[Number(r[1]),xclamp(Number(r[1]),Math.round(Number(r[3]))),r[0],r[2]]);
+}
+function calmodalClose(){const e=$('calmodal');if(e)e.classList.remove('on');}
+function calmodalOpen(){
+ const jobs=caljobs();
+ if(!jobs.length){stxt('calst',calsummary(CALR,null,'خلاصهٔ تغییرهای محاسبه‌شده')+'<div class="lb">هیچ مقدار معتبر و قابل اعمالی وجود ندارد.</div>');return false;}
+ const e=$('calmodal'),b=$('calmodalBody');if(!e||!b)return false;
+ b.innerHTML=calsummary(CALR,null,'تأیید اعمال همهٔ تغییرهای معتبر');
+ e.classList.add('on');
+ return true;
+}
 /* [EN] v1.59 (user order: "these calibration numbers must be saveable and
    restorable so I do not have to repeat the whole test every time"). Two
    things are saved now: the FINISHED numbers already travel in the settings
@@ -3441,8 +3452,14 @@ function calbuild(n,off,gn){
    if(Y[i]<Y[i-1])bad='محور توان نزول دارد';}}
  return {X:X,Y:Y,note:note,bad:bad};}
 function calcode(){
- const get=id=>{const r=CALR.filter(x=>x[1]===id)[0];if(!r)return (D&&D.p&&D.p[id]!=null)?D.p[id]:0;
-  const e=$('calv'+CALR.indexOf(r));return e?Math.round(+e.value):r[3];};
+ const samples=calsel(null).length;
+ if(samples<2){
+  const t=$('calcd');if(t){t.value='/* NOT GENERATED: کمتر از ۲ نقطهٔ معتبر ('+samples+') — حداقل ۲ لازم است. */';t.style.display='block';}
+  stxt('calst','⚠ کمتر از ۲ نقطهٔ معتبر برای تولید کد وجود دارد.');return;
+ }
+ const get=id=>{const r=CALR.filter(x=>Number(x[1])===id)[0];
+  if(r&&Number.isFinite(Number(r[3])))return Math.round(Number(r[3]));
+  return (D&&D.p&&D.p[id]!=null)?D.p[id]:0;};
  const off=[get(0),get(1)],gn=[get(2),get(3)],msg=[];
  let out='/* [EN] Generated by the ChangeOver panel on '+new Date().toISOString()+
   '\n *      from '+calsel(null).length+' accepted bench samples. The panel has\n'+
@@ -3500,43 +3517,49 @@ async function calimp(f){let o;try{o=JSON.parse(await f.text());}catch(e){stxt('
  stxt('calst','⬆ '+add.length+' نمونه بازخوانی شد (مجموع '+CALS.length+'). حالا «محاسبه» را بزنید.');
  const e=$('calf');if(e)e.value='';}
 async function calapply(){
- /* [EN] v1.64 line-by-line audit finding: the bench wizard owns the board
-    while it runs (manual mode, duty, channel enables). Writing calibration
-    in the middle of it would change the numbers under a measurement that is
-    already in progress and silently poison the row being recorded.
-    [FA] تا وقتی ویزارد بنچ در حال اجراست برد در اختیار اوست؛ نوشتن وسط کار
-    همان ردیفی را که دارد ثبت می‌شود خراب می‌کند. */
+ /* [EN] One confirmation owns the complete calibration batch. There are no
+    per-row ticks: every valid calculated calibration parameter is written,
+    read back and reported by its name.
+    [FA] یک تأیید، کل batch کالیبراسیون را مالک می‌شود. تیک ردیف‌به‌ردیف
+    وجود ندارد؛ هر پارامتر معتبر محاسبه‌شده با نام خودش نوشته، readback و
+    گزارش می‌شود. */
  if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است.');return;}
- CALP=[];
- CALR.forEach((r,i)=>{const k=$('calk'+i),e=$('calv'+i);if(!k||!e||!k.checked)return;
-  const nv=+e.value;if(!Number.isFinite(nv))return;CALP.push([r[1],xclamp(r[1],Math.round(nv)),r[0]]);});
- if(!CALP.length){stxt('calst','هیچ ردیفی تیک نخورده است — اول «محاسبه» را بزنید و ردیف‌های موردنظر را تیک بزنید.');return;}
- const txt=CALP.map(c=>c[2]+': '+((D&&D.p&&D.p[c[0]]!=null)?D.p[c[0]]:'?')+' → '+c[1]).join('\n');
- if(!confirm(CALP.length+' عدد کالیبراسیون روی برد نوشته شود؟\n\n'+txt+
-  '\n\nیک فایل پشتیبان از تنظیمات فعلی دانلود می‌شود تا در صورت نیاز برگردانید.'))return;
+ calmodalOpen();
+}
+async function calmodalApply(){
+ if(W&&W.run){calmodalClose();stxt('calst','⛔ داده‌برداری بنچ در جریان است.');return;}
+ const jobs=caljobs();
+ if(!jobs.length){calmodalClose();stxt('calst',calsummary(CALR,null,'خلاصهٔ تغییرهای محاسبه‌شده')+'<div class="lb">هیچ مقدار معتبر و قابل اعمالی وجود ندارد.</div>');return;}
+ calmodalClose();
+ CALP=jobs;
  xexp();
- /* [EN] /s=200 only queues; setv() waits for PARAM_REPORT/PARAMS_BULK
-    read-back. [FA] ۲۰۰ ‎/s‎ فقط صف است؛ setv() بازخوانی مطابق می‌گیرد؛
-    ارسال‌ها سریالی می‌مانند. */
- let ok=0,fail=0,C=[];
+ /* [EN] /s=200 only queues; setv() waits for the board's matching report.
+    [FA] ۲۰۰ ‎/s‎ فقط صف است؛ setv() تا گزارش دقیق همان مقدار صبر می‌کند. */
+ let ok=0,fail=0;
+ const status=Object.create(null);
  for(const c of CALP){
+  const id=c[0],value=c[1];
   try{
-   await setv(c[0],c[1]);
-   const back=(D&&D.p)?D.p[c[0]]:null;
-   const report=c[2]+': '+c[1]+'→'+(back==null?'بی‌پاسخ':back);
-   if(back==null||+back!==+c[1]){fail++;C.push(report+' — بازخوانی متفاوت');}
-   else{ok++;C.push(report+' — پذیرفت');}
-   if(back!=null){const ri=CALR.findIndex(r=>r[1]===c[0]);
-    if(ri>=0){CALR[ri][2]=+back;const l=$('calc'+ri),e=$('calv'+ri);
-     if(l)l.textContent=back;if(e&&document.activeElement!==e)e.value=back;caldiff(ri);}
-    const e=$('q'+c[0]);if(e&&document.activeElement!==e&&!(c[0] in PEND))e.value=back;}
-  }catch(e){fail++;C.push(c[2]+': '+c[1]+'→خطا: '+e);}
-  stxt('calst','… '+ok+'/'+CALP.length);
+   await setv(id,value);
+   const back=(D&&D.p)?D.p[id]:null;
+   const ri=CALR.findIndex(r=>Number(r[1])===id);
+   if(back==null||+back!==+value){
+    fail++;status[id]='⚠ بازخوانی متفاوت؛ این مقدار اعمال‌شده فرض نمی‌شود';
+   }else{
+    ok++;status[id]='✅ روی برد نشست و با readback تأیید شد';
+    if(ri>=0){CALR[ri][2]=+back;CALR[ri][3]=+back;}
+    const e=$('q'+id);if(e&&document.activeElement!==e&&!(id in PEND))e.value=back;
+   }
+  }catch(e){
+   fail++;status[id]='⛔ بازخوانی ناموفق؛ این تغییر روی برد تأیید نشد';
+  }
+  stxt('calst',calsummary(CALR,status,'وضعیت اعمال کالیبراسیون')+
+   '<div class="lb">پیشرفت: '+(ok+fail)+' از '+CALP.length+' نام پارامتر بررسی شد.</div>');
  }
- stxt('calst',(fail===0?'✅ ':'⚠ ')+ok+'/'+CALP.length+' مقدار با بازخوانی برد تأیید شد'+
-  (fail?' · '+fail+' مقدار تأیید نشد':' · برد همه را عیناً پذیرفت')+
-  (ok?'<br>ثبت فلش مقدارهای تأییدشده حدود ۲ ثانیه بعد کامل می‌شود؛ تا آن موقع برد را خاموش نکنید (ریست پنل امن است).':'<br>تا دریافت بازخوانی معتبر، هیچ مقدار ناموفق را اعمال‌شده فرض نکنید.')+
-  '<br>گزارش: '+C.join(' · '));}
+ stxt('calst',calsummary(CALR,status,'وضعیت نهایی اعمال کالیبراسیون')+
+  '<div class="lb">'+(fail===0?'✅ همهٔ تغییرهای معتبر روی برد نشستند و readback شدند.':'⚠ '+fail+' تغییر readback نشد؛ فقط '+ok+' تغییر تأیید شده است. مقدار ناموفق را اعمال‌شده فرض نکنید.')+
+  (ok?'<br>ثبت فلش مقدارهای تأییدشده حدود ۲ ثانیه بعد کامل می‌شود؛ تا آن موقع برد را خاموش نکنید.':'')+'</div>');}
+
 
 /* ---------- v1.66: ارسال مستقیم جدول به حافظهٔ خود میکرو (دستور کاربر ۲۰۲۶-۱۰-۰۵) ----------
    [FA] «حتماً باید جدول را در کد میکرو بچسبانیم و بیلد کنیم؟» نه. برد از این
@@ -3557,16 +3580,17 @@ const LUTST={0:'موفق',1:'برد مرحلهٔ شروع را ندیده بود
 function lcrc(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++){c^=b[i];
  for(let k=0;k<8;k++)c=(c>>>1)^(0xEDB88320&-(c&1));}return (c^0xFFFFFFFF)>>>0;}
 function lcalvalue(id){
- const r=CALR.filter(x=>x[1]===id)[0];
- if(!r)return (D&&D.p&&D.p[id]!=null)?Number(D.p[id]):0;
- const e=$('calv'+CALR.indexOf(r));
- return e?Math.round(+e.value):r[3];}
+ const r=CALR.filter(x=>Number(x[1])===id)[0];
+ if(r&&Number.isFinite(Number(r[3])))return Math.round(Number(r[3]));
+ return (D&&D.p&&D.p[id]!=null)?Number(D.p[id]):0;}
 function lcopytable(t){return {X:t&&Array.isArray(t.X)?t.X.slice():[],Y:t&&Array.isArray(t.Y)?t.Y.slice():[]};}
 function lpack(target,base){
  const both=target==null||target===0||target==='both';
  const proposedOff=[lcalvalue(0),lcalvalue(1)],proposedGain=[lcalvalue(2),lcalvalue(3)];
+ const proposedVoltage=[lcalvalue(4),lcalvalue(5),lcalvalue(6)];
  const boardOff=[D&&D.p&&D.p[0]!=null?Number(D.p[0]):null,D&&D.p&&D.p[1]!=null?Number(D.p[1]):null];
  const boardGain=[D&&D.p&&D.p[2]!=null?Number(D.p[2]):null,D&&D.p&&D.p[3]!=null?Number(D.p[3]):null];
+ const boardVoltage=[D&&D.p&&D.p[4]!=null?Number(D.p[4]):null,D&&D.p&&D.p[5]!=null?Number(D.p[5]):null,D&&D.p&&D.p[6]!=null?Number(D.p[6]):null];
  const off=both?proposedOff:proposedOff.map((v,i)=>i+1===target?v:boardOff[i]);
  const gn=both?proposedGain:proposedGain.map((v,i)=>i+1===target?v:boardGain[i]);
  const msg=[],T=[{X:[],Y:[]},{X:[],Y:[]}];
@@ -3596,7 +3620,8 @@ function lpack(target,base){
  T.forEach(t=>{for(let i=0;i<t.X.length;i++){cs.push(t.X[i],t.Y[i]);}});
  const crc=lcrc(by);cs.push(crc);
  return {T:T,crc:crc,body:cs.join(','),msg:msg,target:both?0:target,
-  cal:{offset:off,gain:gn},calBefore:{offset:boardOff,gain:boardGain}};}
+  cal:{offset:off,gain:gn,voltage:proposedVoltage},
+  calBefore:{offset:boardOff,gain:boardGain,voltage:boardVoltage}};}
 /* [EN] The read-only view is deliberately separate from the transaction
    audit: an operator asking "what is on the board now?" must not get a
    three-column comparison full of empty proposal cells.
@@ -3661,6 +3686,7 @@ function lrender(p,b,a){
   h+='<div class="lutcal"><b>پارامترهای کالیبراسیون مورد استفاده برای ساخت این جدول</b>';
   [1,2].forEach(n=>{const i=n-1,bo=p.calBefore&&p.calBefore.offset?p.calBefore.offset[i]:null,bg=p.calBefore&&p.calBefore.gain?p.calBefore.gain[i]:null;
    h+='<span>باتری '+fa(n)+': آفست '+(bo==null?'—':bo)+' → '+p.cal.offset[i]+' · گین '+(bg==null?'—':bg)+' → '+p.cal.gain[i]+'</span>';});
+  if(p.cal.voltage){const vn=['ولتاژ ورودی','پک ۲۴ ولت','نود ۱۲ ولت'];vn.forEach((name,i)=>{const old=p.calBefore&&p.calBefore.voltage?p.calBefore.voltage[i]:null;h+='<span>'+name+': '+(old==null?'—':old)+' → '+p.cal.voltage[i]+'</span>';});}
   h+='</div>';
  }
  [1,2].forEach(n=>{
@@ -3703,13 +3729,13 @@ async function lreadnow(){
  stxt('calst',r.ready?'✅ جدول فعال واقعی هر دو باتری در بالا نمایش داده شد.':'⚠ '+r.error+'؛ جدول فعلی قابل اتکا نیست.');
 }
 /* [EN] After reset, fetch a fresh telemetry report instead of trusting the
-   pre-reset D object. The four IDs used to build the proposed LUT must still
-   equal the values that survived the reset.
+   pre-reset D object. Every calibration value used by this transaction must
+   equal the value that survived the reset.
    [FA] بعد از ریست، گزارش تازهٔ تله‌متری خوانده می‌شود و شیء D قبل از ریست
-   معتبر فرض نمی‌شود؛ هر چهار شناسهٔ استفاده‌شده برای LUT باید بعد از ریست
-   همچنان دقیقاً برابر مقدار پایدارشده باشند. */
+   معتبر فرض نمی‌شود؛ هر مقدار کالیبراسیون این تراکنش باید بعد از ریست
+   همچنان دقیقاً برابر مقدار پایدارشده باشد. */
 async function lcalread(p){
- const ids=[0,1,2,3],want=[p.cal.offset[0],p.cal.offset[1],p.cal.gain[0],p.cal.gain[1]];
+ const ids=[0,1,2,3,4,5,6],want=[p.cal.offset[0],p.cal.offset[1],p.cal.gain[0],p.cal.gain[1],p.cal.voltage[0],p.cal.voltage[1],p.cal.voltage[2]];
  for(let i=0;i<10;i++){
   try{
    const j=await req('/t','GET');
@@ -3733,12 +3759,13 @@ function lupd(){
  [b1,b2,ba,rd].forEach(b=>{if(b){b.disabled=disabled;b.title=why||'ابتدا جدول واقعی هر دو باتری خوانده می‌شود';}});
  if(rr){const off=!LSNT||LREAD_IN_PROGRESS;rr.disabled=off;rr.title=off?'بعد از commit و readback دقیق فعال می‌شود':'ریست و بررسی ماندگاری جدول';}}
 async function lapplycal(target,p){
- const ids=target===0?[0,1,2,3]:(target===1?[0,2]:[1,3]);
+ const ids=target===0?[0,1,2,3,4,5,6]:(target===1?[0,2,4,5,6]:[1,3,4,5,6]);
  for(const id of ids){
-  const value=id===0?p.cal.offset[0]:id===1?p.cal.offset[1]:id===2?p.cal.gain[0]:p.cal.gain[1];
-  if(!Number.isFinite(value))throw 'گین/آفست باتری معتبر نیست';
+  const value=id===0?p.cal.offset[0]:id===1?p.cal.offset[1]:id===2?p.cal.gain[0]:id===3?p.cal.gain[1]:p.cal.voltage[id-4];
+  if(!Number.isFinite(value))throw 'پارامتر کالیبراسیون معتبر نیست';
   if(D&&D.p&&Number(D.p[id])===value)continue;
-  stxt('calst','… ارسال و بازخوانی '+(id<2?'آفست':'گین')+' باتری '+fa(id===0||id===2?1:2));
+  const name=id===0?'آفست جریان باتری ۱':id===1?'آفست جریان باتری ۲':id===2?'گین جریان باتری ۱':id===3?'گین جریان باتری ۲':(['آفست ولتاژ ورودی','آفست ولتاژ پک ۲۴ ولت','آفست ولتاژ نود ۱۲ ولت'][id-4]);
+  stxt('calst','… ارسال و بازخوانی '+name);
   await setv(id,value);
   if(D&&D.p)D.p[id]=value;
  }
@@ -3756,22 +3783,22 @@ async function lsend(target){
  lview(p,before,null);
  const targetText=targetId===0?'هر دو باتری':'فقط باتری '+fa(targetId);
  const calText=targetId===0
-  ?'آفست/گین پیشنهادی هر دو باتری نیز قبل از جدول ارسال و readback می‌شوند.'
-  :'آفست/گین پیشنهادی همین باتری قبل از جدول ارسال و readback می‌شود؛ جدول و تنظیمات باتری دیگر دست‌نخورده می‌ماند.';
+  ?'همهٔ gain/offsetهای جریان و آفست‌های ولتاژ معتبر قبل از جدول ارسال و readback می‌شوند.'
+  :'gain/offset همین باتری و آفست‌های ولتاژ معتبر قبل از جدول ارسال و readback می‌شوند؛ جدول و gain/offset باتری دیگر دست‌نخورده می‌ماند.';
  const dn=t=>t.X.length?t.X.length+' نقطه':'صفرنقطه‌ای — override قبلی حذف می‌شود';
  if(!confirm('به‌روزرسانی '+targetText+' انجام شود؟\n\n'+calText+'\n'+
   'باتری ۱: '+dn(p.T[0])+' · باتری ۲: '+dn(p.T[1])+
-  '\nاگر گین/آفست یا جدول readback نشود، ارسال LUT متوقف می‌شود.'))return;
+  '\nاگر هر پارامتر کالیبراسیون یا جدول readback نشود، ارسال LUT متوقف می‌شود.'))return;
  LREAD_IN_PROGRESS=true;LSNT=0;lupd();
- try{await lapplycal(targetId,p);}catch(e){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ گین/آفست '+targetText+' تأیید نشد؛ جدول LUT ارسال نشد: '+e);return;}
+ try{await lapplycal(targetId,p);}catch(e){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ پارامترهای کالیبراسیون '+targetText+' تأیید نشد؛ جدول LUT ارسال نشد: '+e);return;}
  stxt('calst','… جدول '+targetText+' در حال ارسال به برد است');
- let r;try{r=await req('/lut','POST',p.body);}catch(e){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⚠ ارسال جدول به ESP نرسید؛ گین/آفست ممکن است اعمال شده باشد، اما LUT تأیید نشده است.');return;}
+ let r;try{r=await req('/lut','POST',p.body);}catch(e){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⚠ ارسال جدول به ESP نرسید؛ پارامترهای کالیبراسیون ممکن است اعمال شده باشند، اما LUT تأیید نشده است.');return;}
  /* [EN] The sketch's own reason codes (plink_http.h), in Persian.
     [FA] کدهای دلیل خود اسکچ، به فارسی. */
  const LE={len:'بدنهٔ ارسال خراب/بزرگ',n:'تعداد نقاط نامجاز',
   empty:'هر دو کانال خالی‌اند',pt:'بدنهٔ نقاط ناقص رسید',
   mono:'نقاط یک کانال صعودی نیستند',crc:'CRC بدنه پیدا نشد'};
- if(!r||r.ok!==1){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ ESP جدول را نپذیرفت — دلیل: '+((r&&r.e&&LE[r.e])||('کد ناشناختهٔ '+((r&&r.e)||'?')))+' · گین/آفست تأیید شده، اما جدول قبلی حفظ نشد/وضعیت جدول باید دوباره خوانده شود.');return;}
+ if(!r||r.ok!==1){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ ESP جدول را نپذیرفت — دلیل: '+((r&&r.e&&LE[r.e])||('کد ناشناختهٔ '+((r&&r.e)||'?')))+' · پارامترهای کالیبراسیون تأیید شده‌اند، اما جدول قبلی حفظ نشد/وضعیت جدول باید دوباره خوانده شود.');return;}
  /* [EN] Staged send: ESP releases one frame per ACK (no RX-ring overrun),
     so wait up to 10 s and show the stage. [FA] ارسال گام‌به‌گام با تأیید هر
     فریم؛ تا ۱۰ ثانیه صبر و نمایش مرحله. */
@@ -3782,7 +3809,7 @@ async function lsend(target){
   if(a&&a.txe){break;}
   if(a&&a.tx){stxt('calst','… ارسال جدول: '+(LSTG[a.tx]||a.tx));continue;}
   if(a&&a.st===3)break;}
- if(a&&a.txe===1){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ برد به مرحلهٔ «'+(LSTG[a.tx]||('کد '+a.tx))+'» پاسخ نداد (STM32 فریم را تأیید نکرد). جدول ارسال نشد؛ گین/آفست readback شده‌اند.');return;}
+ if(a&&a.txe===1){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ برد به مرحلهٔ «'+(LSTG[a.tx]||('کد '+a.tx))+'» پاسخ نداد (STM32 فریم را تأیید نکرد). جدول ارسال نشد؛ پارامترهای کالیبراسیون readback شده‌اند.');return;}
  if(a&&a.txe===2){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ برد یکی از مرحله‌های ارسال را رد کرد: '+
   (LUTST[a.s]||('کد '+a.s))+' · جدول قبلی بدون تغییر ماند.');return;}
  if(!a||a.st!==3){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⚠ برد پاسخ کامیت را نداد؛ جدول قبلی بدون تغییر ماند.');return;}
@@ -3795,8 +3822,8 @@ async function lsend(target){
  if(!after.ready){LSNT=0;lupd();stxt('calst','⚠ commit با handshake تأیید شد، اما بازخوانی عددبه‌عدد بعد از commit ناموفق بود؛ تغییرات اعمال‌شده فرض نمی‌شوند و ریست پیشنهاد نمی‌شود.');return;}
  if(!lmatch(after,p)){LSNT=0;lupd();stxt('calst','⛔ mismatch: commit پاسخ موفق داد، اما حداقل یک chain/power بازخوانی‌شده با پیشنهاد فرق دارد؛ ریست انجام نشد. جدول بالا ردیف خطادار را نشان می‌دهد.');return;}
  LUT_LAST_PROPOSAL=p;LSNT=1;lupd();
- stxt('calst','✅ '+targetText+'، گین/آفست و جدول با readback واقعی تأیید شدند. جدول دیگر حفظ شد؛ برای شروع با مقدار نو «ریست برد» را بزنید.');
- if(confirm('گین/آفست و جدول '+targetText+' ذخیره و با عددهای واقعی برد تأیید شدند.\n\nبرد ریست شود تا با مقدار جدید بالا بیاید؟\n(شارژ چند ثانیه قطع می‌شود.)'))await lrst();}
+ stxt('calst','✅ '+targetText+'، همهٔ پارامترهای کالیبراسیون و جدول با readback واقعی تأیید شدند. جدول دیگر حفظ شد؛ برای شروع با مقدار نو «ریست برد» را بزنید.');
+ if(confirm('همهٔ پارامترهای کالیبراسیون و جدول '+targetText+' ذخیره و با عددهای واقعی برد تأیید شدند.\n\nبرد ریست شود تا با مقدار جدید بالا بیاید؟\n(شارژ چند ثانیه قطع می‌شود.)'))await lrst();}
 async function lrst(){
  const p=LUT_LAST_PROPOSAL;
  if(!LSNT||!p){stxt('calst','⛔ اول یک ارسال و بازخوانی موفق لازم است.');return;}
@@ -3805,10 +3832,10 @@ async function lrst(){
  const beforeReset=LUT_LAST_AFTER&&LUT_LAST_AFTER.ready?LUT_LAST_AFTER:LUT_LAST_BEFORE;
  LSNT=0;LREAD_IN_PROGRESS=true;lupd();stxt('calst','… فرمان ریست رفت؛ پس از بالا آمدن STM32 جدول دوباره خوانده می‌شود.');
  await sl(1200);const calOk=await lcalread(p),after=await lread();LREAD_IN_PROGRESS=false;LAT=after;LBT=beforeReset||after;LUT_LAST_BEFORE=beforeReset||after;LUT_LAST_AFTER=after;lupd();lview(p,LBT,LAT);
- if(!calOk){stxt('calst','⚠ برد ریست شد، اما readback تازهٔ گین/آفست با مقدار مورد استفاده برای LUT یکی نیست؛ ماندگاری تأیید نشده است.');return;}
+ if(!calOk){stxt('calst','⚠ برد ریست شد، اما readback تازهٔ پارامترهای کالیبراسیون با مقدار مورد استفاده برای LUT یکی نیست؛ ماندگاری تأیید نشده است.');return;}
  if(!after.ready){stxt('calst','⚠ برد ریست شد، اما بازخوانی جدول پس از ریست ناموفق بود؛ ماندگاری جدول تأیید نشده است.');return;}
  if(!lmatch(after,p)){stxt('calst','⛔ پس از ریست mismatch: جدول فعال برد با پیشنهاد یکی نیست؛ مقدارهای واقعی بالا دیده می‌شوند.');return;}
- LSNT=1;lupd();stxt('calst','✅ پس از ریست هم گین/آفست و جدول هر دو باتری با readback عددبه‌عدد تأیید شدند.');}
+ LSNT=1;lupd();stxt('calst','✅ پس از ریست هم همهٔ پارامترهای کالیبراسیون و جدول هر دو باتری با readback عددبه‌عدد تأیید شدند.');}
 
 /* ---------- ساخت تب‌ها ---------- */
 /* تب ۱: داده‌برداری بنچ */
@@ -3819,8 +3846,8 @@ $('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty 
 <div class="cm lb" id="wS0"></div><div id="wF0"></div><div id="wT"></div>
 <div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb sb2" onclick="wclear()">پاک کردن فایل</button></div></div><div class="cd"><div class="hd"><b>کالیبراسیون خودکار از همین جدول</b><span class="lb">· نمونه‌های ثبت‌شده: <b id="caln">0</b> · عددها فقط با تأیید شما روی برد نوشته می‌شوند</span></div>
 <div class="ds">هر مرحله‌ای که در ویزارد «ثبت» می‌کنید یک نمونه هم اینجا می‌ماند. «محاسبه» از روی همین نمونه‌ها گین و آفست جریان هر دو کانال و سه آفست ولتاژ را درمی‌آورد، مقدار فعلی برد را کنار پیشنهاد می‌گذارد و کیفیت هر برازش را می‌گوید. برای نتیجهٔ خوب حداقل ۴ مرحله با duty پخش‌شده (مثلاً ۲ تا ۲۰٪) بگیرید.</div>
-<div class="bqr2"><button class="sb sb2" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb brun" onclick="calapply()">اعمال روی برد (با تأیید)</button><button class="sb sb2" onclick="calexp()">⬇ ذخیرهٔ نمونه‌ها</button><label class="sb" style="cursor:pointer">⬆ بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2" onclick="calclr()">پاک کردن نمونه‌ها</button></div>
-<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">۱) خواندن و به‌روزرسانی مستقل جدول هر باتری (سقف ۲۴ نقطه)</div><div class="ds">«خواندن جدول فعلی» فقط دو جدول واقعی را از STM32 می‌خواند و جداگانه نشان می‌دهد. هر دکمهٔ باتری فقط گین، آفست و LUT همان باتری را تغییر می‌دهد؛ جدول و تنظیمات باتری دیگر از readback قبلی حفظ می‌شود. دکمهٔ هر دو باتری برای اعمال هم‌زمان هر چهار مقدار است.</div><div class="bqr2"><button class="sb sb2" id="lbtnRead" onclick="lreadnow()" disabled>↻ خواندن جدول فعلی از برد</button><button class="sb brun" id="lbtnS1" onclick="lsend(1)" disabled>⇪ به‌روزرسانی باتری ۱</button><button class="sb brun" id="lbtnS2" onclick="lsend(2)" disabled>⇪ به‌روزرسانی باتری ۲</button><button class="sb" id="lbtnSA" onclick="lsend(0)" disabled>⇪ به‌روزرسانی هر دو</button><button class="sb sb2" id="lbtnR" onclick="lrst()" disabled>↻ ریست و بازخوانی دوباره</button></div><div id="lutcmp"></div><div class="lgrp">۲) ساخت calibration.h</div><div class="bqr2"><button class="sb sb2" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb" onclick="calcopy()">کپی کد</button><button class="sb" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" class="calcd" readonly></textarea><div class="cm lb" id="calst"></div><div id="caltb"></div></div>
+<div class="bqr2"><button class="sb sb2" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb brun" onclick="calapply()">اعمال همهٔ تغییرها روی برد</button><button class="sb sb2" onclick="calexp()">⬇ ذخیرهٔ نمونه‌ها</button><label class="sb" style="cursor:pointer">⬆ بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2" onclick="calclr()">پاک کردن نمونه‌ها</button></div>
+<div class="bqr2"><button class="sb" onclick="calpick(1)">انتخاب همه</button><button class="sb" onclick="calpick(0)">هیچ‌کدام</button></div><div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">۱) خواندن و به‌روزرسانی مستقل جدول هر باتری (سقف ۲۴ نقطه)</div><div class="ds">«خواندن جدول فعلی» فقط دو جدول واقعی را از STM32 می‌خواند و جداگانه نشان می‌دهد. هر دکمهٔ باتری فقط گین، آفست و LUT همان باتری را تغییر می‌دهد؛ جدول و تنظیمات باتری دیگر از readback قبلی حفظ می‌شود. دکمهٔ هر دو باتری برای اعمال هم‌زمان هر چهار مقدار است.</div><div class="bqr2"><button class="sb sb2" id="lbtnRead" onclick="lreadnow()" disabled>↻ خواندن جدول فعلی از برد</button><button class="sb brun" id="lbtnS1" onclick="lsend(1)" disabled>⇪ به‌روزرسانی باتری ۱</button><button class="sb brun" id="lbtnS2" onclick="lsend(2)" disabled>⇪ به‌روزرسانی باتری ۲</button><button class="sb" id="lbtnSA" onclick="lsend(0)" disabled>⇪ به‌روزرسانی هر دو</button><button class="sb sb2" id="lbtnR" onclick="lrst()" disabled>↻ ریست و بازخوانی دوباره</button></div><div id="lutcmp"></div><div class="lgrp">۲) ساخت calibration.h</div><div class="bqr2"><button class="sb sb2" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb" onclick="calcopy()">کپی کد</button><button class="sb" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" class="calcd" readonly></textarea><div class="cm lb" id="calst"></div><div id="calmodal" class="calmodal" role="dialog" aria-modal="true" aria-labelledby="calmodalTitle"><div class="calmodalbox"><div class="calmodalhead"><b id="calmodalTitle">تأیید تغییرهای کالیبراسیون</b><button class="calmodalclose" type="button" aria-label="بستن" onclick="calmodalClose()">×</button></div><div id="calmodalBody" class="calmodalbody"></div><div class="calmodalfoot"><button class="sb brun" type="button" onclick="calmodalApply()">تأیید و اعمال همه</button><button class="sb sb2" type="button" onclick="calmodalClose()">لغو و بستن</button></div></div></div></div>
 `;
 caln();calsmp();calchk();bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{const s=$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB');if(L)L.disabled=s;if(A)A.disabled=!s;if(B)B.disabled=!s;};$('wSw').onchange();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
 /* ---------- کنترل دستی duty دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کنترلها داخل کارت هر شارژر (از v1.16p)؛

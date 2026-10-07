@@ -614,3 +614,33 @@ LEDهای سه‌گانه یک phase دارند و بوق/چرخهٔ آن با i
 UART/WiFi/LittleFS واقعی، build/link ARM و map نهایی اجرا نشده‌اند. این گزارش
 فقط host/static/DOM evidence را PASS می‌داند و hardware validation را NOT RUN
 نگه می‌دارد.
+
+## الحاقیهٔ ۲۰۲۶-۱۰-۰۷ — workflow کالیبراسیون یک‌تأییدی و summary نام‌محور
+
+درخواست اصلاحی کالیبراسیون اجرا شد: جدول نتیجهٔ `#caltb`، checkboxهای `calk*` و
+input/diffهای `calv*`/`cald*` حذف شدند. نتیجهٔ محاسبه اکنون یک status summary
+نام‌محور با مقدار قبلی/جدید و وضعیت‌های unchanged، changed/confirmed، mismatch و
+readback failure است؛ summary و modal هر دو ناحیهٔ scrollable دارند و هیچ شناسهٔ
+عددی کالیبراسیون به کاربر نمایش نمی‌دهند. یک modal، کل پارامترهای معتبر محاسبه‌شده
+را با یک تأیید اعمال می‌کند، سپس برای هر مقدار `setv()` و readback واقعی را کامل
+می‌کند و بعد از تأیید modal بسته می‌شود. مسیر LUT نیز همهٔ پارامترهای معتبرِ قابل‌اعمال
+تراکنش را پیش از LUT می‌نویسد و ماندگاری هر هفت مقدار calibration را پس از reset
+دوباره می‌خواند؛ battery 2 همچنان مستقل از gain/offset باتری 1 است.
+
+مدرک اجرای همین checkout:
+
+- `node esp_link_panel/Tester/host_test_scenario_cards.js`: **316/316 PASS**؛ شامل
+  summary نام‌محور، حذف جدول/کنترل‌های ردیفی، modal یک‌تأییدی، اعمال همهٔ مقادیر معتبر
+  و بسته‌شدن modal.
+- `node esp_link_panel/Tester/host_test_panel_click.js`: **129/129 PASS**.
+- `./Firmware/Modules/CalLut/Tester/run_host_test_cal_lut.sh`: **159/159 PASS**.
+- `./esp_link_panel/Tester/run_esp_tests.sh`: **112/112 PASS**.
+- `python3 Firmware/Modules/Charger/Tester/host_test_charger.py`: **53/53 PASS**.
+- `python3 tools/audit_consistency.py`: **444 invariant / 0 finding**؛ قوانین AI،
+  syntax firmware، RTL comments و JavaScript syntax نیز PASS.
+- `Firmware/Modules/EspLink/EspLink_Validation.xlsx` با نتیجهٔ جدید DOM/ESP/CalLut و
+  readback همهٔ پارامترهای معتبر calibration به‌روز شد؛ شواهد CalLut در
+  `Firmware/Modules/CalLut/CalLut_Validation.xlsx` حفظ شد.
+
+این اعداد host/static/DOM هستند و جای تست فیزیکی برد، فلش STM32/ESP، UART/WiFi واقعی،
+ARM build/link یا باتری واقعی را نمی‌گیرند؛ آن موارد همچنان **NOT RUN** هستند.
