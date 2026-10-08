@@ -1000,6 +1000,21 @@ async function testSendQueue(win, doc) {
 async function testBackupAndCal(win, doc) {
     console.log('\nv1.81 parameter schema + bench calibration / شمای پارامتر و کالیبراسیون');
 
+    const backupOut = doc.querySelector('#s4 button[onclick="xexp()"]');
+    const backupIn = doc.getElementById('xim') && doc.getElementById('xim').closest('label');
+    const backupText = textOf(doc, 's4');
+    check(backupOut && backupOut.textContent.trim() === '⇩' &&
+          backupOut.getAttribute('aria-label') === 'ذخیرهٔ پشتیبان کامل' &&
+          backupIn && backupIn.textContent.trim() === '⇧' &&
+          backupIn.getAttribute('aria-label') === 'بازگردانی پشتیبان',
+          'backup export/import use accessible download and upload icons');
+    check(backupText.indexOf('خروجی (دانلود JSON)') < 0 &&
+          backupText.indexOf('PEND') < 0 && backupText.indexOf('CALS') < 0 &&
+          backupText.indexOf('LUT_BACKUP') < 0 &&
+          backupText.indexOf('تنظیمات اعمال‌شده') >= 0 &&
+          backupText.indexOf('ارسال همه') >= 0,
+          'the backup card explains user-facing actions without internal variable names');
+
     /* --- the export payload carries the identity fields --- */
     const blobs = [];
     const OldBlob = win.Blob;
