@@ -258,6 +258,29 @@
 > side is IMPLEMENTED and pushed (param 19, state 9, flags b5, dead-man,
 > payload 112). Only the final `MODULE_ESP = 1` flip is left (section 9).
 
+> v1.25 (2026-10-08, twenty-second order - "the value I read is lower than the
+> multimeter current, and that can hurt the battery; check the calibration and
+> the table-building formulas"): two formula defects, no wire change.
+> (1) The current chain truncated at every division while the panel fits with
+> rounding and every bench anchor is a rounded number, so the board sat 1-4 mA
+> BELOW the values it is compared against and never once read high: the folded
+> stages in bsp_measurement.c (counts x 24200 / 27573, then x gain permille /
+> 1000) and MulDivU32Saturating (LUT interpolation + power->current) now round
+> to nearest. Numeric replay: -2.62 % mean (-14.08 % at the low point) ->
+> +0.16 %; on the 2026-09-27 SOLO1 sweep the signed error sum went -10 mA ->
+> +2 mA. (2) The LUT power axis was built from the DMM voltmeter while the
+> firmware divides by the BOARD's own battery voltage at run time, so the
+> board's voltage scale residue (~+1.19 % VDDA) landed in the CURRENT with the
+> opposite sign - one-sided, growing with current, the unsafe direction.
+> `calbuild()` now uses the board's vhi/vlo (the exact run-time divisor) and
+> mirrors the firmware's two integer chain stages, so an anchor lands exactly
+> on the board's chain (replay -0.95 % -> +0.16 %). A missing DMM voltage is a
+> note again, not a table blocker. The COMPILED tables in calibration.h still
+> carry the DMM-voltage convention (~1.2 %): import the saved bench samples in
+> the panel, rebuild and push the table - no new bench run needed, and fix the
+> VDDA scale first if you do it at all, or the table is rebuilt twice.
+> Panel v1.92. STM32 + ESP flash together.
+
 ---
 
 ## 1. Historical protocol snapshot (superseded by §1.1)
