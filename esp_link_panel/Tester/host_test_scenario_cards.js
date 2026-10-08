@@ -1162,6 +1162,23 @@ async function testBackupAndCal(win, doc) {
     win.CALS.pop();
     win.eval('calrun')();
 
+    /* Selecting only BAT2 narrows every green/red rule and the fit itself.
+       The other battery is not allowed to turn the selected result red. */
+    doc.getElementById('wcBAT1').checked = false;
+    doc.getElementById('wcBAT2').checked = true;
+    doc.getElementById('wcBOTH').checked = false;
+    win.eval('calchk')();
+    check(doc.getElementById('calck').textContent.indexOf('دامنهٔ بررسی: فقط باتری ۲') >= 0 &&
+          doc.getElementById('calck').textContent.indexOf('باتری ۱:') < 0 &&
+          doc.getElementById('calck').textContent.indexOf('باتری ۲:') >= 0,
+          'a BAT2-only selection checks and reports only battery 2');
+    win.eval('calrun')();
+    check(win.CALR.some(r => Number(r[1]) === 1) && win.CALR.some(r => Number(r[1]) === 3) &&
+          !win.CALR.some(r => Number(r[1]) === 0) && !win.CALR.some(r => Number(r[1]) === 2),
+          'a BAT2-only fit does not produce battery-1 calibration rows');
+    ['BAT1', 'BAT2', 'BOTH'].forEach(k => { doc.getElementById('wc' + k).checked = true; });
+    win.eval('calrun')();
+
     /* --- v1.61: the conditions are on the page, and a firmware snippet --- */
     win.eval('calchk')();
     const ruleRows = doc.querySelectorAll('#calck .ckr');
@@ -1592,6 +1609,12 @@ async function testLutPush(win, doc) {
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(win.D) });
     };
     const oldConfirm = win.confirm;
+    const applyPending = async (name) => {
+        check(!!doc.getElementById('lutApply') &&
+              doc.querySelectorAll('#lutcmp input.lutcalcheck').length > 0,
+              name + ': the change audit exposes an apply action and calibration checkboxes');
+        await win.eval('lapplypending')();
+    };
     const ackOk = { st: 3, s: 0, n1: packed.T[0].X.length, n2: packed.T[1].X.length,
                     crc: packed.crc, sent: packed.crc, age: 10, n: 3 };
 
@@ -1609,6 +1632,17 @@ async function testLutPush(win, doc) {
     win.confirm = (m) => String(m).indexOf('ریست شود') < 0;
     win.fetch = stub(ackOk);
     await win.eval('lsend')();
+    const calChecks = Array.from(doc.querySelectorAll('#lutcmp input.lutcalcheck'));
+    check(calChecks.length === 7 && calChecks.every(x => x.checked),
+          'every in-scope calibration value is checked by default');
+    const keepVoltage = doc.querySelector('#lutcmp input[data-cal-id="4"]');
+    keepVoltage.click();
+    check(!doc.querySelector('#lutcmp input[data-cal-id="4"]').checked &&
+          doc.getElementById('lutcmp').textContent.indexOf('حفظ می‌شود') >= 0,
+          'unticking one calibration value marks it to be preserved');
+    await applyPending('the first LUT transaction');
+    check(!calls.some(c => c.indexOf('/s?id=4&') >= 0),
+          'an unchecked calibration value is absent from the setter payload');
     check(doc.getElementById('calst').textContent.indexOf('✅') >= 0,
           'a matching CRC and point-by-point readback are reported as a real success');
     check(doc.getElementById('calst').classList.contains('cal-ok'),
@@ -1634,6 +1668,7 @@ async function testLutPush(win, doc) {
     win.confirm = () => true;
     win.fetch = stub(ackOk);
     await win.eval('lsend')();
+    await applyPending('the rebooted LUT transaction');
     check(calls.filter(c => c.indexOf('POST /lut/reset') >= 0).length === 1,
           'the confirmed reboot is sent so every module starts on the new table');
     check(calls.filter(c => c === 'GET /t').length >= 1,
@@ -1660,6 +1695,7 @@ async function testLutPush(win, doc) {
     calls.length = 0;
     win.fetch = stub({ st: 3, s: 0, n1: 4, n2: 3, crc: (packed.crc ^ 1) >>> 0, sent: packed.crc, age: 10, n: 3 });
     await win.eval('lsend')();
+    await applyPending('the CRC-mismatch LUT transaction');
     check(doc.getElementById('calst').textContent.indexOf('دست‌دادن نخواند') >= 0,
           'a CRC mismatch is called out instead of being hidden');
     check(doc.getElementById('calst').textContent.indexOf('جدول قبلی بدون تغییر ماند') >= 0,
@@ -1670,6 +1706,7 @@ async function testLutPush(win, doc) {
     /* --- a board-side refusal is reported with its reason --- */
     win.fetch = stub({ st: 3, s: 5, n1: 0, n2: 0, crc: 0, sent: packed.crc, age: 10, n: 3 });
     await win.eval('lsend')();
+    await applyPending('the board-refused LUT transaction');
     check(doc.getElementById('calst').textContent.indexOf('محور توان') >= 0,
           'the board status code is translated into a plain reason');
 
@@ -1682,6 +1719,7 @@ async function testLutPush(win, doc) {
     win.fetch = stub(ackOk);
     win.confirm = () => true;
     await win.eval('lsend')();
+    await applyPending('the post-commit-readback-failure LUT transaction');
     check(doc.getElementById('calst').textContent.indexOf('بازخوانی عددبه‌عدد بعد از commit ناموفق') >= 0,
           'a missing active-table readback is shown as a failure, not hidden by CRC');
     check(doc.getElementById('lutcmp').textContent.indexOf('بازخوانی ناموفق') >= 0,
@@ -1755,6 +1793,10 @@ async function testLutPush(win, doc) {
         win.confirm = (m) => String(m).indexOf('ریست شود') < 0;
         win.fetch = stub(ackOne);
         await win.eval('lsend')(1);
+        check(doc.getElementById('lutcmp').textContent.indexOf('فقط باتری ۱') >= 0 &&
+              doc.getElementById('lutcmp').textContent.indexOf('باتری ۲') < 0,
+              'a single-battery audit renders only the selected battery');
+        await applyPending('the single-battery LUT transaction');
         check(doc.getElementById('calst').textContent.indexOf('✅') >= 0,
               'a single-battery update completes with calibration and LUT readback');
         check(calls.some(c => c.indexOf('/s?id=0&') >= 0) && calls.some(c => c.indexOf('/s?id=2&') >= 0) &&
@@ -1765,8 +1807,8 @@ async function testLutPush(win, doc) {
         check(oneBody[0] === onePreview.T[0].X.length &&
               oneBody[1] === readBefore[1].X.length,
               'battery 2 stays in the transaction with exactly its fresh readback point count');
-        check(doc.getElementById('lutcmp').textContent.indexOf('unchanged') >= 0,
-              'the unchanged battery is visibly marked unchanged in the audit');
+        check(doc.getElementById('lutcmp').textContent.indexOf('باتری ۲') < 0,
+              'the unselected battery does not create a status or warning in the selected-battery audit');
 
         /* A calibration endpoint failure is a hard stop: no LUT POST may
            follow a missing/mismatched gain or offset readback. */
@@ -1777,6 +1819,7 @@ async function testLutPush(win, doc) {
         postedBodies.length = 0;
         win.confirm = () => true;
         await win.eval('lsend')(1);
+        await applyPending('the failed-calibration LUT transaction');
         check(doc.getElementById('calst').textContent.indexOf('پارامترهای کالیبراسیون') >= 0 &&
               doc.getElementById('calst').textContent.indexOf('جدول LUT ارسال نشد') >= 0,
               'a calibration readback failure is reported before LUT commit');

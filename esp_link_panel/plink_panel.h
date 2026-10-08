@@ -171,13 +171,13 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
    post-commit value together. The status colour describes values, not CRC.
    [FA] جدول ممیزی LUT: مقدار برد، پیشنهاد و مقدار پس از commit در هر ردیف
    کنار هم می‌مانند؛ رنگ وضعیت از خود عددها می‌آید، نه از CRC. */
-.lutbox{margin-top:10px;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:10px}.calstatus{direction:rtl;text-align:right;unicode-bidi:plaintext;margin:10px 0 0;padding:10px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--in);color:var(--tx);line-height:1.9;overflow-wrap:anywhere}.calstatus:empty{display:none}.calstatus.cal-ok{border-color:rgba(53,214,160,.65);background:rgba(53,214,160,.10);color:#b9f6df}.calstatus.cal-warn{border-color:rgba(247,193,60,.65);background:rgba(247,193,60,.10);color:#ffe2a3}.calstatus.cal-err{border-color:rgba(255,104,115,.65);background:rgba(255,104,115,.10);color:#ffc2c7}.calstatus.cal-info{border-color:rgba(99,162,255,.55);background:rgba(99,162,255,.08);color:#cfe2ff}.calstatus .calsummary{margin:0;background:transparent;border:0;padding:0}.calstatus .calsummarybody{max-height:260px}.calreadbox{direction:rtl;text-align:right}.calreadmeta{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;color:var(--mu);font-size:11px;margin-bottom:6px}.calreadmeta b{color:var(--tx)}.calparamtable{direction:rtl}.calparamtable .calpname{text-align:right;font-weight:700;white-space:normal}.calparamtable .calpid{font-size:10px;color:var(--mu);font-weight:400;white-space:nowrap}.calparamtable .calnum{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;white-space:nowrap}.luthead{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;color:var(--tx);font-weight:700}.luttag{font-size:11px;color:var(--mu);font-weight:400}.lutreadnote{margin:7px 0;padding:7px 9px;border-radius:8px;background:rgba(80,150,255,.08);color:var(--mu);font-size:12px}.lutreadcard{margin-top:9px;border:1px solid var(--ln);border-radius:9px;padding:8px;background:rgba(0,0,0,.08)}.lutcal{display:grid;gap:4px;margin:7px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:9px;background:rgba(247,193,60,.08);font-size:12px}.lutbox.badread{border-color:rgba(255,104,115,.6)}.lutt{width:100%;font-size:12px;direction:ltr;white-space:nowrap}.lutt th{position:sticky;top:0;background:var(--rs);color:var(--mu);padding:6px 8px;text-align:center;font-weight:600}.lutt td{padding:5px 8px;text-align:center;border-top:1px solid rgba(56,69,94,.45)}.lutt .pair{font-variant-numeric:tabular-nums}.lutst{font-weight:700;border-radius:999px;padding:2px 8px;display:inline-block}.lutst.same{color:var(--mu);background:rgba(150,161,184,.12)}.lutst.changed{color:var(--ok);background:rgba(53,214,160,.12)}.lutst.diff{color:var(--wa);background:rgba(247,193,60,.12)}.lutst.bad{color:var(--er);background:rgba(255,104,115,.12)}.calsummary{margin:8px 0;padding:9px;border:1px solid var(--ln);border-radius:10px;background:var(--in)}.calsummaryhead{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;font-weight:700}.calsummarybody{max-height:280px;overflow-y:auto;margin-top:7px;display:grid;gap:5px;padding-right:2px}.calsummaryrow{display:grid;grid-template-columns:minmax(150px,1fr) minmax(170px,2fr);gap:8px;align-items:center;padding:7px 8px;border:1px solid rgba(56,69,94,.55);border-radius:8px;background:rgba(0,0,0,.08)}.calsummaryrow .calname{font-weight:700}.calsummaryrow .calvalue{direction:ltr;text-align:left;font-variant-numeric:tabular-nums}.calsummaryrow .calstate{grid-column:1/-1;color:var(--mu);font-size:12px}.calmodal{display:none;position:fixed;inset:0;z-index:120;background:rgba(2,6,23,.72);padding:16px;align-items:center;justify-content:center}.calmodal.on{display:flex}.calmodalbox{width:min(700px,100%);max-height:82vh;display:flex;flex-direction:column;background:var(--rs);border:1px solid var(--ln);border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.45);padding:12px}.calmodalhead{display:flex;justify-content:space-between;gap:10px;align-items:center}.calmodalbody{overflow-y:auto;max-height:min(58vh,460px);margin:10px 0}.calmodalfoot{display:flex;justify-content:flex-start;gap:8px;flex-wrap:wrap;border-top:1px solid var(--ln);padding-top:10px}.calmodalclose{border:0;background:transparent;color:var(--mu);font-size:24px;cursor:pointer;padding:0 6px}.calmodal .calsummary{margin:0;background:var(--in)}
+.lutbox{margin-top:10px;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:10px}.lutbox.lutchange{border-color:rgba(247,148,30,.88);box-shadow:0 0 0 2px rgba(247,148,30,.16),0 0 18px rgba(247,148,30,.18)}.lutactions{margin-top:10px;padding-top:9px;border-top:1px solid rgba(247,148,30,.42);display:grid;gap:8px}.lutactions .bqr2{margin-top:0}.calstatus{direction:rtl;text-align:right;unicode-bidi:plaintext;margin:10px 0 0;padding:10px 12px;border:1px solid var(--ln);border-radius:12px;background:var(--in);color:var(--tx);line-height:1.9;overflow-wrap:anywhere}.calstatus:empty{display:none}.calstatus.cal-ok{border-color:rgba(53,214,160,.65);background:rgba(53,214,160,.10);color:#b9f6df}.calstatus.cal-warn{border-color:rgba(247,193,60,.65);background:rgba(247,193,60,.10);color:#ffe2a3}.calstatus.cal-err{border-color:rgba(255,104,115,.65);background:rgba(255,104,115,.10);color:#ffc2c7}.calstatus.cal-info{border-color:rgba(99,162,255,.55);background:rgba(99,162,255,.08);color:#cfe2ff}.calstatus .calsummary{margin:0;background:transparent;border:0;padding:0}.calstatus .calsummarybody{max-height:260px}.calreadbox{direction:rtl;text-align:right}.calreadmeta{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;color:var(--mu);font-size:11px;margin-bottom:6px}.calreadmeta b{color:var(--tx)}.calparamtable{direction:rtl}.calparamtable .calpname{text-align:right;font-weight:700;white-space:normal}.calparamtable .calpid{font-size:10px;color:var(--mu);font-weight:400;white-space:nowrap}.calparamtable .calnum{direction:ltr;unicode-bidi:isolate;font-variant-numeric:tabular-nums;white-space:nowrap}.calparamtable .calpick{white-space:nowrap}.calparamtable .calpick label{display:inline-flex;align-items:center;gap:4px;color:var(--tx);cursor:pointer}.calparamtable .lutcalcheck{accent-color:#f7941e}.calparamtable tr.calskip{opacity:.72}.calparamtable tr.calskip .calpname{text-decoration:line-through;text-decoration-color:rgba(247,148,30,.7)}.luthead{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;color:var(--tx);font-weight:700}.luttag{font-size:11px;color:var(--mu);font-weight:400}.lutreadnote{margin:7px 0;padding:7px 9px;border-radius:8px;background:rgba(80,150,255,.08);color:var(--mu);font-size:12px}.lutreadcard{margin-top:9px;border:1px solid var(--ln);border-radius:9px;padding:8px;background:rgba(0,0,0,.08)}.lutcal{display:grid;gap:4px;margin:7px 0;padding:8px 10px;border:1px solid var(--ln);border-radius:9px;background:rgba(247,193,60,.08);font-size:12px}.lutbox.badread{border-color:rgba(255,104,115,.6)}.lutt{width:100%;font-size:12px;direction:ltr;white-space:nowrap}.lutt th{position:sticky;top:0;background:var(--rs);color:var(--mu);padding:6px 8px;text-align:center;font-weight:600}.lutt td{padding:5px 8px;text-align:center;border-top:1px solid rgba(56,69,94,.45)}.lutt .pair{font-variant-numeric:tabular-nums}.lutst{font-weight:700;border-radius:999px;padding:2px 8px;display:inline-block}.lutst.same{color:var(--mu);background:rgba(150,161,184,.12)}.lutst.changed{color:var(--ok);background:rgba(53,214,160,.12)}.lutst.diff{color:var(--wa);background:rgba(247,193,60,.12)}.lutst.bad{color:var(--er);background:rgba(255,104,115,.12)}.calsummary{margin:8px 0;padding:9px;border:1px solid var(--ln);border-radius:10px;background:var(--in)}.calsummaryhead{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;font-weight:700}.calsummarybody{max-height:280px;overflow-y:auto;margin-top:7px;display:grid;gap:5px;padding-right:2px}.calsummaryrow{display:grid;grid-template-columns:minmax(150px,1fr) minmax(170px,2fr);gap:8px;align-items:center;padding:7px 8px;border:1px solid rgba(56,69,94,.55);border-radius:8px;background:rgba(0,0,0,.08)}.calsummaryrow .calname{font-weight:700}.calsummaryrow .calvalue{direction:ltr;text-align:left;font-variant-numeric:tabular-nums}.calsummaryrow .calstate{grid-column:1/-1;color:var(--mu);font-size:12px}.calmodal{display:none;position:fixed;inset:0;z-index:120;background:rgba(2,6,23,.72);padding:16px;align-items:center;justify-content:center}.calmodal.on{display:flex}.calmodalbox{width:min(700px,100%);max-height:82vh;display:flex;flex-direction:column;background:var(--rs);border:1px solid var(--ln);border-radius:14px;box-shadow:0 18px 60px rgba(0,0,0,.45);padding:12px}.calmodalhead{display:flex;justify-content:space-between;gap:10px;align-items:center}.calmodalbody{overflow-y:auto;max-height:min(58vh,460px);margin:10px 0}.calmodalfoot{display:flex;justify-content:flex-start;gap:8px;flex-wrap:wrap;border-top:1px solid var(--ln);padding-top:10px}.calmodalclose{border:0;background:transparent;color:var(--mu);font-size:24px;cursor:pointer;padding:0 6px}.calmodal .calsummary{margin:0;background:var(--in)}
 .bt3{width:auto;font-size:13px}.bt3 th{color:var(--mu);font-weight:600;text-align:center;padding:5px 8px;white-space:nowrap}.bt3 td{padding:5px 8px;text-align:center}.bt3 input[type=number]{padding:6px 8px}
 .bsum{font-size:12px;direction:ltr;text-align:left;line-height:1.9;margin-bottom:8px}.okc{color:var(--ok)}.erc{color:var(--er)}
 /* [EN] Colour checklist: green ready / yellow warning / red blocker.
    [FA] فهرست رنگی: سبز آماده / زرد هشدار / قرمز مانع. */
 .wak{color:var(--wa)}
-.cksum{display:flex;gap:16px;font-size:12.5px;margin:8px 0 2px}
+.ckscope{direction:rtl;text-align:right;margin:8px 0 4px;padding:7px 10px;border:1px solid rgba(247,148,30,.55);border-radius:9px;background:rgba(247,148,30,.08);color:var(--tx);font-size:12px}.cksum{display:flex;gap:16px;font-size:12.5px;margin:8px 0 2px}
 .ckl{display:flex;flex-direction:column;gap:6px;margin:8px 0 10px}
 .ckr{display:flex;gap:9px;align-items:flex-start;direction:rtl;text-align:right;background:var(--in);border:1px solid var(--ln);border-right:4px solid var(--ln);border-radius:10px;padding:8px 11px;font-size:12.5px;line-height:1.9}
 .ckr.ok{border-right-color:var(--ok);background:rgba(53,214,160,.06)}
@@ -395,7 +395,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build c92ead1</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build feea3a1</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3117,9 +3117,9 @@ function calrun(){
  const cur=id=>(D&&D.p&&D.p[id]!=null)?D.p[id]:null;
  if(!D||!D.p){stxt('calst','⚠ هنوز داده‌ای از برد نرسیده — لینک برقرار نیست.');return;}
  if(calsel(null).length<3){stxt('calst','⚠ فقط '+calsel(null).length+' نمونهٔ تیک‌خورده هست؛ برای کالیبره حداقل ۳ مرحله لازم است.');return;}
- const rows=[];
- /* --- جریان دو کانال: شیب و آفست با هم از یک خط --- */
- [[1,'r1','b1',0,2],[2,'r2','b2',1,3]].forEach(ch=>{
+ const rows=[],targets=caltargets(),hasTarget=n=>targets.indexOf(n)>=0;
+ /* --- جریان فقط کانال‌های انتخاب‌شده: شیب و آفست با هم از یک خط --- */
+ [[1,'r1','b1',0,2],[2,'r2','b2',1,3]].filter(ch=>hasTarget(ch[0])).forEach(ch=>{
   const S=calsel(ch[0]).filter(z=>Number.isFinite(z[ch[2]])&&Number.isFinite(z[ch[1]]));
   const f=calfit(S.map(z=>z[ch[1]]),S.map(z=>z[ch[2]]));
   const ttl='کانال '+fa(ch[0]);
@@ -3221,6 +3221,14 @@ function calpick(on){CALS.forEach(z=>{z.use=on?1:0;});calinvalidate();calsave();
    channel. [FA] فقط ردیف‌های تیک‌خورده، و فقط ردیف‌هایی که همان کانال در
    آن سناریو واقعاً کار می‌کرده. */
 function calsel(n){return CALS.filter(z=>z.use!==0&&(n==null||z.sc==null||WSC[z.sc]==null||WSC[z.sc].indexOf(n)>=0));}
+/* [FA] دامنهٔ ممیزی از سناریوهای انتخاب‌شده می‌آید؛ باتری خارج از دامنه
+   نباید برای نتیجهٔ باتری انتخاب‌شده هشدار بسازد. */
+function caltargets(){
+ const keys=Object.keys(WSC),chosen=keys.filter(k=>{const e=$('wc'+k);return !e||e.checked;});
+ const out=[];chosen.forEach(k=>WSC[k].forEach(n=>{if(out.indexOf(n)<0)out.push(n);}));
+ return out.length?out:[1,2];
+}
+function caltargetText(targets){return targets.length===1?'فقط باتری '+fa(targets[0]):'هر دو باتری';}
 /* ==================== Voltage slope / شیب ولتاژ ====================
    [EN] Measure divider slope separately; an offset cannot hide a scale error.
    [FA] شیب مقسم جداگانه سنجیده می‌شود؛ آفست خطای مقیاس را پنهان نمی‌کند. */
@@ -3262,12 +3270,13 @@ function calchk(){
  /* [EN] ok=green, wa=yellow (runs anyway), no=red blocker; RTL list.
     [FA] سبز آماده، زرد هشدار (انجام می‌شود)، قرمز مانع؛ فهرست راست‌به‌چپ. */
  const R=[],ok=(t)=>R.push(['ok',t,'']),wn=(t,f)=>R.push(['wa',t,f||'']),no=(t,f)=>R.push(['no',t,f||'']);
+ const targets=caltargets(),hasTarget=n=>targets.indexOf(n)>=0;
  const S=calsel(null);
  /* ۱) لینک */
  if(D&&D.p)ok('ارتباط با برد برقرار است و عددهای فعلی خوانده شدند.');
  else no('ارتباط با برد برقرار نیست.','تا لینک وصل نشود نه مقدار فعلی دیده می‌شود نه چیزی نوشتنی است.');
- /* ۲) تعداد نمونه به تفکیک باتری */
- [1,2].forEach(n=>{const k=n===1?'b1':'b2',r=n===1?'r1':'r2';
+ /* ۲) تعداد نمونه فقط برای باتری‌های انتخاب‌شده */
+ targets.forEach(n=>{const k=n===1?'b1':'b2',r=n===1?'r1':'r2';
   const c=calsel(n).filter(z=>Number.isFinite(z[k])&&Number.isFinite(z[r]));
   if(c.length>=4)ok('باتری '+fa(n)+': '+c.length+' نمونهٔ کامل دارد (حداقل ۴ لازم است).');
   else no('باتری '+fa(n)+': فقط '+c.length+' نمونهٔ کامل دارد.',
@@ -3289,8 +3298,8 @@ function calchk(){
  else wn('ولتاژ ورودی فقط در '+nv+' مرحله ثبت شده.','بدون حداقل ۳ عدد، آفست ولتاژ ورودی محاسبه نمی‌شود.');
  if(nb>=3)ok('ولتاژ هر دو نیم‌باتری در '+nb+' مرحله ثبت شده.');
  else wn('ولتاژ نیم‌باتری‌ها فقط در '+nb+' مرحله ثبت شده.','آفست پک ۲۴ ولت و نود ۱۲ ولت به عدد هر دو نیم‌باتری نیاز دارد.');
- /* ۶) قانونی‌بودن جدولی که ساخته می‌شود */
- [1,2].forEach(n=>{const t=calbuild(n,(D&&D.p&&D.p[n-1]!=null)?D.p[n-1]:0,(D&&D.p&&D.p[n+1]!=null)?D.p[n+1]:1000);
+ /* ۶) قانونی‌بودن جدول فقط برای باتری‌های انتخاب‌شده */
+ targets.forEach(n=>{const t=calbuild(n,(D&&D.p&&D.p[n-1]!=null)?D.p[n-1]:0,(D&&D.p&&D.p[n+1]!=null)?D.p[n+1]:1000);
   if(t.bad)no('جدول باتری '+fa(n)+': '+t.bad+'.','جدول ساخته نمی‌شود تا چیز نادرستی وارد کد میکرو نشود.');
   else ok('جدول باتری '+fa(n)+': '+t.X.length+' نقطه، دو محور هم‌طول، جریان صعودی و توان بدون نزول.'+
    (t.note.length?' ('+t.note.join(' · ')+')':''));});
@@ -3306,12 +3315,14 @@ function calchk(){
   if(err<2)ok(k[0]+': شیب <span dir="ltr">'+f.a.toFixed(4)+'</span> است (<span dir="ltr">'+err.toFixed(1)+'٪</span>) — در حد تلرانس ۱٪ مقاومت‌ها، کاری لازم نیست.');
   else wn(k[0]+': شیب <span dir="ltr">'+f.a.toFixed(4)+'</span> است، یعنی <span dir="ltr">'+err.toFixed(1)+'٪</span> خطای ضریبی.',
    'این بیشتر از تلرانس ۱٪ مقاومت‌هاست، پس احتمالاً قطعهٔ اشتباه یا اتصال بد است؛ آفست درستش نمی‌کند. در «ساخت کد برای میکرو» عدد اصلاح‌شدهٔ مقسم چاپ می‌شود.');});
- /* ۸) جریان منفی/صفر در همهٔ نقاط */
- if(S.some(z=>Number.isFinite(z.b1)&&z.b1>0)||S.some(z=>Number.isFinite(z.b2)&&z.b2>0))
-  ok('حداقل در بعضی مرحله‌ها جریان واقعی شارژ ثبت شده.');
- else no('هیچ مرحله‌ای جریان شارژ مثبت ندارد.','با duty بالاتر یا باتری خالی‌تر تست کنید؛ از روی جریان صفر چیزی درنمی‌آید.');
+ /* ۸) جریان منفی/صفر فقط در باتری‌های انتخاب‌شده */
+ const currentKeys=targets.map(n=>n===1?'b1':'b2');
+ if(currentKeys.some(k=>S.some(z=>Number.isFinite(z[k])&&z[k]>0)))
+  ok('حداقل در بعضی مرحله‌های باتری‌های انتخاب‌شده جریان واقعی شارژ ثبت شده.');
+ else no('هیچ مرحله‌ای برای باتری‌های انتخاب‌شده جریان شارژ مثبت ندارد.','با duty بالاتر یا باتری خالی‌تر تست کنید؛ از روی جریان صفر چیزی درنمی‌آید.');
   const cO=R.filter(x=>x[0]==='ok').length,cW=R.filter(x=>x[0]==='wa').length,cN=R.filter(x=>x[0]==='no').length;
- box.innerHTML='<div class="cksum"><b class="okc">✔ '+fa(cO)+' آماده</b><b class="wak">⚠ '+fa(cW)+' هشدار</b><b class="erc">✕ '+fa(cN)+' مانده</b></div>'+
+ box.innerHTML='<div class="ckscope"><b>دامنهٔ بررسی:</b> '+caltargetText(targets)+' — باتری‌های خارج از این دامنه در هشدارها و نتیجه وارد نمی‌شوند.</div>'+
+  '<div class="cksum"><b class="okc">✔ '+fa(cO)+' آماده</b><b class="wak">⚠ '+fa(cW)+' هشدار</b><b class="erc">✕ '+fa(cN)+' مانده</b></div>'+
   '<div class="ckl">'+R.map(x=>'<div class="ckr '+x[0]+'"><i>'+(x[0]==='ok'?'✔':x[0]==='wa'?'!':'✕')+'</i><div>'+x[1]+(x[2]?'<span class="fx">'+x[2]+'</span>':'')+'</div></div>').join('')+'</div>';
  return cN+cW;}
 
@@ -3499,20 +3510,24 @@ function lcalvalue(id){
  const r=CALR.filter(x=>Number(x[1])===id)[0];
  if(r&&Number.isFinite(Number(r[3])))return Math.round(Number(r[3]));
  return (D&&D.p&&D.p[id]!=null)?Number(D.p[id]):0;}
+function lcalids(target){return target===1?[0,2,4,5,6]:target===2?[1,3,4,5,6]:[0,1,2,3,4,5,6];}
+function lcalselected(selected,id){return !selected||selected[id]!==false;}
 function lcopytable(t){return {X:t&&Array.isArray(t.X)?t.X.slice():[],Y:t&&Array.isArray(t.Y)?t.Y.slice():[]};}
-function lpack(target,base){
+function lpack(target,base,selected){
  if(!CALR.length)return {bad:'نتیجهٔ محاسبهٔ فعلی کالیبراسیون وجود ندارد؛ ابتدا دوباره محاسبه کنید',msg:[]};
- const both=target==null||target===0||target==='both';
- const proposedOff=[lcalvalue(0),lcalvalue(1)],proposedGain=[lcalvalue(2),lcalvalue(3)];
- const proposedVoltage=[lcalvalue(4),lcalvalue(5),lcalvalue(6)];
+ const targetId=(target===1||target===2)?target:0,both=targetId===0,ids=lcalids(targetId);
+ const proposedOff=[lcalvalue(0),lcalvalue(1)],proposedGain=[lcalvalue(2),lcalvalue(3)],proposedVoltage=[lcalvalue(4),lcalvalue(5),lcalvalue(6)];
  const boardSnapshot=lcalSnapshot(),boardOff=boardSnapshot.offset,boardGain=boardSnapshot.gain,boardVoltage=boardSnapshot.voltage;
- const off=both?proposedOff:proposedOff.map((v,i)=>i+1===target?v:boardOff[i]);
- const gn=both?proposedGain:proposedGain.map((v,i)=>i+1===target?v:boardGain[i]);
- const msg=[],T=[{X:[],Y:[]},{X:[],Y:[]}];
+ const off=boardOff.slice(),gn=boardGain.slice(),voltage=boardVoltage.slice();
+ const setIfSelected=(id,value,old)=>lcalselected(selected,id)?value:old;
+ [0,1].forEach(i=>{const id=i,ga=id+2;if((both||id===targetId-1)){off[i]=setIfSelected(id,proposedOff[i],boardOff[i]);gn[i]=setIfSelected(ga,proposedGain[i],boardGain[i]);}});
+ [4,5,6].forEach(id=>{voltage[id-4]=setIfSelected(id,proposedVoltage[id-4],boardVoltage[id-4]);});
+ const chosen={};ids.forEach(id=>{chosen[id]=lcalselected(selected,id);});
+ const msg=[],T=[{X:[],Y:[]},{X:[],Y:[]}],buildTargets=both?[1,2]:[targetId];
  [1,2].forEach(n=>{
-  if(!both&&n!==target){
+  if(buildTargets.indexOf(n)<0){
    if(!base||!base.ready){
-    msg.push('برای به‌روزرسانی تکی باتری '+fa(target)+'، ابتدا جدول واقعی هر دو باتری باید خوانده شود');
+    msg.push('برای حفظ جدول باتری دیگر، ابتدا جدول واقعی هر دو باتری باید خوانده شود');
     return;
    }
    T[n-1]=lcopytable(base.T[n-1]);
@@ -3526,7 +3541,7 @@ function lpack(target,base){
    T[n-1]={X:[],Y:[]};return;}
   T[n-1]=t;});
  if(!T[0].X.length&&!T[1].X.length)return {bad:'هیچ کانالی جدول قابل‌ارسال ندارد',msg:msg};
- if(!both&&(!Number.isFinite(off[target-1])||!Number.isFinite(gn[target-1])))
+ if(!both&&(!Number.isFinite(off[targetId-1])||!Number.isFinite(gn[targetId-1])))
   return {bad:'گین/آفست پیشنهادی این باتری معتبر نیست',msg:msg};
  const by=[],cs=[T[0].X.length,T[1].X.length];
  T.forEach(t=>{by.push(t.X.length&255);
@@ -3534,8 +3549,8 @@ function lpack(target,base){
    by.push(v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255);});}});
  T.forEach(t=>{for(let i=0;i<t.X.length;i++){cs.push(t.X[i],t.Y[i]);}});
  const crc=lcrc(by);cs.push(crc);
- return {T:T,crc:crc,body:cs.join(','),msg:msg,target:both?0:target,
-  cal:{offset:off,gain:gn,voltage:proposedVoltage},
+ return {T:T,crc:crc,body:cs.join(','),msg:msg,target:targetId,
+  cal:{offset:off,gain:gn,voltage:voltage,ids:ids,selected:chosen,editable:false},
   calBefore:boardSnapshot};}
 /* [EN] The read-only view is deliberately separate from the transaction
    audit: an operator asking "what is on the board now?" must not get a
@@ -3594,17 +3609,19 @@ function calpstate(before,proposed,after){
  if(before!=null&&Number(before)===Number(proposed))return {c:'same',t:'بدون تغییر'};
  return {c:'changed',t:'تغییر کرد و تأیید شد'};
 }
-function calParamTable(before,proposed,after,title,source){
+function calParamTable(before,proposed,after,title,source,ids,selection,editable){
  const seq=before&&before.seq!=null?before.seq:(after&&after.seq!=null?after.seq:null);
- let h='<div class="lutbox calreadbox"><div class="luthead"><b>'+title+'</b><span class="luttag">۷ شناسهٔ calibration</span></div>';
- h+='<div class="calreadmeta"><span><b>منبع:</b> '+source+'</span><span><b>فریم تازه:</b> '+(seq==null?'—':seq)+'</span><span><b>ملاک:</b> تطبیق عددی همان شناسه</span></div>';
+ const rows=Array.isArray(ids)?CALREAD.filter(m=>ids.indexOf(m.id)>=0):CALREAD;
+ const pick=selection&&typeof selection==='object';
+ let h='<div class="lutbox calreadbox"><div class="luthead"><b>'+title+'</b><span class="luttag">'+rows.length+' شناسهٔ calibration'+(pick?' · تیک پیش‌فرض برای اعمال':'')+'</span></div>';
+ h+='<div class="calreadmeta"><span><b>منبع:</b> '+source+'</span><span><b>فریم تازه:</b> '+(seq==null?'—':seq)+'</span><span><b>ملاک:</b> تطبیق عددی همان شناسه</span>'+(pick?'<span><b>انتخاب:</b> برداشتن تیک یعنی حفظ مقدار قبلی و نرفتن این شناسه در payload</span>':'')+'</div>';
  if(proposed){
-  h+='<div class="tw"><table class="lutt calparamtable"><tr><th>پارامتر / شناسه</th><th>واحد</th><th>روی برد<br>قبل از ارسال</th><th>پیشنهاد پنل</th><th>روی برد<br>بعد از اعمال</th><th>نتیجه</th></tr>';
-  CALREAD.forEach(m=>{const b=calpval(before,m),p=calpval(proposed,m),a=calpval(after,m),s=calpstate(b,p,a);h+='<tr><td class="calpname">'+m.name+' <span class="calpid">(ID '+m.id+')</span></td><td>'+m.unit+'</td><td>'+calpnum(b)+'</td><td>'+calpnum(p)+'</td><td>'+calpnum(a)+'</td><td><span class="lutst '+s.c+'">'+s.t+'</span></td></tr>';});
+  h+='<div class="tw"><table class="lutt calparamtable"><tr>'+(pick?'<th>اعمال</th>':'')+'<th>پارامتر / شناسه</th><th>واحد</th><th>روی برد<br>قبل از ارسال</th><th>پیشنهاد پنل</th><th>روی برد<br>بعد از اعمال</th><th>نتیجه</th></tr>';
+  rows.forEach(m=>{const b=calpval(before,m),p=calpval(proposed,m),a=calpval(after,m),skip=pick&&selection[m.id]===false,s=skip?{c:'same',t:after==null?'حفظ می‌شود — ارسال نمی‌شود':'حفظ شد — ارسال نشد'}:calpstate(b,p,a),check=(!skip?' checked':'')+(editable?'':' disabled');h+='<tr class="'+(skip?'calskip':'')+'">'+(pick?'<td class="calpick"><label><input class="lutcalcheck" type="checkbox" data-cal-id="'+m.id+'"'+check+' onchange="lcaltoggle(this)"><span>اعمال</span></label></td>':'')+'<td class="calpname">'+m.name+' <span class="calpid">(ID '+m.id+')</span></td><td>'+m.unit+'</td><td>'+calpnum(b)+'</td><td>'+calpnum(p)+'</td><td>'+calpnum(a)+'</td><td><span class="lutst '+s.c+'">'+s.t+'</span></td></tr>';});
   h+='</table></div>';
  }else{
   h+='<div class="tw"><table class="lutt calparamtable"><tr><th>پارامتر / شناسه</th><th>واحد</th><th>مقدار واقعی روی برد</th></tr>';
-  CALREAD.forEach(m=>{h+='<tr><td class="calpname">'+m.name+' <span class="calpid">(ID '+m.id+')</span></td><td>'+m.unit+'</td><td>'+calpnum(calpval(before,m))+'</td></tr>';});
+  rows.forEach(m=>{h+='<tr><td class="calpname">'+m.name+' <span class="calpid">(ID '+m.id+')</span></td><td>'+m.unit+'</td><td>'+calpnum(calpval(before,m))+'</td></tr>';});
   h+='</table></div>';
  }
  return h+'</div>';
@@ -3632,13 +3649,14 @@ function lrender(p,b,a){
  const e=$('lutcmp');if(!e)return;
  if(!p||p.bad){e.innerHTML='<div class="lutbox"><div class="luthead">ممیزی عددبه‌عدد جدول LUT</div><div class="lb">پس از ساخت جدول پیشنهادی، مقدار فعلی برد و مقدار پیشنهادی اینجا نمایش داده می‌شود.</div></div>';return;}
  const br=!!(b&&b.ready),ar=!!(a&&a.ready),bt=br?b.T:[{X:[],Y:[]},{X:[],Y:[]}],at=ar?a.T:[{X:[],Y:[]},{X:[],Y:[]}];
- let h='<div class="lutbox"><div class="luthead"><span>ممیزی ارسال جدول LUT</span><span class="luttag">برد قبل ← پیشنهاد پنل ← برد بعد</span></div>';
+ const target=p.target===1||p.target===2?p.target:0,viewTargets=target===0?[1,2]:[target];
+ let h='<div class="lutbox lutchange"><div class="luthead"><span>ممیزی ارسال جدول LUT</span><span class="luttag">'+(target===0?'هر دو باتری':'فقط باتری '+fa(target))+' · برد قبل ← پیشنهاد پنل ← برد بعد</span></div>';
  h+='<div class="lutreadnote"><b>این سه ستون به هم مربوط‌اند:</b> «برد قبل» از readback واقعی قبل از ارسال، «پیشنهاد پنل» همان payload ساخته‌شده و «برد بعد» از readback واقعی بعد از commit می‌آید. ملاک موفقیت، برابر بودن عدد هر chain/power است؛ CRC فقط سلامت انتقال را نشان می‌دهد.</div>';
  h+='<div class="lb" style="margin:5px 0">'+(br?'✅ جدول واقعی قبل از ارسال خوانده شد. اختلاف‌های قبل و بعد در همان ردیف مشخص‌اند.':'⚠ جدول واقعی قبل از ارسال در دسترس نیست؛ مقدار «فعلی» حدس زده نمی‌شود و با — نشان داده می‌شود.')+'</div>';
  if(p.cal){
-  h+=calParamTable(p.calBefore,p.cal,p.calAfter||null,'پارامترهایی که برای ساخت همین جدول استفاده شدند','telemetry تازهٔ STM32 (/t)؛ readback همان شناسه');
+  h+=calParamTable(p.calBefore,p.cal,p.calAfter||null,'پارامترهایی که برای ساخت همین جدول استفاده شدند','telemetry تازهٔ STM32 (/t)؛ readback همان شناسه',p.cal.ids,p.cal.selected,p.cal.editable);
  }
- [1,2].forEach(n=>{
+ viewTargets.forEach(n=>{
   const p0=p.T[n-1]||{X:[],Y:[]},b0=bt[n-1],a0=at[n-1],m=Math.max(p0.X.length,b0.X.length,a0.X.length);
   h+='<div class="luthead" style="margin-top:9px"><span>باتری '+fa(n)+'</span><span class="luttag">'+m+' ردیف قابل مقایسه</span></div>';
   if(!m){h+='<div class="lb">برای این باتری نقطه‌ای در جدول پیشنهادی یا بازخوانی‌شده نیست.</div>';return;}
@@ -3650,10 +3668,13 @@ function lrender(p,b,a){
   }
   h+='</table></div>';
  });
- h+='<div class="luttag">ملاک موفقیت، تطبیق chain و power هر ردیف با پیشنهاد است؛ CRC و تعداد فقط سلامت handshake را توضیح می‌دهند.</div></div>';
+ if(p.cal&&p.cal.editable){
+  h+='<div class="lutactions"><span class="luttag">تیک‌ها پیش‌فرض فعال‌اند؛ برای حفظ هر مقدار، تیک همان ردیف را بردارید.</span><div class="bqr2"><button class="sb brun pbg" id="lutApply" type="button" onclick="lapplypending()">✓ تأیید و اعمال موارد تیک‌خورده</button><button class="sb stp2 pbr" id="lutCancel" type="button" onclick="lcancelpending()">لغو این تغییرها</button></div></div>';
+ }else h+='<div class="luttag">ملاک موفقیت، تطبیق chain و power هر ردیف با پیشنهاد است؛ CRC و تعداد فقط سلامت handshake را توضیح می‌دهند.</div>';
+ h+='</div>';
  e.innerHTML=h;
 }
-function lview(p,b,a){const k=(p&&!p.bad?p.body:'none')+'|'+(b?b.stamp:0)+'|'+(a?a.stamp:0);if(k===LUTVIEW)return;LUTVIEW=k;lrender(p,b,a);}
+function lview(p,b,a){const sel=p&&p.cal&&p.cal.selected?Object.keys(p.cal.selected).map(id=>id+':'+(p.cal.selected[id]?'1':'0')).join(','):'';const k=(p&&!p.bad?p.body:'none')+'|'+sel+'|'+(p&&p.cal&&p.cal.editable?'edit':'lock')+'|'+(b?b.stamp:0)+'|'+(a?a.stamp:0);if(k===LUTVIEW)return;LUTVIEW=k;lrender(p,b,a);}
 function ldecode(j){
  const r=j&&j.read;
  if(!r||r.ready!==1)return lnewread(false,(r&&r.error)?'دادهٔ بازخوانی ناقص بود':'پاسخ بازخوانی نرسید');
@@ -3669,7 +3690,7 @@ async function lread(){
  }
  return lnewread(false,'مهلت بازخوانی جدول تمام شد');
 }
-function lmatch(a,p){if(!a||!a.ready)return false;for(let n=0;n<2;n++){const x=a.T[n],y=p.T[n];if(x.X.length!==y.X.length)return false;for(let i=0;i<x.X.length;i++){if(x.X[i]!==y.X[i]||x.Y[i]!==y.Y[i])return false;}}return true;}
+function lmatch(a,p,target){if(!a||!a.ready)return false;const targetId=target===1||target===2?target:(p&&p.target===1||p&&p.target===2?p.target:0),rows=targetId===0?[0,1]:[targetId-1];for(const n of rows){const x=a.T[n],y=p.T[n];if(x.X.length!==y.X.length)return false;for(let i=0;i<x.X.length;i++){if(x.X[i]!==y.X[i]||x.Y[i]!==y.Y[i])return false;}}return true;}
 async function lreadnow(){
  if(LREAD_IN_PROGRESS||CAL_BUSY)return;
  CAL_BUSY=true;
@@ -3687,33 +3708,35 @@ async function lreadnow(){
    معتبر فرض نمی‌شود؛ هر مقدار کالیبراسیون این تراکنش باید بعد از ریست
    همچنان دقیقاً برابر مقدار پایدارشده باشد. */
 async function lcalread(p){
- const ids=[0,1,2,3,4,5,6],want=[p.cal.offset[0],p.cal.offset[1],p.cal.gain[0],p.cal.gain[1],p.cal.voltage[0],p.cal.voltage[1],p.cal.voltage[2]];
+ const ids=Array.isArray(p&&p.cal&&p.cal.ids)&&p.cal.ids.length?p.cal.ids:lcalids(p&&p.target),want=id=>id===0?p.cal.offset[0]:id===1?p.cal.offset[1]:id===2?p.cal.gain[0]:id===3?p.cal.gain[1]:p.cal.voltage[id-4];
  for(let i=0;i<10;i++){
   try{
    const j=await req('/t','GET');
    if(j&&j._s===200&&j.p){
     D=j;lupd();
-    if(ids.every(id=>Number.isFinite(Number(j.p[id]))&&Number(j.p[id])===want[id]))return true;
+    if(ids.every(id=>Number.isFinite(Number(j.p[id]))&&Number(j.p[id])===want(id)))return true;
    }
   }catch(e){}
   await sl(300);
  }
  return false;
 }
-let LREAD_IN_PROGRESS=false,LUT_LAST_PROPOSAL=null,LUT_LAST_BEFORE=null,LUT_LAST_AFTER=null;
+let LREAD_IN_PROGRESS=false,LUT_LAST_PROPOSAL=null,LUT_LAST_BEFORE=null,LUT_LAST_AFTER=null,LUT_PENDING=null;
 function lupd(){
  const b1=$('lbtnS1'),b2=$('lbtnS2'),ba=$('lbtnSA'),rr=$('lbtnR'),rd=$('lbtnRead');
  if(!b1&&!b2&&!ba)return;
  let why='';
  if(W&&W.run)why='داده‌برداری بنچ در جریان است';
  else if(CAL_BUSY)why='یک تراکنش کالیبراسیون یا جدول در جریان است';
+ else if(LUT_PENDING)why='یک جدول تغییر در انتظار انتخاب شماست؛ ابتدا اعمال یا لغو کنید';
  else if(!D||D.on!=1)why='لینک STM32 برقرار نیست';
  const disabled=!!why||LREAD_IN_PROGRESS;
  [b1,b2,ba,rd].forEach(b=>{if(b){b.disabled=disabled;b.title=why||'ابتدا جدول واقعی هر دو باتری خوانده می‌شود';}});
  if(rr){const off=!LSNT||LREAD_IN_PROGRESS;rr.disabled=off;rr.title=off?'بعد از commit و readback دقیق فعال می‌شود':'ریست و بررسی ماندگاری جدول';}}
 async function lapplycal(target,p){
- const ids=target===0?[0,1,2,3,4,5,6]:(target===1?[0,2,4,5,6]:[1,3,4,5,6]);
+ const ids=Array.isArray(p&&p.cal&&p.cal.ids)?p.cal.ids:lcalids(target);
  for(const id of ids){
+  if(p.cal.selected&&p.cal.selected[id]===false)continue;
   const value=id===0?p.cal.offset[0]:id===1?p.cal.offset[1]:id===2?p.cal.gain[0]:id===3?p.cal.gain[1]:p.cal.voltage[id-4];
   if(!Number.isFinite(value))throw 'پارامتر کالیبراسیون معتبر نیست';
   if(D&&D.p&&Number(D.p[id])===value)continue;
@@ -3724,31 +3747,31 @@ async function lapplycal(target,p){
  }
  p.calAfter=lcalSnapshot();
 }
-async function lsend(target){
- const targetId=(target===1||target===2)?target:0;
- if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
- if(CAL_BUSY){stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
- if(!D||D.on!=1){stxt('calst','⛔ لینک STM32 برقرار نیست.');return;}
- const calIds=targetId===0?[0,1,2,3,4,5,6]:(targetId===1?[0,2,4,5,6]:[1,3,4,5,6]);
- const conflicts=calpending(calIds);
- if(conflicts.length){stxt('calst','⛔ '+calpendingText(conflicts)+' هنوز در صف تغییرات پنل است؛ ابتدا آن‌ها را ارسال یا لغو کنید.');return;}
- CAL_BUSY=true;
- try{
-  LREAD_IN_PROGRESS=true;LSNT=0;LUT_LAST_PROPOSAL=null;lupd();
- stxt('calst','… اول جدول واقعی فعلی هر دو باتری خوانده می‌شود؛ مقدارها حدس زده نمی‌شوند.');
- const before=await lread();LBT=before;LAT=null;LREAD_IN_PROGRESS=false;lupd();
- if(!before.ready){lrenderRead(before);stxt('calst','⚠ بازخوانی قبل از ارسال ناموفق بود؛ برای جلوگیری از تغییر ناخواسته، هیچ جدولی ارسال نشد.');return;}
- const p=lpack(targetId,before);
- if(p.bad){lview(p,before,null);stxt('calst','⛔ '+p.bad+(p.msg.length?' · '+p.msg.join(' · '):''));return;}
- lview(p,before,null);
+function lcaltoggle(el){
+ if(!LUT_PENDING||!el)return;
+ const id=Number(el.getAttribute('data-cal-id'));
+ if(!Array.isArray(LUT_PENDING.p.cal.ids)||LUT_PENDING.p.cal.ids.indexOf(id)<0)return;
+ LUT_PENDING.selected[id]=!!el.checked;
+ const next=lpack(LUT_PENDING.target,LUT_PENDING.before,LUT_PENDING.selected);
+ if(next.bad){
+  el.checked=!el.checked;LUT_PENDING.selected[id]=el.checked;
+  stxt('calst','⛔ با این انتخاب جدول قابل‌ارسال نیست: '+next.bad);
+  return;
+ }
+ next.cal.editable=true;
+ LUT_PENDING.p=next;
+ LUTVIEW='';lview(next,LUT_PENDING.before,null);
+ stxt('calst','تغییر انتخاب شد؛ جدول پایین با مقدارهای انتخاب‌شده دوباره ساخته شد.');
+}
+function lcancelpending(){
+ if(!LUT_PENDING)return;
+ LUT_PENDING=null;LUTVIEW='';
+ const e=$('lutcmp');if(e)e.innerHTML='';
+ stxt('calst','تغییرهای جدول لغو شد؛ هیچ پارامتر کالیبراسیون یا LUT ارسال نشد.');
+ lupd();
+}
+async function lcommit(targetId,before,p){
  const targetText=targetId===0?'هر دو باتری':'فقط باتری '+fa(targetId);
- const calText=targetId===0
-  ?'همهٔ gain/offsetهای جریان و آفست‌های ولتاژ معتبر قبل از جدول ارسال و readback می‌شوند.'
-  :'gain/offset همین باتری و آفست‌های ولتاژ معتبر قبل از جدول ارسال و readback می‌شوند؛ جدول و gain/offset باتری دیگر دست‌نخورده می‌ماند.';
- const dn=t=>t.X.length?t.X.length+' نقطه':'صفرنقطه‌ای — override قبلی حذف می‌شود';
- if(!confirm('به‌روزرسانی '+targetText+' انجام شود؟\n\n'+calText+'\n'+
-  'باتری ۱: '+dn(p.T[0])+' · باتری ۲: '+dn(p.T[1])+
-  '\nاگر هر پارامتر کالیبراسیون یا جدول readback نشود، ارسال LUT متوقف می‌شود.'))return;
  LREAD_IN_PROGRESS=true;LSNT=0;lupd();
  try{await lapplycal(targetId,p);}catch(e){LREAD_IN_PROGRESS=false;lupd();stxt('calst','⛔ پارامترهای کالیبراسیون '+targetText+' تأیید نشد؛ جدول LUT ارسال نشد: '+e);return;}
  stxt('calst','… جدول '+targetText+' در حال ارسال به برد است');
@@ -3780,11 +3803,41 @@ async function lsend(target){
  stxt('calst','… commit موفق بود؛ حالا جدول فعال STM32 دوباره خوانده می‌شود.');
  const after=await lread();LREAD_IN_PROGRESS=false;LAT=after;LUT_LAST_BEFORE=before;LUT_LAST_AFTER=after.ready?after:null;lupd();lview(p,before,LAT);
  if(!after.ready){LSNT=0;lupd();stxt('calst','⚠ commit با handshake تأیید شد، اما بازخوانی عددبه‌عدد بعد از commit ناموفق بود؛ تغییرات اعمال‌شده فرض نمی‌شوند و ریست پیشنهاد نمی‌شود.');return;}
- if(!lmatch(after,p)){LSNT=0;lupd();stxt('calst','⛔ mismatch: commit پاسخ موفق داد، اما حداقل یک chain/power بازخوانی‌شده با پیشنهاد فرق دارد؛ ریست انجام نشد. جدول بالا ردیف خطادار را نشان می‌دهد.');return;}
+ if(!lmatch(after,p,targetId)){LSNT=0;lupd();stxt('calst','⛔ mismatch: commit پاسخ موفق داد، اما حداقل یک chain/power بازخوانی‌شده از باتری انتخاب‌شده با پیشنهاد فرق دارد؛ ریست انجام نشد. جدول بالا ردیف خطادار را نشان می‌دهد.');return;}
  LUT_LAST_PROPOSAL=p;LSNT=1;lupd();
-  stxt('calst','✅ '+targetText+'، همهٔ پارامترهای کالیبراسیون و جدول با readback واقعی تأیید شدند. جدول دیگر حفظ شد؛ برای شروع با مقدار نو «ریست برد» را بزنید.');
-  if(confirm('همهٔ پارامترهای کالیبراسیون و جدول '+targetText+' ذخیره و با عددهای واقعی برد تأیید شدند.\n\nبرد ریست شود تا با مقدار جدید بالا بیاید؟\n(شارژ چند ثانیه قطع می‌شود.)'))await lrst();
- }finally{CAL_BUSY=false;LREAD_IN_PROGRESS=false;lupd();}}
+  stxt('calst','✅ '+targetText+'، پارامترهای انتخاب‌شدهٔ کالیبراسیون و جدول با readback واقعی تأیید شدند. جدول دیگر حفظ شد؛ برای شروع با مقدار نو «ریست برد» را بزنید.');
+  if(confirm('پارامترهای انتخاب‌شدهٔ کالیبراسیون و جدول '+targetText+' ذخیره و با عددهای واقعی برد تأیید شدند.\n\nبرد ریست شود تا با مقدار جدید بالا بیاید؟\n(شارژ چند ثانیه قطع می‌شود.)'))await lrst();
+}
+async function lapplypending(){
+ const tx=LUT_PENDING;
+ if(!tx||CAL_BUSY)return;
+ LUT_PENDING=null;tx.p.cal.editable=false;LUTVIEW='';lview(tx.p,tx.before,null);
+ CAL_BUSY=true;
+ try{await lcommit(tx.target,tx.before,tx.p);}
+ finally{CAL_BUSY=false;LREAD_IN_PROGRESS=false;lupd();}
+}
+async function lsend(target){
+ const targetId=(target===1||target===2)?target:0;
+ if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
+ if(CAL_BUSY){stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
+ if(LUT_PENDING){stxt('calst','⛔ ابتدا تغییرهای جدول پایین را اعمال یا لغو کنید.');return;}
+ if(!D||D.on!=1){stxt('calst','⛔ لینک STM32 برقرار نیست.');return;}
+ const conflicts=calpending(lcalids(targetId));
+ if(conflicts.length){stxt('calst','⛔ '+calpendingText(conflicts)+' هنوز در صف تغییرات پنل است؛ ابتدا آن‌ها را ارسال یا لغو کنید.');return;}
+ CAL_BUSY=true;
+ try{
+  LREAD_IN_PROGRESS=true;LSNT=0;LUT_LAST_PROPOSAL=null;lupd();
+  stxt('calst','… اول جدول واقعی فعلی هر دو باتری خوانده می‌شود؛ مقدارها حدس زده نمی‌شوند.');
+  const before=await lread();LBT=before;LAT=null;LREAD_IN_PROGRESS=false;lupd();
+  if(!before.ready){lrenderRead(before);stxt('calst','⚠ بازخوانی قبل از ارسال ناموفق بود؛ برای جلوگیری از تغییر ناخواسته، هیچ جدولی ارسال نشد.');return;}
+  const p=lpack(targetId,before);
+  if(p.bad){lview(p,before,null);stxt('calst','⛔ '+p.bad+(p.msg.length?' · '+p.msg.join(' · '):''));return;}
+  p.cal.editable=true;
+  LUT_PENDING={target:targetId,before:before,p:p,selected:p.cal.selected};
+  LUTVIEW='';lview(p,before,null);
+  stxt('calst','تغییرهای پیشنهادی پایین صفحه آماده‌اند؛ تیک هر مقدار را که نباید عوض شود بردارید، سپس «تأیید و اعمال موارد تیک‌خورده» را بزنید.');
+ }finally{CAL_BUSY=false;LREAD_IN_PROGRESS=false;lupd();}
+}
 async function lrst(){
  const p=LUT_LAST_PROPOSAL;
  if(!LSNT||!p){stxt('calst','⛔ اول یک ارسال و بازخوانی موفق لازم است.');return;}
@@ -3795,8 +3848,8 @@ async function lrst(){
  await sl(1200);const calOk=await lcalread(p),after=await lread();if(calOk)p.calAfter=lcalSnapshot();LREAD_IN_PROGRESS=false;LAT=after;LBT=beforeReset||after;LUT_LAST_BEFORE=beforeReset||after;LUT_LAST_AFTER=after;lupd();lview(p,LBT,LAT);
  if(!calOk){stxt('calst','⚠ برد ریست شد، اما readback تازهٔ پارامترهای کالیبراسیون با مقدار مورد استفاده برای LUT یکی نیست؛ ماندگاری تأیید نشده است.');return;}
  if(!after.ready){stxt('calst','⚠ برد ریست شد، اما بازخوانی جدول پس از ریست ناموفق بود؛ ماندگاری جدول تأیید نشده است.');return;}
- if(!lmatch(after,p)){stxt('calst','⛔ پس از ریست mismatch: جدول فعال برد با پیشنهاد یکی نیست؛ مقدارهای واقعی بالا دیده می‌شوند.');return;}
- LSNT=1;lupd();stxt('calst','✅ پس از ریست هم همهٔ پارامترهای کالیبراسیون و جدول هر دو باتری با readback عددبه‌عدد تأیید شدند.');}
+ if(!lmatch(after,p,p.target)){stxt('calst','⛔ پس از ریست mismatch: جدول فعال باتری انتخاب‌شده با پیشنهاد یکی نیست؛ مقدارهای واقعی بالا دیده می‌شوند.');return;}
+ LSNT=1;lupd();stxt('calst','✅ پس از ریست هم پارامترهای انتخاب‌شدهٔ کالیبراسیون و جدول '+(p.target===0?'هر دو باتری':'فقط باتری '+fa(p.target))+' با readback عددبه‌عدد تأیید شدند.');}
 
 /* ---------- ساخت تب‌ها ---------- */
 /* تب ۱: داده‌برداری بنچ */
