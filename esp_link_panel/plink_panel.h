@@ -3113,11 +3113,11 @@ function calpush(m,v,act,sc,duty){
 function calclr(){if(!confirm('همهٔ نمونه‌های جمع‌شده پاک شوند؟'))return;CALS=[];calinvalidate();calsave();caln();calsmp();
  stxt('calst','نمونه‌ها پاک شدند.');}
 function caln(){stxt('caln',String(CALS.length));}
-/* [‎EN] line fit; current mode anchors at duty zero. [FA] برازش خط؛ جریان به صفر duty قفل است. */
-function calfit(xs,ys,z){const n=xs.length;let sx=0,sy=0,sxx=0,sxy=0;
- for(let i=0;i<n;i++){if(z){xs[i]-=z[0];ys[i]-=z[1];}sx+=xs[i];sy+=ys[i];sxx+=xs[i]*xs[i];sxy+=xs[i]*ys[i];}
- const den=z?sxx:n*sxx-sx*sx;if(n<2||Math.abs(den)<1e-9)return null;
- const a=z?sxy/sxx:(n*sxy-sx*sy)/den,b=z?0:(sy-a*sx)/n,my=sy/n;
+/* [‎EN] least squares y = a*x + b, plus R‎². [FA] برازش خطی + کیفیت. */
+function calfit(xs,ys){const n=xs.length;let sx=0,sy=0,sxx=0,sxy=0;
+ for(let i=0;i<n;i++){sx+=xs[i];sy+=ys[i];sxx+=xs[i]*xs[i];sxy+=xs[i]*ys[i];}
+ const den=n*sxx-sx*sx;if(n<2||Math.abs(den)<1e-9)return null;
+ const a=(n*sxy-sx*sy)/den,b=(sy-a*sx)/n,my=sy/n;
  let ss=0,sr=0,mx=0;for(let i=0;i<n;i++){const e=ys[i]-(a*xs[i]+b);sr+=e*e;ss+=(ys[i]-my)*(ys[i]-my);
   if(Math.abs(e)>mx)mx=Math.abs(e);}
  return {a,b,r2:ss>0?(1-sr/ss):1,n,mx,span:Math.max(...xs)-Math.min(...xs)};}
@@ -3299,9 +3299,6 @@ function calchk(){
   if(c.length>=4)ok('باتری '+fa(n)+': '+c.length+' نمونهٔ کامل دارد (حداقل ۴ لازم است).');
   else no('باتری '+fa(n)+': فقط '+c.length+' نمونهٔ کامل دارد.',
    'حداقل ۴ مرحله با «فقط باتری '+fa(n)+'» یا «هر دو باتری» بگیرید و جریان مولتی‌متر همان باتری را وارد کنید.');
-  if(z)ok('باتری '+fa(n)+': مرجع صفر duty ثبت شده ('+Math.round(z[1])+' mA؛ جریان‌های بعدی نسبت به آن سنجیده می‌شوند).');
-  else no('باتری '+fa(n)+': نمونهٔ duty صفر برای مرجع جریان وجود ندارد.',
-   'یک مرحلهٔ duty صفر بگیرید و تیک آن را نگه دارید؛ مقدار منفی همان‌جا به‌عنوان صفر شارژ استفاده می‌شود.');
   /* ۳) پخش‌بودن نقاط */
   if(c.length>1){const xs=c.map(z=>z[r]),sp=Math.max(...xs)-Math.min(...xs);
    if(sp>=20)ok('باتری '+fa(n)+': نقاط به اندازهٔ کافی پخش‌اند (بازهٔ raw برابر '+Math.round(sp)+').');
@@ -3353,8 +3350,7 @@ function calchk(){
 /* [EN] Build equal, increasing chain/power axes; drop noisy dips.
    [FA] محورهای هم‌طول و صعودی را می‌سازد و افت نویزی را حذف می‌کند. */
 function calbuild(n,off,gn){
- const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'dv1':'dv2',note=[],S=calsel(n),z=calzero(n,S);
- if(!z)return {X:[],Y:[],note:[],bad:'نمونهٔ duty صفر برای مرجع جریان وجود ندارد'};
+ const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'dv1':'dv2',note=[];
  const pts=[];
  calsel(n).forEach(z=>{if(!Number.isFinite(z[r])||!Number.isFinite(z[b]))return;
   const vb=(z[v]!=null)?z[v]:(n===1?z.vhi:z.vlo);if(!vb)return;
