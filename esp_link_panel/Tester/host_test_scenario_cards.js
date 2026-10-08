@@ -1383,6 +1383,59 @@ async function testBackupAndCal(win, doc) {
     win.CALS = keepN;
     win.eval('calrun')();
 
+    /* --- user order 2026-10-08: which voltage the power axis uses ------------
+       measurement.c turns the LUT power back into current with
+       (powerMw * 1000) / live battery voltage, and the live value comes from
+       the BOARD's own divider (MeasBatteryHighMv = V24 - V12 for battery 1,
+       MeasBatteryLowMv = V12 for battery 2). The power axis therefore has to
+       be built with that same board number: with the DMM voltmeter in it
+       instead, every board voltage scale error lands in the CURRENT with the
+       opposite sign (a board reading the battery 1.2 % high reports 1.2 %
+       low - the unsafe direction for a charger).
+       Hand-derived expectation, gn = 1000 permille, off = 0 counts:
+         r1 = 1000 counts, b1 = 500 mA, vhi = 13000 mV, dv1 = 12000 mV
+         chain  = round(1000 * 24200 / 27573)                        = 878 mA
+         power1 = round(500 * 13000 / 1000) = 6500 mW   (board voltage)
+         the DMM value would have been 500 * 12000 / 1000 = 6000 mW
+         r2 = 1000 counts, b2 = 500 mA, vlo = 11000 mV, dv2 = 12500 mV
+         power2 = round(500 * 11000 / 1000) = 5500 mW   (board voltage) */
+    win.CALS = [{ r1: 1000, r2: 1000, vin: 24000, v24: 25000, v12: 12500,
+                  vlo: 11000, vhi: 13000, b1: 500, b2: 500,
+                  dvi: 24300, dv1: 12000, dv2: 12500, ts: 1 },
+                { r1: 2000, r2: 2000, vin: 24000, v24: 25000, v12: 12500,
+                  vlo: 11000, vhi: 13000, b1: 1000, b2: 1000,
+                  dvi: 24300, dv1: 12000, dv2: 12500, ts: 1 },
+                { r1: 3000, r2: 3000, vin: 24000, v24: 25000, v12: 12500,
+                  vlo: 11000, vhi: 13000, b1: 1500, b2: 1500,
+                  dvi: 24300, dv1: 12000, dv2: 12500, ts: 1 }];
+    win.eval('calrun')();
+    const boardV = win.eval('calbuild')(1, 0, 1000);
+    check(boardV.X[1] === 878 && boardV.Y[1] === 6500,
+          'the ch1 power axis is DMM current x the BOARD battery voltage (6500 mW), not the DMM voltage (6000)');
+    const boardV2 = win.eval('calbuild')(2, 0, 1000);
+    check(boardV2.X[1] === 878 && boardV2.Y[1] === 5500,
+          'the ch2 power axis uses the board low-rail voltage (5500 mW), not the DMM voltage (6250)');
+    /* The chain axis has to be the chain the BOARD computes, and bsp_measurement.c
+       divides in two integer stages (counts x 24200 / 27573, then x gain / 1000).
+       Hand-derived for raw = 100 counts, off = 0, gain = 1303 permille:
+         stage 1: round(100 * 24200 / 27573) = round(87.767)  = 88 mA
+         stage 2: round(88 * 1303 / 1000)   = round(114.664) = 115 mA
+       A single float rounding of the whole product gives 114 instead, i.e. the
+       anchor would sit one mA away from where the board lands - up to 2 mA of
+       current error on a steep LUT segment. */
+    const keepV = win.CALS;
+    win.CALS = [{ r1: 100, r2: 100, vin: 24000, v24: 25000, v12: 12500,
+                  vlo: 11000, vhi: 13000, b1: 100, b2: 100,
+                  dvi: 24300, dv1: 12000, dv2: 12500, ts: 1 }];
+    check(win.eval('calbuild')(2, 0, 1303).X[1] === 115,
+          'the chain axis is the board two-stage integer chain (115 mA), not the float single-round (114)');
+    win.CALS = keepV;
+    win.eval('calcode')();
+    check(doc.getElementById('calcd').value.indexOf('BOARD battery voltage') >= 0,
+          'the generated header documents the board-voltage convention the table was built with');
+    win.CALS = keepN;
+    win.eval('calrun')();
+
     /* --- v1.64: nothing may be written while the bench wizard owns the board --- */
     const Wv = win.eval('W'); Wv.run = true;
     win.eval('calapply')();

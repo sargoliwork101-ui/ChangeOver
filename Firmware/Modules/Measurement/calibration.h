@@ -30,7 +30,24 @@
  * [EN] Output is battery-1 POWER in mW, not current: in DCM the mid-ON
  *      chain sample tracks the energy per cycle (battery-voltage
  *      independent); measurement.c divides by the LIVE vhigh (clamped
- *      8.0..15.0 V) to get mA. Anchored on the 2026-09-27 SOLO1 sweep with
+ *      8.0..15.0 V) to get mA.
+ *      POWER-AXIS BASIS (user order 2026-10-08, "the current I read is lower
+ *      than the multimeter, and that can hurt the battery"): the power axis
+ *      is the DMM current x the BOARD's OWN battery voltage of that sample
+ *      (vhi = V24 - V12) - the same quantity the run-time division above
+ *      uses - so a board voltage SCALE error cancels instead of landing in
+ *      the current with the opposite sign. With the DMM voltmeter in the
+ *      axis instead, a board that reads its battery 1.19 % high (the
+ *      unpatched VDDA/divider residue) reported the charge current 1.19 %
+ *      LOW - one-sided, growing with current, the unsafe direction for a
+ *      charger. The chain axis is the board's own two integer stages with
+ *      NEAREST rounding, so an anchor lands exactly where the board lands.
+ *      The anchors in this file were placed with the DMM voltmeter (the
+ *      2026-09-29 convention), so they still carry that ~1.2 %; a table
+ *      rebuilt and pushed from the panel (File > bench samples > refit)
+ *      carries the corrected basis. Any change to the voltage scale - the
+ *      dividers or CAL_VREFINT_MV - means rebuilding the table.
+ *      Anchored on the 2026-09-27 SOLO1 sweep with
  *      off1=8 / gain1=1046 - if those params change the table MUST be
  *      rebuilt (the chain axis rescales). Gate (5,0): chain <= 5 is
  *      switching noise and reads exactly 0. The D7 dip (81,1028) is the
@@ -44,6 +61,16 @@
  * [FA] خروجی «توان باتری ۱» است نه جریان: در DCM نمونهٔ وسط-ON زنجیره
  *      انرژیِ هر سایکل را دنبال می‌کند (مستقل از ولتاژ باتری) و
  *      measurement.c آن را به vhigh زنده (گیرهٔ ۸..۱۵V) تقسیم می‌کند.
+ *      مبنای محور توان (دستور کاربر ۲۰۲۶-۱۰-۰۸): محور توان = جریان
+ *      مولتی‌متر × ولتاژ خودِ برد در همان نمونه (vhi)، یعنی همان کمیتی که
+ *      تقسیم زمان اجرا بالا استفاده می‌کند؛ پس خطای مقیاس ولتاژ برد در
+ *      جریان نمی‌نشیند. با ولتاژ مولتی‌متر، بردِ ۱٬۱۹٪ زیادخوان جریان شارژ
+ *      را ۱٬۱۹٪ کم می‌گفت: یک‌طرفه، بزرگ‌شونده با جریان و در جهت ناامن
+ *      شارژر. محور زنجیره همان دو مرحلهٔ عدد صحیح خود فرم‌ور با رُند به
+ *      نزدیک است تا لنگر دقیقاً روی زنجیرهٔ برد بیفتد. لنگرهای همین فایل
+ *      با ولتاژ مولتی‌متر گذاشته شده‌اند (قرارداد ۲۰۲۶-۰۹-۲۹)، پس آن
+ *      ‎~۱٬۲٪‎ را همراه دارند؛ جدولی که از پنل بازسازی و پوش شود مبنای
+ *      درست را دارد و هر تغییر مقیاس ولتاژ یعنی بازسازی جدول.
  *      لنگرها با ‎off1=8 / gain1=1046‎ ثبت شده‌اند - با تغییر آنها جدول
  *      باید بازسازی شود (محور زنجیره جابه‌جا می‌شود). گیت (۵٫۰):
  *      زنجیره ≤۵ نویز سوییچینگ است و دقیقاً صفر می‌خواند. گودی D7
@@ -92,7 +119,15 @@ static const uint32_t CAL_Current1LutBatteryMw[] =
  *      you read are wrong"): the table OUTPUT is the battery-2 POWER in
  *      mW, not current - the DCM energy per cycle is battery-voltage
  *      independent (current = P/Vbat); measurement.c divides by the LIVE
- *      battery-2 voltage (clamped 8.0..15.0 V) to get mA. Anchors are
+ *      battery-2 voltage (clamped 8.0..15.0 V) to get mA.
+ *      POWER-AXIS BASIS 2026-10-08: same as table 1 - the power axis is the
+ *      DMM current x the BOARD's own battery-2 voltage (vlo = V12), the
+ *      quantity the run-time division uses, and the chain axis is the
+ *      board's own two integer stages with nearest rounding. These anchors
+ *      were placed with the DMM voltmeter, so they still carry the board's
+ *      voltage-scale residue (~1.2 %); a table rebuilt and pushed from the
+ *      panel carries the corrected basis.
+ *      Anchors are
  *      fitted end-to-end against the exact integer firmware pipeline
  *      (2026-09-27 SOLO2 sweep; off2=8 / gain2=1303 - if those params
  *      change the table MUST be rebuilt). Gate (20,0): chain <= 20 is
@@ -105,7 +140,12 @@ static const uint32_t CAL_Current1LutBatteryMw[] =
  *      (12.37 mW per chain-mA) extends. Methodology floor: +-1 count =
  *      +-3 mA (slope ~30 mW/chain-mA on the steep band).
  * [FA] همان معماری توان جدول ۱ (ناوردای DCM: جریان = ‎P/Vbat‎ با تقسیم
- *      زمان اجرا بر ولتاژ زندهٔ باتری ۲، گیرهٔ ۸..۱۵V). لنگرها
+ *      زمان اجرا بر ولتاژ زندهٔ باتری ۲، گیرهٔ ۸..۱۵V).
+ *      مبنای محور توان ۲۰۲۶-۱۰-۰۸ مثل جدول ۱: محور توان = جریان مولتی‌متر ×
+ *      ولتاژ خودِ برد (vlo) و محور زنجیره دو مرحلهٔ عدد صحیح فرم‌ور با رُند
+ *      به نزدیک. لنگرهای این فایل با ولتاژ مولتی‌متر گذاشته شده‌اند و باقی‌ماندهٔ
+ *      ‎~۱٬۲٪‎ را دارند؛ جدولِ بازساخته از پنل مبنای درست را دارد.
+ *      لنگرها
  *      سرتاسری روی خط‌لولهٔ صحیحِ خود فرم‌ور فیت شده‌اند (سوییپ SOLO2
  *      ۲۰۲۶-۰۹-۲۷؛ ‎off2=8 / gain2=1303‎ - با تغییر آنها جدول باید
  *      بازسازی شود). گیت (۲۰٫۰): زنجیره ≤۲۰ نویز سوییچینگ دیوتی ۱..۳٪

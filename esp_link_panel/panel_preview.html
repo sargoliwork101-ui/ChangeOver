@@ -490,7 +490,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 483c79c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build df9001a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3446,12 +3446,16 @@ function calchk(){
 /* [EN] Build equal, increasing chain/power axes; drop noisy dips.
    [FA] محورهای هم‌طول و صعودی را می‌سازد و افت نویزی را حذف می‌کند. */
 function calbuild(n,off,gn){
- const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'dv1':'dv2',note=[];
+ const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'vhi':'vlo',note=[];
  if(!Number.isFinite(off)||!Number.isFinite(gn))return {X:[],Y:[],note:[],bad:'fit مردود'};
  const pts=[];let missingVoltage=0;
  calsel(n).forEach(z=>{if(!Number.isFinite(z[r])||!Number.isFinite(z[b]))return;
+  /* [EN] Power axis = DMM current x the BOARD's own battery voltage (the
+     runtime divisor the firmware uses). [FA] محور توان = جریان مولتی‌متر
+     × ولتاژ خودِ برد (همان مقسوم‌علیه زمان اجرا). */
   const vb=z[v];if(!Number.isFinite(vb)||vb<=0){missingVoltage++;return;}
-  const chain=Math.max(0,Math.round((z[r]-off)*K_MA*gn/1000));
+  /* [EN] two integer stages, like the firmware [FA] دو مرحلهٔ عدد صحیح، مثل فرم‌ور */
+  const chain=Math.max(0,Math.round(Math.round((z[r]-off)*K_MA)*gn/1000));
   /* Signed DMM current is battery current. The firmware table is unsigned
      charge power, so discharge rows deliberately floor at zero. */
   pts.push([chain,Math.max(0,Math.round(z[b]*vb/1000))]);});
@@ -3465,8 +3469,8 @@ function calbuild(n,off,gn){
  if(dup)note.push(dup+' نقطه با جریان تکراری کنار گذاشته شد');
  if(dip)note.push(dip+' نقطهٔ نویزی که توانش پایین‌تر از نقطهٔ قبل بود کنار گذاشته شد');
  let bad='';
- if(missingVoltage)bad='ولتاژ DMM برای '+missingVoltage+' نقطه ناقص است';
- else if(X.length!==Y.length)bad='محورها هم‌طول نیستند';
+ if(missingVoltage)note.push(missingVoltage+' نمونه ولتاژ برد نداشت');
+ if(X.length!==Y.length)bad='محورها هم‌طول نیستند';
  else if(X.length<2)bad='کمتر از ۲ نقطه ('+X.length+') — حداقل ۲ لازم است';
  else{for(let i=1;i<X.length;i++){if(X[i]<=X[i-1])bad='محور جریان صعودی نیست';
    if(Y[i]<Y[i-1])bad='محور توان نزول دارد';}}
@@ -3486,9 +3490,11 @@ function calcode(){
   '\n *      from '+calScope.length+' accepted bench samples. The panel has\n'+
   ' *      already checked: equal axis lengths, >= 2 points, increasing chain\n'+
   ' *      axis, non-decreasing power axis.\n'+
+  ' *      powerMw = DMM current x the BOARD battery voltage (the runtime\n'+
+  ' *      divisor); rebuild if the voltage scale changes.\n'+
   ' *      Paste into Firmware/Modules/Measurement/calibration.h.\n'+
-  ' * [FA] ساختهٔ پنل ChangeOver؛ هم‌طولی، حداقل دو نقطه، صعودی‌بودن محور\n'+
-  ' *      جریان و نزول‌نکردن محور توان همین‌جا بررسی شده است. */\n\n';
+  ' * [FA] محور توان = جریان مولتی‌متر × ولتاژ خودِ برد؛ با تغییر مقیاس\n'+
+  ' *      ولتاژ جدول باید بازسازی شود. */\n\n';
  [1,2].forEach(n=>{const t=calbuild(n,off[n-1],gn[n-1]);
   t.note.forEach(x=>msg.push('باتری '+fa(n)+': '+x));
   if(t.bad){msg.push('⛔ باتری '+fa(n)+': '+t.bad);

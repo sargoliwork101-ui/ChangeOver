@@ -446,12 +446,19 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
  *                den = FULL(4095) x R42(10000) x GAIN(101) x SHUNT(10 mOhm)
  *                = counts x 24200 / 27573   (both sides / 1,500,000;
  *                  24200 x 4095 = 99,099,000 < 2^32, exact for every count).
+ *              ROUNDING (2026-10-08): the folded division follows the same
+ *              nearest-integer rule the panel and the bench LUT anchors use
+ *              (half divisor added before dividing), because a truncating
+ *              chain is a one-sided UNDER-read of the measured current.
  *              If ANY resistor/value above ever changes, re-derive (the
  *              host test recomputes the collapse from these defines).
  *         [FA] رژیم فلش: پنج مرحله در یک ضرب+تقسیم ۳۲بیتی با نتیجهٔ
  *              بیت‌به‌بیت یکسان جمع شد (اثبات برای هر ۴۰۹۶ شمارش؛ تقسیم
  *              ۶۴بیتی ~۱KB می‌خواست). اگر مقاومتی عوض شد دوباره اشتقاق
  *              بگیر (تست هاست از همین دیفاین‌ها بازمحاسبه می‌کند).
+ *              رُند: تقسیم جمع‌شده همان قاعدهٔ رُند به نزدیکِ پنل و لنگرهای
+ *              جدول بنچ را دارد (نصف مقسوم‌علیه پیش از تقسیم)، چون زنجیرهٔ
+ *              برشی، کم‌خوانی یک‌طرفهٔ جریان اندازه‌گیری‌شده است.
  * @param  uint16_t__counts           [EN] ADC count / شمارش ADC
  * @param  uint32_t__offsetCounts     [EN] zero-current offset, counts‎ / آفست صفر
  * @param  uint32_t__gainPermille     [EN] bench gain permille / ضریب گین بنچ
@@ -478,17 +485,35 @@ static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
 
     /* [EN] Stages 1..4 folded (see the @note derivation): counts x 24200 /
        27573 - exact for every count, fits u32 (99,099,000 < 2^32).
-       [FA] مراحل ۱..۴ جمع‌شده (اشتقاق در @note): دقیق برای هر شمارش. */
+       NEAREST-ROUNDING (user order 2026-10-08): the half divisor is added
+       BEFORE the division. The panel fits the current chain with
+       Math.round() and every bench LUT anchor is a rounded value, so a
+       truncating division here puts the whole chain 1-2 mA BELOW the anchors
+       it is looked up against - a one-sided UNDER-read that the charger's
+       current limits and the LUT then inherit (2 mA is 1.5 % at 130 mA and
+       it never once reads high). Both addends stay far inside u32:
+       4095 x 24200 + 13786 = 99,112,786 < 2^32.
+       [FA] مراحل ۱..۴ جمع‌شده (اشتقاق در @note): دقیق برای هر شمارش.
+       رُند به نزدیک (دستور کاربر ۲۰۲۶-۱۰-۰۸): نصف مقسوم‌علیه پیش از تقسیم
+       اضافه می‌شود. پنل زنجیرهٔ جریان را با Math.round برازش می‌کند و هر
+       لنگر جدول بنچ یک عدد رُندشده است، پس تقسیم با برش، تمام زنجیره را
+       ۱ تا ۲ میلی‌آمپر زیر لنگرهایی که با آنها مقایسه می‌شود می‌گذارد -
+       کم‌خوانی یک‌طرفه‌ای که حدهای جریان شارژر و جدول آن را ارث می‌برند
+       (۲ میلی‌آمپر در ۱۳۰ میلی‌آمپر یعنی ۱٫۵٪ و هرگز زیاد نمی‌خواند). */
     uint32_t__chainCurrentMa =
-        (uint32_t__calibratedCounts * (uint32_t)24200) / (uint32_t)27573;
+        ((uint32_t__calibratedCounts * (uint32_t)24200) +
+         ((uint32_t)27573 / 2u)) / (uint32_t)27573;
 
     /* [EN] Stage 5 - per-channel bench gain trim in permille (ch1 1046,
        ch2 1303 = the DMM-calibrated 2026-09-24 points at D=15%).
        u32 is exact here: mA <= 3594 (full-scale chain) x gain <= 3000
-       (setter clamp) = 10,782,000 < 2^32.
+       (setter clamp) = 10,782,000 < 2^32. Same nearest-rounding rule as
+       stage 1..4 above, for the same reason.
        [FA] مرحلهٔ ۵ - اصلاح گین بنچ پر-کانال بر حسب پرمیل. ضرب ۳۲بیتی
-       دقیق است (حداکثر ~۱۰٫۸میلیون < ۲^۳۲). */
-    return (uint32_t__chainCurrentMa * uint32_t__gainPermille) /
+       دقیق است (حداکثر ~۱۰٫۸میلیون < ۲^۳۲). همان قاعدهٔ رُند به نزدیک
+       مرحلهٔ ۱..۴، به همان دلیل. */
+    return ((uint32_t__chainCurrentMa * uint32_t__gainPermille) +
+            (BSP_MEASUREMENT_PERMILLE_SCALE / 2u)) /
            BSP_MEASUREMENT_PERMILLE_SCALE;
 }
 

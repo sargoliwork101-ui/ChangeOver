@@ -657,14 +657,17 @@ _Static_assert(sizeof(CAL_Current1LutChainMa) ==
 /* ==================== Measurement bench LUT interpolation (v1.66) ==================== */
 
 #if ((CAL_CURRENT1_LUT_ENABLE != 0u) || (CAL_CURRENT2_LUT_ENABLE != 0u))
-/* [EN] Exact saturating (a*b)/div without a compiler u64 helper. The
-   product is accumulated in two u32 words and divided with restoring binary
-   division. This keeps the firmware flash diet while preventing the old u32
-   wrap in both interpolation and power-to-current conversion.
-   [FA] محاسبهٔ دقیق و اشباع‌شوندهٔ ‎(a*b)/div‎ بدون helper شانزده‌بیتی
-   کامپایلر: حاصل‌ضرب در دو کلمهٔ u32 جمع و با تقسیم دودویی restoring تقسیم
-   می‌شود. رژیم فلش حفظ می‌شود و wrap قدیمی در interpolation و توان‌به‌جریان
-   از بین می‌رود. */
+/* [EN] Exact (a*b)/div with saturation and NEAREST-ROUNDING, no compiler u64
+   helper. The product is accumulated in two u32 words and divided with
+   restoring binary division; the final remainder decides the last unit.
+   This keeps the firmware flash diet while preventing the old u32 wrap in
+   both interpolation and power-to-current conversion, and keeps those two
+   conversions on the same rounding rule as the panel that fitted them.
+   [FA] محاسبهٔ دقیق و اشباع‌شوندهٔ ‎(a*b)/div‎ با رُند به نزدیک و بدون
+   helper شانزده‌بیتی کامپایلر: حاصل‌ضرب در دو کلمهٔ u32 جمع و با تقسیم دودویی
+   restoring تقسیم می‌شود و باقی‌ماندهٔ پایانی رقم آخر را تعیین می‌کند. رژیم
+   فلش حفظ می‌شود، wrap قدیمی در interpolation و توان‌به‌جریان از بین می‌رود و
+   این دو تبدیل همان قاعدهٔ رُندِ پنلی را دارند که آنها را برازش کرده است. */
 static uint32_t func__Measurement_MulDivU32Saturating(uint32_t uint32_t__a,
                                                       uint32_t uint32_t__b,
                                                       uint32_t uint32_t__divisor)
@@ -753,6 +756,37 @@ static uint32_t func__Measurement_MulDivU32Saturating(uint32_t uint32_t__a,
             uint32_t__quotient <<= 1;
         }
     }
+
+    /* [EN] NEAREST-ROUNDING (user order 2026-10-08): every caller of this
+       helper converts a MEASURED quantity - a bench LUT interpolation or a
+       battery power divided by the live battery voltage - and the panel, the
+       bench anchors and the BSP current chain all round to the nearest
+       integer. Truncating here instead is a one-sided UNDER-read of the
+       battery current that the charger's limit and the taper decision then
+       inherit (and under-reading a charge current is the unsafe direction).
+       The exact remainder is already sitting in uint32_t__remainder, so the
+       decision is ONE comparison and never forms 2x remainder (the
+       subtraction cannot underflow: remainder < divisor always holds after
+       restoring division, and divisor == 0 returned above).
+       [FA] رُند به نزدیک (دستور کاربر ۲۰۲۶-۱۰-۰۸): هر صداکنندهٔ این helper
+       یک کمیت اندازه‌گیری‌شده را تبدیل می‌کند - درون‌یابی جدول بنچ یا تقسیم
+       توان باتری بر ولتاژ زندهٔ باتری - و پنل، لنگرهای بنچ و زنجیرهٔ جریان
+       BSP همگی به نزدیک‌ترین عدد صحیح رُند می‌کنند. برش در اینجا کم‌خوانی
+       یک‌طرفهٔ جریان باتری است که حد جریان و تشخیص شیبِ شارژر آن را ارث
+       می‌برند (و کم‌خوانی جریان شارژ جهت ناامن است). باقی‌ماندهٔ دقیق همین
+       حالا در uint32_t__remainder هست، پس تصمیم فقط یک مقایسه است و هرگز
+       ‎۲×r‎ ساخته نمی‌شود (تفریق سرریز نمی‌کند: بعد از تقسیم restoring
+       همیشه ‎r < divisor‎ و divisor صفر بالاتر برگشته است). */
+    if ((uint32_t__remainder != 0u) &&
+        (uint32_t__remainder >= (uint32_t__divisor - uint32_t__remainder)))
+    {
+        if (uint32_t__quotient == UINT32_MAX)
+        {
+            return UINT32_MAX;
+        }
+        uint32_t__quotient++;
+    }
+
     return uint32_t__quotient;
 }
 

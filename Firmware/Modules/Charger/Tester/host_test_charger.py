@@ -472,13 +472,14 @@ def test_setpoints_and_timing():
     check(ceil <= meas, "the ceiling must stay inside what the ADC chain can "
                         "represent: a trip that can never be reached is not a "
                         "protection, it is decoration")
-    # 4095 counts * 24200 / 27573 is the chain full scale (bsp_measurement.c);
-    # through the ch1 LUT's last slope, divided by the highest valid battery
-    # voltage, that is the smallest battery current the chain still covers.
-    chain_fs = (4095 * 24200) // 27573
+    # 4095 counts * 24200 / 27573 is the chain full scale (bsp_measurement.c),
+    # rounded to nearest like the firmware does since 2026-10-08; through the
+    # ch1 LUT's last slope, divided by the highest valid battery voltage, that
+    # is the smallest battery current the chain still covers.
+    chain_fs = (4095 * 24200 + 27573 // 2) // 27573
     gain1 = 1046
     slope1 = (9089 - 8061) / (640 - 567)
-    power1 = 9089 + ((chain_fs * gain1) // 1000 - 640) * slope1
+    power1 = 9089 + (round(chain_fs * gain1 / 1000) - 640) * slope1
     worst = power1 * 1000.0 / 15000.0
     check(abs(meas - worst) < 10,
           "CHG_CURRENT_MEASURABLE_MAX_MA must match its own derivation from "
@@ -975,7 +976,7 @@ def test_ch2_power_lut_v113():
     you read are wrong"): the ch2 LUT outputs battery-2 POWER; the live battery
     voltage turns it into current. This test replays the EXACT firmware integer
     math (BSP staged chain = the folded u32 form, proven bit-identical, with
-    truncating divisions -> LUT -> x1000 / V) on the dense-run CSV rows and
+    nearest-rounding divisions -> LUT -> x1000 / V) on the dense-run CSV rows and
     checks both the DMM agreement AND the voltage behaviour the old
     current-current table got wrong. The LUT under test is the v1.18 refit
     (14 anchors); the 2026-09-25 rows below must STILL agree (<= 6 mA).
@@ -993,30 +994,29 @@ def test_ch2_power_lut_v113():
           and all(ys[i] <= ys[i + 1] for i in range(13)),
           "ch2 LUT anchors: 14 points (v1.18 refit), chain strictly increasing, power non-decreasing")
 
-    # exact firmware math replay (folded u32 chain, truncating divisions)
+    # exact firmware math replay (folded u32 chain, nearest-rounding divisions)
     def bsp_chain(counts, off=8, gain=1303):
         if counts <= off:
             return 0
-        num = (counts - off) * 3300
-        den = 4095
-        num *= 11
-        den *= 10
-        den *= 101
-        num *= 1000
-        den *= 10
-        ma = num // den
-        return (ma * gain) // 1000
+        # stages 1..4 of bsp_measurement.c fold to counts x 24200 / 27573;
+        # both divisions round to nearest (user order 2026-10-08)
+        ma = ((counts - off) * 24200 + 27573 // 2) // 27573
+        return (ma * gain + 500) // 1000
 
     def lut_mw(c):
+        # MulDivU32Saturating rounds to nearest; every anchor pair here rises,
+        # so adding half the divisor is that same rule.
         if c <= xs[0]:
             return ys[0]
         for i in range(1, len(xs)):
             if c <= xs[i]:
-                return ys[i - 1] + ((c - xs[i - 1]) * (ys[i] - ys[i - 1])) // (xs[i] - xs[i - 1])
-        return ys[-1] + ((c - xs[-1]) * (ys[-1] - ys[-2])) // (xs[-1] - xs[-2])
+                sp = xs[i] - xs[i - 1]
+                return ys[i - 1] + ((c - xs[i - 1]) * (ys[i] - ys[i - 1]) + sp // 2) // sp
+        sp = xs[-1] - xs[-2]
+        return ys[-1] + ((c - xs[-1]) * (ys[-1] - ys[-2]) + sp // 2) // sp
 
     def ibat(raw, v_mv):
-        return (lut_mw(bsp_chain(raw)) * 1000) // v_mv
+        return (lut_mw(bsp_chain(raw)) * 1000 + v_mv // 2) // v_mv
 
     # dense 2026-09-25T18:14 run: (raw2_avg, vlow TLM, dmm_i_bat2) per duty 2..20%
     rows = [(12.6, 12073, -13), (40.1, 12085, 9), (100.9, 12122, 62), (173.0, 12159, 130),
@@ -1036,12 +1036,20 @@ def test_ch2_power_lut_v113():
         undone = vlow + 150 + ((i_ma if i_ma > 0 else 0) * 470) // 1000
         return round(undone * 6.0585 / 6.0294)
 
-    worst = 0
-    for raw, vlow, dmm in rows:
-        err = ibat(raw, vlow_now(vlow, dmm)) - dmm
-        worst = max(worst, err if raw > 20 else 0)  # the 2% row is the documented unsigned floor
-    check(worst <= 6,
-          f"firmware-math replay of the dense run: worst DMM error {worst} mA (<= 6 = integer-truncation bias, within DMM accuracy; the 2%-duty row floors at 0 as documented)")
+    # [EN] Checked in BOTH directions since 2026-10-08: with the old
+    #      truncating chain the residuals were one-sided (the integer chain sat
+    #      1-2 mA below the DMM), and a one-sided max() hid under-reads - the
+    #      unsafe direction for a charger - completely. The fit itself is
+    #      exact, so what is left here is the table's own interpolation
+    #      residual on this pre-refit run plus DMM accuracy.
+    # [FA] از ۲۰۲۶-۱۰-۰۸ هر دو جهت بررسی می‌شود: با زنجیرهٔ برشی قدیم باقی‌مانده‌ها
+    #      یک‌طرفه بودند و max یک‌طرفه، کم‌خوانی را که جهت ناامن شارژر است
+    #      کامل پنهان می‌کرد.
+    errs = [ibat(raw, vlow_now(vlow, dmm)) - dmm for raw, vlow, dmm in rows if raw > 20]
+    worst = max(abs(e) for e in errs)
+    mean = sum(errs) / len(errs)
+    check(worst <= 10 and abs(mean) <= 3,
+          f"firmware-math replay of the dense run: worst |DMM error| {worst} mA (<= 10), mean {mean:+.1f} mA (<= 3, no systematic sign); the 2%-duty row floors at 0 as documented")
 
     # the fix's whole point: same chain, fuller battery -> proportionally less current
     i_122, i_130, i_140, i_144 = (ibat(494.8, v) for v in (12200, 13000, 14000, 14400))
@@ -1090,26 +1098,25 @@ def test_ch2_lut_refit_v118():
     def bsp_chain(counts, off=8, gain=1303):
         if counts <= off:
             return 0
-        num = (counts - off) * 3300
-        den = 4095
-        num *= 11
-        den *= 10
-        den *= 101
-        num *= 1000
-        den *= 10
-        ma = num // den
-        return (ma * gain) // 1000
+        # stages 1..4 of bsp_measurement.c fold to counts x 24200 / 27573;
+        # both divisions round to nearest (user order 2026-10-08)
+        ma = ((counts - off) * 24200 + 27573 // 2) // 27573
+        return (ma * gain + 500) // 1000
 
     def lut_mw(c):
+        # MulDivU32Saturating rounds to nearest; every anchor pair here rises,
+        # so adding half the divisor is that same rule.
         if c <= xs[0]:
             return ys[0]
         for i in range(1, len(xs)):
             if c <= xs[i]:
-                return ys[i - 1] + ((c - xs[i - 1]) * (ys[i] - ys[i - 1])) // (xs[i] - xs[i - 1])
-        return ys[-1] + ((c - xs[-1]) * (ys[-1] - ys[-2])) // (xs[-1] - xs[-2])
+                sp = xs[i] - xs[i - 1]
+                return ys[i - 1] + ((c - xs[i - 1]) * (ys[i] - ys[i - 1]) + sp // 2) // sp
+        sp = xs[-1] - xs[-2]
+        return ys[-1] + ((c - xs[-1]) * (ys[-1] - ys[-2]) + sp // 2) // sp
 
     def ibat(raw, v_mv):
-        return (lut_mw(bsp_chain(raw)) * 1000) // v_mv
+        return (lut_mw(bsp_chain(raw)) * 1000 + v_mv // 2) // v_mv
 
     check("EXCLUDED: D9" in cal_h and "12650" in cal_h,
           "calibration.h must document the D9 exclusion and the D16 DMM-voltage typo")
@@ -1130,11 +1137,28 @@ def test_ch2_lut_refit_v118():
     def _vnow(vlow, i_ma):
         return round((vlow + 150 + (max(i_ma, 0) * 470) // 1000) * 6.0585 / 6.0294)
 
-    worst = 0
-    for raw, vlow, dmm in rows:
-        worst = max(worst, abs(ibat(raw, _vnow(vlow, dmm)) - dmm))
-    check(worst <= 5,
-          f"firmware-math replay of the 2026-09-27 SOLO2 sweep: worst DMM error {worst} mA (<= 5, no systematic sign; the v1.17 float fit drifted -8 mA at D15)")
+    # [EN] Bounds on THIS dataset (the run the v1.18 anchors were fitted from,
+    #      with the voltage replayed through the corrected divider): worst
+    #      |error| and the MEAN. The mean is the guard that matters - the v1.17
+    #      float fit drifted -8 mA one-way at D15. Since 2026-10-08 the chain
+    #      rounds like the panel instead of flooring, so where the anchors were
+    #      placed by the panel's single float rounding and the board now uses
+    #      its own two integer stages the anchor can sit 1-2 mA away, which the
+    #      steep DCM->CCM segment amplifies (one row: 2 mA of chain -> 6 mA of
+    #      current). A re-pushed table lands the anchors exactly on the board's
+    #      chain, so this is a property of the OLD table, not of the fix.
+    # [FA] کران‌ها روی همین داده (اجرایی که لنگرهای v1.18 از آن برازش شده):
+    #      بدترین قدرمطلق و «میانگین». میانگین همان نگهبان مهم است - برازش
+    #      اعشاری v1.17 یک‌طرفه ۸ میلی‌آمپر می‌لغزید. از ۲۰۲۶-۱۰-۰۸ زنجیره مثل
+    #      پنل رُند می‌کند نه برش، پس اگر لنگری با رُند اعشاری پنل گذاشته شده
+    #      باشد و برد حالا دو مرحلهٔ عدد صحیح خودش را دارد، لنگر می‌تواند ۱-۲
+    #      میلی‌آمپر جابه‌جا باشد و شیب تند ناحیهٔ زانو آن را تا ۶ بزرگ می‌کند.
+    #      جدولِ تازه‌پوش‌شده لنگرها را دقیقاً روی زنجیرهٔ برد می‌گذارد.
+    errs = [ibat(raw, _vnow(vlow, dmm)) - dmm for raw, vlow, dmm in rows]
+    worst = max(abs(e) for e in errs)
+    mean = sum(errs) / len(errs)
+    check(worst <= 7 and abs(mean) <= 3,
+          f"firmware-math replay of the 2026-09-27 SOLO2 sweep: worst |DMM error| {worst} mA (<= 7), mean {mean:+.1f} mA (<= 3, no systematic sign; the v1.17 float fit drifted -8 mA at D15)")
 
 
 def test_ch1_lut_v119():
@@ -1169,23 +1193,22 @@ def test_ch1_lut_v119():
     def bsp_chain(counts, off=8, gain=1046):
         if counts <= off:
             return 0
-        num = (counts - off) * 3300
-        den = 4095
-        num *= 11
-        den *= 10
-        den *= 101
-        num *= 1000
-        den *= 10
-        ma = num // den
-        return (ma * gain) // 1000
+        # stages 1..4 of bsp_measurement.c fold to counts x 24200 / 27573;
+        # both divisions round to nearest (user order 2026-10-08)
+        ma = ((counts - off) * 24200 + 27573 // 2) // 27573
+        return (ma * gain + 500) // 1000
 
     def lut_mw(c):
+        # MulDivU32Saturating rounds to nearest; every anchor pair here rises,
+        # so adding half the divisor is that same rule.
         if c <= xs[0]:
             return ys[0]
         for i in range(1, len(xs)):
             if c <= xs[i]:
-                return ys[i - 1] + ((c - xs[i - 1]) * (ys[i] - ys[i - 1])) // (xs[i] - xs[i - 1])
-        return ys[-1] + ((c - xs[-1]) * (ys[-1] - ys[-2])) // (xs[-1] - xs[-2])
+                sp = xs[i] - xs[i - 1]
+                return ys[i - 1] + ((c - xs[i - 1]) * (ys[i] - ys[i - 1]) + sp // 2) // sp
+        sp = xs[-1] - xs[-2]
+        return ys[-1] + ((c - xs[-1]) * (ys[-1] - ys[-2]) + sp // 2) // sp
 
     def vhigh_corr(v24, vlow):
         # [EN] The sweep's v24 was logged while the pack net still used total
@@ -1201,7 +1224,8 @@ def test_ch1_lut_v119():
         return (v24 * 74800) // 69200 - vlow
 
     def ibat(raw, v24, vlow):
-        return (lut_mw(bsp_chain(raw)) * 1000) // vhigh_corr(v24, vlow)
+        vh = vhigh_corr(v24, vlow)
+        return (lut_mw(bsp_chain(raw)) * 1000 + vh // 2) // vh
 
     check("D7" in cal_h and "12200" in cal_h,
           "calibration.h must document the kept D7 dip and the D5 DMM-voltage outlier")
