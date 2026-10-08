@@ -632,7 +632,7 @@ readback failure است؛ summary و modal هر دو ناحیهٔ scrollable د�
 
 مدرک اجرای همین checkout:
 
-- `node esp_link_panel/Tester/host_test_scenario_cards.js`: **324/324 PASS**؛ شامل
+- `node esp_link_panel/Tester/host_test_scenario_cards.js`: **331/331 PASS**؛ شامل
   summary نام‌محور، checkbox انتخاب همهٔ نمونه‌ها، انتخاب انحصاری SWEEP/فهرست دستی
   با گام قابل‌تنظیم، کلیدهای factory-reset یکدست در همهٔ تنظیمات، حذف جدول/کنترل‌های
   ردیفی، modal یک‌تأییدی، اعمال همهٔ مقادیر معتبر و بسته‌شدن modal.
@@ -648,3 +648,13 @@ readback failure است؛ summary و modal هر دو ناحیهٔ scrollable د�
 
 این اعداد host/static/DOM هستند و جای تست فیزیکی برد، فلش STM32/ESP، UART/WiFi واقعی،
 ARM build/link یا باتری واقعی را نمی‌گیرند؛ آن موارد همچنان **NOT RUN** هستند.
+
+## الحاقیهٔ ۲۰۲۶-۱۰-۰۸ — گیت commit صفرنقطه‌ای، flush و reset
+
+- commit صفرنقطه‌ای برای حذف override فلش معتبر شد و دیگر به فعال‌بودن جدول وابسته نیست.
+- reset فقط با magic معتبر و grant حاصل از commit موفق پیش می‌رود. پیش از مصرف grant و arm شدن reset، `func__EspLink_NvmFlushForReset()` باید `true` بدهد؛ شکست flush با `CAL_LUT_ST_FLASH` گزارش می‌شود، reset مسلح نمی‌شود و grant/dirty state برای retry باقی می‌ماند.
+- بعد از reset، پنل `/t` تازه و سپس `LUT_READ/LUT_DATA` را می‌خواند؛ mismatch، timeout، clamp، reject و readback ناقص موفقیت نیستند.
+- اجرای نهایی همین checkout: DOM **331/331**، panel click **129/129**، ESP **112/112**، Charger **53/53**، CalLut **159/159**، parser **14**، NVM PASS، `audit_consistency.py` با **444 invariant و 0 finding** و `check_ai_rules.sh`/`check_firmware_syntax.sh` PASS.
+- Preview با `tools/stamp_panel.py` و `tools/make_panel_preview.py` بازسازی شد؛ `plink_panel.h` برابر **409692 bytes** و زیر سقف transfer audit است. Preview server روی پورت 3000 بالا است.
+
+این الحاقیه نیز host/static/DOM evidence است؛ تست فیزیکی STM32/ESP، UART/WiFi، فلش واقعی، persistence واقعی و باتری همچنان **NOT RUN** هستند.

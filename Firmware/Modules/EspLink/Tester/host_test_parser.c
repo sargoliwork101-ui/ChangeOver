@@ -160,15 +160,16 @@ int main(void)
         CHECK(func__EspLink_HostTest_AcceptedFrames() == 1u);
     }
 
-    /* LUT_RESET is one-shot and requires a fresh successful commit ACK. */
+    /* LUT_RESET is one-shot and requires a fresh successful commit ACK. A
+       successful zero-point commit is intentionally accepted even though no
+       active flash table remains. */
     func__EspLink_HostTest_Reset();
     CHECK(func__EspLink_HostTest_TryReset(true, true) == false);
     func__EspLink_HostTest_RecordCommitAck(false);
     CHECK(func__EspLink_HostTest_TryReset(true, true) == false);
     func__EspLink_HostTest_RecordCommitAck(true);
     CHECK(func__EspLink_HostTest_TryReset(false, true) == false);
-    CHECK(func__EspLink_HostTest_TryReset(true, false) == false);
-    CHECK(func__EspLink_HostTest_TryReset(true, true) == true);
+    CHECK(func__EspLink_HostTest_TryReset(true, false) == true);
     CHECK(func__EspLink_HostTest_TryReset(true, true) == false);
     func__EspLink_HostTest_RecordCommitAck(true);
     CHECK(func__EspLink_HostTest_TryReset(true, true) == true);

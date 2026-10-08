@@ -123,11 +123,12 @@ void func__BspUart_Init(void)
 }
 
 /* [EN] esp_link.c's reset branch flushes the debounced NVM save; this test
-   does not exercise persistence, so an empty double is enough.
+   does not exercise persistence, so the host double reports success.
    [FA] شاخهٔ ریستِ esp_link.c ذخیرهٔ دیبانس‌شده را فلاش می‌کند؛ این تست
-   پایداری را نمی‌آزماید، پس بدل خالی کافی است. */
-void func__EspLink_NvmFlushForReset(void)
+   پایداری را نمی‌آزماید، پس بدل هاست موفقیت را گزارش می‌کند. */
+bool func__EspLink_NvmFlushForReset(void)
 {
+    return true;
 }
 
 void func__Charger_SetSuspended(bool bool__suspended)

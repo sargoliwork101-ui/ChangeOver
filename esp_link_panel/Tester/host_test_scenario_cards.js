@@ -1106,6 +1106,16 @@ async function testBackupAndCal(win, doc) {
     check(doc.getElementById('calst').textContent.indexOf('در انتظار تأیید کاربر') >= 0,
           'nothing is written until the user confirms the complete batch');
 
+    /* A sample-selection edit invalidates the previous fit immediately; the
+       old numbers must not remain usable until the user runs the fit again.
+       [FA] تغییر انتخاب نمونه باید همان لحظه برازش قبلی را باطل کند. */
+    win.eval('caluse')(0, false);
+    check(win.CALR.length === 0 &&
+          doc.getElementById('calst').textContent.indexOf('نتیجهٔ قبلی دیگر معتبر نیست') >= 0,
+          'changing sample selection invalidates the old calibration result');
+    win.eval('caluse')(0, true);
+    win.eval('calrun')();
+
     /* --- v1.58: one confirmation, no per-parameter ticks --------------- */
     check(!doc.querySelector('[id^="calv"]') && !doc.querySelector('[id^="calk"]') &&
           !doc.querySelector('[id^="cald"]'),
@@ -1126,6 +1136,8 @@ async function testBackupAndCal(win, doc) {
     win.eval('calpick')(0);
     check(win.CALS.every(z => z.use === 0) && doc.getElementById('calall').checked === false,
           'unchecking the master sample checkbox excludes every row');
+    check(win.CALR.length === 0,
+          'unchecking all samples also invalidates the previous fit');
     win.eval('calpick')(1);
     check(win.CALS.every(z => z.use !== 0) && doc.getElementById('calall').checked === true,
           'checking the master sample checkbox includes every row again');
@@ -1263,6 +1275,12 @@ async function testBackupAndCal(win, doc) {
     const oldXexp = win.eval('xexp');
     win.eval('xexp = () => {}');
     win.eval('setv = async (id, value) => { D.p[id] = value; }');
+    win.PEND = { 0: 999 };
+    await win.eval('calapply')();
+    await win.eval('calmodalApply')();
+    check(doc.getElementById('calst').textContent.indexOf('در صف تغییرات پنل') >= 0 &&
+          doc.getElementById('calst').textContent.indexOf('شناسهٔ 0') >= 0,
+          'calibration refuses to overwrite a same-id pending edit');
     win.PEND = {};
     const expected = {};
     win.CALR.forEach(r => {
@@ -1291,6 +1309,23 @@ async function testBackupAndCal(win, doc) {
     check(doc.getElementById('calst').textContent.indexOf('✅') >= 0 &&
           doc.getElementById('calst').textContent.indexOf('readback') >= 0,
           'calibration apply reports successful board readback for the batch');
+
+    /* The voltage helper must use the same awaited setter/readback path, and
+       must refuse to calculate from a missing live voltage. */
+    const vcalCalls = [];
+    win.setv = async (id, value) => { vcalCalls.push([id, value]); win.D.p[id] = value; };
+    win.confirm = () => true;
+    win.D = { p: { 4: 10 }, t: [] };
+    doc.getElementById('vm0').value = '13.05';
+    await win.eval('vcal')(0);
+    check(vcalCalls.length === 0 &&
+          doc.getElementById('calst').textContent.indexOf('telemetry معتبر') >= 0,
+          'voltage calibration refuses a missing live board reading');
+    win.D.t[14] = 12500;
+    await win.eval('vcal')(0);
+    check(vcalCalls.length === 1 && vcalCalls[0][0] === 4 && vcalCalls[0][1] === 560 &&
+          doc.getElementById('calst').textContent.indexOf('readback همان شناسه') >= 0,
+          'voltage calibration awaits the same-id setter/readback path');
     win.setv = oldSetv;
     win.xexp = oldXexp;
     win.PEND = {};
@@ -1380,7 +1415,7 @@ async function testBackupAndCal(win, doc) {
           'the sample file says how many points it holds and when it was taken');
     const kept = win.CALS.length;
     win.CALS = [];
-    win.eval('calimp')({ text: async () => JSON.stringify(sf) }).then(() => {});
+    await win.eval('calimp')({ text: async () => JSON.stringify(sf) });
 
     /* --- noisy / too few samples must be refused, not applied --- */
     win.CALS = [{ r1: 100, r2: 100, vin: 24000, v24: 25000, v12: 12500, vlo: 12500, vhi: 12500,
@@ -1559,6 +1594,16 @@ async function testLutPush(win, doc) {
     const oldConfirm = win.confirm;
     const ackOk = { st: 3, s: 0, n1: packed.T[0].X.length, n2: packed.T[1].X.length,
                     crc: packed.crc, sent: packed.crc, age: 10, n: 3 };
+
+    win.PEND = { 0: off + 1 };
+    calls.length = 0;
+    await win.eval('lsend')(1);
+    check(doc.getElementById('calst').textContent.indexOf('در صف تغییرات پنل') >= 0 &&
+          doc.getElementById('calst').textContent.indexOf('شناسهٔ 0') >= 0,
+          'a LUT update refuses to overwrite a pending calibration id');
+    check(calls.length === 0, 'a pending calibration conflict does not even start LUT readback');
+    win.PEND = {};
+    win.pbar();
 
     /* The operator accepts the push but declines the reboot for now. */
     win.confirm = (m) => String(m).indexOf('ریست شود') < 0;

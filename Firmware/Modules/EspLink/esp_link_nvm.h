@@ -293,8 +293,12 @@ void func__EspLink_NvmTick(void);
  *              ویرایش جلو نزند (باگ کاربر ۲۰۲۶-۱۰-۰۷: ریست داخل پنجرهٔ
  *              ~۱٫۵ ثانیه‌ای دیبانس، مقادیر نو را می‌پرد درحالی‌که پنل آنها
  *              را اعمال‌شده نشان داده بود).
- * @return [EN] None / [FA]‎ ندارد
+ * @return bool [EN] true = no pending save or the record was flushed and
+ *              verified; false = flash erase/program/verify failed, so reset
+ *              must not be armed / درست = ذخیره‌ای معلق نیست یا رکورد با موفقیت
+ *              ذخیره و verify شده؛ نادرست = پاک/نوشتن/صحت‌سنجی فلش شکست خورد و
+ *              نباید ریست مسلح شود
  */
-void func__EspLink_NvmFlushForReset(void);
+bool func__EspLink_NvmFlushForReset(void);
 
 #endif /* ESP_LINK_NVM_H */

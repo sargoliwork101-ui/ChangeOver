@@ -1292,21 +1292,21 @@ static bool func__EspLink_HandleLutRead(uint16_t uint16_t__payloadLength)
 }
 
 /* [EN] Keep the handshake policy as a small stateful predicate so it is
-   testable without a UART or flash model. The handler supplies the facts it
-   already knows: whether the magic and active-table checks passed.
+   testable without a UART or flash model. A successful commit is the proof of
+   intent, including a valid zero-point commit that deliberately disables both
+   flash overrides; active-table presence is not a second gate.
    [FA] سیاست دست‌دادن را به‌صورت یک predicate کوچک و stateful نگه می‌داریم
-   تا بدون مدل UART یا فلش تست‌پذیر باشد. هندلر واقعیت‌هایی را که خودش دارد
-   می‌دهد: معتبر بودن مجیک و فعال بودن جدول. */
+   تا بدون مدل UART یا فلش تست‌پذیر باشد. commit موفق نشانهٔ قصد معتبر است،
+   حتی اگر commit صفرنقطه‌ای هر دو override فلش را عمداً خاموش کرده باشد؛
+   فعال‌بودن جدول شرط دوم نیست. */
 static void func__EspLink_RecordLutCommitAck(bool bool__success)
 {
     BOOL__G__LutResetAuthorized = bool__success;
 }
 
-static bool func__EspLink_ConsumeLutResetAuthorization(bool bool__magicValid,
-                                                        bool bool__tableActive)
+static bool func__EspLink_ConsumeLutResetAuthorization(bool bool__magicValid)
 {
     if ((bool__magicValid == false) ||
-        (bool__tableActive == false) ||
         (BOOL__G__LutResetAuthorized == false))
     {
         return false;
@@ -1428,15 +1428,15 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
     {
         uint8_t uint8_t__status = (uint8_t)CAL_LUT_ST_NO_STAGE;
         bool bool__magicValid = false;
-        bool bool__tableActive;
 
-        /* [EN] Literal 'R','S','T','!' and a table that is actually active:
-           a stray or replayed frame must never be able to reboot a charging
-           board. The stateful predicate additionally requires the last
-           LUT_ACK to have been a successful COMMIT and consumes that grant.
-           [FA] مجیک متنی و وجود جدول فعال: فریم سرگردان یا تکرارشده هرگز
-           نباید بردِ در حال شارژ را ریست کند. predicate علاوه بر این، ACK
-           آخر را باید commit موفق بداند و مجوز را مصرف می‌کند. */
+        /* [EN] Literal 'R','S','T','!' and a fresh successful COMMIT are the
+           reset proof. A zero-point COMMIT is intentionally allowed: it clears
+           both flash overrides, so neither active-table predicate can be used
+           as a reset gate. The grant is consumed only after NVM flush succeeds.
+           [FA] مجیک متنی و commit موفق تازه مدرک ریست هستند. commit صفرنقطه‌ای
+           عمداً مجاز است چون هر دو override فلش را پاک می‌کند؛ بنابراین فعال
+           بودن جدول نباید دروازهٔ ریست باشد. مجوز فقط بعد از flush موفق NVM
+           مصرف می‌شود. */
         if ((uint16_t__payloadLength == 4u) &&
             (uint8_t__payload[0] == (uint8_t)'R') &&
             (uint8_t__payload[1] == (uint8_t)'S') &&
@@ -1445,22 +1445,30 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
         {
             bool__magicValid = true;
         }
-        bool__tableActive =
-            (func__CalLut_Active(CAL_LUT_CHANNEL_1) != false) ||
-            (func__CalLut_Active(CAL_LUT_CHANNEL_2) != false);
-
-        if (func__EspLink_ConsumeLutResetAuthorization(bool__magicValid,
-                                                        bool__tableActive) != false)
+        if ((bool__magicValid != false) &&
+            (BOOL__G__LutResetAuthorized != false))
         {
             /* [EN] User bug 2026-10-07: the reboot must not outrun the
-               debounced save - flush a pending record BEFORE arming, so a
-               reset right after a settings edit keeps the new values.
-               [FA] باگ کاربر ۲۰۲۶-۱۰-۰۷: ریست نباید از ذخیرهٔ دیبانس‌شده
-               جلو بزند - رکورد معلق «قبل از» مسلح‌کردن فلاش می‌شود تا ریستِ
-               بلافاصله بعد از ویرایش تنظیمات، مقادیر نو را نگه دارد. */
-            func__EspLink_NvmFlushForReset();
-            func__CalLut_RequestReset();
-            uint8_t__status = (uint8_t)CAL_LUT_ST_OK;
+               debounced save - flush a pending record BEFORE consuming the
+               commit grant and arming reset, so a reset right after a settings
+               edit keeps the new values. A failed flush is a visible flash
+               error and leaves the grant available for a retry.
+               [FA] باگ کاربر ۲۰۲۶-۱۰-۰۷: ریست نباید از ذخیرهٔ دیبانس‌شده جلو
+               بزند - رکورد معلق پیش از مصرف مجوز commit و مسلح‌کردن ریست flush
+               می‌شود تا مقدارهای نو بمانند. شکست flush خطای دیدنی فلش است و
+               مجوز برای تلاش دوباره باقی می‌ماند. */
+            if (func__EspLink_NvmFlushForReset() != false)
+            {
+                if (func__EspLink_ConsumeLutResetAuthorization(bool__magicValid) != false)
+                {
+                    func__CalLut_RequestReset();
+                    uint8_t__status = (uint8_t)CAL_LUT_ST_OK;
+                }
+            }
+            else
+            {
+                uint8_t__status = (uint8_t)CAL_LUT_ST_FLASH;
+            }
         }
         func__EspLink_SendLutAck((uint8_t)ESPLINK_LUT_ACK_STAGE_RESET,
                                  uint8_t__status, func__CalLut_ActiveCrc32());
@@ -1742,8 +1750,12 @@ void func__EspLink_HostTest_RecordCommitAck(bool bool__success)
 bool func__EspLink_HostTest_TryReset(bool bool__magicValid,
                                      bool bool__tableActive)
 {
-    return func__EspLink_ConsumeLutResetAuthorization(bool__magicValid,
-                                                       bool__tableActive);
+    /* [EN] tableActive is retained in the host probe signature for source
+       compatibility; a successful zero-point commit is a valid reset grant.
+       [FA] tableActive برای سازگاری امضای probe هاست باقی مانده است؛ commit
+       موفق صفرنقطه‌ای هم مجوز معتبر ریست است. */
+    (void)bool__tableActive;
+    return func__EspLink_ConsumeLutResetAuthorization(bool__magicValid);
 }
 
 bool func__EspLink_HostTest_HandleLutFrame(uint8_t uint8_t__messageType,

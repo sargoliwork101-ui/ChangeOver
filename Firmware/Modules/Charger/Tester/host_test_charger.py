@@ -4095,6 +4095,13 @@ def test_direct_lut_push_v166():
           "the LUT module must be initialised at boot and ticked by the comm task (the armed reboot lives there)")
     check("(uint8_t)'R'" in esp_c and "(uint8_t)'S'" in esp_c and "(uint8_t)'T'" in esp_c,
           "LUT_RESET must carry a literal magic: a stray frame must never be able to reboot a charging board")
+    reset_start = esp_c.find("if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_RESET)")
+    reset_end = esp_c.find("return true;", reset_start)
+    reset_block = esp_c[reset_start:reset_end] if reset_start >= 0 and reset_end >= 0 else ""
+    check("func__CalLut_Active(" not in reset_block and
+          "func__EspLink_NvmFlushForReset() != false" in reset_block and
+          "CAL_LUT_ST_FLASH" in reset_block,
+          "a valid zero-point commit may reset, but a failed NVM flush must refuse reset before consuming the grant")
 
     # ---------- measurement prefers the stored table, falls back to the compiled one ----------
     check("func__Measurement_BenchLutInterp" in meas_c,

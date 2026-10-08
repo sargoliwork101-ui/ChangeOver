@@ -490,7 +490,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 41c49f8</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 90a57fa</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1211,6 +1211,7 @@ function pvalidate(ids){return ids.map(id=>{
   return 'شناسهٔ '+id+' — '+m.name+'؛ مقدار واردشده: '+String(raw)+'؛ بازهٔ مجاز: '+prange(m)+'؛ برد این مقدار خارج از بازه را نمی‌پذیرد و روی برد نمی‌نشیند (ممکن است آن را clamp کند یا اصلاً اعمال نکند).';
  return null;}).filter(Boolean);}
 async function sendall(){
+ if(CAL_BUSY){stxt('sbst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است؛ ارسال عمومی فعلاً متوقف شد.');return;}
  if(!Object.keys(PEND).length)return;
  const queued=Object.keys(PEND);
  const rangeErrors=pvalidate(queued);
@@ -1326,8 +1327,20 @@ $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${
 [1,2].forEach(n=>$('tg'+n).onclick=()=>{const c=D&&D.p[10+n];if(c!==0&&!confirm('PWM شارژر '+n+' فوراً قطع شود؟'))return;send(10+n,c===0?1:0);});
 /* ---------- تاریخچهٔ نمودار هر کانال ---------- */
 let LS=-1;const hn=c=>{const e=$('hN'+(c+1)),v=e?Math.round(+e.value):0;return !v?100:Math.min(600,Math.max(10,v));},H=[0,1].map(()=>({u:[],f:[]}));
-function vcal(k){const R=V[k],m=Math.round(+$('vm'+k).value*1000),shown=D&&D.t[R[1]],off=D&&D.p[R[2]];if(!(m>0))return alert('عدد مولتی‌متر را به ولت وارد کنید (مثلاً 13.05).');if(off==null)return;
- const no=Math.min(5000,Math.max(-5000,off+m-shown));if(confirm(R[0]+': آفست '+off+' ← '+no+' میلی‌ولت\n(نمایش '+v2(shown)+' ولت، مولتی‌متر '+v2(m)+' ولت)')){send(R[2],no);$('vm'+k).value='';}}
+async function vcal(k){
+ const R=V[k],input=$('vm'+k),m=Math.round(+$('vm'+k).value*1000),shown=D&&D.t[R[1]],off=D&&D.p[R[2]];
+ if(!(m>0))return alert('عدد مولتی‌متر را به ولت وارد کنید (مثلاً 13.05).');
+ if(!Number.isFinite(Number(shown))||!Number.isFinite(Number(off))){stxt('calst','⛔ telemetry معتبر برای '+R[0]+' در دسترس نیست؛ مقدار را حدس نمی‌زنیم.');return;}
+ if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
+ if(CAL_BUSY){stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
+ if(Object.prototype.hasOwnProperty.call(PEND,R[2])){stxt('calst','⛔ شناسهٔ '+R[2]+' هنوز در صف تغییرات پنل است؛ ابتدا آن را ارسال یا لغو کنید.');return;}
+ const no=Math.min(5000,Math.max(-5000,Number(off)+m-Number(shown)));
+ if(!confirm(R[0]+': آفست '+off+' ← '+no+' میلی‌ولت\n(نمایش '+v2(shown)+' ولت، مولتی‌متر '+v2(m)+' ولت)'))return;
+ CAL_BUSY=true;
+ try{await setv(R[2],no);if(input)input.value='';stxt('calst','✅ '+R[0]+' روی برد نشست و با readback همان شناسه تأیید شد.');}
+ catch(e){stxt('calst','⛔ '+R[0]+' readback نشد؛ مقدار روی برد موفق فرض نمی‌شود: '+e);}
+ finally{CAL_BUSY=false;lupd();}
+}
 /* نمودار زندهٔ فیلتر هر کانال */
 function chart(){[0,1].forEach(ci=>{const c=$('cv'+(ci+1)),w=c.clientWidth,h=c.clientHeight,dp=devicePixelRatio||1;if(!w)return;
  if(c.width!=Math.round(w*dp)){c.width=Math.round(w*dp);c.height=Math.round(h*dp);}
@@ -3064,8 +3077,24 @@ function wst(m,c){const e=$('wS0');e.innerHTML=m;e.className='cm '+(c||'lb');}
 function wchk(){if(W.abort)throw 'پایان توسط کاربر';const d=D;if(!d||d.on!=1)throw 'لینک STM32 قطع شد';
  (W.act||[]).forEach(n=>{const s=d.t[(n-1)*7+6];if(s==7)throw 'Final fault کانال '+fa(n);if(s==5)throw 'تریپ JIT کانال '+fa(n);if(d.t[n==1?18:17]>=15000)throw 'قطع ۱۵ ولت کانال '+fa(n);});
  if(W.man&&!(d.fl&32))throw 'مود دستی قطع شد (deadman یا محافظ پنل)';}
-/* نوشتن پارامتر و صبر تا گزارش همان مقدار از STM32 */
-async function setv(id,v){for(let k=0;k<3;k++){const j=await req('/s?id='+id+'&v='+v,'POST');if(j._s!=200)throw 'پاسخ ESP: '+j._s;const e=Date.now()+2500;while(Date.now()<e){await sl(150);if(D&&D.p[id]===v)return;}}throw 'برد مقدار شناسهٔ '+id+' = '+v+' را گزارش نکرد';}
+/* نوشتن پارامتر و صبر تا گزارش تازهٔ همان مقدار از STM32 */
+async function setv(id,v){
+ const seqBefore=(D&&Number.isFinite(+D.seq))?+D.seq:null;
+ for(let k=0;k<3;k++){
+  const j=await req('/s?id='+id+'&v='+v,'POST');
+  if(j._s!=200)throw 'پاسخ ESP: '+j._s;
+  const e=Date.now()+2500;
+  while(Date.now()<e){
+   await sl(150);
+   const fresh=seqBefore==null||!D||!Number.isFinite(+D.seq)||+D.seq!==seqBefore;
+   if(fresh&&D&&D.p&&Number(D.p[id])===Number(v)){
+    pclr(id,Number(D.p[id]));
+    const a=$('a'+id);if(a)a.textContent=D.p[id];
+    return;
+   }
+  }
+ }
+ throw 'برد مقدار شناسهٔ '+id+' = '+v+' را گزارش نکرد';}
 async function wrestore(o){wst('بازگردانی تنظیمات قبل از ثبت…');W.man=false;W.act=null;const L=[[16,0],[18,0],[19,o[19]],[11,o[11]],[12,o[12]]];if(o[19]===0)L.push([16,o[16]],[18,o[18]]);for(const [i,v] of L){try{await setv(i,v);}catch(e){}}}
 async function wlog(txt){const j=await req('/benchlog/add','POST',txt);if(j._s==507)throw 'فایل پر است (حدود ۱۰۰KB). فایل را دانلود و پاک کنید.';if(j._s!=200)throw 'نوشتن در فایل انجام نشد (پاسخ '+j._s+')';wfs(j.size);return j;}
 function wfs(sz){$('wF').innerHTML=sz==null?'':`<span class="n">${(sz/1024).toFixed(1)} / 100 KB</span>`;}
@@ -3225,38 +3254,19 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
  stxt('calst','جدول بسته شد. مرحلهٔ بعد پایین همین صفحه است: «محاسبه از نمونه‌ها» و بعد «ساخت کد برای میکرو».');}
 
 /* ==================== Bench Calibration / کالیبراسیون از جدول بنچ ====================
-   [EN] v1.57 (user order: "take the bench capture straight onto the board with
-   the user's confirmation, so I do not have to hand the file to an AI every
-   time"). Every recorded wizard step now also lands in a small sample list,
-   and this block turns that list into the SEVEN calibration numbers the board
-   actually stores:
-
-     id 0 / id 1  current offset ch1 / ch2 (ADC counts at zero current)
-     id 2 / id 3  current gain   ch1 / ch2 (per-mille)
-     id 4 / 5 / 6 input, 24 V pack and 12 V node offsets (mV)
-
-   The board's own formula is  I_mA = (raw - offset) * 0.8777 * gain/1000, so a
-   straight least-squares line  dmm = slope*raw + intercept  gives both numbers
-   at once: gain = slope/0.8777*1000 and offset = -intercept/slope. The voltage
-   offsets are simply the average of (multimeter - board), added to whatever
-   offset the board is using now.
-
-   Nothing is written silently: the panel shows a named before/after/status
-   summary, refuses obviously bad data, and before writing it downloads a full
-   settings backup so one click can undo the whole thing.
-   [FA] هر مرحلهٔ ثبت‌شدهٔ ویزارد یک نمونه هم اینجا ذخیره می‌کند. این بخش از
-   روی همان نمونه‌ها با «کمترین مربعات» هفت عدد کالیبراسیون را حساب می‌کند،
-   خلاصهٔ نام‌محورِ مقدار قبلی/جدید و وضعیت را نشان می‌دهد، دادهٔ بد را رد
-   می‌کند و پیش از نوشتن روی برد، یک پشتیبان کامل دانلود می‌کند. */
+   [EN] Fit checked bench samples into the seven board calibration parameters;
+   show the result and wait for explicit confirmation before any write.
+   [FA] نمونه‌های معتبر بنچ به هفت پارامتر کالیبراسیون برد برازش می‌شوند؛
+   نتیجه نمایش داده می‌شود و پیش از هر نوشتن تأیید صریح کاربر لازم است. */
 var CALS=[];try{CALS=JSON.parse(localStorage.getItem('calsmp')||'[]')||[];}catch(e){CALS=[];}
 function calsave(){try{localStorage.setItem('calsmp',JSON.stringify(CALS.slice(-400)));}catch(e){}}
 function calpush(m,v,act,sc,duty){
  CALS.push({sc:sc,d:duty,use:1,r1:m.a(0),r2:m.a(7),vin:m.a(14),v24:m.a(15),v12:m.a(16),vlo:m.a(17),vhi:m.a(18),
   b1:act.includes(1)?v.b1:null,b2:act.includes(2)?v.b2:null,
   dvi:v.vi,dv1:v.v1,dv2:v.v2,ts:Date.now()});
- calsave();caln();calsmp();calchk();}
-function calclr(){if(!confirm('همهٔ نمونه‌های جمع‌شده پاک شوند؟'))return;CALS=[];calsave();caln();calsmp();
- stxt('calst','نمونه‌ها پاک شدند.');CALP=[];CALR=[];calmodalClose();}
+ calinvalidate();calsave();caln();calsmp();calchk();}
+function calclr(){if(!confirm('همهٔ نمونه‌های جمع‌شده پاک شوند؟'))return;CALS=[];calinvalidate();calsave();caln();calsmp();
+ stxt('calst','نمونه‌ها پاک شدند.');}
 function caln(){stxt('caln',String(CALS.length));}
 /* [‎EN] least squares y = a*x + b, plus R‎². [FA] برازش خطی + کیفیت. */
 function calfit(xs,ys){const n=xs.length;let sx=0,sy=0,sxx=0,sxy=0;
@@ -3266,9 +3276,15 @@ function calfit(xs,ys){const n=xs.length;let sx=0,sy=0,sxx=0,sxy=0;
  let ss=0,sr=0,mx=0;for(let i=0;i<n;i++){const e=ys[i]-(a*xs[i]+b);sr+=e*e;ss+=(ys[i]-my)*(ys[i]-my);
   if(Math.abs(e)>mx)mx=Math.abs(e);}
  return {a,b,r2:ss>0?(1-sr/ss):1,n,mx,span:Math.max(...xs)-Math.min(...xs)};}
-var CALP=[],CALR=[];
+var CALP=[],CALR=[],CAL_BUSY=false;
+function calinvalidate(){
+ CALP=[];CALR=[];calmodalClose();
+ const e=$('calst');if(e)e.textContent='نمونه‌ها یا انتخاب آن‌ها تغییر کرده‌اند؛ نتیجهٔ قبلی دیگر معتبر نیست و باید دوباره محاسبه شود.';
+}
+function calpending(ids){return (ids||[]).filter(id=>Object.prototype.hasOwnProperty.call(PEND,id));}
+function calpendingText(ids){return calpending(ids).map(id=>'شناسهٔ '+id).join('، ');}
 function calrun(){
- CALR=[];CALP=[];
+ calinvalidate();
  const cur=id=>(D&&D.p&&D.p[id]!=null)?D.p[id]:null;
  if(!D||!D.p){stxt('calst','⚠ هنوز داده‌ای از برد نرسیده — لینک برقرار نیست.');return;}
  if(calsel(null).length<3){stxt('calst','⚠ فقط '+calsel(null).length+' نمونهٔ تیک‌خورده هست؛ برای کالیبره حداقل ۳ مرحله لازم است.');return;}
@@ -3370,29 +3386,15 @@ function calsmp(){const b=$('calsl');if(!b)return;
    '<td dir="ltr">'+(z.r2==null?'':Math.round(z.r2))+'</td><td dir="ltr">'+(z.b2==null?'':Math.round(z.b2))+'</td>'+
    '<td dir="ltr">'+(z.dvi==null?'':z.dvi)+'</td></tr>').join('')+'</table></div>';calallSync();}
 function calallSync(){const e=$('calall');if(!e)return;const selected=CALS.filter(z=>z.use!==0).length;e.checked=selected===CALS.length;e.indeterminate=selected>0&&selected<CALS.length;const n=$('calallCount');if(n)n.textContent=selected+' از '+CALS.length+' نمونه برای محاسبه انتخاب شده';}
-function caluse(i,on){if(CALS[i]){CALS[i].use=on?1:0;calsave();calallSync();}}
-function calpick(on){CALS.forEach(z=>{z.use=on?1:0;});calsave();calsmp();}
+function caluse(i,on){if(CALS[i]){CALS[i].use=on?1:0;calinvalidate();calsave();calallSync();}}
+function calpick(on){CALS.forEach(z=>{z.use=on?1:0;});calinvalidate();calsave();calsmp();}
 /* [EN] Only ticked rows, and only rows whose scenario really drove that
    channel. [FA] فقط ردیف‌های تیک‌خورده، و فقط ردیف‌هایی که همان کانال در
    آن سناریو واقعاً کار می‌کرده. */
 function calsel(n){return CALS.filter(z=>z.use!==0&&(n==null||z.sc==null||WSC[z.sc]==null||WSC[z.sc].indexOf(n)>=0));}
 /* ==================== Voltage slope / شیب ولتاژ ====================
-   [EN] v1.62 (user question: "how do we know the battery voltage is read
-   right? shouldn't that have a table too?"). It must NOT have a table: a
-   resistive divider is a straight line, so two numbers describe it fully -
-   a slope (the divider ratio) and an offset. The board today lets the panel
-   tune the OFFSET only (ids 4/5/6); the slope lives in the divider resistor
-   constants in bsp_measurement.c. So the honest thing is to MEASURE the
-   slope from the same bench samples and say it out loud: if it is 1.000 the
-   offset is enough, if it is not, an offset can never fix it (the error
-   grows with voltage) and the divider constant itself has to be corrected
-   in the firmware - which the code generator now prints.
-   [FA] ولتاژ جدول نمی‌خواهد چون مقسم مقاومتی یک خط صاف است: فقط «شیب»
-   (نسبت مقسم) و «آفست». برد فقط آفست را قابل تنظیم کرده؛ شیب داخل
-   مقدار مقاومت‌هاست. پس شیب را از همین نمونه‌ها اندازه می‌گیریم و صریح
-   می‌گوییم: اگر ۱٫۰۰۰ بود آفست کافی است، اگر نبود آفست هرگز درستش
-   نمی‌کند (خطا با ولتاژ بزرگ می‌شود) و باید مقاومت مقسم در فرم‌ور اصلاح
-   شود - که تولیدکنندهٔ کد همان را چاپ می‌کند. */
+   [EN] Measure divider slope separately; an offset cannot hide a scale error.
+   [FA] شیب مقسم جداگانه سنجیده می‌شود؛ آفست خطای مقیاس را پنهان نمی‌کند. */
 /* [EN] v1.62b self-audit finding: the input rail (R46) and the pack rail
    (R47) are two DIFFERENT resistors that today both alias the same
    constant. Printing one #define for both would have made the generator
@@ -3485,20 +3487,8 @@ function calchk(){
  return cN+cW;}
 
 /* ==================== Firmware snippet / خروجی برای کد میکرو ====================
-   [EN] v1.61 (user order: "give me something I can paste into the firmware so
-   a new board does not need this table pushed into it"). The board's own
-   bench table is chain-current -> battery POWER, and measurement.c divides
-   that power by the LIVE battery voltage to get current. So the generator
-   rebuilds exactly that: for each accepted sample it computes the chain
-   current the firmware itself would compute, and the battery power the
-   multimeter actually proved (I_dmm x V_bat), sorts them, drops duplicates
-   and prints the two C arrays plus the matching default offsets and gains.
-   Paste it into Firmware/Modules/Measurement/calibration.h and every board
-   flashed with that build already knows the table.
-   [FA] جدول داخل برد «جریان زنجیره ← توان باتری» است و فرم‌ور توان را بر
-   ولتاژ زندهٔ باتری تقسیم می‌کند تا جریان دربیاید. این خروجی دقیقاً همان را
-   می‌سازد و دو آرایهٔ C به‌علاوهٔ آفست و گین پیش‌فرض را چاپ می‌کند تا داخل
-   calibration.h کپی کنید. */
+   [EN] Generate calibration.h from the current, validated fit.
+   [FA] calibration.h از برازش فعلی و اعتبارسنجی‌شده ساخته می‌شود. */
 /* [EN] v1.64 (user order: "the panel must guarantee a battery's two axes
    come out the same length - the MCU must not spend time on it"). This
    builder is now the single place that proves a table is legal before it
@@ -3542,6 +3532,9 @@ function calcode(){
  if(samples<2){
   const t=$('calcd');if(t){t.value='/* NOT GENERATED: کمتر از ۲ نقطهٔ معتبر ('+samples+') — حداقل ۲ لازم است. */';t.style.display='block';}
   stxt('calst','⚠ کمتر از ۲ نقطهٔ معتبر برای تولید کد وجود دارد.');return;
+ }
+ if(!CALR.length){
+  stxt('calst','⚠ نتیجهٔ محاسبهٔ فعلی وجود ندارد؛ قبل از ساخت کد دوباره «محاسبه از نمونه‌ها» را بزنید.');return;
  }
  const get=id=>{const r=CALR.filter(x=>Number(x[1])===id)[0];
   if(r&&Number.isFinite(Number(r[3])))return Math.round(Number(r[3]));
@@ -3599,7 +3592,7 @@ async function calimp(f){let o;try{o=JSON.parse(await f.text());}catch(e){stxt('
  const add=o.samples.filter(z=>z&&Number.isFinite(z.r1));
  if(!add.length){stxt('calst','⚠ نمونهٔ معتبری در فایل نیست');return;}
  const keep=CALS.length&&confirm('نمونه‌های فعلی ('+CALS.length+' تا) هم نگه داشته شوند؟\nلغو = فقط نمونه‌های فایل بماند.');
- CALS=keep?CALS.concat(add):add;calsave();caln();calsmp();
+ CALS=keep?CALS.concat(add):add;calinvalidate();calsave();caln();calsmp();
  stxt('calst','⬆ '+add.length+' نمونه بازخوانی شد (مجموع '+CALS.length+'). حالا «محاسبه» را بزنید.');
  const e=$('calf');if(e)e.value='';}
 async function calapply(){
@@ -3610,41 +3603,49 @@ async function calapply(){
     وجود ندارد؛ هر پارامتر معتبر محاسبه‌شده با نام خودش نوشته، readback و
     گزارش می‌شود. */
  if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است.');return;}
+ if(CAL_BUSY){stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
  calmodalOpen();
 }
 async function calmodalApply(){
  if(W&&W.run){calmodalClose();stxt('calst','⛔ داده‌برداری بنچ در جریان است.');return;}
+ if(CAL_BUSY){calmodalClose();stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
  const jobs=caljobs();
  if(!jobs.length){calmodalClose();stxt('calst',calsummary(CALR,null,'خلاصهٔ تغییرهای محاسبه‌شده')+'<div class="lb">هیچ مقدار معتبر و قابل اعمالی وجود ندارد.</div>');return;}
+ const conflicts=calpending(jobs.map(c=>c[0]));
+ if(conflicts.length){calmodalClose();stxt('calst','⛔ '+calpendingText(conflicts)+' هنوز در صف تغییرات پنل است؛ ابتدا آن‌ها را ارسال یا لغو کنید.');return;}
  calmodalClose();
  CALP=jobs;
- xexp();
- /* [EN] /s=200 only queues; setv() waits for the board's matching report.
-    [FA] ۲۰۰ ‎/s‎ فقط صف است؛ setv() تا گزارش دقیق همان مقدار صبر می‌کند. */
- let ok=0,fail=0;
- const status=Object.create(null);
- for(const c of CALP){
-  const id=c[0],value=c[1];
-  try{
-   await setv(id,value);
-   const back=(D&&D.p)?D.p[id]:null;
-   const ri=CALR.findIndex(r=>Number(r[1])===id);
-   if(back==null||+back!==+value){
-    fail++;status[id]='⚠ بازخوانی متفاوت؛ این مقدار اعمال‌شده فرض نمی‌شود';
-   }else{
-    ok++;status[id]='✅ روی برد نشست و با readback تأیید شد';
-    if(ri>=0){CALR[ri][2]=+back;CALR[ri][3]=+back;}
-    const e=$('q'+id);if(e&&document.activeElement!==e&&!(id in PEND))e.value=back;
+ CAL_BUSY=true;
+ try{
+  xexp();
+  /* [EN] /s=200 only queues; setv() waits for the board's matching report.
+     [FA] ۲۰۰ ‎/s‎ فقط صف است؛ setv() تا گزارش دقیق همان مقدار صبر می‌کند. */
+  let ok=0,fail=0;
+  const status=Object.create(null);
+  for(const c of CALP){
+   const id=c[0],value=c[1];
+   try{
+    await setv(id,value);
+    const back=(D&&D.p)?D.p[id]:null;
+    const ri=CALR.findIndex(r=>Number(r[1])===id);
+    if(back==null||+back!==+value){
+     fail++;status[id]='⚠ بازخوانی متفاوت؛ این مقدار اعمال‌شده فرض نمی‌شود';
+    }else{
+     ok++;status[id]='✅ روی برد نشست و با readback تأیید شد';
+     if(ri>=0){CALR[ri][2]=+back;CALR[ri][3]=+back;}
+     const e=$('q'+id);if(e&&document.activeElement!==e&&!(id in PEND))e.value=back;
+    }
+   }catch(e){
+    fail++;status[id]='⛔ بازخوانی ناموفق؛ این تغییر روی برد تأیید نشد';
    }
-  }catch(e){
-   fail++;status[id]='⛔ بازخوانی ناموفق؛ این تغییر روی برد تأیید نشد';
+   stxt('calst',calsummary(CALR,status,'وضعیت اعمال کالیبراسیون')+
+    '<div class="lb">پیشرفت: '+(ok+fail)+' از '+CALP.length+' نام پارامتر بررسی شد.</div>');
   }
-  stxt('calst',calsummary(CALR,status,'وضعیت اعمال کالیبراسیون')+
-   '<div class="lb">پیشرفت: '+(ok+fail)+' از '+CALP.length+' نام پارامتر بررسی شد.</div>');
- }
- stxt('calst',calsummary(CALR,status,'وضعیت نهایی اعمال کالیبراسیون')+
-  '<div class="lb">'+(fail===0?'✅ همهٔ تغییرهای معتبر روی برد نشستند و readback شدند.':'⚠ '+fail+' تغییر readback نشد؛ فقط '+ok+' تغییر تأیید شده است. مقدار ناموفق را اعمال‌شده فرض نکنید.')+
-  (ok?'<br>ثبت فلش مقدارهای تأییدشده حدود ۲ ثانیه بعد کامل می‌شود؛ تا آن موقع برد را خاموش نکنید.':'')+'</div>');}
+  stxt('calst',calsummary(CALR,status,'وضعیت نهایی اعمال کالیبراسیون')+
+   '<div class="lb">'+(fail===0?'✅ همهٔ تغییرهای معتبر روی برد نشستند و readback شدند.':'⚠ '+fail+' تغییر readback نشد؛ فقط '+ok+' تغییر تأیید شده است. مقدار ناموفق را اعمال‌شده فرض نکنید.')+
+   (ok?'<br>ثبت فلش مقدارهای تأییدشده حدود ۲ ثانیه بعد کامل می‌شود؛ تا آن موقع برد را خاموش نکنید.':'')+'</div>');
+ }finally{CAL_BUSY=false;lupd();}
+}
 
 
 /* ---------- v1.66: ارسال مستقیم جدول به حافظهٔ خود میکرو (دستور کاربر ۲۰۲۶-۱۰-۰۵) ----------
@@ -3671,6 +3672,7 @@ function lcalvalue(id){
  return (D&&D.p&&D.p[id]!=null)?Number(D.p[id]):0;}
 function lcopytable(t){return {X:t&&Array.isArray(t.X)?t.X.slice():[],Y:t&&Array.isArray(t.Y)?t.Y.slice():[]};}
 function lpack(target,base){
+ if(!CALR.length)return {bad:'نتیجهٔ محاسبهٔ فعلی کالیبراسیون وجود ندارد؛ ابتدا دوباره محاسبه کنید',msg:[]};
  const both=target==null||target===0||target==='both';
  const proposedOff=[lcalvalue(0),lcalvalue(1)],proposedGain=[lcalvalue(2),lcalvalue(3)];
  const proposedVoltage=[lcalvalue(4),lcalvalue(5),lcalvalue(6)];
@@ -3808,11 +3810,14 @@ async function lread(){
 }
 function lmatch(a,p){if(!a||!a.ready)return false;for(let n=0;n<2;n++){const x=a.T[n],y=p.T[n];if(x.X.length!==y.X.length)return false;for(let i=0;i<x.X.length;i++){if(x.X[i]!==y.X[i]||x.Y[i]!==y.Y[i])return false;}}return true;}
 async function lreadnow(){
- if(LREAD_IN_PROGRESS)return;
- LSNT=0;LUT_LAST_PROPOSAL=null;LREAD_IN_PROGRESS=true;lupd();
- stxt('calst','… جدول فعال واقعی هر دو باتری از برد خوانده می‌شود.');
- const r=await lread();LREAD_IN_PROGRESS=false;LBT=r;LAT=null;lupd();lrenderRead(r);
- stxt('calst',r.ready?'✅ جدول فعال واقعی هر دو باتری در بالا نمایش داده شد.':'⚠ '+r.error+'؛ جدول فعلی قابل اتکا نیست.');
+ if(LREAD_IN_PROGRESS||CAL_BUSY)return;
+ CAL_BUSY=true;
+ try{
+  LSNT=0;LUT_LAST_PROPOSAL=null;LREAD_IN_PROGRESS=true;lupd();
+  stxt('calst','… جدول فعال واقعی هر دو باتری از برد خوانده می‌شود.');
+  const r=await lread();LBT=r;LAT=null;lrenderRead(r);
+  stxt('calst',r.ready?'✅ جدول فعال واقعی هر دو باتری در بالا نمایش داده شد.':'⚠ '+r.error+'؛ جدول فعلی قابل اتکا نیست.');
+ }finally{LREAD_IN_PROGRESS=false;CAL_BUSY=false;lupd();}
 }
 /* [EN] After reset, fetch a fresh telemetry report instead of trusting the
    pre-reset D object. Every calibration value used by this transaction must
@@ -3840,6 +3845,7 @@ function lupd(){
  if(!b1&&!b2&&!ba)return;
  let why='';
  if(W&&W.run)why='داده‌برداری بنچ در جریان است';
+ else if(CAL_BUSY)why='یک تراکنش کالیبراسیون یا جدول در جریان است';
  else if(!D||D.on!=1)why='لینک STM32 برقرار نیست';
  const disabled=!!why||LREAD_IN_PROGRESS;
  [b1,b2,ba,rd].forEach(b=>{if(b){b.disabled=disabled;b.title=why||'ابتدا جدول واقعی هر دو باتری خوانده می‌شود';}});
@@ -3859,8 +3865,14 @@ async function lapplycal(target,p){
 async function lsend(target){
  const targetId=(target===1||target===2)?target:0;
  if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است؛ اول آن را تمام کنید.');return;}
+ if(CAL_BUSY){stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
  if(!D||D.on!=1){stxt('calst','⛔ لینک STM32 برقرار نیست.');return;}
- LREAD_IN_PROGRESS=true;LSNT=0;LUT_LAST_PROPOSAL=null;lupd();
+ const calIds=targetId===0?[0,1,2,3,4,5,6]:(targetId===1?[0,2,4,5,6]:[1,3,4,5,6]);
+ const conflicts=calpending(calIds);
+ if(conflicts.length){stxt('calst','⛔ '+calpendingText(conflicts)+' هنوز در صف تغییرات پنل است؛ ابتدا آن‌ها را ارسال یا لغو کنید.');return;}
+ CAL_BUSY=true;
+ try{
+  LREAD_IN_PROGRESS=true;LSNT=0;LUT_LAST_PROPOSAL=null;lupd();
  stxt('calst','… اول جدول واقعی فعلی هر دو باتری خوانده می‌شود؛ مقدارها حدس زده نمی‌شوند.');
  const before=await lread();LBT=before;LAT=null;LREAD_IN_PROGRESS=false;lupd();
  if(!before.ready){lrenderRead(before);stxt('calst','⚠ بازخوانی قبل از ارسال ناموفق بود؛ برای جلوگیری از تغییر ناخواسته، هیچ جدولی ارسال نشد.');return;}
@@ -3908,8 +3920,9 @@ async function lsend(target){
  if(!after.ready){LSNT=0;lupd();stxt('calst','⚠ commit با handshake تأیید شد، اما بازخوانی عددبه‌عدد بعد از commit ناموفق بود؛ تغییرات اعمال‌شده فرض نمی‌شوند و ریست پیشنهاد نمی‌شود.');return;}
  if(!lmatch(after,p)){LSNT=0;lupd();stxt('calst','⛔ mismatch: commit پاسخ موفق داد، اما حداقل یک chain/power بازخوانی‌شده با پیشنهاد فرق دارد؛ ریست انجام نشد. جدول بالا ردیف خطادار را نشان می‌دهد.');return;}
  LUT_LAST_PROPOSAL=p;LSNT=1;lupd();
- stxt('calst','✅ '+targetText+'، همهٔ پارامترهای کالیبراسیون و جدول با readback واقعی تأیید شدند. جدول دیگر حفظ شد؛ برای شروع با مقدار نو «ریست برد» را بزنید.');
- if(confirm('همهٔ پارامترهای کالیبراسیون و جدول '+targetText+' ذخیره و با عددهای واقعی برد تأیید شدند.\n\nبرد ریست شود تا با مقدار جدید بالا بیاید؟\n(شارژ چند ثانیه قطع می‌شود.)'))await lrst();}
+  stxt('calst','✅ '+targetText+'، همهٔ پارامترهای کالیبراسیون و جدول با readback واقعی تأیید شدند. جدول دیگر حفظ شد؛ برای شروع با مقدار نو «ریست برد» را بزنید.');
+  if(confirm('همهٔ پارامترهای کالیبراسیون و جدول '+targetText+' ذخیره و با عددهای واقعی برد تأیید شدند.\n\nبرد ریست شود تا با مقدار جدید بالا بیاید؟\n(شارژ چند ثانیه قطع می‌شود.)'))await lrst();
+ }finally{CAL_BUSY=false;LREAD_IN_PROGRESS=false;lupd();}}
 async function lrst(){
  const p=LUT_LAST_PROPOSAL;
  if(!LSNT||!p){stxt('calst','⛔ اول یک ارسال و بازخوانی موفق لازم است.');return;}
