@@ -998,7 +998,8 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
  *      به‌روز می‌شود تا در Live Expressions با یک ورودی دیده شود.
  *      چیدمان (۵ خانه per channel + مشترک‌ها):
  *        [‎0..4]‎  کانال ۰ = نیم VHIGH: state، duty پرمیل، vbat mV،
- *                جریان اولیه mA، تخمین خروجی mA (مقدار تنظیم‌شونده)
+ *                جریان Measurement بر حسب mA (با LUT سمت باتری)، تخمین خروجی
+ *                mA (مقدار تنظیم‌شونده)
  *        [‎5..9]‎  کانال ۱ = نیم VLOW: همان پنج‌تا
  *        [10] v_in_mv، [11] v_bat24_mv، [12] v_bat12_mv،
  *        [13] v_bat_high_mv (مشتق = ‎V24 - V12)‎، [14] ماسک خطا،

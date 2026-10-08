@@ -1666,11 +1666,15 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     uint32_t__currentMa =
         func__Charger_ChannelCurrentMa(measurement_snapshot_t__snap, uint8_t__channelIndex);
 
-    /* [EN] The snapshot current is primary-side; Bulk/Absorb/Float limits are
-       output (battery) currents, so this normal-charge path decides with the
-       converted value. The bring-up regulator above keeps primary mA.
-       [FA] جریان snapshot سمت اولیه است؛ حدهای شارژ خروجی‌اند، پس مسیر نرمال با
-       مقدار تبدیل‌شده تصمیم می‌گیرد. */
+    /* [EN] Measurement owns the current meaning. With a battery LUT enabled,
+       the snapshot value is already battery-side; without a LUT it is the
+       legacy chain/primary value. Bulk/Absorb/Float limits are battery-side,
+       so OutputEstimateMa is the single boundary that keeps the LUT path at
+       identity and applies live Vin/Vbat only to the legacy path.
+       [FA] Measurement معنای جریان را تعیین می‌کند. با LUT باتری، مقدار
+       snapshot همین حالا سمت باتری است؛ بدون LUT مقدار legacy زنجیره/اولیه
+       است. حدهای Bulk/Absorb/Float سمت باتری‌اند و OutputEstimateMa تنها
+       مرز انتخاب همانیِ LUT یا تبدیل زندهٔ Vin/Vbat در legacy است. */
     uint32_t__currentMa =
         func__Charger_OutputEstimateMa(measurement_snapshot_t__snap,
                                        uint8_t__channelIndex,
