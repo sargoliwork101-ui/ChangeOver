@@ -2098,9 +2098,10 @@ def test_alarms_tab_v115():
           "v1.15b (user order: grouped status + fault explanations, no flicker): per-bit fault explanations and a build-once status skeleton")
     check("function xexp()" in ino and "function ximp(f)" in ino and 'id="xim"' in ino
           and "'changeover-settings-'" in ino and "XIDS=" in ino
-          and 'aria-label="ذخیرهٔ پشتیبان کامل"' in ino
-          and 'aria-label="بازگردانی پشتیبان"' in ino,
-          "v1.15b: the backup card uses accessible export/import icons")
+          and 'aria-label="ذخیرهٔ پشتیبان"' in ino
+          and 'aria-label="بازگردانی پشتیبان"' in ino
+          and 'class="sb pbg"' in ino and 'class="sb pby"' in ino,
+          "v1.15b: the backup card uses labeled, color-coded export/import icons")
     # [EN] v1.57 (user order: finish the backup): the file must carry an
     #      identity and the import must reuse the panel's joint rules.
     # [FA] فایل پشتیبان شناسنامه دارد و ورودی از قوانین مشترک رد می‌شود.

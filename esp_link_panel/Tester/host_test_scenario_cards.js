@@ -1003,11 +1003,13 @@ async function testBackupAndCal(win, doc) {
     const backupOut = doc.querySelector('#s4 button[onclick="xexp()"]');
     const backupIn = doc.getElementById('xim') && doc.getElementById('xim').closest('label');
     const backupText = textOf(doc, 's4');
-    check(backupOut && backupOut.textContent.trim() === '⇩' &&
-          backupOut.getAttribute('aria-label') === 'ذخیرهٔ پشتیبان کامل' &&
-          backupIn && backupIn.textContent.trim() === '⇧' &&
+    check(backupOut && backupOut.textContent.trim() === '📥 ذخیرهٔ پشتیبان' &&
+          backupOut.classList.contains('pbg') &&
+          backupOut.getAttribute('aria-label') === 'ذخیرهٔ پشتیبان' &&
+          backupIn && backupIn.textContent.trim() === '📤 بازگردانی پشتیبان' &&
+          backupIn.classList.contains('pby') &&
           backupIn.getAttribute('aria-label') === 'بازگردانی پشتیبان',
-          'backup export/import use accessible download and upload icons');
+          'backup export/import use labeled download and upload icons with different colors');
     check(backupText.indexOf('خروجی (دانلود JSON)') < 0 &&
           backupText.indexOf('PEND') < 0 && backupText.indexOf('CALS') < 0 &&
           backupText.indexOf('LUT_BACKUP') < 0 &&
