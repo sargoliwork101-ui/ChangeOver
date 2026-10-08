@@ -280,16 +280,7 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .wclose{position:absolute;top:6px;left:8px;width:28px;height:28px;padding:0;border:1px solid currentColor;border-radius:8px;background:transparent;color:inherit;font-size:20px;line-height:24px;cursor:pointer;opacity:.85}
 .wclose:hover{opacity:1;background:rgba(255,255,255,.08)}
 .ab.bad{border-color:rgba(251,94,106,.55);box-shadow:0 0 0 1px rgba(251,94,106,.2)}.ab.warn{border-color:rgba(251,191,36,.5)}.ab.good{border-color:rgba(52,211,153,.4)}
-/* [EN] v1.79 (user: "what is this? there used to be a LED behind it"): the
-   .bit class had markup (<i> dot + <small> label) but NO stylesheet rule at
-   all, so the dots were invisible and the labels ran together as
-   "ADCOC1OC2باتری...". ‎The LEDs are needed - they are the only per-bit view‎
-   of the latched fault mask - so they are drawn properly instead of removed.
-   A latched bit stays dim red at all times and brightens on the blink phase,
-   so a fault is never invisible between blinks.
-   [FA] کلاس .bit هیچ استایلی نداشت؛ پس نقطه‌ها دیده نمی‌شدند و برچسب‌ها به هم
-   چسبیده بودند. حالا هر بیت یک LED واقعی با برچسب زیرش دارد: بیتِ قفل‌شده
-   همیشه قرمزِ کم‌رنگ است و در فاز چشمک پررنگ می‌شود. */
+
 .bit{display:inline-flex;flex-direction:column;align-items:center;gap:5px;min-width:54px}
 .bit i{width:14px;height:14px;border-radius:50%;background:#28303f;border:1px solid var(--ln);box-shadow:inset 0 1px 2px #0009;transition:background .12s,box-shadow .12s}
 .bit small{font-size:11px;line-height:1;color:var(--mu);white-space:nowrap}
@@ -395,7 +386,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 7cc4e36</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build abbbe06</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1586,49 +1577,14 @@ const PXT={
    [FA] v1.36: متن کامل v1.36 اگر هست همان، وگرنه ردیف کلاسیک PX - تا حباب
    کمک و تراشه همیشه یک حرف بزنند. */
 const pxt=id=>(typeof PXT!=='undefined'&&PXT[id])?[EVN[id]||((PX[id]||['',''])[0]),PXT[id]]:PX[id];
-/* [EN] v1.31: the chart is mounted in two places - above the operating table
-   on the chargers page (where you read the numbers, so where you reach for
-   them) and next to the profile fields in settings (where the dashed
-   "typed but not applied" preview is worth seeing). ONE renderer fills every
-   mount, so the two can never say different things; adding or moving a mount
-   is markup only. The containers are classes, not ids, for exactly that
-   reason - $('qg') would have silently filled only the first.
-   [FA] نمودار در دو جا نصب شده - بالای جدول عملکرد در صفحهٔ شارژرها (جایی که
-   اعداد را می‌خوانید، پس همان‌جا سراغشان می‌روید) و کنار فیلدهای profile در
-   تنظیمات (جایی که پیش‌نمایش خط‌چینِ «تایپ‌شده ولی هنوز اعمال‌نشده» ارزش
-   دیدن دارد). یک رندرکننده همهٔ محل‌ها را پر می‌کند، پس آن دو هرگز نمی‌توانند
-   دو چیز متفاوت بگویند؛ افزودن یا جابه‌جاکردن یک محل فقط مارک‌آپ است. */
+
 function qgraph(){const MG=document.querySelectorAll('.qgm');
  if(!MG.length||EVOPEN!=null)return;const g=MG[0];
  const q={a:qv(20),e:qv(21),o:qv(22),f:qv(23),r:qv(24)},im=qv(25),tp=qv(26);
- /* v3 (دستور کاربر ۲۰۲۶-۰۹-۲۹): نمودار دوبعدی جریان-ولتاژ.
-    محور افقی = جریان (mA)، محور عمودی = ولتاژ (mV).
-    قبلاً فقط یک نردبان عمودی ولتاژ بود و جریان اصلاً روی نمودار نبود؛ حالا
-    مسیر واقعی شارژ ‎CC/CV‎ دیده می‌شود: Bulk یک خط عمودی روی سقف جریان است
-    (جریان ثابت، ولتاژ بالا می‌رود) و Absorb یک خط افقی روی ولتاژ هدف
-    (ولتاژ ثابت، جریان پایین می‌آید). نقطهٔ زندهٔ هر باتری روی مختصات واقعی
-    خودش (جریان، ولتاژ) می‌نشیند، پس یک نگاه می‌گوید کجای مسیر است.
-    v3: a real current-voltage chart. X = current, Y = voltage. The CC/CV
-    path is now visible as what it is - a vertical leg at the current limit
-    and a horizontal leg at the absorb voltage - and each battery's live dot
-    sits at its true (I, V), so one look says where it is on that path.
-    ناحیه‌ها از مقدار نمایشی v می‌آیند؛ مقدار اعمال‌شده d پایهٔ خط و ‎read-back‎ است و
-    درخواستِ هنوز-اعمال‌نشده با خط‌چین دیده می‌شود. */
+
  const lo=Math.max(7600,Math.min(q.r.v,12000)-500),hi=15060,W=760,H=420,X0=48,X1=742;
  const LBL_GAP=11;
- /* [EN] v1.36 (user order: chart texts are FAR too big on some browsers):
-    the SVG stretches with the page width, and SVG scales font-size along
-    with everything else - on a wide browser window an 8px label renders
-    at ~15px. Therefore the on-screen font size is DYNAMIC: measure the
-    real mount width and shrink every size by W/width so it renders close
-    to the designed pixel size on every browser. Shrink-only (never grow),
-    floor 6.5 so an ultra-wide window cannot make it unreadable.
-    [FA] v1.36 (دستور کاربر: نوشته‌های نمودار روی بعضی مرورگرها خیلی درشت
-    است): چون SVG خودش را با پهنای صفحه می‌کشد، فونت هم با آن بزرگ می‌شود؛
-    پس اندازهٔ فونت داینامیک شد: با پهنای واقعی محل نصب سنجیده و هر
-    اندازه در ‎W/width‎ ضرب می‌شود تا روی صفحه نزدیک همان پیکسلِ طراحی بماند.
-    فقط کوچک‌کننده (هرگز بزرگ نمی‌کند) و کف ۶٫۵ تا روی صفحهٔ خیلی عریض
-    ناخوانا نشود. */
+
  const RWM=(MG.length&&MG[0].clientWidth)?MG[0].clientWidth:0;
  const FKF=RWM>W?W/RWM:1;
  const F=fs=>Math.max(6.5,+(fs*FKF).toFixed(2));
@@ -1638,20 +1594,7 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
  const V=mv=>(mv/1000).toFixed(2);
  /* برچسب‌ها جدا جمع و با کمینهٔ فاصله رندر می‌شوند تا در ناحیه‌های باریک در هم نروند */
  const LL=[],PL=[]; /* [EN] v1.41 audit: zone-name container ZL died with the v1.39 legend move / [FA] ممیزی v1.41: ظرف ZL با رفتن نام‌ها به راهنما مرده بود */
- /* [EN] v1.38 (user follow-up): the Persian left label carries ONLY the
-    name - number+unit live on the right English label; it hangs BELOW its
-    line (never above); and each line gets exactly ONE Persian label. Zone
-    names float at the CENTER of their band so a band name can never look
-    like a second label for the boundary line touching it. Names come from
-    PX (the same source the chips and help bubbles read), so a rename can
-    never drift in two places. Left labels are display mirrors: editing
-    stays with the English labels on the right.
-    [FA] v1.38 (دستور پیگیری): برچسب فارسیِ چپ فقط نام است - عدد و واحد
-    همان برچسب انگلیسی سمت راست؛ زیر خط خودش می‌آویزد (هرگز بالای آن نیست)
-    و هر خط دقیقاً یک برچسب فارسی دارد. نام ناحیه‌ها هم وسط ناحیهٔ خودشان
-    شناور است تا اسم ناحیه، دومین برچسب خط مرزیِ مجاور به نظر نرسد. نام‌ها
-    از PX می‌آیند (همان منبع تراشه‌ها و حباب‌های کمک) تا تکرار دوبرابری
-    نشود. برچسب‌های چپ فقط نمایشی‌اند؛ ویرایش همان انگلیسی سمت راست است. */
+
  const pfn=id=>(PX[id]?PX[id][0]:(EVN[id]||''));
  /* [EN] v1.39 (user order: the band names crowded the plot - take them out
     and put them OUTSIDE the chart, like a map legend: which colour means
@@ -1760,29 +1703,8 @@ function qgraph(){const MG=document.querySelectorAll('.qgm');
    return `<span class="tg" style="background:${st[1]}22;color:${st[1]};border:1px solid ${st[1]}66">● ${b[0]}: <b>${V(b[1])}V</b> · ${b[3]}mA · ${st[0]}</span>`;}).join(' ')+
    `<span class="lb"> · Bulk ≤ ${im.v}mA · Taper < ${tp.v}mA · پس از هر تغییر ~۱٫۵ ثانیه بعد روی فلش برد ذخیره می‌شود</span>`;
  }else lg='در انتظار دادهٔ برد…';
- /* [EN] v1.32 (user order): the loop and timing numbers go ON the plot, each
-    one next to the line it actually acts on - not listed underneath it. A
-    tspan carries data-i exactly like an axis label does, so the same click
-    handler and the same floating editor serve them with no second mechanism.
-    They are deliberately quiet: small and muted until you hover, because
-    these are the numbers you touch once, and the chart still has to be
-    readable at a glance for the ones you watch.
-    [FA] اعداد حلقه و زمان‌بندی روی خود نمودار می‌آیند، هر کدام کنار همان خطی
-    که واقعاً رویش اثر می‌گذارد - نه فهرست‌شده زیرش. هر tspan دقیقاً مثل برچسب
-    محور صفت ‎data-i‎ دارد، پس همان شنوندهٔ کلیک و همان ویرایشگر Float بدون هیچ
-    ساز و کار دومی سرویسشان می‌دهد. عمداً کم‌صدا هستند: ریز و محو تا وقتی ماوس
-    رویشان برود، چون این‌ها عددهایی‌اند که یک‌بار تنظیم می‌شوند و نمودار باید
-    برای آن‌هایی که مدام می‌پاییدشان در یک نگاه خوانا بماند. */
- /* [EN] The timers and gains used to be drawn here, as <tspan> runs floating
-    over the plane. They are gone from the picture and live in chips under it
-    now (user order 2026-10-03: "write those times underneath so the charts do
-    not get so crowded - do the same for the gains"). Nothing became
-    read-only: the chips carry the same data-i and the same editor.
-    [FA] زمان‌ها و گین‌ها قبلاً همین‌جا روی صفحه رسم می‌شدند. حالا از تصویر
-    بیرون آمده‌اند و زیر نمودار به‌صورت تراشه نشسته‌اند (دستور کاربر: «اون
-    زمان‌ها رو همون زیرش بنویس که انقدر شلوغ نشه نمودارها؛ گین هم همین کار رو
-    براش بکن»). هیچ‌چیز فقط‌خواندنی نشد: تراشه‌ها همان ‎data-i‎ و همان ویرایشگر
-    را دارند. */
+
+
  s+=put(PL,X0+6,'start','8.5')+put(LL,X1-4,'end','9');
  /* عددهای شارژ زنده - دقیقاً روی همهٔ خط‌ها و نوشته‌ها (آخرین لایهٔ رسم)،
     با جداکنندهٔ عمودی ساده تا در هم نروند و هالهٔ تیره برای خوانایی. */
@@ -3106,9 +3028,11 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
 var CALS=[];try{CALS=JSON.parse(localStorage.getItem('calsmp')||'[]')||[];}catch(e){CALS=[];}
 function calsave(){try{localStorage.setItem('calsmp',JSON.stringify(CALS.slice(-400)));}catch(e){}}
 function calpush(m,v,act,sc,duty){
+ const v24off=D&&D.p&&D.p[5]!=null&&Number.isFinite(Number(D.p[5]))?Number(D.p[5]):null;
+ const v12off=D&&D.p&&D.p[6]!=null&&Number.isFinite(Number(D.p[6]))?Number(D.p[6]):null;
  CALS.push({sc:sc,d:duty,use:1,r1:m.a(0),r2:m.a(7),vin:m.a(14),v24:m.a(15),v12:m.a(16),vlo:m.a(17),vhi:m.a(18),
   b1:act.includes(1)?v.b1:null,b2:act.includes(2)?v.b2:null,
-  dvi:v.vi,dv1:v.v1,dv2:v.v2,ts:Date.now()});
+  dvi:v.vi,dv1:v.v1,dv2:v.v2,v24off:v24off,v12off:v12off,ts:Date.now()});
  calinvalidate();calsave();caln();calsmp();calchk();}
 function calclr(){if(!confirm('همهٔ نمونه‌های جمع‌شده پاک شوند؟'))return;CALS=[];calinvalidate();calsave();caln();calsmp();
  stxt('calst','نمونه‌ها پاک شدند.');}
@@ -3164,17 +3088,25 @@ function calrun(){
   const bad=f.r2<0.9;
   rows.push([ttl+' — گین (‰)',ch[4],cur(ch[4]),gc,w.length?'⚠ '+w.join(' · '):'✅ برازش خوب ('+f.n+' نقطه، R²=<span dir="ltr">'+f.r2.toFixed(4)+'</span>)',bad?0:1]);
   rows.push([ttl+' — آفست (count)',ch[3],cur(ch[3]),oc,'از همان خط به‌دست آمد (جریان خالص باتری صفر در raw='+oc+')',bad?0:1]);});
- /* --- سه آفست ولتاژ: میانگین اختلاف مولتی‌متر با برد --- */
- const voff=(ttl,id,get)=>{const d=[];scope.forEach(z=>{const x=get(z);if(x!=null&&Number.isFinite(x))d.push(x);});
-  if(d.length<2){rows.push([ttl,id,cur(id),cur(id),'اندازه‌گیری مولتی‌متر در دسترس نیست',0]);return;}
-  const center=calrobustCenter(d);
+ /* --- سه آفست ولتاژ: اختلاف DMM با مبنای ثبت هر نمونه --- */
+ const voff=(ttl,id,get)=>{const delta=[],absolute=[],unknown=[];
+  scope.forEach(z=>{const x=get(z);if(x==null||!Number.isFinite(x))return;delta.push(x);
+   const base=caloffsetsample(z,id);if(base==null)unknown.push(x);else absolute.push(base+x);});
+  const offsetBaselineRequired=id===5||id===6,tracked=offsetBaselineRequired&&absolute.length>=2;
+  const d=tracked?absolute:(offsetBaselineRequired?[]:delta);
+  if(d.length<2){rows.push([ttl,id,cur(id),cur(id),offsetBaselineRequired?
+   'مبنای آفست ثبت‌شده برای دست‌کم ۲ نمونه موجود نیست؛ مقدار فعلی تغییر نمی‌کند':
+   'اندازه‌گیری مولتی‌متر در دسترس نیست',0]);return;}
+  const center=calrobustCenter(d),old=cur(id),oldValue=old!=null&&Number.isFinite(Number(old))?Number(old):0;
+  const change=tracked?center-oldValue:center;
   let sd=0;d.forEach(x=>sd+=(x-center)*(x-center));sd=Math.sqrt(sd/d.length);
-  const nv=Math.round(xclamp(id,(cur(id)||0)+center));const w=[];
+  const nv=Math.round(xclamp(id,tracked?center:oldValue+center)),w=[];
   if(d.length<3)w.push('فقط '+d.length+' نقطه');
   if(sd>120)w.push('پراکندگی اندازه‌ها بالاست (±'+Math.round(sd)+' میلی‌ولت)');
-  if(Math.abs(center)>2000)w.push('اختلاف '+Math.round(center)+' میلی‌ولت غیرعادی بزرگ است — سیم مولتی‌متر را چک کنید');
-  const bad=Math.abs(center)>2000;
-  rows.push([ttl,id,cur(id),nv,(w.length?'⚠ '+w.join(' · '):'✅ اختلاف مقاوم '+Math.round(center)+' میلی‌ولت')+' ('+d.length+' نقطه)',bad?0:1]);};
+  if(tracked&&unknown.length)w.push(unknown.length+' نمونه بدون مبنای آفست از این فیت کنار گذاشته شد');
+  if(Math.abs(change)>2000)w.push('تغییر آفست '+Math.round(change)+' میلی‌ولت غیرعادی بزرگ است — سیم مولتی‌متر را چک کنید');
+  const bad=Math.abs(change)>2000,label=tracked?'آفست هدف بر پایهٔ مبنای ثبت‌شده ':'اختلاف مقاوم ';
+  rows.push([ttl,id,cur(id),nv,(w.length?'⚠ '+w.join(' · '):'✅ '+label+Math.round(center)+' میلی‌ولت')+' ('+d.length+' نقطه)',bad?0:1]);};
  voff('آفست ولتاژ ورودی (mV)',4,z=>(z.dvi!=null)?(z.dvi-z.vin):null);
  voff('آفست ولتاژ پک ۲۴ ولت (mV)',5,z=>(z.dv1!=null&&z.dv2!=null)?((z.dv1+z.dv2)-z.v24):null);
  voff('آفست نود ۱۲ ولت (mV)',6,z=>(z.dv2!=null)?(z.dv2-z.vlo):null);
@@ -3305,7 +3237,9 @@ function calchk(){
  if(nb>=3)ok('ولتاژ هر دو نیم‌باتری در '+nb+' مرحله ثبت شده.');
  else wn('ولتاژ نیم‌باتری‌ها فقط در '+nb+' مرحله ثبت شده.','آفست پک ۲۴ ولت و نود ۱۲ ولت به عدد هر دو نیم‌باتری نیاز دارد.');
  /* ۶) قانونی‌بودن جدول فقط برای باتری‌های انتخاب‌شده */
- targets.forEach(n=>{const t=calbuild(n,(D&&D.p&&D.p[n-1]!=null)?D.p[n-1]:0,(D&&D.p&&D.p[n+1]!=null)?D.p[n+1]:1000);
+ const liveVoltage={v24:D&&D.p&&D.p[5]!=null&&Number.isFinite(Number(D.p[5]))?Number(D.p[5]):null,
+                    v12:D&&D.p&&D.p[6]!=null&&Number.isFinite(Number(D.p[6]))?Number(D.p[6]):null};
+ targets.forEach(n=>{const t=calbuild(n,(D&&D.p&&D.p[n-1]!=null)?D.p[n-1]:0,(D&&D.p&&D.p[n+1]!=null)?D.p[n+1]:1000,liveVoltage);
   if(t.bad)no('جدول باتری '+fa(n)+': '+t.bad+'.','جدول ساخته نمی‌شود تا چیز نادرستی وارد کد میکرو نشود.');
   else ok('جدول باتری '+fa(n)+': '+t.X.length+' نقطه، دو محور هم‌طول، جریان صعودی و توان بدون نزول.'+
    (t.note.length?' ('+t.note.join(' · ')+')':''));});
@@ -3335,17 +3269,44 @@ function calchk(){
 /* ==================== Firmware snippet / خروجی برای کد میکرو ====================
    [EN] Generate calibration.h from the current, validated fit.
    [FA] calibration.h از برازش فعلی و اعتبارسنجی‌شده ساخته می‌شود. */
+/* [EN] Offset baselines captured with a bench row. Old imported rows have
+   no baseline and must never be treated as though their offset were zero.
+   [FA] مبنای آفست همراه هر نمونه ثبت می‌شود؛ ردیف قدیمیِ بی‌مبنا هرگز صفر
+   فرض نمی‌شود. */
+function caloffsetsample(z,id){
+ const v=id===5?(z&&z.v24off):id===6?(z&&z.v12off):null;
+ return v!=null&&v!==''&&Number.isFinite(Number(v))?Number(v):null;}
+function calvoltageRows(n){
+ const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'vhi':'vlo';
+ return calsel(n).filter(z=>Number.isFinite(z[r])&&Number.isFinite(z[b])&&
+  Number.isFinite(z[v])&&z[v]>0);}
+function calhasoffset(n,id){const rows=calvoltageRows(n);
+ return rows.length>0&&rows.every(z=>caloffsetsample(z,id)!=null);}
+function calvoltagechanged(current,wanted){return Number.isFinite(wanted)&&
+ (!Number.isFinite(current)||Number(current)!==wanted);}
 /* [EN] Build equal, increasing chain/power axes; drop noisy dips.
    [FA] محورهای هم‌طول و صعودی را می‌سازد و افت نویزی را حذف می‌کند. */
-function calbuild(n,off,gn){
- const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'vhi':'vlo',note=[];
+function calbuild(n,off,gn,basis,requiredOffsets){
+ const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'vhi':'vlo',note=[],required=Array.isArray(requiredOffsets)?requiredOffsets:[];
  if(!Number.isFinite(off)||!Number.isFinite(gn))return {X:[],Y:[],note:[],bad:'آفست یا گین جریان حساب نشده است'};
- const pts=[];let missingVoltage=0;
+ const pts=[];let missingVoltage=0,missingOffsetBaseline=0;
  calsel(n).forEach(z=>{if(!Number.isFinite(z[r])||!Number.isFinite(z[b]))return;
-  /* [EN] Power axis = DMM current x the BOARD's own battery voltage (the
-     runtime divisor the firmware uses). [FA] محور توان = جریان مولتی‌متر
-     × ولتاژ خودِ برد (همان مقسوم‌علیه زمان اجرا). */
-  const vb=z[v];if(!Number.isFinite(vb)||vb<=0){missingVoltage++;return;}
+  /* [EN] Power axis = DMM current x the BOARD's post-calibration battery
+     voltage (the runtime divisor). Battery 1 is V24 - V12; battery 2 is
+     V12. [FA] محور توان = جریان مولتی‌متر × ولتاژ آفست‌خوردهٔ برد (مقسوم‌علیه
+     زمان اجرا): باتری ۱ برابر V24−V12 و باتری ۲ برابر V12 است. */
+  let vb=z[v],missingBaseline=false,skip=false;
+  if(basis&&typeof basis==='object'){
+   if(n===1&&basis.v24!=null&&Number.isFinite(Number(basis.v24))){
+    const base=caloffsetsample(z,5);if(base==null){missingBaseline=true;if(required.indexOf(5)>=0)skip=true;}
+    else vb+=Number(basis.v24)-base;}
+   if(basis.v12!=null&&Number.isFinite(Number(basis.v12))){
+    const base=caloffsetsample(z,6);if(base==null){missingBaseline=true;if(required.indexOf(6)>=0)skip=true;}
+    else vb+=(n===1?-1:1)*(Number(basis.v12)-base);}
+  }
+  if(missingBaseline)missingOffsetBaseline++;
+  if(skip)return;
+  if(!Number.isFinite(vb)||vb<=0){missingVoltage++;return;}
   /* [EN] two integer stages, like the firmware [FA] دو مرحلهٔ عدد صحیح، مثل فرم‌ور */
   const chain=Math.max(0,Math.round(Math.round((z[r]-off)*K_MA)*gn/1000));
   /* Signed DMM current is battery current. The firmware table is unsigned
@@ -3362,11 +3323,12 @@ function calbuild(n,off,gn){
  if(dip)note.push(dip+' نقطهٔ نویزی که توانش پایین‌تر از نقطهٔ قبل بود کنار گذاشته شد');
  let bad='';
  if(missingVoltage)note.push(missingVoltage+' نمونه ولتاژ برد نداشت');
+ if(missingOffsetBaseline)note.push(missingOffsetBaseline+' نمونه مبنای آفست ثبت‌شده نداشت؛ ولتاژ ذخیره‌شده بدون حدس نگه داشته شد');
  if(X.length!==Y.length)bad='محورها هم‌طول نیستند';
  else if(X.length<2)bad='کمتر از ۲ نقطه ('+X.length+') — حداقل ۲ لازم است';
  else{for(let i=1;i<X.length;i++){if(X[i]<=X[i-1])bad='محور جریان صعودی نیست';
    if(Y[i]<Y[i-1])bad='محور توان نزول دارد';}}
- return {X:X,Y:Y,note:note,bad:bad};}
+ return {X:X,Y:Y,note:note,bad:bad,missingOffsetBaseline:missingOffsetBaseline};}
 function calcode(){
  const calScope=calscope(caltargets()),samples=calScope.length;
  if(samples<2){
@@ -3377,7 +3339,12 @@ function calcode(){
   stxt('calst','⚠ نتیجهٔ محاسبهٔ فعلی وجود ندارد؛ قبل از ساخت کد دوباره «محاسبه از نمونه‌ها» را بزنید.');return;
  }
  const board=lcalSnapshot(),notice=lcalnotice(CALREAD.map(r=>r.id),board),get=id=>{const v=lcalvalue(id);return v==null?(id<4&&notice.absent.indexOf(id)>=0?null:lcalboard(board,id)):v;};
- const off=[get(0),get(1)],gn=[get(2),get(3)],msg=notice.text?[notice.text]:[];
+ const off=[get(0),get(1)],gn=[get(2),get(3)],voltage=[get(4),get(5),get(6)],msg=notice.text?[notice.text]:[];
+ if(calvoltagechanged(board.voltage[1],voltage[1])&&!calhasoffset(1,5)){
+  voltage[1]=board.voltage[1];msg.push('مبنای آفست ۲۴ ولت در نمونه‌های باتری ۱ ثبت نشده؛ آفست فعلی برد حفظ شد و برای تغییر آن نمونه‌گیری تازه لازم است.');}
+ if(calvoltagechanged(board.voltage[2],voltage[2])&&(!calhasoffset(1,6)||!calhasoffset(2,6))){
+  voltage[2]=board.voltage[2];msg.push('مبنای آفست نود ۱۲ ولت در نمونه‌های هر دو باتری ثبت نشده؛ آفست فعلی برد حفظ شد و برای تغییر آن نمونه‌گیری تازه لازم است.');}
+ const voltageBasis={v24:voltage[1],v12:voltage[2]},requiredVoltageOffsets=[5,6].filter(id=>calvoltagechanged(board.voltage[id-4],voltage[id-4]));
  let out='/* [EN] Generated by the ChangeOver panel on '+new Date().toISOString()+
   '\n *      from '+calScope.length+' accepted bench samples. The panel has\n'+
   ' *      already checked: equal axis lengths, >= 2 points, increasing chain\n'+
@@ -3387,7 +3354,11 @@ function calcode(){
   ' *      Paste into Firmware/Modules/Measurement/calibration.h.\n'+
   ' * [FA] محور توان = جریان مولتی‌متر × ولتاژ خودِ برد؛ با تغییر مقیاس\n'+
   ' *      ولتاژ جدول باید بازسازی شود. */\n\n';
- [1,2].forEach(n=>{const t=calbuild(n,off[n-1],gn[n-1]);
+ [1,2].forEach(n=>{
+  if(!Number.isFinite(voltageBasis.v12)||(n===1&&!Number.isFinite(voltageBasis.v24))){
+   const why='مبنای آفست ولتاژ برای این جدول از برد خوانده نشده؛ جدول حدس زده نشد';
+   msg.push('باتری '+fa(n)+': '+why);out+='/* table '+n+' - battery '+n+' NOT GENERATED: '+why+' */\n\n';return;}
+  const t=calbuild(n,off[n-1],gn[n-1],voltageBasis,requiredVoltageOffsets);
   t.note.forEach(x=>msg.push('باتری '+fa(n)+': '+x));
   if(t.bad){msg.push('⛔ باتری '+fa(n)+': '+t.bad);
    out+='/* table '+n+' - battery '+n+' NOT GENERATED: '+t.bad+' */\n\n';return;}
@@ -3408,7 +3379,7 @@ function calcode(){
  out+='/* defaults that belong WITH the tables above (esp_link.h / plink_params.h):\n'+
   ' *   current offset ch1 = '+calnumber(off[0])+' counts, ch2 = '+calnumber(off[1])+' counts\n'+
   ' *   current gain   ch1 = '+calnumber(gn[0])+' permille, ch2 = '+calnumber(gn[1])+' permille\n'+
-  ' *   voltage offsets: input = '+calnumber(get(4))+' mV, 24V pack = '+calnumber(get(5))+' mV, 12V node = '+calnumber(get(6))+' mV\n'+
+  ' *   voltage offsets: input = '+calnumber(voltage[0])+' mV, 24V pack = '+calnumber(voltage[1])+' mV, 12V node = '+calnumber(voltage[2])+' mV\n'+
   ' * A table fitted with one gain/offset pair is only valid with that pair. */\n';
  const t=$('calcd');if(t){t.value=out;t.style.display='block';}
  stxt('calst',(msg.length?('⚠ '+msg.join(' · ')+' — '):'')+(out.indexOf('NOT GENERATED')>=0?'بعضی جدول‌ها ساخته نشدند؛ علت در همین پیام/کد مشخص است.':'کد آماده است؛ متن زیر را کپی یا دانلود کنید. هم‌طولی و صعودی‌بودن جدول‌ها بررسی شد.'));}
@@ -3515,11 +3486,25 @@ function lpack(target,base,selected){
  if(note.absent.length)return {bad:'مقدار معتبر جریان از برد در دسترس نیست',msg:[note.text]};
  /* [EN] Keep every unavailable fit untouched; [FA] فیتِ ناموجود نوشته نشود. */
  const proposedOff=[lcalvalue(0),lcalvalue(1)],proposedGain=[lcalvalue(2),lcalvalue(3)],proposedVoltage=[lcalvalue(4),lcalvalue(5),lcalvalue(6)];
- const off=boardOff.slice(),gn=boardGain.slice(),voltage=boardVoltage.slice();
+ const off=boardOff.slice(),gn=boardGain.slice(),voltage=boardVoltage.slice(),msg=note.text?[note.text]:[];
  const setIfSelected=(id,value,old)=>chosen[id]?value:old;
  [0,1].forEach(i=>{const id=i,ga=id+2;if((both||id===targetId-1)){off[i]=setIfSelected(id,proposedOff[i],boardOff[i]);gn[i]=setIfSelected(ga,proposedGain[i],boardGain[i]);}});
  [4,5,6].forEach(id=>{voltage[id-4]=setIfSelected(id,proposedVoltage[id-4],boardVoltage[id-4]);});
- const msg=note.text?[note.text]:[],T=[{X:[],Y:[]},{X:[],Y:[]}],buildTargets=both?[1,2]:[targetId];
+ const voltageChanging=id=>chosen[id]&&calvoltagechanged(boardVoltage[id-4],proposedVoltage[id-4]);
+ const keepVoltage=(id,reason)=>{if(!voltageChanging(id))return;chosen[id]=false;voltage[id-4]=boardVoltage[id-4];msg.push(reason);};
+ /* [EN] A single-battery transaction preserves any global offset that would
+    change the copied, unselected LUT. [FA] تراکنش تک‌باتری آفستی را که جدول
+    کپی‌شدهٔ باتری دیگر را عوض می‌کند حفظ می‌کند. */
+ if(voltageChanging(6)&&!both)keepVoltage(6,'شناسهٔ ۶ هر دو ولتاژ Vlow و Vhigh را تغییر می‌دهد؛ در به‌روزرسانی تکی حفظ شد. برای اعمال آن «به‌روزرسانی هر دو» را بزنید.');
+ if(voltageChanging(5)&&targetId===2)keepVoltage(5,'شناسهٔ ۵ ولتاژ باتری ۱ را تغییر می‌دهد؛ در به‌روزرسانی تکی باتری ۲ حفظ شد. برای اعمال آن «به‌روزرسانی هر دو» را بزنید.');
+ if(voltageChanging(5)&&targetId!==2&&!calhasoffset(1,5))keepVoltage(5,'مبنای شناسهٔ ۵ در نمونه‌های باتری ۱ ثبت نشده؛ آفست فعلی حفظ شد. برای تغییر آن نمونه‌گیری تازه لازم است.');
+ if(voltageChanging(6)&&both&&(!calhasoffset(1,6)||!calhasoffset(2,6)))keepVoltage(6,'مبنای شناسهٔ ۶ در نمونه‌های هر دو باتری ثبت نشده؛ آفست فعلی حفظ شد. برای تغییر آن نمونه‌گیری تازه لازم است.');
+ const requiredVoltageOffsets=[5,6].filter(id=>chosen[id]&&calvoltagechanged(boardVoltage[id-4],voltage[id-4]));
+ const voltageBasis={v24:voltage[1],v12:voltage[2]},T=[{X:[],Y:[]},{X:[],Y:[]}],buildTargets=both?[1,2]:[targetId];
+ const missingBasis=buildTargets.filter(n=>!Number.isFinite(voltageBasis.v12)||
+  (n===1&&!Number.isFinite(voltageBasis.v24)));
+ if(missingBasis.length)return {bad:'آفست فعال V12/V24 برای ساخت مبنای ولتاژ LUT از برد خوانده نشده؛ هیچ جدولی ارسال نمی‌شود',
+  msg:msg.concat(['مبنای ولتاژ باتری '+missingBasis.map(fa).join(' و ')+' نامعلوم است.'])};
  [1,2].forEach(n=>{
   if(buildTargets.indexOf(n)<0){
    if(!base||!base.ready){
@@ -3529,7 +3514,7 @@ function lpack(target,base,selected){
    T[n-1]=lcopytable(base.T[n-1]);
    return;
   }
-  const t=calbuild(n,off[n-1],gn[n-1]);
+  const t=calbuild(n,off[n-1],gn[n-1],voltageBasis,requiredVoltageOffsets);
   t.note.forEach(x=>msg.push('باتری '+fa(n)+': '+x));
   if(t.bad){msg.push('⛔ باتری '+fa(n)+': '+t.bad+' — این کانال به‌صورت صفرنقطه‌ای ارسال می‌شود و override قبلی را حذف می‌کند');T[n-1]={X:[],Y:[]};return;}
   if(t.X.length>LUTMAX){msg.push('⛔ باتری '+fa(n)+': '+t.X.length+' نقطه از سقف '+fa(LUTMAX)+
@@ -3859,7 +3844,7 @@ $('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty 
 <div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb sb2 pbb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb stp2 pbr" onclick="wclear()">پاک کردن فایل</button></div></div><div class="cd"><div class="hd"><b>کالیبراسیون خودکار از همین جدول</b><span class="lb">· نمونه‌های ثبت‌شده: <b id="caln">0</b> · عددها فقط با تأیید شما روی برد نوشته می‌شوند</span></div>
 <div class="ds">هر مرحله‌ای که در ویزارد «ثبت» می‌کنید یک نمونه هم اینجا می‌ماند. «محاسبه» جریان signed واقعی همان باتری را مستقیم فیت می‌کند؛ جریان منفی یعنی باتری بار برد را تغذیه می‌کند و برای ناحیهٔ بدون شارژ صفر می‌شود، نه اینکه از همهٔ نقاط کم شود. مقدار فعلی برد و کیفیت برازش هم نمایش داده می‌شود. برای نتیجهٔ خوب حداقل ۴ مرحله با duty پخش‌شده (مثلاً ۰ تا ۲۰٪) بگیرید.</div>
 <div class="lgrp">نمونه‌ها و محاسبه</div><div class="bqr2"><button class="sb sb2 pbg" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb sb2 pbb" onclick="calexp()">📥 ذخیرهٔ نمونه‌ها</button><label class="sb sb2 pbb" style="cursor:pointer">📤 بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2 pbr" type="button" onclick="calclr()" aria-label="پاک کردن نمونه‌ها" title="پاک کردن نمونه‌ها">🗑️ پاک کردن نمونه‌ها</button><button class="sb brun pbg" onclick="calapply()">اعمال فقط پارامترهای کالیبراسیون</button></div>
-<div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">۱) خواندن و به‌روزرسانی مستقل جدول هر باتری (سقف ۲۴ نقطه)</div><div class="ds">«خواندن جدول فعلی» فقط دو جدول واقعی را از STM32 می‌خواند و جداگانه نشان می‌دهد. هر دکمهٔ «به‌روزرسانی» ابتدا گین/آفست‌های لازم را با readback همان شناسه تأیید می‌کند و سپس LUT همان تراکنش را می‌فرستد؛ جدول و تنظیمات باتری دیگر از readback واقعی حفظ می‌شود. «به‌روزرسانی هر دو» هر دو زنجیره را در یک تراکنش انجام می‌دهد. برای این مسیر دکمهٔ عمومی «اعمال همهٔ تغییرات» لازم نیست؛ دکمهٔ مستقل بالا فقط برای اعمال پارامترهای کالیبراسیون بدون ارسال جدول است.</div><div class="bqr2"><button class="sb sb2 pbb" id="lbtnRead" onclick="lreadnow()" disabled>↻ خواندن جدول فعلی از برد</button><button class="sb brun pbg" id="lbtnS1" onclick="lsend(1)" disabled>⇪ به‌روزرسانی باتری ۱</button><button class="sb brun pbg" id="lbtnS2" onclick="lsend(2)" disabled>⇪ به‌روزرسانی باتری ۲</button><button class="sb brun pbg" id="lbtnSA" onclick="lsend(0)" disabled>⇪ به‌روزرسانی هر دو</button><button class="sb sb2 pby" id="lbtnR" onclick="lrst()" disabled>↻ ریست و بازخوانی دوباره</button></div><div id="calst" class="calstatus" role="status" aria-live="polite"></div><div id="lutcmp"></div><div class="lgrp">۲) ساخت calibration.h</div><div class="bqr2"><button class="sb sb2 pbv" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb sb2 pbv" onclick="calcopy()">کپی کد</button><button class="sb sb2 pbv" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" class="calcd" readonly></textarea><div id="calmodal" class="calmodal" role="dialog" aria-modal="true" aria-labelledby="calmodalTitle"><div class="calmodalbox"><div class="calmodalhead"><b id="calmodalTitle">تأیید تغییرهای کالیبراسیون</b><button class="calmodalclose" type="button" aria-label="بستن" onclick="calmodalClose()">×</button></div><div id="calmodalBody" class="calmodalbody"></div><div class="calmodalfoot"><button class="sb brun pbg" type="button" onclick="calmodalApply()">تأیید و اعمال همه</button><button class="sb stp2 pbr" type="button" onclick="calmodalClose()">لغو و بستن</button></div></div></div></div>
+<div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">۱) خواندن و به‌روزرسانی مستقل جدول هر باتری (سقف ۲۴ نقطه)</div><div class="ds">«خواندن جدول فعلی» فقط دو جدول واقعی را از STM32 می‌خواند و جداگانه نشان می‌دهد. هر دکمهٔ «به‌روزرسانی» ابتدا گین/آفست‌های لازم را با readback همان شناسه تأیید می‌کند و سپس LUT همان تراکنش را می‌فرستد؛ جدول و تنظیمات باتری دیگر از readback واقعی حفظ می‌شود. «به‌روزرسانی هر دو» هر دو زنجیره را در یک تراکنش انجام می‌دهد. شناسهٔ ۶ هم Vlow باتری ۲ و هم Vhigh باتری ۱ را عوض می‌کند، پس در update تک‌باتری حفظ می‌شود؛ برای اعمالش «به‌روزرسانی هر دو» را بزنید. شناسهٔ ۵ نیز در update تک‌باتری ۲ حفظ می‌شود. اگر نمونهٔ قدیمی baseline آفست نداشته باشد، تغییر آن آفست پذیرفته نمی‌شود. برای این مسیر دکمهٔ عمومی «اعمال همهٔ تغییرات» لازم نیست؛ دکمهٔ مستقل بالا فقط برای اعمال پارامترهای کالیبراسیون بدون ارسال جدول است.</div><div class="bqr2"><button class="sb sb2 pbb" id="lbtnRead" onclick="lreadnow()" disabled>↻ خواندن جدول فعلی از برد</button><button class="sb brun pbg" id="lbtnS1" onclick="lsend(1)" disabled>⇪ به‌روزرسانی باتری ۱</button><button class="sb brun pbg" id="lbtnS2" onclick="lsend(2)" disabled>⇪ به‌روزرسانی باتری ۲</button><button class="sb brun pbg" id="lbtnSA" onclick="lsend(0)" disabled>⇪ به‌روزرسانی هر دو</button><button class="sb sb2 pby" id="lbtnR" onclick="lrst()" disabled>↻ ریست و بازخوانی دوباره</button></div><div id="calst" class="calstatus" role="status" aria-live="polite"></div><div id="lutcmp"></div><div class="lgrp">۲) ساخت calibration.h</div><div class="bqr2"><button class="sb sb2 pbv" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb sb2 pbv" onclick="calcopy()">کپی کد</button><button class="sb sb2 pbv" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" class="calcd" readonly></textarea><div id="calmodal" class="calmodal" role="dialog" aria-modal="true" aria-labelledby="calmodalTitle"><div class="calmodalbox"><div class="calmodalhead"><b id="calmodalTitle">تأیید تغییرهای کالیبراسیون</b><button class="calmodalclose" type="button" aria-label="بستن" onclick="calmodalClose()">×</button></div><div id="calmodalBody" class="calmodalbody"></div><div class="calmodalfoot"><button class="sb brun pbg" type="button" onclick="calmodalApply()">تأیید و اعمال همه</button><button class="sb stp2 pbr" type="button" onclick="calmodalClose()">لغو و بستن</button></div></div></div></div>
 `;
 function wmode(){const s=$('wSw')&&$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB'),S=$('wStep'),manual=$('wManual'),sweep=$('wSweep');
  if(L)L.disabled=!!s;if(A)A.disabled=!s;if(B)B.disabled=!s;if(S)S.disabled=!s;
@@ -3891,3 +3876,96 @@ function mview(d){const man=(d.fl&32)!=0,sup=d.p[19]!=null&&d.on==1;
 poll();
 setInterval(uview,250); /* v1.16: آینهٔ LED با ۵۰ میلی‌ثانیه — چشمک هم‌سرعت برد */
 </script></body></html>)HTML";
+
+// Historical chart/fault-LED design notes kept source-only (not sent to browsers).
+/* [EN] v1.79 (user: "what is this? there used to be a LED behind it"): the
+   .bit class had markup (<i> dot + <small> label) but NO stylesheet rule at
+   all, so the dots were invisible and the labels ran together as
+   "ADCOC1OC2باتری...". ‎The LEDs are needed - they are the only per-bit view‎
+   of the latched fault mask - so they are drawn properly instead of removed.
+   A latched bit stays dim red at all times and brightens on the blink phase,
+   so a fault is never invisible between blinks.
+   [FA] کلاس .bit هیچ استایلی نداشت؛ پس نقطه‌ها دیده نمی‌شدند و برچسب‌ها به هم
+   چسبیده بودند. حالا هر بیت یک LED واقعی با برچسب زیرش دارد: بیتِ قفل‌شده
+   همیشه قرمزِ کم‌رنگ است و در فاز چشمک پررنگ می‌شود. */
+
+/* [EN] v1.31: the chart is mounted in two places - above the operating table
+   on the chargers page (where you read the numbers, so where you reach for
+   them) and next to the profile fields in settings (where the dashed
+   "typed but not applied" preview is worth seeing). ONE renderer fills every
+   mount, so the two can never say different things; adding or moving a mount
+   is markup only. The containers are classes, not ids, for exactly that
+   reason - $('qg') would have silently filled only the first.
+   [FA] نمودار در دو جا نصب شده - بالای جدول عملکرد در صفحهٔ شارژرها (جایی که
+   اعداد را می‌خوانید، پس همان‌جا سراغشان می‌روید) و کنار فیلدهای profile در
+   تنظیمات (جایی که پیش‌نمایش خط‌چینِ «تایپ‌شده ولی هنوز اعمال‌نشده» ارزش
+   دیدن دارد). یک رندرکننده همهٔ محل‌ها را پر می‌کند، پس آن دو هرگز نمی‌توانند
+   دو چیز متفاوت بگویند؛ افزودن یا جابه‌جاکردن یک محل فقط مارک‌آپ است. */
+
+/* v3 (دستور کاربر ۲۰۲۶-۰۹-۲۹): نمودار دوبعدی جریان-ولتاژ.
+    محور افقی = جریان (mA)، محور عمودی = ولتاژ (mV).
+    قبلاً فقط یک نردبان عمودی ولتاژ بود و جریان اصلاً روی نمودار نبود؛ حالا
+    مسیر واقعی شارژ ‎CC/CV‎ دیده می‌شود: Bulk یک خط عمودی روی سقف جریان است
+    (جریان ثابت، ولتاژ بالا می‌رود) و Absorb یک خط افقی روی ولتاژ هدف
+    (ولتاژ ثابت، جریان پایین می‌آید). نقطهٔ زندهٔ هر باتری روی مختصات واقعی
+    خودش (جریان، ولتاژ) می‌نشیند، پس یک نگاه می‌گوید کجای مسیر است.
+    v3: a real current-voltage chart. X = current, Y = voltage. The CC/CV
+    path is now visible as what it is - a vertical leg at the current limit
+    and a horizontal leg at the absorb voltage - and each battery's live dot
+    sits at its true (I, V), so one look says where it is on that path.
+    ناحیه‌ها از مقدار نمایشی v می‌آیند؛ مقدار اعمال‌شده d پایهٔ خط و ‎read-back‎ است و
+    درخواستِ هنوز-اعمال‌نشده با خط‌چین دیده می‌شود. */
+
+/* [EN] v1.36 (user order: chart texts are FAR too big on some browsers):
+    the SVG stretches with the page width, and SVG scales font-size along
+    with everything else - on a wide browser window an 8px label renders
+    at ~15px. Therefore the on-screen font size is DYNAMIC: measure the
+    real mount width and shrink every size by W/width so it renders close
+    to the designed pixel size on every browser. Shrink-only (never grow),
+    floor 6.5 so an ultra-wide window cannot make it unreadable.
+    [FA] v1.36 (دستور کاربر: نوشته‌های نمودار روی بعضی مرورگرها خیلی درشت
+    است): چون SVG خودش را با پهنای صفحه می‌کشد، فونت هم با آن بزرگ می‌شود؛
+    پس اندازهٔ فونت داینامیک شد: با پهنای واقعی محل نصب سنجیده و هر
+    اندازه در ‎W/width‎ ضرب می‌شود تا روی صفحه نزدیک همان پیکسلِ طراحی بماند.
+    فقط کوچک‌کننده (هرگز بزرگ نمی‌کند) و کف ۶٫۵ تا روی صفحهٔ خیلی عریض
+    ناخوانا نشود. */
+
+/* [EN] v1.38 (user follow-up): the Persian left label carries ONLY the
+    name - number+unit live on the right English label; it hangs BELOW its
+    line (never above); and each line gets exactly ONE Persian label. Zone
+    names float at the CENTER of their band so a band name can never look
+    like a second label for the boundary line touching it. Names come from
+    PX (the same source the chips and help bubbles read), so a rename can
+    never drift in two places. Left labels are display mirrors: editing
+    stays with the English labels on the right.
+    [FA] v1.38 (دستور پیگیری): برچسب فارسیِ چپ فقط نام است - عدد و واحد
+    همان برچسب انگلیسی سمت راست؛ زیر خط خودش می‌آویزد (هرگز بالای آن نیست)
+    و هر خط دقیقاً یک برچسب فارسی دارد. نام ناحیه‌ها هم وسط ناحیهٔ خودشان
+    شناور است تا اسم ناحیه، دومین برچسب خط مرزیِ مجاور به نظر نرسد. نام‌ها
+    از PX می‌آیند (همان منبع تراشه‌ها و حباب‌های کمک) تا تکرار دوبرابری
+    نشود. برچسب‌های چپ فقط نمایشی‌اند؛ ویرایش همان انگلیسی سمت راست است. */
+
+/* [EN] v1.32 (user order): the loop and timing numbers go ON the plot, each
+    one next to the line it actually acts on - not listed underneath it. A
+    tspan carries data-i exactly like an axis label does, so the same click
+    handler and the same floating editor serve them with no second mechanism.
+    They are deliberately quiet: small and muted until you hover, because
+    these are the numbers you touch once, and the chart still has to be
+    readable at a glance for the ones you watch.
+    [FA] اعداد حلقه و زمان‌بندی روی خود نمودار می‌آیند، هر کدام کنار همان خطی
+    که واقعاً رویش اثر می‌گذارد - نه فهرست‌شده زیرش. هر tspan دقیقاً مثل برچسب
+    محور صفت ‎data-i‎ دارد، پس همان شنوندهٔ کلیک و همان ویرایشگر Float بدون هیچ
+    ساز و کار دومی سرویسشان می‌دهد. عمداً کم‌صدا هستند: ریز و محو تا وقتی ماوس
+    رویشان برود، چون این‌ها عددهایی‌اند که یک‌بار تنظیم می‌شوند و نمودار باید
+    برای آن‌هایی که مدام می‌پاییدشان در یک نگاه خوانا بماند. */
+
+/* [EN] The timers and gains used to be drawn here, as <tspan> runs floating
+    over the plane. They are gone from the picture and live in chips under it
+    now (user order 2026-10-03: "write those times underneath so the charts do
+    not get so crowded - do the same for the gains"). Nothing became
+    read-only: the chips carry the same data-i and the same editor.
+    [FA] زمان‌ها و گین‌ها قبلاً همین‌جا روی صفحه رسم می‌شدند. حالا از تصویر
+    بیرون آمده‌اند و زیر نمودار به‌صورت تراشه نشسته‌اند (دستور کاربر: «اون
+    زمان‌ها رو همون زیرش بنویس که انقدر شلوغ نشه نمودارها؛ گین هم همین کار رو
+    براش بکن»). هیچ‌چیز فقط‌خواندنی نشد: تراشه‌ها همان ‎data-i‎ و همان ویرایشگر
+    را دارند. */

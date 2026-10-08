@@ -1141,13 +1141,15 @@ async function testBackupAndCal(win, doc) {
     const expectedOffset = Math.round(off - zeroMa / (K * gain / 1000));
     win.CALS = [{ sc: 'BOTH', d: 0, use: 1, r1: off, r2: off, vin: 24000, v24: 25000,
                   v12: 12500, vlo: 12500, vhi: 12500,
-                  b1: zeroMa, b2: zeroMa, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 }];
+                  b1: zeroMa, b2: zeroMa, dvi: 24300, dv1: 12600, dv2: 12700,
+                  v24off: 0, v12off: 0, ts: 1 }];
     for (let duty = 2; duty <= 20; duty += 2) {
         const raw = off + duty * 25;
         const mA = zeroMa + (raw - off) * K * gain / 1000;
         win.CALS.push({ sc: 'BOTH', d: duty, use: 1, r1: raw, r2: raw, vin: 24000, v24: 25000,
                         v12: 12500, vlo: 12500, vhi: 12500,
-                        b1: mA, b2: mA, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });
+                        b1: mA, b2: mA, dvi: 24300, dv1: 12600, dv2: 12700,
+                        v24off: 0, v12off: 0, ts: 1 });
     }
     win.D = { p: { 0: 0, 1: 0, 2: 1000, 3: 1000, 4: 0, 5: 0, 6: 0 }, t: [] };
     win.eval('calrun')();
@@ -1161,6 +1163,21 @@ async function testBackupAndCal(win, doc) {
     check(prop[4] === 300, 'the input-voltage offset is the mean multimeter difference');
     check(prop[5] === 300, 'the 24 V pack offset uses the sum of the two halves');
     check(prop[6] === 200, 'the 12 V node offset uses the lower half');
+    const trackedVoltageSamples = win.CALS;
+    win.CALS = trackedVoltageSamples.map(sample => {
+        const legacy = Object.assign({}, sample);
+        delete legacy.v24off;
+        delete legacy.v12off;
+        return legacy;
+    });
+    win.eval('calrun')();
+    check([5, 6].every(id => {
+        const row = win.CALR.find(entry => Number(entry[1]) === id);
+        return row && row[5] !== 1 && Number(row[2]) === Number(row[3]) &&
+               row[4].indexOf('مبنای آفست ثبت‌شده') >= 0;
+    }), 'legacy samples without recorded V24/V12 baselines cannot propose an unverified voltage-offset change');
+    win.CALS = trackedVoltageSamples;
+    win.eval('calrun')();
     check(doc.querySelectorAll('#calst .calsummaryrow').length === 7 &&
           doc.getElementById('calst').textContent.indexOf('گین') >= 0 &&
           doc.getElementById('calst').textContent.indexOf('ولتاژ ورودی') >= 0,
@@ -1743,19 +1760,23 @@ async function testLutPush(win, doc) {
     const expectedOffset = Math.round(off - zeroMa / (K * gain / 1000));
     win.CALS = [{ sc: 'BOTH', d: 0, use: 1, r1: off, r2: off, vin: 24000, v24: 25000,
                   v12: 12500, vlo: 12500, vhi: 12500,
-                  b1: zeroMa, b2: zeroMa, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 }];
+                  b1: zeroMa, b2: zeroMa, dvi: 24300, dv1: 12600, dv2: 12700,
+                  v24off: 50, v12off: 60, ts: 1 }];
     for (let duty = 2; duty <= 20; duty += 2) {
         const raw = off + duty * 25;
         const mA = zeroMa + (raw - off) * K * gain / 1000;
         win.CALS.push({ sc: 'BOTH', d: duty, use: 1, r1: raw, r2: raw, vin: 24000, v24: 25000,
                         v12: 12500, vlo: 12500, vhi: 12500,
-                        b1: mA, b2: mA, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });
+                        b1: mA, b2: mA, dvi: 24300, dv1: 12600, dv2: 12700,
+                        v24off: 50, v12off: 60, ts: 1 });
     }
     win.D = { p: { 0: off, 1: off, 2: gain, 3: gain, 4: 40, 5: 50, 6: 60 }, t: [], on: 1 };
     win.eval('calrun')();
 
     const packed = win.eval('lpack')();
     check(!packed.bad, 'a clean sample set packs into a sendable table');
+    check(packed.cal.voltage[1] === 350 && packed.cal.voltage[2] === 260,
+          'ID 5/6 fits are absolute targets from the per-sample offset baselines, not offsets added to today\'s board settings');
     check(packed.T[0].Y[0] === 0 && packed.T[0].Y[packed.T[0].Y.length - 1] > 0,
           'the LUT uses signed battery current times that battery voltage and floors discharge power at zero');
     const nums = packed.body.split(',').map(Number);
@@ -1778,6 +1799,58 @@ async function testLutPush(win, doc) {
     });
     check(win.eval('lcrc')(bytes) === packed.crc,
           'the CRC covers the point bytes in the order the board rebuilds them');
+
+    /* --- user order 2026-10-08: a voltage offset and its LUT share one basis ---
+       The bench sample was captured at V12 offset 0 mV. Applying ID 6 =
+       +144 mV must move both runtime voltage denominators and the power
+       anchors: battery 2 uses Vlow + 144, battery 1 uses Vhigh - 144.
+       [FA] نمونه با آفست V12 صفر گرفته شده؛ اعمال شناسهٔ ۶ با +۱۴۴mV باید
+       هم مخرج زمان اجرا و هم لنگر توان هر دو باتری را هم‌مبنا کند. */
+    {
+        const savedSamples = win.CALS, savedRows = win.CALR, savedBoard = win.D;
+        const sample = { sc: 'BOTH', use: 1, r1: 1000, r2: 1000, b1: 500, b2: 500,
+                         v24: 24000, v12: 11000, vhi: 13000, vlo: 11000,
+                         dv1: 12856, dv2: 11144, v24off: 0, v12off: 0 };
+        const row = (id, value) => ['test ID ' + id, id, value, value, '', 1];
+        win.CALS = [sample];
+        win.CALR = [row(0, 0), row(1, 0), row(2, 1000), row(3, 1000),
+                    row(4, 0), row(5, 0), row(6, 144)];
+        win.D = { p: { 0: 0, 1: 0, 2: 1000, 3: 1000, 4: 0, 5: 0, 6: 0 }, t: [], on: 1 };
+        const adjusted = win.eval('lpack')();
+        const ch1Index = adjusted.T[0].X.indexOf(878);
+        const ch2Index = adjusted.T[1].X.indexOf(878);
+        check(!adjusted.bad && adjusted.cal.selected[6] && adjusted.cal.voltage[2] === 144 &&
+              adjusted.T[0].Y[ch1Index] === 6428 && adjusted.T[1].Y[ch2Index] === 5572,
+              'a +144 mV V12 calibration shifts battery-1 Vhigh down and battery-2 Vlow up in the LUT anchors');
+        check(Math.floor(adjusted.T[1].Y[ch2Index] * 1000 / 11144) === 500,
+              'the post-offset battery-2 runtime divisor reconstructs the 500 mA DMM reading');
+
+        const singleBattery = win.eval('lpack')(2, { ready: true, T: [
+            { X: [100, 200], Y: [1000, 2000] }, { X: [], Y: [] }
+        ] });
+        check(!singleBattery.bad && singleBattery.cal.selected[6] === false &&
+              singleBattery.cal.voltage[2] === 0 &&
+              JSON.stringify(singleBattery.T[0]) === JSON.stringify({ X: [100, 200], Y: [1000, 2000] }) &&
+              singleBattery.T[1].Y[singleBattery.T[1].X.indexOf(878)] === 5500,
+              'a one-battery update preserves ID 6 because it would stale the copied other LUT');
+
+        const legacySample = Object.assign({}, sample);
+        delete legacySample.v12off;
+        win.CALS = [legacySample];
+        const unknownBaseline = win.eval('lpack')();
+        check(!unknownBaseline.bad && unknownBaseline.cal.selected[6] === false &&
+              unknownBaseline.cal.voltage[2] === 0 &&
+              unknownBaseline.msg.join(' ').indexOf('مبنای شناسهٔ ۶') >= 0 &&
+              unknownBaseline.T[1].Y[unknownBaseline.T[1].X.indexOf(878)] === 5500,
+              'legacy samples without a recorded V12-offset baseline keep the live offset instead of guessing');
+        win.D.p[6] = null;
+        const unknownLiveBasis = win.eval('lpack')();
+        check(unknownLiveBasis.bad && unknownLiveBasis.msg.join(' ').indexOf('مبنای ولتاژ باتری') >= 0,
+              'an unknown live voltage-offset basis refuses the LUT transaction instead of sending an unverified table');
+        win.CALS = savedSamples;
+        win.CALR = savedRows;
+        win.D = savedBoard;
+    }
 
     /* --- a matching handshake is a success and offers the reboot --- */
     const calls = [];
@@ -1856,8 +1929,11 @@ async function testLutPush(win, doc) {
     }));
     win.eval('calrun')();
     const noVoltagePack = win.eval('lpack')();
-    check(!noVoltagePack.bad && noVoltagePack.body === packed.body,
-          'missing DMM voltage readings do not alter or block the current LUT');
+    const noVoltageExpected = win.eval('calbuild')(2, noVoltagePack.cal.offset[1],
+        noVoltagePack.cal.gain[1], { v24: noVoltagePack.cal.voltage[1], v12: noVoltagePack.cal.voltage[2] });
+    check(!noVoltagePack.bad && noVoltagePack.T[1].X.join(',') === noVoltageExpected.X.join(',') &&
+          noVoltagePack.T[1].Y.join(',') === noVoltageExpected.Y.join(','),
+          'missing DMM voltage readings preserve the live offsets and build the LUT at that runtime basis');
     check([4, 5, 6].every(id => noVoltagePack.cal.selected[id] === false &&
                                noVoltagePack.cal.voltage[id - 4] === oldVoltageOffsets[id - 4]),
           'unfitted voltage offsets default to preserve the exact board values');
@@ -2109,6 +2185,9 @@ async function testLutPush(win, doc) {
             حمل شود. */
     {
         const savedSamples = win.CALS;
+        const savedGlobalOffsets = [win.D.p[5], win.D.p[6]];
+        win.D.p[5] = Number(win.D.p[5]) - 1;
+        win.D.p[6] = Number(win.D.p[6]) - 1;
         win.CALS = savedSamples.map(z => Object.assign({}, z, { sc: 'BAT1' }));
         win.eval('calrun')();
         const idxOff1 = win.CALR.findIndex(r => Number(r[1]) === 0);
@@ -2138,15 +2217,20 @@ async function testLutPush(win, doc) {
         check(doc.getElementById('calst').textContent.indexOf('✅') >= 0,
               'a single-battery update completes with calibration and LUT readback');
         check(calls.some(c => c.indexOf('/s?id=0&') >= 0) && calls.some(c => c.indexOf('/s?id=2&') >= 0) &&
-              [4, 5, 6].every(id => calls.some(c => c.indexOf('/s?id=' + id + '&') >= 0)) &&
+              calls.some(c => c.indexOf('/s?id=5&') >= 0) &&
+              !calls.some(c => c.indexOf('/s?id=6&') >= 0) &&
+              onePreview.cal.selected[6] === false &&
+              onePreview.msg.join(' ').indexOf('شناسهٔ ۶ هر دو ولتاژ') >= 0 &&
               !calls.some(c => c.indexOf('/s?id=1&') >= 0) && !calls.some(c => c.indexOf('/s?id=3&') >= 0),
-              'battery 1 sends its own offset/gain plus every valid global voltage offset');
+              'battery 1 applies its fitted V24 offset but preserves ID 6 because it also affects the copied battery-2 LUT');
         const oneBody = postedBodies[postedBodies.length - 1].split(',').map(Number);
         check(oneBody[0] === onePreview.T[0].X.length &&
               oneBody[1] === readBefore[1].X.length,
               'battery 2 stays in the transaction with exactly its fresh readback point count');
         check(doc.getElementById('lutcmp').textContent.indexOf('باتری ۲') < 0,
               'the unselected battery does not create a status or warning in the selected-battery audit');
+        win.D.p[5] = savedGlobalOffsets[0];
+        win.D.p[6] = savedGlobalOffsets[1];
 
         /* A calibration endpoint failure is a hard stop: no LUT POST may
            follow a missing/mismatched gain or offset readback. */
