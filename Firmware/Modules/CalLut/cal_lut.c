@@ -133,13 +133,16 @@ uint32_t func__CalLut_Crc32(const uint8_t *uint8_t__A__Data,
 
 /**
  * @brief  [EN] Axis legality for ONE channel: 0 points = "not overridden"
- *              and is legal; otherwise 2..MAX points, a strictly increasing
- *              chain axis (a flat segment divides by zero, a falling one
- *              makes the search meaningless) and a non-decreasing power
- *              axis (the interpolation computes yHigh - yLow UNSIGNED, so a
- *              dip wraps to ~4e9 mW and the reported current explodes).
+ *              and is legal; on commit it deliberately removes any previous
+ *              flash override for that channel. Otherwise 2..MAX points, a
+ *              strictly increasing chain axis (a flat segment divides by
+ *              zero, a falling one makes the search meaningless) and a
+ *              non-decreasing power axis (the interpolation computes
+ *              yHigh - yLow UNSIGNED, so a dip wraps to ~4e9 mW and the
+ *              reported current explodes).
  *         [FA] قانونی‌بودن محورهای یک کانال: ۰ نقطه یعنی «جایگزین نشده» و
- *              مجاز است؛ وگرنه ۲..سقف نقطه، محور زنجیرهٔ اکیداً صعودی و
+ *              مجاز است؛ در کامیت عمداً override فلش قبلی همان کانال را
+ *              حذف می‌کند. وگرنه ۲..سقف نقطه، محور زنجیرهٔ اکیداً صعودی و
  *              محور توان بدون افت (تفریق بدون‌علامت در درون‌یابی، افت را به
  *              ~۴e۹ می‌پیچاند).
  */

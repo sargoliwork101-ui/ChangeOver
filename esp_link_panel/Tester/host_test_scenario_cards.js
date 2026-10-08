@@ -152,8 +152,16 @@ function testStructure(win, doc) {
         check(el.querySelector('.c4ds') !== null, 'card ' + card + ' explains when it triggers');
         check(el.querySelectorAll('.sec').length >= 2, 'card ' + card + ' is split into numbered sections');
     }
-    check(doc.getElementById('simopen') && typeof win.opensim === 'function',
-        'the operating page provides a direct route to the simulator');
+    const factoryButtons = Array.from(doc.querySelectorAll('button')).filter(b =>
+        b.textContent.indexOf('بازگردانی پیش‌فرض کارخانه') >= 0);
+    check(factoryButtons.length === 9 && factoryButtons.every(b => b.classList.contains('fwb')),
+          'every settings section gives its factory-reset key the same full-width panel layout');
+    check(factoryButtons.every(b => b.classList.contains('sb2')),
+          'all factory-reset keys use the panel secondary-button theme');
+    /* The standalone simulator launch card was intentionally removed; the
+       operating page must not advertise a dead route. */
+    check(!doc.getElementById('simopen') && typeof win.opensim !== 'function',
+        'the removed standalone simulator route is not advertised on the operating page');
 
     /* [EN] A browser min/max attribute is not a visible instruction. Every
        numeric scenario box must print the same range immediately below it.
@@ -992,6 +1000,36 @@ async function testSendQueue(win, doc) {
 async function testBackupAndCal(win, doc) {
     console.log('\nv1.81 parameter schema + bench calibration / شمای پارامتر و کالیبراسیون');
 
+    const backupOut = doc.querySelector('#s4 button[onclick="xexp()"]');
+    const backupIn = doc.getElementById('xim') && doc.getElementById('xim').closest('label');
+    const backupText = textOf(doc, 's4');
+    check(backupOut && backupOut.textContent.trim() === '📥 ذخیرهٔ پشتیبان' &&
+          backupOut.classList.contains('pbg') &&
+          backupOut.getAttribute('aria-label') === 'ذخیرهٔ پشتیبان' &&
+          backupIn && backupIn.textContent.trim() === '📤 بازگردانی پشتیبان' &&
+          backupIn.classList.contains('pby') &&
+          backupIn.getAttribute('aria-label') === 'بازگردانی پشتیبان',
+          'backup export/import use labeled download and upload icons with different colors');
+    check(backupText.indexOf('خروجی (دانلود JSON)') < 0 &&
+          backupText.indexOf('PEND') < 0 && backupText.indexOf('CALS') < 0 &&
+          backupText.indexOf('LUT_BACKUP') < 0 &&
+          backupText.indexOf('تنظیمات اعمال‌شده') >= 0 &&
+          backupText.indexOf('LUT یعنی جدول تبدیل') >= 0 &&
+          backupText.indexOf('ارسال همه') >= 0,
+          'the backup card explains user-facing actions and the LUT without internal variable names');
+    const backupCss = Array.from(doc.querySelectorAll('style')).map(s => s.textContent).join('\n');
+    check(backupCss.indexOf('#p2 .pbg') >= 0 && backupCss.indexOf('#p2 .pby') >= 0,
+          'backup colors are scoped to the settings page as well as the bench page');
+    const sampleActions = ['calrun()', 'calexp()', 'calclr()'].map(fn =>
+        doc.querySelector('#p1 [onclick="' + fn + '"]'));
+    const sampleGroup = sampleActions[0] && sampleActions[0].closest('.bqr2');
+    check(sampleGroup && sampleActions.every(el => el && el.closest('.bqr2') === sampleGroup),
+          'sample save, restore and delete actions sit beside the sample calculation');
+    const trash = doc.querySelector('#p1 button[onclick="calclr()"]');
+    check(trash && trash.textContent.trim() === '🗑️ پاک کردن نمونه‌ها' &&
+          trash.classList.contains('pbr') && trash.getAttribute('aria-label') === 'پاک کردن نمونه‌ها',
+          'sample deletion has a red trash icon, label and accessible hint');
+
     /* --- the export payload carries the identity fields --- */
     const blobs = [];
     const OldBlob = win.Blob;
@@ -1002,6 +1040,8 @@ async function testBackupAndCal(win, doc) {
     const oldCreate = doc.createElement.bind(doc);
     doc.createElement = (t) => { const e = oldCreate(t); if (t === 'a') { e.click = () => {}; } return e; };
     win.D = { p: {}, t: [] };
+    win.PEND = {};
+    win.CALS = [];
     const XIDS = win.eval('XIDS'), K = win.eval('K_MA');
     XIDS.forEach(id => { win.D.p[id] = 1; });
     win.eval('xexp')();
@@ -1009,13 +1049,17 @@ async function testBackupAndCal(win, doc) {
     win.Blob = OldBlob;
     check(blobs.length === 1, 'the export button produces exactly one file');
     const o = JSON.parse(blobs[0]);
-    check(o.app === 'ChangeOver-settings' && o.v === 3, 'the file says what it is and uses the parameter-schema format');
+    check(o.app === 'ChangeOver-settings' && o.v === 4, 'the file says what it is and uses the full backup format');
     check(o.build === undefined, 'the backup does not use the panel build as its compatibility identity');
     check(typeof o.saved === 'string' && o.saved.indexOf('T') > 0, 'the file records when it was taken');
     check(Array.isArray(o.schema) && o.schema.length === XIDS.length, 'the file records one schema entry for every backed-up id');
     check(o.schema.every(s => s.id != null && typeof s.name === 'string' && 'unit' in s && 'min' in s && 'max' in s),
           'each schema entry carries the id, readable name, unit and limits');
     check(Object.keys(o.params).length === XIDS.length, 'every backed-up id is in the file');
+    check(o.params['0'] === 1 && o.params['6'] === 1,
+          'the applied calibration ids 0..6 are included in the full backup');
+    check(o.pending && Object.keys(o.pending).length === 0 && Array.isArray(o.benchSamples) && o.lut === null,
+          'the full backup has explicit pending, raw-sample and LUT slots even when they are empty');
     check(o.params['76'] === undefined, 'the live-only id 76 stays out of the backup');
     check(o.params['72'] === undefined && o.params['73'] === undefined,
           'retired ids 72 and 73 stay out of the backup');
@@ -1031,16 +1075,76 @@ async function testBackupAndCal(win, doc) {
         check(o.params[String(id)] === undefined, 'the momentary id ' + id + ' stays out of the backup');
     });
 
+    /* --- the complete backup keeps pending edits, raw bench rows and the
+       last real LUT readback in the same schema. Export must not substitute a
+       generated proposal for the board's readback. --- */
+    const fullBlobs = [];
+    const OldBlobFull = win.Blob;
+    win.Blob = function (parts, opts) { fullBlobs.push(String(parts[0])); return new OldBlobFull(parts, opts); };
+    win.D = { on: 1, p: { 0: 12, 1: 13, 2: 1000, 3: 1000, 4: 0, 5: 0, 6: 0 }, t: [] };
+    win.PEND = { 0: 19, 127: 1 };
+    win.CALS = [{ sc: 'BOTH', d: 5, use: 1, r1: 125, r2: 125, vin: 24000, v24: 25000,
+                  v12: 12500, vlo: 12500, vhi: 12500, b1: 100, b2: 100, ts: 2 }];
+    win.eval("LUT_LAST_AFTER = { ready: 1, source: 'readback', T: [{ X: [100, 200], Y: [110, 220] }, { X: [100], Y: [120] }] }");
+    await win.eval('xexp')();
+    win.Blob = OldBlobFull;
+    const full = JSON.parse(fullBlobs[0]);
+    check(full.v === 4 && full.params['0'] === 12 && full.params['6'] === 0,
+          'a complete backup keeps the applied calibration values separately from pending values');
+    check(full.pending['0'] === 19 && full.pending['127'] === 1,
+          'a complete backup keeps queued values that have not reached the board');
+    check(full.benchSamples.length === 1 && full.benchSamples[0].r1 === 125,
+          'a complete backup keeps the raw bench calibration row');
+    check(full.lut && full.lut.T[0].Y[1] === 220,
+          'a complete backup keeps the last LUT read from the board');
+
     /* --- an out-of-range number from a hand-edited file is pulled back --- */
     check(win.eval('xclamp')(2, 99999) === 3000, 'an impossible gain from a file is clamped to its maximum');
     check(win.eval('xclamp')(0, -5) === 0, 'a negative offset from a file is clamped to zero');
 
-    /* --- calibration: feed a perfect line and demand the numbers back --- */
-    const gain = 1200, off = 7;
-    win.CALS = [];
+    /* --- applied values must replace stale visible calibration/filter boxes ---
+       [FA] مقدار اعمال‌شده باید کادرهای قدیمی کالیبراسیون/فیلتر را جایگزین کند. */
+    win.D = { p: { 0: 17, 1: 19, 2: 1200, 3: 1300, 7: 5, 8: 20, 27: 14800 }, t: [] };
+    win.PEND = {};
+    /* The previous scenario may leave its last input focused. The production
+       rule intentionally preserves a focused field, so blur it before testing
+       an incoming telemetry refresh. */
+    if (doc.activeElement && typeof doc.activeElement.blur === 'function') {
+        doc.activeElement.blur();
+    }
+    doc.getElementById('q0').value = '7';
+    doc.getElementById('q7').value = '3';
+    doc.getElementById('q27').value = '14000';
+    win.eval('cfill')();
+    win.eval('qfill')();
+    win.eval('afill')();
+    check(doc.getElementById('q0').value === '17' &&
+          doc.getElementById('q2').value === '1200',
+          'refresh replaces stale current offset/gain boxes with applied board values');
+    check(doc.getElementById('q7').value === '5',
+          'refresh replaces a stale median-filter value with the applied board value');
+    check(doc.getElementById('q27').value === '14800',
+          'refresh replaces a stale alarm value with the applied board value');
+    check(Math.abs(win.eval('K24') - (3300 / 4095 * 68000 / 6800)) < 1e-9 &&
+          Math.abs(win.eval('K24B') - (3300 / 4095 * 68000 / 6800)) < 1e-9 &&
+          Math.abs(win.eval('K12') - (3300 / 4095 * 34398 / 6800)) < 1e-9,
+          'the panel uses the live BSP divider constants, not historical voltage factors');
+    win.PEND[0] = 99;
+    doc.getElementById('q0').value = '99';
+    win.eval('cfill')();
+    check(doc.getElementById('q0').value === '99',
+          'an explicitly queued local edit is not overwritten by telemetry');
+    win.PEND = {};
+
+    /* --- calibration: fit once, then show a named batch summary --------- */
+    const gain = 1200, off = 7, zeroMa = -120;
+    const expectedOffset = Math.round(off - zeroMa / (K * gain / 1000));
+    win.CALS = [{ sc: 'BOTH', d: 0, use: 1, r1: off, r2: off, vin: 24000, v24: 25000,
+                  v12: 12500, vlo: 12500, vhi: 12500,
+                  b1: zeroMa, b2: zeroMa, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 }];
     for (let duty = 2; duty <= 20; duty += 2) {
         const raw = off + duty * 25;
-        const mA = (raw - off) * K * gain / 1000;
+        const mA = zeroMa + (raw - off) * K * gain / 1000;
         win.CALS.push({ sc: 'BOTH', d: duty, use: 1, r1: raw, r2: raw, vin: 24000, v24: 25000,
                         v12: 12500, vlo: 12500, vhi: 12500,
                         b1: mA, b2: mA, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });
@@ -1048,33 +1152,46 @@ async function testBackupAndCal(win, doc) {
     win.D = { p: { 0: 0, 1: 0, 2: 1000, 3: 1000, 4: 0, 5: 0, 6: 0 }, t: [] };
     win.eval('calrun')();
     const prop = {};
-    win.CALR.forEach((r, i) => { prop[r[1]] = +doc.getElementById('calv' + i).value; });
+    win.CALR.forEach(r => { prop[Number(r[1])] = Number(r[3]); });
     check(prop[2] === gain, 'the fit recovers the current gain of channel 1 exactly');
     check(prop[3] === gain, 'the fit recovers the current gain of channel 2 exactly');
-    check(prop[0] === off, 'the fit recovers the zero-current offset of channel 1');
+    check(prop[0] === expectedOffset, 'the fit preserves signed battery current and finds the zero-current raw point');
+    check(String(win.CALR.find(r => Number(r[1]) === 0)[4]).indexOf('جریان خالص باتری صفر در raw='+expectedOffset) >= 0,
+          'a negative battery current remains in the direct signed fit');
     check(prop[4] === 300, 'the input-voltage offset is the mean multimeter difference');
     check(prop[5] === 300, 'the 24 V pack offset uses the sum of the two halves');
     check(prop[6] === 200, 'the 12 V node offset uses the lower half');
-    check(doc.getElementById('caltb').innerHTML.indexOf('1200') >= 0,
-          'the preview table shows the proposed number before anything is written');
-    check(doc.getElementById('calst').textContent.indexOf('تیک‌خورده') >= 0,
-          'nothing is written until the user presses apply');
-    /* --- v1.58: every proposal is editable and tickable --- */
-    check(doc.getElementById('calv0') && doc.getElementById('calv0').tagName === 'INPUT',
-          'each proposed number is an input box the user can correct');
-    check(doc.getElementById('calk0') && doc.getElementById('calk0').type === 'checkbox',
-          'each line has its own apply tick');
-    check(doc.querySelectorAll('#caltb th')[2].textContent.indexOf('الان روی برد') >= 0,
-          'the board value sits in its own column next to the new one');
-    doc.getElementById('calv0').value = 1500;
-    win.eval('caldiff')(0);
-    check(doc.getElementById('cald0').textContent.indexOf('+500') >= 0,
-          'editing a number updates the difference against the board value');
-    doc.getElementById('calv0').value = 99999;
-    win.eval('caldiff')(0);
-    check(doc.getElementById('cald0').innerHTML.indexOf('خارج از بازهٔ مجاز') >= 0,
-          'an impossible hand-typed number is flagged before it is sent');
+    check(doc.querySelectorAll('#calst .calsummaryrow').length === 7 &&
+          doc.getElementById('calst').textContent.indexOf('گین') >= 0 &&
+          doc.getElementById('calst').textContent.indexOf('ولتاژ ورودی') >= 0,
+          'the result is a named status summary containing every calibration parameter');
+    const panelCss = Array.from(doc.querySelectorAll('style')).map(s => s.textContent).join('\n');
+    check(doc.getElementById('calst').classList.contains('cal-summary') &&
+          panelCss.indexOf('.calstatus.cal-summary') >= 0 &&
+          panelCss.indexOf('border-color:transparent!important') >= 0,
+          'a calibration summary removes the outer error frame while retaining the inner orange summary frame');
+    check(!doc.getElementById('caltb') && !doc.querySelector('#calst input'),
+          'the old calibration result table and its per-row editors are gone');
+    check(doc.getElementById('calst').textContent.indexOf('در انتظار تأیید کاربر') >= 0,
+          'nothing is written until the user confirms the complete batch');
 
+    /* A sample-selection edit invalidates the previous fit immediately; the
+       old numbers must not remain usable until the user runs the fit again.
+       [FA] تغییر انتخاب نمونه باید همان لحظه برازش قبلی را باطل کند. */
+    win.eval('caluse')(0, false);
+    check(win.CALR.length === 0 &&
+          doc.getElementById('calst').textContent.indexOf('نتیجهٔ قبلی دیگر معتبر نیست') >= 0,
+          'changing sample selection invalidates the old calibration result');
+    win.eval('caluse')(0, true);
+    win.eval('calrun')();
+
+    /* --- v1.58: one confirmation, no per-parameter ticks --------------- */
+    check(!doc.querySelector('[id^="calv"]') && !doc.querySelector('[id^="calk"]') &&
+          !doc.querySelector('[id^="cald"]'),
+          'the calibration result no longer exposes per-parameter inputs, ticks or diffs');
+    check(doc.getElementById('calmodal') && doc.getElementById('calmodalBody') &&
+          doc.getElementById('calmodalBody').className.indexOf('calmodalbody') >= 0,
+          'the one-shot confirmation dialog has a dedicated scrollable body');
 
     /* --- v1.60: a sample knows its scenario and can be excluded by hand --- */
     win.eval('calsmp')();
@@ -1082,14 +1199,25 @@ async function testBackupAndCal(win, doc) {
           'the sample list names the scenario in plain words, not SOLO');
     check(doc.getElementById('calsl').innerHTML.indexOf('SOLO') < 0,
           'the word SOLO is gone from what the user reads');
+    check(doc.getElementById('calall') && doc.getElementById('calall').type === 'checkbox' &&
+          doc.querySelectorAll('#calsl button').length === 0,
+          'the sample list has one master checkbox above the rows and no select-all buttons');
+    win.eval('calpick')(0);
+    check(win.CALS.every(z => z.use === 0) && doc.getElementById('calall').checked === false,
+          'unchecking the master sample checkbox excludes every row');
+    check(win.CALR.length === 0,
+          'unchecking all samples also invalidates the previous fit');
+    win.eval('calpick')(1);
+    check(win.CALS.every(z => z.use !== 0) && doc.getElementById('calall').checked === true,
+          'checking the master sample checkbox includes every row again');
     win.CALS.push({ sc: 'BAT1', d: 30, use: 1, r1: 900, r2: 900, vin: 24000, v24: 25000,
                     v12: 12500, vlo: 12500, vhi: 12500, b1: 10, b2: 10,
                     dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });   /* an obvious outlier */
     win.eval('calrun')();
-    const spoiled = +doc.getElementById('calv0').value;
+    const spoiled = Number(win.CALR.find(r => Number(r[1]) === 2)[3]);
     win.eval('caluse')(win.CALS.length - 1, false);
     win.eval('calrun')();
-    check(spoiled !== gain && +doc.getElementById('calv0').value === gain,
+    check(spoiled !== gain && Number(win.CALR.find(r => Number(r[1]) === 2)[3]) === gain,
           'unticking a bad row takes it straight out of the maths');
     check(win.CALS[win.CALS.length - 1].use === 0,
           'an unticked row is kept in the file, only excluded from the fit');
@@ -1098,19 +1226,49 @@ async function testBackupAndCal(win, doc) {
         vin: 24000, v24: 25000, v12: 12500, vlo: 12500, vhi: 12500, b1: 10, b2: null,
         dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 };
     win.eval('calrun')();
-    check(+doc.getElementById('calv0').value === gain,
+    check(Number(win.CALR.find(r => Number(r[1]) === 2)[3]) === gain,
           'a battery-2-only row is ignored when fitting battery 1');
     win.CALS.pop();
     win.eval('calrun')();
 
+    /* Selecting only BAT2 narrows every green/red rule and the fit itself.
+       The other battery is not allowed to turn the selected result red. */
+    doc.getElementById('wcBAT1').checked = false;
+    doc.getElementById('wcBAT2').checked = true;
+    doc.getElementById('wcBOTH').checked = false;
+    win.eval('calchk')();
+    check(doc.getElementById('calck').textContent.indexOf('دامنهٔ بررسی: فقط باتری ۲') >= 0 &&
+          doc.getElementById('calck').textContent.indexOf('باتری ۱:') < 0 &&
+          doc.getElementById('calck').textContent.indexOf('باتری ۲:') >= 0,
+          'a BAT2-only selection checks and reports only battery 2');
+    win.eval('calrun')();
+    check(win.CALR.some(r => Number(r[1]) === 1) && win.CALR.some(r => Number(r[1]) === 3) &&
+          !win.CALR.some(r => Number(r[1]) === 0) && !win.CALR.some(r => Number(r[1]) === 2),
+          'a BAT2-only fit does not produce battery-1 calibration rows');
+    const savedScopeSamples = win.CALS;
+    const bat2ScopeSamples = savedScopeSamples.slice(0, 4).map(z => Object.assign({}, z, { sc: 'BAT2' }));
+    const noisyBat1Samples = savedScopeSamples.slice(4, 8).map(z => Object.assign({}, z, {
+        sc: 'BAT1', dvi: 50000, dv1: 40000, dv2: 40000
+    }));
+    win.CALS = bat2ScopeSamples.concat(noisyBat1Samples);
+    win.eval('calrun')();
+    const scopedVoltage = Number(win.CALR.find(r => Number(r[1]) === 4)[3]);
+    check(scopedVoltage === 300,
+          'battery-1 voltage samples do not alter a BAT2-only calibration result');
+    win.CALS = savedScopeSamples;
+    ['BAT1', 'BAT2', 'BOTH'].forEach(k => { doc.getElementById('wc' + k).checked = true; });
+    win.eval('calrun')();
+
     /* --- v1.61: the conditions are on the page, and a firmware snippet --- */
     win.eval('calchk')();
-    check(doc.getElementById('calck').innerHTML.indexOf('✅') >= 0,
+    const ruleRows = doc.querySelectorAll('#calck .ckr');
+    check(ruleRows.length >= 10 &&
+          [...ruleRows].every(row => row.querySelector('i') && row.textContent.trim().length > 1),
           'the rule check-list is rendered with a result for each rule');
     const keepAll = win.CALS;
     win.CALS = [keepAll[0]];
     win.eval('calchk')();
-    check(doc.getElementById('calck').innerHTML.indexOf('⛔') >= 0 &&
+    check(doc.querySelectorAll('#calck .ckr.no').length >= 2 &&
           doc.getElementById('calck').innerHTML.indexOf('حداقل ۴') >= 0,
           'too few points is shown as a failed rule with what to do about it');
     win.CALS = keepAll;
@@ -1161,10 +1319,21 @@ async function testBackupAndCal(win, doc) {
 
     /* --- v1.63: any point count is fine, but fewer than two is refused --- */
     const keepP = win.CALS;
-    /* one sample sitting exactly at the zero-current point: a single anchor */
-    win.CALS = [{ sc: 'BOTH', d: 2, use: 1, r1: off, r2: off, vin: 24000, v24: 25000,
-                  v12: 12500, vlo: 12500, vhi: 12500, b1: 0, b2: 0,
-                  dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 }];
+    const noZeroRow = { sc: 'BOTH', d: 2, use: 1, r1: off, r2: off, vin: 24000, v24: 25000,
+                        v12: 12500, vlo: 12500, vhi: 12500, b1: 0, b2: 0,
+                        dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 };
+    const noZeroRows = [2, 4, 6].map(d => {
+        const raw = off + d * 25;
+        return Object.assign({}, noZeroRow, { d, r1: raw, r2: raw,
+            b1: zeroMa + (raw - off) * K * gain / 1000,
+            b2: zeroMa + (raw - off) * K * gain / 1000 });
+    });
+    win.CALS = noZeroRows;
+    win.eval('calrun')();
+    const noZero = win.CALR.find(r => Number(r[1]) === 2);
+    check(noZero && noZero[5] === 1 && Number(noZero[3]) === gain,
+          'a direct signed fit does not require an artificial zero-duty baseline');
+    win.CALS = [noZeroRow];
     win.eval('calrun')();
     win.eval('calcode')();
     check(doc.getElementById('calcd').value.indexOf('NOT GENERATED') >= 0 &&
@@ -1179,9 +1348,12 @@ async function testBackupAndCal(win, doc) {
     /* --- v1.64: the panel proves the table is legal before emitting it --- */
     const keepN = win.CALS;
     const noisy = keepN.map(z => Object.assign({}, z));
-    noisy[3].b1 = 1;            /* one point whose power dips below the previous */
+    noisy[2].b1 = 100;         /* a positive point still below the fitted zero-crossing */
+    noisy[5].b1 = -1;          /* after charge power, signed discharge must dip to zero */
     win.CALS = noisy;
-    const built = win.eval('calbuild')(1, 7, 1200);
+    const fittedOffset = Number(win.CALR.find(r => Number(r[1]) === 0)[3]);
+    const fittedGain = Number(win.CALR.find(r => Number(r[1]) === 2)[3]);
+    const built = win.eval('calbuild')(1, fittedOffset, fittedGain);
     check(built.X.length === built.Y.length,
           'the two axes of one battery always come out the same length');
     check(built.Y.every((v, i) => i === 0 || v >= built.Y[i - 1]),
@@ -1203,6 +1375,71 @@ async function testBackupAndCal(win, doc) {
           'applying calibration is refused while the bench wizard is running');
     await win.eval('ximp')({ text: async () => JSON.stringify({ app: 'ChangeOver-settings', v: 2, params: { 0: 1 } }) });
     Wv.run = false;
+
+    /* The successful path applies every valid calibration parameter in one
+       confirmation, then reconciles each local owner with board readback.
+       [FA] مسیر موفق باید همهٔ پارامترهای معتبر را با یک تأیید اعمال کند و
+       بعد هر مالک محلی را با readback برد هماهنگ کند. */
+    const applyId = 2;
+    const applyRow = win.CALR.findIndex(r => Number(r[1]) === applyId);
+    const oldSetv = win.eval('setv');
+    const oldXexp = win.eval('xexp');
+    win.eval('xexp = () => {}');
+    win.eval('setv = async (id, value) => { D.p[id] = value; }');
+    win.PEND = { 0: 999 };
+    await win.eval('calapply')();
+    await win.eval('calmodalApply')();
+    check(doc.getElementById('calst').textContent.indexOf('در صف تغییرات پنل') >= 0 &&
+          doc.getElementById('calst').textContent.indexOf('شناسهٔ 0') >= 0,
+          'calibration refuses to overwrite a same-id pending edit');
+    win.PEND = {};
+    const expected = {};
+    win.CALR.forEach(r => {
+        if (Number(r[1]) === applyId) r[3] = 1234;
+        if (Number.isFinite(Number(r[1])) && r[5] === 1 && Number.isFinite(Number(r[3]))) {
+            expected[Number(r[1])] = Number(r[3]);
+        }
+    });
+    doc.getElementById('q' + applyId).value = '1000';
+    if (doc.activeElement && typeof doc.activeElement.blur === 'function') {
+        doc.activeElement.blur();
+    }
+    await win.eval('calapply')();
+    check(doc.getElementById('calmodal').className.indexOf('on') >= 0 &&
+          doc.getElementById('calmodalBody').textContent.indexOf('گین') >= 0 &&
+          doc.getElementById('calmodalBody').textContent.indexOf('شناسه') < 0,
+          'one confirmation modal lists named calibration values without internal ids');
+    await win.eval('calmodalApply')();
+    check(Object.keys(expected).every(id => win.D.p[id] === expected[id]),
+          'one confirmed operation writes every valid calibration parameter');
+    check(win.D.p[applyId] === 1234 && win.CALR[applyRow][2] === 1234,
+          'calibration apply keeps the board readback in its local row snapshot');
+    check(doc.getElementById('q' + applyId).value === '1234' &&
+          doc.getElementById('calmodal').className.indexOf('on') < 0,
+          'calibration apply refreshes the owning filter control and closes the modal');
+    check(doc.getElementById('calst').textContent.indexOf('✅') >= 0 &&
+          doc.getElementById('calst').textContent.indexOf('readback') >= 0,
+          'calibration apply reports successful board readback for the batch');
+
+    /* The voltage helper must use the same awaited setter/readback path, and
+       must refuse to calculate from a missing live voltage. */
+    const vcalCalls = [];
+    win.setv = async (id, value) => { vcalCalls.push([id, value]); win.D.p[id] = value; };
+    win.confirm = () => true;
+    win.D = { p: { 4: 10 }, t: [] };
+    doc.getElementById('vm0').value = '13.05';
+    await win.eval('vcal')(0);
+    check(vcalCalls.length === 0 &&
+          doc.getElementById('calst').textContent.indexOf('telemetry معتبر') >= 0,
+          'voltage calibration refuses a missing live board reading');
+    win.D.t[14] = 12500;
+    await win.eval('vcal')(0);
+    check(vcalCalls.length === 1 && vcalCalls[0][0] === 4 && vcalCalls[0][1] === 560 &&
+          doc.getElementById('calst').textContent.indexOf('readback همان شناسه') >= 0,
+          'voltage calibration awaits the same-id setter/readback path');
+    win.setv = oldSetv;
+    win.xexp = oldXexp;
+    win.PEND = {};
 
     /* v1.81: importing a settings file must stage locally, never call /s. */
     const importUrls = [];
@@ -1227,6 +1464,25 @@ async function testBackupAndCal(win, doc) {
     win.PEND = {};
     win.pbar();
 
+    /* A full backup restores all three local layers together. The imported
+       LUT is only retained for review; no endpoint is called and no LUT
+       payload is staged as an automatic board write. */
+    win.D = { p: { 0: 12, 1: 13, 2: 1000, 3: 1000, 4: 0, 5: 0, 6: 0 }, t: [] };
+    win.PEND = {};
+    win.CALS = [];
+    win.LUT_BACKUP = null;
+    await win.eval('ximp')({ text: async () => JSON.stringify(full) });
+    check(importUrls.filter(u => u.indexOf('/s?') >= 0).length === 0 &&
+          win.PEND[0] === 19 && win.PEND[127] === 1,
+          'full restore stages pending values without writing them to the board');
+    check(win.CALS.length === 1 && win.CALS[0].r1 === 125,
+          'full restore brings raw calibration samples back into the sample list');
+    check(win.LUT_BACKUP && win.LUT_BACKUP.T[0].Y[1] === 220 &&
+          doc.getElementById('xst').textContent.indexOf('روی برد اعمال نشد') >= 0,
+          'full restore reports the imported LUT and keeps it review-only');
+    win.PEND = {};
+    win.pbar();
+
     /* --- v1.65: the live table shows only what the user needs --- */
     const heads = Array.from(doc.querySelectorAll('#wT th')).map(h => h.textContent);
     if (heads.length) {
@@ -1242,6 +1498,36 @@ async function testBackupAndCal(win, doc) {
           'the board readings the user needs are shown: input, both batteries, both currents');
     check(win.eval('WSTC') === win.eval('WH').length - 1,
           'the status column index follows the header list instead of a hard-coded 12');
+
+    /* --- v1.66 bench input mode: SWEEP and manual duty are exclusive ----- */
+    const sweepToggle = doc.getElementById('wSw');
+    const manualDuty = doc.getElementById('wManual');
+    const sweepFields = doc.getElementById('wSweep');
+    const sweepStep = doc.getElementById('wStep');
+    sweepToggle.checked = true;
+    sweepToggle.onchange();
+    check(manualDuty.className.indexOf('wmode-hidden') >= 0 &&
+          sweepFields.className.indexOf('wmode-hidden') < 0 &&
+          doc.getElementById('wA').disabled === false &&
+          doc.getElementById('wB').disabled === false &&
+          sweepStep && sweepStep.disabled === false,
+          'SWEEP shows only its start, end and step controls');
+    sweepToggle.checked = false;
+    sweepToggle.onchange();
+    check(manualDuty.className.indexOf('wmode-hidden') < 0 &&
+          sweepFields.className.indexOf('wmode-hidden') >= 0 &&
+          doc.getElementById('wL').disabled === false &&
+          doc.getElementById('wA').disabled === true &&
+          doc.getElementById('wB').disabled === true &&
+          sweepStep.disabled === true,
+          'turning SWEEP off shows only the manual duty list');
+    sweepToggle.checked = true;
+    doc.getElementById('wA').value = '2';
+    doc.getElementById('wB').value = '6';
+    sweepStep.value = '2';
+    sweepToggle.onchange();
+    check(JSON.stringify(win.eval('wsweep')()) === JSON.stringify([2, 4, 6]),
+          'the SWEEP step field controls the generated duty sequence');
 
     /* --- v1.59: the raw bench samples can be saved and restored --- */
     const sbl = [];
@@ -1259,7 +1545,7 @@ async function testBackupAndCal(win, doc) {
           'the sample file says how many points it holds and when it was taken');
     const kept = win.CALS.length;
     win.CALS = [];
-    win.eval('calimp')({ text: async () => JSON.stringify(sf) }).then(() => {});
+    await win.eval('calimp')({ text: async () => JSON.stringify(sf) });
 
     /* --- noisy / too few samples must be refused, not applied --- */
     win.CALS = [{ r1: 100, r2: 100, vin: 24000, v24: 25000, v12: 12500, vlo: 12500, vhi: 12500,
@@ -1354,11 +1640,14 @@ async function testLutPush(win, doc) {
     console.log('\nv1.66 direct LUT push / ارسال مستقیم جدول به برد');
 
     const K = win.eval('K_MA');
-    const gain = 1200, off = 7;
-    win.CALS = [];
+    const gain = 1200, off = 7, zeroMa = -120;
+    const expectedOffset = Math.round(off - zeroMa / (K * gain / 1000));
+    win.CALS = [{ sc: 'BOTH', d: 0, use: 1, r1: off, r2: off, vin: 24000, v24: 25000,
+                  v12: 12500, vlo: 12500, vhi: 12500,
+                  b1: zeroMa, b2: zeroMa, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 }];
     for (let duty = 2; duty <= 20; duty += 2) {
         const raw = off + duty * 25;
-        const mA = (raw - off) * K * gain / 1000;
+        const mA = zeroMa + (raw - off) * K * gain / 1000;
         win.CALS.push({ sc: 'BOTH', d: duty, use: 1, r1: raw, r2: raw, vin: 24000, v24: 25000,
                         v12: 12500, vlo: 12500, vhi: 12500,
                         b1: mA, b2: mA, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });
@@ -1368,6 +1657,8 @@ async function testLutPush(win, doc) {
 
     const packed = win.eval('lpack')();
     check(!packed.bad, 'a clean sample set packs into a sendable table');
+    check(packed.T[0].Y[0] === 0 && packed.T[0].Y[packed.T[0].Y.length - 1] > 0,
+          'the LUT uses signed battery current times that battery voltage and floors discharge power at zero');
     const nums = packed.body.split(',').map(Number);
     check(nums[0] === packed.T[0].X.length && nums[1] === packed.T[1].X.length,
           'the body starts with the two point counts');
@@ -1391,29 +1682,105 @@ async function testLutPush(win, doc) {
 
     /* --- a matching handshake is a success and offers the reboot --- */
     const calls = [];
+    const postedBodies = [];
+    let calFail = false;
+    let readBefore = packed.T.map(t => ({ X: t.X.map(v => v + 10), Y: t.Y.map(v => v + 100) }));
+    let activeRows = packed.T;
+    let readPhase = 0;
+    let readAfterTransaction = false;
+    let readMode = 'good';
+    const readJson = () => {
+        if (readMode === 'unavailable' && readPhase) return { ready: 0, pending: 0, error: 1 };
+        const rows = readPhase ? activeRows : readBefore;
+        return { ready: 1, pending: 0, error: 0,
+                 n1: rows[0].X.length, n2: rows[1].X.length,
+                 r1: rows[0].X.map((v, i) => [v, rows[0].Y[i]]),
+                 r2: rows[1].X.map((v, i) => [v, rows[1].Y[i]]) };
+    };
     const stub = (ack) => (u, o) => {
         calls.push((o && o.method ? o.method : 'GET') + ' ' + u);
-        if (String(u).indexOf('/lut') === 0 && o && o.method === 'POST' && String(u).indexOf('reset') < 0) {
+        if (String(u) === '/lut/read' && o && o.method === 'POST') {
+            readPhase = readAfterTransaction ? 1 : 0;
+            readAfterTransaction = false;
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: 1, pending: 1 }) });
+        }
+        if (String(u).indexOf('/s?id=') === 0 && o && o.method === 'POST') {
+            if (calFail) return Promise.resolve({ ok: false, status: 503, json: () => Promise.resolve({}) });
+            const q = new URL('http://panel' + String(u)).searchParams;
+            const id = Number(q.get('id')), value = Number(q.get('v'));
+            win.D.p[id] = value;
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: 1 }) });
+        }
+        if (String(u) === '/lut' && o && o.method === 'POST') {
+            postedBodies.push(o.body);
+            readAfterTransaction = true;
             return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: 1 }) });
         }
         if (String(u) === '/lut') {
-            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(ack) });
+            const answer = Object.assign({}, ack, { read: readJson() });
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(answer) });
         }
         if (String(u).indexOf('/lut/reset') === 0) {
+            readAfterTransaction = true;
             return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: 1 }) });
         }
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(win.D) });
     };
     const oldConfirm = win.confirm;
+    const applyPending = async (name) => {
+        check(!!doc.getElementById('lutApply') &&
+              doc.querySelectorAll('#lutcmp input.lutcalcheck').length > 0,
+              name + ': the change audit exposes an apply action and calibration checkboxes');
+        await win.eval('lapplypending')();
+    };
     const ackOk = { st: 3, s: 0, n1: packed.T[0].X.length, n2: packed.T[1].X.length,
                     crc: packed.crc, sent: packed.crc, age: 10, n: 3 };
+
+    win.PEND = { 0: off + 1 };
+    calls.length = 0;
+    await win.eval('lsend')(1);
+    check(doc.getElementById('calst').textContent.indexOf('در صف تغییرات پنل') >= 0 &&
+          doc.getElementById('calst').textContent.indexOf('شناسهٔ 0') >= 0,
+          'a LUT update refuses to overwrite a pending calibration id');
+    check(calls.length === 0, 'a pending calibration conflict does not even start LUT readback');
+    win.PEND = {};
+    win.pbar();
 
     /* The operator accepts the push but declines the reboot for now. */
     win.confirm = (m) => String(m).indexOf('ریست شود') < 0;
     win.fetch = stub(ackOk);
     await win.eval('lsend')();
+    const calChecks = Array.from(doc.querySelectorAll('#lutcmp input.lutcalcheck'));
+    check(calChecks.length === 7 && calChecks.every(x => x.checked),
+          'every in-scope calibration value is checked by default');
+    check(doc.querySelector('#lutcmp .lutchange') !== null &&
+          doc.getElementById('lutcmp').innerHTML.indexOf('rgba(247,148,30') < 0,
+          'the change audit uses the orange change-card class instead of an inline red frame');
+    const keepVoltage = doc.querySelector('#lutcmp input[data-cal-id="4"]');
+    keepVoltage.click();
+    check(!doc.querySelector('#lutcmp input[data-cal-id="4"]').checked &&
+          doc.getElementById('lutcmp').textContent.indexOf('حفظ می‌شود') >= 0,
+          'unticking one calibration value marks it to be preserved');
+    await applyPending('the first LUT transaction');
+    check(!calls.some(c => c.indexOf('/s?id=4&') >= 0),
+          'an unchecked calibration value is absent from the setter payload');
     check(doc.getElementById('calst').textContent.indexOf('✅') >= 0,
-          'a matching CRC is reported as a real success');
+          'a matching CRC and point-by-point readback are reported as a real success');
+    check(doc.getElementById('calst').classList.contains('cal-ok'),
+          'a successful transaction uses the application success status theme');
+    check(doc.getElementById('lutcmp').textContent.indexOf('فعلی روی برد') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('پیشنهادی برای ارسال') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('پس از commit') >= 0,
+          'the LUT audit keeps current, proposed and post-commit columns visible');
+    check(doc.getElementById('lutcmp').textContent.indexOf('قبل از ارسال') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('پیشنهاد پنل') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('بعد از اعمال') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('ID 0') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('readback همان شناسه') >= 0,
+          'the calibration audit names each id and maps board-before, panel-proposal and board-after values');
+    check(doc.getElementById('lutcmp').textContent.indexOf('باتری ۲') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('تغییر کرد و تأیید شد') >= 0,
+          'battery 2 is compared point by point and a changed row is marked');
     check(calls.filter(c => c.indexOf('/lut/reset') >= 0).length === 0,
           'declining the reboot leaves the board running on the table it just stored');
 
@@ -1422,13 +1789,34 @@ async function testLutPush(win, doc) {
     win.confirm = () => true;
     win.fetch = stub(ackOk);
     await win.eval('lsend')();
+    await applyPending('the rebooted LUT transaction');
     check(calls.filter(c => c.indexOf('POST /lut/reset') >= 0).length === 1,
           'the confirmed reboot is sent so every module starts on the new table');
+    check(calls.filter(c => c === 'GET /t').length >= 1,
+          'after reset the panel gets a fresh calibration telemetry readback before declaring persistence');
+
+    /* --- the read-only board view is useful on its own ------------------- */
+    calls.length = 0;
+    readPhase = 0;
+    readMode = 'good';
+    win.fetch = stub(ackOk);
+    await win.eval('lreadnow')();
+    check(doc.getElementById('lutcmp').textContent.indexOf('جدول فعال واقعی روی برد') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('chainMa') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('powerMw') >= 0,
+          'a standalone board readback shows clear chainMa/powerMw tables');
+    check(doc.getElementById('lutcmp').textContent.indexOf('پیشنهادی برای ارسال') < 0,
+          'the standalone board view does not mix empty audit columns into the actual values');
+    check(doc.getElementById('lutcmp').textContent.indexOf('مقدار واقعی روی برد') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('telemetry معتبر STM32') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('ID 6') >= 0,
+          'the standalone board view explains the source of calibration readback and names every id');
 
     /* --- a CRC that does not match is NOT a success and reboots nothing --- */
     calls.length = 0;
     win.fetch = stub({ st: 3, s: 0, n1: 4, n2: 3, crc: (packed.crc ^ 1) >>> 0, sent: packed.crc, age: 10, n: 3 });
     await win.eval('lsend')();
+    await applyPending('the CRC-mismatch LUT transaction');
     check(doc.getElementById('calst').textContent.indexOf('دست‌دادن نخواند') >= 0,
           'a CRC mismatch is called out instead of being hidden');
     check(doc.getElementById('calst').textContent.indexOf('جدول قبلی بدون تغییر ماند') >= 0,
@@ -1439,8 +1827,131 @@ async function testLutPush(win, doc) {
     /* --- a board-side refusal is reported with its reason --- */
     win.fetch = stub({ st: 3, s: 5, n1: 0, n2: 0, crc: 0, sent: packed.crc, age: 10, n: 3 });
     await win.eval('lsend')();
+    await applyPending('the board-refused LUT transaction');
     check(doc.getElementById('calst').textContent.indexOf('محور توان') >= 0,
           'the board status code is translated into a plain reason');
+
+    /* A successful ACK without a value readback is not promoted to success. */
+    readMode = 'unavailable';
+    /* A rejected previous transaction did not perform its post-commit read,
+       so do not let the stub leak that one-shot after flag into this new
+       transaction's required before-read. */
+    readAfterTransaction = false;
+    win.fetch = stub(ackOk);
+    win.confirm = () => true;
+    await win.eval('lsend')();
+    await applyPending('the post-commit-readback-failure LUT transaction');
+    check(doc.getElementById('calst').textContent.indexOf('بازخوانی عددبه‌عدد بعد از commit ناموفق') >= 0,
+          'a missing active-table readback is shown as a failure, not hidden by CRC');
+    check(doc.getElementById('lutcmp').textContent.indexOf('بازخوانی ناموفق') >= 0,
+          'the table marks unavailable post-commit values visibly');
+    readMode = 'good';
+
+    /* --- zero points are a valid clear, not an unchanged result ---------
+       [EN] A non-zero active override followed by a zero-point readback is
+            a real deletion of that override. A malformed/empty source table
+            is also intentionally encoded as zero points for that channel;
+            this test makes the destructive meaning visible instead of
+            claiming that the channel was not sent.
+       [FA] بازخوانی صفرنقطه‌ای پس از override غیرصفر، حذف واقعی override
+            است و نباید «بدون تغییر» نمایش داده شود. جدول نامعتبر/خالی نیز
+            عمداً برای آن کانال صفرنقطه‌ای رمز می‌شود؛ تست معنای حذف را
+            آشکار می‌کند تا پیام دروغین «فرستاده نشد» برنگردد. */
+    {
+        const clear = win.eval('lpost')([100, 200], null, null, true, true, '');
+        check(clear.c === 'changed' && clear.t.indexOf('تغییر کرد و تأیید شد') >= 0,
+              'before non-zero, proposed zero and after zero are marked changed/confirmed');
+        const extra = win.eval('lpost')([100, 200], null, [100, 200], true, true, '');
+        check(extra.c === 'bad' && extra.t.indexOf('اضافه') >= 0,
+              'a zero-point proposal with a non-zero post-readback is a mismatch');
+
+        const savedSamples = win.CALS;
+        win.CALS = savedSamples.map(z => Object.assign({}, z, { sc: 'BAT1' }));
+        const partial = win.eval('lpack')();
+        const partialNumbers = partial.body.split(',').map(Number);
+        check(!partial.bad && partial.T[1].X.length === 0 && partialNumbers[1] === 0,
+              'an unusable battery-2 source is encoded as a valid zero-point channel');
+        check(partial.msg.join(' ').indexOf('override قبلی را حذف می‌کند') >= 0,
+              'the invalid-channel warning says zero points remove the old override');
+        win.CALS = savedSamples;
+
+        const proposed = { bad: false, T: [{ X: [], Y: [] }, { X: [], Y: [] }], body: 'zero' };
+        const before = { ready: true, T: [{ X: [100], Y: [200] }, { X: [300], Y: [400] }] };
+        const after = { ready: true, T: [{ X: [], Y: [] }, { X: [], Y: [] }] };
+        win.eval('lrender')(proposed, before, after);
+        check(doc.getElementById('lutcmp').textContent.indexOf('تغییر کرد و تأیید شد') >= 0,
+              'the DOM audit shows the non-zero to zero-point transition as confirmed');
+    }
+
+    /* --- one battery update carries the other battery unchanged ---------
+       [EN] This is the regression the original all-table sender missed:
+            changing battery 1 must send its proposed gain/offset and LUT,
+            while battery 2 is copied from the fresh board readback.
+       [FA] این رگرسیون مسیر قبلی است: تغییر باتری ۱ باید گین/آفست و LUT
+            پیشنهادی خودش را بفرستد، اما باتری ۲ از readback تازه بدون تغییر
+            حمل شود. */
+    {
+        const savedSamples = win.CALS;
+        win.CALS = savedSamples.map(z => Object.assign({}, z, { sc: 'BAT1' }));
+        win.eval('calrun')();
+        const idxOff1 = win.CALR.findIndex(r => Number(r[1]) === 0);
+        const idxGain1 = win.CALR.findIndex(r => Number(r[1]) === 2);
+        win.CALR[idxOff1][3] = Number(win.D.p[0]) + 1;
+        win.CALR[idxGain1][3] = Number(win.D.p[2]) + 1;
+        readBefore = [
+            { X: packed.T[0].X.map(v => v + 20), Y: packed.T[0].Y.map(v => v + 200) },
+            { X: [900, 1000], Y: [1800, 2200] }
+        ];
+        readPhase = 0;
+        readMode = 'good';
+        const onePreview = win.eval('lpack')(1, { ready: true, T: readBefore });
+        activeRows = onePreview.T;
+        const ackOne = { st: 3, s: 0, n1: onePreview.T[0].X.length,
+                         n2: onePreview.T[1].X.length, crc: onePreview.crc,
+                         sent: onePreview.crc, age: 10, n: 3 };
+        calls.length = 0;
+        postedBodies.length = 0;
+        win.confirm = (m) => String(m).indexOf('ریست شود') < 0;
+        win.fetch = stub(ackOne);
+        await win.eval('lsend')(1);
+        check(doc.getElementById('lutcmp').textContent.indexOf('فقط باتری ۱') >= 0 &&
+              doc.getElementById('lutcmp').textContent.indexOf('باتری ۲') < 0,
+              'a single-battery audit renders only the selected battery');
+        await applyPending('the single-battery LUT transaction');
+        check(doc.getElementById('calst').textContent.indexOf('✅') >= 0,
+              'a single-battery update completes with calibration and LUT readback');
+        check(calls.some(c => c.indexOf('/s?id=0&') >= 0) && calls.some(c => c.indexOf('/s?id=2&') >= 0) &&
+              [4, 5, 6].every(id => calls.some(c => c.indexOf('/s?id=' + id + '&') >= 0)) &&
+              !calls.some(c => c.indexOf('/s?id=1&') >= 0) && !calls.some(c => c.indexOf('/s?id=3&') >= 0),
+              'battery 1 sends its own offset/gain plus every valid global voltage offset');
+        const oneBody = postedBodies[postedBodies.length - 1].split(',').map(Number);
+        check(oneBody[0] === onePreview.T[0].X.length &&
+              oneBody[1] === readBefore[1].X.length,
+              'battery 2 stays in the transaction with exactly its fresh readback point count');
+        check(doc.getElementById('lutcmp').textContent.indexOf('باتری ۲') < 0,
+              'the unselected battery does not create a status or warning in the selected-battery audit');
+
+        /* A calibration endpoint failure is a hard stop: no LUT POST may
+           follow a missing/mismatched gain or offset readback. */
+        win.CALR[idxOff1][3] = Number(win.D.p[0]) + 1;
+        calFail = true;
+        readAfterTransaction = false;
+        calls.length = 0;
+        postedBodies.length = 0;
+        win.confirm = () => true;
+        await win.eval('lsend')(1);
+        await applyPending('the failed-calibration LUT transaction');
+        check(doc.getElementById('calst').textContent.indexOf('پارامترهای کالیبراسیون') >= 0 &&
+              doc.getElementById('calst').textContent.indexOf('جدول LUT ارسال نشد') >= 0,
+              'a calibration readback failure is reported before LUT commit');
+        check(!calls.some(c => c === 'POST /lut'),
+              'a failed calibration readback sends no LUT frame');
+        calFail = false;
+        win.CALS = savedSamples;
+        activeRows = packed.T;
+        readBefore = packed.T.map(t => ({ X: t.X.slice(), Y: t.Y.slice() }));
+        readPhase = 0;
+    }
 
     /* --- the wizard still owns the board while it runs --- */
     const Wv = win.eval('W'); Wv.run = true;
@@ -1454,8 +1965,16 @@ async function testLutPush(win, doc) {
     win.eval('calcode')();
     check(doc.getElementById('calcd').value.indexOf('CAL_Current1LutChainMa') >= 0,
           'the build-time route still produces calibration.h - the user asked to keep it');
-    check(win.eval('document').body.innerHTML.indexOf('ارسال مستقیم جدول به برد') >= 0,
-          'both routes are offered as buttons in the calibration card');
+    check(doc.getElementById('lbtnS1') && doc.getElementById('lbtnS2') &&
+          doc.getElementById('lbtnRead') && doc.querySelector('button[onclick="calcode()"]'),
+          'the calibration card offers readback plus separate battery update buttons');
+    check(doc.querySelector('button[onclick="calapply()"]') &&
+          doc.querySelector('button[onclick="calapply()"]').textContent.indexOf('فقط پارامترهای کالیبراسیون') >= 0 &&
+          doc.querySelector('button[onclick="calapply()"]') !== doc.getElementById('lbtnSA'),
+          'the standalone calibration action is named explicitly and is not a duplicate LUT apply button');
+    check(doc.getElementById('calst').className.indexOf('calstatus') >= 0 &&
+          doc.getElementById('calst').compareDocumentPosition(doc.getElementById('lutcmp')) & 4,
+          'calibration and LUT messages live in a themed RTL status box before the readback card');
 }
 
 

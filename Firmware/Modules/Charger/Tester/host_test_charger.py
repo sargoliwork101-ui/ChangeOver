@@ -2097,22 +2097,33 @@ def test_alarms_tab_v115():
     check("FEXP=" in ino and "آستانهٔ قطع (۲۷)" in ino and "ASB=" in ino,
           "v1.15b (user order: grouped status + fault explanations, no flicker): per-bit fault explanations and a build-once status skeleton")
     check("function xexp()" in ino and "function ximp(f)" in ino and 'id="xim"' in ino
-          and "'changeover-settings-'" in ino and "XIDS=" in ino,
-          "v1.15b (user order: settings import/export): JSON backup card for filter + profile + alarms")
+          and "'changeover-settings-'" in ino and "XIDS=" in ino
+          and 'aria-label="ذخیرهٔ پشتیبان"' in ino
+          and 'aria-label="بازگردانی پشتیبان"' in ino
+          and 'class="sb pbg"' in ino and 'class="sb pby"' in ino
+          and '#p2 .pbg' in ino and '#p2 .pby' in ino,
+          "v1.15b: the backup card uses labeled, color-coded export/import icons on settings")
+    check("نمونه‌ها و محاسبه" in ino and "📥 ذخیرهٔ نمونه‌ها" in ino
+          and "📤 بازخوانی نمونه‌ها" in ino and "🗑️ پاک کردن نمونه‌ها" in ino
+          and "aria-label=\"پاک کردن نمونه‌ها\"" in ino,
+          "the bench sample actions are grouped beside calculation with a labeled trash control")
     # [EN] v1.57 (user order: finish the backup): the file must carry an
     #      identity and the import must reuse the panel's joint rules.
     # [FA] فایل پشتیبان شناسنامه دارد و ورودی از قوانین مشترک رد می‌شود.
-    check("app:'ChangeOver-settings',v:3" in ino and "schema:xschema()" in ino
-          and "saved:new Date().toISOString()" in ino,
-          "v1.81: the backup file records a parameter schema and date")
+    check("app:'ChangeOver-settings',v:4" in ino and "schema:xschema()" in ino
+          and "saved:new Date().toISOString()" in ino and "pending:xpending()" in ino
+          and "benchSamples:xsamples" in ino and "lut:lut" in ino,
+          "v1.81: the full backup records schema, date, pending values, raw samples and LUT")
     check("const fixed=fixrules(v);" in ino and "function xclamp(id,n)" in ino,
           "v1.57: an imported file passes through fixrules and each field's own range")
     # [EN] v1.57 (user order: calibrate straight from the bench capture).
     # [FA] v1.57: کالیبراسیون مستقیم از داده‌برداری بنچ با تأیید کاربر.
     check("function calpush(" in ino and "function calfit(" in ino
           and "function calrun()" in ino and "async function calapply()" in ino
+          and "جریان خالص باتری صفر در raw=" in ino
+          and "Math.max(0,Math.round(z[b]*vb/1000))" in ino
           and "calapply()" in ino and "xexp();" in ino,
-          "v1.57: bench samples are fitted, previewed and only written after a confirm + auto backup")
+          "bench calibration directly fits signed current in each battery lead and builds battery-power LUTs")
     # [EN] Stale since the scenario-card redesign and only found on 2026-10-05:
     #      the battery-supervision fields are no longer one flat group called
     #      "نظارت باتری" - they live in the six scenario cards, and the
@@ -3352,8 +3363,8 @@ def test_min_select_handover_v124():
           "the two id blocks (108..118 and 123..124) need an ownership and an index helper")
     check('id="q123"' in ino and 'id="q124"' in ino,
           "card 5 must expose the blink period and duty inputs")
-    check("c4v(123,1000)" in ino and "simblink(now,bper,bdt)" in ino,
-          "the card-6 simulator must blink its red lamp the way the board does")
+    check("c4v(123,1000)" in ino and "simblink(now-S5.lt,bper,bdt)" in ino,
+          "the card-6 simulator must blink its red lamp from the lock-start phase")
     # [EN] v1.49 appends one more block after IDEF: CDEF, the charge-side
     #      percent map (119..120). Derive the top from every table so the next
     #      block keeps this check honest too.
@@ -4095,6 +4106,13 @@ def test_direct_lut_push_v166():
           "the LUT module must be initialised at boot and ticked by the comm task (the armed reboot lives there)")
     check("(uint8_t)'R'" in esp_c and "(uint8_t)'S'" in esp_c and "(uint8_t)'T'" in esp_c,
           "LUT_RESET must carry a literal magic: a stray frame must never be able to reboot a charging board")
+    reset_start = esp_c.find("if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_RESET)")
+    reset_end = esp_c.find("return true;", reset_start)
+    reset_block = esp_c[reset_start:reset_end] if reset_start >= 0 and reset_end >= 0 else ""
+    check("func__CalLut_Active(" not in reset_block and
+          "func__EspLink_NvmFlushForReset() != false" in reset_block and
+          "CAL_LUT_ST_FLASH" in reset_block,
+          "a valid zero-point commit may reset, but a failed NVM flush must refuse reset before consuming the grant")
 
     # ---------- measurement prefers the stored table, falls back to the compiled one ----------
     check("func__Measurement_BenchLutInterp" in meas_c,
@@ -4109,8 +4127,13 @@ def test_direct_lut_push_v166():
     # ---------- the panel keeps BOTH routes and drives the handshake ----------
     check("calcode()" in ino and "calcdl()" in ino,
           "option (c), generating calibration.h for a rebuild, must still be offered")
-    check("lsend()" in ino and "lrst()" in ino and "function lcrc(" in ino,
+    check("async function lsend(target)" in ino and "async function lrst()" in ino and
+          "function lcrc(" in ino,
           "the panel must offer the direct push, the post-handshake reset, and compute the CRC32 itself")
+    check("async function lapplycal(target,p)" in ino and "await lapplycal(targetId,p)" in ino and
+          "id=\"lbtnS1\"" in ino and "id=\"lbtnS2\"" in ino and
+          "id=\"lbtnRead\"" in ino,
+          "each LUT push must apply/read back calibration first and expose independent battery/read buttons")
     check("a.crc>>>0!==p.crc>>>0" in ino,
           "the panel must compare the board's CRC with its own before calling the push a success")
     check("جدول قبلی بدون تغییر ماند" in ino,
@@ -4383,6 +4406,36 @@ def test_scenario7_technical_fault_lockout():
           "ESP protocol must route and name all scenario 7 controls")
 
 
+def test_panel_calibration_requires_readback_v127():
+    """[EN] The calibration card must distinguish an HTTP queue response from
+    a board acknowledgement. A successful /s request is not proof that the
+    STM32 accepted the value; the one-shot calmodalApply() operation must use
+    the existing serial setv() helper and wait for matching telemetry read-back
+    for every valid calibration parameter.
+    [FA] کارت کالیبراسیون باید پاسخ صف‌شدن HTTP را از تأیید برد جدا کند.
+    موفقیت /s ثابت نمی‌کند STM32 مقدار را پذیرفته است؛ عملیات یک‌جای
+    calmodalApply() باید برای هر پارامتر معتبر از setv() سریالی استفاده کند
+    و بازخوانی متناظر تله‌متری را ببیند.
+    """
+    panel = (ROOT / "esp_link_panel/plink_panel.h").read_text(encoding="utf-8")
+    check("async function calapply()" in panel,
+          "the panel must keep the explicit calibration apply function")
+    body = panel.split("async function calapply()", 1)[1].split("/* ---------- v1.66", 1)[0]
+    check("async function calmodalApply()" in body and
+          re.search(r"await\s+setv\(id,value\)", body),
+          "the one-shot calibration operation must wait for setv() for every board read-back")
+    check("caljobs()" in body and "/s=200" in body,
+          "the operation must build one valid batch and document the queue-vs-ack distinction")
+    check("fetch('/s?id='+c[0]+'&v='+c[1]" not in body,
+          "calibration must not count a direct HTTP /s response as an applied value")
+    check("await sl(800)" not in body and "ok++" in body,
+          "calibration must use per-value acknowledgement rather than a fixed batch wait")
+    check("readback" in body and "بازخوانی متفاوت" in body and "بازخوانی ناموفق" in body,
+          "the panel must show confirmed, mismatched and failed calibration values separately")
+    check("calmodalClose();" in body and "calk" not in body and "calv" not in body,
+          "the confirmation closes after one batch and no per-row controls remain")
+
+
 def test_boundary_concurrency_hardening_v126():
     """Static host checks for the cross-module edge cases not exercised by
     the pure charger model: flash address arithmetic, NVM id width, UART
@@ -4488,6 +4541,7 @@ def main():
         test_section_parameter_help_v125,
         test_theme_contrast_and_param_coverage_v125,
         test_scenario7_technical_fault_lockout,
+        test_panel_calibration_requires_readback_v127,
         test_boundary_concurrency_hardening_v126,
     ]
     for test in tests:

@@ -60,7 +60,9 @@
 #define ESP_MSG_LUT_CHUNK           0x05u
 #define ESP_MSG_LUT_COMMIT          0x06u
 #define ESP_MSG_LUT_RESET           0x07u
+#define ESP_MSG_LUT_READ            0x08u
 #define ESP_MSG_LUT_ACK             0x13u
+#define ESP_MSG_LUT_DATA            0x14u
 /* [EN] Per-channel point cap, identical to CAL_LUT_POINTS_MAX on the board.
    [FA] سقف نقاط هر کانال، برابر CAL_LUT_POINTS_MAX روی برد. */
 #define ESP_LUT_POINTS_MAX          24u
@@ -264,13 +266,21 @@
  *      bytes past the 375 KiB step (384008). The ceiling is deliberately
  *      stepped 375 KiB to 376 KiB (384000 to 385024); behaviour, chunked
  *      transfer and the stamp/size audit are unchanged.
+ *
  *      [FA] ۲۰۲۶-۱۰-۰۷ (پاس برنامه‌نویس: بهداشت کامنت راست‌به‌چپ با خود ابزار
  *      پروژه احیا شد): علامت‌های جهت اجباری داخل متن توضیح فارسی، مارک‌آپ را
  *      ۸ بایت از پلهٔ ۳۷۵ کیلوبایت جلو زد (۳۸۴۰۰۸). سقف عمداً از ۳۷۵ به ۳۷۶
  *      کیلوبایت (۳۸۴۰۰۰ به ۳۸۵۰۲۴) پله خورد؛ رفتار، انتقال تکه‌ای و ممیزی
  *      مهر/اندازه بدون تغییر است.
+ *
+ *      2026-10-08 the scoped calibration review and per-row keep/apply
+ *      controls add served markup; the deliberate guard is stepped to
+ *      416000 bytes so the chunked page still has build-time headroom.
+ *      [FA] در ۲۰۲۶-۱۰-۰۸ ممیزی دامنه‌دار کالیبراسیون و کنترل حفظ/اعمال
+ *      ردیفی به مارک‌آپ افزوده شد؛ سقف عمداً با حاشیه به ۴۱۶۰۰۰ بایت
+ *      پله خورد تا صفحهٔ chunked در بیلد جا داشته باشد.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    385024u
+#define ESP_PANEL_HTML_MAX_BYTES    416000u
 
 /* ==================== Parser States ==================== */
 typedef enum

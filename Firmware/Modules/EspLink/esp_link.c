@@ -1224,22 +1224,89 @@ static void func__EspLink_SendLutAck(uint8_t uint8_t__stage,
                             UINT8_T__A__Payload, 8u);
 }
 
+/* ==================== LUT active readback / بازخوانی جدول فعال ==================== */
+
+/**
+ * @brief  [EN] Send one channel of the active LUT as point pairs. A zero-count
+ *              frame is intentional: it tells the panel that this channel has
+ *              no active flash override, rather than leaving stale values.
+ *         [FA] نقاط فعال یک کانال را به شکل جفت‌مقدار می‌فرستد. فریم با تعداد
+ *              صفر عمدی است تا پنل بداند برای این کانال override فلش فعال نیست
+ *              و مقدارهای قدیمی را نگه ندارد.
+ * @‎param  uint8_t__channel [EN] Channel 1 or 2 / [FA]‎ کانال ۱ یا ۲
+ * @‎return [EN] None / [FA]‎ ندارد
+ */
+static void func__EspLink_SendLutData(uint8_t uint8_t__channel)
+{
+    static uint8_t UINT8_T__A__Payload[3u + (8u * CAL_LUT_POINTS_MAX)];
+    const uint32_t *uint32_t__ptr_chain = func__CalLut_ChainMa(uint8_t__channel);
+    const uint32_t *uint32_t__ptr_power = func__CalLut_PowerMw(uint8_t__channel);
+    uint32_t uint32_t__points = func__CalLut_Points(uint8_t__channel);
+    uint8_t uint8_t__count = (uint8_t)uint32_t__points;
+    uint16_t uint16_t__cursor = 3u;
+    uint8_t uint8_t__index;
+
+    UINT8_T__A__Payload[0] = uint8_t__channel;
+    UINT8_T__A__Payload[1] = 0u;
+    UINT8_T__A__Payload[2] = uint8_t__count;
+
+    if ((uint8_t__count > 0u) &&
+        ((uint32_t__ptr_chain != NULL) && (uint32_t__ptr_power != NULL)))
+    {
+        for (uint8_t__index = 0u; uint8_t__index < uint8_t__count; uint8_t__index++)
+        {
+            func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                                 uint32_t__ptr_chain[uint8_t__index]);
+            func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                                 uint32_t__ptr_power[uint8_t__index]);
+        }
+    }
+    else
+    {
+        /* [EN] An inactive channel must produce a clean zero-point frame.
+           [FA] کانال غیرفعال باید فریم تمیزِ صفرنقطه‌ای تولید کند. */
+        UINT8_T__A__Payload[2] = 0u;
+        uint16_t__cursor = 3u;
+    }
+
+    func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_LUT_DATA,
+                            UINT8_T__A__Payload, uint16_t__cursor);
+}
+
+/**
+ * @brief  [EN] Answer a zero-payload LUT_READ with both active channels.
+ *         [FA] به LUT_READ بدون payload با هر دو کانال فعال پاسخ می‌دهد.
+ * @‎param  uint16_t__payloadLength [EN] Must be zero / [FA]‎ باید صفر باشد
+ * @‎return bool [EN] true when this was a LUT read request / [FA]‎ درست اگر درخواست خواندن جدول بود
+ */
+static bool func__EspLink_HandleLutRead(uint16_t uint16_t__payloadLength)
+{
+    if (uint16_t__payloadLength != 0u)
+    {
+        return false;
+    }
+
+    func__EspLink_SendLutData((uint8_t)CAL_LUT_CHANNEL_1);
+    func__EspLink_SendLutData((uint8_t)CAL_LUT_CHANNEL_2);
+    return true;
+}
+
 /* [EN] Keep the handshake policy as a small stateful predicate so it is
-   testable without a UART or flash model. The handler supplies the facts it
-   already knows: whether the magic and active-table checks passed.
+   testable without a UART or flash model. A successful commit is the proof of
+   intent, including a valid zero-point commit that deliberately disables both
+   flash overrides; active-table presence is not a second gate.
    [FA] سیاست دست‌دادن را به‌صورت یک predicate کوچک و stateful نگه می‌داریم
-   تا بدون مدل UART یا فلش تست‌پذیر باشد. هندلر واقعیت‌هایی را که خودش دارد
-   می‌دهد: معتبر بودن مجیک و فعال بودن جدول. */
+   تا بدون مدل UART یا فلش تست‌پذیر باشد. commit موفق نشانهٔ قصد معتبر است،
+   حتی اگر commit صفرنقطه‌ای هر دو override فلش را عمداً خاموش کرده باشد؛
+   فعال‌بودن جدول شرط دوم نیست. */
 static void func__EspLink_RecordLutCommitAck(bool bool__success)
 {
     BOOL__G__LutResetAuthorized = bool__success;
 }
 
-static bool func__EspLink_ConsumeLutResetAuthorization(bool bool__magicValid,
-                                                        bool bool__tableActive)
+static bool func__EspLink_ConsumeLutResetAuthorization(bool bool__magicValid)
 {
     if ((bool__magicValid == false) ||
-        (bool__tableActive == false) ||
         (BOOL__G__LutResetAuthorized == false))
     {
         return false;
@@ -1250,16 +1317,21 @@ static bool func__EspLink_ConsumeLutResetAuthorization(bool bool__magicValid,
 }
 
 /**
- * @brief  [EN] The four LUT-push frames (v1.66). Kept out of HandleFrame so
- *              the hot parameter path stays as short as it was.
- *         [FA] چهار فریم ارسال جدول، جدا از HandleFrame تا مسیر داغ
- *              پارامترها به همان کوتاهی بماند.
+ * @brief  [EN] Handle the LUT push and active-read messages. Kept out of
+ *              HandleFrame so the hot parameter path stays as short as it was.
+ *         [FA] پیام‌های ارسال و بازخوانی جدول را رسیدگی می‌کند و از
+ *              HandleFrame جداست تا مسیر داغ پارامترها کوتاه بماند.
  * @return bool [EN] true = this type was a LUT frame‎ / این نوع، فریم جدول بود
  */
 static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
                                          uint16_t uint16_t__payloadLength,
                                          const uint8_t *uint8_t__payload)
 {
+    if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_READ)
+    {
+        return func__EspLink_HandleLutRead(uint16_t__payloadLength);
+    }
+
     if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_BEGIN)
     {
         /* [EN] The latest LUT ACK is no longer the successful commit once a
@@ -1356,15 +1428,15 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
     {
         uint8_t uint8_t__status = (uint8_t)CAL_LUT_ST_NO_STAGE;
         bool bool__magicValid = false;
-        bool bool__tableActive;
 
-        /* [EN] Literal 'R','S','T','!' and a table that is actually active:
-           a stray or replayed frame must never be able to reboot a charging
-           board. The stateful predicate additionally requires the last
-           LUT_ACK to have been a successful COMMIT and consumes that grant.
-           [FA] مجیک متنی و وجود جدول فعال: فریم سرگردان یا تکرارشده هرگز
-           نباید بردِ در حال شارژ را ریست کند. predicate علاوه بر این، ACK
-           آخر را باید commit موفق بداند و مجوز را مصرف می‌کند. */
+        /* [EN] Literal 'R','S','T','!' and a fresh successful COMMIT are the
+           reset proof. A zero-point COMMIT is intentionally allowed: it clears
+           both flash overrides, so neither active-table predicate can be used
+           as a reset gate. The grant is consumed only after NVM flush succeeds.
+           [FA] مجیک متنی و commit موفق تازه مدرک ریست هستند. commit صفرنقطه‌ای
+           عمداً مجاز است چون هر دو override فلش را پاک می‌کند؛ بنابراین فعال
+           بودن جدول نباید دروازهٔ ریست باشد. مجوز فقط بعد از flush موفق NVM
+           مصرف می‌شود. */
         if ((uint16_t__payloadLength == 4u) &&
             (uint8_t__payload[0] == (uint8_t)'R') &&
             (uint8_t__payload[1] == (uint8_t)'S') &&
@@ -1373,22 +1445,30 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
         {
             bool__magicValid = true;
         }
-        bool__tableActive =
-            (func__CalLut_Active(CAL_LUT_CHANNEL_1) != false) ||
-            (func__CalLut_Active(CAL_LUT_CHANNEL_2) != false);
-
-        if (func__EspLink_ConsumeLutResetAuthorization(bool__magicValid,
-                                                        bool__tableActive) != false)
+        if ((bool__magicValid != false) &&
+            (BOOL__G__LutResetAuthorized != false))
         {
             /* [EN] User bug 2026-10-07: the reboot must not outrun the
-               debounced save - flush a pending record BEFORE arming, so a
-               reset right after a settings edit keeps the new values.
-               [FA] باگ کاربر ۲۰۲۶-۱۰-۰۷: ریست نباید از ذخیرهٔ دیبانس‌شده
-               جلو بزند - رکورد معلق «قبل از» مسلح‌کردن فلاش می‌شود تا ریستِ
-               بلافاصله بعد از ویرایش تنظیمات، مقادیر نو را نگه دارد. */
-            func__EspLink_NvmFlushForReset();
-            func__CalLut_RequestReset();
-            uint8_t__status = (uint8_t)CAL_LUT_ST_OK;
+               debounced save - flush a pending record BEFORE consuming the
+               commit grant and arming reset, so a reset right after a settings
+               edit keeps the new values. A failed flush is a visible flash
+               error and leaves the grant available for a retry.
+               [FA] باگ کاربر ۲۰۲۶-۱۰-۰۷: ریست نباید از ذخیرهٔ دیبانس‌شده جلو
+               بزند - رکورد معلق پیش از مصرف مجوز commit و مسلح‌کردن ریست flush
+               می‌شود تا مقدارهای نو بمانند. شکست flush خطای دیدنی فلش است و
+               مجوز برای تلاش دوباره باقی می‌ماند. */
+            if (func__EspLink_NvmFlushForReset() != false)
+            {
+                if (func__EspLink_ConsumeLutResetAuthorization(bool__magicValid) != false)
+                {
+                    func__CalLut_RequestReset();
+                    uint8_t__status = (uint8_t)CAL_LUT_ST_OK;
+                }
+            }
+            else
+            {
+                uint8_t__status = (uint8_t)CAL_LUT_ST_FLASH;
+            }
         }
         func__EspLink_SendLutAck((uint8_t)ESPLINK_LUT_ACK_STAGE_RESET,
                                  uint8_t__status, func__CalLut_ActiveCrc32());
@@ -1670,8 +1750,12 @@ void func__EspLink_HostTest_RecordCommitAck(bool bool__success)
 bool func__EspLink_HostTest_TryReset(bool bool__magicValid,
                                      bool bool__tableActive)
 {
-    return func__EspLink_ConsumeLutResetAuthorization(bool__magicValid,
-                                                       bool__tableActive);
+    /* [EN] tableActive is retained in the host probe signature for source
+       compatibility; a successful zero-point commit is a valid reset grant.
+       [FA] tableActive برای سازگاری امضای probe هاست باقی مانده است؛ commit
+       موفق صفرنقطه‌ای هم مجوز معتبر ریست است. */
+    (void)bool__tableActive;
+    return func__EspLink_ConsumeLutResetAuthorization(bool__magicValid);
 }
 
 bool func__EspLink_HostTest_HandleLutFrame(uint8_t uint8_t__messageType,

@@ -49,6 +49,7 @@ StubFS LittleFS;
 
 #include <iostream>
 #include <string>
+#include <utility>
 
 static int checks = 0;
 static int failures = 0;
@@ -97,6 +98,29 @@ static std::vector<uint8_t> build_frame(uint8_t type, const std::vector<uint8_t>
     return f;
 }
 
+static void append_u32(std::vector<uint8_t> &payload, uint32_t value)
+{
+    payload.push_back((uint8_t)(value & 0xFFu));
+    payload.push_back((uint8_t)((value >> 8) & 0xFFu));
+    payload.push_back((uint8_t)((value >> 16) & 0xFFu));
+    payload.push_back((uint8_t)((value >> 24) & 0xFFu));
+}
+
+static std::vector<uint8_t> lut_data(uint8_t channel,
+                                     const std::vector<std::pair<uint32_t, uint32_t>> &points)
+{
+    std::vector<uint8_t> payload;
+    payload.push_back(channel);
+    payload.push_back(0u);
+    payload.push_back((uint8_t)points.size());
+    for (size_t i = 0u; i < points.size(); i++)
+    {
+        append_u32(payload, points[i].first);
+        append_u32(payload, points[i].second);
+    }
+    return payload;
+}
+
 static void feed(const std::vector<uint8_t> &v)
 {
     for (size_t i = 0; i < v.size(); i++) func__Esp_ParseByte(v[i]);
@@ -136,6 +160,8 @@ int main(void)
           ESP_WEB_SERVER_T__G__Server.has("/m", HTTP_POST),
           "/m answers both GET (read) and POST (reset)",
           "one map keyed by path alone would lose one of them");
+    check(ESP_WEB_SERVER_T__G__Server.has("/lut/read", HTTP_POST),
+          "setup() registers the active-LUT readback route");
     check(BOOL__G__FsOk, "setup() mounts the file system for the bench log");
 
     /* ---- 2. CRC-16/CCITT-FALSE against the published vector -------------
@@ -578,6 +604,55 @@ int main(void)
         check(Serial.rx.empty(), "and it drains the buffer in one pass");
     }
 
+    /* ---- 14b. active LUT readback returns actual point pairs ------------ */
+    {
+        /* [EN] The panel must request the table through the link, not rebuild
+           it from its own proposal. Two channel frames are required before
+           GET /lut reports ready, including a zero-free battery-2 example.
+           [FA] پنل باید جدول را از لینک بخواند، نه از پیشنهاد خودش بسازد.
+           تا رسیدن هر دو فریم کانال، GET /lut آماده اعلام نمی‌شود؛ نمونهٔ
+           باتری ۲ هم عمداً مقدار جداگانه دارد. */
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        Serial.tx.clear();
+        ESP_WEB_SERVER_T__G__Server.call("/lut/read", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 200 && Serial.tx.size() >= 8u,
+              "POST /lut/read starts a board readback request");
+        check(Serial.tx[3] == ESP_MSG_LUT_READ && Serial.tx[4] == 0u && Serial.tx[5] == 0u,
+              "the readback command has its own zero-payload message");
+
+        feed(build_frame(ESP_MSG_LUT_DATA,
+                         lut_data(1u, {{111u, 222u}, {333u, 444u}})));
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/lut", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find("\"ready\":0") != std::string::npos,
+              "one channel alone never masquerades as a complete readback");
+
+        feed(build_frame(ESP_MSG_LUT_DATA,
+                         lut_data(2u, {{777u, 888u}})));
+        check(UINT8_T__G__LutReadCount1 == 2u && UINT8_T__G__LutReadCount2 == 1u,
+              "readback stores both channel point counts");
+        check(UINT32_T__G__LutReadChain2[0] == 777u &&
+              UINT32_T__G__LutReadPower2[0] == 888u,
+              "battery 2 chain/power values survive the wire decode");
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/lut", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find("\"ready\":1") != std::string::npos &&
+              ESP_WEB_SERVER_T__G__Server.lastBody.find("[777,888]") != std::string::npos,
+              "GET /lut exposes the actual battery-2 pair after both frames arrive");
+        feed(build_frame(ESP_MSG_LUT_DATA, lut_data(1u, {{999u, 999u}})));
+        check(UINT8_T__G__LutReadCount1 == 2u && UINT32_T__G__LutReadChain1[0] == 111u,
+              "an unsolicited LUT_DATA frame cannot overwrite a complete readback");
+
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/lut/read", HTTP_POST);
+        feed(build_frame(ESP_MSG_LUT_DATA, std::vector<uint8_t>{ 1u, 0u, 1u }));
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/lut", HTTP_GET);
+        check(ESP_WEB_SERVER_T__G__Server.lastBody.find("\"ready\":0") != std::string::npos &&
+              ESP_WEB_SERVER_T__G__Server.lastBody.find("\"error\":1") != std::string::npos,
+              "a truncated LUT_DATA frame is reported as readback failure");
+    }
+
     /* ---- 15. v1.67: the LUT push is paced, one frame per ACK ----------- */
     {
         /* [EN] The board receives on a 256-byte DMA ring. v1.66 wrote all
@@ -641,6 +716,17 @@ int main(void)
         check(UINT8_T__G__LutTxStage == 0u && UINT8_T__G__LutTxError == 0u,
               "the commit ACK ends the push with no error");
 
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/lut/reset", HTTP_POST);
+        check(ESP_WEB_SERVER_T__G__Server.lastCode == 409,
+              "the reboot is still refused until the exact active table is read back");
+
+        ESP_WEB_SERVER_T__G__Server.clearArgs();
+        ESP_WEB_SERVER_T__G__Server.call("/lut/read", HTTP_POST);
+        feed(build_frame(ESP_MSG_LUT_DATA,
+                         lut_data(1u, {{1u, 2u}, {3u, 4u}})));
+        feed(build_frame(ESP_MSG_LUT_DATA,
+                         lut_data(2u, {{1u, 2u}, {3u, 4u}})));
         ESP_WEB_SERVER_T__G__Server.clearArgs();
         ESP_WEB_SERVER_T__G__Server.call("/lut/reset", HTTP_POST);
         check(ESP_WEB_SERVER_T__G__Server.lastCode == 200,

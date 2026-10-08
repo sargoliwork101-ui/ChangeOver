@@ -614,3 +614,47 @@ LEDهای سه‌گانه یک phase دارند و بوق/چرخهٔ آن با i
 UART/WiFi/LittleFS واقعی، build/link ARM و map نهایی اجرا نشده‌اند. این گزارش
 فقط host/static/DOM evidence را PASS می‌داند و hardware validation را NOT RUN
 نگه می‌دارد.
+
+## الحاقیهٔ ۲۰۲۶-۱۰-۰۷ — workflow کالیبراسیون یک‌تأییدی و summary نام‌محور
+
+درخواست اصلاحی کالیبراسیون اجرا شد: جدول نتیجهٔ `#caltb`، checkboxهای `calk*` و
+input/diffهای `calv*`/`cald*` حذف شدند. نتیجهٔ محاسبه اکنون یک status summary
+نام‌محور با مقدار قبلی/جدید و وضعیت‌های unchanged، changed/confirmed، mismatch و
+readback failure است؛ summary و modal هر دو ناحیهٔ scrollable دارند و هیچ شناسهٔ
+عددی کالیبراسیون به کاربر نمایش نمی‌دهند. یک modal، کل پارامترهای معتبر محاسبه‌شده
+را با یک تأیید اعمال می‌کند، سپس برای هر مقدار `setv()` و readback واقعی را کامل
+می‌کند و بعد از تأیید modal بسته می‌شود. مسیر LUT نیز همهٔ پارامترهای معتبرِ قابل‌اعمال
+تراکنش را پیش از LUT می‌نویسد و ماندگاری هر هفت مقدار calibration را پس از reset
+دوباره می‌خواند؛ battery 2 همچنان مستقل از gain/offset باتری 1 است. در ابزار
+داده‌برداری بنچ نیز کنترل `SWEEP` از فهرست دستی جدا شد: با روشن بودن آن فقط
+از/تا/گام دیده می‌شود و با خاموش بودن فقط فهرست دستی دیده می‌شود؛ تم همهٔ کلیدهای داده‌برداری، از شروع/پایان تا ثبت، دانلود، پاک‌کردن، LUT و کالیبراسیون،
+با تم خود پنل یکسان شد؛ کلیدهای عمومی کل پنل همان فرم فشردهٔ کارت‌های «اعمال» و «صفر» را دارند و کلیدهای داده‌برداری در دسته‌های معنایی جدا قرار گرفتند: محاسبه/اعمال سبز، فایل و readback آبی، ساخت کد بنفش، تکرار/ریست زرد و پایان/پاک‌کردن قرمز. کلیدهای بازگردانی کارخانه در همهٔ بخش‌های تنظیمات نیز full-width و با تم ثانویهٔ پنل شدند.
+
+مدرک اجرای همین checkout:
+
+- `node esp_link_panel/Tester/host_test_scenario_cards.js`: **331/331 PASS**؛ شامل
+  summary نام‌محور، checkbox انتخاب همهٔ نمونه‌ها، انتخاب انحصاری SWEEP/فهرست دستی
+  با گام قابل‌تنظیم، کلیدهای factory-reset یکدست در همهٔ تنظیمات، حذف جدول/کنترل‌های
+  ردیفی، modal یک‌تأییدی، اعمال همهٔ مقادیر معتبر و بسته‌شدن modal.
+- `node esp_link_panel/Tester/host_test_panel_click.js`: **129/129 PASS**.
+- `./Firmware/Modules/CalLut/Tester/run_host_test_cal_lut.sh`: **159/159 PASS**.
+- `./esp_link_panel/Tester/run_esp_tests.sh`: **112/112 PASS**.
+- `python3 Firmware/Modules/Charger/Tester/host_test_charger.py`: **53/53 PASS**.
+- `python3 tools/audit_consistency.py`: **444 invariant / 0 finding**؛ قوانین AI،
+  syntax firmware، RTL comments و JavaScript syntax نیز PASS.
+- `Firmware/Modules/EspLink/EspLink_Validation.xlsx` با نتیجهٔ جدید DOM/ESP/CalLut و
+  readback همهٔ پارامترهای معتبر calibration به‌روز شد؛ شواهد CalLut در
+  `Firmware/Modules/CalLut/CalLut_Validation.xlsx` حفظ شد.
+
+این اعداد host/static/DOM هستند و جای تست فیزیکی برد، فلش STM32/ESP، UART/WiFi واقعی،
+ARM build/link یا باتری واقعی را نمی‌گیرند؛ آن موارد همچنان **NOT RUN** هستند.
+
+## الحاقیهٔ ۲۰۲۶-۱۰-۰۸ — گیت commit صفرنقطه‌ای، flush و reset
+
+- commit صفرنقطه‌ای برای حذف override فلش معتبر شد و دیگر به فعال‌بودن جدول وابسته نیست.
+- reset فقط با magic معتبر و grant حاصل از commit موفق پیش می‌رود. پیش از مصرف grant و arm شدن reset، `func__EspLink_NvmFlushForReset()` باید `true` بدهد؛ شکست flush با `CAL_LUT_ST_FLASH` گزارش می‌شود، reset مسلح نمی‌شود و grant/dirty state برای retry باقی می‌ماند.
+- بعد از reset، پنل `/t` تازه و سپس `LUT_READ/LUT_DATA` را می‌خواند؛ mismatch، timeout، clamp، reject و readback ناقص موفقیت نیستند.
+- اجرای نهایی همین checkout: DOM **331/331**، panel click **129/129**، ESP **112/112**، Charger **53/53**، CalLut **159/159**، parser **14**، NVM PASS، `audit_consistency.py` با **444 invariant و 0 finding** و `check_ai_rules.sh`/`check_firmware_syntax.sh` PASS.
+- Preview با `tools/stamp_panel.py` و `tools/make_panel_preview.py` بازسازی شد؛ `plink_panel.h` برابر **409692 bytes** و زیر سقف transfer audit است. Preview server روی پورت 3000 بالا است.
+
+این الحاقیه نیز host/static/DOM evidence است؛ تست فیزیکی STM32/ESP، UART/WiFi، فلش واقعی، persistence واقعی و باتری همچنان **NOT RUN** هستند.

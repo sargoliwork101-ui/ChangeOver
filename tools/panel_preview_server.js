@@ -611,7 +611,12 @@ const lutWindow = (name) => {
 };
 const LUT_POINTS_MIN = lutWindow("CAL_LUT_POINTS_MIN");
 const LUT_POINTS_MAX = lutWindow("CAL_LUT_POINTS_MAX");
-let LUT = { stage: 0, status: 0, n1: 0, n2: 0, crc: 0, sent: 0, count: 0, txStage: 0, txError: 0, at: Date.now() };
+let LUT = {
+    stage: 0, status: 0, n1: 0, n2: 0, crc: 0, sent: 0, count: 0,
+    txStage: 0, txError: 0, at: Date.now(),
+    points: [[], []],
+    read: { ready: 0, pending: 0, error: 0, n1: 0, n2: 0, r1: [], r2: [] }
+};
 
 /* ---------- HTTP server ---------- */
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
@@ -687,7 +692,8 @@ const server = http.createServer((req, res) => {
              *      پیش‌نمایش با خطای گمراه‌کننده شکست می‌خورد. */
             const refuse = (e) => {
                 LUT = { stage: 0, status: 2, n1: 0, n2: 0, crc: 0, sent: 0,
-                        count: LUT.count, txStage: 0, txError: 0, at: Date.now() };
+                        count: LUT.count, txStage: 0, txError: 0, at: Date.now(),
+                        points: LUT.points, read: LUT.read };
                 return send(400, "application/json", '{"ok":0,"e":"' + e + '"}');
             };
             if (!body.length || body.length > 1600) return refuse("len");
@@ -714,17 +720,35 @@ const server = http.createServer((req, res) => {
             if (i >= vals.length) return refuse("crc");
             const crc = vals[i] >>> 0;
             LUT = { stage: 3, status: 0, n1, n2, crc, sent: crc,
-                    count: LUT.count + 1, txStage: 0, txError: 0, at: Date.now() };
+                    count: LUT.count + 1, txStage: 0, txError: 0, at: Date.now(),
+                    points: pts,
+                    read: { ready: 0, pending: 0, error: 0, n1: 0, n2: 0, r1: [], r2: [] } };
             return send(200, "application/json",
                 '{"ok":1,"n1":' + n1 + ',"n2":' + n2 + ',"crc":' + crc + '}');
         });
         return undefined;
     }
+    /* [EN] The real ESP asks the STM32 for both active frames; the preview
+     *      answers from its simulated committed table so the new read-only
+     *      and before/after panel flow is usable without hardware.
+     * [FA] ESP واقعی هر دو فریم فعال را از STM32 می‌خواهد؛ پیش‌نمایش از جدول
+     *      کامیت‌شدهٔ شبیه‌سازی‌شده پاسخ می‌دهد تا مسیر ‎read-only‎ و ‎before/after‎
+     *      بدون سخت‌افزار هم واقعاً قابل اجرا باشد. */
+    if (req.method === "POST" && url.pathname === "/lut/read") {
+        const pair = (tab) => tab.map((point) => [point[0], point[1]]);
+        LUT.read = {
+            ready: 1, pending: 0, error: 0,
+            n1: LUT.points[0].length, n2: LUT.points[1].length,
+            r1: pair(LUT.points[0]), r2: pair(LUT.points[1])
+        };
+        return send(200, "application/json", '{"ok":1,"pending":1}');
+    }
     if (req.method === "GET" && url.pathname === "/lut") {
         const age = (LUT.count === 0) ? 0 : (Date.now() - LUT.at);
         return send(200, "application/json", JSON.stringify({
             st: LUT.stage, s: LUT.status, n1: LUT.n1, n2: LUT.n2, crc: LUT.crc,
-            sent: LUT.sent, age, n: LUT.count, tx: LUT.txStage, txe: LUT.txError
+            sent: LUT.sent, age, n: LUT.count, tx: LUT.txStage, txe: LUT.txError,
+            read: LUT.read
         }));
     }
     if (req.method === "POST" && url.pathname === "/lut/reset") {
