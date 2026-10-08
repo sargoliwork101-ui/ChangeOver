@@ -1223,6 +1223,19 @@ async function testBackupAndCal(win, doc) {
           'manually excluding the same bad row preserves the robust fit');
     check(win.CALS[win.CALS.length - 1].use === 0,
           'an unticked row is kept in the file, only excluded from the fit');
+    /* A rejected fit must be a hard stop for the LUT route too. The old
+       lcalvalue() path ignored CALR[r][5] and could send a table built from
+       a fit that the summary had already rejected. */
+    const rejectedFit = win.CALR.find(r => Number(r[1]) === 2);
+    rejectedFit[5] = 0;
+    const rejectedPack = win.eval('lpack')();
+    check(rejectedPack.bad && rejectedPack.msg.join(' ').indexOf('شناسه‌های مردود') >= 0,
+          'a rejected current fit blocks the direct LUT transaction');
+    win.eval('calcode')();
+    check(doc.getElementById('calcd').value.indexOf('NOT GENERATED') >= 0 &&
+          doc.getElementById('calst').textContent.indexOf('fit مردود') >= 0,
+          'a rejected fit also blocks the generated firmware table');
+    win.eval('calrun')();
     /* a battery-2-only row must not touch the channel-1 fit */
     win.CALS[win.CALS.length - 1] = { sc: 'BAT2', d: 30, use: 1, r1: 900, r2: 900,
         vin: 24000, v24: 25000, v12: 12500, vlo: 12500, vhi: 12500, b1: 10, b2: null,

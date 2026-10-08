@@ -395,7 +395,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build f1d8d7c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 483c79c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3124,13 +3124,14 @@ function calfit(xs,ys){
  for(let pass=0;pass<3;pass++){
   const E=I.map(i=>ys[i]-(a*xs[i]+b)),c=md(E),mad=md(E.map(e=>Math.abs(e-c)));if(mad<=1e-9)break;
   const d=1.994*mad;let sw=0,sx=0,sy=0,sxx=0,sxy=0;
-  I.forEach((i,k)=>{const h=Math.abs(E[k]),w=h<=d?1:d/h;sw+=w;sx+=w*xs[i];sy+=w*ys[i];sxx+=w*xs[i]*xs[i];sxy+=w*xs[i]*ys[i];});
+   I.forEach((i,k)=>{const h=Math.abs(E[k]-c),w=h<=d?1:d/h;sw+=w;sx+=w*xs[i];sy+=w*ys[i];sxx+=w*xs[i]*xs[i];sxy+=w*xs[i]*ys[i];});
   const den=sw*sxx-sx*sx;if(Math.abs(den)<1e-12)break;const na=(sw*sxy-sx*sy)/den,nb=(sy-na*sx)/sw;
   if(Math.abs(na-a)<1e-12&&Math.abs(nb-b)<1e-9){a=na;b=nb;break;}a=na;b=nb;
  }
  const my=I.reduce((s,i)=>s+ys[i],0)/I.length;let ss=0,sr=0,mx=0;
  I.forEach(i=>{const e=ys[i]-(a*xs[i]+b);sr+=e*e;ss+=(ys[i]-my)*(ys[i]-my);if(Math.abs(e)>mx)mx=Math.abs(e);});
  return {a,b,r2:ss>0?(1-sr/ss):1,n:I.length,mx,span:Math.max(...I.map(i=>xs[i]))-Math.min(...I.map(i=>xs[i]))};}
+function calrobustCenter(v){v=(v||[]).filter(Number.isFinite).sort((a,b)=>a-b);const m=v.length>>1;return v.length&1?v[m]:(v[m-1]+v[m])/2;}
 var CALP=[],CALR=[],CAL_BUSY=false;
 function calinvalidate(){
  CALP=[];CALR=[];calmodalClose();
@@ -3166,14 +3167,14 @@ function calrun(){
  /* --- سه آفست ولتاژ: میانگین اختلاف مولتی‌متر با برد --- */
  const voff=(ttl,id,get)=>{const d=[];scope.forEach(z=>{const x=get(z);if(x!=null&&Number.isFinite(x))d.push(x);});
   if(d.length<2){rows.push([ttl,id,cur(id),cur(id),'⛔ عدد مولتی‌متر برای این ولتاژ ثبت نشده — می‌توانید دستی بنویسید',0]);return;}
-  const mean=d.reduce((a,b)=>a+b,0)/d.length;
-  let sd=0;d.forEach(x=>sd+=(x-mean)*(x-mean));sd=Math.sqrt(sd/d.length);
-  const nv=Math.round(xclamp(id,(cur(id)||0)+mean));const w=[];
+  const center=calrobustCenter(d);
+  let sd=0;d.forEach(x=>sd+=(x-center)*(x-center));sd=Math.sqrt(sd/d.length);
+  const nv=Math.round(xclamp(id,(cur(id)||0)+center));const w=[];
   if(d.length<3)w.push('فقط '+d.length+' نقطه');
   if(sd>120)w.push('پراکندگی اندازه‌ها بالاست (±'+Math.round(sd)+' میلی‌ولت)');
-  if(Math.abs(mean)>2000)w.push('اختلاف '+Math.round(mean)+' میلی‌ولت غیرعادی بزرگ است — سیم مولتی‌متر را چک کنید');
-  const bad=Math.abs(mean)>2000;
-  rows.push([ttl,id,cur(id),nv,(w.length?'⚠ '+w.join(' · '):'✅ اختلاف میانگین '+Math.round(mean)+' میلی‌ولت')+' ('+d.length+' نقطه)',bad?0:1]);};
+  if(Math.abs(center)>2000)w.push('اختلاف '+Math.round(center)+' میلی‌ولت غیرعادی بزرگ است — سیم مولتی‌متر را چک کنید');
+  const bad=Math.abs(center)>2000;
+  rows.push([ttl,id,cur(id),nv,(w.length?'⚠ '+w.join(' · '):'✅ اختلاف مقاوم '+Math.round(center)+' میلی‌ولت')+' ('+d.length+' نقطه)',bad?0:1]);};
  voff('آفست ولتاژ ورودی (mV)',4,z=>(z.dvi!=null)?(z.dvi-z.vin):null);
  voff('آفست ولتاژ پک ۲۴ ولت (mV)',5,z=>(z.dv1!=null&&z.dv2!=null)?((z.dv1+z.dv2)-z.v24):null);
  voff('آفست نود ۱۲ ولت (mV)',6,z=>(z.dv2!=null)?(z.dv2-z.vlo):null);
@@ -3281,16 +3282,6 @@ function calvfit(k,scope){const xs=[],ys=[];
  if(xs.length<3||(Math.max(...xs)-Math.min(...xs))<1000)return null;   /* شیب بدون بازهٔ ولتاژ معنا ندارد */
  return calfit(xs,ys);}
 
-/* ==================== Rules shown to the user / شرط‌ها روی خود صفحه ====================
-   [EN] v1.61 (user order: "put your conditions in the panel and TELL the user
-   when he broke one"). Until now the quality rules lived inside calrun() and
-   only produced a short warning next to a number. They are listed here, each
-   with the plain sentence the user sees, and the list is rendered as a
-   check-list: green when the data satisfies it, red with the reason when it
-   does not. Nothing is hidden in code comments any more.
-   [FA] شرط‌ها تا حالا داخل کد بودند و فقط یک هشدار کوتاه می‌دادند. حالا
-   فهرست‌شان روی خود صفحه است: سبز یعنی داده‌ات این شرط را دارد، قرمز یعنی
-   ندارد و دقیقاً می‌گوید چرا و چه‌کار کنی. */
 function calchk(){
  const box=$('calck');if(!box)return;
  /* [EN] Zero samples: one short line instead of a wall of red rows.
@@ -3361,9 +3352,10 @@ function calchk(){
    [FA] محورهای هم‌طول و صعودی را می‌سازد و افت نویزی را حذف می‌کند. */
 function calbuild(n,off,gn){
  const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'dv1':'dv2',note=[];
- const pts=[];
+ if(!Number.isFinite(off)||!Number.isFinite(gn))return {X:[],Y:[],note:[],bad:'fit مردود'};
+ const pts=[];let missingVoltage=0;
  calsel(n).forEach(z=>{if(!Number.isFinite(z[r])||!Number.isFinite(z[b]))return;
-  const vb=(z[v]!=null)?z[v]:(n===1?z.vhi:z.vlo);if(!vb)return;
+  const vb=z[v];if(!Number.isFinite(vb)||vb<=0){missingVoltage++;return;}
   const chain=Math.max(0,Math.round((z[r]-off)*K_MA*gn/1000));
   /* Signed DMM current is battery current. The firmware table is unsigned
      charge power, so discharge rows deliberately floor at zero. */
@@ -3378,7 +3370,8 @@ function calbuild(n,off,gn){
  if(dup)note.push(dup+' نقطه با جریان تکراری کنار گذاشته شد');
  if(dip)note.push(dip+' نقطهٔ نویزی که توانش پایین‌تر از نقطهٔ قبل بود کنار گذاشته شد');
  let bad='';
- if(X.length!==Y.length)bad='دو محور هم‌طول نشدند';                 /* نباید رخ دهد */
+ if(missingVoltage)bad='ولتاژ DMM برای '+missingVoltage+' نقطه ناقص است';
+ else if(X.length!==Y.length)bad='محورها هم‌طول نیستند';
  else if(X.length<2)bad='کمتر از ۲ نقطه ('+X.length+') — حداقل ۲ لازم است';
  else{for(let i=1;i<X.length;i++){if(X[i]<=X[i-1])bad='محور جریان صعودی نیست';
    if(Y[i]<Y[i-1])bad='محور توان نزول دارد';}}
@@ -3392,9 +3385,7 @@ function calcode(){
  if(!CALR.length){
   stxt('calst','⚠ نتیجهٔ محاسبهٔ فعلی وجود ندارد؛ قبل از ساخت کد دوباره «محاسبه از نمونه‌ها» را بزنید.');return;
  }
- const get=id=>{const r=CALR.filter(x=>Number(x[1])===id)[0];
-  if(r&&Number.isFinite(Number(r[3])))return Math.round(Number(r[3]));
-  return (D&&D.p&&D.p[id]!=null)?D.p[id]:0;};
+ const get=id=>lcalvalue(id);
  const off=[get(0),get(1)],gn=[get(2),get(3)],msg=[];
  let out='/* [EN] Generated by the ChangeOver panel on '+new Date().toISOString()+
   '\n *      from '+calScope.length+' accepted bench samples. The panel has\n'+
@@ -3522,23 +3513,23 @@ const LUTST={0:'موفق',1:'برد مرحلهٔ شروع را ندیده بود
  7:'نوشتن روی فلش برد شکست خورد'};
 function lcrc(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++){c^=b[i];
  for(let k=0;k<8;k++)c=(c>>>1)^(0xEDB88320&-(c&1));}return (c^0xFFFFFFFF)>>>0;}
-function lcalvalue(id){
- const r=CALR.filter(x=>Number(x[1])===id)[0];
- if(r&&Number.isFinite(Number(r[3])))return Math.round(Number(r[3]));
- return (D&&D.p&&D.p[id]!=null)?Number(D.p[id]):0;}
+function lcalvalue(id){const r=CALR.find(x=>Number(x[1])===id);
+ return r&&r[5]===1&&Number.isFinite(Number(r[3]))?Math.round(Number(r[3])):null;}
 function lcalids(target){return target===1?[0,2,4,5,6]:target===2?[1,3,4,5,6]:[0,1,2,3,4,5,6];}
 function lcalselected(selected,id){return !selected||selected[id]!==false;}
 function lcopytable(t){return {X:t&&Array.isArray(t.X)?t.X.slice():[],Y:t&&Array.isArray(t.Y)?t.Y.slice():[]};}
 function lpack(target,base,selected){
  if(!CALR.length)return {bad:'نتیجهٔ محاسبهٔ فعلی کالیبراسیون وجود ندارد؛ ابتدا دوباره محاسبه کنید',msg:[]};
  const targetId=(target===1||target===2)?target:0,both=targetId===0,ids=lcalids(targetId);
+ const chosen={};ids.forEach(id=>{chosen[id]=lcalselected(selected,id);});
+ const missing=ids.filter(id=>chosen[id]&&lcalvalue(id)==null);
+ if(missing.length)return {bad:'fit کالیبراسیون مردود است',msg:['شناسه‌های مردود: '+missing.join('، ')]};
  const proposedOff=[lcalvalue(0),lcalvalue(1)],proposedGain=[lcalvalue(2),lcalvalue(3)],proposedVoltage=[lcalvalue(4),lcalvalue(5),lcalvalue(6)];
  const boardSnapshot=lcalSnapshot(),boardOff=boardSnapshot.offset,boardGain=boardSnapshot.gain,boardVoltage=boardSnapshot.voltage;
  const off=boardOff.slice(),gn=boardGain.slice(),voltage=boardVoltage.slice();
  const setIfSelected=(id,value,old)=>lcalselected(selected,id)?value:old;
  [0,1].forEach(i=>{const id=i,ga=id+2;if((both||id===targetId-1)){off[i]=setIfSelected(id,proposedOff[i],boardOff[i]);gn[i]=setIfSelected(ga,proposedGain[i],boardGain[i]);}});
  [4,5,6].forEach(id=>{voltage[id-4]=setIfSelected(id,proposedVoltage[id-4],boardVoltage[id-4]);});
- const chosen={};ids.forEach(id=>{chosen[id]=lcalselected(selected,id);});
  const msg=[],T=[{X:[],Y:[]},{X:[],Y:[]}],buildTargets=both?[1,2]:[targetId];
  [1,2].forEach(n=>{
   if(buildTargets.indexOf(n)<0){
