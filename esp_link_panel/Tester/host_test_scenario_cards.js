@@ -1010,6 +1010,8 @@ async function testBackupAndCal(win, doc) {
     const oldCreate = doc.createElement.bind(doc);
     doc.createElement = (t) => { const e = oldCreate(t); if (t === 'a') { e.click = () => {}; } return e; };
     win.D = { p: {}, t: [] };
+    win.PEND = {};
+    win.CALS = [];
     const XIDS = win.eval('XIDS'), K = win.eval('K_MA');
     XIDS.forEach(id => { win.D.p[id] = 1; });
     win.eval('xexp')();
@@ -1017,13 +1019,17 @@ async function testBackupAndCal(win, doc) {
     win.Blob = OldBlob;
     check(blobs.length === 1, 'the export button produces exactly one file');
     const o = JSON.parse(blobs[0]);
-    check(o.app === 'ChangeOver-settings' && o.v === 3, 'the file says what it is and uses the parameter-schema format');
+    check(o.app === 'ChangeOver-settings' && o.v === 4, 'the file says what it is and uses the full backup format');
     check(o.build === undefined, 'the backup does not use the panel build as its compatibility identity');
     check(typeof o.saved === 'string' && o.saved.indexOf('T') > 0, 'the file records when it was taken');
     check(Array.isArray(o.schema) && o.schema.length === XIDS.length, 'the file records one schema entry for every backed-up id');
     check(o.schema.every(s => s.id != null && typeof s.name === 'string' && 'unit' in s && 'min' in s && 'max' in s),
           'each schema entry carries the id, readable name, unit and limits');
     check(Object.keys(o.params).length === XIDS.length, 'every backed-up id is in the file');
+    check(o.params['0'] === 1 && o.params['6'] === 1,
+          'the applied calibration ids 0..6 are included in the full backup');
+    check(o.pending && Object.keys(o.pending).length === 0 && Array.isArray(o.benchSamples) && o.lut === null,
+          'the full backup has explicit pending, raw-sample and LUT slots even when they are empty');
     check(o.params['76'] === undefined, 'the live-only id 76 stays out of the backup');
     check(o.params['72'] === undefined && o.params['73'] === undefined,
           'retired ids 72 and 73 stay out of the backup');
@@ -1038,6 +1044,29 @@ async function testBackupAndCal(win, doc) {
     [15, 16, 17, 18, 19].forEach(id => {
         check(o.params[String(id)] === undefined, 'the momentary id ' + id + ' stays out of the backup');
     });
+
+    /* --- the complete backup keeps pending edits, raw bench rows and the
+       last real LUT readback in the same schema. Export must not substitute a
+       generated proposal for the board's readback. --- */
+    const fullBlobs = [];
+    const OldBlobFull = win.Blob;
+    win.Blob = function (parts, opts) { fullBlobs.push(String(parts[0])); return new OldBlobFull(parts, opts); };
+    win.D = { on: 1, p: { 0: 12, 1: 13, 2: 1000, 3: 1000, 4: 0, 5: 0, 6: 0 }, t: [] };
+    win.PEND = { 0: 19, 127: 1 };
+    win.CALS = [{ sc: 'BOTH', d: 5, use: 1, r1: 125, r2: 125, vin: 24000, v24: 25000,
+                  v12: 12500, vlo: 12500, vhi: 12500, b1: 100, b2: 100, ts: 2 }];
+    win.eval("LUT_LAST_AFTER = { ready: 1, source: 'readback', T: [{ X: [100, 200], Y: [110, 220] }, { X: [100], Y: [120] }] }");
+    await win.eval('xexp')();
+    win.Blob = OldBlobFull;
+    const full = JSON.parse(fullBlobs[0]);
+    check(full.v === 4 && full.params['0'] === 12 && full.params['6'] === 0,
+          'a complete backup keeps the applied calibration values separately from pending values');
+    check(full.pending['0'] === 19 && full.pending['127'] === 1,
+          'a complete backup keeps queued values that have not reached the board');
+    check(full.benchSamples.length === 1 && full.benchSamples[0].r1 === 125,
+          'a complete backup keeps the raw bench calibration row');
+    check(full.lut && full.lut.T[0].Y[1] === 220,
+          'a complete backup keeps the last LUT read from the board');
 
     /* --- an out-of-range number from a hand-edited file is pulled back --- */
     check(win.eval('xclamp')(2, 99999) === 3000, 'an impossible gain from a file is clamped to its maximum');
@@ -1101,6 +1130,11 @@ async function testBackupAndCal(win, doc) {
           doc.getElementById('calst').textContent.indexOf('گین') >= 0 &&
           doc.getElementById('calst').textContent.indexOf('ولتاژ ورودی') >= 0,
           'the result is a named status summary containing every calibration parameter');
+    const panelCss = Array.from(doc.querySelectorAll('style')).map(s => s.textContent).join('\n');
+    check(doc.getElementById('calst').classList.contains('cal-summary') &&
+          panelCss.indexOf('.calstatus.cal-summary') >= 0 &&
+          panelCss.indexOf('border-color:transparent!important') >= 0,
+          'a calibration summary removes the outer error frame while retaining the inner orange summary frame');
     check(!doc.getElementById('caltb') && !doc.querySelector('#calst input'),
           'the old calibration result table and its per-row editors are gone');
     check(doc.getElementById('calst').textContent.indexOf('در انتظار تأیید کاربر') >= 0,
@@ -1378,6 +1412,25 @@ async function testBackupAndCal(win, doc) {
           'restored changes are staged in the yellow global queue, including checkboxes');
     check(doc.getElementById('xst').textContent.indexOf('روی پنل آماده شد') >= 0,
           'restore tells the user that values are staged, not written');
+    win.PEND = {};
+    win.pbar();
+
+    /* A full backup restores all three local layers together. The imported
+       LUT is only retained for review; no endpoint is called and no LUT
+       payload is staged as an automatic board write. */
+    win.D = { p: { 0: 12, 1: 13, 2: 1000, 3: 1000, 4: 0, 5: 0, 6: 0 }, t: [] };
+    win.PEND = {};
+    win.CALS = [];
+    win.LUT_BACKUP = null;
+    await win.eval('ximp')({ text: async () => JSON.stringify(full) });
+    check(importUrls.filter(u => u.indexOf('/s?') >= 0).length === 0 &&
+          win.PEND[0] === 19 && win.PEND[127] === 1,
+          'full restore stages pending values without writing them to the board');
+    check(win.CALS.length === 1 && win.CALS[0].r1 === 125,
+          'full restore brings raw calibration samples back into the sample list');
+    check(win.LUT_BACKUP && win.LUT_BACKUP.T[0].Y[1] === 220 &&
+          doc.getElementById('xst').textContent.indexOf('روی برد اعمال نشد') >= 0,
+          'full restore reports the imported LUT and keeps it review-only');
     win.PEND = {};
     win.pbar();
 

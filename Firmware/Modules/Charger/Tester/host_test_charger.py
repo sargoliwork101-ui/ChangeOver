@@ -2102,9 +2102,10 @@ def test_alarms_tab_v115():
     # [EN] v1.57 (user order: finish the backup): the file must carry an
     #      identity and the import must reuse the panel's joint rules.
     # [FA] فایل پشتیبان شناسنامه دارد و ورودی از قوانین مشترک رد می‌شود.
-    check("app:'ChangeOver-settings',v:3" in ino and "schema:xschema()" in ino
-          and "saved:new Date().toISOString()" in ino,
-          "v1.81: the backup file records a parameter schema and date")
+    check("app:'ChangeOver-settings',v:4" in ino and "schema:xschema()" in ino
+          and "saved:new Date().toISOString()" in ino and "pending:xpending()" in ino
+          and "benchSamples:xsamples" in ino and "lut:lut" in ino,
+          "v1.81: the full backup records schema, date, pending values, raw samples and LUT")
     check("const fixed=fixrules(v);" in ino and "function xclamp(id,n)" in ino,
           "v1.57: an imported file passes through fixrules and each field's own range")
     # [EN] v1.57 (user order: calibrate straight from the bench capture).
