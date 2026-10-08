@@ -279,7 +279,7 @@
 > carry the DMM-voltage convention (~1.2 %): import the saved bench samples in
 > the panel, rebuild and push the table - no new bench run needed, and fix the
 > VDDA scale first if you do it at all, or the table is rebuilt twice.
-> Panel v1.92. STM32 + ESP flash together.
+> Panel v1.93. STM32 + ESP flash together.
 
 ---
 
