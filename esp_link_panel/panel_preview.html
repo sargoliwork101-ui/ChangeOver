@@ -153,7 +153,7 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .bctl .bapply{background:#263d62;border-color:#4775b5;color:#dcecff}
 .bctl .bzero{background:rgba(229,72,77,.14);border-color:rgba(255,104,115,.55);color:#ffbfc4}
 .bctl .bapply:hover,.bctl .bzero:hover{filter:brightness(1.15)}
-#p1 .pbg{background:rgba(53,214,160,.14);border-color:rgba(53,214,160,.55);color:#a7f3d0}#p1 .pbb{background:rgba(99,162,255,.14);border-color:rgba(99,162,255,.55);color:#cfe2ff}#p1 .pbv{background:rgba(153,128,255,.16);border-color:rgba(164,150,255,.6);color:#ddd8ff}#p1 .pby{background:rgba(247,193,60,.14);border-color:rgba(247,193,60,.55);color:#ffe2a3}#p1 .pbr{background:rgba(229,72,77,.14);border-color:rgba(255,104,115,.55);color:#ffbfc4}
+#p1 .pbg,#p2 .pbg{background:rgba(53,214,160,.14);border-color:rgba(53,214,160,.55);color:#a7f3d0}#p1 .pbb{background:rgba(99,162,255,.14);border-color:rgba(99,162,255,.55);color:#cfe2ff}#p1 .pbv{background:rgba(153,128,255,.16);border-color:rgba(164,150,255,.6);color:#ddd8ff}#p1 .pby,#p2 .pby{background:rgba(247,193,60,.14);border-color:rgba(247,193,60,.55);color:#ffe2a3}#p1 .pbr{background:rgba(229,72,77,.14);border-color:rgba(255,104,115,.55);color:#ffbfc4}
 /* [EN] Inside a control row the caption belongs BESIDE its box, not
    stacked above it: "از [ ۱ ]  تا [ ۵۰ ]" reads as one sentence.
    The global label rule stacks captions, which is right for the
@@ -490,7 +490,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 25f58c2</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 66d656c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3208,14 +3208,16 @@ function calpush(m,v,act,sc,duty){
 function calclr(){if(!confirm('همهٔ نمونه‌های جمع‌شده پاک شوند؟'))return;CALS=[];calinvalidate();calsave();caln();calsmp();
  stxt('calst','نمونه‌ها پاک شدند.');}
 function caln(){stxt('caln',String(CALS.length));}
-/* [‎EN] least squares y = a*x + b, plus R‎². [FA] برازش خطی + کیفیت. */
-function calfit(xs,ys){const n=xs.length;let sx=0,sy=0,sxx=0,sxy=0;
- for(let i=0;i<n;i++){sx+=xs[i];sy+=ys[i];sxx+=xs[i]*xs[i];sxy+=xs[i]*ys[i];}
- const den=n*sxx-sx*sx;if(n<2||Math.abs(den)<1e-9)return null;
- const a=(n*sxy-sx*sy)/den,b=(sy-a*sx)/n,my=sy/n;
+/* [‎EN] line fit; current mode anchors at duty zero. [FA] برازش خط؛ جریان به صفر duty قفل است. */
+function calfit(xs,ys,z){const n=xs.length;let sx=0,sy=0,sxx=0,sxy=0;
+ for(let i=0;i<n;i++){if(z){xs[i]-=z[0];ys[i]-=z[1];}sx+=xs[i];sy+=ys[i];sxx+=xs[i]*xs[i];sxy+=xs[i]*ys[i];}
+ const den=z?sxx:n*sxx-sx*sx;if(n<2||Math.abs(den)<1e-9)return null;
+ const a=z?sxy/sxx:(n*sxy-sx*sy)/den,b=z?0:(sy-a*sx)/n,my=sy/n;
  let ss=0,sr=0,mx=0;for(let i=0;i<n;i++){const e=ys[i]-(a*xs[i]+b);sr+=e*e;ss+=(ys[i]-my)*(ys[i]-my);
   if(Math.abs(e)>mx)mx=Math.abs(e);}
  return {a,b,r2:ss>0?(1-sr/ss):1,n,mx,span:Math.max(...xs)-Math.min(...xs)};}
+function calzero(n,S){const r=n==1?'r1':'r2',b=n==1?'b1':'b2',z=S.filter(q=>q.d==0&&Number.isFinite(q[r])&&Number.isFinite(q[b]));
+ if(!z.length)return null;return [z.reduce((a,q)=>a+q[r],0)/z.length,z.reduce((a,q)=>a+q[b],0)/z.length];}
 var CALP=[],CALR=[],CAL_BUSY=false;
 function calinvalidate(){
  CALP=[];CALR=[];calmodalClose();
@@ -3229,23 +3231,21 @@ function calrun(){
  if(!D||!D.p){stxt('calst','⚠ هنوز داده‌ای از برد نرسیده — لینک برقرار نیست.');return;}
  if(calsel(null).length<3){stxt('calst','⚠ فقط '+calsel(null).length+' نمونهٔ تیک‌خورده هست؛ برای کالیبره حداقل ۳ مرحله لازم است.');return;}
  const rows=[],targets=caltargets(),hasTarget=n=>targets.indexOf(n)>=0,scope=calscope(targets);
- /* --- جریان فقط کانال‌های انتخاب‌شده: شیب و آفست با هم از یک خط --- */
+ /* --- جریان انتخاب‌شده: صفر duty مرجع جریان صفر است --- */
  [[1,'r1','b1',0,2],[2,'r2','b2',1,3]].filter(ch=>hasTarget(ch[0])).forEach(ch=>{
-  const S=calsel(ch[0]).filter(z=>Number.isFinite(z[ch[2]])&&Number.isFinite(z[ch[1]]));
-  const f=calfit(S.map(z=>z[ch[1]]),S.map(z=>z[ch[2]]));
+  const S=calsel(ch[0]).filter(z=>Number.isFinite(z[ch[2]])&&Number.isFinite(z[ch[1]])),z=calzero(ch[0],S),f=z&&calfit(S.map(q=>q[ch[1]]),S.map(q=>q[ch[2]]),z);
   const ttl='کانال '+fa(ch[0]);
-  if(!f||f.a<=0){rows.push([ttl+' (جریان)','','','⛔ دادهٔ کافی/سالم برای این کانال نیست',0]);return;}
-  let g=Math.round(f.a/K_MA*1000),o=Math.round(-f.b/f.a);
-  const gc=Math.min(3000,Math.max(100,g)),oc=Math.min(255,Math.max(0,o));
-  const w=[];
+  if(!z||!f||f.a<=0){rows.push([ttl+' (جریان)','','','⛔ '+(z?'دادهٔ کافی/سالم':'نمونهٔ duty صفر برای مرجع صفر')+' نیست',0]);return;}
+  let g=Math.round(f.a/K_MA*1000),o=Math.round(z[0]);
+  const gc=Math.min(3000,Math.max(100,g)),oc=Math.min(255,Math.max(0,o)),w=[];
   if(f.n<4)w.push('فقط '+f.n+' نقطه');
   if(f.span<20)w.push('بازهٔ duty خیلی باریک است');
   if(f.r2<0.98)w.push('نقاط پراکنده‌اند (R²=<span dir="ltr">'+f.r2.toFixed(3)+'</span>)');
   if(f.mx>150)w.push('خطای باقیمانده تا <span dir="ltr">'+Math.round(f.mx)+'</span> میلی‌آمپر');
   if(g!==gc||o!==oc)w.push('عدد خام خارج از بازهٔ مجاز بود و محدود شد');
   const bad=w.length>0&&(f.n<4||f.r2<0.9);
-  rows.push([ttl+' — گین (‰)',ch[4],cur(ch[4]),gc,w.length?'⚠ '+w.join(' · '):'✅ برازش خوب ('+f.n+' نقطه، R²=<span dir="ltr">'+f.r2.toFixed(4)+'</span>)',bad?0:1]);
-  rows.push([ttl+' — آفست (count)',ch[3],cur(ch[3]),oc,'از همان خط به‌دست آمد (جریان صفر در raw='+oc+')',bad?0:1]);});
+  rows.push([ttl+' — گین (‰)',ch[4],cur(ch[4]),gc,w.length?'⚠ '+w.join(' · '):'✅ برازش خوب؛ مرجع صفر duty برابر '+Math.round(z[1])+' mA ('+f.n+' نقطه، R²=<span dir="ltr">'+f.r2.toFixed(4)+'</span>)',bad?0:1]);
+  rows.push([ttl+' — آفست (count)',ch[3],cur(ch[3]),oc,'مرجع raw در duty صفر؛ جریان مؤثر هر نقطه از اختلاف با '+Math.round(z[1])+' mA به‌دست آمد',bad?0:1]);});
  /* --- سه آفست ولتاژ: میانگین اختلاف مولتی‌متر با برد --- */
  const voff=(ttl,id,get)=>{const d=[];scope.forEach(z=>{const x=get(z);if(x!=null&&Number.isFinite(x))d.push(x);});
   if(d.length<2){rows.push([ttl,id,cur(id),cur(id),'⛔ عدد مولتی‌متر برای این ولتاژ ثبت نشده — می‌توانید دستی بنویسید',0]);return;}
@@ -3388,15 +3388,18 @@ function calchk(){
  else no('ارتباط با برد برقرار نیست.','تا لینک وصل نشود نه مقدار فعلی دیده می‌شود نه چیزی نوشتنی است.');
  /* ۲) تعداد نمونه فقط برای باتری‌های انتخاب‌شده */
  targets.forEach(n=>{const k=n===1?'b1':'b2',r=n===1?'r1':'r2';
-  const c=calsel(n).filter(z=>Number.isFinite(z[k])&&Number.isFinite(z[r]));
+  const c=calsel(n).filter(z=>Number.isFinite(z[k])&&Number.isFinite(z[r])),z=calzero(n,c);
   if(c.length>=4)ok('باتری '+fa(n)+': '+c.length+' نمونهٔ کامل دارد (حداقل ۴ لازم است).');
   else no('باتری '+fa(n)+': فقط '+c.length+' نمونهٔ کامل دارد.',
    'حداقل ۴ مرحله با «فقط باتری '+fa(n)+'» یا «هر دو باتری» بگیرید و جریان مولتی‌متر همان باتری را وارد کنید.');
+  if(z)ok('باتری '+fa(n)+': مرجع صفر duty ثبت شده ('+Math.round(z[1])+' mA؛ جریان‌های بعدی نسبت به آن سنجیده می‌شوند).');
+  else no('باتری '+fa(n)+': نمونهٔ duty صفر برای مرجع جریان وجود ندارد.',
+   'یک مرحلهٔ duty صفر بگیرید و تیک آن را نگه دارید؛ مقدار منفی همان‌جا به‌عنوان صفر شارژ استفاده می‌شود.');
   /* ۳) پخش‌بودن نقاط */
   if(c.length>1){const xs=c.map(z=>z[r]),sp=Math.max(...xs)-Math.min(...xs);
    if(sp>=20)ok('باتری '+fa(n)+': نقاط به اندازهٔ کافی پخش‌اند (بازهٔ raw برابر '+Math.round(sp)+').');
    else no('باتری '+fa(n)+': همهٔ نقاط تقریباً روی یک duty هستند (بازهٔ raw فقط '+Math.round(sp)+').',
-    'از duty کم تا زیاد بروید (مثلاً ۲ تا ۲۰ درصد)؛ با نقاط چسبیده شیب قابل محاسبه نیست.');
+    'از duty کم تا زیاد بروید (مثلاً ۰ تا ۲۰ درصد)؛ با نقاط چسبیده شیب قابل محاسبه نیست.');
    /* ۴) تکراری نبودن duty */
    const ds=c.map(z=>z.d).filter(x=>x!=null),u=new Set(ds);
    if(ds.length&&u.size<ds.length)wn('باتری '+fa(n)+': '+(ds.length-u.size)+' مرحله با duty تکراری ثبت شده.',
@@ -3426,11 +3429,10 @@ function calchk(){
   if(err<2)ok(k[0]+': شیب <span dir="ltr">'+f.a.toFixed(4)+'</span> است (<span dir="ltr">'+err.toFixed(1)+'٪</span>) — در حد تلرانس ۱٪ مقاومت‌ها، کاری لازم نیست.');
   else wn(k[0]+': شیب <span dir="ltr">'+f.a.toFixed(4)+'</span> است، یعنی <span dir="ltr">'+err.toFixed(1)+'٪</span> خطای ضریبی.',
    'این بیشتر از تلرانس ۱٪ مقاومت‌هاست، پس احتمالاً قطعهٔ اشتباه یا اتصال بد است؛ آفست درستش نمی‌کند. در «ساخت کد برای میکرو» عدد اصلاح‌شدهٔ مقسم چاپ می‌شود.');});
- /* ۸) جریان منفی/صفر فقط در باتری‌های انتخاب‌شده */
- const currentKeys=targets.map(n=>n===1?'b1':'b2');
- if(currentKeys.some(k=>S.some(z=>Number.isFinite(z[k])&&z[k]>0)))
-  ok('حداقل در بعضی مرحله‌های باتری‌های انتخاب‌شده جریان واقعی شارژ ثبت شده.');
- else no('هیچ مرحله‌ای برای باتری‌های انتخاب‌شده جریان شارژ مثبت ندارد.','با duty بالاتر یا باتری خالی‌تر تست کنید؛ از روی جریان صفر چیزی درنمی‌آید.');
+ /* ۸) جریان مثبت نسبت به صفر duty فقط در باتری‌های انتخاب‌شده */
+ if(targets.some(n=>{const k=n===1?'b1':'b2',c=calsel(n),z=calzero(n,c);return z&&c.some(q=>Number.isFinite(q[k])&&q[k]-z[1]>0);}))
+  ok('حداقل در یک مرحله جریان نسبت به صفر duty مثبت است.');
+ else no('هیچ مرحله‌ای نسبت به صفر duty جریان شارژ مثبت ندارد.','با duty بالاتر تست کنید؛ مقدار منفیِ نقطهٔ صفر به‌تنهایی جریان شارژ نیست.');
   const cO=R.filter(x=>x[0]==='ok').length,cW=R.filter(x=>x[0]==='wa').length,cN=R.filter(x=>x[0]==='no').length;
  box.innerHTML='<div class="ckscope"><b>دامنهٔ بررسی:</b> '+caltargetText(targets)+' — باتری‌های خارج از این دامنه در هشدارها و نتیجه وارد نمی‌شوند.</div>'+
   '<div class="cksum"><b class="okc">✔ '+fa(cO)+' آماده</b><b class="wak">⚠ '+fa(cW)+' هشدار</b><b class="erc">✕ '+fa(cN)+' مانده</b></div>'+
@@ -3440,29 +3442,16 @@ function calchk(){
 /* ==================== Firmware snippet / خروجی برای کد میکرو ====================
    [EN] Generate calibration.h from the current, validated fit.
    [FA] calibration.h از برازش فعلی و اعتبارسنجی‌شده ساخته می‌شود. */
-/* [EN] v1.64 (user order: "the panel must guarantee a battery's two axes
-   come out the same length - the MCU must not spend time on it"). This
-   builder is now the single place that proves a table is legal before it
-   ever reaches the firmware, and it returns the proof instead of printing
-   it in three different places:
-     - both axes identical length (they are built as one list of pairs)
-     - at least two points (the firmware extends the last segment's slope)
-     - chain axis strictly increasing (the interpolation divides by the gap)
-     - power axis NEVER decreasing. This one matters most: the firmware
-       computes (yHigh - yLow) in UNSIGNED arithmetic, so one noisy point
-       that dips would wrap around to a gigantic number instead of a small
-       negative one. A dipping point is dropped here and reported.
-   [FA] این سازنده تنها جایی است که قانونی‌بودن جدول را پیش از رسیدن به
-   فرم‌ور ثابت می‌کند: هم‌طولی دو محور، حداقل دو نقطه، صعودی‌بودن محور
-   جریان، و هرگز نزول‌نکردن محور توان - چون فرم‌ور تفریق را بدون علامت
-   انجام می‌دهد و یک نقطهٔ نویزیِ نزولی به عددی غول‌پیکر تبدیل می‌شد. */
+/* [EN] Build equal, increasing chain/power axes; drop noisy dips.
+   [FA] محورهای هم‌طول و صعودی را می‌سازد و افت نویزی را حذف می‌کند. */
 function calbuild(n,off,gn){
- const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'dv1':'dv2',note=[];
+ const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'dv1':'dv2',note=[],S=calsel(n),z=calzero(n,S);
+ if(!z)return {X:[],Y:[],note:[],bad:'نمونهٔ duty صفر برای مرجع جریان وجود ندارد'};
  const pts=[];
- calsel(n).forEach(z=>{if(!Number.isFinite(z[r])||!Number.isFinite(z[b]))return;
-  const vb=(z[v]!=null)?z[v]:(n===1?z.vhi:z.vlo);if(!vb)return;
-  const chain=Math.max(0,Math.round((z[r]-off)*K_MA*gn/1000));
-  pts.push([chain,Math.max(0,Math.round(z[b]*vb/1000))]);});
+ S.forEach(q=>{if(!Number.isFinite(q[r])||!Number.isFinite(q[b]))return;
+  const vb=(q[v]!=null)?q[v]:(n===1?q.vhi:q.vlo);if(!vb)return;
+  const chain=Math.max(0,Math.round((q[r]-off)*K_MA*gn/1000));
+  pts.push([chain,Math.max(0,Math.round((q[b]-z[1])*vb/1000))]);});
  pts.sort((a,c)=>a[0]-c[0]);
  const X=[],Y=[];let dup=0,dip=0;
  pts.forEach(q=>{
@@ -3965,7 +3954,7 @@ async function lrst(){
 /* ---------- ساخت تب‌ها ---------- */
 /* تب ۱: داده‌برداری بنچ */
 $('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty را می‌گذارد، جدول همان ردیف را نشان می‌دهد و عدد مولتی‌متر را در فرم بالای جدول بنویس و <b>ثبت</b> کن — آمار همان لحظهٔ ثبت قفل می‌شود. <b>SOLO1</b>: کانال ۱ · <b>SOLO2</b>: کانال ۲ · <b>BOTH</b>: هر دو. آمپرمتر: یکی در تغذیهٔ کل برد + سری با سیم شارژ هر باتری روشن. هیچ ضریبی خودکار اعمال نمی‌شود.</div>
-<div class="bctl"><label class="lb"><input type="checkbox" id="wSw" checked> SWEEP خودکار</label><label class="lb wmode-manual" id="wManual"><span class="t">فهرست duty دستی (%)</span><input type="text" id="wL" data-s class="dl" value="2,4,6,8,10,12,14,16,18,20"></label><span class="wmode-sweep" id="wSweep"><label class="lb"><span class="t">از</span><input type="number" id="wA" data-s value="1" min="0" max="50"></label><label class="lb"><span class="t">تا</span><input type="number" id="wB" data-s value="50" min="0" max="50"></label><label class="lb"><span class="t">گام</span><input type="number" id="wStep" data-s value="1" min="1" max="50"></label></span>${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${WSN[k]}</label>`).join('')}</div>
+<div class="bctl"><label class="lb"><input type="checkbox" id="wSw" checked> SWEEP خودکار</label><label class="lb wmode-manual" id="wManual"><span class="t">فهرست duty دستی (%)</span><input type="text" id="wL" data-s class="dl" value="0,2,4,6,8,10,12,14,16,18,20"></label><span class="wmode-sweep" id="wSweep"><label class="lb"><span class="t">از</span><input type="number" id="wA" data-s value="0" min="0" max="50"></label><label class="lb"><span class="t">تا</span><input type="number" id="wB" data-s value="50" min="0" max="50"></label><label class="lb"><span class="t">گام</span><input type="number" id="wStep" data-s value="1" min="1" max="50"></label></span>${Object.keys(WSC).map(k=>`<label class="lb"><input type="checkbox" id="wc${k}" checked> ${WSN[k]}</label>`).join('')}</div>
 <div class="movl" id="wEx" style="display:none"><div class="mod" id="wExB"></div></div>
 <div class="bctl"><button class="sb brun pbg" onclick="wStart()">شروع</button><button class="sb stp2 pbr wstop" onclick="W.abort=true">پایان</button><span class="lb">فایل: <b id="wF"></b></span><a class="sb sb2 pbb lnk" href="/benchlog" download="benchlog.csv">دانلود فایل</a><button class="sb stp2 pbr" onclick="wclear()">پاک کردن فایل</button></div>
 <div class="cm lb" id="wS0"></div><div id="wF0"></div><div id="wT"></div>

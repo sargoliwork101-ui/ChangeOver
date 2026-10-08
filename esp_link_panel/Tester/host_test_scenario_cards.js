@@ -1017,6 +1017,9 @@ async function testBackupAndCal(win, doc) {
           backupText.indexOf('LUT یعنی جدول تبدیل') >= 0 &&
           backupText.indexOf('ارسال همه') >= 0,
           'the backup card explains user-facing actions and the LUT without internal variable names');
+    const backupCss = Array.from(doc.querySelectorAll('style')).map(s => s.textContent).join('\n');
+    check(backupCss.indexOf('#p2 .pbg') >= 0 && backupCss.indexOf('#p2 .pby') >= 0,
+          'backup colors are scoped to the settings page as well as the bench page');
     const sampleActions = ['calrun()', 'calexp()', 'calclr()'].map(fn =>
         doc.querySelector('#p1 [onclick="' + fn + '"]'));
     const sampleGroup = sampleActions[0] && sampleActions[0].closest('.bqr2');
@@ -1134,11 +1137,13 @@ async function testBackupAndCal(win, doc) {
     win.PEND = {};
 
     /* --- calibration: fit once, then show a named batch summary --------- */
-    const gain = 1200, off = 7;
-    win.CALS = [];
+    const gain = 1200, off = 7, zeroMa = -120;
+    win.CALS = [{ sc: 'BOTH', d: 0, use: 1, r1: off, r2: off, vin: 24000, v24: 25000,
+                  v12: 12500, vlo: 12500, vhi: 12500,
+                  b1: zeroMa, b2: zeroMa, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 }];
     for (let duty = 2; duty <= 20; duty += 2) {
         const raw = off + duty * 25;
-        const mA = (raw - off) * K * gain / 1000;
+        const mA = zeroMa + (raw - off) * K * gain / 1000;
         win.CALS.push({ sc: 'BOTH', d: duty, use: 1, r1: raw, r2: raw, vin: 24000, v24: 25000,
                         v12: 12500, vlo: 12500, vhi: 12500,
                         b1: mA, b2: mA, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });
@@ -1150,6 +1155,8 @@ async function testBackupAndCal(win, doc) {
     check(prop[2] === gain, 'the fit recovers the current gain of channel 1 exactly');
     check(prop[3] === gain, 'the fit recovers the current gain of channel 2 exactly');
     check(prop[0] === off, 'the fit recovers the zero-current offset of channel 1');
+    check(String(win.CALR.find(r => Number(r[1]) === 2)[4]).indexOf('مرجع صفر duty برابر -120 mA') >= 0,
+          'a negative zero-duty current becomes the named zero-current baseline');
     check(prop[4] === 300, 'the input-voltage offset is the mean multimeter difference');
     check(prop[5] === 300, 'the 24 V pack offset uses the sum of the two halves');
     check(prop[6] === 200, 'the 12 V node offset uses the lower half');
@@ -1311,10 +1318,15 @@ async function testBackupAndCal(win, doc) {
 
     /* --- v1.63: any point count is fine, but fewer than two is refused --- */
     const keepP = win.CALS;
-    /* one sample sitting exactly at the zero-current point: a single anchor */
-    win.CALS = [{ sc: 'BOTH', d: 2, use: 1, r1: off, r2: off, vin: 24000, v24: 25000,
-                  v12: 12500, vlo: 12500, vhi: 12500, b1: 0, b2: 0,
-                  dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 }];
+    const noZeroRow = { sc: 'BOTH', d: 2, use: 1, r1: off, r2: off, vin: 24000, v24: 25000,
+                        v12: 12500, vlo: 12500, vhi: 12500, b1: 0, b2: 0,
+                        dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 };
+    win.CALS = [2, 4, 6].map(d => Object.assign({}, noZeroRow, { d, r1: off + d * 25, r2: off + d * 25 }));
+    win.eval('calrun')();
+    const noZero = win.CALR.find(r => String(r[0]).indexOf('کانال ۱') === 0);
+    check(noZero && noZero[4] === 0 && String(noZero[3]).indexOf('نمونهٔ duty صفر') >= 0,
+          'a current fit without a zero-duty baseline is blocked explicitly');
+    win.CALS = [noZeroRow];
     win.eval('calrun')();
     win.eval('calcode')();
     check(doc.getElementById('calcd').value.indexOf('NOT GENERATED') >= 0 &&
@@ -1329,7 +1341,7 @@ async function testBackupAndCal(win, doc) {
     /* --- v1.64: the panel proves the table is legal before emitting it --- */
     const keepN = win.CALS;
     const noisy = keepN.map(z => Object.assign({}, z));
-    noisy[3].b1 = 1;            /* one point whose power dips below the previous */
+    noisy[3].b1 = -120;        /* one point whose effective power dips below the previous */
     win.CALS = noisy;
     const built = win.eval('calbuild')(1, 7, 1200);
     check(built.X.length === built.Y.length,
@@ -1618,11 +1630,13 @@ async function testLutPush(win, doc) {
     console.log('\nv1.66 direct LUT push / ارسال مستقیم جدول به برد');
 
     const K = win.eval('K_MA');
-    const gain = 1200, off = 7;
-    win.CALS = [];
+    const gain = 1200, off = 7, zeroMa = -120;
+    win.CALS = [{ sc: 'BOTH', d: 0, use: 1, r1: off, r2: off, vin: 24000, v24: 25000,
+                  v12: 12500, vlo: 12500, vhi: 12500,
+                  b1: zeroMa, b2: zeroMa, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 }];
     for (let duty = 2; duty <= 20; duty += 2) {
         const raw = off + duty * 25;
-        const mA = (raw - off) * K * gain / 1000;
+        const mA = zeroMa + (raw - off) * K * gain / 1000;
         win.CALS.push({ sc: 'BOTH', d: duty, use: 1, r1: raw, r2: raw, vin: 24000, v24: 25000,
                         v12: 12500, vlo: 12500, vhi: 12500,
                         b1: mA, b2: mA, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });

@@ -2100,8 +2100,9 @@ def test_alarms_tab_v115():
           and "'changeover-settings-'" in ino and "XIDS=" in ino
           and 'aria-label="ذخیرهٔ پشتیبان"' in ino
           and 'aria-label="بازگردانی پشتیبان"' in ino
-          and 'class="sb pbg"' in ino and 'class="sb pby"' in ino,
-          "v1.15b: the backup card uses labeled, color-coded export/import icons")
+          and 'class="sb pbg"' in ino and 'class="sb pby"' in ino
+          and '#p2 .pbg' in ino and '#p2 .pby' in ino,
+          "v1.15b: the backup card uses labeled, color-coded export/import icons on settings")
     check("نمونه‌ها و محاسبه" in ino and "📥 ذخیرهٔ نمونه‌ها" in ino
           and "📤 بازخوانی نمونه‌ها" in ino and "🗑️ پاک کردن نمونه‌ها" in ino
           and "aria-label=\"پاک کردن نمونه‌ها\"" in ino,
@@ -2118,9 +2119,11 @@ def test_alarms_tab_v115():
     # [EN] v1.57 (user order: calibrate straight from the bench capture).
     # [FA] v1.57: کالیبراسیون مستقیم از داده‌برداری بنچ با تأیید کاربر.
     check("function calpush(" in ino and "function calfit(" in ino
+          and "function calzero(" in ino and "q.d==0" in ino
+          and "نمونهٔ duty صفر برای مرجع صفر" in ino
           and "function calrun()" in ino and "async function calapply()" in ino
           and "calapply()" in ino and "xexp();" in ino,
-          "v1.57: bench samples are fitted, previewed and only written after a confirm + auto backup")
+          "bench calibration anchors negative current at the selected battery's zero-duty baseline before fitting")
     # [EN] Stale since the scenario-card redesign and only found on 2026-10-05:
     #      the battery-supervision fields are no longer one flat group called
     #      "نظارت باتری" - they live in the six scenario cards, and the
