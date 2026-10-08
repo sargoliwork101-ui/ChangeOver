@@ -395,7 +395,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 830fb66</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build f1d8d7c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1221,7 +1221,7 @@ ASB={sp:[0,1,2].map(k=>$('sp'+k)),sr:[0,1,2].map(k=>$('sr'+k)),flt:$('asf'),bits
 /* ---------- دو ستون جدا: شارژر ۱ و شارژر ۲ ---------- */
 $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${n} <span class="lb">· باتری ${n==1?'بالا':'پایین'}</span></b><span class="tg" id="st${n}"></span></div>
 
-<div class="bg2"><div class="bmetric"><div class="big"><span class="biglabel">جریان باتری (iest)</span><b class="n" id="ie${n}"></b></div><div class="bsub"><span>ولتاژ باتری ${n==1?'بالا':'پایین'}</span><span dir="ltr"><b class="n" id="vb${n}"></b> <span class="unit">V</span></span></div></div>
+<div class="bg2"><div class="bmetric"><div class="big"><span class="biglabel">جریان باتری (کالیبره)</span><b class="n" id="ie${n}"></b></div><div class="bsub"><span>ولتاژ باتری ${n==1?'بالا':'پایین'}</span><span dir="ltr"><b class="n" id="vb${n}"></b> <span class="unit">V</span></span></div></div>
 <div class="big"><span class="biglabel dutybig" id="dutyedit${n}" role="button" tabindex="0" title="برای تغییر سقف duty کلیک کنید" onclick="dutyedit(${n})" onkeydown="if(event.key==='Enter'||event.key===' ')dutyedit(${n})">duty <span class="ceval" id="dc${n}"></span></span><b class="n" id="du${n}"></b></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
 <div class="bctl"><span class="ctlcap">حالت کار</span><div class="modepick"><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button></div><label class="dutyctl"><span>Duty دستی (%)</span><input type="number" step="any" id="qm${n}" data-s></label><div class="dutyactions"><button class="sb bapply" onclick="qset(${n})">اعمال</button><button class="sb bzero" onclick="qzero(${n})">صفر</button></div></div>
 <div class="lb">بستن پنل: ۱۰ ثانیه بعد مود دستی خاموش و duty صفر می‌شود؛ بعد از تریپ JIT همان duty را دوباره اعمال کنید.</div>
@@ -2875,7 +2875,7 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   (t[19]&~64?`<span class="tg r n">fault 0x${t[19].toString(16)}</span>`:'')+(man?'<span class="tg y">مود دستی</span>':'');
  [1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=p[10+n],ce=(PEND[12+n]!=null?PEND[12+n]:p[12+n]);
   const st=$('st'+n);st.textContent=ST[s]||'#'+s;st.className='tg '+(SC[s]||'');
-  $('ie'+n).innerHTML=t[b+4]+' <span class="lb">mA</span>';
+  $('ie'+n).innerHTML=t[b+3]+' <span class="lb">mA</span>';
   const bv=n==1?t[18]:t[17];$('vb'+n).textContent=bv==null?'--':v2(bv);
   $('du'+n).textContent=pc(t[b+5]);$('dc'+n).textContent=ce==null?'':'· سقف '+pc(ce);
   $('db'+n).style.width=Math.min(100,t[b+5]/10)+'%';$('cl'+n).style.left=(100-Math.min(100,(ce==null?1000:ce)/10))+'%';
@@ -3113,14 +3113,24 @@ function calpush(m,v,act,sc,duty){
 function calclr(){if(!confirm('همهٔ نمونه‌های جمع‌شده پاک شوند؟'))return;CALS=[];calinvalidate();calsave();caln();calsmp();
  stxt('calst','نمونه‌ها پاک شدند.');}
 function caln(){stxt('caln',String(CALS.length));}
-/* [‎EN] least squares y = a*x + b, plus R‎². [FA] برازش خطی + کیفیت. */
-function calfit(xs,ys){const n=xs.length;let sx=0,sy=0,sxx=0,sxy=0;
- for(let i=0;i<n;i++){sx+=xs[i];sy+=ys[i];sxx+=xs[i]*xs[i];sxy+=xs[i]*ys[i];}
- const den=n*sxx-sx*sx;if(n<2||Math.abs(den)<1e-9)return null;
- const a=(n*sxy-sx*sy)/den,b=(sy-a*sx)/n,my=sy/n;
- let ss=0,sr=0,mx=0;for(let i=0;i<n;i++){const e=ys[i]-(a*xs[i]+b);sr+=e*e;ss+=(ys[i]-my)*(ys[i]-my);
-  if(Math.abs(e)>mx)mx=Math.abs(e);}
- return {a,b,r2:ss>0?(1-sr/ss):1,n,mx,span:Math.max(...xs)-Math.min(...xs)};}
+/*Theil-Sen Huber IRLS*/
+function calfit(xs,ys){
+ const I=[];for(let i=0;i<xs.length;i++)if(Number.isFinite(xs[i])&&Number.isFinite(ys[i]))I.push(i);
+ if(I.length<2)return null;
+ const md=A=>{A=A.slice().sort((a,b)=>a-b);const m=A.length>>1;return A.length&1?A[m]:(A[m-1]+A[m])/2;},Q=[];
+ for(let u=0;u<I.length;u++)for(let v=u+1;v<I.length;v++){const i=I[u],j=I[v],dx=xs[j]-xs[i];if(Math.abs(dx)>1e-12)Q.push((ys[j]-ys[i])/dx);}
+ if(!Q.length)return null;
+ let a=md(Q),b=md(I.map(i=>ys[i]-a*xs[i]));
+ for(let pass=0;pass<3;pass++){
+  const E=I.map(i=>ys[i]-(a*xs[i]+b)),c=md(E),mad=md(E.map(e=>Math.abs(e-c)));if(mad<=1e-9)break;
+  const d=1.994*mad;let sw=0,sx=0,sy=0,sxx=0,sxy=0;
+  I.forEach((i,k)=>{const h=Math.abs(E[k]),w=h<=d?1:d/h;sw+=w;sx+=w*xs[i];sy+=w*ys[i];sxx+=w*xs[i]*xs[i];sxy+=w*xs[i]*ys[i];});
+  const den=sw*sxx-sx*sx;if(Math.abs(den)<1e-12)break;const na=(sw*sxy-sx*sy)/den,nb=(sy-na*sx)/sw;
+  if(Math.abs(na-a)<1e-12&&Math.abs(nb-b)<1e-9){a=na;b=nb;break;}a=na;b=nb;
+ }
+ const my=I.reduce((s,i)=>s+ys[i],0)/I.length;let ss=0,sr=0,mx=0;
+ I.forEach(i=>{const e=ys[i]-(a*xs[i]+b);sr+=e*e;ss+=(ys[i]-my)*(ys[i]-my);if(Math.abs(e)>mx)mx=Math.abs(e);});
+ return {a,b,r2:ss>0?(1-sr/ss):1,n:I.length,mx,span:Math.max(...I.map(i=>xs[i]))-Math.min(...I.map(i=>xs[i]))};}
 var CALP=[],CALR=[],CAL_BUSY=false;
 function calinvalidate(){
  CALP=[];CALR=[];calmodalClose();

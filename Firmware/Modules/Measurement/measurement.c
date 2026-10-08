@@ -1083,6 +1083,40 @@ uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
 #endif
 }
 
+bool func__Measurement_CurrentIsBatteryCalibrated(uint8_t uint8_t__channelIndex)
+{
+    /* [EN] The public CurrentNCountsToMa() result is battery-side whenever
+       the corresponding compile-time LUT is enabled. A valid runtime flash
+       record overrides the anchors, while an absent/invalid record uses the
+       compiled fallback; both are the same battery-power -> live-voltage
+       architecture. Keep this query beside the conversion so Charger cannot
+       accidentally duplicate that conversion as the LUT evolves.
+       [FA] خروجی عمومی CurrentNCountsToMa وقتی LUT متناظر فعال است متعلق به
+       سمت باتری است. رکورد معتبر فلش فقط لنگرها را جایگزین می‌کند و در نبود
+       رکورد، fallback کامپایل‌شده مصرف می‌شود؛ هر دو همان معماری توان باتری
+       تقسیم بر ولتاژ زنده‌اند. این query کنار تبدیل می‌ماند تا Charger با
+       تغییر LUT نتواند تبدیل را دوباره انجام دهد. */
+    if (uint8_t__channelIndex == 0u)
+    {
+#if (CAL_CURRENT1_LUT_ENABLE != 0u)
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    if (uint8_t__channelIndex == 1u)
+    {
+#if (CAL_CURRENT2_LUT_ENABLE != 0u)
+        return true;
+#else
+        return false;
+#endif
+    }
+
+    return false;
+}
+
 /* ==================== Measurement Current Counts To Ma (legacy) ==================== */
 
 uint32_t func__Measurement_CurrentCountsToMa(uint16_t uint16_t__counts)

@@ -364,6 +364,15 @@ int main(void)
     CHECK(func__Measurement_CountsToMv(1000u) == 10000u);
     CHECK(func__Measurement_CurrentCountsToShuntUv(1234u) == 1234u);
     CHECK(func__Measurement_CountsToMv(0u) == 0u);
+    /* [EN] Both compiled battery LUTs make the public current result
+            battery-side. This is the contract Charger uses to suppress a
+            stale ETA conversion; an invalid channel must never claim it.
+       [FA] هر دو LUT کامپایل‌شده خروجی عمومی جریان را سمت باتری می‌کنند.
+            Charger از همین قرارداد برای حذف ETA کهنه استفاده می‌کند؛ کانال
+            نامعتبر هرگز نباید active گزارش شود. */
+    CHECK(func__Measurement_CurrentIsBatteryCalibrated(0u) == true);
+    CHECK(func__Measurement_CurrentIsBatteryCalibrated(1u) == true);
+    CHECK(func__Measurement_CurrentIsBatteryCalibrated(2u) == false);
 
     /* ---- 9b. runtime LUT arithmetic cannot wrap at u32 boundaries ----
        [EN] The first table makes interpolation multiply two large u32

@@ -508,6 +508,16 @@ def test_setpoints_and_timing():
           "non-zero ETA must convert with LIVE voltages: iest = I x Vin x eta / (1000 x Vbat) - the v1.3 calibration architecture (user order 2026-09-24)")
     check("CHG_ETA_MIN_VIN_MV" in charger_c_txt and "CHG_ETA_MIN_VBAT_MV" in charger_c_txt,
           "live-voltage sanity guards must exist for the ETA conversion")
+    meas_h_txt = (ROOT / "Firmware/Modules/Measurement/measurement.h").read_text()
+    meas_c_txt = (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text()
+    check("func__Measurement_CurrentIsBatteryCalibrated" in meas_h_txt and
+          "func__Measurement_CurrentIsBatteryCalibrated" in meas_c_txt and
+          "func__Measurement_CurrentIsBatteryCalibrated(uint8_t__channelIndex)" in charger_c_txt,
+          "the charger must ask Measurement whether the per-channel result is already battery-side calibrated")
+    gate_at = charger_c_txt.find("func__Measurement_CurrentIsBatteryCalibrated")
+    eta_math_at = charger_c_txt.find("uint32_t__primaryMa * uint32_t__etaPermille")
+    check(gate_at >= 0 and eta_math_at > gate_at,
+          "the battery LUT gate must run before the legacy ETA Vin/Vbat math, so stale NVM ETA cannot double-convert it")
     esp_link_h_txt = (ROOT / "Firmware/Modules/EspLink/esp_link.h").read_text()
     esp_link_c_txt = (ROOT / "Firmware/Modules/EspLink/esp_link.c").read_text()
     # [EN] CAL_REFERENCE was a v1.3 command the panel stopped sending in v1.7.
@@ -2119,6 +2129,7 @@ def test_alarms_tab_v115():
     # [EN] v1.57 (user order: calibrate straight from the bench capture).
     # [FA] v1.57: کالیبراسیون مستقیم از داده‌برداری بنچ با تأیید کاربر.
     check("function calpush(" in ino and "function calfit(" in ino
+          and "Theil-Sen" in ino and "Huber IRLS" in ino
           and "function calrun()" in ino and "async function calapply()" in ino
           and "جریان خالص باتری صفر در raw=" in ino
           and "Math.max(0,Math.round(z[b]*vb/1000))" in ino
@@ -3522,6 +3533,21 @@ def test_panel_lut_mirrors_firmware_v125():
               "mirror makes the page report a different current than the board")
 
 
+def test_battery_card_uses_measurement_current_not_legacy_iest():
+    """The prominent card must show filtered Measurement current; iest stays
+    in the per-channel diagnostics table so a stale legacy ETA cannot hide the
+    raw -> filtered -> LUT mismatch."""
+    panel = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
+    preview = (ROOT / "esp_link_panel" / "panel_preview.html").read_text()
+    check("جریان باتری (کالیبره)" in panel and "جریان باتری (کالیبره)" in preview,
+          "both live panel sources must label the main card as calibrated battery current")
+    check("$('ie'+n).innerHTML=t[b+3]" in panel and
+          "$('ie'+n).innerHTML=t[b+3]" in preview,
+          "the main card must use filtered Measurement current t[b+3], not the legacy iest t[b+4]")
+    check("تخمین باتری (iest)" in panel and "تخمین باتری (iest)" in preview,
+          "iest must remain visible as a separate diagnostic audit field")
+
+
 def test_vdda_reference_measurement_v125():
     """[EN] The board "never calibrates" for a mathematical reason: the
        dominant error is a GAIN (the ADC reference is not the assumed 3.300 V)
@@ -4532,6 +4558,7 @@ def main():
         test_min_select_handover_v124,
         test_dynamic_disturbances_v124,
         test_panel_lut_mirrors_firmware_v125,
+        test_battery_card_uses_measurement_current_not_legacy_iest,
         test_vdda_reference_measurement_v125,
         test_param_ranges_match_panel_v125,
         test_benchlog_row_matches_header_v125,

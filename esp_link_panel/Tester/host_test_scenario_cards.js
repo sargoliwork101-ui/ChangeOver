@@ -1214,11 +1214,13 @@ async function testBackupAndCal(win, doc) {
                     v12: 12500, vlo: 12500, vhi: 12500, b1: 10, b2: 10,
                     dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });   /* an obvious outlier */
     win.eval('calrun')();
-    const spoiled = Number(win.CALR.find(r => Number(r[1]) === 2)[3]);
+    const robust = Number(win.CALR.find(r => Number(r[1]) === 2)[3]);
+    check(robust === gain,
+          'a single gross DMM outlier does not move the robust current fit');
     win.eval('caluse')(win.CALS.length - 1, false);
     win.eval('calrun')();
-    check(spoiled !== gain && Number(win.CALR.find(r => Number(r[1]) === 2)[3]) === gain,
-          'unticking a bad row takes it straight out of the maths');
+    check(Number(win.CALR.find(r => Number(r[1]) === 2)[3]) === gain,
+          'manually excluding the same bad row preserves the robust fit');
     check(win.CALS[win.CALS.length - 1].use === 0,
           'an unticked row is kept in the file, only excluded from the fit');
     /* a battery-2-only row must not touch the channel-1 fit */

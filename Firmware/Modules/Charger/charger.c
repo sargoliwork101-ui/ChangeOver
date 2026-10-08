@@ -16,6 +16,7 @@
 
 /* ==================== Includes / شامل‌ها ==================== */
 #include "charger.h"
+#include "measurement.h"
 #include "app_config.h"
 #include "bsp_gpio.h"
 #include "bsp_pwm.h"
@@ -521,29 +522,19 @@ static uint32_t func__Charger_ChannelCurrentMa(const measurement_snapshot_t *mea
 /* ==================== Charger_OutputEstimateMa / تخمین جریان خروجی ==================== */
 
 /**
- * @brief  [EN] Output (battery-side) current estimate - calibration
- *              architecture v1.3 (user order 2026-09-24). Two modes:
- *              (1) ETA = 0 (compiled default): identity - with the
- *              battery-calibrated gains the filtered reading already
- *              equals the battery current, so a reflash changes no number.
- *              (2) ETA != 0 (ESP param 9/10 or panel CAL_REFERENCE):
- *              iest = I x Vin x eta / (1000 x Vbat) with LIVE voltages,
- *              so the reading stays true while Vbat moves during a charge.
- *              Guards: below CHG_ETA_MIN_VIN_MV / CHG_ETA_MIN_VBAT_MV the
- *              estimate falls back to identity instead of dividing a
- *              garbage snapshot. Math ordered to stay inside 32 bits:
- *              (I*eta/1000) < ~1e7, product with Vin < ~3e8. (History of
- *              the deleted double-counting conversion: charger.h.)
- *         [FA] تخمین جریان خروجی (سمت باتری) - معماری کالیبراسیون v1.3
- *              (دستور کاربر ۲۰۲۶-۰۹-۲۴). (۱) η=۰ (پیش‌فرض): همانی - با
- *              گین‌های کالیبره-باتری عدد فیلترشده خودش جریان باتری است؛
- *              ریفلش هیچ عددی را عوض نمی‌کند. (۲) η≠۰ (پارامتر ۹/۱۰ یا
- *              CAL_REFERENCE پنل): ‎iest = I‎ × Vin × η ÷ (۱۰۰۰ × Vbat) با
- *              ولتاژهای زنده تا خوانش با حرکت Vbat درست بماند. گارد: زیر
- *              ‎CHG_ETA_MIN_VIN_MV / CHG_ETA_MIN_VBAT_MV‎ برگشت به همانی
- *              به‌جای تقسیم snapshot بی‌معنی. ترتیب ریاضی داخل ۳۲ بیت
- *              می‌ماند: (I×η÷۱۰۰۰) زیر ~1e7 و ضرب در Vin زیر ~3e8.
- *              (تاریخچهٔ تبدیل دوبارشمرِ حذف‌شده: charger.h.)
+ * @brief  [EN] Output (battery-side) current estimate. When the
+ *              Measurement battery LUT is active, the incoming filtered
+ *              value already is battery current; OutputEstimateMa therefore
+ *              returns identity even if a legacy ETA survives in NVM. With
+ *              no battery LUT, ETA = 0 is still identity and a non-zero ETA
+ *              uses iest = I x Vin x eta / (1000 x Vbat) with LIVE voltages.
+ *              Low-voltage guards apply only to that legacy conversion.
+ *         [FA] تخمین جریان سمت باتری. وقتی LUT باتری Measurement فعال است،
+ *              جریان فیلترشدهٔ ورودی همین حالا جریان باتری است؛ بنابراین
+ *              OutputEstimateMa حتی با ETA قدیمیِ مانده در NVM همانی است.
+ *              بدون LUT، ETA صفر نیز همانی است و ETA غیرصفر تبدیل زندهٔ
+ *              iest = I × Vin × eta ÷ (۱۰۰۰ × Vbat) را انجام می‌دهد؛ گاردهای
+ *              ولتاژ پایین فقط روی همین مسیر legacy اعمال می‌شوند.
  * @param  measurement_snapshot_t__snap [EN] Live snapshot (Vin/Vbat) / snapshot‎ زنده
  * @param  uint8_t__channelIndex [EN] 0 = ch1 (upper battery), 1 = ch2‎ / ۰=کانال۱، ۱=کانال۲
  * @param  uint32_t__primaryMa [EN] Filtered chain current, mA / جریان فیلترشدهٔ زنجیره، mA
@@ -557,10 +548,27 @@ static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *mea
         (uint8_t__channelIndex == 0u) ? UINT32_T__G__ChargerEta1Permille
                                       : UINT32_T__G__ChargerEta2Permille;
 
+    /* [EN] The Measurement module owns the end-to-end battery LUT:
+       chain mA -> battery power -> live battery voltage -> battery mA.
+       Once that path is compiled in, primaryMa is already the battery-side
+       result. Ignore a legacy non-zero ETA that survived the parameter flash;
+       applying Vin/Vbat here would convert the calibrated value twice and
+       under-read both channels. ETA remains available only for a channel
+       without a battery LUT.
+       [FA] ماژول Measurement مالک LUT سرتاسری است: mA زنجیره ← توان باتری
+       ← ولتاژ زندهٔ باتری ← mA باتری. وقتی این مسیر برای کانال فعال است،
+       primaryMa همین حالا جریان سمت باتری است. ETA قدیمیِ غیرصفر که در فلش
+       پارامتر مانده نادیده گرفته می‌شود؛ اعمال Vin/Vbat در اینجا تبدیل دوم
+       و کم‌خوانی هر دو کانال بود. ETA فقط برای کانالِ بدون LUT می‌ماند. */
+    if (func__Measurement_CurrentIsBatteryCalibrated(uint8_t__channelIndex) != false)
+    {
+        return uint32_t__primaryMa;
+    }
+
     if (uint32_t__etaPermille == 0u)
     {
-        /* [EN] Identity (default): the reading already is the battery
-           current. [FA] همانی (پیش‌فرض): عدد خودش جریان باتری است. */
+        /* [EN] Identity for the legacy path when ETA is not configured.
+           [FA] همانی در مسیر legacy وقتی ETA تنظیم نشده است. */
         return uint32_t__primaryMa;
     }
 
