@@ -1229,12 +1229,12 @@ async function testBackupAndCal(win, doc) {
     const rejectedFit = win.CALR.find(r => Number(r[1]) === 2);
     rejectedFit[5] = 0;
     const rejectedPack = win.eval('lpack')();
-    check(rejectedPack.bad && rejectedPack.msg.join(' ').indexOf('شناسه‌های مردود') >= 0,
-          'a rejected current fit blocks the direct LUT transaction');
+    check(rejectedPack.bad && rejectedPack.msg.join(' ').indexOf('گین جریان باتری ۱') >= 0,
+          'a rejected current fit blocks the direct LUT transaction with its parameter name');
     win.eval('calcode')();
     check(doc.getElementById('calcd').value.indexOf('NOT GENERATED') >= 0 &&
-          doc.getElementById('calst').textContent.indexOf('fit مردود') >= 0,
-          'a rejected fit also blocks the generated firmware table');
+          doc.getElementById('calst').textContent.indexOf('آفست یا گین جریان') >= 0,
+          'a rejected fit also blocks the generated firmware table with a plain explanation');
     win.eval('calrun')();
     /* a battery-2-only row must not touch the channel-1 fit */
     win.CALS[win.CALS.length - 1] = { sc: 'BAT2', d: 30, use: 1, r1: 900, r2: 900,
@@ -1720,7 +1720,7 @@ async function testLutPush(win, doc) {
                         v12: 12500, vlo: 12500, vhi: 12500,
                         b1: mA, b2: mA, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });
     }
-    win.D = { p: { 0: off, 1: off, 2: gain, 3: gain, 4: 0, 5: 0, 6: 0 }, t: [], on: 1 };
+    win.D = { p: { 0: off, 1: off, 2: gain, 3: gain, 4: 40, 5: 50, 6: 60 }, t: [], on: 1 };
     win.eval('calrun')();
 
     const packed = win.eval('lpack')();
@@ -1813,6 +1813,58 @@ async function testLutPush(win, doc) {
     check(calls.length === 0, 'a pending calibration conflict does not even start LUT readback');
     win.PEND = {};
     win.pbar();
+
+    /* [EN] Missing DMM voltages are optional for the current LUT.
+       [FA] نبودن ولتاژ مولتی‌متر نباید جلوی ساخت جدول جریان را بگیرد. */
+    const completeSamples = win.CALS;
+    const oldVoltageOffsets = [4, 5, 6].map(id => win.D.p[id]);
+    win.CALS = completeSamples.map(row => Object.assign({}, row, {
+        dvi: null, dv1: null, dv2: null
+    }));
+    win.eval('calrun')();
+    const noVoltagePack = win.eval('lpack')();
+    check(!noVoltagePack.bad && noVoltagePack.body === packed.body,
+          'missing DMM voltage readings do not alter or block the current LUT');
+    check([4, 5, 6].every(id => noVoltagePack.cal.selected[id] === false &&
+                               noVoltagePack.cal.voltage[id - 4] === oldVoltageOffsets[id - 4]),
+          'unfitted voltage offsets default to preserve the exact board values');
+
+    calls.length = 0;
+    win.confirm = () => false;
+    win.fetch = stub(ackOk);
+    await win.eval('lsend')();
+    const optionalFitStatus = doc.getElementById('calst').textContent;
+    const optionalChecks = [4, 5, 6].map(id =>
+        doc.querySelector('#lutcmp input[data-cal-id="' + id + '"]'));
+    check(doc.getElementById('lutApply') !== null &&
+          optionalFitStatus.indexOf('اندازه‌گیری ولتاژ مولتی‌متر') >= 0 &&
+          optionalFitStatus.indexOf('آفست ولتاژ پک ۲۴ ولت') >= 0 &&
+          optionalFitStatus.indexOf('آفست ولتاژ نود ۱۲ ولت') >= 0 &&
+          optionalFitStatus.indexOf('مقدار فعلی برد حفظ می‌شود') >= 0 &&
+          optionalFitStatus.indexOf('جدول جریان ادامه دارد') >= 0,
+          'the preview names missing optional voltage fits and says the board values stay',
+          optionalFitStatus);
+    check(optionalChecks.every(el => el && !el.checked && el.disabled),
+          'unfitted voltage offsets are visibly unchecked and cannot be enabled');
+    check(oldVoltageOffsets.every((value, i) => win.D.p[4 + i] === value) &&
+          !calls.some(c => c.indexOf('POST /s?id=') === 0),
+          'previewing the LUT sends no parameter write and leaves the board unchanged');
+    const savedBoardParams = Object.assign({}, win.D.p);
+    const oldSetv = win.setv;
+    const appliedCalWrites = [];
+    win.setv = async (id, value) => { appliedCalWrites.push([id, value]); };
+    try {
+        await win.lapplycal(0, noVoltagePack);
+    } finally {
+        win.setv = oldSetv;
+        win.D.p = savedBoardParams;
+    }
+    check(appliedCalWrites.every(([id, value]) => id < 4 && Number.isFinite(value)) &&
+          [4, 5, 6].every((id, i) => noVoltagePack.cal.voltage[i] === oldVoltageOffsets[i]),
+          'applying the LUT calibration skips missing voltage fits instead of sending null');
+    win.eval('lcancelpending')();
+    win.CALS = completeSamples;
+    win.eval('calrun')();
 
     /* The operator accepts the push but declines the reboot for now. */
     win.confirm = (m) => String(m).indexOf('ریست شود') < 0;

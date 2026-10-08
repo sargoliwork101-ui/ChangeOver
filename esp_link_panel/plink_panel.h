@@ -395,7 +395,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build df9001a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build b3c245f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3352,7 +3352,7 @@ function calchk(){
    [FA] محورهای هم‌طول و صعودی را می‌سازد و افت نویزی را حذف می‌کند. */
 function calbuild(n,off,gn){
  const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'vhi':'vlo',note=[];
- if(!Number.isFinite(off)||!Number.isFinite(gn))return {X:[],Y:[],note:[],bad:'fit مردود'};
+ if(!Number.isFinite(off)||!Number.isFinite(gn))return {X:[],Y:[],note:[],bad:'آفست یا گین جریان حساب نشده است'};
  const pts=[];let missingVoltage=0;
  calsel(n).forEach(z=>{if(!Number.isFinite(z[r])||!Number.isFinite(z[b]))return;
   /* [EN] Power axis = DMM current x the BOARD's own battery voltage (the
@@ -3528,15 +3528,19 @@ function lpack(target,base,selected){
  if(!CALR.length)return {bad:'نتیجهٔ محاسبهٔ فعلی کالیبراسیون وجود ندارد؛ ابتدا دوباره محاسبه کنید',msg:[]};
  const targetId=(target===1||target===2)?target:0,both=targetId===0,ids=lcalids(targetId);
  const chosen={};ids.forEach(id=>{chosen[id]=lcalselected(selected,id);});
- const missing=ids.filter(id=>chosen[id]&&lcalvalue(id)==null);
- if(missing.length)return {bad:'fit کالیبراسیون مردود است',msg:['شناسه‌های مردود: '+missing.join('، ')]};
+ const missing=ids.filter(id=>id<4&&chosen[id]&&lcalvalue(id)==null);
+ if(missing.length)return {bad:'محاسبهٔ جریان ناقص است',msg:[missing.map(id=>CALREAD[id].name).join('، ')+'؛ نمونه‌ها را بررسی و دوباره «محاسبه از نمونه‌ها» را بزنید.']};
+ /* [EN] Missing voltage fits do not block a current LUT.
+    [FA] نبود آفست ولتاژ مانع جدول جریان نیست؛ مقدار فعلی برد می‌ماند. */
+ const skipped=ids.filter(id=>id>3&&chosen[id]&&lcalvalue(id)==null);
+ skipped.forEach(id=>{chosen[id]=false;});
  const proposedOff=[lcalvalue(0),lcalvalue(1)],proposedGain=[lcalvalue(2),lcalvalue(3)],proposedVoltage=[lcalvalue(4),lcalvalue(5),lcalvalue(6)];
  const boardSnapshot=lcalSnapshot(),boardOff=boardSnapshot.offset,boardGain=boardSnapshot.gain,boardVoltage=boardSnapshot.voltage;
  const off=boardOff.slice(),gn=boardGain.slice(),voltage=boardVoltage.slice();
- const setIfSelected=(id,value,old)=>lcalselected(selected,id)?value:old;
+ const setIfSelected=(id,value,old)=>chosen[id]?value:old;
  [0,1].forEach(i=>{const id=i,ga=id+2;if((both||id===targetId-1)){off[i]=setIfSelected(id,proposedOff[i],boardOff[i]);gn[i]=setIfSelected(ga,proposedGain[i],boardGain[i]);}});
  [4,5,6].forEach(id=>{voltage[id-4]=setIfSelected(id,proposedVoltage[id-4],boardVoltage[id-4]);});
- const msg=[],T=[{X:[],Y:[]},{X:[],Y:[]}],buildTargets=both?[1,2]:[targetId];
+ const msg=skipped.length?['اندازه‌گیری ولتاژ مولتی‌متر برای '+skipped.map(id=>CALREAD[id].name).join('، ')+' ثبت نشده یا معتبر نبوده؛ مقدار فعلی برد حفظ می‌شود و جدول جریان ادامه دارد.']:[],T=[{X:[],Y:[]},{X:[],Y:[]}],buildTargets=both?[1,2]:[targetId];
  [1,2].forEach(n=>{
   if(buildTargets.indexOf(n)<0){
    if(!base||!base.ready){
@@ -3565,11 +3569,8 @@ function lpack(target,base,selected){
  return {T:T,crc:crc,body:cs.join(','),msg:msg,target:targetId,
   cal:{offset:off,gain:gn,voltage:voltage,ids:ids,selected:chosen,editable:false},
   calBefore:boardSnapshot};}
-/* [EN] The read-only view is deliberately separate from the transaction
-   audit: an operator asking "what is on the board now?" must not get a
-   three-column comparison full of empty proposal cells.
-   [FA] نمای ‎read-only‎ از ممیزی تراکنش جداست؛ وقتی کاربر می‌پرسد «الان روی
-   برد چیست؟» نباید جدولی با خانه‌های خالی پیشنهاد تحویل بگیرد. */
+/* [EN] Keep the real-board view separate from transaction comparisons.
+   [FA] نمای واقعی برد را از پیشنهاد و ممیزی تراکنش جدا نگه دار. */
 function lrenderRead(r){
  const e=$('lutcmp');if(!e)return;
  if(!r||!r.ready){e.innerHTML='<div class="lutbox badread"><div class="luthead">جدول فعال روی برد</div><div class="lb">بازخوانی واقعی در دسترس نیست: '+((r&&r.error)||'پاسخی از برد نرسید')+'</div></div>';return;}
@@ -3630,7 +3631,7 @@ function calParamTable(before,proposed,after,title,source,ids,selection,editable
  h+='<div class="calreadmeta"><span><b>منبع:</b> '+source+'</span><span><b>فریم تازه:</b> '+(seq==null?'—':seq)+'</span><span><b>ملاک:</b> تطبیق عددی همان شناسه</span>'+(pick?'<span><b>انتخاب:</b> برداشتن تیک یعنی حفظ مقدار قبلی و نرفتن این شناسه در payload</span>':'')+'</div>';
  if(proposed){
   h+='<div class="tw"><table class="lutt calparamtable"><tr>'+(pick?'<th>اعمال</th>':'')+'<th>پارامتر / شناسه</th><th>واحد</th><th>روی برد<br>قبل از ارسال</th><th>پیشنهاد پنل</th><th>روی برد<br>بعد از اعمال</th><th>نتیجه</th></tr>';
-  rows.forEach(m=>{const b=calpval(before,m),p=calpval(proposed,m),a=calpval(after,m),skip=pick&&selection[m.id]===false,s=skip?{c:'same',t:after==null?'حفظ می‌شود — ارسال نمی‌شود':'حفظ شد — ارسال نشد'}:calpstate(b,p,a),check=(!skip?' checked':'')+(editable?'':' disabled');h+='<tr class="'+(skip?'calskip':'')+'">'+(pick?'<td class="calpick"><label><input class="lutcalcheck" type="checkbox" data-cal-id="'+m.id+'"'+check+' onchange="lcaltoggle(this)"><span>اعمال</span></label></td>':'')+'<td class="calpname">'+m.name+' <span class="calpid">(ID '+m.id+')</span></td><td>'+m.unit+'</td><td>'+calpnum(b)+'</td><td>'+calpnum(p)+'</td><td>'+calpnum(a)+'</td><td><span class="lutst '+s.c+'">'+s.t+'</span></td></tr>';});
+  rows.forEach(m=>{const b=calpval(before,m),p=calpval(proposed,m),a=calpval(after,m),skip=pick&&selection[m.id]===false,unavailable=pick&&lcalvalue(m.id)==null,s=skip?{c:'same',t:after==null?'حفظ می‌شود — ارسال نمی‌شود':'حفظ شد — ارسال نشد'}:calpstate(b,p,a),check=(!skip?' checked':'')+(editable&&!unavailable?'':' disabled');h+='<tr class="'+(skip?'calskip':'')+'">'+(pick?'<td class="calpick"><label><input class="lutcalcheck" type="checkbox" data-cal-id="'+m.id+'"'+check+' onchange="lcaltoggle(this)"><span>اعمال</span></label></td>':'')+'<td class="calpname">'+m.name+' <span class="calpid">(ID '+m.id+')</span></td><td>'+m.unit+'</td><td>'+calpnum(b)+'</td><td>'+calpnum(p)+'</td><td>'+calpnum(a)+'</td><td><span class="lutst '+s.c+'">'+s.t+'</span></td></tr>';});
   h+='</table></div>';
  }else{
   h+='<div class="tw"><table class="lutt calparamtable"><tr><th>پارامتر / شناسه</th><th>واحد</th><th>مقدار واقعی روی برد</th></tr>';
@@ -3641,12 +3642,10 @@ function calParamTable(before,proposed,after,title,source,ids,selection,editable
 }
 function lpost(b,p,a,br,ar,ae){
  if(!ar)return {c:'bad',t:ae?'بازخوانی ناموفق':'در انتظار بازخوانی بعد'};
- /* [EN] A zero-point proposal is a real command: it removes the flash
-    override and returns that channel to the compiled table. Therefore an
-    old non-zero pair followed by zero points is a CONFIRMED CHANGE, not
-    "unchanged". [FA] پیشنهاد صفرنقطه‌ای یک فرمان واقعی است: override فلش
-    را حذف می‌کند و کانال را به جدول کامپایل‌شده برمی‌گرداند؛ پس حذف نقطهٔ
-    قبلی باید «تغییر کرد و تأیید شد» باشد، نه «بدون تغییر». */
+ /* [EN] Zero points remove the flash override and restore the compiled
+    table; removing old points is therefore a confirmed change.
+    [FA] صفرنقطه‌ای override فلش را حذف و جدول کامپایل‌شده را برمی‌گرداند؛
+    پس حذف نقطهٔ قبلی «تغییر کرد» است، نه «بدون تغییر». */
  if(!p){
   if(a)return {c:'bad',t:'نقطهٔ اضافه روی برد'};
   if(br&&b)return {c:'changed',t:'تغییر کرد و تأیید شد'};
@@ -3714,12 +3713,8 @@ async function lreadnow(){
   stxt('calst',r.ready?'✅ جدول فعال واقعی هر دو باتری در بالا نمایش داده شد.':'⚠ '+r.error+'؛ جدول فعلی قابل اتکا نیست.');
  }finally{LREAD_IN_PROGRESS=false;CAL_BUSY=false;lupd();}
 }
-/* [EN] After reset, fetch a fresh telemetry report instead of trusting the
-   pre-reset D object. Every calibration value used by this transaction must
-   equal the value that survived the reset.
-   [FA] بعد از ریست، گزارش تازهٔ تله‌متری خوانده می‌شود و شیء D قبل از ریست
-   معتبر فرض نمی‌شود؛ هر مقدار کالیبراسیون این تراکنش باید بعد از ریست
-   همچنان دقیقاً برابر مقدار پایدارشده باشد. */
+/* [EN] Verify every calibration value from fresh telemetry after reset.
+   [FA] پس از ریست، همهٔ پارامترها با تله‌متری تازه دوباره تأیید شوند. */
 async function lcalread(p){
  const ids=Array.isArray(p&&p.cal&&p.cal.ids)&&p.cal.ids.length?p.cal.ids:lcalids(p&&p.target),want=id=>id===0?p.cal.offset[0]:id===1?p.cal.offset[1]:id===2?p.cal.gain[0]:id===3?p.cal.gain[1]:p.cal.voltage[id-4];
  for(let i=0;i<10;i++){
@@ -3774,7 +3769,7 @@ function lcaltoggle(el){
  next.cal.editable=true;
  LUT_PENDING.p=next;
  LUTVIEW='';lview(next,LUT_PENDING.before,null);
- stxt('calst','تغییر انتخاب شد؛ جدول پایین با مقدارهای انتخاب‌شده دوباره ساخته شد.');
+ stxt('calst',(next.msg.length?next.msg.join(' · ')+' · ':'')+'انتخاب تغییر کرد؛ جدول دوباره ساخته شد.');
 }
 function lcancelpending(){
  if(!LUT_PENDING)return;
@@ -3848,7 +3843,7 @@ async function lsend(target){
   p.cal.editable=true;
   LUT_PENDING={target:targetId,before:before,p:p,selected:p.cal.selected};
   LUTVIEW='';lview(p,before,null);
-  stxt('calst','تغییرهای پیشنهادی پایین صفحه آماده‌اند؛ تیک هر مقدار را که نباید عوض شود بردارید، سپس «تأیید و اعمال موارد تیک‌خورده» را بزنید.');
+  stxt('calst',(p.msg.length?'ℹ '+p.msg.join(' · ')+' · ':'')+'موارد پیشنهادی آماده‌اند؛ تیک‌ها را بررسی و موارد دلخواه را اعمال کنید.');
  }finally{CAL_BUSY=false;LREAD_IN_PROGRESS=false;lupd();}
 }
 async function lrst(){
