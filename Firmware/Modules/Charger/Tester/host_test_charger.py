@@ -508,6 +508,16 @@ def test_setpoints_and_timing():
           "non-zero ETA must convert with LIVE voltages: iest = I x Vin x eta / (1000 x Vbat) - the v1.3 calibration architecture (user order 2026-09-24)")
     check("CHG_ETA_MIN_VIN_MV" in charger_c_txt and "CHG_ETA_MIN_VBAT_MV" in charger_c_txt,
           "live-voltage sanity guards must exist for the ETA conversion")
+    meas_h_txt = (ROOT / "Firmware/Modules/Measurement/measurement.h").read_text()
+    meas_c_txt = (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text()
+    check("func__Measurement_CurrentIsBatteryCalibrated" in meas_h_txt and
+          "func__Measurement_CurrentIsBatteryCalibrated" in meas_c_txt and
+          "func__Measurement_CurrentIsBatteryCalibrated(uint8_t__channelIndex)" in charger_c_txt,
+          "the charger must ask Measurement whether the per-channel result is already battery-side calibrated")
+    gate_at = charger_c_txt.find("func__Measurement_CurrentIsBatteryCalibrated")
+    eta_math_at = charger_c_txt.find("uint32_t__primaryMa * uint32_t__etaPermille")
+    check(gate_at >= 0 and eta_math_at > gate_at,
+          "the battery LUT gate must run before the legacy ETA Vin/Vbat math, so stale NVM ETA cannot double-convert it")
     esp_link_h_txt = (ROOT / "Firmware/Modules/EspLink/esp_link.h").read_text()
     esp_link_c_txt = (ROOT / "Firmware/Modules/EspLink/esp_link.c").read_text()
     # [EN] CAL_REFERENCE was a v1.3 command the panel stopped sending in v1.7.
@@ -2097,22 +2107,34 @@ def test_alarms_tab_v115():
     check("FEXP=" in ino and "آستانهٔ قطع (۲۷)" in ino and "ASB=" in ino,
           "v1.15b (user order: grouped status + fault explanations, no flicker): per-bit fault explanations and a build-once status skeleton")
     check("function xexp()" in ino and "function ximp(f)" in ino and 'id="xim"' in ino
-          and "'changeover-settings-'" in ino and "XIDS=" in ino,
-          "v1.15b (user order: settings import/export): JSON backup card for filter + profile + alarms")
+          and "'changeover-settings-'" in ino and "XIDS=" in ino
+          and 'aria-label="ذخیرهٔ پشتیبان"' in ino
+          and 'aria-label="بازگردانی پشتیبان"' in ino
+          and 'class="sb pbg"' in ino and 'class="sb pby"' in ino
+          and '#p2 .pbg' in ino and '#p2 .pby' in ino,
+          "v1.15b: the backup card uses labeled, color-coded export/import icons on settings")
+    check("نمونه‌ها و محاسبه" in ino and "📥 ذخیرهٔ نمونه‌ها" in ino
+          and "📤 بازخوانی نمونه‌ها" in ino and "🗑️ پاک کردن نمونه‌ها" in ino
+          and "aria-label=\"پاک کردن نمونه‌ها\"" in ino,
+          "the bench sample actions are grouped beside calculation with a labeled trash control")
     # [EN] v1.57 (user order: finish the backup): the file must carry an
     #      identity and the import must reuse the panel's joint rules.
     # [FA] فایل پشتیبان شناسنامه دارد و ورودی از قوانین مشترک رد می‌شود.
-    check("app:'ChangeOver-settings',v:3" in ino and "schema:xschema()" in ino
-          and "saved:new Date().toISOString()" in ino,
-          "v1.81: the backup file records a parameter schema and date")
+    check("app:'ChangeOver-settings',v:4" in ino and "schema:xschema()" in ino
+          and "saved:new Date().toISOString()" in ino and "pending:xpending()" in ino
+          and "benchSamples:xsamples" in ino and "lut:lut" in ino,
+          "v1.81: the full backup records schema, date, pending values, raw samples and LUT")
     check("const fixed=fixrules(v);" in ino and "function xclamp(id,n)" in ino,
           "v1.57: an imported file passes through fixrules and each field's own range")
     # [EN] v1.57 (user order: calibrate straight from the bench capture).
     # [FA] v1.57: کالیبراسیون مستقیم از داده‌برداری بنچ با تأیید کاربر.
     check("function calpush(" in ino and "function calfit(" in ino
+          and "Theil-Sen" in ino and "Huber IRLS" in ino
           and "function calrun()" in ino and "async function calapply()" in ino
+          and "جریان خالص باتری صفر در raw=" in ino
+          and "Math.max(0,Math.round(z[b]*vb/1000))" in ino
           and "calapply()" in ino and "xexp();" in ino,
-          "v1.57: bench samples are fitted, previewed and only written after a confirm + auto backup")
+          "bench calibration directly fits signed current in each battery lead and builds battery-power LUTs")
     # [EN] Stale since the scenario-card redesign and only found on 2026-10-05:
     #      the battery-supervision fields are no longer one flat group called
     #      "نظارت باتری" - they live in the six scenario cards, and the
@@ -3511,6 +3533,21 @@ def test_panel_lut_mirrors_firmware_v125():
               "mirror makes the page report a different current than the board")
 
 
+def test_battery_card_uses_measurement_current_not_legacy_iest():
+    """The prominent card must show filtered Measurement current; iest stays
+    in the per-channel diagnostics table so a stale legacy ETA cannot hide the
+    raw -> filtered -> LUT mismatch."""
+    panel = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
+    preview = (ROOT / "esp_link_panel" / "panel_preview.html").read_text()
+    check("جریان باتری (کالیبره)" in panel and "جریان باتری (کالیبره)" in preview,
+          "both live panel sources must label the main card as calibrated battery current")
+    check("$('ie'+n).innerHTML=t[b+3]" in panel and
+          "$('ie'+n).innerHTML=t[b+3]" in preview,
+          "the main card must use filtered Measurement current t[b+3], not the legacy iest t[b+4]")
+    check("تخمین باتری (iest)" in panel and "تخمین باتری (iest)" in preview,
+          "iest must remain visible as a separate diagnostic audit field")
+
+
 def test_vdda_reference_measurement_v125():
     """[EN] The board "never calibrates" for a mathematical reason: the
        dominant error is a GAIN (the ADC reference is not the assumed 3.300 V)
@@ -4521,6 +4558,7 @@ def main():
         test_min_select_handover_v124,
         test_dynamic_disturbances_v124,
         test_panel_lut_mirrors_firmware_v125,
+        test_battery_card_uses_measurement_current_not_legacy_iest,
         test_vdda_reference_measurement_v125,
         test_param_ranges_match_panel_v125,
         test_benchlog_row_matches_header_v125,

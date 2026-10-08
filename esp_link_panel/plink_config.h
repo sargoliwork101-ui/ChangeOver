@@ -273,14 +273,14 @@
  *      کیلوبایت (۳۸۴۰۰۰ به ۳۸۵۰۲۴) پله خورد؛ رفتار، انتقال تکه‌ای و ممیزی
  *      مهر/اندازه بدون تغییر است.
  *
- *      2026-10-07 active-LUT readback and point-by-point audit add served
- *      markup; the per-battery calibration/readback controls now measure
- *      about 402.5 KB, so the deliberate guard is 410000 bytes.
- *      [FA] در ۲۰۲۶-۱۰-۰۷ کنترل مستقل کالیبراسیون/بازخوانی هر باتری به
- *      مارک‌آپ افزوده شد؛ اندازه حدود ۴۰۲٫۵ کیلوبایت است، پس سقف عمدی
- *      ۴۱۰۰۰۰ بایت با حاشیهٔ روشن است.
+ *      2026-10-08 the scoped calibration review and per-row keep/apply
+ *      controls add served markup; the deliberate guard is stepped to
+ *      416000 bytes so the chunked page still has build-time headroom.
+ *      [FA] در ۲۰۲۶-۱۰-۰۸ ممیزی دامنه‌دار کالیبراسیون و کنترل حفظ/اعمال
+ *      ردیفی به مارک‌آپ افزوده شد؛ سقف عمداً با حاشیه به ۴۱۶۰۰۰ بایت
+ *      پله خورد تا صفحهٔ chunked در بیلد جا داشته باشد.
  */
-#define ESP_PANEL_HTML_MAX_BYTES    410000u
+#define ESP_PANEL_HTML_MAX_BYTES    416000u
 
 /* ==================== Parser States ==================== */
 typedef enum

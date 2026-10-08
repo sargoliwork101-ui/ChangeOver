@@ -348,15 +348,15 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
  * [FA] حدود گیرهٔ ضریب تبدیل زمان اجرای قابل‌تنظیم از ESP (v1.3): صفر =
  *      همانی/گذر (پیش‌فرض کامپایل)، ۱..۹۹۹ = تبدیل زندهٔ ‎Vin/Vbat‎. پنل
  *      می‌تواند هر وقت خواست صفرش کند تا به خوانش فیلترشدهٔ خام برگردد. */
-/* [EN] ETA vs the ch2 bench LUT (full-program audit 2026-09-27): ch2
- *      already yields true battery current through the power LUT in
- *      measurement.c - keep ETA2 at 0 or the current converts twice
- *      (LUT shape x power factor). ETA calibration is for channels
- *      without a bench table (ch1 until its SOLO1 data arrives).
- * [FA] نسبت ETA با جدول بنچ کانال ۲ (ممیزی کل برنامه): کانال ۲ با
- *      خروجی جدول توانی measurement.c همان جریان واقعی باتری است -
- *      ETA آن صفر بماند تا جریان دو بار تبدیل نشود.
- *      کالیبرهٔ ETA برای کانال بدون جدول بنچ است. */
+/* [EN] ETA vs the battery LUT (full-program audit 2026-10-08): when a
+ *      channel's Measurement LUT is enabled, its output already is battery
+ *      current and Charger_OutputEstimateMa bypasses ETA, including a stale
+ *      non-zero parameter left in NVM. ETA remains a legacy fallback only
+ *      for a channel compiled without a battery LUT.
+ * [FA] نسبت ETA با LUT باتری (ممیزی کل برنامه ۲۰۲۶-۱۰-۰۸): وقتی LUT
+ *      Measurement کانال فعال است، خروجی همین حالا جریان باتری است و
+ *      Charger_OutputEstimateMa باید ETA را حتی اگر پارامتر قدیمی غیرصفر در
+ *      NVM مانده باشد نادیده بگیرد. ETA فقط fallback مسیر legacy بدون LUT است. */
 #define CHG_ETA_MIN_PERMILLE                  0u
 #define CHG_ETA_MAX_PERMILLE                  999u
 
@@ -998,7 +998,8 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
  *      به‌روز می‌شود تا در Live Expressions با یک ورودی دیده شود.
  *      چیدمان (۵ خانه per channel + مشترک‌ها):
  *        [‎0..4]‎  کانال ۰ = نیم VHIGH: state، duty پرمیل، vbat mV،
- *                جریان اولیه mA، تخمین خروجی mA (مقدار تنظیم‌شونده)
+ *                جریان Measurement بر حسب mA (با LUT سمت باتری)، تخمین خروجی
+ *                mA (مقدار تنظیم‌شونده)
  *        [‎5..9]‎  کانال ۱ = نیم VLOW: همان پنج‌تا
  *        [10] v_in_mv، [11] v_bat24_mv، [12] v_bat12_mv،
  *        [13] v_bat_high_mv (مشتق = ‎V24 - V12)‎، [14] ماسک خطا،
