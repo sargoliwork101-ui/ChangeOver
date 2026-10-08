@@ -1014,8 +1014,18 @@ async function testBackupAndCal(win, doc) {
           backupText.indexOf('PEND') < 0 && backupText.indexOf('CALS') < 0 &&
           backupText.indexOf('LUT_BACKUP') < 0 &&
           backupText.indexOf('تنظیمات اعمال‌شده') >= 0 &&
+          backupText.indexOf('LUT یعنی جدول تبدیل') >= 0 &&
           backupText.indexOf('ارسال همه') >= 0,
-          'the backup card explains user-facing actions without internal variable names');
+          'the backup card explains user-facing actions and the LUT without internal variable names');
+    const sampleActions = ['calrun()', 'calexp()', 'calclr()'].map(fn =>
+        doc.querySelector('#p1 [onclick="' + fn + '"]'));
+    const sampleGroup = sampleActions[0] && sampleActions[0].closest('.bqr2');
+    check(sampleGroup && sampleActions.every(el => el && el.closest('.bqr2') === sampleGroup),
+          'sample save, restore and delete actions sit beside the sample calculation');
+    const trash = doc.querySelector('#p1 button[onclick="calclr()"]');
+    check(trash && trash.textContent.trim() === '🗑️ پاک کردن نمونه‌ها' &&
+          trash.classList.contains('pbr') && trash.getAttribute('aria-label') === 'پاک کردن نمونه‌ها',
+          'sample deletion has a red trash icon, label and accessible hint');
 
     /* --- the export payload carries the identity fields --- */
     const blobs = [];

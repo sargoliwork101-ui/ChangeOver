@@ -2102,6 +2102,10 @@ def test_alarms_tab_v115():
           and 'aria-label="بازگردانی پشتیبان"' in ino
           and 'class="sb pbg"' in ino and 'class="sb pby"' in ino,
           "v1.15b: the backup card uses labeled, color-coded export/import icons")
+    check("نمونه‌ها و محاسبه" in ino and "📥 ذخیرهٔ نمونه‌ها" in ino
+          and "📤 بازخوانی نمونه‌ها" in ino and "🗑️ پاک کردن نمونه‌ها" in ino
+          and "aria-label=\"پاک کردن نمونه‌ها\"" in ino,
+          "the bench sample actions are grouped beside calculation with a labeled trash control")
     # [EN] v1.57 (user order: finish the backup): the file must carry an
     #      identity and the import must reuse the panel's joint rules.
     # [FA] فایل پشتیبان شناسنامه دارد و ورودی از قوانین مشترک رد می‌شود.

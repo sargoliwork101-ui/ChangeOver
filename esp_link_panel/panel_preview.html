@@ -209,7 +209,7 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
    برای کاربر لمسی کافی نیست. */
 .bqr label .qrng{display:block;color:var(--mu);font-size:.82em;line-height:1.35;font-variant-numeric:tabular-nums}
 .bqr input[type=number]{width:100%}
-.bqr>button,.bqr>.sb{align-self:end}
+.bqr>button,.bqr>.sb{align-self:end;text-align:center}
 /* [EN] v1.76 (user order): one full-width factory key per scenario.
    [FA] کلید بازگردانی هر سناریو، تمام‌عرض. */
 .fwb{grid-column:1/-1;width:100%}
@@ -490,7 +490,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 507e2f3</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 25f58c2</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1047,7 +1047,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <label class="sb pby" style="cursor:pointer" aria-label="بازگردانی پشتیبان" title="بازگردانی پشتیبان">📤 بازگردانی پشتیبان<input type="file" id="xim" accept=".json,application/json" style="display:none"></label>
 <span class="lb" id="xst"></span>
 </div>
-<div class="sx">پشتیبان کامل، تنظیمات اعمال‌شده، تغییرهای در صف، نمونه‌های خام calibration و آخرین LUT خوانده‌شده را ذخیره می‌کند. بازگردانی فقط روی پنل آماده می‌کند؛ برای ارسال به برد «ارسال همه» را بزنید. LUT خودکار روی برد نوشته نمی‌شود و فقط برای بازبینی می‌ماند.</div>
+<div class="sx">پشتیبان تنظیمات اعمال‌شده، تغییرهای در صف و نمونه‌های خام calibration است. LUT یعنی جدول تبدیل جریان زنجیره و توان باتری از readback برد. بازگردانی فقط روی پنل آماده می‌کند؛ ارسال به برد با «ارسال همه» است و LUT خودکار اعمال نمی‌شود.</div>
 
 </div>
 </div>
@@ -3971,7 +3971,7 @@ $('p1').innerHTML=`<div class="cd"><div class="ds">هر مرحله: پنل duty 
 <div class="cm lb" id="wS0"></div><div id="wF0"></div><div id="wT"></div>
 <div class="wn gb" id="wDone" style="background:rgba(52,211,153,.10);color:#a7f3d0"><b style="color:var(--ok)">فایل آماده است.</b> <a class="sb sb2 pbb lnk" href="/benchlog" download="benchlog.csv">دانلود benchlog.csv</a> <button class="sb stp2 pbr" onclick="wclear()">پاک کردن فایل</button></div></div><div class="cd"><div class="hd"><b>کالیبراسیون خودکار از همین جدول</b><span class="lb">· نمونه‌های ثبت‌شده: <b id="caln">0</b> · عددها فقط با تأیید شما روی برد نوشته می‌شوند</span></div>
 <div class="ds">هر مرحله‌ای که در ویزارد «ثبت» می‌کنید یک نمونه هم اینجا می‌ماند. «محاسبه» از روی همین نمونه‌ها گین و آفست جریان هر دو کانال و سه آفست ولتاژ را درمی‌آورد، مقدار فعلی برد را کنار پیشنهاد می‌گذارد و کیفیت هر برازش را می‌گوید. برای نتیجهٔ خوب حداقل ۴ مرحله با duty پخش‌شده (مثلاً ۲ تا ۲۰٪) بگیرید.</div>
-<div class="lgrp">محاسبه و اعمال</div><div class="bqr2"><button class="sb sb2 pbg" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb brun pbg" onclick="calapply()">اعمال فقط پارامترهای کالیبراسیون</button></div><div class="lgrp">نمونه‌های calibration</div><div class="bqr2"><button class="sb sb2 pbb" onclick="calexp()">⬇ ذخیرهٔ نمونه‌ها</button><label class="sb sb2 pbb" style="cursor:pointer">⬆ بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2 pbr" onclick="calclr()">پاک کردن نمونه‌ها</button></div>
+<div class="lgrp">نمونه‌ها و محاسبه</div><div class="bqr2"><button class="sb sb2 pbg" onclick="calrun()">محاسبه از نمونه‌ها</button><button class="sb sb2 pbb" onclick="calexp()">📥 ذخیرهٔ نمونه‌ها</button><label class="sb sb2 pbb" style="cursor:pointer">📤 بازخوانی نمونه‌ها<input type="file" id="calf" accept=".json,application/json" style="display:none" onchange="if(this.files[0])calimp(this.files[0])"></label><button class="sb stp2 pbr" type="button" onclick="calclr()" aria-label="پاک کردن نمونه‌ها" title="پاک کردن نمونه‌ها">🗑️ پاک کردن نمونه‌ها</button><button class="sb brun pbg" onclick="calapply()">اعمال فقط پارامترهای کالیبراسیون</button></div>
 <div id="calck" style="margin:6px 0"></div><div id="calsl" style="margin:6px 0"></div><div class="lgrp">۱) خواندن و به‌روزرسانی مستقل جدول هر باتری (سقف ۲۴ نقطه)</div><div class="ds">«خواندن جدول فعلی» فقط دو جدول واقعی را از STM32 می‌خواند و جداگانه نشان می‌دهد. هر دکمهٔ «به‌روزرسانی» ابتدا گین/آفست‌های لازم را با readback همان شناسه تأیید می‌کند و سپس LUT همان تراکنش را می‌فرستد؛ جدول و تنظیمات باتری دیگر از readback واقعی حفظ می‌شود. «به‌روزرسانی هر دو» هر دو زنجیره را در یک تراکنش انجام می‌دهد. برای این مسیر دکمهٔ عمومی «اعمال همهٔ تغییرات» لازم نیست؛ دکمهٔ مستقل بالا فقط برای اعمال پارامترهای کالیبراسیون بدون ارسال جدول است.</div><div class="bqr2"><button class="sb sb2 pbb" id="lbtnRead" onclick="lreadnow()" disabled>↻ خواندن جدول فعلی از برد</button><button class="sb brun pbg" id="lbtnS1" onclick="lsend(1)" disabled>⇪ به‌روزرسانی باتری ۱</button><button class="sb brun pbg" id="lbtnS2" onclick="lsend(2)" disabled>⇪ به‌روزرسانی باتری ۲</button><button class="sb brun pbg" id="lbtnSA" onclick="lsend(0)" disabled>⇪ به‌روزرسانی هر دو</button><button class="sb sb2 pby" id="lbtnR" onclick="lrst()" disabled>↻ ریست و بازخوانی دوباره</button></div><div id="calst" class="calstatus" role="status" aria-live="polite"></div><div id="lutcmp"></div><div class="lgrp">۲) ساخت calibration.h</div><div class="bqr2"><button class="sb sb2 pbv" onclick="calcode()">ساخت کد برای میکرو</button><button class="sb sb2 pbv" onclick="calcopy()">کپی کد</button><button class="sb sb2 pbv" onclick="calcdl()">دانلود calibration_generated.h</button></div><textarea id="calcd" class="calcd" readonly></textarea><div id="calmodal" class="calmodal" role="dialog" aria-modal="true" aria-labelledby="calmodalTitle"><div class="calmodalbox"><div class="calmodalhead"><b id="calmodalTitle">تأیید تغییرهای کالیبراسیون</b><button class="calmodalclose" type="button" aria-label="بستن" onclick="calmodalClose()">×</button></div><div id="calmodalBody" class="calmodalbody"></div><div class="calmodalfoot"><button class="sb brun pbg" type="button" onclick="calmodalApply()">تأیید و اعمال همه</button><button class="sb stp2 pbr" type="button" onclick="calmodalClose()">لغو و بستن</button></div></div></div></div>
 `;
 function wmode(){const s=$('wSw')&&$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB'),S=$('wStep'),manual=$('wManual'),sweep=$('wSweep');
