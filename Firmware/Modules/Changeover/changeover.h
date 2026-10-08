@@ -6,12 +6,17 @@
  * @note    [EN] This module uses ONLY: snapshot.valid, snapshot.v_bat24_mv,
  *              snapshot.input_present, fault_mask, an internal low-battery latch
  *              and (MODULE_IMBALANCE) the func__Imbalance_GetOutputs() veto
- *              flag. Time conversion uses rtos_time.h only, tick=1ms
+ *              flag, plus (MODULE_CHARGER) func__Charger_DeadBlocksOutput()
+ *              for the condemned-pack veto - both vetos assert the battery
+ *              protect line and sit in SAFE. Time conversion uses rtos_time.h
+ *              only, tick=1ms
  *              assumption is forbidden.
  *              Only BSP_GPIO_PROTECT_BATTERY is allowed; PB5/PB7 are forbidden.
  *          [FA] این ماژول فقط از valid، v_bat24_mv، input_present، fault_mask،
- *              فلگ UI و (با ماژول عدم‌توازن) پرچم وتوی GetOutputs استفاده
- *              می‌کند.
+ *              قفل داخلی باتری کم و (با ماژول عدم‌توازن) پرچم وتوی GetOutputs
+ *              به‌علاوهٔ (با ماژول شارژر) وتوی باتری خرابِ DeadBlocksOutput
+ *              استفاده می‌کند - هر دو وتو خط محافظ باتری را فعال و به SAFE
+ *              می‌روند.
  */
 
 #ifndef CHANGEOVER_H

@@ -172,7 +172,7 @@ bool func__BspFlash_ErasePage(uint32_t uint32_t__pageAddress)
 
     bool__ok = func__BspFlash_WaitIdle();
 
-    FLASH->CR &= ~FLASH_CR_PER;
+    FLASH->CR &= (uint32_t)(~FLASH_CR_PER);
     FLASH->CR |= FLASH_CR_LOCK;
 
     return bool__ok;
@@ -273,7 +273,7 @@ bool func__BspFlash_ProgramHalfWords(uint32_t uint32_t__address,
         }
     }
 
-    FLASH->CR &= ~FLASH_CR_PG;
+    FLASH->CR &= (uint32_t)(~FLASH_CR_PG);
     FLASH->CR |= FLASH_CR_LOCK;
 
     return bool__ok;

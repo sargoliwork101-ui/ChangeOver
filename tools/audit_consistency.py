@@ -1529,6 +1529,71 @@ def sec_docs():
        f"a 24 V divider row in the BSP README disagrees with the code ({top24})",
        "; ".join(bad24))
 
+    # [EN] A second family of stale numbers, added 2026-10-08 after the
+    #      line-by-line pass: values that were true in an older release and
+    #      survived in prose nobody re-read. Each is compared against the
+    #      header it describes, so a future resize fails the gate instead of
+    #      misleading the next reader.
+    # [FA] خانوادهٔ دومی از اعداد کهنه، پس از پاس خط‌به‌خط ۲۰۲۶-۱۰-۰۸:
+    #      مقادیری که در نسخه‌ای درست بودند و در متنی ماندند که کسی دوباره
+    #      نخوانده بود. هر یک با هدری که توصیف می‌کند سنجیده می‌شود.
+    def digits(txt):
+        """[EN] Fold Persian/Arabic-Indic digits to ASCII.
+           [FA] تبدیل ارقام فارسی/عربی به لاتین."""
+        table = {ord(c): str(i) for i, c in enumerate("۰۱۲۳۴۵۶۷۸۹")}
+        table.update({ord(c): str(i) for i, c in enumerate("٠١٢٣٤٥٦٧٨٩")})
+        return txt.translate(table)
+
+    # (1) [EN] The fabricated pack-divider top must never come back: it was
+    #         invented to make one bench reading fit and it is not a resistor
+    #         on this board. (2) [EN] Every file that describes the linker's
+    #         application region must state the size the linker script really
+    #         has, and may only cite the old 62K with a history marker on the
+    #         same line. (3) [EN] The front page's current-phase line must
+    #         carry the parameter count and NVM record version from the
+    #         headers - the two numbers that sat stale while the protocol
+    #         grew from 93 ids to 143.
+    ok("66200" not in CAL_H,
+       "calibration.h carries the fabricated 66200-ohm divider again",
+       "the pack divider is 68K + 1.2K over 6.8K on the schematic (measured 11.0054)")
+    flash_k = None
+    m_ld = re.search(r"FLASH\s*\(rx\)\s*:\s*ORIGIN\s*=\s*0x[0-9A-Fa-f]+\s*,"
+                     r"\s*LENGTH\s*=\s*(\d+)K",
+                     read("CubeIDE/STM32CubeIDE/STM32F103C8TX_FLASH.ld"))
+    if ok(m_ld is not None,
+          "the linker script FLASH region could not be parsed for the docs check"):
+        flash_k = int(m_ld.group(1))
+    hist = ("before", "used to", "was ", "of that day", "then-", "previously",
+            "پیش از", "قبلاً", "همان روز", "هنگام", "تاریخچه", "قدیم")
+    for rel in ("CubeIDE/README.md",
+                "CubeIDE/Core/Inc/FreeRTOSConfig.h",
+                "Firmware/Rtos/Src/freertos_hooks.c",
+                "tools/measure_flash.py"):
+        body = digits(read(rel))
+        ok((f"{flash_k}K" in body) or (f"{flash_k} KiB" in body),
+           f"{rel} never states the current application FLASH region ({flash_k}K)")
+        stale = [l.strip()[:70] for l in body.split("\n")
+                 if re.search(r"62\s*(?:KiB|Ki|K|k|کیلو)", l)
+                 and not any(h in l for h in hist)]
+        ok(not stale,
+           f"{rel} claims the old 62K region without marking it as history",
+           "; ".join(stale))
+    params = code(ESP_H, "ESPLINK_PARAM_COUNT")
+    nvm_ver = code(NVM_H, "ESP_LINK_NVM_VERSION")
+    root = digits(docs.get("README.md", ""))
+    status = next((l for l in root.split("\n") if "مرحله فعلی" in l), "")
+    if ok(status != "", "the root README has no current-phase line"):
+        if ok(params is not None,
+              "ESPLINK_PARAM_COUNT not found for the root README check"):
+            ok(str(params) in status,
+               f"the root README status line omits the real parameter count ({params})",
+               status[:90])
+        if ok(nvm_ver is not None,
+              "ESP_LINK_NVM_VERSION not found for the root README check"):
+            ok(f"نسخهٔ {nvm_ver}" in status,
+               f"the root README status line omits the real NVM record version ({nvm_ver})",
+               status[:90])
+
 
 
 # ============================================== 12. standalone preview

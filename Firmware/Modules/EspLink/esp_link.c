@@ -1334,11 +1334,13 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
 
     if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_BEGIN)
     {
+        uint8_t uint8_t__status;
+
         /* [EN] The latest LUT ACK is no longer the successful commit once a
            new staging transaction begins.
            [FA] با شروع تراکنش جدید، آخرین ACK دیگر ACK موفق commit نیست. */
         func__EspLink_RecordLutCommitAck(false);
-        uint8_t uint8_t__status = (uint8_t)CAL_LUT_ST_COUNT;
+        uint8_t__status = (uint8_t)CAL_LUT_ST_COUNT;
 
         if (uint16_t__payloadLength == 2u)
         {
@@ -1362,12 +1364,14 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
 
     if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_LUT_CHUNK)
     {
+        uint8_t uint8_t__status;
+
         /* [EN] A chunk ACK supersedes a commit ACK; reset must wait for a
            fresh successful commit after this transaction step.
            [FA] ACK تکه جای ACK commit را می‌گیرد؛ بعد از این مرحله ریست باید
            منتظر commit موفق تازه بماند. */
         func__EspLink_RecordLutCommitAck(false);
-        uint8_t uint8_t__status = (uint8_t)CAL_LUT_ST_MISSING;
+        uint8_t__status = (uint8_t)CAL_LUT_ST_MISSING;
 
         if (uint16_t__payloadLength >= 3u)
         {

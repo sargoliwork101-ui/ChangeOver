@@ -556,6 +556,8 @@ static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *mea
     uint32_t uint32_t__etaPermille =
         (uint8_t__channelIndex == 0u) ? UINT32_T__G__ChargerEta1Permille
                                       : UINT32_T__G__ChargerEta2Permille;
+    uint32_t uint32_t__vinMv;
+    uint32_t uint32_t__vbatMv;
 
     if (uint32_t__etaPermille == 0u)
     {
@@ -564,8 +566,8 @@ static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *mea
         return uint32_t__primaryMa;
     }
 
-    uint32_t uint32_t__vinMv = measurement_snapshot_t__snap->v_in_mv;
-    uint32_t uint32_t__vbatMv =
+    uint32_t__vinMv = measurement_snapshot_t__snap->v_in_mv;
+    uint32_t__vbatMv =
         func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,
                                        uint8_t__channelIndex);
 
@@ -1810,6 +1812,12 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
         if (charger_channel_state_t__channel->charger_state_t__state == CHG_STATE_ABSORB)
         {
             uint32_t uint32_t__absorbDeltaTicks;
+            bool bool__taperNow;
+            bool bool__taperDone;
+            bool bool__soakDone;
+            bool bool__absorbTimedOut;
+            uint32_t uint32_t__taperSustainTicks;
+            uint32_t uint32_t__absorbMaxTicks;
 
             uint32_t__absorbTicks = func__Charger_DurationTicks(CHG_LIM(CHG_LIMIT_PARAM_ABSORB_HOLD_MS));
 
@@ -1836,13 +1844,6 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                 charger_channel_state_t__channel->uint32_t__absorbAccumTicks =
                     uint32_t__absorbTicks;
             }
-
-            bool bool__taperNow;
-            bool bool__taperDone;
-            bool bool__soakDone;
-            bool bool__absorbTimedOut;
-            uint32_t uint32_t__taperSustainTicks;
-            uint32_t uint32_t__absorbMaxTicks;
 
             /* [EN] Absorb completion (user formula 2026-09-20, bench pack
                4.5 Ah): FLOAT begins when the minimum soak has passed AND the
@@ -3711,6 +3712,8 @@ bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
                                    uint32_t uint32_t__value,
                                    uint32_t *uint32_t__appliedValue)
 {
+    int32_t int32_t__savedKernelLock;
+
     if (uint32_t__appliedValue == NULL)
     {
         return false;
@@ -3724,7 +3727,7 @@ bool func__Charger_SetProfileParam(uint8_t uint8_t__paramId,
        [FA] قفل زمان‌بند سمت نویسنده: تسک ارتباط می‌نویسد و تسک کنترل وسط
        گیره پیشی می‌گیرد و یک پاس ست پاره می‌خواند؛ ذخیره + گیره اتمیک
        می‌شود. پیش از کرنل مسیر سادهٔ تک‌نخی اجرا می‌شود. */
-    int32_t int32_t__savedKernelLock = osKernelLock();
+    int32_t__savedKernelLock = osKernelLock();
 
     /* [EN] Indexed store (flash diet 2026-09-27): wire ids 20..26 are
        dense and charger_profile_t packs the same fields in the same order
@@ -3779,6 +3782,8 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
                                  uint32_t uint32_t__value,
                                  uint32_t *uint32_t__appliedValue)
 {
+    int32_t int32_t__savedKernelLock;
+
     if (uint32_t__appliedValue == NULL)
     {
         return false;
@@ -3789,7 +3794,7 @@ bool func__Charger_SetAlarmParam(uint8_t uint8_t__paramId,
        computation, lock-safe. Pre-kernel the plain path runs (NVM replay).
        [FA] قفل زمان‌بند سمت نویسنده: همان بستن پارگی مسیر پروفایل؛ آبشار
        نظارت محاسبهٔ خالص و امن زیر قفل است. */
-    int32_t int32_t__savedKernelLock = osKernelLock();
+    int32_t__savedKernelLock = osKernelLock();
 
     switch (uint8_t__paramId)
     {
@@ -3936,6 +3941,8 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
                                uint32_t uint32_t__value,
                                uint32_t *uint32_t__appliedValue)
 {
+    int32_t int32_t__savedKernelLock;
+
     if (uint32_t__appliedValue == NULL)
     {
         return false;
@@ -3947,7 +3954,7 @@ bool func__Charger_SetPidParam(uint8_t uint8_t__paramId,
        [FA] قفل زمان‌بند سمت نویسنده، به همان دلیل ستر پروفایل: تسک ارتباط
        می‌نویسد و تسک کنترل ممکن است وسط به‌روزرسانی PID باشد و ردیف
        نیمه‌اعمال‌شده بخواند. */
-    int32_t int32_t__savedKernelLock = osKernelLock();
+    int32_t__savedKernelLock = osKernelLock();
 
     if ((uint8_t__paramId < CHG_PID_PARAM_CURRENT_KP) ||
         (uint8_t__paramId > CHG_PID_PARAM_VOLTAGE_DOWN_RATE))
@@ -4095,12 +4102,12 @@ bool func__Charger_SetLimitParam(uint8_t uint8_t__paramId,
                                  uint32_t *uint32_t__appliedValue)
 {
     uint8_t uint8_t__index;
+    uint32_t uint32_t__applied;
 
     if (uint32_t__appliedValue == NULL)
     {
         return false;
     }
-    uint32_t uint32_t__applied;
 
     if ((uint8_t__paramId < CHG_LIMIT_PARAM_FIRST_ID) ||
         (uint8_t__paramId > CHG_LIMIT_PARAM_LAST_ID))

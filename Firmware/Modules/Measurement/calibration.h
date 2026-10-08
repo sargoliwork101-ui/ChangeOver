@@ -1,6 +1,9 @@
 /* ============================================================================
  * @file    calibration.h
- * ChangeOver bench calibration tables / جداول کالیبراسیون بنچ ChangeOver
+ * @brief   [EN] ChangeOver bench calibration tables (current LUTs, dividers,
+ *              divider-ratio and VDDA constants).
+ *          [FA] جدول‌های کالیبراسیون بنچ ChangeOver (LUT جریان، مقسم‌ها،
+ *              نسبت مقسم و ثابت‌های VDDA).
  * ----------------------------------------------------------------------------
  * [EN] All bench calibration tables in ONE place (included ONLY by
  *      measurement.c; the arrays are static). HOW TO EXTEND (all three
@@ -34,8 +37,10 @@
  *      real curve, kept as an anchor. D5's DMM voltage (12200 mV) is a
  *      +150 mV outlier vs its neighbours but harmless (36 mA x 150 mV =
  *      5 mW). Above the last anchor the last slope (13.14 mW per
- *      chain-mA) extends. COMPANION: V24 pack divider
- *      top = 66200 ohms.
+ *      chain-mA) extends. COMPANION: the V24 pack divider is
+ *      top = 68K + 1.2K over 6.8K from the schematic (correction
+ *      2026-09-29: the fabricated top value this line used to carry was
+ *      deleted; see bsp_measurement.c for the measured ratio).
  * [FA] خروجی «توان باتری ۱» است نه جریان: در DCM نمونهٔ وسط-ON زنجیره
  *      انرژیِ هر سایکل را دنبال می‌کند (مستقل از ولتاژ باتری) و
  *      measurement.c آن را به vhigh زنده (گیرهٔ ۸..۱۵V) تقسیم می‌کند.

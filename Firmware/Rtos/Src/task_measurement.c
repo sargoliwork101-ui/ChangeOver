@@ -43,11 +43,13 @@
  */
 void func__TaskMeasurement(void *void_ptr__argument)
 {
+#if MODULE_MEASUREMENT
+    uint32_t UINT32_T__lastWakeTime;
+#endif
+
     (void)void_ptr__argument;
 
 #if MODULE_MEASUREMENT
-    uint32_t UINT32_T__lastWakeTime;
-
     /* [EN] One-time bring-up is delegated to the board BSP. The task does not
        know the MCU ADC handle or its peripheral name.
        [FA] راه‌اندازی یک‌بار به BSP برد سپرده می‌شود. این تسک هندل ADC

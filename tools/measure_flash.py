@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """
-[EN] Measure the STM32 image size on the host, so "does it still fit in 62K"
-     stops being a question only the Windows IDE can answer.
+[EN] Measure the STM32 image size on the host, so "does it still fit in the
+     linker's application FLASH region" stops being a question only the
+     Windows IDE can answer. The region is 56K today (it was 62K before the
+     NVM blocks were reserved and 60K before v1.80 moved the parameter bank);
+     the budget is not retyped here - the project's own linker script is
+     parsed, so this tool follows a re-sized region automatically.
 
      There is no arm-none-eabi-gcc in this sandbox, so the sources are built
      for Thumb/Cortex-M3 with the LLVM toolchain inside the ziglang wheel.
@@ -12,8 +16,12 @@
      That is exactly what a "FLASH overflowed by 780 bytes" decision needs,
      and guessing at it from source is how people remove the wrong thing.
 
-[FA] اندازه‌گیری حجم ایمیج STM32 روی هاست، تا «هنوز در ۶۲ کیلوبایت جا می‌شود
-     یا نه» سؤالی نباشد که فقط IDE ویندوز جوابش را بداند.
+[FA] اندازه‌گیری حجم ایمیج STM32 روی هاست، تا «هنوز در ناحیهٔ فلش برنامهٔ
+     لینکر جا می‌شود یا نه» سؤالی نباشد که فقط IDE ویندوز جوابش را بداند.
+     ناحیه امروز 56K است (پیش از رزرو بلوک‌های NVM برابر 62K و پیش از
+     جابه‌جایی بانک پارامترها در v1.80 برابر 60K)؛ بودجه اینجا دوباره
+     تایپ نمی‌شود - اسکریپت لینکر خود پروژه خوانده می‌شود، پس این ابزار با
+     تغییر اندازهٔ ناحیه خودش را هم‌گام می‌کند.
 
      در این سندباکس arm-none-eabi-gcc نیست، پس سورس‌ها با توولچین LLVM داخل
      بستهٔ ziglang برای Thumb/Cortex-M3 ساخته می‌شوند. عدد مطلق با گزارش

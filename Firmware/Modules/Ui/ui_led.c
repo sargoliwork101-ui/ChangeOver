@@ -478,6 +478,9 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t uint32_t__value,
                             uint32_t *uint32_t__appliedValue)
 {
+    int32_t int32_t__savedKernelLock;
+    uint8_t uint8_t__wordIndex;
+
     if (uint32_t__appliedValue == NULL)
     {
         /* [EN] The API promises the applied value on success; reject a write
@@ -494,7 +497,7 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
        [FA] قفل زمان‌بند سمت نویسنده: امروز عملاً افزونه (خواننده پایین‌تر
        از نویسنده است) ولی ست ۴۶فیلدی را در برابر جابه‌جایی آیندهٔ
        اولویت‌ها می‌بندد. */
-    int32_t int32_t__savedKernelLock = osKernelLock();
+    int32_t__savedKernelLock = osKernelLock();
 
     /* [EN] Indexed store (flash diet 2026-09-27: the 39-case switch cost
        1.4 KiB the F103C8 no longer has). Wire ids are dense MIN..MAX and
@@ -505,7 +508,7 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
        [FA] ذخیرهٔ نمایه‌ای (رژیم فلش: سوییچ ۳۹حالته ۱٫۴KB می‌خورد که
        نداریم). شناسه‌ها پشت‌سرهم و فیلدها به همان ترتیب‌اند پس مستقیم
        ایندکس می‌زنیم - همان ذخیره، همان گیره، همان قفل. */
-    uint8_t uint8_t__wordIndex = func__Ui_AlarmParamIndex(uint8_t__paramId);
+    uint8_t__wordIndex = func__Ui_AlarmParamIndex(uint8_t__paramId);
 
     if (uint8_t__wordIndex == UI_ALARM_PARAM_INDEX_INVALID)
     {
@@ -529,6 +532,8 @@ bool func__Ui_SetAlarmParam(uint8_t uint8_t__paramId,
 bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
                             uint32_t *uint32_t__value)
 {
+    uint8_t uint8_t__wordIndex;
+
     if (uint32_t__value == NULL)
     {
         return false;
@@ -536,7 +541,7 @@ bool func__Ui_GetAlarmParam(uint8_t uint8_t__paramId,
 
     /* [EN] Indexed read: same dense-id/struct contract as the setter.
        [FA] خواندن نمایه‌ای: همان قرارداد شناسه/ساختار. */
-    uint8_t uint8_t__wordIndex = func__Ui_AlarmParamIndex(uint8_t__paramId);
+    uint8_t__wordIndex = func__Ui_AlarmParamIndex(uint8_t__paramId);
 
     if (uint8_t__wordIndex == UI_ALARM_PARAM_INDEX_INVALID)
     {
@@ -1699,6 +1704,15 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
  */
 void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
 {
+    uint8_t uint8_t__rawPercent;
+    uint8_t uint8_t__stablePercent;
+    uint32_t uint32_t__remainingPercent;
+    uint32_t uint32_t__periodPerPercent;
+    uint32_t uint32_t__greenOffMs;
+    uint32_t uint32_t__greenOnMs;
+    uint32_t uint32_t__nowTick;
+    uint32_t uint32_t__criticalElapsedMs;
+
 #if MODULE_FAULT
     /* [EN] Defensive priority guard: if a battery-lost fault reaches this
        helper directly, it must replace BatteryRun before the one-shot empty
@@ -1712,15 +1726,6 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
         return;
     }
 #endif
-
-    uint8_t uint8_t__rawPercent;
-    uint8_t uint8_t__stablePercent;
-    uint32_t uint32_t__remainingPercent;
-    uint32_t uint32_t__periodPerPercent;
-    uint32_t uint32_t__greenOffMs;
-    uint32_t uint32_t__greenOnMs;
-    uint32_t uint32_t__nowTick;
-    uint32_t uint32_t__criticalElapsedMs;
 
     func__Ui_ResetChargingYellowBlink();
 

@@ -8,7 +8,7 @@
 
 تغییر مسیر تغذیه ۲۴ ولت DC: ورودی یا باتری. MCU: `STM32F103C8T6`.
 
-**مرحله فعلی (۲۰۲۶-۰۹-۲۹، فرم‌ور v2 — لینک CRC-16 + مقسم‌های اندازه‌گیری‌شده):** محصول کامل است و روی بنچ واقعی کالیبره شده: دو شارژر مستقل ۱۲V با LUT توانی بنچ پر-کانال (mA واقعی باتری)، نمونه‌برداری سنکرون جریان، ESP-Link با پروتکل v1.24 (۹۳ پارامتر، ماندگاری فلش NVM v8) و پنل وب v1.24. همهٔ ماژول‌ها فعال‌اند (`MODULE_UI/MEASUREMENT/CHARGER/JITTER/FAULT/CHANGEOVER/MCU_POWER_PATH/ESP=1`؛ شارژر با `CHG_MASTER_ENABLE=1`)؛ فقط `MODULE_PROTECTION=0` خاموش است ولی backendاش در Build مانده.
+**مرحله فعلی (۲۰۲۶-۱۰-۰۸، فرم‌ور v2 — لینک CRC-16، کالیبراسیون بنچ و جدول زندهٔ میکرو):** محصول کامل است و روی بنچ واقعی کالیبره شده: دو شارژر مستقل ۱۲V با PID دوحلقه‌ای CC/CV و LUT توانی بنچ پر-کانال (mA واقعی باتری) به‌همراه مسیر ارسال مستقیم جدول به فلش میکرو (`CalLut`)، نمونه‌برداری سنکرون جریان با مقسم‌های اندازه‌گیری‌شده، ESP-Link با قاب نسخهٔ ۲ و CRC-16 (**۱۴۳ شناسهٔ سیم: ۰..۱۴۲**، **ماندگاری فلش NVM رکورد نسخهٔ ۱۲ با ۱۴۴ جای**) و **پنل وب v1.91**. چهرهٔ LED/بوق سناریوهای عدم‌توازن، باتری خراب و خطای فنی مستقل و از پنل تنظیم‌شدنی است؛ مود تست دستی هم با ددمن ۳ ثانیه پیاده شده است. همهٔ ماژول‌ها فعال‌اند (`MODULE_UI/MEASUREMENT/CHARGER/JITTER/FAULT/CHANGEOVER/MCU_POWER_PATH/ESP=1`؛ شارژر با `CHG_MASTER_ENABLE=1`)؛ فقط `MODULE_PROTECTION=0` خاموش است ولی backendاش در Build مانده.
 
 شماتیک: `Circuit/ChangeOver(24V_DC).pdf`
 
@@ -35,7 +35,7 @@ CubeIDE/Core/Src/main.c
     App_Init()                        نقطهٔ آماده‌سازی عمومی برنامه
     Rtos_Start()                      Firmware/Rtos/Src/rtos_app.c
       TaskMeasurement                 Firmware/Rtos/Src/task_measurement.c
-        ADC1 + DMA1                   سخت‌افزار، بافر چرخشی ۵ کاناله
+        ADC1 + DMA1                   سخت‌افزار، بافر چرخشی ۶ کاناله (۵ پایه + VREFINT)
           Measurement_Run()           تبدیل ADC خام به mV/mA و انتشار snapshot
       TaskUi                          Firmware/Rtos/Src/task_ui.c
         سناریوهای LED/بازر از snapshot کامل (ولتاژها + جریان‌ها + وضعیت شارژر)
@@ -52,7 +52,7 @@ CubeIDE/Core/Src/main.c
 | حوزه | API منطقی | backend فیزیکی فعلی |
 |---|---|---|
 | GPIO | `func__BspGpio_Init/Write/Read` | PA4، PA8، PB0/PB1/PB10، PB5/PB7/PB11 و PB2/PB4/PB6 |
-| ADC | `func__BspAdc_Init/Start/GetRaw` | ADC1 + DMA1 Channel1، پنج کانال PA1/PA2/PA3/PA5/PA7 |
+| ADC | `func__BspAdc_Init/Start/GetRaw` | ADC1 + DMA1 Channel1، شش تبدیل (پنج کانال PA1/PA2/PA3/PA5/PA7 + VREFINT داخلی) |
 | Calibration | `func__BspMeasurement_*` | تقسیم‌های ۲۴V/۱۲V، شانت و gain در پورت برد |
 | PWM | `func__BspPwm_Init/SetDutyPermille/StopAll` | TIM2_CH1 روی PA0 و TIM3_CH1 روی PA6 |
 | UART | `func__BspUart_Init/Write/ReadByte` | USART1 روی PA9/PA10؛ init مکعب 115200، ران‌تایم 921600 8-N-1 با DMA دوطرفه |
@@ -86,6 +86,10 @@ ChangeOver
 ├── README.md                          ← همین صفحه
 ├── Circuit/
 │   └── ChangeOver(24V_DC).pdf
+├── Documentation/
+│   ├── Program_Map.xlsx               ← نقشهٔ کل برنامه (فایل‌ها، توابع، ۱۴۳ شناسه، پایه‌ها، فلش، دروازه‌ها) — ساختهٔ tools/make_program_map.py
+│   ├── System_State_Machine.xlsx      ← ماشین حالت کل برنامه؛ هر ماژول هم کتاب خودش را کنار برگهٔ اعتبارسنجی دارد
+│   └── (گزارش‌های ممیزی/اعتبارسنجی تاریخ‌دار — تاریخچه، دست‌نخورده می‌مانند)
 ├── CubeMX/
 │   └── CubeIDE.ioc                    ← کپی تنظیمات مکعب (هم‌نام پروژه، بعد از Generate کپی شود)
 ├── CubeIDE/                           ← HAL، main.c، CMSIS-RTOS2 با Backend فعلی FreeRTOS
@@ -93,8 +97,14 @@ ChangeOver
 ├── tools/
 │   ├── check_ai_rules.sh              ← اجرای قوانین AI_AGENT_RULES.md
 │   ├── check_firmware_syntax.sh       ← syntax check سمت Host برای Core و Firmware (از ۲۰۲۶-۱۰-۰۶ روی سورس‌های Firmware هشدارهای سخت‌گیرانهٔ shadow/undef/prototypes/cast-qual هم با ‎-Werror‎ اعمال می‌شود)
-│   ├── audit_consistency.py           ← ممیز نامتغیرهای بین‌فایلی (۳۶۶ نامتغیر؛ شامل پوشش اعتبارسنجی، آینه‌بودن شبیه‌ساز و ماشین حالت هر ماژول)
+│   ├── audit_consistency.py           ← ممیز نامتغیرهای بین‌فایلی (۴۵۹ نامتغیر؛ شامل پوشش اعتبارسنجی، آینه‌بودن شبیه‌ساز، ماشین حالت هر ماژول، و اعداد کهنهٔ مستندات در برابر کد)
 │   ├── make_module_state_machines.py  ← ساخت ماشین حالت جدا برای هر ماژول + لینک در فایل اعتبارسنجی همان ماژول
+│   ├── make_state_machine_xlsx.py     ← کتاب ماشین حالت کل برنامه (Documentation/System_State_Machine.xlsx)
+│   ├── make_program_map.py            ← نقشهٔ کل برنامه: فایل‌ها، توابع، ۱۴۳ شناسهٔ ESP، پایه‌ها، فلش، دروازه‌ها (Documentation/Program_Map.xlsx)
+│   ├── fix_rtl_comments.py            ← چک/اصلاح علامت‌های راست‌به‌چپ داخل کامنت‌های فارسی
+│   ├── make_panel_preview.py          ← ساخت کپی آفلاین پنل (esp_link_panel/panel_preview.html)
+│   ├── panel_preview_server.js        ← سرور محلی همان کپی آفلاین (پورت ۳۰۰۰)
+│   ├── stamp_panel.py                 ← مهر نسخه/تاریخ ساخت روی هدر پنل
 │   ├── measure_flash.py               ← اندازهٔ فلش ایمیج (مقایسهٔ دلتا، نه عدد مطلق)
 │   ├── measure_ram.py                 ← بودجهٔ RAM + بدترین عمق پشتهٔ هر تسک و وقفه (capstone)
 │   └── (host tests در Modules/*/Tester: Ui, Charger, Imbalance, Changeover, Fault, Protection, Jitter, McuPowerPath, CalLut, Measurement — همه داخل check_firmware_syntax.sh اجرا می‌شوند)
@@ -122,14 +132,16 @@ ChangeOver
     │              ──► task_comm.c        (MODULE_ESP، فعال)
     │   freertos_hooks.c
     └── Modules/
-        Ui              فعال (+ host_test_ui.py)
+        Ui              فعال (+ host_test_ui.py؛ سناریوهای چراغ/بوق)
         Measurement     فعال (ADC → mV/mA + LUT بنچ + snapshot)
-        Charger         فعال (دو شارژر ۱۲V + مود دستی، + host_test_charger.py)
-        EspLink         فعال (پروتکل v1.17b + NVM v5 + پنل v1.17b)
+        Charger         فعال (دو شارژر ۱۲V + PID دوحلقه‌ای + مود دستی، + host_test_charger.py)
+        EspLink         فعال (پروتکل v2 + CRC-16 + NVM نسخهٔ ۱۲ + پنل v1.91)
         Fault           فعال (تشخیص قطع باتری + نظارت)
         Jitter          فعال (رویداد EXTI → صف retry شارژر)
-        Changeover      فعال (انتخاب ورودی/باتری + APP_STATE)
+        Changeover      فعال (انتخاب ورودی/باتری + APP_STATE + وتوی سناریو ۵/۶)
         McuPowerPath    فعال (Q1/PB5 مستقل)
+        Imbalance       فعال (سناریوی ۵: تشخیص عدم‌توازن نیم‌باتری‌ها)
+        CalLut          فعال (بلوک فلش جدا برای جدول بنچ ارسالی از پنل)
         Protection      خاموش (فلگ ۰، backend در Build)
 ```
 

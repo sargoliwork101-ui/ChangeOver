@@ -213,6 +213,7 @@ static void func__BspPwm_InitSamplingPulse(TIM_HandleTypeDef *TIM_HandleTypeDef_
 void func__BspPwm_Init(void)
 {
     uint32_t uint32_t__periodCounts;
+    uint32_t uint32_t__tim3StartCounts;
 
     __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0u);
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, 0u);
@@ -240,11 +241,11 @@ void func__BspPwm_Init(void)
        0, so both gates rise together every period.
        [FA] آزمایش بنچ (دستور کاربر ۲۰۲۶-۰۹-۲۴): TIM3 هم از صفر شروع
        می‌شود تا هر دو گیت هر دوره با هم بالا بیایند. */
-    uint32_t uint32_t__tim3StartCounts = 0u;
+    uint32_t__tim3StartCounts = 0u;
 #else
     /* [EN] Production: the frozen half-period interleave.
        [FA] تولید: درهم‌گذاری ثابت نیم‌دوره. */
-    uint32_t uint32_t__tim3StartCounts = uint32_t__periodCounts / 2u;
+    uint32_t__tim3StartCounts = uint32_t__periodCounts / 2u;
 #endif
     __HAL_TIM_SET_COUNTER(&htim2, 0u);
     __HAL_TIM_SET_COUNTER(&htim3, uint32_t__tim3StartCounts);

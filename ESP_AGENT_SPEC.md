@@ -1207,10 +1207,14 @@ its automatic mode and the buzzer unmuted.
   settings; application FLASH is 60K from that release on. A valid record
   overrides the compiled tables in calibration.h, which remain the fallback
   and remain pasteable by hand - both routes stay supported.
-- Layout: the last two 1 KiB flash pages of the STM32F103C8 (0x0800F800 /
-  0x0800FC00); the linker script shrinks application FLASH 64K -> 60K (62K
-  before v1.66) and
-  adds an NVM region, so an oversized image fails AT BUILD, not by
+- Layout (v1.80): the parameter NVM is the 4 KiB region 0x0800E000..0x0800EFFF
+  (bank A over the first two 1 KiB pages, bank B over the next two); the
+  calibration LUT block of v1.66 keeps its two pages at 0x0800F000/0x0800F400;
+  the old top pages 0x0800F800/0x0800FC00 stay reserved-unused - they are NOT
+  handed back to the application, so a board upgraded from the field cannot see
+  a stale record change meaning. The linker script shrinks application FLASH
+  64K -> 56K today (60K before v1.80, 62K before v1.66) and
+  adds the NVM regions, so an oversized image fails AT BUILD, not by
   overwriting records. Driver: `Firmware/Bsp/Src/bsp_flash.c` (direct
   RM0008 FPEC register sequences - no HAL flash sources needed).
 - Record (esp_link_nvm.c): magic "CHO1" + version + wrap-around u16

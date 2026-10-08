@@ -86,7 +86,9 @@
 
 /* Software timer definitions. */
 /* [EN] Timers OFF - flash diet 2026-10-03, after the linker reported
-   "region FLASH overflowed by 780 bytes".
+   "region FLASH overflowed by 780 bytes". That measurement was against the
+   then-62 KiB application region; the region is 56K since v1.80 reserved the
+   two-page parameter NVM banks, so this diet must NEVER be reverted.
    Nothing in this firmware creates a software timer. The only mention was
    the hook that hands the timer task its RAM, and that hook is already
    wrapped in #if (configUSE_TIMERS == 1).

@@ -8,8 +8,9 @@
  *              into calibration.h and rebuilt - and because it moves a lot
  *              of data at once, its storage path must be SEPARATE from the
  *              ordinary parameter NVM. This module is that separate path:
- *              two dedicated 1 KiB pages (0x0800F000 / 0x0800F400) directly below
- *              the parameter pages (0x0800F800 / 0x0800FC00), the same
+ *              two dedicated 1 KiB pages (0x0800F000 / 0x0800F400) that sit
+ *              ABOVE the parameter NVM (0x0800E000..0x0800EFFF since v1.80),
+ *              the same
  *              power-cut-safe ping-pong, its own magic/version/CRC32, and
  *              NOTHING in common with esp_link_nvm.c except the BSP flash
  *              driver. A LUT push can therefore never disturb a parameter

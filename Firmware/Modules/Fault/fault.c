@@ -241,6 +241,8 @@ bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
                                uint32_t uint32_t__value,
                                uint32_t *uint32_t__appliedValue)
 {
+    int32_t int32_t__savedKernelLock;
+
     if (uint32_t__appliedValue == NULL)
     {
         return false;
@@ -252,7 +254,7 @@ bool func__Fault_SetAlarmParam(uint8_t uint8_t__paramId,
        runs (NVM replay).
        [FA] قفل زمان‌بند سمت نویسنده: تسک ارتباط می‌نویسد و ارزیابی فالت
        وسط گیره پیشی می‌گیرد و یک پاس آستانهٔ پاره می‌خواند. */
-    int32_t int32_t__savedKernelLock = osKernelLock();
+    int32_t__savedKernelLock = osKernelLock();
 
     /* [EN] Indexed store (flash diet): ids 27..34 are dense and
        fault_alarm_t packs the same fields in the same order (asserts above).

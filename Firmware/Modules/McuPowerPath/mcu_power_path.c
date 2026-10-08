@@ -118,6 +118,7 @@ void func__McuPowerPath_Run(void)
      * [FA] باند ورودی DC را با ولتاژ باس و هیسترزیس تعیین می‌کنیم. */
     bool bool__inputQualify = false;   /* v_in >= QUALIFY (22000) */
     bool bool__inputLow     = false;   /* v_in < RECONNECT (21500) */
+    uint32_t uint32_t__nowTick;
 
 #if MODULE_MEASUREMENT
     measurement_snapshot_t measurement_snapshot_t__snap;
@@ -167,7 +168,7 @@ void func__McuPowerPath_Run(void)
     }
 #endif
 
-    uint32_t uint32_t__nowTick = osKernelGetTickCount();
+    uint32_t__nowTick = osKernelGetTickCount();
 
     /* ==================== Hysteresis band handling ==================== */
     if (bool__inputQualify != false)
