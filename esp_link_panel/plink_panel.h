@@ -3840,4 +3840,3 @@ function mview(d){const man=(d.fl&32)!=0,sup=d.p[19]!=null&&d.on==1;
 poll();
 setInterval(uview,250); /* v1.16: آینهٔ LED با ۵۰ میلی‌ثانیه — چشمک هم‌سرعت برد */
 </script></body></html>)HTML";
-l>)HTML";
