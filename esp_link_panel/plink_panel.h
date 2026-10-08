@@ -395,7 +395,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build b3c245f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 7cc4e36</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3150,7 +3150,7 @@ function calrun(){
   const S=calsel(ch[0]).filter(z=>Number.isFinite(z[ch[2]])&&Number.isFinite(z[ch[1]]));
   const f=calfit(S.map(z=>z[ch[1]]),S.map(z=>z[ch[2]]));
   const ttl='کانال '+fa(ch[0]);
-  if(!f||f.a<=0){rows.push([ttl+' (جریان)','','','⛔ دادهٔ کافی/سالم برای این کانال نیست',0]);return;}
+  if(!f||f.a<=0){const why='فیت جریان دادهٔ کافی/سالم ندارد';[ch[4],ch[3]].forEach(id=>{const old=cur(id);rows.push([CALREAD[id].name,id,old,old,why,0]);});return;}
   let g=Math.round(f.a/K_MA*1000),o=Math.round(-f.b/f.a);
   const gc=Math.min(3000,Math.max(100,g)),oc=Math.min(255,Math.max(0,o)),w=[];
   if(f.n<4)w.push('فقط '+f.n+' نقطه');
@@ -3166,7 +3166,7 @@ function calrun(){
   rows.push([ttl+' — آفست (count)',ch[3],cur(ch[3]),oc,'از همان خط به‌دست آمد (جریان خالص باتری صفر در raw='+oc+')',bad?0:1]);});
  /* --- سه آفست ولتاژ: میانگین اختلاف مولتی‌متر با برد --- */
  const voff=(ttl,id,get)=>{const d=[];scope.forEach(z=>{const x=get(z);if(x!=null&&Number.isFinite(x))d.push(x);});
-  if(d.length<2){rows.push([ttl,id,cur(id),cur(id),'⛔ عدد مولتی‌متر برای این ولتاژ ثبت نشده — می‌توانید دستی بنویسید',0]);return;}
+  if(d.length<2){rows.push([ttl,id,cur(id),cur(id),'اندازه‌گیری مولتی‌متر در دسترس نیست',0]);return;}
   const center=calrobustCenter(d);
   let sd=0;d.forEach(x=>sd+=(x-center)*(x-center));sd=Math.sqrt(sd/d.length);
   const nv=Math.round(xclamp(id,(cur(id)||0)+center));const w=[];
@@ -3178,12 +3178,8 @@ function calrun(){
  voff('آفست ولتاژ ورودی (mV)',4,z=>(z.dvi!=null)?(z.dvi-z.vin):null);
  voff('آفست ولتاژ پک ۲۴ ولت (mV)',5,z=>(z.dv1!=null&&z.dv2!=null)?((z.dv1+z.dv2)-z.v24):null);
  voff('آفست نود ۱۲ ولت (mV)',6,z=>(z.dv2!=null)?(z.dv2-z.vlo):null);
- /* [EN] The result is a compact status summary, not a second editor/table.
-    Every valid calculated calibration value is included in one batch; the
-    user confirms the whole batch in the scrollable dialog below.
-    [FA] نتیجه فقط یک خلاصهٔ وضعیت است، نه جدول و نه ویرایشگر دوم. هر مقدار
-    معتبر محاسبه‌شده در یک batch می‌آید و کاربر همان batch را در پنجرهٔ قابل
-    اسکرول تأیید می‌کند. */
+ /* [EN] Show one batch summary.
+    [FA] خلاصهٔ همهٔ تغییرها با یک تأیید نمایش داده می‌شود. */
  calchk();
  CALR=rows;
  stxt('calst',calsummary(rows,null,'خلاصهٔ تغییرهای محاسبه‌شده')+
@@ -3193,11 +3189,12 @@ function calnumber(v){return v==null||v===''?'—':String(v);}
 function calsummary(rows,status,heading){
  const list=(rows||[]).filter(r=>r&&r[0]);
  if(!list.length)return '<div class="calsummary"><div class="calsummaryhead">'+heading+'</div><div class="lb">تغییری برای نمایش وجود ندارد.</div></div>';
- const h='<div class="calsummary"><div class="calsummaryhead"><span>'+heading+'</span><span class="luttag">نام پارامتر · مقدار قبلی ← مقدار جدید</span></div><div class="calsummarybody">';
+ const missing=list.filter(r=>String(r[1])!==''&&Number.isInteger(Number(r[1]))&&r[5]!==1).map(r=>Number(r[1])),notice=lcalnotice(missing,lcalSnapshot()).text;
+ const h='<div class="calsummary"><div class="calsummaryhead"><span>'+heading+'</span><span class="luttag">نام پارامتر · مقدار قبلی ← مقدار جدید</span></div>'+(notice?'<div class="lb">'+notice+'</div>':'')+'<div class="calsummarybody">';
  const body=list.map(r=>{
-  const id=Number(r[1]),valid=Number.isFinite(id)&&r[5]===1&&Number.isFinite(Number(r[3]));
-  const state=status&&status[id]?status[id]:(valid?(Number(r[2])===Number(r[3])?'بدون تغییر — مقدار روی برد همین است':'در انتظار تأیید کاربر'):'این مقدار به‌دلیل کیفیت داده آمادهٔ اعمال نیست');
-  const val=valid?calnumber(r[2])+' ← '+calnumber(r[3]):calnumber(r[4]);
+  const id=Number(r[1]),known=String(r[1])!==''&&Number.isInteger(id)&&id>=0&&id<7,valid=known&&r[5]===1&&Number.isFinite(Number(r[3])),keep=known&&r[2]!=null&&Number.isFinite(Number(r[2])),why=r[4]?' · '+r[4]:'';
+  const state=status&&status[id]?status[id]:(valid?(Number(r[2])===Number(r[3])?'بدون تغییر — مقدار روی برد همین است':'در انتظار تأیید کاربر'):(keep?'فیت معتبر نیست؛ مقدار فعلی تغییر نمی‌کند':'مقدار فعلی برد هم خوانده نشده؛ چیزی نوشته نمی‌شود')+why);
+  const val=valid?calnumber(r[2])+' ← '+calnumber(r[3]):keep?calnumber(r[2])+' — حفظ می‌شود':calnumber(r[4]);
   return '<div class="calsummaryrow"><span class="calname">'+r[0]+'</span><span class="calvalue">'+val+'</span><span class="calstate">'+state+'</span></div>';
  }).join('');
  return h+body+'</div></div>';
@@ -3215,24 +3212,14 @@ function calmodalOpen(){
  e.classList.add('on');
  return true;
 }
-/* [EN] v1.59 (user order: "these calibration numbers must be saveable and
-   restorable so I do not have to repeat the whole test every time"). Two
-   things are saved now: the FINISHED numbers already travel in the settings
-   backup (ids 0..14 are part of XIDS), and the RAW bench samples get their
-   own file here. With the samples back you can refit, change a number by
-   hand and re-apply onto another board without touching the hardware again.
-   [FA] دو چیز ذخیره می‌شود: عددهای نهایی کالیبراسیون از قبل داخل همان فایل
-   پشتیبان تنظیمات هستند (شناسه‌های ۰ تا ۱۴)، و نمونه‌های خام بنچ هم فایل
-   مخصوص خودشان را گرفتند. با برگرداندن نمونه‌ها می‌شود دوباره محاسبه کرد،
-   عددی را دستی عوض کرد و روی برد دیگری نشاند، بدون تکرار کل تست. */
-/* [EN] v1.60 (user order: "can it tell whether a row belongs to charger 1 or
-   2, and can the user pick which rows are used?"). Every sample now carries
-   the scenario it came from - only battery 1, only battery 2, or both - and
-   its duty step, and this list lets the user untick any row before fitting.
-   An unticked row stays in the file; it is simply not used in the maths.
-   [FA] هر نمونه می‌داند از کدام سناریو آمده (فقط باتری ۱ / فقط باتری ۲ /
-   هر دو) و duty آن چند بوده. با تیک هر ردیف می‌توانید آن را از محاسبه
-   بیرون بگذارید؛ ردیف بیرون‌گذاشته‌شده پاک نمی‌شود، فقط در حساب نمی‌آید. */
+/* [EN] v1.59: settings backup keeps finished values; raw bench samples
+   have a separate file for refitting on another board.
+   [FA] v1.59: مقدارهای نهایی در پشتیبان و نمونه‌های خام در فایل جدا برای
+   محاسبهٔ دوباره روی برد دیگر نگه‌داری می‌شوند. */
+/* [EN] v1.60: each sample saves its scenario and duty; unticked rows
+   stay in the file but are excluded from the fit.
+   [FA] v1.60: سناریو و درصد هر نمونه ذخیره می‌شود؛ ردیف بی‌تیک پاک نمی‌شود،
+   فقط از محاسبه بیرون می‌ماند. */
 function calsmp(){const b=$('calsl');if(!b)return;
  if(!CALS.length){b.innerHTML='<span class="lb">هنوز نمونه‌ای ثبت نشده است.</span>';return;}
  const selected=CALS.filter(z=>z.use!==0).length,all=selected===CALS.length;
@@ -3389,8 +3376,8 @@ function calcode(){
  if(!CALR.length){
   stxt('calst','⚠ نتیجهٔ محاسبهٔ فعلی وجود ندارد؛ قبل از ساخت کد دوباره «محاسبه از نمونه‌ها» را بزنید.');return;
  }
- const get=id=>lcalvalue(id);
- const off=[get(0),get(1)],gn=[get(2),get(3)],msg=[];
+ const board=lcalSnapshot(),notice=lcalnotice(CALREAD.map(r=>r.id),board),get=id=>{const v=lcalvalue(id);return v==null?(id<4&&notice.absent.indexOf(id)>=0?null:lcalboard(board,id)):v;};
+ const off=[get(0),get(1)],gn=[get(2),get(3)],msg=notice.text?[notice.text]:[];
  let out='/* [EN] Generated by the ChangeOver panel on '+new Date().toISOString()+
   '\n *      from '+calScope.length+' accepted bench samples. The panel has\n'+
   ' *      already checked: equal axis lengths, >= 2 points, increasing chain\n'+
@@ -3419,13 +3406,12 @@ function calcode(){
    ' *   '+(Math.abs(f.a-1)<0.02?'within the 1% resistor tolerance - keep the constant as it is.':
     'the offset cannot fix a scale error - in bsp_measurement.c set\n *   #define '+k[2]+'  '+nt+'u   (was '+k[3]+'u)')+' */\n';});
  out+='/* defaults that belong WITH the tables above (esp_link.h / plink_params.h):\n'+
-  ' *   current offset ch1 = '+off[0]+' counts, ch2 = '+off[1]+' counts\n'+
-  ' *   current gain   ch1 = '+gn[0]+' permille, ch2 = '+gn[1]+' permille\n'+
-  ' *   voltage offsets: input = '+get(4)+' mV, 24V pack = '+get(5)+' mV, 12V node = '+get(6)+' mV\n'+
+  ' *   current offset ch1 = '+calnumber(off[0])+' counts, ch2 = '+calnumber(off[1])+' counts\n'+
+  ' *   current gain   ch1 = '+calnumber(gn[0])+' permille, ch2 = '+calnumber(gn[1])+' permille\n'+
+  ' *   voltage offsets: input = '+calnumber(get(4))+' mV, 24V pack = '+calnumber(get(5))+' mV, 12V node = '+calnumber(get(6))+' mV\n'+
   ' * A table fitted with one gain/offset pair is only valid with that pair. */\n';
  const t=$('calcd');if(t){t.value=out;t.style.display='block';}
- stxt('calst',(msg.length?('⚠ '+msg.join(' · ')+' — '):'')+
-  'کد آماده است؛ متن زیر را کپی یا دانلود کنید. هم‌طولی و صعودی‌بودن جدول‌ها همین‌جا بررسی شد.');}
+ stxt('calst',(msg.length?('⚠ '+msg.join(' · ')+' — '):'')+(out.indexOf('NOT GENERATED')>=0?'بعضی جدول‌ها ساخته نشدند؛ علت در همین پیام/کد مشخص است.':'کد آماده است؛ متن زیر را کپی یا دانلود کنید. هم‌طولی و صعودی‌بودن جدول‌ها بررسی شد.'));}
 function calcdl(){const t=$('calcd');if(!t||!t.value)return;
  const u=URL.createObjectURL(new Blob([t.value],{type:'text/plain'}));
  const a=document.createElement('a');a.href=u;a.download='calibration_generated.h';a.click();
@@ -3449,12 +3435,8 @@ async function calimp(f){let o;try{o=JSON.parse(await f.text());}catch(e){stxt('
  stxt('calst','⬆ '+add.length+' نمونه بازخوانی شد (مجموع '+CALS.length+'). حالا «محاسبه» را بزنید.');
  const e=$('calf');if(e)e.value='';}
 async function calapply(){
- /* [EN] One confirmation owns the complete calibration batch. There are no
-    per-row ticks: every valid calculated calibration parameter is written,
-    read back and reported by its name.
-    [FA] یک تأیید، کل batch کالیبراسیون را مالک می‌شود. تیک ردیف‌به‌ردیف
-    وجود ندارد؛ هر پارامتر معتبر محاسبه‌شده با نام خودش نوشته، readback و
-    گزارش می‌شود. */
+ /* [EN] One confirmation applies every valid fit.
+    [FA] یک تأیید، همهٔ برازش‌های معتبر را اعمال می‌کند. */
  if(W&&W.run){stxt('calst','⛔ داده‌برداری بنچ در جریان است.');return;}
  if(CAL_BUSY){stxt('calst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است.');return;}
  calmodalOpen();
@@ -3528,19 +3510,16 @@ function lpack(target,base,selected){
  if(!CALR.length)return {bad:'نتیجهٔ محاسبهٔ فعلی کالیبراسیون وجود ندارد؛ ابتدا دوباره محاسبه کنید',msg:[]};
  const targetId=(target===1||target===2)?target:0,both=targetId===0,ids=lcalids(targetId);
  const chosen={};ids.forEach(id=>{chosen[id]=lcalselected(selected,id);});
- const missing=ids.filter(id=>id<4&&chosen[id]&&lcalvalue(id)==null);
- if(missing.length)return {bad:'محاسبهٔ جریان ناقص است',msg:[missing.map(id=>CALREAD[id].name).join('، ')+'؛ نمونه‌ها را بررسی و دوباره «محاسبه از نمونه‌ها» را بزنید.']};
- /* [EN] Missing voltage fits do not block a current LUT.
-    [FA] نبود آفست ولتاژ مانع جدول جریان نیست؛ مقدار فعلی برد می‌ماند. */
- const skipped=ids.filter(id=>id>3&&chosen[id]&&lcalvalue(id)==null);
- skipped.forEach(id=>{chosen[id]=false;});
+ const boardSnapshot=lcalSnapshot(),boardOff=boardSnapshot.offset,boardGain=boardSnapshot.gain,boardVoltage=boardSnapshot.voltage,note=lcalnotice(ids,boardSnapshot);
+ note.missing.forEach(id=>{chosen[id]=false;});
+ if(note.absent.length)return {bad:'مقدار معتبر جریان از برد در دسترس نیست',msg:[note.text]};
+ /* [EN] Keep every unavailable fit untouched; [FA] فیتِ ناموجود نوشته نشود. */
  const proposedOff=[lcalvalue(0),lcalvalue(1)],proposedGain=[lcalvalue(2),lcalvalue(3)],proposedVoltage=[lcalvalue(4),lcalvalue(5),lcalvalue(6)];
- const boardSnapshot=lcalSnapshot(),boardOff=boardSnapshot.offset,boardGain=boardSnapshot.gain,boardVoltage=boardSnapshot.voltage;
  const off=boardOff.slice(),gn=boardGain.slice(),voltage=boardVoltage.slice();
  const setIfSelected=(id,value,old)=>chosen[id]?value:old;
  [0,1].forEach(i=>{const id=i,ga=id+2;if((both||id===targetId-1)){off[i]=setIfSelected(id,proposedOff[i],boardOff[i]);gn[i]=setIfSelected(ga,proposedGain[i],boardGain[i]);}});
  [4,5,6].forEach(id=>{voltage[id-4]=setIfSelected(id,proposedVoltage[id-4],boardVoltage[id-4]);});
- const msg=skipped.length?['اندازه‌گیری ولتاژ مولتی‌متر برای '+skipped.map(id=>CALREAD[id].name).join('، ')+' ثبت نشده یا معتبر نبوده؛ مقدار فعلی برد حفظ می‌شود و جدول جریان ادامه دارد.']:[],T=[{X:[],Y:[]},{X:[],Y:[]}],buildTargets=both?[1,2]:[targetId];
+ const msg=note.text?[note.text]:[],T=[{X:[],Y:[]},{X:[],Y:[]}],buildTargets=both?[1,2]:[targetId];
  [1,2].forEach(n=>{
   if(buildTargets.indexOf(n)<0){
    if(!base||!base.ready){
@@ -3614,6 +3593,17 @@ const CALREAD=[
 function lcalSnapshot(){
  const p=D&&D.p?D.p:{};
  return {offset:[p[0]!=null?Number(p[0]):null,p[1]!=null?Number(p[1]):null],gain:[p[2]!=null?Number(p[2]):null,p[3]!=null?Number(p[3]):null],voltage:[p[4]!=null?Number(p[4]):null,p[5]!=null?Number(p[5]):null,p[6]!=null?Number(p[6]):null],seq:D&&D.seq!=null?D.seq:null};
+}
+/* [EN] Missing fits may only reuse values actually read from the board.
+   [FA] فیتِ ناموجود فقط با مقدارِ واقعاً خوانده‌شده از برد جایگزین شود. */
+function lcalboard(s,id){return !s?null:id<2?s.offset[id]:id<4?s.gain[id-2]:s.voltage[id-4];}
+function lcalnames(ids){return ids.map(id=>CALREAD[id].name).join('، ');}
+function lcalnotice(ids,s){
+ const missing=(ids||[]).filter(id=>lcalvalue(id)==null),cur=missing.filter(id=>id<4),vol=missing.filter(id=>id>3),usable=id=>{const v=lcalboard(s,id);return Number.isFinite(v)&&(id<2?v>=0&&v<=255:v>=100&&v<=3000);},live=cur.filter(usable),absent=cur.filter(id=>!usable(id)),m=[];
+ if(live.length)m.push('فیت جریان معتبر برای '+lcalnames(live)+' نیست؛ مقدار فعلی برد برای ساخت جدول استفاده می‌شود و تغییر نمی‌کند.');
+ if(absent.length)m.push('مقدار معتبر برد برای '+lcalnames(absent)+' نداریم؛ جدول مربوطه ساخته نمی‌شود.');
+ if(vol.length)m.push('اندازه‌گیری ولتاژ مولتی‌متر برای '+lcalnames(vol)+' موجود یا معتبر نیست؛ آفست‌های فعلی تغییر نمی‌کنند.');
+ return {missing:missing,absent:absent,text:m.join(' ')};
 }
 function calpval(s,m){return s&&s[m.key]&&s[m.key][m.index]!=null?Number(s[m.key][m.index]):null;}
 function calpnum(v){return v==null?'<span class="lb">—</span>':'<span class="calnum">'+v+'</span>';}
@@ -3716,7 +3706,7 @@ async function lreadnow(){
 /* [EN] Verify every calibration value from fresh telemetry after reset.
    [FA] پس از ریست، همهٔ پارامترها با تله‌متری تازه دوباره تأیید شوند. */
 async function lcalread(p){
- const ids=Array.isArray(p&&p.cal&&p.cal.ids)&&p.cal.ids.length?p.cal.ids:lcalids(p&&p.target),want=id=>id===0?p.cal.offset[0]:id===1?p.cal.offset[1]:id===2?p.cal.gain[0]:id===3?p.cal.gain[1]:p.cal.voltage[id-4];
+ const all=Array.isArray(p&&p.cal&&p.cal.ids)&&p.cal.ids.length?p.cal.ids:lcalids(p&&p.target),sel=p&&p.cal&&p.cal.selected||{},before=p&&p.calBefore,ids=all.filter(id=>sel[id]!==false||Number.isFinite(lcalboard(before,id))),want=id=>sel[id]===false?lcalboard(before,id):id===0?p.cal.offset[0]:id===1?p.cal.offset[1]:id===2?p.cal.gain[0]:id===3?p.cal.gain[1]:p.cal.voltage[id-4];
  for(let i=0;i<10;i++){
   try{
    const j=await req('/t','GET');
