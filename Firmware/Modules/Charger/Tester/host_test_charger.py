@@ -2119,6 +2119,8 @@ def test_alarms_tab_v115():
     # [EN] v1.57 (user order: calibrate straight from the bench capture).
     # [FA] v1.57: کالیبراسیون مستقیم از داده‌برداری بنچ با تأیید کاربر.
     check("function calpush(" in ino and "function calfit(" in ino
+          and "function calzero(" in ino and "q.d==0" in ino
+          and "نمونهٔ duty صفر برای مرجع صفر" in ino
           and "function calrun()" in ino and "async function calapply()" in ino
           and "جریان خالص باتری صفر در raw=" in ino
           and "Math.max(0,Math.round(z[b]*vb/1000))" in ino
