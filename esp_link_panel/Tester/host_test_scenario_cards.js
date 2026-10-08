@@ -1611,10 +1611,18 @@ async function testLutPush(win, doc) {
     await win.eval('lsend')();
     check(doc.getElementById('calst').textContent.indexOf('✅') >= 0,
           'a matching CRC and point-by-point readback are reported as a real success');
+    check(doc.getElementById('calst').classList.contains('cal-ok'),
+          'a successful transaction uses the application success status theme');
     check(doc.getElementById('lutcmp').textContent.indexOf('فعلی روی برد') >= 0 &&
           doc.getElementById('lutcmp').textContent.indexOf('پیشنهادی برای ارسال') >= 0 &&
           doc.getElementById('lutcmp').textContent.indexOf('پس از commit') >= 0,
           'the LUT audit keeps current, proposed and post-commit columns visible');
+    check(doc.getElementById('lutcmp').textContent.indexOf('قبل از ارسال') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('پیشنهاد پنل') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('بعد از اعمال') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('ID 0') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('readback همان شناسه') >= 0,
+          'the calibration audit names each id and maps board-before, panel-proposal and board-after values');
     check(doc.getElementById('lutcmp').textContent.indexOf('باتری ۲') >= 0 &&
           doc.getElementById('lutcmp').textContent.indexOf('تغییر کرد و تأیید شد') >= 0,
           'battery 2 is compared point by point and a changed row is marked');
@@ -1643,6 +1651,10 @@ async function testLutPush(win, doc) {
           'a standalone board readback shows clear chainMa/powerMw tables');
     check(doc.getElementById('lutcmp').textContent.indexOf('پیشنهادی برای ارسال') < 0,
           'the standalone board view does not mix empty audit columns into the actual values');
+    check(doc.getElementById('lutcmp').textContent.indexOf('مقدار واقعی روی برد') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('telemetry معتبر STM32') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('ID 6') >= 0,
+          'the standalone board view explains the source of calibration readback and names every id');
 
     /* --- a CRC that does not match is NOT a success and reboots nothing --- */
     calls.length = 0;
@@ -1792,6 +1804,13 @@ async function testLutPush(win, doc) {
     check(doc.getElementById('lbtnS1') && doc.getElementById('lbtnS2') &&
           doc.getElementById('lbtnRead') && doc.querySelector('button[onclick="calcode()"]'),
           'the calibration card offers readback plus separate battery update buttons');
+    check(doc.querySelector('button[onclick="calapply()"]') &&
+          doc.querySelector('button[onclick="calapply()"]').textContent.indexOf('فقط پارامترهای کالیبراسیون') >= 0 &&
+          doc.querySelector('button[onclick="calapply()"]') !== doc.getElementById('lbtnSA'),
+          'the standalone calibration action is named explicitly and is not a duplicate LUT apply button');
+    check(doc.getElementById('calst').className.indexOf('calstatus') >= 0 &&
+          doc.getElementById('calst').compareDocumentPosition(doc.getElementById('lutcmp')) & 4,
+          'calibration and LUT messages live in a themed RTL status box before the readback card');
 }
 
 
