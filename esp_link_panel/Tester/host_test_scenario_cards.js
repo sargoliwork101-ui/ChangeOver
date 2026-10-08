@@ -1176,6 +1176,17 @@ async function testBackupAndCal(win, doc) {
     check(win.CALR.some(r => Number(r[1]) === 1) && win.CALR.some(r => Number(r[1]) === 3) &&
           !win.CALR.some(r => Number(r[1]) === 0) && !win.CALR.some(r => Number(r[1]) === 2),
           'a BAT2-only fit does not produce battery-1 calibration rows');
+    const savedScopeSamples = win.CALS;
+    const bat2ScopeSamples = savedScopeSamples.slice(0, 4).map(z => Object.assign({}, z, { sc: 'BAT2' }));
+    const noisyBat1Samples = savedScopeSamples.slice(4, 8).map(z => Object.assign({}, z, {
+        sc: 'BAT1', dvi: 50000, dv1: 40000, dv2: 40000
+    }));
+    win.CALS = bat2ScopeSamples.concat(noisyBat1Samples);
+    win.eval('calrun')();
+    const scopedVoltage = Number(win.CALR.find(r => Number(r[1]) === 4)[3]);
+    check(scopedVoltage === 300,
+          'battery-1 voltage samples do not alter a BAT2-only calibration result');
+    win.CALS = savedScopeSamples;
     ['BAT1', 'BAT2', 'BOTH'].forEach(k => { doc.getElementById('wc' + k).checked = true; });
     win.eval('calrun')();
 
@@ -1635,6 +1646,9 @@ async function testLutPush(win, doc) {
     const calChecks = Array.from(doc.querySelectorAll('#lutcmp input.lutcalcheck'));
     check(calChecks.length === 7 && calChecks.every(x => x.checked),
           'every in-scope calibration value is checked by default');
+    check(doc.querySelector('#lutcmp .lutchange') !== null &&
+          doc.getElementById('lutcmp').innerHTML.indexOf('rgba(247,148,30') < 0,
+          'the change audit uses the orange change-card class instead of an inline red frame');
     const keepVoltage = doc.querySelector('#lutcmp input[data-cal-id="4"]');
     keepVoltage.click();
     check(!doc.querySelector('#lutcmp input[data-cal-id="4"]').checked &&
