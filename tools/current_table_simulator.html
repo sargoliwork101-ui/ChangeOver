@@ -87,10 +87,11 @@ function validate(X, Y) {
   const msgs = [];
   if (X.length < 2) msgs.push('حداقل ۲ لنگر لازم است');
   if (X.some(x => !Number.isInteger(x) || x < 0 || x > 4095)) msgs.push('شمارش باید عدد صحیح ۰ تا ۴۰۹۵ باشد');
+  if (Y.some(y => !Number.isFinite(y))) msgs.push('mA باید عدد باشد');
   if (X.length !== Y.length) msgs.push('تعداد شمارش و mA برابر نیست');
   for (let i = 1; i < X.length; i++) if (X[i] <= X[i-1]) msgs.push('محور شمارش باید اکیداً صعودی باشد');
   for (let i = 1; i < Y.length; i++) if (Y[i] < Y[i-1]) msgs.push('mA نباید کم شود (افت)');
-  if (Y.length && Y[0] !== 0) msgs.push('هشدار: لنگر اول mA صفر نیست (نقطهٔ ۰٪ باید صفر باشد)');
+  if (Y.length && Y[0] !== 0) msgs.push('خطا: لنگر اول mA صفر نیست (نقطهٔ ۰٪ اجباری و صفر است)');
   return msgs;
 }
 
@@ -102,8 +103,8 @@ function tableOut(c, X, Y, gain, off) {
       const span = X[i] - X[i-1];
       const step = c - X[i-1];
       const dy = Y[i] - Y[i-1];
-      const v = Y[i-1] + Math.round(step * dy / span);
-      return { v, how: `بین لنگر ${i} و ${i+1}: درون‌یابی خطی (یک رُند)` };
+      const v = Math.round(Y[i-1] + step * dy / span);
+      return { v, how: `بین لنگر ${i} و ${i+1}: درون‌یابی خطی، بدون رُند میانی، یک رُند نهایی` };
     }
   }
   const d = bspDelta(c, X[n-1], gain, off);
@@ -120,8 +121,8 @@ function run() {
   const bsp = bspFull(c, gain, off);
 
   let out, how;
-  if (!useTable || msgs.some(m => m.indexOf('حداقل') === 0 || m.indexOf('محور') >= 0 || m.indexOf('شمارش') >= 0)) {
-    out = bsp; how = useTable ? 'جدول نامعتبر است؛ فقط خط BSP نشان داده می‌شود' : 'بدون جدول: خط BSP';
+  if (!useTable || msgs.length > 0) {
+    out = bsp; how = useTable ? 'جدول نامعتبر است؛ فقط خط BSP نشان داده می‌شود (هیچ نقطه‌ای حذف نشد)' : 'بدون جدول: خط BSP';
   } else {
     const r = tableOut(c, X, Y, gain, off);
     out = r.v; how = r.how;
@@ -132,8 +133,7 @@ function run() {
     `شمارش ورودی: <b>${c}</b> — ${how}<br>` +
     `خط BSP برای همین شمارش: ${bsp} mA<br>` +
     (msgs.length ? '<span class="bad">' + msgs.join(' · ') + '</span>' : '<span class="ok">جدول معتبر است</span>');
-  $('checks').innerHTML = msgs.length ? '' : '';
-  draw(X, Y, gain, off, c, useTable && msgs.length === 0);
+  draw(X, Y, gain, off, c, useTable && msgs.length === 0 && X.length > 0);
 }
 
 function draw(X, Y, gain, off, cx, useTab) {

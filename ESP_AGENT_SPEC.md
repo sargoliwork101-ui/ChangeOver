@@ -874,8 +874,9 @@ Vhigh). `MEASUREMENT_BATTERY12_BENCH_COMP_ENABLE = 0` restores the
 uncompensated reading. Vin keeps its own static offset (~+270 mV, growing
 slightly under load): NOT firmware-corrected - remove it with the
 panel-side voltage helper against a DMM. The battery-1 path (Vhigh) is
-not yet DMM-verified: fill `dmm_vbat1_mv` (and the DMM Vin/V24 fields) in
-the next bench runs so it can be fitted the same way.
+not yet DMM-verified. Voltage DMM readings are NOT part of the table capture
+(removed 2026-10); they belong to the separate voltage-calibration flow, which
+is where the Vhigh fit must be measured.
 
 Fixed hardware constants (NOT parameters - never editable): 12-bit ADC,
 3300 mV reference, full scale 4095; R41/R42 = 1 k / 10 k MCU-input divider
@@ -1054,8 +1055,7 @@ one row per recorded step. `-` means "not entered".
 #  [ch2]    raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,
 #           filt2,filt2_min,filt2_max,iest2,iest2_min,iest2_max,duty2,state2
 #  [glob]   seq,flags,vin_mv,v24_mv,v12_mv,vlow_mv,vhigh_mv,faults_or
-#  [dmm]    dmm_i_in_ma,dmm_vin_mv,dmm_i_bat1_ma,dmm_vbat1_mv,
-#           dmm_i_bat2_ma,dmm_vbat2_mv,note
+#  [dmm]    dmm_i_in_ma,dmm_i_bat1_ma,dmm_i_bat2_ma,note
 # run <n> browser_ts=<ISO from the panel page> scenario=<BAT1|BAT2|BOTH>
 #  duty_list=<...>
 ```
