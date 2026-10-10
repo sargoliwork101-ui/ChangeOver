@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>شبیه‌ساز جدول جریان (محور شمارش)</title>
+<style>
+  body { font-family: Tahoma, sans-serif; margin: 16px; background:#f7f7f9; color:#222; }
+  h1 { font-size: 18px; }
+  .box { background:#fff; border:1px solid #ddd; border-radius:8px; padding:12px; margin-bottom:12px; }
+  label { display:inline-block; margin:4px 10px 4px 0; }
+  input[type=number] { width:90px; }
+  textarea { width:100%; height:48px; direction:ltr; }
+  table { border-collapse:collapse; margin-top:8px; }
+  td, th { border:1px solid #ccc; padding:4px 8px; text-align:center; }
+  .ok { color:#0a7; font-weight:bold; }
+  .bad { color:#c20; font-weight:bold; }
+  .warn { color:#a60; }
+  .note { font-size:13px; color:#555; line-height:1.8; }
+  canvas { width:100%; height:300px; border:1px solid #ddd; background:#fff; }
+</style>
+</head>
+<body>
+<h1>شبیه‌ساز جدول جریان روی محور شمارش خام ADC</h1>
+
+<div class="box note">
+  <b>قانون‌ها:</b>
+  جدول بر حسب شمارش خام است (بدون گین و آفست).
+  بین لنگرها درون‌یابی خطی با یک رُند.
+  زیر اولین لنگر: مقدار Y[0].
+  بالای آخرین لنگر: lastY + (BSPfull(c) − BSPfull(lastCounts)) با یک رُند.
+  بدون جدول: خط کامل BSPfull(c).
+  <br>
+  <b>BSPfull(c)</b> = round( (c − آفست)⁺ × گین/1000 × 24200 / 27573 ) (یک رُند در انتها).
+</div>
+
+<div class="box">
+  <label>شمارش ورودی c: <input id="c" type="number" value="300" min="0" max="4095"></label>
+  <label>گین (پرمیل): <input id="gain" type="number" value="3000" min="100" max="3000"></label>
+  <label>آفست (شمارش): <input id="off" type="number" value="0" min="0" max="255"></label>
+  <br>
+  <label>لنگرهای شمارش (با کاما): <textarea id="X">0,100,200</textarea></label><br>
+  <label>لنگرهای mA (با کاما): <textarea id="Y">0,90,210</textarea></label><br>
+  <label><input id="useTable" type="checkbox" checked> استفاده از جدول (اگر خاموش باشد فقط خط BSP)</label>
+  <button onclick="run()">محاسبه</button>
+  <div id="checks" class="note"></div>
+</div>
+
+<div class="box">
+  <b>نتیجه:</b> <span id="out" style="font-size:20px"></span>
+  <div id="detail" class="note"></div>
+</div>
+
+<div class="box">
+  <b>نمودار:</b> خط آبی = خروجی با جدول، خط خاکستری = خط BSP بدون جدول، نقطه قرمز = ورودی فعلی.
+  <canvas id="plot" width="900" height="300"></canvas>
+</div>
+
+<div class="box note">
+  <b>مثال با گین ۳۰۰۰ و آفست ۰ (جدول پیش‌فرض ۰،۱۰۰،۲۰۰ شمارش ← ۰،۹۰،۲۱۰ mA):</b>
+  شمارش ۱۵۰ → ۱۵۰ mA (درون‌یابی، مستقل از گین).
+  شمارش ۳۰۰ → ۲۱۰ + round(100 × 3000 × 24200 / 27573000) = ۲۱۰ + ۲۶۳ = ۴۷۳ mA.
+  (عددهای ۳۱۰ در تست هاست از استاب ۱ mA به ازای هر شمارش آمده‌اند، نه گین واقعی.)
+  تغییر گین فقط بالای آخرین لنگر اثر دارد. تغییر آفست بالای آخرین لنگر تفاضل را عوض نمی‌کند، ولی زیر آن و در خط BSP اثر دارد.
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// [EN] Exact chain in mA for counts c: one final rounding. [FA] خط BSP با یک رُند.
+function bspFull(c, gain, off) {
+  const cal = Math.max(c - off, 0);
+  return Math.round(cal * gain * 24200 / (27573 * 1000));
+}
+// [EN] Exact difference of two BSP values, rounded once. [FA] تفاضل دقیق، یک رُند.
+function bspDelta(hi, lo, gain, off) {
+  const a = Math.max(hi - off, 0) * gain;
+  const b = Math.max(lo - off, 0) * gain;
+  const num = Math.max(a - b, 0);
+  return Math.round(num * 24200 / (27573 * 1000));
+}
+
+function parseList(txt) {
+  return txt.split(/[,، ]+/).filter(s => s !== '').map(Number);
+}
+
+function validate(X, Y) {
+  const msgs = [];
+  if (X.length < 2) msgs.push('حداقل ۲ لنگر لازم است');
+  if (X.some(x => !Number.isInteger(x) || x < 0 || x > 4095)) msgs.push('شمارش باید عدد صحیح ۰ تا ۴۰۹۵ باشد');
+  if (X.length !== Y.length) msgs.push('تعداد شمارش و mA برابر نیست');
+  for (let i = 1; i < X.length; i++) if (X[i] <= X[i-1]) msgs.push('محور شمارش باید اکیداً صعودی باشد');
+  for (let i = 1; i < Y.length; i++) if (Y[i] < Y[i-1]) msgs.push('mA نباید کم شود (افت)');
+  if (Y.length && Y[0] !== 0) msgs.push('هشدار: لنگر اول mA صفر نیست (نقطهٔ ۰٪ باید صفر باشد)');
+  return msgs;
+}
+
+function tableOut(c, X, Y, gain, off) {
+  const n = X.length;
+  if (c <= X[0]) return { v: Y[0], how: 'زیر اولین لنگر: Y[0] نگه داشته شد' };
+  for (let i = 1; i < n; i++) {
+    if (c <= X[i]) {
+      const span = X[i] - X[i-1];
+      const step = c - X[i-1];
+      const dy = Y[i] - Y[i-1];
+      const v = Y[i-1] + Math.round(step * dy / span);
+      return { v, how: `بین لنگر ${i} و ${i+1}: درون‌یابی خطی (یک رُند)` };
+    }
+  }
+  const d = bspDelta(c, X[n-1], gain, off);
+  return { v: Y[n-1] + d, how: `بالای آخرین لنگر: ${Y[n-1]} + تفاضل BSP (${d})` };
+}
+
+function run() {
+  const c = Math.round(Number($('c').value));
+  const gain = Number($('gain').value);
+  const off = Number($('off').value);
+  const X = parseList($('X').value), Y = parseList($('Y').value);
+  const msgs = validate(X, Y);
+  const useTable = $('useTable').checked;
+  const bsp = bspFull(c, gain, off);
+
+  let out, how;
+  if (!useTable || msgs.some(m => m.indexOf('حداقل') === 0 || m.indexOf('محور') >= 0 || m.indexOf('شمارش') >= 0)) {
+    out = bsp; how = useTable ? 'جدول نامعتبر است؛ فقط خط BSP نشان داده می‌شود' : 'بدون جدول: خط BSP';
+  } else {
+    const r = tableOut(c, X, Y, gain, off);
+    out = r.v; how = r.how;
+  }
+  $('out').textContent = out + ' mA';
+  $('out').className = '';
+  $('detail').innerHTML =
+    `شمارش ورودی: <b>${c}</b> — ${how}<br>` +
+    `خط BSP برای همین شمارش: ${bsp} mA<br>` +
+    (msgs.length ? '<span class="bad">' + msgs.join(' · ') + '</span>' : '<span class="ok">جدول معتبر است</span>');
+  $('checks').innerHTML = msgs.length ? '' : '';
+  draw(X, Y, gain, off, c, useTable && msgs.length === 0);
+}
+
+function draw(X, Y, gain, off, cx, useTab) {
+  const cv = $('plot'), g = cv.getContext('2d');
+  const W = cv.width, H = cv.height, P = 40;
+  g.clearRect(0, 0, W, H);
+  const maxC = 4095, maxY = Math.max(bspFull(maxC, gain, off), 1);
+  const sx = c => P + (c / maxC) * (W - 2 * P);
+  const sy = v => H - P - (v / maxY) * (H - 2 * P);
+  g.strokeStyle = '#ccc'; g.beginPath(); g.moveTo(P, P); g.lineTo(P, H - P); g.lineTo(W - P, H - P); g.stroke();
+  g.fillStyle = '#555'; g.font = '12px Tahoma';
+  g.fillText('شمارش خام ADC →', W - 140, H - 12);
+  g.fillText('mA ↑', 6, 14);
+  // BSP line
+  g.strokeStyle = '#999'; g.beginPath();
+  for (let c = 0; c <= maxC; c += 16) { const x = sx(c), y = sy(bspFull(c, gain, off)); c ? g.lineTo(x, y) : g.moveTo(x, y); }
+  g.stroke();
+  // table line
+  if (useTab) {
+    g.strokeStyle = '#1565c0'; g.lineWidth = 2; g.beginPath();
+    for (let c = 0; c <= maxC; c += 8) {
+      const v = tableOut(c, X, Y, gain, off).v;
+      const x = sx(c), y = sy(v);
+      c ? g.lineTo(x, y) : g.moveTo(x, y);
+    }
+    g.stroke(); g.lineWidth = 1;
+    g.fillStyle = '#1565c0';
+    X.forEach((x, i) => { g.beginPath(); g.arc(sx(x), sy(Y[i]), 3, 0, 6.3); g.fill(); });
+  }
+  // current point
+  g.fillStyle = '#c20'; g.beginPath(); g.arc(sx(cx), sy(useTab ? tableOut(cx, X, Y, gain, off).v : bspFull(cx, gain, off)), 5, 0, 6.3); g.fill();
+}
+
+run();
+</script>
+</body>
+</html>

@@ -174,8 +174,7 @@
     "#           filt2,filt2_min,filt2_max,iest2,iest2_min,iest2_max,duty2,state2\n" \
     "#  [glob]   seq,flags,vin_mv,v24_mv,v12_mv,vlow_mv,vhigh_mv,faults_or\n" \
     "#  [raw]    vin_counts,v24_counts,v12_counts,vrefint_counts,vdda_mv\n" \
-    "#  [dmm]    dmm_i_in_ma,dmm_vin_mv,dmm_i_bat1_ma,dmm_vbat1_mv,\n" \
-    "#           dmm_i_bat2_ma,dmm_vbat2_mv,note\n" \
+    "#  [dmm]    dmm_i_in_ma,dmm_i_bat1_ma,dmm_i_bat2_ma,note\n" \
     "# run <n> browser_ts=<ISO from the panel page> scenario=<BAT1|BAT2|BOTH>\n" \
     "#  duty_list=<...>\n"
 

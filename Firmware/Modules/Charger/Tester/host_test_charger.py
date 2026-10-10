@@ -859,8 +859,8 @@ def test_charge_profile_v112():
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     check(txo and len(txo.group(1).split(",")) == 143 and "139, 140, 141, 142 };" in ino,
           "TxOrder must list all 143 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
-    check("window.WVI=" in ino and "L('wVi','ولتاژ ورودی V',WVI)" in ino,
-          "the input-voltage DMM reading must carry into the next wizard step (user order 2026-09-25: quasi-static, type once)")
+    check("window.WVI=" not in ino and "L('wVi'" not in ino and "wV1" not in ino and "wV2" not in ino,
+          "voltage fields are removed from the table capture (user order 2026-10: keep voltage calibration separate)")
 
     # --- python model of ClampProfile: interdependencies hold for arbitrary writes ---
     def clamp(p):
