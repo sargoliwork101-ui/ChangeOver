@@ -353,7 +353,7 @@ int main(void)
     CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 2u, 300u, 500u) == true);
     UINT32_T__G__A__Power[0][2] = 500u;
     uint8_t__status = func__CalLut_Commit(func__HostPanelCrc(), &uint32_t__boardCrc);
-    CHECK(uint8_t__status == CAL_LUT_ST_POWER);
+    CHECK(uint8_t__status == CAL_LUT_ST_DIP);
 
     /* ---- 8. a wrong panel CRC is refused and flash is untouched ---- */
     func__StageTable(5u, 1000u);
@@ -375,7 +375,7 @@ int main(void)
     CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_2) == true);
     CHECK(func__CalLut_Points(CAL_LUT_CHANNEL_1) == 5u);
     CHECK(func__CalLut_ChainMa(CAL_LUT_CHANNEL_1)[0] == 100u);
-    CHECK(func__CalLut_PowerMw(CAL_LUT_CHANNEL_1)[4] == 4000u);
+    CHECK(func__CalLut_BatteryMa(CAL_LUT_CHANNEL_1)[4] == 4000u);
 
     /* [EN] ActiveCrc32() reports the CRC of the RECORD in flash, which is a
             different number from the panel content CRC; what matters is that

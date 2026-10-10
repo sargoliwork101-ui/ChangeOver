@@ -143,7 +143,7 @@ const uint32_t *func__CalLut_ChainMa(uint8_t uint8_t__channel)
     return (uint8_t__channel <= 2u) ? UINT32_T__G__FlashLutChain[uint8_t__channel] : NULL;
 }
 
-const uint32_t *func__CalLut_PowerMw(uint8_t uint8_t__channel)
+const uint32_t *func__CalLut_BatteryMa(uint8_t uint8_t__channel)
 {
     return (uint8_t__channel <= 2u) ? UINT32_T__G__FlashLutPower[uint8_t__channel] : NULL;
 }
@@ -374,129 +374,40 @@ int main(void)
     CHECK(func__Measurement_CurrentIsBatteryCalibrated(1u) == true);
     CHECK(func__Measurement_CurrentIsBatteryCalibrated(2u) == false);
 
-    /* ---- 9b. runtime LUT arithmetic cannot wrap at u32 boundaries ----
-       [EN] The first table makes interpolation multiply two large u32
-            deltas while the requested chain value is small. The second makes
-            power x 1000 exceed u32. Both are valid monotonic records; the
-            result must match wide arithmetic, with the final current
-            saturating when it cannot fit the public u32 API.
-       [FA] جدول اول درون‌یابی را مجبور می‌کند دو delta بزرگ u32 را ضرب کند
-            در حالی که ورودی کوچک است. جدول دوم توان×۱۰۰۰ را از u32 بیرون
-            می‌برد. هر دو رکورد یکنواخت و معتبرند؛ نتیجه باید برابر حساب
-            پهن باشد و وقتی جریان در u32 جا نمی‌گیرد، در سقف اشباع شود. */
+    /* ---- 9b. bench table on the CURRENT axis (user order 2026-10-10) ----
+       [EN] The stub BSP returns chain = counts. The panel table is
+            chain {0,100,200} -> battery {0,90,210} mA. Expected values:
+            interpolation with nearest rounding between anchors, slope 1
+            above the last anchor, identity when no table is active.
+       [FA] BSP بدلی زنجیره = شمارش را برمی‌گرداند. جدول پنل:
+            زنجیره {0,100,200} ← باتری {0,90,210} mA. انتظار: درون‌یابی با
+            رُند به نزدیک‌ترین بین لنگرها، شیب ۱ بالای آخرین لنگر، و همانی
+            وقتی جدول فعال نیست. */
     {
-        static const uint32_t UINT32_T__A__WideChain[] = { 0u, UINT32_MAX };
-        static const uint32_t UINT32_T__A__WidePower[] = { 0u, UINT32_MAX };
-        static const uint32_t UINT32_T__A__UnitChain[] = { 0u, 1u };
-        static const uint32_t UINT32_T__A__MaxPower[] = { 0u, UINT32_MAX };
-        uint32_t uint32_t__expected;
-        uint32_t uint32_t__expectedMax;
-
-        /* Establish the cache at 12.5 V, independently of preceding cases. */
-        func__SetFrame(2400u, 2500u, 1250u, 0u, 0u);
-        func__Measurement_Init();
-        func__RunFrames(MEASUREMENT_WARMUP_FRAME_COUNT + 2u);
+        static const uint32_t UINT32_T__A__TestChain[] = { 0u, 100u, 200u };
+        static const uint32_t UINT32_T__A__TestBattery[] = { 0u, 90u, 210u };
 
         BOOL__G__FlashLutActive[1] = true;
         BOOL__G__FlashLutActive[2] = true;
-        UINT32_T__G__FlashLutPoints[1] = 2u;
-        UINT32_T__G__FlashLutPoints[2] = 2u;
-        UINT32_T__G__FlashLutChain[1] = UINT32_T__A__WideChain;
-        UINT32_T__G__FlashLutChain[2] = UINT32_T__A__WideChain;
-        UINT32_T__G__FlashLutPower[1] = UINT32_T__A__WidePower;
-        UINT32_T__G__FlashLutPower[2] = UINT32_T__A__WidePower;
+        UINT32_T__G__FlashLutPoints[1] = 3u;
+        UINT32_T__G__FlashLutPoints[2] = 3u;
+        UINT32_T__G__FlashLutChain[1] = UINT32_T__A__TestChain;
+        UINT32_T__G__FlashLutChain[2] = UINT32_T__A__TestChain;
+        UINT32_T__G__FlashLutPower[1] = UINT32_T__A__TestBattery;
+        UINT32_T__G__FlashLutPower[2] = UINT32_T__A__TestBattery;
 
-        /* [EN] The expected power->current values carry the production
-           rounding rule (half divisor added before dividing, 2026-10-08), so
-           this fixture locks the ROUNDED result, not a truncated one.
-           [FA] مقدارهای انتظاری توان->جریان همان قاعدهٔ رُند تولید را دارند
-           (نصف مقسوم‌علیه پیش از تقسیم، ۲۰۲۶-۱۰-۰۸)، پس این fixture نتیجهٔ
-           رُندشده را قفل می‌کند، نه بریده را. */
-        uint32_t__expected =
-            (uint32_t)((((uint64_t)65535u * 1000u) + (12500u / 2u)) / 12500u);
-        uint32_t__expectedMax =
-            (uint32_t)((((uint64_t)UINT32_MAX * 1000u) + (12500u / 2u)) / 12500u);
-        CHECK(func__Measurement_Current1CountsToMa(65535u) == uint32_t__expected);
-        CHECK(func__Measurement_Current2CountsToMa(65535u) == uint32_t__expected);
-
-        UINT32_T__G__FlashLutChain[1] = UINT32_T__A__UnitChain;
-        UINT32_T__G__FlashLutChain[2] = UINT32_T__A__UnitChain;
-        UINT32_T__G__FlashLutPower[1] = UINT32_T__A__MaxPower;
-        UINT32_T__G__FlashLutPower[2] = UINT32_T__A__MaxPower;
-        CHECK(func__Measurement_Current1CountsToMa(1u) == uint32_t__expectedMax);
-        CHECK(func__Measurement_Current2CountsToMa(1u) == uint32_t__expectedMax);
-        CHECK(func__Measurement_Current1CountsToMa(65535u) == uint32_t__expectedMax);
-        CHECK(func__Measurement_Current2CountsToMa(65535u) == uint32_t__expectedMax);
+        CHECK(func__Measurement_Current1CountsToMa(0u) == 0u);
+        CHECK(func__Measurement_Current1CountsToMa(50u) == 45u);
+        CHECK(func__Measurement_Current1CountsToMa(100u) == 90u);
+        CHECK(func__Measurement_Current1CountsToMa(150u) == 150u);
+        CHECK(func__Measurement_Current1CountsToMa(300u) == 310u);
+        CHECK(func__Measurement_Current2CountsToMa(150u) == 150u);
+        CHECK(func__Measurement_Current2CountsToMa(300u) == 310u);
 
         BOOL__G__FlashLutActive[1] = false;
         BOOL__G__FlashLutActive[2] = false;
-    }
-
-    /* ---- 9c. randomized exact oracle for split-word mul/div ------------
-       [EN] Exercise the production helper directly against a host u64 oracle
-            over adversarial full-range operands. This catches a carry or
-            restoring-division boundary that a handful of LUT fixtures could
-            miss, while the firmware itself remains u64-free. The oracle
-            carries the SAME nearest-rounding rule as the helper (user order
-            2026-10-08): remainder >= divisor - remainder rounds up, which is
-            exactly floor((a*b + divisor/2) / divisor).
-       [FA] helper تولیدی را مستقیماً با oracle شانزده‌بیتی هاست روی operandهای
-            تمام‌بازه و خصمانه می‌سنجیم. این تست خطای carry یا مرز تقسیم
-            restoring را که چند fixture نمی‌بیند پیدا می‌کند، در حالی که خود
-            فرم‌ور همچنان بدون u64 می‌ماند. oracle همان قاعدهٔ رُند به نزدیکِ
-            helper را دارد (دستور کاربر ۲۰۲۶-۱۰-۰۸): باقی‌ماندهٔ ≥ نصف
-            مقسوم‌علیه یک واحد بالا می‌رود. */
-    {
-        uint32_t uint32_t__seed = 0x13579BDFu;
-        uint32_t uint32_t__i;
-
-        CHECK(func__Measurement_HostTest_MulDivU32(1u, 1u, 0u) == 0u);
-        /* [EN] The rule, spelled out. 1/3 -> 0, 2/3 -> 1, 3/7 -> 0, 4/7 -> 1,
-           an exact division is untouched, an exact half rounds UP (no
-           banker's rounding - the safe direction for a current is up), and a
-           quotient already at the u32 ceiling must saturate, never wrap.
-           [FA] قاعده صریح: ۱/۳ صفر، ۲/۳ یک، ۳/۷ صفر، ۴/۷ یک، تقسیم دقیق دست
-           نمی‌خورد، نیمِ دقیق بالا می‌رود (بدون رُند بانکی - جهت امن جریان
-           بالا است) و خارج‌قسمتِ در سقف u32 باید اشباع شود، نه wrap. */
-        CHECK(func__Measurement_HostTest_MulDivU32(1u, 1u, 3u) == 0u);
-        CHECK(func__Measurement_HostTest_MulDivU32(2u, 1u, 3u) == 1u);
-        CHECK(func__Measurement_HostTest_MulDivU32(3u, 1u, 7u) == 0u);
-        CHECK(func__Measurement_HostTest_MulDivU32(4u, 1u, 7u) == 1u);
-        CHECK(func__Measurement_HostTest_MulDivU32(7u, 1u, 7u) == 1u);
-        CHECK(func__Measurement_HostTest_MulDivU32(1u, 1000u, 4u) == 250u);
-        CHECK(func__Measurement_HostTest_MulDivU32(1u, 1u, 2u) == 1u);
-        CHECK(func__Measurement_HostTest_MulDivU32(UINT32_MAX, 4u, 4u) ==
-              UINT32_MAX);
-        CHECK(func__Measurement_HostTest_MulDivU32(UINT32_MAX, 1000u, 1u) ==
-              UINT32_MAX);
-        for (uint32_t__i = 0u; uint32_t__i < 2048u; uint32_t__i++)
-        {
-            uint32_t uint32_t__a;
-            uint32_t uint32_t__b;
-            uint32_t uint32_t__divisor;
-            uint64_t uint64_t__oracle;
-            uint32_t uint32_t__expected;
-
-            uint32_t__seed = (uint32_t)(uint32_t__seed * 1664525u + 1013904223u);
-            uint32_t__a = uint32_t__seed;
-            uint32_t__seed = (uint32_t)(uint32_t__seed * 1664525u + 1013904223u);
-            uint32_t__b = uint32_t__seed;
-            uint32_t__seed = (uint32_t)(uint32_t__seed * 1664525u + 1013904223u);
-            uint32_t__divisor = uint32_t__seed | 1u;
-            /* [EN] a*b + divisor/2 cannot overflow u64: the largest product
-               is (2^32-1)^2 and half a u32 divisor is far below the 2^33
-               headroom that leaves.
-               [‎FA] a*b + divisor/2‎ در u64 سرریز نمی‌کند: بزرگ‌ترین حاصل‌ضرب
-               ‎(2^32-1)^2‎ است و نصف مقسوم‌علیه بسیار کمتر از حاشیهٔ ‎2^33‎. */
-            uint64_t__oracle = (((uint64_t)uint32_t__a * (uint64_t)uint32_t__b) +
-                                ((uint64_t)uint32_t__divisor / 2u)) /
-                               (uint64_t)uint32_t__divisor;
-            uint32_t__expected = (uint64_t__oracle > (uint64_t)UINT32_MAX)
-                ? UINT32_MAX : (uint32_t)uint64_t__oracle;
-            CHECK(func__Measurement_HostTest_MulDivU32(
-                      uint32_t__a, uint32_t__b, uint32_t__divisor) ==
-                  uint32_t__expected);
-        }
+        CHECK(func__Measurement_Current1CountsToMa(150u) == 150u);
+        CHECK(func__Measurement_Current2CountsToMa(150u) == 150u);
     }
 
     /* ---- 10. Init really restarts the module ----

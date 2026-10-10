@@ -395,7 +395,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 7cc4e36</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 4f6cef4</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1317,18 +1317,13 @@ $('mx').onclick=()=>send(19,0);
 const f1=x=>x.toFixed(1),V_=mv=>(mv/1000).toFixed(2)+'V',nz=v=>v==null?'?':v;
 /* iest مثل STM32 (charger.c): زیر Vin 10 ولت یا Vbat 5 ولت برگشت به همانی */
 const ie=(fl,vin,eta,vb)=>vin<10000||vb<5000?fl+' (همانی: ولتاژ زیر حد)':Math.floor(Math.floor(fl*eta/1000)*vin/vb);
-const LUTX=[0,20,37,106,189,236,253,283,312,353,390,441,557,707],LUTY=[0,0,111,766,1616,2753,3347,4037,4686,5523,6231,7043,8867,10794];
-const lutPow=c=>{for(let i=1;i<LUTX.length;i++){if(c<=LUTX[i]){const x0=LUTX[i-1],x1=LUTX[i];if(x1==x0)return LUTY[i];return LUTY[i-1]+Math.floor((c-x0)*(LUTY[i]-LUTY[i-1])/(x1-x0));}}const n=LUTX.length-1,d=LUTX[n]-LUTX[n-1];if(!d)return LUTY[n];return LUTY[n]+Math.floor((c-LUTX[n])*(LUTY[n]-LUTY[n-1])/d);};
-const lutTap=(ch,vb)=>{const pw=lutPow(Math.round(ch)),v=Math.min(15000,Math.max(8000,vb));return ' => LUT:'+pw+'mW/'+v+'='+Math.floor(pw*1000/v)+'mA';};
-/* v1.19: آینهٔ جدول توان کانال ۱ (SOLO1، ۱۷ لنگر) — قرینهٔ کانال ۲ */
-const LUT1X=[0,5,11,31,54,81,114,148,189,231,277,330,382,444,504,567,640],LUT1Y=[0,0,135,445,795,1061,1670,2189,2778,3390,4007,4720,5474,6306,7159,8061,9089];
-const lut1Pow=c=>{for(let i=1;i<LUT1X.length;i++){if(c<=LUT1X[i]){const x0=LUT1X[i-1],x1=LUT1X[i];if(x1==x0)return LUT1Y[i];return LUT1Y[i-1]+Math.floor((c-x0)*(LUT1Y[i]-LUT1Y[i-1])/(x1-x0));}}const n=LUT1X.length-1,d=LUT1X[n]-LUT1X[n-1];if(!d)return LUT1Y[n];return LUT1Y[n]+Math.floor((c-LUT1X[n])*(LUT1Y[n]-LUT1Y[n-1])/d);};
-const lut1Tap=(ch,vb)=>{const pw=lut1Pow(Math.round(ch)),v=Math.min(15000,Math.max(8000,vb));return ' => LUT:'+pw+'mW/'+v+'='+Math.floor(pw*1000/v)+'mA';};
+/* [EN] The compiled bench tables were removed (2026-10-10): the board table
+   is the one pushed from this panel and stored in flash. */
 function formulas(t,p){
  [1,2].forEach(n=>{const b=n==1?0:7,raw=t[b],off=p[n-1],g=p[n+1],eta=p[8+n],vb=n==1?t[18]:t[17],vin=t[14],fl=t[b+3];
   $('f'+n+'0').textContent='12-bit ADC · Vref 3300mV';
   $('f'+n+'1').textContent=`${raw} × 3300/4095 × 11/10 × 1000/101 = ${raw} × 8.7767 ≈ ${Math.round(raw*K_UV)}`;
-  $('f'+n+'2').textContent=off==null||g==null?'':`(${raw} − ${off}) × 0.8777 × ${g}/1000 ≈ ${f1(Math.max(raw-off,0)*K_MA*g/1000)}${n==2?lutTap(Math.max(raw-off,0)*K_MA*g/1000,vb):lut1Tap(Math.max(raw-off,0)*K_MA*g/1000,vb)}`;
+  $('f'+n+'2').textContent=off==null||g==null?'':`(${raw} − ${off}) × 0.8777 × ${g}/1000 ≈ ${f1(Math.max(raw-off,0)*K_MA*g/1000)}`;
   $('f'+n+'3').textContent=`convert( average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( raw ) ) ) = ${fl}`;
   $('f'+n+'4').textContent=eta==null?'':eta==0?`eta = 0 → Iest = I = ${fl}`:`${fl} × ${V_(vin)} × ${eta}‰ / ${V_(vb)} ≈ ${ie(fl,vin,eta,vb)}`;});
  V.forEach((v,i)=>{const e=$('fv'+i);if(!e)return;/* The summary now exposes only the three shared rails; the two battery-voltage formulas are rendered in their charger cards. */if(i<3){const o=p[v[2]]==null?0:p[v[2]],c=Math.round((t[v[1]]-o+(i==2?150+Math.floor(t[9]*470/1000):0))/v[3]);e.textContent=`${c} × ${v[3].toFixed(3)} ${o<0?'−':'+'} ${Math.abs(o)}${i==2?' − (150 + '+t[9]+'×470/1000)':''}`;}
@@ -1433,8 +1428,8 @@ const PX={
  82:['خروج از یک درصد','تا این درصد بالا نرود، نمایش از یک بیرون نمی‌آید.'],
  0:['آفست جریان ۱','شمارش ADC که در جریان صفر خوانده می‌شود و از هر نمونه کم می‌گردد؛ اگر در حالت بی‌بار عدد جریان صفر نیست، این را تنظیم کنید.'],
  1:['آفست جریان ۲','شمارش ADC که کانال دوم در جریان صفر می‌خواند و از هر نمونه کم می‌شود؛ اگر بی‌بار عدد جریان ۲ صفر نیست، این را تنظیم کنید.'],
- 2:['ضریب جریان ۱','مقیاس محور جدول توان کانال ۱ (‰). با جدول کالیبراسیون جفت است — تغییرش خوانش جریان را بی‌صدا غلط می‌کند.'],
- 3:['ضریب جریان ۲','مقیاس محور جدول توان کانال ۲ (‰). با جدول کالیبراسیون جفت است — تغییرش خوانش جریان ۲ را بی‌صدا غلط می‌کند.'],
+ 2:['ضریب جریان ۱','گین کانال ۱ (‰). بیشترین گین شروع کار است و خارج از جدول (بالاتر از آخرین نقطه) از همین گین استفاده می‌شود — تغییرش خوانش جریان را بی‌صدا غلط می‌کند.'],
+ 3:['ضریب جریان ۲','گین کانال ۲ (‰). بیشترین گین شروع کار است و خارج از جدول (بالاتر از آخرین نقطه) از همین گین استفاده می‌شود — تغییرش خوانش جریان ۲ را بی‌صدا غلط می‌کند.'],
  4:['آفست ولتاژ ورودی','عدد ثابتی که به ولتاژ ورودی اضافه/کم می‌شود (mV). فقط خطای جمعی را می‌گیرد، نه خطای ضربی.'],
  5:['آفست ولتاژ پک','عدد ثابتی که به ولتاژ پک ۲۴ ولت اضافه/کم می‌شود (mV). فقط خطای جمعی را می‌گیرد؛ خطای ضربی را باید از مرجع ADC درست کرد.'],
  6:['آفست ولتاژ ۱۲ ولت','عدد ثابتی که به ولتاژ نقطهٔ میانی اضافه/کم می‌شود (mV). ولتاژ باتری بالا از تفریق همین عدد به دست می‌آید، پس روی هر دو نیمه اثر دارد.'],
@@ -3307,7 +3302,7 @@ function calchk(){
  /* ۶) قانونی‌بودن جدول فقط برای باتری‌های انتخاب‌شده */
  targets.forEach(n=>{const t=calbuild(n,(D&&D.p&&D.p[n-1]!=null)?D.p[n-1]:0,(D&&D.p&&D.p[n+1]!=null)?D.p[n+1]:1000);
   if(t.bad)no('جدول باتری '+fa(n)+': '+t.bad+'.','جدول ساخته نمی‌شود تا چیز نادرستی وارد کد میکرو نشود.');
-  else ok('جدول باتری '+fa(n)+': '+t.X.length+' نقطه، دو محور هم‌طول، جریان صعودی و توان بدون نزول.'+
+  else ok('جدول باتری '+fa(n)+': '+t.X.length+' نقطه، دو محور هم‌طول، زنجیرهٔ صعودی و جریان بدون افت.'+
    (t.note.length?' ('+t.note.join(' · ')+')':''));});
  /* ۷) شیب ولتاژ: آیا آفست تنهایی کافی است؟ */
  VDIV.forEach(k=>{const f=calvfit(k,S);
@@ -3338,34 +3333,34 @@ function calchk(){
 /* [EN] Build equal, increasing chain/power axes; drop noisy dips.
    [FA] محورهای هم‌طول و صعودی را می‌سازد و افت نویزی را حذف می‌کند. */
 function calbuild(n,off,gn){
- const r=n===1?'r1':'r2',b=n===1?'b1':'b2',v=n===1?'vhi':'vlo',note=[];
+ /* [EN] Current table (user order 2026-10-10): chain mA -> true battery mA.
+    No power axis and no voltage division. Rules: nothing is dropped
+    silently - every problem is returned as a message and blocks the table.
+    [FA] جدول جریان (دستور کاربر ۲۰۲۶-۱۰-۱۰): mA زنجیره ← mA واقعی باتری.
+    بدون محور توان و بدون تقسیم بر ولتاژ. هیچ نقطه‌ای بی‌صدا حذف نمی‌شود؛
+    هر مشکل پیام می‌شود و جدول را متوقف می‌کند. */
+ const r=n===1?'r1':'r2',b=n===1?'b1':'b2',note=[];
  if(!Number.isFinite(off)||!Number.isFinite(gn))return {X:[],Y:[],note:[],bad:'آفست یا گین جریان حساب نشده است'};
- const pts=[];let missingVoltage=0;
- calsel(n).forEach(z=>{if(!Number.isFinite(z[r])||!Number.isFinite(z[b]))return;
-  /* [EN] Power axis = DMM current x the BOARD's own battery voltage (the
-     runtime divisor the firmware uses). [FA] محور توان = جریان مولتی‌متر
-     × ولتاژ خودِ برد (همان مقسوم‌علیه زمان اجرا). */
-  const vb=z[v];if(!Number.isFinite(vb)||vb<=0){missingVoltage++;return;}
-  /* [EN] two integer stages, like the firmware [FA] دو مرحلهٔ عدد صحیح، مثل فرم‌ور */
-  const chain=Math.max(0,Math.round(Math.round((z[r]-off)*K_MA)*gn/1000));
-  /* Signed DMM current is battery current. The firmware table is unsigned
-     charge power, so discharge rows deliberately floor at zero. */
-  pts.push([chain,Math.max(0,Math.round(z[b]*vb/1000))]);});
- pts.sort((a,c)=>a[0]-c[0]);
- const X=[],Y=[];let dup=0,dip=0;
- pts.forEach(q=>{
-  if(X.length&&q[0]===X[X.length-1]){dup++;return;}      /* جریان تکراری */
-  if(Y.length&&q[1]<Y[Y.length-1]){dip++;return;}        /* توان نزولی */
-  X.push(q[0]);Y.push(q[1]);});
- if(X.length&&X[0]!==0){X.unshift(0);Y.unshift(0);}
- if(dup)note.push(dup+' نقطه با جریان تکراری کنار گذاشته شد');
- if(dip)note.push(dip+' نقطهٔ نویزی که توانش پایین‌تر از نقطهٔ قبل بود کنار گذاشته شد');
+ const rows=calsel(n).filter(z=>Number.isFinite(z[r])&&Number.isFinite(z[b]));
+ /* [‎EN] Zero current row is mandatory - never manufactured. [FA]‎ نقطهٔ صفر الزامی است و ساخته نمی‌شود. */
+ if(!rows.some(z=>Number.isFinite(z.d)&&z.d===0))
+  return {X:[],Y:[],note:[],bad:'نقطهٔ صفر (duty ۰٪) با مولتی‌متر ثبت نشده است'};
+ if(rows.some(z=>z[b]<0))
+  return {X:[],Y:[],note:[],bad:'جریان منفی (دشارژ) در نمونه‌ها هست؛ جدول شارژ فقط برای جریان مثبت است — آن ردیف‌ها را تیک بردارید'};
+ /* [EN] Two integer stages, exactly like the firmware. [FA] دو مرحلهٔ عدد صحیح، دقیقاً مثل فرم‌ور. */
+ const pts=rows.map(z=>({c:Math.max(0,Math.round(Math.round((z[r]-off)*K_MA)*gn/1000)),i:z[b]}));
+ pts.sort((x,y)=>x.c-y.c);
+ /* [EN] Equal chain values are AVERAGED, and the count is reported. [FA] جریان‌های تکراری میانگین می‌شوند و گزارش می‌شوند. */
+ const groups=[];
+ pts.forEach(q=>{const g=groups.length?groups[groups.length-1]:null;
+  if(g&&g.c===q.c){g.sum+=q.i;g.n++;}else groups.push({c:q.c,sum:q.i,n:1});});
+ const dupGroups=groups.filter(g=>g.n>1).length;
+ if(dupGroups)note.push(dupGroups+' جریان تکراری میانگین گرفته شد');
+ /* [EN] Round ONCE, at the end. [FA] رند فقط یک بار، در پایان. */
+ const X=groups.map(g=>g.c),Y=groups.map(g=>Math.round(g.sum/g.n));
  let bad='';
- if(missingVoltage)note.push(missingVoltage+' نمونه ولتاژ برد نداشت');
- if(X.length!==Y.length)bad='محورها هم‌طول نیستند';
- else if(X.length<2)bad='کمتر از ۲ نقطه ('+X.length+') — حداقل ۲ لازم است';
- else{for(let i=1;i<X.length;i++){if(X[i]<=X[i-1])bad='محور جریان صعودی نیست';
-   if(Y[i]<Y[i-1])bad='محور توان نزول دارد';}}
+ if(X.length<2)bad='کمتر از ۲ نقطهٔ متمایز ('+X.length+') — حداقل ۲ لازم است';
+ else{for(let i=1;i<Y.length;i++){if(Y[i]<Y[i-1]){bad='جریان با افزایش شمارش پایین آمده (زنجیره '+X[i-1]+' ← '+Y[i-1]+' mA، بعد '+X[i]+' ← '+Y[i]+' mA). این نقطه را بررسی یا تکرار کنید؛ چیزی حذف نشده است';break;}}}
  return {X:X,Y:Y,note:note,bad:bad};}
 function calcode(){
  const calScope=calscope(caltargets()),samples=calScope.length;
@@ -3381,12 +3376,11 @@ function calcode(){
  let out='/* [EN] Generated by the ChangeOver panel on '+new Date().toISOString()+
   '\n *      from '+calScope.length+' accepted bench samples. The panel has\n'+
   ' *      already checked: equal axis lengths, >= 2 points, increasing chain\n'+
-  ' *      axis, non-decreasing power axis.\n'+
-  ' *      powerMw = DMM current x the BOARD battery voltage (the runtime\n'+
+  ' *      axis, non-decreasing battery-current axis.\n'+
+  ' *      batteryMa = DMM current (mA). No voltage is involved.\n'+
   ' *      divisor); rebuild if the voltage scale changes.\n'+
-  ' *      Paste into Firmware/Modules/Measurement/calibration.h.\n'+
-  ' * [FA] محور توان = جریان مولتی‌متر × ولتاژ خودِ برد؛ با تغییر مقیاس\n'+
-  ' *      ولتاژ جدول باید بازسازی شود. */\n\n';
+  ' *      Record only: the board receives the table by LUT push from the panel.\n'+
+  ' * [FA] جدول فقط جریان مولتی‌متر است و هیچ ولتاژی در آن نیست. */\n\n';
  [1,2].forEach(n=>{const t=calbuild(n,off[n-1],gn[n-1]);
   t.note.forEach(x=>msg.push('باتری '+fa(n)+': '+x));
   if(t.bad){msg.push('⛔ باتری '+fa(n)+': '+t.bad);
@@ -3394,7 +3388,7 @@ function calcode(){
   if(t.X.length>24)msg.push('باتری '+fa(n)+': جدول '+t.X.length+' نقطه‌ای شد (هر نقطه ۸ بایت فلش)');
   out+='/* table '+n+' - battery '+n+', '+t.X.length+' points, axes equal length (any count is valid) */\n'+
    'static const uint32_t CAL_Current'+n+'LutChainMa[] =\n    { '+t.X.map(q=>q+'u').join(', ')+' };\n'+
-   'static const uint32_t CAL_Current'+n+'LutBatteryMw[] =\n    { '+t.Y.map(q=>q+'u').join(', ')+' };\n\n';});
+   'static const uint32_t CAL_Current'+n+'LutBatteryMa[] =\n    { '+t.Y.map(q=>q+'u').join(', ')+' };\n\n';});
  {const f0=calvfit(VDIV[0],calScope),f1=calvfit(VDIV[1],calScope);
   if(f0&&f1&&Math.abs(f0.a-f1.a)>0.005)
    out+='/* WARNING: the input rail and the pack rail measure DIFFERENT slopes ('+
@@ -3497,7 +3491,7 @@ async function calmodalApply(){
 const LUTMAX=24;
 const LUTST={0:'موفق',1:'برد مرحلهٔ شروع را ندیده بود',2:'تعداد نقاط برای برد نامعتبر بود',
  3:'یکی از تکه‌های جدول به برد نرسید',4:'محور جریان روی برد صعودی نبود',
- 5:'محور توان روی برد افت داشت',6:'CRC برد با CRC پنل نخواند (داده در راه خراب شد)',
+ 5:'جدول روی برد افت داشت',6:'CRC برد با CRC پنل نخواند (داده در راه خراب شد)',
  7:'نوشتن روی فلش برد شکست خورد'};
 function lcrc(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++){c^=b[i];
  for(let k=0;k<8;k++)c=(c>>>1)^(0xEDB88320&-(c&1));}return (c^0xFFFFFFFF)>>>0;}
@@ -3561,7 +3555,7 @@ function lrenderRead(r){
   h+='<div class="lutreadcard"><div class="luthead"><span>باتری '+fa(n)+'</span><span class="luttag">'+(t.X.length?t.X.length+' نقطهٔ فعال':'صفرنقطه‌ای — جدول کامپایل‌شده مرجع است')+'</span></div>';
   if(!t.X.length){h+='<div class="lb">برای این باتری override فلش فعال وجود ندارد.</div>';}
   else{
-   h+='<div class="tw"><table class="lutt"><tr><th>نقطه</th><th>جریان زنجیره<br><span class="luttag">chainMa (mA)</span></th><th>توان باتری<br><span class="luttag">powerMw (mW)</span></th></tr>';
+   h+='<div class="tw"><table class="lutt"><tr><th>نقطه</th><th>جریان زنجیره<br><span class="luttag">chainMa (mA)</span></th><th>جریان باتری<br><span class="luttag">batteryMa (mA)</span></th></tr>';
    for(let i=0;i<t.X.length;i++)h+='<tr><td>'+(i+1)+'</td><td class="pair">'+t.X[i]+'</td><td class="pair">'+t.Y[i]+'</td></tr>';
    h+='</table></div>';
   }
@@ -3662,7 +3656,7 @@ function lrender(p,b,a){
   const p0=p.T[n-1]||{X:[],Y:[]},b0=bt[n-1],a0=at[n-1],m=Math.max(p0.X.length,b0.X.length,a0.X.length);
   h+='<div class="luthead" style="margin-top:9px"><span>باتری '+fa(n)+'</span><span class="luttag">'+m+' ردیف قابل مقایسه</span></div>';
   if(!m){h+='<div class="lb">برای این باتری نقطه‌ای در جدول پیشنهادی یا بازخوانی‌شده نیست.</div>';return;}
-  h+='<div class="tw"><table class="lutt"><tr><th>نقطه</th><th>فعلی روی برد<br>قبل از ارسال<br><span class="luttag">chainMa / powerMw</span></th><th>پیشنهادی برای ارسال<br>از پنل<br><span class="luttag">chainMa / powerMw</span></th><th>پس از commit<br>readback برد<br><span class="luttag">chainMa / powerMw</span></th><th>نتیجهٔ تطبیق</th></tr>';
+  h+='<div class="tw"><table class="lutt"><tr><th>نقطه</th><th>فعلی روی برد<br>قبل از ارسال<br><span class="luttag">chainMa / batteryMa</span></th><th>پیشنهادی برای ارسال<br>از پنل<br><span class="luttag">chainMa / batteryMa</span></th><th>پس از commit<br>readback برد<br><span class="luttag">chainMa / batteryMa</span></th><th>نتیجهٔ تطبیق</th></tr>';
   for(let i=0;i<m;i++){
    const old=lpair(b0,i),want=lpair(p0,i),now=lpair(a0,i),pre=!br?{c:'bad',t:'فعلی نامعلوم'}:(!old&&want?{c:'changed',t:'نقطهٔ جدید'}:(!want&&old?{c:'bad',t:'نقطهٔ فعلی اضافه'}:{c:leq(old,want)?'same':'diff',t:leq(old,want)?'بدون اختلاف':'اختلاف'}));
    const post=lpost(old,want,now,br,ar,a&&a.error);
@@ -3672,7 +3666,7 @@ function lrender(p,b,a){
  });
  if(p.cal&&p.cal.editable){
   h+='<div class="lutactions"><span class="luttag">تیک‌ها پیش‌فرض فعال‌اند؛ برای حفظ هر مقدار، تیک همان ردیف را بردارید.</span><div class="bqr2"><button class="sb brun pbg" id="lutApply" type="button" onclick="lapplypending()">✓ تأیید و اعمال موارد تیک‌خورده</button><button class="sb stp2 pbr" id="lutCancel" type="button" onclick="lcancelpending()">لغو این تغییرها</button></div></div>';
- }else h+='<div class="luttag">ملاک موفقیت، تطبیق chain و power هر ردیف با پیشنهاد است؛ CRC و تعداد فقط سلامت handshake را توضیح می‌دهند.</div>';
+ }else h+='<div class="luttag">ملاک موفقیت، تطبیق chain و جریان باتری هر ردیف با پیشنهاد است؛ CRC و تعداد فقط سلامت handshake را توضیح می‌دهند.</div>';
  h+='</div>';
  e.innerHTML=h;
 }
@@ -3801,7 +3795,7 @@ async function lcommit(targetId,before,p){
  stxt('calst','… commit موفق بود؛ حالا جدول فعال STM32 دوباره خوانده می‌شود.');
  const after=await lread();LREAD_IN_PROGRESS=false;LAT=after;LUT_LAST_BEFORE=before;LUT_LAST_AFTER=after.ready?after:null;lupd();lview(p,before,LAT);
  if(!after.ready){LSNT=0;lupd();stxt('calst','⚠ commit با handshake تأیید شد، اما بازخوانی عددبه‌عدد بعد از commit ناموفق بود؛ تغییرات اعمال‌شده فرض نمی‌شوند و ریست پیشنهاد نمی‌شود.');return;}
- if(!lmatch(after,p,targetId)){LSNT=0;lupd();stxt('calst','⛔ mismatch: commit پاسخ موفق داد، اما حداقل یک chain/power بازخوانی‌شده از باتری انتخاب‌شده با پیشنهاد فرق دارد؛ ریست انجام نشد. جدول بالا ردیف خطادار را نشان می‌دهد.');return;}
+ if(!lmatch(after,p,targetId)){LSNT=0;lupd();stxt('calst','⛔ mismatch: commit پاسخ موفق داد، اما حداقل یک chain/جریان بازخوانی‌شده از باتری انتخاب‌شده با پیشنهاد فرق دارد؛ ریست انجام نشد. جدول بالا ردیف خطادار را نشان می‌دهد.');return;}
  LUT_LAST_PROPOSAL=p;LSNT=1;lupd();
   stxt('calst','✅ '+targetText+'، پارامترهای انتخاب‌شدهٔ کالیبراسیون و جدول با readback واقعی تأیید شدند. جدول دیگر حفظ شد؛ برای شروع با مقدار نو «ریست برد» را بزنید.');
   if(confirm('پارامترهای انتخاب‌شدهٔ کالیبراسیون و جدول '+targetText+' ذخیره و با عددهای واقعی برد تأیید شدند.\n\nبرد ریست شود تا با مقدار جدید بالا بیاید؟\n(شارژ چند ثانیه قطع می‌شود.)'))await lrst();

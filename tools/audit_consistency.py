@@ -1015,87 +1015,29 @@ def sec_panel(ids):
 
 # ================================================== 5. calibration mirrors
 def sec_calibration():
-    """[EN] Tables copied by hand between the firmware and the panel.
-       [FA] جدول‌هایی که دستی بین فرم‌ور و پنل کپی شده‌اند."""
-    pairs = (("CAL_Current1LutChainMa", "LUT1X", "ch1 chain axis"),
-             ("CAL_Current1LutBatteryMw", "LUT1Y", "ch1 power axis"),
-             ("CAL_Current2LutChainMa", "LUTX", "ch2 chain axis"),
-             ("CAL_Current2LutBatteryMw", "LUTY", "ch2 power axis"))
-    for cname, jname, label in pairs:
-        fw = c_array(CAL_H, cname)
-        pn = js_array(P_PAN, jname)
-        if fw is None or pn is None:
-            ok(False, f"{label}: table missing", f"{cname} / {jname}")
-            continue
-        fwv = [int(v.rstrip("uU")) for v in fw]
-        pnv = [int(v) for v in pn]
-        ok(fwv == pnv, f"panel {label} mirror is stale",
-           f"firmware {fwv} vs panel {pnv}")
-
-    for x, y, lbl in (("CAL_Current1LutChainMa", "CAL_Current1LutBatteryMw", "ch1"),
-                      ("CAL_Current2LutChainMa", "CAL_Current2LutBatteryMw", "ch2")):
-        ax, ay = c_array(CAL_H, x), c_array(CAL_H, y)
-        ok(ax and ay and len(ax) == len(ay),
-           f"{lbl} LUT axes have different lengths",
-           f"{len(ax) if ax else 0} vs {len(ay) if ay else 0}")
-        if ax:
-            xs = [int(v.rstrip("uU")) for v in ax]
-            ok(xs == sorted(xs) and len(set(xs)) == len(xs),
-               f"{lbl} LUT chain axis is not strictly increasing",
-               "interpolation divides by the gap, so a repeat or a step "
-               "backwards is a divide-by-zero or a sign flip")
-            # [EN] v1.64 line-by-line audit finding: the firmware computes
-            #      (yHigh - yLow) in UNSIGNED arithmetic. A power axis that
-            #      dips - one noisy bench point is enough - wraps around to
-            #      ~4 billion instead of a small negative number, so the
-            #      reported battery current explodes. The panel refuses to
-            #      emit such a table; this catches a hand-edited one.
-            # [FA] تفریق محور توان در فرم‌ور بدون علامت است؛ یک نقطهٔ نزولی
-            #      به‌جای عدد منفی کوچک، به ~۴ میلیارد می‌پیچد.
-            ays = [int(v.rstrip("uU")) for v in ay] if ay else []
-            ok(all(ays[i] >= ays[i - 1] for i in range(1, len(ays))),
-               f"{lbl} LUT power axis dips",
-               "the firmware subtracts these as unsigned, so a dip wraps to "
-               "a gigantic number instead of a negative one")
-
-    # ---------- v1.66: the direct-push path must agree in three places ----------
-    # [EN] The board stores at most CAL_LUT_POINTS_MAX points per channel, the
-    #      ESP mirrors that cap before it even opens the link, and the browser
-    #      refuses to offer a bigger table. Three hand-typed numbers - exactly
-    #      the shape of drift this audit exists for.
-    # [FA] سقف نقاط در سه جای دست‌نویس تکرار شده: برد، ESP و مرورگر. دقیقاً
-    #      همان نوع واگراییِ خاموشی که این ممیزی برای آن نوشته شده.
-    lut_h = read("Firmware/Modules/CalLut/cal_lut.h")
-    m_board = re.search(r"CAL_LUT_POINTS_MAX\s+(\d+)u", lut_h)
-    m_esp = re.search(r"ESP_LUT_POINTS_MAX\s+(\d+)u", P_CFG)
-    m_js = re.search(r"const LUTMAX=(\d+);", P_PAN)
-    ok(bool(m_board and m_esp and m_js),
-       "the LUT point cap is missing on one of the three sides",
-       "board cal_lut.h / ESP plink_config.h / browser plink_panel.h")
-    if m_board and m_esp and m_js:
-        ok(m_board.group(1) == m_esp.group(1) == m_js.group(1),
-           "the LUT point cap disagrees between the board, the ESP and the browser",
-           f"board {m_board.group(1)} / ESP {m_esp.group(1)} / browser {m_js.group(1)}")
-    # [EN] The LUT block and the parameter block must not be the same pages:
-    #      the user asked for a SEPARATE storage path precisely so a big table
-    #      transfer can never endanger the saved settings.
-    # [FA] بلوک جدول و بلوک پارامترها نباید یکی باشند: کاربر «مسیر جدا» خواست
-    #      تا انتقال حجیم جدول هرگز تنظیمات ذخیره‌شده را به خطر نیندازد.
-    lut_pages = set(re.findall(r"CAL_LUT_PAGE_[AB]_ADDR\s+(0x[0-9A-Fa-f]+)u", lut_h))
-    nvm_pages = set(re.findall(r"ESP_LINK_NVM_PAGE_[AB]_ADDR\s+(0x[0-9A-Fa-f]+)u", NVM_H))
-    ok(lut_pages and nvm_pages and not (lut_pages & nvm_pages),
-       "the bench-LUT flash block overlaps the parameter record block",
-       f"LUT {sorted(lut_pages)} vs parameters {sorted(nvm_pages)}")
-
-    # the two 24 V sense nets are the same physical network
-    ok("#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS   BSP_MEASUREMENT_DIV24_TOP_OHMS" in BSP_M,
-       "the pack divider is not defined as the input divider",
-       "R46 and R47 are both 68K; giving them separate numbers is what let a "
-       "fabricated 66200 survive")
-    ok(not re.search(r"#define\s+\w+\s+(66200|62400)u", BSP_M),
-       "a fabricated divider constant is back",
-       "62400 and 66200 are not resistors on this board")
-
+    """[EN] Current calibration after 2026-10-10: no compiled tables and no
+       hand-copied mirror. The table lives in flash (CalLut) and comes from
+       the panel; the BSP starts at max gain and zero offset.
+       [FA] کالیبراسیون جریان از ۲۰۲۶-۱۰-۱۰: بدون جدول کامپایلی و بدون کپی دستی.
+       جدول در فلش (CalLut) است و از پنل می‌آید؛ BSP از بیشترین گین و آفست صفر شروع می‌کند."""
+    ok(c_array(CAL_H, "CAL_Current1LutChainMa") is None and
+       c_array(CAL_H, "CAL_Current2LutChainMa") is None,
+       "calibration.h still carries a compiled current table",
+       "the table must come from the panel (flash), not from the header")
+    ok(js_array(P_PAN, "LUTX") is None and js_array(P_PAN, "LUT1X") is None,
+       "panel still carries a hand-copied current table mirror",
+       "the panel no longer mirrors any table; it only sends what it computed")
+    cal_c = (ROOT / "Firmware/Modules/CalLut/cal_lut.c").read_text(encoding="utf-8")
+    ok("UINT32_T__A__BatteryMa" in cal_c and "UINT32_T__A__PowerMw" not in cal_c,
+       "CalLut still stores a power axis",
+       "the stored table must be battery mA")
+    bsp = (ROOT / "Firmware/Bsp/Src/bsp_measurement.c").read_text(encoding="utf-8")
+    ok(re.search(r"#define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE\s+3000u", bsp) and
+       re.search(r"#define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE\s+3000u", bsp) and
+       re.search(r"#define BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS\s+0u", bsp) and
+       re.search(r"#define BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS\s+0u", bsp),
+       "BSP current start values are not max gain (3000) and zero offset",
+       "safe start: a high reading only slows the charge")
 
 # ======================================================== 6. protocol/CSV
 def sec_protocol():

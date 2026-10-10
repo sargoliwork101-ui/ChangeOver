@@ -16,11 +16,11 @@
  *              driver. A LUT push can therefore never disturb a parameter
  *              record and vice versa.
  *
- *              The compile-time tables in calibration.h STAY and remain the
- *              fallback (user order: "keep today's capability too"): the
- *              measurement path uses the flash table only when a valid
- *              record is present, and falls back to the compiled table on a
- *              fresh board, a corrupt record or a version bump.
+ *              [2026-10-10] There is NO compiled table any more. The panel
+ *              is the only source. Without a valid record the measurement
+ *              path returns the chain value itself (BSP gain and offset),
+ *              which starts at the maximum gain so a fresh board reads high,
+ *              never low.
  *
  *              Handshake: the panel stages the table (LUT_BEGIN +
  *              LUT_CHUNK), then asks for a commit (LUT_COMMIT carrying the
@@ -66,11 +66,13 @@
 #endif
 
 /* [EN] "CLUT" + format version; a bump invalidates old records and the
- *      compiled tables take over again (never a silent half-upgrade).
+ *      board falls back to the gain/offset line (never a silent half-upgrade:
+ *      old power records are rejected, they are not reinterpreted as mA).
  * [FA] «CLUT» + نسخهٔ قالب؛ تغییر نسخه رکورد قدیمی را نامعتبر می‌کند و
- *      جدول کامپایل‌شده دوباره سر کار می‌آید. */
+ *      برد به خط گین و آفست برمی‌گردد (رکورد توانیِ قدیمی به‌عنوان mA
+ *      خوانده نمی‌شود). */
 #define CAL_LUT_MAGIC                   0x434C5554u
-#define CAL_LUT_VERSION                 1u
+#define CAL_LUT_VERSION                 2u
 
 /* [EN] Per-channel point cap. 24 points x 2 axes x 2 channels x 4 B = 384 B
  *      of record (and the same in RAM). The bench wizard runs 17..21 duty
@@ -97,7 +99,7 @@
 #define CAL_LUT_ST_COUNT                2u  /* point count out of range / تعداد نقاط نامعتبر */
 #define CAL_LUT_ST_MISSING              3u  /* a chunk never arrived / تکه‌ای نرسید */
 #define CAL_LUT_ST_CHAIN                4u  /* chain axis not strictly increasing / محور زنجیره صعودی نیست */
-#define CAL_LUT_ST_POWER                5u  /* power axis dips / محور توان افت دارد */
+#define CAL_LUT_ST_DIP                5u  /* battery current dips / جریان باتری افت دارد */
 #define CAL_LUT_ST_CRC                  6u  /* panel CRC != staged CRC / CRC پنل با CRC چیده‌شده فرق دارد */
 #define CAL_LUT_ST_FLASH                7u  /* erase/program/verify failed / نوشتن فلش شکست */
 
@@ -111,7 +113,7 @@ typedef struct
 {
     uint32_t uint32_t__points;                              /* [EN] 0 = channel not overridden / ۰ = این کانال جایگزین نشده */
     uint32_t UINT32_T__A__ChainMa[CAL_LUT_POINTS_MAX];      /* [EN] ADC chain mA / mA زنجیره */
-    uint32_t UINT32_T__A__PowerMw[CAL_LUT_POINTS_MAX];      /* [EN] Battery power mW / توان باتری */
+    uint32_t UINT32_T__A__BatteryMa[CAL_LUT_POINTS_MAX];      /* [EN] Battery current mA / جریان باتری mA */
 } cal_lut_channel_t;
 
 /**
@@ -148,18 +150,19 @@ uint32_t func__CalLut_Crc32(const uint8_t *uint8_t__A__Data,
 
 /**
  * @brief  [EN] Validate a candidate record: magic, version, point counts,
- *              strictly increasing chain axis, non-decreasing power axis
- *              (an unsigned dip wraps the interpolation to ~4e9 mW), CRC32.
+ *              strictly increasing chain axis, non-decreasing battery-current
+ *              axis (a dip would make the unsigned interpolation wrap), CRC32.
  *         [FA] اعتبارسنجی رکورد: مجیک، نسخه، تعداد نقاط، محور زنجیرهٔ
- *              اکیداً صعودی، محور توان بدون افت (افت در حساب بدون‌علامت به
- *              ~۴e۹ می‌پیچد) و CRC32.
+ *              اکیداً صعودی، محور جریان باتری بدون افت (افت در حساب
+ *              بدون‌علامت می‌پیچد) و CRC32.
  */
 bool func__CalLut_RecordValidate(const cal_lut_record_t *cal_lut_record_t__record);
 
 /**
- * @brief  [EN] Boot load: newest valid record wins, otherwise the compiled
- *              tables in calibration.h stay in charge.
- *         [FA] بارگذاری بوت: تازه‌ترین رکورد معتبر؛ وگرنه جدول کامپایل‌شده.
+ * @brief  [EN] Boot load: newest valid record wins, otherwise no table
+ *              is active and the chain value is used as the reading.
+ *         [FA] بارگذاری بوت: تازه‌ترین رکورد معتبر؛ وگرنه جدولی فعال نیست و
+ *              زنجیره به‌عنوان خوانش استفاده می‌شود.
  */
 void func__CalLut_Init(void);
 
@@ -176,7 +179,7 @@ bool func__CalLut_Active(uint8_t uint8_t__channel);
  */
 uint32_t func__CalLut_Points(uint8_t uint8_t__channel);
 const uint32_t *func__CalLut_ChainMa(uint8_t uint8_t__channel);
-const uint32_t *func__CalLut_PowerMw(uint8_t uint8_t__channel);
+const uint32_t *func__CalLut_BatteryMa(uint8_t uint8_t__channel);
 
 /**
  * @brief  [EN] Start staging a new table (LUT_BEGIN). Clears the staging
@@ -200,7 +203,7 @@ bool func__CalLut_StageBegin(uint32_t uint32_t__points1,
 bool func__CalLut_StagePoint(uint8_t uint8_t__channel,
                              uint32_t uint32_t__index,
                              uint32_t uint32_t__chainMa,
-                             uint32_t uint32_t__powerMw);
+                             uint32_t uint32_t__batteryMa);
 
 /**
  * @brief  [EN] Validate + write the staged table (LUT_COMMIT). On success

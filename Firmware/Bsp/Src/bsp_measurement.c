@@ -216,34 +216,19 @@
  *      only the offset and the bench gain permille differ per channel.
  * [FA] کالیبراسیون پر-کانال (دستور کاربر): توپولوژی هر دو زنجیره یکی است و
  *      فقط آفست و ضریب گینِ بنچ هر کانال جدا تنظیم می‌شود. */
-/* [EN] Channel 2 (Trans2 / Shunt2 -> PA7): bench-calibrated pair. The
- *      2026-09-18 scope run gave 1085 permille (330 read vs 358 mA true
- *      primary at fixed 15% duty); the 2026-09-24 user order (calibrate
- *      from the given bench numbers, no further tests) re-set the gain at
- *      the D=15% point: 1085 x 425/354 = 1303 permille (displayed 354 vs
- *      425 mA DMM true). The chain stays non-linear (D=10%: reads
- *      ~222-250 vs 185 true) - a solo hardware re-check stays on the
- *      bench list; the LUT above the chain is the real correction.
- * [FA] کانال ۲ (‎Trans2/Shunt2)‎: زوج کالیبره‌شدهٔ بنچ. ران اسکوپ ۲۰۲۶-۰۹-۱۸
- *      ۱۰۸۵ پرمیل داد؛ دستور ۲۰۲۶-۰۹-۲۴ (کالیبره از همین اعداد، بدون تست
- *      بیشتر) گین را در نقطهٔ ‎D=15%‎ گذاشت: 1085×425÷354 = ۱۳۰۳ پرمیل.
- *      زنجیره هنوز غیرخطی است (‎D=10%: ~222-250‎ در برابر 185 واقعی) — تست
- *      تکی سخت‌افزاری در فهرست بنچ می‌ماند؛ اصلاح واقعی LUT روی زنجیره است. */
-#define BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS 8u
-#define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE 1303u
-/* [EN] Channel 1 (Trans1 / Shunt1 -> PA1): bench-calibrated 2026-09-24,
- *      after the dual-channel drop cleared (user order: bake it and push).
- *      DMM in series with the 24 V input, true vs displayed: D=15% 423 vs
- *      436/438/442 mA, D=10% 185 vs 185/189 mA. Gain = 1085 * 423/438.7 =
- *      1046 permille, set at D=15% (closest to the ~650 mA AUTO point).
- *      Offset stays 8 counts - off-state display reads 0 mA.
- * [FA] کانال ۱ (‎Trans1/Shunt1)‎: کالیبرهٔ بنچ ۲۰۲۶-۰۹-۲۴ پس از رفع افت
- *      دوکاناله (دستور کاربر: بپز و پوش کن). مولتی‌متر سری با ورودی ۲۴V؛
- *      واقعی در برابر نمایش: ‎D=15%‎ → 423 در برابر ‎436/438/442‎؛ ‎D=10%‎ → 185
- *      در برابر ‎185/189‎. گین = 1085×423÷438.7 = ۱۰۴۶ پرمیل، تنظیم در ‎D=15%‎
- *      (نزدیک‌ترین به نقطهٔ کار ~650mA در AUTO). آفست 8 ماند (خاموش = 0mA). */
-#define BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS 8u
-#define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE 1046u
+/* [EN] Safe start values until the first bench calibration (user order
+ *      2026-10-10): the MAXIMUM gain (3000 permille) and ZERO offset. A
+ *      higher reading only slows the charge; a low reading would push
+ *      extra current into the battery. Both channels start here and the
+ *      panel calibrates them at the first flash.
+ * [FA] مقدار شروع ایمن تا اولین کالیبراسیون بنچ (دستور کاربر ۲۰۲۶-۱۰-۱۰):
+ *      بیشترین گین (۳۰۰۰ پرمیل) و آفست صفر. خواندن بالاتر فقط شارژ را کند
+ *      می‌کند؛ خواندن پایین‌تر جریان اضافه به باتری می‌دهد. هر دو کانال از
+ *      همین‌جا شروع می‌کنند و پنل در اولین ریختن برنامه کالیبره‌شان می‌کند. */
+#define BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS 0u
+#define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE 3000u
+#define BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS 0u
+#define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE 3000u
 
 /* [EN] Runtime clamp limits for the ESP-adjustable current calibration
  *      (user order 2026-09-22: the ESP command panel must never be able to

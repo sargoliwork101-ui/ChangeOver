@@ -570,90 +570,25 @@ def test_setpoints_and_timing():
           "func__Measurement_Current1CountsToMa((uint16_t)uint32_t__current1CountsFiltered);" in meas_c_raw and
           "func__Measurement_Current2CountsToMa((uint16_t)uint32_t__current2CountsFiltered);" in meas_c_raw,
           "Measurement must run the median chain (v1.4: runtime size ANY 1..15, default 3) then the moving-average chain (v1.4: runtime window ANY 1..300 since v1.9, default 10) on each current channel (user order 2026-09-25) - and on the RAW ADC counts with the counts->mA conversion AFTER the filter (user order 2026-09-27)")
-    lut_chain = re.search(r"CAL_Current2LutChainMa\[\] =\s*\{([^}]*)\}", cal_h)
-    lut_batt = re.search(r"CAL_Current2LutBatteryMw\[\] =\s*\{([^}]*)\}", cal_h)
-    lut_chain_n = len(lut_chain.group(1).split(",")) if lut_chain else 0
-    lut_batt_n = len(lut_batt.group(1).split(",")) if lut_batt else 0
-    lut1_chain = re.search(r"CAL_Current1LutChainMa\[\] =\s*\{([^}]*)\}", cal_h)
-    lut1_batt = re.search(r"CAL_Current1LutBatteryMw\[\] =\s*\{([^}]*)\}", cal_h)
-    lut1_chain_n = len(lut1_chain.group(1).split(",")) if lut1_chain else 0
-    lut1_batt_n = len(lut1_batt.group(1).split(",")) if lut1_batt else 0
-    check('#include "calibration.h"' in meas_c_raw and
-          re.search(r"#define CAL_CURRENT2_LUT_ENABLE\s+1u", cal_h) and
-          "static const uint32_t CAL_Current2LutChainMa[] =" in cal_h and
-          "static const uint32_t CAL_Current2LutBatteryMw[] =" in cal_h and
-          "sizeof(CAL_Current2LutChainMa) /" in cal_h and
-          "{ 0u, 20u, 37u, 106u, 189u, 236u, 253u, 283u, 312u, 353u, 390u, 441u, 557u, 707u }" in cal_h and
-          "{ 0u, 0u, 111u, 766u, 1616u, 2753u, 3347u, 4037u, 4686u, 5523u, 6231u, 7043u, 8867u, 10794u }" in cal_h and
-          lut_chain_n == lut_batt_n and lut_chain_n == 14 and
-          re.search(r"#define CAL_CURRENT1_LUT_ENABLE\s+1u", cal_h) and
-          "static const uint32_t CAL_Current1LutChainMa[] =" in cal_h and
-          "static const uint32_t CAL_Current1LutBatteryMw[] =" in cal_h and
-          "sizeof(CAL_Current1LutChainMa) /" in cal_h and
-          "{ 0u, 5u, 11u, 31u, 54u, 81u, 114u, 148u, 189u, 231u, 277u, 330u, 382u, 444u, 504u, 567u, 640u }" in cal_h and
-          "{ 0u, 0u, 135u, 445u, 795u, 1061u, 1670u, 2189u, 2778u, 3390u, 4007u, 4720u, 5474u, 6306u, 7159u, 8061u, 9089u }" in cal_h and
-          lut1_chain_n == lut1_batt_n and lut1_chain_n == 17,
-          f"channel-2 bench LUT must be ON as a chain->POWER table (v1.13, user order 2026-09-25 'voltages are fixed but the currents are wrong'; v1.17/v1.18 refit 2026-09-27 SOLO2 sweep duty 1..19): the DCM invariant is battery POWER, the current is P/Vbat - the old chain->current table embedded the calibration run's battery voltage (12.0..13.65V) and overread ~7 percent per volt as the battery filled; anchors = DMM_I2 x DMM_V2 of the dense 2026-09-25T18:14 run (10 points, duty 2..20%) plus the 2026-09-27 SOLO2 refit points, fitted end-to-end against the exact integer pipeline (v1.18: the integer chain sits ~1.5 mA left of the float chain, so float-fitted anchors drifted -4..-8 mA on the steep slopes); the axis stays the ADC chain current (raw-off2)*K*gain, NEVER duty; the tables size themselves from the initializers and both lists must stay the same length (got chain={lut_chain_n} power={lut_batt_n}); v1.19 (user order 2026-09-27, SOLO1 sweep duty 1..18): channel 1 gets the SAME chain->POWER architecture (TABLE 1, 17 anchors, gate (5,0), ceil-fitted so every DMM point replays EXACTLY - got chain={lut1_chain_n} power={lut1_batt_n}); USER-ORDERED 2026-09-29: TABLE 1 was REFITTED when the pack divider was corrected to the schematic - power is V x I, so the table had silently absorbed the divider error and I = P/V only looked right because BOTH terms were wrong by the same factor")
-    check("uint32_t uint32_t__batteryPowerMw = func__Measurement_Current2BenchLut(\n        func__BspMeasurement_Current2CountsToMa(uint16_t__counts));" in meas_c_raw and
-          "return func__Measurement_PowerMwToMa(uint32_t__batteryPowerMw,\n                                          UINT32_T__G__Battery2VoltageMv);" in meas_c_raw,
-          "the ch2 LUT must wrap the BSP conversion inside func__Measurement_Current2CountsToMa (unfiltered, filtered and iest all become true battery mA; raw counts and shunt uV untouched) and v1.13 must divide the table's POWER output through the overflow-safe helper using the live cached battery-2 voltage (user order: the currents were wrong as the battery filled)")
-    check("static uint32_t UINT32_T__G__Battery2VoltageMv = 12000u;" in meas_c_raw and
-          meas_c_raw.count("UINT32_T__G__Battery2VoltageMv") >= 5 and
-          "if (uint32_t__batteryLowMv < 8000u)\n    {\n        UINT32_T__G__Battery2VoltageMv = 8000u;" in meas_c_raw and
-          "UINT32_T__G__Battery2VoltageMv = 15000u;" in meas_c_raw,
-          "the ch2 power LUT needs the live battery-2 voltage cache: static default 12.0 V, written each pass after the median-5 filter, clamped 8.0..15.0 V so a missing battery can never blow up the division")
-    check("uint32_t uint32_t__batteryPowerMw = func__Measurement_Current1BenchLut(\n        func__BspMeasurement_Current1CountsToMa(uint16_t__counts));" in meas_c_raw and
-          "return func__Measurement_PowerMwToMa(uint32_t__batteryPowerMw,\n                                          UINT32_T__G__Battery1VoltageMv);" in meas_c_raw,
-          "v1.19: the ch1 LUT must wrap the BSP conversion inside func__Measurement_Current1CountsToMa (unfiltered, filtered and iest all become true battery mA; raw counts and shunt uV untouched) and divide the table's POWER output through the overflow-safe helper by the live cached battery-1 voltage (same architecture as ch2)")
-    check("static uint32_t UINT32_T__G__Battery1VoltageMv = 12000u;" in meas_c_raw and
-          meas_c_raw.count("UINT32_T__G__Battery1VoltageMv") >= 5 and
-          "if (uint32_t__batteryHighMv < 8000u)\n    {\n        UINT32_T__G__Battery1VoltageMv = 8000u;" in meas_c_raw and
-          "UINT32_T__G__Battery1VoltageMv = 15000u;" in meas_c_raw,
-          "v1.19: the ch1 power LUT needs the live battery-1 voltage cache (vhigh = V24 - V12): static default 12.0 V, written each pass after the median-5 filter, clamped 8.0..15.0 V so a missing battery can never blow up the division")
+    # [EN] 2026-10-10: the compiled current tables and the battery-voltage
+    #      division were removed; the current table now comes from the panel.
+    # [FA] ۲۰۲۶-۱۰-۱۰: جدول‌های جریان کامپایلی و تقسیم بر ولتاژ باتری حذف شد؛
+    #      جدول جریان حالا از پنل می‌آید.
+    check("func__Measurement_BenchTableInterp(" in meas_c_raw and
+          "func__CalLut_BatteryMa(" in meas_c_raw and
+          "CAL_CURRENT1_LUT_ENABLE" not in meas_c_raw and
+          "CAL_CURRENT2_LUT_ENABLE" not in meas_c_raw and
+          "PowerMwToMa" not in meas_c_raw and
+          "VoltageMv = 12000u" not in meas_c_raw,
+          "measurement.c must convert chain mA to battery mA through the panel table only: no power axis, no voltage division, no compile switches")
+    check("CAL_Current1LutChainMa" not in cal_h and "CAL_Current2LutChainMa" not in cal_h and
+          "CAL_BATTERY12_BENCH_COMP_ENABLE" not in cal_h and "TABLE 3" not in cal_h,
+          "calibration.h must no longer carry compiled current tables or the disabled V12 compensation")
     check("func__Measurement_MedianFilterVoltageSample(0u,\n            (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);" in meas_c_raw and
           "func__Measurement_MedianFilterVoltageSample(1u,\n            (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_12V_BAT]);" in meas_c_raw and
           meas_c_raw.find("func__Measurement_MedianFilterVoltageSample(0u,") <
-          meas_c_raw.find("if (uint32_t__batteryLowMv < 8000u)"),
-          "the median-5 must run on the RAW V24/V12 ADC counts (user order 2026-09-27: filters on raw data, conversion after) and the LUT voltage cache must be fed AFTER it (spikes must not modulate the current reading)")
-    check(re.search(r"func__Measurement_Current2CountsToMa\(uint16_t uint16_t__counts\)\n\{\n#if \(CAL_CURRENT2_LUT_ENABLE != 0u\)", meas_c_raw) and
-          re.search(r"#else\n    return func__BspMeasurement_Current2CountsToMa\(uint16_t__counts\);\n#endif", meas_c_raw),
-          "the ch2 LUT must be compile-switchable: MEASUREMENT_CURRENT2_LUT_ENABLE=0 restores the old linear behaviour exactly")
-    # [EN] TURNED OFF 2026-09-29. This test used to require the compensation to
-    #      be ON, and cited a good least-squares fit as the justification -
-    #      149.8 mV + 472.5 mOhm, residual within +/-28 mV. The fit was good and
-    #      the MODEL was wrong, which is the more dangerous combination: the
-    #      residual is 203 mV at essentially ZERO current, and an I x R term must
-    #      be zero there. Replayed with the divider corrected, the implied
-    #      resistance runs from 12.4 ohm at 17 mA to 0.73 ohm at 754 mA. That is
-    #      not a resistance.
-    #      What it actually did: the block SUBTRACTS from the 12 V reading, the
-    #      regulator only sees the reading, so the real terminal sat that much
-    #      HIGHER - 14.86 V at 500 mA while the panel showed 14.40. The user
-    #      measured 14.88 V. It also blinded the protection: the 14.85 V cut was
-    #      tripping at a real 15.31 V.
-    #      A static term is only legitimate if it survives at zero current.
-    # [FA] ۲۰۲۶-۰۹-۲۹ خاموش شد. این تست قبلاً روشن‌بودن جبران‌ساز را الزام می‌کرد و
-    #      برازش خوب کمترین‌مربعات را دلیل می‌آورد. برازش خوب بود و مدل غلط، که
-    #      ترکیب خطرناک‌تری است: باقی‌مانده در جریانِ عملاً صفر ۲۰۳ میلی‌ولت است و
-    #      جملهٔ I×R آنجا باید صفر باشد. کاری که می‌کرد: از خوانش کم می‌کرد و چون
-    #      تنظیم‌کننده فقط خوانش را می‌بیند، ترمینال واقعی همان‌قدر بالاتر می‌نشست.
-    check(re.search(r"#define CAL_BATTERY12_BENCH_COMP_ENABLE\s+0u", cal_h),
-          "the V12 bench compensation must stay OFF: it subtracts 150 mV + I x 0.47 ohm "
-          "from the reading the regulator uses, so it pushed the lower battery to a real "
-          "14.86 V while the panel showed 14.40, and made the 14.85 V cut trip at a real "
-          "15.31 V. Its residual is 203 mV at zero current, where an I x R term must be "
-          "zero - a good fit to a wrong model. Re-enable only with a drop measured "
-          "directly at a known current, and with STATIC_MV at 0")
-    check("func__Measurement_Battery12BenchCompensate(\n        uint32_t__battery12Mv, uint32_t__current2SampleMa);" in meas_c_raw and
-          meas_c_raw.find("func__Measurement_Current2CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT2])") <
-          meas_c_raw.find("uint32_t__battery12Mv = func__Measurement_ApplyVoltageOffsetMv(") and
-          meas_c_raw.find("func__Measurement_Battery12BenchCompensate(\n        uint32_t__battery12Mv, uint32_t__current2SampleMa);") <
           meas_c_raw.find("uint32_t__batteryLowMv = uint32_t__battery12Mv;"),
-          "the V12 compensation must consume the post-LUT channel-2 current (sample moved ahead of the voltage chain) and must land on battery12Mv after the runtime voff, before the low/high derivation (the median now runs on the raw counts ahead of the chain) - so Vlow, published V12 and derived Vhigh all describe the true battery-2 terminals")
-    check(len(re.findall(r"#if \(CAL_BATTERY12_BENCH_COMP_ENABLE != 0u\)", meas_c_raw)) == 2 and
-          "uint32_t__dropMv = CAL_BATTERY12_BENCH_STATIC_MV +" in meas_c_raw and
-          "return 0u;" in meas_c_raw.split("func__Measurement_Battery12BenchCompensate")[1].split("\n}\n")[0],
-          "the V12 bench compensation must be compile-switchable (enable=0 restores today's behaviour), use saturating subtraction (static + I2 x mOhm / 1000, never below 0 mV)")
+          "the median-5 must run on the RAW V24/V12 ADC counts (user order 2026-09-27: filters on raw data, conversion after) and the LUT voltage cache must be fed AFTER it (spikes must not modulate the current reading)")
     check(re.search(r"#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS\s+BSP_MEASUREMENT_DIV24_TOP_OHMS", bsp_meas_c) and
           re.search(r"#define BSP_MEASUREMENT_SENSE_TOP_24V_OHMS\s+68000u", bsp_meas_c) and
           re.search(r"#define BSP_MEASUREMENT_SENSE_TOP_12V_OHMS\s+33000u", bsp_meas_c) and
@@ -682,10 +617,10 @@ def test_setpoints_and_timing():
     check(re.search(r"#define FAULT_BAT_DISCONNECT_DEBOUNCE_MS\s+150u", text_fault_h), "pump debounce must be 150 ms = 15 control passes (armed-absorb false trips still happened at 50 ms; real pump floats ~0.5 s so 150 ms still catches it)")
     check("func__Measurement_Median5" in (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text(), "battery channel voltages must pass the median-5 prefilter (2-frame spike bursts beat median-3 during absorb)")
     bsp_meas_c = (ROOT / "Firmware/Bsp/Src/bsp_measurement.c").read_text()
-    check(re.search(r"#define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE\s+1046u", bsp_meas_c) and
-          re.search(r"#define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE\s+1303u", bsp_meas_c) and
-          re.search(r"#define BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS\s+8u", bsp_meas_c) and
-          re.search(r"#define BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS\s+8u", bsp_meas_c),
+    check(re.search(r"#define BSP_MEASUREMENT_CURRENT1_GAIN_PERMILLE\s+3000u", bsp_meas_c) and
+          re.search(r"#define BSP_MEASUREMENT_CURRENT2_GAIN_PERMILLE\s+3000u", bsp_meas_c) and
+          re.search(r"#define BSP_MEASUREMENT_CURRENT1_OFFSET_COUNTS\s+0u", bsp_meas_c) and
+          re.search(r"#define BSP_MEASUREMENT_CURRENT2_OFFSET_COUNTS\s+0u", bsp_meas_c),
           "current calibration must be split per channel (user: charger 1 must not ride on charger 2's calibration); ch1 baked 2026-09-24 to 1046 permille (DMM 423 mA true vs 436/438/442 displayed at D=15%), ch2 baked to 1303 permille from its D=15% point (DMM 425 true vs 354 displayed, latest of 320/354; the D=10% chain stays non-linear: 185/200/208 vs 185)")
     meas_c_txt = (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text()
     check("func__Measurement_Current1CountsToMa(uint16_t__raw[BSP_ADC_CHANNEL_CURRENT1])" in meas_c_txt and
@@ -961,329 +896,9 @@ def test_charge_profile_v112():
             break
     check(ok, "2000 random writes must all land inside the invariant ranges")
 
-    # --- calibration.h: one file, three tables (user order 2026-09-25) ---
-    check("TABLE 1" in cal_h and "TABLE 2" in cal_h and "TABLE 3" in cal_h,
-          "calibration.h must host all THREE tables (ch1 LUT, ch2 LUT, voltage comp)")
-    check(cal_h.count("CAL_Current1LutChainMa") >= 2 and re.search(r"#define CAL_CURRENT1_LUT_ENABLE\s+1u", cal_h) and
-          "CAL_Current1LutBatteryMw" in cal_h,
-          "table 1 (ch1) is FILLED since the v1.19 SOLO1 sweep (enable 1, chain->POWER anchors like ch2)")
-    check("can grow into a full anchor table" in cal_h,
-          "table 3 must document its growth path to an anchor table")
-
-
-def test_ch2_power_lut_v113():
-    """[EN] v1.13 (user order 2026-09-25, "voltages are fixed but the currents
-    you read are wrong"): the ch2 LUT outputs battery-2 POWER; the live battery
-    voltage turns it into current. This test replays the EXACT firmware integer
-    math (BSP staged chain = the folded u32 form, proven bit-identical, with
-    nearest-rounding divisions -> LUT -> x1000 / V) on the dense-run CSV rows and
-    checks both the DMM agreement AND the voltage behaviour the old
-    current-current table got wrong. The LUT under test is the v1.18 refit
-    (14 anchors); the 2026-09-25 rows below must STILL agree (<= 6 mA).
-    [FA] تست عددی v1.13: بازپخش دقیق ریاضی صحیح فرم‌ور روی ردیف‌های ران
-    متراکم + بررسی رفتار ولتاژی که جدول قدیمی اشتباه می‌گرفت."""
-    cal_h = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
-    meas_c_raw = (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text()
-
-    m_chain = re.search(r"CAL_Current2LutChainMa\[\] =\s*\{([^}]*)\}", cal_h)
-    m_mw = re.search(r"CAL_Current2LutBatteryMw\[\] =\s*\{([^}]*)\}", cal_h)
-    check(m_chain and m_mw, "calibration.h must carry both ch2 LUT arrays")
-    xs = [int(v.strip().rstrip("u")) for v in m_chain.group(1).split(",")]
-    ys = [int(v.strip().rstrip("u")) for v in m_mw.group(1).split(",")]
-    check(len(xs) == len(ys) == 14 and all(xs[i] < xs[i + 1] for i in range(13))
-          and all(ys[i] <= ys[i + 1] for i in range(13)),
-          "ch2 LUT anchors: 14 points (v1.18 refit), chain strictly increasing, power non-decreasing")
-
-    # exact firmware math replay (folded u32 chain, nearest-rounding divisions)
-    def bsp_chain(counts, off=8, gain=1303):
-        if counts <= off:
-            return 0
-        # stages 1..4 of bsp_measurement.c fold to counts x 24200 / 27573;
-        # both divisions round to nearest (user order 2026-10-08)
-        ma = ((counts - off) * 24200 + 27573 // 2) // 27573
-        return (ma * gain + 500) // 1000
-
-    def lut_mw(c):
-        # MulDivU32Saturating rounds to nearest; every anchor pair here rises,
-        # so adding half the divisor is that same rule.
-        if c <= xs[0]:
-            return ys[0]
-        for i in range(1, len(xs)):
-            if c <= xs[i]:
-                sp = xs[i] - xs[i - 1]
-                return ys[i - 1] + ((c - xs[i - 1]) * (ys[i] - ys[i - 1]) + sp // 2) // sp
-        sp = xs[-1] - xs[-2]
-        return ys[-1] + ((c - xs[-1]) * (ys[-1] - ys[-2]) + sp // 2) // sp
-
-    def ibat(raw, v_mv):
-        return (lut_mw(bsp_chain(raw)) * 1000 + v_mv // 2) // v_mv
-
-    # dense 2026-09-25T18:14 run: (raw2_avg, vlow TLM, dmm_i_bat2) per duty 2..20%
-    rows = [(12.6, 12073, -13), (40.1, 12085, 9), (100.9, 12122, 62), (173.0, 12159, 130),
-            (214.2, 12230, 215), (255.2, 12306, 310), (316.3, 12430, 422), (393.4, 12651, 541),
-            (494.8, 13031, 660), (626.5, 13626, 764)]
-    # [EN] The vlow column was LOGGED by a firmware that used the old 12 V
-    #      divider and still applied the bench compensation. The table is power
-    #      and the firmware divides it by this voltage, so the replay has to use
-    #      the voltage the firmware will ACTUALLY see now: undo the compensation
-    #      the logger had applied, then correct the divider to the ratio measured
-    #      on the board. Replaying against the old logged value would be testing
-    #      a firmware that no longer exists.
-    # [FA] ستون vlow را فرم‌وری ثبت کرده که مقسم قدیمی ۱۲ولت را داشت و جبران‌ساز
-    #      را هم اعمال می‌کرد. جدول «توان» است و فرم‌ور بر همین ولتاژ تقسیم می‌کند،
-    #      پس بازپخش باید ولتاژی را بگذارد که فرم‌ور واقعاً خواهد دید.
-    def vlow_now(vlow, i_ma):
-        undone = vlow + 150 + ((i_ma if i_ma > 0 else 0) * 470) // 1000
-        return round(undone * 6.0585 / 6.0294)
-
-    # [EN] Checked in BOTH directions since 2026-10-08: with the old
-    #      truncating chain the residuals were one-sided (the integer chain sat
-    #      1-2 mA below the DMM), and a one-sided max() hid under-reads - the
-    #      unsafe direction for a charger - completely. The fit itself is
-    #      exact, so what is left here is the table's own interpolation
-    #      residual on this pre-refit run plus DMM accuracy.
-    # [FA] از ۲۰۲۶-۱۰-۰۸ هر دو جهت بررسی می‌شود: با زنجیرهٔ برشی قدیم باقی‌مانده‌ها
-    #      یک‌طرفه بودند و max یک‌طرفه، کم‌خوانی را که جهت ناامن شارژر است
-    #      کامل پنهان می‌کرد.
-    errs = [ibat(raw, vlow_now(vlow, dmm)) - dmm for raw, vlow, dmm in rows if raw > 20]
-    worst = max(abs(e) for e in errs)
-    mean = sum(errs) / len(errs)
-    check(worst <= 10 and abs(mean) <= 3,
-          f"firmware-math replay of the dense run: worst |DMM error| {worst} mA (<= 10), mean {mean:+.1f} mA (<= 3, no systematic sign); the 2%-duty row floors at 0 as documented")
-
-    # the fix's whole point: same chain, fuller battery -> proportionally less current
-    i_122, i_130, i_140, i_144 = (ibat(494.8, v) for v in (12200, 13000, 14000, 14400))
-    # [EN] The property - more voltage, less current for the same chain - is the
-    #      point of the power table and still holds. The absolute anchor moved
-    #      658 -> 680 mA because the table was rescaled when the 12 V voltage it
-    #      is divided by was corrected (divider fixed, bench compensation off):
-    #      658 x 1.034 = 680. Same current from the board, different number here
-    #      only because the voltage underneath it is now right.
-    # [FA] خاصیت - ولتاژ بیشتر، جریان کمتر برای همان زنجیره - هدف جدول توان است و
-    #      هنوز برقرار است. لنگر مطلق از ۶۵۸ به ۶۸۰ رفت چون جدول با اصلاح ولتاژ
-    #      ۱۲ولت بازمقیاس شد؛ جریان واقعی همان است و فقط ولتاژ زیرش درست شده.
-    check(i_122 > i_130 > i_140 > i_144 and abs(i_130 - 680) <= 3,
-          f"voltage behaviour: at chain 556 the current must fall as the battery fills (12.2V:{i_122} 13.0V:{i_130} 14.0V:{i_140} 14.4V:{i_144} mA) - the old current-current table answered 658 mA at EVERY voltage")
-
-    check("UINT32_T__G__Battery2VoltageMv = 12000u" in meas_c_raw and
-          "func__Measurement_MulDivU32Saturating(uint32_t__powerMw,\n                                                  1000u," in meas_c_raw and
-          "func__Measurement_InterpU32Increasing" in meas_c_raw,
-          "the division must use the cached clamped voltage (boot default 12.0 V) and the overflow-safe split-word arithmetic for both runtime LUT interpolation and power x 1000")
-
-
-def test_ch2_lut_refit_v118():
-    """[EN] v1.18 end-to-end fit (user order 2026-09-27, "look closer, there
-    is still drift"): replay the exact firmware integer math on the
-    2026-09-27 SOLO2 sweep (duty 1..19 step 1, off2=8/gain2=1303) and
-    require DMM agreement within 5 mA with NO systematic sign - the v1.17
-    float-fitted anchors drifted -4..-8 mA at D10..D15 because the integer
-    chain sits ~1.5 mA left of the float chain on the steep slopes. D9 is
-    EXCLUDED (10.4% low outlier: unsettled sample, raw spread 197..210,
-    DMM 167 mA below the whole firmware window 177..186 mA); D16 uses the
-    firmware voltage (13617 mV - the DMM 12650 mV reading is a typo against
-    neighbours 13200/14000 mV). D1..D3 must read exactly 0 (the (20,0)
-    noise gate + unsigned floor; the DMM's -15..-5 mA there is backfeed
-    through the idle converter, which the single-supply shunt chain cannot
-    see). Methodology floor is +-1 count = +-3 mA; the old 2026-09-25 run
-    still replays within 6 mA (v113 test).
-    [FA] تست عددی v1.18: بازپخش ریاضی فرم‌ور روی سوییپ SOLO2 با تلرانس
-    5mA و بدون علامت سیستماتیک؛ D9 کنارگذاشته، ولتاژ D16 اصلاح‌شده،
-    D1..D3 دقیقاً صفر. کف روش ‎±3mA است."""
-    cal_h = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
-    m_chain = re.search(r"CAL_Current2LutChainMa\[\] =\s*\{([^}]*)\}", cal_h)
-    m_mw = re.search(r"CAL_Current2LutBatteryMw\[\] =\s*\{([^}]*)\}", cal_h)
-    xs = [int(v.strip().rstrip("u")) for v in m_chain.group(1).split(",")]
-    ys = [int(v.strip().rstrip("u")) for v in m_mw.group(1).split(",")]
-
-    def bsp_chain(counts, off=8, gain=1303):
-        if counts <= off:
-            return 0
-        # stages 1..4 of bsp_measurement.c fold to counts x 24200 / 27573;
-        # both divisions round to nearest (user order 2026-10-08)
-        ma = ((counts - off) * 24200 + 27573 // 2) // 27573
-        return (ma * gain + 500) // 1000
-
-    def lut_mw(c):
-        # MulDivU32Saturating rounds to nearest; every anchor pair here rises,
-        # so adding half the divisor is that same rule.
-        if c <= xs[0]:
-            return ys[0]
-        for i in range(1, len(xs)):
-            if c <= xs[i]:
-                sp = xs[i] - xs[i - 1]
-                return ys[i - 1] + ((c - xs[i - 1]) * (ys[i] - ys[i - 1]) + sp // 2) // sp
-        sp = xs[-1] - xs[-2]
-        return ys[-1] + ((c - xs[-1]) * (ys[-1] - ys[-2]) + sp // 2) // sp
-
-    def ibat(raw, v_mv):
-        return (lut_mw(bsp_chain(raw)) * 1000 + v_mv // 2) // v_mv
-
-    check("EXCLUDED: D9" in cal_h and "12650" in cal_h,
-          "calibration.h must document the D9 exclusion and the D16 DMM-voltage typo")
-    for raw, vlow in ((7.9, 12143), (10.6, 12141), (22.9, 12149)):
-        check(ibat(raw, vlow) == 0,
-              f"sweep rows D1..D3 (raw {raw}) must read exactly 0 (noise gate + unsigned floor)")
-    # (raw2_avg, vlow, dmm_i_bat2); D9 excluded, D16 voltage corrected - see docstring
-    rows = [(39.0, 12165, 9), (68.7, 12185, 34), (100.8, 12208, 61),
-            (134.2, 12240, 92), (173.3, 12274, 129), (212.7, 12372, 211),
-            (228.8, 12442, 256), (250.8, 12543, 303), (280.5, 12721, 354),
-            (311.9, 12936, 404), (349.1, 13213, 455), (390.6, 13617, 498),
-            (436.3, 14006, 540), (491.6, 14458, 585), (552.1, 14879, 632)]
-    # [EN] Same correction as the dense-run replay above: this vlow column was
-    #      logged with the old 12 V divider and the bench compensation applied,
-    #      so it has to be brought to the voltage the firmware will now see.
-    # [FA] همان اصلاح بازپخش بالا: این ستون vlow با مقسم قدیمی و جبران‌ساز روشن
-    #      ثبت شده، پس باید به ولتاژی برسد که فرم‌ور حالا می‌بیند.
-    def _vnow(vlow, i_ma):
-        return round((vlow + 150 + (max(i_ma, 0) * 470) // 1000) * 6.0585 / 6.0294)
-
-    # [EN] Bounds on THIS dataset (the run the v1.18 anchors were fitted from,
-    #      with the voltage replayed through the corrected divider): worst
-    #      |error| and the MEAN. The mean is the guard that matters - the v1.17
-    #      float fit drifted -8 mA one-way at D15. Since 2026-10-08 the chain
-    #      rounds like the panel instead of flooring, so where the anchors were
-    #      placed by the panel's single float rounding and the board now uses
-    #      its own two integer stages the anchor can sit 1-2 mA away, which the
-    #      steep DCM->CCM segment amplifies (one row: 2 mA of chain -> 6 mA of
-    #      current). A re-pushed table lands the anchors exactly on the board's
-    #      chain, so this is a property of the OLD table, not of the fix.
-    # [FA] کران‌ها روی همین داده (اجرایی که لنگرهای v1.18 از آن برازش شده):
-    #      بدترین قدرمطلق و «میانگین». میانگین همان نگهبان مهم است - برازش
-    #      اعشاری v1.17 یک‌طرفه ۸ میلی‌آمپر می‌لغزید. از ۲۰۲۶-۱۰-۰۸ زنجیره مثل
-    #      پنل رُند می‌کند نه برش، پس اگر لنگری با رُند اعشاری پنل گذاشته شده
-    #      باشد و برد حالا دو مرحلهٔ عدد صحیح خودش را دارد، لنگر می‌تواند ۱-۲
-    #      میلی‌آمپر جابه‌جا باشد و شیب تند ناحیهٔ زانو آن را تا ۶ بزرگ می‌کند.
-    #      جدولِ تازه‌پوش‌شده لنگرها را دقیقاً روی زنجیرهٔ برد می‌گذارد.
-    errs = [ibat(raw, _vnow(vlow, dmm)) - dmm for raw, vlow, dmm in rows]
-    worst = max(abs(e) for e in errs)
-    mean = sum(errs) / len(errs)
-    check(worst <= 7 and abs(mean) <= 3,
-          f"firmware-math replay of the 2026-09-27 SOLO2 sweep: worst |DMM error| {worst} mA (<= 7), mean {mean:+.1f} mA (<= 3, no systematic sign; the v1.17 float fit drifted -8 mA at D15)")
-
-
-def test_ch1_lut_v119():
-    """[EN] v1.19 (user order 2026-09-27, "check the upper charger's data -
-    it went past 15 V and never cut off"): replay the exact firmware integer
-    math on the 2026-09-27 SOLO1 sweep (duty 1..18 step 1, off1=8/gain1=1046)
-    through the TABLE 1 chain->POWER LUT, dividing by the CORRECTED firmware
-    divisor (V24 pack top 66200: v24 x 73000 // 69200 - vlow). Require DMM
-    agreement within 5 mA with no systematic sign (actual worst 4, minimax
-    hump +3/-4; the old linear chain read an S-curve -29..+72 mA).
-    D1..D3 must read exactly 0 (the (5,0) noise gate: SOLO1 rows D1..D3 never
-    exceed chain 1; the DMM's -15..-5 mA there is backfeed the single-supply
-    shunt chain cannot see). Methodology floor is +-1 count = +-3 mA.
-    The same order's companion safety fix is pinned too: the pack divider
-    top 62400 -> 66200 (the old top read ~1.4 V low and blinded the 15.0 V
-    hard OV cut - firmware saw 13.9 V at a true 15.22 V); D18's replayed
-    vhigh must reach the 15000 mV cutoff so the manual-mode cut provably
-    trips where the user had to stop by hand.
-    [FA] تست عددی v1.19: بازپخش ریاضی فرم‌ور روی سوییپ SOLO1 از جدول توان
-    کانال ۱ با مقسوم‌علیه اصلاح‌شده (تاپ پک ۶۶۲۰۰) با تلرانس 5mA و بدون
-    علامت سیستماتیک (واقعی ۴)؛ D1..D3 دقیقاً صفر؛ فیکس ایمنی همراه (تاپ
-    ۶۲۴۰۰←۶۶۲۰۰) و رسیدن vhigh بازپخش‌شدهٔ D18 به آستانهٔ ۱۵V هم قفل
-    می‌شود. کف روش ‎±3mA است."""
-    cal_h = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
-    bsp_c = (ROOT / "Firmware/Bsp/Src/bsp_measurement.c").read_text()
-    chg_c = (ROOT / "Firmware/Modules/Charger/charger.c").read_text()
-    m_chain = re.search(r"CAL_Current1LutChainMa\[\] =\s*\{([^}]*)\}", cal_h)
-    m_mw = re.search(r"CAL_Current1LutBatteryMw\[\] =\s*\{([^}]*)\}", cal_h)
-    xs = [int(v.strip().rstrip("u")) for v in m_chain.group(1).split(",")]
-    ys = [int(v.strip().rstrip("u")) for v in m_mw.group(1).split(",")]
-
-    def bsp_chain(counts, off=8, gain=1046):
-        if counts <= off:
-            return 0
-        # stages 1..4 of bsp_measurement.c fold to counts x 24200 / 27573;
-        # both divisions round to nearest (user order 2026-10-08)
-        ma = ((counts - off) * 24200 + 27573 // 2) // 27573
-        return (ma * gain + 500) // 1000
-
-    def lut_mw(c):
-        # MulDivU32Saturating rounds to nearest; every anchor pair here rises,
-        # so adding half the divisor is that same rule.
-        if c <= xs[0]:
-            return ys[0]
-        for i in range(1, len(xs)):
-            if c <= xs[i]:
-                sp = xs[i] - xs[i - 1]
-                return ys[i - 1] + ((c - xs[i - 1]) * (ys[i] - ys[i - 1]) + sp // 2) // sp
-        sp = xs[-1] - xs[-2]
-        return ys[-1] + ((c - xs[-1]) * (ys[-1] - ys[-2]) + sp // 2) // sp
-
-    def vhigh_corr(v24, vlow):
-        # [EN] The sweep's v24 was logged while the pack net still used total
-        #      69200. Rescale it to the total the divider was MEASURED to have
-        #      on the board: 74800 (68K over 6.8K). The schematic reading said
-        #      76000 because it counted the 1.2K, but probing the ADC pin showed
-        #      that resistor sits after the tap and drops no DC - two
-        #      independent nets landed on 11.0000 to within 0.05 %.
-        # [FA] v24 این سوییپ با مجموع ۶۹۲۰۰ ثبت شده؛ به مجموعی مقیاس می‌شود که
-        #      روی برد اندازه گرفته شد یعنی ۷۴۸۰۰. خوانش شماتیک ۷۶۰۰۰ می‌گفت چون
-        #      ۱٫۲ کیلواهم را می‌شمرد، ولی اندازه‌گیری پایهٔ ADC نشان داد آن مقاومت
-        #      بعد از نقطهٔ تقسیم است و افت DC ندارد.
-        return (v24 * 74800) // 69200 - vlow
-
-    def ibat(raw, v24, vlow):
-        vh = vhigh_corr(v24, vlow)
-        return (lut_mw(bsp_chain(raw)) * 1000 + vh // 2) // vh
-
-    check("D7" in cal_h and "12200" in cal_h,
-          "calibration.h must document the kept D7 dip and the D5 DMM-voltage outlier")
-    for raw in (7.4, 7.6, 7.5):
-        check(lut_mw(bsp_chain(raw)) == 0,
-              f"sweep rows D1..D3 (raw {raw}) must read exactly 0 (noise gate + unsigned floor)")
-    # (raw1_avg, v24_fw, vlow_fw, dmm_i_bat1) - divisor is the CORRECTED firmware vhigh
-    rows = [(20.6, 22760, 12283, 11), (42.8, 22797, 12274, 36),
-            (68.1, 22838, 12265, 64), (97.0, 22887, 12258, 85),
-            (132.5, 22952, 12251, 133), (170.3, 23032, 12240, 173),
-            (214.7, 23162, 12233, 217), (260.4, 23371, 12222, 260),
-            (310.1, 23737, 12210, 298), (368.1, 24285, 12201, 336),
-            (425.9, 24783, 12190, 375), (492.5, 25294, 12182, 416),
-            (558.2, 25657, 12170, 460), (626.7, 25870, 12158, 510),
-            (705.5, 26040, 12145, 568)]
-    worst = 0
-    for raw, v24, vlow, dmm in rows:
-        worst = max(worst, abs(ibat(raw, v24, vlow) - dmm))
-    check(worst <= 5,
-          f"firmware-math replay of the 2026-09-27 SOLO1 sweep through the ch1 power LUT with the corrected divisor: worst DMM error {worst} mA (<= 5, no systematic sign; the old linear chain drifted -29..+72 mA)")
-    check(re.search(r"#define BSP_MEASUREMENT_DIV24BAT_TOP_OHMS\s+BSP_MEASUREMENT_DIV24_TOP_OHMS", bsp_c) and
-          not re.search(r"#define\s+\w+\s+(66200|62400)u", bsp_c),
-          "the pack divider must BE the input divider (both nets are 68K+1.2K over 6.8K); "
-          "62400 and 66200 were successive fudges, neither is a resistor on this board")
-    ov_ceiling = int(re.search(r"#define CHG_MAX_VALID_BATTERY_MV\s+(\d+)u",
-                               (ROOT / "Firmware/Modules/Charger/charger.h").read_text()).group(1))
-    vh18 = vhigh_corr(26040, 12145)
-    check(vh18 >= ov_ceiling,
-          f"D18's replayed vhigh must still reach the {ov_ceiling} mV hard cutoff "
-          f"(got {vh18} mV) so the manual-mode OV cut provably trips on the row where the "
-          "operator had to stop by hand")
-    # [EN] OPEN BENCH DISCREPANCY, recorded rather than papered over. With the
-    #      honest divider this row replays at ~16.4 V while the 2026-09-27 note
-    #      says the DMM read 15.22 V. The 2026-09-25 CSV disagrees with that
-    #      note: there the V12 net is accurate to 0.4 percent and the input net
-    #      to 1.2 percent using this SAME two-series-plus-shunt model, and the
-    #      honest divider is what makes the two half-packs come out plausible
-    #      (12.07 / 12.94 V) instead of leaving one half at an implausible
-    #      10.70 V. One DMM reading on pack+ settles it; until then the
-    #      SCHEMATIC wins, because a divider is hardware, not a fitted number.
-    # [FA] اختلاف باز بنچ، ثبت شده نه ماست‌مالی. با مقسم صادقانه این ردیف حدود
-    #      ۱۶٫۴ ولت بازپخش می‌شود در حالی که یادداشت ۲۰۲۶-۰۹-۲۷ می‌گوید DMM
-    #      ۱۵٫۲۲ خوانده. CSV ۲۰۲۶-۰۹-۲۵ با آن یادداشت نمی‌خواند: همین مدل روی
-    #      نت ۱۲ولت تا ۰٫۴٪ و روی ورودی تا ۱٫۲٪ دقیق است. یک اندازه‌گیری DMM
-    #      روی pack+ تکلیف را روشن می‌کند؛ تا آن موقع شماتیک برنده است.
-    chg_h_txt = (ROOT / "Firmware/Modules/Charger/charger.h").read_text()
-    m_early = re.search(r"#define CHG_OV_DECIDE_EARLY_MV\s+(\d+)u", chg_h_txt)
-    check(m_early and int(m_early.group(1)) >= 50,
-          "the safety margin that used to be bought by bending the divider must now exist "
-          "as a REAL earlier decision: CHG_OV_DECIDE_EARLY_MV has to be a non-trivial "
-          f"margin, got {m_early.group(1) if m_early else 'missing'}")
-    check(re.search(r"#define CHG_OV_CUTOFF_DEFAULT_MV\s*\\?\s*\n?\s*\(CHG_MAX_VALID_BATTERY_MV - CHG_OV_DECIDE_EARLY_MV\)", chg_h_txt) and
-          "UINT32_T__G__ChargerOvCutoffMv = CHG_OV_CUTOFF_DEFAULT_MV;" in chg_c,
-          "the default OV cut-off must sit BELOW the absolute ceiling by that margin and "
-          "actually be used as the power-on default - stopping before the ceiling instead "
-          "of at it is the honest replacement for the old scale fudge")
-    check("func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,\n                                       uint8_t__channelIndex) >= UINT32_T__G__ChargerOvCutoffMv" in chg_c,
-          "ManualDriveChannel must keep the hard OV comparison (channel voltage >= ChargerOvCutoffMv forces duty 0) - the logic was sound, it was only blinded by the divider")
+    # --- calibration.h: 2026-10-10 - no compiled current tables any more ---
+    check("CAL_Current1LutChainMa" not in cal_h and "CAL_Current2LutChainMa" not in cal_h,
+          "calibration.h must not carry compiled current tables (the panel pushes them into flash)")
 
 
 def test_charger_persistence_v114():
@@ -2156,9 +1771,9 @@ def test_alarms_tab_v115():
           and "Theil-Sen" in ino and "Huber IRLS" in ino
           and "function calrun()" in ino and "async function calapply()" in ino
           and "جریان خالص باتری صفر در raw=" in ino
-          and "Math.max(0,Math.round(z[b]*vb/1000))" in ino
+          and "Math.round(g.sum/g.n)" in ino and "function calbuild(" in ino
           and "calapply()" in ino and "xexp();" in ino,
-          "bench calibration directly fits signed current in each battery lead and builds battery-power LUTs")
+          "bench calibration directly fits signed current in each battery lead and builds battery-current LUTs (2026-10-10)")
     # [EN] Stale since the scenario-card redesign and only found on 2026-10-05:
     #      the battery-supervision fields are no longer one flat group called
     #      "نظارت باتری" - they live in the six scenario cards, and the
@@ -2758,22 +2373,20 @@ def test_audit_batch_v116b():
           "NVM record comment must state the true record capacity for the expanded scenario-7 set")
 
     # --- LUT hardening + dead-clamp cleanup ---
-    check("uint32_t__xHigh == uint32_t__xLow" in meas,
+    check("uint32_t__span == 0u" in meas,
           "LUT must guard the degenerate (equal-anchor) segment")
-    check("CAL_CURRENT2_LUT_POINTS >= 2u" in meas,
-          "LUT must statically assert >= 2 points for the tail slope")
+    check("uint32_t__points < 2u" in meas,
+          "LUT must refuse a table with fewer than 2 points (runtime guard, the table now comes from the panel)")
     # [EN] v1.63 (user question: may the table have more or fewer points?):
     #      the count is free, but two axes of different length would read
     #      past the end of the shorter one - that must not compile.
     # [FA] تعداد نقاط آزاد است، ولی دو محور با طول متفاوت نباید کامپایل شود.
-    check("sizeof(CAL_Current1LutChainMa) ==" in meas
-          and "sizeof(CAL_Current1LutBatteryMw)" in meas
-          and "sizeof(CAL_Current2LutChainMa) ==" in meas,
-          "v1.63: both LUTs must statically assert the two axes are the same length")
+    check("sizeof(CAL_Current1LutChainMa)" not in meas and "sizeof(CAL_Current2LutChainMa)" not in meas,
+          "2026-10-10: the compiled-table size asserts went away with the compiled tables")
     check("#if (CHG_ETA_MIN_PERMILLE != 0u)" in cc,
           "the always-false u32<0 ETA clamp must compile out (type-limits green)")
-    check("v1.13 (user order 2026-09-25" in calh and "voltages are fixed but the currents" in calh,
-          "calibration.h must keep the v1.13 power-LUT note")
+    check("2026-10-10" in calh and "NO LONGER compiled in" in calh,
+          "calibration.h must document that the current tables are no longer compiled in")
     nested = [ln for ln in calh.splitlines() if ln.startswith("/* [EN] v1.13")]
     check(not nested,
           "calibration.h must not nest a block comment inside the banner")
@@ -3522,41 +3135,6 @@ def test_dynamic_disturbances_v124():
               f"a pack starting {name} must not be pushed through the backstop")
 
 
-def test_panel_lut_mirrors_firmware_v125():
-    """[EN] The ESP panel keeps a HAND-COPIED mirror of both current LUTs so it
-       can show the same milliamps the board computes. Nothing checked that the
-       copy still matched. It bit immediately: refitting the channel-1 power
-       table for the divider correction left the panel showing the old table,
-       so the page and the board would have disagreed by ~8 percent with no
-       warning anywhere. Any duplicated calibration table needs a test that
-       the duplicate is still a duplicate.
-       [FA] پنل ESP یک کپی دستی از هر دو جدول جریان دارد تا همان میلی‌آمپری را
-       نشان دهد که برد حساب می‌کند. هیچ‌چیز بررسی نمی‌کرد که کپی هنوز برابر
-       است. بلافاصله هم گاز گرفت: بعد از بازبرازش جدول کانال ۱ برای اصلاح
-       مقسم، پنل جدول قدیمی را نگه داشت و صفحه با برد حدود ۸٪ اختلاف پیدا
-       می‌کرد، بی‌هیچ هشداری. هر جدول کالیبراسیون تکراری، تست برابری می‌خواهد."""
-    cal = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
-    pan = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
-
-    def c_arr(name):
-        return [int(v.strip().rstrip("u"))
-                for v in re.search(name + r"\[\] =\s*\{([^}]*)\}", cal).group(1).split(",")]
-
-    def js_arr(name):
-        return [int(v) for v in re.search(name + r"=\[([^\]]*)\]", pan).group(1).split(",")]
-
-    for c_name, js_name, label in (
-            ("CAL_Current1LutChainMa", "LUT1X", "channel 1 chain axis"),
-            ("CAL_Current1LutBatteryMw", "LUT1Y", "channel 1 power axis"),
-            ("CAL_Current2LutChainMa", "LUTX", "channel 2 chain axis"),
-            ("CAL_Current2LutBatteryMw", "LUTY", "channel 2 power axis")):
-        fw_vals, panel_vals = c_arr(c_name), js_arr(js_name)
-        check(fw_vals == panel_vals,
-              f"the panel's {label} mirror must equal the firmware table exactly "
-              f"({c_name} vs {js_name}); firmware={fw_vals} panel={panel_vals} - a stale "
-              "mirror makes the page report a different current than the board")
-
-
 def test_battery_card_uses_measurement_current_not_legacy_iest():
     """The prominent card must show filtered Measurement current; iest stays
     in the per-channel diagnostics table so a stale legacy ETA cannot hide the
@@ -4164,15 +3742,15 @@ def test_direct_lut_push_v166():
           "CAL_LUT_ST_FLASH" in reset_block,
           "a valid zero-point commit may reset, but a failed NVM flush must refuse reset before consuming the grant")
 
-    # ---------- measurement prefers the stored table, falls back to the compiled one ----------
-    check("func__Measurement_BenchLutInterp" in meas_c,
-          "both channels and both table sources must share ONE interpolation function")
+    # ---------- 2026-10-10: measurement uses ONLY the panel table; no compiled fallback ----------
+    check("func__Measurement_BenchTableInterp(" in meas_c and
+          meas_c.count("func__Measurement_BenchTableInterp(") >= 3,
+          "both channels must share ONE interpolation function (the panel table on the current axis)")
     for ch in ("1", "2"):
-        check(("func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_%s)" % ch) in meas_c and
-              ("CAL_Current%sLutChainMa" % ch) in meas_c,
-              "channel %s must use the pushed table when it is active and the compiled table otherwise" % ch)
-    check("CAL_CURRENT1_LUT_POINTS" in meas_c and "CAL_CURRENT2_LUT_POINTS" in meas_c,
-          "the compile-time tables must remain the fallback (the user asked to KEEP the current capability)")
+        check(("func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_%s)" % ch) in meas_c,
+              "channel %s must use the panel table when it is active and return the chain value (gain and offset line) otherwise" % ch)
+    check("CAL_CURRENT1_LUT_POINTS" not in meas_c and "CAL_CURRENT2_LUT_POINTS" not in meas_c,
+          "2026-10-10: there is no compiled table any more; the board starts from the max gain and zero offset")
 
     # ---------- the panel keeps BOTH routes and drives the handshake ----------
     check("calcode()" in ino and "calcdl()" in ino,
@@ -4309,7 +3887,7 @@ int main(void){
     assert(func__CalLut_Commit(crc, &board) == CAL_LUT_ST_OK);
     assert(board == crc);
     assert(func__CalLut_Active(1) && func__CalLut_Points(1) == 4);
-    assert(func__CalLut_ChainMa(1)[3] == 268 && func__CalLut_PowerMw(1)[3] == 3886);
+    assert(func__CalLut_ChainMa(1)[3] == 268 && func__CalLut_BatteryMa(1)[3] == 3886);
     assert(func__CalLut_Active(2) && func__CalLut_Points(2) == 3);
     uint16_t seq_after_first = ((const cal_lut_record_t *)CAL_LUT_PAGE_B_ADDR)->uint16_t__seq;
     assert(seq_after_first == 1u);
@@ -4328,7 +3906,7 @@ int main(void){
     uint32_t YD[4] = { 0, 703, 400, 3886 };
     assert(func__CalLut_StageBegin(4, 0));
     for (uint32_t i = 0; i < 4; i++) assert(func__CalLut_StagePoint(1, i, X1[i], YD[i]));
-    assert(func__CalLut_Commit(0u, &board) == CAL_LUT_ST_POWER);
+    assert(func__CalLut_Commit(0u, &board) == CAL_LUT_ST_DIP);
 
     /* T6 a non-increasing chain axis is refused */
     uint32_t XB[4] = { 0, 48, 48, 268 };
@@ -4565,9 +4143,6 @@ def main():
         test_electronic_load_policy_documented,
         test_manual_test_mode_v12,
         test_charge_profile_v112,
-        test_ch2_power_lut_v113,
-        test_ch2_lut_refit_v118,
-        test_ch1_lut_v119,
         test_charger_persistence_v114,
         test_direct_lut_push_v166,
         test_alarms_tab_v115,
@@ -4581,7 +4156,6 @@ def main():
         test_two_loop_pid_v124,
         test_min_select_handover_v124,
         test_dynamic_disturbances_v124,
-        test_panel_lut_mirrors_firmware_v125,
         test_battery_card_uses_measurement_current_not_legacy_iest,
         test_vdda_reference_measurement_v125,
         test_param_ranges_match_panel_v125,

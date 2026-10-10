@@ -613,542 +613,161 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
     return func__BspMeasurement_V12CountsToMv(uint16_t__counts);
 }
 
-/* ==================== Measurement Current1 Counts To Ma (LUT, user order 2026-09-27) ==================== */
+/* ==================== Measurement Current Counts To Ma (bench table, current) ==================== */
 
-#if (CAL_CURRENT1_LUT_ENABLE != 0u)
-/* [EN] Live battery-1 terminal voltage cache for the ch1 power LUT (v1.19,
- *      user order 2026-09-27): vhigh = V24 - V12, written AFTER the median-5
- *      voltage filter each pass, read by func__Measurement_Current1CountsToMa
- *      one pass later (1 ms stale - negligible vs the battery time
- *      constant). Clamped to 8.0..15.0 V so a missing/garbage voltage can
- *      never blow up the division; boot default 12.0 V.
- * [FA] کش ولتاژ زندهٔ ترمینال باتری ۱ برای LUT توانیِ کانال ۱ (v1.19):
- *      ‎vhigh = V24‎ − V12، بعد از فیلتر مدین-۵ هر پاس نوشته می‌شود و یک پاس
- *      بعدتر خوانده می‌شود (۱ms کهنگی - ناچیز مقابل ثابت زمانی باتری).
- *      گیرهٔ ۸..۱۵V تا ولتاژ گم/خراب تقسیم را منفجر نکند؛ پیش‌فرض بوت
- *      ۱۲٫۰V. */
-static uint32_t UINT32_T__G__Battery1VoltageMv = 12000u;
-
-/* [EN] The tail slope indexes POINTS-1/POINTS-2: fail the build if the
-   table ever shrinks below 2 points.
-   Full-program audit 2026-10-05: the two asserts below used to sit AFTER
-   the #endif of this guard, so they referenced CAL_CURRENT1_LUT_POINTS and
-   the ch1 axes even when CAL_CURRENT1_LUT_ENABLE was 0u - which broke the
-   build. They now live inside the guard, exactly like the channel-2 pair.
-   [FA] شیب دنباله ‎POINTS-1/POINTS-2‎ را می‌خواند: اگر جدول روزی زیر ۲ نقطه
-   رفت، بیلد بشکند. ممیزی ۲۰۲۶-۱۰-۰۵: این دو assert قبلاً بعد از endif این
-   گارد بودند و با خاموش‌بودن کلید کانال ۱ بیلد را می‌شکستند؛ حالا مثل جفتِ
-   کانال ۲ داخل گاردند. */
-_Static_assert(CAL_CURRENT1_LUT_POINTS >= 2u, "ch1 LUT needs >= 2 points");
-/* [EN] v1.63 (user question: "can the table have more or fewer points -
-   does it break anything?"). The point COUNT is free: every loop here is
-   driven by CAL_CURRENT1_LUT_POINTS, which is sizeof-derived. The one way
-   a re-fitted table can still break the build silently is pasting two axes
-   of DIFFERENT length - the interpolation would then read past the end of
-   the shorter one. That is now a compile error instead of a field fault.
-   [FA] تعداد نقاط آزاد است چون همهٔ حلقه‌ها از روی sizeof حساب می‌شوند.
-   تنها خطای خاموش ممکن این بود که دو محور با طول متفاوت کپی شوند؛ حالا
-   خطای زمان کامپایل است، نه خرابی در میدان. */
-_Static_assert(sizeof(CAL_Current1LutChainMa) ==
-               sizeof(CAL_Current1LutBatteryMw),
-               "ch1 LUT axes must hold the same number of points");
-#endif
-
-/* ==================== Measurement bench LUT interpolation (v1.66) ==================== */
-
-#if ((CAL_CURRENT1_LUT_ENABLE != 0u) || (CAL_CURRENT2_LUT_ENABLE != 0u))
-/* [EN] Exact (a*b)/div with saturation and NEAREST-ROUNDING, no compiler u64
-   helper. The product is accumulated in two u32 words and divided with
-   restoring binary division; the final remainder decides the last unit.
-   This keeps the firmware flash diet while preventing the old u32 wrap in
-   both interpolation and power-to-current conversion, and keeps those two
-   conversions on the same rounding rule as the panel that fitted them.
-   [FA] محاسبهٔ دقیق و اشباع‌شوندهٔ ‎(a*b)/div‎ با رُند به نزدیک و بدون
-   helper شانزده‌بیتی کامپایلر: حاصل‌ضرب در دو کلمهٔ u32 جمع و با تقسیم دودویی
-   restoring تقسیم می‌شود و باقی‌ماندهٔ پایانی رقم آخر را تعیین می‌کند. رژیم
-   فلش حفظ می‌شود، wrap قدیمی در interpolation و توان‌به‌جریان از بین می‌رود و
-   این دو تبدیل همان قاعدهٔ رُندِ پنلی را دارند که آنها را برازش کرده است. */
-static uint32_t func__Measurement_MulDivU32Saturating(uint32_t uint32_t__a,
-                                                      uint32_t uint32_t__b,
-                                                      uint32_t uint32_t__divisor)
-{
-    uint32_t uint32_t__productLow = 0u;
-    uint32_t uint32_t__productHigh = 0u;
-    uint32_t uint32_t__addLow = uint32_t__a;
-    uint32_t uint32_t__addHigh = 0u;
-    uint32_t uint32_t__multiplier = uint32_t__b;
-    uint32_t uint32_t__remainder = 0u;
-    uint32_t uint32_t__quotient = 0u;
-    uint8_t uint8_t__bit;
-
-    if ((uint32_t__divisor == 0u) || (uint32_t__a == 0u) ||
-        (uint32_t__b == 0u))
-    {
-        return 0u;
-    }
-
-    /* Shift-and-add multiplication into a 64-bit value represented as
-       high/low u32 words. The mathematical product of two u32 values fits. */
-    for (uint8_t__bit = 0u; uint8_t__bit < 32u; uint8_t__bit++)
-    {
-        if ((uint32_t__multiplier & 1u) != 0u)
-        {
-            uint32_t uint32_t__oldLow = uint32_t__productLow;
-            uint32_t__productLow += uint32_t__addLow;
-            uint32_t__productHigh += uint32_t__addHigh;
-            if (uint32_t__productLow < uint32_t__oldLow)
-            {
-                uint32_t__productHigh++;
-            }
-        }
-        uint32_t__addHigh = (uint32_t)((uint32_t__addHigh << 1) |
-                                       (uint32_t__addLow >> 31));
-        uint32_t__addLow <<= 1;
-        uint32_t__multiplier >>= 1;
-    }
-
-    /* Divide the 64-bit product from MSB to LSB. A quotient bit above bit 31
-       proves the public u32 result must saturate. */
-    for (uint8_t__bit = 64u; uint8_t__bit > 0u; uint8_t__bit--)
-    {
-        uint8_t uint8_t__productBitIndex = (uint8_t)(uint8_t__bit - 1u);
-        uint32_t uint32_t__productBit =
-            (uint8_t__productBitIndex >= 32u)
-                ? ((uint32_t__productHigh >>
-                    (uint8_t__productBitIndex - 32u)) & 1u)
-                : ((uint32_t__productLow >> uint8_t__productBitIndex) & 1u);
-        uint32_t uint32_t__complement = uint32_t__divisor -
-                                         uint32_t__remainder;
-        bool bool__subtract = false;
-
-        /* Compare 2*remainder+bit with divisor without overflowing u32. */
-        if (uint32_t__remainder >= uint32_t__complement)
-        {
-            uint32_t__remainder -= uint32_t__complement;
-            if (uint32_t__productBit != 0u)
-            {
-                uint32_t__remainder++;
-            }
-            bool__subtract = true;
-        }
-        else if ((uint32_t__productBit != 0u) &&
-                 (uint32_t__remainder == (uint32_t__complement - 1u)))
-        {
-            uint32_t__remainder = 0u;
-            bool__subtract = true;
-        }
-        else
-        {
-            uint32_t__remainder = (uint32_t)((uint32_t__remainder << 1) |
-                                              uint32_t__productBit);
-        }
-
-        if (bool__subtract != false)
-        {
-            if (uint8_t__productBitIndex >= 32u)
-            {
-                return UINT32_MAX;
-            }
-            uint32_t__quotient = (uint32_t)((uint32_t__quotient << 1) | 1u);
-        }
-        else if (uint8_t__productBitIndex < 32u)
-        {
-            uint32_t__quotient <<= 1;
-        }
-    }
-
-    /* [EN] NEAREST-ROUNDING (user order 2026-10-08): every caller of this
-       helper converts a MEASURED quantity - a bench LUT interpolation or a
-       battery power divided by the live battery voltage - and the panel, the
-       bench anchors and the BSP current chain all round to the nearest
-       integer. Truncating here instead is a one-sided UNDER-read of the
-       battery current that the charger's limit and the taper decision then
-       inherit (and under-reading a charge current is the unsafe direction).
-       The exact remainder is already sitting in uint32_t__remainder, so the
-       decision is ONE comparison and never forms 2x remainder (the
-       subtraction cannot underflow: remainder < divisor always holds after
-       restoring division, and divisor == 0 returned above).
-       [FA] رُند به نزدیک (دستور کاربر ۲۰۲۶-۱۰-۰۸): هر صداکنندهٔ این helper
-       یک کمیت اندازه‌گیری‌شده را تبدیل می‌کند - درون‌یابی جدول بنچ یا تقسیم
-       توان باتری بر ولتاژ زندهٔ باتری - و پنل، لنگرهای بنچ و زنجیرهٔ جریان
-       BSP همگی به نزدیک‌ترین عدد صحیح رُند می‌کنند. برش در اینجا کم‌خوانی
-       یک‌طرفهٔ جریان باتری است که حد جریان و تشخیص شیبِ شارژر آن را ارث
-       می‌برند (و کم‌خوانی جریان شارژ جهت ناامن است). باقی‌ماندهٔ دقیق همین
-       حالا در uint32_t__remainder هست، پس تصمیم فقط یک مقایسه است و هرگز
-       ‎۲×r‎ ساخته نمی‌شود (تفریق سرریز نمی‌کند: بعد از تقسیم restoring
-       همیشه ‎r < divisor‎ و divisor صفر بالاتر برگشته است). */
-    if ((uint32_t__remainder != 0u) &&
-        (uint32_t__remainder >= (uint32_t__divisor - uint32_t__remainder)))
-    {
-        if (uint32_t__quotient == UINT32_MAX)
-        {
-            return UINT32_MAX;
-        }
-        uint32_t__quotient++;
-    }
-
-    return uint32_t__quotient;
-}
-
-static uint32_t func__Measurement_InterpU32Increasing(uint32_t uint32_t__yLow,
-                                                      uint32_t uint32_t__deltaX,
-                                                      uint32_t uint32_t__deltaY,
-                                                      uint32_t uint32_t__spanX)
-{
-    uint32_t uint32_t__deltaYScaled;
-    uint32_t uint32_t__result;
-
-    if (uint32_t__spanX == 0u)
-    {
-        return uint32_t__yLow;
-    }
-    uint32_t__deltaYScaled = func__Measurement_MulDivU32Saturating(
-        uint32_t__deltaX, uint32_t__deltaY, uint32_t__spanX);
-    uint32_t__result = uint32_t__yLow + uint32_t__deltaYScaled;
-    if (uint32_t__result < uint32_t__yLow)
-    {
-        return UINT32_MAX;
-    }
-    return uint32_t__result;
-}
-
-static uint32_t func__Measurement_PowerMwToMa(uint32_t uint32_t__powerMw,
-                                               uint32_t uint32_t__voltageMv)
-{
-    return func__Measurement_MulDivU32Saturating(uint32_t__powerMw,
-                                                  1000u,
-                                                  uint32_t__voltageMv);
-}
-
-#ifdef MEASUREMENT_HOST_TEST
-uint32_t func__Measurement_HostTest_MulDivU32(uint32_t uint32_t__a,
-                                              uint32_t uint32_t__b,
-                                              uint32_t uint32_t__divisor)
-{
-    return func__Measurement_MulDivU32Saturating(uint32_t__a,
-                                                  uint32_t__b,
-                                                  uint32_t__divisor);
-}
-#endif
-
-/**
- * @brief  [EN] Piecewise-linear interpolation over ONE bench table: chain
- *              mA -> battery POWER mW. Both channels and BOTH sources (the
- *              compile-time table in calibration.h and the flash table a
- *              panel push stored, v1.66) go through this one function, so
- *              a pushed table can never behave differently from a pasted
- *              one - the only thing that changes is which array is read.
- *              Linear between anchors, the last slope extends above the
- *              last anchor, and a degenerate (equal-x) segment returns the
- *              point value instead of dividing by zero.
- *         [FA] درون‌یابی خطی-تکه‌ای روی یک جدول بنچ: mA زنجیره ← توان
- *              باتری. هر دو کانال و «هر دو منبع» (جدول کامپایل‌تایم در
- *              calibration.h و جدول فلش که ارسال پنل ذخیره کرده - v1.66)
- *              از همین یک تابع می‌گذرند، پس جدول ارسال‌شده هرگز نمی‌تواند
- *              رفتار متفاوتی از جدول چسبانده‌شده داشته باشد؛ تنها تفاوت
- *              این است که کدام آرایه خوانده می‌شود.
- * @param  UINT32_T__A__ChainMa [EN] Chain axis / محور زنجیره
- * @param  UINT32_T__A__PowerMw [EN] Power axis / محور توان
- * @param  uint32_t__points [EN] Point count, >= 2 / تعداد نقاط
- * @param  uint32_t__chainMa [EN] Chain current / جریان زنجیره
- * @return uint32_t [EN] Battery power in mW / توان باتری بر حسب mW
- */
-static uint32_t func__Measurement_BenchLutInterp(
-    const uint32_t *UINT32_T__A__ChainMa,
-    const uint32_t *UINT32_T__A__PowerMw,
-    uint32_t uint32_t__points,
-    uint32_t uint32_t__chainMa)
+/* [EN] Bench correction, CURRENT axis (user order 2026-10-10). The table
+ *      maps the BSP chain current (already including the per-channel gain
+ *      and offset) to the true battery current in mA. There is no power
+ *      axis and no battery-voltage division any more.
+ *      - Between anchors: linear interpolation, rounded to nearest.
+ *      - Above the last anchor: the chain is used with slope 1 (the gain
+ *        and offset line), so the reading never depends on a guessed slope.
+ *      - Below the first anchor: the first anchor's value is held.
+ *      - No table in flash: the chain itself is the reading.
+ *      The table is written only by the panel (CalLut); there is no compiled
+ *      fallback table, so a fresh board reads through gain and offset.
+ *  [FA] اصلاح جدول بنچ روی محور «جریان» (دستور کاربر ۲۰۲۶-۱۰-۱۰). جدول،
+ *      جریان زنجیرهٔ BSP (که گین و آفست هر کانال را دارد) را به جریان واقعی
+ *      باتری بر حسب mA می‌برد. دیگر محور توان و تقسیم بر ولتاژ باتری وجود ندارد.
+ *      - بین لنگرها: درون‌یابی خطی، رُند به نزدیک‌ترین.
+ *      - بالای آخرین لنگر: زنجیره با شیب ۱ ادامه می‌یابد (خط گین و آفست)،
+ *        پس خوانش هرگز به شیب حدسی وابسته نیست.
+ *      - زیر اولین لنگر: مقدار اولین لنگر نگه داشته می‌شود.
+ *      - جدول در فلش نباشد: خود زنجیره خوانش است.
+ *      جدول فقط از پنل (CalLut) نوشته می‌شود؛ جدول کامپایل‌شده وجود ندارد،
+ *      پس برد تازه با گین و آفست کار می‌کند. */
+static uint32_t func__Measurement_BenchTableInterp(const uint32_t *UINT32_T__A__ChainMa,
+                                                   const uint32_t *UINT32_T__A__BatteryMa,
+                                                   uint32_t uint32_t__points,
+                                                   uint32_t uint32_t__chainMa)
 {
     uint32_t uint32_t__index;
 
-    /* [EN] Audit guard 2026-10-06: the contract is points >= 2 and every
-     *      caller enforces it (CAL_LUT_POINTS_MIN), but the tail branch
-     *      below indexes [points - 2]; an unsigned underflow there would
-     *      read far outside the table. Refusing a degenerate table keeps
-     *      valid inputs bit-identical.
-     * [FA] نگهبان ممیزی ۲۰۲۶-۱۰-۰۶: قرارداد «حداقل دو نقطه» است و همهٔ
-     *      فراخوان‌ها آن را رعایت می‌کنند، ولی شاخهٔ انتهایی ‎[points - 2]‎ را
-     *      می‌خواند و کم‌ریزی بدون‌علامت آنجا بیرون از جدول را می‌خواند.
-     *      رد کردن جدول ناقص، خروجی ورودی‌های معتبر را عوض نمی‌کند. */
+    /* [EN] Degenerate table (fewer than 2 anchors) is not used.
+     * [FA] جدول ناقص (کمتر از ۲ لنگر) استفاده نمی‌شود. */
     if (uint32_t__points < 2u)
     {
-        return 0u;
+        return uint32_t__chainMa;
     }
 
-    for (uint32_t__index = 1u; uint32_t__index < uint32_t__points;
-         uint32_t__index++)
+    if (uint32_t__chainMa <= UINT32_T__A__ChainMa[0u])
     {
+        return UINT32_T__A__BatteryMa[0u];
+    }
+
+    for (uint32_t__index = 1u; uint32_t__index < uint32_t__points; uint32_t__index++)
+    {
+        uint32_t uint32_t__xLow = UINT32_T__A__ChainMa[uint32_t__index - 1u];
         uint32_t uint32_t__xHigh = UINT32_T__A__ChainMa[uint32_t__index];
 
         if (uint32_t__chainMa <= uint32_t__xHigh)
         {
-            uint32_t uint32_t__xLow = UINT32_T__A__ChainMa[uint32_t__index - 1u];
-            uint32_t uint32_t__yLow = UINT32_T__A__PowerMw[uint32_t__index - 1u];
-            uint32_t uint32_t__yHigh = UINT32_T__A__PowerMw[uint32_t__index];
+            uint32_t uint32_t__yLow = UINT32_T__A__BatteryMa[uint32_t__index - 1u];
+            uint32_t uint32_t__yHigh = UINT32_T__A__BatteryMa[uint32_t__index];
+            uint32_t uint32_t__span = uint32_t__xHigh - uint32_t__xLow;
+            uint32_t uint32_t__step = uint32_t__chainMa - uint32_t__xLow;
 
-            /* [EN] Degenerate-segment guard (tables are hand-edited and now
-               also uploaded): equal anchors would divide by zero.
-               [FA] گارد بازهٔ تباه‌شده: لنگرهای برابر تقسیم‌برصفر می‌کردند. */
-            if (uint32_t__xHigh == uint32_t__xLow)
+            /* [EN] Strictly increasing axis is enforced by CalLut on commit;
+             *      the guard keeps a bad table from dividing by zero.
+             * [FA] محور اکیداً صعودی را CalLut هنگام commit تضمین می‌کند؛
+             *      این گارد جدول بد را از تقسیم بر صفر نگه می‌دارد. */
+            if (uint32_t__span == 0u)
             {
                 return uint32_t__yHigh;
             }
-            return func__Measurement_InterpU32Increasing(
-                uint32_t__yLow,
-                uint32_t__chainMa - uint32_t__xLow,
-                uint32_t__yHigh - uint32_t__yLow,
-                uint32_t__xHigh - uint32_t__xLow);
+            if (uint32_t__yHigh <= uint32_t__yLow)
+            {
+                return uint32_t__yLow;
+            }
+            /* [EN] Nearest rounding; the product fits u32 (chain <= ~3600 mA,
+             *      battery <= ~3600 mA, both 32-bit safe).
+             * [FA] رُند به نزدیک‌ترین؛ حاصل‌ضرب در u32 جا می‌شود. */
+            return uint32_t__yLow +
+                   (((uint32_t__step * (uint32_t__yHigh - uint32_t__yLow)) +
+                     (uint32_t__span / 2u)) /
+                    uint32_t__span);
         }
     }
 
-    /* [EN] Above the last anchor: extend the last segment's slope.
-       [FA] بالای آخرین لنگر: شیب آخرین بازه ادامه می‌یابد. */
-    if (UINT32_T__A__ChainMa[uint32_t__points - 1u] ==
-        UINT32_T__A__ChainMa[uint32_t__points - 2u])
-    {
-        return UINT32_T__A__PowerMw[uint32_t__points - 1u];
-    }
-    return func__Measurement_InterpU32Increasing(
-        UINT32_T__A__PowerMw[uint32_t__points - 1u],
-        uint32_t__chainMa - UINT32_T__A__ChainMa[uint32_t__points - 1u],
-        UINT32_T__A__PowerMw[uint32_t__points - 1u] -
-            UINT32_T__A__PowerMw[uint32_t__points - 2u],
-        UINT32_T__A__ChainMa[uint32_t__points - 1u] -
-            UINT32_T__A__ChainMa[uint32_t__points - 2u]);
+    /* [EN] Above the last anchor: slope 1 (the gain and offset line).
+     * [FA] بالای آخرین لنگر: شیب ۱ (خط گین و آفست). */
+    return UINT32_T__A__BatteryMa[uint32_t__points - 1u] +
+           (uint32_t__chainMa - UINT32_T__A__ChainMa[uint32_t__points - 1u]);
 }
-#endif
 
-#if (CAL_CURRENT1_LUT_ENABLE != 0u)
 /**
- * @brief  [EN] Piecewise-linear bench correction: ADC chain mA of channel
- *              1 -> battery-1 POWER in mW (the DCM energy per cycle is
- *              battery-voltage independent; current = P/Vbat, so the table
- *              carries POWER and the caller divides by the live battery
- *              voltage). Linear interpolation between anchors; the last
- *              slope extends above the last anchor; 0 maps to 0.
- *         [FA] اصلاح خطی-تکه‌ای بنچ: mA زنجیرهٔ ADC کانال ۱ → «توان باتری
- *              ۱» بر حسب mW (انرژی هر سایکل DCM مستقل از ولتاژ باتری است؛
- *              جریان = ‎P/Vbat‎، پس جدول توان را می‌دهد و صداکننده بر ولتاژ
- *              زنده تقسیم می‌کند). بین لنگرها درون‌یابی خطی؛ بالای آخرین
- *              لنگر شیب آخر ادامه می‌یابد؛ صفر به صفر.
- * @param  uint32_t__chainMa [EN] ADC chain output in mA / خروجی زنجیرهٔ ADC بر حسب mA
- * @return uint32_t [EN] Battery-1 power in mW‎ / توان باتری ۱ بر حسب mW
- */
+ * @brief  [EN] Channel-1 bench table: chain mA -> battery-1 mA. A valid
+ *              flash table from the panel is used; otherwise identity.
+ *         [FA] جدول بنچ کانال ۱: mA زنجیره ← mA باتری ۱. جدول معتبر فلش
+ *              از پنل استفاده می‌شود وگرنه همانی. */
 static uint32_t func__Measurement_Current1BenchLut(uint32_t uint32_t__chainMa)
 {
-    /* [EN] v1.66 (user order 2026-10-05): a table pushed from the panel and
-       stored in its own flash block WINS over the compiled table; a fresh
-       board, a corrupt record or a format bump falls straight back to
-       calibration.h, so the board always measures with something sane.
-       [FA] v1.66 (دستور کاربر): جدولی که از پنل فرستاده و در بلوک فلش خودش
-       ذخیره شده بر جدول کامپایل‌شده مقدم است؛ برد نو، رکورد خراب یا تغییر
-       قالب مستقیماً به calibration.h برمی‌گردد تا برد همیشه با چیزی سالم
-       اندازه بگیرد. */
     if (func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_1) != false)
     {
-        return func__Measurement_BenchLutInterp(
+        return func__Measurement_BenchTableInterp(
             func__CalLut_ChainMa((uint8_t)CAL_LUT_CHANNEL_1),
-            func__CalLut_PowerMw((uint8_t)CAL_LUT_CHANNEL_1),
+            func__CalLut_BatteryMa((uint8_t)CAL_LUT_CHANNEL_1),
             func__CalLut_Points((uint8_t)CAL_LUT_CHANNEL_1),
             uint32_t__chainMa);
     }
-
-    return func__Measurement_BenchLutInterp(CAL_Current1LutChainMa,
-                                            CAL_Current1LutBatteryMw,
-                                            CAL_CURRENT1_LUT_POINTS,
-                                            uint32_t__chainMa);
-}
-#endif
-
-/* ==================== Measurement Current1 Counts To Ma ==================== */
-
-/**
- * @brief  [EN] Channel-1 raw counts to battery mA: the BSP per-channel
- *              linear calibration, then - when the bench LUT is enabled -
- *              the piecewise-linear bench correction (the linear chain
- *              alone reads an S-curve vs the DMM). The LUT sits on the OLD
- *              chain output, so unfiltered, filtered and iest all become
- *              true battery mA; raw counts and shunt uV are untouched.
- *         [FA] شمارش خام کانال ۱ به mA باتری: کالیبراسیون خطی BSP و بعد -
- *              با فعال بودن جدول بنچ - اصلاح خطی-تکه‌ای (زنجیرهٔ خطیِ تنها،
- *              Sشکل برابر DMM می‌خواند). جدول روی خروجی زنجیرهٔ قدیم
- *              می‌نشیند پس بدون فیلتر، فیلترشده و iest هر سه به mA واقعی
- *              باتری تبدیل می‌شوند؛ شمارش خام و uV شانت دست نمی‌خورند.
- * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Corrected current in mA / جریان اصلاح‌شده mA
- */
-uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
-{
-#if (CAL_CURRENT1_LUT_ENABLE != 0u)
-    /* [EN] The LUT maps the ADC chain current to battery-1 POWER (the DCM
-       invariant); dividing by the LIVE battery-1 terminal voltage (vhigh,
-       previous 1 ms pass, clamped 8.0..15.0 V) yields the CURRENT. The
-       multiply/divide uses exact split-word u32 arithmetic because panel LUT
-       data is runtime; the public result saturates to u32.
-       [FA] جدول جریان زنجیرهٔ ADC را به «توان باتری ۱» می‌برد (ناوردای
-       DCM)؛ تقسیم بر ولتاژ زندهٔ ترمینال باتری ۱ (vhigh، پاس ۱ms قبل،
-       گیرهٔ ۸..۱۵V) جریان باتری را می‌دهد. ضرب/تقسیم با arithmetic دقیق
-       ‎split-word‎ انجام می‌شود چون LUT پنل دادهٔ زمان اجراست و خروجی عمومی
-       به u32 اشباع می‌شود. */
-    uint32_t uint32_t__batteryPowerMw = func__Measurement_Current1BenchLut(
-        func__BspMeasurement_Current1CountsToMa(uint16_t__counts));
-    return func__Measurement_PowerMwToMa(uint32_t__batteryPowerMw,
-                                          UINT32_T__G__Battery1VoltageMv);
-#else
-    return func__BspMeasurement_Current1CountsToMa(uint16_t__counts);
-#endif
+    return uint32_t__chainMa;
 }
 
-/* ==================== Measurement Current2 Bench LUT (user order 2026-09-25) ==================== */
-
-/* [EN] Bench runs proved the channel-2 chain is strongly non-linear vs
-        the true battery current: ~2x too high at 5% duty, 0.85x too low at
-        15..17% - no single gain or gain+offset line covers both ends, so a
-        piecewise-linear table on the chain output is the honest correction.
-        Physical cause: the mid-ON synchronized sample of the primary ramp
-        vs the ~duty^2 energy transfer, with a DCM->CCM kink near 12% duty.
-   [FA] اجرای بنچ نشان داد زنجیرهٔ کانال ۲ نسبت به جریان واقعی باتری
-        به‌شدت غیرخطی است: ~۲ برابر زیاد در دیوتی ۵٪ و ۰٫۸۵ برابر کم در
-        ۱۵..۱۷٪ - هیچ خط تک‌گین/گین+آفستی دو سر را نمی‌پوشاند، پس جدول
-        خطی-تکه‌ای روی خروجی زنجیره اصلاح درست است. علت فیزیکی: نمونهٔ
-        سنکرون وسط ON از رمپ اولیه در برابر انتقال انرژی ~duty²، با شکست
-        DCM→CCM نزدیک دیوتی ~۱۲٪. */
-
-#if (CAL_CURRENT2_LUT_ENABLE != 0u)
 /**
- * @brief  [EN] Piecewise-linear bench correction: ADC chain mA of channel
- *              2 -> battery-2 POWER in mW (same DCM POWER architecture as
- *              channel 1; the caller divides by the live battery voltage).
- *              Linear interpolation between anchors; the last slope
- *              extends above the last anchor; 0 maps to 0.
- *         [FA] اصلاح خطی-تکه‌ای بنچ: mA زنجیرهٔ ADC کانال ۲ → «توان باتری
- *              ۲» بر حسب mW (همان معماری توان کانال ۱؛ صداکننده بر ولتاژ
- *              زنده تقسیم می‌کند). بین لنگرها درون‌یابی خطی؛ بالای آخرین
- *              لنگر شیب آخر ادامه می‌یابد؛ صفر به صفر.
- * @param  uint32_t__chainMa [EN] ADC chain output in mA / خروجی زنجیرهٔ ADC بر حسب mA
- * @return uint32_t [EN] Battery-2 power in mW‎ / توان باتری ۲ بر حسب mW
- */
-/* [EN] Live battery-2 terminal voltage cache for the ch2 power LUT (v1.13,
- *      user order 2026-09-25): written AFTER the median-5 voltage filter each
- *      pass, read by func__Measurement_Current2CountsToMa one pass later
- *      (1 ms stale - negligible vs the battery time constant). Clamped to
- *      8.0..15.0 V so a missing/garbage voltage can never blow up the
- *      division; boot default 12.0 V.
- * [FA] کش ولتاژ زندهٔ ترمینال باتری ۲ برای LUT توانیِ کانال ۲ (v1.13):
- *      بعد از فیلتر مدین-۵ هر پاس نوشته می‌شود و یک پاس بعدتر خوانده
- *      می‌شود (۱ms کهنگی - ناچیز مقابل ثابت زمانی باتری). گیرهٔ ۸..۱۵V
- *      تا ولتاژ گم/خراب تقسیم را منفجر نکند؛ پیش‌فرض بوت ۱۲٫۰V. */
-#if (CAL_CURRENT2_LUT_ENABLE != 0u)
-static uint32_t UINT32_T__G__Battery2VoltageMv = 12000u;
-#endif
-
-/* [EN] The tail slope indexes POINTS-1/POINTS-2: fail the build if the
-   table ever shrinks below 2 points.
-   [FA] شیب دنباله ‎POINTS-1/POINTS-2‎ را می‌خواند: اگر جدول روزی زیر ۲ نقطه
-   رفت، بیلد بشکند. */
-_Static_assert(CAL_CURRENT2_LUT_POINTS >= 2u, "ch2 LUT needs >= 2 points");
-/* [EN] v1.63: same length guard for channel 2. [FA] همان گارد برای کانال ۲. */
-_Static_assert(sizeof(CAL_Current2LutChainMa) ==
-               sizeof(CAL_Current2LutBatteryMw),
-               "ch2 LUT axes must hold the same number of points");
-
+ * @brief  [EN] Channel-2 bench table: chain mA -> battery-2 mA. A valid
+ *              flash table from the panel is used; otherwise identity.
+ *         [FA] جدول بنچ کانال ۲: mA زنجیره ← mA باتری ۲. جدول معتبر فلش
+ *              از پنل استفاده می‌شود وگرنه همانی. */
 static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
 {
-    /* [EN] v1.66 (user order 2026-10-05): a table pushed from the panel and
-       stored in its own flash block WINS over the compiled table; a fresh
-       board, a corrupt record or a format bump falls straight back to
-       calibration.h, so the board always measures with something sane.
-       [FA] v1.66 (دستور کاربر): جدولی که از پنل فرستاده و در بلوک فلش خودش
-       ذخیره شده بر جدول کامپایل‌شده مقدم است؛ برد نو، رکورد خراب یا تغییر
-       قالب مستقیماً به calibration.h برمی‌گردد تا برد همیشه با چیزی سالم
-       اندازه بگیرد. */
     if (func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_2) != false)
     {
-        return func__Measurement_BenchLutInterp(
+        return func__Measurement_BenchTableInterp(
             func__CalLut_ChainMa((uint8_t)CAL_LUT_CHANNEL_2),
-            func__CalLut_PowerMw((uint8_t)CAL_LUT_CHANNEL_2),
+            func__CalLut_BatteryMa((uint8_t)CAL_LUT_CHANNEL_2),
             func__CalLut_Points((uint8_t)CAL_LUT_CHANNEL_2),
             uint32_t__chainMa);
     }
-
-    return func__Measurement_BenchLutInterp(CAL_Current2LutChainMa,
-                                            CAL_Current2LutBatteryMw,
-                                            CAL_CURRENT2_LUT_POINTS,
-                                            uint32_t__chainMa);
+    return uint32_t__chainMa;
 }
-#endif
 
 /**
- * @brief  [EN] Channel-2 raw counts to battery mA: the BSP per-channel
- *              linear calibration, then - when the bench LUT is enabled -
- *              the piecewise-linear bench correction. The LUT sits on the
- *              OLD chain output, so unfiltered, filtered and iest all
- *              become true battery mA; raw counts and shunt uV untouched.
- *         [FA] شمارش خام کانال ۲ به mA باتری: کالیبراسیون خطی BSP و بعد -
- *              با فعال بودن جدول بنچ - اصلاح خطی-تکه‌ای. جدول روی خروجی
- *              زنجیرهٔ قدیم می‌نشیند، پس بدون فیلتر، فیلترشده و iest هر سه
- *              به mA واقعی باتری تبدیل می‌شوند؛ شمارش خام و uV شانت
- *              دست نمی‌خورند.
+ * @brief  [EN] Channel-1 raw counts to battery mA: BSP chain (gain and
+ *              offset included), then the bench table.
+ *         [FA] شمارش خام کانال ۱ به mA باتری: زنجیرهٔ BSP (با گین و آفست)
+ *              و بعد جدول بنچ.
  * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Corrected current in mA / جریان اصلاح‌شده mA
+ * @‎return uint32_t [EN] Battery-1 current in mA‎ / جریان باتری ۱ بر حسب mA
+ */
+uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
+{
+    return func__Measurement_Current1BenchLut(
+        func__BspMeasurement_Current1CountsToMa(uint16_t__counts));
+}
+
+/**
+ * @brief  [EN] Channel-2 raw counts to battery mA: BSP chain (gain and
+ *              offset included), then the bench table.
+ *         [FA] شمارش خام کانال ۲ به mA باتری: زنجیرهٔ BSP (با گین و آفست)
+ *              و بعد جدول بنچ.
+ * @param  uint16_t__counts [EN] ADC count / شمارش ADC
+ * @‎return uint32_t [EN] Battery-2 current in mA‎ / جریان باتری ۲ بر حسب mA
  */
 uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
 {
-#if (CAL_CURRENT2_LUT_ENABLE != 0u)
-    /* [EN] The LUT maps the ADC chain current to battery-2 POWER (the DCM
-       invariant); dividing by the LIVE battery-2 terminal voltage (previous
-       1 ms pass, clamped 8.0..15.0 V) yields the battery CURRENT. The exact
-       split-word u32 helper prevents runtime-table multiplication from
-       wrapping and saturates only when the public result cannot fit.
-       [FA] جدول جریان زنجیرهٔ ADC را به «توان باتری ۲» می‌برد (ناوردای
-       DCM)؛ تقسیم بر ولتاژ زندهٔ ترمینال باتری ۲ (پاس ۱ms قبل، گیرهٔ
-       ۸..۱۵V) جریان باتری را می‌دهد. helper دقیق ‎split-word‎ از wrap ضرب
-       جدول زمان اجرا جلوگیری می‌کند و فقط در خروجی خارج از u32 اشباع می‌شود. */
-    uint32_t uint32_t__batteryPowerMw = func__Measurement_Current2BenchLut(
+    return func__Measurement_Current2BenchLut(
         func__BspMeasurement_Current2CountsToMa(uint16_t__counts));
-    /* [EN] Runtime LUT values are not limited to the compiled table's small
-       range; the split-word conversion helper prevents wrap and saturates.
-       [FA] مقادیر LUT زمان اجرا به بازهٔ کوچک جدول کامپایل محدود نیستند؛
-       کمک‌کنندهٔ ‎split-word‎ از wrap جلوگیری و اشباع می‌کند. */
-    return func__Measurement_PowerMwToMa(uint32_t__batteryPowerMw,
-                                          UINT32_T__G__Battery2VoltageMv);
-#else
-    return func__BspMeasurement_Current2CountsToMa(uint16_t__counts);
-#endif
 }
 
 bool func__Measurement_CurrentIsBatteryCalibrated(uint8_t uint8_t__channelIndex)
 {
-    /* [EN] The public CurrentNCountsToMa() result is battery-side whenever
-       the corresponding compile-time LUT is enabled. A valid runtime flash
-       record overrides the anchors, while an absent/invalid record uses the
-       compiled fallback; both are the same battery-power -> live-voltage
-       architecture. Keep this query beside the conversion so Charger cannot
-       accidentally duplicate that conversion as the LUT evolves.
-       [FA] خروجی عمومی CurrentNCountsToMa وقتی LUT متناظر فعال است متعلق به
-       سمت باتری است. رکورد معتبر فلش فقط لنگرها را جایگزین می‌کند و در نبود
-       رکورد، fallback کامپایل‌شده مصرف می‌شود؛ هر دو همان معماری توان باتری
-       تقسیم بر ولتاژ زنده‌اند. این query کنار تبدیل می‌ماند تا Charger با
-       تغییر LUT نتواند تبدیل را دوباره انجام دهد. */
-    if (uint8_t__channelIndex == 0u)
-    {
-#if (CAL_CURRENT1_LUT_ENABLE != 0u)
-        return true;
-#else
-        return false;
-#endif
-    }
-
-    if (uint8_t__channelIndex == 1u)
-    {
-#if (CAL_CURRENT2_LUT_ENABLE != 0u)
-        return true;
-#else
-        return false;
-#endif
-    }
-
-    return false;
+    /* [EN] Channels 1 and 2 always return BATTERY-side current (chain with
+     *      gain and offset, then the bench table when present). Whether the
+     *      table has been calibrated is a separate question for the panel.
+     * [FA] کانال ۱ و ۲ همیشه جریان سمت باتری برمی‌گردانند (زنجیره با گین و
+     *      آفست، و جدول بنچ در صورت وجود). اینکه جدول کالیبره شده یا نه،
+     *      موضوعی جداست که پنل نشان می‌دهد. */
+    return (uint8_t__channelIndex <= 1u);
 }
 
 /* ==================== Measurement Current Counts To Ma (legacy) ==================== */
@@ -1177,57 +796,6 @@ uint32_t func__Measurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
 }
 
 /* ==================== Measurement Battery12 Bench Compensation (user order 2026-09-25) ==================== */
-
-#if (CAL_BATTERY12_BENCH_COMP_ENABLE != 0u)
-/* [EN] Bench DMM runs measured the V12 channel against the battery
-        terminals: a static divider error plus a current-proportional
-        charge-path wire drop (the board sense point sits above the battery
-        terminal while charging). This compensation subtracts both so the
-        panel - and the charger's own decisions on Vlow - work on the TRUE
-        battery-2 terminal voltage; Vhigh = V24 - V12 shifts up by the same
-        amount (the physically correct direction). The I2 input is the
-        post-LUT corrected current; re-derive the constants if the bench
-        wiring changes.
-   [FA] بنچ با مولتی‌متر روی ترمینال باتری نشان داد کانال V12 خطای ثابت
-        مقسم + افت مسیر شارژ متناسب جریان دارد (نقطهٔ سنس برد حین شارژ
-        بالاتر از ترمینال باتری است). این جبران هر دو را کم می‌کند تا پنل
-        و تصمیم‌های شارژر روی Vlow با ولتاژ واقعی ترمینال باتری ۲ کار
-        کنند؛ ‎Vhigh = V24‎ − V12 به همان اندازه بالا می‌رود (جهت فیزیکی
-        درست). ورودی I2 جریان اصلاح‌شدهٔ بعد از جدول است؛ با تغییر
-        سیم‌بندی، ثابت‌ها دوباره ساخته شوند. */
-/* [EN] Refit from the dense 2026-09-25T18:14 run (10 DMM points,
-        0..764 mA): LSQ static 149.8 mV + 472.5 mOhm - rounded to 150/470.
-        Residual vs DMM within +/-28 mV (0.23 percent) across the range.
-        (Full-program audit 2026-09-27: the two constants live ONLY in
-        calibration.h - the identical local redefinition here is deleted.)
-   [FA] برازش دوباره از اجرای متراکم ۲۰۲۶-۰۹-۲۵T18:14 (۱۰ نقطهٔ DMM،
-        ‎0..764mA)‎: کمینهٔ مربعات ‎149.8mV + 472.5mOhm‎ - گرد به ‎150/470‎.
-        خطای باقی‌مانده در کل بازه ±۲۸mV (۰٫۲۳٪).
-        (ممیزی کل برنامه: این دو ثابت فقط در calibration.h هستند -
-        تعریف تکراری محلی اینجا حذف شد.) */
-
-/**
- * @brief  [EN] V12 true-battery compensation: subtract the static channel
- *              error and the I2 x R charge-path wire drop, never below 0 mV.
- *         [FA] جبران V12 به باتری واقعی: کم‌کردن خطای ثابت کانال و افت
- *              مسیر I2×R؛ هرگز زیر 0mV نمی‌رود.
- * @param  uint32_t__v12Mv      [EN] Measured V12 in mV / V12‎ اندازه‌گیری‌شده mV
- * @param  uint32_t__current2Ma [EN] Corrected channel-2 current in mA‎ / جریان اصلاح‌شدهٔ کانال ۲ mA
- * @return uint32_t [EN] Compensated battery-low voltage in mV‎ / ولتاژ جبران‌شدهٔ باتری پایین mV
- */
-static uint32_t func__Measurement_Battery12BenchCompensate(uint32_t uint32_t__v12Mv,
-                                                           uint32_t uint32_t__current2Ma)
-{
-    uint32_t uint32_t__dropMv = CAL_BATTERY12_BENCH_STATIC_MV +
-        ((uint32_t__current2Ma * CAL_BATTERY12_BENCH_PATH_MOHM) / 1000u);
-
-    if (uint32_t__v12Mv > uint32_t__dropMv)
-    {
-        return uint32_t__v12Mv - uint32_t__dropMv;
-    }
-    return 0u;
-}
-#endif
 
 /* ==================== Measurement ApplyVoltageOffsetMv ==================== */
 
@@ -1426,16 +994,6 @@ void func__Measurement_Run(void)
         uint32_t__battery24Mv, INT32_T__G__Voltage24OffsetMv);
     uint32_t__battery12Mv = func__Measurement_ApplyVoltageOffsetMv(
         uint32_t__battery12Mv, INT32_T__G__Voltage12OffsetMv);
-#if (CAL_BATTERY12_BENCH_COMP_ENABLE != 0u)
-    /* [EN] Bench compensation of the battery-low channel (user order
-            2026-09-25): static error + I2 wire drop, so Vlow and the derived
-            Vhigh describe the true battery terminals.
-       [FA] جبران بنچ کانال باتری پایین (دستور کاربر ۲۰۲۶-۰۹-۲۵): خطای
-            ثابت + افت مسیر I2 تا Vlow و Vhigh مشتق‌شده، ترمینال واقعی
-            باتری‌ها را توصیف کنند. */
-    uint32_t__battery12Mv = func__Measurement_Battery12BenchCompensate(
-        uint32_t__battery12Mv, uint32_t__current2SampleMa);
-#endif
     uint32_t__batteryLowMv = uint32_t__battery12Mv;
     if (uint32_t__battery24Mv >= uint32_t__battery12Mv)
     {
@@ -1455,42 +1013,6 @@ void func__Measurement_Run(void)
        پس اسپایک تک‌فریمی پیش از تبدیل مرده است؛ ‎low/high‎ از تبدیل‌های
        فیلترشده مشتق می‌شوند. */
 
-#if (CAL_CURRENT2_LUT_ENABLE != 0u)
-    /* [EN] Feed the ch2 power-LUT voltage cache (v1.13): the filtered TRUE
-       battery-2 terminal voltage, clamped 8.0..15.0 V.
-       [FA] خوراک کشِ ولتاژ LUT توانی کانال ۲: ولتاژ فیلترشدهٔ واقعی
-            ترمینال باتری ۲، گیرهٔ ۸٫۰..۱۵٫۰V. */
-    if (uint32_t__batteryLowMv < 8000u)
-    {
-        UINT32_T__G__Battery2VoltageMv = 8000u;
-    }
-    else if (uint32_t__batteryLowMv > 15000u)
-    {
-        UINT32_T__G__Battery2VoltageMv = 15000u;
-    }
-    else
-    {
-        UINT32_T__G__Battery2VoltageMv = uint32_t__batteryLowMv;
-    }
-#endif
-#if (CAL_CURRENT1_LUT_ENABLE != 0u)
-    /* [EN] Feed the ch1 power-LUT voltage cache (v1.19): the filtered TRUE
-       battery-1 terminal voltage (vhigh = V24 - V12), clamped 8.0..15.0 V.
-       [FA] خوراک کشِ ولتاژ LUT توانی کانال ۱: ولتاژ فیلترشدهٔ واقعی
-            ترمینال باتری ۱ (‎vhigh = V24‎ − V12)، گیرهٔ ۸٫۰..۱۵٫۰V. */
-    if (uint32_t__batteryHighMv < 8000u)
-    {
-        UINT32_T__G__Battery1VoltageMv = 8000u;
-    }
-    else if (uint32_t__batteryHighMv > 15000u)
-    {
-        UINT32_T__G__Battery1VoltageMv = 15000u;
-    }
-    else
-    {
-        UINT32_T__G__Battery1VoltageMv = uint32_t__batteryHighMv;
-    }
-#endif
     /* [EN] Convert the filtered counts AFTER the LUT voltage cache above
        is refreshed, so the ch2 power correction divides by this pass's
        battery-2 voltage.

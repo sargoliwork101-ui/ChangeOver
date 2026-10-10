@@ -251,7 +251,7 @@ static void func__Esp_StoreLutData(const uint8_t *uint8_t__ptr_payload,
     uint16_t uint16_t__offset;
     uint8_t uint8_t__index;
     uint32_t *uint32_t__ptr_chain;
-    uint32_t *uint32_t__ptr_power;
+    uint32_t *uint32_t__ptr_battery;
     uint8_t uint8_t__mask;
 
     if (!BOOL__G__LutReadPending)
@@ -288,12 +288,12 @@ static void func__Esp_StoreLutData(const uint8_t *uint8_t__ptr_payload,
     if (uint8_t__channel == 1u)
     {
         uint32_t__ptr_chain = UINT32_T__G__LutReadChain1;
-        uint32_t__ptr_power = UINT32_T__G__LutReadPower1;
+        uint32_t__ptr_battery = UINT32_T__G__LutReadPower1;
     }
     else
     {
         uint32_t__ptr_chain = UINT32_T__G__LutReadChain2;
-        uint32_t__ptr_power = UINT32_T__G__LutReadPower2;
+        uint32_t__ptr_battery = UINT32_T__G__LutReadPower2;
     }
 
     uint16_t__offset = 3u;
@@ -301,7 +301,7 @@ static void func__Esp_StoreLutData(const uint8_t *uint8_t__ptr_payload,
     {
         uint32_t__ptr_chain[uint8_t__index] = func__Esp_ReadU32(
             uint8_t__ptr_payload, (uint8_t)uint16_t__offset);
-        uint32_t__ptr_power[uint8_t__index] = func__Esp_ReadU32(
+        uint32_t__ptr_battery[uint8_t__index] = func__Esp_ReadU32(
             uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 4u));
         uint16_t__offset = (uint16_t)(uint16_t__offset + 8u);
     }
@@ -370,7 +370,7 @@ static bool func__Esp_LutReadMatchesStaged(void)
  *         [FA] ارسال نقاط یک کانال در یک LUT_CHUNK.
  */
 static void func__Esp_SendLutChunk(uint8_t uint8_t__channel, const uint32_t *uint32_t__ptr_chainMa,
-                                   const uint32_t *uint32_t__ptr_powerMw, uint8_t uint8_t__count)
+                                   const uint32_t *uint32_t__ptr_batteryMa, uint8_t uint8_t__count)
 {
     uint8_t UINT8_T__A__Payload[3u + (8u * ESP_LUT_POINTS_MAX)];
     uint16_t uint16_t__used = 3u;
@@ -388,7 +388,7 @@ static void func__Esp_SendLutChunk(uint8_t uint8_t__channel, const uint32_t *uin
     for (uint8_t__index = 0u; uint8_t__index < uint8_t__count; uint8_t__index++)
     {
         uint16_t__used = func__Esp_PutU32(UINT8_T__A__Payload, uint16_t__used, uint32_t__ptr_chainMa[uint8_t__index]);
-        uint16_t__used = func__Esp_PutU32(UINT8_T__A__Payload, uint16_t__used, uint32_t__ptr_powerMw[uint8_t__index]);
+        uint16_t__used = func__Esp_PutU32(UINT8_T__A__Payload, uint16_t__used, uint32_t__ptr_batteryMa[uint8_t__index]);
     }
 
     func__Esp_WriteFrame(ESP_MSG_LUT_CHUNK, UINT8_T__A__Payload, uint16_t__used);

@@ -1416,7 +1416,7 @@ async function testBackupAndCal(win, doc) {
 
     /* --- user order 2026-10-08: which voltage the power axis uses ------------
        measurement.c turns the LUT power back into current with
-       (powerMw * 1000) / live battery voltage, and the live value comes from
+       (batteryMa * 1000) / live battery voltage, and the live value comes from
        the BOARD's own divider (MeasBatteryHighMv = V24 - V12 for battery 1,
        MeasBatteryLowMv = V12 for battery 2). The power axis therefore has to
        be built with that same board number: with the DMM voltmeter in it
@@ -2020,8 +2020,8 @@ async function testLutPush(win, doc) {
     await win.eval('lreadnow')();
     check(doc.getElementById('lutcmp').textContent.indexOf('جدول فعال واقعی روی برد') >= 0 &&
           doc.getElementById('lutcmp').textContent.indexOf('chainMa') >= 0 &&
-          doc.getElementById('lutcmp').textContent.indexOf('powerMw') >= 0,
-          'a standalone board readback shows clear chainMa/powerMw tables');
+          doc.getElementById('lutcmp').textContent.indexOf('batteryMa') >= 0,
+          'a standalone board readback shows clear chainMa/batteryMa tables');
     check(doc.getElementById('lutcmp').textContent.indexOf('پیشنهادی برای ارسال') < 0,
           'the standalone board view does not mix empty audit columns into the actual values');
     check(doc.getElementById('lutcmp').textContent.indexOf('مقدار واقعی روی برد') >= 0 &&

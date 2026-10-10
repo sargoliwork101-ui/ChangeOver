@@ -173,10 +173,10 @@ static uint8_t func__CalLut_ChannelCheck(const cal_lut_channel_t
         {
             return (uint8_t)CAL_LUT_ST_CHAIN;
         }
-        if (cal_lut_channel_t__channel->UINT32_T__A__PowerMw[uint32_t__i] <
-            cal_lut_channel_t__channel->UINT32_T__A__PowerMw[uint32_t__i - 1u])
+        if (cal_lut_channel_t__channel->UINT32_T__A__BatteryMa[uint32_t__i] <
+            cal_lut_channel_t__channel->UINT32_T__A__BatteryMa[uint32_t__i - 1u])
         {
-            return (uint8_t)CAL_LUT_ST_POWER;
+            return (uint8_t)CAL_LUT_ST_DIP;
         }
     }
 
@@ -398,7 +398,7 @@ const uint32_t *func__CalLut_ChainMa(uint8_t uint8_t__channel)
         .CAL_LUT_CHANNEL_T__A__Channel[uint8_t__index].UINT32_T__A__ChainMa;
 }
 
-const uint32_t *func__CalLut_PowerMw(uint8_t uint8_t__channel)
+const uint32_t *func__CalLut_BatteryMa(uint8_t uint8_t__channel)
 {
     uint8_t uint8_t__index = func__CalLut_Index(uint8_t__channel);
 
@@ -407,7 +407,7 @@ const uint32_t *func__CalLut_PowerMw(uint8_t uint8_t__channel)
         return NULL;
     }
     return CAL_LUT_RECORD_T__G__Active
-        .CAL_LUT_CHANNEL_T__A__Channel[uint8_t__index].UINT32_T__A__PowerMw;
+        .CAL_LUT_CHANNEL_T__A__Channel[uint8_t__index].UINT32_T__A__BatteryMa;
 }
 
 uint32_t func__CalLut_ActiveCrc32(void)
@@ -462,7 +462,7 @@ bool func__CalLut_StageBegin(uint32_t uint32_t__points1,
 bool func__CalLut_StagePoint(uint8_t uint8_t__channel,
                              uint32_t uint32_t__index,
                              uint32_t uint32_t__chainMa,
-                             uint32_t uint32_t__powerMw)
+                             uint32_t uint32_t__batteryMa)
 {
     uint8_t uint8_t__slot = func__CalLut_Index(uint8_t__channel);
 
@@ -480,7 +480,7 @@ bool func__CalLut_StagePoint(uint8_t uint8_t__channel,
     CAL_LUT_RECORD_T__G__Stage.CAL_LUT_CHANNEL_T__A__Channel[uint8_t__slot]
         .UINT32_T__A__ChainMa[uint32_t__index] = uint32_t__chainMa;
     CAL_LUT_RECORD_T__G__Stage.CAL_LUT_CHANNEL_T__A__Channel[uint8_t__slot]
-        .UINT32_T__A__PowerMw[uint32_t__index] = uint32_t__powerMw;
+        .UINT32_T__A__BatteryMa[uint32_t__index] = uint32_t__batteryMa;
 
     /* [EN] A chunk may be retransmitted after its ACK was lost. Only the
        first receipt of this index consumes one missing point; every receipt
@@ -626,7 +626,7 @@ uint8_t func__CalLut_Commit(uint32_t uint32_t__panelCrc32,
                 uint32_t__pair[0] =
                     cal_lut_channel_t__ch->UINT32_T__A__ChainMa[uint32_t__i];
                 uint32_t__pair[1] =
-                    cal_lut_channel_t__ch->UINT32_T__A__PowerMw[uint32_t__i];
+                    cal_lut_channel_t__ch->UINT32_T__A__BatteryMa[uint32_t__i];
 
                 for (uint8_t__b = 0u; uint8_t__b < 8u; uint8_t__b++)
                 {

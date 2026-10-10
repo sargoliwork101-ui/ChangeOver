@@ -402,7 +402,7 @@ static void func__Esp_HttpBenchLogGet(void)
 /**
  * @brief  [EN] POST /lut : push one bench table to the STM32.
  *              Body is plain CSV of unsigned integers, in this exact order:
- *                n1, n2, (chain,power) x n1, (chain,power) x n2, crc32
+ *                n1, n2, (chain,mA) x n1, (chain,mA) x n2, crc32
  *              where crc32 is the browser's reflected CRC32 over
  *              [n1][8 bytes LE per ch1 point][n2][8 bytes LE per ch2 point].
  *              The board recomputes that CRC from what it actually received
@@ -494,13 +494,13 @@ static void func__Esp_HttpLutPush(void)
     for (uint8_t__channel = 0u; uint8_t__channel < 2u; uint8_t__channel++)
     {
         uint32_t *uint32_t__ptr_chain = (uint8_t__channel == 0u) ? UINT32_T__G__LutChain1 : UINT32_T__G__LutChain2;
-        uint32_t *uint32_t__ptr_power = (uint8_t__channel == 0u) ? UINT32_T__G__LutPower1 : UINT32_T__G__LutPower2;
+        uint32_t *uint32_t__ptr_battery = (uint8_t__channel == 0u) ? UINT32_T__G__LutPower1 : UINT32_T__G__LutPower2;
         uint32_t uint32_t__index;
 
         for (uint32_t__index = 0u; uint32_t__index < UINT32_T__A__Head[uint8_t__channel]; uint32_t__index++)
         {
             if ((!scan.next(&uint32_t__ptr_chain[uint32_t__index])) ||
-                (!scan.next(&uint32_t__ptr_power[uint32_t__index])))
+                (!scan.next(&uint32_t__ptr_battery[uint32_t__index])))
             {
                 ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"pt\"}");
                 return;
@@ -512,7 +512,7 @@ static void func__Esp_HttpLutPush(void)
             if (uint32_t__index > 0u)
             {
                 if ((uint32_t__ptr_chain[uint32_t__index] <= uint32_t__ptr_chain[uint32_t__index - 1u]) ||
-                    (uint32_t__ptr_power[uint32_t__index] < uint32_t__ptr_power[uint32_t__index - 1u]))
+                    (uint32_t__ptr_battery[uint32_t__index] < uint32_t__ptr_battery[uint32_t__index - 1u]))
                 {
                     ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"mono\"}");
                     return;

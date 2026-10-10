@@ -261,17 +261,18 @@ uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts);
 
 /**
  * @brief  [EN] Report whether a channel's public current result is already
- *              battery-side calibrated by the bench power LUT. When true,
+ *              battery-side by the panel's current table (or by the gain and
+ *              offset line when no table is stored). When true,
  *              downstream charger code must not apply a second Vin/Vbat
  *              conversion, even if a legacy ETA parameter remains in NVM.
- *         [FA] اعلام می‌کند که خروجی جریان کانال همین حالا با LUT توانی
- *              کالیبره و متعلق به سمت باتری است. وقتی true است، کد بعدی
+ *         [FA] اعلام می‌کند که خروجی جریان کانال همین حالا سمت باتری است
+ *              (جدول جریان پنل، یا خط گین و آفست وقتی جدولی نیست). وقتی true است، کد بعدی
  *              شارژر نباید تبدیل دوم ‎Vin/Vbat‎ را اعمال کند، حتی اگر ETA
  *              قدیمی در NVM مانده باشد.
  * @param  uint8_t__channelIndex [EN] Zero-based channel index (0 or 1) /
  *                               اندیس صفرمبنای کانال
- * @return bool [EN] true only when the compiled battery LUT path is active /
- *                   فقط هنگام فعال‌بودن مسیر LUT باتری true است
+ * @return bool [EN] true for channels 0 and 1 (battery-side output) /
+ *                   برای کانال ۰ و ۱ true است (خروجی سمت باتری)
  */
 bool func__Measurement_CurrentIsBatteryCalibrated(uint8_t uint8_t__channelIndex);
 

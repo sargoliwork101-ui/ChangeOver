@@ -48,12 +48,12 @@
 
 ```
 ESP → STM   0x04 LUT_BEGIN   [n1][n2]
-ESP → STM   0x05 LUT_CHUNK   [ch][first][count] + count × (chainMa:u32, powerMw:u32)
+ESP → STM   0x05 LUT_CHUNK   [ch][first][count] + count × (chainMa:u32, batteryMa:u32)
 ESP → STM   0x06 LUT_COMMIT  [crc32 محتوای جدول]
 ESP → STM   0x07 LUT_RESET   ['R','S','T','!']
 ESP → STM   0x08 LUT_READ    []
 STM → ESP   0x13 LUT_ACK     [stage][status][n1][n2][crc32]
-STM → ESP   0x14 LUT_DATA    [ch][first][count] + count × (chainMa:u32, powerMw:u32)
+STM → ESP   0x14 LUT_DATA    [ch][first][count] + count × (chainMa:u32, batteryMa:u32)
 ```
 
 CRC32 بازتابیدهٔ استاندارد روی بایت‌های «`[تعداد]` + هر نقطه ۸ بایت لیتل‌اندین» هر
@@ -76,7 +76,7 @@ CRC32 بازتابیدهٔ استاندارد روی بایت‌های «`[تع�
 
 `GET /lut` دو فیلد تازه دارد: `tx` (مرحلهٔ در حال ارسال، ۰ یعنی بیکار) و `txe`
 (۰ بدون خطا، ۱ بی‌پاسخ ماندن برد، ۲ رد شدن یک مرحله). همچنین شیء `read` شامل
-`ready/pending/error/n1/n2/r1/r2` است؛ `r1` و `r2` آرایهٔ عددی `[chainMa,powerMw]`
+`ready/pending/error/n1/n2/r1/r2` است؛ `r1` و `r2` آرایهٔ عددی `[chainMa,batteryMa]`
 هستند و فقط بعد از رسیدن هر دو فریم `LUT_DATA` معتبر می‌شوند. پنل همین‌ها را به
 کاربر نشان می‌دهد، جدول فعلی و پیشنهادی را قبل از ارسال نگه می‌دارد و بعد از commit
 همان مقایسه را با readback تازه تکرار می‌کند. `POST /lut/reset` تا وقتی ارسالی در
@@ -116,7 +116,7 @@ CRC32 بازتابیدهٔ استاندارد روی بایت‌های «`[تع�
 | تابع | کار |
 |---|---|
 | `func__CalLut_Init()` | بوت: تازه‌ترین رکورد معتبر را در RAM می‌آورد |
-| `func__CalLut_Active/Points/ChainMa/PowerMw(ch)` | جدول فعال هر کانال برای `measurement.c` |
+| `func__CalLut_Active/Points/ChainMa/BatteryMa(ch)` | جدول فعال هر کانال برای `measurement.c` |
 | `func__CalLut_StageBegin/StagePoint` | چیدن جدولِ در حال دریافت (جدا از جدول فعال) |
 | `func__CalLut_Commit(panelCrc, &boardCrc)` | اعتبارسنجی، نوشتن، بازخوانی و برگرداندن کد وضعیت |
 | `func__CalLut_ActiveCrc32()` | CRC رکورد فعلی برای دست‌دادن |
@@ -159,6 +159,8 @@ app.c: func__CalLut_Init()   ·   esp_link.c Run(): func__CalLut_Tick()
 | `README.md` | همین برگه |
 
 ## تاریخچه
+
+- **2026-10-10:** محور جدول از «توان» به «جریان باتری (mA)» تغییر کرد؛ نسخهٔ قالب ۲ شد. رکورد توانیِ قدیمی رد می‌شود. جدول کامپایلی وجود ندارد؛ بدون رکورد، خوانش = زنجیره.
 
 - **v1.85 (۲۰۲۶-۱۰-۰۷)** — `LUT_READ` و دو فریم مستقل `LUT_DATA` مقدار واقعی نقاط فعال هر دو کانال را برمی‌گردانند؛ تست هاست sender هر دو فریم و آخرین نقطه را بررسی می‌کند. پنل قبل و بعد از commit همهٔ جفت‌های chain/power را مقایسه می‌کند و reset فقط پس از readback دقیق مجاز است.
 - **v1.67 (۲۰۲۶-۱۰-۰۵)** — ممیزی خط‌به‌خط: ارسال گام‌به‌گام شد (یافتهٔ L1،

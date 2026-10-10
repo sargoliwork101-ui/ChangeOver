@@ -1240,7 +1240,7 @@ static void func__EspLink_SendLutData(uint8_t uint8_t__channel)
 {
     static uint8_t UINT8_T__A__Payload[3u + (8u * CAL_LUT_POINTS_MAX)];
     const uint32_t *uint32_t__ptr_chain = func__CalLut_ChainMa(uint8_t__channel);
-    const uint32_t *uint32_t__ptr_power = func__CalLut_PowerMw(uint8_t__channel);
+    const uint32_t *uint32_t__ptr_battery = func__CalLut_BatteryMa(uint8_t__channel);
     uint32_t uint32_t__points = func__CalLut_Points(uint8_t__channel);
     uint8_t uint8_t__count = (uint8_t)uint32_t__points;
     uint16_t uint16_t__cursor = 3u;
@@ -1251,14 +1251,14 @@ static void func__EspLink_SendLutData(uint8_t uint8_t__channel)
     UINT8_T__A__Payload[2] = uint8_t__count;
 
     if ((uint8_t__count > 0u) &&
-        ((uint32_t__ptr_chain != NULL) && (uint32_t__ptr_power != NULL)))
+        ((uint32_t__ptr_chain != NULL) && (uint32_t__ptr_battery != NULL)))
     {
         for (uint8_t__index = 0u; uint8_t__index < uint8_t__count; uint8_t__index++)
         {
             func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
                                  uint32_t__ptr_chain[uint8_t__index]);
             func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
-                                 uint32_t__ptr_power[uint8_t__index]);
+                                 uint32_t__ptr_battery[uint8_t__index]);
         }
     }
     else
@@ -1391,14 +1391,14 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
                     uint16_t uint16_t__offset = (uint16_t)(3u + (8u * (uint16_t)uint8_t__i));
                     uint32_t uint32_t__chainMa =
                         func__EspLink_GetU32(uint8_t__payload, uint16_t__offset);
-                    uint32_t uint32_t__powerMw =
+                    uint32_t uint32_t__batteryMa =
                         func__EspLink_GetU32(uint8_t__payload,
                                              (uint16_t)(uint16_t__offset + 4u));
 
                     if (func__CalLut_StagePoint(uint8_t__channel,
                                                 (uint32_t)(uint8_t__first + uint8_t__i),
                                                 uint32_t__chainMa,
-                                                uint32_t__powerMw) == false)
+                                                uint32_t__batteryMa) == false)
                     {
                         uint8_t__status = (uint8_t)CAL_LUT_ST_MISSING;
                         break;
