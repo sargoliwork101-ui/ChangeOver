@@ -712,7 +712,7 @@ static uint32_t func__Measurement_BenchTableMa(const uint32_t *UINT32_T__A__Coun
  * @param  uint16_t__counts [EN] ADC count / شمارش ADC
  * @return uint32_t [EN] Battery-1 current in mA / جریان باتری ۱ بر حسب mA
  */
-uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
+static uint32_t func__Measurement_Current1CountsToMaLocked(uint16_t uint16_t__counts)
 {
     const uint32_t *UINT32_T__A__Counts;
     const uint32_t *UINT32_T__A__BatteryMa;
@@ -741,6 +741,20 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
 }
 
 /**
+ * @brief  [EN] Channel-1 counts to battery mA, read under the kernel lock so a
+ *              CalLut commit cannot swap the table mid-lookup (race fix 2026-10-10).
+ *         [FA] شمارش کانال 1 به mA باتری، زیر قفل کرنل؛ commit جدول CalLut
+ *              نمی‌تواند وسط جستجو جدول را عوض کند.
+ */
+uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
+{
+    int32_t int32_t__savedKernelLock = osKernelLock();
+    uint32_t uint32_t__ma = func__Measurement_Current1CountsToMaLocked(uint16_t__counts);
+    (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    return uint32_t__ma;
+}
+
+/**
  * @brief  [EN] Channel-2 counts to battery-2 mA. Table present: bench table on
  *              the counts axis. No table: the full gain/offset line BSPfull.
  *         [FA] شمارش کانال ۲ به mA باتری ۲. با جدول: جدول بنچ روی محور شمارش.
@@ -748,7 +762,7 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
  * @param  uint16_t__counts [EN] ADC count / شمارش ADC
  * @return uint32_t [EN] Battery-2 current in mA / جریان باتری ۲ بر حسب mA
  */
-uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
+static uint32_t func__Measurement_Current2CountsToMaLocked(uint16_t uint16_t__counts)
 {
     const uint32_t *UINT32_T__A__Counts;
     const uint32_t *UINT32_T__A__BatteryMa;
@@ -774,6 +788,20 @@ uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
                                           uint32_t__points,
                                           uint16_t__counts,
                                           uint32_t__aboveMa);
+}
+
+/**
+ * @brief  [EN] Channel-2 counts to battery mA, read under the kernel lock so a
+ *              CalLut commit cannot swap the table mid-lookup (race fix 2026-10-10).
+ *         [FA] شمارش کانال 2 به mA باتری، زیر قفل کرنل؛ commit جدول CalLut
+ *              نمی‌تواند وسط جستجو جدول را عوض کند.
+ */
+uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
+{
+    int32_t int32_t__savedKernelLock = osKernelLock();
+    uint32_t uint32_t__ma = func__Measurement_Current2CountsToMaLocked(uint16_t__counts);
+    (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    return uint32_t__ma;
 }
 
 bool func__Measurement_CurrentIsBatteryCalibrated(uint8_t uint8_t__channelIndex)

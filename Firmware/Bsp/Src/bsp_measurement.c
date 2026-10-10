@@ -21,16 +21,13 @@
  *      them - and therefore the ONLY correct place to fix a common-mode scale
  *      error. Do not patch individual channels for something that is shared.
  *
- *      MEASURED EVIDENCE (bench/solo2_dense.csv, 2026-09-25, zero-current row):
- *        VIN : firmware 24386 vs DMM 24100  -> ratio 1.01187
- *        V12 : firmware 12224 vs DMM 12080  -> ratio 1.01192   (patch removed)
- *      Two independent channels, different resistors, different dividers,
- *      agreeing to 5 parts in 100000. A per-channel resistor tolerance cannot
- *      produce that; only the shared reference can. It implies the real VDDA
- *      is about 3261 mV, i.e. the 3.3 V rail sitting 1.2 percent low - well
- *      inside a normal regulator spec.
+ *      VDDA HYPOTHESIS - NOT CONFIRMED (audit 2026-10-10). An earlier note
+ *      claimed VIN and V12 both over-read by 1.19 %, implying VDDA ~3261 mV.
+ *      bench/solo2_dense.csv does NOT support that: row 1 has VIN 24386 vs
+ *      DMM 24100 (+1.2 %) but V12 12074 vs DMM 12080 (-0.05 %). Two channels
+ *      disagree, so no shared-VDDA conclusion follows from this file.
  *
- *      THIS IS WHY THE BOARD "NEVER CALIBRATES": the dominant error is a GAIN
+ *      (Unverified idea) the board "never calibrates" if the dominant error is a GAIN
  *      error, and the only runtime calibration the product exposes (params
  *      4/5/6) is an ADDER. An adder mathematically cannot correct a
  *      multiplier - it can only be right at one operating point, which is

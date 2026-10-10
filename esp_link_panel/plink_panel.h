@@ -395,7 +395,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 3b03604</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build ced5092</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3330,28 +3330,20 @@ function calchk(){
 /* ==================== Firmware snippet / خروجی برای کد میکرو ====================
    [EN] Generate calibration.h from the current, validated fit.
    [FA] calibration.h از برازش فعلی و اعتبارسنجی‌شده ساخته می‌شود. */
-/* [EN] Build the counts/mA table; nothing is dropped silently (see calbuild).
-   [FA] جدول شمارش/mA را می‌سازد؛ هیچ نقطه‌ای بی‌صدا حذف نمی‌شود (به calbuild نگاه کنید). */
+/* [EN] Counts-axis table: X=round(raw mean counts), Y=mA. No gain/offset. [FA] جدول روی شمارش خام. */
 function calbuild(n){
- /* [EN] Counts-axis current table (user order 2026-10-10): X = round(raw mean
-    ADC counts) per duty row, Y = DMM battery mA. No gain, no offset, no
-    power axis, no voltage division. Nothing is dropped silently - every
-    problem is returned as a message and blocks the table.
-    [FA] جدول جریان روی محور شمارش (دستور کاربر ۲۰۲۶-۱۰-۱۰): X = round(میانگین
-    خام شمارش) برای هر ردیف duty، Y = mA باتری از مولتی‌متر. بدون گین، آفست،
-    محور توان یا تقسیم ولتاژ. هیچ نقطه‌ای بی‌صدا حذف نمی‌شود؛ هر مشکل پیام
-    می‌شود و جدول را متوقف می‌کند. */
  const r=n===1?'r1':'r2',b=n===1?'b1':'b2',note=[];
- const rows=calsel(n).filter(z=>Number.isFinite(z[r])&&Number.isFinite(z[b]));
+ /* [EN] Missing readings block, never skip. [FA] عدد ناقص جدول را می‌بندد، حذف نمی‌شود. */
+ const kept=calsel(n),rows=kept.filter(z=>Number.isFinite(z[r])&&Number.isFinite(z[b]));
+ const missing=kept.filter(z=>!(Number.isFinite(z[r])&&Number.isFinite(z[b])));
+ if(missing.length)
+  return {X:[],Y:[],note:[],bad:missing.length+' ردیف نگه‌داشته‌شده عدد ناقص دارد (مرحله '+missing.map(z=>z.d+'٪').join('، ')+') — آن‌ها را کامل کنید یا تیک بردارید'};
  /* [‎EN] Zero current row is mandatory - never manufactured. [FA]‎ نقطهٔ صفر الزامی است و ساخته نمی‌شود. */
  if(!rows.some(z=>Number.isFinite(z.d)&&z.d===0))
   return {X:[],Y:[],note:[],bad:'نقطهٔ صفر (duty ۰٪) با مولتی‌متر ثبت نشده است'};
  if(rows.some(z=>z[b]<0))
   return {X:[],Y:[],note:[],bad:'جریان منفی (دشارژ) در نمونه‌ها هست؛ جدول شارژ فقط برای جریان مثبت است — آن ردیف‌ها را تیک بردارید'};
- /* [EN] The only rounding of the axis: the raw mean counts, once. The mean is
-    read as stored (no offset or gain applied before rounding).
-    [FA] تنها رُند محور: میانگین خام شمارش، یک‌بار. میانگین همان‌طور که ذخیره
-    شده خوانده می‌شود (پیش از رُند، آفست یا گین اعمال نمی‌شود). */
+ /* [EN] One rounding: raw mean counts. [FA] تنها رُند: میانگین خام شمارش. */
  const pts=rows.map(z=>({c:Math.round(z[r]),i:z[b]}));
  if(pts.some(q=>q.c<0||q.c>4095))
   return {X:[],Y:[],note:[],bad:'شمارش خارج از بازهٔ ۰ تا ۴۰۹۵ است'};

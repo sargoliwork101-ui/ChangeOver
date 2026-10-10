@@ -142,6 +142,22 @@ void func__Rtos_DelayMilliseconds(uint32_t uint32_t__milliseconds)
     (void)uint32_t__milliseconds;       /* [EN] no clock on the host */
 }
 
+/* [EN] Kernel lock stubs: the production commit swaps the active record under
+ *      osKernelLock(). On the PC there is no scheduler, so the lock is a no-op.
+ * [FA] استاب قفل کرنل: commit تولیدی رکورد فعال را زیر osKernelLock() عوض می‌کند.
+ *      روی PC زمان‌بند نیست و قفل بی‌اثر است. */
+int32_t osKernelLock(void);
+int32_t osKernelLock(void)
+{
+    return 0;
+}
+
+int32_t osKernelRestoreLock(int32_t int32_t__state);
+int32_t osKernelRestoreLock(int32_t int32_t__state)
+{
+    return int32_t__state;
+}
+
 int32_t osKernelGetState(void);
 int32_t osKernelGetState(void)
 {

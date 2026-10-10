@@ -3158,7 +3158,7 @@ def test_vdda_reference_measurement_v125():
     """[EN] The board "never calibrates" for a mathematical reason: the
        dominant error is a GAIN (the ADC reference is not the assumed 3.300 V)
        while the only runtime calibration the product exposes is an ADDER.
-       Bench proof: at the zero-current row of solo2_dense.csv the input
+       Earlier hypothesis (UNVERIFIED, audit 2026-10-10): at the zero-current row of solo2_dense.csv the input
        channel and the 12 V channel over-read by the SAME 1.19 percent -
        different dividers, different resistors, agreeing to 5 parts in 100000,
        which only a shared term can do. This pins the machinery that finally
@@ -3830,6 +3830,9 @@ static int g_reset = 0;
 #define CAL_LUT_HOST_RESET_HOOK() (g_reset++)
 static int g_cut_after = -1;
 static int g_erase_fail = 0;
+/* kernel lock stubs: no scheduler on the PC (commit uses osKernelLock) */
+int32_t osKernelLock(void){ return 0; }
+int32_t osKernelRestoreLock(int32_t st){ return st; }
 bool func__BspFlash_ErasePage(uint32_t p){
     if (p != CAL_LUT_PAGE_A_ADDR && p != CAL_LUT_PAGE_B_ADDR) return false;
     if (g_erase_fail) return false;

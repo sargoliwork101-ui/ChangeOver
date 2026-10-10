@@ -690,6 +690,12 @@ uint8_t func__CalLut_Commit(uint32_t uint32_t__panelCrc32,
         return (uint8_t)CAL_LUT_ST_FLASH;
     }
 
+    /* [EN] The active record is read by the Measurement task. The swap is a
+     *      multi-KB copy, so it runs under the kernel lock: a reader sees the
+     *      old table or the new one, never a torn mix (race fix 2026-10-10).
+     * [FA] رکورد فعال را تسک Measurement می‌خواند. کپی چند کیلوبایتی زیر قفل
+     *      کرنل انجام می‌شود تا خواننده هرگز ترکیبی نیمه‌نوشته نبیند. */
+    int32_t int32_t__savedKernelLock = osKernelLock();
     (void)memcpy(&CAL_LUT_RECORD_T__G__Active,
                  func__CalLut_PageRecord(uint32_t__pageAddress),
                  sizeof(cal_lut_record_t));
@@ -697,6 +703,7 @@ uint8_t func__CalLut_Commit(uint32_t uint32_t__panelCrc32,
     UINT16_T__G__NewestSeq = CAL_LUT_RECORD_T__G__Active.uint16_t__seq;
     BOOL__G__NewestIsPageB = (uint32_t__pageAddress == CAL_LUT_PAGE_B_ADDR);
     BOOL__G__StageOpen = false;
+    (void)osKernelRestoreLock(int32_t__savedKernelLock);
 
     if (uint32_t__ptr_boardCrc32 != NULL)
     {

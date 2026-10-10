@@ -122,7 +122,7 @@
 #define ESP_BENCHLOG_MAX_POST       1536u
 #define ESP_BENCHLOG_HEADER \
     "# cols:\n" \
-    "#  [id]     scenario,step,duty_permille,settle_ms,sample_ms,browser_ts\n" \
+    "#  [id]     scenario,step,duty_pct,settle_ms,sample_ms,browser_ts\n" \
     "# NOTE: the settings below are NOT data columns. They do not change during a\n" \
     "#       sweep, so they are written ONCE as a '# settings:' line (same order,\n" \
     "#       comma separated) instead of repeating on all 149 columns of every\n" \
@@ -176,7 +176,7 @@
     "#  [raw]    vin_counts,v24_counts,v12_counts,vrefint_counts,vdda_mv\n" \
     "#  [dmm]    dmm_i_in_ma,dmm_vin_mv,dmm_i_bat1_ma,dmm_vbat1_mv,\n" \
     "#           dmm_i_bat2_ma,dmm_vbat2_mv,note\n" \
-    "# run <n> browser_ts=<ISO from the panel page> scenario=<SOLO1|SOLO2|BOTH>\n" \
+    "# run <n> browser_ts=<ISO from the panel page> scenario=<BAT1|BAT2|BOTH>\n" \
     "#  duty_list=<...>\n"
 
 /* ==================== Wi-Fi / HTTP Constants ==================== */

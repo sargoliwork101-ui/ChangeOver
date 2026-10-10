@@ -20,13 +20,12 @@
 /* ============================================================================
  * [EN] ADC REFERENCE (VDDA) CALIBRATION - the single global scale
  *      Every voltage and every current is counts x VDDA / 4095, so VDDA is the
- *      one term common to all of them. Bench evidence (solo2_dense.csv,
- *      zero-current row) showed the input channel and the 12 V channel both
- *      over-reading by the SAME 1.19 percent - two different dividers, two
- *      different resistor sets, agreeing to 5 parts in 100000. Only a shared
- *      term can do that, and the implied real VDDA is about 3261 mV.
- *      That is also the mathematical reason the board "never calibrates": the
- *      error is a GAIN, and the only runtime calibration the product exposes
+ *      one term common to all of them. The earlier VDDA-3261 mV note is NOT
+ *      supported by bench/solo2_dense.csv (the two voltage channels disagree:
+ *      +1.2 % and -0.05 %). Treat VDDA as unverified until a bench run with
+ *      a reference shows one shared error.
+ *      If the error is a GAIN (hypothesis), that would explain why the board
+ *      "never calibrates": the error is a GAIN, and the only runtime calibration the product exposes
  *      (params 4/5/6) is an ADDER, which can only be right at one point.
  *
  *      HOW TO CALIBRATE THIS BOARD, once:

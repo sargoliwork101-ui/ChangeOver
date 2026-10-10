@@ -1,3 +1,10 @@
+# SOLO2 bench log - header added by agent (2026-10-10).
+# 73 columns per row. Columns 1-26 and 29-66 follow ESP_BENCHLOG_HEADER (esp_link_panel/plink_config.h).
+# This file is from an OLDER build: settings are inline (spec: '# settings:' line), duty is in permille (spec wording), scenario SOLO2 (current panel: BAT1/BAT2/BOTH).
+# Columns marked UNVERIFIED or *_likely are not confirmed by the current code.
+# Column 44 is ch2 raw counts (raw2 mean), NOT a DMM current. No DMM current column exists in this file.
+# Columns 68 and 72 look like DMM voltage readings (24100 and ~12080 mV): compare with vin_mv (61) and v12_mv (63).
+# columns: scenario,step,duty,settle_ms,sample_ms,browser_ts,off1,off2,gain1,gain2,voff_in,voff_24,voff_12,med,avg,eta1,eta2,en1,en2,ceil1,ceil2,fixon1,fix1,fixon2,fix2,manual,col27_duty_repeat(UNVERIFIED),col28_flag(UNVERIFIED),raw1,raw1_min,raw1_max,shunt1_uv,unf1,unf1_min,unf1_max,filt1,filt1_min,filt1_max,iest1,iest1_min,iest1_max,duty1,state1,raw2,raw2_min,raw2_max,shunt2_uv,unf2,unf2_min,unf2_max,filt2,filt2_min,filt2_max,iest2,iest2_min,iest2_max,duty2,state2,seq,flags,vin_mv,v24_mv,v12_mv,vlow_mv,vhigh_mv,faults_or,col67_la20(UNVERIFIED),col68_dmm_vin_mv_likely,col69_unknown,col70_unknown,col71_la24(UNVERIFIED),col72_dmm_v12_mv_likely,col73_note
 SOLO2,1,20,0,31172,2026-09-25T18:15:18.273Z,8,8,1046,1303,0,0,0,3,10,0,0,0,1,500,300,0,0,0,0,0,20,1,8.0,6,10,70,0,0,1,0,0,0,0,0,0,0,9,12.6,7,19,110,1,0,5,1,0,2,1,0,2,20,9,7424,55,24386,22779,12074,12073,10704,0,100,24100,-,-,-13,12080,-
 SOLO2,2,40,0,24426,2026-09-25T18:15:43.721Z,8,8,1046,1303,0,0,0,3,10,0,0,0,1,500,300,0,0,0,0,0,40,1,8.2,5,11,72,0,0,2,0,0,0,0,0,0,0,9,40.1,36,45,352,18,15,20,17,17,18,17,17,18,40,9,7678,55,24384,22779,12084,12085,10694,0,130,24100,-,-,9,12090,-
 SOLO2,3,60,0,25350,2026-09-25T18:16:10.122Z,8,8,1046,1303,0,0,0,3,10,0,0,0,1,500,300,0,0,0,0,0,60,1,8.1,6,10,71,0,0,1,0,0,0,0,0,0,0,9,100.9,94,109,885,63,57,70,63,62,63,63,62,63,60,9,7942,55,24385,22815,12123,12122,10691,0,160,24100,-,-,62,12120,-
