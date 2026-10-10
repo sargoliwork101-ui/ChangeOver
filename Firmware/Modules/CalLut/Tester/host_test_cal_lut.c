@@ -151,7 +151,7 @@ int32_t osKernelGetState(void)
 /* ==================== Panel-side CRC / CRC سمت پنل ==================== */
 
 /* [EN] Byte-for-byte the CRC32 the panel computes over the staged content:
-       per channel the point count as one byte, then every (chain, power)
+       per channel the point count as one byte, then every (counts, mA)
        pair little endian. If this drifts from the module's own version the
        commit is refused - which is exactly the end-to-end property the
        handshake exists for.
@@ -178,7 +178,7 @@ static uint32_t func__HostCrc32Byte(uint32_t uint32_t__crc, uint8_t uint8_t__byt
 
 static uint32_t UINT32_T__G__A__Points[2];
 static uint32_t UINT32_T__G__A__Chain[2][CAL_LUT_POINTS_MAX];
-static uint32_t UINT32_T__G__A__Power[2][CAL_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__A__BatteryMa[2][CAL_LUT_POINTS_MAX];
 
 /* ==================== Host u32 reader / خواندن u32 در تست هاست ==================== */
 
@@ -217,7 +217,7 @@ static uint32_t func__HostPanelCrc(void)
             uint32_t uint32_t__pair[2];
 
             uint32_t__pair[0] = UINT32_T__G__A__Chain[uint8_t__channel][uint32_t__i];
-            uint32_t__pair[1] = UINT32_T__G__A__Power[uint8_t__channel][uint32_t__i];
+            uint32_t__pair[1] = UINT32_T__G__A__BatteryMa[uint8_t__channel][uint32_t__i];
 
             for (uint8_t__b = 0u; uint8_t__b < 8u; uint8_t__b++)
             {
@@ -253,7 +253,7 @@ static void func__StageTable(uint32_t uint32_t__points, uint32_t uint32_t__power
             uint32_t uint32_t__power = uint32_t__i * uint32_t__powerStep;
 
             UINT32_T__G__A__Chain[uint8_t__channel][uint32_t__i] = uint32_t__chain;
-            UINT32_T__G__A__Power[uint8_t__channel][uint32_t__i] = uint32_t__power;
+            UINT32_T__G__A__BatteryMa[uint8_t__channel][uint32_t__i] = uint32_t__power;
 
             CHECK(func__CalLut_StagePoint((uint8_t)(uint8_t__channel + 1u),
                                           uint32_t__i,
@@ -346,15 +346,25 @@ int main(void)
     uint8_t__status = func__CalLut_Commit(func__HostPanelCrc(), &uint32_t__boardCrc);
     CHECK(uint8_t__status == CAL_LUT_ST_CHAIN);
 
-    /* ---- 7. the power axis may be flat but never dip ----
-       [EN] An unsigned dip wraps the interpolation to about 4e9 mW.
-       [FA] افت در حساب بدون‌علامت نتیجه را به حدود ۴e۹ می‌پیچاند. */
+    /* ---- 7. the mA axis may be flat but never dip ----
+       [EN] An unsigned dip wraps the interpolation to about 4e9 mA.
+       [FA] افت در حساب بدون‌علامت نتیجه را به حدود ۴e۹ mA می‌پیچاند. */
     func__StageTable(4u, 1000u);
     CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 2u, 300u, 500u) == true);
-    UINT32_T__G__A__Power[0][2] = 500u;
+    UINT32_T__G__A__BatteryMa[0][2] = 500u;
     uint8_t__status = func__CalLut_Commit(func__HostPanelCrc(), &uint32_t__boardCrc);
     CHECK(uint8_t__status == CAL_LUT_ST_DIP);
 
+    /* ---- 7b. every count must fit the 12-bit ADC (<= 4095) ----
+       [EN] A count above full scale can never be produced by the ADC, so the
+            table is refused rather than silently clipped.
+       [FA] شمارشی بالاتر از تمام‌مقیاس ADC هرگز تولید نمی‌شود؛ جدول رد می‌شود و
+            بی‌صدا برش نمی‌خورد. */
+    func__StageTable(4u, 1000u);
+    CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 3u, 4096u, 3000u) == true);
+    UINT32_T__G__A__Chain[0][3] = 4096u;
+    uint8_t__status = func__CalLut_Commit(func__HostPanelCrc(), &uint32_t__boardCrc);
+    CHECK(uint8_t__status == CAL_LUT_ST_RANGE);
     /* ---- 8. a wrong panel CRC is refused and flash is untouched ---- */
     func__StageTable(5u, 1000u);
     uint32_t__crc = func__HostPanelCrc();
@@ -374,7 +384,7 @@ int main(void)
     CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_1) == true);
     CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_2) == true);
     CHECK(func__CalLut_Points(CAL_LUT_CHANNEL_1) == 5u);
-    CHECK(func__CalLut_ChainMa(CAL_LUT_CHANNEL_1)[0] == 100u);
+    CHECK(func__CalLut_Counts(CAL_LUT_CHANNEL_1)[0] == 100u);
     CHECK(func__CalLut_BatteryMa(CAL_LUT_CHANNEL_1)[4] == 4000u);
 
     /* [EN] ActiveCrc32() reports the CRC of the RECORD in flash, which is a
@@ -485,10 +495,10 @@ int main(void)
     for (uint32_t uint32_t__i = 0u; uint32_t__i < 5u; uint32_t__i++)
     {
         UINT32_T__G__A__Chain[0][uint32_t__i] = 100u + (100u * uint32_t__i);
-        UINT32_T__G__A__Power[0][uint32_t__i] = 1000u * uint32_t__i;
+        UINT32_T__G__A__BatteryMa[0][uint32_t__i] = 1000u * uint32_t__i;
         CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, uint32_t__i,
                                       UINT32_T__G__A__Chain[0][uint32_t__i],
-                                      UINT32_T__G__A__Power[0][uint32_t__i]) == true);
+                                      UINT32_T__G__A__BatteryMa[0][uint32_t__i]) == true);
     }
     uint32_t__crc = func__HostPanelCrc();
     uint8_t__status = func__CalLut_Commit(uint32_t__crc, &uint32_t__boardCrc);
@@ -609,6 +619,14 @@ int main(void)
         CHECK(UINT8_T__G__TxCap[8] == uint8_t__n1);
         CHECK(UINT8_T__G__TxCap[9] == 0u);
     }
+
+    /* ---- 12. the 4095 boundary is accepted (last check: it writes flash) ----
+       [EN] Full scale is the largest legal count, so 4095 must commit OK.
+       [FA] تمام‌مقیاس بزرگ‌ترین شمارش مجاز است، پس ۴۰۹۵ باید OK کامیت شود. */
+    func__StageTable(4u, 1000u);
+    UINT32_T__G__A__Chain[0][3] = 4095u;
+    CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 3u, 4095u, 3000u) == true);
+    CHECK(func__CalLut_Commit(func__HostPanelCrc(), &uint32_t__boardCrc) == CAL_LUT_ST_OK);
 
     printf("checks: %d, fails: %d\n", INT32_T__G__Checks, INT32_T__G__Fails);
     return (INT32_T__G__Fails == 0) ? 0 : 1;

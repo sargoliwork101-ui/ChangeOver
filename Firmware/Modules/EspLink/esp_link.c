@@ -1239,7 +1239,7 @@ static void func__EspLink_SendLutAck(uint8_t uint8_t__stage,
 static void func__EspLink_SendLutData(uint8_t uint8_t__channel)
 {
     static uint8_t UINT8_T__A__Payload[3u + (8u * CAL_LUT_POINTS_MAX)];
-    const uint32_t *uint32_t__ptr_chain = func__CalLut_ChainMa(uint8_t__channel);
+    const uint32_t *uint32_t__ptr_chain = func__CalLut_Counts(uint8_t__channel);
     const uint32_t *uint32_t__ptr_battery = func__CalLut_BatteryMa(uint8_t__channel);
     uint32_t uint32_t__points = func__CalLut_Points(uint8_t__channel);
     uint8_t uint8_t__count = (uint8_t)uint32_t__points;
@@ -1389,7 +1389,7 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
                 for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
                 {
                     uint16_t uint16_t__offset = (uint16_t)(3u + (8u * (uint16_t)uint8_t__i));
-                    uint32_t uint32_t__chainMa =
+                    uint32_t uint32_t__counts =
                         func__EspLink_GetU32(uint8_t__payload, uint16_t__offset);
                     uint32_t uint32_t__batteryMa =
                         func__EspLink_GetU32(uint8_t__payload,
@@ -1397,7 +1397,7 @@ static bool func__EspLink_HandleLutFrame(uint8_t uint8_t__messageType,
 
                     if (func__CalLut_StagePoint(uint8_t__channel,
                                                 (uint32_t)(uint8_t__first + uint8_t__i),
-                                                uint32_t__chainMa,
+                                                uint32_t__counts,
                                                 uint32_t__batteryMa) == false)
                     {
                         uint8_t__status = (uint8_t)CAL_LUT_ST_MISSING;

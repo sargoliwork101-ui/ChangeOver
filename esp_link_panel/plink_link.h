@@ -156,10 +156,10 @@ static uint32_t UINT32_T__G__LutSentCrc32 = 0u;
 
 /* [EN] Staged table (filled by POST /lut, sent by func__Esp_LutTxPump).
    [FA] جدول چیده‌شده که ‎POST /lut‎ پر می‌کند و pump می‌فرستد. */
-static uint32_t UINT32_T__G__LutChain1[ESP_LUT_POINTS_MAX];
-static uint32_t UINT32_T__G__LutPower1[ESP_LUT_POINTS_MAX];
-static uint32_t UINT32_T__G__LutChain2[ESP_LUT_POINTS_MAX];
-static uint32_t UINT32_T__G__LutPower2[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutCounts1[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutMa1[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutCounts2[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutMa2[ESP_LUT_POINTS_MAX];
 static uint8_t  UINT8_T__G__LutTxCount1 = 0u;
 static uint8_t  UINT8_T__G__LutTxCount2 = 0u;
 static uint32_t UINT32_T__G__LutTxCrc32 = 0u;
@@ -180,10 +180,10 @@ static uint8_t  UINT8_T__G__LutTxError = 0u;
    [FA] بازخوانی جدول فعال که ‎/lut/read‎ درخواست می‌کند. آرایه‌ها مقدارهایی
    هستند که STM32 برگردانده، نه مقدار بازسازی‌شده از پیشنهاد پنل؛ همین تفاوت
    مقایسهٔ واقعی قبل/بعد را ممکن می‌کند. */
-static uint32_t UINT32_T__G__LutReadChain1[ESP_LUT_POINTS_MAX];
-static uint32_t UINT32_T__G__LutReadPower1[ESP_LUT_POINTS_MAX];
-static uint32_t UINT32_T__G__LutReadChain2[ESP_LUT_POINTS_MAX];
-static uint32_t UINT32_T__G__LutReadPower2[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutReadCounts1[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutReadMa1[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutReadCounts2[ESP_LUT_POINTS_MAX];
+static uint32_t UINT32_T__G__LutReadMa2[ESP_LUT_POINTS_MAX];
 static uint8_t  UINT8_T__G__LutReadCount1 = 0u;
 static uint8_t  UINT8_T__G__LutReadCount2 = 0u;
 static uint8_t  UINT8_T__G__LutReadMask = 0u;
@@ -287,13 +287,13 @@ static void func__Esp_StoreLutData(const uint8_t *uint8_t__ptr_payload,
 
     if (uint8_t__channel == 1u)
     {
-        uint32_t__ptr_chain = UINT32_T__G__LutReadChain1;
-        uint32_t__ptr_battery = UINT32_T__G__LutReadPower1;
+        uint32_t__ptr_chain = UINT32_T__G__LutReadCounts1;
+        uint32_t__ptr_battery = UINT32_T__G__LutReadMa1;
     }
     else
     {
-        uint32_t__ptr_chain = UINT32_T__G__LutReadChain2;
-        uint32_t__ptr_battery = UINT32_T__G__LutReadPower2;
+        uint32_t__ptr_chain = UINT32_T__G__LutReadCounts2;
+        uint32_t__ptr_battery = UINT32_T__G__LutReadMa2;
     }
 
     uint16_t__offset = 3u;
@@ -346,16 +346,16 @@ static bool func__Esp_LutReadMatchesStaged(void)
 
     for (uint8_t__index = 0u; uint8_t__index < UINT8_T__G__LutTxCount1; uint8_t__index++)
     {
-        if ((UINT32_T__G__LutReadChain1[uint8_t__index] != UINT32_T__G__LutChain1[uint8_t__index]) ||
-            (UINT32_T__G__LutReadPower1[uint8_t__index] != UINT32_T__G__LutPower1[uint8_t__index]))
+        if ((UINT32_T__G__LutReadCounts1[uint8_t__index] != UINT32_T__G__LutCounts1[uint8_t__index]) ||
+            (UINT32_T__G__LutReadMa1[uint8_t__index] != UINT32_T__G__LutMa1[uint8_t__index]))
         {
             return false;
         }
     }
     for (uint8_t__index = 0u; uint8_t__index < UINT8_T__G__LutTxCount2; uint8_t__index++)
     {
-        if ((UINT32_T__G__LutReadChain2[uint8_t__index] != UINT32_T__G__LutChain2[uint8_t__index]) ||
-            (UINT32_T__G__LutReadPower2[uint8_t__index] != UINT32_T__G__LutPower2[uint8_t__index]))
+        if ((UINT32_T__G__LutReadCounts2[uint8_t__index] != UINT32_T__G__LutCounts2[uint8_t__index]) ||
+            (UINT32_T__G__LutReadMa2[uint8_t__index] != UINT32_T__G__LutMa2[uint8_t__index]))
         {
             return false;
         }
@@ -369,7 +369,7 @@ static bool func__Esp_LutReadMatchesStaged(void)
  *              the 512-byte frame ceiling).
  *         [FA] ارسال نقاط یک کانال در یک LUT_CHUNK.
  */
-static void func__Esp_SendLutChunk(uint8_t uint8_t__channel, const uint32_t *uint32_t__ptr_chainMa,
+static void func__Esp_SendLutChunk(uint8_t uint8_t__channel, const uint32_t *uint32_t__ptr_counts,
                                    const uint32_t *uint32_t__ptr_batteryMa, uint8_t uint8_t__count)
 {
     uint8_t UINT8_T__A__Payload[3u + (8u * ESP_LUT_POINTS_MAX)];
@@ -387,7 +387,7 @@ static void func__Esp_SendLutChunk(uint8_t uint8_t__channel, const uint32_t *uin
 
     for (uint8_t__index = 0u; uint8_t__index < uint8_t__count; uint8_t__index++)
     {
-        uint16_t__used = func__Esp_PutU32(UINT8_T__A__Payload, uint16_t__used, uint32_t__ptr_chainMa[uint8_t__index]);
+        uint16_t__used = func__Esp_PutU32(UINT8_T__A__Payload, uint16_t__used, uint32_t__ptr_counts[uint8_t__index]);
         uint16_t__used = func__Esp_PutU32(UINT8_T__A__Payload, uint16_t__used, uint32_t__ptr_batteryMa[uint8_t__index]);
     }
 
@@ -537,12 +537,12 @@ static bool func__Esp_LutTxPump(void)
     }
     else if (UINT8_T__G__LutTxStage == 2u)
     {
-        func__Esp_SendLutChunk(1u, UINT32_T__G__LutChain1, UINT32_T__G__LutPower1,
+        func__Esp_SendLutChunk(1u, UINT32_T__G__LutCounts1, UINT32_T__G__LutMa1,
                                UINT8_T__G__LutTxCount1);
     }
     else if (UINT8_T__G__LutTxStage == 3u)
     {
-        func__Esp_SendLutChunk(2u, UINT32_T__G__LutChain2, UINT32_T__G__LutPower2,
+        func__Esp_SendLutChunk(2u, UINT32_T__G__LutCounts2, UINT32_T__G__LutMa2,
                                UINT8_T__G__LutTxCount2);
     }
     else

@@ -105,6 +105,24 @@ uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts)
     return (uint32_t)uint16_t__counts;
 }
 
+/* [EN] Stub of the exact chain difference: with 1 mA per count the difference
+ *      is simply high - low (never negative). / [FA] تفاضل دقیق بدلی: با هر
+ *      شمارش یک mA، تفاضل همان high - low است (هرگز منفی نیست). */
+uint32_t func__BspMeasurement_Current1DeltaMa(uint16_t uint16_t__countsHigh,
+                                              uint16_t uint16_t__countsLow)
+{
+    return (uint16_t__countsHigh > uint16_t__countsLow)
+               ? (uint32_t)(uint16_t__countsHigh - uint16_t__countsLow)
+               : 0u;
+}
+
+uint32_t func__BspMeasurement_Current2DeltaMa(uint16_t uint16_t__countsHigh,
+                                              uint16_t uint16_t__countsLow)
+{
+    return func__BspMeasurement_Current1DeltaMa(uint16_t__countsHigh,
+                                                uint16_t__countsLow);
+}
+
 /* [‎EN] 1 count = 1 uV across the shunt. / [FA]‎ هر شمارش یک میکروولت شانت. */
 uint32_t func__BspMeasurement_CurrentCountsToShuntUv(uint16_t uint16_t__counts)
 {
@@ -125,8 +143,8 @@ uint32_t func__BspMeasurement_VddaMv(uint16_t uint16_t__vrefintCounts,
    در تست خصمانهٔ arithmetic فعال می‌شود. */
 static bool BOOL__G__FlashLutActive[3] = { false, false, false };
 static uint32_t UINT32_T__G__FlashLutPoints[3] = { 0u, 0u, 0u };
-static const uint32_t *UINT32_T__G__FlashLutChain[3] = { NULL, NULL, NULL };
-static const uint32_t *UINT32_T__G__FlashLutPower[3] = { NULL, NULL, NULL };
+static const uint32_t *UINT32_T__G__FlashLutCounts[3] = { NULL, NULL, NULL };
+static const uint32_t *UINT32_T__G__FlashLutBatteryMa[3] = { NULL, NULL, NULL };
 
 bool func__CalLut_Active(uint8_t uint8_t__channel)
 {
@@ -138,14 +156,14 @@ uint32_t func__CalLut_Points(uint8_t uint8_t__channel)
     return (uint8_t__channel <= 2u) ? UINT32_T__G__FlashLutPoints[uint8_t__channel] : 0u;
 }
 
-const uint32_t *func__CalLut_ChainMa(uint8_t uint8_t__channel)
+const uint32_t *func__CalLut_Counts(uint8_t uint8_t__channel)
 {
-    return (uint8_t__channel <= 2u) ? UINT32_T__G__FlashLutChain[uint8_t__channel] : NULL;
+    return (uint8_t__channel <= 2u) ? UINT32_T__G__FlashLutCounts[uint8_t__channel] : NULL;
 }
 
 const uint32_t *func__CalLut_BatteryMa(uint8_t uint8_t__channel)
 {
-    return (uint8_t__channel <= 2u) ? UINT32_T__G__FlashLutPower[uint8_t__channel] : NULL;
+    return (uint8_t__channel <= 2u) ? UINT32_T__G__FlashLutBatteryMa[uint8_t__channel] : NULL;
 }
 
 int32_t osKernelLock(void);
@@ -375,14 +393,15 @@ int main(void)
     CHECK(func__Measurement_CurrentIsBatteryCalibrated(2u) == false);
 
     /* ---- 9b. bench table on the CURRENT axis (user order 2026-10-10) ----
-       [EN] The stub BSP returns chain = counts. The panel table is
-            chain {0,100,200} -> battery {0,90,210} mA. Expected values:
-            interpolation with nearest rounding between anchors, slope 1
-            above the last anchor, identity when no table is active.
-       [FA] BSP بدلی زنجیره = شمارش را برمی‌گرداند. جدول پنل:
-            زنجیره {0,100,200} ← باتری {0,90,210} mA. انتظار: درون‌یابی با
-            رُند به نزدیک‌ترین بین لنگرها، شیب ۱ بالای آخرین لنگر، و همانی
-            وقتی جدول فعال نیست. */
+       [EN] The stub BSP returns chain = counts. The table is on the counts
+            axis: counts {0,100,200} -> battery {0,90,210} mA. Expected:
+            interpolation with ONE nearest rounding between anchors, lastY +
+            exact delta above the last anchor, identity (BSP line) without a
+            table.
+       [FA] BSP بدلی زنجیره = شمارش را برمی‌گرداند. جدول روی محور شمارش:
+            شمارش {0,100,200} ← باتری {0,90,210} mA. انتظار: درون‌یابی با یک
+            رُند به نزدیک‌ترین بین لنگرها، lastY + تفاضل دقیق بالای آخرین
+            لنگر، و خط BSP وقتی جدول نیست. */
     {
         static const uint32_t UINT32_T__A__TestChain[] = { 0u, 100u, 200u };
         static const uint32_t UINT32_T__A__TestBattery[] = { 0u, 90u, 210u };
@@ -391,16 +410,17 @@ int main(void)
         BOOL__G__FlashLutActive[2] = true;
         UINT32_T__G__FlashLutPoints[1] = 3u;
         UINT32_T__G__FlashLutPoints[2] = 3u;
-        UINT32_T__G__FlashLutChain[1] = UINT32_T__A__TestChain;
-        UINT32_T__G__FlashLutChain[2] = UINT32_T__A__TestChain;
-        UINT32_T__G__FlashLutPower[1] = UINT32_T__A__TestBattery;
-        UINT32_T__G__FlashLutPower[2] = UINT32_T__A__TestBattery;
+        UINT32_T__G__FlashLutCounts[1] = UINT32_T__A__TestChain;
+        UINT32_T__G__FlashLutCounts[2] = UINT32_T__A__TestChain;
+        UINT32_T__G__FlashLutBatteryMa[1] = UINT32_T__A__TestBattery;
+        UINT32_T__G__FlashLutBatteryMa[2] = UINT32_T__A__TestBattery;
 
         CHECK(func__Measurement_Current1CountsToMa(0u) == 0u);
         CHECK(func__Measurement_Current1CountsToMa(50u) == 45u);
         CHECK(func__Measurement_Current1CountsToMa(100u) == 90u);
         CHECK(func__Measurement_Current1CountsToMa(150u) == 150u);
         CHECK(func__Measurement_Current1CountsToMa(300u) == 310u);
+        CHECK(func__Measurement_Current1CountsToMa(200u) == 210u);
         CHECK(func__Measurement_Current2CountsToMa(150u) == 150u);
         CHECK(func__Measurement_Current2CountsToMa(300u) == 310u);
 

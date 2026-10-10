@@ -135,10 +135,10 @@ uint32_t func__CalLut_Crc32(const uint8_t *uint8_t__A__Data,
  * @brief  [EN] Axis legality for ONE channel: 0 points = "not overridden"
  *              and is legal; on commit it deliberately removes any previous
  *              flash override for that channel. Otherwise 2..MAX points, a
- *              strictly increasing chain axis (a flat segment divides by
- *              zero, a falling one makes the search meaningless) and a
- *              non-decreasing power axis (the interpolation computes
- *              yHigh - yLow UNSIGNED, so a dip wraps to ~4e9 mW and the
+ *              strictly increasing counts axis (a flat segment divides by
+ *              zero, a falling one makes the search meaningless), every
+ *              count <= 4095 (12-bit ADC), and a non-decreasing mA axis (the interpolation computes
+ *              yHigh - yLow UNSIGNED, so a dip wraps to ~4e9 mA and the
  *              reported current explodes).
  *         [FA] قانونی‌بودن محورهای یک کانال: ۰ نقطه یعنی «جایگزین نشده» و
  *              مجاز است؛ در کامیت عمداً override فلش قبلی همان کانال را
@@ -164,12 +164,23 @@ static uint8_t func__CalLut_ChannelCheck(const cal_lut_channel_t
         return (uint8_t)CAL_LUT_ST_COUNT;
     }
 
+    for (uint32_t__i = 0u;
+         uint32_t__i < cal_lut_channel_t__channel->uint32_t__points;
+         uint32_t__i++)
+    {
+        if (cal_lut_channel_t__channel->UINT32_T__A__Counts[uint32_t__i] >
+            (uint32_t)CAL_LUT_COUNTS_MAX)
+        {
+            return (uint8_t)CAL_LUT_ST_RANGE;
+        }
+    }
+
     for (uint32_t__i = 1u;
          uint32_t__i < cal_lut_channel_t__channel->uint32_t__points;
          uint32_t__i++)
     {
-        if (cal_lut_channel_t__channel->UINT32_T__A__ChainMa[uint32_t__i] <=
-            cal_lut_channel_t__channel->UINT32_T__A__ChainMa[uint32_t__i - 1u])
+        if (cal_lut_channel_t__channel->UINT32_T__A__Counts[uint32_t__i] <=
+            cal_lut_channel_t__channel->UINT32_T__A__Counts[uint32_t__i - 1u])
         {
             return (uint8_t)CAL_LUT_ST_CHAIN;
         }
@@ -386,7 +397,7 @@ uint32_t func__CalLut_Points(uint8_t uint8_t__channel)
         .CAL_LUT_CHANNEL_T__A__Channel[uint8_t__index].uint32_t__points;
 }
 
-const uint32_t *func__CalLut_ChainMa(uint8_t uint8_t__channel)
+const uint32_t *func__CalLut_Counts(uint8_t uint8_t__channel)
 {
     uint8_t uint8_t__index = func__CalLut_Index(uint8_t__channel);
 
@@ -395,7 +406,7 @@ const uint32_t *func__CalLut_ChainMa(uint8_t uint8_t__channel)
         return NULL;
     }
     return CAL_LUT_RECORD_T__G__Active
-        .CAL_LUT_CHANNEL_T__A__Channel[uint8_t__index].UINT32_T__A__ChainMa;
+        .CAL_LUT_CHANNEL_T__A__Channel[uint8_t__index].UINT32_T__A__Counts;
 }
 
 const uint32_t *func__CalLut_BatteryMa(uint8_t uint8_t__channel)
@@ -461,7 +472,7 @@ bool func__CalLut_StageBegin(uint32_t uint32_t__points1,
 
 bool func__CalLut_StagePoint(uint8_t uint8_t__channel,
                              uint32_t uint32_t__index,
-                             uint32_t uint32_t__chainMa,
+                             uint32_t uint32_t__counts,
                              uint32_t uint32_t__batteryMa)
 {
     uint8_t uint8_t__slot = func__CalLut_Index(uint8_t__channel);
@@ -478,7 +489,7 @@ bool func__CalLut_StagePoint(uint8_t uint8_t__channel,
     }
 
     CAL_LUT_RECORD_T__G__Stage.CAL_LUT_CHANNEL_T__A__Channel[uint8_t__slot]
-        .UINT32_T__A__ChainMa[uint32_t__index] = uint32_t__chainMa;
+        .UINT32_T__A__Counts[uint32_t__index] = uint32_t__counts;
     CAL_LUT_RECORD_T__G__Stage.CAL_LUT_CHANNEL_T__A__Channel[uint8_t__slot]
         .UINT32_T__A__BatteryMa[uint32_t__index] = uint32_t__batteryMa;
 
@@ -624,7 +635,7 @@ uint8_t func__CalLut_Commit(uint32_t uint32_t__panelCrc32,
                 uint8_t uint8_t__b;
 
                 uint32_t__pair[0] =
-                    cal_lut_channel_t__ch->UINT32_T__A__ChainMa[uint32_t__i];
+                    cal_lut_channel_t__ch->UINT32_T__A__Counts[uint32_t__i];
                 uint32_t__pair[1] =
                     cal_lut_channel_t__ch->UINT32_T__A__BatteryMa[uint32_t__i];
 

@@ -69,7 +69,7 @@
  *      board falls back to the gain/offset line (never a silent half-upgrade:
  *      old power records are rejected, they are not reinterpreted as mA).
  * [FA] «CLUT» + نسخهٔ قالب؛ تغییر نسخه رکورد قدیمی را نامعتبر می‌کند و
- *      برد به خط گین و آفست برمی‌گردد (رکورد توانیِ قدیمی به‌عنوان mA
+ *      برد به خط گین و آفست برمی‌گردد (رکورد قدیمی توانی به‌عنوان mA
  *      خوانده نمی‌شود). */
 #define CAL_LUT_MAGIC                   0x434C5554u
 #define CAL_LUT_VERSION                 2u
@@ -102,6 +102,8 @@
 #define CAL_LUT_ST_DIP                5u  /* battery current dips / جریان باتری افت دارد */
 #define CAL_LUT_ST_CRC                  6u  /* panel CRC != staged CRC / CRC پنل با CRC چیده‌شده فرق دارد */
 #define CAL_LUT_ST_FLASH                7u  /* erase/program/verify failed / نوشتن فلش شکست */
+#define CAL_LUT_ST_RANGE                8u  /* counts above 12-bit ADC max / شمارش بالاتر از 4095 */
+#define CAL_LUT_COUNTS_MAX              4095u /* 12-bit ADC full scale / تمام‌مقیاس ADC ۱۲ بیتی */
 
 /* ==================== CalLut types / نوع‌ها ==================== */
 
@@ -112,8 +114,8 @@
 typedef struct
 {
     uint32_t uint32_t__points;                              /* [EN] 0 = channel not overridden / ۰ = این کانال جایگزین نشده */
-    uint32_t UINT32_T__A__ChainMa[CAL_LUT_POINTS_MAX];      /* [EN] ADC chain mA / mA زنجیره */
-    uint32_t UINT32_T__A__BatteryMa[CAL_LUT_POINTS_MAX];      /* [EN] Battery current mA / جریان باتری mA */
+    uint32_t UINT32_T__A__Counts[CAL_LUT_POINTS_MAX];      /* [EN] Raw ADC counts / شمارش خام ADC */
+    uint32_t UINT32_T__A__BatteryMa[CAL_LUT_POINTS_MAX];   /* [EN] Battery current mA / جریان باتری mA */
 } cal_lut_channel_t;
 
 /**
@@ -173,12 +175,12 @@ void func__CalLut_Init(void);
 bool func__CalLut_Active(uint8_t uint8_t__channel);
 
 /**
- * @brief  [EN] Active point count / chain axis / power axis of a channel.
+ * @brief  [EN] Active point count / counts axis / mA axis of a channel.
  *              Only valid while func__CalLut_Active() is true.
- *         [FA] تعداد نقاط / محور زنجیره / محور توانِ کانال فعال.
+ *         [FA] تعداد نقاط / محور شمارش / محور mA کانال فعال.
  */
 uint32_t func__CalLut_Points(uint8_t uint8_t__channel);
-const uint32_t *func__CalLut_ChainMa(uint8_t uint8_t__channel);
+const uint32_t *func__CalLut_Counts(uint8_t uint8_t__channel);
 const uint32_t *func__CalLut_BatteryMa(uint8_t uint8_t__channel);
 
 /**
@@ -202,7 +204,7 @@ bool func__CalLut_StageBegin(uint32_t uint32_t__points1,
  */
 bool func__CalLut_StagePoint(uint8_t uint8_t__channel,
                              uint32_t uint32_t__index,
-                             uint32_t uint32_t__chainMa,
+                             uint32_t uint32_t__counts,
                              uint32_t uint32_t__batteryMa);
 
 /**

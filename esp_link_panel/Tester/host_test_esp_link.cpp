@@ -631,8 +631,8 @@ int main(void)
                          lut_data(2u, {{777u, 888u}})));
         check(UINT8_T__G__LutReadCount1 == 2u && UINT8_T__G__LutReadCount2 == 1u,
               "readback stores both channel point counts");
-        check(UINT32_T__G__LutReadChain2[0] == 777u &&
-              UINT32_T__G__LutReadPower2[0] == 888u,
+        check(UINT32_T__G__LutReadCounts2[0] == 777u &&
+              UINT32_T__G__LutReadMa2[0] == 888u,
               "battery 2 chain/power values survive the wire decode");
         ESP_WEB_SERVER_T__G__Server.clearArgs();
         ESP_WEB_SERVER_T__G__Server.call("/lut", HTTP_GET);
@@ -640,7 +640,7 @@ int main(void)
               ESP_WEB_SERVER_T__G__Server.lastBody.find("[777,888]") != std::string::npos,
               "GET /lut exposes the actual battery-2 pair after both frames arrive");
         feed(build_frame(ESP_MSG_LUT_DATA, lut_data(1u, {{999u, 999u}})));
-        check(UINT8_T__G__LutReadCount1 == 2u && UINT32_T__G__LutReadChain1[0] == 111u,
+        check(UINT8_T__G__LutReadCount1 == 2u && UINT32_T__G__LutReadCounts1[0] == 111u,
               "an unsolicited LUT_DATA frame cannot overwrite a complete readback");
 
         ESP_WEB_SERVER_T__G__Server.clearArgs();

@@ -493,8 +493,8 @@ static void func__Esp_HttpLutPush(void)
 
     for (uint8_t__channel = 0u; uint8_t__channel < 2u; uint8_t__channel++)
     {
-        uint32_t *uint32_t__ptr_chain = (uint8_t__channel == 0u) ? UINT32_T__G__LutChain1 : UINT32_T__G__LutChain2;
-        uint32_t *uint32_t__ptr_battery = (uint8_t__channel == 0u) ? UINT32_T__G__LutPower1 : UINT32_T__G__LutPower2;
+        uint32_t *uint32_t__ptr_chain = (uint8_t__channel == 0u) ? UINT32_T__G__LutCounts1 : UINT32_T__G__LutCounts2;
+        uint32_t *uint32_t__ptr_battery = (uint8_t__channel == 0u) ? UINT32_T__G__LutMa1 : UINT32_T__G__LutMa2;
         uint32_t uint32_t__index;
 
         for (uint32_t__index = 0u; uint32_t__index < UINT32_T__A__Head[uint8_t__channel]; uint32_t__index++)
@@ -588,8 +588,8 @@ static void func__Esp_HttpLutStatus(void)
         size_t__used += (size_t)snprintf(
             &CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used,
             "%s[%lu,%lu]", char__ptr_separator,
-            (unsigned long)UINT32_T__G__LutReadChain1[uint8_t__index],
-            (unsigned long)UINT32_T__G__LutReadPower1[uint8_t__index]);
+            (unsigned long)UINT32_T__G__LutReadCounts1[uint8_t__index],
+            (unsigned long)UINT32_T__G__LutReadMa1[uint8_t__index]);
     }
 
     size_t__used += (size_t)snprintf(
@@ -601,8 +601,8 @@ static void func__Esp_HttpLutStatus(void)
         size_t__used += (size_t)snprintf(
             &CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used,
             "%s[%lu,%lu]", char__ptr_separator,
-            (unsigned long)UINT32_T__G__LutReadChain2[uint8_t__index],
-            (unsigned long)UINT32_T__G__LutReadPower2[uint8_t__index]);
+            (unsigned long)UINT32_T__G__LutReadCounts2[uint8_t__index],
+            (unsigned long)UINT32_T__G__LutReadMa2[uint8_t__index]);
     }
 
     (void)snprintf(&CHAR__G__JsonBuffer[size_t__used], ESP_JSON_BUFFER_SIZE - size_t__used,

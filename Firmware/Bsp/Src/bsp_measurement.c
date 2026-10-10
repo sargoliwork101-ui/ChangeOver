@@ -449,15 +449,14 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
  * @param  uint32_t__gainPermille     [EN] bench gain permille / ضریب گین بنچ
  * @return uint32_t [EN] Current in mA / جریان بر حسب mA
  */
-static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
+static uint32_t func__BspMeasurement_ChainNumerator(uint16_t uint16_t__counts,
                                                     uint32_t uint32_t__offsetCounts,
                                                     uint32_t uint32_t__gainPermille)
 {
     uint32_t uint32_t__calibratedCounts;
-    uint32_t uint32_t__chainCurrentMa;
 
-    /* [EN] Stage 0 - per-channel zero offset, in raw counts (bench value).
-       [FA] مرحلهٔ ۰ - آفست صفر پر-کانال، بر حسب شمارش خام (مقدار بنچ). */
+    /* [EN] Zero offset in raw counts (bench value), clamped at 0. Integer only.
+       [FA] آفست صفر بر حسب شمارش خام (مقدار بنچ)، با کف صفر. فقط عدد صحیح. */
     if ((uint32_t)uint16_t__counts > uint32_t__offsetCounts)
     {
         uint32_t__calibratedCounts =
@@ -468,38 +467,106 @@ static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
         uint32_t__calibratedCounts = 0u;
     }
 
-    /* [EN] Stages 1..4 folded (see the @note derivation): counts x 24200 /
-       27573 - exact for every count, fits u32 (99,099,000 < 2^32).
-       NEAREST-ROUNDING (user order 2026-10-08): the half divisor is added
-       BEFORE the division. The panel fits the current chain with
-       Math.round() and every bench LUT anchor is a rounded value, so a
-       truncating division here puts the whole chain 1-2 mA BELOW the anchors
-       it is looked up against - a one-sided UNDER-read that the charger's
-       current limits and the LUT then inherit (2 mA is 1.5 % at 130 mA and
-       it never once reads high). Both addends stay far inside u32:
-       4095 x 24200 + 13786 = 99,112,786 < 2^32.
-       [FA] مراحل ۱..۴ جمع‌شده (اشتقاق در @note): دقیق برای هر شمارش.
-       رُند به نزدیک (دستور کاربر ۲۰۲۶-۱۰-۰۸): نصف مقسوم‌علیه پیش از تقسیم
-       اضافه می‌شود. پنل زنجیرهٔ جریان را با Math.round برازش می‌کند و هر
-       لنگر جدول بنچ یک عدد رُندشده است، پس تقسیم با برش، تمام زنجیره را
-       ۱ تا ۲ میلی‌آمپر زیر لنگرهایی که با آنها مقایسه می‌شود می‌گذارد -
-       کم‌خوانی یک‌طرفه‌ای که حدهای جریان شارژر و جدول آن را ارث می‌برند
-       (۲ میلی‌آمپر در ۱۳۰ میلی‌آمپر یعنی ۱٫۵٪ و هرگز زیاد نمی‌خواند). */
-    uint32_t__chainCurrentMa =
-        ((uint32_t__calibratedCounts * (uint32_t)24200) +
-         ((uint32_t)27573 / 2u)) / (uint32_t)27573;
+    /* [EN] Exact numerator (no division, no rounding): calibrated counts x gain
+       permille. Max 4095 x 3000 = 12,285,000, fits u32.
+       [FA] صورت دقیق (بدون تقسیم و بدون رُند): شمارش کالیبره x گین پرمیل.
+       حداکثر 4095 x 3000 = 12,285,000، در u32 جا می‌شود. */
+    return uint32_t__calibratedCounts * uint32_t__gainPermille;
+}
 
-    /* [EN] Stage 5 - per-channel bench gain trim in permille (ch1 1046,
-       ch2 1303 = the DMM-calibrated 2026-09-24 points at D=15%).
-       u32 is exact here: mA <= 3594 (full-scale chain) x gain <= 3000
-       (setter clamp) = 10,782,000 < 2^32. Same nearest-rounding rule as
-       stage 1..4 above, for the same reason.
-       [FA] مرحلهٔ ۵ - اصلاح گین بنچ پر-کانال بر حسب پرمیل. ضرب ۳۲بیتی
-       دقیق است (حداکثر ~۱۰٫۸میلیون < ۲^۳۲). همان قاعدهٔ رُند به نزدیک
-       مرحلهٔ ۱..۴، به همان دلیل. */
-    return ((uint32_t__chainCurrentMa * uint32_t__gainPermille) +
-            (BSP_MEASUREMENT_PERMILLE_SCALE / 2u)) /
-           BSP_MEASUREMENT_PERMILLE_SCALE;
+/* [EN] Exact chain scale: mA = numerator x 24200 / 27573000, where 24200 /
+ *      27573 is the fixed fold of the schematic stages and 1000 is the permille
+ *      scale. [FA] مقیاس دقیق زنجیره: mA = صورت x 24200 / 27573000؛ ۲۴۲۰۰/۲۷۵۷۳
+ *      تجمیع ثابت مراحل مدار و ۱۰۰۰ مقیاس پرمیل است. */
+#define BSP_MEASUREMENT_CHAIN_DENOMINATOR (27573u * BSP_MEASUREMENT_PERMILLE_SCALE)
+
+/**
+ * @brief  [EN] Round(numerator x 24200 / 27573000) in ONE rounding, without a
+ *              64-bit divide. Split: N = a x 27573 + b, so
+ *              N x 24200 / D = a x 24200 / 1000 + frac / D with
+ *              frac = (a x 24200 mod 1000) x 27573 + b x 24200 (all < 2^31).
+ *              round = p1 + floor((2 x frac + D) / (2 x D)).
+ *         [FA] رُند(صورت x 24200 / 27573000) با یک رُند و بدون تقسیم ۶۴بیتی.
+ * @param  uint32_t__numerator [EN] Exact numerator / صورت دقیق
+ * @return uint32_t [EN] Current in mA, nearest integer / جریان mA، نزدیک‌ترین عدد
+ */
+static uint32_t func__BspMeasurement_ScaleRoundMa(uint32_t uint32_t__numerator)
+{
+    uint32_t uint32_t__a = uint32_t__numerator / 27573u;
+    uint32_t uint32_t__b = uint32_t__numerator % 27573u;
+    uint32_t uint32_t__product = uint32_t__a * 24200u;
+    uint32_t uint32_t__p1 = uint32_t__product / BSP_MEASUREMENT_PERMILLE_SCALE;
+    uint32_t uint32_t__r1 = uint32_t__product % BSP_MEASUREMENT_PERMILLE_SCALE;
+    uint32_t uint32_t__frac = (uint32_t__r1 * 27573u) + (uint32_t__b * 24200u);
+
+    return uint32_t__p1 +
+           (((2u * uint32_t__frac) + BSP_MEASUREMENT_CHAIN_DENOMINATOR) /
+            (2u * BSP_MEASUREMENT_CHAIN_DENOMINATOR));
+}
+
+/**
+ * @brief  [EN] round(BSPfull(high) - BSPfull(low)) in mA, one rounding. The
+ *              difference is taken on the exact numerators, so it is exact.
+ *         [FA] round(BSPfull(high) - BSPfull(low)) بر حسب mA با یک رُند. تفاضل
+ *              روی صورت‌های دقیق گرفته می‌شود، پس دقیق است.
+ * @param  uint16_t__countsHigh [EN] Higher count / شمارش بالاتر
+ * @param  uint16_t__countsLow  [EN] Lower count / شمارش پایین‌تر
+ * @return uint32_t [EN] Difference in mA / تفاضل بر حسب mA
+ */
+static uint32_t func__BspMeasurement_ChainDeltaMa(uint16_t uint16_t__countsHigh,
+                                                  uint16_t uint16_t__countsLow,
+                                                  uint32_t uint32_t__offsetCounts,
+                                                  uint32_t uint32_t__gainPermille)
+{
+    uint32_t uint32_t__high =
+        func__BspMeasurement_ChainNumerator(uint16_t__countsHigh,
+                                            uint32_t__offsetCounts,
+                                            uint32_t__gainPermille);
+    uint32_t uint32_t__low =
+        func__BspMeasurement_ChainNumerator(uint16_t__countsLow,
+                                            uint32_t__offsetCounts,
+                                            uint32_t__gainPermille);
+
+    if (uint32_t__high > uint32_t__low)
+    {
+        return func__BspMeasurement_ScaleRoundMa(uint32_t__high - uint32_t__low);
+    }
+    return 0u;
+}
+
+static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
+                                                    uint32_t uint32_t__offsetCounts,
+                                                    uint32_t uint32_t__gainPermille)
+{
+    return func__BspMeasurement_ScaleRoundMa(
+        func__BspMeasurement_ChainNumerator(uint16_t__counts,
+                                            uint32_t__offsetCounts,
+                                            uint32_t__gainPermille));
+}
+
+/**
+ * @brief  [EN] Channel 1 chain difference (for the extrapolation above the last
+ *              table anchor): round(BSPfull(high) - BSPfull(low)) in mA.
+ *         [FA] تفاضل زنجیرهٔ کانال ۱ (برای برون‌یابی بالای آخرین لنگر جدول):
+ *              round(BSPfull(high) - BSPfull(low)) بر حسب mA.
+ */
+uint32_t func__BspMeasurement_Current1DeltaMa(uint16_t uint16_t__countsHigh,
+                                              uint16_t uint16_t__countsLow)
+{
+    return func__BspMeasurement_ChainDeltaMa(uint16_t__countsHigh,
+                                             uint16_t__countsLow,
+                                             UINT32_T__G__Current1OffsetCounts,
+                                             UINT32_T__G__Current1GainPermille);
+}
+
+/* [EN] Channel 2 chain difference. [FA] تفاضل زنجیرهٔ کانال ۲. */
+uint32_t func__BspMeasurement_Current2DeltaMa(uint16_t uint16_t__countsHigh,
+                                              uint16_t uint16_t__countsLow)
+{
+    return func__BspMeasurement_ChainDeltaMa(uint16_t__countsHigh,
+                                             uint16_t__countsLow,
+                                             UINT32_T__G__Current2OffsetCounts,
+                                             UINT32_T__G__Current2GainPermille);
 }
 
 /* ==================== BspMeasurement_Current1CountsToMa ==================== */

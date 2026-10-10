@@ -116,13 +116,13 @@
  *      ACKs; the active-table readback adds one request and two replies:
  *        0x04 LUT_BEGIN  [n1:u8][n2:u8]                 open a staging buffer
  *        0x05 LUT_CHUNK  [ch:u8][first:u8][count:u8]
- *                        + count x (chainMa:u32, batteryMa:u32)
+ *                        + count x (counts:u32, batteryMa:u32)
  *        0x06 LUT_COMMIT [crc32:u32 of the staged CONTENT]
  *        0x07 LUT_RESET  ['R','S','T','!']              reboot after handshake
  *        0x08 LUT_READ   []                             read the active points
  *        0x13 LUT_ACK    [stage:u8][status:u8][n1:u8][n2:u8][crc32:u32]
  *        0x14 LUT_DATA   [ch:u8][first:u8][count:u8]
- *                       + count x (chainMa:u32, batteryMa:u32)
+ *                       + count x (counts:u32, batteryMa:u32)
  *      ACK n1/n2 echo the point counts the CURRENT BEGIN declared (NOT the
  *      active table), so the sender can match each ACK against its own push.
  *      LUT_DATA is the diagnostic readback of the active RAM/flash table; the

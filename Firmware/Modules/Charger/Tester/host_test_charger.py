@@ -574,14 +574,16 @@ def test_setpoints_and_timing():
     #      division were removed; the current table now comes from the panel.
     # [FA] ۲۰۲۶-۱۰-۱۰: جدول‌های جریان کامپایلی و تقسیم بر ولتاژ باتری حذف شد؛
     #      جدول جریان حالا از پنل می‌آید.
-    check("func__Measurement_BenchTableInterp(" in meas_c_raw and
+    check("func__Measurement_BenchTableMa(" in meas_c_raw and
+          "func__BspMeasurement_Current1DeltaMa(" in meas_c_raw and
           "func__CalLut_BatteryMa(" in meas_c_raw and
+          "func__CalLut_Counts(" in meas_c_raw and
           "CAL_CURRENT1_LUT_ENABLE" not in meas_c_raw and
           "CAL_CURRENT2_LUT_ENABLE" not in meas_c_raw and
           "PowerMwToMa" not in meas_c_raw and
           "VoltageMv = 12000u" not in meas_c_raw,
-          "measurement.c must convert chain mA to battery mA through the panel table only: no power axis, no voltage division, no compile switches")
-    check("CAL_Current1LutChainMa" not in cal_h and "CAL_Current2LutChainMa" not in cal_h and
+          "measurement.c must convert raw counts to battery mA through the panel table only (counts axis): no power axis, no voltage division, no compile switches")
+    check("CAL_Current1LutCounts" not in cal_h and "CAL_Current2LutCounts" not in cal_h and
           "CAL_BATTERY12_BENCH_COMP_ENABLE" not in cal_h and "TABLE 3" not in cal_h,
           "calibration.h must no longer carry compiled current tables or the disabled V12 compensation")
     check("func__Measurement_MedianFilterVoltageSample(0u,\n            (uint32_t)uint16_t__raw[BSP_ADC_CHANNEL_24V_BAT]);" in meas_c_raw and
@@ -897,7 +899,7 @@ def test_charge_profile_v112():
     check(ok, "2000 random writes must all land inside the invariant ranges")
 
     # --- calibration.h: 2026-10-10 - no compiled current tables any more ---
-    check("CAL_Current1LutChainMa" not in cal_h and "CAL_Current2LutChainMa" not in cal_h,
+    check("CAL_Current1LutCounts" not in cal_h and "CAL_Current2LutCounts" not in cal_h,
           "calibration.h must not carry compiled current tables (the panel pushes them into flash)")
 
 
@@ -2375,13 +2377,15 @@ def test_audit_batch_v116b():
     # --- LUT hardening + dead-clamp cleanup ---
     check("uint32_t__span == 0u" in meas,
           "LUT must guard the degenerate (equal-anchor) segment")
-    check("uint32_t__points < 2u" in meas,
-          "LUT must refuse a table with fewer than 2 points (runtime guard, the table now comes from the panel)")
+    check("uint32_t__points >= (uint32_t)CAL_LUT_POINTS_MIN" in (ROOT / "Firmware/Modules/CalLut/cal_lut.c").read_text(encoding="utf-8") and
+          "if (func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_1) == false)" in meas and
+          "if (func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_2) == false)" in meas,
+          "LUT must refuse a table with fewer than 2 points: CalLut Active() requires CAL_LUT_POINTS_MIN, and measurement uses the table only when Active() is true")
     # [EN] v1.63 (user question: may the table have more or fewer points?):
     #      the count is free, but two axes of different length would read
     #      past the end of the shorter one - that must not compile.
     # [FA] تعداد نقاط آزاد است، ولی دو محور با طول متفاوت نباید کامپایل شود.
-    check("sizeof(CAL_Current1LutChainMa)" not in meas and "sizeof(CAL_Current2LutChainMa)" not in meas,
+    check("sizeof(CAL_Current1LutCounts)" not in meas and "sizeof(CAL_Current2LutCounts)" not in meas,
           "2026-10-10: the compiled-table size asserts went away with the compiled tables")
     check("#if (CHG_ETA_MIN_PERMILLE != 0u)" in cc,
           "the always-false u32<0 ETA clamp must compile out (type-limits green)")
@@ -3743,9 +3747,9 @@ def test_direct_lut_push_v166():
           "a valid zero-point commit may reset, but a failed NVM flush must refuse reset before consuming the grant")
 
     # ---------- 2026-10-10: measurement uses ONLY the panel table; no compiled fallback ----------
-    check("func__Measurement_BenchTableInterp(" in meas_c and
-          meas_c.count("func__Measurement_BenchTableInterp(") >= 3,
-          "both channels must share ONE interpolation function (the panel table on the current axis)")
+    check("func__Measurement_BenchTableMa(" in meas_c and
+          meas_c.count("func__Measurement_BenchTableMa(") >= 3,
+          "both channels must share ONE interpolation function (the panel table on the counts axis)")
     for ch in ("1", "2"):
         check(("func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_%s)" % ch) in meas_c,
               "channel %s must use the panel table when it is active and return the chain value (gain and offset line) otherwise" % ch)
@@ -3879,7 +3883,7 @@ int main(void){
     /* T1 fresh board: no table, the compiled one stays in charge */
     func__CalLut_Init();
     assert(!func__CalLut_Active(1) && !func__CalLut_Active(2));
-    assert(func__CalLut_Points(1) == 0 && func__CalLut_ChainMa(1) == NULL);
+    assert(func__CalLut_Points(1) == 0 && func__CalLut_Counts(1) == NULL);
 
     /* T2 a good push lands and is readable */
     uint32_t crc = content_crc(X1, Y1, 4, X2, Y2, 3);
@@ -3887,7 +3891,7 @@ int main(void){
     assert(func__CalLut_Commit(crc, &board) == CAL_LUT_ST_OK);
     assert(board == crc);
     assert(func__CalLut_Active(1) && func__CalLut_Points(1) == 4);
-    assert(func__CalLut_ChainMa(1)[3] == 268 && func__CalLut_BatteryMa(1)[3] == 3886);
+    assert(func__CalLut_Counts(1)[3] == 268 && func__CalLut_BatteryMa(1)[3] == 3886);
     assert(func__CalLut_Active(2) && func__CalLut_Points(2) == 3);
     uint16_t seq_after_first = ((const cal_lut_record_t *)CAL_LUT_PAGE_B_ADDR)->uint16_t__seq;
     assert(seq_after_first == 1u);

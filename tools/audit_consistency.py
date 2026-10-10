@@ -1020,8 +1020,8 @@ def sec_calibration():
        the panel; the BSP starts at max gain and zero offset.
        [FA] کالیبراسیون جریان از ۲۰۲۶-۱۰-۱۰: بدون جدول کامپایلی و بدون کپی دستی.
        جدول در فلش (CalLut) است و از پنل می‌آید؛ BSP از بیشترین گین و آفست صفر شروع می‌کند."""
-    ok(c_array(CAL_H, "CAL_Current1LutChainMa") is None and
-       c_array(CAL_H, "CAL_Current2LutChainMa") is None,
+    ok(c_array(CAL_H, "CAL_Current1LutCounts") is None and
+       c_array(CAL_H, "CAL_Current2LutCounts") is None,
        "calibration.h still carries a compiled current table",
        "the table must come from the panel (flash), not from the header")
     ok(js_array(P_PAN, "LUTX") is None and js_array(P_PAN, "LUT1X") is None,

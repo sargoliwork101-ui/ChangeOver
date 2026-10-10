@@ -615,62 +615,73 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
 
 /* ==================== Measurement Current Counts To Ma (bench table, current) ==================== */
 
-/* [EN] Bench correction, CURRENT axis (user order 2026-10-10). The table
- *      maps the BSP chain current (already including the per-channel gain
- *      and offset) to the true battery current in mA. There is no power
- *      axis and no battery-voltage division any more.
- *      - Between anchors: linear interpolation, rounded to nearest.
- *      - Above the last anchor: the chain is used with slope 1 (the gain
- *        and offset line), so the reading never depends on a guessed slope.
- *      - Below the first anchor: the first anchor's value is held.
- *      - No table in flash: the chain itself is the reading.
- *      The table is written only by the panel (CalLut); there is no compiled
- *      fallback table, so a fresh board reads through gain and offset.
- *  [FA] اصلاح جدول بنچ روی محور «جریان» (دستور کاربر ۲۰۲۶-۱۰-۱۰). جدول،
- *      جریان زنجیرهٔ BSP (که گین و آفست هر کانال را دارد) را به جریان واقعی
- *      باتری بر حسب mA می‌برد. دیگر محور توان و تقسیم بر ولتاژ باتری وجود ندارد.
- *      - بین لنگرها: درون‌یابی خطی، رُند به نزدیک‌ترین.
- *      - بالای آخرین لنگر: زنجیره با شیب ۱ ادامه می‌یابد (خط گین و آفست)،
- *        پس خوانش هرگز به شیب حدسی وابسته نیست.
- *      - زیر اولین لنگر: مقدار اولین لنگر نگه داشته می‌شود.
- *      - جدول در فلش نباشد: خود زنجیره خوانش است.
- *      جدول فقط از پنل (CalLut) نوشته می‌شود؛ جدول کامپایل‌شده وجود ندارد،
- *      پس برد تازه با گین و آفست کار می‌کند. */
-static uint32_t func__Measurement_BenchTableInterp(const uint32_t *UINT32_T__A__ChainMa,
-                                                   const uint32_t *UINT32_T__A__BatteryMa,
-                                                   uint32_t uint32_t__points,
-                                                   uint32_t uint32_t__chainMa)
+/* [EN] Bench correction on the COUNTS axis (user order 2026-10-10).
+ *      - Table axis X = raw ADC counts (fixed fold only, no gain, no offset),
+ *        so calibrating gain or offset can never change a table output
+ *        inside the table range.
+ *      - Between anchors: linear interpolation in counts, rounded ONCE.
+ *      - Below the first anchor: Y[0] is held.
+ *      - Above the last anchor: out = lastY + (BSPfull(c) - BSPfull(lastCounts)),
+ *        using the gain/offset chain; the difference is rounded once.
+ *        Offset cancels in this difference when lastCounts >= offset, so
+ *        above the table only the gain matters.
+ *      - No table in flash: out = BSPfull(c), the full gain/offset line.
+ *      No intermediate rounding, no auto-inserted point, no silent drop.
+ *  [FA] اصلاح جدول بنچ روی محور «شمارش» (دستور کاربر ۲۰۲۶-۱۰-۱۰).
+ *      - محور جدول X = شمارش خام ADC (فقط تجمیع ثابت)، بدون گین و آفست؛
+ *        پس تنظیم گین یا آفست هرگز خروجی جدول را در بازهٔ جدول تغییر نمی‌دهد.
+ *      - بین لنگرها: درون‌یابی خطی بر حسب شمارش، فقط یک‌بار رُند.
+ *      - زیر اولین لنگر: مقدار Y[0] نگه داشته می‌شود.
+ *      - بالای آخرین لنگر: خروجی = lastY + (BSPfull(c) - BSPfull(lastCounts))،
+ *        تفاضل فقط یک‌بار رُند می‌شود. آفست در این تفاضل حذف می‌شود (وقتی
+ *        lastCounts >= آفست)، پس بالای جدول فقط گین اثر دارد.
+ *      - بدون جدول در فلش: خروجی = BSPfull(c) یعنی خط کامل گین و آفست.
+ *      بدون رُند میانی، بدون نقطهٔ خودکار، بدون حذف بی‌صدا. */
+
+/**
+ * @brief  [EN] Table lookup in counts; the caller supplies the above-table
+ *              extension (BSPfull delta from the last anchor, one rounding).
+ *         [FA] جستجوی جدول بر حسب شمارش؛ فراخوان‌کننده برون‌یابی بالای جدول
+ *              (تفاضل BSPfull از آخرین لنگر، با یک رُند) را می‌دهد.
+ * @param  UINT32_T__A__Counts   [EN] Anchor counts, strictly increasing / شمارش لنگرها
+ * @param  UINT32_T__A__BatteryMa [EN] Anchor battery mA, non-decreasing / mA باتری
+ * @param  uint32_t__points      [EN] Anchor count (>= 1) / تعداد لنگر
+ * @param  uint16_t__counts      [EN] Raw counts / شمارش خام
+ * @param  uint32_t__aboveMa     [EN] Extension used only when counts > last anchor
+ * @return uint32_t [EN] Battery mA / mA باتری
+ */
+static uint32_t func__Measurement_BenchTableMa(const uint32_t *UINT32_T__A__Counts,
+                                               const uint32_t *UINT32_T__A__BatteryMa,
+                                               uint32_t uint32_t__points,
+                                               uint16_t uint16_t__counts,
+                                               uint32_t uint32_t__aboveMa)
 {
     uint32_t uint32_t__index;
+    uint32_t uint32_t__c = (uint32_t)uint16_t__counts;
 
-    /* [EN] Degenerate table (fewer than 2 anchors) is not used.
-     * [FA] جدول ناقص (کمتر از ۲ لنگر) استفاده نمی‌شود. */
-    if (uint32_t__points < 2u)
-    {
-        return uint32_t__chainMa;
-    }
-
-    if (uint32_t__chainMa <= UINT32_T__A__ChainMa[0u])
+    /* [EN] Below or at the first anchor: hold Y[0].
+     * [FA] زیر یا برابر اولین لنگر: Y[0] نگه داشته می‌شود. */
+    if (uint32_t__c <= UINT32_T__A__Counts[0u])
     {
         return UINT32_T__A__BatteryMa[0u];
     }
 
     for (uint32_t__index = 1u; uint32_t__index < uint32_t__points; uint32_t__index++)
     {
-        uint32_t uint32_t__xLow = UINT32_T__A__ChainMa[uint32_t__index - 1u];
-        uint32_t uint32_t__xHigh = UINT32_T__A__ChainMa[uint32_t__index];
+        uint32_t uint32_t__xLow = UINT32_T__A__Counts[uint32_t__index - 1u];
+        uint32_t uint32_t__xHigh = UINT32_T__A__Counts[uint32_t__index];
 
-        if (uint32_t__chainMa <= uint32_t__xHigh)
+        if (uint32_t__c <= uint32_t__xHigh)
         {
             uint32_t uint32_t__yLow = UINT32_T__A__BatteryMa[uint32_t__index - 1u];
             uint32_t uint32_t__yHigh = UINT32_T__A__BatteryMa[uint32_t__index];
             uint32_t uint32_t__span = uint32_t__xHigh - uint32_t__xLow;
-            uint32_t uint32_t__step = uint32_t__chainMa - uint32_t__xLow;
+            uint32_t uint32_t__step = uint32_t__c - uint32_t__xLow;
 
-            /* [EN] Strictly increasing axis is enforced by CalLut on commit;
-             *      the guard keeps a bad table from dividing by zero.
-             * [FA] محور اکیداً صعودی را CalLut هنگام commit تضمین می‌کند؛
-             *      این گارد جدول بد را از تقسیم بر صفر نگه می‌دارد. */
+            /* [EN] CalLut enforces strictly increasing counts and non-decreasing
+             *      mA on commit; the guard only avoids a divide by zero.
+             * [FA] CalLut هنگام commit صعودی بودن شمارش و عدم کاهش mA را
+             *      تضمین می‌کند؛ این گارد فقط تقسیم بر صفر را نگه می‌دارد. */
             if (uint32_t__span == 0u)
             {
                 return uint32_t__yHigh;
@@ -679,9 +690,8 @@ static uint32_t func__Measurement_BenchTableInterp(const uint32_t *UINT32_T__A__
             {
                 return uint32_t__yLow;
             }
-            /* [EN] Nearest rounding; the product fits u32 (chain <= ~3600 mA,
-             *      battery <= ~3600 mA, both 32-bit safe).
-             * [FA] رُند به نزدیک‌ترین؛ حاصل‌ضرب در u32 جا می‌شود. */
+            /* [EN] Single nearest rounding. Product <= 4095 x 3600 fits u32.
+             * [FA] یک رُند به نزدیک‌ترین. حاصل‌ضرب <= 4095 x 3600 در u32 جا می‌شود. */
             return uint32_t__yLow +
                    (((uint32_t__step * (uint32_t__yHigh - uint32_t__yLow)) +
                      (uint32_t__span / 2u)) /
@@ -689,74 +699,81 @@ static uint32_t func__Measurement_BenchTableInterp(const uint32_t *UINT32_T__A__
         }
     }
 
-    /* [EN] Above the last anchor: slope 1 (the gain and offset line).
-     * [FA] بالای آخرین لنگر: شیب ۱ (خط گین و آفست). */
-    return UINT32_T__A__BatteryMa[uint32_t__points - 1u] +
-           (uint32_t__chainMa - UINT32_T__A__ChainMa[uint32_t__points - 1u]);
+    /* [EN] Above the last anchor: lastY + gain-line extension.
+     * [FA] بالای آخرین لنگر: lastY + برون‌یابی خط گین. */
+    return UINT32_T__A__BatteryMa[uint32_t__points - 1u] + uint32_t__aboveMa;
 }
 
 /**
- * @brief  [EN] Channel-1 bench table: chain mA -> battery-1 mA. A valid
- *              flash table from the panel is used; otherwise identity.
- *         [FA] جدول بنچ کانال ۱: mA زنجیره ← mA باتری ۱. جدول معتبر فلش
- *              از پنل استفاده می‌شود وگرنه همانی. */
-static uint32_t func__Measurement_Current1BenchLut(uint32_t uint32_t__chainMa)
-{
-    if (func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_1) != false)
-    {
-        return func__Measurement_BenchTableInterp(
-            func__CalLut_ChainMa((uint8_t)CAL_LUT_CHANNEL_1),
-            func__CalLut_BatteryMa((uint8_t)CAL_LUT_CHANNEL_1),
-            func__CalLut_Points((uint8_t)CAL_LUT_CHANNEL_1),
-            uint32_t__chainMa);
-    }
-    return uint32_t__chainMa;
-}
-
-/**
- * @brief  [EN] Channel-2 bench table: chain mA -> battery-2 mA. A valid
- *              flash table from the panel is used; otherwise identity.
- *         [FA] جدول بنچ کانال ۲: mA زنجیره ← mA باتری ۲. جدول معتبر فلش
- *              از پنل استفاده می‌شود وگرنه همانی. */
-static uint32_t func__Measurement_Current2BenchLut(uint32_t uint32_t__chainMa)
-{
-    if (func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_2) != false)
-    {
-        return func__Measurement_BenchTableInterp(
-            func__CalLut_ChainMa((uint8_t)CAL_LUT_CHANNEL_2),
-            func__CalLut_BatteryMa((uint8_t)CAL_LUT_CHANNEL_2),
-            func__CalLut_Points((uint8_t)CAL_LUT_CHANNEL_2),
-            uint32_t__chainMa);
-    }
-    return uint32_t__chainMa;
-}
-
-/**
- * @brief  [EN] Channel-1 raw counts to battery mA: BSP chain (gain and
- *              offset included), then the bench table.
- *         [FA] شمارش خام کانال ۱ به mA باتری: زنجیرهٔ BSP (با گین و آفست)
- *              و بعد جدول بنچ.
+ * @brief  [EN] Channel-1 counts to battery-1 mA. Table present: bench table on
+ *              the counts axis. No table: the full gain/offset line BSPfull.
+ *         [FA] شمارش کانال ۱ به mA باتری ۱. با جدول: جدول بنچ روی محور شمارش.
+ *              بدون جدول: خط کامل گین/آفست BSPfull.
  * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @‎return uint32_t [EN] Battery-1 current in mA‎ / جریان باتری ۱ بر حسب mA
+ * @return uint32_t [EN] Battery-1 current in mA / جریان باتری ۱ بر حسب mA
  */
 uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
 {
-    return func__Measurement_Current1BenchLut(
-        func__BspMeasurement_Current1CountsToMa(uint16_t__counts));
+    const uint32_t *UINT32_T__A__Counts;
+    const uint32_t *UINT32_T__A__BatteryMa;
+    uint32_t uint32_t__points;
+    uint32_t uint32_t__aboveMa = 0u;
+
+    if (func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_1) == false)
+    {
+        return func__BspMeasurement_Current1CountsToMa(uint16_t__counts);
+    }
+
+    UINT32_T__A__Counts = func__CalLut_Counts((uint8_t)CAL_LUT_CHANNEL_1);
+    UINT32_T__A__BatteryMa = func__CalLut_BatteryMa((uint8_t)CAL_LUT_CHANNEL_1);
+    uint32_t__points = func__CalLut_Points((uint8_t)CAL_LUT_CHANNEL_1);
+
+    if (uint16_t__counts > UINT32_T__A__Counts[uint32_t__points - 1u])
+    {
+        uint32_t__aboveMa = func__BspMeasurement_Current1DeltaMa(
+            uint16_t__counts, (uint16_t)UINT32_T__A__Counts[uint32_t__points - 1u]);
+    }
+    return func__Measurement_BenchTableMa(UINT32_T__A__Counts,
+                                          UINT32_T__A__BatteryMa,
+                                          uint32_t__points,
+                                          uint16_t__counts,
+                                          uint32_t__aboveMa);
 }
 
 /**
- * @brief  [EN] Channel-2 raw counts to battery mA: BSP chain (gain and
- *              offset included), then the bench table.
- *         [FA] شمارش خام کانال ۲ به mA باتری: زنجیرهٔ BSP (با گین و آفست)
- *              و بعد جدول بنچ.
+ * @brief  [EN] Channel-2 counts to battery-2 mA. Table present: bench table on
+ *              the counts axis. No table: the full gain/offset line BSPfull.
+ *         [FA] شمارش کانال ۲ به mA باتری ۲. با جدول: جدول بنچ روی محور شمارش.
+ *              بدون جدول: خط کامل گین/آفست BSPfull.
  * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @‎return uint32_t [EN] Battery-2 current in mA‎ / جریان باتری ۲ بر حسب mA
+ * @return uint32_t [EN] Battery-2 current in mA / جریان باتری ۲ بر حسب mA
  */
 uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
 {
-    return func__Measurement_Current2BenchLut(
-        func__BspMeasurement_Current2CountsToMa(uint16_t__counts));
+    const uint32_t *UINT32_T__A__Counts;
+    const uint32_t *UINT32_T__A__BatteryMa;
+    uint32_t uint32_t__points;
+    uint32_t uint32_t__aboveMa = 0u;
+
+    if (func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_2) == false)
+    {
+        return func__BspMeasurement_Current2CountsToMa(uint16_t__counts);
+    }
+
+    UINT32_T__A__Counts = func__CalLut_Counts((uint8_t)CAL_LUT_CHANNEL_2);
+    UINT32_T__A__BatteryMa = func__CalLut_BatteryMa((uint8_t)CAL_LUT_CHANNEL_2);
+    uint32_t__points = func__CalLut_Points((uint8_t)CAL_LUT_CHANNEL_2);
+
+    if (uint16_t__counts > UINT32_T__A__Counts[uint32_t__points - 1u])
+    {
+        uint32_t__aboveMa = func__BspMeasurement_Current2DeltaMa(
+            uint16_t__counts, (uint16_t)UINT32_T__A__Counts[uint32_t__points - 1u]);
+    }
+    return func__Measurement_BenchTableMa(UINT32_T__A__Counts,
+                                          UINT32_T__A__BatteryMa,
+                                          uint32_t__points,
+                                          uint16_t__counts,
+                                          uint32_t__aboveMa);
 }
 
 bool func__Measurement_CurrentIsBatteryCalibrated(uint8_t uint8_t__channelIndex)
@@ -1013,11 +1030,9 @@ void func__Measurement_Run(void)
        پس اسپایک تک‌فریمی پیش از تبدیل مرده است؛ ‎low/high‎ از تبدیل‌های
        فیلترشده مشتق می‌شوند. */
 
-    /* [EN] Convert the filtered counts AFTER the LUT voltage cache above
-       is refreshed, so the ch2 power correction divides by this pass's
-       battery-2 voltage.
-       [FA] تبدیل شمارش فیلترشده بعد از تازه‌شدن کش ولتاژ LUT تا تصحیح توان
-       کانال ۲ بر ولتاژ همین پاس تقسیم شود. */
+    /* [EN] Convert the filtered counts once per pass (counts axis, no
+       voltage input).
+       [FA] تبدیل شمارش فیلترشده یک‌بار در هر پاس (محور شمارش، بدون ورودی ولتاژ). */
     uint32_t__current2Ma =
         func__Measurement_Current2CountsToMa((uint16_t)uint32_t__current2CountsFiltered);
 

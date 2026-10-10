@@ -1239,7 +1239,7 @@ async function testBackupAndCal(win, doc) {
     win.eval('calcode')();
     const fallbackCode = doc.getElementById('calcd').value;
     check(fallbackCode.indexOf('NOT GENERATED') < 0 &&
-          fallbackCode.indexOf('CAL_Current1LutChainMa[] =') >= 0 &&
+          fallbackCode.indexOf('CAL_Current1LutCounts[] =') >= 0 &&
           fallbackCode.indexOf('current gain   ch1 = 1000 permille') >= 0 &&
           doc.getElementById('calst').textContent.indexOf('گین جریان باتری ۱') >= 0,
           'firmware tables use the existing board gain when its bench fit is rejected');
@@ -1322,10 +1322,10 @@ async function testBackupAndCal(win, doc) {
     win.eval('calrun')();
     win.eval('calcode')();
     const code = doc.getElementById('calcd').value;
-    check(code.indexOf('CAL_Current1LutChainMa[] =') >= 0 &&
+    check(code.indexOf('CAL_Current1LutCounts[] =') >= 0 &&
           code.indexOf('CAL_Current1LutBatteryMw[] =') >= 0,
           'the generator emits the two C arrays the firmware already uses');
-    check(code.indexOf('CAL_Current2LutChainMa[] =') >= 0,
+    check(code.indexOf('CAL_Current2LutCounts[] =') >= 0,
           'both channels get a table');
     check(/\{ 0u,/.test(code), 'every generated table starts at the origin');
     check(code.indexOf('current gain   ch1 = 1200 permille') >= 0,
@@ -2019,9 +2019,9 @@ async function testLutPush(win, doc) {
     win.fetch = stub(ackOk);
     await win.eval('lreadnow')();
     check(doc.getElementById('lutcmp').textContent.indexOf('جدول فعال واقعی روی برد') >= 0 &&
-          doc.getElementById('lutcmp').textContent.indexOf('chainMa') >= 0 &&
+          doc.getElementById('lutcmp').textContent.indexOf('counts') >= 0 &&
           doc.getElementById('lutcmp').textContent.indexOf('batteryMa') >= 0,
-          'a standalone board readback shows clear chainMa/batteryMa tables');
+          'a standalone board readback shows clear counts/batteryMa tables');
     check(doc.getElementById('lutcmp').textContent.indexOf('پیشنهادی برای ارسال') < 0,
           'the standalone board view does not mix empty audit columns into the actual values');
     check(doc.getElementById('lutcmp').textContent.indexOf('مقدار واقعی روی برد') >= 0 &&
@@ -2180,7 +2180,7 @@ async function testLutPush(win, doc) {
 
     /* --- option (c) is still there: generate the header and rebuild --- */
     win.eval('calcode')();
-    check(doc.getElementById('calcd').value.indexOf('CAL_Current1LutChainMa') >= 0,
+    check(doc.getElementById('calcd').value.indexOf('CAL_Current1LutCounts') >= 0,
           'the build-time route still produces calibration.h - the user asked to keep it');
     check(doc.getElementById('lbtnS1') && doc.getElementById('lbtnS2') &&
           doc.getElementById('lbtnRead') && doc.querySelector('button[onclick="calcode()"]'),
