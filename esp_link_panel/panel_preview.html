@@ -490,7 +490,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build ced5092</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 299b21b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3425,7 +3425,7 @@ function calchk(){
 /* ==================== Firmware snippet / خروجی برای کد میکرو ====================
    [EN] Generate calibration.h from the current, validated fit.
    [FA] calibration.h از برازش فعلی و اعتبارسنجی‌شده ساخته می‌شود. */
-/* [EN] Counts-axis table: X=round(raw mean counts), Y=mA. No gain/offset. [FA] جدول روی شمارش خام. */
+/* [‎EN] Counts-axis table: X=round(raw mean counts), Y=mA. No gain/offset. [FA]‎ جدول روی شمارش خام. */
 function calbuild(n){
  const r=n===1?'r1':'r2',b=n===1?'b1':'b2',note=[];
  /* [EN] Missing readings block, never skip. [FA] عدد ناقص جدول را می‌بندد، حذف نمی‌شود. */
@@ -3436,10 +3436,11 @@ function calbuild(n){
  /* [‎EN] Zero current row is mandatory - never manufactured. [FA]‎ نقطهٔ صفر الزامی است و ساخته نمی‌شود. */
  if(!rows.some(z=>Number.isFinite(z.d)&&z.d===0))
   return {X:[],Y:[],note:[],bad:'نقطهٔ صفر (duty ۰٪) با مولتی‌متر ثبت نشده است'};
- if(rows.some(z=>z[b]<0))
-  return {X:[],Y:[],note:[],bad:'جریان منفی (دشارژ) در نمونه‌ها هست؛ جدول شارژ فقط برای جریان مثبت است — آن ردیف‌ها را تیک بردارید'};
+ /* [‎EN] Negative (discharge) mA is clamped to 0 and reported - never blocks. [FA]‎ منفی (دشارژ) صفر می‌شود و گزارش می‌شود؛ جدول را نمی‌بندد. */
+const negN=rows.filter(z=>z[b]<0).length;
+if(negN)note.push(negN+' نمونهٔ منفی (دشارژ) صفر حساب شد');
  /* [EN] One rounding: raw mean counts. [FA] تنها رُند: میانگین خام شمارش. */
- const pts=rows.map(z=>({c:Math.round(z[r]),i:z[b]}));
+ const pts=rows.map(z=>({c:Math.round(z[r]),i:Math.max(0,z[b])}));
  if(pts.some(q=>q.c<0||q.c>4095))
   return {X:[],Y:[],note:[],bad:'شمارش خارج از بازهٔ ۰ تا ۴۰۹۵ است'};
  pts.sort((x,y)=>x.c-y.c);

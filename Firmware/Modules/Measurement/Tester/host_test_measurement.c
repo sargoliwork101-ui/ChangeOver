@@ -106,8 +106,8 @@ uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts)
 }
 
 /* [EN] Stub of the exact chain difference: with 1 mA per count the difference
- *      is simply high - low (never negative). / [FA] تفاضل دقیق بدلی: با هر
- *      شمارش یک mA، تفاضل همان high - low است (هرگز منفی نیست). */
+ *      ‎is simply high - low (never negative). / [FA]‎ تفاضل دقیق بدلی: با هر
+ *      شمارش یک mA، تفاضل همان ‎high - low‎ است (هرگز منفی نیست). */
 uint32_t func__BspMeasurement_Current1DeltaMa(uint16_t uint16_t__countsHigh,
                                               uint16_t uint16_t__countsLow)
 {

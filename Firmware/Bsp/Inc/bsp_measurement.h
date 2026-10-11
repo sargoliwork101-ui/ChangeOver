@@ -143,7 +143,7 @@ uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts);
 uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts);
 /* [EN] Exact chain difference round(BSPfull(high) - BSPfull(low)) in mA, one
  *      rounding; used for the extrapolation above the last table anchor.
- * [FA] تفاضل دقیق زنجیره round(BSPfull(high) - BSPfull(low)) بر حسب mA با
+ * [FA] تفاضل دقیق زنجیره ‎round(BSPfull(high) - BSPfull(low))‎ بر حسب mA با
  *      یک رُند؛ برای برون‌یابی بالای آخرین لنگر جدول. */
 uint32_t func__BspMeasurement_Current1DeltaMa(uint16_t uint16_t__countsHigh,
                                               uint16_t uint16_t__countsLow);

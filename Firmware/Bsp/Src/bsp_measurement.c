@@ -467,13 +467,13 @@ static uint32_t func__BspMeasurement_ChainNumerator(uint16_t uint16_t__counts,
     /* [EN] Exact numerator (no division, no rounding): calibrated counts x gain
        permille. Max 4095 x 3000 = 12,285,000, fits u32.
        [FA] صورت دقیق (بدون تقسیم و بدون رُند): شمارش کالیبره x گین پرمیل.
-       حداکثر 4095 x 3000 = 12,285,000، در u32 جا می‌شود. */
+       حداکثر ‎4095 x 3000 = 12,285,000‎، در u32 جا می‌شود. */
     return uint32_t__calibratedCounts * uint32_t__gainPermille;
 }
 
 /* [EN] Exact chain scale: mA = numerator x 24200 / 27573000, where 24200 /
  *      27573 is the fixed fold of the schematic stages and 1000 is the permille
- *      scale. [FA] مقیاس دقیق زنجیره: mA = صورت x 24200 / 27573000؛ ۲۴۲۰۰/۲۷۵۷۳
+ *      scale. [FA] مقیاس دقیق زنجیره: mA = صورت ‎x 24200 / 27573000‎؛ ۲۴۲۰۰/۲۷۵۷۳
  *      تجمیع ثابت مراحل مدار و ۱۰۰۰ مقیاس پرمیل است. */
 #define BSP_MEASUREMENT_CHAIN_DENOMINATOR (27573u * BSP_MEASUREMENT_PERMILLE_SCALE)
 
@@ -483,7 +483,7 @@ static uint32_t func__BspMeasurement_ChainNumerator(uint16_t uint16_t__counts,
  *              N x 24200 / D = a x 24200 / 1000 + frac / D with
  *              frac = (a x 24200 mod 1000) x 27573 + b x 24200 (all < 2^31).
  *              round = p1 + floor((2 x frac + D) / (2 x D)).
- *         [FA] رُند(صورت x 24200 / 27573000) با یک رُند و بدون تقسیم ۶۴بیتی.
+ *         [FA] رُند(صورت ‎x 24200 / 27573000)‎ با یک رُند و بدون تقسیم ۶۴بیتی.
  * @param  uint32_t__numerator [EN] Exact numerator / صورت دقیق
  * @return uint32_t [EN] Current in mA, nearest integer / جریان mA، نزدیک‌ترین عدد
  */
@@ -504,7 +504,7 @@ static uint32_t func__BspMeasurement_ScaleRoundMa(uint32_t uint32_t__numerator)
 /**
  * @brief  [EN] round(BSPfull(high) - BSPfull(low)) in mA, one rounding. The
  *              difference is taken on the exact numerators, so it is exact.
- *         [FA] round(BSPfull(high) - BSPfull(low)) بر حسب mA با یک رُند. تفاضل
+ *         [‎FA] round(BSPfull(high) - BSPfull(low))‎ بر حسب mA با یک رُند. تفاضل
  *              روی صورت‌های دقیق گرفته می‌شود، پس دقیق است.
  * @param  uint16_t__countsHigh [EN] Higher count / شمارش بالاتر
  * @param  uint16_t__countsLow  [EN] Lower count / شمارش پایین‌تر
@@ -545,7 +545,7 @@ static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
  * @brief  [EN] Channel 1 chain difference (for the extrapolation above the last
  *              table anchor): round(BSPfull(high) - BSPfull(low)) in mA.
  *         [FA] تفاضل زنجیرهٔ کانال ۱ (برای برون‌یابی بالای آخرین لنگر جدول):
- *              round(BSPfull(high) - BSPfull(low)) بر حسب mA.
+ *              ‎round(BSPfull(high) - BSPfull(low))‎ بر حسب mA.
  */
 uint32_t func__BspMeasurement_Current1DeltaMa(uint16_t uint16_t__countsHigh,
                                               uint16_t uint16_t__countsLow)

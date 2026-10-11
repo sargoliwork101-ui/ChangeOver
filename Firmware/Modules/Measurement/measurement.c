@@ -632,7 +632,7 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
  *        پس تنظیم گین یا آفست هرگز خروجی جدول را در بازهٔ جدول تغییر نمی‌دهد.
  *      - بین لنگرها: درون‌یابی خطی بر حسب شمارش، فقط یک‌بار رُند.
  *      - زیر اولین لنگر: مقدار Y[0] نگه داشته می‌شود.
- *      - بالای آخرین لنگر: خروجی = lastY + (BSPfull(c) - BSPfull(lastCounts))،
+ *      - بالای آخرین لنگر: خروجی = ‎lastY + (BSPfull(c) - BSPfull(lastCounts))‎،
  *        تفاضل فقط یک‌بار رُند می‌شود. آفست در این تفاضل حذف می‌شود (وقتی
  *        lastCounts >= آفست)، پس بالای جدول فقط گین اثر دارد.
  *      - بدون جدول در فلش: خروجی = BSPfull(c) یعنی خط کامل گین و آفست.
@@ -644,11 +644,11 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
  *         [FA] جستجوی جدول بر حسب شمارش؛ فراخوان‌کننده برون‌یابی بالای جدول
  *              (تفاضل BSPfull از آخرین لنگر، با یک رُند) را می‌دهد.
  * @param  UINT32_T__A__Counts   [EN] Anchor counts, strictly increasing / شمارش لنگرها
- * @param  UINT32_T__A__BatteryMa [EN] Anchor battery mA, non-decreasing / mA باتری
+ * @‎param  UINT32_T__A__BatteryMa [EN] Anchor battery mA, non-decreasing / mA‎ باتری
  * @param  uint32_t__points      [EN] Anchor count (>= 1) / تعداد لنگر
  * @param  uint16_t__counts      [EN] Raw counts / شمارش خام
  * @param  uint32_t__aboveMa     [EN] Extension used only when counts > last anchor
- * @return uint32_t [EN] Battery mA / mA باتری
+ * @‎return uint32_t [EN] Battery mA / mA‎ باتری
  */
 static uint32_t func__Measurement_BenchTableMa(const uint32_t *UINT32_T__A__Counts,
                                                const uint32_t *UINT32_T__A__BatteryMa,
@@ -710,7 +710,7 @@ static uint32_t func__Measurement_BenchTableMa(const uint32_t *UINT32_T__A__Coun
  *         [FA] شمارش کانال ۱ به mA باتری ۱. با جدول: جدول بنچ روی محور شمارش.
  *              بدون جدول: خط کامل گین/آفست BSPfull.
  * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Battery-1 current in mA / جریان باتری ۱ بر حسب mA
+ * @‎return uint32_t [EN] Battery-1 current in mA‎ / جریان باتری ۱ بر حسب mA
  */
 static uint32_t func__Measurement_Current1CountsToMaLocked(uint16_t uint16_t__counts)
 {
@@ -760,7 +760,7 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
  *         [FA] شمارش کانال ۲ به mA باتری ۲. با جدول: جدول بنچ روی محور شمارش.
  *              بدون جدول: خط کامل گین/آفست BSPfull.
  * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Battery-2 current in mA / جریان باتری ۲ بر حسب mA
+ * @‎return uint32_t [EN] Battery-2 current in mA‎ / جریان باتری ۲ بر حسب mA
  */
 static uint32_t func__Measurement_Current2CountsToMaLocked(uint16_t uint16_t__counts)
 {
