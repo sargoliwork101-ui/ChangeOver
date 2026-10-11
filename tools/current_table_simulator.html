@@ -63,6 +63,9 @@
   تغییر گین فقط بالای آخرین لنگر اثر دارد. تغییر آفست بالای آخرین لنگر تفاضل را عوض نمی‌کند، ولی زیر آن و در خط BSP اثر دارد.
 </div>
 
+<h3>داده واقعی solo2 (ch2): ستون‌های جریان در CSV</h3>
+<p class="note">ستون ۴۴ شمارش خام است، نه DMM. ستون‌های ۴۸/۵۱/۵۴ (unf2/filt2/iest2) mA هستند ولی با فرمول سخت‌افزاری نمی‌خوانند. ستون ۴۷ شانت µV است (mA ≈ µV÷۱۰). فرمول: (شمارش − آفست) × ۲۴۲۰۰/۲۷۵۷۳ × گین/۱۰۰۰.</p>
+<table id="solo" style="border-collapse:collapse;font:13px Tahoma"></table>
 <script>
 const $ = id => document.getElementById(id);
 
@@ -167,6 +170,19 @@ function draw(X, Y, gain, off, cx, useTab) {
   g.fillStyle = '#c20'; g.beginPath(); g.arc(sx(cx), sy(useTab ? tableOut(cx, X, Y, gain, off).v : bspFull(cx, gain, off)), 5, 0, 6.3); g.fill();
 }
 
+
+// [EN] Real solo2 ch2 rows (duty, raw2 mean, off2, gain2, shunt2_uv, unf2, filt2, iest2).
+const SOLO = [[20.0, 12.6, 8.0, 1303.0, 110.0, 1.0, 1.0, 1.0], [40.0, 40.1, 8.0, 1303.0, 352.0, 18.0, 17.0, 17.0], [60.0, 100.9, 8.0, 1303.0, 885.0, 63.0, 63.0, 63.0], [80.0, 173.0, 8.0, 1303.0, 1518.0, 147.0, 146.0, 146.0], [100.0, 214.2, 8.0, 1303.0, 1880.0, 205.0, 204.0, 204.0], [120.0, 255.2, 8.0, 1303.0, 2239.0, 304.0, 304.0, 304.0], [140.0, 316.3, 8.0, 1303.0, 2776.0, 399.0, 398.0, 398.0], [160.0, 393.4, 8.0, 1303.0, 3453.0, 499.0, 499.0, 499.0], [180.0, 494.8, 8.0, 1303.0, 4342.0, 610.0, 610.0, 610.0], [200.0, 626.5, 8.0, 1303.0, 5498.0, 754.0, 754.0, 754.0]];
+function renderSolo() {
+  const t = $('solo');
+  let h = '<tr><th>duty ٪</th><th>raw2</th><th>آفست</th><th>گین‰</th><th>فرمول mA</th><th>شانت÷۱۰ mA</th><th>unf2 mA</th><th>filt2</th><th>iest2</th><th>unf2 − فرمول</th></tr>';
+  SOLO.forEach(([duty, raw, off, gain, shunt, unf, filt, iest]) => {
+    const f = (raw - off) * 24200 / 27573 * gain / 1000;
+    h += `<tr><td>${duty}</td><td>${raw}</td><td>${off}</td><td>${gain}</td><td>${f.toFixed(1)}</td><td>${(shunt/10).toFixed(1)}</td><td>${unf}</td><td>${filt}</td><td>${iest}</td><td>${(unf - f).toFixed(1)}</td></tr>`;
+  });
+  t.innerHTML = h;
+}
+renderSolo();
 run();
 </script>
 </body>
