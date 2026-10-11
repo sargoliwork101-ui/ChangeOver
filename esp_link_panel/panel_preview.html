@@ -490,7 +490,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 299b21b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d17dec3</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1028,14 +1028,12 @@ window.addEventListener('DOMContentLoaded', function(){
 </div>
 <div class="cd">
 <div class="hd"><b>کالیبراسیون جریان</b></div>
-<div class="sx"><b>آفست</b> = عدد ADC در جریان صفر که از هر نمونه کم می‌شود.<br><b>گین</b> = ضریب تبدیل شمارش به جریان.<br><b>ETA</b> = ضریب تبدیل جریان ورودی به جریان سمت باتری (صفر = بدون تبدیل).<br><b>هشدار کانال ۲:</b> این کانال جدول بنچ دارد، پس ETA آن صفر بماند؛ تغییر آفست یا گینِ کانال ۲ یعنی جدول بنچ باید دوباره ساخته شود.</div>
+<div class="sx"><b>آفست</b> = عدد ADC در جریان صفر که از هر نمونه کم می‌شود.<br><b>گین</b> = ضریب تبدیل شمارش به جریان.<br><b>هشدار کانال ۲:</b> این کانال جدول بنچ دارد، پس ETA آن صفر بماند؛ تغییر آفست یا گینِ کانال ۲ یعنی جدول بنچ باید دوباره ساخته شود.</div>
 <div class="bqr">
 <label>آفست کانال ۱ (count)<input type="number" id="q0" step="1" min="0" max="255"><span class="lb" id="a0"></span></label>
 <label>آفست کانال ۲ (count)<input type="number" id="q1" step="1" min="0" max="255"><span class="lb" id="a1"></span></label>
 <label>گین کانال ۱ (‰)<input type="number" id="q2" step="1" min="100" max="3000"><span class="lb" id="a2"></span></label>
 <label>گین کانال ۲ (‰)<input type="number" id="q3" step="1" min="100" max="3000"><span class="lb" id="a3"></span></label>
-<label>ضریب ETA کانال ۱ (‰، صفر=خاموش)<input type="number" id="q9" step="1" min="0" max="999"><span class="lb" id="a9"></span></label>
-<label>ضریب ETA کانال ۲ (‰، صفر=خاموش)<input type="number" id="q10" step="1" min="0" max="999"><span class="lb" id="a10"></span></label>
 </div>
 </div>
 </div>
@@ -1320,7 +1318,7 @@ $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${
 <div class="big"><span class="biglabel dutybig" id="dutyedit${n}" role="button" tabindex="0" title="برای تغییر سقف duty کلیک کنید" onclick="dutyedit(${n})" onkeydown="if(event.key==='Enter'||event.key===' ')dutyedit(${n})">duty <span class="ceval" id="dc${n}"></span></span><b class="n" id="du${n}"></b></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
 <div class="bctl"><span class="ctlcap">حالت کار</span><div class="modepick"><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button></div><label class="dutyctl"><span>Duty دستی (%)</span><input type="number" step="any" id="qm${n}" data-s></label><div class="dutyactions"><button class="sb bapply" onclick="qset(${n})">اعمال</button><button class="sb bzero" onclick="qzero(${n})">صفر</button></div></div>
 <div class="lb">بستن پنل: ۱۰ ثانیه بعد مود دستی خاموش و duty صفر می‌شود؛ بعد از تریپ JIT همان duty را دوباره اعمال کنید.</div>
-<table>${[['ADC خام','count',0],['ولتاژ شنت',' میکروولت',1],['جریان بدون فیلتر',' میلی‌آمپر',2],['جریان فیلترشده',' میلی‌آمپر',3],['تخمین باتری (iest)',' میلی‌آمپر',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}"></b></td><td class="lb">${r[1]}</td></tr>`).join('')}</table>
+<table>${[['ADC خام','count',0],['ولتاژ شنت',' میکروولت',1],['جریان بدون فیلتر',' میلی‌آمپر',2],['جریان فیلترشده',' میلی‌آمپر',3],['جریان باتری (iest = فیلترشده)',' میلی‌آمپر',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}"></b></td><td class="lb">${r[1]}</td></tr>`).join('')}</table>
 <div class="lb kc">ثابت‌ها: ADC دوازده‌بیتی، ۳۳۰۰ میلی‌ولت، R41/R42 = 1k/10k، LM358 × 101، شنت 10 mOhm</div>
 <canvas id="cv${n}"></canvas><div class="lg"><span><i style="background:#78849f"></i>بدون فیلتر · نوسان <b class="n" id="pu${n}"></b> mA</span><span><i style="background:#63a2ff"></i>فیلترشده · نوسان <b class="n" id="pf${n}"></b> mA</span><span class="hnl">نقاط <input type="number" id="hN${n}" data-s min="10" max="600" value="100"> از <b class="n" id="hC${n}">--</b></span></div>
 <button class="bt" id="tg${n}"></button></div>`).join('');
@@ -1410,17 +1408,15 @@ $('mx').onclick=()=>send(19,0);
 
 /* ---------- به‌روزرسانی: فرمول‌های بخش 5.3 با مقادیر زنده ---------- */
 const f1=x=>x.toFixed(1),V_=mv=>(mv/1000).toFixed(2)+'V',nz=v=>v==null?'?':v;
-/* iest مثل STM32 (charger.c): زیر Vin 10 ولت یا Vbat 5 ولت برگشت به همانی */
-const ie=(fl,vin,eta,vb)=>vin<10000||vb<5000?fl+' (همانی: ولتاژ زیر حد)':Math.floor(Math.floor(fl*eta/1000)*vin/vb);
 /* [EN] The compiled bench tables were removed (2026-10-10): the board table
    is the one pushed from this panel and stored in flash. */
 function formulas(t,p){
- [1,2].forEach(n=>{const b=n==1?0:7,raw=t[b],off=p[n-1],g=p[n+1],eta=p[8+n],vb=n==1?t[18]:t[17],vin=t[14],fl=t[b+3];
+ [1,2].forEach(n=>{const b=n==1?0:7,raw=t[b],off=p[n-1],g=p[n+1],fl=t[b+3];
   $('f'+n+'0').textContent='12-bit ADC · Vref 3300mV';
   $('f'+n+'1').textContent=`${raw} × 3300/4095 × 11/10 × 1000/101 = ${raw} × 8.7767 ≈ ${Math.round(raw*K_UV)}`;
   $('f'+n+'2').textContent=off==null||g==null?'':`(${raw} − ${off}) × 0.8777 × ${g}/1000 ≈ ${f1(Math.max(raw-off,0)*K_MA*g/1000)}`;
   $('f'+n+'3').textContent=`convert( average[W=${nz(p[8])}]( median[N=${nz(p[7])}]( raw ) ) ) = ${fl}`;
-  $('f'+n+'4').textContent=eta==null?'':eta==0?`eta = 0 → Iest = I = ${fl}`:`${fl} × ${V_(vin)} × ${eta}‰ / ${V_(vb)} ≈ ${ie(fl,vin,eta,vb)}`;});
+ });
  V.forEach((v,i)=>{const e=$('fv'+i);if(!e)return;/* The summary now exposes only the three shared rails; the two battery-voltage formulas are rendered in their charger cards. */if(i<3){const o=p[v[2]]==null?0:p[v[2]],c=Math.round((t[v[1]]-o+(i==2?150+Math.floor(t[9]*470/1000):0))/v[3]);e.textContent=`${c} × ${v[3].toFixed(3)} ${o<0?'−':'+'} ${Math.abs(o)}${i==2?' − (150 + '+t[9]+'×470/1000)':''}`;}
   else e.textContent=i==3?'V24 − V12':'= V12';});
 }

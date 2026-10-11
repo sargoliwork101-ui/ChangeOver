@@ -219,25 +219,6 @@ volatile uint32_t UINT32_T__G__ChargerCalib[CHG_CALIB_COUNT] = {0u};
 volatile uint32_t UINT32_T__G__ChargerIest1Ma = 0u;
 volatile uint32_t UINT32_T__G__ChargerIest2Ma = 0u;
 
-/* [EN] Runtime per-channel conversion factors ETA1/ETA2 (protocol v1.3,
- *      user order 2026-09-24). 0 (compiled default) = identity: with the
- *      battery-calibrated gains the filtered reading already equals the
- *      battery current. Non-zero = live conversion iest = I x Vin x eta /
- *      (1000 x Vbat), set via ESP params 9/10 or computed by the panel
- *      CAL_REFERENCE command. Flash-persisted since v1.14 (NVM ids 9/10);
- *      written by the EspLink task, read in the control task; aligned
- *      32-bit values are atomic on Cortex-M3.
- * [FA] ضریب تبدیل زمان اجرای هر کانال (پروتکل v1.3، دستور ۲۰۲۶-۰۹-۲۴).
- *      صفر (پیش‌فرض) = همانی: با گین‌های کالیبره-باتری عدد فیلترشده خودش
- *      جریان باتری است. غیرصفر = تبدیل زندهٔ ‎iest = I‎ × Vin × η ÷ (۱۰۰۰ ×
- *      Vbat)؛ ست از پارامتر ۹/۱۰ یا فرمان CAL_REFERENCE. روی فلش از v1.14
- *      (شناسه ۹/۱۰)؛ نوشتن از تسک EspLink، خواندن در کنترل؛ u32 تراز اتمیک.
- */
-static volatile uint32_t UINT32_T__G__ChargerEta1Permille =
-    CHG_FLYBACK_ETA1_PERMILLE;
-static volatile uint32_t UINT32_T__G__ChargerEta2Permille =
-    CHG_FLYBACK_ETA2_PERMILLE;
-
 /* [EN] Runtime per-channel enable gates for the ESP command panel (user
  *      order 2026-09-22: the ESP must be able to cut and reconnect each
  *      charger module). Default true = today's behavior. While false the
@@ -517,80 +498,6 @@ static uint32_t func__Charger_ChannelCurrentMa(const measurement_snapshot_t *mea
     }
 
     return measurement_snapshot_t__snap->i_ch2_ma;
-}
-
-/* ==================== Charger_OutputEstimateMa / تخمین جریان خروجی ==================== */
-
-/**
- * @brief  [EN] Output (battery-side) current estimate. When the
- *              Measurement battery LUT is active, the incoming filtered
- *              value already is battery current; OutputEstimateMa therefore
- *              returns identity even if a legacy ETA survives in NVM. With
- *              no battery LUT, ETA = 0 is still identity and a non-zero ETA
- *              uses iest = I x Vin x eta / (1000 x Vbat) with LIVE voltages.
- *              Low-voltage guards apply only to that legacy conversion.
- *         [FA] تخمین جریان سمت باتری. وقتی LUT باتری Measurement فعال است،
- *              جریان فیلترشدهٔ ورودی همین حالا جریان باتری است؛ بنابراین
- *              OutputEstimateMa حتی با ETA قدیمیِ مانده در NVM همانی است.
- *              بدون LUT، ETA صفر نیز همانی است و ETA غیرصفر تبدیل زندهٔ
- *              ‎iest = I‎ × Vin × eta ÷ (۱۰۰۰ × Vbat) را انجام می‌دهد؛ گاردهای
- *              ولتاژ پایین فقط روی همین مسیر legacy اعمال می‌شوند.
- * @param  measurement_snapshot_t__snap [EN] Live snapshot (Vin/Vbat) / snapshot‎ زنده
- * @param  uint8_t__channelIndex [EN] 0 = ch1 (upper battery), 1 = ch2‎ / ۰=کانال۱، ۱=کانال۲
- * @param  uint32_t__primaryMa [EN] Filtered chain current, mA / جریان فیلترشدهٔ زنجیره، mA
- * @return uint32_t [EN] Battery-side current estimate, mA‎ / تخمین جریان سمت باتری، mA
- */
-static uint32_t func__Charger_OutputEstimateMa(const measurement_snapshot_t *measurement_snapshot_t__snap,
-                                               uint8_t uint8_t__channelIndex,
-                                               uint32_t uint32_t__primaryMa)
-{
-    uint32_t uint32_t__etaPermille =
-        (uint8_t__channelIndex == 0u) ? UINT32_T__G__ChargerEta1Permille
-                                      : UINT32_T__G__ChargerEta2Permille;
-    uint32_t uint32_t__vinMv;
-    uint32_t uint32_t__vbatMv;
-
-    /* [EN] The Measurement module owns the end-to-end battery LUT:
-       chain mA -> battery power -> live battery voltage -> battery mA.
-       Once that path is compiled in, primaryMa is already the battery-side
-       result. Ignore a legacy non-zero ETA that survived the parameter flash;
-       applying Vin/Vbat here would convert the calibrated value twice and
-       under-read both channels. ETA remains available only for a channel
-       without a battery LUT.
-       [FA] ماژول Measurement مالک LUT سرتاسری است: mA زنجیره ← توان باتری
-       ← ولتاژ زندهٔ باتری ← mA باتری. وقتی این مسیر برای کانال فعال است،
-       primaryMa همین حالا جریان سمت باتری است. ETA قدیمیِ غیرصفر که در فلش
-       پارامتر مانده نادیده گرفته می‌شود؛ اعمال ‎Vin/Vbat‎ در اینجا تبدیل دوم
-       و کم‌خوانی هر دو کانال بود. ETA فقط برای کانالِ بدون LUT می‌ماند. */
-    if (func__Measurement_CurrentIsBatteryCalibrated(uint8_t__channelIndex) != false)
-    {
-        return uint32_t__primaryMa;
-    }
-
-    if (uint32_t__etaPermille == 0u)
-    {
-        /* [EN] Identity for the legacy path when ETA is not configured.
-           [FA] همانی در مسیر legacy وقتی ETA تنظیم نشده است. */
-        return uint32_t__primaryMa;
-    }
-
-    uint32_t__vinMv = measurement_snapshot_t__snap->v_in_mv;
-    uint32_t__vbatMv =
-        func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,
-                                       uint8_t__channelIndex);
-
-    if ((uint32_t__vinMv < CHG_ETA_MIN_VIN_MV) ||
-        (uint32_t__vbatMv < CHG_ETA_MIN_VBAT_MV))
-    {
-        /* [EN] Garbage voltages: fall back to the identity.
-           [FA] ولتاژهای بی‌معنی: برگشت به همانی. */
-        return uint32_t__primaryMa;
-    }
-
-    /* [EN] iest = I x Vin x eta / (1000 x Vbat), 32-bit-safe order.
-       [‎FA] iest = I‎ × Vin × η ÷ (۱۰۰۰ × Vbat)، ترتیب امن برای ۳۲ بیت. */
-    return ((((uint32_t__primaryMa * uint32_t__etaPermille) / 1000u) * uint32_t__vinMv) /
-            uint32_t__vbatMv);
 }
 
 static uint16_t func__Charger_MaxDutyPermille(void)
@@ -1668,19 +1575,7 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
     uint32_t__currentMa =
         func__Charger_ChannelCurrentMa(measurement_snapshot_t__snap, uint8_t__channelIndex);
 
-    /* [EN] Measurement owns the current meaning. With a battery LUT enabled,
-       the snapshot value is already battery-side; without a LUT it is the
-       legacy chain/primary value. Bulk/Absorb/Float limits are battery-side,
-       so OutputEstimateMa is the single boundary that keeps the LUT path at
-       identity and applies live Vin/Vbat only to the legacy path.
-       [FA] Measurement معنای جریان را تعیین می‌کند. با LUT باتری، مقدار
-       snapshot همین حالا سمت باتری است؛ بدون LUT مقدار legacy زنجیره/اولیه
-       است. حدهای ‎Bulk/Absorb/Float‎ سمت باتری‌اند و OutputEstimateMa تنها
-       مرز انتخاب همانیِ LUT یا تبدیل زندهٔ ‎Vin/Vbat‎ در legacy است. */
-    uint32_t__currentMa =
-        func__Charger_OutputEstimateMa(measurement_snapshot_t__snap,
-                                       uint8_t__channelIndex,
-                                       uint32_t__currentMa);
+    /* [EN] Measurement already returns battery-side current (LUT or line). */
 
     /* [EN] Battery-disconnect detection used to live here; it moved to the
        central Fault module (fault.c, FAULT_BAT_*), which latches
@@ -2287,9 +2182,7 @@ static void func__Charger_CaptureDiag(const measurement_snapshot_t *measurement_
             UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_IPRI] =
                 uint32_t__primaryMa;
             UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_IEST] =
-                func__Charger_OutputEstimateMa(measurement_snapshot_t__snap,
-                                               uint8_t__channelIndex,
-                                               uint32_t__primaryMa);
+                uint32_t__primaryMa;
             UINT32_T__G__ChargerCalib[uint32_t__calibBase + CHG_CALIB_OFF_VBAT] =
                 UINT32_T__G__ChargerDiag[uint32_t__base + CHG_DIAG_IDX_VBAT];
             UINT32_T__G__ChargerCalib[uint32_t__calibBase + CHG_CALIB_OFF_IPRI] =
@@ -3346,73 +3239,6 @@ bool func__Charger_IsChargeComplete(void)
 }
 
 /* ==================== Charger runtime config API (ESP panel) ==================== */
-
-/**
- * @brief  [EN] Set the runtime conversion factor of one channel, clamped
- *              to 0..999 permille (v1.3): 0 = identity bypass (compiled
- *              default), non-zero = live iest = I x Vin x eta / (1000 x
- *              Vbat). Channel 0 = charger 1 (upper battery), 1 = charger 2.
- *              Flash-persisted since v1.14 (NVM ids 9/10); written by the
- *              ESP panel (params 9/10) and by CAL_REFERENCE (user order
- *              2026-09-24).
- *         [FA] ضریب تبدیل زمان اجرای یک کانال، گیرهٔ ۰..۹۹۹ پرمیل (v1.3):
- *              صفر = همانی (پیش‌فرض)، غیرصفر = تبدیل زندهٔ ‎iest = I‎ × Vin ×
- *              η ÷ (۱۰۰۰ × Vbat). کانال ۰ = شارژر ۱ (باتری بالا)، ۱ = شارژر
- *              ۲. روی فلش از v1.14 (شناسه ۹/۱۰)؛ از پنل ESP و CAL_REFERENCE.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @param  uint32_t__etaPermille [EN] Requested efficiency / بازدهی درخواستی
- * @return uint32_t [EN] Applied efficiency permille / بازدهی اعمال‌شده
- */
-uint32_t func__Charger_SetEfficiencyPermille(uint8_t uint8_t__channelIndex,
-                                             uint32_t uint32_t__etaPermille)
-{
-    /* [EN] The lower clamp compiles out while CHG_ETA_MIN_PERMILLE is 0
-       (a u32 can never be below 0; keeps -Wtype-limits green). If the floor
-       ever rises above zero the clamp reactivates automatically.
-       [FA] گیرهٔ پایین تا وقتی کف صفر است کامپایل نمی‌شود (u32 هرگز زیر صفر
-       نیست). اگر کف روزی بالای صفر رفت، گیره خودکار برمی‌گردد. */
-#if (CHG_ETA_MIN_PERMILLE != 0u)
-    if (uint32_t__etaPermille < CHG_ETA_MIN_PERMILLE)
-    {
-        uint32_t__etaPermille = CHG_ETA_MIN_PERMILLE;
-    }
-#endif
-    if (uint32_t__etaPermille > CHG_ETA_MAX_PERMILLE)
-    {
-        uint32_t__etaPermille = CHG_ETA_MAX_PERMILLE;
-    }
-    else
-    {
-        /* [EN] Value already inside the window. [FA] مقدار داخل پنجره است. */
-    }
-
-    if (uint8_t__channelIndex == 0u)
-    {
-        UINT32_T__G__ChargerEta1Permille = uint32_t__etaPermille;
-    }
-    else
-    {
-        UINT32_T__G__ChargerEta2Permille = uint32_t__etaPermille;
-    }
-
-    return uint32_t__etaPermille;
-}
-
-/**
- * @brief  [EN] Read the live flyback efficiency of one channel.
- *         [FA] بازدهی flyback زندهٔ یک کانال را می‌خواند.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @return uint32_t [EN] Live efficiency permille / بازدهی زندهٔ پرمیل
- */
-uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex)
-{
-    if (uint8_t__channelIndex == 0u)
-    {
-        return UINT32_T__G__ChargerEta1Permille;
-    }
-
-    return UINT32_T__G__ChargerEta2Permille;
-}
 
 /**
  * @brief  [EN] Set the ESP enable gate of one charger channel. false = cut:

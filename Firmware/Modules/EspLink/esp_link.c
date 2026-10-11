@@ -254,16 +254,6 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
 #endif
 
 #if MODULE_CHARGER
-        case ESPLINK_PARAM_CHG_ETA1_PERMILLE:
-            *uint32_t__appliedValue =
-                func__Charger_SetEfficiencyPermille(0u, uint32_t__value);
-            return true;
-
-        case ESPLINK_PARAM_CHG_ETA2_PERMILLE:
-            *uint32_t__appliedValue =
-                func__Charger_SetEfficiencyPermille(1u, uint32_t__value);
-            return true;
-
         case ESPLINK_PARAM_CHG1_ENABLE:
             func__Charger_SetChannelEspEnable(0u, uint32_t__value != 0u);
             *uint32_t__appliedValue =
@@ -499,14 +489,6 @@ bool func__EspLink_GetParam(uint8_t uint8_t__paramId,
 #endif
 
 #if MODULE_CHARGER
-        case ESPLINK_PARAM_CHG_ETA1_PERMILLE:
-            *uint32_t__value = func__Charger_GetEfficiencyPermille(0u);
-            return true;
-
-        case ESPLINK_PARAM_CHG_ETA2_PERMILLE:
-            *uint32_t__value = func__Charger_GetEfficiencyPermille(1u);
-            return true;
-
         case ESPLINK_PARAM_CHG1_ENABLE:
             *uint32_t__value =
                 (func__Charger_GetChannelEspEnable(0u) != false) ? 1u : 0u;

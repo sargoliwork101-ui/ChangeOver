@@ -306,68 +306,6 @@ _Static_assert(CHG_CURRENT_HARD_FAULT_DEFAULT_MA <= CHG_CURRENT_HARD_FAULT_MAX_M
                "factory default above its own ceiling");
 _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
                "calibrated edge must sit below the default trip");
-/* [EN] Battery-current estimate architecture v1.3 (user order
- *      2026-09-24). The sense chain turned out to be battery-side, so
- *      with the 2026-09-24 battery-calibrated gains the filtered reading
- *      already IS the battery current. Instead of deleting the old
- *      primary->output conversion, it stays as an EXPLICIT,
- *      panel-calibratable stage: ETA1/ETA2 (ESP params 9/10) are
- *      per-channel factors, DEFAULT 0 = identity (a reflash changes no
- *      number until the user calibrates). Non-zero: iest = I_filtered x
- *      Vin x eta / (1000 x Vbat) with LIVE voltages, so the reading stays
- *      true while Vbat moves during a charge (identity drifts by
- *      Vbat_cal/Vbat). Calibration is ONE ESP command (CAL_REFERENCE,
- *      protocol v1.3): the user types the battery-side DMM mA and the
- *      firmware computes eta from its own live snapshot; with the
- *      battery-calibrated gains it lands near 1000 x Vbat / Vin (~537).
- *      The legacy 758/242 permille (bench 2026-09-22, wrong
- *      shunt-in-MOSFET-source assumption) feed no calculation - kept only
- *      as inert defaults for the eta param read-back; ch2's 242 also
- *      absorbs the ch2 sense chain over-reading (~2.9x), do not reuse it
- *      as a physical constant.
- * [FA] معماری تخمین جریان باتری v1.3 (دستور ۲۰۲۶-۰۹-۲۴): زنجیرهٔ sense سمت
- *      باتری است، پس با گین‌های کالیبره-باتری عدد فیلترشده خودش جریان
- *      باتری است. تبدیل قدیمی اولیه→خروجی به‌جای حذف، مرحلهٔ صریحِ
- *      قابل‌کالیبره ماند: ‎ETA1/ETA2 (‎پارامتر ۹/۱۰) ضریب هر کانال با
- *      پیش‌فرض ۰ = همانی (ریفلش عددی را عوض نمی‌کند). غیرصفر: ‎iest = I‎ ×
- *      Vin × η ÷ (۱۰۰۰ × Vbat) با ولتاژهای زنده تا خوانش با حرکت Vbat
- *      درست بماند. کالیبراسیون یک فرمان ESP (CAL_REFERENCE): کاربر عدد
- *      مولتی‌متر سمت باتری را می‌دهد و فریم‌ور η را از snapshot خودش
- *      می‌سازد؛ با گین‌های جدید نزدیک ۱۰۰۰×Vbat÷Vin (~۵۳۷) می‌افتد.
- *      مقادیر قدیمی ۷۵۸/۲۴۲ (فرض اشتباه شانت-در-سورس) در هیچ محاسبه‌ای
- *      نیستند - فقط پیش‌فرض بی‌اثر برای خوانده‌شدن پارامتر؛ ۲۴۲ کانال ۲
- *      خطای ‎over-read‎ زنجیرهٔ sense (~۲٫۹×) را هم جذب کرده - ثابت فیزیکی
- *      نیست. */
-#define CHG_FLYBACK_ETA1_PERMILLE            0u
-#define CHG_FLYBACK_ETA2_PERMILLE            0u
-
-/* [EN] Clamp limits of the ESP-adjustable runtime conversion factor
- *      (v1.3): 0 = identity bypass (compiled default), 1..999 = the live
- *      Vin/Vbat conversion. The panel may zero it to return to the raw
- *      filtered reading at any time.
- * [FA] حدود گیرهٔ ضریب تبدیل زمان اجرای قابل‌تنظیم از ESP (v1.3): صفر =
- *      همانی/گذر (پیش‌فرض کامپایل)، ۱..۹۹۹ = تبدیل زندهٔ ‎Vin/Vbat‎. پنل
- *      می‌تواند هر وقت خواست صفرش کند تا به خوانش فیلترشدهٔ خام برگردد. */
-/* [EN] ETA vs the battery LUT (full-program audit 2026-10-08): when a
- *      channel's Measurement LUT is enabled, its output already is battery
- *      current and Charger_OutputEstimateMa bypasses ETA, including a stale
- *      non-zero parameter left in NVM. ETA remains a legacy fallback only
- *      for a channel compiled without a battery LUT.
- * [FA] نسبت ETA با LUT باتری (ممیزی کل برنامه ۲۰۲۶-۱۰-۰۸): وقتی LUT
- *      Measurement کانال فعال است، خروجی همین حالا جریان باتری است و
- *      Charger_OutputEstimateMa باید ETA را حتی اگر پارامتر قدیمی غیرصفر در
- *      NVM مانده باشد نادیده بگیرد. ETA فقط fallback مسیر legacy بدون LUT است. */
-#define CHG_ETA_MIN_PERMILLE                  0u
-#define CHG_ETA_MAX_PERMILLE                  999u
-
-/* [EN] Live-voltage sanity floors for the conversion (v1.3): below these
- *      the estimate falls back to the identity instead of dividing a
- *      garbage snapshot. Also used by the ESP CAL_REFERENCE handler.
- * [FA] کف‌های سلامت ولتاژ زنده برای تبدیل (v1.3): زیر این مقادیر تخمین
- *      به‌جای تقسیم snapshot بی‌معنی به همانی برمی‌گردد. هندلر
- *      CAL_REFERENCE ‌ی ESP هم از همین‌ها استفاده می‌کند. */
-#define CHG_ETA_MIN_VIN_MV                10000u
-#define CHG_ETA_MIN_VBAT_MV                5000u
 #define CHG_INPUT_VALID_MV           22000u
 #define CHG_DUTY_START_PERMILLE        10u
 #define CHG_DUTY_STEP_PERMILLE          5u
@@ -1077,28 +1015,6 @@ extern volatile uint32_t UINT32_T__G__ChargerIest1Ma;
 extern volatile uint32_t UINT32_T__G__ChargerIest2Ma;
 
 /* ==================== Runtime config API (ESP panel) / API پیکربندی زمان اجرا ==================== */
-
-/**
- * @brief  [EN] Set the runtime flyback efficiency of one channel, clamped
- *              to CHG_ETA_MIN_PERMILLE..CHG_ETA_MAX_PERMILLE;
- *              flash-persisted since v1.14, ESP panel (user order 2026-09-22).
- *         [FA] بازدهی flyback یک کانال در زمان اجرا، گیرهٔ
- *              ‎CHG_ETA_MIN_PERMILLE..CHG_ETA_MAX_PERMILLE‎؛ روی فلش
- *              می‌ماند از نسخهٔ ۱.۱۴، پنل ESP (دستور کاربر ۲۰۲۶-۰۹-۲۲).
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @param  uint32_t__etaPermille [EN] Requested efficiency / بازدهی درخواستی
- * @return uint32_t [EN] Applied efficiency permille / بازدهی اعمال‌شده
- */
-uint32_t func__Charger_SetEfficiencyPermille(uint8_t uint8_t__channelIndex,
-                                             uint32_t uint32_t__etaPermille);
-
-/**
- * @brief  [EN] Read the live flyback efficiency of one channel.
- *         [FA] بازدهی flyback زندهٔ یک کانال.
- * @param  uint8_t__channelIndex [EN] 0 = charger 1, 1 = charger 2‎ / ۰ یا ۱
- * @return uint32_t [EN] Live efficiency permille / بازدهی زندهٔ پرمیل
- */
-uint32_t func__Charger_GetEfficiencyPermille(uint8_t uint8_t__channelIndex);
 
 /**
  * @brief  [EN] Set the ESP enable gate of one charger channel: false = PWM

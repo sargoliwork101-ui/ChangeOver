@@ -383,10 +383,10 @@ int main(void)
     CHECK(func__Measurement_CurrentCountsToShuntUv(1234u) == 1234u);
     CHECK(func__Measurement_CountsToMv(0u) == 0u);
     /* [EN] Both compiled battery LUTs make the public current result
-            battery-side. This is the contract Charger uses to suppress a
-            stale ETA conversion; an invalid channel must never claim it.
+            battery-side; Charger applies no second conversion. An invalid
+            channel must never claim it.
        [FA] هر دو LUT کامپایل‌شده خروجی عمومی جریان را سمت باتری می‌کنند.
-            Charger از همین قرارداد برای حذف ETA کهنه استفاده می‌کند؛ کانال
+            Charger تبدیل دوم اعمال نمی‌کند؛ کانال
             نامعتبر هرگز نباید active گزارش شود. */
     CHECK(func__Measurement_CurrentIsBatteryCalibrated(0u) == true);
     CHECK(func__Measurement_CurrentIsBatteryCalibrated(1u) == true);

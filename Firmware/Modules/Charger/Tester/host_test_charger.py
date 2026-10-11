@@ -499,26 +499,15 @@ def test_setpoints_and_timing():
         check(gone not in text_c and gone not in text_h,
               "the legacy step regulator must stay deleted, found: " + gone)
     check(re.search(r"#define CHG_DUTY_RAMP_DOWN_INTERVAL_MS\s+500u", text_h), "down-steps must be limited to one per 500 ms")
-    check(re.search(r"#define CHG_FLYBACK_ETA1_PERMILLE\s+0u", text_h), "per-channel ETA1 default = 0 permille = identity (v1.3: a reflash changes no number until the user calibrates from the panel)")
-    check(re.search(r"#define CHG_FLYBACK_ETA2_PERMILLE\s+0u", text_h), "per-channel ETA2 default = 0 permille = identity (v1.3: a reflash changes no number until the user calibrates from the panel)")
-    check(re.search(r"#define CHG_ETA_MIN_PERMILLE\s+0u", text_h), "ETA clamp floor must be 0 (0 = identity bypass, v1.3)")
     charger_c_txt = CHARGER_C.read_text()
-    check("if (uint32_t__etaPermille == 0u)" in charger_c_txt and "return uint32_t__primaryMa;" in charger_c_txt,
-          "output estimate must fall back to the identity when ETA = 0 (default; user 2026-09-24: with the battery-calibrated gains the filtered reading IS the battery current)")
-    check("((((uint32_t__primaryMa * uint32_t__etaPermille) / 1000u) * uint32_t__vinMv)" in charger_c_txt,
-          "non-zero ETA must convert with LIVE voltages: iest = I x Vin x eta / (1000 x Vbat) - the v1.3 calibration architecture (user order 2026-09-24)")
-    check("CHG_ETA_MIN_VIN_MV" in charger_c_txt and "CHG_ETA_MIN_VBAT_MV" in charger_c_txt,
-          "live-voltage sanity guards must exist for the ETA conversion")
+    check(not re.search(r"CHG_FLYBACK_ETA|CHG_ETA_M|OutputEstimate|EfficiencyPermille|\\bVin\\s*[x×]\\s*eta", text_h + charger_c_txt),
+          "the Vin/Vbat efficiency formula and its ETA defines must be gone from charger.c/.h (removed 2026-10-11)")
+    check("func__Charger_SetEfficiencyPermille" not in text_h and "func__Charger_GetEfficiencyPermille" not in text_h,
+          "the ETA setter and getter must not be declared")
     meas_h_txt = (ROOT / "Firmware/Modules/Measurement/measurement.h").read_text()
     meas_c_txt = (ROOT / "Firmware/Modules/Measurement/measurement.c").read_text()
-    check("func__Measurement_CurrentIsBatteryCalibrated" in meas_h_txt and
-          "func__Measurement_CurrentIsBatteryCalibrated" in meas_c_txt and
-          "func__Measurement_CurrentIsBatteryCalibrated(uint8_t__channelIndex)" in charger_c_txt,
-          "the charger must ask Measurement whether the per-channel result is already battery-side calibrated")
-    gate_at = charger_c_txt.find("func__Measurement_CurrentIsBatteryCalibrated")
-    eta_math_at = charger_c_txt.find("uint32_t__primaryMa * uint32_t__etaPermille")
-    check(gate_at >= 0 and eta_math_at > gate_at,
-          "the battery LUT gate must run before the legacy ETA Vin/Vbat math, so stale NVM ETA cannot double-convert it")
+    check("uint32_t__vbatMv" not in charger_c_txt and "uint32_t__vinMv" not in charger_c_txt,
+          "the charger must apply no Vin/Vbat conversion to the current (power formula removed 2026-10-11)")
     esp_link_h_txt = (ROOT / "Firmware/Modules/EspLink/esp_link.h").read_text()
     esp_link_c_txt = (ROOT / "Firmware/Modules/EspLink/esp_link.c").read_text()
     # [EN] CAL_REFERENCE was a v1.3 command the panel stopped sending in v1.7.
@@ -2387,8 +2376,8 @@ def test_audit_batch_v116b():
     # [FA] تعداد نقاط آزاد است، ولی دو محور با طول متفاوت نباید کامپایل شود.
     check("sizeof(CAL_Current1LutCounts)" not in meas and "sizeof(CAL_Current2LutCounts)" not in meas,
           "2026-10-10: the compiled-table size asserts went away with the compiled tables")
-    check("#if (CHG_ETA_MIN_PERMILLE != 0u)" in cc,
-          "the always-false u32<0 ETA clamp must compile out (type-limits green)")
+    check("CHG_ETA_MIN" not in cc,
+          "the ETA clamp is removed with the formula")
     check("2026-10-10" in calh and "NO LONGER compiled in" in calh,
           "calibration.h must document that the current tables are no longer compiled in")
     nested = [ln for ln in calh.splitlines() if ln.startswith("/* [EN] v1.13")]
@@ -3150,8 +3139,8 @@ def test_battery_card_uses_measurement_current_not_legacy_iest():
     check("$('ie'+n).innerHTML=t[b+3]" in panel and
           "$('ie'+n).innerHTML=t[b+3]" in preview,
           "the main card must use filtered Measurement current t[b+3], not the legacy iest t[b+4]")
-    check("تخمین باتری (iest)" in panel and "تخمین باتری (iest)" in preview,
-          "iest must remain visible as a separate diagnostic audit field")
+    check("جریان باتری (iest = فیلترشده)" in panel and "جریان باتری (iest = فیلترشده)" in preview,
+          "iest must remain visible as a diagnostic audit field (now equal to the filtered current)")
 
 
 def test_vdda_reference_measurement_v125():
