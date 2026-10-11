@@ -155,7 +155,7 @@ const page = html.replace("</body></html>", inject);
 if (page === html) page = html + inject; /* fallback: append */
 
 /* ---------- simulated STM32 ---------- */
-const P = [8, 8, 1046, 1303, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0,
+const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0,
            14400, 14300, 14600, 13500, 12800, 650, 50,
            14800, 150, 6000, 7000, 1000, 1000, 21000, 28000, 950, 14850, 2000,
            /* v1.16 ids 38..76 = firmware UI_ALARM_T__G__Alarm boot defaults */
@@ -480,7 +480,7 @@ function telemetry() {
         /* [EN] User calibration ids 0..3 change what the board REPORTS:
          *      chain mA = (raw − offset) × K × gain/1000, exactly like
          *      measurement.c. The sim physics built `raw` for the default
-         *      offset (8) and the default gains (1046/1303), so reporting
+         *      offset (0) and the default gains (3000/3000), so reporting
          *      the physical current scaled by the reported/physical chain
          *      ratio mirrors the board. With defaults the ratio is exactly
          *      1 and the demo looks unchanged; after the panel applies a
@@ -490,7 +490,7 @@ function telemetry() {
          *      می‌کند؛ با پیش‌فرض‌ها نسبت دقیقاً ۱ است و دمو تغییری
          *      نمی‌کند، ولی بعد از «اعمال روی برد» اینجا هم اعداد تکان
          *      می‌خورند (گزارش کاربر ۲۰۲۶-۱۰-۰۷: کالیبراسیون بی‌اثر بود). */
-        const gDef = k === 0 ? 1046 : 1303, oDef = 8, rawK = 1.144096;
+        const gDef = 3000, oDef = 0, rawK = 1.144096;
         const phys = Math.max(t[b + 0] - oDef, 0) * rawK * gDef / 1000;
         const rep = Math.max(t[b + 0] - P[k], 0) * rawK * P[2 + k] / 1000;
         const iCal = phys > 0 ? Math.round(c.i * rep / phys) : c.i;

@@ -50,10 +50,6 @@
 /* ---------------- PROGMEM is plain memory on a PC ----------------------- */
 #define PROGMEM
 #define PGM_P const char *
-#define pgm_read_byte(a) (*(const uint8_t *)(a))
-#define strlen_P strlen
-#define memcpy_P memcpy
-#define snprintf_P snprintf
 #define F(x) (x)
 #define SERIAL_8N1 0
 #define CONTENT_LENGTH_UNKNOWN ((size_t)-1)

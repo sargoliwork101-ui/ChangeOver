@@ -168,10 +168,10 @@
  *      ۲۰..۷۵ روی فلش می‌مانند؛ فقط مودهای گذرا ۱۵..۱۹ (+۷۶) فقط-RAM
  *      هستند. هر فیلتر یک پارامتر اندازه دارد (مدین ۱..۱۵، میانگین
  *      ۱..۳۰۰؛ ۱ = عبور مستقیم). */
-#define ESPLINK_PARAM_CUR1_OFFSET_COUNTS   0u   /* u32, counts,   def 8,    0..255    */
-#define ESPLINK_PARAM_CUR2_OFFSET_COUNTS   1u   /* u32, counts,   def 8,    0..255    */
-#define ESPLINK_PARAM_CUR1_GAIN_PERMILLE   2u   /* u32, permille, def 1046, 100..3000 */
-#define ESPLINK_PARAM_CUR2_GAIN_PERMILLE   3u   /* u32, permille, def 1303, 100..3000 */
+#define ESPLINK_PARAM_CUR1_OFFSET_COUNTS   0u   /* u32, counts,   def 0,    0..255    */
+#define ESPLINK_PARAM_CUR2_OFFSET_COUNTS   1u   /* u32, counts,   def 0,    0..255    */
+#define ESPLINK_PARAM_CUR1_GAIN_PERMILLE   2u   /* u32, permille, def 3000, 100..3000 */
+#define ESPLINK_PARAM_CUR2_GAIN_PERMILLE   3u   /* u32, permille, def 3000, 100..3000 */
 #define ESPLINK_PARAM_VIN_OFFSET_MV        4u   /* i32, mV,       def 0,    -5000..5000 (v1.10) */
 #define ESPLINK_PARAM_V24_OFFSET_MV        5u   /* i32, mV,       def 0,    -5000..5000 (v1.10) */
 #define ESPLINK_PARAM_V12_OFFSET_MV        6u   /* i32, mV,       def 0,    -5000..5000 (v1.10) */

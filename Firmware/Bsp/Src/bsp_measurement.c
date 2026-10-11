@@ -181,8 +181,6 @@
 
 /* [EN] Current sense: 10mOhm shunt and LM358 gain 101.
  *      [FA] سنجش جریان: شانت ۱۰mΩ و گین LM358 برابر ۱۰۱. */
-#define BSP_MEASUREMENT_SHUNT_MOHMS          10u
-#define BSP_MEASUREMENT_AMP_GAIN            101u
 /* [EN] MCU input divider on the CURRENTx nets (MCU sheet): R41 = 1k series
  *      and R42 = 10k to GND. The ADC pin therefore sees only
  *      10k/(1k+10k) of the LM358 output; the conversion below undoes this
@@ -191,8 +189,6 @@
  *      و R42 برابر 10k به زمین. پایه ADC فقط ‎10k/(1k+10k)‎ خروجی LM358 را
  *      می‌بیند؛ تبدیل پایین این تقسیم دائمی سخت‌افزاری را جدا از کالیبراسیون
  *      کاربر خنثی می‌کند. */
-#define BSP_MEASUREMENT_CURRENT_DIV_TOP_OHMS     1000u
-#define BSP_MEASUREMENT_CURRENT_DIV_BOTTOM_OHMS  10000u
 /* [EN] Unit scales of the current formula, each ONE concept (no shared
  *      magic 1000): milliamps per ampere for the shunt stage, and permille
  *      for the bench gain trim stage.
@@ -206,7 +202,6 @@
    shunt-voltage diagnostic converter (user order 2026-09-22).
    [FA] میکروولت بر میلی‌ولت - ضریب مقیاس مبدل تشخیصیِ فقط-سخت‌افزاریِ
    ولتاژ شانت (دستور کاربر ۲۰۲۶-۰۹-۲۲). */
-#define BSP_MEASUREMENT_UV_PER_MV             1000u
 /* [EN] Per-CHANNEL calibration since 2026-09-20 (user order: charger 1 must
  *      not ride on charger 2's calibration). Both chains share the same
  *      schematic topology above (10 mOhm shunt, LM358 gain 101, R41/R42), so

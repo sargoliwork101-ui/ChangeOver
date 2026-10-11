@@ -62,7 +62,6 @@
  * @brief  [EN] Legacy alias: valid input threshold equals qualify threshold. Prefer QUALIFY.
  *         [FA] نام قدیمی: آستانه معتبر برابر احراز است. از QUALIFY استفاده کنید.
  */
-#define MCU_POWER_INPUT_VALID_MV        MCU_POWER_INPUT_QUALIFY_MV
 
 /* ==================== McuPowerPath Init / مقداردهی اولیه ==================== */
 

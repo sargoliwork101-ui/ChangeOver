@@ -89,7 +89,6 @@ ChangeOver
 ├── Documentation/
 │   ├── Program_Map.xlsx               ← نقشهٔ کل برنامه (فایل‌ها، توابع، ۱۴۳ شناسه، پایه‌ها، فلش، دروازه‌ها) — ساختهٔ tools/make_program_map.py
 │   ├── System_State_Machine.xlsx      ← ماشین حالت کل برنامه؛ هر ماژول هم کتاب خودش را کنار برگهٔ اعتبارسنجی دارد
-│   └── (گزارش‌های ممیزی/اعتبارسنجی تاریخ‌دار — تاریخچه، دست‌نخورده می‌مانند)
 ├── CubeMX/
 │   └── CubeIDE.ioc                    ← کپی تنظیمات مکعب (هم‌نام پروژه، بعد از Generate کپی شود)
 ├── CubeIDE/                           ← HAL، main.c، CMSIS-RTOS2 با Backend فعلی FreeRTOS
@@ -97,7 +96,7 @@ ChangeOver
 ├── tools/
 │   ├── check_ai_rules.sh              ← اجرای قوانین AI_AGENT_RULES.md
 │   ├── check_firmware_syntax.sh       ← syntax check سمت Host برای Core و Firmware (از ۲۰۲۶-۱۰-۰۶ روی سورس‌های Firmware هشدارهای سخت‌گیرانهٔ shadow/undef/prototypes/cast-qual هم با ‎-Werror‎ اعمال می‌شود)
-│   ├── audit_consistency.py           ← ممیز نامتغیرهای بین‌فایلی (۴۵۹ نامتغیر؛ شامل پوشش اعتبارسنجی، آینه‌بودن شبیه‌ساز، ماشین حالت هر ماژول، و اعداد کهنهٔ مستندات در برابر کد)
+│   ├── audit_consistency.py           ← ممیز نامتغیرهای بین‌فایلی (۴۴۶ نامتغیر؛ شامل پوشش اعتبارسنجی، آینه‌بودن شبیه‌ساز، ماشین حالت هر ماژول، و اعداد کهنهٔ مستندات در برابر کد)
 │   ├── make_module_state_machines.py  ← ساخت ماشین حالت جدا برای هر ماژول + لینک در فایل اعتبارسنجی همان ماژول
 │   ├── make_state_machine_xlsx.py     ← کتاب ماشین حالت کل برنامه (Documentation/System_State_Machine.xlsx)
 │   ├── make_program_map.py            ← نقشهٔ کل برنامه: فایل‌ها، توابع، ۱۴۳ شناسهٔ ESP، پایه‌ها، فلش، دروازه‌ها (Documentation/Program_Map.xlsx)
@@ -107,7 +106,7 @@ ChangeOver
 │   ├── stamp_panel.py                 ← مهر نسخه/تاریخ ساخت روی هدر پنل
 │   ├── measure_flash.py               ← اندازهٔ فلش ایمیج (مقایسهٔ دلتا، نه عدد مطلق)
 │   ├── measure_ram.py                 ← بودجهٔ RAM + بدترین عمق پشتهٔ هر تسک و وقفه (capstone)
-│   └── (host tests در Modules/*/Tester: Ui, Charger, Imbalance, Changeover, Fault, Protection, Jitter, McuPowerPath, CalLut, Measurement — همه داخل check_firmware_syntax.sh اجرا می‌شوند)
+│   └── (host tests در Modules/*/Tester: Ui, Charger, Imbalance, Changeover, Fault, Protection, Jitter, McuPowerPath, CalLut, Measurement, EspLink — همه داخل check_firmware_syntax.sh اجرا می‌شوند)
 └── Firmware/
     ├── App/
     │   app.c ──► rtos_app.h

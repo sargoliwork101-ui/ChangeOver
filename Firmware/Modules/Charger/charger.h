@@ -80,7 +80,7 @@
 /* ==================== Conservative bring-up gate / دروازه امن راه‌اندازی ==================== */
 /* [EN] CHG_TRANSFORMER_KNOWN = 1: transformer data and the current-sense
  * chain are board-verified (gate/shunt waveforms at the 10% stage, R41/R42
- * divider compensated in the BSP, zero offset 8 counts, R77 confirmed 100k,
+ * divider compensated in the BSP, bench-calibrated zero offset, R77 confirmed 100k,
  * shunt reading physically consistent with a 23.5 V / 12.55 V energy audit).
  * Normal Bulk/Absorb/Float control below now runs. It is still a separate
  * compile-time safety gate from CHG_MASTER_ENABLE.
@@ -116,8 +116,6 @@
 #define CHG_BRINGUP_TEST_ENABLE                0u   /* [EN] bring-up finished; normal charge active / bring-up تمام شد، شارژ نرمال فعال است */
 #define CHG_BRINGUP_TEST_MAX_DUTY_PERMILLE    100u  /* [EN] dormant: 10% stage verified on board / غیرفعال: مرحله ۱۰٪ روی برد تأیید شده */
 #define CHG_BRINGUP_TEST_SOURCE_LIMIT_MA      150u  /* [EN] dormant: 150 mA source limit / غیرفعال: حد منبع ۱۵۰mA */
-#define CHG_BRINGUP_TEST_FULL_STAGE_MAX_DUTY  100u  /* [EN] 10% after waveform confirmation / ۱۰٪ بعد از تأیید شکل‌موج */
-#define CHG_BRINGUP_TEST_FULL_STAGE_LIMIT_MA  100u  /* [EN] 100 mA after waveform confirmation / ۱۰۰mA بعد از تأیید شکل‌موج */
 
 /* ==================== Electrical policy / سیاست الکتریکی ==================== */
 #define CHG_PWM_FREQUENCY_HZ          50000u
@@ -270,7 +268,6 @@
 
 /* [EN] 4095 counts x 24200 / 27573 - the chain's full-scale current.
  * [FA] جریان تمام‌مقیاس زنجیره. */
-#define CHG_CHAIN_FULL_SCALE_MA        ((4095u * 24200u) / 27573u)
 /* [EN] Worst-case (channel 1, at the highest valid battery voltage)
  *      battery current the chain can still represent. Derived above.
  * [FA] بدترین‌حالتِ جریان باتری که زنجیره هنوز می‌تواند نمایش دهد. */
@@ -870,7 +867,6 @@ _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
  * [FA] تشخیص قطع باتری از ۲۰۲۶-۰۹-۱۹ به مالکیت ماژول Fault منتقل شد؛ شارژر
  *      فقط آینهٔ پرچم است و آستانه/تایمری اینجا ندارد (fault.h ببین). */
 #define CHG_JIT_LOCKOUT_MS            3000u
-#define CHG_RELAY_SETTLE_MS            100u
 /* [EN] Manual test mode link dead-man (user order 2026-09-23): while the
  *      mode is on, the STM expects at least one valid ESP frame every
  *      3 s; on expiry both duties drop to 0 and the autonomous charger
@@ -989,7 +985,6 @@ extern volatile uint32_t UINT32_T__G__ChargerDiag[CHG_DIAG_COUNT];
 #define CHG_CALIB_IDX_V12                   3u
 #define CHG_CALIB_IDX_VHIGH                 4u
 #define CHG_CALIB_CH_UP_BASE                5u
-#define CHG_CALIB_CH_DN_BASE               10u
 #define CHG_CALIB_CH_STRIDE                 5u
 #define CHG_CALIB_OFF_DUTY                  0u
 #define CHG_CALIB_OFF_STATE                 1u

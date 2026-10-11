@@ -803,8 +803,6 @@ static bool BOOL__G__UiBatteryStableInitialized = false;
  * @brief  [EN] Alias stable percent for BatteryRun (raw/hysteresis 2% + 0/1).
  *         [FA] درصد پایدار BatteryRun (هیسترزیس 2٪ + ۰/۱).
  */
-#define UINT8_T__G__UiBatteryRunStablePercent UINT8_T__G__UiBatteryStablePercent
-#define BOOL__G__UiBatteryRunStableInitialized BOOL__G__UiBatteryStableInitialized
 
 /* ==================== Charging stable percent / درصد پایدار شارژ ==================== */
 
