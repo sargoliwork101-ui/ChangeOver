@@ -190,11 +190,11 @@
 /* [EN] v1.2 global manual test mode (user order 2026-09-23): 1 = the
  *      automatic charger is suspended, every battery condition bypassed
  *      and each channel driven directly at param 16/18; see
- *      ESP_AGENT_SPEC.md section 5.2 for the full contract (hardware
+ *      ESP_AGENT_SPEC.md section 19 for the full contract (hardware
  *      ‎floor, JIT re-arm, 3 s link dead-man). / [FA]‎ مود تست دستی سراسری
  *      v1.2 (دستور کاربر): ۱ = شارژر خودکار تعلیق، شرط‌های باتری رد و
  *      درایو مستقیم هر کانال با پارامتر ۱۶/۱۸؛ قرارداد کامل در
- *      ESP_AGENT_SPEC.md بخش 5.2 (کف سخت‌افزاری، ‎re-arm‎ ی JIT، ددمن ۳
+ *      ESP_AGENT_SPEC.md بخش 19 (کف سخت‌افزاری، ‎re-arm‎ ی JIT، ددمن ۳
  *      ثانیه‌ای لینک). */
 #define ESPLINK_PARAM_MANUAL_TEST_MODE     19u  /* u32, 0/1,      def 0                */
 /* [EN] Charge profile (v1.12, user order 2026-09-25): shared by BOTH

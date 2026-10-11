@@ -1115,12 +1115,12 @@ uint32_t func__Charger_GetDutyFixedPermille(uint8_t uint8_t__channelIndex);
  *      (SetDutyFixedPermille) with every battery condition bypassed; the
  *      hardware floor stays: input presence, the JIT trip, the 15.0 V
  *      overvoltage cutoff, the duty ceilings and the FINAL_FAULT latch.
- *      See ESP_AGENT_SPEC.md section 5.2 for the full contract.
+ *      See ESP_AGENT_SPEC.md section 19 for the full contract.
  * [FA] کلید سراسری تست/بنچ (دستور کاربر ۲۰۲۶-۰۹-۲۳، پارامتر ۱۹ پروتکل
  *      v1.2). تا وقتی فعال است شارژر خودکار تعلیق و هر کانال مستقیم روی
  *      مقدار duty فیکس خودشران می‌شود با حذف همهٔ شرط‌های باتری؛ کفِ
  *      سخت‌افزاری می‌ماند: حضور ورودی، تریپ JIT، قطع ۱۵٫۰V، سقف‌های duty
- *      و قفل FINAL_FAULT. قرارداد کامل: ESP_AGENT_SPEC.md بخش 5.2. */
+ *      و قفل FINAL_FAULT. قرارداد کامل: ESP_AGENT_SPEC.md بخش 19. */
 
 /**
  * @brief  [EN] Request manual test mode on/off (called by the ESP link

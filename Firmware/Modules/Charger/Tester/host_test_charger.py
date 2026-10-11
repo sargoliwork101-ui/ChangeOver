@@ -2891,7 +2891,7 @@ def test_min_select_handover_v124():
        controlling one percent parameter with two duties? you have two
        parameters and one output." The answer is that there is ONE output and
        ONE integrator, driven by whichever loop asks for less. That answer is
-       now published as a numeric trace in ESP_AGENT_SPEC 5.11 and in the
+       now published as a numeric trace in ESP_AGENT_SPEC section 12 and in the
        panel's help text, so it needs a guard: without one, the next gain
        change makes those printed numbers quietly wrong.
        [FA] کاربر با دیدن جدول پارامترها پرسید: «چطور با دو دیوتی یک درصد را
@@ -2940,7 +2940,7 @@ def test_min_select_handover_v124():
     # --- 4. the published explanation must exist in both places the user reads ---
     spec = (ROOT / "ESP_AGENT_SPEC.md").read_text(encoding="utf-8")
     check("How TWO loops drive ONE duty" in spec and "min-select" in spec,
-          "spec 5.11 must explain how two loops drive one output")
+          "spec section 12 must explain how two loops drive one output")
     check("199511" in spec,
           "the spec's bumpless claim must cite the measured integrator value")
     panel = (ROOT / "esp_link_panel" / "plink_panel.h").read_text(encoding="utf-8")

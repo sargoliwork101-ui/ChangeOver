@@ -289,7 +289,7 @@ SCENARIOS = {
 
 def trace(rows=None, hours=5.0, **plant_kw):
     """[EN] Record who wins the min-select on every pass. This is the evidence
-       behind the "how TWO loops drive ONE duty" table in ESP_AGENT_SPEC 5.11
+       behind the "how TWO loops drive ONE duty" table in ESP_AGENT_SPEC section 12
        and the charge-PID card's help text: without it those numbers could go
        stale silently the next time a gain moves.
        [FA] ثبت اینکه در هر پاس کدام شاخه کمینه‌گیری را می‌برد. مدرکِ پشت
