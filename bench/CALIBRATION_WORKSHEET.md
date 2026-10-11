@@ -40,9 +40,9 @@ believes:
 | 24 V dividers (both) | 68000 / 6800 | connector vs ADC pin: 10.9968 and 11.0139, and 68K/6.8K is exactly 11.0000 |
 | 12 V divider | 34398 / 6800 | 14.88 V / 2.456 V = 6.0586 |
 | V12 bench compensation | **OFF** | it was subtracting 150 mV + I x 0.47 ohm, which pushed the real terminal 0.4 V above target |
-| both current LUTs | refitted | they are power tables and the voltage they divide by moved |
+| both current tables | refitted | battery-current tables on the raw-counts axis (mA, no power, no voltage) |
 
-[FA] این‌ها از خوانش‌های ۲۰۲۹-۰۹-۲۹ شما درآمدند و در فرم‌ور هستند؛ **دوباره
+[FA] این‌ها از خوانش‌های ۲۰۲۶-۰۹-۲۹ شما درآمدند و در فرم‌ور هستند؛ **دوباره
 انجامشان ندهید**. اینجا آمده‌اند تا بدانید برد حالا چه باوری دارد.
 
 ---
