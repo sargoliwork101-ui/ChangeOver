@@ -263,12 +263,10 @@ uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts);
  * @brief  [EN] Report whether a channel's public current result is already
  *              battery-side by the panel's current table (or by the gain and
  *              offset line when no table is stored). When true,
- *              downstream charger code must not apply a second Vin/Vbat
- *              conversion.
+ *              downstream charger code must not apply any second conversion.
  *         [FA] اعلام می‌کند که خروجی جریان کانال همین حالا سمت باتری است
  *              (جدول جریان پنل، یا خط گین و آفست وقتی جدولی نیست). وقتی true است، کد بعدی
- *              شارژر نباید تبدیل دوم ‎Vin/Vbat‎ را اعمال کند، حتی اگر ETA
- *              کند.
+ *              شارژر نباید هیچ تبدیل دوم دیگری اعمال کند.
  * @param  uint8_t__channelIndex [EN] Zero-based channel index (0 or 1) /
  *                               اندیس صفرمبنای کانال
  * @return bool [EN] true for channels 0 and 1 (battery-side output) /
