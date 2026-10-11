@@ -490,7 +490,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d17dec3</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 22a3996</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3467,8 +3467,8 @@ function calcode(){
   '\n *      from '+calScope.length+' accepted bench samples. The panel has\n'+
   ' *      already checked: equal axis lengths, >= 2 points, increasing counts\n'+
   ' *      axis (every count <= 4095), non-decreasing battery-current axis.\n'+
-  ' *      batteryMa = DMM current (mA). No voltage is involved.\n'+
-  ' *      divisor); rebuild if the voltage scale changes.\n'+
+  ' *      batteryMa = DMM current (mA). The table itself holds no voltage;\n'+
+  ' *      the voltage lines below are separate.\n'+
   ' *      Record only: the board receives the table by LUT push from the panel.\n'+
   ' * [FA] جدول فقط جریان مولتی‌متر است و هیچ ولتاژی در آن نیست. */\n\n';
  [1,2].forEach(n=>{const t=calbuild(n);

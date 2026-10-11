@@ -1165,7 +1165,7 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
  *              GET_PARAMS with PARAMS_BULK. Unknown types and wrong payload
  *              lengths are dropped silently. CAL_REFERENCE (0x03) is no longer
  *              handled - the panel stopped sending it in v1.7 and the dead
- *              handler was removed in v2 to fit the 62 K flash budget.
+ *              handler was removed in v2 to fit the flash budget.
  *         [FA] رسیدگی به یک فریم کامل و تأییدشده با CRC: اعمال SET_PARAM (با
  *              پاسخ PARAM_REPORT حاوی مقدار اعمال‌شده) یا پاسخ GET_PARAMS با
  *              PARAMS_BULK. نوع ناشناخته و طول payload غلط بی‌صدا کنار گذاشته
