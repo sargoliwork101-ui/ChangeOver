@@ -21,7 +21,7 @@
  * [EN] ADC REFERENCE (VDDA) CALIBRATION - the single global scale
  *      Every voltage and every current is counts x VDDA / 4095, so VDDA is the
  *      one term common to all of them. The earlier VDDA-3261 mV note is NOT
- *      supported by bench/solo2_dense.csv (the two voltage channels disagree:
+ *      supported by bench/solo2_dense.csv (removed, see git history) (the two voltage channels disagree:
  *      +1.2 % and -0.05 %). Treat VDDA as unverified until a bench run with
  *      a reference shows one shared error.
  *      If the error is a GAIN (hypothesis), that would explain why the board

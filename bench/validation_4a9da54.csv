@@ -1,0 +1,31 @@
+# Validation of bench/current_table_4a9da54.csv against the DMM export bench/bench_samples_4a9da54.json.
+# Replaces the removed bench/solo2_dense.csv (older build, no DMM current column).
+# Method: each BAT2 sample: count = round(raw ch2 mean counts) (table axis is whole counts),
+#   table value = linear interpolation between anchors (same rule as the firmware, tenths of mA),
+#   margin = table - DMM. A reading below the true current would show a negative margin.
+# IN-SAMPLE: the table was built from these same samples, so this checks the build, not new data.
+#   The real test of 'never below true current' needs a fresh sweep (not yet measured).
+sample,duty_pct,raw_counts,count_used,dmm_mA,table_mA,margin_mA,rule
+1,0,7.36,7,0.0,0.0,0.0,hold
+2,1,8.21,8,0.0,0.0,0.0,interp
+3,2,10.24,10,0.0,0.0,0.0,interp
+4,3,22.48,22,5.0,5.0,0.0,interp
+5,0,7.72,8,0.0,0.0,0.0,interp
+6,1,8.54,9,0.0,0.0,0.0,interp
+7,2,10.42,10,0.0,0.0,0.0,interp
+8,3,22.49,22,5.0,5.0,0.0,interp
+9,4,37.86,38,21.0,21.0,0.0,interp
+10,5,62.55,63,47.0,47.0,0.0,interp
+11,6,94.70,95,73.0,73.0,0.0,interp
+12,7,127.44,127,104.0,104.0,0.0,interp
+13,8,165.74,166,142.0,142.0,0.0,interp
+14,9,205.66,206,181.0,181.0,0.0,interp
+15,10,251.54,252,225.0,225.0,0.0,interp
+16,11,283.40,283,265.0,265.0,0.0,interp
+17,12,308.15,308,310.0,310.0,0.0,interp
+18,13,341.28,341,363.0,363.0,0.0,interp
+19,14,376.66,377,413.0,413.0,0.0,interp
+20,15,419.88,420,467.0,467.0,0.0,interp
+21,16,465.60,466,518.0,518.0,0.0,interp
+22,17,514.81,515,560.0,560.0,0.0,above_last
+# samples below DMM: 0

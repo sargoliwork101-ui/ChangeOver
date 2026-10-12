@@ -17,22 +17,8 @@
 /* ==================== PWM outputs / خروجی‌های PWM ==================== */
 /* [EN] Schematic MCU_PWM1 = PA0/TIM2_CH1 and MCU_PWM2 = PA6/TIM3_CH1.
  * [FA] در شماتیک MCU_PWM1 برابر ‎PA0/TIM2_CH1‎ و MCU_PWM2 برابر ‎PA6/TIM3_CH1‎ است. */
-#define PIN_PWM1_PORT           GPIOA
-#define PIN_PWM1_PIN            GPIO_PIN_0      /* PA0 TIM2_CH1 MCU_PWM1 */
-#define PIN_PWM2_PORT           GPIOA
-#define PIN_PWM2_PIN            GPIO_PIN_6      /* PA6 TIM3_CH1 MCU_PWM2 */
 
 /* ==================== ADC inputs / ورودی‌های ADC ==================== */
-#define PIN_ADC_CURRENT1_PORT   GPIOA
-#define PIN_ADC_CURRENT1_PIN    GPIO_PIN_1      /* PA1 ADC1_IN1 ADC_CURRENT1 */
-#define PIN_ADC_24_IN_PORT      GPIOA
-#define PIN_ADC_24_IN_PIN       GPIO_PIN_2      /* PA2 ADC1_IN2 MCU_ADC_24_IN */
-#define PIN_ADC_24_BAT_PORT     GPIOA
-#define PIN_ADC_24_BAT_PIN      GPIO_PIN_3      /* PA3 ADC1_IN3 MCU_ADC_24_BAT */
-#define PIN_ADC_12_BAT_PORT     GPIOA
-#define PIN_ADC_12_BAT_PIN      GPIO_PIN_5      /* PA5 ADC1_IN5 MCU_ADC_12_BAT */
-#define PIN_ADC_CURRENT2_PORT   GPIOA
-#define PIN_ADC_CURRENT2_PIN    GPIO_PIN_7      /* PA7 ADC1_IN7 ADC_CURRENT2 */
 
 /* ==================== Digital outputs / خروجی‌های دیجیتال ==================== */
 #define PIN_BUZZER_PORT         GPIOA
@@ -78,10 +64,6 @@
 #define PIN_INT_24_IN_PIN       GPIO_PIN_4      /* PB4 MCU_INT_24_IN */
 
 /* ==================== ESP-Link UART / UART ارتباط ESP ==================== */
-#define PIN_TX_PORT             GPIOA
-#define PIN_TX_PIN              GPIO_PIN_9      /* PA9 MCU_TX -> ESP_RX */
-#define PIN_RX_PORT             GPIOA
-#define PIN_RX_PIN              GPIO_PIN_10     /* PA10 MCU_RX <- ESP_TX */
 
 /* ==================== Safe startup levels / سطوح امن شروع ==================== */
 /* [EN] Active-high loads are kept low; PB5 (MCU battery path Q1, active-low)

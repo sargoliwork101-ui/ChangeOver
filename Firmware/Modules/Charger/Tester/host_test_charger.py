@@ -3147,7 +3147,7 @@ def test_vdda_reference_measurement_v125():
     """[EN] The board "never calibrates" for a mathematical reason: the
        dominant error is a GAIN (the ADC reference is not the assumed 3.300 V)
        while the only runtime calibration the product exposes is an ADDER.
-       Earlier hypothesis (UNVERIFIED, audit 2026-10-10): at the zero-current row of solo2_dense.csv the input
+       Earlier hypothesis (UNVERIFIED, audit 2026-10-10): at the zero-current row of solo2_dense.csv (removed, see git history) the input
        channel and the 12 V channel over-read by the SAME 1.19 percent -
        different dividers, different resistors, agreeing to 5 parts in 100000,
        which only a shared term can do. This pins the machinery that finally
