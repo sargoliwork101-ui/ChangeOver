@@ -329,7 +329,9 @@ its automatic mode and the buzzer unmuted.
   `func__EspLink_Run` calls `func__EspLink_NvmTick` every comm period and
   saves ~1.5 s (15 runs) after the LAST change - one page erase + program
   per burst, not per keystroke. A failed verify retries up to 3 times,
-  then gives up until the next change (no erase loop on a worn page).
+  then the save PARKS (no erase loop on a worn page): the value stays dirty in RAM
+  and nothing is discarded. The next persisted change, or the reset flush before
+  a LUT reset, tries again.
 - Cost note: an F1 page erase stalls ALL flash instruction fetches for
   typ. 20..40 ms - the measurement/charger loops hiccup once per save
   (rare event); one UART frame may be lost around a save (the parser

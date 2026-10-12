@@ -199,6 +199,11 @@ int main(void)
     require_check(g_erase_attempts == 4u,
                   "the first failed save gets one initial attempt plus three retries");
 
+    /* [EN] Parked, not dropped: more ticks must not start timed erases again. */
+    tick_until_exhausted();
+    require_check(g_erase_attempts == 4u,
+                  "after the budget is spent the save parks: no further timed erases");
+
     /* This is the regression: after exhaustion, a new persisted edit must
        restore the complete retry budget rather than inheriting retry=3. */
     func__EspLink_NvmMarkDirty(1u);

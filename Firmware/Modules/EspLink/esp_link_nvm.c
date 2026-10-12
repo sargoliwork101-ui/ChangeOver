@@ -319,6 +319,11 @@ void func__EspLink_NvmRecordBuild(esp_link_nvm_record_t
  * [FA] 0 = پاک؛ 1.. = سن دیبانس به تعداد اجرای تسک ارتباط از آخرین تغییر. */
 static uint16_t UINT16_T__G__NvmDirtyRuns = 0u;
 static uint8_t UINT8_T__G__NvmSaveRetries = 0u;
+/* [EN] Parked = the retry budget is spent. The value stays dirty in RAM (never
+   dropped): no more timed erases until a new persisted edit or the reset flush.
+   [FA] پارک = بودجهٔ تلاش تمام شده است. مقدار در RAM کثیف می‌ماند (هرگز حذف
+   نمی‌شود): تا ویرایش ماندگار جدید یا flush ریست، پاک‌کردن زمان‌بندی‌شده نیست. */
+static bool BOOL__G__NvmParked = false;
 
 /* [EN] Sequence of the newest valid record on flash and which page holds it.
  *      Fresh board (no valid record anywhere): the default routes the first
@@ -436,6 +441,7 @@ void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
            ویرایش سالم بعدی هم ممکن است هرگز ذخیره نشود. */
         UINT16_T__G__NvmDirtyRuns = 1u;
         UINT8_T__G__NvmSaveRetries = 0u;
+        BOOL__G__NvmParked = false;
     }
 }
 
@@ -650,6 +656,7 @@ bool func__EspLink_NvmFlushForReset(void)
     {
         UINT16_T__G__NvmDirtyRuns = 0u;
         UINT8_T__G__NvmSaveRetries = 0u;
+        BOOL__G__NvmParked = false;
         return true;
     }
     /* [EN] Keep the dirty flag and the LUT reset authorization intact after a
@@ -663,7 +670,7 @@ bool func__EspLink_NvmFlushForReset(void)
 
 void func__EspLink_NvmTick(void)
 {
-    if (UINT16_T__G__NvmDirtyRuns == 0u)
+    if ((UINT16_T__G__NvmDirtyRuns == 0u) || (BOOL__G__NvmParked != false))
     {
         return;
     }
@@ -689,6 +696,10 @@ void func__EspLink_NvmTick(void)
     }
     else
     {
-        UINT16_T__G__NvmDirtyRuns = 0u;
+        /* [EN] Retry budget spent: park instead of clearing the dirty flag, so
+           the unsaved value is not silently dropped. [FA] بودجه تمام شد: پارک
+           می‌شود، نه پاک‌کردن پرچم کثیف، تا مقدار ذخیره‌نشده بی‌صدا حذف نشود. */
+        UINT16_T__G__NvmDirtyRuns = (uint16_t)ESP_LINK_NVM_SAVE_DELAY_RUNS;
+        BOOL__G__NvmParked = true;
     }
 }
