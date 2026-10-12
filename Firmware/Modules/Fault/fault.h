@@ -133,7 +133,7 @@ void func__Fault_Evaluate(const measurement_snapshot_t *measurement_snapshot_t__
  *      stay boot defaults only.
  * [FA] هشت عدد FAULT_* بالا = شناسه‌های زمان‌اجرای ۲۷..۳۴ از پنل، ماندگار
  *      روی فلش و گیره‌شده به‌صورت مجموعه؛ ماکروها فقط پیش‌فرض بوت‌اند. */
-#define FAULT_ALARM_PARAM_DISCONNECT_MV        27u  /* [EN] mV, 14000..15000, >= absorbOver+50, <= ovCutoff-100 / mV */
+#define FAULT_ALARM_PARAM_DISCONNECT_MV        27u  /* [EN] mV, 14000..15000, independent of absorbOver and OV cutoff / mV */
 #define FAULT_ALARM_PARAM_DISCONNECT_DEB_MS    28u  /* [EN] ms, 50..1000 / ms */
 #define FAULT_ALARM_PARAM_ABSENT_MV            29u  /* [EN] mV, 3000..8000, < back-500 / mV */
 #define FAULT_ALARM_PARAM_BACK_MV              30u  /* [EN] mV, 4000..9000, > absent+500 / mV */
