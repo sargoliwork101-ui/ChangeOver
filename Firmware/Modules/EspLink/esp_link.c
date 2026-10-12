@@ -243,8 +243,12 @@ bool func__EspLink_ApplyParam(uint8_t uint8_t__paramId,
             return true;
 
         case ESPLINK_PARAM_FILTER_MEDIAN_SIZE:
+            /* [EN] Saturate before the narrowing cast: a wrapped value (300 -> 44)
+               would be accepted silently. The setter clamps 1..MAX itself.
+               [FA] قبل از تبدیل به ۸ بیت اشباع کن: مقدار پیچیده (۳۰۰ -> ۴۴) بی‌صدا
+               پذیرفته می‌شد. سترِ اندازه خودش ۱..MAX را گیره می‌زند. */
             *uint32_t__appliedValue = (uint32_t)func__Measurement_SetFilterMedianSize(
-                (uint8_t)(uint32_t__value & 0xFFu));
+                (uint8_t)((uint32_t__value > 255u) ? 255u : uint32_t__value));
             return true;
 
         case ESPLINK_PARAM_FILTER_AVERAGE_WINDOW:

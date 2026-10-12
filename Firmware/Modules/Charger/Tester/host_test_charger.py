@@ -4108,9 +4108,19 @@ def test_boundary_concurrency_hardening_v126():
           "dead-charge elapsed time must saturate at the exact UINT32_MAX boundary")
 
 
+def test_median_param_saturates():
+    """[EN] A median size wider than 8 bits must saturate, not wrap (300 -> 44).
+    [FA] اندازهٔ مدین بیشتر از ۸ بیت باید اشباع شود، نه بپیچد (۳۰۰ -> ۴۴)."""
+    txt = ESP_LINK_C.read_text()
+    check("(uint32_t__value > 255u) ? 255u : uint32_t__value" in txt
+          and "(uint8_t)(uint32_t__value & 0xFFu));" not in txt,
+          "esp_link.c: FILTER_MEDIAN_SIZE must saturate before the 8-bit cast")
+
+
 def main():
     tests = [
         test_modules_enabled_build,
+        test_median_param_saturates,
         test_master_enable_constant_is_single_gate,
         test_master_enable_zero_safeidle_stops_both_pwm_and_relay_off,
         test_transformer_known_not_bypassable_bringup_only_when_zero,
