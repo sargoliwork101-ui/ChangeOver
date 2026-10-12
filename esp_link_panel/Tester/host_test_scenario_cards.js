@@ -1636,6 +1636,21 @@ const win = dom.window;
  *      تا وقتی برد همان CRC را پس نداده دکمهٔ ریست را پیشنهاد نمی‌دهد. راه
  *      بیلد هم باید سر جایش بماند - خواستهٔ کاربر.
  */
+
+/* v2 NAK: the board refused a SET_PARAM. The panel must say so, name the id,
+   and clear the warning once the link reports no refusal. */
+function testNakWarning(win, doc) {
+    win.eval('lnkhealth')({ vm: 0, ce: 0, nk: 2, nr: 1, nid: 7 });
+    const w = doc.getElementById('lnkw');
+    check(w.className.indexOf('warn') >= 0 && w.textContent.indexOf('نپذیرفت') >= 0 &&
+          w.textContent.indexOf('7') >= 0,
+          'a board refusal (PARAM_NAK) shows a warning naming the parameter id');
+    win.eval('lnkDismiss')();
+    win.eval('lnkhealth')({ vm: 0, ce: 0, nk: 0, nr: 0, nid: 0 });
+    check(w.innerHTML === '' && w.className.indexOf('warn') < 0,
+          'with no refusal reported, the NAK warning is cleared');
+}
+
 async function testLutPush(win, doc) {
     console.log('\nv1.66 direct LUT push / ارسال مستقیم جدول به برد');
 
@@ -2106,6 +2121,7 @@ setTimeout(async () => {
         testFixRules(win, doc);
         await testBackupAndCal(win, doc);
         await testLutPush(win, doc);
+        testNakWarning(win, doc);
     } catch (err) {
         failed += 1;
         console.log('  FAIL threw: ' + err.message);
