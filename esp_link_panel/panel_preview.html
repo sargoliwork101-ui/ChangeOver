@@ -490,7 +490,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 41090fa</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 5538db3</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1140,11 +1140,6 @@ pendRestore();
    clamp کند و مقدار اعمال‌شده/بازخوانی‌شده مرجع است. فقط بازهٔ مستقل ‎HTML/EVB‎
    پیش از POST اعتبارسنجی سخت است. */
 const MINGAP=100;
-function fitdur(per,cnt,gap){/* بیشترین مدت هر بوق که در پنجره جا می‌شود */
- if(per<=0||cnt<=0)return 600000;
- const gaps=cnt>1?gap*(cnt-1):0;
- if(gaps>=per)return 0;
- return Math.floor((per-gaps)/cnt);}
 /* [EN] v: id->value map of the WHOLE picture (boxes + board). Returns the
    list of fixes as [id, from, to]. [FA] فهرست اصلاح‌ها را برمی‌گرداند. */
 function fixrules(v){
@@ -2051,7 +2046,7 @@ function afresh(){const w=achk();
  [$('aw'),$('aw2')].forEach(el=>{if(el){el.innerHTML='';el.style.cssText='margin:2px 0 0';}});
  for(const id of AIDS){const ne=$('q'+id);if(ne){const hit=w.filter(x=>x.ids.includes(id));ne.style.borderColor=hit.length?(hit.some(x=>x.advisory)?'#f7c13c':'#e5484d'):'';ne.title=hit.length?hit.map(x=>(x.advisory?'⚠ توصیه: ':'⛔ ')+x.msg).join('\n'):'';}}
  try{c4();sall();}catch(e){}
- const ms=$('xmuteS');if(ms)ms.textContent=(D&&D.p&&D.p[76]===1)?'🔇 میوت روشن — موقتی، با ریست برد پاک می‌شود؛ LEDها همچنان چشمک می‌زنند':'🔊 بوق روشن';}
+ }
 function apend(id){if(!D)return 0;return id<32?(D.q&(1<<id)):id<64?(D.q2&(1<<(id-32))):id<96?((D.q3||0)&(1<<(id-64))):id<128?((D.q4||0)&(1<<(id-96))):((D.q5||0)&(1<<(id-128)));}
 /* v1.70 (دستور کاربر): چیپ «روی برد: …» حذف شد — از فریم تله‌متری پر می‌شد و
    بعد از تغییر هنوز عدد قدیمی را نشان می‌داد. خود کادر از برد پر می‌شود،
@@ -2196,12 +2191,10 @@ function evcl(id){const v=evval(id);return (EVWANT[id]!=null&&v!=null&&EVWANT[id
 /* [EN] Read-only rendering. The operating table uses ONLY this now (user
    order): it reports, it does not edit.
    [FA] رندر فقط‌خواندنی. جدول عملکرد حالا فقط از همین استفاده می‌کند. */
-function evr(id){return '<b class="evv">'+evtxt(id)+'</b>';}
 /* [EN] A derived number with no parameter behind it (the duty ceiling is
    max(id 13, id 14)); it is reported, never offered as a control.
    [FA] عددی مشتق که پارامتری پشتش نیست؛ گزارش می‌شود، هرگز به‌عنوان کنترل
    پیشنهاد نمی‌شود. */
-function evr_plain(txt){return '<b class="evv">'+txt+'</b>';}
 
 /* [EN] An editable chip (HTML) and the attributes that make an SVG <text>
    editable. Same data-i contract, so one click handler serves both.
@@ -2780,7 +2773,6 @@ function sall(){
    ' · سه LED هم‌زمان: '+Math.round(lp*ld/100)+' میلی‌ثانیه روشن / '+Math.round(lp*(100-ld)/100)+' میلی‌ثانیه خاموش، هر '+lp+' میلی‌ثانیه ('+ld+'٪ duty) · q137..q142 مستقل از سناریوهای ۵ و ۶.');
  }
 }
-function xmute(){const v=(D&&D.p&&D.p[76]===1)?0:1;const f=$('q76');if(f)f.value=v;send(76,v);}
 /* [EN] Alarm edits use only each field's own firmware range as a hard
    gate. Cross-field messages remain advisory; they never erase or veto a
    value before the board has had the chance to apply and report it.
@@ -3228,7 +3220,6 @@ function calfit(xs,ys){
  const my=I.reduce((s,i)=>s+ys[i],0)/I.length;let ss=0,sr=0,mx=0;
  I.forEach(i=>{const e=ys[i]-(a*xs[i]+b);sr+=e*e;ss+=(ys[i]-my)*(ys[i]-my);if(Math.abs(e)>mx)mx=Math.abs(e);});
  return {a,b,r2:ss>0?(1-sr/ss):1,n:I.length,mx,span:Math.max(...I.map(i=>xs[i]))-Math.min(...I.map(i=>xs[i]))};}
-function calrobustCenter(v){v=(v||[]).filter(Number.isFinite).sort((a,b)=>a-b);const m=v.length>>1;return v.length&1?v[m]:(v[m-1]+v[m])/2;}
 var CALP=[],CALR=[],CAL_BUSY=false;
 function calinvalidate(){
  CALP=[];CALR=[];calmodalClose();

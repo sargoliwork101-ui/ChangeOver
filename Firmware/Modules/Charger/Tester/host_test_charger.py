@@ -1954,8 +1954,8 @@ def test_ui_mirror_v116():
     # per-card simulators replaced it. What must survive is the fault-bit
     # mirror refresh and the mute toggle.
     # v1.53: آینهٔ LED برد حذف شد؛ شبیه‌ساز هر کارت جایش را گرفت.
-    check("function uview()" in ino and "setInterval(uview,250)" in ino and "function xmute()" in ino,
-          "the fault-bit refresh and the mute toggle must exist")
+    check("function uview()" in ino and "setInterval(uview,250)" in ino ,
+          "the fault-bit refresh must exist")
     check("ulR" not in ino and "function simrun()" in ino and "function simbz(" in ino,
           "the board-driven LED strip is gone and the per-card simulator is in")
     # v1.55 (user order): the leftover notice row and the mute button went too.
@@ -2114,7 +2114,7 @@ def test_ui_mirror_v116():
           "the duplicated روند one-liner is gone from every scenario card")
     check(ino.count('class="ds c4ds"') >= 6,
           "every scenario card keeps its dark explanation box")
-    check("با ریست برد پاک می‌شود" in ino and "روی فلش می‌ماند" not in ino,
+    check("روی فلش ذخیره نمی‌شود" in ino and "روی فلش می‌ماند" not in ino,
           "v1.16b (user order: mute lives only for the panel session): no stale persisted-mute text")
 
     # --- preview server: 93 params + q3 ---
