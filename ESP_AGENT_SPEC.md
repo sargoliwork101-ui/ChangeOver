@@ -56,7 +56,8 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
 ```
 
 - Rounding rule: the table never rounds in the middle of a calculation; the final value is
-  rounded once, to the nearest integer mA.
+  rounded once, UP to the next integer mA (ceiling), so a reading is never below the
+  table/chain value.
 - Gain and offset never change the table itself. They only add the part above the last anchor
   and the no-table fallback.
 - Table axis: counts, strictly increasing, 0..4095. Table values: mA, non-decreasing.

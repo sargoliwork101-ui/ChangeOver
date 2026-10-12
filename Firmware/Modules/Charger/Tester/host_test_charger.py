@@ -1762,7 +1762,7 @@ def test_alarms_tab_v115():
           and "Theil-Sen" in ino and "Huber IRLS" in ino
           and "function calrun()" in ino and "async function calapply()" in ino
           and "جریان خالص باتری صفر در raw=" in ino
-          and "Math.round(g.sum/g.n)" in ino and "function calbuild(" in ino
+          and "Math.ceil(g.sum/g.n-1e-9)" in ino and "function calbuild(" in ino
           and "calapply()" in ino and "xexp();" in ino,
           "bench calibration directly fits signed current in each battery lead and builds battery-current LUTs (2026-10-10)")
     # [EN] Stale since the scenario-card redesign and only found on 2026-10-05:

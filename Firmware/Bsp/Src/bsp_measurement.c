@@ -423,19 +423,17 @@ uint32_t func__BspMeasurement_V12CountsToMv(uint16_t uint16_t__counts)
  *                den = FULL(4095) x R42(10000) x GAIN(101) x SHUNT(10 mOhm)
  *                = counts x 24200 / 27573   (both sides / 1,500,000;
  *                  24200 x 4095 = 99,099,000 < 2^32, exact for every count).
- *              ROUNDING (2026-10-08): the folded division follows the same
- *              nearest-integer rule the panel and the bench LUT anchors use
- *              (half divisor added before dividing), because a truncating
- *              chain is a one-sided UNDER-read of the measured current.
+ *              ROUNDING (2026-10-11): the folded division rounds UP (ceiling),
+ *              the same rule as the table interpolation, so no truncation or
+ *              nearest rounding can read below the true current.
  *              If ANY resistor/value above ever changes, re-derive (the
  *              host test recomputes the collapse from these defines).
  *         [FA] رژیم فلش: پنج مرحله در یک ضرب+تقسیم ۳۲بیتی با نتیجهٔ
  *              بیت‌به‌بیت یکسان جمع شد (اثبات برای هر ۴۰۹۶ شمارش؛ تقسیم
  *              ۶۴بیتی ~۱KB می‌خواست). اگر مقاومتی عوض شد دوباره اشتقاق
  *              بگیر (تست هاست از همین دیفاین‌ها بازمحاسبه می‌کند).
- *              رُند: تقسیم جمع‌شده همان قاعدهٔ رُند به نزدیکِ پنل و لنگرهای
- *              جدول بنچ را دارد (نصف مقسوم‌علیه پیش از تقسیم)، چون زنجیرهٔ
- *              برشی، کم‌خوانی یک‌طرفهٔ جریان اندازه‌گیری‌شده است.
+ *              رُند: تقسیم جمع‌شده رو به بالا (سقف) گرد می‌شود، همان قاعدهٔ
+ *              درون‌یابی جدول؛ هیچ گرد یا برشی‌ای نباید از جریان واقعی پایین‌تر بخواند.
  * @param  uint16_t__counts           [EN] ADC count / شمارش ADC
  * @param  uint32_t__offsetCounts     [EN] zero-current offset, counts‎ / آفست صفر
  * @param  uint32_t__gainPermille     [EN] bench gain permille / ضریب گین بنچ
@@ -473,14 +471,14 @@ static uint32_t func__BspMeasurement_ChainNumerator(uint16_t uint16_t__counts,
 #define BSP_MEASUREMENT_CHAIN_DENOMINATOR (27573u * BSP_MEASUREMENT_PERMILLE_SCALE)
 
 /**
- * @brief  [EN] Round(numerator x 24200 / 27573000) in ONE rounding, without a
+ * @brief  [EN] Ceil(numerator x 24200 / 27573000) in ONE round-up, without a
  *              64-bit divide. Split: N = a x 27573 + b, so
  *              N x 24200 / D = a x 24200 / 1000 + frac / D with
  *              frac = (a x 24200 mod 1000) x 27573 + b x 24200 (all < 2^31).
- *              round = p1 + floor((2 x frac + D) / (2 x D)).
+ *              round-up = p1 + ceil(frac / D).
  *         [FA] رُند(صورت ‎x 24200 / 27573000)‎ با یک رُند و بدون تقسیم ۶۴بیتی.
  * @param  uint32_t__numerator [EN] Exact numerator / صورت دقیق
- * @return uint32_t [EN] Current in mA, nearest integer / جریان mA، نزدیک‌ترین عدد
+ * @return uint32_t [EN] Current in mA, rounded up to an integer / جریان mA، گرد شده به بالا
  */
 static uint32_t func__BspMeasurement_ScaleRoundMa(uint32_t uint32_t__numerator)
 {
@@ -491,9 +489,10 @@ static uint32_t func__BspMeasurement_ScaleRoundMa(uint32_t uint32_t__numerator)
     uint32_t uint32_t__r1 = uint32_t__product % BSP_MEASUREMENT_PERMILLE_SCALE;
     uint32_t uint32_t__frac = (uint32_t__r1 * 27573u) + (uint32_t__b * 24200u);
 
+    /* [EN] Single ROUND-UP (ceiling): never below the exact chain value. */
     return uint32_t__p1 +
-           (((2u * uint32_t__frac) + BSP_MEASUREMENT_CHAIN_DENOMINATOR) /
-            (2u * BSP_MEASUREMENT_CHAIN_DENOMINATOR));
+           ((uint32_t__frac + BSP_MEASUREMENT_CHAIN_DENOMINATOR - 1u) /
+            BSP_MEASUREMENT_CHAIN_DENOMINATOR);
 }
 
 /**

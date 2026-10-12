@@ -690,11 +690,11 @@ static uint32_t func__Measurement_BenchTableMa(const uint32_t *UINT32_T__A__Coun
             {
                 return uint32_t__yLow;
             }
-            /* [EN] Single nearest rounding. Product <= 4095 x 3600 fits u32.
-             * [FA] یک رُند به نزدیک‌ترین. حاصل‌ضرب <= 4095 x 3600 در u32 جا می‌شود. */
+            /* [EN] Single ROUND-UP (ceiling) at the integer output: a reading must never sit below the true current. Product <= 4095 x 3600 fits u32.
+             * [FA] یک رُند به بالا (سقف) در خروجی عدد صحیح: خوانده‌شده هرگز پایین‌تر از جریان واقعی نیست. حاصل‌ضرب <= 4095 x 3600 در u32 جا می‌شود. */
             return uint32_t__yLow +
                    (((uint32_t__step * (uint32_t__yHigh - uint32_t__yLow)) +
-                     (uint32_t__span / 2u)) /
+                     (uint32_t__span - 1u)) /
                     uint32_t__span);
         }
     }

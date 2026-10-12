@@ -395,7 +395,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build be9e256</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build dae0fb7</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3352,7 +3352,7 @@ if(negN)note.push(negN+' نمونهٔ منفی (دشارژ) صفر حساب شد
  const dupGroups=groups.filter(g=>g.n>1).length;
  if(dupGroups)note.push(dupGroups+' جریان تکراری میانگین گرفته شد');
  /* [EN] Round ONCE, at the end. [FA] رند فقط یک بار، در پایان. */
- const X=groups.map(g=>g.c),Y=groups.map(g=>Math.round(g.sum/g.n));
+ const X=groups.map(g=>g.c),Y=groups.map(g=>Math.ceil(g.sum/g.n-1e-9));
  let bad='';
  if(X.length<2)bad='کمتر از ۲ نقطهٔ متمایز ('+X.length+') — حداقل ۲ لازم است';
  else{for(let i=1;i<Y.length;i++){if(Y[i]<Y[i-1]){bad='جریان با افزایش شمارش پایین آمده (زنجیره '+X[i-1]+' ← '+Y[i-1]+' mA، بعد '+X[i]+' ← '+Y[i]+' mA). این نقطه را بررسی یا تکرار کنید؛ چیزی حذف نشده است';break;}}}

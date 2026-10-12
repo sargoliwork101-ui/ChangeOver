@@ -417,6 +417,8 @@ int main(void)
 
         CHECK(func__Measurement_Current1CountsToMa(0u) == 0u);
         CHECK(func__Measurement_Current1CountsToMa(50u) == 45u);
+        /* [EN] 6 counts = 5.4 mA between anchors: the board rounds UP, never down. */
+        CHECK(func__Measurement_Current1CountsToMa(6u) == 6u);
         CHECK(func__Measurement_Current1CountsToMa(100u) == 90u);
         CHECK(func__Measurement_Current1CountsToMa(150u) == 150u);
         CHECK(func__Measurement_Current1CountsToMa(300u) == 310u);
