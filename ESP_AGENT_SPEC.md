@@ -57,16 +57,18 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
 ```
 
 - Rounding rule: the table never rounds in the middle of a calculation; the final value is
-  rounded once, UP to the next 0.1 mA (ceiling; no integer rounding anywhere), so a reading is never below the
+  rounded once, UP to the next 0.1 mA (ceiling; the only integer rounding is the count axis, see below), so a reading is never below the
   table/chain value.
 - Gain and offset never change the table itself. They only add the part above the last anchor
   and the no-table fallback.
 - Table axis: counts, strictly increasing, 0..4095. Table values: mA, non-decreasing.
-  Points: 2..24 (`CAL_LUT_POINTS_MAX = 24`). The 0% anchor is mandatory and its mA value is 0.
-- The table is stored in STM32 flash (CalLut module, one record per channel).
+  Points: 2..24 (`CAL_LUT_POINTS_MAX = 24`). The 0% anchor is mandatory; its value is the measured
+  current at that count (discharge clamped to 0).
+- The table is stored in STM32 flash (CalLut module, one record per channel) and is pushed to the
+  boards from the panel (`calapply` / `lsend`).
 - Built by the panel from captured samples (`calbuild`):
-  - raw mean counts are rounded once;
-  - equal counts are averaged and the count of averaged points is reported;
+  - raw mean counts are rounded to whole counts (the board axis is integer counts);
+  - equal counts keep the MAXIMUM measured current (never below the DMM) and the count is reported;
   - negative (discharge) mA is clamped to 0 and reported, it never blocks the build;
   - a missing DMM value blocks the build and names the row;
   - no point is inserted automatically and no point is dropped silently.
@@ -74,20 +76,18 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
   `LUT_RESET` only after a successful COMMIT, `LUT_READ` for read-back. The payload layout is
   defined in `Firmware/Modules/EspLink/esp_link.c` (LUT handlers).
 - Measured table: `bench/current_table_4a9da54.csv`, built from the DMM export
-  `bench/bench_samples_4a9da54.json` (BAT2, duty 0-17 %). It is a repository file only; it is not
-  loaded on any board. Y is the highest DMM reading at each count, rounded UP to 0.1 mA. The chain
+  `bench/bench_samples_4a9da54.json` (BAT2, duty 0-17 %). It is the table in use on the bench
+  boards. Y is the highest DMM reading at each count, rounded UP to 0.1 mA. The chain
   formula `counts x 24200/27573` (no gain) was NOT the real relation: above about 11 % duty it read
   below the measured current (about 108 mA low at 17 %). BSP(c) above is the fallback formula only.
 
 ## 3. Voltage calibration (separate from the table)
 
-- The bench capture records the DMM voltages Vin, V24 and V12 (halves). They are required for
-  the voltage fits; they are not used by the current table.
-- Fits (panel calibration card): offset for Vin, offset for the 24 V pack, offset for the 12 V node,
-  and divider fits for each rail.
+- The panel does not calibrate voltages from DMM readings. The voltage inputs were removed from the calibration page, and no panel code computes voltage offsets any more.
+- Voltage offsets (parameters 4, 5, 6: 24 V input, 24 V pack, 12 V node) keep their stored board values and are set by hand through the parameters.
+- Vhigh = V24 − V12 is computed on the board, so parameters 5 and 6 affect it.
 - Divider values (`Firmware/Bsp/Src/bsp_measurement.c`): 24 V top 68000 Ω, 24 V battery top 68000 Ω,
   12 V top 34398 Ω, bottom 6800 Ω on each.
-- Missing voltage samples produce a warning only. They never block the current table.
 
 ## 4. Bench capture file (current)
 
