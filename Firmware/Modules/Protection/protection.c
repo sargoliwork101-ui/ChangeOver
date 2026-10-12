@@ -20,7 +20,6 @@
  */
 
 #include "protection.h"
-#include "app_config.h"
 #include "fault.h"
 
 #include <stddef.h>
@@ -68,6 +67,4 @@ void func__Protection_Run(const measurement_snapshot_t *measurement_snapshot_t__
     }
 
     func__Fault_Clear(FAULT_ADC);
-
-    (void)APP_CONFIG;
 }
