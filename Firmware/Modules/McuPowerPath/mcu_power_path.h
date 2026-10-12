@@ -58,11 +58,6 @@
  */
 #define MCU_POWER_INPUT_HYSTERESIS_MV   (MCU_POWER_INPUT_QUALIFY_MV - MCU_POWER_INPUT_RECONNECT_MV)
 
-/**
- * @brief  [EN] Legacy alias: valid input threshold equals qualify threshold. Prefer QUALIFY.
- *         [FA] نام قدیمی: آستانه معتبر برابر احراز است. از QUALIFY استفاده کنید.
- */
-
 /* ==================== McuPowerPath Init / مقداردهی اولیه ==================== */
 
 /**
