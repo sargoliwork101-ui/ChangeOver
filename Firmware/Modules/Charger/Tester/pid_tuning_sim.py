@@ -293,7 +293,7 @@ def trace(rows=None, hours=5.0, **plant_kw):
        and the charge-PID card's help text: without it those numbers could go
        stale silently the next time a gain moves.
        [FA] ثبت اینکه در هر پاس کدام شاخه کمینه‌گیری را می‌برد. مدرکِ پشت
-       جدول «دو حلقه چطور یک دیوتی را می‌رانند» در بخش ۵.۱۱ و راهنمای کارت
+       جدول «دو حلقه چطور یک دیوتی را می‌رانند» در بخش ۱۲ (ESP_AGENT_SPEC) و راهنمای کارت
        PID پنل؛ بدون آن، آن اعداد با اولین تغییر ضریب بی‌صدا کهنه می‌شوند."""
     rows = rows or FACTORY
     rec = []
