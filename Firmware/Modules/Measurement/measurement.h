@@ -50,15 +50,11 @@
  *      واکنش می‌دهد. ۱u فعال و ۰u کامپایل‌نشده. */
 #define MEASUREMENT_CURRENT_AVERAGE_ENABLE   1u
 
-/* [EN] The bench calibration tables (channel LUTs + battery-voltage
-        compensation) moved to calibration.h (user order 2026-09-25: one
-        separate file next to this one, easy to amend; three tables live
-        there and missing points get appended later). calibration.h is
-        included ONLY by measurement.c - the tables are static.
-   [FA] جدول‌های کالیبراسیون بنچ (LUT کانال‌ها + جبران ولتاژ باتری) به
-        calibration.h منتقل شدند (دستور کاربر ۲۰۲۶-۰۹-۲۵: یک فایل جدا کنار
-        همین فایل برای اصلاح راحت؛ سه جدول آنجاست و نقاط ناقص بعداً اضافه
-        می‌شوند). calibration.h فقط توسط measurement.c اینکلود می‌شود. */
+/* [EN] calibration.h holds only the VREFINT constant and the VDDA tracking
+        switch. The bench tables are NOT compiled in: they live in flash
+        (CalLut) and the gain and offset line is the fallback.
+   [FA] calibration.h فقط ثابت VREFINT و سوئیچ ردیابی VDDA را دارد. جدول‌های
+        بنچ کامپایل نمی‌شوند: در فلش هستند (CalLut) و خط گین و آفست پشتیبان است. */
 
 
 /* [EN] Compiled ring size / hard ceiling of the ESP-adjustable runtime

@@ -11,7 +11,7 @@
  *              پاک/نوشتن BSP هم در همان حافظه انجام شود.
  *
  * @note    [EN] What is proven here: a fresh board falls back to the
- *              compiled tables, a staged table must be complete and
+ *              gain and offset fallback, a staged table must be complete and
  *              monotonic, the panel CRC must match byte for byte, a
  *              successful commit survives a reload, the ping-pong page
  *              alternation works, and a torn/corrupt record is rejected
@@ -303,7 +303,7 @@ int main(void)
     }
     memset(void_ptr__map, 0xFF, HOST_MAP_SIZE);     /* [EN] erased flash */
 
-    /* ---- 1. a fresh board: no record, compiled tables stay in charge ---- */
+    /* ---- 1. a fresh board: no record, gain and offset line stays in charge ---- */
     func__CalLut_Init();
     CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_1) == false);
     CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_2) == false);
@@ -541,7 +541,7 @@ int main(void)
               UINT8_T__G__TxCap[uint16_t__frame1 + 8u] == 0u);
     }
 
-    /* ---- 12. both pages unreadable: back to the compiled tables ---- */
+    /* ---- 12. both pages unreadable: back to the gain and offset line ---- */
     memset(void_ptr__map, 0xFF, HOST_MAP_SIZE);
     func__CalLut_Init();
     CHECK(func__CalLut_Active(CAL_LUT_CHANNEL_1) == false);

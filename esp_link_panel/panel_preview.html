@@ -490,7 +490,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 71bbd35</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 30a7645</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3312,10 +3312,10 @@ function calsmp(){const b=$('calsl');if(!b)return;
  b.innerHTML='<div class="calselbar"><label><input type="checkbox" id="calall"'+(all?' checked':'')+' onchange="calpick(this.checked)">انتخاب همهٔ نمونه‌ها</label><span class="lb" id="calallCount">'+selected+' از '+CALS.length+' نمونه برای محاسبه انتخاب شده</span></div><div class="tw"><table class="bt2 cals"><tr><th>استفاده</th><th>#</th><th>سناریو</th><th>duty ٪</th>'+
   '<th>raw باتری ۱</th><th>جریان مولتی‌متر ۱ mA</th><th>raw باتری ۲</th><th>جریان مولتی‌متر ۲ mA</th><th>ولتاژ ورودی mV</th></tr>'+
   CALS.map((z,i)=>'<tr><td><input type="checkbox" id="calu'+i+'"'+(z.use===0?'':' checked')+' onchange="caluse('+i+',this.checked)"></td>'+
-   '<td>'+(i+1)+'</td><td>'+(WSN[z.sc]||z.sc||'')+'</td><td dir="ltr">'+(z.d==null?'':z.d)+'</td>'+
+   '<td>'+(i+1)+'</td><td>'+esc(WSN[z.sc]||z.sc||'')+'</td><td dir="ltr">'+(z.d==null?'':esc(z.d))+'</td>'+
    '<td dir="ltr">'+(z.r1==null?'':Math.round(z.r1))+'</td><td dir="ltr">'+(z.b1==null?'':Math.round(z.b1))+'</td>'+
    '<td dir="ltr">'+(z.r2==null?'':Math.round(z.r2))+'</td><td dir="ltr">'+(z.b2==null?'':Math.round(z.b2))+'</td>'+
-   '<td dir="ltr">'+(z.dvi==null?'':z.dvi)+'</td></tr>').join('')+'</table></div>';calallSync();}
+   '<td dir="ltr">'+(z.dvi==null?'':esc(z.dvi))+'</td></tr>').join('')+'</table></div>';calallSync();}
 function calallSync(){const e=$('calall');if(!e)return;const selected=CALS.filter(z=>z.use!==0).length;e.checked=selected===CALS.length;e.indeterminate=selected>0&&selected<CALS.length;const n=$('calallCount');if(n)n.textContent=selected+' از '+CALS.length+' نمونه برای محاسبه انتخاب شده';}
 function caluse(i,on){if(CALS[i]){CALS[i].use=on?1:0;calinvalidate();calsave();calallSync();}}
 function calpick(on){CALS.forEach(z=>{z.use=on?1:0;});calinvalidate();calsave();calsmp();}

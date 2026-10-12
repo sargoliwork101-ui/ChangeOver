@@ -226,7 +226,7 @@
  *      CALIBRATED vs MEASURABLE - the honest caveat. The LUTs are fitted
  *      from bench data only up to chain 640 mA (ch1) and 707 mA (ch2),
  *      which at 14.4 V is 631 mA and 749 mA of battery current. Above the
- *      last anchor calibration.h extends the last slope, so readings there
+ *      last anchor the gain and offset line extends the last slope, so readings there
  *      are extrapolated, not measured. Extrapolation is fine for a trip
  *      level - it only has to be monotonic to fire - but the panel marks
  *      where calibration ends so a current set above it is an informed

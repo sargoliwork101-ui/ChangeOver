@@ -21,7 +21,7 @@
 | فایل | نقش |
 |---|---|
 | `measurement.h` / `measurement.c` | قرارداد عمومی، توابع نما و آخرین snapshot؛ بدون جزئیات برد. درون‌یابی جدول بنچ از ۲۰۲۶-۱۰-۰۶ جدول کمتر از دو نقطه را رد می‌کند (گیره در برابر کم‌ریزی شاخص) |
-| `calibration.h` | جدول‌های بنچ LUT جریان (mA زنجیره → توان mW) + سوئیچ‌های فعال‌سازی؛ بدون منطق، فقط داده + گارد بیلد |
+| `calibration.h` | ثابت VREFINT و سوئیچ ردیابی VDDA؛ جدول بنچ دیگر اینجا کامپایل نمی‌شود (در فلش است، ماژول CalLut) |
 | `../../Bsp/Src/bsp_adc.c` / `bsp_adc.h` | لایهٔ برد: استارت ADC+DMA و ارائهٔ فریم خام استاندارد؛ هندل و کانال فیزیکی خصوصی است |
 | `../../Rtos/Src/task_measurement.c` | تسک: Init+Start یک‌بار، بعد هر `MEASUREMENT_PERIOD_MS` یک `Run` |
 | `../../Bsp/Src/bsp_measurement.c` / `bsp_measurement.h` | کالیبراسیون مخصوص مدار برد؛ مرجع ADC، تقسیم مقاومتی، گین و شانت در این Port هستند |
@@ -39,7 +39,7 @@
 | `func__Measurement_CountsToMv` | خام استاندارد → mV پایه، با کالیبراسیون BSP برد |
 | `func__Measurement_V24CountsToMv` | خام استاندارد → mV منبع ۲۴، با تقسیم برد در BSP |
 | `func__Measurement_V12CountsToMv` | خام استاندارد → mV منبع ۱۲، با تقسیم برد در BSP |
-| `func__Measurement_Current1CountsToMa` / `Current2CountsToMa` | شمارش خام هر کانال → mA باتری: جدول جریان بنچ همان کانال روی محور شمارش (اگر جدول ذخیره باشد)؛ در غیر این صورت خط گین و آفست پر-کانال در BSP (پیش‌فرض گین ۳۰۰۰‰ و آفست ۰) در `calibration.h` (۱۷ انکر ch1 از v1.19، ۱۴ انکر ch2 از v1.18). **جفت‌شدگی:** هر جدول فقط با آفست/گینِ بنچ خودش معتبر است — تغییر گین = بازفیت جدول |
+| `func__Measurement_Current1CountsToMa` / `Current2CountsToMa` | شمارش خام هر کانال → mA باتری: جدول جریان بنچ همان کانال روی محور شمارش (اگر جدول در فلش باشد)؛ در غیر این صورت خط گین و آفست پر-کانال در BSP (پیش‌فرض گین ۳۰۰۰‰ و آفست ۰) در `calibration.h` (۱۷ انکر ch1 از v1.19، ۱۴ انکر ch2 از v1.18). **جفت‌شدگی:** هر جدول فقط با آفست/گینِ بنچ خودش معتبر است — تغییر گین = بازفیت جدول |
 | `func__TaskMeasurement` | Init+Start یک‌بار، سپس هر `MEASUREMENT_PERIOD_MS` (۱ms) یک `Run` (`osDelayUntil` با تبدیل قابل‌حمل میلی‌ثانیه/تیک) |
 | `func__BspAdc_Init` (Bsp) | آماده‌سازی Backend ADC برد و صفر کردن بافر DMA؛ هندل و پایه‌ها در BSP پنهان هستند |
 | `func__BspAdc_Start` (Bsp) | شروع backend ADC+DMA برد؛ جزئیات peripheral و منابع وقفه در پورت برد خصوصی است |

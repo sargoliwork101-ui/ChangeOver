@@ -34,11 +34,11 @@ void func__App_Init(void)
     func__EspLink_NvmInit();
     /* [EN] v1.66 (user order 2026-10-05: push the calibration table straight
        into the micro, on its OWN storage path): load the bench LUT from its
-       dedicated flash block. No valid record = the compiled tables in
-       calibration.h stay in charge, exactly as before.
+       dedicated flash block. No valid record = the gain and offset line stays in
+       charge (there is no compiled table any more).
        [FA] v1.66 (دستور کاربر: جدول مستقیم به میکرو، روی «مسیر ذخیره‌سازی
        جدا»): جدول بنچ از بلوک فلش اختصاصی‌اش بار می‌شود. نبودِ رکورد معتبر
-       یعنی همان جدول‌های کامپایل‌شده سر کارند. */
+       یعنی خط گین و آفست سر کار است (جدول کامپایل‌شده دیگر وجود ندارد). */
     func__CalLut_Init();
 #endif
 }

@@ -335,9 +335,9 @@ void func__CalLut_Init(void)
     }
     else
     {
-        /* [EN] Fresh board or both records corrupt: the COMPILED tables in
-           calibration.h stay in charge - the board always measures.
-           [FA] برد نو یا خرابی هر دو رکورد: جدول‌های کامپایل‌شده سر کار
+        /* [EN] Fresh board or both records corrupt: the gain and offset line
+           stays in charge - the board always measures.
+           [FA] برد نو یا خرابی هر دو رکورد: خط گین و آفست سر کار
            می‌مانند - برد همیشه اندازه می‌گیرد. */
     }
 
