@@ -134,10 +134,20 @@ void func__TaskControl(void *void_ptr__argument)
      MODULE_IMBALANCE || MODULE_MCU_POWER_PATH)
         {
             measurement_snapshot_t measurement_snapshot_t__snap;
+
+            measurement_snapshot_t__snap.v_in_mv       = 0u;
+            measurement_snapshot_t__snap.v_bat24_mv    = 0u;
+            measurement_snapshot_t__snap.v_bat12_mv    = 0u;
+            measurement_snapshot_t__snap.v_bat_low_mv  = 0u;
+            measurement_snapshot_t__snap.v_bat_high_mv = 0u;
+            measurement_snapshot_t__snap.i_ch1_ma      = 0u;
+            measurement_snapshot_t__snap.i_ch2_ma      = 0u;
+            measurement_snapshot_t__snap.input_present = false;
+            measurement_snapshot_t__snap.valid         = false;
+
             fault_mask_t fault_mask_t__faults = FAULT_NONE;
             app_state_t app_state_t__state = APP_STATE_IDLE;
 
-            measurement_snapshot_t__snap.valid = false;
 #if MODULE_MEASUREMENT
             (void)func__Measurement_GetSnapshot(&measurement_snapshot_t__snap);
 #endif
