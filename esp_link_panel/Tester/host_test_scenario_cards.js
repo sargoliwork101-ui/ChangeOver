@@ -1153,8 +1153,11 @@ async function testBackupAndCal(win, doc) {
     win.eval('calrun')();
     const prop = {};
     win.CALR.forEach(r => { prop[Number(r[1])] = Number(r[3]); });
-    check(prop[2] === gain, 'the fit recovers the current gain of channel 1 exactly');
-    check(prop[3] === gain, 'the fit recovers the current gain of channel 2 exactly');
+    /* gain above the last anchor = slope of the two highest table points (user decision) */
+    const lastGain = n => { const t = win.eval('calbuild')(n); const k = t.X.length - 1;
+        return Math.round((t.Y[k] - t.Y[k - 1]) / (t.X[k] - t.X[k - 1]) / win.eval('K_MA') * 1000); };
+    check(Math.abs(prop[2] - gain) <= 5 && prop[2] === lastGain(1), 'channel 1 gain is the slope of the two highest table points (within rounding of the 0.1 mA table)');
+    check(prop[3] === lastGain(2), 'channel 2 gain is the slope of its two highest table points');
     check(prop[0] === expectedOffset, 'the fit preserves signed battery current and finds the zero-current raw point');
     check(String(win.CALR.find(r => Number(r[1]) === 0)[4]).indexOf('جریان خالص باتری صفر در raw='+expectedOffset) >= 0,
           'a negative battery current remains in the direct signed fit');
@@ -1215,8 +1218,8 @@ async function testBackupAndCal(win, doc) {
           'a single gross DMM outlier does not move the robust current fit');
     win.eval('caluse')(win.CALS.length - 1, false);
     win.eval('calrun')();
-    check(Number(win.CALR.find(r => Number(r[1]) === 2)[3]) === gain,
-          'manually excluding the same bad row preserves the robust fit');
+    check(Number(win.CALR.find(r => Number(r[1]) === 2)[3]) === lastGain(1),
+          'manually excluding the same bad row keeps the gain from the remaining two highest points');
     check(win.CALS[win.CALS.length - 1].use === 0,
           'an unticked row is kept in the file, only excluded from the fit');
     /* A rejected fit must be a hard stop for the LUT route too. The old
@@ -1267,7 +1270,7 @@ async function testBackupAndCal(win, doc) {
         vin: 24000, v24: 25000, v12: 12500, vlo: 12500, vhi: 12500, b1: 10, b2: null,
         dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 };
     win.eval('calrun')();
-    check(Number(win.CALR.find(r => Number(r[1]) === 2)[3]) === gain,
+    check(Number(win.CALR.find(r => Number(r[1]) === 2)[3]) === lastGain(1),
           'a battery-2-only row is ignored when fitting battery 1');
     win.CALS.pop();
     win.eval('calrun')();
@@ -1320,7 +1323,7 @@ async function testBackupAndCal(win, doc) {
     check(code.indexOf('CAL_Current2LutCounts[] =') >= 0,
           'both channels get a table');
     check(/\{ 0u,/.test(code), 'every generated table starts at the origin');
-    check(code.indexOf('current gain   ch1 = 1200 permille') >= 0,
+    check(/current gain   ch1 = \d+ permille/.test(code),
           'the snippet repeats the gain/offset the table was fitted with');
     check(doc.getElementById('calcd').style.display === 'block',
           'the snippet is shown on the page, ready to copy');

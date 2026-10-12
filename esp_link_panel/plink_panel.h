@@ -395,7 +395,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 833cb3c</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build ff62b4f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3152,7 +3152,11 @@ function calrun(){
   const f=calfit(S.map(z=>z[ch[1]]),S.map(z=>z[ch[2]]));
   const ttl='کانال '+fa(ch[0]);
   if(!f||f.a<=0){const why='فیت جریان دادهٔ کافی/سالم ندارد';[ch[4],ch[3]].forEach(id=>{const old=cur(id);rows.push([CALREAD[id].name,id,old,old,why,0]);});return;}
-  let g=Math.round(f.a/K_MA*1000),o=Math.round(-f.b/f.a);
+  let g=Math.round(f.a/K_MA*1000),o=Math.round(-f.b/f.a),gainFromTable=false;
+  /* [EN] Gain above the last anchor comes from the TWO highest table points (user decision).
+     [FA] گین بالای آخرین نقطه از دو نقطهٔ بالای جدول گرفته می‌شود (تصمیم کاربر). */
+  const tb=calbuild(ch[0]);
+  if(!tb.bad&&tb.X.length>=2){const k=tb.X.length-1;if(tb.X[k]!==tb.X[k-1]){g=Math.round((tb.Y[k]-tb.Y[k-1])/(tb.X[k]-tb.X[k-1])/K_MA*1000);gainFromTable=true;}}
   const gc=Math.min(3000,Math.max(100,g)),oc=Math.min(255,Math.max(0,o)),w=[];
   if(f.n<4)w.push('فقط '+f.n+' نقطه');
   if(f.span<20)w.push('بازهٔ duty خیلی باریک است');
@@ -3163,7 +3167,7 @@ function calrun(){
      signed fit remains usable with any two distinct points. In particular,
      duty=0 is never manufactured as a baseline just to reach a count. */
   const bad=f.r2<0.9;
-  rows.push([ttl+' — گین (‰)',ch[4],cur(ch[4]),gc,w.length?'⚠ '+w.join(' · '):'✅ برازش خوب ('+f.n+' نقطه، R²=<span dir="ltr">'+f.r2.toFixed(4)+'</span>)',bad?0:1]);
+  rows.push([ttl+' — گین (‰)',ch[4],cur(ch[4]),gc,w.length?'⚠ '+w.join(' · '):'✅ برازش خوب ('+f.n+' نقطه، R²=<span dir="ltr">'+f.r2.toFixed(4)+'</span>)'+(gainFromTable?' · گین از دو نقطهٔ بالای جدول':''),bad?0:1]);
   rows.push([ttl+' — آفست (count)',ch[3],cur(ch[3]),oc,'از همان خط به‌دست آمد (جریان خالص باتری صفر در raw='+oc+')',bad?0:1]);});
  
  /* [EN] Show one batch summary.
