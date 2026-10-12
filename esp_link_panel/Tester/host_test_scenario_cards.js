@@ -909,6 +909,42 @@ function testSimulator(win, doc) {
  * [FA] تا وقتی دکمهٔ سراسری زده نشود هیچ چیز به برد نمی‌رود؛ و گزارش بعد از
  *      دست‌دادن باید دربارهٔ گیره‌خوردن راست بگوید.
  */
+/* Manual duty box: Enter applies the typed duty, Escape sets it to 0 and clears the box. */
+async function testManualDutyKeys(win, doc) {
+    console.log('\nmanual duty box keys / کلیدهای کادر duty دستی');
+    const sent = [];
+    const board = Object.assign({}, win.D, { on: 1, fl: 32, seq: 1000, p: Object.assign({}, win.D.p || {}, { 19: 1, 13: 1000, 14: 0, 15: 0, 16: 0, 17: 0 }) });
+    win.alert = () => {};
+    win.D = board;
+    win.fetch = (u, o) => {
+        const url = String(u);
+        if (url.indexOf('/s?id=') === 0) {
+            const q = new URL('http://panel' + url).searchParams;
+            const id = Number(q.get('id')), v = Number(q.get('v'));
+            sent.push(id + '=' + v);
+            board.p[id] = v;
+            board.seq += 1;
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ _s: 200 }) });
+        }
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(board) });
+    };
+    const box = doc.getElementById('qm1');
+    check(!!box, 'the manual duty box of channel 1 exists');
+    box.value = '17';
+    box.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await new Promise(r => setTimeout(r, 900));
+    check(sent.indexOf('16=170') >= 0,
+          'Enter in the manual duty box applies the typed duty (17 % = 170 permille)');
+    check(box.value === '', 'after applying, the box is cleared');
+
+    box.value = '42';
+    box.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await new Promise(r => setTimeout(r, 900));
+    check(sent.indexOf('16=0') >= 0 && board.p[16] === 0,
+          'Escape in the manual duty box sets the duty to 0');
+    check(box.value === '', 'Escape clears the typed value too');
+}
+
 async function testSendQueue(win, doc) {
     console.log('\nv1.52 send queue / صف ارسال سراسری');
 
@@ -2122,6 +2158,7 @@ setTimeout(async () => {
         await testBackupAndCal(win, doc);
         await testLutPush(win, doc);
         testNakWarning(win, doc);
+        await testManualDutyKeys(win, doc);
     } catch (err) {
         failed += 1;
         console.log('  FAIL threw: ' + err.message);

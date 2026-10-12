@@ -490,7 +490,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 5538db3</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build b5e0e5f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1311,7 +1311,7 @@ $('ch').innerHTML=[1,2].map(n=>`<div class="cd"><div class="hd"><b>شارژر ${
 
 <div class="bg2"><div class="bmetric"><div class="big"><span class="biglabel">جریان باتری (کالیبره)</span><b class="n" id="ie${n}"></b></div><div class="bsub"><span>ولتاژ باتری ${n==1?'بالا':'پایین'}</span><span dir="ltr"><b class="n" id="vb${n}"></b> <span class="unit">V</span></span></div></div>
 <div class="big"><span class="biglabel dutybig" id="dutyedit${n}" role="button" tabindex="0" title="برای تغییر سقف duty کلیک کنید" onclick="dutyedit(${n})" onkeydown="if(event.key==='Enter'||event.key===' ')dutyedit(${n})">duty <span class="ceval" id="dc${n}"></span></span><b class="n" id="du${n}"></b></div></div><div class="bar"><i id="db${n}"></i><u id="cl${n}"></u></div>
-<div class="bctl"><span class="ctlcap">حالت کار</span><div class="modepick"><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button></div><label class="dutyctl"><span>Duty دستی (%)</span><input type="number" step="any" id="qm${n}" data-s></label><div class="dutyactions"><button class="sb bapply" onclick="qset(${n})">اعمال</button><button class="sb bzero" onclick="qzero(${n})">صفر</button></div></div>
+<div class="bctl"><span class="ctlcap">حالت کار</span><div class="modepick"><button class="sw" id="ma${n}">خودکار</button><button class="sw w" id="mm${n}">دستی</button></div><label class="dutyctl"><span>Duty دستی (%)</span><input type="number" step="any" id="qm${n}" data-s onkeydown="qmkey(${n},event)"></label><div class="dutyactions"><button class="sb bapply" onclick="qset(${n})">اعمال</button><button class="sb bzero" onclick="qzero(${n})">صفر</button></div></div>
 <div class="lb">بستن پنل: ۱۰ ثانیه بعد مود دستی خاموش و duty صفر می‌شود؛ بعد از تریپ JIT همان duty را دوباره اعمال کنید.</div>
 <table>${[['ADC خام','count',0],['ولتاژ شنت',' میکروولت',1],['جریان بدون فیلتر',' میلی‌آمپر',2],['جریان فیلترشده',' میلی‌آمپر',3],['جریان باتری (iest = فیلترشده)',' میلی‌آمپر',4]].map(r=>`<tr><td>${r[0]}<div class="fx" id="f${n}${r[2]}"></div></td><td class="n"><b id="c${n}${r[2]}"></b></td><td class="lb">${r[1]}</td></tr>`).join('')}</table>
 <div class="lb kc">ثابت‌ها: ADC دوازده‌بیتی، ۳۳۰۰ میلی‌ولت، R41/R42 = 1k/10k، LM358 × 101، شنت 10 mOhm</div>
@@ -3909,6 +3909,12 @@ async function qset(n){if(W.run)return alert('داده‌برداری ویزار
  const man=manOn(),fx=D&&D.p[13+2*n]===1;let go=man||fx;
  if(!go)go=confirm('مود دستی خاموش است؛ روشن شود و duty اعمال گردد؟\n(لغو = فقط عدد duty ذخیره می‌شود)');
  try{if(go&&!man&&!fx)await setv(19,1);await setv(14+2*n,pm);$('qm'+n).value='';}catch(e){alert(e);}}
+/* [EN] Keyboard for the manual duty box: Enter applies (same as «اعمال»), Escape sets
+   duty to 0 and clears the box (same as «صفر»). [FA] کلید Enter = اعمال، Escape = صفر و خالی‌کردن کادر. */
+function qmkey(n,ev){
+ if(ev.key==='Enter'){ev.preventDefault();qset(n);}
+ else if(ev.key==='Escape'){ev.preventDefault();qzero(n).then(()=>{const e=$('qm'+n);if(e)e.value='';});}
+}
 async function qzero(n){if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');
  if(!D||D.on!=1)return alert('لینک STM32 برقرار نیست.');
  const man=manOn(),fx=D&&D.p[13+2*n]===1;if(!man&&!fx&&!confirm('مود دستی خاموش است؛ روشن شود و duty صفر گردد؟'))return;
