@@ -395,7 +395,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 22a3996</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build be9e256</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2900,7 +2900,7 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
  $('mb').classList.toggle('v',man);$('ka').innerHTML=man?(d.ka<1500?`پایش لینک فعال · <span class="n">keepalive ${d.ka} </span> میلی‌ثانیه`:'<b>keepalive متوقف است</b>'):'';}
 async function poll(){const c=new AbortController(),k=setTimeout(()=>c.abort(),2000);try{const r=await fetch('/t',{cache:'no-store',signal:c.signal});const d=await r.json();clearTimeout(k);if(document.hidden){D=d;hist(d);}else draw(d);}catch(e){clearTimeout(k);document.body.classList.add('dn');$('lk').classList.remove('on');$('lt').textContent='ESP در دسترس نیست';}
  lupd();setTimeout(poll,300);}
-/* ---------- ابزار بنچ (بخش 5.5 و 5.6 نسخه ۲؛ همه دستی، هیچ ضریبی خودکار ارسال نمی‌شود) ----------
+/* ---------- ابزار بنچ (بخش 4 نسخه ۲؛ همه دستی، هیچ ضریبی خودکار ارسال نمی‌شود) ----------
  * Bench tools (spec 5.5 / 5.6 v2): manual only; no coefficient is ever sent automatically. */
 const gv=id=>{const e=$(id);if(!e||e.value==='')return null;const v=+e.value;return isNaN(v)?null:v;};
 const fa=n=>n<3?'۱۲'[n-1]:n,r0=Math.round;
@@ -2908,7 +2908,7 @@ const fa=n=>n<3?'۱۲'[n-1]:n,r0=Math.round;
 let BDS={};try{BDS=JSON.parse(localStorage.getItem('bd')||'{}');}catch(e){}
 function bsave(){document.querySelectorAll('[data-s]').forEach(e=>{if(e.value==='')delete BDS[e.id];else BDS[e.id]=e.value;});try{localStorage.setItem('bd',JSON.stringify(BDS));}catch(e){}}
 function bload(r){r.querySelectorAll('[data-s]').forEach(e=>{if(BDS[e.id]!=null)e.value=BDS[e.id];});}
-/* ----- داده‌برداری بنچ (بخش 5.6 نسخه ۲): همهٔ مرحله‌ها در یک جدول؛ جلو رفتن فقط با دکمهٔ کاربر -----
+/* ----- داده‌برداری بنچ (بخش 4 نسخه ۲): همهٔ مرحله‌ها در یک جدول؛ جلو رفتن فقط با دکمهٔ کاربر -----
  * هر مرحله: duty → صبر → پنجرهٔ /m (قبلش GET_PARAMS) → توقف روی ردیف فعال برای عدد مولتی‌متر → با دکمهٔ ثبت و مرحلهٔ بعد یک ردیف ۸۹ستونی در ESP.
  * Capture v2: set duty → settle → /m window (preceded by GET_PARAMS) → STOP on the active table row for the DMM → one 134-column row only on submit. */
 /* [EN] v1.60 (user order: "SOLO means nothing - name them properly"): the
@@ -2982,7 +2982,7 @@ function wmeas(m,act){
  const cur=n=>act.includes(n)?r0(m.a(n===1?3:10)):'قطع';
  return [v2(r0(m.a(14))),v2(r0(m.a(18))),v2(r0(m.a(17))),cur(1),cur(2)];}
 
-/* ردیف CSV (۱۴۹ ستون، ترتیب دقیق بخش 5.6، مولتی‌متر نسخه ۴).
+/* ردیف CSV (۱۴۹ ستون، ترتیب دقیق بخش 4، مولتی‌متر نسخه ۴).
    v1.25 رفع باگ: شمارندهٔ پارامترها روی ۹۹ (تعداد v1.22) جا مانده بود در حالی که
    تعداد واقعی ۹۳ است، پس هر ردیف ۶ ستون اضافه می‌نوشت و همهٔ ستون‌های بعد از بلوک
    پارامتر زیر عنوان اشتباه می‌افتادند. حالا از PN که از تعداد واقعی می‌آید استفاده
@@ -3857,7 +3857,7 @@ function wmode(){const s=$('wSw')&&$('wSw').checked,L=$('wL'),A=$('wA'),B=$('wB'
  if(manual)manual.classList.toggle('wmode-hidden',!!s);if(sweep)sweep.classList.toggle('wmode-hidden',!s);}
 caln();calsmp();calchk();bload(document.body);try{$('wSw').checked=localStorage.getItem('wsw')!=='0';}catch(e){};$('wSw').onchange=()=>{try{localStorage.setItem('wsw',$('wSw').checked?'1':'0');}catch(e){}wmode();};wmode();document.body.addEventListener('input',bsave);document.body.addEventListener('change',bsave);winfo();
 /* ---------- کنترل دستی duty دائمی (دستور کاربر ۲۰۲۶-۰۹-۲۵): کنترلها داخل کارت هر شارژر (از v1.16p)؛
- * ---------- قرارداد ایمنی بخش 5.2 اسپک بدون تغییر: deadman ۱۰ ثانیه، سقف کانال (‎p13/p14)‎،
+ * ---------- قرارداد ایمنی بخش 19 اسپک بدون تغییر: deadman ۱۰ ثانیه، سقف کانال (‎p13/p14)‎،
  * ---------- JIT با شروع‌مجددِ شمارش (Arm در فرمور) با ارسال دوبارهٔ همان duty. هیچ ضریبی اینجا ارسال نمی‌شود. ---------- */
 const manOn=()=>!!(D&&((D.fl&32)||D.p[19]===1));
 async function qset(n){if(W.run)return alert('داده‌برداری ویزارد در جریان است؛ اول آن را تمام کنید.');

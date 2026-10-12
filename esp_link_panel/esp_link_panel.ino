@@ -37,7 +37,7 @@
  *                  /benchlog.csv, GET /benchlog to download. v1.8 (user order 2026-09-25,
  *                  same day): the bench tab also carries a compact PERMANENT manual-duty card
  *                  (manual-mode toggle + per-channel duty + both-to-zero) so current tests can
- *                  run without the removed engineer tab; the section 5.2 safety contract (10 s
+ *                  run without the removed engineer tab; the section 19 safety contract (10 s
  *                  dead-man, channel ceilings, JIT re-arm) is unchanged. v1.9 (user order 2026-09-25,
  *                  same day): DMM currents accept NEGATIVE values (battery discharge path), the
  *                  moving-average ceiling is 300 samples (visible smoothing at the 10 Hz TLM), the
@@ -80,7 +80,7 @@
  *               وای‌فای "‎ChangeOver-ESP‎" با رمز "123456789"، پنل در http://192.168.4.1
  *               بدون اینترنت: فقط تبادل داده بین MCU و ESP (فلش فقط برای فایل ثبت بنچ استفاده می‌شود).
  *               مود تست دستی (شناسه ۱۹): تا وقتی مود دستی فعال است (پرچم b5 یا پارامتر ۱۹) هر ۱ ثانیه
- *               یک GET_PARAMS فرستاده می‌شود، حتی با تب پس‌زمینه (بخش 5.2 سند). ایمنی: اگر ۱۰ ثانیه
+ *               یک GET_PARAMS فرستاده می‌شود، حتی با تب پس‌زمینه (بخش 19 سند). ایمنی: اگر ۱۰ ثانیه
  *               هیچ مرورگری /t را نخواند (یا از بوت ESP هنوز نخوانده باشد)، ESP هر ۱ ثانیه شناسهٔ ۱۹ = 0 را
  *               می‌فرستد تا STM32 خاموشی مود دستی را گزارش کند؛ پس پنل بسته هرگز کانال را روی duty بدون
  *               تنظیم رها نمی‌کند. هنگ ESP یا قطع لینک را ‎dead-man‎ سه‌ثانیه‌ای STM32 پوشش می‌دهد.

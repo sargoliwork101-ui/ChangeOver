@@ -1310,7 +1310,7 @@ bool func__Charger_IsChargeComplete(void);
 
 /* ==================== Charge Profile (user order 2026-09-25) ====================
  * [EN] Runtime-settable charge profile, shared by BOTH channels, written from
- *      the ESP panel tab "تنظیمات شارژ" (‎wire params 20..26, section 5.7 of‎
+ *      the ESP panel tab "تنظیمات شارژ" (‎wire params 20..26, section 8 of‎
  *      ESP_AGENT_SPEC.md). Boot defaults equal the old compile-time setpoints
  *      (CHG_*_MV / CHG_*_MA below); values live in RAM and reset at boot,
  *      like every other parameter. v1.15: the hard safety stack
@@ -1318,7 +1318,7 @@ bool func__Charger_IsChargeComplete(void);
  *      overvoltage cutoff) is runtime-LOWERABLE from the alarms tab (ids
  *      35..37) but can NEVER be raised above the compile maxima.
  * [FA] پروفایل شارژِ قابل‌تنظیم در زمان اجرا، مشترک بین هر دو کانال، از تب
- *      «تنظیمات شارژ» پنل نوشته می‌شود (پارامترهای سیمی ۲۰..۲۶، بخش 5.7
+ *      «تنظیمات شارژ» پنل نوشته می‌شود (پارامترهای سیمی ۲۰..۲۶، بخش 8
  *      سند). پیش‌فرض بوت همان ست‌پوینت‌های کامپایل‌تایم قبلی است (ماکروهای
  *      ‎CHG_*_MV / CHG_*_MA‎ پایین)؛ مقادیر در RAM می‌مانند و با ریست به
  *      پیش‌فرض برمی‌گردند، مثل بقیهٔ پارامترها. v1.15: پشتهٔ ایمنی سخت

@@ -274,7 +274,7 @@ static void func__Esp_HttpSetParam(void)
  * @brief  [EN] POST /m : restart the bench statistics window and queue one GET_PARAMS (spec 5.6 v2).
  *              v1.7: the wizard resets this when the DMM form OPENS and reads it when the user
  *              PRESSES submit, so the logged window is the moment of the typed meters.
- *         [FA] مسیر ‎POST /m‎ : شروع دوبارهٔ پنجرهٔ آمار بنچ و صف کردن یک GET_PARAMS (بخش 5.6 نسخه ۲).
+ *         [FA] مسیر ‎POST /m‎ : شروع دوبارهٔ پنجرهٔ آمار بنچ و صف کردن یک GET_PARAMS (بخش 4 نسخه ۲).
  *              نسخهٔ ۱.۷: ویزارد با باز شدن فرم مولتی‌متر این را صفر می‌کند و همان لحظهٔ زدن «ثبت»
  *              می‌خواند تا پنجرهٔ ثبتشده هم‌لحظهِ عددهای واردشدهٔ کاربر باشد.
  * @return [EN] None / [FA]‎ ندارد

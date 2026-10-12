@@ -35,7 +35,7 @@ static uint32_t UINT32_T__G__LastBrowserPollMs = 0u;
 static bool     BOOL__G__BrowserSeen = false;
 static uint32_t UINT32_T__G__LastParamRefreshMs = 0u;
 
-/* [‎EN] Bench statistics window (see ESP_BENCHLOG_HEADER in plink_config.h) / [FA]‎ پنجرهٔ آمار بنچ (بخش 5.6 نسخه ۲) */
+/* [‎EN] Bench statistics window (see ESP_BENCHLOG_HEADER in plink_config.h) / [FA]‎ پنجرهٔ آمار بنچ (بخش 4 نسخه ۲) */
 static bool     BOOL__G__FsOk = false;   /* [EN] LittleFS mounted / [FA] LittleFS سوار شده */
 static uint32_t UINT32_T__G__StatSum[ESP_LINK_TLM_FIELD_COUNT];
 static uint32_t UINT32_T__G__StatMin[ESP_LINK_TLM_FIELD_COUNT];

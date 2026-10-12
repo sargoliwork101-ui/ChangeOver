@@ -637,7 +637,7 @@ static void func__Esp_PumpTx(void)
     /* [EN] Manual-mode keepalive: every ESP_LINK_KEEPALIVE_MS while manual is active (b5 or param 19),
             whether or not a browser is polling (spec section 19: from every tab and in the background).
        [FA] keepalive مود دستی: هر ESP_LINK_KEEPALIVE_MS تا وقتی مود دستی فعال است (b5 یا پارامتر ۱۹)،
-            چه مرورگری poll کند چه نه (بخش 5.2 سند: از هر تب و در پس‌زمینه). */
+            چه مرورگری poll کند چه نه (بخش 19 سند: از هر تب و در پس‌زمینه). */
     bool bool__flagManual = ((UINT8_T__G__TlmFlags & ESP_TLM_FLAG_MANUAL_MODE) != 0u);
     bool bool__paramManual = BOOL__G__ParamKnown[ESP_PARAM_MANUAL_TEST_MODE] &&
                              (UINT32_T__G__ParamApplied[ESP_PARAM_MANUAL_TEST_MODE] != 0u);

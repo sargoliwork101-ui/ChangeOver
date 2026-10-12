@@ -2095,10 +2095,10 @@ static void func__Charger_ManualDriveChannel(uint8_t uint8_t__channelIndex,
 
     /* [EN] Hard overvoltage floor: with regulation off and no battery
        clamping the output, stop switching at 15.0 V and resume by itself
-       once the voltage is back below it (protocol v1.2, section 5.2).
+       once the voltage is back below it (protocol v1.2, section 13).
        [FA] کف سخت اضافه‌ولتاژ: با تنظیمِ خاموش و باتری‌ای که ولتاژ را
        نگه ندارد، سوئیچینگ در ۱۵٫۰V متوقف و با افت زیرش خودکار ادامه
-       می‌یابد (پروتکل v1.2، بخش 5.2). */
+       می‌یابد (ESP_AGENT_SPEC بخش 13). */
     if (func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,
                                        uint8_t__channelIndex) >= UINT32_T__G__ChargerOvCutoffMv)
     {
@@ -2985,12 +2985,12 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                 if ((BOOL__G__ChargerManualModeActive != false) &&
                     (BOOL__G__ChargerManualRearmRequest[uint8_t__channelIndex] != false))
                 {
-                    /* [EN] Manual JIT re-arm (protocol v1.2 section 5.2): a
+                    /* [EN] Manual JIT re-arm (ESP_AGENT_SPEC section 19): a
                        fresh duty write is the re-arm gesture - clear the park
                        and the trip latch, then the manual drive below applies
                        the commanded duty in this same pass. The trip COUNT is
                        untouched, so the 3rd trip still latches FINAL_FAULT.
-                       [FA] مسلح‌کردن دوبارهٔ JIT در مود دستی (بخش 5.2 ی
+                       [FA] مسلح‌کردن دوبارهٔ JIT در مود دستی (بخش 19 ی
                        v1.2): نوشتن دوبارهٔ duty یعنی ‎re-arm‎ - پارک و لچ
                        تریپ پاک می‌شوند و درایو دستی پایین همان پاس duty
                        فرمان‌شده را اعمال می‌کند. شمارش تریپ دست نمی‌خورد،
@@ -4130,9 +4130,9 @@ uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
         {
             /* [EN] Manual test mode: a fresh duty write is the re-arm
                gesture for a JIT-parked channel (protocol v1.2, section
-               5.2); the charger task consumes the request.
+               19); the charger task consumes the request.
                [FA] مود تست دستی: نوشتن دوبارهٔ duty حرکتِ مسلح‌کردنِ
-               کانالِ پارک‌شده در JIT است (پروتکل v1.2 بخش 5.2)؛ تسک
+               کانالِ پارک‌شده در JIT است (ESP_AGENT_SPEC بخش 19)؛ تسک
                شارژر درخواست را مصرف می‌کند. */
             BOOL__G__ChargerManualRearmRequest[uint8_t__channelIndex] = true;
         }
