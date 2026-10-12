@@ -29,7 +29,7 @@
  *               1) Panel: shared voltages (with DMM offset helpers), the current filter (median 1..15,
  *                  average 1..300) and one column per charger: live status, the measurement chain with
  *                  live formulas, the live filter chart and a charger cut button.
- *               2) Bench capture (spec 5.6): SOLO1/SOLO2/BOTH, a user-typed duty list, advance ONLY on
+ *               2) Bench capture (spec 4): SOLO1/SOLO2/BOTH, a user-typed duty list, advance ONLY on
  *                  the user's submit. v1.7 latch fix (user order 2026-09-25): the statistics window is
  *                  reset when the DMM form OPENS and is read the moment the user PRESSES submit, so the
  *                  CSV row matches the typed meters instead of a stale earlier window; sample_ms in the
@@ -70,7 +70,7 @@
  *               Wi-Fi AP "ChangeOver-ESP", password "123456789", panel at http://192.168.4.1
  *               No cloud: only MCU <-> ESP data exchange (flash is used only for the bench log file).
  *               Manual test mode (ID 19): a GET_PARAMS keepalive is sent every 1 s while manual
- *               mode is active (TLM flag b5 or param 19), also with a background tab (spec 5.2).
+ *               mode is active (TLM flag b5 or param 19), also with a background tab (spec 19).
  *               Safety: if no browser has polled /t for 10 s (or none since the ESP booted), the ESP
  *               sends ID 19 = 0 every 1 s until the STM32 reports manual off, so a closed panel never
  *               leaves a channel on an unregulated duty; the STM32 3 s dead-man still covers an ESP

@@ -473,18 +473,11 @@ def test_setpoints_and_timing():
                         "represent: a trip that can never be reached is not a "
                         "protection, it is decoration")
     # 4095 counts * 24200 / 27573 is the chain full scale (bsp_measurement.c),
-    # rounded to nearest like the firmware does since 2026-10-08; through the
-    # ch1 LUT's last slope, divided by the highest valid battery voltage, that
-    # is the smallest battery current the chain still covers.
+    # rounded to the nearest integer. No voltage division: the table is in mA.
     chain_fs = (4095 * 24200 + 27573 // 2) // 27573
-    gain1 = 1046
-    slope1 = (9089 - 8061) / (640 - 567)
-    power1 = 9089 + (round(chain_fs * gain1 / 1000) - 640) * slope1
-    worst = power1 * 1000.0 / 15000.0
-    check(abs(meas - worst) < 10,
-          "CHG_CURRENT_MEASURABLE_MAX_MA must match its own derivation from "
-          "the ADC chain and the channel-1 LUT (got %d, derived %.0f)"
-          % (meas, worst))
+    check(meas == chain_fs,
+          "CHG_CURRENT_MEASURABLE_MAX_MA must equal the chain full scale "
+          "(got %d, derived %d)" % (meas, chain_fs))
     check("#define CHG_CURRENT_HARD_FAULT_MA " not in text_h and
           "#define CHG_CURRENT_HARD_FAULT_MA\t" not in text_h,
           "the old one-name-two-jobs macro must not come back as an alias: "

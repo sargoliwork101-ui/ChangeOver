@@ -92,7 +92,7 @@
    [FA] کارت CAL در ساده‌سازی نسخهٔ ۱.۷ حذف شد (دستور کاربر ۲۰۲۶-۰۹-۲۵): پنل دیگر CAL_REFERENCE
         نمی‌فرستد. handler آن در فریم‌ور STM32 مانده است؛ بی‌استفاده و بی‌ضرر. */
 
-/* ==================== Bench Statistics Window (spec 5.5 / 5.6 v2) ==================== */
+/* ==================== Bench Statistics Window (spec 4) ==================== */
 /* [EN] The browser polls /t only every 300 ms, so the bench tools read EVERY TLM frame (10 Hz) through
         this window: POST /m restarts it (and queues one GET_PARAMS so the logged parameters are the live
         ones), GET /m reads it. All 20 t[] fields are tracked (ch1 0..6, ch2 7..13, Vin 14, V24 15, V12 16,
@@ -106,17 +106,18 @@
 #define ESP_STAT_FAULT_FIELD        19u
 #define ESP_STAT_MAX_FRAMES         60000u
 
-/* ==================== Bench Data Log File (spec 5.6, CSV v3: 56 data columns per row + a one-off settings line (was 149 repeated every row)) ==================== */
+/* ==================== Bench Data Log File (spec 4, CSV v3: 56 data columns per row + a one-off settings line (was 149 repeated every row)) ==================== */
 /* [EN] One append-only CSV on LittleFS. The panel builds each row from the /m window (every TLM frame,
         raw included) plus the typed DMM readings and POSTs it to /benchlog/add; the ESP only validates
         (printable ASCII, newline-terminated, bounded length) and appends. The column header (the comment block
-        of spec 5.6; v1.26 split the 149 into 56 data columns plus 93 settings written once - v1.12: +7 charge-profile params, v1.15: +11 alarm params, v1.16: +39 UI cadence params, v1.17: +6 full/hysteresis params, v1.24: +10 two-loop PID params, v1.25: +5 raw-count calibration columns) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
-        Arduino IDE: pick a flash layout WITH a file system (ESP8266 e.g. "4MB (FS:1MB)"; ESP32 default is fine).
+        of spec 4; v1.26 split the 149 into 56 data columns plus 93 settings written once - v1.12: +7 charge-profile params, v1.15: +11 alarm params, v1.16: +39 UI cadence params, v1.17: +6 full/hysteresis params, v1.24: +10 two-loop PID params, v1.25: +5 raw-count calibration columns) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
+        Arduino IDE: pick a flash layout WITH a file system. ESP8266-01S (1 MB) has no room for LittleFS next to the
+        ~414 KB panel and the sketch, so this log is OFF on that board (estimate; not measured). ESP32 default is fine.
    [FA] یک فایل CSV فقط-افزودنی روی LittleFS. پنل هر ردیف را از پنجرهٔ /m (تک‌تک فریم‌های TLM با raw)
         و عددهای مولتی‌متر می‌سازد و به /‎benchlog/add‎ می‌فرستد؛ ESP فقط بررسی (ASCII قابل چاپ، پایان با
         خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 4؛ نسخهٔ ۱.۲۶ آن ۱۴۹ را به ۵۶ ستون داده به‌اضافهٔ ۹۳ تنظیم که یک‌بار نوشته می‌شود تقسیم کرد - v1.12: +۷ پارامتر profile شارژ، v1.15: +۱۱ پارامتر آلارم، v1.16: +۳۹ پارامتر UI، v1.17: +۶ پارامتر فول/hysteresis، v1.24: +۱۰ پارامتر PID دوحلقه‌ای، v1.25: +۵ ستون شمارش خام برای کالیبراسیون) را ESP هنگام ساخت فایل می‌نویسد. در سقف
         اندازه افزودن متوقف می‌شود (HTTP 507) و پنل هشدار می‌دهد.
-        در Arduino IDE چیدمان فلشِ دارای فایل‌سیستم را انتخاب کنید (ESP8266 مثلاً "4MB (FS:1MB)"؛ ESP32 پیش‌فرض کافی است). */
+        ‎ESP8266-01S (‎۱ مگابایت) جا برای LittleFS کنار پنل ~۴۱۴ کیلوبایتی و اسکچ ندارد، پس این گزارش روی آن برد خاموش است (برآورد، نه اندازه‌گیری). ESP32 پیش‌فرض کافی است. */
 #define ESP_BENCHLOG_PATH           "/benchlog.csv"
 #define ESP_BENCHLOG_MAX_BYTES      102400u
 #define ESP_BENCHLOG_MAX_POST       1536u
@@ -187,7 +188,7 @@
 #define ESP_HTTP_FONT_CACHE         "public, max-age=31536000"
 /* [EN] Ceiling for the web panel, checked by a static_assert in plink_http.h.
  *      The panel is streamed from PROGMEM in small HTTP chunks and was 118 KB
- *      when this project started; it is 194 KB now and nothing ever stopped
+ *      when this project started; it is ~414 KB now and nothing ever stopped
  *      it growing. Chunking keeps a stalled ESP8266 client from losing the
  *      tail, which contains the settings sub-pages and the scripts.
  *      The ceiling turns the next large addition into a compile error that
@@ -199,8 +200,9 @@
  *      settings and the derived numbers the board will actually use): the
  *      page needed ~16 KB more, so the step went 208 -> 224 -> 256 KB in two
  *      deliberate moves, each tied to a named user order, not a drift.
- *      248 KB of markup is still safe in PROGMEM (the sketch uses a fraction
- *      of the 1 MB image); the HTTP response is chunked so transfer size is
+ *      The current ceiling is 416000 bytes (about 414 KB of markup). On the
+ *      ESP8266-01S (1 MB flash) the page is the largest single block of flash;
+ *      the HTTP response is chunked so transfer size is
  *      not confused with one giant socket write.
  * [FA] سقف پنل وب، با static_assert در plink_http.h بررسی می‌شود. پنل با یک
  *      send_P می‌رود و اول کار ۱۱۸ کیلوبایت بود؛ حالا ۱۹۴ است و هیچ‌چیز جلوی
@@ -215,6 +217,8 @@
  *      (شرط ورود، تنظیم‌های شماره‌دار و اعداد محاسبه‌شده‌ای که برد به‌کار
  *      می‌برد) که ~۱۶ کیلوبایت دیگر خواست؛ پس پله در دو حرکت عمدی از ۲۰۸ به
  *      ۲۲۴ و بعد ۲۵۶ کیلوبایت رفت — هر دو پای یک دستور مشخص، نه رانش.
+ *      سقف فعلی ۴۱۶۰۰۰ بایت (حدود ۴۱۴ کیلوبایت) است؛ روی ‎ESP8266-01S‎ با ۱ مگابایت
+ *      فلش، صفحه بزرگ‌ترین بلوک فلش است.
  *
  *      v1.52 (دستور کاربر ۲۰۲۶-۱۰-۰۵: یک کلید سراسری برای ارسال تنظیمات و
  *      پیام تأیید بعد از دست‌دادن، به‌علاوهٔ شبیه‌ساز زندهٔ کارت‌ها در v1.51)

@@ -17,15 +17,6 @@
 - قطع مستقل: `v_bat24_mv<20800` مستقل از فلگ، به‌مدت پیوسته 3000ms → قطع باتری.
 - وصل مجدد: `input_present==true` و `v_bat24_mv≥21200` به‌مدت پیوسته 3000ms → وصل باتری (PB11 High-Safe).
 
-## تاریخچه
-
-| تاریخ | تغییر |
-|---|---|
-| 2026-09-16 | پیاده‌سازی snapshot-first با `MillisecondsToTicks`، نگاشت حالت `BATTERY/INPUT/SAFE/FAULT` (بدون `IDLE` برای معتبر)، هندل `invalid` قبل از `fault`، فقط `BSP_GPIO_PROTECT_BATTERY` و ساخت `Changeover_Board_Validation.xlsx` با 21 سناریو (شامل fault+invalid). |
-| 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
-| 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
-| 2026-09 | اسکلت `func__Changeover_Init` / `func__Changeover_Evaluate` |
-
 ## فایل‌ها
 
 | فایل | نقش |
@@ -115,3 +106,7 @@ snapshot از Measurement می‌آید، faults از Fault، flag از UI؛ Cha
 پوشه هم به آن لینک هست و خودش به نمای سیستمی
 (`Documentation/System_State_Machine.xlsx`) برمی‌گردد. بازتولید:
 `python3 tools/make_module_state_machines.py`.
+
+## تاریخچه
+
+تاریخچهٔ تغییرات در `git log` همین مخزن نگهداری می‌شود.

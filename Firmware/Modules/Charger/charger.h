@@ -214,13 +214,11 @@
  *           converter push more through the core than the duty cap allows.
  *        2. MEASURABILITY. A trip the ADC can never reach is not a
  *           protection, it is decoration. The chain saturates at 4095
- *           counts = 3594 mA chain current (bsp_measurement.c
- *           ConvertCurrent: counts x 24200 / 27573). Through the channel
- *           LUTs and divided by the HIGHEST valid battery voltage - the
- *           worst case, because battery current = power / voltage - that
- *           is 3534 mA on channel 1 and 4124 mA on channel 2. So any
- *           ceiling at or below 3534 mA is a number the firmware can
- *           actually observe. That is the real bound, and the one used.
+ *           counts = 3594 mA chain current before bench gain (bsp_measurement.c
+ *           ConvertCurrent: counts x 24200 / 27573). The battery-current
+ *           table is on the counts axis and is read directly in mA, so the
+ *           observable ceiling is that full-scale value. It must be
+ *           re-read from the firmware after the first bench test.
  *        3. POLICY. Where the user wants the charger to shout. That is the
  *           user's call, not the firmware's, and it is now settable across
  *           the whole measurable range.
@@ -268,10 +266,12 @@
 
 /* [EN] 4095 counts x 24200 / 27573 - the chain's full-scale current.
  * [FA] جریان تمام‌مقیاس زنجیره. */
-/* [EN] Worst-case (channel 1, at the highest valid battery voltage)
- *      battery current the chain can still represent. Derived above.
- * [FA] بدترین‌حالتِ جریان باتری که زنجیره هنوز می‌تواند نمایش دهد. */
-#define CHG_CURRENT_MEASURABLE_MAX_MA  3534u
+/* [EN] Full-scale chain current (4095 counts x 24200 / 27573, rounded).
+ *      The table is read directly in mA on the counts axis, so no voltage
+ *      division is involved. Re-check after the first bench test.
+ * [FA] جریان تمام‌مقیاس زنجیره (۴۰۹۵ شمارش × ۲۴۲۰۰ ÷ ۲۷۵۷۳). جدول مستقیم
+ *      روی شمارش خوانده می‌شود، پس تقسیم بر ولتاژ در کار نیست. */
+#define CHG_CURRENT_MEASURABLE_MAX_MA  3594u
 /* [EN] The settable ceiling. Below the measurable maximum so every value
  *      the panel can ask for is one the firmware can actually observe.
  * [FA] سقف تنظیم‌شدنی. زیر بیشینهٔ قابل اندازه‌گیری. */

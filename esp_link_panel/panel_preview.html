@@ -490,7 +490,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build dae0fb7</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build f6feb89</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2996,7 +2996,7 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
 async function poll(){const c=new AbortController(),k=setTimeout(()=>c.abort(),2000);try{const r=await fetch('/t',{cache:'no-store',signal:c.signal});const d=await r.json();clearTimeout(k);if(document.hidden){D=d;hist(d);}else draw(d);}catch(e){clearTimeout(k);document.body.classList.add('dn');$('lk').classList.remove('on');$('lt').textContent='ESP در دسترس نیست';}
  lupd();setTimeout(poll,300);}
 /* ---------- ابزار بنچ (بخش 4 نسخه ۲؛ همه دستی، هیچ ضریبی خودکار ارسال نمی‌شود) ----------
- * Bench tools (spec 5.5 / 5.6 v2): manual only; no coefficient is ever sent automatically. */
+ * Bench tools (spec 4): manual only; no coefficient is ever sent automatically. */
 const gv=id=>{const e=$(id);if(!e||e.value==='')return null;const v=+e.value;return isNaN(v)?null:v;};
 const fa=n=>n<3?'۱۲'[n-1]:n,r0=Math.round;
 /* ذخیرهٔ خودکار ورودی‌ها در همین مرورگر (با بستن صفحه پاک نمی‌شوند) */
@@ -3190,7 +3190,7 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
    [FA] نمونه‌های معتبر بنچ به هفت پارامتر کالیبراسیون برد برازش می‌شوند؛
    نتیجه نمایش داده می‌شود و پیش از هر نوشتن تأیید صریح کاربر لازم است. */
 var CALS=[];try{CALS=JSON.parse(localStorage.getItem('calsmp')||'[]')||[];}catch(e){CALS=[];}
-function calsave(){try{localStorage.setItem('calsmp',JSON.stringify(CALS.slice(-400)));}catch(e){}}
+function calsave(){try{localStorage.setItem('calsmp',JSON.stringify(CALS));}catch(e){}}
 function calpush(m,v,act,sc,duty){
  CALS.push({sc:sc,d:duty,use:1,r1:m.a(0),r2:m.a(7),vin:m.a(14),v24:m.a(15),v12:m.a(16),vlo:m.a(17),vhi:m.a(18),
   b1:act.includes(1)?v.b1:null,b2:act.includes(2)?v.b2:null,

@@ -10,14 +10,6 @@
 
 ماژول event-latch فعال است: `MODULE_JITTER = 1` و همراه Charger در build می‌آید. PB2/PB6 خروجی‌های open-collector active-low LM393 هستند؛ `.ioc` فقط falling edge را برای JIT فعال می‌کند و callback سطح low را دوباره تأیید می‌کند.
 
-## تاریخچه
-
-| تاریخ | تغییر |
-|---|---|
-| 2026-09-14 | درخت اتصال فایل‌ها اضافه شد |
-| 2026-09-14 | برگه ماژول با توابع، پایه‌ها، لیبل و تاریخچه |
-| 2026-09 | اسکلت `func__Jitter_Init` / `Run` / `ChannelTripped` |
-
 ## فایل‌ها
 
 | فایل | نقش |
@@ -81,3 +73,7 @@ jitter.c
 پوشه هم به آن لینک هست و خودش به نمای سیستمی
 (`Documentation/System_State_Machine.xlsx`) برمی‌گردد. بازتولید:
 `python3 tools/make_module_state_machines.py`.
+
+## تاریخچه
+
+تاریخچهٔ تغییرات در `git log` همین مخزن نگهداری می‌شود.

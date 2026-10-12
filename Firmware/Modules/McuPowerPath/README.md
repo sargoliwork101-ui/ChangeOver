@@ -27,14 +27,6 @@
 - قطع ناگهانی با falling PB4 → ISR فوراً Low بدون نیاز به ADC، لغو تایمر، MCU reset نمی‌شود.
 - `v_bat` تاثیری ندارد وقتی `v_in` معتبر است.
 
-## تاریخچه
-
-| تاریخ | تغییر |
-|---|---|
-| 2026-09-17 | افزودن هیسترزیس `QUALIFY 22000u / RECONNECT 21500u / HYSTERESIS 500u` به `mcu_power_path.h` و بازنویسی `func__McuPowerPath_Run` برای سه باند (`>=22000` احراز 5s، `21500..21999` حفظ، `<21500` وصل)، تکمیل مستندات و فایل‌های Validation/Board_Validation، به‌روزرسانی README و گزارش. |
-| 2026-09-17 | ایجاد ماژول مستقل `McuPowerPath` با `mcu_power_path.h/.c`، نگاشت PB5، `PIN_SAFE_BAT_SWITCH_HIGH=0u`، latch Low در `MX_GPIO_Init`، هوک ISR در `bsp_exti.c` با اولویت PB5 Low قبل از `BSP_EXTI_INPUT_DETECT`، `MODULE_MCU_POWER_PATH=1`، `func__McuPowerPath_Run` در `task_control` حدود 10ms، 5000ms با `rtos_time.h` و بدون آستانه‌های Changeover. |
-| 2026-09-17 | بازرسی فایل‌های فعلی و استخراج نگاشت سخت‌افزار و شماتیک (Q1=PB5 active-low، Q17=PB11). |
-
 ## فایل‌ها
 
 | فایل | نقش |
@@ -138,3 +130,7 @@ mcu_power_path.c
 پوشه هم به آن لینک هست و خودش به نمای سیستمی
 (`Documentation/System_State_Machine.xlsx`) برمی‌گردد. بازتولید:
 `python3 tools/make_module_state_machines.py`.
+
+## تاریخچه
+
+تاریخچهٔ تغییرات در `git log` همین مخزن نگهداری می‌شود.
