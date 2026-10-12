@@ -556,6 +556,10 @@ void func__Ui_ScenarioImbalance_Tick(void);
 /* [EN] v1.72 scenario 6: condemned-battery face owned by Charger /
  *      چهرهٔ باتری خراب در مالکیت Charger. */
 void func__Ui_ScenarioDeadBattery_Tick(void);
+
+/* [EN] v1.88 thermal rest face: yellow blink during 10min rest after 1h max.
+ *      چهرهٔ استراحت حرارتی: زرد چشمک حین استراحت ۱۰ دقیقه. */
+void func__Ui_ScenarioThermalRest_Tick(uint32_t uint32_t__batteryMv);
 #endif
 
 /* ==================== Scenario Charging Tick / تیک سناریوی شارژ ==================== */

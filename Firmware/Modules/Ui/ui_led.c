@@ -1687,6 +1687,42 @@ void func__Ui_ScenarioCharging_Tick(uint32_t uint32_t__batteryMv)
     func__Ui_UpdateChargingYellowBlink(uint32_t__yellowOnMs, uint32_t__yellowOffMs);
 }
 
+#if MODULE_CHARGER
+/* ==================== Scenario ThermalRest Tick / تیک استراحت حرارتی ==================== */
+
+/**
+ * @brief  [EN] Thermal rest face (v1.88, user order 2026-10-12): yellow blinks
+ *              1s 50% while charger rests 10min after 1h at max current.
+ *              Green steady, red off, buzzer off. Uses absolute tick phase.
+ *         [FA] چهره استراحت حرارتی: زرد چشمک ۱ ثانیه ۵۰٪ حین استراحت ۱۰ دقیقه
+ *              بعد از ۱ ساعت جریان ماکس. سبز ثابت، قرمز خاموش، بوق خاموش.
+ * @param  uint32_t__batteryMv [EN] Battery voltage mV (not used, kept for uniform signature)
+ */
+void func__Ui_ScenarioThermalRest_Tick(uint32_t uint32_t__batteryMv)
+{
+    uint32_t uint32_t__elapsedMs;
+    uint32_t uint32_t__phaseMs;
+    uint32_t uint32_t__onMs;
+    bool bool__yellowOn;
+
+    (void)uint32_t__batteryMv;
+
+    func__Ui_ResetBatteryCriticalBeep();
+    func__Ui_ResetBatteryRunGreenBlink();
+    (void)func__Ui_Buzzer_Gated(0u, 0u, 0u, 0u);
+
+    func__green(true);
+    func__red(false);
+
+    uint32_t__elapsedMs = func__Rtos_TicksToMilliseconds(osKernelGetTickCount());
+    uint32_t__phaseMs = uint32_t__elapsedMs % CHG_THERMAL_YELLOW_PERIOD_MS;
+    uint32_t__onMs = (CHG_THERMAL_YELLOW_PERIOD_MS * CHG_THERMAL_YELLOW_DUTY_PCT) / UI_PERCENT_SCALE;
+    bool__yellowOn = (uint32_t__phaseMs < uint32_t__onMs);
+
+    func__yellow(bool__yellowOn);
+}
+#endif
+
 /* ==================== Scenario BatteryRun Tick / تیک سناریوی دشارژ ==================== */
 
 /**
@@ -2039,6 +2075,14 @@ void func__Ui_Tick(const measurement_snapshot_t *measurement_snapshot_t__snap)
             func__Ui_ScenarioInputOk();
         }
 #if MODULE_CHARGER
+        else if (func__Charger_IsAnyChannelInThermalRest() == true)
+        {
+            /* [EN] Thermal rest: 1h max -> 10min rest, yellow blinks 1s 50%
+               so user sees rest, green steady, red off.
+               [FA] استراحت حرارتی: ۱ ساعت ماکس -> ۱۰ دقیقه استراحت، زرد چشمک
+               ۱ ثانیه ۵۰٪ تا کاربر بفهمد در استراحت است، سبز ثابت. */
+            func__Ui_ScenarioThermalRest_Tick(uint32_t__batteryClampedMv);
+        }
         else if (func__Charger_IsAnyChannelActive() == false)
         {
             /* [EN] Not full and NO channel charging (OFF / JIT retry /

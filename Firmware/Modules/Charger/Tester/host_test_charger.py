@@ -300,16 +300,22 @@ def test_input_voltage_is_real_adc_22000mv():
     text_c = CHARGER_C.read_text()
     check(re.search(r"#define CHG_INPUT_VALID_MV\s+22000u", text_h),
           "input validity threshold must be 22000 mV")
-    check("measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_VALID_MV" in text_c,
+    check(re.search(r"#define CHG_INPUT_VALID_MAX_MV\s+28000u", text_h),
+          "input max must be 28000 mV per user order")
+    check("measurement_snapshot_t__snap->v_in_mv" in text_c,
           "input must be checked from real ADC v_in_mv every cycle")
-    check("input_present == false" not in text_c,
-          "PB4 digital input alone must not be the charge gate")
-    # Vin<22000 path: SafeIdle (both PWM 0 + relay coil false/NC closed), no retry/PWM
+    check("FAULT_ALARM_PARAM_INPUT_MIN_MV" in text_c and "FAULT_ALARM_PARAM_INPUT_MAX_MV" in text_c,
+          "input range must be panel-settable via fault alarm params 33/34")
+    check("func__Fault_GetAlarmParam" in text_c,
+          "charger must read panel input range via GetAlarmParam")
+    check("input_present == false" not in text_c or "bool__inputAdcValid" in text_c,
+          "PB4 digital input alone must not be the charge gate - use ADC range")
+    # Vin out of range path: SafeIdle (both PWM 0 + relay coil false/NC closed), no retry/PWM
     idx = text_c.find("bool__inputAdcValid == false")
     check(idx >= 0, "low-Vin gate must exist")
     snippet = text_c[idx:idx+1400]  # C26 (2026-09-26): SafeIdle-first + comment widened the block
-    check("func__Charger_SafeIdle();" in snippet, "low Vin must SafeIdle (PWM1=PWM2=0, relay off/NC closed)")
-    check("CHG_STATE_INPUT_WAIT" in snippet, "low Vin must put channels into INPUT_WAIT (no retry/PWM until recovery)")
+    check("func__Charger_SafeIdle();" in snippet, "out-of-range Vin must SafeIdle (PWM1=PWM2=0, relay off/NC closed)")
+    check("CHG_STATE_INPUT_WAIT" in snippet, "out-of-range Vin must put channels into INPUT_WAIT (no retry/PWM until recovery)")
 
 
 def test_input_recovery_restarts_with_safe_duty():

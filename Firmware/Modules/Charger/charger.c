@@ -2838,8 +2838,27 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         return;
     }
 
-    bool__inputAdcValid = ((measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_VALID_MV) &&
-                           (measurement_snapshot_t__snap->v_in_mv <= CHG_INPUT_VALID_MAX_MV));
+    {
+        uint32_t uint32_t__inputMinMv = CHG_INPUT_VALID_MV;
+        uint32_t uint32_t__inputMaxMv = CHG_INPUT_VALID_MAX_MV;
+
+#if MODULE_FAULT
+        uint32_t uint32_t__panelMin = 0u;
+        uint32_t uint32_t__panelMax = 0u;
+
+        if (func__Fault_GetAlarmParam(FAULT_ALARM_PARAM_INPUT_MIN_MV, &uint32_t__panelMin) == true)
+        {
+            uint32_t__inputMinMv = uint32_t__panelMin;
+        }
+        if (func__Fault_GetAlarmParam(FAULT_ALARM_PARAM_INPUT_MAX_MV, &uint32_t__panelMax) == true)
+        {
+            uint32_t__inputMaxMv = uint32_t__panelMax;
+        }
+#endif
+
+        bool__inputAdcValid = ((measurement_snapshot_t__snap->v_in_mv >= uint32_t__inputMinMv) &&
+                               (measurement_snapshot_t__snap->v_in_mv <= uint32_t__inputMaxMv));
+    }
 
     /* [EN] Connection-settle bookkeeping for every installed channel
        (user refinement 2026-09-19): the 15-second count must START FROM THE
@@ -3307,6 +3326,33 @@ bool func__Charger_IsAnyChannelActive(void)
     }
 
     return false;
+}
+
+bool func__Charger_IsAnyChannelInThermalRest(void)
+{
+    uint8_t uint8_t__channelIndex;
+
+    for (uint8_t__channelIndex = 0u; uint8_t__channelIndex < CHG_CHANNEL_COUNT; uint8_t__channelIndex++)
+    {
+        if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
+            CHG_STATE_THERMAL_REST)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool func__Charger_IsThermalRestActive(uint8_t uint8_t__channelIndex)
+{
+    if (uint8_t__channelIndex >= CHG_CHANNEL_COUNT)
+    {
+        return false;
+    }
+
+    return (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
+            CHG_STATE_THERMAL_REST);
 }
 
 /* ==================== Charger_IsChargeComplete ==================== */

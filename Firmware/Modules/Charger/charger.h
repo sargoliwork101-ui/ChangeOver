@@ -310,10 +310,12 @@ _Static_assert(CHG_CURRENT_HARD_FAULT_DEFAULT_MA <= CHG_CURRENT_HARD_FAULT_MAX_M
 _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
                "calibrated edge must sit below the default trip");
 #define CHG_INPUT_VALID_MV           22000u
-#define CHG_INPUT_VALID_MAX_MV       30000u
+#define CHG_INPUT_VALID_MAX_MV       28000u
 #define CHG_THERMAL_CONTINUOUS_MS    3600000u
 #define CHG_THERMAL_REST_MS           600000u
 #define CHG_THERMAL_CURRENT_MARGIN_MA    50u
+#define CHG_THERMAL_YELLOW_PERIOD_MS   1000u
+#define CHG_THERMAL_YELLOW_DUTY_PCT      50u
 #define CHG_DUTY_START_PERMILLE        10u
 #define CHG_DUTY_STEP_PERMILLE          5u
 /* [EN] The only fixed-step cadence left after v1.23. The BULK/ABSORB step
@@ -1235,6 +1237,23 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
  * @return bool [EN] true if any channel is charging / اگر هر کانالی شارژ کند true
  */
 bool func__Charger_IsAnyChannelActive(void);
+
+/**
+ * @brief  [EN] True while any channel is in thermal rest (1h max -> 10min).
+ *         Used by UI to show yellow blink during rest.
+ *         [FA] آیا کانالی در استراحت حرارتی است (۱ ساعت ماکس -> ۱۰ دقیقه).
+ *         برای نمایش چشمک زرد در UI استفاده می‌شود.
+ * @return bool [EN] true if any channel in THERMAL_REST / اگر کانالی در استراحت حرارتی true
+ */
+bool func__Charger_IsAnyChannelInThermalRest(void);
+
+/**
+ * @brief  [EN] True while ONE given channel is in thermal rest.
+ *         [FA] کانال داده‌شده در استراحت حرارتی است؟
+ * @param  uint8_t__channelIndex [EN] 0 or 1
+ * @return bool [EN] true while that channel in THERMAL_REST
+ */
+bool func__Charger_IsThermalRestActive(uint8_t uint8_t__channelIndex);
 
 /**
  * @brief  [EN] True while ONE given channel (0 = charger 1 / upper battery,
