@@ -3172,7 +3172,12 @@ void func__Charger_EvaluateTechnicalFault(
                 : measurement_snapshot_t__snap->i_ch2_ma;
 
         if ((func__Charger_GetAppliedDutyPermille(uint8_t__channelIndex) > 200u) &&
-            (uint32_t__currentMa == 0u))
+            (uint32_t__currentMa == 0u) &&
+            (func__Charger_ChannelVoltageMv(measurement_snapshot_t__snap,
+                                            uint8_t__channelIndex) >=
+             CHG_TECH_OPEN_MIN_BATTERY_MV) &&
+            (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
+             CHG_STATE_BAT_LOST))
         {
             bool__openFault = true;
         }

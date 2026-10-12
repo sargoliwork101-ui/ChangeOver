@@ -171,6 +171,12 @@
  */
 #define CHG_FIXED_DUTY_TEST_ENABLE              0u  /* [EN] 1=fixed 15% duty diagnostic (DONE, coefficients locked); 0=normal charge / تست تمام شد، شارژ نرمال فعال */
 #define CHG_FIXED_DUTY_TEST_DUTY_PERMILLE     150u
+/* [EN] Open-power-stage rule (scenario 7) needs a battery present: below this
+   pack voltage the channel is treated as unplugged, not as a dead stage. It equals
+   the Fault module's absent threshold (FAULT_BAT_ABSENT_MV, 6000 mV).
+   [FA] قانون طبقهٔ قدرت بازِ سناریوی ۷ باتری حاضر می‌خواهد؛ زیر این ولتاژ کانال
+   «باتری جدا» است، نه طبقهٔ خراب. برابر آستانهٔ غیبت ماژول Fault است. */
+#define CHG_TECH_OPEN_MIN_BATTERY_MV           6000u
 /* [EN] CHG_CURRENT_LIMIT_MA (675) was deleted on 2026-10-03: a grep of the
  *      whole firmware found zero readers, so it had been describing a limit
  *      that did not exist since the step chain was removed in v1.23. It was

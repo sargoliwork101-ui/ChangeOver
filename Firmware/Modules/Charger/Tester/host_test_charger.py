@@ -3988,6 +3988,9 @@ def test_scenario7_technical_fault_lockout():
           "short/burned signature must require open relay, zero applied PWM and recorded JIT")
     check("> 200u" in eval_body and "i_ch1_ma" in eval_body and "i_ch2_ma" in eval_body and "== 0u" in eval_body,
           "open/burned signature must require applied PWM over 20 percent and zero measured current")
+    check("CHG_TECH_OPEN_MIN_BATTERY_MV" in eval_body and "BAT_LOST" in eval_body,
+          "open/burned signature must ignore an unplugged channel (battery voltage gate and not BAT_LOST), "
+          "or a battery pulled mid-charge latches the session lockout")
     check("BOOL__G__TechnicalFaultLockout = true;" in eval_body and
           "func__Fault_Set(FAULT_CHARGER_TECHNICAL)" in eval_body,
           "either signature must latch the technical bit and output lockout")

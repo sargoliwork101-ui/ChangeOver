@@ -38,7 +38,8 @@ Authoritative endpoint contract for the current firmware/panel pair:
 
 Scenario-7 detection is not performed by the ESP. The STM32 detects either
 `relay open + applied PWM 0 + recorded JIT`, or `applied PWM > 200 permille +
-measured channel current 0 mA`. After detection the Charger keeps both PWM paths
+measured channel current 0 mA + channel battery >= 6000 mV (not BAT_LOST)`. The battery
+condition keeps an unplugged battery from latching the lockout during the 1 s absent debounce. After detection the Charger keeps both PWM paths
 stopped and the relay open until reset/power-cycle; only the three-LED face and
 its six settings are exposed to the panel. This is the single current contract.
 
@@ -996,7 +997,7 @@ raw2 ≈ 951 ↔ shunt2 ≈ 8346 µV ↔ ma2_unfiltered ≈ 897.
    borrow `132..135`.
 6. Keep the Charger/Fault lockout semantics visible: short/burned requires
    relay open + applied PWM zero + JIT; open/burned requires applied PWM above
-   20% + measured current zero; reset/power-cycle is the only release.
+   20% + measured current zero + battery present (>= 6000 mV, not BAT_LOST); reset/power-cycle is the only release.
 7. Render telemetry and current-chain formulas from applied board values. The
    panel is an operator UI, not a second charger controller; loss of telemetry
    must be reported without pretending that a physical-board test passed.
