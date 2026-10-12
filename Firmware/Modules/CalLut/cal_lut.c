@@ -83,10 +83,6 @@ _Static_assert((sizeof(cal_lut_record_t) % 2u) == 0u,
  * ==================================================================== */
 
 /**
- * @brief  [EN] Reflected CRC32, bit-by-bit (no table in flash).
- *         [FA] CRC32 بازتابیده، بیت‌به‌بیت (بدون جدول در فلش).
- */
-/**
  * @brief  [EN] Fold one byte into a running reflected CRC32. Exposed as a
  *              separate step so the staged table can be CRC-ed as a STREAM:
  *              the comm task has a 1 KiB stack and a 386-byte scratch
@@ -116,6 +112,10 @@ static uint32_t func__CalLut_Crc32Byte(uint32_t uint32_t__crc, uint8_t uint8_t__
     return uint32_t__crc;
 }
 
+/**
+ * @brief  [EN] Reflected CRC32 of a byte block, bit-by-bit (no table in flash).
+ *         [FA] CRC32 بازتابیده یک بلوک بایت، بیت‌به‌بیت (بدون جدول در فلش).
+ */
 uint32_t func__CalLut_Crc32(const uint8_t *uint8_t__A__Data,
                             uint32_t uint32_t__length)
 {
@@ -143,7 +143,7 @@ uint32_t func__CalLut_Crc32(const uint8_t *uint8_t__A__Data,
  *         [FA] قانونی‌بودن محورهای یک کانال: ۰ نقطه یعنی «جایگزین نشده» و
  *              مجاز است؛ در کامیت عمداً override فلش قبلی همان کانال را
  *              حذف می‌کند. وگرنه ۲..سقف نقطه، محور زنجیرهٔ اکیداً صعودی و
- *              محور توان بدون افت (تفریق بدون‌علامت در درون‌یابی، افت را به
+ *              محور جریان بدون افت (تفریق بدون‌علامت در درون‌یابی، افت را به
  *              ~۴e۹ می‌پیچاند).
  */
 static uint8_t func__CalLut_ChannelCheck(const cal_lut_channel_t
