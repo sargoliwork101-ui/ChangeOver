@@ -10,7 +10,7 @@ must be corrected. Older version history was removed; it lives in `git log`.
   The Vin/Vbat power formula, the power LUT and the η parameters are removed.
 - Gain and offset are used only above the last table anchor, and when no table is stored.
 - Parameters 9 and 10 (η) are reserved. GET and SET for them are rejected.
-- Voltage DMM fields stay in the bench capture. Voltage calibration is separate from the table.
+- The bench capture has no voltage DMM columns (removed; see §4). Voltage calibration is separate from the table.
 - Removed from this document: version history, the CAL_REFERENCE command (already not handled),
   the power-LUT conversion formulas and the bench-test narratives.
 
