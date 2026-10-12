@@ -124,23 +124,6 @@ uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts);
 
 /* ==================== BspMeasurement Current Counts To Ma (legacy) ==================== */
 
-/**
- * @brief  [EN] Legacy generic converter, identical to the channel-2
- *              function above because it uses the channel-2 calibration
- *              pair. Kept only so older callers keep linking; new code must
- *              pick the per-channel function (user order 2026-09-20:
- *              charger 1 no longer rides on charger 2's calibration).
- *         [FA] مبدل عمومی قدیمی که دقیقاً همان تابع کانال ۲ است، چون از جفت
- *              کالیبراسیون کانال ۲ استفاده می‌کند. فقط برای این نگه داشته
- *              شده که فراخوان‌های قدیمی لینک شوند؛ کد جدید باید تابع
- *              پر-کانال را بردارد (دستور کاربر ۲۰۲۶-۰۹-۲۰: شارژر ۱ دیگر روی
- *              کالیبراسیون شارژر ۲ سوار نیست).
- * @param  uint16_t__counts [EN] Normalized ADC count of a current channel /
- *                              شمارش استاندارد ADC یک کانال جریان
- * @return uint32_t [EN] Current in mA, channel-2 calibration /
- *                      جریان بر حسب mA با کالیبراسیون کانال ۲
- */
-uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts);
 /* [EN] Exact chain difference round(BSPfull(high) - BSPfull(low)) in mA, one
  *      rounding; used for the extrapolation above the last table anchor.
  * [FA] تفاضل دقیق زنجیره ‎round(BSPfull(high) - BSPfull(low))‎ بر حسب mA با

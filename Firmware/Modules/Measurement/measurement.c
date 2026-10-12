@@ -815,13 +815,6 @@ bool func__Measurement_CurrentIsBatteryCalibrated(uint8_t uint8_t__channelIndex)
     return (uint8_t__channelIndex <= 1u);
 }
 
-/* ==================== Measurement Current Counts To Ma (legacy) ==================== */
-
-uint32_t func__Measurement_CurrentCountsToMa(uint16_t uint16_t__counts)
-{
-    return func__Measurement_Current2CountsToMa(uint16_t__counts);
-}
-
 /* ==================== Measurement Current Counts To Shunt Uv ==================== */
 
 /**

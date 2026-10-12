@@ -63,8 +63,7 @@
 | `func__Measurement_CountsToMv` | خام استاندارد → mV پایه، با کالیبراسیون BSP برد |
 | `func__Measurement_V24CountsToMv` | خام استاندارد → mV منبع ۲۴، با تقسیم برد در BSP |
 | `func__Measurement_V12CountsToMv` | خام استاندارد → mV منبع ۱۲، با تقسیم برد در BSP |
-| `func__Measurement_Current1CountsToMa` / `Current2CountsToMa` | خام استاندارد هر کانال → mA واقعی باتری: کالیبراسیون مستقل پر-کانال در BSP (پیش‌فرض off=8، گین ch1=1046‰ و ch2=1303‰) + LUT توانی بنچ همان کانال در `calibration.h` (۱۷ انکر ch1 از v1.19، ۱۴ انکر ch2 از v1.18). **جفت‌شدگی:** هر جدول فقط با آفست/گینِ بنچ خودش معتبر است — تغییر گین = بازفیت جدول |
-| `func__Measurement_CurrentCountsToMa` | قدیمی/سازگاری = کانال ۲؛ کد جدید wrapper پر-کانال |
+| `func__Measurement_Current1CountsToMa` / `Current2CountsToMa` | شمارش خام هر کانال → mA باتری: جدول جریان بنچ همان کانال روی محور شمارش (اگر جدول ذخیره باشد)؛ در غیر این صورت خط گین و آفست پر-کانال در BSP (پیش‌فرض گین ۳۰۰۰‰ و آفست ۰) در `calibration.h` (۱۷ انکر ch1 از v1.19، ۱۴ انکر ch2 از v1.18). **جفت‌شدگی:** هر جدول فقط با آفست/گینِ بنچ خودش معتبر است — تغییر گین = بازفیت جدول |
 | `func__TaskMeasurement` | Init+Start یک‌بار، سپس هر `MEASUREMENT_PERIOD_MS` (۱ms) یک `Run` (`osDelayUntil` با تبدیل قابل‌حمل میلی‌ثانیه/تیک) |
 | `func__BspAdc_Init` (Bsp) | آماده‌سازی Backend ADC برد و صفر کردن بافر DMA؛ هندل و پایه‌ها در BSP پنهان هستند |
 | `func__BspAdc_Start` (Bsp) | شروع backend ADC+DMA برد؛ جزئیات peripheral و منابع وقفه در پورت برد خصوصی است |

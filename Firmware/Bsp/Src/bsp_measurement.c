@@ -701,22 +701,6 @@ uint32_t func__BspMeasurement_GetCurrentGainPermille(uint8_t uint8_t__channelInd
     return UINT32_T__G__Current2GainPermille;
 }
 
-/* ==================== BspMeasurement_CurrentCountsToMa (legacy) ==================== */
-
-/**
- * @brief  [EN] Legacy generic converter, kept for the old public wrapper:
- *              identical to func__BspMeasurement_Current2CountsToMa (the
- *              bench-calibrated chain). New code must pick the per-channel
- *              function instead.
- *         [FA] نسخهٔ قدیمی عمومی = کانال ۲؛ کد جدید از تابع پر-کانال استفاده کند.
- * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @return uint32_t [EN] Primary current in mA / جریان اولیه mA
- */
-uint32_t func__BspMeasurement_CurrentCountsToMa(uint16_t uint16_t__counts)
-{
-    return func__BspMeasurement_Current2CountsToMa(uint16_t__counts);
-}
-
 /* ==================== BspMeasurement Current Counts To Shunt Uv ==================== */
 
 /**
