@@ -57,6 +57,10 @@ static uint16_t func__Esp_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte)
    [FA] سلامت لینک، نمایش‌داده‌شده در صفحه. ناهم‌نسخگی یعنی STM32 و این پنل
    ناهماهنگ فلش شده‌اند - خرابی‌ای که قبلاً عیناً شبیه کابل قطع به نظر می‌رسید. */
 static uint32_t UINT32_T__G__RxCrcError = 0u;
+/* [EN] v2 NAK: how many SET_PARAM were refused, and the last id and reason. */
+static uint32_t UINT32_T__G__NakCount = 0u;
+static uint8_t  UINT8_T__G__NakId = 0xFFu;
+static uint8_t  UINT8_T__G__NakReason = 0u;
 static uint32_t UINT32_T__G__RxVersionMismatch = 0u;
 static uint16_t UINT16_T__G__RxCrc = 0u;
 static uint8_t  UINT8_T__G__RxCrcLow = 0u;
@@ -834,6 +838,13 @@ static void func__Esp_HandleFrame(void)
     else if ((UINT8_T__G__RxType == ESP_MSG_PARAM_REPORT) && (UINT16_T__G__RxLen == ESP_LINK_PARAM_ITEM_SIZE))
     {
         func__Esp_StoreParamItem(uint8_t__ptr_payload);
+    }
+    else if ((UINT8_T__G__RxType == ESP_MSG_PARAM_NAK) && (UINT16_T__G__RxLen == 2u))
+    {
+        /* [EN] v2: the board refused this SET_PARAM; its value was NOT applied. */
+        UINT8_T__G__NakId = uint8_t__ptr_payload[0];
+        UINT8_T__G__NakReason = uint8_t__ptr_payload[1];
+        UINT32_T__G__NakCount++;
     }
     else if ((UINT8_T__G__RxType == ESP_MSG_PARAMS_BULK) && (UINT16_T__G__RxLen >= 1u))
     {

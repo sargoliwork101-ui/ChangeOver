@@ -841,6 +841,13 @@ def test_charge_profile_v112():
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     check(txo and len(txo.group(1).split(",")) == 143 and "139, 140, 141, 142 };" in ino,
           "TxOrder must list all 143 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
+    # [EN] v2 NAK (user approval 2026-10-12): a refused SET_PARAM is answered with PARAM_NAK.
+    esp_h = (ROOT / "Firmware" / "Modules" / "EspLink" / "esp_link.h").read_text(encoding="utf-8")
+    esp_c = (ROOT / "Firmware" / "Modules" / "EspLink" / "esp_link.c").read_text(encoding="utf-8")
+    check("ESPLINK_MSG_PARAM_NAK" in esp_h and "func__EspLink_SendParamNak(" in esp_c
+          and "ESPLINK_NAK_BAD_LENGTH" in esp_c and "ESP_MSG_PARAM_NAK" in ino
+          and "UINT32_T__G__NakCount++" in ino,
+          "v2 NAK: the STM sends PARAM_NAK for every SET_PARAM it does not apply, and the panel counts it")
     check("L('wVi'" not in ino and "window.WVI=" not in ino and "calpush" in ino,
           "the calibration wizard has no voltage inputs (voltage readings removed from the calibration page)")
 

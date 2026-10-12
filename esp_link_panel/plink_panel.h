@@ -395,7 +395,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build cbff5fa</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 41090fa</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2845,10 +2845,11 @@ let LINK_WARN_KEY='';
 let LINK_WARN_DISMISS='';
 function lnkDismiss(){const e=$('lnkw');if(!e)return;LINK_WARN_DISMISS=LINK_WARN_KEY;e.className='wbx';e.innerHTML='';}
 function lnkhealth(d){const e=$('lnkw');if(!e)return;
- const vm=d.vm|0,ce=d.ce|0;
+ const vm=d.vm|0,ce=d.ce|0,nk=d.nk|0,nr=d.nr|0,nid=d.nid|0;
  let key='',kind='',body='';
  if(vm>0){key='version:'+vm;kind='bad';body='⛔ <b>نسخهٔ فرم‌ور و پنل یکی نیست</b> — '+vm+
   ' فریم با نسخهٔ ناشناخته رد شد. برد و ESP باید <b>با هم</b> دوباره فلش شوند (Clean + Rebuild کامل).';}
+ else if(nk>0){key='nak:'+nk;kind='warn';body='⚠ برد تنظیم شناسهٔ <b>'+nid+'</b> را <b>نپذیرفت</b> (کد '+nr+'). مقدار روی برد تغییری نکرد؛ دوباره ثبت کنید.';}
  else if(ce>0){key='crc:'+ce;kind='warn';body='⚠ <b>'+ce+'</b> فریم به‌خاطر خطای CRC رد شد — اتصال سیم و زمین لینک را بررسی کنید. داده‌ها معتبرند؛ فقط بخشی از قاب‌ها رسیده‌اند.';}
  else{LINK_WARN_KEY='';LINK_WARN_DISMISS='';e.className='wbx';e.innerHTML='';return;}
  LINK_WARN_KEY=key;

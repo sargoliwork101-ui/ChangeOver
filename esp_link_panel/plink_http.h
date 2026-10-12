@@ -189,7 +189,7 @@ static void func__Esp_HttpTelemetry(void)
            [‎FA] vm/ce‎: سلامت لینک. vm بزرگ‌تر از صفر یعنی STM32 و این پنل ناهماهنگ
            فلش شده‌اند - خرابی‌ای که قبلاً از کابل قطع قابل تشخیص نبود. ce خطاهای
            CRC را می‌شمارد تا هارنس نویزی قابل اندازه‌گیری باشد. */
-        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"q\":%lu,\"q2\":%lu,\"q3\":%lu,\"q4\":%lu,\"q5\":%lu,\"ka\":%lu,\"vm\":%lu,\"ce\":%lu,\"t\":[",
+        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"q\":%lu,\"q2\":%lu,\"q3\":%lu,\"q4\":%lu,\"q5\":%lu,\"ka\":%lu,\"vm\":%lu,\"ce\":%lu,\"nk\":%lu,\"nr\":%lu,\"nid\":%lu,\"t\":[",
         bool__online ? 1u : 0u, (unsigned long)uint32_t__ageMs, (unsigned int)UINT16_T__G__TlmSeq,
         (unsigned int)UINT8_T__G__TlmFlags, (unsigned int)UINT8_T__G__TlmFlags2, (unsigned long)UINT32_T__G__TlmFrameCount,
         (unsigned long)uint32_t__pendingMask, (unsigned long)uint32_t__pendingMask2,
@@ -197,7 +197,9 @@ static void func__Esp_HttpTelemetry(void)
         (unsigned long)uint32_t__pendingMask5,
         (unsigned long)uint32_t__keepaliveAgeMs,
         (unsigned long)UINT32_T__G__RxVersionMismatch,
-        (unsigned long)UINT32_T__G__RxCrcError);
+        (unsigned long)UINT32_T__G__RxCrcError,
+        (unsigned long)UINT32_T__G__NakCount, (unsigned long)UINT8_T__G__NakReason,
+        (unsigned long)UINT8_T__G__NakId);
 
     for (uint8_t__index = 0u; uint8_t__index < ESP_LINK_TLM_FIELD_COUNT; uint8_t__index++)
     {

@@ -123,6 +123,7 @@
  *        0x13 LUT_ACK    [stage:u8][status:u8][n1:u8][n2:u8][crc32:u32]
  *        0x14 LUT_DATA   [ch:u8][first:u8][count:u8]
  *                       + count x (counts:u32, batteryMa:u32)
+ *        0x15 PARAM_NAK  [id:u8][reason:u8]   (v2: a SET_PARAM that was NOT applied; 1 = not applied, 2 = bad length)
  *      ACK n1/n2 echo the point counts the CURRENT BEGIN declared (NOT the
  *      active table), so the sender can match each ACK against its own push.
  *      LUT_DATA is the diagnostic readback of the active RAM/flash table; the
@@ -144,6 +145,12 @@
 #define ESPLINK_MSG_LUT_READ          0x08u
 #define ESPLINK_MSG_LUT_ACK           0x13u
 #define ESPLINK_MSG_LUT_DATA          0x14u
+/* [EN] v2 NAK (user approval 2026-10-12): STM -> ESP, payload [id:u8][reason:u8].
+ *      Sent for every SET_PARAM that is NOT applied. Reasons below.
+ *      [FA] NAK نسخهٔ ۲ (تأیید کاربر ۲۰۲۶-۱۰-۱۲): برای هر SET_PARAM که اعمال نشد. */
+#define ESPLINK_MSG_PARAM_NAK         0x15u
+#define ESPLINK_NAK_NOT_APPLIED       0x01u  /* [EN] unknown id or owner refused / [FA] شناسهٔ ناشناخته یا رد مالک */
+#define ESPLINK_NAK_BAD_LENGTH        0x02u  /* [EN] payload is not 5 bytes / [FA] طول payload برابر ۵ نیست */
 #define ESPLINK_LUT_ACK_STAGE_BEGIN   1u
 #define ESPLINK_LUT_ACK_STAGE_CHUNK   2u
 #define ESPLINK_LUT_ACK_STAGE_COMMIT  3u

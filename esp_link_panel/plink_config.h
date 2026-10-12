@@ -48,6 +48,8 @@
 #define ESP_MSG_GET_PARAMS          0x02u
 #define ESP_MSG_TLM_LIVE            0x10u
 #define ESP_MSG_PARAM_REPORT        0x11u
+/* [‎EN] v2 NAK: STM -> panel, payload [id:u8][reason:u8]. [FA] NAK‎ نسخهٔ ۲. */
+#define ESP_MSG_PARAM_NAK           0x15u
 #define ESP_MSG_PARAMS_BULK         0x12u
 /* [EN] v1.66 direct LUT push (user order 2026-10-05). Mirror of the STM32
    ESPLINK_MSG_LUT_* ids - the table gets its OWN messages and its OWN flash

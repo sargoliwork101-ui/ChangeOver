@@ -743,6 +743,24 @@ static void func__EspLink_SendFrame(uint8_t uint8_t__messageType,
 }
 
 /**
+ * @brief  [EN] Send one PARAM_NAK frame: a SET_PARAM that was not applied.
+ *         [FA] یک فریم PARAM_NAK: SET_PARAM ای که اعمال نشد.
+ * @‎param  uint8_t__paramId [EN] Parameter id (0xFF when unknown) / [FA]‎ شناسه (0xFF اگر نامشخص)
+ * @param  uint8_t__reason  [EN] ESPLINK_NAK_* / [FA] ESPLINK_NAK_*
+ */
+static void func__EspLink_SendParamNak(uint8_t uint8_t__paramId,
+                                       uint8_t uint8_t__reason)
+{
+    uint8_t UINT8_T__A__Payload[2u];
+
+    UINT8_T__A__Payload[0] = uint8_t__paramId;
+    UINT8_T__A__Payload[1] = uint8_t__reason;
+
+    func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_PARAM_NAK,
+                            UINT8_T__A__Payload, 2u);
+}
+
+/**
  * @brief  [EN] Send one PARAM_REPORT frame (id + applied value).
  *         [FA] یک فریم PARAM_REPORT می‌فرستد (شناسه + مقدار اعمال‌شده).
  * @param  uint8_t__paramId [EN] Parameter id / شناسهٔ پارامتر
@@ -1165,9 +1183,9 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
 
 /**
  * @brief  [EN] Handle one complete, CRC-verified frame: apply a SET_PARAM
- *              (with a PARAM_REPORT reply of the applied value) or answer
- *              GET_PARAMS with PARAMS_BULK. Unknown types and wrong payload
- *              lengths are dropped silently. CAL_REFERENCE (0x03) is no longer
+ *              (with a PARAM_REPORT reply of the applied value, or a PARAM_NAK
+ *              when it is not applied - v2) or answer
+ *              GET_PARAMS with PARAMS_BULK. Unknown types are dropped silently. CAL_REFERENCE (0x03) is no longer
  *              handled - the panel stopped sending it in v1.7 and the dead
  *              handler was removed in v2 to fit the flash budget.
  *         [FA] رسیدگی به یک فریم کامل و تأییدشده با CRC: اعمال SET_PARAM (با
@@ -1490,7 +1508,12 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
 #endif /* MODULE_CHARGER */
             uint32_t__value = func__EspLink_GetU32(uint8_t__payload, 1u);
             if (func__EspLink_ApplyParam(uint8_t__payload[0], uint32_t__value,
-                                         &uint32_t__appliedValue) != false)
+                                         &uint32_t__appliedValue) == false)
+            {
+                /* [EN] v2 NAK: the id was unknown or its owner refused. */
+                func__EspLink_SendParamNak(uint8_t__payload[0], ESPLINK_NAK_NOT_APPLIED);
+            }
+            else
             {
                 func__EspLink_SendParamReport(uint8_t__payload[0],
                                               uint32_t__appliedValue);
@@ -1504,6 +1527,12 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
                    فیلتر می‌شوند). */
                 func__EspLink_NvmMarkDirty(uint8_t__payload[0]);
             }
+        }
+        else
+        {
+            /* [EN] v2 NAK: wrong payload length (id unknown when the frame is empty). */
+            func__EspLink_SendParamNak((uint16_t__payloadLength >= 1u) ? uint8_t__payload[0] : 0xFFu,
+                                       ESPLINK_NAK_BAD_LENGTH);
         }
     }
     else if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_GET_PARAMS)
