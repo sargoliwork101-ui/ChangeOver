@@ -76,6 +76,13 @@ static uint32_t UINT32_T__G__ReconnectStartTick = 0u;
  */
 static bool BOOL__G__ReconnectTimerActive = false;
 
+/**
+ * @brief  [EN] Input stable tracking for 30s extra delay before reconnect.
+ *         [FA] ردیابی پایداری ورودی برای تاخیر ۳۰ ثانیه اضافه قبل از وصل مجدد.
+ */
+static uint32_t UINT32_T__G__InputStableSinceTick = 0u;
+static bool BOOL__G__InputStableActive = false;
+
 /* ==================== Changeover_Init / مقداردهی اولیه ==================== */
 
 /**
@@ -91,6 +98,8 @@ void func__Changeover_Init(void)
     UINT32_T__G__ReconnectStartTick = 0u;
     BOOL__G__ReconnectTimerActive = false;
     BOOL__G__LowBatteryLatched = false;
+    UINT32_T__G__InputStableSinceTick = 0u;
+    BOOL__G__InputStableActive = false;
 }
 
 /* ==================== Changeover_Evaluate / ارزیابی ==================== */
@@ -352,23 +361,60 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
         BOOL__G__CutTimerActive = false;
     }
 
-    /* [EN] Evaluate reconnect: input_present true AND v >=21200 for 3000ms continuous.
+    /* [EN] Track input_present stable time for extra 30s delay before reconnect.
+          If input drops, reset the stable timer.
+       [FA] ردیابی پایداری ورودی برای تاخیر ۳۰ ثانیه اضافه قبل از وصل مجدد.
+          اگر ورودی قطع شود تایمر ریست می‌شود. */
+    if (measurement_snapshot_t__snap->input_present == true)
+    {
+        if (BOOL__G__InputStableActive == false)
+        {
+            BOOL__G__InputStableActive = true;
+            UINT32_T__G__InputStableSinceTick = uint32_t__nowTick;
+        }
+    }
+    else
+    {
+        BOOL__G__InputStableActive = false;
+        UINT32_T__G__InputStableSinceTick = 0u;
+    }
+
+    /* [EN] Evaluate reconnect: input_present true AND v >=21200 for 3000ms continuous
+          PLUS input stable for CHANGEOVER_INPUT_STABLE_MS (30s) after a cut.
           CONFIRMED 2026-10-06 (user decision): requiring the input is
           DELIBERATE. After a low-battery cut the pack voltage recovers on
           its own once the load is gone; reconnecting without mains would
           just put the load back on a weak pack and start a cut/reconnect
           cycle. The battery stays parked until a real charging source is
-          present. Do not "fix" this.
-       [FA] وصل مجدد فقط وقتی ورودی حاضر و ولتاژ باتری >=21200 به مدت ۳ ثانیه.
-          تأییدشده ۲۰۲۶-۱۰-۰۶ (تصمیم کاربر): شرطِ حضور ورودی عمدی است. پس از
-          قطعِ باتری ضعیف، با برداشته‌شدن بار ولتاژ خودبه‌خود بالا می‌آید؛ وصل
-          بدون برق فقط بار را دوباره روی باتری ضعیف می‌گذارد و چرخهٔ
-          قطع/وصل می‌سازد. این را «اصلاح» نکنید. */
+          present. Do not "fix" this. User order 2026-10-12: add 30s extra
+          stable-input delay before reconnect (time only, not voltage 24V).
+       [FA] وصل مجدد فقط وقتی ورودی حاضر و ولتاژ باتری >=21200 به مدت ۳ ثانیه
+          به‌علاوه ورودی ۳۰ ثانیه پایدار. تأییدشده ۲۰۲۶-۱۰-۰۶ (تصمیم کاربر):
+          شرطِ حضور ورودی عمدی است. دستور ۲۰۲۶-۱۰-۱۲: تاخیر ۳۰ ثانیه اضافه
+          پایداری ورودی قبل از وصل مجدد (فقط زمان، نه ولتاژ ۲۴). */
     bool__reconnectCondition = false;
     if ((measurement_snapshot_t__snap->input_present == true) &&
         (measurement_snapshot_t__snap->v_bat24_mv >= CHANGEOVER_BAT_RECONNECT_MV))
     {
-        bool__reconnectCondition = true;
+        if (BOOL__G__InputStableActive == true)
+        {
+            uint32_t uint32_t__inputStableElapsed;
+
+            uint32_t__inputStableElapsed = uint32_t__nowTick - UINT32_T__G__InputStableSinceTick;
+            if (uint32_t__inputStableElapsed >=
+                func__Rtos_MillisecondsToTicks(CHANGEOVER_INPUT_STABLE_MS))
+            {
+                bool__reconnectCondition = true;
+            }
+            else
+            {
+                bool__reconnectCondition = false;
+            }
+        }
+        else
+        {
+            bool__reconnectCondition = false;
+        }
     }
     else
     {

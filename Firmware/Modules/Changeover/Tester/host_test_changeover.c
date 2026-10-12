@@ -243,12 +243,14 @@ int main(void)
     CHECK(BOOL__G__ProtectLine == false);
     CHECK(UINT32_T__G__ProtectWrites == 0u);
 
-    /* ---- 6. reconnect needs mains AND 21200 mV AND 3 s (user decision ج-۲) ----
+    /* ---- ‎6. reconnect needs mains AND 21200 mV AND 3 s + 30 s stable input (user decision‎ ج-۲ + ‎2026-10-12)‎ ----
        [EN] After a cut the pack recovers, but with no mains the module must
-            stay parked in SAFE for ever. Only when the input shows up does
-            the 3 s reconnect filter start.
+            stay parked in SAFE for ever. Only when the input shows up and
+            stays for 30 s does the 3 s reconnect filter count. User order
+            2026-10-12: add 30 s extra stable-input delay (time only, not 24 V).
        [FA] پس از قطع، باتری بهبود می‌یابد ولی بدون برق ورودی باید برای همیشه
-            در SAFE بماند. فیلتر ۳ ثانیهٔ وصل فقط با حضور ورودی شروع می‌شود. */
+            در SAFE بماند. فیلتر ۳ ثانیهٔ وصل فقط با حضور ورودی و ۳۰ ثانیه
+            پایداری اضافه شروع می‌شود. دستور ۲۰۲۶-۱۰-۱۲: تاخیر ۳۰ ثانیه اضافه. */
     func__Reset(200000u);
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
@@ -262,15 +264,18 @@ int main(void)
     CHECK(BOOL__G__ProtectLine == true);
 
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = true;
-    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);     /* [EN] filter starts */
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);     /* [EN] input stable starts */
+    CHECK(func__Step(CHANGEOVER_INPUT_STABLE_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(BOOL__G__ProtectLine == true);
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);     /* [EN] 30 s done, 3 s filter starts */
     CHECK(func__Step(CHANGEOVER_DURATION_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
     CHECK(BOOL__G__ProtectLine == true);
     CHECK(func__Step(1u, FAULT_NONE) == APP_STATE_INPUT);
     CHECK(BOOL__G__ProtectLine == false);
     CHECK(UINT32_T__G__ProtectWrites == 2u);
 
-    /* [EN] Losing the input mid-filter must abandon the reconnect.
-       [FA] قطع ورودی وسط فیلتر، وصل مجدد را رها می‌کند. */
+    /* [EN] Losing the input mid-filter must abandon the reconnect and reset 30 s.
+       [FA] قطع ورودی وسط فیلتر، وصل مجدد و ۳۰ ثانیه را رها می‌کند. */
     func__Reset(300000u);
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_CRITICAL_CUT_MV - 1u;
@@ -278,11 +283,13 @@ int main(void)
     MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 24000u;
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = true;
     (void)func__Step(10u, FAULT_NONE);
-    (void)func__Step(CHANGEOVER_DURATION_MS - 500u, FAULT_NONE);
-    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;    /* [EN] mains lost */
+    (void)func__Step(CHANGEOVER_INPUT_STABLE_MS - 500u, FAULT_NONE);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;    /* [EN] mains lost -> reset 30 s */
     CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);
     MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = true;
-    (void)func__Step(10u, FAULT_NONE);                        /* [EN] filter restarts */
+    (void)func__Step(10u, FAULT_NONE);                        /* [EN] 30 s restarts */
+    CHECK(func__Step(CHANGEOVER_INPUT_STABLE_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);
     CHECK(func__Step(CHANGEOVER_DURATION_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
     CHECK(func__Step(1u, FAULT_NONE) == APP_STATE_INPUT);
 

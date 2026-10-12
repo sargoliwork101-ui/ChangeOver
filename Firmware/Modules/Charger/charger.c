@@ -52,7 +52,8 @@ typedef enum
     CHG_STATE_INPUT_WAIT,
     CHG_STATE_FINAL_FAULT,
     CHG_STATE_BAT_LOST,  /* [EN] battery wire cut during charge (fault bit latched) / باتری حین شارژ قطع شده */
-    CHG_STATE_MANUAL     /* [EN] manual test mode owns this channel: duty driven from the panel, battery gates bypassed / مود تست دستی مالک کانال: duty از پنل، گیت‌های باتری رد شده‌اند */
+    CHG_STATE_MANUAL,    /* [EN] manual test mode owns this channel: duty driven from the panel, battery gates bypassed / مود تست دستی مالک کانال: duty از پنل، گیت‌های باتری رد شده‌اند */
+    CHG_STATE_THERMAL_REST /* [EN] thermal rest: 1h at max current -> 10min rest / استراحت حرارتی: ۱ ساعت جریان ماکس -> ۱۰ دقیقه استراحت */
 } charger_state_t;
 
 typedef struct
@@ -284,6 +285,11 @@ static bool BOOL__G__RelayOpen;
 static bool BOOL__G__TechnicalFaultLockout;
 static uint32_t UINT32_T__G__RelaySettleDeadline;
 
+/* [EN] Thermal rest: 1h continuous at max current -> 10min rest per channel.
+   [FA] استراحت حرارتی: ۱ ساعت مداوم با بیشترین جریان -> ۱۰ دقیقه استراحت برای هر کانال. */
+static uint32_t UINT32_T__G__ThermalContinuousSinceTick[CHG_CHANNEL_COUNT] = {0u, 0u};
+static uint32_t UINT32_T__G__ThermalRestUntilTick[CHG_CHANNEL_COUNT] = {0u, 0u};
+
 #define CHG_NO_CHANNEL 0xFFu
 static uint8_t UINT8_T__G__RetryChannel;
 
@@ -382,13 +388,15 @@ static void func__Charger_SafeIdle(void)
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyBeforeTripPermille = 0u;
         CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint32_t__retryDeadlineTick = 0u;
-        /* [EN] FINAL_FAULT and BAT_LOST survive SafeIdle so their latches and
-           recovery logic are not wiped by fault-idle passes.
-           [FA] حالت‌های قفل (خطای نهایی و قطع باتری) با SafeIdle پاک نمی‌شوند. */
+        /* [EN] FINAL_FAULT, BAT_LOST and THERMAL_REST survive SafeIdle so their
+           latches and recovery logic are not wiped by fault-idle passes.
+           [FA] حالت‌های قفل (خطای نهایی، قطع باتری و استراحت حرارتی) با SafeIdle پاک نمی‌شوند. */
         if ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
              CHG_STATE_FINAL_FAULT) &&
             (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
-             CHG_STATE_BAT_LOST))
+             CHG_STATE_BAT_LOST) &&
+            (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state !=
+             CHG_STATE_THERMAL_REST))
         {
             CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
                 CHG_STATE_OFF;
@@ -1977,6 +1985,10 @@ void func__Charger_Init(void)
     BOOL__G__RelayOpen = false;
     UINT32_T__G__RelaySettleDeadline = 0u;
     UINT8_T__G__RetryChannel = CHG_NO_CHANNEL;
+    UINT32_T__G__ThermalContinuousSinceTick[0u] = 0u;
+    UINT32_T__G__ThermalContinuousSinceTick[1u] = 0u;
+    UINT32_T__G__ThermalRestUntilTick[0u] = 0u;
+    UINT32_T__G__ThermalRestUntilTick[1u] = 0u;
 
     func__Charger_SafeIdle();
 }
@@ -2826,7 +2838,8 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
         return;
     }
 
-    bool__inputAdcValid = (measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_VALID_MV);
+    bool__inputAdcValid = ((measurement_snapshot_t__snap->v_in_mv >= CHG_INPUT_VALID_MV) &&
+                           (measurement_snapshot_t__snap->v_in_mv <= CHG_INPUT_VALID_MAX_MV));
 
     /* [EN] Connection-settle bookkeeping for every installed channel
        (user refinement 2026-09-19): the 15-second count must START FROM THE
@@ -3017,6 +3030,95 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
                verdict of this very tick is visible to the gate below.
                [FA] سناریوی ۶ قبل از درایو همین پاس اجرا می‌شود. */
             func__Charger_DeadBatteryTick(uint8_t__channelIndex, uint32_t__nowTick);
+
+            /* [EN] Thermal rest: 1h continuous at max current -> 10min rest.
+               [FA] استراحت حرارتی: ۱ ساعت مداوم با بیشترین جریان -> ۱۰ دقیقه استراحت. */
+            {
+                uint32_t uint32_t__now = uint32_t__nowTick;
+                uint32_t uint32_t__restUntil = UINT32_T__G__ThermalRestUntilTick[uint8_t__channelIndex];
+                bool bool__inRest = false;
+
+                if (uint32_t__restUntil != 0u)
+                {
+                    if (func__Charger_DeadlineElapsed(uint32_t__now, uint32_t__restUntil) == false)
+                    {
+                        bool__inRest = true;
+                    }
+                    else
+                    {
+                        UINT32_T__G__ThermalRestUntilTick[uint8_t__channelIndex] = 0u;
+                        UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = 0u;
+                        if (CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
+                            CHG_STATE_THERMAL_REST)
+                        {
+                            CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
+                                CHG_STATE_OFF;
+                        }
+                    }
+                }
+
+                if (bool__inRest == true)
+                {
+                    func__Charger_StopOneChannel(uint8_t__channelIndex);
+                    CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
+                        CHG_STATE_THERMAL_REST;
+                    continue;
+                }
+
+                {
+                    uint32_t uint32_t__currentMa =
+                        func__Charger_ChannelCurrentMa(measurement_snapshot_t__snap,
+                                                       uint8_t__channelIndex);
+                    uint32_t uint32_t__bulkMax =
+                        CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa;
+                    uint32_t uint32_t__threshold = 0u;
+                    bool bool__atMax = false;
+
+                    if (uint32_t__bulkMax > CHG_THERMAL_CURRENT_MARGIN_MA)
+                    {
+                        uint32_t__threshold = uint32_t__bulkMax - CHG_THERMAL_CURRENT_MARGIN_MA;
+                    }
+                    else
+                    {
+                        uint32_t__threshold = uint32_t__bulkMax;
+                    }
+
+                    bool__atMax =
+                        ((CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state ==
+                          CHG_STATE_BULK) &&
+                         (uint32_t__currentMa >= uint32_t__threshold));
+
+                    if (bool__atMax == true)
+                    {
+                        if (UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] == 0u)
+                        {
+                            UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = uint32_t__now;
+                        }
+                        else
+                        {
+                            uint32_t uint32_t__elapsed =
+                                uint32_t__now -
+                                UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex];
+                            uint32_t uint32_t__needTicks =
+                                func__Charger_DurationTicks(CHG_THERMAL_CONTINUOUS_MS);
+                            if (uint32_t__elapsed >= uint32_t__needTicks)
+                            {
+                                UINT32_T__G__ThermalRestUntilTick[uint8_t__channelIndex] =
+                                    uint32_t__now + func__Charger_DurationTicks(CHG_THERMAL_REST_MS);
+                                UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = 0u;
+                                func__Charger_StopOneChannel(uint8_t__channelIndex);
+                                CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].charger_state_t__state =
+                                    CHG_STATE_THERMAL_REST;
+                                continue;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        UINT32_T__G__ThermalContinuousSinceTick[uint8_t__channelIndex] = 0u;
+                    }
+                }
+            }
 
             if (BOOL__G__ChargerManualModeActive != false)
             {

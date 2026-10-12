@@ -310,6 +310,10 @@ _Static_assert(CHG_CURRENT_HARD_FAULT_DEFAULT_MA <= CHG_CURRENT_HARD_FAULT_MAX_M
 _Static_assert(CHG_CURRENT_CALIBRATED_MA < CHG_CURRENT_HARD_FAULT_DEFAULT_MA,
                "calibrated edge must sit below the default trip");
 #define CHG_INPUT_VALID_MV           22000u
+#define CHG_INPUT_VALID_MAX_MV       30000u
+#define CHG_THERMAL_CONTINUOUS_MS    3600000u
+#define CHG_THERMAL_REST_MS           600000u
+#define CHG_THERMAL_CURRENT_MARGIN_MA    50u
 #define CHG_DUTY_START_PERMILLE        10u
 #define CHG_DUTY_STEP_PERMILLE          5u
 /* [EN] The only fixed-step cadence left after v1.23. The BULK/ABSORB step

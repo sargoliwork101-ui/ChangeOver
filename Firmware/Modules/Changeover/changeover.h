@@ -75,6 +75,16 @@ void func__Changeover_Init(void);
  */
 #define CHANGEOVER_DURATION_MS            3000u
 
+/**
+ * @brief  [EN] Extra stable input time before reconnect allowed, in milliseconds.
+ *         After a cut, input_present must stay true for this long in addition
+ *         to the 3s voltage condition. Prevents immediate re-connect on a
+ *         flickering input.
+ *         [FA] زمان پایداری اضافه ورودی قبل از وصل مجدد، بر حسب میلی‌ثانیه.
+ *         بعد از قطع، ورودی باید این مدت پایدار بماند علاوه بر شرط ۳ ثانیه ولتاژ.
+ */
+#define CHANGEOVER_INPUT_STABLE_MS        30000u
+
 /* ==================== Changeover_Evaluate / ارزیابی Changeover ==================== */
 
 /**
