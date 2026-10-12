@@ -841,8 +841,8 @@ def test_charge_profile_v112():
     txo = re.search(r"UINT8_T__G__TxOrder\[ESP_PARAM_COUNT\] = \{([^}]*)\}", ino)
     check(txo and len(txo.group(1).split(",")) == 143 and "139, 140, 141, 142 };" in ino,
           "TxOrder must list all 143 ids explicitly (v1.17: a short initializer zero-fills the tail, so the tail ids would never transmit and id 0 would repeat)")
-    check("window.WVI=" in ino and "L('wVi','ولتاژ ورودی V',WVI)" in ino,
-          "the input-voltage DMM reading must carry into the next wizard step (user order 2026-09-25: quasi-static, type once)")
+    check("L('wVi'" not in ino and "window.WVI=" not in ino and "calpush" in ino,
+          "the calibration wizard has no voltage inputs (voltage readings removed from the calibration page)")
 
     # --- python model of ClampProfile: interdependencies hold for arbitrary writes ---
     def clamp(p):
@@ -1755,7 +1755,7 @@ def test_alarms_tab_v115():
           and "Theil-Sen" in ino and "Huber IRLS" in ino
           and "function calrun()" in ino and "async function calapply()" in ino
           and "جریان خالص باتری صفر در raw=" in ino
-          and "Math.ceil(g.sum/g.n*10-1e-9)/10" in ino and "function calbuild(" in ino
+          and "Math.ceil(g.max*10-1e-9)/10" in ino and "function calbuild(" in ino
           and "calapply()" in ino and "xexp();" in ino,
           "bench calibration directly fits signed current in each battery lead and builds battery-current LUTs (2026-10-10)")
     # [EN] Stale since the scenario-card redesign and only found on 2026-10-05:

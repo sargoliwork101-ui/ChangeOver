@@ -1158,12 +1158,8 @@ async function testBackupAndCal(win, doc) {
     check(prop[0] === expectedOffset, 'the fit preserves signed battery current and finds the zero-current raw point');
     check(String(win.CALR.find(r => Number(r[1]) === 0)[4]).indexOf('جریان خالص باتری صفر در raw='+expectedOffset) >= 0,
           'a negative battery current remains in the direct signed fit');
-    check(prop[4] === 300, 'the input-voltage offset is the mean multimeter difference');
-    check(prop[5] === 300, 'the 24 V pack offset uses the sum of the two halves');
-    check(prop[6] === 200, 'the 12 V node offset uses the lower half');
-    check(doc.querySelectorAll('#calst .calsummaryrow').length === 7 &&
-          doc.getElementById('calst').textContent.indexOf('گین') >= 0 &&
-          doc.getElementById('calst').textContent.indexOf('ولتاژ ورودی') >= 0,
+    check(doc.querySelectorAll('#calst .calsummaryrow').length === 4 &&
+          doc.getElementById('calst').textContent.indexOf('گین') >= 0,
           'the result is a named status summary containing every calibration parameter');
     const panelCss = Array.from(doc.querySelectorAll('style')).map(s => s.textContent).join('\n');
     check(doc.getElementById('calst').classList.contains('cal-summary') &&
@@ -1249,14 +1245,13 @@ async function testBackupAndCal(win, doc) {
     win.CALS = fitSamples.map(row => Object.assign({}, row,
         { b1: null, b2: null, dvi: null, dv1: null, dv2: null }));
     win.eval('calrun')();
-    const noFitRows = [0, 1, 2, 3, 4, 5, 6].map(id =>
+    const noFitRows = [0, 1, 2, 3].map(id =>
         win.CALR.find(row => Number(row[1]) === id));
     check(noFitRows.every(row => row && row[5] !== 1),
-          'all seven missing fits are represented as non-applicable board parameters');
+          'all four missing current fits are represented as non-applicable board parameters');
     const noFitStatus = doc.getElementById('calst').textContent;
     check(['آفست جریان باتری ۱', 'آفست جریان باتری ۲', 'گین جریان باتری ۱',
-           'گین جریان باتری ۲', 'آفست ولتاژ ورودی', 'آفست ولتاژ پک ۲۴ ولت',
-           'آفست ولتاژ نود ۱۲ ولت'].every(name => noFitStatus.indexOf(name) >= 0) &&
+           'گین جریان باتری ۲'].every(name => noFitStatus.indexOf(name) >= 0) &&
           doc.querySelectorAll('#calst .calsummary > .lb').length === 1 &&
           noFitStatus.indexOf('تغییر نمی‌کند') >= 0,
           'one consolidated notice names every unavailable fit and says the board values stay');
@@ -1298,9 +1293,6 @@ async function testBackupAndCal(win, doc) {
     }));
     win.CALS = bat2ScopeSamples.concat(noisyBat1Samples);
     win.eval('calrun')();
-    const scopedVoltage = Number(win.CALR.find(r => Number(r[1]) === 4)[3]);
-    check(scopedVoltage === 300,
-          'battery-1 voltage samples do not alter a BAT2-only calibration result');
     win.CALS = savedScopeSamples;
     ['BAT1', 'BAT2', 'BOTH'].forEach(k => { doc.getElementById('wc' + k).checked = true; });
     win.eval('calrun')();
@@ -1332,36 +1324,6 @@ async function testBackupAndCal(win, doc) {
           'the snippet repeats the gain/offset the table was fitted with');
     check(doc.getElementById('calcd').style.display === 'block',
           'the snippet is shown on the page, ready to copy');
-
-    /* --- v1.62: the voltage SLOPE is measured and reported --- */
-    /* two voltage levels 2 V apart, board reading 2% low: offset cannot fix it */
-    const vs = [];
-    for (let i = 0; i < 6; i += 1) {
-        const board = 12000 + i * 400;
-        vs.push({ sc: 'BOTH', d: 2 + i, use: 1, r1: 100 + i * 50, r2: 100 + i * 50,
-                  vin: board * 2, v24: board * 2, v12: board, vlo: board, vhi: board,
-                  b1: 50 + i * 20, b2: 50 + i * 20,
-                  dvi: Math.round(board * 2 * 1.02), dv1: Math.round(board * 1.02),
-                  dv2: Math.round(board * 1.02), ts: 1 });
-    }
-    const keepS = win.CALS;
-    win.CALS = vs;
-    win.eval('calchk')();
-    check(doc.getElementById('calck').innerHTML.indexOf('خطای ضریبی') >= 0,
-          'a 2% scale error on the voltage is reported as a slope problem, not an offset');
-    win.eval('calrun')();
-    win.eval('calcode')();
-    const vcode = doc.getElementById('calcd').value;
-    check(vcode.indexOf('BSP_MEASUREMENT_DIV24_TOP_OHMS') >= 0 &&
-          vcode.indexOf('scale error') >= 0,
-          'the snippet prints the corrected divider constant for the firmware');
-    check(vcode.indexOf('69496u') >= 0,
-          'the corrected constant is slope x top + (slope - 1) x bottom, checked by hand');
-    check(vcode.indexOf('BSP_MEASUREMENT_DIV24BAT_TOP_OHMS') >= 0,
-          'the input rail and the pack rail get their own macro, not one shared line');
-    win.CALS = keepS;
-    win.eval('calchk')();
-    win.eval('calrun')();
 
     /* --- v1.63: any point count is fine, but fewer than two is refused --- */
     const keepP = win.CALS;
@@ -1591,10 +1553,12 @@ async function testBackupAndCal(win, doc) {
     check(win.eval('WH').join('|').indexOf('raw') < 0 &&
           win.eval('WH').join('|').indexOf('iest') < 0,
           'the column set itself drops the extra fields');
-    check(win.eval('WH').filter(h => h.indexOf('(شما)') >= 0).length === 6,
-          'the six numbers the user types each have their own column');
-    check(win.eval('WH').filter(h => h.indexOf('(برد)') >= 0).length === 5,
-          'the board readings the user needs are shown: input, both batteries, both currents');
+    check(win.eval('WH').filter(h => h.indexOf('(شما)') >= 0).length === 3,
+          'the three numbers the user types (two currents and the input current) each have their own column');
+    check(win.eval('WH').filter(h => h.indexOf('(برد)') >= 0).length === 2,
+          'the board current readings are shown: both batteries');
+    check(win.eval('WH').join('|').indexOf('V') < 0,
+          'no voltage column remains in the calibration wizard');
     check(win.eval('WSTC') === win.eval('WH').length - 1,
           'the status column index follows the header list instead of a hard-coded 12');
 
@@ -1968,14 +1932,14 @@ async function testLutPush(win, doc) {
     win.fetch = stub(ackOk);
     await win.eval('lsend')();
     const calChecks = Array.from(doc.querySelectorAll('#lutcmp input.lutcalcheck'));
-    check(calChecks.length === 7 && calChecks.every(x => x.checked),
-          'every in-scope calibration value is checked by default');
+    check(calChecks.length === 7 && calChecks.every(x => x.checked === (Number(x.dataset.calId) < 4)),
+          'the four current values are checked by default; the voltage offsets are not (no voltage fit)');
     check(doc.querySelector('#lutcmp .lutchange') !== null &&
           doc.getElementById('lutcmp').innerHTML.indexOf('rgba(247,148,30') < 0,
           'the change audit uses the orange change-card class instead of an inline red frame');
-    const keepVoltage = doc.querySelector('#lutcmp input[data-cal-id="4"]');
-    keepVoltage.click();
-    check(!doc.querySelector('#lutcmp input[data-cal-id="4"]').checked &&
+    const keepCurrent = doc.querySelector('#lutcmp input[data-cal-id="0"]');
+    keepCurrent.click();
+    check(!doc.querySelector('#lutcmp input[data-cal-id="0"]').checked &&
           doc.getElementById('lutcmp').textContent.indexOf('حفظ می‌شود') >= 0,
           'unticking one calibration value marks it to be preserved');
     await applyPending('the first LUT transaction');
@@ -2138,9 +2102,9 @@ async function testLutPush(win, doc) {
         check(doc.getElementById('calst').textContent.indexOf('✅') >= 0,
               'a single-battery update completes with calibration and LUT readback');
         check(calls.some(c => c.indexOf('/s?id=0&') >= 0) && calls.some(c => c.indexOf('/s?id=2&') >= 0) &&
-              [4, 5, 6].every(id => calls.some(c => c.indexOf('/s?id=' + id + '&') >= 0)) &&
+              ![4, 5, 6].some(id => calls.some(c => c.indexOf('/s?id=' + id + '&') >= 0)) &&
               !calls.some(c => c.indexOf('/s?id=1&') >= 0) && !calls.some(c => c.indexOf('/s?id=3&') >= 0),
-              'battery 1 sends its own offset/gain plus every valid global voltage offset');
+              'battery 1 sends its own offset/gain; no voltage offset is written from the calibration page');
         const oneBody = postedBodies[postedBodies.length - 1].split(',').map(Number);
         check(oneBody[0] === onePreview.T[0].X.length &&
               oneBody[1] === readBefore[1].X.length,

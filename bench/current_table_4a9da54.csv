@@ -1,0 +1,27 @@
+# Current table measured on the bench: DMM current (mA) against the ch2 raw count mean.
+# Source: bench/bench_samples_4a9da54.json (BAT2, duty 0-17 %, 22 samples, build 4a9da54).
+# Axis: raw ADC counts, rounded to the integer the board table needs (the only rounding in the path).
+# Y: the highest DMM reading at that count, rounded UP to 0.1 mA. Never below the measured current.
+# Negative DMM (discharge at 0 %) is clamped to 0 mA, as calbuild does.
+# Linear interpolation between anchors. Above the last anchor (515 counts): gain and offset apply (defaults 3000 / 0).
+# Values BETWEEN anchors are interpolated, not measured; they are not checked against the DMM.
+counts_x,dmm_max_mA,table_y_mA,duty_pct_seen
+7,0,0.0,0
+8,0,0.0,0|1
+9,0,0.0,1
+10,0,0.0,2
+22,5,5.0,3
+38,21,21.0,4
+63,47,47.0,5
+95,73,73.0,6
+127,104,104.0,7
+166,142,142.0,8
+206,181,181.0,9
+252,225,225.0,10
+283,265,265.0,11
+308,310,310.0,12
+341,363,363.0,13
+377,413,413.0,14
+420,467,467.0,15
+466,518,518.0,16
+515,560,560.0,17

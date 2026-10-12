@@ -73,11 +73,11 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
 - Push and commit (messages 0x04..0x08): `LUT_BEGIN`, `LUT_CHUNK` (points), `LUT_COMMIT` (ACK),
   `LUT_RESET` only after a successful COMMIT, `LUT_READ` for read-back. The payload layout is
   defined in `Firmware/Modules/EspLink/esp_link.c` (LUT handlers).
-- Initial, uncalibrated table: `bench/current_table_initial.csv`. It is a file in the repository
-  only. It is not loaded on any board. The `dmm_mA` column is to be measured.
-  Its chain column is `counts x 24200/27573` with NO gain. BSP(c) above includes the gain
-  (default 3000 = x3), so until the DMM is measured the table and the BSP line differ by
-  that factor. This is open; it is decided by measurement, not by the formula.
+- Measured table: `bench/current_table_4a9da54.csv`, built from the DMM export
+  `bench/bench_samples_4a9da54.json` (BAT2, duty 0-17 %). It is a repository file only; it is not
+  loaded on any board. Y is the highest DMM reading at each count, rounded UP to 0.1 mA. The chain
+  formula `counts x 24200/27573` (no gain) was NOT the real relation: above about 11 % duty it read
+  below the measured current (about 108 mA low at 17 %). BSP(c) above is the fallback formula only.
 
 ## 3. Voltage calibration (separate from the table)
 
