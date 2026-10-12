@@ -95,8 +95,8 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
   That header is the source of truth; this file does not repeat it.
 - Current-channel columns: `raw1/raw2` (counts), `shunt1_uv/shunt2_uv` (mA ≈ µV ÷ 10 with the
   10 mΩ shunt), `unf/filt/iest` (mA after the chain; `iest` equals the filtered current).
-- The `[dmm]` group holds `dmm_i_in_ma`, `dmm_vin_mv`, `dmm_i_bat1_ma`, `dmm_vbat1_mv`,
-  `dmm_i_bat2_ma`, `dmm_vbat2_mv`, `note`.
+- The `[dmm]` group holds `dmm_i_in_ma`, `dmm_i_bat1_ma`, `dmm_i_bat2_ma`, `note` (the DMM voltage
+  columns were removed; no code wrote them).
 
 ## 5. Wiring / physical
 
