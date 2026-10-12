@@ -49,7 +49,7 @@ its six settings are exposed to the panel. This is the single current contract.
 ```
 raw ADC counts (12-bit, per channel)
   -> median (param 7) then moving average (param 8), on counts
-  -> counts <= last anchor : table (counts -> battery mA), linear, ONE final rounding
+  -> counts <= last anchor : table (counts -> battery mA), linear, ONE final rounding (UP to 0.1 mA)
                              below first anchor: hold Y[0]
   -> counts >  last anchor : Y_last + (BSP(c) - BSP(c_last)), one rounding
   -> no table stored       : BSP(c)
@@ -57,7 +57,7 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
 ```
 
 - Rounding rule: the table never rounds in the middle of a calculation; the final value is
-  rounded once, UP to the next integer mA (ceiling), so a reading is never below the
+  rounded once, UP to the next 0.1 mA (ceiling; no integer rounding anywhere), so a reading is never below the
   table/chain value.
 - Gain and offset never change the table itself. They only add the part above the last anchor
   and the no-table fallback.
@@ -75,6 +75,9 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
   defined in `Firmware/Modules/EspLink/esp_link.c` (LUT handlers).
 - Initial, uncalibrated table: `bench/current_table_initial.csv`. It is a file in the repository
   only. It is not loaded on any board. The `dmm_mA` column is to be measured.
+  Its chain column is `counts x 24200/27573` with NO gain. BSP(c) above includes the gain
+  (default 3000 = x3), so until the DMM is measured the table and the BSP line differ by
+  that factor. This is open; it is decided by measurement, not by the formula.
 
 ## 3. Voltage calibration (separate from the table)
 
