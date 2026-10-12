@@ -103,8 +103,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/* [EN] Modules (single translation unit, included in this order).
-   [FA] ماژول‌ها (یک واحد ترجمه، با همین ترتیب include می‌شوند). */
+/* Modules (single translation unit, included in this order): */
 #include "plink_config.h"
 #include "plink_params.h"
 #include "plink_state.h"

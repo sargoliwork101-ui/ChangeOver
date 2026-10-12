@@ -1,9 +1,6 @@
-/* [EN] plink_config.h - link/message/param constants, bench CSV header, Wi-Fi/HTTP constants, parser states.
+/* plink_config.h - link/message/param constants, bench CSV header, Wi-Fi/HTTP constants, parser states.
    Included by esp_link_panel.ino (single translation unit, order matters).
-   No include guard on purpose: including twice would redefine everything.
-   [FA] plink_config.h - ثابت‌های لینک، پیام و پارامتر، هدر CSV بنچ، ثابت‌های ‎Wi-Fi‎ و HTTP، و وضعیت‌های پارسر.
-   توسط esp_link_panel.ino به‌عنوان یک واحد ترجمه include می‌شود (ترتیب مهم است).
-   بدون include guard عمدی است: دو بار include شدن همه‌چیز را دوباره تعریف می‌کند. */
+   No include guard on purpose: including twice would redefine everything. */
 /* ==================== Link Constants ==================== */
 #define ESP_LINK_BAUD_RATE          921600u
 /* [EN] RX ring headroom. The panel page/bench-log handlers drain the ring
@@ -23,8 +20,7 @@
        SOF0 SOF1 VER TYPE LEN_LO LEN_HI [payload] CRC_LO CRC_HI
    [FA] فریم نسخهٔ ۲؛ باید بایت‌به‌بایت با esp_link.h فرم‌ور یکی بماند. */
 #define ESP_LINK_PROTOCOL_VERSION   2u
-#define ESP_LINK_HEADER_SIZE        6u   /* [EN] SOF0 + SOF1 + ver + type + len_lo + len_hi.
-   [FA] SOF0 و SOF1، نسخه، نوع، بایت کم و زیاد طول. */
+#define ESP_LINK_HEADER_SIZE        6u   /* SOF0 + SOF1 + ver + type + len_lo + len_hi */
 #define ESP_LINK_CRC_SIZE           2u
 #define ESP_LINK_CRC16_INIT         0xFFFFu
 #define ESP_LINK_CRC16_POLY         0x1021u

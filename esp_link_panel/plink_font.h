@@ -1,9 +1,6 @@
-/* [EN] plink_font.h - Vazirmatn subset font in PROGMEM.
+/* plink_font.h - Vazirmatn subset font in PROGMEM.
    Included by esp_link_panel.ino (single translation unit, order matters).
-   No include guard on purpose: including twice would redefine everything.
-   [FA] plink_font.h - زیرمجموعهٔ فونت Vazirmatn در PROGMEM.
-   توسط esp_link_panel.ino به‌عنوان یک واحد ترجمه include می‌شود (ترتیب مهم است).
-   بدون include guard عمدی است: دو بار include شدن همه‌چیز را دوباره تعریف می‌کند. */
+   No include guard on purpose: including twice would redefine everything. */
 /* ==================== Vazirmatn Font (PROGMEM) ==================== */
 /* [EN] Vazirmatn v33.0.3 (SIL OFL 1.1, github.com/rastikerdar/vazirmatn), variable wght 400..700,
         subset to the glyphs used by the panel, plus added arrows U+2190/U+2192 drawn on the minus

@@ -1,9 +1,6 @@
-/* [EN] plink_params.h - ESP-side parameter envelopes (clamp mirror) + transmit priority order.
+/* plink_params.h - ESP-side parameter envelopes (clamp mirror) + transmit priority order.
    Included by esp_link_panel.ino (single translation unit, order matters).
-   No include guard on purpose: including twice would redefine everything.
-   [FA] plink_params.h - بازه‌های پارامتر سمت ESP (آینهٔ clamp) و ترتیب اولویت ارسال.
-   توسط esp_link_panel.ino به‌عنوان یک واحد ترجمه include می‌شود (ترتیب مهم است).
-   بدون include guard عمدی است: دو بار include شدن همه‌چیز را دوباره تعریف می‌کند. */
+   No include guard on purpose: including twice would redefine everything. */
 /* ==================== Parameter Ranges (STM32 clamps too) ==================== */
 /* [EN] ID: 0..1 offset, 2..3 gain, 4..6 mV offset (signed), 7 median 1..15, 8 avg window 1..300 (v1.4, raised in v1.9), 9..10 reserved (ETA formula removed 2026-10-11; rejected),
         11..12 charger enable, 13..14 duty ceiling, 15/17 fixed-duty on, 16/18 fixed/manual duty,

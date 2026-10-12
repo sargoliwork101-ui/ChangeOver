@@ -1,9 +1,6 @@
-/* [EN] plink_http.h - HTTP handlers: / /t /s /m /benchlog (+info).
+/* plink_http.h - HTTP handlers: / /t /s /m /benchlog (+info).
    Included by esp_link_panel.ino (single translation unit, order matters).
-   No include guard on purpose: including twice would redefine everything.
-   [FA] plink_http.h - هندلرهای ‎HTTP: / /t /s /m /benchlog (+info)‎.
-   توسط esp_link_panel.ino به‌عنوان یک واحد ترجمه include می‌شود (ترتیب مهم است).
-   بدون include guard عمدی است: دو بار include شدن همه‌چیز را دوباره تعریف می‌کند. */
+   No include guard on purpose: including twice would redefine everything. */
 /* ==================== HTTP Handlers ==================== */
 
 /**

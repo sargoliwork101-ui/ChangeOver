@@ -1,9 +1,6 @@
-/* [EN] plink_link.h - UART frame transmit/receive, TLM store, bench statistics window.
+/* plink_link.h - UART frame transmit/receive, TLM store, bench statistics window.
    Included by esp_link_panel.ino (single translation unit, order matters).
-   No include guard on purpose: including twice would redefine everything.
-   [FA] plink_link.h - ارسال و دریافت فریم UART، ذخیرهٔ TLM و پنجرهٔ آمار بنچ.
-   توسط esp_link_panel.ino به‌عنوان یک واحد ترجمه include می‌شود (ترتیب مهم است).
-   بدون include guard عمدی است: دو بار include شدن همه‌چیز را دوباره تعریف می‌کند. */
+   No include guard on purpose: including twice would redefine everything. */
 /* ==================== Byte Helpers ==================== */
 
 /**
@@ -60,8 +57,7 @@ static uint16_t func__Esp_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte)
    [FA] سلامت لینک، نمایش‌داده‌شده در صفحه. ناهم‌نسخگی یعنی STM32 و این پنل
    ناهماهنگ فلش شده‌اند - خرابی‌ای که قبلاً عیناً شبیه کابل قطع به نظر می‌رسید. */
 static uint32_t UINT32_T__G__RxCrcError = 0u;
-/* [EN] v2 NAK: how many SET_PARAM were refused, and the last id and reason.
-   [FA] NAK نسخهٔ ۲: چند SET_PARAM رد شد و آخرین شناسه و دلیل آن. */
+/* [EN] v2 NAK: how many SET_PARAM were refused, and the last id and reason. */
 static uint32_t UINT32_T__G__NakCount = 0u;
 static uint8_t  UINT8_T__G__NakId = 0xFFu;
 static uint8_t  UINT8_T__G__NakReason = 0u;
@@ -390,7 +386,7 @@ static void func__Esp_SendLutChunk(uint8_t uint8_t__channel, const uint32_t *uin
     }
 
     UINT8_T__A__Payload[0] = uint8_t__channel;
-    UINT8_T__A__Payload[1] = 0u;   /* [EN] first index / [FA] اندیس شروع */
+    UINT8_T__A__Payload[1] = 0u;   /* [EN] first index / اندیس شروع */
     UINT8_T__A__Payload[2] = uint8_t__count;
 
     for (uint8_t__index = 0u; uint8_t__index < uint8_t__count; uint8_t__index++)
@@ -845,8 +841,7 @@ static void func__Esp_HandleFrame(void)
     }
     else if ((UINT8_T__G__RxType == ESP_MSG_PARAM_NAK) && (UINT16_T__G__RxLen == 2u))
     {
-        /* [EN] v2: the board refused this SET_PARAM; its value was NOT applied.
-   [FA] نسخهٔ ۲: برد این SET_PARAM را رد کرد و مقدارش اعمال نشد. */
+        /* [EN] v2: the board refused this SET_PARAM; its value was NOT applied. */
         UINT8_T__G__NakId = uint8_t__ptr_payload[0];
         UINT8_T__G__NakReason = uint8_t__ptr_payload[1];
         UINT32_T__G__NakCount++;
