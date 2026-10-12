@@ -395,7 +395,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build f6feb89</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 71bbd35</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -962,7 +962,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 const $=i=>document.getElementById(i);
 const ST=['خاموش','Bulk','Absorb','Float','راه‌اندازی','JIT wait','Input wait','Final fault','باتری قطع','دستی'];
 const SC=['','g','g','g','y','r','y','r','r','y'];
-/* ثابت‌های بخش 5.3 سند */
+/* ثابت‌های بخش 2 سند (زنجیرهٔ جریان باتری) */
 const K_UV=3300/4095*11/10*1000/101,K_MA=K_UV/10,K24=3300/4095*68000/6800,K24B=K24,K12=3300/4095*34398/6800;
 /* شناسه: [عنوان, واحد, کمینه, بیشینه, نوع(n عدد، b کلید), توضیح] */
 /* [EN] v1.83: ids 13/14 keep their parameter-schema metadata here, while
@@ -1311,7 +1311,7 @@ $('mx').onclick=()=>send(19,0);
 {const b6=$('ib117');if(b6)b6.onchange=()=>{send(117,b6.checked?1:0);};}
 {const b7=$('db127');if(b7)b7.onchange=()=>{send(127,b7.checked?1:0);};}
 
-/* ---------- به‌روزرسانی: فرمول‌های بخش 5.3 با مقادیر زنده ---------- */
+/* ---------- به‌روزرسانی: فرمول‌های بخش 2 با مقادیر زنده ---------- */
 const f1=x=>x.toFixed(1),V_=mv=>(mv/1000).toFixed(2)+'V',nz=v=>v==null?'?':v;
 /* [EN] The compiled bench tables were removed (2026-10-10): the board table
    is the one pushed from this panel and stored in flash. */

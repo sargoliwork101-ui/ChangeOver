@@ -7,7 +7,7 @@
  *               annotations, live battery markers and charger states, dashed preview of typed
  *               values) and the persistence texts - every applied parameter is stored on the
  *               STM32's own flash ~1.5 s after the change and survives power loss there
- *               (wire protocol unchanged; see ESP_AGENT_SPEC.md 5.8).
+ *               (wire protocol unchanged; see ESP_AGENT_SPEC.md sections 6 and 7).
  *               v1.15 (user order 2026-09-26): ALARMS inside the settings
  *               tab (ids 27..34 fault supervision + 35..37 down-only
  *               charger safety ceilings), with grouped cards, live
