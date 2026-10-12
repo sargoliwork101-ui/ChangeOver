@@ -1754,7 +1754,7 @@ def test_alarms_tab_v115():
     check("function calpush(" in ino and "function calfit(" in ino
           and "Theil-Sen" in ino and "Huber IRLS" in ino
           and "function calrun()" in ino and "async function calapply()" in ino
-          and "جریان خالص باتری صفر در raw=" in ino
+          and "آفست ثابت صفر" in ino
           and "Math.ceil(g.max*10-1e-9)/10" in ino and "function calbuild(" in ino
           and "calapply()" in ino and "xexp();" in ino,
           "bench calibration directly fits signed current in each battery lead and builds battery-current LUTs (2026-10-10)")

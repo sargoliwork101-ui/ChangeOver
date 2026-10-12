@@ -1158,8 +1158,8 @@ async function testBackupAndCal(win, doc) {
         return Math.round((t.Y[k] - t.Y[k - 1]) / (t.X[k] - t.X[k - 1]) / win.eval('K_MA') * 1000); };
     check(Math.abs(prop[2] - gain) <= 5 && prop[2] === lastGain(1), 'channel 1 gain is the slope of the two highest table points (within rounding of the 0.1 mA table)');
     check(prop[3] === lastGain(2), 'channel 2 gain is the slope of its two highest table points');
-    check(prop[0] === expectedOffset, 'the fit preserves signed battery current and finds the zero-current raw point');
-    check(String(win.CALR.find(r => Number(r[1]) === 0)[4]).indexOf('جریان خالص باتری صفر در raw='+expectedOffset) >= 0,
+    check(prop[0] === 0, 'the offset is fixed at 0 (user decision), not taken from the fit');
+    check(String(win.CALR.find(r => Number(r[1]) === 0)[4]).indexOf('آفست ثابت صفر') >= 0,
           'a negative battery current remains in the direct signed fit');
     check(doc.querySelectorAll('#calst .calsummaryrow').length === 4 &&
           doc.getElementById('calst').textContent.indexOf('گین') >= 0,

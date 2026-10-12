@@ -490,7 +490,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build ff62b4f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build cbff5fa</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3247,7 +3247,7 @@ function calrun(){
   const f=calfit(S.map(z=>z[ch[1]]),S.map(z=>z[ch[2]]));
   const ttl='کانال '+fa(ch[0]);
   if(!f||f.a<=0){const why='فیت جریان دادهٔ کافی/سالم ندارد';[ch[4],ch[3]].forEach(id=>{const old=cur(id);rows.push([CALREAD[id].name,id,old,old,why,0]);});return;}
-  let g=Math.round(f.a/K_MA*1000),o=Math.round(-f.b/f.a),gainFromTable=false;
+  let g=Math.round(f.a/K_MA*1000),o=0,gainFromTable=false; /* [EN] offset is fixed at 0 (user decision) */
   /* [EN] Gain above the last anchor comes from the TWO highest table points (user decision).
      [FA] گین بالای آخرین نقطه از دو نقطهٔ بالای جدول گرفته می‌شود (تصمیم کاربر). */
   const tb=calbuild(ch[0]);
@@ -3263,7 +3263,7 @@ function calrun(){
      duty=0 is never manufactured as a baseline just to reach a count. */
   const bad=f.r2<0.9;
   rows.push([ttl+' — گین (‰)',ch[4],cur(ch[4]),gc,w.length?'⚠ '+w.join(' · '):'✅ برازش خوب ('+f.n+' نقطه، R²=<span dir="ltr">'+f.r2.toFixed(4)+'</span>)'+(gainFromTable?' · گین از دو نقطهٔ بالای جدول':''),bad?0:1]);
-  rows.push([ttl+' — آفست (count)',ch[3],cur(ch[3]),oc,'از همان خط به‌دست آمد (جریان خالص باتری صفر در raw='+oc+')',bad?0:1]);});
+  rows.push([ttl+' — آفست (count)',ch[3],cur(ch[3]),oc,'آفست ثابت صفر (تصمیم کاربر)',bad?0:1]);});
  
  /* [EN] Show one batch summary.
     [FA] خلاصهٔ همهٔ تغییرها با یک تأیید نمایش داده می‌شود. */
