@@ -34,6 +34,12 @@ static unsigned g_erase_attempts;
    هنگام بوت ‎end-to-end‎ آزموده شود. پیش‌فرض true رفتار قبلی را نگه می‌دارد. */
 static bool g_flash_fails = true;
 static uint32_t g_params[256];
+/* [EN] Race probe: a change marked from inside the flash write (the Control
+   task in the real firmware) must survive the save that is in progress.
+   [FA] کاوشگر رقابت: تغییری که از داخل نوشتن فلش ثبت می‌شود باید از همان ذخیرهٔ
+   در حال انجام جان سالم به در ببرد. */
+static unsigned g_program_calls;
+static bool g_mark_during_program = false;
 
 #define NVM_HOST_MAP_BASE  0x0800E000u
 #define NVM_HOST_MAP_SIZE  0x1000u
@@ -41,6 +47,17 @@ static uint32_t g_params[256];
 osKernelState_t osKernelGetState(void)
 {
     return osKernelRunning;
+}
+
+int32_t osKernelLock(void)
+{
+    return 0;
+}
+
+int32_t osKernelRestoreLock(int32_t int32_t__state)
+{
+    (void)int32_t__state;
+    return 0;
 }
 
 void func__Charger_SetSuspended(bool bool__suspended)
@@ -75,6 +92,12 @@ bool func__BspFlash_ProgramHalfWords(uint32_t uint32_t__address,
                                      const uint16_t *uint16_t__A__Data,
                                      uint32_t uint32_t__count)
 {
+    g_program_calls++;
+    if (g_mark_during_program != false)
+    {
+        g_mark_during_program = false;
+        func__EspLink_NvmMarkDirty(20u);
+    }
     if (g_flash_fails != false)
     {
         return false;
@@ -288,6 +311,32 @@ int main(void)
                           "the newest bank wins after the ping-pong save");
             require_check(g_params[3] == 1303u,
                           "untouched ids ride along in the newest record");
+            /* [EN] Race: a change lands while the flash write is in progress. The
+               first save must not swallow it; a later pass must save it. */
+            g_params[2] = 1300u;
+            g_mark_during_program = true;
+            func__EspLink_NvmMarkDirty(2u);
+            {
+                unsigned unsigned__before = g_program_calls;
+                for (unsigned unsigned__k = 0u;
+                     (unsigned__k < 64u) && (g_program_calls == unsigned__before);
+                     unsigned__k++)
+                {
+                    func__EspLink_NvmTick();
+                }
+                require_check(g_program_calls > unsigned__before,
+                              "race: the first save reached flash");
+
+                unsigned__before = g_program_calls;
+                for (unsigned unsigned__k = 0u;
+                     (unsigned__k < 64u) && (g_program_calls == unsigned__before);
+                     unsigned__k++)
+                {
+                    func__EspLink_NvmTick();
+                }
+                require_check(g_program_calls > unsigned__before,
+                              "a change made during a save is saved by a later pass");
+            }
             g_flash_fails = true;
         }
     }

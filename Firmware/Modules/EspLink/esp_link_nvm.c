@@ -319,6 +319,9 @@ void func__EspLink_NvmRecordBuild(esp_link_nvm_record_t
  * [FA] 0 = پاک؛ 1.. = سن دیبانس به تعداد اجرای تسک ارتباط از آخرین تغییر. */
 static uint16_t UINT16_T__G__NvmDirtyRuns = 0u;
 static uint8_t UINT8_T__G__NvmSaveRetries = 0u;
+/* [EN] Bumped by every change under the kernel lock; lets NvmTick tell a change
+   that arrived during its flash write from the one it saved. */
+static uint32_t UINT32_T__G__NvmChangeSeq = 0u;
 /* [EN] Parked = the retry budget is spent. The value stays dirty in RAM (never
    dropped): no more timed erases until a new persisted edit or the reset flush.
    [FA] پارک = بودجهٔ تلاش تمام شده است. مقدار در RAM کثیف می‌ماند (هرگز حذف
@@ -429,6 +432,7 @@ void func__EspLink_NvmInit(void)
  */
 void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
 {
+    int32_t int32_t__savedKernelLock = osKernelLock();
     if (func__EspLink_NvmParamPersisted(uint8_t__paramId) != false)
     {
         /* [EN] A new change starts a fresh save budget. Without resetting
@@ -442,7 +446,9 @@ void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
         UINT16_T__G__NvmDirtyRuns = 1u;
         UINT8_T__G__NvmSaveRetries = 0u;
         BOOL__G__NvmParked = false;
+        UINT32_T__G__NvmChangeSeq++;
     }
+    (void)osKernelRestoreLock(int32_t__savedKernelLock);
 }
 
 /**
@@ -670,8 +676,10 @@ bool func__EspLink_NvmFlushForReset(void)
 
 void func__EspLink_NvmTick(void)
 {
+    int32_t int32_t__savedKernelLock = osKernelLock();
     if ((UINT16_T__G__NvmDirtyRuns == 0u) || (BOOL__G__NvmParked != false))
     {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
         return;
     }
 
@@ -679,27 +687,46 @@ void func__EspLink_NvmTick(void)
 
     if (UINT16_T__G__NvmDirtyRuns < (uint16_t)ESP_LINK_NVM_SAVE_DELAY_RUNS)
     {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
         return;
     }
 
-    if (func__EspLink_NvmSaveNow() != false)
-    {
-        UINT16_T__G__NvmDirtyRuns = 0u;
-        UINT8_T__G__NvmSaveRetries = 0u;
-        return;
-    }
+    uint32_t uint32_t__seqAtStart = UINT32_T__G__NvmChangeSeq;
+    (void)osKernelRestoreLock(int32_t__savedKernelLock);
 
-    if (UINT8_T__G__NvmSaveRetries < (uint8_t)ESP_LINK_NVM_SAVE_RETRIES)
+    /* [EN] The flash write runs OUTSIDE the lock (milliseconds). A change that
+       lands during it bumps the sequence and re-arms the dirty flag; this save
+       must then not clear that flag, or the change is silently never saved.
+       [FA] نوشتن فلش بیرون از قفل انجام می‌شود. تغییری که وسط نوشتن برسد
+       شمارندهٔ ترتیب را جلو می‌برد و پرچم کثیف را دوباره روشن می‌کند؛ این
+       ذخیره نباید آن پرچم را پاک کند، وگرنه آن تغییر هرگز ذخیره نمی‌شود. */
+    bool bool__saved = func__EspLink_NvmSaveNow();
+
+    int32_t int32_t__lock = osKernelLock();
+    if (bool__saved != false)
     {
-        UINT8_T__G__NvmSaveRetries++;
-        UINT16_T__G__NvmDirtyRuns = (uint16_t)ESP_LINK_NVM_SAVE_DELAY_RUNS;
+        if (UINT32_T__G__NvmChangeSeq == uint32_t__seqAtStart)
+        {
+            UINT16_T__G__NvmDirtyRuns = 0u;
+            UINT8_T__G__NvmSaveRetries = 0u;
+        }
     }
-    else
+    else if (UINT32_T__G__NvmChangeSeq == uint32_t__seqAtStart)
     {
-        /* [EN] Retry budget spent: park instead of clearing the dirty flag, so
-           the unsaved value is not silently dropped. [FA] بودجه تمام شد: پارک
-           می‌شود، نه پاک‌کردن پرچم کثیف، تا مقدار ذخیره‌نشده بی‌صدا حذف نشود. */
-        UINT16_T__G__NvmDirtyRuns = (uint16_t)ESP_LINK_NVM_SAVE_DELAY_RUNS;
-        BOOL__G__NvmParked = true;
+        /* [EN] Retry budget. A newer change already got a fresh budget in MarkDirty.
+           [FA] بودجهٔ تلاش. تغییر جدیدتر در MarkDirty بودجهٔ تازه گرفته است. */
+        if (UINT8_T__G__NvmSaveRetries < (uint8_t)ESP_LINK_NVM_SAVE_RETRIES)
+        {
+            UINT8_T__G__NvmSaveRetries++;
+            UINT16_T__G__NvmDirtyRuns = (uint16_t)ESP_LINK_NVM_SAVE_DELAY_RUNS;
+        }
+        else
+        {
+            /* [EN] Park instead of clearing the dirty flag, so the unsaved value is not
+               silently dropped. [FA] پارک، نه پاک‌کردن پرچم، تا مقدار ذخیره‌نشده بی‌صدا حذف نشود. */
+            UINT16_T__G__NvmDirtyRuns = (uint16_t)ESP_LINK_NVM_SAVE_DELAY_RUNS;
+            BOOL__G__NvmParked = true;
+        }
     }
+    (void)osKernelRestoreLock(int32_t__lock);
 }

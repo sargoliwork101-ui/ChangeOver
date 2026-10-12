@@ -1261,6 +1261,9 @@ uint8_t *EMU_FLASH;
 #include "stub_esp_link.h"
 #include "stub_bsp_flash.h"
 
+/* kernel lock stubs: no scheduler on the PC (NvmTick/MarkDirty use osKernelLock) */
+int32_t osKernelLock(void){ return 0; }
+int32_t osKernelRestoreLock(int32_t st){ return st; }
 int g_cut_after = -1, g_erase_cut = 0, g_apply_calls = 0;
 uint32_t g_params[99];
 static uint32_t clampf(uint32_t v, uint32_t lo, uint32_t hi){ return v < lo ? lo : (v > hi ? hi : v); }
