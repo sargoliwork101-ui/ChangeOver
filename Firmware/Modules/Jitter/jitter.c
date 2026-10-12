@@ -2,12 +2,11 @@
  * @file    jitter.c
  * @brief   [EN] Implementation of the LM393 trip-flag latch: it polls the
  *               EXTI software flags of the board layer, latches one sticky
- *               boolean per channel and offers per-channel and global
- *               clears. No HAL and no pin numbers appear here - which EXTI
+ *               boolean per channel and offers a per-channel clear. No HAL and no pin numbers appear here - which EXTI
  *               line belongs to which comparator is the board port's job.
  *          [FA] پیاده‌سازی قفلِ پرچم تریپ LM393: پرچم‌های نرم‌افزاری EXTI لایهٔ
  *               برد را می‌خواند، برای هر کانال یک بولینِ چسبنده قفل می‌کند و
- *               پاک‌کردن تکی و کلی می‌دهد. هیچ HAL و شمارهٔ پایه‌ای اینجا نیست؛
+ *               پاک‌کردن تکی می‌دهد. هیچ HAL و شمارهٔ پایه‌ای اینجا نیست؛
  *               اینکه کدام خط EXTI به کدام مقایسه‌گر می‌رود کار پورت برد است.
  * @note    [EN] Full-program audit 2026-10-05: the stale "placeholder"
  *               label of the old header line was removed.
