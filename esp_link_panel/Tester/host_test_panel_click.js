@@ -479,6 +479,35 @@ function main() {
             w.sendall = realSendAll;
         }
 
+        /* [EN] Styled dialogs: the panel's own modal is shown, Enter confirms, Escape cancels.
+           The modal opens one tick after the call (it queues behind any open dialog).
+           [FA] کادر تأیید پنل: نمایش در کادر خود پنل، Enter = تأیید، Esc = انصراف. */
+        {
+            const pm = d.getElementById("pmod");
+            const press = (key) => d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key, bubbles: true }));
+            const p1 = w.pmConfirm("تست کادر");
+            setTimeout(() => {
+                check(pm.classList.contains("on") && d.getElementById("pmt").textContent === "تست کادر",
+                      "pmConfirm opens the panel's own dialog with the text");
+                press("Enter");
+            }, 30);
+            p1.then((v) => {
+                check(v === true && !pm.classList.contains("on"), "Enter confirms and closes the dialog");
+                const p2 = w.pmConfirm("تست لغو");
+                setTimeout(() => press("Escape"), 30);
+                return p2;
+            }).then((v) => {
+                check(v === false && !pm.classList.contains("on"), "Escape cancels the confirm dialog");
+                console.log("=".repeat(68));
+                if (failures === 0) {
+                    console.log("ALL " + checks + " PANEL CLICK TESTS PASSED");
+                } else {
+                    console.log(failures + " of " + checks + " FAILED");
+                }
+                process.exit(failures === 0 ? 0 : 1);
+            });
+            return;
+        }
         console.log("=".repeat(68));
         if (failures === 0) {
             console.log("ALL " + checks + " PANEL CLICK TESTS PASSED");
