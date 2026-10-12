@@ -495,36 +495,6 @@ static uint32_t func__BspMeasurement_ScaleRoundMa(uint32_t uint32_t__numerator)
             BSP_MEASUREMENT_CHAIN_DENOMINATOR);
 }
 
-/**
- * @brief  [EN] round(BSPfull(high) - BSPfull(low)) in mA, one rounding. The
- *              difference is taken on the exact numerators, so it is exact.
- *         [‎FA] round(BSPfull(high) - BSPfull(low))‎ بر حسب mA با یک رُند. تفاضل
- *              روی صورت‌های دقیق گرفته می‌شود، پس دقیق است.
- * @param  uint16_t__countsHigh [EN] Higher count / شمارش بالاتر
- * @param  uint16_t__countsLow  [EN] Lower count / شمارش پایین‌تر
- * @return uint32_t [EN] Difference in mA / تفاضل بر حسب mA
- */
-static uint32_t func__BspMeasurement_ChainDeltaMa(uint16_t uint16_t__countsHigh,
-                                                  uint16_t uint16_t__countsLow,
-                                                  uint32_t uint32_t__offsetCounts,
-                                                  uint32_t uint32_t__gainPermille)
-{
-    uint32_t uint32_t__high =
-        func__BspMeasurement_ChainNumerator(uint16_t__countsHigh,
-                                            uint32_t__offsetCounts,
-                                            uint32_t__gainPermille);
-    uint32_t uint32_t__low =
-        func__BspMeasurement_ChainNumerator(uint16_t__countsLow,
-                                            uint32_t__offsetCounts,
-                                            uint32_t__gainPermille);
-
-    if (uint32_t__high > uint32_t__low)
-    {
-        return func__BspMeasurement_ScaleRoundMa(uint32_t__high - uint32_t__low);
-    }
-    return 0u;
-}
-
 static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
                                                     uint32_t uint32_t__offsetCounts,
                                                     uint32_t uint32_t__gainPermille)
@@ -535,29 +505,55 @@ static uint32_t func__BspMeasurement_ConvertCurrent(uint16_t uint16_t__counts,
                                             uint32_t__gainPermille));
 }
 
-/**
- * @brief  [EN] Channel 1 chain difference (for the extrapolation above the last
- *              table anchor): round(BSPfull(high) - BSPfull(low)) in mA.
- *         [FA] تفاضل زنجیرهٔ کانال ۱ (برای برون‌یابی بالای آخرین لنگر جدول):
- *              ‎round(BSPfull(high) - BSPfull(low))‎ بر حسب mA.
- */
-uint32_t func__BspMeasurement_Current1DeltaMa(uint16_t uint16_t__countsHigh,
-                                              uint16_t uint16_t__countsLow)
+/* [EN] Above-anchor extension in TENTHS of mA, rounded UP once. Exact:
+ *      mA x 10 = num x 24200 x 10 / (27573 x 1000) = num x 242 / 27573.
+ *      num = q x 27573 + r gives q x 242 + ceil(r x 242 / 27573), so the whole
+ *      computation stays in 32 bits (no 64-bit divide in the image).
+ * [FA] افزایش بالای آخرین نقطه بر حسب دهم mA، فقط یک بار به بالا گرد می‌شود.
+ *      ‎num x 242 / 27573‎ با تقسیم num به q و r، بدون عدد ۶۴ بیتی. */
+static uint32_t func__BspMeasurement_ChainDeltaTenthMa(uint16_t uint16_t__countsHigh,
+                                                       uint16_t uint16_t__countsLow,
+                                                       uint32_t uint32_t__offsetCounts,
+                                                       uint32_t uint32_t__gainPermille)
 {
-    return func__BspMeasurement_ChainDeltaMa(uint16_t__countsHigh,
-                                             uint16_t__countsLow,
-                                             UINT32_T__G__Current1OffsetCounts,
-                                             UINT32_T__G__Current1GainPermille);
+    uint32_t uint32_t__high =
+        func__BspMeasurement_ChainNumerator(uint16_t__countsHigh,
+                                            uint32_t__offsetCounts,
+                                            uint32_t__gainPermille);
+    uint32_t uint32_t__low =
+        func__BspMeasurement_ChainNumerator(uint16_t__countsLow,
+                                            uint32_t__offsetCounts,
+                                            uint32_t__gainPermille);
+    uint32_t uint32_t__num;
+    uint32_t uint32_t__q;
+    uint32_t uint32_t__r;
+
+    if (uint32_t__high <= uint32_t__low)
+    {
+        return 0u;
+    }
+    uint32_t__num = uint32_t__high - uint32_t__low;
+    uint32_t__q = uint32_t__num / 27573u;
+    uint32_t__r = uint32_t__num % 27573u;
+    return (uint32_t__q * 242u) + (((uint32_t__r * 242u) + 27572u) / 27573u);
 }
 
-/* [EN] Channel 2 chain difference. [FA] تفاضل زنجیرهٔ کانال ۲. */
-uint32_t func__BspMeasurement_Current2DeltaMa(uint16_t uint16_t__countsHigh,
-                                              uint16_t uint16_t__countsLow)
+uint32_t func__BspMeasurement_Current1DeltaTenthMa(uint16_t uint16_t__countsHigh,
+                                                   uint16_t uint16_t__countsLow)
 {
-    return func__BspMeasurement_ChainDeltaMa(uint16_t__countsHigh,
-                                             uint16_t__countsLow,
-                                             UINT32_T__G__Current2OffsetCounts,
-                                             UINT32_T__G__Current2GainPermille);
+    return func__BspMeasurement_ChainDeltaTenthMa(uint16_t__countsHigh,
+                                                  uint16_t__countsLow,
+                                                  UINT32_T__G__Current1OffsetCounts,
+                                                  UINT32_T__G__Current1GainPermille);
+}
+
+uint32_t func__BspMeasurement_Current2DeltaTenthMa(uint16_t uint16_t__countsHigh,
+                                                   uint16_t uint16_t__countsLow)
+{
+    return func__BspMeasurement_ChainDeltaTenthMa(uint16_t__countsHigh,
+                                                  uint16_t__countsLow,
+                                                  UINT32_T__G__Current2OffsetCounts,
+                                                  UINT32_T__G__Current2GainPermille);
 }
 
 /* ==================== BspMeasurement_Current1CountsToMa ==================== */

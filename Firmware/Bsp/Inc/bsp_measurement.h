@@ -122,16 +122,16 @@ uint32_t func__BspMeasurement_GetCurrentGainPermille(uint8_t uint8_t__channelInd
  */
 uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts);
 
-/* ==================== BspMeasurement Current Counts To Ma (legacy) ==================== */
+/* ==================== BspMeasurement Chain Extension (tenths of mA) ==================== */
 
-/* [EN] Exact chain difference round(BSPfull(high) - BSPfull(low)) in mA, one
- *      rounding; used for the extrapolation above the last table anchor.
- * [FA] تفاضل دقیق زنجیره ‎round(BSPfull(high) - BSPfull(low))‎ بر حسب mA با
- *      یک رُند؛ برای برون‌یابی بالای آخرین لنگر جدول. */
-uint32_t func__BspMeasurement_Current1DeltaMa(uint16_t uint16_t__countsHigh,
-                                              uint16_t uint16_t__countsLow);
-uint32_t func__BspMeasurement_Current2DeltaMa(uint16_t uint16_t__countsHigh,
-                                              uint16_t uint16_t__countsLow);
+/* [EN] Exact chain difference BSPfull(high) - BSPfull(low) in tenths of mA,
+ *      rounded up once; used for the extrapolation above the last table anchor.
+ * [FA] تفاضل دقیق زنجیره ‎BSPfull(high) - BSPfull(low)‎ بر حسب دهم mA، فقط یک بار
+ *      به بالا گرد شده؛ برای برون‌یابی بالای آخرین لنگر جدول. */
+uint32_t func__BspMeasurement_Current1DeltaTenthMa(uint16_t uint16_t__countsHigh,
+                                                   uint16_t uint16_t__countsLow);
+uint32_t func__BspMeasurement_Current2DeltaTenthMa(uint16_t uint16_t__countsHigh,
+                                                   uint16_t uint16_t__countsLow);
 
 /* ==================== BspMeasurement Current Counts To Shunt Uv ==================== */
 

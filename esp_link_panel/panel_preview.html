@@ -490,7 +490,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 30a7645</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build ceea70a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -3447,7 +3447,7 @@ if(negN)note.push(negN+' نمونهٔ منفی (دشارژ) صفر حساب شد
  const dupGroups=groups.filter(g=>g.n>1).length;
  if(dupGroups)note.push(dupGroups+' جریان تکراری میانگین گرفته شد');
  /* [EN] Round ONCE, at the end. [FA] رند فقط یک بار، در پایان. */
- const X=groups.map(g=>g.c),Y=groups.map(g=>Math.ceil(g.sum/g.n-1e-9));
+ const X=groups.map(g=>g.c),Y=groups.map(g=>Math.ceil(g.sum/g.n*10-1e-9)/10);
  let bad='';
  if(X.length<2)bad='کمتر از ۲ نقطهٔ متمایز ('+X.length+') — حداقل ۲ لازم است';
  else{for(let i=1;i<Y.length;i++){if(Y[i]<Y[i-1]){bad='جریان با افزایش شمارش پایین آمده (زنجیره '+X[i-1]+' ← '+Y[i-1]+' mA، بعد '+X[i]+' ← '+Y[i]+' mA). این نقطه را بررسی یا تکرار کنید؛ چیزی حذف نشده است';break;}}}
@@ -3467,7 +3467,8 @@ function calcode(){
   '\n *      from '+calScope.length+' accepted bench samples. The panel has\n'+
   ' *      already checked: equal axis lengths, >= 2 points, increasing counts\n'+
   ' *      axis (every count <= 4095), non-decreasing battery-current axis.\n'+
-  ' *      batteryMa = DMM current (mA). The table itself holds no voltage;\n'+
+  ' *      batteryMa = DMM current in TENTHS of mA (value x10, rounded up to 0.1 mA\n'+
+  ' *      when saved). The table itself holds no voltage;\n'+
   ' *      the voltage lines below are separate.\n'+
   ' *      Record only: the board receives the table by LUT push from the panel.\n'+
   ' * [FA] جدول فقط جریان مولتی‌متر است و هیچ ولتاژی در آن نیست. */\n\n';
@@ -3478,7 +3479,7 @@ function calcode(){
   if(t.X.length>24)msg.push('باتری '+fa(n)+': جدول '+t.X.length+' نقطه‌ای شد (هر نقطه ۸ بایت فلش)');
   out+='/* table '+n+' - battery '+n+', '+t.X.length+' points (counts axis, raw ADC) */\n'+
    'static const uint32_t CAL_Current'+n+'LutCounts[] =\n    { '+t.X.map(q=>q+'u').join(', ')+' };\n'+
-   'static const uint32_t CAL_Current'+n+'LutBatteryMa[] =\n    { '+t.Y.map(q=>q+'u').join(', ')+' };\n\n';});
+   'static const uint32_t CAL_Current'+n+'LutBatteryMa[] =\n    { '+t.Y.map(q=>Math.round(q*10)+'u').join(', ')+' };\n\n';});
  {const f0=calvfit(VDIV[0],calScope),f1=calvfit(VDIV[1],calScope);
   if(f0&&f1&&Math.abs(f0.a-f1.a)>0.005)
    out+='/* WARNING: the input rail and the pack rail measure DIFFERENT slopes ('+
@@ -3627,9 +3628,9 @@ function lpack(target,base,selected){
   return {bad:'گین/آفست پیشنهادی این باتری معتبر نیست',msg:msg};
  const by=[],cs=[T[0].X.length,T[1].X.length];
  T.forEach(t=>{by.push(t.X.length&255);
-  for(let i=0;i<t.X.length;i++){[t.X[i],t.Y[i]].forEach(v=>{
+  for(let i=0;i<t.X.length;i++){[t.X[i],Math.round(t.Y[i]*10)].forEach(v=>{
    by.push(v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255);});}});
- T.forEach(t=>{for(let i=0;i<t.X.length;i++){cs.push(t.X[i],t.Y[i]);}});
+ T.forEach(t=>{for(let i=0;i<t.X.length;i++){cs.push(t.X[i],Math.round(t.Y[i]*10));}});
  const crc=lcrc(by);cs.push(crc);
  return {T:T,crc:crc,body:cs.join(','),msg:msg,target:targetId,
   cal:{offset:off,gain:gn,voltage:voltage,ids:ids,selected:chosen,editable:false},
@@ -3662,7 +3663,7 @@ function lrenderRead(r){
 let LSNT=0,LBT={ready:false,error:'هنوز خوانده نشده',T:[{X:[],Y:[]},{X:[],Y:[]}]},LAT=null,LUTVIEW='',LUTREADSEQ=0;
 function lnewread(ok,e,t){return {ready:!!ok,error:e||'',T:t||[{X:[],Y:[]},{X:[],Y:[]}],stamp:++LUTREADSEQ};}
 function lreadtable(a){
- const v=Array.isArray(a)?a:[],X=[],Y=[];v.forEach(q=>{if(Array.isArray(q)&&q.length===2&&Number.isFinite(+q[0])&&Number.isFinite(+q[1])){X.push(+q[0]);Y.push(+q[1]);}});
+ const v=Array.isArray(a)?a:[],X=[],Y=[];v.forEach(q=>{if(Array.isArray(q)&&q.length===2&&Number.isFinite(+q[0])&&Number.isFinite(+q[1])){X.push(+q[0]);Y.push(+q[1]/10);}});
  return {X:X,Y:Y};}
 function lpair(t,i){return t&&t.X&&t.Y&&i<t.X.length&&i<t.Y.length?[+t.X[i],+t.Y[i]]:null;}
 function leq(a,b){return !!a&&!!b&&a[0]===b[0]&&a[1]===b[1];}

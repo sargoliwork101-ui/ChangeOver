@@ -108,19 +108,19 @@ uint32_t func__BspMeasurement_Current2CountsToMa(uint16_t uint16_t__counts)
 /* [EN] Stub of the exact chain difference: with 1 mA per count the difference
  *      ‎is simply high - low (never negative). / [FA]‎ تفاضل دقیق بدلی: با هر
  *      شمارش یک mA، تفاضل همان ‎high - low‎ است (هرگز منفی نیست). */
-uint32_t func__BspMeasurement_Current1DeltaMa(uint16_t uint16_t__countsHigh,
-                                              uint16_t uint16_t__countsLow)
+uint32_t func__BspMeasurement_Current1DeltaTenthMa(uint16_t uint16_t__countsHigh,
+                                                   uint16_t uint16_t__countsLow)
 {
     return (uint16_t__countsHigh > uint16_t__countsLow)
-               ? (uint32_t)(uint16_t__countsHigh - uint16_t__countsLow)
+               ? (uint32_t)(uint16_t__countsHigh - uint16_t__countsLow) * 10u
                : 0u;
 }
 
-uint32_t func__BspMeasurement_Current2DeltaMa(uint16_t uint16_t__countsHigh,
-                                              uint16_t uint16_t__countsLow)
+uint32_t func__BspMeasurement_Current2DeltaTenthMa(uint16_t uint16_t__countsHigh,
+                                                   uint16_t uint16_t__countsLow)
 {
-    return func__BspMeasurement_Current1DeltaMa(uint16_t__countsHigh,
-                                                uint16_t__countsLow);
+    return func__BspMeasurement_Current1DeltaTenthMa(uint16_t__countsHigh,
+                                                     uint16_t__countsLow);
 }
 
 /* [‎EN] 1 count = 1 uV across the shunt. / [FA]‎ هر شمارش یک میکروولت شانت. */
@@ -394,17 +394,17 @@ int main(void)
 
     /* ---- 9b. bench table on the CURRENT axis (user order 2026-10-10) ----
        [EN] The stub BSP returns chain = counts. The table is on the counts
-            axis: counts {0,100,200} -> battery {0,90,210} mA. Expected:
-            interpolation with ONE nearest rounding between anchors, lastY +
-            exact delta above the last anchor, identity (BSP line) without a
-            table.
+            axis: counts {0,100,200} -> battery {0,90,210} mA (stored as tenths). Expected:
+            exact interpolation between anchors with ONE round-up to whole mA,
+            last point + exact delta above the last anchor, identity (BSP line)
+            without a table.
        [FA] BSP بدلی زنجیره = شمارش را برمی‌گرداند. جدول روی محور شمارش:
             شمارش {0,100,200} ← باتری {0,90,210} mA. انتظار: درون‌یابی با یک
             رُند به نزدیک‌ترین بین لنگرها، lastY + تفاضل دقیق بالای آخرین
             لنگر، و خط BSP وقتی جدول نیست. */
     {
         static const uint32_t UINT32_T__A__TestChain[] = { 0u, 100u, 200u };
-        static const uint32_t UINT32_T__A__TestBattery[] = { 0u, 90u, 210u };
+        static const uint32_t UINT32_T__A__TestBattery[] = { 0u, 900u, 2100u }; /* tenths of mA */
 
         BOOL__G__FlashLutActive[1] = true;
         BOOL__G__FlashLutActive[2] = true;
@@ -417,7 +417,7 @@ int main(void)
 
         CHECK(func__Measurement_Current1CountsToMa(0u) == 0u);
         CHECK(func__Measurement_Current1CountsToMa(50u) == 45u);
-        /* [EN] 6 counts = 5.4 mA between anchors: the board rounds UP, never down. */
+        /* [EN] 6 counts = 5.4 mA between anchors: the board rounds UP once, never down. */
         CHECK(func__Measurement_Current1CountsToMa(6u) == 6u);
         CHECK(func__Measurement_Current1CountsToMa(100u) == 90u);
         CHECK(func__Measurement_Current1CountsToMa(150u) == 150u);

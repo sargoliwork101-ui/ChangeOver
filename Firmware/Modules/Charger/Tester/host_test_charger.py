@@ -557,7 +557,7 @@ def test_setpoints_and_timing():
     # [FA] ۲۰۲۶-۱۰-۱۰: جدول‌های جریان کامپایلی و تقسیم بر ولتاژ باتری حذف شد؛
     #      جدول جریان حالا از پنل می‌آید.
     check("func__Measurement_BenchTableMa(" in meas_c_raw and
-          "func__BspMeasurement_Current1DeltaMa(" in meas_c_raw and
+          "func__BspMeasurement_Current1DeltaTenthMa(" in meas_c_raw and
           "func__CalLut_BatteryMa(" in meas_c_raw and
           "func__CalLut_Counts(" in meas_c_raw and
           "CAL_CURRENT1_LUT_ENABLE" not in meas_c_raw and
@@ -1755,7 +1755,7 @@ def test_alarms_tab_v115():
           and "Theil-Sen" in ino and "Huber IRLS" in ino
           and "function calrun()" in ino and "async function calapply()" in ino
           and "جریان خالص باتری صفر در raw=" in ino
-          and "Math.ceil(g.sum/g.n-1e-9)" in ino and "function calbuild(" in ino
+          and "Math.ceil(g.sum/g.n*10-1e-9)/10" in ino and "function calbuild(" in ino
           and "calapply()" in ino and "xexp();" in ino,
           "bench calibration directly fits signed current in each battery lead and builds battery-current LUTs (2026-10-10)")
     # [EN] Stale since the scenario-card redesign and only found on 2026-10-05:

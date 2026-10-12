@@ -644,26 +644,45 @@ uint32_t func__Measurement_V12CountsToMv(uint16_t uint16_t__counts)
  *         [FA] جستجوی جدول بر حسب شمارش؛ فراخوان‌کننده برون‌یابی بالای جدول
  *              (تفاضل BSPfull از آخرین لنگر، با یک رُند) را می‌دهد.
  * @param  UINT32_T__A__Counts   [EN] Anchor counts, strictly increasing / شمارش لنگرها
- * @‎param  UINT32_T__A__BatteryMa [EN] Anchor battery mA, non-decreasing / mA‎ باتری
+ * @‎param  UINT32_T__A__BatteryTenthMa [EN] Anchor battery mA, non-decreasing / mA‎ باتری
  * @param  uint32_t__points      [EN] Anchor count (>= 1) / تعداد لنگر
  * @param  uint16_t__counts      [EN] Raw counts / شمارش خام
- * @param  uint32_t__aboveMa     [EN] Extension used only when counts > last anchor
+ * @param  uint32_t__aboveTenthMa     [EN] Extension used only when counts > last anchor
  * @‎return uint32_t [EN] Battery mA / mA‎ باتری
  */
+/**
+ * @brief  [EN] Ceiling of n / d (d > 0). The table is capped by CalLut at
+ *              CAL_LUT_BATTERY_TENTHS_MAX, so every numerator here fits 32 bits.
+ *         [FA] سقف ‎n / d (d > 0)‎. جدول در CalLut به CAL_LUT_BATTERY_TENTHS_MAX
+ *              محدود است، پس همهٔ صورت‌ها در ۳۲ بیت جا می‌شوند.
+ */
+static uint32_t func__Measurement_CeilDivU32(uint32_t uint32_t__numerator,
+                                             uint32_t uint32_t__denominator)
+{
+    return (uint32_t__numerator + uint32_t__denominator - 1u) / uint32_t__denominator;
+}
+
+/**
+ * @brief  [EN] Bench table lookup. The table and the above-anchor extension
+ *              are in TENTHS of mA. The interpolation stays exact (no
+ *              intermediate rounding) and the result is rounded UP once, to
+ *              whole mA, so a reading is never below the true current.
+ *         [FA] جستجوی جدول بنچ. جدول و افزایش بالای آخرین نقطه بر حسب دهم mA
+ *              هستند. درون‌یابی دقیق است (بدون گرد میانی) و خروجی فقط یک بار
+ *              به بالا به mA صحیح گرد می‌شود.
+ */
 static uint32_t func__Measurement_BenchTableMa(const uint32_t *UINT32_T__A__Counts,
-                                               const uint32_t *UINT32_T__A__BatteryMa,
+                                               const uint32_t *UINT32_T__A__BatteryTenthMa,
                                                uint32_t uint32_t__points,
                                                uint16_t uint16_t__counts,
-                                               uint32_t uint32_t__aboveMa)
+                                               uint32_t uint32_t__aboveTenthMa)
 {
     uint32_t uint32_t__index;
     uint32_t uint32_t__c = (uint32_t)uint16_t__counts;
 
-    /* [EN] Below or at the first anchor: hold Y[0].
-     * [FA] زیر یا برابر اولین لنگر: Y[0] نگه داشته می‌شود. */
     if (uint32_t__c <= UINT32_T__A__Counts[0u])
     {
-        return UINT32_T__A__BatteryMa[0u];
+        return func__Measurement_CeilDivU32(UINT32_T__A__BatteryTenthMa[0u], 10u);
     }
 
     for (uint32_t__index = 1u; uint32_t__index < uint32_t__points; uint32_t__index++)
@@ -673,51 +692,42 @@ static uint32_t func__Measurement_BenchTableMa(const uint32_t *UINT32_T__A__Coun
 
         if (uint32_t__c <= uint32_t__xHigh)
         {
-            uint32_t uint32_t__yLow = UINT32_T__A__BatteryMa[uint32_t__index - 1u];
-            uint32_t uint32_t__yHigh = UINT32_T__A__BatteryMa[uint32_t__index];
+            uint32_t uint32_t__yLow = UINT32_T__A__BatteryTenthMa[uint32_t__index - 1u];
+            uint32_t uint32_t__yHigh = UINT32_T__A__BatteryTenthMa[uint32_t__index];
             uint32_t uint32_t__span = uint32_t__xHigh - uint32_t__xLow;
             uint32_t uint32_t__step = uint32_t__c - uint32_t__xLow;
 
-            /* [EN] CalLut enforces strictly increasing counts and non-decreasing
-             *      mA on commit; the guard only avoids a divide by zero.
-             * [FA] CalLut هنگام commit صعودی بودن شمارش و عدم کاهش mA را
-             *      تضمین می‌کند؛ این گارد فقط تقسیم بر صفر را نگه می‌دارد. */
             if (uint32_t__span == 0u)
             {
-                return uint32_t__yHigh;
+                return func__Measurement_CeilDivU32(uint32_t__yHigh, 10u);
             }
             if (uint32_t__yHigh <= uint32_t__yLow)
             {
-                return uint32_t__yLow;
+                return func__Measurement_CeilDivU32(uint32_t__yLow, 10u);
             }
-            /* [EN] Single ROUND-UP (ceiling) at the integer output: a reading must never sit below the true current. Product <= 4095 x 3600 fits u32.
-             * [FA] یک رُند به بالا (سقف) در خروجی عدد صحیح: خوانده‌شده هرگز پایین‌تر از جریان واقعی نیست. حاصل‌ضرب <= 4095 x 3600 در u32 جا می‌شود. */
-            return uint32_t__yLow +
-                   (((uint32_t__step * (uint32_t__yHigh - uint32_t__yLow)) +
-                     (uint32_t__span - 1u)) /
-                    uint32_t__span);
+            /* [EN] Exact: value_tenths = yLow + step x (yHigh - yLow) / span.
+             *      mA = value_tenths / 10 = (yLow x span + step x dy) / (10 x span).
+             *      With yLow, dy <= CAL_LUT_BATTERY_TENTHS_MAX and span, step <= 4095
+             *      the numerator is below 2 x 200000 x 4095 < 2^32. */
+            return func__Measurement_CeilDivU32(
+                (uint32_t__yLow * uint32_t__span) +
+                    (uint32_t__step * (uint32_t__yHigh - uint32_t__yLow)),
+                uint32_t__span * 10u);
         }
     }
 
-    /* [EN] Above the last anchor: lastY + gain-line extension.
-     * [FA] بالای آخرین لنگر: lastY + برون‌یابی خط گین. */
-    return UINT32_T__A__BatteryMa[uint32_t__points - 1u] + uint32_t__aboveMa;
+    /* [EN] Above the last anchor: last point + extension, both in tenths. */
+    return func__Measurement_CeilDivU32(
+        UINT32_T__A__BatteryTenthMa[uint32_t__points - 1u] + uint32_t__aboveTenthMa,
+        10u);
 }
 
-/**
- * @brief  [EN] Channel-1 counts to battery-1 mA. Table present: bench table on
- *              the counts axis. No table: the full gain/offset line BSPfull.
- *         [FA] شمارش کانال ۱ به mA باتری ۱. با جدول: جدول بنچ روی محور شمارش.
- *              بدون جدول: خط کامل گین/آفست BSPfull.
- * @param  uint16_t__counts [EN] ADC count / شمارش ADC
- * @‎return uint32_t [EN] Battery-1 current in mA‎ / جریان باتری ۱ بر حسب mA
- */
 static uint32_t func__Measurement_Current1CountsToMaLocked(uint16_t uint16_t__counts)
 {
     const uint32_t *UINT32_T__A__Counts;
-    const uint32_t *UINT32_T__A__BatteryMa;
+    const uint32_t *UINT32_T__A__BatteryTenthMa;
     uint32_t uint32_t__points;
-    uint32_t uint32_t__aboveMa = 0u;
+    uint32_t uint32_t__aboveTenthMa = 0u;
 
     if (func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_1) == false)
     {
@@ -725,19 +735,19 @@ static uint32_t func__Measurement_Current1CountsToMaLocked(uint16_t uint16_t__co
     }
 
     UINT32_T__A__Counts = func__CalLut_Counts((uint8_t)CAL_LUT_CHANNEL_1);
-    UINT32_T__A__BatteryMa = func__CalLut_BatteryMa((uint8_t)CAL_LUT_CHANNEL_1);
+    UINT32_T__A__BatteryTenthMa = func__CalLut_BatteryMa((uint8_t)CAL_LUT_CHANNEL_1);
     uint32_t__points = func__CalLut_Points((uint8_t)CAL_LUT_CHANNEL_1);
 
     if (uint16_t__counts > UINT32_T__A__Counts[uint32_t__points - 1u])
     {
-        uint32_t__aboveMa = func__BspMeasurement_Current1DeltaMa(
+        uint32_t__aboveTenthMa = func__BspMeasurement_Current1DeltaTenthMa(
             uint16_t__counts, (uint16_t)UINT32_T__A__Counts[uint32_t__points - 1u]);
     }
     return func__Measurement_BenchTableMa(UINT32_T__A__Counts,
-                                          UINT32_T__A__BatteryMa,
+                                          UINT32_T__A__BatteryTenthMa,
                                           uint32_t__points,
                                           uint16_t__counts,
-                                          uint32_t__aboveMa);
+                                          uint32_t__aboveTenthMa);
 }
 
 /**
@@ -765,9 +775,9 @@ uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
 static uint32_t func__Measurement_Current2CountsToMaLocked(uint16_t uint16_t__counts)
 {
     const uint32_t *UINT32_T__A__Counts;
-    const uint32_t *UINT32_T__A__BatteryMa;
+    const uint32_t *UINT32_T__A__BatteryTenthMa;
     uint32_t uint32_t__points;
-    uint32_t uint32_t__aboveMa = 0u;
+    uint32_t uint32_t__aboveTenthMa = 0u;
 
     if (func__CalLut_Active((uint8_t)CAL_LUT_CHANNEL_2) == false)
     {
@@ -775,19 +785,19 @@ static uint32_t func__Measurement_Current2CountsToMaLocked(uint16_t uint16_t__co
     }
 
     UINT32_T__A__Counts = func__CalLut_Counts((uint8_t)CAL_LUT_CHANNEL_2);
-    UINT32_T__A__BatteryMa = func__CalLut_BatteryMa((uint8_t)CAL_LUT_CHANNEL_2);
+    UINT32_T__A__BatteryTenthMa = func__CalLut_BatteryMa((uint8_t)CAL_LUT_CHANNEL_2);
     uint32_t__points = func__CalLut_Points((uint8_t)CAL_LUT_CHANNEL_2);
 
     if (uint16_t__counts > UINT32_T__A__Counts[uint32_t__points - 1u])
     {
-        uint32_t__aboveMa = func__BspMeasurement_Current2DeltaMa(
+        uint32_t__aboveTenthMa = func__BspMeasurement_Current2DeltaTenthMa(
             uint16_t__counts, (uint16_t)UINT32_T__A__Counts[uint32_t__points - 1u]);
     }
     return func__Measurement_BenchTableMa(UINT32_T__A__Counts,
-                                          UINT32_T__A__BatteryMa,
+                                          UINT32_T__A__BatteryTenthMa,
                                           uint32_t__points,
                                           uint16_t__counts,
-                                          uint32_t__aboveMa);
+                                          uint32_t__aboveTenthMa);
 }
 
 /**

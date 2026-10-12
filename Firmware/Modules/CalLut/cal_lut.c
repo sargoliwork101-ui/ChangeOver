@@ -173,6 +173,11 @@ static uint8_t func__CalLut_ChannelCheck(const cal_lut_channel_t
         {
             return (uint8_t)CAL_LUT_ST_RANGE;
         }
+        if (cal_lut_channel_t__channel->UINT32_T__A__BatteryMa[uint32_t__i] >
+            (uint32_t)CAL_LUT_BATTERY_TENTHS_MAX)
+        {
+            return (uint8_t)CAL_LUT_ST_RANGE;
+        }
     }
 
     for (uint32_t__i = 1u;

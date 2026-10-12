@@ -381,6 +381,13 @@ int main(void)
     UINT32_T__G__A__Chain[0][3] = 4096u;
     uint8_t__status = func__CalLut_Commit(func__HostPanelCrc(), &uint32_t__boardCrc);
     CHECK(uint8_t__status == CAL_LUT_ST_RANGE);
+    /* ---- 7c. the battery axis is capped (tenths of mA) so the bench math stays
+            inside 32 bits. [FA] سقف محور جریان باتری (دهم mA) برای ۳۲ بیت. ---- */
+    func__StageTable(4u, 1000u);
+    CHECK(func__CalLut_StagePoint(CAL_LUT_CHANNEL_1, 3u, 400u,
+                                  CAL_LUT_BATTERY_TENTHS_MAX + 1u) == true);
+    uint8_t__status = func__CalLut_Commit(func__HostPanelCrc(), &uint32_t__boardCrc);
+    CHECK(uint8_t__status == CAL_LUT_ST_RANGE);
     /* ---- 8. a wrong panel CRC is refused and flash is untouched ---- */
     func__StageTable(5u, 1000u);
     uint32_t__crc = func__HostPanelCrc();

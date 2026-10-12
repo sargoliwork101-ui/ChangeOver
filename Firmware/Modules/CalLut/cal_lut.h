@@ -72,7 +72,7 @@
  *      برد به خط گین و آفست برمی‌گردد (رکورد قدیمی توانی به‌عنوان mA
  *      خوانده نمی‌شود). */
 #define CAL_LUT_MAGIC                   0x434C5554u
-#define CAL_LUT_VERSION                 2u
+#define CAL_LUT_VERSION                 3u   /* 3: battery axis is in TENTHS of mA (v2 records are rejected, not reinterpreted) */
 
 /* [EN] Per-channel point cap. 24 points x 2 axes x 2 channels x 4 B = 384 B
  *      of record (and the same in RAM). The bench wizard runs 17..21 duty
@@ -104,6 +104,11 @@
 #define CAL_LUT_ST_FLASH                7u  /* erase/program/verify failed / نوشتن فلش شکست */
 #define CAL_LUT_ST_RANGE                8u  /* counts above 12-bit ADC max / شمارش بالاتر از 4095 */
 #define CAL_LUT_COUNTS_MAX              4095u /* 12-bit ADC full scale / تمام‌مقیاس ADC ۱۲ بیتی */
+/* [EN] Battery-current axis cap in TENTHS of mA (200000 = 20000 mA). Keeps the
+ *      bench interpolation inside 32 bits. Real packs are far below it.
+ * [FA] سقف محور جریان باتری بر حسب دهم mA (۲۰۰۰۰۰ = ۲۰۰۰۰ mA). محاسبهٔ
+ *      درون‌یابی را در ۳۲ بیت نگه می‌دارد. */
+#define CAL_LUT_BATTERY_TENTHS_MAX      200000u
 
 /* ==================== CalLut types / نوع‌ها ==================== */
 
@@ -115,7 +120,7 @@ typedef struct
 {
     uint32_t uint32_t__points;                              /* [EN] 0 = channel not overridden / ۰ = این کانال جایگزین نشده */
     uint32_t UINT32_T__A__Counts[CAL_LUT_POINTS_MAX];      /* [EN] Raw ADC counts / شمارش خام ADC */
-    uint32_t UINT32_T__A__BatteryMa[CAL_LUT_POINTS_MAX];   /* [EN] Battery current mA / جریان باتری mA */
+    uint32_t UINT32_T__A__BatteryMa[CAL_LUT_POINTS_MAX];   /* [EN] Battery current in TENTHS of mA (x10, rounded up when saved) / جریان باتری بر حسب دهم mA */
 } cal_lut_channel_t;
 
 /**
