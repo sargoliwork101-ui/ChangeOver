@@ -914,7 +914,7 @@ async function testManualDutyKeys(win, doc) {
     console.log('\nmanual duty box keys / کلیدهای کادر duty دستی');
     const sent = [];
     const board = Object.assign({}, win.D, { on: 1, fl: 32, seq: 1000, p: Object.assign({}, win.D.p || {}, { 19: 1, 13: 1000, 14: 0, 15: 0, 16: 0, 17: 0 }) });
-    win.alert = () => {};
+    win.pmAlert = () => {};
     win.D = board;
     win.fetch = (u, o) => {
         const url = String(u);
@@ -1460,7 +1460,7 @@ async function testBackupAndCal(win, doc) {
        must refuse to calculate from a missing live voltage. */
     const vcalCalls = [];
     win.setv = async (id, value) => { vcalCalls.push([id, value]); win.D.p[id] = value; };
-    win.confirm = () => true;
+    win.pmConfirm = () => true;
     win.D = { p: { 4: 10 }, t: [] };
     doc.getElementById('vm0').value = '13.05';
     await win.eval('vcal')(0);
@@ -1479,7 +1479,7 @@ async function testBackupAndCal(win, doc) {
     /* v1.81: importing a settings file must stage locally, never call /s. */
     const importUrls = [];
     win.fetch = (u) => { importUrls.push(String(u)); return Promise.resolve({ ok: true }); };
-    win.confirm = () => true;
+    win.pmConfirm = () => true;
     win.D = { p: { 25: 650, 26: 50, 127: 0 }, t: [] };
     win.PEND = {};
     const importSchema = win.eval('xschema()');
@@ -1773,7 +1773,7 @@ async function testLutPush(win, doc) {
         }
         return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(win.D) });
     };
-    const oldConfirm = win.confirm;
+    const oldConfirm = win.pmConfirm;
     const applyPending = async (name) => {
         check(!!doc.getElementById('lutApply') &&
               doc.querySelectorAll('#lutcmp input.lutcalcheck').length > 0,
@@ -1809,7 +1809,7 @@ async function testLutPush(win, doc) {
           'unfitted voltage offsets default to preserve the exact board values');
 
     calls.length = 0;
-    win.confirm = () => false;
+    win.pmConfirm = () => false;
     win.fetch = stub(ackOk);
     await win.eval('lsend')();
     const optionalFitStatus = doc.getElementById('calst').textContent;
@@ -1910,7 +1910,7 @@ async function testLutPush(win, doc) {
     win.eval('calrun')();
 
     /* The operator accepts the push but declines the reboot for now. */
-    win.confirm = (m) => String(m).indexOf('ریست شود') < 0;
+    win.pmConfirm = (m) => String(m).indexOf('ریست شود') < 0;
     win.fetch = stub(ackOk);
     await win.eval('lsend')();
     const calChecks = Array.from(doc.querySelectorAll('#lutcmp input.lutcalcheck'));
@@ -1949,7 +1949,7 @@ async function testLutPush(win, doc) {
 
     /* Same push, reboot accepted. */
     calls.length = 0;
-    win.confirm = () => true;
+    win.pmConfirm = () => true;
     win.fetch = stub(ackOk);
     await win.eval('lsend')();
     await applyPending('the rebooted LUT transaction');
@@ -2001,7 +2001,7 @@ async function testLutPush(win, doc) {
        transaction's required before-read. */
     readAfterTransaction = false;
     win.fetch = stub(ackOk);
-    win.confirm = () => true;
+    win.pmConfirm = () => true;
     await win.eval('lsend')();
     await applyPending('the post-commit-readback-failure LUT transaction');
     check(doc.getElementById('calst').textContent.indexOf('بازخوانی عددبه‌عدد بعد از commit ناموفق') >= 0,
@@ -2074,7 +2074,7 @@ async function testLutPush(win, doc) {
                          sent: onePreview.crc, age: 10, n: 3 };
         calls.length = 0;
         postedBodies.length = 0;
-        win.confirm = (m) => String(m).indexOf('ریست شود') < 0;
+        win.pmConfirm = (m) => String(m).indexOf('ریست شود') < 0;
         win.fetch = stub(ackOne);
         await win.eval('lsend')(1);
         check(doc.getElementById('lutcmp').textContent.indexOf('فقط باتری ۱') >= 0 &&
@@ -2101,7 +2101,7 @@ async function testLutPush(win, doc) {
         readAfterTransaction = false;
         calls.length = 0;
         postedBodies.length = 0;
-        win.confirm = () => true;
+        win.pmConfirm = () => true;
         await win.eval('lsend')(1);
         await applyPending('the failed-calibration LUT transaction');
         check(doc.getElementById('calst').textContent.indexOf('پارامترهای کالیبراسیون') >= 0 &&
@@ -2122,7 +2122,7 @@ async function testLutPush(win, doc) {
     check(doc.getElementById('calst').textContent.indexOf('داده‌برداری بنچ در جریان') >= 0,
           'pushing a table is refused while the bench wizard owns the board');
     Wv.run = false;
-    win.confirm = oldConfirm;
+    win.pmConfirm = oldConfirm;
 
     /* --- option (c) is still there: generate the header and rebuild --- */
     win.eval('calcode')();
