@@ -36,9 +36,9 @@ void func__Changeover_Init(void);
 /* ==================== Changeover_Evaluate Thresholds / آستانه‌های ارزیابی Changeover ==================== */
 
 /**
- * @brief  [EN] Battery voltage below which the gated cut (with UI alarm) can trigger, in millivolts.
- *         Range 0..40000 mV; effect: v_bat24_mv < 21000 and UI flag true for 3000 ms -> battery cut.
- *         [FA] ولتاژ باتری که پایین‌تر از آن قطع با گیت آلارم UI ممکن است، بر حسب میلی‌ولت.
+ * @brief  [EN] Battery voltage below which the internal low-battery latch sets, in millivolts.
+ *         Range 0..40000 mV; effect: v_bat24_mv < 21000 sets the latch; with the latch set for 3000 ms -> battery cut.
+ *         [FA] ولتاژ باتری که پایین‌تر از آن قفل داخلی باتری کم بسته می‌شود، بر حسب میلی‌ولت.
  */
 #define CHANGEOVER_BAT_LOW_ALARM_CUT_MV   21000u
 
@@ -55,9 +55,9 @@ void func__Changeover_Init(void);
 #define CHANGEOVER_BAT_LOW_ALARM_CLEAR_MV 21200u
 
 /**
- * @brief  [EN] Battery voltage below which the independent cut triggers regardless of UI flag, in millivolts.
- *         Range 0..40000 mV; effect: v_bat24_mv < 20800 for 3000 ms -> battery cut independent of flag.
- *         [FA] ولتاژ باتری که پایین‌تر از آن قطع مستقل بدون نیاز به فلگ UI رخ می‌دهد، بر حسب میلی‌ولت.
+ * @brief  [EN] Battery voltage below which the independent (critical) cut triggers without waiting for the latch, in millivolts.
+ *         Range 0..40000 mV; effect: v_bat24_mv < 20800 for 3000 ms -> battery cut.
+ *         [FA] ولتاژ باتری که پایین‌تر از آن قطع بحرانی، بدون انتظار برای قفل، رخ می‌دهد، بر حسب میلی‌ولت.
  */
 #define CHANGEOVER_BAT_CRITICAL_CUT_MV    20800u
 
