@@ -395,7 +395,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build ceea70a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 4a9da54</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2747,7 +2747,7 @@ function xdiff(schema){
  return out;
 }
 function xpending(){const out={};for(const id in PEND)if(Number.isFinite(+PEND[id]))out[id]=+PEND[id];return out;}
-function xsamples(raw){return Array.isArray(raw)?raw.slice():[];}
+function xsamples(raw){return Array.isArray(raw)?raw.map(calnorm).filter(Boolean):[];}
 function xlutpack(r){const src=r&&r.ready?r:null;if(!src||!Array.isArray(src.T)||src.T.length!==2)return null;const T=src.T.map(t=>({X:t.X.slice(),Y:t.Y.slice()}));if(T.some(t=>t.X.length!==t.Y.length))return null;return {ready:1,T:T};}
 var LUT_BACKUP=null;
 async function xexp(){const x=$('xst');if(!D||!D.p){if(x)x.textContent='هنوز داده‌ای از برد نرسیده';return;}
@@ -3094,7 +3094,23 @@ async function wStart(){if(W.run)return;if(!D||D.on!=1)return alert('لینک ST
    show the result and wait for explicit confirmation before any write.
    [FA] نمونه‌های معتبر بنچ به هفت پارامتر کالیبراسیون برد برازش می‌شوند؛
    نتیجه نمایش داده می‌شود و پیش از هر نوشتن تأیید صریح کاربر لازم است. */
-var CALS=[];try{CALS=JSON.parse(localStorage.getItem('calsmp')||'[]')||[];}catch(e){CALS=[];}
+var CALS=[];try{CALS=(JSON.parse(localStorage.getItem('calsmp')||'[]')||[]).map(calnorm).filter(Boolean);}catch(e){CALS=[];}
+/* [EN] Sanitize one bench sample from storage or a file. r1 must be finite; every
+    other numeric field must be null or finite; sc must be a known scenario or null.
+    Anything else is rejected, so NaN or text can never reach the fit or the board.
+   [FA] پاک‌سازی یک نمونهٔ بنچ از حافظه یا فایل. r1 باید عدد متناهی باشد؛ بقیهٔ
+    فیلدهای عددی باید null یا عدد متناهی باشند؛ sc باید سناریوی شناخته‌شده یا null باشد.
+    هر چیز دیگر رد می‌شود تا NaN یا متن به برازش یا برد نرسد. */
+function calnorm(z){
+ if(!z||typeof z!=='object'||!Number.isFinite(z.r1))return null;
+ const NUM=['r1','r2','vin','v24','v12','vlo','vhi','b1','b2','dvi','dv1','dv2','d','ts'];
+ const o={};
+ for(const k of NUM){const v=z[k];if(v===null||v===undefined){o[k]=null;continue;}if(typeof v!=='number'||!Number.isFinite(v))return null;o[k]=v;}
+ if(z.sc!=null&&(typeof z.sc!=='string'||!WSC[z.sc]))return null;
+ o.sc=z.sc==null?null:z.sc;
+ o.use=z.use===0?0:1;
+ return o;
+}
 function calsave(){try{localStorage.setItem('calsmp',JSON.stringify(CALS));}catch(e){}}
 function calpush(m,v,act,sc,duty){
  CALS.push({sc:sc,d:duty,use:1,r1:m.a(0),r2:m.a(7),vin:m.a(14),v24:m.a(15),v12:m.a(16),vlo:m.a(17),vhi:m.a(18),
@@ -3420,11 +3436,11 @@ function calexp(){if(!CALS.length){stxt('calst','نمونه‌ای برای ذخ
  stxt('calst','⬇ '+CALS.length+' نمونه در فایل ذخیره شد.');}
 async function calimp(f){let o;try{o=JSON.parse(await f.text());}catch(e){stxt('calst','⚠ فایل JSON معتبر نیست');return;}
  if(!o||o.app!=='ChangeOver-bench-samples'||!Array.isArray(o.samples)){stxt('calst','⚠ این فایل نمونه‌های بنچ نیست');return;}
- const add=o.samples.filter(z=>z&&Number.isFinite(z.r1));
+ const add=o.samples.map(calnorm).filter(Boolean),bad=o.samples.length-add.length;
  if(!add.length){stxt('calst','⚠ نمونهٔ معتبری در فایل نیست');return;}
  const keep=CALS.length&&confirm('نمونه‌های فعلی ('+CALS.length+' تا) هم نگه داشته شوند؟\nلغو = فقط نمونه‌های فایل بماند.');
  CALS=keep?CALS.concat(add):add;calinvalidate();calsave();caln();calsmp();
- stxt('calst','⬆ '+add.length+' نمونه بازخوانی شد (مجموع '+CALS.length+'). حالا «محاسبه» را بزنید.');
+ stxt('calst','⬆ '+add.length+' نمونه بازخوانی شد'+(bad?' ('+bad+' نمونهٔ نامعتبر کنار گذاشته شد)':'')+' (مجموع '+CALS.length+'). حالا «محاسبه» را بزنید.');
  const e=$('calf');if(e)e.value='';}
 async function calapply(){
  /* [EN] One confirmation applies every valid fit.
