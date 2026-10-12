@@ -10,6 +10,7 @@
 /* ==================== Includes ==================== */
 #include "FreeRTOS.h"
 #include "task.h"
+#include "bsp_pwm.h"
 
 /* [EN] Flash guard (2026-10-03). The image was 780 bytes too big for the
    62 KiB FLASH region of that day - after the later NVM blocks were reserved
@@ -106,6 +107,12 @@ void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName)
 {
     (void)xTask;
     (void)pcTaskName;
+
+    /* [EN] Gates first: the charger must not keep driving the battery while the
+       system halts and waits for the watchdog reset. Register writes only, so
+       this is safe here.  [FA] اول گیت‌ها: شارژر نباید تا رسیدن ریست واچ‌داگ
+       باتری را ادامه بدهد. فقط نوشتن رجیستر است و در این نقطه امن است. */
+    func__BspPwm_StopAll();
 
     taskDISABLE_INTERRUPTS();
     for (;;)
