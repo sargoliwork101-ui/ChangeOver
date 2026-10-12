@@ -111,13 +111,13 @@
         raw included) plus the typed DMM readings and POSTs it to /benchlog/add; the ESP only validates
         (printable ASCII, newline-terminated, bounded length) and appends. The column header (the comment block
         of spec 4; v1.26 split the 149 into 56 data columns plus 93 settings written once - v1.12: +7 charge-profile params, v1.15: +11 alarm params, v1.16: +39 UI cadence params, v1.17: +6 full/hysteresis params, v1.24: +10 two-loop PID params, v1.25: +5 raw-count calibration columns) is written by the ESP when the file is created. Appending stops at the cap (HTTP 507) and the UI warns.
-        Arduino IDE: pick a flash layout WITH a file system. ESP8266-01S (1 MB) has no room for LittleFS next to the
-        ~414 KB panel and the sketch, so this log is OFF on that board (estimate; not measured). ESP32 default is fine.
+        Arduino IDE: pick a flash layout WITH a file system. ESP8266-01S (1 MB): LittleFS next to the ~414 KB panel and the
+        sketch may not fit. NOT measured yet - check the sketch size in the IDE before relying on this log. ESP32 default is fine.
    [FA] یک فایل CSV فقط-افزودنی روی LittleFS. پنل هر ردیف را از پنجرهٔ /m (تک‌تک فریم‌های TLM با raw)
         و عددهای مولتی‌متر می‌سازد و به /‎benchlog/add‎ می‌فرستد؛ ESP فقط بررسی (ASCII قابل چاپ، پایان با
         خط جدید، طول محدود) و اضافه می‌کند. بلوک عنوان ستون‌ها (بلوک توضیح بخش 4؛ نسخهٔ ۱.۲۶ آن ۱۴۹ را به ۵۶ ستون داده به‌اضافهٔ ۹۳ تنظیم که یک‌بار نوشته می‌شود تقسیم کرد - v1.12: +۷ پارامتر profile شارژ، v1.15: +۱۱ پارامتر آلارم، v1.16: +۳۹ پارامتر UI، v1.17: +۶ پارامتر فول/hysteresis، v1.24: +۱۰ پارامتر PID دوحلقه‌ای، v1.25: +۵ ستون شمارش خام برای کالیبراسیون) را ESP هنگام ساخت فایل می‌نویسد. در سقف
         اندازه افزودن متوقف می‌شود (HTTP 507) و پنل هشدار می‌دهد.
-        ‎ESP8266-01S (‎۱ مگابایت) جا برای LittleFS کنار پنل ~۴۱۴ کیلوبایتی و اسکچ ندارد، پس این گزارش روی آن برد خاموش است (برآورد، نه اندازه‌گیری). ESP32 پیش‌فرض کافی است. */
+        ‎ESP8266-01S (۱ مگابایت): LittleFS کنار پنل ~۴۱۴ کیلوبایتی و اسکچ شاید جا نشود. هنوز اندازه‌گیری نشده - پیش از تکیه بر این گزارش، اندازهٔ اسکچ را در IDE ببینید. ESP32 پیش‌فرض کافی است. */
 #define ESP_BENCHLOG_PATH           "/benchlog.csv"
 #define ESP_BENCHLOG_MAX_BYTES      102400u
 #define ESP_BENCHLOG_MAX_POST       1536u
