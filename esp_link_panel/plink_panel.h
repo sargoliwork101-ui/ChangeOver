@@ -391,11 +391,11 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 #srsa{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 </style></head><body>
 <div id="sbar"><span>📝 <b id="sbn">0</b> تغییر هنوز روی برد ننشسته — کادرهای نارنجی</span>
-<button class="sb" onclick="sendall()">ارسال همهٔ تغییرات به برد</button>
+<button class="sb" onclick="sendall()" title="Ctrl+Enter">ارسال همهٔ تغییرات به برد (Ctrl+Enter)</button>
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 0b2084a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 5577f23</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1108,6 +1108,10 @@ function pvalidate(ids){return ids.map(id=>{
  if(!Number.isFinite(n)||n<m.lo||n>m.hi)
   return 'شناسهٔ '+id+' — '+m.name+'؛ مقدار واردشده: '+String(raw)+'؛ بازهٔ مجاز: '+prange(m)+'؛ برد این مقدار خارج از بازه را نمی‌پذیرد و روی برد نمی‌نشیند (ممکن است آن را clamp کند یا اصلاً اعمال نکند).';
  return null;}).filter(Boolean);}
+/* [EN] Ctrl+Enter (Cmd+Enter on Mac) sends the whole pending queue to the board,
+   exactly like the send-all button (sendall keeps its own range and calibration guards).
+   [FA] کلید ‎Ctrl+Enter‎ همان دکمهٔ ارسال همهٔ تغییرات را اجرا می‌کند؛ همان کنترل‌های sendall. */
+document.addEventListener('keydown',ev=>{if((ev.ctrlKey||ev.metaKey)&&ev.key==='Enter'&&!ev.altKey){ev.preventDefault();sendall();}});
 async function sendall(){
  if(CAL_BUSY){stxt('sbst','⛔ یک تراکنش کالیبراسیون یا جدول در جریان است؛ ارسال عمومی فعلاً متوقف شد.');return;}
  if(!Object.keys(PEND).length)return;

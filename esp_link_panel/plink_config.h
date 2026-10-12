@@ -1,6 +1,9 @@
-/* plink_config.h - link/message/param constants, bench CSV header, Wi-Fi/HTTP constants, parser states.
+/* [EN] plink_config.h - link/message/param constants, bench CSV header, Wi-Fi/HTTP constants, parser states.
    Included by esp_link_panel.ino (single translation unit, order matters).
-   No include guard on purpose: including twice would redefine everything. */
+   No include guard on purpose: including twice would redefine everything.
+   [FA] plink_config.h - ثابت‌های لینک، پیام و پارامتر، هدر CSV بنچ، ثابت‌های ‎Wi-Fi‎ و HTTP، و وضعیت‌های پارسر.
+   توسط esp_link_panel.ino به‌عنوان یک واحد ترجمه include می‌شود (ترتیب مهم است).
+   بدون include guard عمدی است: دو بار include شدن همه‌چیز را دوباره تعریف می‌کند. */
 /* ==================== Link Constants ==================== */
 #define ESP_LINK_BAUD_RATE          921600u
 /* [EN] RX ring headroom. The panel page/bench-log handlers drain the ring
@@ -20,7 +23,8 @@
        SOF0 SOF1 VER TYPE LEN_LO LEN_HI [payload] CRC_LO CRC_HI
    [FA] فریم نسخهٔ ۲؛ باید بایت‌به‌بایت با esp_link.h فرم‌ور یکی بماند. */
 #define ESP_LINK_PROTOCOL_VERSION   2u
-#define ESP_LINK_HEADER_SIZE        6u   /* SOF0 + SOF1 + ver + type + len_lo + len_hi */
+#define ESP_LINK_HEADER_SIZE        6u   /* [EN] SOF0 + SOF1 + ver + type + len_lo + len_hi.
+   [FA] SOF0 و SOF1، نسخه، نوع، بایت کم و زیاد طول. */
 #define ESP_LINK_CRC_SIZE           2u
 #define ESP_LINK_CRC16_INIT         0xFFFFu
 #define ESP_LINK_CRC16_POLY         0x1021u
@@ -83,8 +87,6 @@
          شکل بوق باند ۲، ۱۲۳..۱۲۴ cadence چراغ عدم‌توازن، ۱۲۵..۱۳۱ و ۱۳۴..۱۳۵
          سناریوی ۶، ۱۳۲..۱۳۳ و ۱۳۶ توسعهٔ سناریوی ۵ و ۱۳۷..۱۴۲ سناریوی ۷ خطای فنی برد. */
 #define ESP_PARAM_COUNT            143u /* [EN] v1.84 ends at technical-fault id 142; ids 137..142 own scenario 7. / [FA] نسخه ۱٫۸۴ با شناسهٔ ۱۴۲ سناریوی خطای فنی تمام می‌شود؛ ۱۳۷..۱۴۲ متعلق به سناریوی ۷ است. */
-#define ESP_PARAM_CHG1_ENABLE       11u
-#define ESP_PARAM_CHG2_ENABLE       12u
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
 #define ESP_TLM_FLAG_MANUAL_MODE    0x20u
 

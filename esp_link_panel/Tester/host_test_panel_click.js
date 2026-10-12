@@ -466,6 +466,19 @@ function main() {
         check(chartLabel(25).includes("650"),
               "and it follows the value back down again");
 
+        /* [EN] Ctrl+Enter must run the same send-all as the button (spy on the global).
+           [FA] ‎Ctrl+Enter‎ باید همان ارسال همگانی دکمه را اجرا کند (جاسوس روی تابع سراسری). */
+        {
+            let sendCalls = 0;
+            const realSendAll = w.sendall;
+            w.sendall = () => { sendCalls++; };
+            d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Enter", ctrlKey: true, bubbles: true, cancelable: true }));
+            check(sendCalls === 1, "Ctrl+Enter triggers send-all once");
+            d.body.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+            check(sendCalls === 1, "plain Enter does not trigger send-all");
+            w.sendall = realSendAll;
+        }
+
         console.log("=".repeat(68));
         if (failures === 0) {
             console.log("ALL " + checks + " PANEL CLICK TESTS PASSED");

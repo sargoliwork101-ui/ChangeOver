@@ -1,6 +1,9 @@
-/* plink_state.h - RX buffers, live TLM data, TX queue, bench window, HTTP server object.
+/* [EN] plink_state.h - RX buffers, live TLM data, TX queue, bench window, HTTP server object.
    Included by esp_link_panel.ino (single translation unit, order matters).
-   No include guard on purpose: including twice would redefine everything. */
+   No include guard on purpose: including twice would redefine everything.
+   [FA] plink_state.h - بافرهای RX، داده‌های زندهٔ TLM، صف TX، پنجرهٔ بنچ و آبجکت سرور HTTP.
+   توسط esp_link_panel.ino به‌عنوان یک واحد ترجمه include می‌شود (ترتیب مهم است).
+   بدون include guard عمدی است: دو بار include شدن همه‌چیز را دوباره تعریف می‌کند. */
 /* ==================== RX State ==================== */
 static esp_rx_state_t ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;
 static uint8_t  UINT8_T__G__RxType = 0u;
