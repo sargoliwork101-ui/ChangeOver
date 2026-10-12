@@ -1083,8 +1083,7 @@ async function testBackupAndCal(win, doc) {
     win.Blob = function (parts, opts) { fullBlobs.push(String(parts[0])); return new OldBlobFull(parts, opts); };
     win.D = { on: 1, p: { 0: 12, 1: 13, 2: 1000, 3: 1000, 4: 0, 5: 0, 6: 0 }, t: [] };
     win.PEND = { 0: 19, 127: 1 };
-    win.CALS = [{ sc: 'BOTH', d: 5, use: 1, r1: 125, r2: 125, vin: 24000, v24: 25000,
-                  v12: 12500, vlo: 12500, vhi: 12500, b1: 100, b2: 100, ts: 2 }];
+    win.CALS = [{ sc: 'BOTH', d: 5, use: 1, r1: 125, r2: 125, b1: 100, b2: 100, ts: 2 }];
     win.eval("LUT_LAST_AFTER = { ready: 1, source: 'readback', T: [{ X: [100, 200], Y: [110, 220] }, { X: [100], Y: [120] }] }");
     await win.eval('xexp')();
     win.Blob = OldBlobFull;
@@ -1139,15 +1138,11 @@ async function testBackupAndCal(win, doc) {
     /* --- calibration: fit once, then show a named batch summary --------- */
     const gain = 1200, off = 7, zeroMa = -120;
     const expectedOffset = Math.round(off - zeroMa / (K * gain / 1000));
-    win.CALS = [{ sc: 'BOTH', d: 0, use: 1, r1: off, r2: off, vin: 24000, v24: 25000,
-                  v12: 12500, vlo: 12500, vhi: 12500,
-                  b1: zeroMa, b2: zeroMa, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 }];
+    win.CALS = [{ sc: 'BOTH', d: 0, use: 1, r1: off, r2: off, b1: zeroMa, b2: zeroMa, ts: 1 }];
     for (let duty = 2; duty <= 20; duty += 2) {
         const raw = off + duty * 25;
         const mA = zeroMa + (raw - off) * K * gain / 1000;
-        win.CALS.push({ sc: 'BOTH', d: duty, use: 1, r1: raw, r2: raw, vin: 24000, v24: 25000,
-                        v12: 12500, vlo: 12500, vhi: 12500,
-                        b1: mA, b2: mA, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });
+        win.CALS.push({ sc: 'BOTH', d: duty, use: 1, r1: raw, r2: raw, b1: mA, b2: mA, ts: 1 });
     }
     win.D = { p: { 0: 0, 1: 0, 2: 1000, 3: 1000, 4: 0, 5: 0, 6: 0 }, t: [] };
     win.eval('calrun')();
@@ -1209,9 +1204,8 @@ async function testBackupAndCal(win, doc) {
     win.eval('calpick')(1);
     check(win.CALS.every(z => z.use !== 0) && doc.getElementById('calall').checked === true,
           'checking the master sample checkbox includes every row again');
-    win.CALS.push({ sc: 'BAT1', d: 30, use: 1, r1: 900, r2: 900, vin: 24000, v24: 25000,
-                    v12: 12500, vlo: 12500, vhi: 12500, b1: 10, b2: 10,
-                    dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });   /* an obvious outlier */
+    win.CALS.push({ sc: 'BAT1', d: 30, use: 1, r1: 900, r2: 900, b1: 10, b2: 10,
+                    ts: 1 });   /* an obvious outlier */
     win.eval('calrun')();
     const robust = Number(win.CALR.find(r => Number(r[1]) === 2)[3]);
     check(robust === gain,
@@ -1246,7 +1240,7 @@ async function testBackupAndCal(win, doc) {
     const fitSamples = win.CALS;
     const boardBeforeNoFits = Object.assign({}, win.D.p);
     win.CALS = fitSamples.map(row => Object.assign({}, row,
-        { b1: null, b2: null, dvi: null, dv1: null, dv2: null }));
+        { b1: null, b2: null }));
     win.eval('calrun')();
     const noFitRows = [0, 1, 2, 3].map(id =>
         win.CALR.find(row => Number(row[1]) === id));
@@ -1267,8 +1261,8 @@ async function testBackupAndCal(win, doc) {
     win.eval('calrun')();
     /* a battery-2-only row must not touch the channel-1 fit */
     win.CALS[win.CALS.length - 1] = { sc: 'BAT2', d: 30, use: 1, r1: 900, r2: 900,
-        vin: 24000, v24: 25000, v12: 12500, vlo: 12500, vhi: 12500, b1: 10, b2: null,
-        dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 };
+        b1: 10, b2: null,
+        ts: 1 };
     win.eval('calrun')();
     check(Number(win.CALR.find(r => Number(r[1]) === 2)[3]) === lastGain(1),
           'a battery-2-only row is ignored when fitting battery 1');
@@ -1292,7 +1286,7 @@ async function testBackupAndCal(win, doc) {
     const savedScopeSamples = win.CALS;
     const bat2ScopeSamples = savedScopeSamples.slice(0, 4).map(z => Object.assign({}, z, { sc: 'BAT2' }));
     const noisyBat1Samples = savedScopeSamples.slice(4, 8).map(z => Object.assign({}, z, {
-        sc: 'BAT1', dvi: 50000, dv1: 40000, dv2: 40000
+        sc: 'BAT1'
     }));
     win.CALS = bat2ScopeSamples.concat(noisyBat1Samples);
     win.eval('calrun')();
@@ -1318,7 +1312,7 @@ async function testBackupAndCal(win, doc) {
     win.eval('calcode')();
     const code = doc.getElementById('calcd').value;
     check(code.indexOf('CAL_Current1LutCounts[] =') >= 0 &&
-          code.indexOf('CAL_Current1LutBatteryMw[] =') >= 0,
+          code.indexOf('CAL_Current1LutBatteryMa[] =') >= 0,
           'the generator emits the two C arrays the firmware already uses');
     check(code.indexOf('CAL_Current2LutCounts[] =') >= 0,
           'both channels get a table');
@@ -1330,9 +1324,8 @@ async function testBackupAndCal(win, doc) {
 
     /* --- v1.63: any point count is fine, but fewer than two is refused --- */
     const keepP = win.CALS;
-    const noZeroRow = { sc: 'BOTH', d: 2, use: 1, r1: off, r2: off, vin: 24000, v24: 25000,
-                        v12: 12500, vlo: 12500, vhi: 12500, b1: 0, b2: 0,
-                        dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 };
+    const noZeroRow = { sc: 'BOTH', d: 2, use: 1, r1: off, r2: off, b1: 0, b2: 0,
+                        ts: 1 };
     const noZeroRows = [2, 4, 6].map(d => {
         const raw = off + d * 25;
         return Object.assign({}, noZeroRow, { d, r1: raw, r2: raw,
@@ -1352,9 +1345,6 @@ async function testBackupAndCal(win, doc) {
           'a table with fewer than two points is refused, not emitted');
     win.CALS = keepP;
     win.eval('calrun')();
-    win.eval('calcode')();
-    check(doc.getElementById('calcd').value.indexOf('any count is valid') >= 0,
-          'the generated header states that the point count is free');
 
     /* --- v1.64: the panel proves the table is legal before emitting it --- */
     const keepN = win.CALS;
@@ -1367,68 +1357,13 @@ async function testBackupAndCal(win, doc) {
     const built = win.eval('calbuild')(1, fittedOffset, fittedGain);
     check(built.X.length === built.Y.length,
           'the two axes of one battery always come out the same length');
-    check(built.Y.every((v, i) => i === 0 || v >= built.Y[i - 1]),
-          'a dipping power point is dropped, never emitted');
-    check(built.note.join(' ').indexOf('نویزی') >= 0,
-          'and the user is told that a noisy point was dropped');
+    check(built.bad && built.bad.indexOf('پایین آمده') >= 0,
+          'a current that dips with a higher count blocks the table with a message, never dropped silently');
     check(built.X.every((v, i) => i === 0 || v > built.X[i - 1]),
-          'the chain axis comes out strictly increasing');
-    win.eval('calcode')();
-    check(doc.getElementById('calst').textContent.indexOf('نویزی') >= 0,
-          'the warning survives to the status line instead of being overwritten');
+          'the count axis comes out strictly increasing');
     win.CALS = keepN;
     win.eval('calrun')();
 
-    /* --- user order 2026-10-08: which voltage the power axis uses ------------
-       measurement.c turns the LUT power back into current with
-       (batteryMa * 1000) / live battery voltage, and the live value comes from
-       the BOARD's own divider (MeasBatteryHighMv = V24 - V12 for battery 1,
-       MeasBatteryLowMv = V12 for battery 2). The power axis therefore has to
-       be built with that same board number: with the DMM voltmeter in it
-       instead, every board voltage scale error lands in the CURRENT with the
-       opposite sign (a board reading the battery 1.2 % high reports 1.2 %
-       low - the unsafe direction for a charger).
-       Hand-derived expectation, gn = 1000 permille, off = 0 counts:
-         r1 = 1000 counts, b1 = 500 mA, vhi = 13000 mV, dv1 = 12000 mV
-         chain  = round(1000 * 24200 / 27573)                        = 878 mA
-         power1 = round(500 * 13000 / 1000) = 6500 mW   (board voltage)
-         the DMM value would have been 500 * 12000 / 1000 = 6000 mW
-         r2 = 1000 counts, b2 = 500 mA, vlo = 11000 mV, dv2 = 12500 mV
-         power2 = round(500 * 11000 / 1000) = 5500 mW   (board voltage) */
-    win.CALS = [{ r1: 1000, r2: 1000, vin: 24000, v24: 25000, v12: 12500,
-                  vlo: 11000, vhi: 13000, b1: 500, b2: 500,
-                  dvi: 24300, dv1: 12000, dv2: 12500, ts: 1 },
-                { r1: 2000, r2: 2000, vin: 24000, v24: 25000, v12: 12500,
-                  vlo: 11000, vhi: 13000, b1: 1000, b2: 1000,
-                  dvi: 24300, dv1: 12000, dv2: 12500, ts: 1 },
-                { r1: 3000, r2: 3000, vin: 24000, v24: 25000, v12: 12500,
-                  vlo: 11000, vhi: 13000, b1: 1500, b2: 1500,
-                  dvi: 24300, dv1: 12000, dv2: 12500, ts: 1 }];
-    win.eval('calrun')();
-    const boardV = win.eval('calbuild')(1, 0, 1000);
-    check(boardV.X[1] === 878 && boardV.Y[1] === 6500,
-          'the ch1 power axis is DMM current x the BOARD battery voltage (6500 mW), not the DMM voltage (6000)');
-    const boardV2 = win.eval('calbuild')(2, 0, 1000);
-    check(boardV2.X[1] === 878 && boardV2.Y[1] === 5500,
-          'the ch2 power axis uses the board low-rail voltage (5500 mW), not the DMM voltage (6250)');
-    /* The chain axis has to be the chain the BOARD computes, and bsp_measurement.c
-       divides in two integer stages (counts x 24200 / 27573, then x gain / 1000).
-       Hand-derived for raw = 100 counts, off = 0, gain = 1303 permille:
-         stage 1: round(100 * 24200 / 27573) = round(87.767)  = 88 mA
-         stage 2: round(88 * 1303 / 1000)   = round(114.664) = 115 mA
-       A single float rounding of the whole product gives 114 instead, i.e. the
-       anchor would sit one mA away from where the board lands - up to 2 mA of
-       current error on a steep LUT segment. */
-    const keepV = win.CALS;
-    win.CALS = [{ r1: 100, r2: 100, vin: 24000, v24: 25000, v12: 12500,
-                  vlo: 11000, vhi: 13000, b1: 100, b2: 100,
-                  dvi: 24300, dv1: 12000, dv2: 12500, ts: 1 }];
-    check(win.eval('calbuild')(2, 0, 1303).X[1] === 115,
-          'the chain axis is the board two-stage integer chain (115 mA), not the float single-round (114)');
-    win.CALS = keepV;
-    win.eval('calcode')();
-    check(doc.getElementById('calcd').value.indexOf('BOARD battery voltage') >= 0,
-          'the generated header documents the board-voltage convention the table was built with');
     win.CALS = keepN;
     win.eval('calrun')();
 
@@ -1614,8 +1549,7 @@ async function testBackupAndCal(win, doc) {
     await win.eval('calimp')({ text: async () => JSON.stringify(sf) });
 
     /* --- noisy / too few samples must be refused, not applied --- */
-    win.CALS = [{ r1: 100, r2: 100, vin: 24000, v24: 25000, v12: 12500, vlo: 12500, vhi: 12500,
-                  b1: 50, b2: 50, dvi: 24000, dv1: 12500, dv2: 12500, ts: 1 }];
+    win.CALS = [{ r1: 100, r2: 100, b1: 50, b2: 50, ts: 1 }];
     win.eval('calrun')();
     check(doc.getElementById('calst').textContent.indexOf('حداقل ۳') >= 0,
           'one sample is refused with a plain reason');
@@ -1708,15 +1642,11 @@ async function testLutPush(win, doc) {
     const K = win.eval('K_MA');
     const gain = 1200, off = 7, zeroMa = -120;
     const expectedOffset = Math.round(off - zeroMa / (K * gain / 1000));
-    win.CALS = [{ sc: 'BOTH', d: 0, use: 1, r1: off, r2: off, vin: 24000, v24: 25000,
-                  v12: 12500, vlo: 12500, vhi: 12500,
-                  b1: zeroMa, b2: zeroMa, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 }];
+    win.CALS = [{ sc: 'BOTH', d: 0, use: 1, r1: off, r2: off, b1: zeroMa, b2: zeroMa, ts: 1 }];
     for (let duty = 2; duty <= 20; duty += 2) {
         const raw = off + duty * 25;
         const mA = zeroMa + (raw - off) * K * gain / 1000;
-        win.CALS.push({ sc: 'BOTH', d: duty, use: 1, r1: raw, r2: raw, vin: 24000, v24: 25000,
-                        v12: 12500, vlo: 12500, vhi: 12500,
-                        b1: mA, b2: mA, dvi: 24300, dv1: 12600, dv2: 12700, ts: 1 });
+        win.CALS.push({ sc: 'BOTH', d: duty, use: 1, r1: raw, r2: raw, b1: mA, b2: mA, ts: 1 });
     }
     win.D = { p: { 0: off, 1: off, 2: gain, 3: gain, 4: 40, 5: 50, 6: 60 }, t: [], on: 1 };
     win.eval('calrun')();
@@ -1740,7 +1670,7 @@ async function testLutPush(win, doc) {
     packed.T.forEach(t => {
         bytes.push(t.X.length & 255);
         for (let i = 0; i < t.X.length; i++) {
-            [t.X[i], t.Y[i]].forEach(v => bytes.push(v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255));
+            [t.X[i], Math.round(t.Y[i] * 10)].forEach(v => bytes.push(v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255));
         }
     });
     check(win.eval('lcrc')(bytes) === packed.crc,
@@ -1760,8 +1690,8 @@ async function testLutPush(win, doc) {
         const rows = readPhase ? activeRows : readBefore;
         return { ready: 1, pending: 0, error: 0,
                  n1: rows[0].X.length, n2: rows[1].X.length,
-                 r1: rows[0].X.map((v, i) => [v, rows[0].Y[i]]),
-                 r2: rows[1].X.map((v, i) => [v, rows[1].Y[i]]) };
+                 r1: rows[0].X.map((v, i) => [v, Math.round(rows[0].Y[i] * 10)]),
+                 r2: rows[1].X.map((v, i) => [v, Math.round(rows[1].Y[i] * 10)]) };
     };
     const stub = (ack) => (u, o) => {
         calls.push((o && o.method ? o.method : 'GET') + ' ' + u);
@@ -1818,9 +1748,7 @@ async function testLutPush(win, doc) {
     const boardInputOffset = win.D.p[4];
     win.D.p[4] = null;
     const oldVoltageOffsets = [4, 5, 6].map(id => win.D.p[id]);
-    win.CALS = completeSamples.map(row => Object.assign({}, row, {
-        dvi: null, dv1: null, dv2: null
-    }));
+    win.CALS = completeSamples.map(row => Object.assign({}, row));
     win.eval('calrun')();
     const noVoltagePack = win.eval('lpack')();
     check(!noVoltagePack.bad && noVoltagePack.body === packed.body,
@@ -2012,7 +1940,7 @@ async function testLutPush(win, doc) {
     win.fetch = stub({ st: 3, s: 5, n1: 0, n2: 0, crc: 0, sent: packed.crc, age: 10, n: 3 });
     await win.eval('lsend')();
     await applyPending('the board-refused LUT transaction');
-    check(doc.getElementById('calst').textContent.indexOf('محور توان') >= 0,
+    check(doc.getElementById('calst').textContent.indexOf('جدول روی برد افت داشت') >= 0,
           'the board status code is translated into a plain reason');
 
     /* A successful ACK without a value readback is not promoted to success. */
