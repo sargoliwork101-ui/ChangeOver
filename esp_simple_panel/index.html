@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#0a0e15">
 <title>ChangeOver - پنل هوشمند</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700;800;900&display=swap" rel="stylesheet">
 <style>
 /* ===== Design System 2026 ===== */
 :root{--r:20px;--r-sm:12px;--r-full:999px}
@@ -166,7 +167,7 @@ main{display:grid;gap:16px}
 .bat-bg{fill:var(--bg);opacity:.7}
 .bat-tick{stroke:var(--ln);stroke-width:.9;stroke-dasharray:2 5;opacity:.45}
 .bat-fill{transition:all .85s cubic-bezier(.34,1.56,.64,1);filter:drop-shadow(0 0 10px rgba(30,230,160,.25))}
-.bat-pct{font-family:ui-monospace,Inter,monospace;font-weight:900;font-size:12.5px;fill:var(--tx);text-anchor:middle;dominant-baseline:middle;letter-spacing:-.3px}
+.bat-pct{font-family:Vazirmatn;font-weight:900;font-size:12.5px;fill:var(--tx);text-anchor:middle;dominant-baseline:middle;letter-spacing:-.3px}
 .half-pct{font-weight:900;font-size:28px;letter-spacing:-1px;line-height:1;display:flex;align-items:baseline;justify-content:center;gap:2px}
 .half-pct small{font-size:13px;opacity:.45;font-weight:700}
 .half-status{font-size:11px;font-weight:700;color:var(--mu);margin-top:4px;letter-spacing:.4px;display:inline-flex;align-items:center;gap:6px;background:var(--cd);border:1px solid var(--ln);border-radius:var(--r-full);padding:3px 10px}
@@ -174,7 +175,7 @@ main{display:grid;gap:16px}
 .half-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
 .half-stat{background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:10px 8px;position:relative;overflow:hidden;transition:.2s}
 .half-stat:hover{border-color:var(--ln2);background:var(--cd2)}
-.half-stat b{display:block;font-size:16px;font-weight:900;font-family:ui-monospace,monospace;line-height:1.1;letter-spacing:-.3px}
+.half-stat b{display:block;font-size:16px;font-weight:900;font-family:Vazirmatn;line-height:1.1;letter-spacing:-.3px}
 .half-stat span{font-size:9px;color:var(--mu);font-weight:700;letter-spacing:.5px;display:block;margin-top:4px;text-transform:uppercase}
 .half-stat::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acbd),transparent);opacity:0;transition:.2s}
 .half-stat:hover::before{opacity:1}
@@ -195,7 +196,7 @@ main{display:grid;gap:16px}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .chip{background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:8px 12px;font-size:11px;font-weight:600;min-width:100px;text-align:center;transition:.2s;position:relative;overflow:hidden}
 .chip:hover{border-color:var(--ln2);transform:translateY(-1px)}
-.chip b{font-family:ui-monospace,monospace;font-size:12px;display:block}
+.chip b{font-family:Vazirmatn;font-size:12px;display:block}
 .chip span{font-size:9.5px;color:var(--mu);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;display:block}
 
 /* Charts */
@@ -208,7 +209,7 @@ canvas:hover{border-color:var(--ln2)}
 .stat:nth-child(2)::before{background:var(--ok)}
 .stat:nth-child(3)::before{background:var(--wa)}
 .stat:nth-child(4)::before{background:var(--er)}
-.stat b{font-size:22px;font-weight:900;font-family:ui-monospace,monospace;letter-spacing:-.5px} .stat span{font-size:10px;color:var(--mu);display:block;margin-top:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.stat b{font-size:22px;font-weight:900;font-family:Vazirmatn;letter-spacing:-.5px} .stat span{font-size:10px;color:var(--mu);display:block;margin-top:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
 .log{max-height:340px;overflow:auto;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:6px;font-size:12px;line-height:1.7;scrollbar-width:thin;scrollbar-color:var(--ln2) transparent}
 .log .row{padding:10px 12px;border-bottom:1px dashed var(--ln);border-radius:8px;transition:.15s}
 .log .row:hover{background:var(--cd);border-bottom-color:transparent}
@@ -238,8 +239,8 @@ button.btn.danger{background:var(--erbg);border-color:var(--erbd);color:var(--er
 .theme-preview{width:100%;height:52px;border-radius:10px;margin-bottom:10px;border:1px solid var(--ln);display:flex;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
 .theme-preview .tp1{flex:1} .theme-preview .tp2{flex:1} .theme-preview .tp3{flex:1}
 .theme-name{font-weight:800;font-size:12px} .theme-desc{font-size:10.5px;color:var(--mu);margin-top:3px}
-.footer{display:flex;justify-content:space-between;gap:10px;font-size:10.5px;color:var(--mu);padding:10px 4px;font-family:ui-monospace,monospace;opacity:.7;border-top:1px solid var(--ln);margin-top:8px}
-.range-btn{font-family:ui-monospace,monospace;min-width:64px}
+.footer{display:flex;justify-content:space-between;gap:10px;font-size:10.5px;color:var(--mu);padding:10px 4px;font-family:Vazirmatn;opacity:.7;border-top:1px solid var(--ln);margin-top:8px}
+.range-btn{font-family:Vazirmatn;min-width:64px}
 
 /* Segmented Control 2026 - با وزیرمتن */
 .segmented{position:relative;display:flex;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:4px;gap:2px;overflow:hidden}
@@ -272,9 +273,12 @@ button.btn.danger{background:var(--erbg);border-color:var(--erbd);color:var(--er
 .leds.center{justify-content:center}
 .chips.center{justify-content:center}
 
-/* Vazirmatn everywhere - no monospace */
-.half-pct,.hero-pct,.stat b,.half-stat b,.footer,canvas+div{font-family:Vazirmatn !important}
-input,select,button{font-family:Vazirmatn !important}
+/* Vazirmatn everywhere - فونت یکدست فارسی */
+*{font-family:Vazirmatn,Inter,system-ui,Tahoma,sans-serif !important}
+.half-pct,.hero-pct,.stat b,.half-stat b,.footer,canvas+div,.bat-pct,.chip b{font-family:Vazirmatn !important}
+input,select,button,canvas{font-family:Vazirmatn !important}
+code,pre,.mono{font-family:Vazirmatn !important}
+
 
 .fault-card{border-right:3px solid var(--ln)} .fault-card.warn{border-right-color:var(--wa)} .fault-card.err{border-right-color:var(--er)} .fault-card.ok{border-right-color:var(--ok)}
 #faultList{font-size:13px;line-height:1.8}
@@ -601,7 +605,7 @@ input,select,button{font-family:Vazirmatn !important}
    <div class="cd">
     <div class="ti">وای‌فای - نام و رمز - فقط ادمین</div>
     <div class="form">
-     <div class="kv" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--ln)"><span style="color:var(--mu)">نام فعلی</span><b id="wifiCurrentSsid" style="font-family:ui-monospace,monospace">--</b></div>
+     <div class="kv" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--ln)"><span style="color:var(--mu)">نام فعلی</span><b id="wifiCurrentSsid" style="font-family:Vazirmatn">--</b></div>
      <input id="wifiNewSsid" placeholder="نام وای‌فای جدید - مثل changeover_userpannel" maxlength="32">
      <input id="wifiNewPass" type="password" placeholder="رمز جدید - حداقل ۸ کاراکتر" maxlength="32">
      <button class="btn pri" onclick="setWifi()">ذخیره وای‌فای - نیاز به ریستارت برد</button>
@@ -612,8 +616,8 @@ input,select,button{font-family:Vazirmatn !important}
    <div class="cd">
     <div class="ti">همگام‌سازی ساعت برد</div>
     <div class="form">
-     <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت گوشی</span><b id="phoneTime" style="font-family:ui-monospace,monospace">--</b></div>
-     <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت برد</span><b id="boardTimeSet" style="font-family:ui-monospace,monospace">--</b></div>
+     <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت گوشی</span><b id="phoneTime" style="font-family:Vazirmatn">--</b></div>
+     <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت برد</span><b id="boardTimeSet" style="font-family:Vazirmatn">--</b></div>
      <button class="btn pri" onclick="syncTime()">ارسال ساعت گوشی به برد (ادمین)</button>
      <div id="timeMsg" style="font-size:12px;color:var(--mu)"></div>
     </div>
@@ -888,7 +892,7 @@ function renderChargeHistoryList(events){
   let timeStr=d.toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   let chName=e.ch===1?'باتری بالا - کانال ۱':'باتری پایین - کانال ۲';
   let color=e.ch===1?'var(--ac)':'var(--ok)';
-  html+='<div class=row style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><b style="color:'+color+'">'+chName+'</b><br><span style="font-size:11px;color:var(--mu)">'+dateStr+'</span></div><div style="text-align:left;direction:ltr;font-family:ui-monospace,monospace;font-weight:800">'+timeStr+'</div></div>';
+  html+='<div class=row style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><b style="color:'+color+'">'+chName+'</b><br><span style="font-size:11px;color:var(--mu)">'+dateStr+'</span></div><div style="text-align:left;direction:ltr;font-family:Vazirmatn;font-weight:800">'+timeStr+'</div></div>';
  }
  div.innerHTML=html;
 }
@@ -1144,7 +1148,7 @@ async function loadUsers(){
      let roleClass=u.role==1?'admin':'viewer';
      let icon=u.role==1?'A':'S';
      let safeName=u.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-     html+='<div class=row style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:8px"><span style="width:28px;height:28px;border-radius:8px;background:var(--in);border:1px solid var(--ln);display:grid;place-items:center;font-weight:800;font-size:11px;color:var(--ac)">'+icon+'</span><b style="font-family:ui-monospace,monospace">'+safeName+'</b></div><span class=badge '+roleClass+'>'+roleText+'</span></div>';
+     html+='<div class=row style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:8px"><span style="width:28px;height:28px;border-radius:8px;background:var(--in);border:1px solid var(--ln);display:grid;place-items:center;font-weight:800;font-size:11px;color:var(--ac)">'+icon+'</span><b style="font-family:Vazirmatn">'+safeName+'</b></div><span class=badge '+roleClass+'>'+roleText+'</span></div>';
     }
    }
    document.getElementById('usersList').innerHTML=html;
@@ -1189,7 +1193,7 @@ function demoData(){
  drawChargeHistory(chargeHist, chartRanges.charge);
  renderChargeHistoryList(chargeHist);
  let el=document.getElementById('wifiCurrentSsid'); if(el) el.textContent='changeover_userpannel';
- document.getElementById('usersList').innerHTML='<div class=row style="display:flex;justify-content:space-between;font-weight:800;color:var(--mu);font-size:10px"><span>نام کاربری</span><span>نقش</span></div><div class=row style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:8px"><span style="width:28px;height:28px;border-radius:8px;background:var(--in);border:1px solid var(--ln);display:grid;place-items:center;font-weight:800;font-size:11px;color:var(--ac)">A</span><b style="font-family:Vazirmatn,monospace">admin</b></div><span class=badge admin>ادمین</span></div>';
+ document.getElementById('usersList').innerHTML='<div class=row style="display:flex;justify-content:space-between;font-weight:800;color:var(--mu);font-size:10px"><span>نام کاربری</span><span>نقش</span></div><div class=row style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:8px"><span style="width:28px;height:28px;border-radius:8px;background:var(--in);border:1px solid var(--ln);display:grid;place-items:center;font-weight:800;font-size:11px;color:var(--ac)">A</span><b style="font-family:Vazirmatn">admin</b></div><span class=badge admin>ادمین</span></div>';
  document.getElementById('usersCount').textContent='2 کاربر';
  document.getElementById('loginPage').style.display='none';
  resizeCanvases();
