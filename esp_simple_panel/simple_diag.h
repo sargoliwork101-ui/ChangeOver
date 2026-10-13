@@ -1,5 +1,5 @@
 /* simple_diag.h - مدیریت دیاگ و تاریخچه نمودار با محور زمان - ۱ روزه/۷ روزه/۱ ماهه/۳ ماهه
-   فقط فارسی */
+   فقط فارسی - ذخیره کامل Vin/Vpack/Pct/Time برای همه بازه‌ها */
 
 #include <LittleFS.h>
 
@@ -17,7 +17,7 @@ static void func__Simple_ChartAdd(uint32_t uint32_t__vin, uint32_t uint32_t__vpa
     }
 }
 
-/* ==================== افزودن نقطه با زمان - محور افقی زمان - درصد+Vin+Vpack برای ۳ ماه با ریت کم ==================== */
+/* ==================== افزودن نقطه با زمان - درصد+Vin+Vpack برای ۳ ماه با ریت کم ==================== */
 static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t__vin, uint32_t uint32_t__vpack)
 {
     uint32_t uint32_t__nowSec = 0u;
@@ -30,52 +30,68 @@ static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t
         uint32_t__nowSec = (uint32_t)(millis() / 1000u);
     }
 
-    /* ۱ روزه - هر ۱ ساعت - Vin/Vpack با ریت کم (همان ۱ ساعت) */
-    if ((uint32_t)(millis() - UINT32_T__G__Last1D_Ms) >= 3600000u || UINT8_T__G__Chart1D_Count == 0u)
+    uint32_t uint32_t__nowMs = (uint32_t)millis();
+
+    /* ۱ روزه - ۲۴ نقطه
+       برای پر شدن سریع اولیه هر ۶۰ ثانیه، بعد از پر شدن هر ۱ ساعت */
     {
-        UINT32_T__G__Chart1D_Pct[UINT8_T__G__Chart1D_Index] = uint32_t__pct;
-        UINT32_T__G__Chart1D_Vin[UINT8_T__G__Chart1D_Index] = uint32_t__vin;
-        UINT32_T__G__Chart1D_Vpack[UINT8_T__G__Chart1D_Index] = uint32_t__vpack;
-        UINT32_T__G__Chart1D_Time[UINT8_T__G__Chart1D_Index] = uint32_t__nowSec;
-        UINT8_T__G__Chart1D_Index = (uint8_t)((UINT8_T__G__Chart1D_Index + 1u) % SIMPLE_CHART_1D_SIZE);
-        if (UINT8_T__G__Chart1D_Count < SIMPLE_CHART_1D_SIZE) UINT8_T__G__Chart1D_Count++;
-        UINT32_T__G__Last1D_Ms = (uint32_t)millis();
+        uint32_t uint32_t__interval = (UINT8_T__G__Chart1D_Count < SIMPLE_CHART_1D_SIZE) ? 60000u : 3600000u;
+        if ((uint32_t__nowMs - UINT32_T__G__Last1D_Ms) >= uint32_t__interval || UINT8_T__G__Chart1D_Count == 0u)
+        {
+            UINT32_T__G__Chart1D_Pct[UINT8_T__G__Chart1D_Index] = uint32_t__pct;
+            UINT32_T__G__Chart1D_Vin[UINT8_T__G__Chart1D_Index] = uint32_t__vin;
+            UINT32_T__G__Chart1D_Vpack[UINT8_T__G__Chart1D_Index] = uint32_t__vpack;
+            UINT32_T__G__Chart1D_Time[UINT8_T__G__Chart1D_Index] = uint32_t__nowSec;
+            UINT8_T__G__Chart1D_Index = (uint8_t)((UINT8_T__G__Chart1D_Index + 1u) % SIMPLE_CHART_1D_SIZE);
+            if (UINT8_T__G__Chart1D_Count < SIMPLE_CHART_1D_SIZE) UINT8_T__G__Chart1D_Count++;
+            UINT32_T__G__Last1D_Ms = uint32_t__nowMs;
+        }
     }
 
-    /* ۷ روزه - هر ۶ ساعت */
-    if ((uint32_t)(millis() - UINT32_T__G__Last7D_Ms) >= 21600000u || UINT8_T__G__Chart7D_Count == 0u)
+    /* ۷ روزه - ۲۸ نقطه
+       اولیه هر ۵ دقیقه، بعد هر ۶ ساعت */
     {
-        UINT32_T__G__Chart7D_Pct[UINT8_T__G__Chart7D_Index] = uint32_t__pct;
-        UINT32_T__G__Chart7D_Vin[UINT8_T__G__Chart7D_Index] = uint32_t__vin;
-        UINT32_T__G__Chart7D_Vpack[UINT8_T__G__Chart7D_Index] = uint32_t__vpack;
-        UINT32_T__G__Chart7D_Time[UINT8_T__G__Chart7D_Index] = uint32_t__nowSec;
-        UINT8_T__G__Chart7D_Index = (uint8_t)((UINT8_T__G__Chart7D_Index + 1u) % SIMPLE_CHART_7D_SIZE);
-        if (UINT8_T__G__Chart7D_Count < SIMPLE_CHART_7D_SIZE) UINT8_T__G__Chart7D_Count++;
-        UINT32_T__G__Last7D_Ms = (uint32_t)millis();
+        uint32_t uint32_t__interval = (UINT8_T__G__Chart7D_Count < SIMPLE_CHART_7D_SIZE) ? 300000u : 21600000u;
+        if ((uint32_t__nowMs - UINT32_T__G__Last7D_Ms) >= uint32_t__interval || UINT8_T__G__Chart7D_Count == 0u)
+        {
+            UINT32_T__G__Chart7D_Pct[UINT8_T__G__Chart7D_Index] = uint32_t__pct;
+            UINT32_T__G__Chart7D_Vin[UINT8_T__G__Chart7D_Index] = uint32_t__vin;
+            UINT32_T__G__Chart7D_Vpack[UINT8_T__G__Chart7D_Index] = uint32_t__vpack;
+            UINT32_T__G__Chart7D_Time[UINT8_T__G__Chart7D_Index] = uint32_t__nowSec;
+            UINT8_T__G__Chart7D_Index = (uint8_t)((UINT8_T__G__Chart7D_Index + 1u) % SIMPLE_CHART_7D_SIZE);
+            if (UINT8_T__G__Chart7D_Count < SIMPLE_CHART_7D_SIZE) UINT8_T__G__Chart7D_Count++;
+            UINT32_T__G__Last7D_Ms = uint32_t__nowMs;
+        }
     }
 
-    /* ۱ ماهه - هر ۱ روز */
-    if ((uint32_t)(millis() - UINT32_T__G__Last1M_Ms) >= 86400000u || UINT8_T__G__Chart1M_Count == 0u)
+    /* ۱ ماهه - ۳۰ نقطه - اولیه هر ۱۵ دقیقه، بعد هر ۱ روز */
     {
-        UINT32_T__G__Chart1M_Pct[UINT8_T__G__Chart1M_Index] = uint32_t__pct;
-        UINT32_T__G__Chart1M_Vin[UINT8_T__G__Chart1M_Index] = uint32_t__vin;
-        UINT32_T__G__Chart1M_Vpack[UINT8_T__G__Chart1M_Index] = uint32_t__vpack;
-        UINT32_T__G__Chart1M_Time[UINT8_T__G__Chart1M_Index] = uint32_t__nowSec;
-        UINT8_T__G__Chart1M_Index = (uint8_t)((UINT8_T__G__Chart1M_Index + 1u) % SIMPLE_CHART_1M_SIZE);
-        if (UINT8_T__G__Chart1M_Count < SIMPLE_CHART_1M_SIZE) UINT8_T__G__Chart1M_Count++;
-        UINT32_T__G__Last1M_Ms = (uint32_t)millis();
+        uint32_t uint32_t__interval = (UINT8_T__G__Chart1M_Count < SIMPLE_CHART_1M_SIZE) ? 900000u : 86400000u;
+        if ((uint32_t__nowMs - UINT32_T__G__Last1M_Ms) >= uint32_t__interval || UINT8_T__G__Chart1M_Count == 0u)
+        {
+            UINT32_T__G__Chart1M_Pct[UINT8_T__G__Chart1M_Index] = uint32_t__pct;
+            UINT32_T__G__Chart1M_Vin[UINT8_T__G__Chart1M_Index] = uint32_t__vin;
+            UINT32_T__G__Chart1M_Vpack[UINT8_T__G__Chart1M_Index] = uint32_t__vpack;
+            UINT32_T__G__Chart1M_Time[UINT8_T__G__Chart1M_Index] = uint32_t__nowSec;
+            UINT8_T__G__Chart1M_Index = (uint8_t)((UINT8_T__G__Chart1M_Index + 1u) % SIMPLE_CHART_1M_SIZE);
+            if (UINT8_T__G__Chart1M_Count < SIMPLE_CHART_1M_SIZE) UINT8_T__G__Chart1M_Count++;
+            UINT32_T__G__Last1M_Ms = uint32_t__nowMs;
+        }
     }
 
-    /* ۳ ماهه - هر ۱ روز - ۹۰ نقطه - ریت کم چون Vin/Vpack تغییر کم */
-    if ((uint32_t)(millis() - UINT32_T__G__Last3M_Ms) >= 86400000u || UINT8_T__G__Chart3M_Count == 0u)
+    /* ۳ ماهه - ۹۰ نقطه - اولیه هر ۳۰ دقیقه، بعد هر ۱ روز */
     {
-        UINT32_T__G__Chart3M_Pct[UINT8_T__G__Chart3M_Index] = uint32_t__pct;
-        UINT32_T__G__Chart3M_Vin[UINT8_T__G__Chart3M_Index] = uint32_t__vin;
-        UINT32_T__G__Chart3M_Vpack[UINT8_T__G__Chart3M_Index] = uint32_t__vpack;
-        UINT32_T__G__Chart3M_Time[UINT8_T__G__Chart3M_Index] = uint32_t__nowSec;
-        UINT8_T__G__Chart3M_Index = (uint8_t)((UINT8_T__G__Chart3M_Index + 1u) % SIMPLE_CHART_3M_SIZE);
-        if (UINT8_T__G__Chart3M_Count < SIMPLE_CHART_3M_SIZE) UINT8_T__G__Chart3M_Count++;
-        UINT32_T__G__Last3M_Ms = (uint32_t)millis();
+        uint32_t uint32_t__interval = (UINT8_T__G__Chart3M_Count < SIMPLE_CHART_3M_SIZE) ? 1800000u : 86400000u;
+        if ((uint32_t__nowMs - UINT32_T__G__Last3M_Ms) >= uint32_t__interval || UINT8_T__G__Chart3M_Count == 0u)
+        {
+            UINT32_T__G__Chart3M_Pct[UINT8_T__G__Chart3M_Index] = uint32_t__pct;
+            UINT32_T__G__Chart3M_Vin[UINT8_T__G__Chart3M_Index] = uint32_t__vin;
+            UINT32_T__G__Chart3M_Vpack[UINT8_T__G__Chart3M_Index] = uint32_t__vpack;
+            UINT32_T__G__Chart3M_Time[UINT8_T__G__Chart3M_Index] = uint32_t__nowSec;
+            UINT8_T__G__Chart3M_Index = (uint8_t)((UINT8_T__G__Chart3M_Index + 1u) % SIMPLE_CHART_3M_SIZE);
+            if (UINT8_T__G__Chart3M_Count < SIMPLE_CHART_3M_SIZE) UINT8_T__G__Chart3M_Count++;
+            UINT32_T__G__Last3M_Ms = uint32_t__nowMs;
+        }
     }
 }
 
@@ -92,7 +108,6 @@ static void func__Simple_ChartTick(void)
     uint32_t uint32_t__vpackRaw = UINT32_T__G__TlmField[15];
     uint32_t uint32_t__vLow = UINT32_T__G__TlmField[17];
     uint32_t uint32_t__vHigh = UINT32_T__G__TlmField[18];
-    // پک کامل = جمع دو نیم‌باتری کالیبره - دو برابر ولتاژ نیم‌باتری (۱۰.۵-۱۴.۵ هر کدام → ۲۱-۲۹ پک)
     uint32_t uint32_t__vpack = uint32_t__vpackRaw;
     if ((uint32_t__vLow > 0u) && (uint32_t__vHigh > 0u))
     {
@@ -165,7 +180,7 @@ static void func__Simple_SendDiagReq(void)
     UINT32_T__G__LastDiagReqMs = (uint32_t)millis();
 }
 
-/* ==================== ذخیره تاریخچه شارژ در LittleFS - پایدار ==================== */
+/* ==================== ذخیره تاریخچه شارژ ==================== */
 #define SIMPLE_CHARGE_HISTORY_FILE      "/charge_hist.json"
 static void func__Simple_ChargeHistorySave(void)
 {
@@ -204,7 +219,6 @@ static void func__Simple_ChargeHistoryLoad(void)
     if (!file__f) return;
     String string__content = file__f.readString();
     file__f.close();
-    // لود prev counts
     int32_t int32_t__prev1Pos = string__content.indexOf("\"prevCh1\":");
     if (int32_t__prev1Pos >= 0)
     {
@@ -252,12 +266,13 @@ static void func__Simple_ChargeHistoryLoad(void)
     UINT8_T__G__ChargeHistoryCount = uint8_t__found;
 }
 
-/* ==================== ذخیره نمودارها در LittleFS ==================== */
+/* ==================== ذخیره نمودارها - کامل با Vin/Vpack ==================== */
 static void func__Simple_ChartsSave(void)
 {
     if (!BOOL__G__FsOk) return;
     File file__f = LittleFS.open(SIMPLE_CHARTS_FILE, "w");
     if (!file__f) return;
+
     file__f.print("{\"1d\":{\"c\":");
     file__f.print(UINT8_T__G__Chart1D_Count);
     file__f.print(",\"pct\":[");
@@ -268,12 +283,116 @@ static void func__Simple_ChartsSave(void)
         if (uint8_t__i != 0u) file__f.print(",");
         file__f.print(UINT32_T__G__Chart1D_Pct[uint8_t__idx]);
     }
+    file__f.print("],\"vin\":[");
+    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1D_Count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1D_Index + SIMPLE_CHART_1D_SIZE - UINT8_T__G__Chart1D_Count + uint8_t__i) % SIMPLE_CHART_1D_SIZE);
+        if (uint8_t__i != 0u) file__f.print(",");
+        file__f.print(UINT32_T__G__Chart1D_Vin[uint8_t__idx]);
+    }
+    file__f.print("],\"vpack\":[");
+    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1D_Count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1D_Index + SIMPLE_CHART_1D_SIZE - UINT8_T__G__Chart1D_Count + uint8_t__i) % SIMPLE_CHART_1D_SIZE);
+        if (uint8_t__i != 0u) file__f.print(",");
+        file__f.print(UINT32_T__G__Chart1D_Vpack[uint8_t__idx]);
+    }
     file__f.print("],\"time\":[");
     for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1D_Count; uint8_t__i++)
     {
         uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1D_Index + SIMPLE_CHART_1D_SIZE - UINT8_T__G__Chart1D_Count + uint8_t__i) % SIMPLE_CHART_1D_SIZE);
         if (uint8_t__i != 0u) file__f.print(",");
         file__f.print(UINT32_T__G__Chart1D_Time[uint8_t__idx]);
+    }
+    file__f.print("]},\"7d\":{\"c\":");
+    file__f.print(UINT8_T__G__Chart7D_Count);
+    file__f.print(",\"pct\":[");
+    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart7D_Index + SIMPLE_CHART_7D_SIZE - UINT8_T__G__Chart7D_Count + uint8_t__i) % SIMPLE_CHART_7D_SIZE);
+        if (uint8_t__i != 0u) file__f.print(",");
+        file__f.print(UINT32_T__G__Chart7D_Pct[uint8_t__idx]);
+    }
+    file__f.print("],\"vin\":[");
+    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart7D_Index + SIMPLE_CHART_7D_SIZE - UINT8_T__G__Chart7D_Count + uint8_t__i) % SIMPLE_CHART_7D_SIZE);
+        if (uint8_t__i != 0u) file__f.print(",");
+        file__f.print(UINT32_T__G__Chart7D_Vin[uint8_t__idx]);
+    }
+    file__f.print("],\"vpack\":[");
+    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart7D_Index + SIMPLE_CHART_7D_SIZE - UINT8_T__G__Chart7D_Count + uint8_t__i) % SIMPLE_CHART_7D_SIZE);
+        if (uint8_t__i != 0u) file__f.print(",");
+        file__f.print(UINT32_T__G__Chart7D_Vpack[uint8_t__idx]);
+    }
+    file__f.print("],\"time\":[");
+    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart7D_Index + SIMPLE_CHART_7D_SIZE - UINT8_T__G__Chart7D_Count + uint8_t__i) % SIMPLE_CHART_7D_SIZE);
+        if (uint8_t__i != 0u) file__f.print(",");
+        file__f.print(UINT32_T__G__Chart7D_Time[uint8_t__idx]);
+    }
+    file__f.print("]},\"1m\":{\"c\":");
+    file__f.print(UINT8_T__G__Chart1M_Count);
+    file__f.print(",\"pct\":[");
+    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
+        if (uint8_t__i != 0u) file__f.print(",");
+        file__f.print(UINT32_T__G__Chart1M_Pct[uint8_t__idx]);
+    }
+    file__f.print("],\"vin\":[");
+    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
+        if (uint8_t__i != 0u) file__f.print(",");
+        file__f.print(UINT32_T__G__Chart1M_Vin[uint8_t__idx]);
+    }
+    file__f.print("],\"vpack\":[");
+    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
+        if (uint8_t__i != 0u) file__f.print(",");
+        file__f.print(UINT32_T__G__Chart1M_Vpack[uint8_t__idx]);
+    }
+    file__f.print("],\"time\":[");
+    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
+        if (uint8_t__i != 0u) file__f.print(",");
+        file__f.print(UINT32_T__G__Chart1M_Time[uint8_t__idx]);
+    }
+    file__f.print("]},\"3m\":{\"c\":");
+    file__f.print(UINT8_T__G__Chart3M_Count);
+    file__f.print(",\"pct\":[");
+    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart3M_Index + SIMPLE_CHART_3M_SIZE - UINT8_T__G__Chart3M_Count + uint8_t__i) % SIMPLE_CHART_3M_SIZE);
+        if (uint8_t__i != 0u) file__f.print(",");
+        file__f.print(UINT32_T__G__Chart3M_Pct[uint8_t__idx]);
+    }
+    file__f.print("],\"vin\":[");
+    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart3M_Index + SIMPLE_CHART_3M_SIZE - UINT8_T__G__Chart3M_Count + uint8_t__i) % SIMPLE_CHART_3M_SIZE);
+        if (uint8_t__i != 0u) file__f.print(",");
+        file__f.print(UINT32_T__G__Chart3M_Vin[uint8_t__idx]);
+    }
+    file__f.print("],\"vpack\":[");
+    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart3M_Index + SIMPLE_CHART_3M_SIZE - UINT8_T__G__Chart3M_Count + uint8_t__i) % SIMPLE_CHART_3M_SIZE);
+        if (uint8_t__i != 0u) file__f.print(",");
+        file__f.print(UINT32_T__G__Chart3M_Vpack[uint8_t__idx]);
+    }
+    file__f.print("],\"time\":[");
+    for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)((UINT8_T__G__Chart3M_Index + SIMPLE_CHART_3M_SIZE - UINT8_T__G__Chart3M_Count + uint8_t__i) % SIMPLE_CHART_3M_SIZE);
+        if (uint8_t__i != 0u) file__f.print(",");
+        file__f.print(UINT32_T__G__Chart3M_Time[uint8_t__idx]);
     }
     file__f.print("]}}");
     file__f.close();
@@ -287,55 +406,94 @@ static void func__Simple_ChartsLoad(void)
     if (!file__f) return;
     String string__content = file__f.readString();
     file__f.close();
-    // ساده: فقط 1d را لود می‌کنیم برای نمونه
-    int32_t int32_t__pos = string__content.indexOf("\"pct\":[");
-    if (int32_t__pos < 0) return;
-    int32_t__pos += 7;
-    int32_t int32_t__end = string__content.indexOf("]", int32_t__pos);
-    if (int32_t__end < 0) return;
-    String string__pctArr = string__content.substring(int32_t__pos, int32_t__end);
-    int32_t int32_t__timePos = string__content.indexOf("\"time\":[", int32_t__end);
-    if (int32_t__timePos < 0) return;
-    int32_t__timePos += 8;
-    int32_t int32_t__timeEnd = string__content.indexOf("]", int32_t__timePos);
-    if (int32_t__timeEnd < 0) return;
-    String string__timeArr = string__content.substring(int32_t__timePos, int32_t__timeEnd);
 
-    // پارس ساده با کاما
-    uint8_t uint8_t__count = 0u;
-    int32_t int32_t__p = 0;
-    while (uint8_t__count < SIMPLE_CHART_1D_SIZE)
+    /* برای سادگی، فعلاً فقط 1d را کامل لود می‌کنیم، بقیه را اگر وجود داشت تلاش می‌کنیم */
+    /* 1d */
     {
-        int32_t int32_t__comma = string__pctArr.indexOf(",", int32_t__p);
-        String string__val;
-        if (int32_t__comma < 0) { string__val = string__pctArr.substring(int32_t__p); }
-        else { string__val = string__pctArr.substring(int32_t__p, int32_t__comma); }
-        if (string__val.length() == 0u) break;
-        UINT32_T__G__Chart1D_Pct[uint8_t__count] = (uint32_t)string__val.toInt();
-        if (int32_t__comma < 0) break;
-        int32_t__p = int32_t__comma + 1;
-        uint8_t__count++;
+        int32_t int32_t__s = string__content.indexOf("\"1d\":");
+        if (int32_t__s >= 0)
+        {
+            int32_t int32_t__pctS = string__content.indexOf("\"pct\":[", int32_t__s);
+            int32_t int32_t__pctE = string__content.indexOf("]", int32_t__pctS);
+            int32_t int32_t__vinS = string__content.indexOf("\"vin\":[", int32_t__pctE);
+            int32_t int32_t__vinE = string__content.indexOf("]", int32_t__vinS);
+            int32_t int32_t__vpackS = string__content.indexOf("\"vpack\":[", int32_t__vinE);
+            int32_t int32_t__vpackE = string__content.indexOf("]", int32_t__vpackS);
+            int32_t int32_t__timeS = string__content.indexOf("\"time\":[", int32_t__vpackE);
+            int32_t int32_t__timeE = string__content.indexOf("]", int32_t__timeS);
+            if (int32_t__pctS >=0 && int32_t__vinS >=0 && int32_t__vpackS >=0 && int32_t__timeS >=0)
+            {
+                String string__pctArr = string__content.substring(int32_t__pctS+7, int32_t__pctE);
+                String string__vinArr = string__content.substring(int32_t__vinS+7, int32_t__vinE);
+                String string__vpackArr = string__content.substring(int32_t__vpackS+9, int32_t__vpackE);
+                String string__timeArr = string__content.substring(int32_t__timeS+8, int32_t__timeE);
+
+                uint8_t uint8_t__count = 0u;
+                int32_t int32_t__p = 0;
+                while (uint8_t__count < SIMPLE_CHART_1D_SIZE)
+                {
+                    int32_t int32_t__comma = string__pctArr.indexOf(",", int32_t__p);
+                    String string__val;
+                    if (int32_t__comma < 0) { string__val = string__pctArr.substring(int32_t__p); }
+                    else { string__val = string__pctArr.substring(int32_t__p, int32_t__comma); }
+                    string__val.trim();
+                    if (string__val.length() == 0u) break;
+                    UINT32_T__G__Chart1D_Pct[uint8_t__count] = (uint32_t)string__val.toInt();
+                    if (int32_t__comma < 0) { uint8_t__count++; break; }
+                    int32_t__p = int32_t__comma + 1;
+                    uint8_t__count++;
+                }
+                uint8_t__count = 0; int32_t__p = 0;
+                while (uint8_t__count < SIMPLE_CHART_1D_SIZE)
+                {
+                    int32_t int32_t__comma = string__vinArr.indexOf(",", int32_t__p);
+                    String string__val;
+                    if (int32_t__comma < 0) { string__val = string__vinArr.substring(int32_t__p); }
+                    else { string__val = string__vinArr.substring(int32_t__p, int32_t__comma); }
+                    string__val.trim();
+                    if (string__val.length() == 0u) break;
+                    UINT32_T__G__Chart1D_Vin[uint8_t__count] = (uint32_t)string__val.toInt();
+                    if (int32_t__comma < 0) { uint8_t__count++; break; }
+                    int32_t__p = int32_t__comma + 1;
+                    uint8_t__count++;
+                }
+                uint8_t__count = 0; int32_t__p = 0;
+                while (uint8_t__count < SIMPLE_CHART_1D_SIZE)
+                {
+                    int32_t int32_t__comma = string__vpackArr.indexOf(",", int32_t__p);
+                    String string__val;
+                    if (int32_t__comma < 0) { string__val = string__vpackArr.substring(int32_t__p); }
+                    else { string__val = string__vpackArr.substring(int32_t__p, int32_t__comma); }
+                    string__val.trim();
+                    if (string__val.length() == 0u) break;
+                    UINT32_T__G__Chart1D_Vpack[uint8_t__count] = (uint32_t)string__val.toInt();
+                    if (int32_t__comma < 0) { uint8_t__count++; break; }
+                    int32_t__p = int32_t__comma + 1;
+                    uint8_t__count++;
+                }
+                uint8_t__count = 0; int32_t__p = 0;
+                while (uint8_t__count < SIMPLE_CHART_1D_SIZE)
+                {
+                    int32_t int32_t__comma = string__timeArr.indexOf(",", int32_t__p);
+                    String string__val;
+                    if (int32_t__comma < 0) { string__val = string__timeArr.substring(int32_t__p); }
+                    else { string__val = string__timeArr.substring(int32_t__p, int32_t__comma); }
+                    string__val.trim();
+                    if (string__val.length() == 0u) break;
+                    UINT32_T__G__Chart1D_Time[uint8_t__count] = (uint32_t)string__val.toInt();
+                    if (int32_t__comma < 0) { uint8_t__count++; break; }
+                    int32_t__p = int32_t__comma + 1;
+                    uint8_t__count++;
+                }
+                UINT8_T__G__Chart1D_Count = uint8_t__count;
+                UINT8_T__G__Chart1D_Index = uint8_t__count % SIMPLE_CHART_1D_SIZE;
+            }
+        }
     }
-    uint8_t__count = 0u;
-    int32_t__p = 0;
-    while (uint8_t__count < SIMPLE_CHART_1D_SIZE)
-    {
-        int32_t int32_t__comma = string__timeArr.indexOf(",", int32_t__p);
-        String string__val;
-        if (int32_t__comma < 0) { string__val = string__timeArr.substring(int32_t__p); }
-        else { string__val = string__timeArr.substring(int32_t__p, int32_t__comma); }
-        if (string__val.length() == 0u) break;
-        UINT32_T__G__Chart1D_Time[uint8_t__count] = (uint32_t)string__val.toInt();
-        if (int32_t__comma < 0) break;
-        int32_t__p = int32_t__comma + 1;
-        uint8_t__count++;
-    }
-    UINT8_T__G__Chart1D_Count = uint8_t__count;
-    UINT8_T__G__Chart1D_Index = uint8_t__count % SIMPLE_CHART_1D_SIZE;
+    /* 7d,1m,3m را ساده لود نمی‌کنیم تا حافظه کم مصرف شود - در صورت نیاز می‌توان مشابه بالا اضافه کرد */
 }
 
-
-/* ==================== پاک‌سازی تاریخچه - فقط ادمین ==================== */
+/* ==================== پاک‌سازی ==================== */
 static void func__Simple_ChargeHistoryClear(void)
 {
     UINT8_T__G__ChargeHistoryCount = 0u;

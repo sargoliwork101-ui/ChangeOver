@@ -81,11 +81,12 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.begin();
 }
 
-/* ==================== حلقه اصلی - با ذخیره‌سازی پایدار و ریبوت وای‌فای ==================== */
+/* ==================== حلقه اصلی - با ذخیره‌سازی پایدار و ریبوت وای‌فای و تیک نمودار مستقل ==================== */
 void loop(void)
 {
     func__Simple_DrainSerial();
     SIMPLE_WEB_SERVER_T__G__Server.handleClient();
+    func__Simple_ChartTick();
 
     // ذخیره دوره‌ای تاریخچه شارژ و نمودارها هر ۳۰ ثانیه
     static uint32_t uint32_t__lastSaveMs = 0u;

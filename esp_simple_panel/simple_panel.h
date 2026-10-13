@@ -556,44 +556,30 @@ code,pre,.mono{font-family:Vazirmatn !important}
    <div id="chargeHistoryList" class="log" style="margin-top:8px;max-height:220px"></div>
   </div>
   <div class="cd">
-   <div class="ti">ولتاژ ورودی - با زمان واقعی
-    <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
+   <div class="ti">ولتاژ ورودی و پک - دو نمودار روی یک محور با زمان واقعی
+    <div style="margin-right:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
      <span style="font-size:10px;color:var(--mu)">بازه:</span>
-     <div class="segmented sm" id="segVin" style="min-width:200px"><div class="seg-indicator" id="segVinIndicator" style="width:calc(25% - 3px);right:4px"></div>
-      <button class="a" id="vin1d" onclick="setChartRange('vin','1d')">۱ روزه</button>
-      <button id="vin7d" onclick="setChartRange('vin','7d')">۷ روزه</button>
-      <button id="vin1m" onclick="setChartRange('vin','1m')">۱ ماهه</button>
-      <button id="vin3m" onclick="setChartRange('vin','3m')">۳ ماهه</button>
+     <div class="segmented sm" id="segVolt" style="min-width:200px"><div class="seg-indicator" id="segVoltIndicator" style="width:calc(25% - 3px);right:4px"></div>
+      <button class="a" id="volt1d" onclick="setChartRange('volt','1d')">۱ روزه</button>
+      <button id="volt7d" onclick="setChartRange('volt','7d')">۷ روزه</button>
+      <button id="volt1m" onclick="setChartRange('volt','1m')">۱ ماهه</button>
+      <button id="volt3m" onclick="setChartRange('volt','3m')">۳ ماهه</button>
      </div>
-     <span class="bdg ac" id="vinCurrent">-- ولت</span>
-     <span class="bdg" id="vinAvg">--</span>
+     <span class="bdg" style="background:rgba(91,141,239,.15);color:#5b8def;border-color:rgba(91,141,239,.3)">Vin - ورودی</span>
+     <span class="bdg" style="background:rgba(30,230,160,.15);color:#1ee6a0;border-color:rgba(30,230,160,.3)">Vpack - پک باتری</span>
     </div>
    </div>
-   <div style="font-size:10px;color:var(--mu);margin-bottom:8px">محور افقی زمان واقعی - ریت کم چون تغییرات کم است</div>
-   <div class="canvas-wrap"><canvas id="cVin" width="700" height="160"></canvas></div>
-   <div id="cVinLabels" style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
-   <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px"><span id="vinRangeInfo">--</span><span id="vinMinMax">--</span></div>
-  </div>
-  <div class="cd">
-   <div class="ti">ولتاژ پک - با زمان واقعی
-    <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
-     <span style="font-size:10px;color:var(--mu)">بازه:</span>
-     <div class="segmented sm" id="segVpack" style="min-width:200px"><div class="seg-indicator" id="segVpackIndicator" style="width:calc(25% - 3px);right:4px"></div>
-      <button class="a" id="vpack1d" onclick="setChartRange('vpack','1d')">۱ روزه</button>
-      <button id="vpack7d" onclick="setChartRange('vpack','7d')">۷ روزه</button>
-      <button id="vpack1m" onclick="setChartRange('vpack','1m')">۱ ماهه</button>
-      <button id="vpack3m" onclick="setChartRange('vpack','3m')">۳ ماهه</button>
-     </div>
-     <span class="bdg ac" id="vpackCurrent">-- ولت</span>
-     <span class="bdg" id="vpackPct">-- ٪</span>
+   <div style="font-size:10px;color:var(--mu);margin-bottom:8px">محور عمودی: ولتاژ ۱۸ تا ۳۰ ولت - محور افقی: زمان واقعی - هر نقطه با ریت کم (۱ دقیقه اولیه، بعد ساعتی/روزانه) - دو خط روی هم</div>
+   <div class="canvas-wrap" style="position:relative">
+    <div style="position:absolute;left:0;top:0;bottom:18px;width:38px;display:flex;flex-direction:column;justify-content:space-between;font-size:9.5px;color:var(--mu);padding:6px 2px 6px 0;text-align:left;pointer-events:none;direction:ltr;border-left:1px dashed var(--ln);">
+     <span>30V</span><span>27V</span><span>24V</span><span>21V</span><span>18V</span>
     </div>
+    <canvas id="cVolt" width="700" height="200" style="margin-left:40px"></canvas>
    </div>
-   <div style="font-size:10px;color:var(--mu);margin-bottom:8px">محور افقی زمان واقعی - ولتاژ کل پک - ریت کم</div>
-   <div class="canvas-wrap"><canvas id="cVpack" width="700" height="160"></canvas></div>
-   <div id="cVpackLabels" style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
-   <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px"><span id="vpackRangeInfo">--</span><span id="vpackMinMax">--</span></div>
+   <div id="cVoltLabels" style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;direction:ltr;margin-left:40px"></div>
+   <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;flex-wrap:wrap;gap:8px"><span id="voltRangeInfo">--</span><span id="voltMinMax">--</span><span id="voltCountInfo" style="color:var(--mu2)">-- نمونه</span></div>
   </div>
-  <div class="cd"><div class="ti">۲۰ قطع و وصل آخر برق شهر</div><div id="powerLog" class="log">--</div></div>
+    <div class="cd"><div class="ti">۲۰ قطع و وصل آخر برق شهر</div><div id="powerLog" class="log">--</div></div>
  </div>
 
  <div id="pg2" class="pgx">
@@ -855,28 +841,18 @@ function updRedBlink(period, dutyPct){
  return redBlink.isOn;
 }
 
-// ===== انیمیشن شارژ - ۴ قسمتی + زرد + جرقه =====
 let g_mainAnim=0, g_mainDir=1, g_highAnim=0, g_highDir=1, g_lowAnim=0, g_lowDir=1;
 let g_isCharging=false, g_ch1Charging=false, g_ch2Charging=false;
 let g_mainPct=0, g_highPct=0, g_lowPct=0;
-
 function getChargingBounds(pct){
- // ۴ قسمت: ۰-۲۵، ۲۵-۵۰، ۵۰-۷۵، ۷۵-۱۰۰ - انیمیشن داخل همان قسمت بر اساس میزان شارژ
  let q=Math.floor(pct/25);
- if(q>3) q=3;
- if(q<0) q=0;
- let base=q*25;
- let top=base+25;
- if(top>100) top=100;
- // اگر درصد خیلی کم، از ۰ شروع کن ولی تا ۲۵
- // اگر درصد داخل قسمت، انیمیشن از base تا top
+ if(q>3) q=3; if(q<0) q=0;
+ let base=q*25; let top=base+25; if(top>100) top=100;
  return {base, top, q};
 }
-
 function updateChargingAnim(){
  if(!lastData || !lastData.on) return;
  if(!g_isCharging){
-  // مخفی کردن جرقه‌ها وقتی شارژ نیست
   let bM=document.getElementById('batMainBolt'); if(bM) bM.classList.remove('show');
   let bH=document.getElementById('batHighBolt'); if(bH) bH.classList.remove('show');
   let bL=document.getElementById('batLowBolt'); if(bL) bL.classList.remove('show');
@@ -885,64 +861,32 @@ function updateChargingAnim(){
   let wL=document.getElementById('batLowWrap'); if(wL) wL.classList.remove('charging');
   return;
  }
-
  function animStep(current, dir, bounds){
-  let step=1.8; // سرعت
-  current+=dir*step;
+  let step=1.8; current+=dir*step;
   if(current>=bounds.top){ current=bounds.top; dir=-1; }
   else if(current<=bounds.base){ current=bounds.base; dir=1; }
   return {current, dir};
  }
-
  let mainBounds=getChargingBounds(g_mainPct);
  let rM=animStep(g_mainAnim, g_mainDir, mainBounds);
  g_mainAnim=rM.current; g_mainDir=rM.dir;
-
  let highBounds=getChargingBounds(g_highPct);
  let rH=animStep(g_highAnim, g_highDir, highBounds);
  g_highAnim=rH.current; g_highDir=rH.dir;
-
  let lowBounds=getChargingBounds(g_lowPct);
  let rL=animStep(g_lowAnim, g_lowDir, lowBounds);
  g_lowAnim=rL.current; g_lowDir=rL.dir;
-
  function setFillAnim(id, pct, isYellow){
-  let el=document.getElementById(id);
-  if(!el) return;
+  let el=document.getElementById(id); if(!el) return;
   let totalH=79; let fillH=Math.max(3, (pct/100)*totalH); let y=18+(totalH-fillH);
-  el.setAttribute('y', y);
-  el.setAttribute('height', fillH);
-  if(isYellow){
-   // زرد در حال شارژ
-   let grad=id==='batMainFill'?'url(#gMainM)':'url(#gm)';
-   el.setAttribute('fill', grad);
-  }
+  el.setAttribute('y', y); el.setAttribute('height', fillH);
+  if(isYellow){ let grad=id==='batMainFill'?'url(#gMainM)':'url(#gm)'; el.setAttribute('fill', grad); }
   let waveId=id==='batHighFill'?'batHighWave':id==='batLowFill'?'batLowWave':id==='batMainFill'?'batMainWave':null;
-  let waveEl=waveId?document.getElementById(waveId):null;
-  if(waveEl) waveEl.setAttribute('transform','translate(0,'+y+')');
+  let waveEl=waveId?document.getElementById(waveId):null; if(waveEl) waveEl.setAttribute('transform','translate(0,'+y+')');
  }
-
- if(g_isCharging){
-  setFillAnim('batMainFill', g_mainAnim, true);
-  let bM=document.getElementById('batMainBolt'); if(bM) bM.classList.add('show');
-  let wM=document.getElementById('batMainWrap'); if(wM) wM.classList.add('charging');
- }
- if(g_ch1Charging){
-  setFillAnim('batHighFill', g_highAnim, true);
-  let bH=document.getElementById('batHighBolt'); if(bH) bH.classList.add('show');
-  let wH=document.getElementById('batHighWrap'); if(wH) wH.classList.add('charging');
- } else {
-  let bH=document.getElementById('batHighBolt'); if(bH) bH.classList.remove('show');
-  let wH=document.getElementById('batHighWrap'); if(wH) wH.classList.remove('charging');
- }
- if(g_ch2Charging){
-  setFillAnim('batLowFill', g_lowAnim, true);
-  let bL=document.getElementById('batLowBolt'); if(bL) bL.classList.add('show');
-  let wL=document.getElementById('batLowWrap'); if(wL) wL.classList.add('charging');
- } else {
-  let bL=document.getElementById('batLowBolt'); if(bL) bL.classList.remove('show');
-  let wL=document.getElementById('batLowWrap'); if(wL) wL.classList.remove('charging');
- }
+ if(g_isCharging){ setFillAnim('batMainFill', g_mainAnim, true); let bM=document.getElementById('batMainBolt'); if(bM) bM.classList.add('show'); let wM=document.getElementById('batMainWrap'); if(wM) wM.classList.add('charging'); }
+ if(g_ch1Charging){ setFillAnim('batHighFill', g_highAnim, true); let bH=document.getElementById('batHighBolt'); if(bH) bH.classList.add('show'); let wH=document.getElementById('batHighWrap'); if(wH) wH.classList.add('charging'); } else { let bH=document.getElementById('batHighBolt'); if(bH) bH.classList.remove('show'); let wH=document.getElementById('batHighWrap'); if(wH) wH.classList.remove('charging'); }
+ if(g_ch2Charging){ setFillAnim('batLowFill', g_lowAnim, true); let bL=document.getElementById('batLowBolt'); if(bL) bL.classList.add('show'); let wL=document.getElementById('batLowWrap'); if(wL) wL.classList.add('charging'); } else { let bL=document.getElementById('batLowBolt'); if(bL) bL.classList.remove('show'); let wL=document.getElementById('batLowWrap'); if(wL) wL.classList.remove('charging'); }
 }
 
 let lastData=null;
@@ -969,48 +913,33 @@ function renderLeds(){
  else if(isBatLost) scn='batlost';
  else if(isDead) scn='dead';
  else if(isImbLatched) scn='imb';
- else if(!inputPresent){
-  scn=isCritical?'crit':'batt';
- } else {
-  if(lastData.fullActive) scn='full';
-  else if(!charging) scn='inputok';
-  else scn='charging';
- }
+ else if(!inputPresent){ scn=isCritical?'crit':'batt'; }
+ else { if(lastData.fullActive) scn='full'; else if(!charging) scn='inputok'; else scn='charging'; }
  resetBlinksIfScenarioChanged(scn);
- if(scn==='tech'){
-  let on=updRedBlink(1000,50);
-  if(on){ g.classList.add('on-green'); y.classList.add('on-yellow'); r.classList.add('on-red'); }
- } else if(scn==='ov'){
-  g.classList.add('on-green');
-  if(updRedBlink(1000,50)) r.classList.add('on-red');
- } else if(scn==='batlost'){
-  g.classList.add('on-green');
-  if(updRedBlink(1000,50)) r.classList.add('on-red');
- } else if(scn==='dead'){
-  r.classList.add('on-red');
- } else if(scn==='imb'){
-  if(updRedBlink(1000,50)) r.classList.add('on-red');
- } else if(scn==='crit'){
- } else if(scn==='batt'){
-  if(updGreenBlink(stablePct)) g.classList.add('on-green');
- } else if(scn==='full' || scn==='inputok'){
-  g.classList.add('on-green');
- } else if(scn==='charging'){
-  g.classList.add('on-green');
-  if(updYellowBlink(chgStablePct)) y.classList.add('on-yellow');
- }
+ if(scn==='tech'){ let on=updRedBlink(1000,50); if(on){ g.classList.add('on-green'); y.classList.add('on-yellow'); r.classList.add('on-red'); } }
+ else if(scn==='ov'){ g.classList.add('on-green'); if(updRedBlink(1000,50)) r.classList.add('on-red'); }
+ else if(scn==='batlost'){ g.classList.add('on-green'); if(updRedBlink(1000,50)) r.classList.add('on-red'); }
+ else if(scn==='dead'){ r.classList.add('on-red'); }
+ else if(scn==='imb'){ if(updRedBlink(1000,50)) r.classList.add('on-red'); }
+ else if(scn==='crit'){ }
+ else if(scn==='batt'){ if(updGreenBlink(stablePct)) g.classList.add('on-green'); }
+ else if(scn==='full' || scn==='inputok'){ g.classList.add('on-green'); }
+ else if(scn==='charging'){ g.classList.add('on-green'); if(updYellowBlink(chgStablePct)) y.classList.add('on-yellow'); }
  let batMainFill=document.getElementById('batMainFill');
- if(batMainFill){
-  if(scn==='batt'){
-   batMainFill.style.opacity = greenBlink.isOn ? '1' : '0.15';
-  } else {
-   batMainFill.style.opacity='1';
-  }
- }
+ if(batMainFill){ if(scn==='batt'){ batMainFill.style.opacity = greenBlink.isOn ? '1' : '0.15'; } else { batMainFill.style.opacity='1'; } }
 }
 
-let chartRanges={pct:'1d',charge:'1d',vin:'1d',vpack:'1d'};
+let chartRanges={pct:'1d',charge:'1d',volt:'1d'};
 function setChartRange(chart, r){
+ if(chart==='volt'){
+  chartRanges.volt=r;
+  const order=['1d','7d','1m','3m'];
+  let seg=document.getElementById('segVolt'); let ind=document.getElementById('segVoltIndicator');
+  if(seg && ind){ let idx=order.indexOf(r); if(idx>=0){ let w=seg.clientWidth; let btnW=(w-8)/4; ind.style.width=btnW+'px'; ind.style.right=(4+idx*(btnW+2))+'px'; } }
+  for(let id of order){ let b=document.getElementById('volt'+id); if(b) b.classList.toggle('a', id===r); }
+  pollChartsVolt();
+  return;
+ }
  chartRanges[chart]=r;
  const order=['1d','7d','1m','3m'];
  let segId='seg'+chart.charAt(0).toUpperCase()+chart.slice(1);
@@ -1019,26 +948,14 @@ function setChartRange(chart, r){
  if(!seg){
   if(chart==='pct') { seg=document.getElementById('segPct'); indId='segPctIndicator'; }
   else if(chart==='charge') { seg=document.getElementById('segCharge'); indId='segChargeIndicator'; }
-  else if(chart==='vin') { seg=document.getElementById('segVin'); indId='segVinIndicator'; }
-  else if(chart==='vpack') { seg=document.getElementById('segVpack'); indId='segVpackIndicator'; }
  }
  let ind=document.getElementById(indId);
- if(seg && ind){
-  let idx=order.indexOf(r);
-  if(idx>=0){ let w=seg.clientWidth; let btnW=(w-8)/4; ind.style.width=btnW+'px'; ind.style.right=(4+idx*(btnW+2))+'px'; }
- }
- for(let id of order){
-  let b=document.getElementById(chart+id);
-  if(b) b.classList.toggle('a', id===r);
- }
+ if(seg && ind){ let idx=order.indexOf(r); if(idx>=0){ let w=seg.clientWidth; let btnW=(w-8)/4; ind.style.width=btnW+'px'; ind.style.right=(4+idx*(btnW+2))+'px'; } }
+ for(let id of order){ let b=document.getElementById(chart+id); if(b) b.classList.toggle('a', id===r); }
  if(chart==='pct') pollChartsPct();
- else if(chart==='vin') pollChartsVin();
- else if(chart==='vpack') pollChartsVpack();
- else if(chart==='charge'){
-  if(window._lastChargeHistory) { drawChargeHistory(window._lastChargeHistory, r); }
- }
+ else if(chart==='charge'){ if(window._lastChargeHistory) { drawChargeHistory(window._lastChargeHistory, r); } }
 }
-function setRange(r){ setChartRange('pct', r); setChartRange('charge', r); setChartRange('vin', r); setChartRange('vpack', r); }
+function setRange(r){ setChartRange('pct', r); setChartRange('charge', r); setChartRange('volt', r); }
 
 function fmtTimeLabel(ts, range){
  if(!ts) return '';
@@ -1047,6 +964,7 @@ function fmtTimeLabel(ts, range){
  else if(range==='7d'){ return d.toLocaleDateString('fa-IR',{weekday:'short',hour:'2-digit'}); }
  else { return d.toLocaleDateString('fa-IR',{month:'short',day:'numeric'}); }
 }
+
 function drawChart(canvasId, data, color, min, max, timeData, range){
  let c=document.getElementById(canvasId); if(!c) return;
  let ctx=c.getContext('2d'); let w=c.width, h=c.height;
@@ -1058,43 +976,101 @@ function drawChart(canvasId, data, color, min, max, timeData, range){
  c._chartData=data; c._chartTime=timeData; c._chartRange=range; c._chartColor=color; c._chartMin=min; c._chartMax=max;
  if(!c._hasTooltip){
   c.addEventListener('mousemove', function(e){
-   let rect=c.getBoundingClientRect();
-   let mx=e.clientX-rect.left; let scaleX=w/rect.width;
+   let rect=c.getBoundingClientRect(); let mx=e.clientX-rect.left; let scaleX=w/rect.width;
    let idx=Math.round((mx*scaleX / w) * (data.length-1));
    if(idx<0) idx=0; if(idx>=data.length) idx=data.length-1;
-   let val=data[idx];
-   let ts=timeData?timeData[idx]:null;
+   let val=data[idx]; let ts=timeData?timeData[idx]:null;
    let tip=document.getElementById('chartTooltip');
-   if(tip && val!=null){
-    let dStr=ts?fmtTime(ts):''; 
-    tip.innerHTML='<b>'+val.toFixed(1)+'</b><span>'+(dStr||'')+'</span>';
-    tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-40)+'px'; tip.classList.add('show');
-   }
+   if(tip && val!=null){ let dStr=ts?fmtTime(ts):''; tip.innerHTML='<b>'+val.toFixed(1)+'</b><span>'+(dStr||'')+'</span>'; tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-40)+'px'; tip.classList.add('show'); }
   });
   c.addEventListener('mouseleave', function(){ let tip=document.getElementById('chartTooltip'); if(tip) tip.classList.remove('show'); });
   c._hasTooltip=true;
  }
  if(data && data.length>1){ for(let i=1;i<4;i++){ let x=(i/4)*w; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); } }
  ctx.setLineDash([]);
- if(!data || data.length<2) return;
+ if(!data || data.length===0) return;
  let rangeVal=(max-min)||1;
  let grad=ctx.createLinearGradient(0,0,0,h); grad.addColorStop(0, color+'38'); grad.addColorStop(1, color+'06');
- ctx.beginPath();
- for(let i=0;i<data.length;i++){ let x=(i/(data.length-1))*w; let v=data[i]; if(v==null) continue; let y=h - ((v-min)/rangeVal)*h; if(i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
- ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
- ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.4; ctx.lineJoin='round'; ctx.lineCap='round';
- for(let i=0;i<data.length;i++){ let x=(i/(data.length-1))*w; let v=data[i]; if(v==null) continue; let y=h - ((v-min)/rangeVal)*h; if(i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
- ctx.stroke();
- if(data.length>0){ let last=data[data.length-1]; let y=h - ((last-min)/rangeVal)*h; ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=14; ctx.arc(w,y,4,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; }
+ if(data.length>=2){
+  ctx.beginPath();
+  for(let i=0;i<data.length;i++){ let x=(i/(data.length-1))*w; let v=data[i]; if(v==null) continue; let y=h - ((v-min)/rangeVal)*h; if(i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+  ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+  ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.4; ctx.lineJoin='round'; ctx.lineCap='round';
+  for(let i=0;i<data.length;i++){ let x=(i/(data.length-1))*w; let v=data[i]; if(v==null) continue; let y=h - ((v-min)/rangeVal)*h; if(i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+  ctx.stroke();
+  let last=data[data.length-1]; let y=h - ((last-min)/rangeVal)*h; ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=14; ctx.arc(w,y,4,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+ } else {
+  // یک نقطه هم نشان بده
+  let v=data[0]; let y=h - ((v-min)/rangeVal)*h; ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=14; ctx.arc(w/2,y,5,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+ }
  if(timeData && range){
   let labelId=canvasId+'Labels'; let labelDiv=document.getElementById(labelId);
-  if(labelDiv){ let html=''; let step=Math.max(1, Math.floor(timeData.length/4)); for(let i=0;i<timeData.length;i+=step){ html+='<span>'+fmtTimeLabel(timeData[i], range)+'</span>'; } if(timeData.length%step!==0) html+='<span>'+fmtTimeLabel(timeData[timeData.length-1], range)+'</span>'; labelDiv.innerHTML=html; }
+  if(labelDiv){ let html=''; let step=Math.max(1, Math.floor(timeData.length/4)); for(let i=0;i<timeData.length;i+=step){ html+='<span>'+fmtTimeLabel(timeData[i], range)+'</span>'; } if(timeData.length%step!==0 && timeData.length>1) html+='<span>'+fmtTimeLabel(timeData[timeData.length-1], range)+'</span>'; labelDiv.innerHTML=html; }
  }
 }
+
+// نمودار ترکیبی ولتاژ - دو خط روی هم + محور عمودی
+function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
+ let c=document.getElementById(canvasId); if(!c) return;
+ let ctx=c.getContext('2d'); let w=c.width, h=c.height;
+ let styles=getComputedStyle(document.body);
+ let ln=styles.getPropertyValue('--ln').trim()||'#1c2940';
+ ctx.clearRect(0,0,w,h);
+ ctx.strokeStyle=ln; ctx.lineWidth=1; ctx.strokeRect(0,0,w,h);
+ // گرید افقی برای ولتاژ ۱۸-۳۰
+ ctx.strokeStyle='rgba(100,116,139,.18)'; ctx.setLineDash([4,5]);
+ for(let v=18; v<=30; v+=3){ let y=h - ((v*1000-18000)/(30000-18000))*h; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+ ctx.setLineDash([]);
+ // دیتا
+ if(!vinData || vinData.length===0) return;
+ let min=18000, max=30000, rangeVal=max-min;
+ function drawLine(data, color){
+  if(!data || data.length===0) return;
+  if(data.length===1){
+   let v=data[0]; let y=h - ((v-min)/rangeVal)*h; ctx.beginPath(); ctx.fillStyle=color; ctx.arc(w/2,y,4,0,Math.PI*2); ctx.fill(); return;
+  }
+  let grad=ctx.createLinearGradient(0,0,0,h); grad.addColorStop(0, color+'22'); grad.addColorStop(1, color+'04');
+  ctx.beginPath();
+  for(let i=0;i<data.length;i++){ let x=(i/(data.length-1))*w; let v=data[i]; let y=h - ((v-min)/rangeVal)*h; if(i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+  ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+  ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.2; ctx.lineJoin='round';
+  for(let i=0;i<data.length;i++){ let x=(i/(data.length-1))*w; let v=data[i]; let y=h - ((v-min)/rangeVal)*h; if(i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+  ctx.stroke();
+ }
+ drawLine(vinData, '#5b8def');
+ drawLine(vpackData, '#1ee6a0');
+ // نقطه آخر
+ if(vinData.length>0){ let last=vinData[vinData.length-1]; let y=h - ((last-min)/rangeVal)*h; ctx.beginPath(); ctx.fillStyle='#5b8def'; ctx.arc(w,y,4,0,Math.PI*2); ctx.fill(); }
+ if(vpackData.length>0){ let last=vpackData[vpackData.length-1]; let y=h - ((last-min)/rangeVal)*h; ctx.beginPath(); ctx.fillStyle='#1ee6a0'; ctx.arc(w,y,4,0,Math.PI*2); ctx.fill(); }
+
+ // تولتیپ ترکیبی
+ if(!c._hasTooltip){
+  c.addEventListener('mousemove', function(e){
+   let rect=c.getBoundingClientRect(); let mx=e.clientX-rect.left; let scaleX=w/rect.width;
+   let idx=Math.round((mx*scaleX / w) * (vinData.length-1));
+   if(idx<0) idx=0; if(idx>=vinData.length) idx=vinData.length-1;
+   let tip=document.getElementById('chartTooltip');
+   if(tip){
+    let v1=vinData[idx], v2=vpackData[idx];
+    let ts=timeData?timeData[idx]:null;
+    let dStr=ts?fmtTime(ts):'';
+    tip.innerHTML='<b style="color:#5b8def">Vin: '+(v1/1000).toFixed(2)+'V</b><b style="color:#1ee6a0">Vpack: '+(v2/1000).toFixed(2)+'V</b><span>'+dStr+'</span>';
+    tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-60)+'px'; tip.classList.add('show');
+   }
+  });
+  c.addEventListener('mouseleave', function(){ let tip=document.getElementById('chartTooltip'); if(tip) tip.classList.remove('show'); });
+  c._hasTooltip=true;
+ }
+
+ if(timeData && range){
+  let labelDiv=document.getElementById(canvasId+'Labels');
+  if(labelDiv){ let html=''; let step=Math.max(1, Math.floor(timeData.length/4)); for(let i=0;i<timeData.length;i+=step){ html+='<span>'+fmtTimeLabel(timeData[i], range)+'</span>'; } if(timeData.length%step!==0 && timeData.length>1) html+='<span>'+fmtTimeLabel(timeData[timeData.length-1], range)+'</span>'; labelDiv.innerHTML=html; }
+ }
+}
+
 let chartData={vin:[],vpack:[],pct:[],imb:[],time:[],range:'1d'};
 let chartDataPct={pct:[],time:[],range:'1d'};
-let chartDataVin={vin:[],time:[],range:'1d'};
-let chartDataVpack={vpack:[],time:[],range:'1d'};
+let chartDataVolt={vin:[],vpack:[],time:[],range:'1d'};
 function renderChartsFromServer(j){
  if(!j) return;
  if(j.pct){
@@ -1103,57 +1079,28 @@ function renderChartsFromServer(j){
   chartDataPct.time=j.time||[];
   drawChart('cPct', chartDataPct.pct, '#ffb84d', 0, 100, chartDataPct.time, chartDataPct.range);
   let curEl=document.getElementById('pctCurrent'); if(curEl && chartDataPct.pct.length>0) curEl.textContent=chartDataPct.pct[chartDataPct.pct.length-1].toFixed(1)+' ٪';
-  let rangeEl=document.getElementById('pctRangeInfo'); if(rangeEl) rangeEl.textContent='بازه: '+ (chartDataPct.range==='1d'?'۱ روزه':chartDataPct.range==='7d'?'۷ روزه':chartDataPct.range==='1m'?'۱ ماهه':'۳ ماهه');
+  let rangeEl=document.getElementById('pctRangeInfo'); if(rangeEl) rangeEl.textContent='بازه: '+ (chartDataPct.range==='1d'?'۱ روزه':chartDataPct.range==='7d'?'۷ روزه':chartDataPct.range==='1m'?'۱ ماهه':'۳ ماهه')+' - '+chartDataPct.pct.length+' نمونه';
  }
- if(j.vin){
+ if(j.vin && j.vpack){
   let rng=j.range||'1d';
-  chartDataVin.vin=j.vin; chartDataVin.time=j.time||[]; chartDataVin.range=rng;
-  drawChart('cVin', chartDataVin.vin, '#5b8def', 18000, 30000, chartDataVin.time, chartDataVin.range);
-  updateVinInfo(rng);
+  chartDataVolt.vin=j.vin; chartDataVolt.vpack=j.vpack; chartDataVolt.time=j.time||[]; chartDataVolt.range=rng;
+  drawVoltChart('cVolt', chartDataVolt.vin, chartDataVolt.vpack, chartDataVolt.time, chartDataVolt.range);
+  let rangeEl=document.getElementById('voltRangeInfo'); if(rangeEl) rangeEl.textContent='بازه: '+(rng==='1d'?'۱ روزه':rng==='7d'?'۷ روزه':rng==='1m'?'۱ ماهه':'۳ ماهه');
+  let cntEl=document.getElementById('voltCountInfo'); if(cntEl) cntEl.textContent=j.vin.length+' نمونه - ریت کم';
+  let mmEl=document.getElementById('voltMinMax');
+  if(mmEl && j.vin.length>0){
+   let v1min=Math.min(...j.vin), v1max=Math.max(...j.vin), v2min=Math.min(...j.vpack), v2max=Math.max(...j.vpack);
+   mmEl.textContent='Vin '+(v1min/1000).toFixed(1)+'-'+(v1max/1000).toFixed(1)+'V | Vpack '+(v2min/1000).toFixed(1)+'-'+(v2max/1000).toFixed(1)+'V';
+  }
  }
- if(j.vpack){
-  let rng=j.range||'1d';
-  chartDataVpack.vpack=j.vpack; chartDataVpack.time=j.time||[]; chartDataVpack.range=rng;
-  drawChart('cVpack', chartDataVpack.vpack, '#1ee6a0', 20000, 30000, chartDataVpack.time, chartDataVpack.range);
-  updateVpackInfo(rng);
- }
-}
-function updateVinInfo(range){
- let elCur=document.getElementById('vinCurrent'), elAvg=document.getElementById('vinAvg'), elMm=document.getElementById('vinMinMax'), elRange=document.getElementById('vinRangeInfo');
- let arr=chartDataVin.vin||[];
- if(arr.length==0) return;
- let last=arr[arr.length-1];
- let min=Math.min(...arr), max=Math.max(...arr);
- let avg=arr.reduce((a,b)=>a+b,0)/arr.length;
- if(elCur) elCur.textContent=(last/1000).toFixed(2)+' ولت';
- if(elAvg) elAvg.textContent='میانگین '+(avg/1000).toFixed(2)+' ولت';
- if(elMm) elMm.textContent='کمترین '+(min/1000).toFixed(2)+' - بیشترین '+(max/1000).toFixed(2)+' ولت';
- if(elRange) elRange.textContent='بازه: '+(range==='1d'?'۱ روزه':range==='7d'?'۷ روزه':range==='1m'?'۱ ماهه':range==='3m'?'۳ ماهه':range);
-}
-function updateVpackInfo(range){
- let elCur=document.getElementById('vpackCurrent'), elPct=document.getElementById('vpackPct'), elMm=document.getElementById('vpackMinMax'), elRange=document.getElementById('vpackRangeInfo');
- let arr=chartDataVpack.vpack||[];
- if(arr.length==0) return;
- let last=arr[arr.length-1];
- let min=Math.min(...arr), max=Math.max(...arr);
- let pct=vToPctPack(last);
- if(elCur) elCur.textContent=(last/1000).toFixed(2)+' ولت';
- if(elPct) elPct.textContent=pct+' ٪';
- if(elMm) elMm.textContent='کمترین '+(min/1000).toFixed(2)+' - بیشترین '+(max/1000).toFixed(2)+' ولت';
- if(elRange) elRange.textContent='بازه: '+(range==='1d'?'۱ روزه':range==='7d'?'۷ روزه':range==='1m'?'۱ ماهه':range==='3m'?'۳ ماهه':range);
 }
 async function pollChartsPct(){
  try{ let r=await fetch('/charts?range='+chartRanges.pct,{cache:'no-store'}); let j=await r.json(); renderChartsFromServer(j); }catch(e){}
 }
-async function pollChartsVin(){
- try{ let r=await fetch('/charts?range='+chartRanges.vin,{cache:'no-store'}); let j=await r.json(); if(j.vin) renderChartsFromServer(j); }catch(e){}
+async function pollChartsVolt(){
+ try{ let r=await fetch('/charts?range='+chartRanges.volt,{cache:'no-store'}); let j=await r.json(); if(j.vin) renderChartsFromServer(j); }catch(e){}
 }
-async function pollChartsVpack(){
- try{ let r=await fetch('/charts?range='+chartRanges.vpack,{cache:'no-store'}); let j=await r.json(); if(j.vpack) renderChartsFromServer(j); }catch(e){}
-}
-async function pollChartsVinVpack(){
- await pollChartsVin(); await pollChartsVpack();
-}
+async function pollCharts(){ await pollChartsPct(); await pollChartsVolt(); }
 
 function drawChargeHistory(events, range){
  window._lastChargeHistory=events;
@@ -1233,7 +1180,6 @@ function setBatFill(id, pct, status){
  let el=document.getElementById(id); if(!el) return;
  let totalH=79; let fillH=Math.max(0, Math.min(totalH, (pct/100)*totalH)); let y=18+(totalH-fillH);
  let grad=status.gradMain||status.grad;
- // اگر در حال شارژ نیست، رنگ اصلی
  if(!g_isCharging || (id==='batHighFill' && !g_ch1Charging) || (id==='batLowFill' && !g_ch2Charging)){
   el.setAttribute('y', y); el.setAttribute('height', fillH); el.setAttribute('fill', grad);
   let waveId=id==='batHighFill'?'batHighWave':id==='batLowFill'?'batLowWave':id==='batMainFill'?'batMainWave':null;
@@ -1268,14 +1214,11 @@ function render(data){
  let greenTiming=calcGreenTiming(inputPresent ? 100 : stablePack);
  let fillPct = inputPresent ? pctPack : Math.round((greenTiming.on/GREEN_PERIOD)*100);
  if(!inputPresent && stablePack<1) fillPct=0;
-
  let isCharging=(s1==1||s1==2||s2==1||s2==2);
  let ch1Charging=(s1==1||s1==2);
  let ch2Charging=(s2==1||s2==2);
- // ذخیره برای انیمیشن ۴ قسمتی
  g_isCharging=isCharging; g_ch1Charging=ch1Charging; g_ch2Charging=ch2Charging;
  g_mainPct=pctPack; g_highPct=pctHigh; g_lowPct=pctLow;
- // اگر تازه وارد شارژ شد، انیم را روی base تنظیم کن
  if(isCharging){
   let mb=getChargingBounds(g_mainPct);
   if(g_mainAnim<mb.base || g_mainAnim>mb.top) { g_mainAnim=mb.base; g_mainDir=1; }
@@ -1292,38 +1235,25 @@ function render(data){
  data.inputPresentStable=inputPresent; data.inputPresent=data.inputPresent; data.inputPresentGpio=data.inputPresent;
  data.inputOV=inputOV; data.vPackCal=vPack; data.vLowCal=vLow; data.vHighCal=vHigh; data.vInCal=vIn;
  data.rawPackDis=rawPackDis; data.rawPackChg=rawPackChg; data.fillPct=fillPct;
-
  let mainSt=getBatStatus(pctPack);
- if(!g_isCharging){
-  setBatFill('batMainFill', fillPct, mainSt);
- }
+ if(!g_isCharging){ setBatFill('batMainFill', fillPct, mainSt); }
  let mainSvgPct=document.getElementById('batMainSvgPct'); if(mainSvgPct) mainSvgPct.textContent=pctPack+'%';
  let bp=document.getElementById('batPct'); if(bp) bp.innerHTML=pctPack+'<small>%</small>';
-
  let boardTs = data.boardTime || data.bt || 0;
  let btEl=document.getElementById('boardTime');
  if(btEl){
-  if(boardTs && boardTs>1000000000){
-   btEl.textContent='ساعت برد: '+fmtTime(boardTs);
-  } else {
-   btEl.textContent='ساعت برد: تنظیم نشده - دکمه همگام‌سازی را بزنید';
-  }
+  if(boardTs && boardTs>1000000000){ btEl.textContent='ساعت برد: '+fmtTime(boardTs); }
+  else { btEl.textContent='ساعت برد: تنظیم نشده - دکمه همگام‌سازی را بزنید'; }
  }
-
  let highSt=getBatStatus(pctHigh), lowSt=getBatStatus(pctLow);
- if(!g_ch1Charging){
-  setBatFill('batHighFill', pctHigh, highSt);
- }
- if(!g_ch2Charging){
-  setBatFill('batLowFill', pctLow, lowSt);
- }
+ if(!g_ch1Charging){ setBatFill('batHighFill', pctHigh, highSt); }
+ if(!g_ch2Charging){ setBatFill('batLowFill', pctLow, lowSt); }
  let hSvgPct=document.getElementById('batHighSvgPct'); if(hSvgPct) hSvgPct.textContent=pctHigh+'%';
  let lSvgPct=document.getElementById('batLowSvgPct'); if(lSvgPct) lSvgPct.textContent=pctLow+'%';
  let bhp=document.getElementById('batHighPct'); if(bhp) bhp.innerHTML=pctHigh+'<small>%</small>';
  let blp=document.getElementById('batLowPct'); if(blp) blp.innerHTML=pctLow+'<small>%</small>';
  let bhs=document.getElementById('batHighStatus'); if(bhs) bhs.textContent=highSt.txt+(ch1Charging?' - در حال شارژ ⚡':'' );
  let bls=document.getElementById('batLowStatus'); if(bls) bls.textContent=lowSt.txt+(ch2Charging?' - در حال شارژ ⚡':'' );
-
  let ib=document.getElementById('imbBox'); if(ib){
   let charging=(s1==1||s1==2||s2==1||s2==2);
   let ch1=(s1==1||s1==2), ch2=(s2==1||s2==2);
@@ -1331,20 +1261,11 @@ function render(data){
   if(!charging && sameState && imb>300){ ib.textContent='اختلاف دو باتری: '+imb+' میلی‌ولت - نیاز به بررسی'; ib.className='imb show'; }
   else { ib.className='imb'; ib.textContent=''; }
  }
-
  let bIn=document.getElementById('bdgInput'); if(bIn){
-  if(inputOV){
-   bIn.innerHTML='<i></i>برق ورودی: اضافه ولتاژ ('+(vIn/1000).toFixed(1)+'V)';
-   bIn.className='bdg err';
-  } else if(!inputPresent){
-   bIn.innerHTML='<i></i>برق ورودی قطع - حالت باتری';
-   bIn.className='bdg warn';
-  } else {
-   bIn.innerHTML='<i></i>برق شهر: وصل ('+(vIn/1000).toFixed(1)+'V)';
-   bIn.className='bdg ok';
-  }
+  if(inputOV){ bIn.innerHTML='<i></i>برق ورودی: اضافه ولتاژ ('+(vIn/1000).toFixed(1)+'V)'; bIn.className='bdg err'; }
+  else if(!inputPresent){ bIn.innerHTML='<i></i>برق ورودی قطع - حالت باتری'; bIn.className='bdg warn'; }
+  else { bIn.innerHTML='<i></i>برق شهر: وصل ('+(vIn/1000).toFixed(1)+'V)'; bIn.className='bdg ok'; }
  }
-
  let st=document.getElementById('statusTitle'), ss=document.getElementById('statusSub');
  let heroCard=document.getElementById('heroCard');
  let heroFault=document.getElementById('heroFault');
@@ -1372,26 +1293,22 @@ function render(data){
   if(heroFault){ heroFault.className='hero-fault show'; heroFault.style.display='none'; heroFault.textContent=''; } 
  }
  else { st.textContent='متصل - برق ورودی وصل'; ss.textContent='باتری '+pctPack+' درصد - آماده'; if(heroCard) heroCard.className='hero ok'; if(heroFault){ heroFault.className='hero-fault ok show'; heroFault.textContent='سیستم سالم - برق ورودی وصل - ساعت برد: '+(boardTs?fmtTime(boardTs):'--'); } }
-
  let ls=document.getElementById('linkState'); if(ls) ls.textContent='لینک: '+(data.on?'وصل':'قطع')+' | CRC: '+data.ce+' | Vin:'+(vIn/1000).toFixed(2)+'V';
  let si=document.getElementById('seqInfo'); if(si) si.textContent='فریم: '+data.n+' | سن: '+data.age+'ms | پایدار:'+pctPack+'% خام:'+rawPackDis+'% پر:'+fillPct+'%'+(isCharging?' شارژ '+Math.round(g_mainAnim)+'% در ['+getChargingBounds(pctPack).base+'-'+getChargingBounds(pctPack).top+'%] ⚡':'' );
  let hd=document.getElementById('hdrDot'); if(hd) hd.className='dot '+(data.on?'on':'');
  let ht=document.getElementById('hdrText'); if(ht) ht.textContent=data.on?'متصل':'قطع';
  let hu=document.getElementById('hdrUser'); if(hu) hu.textContent=data.user?(data.user+' '+(data.role==1?'(ادمین)':'(ساده)')):'';
-
  let loginPage=document.getElementById('loginPage');
  let loginCard=document.getElementById('loginCard'), setContent=document.getElementById('settingsContent');
  if(data.user){
   if(loginPage) loginPage.style.display='none';
   document.body.style.overflow='';
   if(loginCard) loginCard.style.display='none'; if(setContent) setContent.style.display='grid';
- }
- else {
+ } else {
   if(loginPage) loginPage.style.display='grid';
   document.body.style.overflow='hidden';
   if(loginCard) loginCard.style.display='block'; if(setContent) setContent.style.display='none';
  }
-
  let pt=document.getElementById('phoneTime'); if(pt) pt.textContent=new Date().toLocaleString('fa-IR');
  if(data.theme!==undefined && data.theme!==currentTheme){ let saved=localStorage.getItem('co_theme'); if(saved===null) applyTheme(data.theme); }
  let isAdmin=data.role==1;
@@ -1440,7 +1357,7 @@ function renderDiag(j){
  }
 }
 async function poll(){ try{ let r=await fetch('/t',{cache:'no-store'}); let j=await r.json(); render(j); }catch(e){} }
-async function pollCharts(){ await pollChartsPct(); await pollChartsVin(); await pollChartsVpack(); }
+async function pollCharts(){ await pollChartsPct(); await pollChartsVolt(); }
 async function pollDiag(){ try{ let r=await fetch('/diag',{cache:'no-store'}); let j=await r.json(); renderDiag(j); }catch(e){} }
 
 async function clearHistory(type){
@@ -1457,11 +1374,9 @@ async function clearHistory(type){
    }
    if(type==='charts' || type==='all'){
     chartData.vin=[]; chartData.vpack=[]; chartDataPct.pct=[]; chartDataPct.time=[];
-    chartDataVin.vin=[]; chartDataVin.time=[]; chartDataVpack.vpack=[]; chartDataVpack.time=[];
+    chartDataVolt.vin=[]; chartDataVolt.vpack=[]; chartDataVolt.time=[];
     drawChart('cPct', [], '#ffb84d', 0, 100, [], '1d');
-    drawChart('cVin', [], '#5b8def', 18000, 30000, [], '1d');
-    drawChart('cVpack', [], '#1ee6a0', 20000, 30000, [], '1d');
-    updateVinInfo('1d'); updateVpackInfo('1d');
+    drawVoltChart('cVolt', [], [], [], '1d');
    }
    if(type==='diag' || type==='all'){
     let errDiv=document.getElementById('diagErrors'); if(errDiv) errDiv.textContent='خطایی ثبت نشده';
@@ -1489,13 +1404,8 @@ async function syncTime(){
   let r=await fetch('/time?ts='+ts,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ts:ts})});
   let j=await r.json(); 
   if(m) m.textContent=j.ok?'ساعت برد تنظیم شد به '+fmtTime(ts):('خطا: '+(j.e||j.msg||'نامشخص'));
-  if(j.ok){
-   setTimeout(poll,500);
-   setTimeout(pollDiag,600);
-  }
- }catch(e){
-  if(m) m.textContent='خطا در ارتباط - '+e;
- }
+  if(j.ok){ setTimeout(poll,500); setTimeout(pollDiag,600); }
+ }catch(e){ if(m) m.textContent='خطا در ارتباط - '+e; }
 }
 function init(){ poll(); pollCharts(); pollDiag(); loadUsers(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(loadUsers,10000); }
 window.addEventListener('DOMContentLoaded', init);
