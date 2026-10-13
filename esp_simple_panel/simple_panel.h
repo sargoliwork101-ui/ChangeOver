@@ -943,7 +943,14 @@ function render(data){
  let bhs=document.getElementById('batHighStatus'); if(bhs) bhs.textContent=highSt.txt;
  let bls=document.getElementById('batLowStatus'); if(bls) bls.textContent=lowSt.txt;
 
- let ib=document.getElementById('imbBox'); if(ib){ if(imb>300){ ib.textContent='اختلاف دو باتری: '+imb+' میلی‌ولت - نیاز به بررسی'; ib.className='imb show'; } else { ib.className='imb'; ib.textContent=''; } }
+ // اختلاف ولتاژ فقط وقتی خطا است که برد در حال شارژ نباشد و دو نیم‌باتری هم‌حالت باشند - مشابه برد اصلی
+ let ib=document.getElementById('imbBox'); if(ib){
+  let charging=(s1==1||s1==2||s2==1||s2==2);
+  let ch1=(s1==1||s1==2), ch2=(s2==1||s2==2);
+  let sameState=(ch1==ch2);
+  if(!charging && sameState && imb>300){ ib.textContent='اختلاف دو باتری: '+imb+' میلی‌ولت - نیاز به بررسی'; ib.className='imb show'; }
+  else { ib.className='imb'; ib.textContent=''; }
+ }
 
  let bIn=document.getElementById('bdgInput'); if(bIn){ bIn.innerHTML='<i></i>برق شهر: '+(data.inputPresent?'وصل':'باتری'); bIn.className='bdg '+(data.inputPresent?'ok':'warn'); }
 
@@ -954,7 +961,15 @@ function render(data){
  else if(fault & FAULT_BAT_LOST){ st.textContent='باتری قطع شده'; ss.textContent='سیم باتری را بررسی کنید'; if(heroCard) heroCard.className='hero err'; if(heroFault){ heroFault.className='hero-fault err show'; heroFault.innerHTML=faultText(fault); } }
  else if(fault & FAULT_TECH){ st.textContent='خطای فنی'; ss.textContent='برد نیاز به بررسی دارد'; if(heroCard) heroCard.className='hero err'; if(heroFault){ heroFault.className='hero-fault err show'; heroFault.innerHTML=faultText(fault); } }
  else if(fault & FAULT_ADC){ st.textContent='در حال بررسی'; ss.textContent='سنسورها در حال کالیبره'; if(heroCard) heroCard.className='hero warn'; if(heroFault){ heroFault.className='hero-fault warn show'; heroFault.innerHTML=faultText(fault); } }
- else if(!data.inputPresent){ st.textContent='حالت باتری'; ss.textContent='شارژ '+pctPack+' درصد'; if(heroCard) heroCard.className='hero'; if(heroFault){ if(pctPack<=5){ heroFault.className='hero-fault err show'; heroFault.textContent='شارژ خیلی کم - کمتر از ۵٪'; } else if(pctPack<=20){ heroFault.className='hero-fault warn show'; heroFault.textContent='شارژ کم - '+pctPack+'٪'; } else if(imb>300){ heroFault.className='hero-fault warn show'; heroFault.textContent='اختلاف دو باتری زیاد است ('+imb+'mV)'; } else { heroFault.className='hero-fault ok show'; heroFault.textContent='سیستم سالم - حالت باتری'; } } }
+ else if(!data.inputPresent){ st.textContent='حالت باتری'; ss.textContent='شارژ '+pctPack+' درصد'; if(heroCard) heroCard.className='hero'; if(heroFault){
+  let charging=(s1==1||s1==2||s2==1||s2==2);
+  let ch1=(s1==1||s1==2), ch2=(s2==1||s2==2);
+  let sameState=(ch1==ch2);
+  if(pctPack<=5){ heroFault.className='hero-fault err show'; heroFault.textContent='شارژ خیلی کم - کمتر از ۵٪'; }
+  else if(pctPack<=20){ heroFault.className='hero-fault warn show'; heroFault.textContent='شارژ کم - '+pctPack+'٪'; }
+  else if(!charging && sameState && imb>300){ heroFault.className='hero-fault warn show'; heroFault.textContent='اختلاف دو باتری زیاد است ('+imb+'mV)'; }
+  else { heroFault.className='hero-fault ok show'; heroFault.textContent='سیستم سالم - حالت باتری'; }
+ } }
  else if(s1==3 && s2==3){ st.textContent='شارژ کامل'; ss.textContent='باتری پر - آماده'; if(heroCard) heroCard.className='hero ok'; if(heroFault){ heroFault.className='hero-fault ok show'; heroFault.textContent='شارژ کامل - باتری پر'; } }
  else if(s1==1||s1==2||s2==1||s2==2){ st.textContent='در حال شارژ'; ss.textContent='باتری '+pctPack+' درصد'; if(heroCard) heroCard.className='hero'; if(heroFault){ heroFault.className='hero-fault show'; heroFault.style.display='none'; heroFault.textContent=''; } }
  else { st.textContent='متصل'; ss.textContent='باتری '+pctPack+' درصد - آماده'; if(heroCard) heroCard.className='hero ok'; if(heroFault){ heroFault.className='hero-fault ok show'; heroFault.textContent='سیستم سالم'; } }
