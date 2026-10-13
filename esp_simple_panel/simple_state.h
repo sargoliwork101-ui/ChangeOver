@@ -110,6 +110,13 @@ static uint32_t UINT32_T__G__BoardTimeSec = 0u;
 static bool BOOL__G__DiagValid = false;
 static uint32_t UINT32_T__G__LastDiagReqMs = 0u;
 
+/* ==================== ردیابی محلی خطا و برق برای ثبت حتی اگر STM32 نفرستد ==================== */
+static uint32_t UINT32_T__G__LastLocalFaultMask = 0u;
+static bool BOOL__G__LastLocalInputPresent = false;
+static bool BOOL__G__LastLocalInputValid = false;
+static uint32_t UINT32_T__G__LocalPowerOffTime = 0u;
+static bool BOOL__G__LocalPowerOffActive = false;
+
 /* ==================== وای‌فای قابل تنظیم ==================== */
 static char CHAR__G__WifiSsid[SIMPLE_WIFI_SSID_MAX + 1] = SIMPLE_WIFI_AP_SSID;
 static char CHAR__G__WifiPass[SIMPLE_WIFI_PASS_MAX + 1] = SIMPLE_WIFI_AP_PASS;

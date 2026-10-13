@@ -72,10 +72,51 @@ static void func__Simple_HandleFrame(void)
             UINT32_T__G__UptimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 9u);
             UINT32_T__G__ResetCount = func__Simple_ReadU32(uint8_t__ptr_payload, 13u);
             UINT32_T__G__BoardTimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 17u);
-            UINT8_T__G__DiagErrorCount = uint8_t__ptr_payload[21];
-            UINT8_T__G__PowerEventCount = uint8_t__ptr_payload[22];
-            if (UINT8_T__G__DiagErrorCount > SIMPLE_DIAG_MAX_ERRORS) UINT8_T__G__DiagErrorCount = SIMPLE_DIAG_MAX_ERRORS;
-            if (UINT8_T__G__PowerEventCount > SIMPLE_DIAG_MAX_POWER_EVENTS) UINT8_T__G__PowerEventCount = SIMPLE_DIAG_MAX_POWER_EVENTS;
+            uint8_t uint8_t__newErr = uint8_t__ptr_payload[21];
+            uint8_t uint8_t__newPwr = uint8_t__ptr_payload[22];
+            if (uint8_t__newErr > SIMPLE_DIAG_MAX_ERRORS) uint8_t__newErr = SIMPLE_DIAG_MAX_ERRORS;
+            if (uint8_t__newPwr > SIMPLE_DIAG_MAX_POWER_EVENTS) uint8_t__newPwr = SIMPLE_DIAG_MAX_POWER_EVENTS;
+            /* اگر برد اصلی صفر گزارش داد ولی ما محلی خطا داریم، محلی را نگه دار */
+            if (uint8_t__newErr == 0u && UINT8_T__G__DiagErrorCount > 0u)
+            {
+                /* نگه‌داشتن خطاهای محلی */
+            }
+            else if (uint8_t__newErr > 0u)
+            {
+                if (uint8_t__newErr > UINT8_T__G__DiagErrorCount)
+                {
+                    UINT8_T__G__DiagErrorCount = uint8_t__newErr;
+                }
+                else if (UINT8_T__G__DiagErrorCount == 0u)
+                {
+                    UINT8_T__G__DiagErrorCount = uint8_t__newErr;
+                }
+                /* اگر محلی بیشتر بود، تعداد محلی می‌ماند تا پاک نشود */
+            }
+            else
+            {
+                UINT8_T__G__DiagErrorCount = uint8_t__newErr;
+            }
+
+            if (uint8_t__newPwr == 0u && UINT8_T__G__PowerEventCount > 0u)
+            {
+                /* نگه‌داشتن رویدادهای محلی برق */
+            }
+            else if (uint8_t__newPwr > 0u)
+            {
+                if (uint8_t__newPwr > UINT8_T__G__PowerEventCount)
+                {
+                    UINT8_T__G__PowerEventCount = uint8_t__newPwr;
+                }
+                else if (UINT8_T__G__PowerEventCount == 0u)
+                {
+                    UINT8_T__G__PowerEventCount = uint8_t__newPwr;
+                }
+            }
+            else
+            {
+                UINT8_T__G__PowerEventCount = uint8_t__newPwr;
+            }
             BOOL__G__DiagValid = true;
             /* توسعه‌یافته: تعداد شارژ هر باتری */
             if (UINT16_T__G__RxLen >= 39u)

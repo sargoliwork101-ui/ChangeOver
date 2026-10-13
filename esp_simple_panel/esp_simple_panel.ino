@@ -54,6 +54,7 @@ void setup(void)
     func__Simple_WifiLoad();
     func__Simple_ChargeHistoryLoad();
     func__Simple_ChartsLoad();
+    func__Simple_DiagLoad();
 
     // بازیابی prev counts برای تشخیص شارژ بعد از ریستارت
     UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
@@ -81,20 +82,29 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.begin();
 }
 
-/* ==================== حلقه اصلی - با ذخیره‌سازی پایدار و ریبوت وای‌فای و تیک نمودار مستقل ==================== */
+/* ==================== حلقه اصلی - با ذخیره‌سازی پایدار و ریبوت وای‌فای و تیک نمودار مستقل و دیاگ ==================== */
 void loop(void)
 {
     func__Simple_DrainSerial();
     SIMPLE_WEB_SERVER_T__G__Server.handleClient();
     func__Simple_ChartTick();
 
-    // ذخیره دوره‌ای تاریخچه شارژ و نمودارها هر ۳۰ ثانیه
-    static uint32_t uint32_t__lastSaveMs = 0u;
+    // درخواست دیاگ مستقل هر ۱۰ ثانیه - حتی اگر تب دیاگ باز نباشد
+    static uint32_t uint32_t__lastDiagReqLoopMs = 0u;
     uint32_t uint32_t__now = (uint32_t)millis();
+    if ((uint32_t__now - uint32_t__lastDiagReqLoopMs) > 10000u)
+    {
+        func__Simple_SendDiagReq();
+        uint32_t__lastDiagReqLoopMs = uint32_t__now;
+    }
+
+    // ذخیره دوره‌ای تاریخچه شارژ و نمودارها و دیاگ هر ۳۰ ثانیه
+    static uint32_t uint32_t__lastSaveMs = 0u;
     if ((uint32_t__now - uint32_t__lastSaveMs) > 30000u)
     {
         func__Simple_ChargeHistorySave();
         func__Simple_ChartsSave();
+        func__Simple_DiagSave();
         uint32_t__lastSaveMs = uint32_t__now;
     }
 
@@ -105,6 +115,7 @@ void loop(void)
         {
             func__Simple_ChargeHistorySave();
             func__Simple_ChartsSave();
+            func__Simple_DiagSave();
 #if defined(ESP8266)
             ESP.restart();
 #else
