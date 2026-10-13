@@ -110,6 +110,75 @@ static uint32_t UINT32_T__G__BoardTimeSec = 0u;
 static bool BOOL__G__DiagValid = false;
 static uint32_t UINT32_T__G__LastDiagReqMs = 0u;
 
+/* ==================== پارامترهای خود برد (درصد باتری و چشمک‌ها) ====================
+   درصد فول/خالی باتری از همین پارامترها خوانده می‌شود - همان‌هایی که چراغ سبز
+   برد با آن‌ها چشمک می‌زند. تا وقتی برد جواب نداده، پیش‌فرض‌های خودش می‌مانند. */
+static uint32_t UINT32_T__G__BoardParam[SIMPLE_PARAM_COUNT];
+static bool BOOL__G__BoardParamKnown[SIMPLE_PARAM_COUNT];
+static bool BOOL__G__BoardParamSeen = false;
+static uint32_t UINT32_T__G__ParamBulkFrames = 0u;
+static uint32_t UINT32_T__G__LastParamsReqMs = 0u;
+
+/* ==================== مقدار پیش‌فرض یک پارامتر (تا آمدن جواب برد) ==================== */
+static uint32_t func__Simple_BoardParamDefault(uint8_t uint8_t__id)
+{
+    switch (uint8_t__id)
+    {
+        case SIMPLE_PARAM_GREEN_PERIOD_MS:  return 1000u;
+        case SIMPLE_PARAM_GREEN_MIN_OFF_MS: return 10u;
+        case SIMPLE_PARAM_YELLOW_PERIOD_MS: return 1000u;
+        case SIMPLE_PARAM_YELLOW_MIN_ON_MS: return 150u;
+        case SIMPLE_PARAM_PCT_VMIN_MV:      return 21000u;
+        case SIMPLE_PARAM_PCT_VMAX_MV:      return 29000u;
+        case SIMPLE_PARAM_FULL_ENTER_PCT:   return 100u;
+        case SIMPLE_PARAM_FULL_EXIT_PCT:    return 95u;
+        case SIMPLE_PARAM_CHG_HYST_PCT:     return 5u;
+        case SIMPLE_PARAM_RUN_HYST_PCT:     return 2u;
+        case SIMPLE_PARAM_RUN_ZERO_EXIT:    return 2u;
+        case SIMPLE_PARAM_RUN_ONE_EXIT:     return 3u;
+        case SIMPLE_PARAM_CHG_PCT_VMIN_MV:  return 21000u;
+        case SIMPLE_PARAM_CHG_PCT_VMAX_MV:  return 29000u;
+        default:                            return 0u;
+    }
+}
+
+/* ==================== خواندن یک پارامتر برد (جواب‌داده‌شده یا پیش‌فرض) ==================== */
+static uint32_t func__Simple_BoardParam(uint8_t uint8_t__id)
+{
+    if (uint8_t__id >= SIMPLE_PARAM_COUNT) return 0u;
+    if (BOOL__G__BoardParamKnown[uint8_t__id]) return UINT32_T__G__BoardParam[uint8_t__id];
+    return func__Simple_BoardParamDefault(uint8_t__id);
+}
+
+/* ==================== ذخیره یک پارامتر رسیده از برد ==================== */
+static void func__Simple_StoreBoardParam(uint8_t uint8_t__id, uint32_t uint32_t__value)
+{
+    if (uint8_t__id >= SIMPLE_PARAM_COUNT) return;
+    UINT32_T__G__BoardParam[uint8_t__id] = uint32_t__value;
+    BOOL__G__BoardParamKnown[uint8_t__id] = true;
+    BOOL__G__BoardParamSeen = true;
+}
+
+/* ==================== فهرست پارامترهایی که پنل به آن‌ها نیاز دارد ====================
+   ترتیب همین آرایه، ترتیب آرایهٔ pv در JSON است؛ پنل با همین ترتیب می‌خواند. */
+static const uint8_t UINT8_T__G__ParamUiIds[SIMPLE_PARAM_UI_COUNT] =
+{
+    SIMPLE_PARAM_GREEN_PERIOD_MS,   /* 0 */
+    SIMPLE_PARAM_GREEN_MIN_OFF_MS,  /* 1 */
+    SIMPLE_PARAM_YELLOW_PERIOD_MS,  /* 2 */
+    SIMPLE_PARAM_YELLOW_MIN_ON_MS,  /* 3 */
+    SIMPLE_PARAM_PCT_VMIN_MV,       /* 4 */
+    SIMPLE_PARAM_PCT_VMAX_MV,       /* 5 */
+    SIMPLE_PARAM_FULL_ENTER_PCT,    /* 6 */
+    SIMPLE_PARAM_FULL_EXIT_PCT,     /* 7 */
+    SIMPLE_PARAM_CHG_HYST_PCT,      /* 8 */
+    SIMPLE_PARAM_RUN_HYST_PCT,      /* 9 */
+    SIMPLE_PARAM_RUN_ZERO_EXIT,     /* 10 */
+    SIMPLE_PARAM_RUN_ONE_EXIT,      /* 11 */
+    SIMPLE_PARAM_CHG_PCT_VMIN_MV,   /* 12 */
+    SIMPLE_PARAM_CHG_PCT_VMAX_MV    /* 13 */
+};
+
 /* ==================== ردیابی محلی خطا و برق برای ثبت حتی اگر STM32 نفرستد ==================== */
 static uint32_t UINT32_T__G__LastLocalFaultMask = 0u;
 static bool BOOL__G__LastLocalInputPresent = false;

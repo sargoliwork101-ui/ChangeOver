@@ -79,9 +79,15 @@ static_assert(SIM_TLM_DEAD_MASK == 28, "T_DEAD پنل = ۲۸");
 #define SIM_LINK_CRC16_INIT         0xFFFFu
 #define SIM_LINK_CRC16_POLY         0x1021u
 #define SIM_MSG_TLM_LIVE            0x10u
+#define SIM_MSG_GET_PARAMS          0x02u
+#define SIM_MSG_PARAM_REPORT        0x11u
+#define SIM_MSG_PARAMS_BULK         0x12u
 #define SIM_MSG_TIME_SYNC           0x30u
 #define SIM_MSG_DIAG_REQ            0x31u
 #define SIM_MSG_DIAG_DATA           0x32u
+#define SIM_PARAM_COUNT             143u
+#define SIM_PARAM_ITEM_SIZE         5u
+#define SIM_PARAMS_PER_FRAME        102u  /* سقف ۵۱۲ بایتی سند: (512-1)/5 */
 #define SIM_TLM_SIZE                128u
 #define SIM_DIAG_MAX_ERRORS         10u
 #define SIM_DIAG_MAX_POWER_EVENTS   20u
@@ -137,6 +143,9 @@ struct SimBoardState
     uint32_t lastTlmMs = 0u;
     uint32_t lastCounterMs = 0u;
     uint32_t framesSent = 0u;
+
+    /* پارامترهای خود برد - پنل درصد باتری و زمان‌بندی چشمک را از همین‌ها می‌خواند */
+    uint32_t param[SIM_PARAM_COUNT];
 };
 
 extern SimBoardState SIM_BOARD_STATE_T__G__Board;
@@ -166,6 +175,43 @@ static uint8_t UINT8_T__G__SimRxCrcLow = 0u;
 /* شمارنده‌های زمانی تیک برد */
 static uint32_t UINT32_T__G__SimLastUptimeMs = 0u;
 static uint32_t UINT32_T__G__SimLastCountMs = 0u;
+
+/* ==================== پارامترهای پیش‌فرض برد ====================
+   همان عددهایی که `Firmware/Modules/Ui/Tester/host_test_ui.py` به‌عنوان
+   پیش‌فرض خود فرم‌ور نگه می‌دارد؛ بقیهٔ شناسه‌ها صفر می‌مانند چون پنل
+   ساده هیچ‌وقت سراغشان نمی‌رود. */
+struct SimParamDefault
+{
+    uint8_t id;
+    uint32_t value;
+};
+
+static const SimParamDefault SIM_PARAM_DEFAULT_TABLE[] =
+{
+    { 52u, 20u }, { 53u, 1u },
+    { 66u, 1000u }, { 67u, 10u }, { 68u, 1000u }, { 69u, 150u },
+    { 70u, 28000u }, { 71u, 1000u },
+    { 74u, 21000u }, { 75u, 29000u }, { 76u, 0u },
+    { 77u, 100u }, { 78u, 95u }, { 79u, 5u }, { 80u, 2u }, { 81u, 2u }, { 82u, 3u },
+    { 119u, 21000u }, { 120u, 29000u }
+};
+
+static bool BOOL__G__SimParamsReady = false;
+
+inline void func__Sim_ParamsInit(void)
+{
+    if (BOOL__G__SimParamsReady) { return; }
+
+    for (uint32_t uint32_t__id = 0u; uint32_t__id < SIM_PARAM_COUNT; uint32_t__id++)
+    {
+        SIM_BOARD_STATE_T__G__Board.param[uint32_t__id] = 0u;
+    }
+    for (uint32_t uint32_t__i = 0u; uint32_t__i < (sizeof(SIM_PARAM_DEFAULT_TABLE) / sizeof(SIM_PARAM_DEFAULT_TABLE[0])); uint32_t__i++)
+    {
+        SIM_BOARD_STATE_T__G__Board.param[SIM_PARAM_DEFAULT_TABLE[uint32_t__i].id] = SIM_PARAM_DEFAULT_TABLE[uint32_t__i].value;
+    }
+    BOOL__G__SimParamsReady = true;
+}
 
 /* ==================== CRC و قاب‌بندی ==================== */
 inline uint16_t func__Sim_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte)
@@ -405,6 +451,59 @@ inline void func__Sim_SendDiagSet(void)
     func__Sim_SendDiagPower(4u);
 }
 
+/* ==================== فرستادن همهٔ پارامترها (جواب GET_PARAMS) ====================
+   مثل خود برد: همهٔ ۱۴۳ پارامتر در فریم‌های حداکثر ۱۰۲ آیتمی (۱ + ۱۰۲×۵ = ۵۱۱
+   بایت، زیر سقف ۵۱۲ سند). ESP با کلید شناسه ذخیره می‌کند، پس چانک‌بندی مهم نیست. */
+inline void func__Sim_SendParamReport(uint8_t uint8_t__id)
+{
+    uint8_t uint8_t__payload[SIM_PARAM_ITEM_SIZE];
+    uint32_t uint32_t__value = SIM_BOARD_STATE_T__G__Board.param[uint8_t__id];
+
+    uint8_t__payload[0] = uint8_t__id;
+    uint8_t__payload[1] = (uint8_t)(uint32_t__value & 0xFFu);
+    uint8_t__payload[2] = (uint8_t)((uint32_t__value >> 8) & 0xFFu);
+    uint8_t__payload[3] = (uint8_t)((uint32_t__value >> 16) & 0xFFu);
+    uint8_t__payload[4] = (uint8_t)((uint32_t__value >> 24) & 0xFFu);
+    func__Sim_SendFrame(SIM_MSG_PARAM_REPORT, uint8_t__payload, (uint16_t)SIM_PARAM_ITEM_SIZE);
+}
+
+inline void func__Sim_SendParamsBulk(void)
+{
+    uint8_t uint8_t__payload[1u + (SIM_PARAMS_PER_FRAME * SIM_PARAM_ITEM_SIZE)];
+    uint32_t uint32_t__start = 0u;
+    uint32_t uint32_t__frames = 0u;
+
+    while (uint32_t__start < SIM_PARAM_COUNT)
+    {
+        uint32_t uint32_t__count = SIM_PARAM_COUNT - uint32_t__start;
+        uint32_t uint32_t__item;
+
+        if (uint32_t__count > SIM_PARAMS_PER_FRAME) { uint32_t__count = SIM_PARAMS_PER_FRAME; }
+        uint8_t__payload[0] = (uint8_t)uint32_t__count;
+
+        for (uint32_t__item = 0u; uint32_t__item < uint32_t__count; uint32_t__item++)
+        {
+            uint8_t uint8_t__id = (uint8_t)(uint32_t__start + uint32_t__item);
+            uint16_t uint16_t__offset = (uint16_t)(1u + (uint32_t__item * SIM_PARAM_ITEM_SIZE));
+            uint32_t uint32_t__value = SIM_BOARD_STATE_T__G__Board.param[uint8_t__id];
+
+            uint8_t__payload[uint16_t__offset] = uint8_t__id;
+            uint8_t__payload[uint16_t__offset + 1u] = (uint8_t)(uint32_t__value & 0xFFu);
+            uint8_t__payload[uint16_t__offset + 2u] = (uint8_t)((uint32_t__value >> 8) & 0xFFu);
+            uint8_t__payload[uint16_t__offset + 3u] = (uint8_t)((uint32_t__value >> 16) & 0xFFu);
+            uint8_t__payload[uint16_t__offset + 4u] = (uint8_t)((uint32_t__value >> 24) & 0xFFu);
+        }
+
+        func__Sim_SendFrame(SIM_MSG_PARAMS_BULK, uint8_t__payload,
+                            (uint16_t)(1u + (uint32_t__count * SIM_PARAM_ITEM_SIZE)));
+        uint32_t__start += uint32_t__count;
+        uint32_t__frames++;
+    }
+
+    printf("[sim] درخواست پارامترها رسید - %lu فریم PARAMS_BULK فرستاده شد\n",
+           (unsigned long)uint32_t__frames);
+}
+
 /* ==================== خواندن قاب‌های ESP -> برد ==================== */
 inline void func__Sim_HandleEspFrame(const uint8_t *uint8_t__ptr_payload,
                                      uint16_t uint16_t__length,
@@ -414,6 +513,12 @@ inline void func__Sim_HandleEspFrame(const uint8_t *uint8_t__ptr_payload,
     {
         func__Sim_SendDiagSet();
         printf("[sim] درخواست دیاگ رسید - پنج چانک فرستاده شد\n");
+        return;
+    }
+    if ((uint8_t__type == SIM_MSG_GET_PARAMS) && (uint16_t__length == 0u))
+    {
+        func__Sim_ParamsInit();
+        func__Sim_SendParamsBulk();
         return;
     }
     if ((uint8_t__type == SIM_MSG_TIME_SYNC) && (uint16_t__length >= 4u))
@@ -619,6 +724,26 @@ inline void func__Sim_ApplyRequest(const SimWebServerT &web_server__server)
     if (func__Sim_ArgU32(web_server__server, "link", &uint32_t__value))
     {
         SIM_BOARD_STATE_T__G__Board.linkUp = (uint32_t__value != 0u);
+    }
+
+    /* پارامترهای خود برد: با تغییرشان، پنل باید همان لحظه با عددهای تازه
+       حساب کند (مثل SET_PARAM روی برد واقعی، جواب PARAM_REPORT می‌رود). */
+    func__Sim_ParamsInit();
+    {
+        static const struct { const char *name; uint8_t id; } SIM_PARAM_ARG_TABLE[] =
+        {
+            { "p66", 66u }, { "p67", 67u }, { "p74", 74u }, { "p75", 75u }
+        };
+        for (uint32_t uint32_t__i = 0u; uint32_t__i < (sizeof(SIM_PARAM_ARG_TABLE) / sizeof(SIM_PARAM_ARG_TABLE[0])); uint32_t__i++)
+        {
+            if (func__Sim_ArgU32(web_server__server, SIM_PARAM_ARG_TABLE[uint32_t__i].name, &uint32_t__value))
+            {
+                SIM_BOARD_STATE_T__G__Board.param[SIM_PARAM_ARG_TABLE[uint32_t__i].id] = uint32_t__value;
+                func__Sim_SendParamReport(SIM_PARAM_ARG_TABLE[uint32_t__i].id);
+                printf("[sim] پارامتر %u = %lu شد\n",
+                       (unsigned)SIM_PARAM_ARG_TABLE[uint32_t__i].id, (unsigned long)uint32_t__value);
+            }
+        }
     }
 }
 

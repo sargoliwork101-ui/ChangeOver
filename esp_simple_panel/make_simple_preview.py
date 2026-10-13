@@ -274,6 +274,30 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     state1: 1, state2: 0,
     fault: 0, deadMask: 0, ce: 0, vm: 0
   };
+  /* پارامترهای خود برد شبیه‌سازی‌شده - همان‌هایی که چراغ سبز و درصد باتری
+     از آن‌ها ساخته می‌شود (۷۴/۷۵ درصد فول/خالی، ۶۶/۶۷ چشمک سبز، ۸۰/۸۱/۸۲
+     هیسترزیس و ...). در حالت زنده با /sim روی برد واقعی هم ست می‌شوند. */
+  var board = {
+    gPer: PANEL.GREEN_PERIOD, gOff: PANEL.GREEN_MIN_OFF,
+    yPer: PANEL.YELLOW_PERIOD, yOn: PANEL.YELLOW_MIN_ON,
+    vmin: PANEL.BAT_VMIN, vmax: PANEL.BAT_VMAX,
+    hEnt: PANEL.FULL_ENTER, hExit: PANEL.FULL_EXIT,
+    cHyst: PANEL.CHG_HYST, rHyst: PANEL.RUN_HYST,
+    rZero: PANEL.ZERO_EXIT, rOne: PANEL.ONE_EXIT,
+    cvmin: PANEL.CHG_VMIN, cvmax: PANEL.CHG_VMAX
+  };
+  function boardParamsBody() {
+    return ',"pvOk":1,"pv":[' + [board.gPer, board.gOff, board.yPer, board.yOn,
+      board.vmin, board.vmax, board.hEnt, board.hExit, board.cHyst, board.rHyst,
+      board.rZero, board.rOne, board.cvmin, board.cvmax].join(',') + ']';
+  }
+  function changedParamQuery() {
+    var query = '';
+    if (board.vmin !== PANEL.BAT_VMIN) { query += '&p74=' + board.vmin; }
+    if (board.vmax !== PANEL.BAT_VMAX) { query += '&p75=' + board.vmax; }
+    return query;
+  }
+
   var counters = { t0: Date.now(), frames: 0, totalChargeSec: 13718, chargeCount: 42,
                    chargeCountCh1: 21, chargeCountCh2: 21, chargeSecCh1: 7031, chargeSecCh2: 6687,
                    resetCount: 3, boardTime: Math.floor(Date.now() / 1000) };
@@ -355,7 +379,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       ',"user":"' + mock.user + '","role":' + mock.role + ',"theme":' + mock.theme +
       ',"boardTime":' + counters.boardTime + ',"bt":' + counters.boardTime + ',"t":[';
     for (var i = 0; i < TLM_N; i++) { body += (i ? ',' : '') + built.t[i]; }
-    return body + ']}';
+    return body + ']' + boardParamsBody() + '}';
   }
 
   function chartJson(range) {
@@ -366,7 +390,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       var phase = (i / conf.len) * Math.PI * 2;
       var wobble = Math.round(Math.sin(phase) * 4);
       pct.push(Math.max(0, Math.min(100,
-        Math.round((sim.vpack - PANEL.BAT_VMIN) * 100 / (PANEL.BAT_VMAX - PANEL.BAT_VMIN)) - 6 + wobble)));
+        Math.round((sim.vpack - board.vmin) * 100 / (board.vmax - board.vmin)) - 6 + wobble)));
       vin.push(sim.vin ? (sim.vin - (i % 3) * 120) : 0);
       vpack.push(sim.vpack - (i % 4) * 90);
       time.push(now - (conf.len - 1 - i) * conf.stepSec);
@@ -533,6 +557,27 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     parent.appendChild(row);
   }
 
+  function paramSlider(parent, title, id, min, max) {
+    var row = el('div', { 'class': 'simrow' });
+    row.appendChild(el('label', {}, title));
+    var input = el('input', { type: 'range', min: min, max: max, step: 100, value: board[id] });
+    var readout = el('span', { 'class': 'simval' });
+    function paint() {
+      input.value = board[id];
+      readout.textContent = board[id] + ' mV';
+    }
+    input.addEventListener('input', function () {
+      board[id] = Number(input.value);
+      if (id === 'vmin') { board.cvmin = board[id]; }
+      if (id === 'vmax') { board.cvmax = board[id]; }
+      readout.textContent = board[id] + ' mV';
+      applySim(); simRefresh();
+    });
+    controls.push(paint); paint();
+    row.appendChild(input); row.appendChild(readout);
+    parent.appendChild(row);
+  }
+
   function buildSimTab() {
     var tab2 = document.getElementById('tab2');
     var pg2 = document.getElementById('pg2');
@@ -556,6 +601,15 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     slider(voltageBox, 'نیم‌باتری پایین', 'vlow', 16000);
     slider(voltageBox, 'نیم‌باتری بالا', 'vhigh', 16000);
     page.appendChild(voltageBox);
+
+    /* پارامترهای خود برد: همان عددهایی که درصد فول/خالی و چشمک سبز از آن‌ها
+       ساخته می‌شود؛ پنل در هر قاب /t همین‌ها را می‌خواند */
+    var paramBox = el('div', { 'class': 'simbox' });
+    paramBox.appendChild(el('div', { 'class': 'simhint' },
+      'پارامترهای خود برد (درصد فول/خالی باتری - همان‌هایی که چراغ سبز با آن‌ها چشمک می‌زند)'));
+    paramSlider(paramBox, '۰٪ باتری (پارامتر ۷۴)', 'vmin', 15000, 25000);
+    paramSlider(paramBox, '۱۰۰٪ باتری (پارامتر ۷۵)', 'vmax', 25000, 32000);
+    page.appendChild(paramBox);
 
     var stateBox = el('div', { 'class': 'simbox' });
     stateBox.appendChild(el('div', { 'class': 'simhint' }, 'حالت شارژر (همان ۰..۹ برد)'));
@@ -614,6 +668,8 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
      ['ریست سیمولاتور', function () {
         sim.vin = BOOT.vin; sim.vpack = BOOT.vpack; sim.vlow = BOOT.vlow; sim.vhigh = BOOT.vhigh;
         sim.state1 = 1; sim.state2 = 0; sim.fault = 0; sim.deadMask = 0; sim.linkUp = true;
+        board.vmin = PANEL.BAT_VMIN; board.vmax = PANEL.BAT_VMAX;
+        board.cvmin = PANEL.CHG_VMIN; board.cvmax = PANEL.CHG_VMAX;
      }]
     ].forEach(function (scenario) {
       var button = el('button', { 'class': 'btn sec' }, scenario[0]);
@@ -657,7 +713,8 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
   function applySim() {
     var params = 'vin=' + sim.vin + '&vpack=' + sim.vpack + '&vlow=' + sim.vlow +
       '&vhigh=' + sim.vhigh + '&s1=' + sim.state1 + '&s2=' + sim.state2 +
-      '&fault=' + sim.fault + '&link=' + (sim.linkUp ? 1 : 0) + '&dead=' + sim.deadMask;
+      '&fault=' + sim.fault + '&link=' + (sim.linkUp ? 1 : 0) + '&dead=' + sim.deadMask +
+      changedParamQuery();
     window.fetch('/sim?' + params, { method: 'POST' }).catch(function () {});
   }
 

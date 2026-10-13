@@ -181,14 +181,26 @@ static void func__Simple_ChartTick(void)
     uint32_t uint32_t__vLow = UINT32_T__G__TlmField[17];
     uint32_t uint32_t__vHigh = UINT32_T__G__TlmField[18];
     uint32_t uint32_t__vpack = uint32_t__vpackRaw; /* برد اصلی درصد را از V24 می‌گیرد - چشمک سبز - نه جمع Vlow+Vhigh */
-    uint32_t uint32_t__pct = 0u;
-    if (uint32_t__vpack >= 21000u && uint32_t__vpack <= 29000u)
+
+    /* درصد فول/خالی از پارامترهای خود برد خوانده می‌شود (۷۴/۷۵)، همان‌هایی که
+       چراغ سبز برد با آن‌ها چشمک می‌زند؛ و مثل خود برد اول با سقف نگاشت شارژ
+       (۱۲۰) گیره می‌شود. */
+    uint32_t uint32_t__vMinMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMIN_MV);
+    uint32_t uint32_t__vMaxMv = func__Simple_BoardParam(SIMPLE_PARAM_PCT_VMAX_MV);
+    uint32_t uint32_t__vMaxChgMv = func__Simple_BoardParam(SIMPLE_PARAM_CHG_PCT_VMAX_MV);
+    uint32_t uint32_t__vpackClamped = uint32_t__vpackRaw;
+    if (uint32_t__vpackClamped > uint32_t__vMaxChgMv)
     {
-        uint32_t__pct = ((uint32_t__vpack - 21000u) * 100u) / (29000u - 21000u);
+        uint32_t__vpackClamped = uint32_t__vMaxChgMv;
     }
-    else if (uint32_t__vpack > 29000u)
+    uint32_t uint32_t__pct = 0u;
+    if ((uint32_t__vMaxMv > uint32_t__vMinMv) && (uint32_t__vpackClamped >= uint32_t__vMinMv))
     {
-        uint32_t__pct = 100u;
+        uint32_t__pct = ((uint32_t__vpackClamped - uint32_t__vMinMv) * 100u) / (uint32_t__vMaxMv - uint32_t__vMinMv);
+        if (uint32_t__pct > 100u)
+        {
+            uint32_t__pct = 100u;
+        }
     }
     uint32_t uint32_t__imb = UINT32_T__G__TlmField[25];
     func__Simple_ChartAdd(uint32_t__vin, uint32_t__vpack, uint32_t__pct, uint32_t__imb);
@@ -259,6 +271,30 @@ static void func__Simple_SendDiagReq(void)
     UINT8_T__A__Frame[7] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
     (void)Serial.write(UINT8_T__A__Frame, 8u);
     UINT32_T__G__LastDiagReqMs = (uint32_t)millis();
+}
+
+/* ==================== درخواست پارامترهای برد ====================
+   درصد فول/خالی باتری و زمان‌بندی چشمک، پارامترهای خود برد هستند؛ این
+   درخواست آن‌ها را می‌خواند تا پنل با همان عددهایی حساب کند که چراغ سبز
+   برد با آن‌ها چشمک می‌زند. */
+static void func__Simple_SendGetParams(void)
+{
+    uint8_t UINT8_T__A__Frame[8];
+    uint16_t uint16_t__crc = SIMPLE_LINK_CRC16_INIT;
+    UINT8_T__A__Frame[0] = SIMPLE_LINK_SOF_BYTE0;
+    UINT8_T__A__Frame[1] = SIMPLE_LINK_SOF_BYTE1;
+    UINT8_T__A__Frame[2] = SIMPLE_LINK_PROTOCOL_VERSION;
+    UINT8_T__A__Frame[3] = SIMPLE_MSG_GET_PARAMS;
+    UINT8_T__A__Frame[4] = 0u;
+    UINT8_T__A__Frame[5] = 0u;
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, SIMPLE_LINK_PROTOCOL_VERSION);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, SIMPLE_MSG_GET_PARAMS);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, 0u);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, 0u);
+    UINT8_T__A__Frame[6] = (uint8_t)(uint16_t__crc & 0xFFu);
+    UINT8_T__A__Frame[7] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
+    (void)Serial.write(UINT8_T__A__Frame, 8u);
+    UINT32_T__G__LastParamsReqMs = (uint32_t)millis();
 }
 
 /* ==================== ذخیره تاریخچه شارژ ==================== */

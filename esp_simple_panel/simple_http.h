@@ -115,7 +115,7 @@ static void func__Simple_HttpTelemetry(void)
     func__Simple_ChartTick();
 
     size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
-        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"ce\":%lu,\"vm\":%lu,\"inputPresent\":%u,\"user\":\"%s\",\"role\":%u,\"theme\":%u,\"boardTime\":%lu,\"bt\":%lu,\"t\":[",
+        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"ce\":%lu,\"vm\":%lu,\"inputPresent\":%u,\"user\":\"%s\",\"role\":%u,\"theme\":%u,\"boardTime\":%lu,\"bt\":%lu,\"pvOk\":%u,\"t\":[",
         bool__online ? 1u : 0u,
         (unsigned long)uint32_t__ageMs,
         (unsigned int)UINT16_T__G__TlmSeq,
@@ -129,7 +129,8 @@ static void func__Simple_HttpTelemetry(void)
         (unsigned int)UINT8_T__G__CurrentRole,
         (unsigned int)UINT8_T__G__Theme,
         (unsigned long)UINT32_T__G__BoardTimeSec,
-        (unsigned long)UINT32_T__G__BoardTimeSec);
+        (unsigned long)UINT32_T__G__BoardTimeSec,
+        BOOL__G__BoardParamSeen ? 1u : 0u);
 
     for (uint8_t__index = 0u; uint8_t__index < SIMPLE_LINK_TLM_FIELD_COUNT; uint8_t__index++)
     {
@@ -137,6 +138,18 @@ static void func__Simple_HttpTelemetry(void)
         size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used],
             SIMPLE_JSON_BUFFER_SIZE - size_t__used,
             "%s%lu", char__ptr_sep, (unsigned long)UINT32_T__G__TlmField[uint8_t__index]);
+    }
+    size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used],
+        SIMPLE_JSON_BUFFER_SIZE - size_t__used, "],\"pv\":[");
+
+    /* پارامترهای خود برد به همان ترتیبی که پنل انتظار دارد */
+    for (uint8_t__index = 0u; uint8_t__index < SIMPLE_PARAM_UI_COUNT; uint8_t__index++)
+    {
+        const char *char__ptr_sep = (uint8_t__index == 0u) ? "" : ",";
+        size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used],
+            SIMPLE_JSON_BUFFER_SIZE - size_t__used,
+            "%s%lu", char__ptr_sep,
+            (unsigned long)func__Simple_BoardParam(UINT8_T__G__ParamUiIds[uint8_t__index]));
     }
     size_t__used += (size_t)snprintf(&CHAR__G__JsonBuffer[size_t__used],
         SIMPLE_JSON_BUFFER_SIZE - size_t__used, "]}");

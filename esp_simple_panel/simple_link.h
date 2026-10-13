@@ -225,6 +225,38 @@ static void func__Simple_HandleFrame(void)
             }
         }
     }
+    else if ((UINT8_T__G__RxType == SIMPLE_MSG_PARAM_REPORT) && (UINT16_T__G__RxLen >= SIMPLE_PARAM_ITEM_SIZE))
+    {
+        /* یک پارامتر که برد تازه اعمال کرده است: [شناسه:u8][مقدار:u32 LE] */
+        func__Simple_StoreBoardParam(uint8_t__ptr_payload[0], func__Simple_ReadU32(uint8_t__ptr_payload, 1u));
+    }
+    else if ((UINT8_T__G__RxType == SIMPLE_MSG_PARAMS_BULK) && (UINT16_T__G__RxLen >= 1u))
+    {
+        /* پارامترهای خود برد: [تعداد:u8] بعد هر آیتم [شناسه:u8][مقدار:u32 LE].
+           قاب بزرگ است (۱۰۲ آیتم = ۵۱۱ بایت) پس آفست باید ۱۶ بیتی باشد.
+           کلید ذخیره شناسه است، نه ترتیب - پس چند فریم پشت سر هم مشکلی ندارند. */
+        uint8_t uint8_t__count = uint8_t__ptr_payload[0];
+        uint16_t uint16_t__item;
+        for (uint16_t__item = 0u; uint16_t__item < (uint16_t)uint8_t__count; uint16_t__item++)
+        {
+            uint16_t uint16_t__offset = (uint16_t)(1u + (uint16_t__item * SIMPLE_PARAM_ITEM_SIZE));
+            uint16_t uint16_t__itemEnd = (uint16_t)(uint16_t__offset + SIMPLE_PARAM_ITEM_SIZE);
+            uint32_t uint32_t__byte0;
+            uint32_t uint32_t__byte1;
+            uint32_t uint32_t__byte2;
+            uint32_t uint32_t__byte3;
+            uint32_t uint32_t__value;
+            if (uint16_t__itemEnd > UINT16_T__G__RxLen) break;
+            uint32_t__byte0 = (uint32_t)uint8_t__ptr_payload[uint16_t__offset + 1u];
+            uint32_t__byte1 = (uint32_t)uint8_t__ptr_payload[uint16_t__offset + 2u] << 8;
+            uint32_t__byte2 = (uint32_t)uint8_t__ptr_payload[uint16_t__offset + 3u] << 16;
+            uint32_t__byte3 = (uint32_t)uint8_t__ptr_payload[uint16_t__offset + 4u] << 24;
+            uint32_t__value = uint32_t__byte0 | uint32_t__byte1;
+            uint32_t__value |= (uint32_t__byte2 | uint32_t__byte3);
+            func__Simple_StoreBoardParam(uint8_t__ptr_payload[uint16_t__offset], uint32_t__value);
+        }
+        UINT32_T__G__ParamBulkFrames++;
+    }
 }
 
 /* ==================== همگام‌سازی مجدد ==================== */

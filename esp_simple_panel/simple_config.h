@@ -26,6 +26,34 @@
 #define SIMPLE_MSG_DIAG_REQ             0x31u
 #define SIMPLE_MSG_DIAG_DATA            0x32u
 
+/* ==================== پارامترهای خود برد ====================
+   درصد فول/خالی باتری و زمان‌بندی چشمک سبز، پارامترهای خود برد هستند
+   (همان‌هایی که چراغ سبز با آن‌ها چشمک می‌زند). پنل آن‌ها را از برد
+   می‌خواند تا اگر کاربر روی برد عوضشان کرد، نمایش هم عوض شود. */
+#define SIMPLE_MSG_GET_PARAMS           0x02u
+#define SIMPLE_MSG_PARAM_REPORT         0x11u
+#define SIMPLE_MSG_PARAMS_BULK          0x12u
+#define SIMPLE_PARAM_COUNT              143u
+#define SIMPLE_PARAM_ITEM_SIZE          5u     /* شناسه ۱ بایت + مقدار ۴ بایت */
+#define SIMPLE_PARAMS_REQ_MS            30000u /* فاصله درخواست پارامترها */
+
+/* شناسه پارامترهای مصرفی - نام‌ها از جدول خود فرم‌ور (host_test_ui.py) */
+#define SIMPLE_PARAM_GREEN_PERIOD_MS    66u
+#define SIMPLE_PARAM_GREEN_MIN_OFF_MS   67u
+#define SIMPLE_PARAM_YELLOW_PERIOD_MS   68u
+#define SIMPLE_PARAM_YELLOW_MIN_ON_MS   69u
+#define SIMPLE_PARAM_PCT_VMIN_MV        74u
+#define SIMPLE_PARAM_PCT_VMAX_MV        75u
+#define SIMPLE_PARAM_FULL_ENTER_PCT     77u
+#define SIMPLE_PARAM_FULL_EXIT_PCT      78u
+#define SIMPLE_PARAM_CHG_HYST_PCT       79u
+#define SIMPLE_PARAM_RUN_HYST_PCT       80u
+#define SIMPLE_PARAM_RUN_ZERO_EXIT      81u
+#define SIMPLE_PARAM_RUN_ONE_EXIT       82u
+#define SIMPLE_PARAM_CHG_PCT_VMIN_MV    119u
+#define SIMPLE_PARAM_CHG_PCT_VMAX_MV    120u
+#define SIMPLE_PARAM_UI_COUNT           14u    /* تعداد پارامترهایی که پنل می‌خواند */
+
 /* ==================== وای‌فای ==================== */
 #define SIMPLE_WIFI_AP_SSID             "changeover_userpannel"
 #define SIMPLE_WIFI_AP_PASS             "123456789"

@@ -697,10 +697,40 @@ const CHG_VMIN=21000, CHG_VMAX=29000;
 const RUN_HYST=2, CHG_HYST=5, ZERO_EXIT=2, ONE_EXIT=3, FULL_ENTER=100, FULL_EXIT=95;
 const GREEN_PERIOD=1000, GREEN_MIN_OFF=10, YELLOW_PERIOD=1000, YELLOW_MIN_ON=150, YELLOW_MIN_REMAIN=2;
 
+/* پارامترهای خود برد - درصد فول/خالی باتری و زمان‌بندی چشمک‌ها از این‌ها می‌آید.
+   این عددها پارامترهای همان برد هستند (۷۴/۷۵ و ۸۰/۸۱/۸۲ و ۶۶/۶۷ و ...) که
+   چراغ سبز برد با آن‌ها چشمک می‌زند؛ با هر قاب /t از برد خوانده می‌شوند و
+   اگر کاربر روی برد عوضشان کند، نمایش هم همان را نشان می‌دهد. تا آمدن اولین
+   جواب، پیش‌فرض‌های بالای همین فایل می‌مانند. */
+let brd={gPer:GREEN_PERIOD, gOff:GREEN_MIN_OFF, yPer:YELLOW_PERIOD, yOn:YELLOW_MIN_ON,
+         vmin:BAT_VMIN, vmax:BAT_VMAX, halfMin:HALF_VMIN, halfMax:HALF_VMAX,
+         hEnt:FULL_ENTER, hExit:FULL_EXIT, cHyst:CHG_HYST, rHyst:RUN_HYST,
+         rZero:ZERO_EXIT, rOne:ONE_EXIT, cvmin:CHG_VMIN, cvmax:CHG_VMAX};
+function updBoardParams(pv){
+ if(!pv || pv.length<14) return;
+ let num=function(i){ let v=parseInt(pv[i],10); return isNaN(v)?0:v; };
+ let gPer=num(0), gOff=num(1), yPer=num(2), yOn=num(3);
+ let vmin=num(4), vmax=num(5), hEnt=num(6), hExit=num(7);
+ let cHyst=num(8), rHyst=num(9), rZero=num(10), rOne=num(11);
+ let cvmin=num(12), cvmax=num(13);
+ if(gPer>0) brd.gPer=gPer;
+ if(gOff>=0) brd.gOff=gOff;
+ if(yPer>0) brd.yPer=yPer;
+ if(yOn>=0) brd.yOn=yOn;
+ if(vmin>0 && vmax>vmin){ brd.vmin=vmin; brd.vmax=vmax; brd.halfMin=Math.floor(vmin/2); brd.halfMax=Math.floor(vmax/2); }
+ if(hEnt>0) brd.hEnt=hEnt;
+ if(hExit>=0) brd.hExit=hExit;
+ if(cHyst>=0) brd.cHyst=cHyst;
+ if(rHyst>=0) brd.rHyst=rHyst;
+ if(rZero>=0) brd.rZero=rZero;
+ if(rOne>=0) brd.rOne=rOne;
+ if(cvmin>0 && cvmax>cvmin){ brd.cvmin=cvmin; brd.cvmax=cvmax; }
+}
+
 function vToPctMap(v, vmin, vmax){ if(v<=vmin) return 0; if(v>=vmax) return 100; return Math.floor(((v-vmin)*100)/(vmax-vmin)); }
-function vToPctPack(v){ return vToPctMap(v, BAT_VMIN, BAT_VMAX); }
-function vToPctHalf(v){ return vToPctMap(v, HALF_VMIN, HALF_VMAX); }
-function vToPctPackChg(v){ return vToPctMap(v, CHG_VMIN, CHG_VMAX); }
+function vToPctPack(v){ return vToPctMap(v, brd.vmin, brd.vmax); }
+function vToPctHalf(v){ return vToPctMap(v, brd.halfMin, brd.halfMax); }
+function vToPctPackChg(v){ return vToPctMap(v, brd.cvmin, brd.cvmax); }
 
 function fmtSec(s){ if(!s) return '--'; let h=Math.floor(s/3600); let m=Math.floor((s%3600)/60); return h+' ساعت '+m+' دقیقه'; }
 function fmtSecShort(s){ if(!s) return '--'; let h=Math.floor(s/3600); let m=Math.floor((s%3600)/60); return h+'h '+m+'m'; }
@@ -729,27 +759,27 @@ let g_inputState=null, g_inputOV=false;
 function updRunStable(raw, st){
  if(!st.init){ st.stable=raw; st.init=true; return st.stable; }
  if(st.stable===0){
-  if(raw>=ZERO_EXIT) st.stable=1;
+  if(raw>=brd.rZero) st.stable=1;
  } else if(st.stable===1){
   if(raw===0) st.stable=0;
-  else if(raw>=ONE_EXIT) st.stable=2;
+  else if(raw>=brd.rOne) st.stable=2;
  } else {
   let diff=Math.abs(raw-st.stable);
-  if(diff>=RUN_HYST) st.stable=raw;
+  if(diff>=brd.rHyst) st.stable=raw;
  }
  return st.stable;
 }
 function updChgStable(raw, st){
  if(!st.init){ st.stable=raw; st.init=true; return st.stable; }
  let diff=Math.abs(raw-st.stable);
- if(diff>=CHG_HYST) st.stable=raw;
+ if(diff>=brd.cHyst) st.stable=raw;
  return st.stable;
 }
 function updFull(raw){
  if(g_fullActive){
-  if(raw<FULL_EXIT) g_fullActive=false;
+  if(raw<brd.hExit) g_fullActive=false;
  } else {
-  if(raw>=FULL_ENTER) g_fullActive=true;
+  if(raw>=brd.hEnt) g_fullActive=true;
  }
  return g_fullActive;
 }
@@ -786,10 +816,10 @@ function resetBlinksIfScenarioChanged(scn){
 }
 function calcGreenTiming(stablePct){
  let remaining=100-stablePct;
- let periodPer=GREEN_PERIOD/100;
+ let periodPer=brd.gPer/100;
  let off=remaining*periodPer;
- if(off<GREEN_MIN_OFF) off=GREEN_MIN_OFF;
- let on=GREEN_PERIOD-off;
+ if(off<brd.gOff) off=brd.gOff;
+ let on=brd.gPer-off;
  return {on,off,remaining};
 }
 function updGreenBlink(stablePct){
@@ -811,11 +841,11 @@ function updGreenBlink(stablePct){
 function updYellowBlink(stablePct){
  let remaining=100-stablePct;
  if(remaining<YELLOW_MIN_REMAIN) remaining=YELLOW_MIN_REMAIN;
- let periodPer=YELLOW_PERIOD/100;
+ let periodPer=brd.yPer/100;
  let on=remaining*periodPer;
- if(on<YELLOW_MIN_ON) on=YELLOW_MIN_ON;
- if(on>YELLOW_PERIOD) on=YELLOW_PERIOD;
- let off=YELLOW_PERIOD-on;
+ if(on<brd.yOn) on=brd.yOn;
+ if(on>brd.yPer) on=brd.yPer;
+ let off=brd.yPer-on;
  if(!yellowBlink.init){
   yellowBlink.onMs=on; yellowBlink.offMs=off; yellowBlink.phaseStart=Date.now(); yellowBlink.isOn=true; yellowBlink.init=true;
  } else if(yellowBlink.onMs!==on || yellowBlink.offMs!==off){
@@ -1187,16 +1217,19 @@ function setBatFill(id, pct, status){
 }
 function render(data){
  lastData=data;
+ updBoardParams(data.pv); /* پارامترهای خود برد پیش از هر محاسبه‌ای */
  let vPackRaw=data.t[T_V24]||0, vLow=data.t[T_VLOW]||0, vHigh=data.t[T_VHIGH]||0, vIn=data.t[T_VIN]||0;
  let vPack=vPackRaw; /* برد اصلی درصد را از V24 (v_bat24_mv) می‌گیرد - چشمک سبز - نه از جمع Vlow+Vhigh */
+ let vPackPct=vPackRaw; /* برد پیش از نگاشت درصد، پک را با سقف نگاشت شارژ گیره می‌کند */
+ if(vPackPct>brd.cvmax) vPackPct=brd.cvmax;
  let vPackSum=(vLow>0 && vHigh>0) ? (vLow+vHigh) : vPackRaw; /* فقط برای نمایش ولتاژ جمع اگر لازم شد */
  let fault=data.t[T_FAULT]||0, s1=data.t[T_STATE1]||0, s2=data.t[T_STATE2]||0, imb=data.t[T_IMB]||0;
  let deadMask=data.t[T_DEAD]||0;
  let fl=data.fl||0, fl2=data.fl2||0;
  let inpInfo=updInputState(vIn, data.inputPresent);
  let inputPresent=inpInfo.present, inputOV=inpInfo.ov;
- let rawPackDis=vToPctPack(vPack), rawLowDis=vToPctHalf(vLow), rawHighDis=vToPctHalf(vHigh);
- let rawPackChg=vToPctPackChg(vPack), rawLowChg=vToPctHalf(vLow), rawHighChg=vToPctHalf(vHigh);
+ let rawPackDis=vToPctPack(vPackPct), rawLowDis=vToPctHalf(vLow), rawHighDis=vToPctHalf(vHigh);
+ let rawPackChg=vToPctPackChg(vPackPct), rawLowChg=vToPctHalf(vLow), rawHighChg=vToPctHalf(vHigh);
  let stablePack, stableLow, stableHigh, chgStablePack, chgStableLow, chgStableHigh;
  if(inputPresent){
   chgStablePack=updChgStable(rawPackChg, chgPackState);
@@ -1285,7 +1318,7 @@ function render(data){
   else if(pctPack<=20){ heroFault.className='hero-fault warn show'; heroFault.textContent='شارژ کم - '+pctPack+'٪ - برق ورودی قطع'; }
   else if(!charging && sameState && imb>300){ heroFault.className='hero-fault warn show'; heroFault.textContent='اختلاف دو باتری زیاد است ('+imb+'mV) - برق ورودی قطع'; }
   else if(pctPack>=100){ heroFault.className='hero-fault ok show'; heroFault.textContent='برق ورودی قطع - سیستم روی باتری - پک کامل ('+pctPack+'٪) - سبز ثابت بدون چشمک'; }
-  else { heroFault.className='hero-fault warn show'; heroFault.textContent='برق ورودی قطع - سیستم روی باتری ('+pctPack+'٪) - چشمک سبز '+greenTiming.on+'/'+GREEN_PERIOD+'ms'; }
+  else { heroFault.className='hero-fault warn show'; heroFault.textContent='برق ورودی قطع - سیستم روی باتری ('+pctPack+'٪) - چشمک سبز '+greenTiming.on+'/'+brd.gPer+'ms'; }
  } }
  else if(g_fullActive || (s1==3 && s2==3)){ st.textContent='شارژ کامل'; ss.textContent='باتری پر - آماده'; if(heroCard) heroCard.className='hero ok'; if(heroFault){ heroFault.className='hero-fault ok show'; heroFault.textContent='شارژ کامل - باتری پر ('+pctPack+'٪)'; } }
  else if(s1==1||s1==2||s2==1||s2==2){ 

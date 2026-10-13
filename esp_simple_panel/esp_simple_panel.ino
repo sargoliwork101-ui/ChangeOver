@@ -98,6 +98,15 @@ void loop(void)
         uint32_t__lastDiagReqLoopMs = uint32_t__now;
     }
 
+    // خواندن پارامترهای خود برد (درصد باتری و چشمک‌ها) - اول بار بعد از آمدن لینک
+    static bool bool__paramsReqDone = false;
+    if ((BOOL__G__TlmSeen && !bool__paramsReqDone) ||
+        ((uint32_t__now - UINT32_T__G__LastParamsReqMs) > SIMPLE_PARAMS_REQ_MS))
+    {
+        func__Simple_SendGetParams();
+        bool__paramsReqDone = true;
+    }
+
     // ذخیره دوره‌ای تاریخچه شارژ و نمودارها و دیاگ هر ۳۰ ثانیه
     static uint32_t uint32_t__lastSaveMs = 0u;
     if ((uint32_t__now - uint32_t__lastSaveMs) > 30000u)
