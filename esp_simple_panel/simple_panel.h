@@ -1238,8 +1238,8 @@ function render(data){
  data.rawPackDis=rawPackDis; data.rawPackChg=rawPackChg; data.fillPct=fillPct;
  let mainSt=getBatStatus(pctPack);
  if(!g_isCharging){ setBatFill('batMainFill', fillPct, mainSt); }
- let mainSvgPct=document.getElementById('batMainSvgPct'); if(mainSvgPct) mainSvgPct.textContent=pctPack+'%';
- let bp=document.getElementById('batPct'); if(bp) bp.innerHTML=pctPack+'<small>%</small>';
+ let mainSvgPct=document.getElementById('batMainSvgPct'); if(mainSvgPct) mainSvgPct.textContent=fillPct+'%';
+ let bp=document.getElementById('batPct'); if(bp) bp.innerHTML=fillPct+'<small>%</small>';
  let boardTs = data.boardTime || data.bt || 0;
  let btEl=document.getElementById('boardTime');
  if(btEl){
