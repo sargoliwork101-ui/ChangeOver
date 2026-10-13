@@ -107,6 +107,7 @@ static void func__Simple_HttpTelemetry(void)
 {
     uint32_t uint32_t__nowMs = (uint32_t)millis();
     uint32_t uint32_t__ageMs = uint32_t__nowMs - UINT32_T__G__LastTlmMs;
+    uint32_t uint32_t__panelTimeSec = func__Simple_NowSec();
     bool bool__online = BOOL__G__TlmSeen && (uint32_t__ageMs <= SIMPLE_LINK_TIMEOUT_MS);
     uint8_t uint8_t__index;
     size_t size_t__used;
@@ -115,7 +116,7 @@ static void func__Simple_HttpTelemetry(void)
     func__Simple_ChartTick();
 
     size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
-        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"ce\":%lu,\"vm\":%lu,\"inputPresent\":%u,\"user\":\"%s\",\"role\":%u,\"theme\":%u,\"boardTime\":%lu,\"bt\":%lu,\"pvOk\":%u,\"t\":[",
+        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"ce\":%lu,\"vm\":%lu,\"inputPresent\":%u,\"user\":\"%s\",\"role\":%u,\"theme\":%u,\"boardTime\":%lu,\"bt\":%lu,\"timeOk\":%u,\"pvOk\":%u,\"t\":[",
         bool__online ? 1u : 0u,
         (unsigned long)uint32_t__ageMs,
         (unsigned int)UINT16_T__G__TlmSeq,
@@ -128,8 +129,9 @@ static void func__Simple_HttpTelemetry(void)
         CHAR__G__CurrentUser,
         (unsigned int)UINT8_T__G__CurrentRole,
         (unsigned int)UINT8_T__G__Theme,
-        (unsigned long)UINT32_T__G__BoardTimeSec,
-        (unsigned long)UINT32_T__G__BoardTimeSec,
+        (unsigned long)uint32_t__panelTimeSec,
+        (unsigned long)uint32_t__panelTimeSec,
+        BOOL__G__TimeValid ? 1u : 0u,
         BOOL__G__BoardParamSeen ? 1u : 0u);
 
     for (uint8_t__index = 0u; uint8_t__index < SIMPLE_LINK_TLM_FIELD_COUNT; uint8_t__index++)
@@ -328,7 +330,11 @@ static void func__Simple_HttpDiag(void)
     s += ",\"chargeSecCh2\":"; s += String(UINT32_T__G__ChargeSecCh2);
     s += ",\"uptimeSec\":"; s += String(UINT32_T__G__UptimeSec);
     s += ",\"resetCount\":"; s += String(UINT32_T__G__ResetCount);
+    /* «boardTime» همان ساعت خود STM32 است (گزارش تلمتری) و «panelTime» ساعت
+       پنل؛ هر دو نمایش داده می‌شوند تا بشود تفاوت را دید */
     s += ",\"boardTime\":"; s += String(UINT32_T__G__BoardTimeSec);
+    s += ",\"panelTime\":"; s += String(func__Simple_NowSec());
+    s += ",\"timeOk\":"; s += String(BOOL__G__TimeValid ? 1u : 0u);
     s += ",\"errCount\":"; s += String(UINT8_T__G__DiagErrorCount);
     s += ",\"powerCount\":"; s += String(UINT8_T__G__PowerEventCount);
     s += ",\"errors\":[";
@@ -399,20 +405,13 @@ static void func__Simple_HttpTimeSync(void)
         return;
     }
 
-    func__Simple_SendTimeSync((uint32_t)int32_t__ts);
-    UINT32_T__G__BoardTimeSec = (uint32_t)int32_t__ts;
-
-    if (BOOL__G__FsOk)
-    {
-        File file__f = LittleFS.open(SIMPLE_TIME_FILE, "w");
-        if (file__f)
-        {
-            file__f.print("{\"ts\":");
-            file__f.print(int32_t__ts);
-            file__f.print("}");
-            file__f.close();
-        }
-    }
+    /* ساعت را در پنل تنظیم، روی فایل ذخیره و به برد هم بگو؛ از این لحظه
+       لنگر ساعت در پنل می‌ماند و بین فریم‌ها هم راه می‌رود */
+    func__Simple_TimeSet((uint32_t)int32_t__ts, true);
+    func__Simple_TimeSave();
+    func__Simple_SendTimeSync(func__Simple_NowSec());
+    UINT32_T__G__BoardTimeSec = func__Simple_NowSec();
+    BOOL__G__TimePushed = true;
 
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
@@ -652,20 +651,75 @@ static void func__Simple_HttpSetWifi(void)
 
     if (BOOL__G__FsOk)
     {
-        File file__f = LittleFS.open(SIMPLE_WIFI_FILE, "w");
-        if (file__f)
-        {
-            file__f.print("{\"ssid\":\"");
-            file__f.print(CHAR__G__WifiSsid);
-            file__f.print("\",\"pass\":\"");
-            file__f.print(CHAR__G__WifiPass);
-            file__f.print("\"}");
-            file__f.close();
-        }
+        func__Simple_WifiSave();   /* رمزنگاری‌شده روی فلش */
     }
     BOOL__G__WifiRebootPending = true;
     UINT32_T__G__WifiRebootMs = (uint32_t)millis();
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1,\"reboot\":1}");
+}
+
+/* ==================== تغییر رمز عبور - /setpass ====================
+   قواعد:
+   - باید وارد شده باشی.
+   - کاربر ساده فقط رمز خودش را می‌تواند عوض کند و رمز فعلی‌اش را هم باید بدهد.
+   - ادمین رمز هر کاربری را می‌تواند عوض کند؛ برای رمز خودش رمز فعلی لازم است. */
+static void func__Simple_HttpSetPass(void)
+{
+    String string__user;
+    String string__oldPass;
+    String string__newPass;
+    String string__newPass2;
+    bool bool__isAdmin;
+    bool bool__isSelf;
+
+    if (!func__Simple_SessionValid())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"login\"}");
+        return;
+    }
+    if (!func__Simple_GetArg("user", string__user) || !func__Simple_GetArg("new", string__newPass))
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"user/new\"}");
+        return;
+    }
+    (void)func__Simple_GetArg("old", string__oldPass);
+    (void)func__Simple_GetArg("new2", string__newPass2);
+
+    if (string__newPass.length() < SIMPLE_USER_PASS_MIN || string__newPass.length() > SIMPLE_USER_PASS_MAX)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"pass 4-32\"}");
+        return;
+    }
+    if (string__newPass2.length() > 0u && string__newPass2 != string__newPass)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"mismatch\"}");
+        return;
+    }
+
+    bool__isAdmin = (UINT8_T__G__CurrentRole == 1u);
+    bool__isSelf = (strcmp(CHAR__G__CurrentUser, string__user.c_str()) == 0);
+
+    if (!bool__isAdmin && !bool__isSelf)
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"self\"}");
+        return;
+    }
+    /* برای رمز خودت رمز فعلی لازم است؛ ادمین برای کاربر دیگر نمی‌خواهد */
+    if (bool__isSelf)
+    {
+        if (!func__Simple_VerifyUserPass(string__user.c_str(), string__oldPass.c_str()))
+        {
+            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"old\"}");
+            return;
+        }
+    }
+
+    if (!func__Simple_SetUserPass(string__user.c_str(), string__newPass.c_str()))
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":\"user\"}");
+        return;
+    }
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
 
 /* ==================== پاک‌سازی تاریخچه - فقط ادمین ==================== */

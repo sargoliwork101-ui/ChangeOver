@@ -63,8 +63,10 @@
 #define SIMPLE_HTTP_PORT                80
 #define SIMPLE_JSON_BUFFER_SIZE         1024u
 
-/* ==================== سقف صفحه ==================== */
-#define SIMPLE_PANEL_HTML_MAX_BYTES     120000u
+/* ==================== سقف صفحه ====================
+   سقف مرجع حجم صفحهٔ پنل (بایت). صفحهٔ فعلی حدود ۱۴۰ کیلوبایت است؛ اگر از
+   این عدد گذشت یعنی چیزی اشتباه به صفحه اضافه شده و باید بررسی شود. */
+#define SIMPLE_PANEL_HTML_MAX_BYTES     160000u
 
 /* ==================== نمودارها - با محور زمان ==================== */
 #define SIMPLE_CHART_HISTORY_SIZE       60u
@@ -82,15 +84,33 @@
 #define SIMPLE_USERS_MAX                8u
 #define SIMPLE_USER_NAME_MAX            24u
 #define SIMPLE_USER_PASS_MAX            32u
+#define SIMPLE_USER_PASS_MIN            4u     /* کوتاه‌ترین رمز قابل قبول در فرم تغییر رمز */
 #define SIMPLE_USERS_FILE               "/users.json"
 #define SIMPLE_SESSION_TIMEOUT_MS       1800000u
 
 /* ==================== زمان ==================== */
 #define SIMPLE_TIME_FILE                "/time.json"
+#define SIMPLE_TIME_VALID_MIN           1600000000u  /* زیر این عدد یعنی ساعت تنظیم نشده */
+#define SIMPLE_TIME_SYNC_DELAY_MS       3000u        /* بعد از آمدن لینک، تا فرستادن ساعت به برد */
+#define SIMPLE_TIME_RESEND_MS           600000u      /* اگر برد ساعت را نگرفت، هر ۱۰ دقیقه دوباره */
+#define SIMPLE_TIME_ADOPT_DIFF_SEC      300u         /* اختلافی که بعد از آن ساعت برد (RTC) بر پنل مقدم می‌شود */
+
+/* ==================== پارامترهای خود برد ==================== */
+#define SIMPLE_PARAMS_FILE              "/params.json"
 
 /* ==================== تم ==================== */
 #define SIMPLE_THEME_FILE               "/theme.json"
-#define SIMPLE_THEME_MAX                2u
+#define SIMPLE_THEME_MAX                1u   /* 0=تیره، 1=روشن - تم سوم حذف شد */
+
+/* ==================== رمزنگاری فایل‌های حساس ====================
+   کاربران و وای‌فای روی فلش رمزنگاری‌شده ذخیره می‌شوند تا کسی نتواند با
+   خواندن یا دست‌کاری فایل، رمزها را ببیند یا عوض کند.
+   - کلید از شناسهٔ یکتای خود چیپ ساخته می‌شود: SHA256(salt || chipId)
+   - بدنهٔ فایل با جریان کلید HMAC-SHA256 رمز می‌شود
+   - برچسب HMAC-SHA256 روی متن رمزشده می‌آید: هر دست‌کاری ⇒ فایل رد می‌شود */
+#define SIMPLE_CRYPTO_TAG_LEN           16u  /* بایت برچسب HMAC در فایل */
+#define SIMPLE_CRYPTO_KEY_LEN           32u  /* بایت کلید مشتق‌شده */
+#define SIMPLE_CRYPTO_SALT              "ChangeOver_FS_2026_v1"
 
 /* ==================== وضعیت پارسر ==================== */
 typedef enum

@@ -67,6 +67,21 @@ inline unsigned long millis(void)
     return unsigned_long__absolute - UNSIGNED_LONG__G__MillisStart;
 }
 
+/* میکروثانیه: همان ساعت میلی‌ثانیه با دقت بیشتر (برنامه برای یکتاشدن
+   شمارندهٔ رمزنگاری از micros استفاده می‌کند) */
+inline unsigned long micros(void)
+{
+    struct timeval timeval__now;
+    gettimeofday(&timeval__now, NULL);
+    unsigned long unsigned_long__absolute =
+        (unsigned long)((timeval__now.tv_sec * 1000000L) + timeval__now.tv_usec);
+    if (UNSIGNED_LONG__G__MillisStart == 0u)
+    {
+        (void)millis();
+    }
+    return unsigned_long__absolute - (UNSIGNED_LONG__G__MillisStart * 1000uL);
+}
+
 inline void delay(unsigned long unsigned_long__ms)
 {
     usleep((useconds_t)(unsigned_long__ms * 1000u));
@@ -109,6 +124,13 @@ public:
     {
         text += String(unsigned_long__other).text;
         return *this;
+    }
+
+    /* مثل String خود آردوینو: کاراکتر در جای مشخص (برای پارسرها) */
+    char charAt(unsigned int unsigned_int__index) const
+    {
+        if (unsigned_int__index >= text.size()) { return '\0'; }
+        return text[unsigned_int__index];
     }
 
     int indexOf(const String &string__needle, unsigned int unsigned_int__from = 0u) const
@@ -373,6 +395,10 @@ class SimEsp
 {
 public:
     void restart(void) { throw SimRestartRequest(); }
+    /* شناسهٔ چیپ: روی برد واقعی یکتاست و کلید رمزنگاری فایل‌های حساس از آن
+       ساخته می‌شود. اینجا ثابت است تا فایل‌های پوشهٔ شبیه‌ساز بین اجراها
+       خوانده شوند. */
+    uint32_t getChipId(void) const { return 0x00A5C0DEu; }
 };
 
 extern SimEsp ESP;

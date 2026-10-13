@@ -639,6 +639,13 @@ inline void func__Sim_Tick(uint32_t uint32_t__nowMs)
         UINT32_T__G__SimLastUptimeMs = uint32_t__nowMs;
         SIM_BOARD_STATE_T__G__Board.uptimeSec++;
 
+        /* همان کاری که RTC واقعی برد می‌کند: بعد از گرفتن ساعت از پنل، خودش
+           ثانیه‌شماری را ادامه می‌دهد تا مقایسهٔ اختلاف دو ساعت معنا داشته باشد */
+        if (SIM_BOARD_STATE_T__G__Board.boardTimeSec >= 100000u)
+        {
+            SIM_BOARD_STATE_T__G__Board.boardTimeSec++;
+        }
+
         if ((SIM_BOARD_STATE_T__G__Board.vInMv >= 21000u) &&
             ((SIM_BOARD_STATE_T__G__Board.state1 == 1u) || (SIM_BOARD_STATE_T__G__Board.state2 == 1u)))
         {
@@ -724,6 +731,11 @@ inline void func__Sim_ApplyRequest(const SimWebServerT &web_server__server)
     if (func__Sim_ArgU32(web_server__server, "link", &uint32_t__value))
     {
         SIM_BOARD_STATE_T__G__Board.linkUp = (uint32_t__value != 0u);
+    }
+    /* ساعت RTC خود برد: برای آزمون حالتی که برد ساعت دارد و پنل ندارد/عقب است */
+    if (func__Sim_ArgU32(web_server__server, "rtc", &uint32_t__value))
+    {
+        SIM_BOARD_STATE_T__G__Board.boardTimeSec = uint32_t__value;
     }
 
     /* پارامترهای خود برد: با تغییرشان، پنل باید همان لحظه با عددهای تازه

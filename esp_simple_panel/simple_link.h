@@ -125,9 +125,11 @@ static void func__Simple_HandleFrame(void)
                 UINT32_T__G__ChargeCountCh2 = func__Simple_ReadU32(uint8_t__ptr_payload, 27u);
                 UINT32_T__G__ChargeSecCh1 = func__Simple_ReadU32(uint8_t__ptr_payload, 31u);
                 UINT32_T__G__ChargeSecCh2 = func__Simple_ReadU32(uint8_t__ptr_payload, 35u);
-                /* ثبت تاریخچه شارژ: اگر تعداد افزایش یافت، زمان برد را ذخیره کن - با بافر چرخشی */
-                if ((UINT32_T__G__ChargeCountCh1 > uint32_t__prevCh1) && (UINT32_T__G__BoardTimeSec != 0u))
+                /* ثبت تاریخچه شارژ: اگر تعداد افزایش یافت، زمان (ساعت پنل) را ذخیره کن - با بافر چرخشی */
+                uint32_t uint32_t__stampSec = func__Simple_NowSec();
+                if ((UINT32_T__G__ChargeCountCh1 > uint32_t__prevCh1) && (uint32_t__stampSec != 0u))
                 {
+                    BOOL__G__ChargeHistDirty = true;
                     uint32_t uint32_t__diff = UINT32_T__G__ChargeCountCh1 - uint32_t__prevCh1;
                     if (uint32_t__diff > SIMPLE_DIAG_MAX_POWER_EVENTS) uint32_t__diff = SIMPLE_DIAG_MAX_POWER_EVENTS;
                     uint32_t uint32_t__k;
@@ -135,7 +137,7 @@ static void func__Simple_HandleFrame(void)
                     {
                         if (UINT8_T__G__ChargeHistoryCount < SIMPLE_DIAG_MAX_POWER_EVENTS)
                         {
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].timestamp = UINT32_T__G__BoardTimeSec;
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].timestamp = uint32_t__stampSec;
                             SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].channel = 1u;
                             SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].durationSec = 0u;
                             UINT8_T__G__ChargeHistoryCount++;
@@ -148,15 +150,16 @@ static void func__Simple_HandleFrame(void)
                             {
                                 SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s - 1u] = SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s];
                             }
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].timestamp = UINT32_T__G__BoardTimeSec;
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].timestamp = uint32_t__stampSec;
                             SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].channel = 1u;
                             SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].durationSec = 0u;
                         }
                     }
                     UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
                 }
-                if ((UINT32_T__G__ChargeCountCh2 > uint32_t__prevCh2) && (UINT32_T__G__BoardTimeSec != 0u))
+                if ((UINT32_T__G__ChargeCountCh2 > uint32_t__prevCh2) && (uint32_t__stampSec != 0u))
                 {
+                    BOOL__G__ChargeHistDirty = true;
                     uint32_t uint32_t__diff = UINT32_T__G__ChargeCountCh2 - uint32_t__prevCh2;
                     if (uint32_t__diff > SIMPLE_DIAG_MAX_POWER_EVENTS) uint32_t__diff = SIMPLE_DIAG_MAX_POWER_EVENTS;
                     uint32_t uint32_t__k;
@@ -164,7 +167,7 @@ static void func__Simple_HandleFrame(void)
                     {
                         if (UINT8_T__G__ChargeHistoryCount < SIMPLE_DIAG_MAX_POWER_EVENTS)
                         {
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].timestamp = UINT32_T__G__BoardTimeSec;
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].timestamp = uint32_t__stampSec;
                             SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].channel = 2u;
                             SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].durationSec = 0u;
                             UINT8_T__G__ChargeHistoryCount++;
@@ -176,7 +179,7 @@ static void func__Simple_HandleFrame(void)
                             {
                                 SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s - 1u] = SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s];
                             }
-                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].timestamp = UINT32_T__G__BoardTimeSec;
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].timestamp = uint32_t__stampSec;
                             SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].channel = 2u;
                             SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].durationSec = 0u;
                         }

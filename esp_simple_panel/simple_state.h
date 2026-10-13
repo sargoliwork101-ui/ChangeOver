@@ -1,5 +1,9 @@
-/* simple_state.h - نگهداری تله‌متری زنده پنل ساده
+/* simple_state.h - نگهداری تله‌متری زنده و ساعت پنل ساده
    فقط فارسی - استثنای قانون دو زبانه */
+
+#include <LittleFS.h>
+/* ==================== وضعیت حافظه ==================== */
+static bool BOOL__G__FsOk = false;
 
 /* ==================== وضعیت گیرنده ==================== */
 static simple_rx_state_t SIMPLE_RX_STATE_T__G__RxState = SIMPLE_RX_WAIT_SOF0;
@@ -116,6 +120,7 @@ static uint32_t UINT32_T__G__LastDiagReqMs = 0u;
 static uint32_t UINT32_T__G__BoardParam[SIMPLE_PARAM_COUNT];
 static bool BOOL__G__BoardParamKnown[SIMPLE_PARAM_COUNT];
 static bool BOOL__G__BoardParamSeen = false;
+static bool BOOL__G__BoardParamsDirty = false;   /* پارامتر تازه‌ای رسید که باید ذخیره شود */
 static uint32_t UINT32_T__G__ParamBulkFrames = 0u;
 static uint32_t UINT32_T__G__LastParamsReqMs = 0u;
 
@@ -154,6 +159,10 @@ static uint32_t func__Simple_BoardParam(uint8_t uint8_t__id)
 static void func__Simple_StoreBoardParam(uint8_t uint8_t__id, uint32_t uint32_t__value)
 {
     if (uint8_t__id >= SIMPLE_PARAM_COUNT) return;
+    if (!BOOL__G__BoardParamKnown[uint8_t__id] || (UINT32_T__G__BoardParam[uint8_t__id] != uint32_t__value))
+    {
+        BOOL__G__BoardParamsDirty = true;
+    }
     UINT32_T__G__BoardParam[uint8_t__id] = uint32_t__value;
     BOOL__G__BoardParamKnown[uint8_t__id] = true;
     BOOL__G__BoardParamSeen = true;
@@ -178,6 +187,95 @@ static const uint8_t UINT8_T__G__ParamUiIds[SIMPLE_PARAM_UI_COUNT] =
     SIMPLE_PARAM_CHG_PCT_VMIN_MV,   /* 12 */
     SIMPLE_PARAM_CHG_PCT_VMAX_MV    /* 13 */
 };
+
+/* ==================== ساعت ====================
+   ساعت یک بار از مرورگر گرفته و در فایل ذخیره می‌شود. از آن به بعد لنگر
+   نگه داشته می‌شود: زمان = ثانیه ذخیره‌شده + (millis حالا - millis لحظه تنظیم).
+   پس ساعت بین فریم‌های دیاگ هم راه می‌رود و بعد از ریست از همان فایل ادامه
+   می‌دهد - دیگر هیچ‌وقت پرسیده نمی‌شود. */
+static uint32_t UINT32_T__G__TimeAnchorSec = 0u;   /* ثانیه یونیکس در لحظه تنظیم */
+static uint32_t UINT32_T__G__TimeAnchorMs = 0u;    /* millis همان لحظه */
+static bool BOOL__G__TimeValid = false;            /* ساعت معتبر است (از فایل یا مرورگر) */
+static bool BOOL__G__TimePushed = false;           /* ساعت به برد گفته شد */
+static uint32_t UINT32_T__G__TimePushMs = 0u;      /* آخرین تلاش برای گفتن ساعت به برد */
+static uint32_t UINT32_T__G__TimePushArmedMs = 0u; /* لحظه‌ای که لینک تازه دیده شد (شروع تأخیر) */
+
+/* ==================== ساعت پنل ====================
+   تنها منبع «الان» برای همهٔ تاریخچه‌ها. تا وقتی ساعت تنظیم نشده صفر
+   برمی‌گرداند تا هیچ نقطه‌ای با زمان الکی (ثانیه از بوت) ذخیره نشود. */
+static uint32_t func__Simple_NowSec(void)
+{
+    uint32_t uint32_t__elapsedSec;
+    if (!BOOL__G__TimeValid)
+    {
+        return 0u;
+    }
+    uint32_t__elapsedSec = ((uint32_t)millis() - UINT32_T__G__TimeAnchorMs) / 1000u;
+    return UINT32_T__G__TimeAnchorSec + uint32_t__elapsedSec;
+}
+
+/* ==================== تنظیم ساعت (از فایل، مرورگر یا فریم برد) ==================== */
+static void func__Simple_TimeSet(uint32_t uint32_t__epochSec, bool bool__pushToBoard)
+{
+    if (uint32_t__epochSec < SIMPLE_TIME_VALID_MIN)
+    {
+        return;
+    }
+    UINT32_T__G__TimeAnchorSec = uint32_t__epochSec;
+    UINT32_T__G__TimeAnchorMs = (uint32_t)millis();
+    BOOL__G__TimeValid = true;
+    if (bool__pushToBoard)
+    {
+        BOOL__G__TimePushed = false;   /* در حلقه به برد گفته می‌شود */
+    }
+}
+
+/* ==================== ذخیره ساعت روی فایل ==================== */
+static void func__Simple_TimeSave(void)
+{
+    if (!BOOL__G__FsOk || !BOOL__G__TimeValid) return;
+    File file__f = LittleFS.open(SIMPLE_TIME_FILE, "w");
+    if (!file__f) return;
+    file__f.print("{\"ts\":");
+    file__f.print((unsigned long)UINT32_T__G__TimeAnchorSec);
+    file__f.print("}");
+    file__f.close();
+}
+
+/* ==================== خواندن ساعت از فایل (بعد از هر بوت) ==================== */
+static void func__Simple_TimeLoad(void)
+{
+    uint32_t uint32_t__savedSec;
+    int32_t int32_t__tsPos;
+    int32_t int32_t__tsEnd;
+
+    if (!BOOL__G__FsOk) return;
+    if (!LittleFS.exists(SIMPLE_TIME_FILE)) return;
+
+    File file__f = LittleFS.open(SIMPLE_TIME_FILE, "r");
+    if (!file__f) return;
+    String string__content = file__f.readString();
+    file__f.close();
+
+    int32_t__tsPos = string__content.indexOf("\"ts\":");
+    if (int32_t__tsPos < 0) return;
+    int32_t__tsPos += 5;
+    int32_t__tsEnd = string__content.indexOf("}", int32_t__tsPos);
+    if (int32_t__tsEnd <= int32_t__tsPos) return;
+    String string__value = string__content.substring(int32_t__tsPos, int32_t__tsEnd);
+    string__value.trim();
+
+    uint32_t__savedSec = (uint32_t)string__value.toInt();
+    /* لحظهٔ ذخیره‌شدن روی فایل نه‌فت‌نخورده مانده، پس لنگر را می‌گذاریم
+       روی همین ثانیه؛ از این لحظه به بعد با millis جلو می‌رود */
+    func__Simple_TimeSet(uint32_t__savedSec, false);
+}
+
+/* ==================== پرچم‌های ذخیره ====================
+   هر تاریخچه فقط وقتی عوض شود روی فلش نوشته می‌شود (عمر فلش ESP). */
+static bool BOOL__G__ChartsDirty = false;
+static bool BOOL__G__ChargeHistDirty = false;
+static bool BOOL__G__DiagDirty = false;
 
 /* ==================== ردیابی محلی خطا و برق برای ثبت حتی اگر STM32 نفرستد ==================== */
 static uint32_t UINT32_T__G__LastLocalFaultMask = 0u;
@@ -210,10 +308,16 @@ static uint8_t UINT8_T__G__UserCount = 0u;
 static char CHAR__G__CurrentUser[SIMPLE_USER_NAME_MAX + 1] = {0};
 static uint8_t UINT8_T__G__CurrentRole = 0u;
 static uint32_t UINT32_T__G__SessionStartMs = 0u;
-static bool BOOL__G__FsOk = false;
 
 /* ==================== تم ==================== */
 static uint8_t UINT8_T__G__Theme = 0u; /* 0=تیره اصلی، 1=روشن، 2=شب عمیق */
+
+/* ==================== کلید رمزنگاری فایل‌های حساس ====================
+   از شناسهٔ یکتای چیپ ساخته می‌شود؛ روی فلش ذخیره نمی‌شود و از بیرون
+   خوانده نمی‌شود. تا وقتی ساخته نشده، فایل‌های رمزشده باز نمی‌شوند. */
+static uint8_t UINT8_T__G__CryptoKey[SIMPLE_CRYPTO_KEY_LEN];
+static bool BOOL__G__CryptoKeyReady = false;
+static uint32_t UINT32_T__G__CryptoNonce = 0u;   /* شمارندهٔ یکتای هر نوشتن */
 
 /* ==================== وب سرور ==================== */
 static esp_web_server_t SIMPLE_WEB_SERVER_T__G__Server(SIMPLE_HTTP_PORT);

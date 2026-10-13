@@ -189,7 +189,18 @@ static void func__Sim_HttpSim(void)
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__answer);
 }
 
-/* ==================== حلقهٔ سیمولاتور ==================== */
+/* ==================== حلقهٔ سیمولاتور ====================
+   اگر SIMPLE_SIM_LINK_DOWN=1 باشد، برد در شروع بدون لینک بالا می‌آید تا
+   مسیر «بازگردانی از فایل» (ساعت/پارامترها/نمودارها) قابل آزمون باشد. */
+static void func__Sim_ApplyBootFlags(void)
+{
+    const char *char__ptr_linkDown = getenv("SIMPLE_SIM_LINK_DOWN");
+    if (char__ptr_linkDown != NULL && char__ptr_linkDown[0] == '1')
+    {
+        SIM_BOARD_STATE_T__G__Board.linkUp = false;
+    }
+}
+
 static void func__Sim_PrintBanner(void)
 {
     const char *char__ptr_portText = getenv("SIMPLE_SIM_PORT");
@@ -205,11 +216,12 @@ static void func__Sim_PrintBanner(void)
     printf("==========================================================\n\n");
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
     setvbuf(stdout, NULL, _IOLBF, 0);
 
     func__Sim_LoadShim();
+    func__Sim_ApplyBootFlags();
     func__Sim_PrintBanner();
 
     for (;;)
@@ -229,11 +241,22 @@ int main(void)
         }
         catch (const SimRestartRequest &)
         {
-            /* برد واقعی ریست می‌شود؛ اینجا فقط setup دوباره اجرا می‌شود و
-               وضعیت فایل‌سیستم سر جایش می‌ماند (سوکت‌ها با begin دوباره باز
-               می‌شوند) */
-            printf("[sim] ریستارت درخواست شد: setup دوباره اجرا می‌شود\n");
-            SIMPLE_WEB_SERVER_T__G__Server.clearRoutes();
+            /* روی برد واقعی ESP.restart حافظهٔ RAM را پاک می‌کند. اگر اینجا
+               فقط setup دوباره صدا زده شود، متغیرهای سراسری برنامه (مثل
+               پرچم ریبوت وای‌فای) پاک نمی‌شوند و «ریست» بی‌اثر می‌ماند.
+               پس مثل خود برد، برنامه از نو اجرا می‌شود: حافظه تازه، و فقط
+               فایل‌سیستم روی دیسک به‌جامی‌ماند. */
+            char char__exePath[512];
+            ssize_t ssize_t__len = readlink("/proc/self/exe", char__exePath, sizeof(char__exePath) - 1u);
+            printf("[sim] ریستارت: اجرای دوبارهٔ برنامه با حافظهٔ تازه\n");
+            fflush(stdout);
+            if (ssize_t__len > 0)
+            {
+                char__exePath[ssize_t__len] = '\0';
+                execv(char__exePath, argv);
+            }
+            if ((argc > 0) && (argv[0] != NULL)) { execv(argv[0], argv); }
+            return 0;   /* اگر اجرای دوباره ممکن نبود، بیرون بیا */
         }
     }
     return 0;

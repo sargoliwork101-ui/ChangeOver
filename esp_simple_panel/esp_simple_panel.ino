@@ -49,11 +49,15 @@ void setup(void)
     BOOL__G__FsOk = LittleFS.begin(true);
 #endif
 
+    /* کلید رمزنگاری از شناسهٔ چیپ ساخته می‌شود - پیش از هر خواندن فایل حساس */
+    func__Simple_CryptoKeyInit();
     func__Simple_AuthLoad();
     func__Simple_ThemeLoad();
     func__Simple_WifiLoad();
+    func__Simple_TimeLoad();          /* ساعت ذخیره‌شده - دیگر پرسیده نمی‌شود */
+    func__Simple_ParamsLoad();        /* پارامترهای خود برد از آخرین بار */
     func__Simple_ChargeHistoryLoad();
-    func__Simple_ChartsLoad();
+    func__Simple_ChartsLoad();        /* هر چهار بازه */
     func__Simple_DiagLoad();
 
     // بازیابی prev counts برای تشخیص شارژ بعد از ریستارت
@@ -71,6 +75,7 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/logout", HTTP_POST, func__Simple_HttpLogout);
     SIMPLE_WEB_SERVER_T__G__Server.on("/users", HTTP_GET, func__Simple_HttpUsers);
     SIMPLE_WEB_SERVER_T__G__Server.on("/users", HTTP_POST, func__Simple_HttpUsersPost);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/setpass", HTTP_POST, func__Simple_HttpSetPass);   /* تغییر رمز عبور */
     SIMPLE_WEB_SERVER_T__G__Server.on("/adduser", HTTP_POST, func__Simple_HttpAddUser);
     SIMPLE_WEB_SERVER_T__G__Server.on("/deluser", HTTP_POST, func__Simple_HttpDelUser);
     SIMPLE_WEB_SERVER_T__G__Server.on("/theme", HTTP_GET, func__Simple_HttpGetTheme);
@@ -107,14 +112,88 @@ void loop(void)
         bool__paramsReqDone = true;
     }
 
+    /* ساعت: RTC خود برد منبع دقیق‌تری است (پنل بین دو روشن‌شدن خواب است و
+       ساعتش عقب می‌ماند). اگر پنل ساعت نداشت یا با ساعت برد بیشتر از
+       SIMPLE_TIME_ADOPT_DIFF_SEC اختلاف داشت، ساعت برد را برمی‌داریم و ذخیره
+       می‌کنیم؛ این‌طور دیگر هیچ‌وقت از کاربر پرسیده نمی‌شود. */
+    if (UINT32_T__G__BoardTimeSec >= SIMPLE_TIME_VALID_MIN)
+    {
+        bool bool__adopt = !BOOL__G__TimeValid;
+        if (BOOL__G__TimeValid)
+        {
+            uint32_t uint32_t__panelSec = func__Simple_NowSec();
+            uint32_t uint32_t__gap = (UINT32_T__G__BoardTimeSec > uint32_t__panelSec)
+                ? (UINT32_T__G__BoardTimeSec - uint32_t__panelSec)
+                : (uint32_t__panelSec - UINT32_T__G__BoardTimeSec);
+            if (uint32_t__gap > SIMPLE_TIME_ADOPT_DIFF_SEC) bool__adopt = true;
+        }
+        if (bool__adopt)
+        {
+            func__Simple_TimeSet(UINT32_T__G__BoardTimeSec, false);
+            func__Simple_TimeSave();
+            BOOL__G__TimePushed = true;   /* ساعت از خود برد گرفته شد - نیازی به فرستادن نیست */
+        }
+    }
+    if (BOOL__G__TimeValid && BOOL__G__TlmSeen && !BOOL__G__TimePushed)
+    {
+        bool bool__fresh = ((uint32_t__now - UINT32_T__G__LastTlmMs) < SIMPLE_LINK_TIMEOUT_MS);
+        bool bool__due = false;
+
+        if (!bool__fresh)
+        {
+            /* لینک نبود؛ دفعهٔ بعد که آمد تأخیر از نو شمرده می‌شود */
+            UINT32_T__G__TimePushArmedMs = 0u;
+        }
+        else if (UINT32_T__G__TimePushArmedMs == 0u)
+        {
+            UINT32_T__G__TimePushArmedMs = uint32_t__now;   /* شروع تأخیر */
+        }
+        else if ((UINT32_T__G__TimePushMs == 0u) &&
+                 ((uint32_t__now - UINT32_T__G__TimePushArmedMs) >= SIMPLE_TIME_SYNC_DELAY_MS))
+        {
+            /* لینک چند ثانیه پایدار ماند - اولین ارسال */
+            bool__due = true;
+        }
+        else if ((UINT32_T__G__TimePushMs != 0u) &&
+                 ((uint32_t__now - UINT32_T__G__TimePushMs) > SIMPLE_TIME_RESEND_MS))
+        {
+            bool__due = true;                               /* تلاش دوبارهٔ دوره‌ای */
+        }
+
+        if (bool__due)
+        {
+            func__Simple_SendTimeSync(func__Simple_NowSec());
+            UINT32_T__G__TimePushMs = uint32_t__now;
+        }
+        /* برد وقتی ساعت را گرفت، در دیاگ خودش همان را گزارش می‌کند */
+        if (UINT32_T__G__BoardTimeSec >= SIMPLE_TIME_VALID_MIN)
+        {
+            uint32_t uint32_t__diff = (UINT32_T__G__BoardTimeSec > func__Simple_NowSec())
+                ? (UINT32_T__G__BoardTimeSec - func__Simple_NowSec())
+                : (func__Simple_NowSec() - UINT32_T__G__BoardTimeSec);
+            if (uint32_t__diff <= 120u) BOOL__G__TimePushed = true;
+        }
+    }
+
     // ذخیره دوره‌ای تاریخچه شارژ و نمودارها و دیاگ هر ۳۰ ثانیه
+    // هر کدام فقط اگر عوض شده باشد نوشته می‌شود (کم‌کردن فرسودگی فلش)
     static uint32_t uint32_t__lastSaveMs = 0u;
     if ((uint32_t__now - uint32_t__lastSaveMs) > 30000u)
     {
-        func__Simple_ChargeHistorySave();
-        func__Simple_ChartsSave();
-        func__Simple_DiagSave();
+        if (BOOL__G__ChargeHistDirty) func__Simple_ChargeHistorySave();
+        if (BOOL__G__ChartsDirty) func__Simple_ChartsSave();
+        if (BOOL__G__DiagDirty) func__Simple_DiagSave();
+        if (BOOL__G__BoardParamsDirty) func__Simple_ParamsSave();
         uint32_t__lastSaveMs = uint32_t__now;
+    }
+
+    /* ساعت هر ۳۰ دقیقه روی فایل تازه می‌شود تا بعد از قطع برق، اختلاف
+       با زمان واقعی بیشتر از همان ۳۰ دقیقه نشود (پنل RTC ندارد) */
+    static uint32_t uint32_t__lastTimeSaveMs = 0u;
+    if (BOOL__G__TimeValid && ((uint32_t__now - uint32_t__lastTimeSaveMs) > 1800000u))
+    {
+        func__Simple_TimeSave();
+        uint32_t__lastTimeSaveMs = uint32_t__now;
     }
 
     // ریبوت خودکار بعد از تغییر وای‌فای - ۲ ثانیه تاخیر
@@ -125,6 +204,8 @@ void loop(void)
             func__Simple_ChargeHistorySave();
             func__Simple_ChartsSave();
             func__Simple_DiagSave();
+            func__Simple_ParamsSave();
+            func__Simple_TimeSave();
 #if defined(ESP8266)
             ESP.restart();
 #else

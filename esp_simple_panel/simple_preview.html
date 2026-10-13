@@ -225,12 +225,17 @@ button.btn.sec{background:var(--in);color:var(--mu)}
 button.btn.a{background:var(--ac);color:#fff;border-color:var(--ac);box-shadow:0 6px 18px var(--acbg),var(--acglow)}
 button.btn.danger{background:var(--erbg);border-color:var(--erbd);color:var(--er)}
 .form{display:grid;gap:12px}
+.pass-wrap{position:relative;display:flex;align-items:center}
+.pass-wrap input{flex:1;padding-left:40px}
+.eye-btn{position:absolute;left:6px;top:50%;transform:translateY(-50%);background:transparent;border:0;color:var(--mu);cursor:pointer;font-size:15px;line-height:1;padding:6px 8px;border-radius:8px;font-family:Vazirmatn}
+.eye-btn:hover{color:var(--tx);background:var(--in)}
+.eye-btn.on{color:var(--ac)}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .login-box{max-width:400px;margin:24px auto}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:var(--r-full);font-size:10px;font-weight:800;letter-spacing:.4px}
 .badge.admin{background:var(--ac);color:#fff;box-shadow:0 2px 8px var(--acbg)} .badge.viewer{background:var(--in);color:var(--mu);border:1px solid var(--ln)}
 .theme-grid{display:grid;grid-template-columns:1fr;gap:12px}
-@media(min-width:600px){.theme-grid{grid-template-columns:1fr 1fr 1fr}}
+@media(min-width:600px){.theme-grid{grid-template-columns:1fr 1fr}}
 .theme-card{border:1px solid var(--ln);border-radius:14px;padding:14px;cursor:pointer;background:var(--in);text-align:center;transition:.22s cubic-bezier(.2,.8,.2,1);position:relative;overflow:hidden}
 .theme-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac);opacity:0;transition:.2s}
 .theme-card:hover{border-color:var(--ln2);transform:translateY(-3px) scale(1.01);box-shadow:var(--sh2)} .theme-card:hover::before{opacity:1}
@@ -329,7 +334,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
 @media(min-width:641px) and (max-width:900px){
  .half-grid{grid-template-columns:1fr 1fr}
  .stat-grid{grid-template-columns:1fr 1fr}
- .theme-grid{grid-template-columns:1fr 1fr 1fr !important}
+ .theme-grid{grid-template-columns:1fr 1fr !important}
 }
 /* Canvas responsive container */
 .canvas-wrap{position:relative;width:100%;overflow:hidden;border-radius:12px}
@@ -370,7 +375,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
   var SCALES = {"mv_per_count_24": 8.864468864468865, "mv_per_count_12": 4.8823313940961, "mv_per_count_adc": 0.8058608058608059, "vrefint_counts": 1489, "vdda_mv": 3300};          /* میلی‌ولت بر شمارش ADC (یا null) */
   var WIFI_SSID = "changeover_userpannel";
   var WIFI_PASS = "123456789";
-  var PANEL = {"T_VIN": 14, "T_V24": 15, "T_VLOW": 17, "T_VHIGH": 18, "T_FAULT": 19, "T_STATE1": 6, "T_STATE2": 13, "T_IMB": 25, "T_DEAD": 28, "FAULT_ADC": 1, "FAULT_BAT_LOST": 1, "FAULT_TECH": 1, "INPUT_CONN_THR": 21000, "INPUT_DISC_THR": 20000, "INPUT_OV_THR": 28000, "INPUT_OV_CLEAR": 27000, "BAT_VMIN": 21000, "BAT_VMAX": 29000, "HALF_VMIN": 10500, "HALF_VMAX": 14500, "CHG_VMIN": 21000, "CHG_VMAX": 29000, "RUN_HYST": 2, "CHG_HYST": 5, "ZERO_EXIT": 2, "ONE_EXIT": 3, "FULL_ENTER": 100, "FULL_EXIT": 95, "GREEN_PERIOD": 1000, "GREEN_MIN_OFF": 10, "YELLOW_PERIOD": 1000, "YELLOW_MIN_ON": 150, "YELLOW_MIN_REMAIN": 2};            /* ثابت‌های عددی خود پنل */
+  var PANEL = {"T_VIN": 14, "T_V24": 15, "T_VLOW": 17, "T_VHIGH": 18, "T_FAULT": 19, "T_STATE1": 6, "T_STATE2": 13, "T_IMB": 25, "T_DEAD": 28, "FAULT_ADC": 1, "FAULT_BAT_LOST": 1, "FAULT_TECH": 1, "INPUT_CONN_THR": 21000, "INPUT_DISC_THR": 20000, "INPUT_OV_THR": 28000, "INPUT_OV_CLEAR": 27000, "BAT_VMIN": 21000, "BAT_VMAX": 29000, "HALF_VMIN": 10500, "HALF_VMAX": 14500, "CHG_VMIN": 21000, "CHG_VMAX": 29000, "RUN_HYST": 2, "CHG_HYST": 5, "ZERO_EXIT": 2, "ONE_EXIT": 3, "FULL_ENTER": 100, "FULL_EXIT": 95, "GREEN_PERIOD": 1000, "GREEN_MIN_OFF": 10, "YELLOW_PERIOD": 1000, "YELLOW_MIN_ON": 150, "YELLOW_MIN_REMAIN": 2, "CHART_PAD_L": 34, "CHART_PAD_R": 8, "CHART_PAD_T": 8, "CHART_PAD_B": 8};            /* ثابت‌های عددی خود پنل */
   var BOOT = {"vin": 24000, "vpack": 25500, "vlow": 12500, "vhigh": 13000};              /* نقطهٔ شروع اسلایدرها */
   var MA_PER_COUNT = 0.877670;
   var UV_PER_COUNT = 8.774;
@@ -410,8 +415,10 @@ code,pre,.mono{font-family:Vazirmatn !important}
                    chargeCountCh1: 21, chargeCountCh2: 21, chargeSecCh1: 7031, chargeSecCh2: 6687,
                    resetCount: 3, boardTime: Math.floor(Date.now() / 1000) };
   var mock = { user: '', role: 0, theme: 0, ssid: WIFI_SSID, pass: WIFI_PASS,
+               userPass: '',   /* رمز عوض‌شدهٔ کاربر در حالت آفلاین - خالی یعنی پیش‌فرض‌ها */
                users: [{ name: 'admin', role: 1 }] };
-  var mockActive = (location.protocol === 'file:');
+  var mockActive = (location.protocol === 'file:');   /* فقط وقتی فایلی باز شده باشد */
+  var mockUntil = 0;                                  /* اگر سرور نبود، موقتاً جای بردی */
   var originalFetch = window.fetch ? window.fetch.bind(window) : null;
   var controls = [];                /* کنترل‌هایی که خودشان را از sim رنگ می‌کنند */
 
@@ -485,7 +492,8 @@ code,pre,.mono{font-family:Vazirmatn !important}
       ',"n":' + counters.frames + ',"ce":' + sim.ce + ',"vm":' + sim.vm +
       ',"inputPresent":' + (inputPresent() ? 1 : 0) +
       ',"user":"' + mock.user + '","role":' + mock.role + ',"theme":' + mock.theme +
-      ',"boardTime":' + counters.boardTime + ',"bt":' + counters.boardTime + ',"t":[';
+      ',"boardTime":' + counters.boardTime + ',"bt":' + counters.boardTime +
+      ',"timeOk":1,"t":[';
     for (var i = 0; i < TLM_N; i++) { body += (i ? ',' : '') + built.t[i]; }
     return body + ']' + boardParamsBody() + '}';
   }
@@ -559,20 +567,38 @@ code,pre,.mono{font-family:Vazirmatn !important}
     if (path === 'diag') { return jsonResponse(diagJson()); }
     if (path === 'theme') { return jsonResponse('{"theme":' + mock.theme + '}'); }
     if (path === 'settheme') {
-      mock.theme = parseInt(query(url, 'theme') || '0', 10) || 0;
+      mock.theme = (parseInt(query(url, 'theme') || '0', 10) === 1) ? 1 : 0;   /* فقط تیره/روشن */
       return jsonResponse('{"ok":1}');
     }
     if (path === 'login') {
       var credentials = bodyJson(options);
       var user = credentials.user !== undefined ? credentials.user : query(url, 'user');
       var pass = credentials.pass !== undefined ? credentials.pass : query(url, 'pass');
-      if ((user === 'admin' && pass === 'admin') || (user === 'viewer' && pass === 'viewer')) {
+      var defaultPass = (user === 'admin') ? 'admin' : ((user === 'viewer') ? 'viewer' : null);
+      var expected = (mock.userPass && user === mock.user) ? mock.userPass : defaultPass;
+      if (expected !== null && pass === expected) {
         mock.user = user; mock.role = (user === 'admin') ? 1 : 0;
         return jsonResponse('{"ok":1,"user":"' + user + '","role":' + mock.role + '}');
       }
       return jsonResponse('{"ok":0,"e":"wrong"}', 401);
     }
     if (path === 'logout') { mock.user = ''; mock.role = 0; return jsonResponse('{"ok":1}'); }
+    if (path === 'setpass') {
+      var change = bodyJson(options);
+      var target = (change.user || '').trim();
+      if (!mock.user) { return jsonResponse('{"ok":0,"e":"login"}', 403); }
+      if (!target || !change.new) { return jsonResponse('{"ok":0,"e":"user/new"}', 400); }
+      if ((change.new || '').length < 4) { return jsonResponse('{"ok":0,"e":"pass 4-32"}', 400); }
+      if (change.new2 && change.new2 !== change.new) { return jsonResponse('{"ok":0,"e":"mismatch"}', 400); }
+      if (mock.role !== 1 && target !== mock.user) { return jsonResponse('{"ok":0,"e":"self"}', 403); }
+      var wantOld = (mock.userPass && target === mock.user) ? mock.userPass
+                                                           : ((target === 'admin') ? 'admin' : 'viewer');
+      if (target === mock.user && (change.old || '') !== wantOld) {
+        return jsonResponse('{\"ok\":0,\"e\":\"old\"}', 400);
+      }
+      if (target === mock.user) { mock.userPass = change.new; }   /* در حالت آفلاین هم رمز عوض می‌شود */
+      return jsonResponse('{"ok":1}');
+    }
     if (path === 'users') {
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
       if (method === 'POST') {
@@ -617,21 +643,47 @@ code,pre,.mono{font-family:Vazirmatn !important}
       return jsonResponse('{"ok":1}');
     }
     if (path === 'clear') { return jsonResponse('{"ok":1}'); }
-    if (path === 'sim') { return jsonResponse('{"ok":1}'); }
+    if (path === 'sim') {
+      /* [FA] در حالت آفلاین هم همان پارامترهای /sim برد شبیه‌سازی‌شده اعمال
+         می‌شود تا تب سیمولاتور بیرون از سرور زنده هم اثر داشته باشد */
+      var num = function (name) {
+        var raw = query(url, name);
+        return raw === '' ? null : parseInt(raw, 10);
+      };
+      var setNumber = function (name, field) { var v = num(name); if (v !== null && !isNaN(v)) { sim[field] = v; } };
+      setNumber('vin', 'vin'); setNumber('vpack', 'vpack');
+      setNumber('vlow', 'vlow'); setNumber('vhigh', 'vhigh');
+      setNumber('s1', 'state1'); setNumber('s2', 'state2');
+      setNumber('fault', 'fault'); setNumber('dead', 'deadMask');
+      var linkFlag = num('link'); if (linkFlag !== null) { sim.linkUp = (linkFlag === 1); }
+      var param = num('p74'); if (param !== null) { board.vmin = param; }
+      param = num('p75'); if (param !== null) { board.vmax = param; }
+      param = num('p66'); if (param !== null) { board.gPer = param; }
+      param = num('p67'); if (param !== null) { board.gOff = param; }
+      return jsonResponse('{"ok":1}');
+    }
     return jsonResponse('{"ok":0,"e":"sim"}', 404);
   }
 
   /* آفلاین هر مسیر داخلی از همین‌جا جواب می‌گیرد؛ اگر سرور سیمولاتور بالا
      باشد (حالت زنده) درخواست واقعاً به سرور می‌رود */
+  /* کلید آزمون: اگر خود آزمون این را true کند، هیچ‌وقت دادهٔ جعلی جای
+     دادهٔ واقعی سرور را نمی‌گیرد (برای سنجش دقیق مسیر واقعی) */
+  var noMock = (window.__CO_NO_MOCK__ === true);
   window.fetch = function (url, options) {
-    if (mockActive) {
+    if (mockActive && !noMock) {
       return Promise.resolve(mockFetch(String(url), options));
     }
     if (!originalFetch) { return Promise.resolve(mockFetch(String(url), options)); }
+    if (!noMock && Date.now() < mockUntil) {   /* سرور چند لحظه پیش جواب نداده بود */
+      return Promise.resolve(mockFetch(String(url), options));
+    }
     return originalFetch(url, options).catch(function (error) {
       var path = routeName(String(url));
       if (path === 't' || path === 'charts' || path === 'diag') {
-        mockActive = true;             /* برد نیست: سیمولاتور جایش را می‌گیرد */
+        /* یک بار جواب نداد - فقط چند ثانیه حالت شبیه‌ساز تا داده جعلی
+           جای داده واقعی را برای همیشه نگیرد؛ دفعه بعد دوباره سرور امتحان می‌شود */
+        mockUntil = Date.now() + 10000;
         return Promise.resolve(mockFetch(String(url), options));
       }
       throw error;
@@ -861,7 +913,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
   <div class="ti">ورود</div>
   <div class="form">
    <div style="display:grid;gap:6px"><span style="font-size:11px;color:var(--mu);font-weight:700">نام کاربری</span><input id="loginUserMain" placeholder="admin"></div>
-   <div style="display:grid;gap:6px"><span style="font-size:11px;color:var(--mu);font-weight:700">رمز عبور</span><input id="loginPassMain" type="password" placeholder="••••••••"></div>
+   <div style="display:grid;gap:6px"><span style="font-size:11px;color:var(--mu);font-weight:700">رمز عبور</span><div class="pass-wrap"><input id="loginPassMain" type="password" placeholder="••••••••"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('loginPassMain',this)">👁</button></div></div>
    <button class="btn pri" onclick="doLoginMain()" style="width:100%;margin-top:4px">ورود به پنل</button>
    <div id="loginMsgMain" style="font-size:12px;color:var(--mu);text-align:center;min-height:18px"></div>
    <div style="font-size:10.5px;color:var(--mu2);text-align:center;margin-top:8px;line-height:1.6">پیش‌فرض: نام کاربری <b style="color:var(--tx)">admin</b> و رمز <b style="color:var(--tx)">admin</b></div>
@@ -1030,7 +1082,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
    </div>
    <div style="font-size:10px;color:var(--mu);margin-bottom:8px">محور افقی زمان واقعی - هر نقطه یک ساعت یا یک روز</div>
    <div class="canvas-wrap"><canvas id="cPct" width="700" height="180"></canvas></div>
-   <div id="cPctLabels" style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
+   <div id="cPctLabels" style="font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
    <div id="pctInfo" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
     <span class="bdg ac" id="pctCurrent">-- ٪</span>
     <span class="bdg" id="pctRangeInfo">--</span>
@@ -1051,7 +1103,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
    </div>
    <div style="font-size:10.5px;color:var(--mu);margin-bottom:10px;line-height:1.6">نمودار نشان می‌دهد هر باتری در چه روز و ساعتی شارژ کامل شده</div>
    <div class="canvas-wrap"><canvas id="cCharge" width="700" height="200"></canvas></div>
-   <div id="cChargeLabels" style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
+   <div id="cChargeLabels" style="font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px">
     <span style="font-size:11px;color:var(--mu)">لیست ۲۰ شارژ آخر</span>
     <button class="btn danger" id="clearChargeBtn" style="display:none;padding:4px 10px;font-size:10px;min-height:26px" onclick="clearHistory('charge')">پاک کردن تاریخچه شارژ</button>
@@ -1077,9 +1129,9 @@ code,pre,.mono{font-family:Vazirmatn !important}
     <div style="position:absolute;left:0;top:0;bottom:18px;width:38px;display:flex;flex-direction:column;justify-content:space-between;font-size:9.5px;color:var(--mu);padding:6px 2px 6px 0;text-align:left;pointer-events:none;direction:ltr;border-left:1px dashed var(--ln);">
      <span>30V</span><span>27V</span><span>24V</span><span>21V</span><span>18V</span>
     </div>
-    <canvas id="cVolt" width="700" height="200" style="margin-left:40px"></canvas>
+    <canvas id="cVolt" width="700" height="200"></canvas>
    </div>
-   <div id="cVoltLabels" style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;direction:ltr;margin-left:40px"></div>
+   <div id="cVoltLabels" style="font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
    <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;flex-wrap:wrap;gap:8px"><span id="voltRangeInfo">--</span><span id="voltMinMax">--</span><span id="voltCountInfo" style="color:var(--mu2)">-- نمونه</span></div>
   </div>
     <div class="cd"><div class="ti">۲۰ قطع و وصل آخر برق شهر</div><div id="powerLog" class="log">--</div></div>
@@ -1090,7 +1142,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
    <div class="ti">ورود به پنل</div>
    <div class="form">
     <input id="loginUser" placeholder="نام کاربری - پیش‌فرض admin">
-    <input id="loginPass" type="password" placeholder="رمز - پیش‌فرض admin">
+    <div class="pass-wrap"><input id="loginPass" type="password" placeholder="رمز - پیش‌فرض admin"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('loginPass',this)">👁</button></div>
     <button class="btn pri" onclick="doLogin()">ورود</button>
     <div id="loginMsg" style="font-size:12px;color:var(--mu)"></div>
    </div>
@@ -1098,22 +1150,17 @@ code,pre,.mono{font-family:Vazirmatn !important}
 
   <div id="settingsContent" style="display:none">
    <div class="cd">
-    <div class="ti">تم - ۳ مدل حرفه‌ای - فقط ادمین</div>
-    <div class="theme-grid" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="ti">تم - دو حالت: تیره و روشن - فقط ادمین</div>
+    <div class="theme-grid" style="grid-template-columns:1fr 1fr">
      <div class="theme-card" id="themeCard0" onclick="selectTheme(0)">
       <div class="theme-preview" style="background:#070a10"><div class="tp1" style="background:#121826"></div><div class="tp2" style="background:#5b8def"></div><div class="tp3" style="background:#1ee6a0"></div></div>
-      <div class="theme-name">تیره حرفه‌ای</div>
+      <div class="theme-name">تیره</div>
       <div class="theme-desc">پیش‌فرض</div>
      </div>
      <div class="theme-card" id="themeCard1" onclick="selectTheme(1)">
       <div class="theme-preview" style="background:#f6f8fb"><div class="tp1" style="background:#ffffff"></div><div class="tp2" style="background:#3b6bf6"></div><div class="tp3" style="background:#059669"></div></div>
-      <div class="theme-name">روشن مدرن</div>
+      <div class="theme-name">روشن</div>
       <div class="theme-desc">روز</div>
-     </div>
-     <div class="theme-card" id="themeCard2" onclick="selectTheme(2)">
-      <div class="theme-preview" style="background:#030508"><div class="tp1" style="background:#0c101a"></div><div class="tp2" style="background:#6b9bff"></div><div class="tp3" style="background:#2ee6a6"></div></div>
-      <div class="theme-name">تیره عمیق</div>
-      <div class="theme-desc">OLED</div>
      </div>
     </div>
     <div id="themeMsg" style="font-size:12px;color:var(--mu);margin-top:10px"></div>
@@ -1124,7 +1171,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
     <div class="form">
      <div class="kv" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--ln)"><span style="color:var(--mu)">نام فعلی</span><b id="wifiCurrentSsid" style="font-family:Vazirmatn">--</b></div>
      <input id="wifiNewSsid" placeholder="نام وای‌فای جدید - مثل changeover_userpannel" maxlength="32">
-     <input id="wifiNewPass" type="password" placeholder="رمز جدید - حداقل ۸ کاراکتر" maxlength="32">
+     <div class="pass-wrap"><input id="wifiNewPass" type="password" placeholder="رمز جدید - حداقل ۸ کاراکتر" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('wifiNewPass',this)">👁</button></div>
      <button class="btn pri" onclick="setWifi()">ذخیره وای‌فای - نیاز به ریستارت برد</button>
      <div id="wifiMsg" style="font-size:11px;color:var(--mu);line-height:1.6">بعد از ذخیره، برد را خاموش و روشن کنید تا با نام جدید بالا بیاید</div>
     </div>
@@ -1149,6 +1196,19 @@ code,pre,.mono{font-family:Vazirmatn !important}
      <button class="btn pri" onclick="addUser()">افزودن / ویرایش کاربر</button>
      <div class="row2"><input id="delUserName" placeholder="نام کاربری برای حذف"><button class="btn danger" onclick="delUser()">حذف کاربر</button></div>
      <div id="userMsg" style="font-size:12px;color:var(--mu)"></div>
+    </div>
+   </div>
+
+   <div class="cd">
+    <div class="ti">تغییر رمز عبور</div>
+    <div style="font-size:11px;color:var(--mu);line-height:1.7;margin-bottom:10px">هر کاربر رمز خودش را عوض می‌کند (رمز فعلی را باید بداند). ادمین رمز هر کاربری را می‌تواند عوض کند. رمز جدید حداقل ۴ کاراکتر.</div>
+    <div class="form">
+     <input id="setPassUser" placeholder="نام کاربری" maxlength="24">
+     <div class="pass-wrap"><input id="setPassOld" type="password" placeholder="رمز فعلی" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('setPassOld',this)">👁</button></div>
+     <div class="pass-wrap"><input id="setPassNew" type="password" placeholder="رمز جدید - حداقل ۴ کاراکتر" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('setPassNew',this)">👁</button></div>
+     <div class="pass-wrap"><input id="setPassNew2" type="password" placeholder="تکرار رمز جدید" maxlength="32"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('setPassNew2',this)">👁</button></div>
+     <button class="btn pri" onclick="setPass()">تغییر رمز عبور</button>
+     <div id="setPassMsg" style="font-size:12px;color:var(--mu);min-height:18px"></div>
     </div>
    </div>
 
@@ -1177,10 +1237,11 @@ code,pre,.mono{font-family:Vazirmatn !important}
 <script>
 let currentTheme=0;
 function applyTheme(t){
+ t=(t===1)?1:0;   /* فقط دو تم داریم: ۰ تیره، ۱ روشن (تم سوم حذف شد) */
  currentTheme=t;
  document.body.setAttribute('data-theme', String(t));
  localStorage.setItem('co_theme', String(t));
- for(let i=0;i<=2;i++){ let c=document.getElementById('themeCard'+i); if(c) c.classList.toggle('a', i===t); }
+ for(let i=0;i<=1;i++){ let c=document.getElementById('themeCard'+i); if(c) c.classList.toggle('a', i===t); }
 }
 function selectTheme(t){
  applyTheme(t);
@@ -1240,7 +1301,18 @@ function vToPctPackChg(v){ return vToPctMap(v, brd.cvmin, brd.cvmax); }
 
 function fmtSec(s){ if(!s) return '--'; let h=Math.floor(s/3600); let m=Math.floor((s%3600)/60); return h+' ساعت '+m+' دقیقه'; }
 function fmtSecShort(s){ if(!s) return '--'; let h=Math.floor(s/3600); let m=Math.floor((s%3600)/60); return h+'h '+m+'m'; }
-function fmtTime(ts){ if(!ts) return '--'; let d=new Date(ts*1000); return d.toLocaleString('fa-IR'); }
+/* زمان زنده با ثانیه - برای «زمان کل شارژ» و «کارکرد برد» که کاربر باید
+   ببیند همین حالا دارد می‌شمارد (قبلاً فقط ساعت و دقیقه بود و ثابت به نظر می‌رسید) */
+function fmtSecLive(s){
+ if(s===undefined || s===null || isNaN(s)) return '--';
+ s=Math.max(0, Math.floor(Number(s)));
+ let h=Math.floor(s/3600), m=Math.floor((s%3600)/60), sec=s%60;
+ let out='';
+ if(h>0) out+=h+' ساعت ';
+ if(h>0 || m>0) out+=m+' دقیقه ';
+ return out+sec+' ثانیه';
+}
+function fmtTime(ts){ if(!ts || ts<1000000000) return 'زمان نامعلوم'; let d=new Date(ts*1000); return d.toLocaleString('fa-IR'); }
 function stateText(s){ const m={0:'خاموش',1:'در حال شارژ',2:'تکمیل شارژ',3:'آماده',4:'راه‌اندازی',5:'بررسی ورودی',6:'انتظار',7:'خطا',8:'باتری قطع',9:'دستی'}; return m[s]||('حالت '+s); }
 function faultText(mask){
  let t=[];
@@ -1402,9 +1474,7 @@ function updateChargingAnim(){
   else if(current<=bounds.base){ current=bounds.base; dir=1; }
   return {current, dir};
  }
- let mainBounds=getChargingBounds(g_mainPct);
- let rM=animStep(g_mainAnim, g_mainDir, mainBounds);
- g_mainAnim=rM.current; g_mainDir=rM.dir;
+ /* پک ۲۴ ولتی عمداً انیمیشن بالا/پایین ندارد (درخواست کاربر: این لرزش لازم نیست) */
  let highBounds=getChargingBounds(g_highPct);
  let rH=animStep(g_highAnim, g_highDir, highBounds);
  g_highAnim=rH.current; g_highDir=rH.dir;
@@ -1419,7 +1489,7 @@ function updateChargingAnim(){
   let waveId=id==='batHighFill'?'batHighWave':id==='batLowFill'?'batLowWave':id==='batMainFill'?'batMainWave':null;
   let waveEl=waveId?document.getElementById(waveId):null; if(waveEl) waveEl.setAttribute('transform','translate(0,'+y+')');
  }
- if(g_isCharging){ setFillAnim('batMainFill', g_mainAnim, true); let bM=document.getElementById('batMainBolt'); if(bM) bM.classList.add('show'); let wM=document.getElementById('batMainWrap'); if(wM) wM.classList.add('charging'); }
+ if(g_isCharging){ let bM=document.getElementById('batMainBolt'); if(bM) bM.classList.add('show'); let wM=document.getElementById('batMainWrap'); if(wM) wM.classList.add('charging'); }
  if(g_ch1Charging){ setFillAnim('batHighFill', g_highAnim, true); let bH=document.getElementById('batHighBolt'); if(bH) bH.classList.add('show'); let wH=document.getElementById('batHighWrap'); if(wH) wH.classList.add('charging'); } else { let bH=document.getElementById('batHighBolt'); if(bH) bH.classList.remove('show'); let wH=document.getElementById('batHighWrap'); if(wH) wH.classList.remove('charging'); }
  if(g_ch2Charging){ setFillAnim('batLowFill', g_lowAnim, true); let bL=document.getElementById('batLowBolt'); if(bL) bL.classList.add('show'); let wL=document.getElementById('batLowWrap'); if(wL) wL.classList.add('charging'); } else { let bL=document.getElementById('batLowBolt'); if(bL) bL.classList.remove('show'); let wL=document.getElementById('batLowWrap'); if(wL) wL.classList.remove('charging'); }
 }
@@ -1460,8 +1530,7 @@ function renderLeds(){
  else if(scn==='batt'){ if(updGreenBlink(stablePct)) g.classList.add('on-green'); }
  else if(scn==='full' || scn==='inputok'){ g.classList.add('on-green'); }
  else if(scn==='charging'){ g.classList.add('on-green'); if(updYellowBlink(chgStablePct)) y.classList.add('on-yellow'); }
- let batMainFill=document.getElementById('batMainFill');
- if(batMainFill){ if(scn==='batt'){ batMainFill.style.opacity = greenBlink.isOn ? '1' : '0.15'; } else { batMainFill.style.opacity='1'; } }
+
 }
 
 let chartRanges={pct:'1d',charge:'1d',volt:'1d'};
@@ -1493,101 +1562,184 @@ function setChartRange(chart, r){
 function setRange(r){ setChartRange('pct', r); setChartRange('charge', r); setChartRange('volt', r); }
 
 function fmtTimeLabel(ts, range){
- if(!ts) return '';
+ if(!ts || ts<1000000000) return '';
  let d=new Date(ts*1000);
  if(range==='1d'){ return d.toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'}); }
  else if(range==='7d'){ return d.toLocaleDateString('fa-IR',{weekday:'short',hour:'2-digit'}); }
  else { return d.toLocaleDateString('fa-IR',{month:'short',day:'numeric'}); }
 }
 
+/* ==================== ابزارهای مشترک نمودارها ====================
+   هر نمودار یک ناحیهٔ ترسیم دارد: از چپ به‌اندازهٔ محور عمودی و از راست
+   کمی فاصله. همین اعداد برای برچسب‌های محور زمان هم استفاده می‌شوند تا
+   برچسب دقیقاً زیر نقطهٔ خودش بنشیند. */
+const CHART_PAD_L=34, CHART_PAD_R=8, CHART_PAD_T=8, CHART_PAD_B=8;
+function chartPlotWidth(w){ return w - CHART_PAD_L - CHART_PAD_R; }
+function chartX(i, n, w){
+ if(n<2) return CHART_PAD_L + chartPlotWidth(w)/2;
+ return CHART_PAD_L + (i/(n-1))*chartPlotWidth(w);
+}
+function chartY(v, min, max, h){
+ let rangeVal=(max-min)||1;
+ let t=(v-min)/rangeVal;
+ if(t<0) t=0; if(t>1) t=1;
+ return CHART_PAD_T + (1-t)*(h - CHART_PAD_T - CHART_PAD_B);
+}
+function faNum(v){ return Number(v).toLocaleString('fa-IR',{maximumFractionDigits:1}); }
+/* محور عمودی: خط راهنما + عدد، از بالا به پایین */
+function drawAxisY(ctx, ticks, min, max, w, h, styles, format){
+ let line=styles.getPropertyValue('--mu').trim()||'#64748b';
+ ctx.setLineDash([4,5]);
+ ctx.strokeStyle='rgba(100,116,139,.22)';
+ ctx.fillStyle=line;
+ ctx.font='9px Vazirmatn';
+ ctx.textAlign='right';
+ ctx.textBaseline='middle';
+ for(let i=0;i<ticks.length;i++){
+  let y=chartY(ticks[i], min, max, h);
+  ctx.beginPath(); ctx.moveTo(CHART_PAD_L, y); ctx.lineTo(w-CHART_PAD_R, y); ctx.stroke();
+  ctx.fillText(format?format(ticks[i]):faNum(ticks[i]), CHART_PAD_L-5, y);
+ }
+ ctx.setLineDash([]);
+ ctx.textAlign='left';
+ ctx.textBaseline='alphabetic';
+}
+/* برچسب‌های محور زمان: هرکدام با درصد موقعیت، پس با نقطه‌اش هم‌تراز است */
+function drawTimeLabels(labelId, timeData, range, w){
+ let div=document.getElementById(labelId); if(!div) return;
+ let n=timeData?timeData.length:0;
+ let html='';
+ if(n>0){
+  let count=Math.min(5, n);
+  let last=-1;
+  for(let k=0;k<count;k++){
+   let i=(count===1)?0:Math.round(k*(n-1)/(count-1));
+   if(i===last) continue;
+   last=i;
+   let pct=(n<2)?50:(chartX(i,n,w)/w*100);
+   html+='<span style="position:absolute;left:'+pct.toFixed(2)+'%;transform:translateX(-50%);white-space:nowrap">'+fmtTimeLabel(timeData[i], range)+'</span>';
+  }
+ }
+ div.style.display='block';
+ div.style.position='relative';
+ div.style.height='16px';
+ if(div.innerHTML!==html) div.innerHTML=html;
+}
+/* پیام روی نمودار بی‌داده (نمودار پاک نمی‌شود، فقط پیام می‌آید) */
+function drawChartNotice(ctx, w, h, styles, text){
+ ctx.fillStyle=styles.getPropertyValue('--mu').trim()||'#64748b';
+ ctx.font='12px Vazirmatn';
+ ctx.textAlign='center';
+ ctx.fillText(text, w/2, h/2);
+ ctx.textAlign='left';
+}
+function chartSignature(parts){ return parts.join('|'); }
+
 function drawChart(canvasId, data, color, min, max, timeData, range){
  let c=document.getElementById(canvasId); if(!c) return;
+ let n=(data&&data.length)?data.length:0;
+ let sig=chartSignature(['p', range, n, n?data[n-1]:'-', n?(timeData&&timeData[n-1]||0):0, color]);
+ if(c._sig===sig && c._drawn){ return; }   /* همان تصویر: دوباره رسم نکن (بدون چشمک) */
+ c._sig=sig; c._drawn=true;
+
  let ctx=c.getContext('2d'); let w=c.width, h=c.height;
  let styles=getComputedStyle(document.body);
  let ln=styles.getPropertyValue('--ln').trim()||'#1c2940';
  ctx.clearRect(0,0,w,h);
  ctx.strokeStyle=ln; ctx.lineWidth=1; ctx.strokeRect(0,0,w,h);
- ctx.strokeStyle='rgba(100,116,139,.22)'; ctx.setLineDash([4,5]);
+
  c._chartData=data; c._chartTime=timeData; c._chartRange=range; c._chartColor=color; c._chartMin=min; c._chartMax=max;
  if(!c._hasTooltip){
   c.addEventListener('mousemove', function(e){
+   let list=c._chartData||[]; if(list.length===0) return;
    let rect=c.getBoundingClientRect(); let mx=e.clientX-rect.left; let scaleX=w/rect.width;
-   let idx=Math.round((mx*scaleX / w) * (data.length-1));
-   if(idx<0) idx=0; if(idx>=data.length) idx=data.length-1;
-   let val=data[idx]; let ts=timeData?timeData[idx]:null;
+   let plotX=(mx*scaleX)-CHART_PAD_L;
+   let idx=(list.length<2)?0:Math.round((plotX/chartPlotWidth(w))*(list.length-1));
+   if(idx<0) idx=0; if(idx>=list.length) idx=list.length-1;
+   let val=list[idx]; let ts=c._chartTime?c._chartTime[idx]:null;
    let tip=document.getElementById('chartTooltip');
-   if(tip && val!=null){ let dStr=ts?fmtTime(ts):''; tip.innerHTML='<b>'+val.toFixed(1)+'</b><span>'+(dStr||'')+'</span>'; tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-40)+'px'; tip.classList.add('show'); }
+   if(tip && val!=null){ let dStr=ts?fmtTime(ts):''; tip.innerHTML='<b>'+faNum(val)+' ٪</b><span>'+(dStr||'')+'</span>'; tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-40)+'px'; tip.classList.add('show'); }
   });
   c.addEventListener('mouseleave', function(){ let tip=document.getElementById('chartTooltip'); if(tip) tip.classList.remove('show'); });
   c._hasTooltip=true;
  }
- if(data && data.length>1){ for(let i=1;i<4;i++){ let x=(i/4)*w; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); } }
- ctx.setLineDash([]);
- if(!data || data.length===0) return;
- let rangeVal=(max-min)||1;
+
+ drawAxisY(ctx, [0,25,50,75,100], min, max, w, h, styles, function(v){ return faNum(v)+'٪'; });
+
+ if(n===0){
+  drawChartNotice(ctx, w, h, styles, 'هنوز نمونه‌ای ثبت نشده - ساعت را یک‌بار تنظیم کنید');
+  drawTimeLabels(canvasId+'Labels', [], range, w);
+  return;
+ }
+
  let grad=ctx.createLinearGradient(0,0,0,h); grad.addColorStop(0, color+'38'); grad.addColorStop(1, color+'06');
- if(data.length>=2){
+ if(n>=2){
   ctx.beginPath();
-  for(let i=0;i<data.length;i++){ let x=(i/(data.length-1))*w; let v=data[i]; if(v==null) continue; let y=h - ((v-min)/rangeVal)*h; if(i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
-  ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+  for(let i=0;i<n;i++){ let x=chartX(i,n,w); let v=data[i]; if(v==null) continue; let y=chartY(v,min,max,h); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+  ctx.lineTo(w-CHART_PAD_R,h-CHART_PAD_B); ctx.lineTo(CHART_PAD_L,h-CHART_PAD_B); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
   ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.4; ctx.lineJoin='round'; ctx.lineCap='round';
-  for(let i=0;i<data.length;i++){ let x=(i/(data.length-1))*w; let v=data[i]; if(v==null) continue; let y=h - ((v-min)/rangeVal)*h; if(i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+  for(let i=0;i<n;i++){ let x=chartX(i,n,w); let v=data[i]; if(v==null) continue; let y=chartY(v,min,max,h); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
   ctx.stroke();
-  let last=data[data.length-1]; let y=h - ((last-min)/rangeVal)*h; ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=14; ctx.arc(w,y,4,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+  let last=data[n-1]; let y=chartY(last,min,max,h);
+  ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=14; ctx.arc(chartX(n-1,n,w),y,4,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
  } else {
-  // یک نقطه هم نشان بده
-  let v=data[0]; let y=h - ((v-min)/rangeVal)*h; ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=14; ctx.arc(w/2,y,5,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+  let y=chartY(data[0],min,max,h);
+  ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=14; ctx.arc(chartX(0,1,w),y,5,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
  }
- if(timeData && range){
-  let labelId=canvasId+'Labels'; let labelDiv=document.getElementById(labelId);
-  if(labelDiv){ let html=''; let step=Math.max(1, Math.floor(timeData.length/4)); for(let i=0;i<timeData.length;i+=step){ html+='<span>'+fmtTimeLabel(timeData[i], range)+'</span>'; } if(timeData.length%step!==0 && timeData.length>1) html+='<span>'+fmtTimeLabel(timeData[timeData.length-1], range)+'</span>'; labelDiv.innerHTML=html; }
- }
+ drawTimeLabels(canvasId+'Labels', timeData, range, w);
 }
 
-// نمودار ترکیبی ولتاژ - دو خط روی هم + محور عمودی
+/* نمودار ترکیبی ولتاژ - دو خط روی هم + محور عمودی */
 function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
  let c=document.getElementById(canvasId); if(!c) return;
+ let n=(vinData&&vinData.length)?vinData.length:0;
+ let sig=chartSignature(['v', range, n, n?vinData[n-1]:'-', n?vpackData[n-1]:'-', n?(timeData&&timeData[n-1]||0):0]);
+ if(c._sig===sig && c._drawn){ return; }
+ c._sig=sig; c._drawn=true;
+
  let ctx=c.getContext('2d'); let w=c.width, h=c.height;
  let styles=getComputedStyle(document.body);
  let ln=styles.getPropertyValue('--ln').trim()||'#1c2940';
  ctx.clearRect(0,0,w,h);
  ctx.strokeStyle=ln; ctx.lineWidth=1; ctx.strokeRect(0,0,w,h);
- // گرید افقی برای ولتاژ ۱۸-۳۰
- ctx.strokeStyle='rgba(100,116,139,.18)'; ctx.setLineDash([4,5]);
- for(let v=18; v<=30; v+=3){ let y=h - ((v*1000-18000)/(30000-18000))*h; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
- ctx.setLineDash([]);
- // دیتا
- if(!vinData || vinData.length===0) return;
+
  let min=18000, max=30000, rangeVal=max-min;
+ drawAxisY(ctx, [18000,21000,24000,27000,30000], min, max, w, h, styles, function(v){ return faNum(v/1000)+'V'; });
+
+ if(n===0){
+  drawChartNotice(ctx, w, h, styles, 'هنوز نمونه‌ای ثبت نشده - ساعت را یک‌بار تنظیم کنید');
+  drawTimeLabels(canvasId+'Labels', [], range, w);
+  return;
+ }
  function drawLine(data, color){
   if(!data || data.length===0) return;
   if(data.length===1){
-   let v=data[0]; let y=h - ((v-min)/rangeVal)*h; ctx.beginPath(); ctx.fillStyle=color; ctx.arc(w/2,y,4,0,Math.PI*2); ctx.fill(); return;
+   let y=chartY(data[0],min,max,h); ctx.beginPath(); ctx.fillStyle=color; ctx.arc(chartX(0,1,w),y,4,0,Math.PI*2); ctx.fill(); return;
   }
   let grad=ctx.createLinearGradient(0,0,0,h); grad.addColorStop(0, color+'22'); grad.addColorStop(1, color+'04');
   ctx.beginPath();
-  for(let i=0;i<data.length;i++){ let x=(i/(data.length-1))*w; let v=data[i]; let y=h - ((v-min)/rangeVal)*h; if(i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
-  ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+  for(let i=0;i<data.length;i++){ let x=chartX(i,data.length,w); let y=chartY(data[i],min,max,h); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+  ctx.lineTo(w-CHART_PAD_R,h-CHART_PAD_B); ctx.lineTo(CHART_PAD_L,h-CHART_PAD_B); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
   ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.2; ctx.lineJoin='round';
-  for(let i=0;i<data.length;i++){ let x=(i/(data.length-1))*w; let v=data[i]; let y=h - ((v-min)/rangeVal)*h; if(i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+  for(let i=0;i<data.length;i++){ let x=chartX(i,data.length,w); let y=chartY(data[i],min,max,h); if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
   ctx.stroke();
  }
  drawLine(vinData, '#5b8def');
  drawLine(vpackData, '#1ee6a0');
- // نقطه آخر
- if(vinData.length>0){ let last=vinData[vinData.length-1]; let y=h - ((last-min)/rangeVal)*h; ctx.beginPath(); ctx.fillStyle='#5b8def'; ctx.arc(w,y,4,0,Math.PI*2); ctx.fill(); }
- if(vpackData.length>0){ let last=vpackData[vpackData.length-1]; let y=h - ((last-min)/rangeVal)*h; ctx.beginPath(); ctx.fillStyle='#1ee6a0'; ctx.arc(w,y,4,0,Math.PI*2); ctx.fill(); }
+ if(vinData.length>0){ let y=chartY(vinData[vinData.length-1],min,max,h); ctx.beginPath(); ctx.fillStyle='#5b8def'; ctx.arc(chartX(vinData.length-1,vinData.length,w),y,4,0,Math.PI*2); ctx.fill(); }
+ if(vpackData.length>0){ let y=chartY(vpackData[vpackData.length-1],min,max,h); ctx.beginPath(); ctx.fillStyle='#1ee6a0'; ctx.arc(chartX(vpackData.length-1,vpackData.length,w),y,4,0,Math.PI*2); ctx.fill(); }
 
- // تولتیپ ترکیبی
  if(!c._hasTooltip){
   c.addEventListener('mousemove', function(e){
+   let list=(c._chartData&&c._chartData.length)?c._chartData:null; if(!list) return;
    let rect=c.getBoundingClientRect(); let mx=e.clientX-rect.left; let scaleX=w/rect.width;
-   let idx=Math.round((mx*scaleX / w) * (vinData.length-1));
-   if(idx<0) idx=0; if(idx>=vinData.length) idx=vinData.length-1;
+   let plotX=(mx*scaleX)-CHART_PAD_L;
+   let idx=(list.length<2)?0:Math.round((plotX/chartPlotWidth(w))*(list.length-1));
+   if(idx<0) idx=0; if(idx>=list.length) idx=list.length-1;
+   let v1=list[idx], v2=(c._chartData2||[])[idx];
+   let ts=c._chartTime?c._chartTime[idx]:null;
    let tip=document.getElementById('chartTooltip');
    if(tip){
-    let v1=vinData[idx], v2=vpackData[idx];
-    let ts=timeData?timeData[idx]:null;
     let dStr=ts?fmtTime(ts):'';
     tip.innerHTML='<b style="color:#5b8def">Vin: '+(v1/1000).toFixed(2)+'V</b><b style="color:#1ee6a0">Vpack: '+(v2/1000).toFixed(2)+'V</b><span>'+dStr+'</span>';
     tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-60)+'px'; tip.classList.add('show');
@@ -1596,44 +1748,44 @@ function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
   c.addEventListener('mouseleave', function(){ let tip=document.getElementById('chartTooltip'); if(tip) tip.classList.remove('show'); });
   c._hasTooltip=true;
  }
-
- if(timeData && range){
-  let labelDiv=document.getElementById(canvasId+'Labels');
-  if(labelDiv){ let html=''; let step=Math.max(1, Math.floor(timeData.length/4)); for(let i=0;i<timeData.length;i+=step){ html+='<span>'+fmtTimeLabel(timeData[i], range)+'</span>'; } if(timeData.length%step!==0 && timeData.length>1) html+='<span>'+fmtTimeLabel(timeData[timeData.length-1], range)+'</span>'; labelDiv.innerHTML=html; }
- }
+ c._chartData=vinData; c._chartData2=vpackData; c._chartTime=timeData; c._chartRange=range;
+ drawTimeLabels(canvasId+'Labels', timeData, range, w);
 }
 
-let chartData={vin:[],vpack:[],pct:[],imb:[],time:[],range:'1d'};
 let chartDataPct={pct:[],time:[],range:'1d'};
 let chartDataVolt={vin:[],vpack:[],time:[],range:'1d'};
-function renderChartsFromServer(j){
- if(!j) return;
- if(j.pct){
-  if(j.range) chartDataPct.range=j.range;
-  chartDataPct.pct=j.pct;
-  chartDataPct.time=j.time||[];
-  drawChart('cPct', chartDataPct.pct, '#ffb84d', 0, 100, chartDataPct.time, chartDataPct.range);
-  let curEl=document.getElementById('pctCurrent'); if(curEl && chartDataPct.pct.length>0) curEl.textContent=chartDataPct.pct[chartDataPct.pct.length-1].toFixed(1)+' ٪';
-  let rangeEl=document.getElementById('pctRangeInfo'); if(rangeEl) rangeEl.textContent='بازه: '+ (chartDataPct.range==='1d'?'۱ روزه':chartDataPct.range==='7d'?'۷ روزه':chartDataPct.range==='1m'?'۱ ماهه':'۳ ماهه')+' - '+chartDataPct.pct.length+' نمونه';
- }
- if(j.vin && j.vpack){
-  let rng=j.range||'1d';
-  chartDataVolt.vin=j.vin; chartDataVolt.vpack=j.vpack; chartDataVolt.time=j.time||[]; chartDataVolt.range=rng;
-  drawVoltChart('cVolt', chartDataVolt.vin, chartDataVolt.vpack, chartDataVolt.time, chartDataVolt.range);
-  let rangeEl=document.getElementById('voltRangeInfo'); if(rangeEl) rangeEl.textContent='بازه: '+(rng==='1d'?'۱ روزه':rng==='7d'?'۷ روزه':rng==='1m'?'۱ ماهه':'۳ ماهه');
-  let cntEl=document.getElementById('voltCountInfo'); if(cntEl) cntEl.textContent=j.vin.length+' نمونه - ریت کم';
-  let mmEl=document.getElementById('voltMinMax');
-  if(mmEl && j.vin.length>0){
-   let v1min=Math.min(...j.vin), v1max=Math.max(...j.vin), v2min=Math.min(...j.vpack), v2max=Math.max(...j.vpack);
-   mmEl.textContent='Vin '+(v1min/1000).toFixed(1)+'-'+(v1max/1000).toFixed(1)+'V | Vpack '+(v2min/1000).toFixed(1)+'-'+(v2max/1000).toFixed(1)+'V';
-  }
+function rangeTitle(range){ return range==='1d'?'۱ روزه':range==='7d'?'۷ روزه':range==='1m'?'۱ ماهه':range==='3m'?'۳ ماهه':range; }
+/* هر نمودار فقط از پاسخ خودش پر می‌شود. پیش‌تر پاسخ «ولتاژ» که همیشه
+   بازهٔ ۱ روزه بود روی نمودار درصد هم می‌نشست و بازهٔ انتخابی کاربر را
+   برمی‌گرداند؛ الان هر کدام جدا به‌روز می‌شوند. */
+function renderPctFromServer(j){
+ if(!j || !j.pct) return;
+ if(j.range) chartDataPct.range=j.range;
+ chartDataPct.pct=j.pct;
+ chartDataPct.time=j.time||[];
+ drawChart('cPct', chartDataPct.pct, '#ffb84d', 0, 100, chartDataPct.time, chartDataPct.range);
+ let n=chartDataPct.pct.length;
+ if(n>0){ setTxt('pctCurrent', faNum(chartDataPct.pct[n-1])+' ٪'); }
+ else { setTxt('pctCurrent', '-- ٪'); }
+ setTxt('pctRangeInfo', 'بازه: '+rangeTitle(chartDataPct.range)+' - '+n+' نمونه'+(n<2?' - در حال جمع‌آوری':''));
+}
+function renderVoltFromServer(j){
+ if(!j || !j.vin || !j.vpack) return;
+ if(j.range) chartDataVolt.range=j.range;
+ chartDataVolt.vin=j.vin; chartDataVolt.vpack=j.vpack; chartDataVolt.time=j.time||[];
+ drawVoltChart('cVolt', chartDataVolt.vin, chartDataVolt.vpack, chartDataVolt.time, chartDataVolt.range);
+ let n=j.vin.length;
+ setTxt('voltRangeInfo', 'بازه: '+rangeTitle(chartDataVolt.range)+' - '+n+' نمونه'+(n<2?' - در حال جمع‌آوری':''));
+ if(n>0){
+  let v1min=Math.min(...j.vin), v1max=Math.max(...j.vin), v2min=Math.min(...j.vpack), v2max=Math.max(...j.vpack);
+  setTxt('voltMinMax', 'Vin '+(v1min/1000).toFixed(1)+'-'+(v1max/1000).toFixed(1)+'V | Vpack '+(v2min/1000).toFixed(1)+'-'+(v2max/1000).toFixed(1)+'V');
  }
 }
 async function pollChartsPct(){
- try{ let r=await fetch('/charts?range='+chartRanges.pct,{cache:'no-store'}); let j=await r.json(); renderChartsFromServer(j); }catch(e){}
+ try{ let r=await fetch('/charts?range='+chartRanges.pct,{cache:'no-store'}); let j=await r.json(); renderPctFromServer(j); }catch(e){}
 }
 async function pollChartsVolt(){
- try{ let r=await fetch('/charts?range='+chartRanges.volt,{cache:'no-store'}); let j=await r.json(); if(j.vin) renderChartsFromServer(j); }catch(e){}
+ try{ let r=await fetch('/charts?range='+chartRanges.volt,{cache:'no-store'}); let j=await r.json(); renderVoltFromServer(j); }catch(e){}
 }
 async function pollCharts(){ await pollChartsPct(); await pollChartsVolt(); }
 
@@ -1676,15 +1828,25 @@ function drawChargeHistory(events, range){
   ctx.fillStyle='#fff'; ctx.font='bold 9px Vazirmatn'; ctx.textAlign='center'; ctx.fillText('CH'+ev.ch, x, y+3);
  });
  let labelDiv=document.getElementById('cChargeLabels');
- if(labelDiv && filtered.length>0){
-  let step=Math.max(1, Math.floor(filtered.length/4));
+ if(labelDiv){
   let html='';
-  for(let i=0;i<filtered.length;i+=step){
-   let d=new Date(filtered[i].ts*1000);
-   let lbl=d.toLocaleDateString('fa-IR',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'});
-   html+='<span>'+lbl+'</span>';
+  if(filtered.length>0){
+   let count=Math.min(5, filtered.length);
+   let last=-1;
+   for(let k=0;k<count;k++){
+    let i=(count===1)?0:Math.round(k*(filtered.length-1)/(count-1));
+    if(i===last) continue;
+    last=i;
+    let d=new Date(filtered[i].ts*1000);
+    let lbl=d.toLocaleDateString('fa-IR',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'});
+    let pctX=(filtered.length<2)?50:((filtered[i].ts-minTs)/span)*100;
+    html+='<span style="position:absolute;left:'+pctX.toFixed(2)+'%;transform:translateX(-50%);white-space:nowrap">'+lbl+'</span>';
+   }
   }
-  labelDiv.innerHTML=html;
+  labelDiv.style.display='block';
+  labelDiv.style.position='relative';
+  labelDiv.style.height='16px';
+  if(labelDiv.innerHTML!==html) labelDiv.innerHTML=html;
  }
 }
 function renderChargeHistoryList(events){
@@ -1711,14 +1873,46 @@ function getBatStatus(pct){
  if(pct>0) return {grad:'url(#gl)',gradMain:'url(#gMainL)',txt:'کم',cls:'low'};
  return {grad:'url(#gl)',gradMain:'url(#gMainL)',txt:'خالی',cls:'low'};
 }
-function setBatFill(id, pct, status){
+/* ==================== نوشتن فقط در صورت تغییر ====================
+   اگر مقدار جدید با مقدار فعلی یکی باشد، DOM دست نمی‌خورد. با این کار
+   ترنزیشن‌های CSS (نوار باتری و ...) هر ثانیه از نو شروع نمی‌شوند و صفحه
+   هیچ پرش/چشمکی نمی‌زند - کاربر فقط نتیجه را می‌بیند، نه به‌روزرسانی را. */
+function setTxt(id, txt){
+ let el=document.getElementById(id); if(!el) return;
+ let val=String(txt);
+ if(el.textContent!==val) el.textContent=val;
+}
+function setHtml(id, html){
+ let el=document.getElementById(id); if(!el) return;
+ let val=String(html);
+ if(el.innerHTML!==val) el.innerHTML=val;
+}
+function setCls(el, cls){
+ if(!el) return;
+ if(el.className!==cls) el.className=cls;
+}
+function setShow(id, show){
+ let el=document.getElementById(id); if(!el) return;
+ let val=show?'':'none';
+ if(el.style.display!==val) el.style.display=val;
+}
+function setAttr(el, name, value){
+ if(!el) return;
+ let val=String(value);
+ if(el.getAttribute(name)!==val) el.setAttribute(name, val);
+}
+
+/* پک ۲۴ ولتی (batMainFill) همیشه از همین‌جا با مقدار پایدار شارژ پر می‌شود؛
+   دیگر هیچ انیمیشن بالا/پایین روی آن نیست تا چشمک/لرزش نداشته باشد.
+   گرادیان در حال شارژ زرد است، ولی خودِ ارتفاع فقط با درصد واقعی عوض می‌شود. */
+function setBatFill(id, pct, status, gradOverride){
  let el=document.getElementById(id); if(!el) return;
  let totalH=79; let fillH=Math.max(0, Math.min(totalH, (pct/100)*totalH)); let y=18+(totalH-fillH);
- let grad=status.gradMain||status.grad;
- if(!g_isCharging || (id==='batHighFill' && !g_ch1Charging) || (id==='batLowFill' && !g_ch2Charging)){
-  el.setAttribute('y', y); el.setAttribute('height', fillH); el.setAttribute('fill', grad);
+ let grad=gradOverride||status.gradMain||status.grad;
+ if((id==='batMainFill') || !g_isCharging || (id==='batHighFill' && !g_ch1Charging) || (id==='batLowFill' && !g_ch2Charging)){
+  setAttr(el, 'y', y); setAttr(el, 'height', fillH); setAttr(el, 'fill', grad);
   let waveId=id==='batHighFill'?'batHighWave':id==='batLowFill'?'batLowWave':id==='batMainFill'?'batMainWave':null;
-  let waveEl=waveId?document.getElementById(waveId):null; if(waveEl){ waveEl.setAttribute('transform','translate(0,'+y+')'); }
+  let waveEl=waveId?document.getElementById(waveId):null; if(waveEl){ setAttr(waveEl, 'transform', 'translate(0,'+y+')'); }
  }
 }
 function render(data){
@@ -1777,69 +1971,88 @@ function render(data){
  data.inputOV=inputOV; data.vPackCal=vPack; data.vLowCal=vLow; data.vHighCal=vHigh; data.vInCal=vIn;
  data.rawPackDis=rawPackDis; data.rawPackChg=rawPackChg; data.fillPct=fillPct;
  let mainSt=getBatStatus(pctPack);
- if(!g_isCharging){ setBatFill('batMainFill', fillPct, mainSt); }
- let mainSvgPct=document.getElementById('batMainSvgPct'); if(mainSvgPct) mainSvgPct.textContent=fillPct+'%';
- let bp=document.getElementById('batPct'); if(bp) bp.innerHTML=fillPct+'<small>%</small>';
+ /* پر شدن پک ۲۴ ولتی، بدون پمپ و بدون چشمک - فقط مقدار پایدار خودش */
+ setBatFill('batMainFill', fillPct, mainSt, isCharging?'url(#gMainM)':null);
+ /* در حال شارژ، عدد درصد زیر آیکون باتری‌ها نشان داده نمی‌شود (به‌جایش متن
+    وضعیت در همان کارت هست) و به‌محض خاموش‌شدن شارژر عدد برمی‌گردد */
+ setShow('batPct', !isCharging);
+ if(!isCharging) setHtml('batPct', fillPct+'<small>%</small>');
+ setTxt('batMainSvgPct', isCharging?'':(fillPct+'%'));
  let boardTs = data.boardTime || data.bt || 0;
- let btEl=document.getElementById('boardTime');
- if(btEl){
-  if(boardTs && boardTs>1000000000){ btEl.textContent='ساعت برد: '+fmtTime(boardTs); }
-  else { btEl.textContent='ساعت برد: تنظیم نشده - دکمه همگام‌سازی را بزنید'; }
- }
+ /* تا وقتی ساعت یک‌بار تنظیم نشده یادآوری می‌شود؛ بعد از آن ساعت ذخیره‌شده
+    خودش برمی‌گردد و هیچ پیامی پرسیده نمی‌شود */
+ if(boardTs && boardTs>1000000000){ setTxt('boardTime', 'ساعت پنل: '+fmtTime(boardTs)); }
+ else { setTxt('boardTime', 'ساعت تنظیم نشده - یک‌بار از تنظیمات بفرستید'); }
  let highSt=getBatStatus(pctHigh), lowSt=getBatStatus(pctLow);
  if(!g_ch1Charging){ setBatFill('batHighFill', pctHigh, highSt); }
  if(!g_ch2Charging){ setBatFill('batLowFill', pctLow, lowSt); }
- let hSvgPct=document.getElementById('batHighSvgPct'); if(hSvgPct) hSvgPct.textContent=pctHigh+'%';
- let lSvgPct=document.getElementById('batLowSvgPct'); if(lSvgPct) lSvgPct.textContent=pctLow+'%';
- let bhp=document.getElementById('batHighPct'); if(bhp) bhp.innerHTML=pctHigh+'<small>%</small>';
- let blp=document.getElementById('batLowPct'); if(blp) blp.innerHTML=pctLow+'<small>%</small>';
- let bhs=document.getElementById('batHighStatus'); if(bhs) bhs.textContent=highSt.txt+(ch1Charging?' - در حال شارژ ⚡':'' );
- let bls=document.getElementById('batLowStatus'); if(bls) bls.textContent=lowSt.txt+(ch2Charging?' - در حال شارژ ⚡':'' );
+ setTxt('batHighSvgPct', ch1Charging?'':(pctHigh+'%'));
+ setTxt('batLowSvgPct', ch2Charging?'':(pctLow+'%'));
+ setShow('batHighPct', !ch1Charging);
+ if(!ch1Charging) setHtml('batHighPct', pctHigh+'<small>%</small>');
+ setShow('batLowPct', !ch2Charging);
+ if(!ch2Charging) setHtml('batLowPct', pctLow+'<small>%</small>');
+ setTxt('batHighStatus', highSt.txt+(ch1Charging?' - در حال شارژ ⚡':'' ));
+ setTxt('batLowStatus', lowSt.txt+(ch2Charging?' - در حال شارژ ⚡':'' ));
  let ib=document.getElementById('imbBox'); if(ib){
   let charging=(s1==1||s1==2||s2==1||s2==2);
   let ch1=(s1==1||s1==2), ch2=(s2==1||s2==2);
   let sameState=(ch1==ch2);
-  if(!charging && sameState && imb>300){ ib.textContent='اختلاف دو باتری: '+imb+' میلی‌ولت - نیاز به بررسی'; ib.className='imb show'; }
-  else { ib.className='imb'; ib.textContent=''; }
+  if(!charging && sameState && imb>300){ setTxt('imbBox','اختلاف دو باتری: '+imb+' میلی‌ولت - نیاز به بررسی'); setCls(ib,'imb show'); }
+  else { setCls(ib,'imb'); setTxt('imbBox',''); }
  }
- let bIn=document.getElementById('bdgInput'); if(bIn){
-  if(inputOV){ bIn.innerHTML='<i></i>برق ورودی: اضافه ولتاژ ('+(vIn/1000).toFixed(1)+'V)'; bIn.className='bdg err'; }
-  else if(!inputPresent){ bIn.innerHTML='<i></i>برق ورودی قطع - حالت باتری'; bIn.className='bdg warn'; }
-  else { bIn.innerHTML='<i></i>برق شهر: وصل ('+(vIn/1000).toFixed(1)+'V)'; bIn.className='bdg ok'; }
+ let bIn=document.getElementById('bdgInput');
+ if(bIn){
+  if(inputOV){ setHtml('bdgInput','<i></i>برق ورودی: اضافه ولتاژ ('+(vIn/1000).toFixed(1)+'V)'); setCls(bIn,'bdg err'); }
+  else if(!inputPresent){ setHtml('bdgInput','<i></i>برق ورودی قطع - حالت باتری'); setCls(bIn,'bdg warn'); }
+  else { setHtml('bdgInput','<i></i>برق شهر: وصل ('+(vIn/1000).toFixed(1)+'V)'); setCls(bIn,'bdg ok'); }
  }
  let st=document.getElementById('statusTitle'), ss=document.getElementById('statusSub');
  let heroCard=document.getElementById('heroCard');
  let heroFault=document.getElementById('heroFault');
- if(!data.on){ st.textContent='ارتباط با برد قطع است'; ss.textContent='کابل یا تغذیه برد را بررسی کنید'; if(heroCard) heroCard.className='hero err'; if(heroFault){ heroFault.className='hero-fault err show'; heroFault.textContent='ارتباط قطع - کابل UART یا تغذیه برد را بررسی کنید'; } }
- else if(fault & FAULT_BAT_LOST){ st.textContent='باتری قطع شده'; ss.textContent='سیم باتری را بررسی کنید'; if(heroCard) heroCard.className='hero err'; if(heroFault){ heroFault.className='hero-fault err show'; heroFault.innerHTML=faultText(fault); } }
- else if(fault & FAULT_TECH){ st.textContent='خطای فنی'; ss.textContent='برد نیاز به بررسی دارد'; if(heroCard) heroCard.className='hero err'; if(heroFault){ heroFault.className='hero-fault err show'; heroFault.innerHTML=faultText(fault); } }
- else if(fault & FAULT_ADC){ st.textContent='در حال بررسی'; ss.textContent='سنسورها در حال کالیبره'; if(heroCard) heroCard.className='hero warn'; if(heroFault){ heroFault.className='hero-fault warn show'; heroFault.innerHTML=faultText(fault); } }
- else if(inputOV){ st.textContent='اضافه ولتاژ ورودی'; ss.textContent='ورودی '+(vIn/1000).toFixed(1)+' ولت - بررسی کنید'; if(heroCard) heroCard.className='hero err'; if(heroFault){ heroFault.className='hero-fault err show'; heroFault.textContent='اضافه ولتاژ ورودی: '+(vIn/1000).toFixed(1)+'V - حد ۲۸ ولت'; } }
- else if(!inputPresent){ st.textContent='برق ورودی قطع - حالت باتری'; ss.textContent='شارژ '+pctPack+' درصد - Vin '+(vIn/1000).toFixed(1)+'V'; if(heroCard) heroCard.className='hero'; if(heroFault){
+ /* پیام بالای صفحه: همیشه از یک مسیر نوشته می‌شود تا نمایش قبلی پاک شود */
+ let heroCls='hero', heroFaultCls='hero-fault show', heroFaultTxt='', heroFaultHtml=false, stTxt='', ssTxt='';
+ if(!data.on){ stTxt='ارتباط با برد قطع است'; ssTxt='کابل یا تغذیه برد را بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='ارتباط قطع - کابل UART یا تغذیه برد را بررسی کنید'; }
+ else if(fault & FAULT_BAT_LOST){ stTxt='باتری قطع شده'; ssTxt='سیم باتری را بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
+ else if(fault & FAULT_TECH){ stTxt='خطای فنی'; ssTxt='برد نیاز به بررسی دارد'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
+ else if(fault & FAULT_ADC){ stTxt='در حال بررسی'; ssTxt='سنسورها در حال کالیبره'; heroCls='hero warn'; heroFaultCls='hero-fault warn show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
+ else if(inputOV){ stTxt='اضافه ولتاژ ورودی'; ssTxt='ورودی '+(vIn/1000).toFixed(1)+' ولت - بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='اضافه ولتاژ ورودی: '+(vIn/1000).toFixed(1)+'V - حد ۲۸ ولت'; }
+ else if(!inputPresent){
   let charging=(s1==1||s1==2||s2==1||s2==2);
   let ch1=(s1==1||s1==2), ch2=(s2==1||s2==2);
   let sameState=(ch1==ch2);
-  if(pctPack<=1){ heroFault.className='hero-fault err show'; heroFault.textContent='شارژ بحرانی - کمتر از ۱٪ - برق ورودی قطع'; }
-  else if(pctPack<=5){ heroFault.className='hero-fault err show'; heroFault.textContent='شارژ خیلی کم - '+pctPack+'٪ - برق ورودی قطع'; }
-  else if(pctPack<=20){ heroFault.className='hero-fault warn show'; heroFault.textContent='شارژ کم - '+pctPack+'٪ - برق ورودی قطع'; }
-  else if(!charging && sameState && imb>300){ heroFault.className='hero-fault warn show'; heroFault.textContent='اختلاف دو باتری زیاد است ('+imb+'mV) - برق ورودی قطع'; }
-  else if(pctPack>=100){ heroFault.className='hero-fault ok show'; heroFault.textContent='برق ورودی قطع - سیستم روی باتری - پک کامل ('+pctPack+'٪) - سبز ثابت بدون چشمک'; }
-  else { heroFault.className='hero-fault warn show'; heroFault.textContent='برق ورودی قطع - سیستم روی باتری ('+pctPack+'٪) - چشمک سبز '+greenTiming.on+'/'+brd.gPer+'ms'; }
- } }
- else if(g_fullActive || (s1==3 && s2==3)){ st.textContent='شارژ کامل'; ss.textContent='باتری پر - آماده'; if(heroCard) heroCard.className='hero ok'; if(heroFault){ heroFault.className='hero-fault ok show'; heroFault.textContent='شارژ کامل - باتری پر ('+pctPack+'٪)'; } }
- else if(s1==1||s1==2||s2==1||s2==2){ 
-  let q=getChargingBounds(pctPack);
-  st.textContent='در حال شارژ ⚡ - قسمت '+(q.q+1)+' از ۴ ('+q.base+'-'+q.top+'٪)'; 
-  ss.textContent='باتری '+pctPack+' درصد - انیمیشن زرد داخل همان قسمت'; 
-  if(heroCard) heroCard.className='hero'; 
-  if(heroFault){ heroFault.className='hero-fault show'; heroFault.style.display='none'; heroFault.textContent=''; } 
+  stTxt='برق ورودی قطع - حالت باتری'; ssTxt='شارژ '+pctPack+' درصد - Vin '+(vIn/1000).toFixed(1)+'V';
+  if(pctPack<=1){ heroFaultCls='hero-fault err show'; heroFaultTxt='شارژ بحرانی - کمتر از ۱٪ - برق ورودی قطع'; }
+  else if(pctPack<=5){ heroFaultCls='hero-fault err show'; heroFaultTxt='شارژ خیلی کم - '+pctPack+'٪ - برق ورودی قطع'; }
+  else if(pctPack<=20){ heroFaultCls='hero-fault warn show'; heroFaultTxt='شارژ کم - '+pctPack+'٪ - برق ورودی قطع'; }
+  else if(!charging && sameState && imb>300){ heroFaultCls='hero-fault warn show'; heroFaultTxt='اختلاف دو باتری زیاد است ('+imb+'mV) - برق ورودی قطع'; }
+  else if(pctPack>=100){ heroFaultCls='hero-fault ok show'; heroFaultTxt='برق ورودی قطع - سیستم روی باتری - پک کامل ('+pctPack+'٪) - سبز ثابت بدون چشمک'; }
+  else { heroFaultCls='hero-fault warn show'; heroFaultTxt='برق ورودی قطع - سیستم روی باتری ('+pctPack+'٪) - چشمک سبز '+greenTiming.on+'/'+brd.gPer+'ms'; }
  }
- else { st.textContent='متصل - برق ورودی وصل'; ss.textContent='باتری '+pctPack+' درصد - آماده'; if(heroCard) heroCard.className='hero ok'; if(heroFault){ heroFault.className='hero-fault ok show'; heroFault.textContent='سیستم سالم - برق ورودی وصل - ساعت برد: '+(boardTs?fmtTime(boardTs):'--'); } }
- let ls=document.getElementById('linkState'); if(ls) ls.textContent='لینک: '+(data.on?'وصل':'قطع')+' | CRC: '+data.ce+' | Vin:'+(vIn/1000).toFixed(2)+'V';
- let si=document.getElementById('seqInfo'); if(si) si.textContent='فریم: '+data.n+' | سن: '+data.age+'ms | درصد:'+pctPack+'% خام:'+rawPackDis+'%'+(isCharging?' شارژ '+Math.round(g_mainAnim)+'% در ['+getChargingBounds(pctPack).base+'-'+getChargingBounds(pctPack).top+'%] ⚡':'' );
- let hd=document.getElementById('hdrDot'); if(hd) hd.className='dot '+(data.on?'on':'');
- let ht=document.getElementById('hdrText'); if(ht) ht.textContent=data.on?'متصل':'قطع';
- let hu=document.getElementById('hdrUser'); if(hu) hu.textContent=data.user?(data.user+' '+(data.role==1?'(ادمین)':'(ساده)')):'';
+ else if(g_fullActive || (s1==3 && s2==3)){ stTxt='شارژ کامل'; ssTxt='باتری پر - آماده'; heroCls='hero ok'; heroFaultCls='hero-fault ok show'; heroFaultTxt='شارژ کامل - باتری پر ('+pctPack+'٪)'; }
+ else if(s1==1||s1==2||s2==1||s2==2){
+  let q=getChargingBounds(pctPack);
+  stTxt='در حال شارژ ⚡ - قسمت '+(q.q+1)+' از ۴ ('+q.base+'-'+q.top+'٪)';
+  ssTxt='باتری '+pctPack+' درصد - انیمیشن زرد داخل همان قسمت';
+ }
+ else { stTxt='متصل - برق ورودی وصل'; ssTxt='باتری '+pctPack+' درصد - آماده'; heroCls='hero ok'; heroFaultCls='hero-fault ok show'; heroFaultTxt='سیستم سالم - برق ورودی وصل - ساعت برد: '+(boardTs?fmtTime(boardTs):'--'); }
+ setTxt('statusTitle', stTxt);
+ setTxt('statusSub', ssTxt);
+ setCls(heroCard, heroCls);
+ if(heroFault){
+  /* اگر پیام برای این حالت خالی است، کامل پنهان می‌شود (متن و کلاس هم پاک
+     می‌شود تا پیام حالت قبلی نماند) */
+  setCls(heroFault, heroFaultCls);
+  if(heroFaultTxt===''){ if(heroFault.innerHTML!=='') heroFault.innerHTML=''; setShow('heroFault', false); }
+  else { if(heroFaultHtml) setHtml('heroFault', heroFaultTxt); else setTxt('heroFault', heroFaultTxt); setShow('heroFault', true); }
+ }
+ setTxt('linkState', 'لینک: '+(data.on?'وصل':'قطع')+' | CRC: '+data.ce+' | Vin:'+(vIn/1000).toFixed(2)+'V');
+ setTxt('seqInfo', 'فریم: '+data.n+' | سن: '+data.age+'ms | درصد:'+pctPack+'% خام:'+rawPackDis+'%'+(isCharging?' شارژ '+Math.round(g_mainAnim)+'% در ['+getChargingBounds(pctPack).base+'-'+getChargingBounds(pctPack).top+'%] ⚡':''));
+ setCls(document.getElementById('hdrDot'), 'dot '+(data.on?'on':''));
+ setTxt('hdrText', data.on?'متصل':'قطع');
+ setTxt('hdrUser', data.user?(data.user+' '+(data.role==1?'(ادمین)':'(ساده)')):'');
+ /* فرم تغییر رمز: نام کاربری پیش‌فرض = همان کاربر واردشده */
+ { let spu=document.getElementById('setPassUser'); if(spu && data.user && !spu.value) spu.value=data.user; }
  let loginPage=document.getElementById('loginPage');
  let loginCard=document.getElementById('loginCard'), setContent=document.getElementById('settingsContent');
  if(data.user){
@@ -1862,20 +2075,26 @@ function render(data){
  if(clearCharge) clearCharge.style.display=isAdmin?'inline-flex':'none';
 }
 
+/* ==================== ساعت‌های زندهٔ کارت آمار ====================
+   دیاگ هر ۵ ثانیه می‌آید؛ بین دو دیاگ همین تابع هر ثانیه عدد را جلو می‌برد
+   تا «زمان کل شارژ» و «کارکرد برد» زنده و شمرده‌شده دیده شوند. */
+let g_diagBase=null;
+function tickDiagClocks(){
+ if(!g_diagBase) return;
+ if(document.hidden) return;
+ let extra=Math.floor((Date.now()-g_diagBase.at)/1000);
+ setTxt('stChargeTime', fmtSecLive(g_diagBase.charge+extra));
+ setTxt('stUptime', fmtSecLive(g_diagBase.uptime+extra));
+}
 function renderDiag(j){
  if(!j) return;
+ g_diagBase={at:Date.now(), charge:(j.totalChargeSec||0), uptime:(j.uptimeSec||0)};
+ tickDiagClocks();
  let elCount=document.getElementById('stChargeCount'); if(elCount) elCount.textContent=j.chargeCount||'--';
- let elUp=document.getElementById('stUptime'); if(elUp) elUp.textContent=j.uptimeSec?fmtSecShort(j.uptimeSec):'--';
  let elRes=document.getElementById('stResets'); if(elRes) elRes.textContent=j.resetCount||'--';
- let elBoard=document.getElementById('boardTimeSet'); 
- if(elBoard){
-  if(j.boardTime && j.boardTime>1000000000) elBoard.textContent=fmtTime(j.boardTime);
-  else elBoard.textContent='تنظیم نشده - دکمه همگام‌سازی را بزنید';
- }
- let btHdr=document.getElementById('boardTime');
- if(btHdr && j.boardTime && j.boardTime>1000000000){
-  if(btHdr.textContent.includes('تنظیم نشده')) btHdr.textContent='ساعت برد: '+fmtTime(j.boardTime);
- }
+ let panelTxt=(j.panelTime && j.panelTime>1000000000) ? fmtTime(j.panelTime) : 'نامعلوم';
+ let boardTxt=(j.boardTime && j.boardTime>1000000000) ? fmtTime(j.boardTime) : 'نامعلوم';
+ setTxt('boardTimeSet', 'پنل: '+panelTxt+' | برد: '+boardTxt);
  let ch1Count=j.chargeCountCh1||0, ch2Count=j.chargeCountCh2||0;
  let elHighCount=document.getElementById('batHighChargeCount'); let elLowCount=document.getElementById('batLowChargeCount');
  if(elHighCount) elHighCount.textContent=ch1Count;
@@ -1891,7 +2110,7 @@ function renderDiag(j){
   else { let html=''; for(let i=0;i<j.power.length;i++){ let p=j.power[i]; html+='<div class=row>قطع: '+fmtTime(p.off)+' وصل: '+fmtTime(p.on)+' مدت: '+fmtSecShort(p.dur)+'</div>'; } pDiv.innerHTML=html; }
  }
  let info=document.getElementById('boardInfo');
- if(info){ info.innerHTML='زمان کل شارژ: '+fmtSec(j.totalChargeSec)+'<br>تعداد شارژ: '+(j.chargeCount||0)+'<br>کارکرد: '+fmtSecShort(j.uptimeSec)+'<br>ریست: '+(j.resetCount||0)+'<br>ساعت برد: '+(j.boardTime?fmtTime(j.boardTime):'--'); }
+ if(info){ info.innerHTML='زمان کل شارژ: '+fmtSecLive(j.totalChargeSec)+'<br>تعداد شارژ: '+(j.chargeCount||0)+'<br>کارکرد: '+fmtSecLive(j.uptimeSec)+'<br>ریست: '+(j.resetCount||0)+'<br>ساعت برد: '+(j.boardTime?fmtTime(j.boardTime):'--'); }
  if(j.chargeHistory){
   window._lastChargeHistory=j.chargeHistory;
   drawChargeHistory(j.chargeHistory, chartRanges.charge);
@@ -1899,7 +2118,6 @@ function renderDiag(j){
  }
 }
 async function poll(){ try{ let r=await fetch('/t',{cache:'no-store'}); let j=await r.json(); render(j); }catch(e){} }
-async function pollCharts(){ await pollChartsPct(); await pollChartsVolt(); }
 async function pollDiag(){ try{ let r=await fetch('/diag',{cache:'no-store'}); let j=await r.json(); renderDiag(j); }catch(e){} }
 
 async function clearHistory(type){
@@ -1949,7 +2167,35 @@ async function syncTime(){
   if(j.ok){ setTimeout(poll,500); setTimeout(pollDiag,600); }
  }catch(e){ if(m) m.textContent='خطا در ارتباط - '+e; }
 }
-function init(){ poll(); pollCharts(); pollDiag(); loadUsers(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(loadUsers,10000); }
+/* ==================== نمایش/پنهان رمز ====================
+   همان دکمهٔ چشم: هر بار که زده شود نوع ورودی بین password و text عوض می‌شود */
+function togglePass(id, btn){
+ let el=document.getElementById(id); if(!el) return;
+ let show=(el.type==='password');
+ el.type=show?'text':'password';
+ if(btn){ btn.textContent=show?'🙈':'👁'; btn.classList.toggle('on', show); }
+}
+
+/* ==================== تغییر رمز عبور - /setpass ==================== */
+async function setPass(){
+ let u=(document.getElementById('setPassUser')||{}).value||'';
+ let o=(document.getElementById('setPassOld')||{}).value||'';
+ let n=(document.getElementById('setPassNew')||{}).value||'';
+ let n2=(document.getElementById('setPassNew2')||{}).value||'';
+ let m=document.getElementById('setPassMsg');
+ u=u.trim();
+ if(!u || !n){ if(m) m.textContent='نام کاربری و رمز جدید لازم است'; return; }
+ if(n!==n2){ if(m) m.textContent='رمز جدید و تکرارش یکی نیست'; return; }
+ try{
+  let r=await fetch('/setpass',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user:u,old:o,new:n,new2:n2})});
+  let j=await r.json();
+  if(m) m.textContent=j.ok?'رمز عوض شد':'خطا: '+(j.e||j.msg||'نامشخص');
+  if(j.ok){ let a=document.getElementById('setPassOld'), b=document.getElementById('setPassNew'), c=document.getElementById('setPassNew2');
+            if(a) a.value=''; if(b) b.value=''; if(c) c.value=''; loadUsers(); }
+ }catch(e){ if(m) m.textContent='خطا در ارتباط'; }
+}
+
+function init(){ poll(); pollCharts(); pollDiag(); loadUsers(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(loadUsers,10000); setInterval(tickDiagClocks,1000); }
 window.addEventListener('DOMContentLoaded', init);
 </script>
 </body>

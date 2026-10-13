@@ -21,6 +21,7 @@
 
 #include <arpa/inet.h>
 #include <cerrno>
+#include <fcntl.h>
 #include <map>
 #include <netinet/in.h>
 #include <poll.h>
@@ -247,6 +248,9 @@ inline void SimWebServerT::begin(void)
         perror("socket");
         exit(1);
     }
+    /* سوکت با exec بسته شود: «ریستارت» شبیه‌ساز برنامه را از نو اجرا می‌کند
+       و اگر این توصیفگر باز بماند، پورت آزاد نمی‌شود و bind بعدی می‌شکند */
+    (void)fcntl(listenFd, F_SETFD, FD_CLOEXEC);
 
     int int__reuse = 1;
     (void)setsockopt(listenFd, SOL_SOCKET, SO_REUSEADDR, &int__reuse, sizeof(int__reuse));
@@ -297,6 +301,7 @@ inline void SimWebServerT::handleClient(void)
         struct sockaddr_in sockaddr__peer;
         socklen_t socklen__peerLength = sizeof(sockaddr__peer);
         int int__fd = accept(listenFd, (struct sockaddr *)&sockaddr__peer, &socklen__peerLength);
+        if (int__fd >= 0) { (void)fcntl(int__fd, F_SETFD, FD_CLOEXEC); }
         if (int__fd < 0) { return; }
 
         uint32_t uint32_t__peerAddress = ntohl(sockaddr__peer.sin_addr.s_addr);

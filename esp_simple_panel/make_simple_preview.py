@@ -302,8 +302,10 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
                    chargeCountCh1: 21, chargeCountCh2: 21, chargeSecCh1: 7031, chargeSecCh2: 6687,
                    resetCount: 3, boardTime: Math.floor(Date.now() / 1000) };
   var mock = { user: '', role: 0, theme: 0, ssid: WIFI_SSID, pass: WIFI_PASS,
+               userPass: '',   /* رمز عوض‌شدهٔ کاربر در حالت آفلاین - خالی یعنی پیش‌فرض‌ها */
                users: [{ name: 'admin', role: 1 }] };
-  var mockActive = (location.protocol === 'file:');
+  var mockActive = (location.protocol === 'file:');   /* فقط وقتی فایلی باز شده باشد */
+  var mockUntil = 0;                                  /* اگر سرور نبود، موقتاً جای بردی */
   var originalFetch = window.fetch ? window.fetch.bind(window) : null;
   var controls = [];                /* کنترل‌هایی که خودشان را از sim رنگ می‌کنند */
 
@@ -377,7 +379,8 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       ',"n":' + counters.frames + ',"ce":' + sim.ce + ',"vm":' + sim.vm +
       ',"inputPresent":' + (inputPresent() ? 1 : 0) +
       ',"user":"' + mock.user + '","role":' + mock.role + ',"theme":' + mock.theme +
-      ',"boardTime":' + counters.boardTime + ',"bt":' + counters.boardTime + ',"t":[';
+      ',"boardTime":' + counters.boardTime + ',"bt":' + counters.boardTime +
+      ',"timeOk":1,"t":[';
     for (var i = 0; i < TLM_N; i++) { body += (i ? ',' : '') + built.t[i]; }
     return body + ']' + boardParamsBody() + '}';
   }
@@ -451,20 +454,38 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
     if (path === 'diag') { return jsonResponse(diagJson()); }
     if (path === 'theme') { return jsonResponse('{"theme":' + mock.theme + '}'); }
     if (path === 'settheme') {
-      mock.theme = parseInt(query(url, 'theme') || '0', 10) || 0;
+      mock.theme = (parseInt(query(url, 'theme') || '0', 10) === 1) ? 1 : 0;   /* فقط تیره/روشن */
       return jsonResponse('{"ok":1}');
     }
     if (path === 'login') {
       var credentials = bodyJson(options);
       var user = credentials.user !== undefined ? credentials.user : query(url, 'user');
       var pass = credentials.pass !== undefined ? credentials.pass : query(url, 'pass');
-      if ((user === 'admin' && pass === 'admin') || (user === 'viewer' && pass === 'viewer')) {
+      var defaultPass = (user === 'admin') ? 'admin' : ((user === 'viewer') ? 'viewer' : null);
+      var expected = (mock.userPass && user === mock.user) ? mock.userPass : defaultPass;
+      if (expected !== null && pass === expected) {
         mock.user = user; mock.role = (user === 'admin') ? 1 : 0;
         return jsonResponse('{"ok":1,"user":"' + user + '","role":' + mock.role + '}');
       }
       return jsonResponse('{"ok":0,"e":"wrong"}', 401);
     }
     if (path === 'logout') { mock.user = ''; mock.role = 0; return jsonResponse('{"ok":1}'); }
+    if (path === 'setpass') {
+      var change = bodyJson(options);
+      var target = (change.user || '').trim();
+      if (!mock.user) { return jsonResponse('{"ok":0,"e":"login"}', 403); }
+      if (!target || !change.new) { return jsonResponse('{"ok":0,"e":"user/new"}', 400); }
+      if ((change.new || '').length < 4) { return jsonResponse('{"ok":0,"e":"pass 4-32"}', 400); }
+      if (change.new2 && change.new2 !== change.new) { return jsonResponse('{"ok":0,"e":"mismatch"}', 400); }
+      if (mock.role !== 1 && target !== mock.user) { return jsonResponse('{"ok":0,"e":"self"}', 403); }
+      var wantOld = (mock.userPass && target === mock.user) ? mock.userPass
+                                                           : ((target === 'admin') ? 'admin' : 'viewer');
+      if (target === mock.user && (change.old || '') !== wantOld) {
+        return jsonResponse('{\"ok\":0,\"e\":\"old\"}', 400);
+      }
+      if (target === mock.user) { mock.userPass = change.new; }   /* در حالت آفلاین هم رمز عوض می‌شود */
+      return jsonResponse('{"ok":1}');
+    }
     if (path === 'users') {
       if (mock.role !== 1) { return jsonResponse('{"ok":0,"e":"admin"}', 403); }
       if (method === 'POST') {
@@ -509,21 +530,47 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       return jsonResponse('{"ok":1}');
     }
     if (path === 'clear') { return jsonResponse('{"ok":1}'); }
-    if (path === 'sim') { return jsonResponse('{"ok":1}'); }
+    if (path === 'sim') {
+      /* [FA] در حالت آفلاین هم همان پارامترهای /sim برد شبیه‌سازی‌شده اعمال
+         می‌شود تا تب سیمولاتور بیرون از سرور زنده هم اثر داشته باشد */
+      var num = function (name) {
+        var raw = query(url, name);
+        return raw === '' ? null : parseInt(raw, 10);
+      };
+      var setNumber = function (name, field) { var v = num(name); if (v !== null && !isNaN(v)) { sim[field] = v; } };
+      setNumber('vin', 'vin'); setNumber('vpack', 'vpack');
+      setNumber('vlow', 'vlow'); setNumber('vhigh', 'vhigh');
+      setNumber('s1', 'state1'); setNumber('s2', 'state2');
+      setNumber('fault', 'fault'); setNumber('dead', 'deadMask');
+      var linkFlag = num('link'); if (linkFlag !== null) { sim.linkUp = (linkFlag === 1); }
+      var param = num('p74'); if (param !== null) { board.vmin = param; }
+      param = num('p75'); if (param !== null) { board.vmax = param; }
+      param = num('p66'); if (param !== null) { board.gPer = param; }
+      param = num('p67'); if (param !== null) { board.gOff = param; }
+      return jsonResponse('{"ok":1}');
+    }
     return jsonResponse('{"ok":0,"e":"sim"}', 404);
   }
 
   /* آفلاین هر مسیر داخلی از همین‌جا جواب می‌گیرد؛ اگر سرور سیمولاتور بالا
      باشد (حالت زنده) درخواست واقعاً به سرور می‌رود */
+  /* کلید آزمون: اگر خود آزمون این را true کند، هیچ‌وقت دادهٔ جعلی جای
+     دادهٔ واقعی سرور را نمی‌گیرد (برای سنجش دقیق مسیر واقعی) */
+  var noMock = (window.__CO_NO_MOCK__ === true);
   window.fetch = function (url, options) {
-    if (mockActive) {
+    if (mockActive && !noMock) {
       return Promise.resolve(mockFetch(String(url), options));
     }
     if (!originalFetch) { return Promise.resolve(mockFetch(String(url), options)); }
+    if (!noMock && Date.now() < mockUntil) {   /* سرور چند لحظه پیش جواب نداده بود */
+      return Promise.resolve(mockFetch(String(url), options));
+    }
     return originalFetch(url, options).catch(function (error) {
       var path = routeName(String(url));
       if (path === 't' || path === 'charts' || path === 'diag') {
-        mockActive = true;             /* برد نیست: سیمولاتور جایش را می‌گیرد */
+        /* یک بار جواب نداد - فقط چند ثانیه حالت شبیه‌ساز تا داده جعلی
+           جای داده واقعی را برای همیشه نگیرد؛ دفعه بعد دوباره سرور امتحان می‌شود */
+        mockUntil = Date.now() + 10000;
         return Promise.resolve(mockFetch(String(url), options));
       }
       throw error;
@@ -807,6 +854,13 @@ def main():
     OUT.write_text(generated, encoding="utf-8")
     print("wrote %s (%d bytes, %d TLM fields, %d fault bits)"
           % (OUT.name, len(generated), tlm_n, len(bits)))
+
+    # [FA] نسخه‌های همگام بیرون از هدر: فقط دقیقاً یک خط جدید ابتدای رشتهٔ خام
+    # حذف می‌شود تا فایل عیناً همان صفحهٔ پنل باشد (بدون shim سیمولاتور)
+    synced = html[1:] if html.startswith("\n") else html
+    for extra in (HERE / "index.html", HERE / "simple_panel_clean.html"):
+        extra.write_text(synced, encoding="utf-8", newline="")
+        print("synced %s (%d bytes)" % (extra.name, len(synced.encode("utf-8"))))
 
 
 if __name__ == "__main__":

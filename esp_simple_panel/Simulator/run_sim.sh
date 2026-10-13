@@ -10,6 +10,7 @@
 #   SIMPLE_SIM_PORT   پورت وب‌سرور (پیش‌فرض ۳۰۰۰)
 #   SIMPLE_SIM_FS     پوشهٔ فایل‌سیستم شبیه‌سازی‌شده (پیش‌فرض /tmp/changeover_simple_fs)
 #   SIMPLE_SIM_BUILD  پوشهٔ ساخت (پیش‌فرض /tmp/changeover_simple_sim)
+#   SIMPLE_SIM_LINK_DOWN=1  برد در شروع بدون لینک بالا می‌آید (آزمون بازگردانی از فایل)
 set -euo pipefail
 
 DIRECTORY="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -71,92 +71,373 @@ static bool func__Simple_IsOldHash(const char *char__ptr_hash)
     return (strlen(char__ptr_hash) == 8u);
 }
 
-/* ==================== بارگذاری کاربران ==================== */
-static void func__Simple_AuthLoad(void)
+/* ==================== رمزنگاری فایل‌های حساس ====================
+   هدف: رمزها روی فلش خوانا نباشند و کسی نتواند فایل را دست‌کاری کند.
+   ساختار:
+     ۱) کلید = SHA256(salt || شناسهٔ چیپ) - یکتا برای هر برد، جایی ذخیره نمی‌شود
+     ۲) دو زیرکلید از همان کلید: HMAC(K,"enc") برای رمز و HMAC(K,"mac") برای برچسب
+     ۳) رمز: هر بلوک ۳۲ بایتی = HMAC(Kenc, nonce||شمارهٔ بلوک) و XOR با متن
+     ۴) برچسب = HMAC(Kmac, nonce||متن رمزشده) - کوتاه‌شده به SIMPLE_CRYPTO_TAG_LEN
+   قالب فایل: {"e":1,"n":nonce,"c":"هگز متن رمزشده","m":"هگز برچسب"}
+   اگر فایل قالب قدیمی (خوانا) باشد، یک‌بار خوانده و بلافاصله رمزشده بازنویسی
+   می‌شود تا هیچ‌وقت رمز خوانا روی فلش نماند. */
+
+/* ==================== شناسهٔ یکتای چیپ ==================== */
+static uint32_t func__Simple_ChipId(void)
 {
+#if defined(ESP8266)
+    return (uint32_t)ESP.getChipId();
+#else
+    return (uint32_t)(ESP.getEfuseMac() & 0xFFFFFFFFu);
+#endif
+}
+
+/* ==================== HMAC-SHA256 (افزایشی) ====================
+   استاندارد RFC 2104 روی همان SHA256 این فایل. افزایشی است چون برچسب باید
+   هم روی nonce و هم روی متن رمزشده حساب شود و نیازی به بافر میانی نیست. */
+typedef struct
+{
+    uint8_t key[64];
+    uint8_t pad[64];
+    simple_sha256_ctx_t ctx;
+} simple_hmac_ctx_t;
+
+static void func__Simple_HmacInit(simple_hmac_ctx_t *simple_hmac_ctx_t__ptr_c,
+                                  const uint8_t *uint8_t__ptr_key, size_t size_t__keyLen)
+{
+    uint8_t uint8_t__i;
+
+    memset(simple_hmac_ctx_t__ptr_c->key, 0, sizeof(simple_hmac_ctx_t__ptr_c->key));
+    if (size_t__keyLen > 64u)
+    {
+        /* کلید بلندتر از بلوک اول هش می‌شود (اینجا پیش نمی‌آید ولی طبق استاندارد) */
+        func__Simple_Sha256Init(&simple_hmac_ctx_t__ptr_c->ctx);
+        func__Simple_Sha256Update(&simple_hmac_ctx_t__ptr_c->ctx, uint8_t__ptr_key, size_t__keyLen);
+        func__Simple_Sha256Final(&simple_hmac_ctx_t__ptr_c->ctx, simple_hmac_ctx_t__ptr_c->key);
+    }
+    else
+    {
+        memcpy(simple_hmac_ctx_t__ptr_c->key, uint8_t__ptr_key, size_t__keyLen);
+    }
+
+    for (uint8_t__i = 0u; uint8_t__i < 64u; uint8_t__i++)
+    {
+        simple_hmac_ctx_t__ptr_c->pad[uint8_t__i] = (uint8_t)(simple_hmac_ctx_t__ptr_c->key[uint8_t__i] ^ 0x36u);
+    }
+    func__Simple_Sha256Init(&simple_hmac_ctx_t__ptr_c->ctx);
+    func__Simple_Sha256Update(&simple_hmac_ctx_t__ptr_c->ctx, simple_hmac_ctx_t__ptr_c->pad, 64u);
+}
+
+static void func__Simple_HmacUpdate(simple_hmac_ctx_t *simple_hmac_ctx_t__ptr_c,
+                                    const uint8_t *uint8_t__ptr_data, size_t size_t__len)
+{
+    func__Simple_Sha256Update(&simple_hmac_ctx_t__ptr_c->ctx, uint8_t__ptr_data, size_t__len);
+}
+
+static void func__Simple_HmacFinal(simple_hmac_ctx_t *simple_hmac_ctx_t__ptr_c, uint8_t uint8_t__ptr_out[32])
+{
+    uint8_t uint8_t__inner[32];
+    uint8_t uint8_t__i;
+
+    func__Simple_Sha256Final(&simple_hmac_ctx_t__ptr_c->ctx, uint8_t__inner);
+    for (uint8_t__i = 0u; uint8_t__i < 64u; uint8_t__i++)
+    {
+        simple_hmac_ctx_t__ptr_c->pad[uint8_t__i] = (uint8_t)(simple_hmac_ctx_t__ptr_c->key[uint8_t__i] ^ 0x5Cu);
+    }
+    func__Simple_Sha256Init(&simple_hmac_ctx_t__ptr_c->ctx);
+    func__Simple_Sha256Update(&simple_hmac_ctx_t__ptr_c->ctx, simple_hmac_ctx_t__ptr_c->pad, 64u);
+    func__Simple_Sha256Update(&simple_hmac_ctx_t__ptr_c->ctx, uint8_t__inner, 32u);
+    func__Simple_Sha256Final(&simple_hmac_ctx_t__ptr_c->ctx, uint8_t__ptr_out);
+}
+
+/* ==================== HMAC یک‌مرحله‌ای (برای بلوک‌های کوتاه) ==================== */
+static void func__Simple_HmacSha256(const uint8_t *uint8_t__ptr_key, size_t size_t__keyLen,
+                                    const uint8_t *uint8_t__ptr_msg, size_t size_t__msgLen,
+                                    uint8_t uint8_t__ptr_out[32])
+{
+    simple_hmac_ctx_t simple_hmac_ctx_t__c;
+
+    func__Simple_HmacInit(&simple_hmac_ctx_t__c, uint8_t__ptr_key, size_t__keyLen);
+    func__Simple_HmacUpdate(&simple_hmac_ctx_t__c, uint8_t__ptr_msg, size_t__msgLen);
+    func__Simple_HmacFinal(&simple_hmac_ctx_t__c, uint8_t__ptr_out);
+}
+
+/* ==================== ساخت کلید از شناسهٔ چیپ ====================
+   کلید = SHA256(salt || چهار بایت شناسهٔ چیپ) - یکتا برای هر برد. */
+static void func__Simple_CryptoKeyInit(void)
+{
+    uint8_t uint8_t__seed[4];
+    uint8_t uint8_t__i;
+    uint32_t uint32_t__chip = func__Simple_ChipId();
+    simple_sha256_ctx_t ctx;
+
+    for (uint8_t__i = 0u; uint8_t__i < 4u; uint8_t__i++)
+    {
+        uint8_t__seed[uint8_t__i] = (uint8_t)((uint32_t__chip >> (8u * (3u - uint8_t__i))) & 0xFFu);
+    }
+    func__Simple_Sha256Init(&ctx);
+    func__Simple_Sha256Update(&ctx, (const uint8_t *)SIMPLE_CRYPTO_SALT, (size_t)strlen(SIMPLE_CRYPTO_SALT));
+    func__Simple_Sha256Update(&ctx, uint8_t__seed, 4u);
+    func__Simple_Sha256Final(&ctx, UINT8_T__G__CryptoKey);
+
+    UINT32_T__G__CryptoNonce = uint32_t__chip ^ (uint32_t)millis() ^ (uint32_t)micros();
+    BOOL__G__CryptoKeyReady = true;
+}
+
+/* ==================== زیرکلید enc / mac ==================== */
+static void func__Simple_CryptoSubKey(const char *char__ptr_label, uint8_t uint8_t__ptr_out[32])
+{
+    func__Simple_HmacSha256(UINT8_T__G__CryptoKey, SIMPLE_CRYPTO_KEY_LEN,
+                            (const uint8_t *)char__ptr_label, strlen(char__ptr_label),
+                            uint8_t__ptr_out);
+}
+
+/* ==================== بلوک جریان کلید ====================
+   بلوک n = HMAC(Kenc, nonce || n) - چون HMAC خروجی‌اش تصادفی و یکتاست،
+   XOR با آن یک رمز جریانی درست می‌دهد (بدون نیاز به AES). */
+static void func__Simple_CryptoBlock(const uint8_t uint8_t__ptr_encKey[32], uint32_t uint32_t__nonce,
+                                     uint32_t uint32_t__blockIndex, uint8_t uint8_t__ptr_out[32])
+{
+    uint8_t uint8_t__msg[8];
+    uint8_t uint8_t__i;
+
+    for (uint8_t__i = 0u; uint8_t__i < 4u; uint8_t__i++)
+    {
+        uint8_t__msg[uint8_t__i] = (uint8_t)((uint32_t__nonce >> (8u * (3u - uint8_t__i))) & 0xFFu);
+        uint8_t__msg[uint8_t__i + 4u] = (uint8_t)((uint32_t__blockIndex >> (8u * (3u - uint8_t__i))) & 0xFFu);
+    }
+    func__Simple_HmacSha256(uint8_t__ptr_encKey, 32u, uint8_t__msg, 8u, uint8_t__ptr_out);
+}
+
+/* ==================== بایت به هگز ==================== */
+static void func__Simple_CryptoToHex(const uint8_t *uint8_t__ptr_in, size_t size_t__len, char *char__ptr_out)
+{
+    static const char char__hexDigits[] = "0123456789abcdef";
+    size_t size_t__i;
+
+    for (size_t__i = 0u; size_t__i < size_t__len; size_t__i++)
+    {
+        char__ptr_out[size_t__i * 2u] = char__hexDigits[(uint8_t__ptr_in[size_t__i] >> 4) & 0x0Fu];
+        char__ptr_out[(size_t__i * 2u) + 1u] = char__hexDigits[uint8_t__ptr_in[size_t__i] & 0x0Fu];
+    }
+    char__ptr_out[size_t__len * 2u] = '\0';
+}
+
+/* ==================== هگز به بایت (۱=موفق) ==================== */
+static bool func__Simple_CryptoFromHex(const char *char__ptr_hex, uint8_t *uint8_t__ptr_out, size_t size_t__len)
+{
+    size_t size_t__i;
+
+    for (size_t__i = 0u; size_t__i < size_t__len; size_t__i++)
+    {
+        uint8_t uint8_t__hi;
+        uint8_t uint8_t__lo;
+        char char__hi = char__ptr_hex[size_t__i * 2u];
+        char char__lo = char__ptr_hex[(size_t__i * 2u) + 1u];
+
+        if (char__hi == '\0' || char__lo == '\0') return false;
+        if (char__hi >= '0' && char__hi <= '9') uint8_t__hi = (uint8_t)(char__hi - '0');
+        else if (char__hi >= 'a' && char__hi <= 'f') uint8_t__hi = (uint8_t)(char__hi - 'a' + 10);
+        else return false;
+        if (char__lo >= '0' && char__lo <= '9') uint8_t__lo = (uint8_t)(char__lo - '0');
+        else if (char__lo >= 'a' && char__lo <= 'f') uint8_t__lo = (uint8_t)(char__lo - 'a' + 10);
+        else return false;
+        uint8_t__ptr_out[size_t__i] = (uint8_t)((uint8_t__hi << 4) | uint8_t__lo);
+    }
+    return true;
+}
+
+/* ==================== برچسب فایل ====================
+   HMAC(Kmac, nonce || بایت‌های متن رمزشده) - روی خودِ متن رمزشده، پس هر
+   دست‌کاری در فایل برچسب را باطل می‌کند. */
+static void func__Simple_CryptoTag(const uint8_t uint8_t__ptr_macKey[32], uint32_t uint32_t__nonce,
+                                   const String &string__hex, uint8_t uint8_t__ptr_out[32])
+{
+    simple_hmac_ctx_t simple_hmac_ctx_t__c;
+    uint8_t uint8_t__nonceBytes[4];
+    size_t size_t__i;
+    size_t size_t__len = string__hex.length();
+
+    for (size_t__i = 0u; size_t__i < 4u; size_t__i++)
+    {
+        uint8_t__nonceBytes[size_t__i] = (uint8_t)((uint32_t__nonce >> (8u * (3u - size_t__i))) & 0xFFu);
+    }
+    func__Simple_HmacInit(&simple_hmac_ctx_t__c, uint8_t__ptr_macKey, 32u);
+    func__Simple_HmacUpdate(&simple_hmac_ctx_t__c, uint8_t__nonceBytes, 4u);
+    for (size_t__i = 0u; size_t__i + 1u < size_t__len; size_t__i += 2u)
+    {
+        uint8_t uint8_t__pair[1];
+        char char__two[3];
+        char__two[0] = string__hex[size_t__i];
+        char__two[1] = string__hex[size_t__i + 1u];
+        char__two[2] = '\0';
+        if (!func__Simple_CryptoFromHex(char__two, uint8_t__pair, 1u)) return;
+        func__Simple_HmacUpdate(&simple_hmac_ctx_t__c, uint8_t__pair, 1u);
+    }
+    func__Simple_HmacFinal(&simple_hmac_ctx_t__c, uint8_t__ptr_out);
+}
+
+/* ==================== رمزگذاری متن ====================
+   خروجی: {"e":1,"n":nonce,"c":"هگز","m":"هگز برچسب"}
+   اگر کلید ساخته نشده باشد، متن دست‌نخورده پس داده می‌شود؛ آن‌وقت فایل مثل
+   قالب قدیمی خوانده می‌شود و چیزی از دست نمی‌رود. */
+static void func__Simple_CryptoEncrypt(const String &string__plain, String &string__out)
+{
+    uint8_t uint8_t__encKey[32];
+    uint8_t uint8_t__macKey[32];
+    uint8_t uint8_t__block[32];
+    uint8_t uint8_t__mac[32];
+    uint32_t uint32_t__nonce;
+    size_t size_t__len = string__plain.length();
+    size_t size_t__i;
+    String string__hex;
+    char char__hex[40];
+
+    if (!BOOL__G__CryptoKeyReady)
+    {
+        string__out = string__plain;
+        return;
+    }
+
+    func__Simple_CryptoSubKey("enc", uint8_t__encKey);
+    func__Simple_CryptoSubKey("mac", uint8_t__macKey);
+
+    /* هر نوشتن یک مقدار تازه می‌گیرد تا جریان کلید دوباره تکرار نشود */
+    UINT32_T__G__CryptoNonce = (UINT32_T__G__CryptoNonce + 1u) ^ (uint32_t)millis();
+    uint32_t__nonce = UINT32_T__G__CryptoNonce;
+
+    string__hex = "";
+    string__hex.reserve((size_t__len * 2u) + 2u);
+    for (size_t__i = 0u; size_t__i < size_t__len; size_t__i++)
+    {
+        uint8_t uint8_t__cipher;
+        if ((size_t__i % 32u) == 0u)
+        {
+            func__Simple_CryptoBlock(uint8_t__encKey, uint32_t__nonce, (uint32_t)(size_t__i / 32u), uint8_t__block);
+        }
+        uint8_t__cipher = (uint8_t)(((uint8_t)string__plain[size_t__i]) ^ uint8_t__block[size_t__i % 32u]);
+        func__Simple_CryptoToHex(&uint8_t__cipher, 1u, char__hex);
+        string__hex += char__hex;
+    }
+
+    func__Simple_CryptoTag(uint8_t__macKey, uint32_t__nonce, string__hex, uint8_t__mac);
+
+    string__out = "{\"e\":1,\"n\":";
+    string__out += String(uint32_t__nonce);
+    string__out += ",\"c\":\"";
+    string__out += string__hex;
+    string__out += "\",\"m\":\"";
+    func__Simple_CryptoToHex(uint8_t__mac, SIMPLE_CRYPTO_TAG_LEN, char__hex);
+    string__out += char__hex;
+    string__out += "\"}";
+}
+
+/* ==================== رمزگشایی ====================
+   ۰ = رمزنگاری‌شده ولی کلید/برچسب نخورد (فایل دست‌کاری‌شده),
+   ۱ = قالب قدیمی خوانا، ۲ = رمزگشایی موفق */
+static uint8_t func__Simple_CryptoDecrypt(const String &string__content, String &string__out)
+{
+    uint8_t uint8_t__encKey[32];
+    uint8_t uint8_t__macKey[32];
+    uint8_t uint8_t__mac[32];
+    uint8_t uint8_t__block[32];
+    uint8_t uint8_t__stored[SIMPLE_CRYPTO_TAG_LEN];
+    uint32_t uint32_t__nonce;
+    int32_t int32_t__nPos;
+    int32_t int32_t__cPos;
+    int32_t int32_t__cEnd;
+    int32_t int32_t__mPos;
+    int32_t int32_t__mEnd;
+    int32_t int32_t__k;
+    size_t size_t__index;
+    String string__hex;
+
+    if (!BOOL__G__CryptoKeyReady) return 0u;
+
+    int32_t__nPos = string__content.indexOf("\"n\":");
+    int32_t__cPos = string__content.indexOf("\"c\":\"");
+    int32_t__mPos = string__content.indexOf("\"m\":\"");
+    if (int32_t__nPos < 0 || int32_t__cPos < 0 || int32_t__mPos < 0)
+    {
+        return 1u;   /* قالب آشنا نیست - فایل قدیمی خوانا */
+    }
+    int32_t__nPos += 4;
+    int32_t__cPos += 5;
+    int32_t__cEnd = string__content.indexOf("\"", int32_t__cPos);
+    int32_t__mPos += 5;
+    int32_t__mEnd = string__content.indexOf("\"", int32_t__mPos);
+    if (int32_t__cEnd <= int32_t__cPos || int32_t__mEnd <= int32_t__mPos) return 0u;
+
+    uint32_t__nonce = (uint32_t)string__content.substring(int32_t__nPos,
+        string__content.indexOf(",", int32_t__nPos)).toInt();
+    string__hex = string__content.substring(int32_t__cPos, int32_t__cEnd);
+
+    func__Simple_CryptoSubKey("enc", uint8_t__encKey);
+    func__Simple_CryptoSubKey("mac", uint8_t__macKey);
+
+    /* ۱) برچسب را دوباره حساب کن - نبودنش یعنی فایل دست‌کاری شده */
+    func__Simple_CryptoTag(uint8_t__macKey, uint32_t__nonce, string__hex, uint8_t__mac);
+    if (!func__Simple_CryptoFromHex(string__content.substring(int32_t__mPos, int32_t__mEnd).c_str(),
+                                    uint8_t__stored, SIMPLE_CRYPTO_TAG_LEN))
+    {
+        return 0u;
+    }
+    if (memcmp(uint8_t__mac, uint8_t__stored, SIMPLE_CRYPTO_TAG_LEN) != 0) return 0u;
+
+    /* ۲) رمزگشایی - هر بایت با جریان کلید XOR می‌شود */
+    string__out = "";
+    string__out.reserve((size_t)((int32_t__cEnd - int32_t__cPos) / 2));
+    size_t__index = 0u;
+    for (int32_t__k = int32_t__cPos; int32_t__k + 1 < int32_t__cEnd; int32_t__k += 2)
+    {
+        uint8_t uint8_t__cipher[1];
+        char char__two[3];
+        char__two[0] = string__content[int32_t__k];
+        char__two[1] = string__content[int32_t__k + 1];
+        char__two[2] = '\0';
+        if (!func__Simple_CryptoFromHex(char__two, uint8_t__cipher, 1u)) return 0u;
+        if ((size_t__index % 32u) == 0u)
+        {
+            func__Simple_CryptoBlock(uint8_t__encKey, uint32_t__nonce, (uint32_t)(size_t__index / 32u), uint8_t__block);
+        }
+        string__out += (char)(uint8_t)(uint8_t__cipher[0] ^ uint8_t__block[size_t__index % 32u]);
+        size_t__index++;
+    }
+    return 2u;
+}
+
+/* ==================== کاربر پیش‌فرض ====================
+   admin/admin با نقش ادمین - هم برای نبودِ فایل و هم برای فایلی که برچسبش
+   نخورده (دست‌کاری‌شده) استفاده می‌شود. */
+static void func__Simple_AuthDefaults(void)
+{
+    uint8_t uint8_t__i;
+
+    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_USERS_MAX; uint8_t__i++)
+    {
+        SIMPLE_USER_T__G__Users[uint8_t__i].active = false;
+    }
+    (void)strncpy(SIMPLE_USER_T__G__Users[0].name, "admin", SIMPLE_USER_NAME_MAX);
+    SIMPLE_USER_T__G__Users[0].name[SIMPLE_USER_NAME_MAX] = '\0';
+    func__Simple_HashPass("admin", SIMPLE_USER_T__G__Users[0].passHash);
+    SIMPLE_USER_T__G__Users[0].role = 1u;
+    SIMPLE_USER_T__G__Users[0].active = true;
+    UINT8_T__G__UserCount = 1u;
+}
+
+/* ==================== پارس متن کاربران ====================
+   همان پارس سادهٔ قبلی؛ فقط روی متنی که پیش‌تر رمزگشایی شده اجرا می‌شود. */
+static void func__Simple_AuthParse(const String &string__content)
+{
+    int32_t int32_t__pos = 0;
+    uint8_t uint8_t__found = 0u;
     uint8_t uint8_t__index;
+
     for (uint8_t__index = 0u; uint8_t__index < SIMPLE_USERS_MAX; uint8_t__index++)
     {
         SIMPLE_USER_T__G__Users[uint8_t__index].active = false;
     }
-    UINT8_T__G__UserCount = 0u;
 
-    if (!BOOL__G__FsOk)
-    {
-        return;
-    }
-
-    if (!LittleFS.exists(SIMPLE_USERS_FILE))
-    {
-        /* کاربر پیش‌فرض: admin / admin نقش ادمین */
-        (void)strncpy(SIMPLE_USER_T__G__Users[0].name, "admin", SIMPLE_USER_NAME_MAX);
-        func__Simple_HashPass("admin", SIMPLE_USER_T__G__Users[0].passHash);
-        SIMPLE_USER_T__G__Users[0].role = 1u;
-        SIMPLE_USER_T__G__Users[0].active = true;
-        UINT8_T__G__UserCount = 1u;
-
-        File file__f = LittleFS.open(SIMPLE_USERS_FILE, "w");
-        if (file__f)
-        {
-            file__f.print("{\"users\":[{\"name\":\"admin\",\"pass\":\"");
-            file__f.print(SIMPLE_USER_T__G__Users[0].passHash);
-            file__f.print("\",\"role\":1}]}");
-            file__f.close();
-        }
-        return;
-    }
-
-    // بررسی مهاجرت از هش قدیمی
-    {
-        File file__check = LittleFS.open(SIMPLE_USERS_FILE, "r");
-        if (file__check)
-        {
-            String string__check = file__check.readString();
-            file__check.close();
-            // اگر هش قدیمی ۸ کاراکتری پیدا شد، فایل را پاک و دوباره بساز
-            if (string__check.indexOf("\"pass\":\"") >= 0)
-            {
-                int32_t int32_t__p = string__check.indexOf("\"pass\":\"");
-                int32_t__p += 8;
-                int32_t int32_t__e = string__check.indexOf("\"", int32_t__p);
-                if (int32_t__e > int32_t__p)
-                {
-                    String string__h = string__check.substring(int32_t__p, int32_t__e);
-                    if (string__h.length() == 8u)
-                    {
-                        // هش قدیمی - پاک کن
-                        LittleFS.remove(SIMPLE_USERS_FILE);
-                        (void)strncpy(SIMPLE_USER_T__G__Users[0].name, "admin", SIMPLE_USER_NAME_MAX);
-                        func__Simple_HashPass("admin", SIMPLE_USER_T__G__Users[0].passHash);
-                        SIMPLE_USER_T__G__Users[0].role = 1u;
-                        SIMPLE_USER_T__G__Users[0].active = true;
-                        UINT8_T__G__UserCount = 1u;
-                        File file__f = LittleFS.open(SIMPLE_USERS_FILE, "w");
-                        if (file__f)
-                        {
-                            file__f.print("{\"users\":[{\"name\":\"admin\",\"pass\":\"");
-                            file__f.print(SIMPLE_USER_T__G__Users[0].passHash);
-                            file__f.print("\",\"role\":1}]}");
-                            file__f.close();
-                        }
-                        return;
-                    }
-                }
-            }
-        }
-    }
-
-    File file__f = LittleFS.open(SIMPLE_USERS_FILE, "r");
-    if (!file__f)
-    {
-        return;
-    }
-    String string__content = file__f.readString();
-    file__f.close();
-
-    /* پارس خیلی ساده: دنبال \"name\":\" و \"pass\":\" و \"role\": */
-    int32_t int32_t__pos = 0;
-    uint8_t uint8_t__found = 0u;
     while (uint8_t__found < SIMPLE_USERS_MAX)
     {
         int32_t int32_t__namePos = string__content.indexOf("\"name\":\"", int32_t__pos);
@@ -184,7 +465,9 @@ static void func__Simple_AuthLoad(void)
         if (string__name.length() > 0 && string__name.length() <= SIMPLE_USER_NAME_MAX)
         {
             (void)strncpy(SIMPLE_USER_T__G__Users[uint8_t__found].name, string__name.c_str(), SIMPLE_USER_NAME_MAX);
+            SIMPLE_USER_T__G__Users[uint8_t__found].name[SIMPLE_USER_NAME_MAX] = '\0';
             (void)strncpy(SIMPLE_USER_T__G__Users[uint8_t__found].passHash, string__pass.c_str(), 64);
+            SIMPLE_USER_T__G__Users[uint8_t__found].passHash[64] = '\0';
             SIMPLE_USER_T__G__Users[uint8_t__found].role = (uint8_t)int32_t__role;
             SIMPLE_USER_T__G__Users[uint8_t__found].active = true;
             uint8_t__found++;
@@ -194,72 +477,201 @@ static void func__Simple_AuthLoad(void)
     UINT8_T__G__UserCount = uint8_t__found;
 }
 
-/* ==================== ذخیره کاربران ==================== */
+/* ==================== پیدا کردن هش قدیمی ۸ کاراکتری (مهاجرت) ==================== */
+static bool func__Simple_AuthHasOldHash(const String &string__content)
+{
+    int32_t int32_t__p = string__content.indexOf("\"pass\":\"");
+    if (int32_t__p < 0) return false;
+    int32_t__p += 8;
+    int32_t int32_t__e = string__content.indexOf("\"", int32_t__p);
+    if (int32_t__e <= int32_t__p) return false;
+    return (string__content.substring(int32_t__p, int32_t__e).length() == 8u);
+}
+
+/* ==================== ذخیره کاربران (رمزنگاری‌شده) ====================
+   متن خوانا در حافظه ساخته و بعد با کلید چیپ رمز می‌شود؛ روی فلش فقط متن
+   رمزشده و برچسب HMAC می‌ماند. */
 static void func__Simple_AuthSave(void)
 {
-    if (!BOOL__G__FsOk) return;
-    File file__f = LittleFS.open(SIMPLE_USERS_FILE, "w");
-    if (!file__f) return;
-    file__f.print("{\"users\":[");
+    String string__plain;
+    String string__enc;
     bool bool__first = true;
     uint8_t uint8_t__i;
+
+    if (!BOOL__G__FsOk) return;
+
+    string__plain = "{\"users\":[";
     for (uint8_t__i = 0u; uint8_t__i < SIMPLE_USERS_MAX; uint8_t__i++)
     {
         if (!SIMPLE_USER_T__G__Users[uint8_t__i].active) continue;
-        if (!bool__first) file__f.print(",");
-        file__f.print("{\"name\":\"");
-        file__f.print(SIMPLE_USER_T__G__Users[uint8_t__i].name);
-        file__f.print("\",\"pass\":\"");
-        file__f.print(SIMPLE_USER_T__G__Users[uint8_t__i].passHash);
-        file__f.print("\",\"role\":");
-        file__f.print(SIMPLE_USER_T__G__Users[uint8_t__i].role);
-        file__f.print("}");
+        if (!bool__first) string__plain += ",";
+        string__plain += "{\"name\":\"";
+        string__plain += SIMPLE_USER_T__G__Users[uint8_t__i].name;
+        string__plain += "\",\"pass\":\"";
+        string__plain += SIMPLE_USER_T__G__Users[uint8_t__i].passHash;
+        string__plain += "\",\"role\":";
+        string__plain += String(SIMPLE_USER_T__G__Users[uint8_t__i].role);
+        string__plain += "}";
         bool__first = false;
     }
-    file__f.print("]}");
+    string__plain += "]}";
+
+    func__Simple_CryptoEncrypt(string__plain, string__enc);
+
+    File file__f = LittleFS.open(SIMPLE_USERS_FILE, "w");
+    if (!file__f) return;
+    file__f.print(string__enc);
     file__f.close();
+}
+
+/* ==================== پیدا کردن کاربر با نام (منفی = نبود) ==================== */
+static int32_t func__Simple_FindUser(const char *char__ptr_name)
+{
+    uint8_t uint8_t__i;
+
+    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_USERS_MAX; uint8_t__i++)
+    {
+        if (!SIMPLE_USER_T__G__Users[uint8_t__i].active) continue;
+        if (strcmp(SIMPLE_USER_T__G__Users[uint8_t__i].name, char__ptr_name) == 0) return (int32_t)uint8_t__i;
+    }
+    return -1;
+}
+
+/* ==================== تأیید رمز یک کاربر ====================
+   با هش فعلی (SHA256+salt) مقایسه می‌شود؛ برای فایل‌های خیلی قدیمی که هش
+   ۸ کاراکتری دارند هم مسیر سازگاری نگه داشته شده است. */
+static bool func__Simple_VerifyUserPass(const char *char__ptr_name, const char *char__ptr_pass)
+{
+    int32_t int32_t__index = func__Simple_FindUser(char__ptr_name);
+    char char__hash[65];
+
+    if (int32_t__index < 0) return false;
+    if (char__ptr_pass == NULL) return false;
+
+    if (func__Simple_IsOldHash(SIMPLE_USER_T__G__Users[int32_t__index].passHash))
+    {
+        uint32_t uint32_t__oldHash = 5381u;
+        uint8_t uint8_t__j = 0u;
+        char char__oldHashStr[16];
+
+        while (char__ptr_pass[uint8_t__j] != '\0')
+        {
+            uint32_t__oldHash = ((uint32_t__oldHash << 5) + uint32_t__oldHash) + (uint32_t)char__ptr_pass[uint8_t__j];
+            uint8_t__j++;
+        }
+        (void)snprintf(char__oldHashStr, sizeof(char__oldHashStr), "%08lX", (unsigned long)uint32_t__oldHash);
+        return (strcmp(SIMPLE_USER_T__G__Users[int32_t__index].passHash, char__oldHashStr) == 0);
+    }
+
+    func__Simple_HashPass(char__ptr_pass, char__hash);
+    return (strcmp(SIMPLE_USER_T__G__Users[int32_t__index].passHash, char__hash) == 0);
+}
+
+/* ==================== تغییر رمز یک کاربر ====================
+   همان مسیری که /setpass صدا می‌زند. اجازه/عدم اجازه در لایهٔ HTTP است. */
+static bool func__Simple_SetUserPass(const char *char__ptr_name, const char *char__ptr_newPass)
+{
+    int32_t int32_t__index = func__Simple_FindUser(char__ptr_name);
+    char char__hash[65];
+
+    if (int32_t__index < 0) return false;
+    if (char__ptr_newPass == NULL) return false;
+    if (strlen(char__ptr_newPass) < SIMPLE_USER_PASS_MIN) return false;
+    if (strlen(char__ptr_newPass) > SIMPLE_USER_PASS_MAX) return false;
+
+    func__Simple_HashPass(char__ptr_newPass, char__hash);
+    (void)strncpy(SIMPLE_USER_T__G__Users[int32_t__index].passHash, char__hash, 64);
+    SIMPLE_USER_T__G__Users[int32_t__index].passHash[64] = '\0';
+    func__Simple_AuthSave();
+    return true;
+}
+
+/* ==================== بارگذاری کاربران ====================
+   فایل رمزنگاری‌شده خوانده و برچسبش بررسی می‌شود:
+   - برچسب درست ⇒ کاربران همان‌ها
+   - قالب قدیمی خوانا ⇒ یک‌بار خوانده و رمزشده بازنویسی می‌شود
+   - برچسب خراب ⇒ فایل دست‌کاری شده؛ به کاربر پیش‌فرض برمی‌گردیم */
+static void func__Simple_AuthLoad(void)
+{
+    uint8_t uint8_t__i;
+    String string__content;
+    uint8_t uint8_t__state;
+
+    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_USERS_MAX; uint8_t__i++)
+    {
+        SIMPLE_USER_T__G__Users[uint8_t__i].active = false;
+    }
+    UINT8_T__G__UserCount = 0u;
+
+    if (!BOOL__G__FsOk)
+    {
+        return;
+    }
+
+    if (!LittleFS.exists(SIMPLE_USERS_FILE))
+    {
+        func__Simple_AuthDefaults();
+        func__Simple_AuthSave();
+        return;
+    }
+
+    File file__f = LittleFS.open(SIMPLE_USERS_FILE, "r");
+    if (!file__f)
+    {
+        func__Simple_AuthDefaults();
+        return;
+    }
+    String string__raw = file__f.readString();
+    file__f.close();
+
+    uint8_t__state = func__Simple_CryptoDecrypt(string__raw, string__content);
+    if (uint8_t__state == 0u)
+    {
+        /* رمزنگاری‌شده ولی برچسب نخورد - فایل خراب/دست‌کاری‌شده */
+        func__Simple_AuthDefaults();
+        func__Simple_AuthSave();
+        return;
+    }
+
+    if (func__Simple_AuthHasOldHash(string__content))
+    {
+        /* هش خیلی قدیمی (۸ کاراکتری) - پاک و از نو بساز */
+        func__Simple_AuthDefaults();
+        func__Simple_AuthSave();
+        return;
+    }
+
+    func__Simple_AuthParse(string__content);
+
+    if (uint8_t__state == 1u)
+    {
+        /* قالب خوانای قدیمی بود؛ همین حالا رمزشده ذخیره کن */
+        func__Simple_AuthSave();
+    }
+
+    if (UINT8_T__G__UserCount == 0u)
+    {
+        func__Simple_AuthDefaults();
+        func__Simple_AuthSave();
+    }
 }
 
 /* ==================== ورود - با IP سشن ==================== */
 static bool func__Simple_AuthLogin(const char *char__ptr_name, const char *char__ptr_pass)
 {
-    char char__hash[65];
-    func__Simple_HashPass(char__ptr_pass, char__hash);
-    uint8_t uint8_t__i;
-    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_USERS_MAX; uint8_t__i++)
-    {
-        if (!SIMPLE_USER_T__G__Users[uint8_t__i].active) continue;
-        if (strcmp(SIMPLE_USER_T__G__Users[uint8_t__i].name, char__ptr_name) == 0)
-        {
-            bool bool__match = false;
-            if (func__Simple_IsOldHash(SIMPLE_USER_T__G__Users[uint8_t__i].passHash))
-            {
-                // Fallback قدیمی برای مهاجرت
-                uint32_t uint32_t__oldHash = 5381u;
-                uint8_t uint8_t__j = 0u;
-                while (char__ptr_pass[uint8_t__j] != '\0') { uint32_t__oldHash = ((uint32_t__oldHash << 5) + uint32_t__oldHash) + (uint32_t)char__ptr_pass[uint8_t__j]; uint8_t__j++; }
-                char char__oldHashStr[16];
-                (void)snprintf(char__oldHashStr, sizeof(char__oldHashStr), "%08lX", (unsigned long)uint32_t__oldHash);
-                if (strcmp(SIMPLE_USER_T__G__Users[uint8_t__i].passHash, char__oldHashStr) == 0) bool__match = true;
-            }
-            else
-            {
-                if (strcmp(SIMPLE_USER_T__G__Users[uint8_t__i].passHash, char__hash) == 0) bool__match = true;
-            }
+    int32_t int32_t__index = func__Simple_FindUser(char__ptr_name);
 
-            if (bool__match)
-            {
-                (void)strncpy(CHAR__G__CurrentUser, char__ptr_name, SIMPLE_USER_NAME_MAX);
-                UINT8_T__G__CurrentRole = SIMPLE_USER_T__G__Users[uint8_t__i].role;
-                UINT32_T__G__SessionStartMs = (uint32_t)millis();
-                // ذخیره IP کلاینت برای سشن
-                IPAddress ip__client = SIMPLE_WEB_SERVER_T__G__Server.client().remoteIP();
-                (void)snprintf(CHAR__G__SessionIP, sizeof(CHAR__G__SessionIP), "%u.%u.%u.%u", ip__client[0], ip__client[1], ip__client[2], ip__client[3]);
-                return true;
-            }
-        }
-    }
-    return false;
+    if (int32_t__index < 0) return false;
+    if (!func__Simple_VerifyUserPass(char__ptr_name, char__ptr_pass)) return false;
+
+    (void)strncpy(CHAR__G__CurrentUser, char__ptr_name, SIMPLE_USER_NAME_MAX);
+    CHAR__G__CurrentUser[SIMPLE_USER_NAME_MAX] = '\0';
+    UINT8_T__G__CurrentRole = SIMPLE_USER_T__G__Users[int32_t__index].role;
+    UINT32_T__G__SessionStartMs = (uint32_t)millis();
+    /* ذخیره IP کلاینت برای سشن */
+    IPAddress ip__client = SIMPLE_WEB_SERVER_T__G__Server.client().remoteIP();
+    (void)snprintf(CHAR__G__SessionIP, sizeof(CHAR__G__SessionIP), "%u.%u.%u.%u", ip__client[0], ip__client[1], ip__client[2], ip__client[3]);
+    return true;
 }
 
 /* ==================== خروج ==================== */
