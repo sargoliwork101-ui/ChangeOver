@@ -38,6 +38,9 @@
 #if MODULE_IMBALANCE
 #include "imbalance.h"
 #endif
+#if MODULE_DIAG
+#include "diag.h"
+#endif
 
 /* ==================== Local types / نوع‌های داخلی ==================== */
 
@@ -1836,6 +1839,12 @@ static void func__Charger_RegulateChannel(uint8_t uint8_t__channelIndex,
                 charger_channel_state_t__channel->uint32_t__taperSinceTick = 0u;
                 charger_channel_state_t__channel->uint32_t__absorbEnterTick = 0u;
                 charger_channel_state_t__channel->uint32_t__absorbMaxArmTick = 0u;
+#if MODULE_DIAG
+                if (charger_channel_state_t__channel->charger_state_t__state != CHG_STATE_FLOAT)
+                {
+                    func__Diag_RecordChargeComplete(uint8_t__channelIndex);
+                }
+#endif
                 charger_channel_state_t__channel->charger_state_t__state = CHG_STATE_FLOAT;
                 uint32_t__targetMv = CHARGER_PROFILE_T__G__Profile.uint32_t__floatMv;
             }
@@ -3309,6 +3318,9 @@ void func__Charger_EvaluateTechnicalFault(
         BOOL__G__TechnicalFaultLockout = true;
 #if MODULE_FAULT
         func__Fault_Set(FAULT_CHARGER_TECHNICAL);
+#endif
+#if MODULE_DIAG
+        func__Diag_RecordFault(FAULT_CHARGER_TECHNICAL, measurement_snapshot_t__snap);
 #endif
     }
 }

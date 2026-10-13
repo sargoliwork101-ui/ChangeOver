@@ -1016,7 +1016,7 @@ function renderDiag(j){
  let errDiv=document.getElementById('diagErrors');
  if(errDiv){
   if(!j.errors || j.errors.length==0) errDiv.textContent='خطایی ثبت نشده - سیستم سالم';
-  else { let html=''; for(let i=0;i<j.errors.length;i++){ let e=j.errors[i]; html+='<div class=row><b>'+fmtTime(e.ts)+'</b> - خطا: '+e.fault+'<br>کانال۱: '+stateText(e.s1)+' کانال۲: '+stateText(e.s2)+'</div>'; } errDiv.innerHTML=html; }
+  else { let html=''; for(let i=0;i<j.errors.length;i++){ let e=j.errors[i]; let fTxt=faultText(e.fault); let vInfo=''; if(e.vin||e.vpack){ vInfo='<br><span style=\"font-size:11px;color:var(--mu)\">Vin:'+(e.vin||0)+'mV Vpack:'+(e.vpack||0)+'mV Vlow:'+(e.vlow||0)+'mV Vhigh:'+(e.vhigh||0)+'mV</span>'; } html+='<div class=row><b>'+fmtTime(e.ts)+'</b><br>'+fTxt+' <span style=\"font-size:11px;color:var(--mu)\">('+e.fault+')</span>'+vInfo+'<br>کانال۱: '+stateText(e.s1)+' کانال۲: '+stateText(e.s2)+'</div>'; } errDiv.innerHTML=html; }
  }
  let pDiv=document.getElementById('powerLog');
  if(pDiv){
@@ -1032,7 +1032,7 @@ function renderDiag(j){
   renderChargeHistoryList(j.chargeHistory);
  }
 }
-async function poll(){ return; try{ let r=await fetch('/t',{cache:'no-store'}); let j=await r.json(); render(j); }catch(e){} }
+async function poll(){ try{ let r=await fetch('/t',{cache:'no-store'}); let j=await r.json(); render(j); }catch(e){} }
 async function pollCharts(){ await pollChartsPct(); await pollChartsVinVpack(); }
 async function pollDiag(){ try{ let r=await fetch('/diag',{cache:'no-store'}); let j=await r.json(); renderDiag(j); }catch(e){} }
 
@@ -1185,46 +1185,66 @@ async function delUser(){
  let u=document.getElementById('delUserName').value;
  try{ let resp=await fetch('/deluser?user='+encodeURIComponent(u),{method:'POST'}); let j=await resp.json(); document.getElementById('userMsg').textContent=j.ok?'حذف شد':'خطا'; loadUsers(); }catch(e){ document.getElementById('userMsg').textContent='خطا'; }
 }
-
-function demoChargeHistory(){
- let now=Math.floor(Date.now()/1000);
- let events=[];
- for(let i=0;i<18;i++){
-  let ch=(i%2)+1;
-  let offset=(18-i)* (86400/2 + Math.random()*3600);
-  events.push({ts: now - offset, ch: ch, dur: 3600});
- }
- return events;
-}
-function demoData(){
- let fakeData={on:true,t:[],inputPresent:true,boardTime:Math.floor(Date.now()/1000),ce:0,n:1,age:10,user:'admin',role:1,theme:0};
- fakeData.t[14]=27000; fakeData.t[15]=27000; fakeData.t[17]=13500; fakeData.t[18]=13500;
- fakeData.t[19]=0; fakeData.t[6]=1; fakeData.t[13]=1; fakeData.t[25]=400;
- render(fakeData);
- let chargeHist=demoChargeHistory();
- let j={totalChargeSec:45000,chargeCount:42,chargeCountCh1:23,chargeCountCh2:19,chargeSecCh1:162000,chargeSecCh2:136800,uptimeSec:864000,resetCount:5,boardTime:Math.floor(Date.now()/1000),errCount:0,powerCount:0,errors:[],power:[],chargeHistory:chargeHist};
- renderDiag(j);
- let now2=Math.floor(Date.now()/1000);
- let cnt=chartRanges.pct==='1d'?24:chartRanges.pct==='7d'?28:chartRanges.pct==='1m'?30:90;
- let pctArr=[], timeArr=[];
- for(let i=0;i<cnt;i++){ pctArr.push(72+Math.sin(i/4)*8+Math.random()*2); let off=chartRanges.pct==='1d'?(cnt-1-i)*3600:chartRanges.pct==='7d'?(cnt-1-i)*21600:(cnt-1-i)*86400; timeArr.push(now2-off); }
- renderChartsFromServer({range:chartRanges.pct,pct:pctArr,time:timeArr,vin:[27000,27100,26900,27200,27050],vpack:[27000,27100,26900,27200,27050]});
- window._lastChargeHistory=chargeHist;
- drawChargeHistory(chargeHist, chartRanges.charge);
- renderChargeHistoryList(chargeHist);
- let el=document.getElementById('wifiCurrentSsid'); if(el) el.textContent='changeover_userpannel';
- document.getElementById('usersList').innerHTML='<div class=row style="display:flex;justify-content:space-between;font-weight:800;color:var(--mu);font-size:10px"><span>نام کاربری</span><span>نقش</span></div><div class=row style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:8px"><span style="width:28px;height:28px;border-radius:8px;background:var(--in);border:1px solid var(--ln);display:grid;place-items:center;font-weight:800;font-size:11px;color:var(--ac)">A</span><b style="font-family:Vazirmatn">admin</b></div><span class=badge admin>ادمین</span></div>';
- document.getElementById('usersCount').textContent='2 کاربر';
- document.getElementById('loginPage').style.display='none';
- resizeCanvases();
-}
 poll(); pollCharts(); pollDiag();
-setTimeout(demoData,200);
-document.addEventListener('keydown', (e)=>{ if(e.key==='l' || e.key==='L'){ let lp=document.getElementById('loginPage'); if(lp){ lp.style.display = lp.style.display==='none'?'grid':'none'; if(lp.style.display!=='none'){ let box=lp.querySelector('.cd'); if(box){ box.classList.remove('login-animate'); void box.offsetWidth; box.classList.add('login-animate'); } } } } });
-
 setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,10000);
 setInterval(()=>{ let e=document.getElementById('phoneTime'); if(e) e.textContent=new Date().toLocaleString('fa-IR'); },1000);
 </script>
+
+<script>
+// preview demo injection - when no board connected, show demo data
+(function(){
+  const demoTlm = {
+    on:1, age:120, seq:1, fl:7, fl2:0, n:100, ce:0, vm:0, inputPresent:1,
+    t:[1000,200,500,400,  // cur1 raw, shunt, unf, filt
+       300, 250, 1,       // iest1, duty1, state1=1 charging
+       1100,210,520,410,  // cur2
+       310, 260, 1,       // iest2, duty2, state2=1
+       24500,  // vin 14
+       25500,  // vpack raw 15
+       12000,  // v12 16
+       12800,  // vlow 17
+       12700,  // vhigh 18
+       64,     // fault 19
+       1000,1100,1200,1300,3300, // raw counts + vdda
+       100, 0, 0,  // imb mv, events, cycles
+       0, 100, 200 // dead mask, elapsed ch1,ch2
+    ]
+  };
+  const demoDiag = {
+    valid:1, totalChargeSec:12345, chargeCount:12, chargeCountCh1:7, chargeCountCh2:5,
+    chargeSecCh1:8000, chargeSecCh2:4345, uptimeSec:54321, resetCount:3, boardTime: Math.floor(Date.now()/1000),
+    errCount:2, powerCount:1,
+    errors:[
+      {ts: Math.floor(Date.now()/1000)-3600, fault:64, vin:24500, vpack:25500, vlow:12800, vhigh:12700, s1:1, s2:1},
+      {ts: Math.floor(Date.now()/1000)-7200, fault:1, vin:24000, vpack:25000, vlow:12500, vhigh:12500, s1:0, s2:0}
+    ],
+    power:[{off: Math.floor(Date.now()/1000)-86400, on: Math.floor(Date.now()/1000)-86000, dur:400}],
+    chargeHistory:[{ts: Math.floor(Date.now()/1000)-10000, ch:1, dur:0},{ts: Math.floor(Date.now()/1000)-5000, ch:2, dur:0}]
+  };
+  const origFetch = window.fetch;
+  window.fetch = async function(url, opts){
+    try{
+      let r = await origFetch(url, opts);
+      // if response is ok and not 404, return it
+      if(r && r.ok) return r;
+    }catch(e){}
+    // fallback to demo
+    if(url.includes('/t')){
+      return {ok:true, json: async()=> demoTlm, text: async()=> JSON.stringify(demoTlm)};
+    }
+    if(url.includes('/diag')){
+      return {ok:true, json: async()=> demoDiag, text: async()=> JSON.stringify(demoDiag)};
+    }
+    if(url.includes('/charts')){
+      return {ok:true, json: async()=> ({range:'1d', count:6, pct:[20,35,50,70,85,90], time:[Math.floor(Date.now()/1000)-5*3600, Math.floor(Date.now()/1000)-4*3600, Math.floor(Date.now()/1000)-3*3600, Math.floor(Date.now()/1000)-2*3600, Math.floor(Date.now()/1000)-3600, Math.floor(Date.now()/1000)]}), text: async()=> '{}'};
+    }
+    return {ok:false, json: async()=> ({}), text: async()=> '{}'};
+  };
+  // auto sync board time in preview
+  setTimeout(()=>{ try{ render({on:1, t: demoTlm.t, fl: demoTlm.fl, fl2: demoTlm.fl2, inputPresent:1, pctPack: 50}); renderDiag(demoDiag); }catch(e){} }, 500);
+})();
+</script>
+
 </body>
 </html>
 

@@ -1018,7 +1018,7 @@ function renderDiag(j){
  let errDiv=document.getElementById('diagErrors');
  if(errDiv){
   if(!j.errors || j.errors.length==0) errDiv.textContent='خطایی ثبت نشده - سیستم سالم';
-  else { let html=''; for(let i=0;i<j.errors.length;i++){ let e=j.errors[i]; html+='<div class=row><b>'+fmtTime(e.ts)+'</b> - خطا: '+e.fault+'<br>کانال۱: '+stateText(e.s1)+' کانال۲: '+stateText(e.s2)+'</div>'; } errDiv.innerHTML=html; }
+  else { let html=''; for(let i=0;i<j.errors.length;i++){ let e=j.errors[i]; let fTxt=faultText(e.fault); let vInfo=''; if(e.vin||e.vpack){ vInfo='<br><span style=\"font-size:11px;color:var(--mu)\">Vin:'+(e.vin||0)+'mV Vpack:'+(e.vpack||0)+'mV Vlow:'+(e.vlow||0)+'mV Vhigh:'+(e.vhigh||0)+'mV</span>'; } html+='<div class=row><b>'+fmtTime(e.ts)+'</b><br>'+fTxt+' <span style=\"font-size:11px;color:var(--mu)\">('+e.fault+')</span>'+vInfo+'<br>کانال۱: '+stateText(e.s1)+' کانال۲: '+stateText(e.s2)+'</div>'; } errDiv.innerHTML=html; }
  }
  let pDiv=document.getElementById('powerLog');
  if(pDiv){

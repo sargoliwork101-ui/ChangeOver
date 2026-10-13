@@ -36,6 +36,9 @@
 #if MODULE_IMBALANCE
 #include "imbalance.h"
 #endif
+#if MODULE_DIAG
+#include "diag.h"
+#endif
 
 /* ==================== Parser state / وضعیت پارسر ==================== */
 
@@ -1179,6 +1182,159 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
                             (uint16_t)ESPLINK_TLM_PAYLOAD_SIZE);
 }
 
+#if MODULE_DIAG
+/* ==================== Diag Data send / ارسال دیاگ ==================== */
+
+/**
+ * @brief  [EN] Send one DIAG_DATA chunk. Chunk 0 is the summary (39 bytes
+ *              with extended per-channel counts), chunks 1-2 are errors
+ *              (5 each, 32 bytes per error), chunks 3-4 are power events
+ *              (10 each, 12 bytes per event). Compatible with
+ *              esp_simple_panel simple_link.h parser.
+ *         [FA] ارسال یک چانک DIAG_DATA - سازگار با پارسر پنل ساده.
+ */
+static void func__EspLink_SendDiagChunk0(void)
+{
+    uint8_t UINT8_T__A__Payload[64];
+    uint16_t uint16_t__cursor = 0u;
+    const diag_record_t *diag_record_t__rec = func__Diag_GetRecord();
+    uint32_t uint32_t__boardTime = func__Diag_GetBoardTime();
+    if (uint32_t__boardTime == 0u)
+    {
+        uint32_t__boardTime = diag_record_t__rec->uint32_t__uptimeSec;
+    }
+
+    UINT8_T__A__Payload[0] = 0u;
+    uint16_t__cursor = 1u;
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         diag_record_t__rec->uint32_t__totalChargeSec);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         diag_record_t__rec->uint32_t__chargeCount);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         diag_record_t__rec->uint32_t__uptimeSec);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         diag_record_t__rec->uint32_t__resetCount);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         uint32_t__boardTime);
+    UINT8_T__A__Payload[uint16_t__cursor] = diag_record_t__rec->uint8_t__errorCount;
+    uint16_t__cursor++;
+    UINT8_T__A__Payload[uint16_t__cursor] = diag_record_t__rec->uint8_t__powerEventCount;
+    uint16_t__cursor++;
+    /* extended */
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         diag_record_t__rec->uint32_t__chargeCountCh1);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         diag_record_t__rec->uint32_t__chargeCountCh2);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         diag_record_t__rec->uint32_t__chargeSecCh1);
+    func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                         diag_record_t__rec->uint32_t__chargeSecCh2);
+
+    func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_DIAG_DATA,
+                            UINT8_T__A__Payload, uint16_t__cursor);
+}
+
+static void func__EspLink_SendDiagErrors(uint8_t uint8_t__chunkId,
+                                         uint8_t uint8_t__start,
+                                         uint8_t uint8_t__count)
+{
+    /* [EN] Each error = 8*u32 =32 bytes, payload = 3 + count*32 <= 163 for 5 */
+    uint8_t UINT8_T__A__Payload[3u + (5u * 32u)];
+    uint16_t uint16_t__cursor = 0u;
+    const diag_record_t *diag_record_t__rec = func__Diag_GetRecord();
+    uint8_t uint8_t__i;
+
+    if (uint8_t__count > 5u) uint8_t__count = 5u;
+    if (uint8_t__start >= DIAG_MAX_ERRORS) return;
+    if ((uint8_t__start + uint8_t__count) > DIAG_MAX_ERRORS)
+    {
+        uint8_t__count = (uint8_t)(DIAG_MAX_ERRORS - uint8_t__start);
+    }
+
+    UINT8_T__A__Payload[0] = uint8_t__chunkId;
+    UINT8_T__A__Payload[1] = uint8_t__start;
+    UINT8_T__A__Payload[2] = uint8_t__count;
+    uint16_t__cursor = 3u;
+
+    for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)(uint8_t__start + uint8_t__i);
+        func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                             diag_record_t__rec->diag_error_t__A__Errors[uint8_t__idx].uint32_t__timestamp);
+        func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                             diag_record_t__rec->diag_error_t__A__Errors[uint8_t__idx].uint32_t__faultMask);
+        func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                             diag_record_t__rec->diag_error_t__A__Errors[uint8_t__idx].uint32_t__vInMv);
+        func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                             diag_record_t__rec->diag_error_t__A__Errors[uint8_t__idx].uint32_t__vPackMv);
+        func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                             diag_record_t__rec->diag_error_t__A__Errors[uint8_t__idx].uint32_t__vLowMv);
+        func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                             diag_record_t__rec->diag_error_t__A__Errors[uint8_t__idx].uint32_t__vHighMv);
+        func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                             diag_record_t__rec->diag_error_t__A__Errors[uint8_t__idx].uint32_t__state1);
+        func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                             diag_record_t__rec->diag_error_t__A__Errors[uint8_t__idx].uint32_t__state2);
+    }
+
+    func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_DIAG_DATA,
+                            UINT8_T__A__Payload, uint16_t__cursor);
+}
+
+static void func__EspLink_SendDiagPower(uint8_t uint8_t__chunkId,
+                                        uint8_t uint8_t__start,
+                                        uint8_t uint8_t__count)
+{
+    uint8_t UINT8_T__A__Payload[3u + (10u * 12u)];
+    uint16_t uint16_t__cursor = 0u;
+    const diag_record_t *diag_record_t__rec = func__Diag_GetRecord();
+    uint8_t uint8_t__i;
+
+    if (uint8_t__count > 10u) uint8_t__count = 10u;
+    if (uint8_t__start >= DIAG_MAX_POWER_EVENTS) return;
+    if ((uint8_t__start + uint8_t__count) > DIAG_MAX_POWER_EVENTS)
+    {
+        uint8_t__count = (uint8_t)(DIAG_MAX_POWER_EVENTS - uint8_t__start);
+    }
+
+    UINT8_T__A__Payload[0] = uint8_t__chunkId;
+    UINT8_T__A__Payload[1] = uint8_t__start;
+    UINT8_T__A__Payload[2] = uint8_t__count;
+    uint16_t__cursor = 3u;
+
+    for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
+    {
+        uint8_t uint8_t__idx = (uint8_t)(uint8_t__start + uint8_t__i);
+        func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                             diag_record_t__rec->diag_power_event_t__A__PowerEvents[uint8_t__idx].uint32_t__offTime);
+        func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                             diag_record_t__rec->diag_power_event_t__A__PowerEvents[uint8_t__idx].uint32_t__onTime);
+        func__EspLink_PutU32(UINT8_T__A__Payload, &uint16_t__cursor,
+                             diag_record_t__rec->diag_power_event_t__A__PowerEvents[uint8_t__idx].uint32_t__durationSec);
+    }
+
+    func__EspLink_SendFrame((uint8_t)ESPLINK_MSG_DIAG_DATA,
+                            UINT8_T__A__Payload, uint16_t__cursor);
+}
+
+static void func__EspLink_SendDiagData(void)
+{
+    const diag_record_t *diag_record_t__rec = func__Diag_GetRecord();
+    uint8_t uint8_t__err = diag_record_t__rec->uint8_t__errorCount;
+    uint8_t uint8_t__pow = diag_record_t__rec->uint8_t__powerEventCount;
+    uint8_t uint8_t__err1 = (uint8_t__err > 5u) ? 5u : uint8_t__err;
+    uint8_t uint8_t__err2 = (uint8_t__err > 5u) ? (uint8_t)(uint8_t__err - 5u) : 0u;
+    uint8_t uint8_t__pow1 = (uint8_t__pow > 10u) ? 10u : uint8_t__pow;
+    uint8_t uint8_t__pow2 = (uint8_t__pow > 10u) ? (uint8_t)(uint8_t__pow - 10u) : 0u;
+
+    func__EspLink_SendDiagChunk0();
+    func__EspLink_SendDiagErrors(1u, 0u, uint8_t__err1);
+    func__EspLink_SendDiagErrors(2u, 5u, uint8_t__err2);
+    func__EspLink_SendDiagPower(3u, 0u, uint8_t__pow1);
+    func__EspLink_SendDiagPower(4u, 10u, uint8_t__pow2);
+}
+#endif /* MODULE_DIAG */
+
 /* ==================== Frame handling / رسیدگی به فریم ==================== */
 
 /**
@@ -1544,6 +1700,28 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
 #endif /* MODULE_CHARGER */
             func__EspLink_SendParamsBulk();
         }
+    }
+    else if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_TIME_SYNC)
+    {
+#if MODULE_DIAG
+        if (uint16_t__payloadLength == 4u)
+        {
+            uint32_t uint32_t__unix = func__EspLink_GetU32(uint8_t__payload, 0u);
+            func__Diag_SetBoardTime(uint32_t__unix);
+        }
+#endif
+#if MODULE_CHARGER
+        func__Charger_NotifyEspLinkActivity();
+#endif
+    }
+    else if (uint8_t__messageType == (uint8_t)ESPLINK_MSG_DIAG_REQ)
+    {
+#if MODULE_DIAG
+        func__EspLink_SendDiagData();
+#endif
+#if MODULE_CHARGER
+        func__Charger_NotifyEspLinkActivity();
+#endif
     }
     else if (func__EspLink_HandleLutFrame(uint8_t__messageType,
                                           uint16_t__payloadLength,

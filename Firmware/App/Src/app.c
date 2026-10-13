@@ -9,6 +9,9 @@
 #include "modules_enable.h"
 #include "esp_link_nvm.h"
 #include "cal_lut.h"
+#if MODULE_DIAG
+#include "diag.h"
+#endif
 
 /**
  * @brief  [EN] Application initialization hook; thread-owned module init runs in its thread.
@@ -40,6 +43,9 @@ void func__App_Init(void)
        جدا»): جدول بنچ از بلوک فلش اختصاصی‌اش بار می‌شود. نبودِ رکورد معتبر
        یعنی خط گین و آفست سر کار است (جدول کامپایل‌شده دیگر وجود ندارد). */
     func__CalLut_Init();
+#endif
+#if MODULE_DIAG
+    func__Diag_Init();
 #endif
 }
 

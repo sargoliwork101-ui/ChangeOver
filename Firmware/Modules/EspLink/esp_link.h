@@ -159,6 +159,18 @@
 #define ESPLINK_MSG_TLM_LIVE          0x10u
 #define ESPLINK_MSG_PARAM_REPORT      0x11u
 #define ESPLINK_MSG_PARAMS_BULK       0x12u
+/* [EN] Simple panel diag/time messages (0x30..0x32) - compatible with
+ *      esp_simple_panel (user panel). The full technical panel does not
+ *      use them, but the STM32 must answer them when the simple panel
+ *      is connected: TIME_SYNC (ESP->STM 4-byte LE unix sec), DIAG_REQ
+ *      (ESP->STM empty, requests full diag), DIAG_DATA (STM->ESP chunked
+ *      diag, see diag.h and simple_link.h).
+ * [FA] پیام‌های دیاگ/زمان پنل ساده (۰x۳۰..۰x۳۲) - سازگار با پنل ساده کاربر.
+ *      پنل فنی از آنها استفاده نمی‌کند، اما STM32 باید هنگام اتصال پنل
+ *      ساده به آنها پاسخ دهد. */
+#define ESPLINK_MSG_TIME_SYNC         0x30u
+#define ESPLINK_MSG_DIAG_REQ          0x31u
+#define ESPLINK_MSG_DIAG_DATA         0x32u
 
 /* ==================== Parameter IDs / شناسهٔ پارامترها ==================== */
 

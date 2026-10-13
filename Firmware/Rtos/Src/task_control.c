@@ -53,6 +53,9 @@
 #if (MODULE_ESP && (MODULE_IMBALANCE || MODULE_CHARGER))
 #include "esp_link_nvm.h"   /* [EN] persisted-slot dirty marking / علامت‌گذاری اسلات‌ها */
 #endif
+#if MODULE_DIAG
+#include "diag.h"
+#endif
 
 #if MODULE_IMBALANCE
 /* [EN] Scenario 5 feed: the changeover state from the PREVIOUS pass is the
@@ -61,6 +64,12 @@
  *      the 30 s stability times).
  * [FA] حالت چنج‌اور پاس قبلی = نیرولهٔ «روی باتری» برای گیت دشارژ. */
 static app_state_t APP_STATE_T__G__ImbalancePrevState = APP_STATE_BOOT;
+#endif
+#if MODULE_DIAG
+static fault_mask_t FAULT_MASK_T__G__DiagPrev = FAULT_NONE;
+static bool BOOL__G__DiagPrevInput = false;
+static bool BOOL__G__DiagPrevInputValid = false;
+static uint16_t UINT16_T__G__DiagTickDiv = 0u;
 #endif
 
 /* ==================== Task Control ==================== */
@@ -300,6 +309,56 @@ void func__TaskControl(void *void_ptr__argument)
             {
 #if MODULE_ESP
                 func__EspLink_NvmMarkDirty(CHG_DEAD_SLOT_MASK_ID);
+#endif
+            }
+#endif
+#if MODULE_DIAG
+            /* [EN] Diag: min/max, power edge, fault edge, 1-sec tick.
+               [FA] دیاگ: کمینه/بیشینه، لبه برق، لبه خطا، تیک ۱ثانیه. */
+            func__Diag_UpdateMinMax(&measurement_snapshot_t__snap);
+            if (measurement_snapshot_t__snap.valid != false)
+            {
+                if (BOOL__G__DiagPrevInputValid != false)
+                {
+                    if ((BOOL__G__DiagPrevInput != false) &&
+                        (measurement_snapshot_t__snap.input_present == false))
+                    {
+                        func__Diag_RecordPowerOff();
+                    }
+                    else if ((BOOL__G__DiagPrevInput == false) &&
+                             (measurement_snapshot_t__snap.input_present != false))
+                    {
+                        func__Diag_RecordPowerOn();
+                    }
+                }
+                BOOL__G__DiagPrevInput = measurement_snapshot_t__snap.input_present;
+                BOOL__G__DiagPrevInputValid = true;
+            }
+            if (fault_mask_t__faults != FAULT_NONE)
+            {
+                fault_mask_t fault_mask_t__newBits =
+                    (fault_mask_t)(fault_mask_t__faults & (fault_mask_t)~FAULT_MASK_T__G__DiagPrev);
+                if (fault_mask_t__newBits != FAULT_NONE)
+                {
+                    func__Diag_RecordFault(fault_mask_t__faults, &measurement_snapshot_t__snap);
+                }
+            }
+            FAULT_MASK_T__G__DiagPrev = fault_mask_t__faults;
+
+            UINT16_T__G__DiagTickDiv++;
+            if (UINT16_T__G__DiagTickDiv >= 100u)
+            {
+                UINT16_T__G__DiagTickDiv = 0u;
+                func__Diag_Tick();
+#if MODULE_CHARGER
+                if (func__Charger_IsChannelActive(0u) != false)
+                {
+                    func__Diag_AddChargeSec(0u, 1u);
+                }
+                if (func__Charger_IsChannelActive(1u) != false)
+                {
+                    func__Diag_AddChargeSec(1u, 1u);
+                }
 #endif
             }
 #endif
