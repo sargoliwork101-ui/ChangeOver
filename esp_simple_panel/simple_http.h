@@ -102,6 +102,20 @@ static void func__Simple_HttpCharts(void)
             if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
             SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart7D_Pct[uint8_t__idx]));
         }
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vin\":[");
+        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
+        {
+            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart7D_Index + SIMPLE_CHART_7D_SIZE - UINT8_T__G__Chart7D_Count + uint8_t__i) % SIMPLE_CHART_7D_SIZE);
+            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
+            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart7D_Vin[uint8_t__idx]));
+        }
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vpack\":[");
+        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
+        {
+            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart7D_Index + SIMPLE_CHART_7D_SIZE - UINT8_T__G__Chart7D_Count + uint8_t__i) % SIMPLE_CHART_7D_SIZE);
+            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
+            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart7D_Vpack[uint8_t__idx]));
+        }
         SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"time\":[");
         for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart7D_Count; uint8_t__i++)
         {
@@ -121,6 +135,20 @@ static void func__Simple_HttpCharts(void)
             uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
             if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
             SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1M_Pct[uint8_t__idx]));
+        }
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vin\":[");
+        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
+        {
+            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
+            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
+            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1M_Vin[uint8_t__idx]));
+        }
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vpack\":[");
+        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
+        {
+            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1M_Index + SIMPLE_CHART_1M_SIZE - UINT8_T__G__Chart1M_Count + uint8_t__i) % SIMPLE_CHART_1M_SIZE);
+            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
+            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1M_Vpack[uint8_t__idx]));
         }
         SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"time\":[");
         for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1M_Count; uint8_t__i++)
@@ -142,6 +170,20 @@ static void func__Simple_HttpCharts(void)
             if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
             SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart3M_Pct[uint8_t__idx]));
         }
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vin\":[");
+        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
+        {
+            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart3M_Index + SIMPLE_CHART_3M_SIZE - UINT8_T__G__Chart3M_Count + uint8_t__i) % SIMPLE_CHART_3M_SIZE);
+            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
+            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart3M_Vin[uint8_t__idx]));
+        }
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vpack\":[");
+        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
+        {
+            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart3M_Index + SIMPLE_CHART_3M_SIZE - UINT8_T__G__Chart3M_Count + uint8_t__i) % SIMPLE_CHART_3M_SIZE);
+            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
+            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart3M_Vpack[uint8_t__idx]));
+        }
         SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"time\":[");
         for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart3M_Count; uint8_t__i++)
         {
@@ -162,26 +204,26 @@ static void func__Simple_HttpCharts(void)
             if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
             SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1D_Pct[uint8_t__idx]));
         }
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vin\":[");
+        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1D_Count; uint8_t__i++)
+        {
+            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1D_Index + SIMPLE_CHART_1D_SIZE - UINT8_T__G__Chart1D_Count + uint8_t__i) % SIMPLE_CHART_1D_SIZE);
+            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
+            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1D_Vin[uint8_t__idx]));
+        }
+        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vpack\":[");
+        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1D_Count; uint8_t__i++)
+        {
+            uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1D_Index + SIMPLE_CHART_1D_SIZE - UINT8_T__G__Chart1D_Count + uint8_t__i) % SIMPLE_CHART_1D_SIZE);
+            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
+            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1D_Vpack[uint8_t__idx]));
+        }
         SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"time\":[");
         for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__Chart1D_Count; uint8_t__i++)
         {
             uint8_t__idx = (uint8_t)((UINT8_T__G__Chart1D_Index + SIMPLE_CHART_1D_SIZE - UINT8_T__G__Chart1D_Count + uint8_t__i) % SIMPLE_CHART_1D_SIZE);
             if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
             SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__Chart1D_Time[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vin\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__ChartCount; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__ChartIndex + SIMPLE_CHART_HISTORY_SIZE - UINT8_T__G__ChartCount + uint8_t__i) % SIMPLE_CHART_HISTORY_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__ChartVin[uint8_t__idx]));
-        }
-        SIMPLE_WEB_SERVER_T__G__Server.sendContent("],\"vpack\":[");
-        for (uint8_t__i = 0u; uint8_t__i < UINT8_T__G__ChartCount; uint8_t__i++)
-        {
-            uint8_t__idx = (uint8_t)((UINT8_T__G__ChartIndex + SIMPLE_CHART_HISTORY_SIZE - UINT8_T__G__ChartCount + uint8_t__i) % SIMPLE_CHART_HISTORY_SIZE);
-            if (uint8_t__i != 0u) SIMPLE_WEB_SERVER_T__G__Server.sendContent(",");
-            SIMPLE_WEB_SERVER_T__G__Server.sendContent(String(UINT32_T__G__ChartVpack[uint8_t__idx]));
         }
         SIMPLE_WEB_SERVER_T__G__Server.sendContent("]}");
     }

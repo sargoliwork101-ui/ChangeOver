@@ -32,26 +32,34 @@ static uint8_t  UINT8_T__G__ChartIndex = 0u;
 static uint8_t  UINT8_T__G__ChartCount = 0u;
 static uint32_t UINT32_T__G__LastChartMs = 0u;
 
-/* تاریخچه با تفکیک زمانی - محور افقی زمان */
+/* تاریخچه با تفکیک زمانی - محور افقی زمان - درصد + Vin + Vpack برای ۳ ماه */
 static uint32_t UINT32_T__G__Chart1D_Pct[SIMPLE_CHART_1D_SIZE];
+static uint32_t UINT32_T__G__Chart1D_Vin[SIMPLE_CHART_1D_SIZE];
+static uint32_t UINT32_T__G__Chart1D_Vpack[SIMPLE_CHART_1D_SIZE];
 static uint32_t UINT32_T__G__Chart1D_Time[SIMPLE_CHART_1D_SIZE];
 static uint8_t  UINT8_T__G__Chart1D_Count = 0u;
 static uint8_t  UINT8_T__G__Chart1D_Index = 0u;
 static uint32_t UINT32_T__G__Last1D_Ms = 0u;
 
 static uint32_t UINT32_T__G__Chart7D_Pct[SIMPLE_CHART_7D_SIZE];
+static uint32_t UINT32_T__G__Chart7D_Vin[SIMPLE_CHART_7D_SIZE];
+static uint32_t UINT32_T__G__Chart7D_Vpack[SIMPLE_CHART_7D_SIZE];
 static uint32_t UINT32_T__G__Chart7D_Time[SIMPLE_CHART_7D_SIZE];
 static uint8_t  UINT8_T__G__Chart7D_Count = 0u;
 static uint8_t  UINT8_T__G__Chart7D_Index = 0u;
 static uint32_t UINT32_T__G__Last7D_Ms = 0u;
 
 static uint32_t UINT32_T__G__Chart1M_Pct[SIMPLE_CHART_1M_SIZE];
+static uint32_t UINT32_T__G__Chart1M_Vin[SIMPLE_CHART_1M_SIZE];
+static uint32_t UINT32_T__G__Chart1M_Vpack[SIMPLE_CHART_1M_SIZE];
 static uint32_t UINT32_T__G__Chart1M_Time[SIMPLE_CHART_1M_SIZE];
 static uint8_t  UINT8_T__G__Chart1M_Count = 0u;
 static uint8_t  UINT8_T__G__Chart1M_Index = 0u;
 static uint32_t UINT32_T__G__Last1M_Ms = 0u;
 
 static uint32_t UINT32_T__G__Chart3M_Pct[SIMPLE_CHART_3M_SIZE];
+static uint32_t UINT32_T__G__Chart3M_Vin[SIMPLE_CHART_3M_SIZE];
+static uint32_t UINT32_T__G__Chart3M_Vpack[SIMPLE_CHART_3M_SIZE];
 static uint32_t UINT32_T__G__Chart3M_Time[SIMPLE_CHART_3M_SIZE];
 static uint8_t  UINT8_T__G__Chart3M_Count = 0u;
 static uint8_t  UINT8_T__G__Chart3M_Index = 0u;

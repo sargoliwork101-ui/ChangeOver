@@ -17,13 +17,12 @@ static void func__Simple_ChartAdd(uint32_t uint32_t__vin, uint32_t uint32_t__vpa
     }
 }
 
-/* ==================== افزودن نقطه با زمان - محور افقی زمان ==================== */
-static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct)
+/* ==================== افزودن نقطه با زمان - محور افقی زمان - درصد+Vin+Vpack برای ۳ ماه با ریت کم ==================== */
+static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct, uint32_t uint32_t__vin, uint32_t uint32_t__vpack)
 {
     uint32_t uint32_t__nowSec = 0u;
     if (UINT32_T__G__BoardTimeSec != 0u)
     {
-        /* BoardTimeSec قبلاً شامل base+uptime است - دوباره جمع نکن */
         uint32_t__nowSec = UINT32_T__G__BoardTimeSec;
     }
     else
@@ -31,10 +30,12 @@ static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct)
         uint32_t__nowSec = (uint32_t)(millis() / 1000u);
     }
 
-    /* ۱ روزه - هر ۱ ساعت */
+    /* ۱ روزه - هر ۱ ساعت - Vin/Vpack با ریت کم (همان ۱ ساعت) */
     if ((uint32_t)(millis() - UINT32_T__G__Last1D_Ms) >= 3600000u || UINT8_T__G__Chart1D_Count == 0u)
     {
         UINT32_T__G__Chart1D_Pct[UINT8_T__G__Chart1D_Index] = uint32_t__pct;
+        UINT32_T__G__Chart1D_Vin[UINT8_T__G__Chart1D_Index] = uint32_t__vin;
+        UINT32_T__G__Chart1D_Vpack[UINT8_T__G__Chart1D_Index] = uint32_t__vpack;
         UINT32_T__G__Chart1D_Time[UINT8_T__G__Chart1D_Index] = uint32_t__nowSec;
         UINT8_T__G__Chart1D_Index = (uint8_t)((UINT8_T__G__Chart1D_Index + 1u) % SIMPLE_CHART_1D_SIZE);
         if (UINT8_T__G__Chart1D_Count < SIMPLE_CHART_1D_SIZE) UINT8_T__G__Chart1D_Count++;
@@ -45,6 +46,8 @@ static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct)
     if ((uint32_t)(millis() - UINT32_T__G__Last7D_Ms) >= 21600000u || UINT8_T__G__Chart7D_Count == 0u)
     {
         UINT32_T__G__Chart7D_Pct[UINT8_T__G__Chart7D_Index] = uint32_t__pct;
+        UINT32_T__G__Chart7D_Vin[UINT8_T__G__Chart7D_Index] = uint32_t__vin;
+        UINT32_T__G__Chart7D_Vpack[UINT8_T__G__Chart7D_Index] = uint32_t__vpack;
         UINT32_T__G__Chart7D_Time[UINT8_T__G__Chart7D_Index] = uint32_t__nowSec;
         UINT8_T__G__Chart7D_Index = (uint8_t)((UINT8_T__G__Chart7D_Index + 1u) % SIMPLE_CHART_7D_SIZE);
         if (UINT8_T__G__Chart7D_Count < SIMPLE_CHART_7D_SIZE) UINT8_T__G__Chart7D_Count++;
@@ -55,16 +58,20 @@ static void func__Simple_ChartAddTimed(uint32_t uint32_t__pct)
     if ((uint32_t)(millis() - UINT32_T__G__Last1M_Ms) >= 86400000u || UINT8_T__G__Chart1M_Count == 0u)
     {
         UINT32_T__G__Chart1M_Pct[UINT8_T__G__Chart1M_Index] = uint32_t__pct;
+        UINT32_T__G__Chart1M_Vin[UINT8_T__G__Chart1M_Index] = uint32_t__vin;
+        UINT32_T__G__Chart1M_Vpack[UINT8_T__G__Chart1M_Index] = uint32_t__vpack;
         UINT32_T__G__Chart1M_Time[UINT8_T__G__Chart1M_Index] = uint32_t__nowSec;
         UINT8_T__G__Chart1M_Index = (uint8_t)((UINT8_T__G__Chart1M_Index + 1u) % SIMPLE_CHART_1M_SIZE);
         if (UINT8_T__G__Chart1M_Count < SIMPLE_CHART_1M_SIZE) UINT8_T__G__Chart1M_Count++;
         UINT32_T__G__Last1M_Ms = (uint32_t)millis();
     }
 
-    /* ۳ ماهه - هر ۱ روز - ۹۰ نقطه */
+    /* ۳ ماهه - هر ۱ روز - ۹۰ نقطه - ریت کم چون Vin/Vpack تغییر کم */
     if ((uint32_t)(millis() - UINT32_T__G__Last3M_Ms) >= 86400000u || UINT8_T__G__Chart3M_Count == 0u)
     {
         UINT32_T__G__Chart3M_Pct[UINT8_T__G__Chart3M_Index] = uint32_t__pct;
+        UINT32_T__G__Chart3M_Vin[UINT8_T__G__Chart3M_Index] = uint32_t__vin;
+        UINT32_T__G__Chart3M_Vpack[UINT8_T__G__Chart3M_Index] = uint32_t__vpack;
         UINT32_T__G__Chart3M_Time[UINT8_T__G__Chart3M_Index] = uint32_t__nowSec;
         UINT8_T__G__Chart3M_Index = (uint8_t)((UINT8_T__G__Chart3M_Index + 1u) % SIMPLE_CHART_3M_SIZE);
         if (UINT8_T__G__Chart3M_Count < SIMPLE_CHART_3M_SIZE) UINT8_T__G__Chart3M_Count++;
@@ -102,7 +109,7 @@ static void func__Simple_ChartTick(void)
     }
     uint32_t uint32_t__imb = UINT32_T__G__TlmField[25];
     func__Simple_ChartAdd(uint32_t__vin, uint32_t__vpack, uint32_t__pct, uint32_t__imb);
-    func__Simple_ChartAddTimed(uint32_t__pct);
+    func__Simple_ChartAddTimed(uint32_t__pct, uint32_t__vin, uint32_t__vpack);
 }
 
 /* ==================== ساخت فریم زمان ==================== */
