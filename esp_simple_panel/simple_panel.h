@@ -1189,7 +1189,8 @@ function setBatFill(id, pct, status){
 function render(data){
  lastData=data;
  let vPackRaw=data.t[T_V24]||0, vLow=data.t[T_VLOW]||0, vHigh=data.t[T_VHIGH]||0, vIn=data.t[T_VIN]||0;
- let vPack=(vLow>0 && vHigh>0) ? (vLow+vHigh) : vPackRaw;
+ let vPack=vPackRaw; /* برد اصلی درصد را از V24 (v_bat24_mv) می‌گیرد - چشمک سبز - نه از جمع Vlow+Vhigh */
+ let vPackSum=(vLow>0 && vHigh>0) ? (vLow+vHigh) : vPackRaw; /* فقط برای نمایش ولتاژ جمع اگر لازم شد */
  let fault=data.t[T_FAULT]||0, s1=data.t[T_STATE1]||0, s2=data.t[T_STATE2]||0, imb=data.t[T_IMB]||0;
  let deadMask=data.t[T_DEAD]||0;
  let fl=data.fl||0, fl2=data.fl2||0;

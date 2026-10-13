@@ -180,11 +180,7 @@ static void func__Simple_ChartTick(void)
     uint32_t uint32_t__vpackRaw = UINT32_T__G__TlmField[15];
     uint32_t uint32_t__vLow = UINT32_T__G__TlmField[17];
     uint32_t uint32_t__vHigh = UINT32_T__G__TlmField[18];
-    uint32_t uint32_t__vpack = uint32_t__vpackRaw;
-    if ((uint32_t__vLow > 0u) && (uint32_t__vHigh > 0u))
-    {
-        uint32_t__vpack = uint32_t__vLow + uint32_t__vHigh;
-    }
+    uint32_t uint32_t__vpack = uint32_t__vpackRaw; /* برد اصلی درصد را از V24 می‌گیرد - چشمک سبز - نه جمع Vlow+Vhigh */
     uint32_t uint32_t__pct = 0u;
     if (uint32_t__vpack >= 21000u && uint32_t__vpack <= 29000u)
     {
