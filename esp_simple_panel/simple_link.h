@@ -32,7 +32,7 @@ static uint16_t func__Simple_Crc16(uint16_t uint16_t__crc, uint8_t uint8_t__byte
     return uint16_t__crc;
 }
 
-/* ==================== ذخیره فریم تله‌متری ==================== */
+/* ==================== ذخیره فریم تله‌متری و دیاگ ==================== */
 static void func__Simple_HandleFrame(void)
 {
     const uint8_t *uint8_t__ptr_payload = UINT8_T__G__RxPayload;
@@ -57,6 +57,132 @@ static void func__Simple_HandleFrame(void)
         UINT32_T__G__LastTlmMs = (uint32_t)millis();
         UINT32_T__G__TlmFrameCount++;
         BOOL__G__TlmSeen = true;
+    }
+    else if (UINT8_T__G__RxType == SIMPLE_MSG_DIAG_DATA)
+    {
+        if (UINT16_T__G__RxLen < 1u) return;
+        uint8_t uint8_t__chunk = uint8_t__ptr_payload[0];
+
+        if (uint8_t__chunk == 0u && UINT16_T__G__RxLen >= 23u)
+        {
+            uint32_t uint32_t__prevCh1 = UINT32_T__G__ChargeCountCh1;
+            uint32_t uint32_t__prevCh2 = UINT32_T__G__ChargeCountCh2;
+            UINT32_T__G__TotalChargeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 1u);
+            UINT32_T__G__ChargeCount = func__Simple_ReadU32(uint8_t__ptr_payload, 5u);
+            UINT32_T__G__UptimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 9u);
+            UINT32_T__G__ResetCount = func__Simple_ReadU32(uint8_t__ptr_payload, 13u);
+            UINT32_T__G__BoardTimeSec = func__Simple_ReadU32(uint8_t__ptr_payload, 17u);
+            UINT8_T__G__DiagErrorCount = uint8_t__ptr_payload[21];
+            UINT8_T__G__PowerEventCount = uint8_t__ptr_payload[22];
+            if (UINT8_T__G__DiagErrorCount > SIMPLE_DIAG_MAX_ERRORS) UINT8_T__G__DiagErrorCount = SIMPLE_DIAG_MAX_ERRORS;
+            if (UINT8_T__G__PowerEventCount > SIMPLE_DIAG_MAX_POWER_EVENTS) UINT8_T__G__PowerEventCount = SIMPLE_DIAG_MAX_POWER_EVENTS;
+            BOOL__G__DiagValid = true;
+            /* توسعه‌یافته: تعداد شارژ هر باتری */
+            if (UINT16_T__G__RxLen >= 39u)
+            {
+                UINT32_T__G__ChargeCountCh1 = func__Simple_ReadU32(uint8_t__ptr_payload, 23u);
+                UINT32_T__G__ChargeCountCh2 = func__Simple_ReadU32(uint8_t__ptr_payload, 27u);
+                UINT32_T__G__ChargeSecCh1 = func__Simple_ReadU32(uint8_t__ptr_payload, 31u);
+                UINT32_T__G__ChargeSecCh2 = func__Simple_ReadU32(uint8_t__ptr_payload, 35u);
+                /* ثبت تاریخچه شارژ: اگر تعداد افزایش یافت، زمان برد را ذخیره کن - با بافر چرخشی */
+                if ((UINT32_T__G__ChargeCountCh1 > uint32_t__prevCh1) && (UINT32_T__G__BoardTimeSec != 0u))
+                {
+                    uint32_t uint32_t__diff = UINT32_T__G__ChargeCountCh1 - uint32_t__prevCh1;
+                    if (uint32_t__diff > SIMPLE_DIAG_MAX_POWER_EVENTS) uint32_t__diff = SIMPLE_DIAG_MAX_POWER_EVENTS;
+                    uint32_t uint32_t__k;
+                    for (uint32_t__k = 0u; uint32_t__k < uint32_t__diff; uint32_t__k++)
+                    {
+                        if (UINT8_T__G__ChargeHistoryCount < SIMPLE_DIAG_MAX_POWER_EVENTS)
+                        {
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].timestamp = UINT32_T__G__BoardTimeSec;
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].channel = 1u;
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].durationSec = 0u;
+                            UINT8_T__G__ChargeHistoryCount++;
+                        }
+                        else
+                        {
+                            /* بافر پر - قدیمی‌ترین را حذف و شیفت بده */
+                            uint8_t uint8_t__s;
+                            for (uint8_t__s = 1u; uint8_t__s < SIMPLE_DIAG_MAX_POWER_EVENTS; uint8_t__s++)
+                            {
+                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s - 1u] = SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s];
+                            }
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].timestamp = UINT32_T__G__BoardTimeSec;
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].channel = 1u;
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].durationSec = 0u;
+                        }
+                    }
+                    UINT32_T__G__PrevChargeCountCh1 = UINT32_T__G__ChargeCountCh1;
+                }
+                if ((UINT32_T__G__ChargeCountCh2 > uint32_t__prevCh2) && (UINT32_T__G__BoardTimeSec != 0u))
+                {
+                    uint32_t uint32_t__diff = UINT32_T__G__ChargeCountCh2 - uint32_t__prevCh2;
+                    if (uint32_t__diff > SIMPLE_DIAG_MAX_POWER_EVENTS) uint32_t__diff = SIMPLE_DIAG_MAX_POWER_EVENTS;
+                    uint32_t uint32_t__k;
+                    for (uint32_t__k = 0u; uint32_t__k < uint32_t__diff; uint32_t__k++)
+                    {
+                        if (UINT8_T__G__ChargeHistoryCount < SIMPLE_DIAG_MAX_POWER_EVENTS)
+                        {
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].timestamp = UINT32_T__G__BoardTimeSec;
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].channel = 2u;
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[UINT8_T__G__ChargeHistoryCount].durationSec = 0u;
+                            UINT8_T__G__ChargeHistoryCount++;
+                        }
+                        else
+                        {
+                            uint8_t uint8_t__s;
+                            for (uint8_t__s = 1u; uint8_t__s < SIMPLE_DIAG_MAX_POWER_EVENTS; uint8_t__s++)
+                            {
+                                SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s - 1u] = SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[uint8_t__s];
+                            }
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].timestamp = UINT32_T__G__BoardTimeSec;
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].channel = 2u;
+                            SIMPLE_CHARGE_EVENT_T__G__ChargeHistory[SIMPLE_DIAG_MAX_POWER_EVENTS - 1u].durationSec = 0u;
+                        }
+                    }
+                    UINT32_T__G__PrevChargeCountCh2 = UINT32_T__G__ChargeCountCh2;
+                }
+            }
+        }
+        else if ((uint8_t__chunk == 1u || uint8_t__chunk == 2u) && UINT16_T__G__RxLen >= 3u)
+        {
+            uint8_t uint8_t__start = uint8_t__ptr_payload[1];
+            uint8_t uint8_t__count = uint8_t__ptr_payload[2];
+            uint16_t uint16_t__offset = 3u;
+            uint8_t uint8_t__i;
+            for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
+            {
+                uint8_t uint8_t__idx = (uint8_t)(uint8_t__start + uint8_t__i);
+                if (uint8_t__idx >= SIMPLE_DIAG_MAX_ERRORS) break;
+                if ((uint16_t__offset + 32u) > UINT16_T__G__RxLen) break;
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].timestamp = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)uint16_t__offset);
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].faultMask = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 4u));
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].vIn = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 8u));
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].vPack = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 12u));
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].vLow = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 16u));
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].vHigh = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 20u));
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].state1 = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 24u));
+                SIMPLE_DIAG_ERROR_T__G__Errors[uint8_t__idx].state2 = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 28u));
+                uint16_t__offset += 32u;
+            }
+        }
+        else if ((uint8_t__chunk == 3u || uint8_t__chunk == 4u) && UINT16_T__G__RxLen >= 3u)
+        {
+            uint8_t uint8_t__start = uint8_t__ptr_payload[1];
+            uint8_t uint8_t__count = uint8_t__ptr_payload[2];
+            uint16_t uint16_t__offset = 3u;
+            uint8_t uint8_t__i;
+            for (uint8_t__i = 0u; uint8_t__i < uint8_t__count; uint8_t__i++)
+            {
+                uint8_t uint8_t__idx = (uint8_t)(uint8_t__start + uint8_t__i);
+                if (uint8_t__idx >= SIMPLE_DIAG_MAX_POWER_EVENTS) break;
+                if ((uint16_t__offset + 12u) > UINT16_T__G__RxLen) break;
+                SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__idx].offTime = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)uint16_t__offset);
+                SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__idx].onTime = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 4u));
+                SIMPLE_POWER_EVENT_T__G__PowerEvents[uint8_t__idx].durationSec = func__Simple_ReadU32(uint8_t__ptr_payload, (uint8_t)(uint16_t__offset + 8u));
+                uint16_t__offset += 12u;
+            }
+        }
     }
 }
 

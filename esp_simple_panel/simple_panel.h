@@ -1,347 +1,1175 @@
-/* simple_panel.h - صفحه وب پنل ساده کاربر
-   فقط فارسی - طراحی موبایل‌طور، باتری، بدون جریان */
+/* simple_panel.h - پنل کاربر مدرن 2026 - خطی، فارسی، مینیمال حرفه‌ای */
 
 static const char SIMPLE_PANEL_HTML[] PROGMEM = R"rawliteral(
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>ChangeOver - پنل کاربر</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0a0e15">
+<title>ChangeOver - پنل هوشمند</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <style>
-:root{
- --bg:#0f172a;--cd:#1e293b;--in:#0b1222;--ln:#334155;--tx:#e2e8f0;--mu:#94a3b8;
- --ok:#22c55e;--wa:#f59e0b;--er:#ef4444;--ac:#38bdf8;
- --okbg:rgba(34,197,94,.14);--wabg:rgba(245,158,11,.14);--erbg:rgba(239,68,68,.14);
- --radius:16px;
+/* ===== Design System 2026 ===== */
+:root{--r:20px;--r-sm:12px;--r-full:999px}
+body[data-theme="0"]{
+ --bg:#070a10;--bg2:#0d121e;--bg3:#111827;
+ --cd:#121826;--cd2:#192339;--cd3:#1e2c45;
+ --in:#0e1420;--in2:#151e2f;
+ --ln:#1c2940;--ln2:#253652;--ln3:#2e4263;
+ --tx:#eef2f8;--tx2:#b8c2d4;--mu:#6e7d98;--mu2:#4b5a73;
+ --ac:#5b8def;--ac2:#8ab0ff;--ac3:#3d6fe0;--acbg:rgba(91,141,239,.13);--acbd:rgba(91,141,239,.26);--acglow:0 0 20px rgba(91,141,239,.25);
+ --ok:#1ee6a0;--ok2:#6ef0c2;--okbg:rgba(30,230,160,.11);--okbd:rgba(30,230,160,.22);
+ --wa:#ffb84d;--wabg:rgba(255,184,77,.11);--wabd:rgba(255,184,77,.22);
+ --er:#ff6b7e;--erbg:rgba(255,107,126,.11);--erbd:rgba(255,107,126,.22);
+ --sh:0 12px 40px rgba(0,0,0,.5),0 1px 0 rgba(255,255,255,.04) inset,0 0 0 1px rgba(255,255,255,.03) inset;
+ --sh2:0 6px 20px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.03) inset;
+ --sh-glow:0 0 0 1px var(--acbd),0 8px 24px var(--acbg),var(--acglow);
 }
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--tx);font:14px/1.8 Vazirmatn,system-ui,Tahoma,sans-serif;direction:rtl}
-header{position:sticky;top:0;z-index:10;background:rgba(15,23,42,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--ln);padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
-header .brand{font-weight:800;font-size:16px}
-header .link{font-size:11px;color:var(--mu);display:flex;gap:8px;align-items:center}
-header .dot{width:8px;height:8px;border-radius:50%;background:var(--mu);display:inline-block}
-header .dot.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
-header .dot.off{background:var(--er)}
-main{max-width:520px;margin:0 auto;padding:14px;display:grid;gap:14px}
-.card{background:var(--cd);border:1px solid var(--ln);border-radius:var(--radius);padding:14px 16px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
-.card-title{font-weight:700;font-size:13px;color:var(--mu);margin-bottom:10px;letter-spacing:.2px}
-.status-card{display:flex;gap:14px;align-items:center;padding:18px 16px}
-.status-card .icon{width:54px;height:54px;border-radius:14px;display:grid;place-items:center;font-size:26px;flex:none}
-.status-card.ok .icon{background:var(--okbg);border:1px solid rgba(34,197,94,.4)}
-.status-card.charge .icon{background:var(--wabg);border:1px solid rgba(245,158,11,.4)}
-.status-card.battery .icon{background:rgba(56,189,248,.14);border:1px solid rgba(56,189,248,.4)}
-.status-card.fault .icon{background:var(--erbg);border:1px solid rgba(239,68,68,.4)}
-.status-card .title{font-weight:800;font-size:16px}
-.status-card .subtitle{font-size:12.5px;color:var(--mu);margin-top:2px;line-height:1.6}
-.battery-wrap{display:flex;align-items:center;gap:14px;margin:6px 0 10px}
-.battery{width:120px;height:58px;border:3px solid var(--ln);border-radius:12px;position:relative;padding:4px;background:var(--in);flex:none}
-.battery:after{content:'';position:absolute;right:-10px;top:50%;transform:translateY(-50%);width:6px;height:18px;background:var(--ln);border-radius:0 4px 4px 0}
-.battery-level{height:100%;border-radius:6px;transition:width .6s ease,background .6s ease;background:var(--ok)}
-.battery-level.low{background:var(--er)}
-.battery-level.mid{background:var(--wa)}
-.battery-pct{font-size:28px;font-weight:800;letter-spacing:.5px}
-.kv{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:1px dashed rgba(51,65,85,.6);font-size:13px}
-.kv:first-of-type{border-top:0}
-.kv span{color:var(--mu)}
-.kv b{font-weight:700;color:var(--tx);font-variant-numeric:tabular-nums;direction:ltr}
-.grid2{display:grid;grid-template-columns:1fr;gap:14px}
-@media(min-width:520px){.grid2{grid-template-columns:1fr 1fr}}
-.half-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.half{background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:10px;text-align:center}
-.half-name{font-size:11px;color:var(--mu);margin-bottom:6px}
-.mini-battery{width:100%;height:18px;border:2px solid var(--ln);border-radius:6px;padding:2px;background:var(--bg);margin:0 auto 6px;position:relative}
-.mini-level{height:100%;border-radius:3px;transition:width .6s ease;background:var(--ok)}
-.mini-level.low{background:var(--er)} .mini-level.mid{background:var(--wa)}
-.half-pct{font-weight:800;font-size:16px}
-.half-v{font-size:11px;color:var(--mu);direction:ltr;font-variant-numeric:tabular-nums}
-.imb{margin-top:8px;font-size:11px;color:var(--wa);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:6px 8px;display:none}
-.imb.on{display:block}
-.leds{display:flex;gap:12px;flex-wrap:wrap}
-.led{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mu);background:var(--in);border:1px solid var(--ln);border-radius:999px;padding:5px 10px}
-.dot-led{width:10px;height:10px;border-radius:50%;background:#334155;display:inline-block;box-shadow:inset 0 0 4px rgba(0,0,0,.6)}
-.dot-led.on-green{background:var(--ok);box-shadow:0 0 10px var(--ok)}
-.dot-led.on-yellow{background:var(--wa);box-shadow:0 0 10px var(--wa)}
-.dot-led.on-red{background:var(--er);box-shadow:0 0 10px var(--er)}
-.dot-led.on-buzzer{background:var(--ac);box-shadow:0 0 10px var(--ac)}
-.charger-states{margin-top:10px;font-size:11px;color:var(--mu);display:flex;gap:8px;flex-wrap:wrap}
-.charger-states span{background:var(--in);border:1px solid var(--ln);border-radius:8px;padding:3px 8px}
-.fault-card{border-right:4px solid var(--ln)}
-.fault-card.warn{border-right-color:var(--wa);background:rgba(245,158,11,.06)}
-.fault-card.err{border-right-color:var(--er);background:rgba(239,68,68,.06)}
-.fault-card.ok{border-right-color:var(--ok)}
-#faultList{font-size:13px;line-height:1.9}
-#faultList .ok{color:var(--ok)} #faultList .warn{color:var(--wa)} #faultList .err{color:var(--er)}
-.footer{display:flex;justify-content:space-between;gap:10px;font-size:10.5px;color:var(--mu);padding:2px 4px}
+body[data-theme="1"]{
+ --bg:#f6f8fb;--bg2:#eef2f7;--bg3:#e4eaf3;
+ --cd:#ffffff;--cd2:#f8fafc;--cd3:#f1f5f9;
+ --in:#f1f5f9;--in2:#e2e8f0;
+ --ln:#dde4ee;--ln2:#cbd5e1;--ln3:#b8c5d6;
+ --tx:#0f172a;--tx2:#334155;--mu:#7a8699;--mu2:#94a3b8;
+ --ac:#3b6bf6;--ac2:#5b8def;--ac3:#2f5ad6;--acbg:rgba(59,107,246,.08);--acbd:rgba(59,107,246,.18);--acglow:0 0 20px rgba(59,107,246,.15);
+ --ok:#059669;--ok2:#10b981;--okbg:rgba(5,150,105,.08);--okbd:rgba(5,150,105,.16);
+ --wa:#b45309;--wabg:rgba(180,83,9,.08);--wabd:rgba(180,83,9,.16);
+ --er:#dc2626;--erbg:rgba(220,38,38,.06);--erbd:rgba(220,38,38,.12);
+ --sh:0 8px 28px rgba(0,0,0,.06),0 0 0 1px rgba(0,0,0,.04);
+ --sh2:0 4px 14px rgba(0,0,0,.05),0 0 0 1px rgba(0,0,0,.03);
+ --sh-glow:0 0 0 1px var(--acbd),0 8px 24px var(--acbg);
+}
+body[data-theme="2"]{
+ --bg:#030508;--bg2:#080c14;--bg3:#0e131e;
+ --cd:#0c101a;--cd2:#121a28;--cd3:#192339;
+ --in:#080c14;--in2:#101828;
+ --ln:#182238;--ln2:#1e2c48;--ln3:#253a5c;
+ --tx:#eef2f8;--tx2:#a8b3c6;--mu:#5e6b82;--mu2:#404e64;
+ --ac:#6b9bff;--ac2:#9ab8ff;--ac3:#4f7de0;--acbg:rgba(107,155,255,.12);--acbd:rgba(107,155,255,.22);--acglow:0 0 24px rgba(107,155,255,.2);
+ --ok:#2ee6a6;--ok2:#6ef0c2;--okbg:rgba(46,230,166,.10);--okbd:rgba(46,230,166,.18);
+ --wa:#ffbe55;--wabg:rgba(255,190,85,.10);--wabd:rgba(255,190,85,.18);
+ --er:#ff7d8e;--erbg:rgba(255,125,142,.10);--erbd:rgba(255,125,142,.18);
+ --sh:0 16px 48px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.03) inset;
+ --sh2:0 8px 24px rgba(0,0,0,.5);
+ --sh-glow:0 0 0 1px var(--acbd),0 12px 32px var(--acbg),var(--acglow);
+}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{
+ background:
+  radial-gradient(900px 500px at 10% -10%,var(--acbg),transparent 60%),
+  radial-gradient(700px 400px at 90% 0%,var(--okbg),transparent 55%),
+  radial-gradient(600px 400px at 50% 120%,rgba(139,92,246,.06),transparent 60%),
+  linear-gradient(180deg,var(--bg2),var(--bg));
+ background-attachment:fixed;
+ color:var(--tx);font:13.5px/1.7 Vazirmatn,Inter,system-ui,Tahoma,sans-serif;direction:rtl;
+ max-width:980px;margin:auto;padding:0 16px 40px;min-height:100vh;
+ -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+}
+button,input,select{font-family:Vazirmatn,Inter,system-ui}
+::selection{background:var(--acbg);color:var(--ac2)}
+/* Header - glass modern */
+header{
+ position:sticky;top:0;z-index:80;display:flex;align-items:center;justify-content:space-between;gap:12px;
+ padding:14px 6px;margin:0 -16px 20px;padding-left:16px;padding-right:16px;
+ background:rgba(7,10,16,.72);backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
+ border-bottom:1px solid var(--ln);transition:.3s;
+}
+body[data-theme="1"] header{background:rgba(246,248,251,.82)}
+header .brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:-.2px}
+header .brand-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--ac),var(--ac2));display:grid;place-items:center;color:#fff;font-weight:900;font-size:14px;box-shadow:var(--acglow),0 4px 12px var(--acbg);position:relative;overflow:hidden}
+header .brand-mark::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.2),transparent);pointer-events:none}
+header .brand-text{line-height:1.1}
+header .brand-text b{display:block;font-size:14px}
+header .brand-text span{display:block;font-size:10.5px;color:var(--mu);font-weight:600;letter-spacing:.6px;margin-top:1px}
+header .hdr{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--mu);background:var(--cd);border:1px solid var(--ln);border-radius:var(--r-full);padding:6px 14px 6px 8px;box-shadow:var(--sh2);backdrop-filter:blur(8px)}
+header .dot{width:8px;height:8px;border-radius:50%;background:var(--mu2);display:inline-block;position:relative;transition:.3s}
+header .dot::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1px solid currentColor;opacity:.3;animation:pulse 2s infinite}
+header .dot.on{background:var(--ok);color:var(--ok);box-shadow:0 0 12px var(--ok)}
+@keyframes pulse{0%{transform:scale(.8);opacity:.6}50%{transform:scale(1.2);opacity:0}100%{transform:scale(1.4);opacity:0}}
+/* Nav - pill with indicator */
+nav{display:flex;gap:6px;background:var(--cd);border:1px solid var(--ln);border-radius:16px;padding:5px;position:sticky;top:64px;z-index:70;margin-bottom:20px;box-shadow:var(--sh);backdrop-filter:blur(12px)}
+nav button{flex:1;border:0;background:transparent;border-radius:12px;padding:11px 10px;color:var(--mu);font-weight:700;font-size:12.5px;letter-spacing:.2px;position:relative;transition:.22s cubic-bezier(.2,.8,.2,1)}
+nav button:hover{color:var(--tx2);background:var(--in)}
+nav button.a{background:var(--cd3);color:var(--tx);border:1px solid var(--ln2);box-shadow:0 2px 10px rgba(0,0,0,.15),0 0 0 1px rgba(255,255,255,.05) inset;transform:translateY(-1px)}
+nav button.a::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:20px;height:3px;border-radius:2px;background:var(--ac);box-shadow:var(--acglow)}
+/* Main */
+main{display:grid;gap:16px}
+.cd{background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,0) 40%),var(--cd);border:1px solid var(--ln);border-radius:var(--r);padding:18px;box-shadow:var(--sh);position:relative;overflow:hidden;transition:.22s}
+.cd:hover{border-color:var(--ln2);box-shadow:0 16px 48px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.05) inset}
+.cd::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);pointer-events:none}
+.ti{font-size:10.5px;font-weight:800;color:var(--mu);letter-spacing:.8px;text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.ti::before{content:"";width:3px;height:12px;border-radius:2px;background:var(--ac);box-shadow:var(--acglow);flex:none}
+.ti::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--ln),transparent);margin-right:10px;opacity:.8}
+.ti[style*="center"]{justify-content:center !important;text-align:center !important;width:100%}
+.ti[style*="center"]::before,.ti[style*="center"]::after{display:none !important}
+.pgx{display:none} .pgx.a{display:grid;gap:16px;animation:fadeUp .35s cubic-bezier(.2,.8,.2,1)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Hero 2026 */
+.hero{border-radius:24px;padding:24px 22px;background:radial-gradient(600px 250px at 10% -20%,var(--acbg),transparent 60%),radial-gradient(500px 220px at 90% 130%,var(--okbg),transparent 60%),linear-gradient(135deg,var(--cd2),var(--cd));border:1px solid var(--ln);box-shadow:var(--sh);position:relative;overflow:hidden;isolation:isolate}
+.hero::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acbd),transparent);z-index:1}
+.hero::after{content:"";position:absolute;inset:0;background:radial-gradient(400px 200px at 20% 0%,rgba(255,255,255,.04),transparent 70%);pointer-events:none;z-index:0}
+.hero-grid{position:relative;z-index:1;display:flex;gap:24px;align-items:stretch;flex-wrap:wrap;min-height:240px}
+.hero-visual{position:relative;width:150px;min-height:220px;height:100%;flex:none;display:grid;place-items:center;align-self:stretch}
+.hero-visual .bat-wrap{width:100% !important;height:100% !important;max-height:260px;min-height:210px}
+.hero{padding:0;overflow:hidden}
+.hero-grid{position:relative;z-index:1;display:flex;gap:24px;align-items:stretch;flex-wrap:nowrap;min-height:260px}
+.hero-info{flex:1;min-width:220px;padding:24px 22px;display:flex;flex-direction:column;justify-content:center;gap:8px;min-width:0}
+.hero-visual{padding:18px 0 18px 18px;box-sizing:border-box}
+.hero-pct{line-height:1;flex-wrap:wrap}
+.hero-title{line-height:1.3;word-break:break-word}
+.hero-sub{line-height:1.5;word-break:break-word}
+
+
+.hero-track{position:absolute;inset:0;border:2px solid var(--ln2);border-radius:14px;background:linear-gradient(180deg,var(--in2),var(--in));box-shadow:inset 0 3px 12px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.04);overflow:hidden}
+.hero-track::after{content:'';position:absolute;right:-11px;top:50%;transform:translateY(-50%);width:10px;height:32px;background:var(--ln2);border-radius:0 6px 6px 0;border:1px solid var(--ln2);border-left:0;box-shadow:2px 0 8px rgba(0,0,0,.2)}
+.hero-fill{position:absolute;top:5px;bottom:5px;left:5px;border-radius:9px;transition:width .9s cubic-bezier(.34,1.56,.64,1),background .4s,box-shadow .4s;background:linear-gradient(90deg,var(--ok),var(--ok2));box-shadow:0 0 20px var(--okbg),inset 0 1px 0 rgba(255,255,255,.25);overflow:hidden}
+.hero-fill::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.18),transparent 50%);pointer-events:none}
+.hero-fill.low{background:linear-gradient(90deg,#ef4444,#fb7185);box-shadow:0 0 20px var(--erbg)}
+.hero-fill.mid{background:linear-gradient(90deg,var(--wa),#fde68a);box-shadow:0 0 20px var(--wabg)}
+.hero-shine{position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);transform:skewX(-12deg);animation:shine 3.5s infinite}
+@keyframes shine{0%{left:-100%}60%{left:150%}100%{left:150%}}
+.hero-info{flex:1;min-width:220px}
+.hero-pct{font-size:48px;font-weight:900;letter-spacing:-2px;line-height:.9;display:flex;align-items:baseline;gap:6px}
+.hero-pct small{font-size:20px;font-weight:700;opacity:.45;letter-spacing:-.5px}
+.hero-title{font-size:15px;font-weight:800;margin-top:6px;letter-spacing:-.3px;line-height:1.3}
+.hero-sub{font-size:12.5px;color:var(--mu);margin-top:5px;line-height:1.6;max-width:420px}
+.hero-fault{margin-top:12px;padding:10px 12px;border-radius:10px;font-size:12px;font-weight:700;line-height:1.6;display:none}
+.hero-fault.show{display:block}
+.hero-fault.ok{background:var(--okbg);border:1px solid var(--okbd);color:var(--ok)}
+.hero-fault.warn{background:var(--wabg);border:1px solid var(--wabd);color:var(--wa)}
+.hero-fault.err{background:var(--erbg);border:1px solid var(--erbd);color:var(--er)}
+.hero.warn{border-color:var(--wabd);box-shadow:0 0 0 1px var(--wabd),var(--sh)}
+.hero.err{border-color:var(--erbd);box-shadow:0 0 0 1px var(--erbd),var(--sh)}
+.hero.ok{border-color:var(--okbd)}
+.hero-badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.bdg{display:inline-flex;align-items:center;gap:7px;background:var(--in);border:1px solid var(--ln);border-radius:var(--r-full);padding:6px 13px;font-size:11px;font-weight:700;color:var(--mu);backdrop-filter:blur(6px);transition:.2s}
+.bdg i{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;box-shadow:0 0 8px currentColor}
+.bdg.ok{color:var(--ok);background:var(--okbg);border-color:var(--okbd)}
+.bdg.warn{color:var(--wa);background:var(--wabg);border-color:var(--wabd)}
+.bdg.err{color:var(--er);background:var(--erbg);border-color:var(--erbd)}
+.bdg.ac{color:var(--ac);background:var(--acbg);border-color:var(--acbd)}
+
+
+/* Battery modern line */
+.half-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.half{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent),var(--in);border:1px solid var(--ln);border-radius:18px;padding:16px;text-align:center;position:relative;overflow:hidden;transition:.24s cubic-bezier(.2,.8,.2,1)}
+.half:hover{border-color:var(--ln2);transform:translateY(-2px);box-shadow:var(--sh2)}
+.half::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent)}
+.half-name{font-size:10px;color:var(--mu);font-weight:800;letter-spacing:.7px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:6px}
+.half-name::before{content:"";width:4px;height:4px;border-radius:50%;background:var(--ac);box-shadow:0 0 8px var(--ac);display:inline-block}
+.bat-wrap{position:relative;width:92px;height:138px;margin:0 auto 14px;filter:drop-shadow(0 8px 20px rgba(0,0,0,.25))}
+.bat-svg{width:100%;height:100%;display:block;overflow:visible}
+.bat-outline{fill:none;stroke:var(--ln2);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;transition:stroke .3s}
+.half:hover .bat-outline{stroke:var(--ln3)}
+.bat-cap{fill:none;stroke:var(--ln2);stroke-width:1.9;stroke-linecap:round;transition:stroke .3s}
+.bat-bg{fill:var(--bg);opacity:.7}
+.bat-tick{stroke:var(--ln);stroke-width:.9;stroke-dasharray:2 5;opacity:.45}
+.bat-fill{transition:all .85s cubic-bezier(.34,1.56,.64,1);filter:drop-shadow(0 0 10px rgba(30,230,160,.25))}
+.bat-pct{font-family:ui-monospace,Inter,monospace;font-weight:900;font-size:12.5px;fill:var(--tx);text-anchor:middle;dominant-baseline:middle;letter-spacing:-.3px}
+.half-pct{font-weight:900;font-size:28px;letter-spacing:-1px;line-height:1;display:flex;align-items:baseline;justify-content:center;gap:2px}
+.half-pct small{font-size:13px;opacity:.45;font-weight:700}
+.half-status{font-size:11px;font-weight:700;color:var(--mu);margin-top:4px;letter-spacing:.4px;display:inline-flex;align-items:center;gap:6px;background:var(--cd);border:1px solid var(--ln);border-radius:var(--r-full);padding:3px 10px}
+.half-status::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);display:inline-block}
+.half-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.half-stat{background:var(--cd);border:1px solid var(--ln);border-radius:12px;padding:10px 8px;position:relative;overflow:hidden;transition:.2s}
+.half-stat:hover{border-color:var(--ln2);background:var(--cd2)}
+.half-stat b{display:block;font-size:16px;font-weight:900;font-family:ui-monospace,monospace;line-height:1.1;letter-spacing:-.3px}
+.half-stat span{font-size:9px;color:var(--mu);font-weight:700;letter-spacing:.5px;display:block;margin-top:4px;text-transform:uppercase}
+.half-stat::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--acbd),transparent);opacity:0;transition:.2s}
+.half-stat:hover::before{opacity:1}
+.imb{margin-top:12px;font-size:11px;font-weight:700;padding:10px 12px;border-radius:10px;text-align:center;display:none;align-items:center;justify-content:center;gap:8px}
+.imb.show{display:flex;color:var(--wa);background:var(--wabg);border:1px solid var(--wabd)}
+.imb::before{content:"!";width:18px;height:18px;border-radius:50%;background:var(--wa);color:#000;display:grid;place-items:center;font-weight:900;font-size:11px;flex:none}
+
+/* HW status */
+.leds{display:flex;gap:8px;flex-wrap:wrap}
+.led{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:600;color:var(--mu);background:var(--in);border:1px solid var(--ln);border-radius:var(--r-full);padding:7px 14px;transition:.2s}
+.led:hover{border-color:var(--ln2);background:var(--cd)}
+.dot-led{width:9px;height:9px;border-radius:50%;background:var(--ln2);transition:.3s;position:relative}
+.dot-led::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:1px solid currentColor;opacity:0;transition:.3s}
+.dot-led.on-green{background:var(--ok);color:var(--ok);box-shadow:0 0 12px var(--ok)}.dot-led.on-green::after{opacity:.4}
+.dot-led.on-yellow{background:var(--wa);color:var(--wa);box-shadow:0 0 12px var(--wa)}.dot-led.on-yellow::after{opacity:.4}
+.dot-led.on-red{background:var(--er);color:var(--er);box-shadow:0 0 12px var(--er);animation:blink 1.2s infinite}.dot-led.on-red::after{opacity:.4}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip{background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:8px 12px;font-size:11px;font-weight:600;min-width:100px;text-align:center;transition:.2s;position:relative;overflow:hidden}
+.chip:hover{border-color:var(--ln2);transform:translateY(-1px)}
+.chip b{font-family:ui-monospace,monospace;font-size:12px;display:block}
+.chip span{font-size:9.5px;color:var(--mu);text-transform:uppercase;letter-spacing:.4px;margin-top:2px;display:block}
+
+/* Charts */
+canvas{width:100%;height:170px;background:var(--in);border:1px solid var(--ln);border-radius:12px;display:block;transition:.2s}
+canvas:hover{border-color:var(--ln2)}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:linear-gradient(180deg,rgba(255,255,255,.02),transparent),var(--in);border:1px solid var(--ln);border-radius:14px;padding:14px;text-align:center;position:relative;overflow:hidden;transition:.2s}
+.stat:hover{transform:translateY(-1px);border-color:var(--ln2);box-shadow:var(--sh2)}
+.stat::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac);opacity:.7}
+.stat:nth-child(2)::before{background:var(--ok)}
+.stat:nth-child(3)::before{background:var(--wa)}
+.stat:nth-child(4)::before{background:var(--er)}
+.stat b{font-size:22px;font-weight:900;font-family:ui-monospace,monospace;letter-spacing:-.5px} .stat span{font-size:10px;color:var(--mu);display:block;margin-top:4px;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+.log{max-height:340px;overflow:auto;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:6px;font-size:12px;line-height:1.7;scrollbar-width:thin;scrollbar-color:var(--ln2) transparent}
+.log .row{padding:10px 12px;border-bottom:1px dashed var(--ln);border-radius:8px;transition:.15s}
+.log .row:hover{background:var(--cd);border-bottom-color:transparent}
+.log .row:last-child{border:0}
+input,select{width:100%;background:var(--in);color:var(--tx);border:1px solid var(--ln);border-radius:10px;padding:11px 13px;font:12.5px Vazirmatn;transition:.18s}
+input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 4px var(--acbg);outline:0;background:var(--cd)}
+button.btn{border:1px solid var(--ln);border-radius:10px;padding:11px 18px;font-weight:800;cursor:pointer;min-height:40px;font-size:12.5px;transition:.18s cubic-bezier(.2,.8,.2,1);background:var(--cd2);color:var(--tx);position:relative;overflow:hidden}
+button.btn::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.06),transparent);opacity:0;transition:.2s;pointer-events:none}
+button.btn:hover{border-color:var(--ln2);transform:translateY(-1px);box-shadow:var(--sh2)} button.btn:hover::before{opacity:1}
+button.btn:active{transform:translateY(0) scale(.98)}
+button.btn.pri{background:linear-gradient(180deg,var(--ac),var(--ac3));border-color:var(--ac);color:#fff;box-shadow:0 6px 18px var(--acbg),0 0 0 1px rgba(255,255,255,.1) inset}
+button.btn.pri:hover{filter:brightness(1.08);box-shadow:0 8px 24px var(--acbg),var(--acglow)}
+button.btn.sec{background:var(--in);color:var(--mu)}
+button.btn.a{background:var(--ac);color:#fff;border-color:var(--ac);box-shadow:0 6px 18px var(--acbg),var(--acglow)}
+button.btn.danger{background:var(--erbg);border-color:var(--erbd);color:var(--er)}
+.form{display:grid;gap:12px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.login-box{max-width:400px;margin:24px auto}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:var(--r-full);font-size:10px;font-weight:800;letter-spacing:.4px}
+.badge.admin{background:var(--ac);color:#fff;box-shadow:0 2px 8px var(--acbg)} .badge.viewer{background:var(--in);color:var(--mu);border:1px solid var(--ln)}
+.theme-grid{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:600px){.theme-grid{grid-template-columns:1fr 1fr 1fr}}
+.theme-card{border:1px solid var(--ln);border-radius:14px;padding:14px;cursor:pointer;background:var(--in);text-align:center;transition:.22s cubic-bezier(.2,.8,.2,1);position:relative;overflow:hidden}
+.theme-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--ac);opacity:0;transition:.2s}
+.theme-card:hover{border-color:var(--ln2);transform:translateY(-3px) scale(1.01);box-shadow:var(--sh2)} .theme-card:hover::before{opacity:1}
+.theme-card.a{border-color:var(--ac);background:var(--acbg);box-shadow:var(--sh-glow)} .theme-card.a::before{opacity:1}
+.theme-preview{width:100%;height:52px;border-radius:10px;margin-bottom:10px;border:1px solid var(--ln);display:flex;overflow:hidden;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.theme-preview .tp1{flex:1} .theme-preview .tp2{flex:1} .theme-preview .tp3{flex:1}
+.theme-name{font-weight:800;font-size:12px} .theme-desc{font-size:10.5px;color:var(--mu);margin-top:3px}
+.footer{display:flex;justify-content:space-between;gap:10px;font-size:10.5px;color:var(--mu);padding:10px 4px;font-family:ui-monospace,monospace;opacity:.7;border-top:1px solid var(--ln);margin-top:8px}
+.range-btn{font-family:ui-monospace,monospace;min-width:64px}
+
+/* Segmented Control 2026 - با وزیرمتن */
+.segmented{position:relative;display:flex;background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:4px;gap:2px;overflow:hidden}
+.segmented .seg-indicator{position:absolute;top:4px;bottom:4px;background:var(--cd2);border:1px solid var(--ln2);border-radius:9px;box-shadow:0 2px 10px rgba(0,0,0,.15),0 0 0 1px rgba(255,255,255,.05) inset;transition:all .38s cubic-bezier(.34,1.56,.64,1);z-index:0;pointer-events:none}
+.segmented button{flex:1;border:0;background:transparent;border-radius:9px;padding:9px 8px;color:var(--mu);font-weight:800;font-size:12px;font-family:Vazirmatn;position:relative;z-index:1;transition:color .2s;min-height:34px}
+.segmented button.a{color:var(--tx)}
+.segmented.sm{padding:2px;border-radius:10px}
+.segmented.sm button{padding:5px 8px;font-size:11px;min-height:28px}
+.segmented.sm .seg-indicator{top:2px;bottom:2px;border-radius:8px}
+
+/* Wave effect for battery - وزیرمتن */
+.bat-wave{animation:waveMove 3s linear infinite;transform:translateX(0)}
+.bat-wave2{animation:waveMove 3s linear infinite reverse;animation-delay:-1.5s;opacity:.6}
+@keyframes waveMove{0%{transform:translateX(-25px)}100%{transform:translateX(0)}}
+.bat-fill{transition:all .85s cubic-bezier(.34,1.56,.64,1)}
+
+/* Tooltip for charts */
+.chart-tooltip{position:absolute;pointer-events:none;background:var(--cd2);border:1px solid var(--ln2);border-radius:10px;padding:8px 10px;font-size:11px;font-family:Vazirmatn;box-shadow:var(--sh2);z-index:20;opacity:0;transform:translateY(4px);transition:opacity .15s,transform .15s;white-space:nowrap}
+.chart-tooltip.show{opacity:1;transform:translateY(0)}
+.chart-tooltip b{font-family:Vazirmatn;font-weight:800;display:block}
+.chart-tooltip span{color:var(--mu);font-size:10.5px}
+
+/* Login animations */
+@keyframes fadeIn{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes shake{0%,100%{transform:translateX(0)}15%,45%,75%{transform:translateX(-6px)}30%,60%,90%{transform:translateX(6px)}}
+.login-animate{animation:fadeIn .45s cubic-bezier(.2,.8,.2,1)}
+.shake{animation:shake .45s cubic-bezier(.2,.8,.2,1)}
+
+/* Center hardware */
+.leds.center{justify-content:center}
+.chips.center{justify-content:center}
+
+/* Vazirmatn everywhere - no monospace */
+.half-pct,.hero-pct,.stat b,.half-stat b,.footer,canvas+div{font-family:Vazirmatn !important}
+input,select,button{font-family:Vazirmatn !important}
+
+.fault-card{border-right:3px solid var(--ln)} .fault-card.warn{border-right-color:var(--wa)} .fault-card.err{border-right-color:var(--er)} .fault-card.ok{border-right-color:var(--ok)}
+#faultList{font-size:13px;line-height:1.8}
+
+/* ===== Responsive 2026 - داینامیک در هر صفحه ===== */
+@media(max-width:640px){
+ .half-grid,.stat-grid,.row2{grid-template-columns:1fr !important}
+ .theme-grid{grid-template-columns:1fr !important}
+ .hero{padding:0 !important;display:block}
+ .hero-grid{flex-direction:column !important;align-items:center !important;gap:0 !important;min-height:auto !important}
+ .hero-visual{margin:0 auto !important;width:110px !important;min-height:150px !important;max-height:170px !important;height:150px !important;padding:14px 0 8px !important;flex:none !important;align-self:center !important}
+ .hero-visual .bat-wrap{width:100% !important;height:100% !important;min-height:140px !important;max-height:160px !important;margin:0 auto !important}
+ .hero-info{width:100% !important;text-align:center !important;padding:12px 16px 18px !important;gap:6px}
+ .hero-pct{justify-content:center !important;font-size:36px !important;line-height:1}
+ .hero-title{font-size:14px !important;margin-top:4px !important}
+ .hero-sub{font-size:11.5px !important;margin-top:2px !important;max-width:100% !important}
+ .hero-badges{justify-content:center !important;margin-top:8px !important;gap:6px !important}
+ .hero-fault{margin-top:8px !important;font-size:11px !important;padding:8px 10px !important}
+ .bdg{font-size:10px !important;padding:4px 10px !important}
+}
+ .segmented{min-width:0 !important;width:100%}
+ .segmented.sm{min-width:0 !important;width:100%}
+ .cd{padding:14px}
+ header{padding:10px 12px;margin:0 -12px 16px;padding-left:12px;padding-right:12px}
+ nav{top:56px;padding:4px;gap:4px}
+ nav button{padding:9px 6px;font-size:11.5px}
+ .ti{flex-wrap:wrap;gap:8px}
+ .ti > div{width:100%;justify-content:flex-start !important}
+ .stat b{font-size:18px}
+ .bat-wrap{width:80px !important;height:120px !important}
+ .hero-visual .bat-wrap{width:100px !important;height:145px !important}
+ canvas{height:140px !important}
+ #cCharge{height:170px !important}
+}
+@media(max-width:380px){
+ body{padding:0 10px 30px}
+ .half-stats{grid-template-columns:1fr !important}
+ .leds,.chips{gap:6px}
+ .led,.chip{font-size:10px;padding:6px 10px}
+ .hero-visual{width:95px !important;min-height:130px !important;max-height:145px !important;height:130px !important}
+ .hero-visual .bat-wrap{min-height:120px !important;max-height:135px !important}
+ .hero-pct{font-size:32px !important}
+ .hero-title{font-size:13px !important}
+}
+@media(max-width:480px){
+ .hero-grid{gap:12px !important}
+ .hero-badges{flex-direction:row;flex-wrap:wrap}
+}
+@media(min-width:641px) and (max-width:900px){
+ .half-grid{grid-template-columns:1fr 1fr}
+ .stat-grid{grid-template-columns:1fr 1fr}
+ .theme-grid{grid-template-columns:1fr 1fr 1fr !important}
+}
+/* Canvas responsive container */
+.canvas-wrap{position:relative;width:100%;overflow:hidden;border-radius:12px}
+.canvas-wrap canvas{width:100% !important;height:auto !important;aspect-ratio:2.2/1;display:block}
+@media(max-width:640px){ .canvas-wrap canvas{aspect-ratio:1.8/1} }
+/* Dynamic grid */
+.dynamic-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
 </style>
 </head>
-<body>
+<body data-theme="0">
+<div id="loginPage" style="position:fixed;inset:0;z-index:100;background:radial-gradient(800px 400px at 50% -100px,var(--acbg),transparent 60%),var(--bg);display:none;place-items:center;padding:20px">
+ <div class="cd login-box login-animate" style="width:100%;max-width:400px;margin:0;box-shadow:var(--sh);border:1px solid var(--ln2)">
+  <div style="text-align:center;margin-bottom:20px">
+   <div style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,var(--ac),var(--ac2));display:grid;place-items:center;color:#fff;font-weight:900;font-size:20px;margin:0 auto 12px;box-shadow:var(--acglow)">CO</div>
+   <div style="font-size:16px;font-weight:900;letter-spacing:-.2px">ChangeOver</div>
+   <div style="font-size:11px;color:var(--mu);margin-top:4px;letter-spacing:.5px">SMART BATTERY • ورود به پنل</div>
+  </div>
+  <div class="ti">ورود</div>
+  <div class="form">
+   <div style="display:grid;gap:6px"><span style="font-size:11px;color:var(--mu);font-weight:700">نام کاربری</span><input id="loginUserMain" placeholder="admin"></div>
+   <div style="display:grid;gap:6px"><span style="font-size:11px;color:var(--mu);font-weight:700">رمز عبور</span><input id="loginPassMain" type="password" placeholder="••••••••"></div>
+   <button class="btn pri" onclick="doLoginMain()" style="width:100%;margin-top:4px">ورود به پنل</button>
+   <div id="loginMsgMain" style="font-size:12px;color:var(--mu);text-align:center;min-height:18px"></div>
+   <div style="font-size:10.5px;color:var(--mu2);text-align:center;margin-top:8px;line-height:1.6">پیش‌فرض: نام کاربری <b style="color:var(--tx)">admin</b> و رمز <b style="color:var(--tx)">admin</b></div>
+  </div>
+ </div>
+</div>
 <header>
- <div class="brand">🔋 ChangeOver - پنل کاربر</div>
- <div class="link"><span id="hdrDot" class="dot"></span><span id="hdrText">قطع</span></div>
+ <div class="brand"><div class="brand-mark">CO</div><div class="brand-text"><b>ChangeOver</b><span>SMART BATTERY • INDUSTRIAL</span></div></div>
+ <div class="hdr"><span id="hdrDot" class="dot"></span><span id="hdrText">قطع</span><span id="hdrUser" style="margin-right:8px"></span><button class="btn sec" style="padding:5px 12px;font-size:11px;min-height:30px" onclick="doLogout()">خروج</button></div>
 </header>
+<nav>
+ <button id="tab0" class="a" onclick="showTab(0)">وضعیت</button>
+ <button id="tab1" onclick="showTab(1)">نمودارها</button>
+ <button id="tab2" onclick="showTab(2)">تنظیمات</button>
+</nav>
 <main>
- <div id="statusCard" class="card status-card battery">
-  <div class="icon" id="statusIcon">🔋</div>
-  <div>
-   <div class="title" id="statusTitle">در حال اتصال به برد...</div>
-   <div class="subtitle" id="statusSub">لطفا صبر کنید</div>
-  </div>
- </div>
-
- <div class="card">
-  <div class="card-title">باتری اصلی - مثل موبایل</div>
-  <div class="battery-wrap">
-   <div class="battery"><div class="battery-level" id="batLevel" style="width:0%"></div></div>
-   <div class="battery-pct" id="batPct">--%</div>
-  </div>
-  <div class="kv"><span>ولتاژ پک</span><b id="vPack">-- V</b></div>
-  <div class="kv"><span>ولتاژ ورودی</span><b id="vInput">-- V</b></div>
-  <div class="kv"><span>وضعیت برق شهر</span><b id="inputState">--</b></div>
- </div>
-
- <div class="grid2">
-  <div class="card">
-   <div class="card-title">نیم‌باتری‌ها</div>
+ <div id="pg0" class="pgx a">
+  <div class="hero" id="heroCard">
+   <div class="hero-grid">
+    <div class="hero-visual">
+     <div class="bat-wrap" style="width:100%;height:100%;min-height:200px;margin:0">
+      <svg class="bat-svg" viewBox="0 0 72 108" xmlns="http://www.w3.org/2000/svg">
+       <defs>
+        <linearGradient id="gMain" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#1ee6a0"/><stop offset="100%" stop-color="#6ef0c2"/></linearGradient>
+        <linearGradient id="gMainM" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#ffb84d"/><stop offset="100%" stop-color="#fde68a"/></linearGradient>
+        <linearGradient id="gMainL" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#ff6b7e"/><stop offset="100%" stop-color="#fca5a5"/></linearGradient>
+        <clipPath id="clipMain"><rect x="11" y="18" width="50" height="79" rx="9"/></clipPath>
+       </defs>
+       <rect class="bat-cap" x="24" y="2" width="24" height="9" rx="3"/>
+       <rect class="bat-outline" x="6" y="13" width="60" height="89" rx="13"/>
+       <rect class="bat-bg" x="11" y="18" width="50" height="79" rx="9"/>
+       <line class="bat-tick" x1="11" y1="37.75" x2="61" y2="37.75"/>
+       <line class="bat-tick" x1="11" y1="57.5" x2="61" y2="57.5"/>
+       <line class="bat-tick" x1="11" y1="77.25" x2="61" y2="77.25"/>
+       <g clip-path="url(#clipMain)">
+        <rect id="batMainFill" class="bat-fill" x="11" y="52" width="50" height="45" rx="9" fill="url(#gMain)"/>
+        <g id="batMainWave" class="bat-wave" style="transform:translate(0,52px)">
+         <path d="M -10 8 Q 2.5 2 15 8 T 40 8 T 65 8 T 90 8 V 30 H -10 Z" fill="rgba(255,255,255,.22)"/>
+         <path class="bat-wave2" d="M -10 12 Q 2.5 18 15 12 T 40 12 T 65 12 T 90 12 V 30 H -10 Z" fill="rgba(255,255,255,.14)"/>
+        </g>
+       </g>
+       <text id="batMainSvgPct" class="bat-pct" x="36" y="62">75%</text>
+      </svg>
+     </div>
+    </div>
+    <div class="hero-info">
+     <div class="hero-pct" id="batPct">75<small>%</small></div>
+     <div class="hero-title" id="statusTitle">آماده به کار</div>
+     <div class="hero-sub" id="statusSub">برق شهر وصل</div>
+     <div class="hero-badges">
+      <span class="bdg ok" id="bdgInput"><i></i>برق شهر: وصل</span>
+      <span class="bdg ac" id="bdgTime"><span id="boardTime">--</span></span>
+     </div>
+     <div id="heroFault" class="hero-fault"></div>
+    </div>
+   </div>
+  </div><div class="cd">
+   <div class="ti">نیم‌باتری‌ها - طراحی خطی + شمارنده شارژ هر باتری</div>
    <div class="half-grid">
     <div class="half">
-     <div class="half-name">باتری بالا</div>
-     <div class="mini-battery"><div class="mini-level" id="batHighLevel" style="width:0%"></div></div>
-     <div class="half-pct" id="batHighPct">--%</div>
-     <div class="half-v" id="vHigh">-- V</div>
+     <div class="half-name">باتری بالا - کانال ۱</div>
+     <div class="bat-wrap">
+      <svg class="bat-svg" viewBox="0 0 72 108" xmlns="http://www.w3.org/2000/svg">
+       <defs>
+        <linearGradient id="gh" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#1ee6a0"/><stop offset="100%" stop-color="#6ef0c2"/></linearGradient>
+        <linearGradient id="gm" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#ffb84d"/><stop offset="100%" stop-color="#fde68a"/></linearGradient>
+        <linearGradient id="gl" x1="0" y1="1" x2="0" y2="0"><stop offset="0%" stop-color="#ff6b7e"/><stop offset="100%" stop-color="#fca5a5"/></linearGradient>
+        <clipPath id="clipHigh"><rect x="11" y="18" width="50" height="79" rx="9"/></clipPath>
+       </defs>
+       <rect class="bat-cap" x="24" y="2" width="24" height="9" rx="3"/>
+       <rect class="bat-outline" x="6" y="13" width="60" height="89" rx="13"/>
+       <rect class="bat-bg" x="11" y="18" width="50" height="79" rx="9"/>
+       <line class="bat-tick" x1="11" y1="37.75" x2="61" y2="37.75"/>
+       <line class="bat-tick" x1="11" y1="57.5" x2="61" y2="57.5"/>
+       <line class="bat-tick" x1="11" y1="77.25" x2="61" y2="77.25"/>
+       <g clip-path="url(#clipHigh)">
+        <rect id="batHighFill" class="bat-fill" x="11" y="52" width="50" height="45" rx="9" fill="url(#gh)"/>
+        <g id="batHighWave" class="bat-wave" style="transform:translate(0,52px)">
+         <path d="M -10 8 Q 2.5 2 15 8 T 40 8 T 65 8 T 90 8 V 30 H -10 Z" fill="rgba(255,255,255,.22)"/>
+         <path class="bat-wave2" d="M -10 12 Q 2.5 18 15 12 T 40 12 T 65 12 T 90 12 V 30 H -10 Z" fill="rgba(255,255,255,.14)"/>
+        </g>
+       </g>
+       <text id="batHighSvgPct" class="bat-pct" x="36" y="62">76%</text>
+      </svg>
+     </div>
+     <div class="half-pct" id="batHighPct">76<small>%</small></div>
+     <div class="half-status" id="batHighStatus">نرمال</div>
+     <div class="half-stats" style="grid-template-columns:1fr">
+      <div class="half-stat"><b id="batHighChargeCount">0</b><span>تعداد شارژ</span></div>
+     </div>
     </div>
     <div class="half">
-     <div class="half-name">باتری پایین</div>
-     <div class="mini-battery"><div class="mini-level" id="batLowLevel" style="width:0%"></div></div>
-     <div class="half-pct" id="batLowPct">--%</div>
-     <div class="half-v" id="vLow">-- V</div>
+     <div class="half-name">باتری پایین - کانال ۲</div>
+     <div class="bat-wrap">
+      <svg class="bat-svg" viewBox="0 0 72 108" xmlns="http://www.w3.org/2000/svg">
+       <defs><clipPath id="clipLow"><rect x="11" y="18" width="50" height="79" rx="9"/></clipPath></defs>
+       <rect class="bat-cap" x="24" y="2" width="24" height="9" rx="3"/>
+       <rect class="bat-outline" x="6" y="13" width="60" height="89" rx="13"/>
+       <rect class="bat-bg" x="11" y="18" width="50" height="79" rx="9"/>
+       <line class="bat-tick" x1="11" y1="37.75" x2="61" y2="37.75"/>
+       <line class="bat-tick" x1="11" y1="57.5" x2="61" y2="57.5"/>
+       <line class="bat-tick" x1="11" y1="77.25" x2="61" y2="77.25"/>
+       <g clip-path="url(#clipLow)">
+        <rect id="batLowFill" class="bat-fill" x="11" y="54" width="50" height="43" rx="9" fill="url(#gh)"/>
+        <g id="batLowWave" class="bat-wave" style="transform:translate(0,54px)">
+         <path d="M -10 8 Q 2.5 2 15 8 T 40 8 T 65 8 T 90 8 V 30 H -10 Z" fill="rgba(255,255,255,.22)"/>
+         <path class="bat-wave2" d="M -10 12 Q 2.5 18 15 12 T 40 12 T 65 12 T 90 12 V 30 H -10 Z" fill="rgba(255,255,255,.14)"/>
+        </g>
+       </g>
+       <text id="batLowSvgPct" class="bat-pct" x="36" y="62">74%</text>
+      </svg>
+     </div>
+     <div class="half-pct" id="batLowPct">74<small>%</small></div>
+     <div class="half-status" id="batLowStatus">نرمال</div>
+     <div class="half-stats" style="grid-template-columns:1fr">
+      <div class="half-stat"><b id="batLowChargeCount">0</b><span>تعداد شارژ</span></div>
+     </div>
     </div>
    </div>
    <div class="imb" id="imbBox"></div>
   </div>
 
-  <div class="card">
-   <div class="card-title">چراغ‌های روی برد</div>
-   <div class="leds">
+  <div class="cd" style="text-align:center">
+   <div class="ti" style="justify-content:center;text-align:center;width:100%;display:flex">وضعیت سخت‌افزار - زنده</div>
+   <div class="leds center" style="justify-content:center">
     <div class="led"><span id="dotGreen" class="dot-led"></span>سبز</div>
     <div class="led"><span id="dotYellow" class="dot-led"></span>زرد</div>
     <div class="led"><span id="dotRed" class="dot-led"></span>قرمز</div>
    </div>
-   <div class="charger-states">
-    <span id="ch1State">کانال۱: --</span>
-    <span id="ch2State">کانال۲: --</span>
-   </div>
-   <div style="margin-top:8px;font-size:11px;color:var(--mu)">چشمک‌ها شبیه‌سازی ساده از روی درصد و حالت شارژ است</div>
+
+  </div>
+
+
+
+  <div class="cd">
+   <div class="ti">۱۰ خطای آخر - دیاگ</div>
+   <div id="diagErrors" class="log">--</div>
   </div>
  </div>
 
- <div id="faultCard" class="card fault-card">
-  <div class="card-title">پیغام سیستم</div>
-  <div id="faultList">در انتظار داده...</div>
+ <div id="pg1" class="pgx">
+  <div class="cd">
+   <div class="ti">آمار کار - محور زمان واقعی</div>
+   <div class="stat-grid">
+    <div class="stat"><b id="stChargeTime">--</b><span>زمان کل شارژ</span></div>
+    <div class="stat"><b id="stChargeCount">--</b><span>تعداد شارژ کامل</span></div>
+    <div class="stat"><b id="stUptime">--</b><span>کارکرد برد</span></div>
+    <div class="stat"><b id="stResets">--</b><span>تعداد ریست</span></div>
+   </div>
+  </div>
+
+  <div class="cd">
+   <div class="ti">درصد شارژ پک - با زمان واقعی
+    <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
+     <span style="font-size:10px;color:var(--mu)">بازه:</span>
+     <div class="segmented sm" id="segPct" style="min-width:200px"><div class="seg-indicator" id="segPctIndicator" style="width:calc(25% - 3px);right:4px"></div>
+      <button class="a" id="pct1d" onclick="setChartRange('pct','1d')">۱ روزه</button>
+      <button id="pct7d" onclick="setChartRange('pct','7d')">۷ روزه</button>
+      <button id="pct1m" onclick="setChartRange('pct','1m')">۱ ماهه</button>
+      <button id="pct3m" onclick="setChartRange('pct','3m')">۳ ماهه</button>
+     </div>
+    </div>
+   </div>
+   <div style="font-size:10px;color:var(--mu);margin-bottom:8px">محور افقی زمان واقعی - هر نقطه یک ساعت یا یک روز</div>
+   <div class="canvas-wrap"><canvas id="cPct" width="700" height="180"></canvas></div>
+   <div id="cPctLabels" style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
+   <div id="pctInfo" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+    <span class="bdg ac" id="pctCurrent">-- ٪</span>
+    <span class="bdg" id="pctRangeInfo">--</span>
+    <button class="btn danger" id="clearPctBtn" style="display:none;padding:4px 10px;font-size:10px;min-height:26px;margin-right:auto" onclick="clearHistory('charts')">پاک کردن</button>
+   </div>
+  </div>
+  <div class="cd">
+   <div class="ti">تاریخچه شارژ - کی و چه ساعتی شارژ شده
+    <div style="margin-right:auto;display:flex;align-items:center;gap:8px">
+     <span style="font-size:10px;color:var(--mu)">بازه:</span>
+     <div class="segmented sm" id="segCharge" style="min-width:200px"><div class="seg-indicator" id="segChargeIndicator" style="width:calc(25% - 3px);right:4px"></div>
+      <button class="a" id="charge1d" onclick="setChartRange('charge','1d')">۱ روزه</button>
+      <button id="charge7d" onclick="setChartRange('charge','7d')">۷ روزه</button>
+      <button id="charge1m" onclick="setChartRange('charge','1m')">۱ ماهه</button>
+      <button id="charge3m" onclick="setChartRange('charge','3m')">۳ ماهه</button>
+     </div>
+    </div>
+   </div>
+   <div style="font-size:10.5px;color:var(--mu);margin-bottom:10px;line-height:1.6">نمودار نشان می‌دهد هر باتری در چه روز و ساعتی شارژ کامل شده</div>
+   <div class="canvas-wrap"><canvas id="cCharge" width="700" height="200"></canvas></div>
+   <div id="cChargeLabels" style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
+   <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:8px">
+    <span style="font-size:11px;color:var(--mu)">لیست ۲۰ شارژ آخر</span>
+    <button class="btn danger" id="clearChargeBtn" style="display:none;padding:4px 10px;font-size:10px;min-height:26px" onclick="clearHistory('charge')">پاک کردن تاریخچه شارژ</button>
+   </div>
+   <div id="chargeHistoryList" class="log" style="margin-top:8px;max-height:220px"></div>
+  </div>
+  <div class="cd">
+   <div class="ti">ولتاژ ورودی - ۶۰ نقطه آخر
+    <div style="margin-right:auto;display:flex;gap:8px;align-items:center">
+     <span class="bdg ac" id="vinCurrent">-- ولت</span>
+     <span class="bdg" id="vinAvg">--</span>
+    </div>
+   </div>
+   <div class="canvas-wrap"><canvas id="cVin" width="700" height="160"></canvas></div>
+   <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px"><span>۶۰ نقطه آخر - هر نقطه ۱ ثانیه</span><span id="vinMinMax">--</span></div>
+  </div>
+  <div class="cd">
+   <div class="ti">ولتاژ پک - ۶۰ نقطه آخر
+    <div style="margin-right:auto;display:flex;gap:8px;align-items:center">
+     <span class="bdg ac" id="vpackCurrent">-- ولت</span>
+     <span class="bdg" id="vpackPct">-- ٪</span>
+    </div>
+   </div>
+   <div class="canvas-wrap"><canvas id="cVpack" width="700" height="160"></canvas></div>
+   <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--mu);margin-top:8px"><span>۶۰ نقطه آخر - ولتاژ کل پک باتری</span><span id="vpackMinMax">--</span></div>
+  </div>
+  <div class="cd"><div class="ti">۲۰ قطع و وصل آخر برق شهر</div><div id="powerLog" class="log">--</div></div>
  </div>
 
- <div class="footer">
-  <span id="linkState">لینک: --</span>
-  <span id="seqInfo">--</span>
+ <div id="pg2" class="pgx">
+  <div class="cd login-box" id="loginCard">
+   <div class="ti">ورود به پنل</div>
+   <div class="form">
+    <input id="loginUser" placeholder="نام کاربری - پیش‌فرض admin">
+    <input id="loginPass" type="password" placeholder="رمز - پیش‌فرض admin">
+    <button class="btn pri" onclick="doLogin()">ورود</button>
+    <div id="loginMsg" style="font-size:12px;color:var(--mu)"></div>
+   </div>
+  </div>
+
+  <div id="settingsContent" style="display:none">
+   <div class="cd">
+    <div class="ti">تم - ۳ مدل حرفه‌ای - فقط ادمین</div>
+    <div class="theme-grid" style="grid-template-columns:1fr 1fr 1fr">
+     <div class="theme-card" id="themeCard0" onclick="selectTheme(0)">
+      <div class="theme-preview" style="background:#070a10"><div class="tp1" style="background:#121826"></div><div class="tp2" style="background:#5b8def"></div><div class="tp3" style="background:#1ee6a0"></div></div>
+      <div class="theme-name">تیره حرفه‌ای</div>
+      <div class="theme-desc">پیش‌فرض</div>
+     </div>
+     <div class="theme-card" id="themeCard1" onclick="selectTheme(1)">
+      <div class="theme-preview" style="background:#f6f8fb"><div class="tp1" style="background:#ffffff"></div><div class="tp2" style="background:#3b6bf6"></div><div class="tp3" style="background:#059669"></div></div>
+      <div class="theme-name">روشن مدرن</div>
+      <div class="theme-desc">روز</div>
+     </div>
+     <div class="theme-card" id="themeCard2" onclick="selectTheme(2)">
+      <div class="theme-preview" style="background:#030508"><div class="tp1" style="background:#0c101a"></div><div class="tp2" style="background:#6b9bff"></div><div class="tp3" style="background:#2ee6a6"></div></div>
+      <div class="theme-name">تیره عمیق</div>
+      <div class="theme-desc">OLED</div>
+     </div>
+    </div>
+    <div id="themeMsg" style="font-size:12px;color:var(--mu);margin-top:10px"></div>
+   </div>
+
+   <div class="cd">
+    <div class="ti">وای‌فای - نام و رمز - فقط ادمین</div>
+    <div class="form">
+     <div class="kv" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--ln)"><span style="color:var(--mu)">نام فعلی</span><b id="wifiCurrentSsid" style="font-family:ui-monospace,monospace">--</b></div>
+     <input id="wifiNewSsid" placeholder="نام وای‌فای جدید - مثل changeover_userpannel" maxlength="32">
+     <input id="wifiNewPass" type="password" placeholder="رمز جدید - حداقل ۸ کاراکتر" maxlength="32">
+     <button class="btn pri" onclick="setWifi()">ذخیره وای‌فای - نیاز به ریستارت برد</button>
+     <div id="wifiMsg" style="font-size:11px;color:var(--mu);line-height:1.6">بعد از ذخیره، برد را خاموش و روشن کنید تا با نام جدید بالا بیاید</div>
+    </div>
+   </div>
+
+   <div class="cd">
+    <div class="ti">همگام‌سازی ساعت برد</div>
+    <div class="form">
+     <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت گوشی</span><b id="phoneTime" style="font-family:ui-monospace,monospace">--</b></div>
+     <div class="kv" style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--ln)"><span style="color:var(--mu)">ساعت برد</span><b id="boardTimeSet" style="font-family:ui-monospace,monospace">--</b></div>
+     <button class="btn pri" onclick="syncTime()">ارسال ساعت گوشی به برد (ادمین)</button>
+     <div id="timeMsg" style="font-size:12px;color:var(--mu)"></div>
+    </div>
+   </div>
+
+   <div class="cd">
+    <div class="ti">مدیریت کاربران - دو نقش <span id="usersCount" style="margin-right:auto;background:var(--in);border:1px solid var(--ln);border-radius:999px;padding:2px 8px;font-size:10px;color:var(--mu)">--</span></div>
+    <div id="usersList" class="log" style="margin-bottom:12px;max-height:260px">--</div>
+    <div class="form">
+     <div class="row2"><input id="newUserName" placeholder="نام کاربری جدید"><select id="newUserRole"><option value="0">کاربر ساده - فقط دیدن</option><option value="1">ادمین - همه کار</option></select></div>
+     <input id="newUserPass" placeholder="رمز عبور">
+     <button class="btn pri" onclick="addUser()">افزودن / ویرایش کاربر</button>
+     <div class="row2"><input id="delUserName" placeholder="نام کاربری برای حذف"><button class="btn danger" onclick="delUser()">حذف کاربر</button></div>
+     <div id="userMsg" style="font-size:12px;color:var(--mu)"></div>
+    </div>
+   </div>
+
+   <div class="cd" id="clearHistoryCard" style="display:none">
+    <div class="ti">پاک‌سازی تاریخچه - فقط ادمین</div>
+    <div style="font-size:11px;color:var(--mu);line-height:1.7;margin-bottom:12px">تاریخچه‌های ذخیره شده در حافظه داخلی ESP را پاک می‌کند - این عمل غیرقابل بازگشت است</div>
+    <div class="form">
+     <div class="row2">
+      <button class="btn danger" onclick="clearHistory('charge')">پاک کردن تاریخچه شارژ</button>
+      <button class="btn danger" onclick="clearHistory('charts')">پاک کردن نمودارها</button>
+     </div>
+     <div class="row2">
+      <button class="btn danger" onclick="clearHistory('diag')">پاک کردن خطاها و قطعی‌ها</button>
+      <button class="btn danger" style="background:var(--er);color:#fff;border-color:var(--er)" onclick="clearHistory('all')">پاک کردن همه تاریخچه‌ها</button>
+     </div>
+     <div id="clearMsg" style="font-size:11px;color:var(--mu);min-height:18px;margin-top:4px"></div>
+    </div>
+   </div>
+
+   <div class="cd"><div class="ti">اطلاعات برد</div><div id="boardInfo" class="log">--</div></div>
+  </div>
  </div>
+
+ <div id="chartTooltip" class="chart-tooltip"></div><div class="footer"><span id="linkState">لینک: --</span><span id="seqInfo">--</span></div>
 </main>
-
 <script>
+let currentTheme=0;
+function applyTheme(t){
+ currentTheme=t;
+ document.body.setAttribute('data-theme', String(t));
+ localStorage.setItem('co_theme', String(t));
+ for(let i=0;i<=2;i++){ let c=document.getElementById('themeCard'+i); if(c) c.classList.toggle('a', i===t); }
+}
+function selectTheme(t){
+ applyTheme(t);
+ fetch('/settheme?theme='+t,{method:'POST'}).then(r=>r.json()).then(j=>{
+  let tm=document.getElementById('themeMsg'); if(tm) tm.textContent=j.ok?'تم ذخیره شد':'خطا - فقط ادمین';
+  setTimeout(()=>{let tmm=document.getElementById('themeMsg'); if(tmm) tmm.textContent='';},3000);
+ }).catch(()=>{ let tmc=document.getElementById('themeMsg'); if(tmc) tmc.textContent='تم در مرورگر ذخیره شد (آفلاین)'; });
+}
+async function loadTheme(){
+ try{ let r=await fetch('/theme',{cache:'no-store'}); let j=await r.json(); if(j.theme!==undefined){ applyTheme(j.theme); return; } }catch(e){}
+ let saved=localStorage.getItem('co_theme'); if(saved!==null){ applyTheme(parseInt(saved)); } else { applyTheme(0); }
+}
+loadTheme();
+
 const T_VIN=14, T_V24=15, T_VLOW=17, T_VHIGH=18, T_FAULT=19, T_STATE1=6, T_STATE2=13, T_IMB=25;
 const FAULT_ADC=1, FAULT_BAT_LOST=1<<6, FAULT_TECH=1<<7;
-
-function vToPctPack(v){
- let min=21000, max=29000;
- if(v<=min) return 0;
- if(v>=max) return 100;
- return Math.floor(((v-min)*100)/(max-min));
+function vToPctPack(v){ if(v<=21000) return 0; if(v>=29000) return 100; return Math.floor(((v-21000)*100)/(8000)); }
+function vToPctHalf(v){ if(v<=10500) return 0; if(v>=14500) return 100; return Math.floor(((v-10500)*100)/(4000)); }
+function fmtSec(s){ if(!s) return '--'; let h=Math.floor(s/3600); let m=Math.floor((s%3600)/60); return h+' ساعت '+m+' دقیقه'; }
+function fmtSecShort(s){ if(!s) return '--'; let h=Math.floor(s/3600); let m=Math.floor((s%3600)/60); return h+'h '+m+'m'; }
+function fmtTime(ts){ if(!ts) return '--'; let d=new Date(ts*1000); return d.toLocaleString('fa-IR'); }
+function stateText(s){ const m={0:'خاموش',1:'در حال شارژ',2:'تکمیل شارژ',3:'آماده',4:'راه‌اندازی',5:'بررسی ورودی',6:'انتظار',7:'خطا',8:'باتری قطع',9:'دستی'}; return m[s]||('حالت '+s); }
+function faultText(mask){
+ let t=[];
+ if(mask & 1) t.push('خطای اندازه‌گیری ولتاژ - سنسور یا سیم‌کشی');
+ if(mask & (1<<1)) t.push('جریان بیش از حد کانال ۱');
+ if(mask & (1<<2)) t.push('جریان بیش از حد کانال ۲');
+ if(mask & (1<<3)) t.push('ولتاژ باتری پایین');
+ if(mask & (1<<4)) t.push('نوسان ورودی کانال ۱');
+ if(mask & (1<<5)) t.push('نوسان ورودی کانال ۲');
+ if(mask & (1<<6)) t.push('باتری قطع شده');
+ if(mask & (1<<7)) t.push('خطای سخت‌افزار - طبقه قدرت');
+ if(t.length==0) return 'سیستم سالم';
+ return t.join('<br>');
 }
-function vToPctHalf(v){
- let min=10500, max=14500;
- if(v<=min) return 0;
- if(v>=max) return 100;
- return Math.floor(((v-min)*100)/(max-min));
-}
-function fmtV(mv){
- if(mv==null || mv<=0) return '-- V';
- return (mv/1000).toFixed(2)+' V';
-}
-function stateText(s){
- const map={0:'خاموش',1:'شارژ اصلی',2:'جذب',3:'شناور - پر',4:'راه‌اندازی',5:'انتظار جیتر',6:'انتظار ورودی',7:'خطای نهایی',8:'باتری قطع',9:'دستی'};
- return map[s]||('حالت '+s);
-}
-let lastData=null;
-let blinkPhase=0;
-setInterval(()=>{ blinkPhase=(blinkPhase+1)%20; renderLeds(); }, 100);
-
+let lastData=null, blinkPhase=0;
+setInterval(()=>{ blinkPhase=(blinkPhase+1)%20; renderLeds(); },100);
 function renderLeds(){
  if(!lastData || !lastData.on) return;
- let pct=lastData.pctPack;
- let inputPresent=lastData.inputPresent;
- let fault=lastData.faultMask;
- let charging = (lastData.state1==1||lastData.state1==2||lastData.state2==1||lastData.state2==2);
- let isFault = (fault & (FAULT_ADC|FAULT_BAT_LOST|FAULT_TECH))!==0;
-
- let g=document.getElementById('dotGreen');
- let y=document.getElementById('dotYellow');
- let r=document.getElementById('dotRed');
+ let pct=lastData.pctPack, inputPresent=lastData.inputPresent, fault=lastData.faultMask;
+ let charging=(lastData.state1==1||lastData.state1==2||lastData.state2==1||lastData.state2==2);
+ let isFault=(fault & (FAULT_ADC|FAULT_BAT_LOST|FAULT_TECH))!==0;
+ let g=document.getElementById('dotGreen'), y=document.getElementById('dotYellow'), r=document.getElementById('dotRed');
+ if(!g) return;
  g.className='dot-led'; y.className='dot-led'; r.className='dot-led';
-
- if(isFault){
-   r.classList.add('on-red');
- } else if(!inputPresent){
-   // روی باتری: سبز چشمک بر اساس درصد
-   let on = (pct>=50) ? (blinkPhase < (pct/5)) : (blinkPhase < 4);
-   // ساده: درصد بالا روشن بیشتر
-   if(blinkPhase < Math.max(2, Math.floor(pct/10)+1)) g.classList.add('on-green');
- } else {
-   // برق وصل
-   g.classList.add('on-green');
-   if(charging){
-     if(blinkPhase < 10) y.classList.add('on-yellow');
-   } else {
-     // پر
-   }
+ if(isFault){ r.classList.add('on-red'); }
+ else if(!inputPresent){ if(blinkPhase < Math.max(2, Math.floor(pct/10)+1)) g.classList.add('on-green'); }
+ else { g.classList.add('on-green'); if(charging && blinkPhase<10) y.classList.add('on-yellow'); }
+}
+let chartRanges={pct:'1d',charge:'1d'};
+function setChartRange(chart, r){
+ chartRanges[chart]=r;
+ const order=['1d','7d','1m','3m'];
+ let seg=document.getElementById('seg'+chart.charAt(0).toUpperCase()+chart.slice(1));
+ if(!seg) seg=document.getElementById('seg'+(chart==='pct'?'Pct':'Charge'));
+ let ind=document.getElementById('seg'+chart.charAt(0).toUpperCase()+chart.slice(1)+'Indicator');
+ if(!ind) ind=document.getElementById('seg'+(chart==='pct'?'Pct':'Charge')+'Indicator');
+ if(seg && ind){
+  let idx=order.indexOf(r);
+  if(idx>=0){ let w=seg.clientWidth; let btnW=(w-8)/4; ind.style.width=btnW+'px'; ind.style.right=(4+idx*(btnW+2))+'px'; }
+ }
+ for(let id of order){
+  let b=document.getElementById(chart+id);
+  if(b) b.classList.toggle('a', id===r);
+ }
+ if(chart==='pct') pollChartsPct();
+ else if(chart==='charge'){
+  if(window._lastChargeHistory) { drawChargeHistory(window._lastChargeHistory, r); }
  }
 }
+function setRange(r){ setChartRange('pct', r); setChartRange('charge', r); }
 
+function fmtTimeLabel(ts, range){
+ if(!ts) return '';
+ let d=new Date(ts*1000);
+ if(range==='1d'){ return d.toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'}); }
+ else if(range==='7d'){ return d.toLocaleDateString('fa-IR',{weekday:'short',hour:'2-digit'}); }
+ else { return d.toLocaleDateString('fa-IR',{month:'short',day:'numeric'}); }
+}
+function drawChart(canvasId, data, color, min, max, timeData, range){
+ let c=document.getElementById(canvasId); if(!c) return;
+ let ctx=c.getContext('2d'); let w=c.width, h=c.height;
+ let styles=getComputedStyle(document.body);
+ let ln=styles.getPropertyValue('--ln').trim()||'#1c2940';
+ ctx.clearRect(0,0,w,h);
+ ctx.strokeStyle=ln; ctx.lineWidth=1; ctx.strokeRect(0,0,w,h);
+ ctx.strokeStyle='rgba(100,116,139,.22)'; ctx.setLineDash([4,5]);
+ // store for tooltip
+ c._chartData=data; c._chartTime=timeData; c._chartRange=range; c._chartColor=color; c._chartMin=min; c._chartMax=max;
+ if(!c._hasTooltip){
+  c.addEventListener('mousemove', function(e){
+   let rect=c.getBoundingClientRect();
+   let mx=e.clientX-rect.left; let scaleX=w/rect.width;
+   let idx=Math.round((mx*scaleX / w) * (data.length-1));
+   if(idx<0) idx=0; if(idx>=data.length) idx=data.length-1;
+   let val=data[idx];
+   let ts=timeData?timeData[idx]:null;
+   let tip=document.getElementById('chartTooltip');
+   if(tip && val!=null){
+    let dStr=ts?fmtTime(ts):''; 
+    tip.innerHTML='<b>'+val.toFixed(1)+'</b><span>'+(dStr||'')+'</span>';
+    tip.style.left=(e.clientX+12)+'px'; tip.style.top=(e.clientY-40)+'px'; tip.classList.add('show');
+   }
+  });
+  c.addEventListener('mouseleave', function(){ let tip=document.getElementById('chartTooltip'); if(tip) tip.classList.remove('show'); });
+  c._hasTooltip=true;
+ }
+ if(data && data.length>1){ for(let i=1;i<4;i++){ let x=(i/4)*w; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); } }
+ ctx.setLineDash([]);
+ if(!data || data.length<2) return;
+ let rangeVal=(max-min)||1;
+ let grad=ctx.createLinearGradient(0,0,0,h); grad.addColorStop(0, color+'38'); grad.addColorStop(1, color+'06');
+ ctx.beginPath();
+ for(let i=0;i<data.length;i++){ let x=(i/(data.length-1))*w; let v=data[i]; if(v==null) continue; let y=h - ((v-min)/rangeVal)*h; if(i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+ ctx.lineTo(w,h); ctx.lineTo(0,h); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+ ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=2.4; ctx.lineJoin='round'; ctx.lineCap='round';
+ for(let i=0;i<data.length;i++){ let x=(i/(data.length-1))*w; let v=data[i]; if(v==null) continue; let y=h - ((v-min)/rangeVal)*h; if(i==0) ctx.moveTo(x,y); else ctx.lineTo(x,y); }
+ ctx.stroke();
+ if(data.length>0){ let last=data[data.length-1]; let y=h - ((last-min)/rangeVal)*h; ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=14; ctx.arc(w,y,4,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0; }
+ if(timeData && range){
+  let labelId=canvasId+'Labels'; let labelDiv=document.getElementById(labelId);
+  if(labelDiv){ let html=''; let step=Math.max(1, Math.floor(timeData.length/4)); for(let i=0;i<timeData.length;i+=step){ html+='<span>'+fmtTimeLabel(timeData[i], range)+'</span>'; } if(timeData.length%step!==0) html+='<span>'+fmtTimeLabel(timeData[timeData.length-1], range)+'</span>'; labelDiv.innerHTML=html; }
+ }
+}
+let chartData={vin:[],vpack:[],pct:[],imb:[],time:[],range:'1d'};
+let chartDataPct={pct:[],time:[],range:'1d'};
+function renderChartsFromServer(j){
+ if(!j) return;
+ if(j.pct){
+  if(j.range) chartDataPct.range=j.range;
+  chartDataPct.pct=j.pct;
+  chartDataPct.time=j.time||[];
+  drawChart('cPct', chartDataPct.pct, '#ffb84d', 0, 100, chartDataPct.time, chartDataPct.range);
+  let curEl=document.getElementById('pctCurrent'); if(curEl && chartDataPct.pct.length>0) curEl.textContent=chartDataPct.pct[chartDataPct.pct.length-1].toFixed(1)+' ٪';
+  let rangeEl=document.getElementById('pctRangeInfo'); if(rangeEl) rangeEl.textContent='بازه: '+ (chartDataPct.range==='1d'?'۱ روزه':chartDataPct.range==='7d'?'۷ روزه':chartDataPct.range==='1m'?'۱ ماهه':'۳ ماهه');
+ }
+ if(j.vin && j.vin.length>0) { chartData.vin=j.vin; drawChart('cVin', chartData.vin, '#5b8def', 18000, 30000, null, null); updateVinInfo(); }
+ if(j.vpack && j.vpack.length>0) { chartData.vpack=j.vpack; drawChart('cVpack', chartData.vpack, '#1ee6a0', 20000, 30000, null, null); updateVpackInfo(); }
+}
+function updateVinInfo(){
+ let elCur=document.getElementById('vinCurrent'), elAvg=document.getElementById('vinAvg'), elMm=document.getElementById('vinMinMax');
+ if(!chartData.vin || chartData.vin.length==0) return;
+ let last=chartData.vin[chartData.vin.length-1];
+ let min=Math.min(...chartData.vin), max=Math.max(...chartData.vin);
+ let avg=chartData.vin.reduce((a,b)=>a+b,0)/chartData.vin.length;
+ if(elCur) elCur.textContent=(last/1000).toFixed(2)+' ولت';
+ if(elAvg) elAvg.textContent='میانگین '+(avg/1000).toFixed(2)+' ولت';
+ if(elMm) elMm.textContent='کمترین '+(min/1000).toFixed(2)+' - بیشترین '+(max/1000).toFixed(2)+' ولت';
+}
+function updateVpackInfo(){
+ let elCur=document.getElementById('vpackCurrent'), elPct=document.getElementById('vpackPct'), elMm=document.getElementById('vpackMinMax');
+ if(!chartData.vpack || chartData.vpack.length==0) return;
+ let last=chartData.vpack[chartData.vpack.length-1];
+ let min=Math.min(...chartData.vpack), max=Math.max(...chartData.vpack);
+ let pct=vToPctPack(last);
+ if(elCur) elCur.textContent=(last/1000).toFixed(2)+' ولت';
+ if(elPct) elPct.textContent=pct+' ٪';
+ if(elMm) elMm.textContent='کمترین '+(min/1000).toFixed(2)+' - بیشترین '+(max/1000).toFixed(2)+' ولت';
+}
+async function pollChartsPct(){
+ try{ let r=await fetch('/charts?range='+chartRanges.pct,{cache:'no-store'}); let j=await r.json(); renderChartsFromServer(j); }catch(e){}
+}
+async function pollChartsVinVpack(){
+ try{ let r=await fetch('/charts?range=1d',{cache:'no-store'}); let j=await r.json(); if(j.vin) { chartData.vin=j.vin; drawChart('cVin', chartData.vin, '#5b8def', 18000, 30000, null, null); updateVinInfo(); } if(j.vpack){ chartData.vpack=j.vpack; drawChart('cVpack', chartData.vpack, '#1ee6a0', 20000, 30000, null, null); updateVpackInfo(); } }catch(e){}
+}
+
+function drawChargeHistory(events, range){
+ window._lastChargeHistory=events;
+ let c=document.getElementById('cCharge'); if(!c) return;
+ let ctx=c.getContext('2d'); let w=c.width, h=c.height;
+ ctx.clearRect(0,0,w,h);
+ let styles=getComputedStyle(document.body);
+ let ln=styles.getPropertyValue('--ln').trim()||'#1c2940';
+ ctx.strokeStyle=ln; ctx.lineWidth=1; ctx.strokeRect(0,0,w,h);
+ ctx.strokeStyle='rgba(100,116,139,.18)'; ctx.setLineDash([4,5]);
+ for(let i=1;i<4;i++){ let x=(i/4)*w; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+ ctx.setLineDash([]);
+ if(!events || events.length==0){
+  ctx.fillStyle=styles.getPropertyValue('--mu'); ctx.font='12px Vazirmatn'; ctx.textAlign='center';
+  ctx.fillText('تاریخچه شارژی ثبت نشده', w/2, h/2);
+  return;
+ }
+ let now=Math.floor(Date.now()/1000);
+ let rangeSec=86400;
+ if(range==='1d') rangeSec=86400;
+ else if(range==='7d') rangeSec=7*86400;
+ else if(range==='1m') rangeSec=30*86400;
+ else if(range==='3m') rangeSec=90*86400;
+ let filtered=events.filter(e=> (now - e.ts) <= rangeSec);
+ if(filtered.length==0) filtered=events.slice(-20);
+ filtered.sort((a,b)=>a.ts-b.ts);
+ let minTs=Math.min(...filtered.map(e=>e.ts));
+ let maxTs=Math.max(...filtered.map(e=>e.ts));
+ let span=(maxTs-minTs)||3600;
+ filtered.forEach((ev, idx)=>{
+  let x=((ev.ts - minTs)/span)*w;
+  let y=ev.ch===1 ? h*0.35 : h*0.70;
+  let color=ev.ch===1 ? '#5b8def' : '#1ee6a0';
+  ctx.beginPath(); ctx.strokeStyle=color+'55'; ctx.lineWidth=1;
+  ctx.moveTo(x, h); ctx.lineTo(x, y); ctx.stroke();
+  ctx.beginPath(); ctx.fillStyle=color; ctx.shadowColor=color; ctx.shadowBlur=12;
+  ctx.arc(x, y, 6, 0, Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+  ctx.fillStyle='#fff'; ctx.font='bold 9px Vazirmatn'; ctx.textAlign='center'; ctx.fillText('CH'+ev.ch, x, y+3);
+ });
+ let labelDiv=document.getElementById('cChargeLabels');
+ if(labelDiv && filtered.length>0){
+  let step=Math.max(1, Math.floor(filtered.length/4));
+  let html='';
+  for(let i=0;i<filtered.length;i+=step){
+   let d=new Date(filtered[i].ts*1000);
+   let lbl=d.toLocaleDateString('fa-IR',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'});
+   html+='<span>'+lbl+'</span>';
+  }
+  labelDiv.innerHTML=html;
+ }
+}
+function renderChargeHistoryList(events){
+ let div=document.getElementById('chargeHistoryList'); if(!div) return;
+ if(!events || events.length==0){ div.textContent='تاریخچه شارژی ثبت نشده'; return; }
+ let sorted=[...events].sort((a,b)=>b.ts-a.ts);
+ let html='';
+ for(let i=0;i<Math.min(sorted.length,20);i++){
+  let e=sorted[i];
+  let d=new Date(e.ts*1000);
+  let dateStr=d.toLocaleDateString('fa-IR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  let timeStr=d.toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  let chName=e.ch===1?'باتری بالا - کانال ۱':'باتری پایین - کانال ۲';
+  let color=e.ch===1?'var(--ac)':'var(--ok)';
+  html+='<div class=row style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><b style="color:'+color+'">'+chName+'</b><br><span style="font-size:11px;color:var(--mu)">'+dateStr+'</span></div><div style="text-align:left;direction:ltr;font-family:ui-monospace,monospace;font-weight:800">'+timeStr+'</div></div>';
+ }
+ div.innerHTML=html;
+}
+
+function getBatStatus(pct){
+ if(pct>=80) return {grad:'url(#gh)',gradMain:'url(#gMain)',txt:'عالی',cls:'high'};
+ if(pct>=50) return {grad:'url(#gh)',gradMain:'url(#gMain)',txt:'خوب',cls:'high'};
+ if(pct>=20) return {grad:'url(#gm)',gradMain:'url(#gMainM)',txt:'متوسط',cls:'mid'};
+ if(pct>0) return {grad:'url(#gl)',gradMain:'url(#gMainL)',txt:'کم',cls:'low'};
+ return {grad:'url(#gl)',gradMain:'url(#gMainL)',txt:'خالی',cls:'low'};
+}
+
+function setBatFill(id, pct, status){
+ let el=document.getElementById(id); if(!el) return;
+ let totalH=79; let fillH=Math.max(0, Math.min(totalH, (pct/100)*totalH)); let y=18+(totalH-fillH);
+ let grad=status.gradMain||status.grad;
+ el.setAttribute('y', y); el.setAttribute('height', fillH); el.setAttribute('fill', grad);
+ let waveId=id==='batHighFill'?'batHighWave':id==='batLowFill'?'batLowWave':id==='batMainFill'?'batMainWave':null;
+ let waveEl=waveId?document.getElementById(waveId):null; if(waveEl){ waveEl.setAttribute('transform','translate(0,'+y+')'); }
+}
 function render(data){
  lastData=data;
- let vPack=data.t[T_V24]||0;
- let vIn=data.t[T_VIN]||0;
- let vLow=data.t[T_VLOW]||0;
- let vHigh=data.t[T_VHIGH]||0;
- let fault=data.t[T_FAULT]||0;
- let s1=data.t[T_STATE1]||0;
- let s2=data.t[T_STATE2]||0;
- let imb=data.t[T_IMB]||0;
+ let vPack=data.t[T_V24]||0, vLow=data.t[T_VLOW]||0, vHigh=data.t[T_VHIGH]||0, vIn=data.t[T_VIN]||0;
+ let fault=data.t[T_FAULT]||0, s1=data.t[T_STATE1]||0, s2=data.t[T_STATE2]||0, imb=data.t[T_IMB]||0;
+ let pctPack=vToPctPack(vPack), pctLow=vToPctHalf(vLow), pctHigh=vToPctHalf(vHigh);
+ data.pctPack=pctPack; data.faultMask=fault; data.state1=s1; data.state2=s2;
 
- let pctPack=vToPctPack(vPack);
- let pctLow=vToPctHalf(vLow);
- let pctHigh=vToPctHalf(vHigh);
+ let mainSt=getBatStatus(pctPack);
+ setBatFill('batMainFill', pctPack, mainSt);
+ let mainSvgPct=document.getElementById('batMainSvgPct'); if(mainSvgPct) mainSvgPct.textContent=pctPack+'%';
+ let bp=document.getElementById('batPct'); if(bp) bp.innerHTML=pctPack+'<small>%</small>';
+ let bt=document.getElementById('boardTime'); if(bt) bt.textContent=data.boardTime?fmtTime(data.boardTime):'تنظیم نشده';
 
- data.pctPack=pctPack;
- data.faultMask=fault;
- data.state1=s1; data.state2=s2;
+ let highSt=getBatStatus(pctHigh), lowSt=getBatStatus(pctLow);
+ setBatFill('batHighFill', pctHigh, highSt); setBatFill('batLowFill', pctLow, lowSt);
+ let hSvgPct=document.getElementById('batHighSvgPct'); if(hSvgPct) hSvgPct.textContent=pctHigh+'%';
+ let lSvgPct=document.getElementById('batLowSvgPct'); if(lSvgPct) lSvgPct.textContent=pctLow+'%';
+ let bhp=document.getElementById('batHighPct'); if(bhp) bhp.innerHTML=pctHigh+'<small>%</small>';
+ let blp=document.getElementById('batLowPct'); if(blp) blp.innerHTML=pctLow+'<small>%</small>';
+ let bhs=document.getElementById('batHighStatus'); if(bhs) bhs.textContent=highSt.txt;
+ let bls=document.getElementById('batLowStatus'); if(bls) bls.textContent=lowSt.txt;
 
- // باتری اصلی
- let batLevel=document.getElementById('batLevel');
- batLevel.style.width=pctPack+'%';
- batLevel.className='battery-level'+(pctPack<20?' low':pctPack<50?' mid':'');
- document.getElementById('batPct').textContent=pctPack+'%';
- document.getElementById('vPack').textContent=fmtV(vPack);
- document.getElementById('vInput').textContent=fmtV(vIn);
- document.getElementById('inputState').textContent=data.inputPresent?'وصل':'قطع';
+ let ib=document.getElementById('imbBox'); if(ib){ if(imb>300){ ib.textContent='اختلاف دو باتری: '+imb+' میلی‌ولت - نیاز به بررسی'; ib.className='imb show'; } else { ib.className='imb'; ib.textContent=''; } }
 
- // نیم باتری
- document.getElementById('batHighLevel').style.width=pctHigh+'%';
- document.getElementById('batHighLevel').className='mini-level'+(pctHigh<20?' low':pctHigh<50?' mid':'');
- document.getElementById('batLowLevel').style.width=pctLow+'%';
- document.getElementById('batLowLevel').className='mini-level'+(pctLow<20?' low':pctLow<50?' mid':'');
- document.getElementById('batHighPct').textContent=pctHigh+'%';
- document.getElementById('batLowPct').textContent=pctLow+'%';
- document.getElementById('vHigh').textContent=fmtV(vHigh);
- document.getElementById('vLow').textContent=fmtV(vLow);
+ let bIn=document.getElementById('bdgInput'); if(bIn){ bIn.innerHTML='<i></i>برق شهر: '+(data.inputPresent?'وصل':'باتری'); bIn.className='bdg '+(data.inputPresent?'ok':'warn'); }
 
- let imbBox=document.getElementById('imbBox');
- if(imb>300){
-   imbBox.className='imb on';
-   imbBox.textContent='اختلاف دو باتری: '+(imb)+' میلی‌ولت - نیاز به بررسی';
- } else { imbBox.className='imb'; imbBox.textContent=''; }
+ let st=document.getElementById('statusTitle'), ss=document.getElementById('statusSub');
+ let heroCard=document.getElementById('heroCard');
+ let heroFault=document.getElementById('heroFault');
+ if(!data.on){ st.textContent='ارتباط با برد قطع است'; ss.textContent='کابل یا تغذیه برد را بررسی کنید'; if(heroCard) heroCard.className='hero err'; if(heroFault){ heroFault.className='hero-fault err show'; heroFault.textContent='ارتباط قطع - کابل UART یا تغذیه برد را بررسی کنید'; } }
+ else if(fault & FAULT_BAT_LOST){ st.textContent='باتری قطع شده'; ss.textContent='سیم باتری را بررسی کنید'; if(heroCard) heroCard.className='hero err'; if(heroFault){ heroFault.className='hero-fault err show'; heroFault.innerHTML=faultText(fault); } }
+ else if(fault & FAULT_TECH){ st.textContent='خطای فنی'; ss.textContent='برد نیاز به بررسی دارد'; if(heroCard) heroCard.className='hero err'; if(heroFault){ heroFault.className='hero-fault err show'; heroFault.innerHTML=faultText(fault); } }
+ else if(fault & FAULT_ADC){ st.textContent='در حال بررسی'; ss.textContent='سنسورها در حال کالیبره'; if(heroCard) heroCard.className='hero warn'; if(heroFault){ heroFault.className='hero-fault warn show'; heroFault.innerHTML=faultText(fault); } }
+ else if(!data.inputPresent){ st.textContent='حالت باتری'; ss.textContent='شارژ '+pctPack+' درصد'; if(heroCard) heroCard.className='hero'; if(heroFault){ if(pctPack<=5){ heroFault.className='hero-fault err show'; heroFault.textContent='شارژ خیلی کم - کمتر از ۵٪'; } else if(pctPack<=20){ heroFault.className='hero-fault warn show'; heroFault.textContent='شارژ کم - '+pctPack+'٪'; } else if(imb>300){ heroFault.className='hero-fault warn show'; heroFault.textContent='اختلاف دو باتری زیاد است ('+imb+'mV)'; } else { heroFault.className='hero-fault ok show'; heroFault.textContent='سیستم سالم - حالت باتری'; } } }
+ else if(s1==3 && s2==3){ st.textContent='شارژ کامل'; ss.textContent='باتری پر - آماده'; if(heroCard) heroCard.className='hero ok'; if(heroFault){ heroFault.className='hero-fault ok show'; heroFault.textContent='شارژ کامل - باتری پر'; } }
+ else if(s1==1||s1==2||s2==1||s2==2){ st.textContent='در حال شارژ'; ss.textContent='باتری '+pctPack+' درصد'; if(heroCard) heroCard.className='hero'; if(heroFault){ heroFault.className='hero-fault show'; heroFault.style.display='none'; heroFault.textContent=''; } }
+ else { st.textContent='متصل'; ss.textContent='باتری '+pctPack+' درصد - آماده'; if(heroCard) heroCard.className='hero ok'; if(heroFault){ heroFault.className='hero-fault ok show'; heroFault.textContent='سیستم سالم'; } }
 
- // شارژر
- document.getElementById('ch1State').textContent='کانال۱: '+stateText(s1);
- document.getElementById('ch2State').textContent='کانال۲: '+stateText(s2);
 
- // وضعیت کلی
- let statusCard=document.getElementById('statusCard');
- let statusTitle=document.getElementById('statusTitle');
- let statusSub=document.getElementById('statusSub');
- let statusIcon=document.getElementById('statusIcon');
- let isFault = (fault & (FAULT_ADC|FAULT_BAT_LOST|FAULT_TECH))!==0;
+ let ls=document.getElementById('linkState'); if(ls) ls.textContent='لینک: '+(data.on?'وصل':'قطع')+' | CRC: '+data.ce;
+ let si=document.getElementById('seqInfo'); if(si) si.textContent='فریم: '+data.n+' | سن: '+data.age+'ms';
+ let hd=document.getElementById('hdrDot'); if(hd) hd.className='dot '+(data.on?'on':'');
+ let ht=document.getElementById('hdrText'); if(ht) ht.textContent=data.on?'متصل':'قطع';
+ let hu=document.getElementById('hdrUser'); if(hu) hu.textContent=data.user?(data.user+' '+(data.role==1?'(ادمین)':'(ساده)')):'';
 
- if(!data.on){
-   statusCard.className='card status-card fault';
-   statusTitle.textContent='ارتباط با برد قطع است';
-   statusSub.textContent='کابل یا برد را بررسی کنید';
-   statusIcon.textContent='⛔';
- } else if(fault & FAULT_BAT_LOST){
-   statusCard.className='card status-card fault';
-   statusTitle.textContent='باتری قطع شده';
-   statusSub.textContent='سیم باتری را چک کنید';
-   statusIcon.textContent='🔌';
- } else if(fault & FAULT_TECH){
-   statusCard.className='card status-card fault';
-   statusTitle.textContent='خطای فنی برد';
-   statusSub.textContent='برد نیاز به بررسی دارد';
-   statusIcon.textContent='⚠️';
- } else if(fault & FAULT_ADC){
-   statusCard.className='card status-card fault';
-   statusTitle.textContent='خطای اندازه‌گیری';
-   statusSub.textContent='سنسورها را بررسی کنید';
-   statusIcon.textContent='⚠️';
- } else if(!data.inputPresent){
-   statusCard.className='card status-card battery';
-   statusTitle.textContent='روی باتری - برق شهر قطع است';
-   statusSub.textContent='شارژ باقی‌مانده: '+pctPack+'%';
-   statusIcon.textContent='🔋';
- } else if(s1==3 && s2==3){
-   statusCard.className='card status-card ok';
-   statusTitle.textContent='باتری پر - برق شهر وصل';
-   statusSub.textContent='آماده به کار';
-   statusIcon.textContent='✅';
- } else if(s1==1||s1==2||s2==1||s2==2){
-   statusCard.className='card status-card charge';
-   statusTitle.textContent='در حال شارژ';
-   statusSub.textContent='باتری '+pctPack+'% - برق شهر وصل';
-   statusIcon.textContent='⚡';
- } else {
-   statusCard.className='card status-card ok';
-   statusTitle.textContent='برق شهر وصل';
-   statusSub.textContent='باتری '+pctPack+'%';
-   statusIcon.textContent='🔌';
+ let loginPage=document.getElementById('loginPage');
+ let loginCard=document.getElementById('loginCard'), setContent=document.getElementById('settingsContent');
+ if(data.user){
+  if(loginPage) loginPage.style.display='none';
+  document.body.style.overflow='';
+  if(loginCard) loginCard.style.display='none'; if(setContent) setContent.style.display='grid';
  }
-
- // پیغام‌ها
- let faultCard=document.getElementById('faultCard');
- let faultList=document.getElementById('faultList');
- let msgs=[];
- if(!data.on){ msgs.push('<span class=err>⛔ ارتباط با برد قطع است - داده قدیمی است</span>'); faultCard.className='card fault-card err'; }
- else if(fault==0){ msgs.push('<span class=ok>✅ سیستم سالم است</span>'); faultCard.className='card fault-card ok'; }
  else {
-   if(fault & FAULT_ADC) msgs.push('<span class=err>• خطای اندازه‌گیری - برد نمی‌تواند ولتاژ را بخواند</span>');
-   if(fault & FAULT_BAT_LOST) msgs.push('<span class=err>• باتری قطع شده - سیم باتری را وصل کنید</span>');
-   if(fault & FAULT_TECH) msgs.push('<span class=err>• خطای فنی - شارژر متوقف شده</span>');
-   if(imb>300) msgs.push('<span class=warn>• اختلاف دو باتری زیاد است ('+imb+'mV) - باتری‌ها نامتعادل</span>');
-   if(pctPack<=5) msgs.push('<span class=err>• باتری خیلی کم - به زودی خاموش می‌شود</span>');
-   else if(pctPack<=20) msgs.push('<span class=warn>• شارژ باتری کم است</span>');
-   faultCard.className=(fault & (FAULT_ADC|FAULT_BAT_LOST|FAULT_TECH))?'card fault-card err':'card fault-card warn';
+  if(loginPage) loginPage.style.display='grid';
+  document.body.style.overflow='hidden';
+  if(loginCard) loginCard.style.display='block'; if(setContent) setContent.style.display='none';
  }
- if(msgs.length==0) msgs.push('<span class=ok>✅ همه چیز عادی است</span>');
- faultList.innerHTML=msgs.join('<br>');
 
- // لینک
- document.getElementById('linkState').textContent='لینک: '+(data.on?'وصل':'قطع')+' | خطای CRC: '+data.ce;
- document.getElementById('seqInfo').textContent='فریم: '+data.n+' | سن: '+data.age+'ms';
- let hdrDot=document.getElementById('hdrDot');
- hdrDot.className='dot '+(data.on?'on':'off');
- document.getElementById('hdrText').textContent=data.on?'متصل':'قطع';
+ let pt=document.getElementById('phoneTime'); if(pt) pt.textContent=new Date().toLocaleString('fa-IR');
+ if(data.theme!==undefined && data.theme!==currentTheme){ let saved=localStorage.getItem('co_theme'); if(saved===null) applyTheme(data.theme); }
+ // نمایش دکمه‌های پاک‌سازی فقط برای ادمین
+ let isAdmin=data.role==1;
+ let clearCard=document.getElementById('clearHistoryCard');
+ if(clearCard) clearCard.style.display=isAdmin?'block':'none';
+ let clearPct=document.getElementById('clearPctBtn');
+ if(clearPct) clearPct.style.display=isAdmin?'inline-flex':'none';
+ let clearCharge=document.getElementById('clearChargeBtn');
+ if(clearCharge) clearCharge.style.display=isAdmin?'inline-flex':'none';
 }
 
-async function poll(){
+function renderDiag(j){
+ if(!j) return;
+ let elCount=document.getElementById('stChargeCount'); if(elCount) elCount.textContent=j.chargeCount||'--';
+ let elUp=document.getElementById('stUptime'); if(elUp) elUp.textContent=j.uptimeSec?fmtSecShort(j.uptimeSec):'--';
+ let elRes=document.getElementById('stResets'); if(elRes) elRes.textContent=j.resetCount||'--';
+ let elBoard=document.getElementById('boardTimeSet'); if(elBoard) elBoard.textContent=j.boardTime?fmtTime(j.boardTime):'تنظیم نشده';
+ let ch1Count=j.chargeCountCh1||0, ch2Count=j.chargeCountCh2||0;
+ let elHighCount=document.getElementById('batHighChargeCount'); let elLowCount=document.getElementById('batLowChargeCount');
+ if(elHighCount) elHighCount.textContent=ch1Count;
+ if(elLowCount) elLowCount.textContent=ch2Count;
+ let errDiv=document.getElementById('diagErrors');
+ if(errDiv){
+  if(!j.errors || j.errors.length==0) errDiv.textContent='خطایی ثبت نشده - سیستم سالم';
+  else { let html=''; for(let i=0;i<j.errors.length;i++){ let e=j.errors[i]; html+='<div class=row><b>'+fmtTime(e.ts)+'</b> - خطا: '+e.fault+'<br>کانال۱: '+stateText(e.s1)+' کانال۲: '+stateText(e.s2)+'</div>'; } errDiv.innerHTML=html; }
+ }
+ let pDiv=document.getElementById('powerLog');
+ if(pDiv){
+  if(!j.power || j.power.length==0) pDiv.textContent='قطعی ثبت نشده';
+  else { let html=''; for(let i=0;i<j.power.length;i++){ let p=j.power[i]; html+='<div class=row>قطع: '+fmtTime(p.off)+' وصل: '+fmtTime(p.on)+' مدت: '+fmtSecShort(p.dur)+'</div>'; } pDiv.innerHTML=html; }
+ }
+ let info=document.getElementById('boardInfo');
+ if(info){ info.innerHTML='زمان کل شارژ: '+fmtSec(j.totalChargeSec)+'<br>تعداد شارژ: '+(j.chargeCount||0)+'<br>کارکرد: '+fmtSecShort(j.uptimeSec)+'<br>ریست: '+(j.resetCount||0)+'<br>ساعت برد: '+(j.boardTime?fmtTime(j.boardTime):'--'); }
+ // تاریخچه شارژ - با بازه مستقل
+ if(j.chargeHistory){
+  window._lastChargeHistory=j.chargeHistory;
+  drawChargeHistory(j.chargeHistory, chartRanges.charge);
+  renderChargeHistoryList(j.chargeHistory);
+ }
+}
+async function poll(){ try{ let r=await fetch('/t',{cache:'no-store'}); let j=await r.json(); render(j); }catch(e){} }
+async function pollCharts(){ await pollChartsPct(); await pollChartsVinVpack(); }
+async function pollDiag(){ try{ let r=await fetch('/diag',{cache:'no-store'}); let j=await r.json(); renderDiag(j); }catch(e){} }
+
+async function clearHistory(type){
+ if(!confirm('آیا مطمئن هستید؟ تاریخچه '+type+' پاک خواهد شد - غیرقابل بازگشت')) return;
+ let msgEl=document.getElementById('clearMsg');
  try{
-  let r=await fetch('/t',{cache:'no-store'});
+  let r=await fetch('/clear?type='+encodeURIComponent(type),{method:'POST'});
   let j=await r.json();
-  render(j);
+  if(j.ok){
+   if(msgEl) msgEl.textContent='تاریخچه '+type+' پاک شد';
+   // پاک کردن محلی
+   if(type==='charge' || type==='all'){
+    window._lastChargeHistory=[]; chartData.chargeHistory=[]; 
+    drawChargeHistory([], chartRanges.charge); renderChargeHistoryList([]);
+   }
+   if(type==='charts' || type==='all'){
+    chartData.vin=[]; chartData.vpack=[]; chartDataPct.pct=[]; chartDataPct.time=[];
+    drawChart('cPct', [], '#ffb84d', 0, 100, [], '1d');
+    drawChart('cVin', [], '#5b8def', 18000, 30000, null, null);
+    drawChart('cVpack', [], '#1ee6a0', 20000, 30000, null, null);
+    updateVinInfo(); updateVpackInfo();
+   }
+   if(type==='diag' || type==='all'){
+    let de=document.getElementById('diagErrors'); if(de) de.textContent='خطایی ثبت نشده';
+    let pl=document.getElementById('powerLog'); if(pl) pl.textContent='قطعی ثبت نشده';
+   }
+   setTimeout(()=>{ if(msgEl) msgEl.textContent=''; },3000);
+   pollDiag(); pollCharts();
+  } else {
+   if(msgEl) msgEl.textContent='خطا: '+(j.e||'');
+  }
+ }catch(e){ if(msgEl) msgEl.textContent='خطا در ارتباط'; }
+}
+
+// Responsive canvas - تنظیم اندازه بر اساس container
+function resizeCanvases(){
+ let canvases=['cPct','cCharge','cVin','cVpack'];
+ canvases.forEach(id=>{
+  let c=document.getElementById(id);
+  if(!c) return;
+  let wrap=c.parentElement;
+  if(!wrap) return;
+  let rect=wrap.getBoundingClientRect();
+  let dpr=window.devicePixelRatio||1;
+  let w=Math.floor(rect.width * dpr);
+  let h=Math.floor((id==='cCharge'?200: id==='cPct'?180:160) * dpr);
+  if(c.width!==w || c.height!==h){
+   c.width=w; c.height=h;
+   // redraw after resize
+   if(id==='cPct' && chartDataPct.pct) drawChart('cPct', chartDataPct.pct, '#ffb84d', 0, 100, chartDataPct.time, chartDataPct.range);
+   else if(id==='cVin' && chartData.vin) { drawChart('cVin', chartData.vin, '#5b8def', 18000, 30000, null, null); }
+   else if(id==='cVpack' && chartData.vpack) { drawChart('cVpack', chartData.vpack, '#1ee6a0', 20000, 30000, null, null); }
+   else if(id==='cCharge' && window._lastChargeHistory) { drawChargeHistory(window._lastChargeHistory, chartRanges.charge); }
+  }
+ });
+}
+window.addEventListener('resize', ()=>{ clearTimeout(window._resizeTimer); window._resizeTimer=setTimeout(resizeCanvases, 150); });
+setTimeout(resizeCanvases, 500);
+
+function showTab(n){
+ for(let i=0;i<3;i++){ document.getElementById('pg'+i).classList.remove('a'); document.getElementById('tab'+i).classList.remove('a'); }
+ document.getElementById('pg'+n).classList.add('a'); document.getElementById('tab'+n).classList.add('a');
+ if(n==1) pollCharts(); if(n==0) pollDiag(); if(n==2){ loadUsers(); loadWifi(); }
+}
+async function doLogin(){
+ let u=document.getElementById('loginUser').value, p=document.getElementById('loginPass').value;
+ let box=document.getElementById('loginCard');
+ try{
+  let r=await fetch('/login?user='+encodeURIComponent(u)+'&pass='+encodeURIComponent(p),{method:'POST'});
+  let j=await r.json();
+  if(j.ok){ let lm=document.getElementById('loginMsg'); if(lm) lm.textContent='ورود موفق'; if(box){ box.classList.remove('shake'); void box.offsetWidth; } poll(); }
+  else { let lmm=document.getElementById('loginMsg'); if(lmm) lmm.textContent='نام یا رمز اشتباه'; if(box){ box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); } }
+ }catch(e){ let lme=document.getElementById('loginMsg'); if(lme) lme.textContent='خطا'; if(box){ box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); } }
+}
+async function doLoginMain(){
+ let u=document.getElementById('loginUserMain').value, p=document.getElementById('loginPassMain').value;
+ let msgEl=document.getElementById('loginMsgMain');
+ let box=document.querySelector('#loginPage .cd');
+ try{
+  let r=await fetch('/login?user='+encodeURIComponent(u)+'&pass='+encodeURIComponent(p),{method:'POST'});
+  let j=await r.json();
+  if(j.ok){
+   if(msgEl) msgEl.textContent='ورود موفق';
+   if(box){ box.classList.remove('shake'); void box.offsetWidth; }
+   poll();
+  }
+  else {
+   if(msgEl) msgEl.textContent='نام کاربری یا رمز اشتباه است';
+   if(box){ box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); }
+  }
  }catch(e){
-  // نگهدار
+  if(msgEl) msgEl.textContent='خطا در ارتباط';
+  if(box){ box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake'); }
  }
 }
-poll();
-setInterval(poll,1000);
+
+async function doLogout(){ await fetch('/logout',{method:'POST'}); poll(); }
+async function loadWifi(){
+ try{
+  let r=await fetch('/wifi',{cache:'no-store'});
+  let j=await r.json();
+  if(j.ssid){ document.getElementById('wifiCurrentSsid').textContent=j.ssid; document.getElementById('wifiNewSsid').value=j.ssid; document.getElementById('wifiNewPass').value=j.pass||''; }
+ }catch(e){}
+}
+async function setWifi(){
+ let ssid=document.getElementById('wifiNewSsid').value.trim();
+ let pass=document.getElementById('wifiNewPass').value.trim();
+ if(!ssid){ document.getElementById('wifiMsg').textContent='نام وای‌فای خالی است'; return; }
+ if(pass.length<8){ document.getElementById('wifiMsg').textContent='رمز حداقل ۸ کاراکتر'; return; }
+ try{
+  let r=await fetch('/setwifi?ssid='+encodeURIComponent(ssid)+'&pass='+encodeURIComponent(pass),{method:'POST'});
+  let j=await r.json();
+  if(j.ok){ document.getElementById('wifiMsg').textContent='ذخیره شد - برد را ریستارت کنید تا با نام '+ssid+' بالا بیاید'; }
+  else { document.getElementById('wifiMsg').textContent='خطا: '+(j.e||''); }
+ }catch(e){ document.getElementById('wifiMsg').textContent='خطا در ارتباط'; }
+}
+async function syncTime(){
+ let ts=Math.floor(Date.now()/1000);
+ try{ let r=await fetch('/time?ts='+ts,{method:'POST'}); let j=await r.json(); document.getElementById('timeMsg').textContent=j.ok?'ساعت ارسال شد':'خطا - فقط ادمین'; pollDiag(); }catch(e){ document.getElementById('timeMsg').textContent='خطا'; }
+}
+async function loadUsers(){
+ try{
+  let r=await fetch('/users',{cache:'no-store'});
+  let j=await r.json();
+  if(j.users){
+   let html='';
+   if(j.users.length===0){ html='<div class=row style="color:var(--mu)">هیچ کاربری ثبت نشده - فقط admin پیش‌فرض فعال است</div>'; }
+   else {
+    html+='<div class=row style="display:flex;justify-content:space-between;font-weight:800;color:var(--mu);font-size:10px;letter-spacing:.5px"><span>نام کاربری</span><span>نقش</span></div>';
+    for(let u of j.users){
+     let roleText=u.role==1?'ادمین':'ساده';
+     let roleClass=u.role==1?'admin':'viewer';
+     let icon=u.role==1?'A':'S';
+     let safeName=u.name.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+     html+='<div class=row style="display:flex;justify-content:space-between;align-items:center"><div style="display:flex;align-items:center;gap:8px"><span style="width:28px;height:28px;border-radius:8px;background:var(--in);border:1px solid var(--ln);display:grid;place-items:center;font-weight:800;font-size:11px;color:var(--ac)">'+icon+'</span><b style="font-family:ui-monospace,monospace">'+safeName+'</b></div><span class=badge '+roleClass+'>'+roleText+'</span></div>';
+    }
+   }
+   document.getElementById('usersList').innerHTML=html;
+   // also update header user count
+   let countEl=document.getElementById('usersCount'); if(countEl) countEl.textContent=j.users.length+' کاربر';
+  }
+ }catch(e){ document.getElementById('usersList').innerHTML='<div class=row style="color:var(--er)">خطا در دریافت لیست کاربران</div>'; }
+}
+async function addUser(){
+ let u=document.getElementById('newUserName').value, p=document.getElementById('newUserPass').value, r=document.getElementById('newUserRole').value;
+ try{ let resp=await fetch('/adduser?user='+encodeURIComponent(u)+'&pass='+encodeURIComponent(p)+'&role='+r,{method:'POST'}); let j=await resp.json(); document.getElementById('userMsg').textContent=j.ok?'کاربر ذخیره شد':'خطا'; loadUsers(); }catch(e){ document.getElementById('userMsg').textContent='خطا'; }
+}
+async function delUser(){
+ let u=document.getElementById('delUserName').value;
+ try{ let resp=await fetch('/deluser?user='+encodeURIComponent(u),{method:'POST'}); let j=await resp.json(); document.getElementById('userMsg').textContent=j.ok?'حذف شد':'خطا'; loadUsers(); }catch(e){ document.getElementById('userMsg').textContent='خطا'; }
+}
+poll(); pollCharts(); pollDiag();
+setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,10000);
+setInterval(()=>{ let e=document.getElementById('phoneTime'); if(e) e.textContent=new Date().toLocaleString('fa-IR'); },1000);
 </script>
 </body>
 </html>
+
 )rawliteral";
 
-static_assert(sizeof(SIMPLE_PANEL_HTML) <= SIMPLE_PANEL_HTML_MAX_BYTES, "ساده پنل از سقف بیشتر شد");
+static_assert(sizeof(SIMPLE_PANEL_HTML) <= SIMPLE_PANEL_HTML_MAX_BYTES, "پنل از سقف بیشتر شد");
