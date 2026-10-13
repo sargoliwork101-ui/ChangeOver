@@ -796,6 +796,8 @@ function calcGreenTiming(stablePct){
  return {on,off,remaining};
 }
 function updGreenBlink(stablePct){
+ /* پک کامل چشمک نمی‌زند: سبز ثابت (همان چهرهٔ برد روی ۱۰۰٪) */
+ if(stablePct>=100){ greenBlink.init=false; greenBlink.isOn=true; return true; }
  let tm=calcGreenTiming(stablePct);
  let on=tm.on, off=tm.off;
  if(!greenBlink.init){
@@ -1213,8 +1215,10 @@ function render(data){
  }
  let pctPack=stablePack, pctLow=stableLow, pctHigh=stableHigh;
  let greenTiming=calcGreenTiming(inputPresent ? 100 : stablePack);
- let fillPct = inputPresent ? pctPack : Math.round((greenTiming.on/GREEN_PERIOD)*100);
- if(!inputPresent && stablePack<1) fillPct=0;
+ /* درصد نمایش = درصد پایدار همان نردبان ولتاژ V24 که برد چشمک سبز را از آن
+    می‌سازد؛ هرگز از روی زمانِ چشمک حساب نمی‌شود (کف خاموشی ۱۰ms باعث می‌شد پک
+    کامل ۹۹٪ نشان داده شود) */
+ let fillPct=pctPack;
  let isCharging=(s1==1||s1==2||s2==1||s2==2);
  let ch1Charging=(s1==1||s1==2);
  let ch2Charging=(s2==1||s2==2);
@@ -1283,6 +1287,7 @@ function render(data){
   else if(pctPack<=5){ heroFault.className='hero-fault err show'; heroFault.textContent='شارژ خیلی کم - '+pctPack+'٪ - برق ورودی قطع'; }
   else if(pctPack<=20){ heroFault.className='hero-fault warn show'; heroFault.textContent='شارژ کم - '+pctPack+'٪ - برق ورودی قطع'; }
   else if(!charging && sameState && imb>300){ heroFault.className='hero-fault warn show'; heroFault.textContent='اختلاف دو باتری زیاد است ('+imb+'mV) - برق ورودی قطع'; }
+  else if(pctPack>=100){ heroFault.className='hero-fault ok show'; heroFault.textContent='برق ورودی قطع - سیستم روی باتری - پک کامل ('+pctPack+'٪) - سبز ثابت بدون چشمک'; }
   else { heroFault.className='hero-fault warn show'; heroFault.textContent='برق ورودی قطع - سیستم روی باتری ('+pctPack+'٪) - چشمک سبز '+greenTiming.on+'/'+GREEN_PERIOD+'ms'; }
  } }
  else if(g_fullActive || (s1==3 && s2==3)){ st.textContent='شارژ کامل'; ss.textContent='باتری پر - آماده'; if(heroCard) heroCard.className='hero ok'; if(heroFault){ heroFault.className='hero-fault ok show'; heroFault.textContent='شارژ کامل - باتری پر ('+pctPack+'٪)'; } }
@@ -1295,7 +1300,7 @@ function render(data){
  }
  else { st.textContent='متصل - برق ورودی وصل'; ss.textContent='باتری '+pctPack+' درصد - آماده'; if(heroCard) heroCard.className='hero ok'; if(heroFault){ heroFault.className='hero-fault ok show'; heroFault.textContent='سیستم سالم - برق ورودی وصل - ساعت برد: '+(boardTs?fmtTime(boardTs):'--'); } }
  let ls=document.getElementById('linkState'); if(ls) ls.textContent='لینک: '+(data.on?'وصل':'قطع')+' | CRC: '+data.ce+' | Vin:'+(vIn/1000).toFixed(2)+'V';
- let si=document.getElementById('seqInfo'); if(si) si.textContent='فریم: '+data.n+' | سن: '+data.age+'ms | پایدار:'+pctPack+'% خام:'+rawPackDis+'% پر:'+fillPct+'%'+(isCharging?' شارژ '+Math.round(g_mainAnim)+'% در ['+getChargingBounds(pctPack).base+'-'+getChargingBounds(pctPack).top+'%] ⚡':'' );
+ let si=document.getElementById('seqInfo'); if(si) si.textContent='فریم: '+data.n+' | سن: '+data.age+'ms | درصد:'+pctPack+'% خام:'+rawPackDis+'%'+(isCharging?' شارژ '+Math.round(g_mainAnim)+'% در ['+getChargingBounds(pctPack).base+'-'+getChargingBounds(pctPack).top+'%] ⚡':'' );
  let hd=document.getElementById('hdrDot'); if(hd) hd.className='dot '+(data.on?'on':'');
  let ht=document.getElementById('hdrText'); if(ht) ht.textContent=data.on?'متصل':'قطع';
  let hu=document.getElementById('hdrUser'); if(hu) hu.textContent=data.user?(data.user+' '+(data.role==1?'(ادمین)':'(ساده)')):'';

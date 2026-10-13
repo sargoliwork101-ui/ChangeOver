@@ -202,7 +202,8 @@ static void func__Simple_ChartTick(void)
     UINT32_T__G__LastLocalFaultMask = uint32_t__faultMask;
 
     bool bool__inputPresent = true;
-    if ((UINT8_T__G__TlmFlags & 0x01u) != 0u) bool__inputPresent = false;
+    /* b0 یعنی «قاب معتبر» است نه ورودی؛ ورودی وصل = b1، پس نبودنش یعنی قطع */
+    if ((UINT8_T__G__TlmFlags & 0x02u) == 0u) bool__inputPresent = false;
     if (uint32_t__vin < 18000u) bool__inputPresent = false;
     func__Simple_LocalRecordPower(bool__inputPresent);
 }
