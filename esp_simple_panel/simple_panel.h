@@ -682,8 +682,9 @@ loadTheme();
 
 const T_VIN=14, T_V24=15, T_VLOW=17, T_VHIGH=18, T_FAULT=19, T_STATE1=6, T_STATE2=13, T_IMB=25;
 const FAULT_ADC=1, FAULT_BAT_LOST=1<<6, FAULT_TECH=1<<7;
-function vToPctPack(v){ if(v<=21000) return 0; if(v>=29000) return 100; return Math.floor(((v-21000)*100)/(8000)); }
-function vToPctHalf(v){ if(v<=10500) return 0; if(v>=14500) return 100; return Math.floor(((v-10500)*100)/(4000)); }
+// کالیبره: نیم‌باتری ۱۰.۵-۱۴.۵V، پک کامل دو برابر ۲۱-۲۹V - همون ولتاژهای کالیبره ESP
+function vToPctPack(v){ if(v<=21000) return 0; if(v>=29000) return 100; return Math.floor(((v-21000)*100)/8000); }
+function vToPctHalf(v){ if(v<=10500) return 0; if(v>=14500) return 100; return Math.floor(((v-10500)*100)/4000); }
 function fmtSec(s){ if(!s) return '--'; let h=Math.floor(s/3600); let m=Math.floor((s%3600)/60); return h+' ساعت '+m+' دقیقه'; }
 function fmtSecShort(s){ if(!s) return '--'; let h=Math.floor(s/3600); let m=Math.floor((s%3600)/60); return h+'h '+m+'m'; }
 function fmtTime(ts){ if(!ts) return '--'; let d=new Date(ts*1000); return d.toLocaleString('fa-IR'); }
@@ -917,10 +918,15 @@ function setBatFill(id, pct, status){
 }
 function render(data){
  lastData=data;
- let vPack=data.t[T_V24]||0, vLow=data.t[T_VLOW]||0, vHigh=data.t[T_VHIGH]||0, vIn=data.t[T_VIN]||0;
+ // ولتاژهای کالیبره که برد اصلی به ESP می‌فرستد: t[14]=Vin, t[15]=V24(pack), t[17]=VLow, t[18]=VHigh
+ let vPackRaw=data.t[T_V24]||0, vLow=data.t[T_VLOW]||0, vHigh=data.t[T_VHIGH]||0, vIn=data.t[T_VIN]||0;
+ // پک کامل = جمع دو نیم‌باتری کالیبره (دقیق‌تر از V24 جدا) - دو برابر ولتاژ نیم‌باتری
+ let vPack=(vLow>0 && vHigh>0) ? (vLow+vHigh) : vPackRaw;
  let fault=data.t[T_FAULT]||0, s1=data.t[T_STATE1]||0, s2=data.t[T_STATE2]||0, imb=data.t[T_IMB]||0;
+ // درصد هر نیم‌باتری از ۱۰.۵-۱۴.۵ ولت، پک کامل دو برابر ۲۱-۲۹ ولت
  let pctPack=vToPctPack(vPack), pctLow=vToPctHalf(vLow), pctHigh=vToPctHalf(vHigh);
  data.pctPack=pctPack; data.faultMask=fault; data.state1=s1; data.state2=s2;
+ data.vPackCal=vPack; data.vLowCal=vLow; data.vHighCal=vHigh; data.vInCal=vIn;
 
  let mainSt=getBatStatus(pctPack);
  setBatFill('batMainFill', pctPack, mainSt);
