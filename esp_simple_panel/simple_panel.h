@@ -697,7 +697,6 @@ async function loadTheme(){
 }
 loadTheme();
 
-// ===== ثابت‌های برد - دقیقاً مثل Firmware/Modules/Ui/ui_led.h =====
 const T_VIN=14, T_V24=15, T_VLOW=17, T_VHIGH=18, T_FAULT=19, T_STATE1=6, T_STATE2=13, T_IMB=25, T_DEAD=28;
 const FAULT_ADC=1, FAULT_BAT_LOST=1<<6, FAULT_TECH=1<<7;
 const INPUT_CONN_THR=21000, INPUT_DISC_THR=20000, INPUT_OV_THR=28000, INPUT_OV_CLEAR=27000;
@@ -729,7 +728,6 @@ function faultText(mask){
  return t.join('<br>');
 }
 
-// ===== وضعیت پایدار باتری - دقیقاً مثل ui_led.c با هیسترزیس ۲٪ و ۰/۱ =====
 let runPackState={stable:0,init:false}, chgPackState={stable:0,init:false};
 let runLowState={stable:0,init:false}, runHighState={stable:0,init:false};
 let chgLowState={stable:0,init:false}, chgHighState={stable:0,init:false};
@@ -784,7 +782,6 @@ function updInputState(vIn, gpioFlag){
  return {present:!!g_inputState, ov:!!g_inputOV};
 }
 
-// ===== چشمک LED - دقیقاً مثل برد =====
 let greenBlink={onMs:0,offMs:0,phaseStart:0,isOn:true,init:false};
 let yellowBlink={onMs:0,offMs:0,phaseStart:0,isOn:true,init:false};
 let redBlink={period:1000,onMs:500,phaseStart:0,isOn:true,init:false};
@@ -849,8 +846,40 @@ function updRedBlink(period, dutyPct){
  return redBlink.isOn;
 }
 
+// ===== انیمیشن شارژ - باتری پر و خالی مثل شارژرها =====
+let g_chargingAnim=0, g_chargingDir=1, g_isCharging=false, g_ch1Charging=false, g_ch2Charging=false;
+function updateChargingAnim(){
+ if(!lastData || !lastData.on) return;
+ if(!g_isCharging){ return; }
+ g_chargingAnim += g_chargingDir*2.5;
+ if(g_chargingAnim>=100){ g_chargingAnim=100; g_chargingDir=-1; }
+ else if(g_chargingAnim<=5){ g_chargingAnim=5; g_chargingDir=1; }
+ let anim=g_chargingAnim;
+ let totalH=79;
+ function setFillAnim(id, pct){
+  let el=document.getElementById(id);
+  if(!el) return;
+  let fillH=Math.max(4, (pct/100)*totalH);
+  let y=18+(totalH-fillH);
+  el.setAttribute('y', y);
+  el.setAttribute('height', fillH);
+  let waveId=id==='batHighFill'?'batHighWave':id==='batLowFill'?'batLowWave':id==='batMainFill'?'batMainWave':null;
+  let waveEl=waveId?document.getElementById(waveId):null;
+  if(waveEl) waveEl.setAttribute('transform','translate(0,'+y+')');
+ }
+ if(g_isCharging){
+  setFillAnim('batMainFill', anim);
+ }
+ if(g_ch1Charging){
+  setFillAnim('batHighFill', anim);
+ } 
+ if(g_ch2Charging){
+  setFillAnim('batLowFill', anim);
+ }
+}
+
 let lastData=null;
-setInterval(()=>{ renderLeds(); },100);
+setInterval(()=>{ renderLeds(); updateChargingAnim(); },100);
 function renderLeds(){
  if(!lastData || !lastData.on) return;
  let g=document.getElementById('dotGreen'), y=document.getElementById('dotYellow'), r=document.getElementById('dotRed');
@@ -903,7 +932,6 @@ function renderLeds(){
   g.classList.add('on-green');
   if(updYellowBlink(chgStablePct)) y.classList.add('on-yellow');
  }
- // باتری اصلی هم با چشمک سبز - پر بودن بر اساس چشمک سبز
  let batMainFill=document.getElementById('batMainFill');
  if(batMainFill){
   if(scn==='batt'){
@@ -922,7 +950,6 @@ function setChartRange(chart, r){
  let indId=segId+'Indicator';
  let seg=document.getElementById(segId);
  if(!seg){
-  // try alternative ids
   if(chart==='pct') { seg=document.getElementById('segPct'); indId='segPctIndicator'; }
   else if(chart==='charge') { seg=document.getElementById('segCharge'); indId='segChargeIndicator'; }
   else if(chart==='vin') { seg=document.getElementById('segVin'); indId='segVinIndicator'; }
@@ -1023,10 +1050,6 @@ function renderChartsFromServer(j){
   drawChart('cVpack', chartDataVpack.vpack, '#1ee6a0', 20000, 30000, chartDataVpack.time, chartDataVpack.range);
   updateVpackInfo(rng);
  }
- // حالت قدیمی که vin/vpack در یک فریم 1d با هم می‌آمد
- if(j.vin && j.vpack && !j.pct){
-  // قبلاً این مسیر استفاده می‌شد
- }
 }
 function updateVinInfo(range){
  let elCur=document.getElementById('vinCurrent'), elAvg=document.getElementById('vinAvg'), elMm=document.getElementById('vinMinMax'), elRange=document.getElementById('vinRangeInfo');
@@ -1062,7 +1085,6 @@ async function pollChartsVpack(){
  try{ let r=await fetch('/charts?range='+chartRanges.vpack,{cache:'no-store'}); let j=await r.json(); if(j.vpack) renderChartsFromServer(j); }catch(e){}
 }
 async function pollChartsVinVpack(){
- // برای سازگاری قدیم - الان هر کدام جدا با رنج خودشان
  await pollChartsVin(); await pollChartsVpack();
 }
 
@@ -1155,13 +1177,10 @@ function render(data){
  let fault=data.t[T_FAULT]||0, s1=data.t[T_STATE1]||0, s2=data.t[T_STATE2]||0, imb=data.t[T_IMB]||0;
  let deadMask=data.t[T_DEAD]||0;
  let fl=data.fl||0, fl2=data.fl2||0;
- // ورودی با هیسترزیس ۲۰/۲۱ ولت + اضافه ولتاژ ۲۸/۲۷ ولت - دقیقاً مثل برد
  let inpInfo=updInputState(vIn, data.inputPresent);
  let inputPresent=inpInfo.present, inputOV=inpInfo.ov;
- // درصد خام از ولتاژ کالیبره - پک ۲۱-۲۹ ولت، نیم ۱۰.۵-۱۴.۵ ولت - همان کالیبره‌های ارسالی ESP
  let rawPackDis=vToPctPack(vPack), rawLowDis=vToPctHalf(vLow), rawHighDis=vToPctHalf(vHigh);
  let rawPackChg=vToPctPackChg(vPack), rawLowChg=vToPctHalf(vLow), rawHighChg=vToPctHalf(vHigh);
- // درصد پایدار با هیسترزیس - مثل ui_led.c
  let stablePack, stableLow, stableHigh, chgStablePack, chgStableLow, chgStableHigh;
  if(inputPresent){
   chgStablePack=updChgStable(rawPackChg, chgPackState);
@@ -1175,13 +1194,18 @@ function render(data){
   stableHigh=updRunStable(rawHighDis, runHighState);
   chgStablePack=chgPackState.stable;
  }
- // برای LED و پر بودن باتری بر اساس چشمک سبز - سبز OFF = remaining*period/100
  let pctPack=stablePack, pctLow=stableLow, pctHigh=stableHigh;
- // محاسبه دقیق پر بودن بر اساس زمان روشن سبز - مثل برد
- let greenTiming=calcGreenTiming(inputPresent ? 100 : stablePack); // وقتی ورودی وصل سبز ثابت، پر بودن ۱۰۰٪ منطقی نیست - پس از stable استفاده می‌کنیم
+ let greenTiming=calcGreenTiming(inputPresent ? 100 : stablePack);
  let fillPct = inputPresent ? pctPack : Math.round((greenTiming.on/GREEN_PERIOD)*100);
- // اگر بحرانی زیر ۱٪، پر بودن صفر
  if(!inputPresent && stablePack<1) fillPct=0;
+
+ // شارژ تشخیص
+ let isCharging=(s1==1||s1==2||s2==1||s2==2);
+ let ch1Charging=(s1==1||s1==2);
+ let ch2Charging=(s2==1||s2==2);
+ g_isCharging=isCharging; g_ch1Charging=ch1Charging; g_ch2Charging=ch2Charging;
+ data.isCharging=isCharging;
+
  data.pctPack=pctPack; data.pctPackStable=stablePack; data.pctPackChgStable=chgStablePack;
  data.pctLowStable=stableLow; data.pctHighStable=stableHigh;
  data.faultMask=fault; data.state1=s1; data.state2=s2; data.deadMask=deadMask;
@@ -1190,20 +1214,41 @@ function render(data){
  data.inputOV=inputOV; data.vPackCal=vPack; data.vLowCal=vLow; data.vHighCal=vHigh; data.vInCal=vIn;
  data.rawPackDis=rawPackDis; data.rawPackChg=rawPackChg; data.fillPct=fillPct;
 
+ // باتری اصلی - وقتی شارژ نیست پر بودن بر اساس چشمک سبز، وقتی شارژ هست انیمیشن پر/خالی
  let mainSt=getBatStatus(pctPack);
- setBatFill('batMainFill', fillPct, mainSt);
+ if(!g_isCharging){
+  setBatFill('batMainFill', fillPct, mainSt);
+ } // اگر شارژ هست، updateChargingAnim پر می‌کند
  let mainSvgPct=document.getElementById('batMainSvgPct'); if(mainSvgPct) mainSvgPct.textContent=pctPack+'%';
  let bp=document.getElementById('batPct'); if(bp) bp.innerHTML=pctPack+'<small>%</small>';
- let bt=document.getElementById('boardTime'); if(bt) bt.textContent=data.boardTime?fmtTime(data.boardTime):'تنظیم نشده';
+
+ // ساعت برد - به جای تنظیم نشده، تاریخ و ساعت برد
+ let boardTs = data.boardTime || data.bt || data.t_board || 0;
+ if(!boardTs && data.t && data.t.length>0){
+  // تلاش از tlm اگر boardTime جدا نیامد، از lastData قبل
+ }
+ let btEl=document.getElementById('boardTime');
+ if(btEl){
+  if(boardTs && boardTs>1000000000){
+   btEl.textContent='ساعت برد: '+fmtTime(boardTs);
+  } else {
+   btEl.textContent='ساعت برد: تنظیم نشده - دکمه همگام‌سازی را بزنید';
+  }
+ }
 
  let highSt=getBatStatus(pctHigh), lowSt=getBatStatus(pctLow);
- setBatFill('batHighFill', pctHigh, highSt); setBatFill('batLowFill', pctLow, lowSt);
+ if(!g_ch1Charging){
+  setBatFill('batHighFill', pctHigh, highSt);
+ }
+ if(!g_ch2Charging){
+  setBatFill('batLowFill', pctLow, lowSt);
+ }
  let hSvgPct=document.getElementById('batHighSvgPct'); if(hSvgPct) hSvgPct.textContent=pctHigh+'%';
  let lSvgPct=document.getElementById('batLowSvgPct'); if(lSvgPct) lSvgPct.textContent=pctLow+'%';
  let bhp=document.getElementById('batHighPct'); if(bhp) bhp.innerHTML=pctHigh+'<small>%</small>';
  let blp=document.getElementById('batLowPct'); if(blp) blp.innerHTML=pctLow+'<small>%</small>';
- let bhs=document.getElementById('batHighStatus'); if(bhs) bhs.textContent=highSt.txt;
- let bls=document.getElementById('batLowStatus'); if(bls) bls.textContent=lowSt.txt;
+ let bhs=document.getElementById('batHighStatus'); if(bhs) bhs.textContent=highSt.txt+(ch1Charging?' - در حال شارژ':'' );
+ let bls=document.getElementById('batLowStatus'); if(bls) bls.textContent=lowSt.txt+(ch2Charging?' - در حال شارژ':'' );
 
  let ib=document.getElementById('imbBox'); if(ib){
   let charging=(s1==1||s1==2||s2==1||s2==2);
@@ -1245,11 +1290,16 @@ function render(data){
   else { heroFault.className='hero-fault warn show'; heroFault.textContent='برق ورودی قطع - سیستم روی باتری ('+pctPack+'٪) - چشمک سبز '+greenTiming.on+'/'+GREEN_PERIOD+'ms'; }
  } }
  else if(g_fullActive || (s1==3 && s2==3)){ st.textContent='شارژ کامل'; ss.textContent='باتری پر - آماده'; if(heroCard) heroCard.className='hero ok'; if(heroFault){ heroFault.className='hero-fault ok show'; heroFault.textContent='شارژ کامل - باتری پر ('+pctPack+'٪)'; } }
- else if(s1==1||s1==2||s2==1||s2==2){ st.textContent='در حال شارژ'; ss.textContent='باتری '+pctPack+' درصد'; if(heroCard) heroCard.className='hero'; if(heroFault){ heroFault.className='hero-fault show'; heroFault.style.display='none'; heroFault.textContent=''; } }
- else { st.textContent='متصل - برق ورودی وصل'; ss.textContent='باتری '+pctPack+' درصد - آماده'; if(heroCard) heroCard.className='hero ok'; if(heroFault){ heroFault.className='hero-fault ok show'; heroFault.textContent='سیستم سالم - برق ورودی وصل'; } }
+ else if(s1==1||s1==2||s2==1||s2==2){ 
+  st.textContent='در حال شارژ - باتری پر و خالی می‌شود'; 
+  ss.textContent='باتری '+pctPack+' درصد - انیمیشن شارژ فعال'; 
+  if(heroCard) heroCard.className='hero'; 
+  if(heroFault){ heroFault.className='hero-fault show'; heroFault.style.display='none'; heroFault.textContent=''; } 
+ }
+ else { st.textContent='متصل - برق ورودی وصل'; ss.textContent='باتری '+pctPack+' درصد - آماده'; if(heroCard) heroCard.className='hero ok'; if(heroFault){ heroFault.className='hero-fault ok show'; heroFault.textContent='سیستم سالم - برق ورودی وصل - ساعت برد: '+(boardTs?fmtTime(boardTs):'--'); } }
 
  let ls=document.getElementById('linkState'); if(ls) ls.textContent='لینک: '+(data.on?'وصل':'قطع')+' | CRC: '+data.ce+' | Vin:'+(vIn/1000).toFixed(2)+'V';
- let si=document.getElementById('seqInfo'); if(si) si.textContent='فریم: '+data.n+' | سن: '+data.age+'ms | پایدار:'+pctPack+'% خام:'+rawPackDis+'% پر:'+fillPct+'%';
+ let si=document.getElementById('seqInfo'); if(si) si.textContent='فریم: '+data.n+' | سن: '+data.age+'ms | پایدار:'+pctPack+'% خام:'+rawPackDis+'% پر:'+fillPct+'%'+(isCharging?' شارژ انیمیشن:'+Math.round(g_chargingAnim)+'%':'');
  let hd=document.getElementById('hdrDot'); if(hd) hd.className='dot '+(data.on?'on':'');
  let ht=document.getElementById('hdrText'); if(ht) ht.textContent=data.on?'متصل':'قطع';
  let hu=document.getElementById('hdrUser'); if(hu) hu.textContent=data.user?(data.user+' '+(data.role==1?'(ادمین)':'(ساده)')):'';
@@ -1283,7 +1333,18 @@ function renderDiag(j){
  let elCount=document.getElementById('stChargeCount'); if(elCount) elCount.textContent=j.chargeCount||'--';
  let elUp=document.getElementById('stUptime'); if(elUp) elUp.textContent=j.uptimeSec?fmtSecShort(j.uptimeSec):'--';
  let elRes=document.getElementById('stResets'); if(elRes) elRes.textContent=j.resetCount||'--';
- let elBoard=document.getElementById('boardTimeSet'); if(elBoard) elBoard.textContent=j.boardTime?fmtTime(j.boardTime):'تنظیم نشده';
+ // ساعت برد - به جای تنظیم نشده، تاریخ و ساعت واقعی برد
+ let elBoard=document.getElementById('boardTimeSet'); 
+ if(elBoard){
+  if(j.boardTime && j.boardTime>1000000000) elBoard.textContent=fmtTime(j.boardTime);
+  else elBoard.textContent='تنظیم نشده - دکمه همگام‌سازی را بزنید';
+ }
+ // همچنین در هدر اگر از تله‌متری نیامد از دیاگ بگیر
+ let btHdr=document.getElementById('boardTime');
+ if(btHdr && j.boardTime && j.boardTime>1000000000){
+  if(btHdr.textContent.includes('تنظیم نشده')) btHdr.textContent='ساعت برد: '+fmtTime(j.boardTime);
+ }
+
  let ch1Count=j.chargeCountCh1||0, ch2Count=j.chargeCountCh2||0;
  let elHighCount=document.getElementById('batHighChargeCount'); let elLowCount=document.getElementById('batLowChargeCount');
  if(elHighCount) elHighCount.textContent=ch1Count;
@@ -1348,7 +1409,24 @@ async function delUser(){ let u=document.getElementById('delUserName').value; le
 async function loadUsers(){ try{ let r=await fetch('/users',{cache:'no-store'}); let j=await r.json(); let div=document.getElementById('usersList'); let cnt=document.getElementById('usersCount'); if(cnt) cnt.textContent=(j.users?j.users.length:0)+' کاربر'; if(div){ if(!j.users||j.users.length==0) div.textContent='کاربری ثبت نشده'; else { let html=''; for(let u of j.users){ html+='<div class=row style="display:flex;justify-content:space-between;align-items:center"><span>'+u.user+' <span class=badge '+(u.role==1?'admin':'viewer')+'>'+(u.role==1?'ادمین':'ساده')+'</span></span><span style="font-size:10px;color:var(--mu)">'+(u.lastLogin?fmtTime(u.lastLogin):'--')+'</span></div>'; } div.innerHTML=html; } } }catch(e){} }
 async function setWifi(){ let ssid=document.getElementById('wifiNewSsid').value, pass=document.getElementById('wifiNewPass').value; let r=await fetch('/wifi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid:ssid,pass:pass})}); let j=await r.json(); let m=document.getElementById('wifiMsg'); if(m) m.textContent=j.ok?'وای‌فای ذخیره شد - برد را ریستارت کنید':(j.msg||'خطا'); if(j.ok) { let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=ssid; } }
 async function loadWifi(){ try{ let r=await fetch('/wifi',{cache:'no-store'}); let j=await r.json(); let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=j.ssid||'--'; }catch(e){} }
-async function syncTime(){ let ts=Math.floor(Date.now()/1000); let r=await fetch('/time',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ts:ts})}); let j=await r.json(); let m=document.getElementById('timeMsg'); if(m) m.textContent=j.ok?'ساعت برد تنظیم شد':(j.msg||'خطا'); }
+async function syncTime(){ 
+ let ts=Math.floor(Date.now()/1000); 
+ let m=document.getElementById('timeMsg'); 
+ if(m) m.textContent='در حال ارسال ساعت گوشی ('+new Date().toLocaleString('fa-IR')+') به برد...';
+ try{
+  // ارسال هم به صورت query و هم JSON برای سازگاری
+  let r=await fetch('/time?ts='+ts,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ts:ts})});
+  let j=await r.json(); 
+  if(m) m.textContent=j.ok?'ساعت برد تنظیم شد به '+fmtTime(ts):('خطا: '+(j.e||j.msg||'نامشخص'));
+  if(j.ok){
+   // فوراً تله‌متری را آپدیت کن تا ساعت جدید دیده شود
+   setTimeout(poll,500);
+   setTimeout(pollDiag,600);
+  }
+ }catch(e){
+  if(m) m.textContent='خطا در ارتباط - '+e;
+ }
+}
 function init(){ poll(); pollCharts(); pollDiag(); loadUsers(); loadWifi(); setInterval(poll,1000); setInterval(pollCharts,5000); setInterval(pollDiag,5000); setInterval(loadUsers,10000); }
 window.addEventListener('DOMContentLoaded', init);
 </script>

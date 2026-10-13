@@ -69,11 +69,13 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/login", HTTP_POST, func__Simple_HttpLogin);
     SIMPLE_WEB_SERVER_T__G__Server.on("/logout", HTTP_POST, func__Simple_HttpLogout);
     SIMPLE_WEB_SERVER_T__G__Server.on("/users", HTTP_GET, func__Simple_HttpUsers);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/users", HTTP_POST, func__Simple_HttpUsersPost);
     SIMPLE_WEB_SERVER_T__G__Server.on("/adduser", HTTP_POST, func__Simple_HttpAddUser);
     SIMPLE_WEB_SERVER_T__G__Server.on("/deluser", HTTP_POST, func__Simple_HttpDelUser);
     SIMPLE_WEB_SERVER_T__G__Server.on("/theme", HTTP_GET, func__Simple_HttpGetTheme);
     SIMPLE_WEB_SERVER_T__G__Server.on("/settheme", HTTP_POST, func__Simple_HttpSetTheme);
     SIMPLE_WEB_SERVER_T__G__Server.on("/wifi", HTTP_GET, func__Simple_HttpGetWifi);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/wifi", HTTP_POST, func__Simple_HttpSetWifi);
     SIMPLE_WEB_SERVER_T__G__Server.on("/setwifi", HTTP_POST, func__Simple_HttpSetWifi);
     SIMPLE_WEB_SERVER_T__G__Server.on("/clear", HTTP_POST, func__Simple_HttpClearHistory);
     SIMPLE_WEB_SERVER_T__G__Server.begin();
