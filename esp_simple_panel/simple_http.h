@@ -41,56 +41,6 @@ static void func__Simple_HttpRoot(void)
     }
 }
 
-/* ==================== وضعیت ورودی با هیسترزیس - دقیقاً مثل برد UI ==================== */
-static bool BOOL__G__SimpleInputPresentState = false;
-static bool BOOL__G__SimpleInputPresentInit = false;
-static bool BOOL__G__SimpleInputOV = false;
-
-static uint8_t func__Simple_InputPresentWithHyst(void)
-{
-    uint32_t uint32_t__vIn = 0u;
-    bool bool__gpioPresent = false;
-    if (SIMPLE_LINK_TLM_FIELD_COUNT > 14u)
-    {
-        uint32_t__vIn = UINT32_T__G__TlmField[14];
-    }
-    bool__gpioPresent = (UINT8_T__G__TlmFlags & 0x02u) != 0u;
-
-    /* اضافه ولتاژ ۲۸/۲۷ ولت */
-    if (BOOL__G__SimpleInputOV == false)
-    {
-        if (uint32_t__vIn > 28000u) BOOL__G__SimpleInputOV = true;
-    }
-    else
-    {
-        if (uint32_t__vIn <= 27000u) BOOL__G__SimpleInputOV = false;
-    }
-
-    /* حضور ورودی ۲۱/۲۰ ولت با هیسترزیس - مثل UI */
-    if (BOOL__G__SimpleInputPresentInit == false)
-    {
-        if (uint32_t__vIn >= 21000u) BOOL__G__SimpleInputPresentState = true;
-        else if (uint32_t__vIn <= 20000u) BOOL__G__SimpleInputPresentState = false;
-        else BOOL__G__SimpleInputPresentState = bool__gpioPresent;
-        BOOL__G__SimpleInputPresentInit = true;
-    }
-    else
-    {
-        if (uint32_t__vIn > 0u)
-        {
-            if (BOOL__G__SimpleInputPresentState == false && uint32_t__vIn >= 21000u)
-                BOOL__G__SimpleInputPresentState = true;
-            else if (BOOL__G__SimpleInputPresentState == true && uint32_t__vIn <= 20000u)
-                BOOL__G__SimpleInputPresentState = false;
-        }
-        else
-        {
-            if (bool__gpioPresent == false) BOOL__G__SimpleInputPresentState = false;
-        }
-    }
-    return BOOL__G__SimpleInputPresentState ? 1u : 0u;
-}
-
 /* ==================== تله‌متری زنده ==================== */
 static void func__Simple_HttpTelemetry(void)
 {
@@ -103,8 +53,6 @@ static void func__Simple_HttpTelemetry(void)
     UINT32_T__G__LastBrowserPollMs = uint32_t__nowMs;
     func__Simple_ChartTick();
 
-    uint8_t uint8_t__inputPresent = func__Simple_InputPresentWithHyst();
-
     size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
         "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"ce\":%lu,\"vm\":%lu,\"inputPresent\":%u,\"user\":\"%s\",\"role\":%u,\"theme\":%u,\"t\":[",
         bool__online ? 1u : 0u,
@@ -115,7 +63,7 @@ static void func__Simple_HttpTelemetry(void)
         (unsigned long)UINT32_T__G__TlmFrameCount,
         (unsigned long)UINT32_T__G__RxCrcError,
         (unsigned long)UINT32_T__G__RxVersionMismatch,
-        (unsigned int)uint8_t__inputPresent,
+        (UINT8_T__G__TlmFlags & 0x02u) ? 1u : 0u,
         CHAR__G__CurrentUser,
         (unsigned int)UINT8_T__G__CurrentRole,
         (unsigned int)UINT8_T__G__Theme);
