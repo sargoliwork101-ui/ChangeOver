@@ -254,6 +254,8 @@ button.btn.danger{background:var(--erbg);border-color:var(--erbd);color:var(--er
 .chart-tooltip.show{opacity:1;transform:translateY(0)}
 .chart-tooltip b{font-family:Vazirmatn;font-weight:800;display:block}
 .chart-tooltip span{color:var(--mu);font-size:10.5px}
+/* پیام کوتاه پایین صفحه (مثل «خروجی گرفته شد») */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--cd2);border:1px solid var(--ln2);color:var(--tx);padding:9px 18px;border-radius:12px;font-size:12px;font-weight:800;box-shadow:var(--sh2);z-index:80;max-width:90vw;text-align:center}
 
 /* Login animations */
 @keyframes fadeIn{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
@@ -519,7 +521,10 @@ code,pre,.mono{font-family:Vazirmatn !important}
    <div id="pctInfo" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
     <span class="bdg ac" id="pctCurrent">-- ٪</span>
     <span class="bdg" id="pctRangeInfo">--</span>
-    <button class="btn danger" id="clearPctBtn" style="display:none;padding:4px 10px;font-size:10px;min-height:26px;margin-right:auto" onclick="clearHistory('charts')">پاک کردن</button>
+    <span style="display:flex;gap:6px;margin-right:auto">
+     <button class="btn" title="دانلود خروجی CSV همین بازه" style="padding:4px 10px;font-size:10px;min-height:26px" onclick="exportCsv('pct')">خروجی CSV</button>
+     <button class="btn danger" id="clearPctBtn" style="display:none;padding:4px 10px;font-size:10px;min-height:26px" onclick="clearHistory('charts')">پاک کردن</button>
+    </span>
    </div>
   </div>
   <div class="cd">
@@ -541,6 +546,9 @@ code,pre,.mono{font-family:Vazirmatn !important}
     <span style="font-size:11px;color:var(--mu)">لیست ۲۰ شارژ آخر</span>
     <button class="btn danger" id="clearChargeBtn" style="display:none;padding:4px 10px;font-size:10px;min-height:26px" onclick="clearHistory('charge')">پاک کردن تاریخچه شارژ</button>
    </div>
+   <div style="display:flex;gap:6px;margin-top:10px">
+    <button class="btn" title="دانلود خروجی CSV تاریخچه شارژ" style="padding:4px 10px;font-size:10px;min-height:26px" onclick="exportCsv('charge')">خروجی CSV</button>
+   </div>
    <div id="chargeHistoryList" class="log" style="margin-top:8px;max-height:220px"></div>
   </div>
   <div class="cd">
@@ -555,6 +563,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
      </div>
      <span class="bdg" style="background:rgba(91,141,239,.15);color:#5b8def;border-color:rgba(91,141,239,.3)">Vin - ورودی</span>
      <span class="bdg" style="background:rgba(30,230,160,.15);color:#1ee6a0;border-color:rgba(30,230,160,.3)">Vpack - پک باتری</span>
+     <button class="btn" title="دانلود خروجی CSV همین بازه" style="padding:4px 10px;font-size:10px;min-height:26px" onclick="exportCsv('volt')">خروجی CSV</button>
     </div>
    </div>
    <div style="font-size:10px;color:var(--mu);margin-bottom:8px">محور عمودی: ولتاژ ۱۸ تا ۳۰ ولت - محور افقی: زمان واقعی - هر نقطه با ریت کم (۱ دقیقه اولیه، بعد ساعتی/روزانه) - دو خط روی هم</div>
@@ -662,7 +671,8 @@ code,pre,.mono{font-family:Vazirmatn !important}
   </div>
  </div>
 
- <div id="chartTooltip" class="chart-tooltip"></div><div class="footer"><span id="linkState">لینک: --</span><span id="seqInfo">--</span></div>
+ <div id="chartTooltip" class="chart-tooltip"></div>
+<div id="toastMsg" class="toast" style="display:none"></div><div class="footer"><span id="linkState">لینک: --</span><span id="seqInfo">--</span></div>
 </main>
 <script>
 let currentTheme=0;
@@ -741,7 +751,128 @@ function fmtSecLive(s){
  if(h>0 || m>0) out+=m+' دقیقه ';
  return out+sec+' ثانیه';
 }
-function fmtTime(ts){ if(!ts || ts<1000000000) return 'زمان نامعلوم'; let d=new Date(ts*1000); return d.toLocaleString('fa-IR'); }
+/* ==================== تاریخ شمسی ====================
+   تبدیل میلادی به هجری شمسی به‌صورت خالص، بدون تکیه بر تقویم مرورگر، تا روی
+   هر گوشی و مرورگری یک جواب بدهد. ترتیب محاسبه:
+   ۱) تاریخ میلادی → شمارهٔ روز از مبدأ  ۲) روز → سال و ماه و روز شمسی
+   (۶ ماه اول ۳۱ روزه، ۵ ماه بعد ۳۰ روزه، ماه دوازدهم کبیسه). خروجی: [سال، ماه، روز]. */
+function jDiv(a,b){ return Math.floor(a/b); }
+function jMod(a,b){ return a - Math.floor(a/b)*b; }
+function jFromDate(d){
+ let gy=d.getFullYear(), gm=d.getMonth()+1, gd=d.getDate();
+ let jy=0;
+ if(gy>1600){ jy=979; gy-=1600; } else { gy-=621; }
+ let gy2=(gm>2)?(gy+1):gy;
+ let gdm=[0,31,59,90,120,151,181,212,243,273,304,334];
+ let days=(365*gy) + jDiv(gy2+3,4) - jDiv(gy2+99,100) + jDiv(gy2+399,400) - 80 + gd + gdm[gm-1];
+ jy += 33*jDiv(days,12053); days=jMod(days,12053);
+ jy += 4*jDiv(days,1461); days=jMod(days,1461);
+ if(days>365){ jy += jDiv(days-1,365); days=jMod(days-1,365); }
+ let jm=(days<186)?1+jDiv(days,31):7+jDiv(days-186,30);
+ let jd=1+((days<186)?jMod(days,31):jMod(days-186,30));
+ return [jy,jm,jd];
+}
+function jOf(ts){ return jFromDate(new Date(ts*1000)); }
+function p2(n){ return (n<10?'0':'')+n; }
+function faDigits(str){ return String(str).replace(/[0-9]/g,function(c){ return '۰۱۲۳۴۵۶۷۸۹'[+c]; }); }
+/* لاتین برای فایل خروجی (اکسل می‌فهمد)، فارسی برای نمایش روی صفحه */
+function jLatinDate(ts){ let j=jOf(ts); return j[0]+'/'+p2(j[1])+'/'+p2(j[2]); }
+const J_MONTHS=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+const J_WEEKDAYS=['یک‌شنبه','دوشنبه','سه‌شنبه','چهارشنبه','پنج‌شنبه','جمعه','شنبه'];
+/* نمونه: «۲۲ مهر ۱۴۰۵ - ۱۴:۳۵» */
+function fmtJalali(ts){
+ if(!ts || ts<1000000000) return 'زمان نامعلوم';
+ let d=new Date(ts*1000); let j=jFromDate(d);
+ return faDigits(j[2]+' '+J_MONTHS[j[1]-1]+' '+j[0]+' - '+p2(d.getHours())+':'+p2(d.getMinutes()));
+}
+/* نمونه: «جمعه ۲۲ مهر ۱۴۰۵ ساعت ۱۴:۳۵:۰۹» */
+function fmtJalaliFull(ts){
+ if(!ts || ts<1000000000) return 'زمان نامعلوم';
+ let d=new Date(ts*1000); let j=jFromDate(d);
+ return J_WEEKDAYS[d.getDay()]+' '+faDigits(j[2]+' '+J_MONTHS[j[1]-1]+' '+j[0])+' ساعت '+faDigits(p2(d.getHours())+':'+p2(d.getMinutes())+':'+p2(d.getSeconds()));
+}
+/* عنوان محور زمان نمودار: ۱ روزه ساعت، ۷ روزه روز هفته + ساعت، بلندتر روز + ماه */
+function fmtJalaliAxis(ts, range){
+ if(!ts || ts<1000000000) return '';
+ let d=new Date(ts*1000); let j=jFromDate(d);
+ if(range==='1d') return faDigits(p2(d.getHours())+':'+p2(d.getMinutes()));
+ if(range==='7d') return J_WEEKDAYS[d.getDay()]+' '+faDigits(p2(d.getHours())+':'+p2(d.getMinutes()));
+ return faDigits(j[2]+' '+J_MONTHS[j[1]-1]);
+}
+
+/* ==================== خروجی CSV نمودارها ====================
+   فایل سمت مرورگر ساخته می‌شود (هیچ فشاری روی برد نیست). عددهای فایل لاتین
+   هستند تا اکسل درست بخواند و برای فارسی، BOM به ابتدای فایل اضافه می‌شود. */
+function csvCell(v){
+ let t=(v===null||v===undefined)?'':String(v);
+ return /[",\r\n]/.test(t) ? '"'+t.replace(/"/g,'""')+'"' : t;
+}
+function csvText(rows){
+ let out=[];
+ for(let i=0;i<rows.length;i++) out.push(rows[i].map(csvCell).join(','));
+ return out.join('\r\n');
+}
+function csvFileStamp(ts){ let d=new Date(ts*1000); return jLatinDate(ts).replace(/\//g,'-')+'-'+p2(d.getHours())+p2(d.getMinutes()); }
+function downloadCsvText(fileName, text){
+ let blob=new Blob(['\ufeff'+text],{type:'text/csv;charset=utf-8'});
+ let url=URL.createObjectURL(blob);
+ let a=document.createElement('a');
+ a.href=url; a.download=fileName; a.style.display='none';
+ document.body.appendChild(a); a.click();
+ setTimeout(function(){ try{ document.body.removeChild(a); URL.revokeObjectURL(url); }catch(e){} },1500);
+}
+/* ردیف‌های خروجی هر نمودار: زمان یونیکس، تاریخ شمسی، ساعت، بعد داده‌ها */
+function csvRowsFromColumns(timeData, columns){
+ let rows=[];
+ let head=['زمان یونیکس','تاریخ شمسی','ساعت'];
+ for(let c=0;c<columns.length;c++) head.push(columns[c].title);
+ rows.push(head);
+ for(let i=0;i<timeData.length;i++){
+  let ts=timeData[i]||0, d=new Date(ts*1000);
+  let row=[ts, ts?jLatinDate(ts):'', ts?p2(d.getHours())+':'+p2(d.getMinutes()):''];
+  for(let c=0;c<columns.length;c++) row.push(columns[c].values[i]);
+  rows.push(row);
+ }
+ return rows;
+}
+function pctCsvData(){
+ let d=chartDataPct, list=d.pct||[], tm=d.time||[];
+ let last=tm.length?tm[tm.length-1]:Math.floor(Date.now()/1000);
+ return {name:'changeover-darsad-'+d.range+'-'+csvFileStamp(last)+'.csv',
+         rows:csvRowsFromColumns(tm,[{title:'درصد باتری',values:list}]), count:list.length};
+}
+function voltCsvData(){
+ let d=chartDataVolt, vin=d.vin||[], vpack=d.vpack||[], tm=d.time||[];
+ let last=tm.length?tm[tm.length-1]:Math.floor(Date.now()/1000);
+ return {name:'changeover-voltaj-'+d.range+'-'+csvFileStamp(last)+'.csv',
+         rows:csvRowsFromColumns(tm,[{title:'ولتاژ ورودی (میلی‌ولت)',values:vin},{title:'ولتاژ پک (میلی‌ولت)',values:vpack}]), count:vin.length};
+}
+function chargeCsvData(){
+ let events=(window._lastChargeHistory||[]).slice().sort(function(a,b){ return a.ts-b.ts; });
+ let tm=[], ch=[], dur=[];
+ for(let i=0;i<events.length;i++){ tm.push(events[i].ts); ch.push(events[i].ch); dur.push(events[i].dur||0); }
+ let last=tm.length?tm[tm.length-1]:Math.floor(Date.now()/1000);
+ return {name:'changeover-sharzh-'+csvFileStamp(last)+'.csv',
+         rows:csvRowsFromColumns(tm,[{title:'کانال',values:ch},{title:'مدت (ثانیه)',values:dur}]), count:events.length};
+}
+function exportCsv(kind){
+ let data=(kind==='pct')?pctCsvData():(kind==='volt')?voltCsvData():chargeCsvData();
+ if(!data.count){ showToast('داده‌ای برای خروجی نیست - هنوز نمونه‌ای ثبت نشده'); return; }
+ try{
+  downloadCsvText(data.name, csvText(data.rows));
+  showToast('خروجی گرفته شد: '+faDigits(data.count)+' نمونه');
+ }catch(e){ showToast('خروجی گرفتن در این مرورگر ممکن نشد'); }
+}
+/* پیام کوتاه پایین صفحه */
+let g_toastTimer=0;
+function showToast(msg, ms){
+ let el=document.getElementById('toastMsg'); if(!el) return;
+ el.textContent=msg; el.style.display='block';
+ if(g_toastTimer) clearTimeout(g_toastTimer);
+ g_toastTimer=setTimeout(function(){ el.style.display='none'; }, ms||2600);
+}
+/* نمایش تاریخ همه‌جای پنل: همان تابع شمسی (نمونه: ۲۲ مهر ۱۴۰۵ - ۱۴:۳۵) */
+function fmtTime(ts){ return fmtJalali(ts); }
 function stateText(s){ const m={0:'خاموش',1:'در حال شارژ',2:'تکمیل شارژ',3:'آماده',4:'راه‌اندازی',5:'بررسی ورودی',6:'انتظار',7:'خطا',8:'باتری قطع',9:'دستی'}; return m[s]||('حالت '+s); }
 function faultText(mask){
  let t=[];
@@ -994,9 +1125,7 @@ function setRange(r){ setChartRange('pct', r); setChartRange('charge', r); setCh
 function fmtTimeLabel(ts, range){
  if(!ts || ts<1000000000) return '';
  let d=new Date(ts*1000);
- if(range==='1d'){ return d.toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'}); }
- else if(range==='7d'){ return d.toLocaleDateString('fa-IR',{weekday:'short',hour:'2-digit'}); }
- else { return d.toLocaleDateString('fa-IR',{month:'short',day:'numeric'}); }
+ return fmtJalaliAxis(ts, range);
 }
 
 /* ==================== ابزارهای مشترک نمودارها ====================
@@ -1267,8 +1396,7 @@ function drawChargeHistory(events, range){
     let i=(count===1)?0:Math.round(k*(filtered.length-1)/(count-1));
     if(i===last) continue;
     last=i;
-    let d=new Date(filtered[i].ts*1000);
-    let lbl=d.toLocaleDateString('fa-IR',{month:'short',day:'numeric'})+' '+d.toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'});
+    let lbl=fmtJalaliAxis(filtered[i].ts, '7d');
     let pctX=(filtered.length<2)?50:((filtered[i].ts-minTs)/span)*100;
     html+='<span style="position:absolute;left:'+pctX.toFixed(2)+'%;transform:translateX(-50%);white-space:nowrap">'+lbl+'</span>';
    }
@@ -1286,12 +1414,10 @@ function renderChargeHistoryList(events){
  let html='';
  for(let i=0;i<Math.min(sorted.length,20);i++){
   let e=sorted[i];
-  let d=new Date(e.ts*1000);
-  let dateStr=d.toLocaleDateString('fa-IR',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  let timeStr=d.toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  let dateStr=fmtJalaliFull(e.ts);
   let chName=e.ch===1?'باتری بالا - کانال ۱':'باتری پایین - کانال ۲';
   let color=e.ch===1?'var(--ac)':'var(--ok)';
-  html+='<div class=row style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><b style="color:'+color+'">'+chName+'</b><br><span style="font-size:11px;color:var(--mu)">'+dateStr+'</span></div><div style="text-align:left;direction:ltr;font-family:Vazirmatn;font-weight:800">'+timeStr+'</div></div>';
+  html+='<div class=row style="display:flex;justify-content:space-between;align-items:center;gap:8px"><div><b style="color:'+color+'">'+chName+'</b><br><span style="font-size:11px;color:var(--mu)">'+dateStr+'</span></div></div>';
  }
  div.innerHTML=html;
 }
@@ -1493,7 +1619,7 @@ function render(data){
   document.body.style.overflow='hidden';
   if(loginCard) loginCard.style.display='block'; if(setContent) setContent.style.display='none';
  }
- let pt=document.getElementById('phoneTime'); if(pt) pt.textContent=new Date().toLocaleString('fa-IR');
+ let pt=document.getElementById('phoneTime'); if(pt) pt.textContent=fmtJalaliFull(Math.floor(Date.now()/1000));
  /* اگر در همین بوت رمزها به پیش‌فرض برگشته باشند، به کاربر گفته می‌شود */
  setShow('recoveryMsgMain', data.recovery==1);
  if(data.theme!==undefined && data.theme!==currentTheme){ let saved=localStorage.getItem('co_theme'); if(saved===null) applyTheme(data.theme); }
@@ -1597,7 +1723,7 @@ async function loadWifi(){ try{ let r=await fetch('/wifi',{cache:'no-store'}); l
 async function syncTime(){ 
  let ts=Math.floor(Date.now()/1000); 
  let m=document.getElementById('timeMsg'); 
- if(m) m.textContent='در حال ارسال ساعت گوشی ('+new Date().toLocaleString('fa-IR')+') به برد...';
+ if(m) m.textContent='در حال ارسال ساعت گوشی ('+fmtJalaliFull(Math.floor(Date.now()/1000))+') به برد...';
  try{
   let r=await fetch('/time?ts='+ts,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ts:ts})});
   let j=await r.json(); 
