@@ -380,7 +380,7 @@ SHIM = r"""<!-- SIM_PREVIEW_SHIM_BEGIN - سیمولاتور آفلاین، فا�
       ',"inputPresent":' + (inputPresent() ? 1 : 0) +
       ',"user":"' + mock.user + '","role":' + mock.role + ',"theme":' + mock.theme +
       ',"boardTime":' + counters.boardTime + ',"bt":' + counters.boardTime +
-      ',"timeOk":1,"t":[';
+      ',"timeOk":1,"recovery":0,"t":[';
     for (var i = 0; i < TLM_N; i++) { body += (i ? ',' : '') + built.t[i]; }
     return body + ']' + boardParamsBody() + '}';
   }

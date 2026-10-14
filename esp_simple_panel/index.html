@@ -37,20 +37,6 @@ body[data-theme="1"]{
  --sh2:0 4px 14px rgba(0,0,0,.05),0 0 0 1px rgba(0,0,0,.03);
  --sh-glow:0 0 0 1px var(--acbd),0 8px 24px var(--acbg);
 }
-body[data-theme="2"]{
- --bg:#030508;--bg2:#080c14;--bg3:#0e131e;
- --cd:#0c101a;--cd2:#121a28;--cd3:#192339;
- --in:#080c14;--in2:#101828;
- --ln:#182238;--ln2:#1e2c48;--ln3:#253a5c;
- --tx:#eef2f8;--tx2:#a8b3c6;--mu:#5e6b82;--mu2:#404e64;
- --ac:#6b9bff;--ac2:#9ab8ff;--ac3:#4f7de0;--acbg:rgba(107,155,255,.12);--acbd:rgba(107,155,255,.22);--acglow:0 0 24px rgba(107,155,255,.2);
- --ok:#2ee6a6;--ok2:#6ef0c2;--okbg:rgba(46,230,166,.10);--okbd:rgba(46,230,166,.18);
- --wa:#ffbe55;--wabg:rgba(255,190,85,.10);--wabd:rgba(255,190,85,.18);
- --er:#ff7d8e;--erbg:rgba(255,125,142,.10);--erbd:rgba(255,125,142,.18);
- --sh:0 16px 48px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.03) inset;
- --sh2:0 8px 24px rgba(0,0,0,.5);
- --sh-glow:0 0 0 1px var(--acbd),0 12px 32px var(--acbg),var(--acglow);
-}
 *{box-sizing:border-box;margin:0}
 html{scroll-behavior:smooth}
 body{
@@ -399,10 +385,6 @@ code,pre,.mono{font-family:Vazirmatn !important}
        <line class="bat-tick" x1="11" y1="77.25" x2="61" y2="77.25"/>
        <g clip-path="url(#clipMain)">
         <rect id="batMainFill" class="bat-fill" x="11" y="52" width="50" height="45" rx="9" fill="url(#gMain)"/>
-        <g id="batMainWave" class="bat-wave" style="transform:translate(0,52px)">
-         <path d="M -10 8 Q 2.5 2 15 8 T 40 8 T 65 8 T 90 8 V 30 H -10 Z" fill="rgba(255,255,255,.22)"/>
-         <path class="bat-wave2" d="M -10 12 Q 2.5 18 15 12 T 40 12 T 65 12 T 90 12 V 30 H -10 Z" fill="rgba(255,255,255,.14)"/>
-        </g>
        </g>
        <text id="batMainSvgPct" class="bat-pct" x="36" y="62">75%</text>
       </svg>
@@ -747,7 +729,6 @@ function vToPctPack(v){ return vToPctMap(v, brd.vmin, brd.vmax); }
 function vToPctHalf(v){ return vToPctMap(v, brd.halfMin, brd.halfMax); }
 function vToPctPackChg(v){ return vToPctMap(v, brd.cvmin, brd.cvmax); }
 
-function fmtSec(s){ if(!s) return '--'; let h=Math.floor(s/3600); let m=Math.floor((s%3600)/60); return h+' ساعت '+m+' دقیقه'; }
 function fmtSecShort(s){ if(!s) return '--'; let h=Math.floor(s/3600); let m=Math.floor((s%3600)/60); return h+'h '+m+'m'; }
 /* زمان زنده با ثانیه - برای «زمان کل شارژ» و «کارکرد برد» که کاربر باید
    ببیند همین حالا دارد می‌شمارد (قبلاً فقط ساعت و دقیقه بود و ثابت به نظر می‌رسید) */
@@ -896,9 +877,9 @@ function updRedBlink(period, dutyPct){
  return redBlink.isOn;
 }
 
-let g_mainAnim=0, g_mainDir=1, g_highAnim=0, g_highDir=1, g_lowAnim=0, g_lowDir=1;
+let g_highAnim=0, g_highDir=1, g_lowAnim=0, g_lowDir=1;   /* پک اصلی انیمیشن ندارد */
 let g_isCharging=false, g_ch1Charging=false, g_ch2Charging=false;
-let g_mainPct=0, g_highPct=0, g_lowPct=0;
+let g_highPct=0, g_lowPct=0;
 function getChargingBounds(pct){
  let q=Math.floor(pct/25);
  if(q>3) q=3; if(q<0) q=0;
@@ -934,7 +915,8 @@ function updateChargingAnim(){
   let totalH=79; let fillH=Math.max(3, (pct/100)*totalH); let y=18+(totalH-fillH);
   el.setAttribute('y', y); el.setAttribute('height', fillH);
   if(isYellow){ let grad=id==='batMainFill'?'url(#gMainM)':'url(#gm)'; el.setAttribute('fill', grad); }
-  let waveId=id==='batHighFill'?'batHighWave':id==='batLowFill'?'batLowWave':id==='batMainFill'?'batMainWave':null;
+  /* فقط نیم‌باتری‌ها موج دارند؛ پک ۲۴ ولتی ثابت است */
+  let waveId=id==='batHighFill'?'batHighWave':id==='batLowFill'?'batLowWave':null;
   let waveEl=waveId?document.getElementById(waveId):null; if(waveEl) waveEl.setAttribute('transform','translate(0,'+y+')');
  }
  if(g_isCharging){ let bM=document.getElementById('batMainBolt'); if(bM) bM.classList.add('show'); let wM=document.getElementById('batMainWrap'); if(wM) wM.classList.add('charging'); }
@@ -1359,7 +1341,8 @@ function setBatFill(id, pct, status, gradOverride){
  let grad=gradOverride||status.gradMain||status.grad;
  if((id==='batMainFill') || !g_isCharging || (id==='batHighFill' && !g_ch1Charging) || (id==='batLowFill' && !g_ch2Charging)){
   setAttr(el, 'y', y); setAttr(el, 'height', fillH); setAttr(el, 'fill', grad);
-  let waveId=id==='batHighFill'?'batHighWave':id==='batLowFill'?'batLowWave':id==='batMainFill'?'batMainWave':null;
+  /* فقط نیم‌باتری‌ها موج دارند؛ پک ۲۴ ولتی ثابت است */
+  let waveId=id==='batHighFill'?'batHighWave':id==='batLowFill'?'batLowWave':null;
   let waveEl=waveId?document.getElementById(waveId):null; if(waveEl){ setAttr(waveEl, 'transform', 'translate(0,'+y+')'); }
  }
 }
@@ -1401,10 +1384,8 @@ function render(data){
  let ch1Charging=(s1==1||s1==2);
  let ch2Charging=(s2==1||s2==2);
  g_isCharging=isCharging; g_ch1Charging=ch1Charging; g_ch2Charging=ch2Charging;
- g_mainPct=pctPack; g_highPct=pctHigh; g_lowPct=pctLow;
+ g_highPct=pctHigh; g_lowPct=pctLow;
  if(isCharging){
-  let mb=getChargingBounds(g_mainPct);
-  if(g_mainAnim<mb.base || g_mainAnim>mb.top) { g_mainAnim=mb.base; g_mainDir=1; }
   let hb=getChargingBounds(g_highPct);
   if(g_highAnim<hb.base || g_highAnim>hb.top) { g_highAnim=hb.base; g_highDir=1; }
   let lb=getChargingBounds(g_lowPct);
@@ -1495,7 +1476,7 @@ function render(data){
   else { if(heroFaultHtml) setHtml('heroFault', heroFaultTxt); else setTxt('heroFault', heroFaultTxt); setShow('heroFault', true); }
  }
  setTxt('linkState', 'لینک: '+(data.on?'وصل':'قطع')+' | CRC: '+data.ce+' | Vin:'+(vIn/1000).toFixed(2)+'V');
- setTxt('seqInfo', 'فریم: '+data.n+' | سن: '+data.age+'ms | درصد:'+pctPack+'% خام:'+rawPackDis+'%'+(isCharging?' شارژ '+Math.round(g_mainAnim)+'% در ['+getChargingBounds(pctPack).base+'-'+getChargingBounds(pctPack).top+'%] ⚡':''));
+ setTxt('seqInfo', 'فریم: '+data.n+' | سن: '+data.age+'ms | درصد:'+pctPack+'% خام:'+rawPackDis+'%'+(isCharging?' شارژ در بازهٔ ['+getChargingBounds(pctPack).base+'-'+getChargingBounds(pctPack).top+'%] ⚡':''));
  setCls(document.getElementById('hdrDot'), 'dot '+(data.on?'on':''));
  setTxt('hdrText', data.on?'متصل':'قطع');
  setTxt('hdrUser', data.user?(data.user+' '+(data.role==1?'(ادمین)':'(ساده)')):'');
@@ -1538,8 +1519,15 @@ function tickDiagClocks(){
 }
 function renderDiag(j){
  if(!j) return;
- g_diagBase={at:Date.now(), charge:(j.totalChargeSec||0), uptime:(j.uptimeSec||0)};
- tickDiagClocks();
+ /* تا وقتی برد دادهٔ دیاگ نفرستاده (valid=0) صفر نشان نمی‌دهیم تا با «واقعاً
+    صفر» اشتباه نشود؛ همان لحظهٔ رسیدن دیاگ اول، ساعت زنده راه می‌افتد */
+ if(!j.valid){
+  g_diagBase=null;
+  setTxt('stChargeTime', '--'); setTxt('stUptime', '--');
+ } else {
+  g_diagBase={at:Date.now(), charge:(j.totalChargeSec||0), uptime:(j.uptimeSec||0)};
+  tickDiagClocks();
+ }
  let elCount=document.getElementById('stChargeCount'); if(elCount) elCount.textContent=j.chargeCount||'--';
  let elRes=document.getElementById('stResets'); if(elRes) elRes.textContent=j.resetCount||'--';
  let panelTxt=(j.panelTime && j.panelTime>1000000000) ? fmtTime(j.panelTime) : 'نامعلوم';

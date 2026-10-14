@@ -20,7 +20,7 @@ static void func__Simple_ThemeLoad(void)
     if (int32_t__end < 0) int32_t__end = string__content.length();
     String string__val = string__content.substring(int32_t__pos, int32_t__end);
     int32_t int32_t__theme = string__val.toInt();
-    if (int32_t__theme >= 0 && int32_t__theme <= SIMPLE_THEME_MAX)
+    if ((int32_t__theme >= 0) && ((uint32_t)int32_t__theme <= (uint32_t)SIMPLE_THEME_MAX))
     {
         UINT8_T__G__Theme = (uint8_t)int32_t__theme;
     }

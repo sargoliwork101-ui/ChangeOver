@@ -54,13 +54,6 @@ static bool func__Simple_JsonGetString(const String &string__json, const char *c
     }
 }
 
-static bool func__Simple_JsonGetInt(const String &string__json, const char *char__ptr_key, int32_t *int32_t__out)
-{
-    String string__val;
-    if (!func__Simple_JsonGetString(string__json, char__ptr_key, string__val)) return false;
-    return func__Simple_ParseInt(string__val.c_str(), int32_t__out);
-}
-
 /* گرفتن آرگومان با پشتیبانی JSON plain */
 static bool func__Simple_GetArg(const char *char__ptr_name, String &string__out)
 {
