@@ -556,9 +556,6 @@ code,pre,.mono{font-family:Vazirmatn !important}
    </div>
    <div style="font-size:10px;color:var(--mu);margin-bottom:8px">محور عمودی: ولتاژ ۱۸ تا ۳۰ ولت - محور افقی: زمان واقعی - هر نقطه با ریت کم (۱ دقیقه اولیه، بعد ساعتی/روزانه) - دو خط روی هم</div>
    <div class="canvas-wrap" style="position:relative">
-    <div style="position:absolute;left:0;top:0;bottom:18px;width:38px;display:flex;flex-direction:column;justify-content:space-between;font-size:9.5px;color:var(--mu);padding:6px 2px 6px 0;text-align:left;pointer-events:none;direction:ltr;border-left:1px dashed var(--ln);">
-     <span>30V</span><span>27V</span><span>24V</span><span>21V</span><span>18V</span>
-    </div>
     <canvas id="cVolt" width="700" height="200"></canvas>
    </div>
    <div id="cVoltLabels" style="font-size:10px;color:var(--mu);margin-top:8px;direction:ltr"></div>
@@ -1134,7 +1131,7 @@ function drawVoltChart(canvasId, vinData, vpackData, timeData, range){
  ctx.strokeStyle=ln; ctx.lineWidth=1; ctx.strokeRect(0,0,w,h);
 
  let min=18000, max=30000, rangeVal=max-min;
- drawAxisY(ctx, [18000,21000,24000,27000,30000], min, max, w, h, styles, function(v){ return faNum(v/1000)+'V'; });
+ drawAxisY(ctx, [18000,21000,24000,27000,30000], min, max, w, h, styles, function(v){ return (v/1000)+'V'; });
 
  if(n===0){
   drawChartNotice(ctx, w, h, styles, 'هنوز نمونه‌ای ثبت نشده - ساعت را یک‌بار تنظیم کنید');
