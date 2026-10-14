@@ -116,7 +116,7 @@ static void func__Simple_HttpTelemetry(void)
     func__Simple_ChartTick();
 
     size_t__used = (size_t)snprintf(CHAR__G__JsonBuffer, SIMPLE_JSON_BUFFER_SIZE,
-        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"ce\":%lu,\"vm\":%lu,\"inputPresent\":%u,\"user\":\"%s\",\"role\":%u,\"theme\":%u,\"boardTime\":%lu,\"bt\":%lu,\"timeOk\":%u,\"pvOk\":%u,\"t\":[",
+        "{\"on\":%u,\"age\":%lu,\"seq\":%u,\"fl\":%u,\"fl2\":%u,\"n\":%lu,\"ce\":%lu,\"vm\":%lu,\"inputPresent\":%u,\"user\":\"%s\",\"role\":%u,\"theme\":%u,\"boardTime\":%lu,\"bt\":%lu,\"timeOk\":%u,\"pvOk\":%u,\"recovery\":%u,\"t\":[",
         bool__online ? 1u : 0u,
         (unsigned long)uint32_t__ageMs,
         (unsigned int)UINT16_T__G__TlmSeq,
@@ -132,7 +132,8 @@ static void func__Simple_HttpTelemetry(void)
         (unsigned long)uint32_t__panelTimeSec,
         (unsigned long)uint32_t__panelTimeSec,
         BOOL__G__TimeValid ? 1u : 0u,
-        BOOL__G__BoardParamSeen ? 1u : 0u);
+        BOOL__G__BoardParamSeen ? 1u : 0u,
+        BOOL__G__RecoveryHappened ? 1u : 0u);
 
     for (uint8_t__index = 0u; uint8_t__index < SIMPLE_LINK_TLM_FIELD_COUNT; uint8_t__index++)
     {

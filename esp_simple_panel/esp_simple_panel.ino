@@ -52,6 +52,7 @@ void setup(void)
     /* کلید رمزنگاری از شناسهٔ چیپ ساخته می‌شود - پیش از هر خواندن فایل حساس */
     func__Simple_CryptoKeyInit();
     func__Simple_AuthLoad();
+    func__Simple_RecoveryApply();     /* بوت قبلی بدون ورود بوده ⇒ بازگشت به admin/admin */
     func__Simple_ThemeLoad();
     func__Simple_WifiLoad();
     func__Simple_TimeLoad();          /* ساعت ذخیره‌شده - دیگر پرسیده نمی‌شود */
@@ -173,6 +174,14 @@ void loop(void)
                 : (func__Simple_NowSec() - UINT32_T__G__BoardTimeSec);
             if (uint32_t__diff <= 120u) BOOL__G__TimePushed = true;
         }
+    }
+
+    /* بازیابی رمز: ۱۰ ثانیه پس از روشن‌شدن، اگر هنوز کسی وارد نشده باشد پرچم
+       «بوت بدون ورود» روی فلش می‌نشیند؛ قطع و وصل برق آن را به بوت بعدی
+       می‌رساند و بوت بعدی رمز ادمین را به پیش‌فرض برمی‌گرداند */
+    if (!BOOL__G__SessionHadLogin && ((uint32_t)millis() > SIMPLE_RECOVERY_ARM_MS))
+    {
+        func__Simple_RecoveryArm();
     }
 
     // ذخیره دوره‌ای تاریخچه شارژ و نمودارها و دیاگ هر ۳۰ ثانیه

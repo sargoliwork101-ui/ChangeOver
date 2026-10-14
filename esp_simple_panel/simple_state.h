@@ -309,6 +309,15 @@ static char CHAR__G__CurrentUser[SIMPLE_USER_NAME_MAX + 1] = {0};
 static uint8_t UINT8_T__G__CurrentRole = 0u;
 static uint32_t UINT32_T__G__SessionStartMs = 0u;
 
+/* ==================== بازیابی رمز ادمین ====================
+   SessionHadLogin: در همین بوت کسی وارد شده (پرچم بازیابی پاک می‌شود)
+   RecoveryArmed: پرچم «بوت بدون ورود» همین حالا روی فلش نوشته شده
+   RecoveryHappened: در همین بوت کاربران به پیش‌فرض برگشتند (برای پیغام صفحهٔ ورود) */
+static bool BOOL__G__SessionHadLogin = false;
+static bool BOOL__G__RecoveryArmed = false;
+static bool BOOL__G__RecoveryHappened = false;
+static uint32_t UINT32_T__G__LastRecoveryTryMs = 0u;
+
 /* ==================== تم ==================== */
 static uint8_t UINT8_T__G__Theme = 0u; /* 0=تیره اصلی، 1=روشن، 2=شب عمیق */
 

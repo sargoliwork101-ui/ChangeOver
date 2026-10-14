@@ -586,6 +586,58 @@ static bool func__Simple_SetUserPass(const char *char__ptr_name, const char *cha
     return true;
 }
 
+/* ==================== بازیابی رمز ادمین با دسترسی فیزیکی ====================
+   رمزها یک‌طرفه هش می‌شوند و قابل خواندن نیستند؛ پس «بازیابی» یعنی برگرداندن
+   کاربران به پیش‌فرض admin/admin. تنها کلید این کار، قطع و وصل برق است:
+   ۱) بوت بدون ورود: بعد از SIMPLE_RECOVERY_ARM_MS اگر کسی وارد نشده باشد
+      پرچم /boot_no_login.json نوشته می‌شود.
+   ۲) ورود هر کاربر: پرچم پاک می‌شود (ریستارت معمولی رمزها را دست نمی‌زند).
+   ۳) بوت بعدی که پرچم را ببیند: پرچم پاک و کاربران پیش‌فرض می‌شوند. */
+static bool func__Simple_RecoveryFlagExists(void)
+{
+    if (!BOOL__G__FsOk) return false;
+    return LittleFS.exists(SIMPLE_RECOVERY_FILE);
+}
+
+static void func__Simple_RecoveryArm(void)
+{
+    if (!BOOL__G__FsOk) return;
+    if (BOOL__G__RecoveryArmed) return;                 /* همین بوت نوشته شده */
+    if (func__Simple_RecoveryFlagExists())
+    {
+        BOOL__G__RecoveryArmed = true;                  /* از بوت قبلی مانده */
+        return;
+    }
+    /* اگر فلش گیر کرد، هر چند ثانیه یک‌بار تلاش کن - نه در هر دور حلقه */
+    if ((uint32_t)millis() - UINT32_T__G__LastRecoveryTryMs < SIMPLE_RECOVERY_RETRY_MS) return;
+    UINT32_T__G__LastRecoveryTryMs = (uint32_t)millis();
+
+    File file__f = LittleFS.open(SIMPLE_RECOVERY_FILE, "w");
+    if (!file__f) return;
+    file__f.print("{\"noLogin\":1,\"up\":");
+    file__f.print((uint32_t)(millis() / 1000u));
+    file__f.print("}");
+    file__f.close();
+    BOOL__G__RecoveryArmed = true;
+}
+
+static void func__Simple_RecoveryDisarm(void)
+{
+    if (!BOOL__G__FsOk) return;
+    if (!func__Simple_RecoveryFlagExists()) return;
+    LittleFS.remove(SIMPLE_RECOVERY_FILE);
+}
+
+/* در شروع برنامه و پیش از هر ورودی صدا زده می‌شود */
+static void func__Simple_RecoveryApply(void)
+{
+    if (!func__Simple_RecoveryFlagExists()) return;
+    LittleFS.remove(SIMPLE_RECOVERY_FILE);
+    func__Simple_AuthDefaults();
+    func__Simple_AuthSave();
+    BOOL__G__RecoveryHappened = true;
+}
+
 /* ==================== بارگذاری کاربران ====================
    فایل رمزنگاری‌شده خوانده و برچسبش بررسی می‌شود:
    - برچسب درست ⇒ کاربران همان‌ها
@@ -671,6 +723,9 @@ static bool func__Simple_AuthLogin(const char *char__ptr_name, const char *char_
     /* ذخیره IP کلاینت برای سشن */
     IPAddress ip__client = SIMPLE_WEB_SERVER_T__G__Server.client().remoteIP();
     (void)snprintf(CHAR__G__SessionIP, sizeof(CHAR__G__SessionIP), "%u.%u.%u.%u", ip__client[0], ip__client[1], ip__client[2], ip__client[3]);
+    /* ورود شد ⇒ این روشن‌بودن «بدون ورود» نبوده؛ پرچم بازیابی پاک می‌شود */
+    BOOL__G__SessionHadLogin = true;
+    func__Simple_RecoveryDisarm();
     return true;
 }
 

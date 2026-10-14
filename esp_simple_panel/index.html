@@ -363,6 +363,7 @@ code,pre,.mono{font-family:Vazirmatn !important}
    <div style="display:grid;gap:6px"><span style="font-size:11px;color:var(--mu);font-weight:700">رمز عبور</span><div class="pass-wrap"><input id="loginPassMain" type="password" placeholder="••••••••"><button class="eye-btn" type="button" title="نمایش رمز" onclick="togglePass('loginPassMain',this)">👁</button></div></div>
    <button class="btn pri" onclick="doLoginMain()" style="width:100%;margin-top:4px">ورود به پنل</button>
    <div id="loginMsgMain" style="font-size:12px;color:var(--mu);text-align:center;min-height:18px"></div>
+   <div id="recoveryMsgMain" class="bdg warn" style="display:none;margin:8px auto 0;text-align:center;line-height:1.7;font-size:11px">بازیابی انجام شد - کاربران به پیش‌فرض برگشتند: admin / admin - بعد از ورود، رمز را عوض کنید</div>
    <div style="font-size:10.5px;color:var(--mu2);text-align:center;margin-top:8px;line-height:1.6">پیش‌فرض: نام کاربری <b style="color:var(--tx)">admin</b> و رمز <b style="color:var(--tx)">admin</b></div>
   </div>
  </div>
@@ -1512,6 +1513,8 @@ function render(data){
   if(loginCard) loginCard.style.display='block'; if(setContent) setContent.style.display='none';
  }
  let pt=document.getElementById('phoneTime'); if(pt) pt.textContent=new Date().toLocaleString('fa-IR');
+ /* اگر در همین بوت رمزها به پیش‌فرض برگشته باشند، به کاربر گفته می‌شود */
+ setShow('recoveryMsgMain', data.recovery==1);
  if(data.theme!==undefined && data.theme!==currentTheme){ let saved=localStorage.getItem('co_theme'); if(saved===null) applyTheme(data.theme); }
  let isAdmin=data.role==1;
  let clearCard=document.getElementById('clearHistoryCard');
