@@ -1486,6 +1486,9 @@ function render(data){
  let deadMask=data.t[T_DEAD]||0;
  let fl=data.fl||0, fl2=data.fl2||0;
  let isImbLatched=((fl2 & 0x02)!==0); /* بیت دوم = قفل دائمی عدم‌توازن */
+ let isImbEpisode=((fl2 & 0x01)!==0); /* بیت اول = اپیزود جاری عدم‌توازن */
+ let isDead=(deadMask!==0);
+ let deadWho=((deadMask&3)===3)?'هر دو کانال':((deadMask&1)?'کانال ۱':'کانال ۲');
  let inpInfo=updInputState(vIn, data.inputPresent);
  let inputPresent=inpInfo.present, inputOV=inpInfo.ov;
  let rawPackDis=vToPctPack(vPackPct), rawLowDis=vToPctHalf(vLow), rawHighDis=vToPctHalf(vHigh);
@@ -1556,7 +1559,9 @@ function render(data){
   let charging=(s1==1||s1==2||s2==1||s2==2);
   let ch1=(s1==1||s1==2), ch2=(s2==1||s2==2);
   let sameState=(ch1==ch2);
-  if(isImbLatched){ setTxt('imbBox','قفل دائمی - باتری را تعویض کنید'); setCls(ib,'imb show err'); }
+  if(isDead){ setTxt('imbBox','قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'); setCls(ib,'imb show err'); }
+  else if(isImbLatched){ setTxt('imbBox','قفل دائمی - باتری را تعویض کنید'); setCls(ib,'imb show err'); }
+  else if(isImbEpisode){ setTxt('imbBox','عدم‌توازن در جریان - اختلاف '+imb+' میلی‌ولت'); setCls(ib,'imb show'); }
   else if(!charging && sameState && imb>300){ setTxt('imbBox','اختلاف دو باتری: '+imb+' میلی‌ولت - نیاز به بررسی'); setCls(ib,'imb show'); }
   else { setCls(ib,'imb'); setTxt('imbBox',''); }
  }
@@ -1576,6 +1581,7 @@ function render(data){
  else if(fault & FAULT_TECH){ stTxt='خطای فنی'; ssTxt='برد نیاز به بررسی دارد'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
  else if(fault & FAULT_ADC){ stTxt='در حال بررسی'; ssTxt='سنسورها در حال کالیبره'; heroCls='hero warn'; heroFaultCls='hero-fault warn show'; heroFaultTxt=faultText(fault); heroFaultHtml=true; }
  else if(inputOV){ stTxt='اضافه ولتاژ ورودی'; ssTxt='ورودی '+(vIn/1000).toFixed(1)+' ولت - بررسی کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='اضافه ولتاژ ورودی: '+(vIn/1000).toFixed(1)+'V - حد ۲۸ ولت'; }
+ else if(isDead){ stTxt='باتری خراب'; ssTxt='قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='قفل دائمی - باتری '+deadWho+' خراب است، تعویضش کنید'; }
  else if(isImbLatched){ stTxt='قفل عدم‌توازن'; ssTxt='قفل دائمی - باتری را تعویض کنید'; heroCls='hero err'; heroFaultCls='hero-fault err show'; heroFaultTxt='قفل دائمی - باتری را تعویض کنید'; }
  else if(!inputPresent){
   let charging=(s1==1||s1==2||s2==1||s2==2);
@@ -1589,6 +1595,7 @@ function render(data){
   else if(pctPack>=100){ heroFaultCls='hero-fault ok show'; heroFaultTxt='برق ورودی قطع - سیستم روی باتری - پک کامل ('+pctPack+'٪) - سبز ثابت بدون چشمک'; }
   else { heroFaultCls='hero-fault warn show'; heroFaultTxt='برق ورودی قطع - سیستم روی باتری ('+pctPack+'٪) - چشمک سبز '+greenTiming.on+'/'+brd.gPer+'ms'; }
  }
+ else if(isImbEpisode && !isCharging){ stTxt='عدم‌توازن در جریان'; ssTxt='اختلاف دو نیم‌پک '+imb+' میلی‌ولت'; heroCls='hero warn'; heroFaultCls='hero-fault warn show'; heroFaultTxt='عدم‌توازن در جریان - اختلاف '+imb+' میلی‌ولت - زیر نظر'; }
  else if(g_fullActive || (s1==3 && s2==3)){ stTxt='شارژ کامل'; ssTxt='باتری پر - آماده'; heroCls='hero ok'; heroFaultCls='hero-fault ok show'; heroFaultTxt='شارژ کامل - باتری پر ('+pctPack+'٪)'; }
  else if(s1==1||s1==2||s2==1||s2==2){
   let q=getChargingBounds(pctPack);

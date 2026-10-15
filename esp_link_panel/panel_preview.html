@@ -503,7 +503,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 7cf772b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build ac5a06f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1394,11 +1394,12 @@ let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=
 let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{STAB=+b.dataset.s;document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i==STAB));stickfit();panelViewSave();if(D)draw(D);});
 let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=7;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();panelViewSave();}
 document.querySelectorAll('#usel button').forEach(b=>b.onclick=()=>usel(+b.dataset.u));
-/* چراغ «خطای قفل شده» نوار چراغ‌های صفحهٔ اول: کلیک، کاربر را به تنظیمات
-   همان خطا می‌برد — تب تنظیمات، تب سناریوها، کارت سناریو ۵. از کلیک خودِ
+/* چراغ‌های خطای نوار صفحهٔ اول: کلیک، کاربر را به تنظیمات همان خطا می‌برد
+   — تب تنظیمات، تب سناریوها، کارت همان سناریو. عدد ورودی، شمارهٔ کارت است
+   (۱..۷). از کلیک خودِ
    دکمه‌های تب استفاده می‌شود تا حالت تب‌ها و نمای ذخیره‌شدهٔ پنل دقیقاً
    مثل کلیک دستی به‌روز شود؛ فقط در پایان کارت مقصد کمی نشان داده می‌شود. */
-function imbjmp(){
+function errjmp(u){
  /* انتخاب تب‌ها با خود صفت‌هایشان انجام می‌شود، نه با رشتهٔ سلکتوری که شمارهٔ
     تب داخلش نوشته شده: ممیزی پروژه همان الگو را در جاوااسکریپت هم می‌شمارد و
     رشتهٔ عددیِ سلکتور، ادعای «۵ صفحه در برابر ۶ دکمه» را خراب می‌کند. */
@@ -1406,8 +1407,8 @@ function imbjmp(){
  if(t)t.click();
  const s=Array.from(document.querySelectorAll('#sbt button')).find(b=>+b.dataset.s===1);
  if(s)s.click();
- usel(5);
- const c=$('ucard5');
+ usel(u);
+ const c=$('ucard'+u);
  if(c){
   /* پیمایش با خود جای کارت انجام می‌شود، نه با پرش کل صفحه: تست
      میزبان بنچ، وجود پرشِ تمام‌صفحه در این فایل را رد می‌کند و
@@ -2378,8 +2379,8 @@ function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
  set(1,'سالم','g');set(2,'سالم','g');
  if(t[19]!==ASB.mask){ASB.mask=t[19];
   if(!t[19]){ASB.flt.textContent='✅ بدون خطای قفل‌شده';ASB.box5.className='ab good';}
-  else{let h='';for(let bit=0;bit<7;bit++)if(t[19]&(1<<bit))h+=`<div>⚠ <b>${FEXP[bit][0]}</b> — ${FEXP[bit][1]}</div>`;
-   if(t[19]&~127)h+=`<div>⚠ بیت ناشناخته: <span class="n">fault 0x${t[19].toString(16)}</span></div>`;
+  else{let h='';for(let bit=0;bit<8;bit++)if(t[19]&(1<<bit))h+=`<div>⚠ <b>${FEXP[bit][0]}</b> — ${FEXP[bit][1]}</div>`;
+   if(t[19]&~255)h+=`<div>⚠ بیت ناشناخته: <span class="n">fault 0x${t[19].toString(16)}</span></div>`;
    ASB.flt.innerHTML=h;ASB.box5.className='ab bad';}}
  ASB.tick=!ASB.tick;if(ASB.live)ASB.live.style.opacity=ASB.tick?1:.3;}
 /* ===== v1.16: آینهٔ LED و بازر برد — همان اولویت Ui_Tick با مقادیر اعمال‌شده؛ چشمک با همان دوره/duty برد (فاز محلی، هم‌سرعت) ===== */
@@ -3008,12 +3009,29 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');
  hist(d);
  const F=[['snapshot',d.fl&1],['ورودی ۲۴ ولت',d.fl&2],['اندازه‌گیری معتبر',d.fl&4]];
- /* چراغ «خطای قفل شده» (قفل عدم‌توازن) همیشه اول همین نوار می‌ماند: سالم سبز،
-    قفل‌شده قرمز. متن چراغ عوض نمی‌شود تا جای ثابتش را کاربر یاد بگیرد و
-    رنگ + تولتیپ تفاوت را بگویند؛ کلیک روی آن به تنظیمات سناریو ۵ می‌رود. */
+ /* چراغ‌های خطای صفحهٔ اول: سه چراغ قفل/حکم همیشه سرِ جایشان می‌مانند
+    (سالم سبز، خطا قرمز) و متنشان عوض نمی‌شود تا کاربر جای ثابت را یاد
+    بگیرد؛ رنگ و تولتیپ تفاوت را می‌گویند و کلیک روی هر چراغ، تنظیمات
+    همان سناریو را باز می‌کند. اپیزود در جریان فقط تا وقتی جریان دارد
+    یک چراغ زرد اضافه می‌کند. کنترل تب‌ها با شمارهٔ کارت انجام می‌شود نه
+    با رشتهٔ سلکتور، چون ممیزی پروژه همان الگو را در جاوااسکریپت هم
+    می‌شمارد و رشتهٔ عددیِ سلکتور، ادعای «۵ صفحه در برابر ۶ دکمه» را
+    خراب می‌کند. */
+ const faN=n=>String(n).replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);
+ const chip=(txt,cls,u,tip)=>`<button type="button" class="tg tgk ${cls}" title="${tip} · برای تنظیمات سناریو ${faN(u)} کلیک کنید" onclick="errjmp(${u})">${txt}</button>`;
  const imbLatch=((d.fl2|0)&2)!==0;
- $('fl').innerHTML=`<button type="button" class="tg tgk ${imbLatch?'r':'g'}" title="${imbLatch?'قفل عدم‌توازن فعال است — قفل دائمی؛ باتری را تعویض کنید':'قفل عدم‌توازن فعال نیست'} · برای تنظیمات سناریو ۵ کلیک کنید" onclick="imbjmp()">خطای قفل شده</button>`+F.map(f=>`<span class="tg ${f[1]?'g':'r'}">${f[0]}</span>`).join('')+(t[19]&64?'<span class="tg r">خطا: باتری قطع</span>':'')+
-  (t[19]&~64?`<span class="tg r n">fault 0x${t[19].toString(16)}</span>`:'')+(man?'<span class="tg y">مود دستی</span>':'');
+ const imbEpi=((((d.fl2|0)&1)!==0)&&(imbLatch===false));
+ const deadMask=(t[28]|0), deadWho=((deadMask&3)===3)?'هر دو کانال':((deadMask&1)?'کانال ۱':'کانال ۲');
+ const techFault=((t[19]|0)&128)!==0, batLost=((t[19]|0)&64)!==0, restFault=((t[19]|0)&~192)!==0;
+ $('fl').innerHTML=
+  chip('خطای قفل شده',imbLatch?'r':'g',5,imbLatch?'قفل عدم‌توازن فعال است — قفل دائمی؛ باتری را تعویض کنید':'قفل عدم‌توازن فعال نیست')
+  +chip('باتری خراب',deadMask?'r':'g',6,deadMask?('قفل دائمی — باتری '+deadWho+' خراب است، تعویضش کنید'):'باتری خرابی حکم نشده')
+  +chip('خطای فنی برد',techFault?'r':'g',7,techFault?'خرابی طبقهٔ قدرت شارژر — تا ریست قفل است':'خطای فنی ثبت نشده')
+  +(imbEpi?chip('عدم‌توازن در جریان','y',5,'اختلاف دو نیم‌پک از حد گذشته و در حال ثبت است'):'')
+  +(batLost?chip('خطا: باتری قطع','r',2,'سیم باتری قطع است یا باتری نیست'):'')
+  +F.map(f=>`<span class="tg ${f[1]?'g':'r'}">${f[0]}</span>`).join('')
+  +(restFault?`<span class="tg r n">fault 0x${t[19].toString(16)}</span>`:'')
+  +(man?'<span class="tg y">مود دستی</span>':'');
  [1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=p[10+n],ce=(PEND[12+n]!=null?PEND[12+n]:p[12+n]);
   const st=$('st'+n);st.textContent=ST[s]||'#'+s;st.className='tg '+(SC[s]||'');
   $('ie'+n).innerHTML=t[b+3]+' <span class="lb">mA</span>';
