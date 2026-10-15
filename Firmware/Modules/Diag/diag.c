@@ -151,11 +151,30 @@ static bool func__Diag_WriteFlash(uint32_t uint32_t__addr, const diag_record_t *
 
 /* ==================== Public Functions ==================== */
 
+/* ==================== Diag Init ==================== */
+
+/**
+ * @brief  [EN] Load the newest valid diag record from the two flash pages.
+ *              Page A is parked in the Active record when valid, then page B
+ *              is judged in the Stage scratch; only the sequence numbers
+ *              cross between the two reads as scalars, so no record copy
+ *              ever sits on the caller stack (RAM/stack fix 2026-10-15: two
+ *              static records used to cost ~1.4 KB of .bss for one boot read).
+ *         [FA] تازه‌ترین رکورد سالم از دو صفحهٔ فلش بار می‌شود: نسخهٔ صفحهٔ
+ *              ‎A‎ اگر سالم باشد در رکورد فعال پارک می‌شود و صفحهٔ ‎B‎ در
+ *              بافر ‎Stage‎ داوری می‌شود؛ بین دو خواندن فقط شماره‌های ترتیب
+ *              به‌صورت اسکالر می‌مانند و هیچ نسخهٔ رکوردی روی استک صدازننده
+ *              نمی‌نشیند.
+ * @return void [EN] None / ندارد
+ */
 void func__Diag_Init(void)
 {
-    static diag_record_t diag_record_t__recA;
-    static diag_record_t diag_record_t__recB;
-    bool bool__validA, bool__validB;
+    bool bool__validA;
+    bool bool__validB;
+    bool bool__bWins;
+    uint16_t uint16_t__seqA;
+    uint16_t uint16_t__seqB;
+    int16_t int16__seqDiff;
 
     (void)memset(&DIAG_RECORD_T__G__Active, 0, sizeof(diag_record_t));
     DIAG_RECORD_T__G__Active.uint32_t__magic = DIAG_MAGIC;
@@ -165,36 +184,55 @@ void func__Diag_Init(void)
     DIAG_RECORD_T__G__Active.uint32_t__minVlowMv = 0xFFFFFFFFu;
     DIAG_RECORD_T__G__Active.uint32_t__minVhighMv = 0xFFFFFFFFu;
 
-    func__Diag_ReadFlash(DIAG_PAGE_A_ADDR, &diag_record_t__recA);
-    func__Diag_ReadFlash(DIAG_PAGE_B_ADDR, &diag_record_t__recB);
-
-    bool__validA = func__Diag_RecordValidate(&diag_record_t__recA);
-    bool__validB = func__Diag_RecordValidate(&diag_record_t__recB);
-
-    if (bool__validA && bool__validB)
+    /* [EN] Page A: validate in the Stage scratch, park a valid copy in
+       Active and keep only its sequence number as a scalar.
+       [FA] صفحهٔ ‎A‎: در ‎Stage‎ اعتبارسنجی می‌شود، نسخهٔ سالم در ‎Active‎
+       پارک و فقط شمارهٔ ترتیبش به‌صورت اسکالر نگه داشته می‌شود. */
+    func__Diag_ReadFlash(DIAG_PAGE_A_ADDR, &DIAG_RECORD_T__G__Stage);
+    bool__validA = func__Diag_RecordValidate(&DIAG_RECORD_T__G__Stage);
+    uint16_t__seqA = 0u;
+    if (bool__validA)
     {
-        /* [EN] Newest seq wins, wrap-safe compare (int16) */
-        int16_t int16__diff = (int16_t)(diag_record_t__recA.uint16_t__seq - diag_record_t__recB.uint16_t__seq);
-        if (int16__diff > 0)
+        uint16_t__seqA = DIAG_RECORD_T__G__Stage.uint16_t__seq;
+        (void)memcpy(&DIAG_RECORD_T__G__Active, &DIAG_RECORD_T__G__Stage, sizeof(diag_record_t));
+    }
+
+    /* [EN] Page B: same scratch, same treatment.
+       [FA] صفحهٔ ‎B‎: همان بافر کمکی و همان رفتار. */
+    func__Diag_ReadFlash(DIAG_PAGE_B_ADDR, &DIAG_RECORD_T__G__Stage);
+    bool__validB = func__Diag_RecordValidate(&DIAG_RECORD_T__G__Stage);
+    uint16_t__seqB = 0u;
+    if (bool__validB)
+    {
+        uint16_t__seqB = DIAG_RECORD_T__G__Stage.uint16_t__seq;
+    }
+
+    /* [EN] B takes over only when it alone is valid, or when both records
+       are valid and B is not older than A (wrap-safe int16 compare, the
+       same rule as before); otherwise the parked A (or the compiled
+       defaults when neither page is valid) stays in Active.
+       [FA] ‎B‎ فقط وقتی برنده است که تنها نسخهٔ سالم باشد، یا هر دو سالم
+       باشند و ‎B‎ قدیمی‌تر از ‎A‎ نباشد؛ وگرنه ‎A‎ پارک‌شده (یا پیش‌فرض‌ها
+       وقتی هیچ صفحه‌ای سالم نیست) در ‎Active‎ می‌ماند. */
+    bool__bWins = false;
+    if (bool__validB)
+    {
+        if (!bool__validA)
         {
-            (void)memcpy(&DIAG_RECORD_T__G__Active, &diag_record_t__recA, sizeof(diag_record_t));
+            bool__bWins = true;
         }
         else
         {
-            (void)memcpy(&DIAG_RECORD_T__G__Active, &diag_record_t__recB, sizeof(diag_record_t));
+            int16__seqDiff = (int16_t)(uint16_t__seqA - uint16_t__seqB);
+            if (int16__seqDiff <= 0)
+            {
+                bool__bWins = true;
+            }
         }
     }
-    else if (bool__validA)
+    if (bool__bWins)
     {
-        (void)memcpy(&DIAG_RECORD_T__G__Active, &diag_record_t__recA, sizeof(diag_record_t));
-    }
-    else if (bool__validB)
-    {
-        (void)memcpy(&DIAG_RECORD_T__G__Active, &diag_record_t__recB, sizeof(diag_record_t));
-    }
-    else
-    {
-        /* [EN] No valid record, keep defaults */
+        (void)memcpy(&DIAG_RECORD_T__G__Active, &DIAG_RECORD_T__G__Stage, sizeof(diag_record_t));
     }
 
     DIAG_RECORD_T__G__Active.uint32_t__uptimeSec = 0u;
@@ -432,36 +470,88 @@ const diag_record_t *func__Diag_GetRecord(void)
     return &DIAG_RECORD_T__G__Active;
 }
 
+/* ==================== Diag SaveNow ==================== */
+
+/**
+ * @brief  [EN] Save the Active record to the older flash page (ping-pong).
+ *              Both pages are judged one at a time in the Stage scratch and
+ *              only their sequence numbers survive as scalars (RAM/stack
+ *              fix 2026-10-15: three local records used to need ~2 KB of
+ *              caller stack - more than the whole control-task stack).
+ *              Runs only from the Diag tick context, so the scratch has a
+ *              single owner.
+ *         [FA] رکورد فعال در صفحهٔ قدیمی‌تر فلش ذخیره می‌شود (پینگ‌پنگ).
+ *              هر دو صفحه یکی‌یکی در بافر ‎Stage‎ داوری می‌شوند و فقط
+ *              شماره‌های ترتیب به‌صورت اسکالر می‌مانند؛ قبلاً سه رکورد
+ *              محلی حدود ۲KB از استک صدازننده می‌خواستند — بیشتر از کل
+ *              استک تسک کنترل. فقط از زمینهٔ تیک Diag صدا زده می‌شود، پس
+ *              بافر کمکی تک‌مالک است.
+ * @return bool [EN] true when the flash write succeeded / موفقیت نوشتن فلش
+ */
 bool func__Diag_SaveNow(void)
 {
-    diag_record_t diag_record_t__new;
     bool bool__ok;
+    bool bool__validA;
+    bool bool__validB;
     uint32_t uint32_t__targetAddr;
-    diag_record_t diag_record_t__readA, diag_record_t__readB;
-    bool bool__validA, bool__validB;
-    uint16_t uint16_t__newSeq = 0u;
+    uint16_t uint16_t__seqA;
+    uint16_t uint16_t__seqB;
+    uint16_t uint16_t__newSeq;
+    int16_t int16__seqDiff;
 
-    /* [EN] Determine newest seq */
-    func__Diag_ReadFlash(DIAG_PAGE_A_ADDR, &diag_record_t__readA);
-    func__Diag_ReadFlash(DIAG_PAGE_B_ADDR, &diag_record_t__readB);
-    bool__validA = func__Diag_RecordValidate(&diag_record_t__readA);
-    bool__validB = func__Diag_RecordValidate(&diag_record_t__readB);
+    /* [EN] Judge page A in the Stage scratch; keep only its sequence.
+       [FA] داوری صفحهٔ ‎A‎ در ‎Stage‎؛ فقط شمارهٔ ترتیب نگه داشته می‌شود. */
+    func__Diag_ReadFlash(DIAG_PAGE_A_ADDR, &DIAG_RECORD_T__G__Stage);
+    bool__validA = func__Diag_RecordValidate(&DIAG_RECORD_T__G__Stage);
+    uint16_t__seqA = 0u;
+    if (bool__validA)
+    {
+        uint16_t__seqA = DIAG_RECORD_T__G__Stage.uint16_t__seq;
+    }
+
+    /* [EN] Judge page B in the same scratch.
+       [FA] داوری صفحهٔ ‎B‎ در همان بافر کمکی. */
+    func__Diag_ReadFlash(DIAG_PAGE_B_ADDR, &DIAG_RECORD_T__G__Stage);
+    bool__validB = func__Diag_RecordValidate(&DIAG_RECORD_T__G__Stage);
+    uint16_t__seqB = 0u;
+    if (bool__validB)
+    {
+        uint16_t__seqB = DIAG_RECORD_T__G__Stage.uint16_t__seq;
+    }
+
+    /* [EN] Decide the next sequence and the target page (the older one),
+       with the exact same comparisons as before: plain greater-than for
+       the sequence, wrap-safe int16 difference for the page choice.
+       [FA] تعیین شمارهٔ ترتیب بعدی و صفحهٔ مقصد (همان قدیمی‌تر) با دقیقاً
+       همان مقایسه‌های قبلی. */
     if (bool__validA && bool__validB)
     {
-        uint16_t__newSeq = (diag_record_t__readA.uint16_t__seq > diag_record_t__readB.uint16_t__seq) ?
-            (uint16_t)(diag_record_t__readA.uint16_t__seq + 1u) : (uint16_t)(diag_record_t__readB.uint16_t__seq + 1u);
-        /* [EN] Pick the older page as target (ping-pong) */
-        int16_t int16__diff = (int16_t)(diag_record_t__readA.uint16_t__seq - diag_record_t__readB.uint16_t__seq);
-        uint32_t__targetAddr = (int16__diff > 0) ? DIAG_PAGE_B_ADDR : DIAG_PAGE_A_ADDR;
+        if (uint16_t__seqA > uint16_t__seqB)
+        {
+            uint16_t__newSeq = (uint16_t)(uint16_t__seqA + 1u);
+        }
+        else
+        {
+            uint16_t__newSeq = (uint16_t)(uint16_t__seqB + 1u);
+        }
+        int16__seqDiff = (int16_t)(uint16_t__seqA - uint16_t__seqB);
+        if (int16__seqDiff > 0)
+        {
+            uint32_t__targetAddr = DIAG_PAGE_B_ADDR;
+        }
+        else
+        {
+            uint32_t__targetAddr = DIAG_PAGE_A_ADDR;
+        }
     }
     else if (bool__validA)
     {
-        uint16_t__newSeq = (uint16_t)(diag_record_t__readA.uint16_t__seq + 1u);
+        uint16_t__newSeq = (uint16_t)(uint16_t__seqA + 1u);
         uint32_t__targetAddr = DIAG_PAGE_B_ADDR;
     }
     else if (bool__validB)
     {
-        uint16_t__newSeq = (uint16_t)(diag_record_t__readB.uint16_t__seq + 1u);
+        uint16_t__newSeq = (uint16_t)(uint16_t__seqB + 1u);
         uint32_t__targetAddr = DIAG_PAGE_A_ADDR;
     }
     else
@@ -470,15 +560,19 @@ bool func__Diag_SaveNow(void)
         uint32_t__targetAddr = DIAG_PAGE_A_ADDR;
     }
 
+    /* [EN] Build the outgoing record in the scratch and write it; on
+       success Active adopts the built copy (CRC included), as before.
+       [FA] رکورد خروجی در بافر کمکی ساخته و نوشته می‌شود؛ در موفقیت،
+       ‎Active‎ همان نسخهٔ ساخته‌شده را می‌گیرد. */
     DIAG_RECORD_T__G__Active.uint16_t__seq = uint16_t__newSeq;
-    func__Diag_BuildRecord(&diag_record_t__new, &DIAG_RECORD_T__G__Active);
+    func__Diag_BuildRecord(&DIAG_RECORD_T__G__Stage, &DIAG_RECORD_T__G__Active);
 
-    bool__ok = func__Diag_WriteFlash(uint32_t__targetAddr, &diag_record_t__new);
+    bool__ok = func__Diag_WriteFlash(uint32_t__targetAddr, &DIAG_RECORD_T__G__Stage);
     if (bool__ok)
     {
         BOOL__G__Dirty = false;
         UINT32_T__G__SaveDelaySec = 0u;
-        (void)memcpy(&DIAG_RECORD_T__G__Active, &diag_record_t__new, sizeof(diag_record_t));
+        (void)memcpy(&DIAG_RECORD_T__G__Active, &DIAG_RECORD_T__G__Stage, sizeof(diag_record_t));
     }
     return bool__ok;
 }
