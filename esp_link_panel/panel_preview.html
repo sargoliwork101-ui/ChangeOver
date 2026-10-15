@@ -131,7 +131,10 @@ select{direction:rtl}
 .fx{direction:ltr;text-align:right;unicode-bidi:isolate;font-size:11px;color:#7c86a0;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fb{background:var(--in);border:1px solid var(--ln);border-radius:12px;padding:9px 11px;margin-bottom:6px}.fb .fx{font-size:12px;color:#a7b0c4;line-height:1.9;white-space:normal}.fb .lb{font-size:11px}
 .as{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:10px 0;border-top:1px solid var(--ln)}.as .nm{flex:1 1 180px}.as .lv{font-weight:700;margin-left:4px;font-variant-numeric:tabular-nums}
-.sb2,.brun{background:#263d62;color:#dcecff;border-color:#4775b5}.brun:hover{filter:brightness(1.08)}.qr{background:#263d62;color:#dcecff;border-color:#4775b5}.qr.j{background:rgba(229,72,77,.14);color:#ffbfc4;border-color:rgba(255,104,115,.55)}.qr:disabled{opacity:.4;cursor:default}
+.sb2,.brun{background:#263d62;color:#dcecff;border-color:#4775b5}
+/* v1.87: دکمهٔ ریست قفل رنگ گرم و متمایز */
+.sb-rst{background:linear-gradient(180deg,#d97706,#b45309);color:#fff;border-color:#92400e;font-weight:700}
+.sb-rst:hover{filter:brightness(1.1)}.sb-rst:active{transform:scale(.98)}.brun:hover{filter:brightness(1.08)}.qr{background:#263d62;color:#dcecff;border-color:#4775b5}.qr.j{background:rgba(229,72,77,.14);color:#ffbfc4;border-color:rgba(255,104,115,.55)}.qr:disabled{opacity:.4;cursor:default}
 .wt tr.wa td{background:rgba(251,191,36,.08)}.wt .wi{width:76px}
 canvas{width:100%;height:160px;display:block;background:var(--in);border:1px solid var(--ln);border-radius:12px;margin-top:10px;direction:ltr}
 .lg{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mu);margin-top:8px}.lg i{display:inline-block;width:14px;height:4px;border-radius:2px;margin-left:5px;vertical-align:middle}
@@ -516,7 +519,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 8419b16</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build b36923a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -886,7 +889,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <label>سیکل‌های کامل بدون رویداد تا پاک‌سازی شمارنده<input type="number" id="q136" step="1" min="1" max="255"><span class="lb" id="a136"></span></label>
 <label>سیکل‌های شارژ پس از قفل تا مسدودی<input type="number" id="q118" step="1" min="1" max="255"><span class="lb" id="a118"></span></label>
 </div>
-<div class="bqr"><label class="ckr"><input type="checkbox" id="ib117"><span><span class="ckt">پس از قفل، باتریِ محکوم از خروجی هم جدا شود (مسدودی خروجی)</span><span class="cks" id="a117"></span></span></label><button class="sb sb2 fwb" onclick="latchrst(5)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست قفل عدم‌توازن و شمارنده‌ها</button><span class="lb fwb" id="rst5">قفل را پاک می‌کند و شمارش از صفر شروع می‌شود</span></div>
+<div class="bqr"><label class="ckr"><input type="checkbox" id="ib117"><span><span class="ckt">پس از قفل، باتریِ محکوم از خروجی هم جدا شود (مسدودی خروجی)</span><span class="cks" id="a117"></span></span></label><button class="sb sb-rst fwb" onclick="latchrst(5)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست قفل عدم‌توازن و شمارنده‌ها</button><span class="lb fwb" id="rst5">قفل را پاک می‌کند و شمارش از صفر شروع می‌شود</span></div>
 
 <div class="sec">۴) چشمک قرمز در قفل <span class="lb">(دوره / duty)</span></div>
 <div class="sx">
@@ -934,7 +937,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <div class="prod">شارژ پیوستهٔ باتری ۱: <b id="dbel1"></b> · شارژ پیوستهٔ باتری ۲: <b id="dbel2"></b> · وضعیت: <b id="dbst"></b></div>
 <div class="sx">هر باتری ساعت خودش را دارد و این دو عدد مستقل‌اند: عددِ هر باتری فقط وقتی بالا می‌رود که همان کانال در حال شارژ باشد، و به‌محضِ کامل‌شدنِ شارژِ همان باتری (رسیدن به Float) ساعتِ همان یکی صفر می‌شود — کانال دیگر دست‌نخورده می‌ماند. وقفهٔ کوتاه‌تر از «مهلت وقفه» ساعت را نگه می‌دارد و وقفهٔ بلندتر صفرش می‌کند.</div>
 
-<div class="sim" id="sim6"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims6" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb6" onclick="simtog(6)">توقف</button></div><div class="simb"><span class="sl r" id="sl6r"></span><span class="sl g" id="sl6g"></span><span class="sl y" id="sl6y"></span><span class="szz" id="sl6z">🔇</span><span class="simt" id="sl6t"></span></div><div class="simc"><label>حالت کانال <select id="sim6m"><option value="c" selected>در حال شارژ (Bulk/Absorb)</option><option value="p">وقفهٔ شارژ</option><option value="f">رسید به Float (شارژ کامل)</option></select></label> <button class="sb sb2" onclick="simrst6()">شروع دوبارهٔ شمارش</button></div></div>
+<div class="sim" id="sim6"><div class="simh"><b>شبیه‌ساز این سناریو</b><span class="lb">از روی همین کادرها ساخته می‌شود — چیزی از برد خوانده نمی‌شود</span><label class="lb">سرعت <select id="sims6" onchange="simspd(this.value)"><option value="1">×۱</option><option value="10">×۱۰</option><option value="60">×۶۰</option><option value="600">×۶۰۰</option></select></label><button class="sb sb2" id="simb6" onclick="simtog(6)">توقف</button></div><div class="simb"><span class="sl r" id="sl6r"></span><span class="sl g" id="sl6g"></span><span class="sl y" id="sl6y"></span><span class="szz" id="sl6z">🔇</span><span class="simt" id="sl6t"></span></div><div class="simc"><label>حالت کانال <select id="sim6m" onchange="sim6mode()"><option value="c" selected>در حال شارژ (Bulk/Absorb)</option><option value="p">وقفهٔ شارژ</option><option value="f">رسید به Float (شارژ کامل)</option><option value="x">باتری قطع شده (absent-reset)</option></select></label> <button class="sb sb2" onclick="simrst6()">شروع دوبارهٔ شمارش</button></div></div>
 
 <div class="sec">۱) مهلت‌ها <span class="lb">(ms)</span></div>
 <div class="sx"><b>مهلت شارژ پیوسته</b> = اگر یک کانال این‌قدر پیوسته شارژ کند و هرگز به پایان شارژ (Float) نرسد، حکم «باتری خراب» صادر می‌شود.<br><b>پیش‌فرض:</b> ۲۴ ساعت · <b>۰ یعنی:</b> این حکم خاموش.<br><b>مهلت وقفه</b> = وقفهٔ کوتاه‌تر از این مقدار، ساعت را فقط نگه می‌دارد؛ وقفهٔ بلندتر آن را صفر می‌کند.<br><b>دلیل:</b> بدون این عدد، باتریِ لرزان با روشن/خاموش‌شدن مدام برای همیشه از حکم فرار می‌کرد.</div>
@@ -969,7 +972,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <li><b>بدون تیک (پیش‌فرض)</b> — فقط شارژ قطع می‌شود؛ باتری سرِ جایش می‌ماند و تا وقتی ولتاژ دارد به بار برق می‌دهد و بعد خالی می‌شود. هشدار در هر دو حالت یکسان است: چراغ از q130/q131 و بوق مستقل از q128/q129/q134/q135 می‌آید.</li>
 </ul>
 این تیک روی فلش برد ذخیره می‌شود و دقیقاً همتای «مسدودی خروجی» در سناریو ۵ است.</div>
-<div class="bqr"><label class="ckr"><input type="checkbox" id="db127"><span><span class="ckt">پس از حکم خرابی، باتری از خروجی هم جدا شود (نه شارژ، نه تغذیهٔ بار)</span><span class="cks" id="a127"></span></span></label><button class="sb sb2 fwb" onclick="latchrst(6)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست حکم باتری خراب</button><span class="lb fwb" id="rst6">حکم را پاک می‌کند تا شارژ آن کانال آزاد شود</span></div>
+<div class="bqr"><label class="ckr"><input type="checkbox" id="db127"><span><span class="ckt">پس از حکم خرابی، باتری از خروجی هم جدا شود (نه شارژ، نه تغذیهٔ بار)</span><span class="cks" id="a127"></span></span></label><button class="sb sb-rst fwb" onclick="latchrst(6)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست حکم باتری خراب</button><span class="lb fwb" id="rst6">حکم را پاک می‌کند تا شارژ آن کانال آزاد شود</span></div>
 <div class="ds c4ds"><b>چک‌لیست — لحظه‌به‌لحظه چه اتفاقی می‌افتد؟</b>
 <ul>
 <li><b>۱ · شمارش</b> — تا کانال در حال شارژ (Bulk یا Absorb) است، ساعتِ همان کانال جلو می‌رود. هر باتری ساعت خودش را دارد.</li>
@@ -2647,6 +2650,7 @@ function simrest(){
   if(!S6.lock){
    if(md==='f'){S6.acc=0;S6.pa=0;}
    else if(md==='c'){S6.acc+=dt;S6.pa=0;if(lim>0&&S6.acc>=lim){S6.lock=true;S6.lt=n6;}}
+   else if(md==='x'){S6.pa+=dt;simset(6,false,false,false,false,'باتری قطع شد · بعد از ۳ ثانیه قفل باتری خراب پاک می‌شود (absent-reset) · منتظر...');return;}
    else{S6.pa+=dt;if(S6.pa>=gap){S6.acc=0;}}
   }
   if(S6.lock){
@@ -2673,6 +2677,7 @@ function simrest(){
 }
 var S6={acc:0,pa:0,lock:false,lt:0,l:0};
 function simrst6(){S6={acc:0,pa:0,lock:false,lt:0,l:SIMT[6]};}
+function sim6mode(){const md=$('sim6m')?$('sim6m').value:'c';if(md==='x'){fetch('/sim/battery?n=2&cut=1',{method:'POST'}).catch(()=>{});}}
 /* [EN] The two imbalance knobs plus the counter they feed.
    [FA] دو ولوم عدم‌توازن و شمارنده‌ای که تغذیه می‌کنند. */
 var S1={al:false};

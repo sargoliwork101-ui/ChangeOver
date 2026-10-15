@@ -472,7 +472,8 @@ let imbFl2 = 0;  /* [EN] scenario 5 demo flags (byte 3 of TLM) / [FA] بیت‌�
  * [FA] ریست دستی قفل‌ها، آینهٔ ESP: صف چهارخانه‌ای، اعمال یکی‌یکی در هر تیک
  *      (مثل یک فریم در هر نوبت روی برد)، پژواک برای پنل و شمارندهٔ NAK. */
 let latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
-              deadMask: DEMO_DEAD, imbBase: 0 };
+              deadMask: DEMO_DEAD, imbBase: 0,
+              chargeSec: [0, 0], cutAt: [0, 0] };
 
 /* [EN] The sim runs on a REAL 100 ms ticker (like the STM32 measurement
  *      task), independent of browser polling; /t just snapshots it.
@@ -600,6 +601,27 @@ function telemetry() {
         else if (imbCyc < 75000) { t[26] = 10; t[27] = Math.round((imbCyc - 30000) / 1500); imbFl2 = 2 | (P[117] ? 4 : 0) | 1; }
         else if (imbCyc < 90000) { t[26] = 10; t[27] = 20; imbFl2 = 2 | 4 | 8; }
         else { t[26] = 0; t[27] = 0; imbFl2 = 0; }
+    }
+
+    /* v1.87: dead-battery charging counters */
+    for (let k = 0; k < 2; k++) {
+        const st = ch[k].state;
+        if (st === 1 || st === 2) {
+            latch.chargeSec[k] += SIM_MS / 1000;
+        } else if (st === 3) {
+            latch.chargeSec[k] = 0;
+        }
+    }
+    t[29] = Math.floor(latch.chargeSec[0]);
+    t[30] = Math.floor(latch.chargeSec[1]);
+
+    /* v1.87: absent-reset simulation */
+    for (let k = 0; k < 2; k++) {
+        if (latch.cutAt[k] > 0 && ms - latch.cutAt[k] >= 3000) {
+            latch.deadMask &= ~(1 << k);
+            latch.chargeSec[k] = 0;
+            latch.cutAt[k] = 0;
+        }
     }
 
     /* [FA] ماسک حکم باتری خراب هم مثل خود برد در تلمتری می‌آید. */
@@ -824,6 +846,16 @@ const server = http.createServer((req, res) => {
     if (req.method === "POST" && url.pathname === "/benchlog/clear") {
         benchSize = 0;
         return send(200, "application/json", '{"ok":1}');
+    }
+    /* v1.87: simulate battery disconnect/reconnect for scenario 6 */
+    if (req.method === "POST" && url.pathname === "/sim/battery") {
+        const n = Number(url.searchParams.get("n"));
+        const cut = Number(url.searchParams.get("cut"));
+        if ((n === 1 || n === 2) && (cut === 0 || cut === 1)) {
+            latch.cutAt[n - 1] = cut === 1 ? ms : 0;
+            return send(200, "application/json", JSON.stringify({ ok: 1, n, cut }));
+        }
+        return send(400, "application/json", '{"ok":0,"e":2}');
     }
     return send(404, "text/plain", "not found");
 });
