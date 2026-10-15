@@ -246,6 +246,8 @@ bash esp_simple_panel/Simulator/run_sim.sh     # سپس http://localhost:3000
   STM32 شبیه‌سازی‌شده (`README.md` خودش را دارد)
 - `index.html` / `simple_panel_clean.html` - کپی‌های صفحهٔ سروشده برای مرور راحت
   (هر سه با یک اجرای `make_simple_preview.py` همگام می‌شوند)
+- `Tester/` - تست‌های هاست: صف ریست قفل‌ها و فریم `SET_PARAM` روی PC
+  (`README.md` خودش را دارد؛ اجرا: `bash esp_simple_panel/Tester/run_simple_tests.sh`)
 - `README.md` - همین فایل
 
 ## فلش کردن

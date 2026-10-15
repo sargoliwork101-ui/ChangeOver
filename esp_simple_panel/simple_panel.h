@@ -669,6 +669,18 @@ code,pre,.mono{font-family:Vazirmatn !important}
     </div>
    </div>
 
+   <div class="cd" id="latchCard" style="display:none">
+    <div class="ti">ریست قفل‌ها - فقط ادمین</div>
+    <div style="font-size:11px;color:var(--mu);line-height:1.7;margin-bottom:12px">قفل عدم‌توازن و حکم «باتری خراب» با حافظه کار می‌کنند و با خاموش/روشن شدن پاک نمی‌شوند. از اینجا پاکشان کنید تا خطا برود و شمارش از صفر شروع شود.</div>
+    <div class="form">
+     <div class="row2">
+      <button class="btn danger" onclick="latchReset(5)">ریست قفل عدم‌توازن و شمارنده‌ها</button>
+      <button class="btn danger" onclick="latchReset(6)">ریست حکم باتری خراب</button>
+     </div>
+     <div id="latchMsg" style="font-size:11px;color:var(--mu);min-height:18px;margin-top:4px"></div>
+    </div>
+   </div>
+
    <div class="cd"><div class="ti">اطلاعات برد</div><div id="boardInfo" class="log">--</div></div>
   </div>
  </div>
@@ -1642,6 +1654,8 @@ function render(data){
  if(clearPct) clearPct.style.display=isAdmin?'inline-flex':'none';
  let clearCharge=document.getElementById('clearChargeBtn');
  if(clearCharge) clearCharge.style.display=isAdmin?'inline-flex':'none';
+ let latchCard=document.getElementById('latchCard');
+ if(latchCard) latchCard.style.display=isAdmin?'block':'none';
 }
 
 /* ==================== ساعت‌های زندهٔ کارت آمار ====================
@@ -1729,6 +1743,26 @@ function doLogout(){ fetch('/logout',{method:'POST'}).then(()=>{ location.reload
 function showTab(n){ for(let i=0;i<3;i++){ let pg=document.getElementById('pg'+i), tb=document.getElementById('tab'+i); if(pg) pg.classList.toggle('a', i===n); if(tb) tb.classList.toggle('a', i===n); } if(n===1) pollCharts(); if(n===0) pollDiag(); }
 async function addUser(){ let u=document.getElementById('newUserName').value, r=document.getElementById('newUserRole').value, p=document.getElementById('newUserPass').value; let res=await fetch('/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'add',user:u,role:parseInt(r),pass:p})}); let j=await res.json(); let m=document.getElementById('userMsg'); if(m) m.textContent=j.ok?'کاربر ذخیره شد':(j.msg||'خطا'); loadUsers(); }
 async function delUser(){ let u=document.getElementById('delUserName').value; let res=await fetch('/users',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'del',user:u})}); let j=await res.json(); let m=document.getElementById('userMsg'); if(m) m.textContent=j.ok?'کاربر حذف شد':(j.msg||'خطا'); loadUsers(); }
+/* ریست قفل‌ها: درخواست به برد می‌رود و تأیید از پژواک REPORT خوانده می‌شود
+   (‎rep‎ بالاتر و مقدار صفر)؛ NAK یعنی برد نپذیرفت. فقط ادمین. */
+async function latchReset(n){
+ let m=document.getElementById('latchMsg');
+ if(!confirm(n===5?'قفل عدم‌توازن پاک شود و شمارنده‌ها از صفر شمرده شوند؟':'حکم «باتری خراب» پاک شود و شارژ آن کانال آزاد شود؟'))return;
+ if(m)m.textContent='در حال ارسال…';
+ try{
+  let b={rep:0,nak:0};
+  try{ b=await (await fetch('/latch',{cache:'no-store'})).json(); }catch(e){}
+  let j=await (await fetch('/latch/reset?n='+n,{method:'POST'})).json();
+  if(!j.ok){ if(m)m.textContent=(j.e===1?'صف پر است؛ چند لحظه بعد دوباره بزن':'درخواست رد شد - فقط ادمین'); return; }
+  for(let k=0;k<25;k++){
+   await new Promise(r=>setTimeout(r,200));
+   let st=await (await fetch('/latch',{cache:'no-store'})).json();
+   if(Number(st.nak)>Number(b.nak||0)){ if(m)m.textContent='⚠ برد درخواست را نپذیرفت'; return; }
+   if(Number(st.rep)>Number(b.rep||0)&&Number(st.val)===0){ if(m)m.textContent='✅ پاک شد'+(n===5?'؛ از صفر شمرده می‌شود':''); showToast('قفل پاک شد'); return; }
+  }
+  if(m)m.textContent='⚠ تأیید برد نرسید؛ سلامت لینک را ببین';
+ }catch(e){ if(m)m.textContent='⚠ خطای شبکه'; }
+}
 async function loadUsers(){ try{ let r=await fetch('/users',{cache:'no-store'}); let j=await r.json(); let div=document.getElementById('usersList'); let cnt=document.getElementById('usersCount'); if(cnt) cnt.textContent=(j.users?j.users.length:0)+' کاربر'; if(div){ if(!j.users||j.users.length==0) div.textContent='کاربری ثبت نشده'; else { let html=''; for(let u of j.users){ html+='<div class=row style="display:flex;justify-content:space-between;align-items:center"><span>'+u.user+' <span class=badge '+(u.role==1?'admin':'viewer')+'>'+(u.role==1?'ادمین':'ساده')+'</span></span><span style="font-size:10px;color:var(--mu)">'+(u.lastLogin?fmtTime(u.lastLogin):'--')+'</span></div>'; } div.innerHTML=html; } } }catch(e){} }
 async function setWifi(){ let ssid=document.getElementById('wifiNewSsid').value, pass=document.getElementById('wifiNewPass').value; let r=await fetch('/wifi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ssid:ssid,pass:pass})}); let j=await r.json(); let m=document.getElementById('wifiMsg'); if(m) m.textContent=j.ok?'وای‌فای ذخیره شد - برد را ریستارت کنید':(j.msg||'خطا'); if(j.ok) { let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=ssid; } }
 async function loadWifi(){ try{ let r=await fetch('/wifi',{cache:'no-store'}); let j=await r.json(); let cur=document.getElementById('wifiCurrentSsid'); if(cur) cur.textContent=j.ssid||'--'; }catch(e){} }

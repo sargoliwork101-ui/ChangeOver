@@ -79,6 +79,7 @@ static_assert(SIM_TLM_DEAD_MASK == 28, "T_DEAD پنل = ۲۸");
 #define SIM_LINK_CRC16_INIT         0xFFFFu
 #define SIM_LINK_CRC16_POLY         0x1021u
 #define SIM_MSG_TLM_LIVE            0x10u
+#define SIM_MSG_SET_PARAM           0x01u
 #define SIM_MSG_GET_PARAMS          0x02u
 #define SIM_MSG_PARAM_REPORT        0x11u
 #define SIM_MSG_PARAMS_BULK         0x12u
@@ -128,6 +129,13 @@ struct SimBoardState
     uint32_t state2 = 0u;        /* حالت OFF */
     uint32_t faultMask = 0u;
     uint32_t deadMask = 0u;
+    /* اسلات‌های ریست قفل: ۲۰۰ = رویداد، ۲۰۱ = سیکل پس از قفل، ۲۰۲ = پرچم
+       قفل عدم‌توازن، ۲۰۳ = ماسک حکم باتری خراب. پنل با SET_PARAM صفرشان
+       می‌کند؛ تناظرشان در تله‌متری `fl2` و فیلدهای ۲۶ تا ۲۸ است. */
+    uint32_t imbEvents = 2u;
+    uint32_t imbLatchedCycles = 0u;
+    uint32_t imbEpisode = 0u;
+    uint32_t imbLatch = 0u;
 
     /* شمارنده‌ها */
     uint16_t seq = 0u;
@@ -319,7 +327,9 @@ inline void func__Sim_SendTlm(void)
     uint8_t__payload[2] = (uint8_t)(0x01u | 0x04u);
     if (bool__inputPresent) { uint8_t__payload[2] |= 0x02u; }                 /* b1 = ورودی وصل */
     if (SIM_BOARD_STATE_T__G__Board.state1 == 9u) { uint8_t__payload[2] |= 0x20u; }  /* b5 = مود دستی */
-    uint8_t__payload[3] = 0u;
+    /* b0 = اپیزود عدم‌توازن در جریان، b1 = قفل عدم‌توازن */
+    uint8_t__payload[3] = (uint8_t)((SIM_BOARD_STATE_T__G__Board.imbEpisode ? 0x01u : 0u) |
+                                   (SIM_BOARD_STATE_T__G__Board.imbLatch ? 0x02u : 0u));
 
 #define SIM_TLM_PUT(field, value) \
     func__Sim_PutU32(&uint8_t__payload[4u + (4u * (uint32_t)(field))], (uint32_t)(value))
@@ -352,8 +362,8 @@ inline void func__Sim_SendTlm(void)
     SIM_TLM_PUT(SIM_TLM_IMB_MV, (SIM_BOARD_STATE_T__G__Board.vHighMv > SIM_BOARD_STATE_T__G__Board.vLowMv)
                                      ? (SIM_BOARD_STATE_T__G__Board.vHighMv - SIM_BOARD_STATE_T__G__Board.vLowMv)
                                      : (SIM_BOARD_STATE_T__G__Board.vLowMv - SIM_BOARD_STATE_T__G__Board.vHighMv));
-    SIM_TLM_PUT(SIM_TLM_IMB_EVENTS, 2u);
-    SIM_TLM_PUT(SIM_TLM_IMB_LATCHED_CYCLES, 0u);
+    SIM_TLM_PUT(SIM_TLM_IMB_EVENTS, SIM_BOARD_STATE_T__G__Board.imbEvents);
+    SIM_TLM_PUT(SIM_TLM_IMB_LATCHED_CYCLES, SIM_BOARD_STATE_T__G__Board.imbLatchedCycles);
     SIM_TLM_PUT(SIM_TLM_DEAD_MASK, SIM_BOARD_STATE_T__G__Board.deadMask);
     SIM_TLM_PUT(SIM_TLM_DEAD_CHARGE1_S,
                 ((SIM_BOARD_STATE_T__G__Board.state1 == 1u) || (SIM_BOARD_STATE_T__G__Board.state1 == 2u)) ? 240u : 0u);
@@ -467,6 +477,20 @@ inline void func__Sim_SendParamReport(uint8_t uint8_t__id)
     func__Sim_SendFrame(SIM_MSG_PARAM_REPORT, uint8_t__payload, (uint16_t)SIM_PARAM_ITEM_SIZE);
 }
 
+/* پژواک یک اسلات ریست: پارامترهای ۲۰۰..۲۰۳ در آرایهٔ پارامترها جا ندارند،
+   پس مقدار اعمال‌شده مستقیم در قاب REPORT نوشته می‌شود. */
+inline void func__Sim_SendParamEcho(uint8_t uint8_t__id, uint32_t uint32_t__value)
+{
+    uint8_t uint8_t__payload[SIM_PARAM_ITEM_SIZE];
+
+    uint8_t__payload[0] = uint8_t__id;
+    uint8_t__payload[1] = (uint8_t)(uint32_t__value & 0xFFu);
+    uint8_t__payload[2] = (uint8_t)((uint32_t__value >> 8) & 0xFFu);
+    uint8_t__payload[3] = (uint8_t)((uint32_t__value >> 16) & 0xFFu);
+    uint8_t__payload[4] = (uint8_t)((uint32_t__value >> 24) & 0xFFu);
+    func__Sim_SendFrame(SIM_MSG_PARAM_REPORT, uint8_t__payload, (uint16_t)SIM_PARAM_ITEM_SIZE);
+}
+
 inline void func__Sim_SendParamsBulk(void)
 {
     uint8_t uint8_t__payload[1u + (SIM_PARAMS_PER_FRAME * SIM_PARAM_ITEM_SIZE)];
@@ -529,6 +553,29 @@ inline void func__Sim_HandleEspFrame(const uint8_t *uint8_t__ptr_payload,
                                      ((uint32_t)uint8_t__ptr_payload[3] << 24);
         SIM_BOARD_STATE_T__G__Board.boardTimeSec = uint32_t__seconds;
         printf("[sim] ساعت برد از گوشی تنظیم شد: %lu\n", (unsigned long)uint32_t__seconds);
+        return;
+    }
+    if ((uint8_t__type == SIM_MSG_SET_PARAM) && (uint16_t__length >= 5u))
+    {
+        /* نوشتن پارامتر مثل برد واقعی: [شناسه:u8][مقدار:u32 LE]. اسلات‌های
+           ریست قفل با مقدار صفر پاک می‌شوند و مثل برد واقعی PARAM_REPORT
+           پژواک داده می‌شود تا پنل بتواند تأیید بگیرد. */
+        const uint8_t uint8_t__id = uint8_t__ptr_payload[0];
+        uint32_t uint32_t__value = (uint32_t)uint8_t__ptr_payload[1] |
+                                   ((uint32_t)uint8_t__ptr_payload[2] << 8) |
+                                   ((uint32_t)uint8_t__ptr_payload[3] << 16) |
+                                   ((uint32_t)uint8_t__ptr_payload[4] << 24);
+
+        if (uint8_t__id == 202u) { SIM_BOARD_STATE_T__G__Board.imbLatch = (uint32_t__value != 0u) ? 1u : 0u; }
+        else if (uint8_t__id == 201u) { SIM_BOARD_STATE_T__G__Board.imbLatchedCycles = uint32_t__value; }
+        else if (uint8_t__id == 200u) { SIM_BOARD_STATE_T__G__Board.imbEvents = uint32_t__value; }
+        else if (uint8_t__id == 203u) { SIM_BOARD_STATE_T__G__Board.deadMask = uint32_t__value & 0x03u; }
+        else if (uint8_t__id < SIM_PARAM_COUNT) { SIM_BOARD_STATE_T__G__Board.param[uint8_t__id] = uint32_t__value; }
+        else { return; }   /* شناسهٔ ناشناخته: بی‌صدا رد می‌شود */
+
+        printf("[sim] SET_PARAM %u = %lu اعمال شد\n",
+               (unsigned)uint8_t__id, (unsigned long)uint32_t__value);
+        func__Sim_SendParamEcho(uint8_t__id, uint32_t__value);
     }
 }
 
@@ -727,6 +774,18 @@ inline void func__Sim_ApplyRequest(const SimWebServerT &web_server__server)
     if (func__Sim_ArgU32(web_server__server, "dead", &uint32_t__value))
     {
         SIM_BOARD_STATE_T__G__Board.deadMask = uint32_t__value & 0x03u;
+    }
+    /* قفل/اپیزود عدم‌توازن برای آزمون دکمهٔ ریست: ‎imb=1‎ قفل، ‎imb=2‎ فقط
+       اپیزود، ‎imb=0‎ پاک. مقدار ۲۰۰ (شمارندهٔ رویداد) هم با ریست صفر می‌شود. */
+    if (func__Sim_ArgU32(web_server__server, "imb", &uint32_t__value))
+    {
+        SIM_BOARD_STATE_T__G__Board.imbLatch = (uint32_t__value == 1u) ? 1u : 0u;
+        SIM_BOARD_STATE_T__G__Board.imbEpisode = (uint32_t__value == 2u) ? 1u : 0u;
+        if (uint32_t__value != 0u)
+        {
+            SIM_BOARD_STATE_T__G__Board.imbEvents = 10u;
+            SIM_BOARD_STATE_T__G__Board.imbLatchedCycles = 3u;
+        }
     }
     if (func__Sim_ArgU32(web_server__server, "link", &uint32_t__value))
     {

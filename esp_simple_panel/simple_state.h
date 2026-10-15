@@ -155,6 +155,24 @@ static uint32_t func__Simple_BoardParam(uint8_t uint8_t__id)
     return func__Simple_BoardParamDefault(uint8_t__id);
 }
 
+/* ==================== ریست دستی قفل‌ها (صف و پژواک برد) ====================
+   صف چهارخانه‌ای برای درخواست‌های ریست، به‌علاوهٔ پژواک آخرین گزارش برد و
+   شمارنده‌های درخواست/تأیید/رد. مقدار اعمال‌شده فقط از پژواک REPORT خوانده
+   می‌شود؛ بی‌تأییدی یعنی «هنوز نشسته»، نه «انجام شد». */
+static uint8_t  UINT8_T__G__SlotQueueId[SIMPLE_SLOT_QUEUE_LEN];
+static uint32_t UINT32_T__G__SlotQueueValue[SIMPLE_SLOT_QUEUE_LEN];
+static bool     BOOL__G__SlotQueuePending[SIMPLE_SLOT_QUEUE_LEN];
+static uint32_t UINT32_T__G__LastSlotTxMs = 0u;
+static uint8_t  UINT8_T__G__SlotLastId = 0u;
+static uint32_t UINT32_T__G__SlotLastValue = 0u;
+static bool     BOOL__G__SlotLastKnown = false;
+static uint32_t UINT32_T__G__SlotRequestCount = 0u;
+static uint32_t UINT32_T__G__SlotEchoCount = 0u;
+static uint32_t UINT32_T__G__SlotNakCount = 0u;
+static uint8_t  UINT8_T__G__SlotNakId = 0u;
+static uint8_t  UINT8_T__G__SlotNakCode = 0u;
+static uint8_t  UINT8_T__G__SlotBusyReject = 0u;
+
 /* ==================== ذخیره یک پارامتر رسیده از برد ==================== */
 static void func__Simple_StoreBoardParam(uint8_t uint8_t__id, uint32_t uint32_t__value)
 {

@@ -85,6 +85,9 @@ void setup(void)
     SIMPLE_WEB_SERVER_T__G__Server.on("/wifi", HTTP_POST, func__Simple_HttpSetWifi);
     SIMPLE_WEB_SERVER_T__G__Server.on("/setwifi", HTTP_POST, func__Simple_HttpSetWifi);
     SIMPLE_WEB_SERVER_T__G__Server.on("/clear", HTTP_POST, func__Simple_HttpClearHistory);
+    /* ریست دستی قفل‌ها: خواندن وضعیت صف و درخواست ریست (فقط ادمین). */
+    SIMPLE_WEB_SERVER_T__G__Server.on("/latch", HTTP_GET, func__Simple_HttpLatchState);
+    SIMPLE_WEB_SERVER_T__G__Server.on("/latch/reset", HTTP_POST, func__Simple_HttpLatchReset);
     SIMPLE_WEB_SERVER_T__G__Server.begin();
 }
 
@@ -94,6 +97,9 @@ void loop(void)
     func__Simple_DrainSerial();
     SIMPLE_WEB_SERVER_T__G__Server.handleClient();
     func__Simple_ChartTick();
+
+    /* صف ریست قفل‌ها: هر ۱۲۰ms حداکثر یک فریم SET_PARAM */
+    func__Simple_SlotTick();
 
     // درخواست دیاگ مستقل هر ۱۰ ثانیه - حتی اگر تب دیاگ باز نباشد
     static uint32_t uint32_t__lastDiagReqLoopMs = 0u;

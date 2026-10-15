@@ -231,7 +231,41 @@ static void func__Simple_HandleFrame(void)
     else if ((UINT8_T__G__RxType == SIMPLE_MSG_PARAM_REPORT) && (UINT16_T__G__RxLen >= SIMPLE_PARAM_ITEM_SIZE))
     {
         /* یک پارامتر که برد تازه اعمال کرده است: [شناسه:u8][مقدار:u32 LE] */
-        func__Simple_StoreBoardParam(uint8_t__ptr_payload[0], func__Simple_ReadU32(uint8_t__ptr_payload, 1u));
+        uint8_t uint8_t__id = uint8_t__ptr_payload[0];
+        uint32_t uint32_t__value = func__Simple_ReadU32(uint8_t__ptr_payload, 1u);
+        if ((uint8_t__id >= SIMPLE_SLOT_FIRST_ID) && (uint8_t__id <= SIMPLE_SLOT_LAST_ID))
+        {
+            /* پژواک یک درخواست ریست: برد مقدار را اعمال کرده است. مقدار
+               اعمال‌شده ذخیره و خانهٔ همان درخواست از صف آزاد می‌شود. */
+            uint8_t uint8_t__i;
+            UINT8_T__G__SlotLastId = uint8_t__id;
+            UINT32_T__G__SlotLastValue = uint32_t__value;
+            BOOL__G__SlotLastKnown = true;
+            UINT32_T__G__SlotEchoCount++;
+            for (uint8_t__i = 0u; uint8_t__i < SIMPLE_SLOT_QUEUE_LEN; uint8_t__i++)
+            {
+                if (BOOL__G__SlotQueuePending[uint8_t__i] &&
+                    (UINT8_T__G__SlotQueueId[uint8_t__i] == uint8_t__id))
+                {
+                    BOOL__G__SlotQueuePending[uint8_t__i] = false;
+                }
+            }
+        }
+        else
+        {
+            func__Simple_StoreBoardParam(uint8_t__id, uint32_t__value);
+        }
+    }
+    else if ((UINT8_T__G__RxType == SIMPLE_MSG_PARAM_NAK) && (UINT16_T__G__RxLen == 2u))
+    {
+        /* برد یک نوشتن را نپذیرفت: [شناسه:u8][کد:u8] */
+        if ((uint8_t__ptr_payload[0] >= SIMPLE_SLOT_FIRST_ID) &&
+            (uint8_t__ptr_payload[0] <= SIMPLE_SLOT_LAST_ID))
+        {
+            UINT8_T__G__SlotNakId = uint8_t__ptr_payload[0];
+            UINT8_T__G__SlotNakCode = uint8_t__ptr_payload[1];
+            UINT32_T__G__SlotNakCount++;
+        }
     }
     else if ((UINT8_T__G__RxType == SIMPLE_MSG_PARAMS_BULK) && (UINT16_T__G__RxLen >= 1u))
     {
@@ -259,6 +293,116 @@ static void func__Simple_HandleFrame(void)
             func__Simple_StoreBoardParam(uint8_t__ptr_payload[uint16_t__offset], uint32_t__value);
         }
         UINT32_T__G__ParamBulkFrames++;
+    }
+}
+
+/* ==================== ریست دستی قفل‌ها (فرستنده و صف) ==================== */
+/**
+ * @brief  یک درخواست ریست را در صف اسلات‌ها می‌گذارد.
+ * @param  uint8_t__id شناسهٔ اسلات (۲۰۰..۲۰۳)؛ بیرون این بازه رد می‌شود
+ * @param  uint32_t__value مقدار اعمالی؛ برای ریست صفر
+ * @return true اگر در صف نشست (یا ادغام شد)، false اگر صف پر بود
+ */
+static bool func__Simple_QueueSlot(uint8_t uint8_t__id, uint32_t uint32_t__value)
+{
+    uint8_t uint8_t__i;
+
+    if ((uint8_t__id < SIMPLE_SLOT_FIRST_ID) || (uint8_t__id > SIMPLE_SLOT_LAST_ID))
+    {
+        return false;
+    }
+
+    /* درخواست تکراری برای همان شناسه دوباره صف نمی‌شود؛ مقدارش تازه می‌شود
+       تا دو کلیک پشت‌سرهم دو فریم بی‌فایده نسازد. */
+    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_SLOT_QUEUE_LEN; uint8_t__i++)
+    {
+        if (BOOL__G__SlotQueuePending[uint8_t__i] && (UINT8_T__G__SlotQueueId[uint8_t__i] == uint8_t__id))
+        {
+            UINT32_T__G__SlotQueueValue[uint8_t__i] = uint32_t__value;
+            return true;
+        }
+    }
+
+    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_SLOT_QUEUE_LEN; uint8_t__i++)
+    {
+        if (BOOL__G__SlotQueuePending[uint8_t__i] == false)
+        {
+            UINT8_T__G__SlotQueueId[uint8_t__i] = uint8_t__id;
+            UINT32_T__G__SlotQueueValue[uint8_t__i] = uint32_t__value;
+            BOOL__G__SlotQueuePending[uint8_t__i] = true;
+            UINT32_T__G__SlotRequestCount++;
+            return true;
+        }
+    }
+
+    UINT8_T__G__SlotBusyReject++;
+    return false;
+}
+
+/**
+ * @brief  یک فریم SET_PARAM برای برد می‌فرستد (شناسه + مقدار ۳۲بیتی).
+ * @param  uint8_t__id شناسهٔ اسلات، uint32_t__value مقدار
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Simple_SendSetParam(uint8_t uint8_t__id, uint32_t uint32_t__value)
+{
+    uint8_t UINT8_T__A__Frame[13];
+    uint8_t UINT8_T__A__Payload[5];
+    uint16_t uint16_t__crc = SIMPLE_LINK_CRC16_INIT;
+    uint8_t uint8_t__i;
+
+    UINT8_T__A__Payload[0] = uint8_t__id;
+    UINT8_T__A__Payload[1] = (uint8_t)(uint32_t__value & 0xFFu);
+    UINT8_T__A__Payload[2] = (uint8_t)((uint32_t__value >> 8) & 0xFFu);
+    UINT8_T__A__Payload[3] = (uint8_t)((uint32_t__value >> 16) & 0xFFu);
+    UINT8_T__A__Payload[4] = (uint8_t)((uint32_t__value >> 24) & 0xFFu);
+
+    UINT8_T__A__Frame[0] = SIMPLE_LINK_SOF_BYTE0;
+    UINT8_T__A__Frame[1] = SIMPLE_LINK_SOF_BYTE1;
+    UINT8_T__A__Frame[2] = SIMPLE_LINK_PROTOCOL_VERSION;
+    UINT8_T__A__Frame[3] = SIMPLE_MSG_SET_PARAM;
+    UINT8_T__A__Frame[4] = 5u;
+    UINT8_T__A__Frame[5] = 0u;
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, SIMPLE_LINK_PROTOCOL_VERSION);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, SIMPLE_MSG_SET_PARAM);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, 5u);
+    uint16_t__crc = func__Simple_Crc16(uint16_t__crc, 0u);
+    for (uint8_t__i = 0u; uint8_t__i < 5u; uint8_t__i++)
+    {
+        UINT8_T__A__Frame[6u + uint8_t__i] = UINT8_T__A__Payload[uint8_t__i];
+        uint16_t__crc = func__Simple_Crc16(uint16_t__crc, UINT8_T__A__Payload[uint8_t__i]);
+    }
+    UINT8_T__A__Frame[11] = (uint8_t)(uint16_t__crc & 0xFFu);
+    UINT8_T__A__Frame[12] = (uint8_t)((uint16_t__crc >> 8) & 0xFFu);
+    (void)Serial.write(UINT8_T__A__Frame, 13u);
+}
+
+/**
+ * @brief  صف ریست را خالی می‌کند: هر SIMPLE_SLOT_TX_GAP_MS یک فریم.
+ *         تأیید نشدن هم مهم نیست؛ پنل از پژواک REPORT می‌فهمد برد مقدار را
+ *         اعمال کرده یا نه (و NAK هم جدا شمرده می‌شود).
+ * @return [EN] None / [FA]‎ ندارد
+ */
+static void func__Simple_SlotTick(void)
+{
+    uint32_t uint32_t__now = (uint32_t)millis();
+    uint8_t uint8_t__i;
+
+    if ((uint32_t__now - UINT32_T__G__LastSlotTxMs) < SIMPLE_SLOT_TX_GAP_MS)
+    {
+        return;
+    }
+
+    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_SLOT_QUEUE_LEN; uint8_t__i++)
+    {
+        if (BOOL__G__SlotQueuePending[uint8_t__i])
+        {
+            BOOL__G__SlotQueuePending[uint8_t__i] = false;
+            func__Simple_SendSetParam(UINT8_T__G__SlotQueueId[uint8_t__i],
+                                      UINT32_T__G__SlotQueueValue[uint8_t__i]);
+            UINT32_T__G__LastSlotTxMs = uint32_t__now;
+            return;
+        }
     }
 }
 

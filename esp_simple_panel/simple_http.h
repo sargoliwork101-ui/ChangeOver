@@ -749,3 +749,94 @@ static void func__Simple_HttpClearHistory(void)
     }
     SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
+
+/* ==================== ریست دستی قفل‌ها - فقط ادمین ==================== */
+/**
+ * @brief  درخواست ریست قفل را در صف می‌گذارد (POST /latch/reset?n=5|6).
+ *         سناریو ۵: پرچم قفل (۲۰۲) و شمارنده‌هایش (۲۰۱ و ۲۰۰) صفر می‌شوند
+ *         تا از اول شمرده شود؛ سناریو ۶: ماسک حکم باتری خراب (۲۰۳) صفر.
+ * @return JSON با ok؛ صف پر → کد ۴۰۹ با e=1، ورودی بد → ۴۰۰ با e=2
+ */
+static void func__Simple_HttpLatchReset(void)
+{
+    if (!func__Simple_IsAdmin())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
+        return;
+    }
+
+    String string__n;
+    bool bool__ok = false;
+
+    if (func__Simple_GetArg("n", string__n))
+    {
+        int32_t int32_t__n = (int32_t)string__n.toInt();
+
+        if (int32_t__n == 5)
+        {
+            /* اول پرچم قفل تا چراغ قرمز همان لحظه خاموش شود، بعد شمارنده‌ها. */
+            bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_LATCH_ID, 0u);
+            bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_CYCLES_ID, 0u) == true) && bool__ok;
+            bool__ok = (func__Simple_QueueSlot(SIMPLE_SLOT_EVENTS_ID, 0u) == true) && bool__ok;
+        }
+        else if (int32_t__n == 6)
+        {
+            bool__ok = func__Simple_QueueSlot(SIMPLE_SLOT_DEAD_MASK_ID, 0u);
+        }
+        else
+        {
+            SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":2}");
+            return;
+        }
+    }
+    else
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":2}");
+        return;
+    }
+
+    char char__A__Out[48];
+    (void)snprintf(char__A__Out, sizeof(char__A__Out), "{\"ok\":%u,\"n\":%s}",
+                   bool__ok ? 1u : 0u, string__n.c_str());
+    SIMPLE_WEB_SERVER_T__G__Server.send(bool__ok ? 200 : 409, "application/json", char__A__Out);
+}
+
+/**
+ * @brief  وضعیت صف و آخرین پژواک برد (GET /latch) - فقط ادمین.
+ *         پنل از همین جواب می‌فهمد ریست روی برد نشست (rep بالاتر و val صفر)
+ *         یا برد ردش کرد (nak بالاتر).
+ * @return JSON با id/val/known/rep/req/nak/busy/q
+ */
+static void func__Simple_HttpLatchState(void)
+{
+    uint8_t uint8_t__i;
+    uint8_t uint8_t__pending = 0u;
+    char char__A__Out[160];
+
+    if (!func__Simple_IsAdmin())
+    {
+        SIMPLE_WEB_SERVER_T__G__Server.send(403, "application/json", "{\"ok\":0,\"e\":\"admin\"}");
+        return;
+    }
+
+    for (uint8_t__i = 0u; uint8_t__i < SIMPLE_SLOT_QUEUE_LEN; uint8_t__i++)
+    {
+        if (BOOL__G__SlotQueuePending[uint8_t__i])
+        {
+            uint8_t__pending++;
+        }
+    }
+
+    (void)snprintf(char__A__Out, sizeof(char__A__Out),
+                   "{\"ok\":1,\"id\":%u,\"val\":%lu,\"known\":%u,\"rep\":%lu,"
+                   "\"req\":%lu,\"nak\":%lu,\"busy\":%u,\"q\":%u}",
+                   (unsigned)UINT8_T__G__SlotLastId,
+                   (unsigned long)UINT32_T__G__SlotLastValue,
+                   BOOL__G__SlotLastKnown ? 1u : 0u,
+                   (unsigned long)UINT32_T__G__SlotEchoCount,
+                   (unsigned long)UINT32_T__G__SlotRequestCount,
+                   (unsigned long)UINT32_T__G__SlotNakCount,
+                   (unsigned)UINT8_T__G__SlotBusyReject,
+                   (unsigned)uint8_t__pending);
+    SIMPLE_WEB_SERVER_T__G__Server.send(200, "application/json", char__A__Out);
+}
