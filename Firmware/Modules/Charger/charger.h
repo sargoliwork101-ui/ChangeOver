@@ -1629,7 +1629,7 @@ bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
 #define CHG_DEAD_PARAM_TIMEOUT_MS          125u
 
 /** [EN] A charge pause shorter than this does NOT restart the timer (ms),
- *  default 600000 = 10 min.
+ *  default 60000 = 1 min.
  *  [FA] مکث کوتاه‌تر از این، تایمر را از نو شروع نمی‌کند. */
 #define CHG_DEAD_PARAM_RESET_GAP_MS        126u
 

@@ -2327,7 +2327,7 @@ typedef struct
  *      در زمان کامپایل بررسی می‌شود. */
 #define CHG_DEAD_ROWS(X)                                                       \
     X(TIMEOUT_MS,        0u, 172800000u, 86400000u)   /* 125 deadline, 0 = off  */ \
-    X(RESET_GAP_MS,      0u,   3600000u,   600000u)   /* 126 pause that resets  */ \
+    X(RESET_GAP_MS,      0u,   3600000u,    60000u)   /* 126 pause that resets (1 min) */ \
     X(BLOCK_OUTPUT,      0u,         1u,        0u)   /* 127 also block output  */ \
     X(BEEP_PERIOD_MS,    0u,  86400000u,   600000u)   /* 128 beep, 0 = silent   */ \
     X(BEEP_LEN_MS,      20u,      2000u,      120u)   /* 129 one beep length    */ \

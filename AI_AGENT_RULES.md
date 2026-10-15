@@ -331,3 +331,25 @@ happened — this has already cost a full round trip twice.
 بالا مانده باشد همچنان صفحهٔ **قدیمی** را سرو می‌کند و باید دستی ری‌استارت شود.
 سرورِ جامانده از نگاه کاربر از «اصلاً انجام‌نشدن تغییر» قابل تشخیص نیست؛ همین
 موضوع تا حالا دو بار یک رفت‌وبرگشت کامل هزینه داده است.
+
+## قانون شبیه‌سازی INPUT_WAIT (v1.88)
+
+**EN —** The demo server must simulate all charger states, not just BULK/ABSORB/FLOAT.
+When input voltage drops below 21V, the charger enters `INPUT_WAIT` state and charging
+stops. The dead-battery charging counter must pause during `INPUT_WAIT`. If the pause
+lasts longer than the reset gap (id 126, default 1 minute), the counter resets to zero.
+This mirrors the firmware's behavior: `func__Charger_IsChannelActive()` returns false
+in `INPUT_WAIT`, so the dead-battery timer pauses.
+
+**FA —** سرور دمو باید تمام حالت‌های شارژر را شبیه‌سازی کند، نه فقط BULK/ABSORB/FLOAT.
+وقتی ولتاژ ورودی زیر ۲۱ ولت می‌آید، شارژر به حالت `INPUT_WAIT` می‌رود و شارژ متوقف می‌شود.
+شمارندهٔ شارژ پیوسته باید در حالت `INPUT_WAIT` مکث کند. اگر مکث از مهلت ریست (شناسهٔ ۱۲۶،
+پیش‌فرض ۱ دقیقه) بلندتر باشد، شمارنده صفر می‌شود. این دقیقاً رفتار فرم‌ور را آینه می‌کند:
+`func__Charger_IsChannelActive()` در حالت `INPUT_WAIT` false برمی‌گرداند، پس تایمر
+باتری خراب مکث می‌کند.
+
+**پیش‌فرض‌های سناریوی ۶:**
+- مهلت شارژ پیوسته (شناسهٔ ۱۲۵): ۲۴ ساعت
+- مهلت مکث (شناسهٔ ۱۲۶): **۱ دقیقه** (تغییر از ۱۰ دقیقه در v1.88)
+- مهلت قطع باتری (absent-reset): ۳ ثانیه
+

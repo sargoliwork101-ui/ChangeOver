@@ -114,6 +114,10 @@ const VREFINT_COUNTS = Math.round((1200 / VREF_MV) * ADC_FULL);
 /* Link-health counters surfaced by /t; 0 = healthy link (see telemetry()). */
 const DEMO_VM = process.env.PLINK_DEMO_VM ? Number(process.env.PLINK_DEMO_VM) : 0;
 const DEMO_CE = process.env.PLINK_DEMO_CE ? Number(process.env.PLINK_DEMO_CE) : 0;
+/* [FA] ماسک حکم باتری خراب برای نمایش: پیش‌فرض صفر (بی‌حکم)؛ با
+   ‎PLINK_DEMO_DEAD=3‎ هر دو کانال حکم‌شده بالا می‌آیند تا دکمهٔ ریست سناریو ۶
+   هم چیزی برای پاک‌کردن داشته باشد. */
+const DEMO_DEAD = process.env.PLINK_DEMO_DEAD ? (Number(process.env.PLINK_DEMO_DEAD) & 3) : 0;
 const html = panelSrc.split('R"HTML(', 2)[1].split(')HTML";', 2)[0];
 
 /* [EN] The settable current ceiling, READ FROM THE FIRMWARE HEADER rather
@@ -200,7 +204,7 @@ const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            /* v1.72 ids 125..127 = dead-battery scenario 6 (charger.h):
               continuous-charge deadline, the pause that zeroes the clock,
               and the output-disconnect checkbox. */
-           86400000, 600000, 0,
+           86400000, 60000, 0,
            /* v1.80 ids 128..131 = scenario 6's OWN lamp and buzzer (user
               question: "it has a lamp and a beep, why no boxes?"): beep
               period, beep length, red blink period (0 = solid) and its
@@ -462,6 +466,15 @@ function rawFromCurrent(iBat, vMv) {
 let SNAP = null;
 let imbFl2 = 0;  /* [EN] scenario 5 demo flags (byte 3 of TLM) / [FA] بیت‌های وضعیت سناریوی ۵ (بایت ۳) */
 
+/* [EN] Manual latch reset, mirrored from the ESP: a four-slot queue, one item
+ *      applied per tick like the board drains one frame per TX interval, an
+ *      echo the panel reads back (rep/val) and a NAK counter for a refusal.
+ * [FA] ریست دستی قفل‌ها، آینهٔ ESP: صف چهارخانه‌ای، اعمال یکی‌یکی در هر تیک
+ *      (مثل یک فریم در هر نوبت روی برد)، پژواک برای پنل و شمارندهٔ NAK. */
+let latch = { q: [], lastId: 0, lastVal: 0, known: 0, rep: 0, req: 0, nak: 0, busy: 0,
+              deadMask: DEMO_DEAD, imbBase: 0,
+              chargeSec: [0, 0], pauseSec: [0, 0], cutAt: [0, 0] };
+
 /* [EN] The sim runs on a REAL 100 ms ticker (like the STM32 measurement
  *      task), independent of browser polling; /t just snapshots it.
  * [FA] شبیه‌سازی روی تیکر واقعی ۱۰۰ms (مثل تسک اندازه‌گیری STM32) مستقل
@@ -469,6 +482,15 @@ let imbFl2 = 0;  /* [EN] scenario 5 demo flags (byte 3 of TLM) / [FA] بیت‌�
 setInterval(() => { SNAP = telemetry(); }, SIM_MS);
 
 function telemetry() {
+    /* [FA] صف ریست قفل‌ها: در هر تیک یک درخواست اعمال می‌شود؛ سناریو ۵
+       چرخهٔ نمایشی را از صفر شروع می‌کند (قفل پاک، شمارش از اول) و
+       سناریو ۶ ماسک حکم باتری خراب را می‌نویسد. */
+    if (latch.q.length) {
+        const item = latch.q.shift();
+        if (item.id === 202 || item.id === 201 || item.id === 200) { latch.imbBase = ms; }
+        if (item.id === 203) { latch.deadMask = item.val & 3; }
+        latch.lastId = item.id; latch.lastVal = item.val; latch.known = 1; latch.rep += 1;
+    }
     stepChannel(ch[0], 0);
     stepChannel(ch[1], 2.1);
     const vlow = ch[1].v, vhigh = ch[0].v;
@@ -572,7 +594,7 @@ function telemetry() {
      * [FA] بلوک زندهٔ سناریوی ۵: دموی چرخه‌ای - ارزیابی، رشد شمارش، قفل و
      *      ریست خودکار با تعویض باتری. */
     {
-        const imbCyc = ms % 120000;
+        const imbCyc = (ms - latch.imbBase) % 120000;
         const imb = Math.abs(t[18] - t[17]);
         t[25] = imb;
         if (imbCyc < 30000) { t[26] = Math.round(imbCyc / 30000 * 10); t[27] = 0; imbFl2 = (imb > P[108]) ? 1 : 0; }
@@ -580,6 +602,47 @@ function telemetry() {
         else if (imbCyc < 90000) { t[26] = 10; t[27] = 20; imbFl2 = 2 | 4 | 8; }
         else { t[26] = 0; t[27] = 0; imbFl2 = 0; }
     }
+
+    /* v1.87: dead-battery charging counters */
+    /* v1.88 (user order: "input < 21V stops charging, should the counter
+         pause?"): the demo now mirrors the firmware's INPUT_WAIT behavior.
+         When input voltage drops below 21V, charging stops (state becomes
+         INPUT_WAIT), and the charging counter pauses. If the pause lasts
+         longer than the reset gap (id 126, default 1 minute), the counter
+         resets to zero. */
+    const inputOk = t[14] >= 21000;  /* firmware checks v_in_mv >= 21000 */
+    const resetGapSec = (P[126] || 60000) / 1000;  /* id 126 = reset gap (ms) */
+    for (let k = 0; k < 2; k++) {
+        const st = ch[k].state;
+        const charging = (st === 1 || st === 2) && inputOk;
+        if (charging) {
+            latch.chargeSec[k] += SIM_MS / 1000;
+            latch.pauseSec[k] = 0;  /* reset pause timer */
+        } else if (st === 3) {
+            latch.chargeSec[k] = 0;  /* FLOAT resets immediately */
+            latch.pauseSec[k] = 0;
+        } else {
+            /* not charging (OFF, INPUT_WAIT, etc.) */
+            latch.pauseSec[k] += SIM_MS / 1000;
+            if (latch.pauseSec[k] >= resetGapSec) {
+                latch.chargeSec[k] = 0;  /* long pause resets counter */
+            }
+        }
+    }
+    t[29] = Math.floor(latch.chargeSec[0]);
+    t[30] = Math.floor(latch.chargeSec[1]);
+
+    /* v1.87: absent-reset simulation */
+    for (let k = 0; k < 2; k++) {
+        if (latch.cutAt[k] > 0 && ms - latch.cutAt[k] >= 3000) {
+            latch.deadMask &= ~(1 << k);
+            latch.chargeSec[k] = 0;
+            latch.cutAt[k] = 0;
+        }
+    }
+
+    /* [FA] ماسک حکم باتری خراب هم مثل خود برد در تلمتری می‌آید. */
+    t[28] = latch.deadMask;
 
     seq += 1; frames += 1; ms += SIM_MS;
     return {
@@ -760,6 +823,30 @@ const server = http.createServer((req, res) => {
         }
         return send(200, "application/json", '{"_s":200}');
     }
+    /* [EN] v1.85 latch-reset routes, mirrored from func__Esp_HttpLatchReset /
+     *      func__Esp_HttpLatchState so the panel's buttons work in the
+     *      preview exactly as they do against the board.
+     * [FA] مسیرهای ریست قفل‌ها، آینهٔ همان دو هندلر ESP تا دکمه‌های پنل در
+     *      پیش‌نمایش هم مثل روی برد کار کنند. */
+    if (req.method === "GET" && url.pathname === "/latch") {
+        return send(200, "application/json", JSON.stringify({
+            ok: 1, id: latch.lastId, val: latch.lastVal, known: latch.known,
+            rep: latch.rep, req: latch.req, nak: latch.nak, busy: latch.busy,
+            q: latch.q.length }));
+    }
+    if (req.method === "POST" && url.pathname === "/latch/reset") {
+        const n = Number(url.searchParams.get("n"));
+        if (n !== 5 && n !== 6) return send(400, "application/json", '{"ok":0,"e":2}');
+        const ids = n === 5 ? [202, 201, 200] : [203];
+        const fresh = ids.filter(id => !latch.q.some(it => it.id === id));
+        if (latch.q.length + fresh.length > 4) {
+            latch.busy += 1;
+            return send(409, "application/json", '{"ok":0,"e":1}');
+        }
+        for (const id of fresh) latch.q.push({ id, val: 0 });
+        latch.req += fresh.length;
+        return send(200, "application/json", JSON.stringify({ ok: 1, n }));
+    }
     if (req.method === "GET" && url.pathname === "/benchlog") {
         if (url.searchParams.get("i") === "1") {
             return send(200, "application/json",
@@ -776,6 +863,16 @@ const server = http.createServer((req, res) => {
     if (req.method === "POST" && url.pathname === "/benchlog/clear") {
         benchSize = 0;
         return send(200, "application/json", '{"ok":1}');
+    }
+    /* v1.87: simulate battery disconnect/reconnect for scenario 6 */
+    if (req.method === "POST" && url.pathname === "/sim/battery") {
+        const n = Number(url.searchParams.get("n"));
+        const cut = Number(url.searchParams.get("cut"));
+        if ((n === 1 || n === 2) && (cut === 0 || cut === 1)) {
+            latch.cutAt[n - 1] = cut === 1 ? ms : 0;
+            return send(200, "application/json", JSON.stringify({ ok: 1, n, cut }));
+        }
+        return send(400, "application/json", '{"ok":0,"e":2}');
     }
     return send(404, "text/plain", "not found");
 });
