@@ -414,7 +414,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 576f626</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 5370afa</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -2943,8 +2943,19 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
     errjmp انجام می‌شود که تب‌ها را با خود صفت‌هایشان کلیک می‌کند نه با
     رشتهٔ سلکتور، چون ممیزی پروژه همان الگو را در جاوااسکریپت هم
     می‌شمارد و رشتهٔ عددیِ سلکتور ادعای شمارش دکمه‌ها را خراب می‌کند. */
+ /* سه چراغ بقیهٔ خطاها هم اضافه شد (دستور کاربر): حکم باتری خراب و خطای
+    فنی برد همیشه سرِ جایشان می‌مانند (سالم سبز، خطا قرمز) و کلیک روی هرکدام
+    تنظیمات همان سناریو را باز می‌کند؛ اپیزود عدم‌توازن تا وقتی جریان دارد یک
+    چراغ زرد اضافه می‌کند. */
+ const deadNow=((t[28]|0)!==0), techNow=(((t[19]|0)&128)!==0);
+ const epiNow=((((d.fl2|0)&1)!==0)&&(((d.fl2|0)&2)===0));
+ const dash=u=>' · برای تنظیمات سناریو '+['','۱','۲','۳','۴','۵','۶','۷'][u]+' کلیک کنید';
+ const flip=(txt,on,u,tipOn,tipOff)=>'<button type="button" class="tg tgk '+(on?'r':'g')+'" title="'+(on?tipOn:tipOff)+dash(u)+'" onclick="errjmp('+u+')">'+txt+'</button>';
  $('fl').innerHTML=
-  F.map(f=>`<span class="tg ${f[1]?'g':'r'}">${f[0]}</span>`).join('')
+  flip('باتری خراب',deadNow,6,'قفل دائمی — باتری خراب حکم شده، تعویضش کنید','باتری خرابی حکم نشده')
+  +flip('خطای فنی برد',techNow,7,'خرابی طبقهٔ قدرت شارژر — تا ریست قفل است','خطای فنی ثبت نشده')
+  +(epiNow?'<button type="button" class="tg tgk y" title="اختلاف دو نیم‌پک از حد گذشته و اپیزود در حال ثبت است'+dash(5)+'" onclick="errjmp(5)">عدم‌توازن در جریان</button>':'')
+  +F.map(f=>`<span class="tg ${f[1]?'g':'r'}">${f[0]}</span>`).join('')
   +(man?'<span class="tg y">مود دستی</span>':'');
  [1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=p[10+n],ce=(PEND[12+n]!=null?PEND[12+n]:p[12+n]);
   const st=$('st'+n);st.textContent=ST[s]||'#'+s;st.className='tg '+(SC[s]||'');
