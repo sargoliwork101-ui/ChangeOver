@@ -203,8 +203,10 @@ const P = [0, 0, 3000, 3000, 0, 0, 0, 3, 10, 0, 0, 1, 1, 500, 500, 0, 0, 0, 0, 0
            1000, 50,
            /* v1.72 ids 125..127 = dead-battery scenario 6 (charger.h):
               continuous-charge deadline, the pause that zeroes the clock,
-              and the output-disconnect checkbox. */
-           86400000, 600000, 0,
+              and the output-disconnect checkbox. Id 126 is 60000 (1 min)
+              since v1.88, matching the firmware default - the stale
+              600000 here is what the consistency audit flagged. */
+           86400000, 60000, 0,
            /* v1.80 ids 128..131 = scenario 6's OWN lamp and buzzer (user
               question: "it has a lamp and a beep, why no boxes?"): beep
               period, beep length, red blink period (0 = solid) and its
