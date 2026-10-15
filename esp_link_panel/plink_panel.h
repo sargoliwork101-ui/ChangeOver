@@ -424,7 +424,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build b36923a</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 22024b9</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1156,6 +1156,15 @@ function pvalidate(ids){return ids.map(id=>{
  if(!Number.isFinite(n)||n<m.lo||n>m.hi)
   return 'شناسهٔ '+id+' — '+m.name+'؛ مقدار واردشده: '+String(raw)+'؛ بازهٔ مجاز: '+prange(m)+'؛ برد این مقدار خارج از بازه را نمی‌پذیرد و روی برد نمی‌نشیند (ممکن است آن را clamp کند یا اصلاً اعمال نکند).';
  return null;}).filter(Boolean);}
+/* نگهبان سخت چشمک سبز: خاموشیِ شناسهٔ ۶۷ نباید از دورهٔ شناسهٔ ۶۶ بزرگ‌تر
+   شود، وگرنه سبز روی برد ثابت می‌ماند؛ پنل چنین ترکیبی را نمی‌فرستد. فقط
+   وقتی یکی از این دو در صف است چک می‌شود تا ترکیب قدیمیِ برد قفل نکند. */
+function pgreenguard(ids){
+ if(!ids.some(id=>+id===66||+id===67))return null;
+ const a=ap();
+ if(a.u67>a.u66)
+  return 'شناسهٔ ۶۷ — حداقل خاموشی سبز '+a.u67+' میلی‌ثانیه از دورهٔ چشمک (شناسهٔ ۶۶: '+a.u66+' میلی‌ثانیه) بزرگ‌تر است؛ یا خاموشی را کم کنید یا دوره را زیاد کنید.';
+ return null;}
 /* کلید ‎Ctrl+Enter (‎روی ‎Mac: Cmd+Enter)‎ همان دکمهٔ ارسال همهٔ تغییرات را اجرا می‌کند؛ کنترل‌های sendall همچنان اعمال می‌شوند. */
 document.addEventListener('keydown',ev=>{if((ev.ctrlKey||ev.metaKey)&&ev.key==='Enter'&&!ev.altKey){ev.preventDefault();sendall();}});
 async function sendall(){
@@ -1169,6 +1178,12 @@ async function sendall(){
    sdlgl(rangeErrors)+'<br>تا اصلاح همهٔ موارد، کل صف دست‌نخورده می‌ماند و چیزی خودکار روی برد نوشته نمی‌شود.';
   stxt('sbst',head+' · '+rangeErrors.length+' مورد نیاز به اصلاح دارد');
   sdlg('bad',head,body,0);return;
+ }
+ const greenError=pgreenguard(queued);
+ if(greenError){
+  const head='⛔ ارسال متوقف شد — ترکیب چشمک سبز نامعتبر است';
+  stxt('sbst',head);
+  sdlg('bad',head,'هیچ درخواستی به برد ارسال نشد؛ مورد زیر را اصلاح و دوباره ارسال کنید.'+sdlgl([greenError])+'<br>کل صف دست‌نخورده ماند.',0);return;
  }
  /* v1.56: رابطه‌های مشترک فقط توصیه‌اند؛ هیچ repair پیش از POST انجام نمی‌شود.
     مقدار ارسال‌شده همان PEND است و ‎setter/readback‎ برد مرجع نهایی است. */
