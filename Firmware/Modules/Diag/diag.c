@@ -9,6 +9,11 @@
 /* ==================== Includes ==================== */
 #include "diag.h"
 #include "bsp_flash.h"
+#include "bsp_pwm.h"
+#include "modules_enable.h"
+#if MODULE_CHARGER
+#include "charger.h"
+#endif
 #include <string.h>
 
 /* ==================== Defines ==================== */
@@ -479,7 +484,24 @@ const diag_record_t *func__Diag_GetRecord(void)
  *              fix 2026-10-15: three local records used to need ~2 KB of
  *              caller stack - more than the whole control-task stack).
  *              Runs only from the Diag tick context, so the scratch has a
- *              single owner.
+ *              single owner. The flash write itself runs with the charger
+ *              suspended and both PWM gates stopped (audit fix 2026-10-15):
+ *              a page erase stalls the whole CPU for ~20..40 ms on this
+ *              single-bank part, and the NVM/CalLut saves already forbid
+ *              switching inside that blind window - this save now follows
+ *              the same rule. SaveNow runs in the control task, the very
+ *              context that owns charger evaluation, so StopAll acts at
+ *              once (no polling) and the duty mirrors stay untouched; the
+ *              next control pass resumes regulation seamlessly.
+ *         [FA] نوشتن فلش با شارژرِ معلق و هر دو گیت PWM متوقف انجام می‌شود
+ *              (اصلاح ممیزی ۲۰۲۶-۱۰-۱۵): پاک‌کردن صفحه روی این قطعهٔ تک‌بانک
+ *              کل ‎CPU‎ را حدود ۲۰ تا ۴۰ میلی‌ثانیه نگه می‌دارد و
+ *              ذخیره‌های ‎NVM/CalLut‎ همین حالا هم سوییچینگ داخل آن
+ *              پنجرهٔ کور را ممنوع کرده‌اند - این ذخیره هم از همان قانون
+ *              پیروی می‌کند. ‎SaveNow‎ در تسک کنترل اجرا می‌شود، یعنی
+ *              همان زمینه‌ای که مالک ارزیابی شارژر است، پس ‎StopAll‎
+ *              بی‌درنگ اثر می‌کند (بدون نظرسنجی) و آینه‌های duty دست‌نخورده
+ *              می‌مانند؛ پاس بعدی کنترل، تنظیم را یکپارچه ادامه می‌دهد.
  *         [FA] رکورد فعال در صفحهٔ قدیمی‌تر فلش ذخیره می‌شود (پینگ‌پنگ).
  *              هر دو صفحه یکی‌یکی در بافر ‎Stage‎ داوری می‌شوند و فقط
  *              شماره‌های ترتیب به‌صورت اسکالر می‌مانند؛ قبلاً سه رکورد
@@ -567,7 +589,25 @@ bool func__Diag_SaveNow(void)
     DIAG_RECORD_T__G__Active.uint16_t__seq = uint16_t__newSeq;
     func__Diag_BuildRecord(&DIAG_RECORD_T__G__Stage, &DIAG_RECORD_T__G__Active);
 
+    /* [EN] Blind-window rule (see the docstring above): suspend the
+       charger and stop both gates for the erase+program stall, then let
+       the next control pass resume. The suspend flag is always cleared
+       right after the write, on success and on failure alike.
+       [FA] قانون پنجرهٔ کور (توضیح بالای تابع): برای مدت استالِ پاک‌کردن
+       و نوشتن، شارژر معلق و هر دو گیت متوقف می‌شوند و بعد پاس بعدی کنترل
+       ادامه می‌دهد. پرچم تعلیق بلافاصله بعد از نوشتن، در موفقیت و شکست،
+       پاک می‌شود. */
+#if MODULE_CHARGER
+    func__Charger_SetSuspended(true);
+    func__BspPwm_StopAll();
+#endif
+
     bool__ok = func__Diag_WriteFlash(uint32_t__targetAddr, &DIAG_RECORD_T__G__Stage);
+
+#if MODULE_CHARGER
+    func__Charger_SetSuspended(false);
+#endif
+
     if (bool__ok)
     {
         BOOL__G__Dirty = false;
