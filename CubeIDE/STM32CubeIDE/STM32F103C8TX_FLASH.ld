@@ -38,7 +38,18 @@ ENTRY(Reset_Handler)
 /* Highest address of the user mode stack */
 _estack = ORIGIN(RAM) + LENGTH(RAM); /* end of "RAM" Ram type memory */
 
-_Min_Heap_Size = 0x200; /* required amount of heap */
+/* [EN] RAM fix 2026-10-15: the product allocates statically only
+   (configSUPPORT_DYNAMIC_ALLOCATION = 0 in FreeRTOSConfig.h, no malloc or
+   printf anywhere in Firmware), so the default 512-byte newlib heap reserve
+   was pure padding and pushed RAM 264 bytes past the 20K region at link
+   time. Reserving zero heap frees those 512 bytes; the 1K main/ISR stack
+   reserve below stays untouched, and _sbrk simply reports ENOMEM if any
+   future code ever asks for heap it must not use.
+   [FA] اصلاح RAM: محصول فقط تخصیص استاتیک دارد و هیچ ‎malloc‎ یا
+   ‎printf‎ای در Firmware نیست، پس رزرو پیش‌فرض ۵۱۲ بایتی هیپ فقط پَدینگ بود
+   و RAM را هنگام لینک ۲۶۴ بایت از ناحیهٔ ۲۰K رد می‌کرد. صفرکردن آن ۵۱۲
+   بایت را آزاد می‌کند؛ رزرو ۱K استک اصلی/وقفه دست‌نخورده می‌ماند. */
+_Min_Heap_Size = 0x000; /* required amount of heap */
 _Min_Stack_Size = 0x400; /* required amount of stack */
 
 /* Memories definition */

@@ -63,6 +63,13 @@ INCLUDES = [
     # [FA] v1.66: ماژول CalLut به بیلد اضافه شد؛ بدون این مسیر، فایل آن
     #      بی‌صدا از مجموع می‌افتاد.
     "Firmware/Modules/CalLut",
+    # [EN] 2026-10-15: the Diag module was missing, so four translation units
+    #      that include diag.h (app.c, charger.c, esp_link.c, task_control.c)
+    #      failed and the link died on undefined symbols - measure_ram.py
+    #      could not measure RAM at all. Same fix as v1.53/v1.66 above.
+    # [FA] ماژول Diag جا افتاده بود و چهار فایل بی‌صدا
+    #      می‌افتادند و لینک می‌مرد؛ اصلاح هم‌جنسِ موارد بالا.
+    "Firmware/Modules/Diag",
 ]
 
 
