@@ -367,10 +367,10 @@ void func__TaskControl(void *void_ptr__argument)
         /* [EN] Watchdog pump (user order 2026-09-27): refresh the IWDG only
            when every supervised task checked in fresh (see bsp_iwdg.h).
            [FA] پمپ واچ‌داگ: فقط وقتی همهٔ تسک‌ها تازه‌اند تازه کن. */
-        func__BspIwdg_PollKick(osKernelGetTickCount());
+        func__BspIwdg_PollKick(func__Rtos_TicksToMilliseconds(osKernelGetTickCount()));
         func__Rtos_DelayMilliseconds(APP_CONFIG.control_period_ms);
 #else
-        func__BspIwdg_PollKick(osKernelGetTickCount());
+        func__BspIwdg_PollKick(func__Rtos_TicksToMilliseconds(osKernelGetTickCount()));
         func__Rtos_DelayMilliseconds(1000u);
 #endif
     }

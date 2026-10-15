@@ -69,7 +69,8 @@ void func__TaskUi(void *void_ptr__argument)
         func__Ui_Tick(&measurement_snapshot_t__snap);
 
 #if MODULE_UI
-        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_UI, osKernelGetTickCount());
+        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_UI,
+                              func__Rtos_TicksToMilliseconds(osKernelGetTickCount()));
 #endif
         func__Rtos_DelayMilliseconds(UI_TICK_MS);
     }

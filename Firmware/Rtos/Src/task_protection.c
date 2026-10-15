@@ -85,7 +85,8 @@ void func__TaskProtection(void *void_ptr__argument)
             (void)func__Measurement_GetSnapshot(&measurement_snapshot_t__snap);
 #endif
             func__Protection_Run(&measurement_snapshot_t__snap);
-            func__BspIwdg_CheckIn(BSP_IWDG_SLOT_PROTECTION, osKernelGetTickCount());
+            func__BspIwdg_CheckIn(BSP_IWDG_SLOT_PROTECTION,
+                                  func__Rtos_TicksToMilliseconds(osKernelGetTickCount()));
         }
         func__Rtos_DelayMilliseconds(APP_CONFIG.protection_period_ms);
 #else

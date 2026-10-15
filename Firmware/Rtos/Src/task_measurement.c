@@ -74,7 +74,8 @@ void func__TaskMeasurement(void *void_ptr__argument)
            reboot-loop the board). 1 s cadence is inside BSP_IWDG_STALE_MS.
            [FA] تسک زنده است فقط سخت‌افزار ADC جواب نمی‌دهد - اعلام حضور کن
            تا واچ‌داگ زنده‌بودن تسک را بپاید نه سلامت سخت‌افزار را. */
-        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_MEASUREMENT, osKernelGetTickCount());
+        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_MEASUREMENT,
+                                  func__Rtos_TicksToMilliseconds(osKernelGetTickCount()));
         func__Rtos_DelayMilliseconds(1000u);
     }
 
@@ -89,7 +90,8 @@ void func__TaskMeasurement(void *void_ptr__argument)
         UINT32_T__lastWakeTime += func__Rtos_MillisecondsToTicks(MEASUREMENT_PERIOD_MS);
         (void)osDelayUntil(UINT32_T__lastWakeTime);
         func__Measurement_Run();
-        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_MEASUREMENT, osKernelGetTickCount());
+        func__BspIwdg_CheckIn(BSP_IWDG_SLOT_MEASUREMENT,
+                                  func__Rtos_TicksToMilliseconds(osKernelGetTickCount()));
     }
 #else
     /* [EN] Flag off: task body is a plain 1 s sleep.
