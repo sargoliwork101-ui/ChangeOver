@@ -86,6 +86,21 @@
 #define ESP_PARAM_MANUAL_TEST_MODE  19u
 #define ESP_TLM_FLAG_MANUAL_MODE    0x20u
 
+/* ==================== ریست دستی قفل‌ها (اسلات‌های زمان‌اجرا) ==================== */
+/* اسلات‌های زمان‌اجرای STM32 پارامتر کاربر نیستند و در جدول پارامترها جا
+   ندارند (جدول ۱۴۳ شناسه دارد): ۲۰۰ = شمارندهٔ رویداد عدم‌توازن، ۲۰۱ = سیکل‌های
+   پس از قفل، ۲۰۲ = پرچم قفل عدم‌توازن و ۲۰۳ = ماسک حکم باتری خراب. خود برد
+   همین شناسه‌ها را از مسیر معمول می‌پذیرد، مقدار را اعمال می‌کند و در فلش
+   ذخیره می‌کند؛ پس برای «ریست» یک صف کوچک جدا کافی است و جدول پارامترها و
+   بازه‌های گیرهٔ آن دست‌نخورده می‌مانند. مقدار صفر یعنی پاک. */
+#define ESP_SLOT_QUEUE_LEN          4u
+#define ESP_SLOT_EVENTS_ID          200u
+#define ESP_SLOT_CYCLES_ID          201u
+#define ESP_SLOT_LATCH_ID           202u
+#define ESP_SLOT_DEAD_MASK_ID       203u
+#define ESP_SLOT_FIRST_ID           ESP_SLOT_EVENTS_ID
+#define ESP_SLOT_LAST_ID            ESP_SLOT_DEAD_MASK_ID
+
 /* ==================== CAL_REFERENCE (removed from the panel in v1.7) ==================== */
 /* [EN] The v1.6 CAL card was dropped in the v1.7 simplification (user order 2026-09-25): the panel
         no longer sends CAL_REFERENCE. The STM32 handler stays in the firmware, unused and harmless.

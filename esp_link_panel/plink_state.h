@@ -28,6 +28,18 @@ static bool     BOOL__G__ParamKnown[ESP_PARAM_COUNT];
 static uint32_t UINT32_T__G__TxParamValue[ESP_PARAM_COUNT];
 static bool     BOOL__G__TxParamPending[ESP_PARAM_COUNT];
 static bool     BOOL__G__ParamUserSet[ESP_PARAM_COUNT];
+
+/* ---- ریست دستی قفل‌ها: صف کوچک جدا از جدول پارامترها و پژواک تأیید برد ---- */
+static uint8_t  UINT8_T__G__SlotQueueId[ESP_SLOT_QUEUE_LEN];
+static uint32_t UINT32_T__G__SlotQueueValue[ESP_SLOT_QUEUE_LEN];
+static bool     BOOL__G__SlotQueuePending[ESP_SLOT_QUEUE_LEN];
+static uint8_t  UINT8_T__G__SlotLastId = 0u;
+static uint32_t UINT32_T__G__SlotLastValue = 0u;
+static bool     BOOL__G__SlotLastKnown = false;
+static uint32_t UINT32_T__G__SlotRequestCount = 0u;
+static uint32_t UINT32_T__G__SlotReportCount = 0u;
+static uint32_t UINT32_T__G__SlotNakCount = 0u;
+static uint8_t  UINT8_T__G__SlotBusyReject = 0u;
 static bool     BOOL__G__TxGetPending = false;
 static uint32_t UINT32_T__G__LastTxMs = 0u;
 static uint32_t UINT32_T__G__LastKeepaliveMs = 0u;

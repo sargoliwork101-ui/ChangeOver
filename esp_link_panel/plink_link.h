@@ -638,6 +638,19 @@ static void func__Esp_PumpTx(void)
         }
     }
 
+    /* صف ریست قفل‌ها بعد از صف پارامترها می‌رود تا نوشتن عددهای کاربر پشت
+       یک ریست دستی نماند؛ همان نرخ و همان فاصله، یک فریم در هر نوبت. */
+    for (uint8_t__step = 0u; uint8_t__step < ESP_SLOT_QUEUE_LEN; uint8_t__step++)
+    {
+        if (BOOL__G__SlotQueuePending[uint8_t__step])
+        {
+            BOOL__G__SlotQueuePending[uint8_t__step] = false;
+            func__Esp_SendSetParam(UINT8_T__G__SlotQueueId[uint8_t__step],
+                                   UINT32_T__G__SlotQueueValue[uint8_t__step]);
+            return;
+        }
+    }
+
     /* [EN] Manual-mode keepalive: every ESP_LINK_KEEPALIVE_MS while manual is active (b5 or param 19),
             whether or not a browser is polling (spec section 19: from every tab and in the background).
        [FA] keepalive مود دستی: هر ESP_LINK_KEEPALIVE_MS تا وقتی مود دستی فعال است (b5 یا پارامتر ۱۹)،
@@ -730,10 +743,36 @@ static void func__Esp_PumpTx(void)
 static void func__Esp_StoreParamItem(const uint8_t *uint8_t__ptr_item)
 {
     uint8_t uint8_t__id = uint8_t__ptr_item[0];
+    uint32_t uint32_t__value = func__Esp_ReadU32(uint8_t__ptr_item, 1u);
+
     if (uint8_t__id < ESP_PARAM_COUNT)
     {
-        UINT32_T__G__ParamApplied[uint8_t__id] = func__Esp_ReadU32(uint8_t__ptr_item, 1u);
+        UINT32_T__G__ParamApplied[uint8_t__id] = uint32_t__value;
         BOOL__G__ParamKnown[uint8_t__id] = true;
+    }
+    else if ((uint8_t__id >= ESP_SLOT_FIRST_ID) && (uint8_t__id <= ESP_SLOT_LAST_ID))
+    {
+        /* گزارش یک اسلات ریست: همین جواب، تأیید نشستن مقدار روی برد است.
+           مقدار اعمال‌شده ذخیره و خانهٔ همان درخواست از صف آزاد می‌شود. */
+        uint8_t uint8_t__index;
+
+        UINT8_T__G__SlotLastId    = uint8_t__id;
+        UINT32_T__G__SlotLastValue = uint32_t__value;
+        BOOL__G__SlotLastKnown    = true;
+        UINT32_T__G__SlotReportCount++;
+
+        for (uint8_t__index = 0u; uint8_t__index < ESP_SLOT_QUEUE_LEN; uint8_t__index++)
+        {
+            if (BOOL__G__SlotQueuePending[uint8_t__index] &&
+                (UINT8_T__G__SlotQueueId[uint8_t__index] == uint8_t__id))
+            {
+                BOOL__G__SlotQueuePending[uint8_t__index] = false;
+            }
+        }
+    }
+    else
+    {
+        /* شناسهٔ بیرون از هر دو جدول: بی‌صدا رد می‌شود. */
     }
 }
 
@@ -845,6 +884,13 @@ static void func__Esp_HandleFrame(void)
         UINT8_T__G__NakId = uint8_t__ptr_payload[0];
         UINT8_T__G__NakReason = uint8_t__ptr_payload[1];
         UINT32_T__G__NakCount++;
+
+        /* برد یک درخواست ریست را رد کرد: جدا شمرده می‌شود تا پنل بگوید
+           «رد شد» نه «در راه است». */
+        if ((UINT8_T__G__NakId >= ESP_SLOT_FIRST_ID) && (UINT8_T__G__NakId <= ESP_SLOT_LAST_ID))
+        {
+            UINT32_T__G__SlotNakCount++;
+        }
     }
     else if ((UINT8_T__G__RxType == ESP_MSG_PARAMS_BULK) && (UINT16_T__G__RxLen >= 1u))
     {

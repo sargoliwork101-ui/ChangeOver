@@ -272,6 +272,124 @@ static void func__Esp_HttpSetParam(void)
     ESP_WEB_SERVER_T__G__Server.send(200, "application/json", "{\"ok\":1}");
 }
 
+/* ==================== ریست دستی قفل‌ها (اسلات‌های زمان‌اجرا) ==================== */
+/**
+ * @brief  یک درخواست ریست را در صف اسلات‌ها می‌گذارد.
+ * @param  uint8_t__id شناسهٔ اسلات (۲۰۰..۲۰۳)؛ بیرون این بازه رد می‌شود
+ * @param  uint32_t__value مقدار اعمالی؛ برای ریست صفر
+ * @return true اگر در صف نشست (یا ادغام شد)، false اگر صف پر بود
+ */
+static bool func__Esp_QueueSlot(uint8_t uint8_t__id, uint32_t uint32_t__value)
+{
+    uint8_t uint8_t__index;
+
+    if ((uint8_t__id < ESP_SLOT_FIRST_ID) || (uint8_t__id > ESP_SLOT_LAST_ID))
+    {
+        return false;
+    }
+
+    /* یک درخواست تکراری برای همان شناسه، دوباره صف نمی‌شود؛ مقدارش به‌روز
+       می‌شود تا دو کلیک پشت‌سرهم دو فریم بی‌فایده نسازد. */
+    for (uint8_t__index = 0u; uint8_t__index < ESP_SLOT_QUEUE_LEN; uint8_t__index++)
+    {
+        if (BOOL__G__SlotQueuePending[uint8_t__index] &&
+            (UINT8_T__G__SlotQueueId[uint8_t__index] == uint8_t__id))
+        {
+            UINT32_T__G__SlotQueueValue[uint8_t__index] = uint32_t__value;
+            return true;
+        }
+    }
+
+    for (uint8_t__index = 0u; uint8_t__index < ESP_SLOT_QUEUE_LEN; uint8_t__index++)
+    {
+        if (BOOL__G__SlotQueuePending[uint8_t__index] == false)
+        {
+            UINT8_T__G__SlotQueueId[uint8_t__index] = uint8_t__id;
+            UINT32_T__G__SlotQueueValue[uint8_t__index] = uint32_t__value;
+            BOOL__G__SlotQueuePending[uint8_t__index] = true;
+            UINT32_T__G__SlotRequestCount++;
+            return true;
+        }
+    }
+
+    UINT8_T__G__SlotBusyReject++;
+    return false;
+}
+
+/**
+ * @brief  دکمهٔ ریست کارت سناریو: ‎POST /latch/reset‎?‎n=5|6‎ را جواب می‌دهد.
+ *         برای سناریو ۵ پرچم قفل (۲۰۲) و شمارنده‌هایش (۲۰۱ و ۲۰۰) صفر
+ *         می‌شوند تا از اول شمرده شود؛ برای سناریو ۶ ماسک حکم باتری خراب
+ *         (۲۰۳) صفر می‌شود. مقدار صفر = پاک، همان اثر تعویض واقعی باتری.
+ * @param  n شمارهٔ سناریو؛ هر چیزی جز ۵ یا ۶ رد می‌شود
+ * @return JSON با ok؛ صف پر → کد ۴۰۹ با ‎e=1‎، ورودی بد → کد ۴۰۰ با ‎e=2‎
+ */
+static void func__Esp_HttpLatchReset(void)
+{
+    int32_t int32_t__n = 0;
+    bool bool__nOk = ESP_WEB_SERVER_T__G__Server.hasArg("n") &&
+                     func__Esp_ParseInt(ESP_WEB_SERVER_T__G__Server.arg("n").c_str(), &int32_t__n);
+
+    if ((!bool__nOk) || ((int32_t__n != 5) && (int32_t__n != 6)))
+    {
+        ESP_WEB_SERVER_T__G__Server.send(400, "application/json", "{\"ok\":0,\"e\":2}");
+        return;
+    }
+
+    bool bool__queued;
+
+    if (int32_t__n == 5)
+    {
+        /* اول پرچم قفل تا چراغ قرمز همان لحظه خاموش شود، بعد شمارنده‌ها. */
+        bool__queued = func__Esp_QueueSlot(ESP_SLOT_LATCH_ID, 0u);
+        bool__queued = (func__Esp_QueueSlot(ESP_SLOT_CYCLES_ID, 0u) == true) && bool__queued;
+        bool__queued = (func__Esp_QueueSlot(ESP_SLOT_EVENTS_ID, 0u) == true) && bool__queued;
+    }
+    else
+    {
+        bool__queued = func__Esp_QueueSlot(ESP_SLOT_DEAD_MASK_ID, 0u);
+    }
+
+    char char__A__Out[48];
+    (void)snprintf(char__A__Out, sizeof(char__A__Out), "{\"ok\":%u,\"n\":%ld}",
+                   bool__queued ? 1u : 0u, (long)int32_t__n);
+    ESP_WEB_SERVER_T__G__Server.send(bool__queued ? 200 : 409, "application/json", char__A__Out);
+}
+
+/**
+ * @brief  وضعیت صف و آخرین پژواک برد: ‎GET /latch‎.
+ *         پنل از همین جواب می‌فهمد ریست روی برد نشسته (مقدار اعمال‌شده و
+ *         شناخته‌شدن) یا برد ردش کرده (شمارندهٔ NAK).
+ * @return JSON با ‎id/val/known/rep/req/nak/busy/q‎
+ */
+static void func__Esp_HttpLatchState(void)
+{
+    uint8_t uint8_t__index;
+    uint8_t uint8_t__pending = 0u;
+
+    for (uint8_t__index = 0u; uint8_t__index < ESP_SLOT_QUEUE_LEN; uint8_t__index++)
+    {
+        if (BOOL__G__SlotQueuePending[uint8_t__index])
+        {
+            uint8_t__pending++;
+        }
+    }
+
+    char char__A__Out[160];
+    (void)snprintf(char__A__Out, sizeof(char__A__Out),
+                   "{\"ok\":1,\"id\":%u,\"val\":%lu,\"known\":%u,\"rep\":%lu,"
+                   "\"req\":%lu,\"nak\":%lu,\"busy\":%u,\"q\":%u}",
+                   (unsigned)UINT8_T__G__SlotLastId,
+                   (unsigned long)UINT32_T__G__SlotLastValue,
+                   BOOL__G__SlotLastKnown ? 1u : 0u,
+                   (unsigned long)UINT32_T__G__SlotReportCount,
+                   (unsigned long)UINT32_T__G__SlotRequestCount,
+                   (unsigned long)UINT32_T__G__SlotNakCount,
+                   (unsigned)UINT8_T__G__SlotBusyReject,
+                   (unsigned)uint8_t__pending);
+    ESP_WEB_SERVER_T__G__Server.send(200, "application/json", char__A__Out);
+}
+
 /**
  * @brief  [EN] POST /m : restart the bench statistics window and queue one GET_PARAMS (spec 4).
  *              v1.7: the wizard resets this when the DMM form OPENS and reads it when the user

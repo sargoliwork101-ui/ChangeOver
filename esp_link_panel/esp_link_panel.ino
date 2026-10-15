@@ -153,6 +153,9 @@ void setup(void)
     ESP_WEB_SERVER_T__G__Server.on("/lut", HTTP_GET, func__Esp_HttpLutStatus);
     ESP_WEB_SERVER_T__G__Server.on("/lut/read", HTTP_POST, func__Esp_HttpLutRead);
     ESP_WEB_SERVER_T__G__Server.on("/lut/reset", HTTP_POST, func__Esp_HttpLutReset);
+    /* ریست دستی قفل‌ها: خواندن وضعیت صف و درخواست ریست (سناریو ۵ یا ۶). */
+    ESP_WEB_SERVER_T__G__Server.on("/latch", HTTP_GET, func__Esp_HttpLatchState);
+    ESP_WEB_SERVER_T__G__Server.on("/latch/reset", HTTP_POST, func__Esp_HttpLatchReset);
     ESP_WEB_SERVER_T__G__Server.on("/benchlog", HTTP_GET, func__Esp_HttpBenchLogGet);
     ESP_WEB_SERVER_T__G__Server.on("/benchlog/add", HTTP_POST, func__Esp_HttpBenchLogAdd);
     ESP_WEB_SERVER_T__G__Server.on("/benchlog/clear", HTTP_POST, func__Esp_HttpBenchLogClear);
