@@ -370,10 +370,17 @@ void func__Diag_RecordFault(fault_mask_t fault_mask_t__faults, const measurement
         DIAG_RECORD_T__G__Active.uint8_t__errorCount++;
     }
 
-    /* [EN] Update counters */
-    if ((fault_mask_t__faults & (1u << 6)) != 0u) DIAG_RECORD_T__G__Active.uint32_t__batLostCount++;
-    if ((fault_mask_t__faults & (1u << 7)) != 0u) DIAG_RECORD_T__G__Active.uint32_t__techFaultCount++;
-    if ((fault_mask_t__faults & 1u) != 0u) DIAG_RECORD_T__G__Active.uint32_t__ovCount++; /* reuse for ADC as generic */
+    /* [EN] Update counters: decode by FAULT_* name from app_types.h, never by
+       raw bit number, so a bit renumber moves both sides together.
+       uint32_t__ovCount counts FAULT_ADC; the field name is legacy and stays,
+       because the stored record layout must not change.
+       [FA] به‌روزرسانی شمارنده‌ها: رمزگشایی با نام‌های ‎FAULT_*‎ از
+       ‎app_types.h‎، نه با شمارهٔ خام بیت، تا جابه‌جایی بیت‌ها هر دو طرف را
+       با هم حرکت دهد. ‎uint32_t__ovCount‎ خطای ‎FAULT_ADC‎ را می‌شمارد؛ اسم
+       فیلد قدیمی است و می‌ماند، چون چیدمان رکورد ذخیره‌شده نباید عوض شود. */
+    if ((fault_mask_t__faults & FAULT_CHARGER_BAT_LOST) != 0u) DIAG_RECORD_T__G__Active.uint32_t__batLostCount++;
+    if ((fault_mask_t__faults & FAULT_CHARGER_TECHNICAL) != 0u) DIAG_RECORD_T__G__Active.uint32_t__techFaultCount++;
+    if ((fault_mask_t__faults & FAULT_ADC) != 0u) DIAG_RECORD_T__G__Active.uint32_t__ovCount++;
 
     BOOL__G__Dirty = true;
     UINT32_T__G__SaveDelaySec = 3u;

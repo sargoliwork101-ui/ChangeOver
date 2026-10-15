@@ -133,6 +133,7 @@ diag.c
 ## تست
 
 - هاست: `audit_consistency.py` و `host_test_*` همه پاس (با MODULE_DIAG=0 برای تست‌های قدیمی)
+- نگهبان نگاشت بیت شمارنده‌های خطا: `python3 tools/check_diag_fault_bits.py` (نباید هیچ‌وقت در `func__Diag_RecordFault` شمارهٔ خام بیت برگردد)
 - برد: با پنل ساده سه‌صفحه‌ای، سیمولاتور `simple_preview.html`، و تست فلش واقعی
 - اعتبارسنجی: `Diag_Validation.xlsx` + `Diag_State_Machine.xlsx` (ورودی‌اش در `tools/make_module_state_machines.py` ثبت است)
 
