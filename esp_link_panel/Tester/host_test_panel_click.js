@@ -558,6 +558,51 @@ function main() {
             w.sendall = realSendAll;
         }
 
+        /* --- 12. v1.86 (user order): every latched fault is written on ONE line
+                 of the fault box, and the scenario-6 continuous-charge counters
+                 (the numbers that decide "battery condemned") are shown live
+                 beside it. --- */
+        {
+            w.D.fl2 = 0; w.D.t[28] = 0; w.D.t[19] = 0;
+            w.D.t[29] = 45; w.D.t[30] = 0; w.D.p[125] = 3600000;
+            w.draw(w.D);
+            const asf = d.getElementById("asf"), dbcnt = d.getElementById("dbcnt");
+            check(d.querySelectorAll("#asb5 .leds").length === 1,
+                  "all fault lamps share a single LED row");
+            check(!!asf && asf.textContent.indexOf("✅ بدون خطای قفل‌شده") >= 0,
+                  "a clean fault box stays one short line",
+                  asf ? asf.textContent : "no #asf");
+
+            w.D.t[19] = 128 + 2 + 1;   /* bits 0, 1 and 7 */
+            w.D.fl2 = 2;               /* permanent imbalance latch */
+            w.D.t[28] = 3;             /* both batteries condemned */
+            w.draw(w.D);
+            const txt = asf ? asf.textContent : "";
+            check(txt.indexOf("خطای ADC") >= 0 && txt.indexOf("اضافه‌جریان کانال ۱") >= 0 &&
+                  txt.indexOf("خطای فنی برد") >= 0 && txt.indexOf("قفل عدم‌توازن") >= 0 &&
+                  txt.indexOf("باتری خراب") >= 0,
+                  "every latched fault is written in the box", txt);
+            check(txt.indexOf("\n") < 0 && txt.indexOf(" · ") >= 0,
+                  "and they all sit on one line, joined by a separator");
+            check(txt.indexOf("عدم‌توازن در جریان") < 0,
+                  "the episode note yields to the permanent latch");
+
+            check(!!dbcnt && dbcnt.textContent.indexOf("باتری ۱") >= 0 &&
+                  dbcnt.textContent.indexOf("باتری ۲") >= 0,
+                  "the dead-battery counters are shown for both batteries",
+                  dbcnt ? dbcnt.textContent : "no #dbcnt");
+            check(!!dbcnt && dbcnt.textContent.indexOf("از") >= 0 &&
+                  dbcnt.textContent.indexOf("حکم صادر شد") >= 0,
+                  "each counter counts up to its deadline and the verdict is flagged");
+
+            w.D.p[125] = 0;
+            w.draw(w.D);
+            check(!!dbcnt && dbcnt.textContent.indexOf("خاموش است") >= 0,
+                  "a zero deadline switches the counter line off");
+            w.D.p[125] = 3600000; w.D.t[19] = 0; w.D.fl2 = 0; w.D.t[28] = 0;
+            w.draw(w.D);
+        }
+
         /* [EN] Styled dialogs: the panel's own modal is shown, Enter confirms, Escape cancels.
            The modal opens one tick after the call (it queues behind any open dialog).
            [FA] کادر تأیید پنل: نمایش در کادر خود پنل، Enter = تأیید، Esc = انصراف. */

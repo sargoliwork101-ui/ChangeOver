@@ -317,6 +317,11 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .prod b{font-variant-numeric:tabular-nums}
 .leds{display:flex;justify-content:center;gap:14px;align-items:center;flex-wrap:wrap;background:var(--in);border:1px solid var(--ln);border-radius:14px;padding:10px 14px;margin:2px 0 12px}
 .fx2{font-size:12px;color:#c9d0df;line-height:1.9;margin-top:4px}
+/* v1.86 (دستور کاربر): در کادر «خطاهای قفل‌شده» هم LEDها یک خط‌اند و هم
+   متن خطاها؛ پس بولدهای این خط و خط شمارش نباید مثل کارت‌های خلاصه بلوکی
+   شوند (قاعدهٔ .ab b همه را display:block می‌کرد و متن را چند خطی می‌کرد). */
+.ab #asf b,.ab #dbcnt b{display:inline;font-size:13px;margin:0}
+#dbcnt{margin-top:6px;font-size:12.5px;line-height:1.9;font-variant-numeric:tabular-nums}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 .ldon{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok);margin-right:8px}
 .hnl input[type=number]{width:66px;min-height:30px;padding:4px 6px}
@@ -416,7 +421,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 859cf68</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 8419b16</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1247,7 +1252,7 @@ async function sendall(){
 const SR=[['ورودی',0],['پک ۲۴ ولت',1],['نود ۱۲ ولت',2]];
 $('ast').innerHTML=`<div class="srvw"><table class="srv"><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"></colgroup><tr><th>سیگنال</th><th>مقدار</th><th>فرمول / بازه</th><th>وضعیت</th><th>کالیبره با مولتی‌متر</th></tr>${SR.map(r=>{const k=r[1];
  const cal=k<3?`<input type="number" step="any" id="vm${k}" placeholder="مولتی‌متر V" onkeydown="if(event.key=='Enter')vcal(${k})"> <button class="sb sb2" onclick="vcal(${k})">اعمال</button> <span class="lb">±<span class="ap n" id="a${[4,5,6][k]}"></span></span>`:'';
- return `<tr id="sr${k}"><td>${r[0]}</td><td class="n" id="v${k}"></td><td><div class="fx" id="fv${k}"></div></td><td><span class="tg" id="sp${k}"></span></td><td>${cal}</td></tr>`;}).join('')}</table></div>`+'<div class="ab" id="asb5" style="margin-top:8px;min-height:0"><small style="display:block;text-align:center">خطاهای قفل‌شده (fault) — LED جدا برای هر بیت</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit ck" id="asbb6" title="باتری قطع است یا باتری نیست — تنظیمات سناریو ۲" onclick="errjmp(2)"><i></i><small>قطع‌باتری</small></span><span class="bit ck" id="asbb7" title="خرابی طبقهٔ قدرت شارژر — تنظیمات سناریو ۷" onclick="errjmp(7)"><i></i><small>فنی برد</small></span></div><div class="leds" style="margin:0 0 6px" id="asfl"><span class="bit ck" id="asbb8" title="قفل عدم‌توازن فعال است — تنظیمات سناریو ۵" onclick="errjmp(5)"><i></i><small>خطای قفل شده</small></span><span class="bit ck" id="asbb9" title="باتری خراب حکم شده — تنظیمات سناریو ۶" onclick="errjmp(6)"><i></i><small>باتری خراب</small></span></div><div class="fx2" id="asf"></div></div>';
+ return `<tr id="sr${k}"><td>${r[0]}</td><td class="n" id="v${k}"></td><td><div class="fx" id="fv${k}"></div></td><td><span class="tg" id="sp${k}"></span></td><td>${cal}</td></tr>`;}).join('')}</table></div>`+'<div class="ab" id="asb5" style="margin-top:8px;min-height:0"><small style="display:block;text-align:center">خطاهای قفل‌شده (fault) — LED جدا برای هر بیت، همه در یک خط</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit ck" id="asbb6" title="باتری قطع است یا باتری نیست — تنظیمات سناریو ۲" onclick="errjmp(2)"><i></i><small>قطع‌باتری</small></span><span class="bit ck" id="asbb7" title="خرابی طبقهٔ قدرت شارژر — تنظیمات سناریو ۷" onclick="errjmp(7)"><i></i><small>فنی برد</small></span><span class="bit ck" id="asbb8" title="قفل عدم‌توازن فعال است — تنظیمات سناریو ۵" onclick="errjmp(5)"><i></i><small>خطای قفل شده</small></span><span class="bit ck" id="asbb9" title="باتری خراب حکم شده — تنظیمات سناریو ۶" onclick="errjmp(6)"><i></i><small>باتری خراب</small></span></div><div class="fx2" id="asf"></div><div id="dbcnt"></div></div>';
 let ASB=null;
 ASB={sp:[0,1,2].map(k=>$('sp'+k)),sr:[0,1,2].map(k=>$('sr'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6,7].map(k=>$('asbb'+k)),lat:$('asbb8'),ded:$('asbb9'),box5:$('asb5'),mask:'',live:$('aslive'),tick:false};
 /* [EN] Median/average controls live in Settings; the main panel keeps only the useful voltage/status table and channel charts.
@@ -2296,13 +2301,15 @@ function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
  const dmW=(t[28]|0),flW=(D.fl2|0),sig=t[19]+','+(flW&3)+','+dmW;
  if(sig!==ASB.mask){ASB.mask=sig;
   const dmWho=((dmW&3)===3)?'هر دو کانال':((dmW&1)?'کانال ۱':'کانال ۲');
-  let h='';
-  for(let bit=0;bit<8;bit++)if(t[19]&(1<<bit))h+=`<div>⚠ <b>${FEXP[bit][0]}</b> — ${FEXP[bit][1]}</div>`;
-  if(t[19]&~255)h+=`<div>⚠ بیت ناشناخته: <span class="n">fault 0x${t[19].toString(16)}</span></div>`;
-  if(flW&2)h+=`<div>⚠ <b>قفل عدم‌توازن</b> — قفل دائمی؛ باتری را تعویض کنید</div>`;
-  else if(flW&1)h+=`<div>ℹ <b>عدم‌توازن در جریان</b> — اپیزود در حال ثبت است</div>`;
-  if(dmW)h+=`<div>⚠ <b>باتری خراب</b> — باتری ${dmWho} خراب حکم شده؛ تعویضش کنید</div>`;
-  if(h){ASB.flt.innerHTML=h;ASB.box5.className='ab bad';}
+  const h=[];
+  for(let bit=0;bit<8;bit++)if(t[19]&(1<<bit))h.push('⚠ <b>'+FEXP[bit][0]+'</b> — '+FEXP[bit][1]);
+  if(t[19]&~255)h.push('⚠ بیت ناشناخته: <span class="n">fault 0x'+t[19].toString(16)+'</span>');
+  if(flW&2)h.push('⚠ <b>قفل عدم‌توازن</b> — قفل دائمی؛ باتری را تعویض کنید');
+  else if(flW&1)h.push('ℹ <b>عدم‌توازن در جریان</b> — اپیزود در حال ثبت است');
+  if(dmW)h.push('⚠ <b>باتری خراب</b> — باتری '+dmWho+' خراب حکم شده؛ تعویضش کنید');
+  /* v1.86 (دستور کاربر): همهٔ خطاها در یک خط نوشته می‌شوند، نه هر کدام در یک
+     سطر جدا؛ متن از همان دادهٔ زنده ساخته می‌شود و با رفتن خطا کوتاه می‌شود. */
+  if(h.length){ASB.flt.innerHTML=h.join(' · ');ASB.box5.className='ab bad';}
   else{ASB.flt.textContent='✅ بدون خطای قفل‌شده';ASB.box5.className='ab good';}}
  ASB.tick=!ASB.tick;if(ASB.live)ASB.live.style.opacity=ASB.tick?1:.3;}
 /* ===== v1.16: آینهٔ LED و بازر برد — همان اولویت Ui_Tick با مقادیر اعمال‌شده؛ چشمک با همان دوره/duty برد (فاز محلی، هم‌سرعت) ===== */
@@ -2988,6 +2995,18 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
   if(bt7&&document.activeElement!==bt7)bt7.checked=!!b127;
   if($('a127'))$('a127').textContent=b127?'الان روشن است: باتریِ محکوم از خروجی هم برداشته می‌شود — نه شارژ می‌گیرد و نه به بار برق می‌دهد.':'الان خاموش است: فقط شارژِ آن کانال قطع است و باتری تا وقتی ولتاژ دارد به بار برق می‌دهد.';}
 
+ /* v1.86 (دستور کاربر): عدد شمارش سناریوی ۶ (شارژ پیوستهٔ هر باتری) فقط در
+    همین پنل کالیبراسیون، در کادر «خطاهای قفل‌شده» زنده نشان داده می‌شود تا
+    معلوم باشد هر باتری تا چه عددی بالا رفته و چقدر تا حکم مانده است. */
+ if($('dbcnt')){const lim6=(p[125]==null?86400000:p[125]),s1=t[29],s2=t[30];
+  const hms=v=>{const h=Math.floor(v/3600),m=Math.floor((v%3600)/60);
+   return h>0?(h+' ساعت'+(m>0?' و '+m+' دقیقه':'')):(m>0?m+' دقیقه':(v>0?'کمتر از ۱ دقیقه':'۰'));};
+  if(lim6===0){$('dbcnt').innerHTML='شمارش باتری خراب: خاموش است (مهلت شارژ پیوسته = ۰)';}
+  else{const limS=Math.round(lim6/1000),pct=v=>Math.min(100,Math.round(v*100/limS));
+   const one=(v,fa)=>'باتری '+fa+': <b>'+(v==null?'—':hms(v))+'</b> از <b>'+hms(limS)+'</b>'+
+    (v==null?'':' ('+pct(v)+'٪)');
+   $('dbcnt').innerHTML='شمارش باتری خراب — '+one(s1,'۱')+' · '+one(s2,'۲')+
+    (((t[28]|0)!==0)?' · <span class="tg r">حکم صادر شد</span>':'');}}
  for(let id=0;id<20;id++){const a=$('a'+id);if(a&&!(d.q&(1<<id)))a.textContent=p[id]==null?'':(id===13||id===14)?pc(p[id]):p[id];}
  formulas(t,p);chart();mview(d);
  $('mb').classList.toggle('v',man);$('ka').innerHTML=man?(d.ka<1500?`پایش لینک فعال · <span class="n">keepalive ${d.ka} </span> میلی‌ثانیه`:'<b>keepalive متوقف است</b>'):'';}
