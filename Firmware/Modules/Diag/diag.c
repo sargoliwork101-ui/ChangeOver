@@ -153,8 +153,8 @@ static bool func__Diag_WriteFlash(uint32_t uint32_t__addr, const diag_record_t *
 
 void func__Diag_Init(void)
 {
-    diag_record_t diag_record_t__recA;
-    diag_record_t diag_record_t__recB;
+    static diag_record_t diag_record_t__recA;
+    static diag_record_t diag_record_t__recB;
     bool bool__validA, bool__validB;
 
     (void)memset(&DIAG_RECORD_T__G__Active, 0, sizeof(diag_record_t));
