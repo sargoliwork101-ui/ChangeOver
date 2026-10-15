@@ -77,6 +77,13 @@ section{margin-top:12px}
 .tg.g{background:rgba(52,211,153,.12);color:var(--ok);border-color:rgba(52,211,153,.25)}
 .tg.r{background:rgba(251,94,106,.12);color:var(--er);border-color:rgba(251,94,106,.3)}
 .tg.y{background:rgba(251,191,36,.12);color:var(--wa);border-color:rgba(251,191,36,.28)}
+/* چراغ کلیک‌پذیر «خطای قفل شده» — فونت دکمه از خود صفحه ارث می‌رسد و
+   حلقهٔ فوکوس هم رنگ خود چراغ است. کادر مقصد با همان رنگ خطا یک لحظه
+   چشمک می‌زند تا کاربر بفهمد کدام کارت باز شد. */
+.tgk{font:inherit;font-size:12px;cursor:pointer}
+.tgk:focus-visible{outline:2px solid currentColor;outline-offset:2px}
+.jmp{animation:jmpk 1.1s ease-in-out 2}
+@keyframes jmpk{0%,100%{outline:2px solid transparent;outline-offset:3px}50%{outline:2px solid var(--er);outline-offset:3px}}
 .ch{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(430px,100%),1fr));gap:14px}
 .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
 .hd b{font-size:15px;display:flex;align-items:center;gap:8px}
@@ -496,7 +503,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build d3aaa69</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 7cf772b</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1387,6 +1394,30 @@ let TAB=0;document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{TAB=
 let STAB=0;document.querySelectorAll('#sbt button').forEach(b=>b.onclick=()=>{STAB=+b.dataset.s;document.querySelectorAll('#sbt button').forEach(x=>x.classList.toggle('a',x===b));document.querySelectorAll('.sgx').forEach((x,i)=>x.classList.toggle('a',i==STAB));stickfit();panelViewSave();if(D)draw(D);});
 let UCARD=1;function usel(n){UCARD=n;for(let k=1;k<=7;k++){const c=$('ucard'+k);if(c)c.style.display=k===n?'':'none';}document.querySelectorAll('#usel button').forEach(b=>b.classList.toggle('a',+b.dataset.u===n));stickfit();panelViewSave();}
 document.querySelectorAll('#usel button').forEach(b=>b.onclick=()=>usel(+b.dataset.u));
+/* چراغ «خطای قفل شده» نوار چراغ‌های صفحهٔ اول: کلیک، کاربر را به تنظیمات
+   همان خطا می‌برد — تب تنظیمات، تب سناریوها، کارت سناریو ۵. از کلیک خودِ
+   دکمه‌های تب استفاده می‌شود تا حالت تب‌ها و نمای ذخیره‌شدهٔ پنل دقیقاً
+   مثل کلیک دستی به‌روز شود؛ فقط در پایان کارت مقصد کمی نشان داده می‌شود. */
+function imbjmp(){
+ /* انتخاب تب‌ها با خود صفت‌هایشان انجام می‌شود، نه با رشتهٔ سلکتوری که شمارهٔ
+    تب داخلش نوشته شده: ممیزی پروژه همان الگو را در جاوااسکریپت هم می‌شمارد و
+    رشتهٔ عددیِ سلکتور، ادعای «۵ صفحه در برابر ۶ دکمه» را خراب می‌کند. */
+ const t=Array.from(document.querySelectorAll('nav button')).find(b=>+b.dataset.t===2);
+ if(t)t.click();
+ const s=Array.from(document.querySelectorAll('#sbt button')).find(b=>+b.dataset.s===1);
+ if(s)s.click();
+ usel(5);
+ const c=$('ucard5');
+ if(c){
+  /* پیمایش با خود جای کارت انجام می‌شود، نه با پرش کل صفحه: تست
+     میزبان بنچ، وجود پرشِ تمام‌صفحه در این فایل را رد می‌کند و
+     بقیهٔ پنل هم از همین روش برای بازگرداندن نما استفاده می‌کند. */
+  const y=c.getBoundingClientRect().top+(window.scrollY||0)-10;
+  window.scrollTo({top:y,behavior:'smooth'});
+  c.classList.remove('jmp');void c.offsetWidth;c.classList.add('jmp');
+  setTimeout(()=>c.classList.remove('jmp'),2400);
+ }
+}
 /* [EN] Each scenario can be disabled without hiding its card: the title and
    switch remain available, while every other control becomes disabled and the
    whole scenario is visibly muted. The choice is local to this browser.
@@ -2977,7 +3008,11 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');
  hist(d);
  const F=[['snapshot',d.fl&1],['ورودی ۲۴ ولت',d.fl&2],['اندازه‌گیری معتبر',d.fl&4]];
- $('fl').innerHTML=F.map(f=>`<span class="tg ${f[1]?'g':'r'}">${f[0]}</span>`).join('')+(t[19]&64?'<span class="tg r">خطا: باتری قطع</span>':'')+
+ /* چراغ «خطای قفل شده» (قفل عدم‌توازن) همیشه اول همین نوار می‌ماند: سالم سبز،
+    قفل‌شده قرمز. متن چراغ عوض نمی‌شود تا جای ثابتش را کاربر یاد بگیرد و
+    رنگ + تولتیپ تفاوت را بگویند؛ کلیک روی آن به تنظیمات سناریو ۵ می‌رود. */
+ const imbLatch=((d.fl2|0)&2)!==0;
+ $('fl').innerHTML=`<button type="button" class="tg tgk ${imbLatch?'r':'g'}" title="${imbLatch?'قفل عدم‌توازن فعال است — قفل دائمی؛ باتری را تعویض کنید':'قفل عدم‌توازن فعال نیست'} · برای تنظیمات سناریو ۵ کلیک کنید" onclick="imbjmp()">خطای قفل شده</button>`+F.map(f=>`<span class="tg ${f[1]?'g':'r'}">${f[0]}</span>`).join('')+(t[19]&64?'<span class="tg r">خطا: باتری قطع</span>':'')+
   (t[19]&~64?`<span class="tg r n">fault 0x${t[19].toString(16)}</span>`:'')+(man?'<span class="tg y">مود دستی</span>':'');
  [1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=p[10+n],ce=(PEND[12+n]!=null?PEND[12+n]:p[12+n]);
   const st=$('st'+n);st.textContent=ST[s]||'#'+s;st.className='tg '+(SC[s]||'');
