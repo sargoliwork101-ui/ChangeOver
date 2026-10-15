@@ -432,7 +432,7 @@
    [FA] سناریوی ۶ (باتری خراب): پس از ۲۴ ساعت شارژ پیوسته و بی‌نتیجه، حکم
    خرابی - قرمز ثابت و قطع شارژ تا تعویض باتری. */
 #define ESPLINK_PARAM_DEAD_TIMEOUT_MS          125u  /* u32, ms, def 86400000 (24 h), 0 = off, max 172800000 */
-#define ESPLINK_PARAM_DEAD_RESET_GAP_MS        126u  /* u32, ms, def 600000 (10 min), pause longer than this zeroes the clock */
+#define ESPLINK_PARAM_DEAD_RESET_GAP_MS        126u  /* u32, ms, def 60000 (1 min), pause longer than this zeroes the clock */
 #define ESPLINK_PARAM_DEAD_BLOCK_OUTPUT        127u  /* u8,  0/1, def 0, also keep the condemned pack off the output */
 
 /* [EN] v1.80 (user question: "scenario 6 has a lamp and a beep - why is there

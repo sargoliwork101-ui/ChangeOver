@@ -54,6 +54,7 @@
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/McuPowerPath"/>
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Imbalance"/>
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/CalLut"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Diag"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input.903822351" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input"/>
 							</tool>
@@ -93,6 +94,7 @@
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/McuPowerPath"/>
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Imbalance"/>
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/CalLut"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Diag"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.1245326357" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
@@ -158,6 +160,7 @@
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/McuPowerPath"/>
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Imbalance"/>
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/CalLut"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Diag"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.846914294" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
@@ -215,6 +218,7 @@
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/McuPowerPath"/>
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Imbalance"/>
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/CalLut"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Diag"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.976684292" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
@@ -232,7 +236,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="Firmware/Modules/CalLut/Tester|Firmware/Modules/Changeover/Tester|Firmware/Modules/EspLink/Tester|Firmware/Modules/Fault/Tester|Firmware/Modules/Imbalance/Tester|Firmware/Modules/McuPowerPath/Tester|Firmware/Modules/Measurement/Tester|Firmware/Modules/Protection/Tester|Firmware/Modules/Jitter/Tester" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="Firmware/Modules/CalLut/Tester|Firmware/Modules/Changeover/Tester|Firmware/Modules/EspLink/Tester|Firmware/Modules/Fault/Tester|Firmware/Modules/Imbalance/Tester|Firmware/Modules/McuPowerPath/Tester|Firmware/Modules/Measurement/Tester|Firmware/Modules/Protection/Tester|Firmware/Modules/Jitter/Tester|Firmware/Modules/Diag/Tester" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -288,6 +292,7 @@
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/McuPowerPath"/>
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Imbalance"/>
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/CalLut"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Diag"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input.1211119378" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.assembler.input"/>
 							</tool>
@@ -324,6 +329,7 @@
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/McuPowerPath"/>
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Imbalance"/>
 									<listOptionValue builtIn="false" value="../../../Firmware/Modules/CalLut"/>
+									<listOptionValue builtIn="false" value="../../../Firmware/Modules/Diag"/>
 								</option>
 								<inputType id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c.1314143062" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.input.c"/>
 							</tool>
@@ -351,7 +357,7 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="Firmware/Modules/CalLut/Tester|Firmware/Modules/Changeover/Tester|Firmware/Modules/EspLink/Tester|Firmware/Modules/Fault/Tester|Firmware/Modules/Imbalance/Tester|Firmware/Modules/McuPowerPath/Tester|Firmware/Modules/Measurement/Tester|Firmware/Modules/Protection/Tester|Firmware/Modules/Jitter/Tester" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
+						<entry excluding="Firmware/Modules/CalLut/Tester|Firmware/Modules/Changeover/Tester|Firmware/Modules/EspLink/Tester|Firmware/Modules/Fault/Tester|Firmware/Modules/Imbalance/Tester|Firmware/Modules/McuPowerPath/Tester|Firmware/Modules/Measurement/Tester|Firmware/Modules/Protection/Tester|Firmware/Modules/Jitter/Tester|Firmware/Modules/Diag/Tester" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
