@@ -220,6 +220,8 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 /* [EN] v1.76 (user order): one full-width factory key per scenario.
    [FA] کلید بازگردانی هر سناریو، تمام‌عرض. */
 .fwb{grid-column:1/-1;width:100%}
+/* v1.85: کلیدهای ریست قفل عدم‌توازن و حکم باتری خراب هم تمام‌عرض شدند؛
+   کاربر خواست به اندازهٔ عرض صفحه باشند، نه یک خانهٔ ۲۶۰ پیکسلی گرید. */
 .dflt{font-size:11px;color:var(--mu);opacity:.9;direction:rtl}
 .dflt b{font-weight:700;color:#aab4c8;font-variant-numeric:tabular-nums}
 /* [EN] A shared parameter is shown, not re-offered: one writable field owns
@@ -509,7 +511,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build f45f08d</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 859cf68</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -879,7 +881,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <label>سیکل‌های کامل بدون رویداد تا پاک‌سازی شمارنده<input type="number" id="q136" step="1" min="1" max="255"><span class="lb" id="a136"></span></label>
 <label>سیکل‌های شارژ پس از قفل تا مسدودی<input type="number" id="q118" step="1" min="1" max="255"><span class="lb" id="a118"></span></label>
 </div>
-<div class="bqr"><label class="ckr"><input type="checkbox" id="ib117"><span><span class="ckt">پس از قفل، باتریِ محکوم از خروجی هم جدا شود (مسدودی خروجی)</span><span class="cks" id="a117"></span></span></label><button class="sb sb2" onclick="latchrst(5)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست قفل عدم‌توازن و شمارنده‌ها</button><span class="lb" id="rst5">قفل را پاک می‌کند و شمارش از صفر شروع می‌شود</span></div>
+<div class="bqr"><label class="ckr"><input type="checkbox" id="ib117"><span><span class="ckt">پس از قفل، باتریِ محکوم از خروجی هم جدا شود (مسدودی خروجی)</span><span class="cks" id="a117"></span></span></label><button class="sb sb2 fwb" onclick="latchrst(5)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست قفل عدم‌توازن و شمارنده‌ها</button><span class="lb fwb" id="rst5">قفل را پاک می‌کند و شمارش از صفر شروع می‌شود</span></div>
 
 <div class="sec">۴) چشمک قرمز در قفل <span class="lb">(دوره / duty)</span></div>
 <div class="sx">
@@ -962,7 +964,7 @@ window.addEventListener('DOMContentLoaded', function(){
 <li><b>بدون تیک (پیش‌فرض)</b> — فقط شارژ قطع می‌شود؛ باتری سرِ جایش می‌ماند و تا وقتی ولتاژ دارد به بار برق می‌دهد و بعد خالی می‌شود. هشدار در هر دو حالت یکسان است: چراغ از q130/q131 و بوق مستقل از q128/q129/q134/q135 می‌آید.</li>
 </ul>
 این تیک روی فلش برد ذخیره می‌شود و دقیقاً همتای «مسدودی خروجی» در سناریو ۵ است.</div>
-<div class="bqr"><label class="ckr"><input type="checkbox" id="db127"><span><span class="ckt">پس از حکم خرابی، باتری از خروجی هم جدا شود (نه شارژ، نه تغذیهٔ بار)</span><span class="cks" id="a127"></span></span></label><button class="sb sb2" onclick="latchrst(6)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست حکم باتری خراب</button><span class="lb" id="rst6">حکم را پاک می‌کند تا شارژ آن کانال آزاد شود</span></div>
+<div class="bqr"><label class="ckr"><input type="checkbox" id="db127"><span><span class="ckt">پس از حکم خرابی، باتری از خروجی هم جدا شود (نه شارژ، نه تغذیهٔ بار)</span><span class="cks" id="a127"></span></span></label><button class="sb sb2 fwb" onclick="latchrst(6)" title="روی برد واقعی اثر می‌گذارد، نه روی شبیه‌ساز">ریست حکم باتری خراب</button><span class="lb fwb" id="rst6">حکم را پاک می‌کند تا شارژ آن کانال آزاد شود</span></div>
 <div class="ds c4ds"><b>چک‌لیست — لحظه‌به‌لحظه چه اتفاقی می‌افتد؟</b>
 <ul>
 <li><b>۱ · شمارش</b> — تا کانال در حال شارژ (Bulk یا Absorb) است، ساعتِ همان کانال جلو می‌رود. هر باتری ساعت خودش را دارد.</li>

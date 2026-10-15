@@ -503,6 +503,21 @@ function testImbalance(win, doc) {
           c5.querySelector('#q136') &&
           c5.querySelector('#s5b') && c5.querySelector('#s5z'),
           'scenario 5 has separate, ordered lamp, clean-cycle and beep boxes');
+    /* [EN] v1.85 (user order): the manual reset key sits in the lockout tag row
+       and must be as wide as the page, not one 260 px grid cell; its status line
+       spans the row with it. Checked on both lock cards.
+       [FA] کلید ریست دستی در ردیف تیک مسدودی نشسته و باید به اندازهٔ عرض صفحه
+       باشد، نه یک خانهٔ ۲۶۰ پیکسلی گرید؛ خط وضعیتش هم با آن تمام‌عرض است. */
+    const card6 = doc.getElementById('ucard6');
+    const rst5 = c5.querySelector('button[onclick="latchrst(5)"]');
+    const rst6 = card6 ? card6.querySelector('button[onclick="latchrst(6)"]') : null;
+    const spansRow = el => !!el &&
+        win.getComputedStyle(el).gridColumn.replace(/\s+/g, '') === '1/-1' &&
+        win.getComputedStyle(el).width === '100%';
+    check(spansRow(rst5) && spansRow(rst6),
+          'both board-latch reset keys span the whole card width',
+          'rst5=' + (rst5 && win.getComputedStyle(rst5).gridColumn) +
+          ' rst6=' + (rst6 && win.getComputedStyle(rst6).gridColumn));
     const c5beep = c5.querySelector('#q115').closest('.bqr');
     check(c5beep.querySelectorAll('label').length === 4 &&
           c5beep.querySelector('#q132').type === 'number' &&

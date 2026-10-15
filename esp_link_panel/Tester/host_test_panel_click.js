@@ -466,6 +466,85 @@ function main() {
         check(chartLabel(25).includes("650"),
               "and it follows the value back down again");
 
+        /* --- 11. v1.85 (user order): a latched or decided error has to be
+                 visible where the locks are, and clicking that lamp must open
+                 the settings card which owns the error. The chips are rebuilt
+                 by every poll, so each assertion clicks the chip from the
+                 CURRENT draw instead of a reference captured earlier. --- */
+        {
+            w.scrollTo = () => {};
+            const chipWith = (txt) => [...d.querySelectorAll("#fl button")]
+                .find(b => b.textContent.indexOf(txt) >= 0);
+            const activeTab = () => [...d.querySelectorAll("nav button")]
+                .filter(b => b.classList.contains("a")).map(b => b.dataset.t).join();
+            const activeSub = () => [...d.querySelectorAll("#sbt button")]
+                .filter(b => b.classList.contains("a")).map(b => b.dataset.s).join();
+            const shownCard = () => [...d.querySelectorAll("#usel button")]
+                .filter(b => b.classList.contains("a")).map(b => b.dataset.u).join();
+
+            /* [EN] The two lock chips are always mounted - green when healthy,
+                    red when the board decides. A chip that only exists while
+                    the error is on is what makes a cause disappear from the
+                    panel the moment it is needed.
+               [FA] دو چراغ قفل همیشه سرِ جایشان‌اند: سالم سبز، خطا قرمز. */
+            w.D.fl2 = 0; w.D.t[28] = 0; w.D.t[19] = 0;
+            w.draw(w.D);
+            const deadOff = chipWith("باتری خراب"), techOff = chipWith("خطای فنی برد");
+            check(!!deadOff && !!techOff &&
+                  deadOff.className.indexOf("tgk r") < 0 &&
+                  techOff.className.indexOf("tgk r") < 0 &&
+                  !chipWith("عدم‌توازن"),
+                  "a healthy board keeps both lock lamps green and hides the episode chip",
+                  (deadOff ? deadOff.className : "-") + " | " +
+                  (techOff ? techOff.className : "-"));
+
+            w.D.t[28] = 1;
+            w.draw(w.D);
+            const dead = chipWith("باتری خراب");
+            check(!!dead && dead.className.indexOf("r") >= 0,
+                  "the condemned-battery chip turns red once the board decides",
+                  dead ? dead.className : "no chip");
+            check(!!dead && dead.getAttribute("onclick") === "errjmp(6)",
+                  "and it carries its own route to scenario 6");
+            if (dead) {
+                dead.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+                check(activeTab() === "2" && activeSub() === "1" && shownCard() === "6",
+                      "clicking it opens Settings > scenarios on card 6",
+                      activeTab() + " | " + activeSub() + " | " + shownCard());
+            }
+
+            w.D.t[28] = 0; w.D.t[19] = 128;
+            w.draw(w.D);
+            const tech = chipWith("خطای فنی برد");
+            check(!!tech && tech.getAttribute("onclick") === "errjmp(7)",
+                  "the charger power-stage fault is clickable into scenario 7");
+            if (tech) {
+                tech.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+                check(shownCard() === "7", "and that click shows card 7", shownCard());
+            }
+
+            w.D.t[19] = 0; w.D.fl2 = 1;
+            w.draw(w.D);
+            const epi = chipWith("عدم‌توازن");
+            check(!!epi && epi.className.indexOf("y") >= 0 &&
+                  epi.getAttribute("onclick") === "errjmp(5)",
+                  "a running imbalance episode is an amber chip into scenario 5");
+
+            w.D.fl2 = 2;
+            w.draw(w.D); w.uview();
+            const latLamp = d.getElementById("asbb8");
+            check(!!latLamp && latLamp.className.indexOf("set") >= 0,
+                  "the permanent latch keeps its own always-lit red lamp",
+                  latLamp ? latLamp.className : "no lamp");
+            check(!chipWith("عدم‌توازن"),
+                  "and the amber episode chip yields to the permanent lock");
+
+            w.D.fl2 = 0; w.D.t[28] = 0;
+            w.draw(w.D); w.uview();
+            check(!!latLamp && latLamp.className.indexOf("set") < 0,
+                  "clearing the lock puts that lamp back out");
+        }
+
         /* [EN] Ctrl+Enter must run the same send-all as the button (spy on the global).
            [FA] ‎Ctrl+Enter‎ باید همان ارسال همگانی دکمه را اجرا کند (جاسوس روی تابع سراسری). */
         {
