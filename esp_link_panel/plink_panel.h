@@ -303,6 +303,12 @@ body.dn #sh,body.dn #ch{opacity:1;filter:none}
 .bit.set i{background:#8d2a2e;border-color:#b13b40}
 .bit.set small{color:#ffbdbf}
 .bit.set.on i{background:#ff5a5f;border-color:#ff5a5f;box-shadow:0 0 9px #ff5a5f,inset 0 1px 2px #0005}
+/* [FA] چراغ‌های کلیک‌پذیر و حالت اپیزود: نشانگر زرد یعنی رویداد در جریان
+   است ولی هنوز قفل نشده؛ قفل‌شده همان قرمزِ چشمک‌زن بیت‌های fault است. */
+.bit.ck{cursor:pointer}
+.bit.ck:hover i{outline:2px solid #ffffff33;outline-offset:2px}
+.bit.ep i{background:#c8891f;border-color:#e0a52a;box-shadow:0 0 8px #e0a52a88}
+.bit.ep small{color:#ffd489}
 /* [EN] v1.79: .prod (the live readout strip of scenarios 5 and 6) had no rule
    either and rendered as loose text. [FA] نوار مقدارهای زنده هم استایل نداشت. */
 .prod{background:var(--in);border:1px solid var(--ln);border-radius:10px;padding:8px 12px;margin:2px 0 10px;font-size:13px;line-height:1.9}
@@ -408,7 +414,7 @@ padding:8px 14px;background:#16203a;border-top:1px solid #35507f;box-shadow:0 -6
 <button class="sb sb2" onclick="pundo()">لغو و برگرداندن از برد</button>
 <span id="sbst"></span></div>
 <div id="sres" role="dialog" aria-modal="true"><div class="rb"><b id="srst"></b><div id="srsm"></div><div id="srsa"></div></div></div>
-<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build ac5a06f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
+<header><h1>پنل ChangeOver</h1><span class="bs" id="bs">build 413317f</span><div class="lk" id="lk"><span id="lt">در حال اتصال…</span><i></i></div></header>
 <nav><button class="a" data-t="0">پنل</button><button data-t="1">داده‌برداری بنچ</button><button data-t="2">تنظیمات</button></nav>
 <div class="wn gb" id="mb"><div class="mx"><div><b>مود تست دستی فعال است</b> — شارژر خودکار و محافظت‌های باتری متوقف‌اند. <span id="ka"></span></div><button class="sb stp2" id="mx">خروج از مود دستی</button></div></div>
 <main id="pg">
@@ -1239,9 +1245,9 @@ async function sendall(){
 const SR=[['ورودی',0],['پک ۲۴ ولت',1],['نود ۱۲ ولت',2]];
 $('ast').innerHTML=`<div class="srvw"><table class="srv"><colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"></colgroup><tr><th>سیگنال</th><th>مقدار</th><th>فرمول / بازه</th><th>وضعیت</th><th>کالیبره با مولتی‌متر</th></tr>${SR.map(r=>{const k=r[1];
  const cal=k<3?`<input type="number" step="any" id="vm${k}" placeholder="مولتی‌متر V" onkeydown="if(event.key=='Enter')vcal(${k})"> <button class="sb sb2" onclick="vcal(${k})">اعمال</button> <span class="lb">±<span class="ap n" id="a${[4,5,6][k]}"></span></span>`:'';
- return `<tr id="sr${k}"><td>${r[0]}</td><td class="n" id="v${k}"></td><td><div class="fx" id="fv${k}"></div></td><td><span class="tg" id="sp${k}"></span></td><td>${cal}</td></tr>`;}).join('')}</table></div>`+'<div class="ab" id="asb5" style="margin-top:8px;min-height:0"><small style="display:block;text-align:center">خطاهای قفل‌شده (fault) — LED جدا برای هر بیت</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit" id="asbb6"><i></i><small>قطع‌باتری</small></span><span class="bit" id="asbb7"><i></i><small>فنی برد</small></span></div><div class="fx2" id="asf"></div></div>';
+ return `<tr id="sr${k}"><td>${r[0]}</td><td class="n" id="v${k}"></td><td><div class="fx" id="fv${k}"></div></td><td><span class="tg" id="sp${k}"></span></td><td>${cal}</td></tr>`;}).join('')}</table></div>`+'<div class="ab" id="asb5" style="margin-top:8px;min-height:0"><small style="display:block;text-align:center">خطاهای قفل‌شده (fault) — LED جدا برای هر بیت</small><div class="leds" style="margin:0 0 6px" id="asfb"><span class="bit" id="asbb0"><i></i><small>ADC</small></span><span class="bit" id="asbb1"><i></i><small>OC1</small></span><span class="bit" id="asbb2"><i></i><small>OC2</small></span><span class="bit" id="asbb3"><i></i><small>باتری</small></span><span class="bit" id="asbb4"><i></i><small>JIT1</small></span><span class="bit" id="asbb5"><i></i><small>JIT2</small></span><span class="bit ck" id="asbb6" title="باتری قطع است یا باتری نیست — تنظیمات سناریو ۲" onclick="errjmp(2)"><i></i><small>قطع‌باتری</small></span><span class="bit ck" id="asbb7" title="خرابی طبقهٔ قدرت شارژر — تنظیمات سناریو ۷" onclick="errjmp(7)"><i></i><small>فنی برد</small></span></div><div class="leds" style="margin:0 0 6px" id="asfl"><span class="bit ck" id="asbb8" title="قفل عدم‌توازن فعال است — تنظیمات سناریو ۵" onclick="errjmp(5)"><i></i><small>خطای قفل شده</small></span><span class="bit ck" id="asbb9" title="باتری خراب حکم شده — تنظیمات سناریو ۶" onclick="errjmp(6)"><i></i><small>باتری خراب</small></span></div><div class="fx2" id="asf"></div></div>';
 let ASB=null;
-ASB={sp:[0,1,2].map(k=>$('sp'+k)),sr:[0,1,2].map(k=>$('sr'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6,7].map(k=>$('asbb'+k)),box5:$('asb5'),mask:-1,live:$('aslive'),tick:false};
+ASB={sp:[0,1,2].map(k=>$('sp'+k)),sr:[0,1,2].map(k=>$('sr'+k)),flt:$('asf'),bits:[0,1,2,3,4,5,6,7].map(k=>$('asbb'+k)),lat:$('asbb8'),ded:$('asbb9'),box5:$('asb5'),mask:'',live:$('aslive'),tick:false};
 /* [EN] Median/average controls live in Settings; the main panel keeps only the useful voltage/status table and channel charts.
    [FA] کنترل median/میانگین در تنظیمات است؛ صفحهٔ اصلی فقط جدول کاربردی ولتاژ/وضعیت و نمودار کانال‌ها را نگه می‌دارد. */
 
@@ -2282,11 +2288,20 @@ function astat(){const s=$('ast');if(!s||!ASB||!D||!D.t||!D.p)return;
  const vinOk=vin>=mn&&vin<=mx;
  set(0,vinOk?'سالم':'خارج از بازه',vinOk?'g':'r');
  set(1,'سالم','g');set(2,'سالم','g');
- if(t[19]!==ASB.mask){ASB.mask=t[19];
-  if(!t[19]){ASB.flt.textContent='✅ بدون خطای قفل‌شده';ASB.box5.className='ab good';}
-  else{let h='';for(let bit=0;bit<8;bit++)if(t[19]&(1<<bit))h+=`<div>⚠ <b>${FEXP[bit][0]}</b> — ${FEXP[bit][1]}</div>`;
-   if(t[19]&~255)h+=`<div>⚠ بیت ناشناخته: <span class="n">fault 0x${t[19].toString(16)}</span></div>`;
-   ASB.flt.innerHTML=h;ASB.box5.className='ab bad';}}
+ /* کادر خطاهای قفل‌شده حالا قفل‌های ماژولی را هم نشان می‌دهد، پس کلید
+    تغییر فقط بیت‌های fault نیست: قفل عدم‌توازن و حکم باتری خراب هم داخل
+    امضای کش می‌آیند تا متن و رنگ کادر با هر تغییر به‌روز شود. */
+ const dmW=(t[28]|0),flW=(D.fl2|0),sig=t[19]+','+(flW&3)+','+dmW;
+ if(sig!==ASB.mask){ASB.mask=sig;
+  const dmWho=((dmW&3)===3)?'هر دو کانال':((dmW&1)?'کانال ۱':'کانال ۲');
+  let h='';
+  for(let bit=0;bit<8;bit++)if(t[19]&(1<<bit))h+=`<div>⚠ <b>${FEXP[bit][0]}</b> — ${FEXP[bit][1]}</div>`;
+  if(t[19]&~255)h+=`<div>⚠ بیت ناشناخته: <span class="n">fault 0x${t[19].toString(16)}</span></div>`;
+  if(flW&2)h+=`<div>⚠ <b>قفل عدم‌توازن</b> — قفل دائمی؛ باتری را تعویض کنید</div>`;
+  else if(flW&1)h+=`<div>ℹ <b>عدم‌توازن در جریان</b> — اپیزود در حال ثبت است</div>`;
+  if(dmW)h+=`<div>⚠ <b>باتری خراب</b> — باتری ${dmWho} خراب حکم شده؛ تعویضش کنید</div>`;
+  if(h){ASB.flt.innerHTML=h;ASB.box5.className='ab bad';}
+  else{ASB.flt.textContent='✅ بدون خطای قفل‌شده';ASB.box5.className='ab good';}}
  ASB.tick=!ASB.tick;if(ASB.live)ASB.live.style.opacity=ASB.tick?1:.3;}
 /* ===== v1.16: آینهٔ LED و بازر برد — همان اولویت Ui_Tick با مقادیر اعمال‌شده؛ چشمک با همان دوره/duty برد (فاز محلی، هم‌سرعت) ===== */
 /* [EN] v1.53 (user order): the board-driven LED/buzzer mirror is gone - the
@@ -2299,7 +2314,12 @@ function uview(){
  const now=performance.now();
  if(ASB&&ASB.bits&&D&&D.t){const m=D.t[19]||0,ph=(now%500)<250;
   /* v1.79: بیتِ قفل‌شده همیشه دیده می‌شود (set) و فقط روشنی‌اش چشمک می‌زند (on) */
-  ASB.bits.forEach((e,bit)=>{const on=(m&(1<<bit))!==0;if(e)e.className='bit'+(on?' set':'')+((on&&ph)?' on':'');});}
+  ASB.bits.forEach((e,bit)=>{const on=(m&(1<<bit))!==0;if(e){const ck=e.classList.contains('ck');e.className='bit'+(ck?' ck':'')+(on?' set':'')+((on&&ph)?' on':'');}});
+  /* قفل‌های ماژولی همان رفتار بیت‌ها را دارند: قفل‌شده قرمزِ همیشه‌روشن که
+     در فاز چشمک پررنگ می‌شود، اپیزود عدم‌توازن زردِ ثابت، و بی‌خطا خاموش. */
+  const fl2u=D.fl2|0,latU=(fl2u&2)!==0,epiU=((fl2u&1)!==0)&&!latU,dmU=D.t[28]|0;
+  if(ASB.lat)ASB.lat.className='bit ck'+(latU?' set':'')+((latU&&ph)?' on':'')+(epiU?' ep':'');
+  if(ASB.ded)ASB.ded.className='bit ck'+((dmU!==0)?' set':'')+(((dmU!==0)&&ph)?' on':'');}
  try{c4();sall();}catch(e){}
 }
 /* ==================== سناریو ۴ — اعداد زندهٔ کارت شارژ ==================== */
@@ -2914,28 +2934,15 @@ if(TAB==2){if(STAB==0)pchk();else if(STAB!=3)afresh();}astat();
  $('lt').innerHTML=on?`آنلاین · <span class="n">seq ${d.seq}</span>`:(d.n?'لینک قطع است':'در انتظار STM32…');
  hist(d);
  const F=[['snapshot',d.fl&1],['ورودی ۲۴ ولت',d.fl&2],['اندازه‌گیری معتبر',d.fl&4]];
- /* چراغ‌های خطای صفحهٔ اول: سه چراغ قفل/حکم همیشه سرِ جایشان می‌مانند
-    (سالم سبز، خطا قرمز) و متنشان عوض نمی‌شود تا کاربر جای ثابت را یاد
-    بگیرد؛ رنگ و تولتیپ تفاوت را می‌گویند و کلیک روی هر چراغ، تنظیمات
-    همان سناریو را باز می‌کند. اپیزود در جریان فقط تا وقتی جریان دارد
-    یک چراغ زرد اضافه می‌کند. کنترل تب‌ها با شمارهٔ کارت انجام می‌شود نه
-    با رشتهٔ سلکتور، چون ممیزی پروژه همان الگو را در جاوااسکریپت هم
-    می‌شمارد و رشتهٔ عددیِ سلکتور، ادعای «۵ صفحه در برابر ۶ دکمه» را
-    خراب می‌کند. */
- const faN=n=>String(n).replace(/[0-9]/g,d=>'۰۱۲۳۴۵۶۷۸۹'[+d]);
- const chip=(txt,cls,u,tip)=>`<button type="button" class="tg tgk ${cls}" title="${tip} · برای تنظیمات سناریو ${faN(u)} کلیک کنید" onclick="errjmp(${u})">${txt}</button>`;
- const imbLatch=((d.fl2|0)&2)!==0;
- const imbEpi=((((d.fl2|0)&1)!==0)&&(imbLatch===false));
- const deadMask=(t[28]|0), deadWho=((deadMask&3)===3)?'هر دو کانال':((deadMask&1)?'کانال ۱':'کانال ۲');
- const techFault=((t[19]|0)&128)!==0, batLost=((t[19]|0)&64)!==0, restFault=((t[19]|0)&~192)!==0;
+  /* نوار بالا فقط وضعیت‌های عمومی را نگه می‌دارد. چراغ‌های خطا و قفل‌ها
+    به کادر «خطاهای قفل‌شده (fault)» زیر همین جدول منتقل شده‌اند (دستور
+    کاربر ۲۰۲۶-۱۰-۱۵): هر قفل باید کنار بیت‌های fault و در یک نگاه دیده
+    شود، هر کدام یک LED و کلیک‌پذیر به کارت سناریوی خودش. پرش با
+    errjmp انجام می‌شود که تب‌ها را با خود صفت‌هایشان کلیک می‌کند نه با
+    رشتهٔ سلکتور، چون ممیزی پروژه همان الگو را در جاوااسکریپت هم
+    می‌شمارد و رشتهٔ عددیِ سلکتور ادعای شمارش دکمه‌ها را خراب می‌کند. */
  $('fl').innerHTML=
-  chip('خطای قفل شده',imbLatch?'r':'g',5,imbLatch?'قفل عدم‌توازن فعال است — قفل دائمی؛ باتری را تعویض کنید':'قفل عدم‌توازن فعال نیست')
-  +chip('باتری خراب',deadMask?'r':'g',6,deadMask?('قفل دائمی — باتری '+deadWho+' خراب است، تعویضش کنید'):'باتری خرابی حکم نشده')
-  +chip('خطای فنی برد',techFault?'r':'g',7,techFault?'خرابی طبقهٔ قدرت شارژر — تا ریست قفل است':'خطای فنی ثبت نشده')
-  +(imbEpi?chip('عدم‌توازن در جریان','y',5,'اختلاف دو نیم‌پک از حد گذشته و در حال ثبت است'):'')
-  +(batLost?chip('خطا: باتری قطع','r',2,'سیم باتری قطع است یا باتری نیست'):'')
-  +F.map(f=>`<span class="tg ${f[1]?'g':'r'}">${f[0]}</span>`).join('')
-  +(restFault?`<span class="tg r n">fault 0x${t[19].toString(16)}</span>`:'')
+  F.map(f=>`<span class="tg ${f[1]?'g':'r'}">${f[0]}</span>`).join('')
   +(man?'<span class="tg y">مود دستی</span>':'');
  [1,2].forEach(n=>{const b=n==1?0:7,s=t[b+6],en=p[10+n],ce=(PEND[12+n]!=null?PEND[12+n]:p[12+n]);
   const st=$('st'+n);st.textContent=ST[s]||'#'+s;st.className='tg '+(SC[s]||'');
