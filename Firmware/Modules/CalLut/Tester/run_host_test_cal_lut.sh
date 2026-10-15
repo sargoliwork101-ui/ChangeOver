@@ -15,6 +15,7 @@ gcc -std=gnu11 -DSTM32F103xB -DUSE_HAL_DRIVER -DESPLINK_HOST_TEST -Wall -Wextra 
     -I "${ROOT}/Firmware/Config/Inc" \
     -I "${ROOT}/Firmware/Rtos/Inc" \
     -I "${ROOT}/Firmware/Modules/CalLut" \
+    -I "${ROOT}/Firmware/Modules/Diag" \
     -I . \
     -I "${ROOT}/Firmware/Modules/Charger" \
     -I "${ROOT}/Firmware/Modules/Imbalance" \

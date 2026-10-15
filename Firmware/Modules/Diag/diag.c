@@ -3,7 +3,7 @@
  * @brief   [EN] Diagnostic logger: charge time/count, 10 last faults, power events, min/max.
  *               Flash ping-pong at 0x0800F800 / 0x0800FC00, CRC32, debounced save.
  *          [FA] لاگر تشخیصی: زمان و تعداد شارژ، ۱۰ خطای آخر، رویدادهای برق، کمینه/بیشینه.
- *               فلش پینگ‌پنگ در 0x0800F800 / 0x0800FC00 با CRC32 و ذخیره دیبانس.
+ *               فلش پینگ‌پنگ در ‎0x0800F800 / 0x0800FC00‎ با CRC32 و ذخیره دیبانس.
  */
 
 /* ==================== Includes ==================== */
@@ -88,7 +88,7 @@ static bool func__Diag_RecordValidate(const diag_record_t *diag_record_t__rec)
         return false;
     }
 
-    uint32_t__len = (uint32_t)((uint8_t *)&diag_record_t__rec->uint32_t__crc32 - (uint8_t *)diag_record_t__rec);
+    uint32_t__len = (uint32_t)((const uint8_t *)&diag_record_t__rec->uint32_t__crc32 - (const uint8_t *)diag_record_t__rec);
     uint32_t__calcCrc = func__Diag_Crc32((const uint8_t *)diag_record_t__rec, uint32_t__len);
 
     return (uint32_t__calcCrc == diag_record_t__rec->uint32_t__crc32);

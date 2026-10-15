@@ -11,6 +11,7 @@ COMMON=(-std=c11 -Wall -Wextra -Wpedantic -Werror \
         -ffunction-sections -fdata-sections)
 INCLUDES=(
   -I"$ROOT/Firmware/Modules/EspLink"
+  -I"$ROOT/Firmware/Modules/Diag"
   -I"$ROOT/Firmware/Modules/CalLut"
   -I"$ROOT/Firmware/Modules/Charger"
   -I"$ROOT/Firmware/Modules/Measurement"

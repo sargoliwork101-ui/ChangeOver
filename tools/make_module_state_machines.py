@@ -187,6 +187,42 @@ MODULES["Changeover"] = {
     ],
 }
 
+MODULES["Diag"] = {
+    "fa": "لاگ تشخیصی (Diag)",
+    "validation": "Diag_Validation.xlsx",
+    "sources": ["Firmware/Modules/Diag/diag.c", "Firmware/Modules/Diag/diag.h"],
+    "sheets": [
+        ("1 حالت‌ها", "حالت‌های ماندگاری و دیاگ", "diag.c"),
+        ("2 فلش", "صفحات فلش پینگ‌پنگ و CRC", "diag.c"),
+    ],
+    "tabs": [
+        ("1 حالت‌ها", "ماشین حالت لاگ تشخیصی",
+         ["حالت", "شرط ورود", "شرط خروج", "اثر"],
+         [
+             ["خاموش/Init", "پس از ریست برد", "خواندن فلش و انتخاب رکورد سالم", "آپتایم صفر، شمارنده‌ها از فلش", "info"],
+             ["عادی", "رکورد معتبر یا پیش‌فرض", "ثبت خطا یا قطع برق", "شمارنده شارژ و آپتایم فعال", "ok"],
+             ["ثبت خطا", "ست‌شدن بیت خطا جدید", "نوشتن در حلقه 10تایی", "خطای آخر با ساعت و ولتاژها", "warn"],
+             ["قطع برق", "input_present 1→0", "بازگشت برق 0→1", "زمان قطع ثبت، پس از وصل مدت محاسبه", "warn"],
+             ["ذخیره دیبانس", "تغییر داده + 60ثانیه", "نوشتن روی صفحه دیگر", "ping-pong با CRC32", "ok"],
+             ["همگام ساعت", "دریافت TIME_SYNC از ESP", "—", "boardTimeBase = unix - uptime", "ok"],
+         ],
+         [18, 34, 34, 44]),
+        ("2 فلش", "صفحات فلش و پروتکل ESP",
+         ["بخش", "آدرس/نوع", "محتوا", "توضیح"],
+         [
+             ["صفحه A", "0x0800F800", "رکورد دیاگ + CRC32", "پینگ", "ok"],
+             ["صفحه B", "0x0800FC00", "رکورد دیاگ + CRC32", "پنگ", "ok"],
+             ["ساختار", "diag_record_t", "totalChargeSec, chargeCount, uptime, reset, boardTime, errors[10], powerEvents[20]", "نسخه 1", "info"],
+             ["چانک 0", "DIAG_DATA", "آمار پایه 7×u32", "ارسال از ESP-Link", "info"],
+             ["چانک 1/2", "DIAG_DATA", "خطاها 5تایی هر کدام 8×u32", "timestamp/faultMask/vIn/vPack/vLow/vHigh/state1/state2", "info"],
+             ["چانک 3/4", "DIAG_DATA", "قطع/وصل 10تایی هر کدام 3×u32", "off/on/duration", "info"],
+             ["TIME_SYNC", "0x30", "u32 unix LE", "از گوشی به برد", "info"],
+             ["DIAG_REQ", "0x31", "بدون payload", "درخواست 5 چانک", "info"],
+         ],
+         [16, 20, 52, 52]),
+    ],
+}
+
 MODULES["Charger"] = {
     "fa": "شارژر (Charger)",
     "validation": "Charger_Validation.xlsx",

@@ -3,7 +3,7 @@
  * @brief   [EN] Diagnostic log: charge time, count, 10 last faults, power events, min/max.
  *               Persisted in dedicated flash pages 0x0800F800 / 0x0800FC00 (2KB ping-pong).
  *          [FA] لاگ تشخیصی: زمان شارژ، تعداد شارژ، ۱۰ خطای آخر، رویدادهای قطع برق، کمینه/بیشینه.
- *               در صفحات فلش جدا 0x0800F800 / 0x0800FC00 به صورت پینگ‌پنگ ماندگار می‌شود.
+ *               در صفحات فلش جدا ‎0x0800F800 / 0x0800FC00‎ به صورت پینگ‌پنگ ماندگار می‌شود.
  */
 
 #ifndef DIAG_H
@@ -75,7 +75,7 @@ typedef struct
     uint32_t uint32_t__resetCount;
     uint32_t uint32_t__boardTimeBase; /* [EN] boardTime = base + uptime / پایه زمان */
 
-    /* [EN] Min/max / کمینه بیشینه */
+    /* [‎EN] Min/max‎ / کمینه بیشینه */
     uint32_t uint32_t__maxVinMv;
     uint32_t uint32_t__minVinMv;
     uint32_t uint32_t__maxVpackMv;
@@ -180,7 +180,7 @@ void func__Diag_UpdateMinMax(const measurement_snapshot_t *measurement_snapshot_
 /**
  * @brief  [EN] Get active record for ESP-Link transmission.
  *         [FA] گرفتن رکورد فعال برای ارسال به ESP.
- * @return const diag_record_t* [EN] Pointer / اشاره‌گر
+ * @‎return const diag_record_t* [EN] Pointer‎ / اشاره‌گر
  */
 const diag_record_t *func__Diag_GetRecord(void);
 

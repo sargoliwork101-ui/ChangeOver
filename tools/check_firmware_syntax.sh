@@ -31,6 +31,7 @@ INCLUDE_FLAGS=(
     -I Firmware/Modules/McuPowerPath
     -I Firmware/Modules/Imbalance
     -I Firmware/Modules/CalLut
+    -I Firmware/Modules/Diag
 )
 
 # [EN] Tester/ holds host harnesses (fake clock, stub BSP). They are built and
