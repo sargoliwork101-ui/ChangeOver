@@ -1834,6 +1834,18 @@ void func__Ui_ScenarioBatteryRun_Tick(uint32_t uint32_t__batteryMv)
         uint32_t__greenOffMs = UI_ALARM_T__G__Alarm.uint32_t__greenMinOffMs;
     }
 
+    /* [EN] Full-program audit: the min-off floor (id 67) and the period
+       (id 66) are clamped independently, so min-off can exceed the whole
+       period; without this clamp the subtraction below underflows and the
+       green phase would stick on for ~49 days (display only, but wrong).
+       [FA] ممیزی کل برنامه: کف خاموشی و دوره جدا جدا گیره می‌خورند و کف
+       می‌تواند از کل دوره بزرگ‌تر شود؛ بدون این گیره تفریق پایین سرریز
+       معکوس می‌شود و فاز سبز حدود ۴۹ روز روشن می‌ماند. */
+    if (uint32_t__greenOffMs > UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs)
+    {
+        uint32_t__greenOffMs = UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs;
+    }
+
     uint32_t__greenOnMs = UI_ALARM_T__G__Alarm.uint32_t__greenPeriodMs - uint32_t__greenOffMs;
 
     if (uint8_t__stablePercent >= (uint8_t)UI_ALARM_T__G__Alarm.uint32_t__runBeepStartPct)

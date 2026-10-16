@@ -795,7 +795,21 @@ static void func__Esp_StatAccumulate(void)
         uint32_t uint32_t__value = UINT32_T__G__TlmField[uint8_t__index];
         UINT32_T__G__StatLast[uint8_t__index] = uint32_t__value;
         bool bool__first = (UINT32_T__G__StatCount == 0u);
-        UINT32_T__G__StatSum[uint8_t__index] += uint32_t__value;
+        /* [EN] Full-program audit: saturate instead of wrapping. A field
+           that sits near its ceiling for the whole 60000-frame window
+           (e.g. a dead-battery elapsed counter near 24 h at 1 Hz) would
+           otherwise wrap the sum and corrupt the bench average.
+           [FA] ممیزی کل برنامه: اشباع به‌جای سرریز چرخشی. فیلدی که کل پنجرهٔ
+           ۶۰۰۰۰ فریمی نزدیک سقفش بنشیند (مثل شمارندهٔ باتری خراب نزدیک
+           ۲۴ ساعت) جمع را می‌چرخاند و میانگین بنچ را خراب می‌کرد. */
+        if ((UINT32_MAX - UINT32_T__G__StatSum[uint8_t__index]) < uint32_t__value)
+        {
+            UINT32_T__G__StatSum[uint8_t__index] = UINT32_MAX;
+        }
+        else
+        {
+            UINT32_T__G__StatSum[uint8_t__index] += uint32_t__value;
+        }
         if (bool__first || (uint32_t__value < UINT32_T__G__StatMin[uint8_t__index]))
         {
             UINT32_T__G__StatMin[uint8_t__index] = uint32_t__value;
