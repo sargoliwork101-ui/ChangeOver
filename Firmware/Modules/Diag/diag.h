@@ -93,7 +93,7 @@ typedef struct
     uint32_t uint32_t__lowBatteryCount;
     uint32_t uint32_t__batLostCount;
     uint32_t uint32_t__techFaultCount;
-    uint32_t uint32_t__ovCount;
+    uint32_t uint32_t__ovCount; /* [EN] FAULT_ADC count; legacy name kept for the flash record layout / شمارندهٔ ‎FAULT_ADC‎؛ نام قدیمی به‌خاطر چیدمان رکورد فلش مانده است */
 
     uint8_t uint8_t__errorCount;
     uint8_t uint8_t__powerEventCount;

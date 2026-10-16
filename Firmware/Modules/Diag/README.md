@@ -22,7 +22,7 @@
 6. جریان ماکس هر کانال (mA)
 7. ۱۰ خطای آخر با ساعت - مثل دیاگ ماشین
 8. لاگ ۲۰ قطع/وصل برق شهر با مدت
-9. شمارنده‌ها: عدم تعادل، باتری کم، قطع باتری، فنی، اضافه ولتاژ
+9. شمارنده‌ها: عدم تعادل، باتری کم، قطع باتری (`FAULT_CHARGER_BAT_LOST`)، فنی (`FAULT_CHARGER_TECHNICAL`)، `FAULT_ADC`
 10. زمان همگام‌سازی ساعت (boardTimeBase)
 11. نسخه و UID (magic + version + seq + crc)
 
@@ -35,7 +35,7 @@
 - هدر: magic='DIAG' (0x44494147), version=1, seq
 - شمارنده‌های اصلی: totalChargeSec, chargeSecCh1/Ch2, chargeCount, chargeCountCh1/Ch2, uptimeSec, resetCount, boardTimeBase
 - کمینه/بیشینه: max/min Vin/Vpack/Vlow/Vhigh, maxImb, maxIch1/Ich2
-- شمارنده رویداد: imbalanceCount, lowBatteryCount, batLostCount, techFaultCount, ovCount
+- شمارنده رویداد: imbalanceCount, lowBatteryCount, batLostCount (`FAULT_CHARGER_BAT_LOST`), techFaultCount (`FAULT_CHARGER_TECHNICAL`), ovCount (`FAULT_ADC`؛ نام فیلد قدیمی است و به‌خاطر چیدمان رکورد فلش مانده)
 - ۱۰ خطا: هر کدام timestamp/faultMask/vIn/vPack/vLow/vHigh/state1/state2 (32 بایت)
 - ۲۰ رویداد برق: هر کدام offTime/onTime/durationSec (12 بایت)
 - CRC32

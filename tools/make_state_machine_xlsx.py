@@ -208,7 +208,7 @@ def build():
             ["اتصال‌کوتاه / سوختن", "رلهٔ شارژر باز + PWM واقعی = ۰ + JIT ثبت‌شده", "ست‌کردن FAULT_CHARGER_TECHNICAL؛ هر دو PWM صفر و رله باز", "فقط reset یا power-cycle", "۱۳۷..۱۴۲", "bad"],
             ["قطع‌شدن / سوختن", "PWM واقعی >۲۰٪ + جریان شارژ همان کانال = ۰", "ست‌کردن FAULT_CHARGER_TECHNICAL؛ هر دو PWM صفر و رله باز", "فقط reset یا power-cycle", "۱۳۷..۱۴۲", "bad"],
             ["قفل فنی", "FAULT_CHARGER_TECHNICAL یا TechnicalFaultLockout فعال", "هیچ مسیر عادی، JIT retry، تنظیم پنل یا NVM آن را آزاد نمی‌کند", "func__Charger_Init پس از reset", "سه LED هم‌زمان؛ بوق مستقل", "bad"],
-            ["چهرهٔ UI", "بیت ۷ در Ui_Tick قبل از OverVoltage بررسی می‌شود", "هر سه LED از یک phase و duty مشترک؛ بوق q137..q140", "پاک‌شدن بیت پس از reset", "q141..q142", "bad"],
+            ["چهرهٔ UI", "FAULT_CHARGER_TECHNICAL در Ui_Tick قبل از OverVoltage بررسی می‌شود", "هر سه LED از یک phase و duty مشترک؛ بوق q137..q140", "پاک‌شدن بیت پس از reset", "q141..q142", "bad"],
         ],
         [26, 58, 54, 38, 34],
     )

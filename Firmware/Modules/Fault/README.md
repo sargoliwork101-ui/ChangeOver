@@ -47,10 +47,9 @@
 دیوایدر آرام خالی می‌شود و تشخیص حالت دوم ~۲۰-۴۰ ثانیه طول می‌کشد (حین شارژ
 همان ۱۵۰ms قاعده اول است). با نبودِ snapshot معتبر هیچ Set/Clear رخ نمی‌دهد.
 
-## بیت ۷ — خطای فنی برد / Scenario 7
+## `FAULT_CHARGER_TECHNICAL` (بیت ۷) — خطای فنی برد / Scenario 7
 
-ماژول Fault فقط مالک بیت مرکزی `FAULT_CHARGER_TECHNICAL` است:
-`(1u << 7)`. تشخیص امضای ترانزیستور در `Charger` انجام می‌شود، سپس
+ماژول Fault فقط مالک بیت مرکزی `FAULT_CHARGER_TECHNICAL` (بیت ۷) است. تشخیص امضای ترانزیستور در `Charger` انجام می‌شود، سپس
 `func__Fault_Set()` این بیت را latch می‌کند تا UI و Changeover همان fault را
 ببینند. این بیت در NVM ذخیره نمی‌شود و `func__Fault_Init()` آن را مثل تمام
 بیت‌های دیگر در reset پاک می‌کند؛ قفل فیزیکی PWM/رله را خود Charger نگه می‌دارد.
@@ -60,8 +59,8 @@
 | فایل | نقش |
 |---|---|
 | `fault.h` / `fault.c` | ماسک خطای قفل‌شده (`FAULT_MASK_T__G__Mask`) و `func__Fault_Evaluate` |
-| `../../Config/Inc/app_types.h` | `FAULT_*`، شامل بیت ۷ `FAULT_CHARGER_TECHNICAL` |
-| `../Charger/charger.c` | تشخیص امضای سناریوی ۷ و فراخوانی `func__Fault_Set`; آینهٔ بیت ۶ به `CHG_STATE_BAT_LOST` |
+| `../../Config/Inc/app_types.h` | `FAULT_*`، شامل `FAULT_CHARGER_TECHNICAL` (بیت ۷) |
+| `../Charger/charger.c` | تشخیص امضای سناریوی ۷ و فراخوانی `func__Fault_Set`; آینهٔ `FAULT_CHARGER_BAT_LOST` (بیت ۶) به `CHG_STATE_BAT_LOST` |
 
 به بیلد LED لازم نیست.
 

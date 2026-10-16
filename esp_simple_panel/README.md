@@ -105,7 +105,7 @@
 6. جریان ماکس هر کانال
 7. ۱۰ خطای آخر با ساعت (timestamp/faultMask/vIn/vPack/vLow/vHigh/state1/state2)
 8. لاگ ۲۰ قطع/وصل برق شهر (offTime/onTime/duration)
-9. شمارنده‌ها: عدم تعادل، باتری کم، قطع، فنی، اضافه ولتاژ
+9. شمارنده‌ها: عدم تعادل، باتری کم، قطع (`FAULT_CHARGER_BAT_LOST`)، فنی (`FAULT_CHARGER_TECHNICAL`)، `FAULT_ADC`
 10. زمان همگام‌سازی ساعت (boardTimeBase)
 11. نسخه و UID (magic + version + seq)
 
