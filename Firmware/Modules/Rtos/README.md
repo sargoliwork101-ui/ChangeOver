@@ -22,7 +22,7 @@
 | `../../Rtos/Src/task_ui.c` | تسک UI: snapshot zero + Ui_Tick |
 | `../../Rtos/Src/task_protection.c` | تسک حفاظت: snapshot zero + Protection_Run |
 | `../../Rtos/Src/rtos_utils.c` | MillisecondsToTicks و Delay helpers |
-| `Rtos_Validation.xlsx` | برگه اعتبارسنجی با 10 سناریو snapshot zeroing، watchdog، ترتیب اجرا، Enter/Esc |
+| `Rtos_Validation.xlsx` | برگه اعتبارسنجی با 11 سناریو (RT-001..RT-011): snapshot zeroing، watchdog، ترتیب اجرا، Enter/Esc |
 
 ## توابع
 

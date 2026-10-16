@@ -25,7 +25,7 @@
 | `../../Rtos/Src/task_control.c` | تسک مشترک؛ `func__Measurement_GetSnapshot(&snap)` + `func__Fault_Get()` + `func__Changeover_Evaluate(&snap, faults)` (از v1.74 بدون هیچ فلگ UI) |
 | `../../Rtos/Src/task_ui.c` | فقط LED و بازر؛ از v1.74 هیچ فلگ باتری کمی ندارد |
 | `../../Config/Inc/app_types.h` | `app_state_t`, `measurement_snapshot_t`, `fault_mask_t` |
-| `Changeover_Board_Validation.xlsx` | برگه اعتبارسنجی با 21 سناریو (invalid، fault+invalid، fault+valid، فول، 21000+flag، 20800 مستقل، <3s، 3s، reconnect <3s/3s، PB5/PB7) |
+| `Changeover_Board_Validation.xlsx` | برگه اعتبارسنجی با 24 سناریو (invalid، fault+invalid، fault+valid، فول، 21000+flag، 20800 مستقل، <3s، 3s، reconnect <3s/3s، PB5/PB7، مدت‌تیک صفر، snapshot صفرشده، وصل مجدد با 30 ثانیه پایداری ورودی) |
 
 `changeover.c` را به بیلد LED اضافه نکن.
 

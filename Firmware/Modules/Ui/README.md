@@ -124,11 +124,11 @@ BoardTest → یک‌بار قرمز/زرد/سبز + بوق
 | `bsp_gpio.c/h` | LED/BUZZER GPIO |
 | `app_config.h` | زمان‌بندی LED |
 | `Tester/` | پوشهٔ تست ماژول — `host_test_ui.py` (تست بوق + BatteryRun 56/57/58 + 0/1 + Charging 5% (53..61) + Full 100/95 + فاز) + `README.md` توضیحات |
-| `UI_Board_Validation.xlsx` | 6 شیت تست 25V jitter + فول + RTOS |
+| `UI_Board_Validation.xlsx` | 7 شیت تست 25V jitter + فول + RTOS + ماشین حالت |
 | `RTOS_Mapping_Report.md` | بررسی نگاشت و RTOS/static/stack |
 
 ## برگه تست روی برد
-`UI_Board_Validation.xlsx` نسخه 2.2 با snapshot واقعی (راهنما/برنامه/مراجع/ایراد/تأیید/فهرست).
+`UI_Board_Validation.xlsx` نسخه 2.2 با snapshot واقعی (راهنما/برنامه/مراجع/ایراد/تأیید/فهرست/ماشین حالت).
 
 - دامنه LED/BUZZER؛ `v_bat PA3/raw2`, `v_in PA2/raw1`, PB4 EXTI, PB5 Q1, PB11 Q17 بدون تغییر.
 - `valid` قبل تصمیم؛ invalid→safe-off flag false.

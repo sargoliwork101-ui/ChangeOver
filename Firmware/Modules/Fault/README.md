@@ -62,7 +62,7 @@
 | `../../Config/Inc/app_types.h` | `FAULT_*`، شامل `FAULT_CHARGER_TECHNICAL` (بیت ۷) |
 | `../Charger/charger.c` | تشخیص امضای سناریوی ۷ و فراخوانی `func__Fault_Set`; آینهٔ `FAULT_CHARGER_BAT_LOST` (بیت ۶) به `CHG_STATE_BAT_LOST` |
 
-به بیلد LED لازم نیست.
+برای این ماژول بیلد جدا لازم نیست؛ با همان بیلد اعتبارسنجی برد (MODULE_FAULT=1) کار می‌کند.
 
 ## توابع
 
