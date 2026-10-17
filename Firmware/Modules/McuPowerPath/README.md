@@ -32,7 +32,7 @@
 | فایل | نقش |
 |---|---|
 | `mcu_power_path.h` / `mcu_power_path.c` | مالک انحصاری Q1/PB5 (BSP_GPIO_BATTERY_SWITCH) با `Init/Run/OnInputIrq`، ثابت‌های `MCU_POWER_INPUT_STABLE_MS=5000u`، `QUALIFY 22000u`، `RECONNECT 21500u`، `HYSTERESIS 500u`، فقط `rtos_time.h` و `measurement.h` (snapshot v_in)؛ ISR امن فقط GPIO و پرچم |
-| `McuPowerPath_Validation.xlsx` / `McuPowerPath_Board_Validation.xlsx` | برگه اعتبارسنجی منطق و برد: نگاشت PB5/PB4/PB11، startup، ورودی 22V با 5s، هیسترزیس 21.9/21.5/<21.5، falling PB4 در ISR، بی‌اثری v_bat، regression Changeover |
+| `McuPowerPath_Board_Validation.xlsx` | برگه اعتبارسنجی منطق و برد: نگاشت PB5/PB4/PB11، startup، ورودی 22V با 5s، هیسترزیس 21.9/21.5/<21.5، falling PB4 در ISR، بی‌اثری v_bat، regression Changeover |
 | `../../Config/Inc/board_pins.h` | `PIN_SAFE_BAT_SWITCH_HIGH=0u` (Low امن برای Q1) و `PIN_BAT_SWITCH_ACTIVE_HIGH=0u`؛ PB11 مستقل و High امن |
 | `../../Bsp/Src/bsp_gpio.c` | منطق وارونگی active-low برای PB5، مقداردهی امن از `PIN_SAFE_*` |
 | `CubeIDE/Core/Src/main.c` | `MX_GPIO_Init()` latch `PB5 RESET Low` قبل از `HAL_GPIO_Init` و `PB11 SET High` مستقل |

@@ -418,7 +418,7 @@ MODULES["Imbalance"] = {
 
 MODULES["McuPowerPath"] = {
     "fa": "مسیر تغذیهٔ میکرو (McuPowerPath)",
-    "validation": "McuPowerPath_Validation.xlsx",
+    "validation": "McuPowerPath_Board_Validation.xlsx",
     "sources": ["Firmware/Modules/McuPowerPath/mcu_power_path.c"],
     "sheets": [
         ("۱ حالت‌ها", "چهار حالت مسیر تغذیهٔ خود میکرو", "mcu_power_path.c"),
