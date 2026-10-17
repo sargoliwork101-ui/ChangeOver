@@ -38,7 +38,7 @@ SYSTEM_BOOK = "../../../Documentation/System_State_Machine.xlsx"
 FONT = "Vazirmatn"
 
 C_TITLE = "1F3864"
-C_HEAD = "2F5597"
+C_HEAD = "1F4E79"
 C_BAND = "D9E2F3"
 C_LINK = "0563C1"
 PALETTE = {
@@ -95,7 +95,7 @@ def sheet(wb, name, title, headers, rows, widths):
 
     for c, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(c)].width = w
-    ws.sheet_properties.tabColor = C_HEAD
+    ws.sheet_properties.tabColor = "7F7F7F" if name == "راهنما" else "7030A0"
     return ws
 
 
@@ -618,7 +618,7 @@ def add_link_sheet(validation_path, module, state_book_name):
 
     ws.column_dimensions["A"].width = 34
     ws.column_dimensions["B"].width = 78
-    ws.sheet_properties.tabColor = C_HEAD
+    ws.sheet_properties.tabColor = "7030A0"
     wb.save(validation_path)
 
 

@@ -42,7 +42,7 @@ OUT = ROOT / "Documentation" / "Program_Map.xlsx"
 
 FONT = "Vazirmatn"
 C_TITLE = "1F3864"
-C_HEAD = "2F5597"
+C_HEAD = "1F4E79"
 C_BAND = "D9E2F3"
 PALETTE = {
     "ok": "C6EFCE",      # تأییدشده / جاری
