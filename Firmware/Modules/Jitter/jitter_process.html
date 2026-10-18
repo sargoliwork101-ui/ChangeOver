@@ -5,20 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>فرآیند جیتر (تریپ سخت‌افزاری) — توضیح ساده</title>
 <style>
-  body { font-family: Vazirmatn, Tahoma, sans-serif; background:#F2F6FC; color:#1F3864; margin:0; padding:24px 14px 48px; line-height:1.9; }
-  .wrap { max-width: 1020px; margin: 0 auto; }
+  body { font-family: Vazirmatn, Tahoma, sans-serif; background:#12151B; color:#E6EAF2; margin:0; padding:24px 14px 48px; line-height:1.9; }
+  .wrap { max-width: none; margin: 0; }
   h1 { font-size: 26px; margin: 6px 0 2px; }
-  h2 { font-size: 20px; margin: 30px 0 8px; border-bottom: 3px solid #1F4E79; padding-bottom: 4px; }
-  .card { background:#fff; border:1.5px solid #1F4E79; border-radius:12px; padding:14px 20px; margin:12px 0; }
-  .ok { background:#C6EFCE; border-color:#548235; }
+  h2 { font-size: 20px; margin: 30px 0 8px; border-bottom: 3px solid #35507A; padding-bottom: 4px; }
+  a { color:#7FB0E6; }
+  .card { background:#1B2029; border:1.5px solid #35507A; border-radius:12px; padding:14px 20px; margin:12px 0; }
+  .ok { background:#20301F; border-color:#548235; }
   ol, ul { margin: 6px 0; padding-right: 22px; }
   li { margin: 4px 0; }
-  b.num { color:#C00000; }
-  table { border-collapse: collapse; width:100%; background:#fff; margin:10px 0; }
-  th { background:#1F4E79; color:#fff; padding:8px 10px; font-size:15px; }
-  td { border:1px solid #B9CDE4; padding:7px 10px; font-size:15px; }
-  tr:nth-child(even) td { background:#F2F6FC; }
-  .small { font-size: 13.5px; color:#444; }
+  b.num { color:#FF8080; }
+  table { border-collapse: collapse; width:100%; background:#1B2029; margin:10px 0; }
+  th { background:#24466B; color:#fff; padding:8px 10px; font-size:15px; }
+  td { border:1px solid #33415C; padding:7px 10px; font-size:15px; }
+  tr:nth-child(even) td { background:#171C26; }
+  .small { font-size: 13.5px; color:#9AA7BC; }
   svg text { font-family: Vazirmatn, Tahoma, sans-serif; }
   .tnode { cursor: pointer; }
   .subhead { cursor: pointer; }
@@ -43,7 +44,7 @@
 <table id="conds"><tr><th style="width:26%">اگر این اتفاق افتاد</th><th style="width:37%">برنامه چه کار می‌کند</th><th>عددش</th></tr></table>
 <h2>فرمان‌ها و خروجی‌ها</h2>
 <table id="outs"><tr><th style="width:26%">به کجا</th><th style="width:37%">چه فرمانی / چه خروجی‌ای</th><th>کی و با چه شرطی</th></tr></table>
-<div class="card" style="background:#FFE699;border-color:#BF8F00"><b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ اول از روی کد چک می‌کنیم، بعد اصلاح می‌کنیم.</div>
+<div class="card" style="background:#2E2A18;border-color:#BF8F00"><b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ اول از روی کد چک می‌کنیم، بعد اصلاح می‌کنیم.</div>
 </div>
 <script>const DATA = {"file": "jitter_process.html", "title": "فرآیند جیتر (تریپ سخت‌افزاری) — توضیح ساده", "sub": "جیتر نگهبان سخت‌افزاری اضافه‌جریان است: کمپراتور روی برد در چند میکروثانیه تریپ می‌دهد و این ماژول آن را برای هر کانال قفل می‌کند تا شارژر ببیند.", "steps": ["کمپراتور سخت‌افزاری هر کانال جدا دیده‌بانی می‌کند؛ وقتی جریان از حد سخت‌افزار رد شود، وقفه می‌آید.", "این ماژول برای همان کانال یک پرچم «تریپ» قفل می‌کند؛ پرچم تا وقتی شارژر آن را پاک نکند می‌ماند.", "شارژر پرچم را می‌خواند: کانال را همان لحظه متوقف می‌کند، بعد از ۳ ثانیه یکی‌یکی احیا می‌کند و در احیا پرچم را پاک می‌کند.", "شمارش تریپ و تریپ سوم و قطع نهایی کار شارژر است، نه این ماژول؛ این‌جا فقط دیدن و قفل‌کردن رویداد است."], "example": ["جریان کانال ۱ ناگهان از حد کمپراتور رد می‌شود؛ وقفه می‌آید و پرچم تریپ کانال ۱ قفل می‌شود.", "شارژر در پاس بعدی پرچم را می‌بیند، کانال ۱ را متوقف می‌کند و کانال ۲ به کارش ادامه می‌دهد.", "بعد از ۳ ثانیه نوبت احیای کانال ۱ می‌رسد؛ شارژر پرچم را پاک و با duty کمتر شروع می‌کند."], "flow": [{"k": "pill", "c": "navy", "t": "کمپراتور سخت‌افزاری هر کانال آماده است", "ref": "func__Jitter_Run + وقفهٔ BSP"}, {"k": "dia", "c": "yellow", "t": "وقفهٔ تریپ کانالی آمد؟", "elab": "بله"}, {"k": "box", "c": "red", "t": "قفل پرچم تریپ همان کانال", "l": ["پرچم تا پاک‌شدن توسط شارژر می‌ماند", "کانال دیگر دست نمی‌خورد"], "ref": "Jitter_Run"}, {"k": "box", "c": "blue", "t": "شارژر پرچم را می‌خواند", "l": ["توقف فوری کانال، شمارش تریپ، احیای یکی‌یکی"]}, {"k": "box", "c": "green", "t": "پاک‌شدن پرچم هنگام احیا", "l": ["شروع دوباره با duty کمتر از قبل تریپ"]}], "tree": {"t": "جیتر — دیده‌بان سخت‌افزاری", "c": [{"t": "وقفهٔ کمپراتور کانال ۱ → پرچم ۱"}, {"t": "وقفهٔ کمپراتور کانال ۲ → پرچم ۲"}, {"t": "خواندن پرچم توسط شارژر"}, {"t": "پاک‌کردن پرچم هنگام احیای شارژر"}]}, "conds": [["جریان از حد کمپراتور رد شد", "پرچم همان کانال قفل می‌شود؛ شارژر کانال را متوقف می‌کند.", "حد سخت‌افزاری روی برد"], ["تریپ وسط احیا دوباره آمد", "پرچم دوباره قفل می‌شود و شمارش تریپ شارژر بالا می‌رود؛ سومی قطع نهایی است.", "قفل ۳ ثانیه و احیای یکی‌یکی در شارژر"]], "outs": [["پرچم تریپ هر کانال", "قفل‌شده تا پاک‌شدن", "شارژر می‌خواند و پاک می‌کند؛ خطای فنی هم از همین پرچم استفاده می‌کند"]], "nav": [{"t": "کل سیستم", "href": "../../../Documentation/system_process.html"}, {"t": "شارژر", "href": "../Charger/charging_process.html"}, {"t": "اندازه‌گیری", "href": "../Measurement/measurement_process.html"}, {"t": "خطاها", "href": "../Fault/fault_process.html"}, {"t": "عدم‌توازن", "href": "../Imbalance/imbalance_process.html"}, {"t": "تعویض خروجی", "href": "../Changeover/changeover_process.html"}, {"t": "چراغ و بوق", "href": "../Ui/ui_process.html"}, {"t": "ناظر حفاظت", "href": "../Protection/protection_process.html"}, {"t": "کالیبراسیون", "href": "../CalLut/callut_process.html"}, {"t": "لینک پنل", "href": "../EspLink/esplink_process.html"}, {"t": "تغذیهٔ میکرو", "href": "../McuPowerPath/mcupowerpath_process.html"}, {"t": "ثبت سابقه", "href": "../Diag/diag_process.html"}, {"t": "تسک‌ها", "href": "../Rtos/rtos_process.html"}]};</script>
 <script>
@@ -55,11 +56,12 @@ var COLORS = {
   gray:  {f:'#EDEDED', o:'#808080', t:'#1F3864'},
   navy:  {f:'#1F3864', o:'#1F3864', t:'#FFFFFF'}
 };
+var LINES = { blue:'#6FA8DC', green:'#7BC47F', yellow:'#E3B341', red:'#FF8080', gray:'#9AA7BC', navy:'#6FA8DC' };
 var LEGEND = [['blue','در حال کار'],['green','کامل / سالم'],['yellow','سؤال و تصمیم'],['red','خطا و توقف'],['gray','صبر و مکث'],['navy','شروع و پایان']];
 var cv = document.createElement('canvas').getContext('2d');
 function tw(t, bold, sz){ cv.font = (bold ? '700 ' : '') + sz + 'px Vazirmatn, Tahoma'; return cv.measureText(t).width; }
 function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
-function linesOf(n){ var a = []; if (n.t) a.push({s:n.t, b:true}); (n.l || []).forEach(function(x){ a.push({s:x, b:false}); }); return a; }
+function linesOf(n){ var a = []; if (n.t) a.push({s:n.t, b:true}); (n.l || []).forEach(function(x){ a.push({s:x, b:false}); }); if (n.ref) a.push({s:n.ref, b:false, r:true}); return a; }
 function wrapLine(t, bold, sz, maxW){
   if (tw(t, bold, sz) <= maxW) return [t];
   var words = t.split(' '), lines = [], cur = '';
@@ -97,7 +99,7 @@ function drawSub(n, cx, y, idx){
   var sz = nodeSize(n), x = cx - sz.w / 2, out = '';
   out += '<g class="subhead" data-i="' + idx + '"><rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="46" rx="10" fill="#EDEDED" stroke="#808080" stroke-width="2"/>' +
     '<text x="' + cx + '" y="' + (y + 29) + '" text-anchor="middle" font-size="15" font-weight="700" fill="#1F3864">' + esc(n.t) + (n._open ? '  ‹ بستن' : '  › بازکردن جزئیات') + '</text></g>';
-  if (n.ref) out += '<text x="' + cx + '" y="' + (y + 63) + '" text-anchor="middle" font-size="11" fill="#808080" font-family="Consolas, monospace">' + esc(n.ref) + '</text>';
+
   if (!n._open) return out;
   var kids = n.flow || [], ky = y + 78, maxW = 200, sizes = [];
   kids.forEach(function(kd){ var ks = nodeSize(kd); sizes.push(ks); maxW = Math.max(maxW, ks.w); });
@@ -124,9 +126,12 @@ function drawNode(n, cx, y){
   }
   var ls = wrappedLines(n), ty = y + sz.h / 2 - (ls.length - 1) * 12.5;
   ls.forEach(function(ln, i){
-    out += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + esc(ln.s) + '</text>';
+    if (ln.r){
+      out += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="11.5" font-family="Consolas, monospace" fill="' + (c.t === '#FFFFFF' ? '#B9CDE4' : '#54677F') + '">' + esc(ln.s) + '</text>';
+    } else {
+      out += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + esc(ln.s) + '</text>';
+    }
   });
-  if (n.ref) out += '<text x="' + cx + '" y="' + (y + sz.h + 17) + '" text-anchor="middle" font-size="11" fill="#808080" font-family="Consolas, monospace">' + esc(n.ref) + '</text>';
   return out;
 }
 function drawSide(s, nodeCx, nodeW, cy, dir){
@@ -135,7 +140,7 @@ function drawSide(s, nodeCx, nodeW, cy, dir){
   var y = cy - sz.h / 2, out = '';
   var x1 = (dir === 'r') ? nodeCx + nodeW / 2 : nodeCx - nodeW / 2;
   var x2 = (dir === 'r') ? x : x + sz.w;
-  out += '<path d="M' + x1 + ' ' + cy + ' H' + x2 + '" stroke="' + c.o + '" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arw)"/>';
+  out += '<path d="M' + x1 + ' ' + cy + ' H' + x2 + '" stroke="' + (LINES[s.c || 'gray']) + '" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arw)"/>';
   out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="9" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="1.6"/>';
   var sl = sideLines(s);
   sl.forEach(function(ln, i){
@@ -145,17 +150,17 @@ function drawSide(s, nodeCx, nodeW, cy, dir){
 }
 function vlabel(x, y, s, col){
   var w = tw(s, true, 13.5) + 16;
-  return '<g transform="translate(' + x + ',' + y + ') rotate(-90)"><rect x="' + (-w/2) + '" y="-11" width="' + w + '" height="22" fill="#FFFFFF"/><text x="0" y="4.5" text-anchor="middle" font-size="13.5" font-weight="700" fill="' + (col || '#1F3864') + '">' + esc(s) + '</text></g>';
+  return '<g transform="translate(' + x + ',' + y + ') rotate(-90)"><rect x="' + (-w/2) + '" y="-11" width="' + w + '" height="22" fill="#1B2029"/><text x="0" y="4.5" text-anchor="middle" font-size="13.5" font-weight="700" fill="' + (col || '#D7E3F5') + '">' + esc(s) + '</text></g>';
 }
 function renderFlow(){
-  var W = 1200, cx = 545, GAP = 68, y = 26, pos = [], out = '';
-  out += '<defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1F4E79"/></marker></defs>';
+  var W = 1200, cx = 545, GAP = 62, y = 26, pos = [], out = '';
+  out += '<defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6FA8DC"/></marker></defs>';
   var loops = [];
   DATA.flow.forEach(function(n, i){
     if (n.k === 'sec'){
       y += 18;
-      out += '<text x="' + (W - 15) + '" y="' + (y + 6) + '" text-anchor="end" font-size="16" font-weight="700" fill="#1F3864">' + esc(n.t) + '</text>';
-      out += '<line x1="15" y1="' + (y + 16) + '" x2="' + (W - 15) + '" y2="' + (y + 16) + '" stroke="#B9CDE4" stroke-width="2"/>';
+      out += '<text x="' + (W - 15) + '" y="' + (y + 6) + '" text-anchor="end" font-size="16" font-weight="700" fill="#E6EAF2">' + esc(n.t) + '</text>';
+      out += '<line x1="15" y1="' + (y + 16) + '" x2="' + (W - 15) + '" y2="' + (y + 16) + '" stroke="#33415C" stroke-width="2"/>';
       y += 34; pos.push(null); return;
     }
     var sz = nodeSize(n);
@@ -174,9 +179,9 @@ function renderFlow(){
     var p = pos[i];
     if (i > 0 && pos[i - 1]){
       var prevBottom = pos[i - 1].y + pos[i - 1].h;
-      out += '<path d="M' + cx + ' ' + prevBottom + ' V' + (p.y - 4) + '" stroke="#1F4E79" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
+      out += '<path d="M' + cx + ' ' + prevBottom + ' V' + (p.y - 4) + '" stroke="#6FA8DC" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
       var pn = DATA.flow[i - 1];
-      if (pn.elab) out += vlabel(cx, (prevBottom + p.y) / 2, pn.elab, '#1F3864');
+      if (pn.elab) out += vlabel(cx, (prevBottom + p.y) / 2, pn.elab, '#D7E3F5');
     }
     if (n.k === 'sub'){ out += drawSub(n, cx, p.y, i); return; }
     out += drawNode(n, cx, p.y);
@@ -186,7 +191,7 @@ function renderFlow(){
   var maxHalf = 0; pos.forEach(function(p){ if (p) maxHalf = Math.max(maxHalf, p.w / 2); });
   loops.forEach(function(L, li){
     var a = pos[L.from], b = pos[L.to], lane = cx - maxHalf - 16 - li * 12;
-    var col = L.col === 'red' ? '#C00000' : '#1F4E79';
+    var col = L.col === 'red' ? '#FF8080' : '#6FA8DC';
     out += '<path d="M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + b.cy + ' H' + (cx - b.w / 2 - 4) + '" stroke="' + col + '" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
     if (L.lab) out += vlabel(lane, (a.cy + b.cy) / 2, L.lab, col);
   });
@@ -217,10 +222,10 @@ function treeDraw(n, levelX, out){
   (n._open ? (n.c || []) : []).forEach(function(ch){ treeDraw(ch, levelX, out); });
   (n._open ? (n.c || []) : []).forEach(function(ch){
     var cx2 = levelX[ch._d], cy2 = ch._y + 15, px = x, py = y + 15, mx = (px + cx2) / 2;
-    out.push('<path d="M' + px + ' ' + py + ' H' + mx + ' V' + cy2 + ' H' + cx2 + '" stroke="#9DB8D9" stroke-width="2" fill="none"/>');
+    out.push('<path d="M' + px + ' ' + py + ' H' + mx + ' V' + cy2 + ' H' + cx2 + '" stroke="#46608C" stroke-width="2" fill="none"/>');
   });
   var has = (n.c || []).length > 0;
-  out.push('<g class="tnode" data-tid="' + n._id + '"><rect x="' + x + '" y="' + y + '" width="' + n._w + '" height="30" rx="8" fill="' + (n._d === 0 ? '#1F3864' : '#DDEBF7') + '" stroke="#1F4E79" stroke-width="1.6"/>' +
+  out.push('<g class="tnode" data-tid="' + n._id + '"><rect x="' + x + '" y="' + y + '" width="' + n._w + '" height="30" rx="8" fill="' + (n._d === 0 ? '#1F3864' : '#DDEBF7') + '" stroke="#6FA8DC" stroke-width="1.6"/>' +
     '<text x="' + (x + n._w / 2) + '" y="' + (y + 20) + '" text-anchor="middle" font-size="13.5" fill="' + (n._d === 0 ? '#FFFFFF' : '#1F3864') + '">' + esc(n.t) + (has ? (n._open ? ' ‹' : ' ›') : '') + '</text></g>');
 }
 function renderTree(){
