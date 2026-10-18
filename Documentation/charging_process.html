@@ -3,201 +3,225 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>فرآیند شارژ — ChangeOver</title>
+<title>فرآیند شارژ — توضیح ساده</title>
 <style>
-  @font-face { font-family: Vazirmatn; src: local('Vazirmatn'); }
-  * { box-sizing: border-box; }
-  body { font-family: Vazirmatn, Tahoma, sans-serif; background:#F2F6FC; color:#1F3864; margin:0; padding:24px 16px 64px; line-height:1.9; }
-  .wrap { max-width: 980px; margin: 0 auto; }
-  h1 { background:#1F3864; color:#fff; border-radius:14px; padding:18px 22px; font-size:24px; margin:0 0 8px; }
-  .sub { color:#404040; margin:0 4px 20px; font-size:14px; }
-  h2 { background:#1F4E79; color:#fff; border-radius:10px; padding:10px 16px; font-size:19px; margin:28px 0 12px; }
-  .card { background:#fff; border:1px solid #D9E2F3; border-radius:12px; padding:14px 18px; margin:10px 0; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; }
-  .mini { background:#fff; border:1px solid #D9E2F3; border-inline-start:6px solid #1F4E79; border-radius:10px; padding:10px 14px; font-size:14px; }
-  .mini b { color:#1F3864; }
-  .num { background:#FFF2CC; border:1px dashed #BF8F00; border-radius:12px; padding:14px 18px; margin:12px 0; }
-  table { width:100%; border-collapse:collapse; background:#fff; font-size:14px; }
-  th { background:#1F4E79; color:#fff; padding:8px; }
-  td { border:1px solid #D9E2F3; padding:7px 9px; }
+  body { font-family: Vazirmatn, Tahoma, sans-serif; background:#F2F6FC; color:#1F3864; margin:0; padding:24px 14px 48px; line-height:1.9; }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 6px 0 2px; }
+  h2 { font-size: 20px; margin: 30px 0 8px; border-bottom: 3px solid #1F4E79; padding-bottom: 4px; }
+  .card { background:#fff; border:1.5px solid #1F4E79; border-radius:12px; padding:14px 20px; margin:12px 0; }
+  .ok { background:#C6EFCE; border-color:#548235; }
+  .warn { background:#FFE699; border-color:#BF8F00; }
+  ol, ul { margin: 6px 0; padding-right: 22px; }
+  li { margin: 4px 0; }
+  b.num { color:#C00000; }
+  table { border-collapse: collapse; width:100%; background:#fff; margin:10px 0; }
+  th { background:#1F4E79; color:#fff; padding:8px 10px; font-size:15px; }
+  td { border:1px solid #B9CDE4; padding:7px 10px; font-size:15px; }
   tr:nth-child(even) td { background:#F2F6FC; }
-  .ok { background:#C6EFCE !important; } .warn { background:#FFE699 !important; }
-  .bad { background:#FFC7CE !important; } .act { background:#FCE4D6 !important; }
-  .idle { background:#EDEDED !important; }
-  svg { width:100%; height:auto; background:#fff; border:1px solid #D9E2F3; border-radius:12px; }
+  .small { font-size: 13.5px; color:#444; }
   svg text { font-family: Vazirmatn, Tahoma, sans-serif; }
-  .foot { color:#808080; font-size:12.5px; margin-top:18px; }
-  b.key { color:#C00000; }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-<h1>فرآیند شارژ — خیلی ساده، با مثال عددی</h1>
-<p class="sub">هر کانال شارژر جدا کار می‌کند: کانال ۱ برای باتری بالای ۱۲ ولت و کانال ۲ برای باتری پایین ۱۲ ولت. همهٔ عددها از کد فعلی برد گرفته شده‌اند (فایل <span dir="ltr">charger.h</span>). هر جا ایرادی دیدی بگو تا اصلاح کنم.</p>
+<h1>فرآیند شارژ — توضیح ساده</h1>
+<p class="small">این صفحه رفتار فعلی برد را ساده توضیح می‌دهد. همهٔ عددها از کد فعلی برد برداشته شده‌اند (فایل‌های شارژر). هر دستگاه دو باتری ۱۲ ولتی دارد و هر باتری کانال شارژ جدا و رفتار یکسان دارد؛ پس توضیح زیر برای هر کانال است.</p>
 
-<h2>۱) کل برنامه در یک نگاه</h2>
-<div class="grid">
-  <div class="mini"><b>اندازه‌گیری:</b> هر ۱۰ میلی‌ثانیه ولتاژ و جریان خوانده می‌شود؛ بعد از ۳ فریم کامل، عددها معتبرند.</div>
-  <div class="mini"><b>تغذیهٔ میکرو:</b> اگر ورودی بالای ۲۲ ولت، ۵ ثانیه پایدار ماند، میکرو از ورودی تغذیه می‌شود؛ زیر ۲۱٫۵ ولت برمی‌گردد روی باتری.</div>
-  <div class="mini"><b>خروجی:</b> باتری زیر ۲۱ ولت برای ۳ ثانیه → خروجی قطع. برگشت ورودی و باتری بالای ۲۱٫۲ ولت برای ۳ ثانیه → خروجی وصل.</div>
-  <div class="mini"><b>عدم‌توازن:</b> اختلاف دو نیم‌باتری بالای ۳۰۰ میلی‌ولت (استراحت) یا ۵۰۰ (تخلیه) اگر بماند، «رویداد» شمرده می‌شود؛ با ۱۰ رویداد دستگاه قفل می‌کند.</div>
-  <div class="mini"><b>خطای ۶ (قطع باتری):</b> سیم باتری هنگام شارژ کشیده شود → شارژ فوری صفر، چراغ قرمز چشمک تند و سه بوق.</div>
-  <div class="mini"><b>خطای ۷ (فنی):</b> کانال دستور می‌دهد ولی جریان صفر است → قفل فنی؛ فقط با خاموش و روشن‌کردن پاک می‌شود.</div>
-  <div class="mini"><b>چراغ‌ها:</b> سبز یعنی درصد و وضعیت کلی؛ زرد یعنی در حال شارژ؛ قرمز یعنی خطا. شارژ کامل: سبز ثابت و زرد خاموش.</div>
-  <div class="mini"><b>پنل:</b> عددهای زنده، تنظیم‌ها و سابقهٔ خطاها (لاگ تشخیصی) از پنل خوانده و عوض می‌شود.</div>
+<h2>کل برنامه در یک نگاه</h2>
+<div class="card">
+<ul>
+<li>برد با دو باتری ۱۲ ولتی کار می‌کند؛ خروجی دستگاه ۲۴ ولت است (دو باتری سری).</li>
+<li>کار برد سه بخش است: <b>شارژ باتری‌ها</b>، <b>عوض‌کردن خروجی بین باتری‌ها</b> وقتی یکی ضعیف یا خراب شد، و <b>گرفتن خطاها</b> و نشان‌دادنشان با چراغ و بوق.</li>
+<li>تغذیهٔ خود میکرو هم دو راه دارد: اول از باتری؛ اگر ورودی ۲۴ ولت آمد و ۵ ثانیه پایدار ماند، میکرو از ورودی تغذیه می‌شود تا باتری بی‌جهت خالی نشود.</li>
+<li>این صفحه فقط بخش شارژ را باز می‌کند.</li>
+</ul>
 </div>
 
-<h2>۲) شارژ قدم‌به‌قدم (برای هر کانال جدا)</h2>
+<h2>شارژ قدم‌به‌قدم</h2>
 <div class="card">
-<b>شرط شروع:</b> ولتاژ ورودی باید بین <b class="key">۲۲ تا ۲۸ ولت</b> باشد و باتری وصل باشد. وقتی باتری تازه وصل می‌شود، اول <b class="key">۱۵ ثانیه</b> صبر و شروع نرم داریم تا همه‌چیز آرام جا بیفتد.
-</div>
-<div class="card">
-<b>مرحلهٔ ۱ — شارژ سریع (BULK):</b> جریان کامل داده می‌شود، حداکثر <b class="key">۶۵۰ میلی‌آمپر</b> (هدف حدود ۶۴۰). ولتاژ باتری کم‌کم بالا می‌رود. وقتی ولتاژ به <b class="key">۱۴٫۳ ولت</b> رسید، می‌رویم مرحلهٔ بعد.
-</div>
-<div class="card">
-<b>مرحلهٔ ۲ — جذب (ABSORB):</b> ولتاژ روی <b class="key">۱۴٫۴ ولت</b> ثابت نگه داشته می‌شود و جریان خودش کم‌کم پایین می‌آید. اگر ولتاژ از <b class="key">۱۴٫۶</b> رد شود، جریان پله‌پله کم می‌شود تا برگردد. اگر زیر <b class="key">۱۴٫۳</b> بیفتد، برمی‌گردیم به شارژ سریع و زمان جذب از صفر شروع می‌شود.
-</div>
-<div class="card">
-<b>تمام‌شدن شارژ:</b> وقتی دست‌کم <b class="key">۱۰ دقیقه</b> در جذب مانده باشیم <b>و</b> جریان به زیر <b class="key">۵۰ میلی‌آمپر</b> رسیده و <b class="key">۶۰ ثانیه</b> همان‌طور مانده باشد، شارژ کامل است و یک «شارژ کامل» هم در سابقه شمرده می‌شود.
-</div>
-<div class="card">
-<b>مرحلهٔ ۳ — نگه‌داری (FLOAT):</b> باتری روی <b class="key">۱۳٫۵ ولت</b> نگه داشته می‌شود؛ جریان تقریباً صفر است. اگر ولتاژ باتری زیر <b class="key">۱۲٫۸ ولت</b> بیفتد (مثلاً بار کشیده شود)، شارژ از نو شروع می‌شود.
+<ol>
+<li><b>شروع:</b> وقتی ورودی بین <b class="num">۲۲ تا ۲۸ ولت</b> باشد و باتری وصل باشد، شارژ می‌تواند شروع شود. اگر ورودی درست نباشد، شارژر صبر می‌کند و هیچ جریانی نمی‌دهد.</li>
+<li><b>آرام‌سازی:</b> هر بار باتری تازه وصل شود، <b class="num">۱۵ ثانیه</b> صبر می‌کنیم تا اتصال جا بیفتد؛ بعد شارژ آرام شروع می‌شود، بدون پرش ناگهانی.</li>
+<li><b>شارژ سریع:</b> جریان کامل می‌دهیم؛ سقفش <b class="num">۶۵۰ میلی‌آمپر</b> است. این مرحله تا وقتی ادامه دارد که ولتاژ باتری به <b class="num">۱۴٫۳ ولت</b> برسد.</li>
+<li><b>جذب:</b> ولتاژ را روی <b class="num">۱۴٫۴ ولت</b> ثابت نگه می‌داریم و جریان خودش کم‌کم پایین می‌آید. اگر ولتاژ زیر ۱۴٫۳ افتاد، برمی‌گردیم به شارژ سریع. اگر ولتاژ از ۱۴٫۶ بالاتر رفت، جریان را پله‌پله کم می‌کنیم.</li>
+<li><b>کامل‌شدن:</b> وقتی باتری دست‌کم <b class="num">۱۰ دقیقه</b> در جذب ماند و جریانش زیر <b class="num">۵۰ میلی‌آمپر</b> آمد و <b class="num">۶۰ ثانیه</b> همان‌طور ثابت ماند، شارژ کامل حساب می‌شود.</li>
+<li><b>نگه‌داری:</b> باتری کامل روی <b class="num">۱۳٫۵ ولت</b> نگه داشته می‌شود؛ چراغ سبز ثابت می‌ماند و زرد خاموش می‌شود. اگر ولتاژ زیر <b class="num">۱۲٫۸ ولت</b> افتاد (یعنی باتری دارد خالی می‌شود)، شارژ از اول شروع می‌شود.</li>
+</ol>
 </div>
 
-<div class="num">
-<b>مثال عددی — یک باتری خالی ۱۲ ولتی:</b><br>
-ساعت ۰: باتری ۱۱٫۹ ولت است، ورودی ۲۴ ولت وصل می‌شود → بعد از آرام‌سازی، شارژ سریع با ~۶۴۰ میلی‌آمپر شروع می‌شود.<br>
-مدتی بعد: ولتاژ به ۱۴٫۳ می‌رسد → جذب شروع می‌شود؛ ولتاژ روی ۱۴٫۴ می‌ماند و جریان از ۶۰۰ به ۳۰۰، بعد ۱۰۰ میلی‌آمپر پایین می‌آید.<br>
-وقتی ۱۰ دقیقه از جذب گذشت و جریان زیر ۵۰ میلی‌آمپر، ۶۰ ثانیه ثابت ماند → شارژ کامل؛ چراغ زرد خاموش و سبز ثابت می‌شود و باتری روی ۱۳٫۵ ولت نگه داشته می‌شود.<br>
-اگر همان موقع یک بار سنگین باتری را به ۱۲٫۷ ولت بکشد → شارژ خودکار از نو شروع می‌شود.
+<h2>یک مثال عددی</h2>
+<div class="card ok">
+<p>باتری‌ای را وصل می‌کنی که ولتاژش <b>۱۱٫۹ ولت</b> است (خالی):</p>
+<ol>
+<li>۱۵ ثانیه آرام‌سازی؛ بعد شارژ سریع با حدود <b>۶۴۰ میلی‌آمپر</b> شروع می‌شود.</li>
+<li>ولتاژ آرام‌آرام بالا می‌رود: ۱۲٫۵، ۱۳، ۱۳٫۸… تا به <b>۱۴٫۳ ولت</b> برسد.</li>
+<li>وارد جذب می‌شود: ولتاژ روی <b>۱۴٫۴</b> می‌ماند و جریان از ۶۰۰ به ۳۰۰، ۱۰۰ و پایین‌تر می‌آید.</li>
+<li>بعد از ۱۰ دقیقه، جریان به <b>۴۰ میلی‌آمپر</b> رسیده و ۶۰ ثانیه ثابت می‌ماند → شارژ کامل.</li>
+<li>از آن به بعد باتری روی <b>۱۳٫۵ ولت</b> نگه داشته می‌شود؛ اگر مصرف آن را زیر <b>۱۲٫۸</b> کشید، شارژ دوباره از اول شروع می‌شود.</li>
+</ol>
 </div>
 
-<h2>۳) فلوچارت شارژ (هر کانال)</h2>
-<svg viewBox="0 0 920 1180" role="img" aria-label="فلوچارت شارژ">
+<h2>فلوچارت شارژ</h2>
+<div class="card">
+<svg viewBox="0 0 920 985" width="100%" role="img" aria-label="فلوچارت شارژ">
   <defs>
-    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#1F4E79"></path>
     </marker>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#C00000"></path>
+    </marker>
   </defs>
-  <!-- main column x center 460 -->
-  <g font-size="15" fill="#1F3864">
-    <rect x="360" y="20" width="200" height="44" rx="22" fill="#1F3864"></rect>
-    <text x="460" y="48" text-anchor="middle" fill="#fff" font-weight="bold">شروع (برد روشن)</text>
 
-    <path d="M460 64 L460 92" stroke="#1F4E79" stroke-width="2" marker-end="url(#arr)"></path>
-    <polygon points="460,96 570,146 460,196 350,146" fill="#FFE699" stroke="#BF8F00"></polygon>
-    <text x="460" y="140" text-anchor="middle">ورودی بین ۲۲ و ۲۸ ولت</text>
-    <text x="460" y="162" text-anchor="middle">و باتری وصل است؟</text>
-    <text x="585" y="140" font-size="13">نه</text>
-    <rect x="640" y="112" width="220" height="66" rx="10" fill="#EDEDED" stroke="#808080"></rect>
-    <text x="750" y="138" text-anchor="middle">توقف و صبر (INPUT_WAIT)</text>
-    <text x="750" y="160" text-anchor="middle" font-size="13">شارژ صفر؛ هر وقت درست شد ادامه</text>
-    <path d="M570 146 L640 146" stroke="#1F4E79" stroke-width="2" marker-end="url(#arr)"></path>
-    <path d="M750 112 L750 42 L566 42" stroke="#1F4E79" stroke-width="2" fill="none" marker-end="url(#arr)"></path>
+  <text x="460" y="24" text-anchor="middle" font-size="16" font-weight="bold" fill="#1F3864">فلوچارت شارژ — برای هر کانال جدا (هر باتری ۱۲ ولت)</text>
 
-    <text x="470" y="216" font-size="13">بله</text>
-    <path d="M460 196 L460 224" stroke="#1F4E79" stroke-width="2" marker-end="url(#arr)"></path>
-    <rect x="330" y="228" width="260" height="58" rx="10" fill="#DDEBF7" stroke="#1F4E79"></rect>
-    <text x="460" y="252" text-anchor="middle">آرام‌سازی ۱۵ ثانیه بعد از وصل باتری</text>
-    <text x="460" y="274" text-anchor="middle" font-size="13">شروع نرم، بدون پرش</text>
+  <!-- شروع -->
+  <rect x="380" y="40" width="160" height="36" rx="18" fill="#1F3864"></rect>
+  <text x="460" y="63" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">شروع (برد روشن)</text>
+  <path d="M460 76 V96" stroke="#1F4E79" stroke-width="2" marker-end="url(#ar)" fill="none"></path>
 
-    <path d="M460 286 L460 314" stroke="#1F4E79" stroke-width="2" marker-end="url(#arr)"></path>
-    <rect x="330" y="318" width="260" height="66" rx="10" fill="#FCE4D6" stroke="#ED7D31"></rect>
-    <text x="460" y="344" text-anchor="middle" font-weight="bold">شارژ سریع (BULK)</text>
-    <text x="460" y="366" text-anchor="middle" font-size="13">جریان کامل، حداکثر ۶۵۰ میلی‌آمپر</text>
+  <!-- سؤال ۱ -->
+  <polygon points="460,100 575,135 460,170 345,135" fill="#FFE699" stroke="#BF8F00" stroke-width="1.5"></polygon>
+  <text x="460" y="130" text-anchor="middle" font-size="13" fill="#1F3864">ورودی بین ۲۲ و ۲۸ ولت</text>
+  <text x="460" y="149" text-anchor="middle" font-size="13" fill="#1F3864">و باتری وصل است؟</text>
 
-    <path d="M460 384 L460 412" stroke="#1F4E79" stroke-width="2" marker-end="url(#arr)"></path>
-    <polygon points="460,416 560,458 460,500 360,458" fill="#FFE699" stroke="#BF8F00"></polygon>
-    <text x="460" y="452" text-anchor="middle">ولتاژ به ۱۴٫۳ رسید؟</text>
-    <text x="460" y="472" text-anchor="middle" font-size="13">نه یعنی هنوز در شارژ سریع</text>
-    <path d="M360 458 L300 458 L300 351 L326 351" stroke="#1F4E79" stroke-width="2" fill="none" marker-end="url(#arr)"></path>
-    <text x="292" y="442" font-size="13">نه</text>
-    <text x="470" y="522" font-size="13">بله</text>
+  <!-- صبر برای ورودی -->
+  <rect x="622" y="109" width="252" height="52" rx="9" fill="#EDEDED" stroke="#808080" stroke-width="1.5"></rect>
+  <text x="748" y="130" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1F3864">توقف و صبر (INPUT_WAIT)</text>
+  <text x="748" y="149" text-anchor="middle" font-size="12" fill="#1F3864">شارژ صفر؛ هر وقت درست شد ادامه</text>
+  <path d="M575 135 H616" stroke="#1F4E79" stroke-width="2" marker-end="url(#ar)" fill="none"></path>
+  <g transform="translate(595,135)"><rect x="-17" y="-11" width="34" height="22" fill="#ffffff"></rect><text x="0" y="4" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1F3864">نه</text></g>
+  <path d="M748 109 V58 H547" stroke="#1F4E79" stroke-width="2" marker-end="url(#ar)" fill="none"></path>
 
-    <path d="M460 500 L460 528" stroke="#1F4E79" stroke-width="2" marker-end="url(#arr)"></path>
-    <rect x="330" y="532" width="260" height="78" rx="10" fill="#FCE4D6" stroke="#ED7D31"></rect>
-    <text x="460" y="556" text-anchor="middle" font-weight="bold">جذب (ABSORB)</text>
-    <text x="460" y="578" text-anchor="middle" font-size="13">ولتاژ ثابت ۱۴٫۴ ولت؛ جریان کم‌کم کم می‌شود</text>
-    <text x="460" y="598" text-anchor="middle" font-size="13">بالای ۱۴٫۶ یعنی کم‌کردن پله‌ای جریان</text>
-    <path d="M330 560 L246 560 L246 351 L326 351" stroke="#C00000" stroke-width="2" fill="none" marker-end="url(#arr)"></path>
-    <text x="238" y="545" font-size="13" fill="#C00000">زیر ۱۴٫۳ افتاد؟ برگرد شارژ سریع</text>
+  <!-- آرام‌سازی -->
+  <path d="M460 170 V201" stroke="#1F4E79" stroke-width="2" marker-end="url(#ar)" fill="none"></path>
+  <g transform="translate(460,186) rotate(-90)"><rect x="-20" y="-11" width="40" height="22" fill="#ffffff"></rect><text x="0" y="4" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1F3864">بله</text></g>
+  <rect x="338" y="205" width="244" height="46" rx="9" fill="#DDEBF7" stroke="#1F4E79" stroke-width="1.5"></rect>
+  <text x="460" y="224" text-anchor="middle" font-size="13" font-weight="bold" fill="#1F3864">آرام‌سازی ۱۵ ثانیه بعد از وصل باتری</text>
+  <text x="460" y="242" text-anchor="middle" font-size="12" fill="#1F3864">شروع نرم، بدون پرش</text>
 
-    <path d="M460 610 L460 638" stroke="#1F4E79" stroke-width="2" marker-end="url(#arr)"></path>
-    <polygon points="460,642 575,700 460,758 345,700" fill="#FFE699" stroke="#BF8F00"></polygon>
-    <text x="460" y="690" text-anchor="middle">۱۰ دقیقه در جذب گذشت</text>
-    <text x="460" y="712" text-anchor="middle">و جریان زیر ۵۰ میلی‌آمپر،</text>
-    <text x="460" y="732" text-anchor="middle">۶۰ ثانیه ثابت ماند؟</text>
-    <path d="M345 700 L292 700 L292 571 L326 571" stroke="#1F4E79" stroke-width="2" fill="none" marker-end="url(#arr)"></path>
-    <text x="284" y="685" font-size="13">نه</text>
-    <text x="470" y="780" font-size="13">بله</text>
+  <!-- شارژ سریع -->
+  <path d="M460 251 V267" stroke="#1F4E79" stroke-width="2" marker-end="url(#ar)" fill="none"></path>
+  <rect x="338" y="271" width="244" height="56" rx="9" fill="#DDEBF7" stroke="#1F4E79" stroke-width="1.5"></rect>
+  <text x="460" y="293" text-anchor="middle" font-size="13" font-weight="bold" fill="#1F3864">شارژ سریع (BULK)</text>
+  <text x="460" y="311" text-anchor="middle" font-size="12" fill="#1F3864">جریان کامل، حداکثر ۶۵۰ میلی‌آمپر</text>
 
-    <path d="M460 758 L460 786" stroke="#1F4E79" stroke-width="2" marker-end="url(#arr)"></path>
-    <rect x="330" y="790" width="260" height="66" rx="10" fill="#C6EFCE" stroke="#548235"></rect>
-    <text x="460" y="816" text-anchor="middle" font-weight="bold">نگه‌داری (FLOAT) — شارژ کامل</text>
-    <text x="460" y="838" text-anchor="middle" font-size="13">باتری روی ۱۳٫۵ ولت؛ سبز ثابت، زرد خاموش</text>
+  <!-- خطای ۶ -->
+  <rect x="622" y="271" width="252" height="64" rx="9" fill="#FFC7CE" stroke="#C00000" stroke-width="1.5"></rect>
+  <text x="748" y="291" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1F3864">خطای ۶: سیم باتری کشیده شد</text>
+  <text x="748" y="308" text-anchor="middle" font-size="11.5" fill="#1F3864">شارژ همان لحظه صفر می‌شود</text>
+  <text x="748" y="325" text-anchor="middle" font-size="11.5" fill="#1F3864">با وصل دوباره و ۱۵ ثانیه آرام‌سازی برمی‌گردد</text>
+  <path d="M622 299 H588" stroke="#C00000" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arr)" fill="none"></path>
 
-    <polygon points="460,880 555,918 460,956 365,918" fill="#FFE699" stroke="#BF8F00"></polygon>
-    <text x="460" y="912" text-anchor="middle">ولتاژ زیر ۱۲٫۸ افتاد؟</text>
-    <text x="460" y="932" text-anchor="middle" font-size="13">یعنی باتری دارد خالی می‌شود</text>
-    <path d="M460 856 L460 876" stroke="#1F4E79" stroke-width="2" marker-end="url(#arr)"></path>
-    <path d="M365 918 L180 918 L180 351 L326 351" stroke="#1F4E79" stroke-width="2" fill="none" marker-end="url(#arr)"></path>
-    <text x="172" y="900" font-size="13">بله: شارژ از نو</text>
-    <text x="470" y="978" font-size="13">نه: همان‌جا می‌ماند</text>
-    <path d="M460 956 L460 984" stroke="#1F4E79" stroke-width="2" marker-end="url(#arr)"></path>
-    <rect x="360" y="988" width="200" height="44" rx="22" fill="#1F3864"></rect>
-    <text x="460" y="1016" text-anchor="middle" fill="#fff" font-weight="bold">باتری آمادهٔ کار</text>
+  <!-- سؤال ۲ -->
+  <path d="M460 327 V343" stroke="#1F4E79" stroke-width="2" marker-end="url(#ar)" fill="none"></path>
+  <polygon points="460,343 575,378 460,413 345,378" fill="#FFE699" stroke="#BF8F00" stroke-width="1.5"></polygon>
+  <text x="460" y="383" text-anchor="middle" font-size="13" fill="#1F3864">ولتاژ به ۱۴٫۳ رسید؟</text>
+  <path d="M345 378 H322 V299 H332" stroke="#1F4E79" stroke-width="2" marker-end="url(#ar)" fill="none"></path>
+  <g transform="translate(322,338) rotate(-90)"><rect x="-15" y="-11" width="30" height="22" fill="#ffffff"></rect><text x="0" y="4" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1F3864">نه</text></g>
+  <path d="M338 474 H292 V299 H332" stroke="#C00000" stroke-width="2" marker-end="url(#arr)" fill="none"></path>
+  <g transform="translate(292,386) rotate(-90)"><rect x="-88" y="-11" width="176" height="22" fill="#ffffff"></rect><text x="0" y="4" text-anchor="middle" font-size="12" font-weight="bold" fill="#C00000">زیر ۱۴٫۳؟ برگرد به شارژ سریع</text></g>
 
-    <!-- side protections -->
-    <rect x="622" y="330" width="262" height="88" rx="10" fill="#FFC7CE" stroke="#C00000"></rect>
-    <text x="753" y="356" text-anchor="middle" font-weight="bold">خطای ۶: سیم باتری کشیده شد</text>
-    <text x="753" y="378" text-anchor="middle" font-size="13">شارژ همان لحظه صفر می‌شود</text>
-    <text x="753" y="398" text-anchor="middle" font-size="13">با وصل دوباره و ۱۵ ثانیه آرام‌سازی برمی‌گردد</text>
-    <path d="M622 360 L594 360" stroke="#C00000" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arr)"></path>
+  <!-- جذب -->
+  <path d="M460 413 V448" stroke="#1F4E79" stroke-width="2" marker-end="url(#ar)" fill="none"></path>
+  <g transform="translate(460,430) rotate(-90)"><rect x="-20" y="-11" width="40" height="22" fill="#ffffff"></rect><text x="0" y="4" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1F3864">بله</text></g>
+  <rect x="338" y="452" width="244" height="68" rx="9" fill="#DDEBF7" stroke="#1F4E79" stroke-width="1.5"></rect>
+  <text x="460" y="473" text-anchor="middle" font-size="13" font-weight="bold" fill="#1F3864">جذب (ABSORB)</text>
+  <text x="460" y="491" text-anchor="middle" font-size="12" fill="#1F3864">ولتاژ ثابت ۱۴٫۴ ولت؛ جریان کم‌کم کم می‌شود</text>
+  <text x="460" y="508" text-anchor="middle" font-size="12" fill="#1F3864">بالای ۱۴٫۶ یعنی کم‌کردن پله‌ای جریان</text>
 
-    <rect x="622" y="470" width="262" height="88" rx="10" fill="#FFC7CE" stroke="#C00000"></rect>
-    <text x="753" y="496" text-anchor="middle" font-weight="bold">خطای ۷: کانال بی‌جریان (فنی)</text>
-    <text x="753" y="518" text-anchor="middle" font-size="13">قفل فنی؛ شارژ آن کانال بسته می‌شود</text>
-    <text x="753" y="538" text-anchor="middle" font-size="13">فقط با خاموش و روشن‌کردن پاک می‌شود</text>
-    <path d="M622 500 L594 500" stroke="#C00000" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arr)"></path>
+  <!-- خطای ۷ -->
+  <rect x="622" y="452" width="252" height="64" rx="9" fill="#FFC7CE" stroke="#C00000" stroke-width="1.5"></rect>
+  <text x="748" y="472" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1F3864">خطای ۷: کانال بی‌جریان (فنی)</text>
+  <text x="748" y="489" text-anchor="middle" font-size="11.5" fill="#1F3864">قفل فنی؛ شارژ آن کانال بسته می‌شود</text>
+  <text x="748" y="506" text-anchor="middle" font-size="11.5" fill="#1F3864">فقط با خاموش و روشن‌کردن پاک می‌شود</text>
+  <path d="M622 486 H588" stroke="#C00000" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arr)" fill="none"></path>
 
-    <rect x="622" y="610" width="262" height="80" rx="10" fill="#FFE699" stroke="#BF8F00"></rect>
-    <text x="753" y="636" text-anchor="middle" font-weight="bold">داغ‌شدن: ۱ ساعت جریان کامل</text>
-    <text x="753" y="658" text-anchor="middle" font-size="13">۱۰ دقیقه استراحت، بعد ادامهٔ شارژ</text>
-    <text x="753" y="676" text-anchor="middle" font-size="13">(چراغ زرد در استراحت چشمک می‌زند)</text>
-    <path d="M622 640 L594 640" stroke="#BF8F00" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arr)"></path>
+  <!-- تریپ JIT -->
+  <rect x="30" y="452" width="210" height="60" rx="9" fill="#EDEDED" stroke="#808080" stroke-width="1.5"></rect>
+  <text x="135" y="472" text-anchor="middle" font-size="12" font-weight="bold" fill="#1F3864">تریپ JIT (جریان ناگهانی)</text>
+  <text x="135" y="489" text-anchor="middle" font-size="11.5" fill="#1F3864">کانال می‌ایستد؛ احیا یکی‌یکی</text>
+  <text x="135" y="506" text-anchor="middle" font-size="11.5" fill="#1F3864">و به ترتیب تریپ انجام می‌شود</text>
+  <path d="M338 486 H246" stroke="#808080" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ar)" fill="none"></path>
 
-    <rect x="36" y="610" width="230" height="80" rx="10" fill="#FFE699" stroke="#BF8F00"></rect>
-    <text x="151" y="636" text-anchor="middle" font-weight="bold">تریپ JIT (جریان ناگهانی)</text>
-    <text x="151" y="658" text-anchor="middle" font-size="13">کانال می‌ایستد؛ احیا یکی‌یکی</text>
-    <text x="151" y="676" text-anchor="middle" font-size="13">و به ترتیب تریپ انجام می‌شود</text>
+  <!-- سؤال ۳ -->
+  <path d="M460 520 V536" stroke="#1F4E79" stroke-width="2" marker-end="url(#ar)" fill="none"></path>
+  <polygon points="460,536 585,586 460,636 335,586" fill="#FFE699" stroke="#BF8F00" stroke-width="1.5"></polygon>
+  <text x="460" y="572" text-anchor="middle" font-size="12.5" fill="#1F3864">۱۰ دقیقه در جذب گذشت</text>
+  <text x="460" y="590" text-anchor="middle" font-size="12.5" fill="#1F3864">و جریان زیر ۵۰ میلی‌آمپر،</text>
+  <text x="460" y="608" text-anchor="middle" font-size="12.5" fill="#1F3864">۶۰ ثانیه ثابت ماند؟</text>
+  <path d="M335 586 H322 V486 H332" stroke="#1F4E79" stroke-width="2" marker-end="url(#ar)" fill="none"></path>
+  <g transform="translate(322,536) rotate(-90)"><rect x="-15" y="-11" width="30" height="22" fill="#ffffff"></rect><text x="0" y="4" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1F3864">نه</text></g>
 
-    <rect x="36" y="730" width="230" height="96" rx="10" fill="#FFC7CE" stroke="#C00000"></rect>
-    <text x="151" y="756" text-anchor="middle" font-weight="bold">باتری خراب (سناریوی ۶)</text>
-    <text x="151" y="778" text-anchor="middle" font-size="13">۲۴ ساعت شارژ فعالِ بی‌نتیجه؟</text>
-    <text x="151" y="796" text-anchor="middle" font-size="13">قفل و قرمز ثابت؛ شارژ دیگر نمی‌کند</text>
-    <text x="151" y="814" text-anchor="middle" font-size="13">پاک‌شدن: نبودِ باتری برای ۳ ثانیه</text>
-  </g>
+  <!-- نگه‌داری -->
+  <path d="M460 636 V671" stroke="#1F4E79" stroke-width="2" marker-end="url(#ar)" fill="none"></path>
+  <g transform="translate(460,653) rotate(-90)"><rect x="-20" y="-11" width="40" height="22" fill="#ffffff"></rect><text x="0" y="4" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1F3864">بله</text></g>
+  <rect x="338" y="675" width="244" height="56" rx="9" fill="#C6EFCE" stroke="#548235" stroke-width="1.5"></rect>
+  <text x="460" y="697" text-anchor="middle" font-size="13" font-weight="bold" fill="#1F3864">نگه‌داری (FLOAT) — شارژ کامل</text>
+  <text x="460" y="715" text-anchor="middle" font-size="12" fill="#1F3864">باتری روی ۱۳٫۵ ولت؛ سبز ثابت، زرد خاموش</text>
+
+  <!-- داغ‌شدن -->
+  <rect x="622" y="675" width="252" height="60" rx="9" fill="#EDEDED" stroke="#808080" stroke-width="1.5"></rect>
+  <text x="748" y="695" text-anchor="middle" font-size="12" font-weight="bold" fill="#1F3864">داغ‌شدن: ۱ ساعت جریان کامل</text>
+  <text x="748" y="712" text-anchor="middle" font-size="11.5" fill="#1F3864">۱۰ دقیقه استراحت، بعد ادامهٔ شارژ</text>
+  <text x="748" y="729" text-anchor="middle" font-size="11.5" fill="#1F3864">در استراحت زرد چشمک می‌زند</text>
+  <path d="M622 703 H588" stroke="#808080" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#ar)" fill="none"></path>
+
+  <!-- باتری خراب -->
+  <rect x="30" y="675" width="210" height="76" rx="9" fill="#FFC7CE" stroke="#C00000" stroke-width="1.5"></rect>
+  <text x="135" y="695" text-anchor="middle" font-size="12" font-weight="bold" fill="#1F3864">باتری خراب (سناریوی ۶)</text>
+  <text x="135" y="712" text-anchor="middle" font-size="11.5" fill="#1F3864">۲۴ ساعت شارژ فعالِ بی‌نتیجه؟</text>
+  <text x="135" y="729" text-anchor="middle" font-size="11.5" fill="#1F3864">قفل و قرمز ثابت؛ شارژ دیگر نمی‌کند</text>
+  <text x="135" y="746" text-anchor="middle" font-size="11" fill="#1F3864">پاک‌شدن: نبودِ باتری برای ۳ ثانیه</text>
+  <path d="M338 703 H246" stroke="#C00000" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#arr)" fill="none"></path>
+
+  <!-- سؤال ۴ -->
+  <path d="M460 731 V747" stroke="#1F4E79" stroke-width="2" marker-end="url(#ar)" fill="none"></path>
+  <polygon points="460,747 575,782 460,817 345,782" fill="#FFE699" stroke="#BF8F00" stroke-width="1.5"></polygon>
+  <text x="460" y="778" text-anchor="middle" font-size="12.5" fill="#1F3864">ولتاژ زیر ۱۲٫۸ افتاد؟</text>
+  <text x="460" y="796" text-anchor="middle" font-size="12.5" fill="#1F3864">یعنی باتری دارد خالی می‌شود</text>
+  <path d="M345 782 H262 V299 H332" stroke="#1F4E79" stroke-width="2" marker-end="url(#ar)" fill="none"></path>
+  <g transform="translate(262,540) rotate(-90)"><rect x="-62" y="-11" width="124" height="22" fill="#ffffff"></rect><text x="0" y="4" text-anchor="middle" font-size="12" font-weight="bold" fill="#1F3864">بله: شارژ از نو</text></g>
+
+  <!-- پایان -->
+  <path d="M460 817 V852" stroke="#1F4E79" stroke-width="2" marker-end="url(#ar)" fill="none"></path>
+  <g transform="translate(460,834) rotate(-90)"><rect x="-15" y="-11" width="30" height="22" fill="#ffffff"></rect><text x="0" y="4" text-anchor="middle" font-size="12.5" font-weight="bold" fill="#1F3864">نه</text></g>
+  <rect x="380" y="856" width="160" height="36" rx="18" fill="#1F3864"></rect>
+  <text x="460" y="879" text-anchor="middle" font-size="13" font-weight="bold" fill="#ffffff">باتری آمادهٔ کار</text>
+
+  <!-- راهنمای رنگ‌ها -->
+  <text x="895" y="934" text-anchor="end" font-size="12.5" font-weight="bold" fill="#1F3864">معنای رنگ‌ها:</text>
+  <rect x="770" y="920" width="14" height="14" fill="#DDEBF7" stroke="#1F4E79"></rect><text x="764" y="932" text-anchor="end" font-size="12" fill="#1F3864">در حال شارژ</text>
+  <rect x="645" y="920" width="14" height="14" fill="#C6EFCE" stroke="#548235"></rect><text x="639" y="932" text-anchor="end" font-size="12" fill="#1F3864">شارژ کامل</text>
+  <rect x="520" y="920" width="14" height="14" fill="#FFE699" stroke="#BF8F00"></rect><text x="514" y="932" text-anchor="end" font-size="12" fill="#1F3864">سؤال و تصمیم</text>
+  <rect x="400" y="920" width="14" height="14" fill="#FFC7CE" stroke="#C00000"></rect><text x="394" y="932" text-anchor="end" font-size="12" fill="#1F3864">خطا و توقف</text>
+  <rect x="285" y="920" width="14" height="14" fill="#EDEDED" stroke="#808080"></rect><text x="279" y="932" text-anchor="end" font-size="12" fill="#1F3864">صبر و مکث</text>
+  <rect x="170" y="920" width="14" height="14" fill="#1F3864" stroke="#1F3864"></rect><text x="164" y="932" text-anchor="end" font-size="12" fill="#1F3864">شروع و پایان</text>
+
+  <text x="460" y="968" text-anchor="middle" font-size="12" fill="#808080">هر وقت عدد یا شرطی به نظرت ایراد داشت، بگو کدام است؛ اول با هم چک می‌کنیم، بعد اصلاح می‌کنیم.</text>
 </svg>
+</div>
 
-<h2>۴) جدول شرط‌ها (خلاصه)</h2>
+<h2>شرط‌ها و حفاظت‌ها</h2>
 <table>
-  <tr><th>شرط</th><th>اتفاق</th><th>عدد</th></tr>
-  <tr><td>ورودی کمتر از ۲۲ یا بیشتر از ۲۸ ولت</td><td>شارژ متوقف و صبر می‌کند</td><td>22 تا 28 V</td></tr>
-  <tr><td>باتری تازه وصل شده</td><td>شروع نرم بعد از آرام‌سازی</td><td>15 s</td></tr>
-  <tr><td>ولتاژ باتری به ۱۴٫۳ رسید</td><td>از شارژ سریع به جذب</td><td>14.3 V</td></tr>
-  <tr><td>در جذب، ولتاژ زیر ۱۴٫۳ افتاد</td><td>برگشت به شارژ سریع؛ زمان جذب از صفر</td><td>14.3 V</td></tr>
-  <tr><td>در جذب، ولتاژ از ۱۴٫۶ رد شد</td><td>جریان پله‌پله کم می‌شود</td><td>14.6 V</td></tr>
-  <tr><td>۱۰ دقیقه جذب + جریان زیر ۵۰ میلی‌آمپر برای ۶۰ ثانیه</td><td>شارژ کامل؛ رفتن به نگه‌داری ۱۳٫۵ ولت</td><td>600 s + 50 mA + 60 s</td></tr>
-  <tr><td>در نگه‌داری، ولتاژ زیر ۱۲٫۸ افتاد</td><td>شارژ از نو شروع می‌شود</td><td>12.8 V</td></tr>
-  <tr><td>سیم باتری هنگام شارژ کشیده شد</td><td>خطای ۶؛ شارژ همان لحظه صفر</td><td>نیم‌باتری زیر 6 V</td></tr>
-  <tr><td>دستور بالای ۲۰٪ ولی جریان دقیقاً صفر</td><td>خطای ۷؛ قفل فنی تا خاموش‌روشن</td><td>duty&gt;20% و I=0</td></tr>
-  <tr><td>۲۴ ساعت شارژ فعال بدون کامل‌شدن</td><td>«باتری خراب»؛ قفل و قرمز ثابت</td><td>24 h (پارامتر ۱۲۵)</td></tr>
-  <tr><td>۱ ساعت پیوسته جریان کامل</td><td>استراحت حرارتی</td><td>1 h ← 10 min</td></tr>
-  <tr><td>جریان از حد سخت رد شد</td><td>خطای جریان سخت و توقف کانال</td><td>950 mA</td></tr>
+<tr><th style="width:26%">اگر این اتفاق افتاد</th><th style="width:37%">برد چه کار می‌کند</th><th>عددش</th></tr>
+<tr><td>ورودی از ۲۲ ولت پایین‌تر یا از ۲۸ ولت بالاتر رفت</td><td>شارژ صفر می‌شود و برد در صبر می‌ماند؛ برگشت خودش ادامه می‌دهد.</td><td>ورودی معتبر: ۲۲ تا ۲۸ ولت</td></tr>
+<tr><td>سیم باتری وسط شارژ کشیده شد</td><td><b>خطای ۶:</b> شارژ همان لحظه صفر می‌شود، چراغ قرمز چشمک می‌زند و سه بوق می‌آید. با وصل دوباره و ۱۵ ثانیه آرام‌سازی همه‌چیز به حالت عادی برمی‌گردد.</td><td>قطع باتری (خطای ۶)</td></tr>
+<tr><td>کانال شارژ جریان نمی‌دهد (خرابی داخلی)</td><td><b>خطای ۷:</b> آن کانال قفل می‌شود و شارژش کامل بسته می‌شود؛ فقط با خاموش و روشن‌کردن برد پاک می‌شود.</td><td>جریان خیلی کمِ ماندگار؛ سقف خطای سخت ۹۵۰ میلی‌آمپر</td></tr>
+<tr><td>ولتاژ باتری در جذب زیر ۱۴٫۳ افتاد</td><td>برمی‌گردد به شارژ سریع و شمارش ۱۰ دقیقه از اول شروع می‌شود.</td><td>۱۴٫۳ ولت</td></tr>
+<tr><td>ولتاژ در جذب از ۱۴٫۶ رد شد</td><td>جریان پله‌پله کم می‌شود تا ولتاژ برگردد.</td><td>۱۴٫۶ ولت</td></tr>
+<tr><td>یک ساعت پشت‌سرهم جریان کامل رفت</td><td>۱۰ دقیقه استراحت؛ چراغ زرد چشمک می‌زند؛ بعد شارژ ادامه پیدا می‌کند.</td><td>۱ ساعت کار، ۱۰ دقیقه استراحت</td></tr>
+<tr><td>شارژ ۲۴ ساعت فعال بود ولی باتری کامل نشد</td><td><b>باتری خراب:</b> شارژ قفل می‌شود، قرمز ثابت می‌ماند و دیگر شارژ نمی‌کند.</td><td>پیش‌فرض ۲۴ ساعت؛ از پنل قابل‌تغییر (شناسهٔ ۱۲۵)</td></tr>
+<tr><td>باتری خراب چطور پاک می‌شود؟</td><td>اگر باتری ۳ ثانیه نباشد (سیمش کشیده شود)، شمارنده از اول شروع می‌شود وقتی باتری برگردد.</td><td>۳ ثانیه نبودِ باتری</td></tr>
+<tr><td>جریان ناگهانی (تریپ JIT)</td><td>کانال می‌ایستد؛ بعد یکی‌یکی و به ترتیب تریپ برمی‌گردند تا دوباره ناگهانی نپرد.</td><td>قفل ۳ ثانیه؛ احیای یکی‌یکی</td></tr>
+<tr><td>باتری در نگه‌داری زیر ۱۲٫۸ افتاد</td><td>شارژ از اول شروع می‌شود (شارژ سریع).</td><td>۱۲٫۸ ولت</td></tr>
 </table>
 
-<p class="foot">این صفحه از روی کد فعلی ساخته شده است (ثابت‌های <span dir="ltr">charger.h</span>). پیش‌نمایش زندهٔ همین فایل است؛ اگر در هر شرط یا عددی ایراد می‌بینی، بگو کدام است تا اول با هم چک کنیم و بعد اصلاح کنم.</p>
+<div class="card warn">
+<b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ من اول از روی کد چک می‌کنم، با هم به نتیجه می‌رسیم، و بعد اصلاحش می‌کنیم.
+</div>
 
 </div>
 </body>
