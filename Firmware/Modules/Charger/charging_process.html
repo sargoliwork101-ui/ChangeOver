@@ -360,27 +360,27 @@ function wireFlow(){
     var ng = ev.target.closest ? ev.target.closest('.fnode') : null;
     clear();
     if (eg){
-      svg.classList.add('sel');
-      var fi = eg.getAttribute('data-fi'), ti = eg.getAttribute('data-ti');
-      var ids = {}; if (fi !== '') ids[fi] = 1; if (ti !== '') ids[ti] = 1;
-      var exp = {}; for (var kk in ids) exp[kk] = 1;
-      if (ti === String(DATA.flow.length)) delete exp[ti];
-      var es = svg.querySelectorAll('.edge');
+      svg.classList.add('sel'); eg.classList.add('hl');
+      var fi = eg.getAttribute('data-fi'), ti = eg.getAttribute('data-ti'), lab = eg.getAttribute('data-l');
+      var es = svg.querySelectorAll('.edge'), paired = null;
+      /* a side result and its return arrow are ONE route: light both, nothing else */
       for (var q = 0; q < es.length; q++){
         var e2 = es[q];
-        if (e2 === eg || exp[e2.getAttribute('data-fi')] || exp[e2.getAttribute('data-ti')]) e2.classList.add('hl');
+        if (e2 === eg) continue;
+        if ((lab === 'بله' || lab === 'نه') && ti === '' && e2.getAttribute('data-l') === 'برگشت' && e2.getAttribute('data-fi') === fi) paired = e2;
+        if (lab === 'برگشت' && e2.getAttribute('data-ti') === '' && (e2.getAttribute('data-l') === 'بله' || e2.getAttribute('data-l') === 'نه') && e2.getAttribute('data-fi') === fi) paired = e2;
       }
+      var ids = {}; if (fi !== '') ids[fi] = 1; if (ti !== '') ids[ti] = 1;
+      if (paired){ paired.classList.add('hl'); var pt = paired.getAttribute('data-ti'); if (pt !== '') ids[pt] = 1; }
       var ns = svg.querySelectorAll('.fnode');
       for (var q2 = 0; q2 < ns.length; q2++){ if (ids[ns[q2].getAttribute('data-i')]) ns[q2].classList.add('hl'); }
-      if (info) info.textContent = 'ارتباط: از «' + eg.getAttribute('data-f') + '» به «' + eg.getAttribute('data-t') + '»' + (eg.getAttribute('data-l') ? ' — ' + eg.getAttribute('data-l') : '') + ' (خط‌های وصل به دو سرش هم روشن شدند)';
+      if (info) info.textContent = 'ارتباط: از «' + eg.getAttribute('data-f') + '» به «' + eg.getAttribute('data-t') + '»' + (eg.getAttribute('data-l') ? ' — ' + eg.getAttribute('data-l') : '') + (paired ? ' (ادامهٔ همین مسیر هم روشن است)' : '');
     } else if (ng){
       var go = ng.getAttribute('data-go');
       if (go){ location.href = go; return; }
       svg.classList.add('sel'); ng.classList.add('hl');
-      var i2 = ng.getAttribute('data-i'), cnt = 0, es = svg.querySelectorAll('.edge'), far = {};
-      for (var q2 = 0; q2 < es.length; q2++){ if (es[q2].getAttribute('data-fi') === i2 || es[q2].getAttribute('data-ti') === i2){ es[q2].classList.add('hl'); cnt++; far[es[q2].getAttribute('data-fi')] = 1; far[es[q2].getAttribute('data-ti')] = 1; } }
-      var ns2 = svg.querySelectorAll('.fnode');
-      for (var q3 = 0; q3 < ns2.length; q3++){ if (far[ns2[q3].getAttribute('data-i')]) ns2[q3].classList.add('hl'); }
+      var i2 = ng.getAttribute('data-i'), cnt = 0, es = svg.querySelectorAll('.edge');
+      for (var q2 = 0; q2 < es.length; q2++){ if (es[q2].getAttribute('data-fi') === i2 || es[q2].getAttribute('data-ti') === i2){ es[q2].classList.add('hl'); cnt++; } }
       if (info) info.textContent = 'باکس «' + (ng.getAttribute('data-t') || '') + '» — ' + cnt + ' خطِ وصل به آن روشن شد. برای برگشت، روی جای خالی شکل کلیک کن.';
     } else {
       if (info) info.textContent = 'برای دیدن ارتباط هر خط، روی آن کلیک کن؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. باکس‌های با علامت ↗ لینک صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل کلیک کن.';
