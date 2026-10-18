@@ -34,6 +34,8 @@ TEMPLATE = r"""<!DOCTYPE html>
   .small { font-size: 13.5px; color:#444; }
   svg text { font-family: Vazirmatn, Tahoma, sans-serif; }
   .tnode { cursor: pointer; }
+  .subhead { cursor: pointer; }
+  .subhead:hover rect { stroke-width: 3; }
   .tnode:hover rect { stroke-width: 3; }
 </style>
 </head>
@@ -72,6 +74,7 @@ function tw(t, bold, sz){ cv.font = (bold ? '700 ' : '') + sz + 'px Vazirmatn, T
 function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
 function linesOf(n){ var a = []; if (n.t) a.push({s:n.t, b:true}); (n.l || []).forEach(function(x){ a.push({s:x, b:false}); }); return a; }
 function nodeSize(n){
+  if (n.k === 'sub') return { w: Math.min(Math.max(tw(n.t || '', true, 15) + 96, 280), 470), h: 46 };
   var ls = linesOf(n), mx = 0;
   ls.forEach(function(x){ mx = Math.max(mx, tw(x.s, x.b, 15)); });
   if (n.k === 'dia') return { w: Math.min(Math.max(mx + 96, 210), 360), h: Math.max(78, ls.length * 25 + 40) };
@@ -80,6 +83,25 @@ function nodeSize(n){
 function sideSize(s){
   var mx = 0; s.l.forEach(function(x){ mx = Math.max(mx, tw(x, false, 13.5)); });
   return { w: Math.min(Math.max(mx + 30, 170), 280), h: s.l.length * 23 + 24 };
+}
+function drawSub(n, cx, y, idx){
+  var sz = nodeSize(n), x = cx - sz.w / 2, out = '';
+  out += '<g class="subhead" data-i="' + idx + '"><rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="46" rx="10" fill="#EDEDED" stroke="#808080" stroke-width="2"/>' +
+    '<text x="' + cx + '" y="' + (y + 29) + '" text-anchor="middle" font-size="15" font-weight="700" fill="#1F3864">' + esc(n.t) + (n._open ? '  ‹ بستن' : '  › بازکردن جزئیات') + '</text></g>';
+  if (n.ref) out += '<text x="' + cx + '" y="' + (y + 63) + '" text-anchor="middle" font-size="11" fill="#808080" font-family="Consolas, monospace">' + esc(n.ref) + '</text>';
+  if (!n._open) return out;
+  var kids = n.flow || [], ky = y + 78, maxW = 200, sizes = [];
+  kids.forEach(function(kd){ var ks = nodeSize(kd); sizes.push(ks); maxW = Math.max(maxW, ks.w); });
+  var frameW = Math.min(maxW + 44, 560), frameY1 = ky;
+  sizes.forEach(function(ks){ frameY1 += ks.h + 30; });
+  frameY1 -= 18;
+  out += '<rect x="' + (cx - frameW / 2) + '" y="' + (y + 56) + '" width="' + frameW + '" height="' + (frameY1 - y - 56) + '" rx="12" fill="#F8FBFF" stroke="#9DB8D9" stroke-width="1.8" stroke-dasharray="7 5"/>';
+  kids.forEach(function(kd, ki){
+    if (ki > 0) out += '<path d="M' + cx + ' ' + (ky - 30) + ' V' + (ky - 4) + '" stroke="#1F4E79" stroke-width="2" fill="none" marker-end="url(#arw)"/>';
+    out += drawNode(kd, cx, ky);
+    ky += sizes[ki].h + 30;
+  });
+  return out;
 }
 function drawNode(n, cx, y){
   var sz = nodeSize(n), c = COLORS[n.c || 'blue'], x = cx - sz.w / 2, out = '';
@@ -127,7 +149,12 @@ function renderFlow(){
       y += 34; pos.push(null); return;
     }
     var sz = nodeSize(n);
-    pos.push({ y: y, h: sz.h, w: sz.w, cy: y + sz.h / 2 });
+    if (n.k === 'sub' && n._open){
+      var kh = 78 - 46;
+      (n.flow || []).forEach(function(kd){ kh += nodeSize(kd).h + 30; });
+      sz = { w: sz.w, h: kh + 14 };
+    }
+    pos.push({ y: y, h: sz.h, w: sz.w, cy: y + (n.k === 'sub' ? 23 : sz.h / 2) });
     y += sz.h + GAP;
     if (n.loop) loops.push({ from: i, to: n.loop.to, lab: n.loop.lab, col: n.loop.col });
   });
@@ -141,6 +168,7 @@ function renderFlow(){
       var pn = DATA.flow[i - 1];
       if (pn.elab) out += vlabel(cx, (prevBottom + p.y) / 2, pn.elab, '#1F3864');
     }
+    if (n.k === 'sub'){ out += drawSub(n, cx, p.y, i); return; }
     out += drawNode(n, cx, p.y);
     if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r');
     if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l');
@@ -153,6 +181,12 @@ function renderFlow(){
     if (L.lab) out += vlabel(lane, (a.cy + b.cy) / 2, L.lab, col);
   });
   document.getElementById('flow').innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%">' + out + '</svg>';
+  document.querySelectorAll('.subhead').forEach(function(g){
+    g.addEventListener('click', function(){
+      var n = DATA.flow[+g.getAttribute('data-i')];
+      n._open = !n._open; renderFlow();
+    });
+  });
   document.getElementById('legend').innerHTML = 'معنای رنگ‌ها: ' + LEGEND.map(function(x){
     return '<span style="display:inline-block;width:13px;height:13px;background:' + COLORS[x[0]].f + ';border:2px solid ' + COLORS[x[0]].o + ';vertical-align:-2px;margin:0 4px 0 2px"></span>' + x[1];
   }).join(' &nbsp; ');
@@ -267,30 +301,61 @@ MODULES['charging'] = {
    N('pill','navy','شروع پاس شارژر', ref='func__Charger_Evaluate'),
    N('dia','yellow','ذخیرهٔ حافظه (NVM) در حال انجام است؟', side=SIDE('gray',['هر دو خروجی صفر و پایان این پاس','شارژ از پاس بعد ادامه دارد']), elab='نه'),
    N('dia','yellow','قفل خطای فنی (خطای ۷) از قبل ست شده؟', ref='FinalDisconnect', side=SIDE('red',['قطع نهایی: رله باز و هر دو خروجی صفر','تا خاموش و روشن‌شدن برد می‌ماند']), elab='نه'),
-   N('dia','yellow','مود تست دستی پنل فعال است؟', ref='EnterManualTestMode', side=SIDE('gray',['duty را پنل می‌فرستد؛ گیت‌های باتری کنار می‌روند','۳ ثانیه سکوت لینک = خروج خودکار از مود'])),
+   {'k': 'sub', 'c': 'gray', 't': 'مود تست دستی پنل چطور کار می‌کند', 'ref': 'EnterManualTestMode / ExitManualTestMode', 'flow': [
+       N('box','blue','درخواست مود از پنل می‌آید (پارامتر ۱۹)', ['خود لینک هیچ خروجی‌ای را تکان نمی‌دهد؛ شارژر در تسک خودش وارد مود می‌شود']),
+       N('box','blue','ورود به مود: بیت قطع باتری پاک می‌شود', ['کانال‌ها در اختیار duty فرمان پنل‌اند؛ گیت‌های باتری کنار می‌روند']),
+       N('dia','yellow','۳ ثانیه از لینک خبری نشد؟', ['بله: خروج خودکار از مود و برگشت به شارژ خودکار (ددمن لینک)']),
+       N('box','gray','تریپ JIT در مود دستی احیای خودکار ندارد', ['فرستادن دوبارهٔ duty یعنی مسلح‌کردن دوباره؛ شمارش تریپ همچنان جلو می‌رود']),
+   ]},
    N('dia','yellow','سیم باتری قطع است؟ (خطای ۶)', ref='آینهٔ بیت Fault در Evaluate', side=SIDE('red',['کانال متوقف و خروجی صفر می‌شود','با برگشت باتری و پاک‌شدن خطا آزاد می‌شود']), elab='نه'),
    N('dia','yellow','اندازه‌گیری سالم و حالت کلی عادی است؟', side=SIDE('gray',['نه: توقف امن؛ همهٔ خروجی‌ها صفر','قفل‌های خطا پاک نمی‌شوند']), elab='بله'),
-   N('dia','yellow','ولتاژ ورودی بین ۲۲ و ۲۸ ولت است؟', ref='SafeIdle + INPUT_WAIT', side=SIDE('gray',['نه: صبر برای ورودی (INPUT_WAIT)','با درست‌شدن ورودی، شارژ ادامه دارد']),
-     note=SIDE('red',['بررسی جدا و موازی: خطای فنی (۷)','duty بالای ۲۰٪ ولی جریان صفر؟ یا رله باز همراه تریپ؟','همان لحظه قفل فنی + ثبت در دیاگ'],'l'), elab='بله'),
+   N('dia','yellow','ولتاژ ورودی بین ۲۲ و ۲۸ ولت است؟', ref='SafeIdle + INPUT_WAIT', side=SIDE('gray',['نه: صبر برای ورودی (INPUT_WAIT)','با درست‌شدن ورودی، شارژ ادامه دارد']), elab='بله'),
+   {'k': 'sub', 'c': 'red', 't': 'بررسی موازی خطای فنی (۷) از کجا می‌آید', 'ref': 'func__Charger_EvaluateTechnicalFault', 'flow': [
+       N('dia','yellow','امضای ۱: duty بالای ۲۰٪ ولی جریان همان کانال دقیقاً صفر؟', ['و ولتاژ باتری بالای ۶ ولت و کانال در قطع‌باتری نیست']),
+       N('dia','yellow','امضای ۲: رله از قبل باز است و duty صفر و تریپ JIT ثبت شده؟', ['یعنی اتصال‌کوتاه یا سوختن کلید قدرت']),
+       N('box','red','هرکدام درست باشد: قفل فنی ست می‌شود', ['بیت خطای ۷ + ثبت در دیاگ؛ قطع نهایی تا خاموش و روشن‌شدن برد']),
+   ]},
    N('sec','navy','بخش ۲: بررسی هر کانال (۱ و ۲ جدا)'),
-   N('pill','navy','برای هر کانال'),
+   N('pill','navy','برای هر کانال', ref='حلقهٔ کانال‌ها در Evaluate'),
    N('dia','yellow','کانال از پنل خاموش شده؟', ref='RegulateChannel: گیت ESP', side=SIDE('gray',['کانال خاموش و خروجی صفر','با وصل از پنل: شروع نرم از ۱٪']), elab='نه'),
    N('dia','yellow','قفل باتری خراب یا بودجهٔ عدم‌توازن تمام شده؟', ref='DeadMask / Imbalance خروجی', side=SIDE('red',['شارژ این کانال بسته و خروجی صفر','باتری خراب: تا تعویض باتری']), elab='نه'),
    N('dia','yellow','ولتاژ باتری بین ۲ و ۱۵ ولت است؟', ref='BatteryVoltageIsValid', side=SIDE('gray',['نه: کانال خاموش و منتظر می‌ماند','جلوی شارژ باتری قطع یا خراب را می‌گیرد']), elab='بله'),
    N('dia','yellow','جریان از ۹۵۰ میلی‌آمپر بالاتر رفته؟', ref='ResetChannelToOff', side=SIDE('red',['بله: ریست کانال به خاموشی','حفاظت سریع با JIT سخت‌افزاری است']), elab='نه'),
    N('sec','navy','بخش ۳: فازهای شارژ'),
    N('dia','yellow','اتصال باتری ۱۵ ثانیه پایدار بوده؟', ref='BulkStartSettled', side=SIDE('gray',['نه: کانال خاموش می‌ماند','شمارش از لحظهٔ دیده‌شدن ولتاژ باتری']), elab='بله'),
-   N('box','blue','شارژ سریع (BULK)', ['شروع نرم از duty یک‌درصد','PID جریان را تا سقف ۶۵۰ میلی‌آمپر نگه می‌دارد'], ref='RegulateChannel → PidStep → ApplyDuty',
-     side=SIDE('gray',['داغ‌شدن: ۱ ساعت نزدیک سقف جریان','۱۰ دقیقه استراحت (زرد چشمک‌زن)، بعد ادامه']),
-     note=SIDE('gray',['تریپ JIT: توقف فوری کانال','احیا پس از ۳ ثانیه، یکی‌یکی، با duty کمتر','تریپ سوم همان کانال = خطای نهایی و قطع رله'],'l')),
-   N('dia','yellow','ولتاژ به ۱۴٫۳ رسید؟', loop={'to': 16, 'lab': 'نه'}, elab='بله'),
+   N('box','blue','شارژ سریع (BULK)', ['شروع نرم از duty یک‌درصد','PID جریان را تا سقف ۶۵۰ میلی‌آمپر نگه می‌دارد'], ref='RegulateChannel → PidStep → ApplyDuty'),
+   N('dia','yellow','ولتاژ به ۱۴٫۳ رسید؟', loop={'to': 17, 'lab': 'نه'}, elab='بله'),
    N('box','blue','جذب (ABSORB)', ['نگه‌داری ۱۴٫۴ ولت با PID','بالای ۱۴٫۶ کم‌کردن پله‌ای؛ سقف پشتیبان ۱۴٫۸ ولت'], ref='RegulateChannel: پنجرهٔ جذب',
-     note=SIDE('red',['شمارش موازی باتری خراب (سناریوی ۶)','فقط هنگام شارژ واقعی می‌شمارد','کامل‌شدن یا مکث بلندتر از ۱ دقیقه: صفر','۲۴ ساعت بی‌نتیجه → قفل باتری خراب'],'l'),
-     loop={'to': 16, 'lab': 'زیر ۱۴٫۳؟ برگرد به شارژ سریع', 'col': 'red'}),
-   N('dia','yellow','کامل شد؟ ۱۰ دقیقه جذب + زیر ۵۰ میلی‌آمپرِ ۶۰ ثانیه — یا سقف ۱ ساعت', loop={'to': 18, 'lab': 'نه'}, elab='بله'),
+     loop={'to': 17, 'lab': 'زیر ۱۴٫۳؟ برگرد به شارژ سریع', 'col': 'red'}),
+   N('dia','yellow','کامل شد؟ ۱۰ دقیقه جذب + زیر ۵۰ میلی‌آمپرِ ۶۰ ثانیه — یا سقف ۱ ساعت', loop={'to': 19, 'lab': 'نه'}, elab='بله'),
    N('box','green','نگه‌داری (FLOAT) — شارژ کامل', ['duty صفر و پمپ پارک؛ باتری روی ۱۳٫۵ ولت','سبز ثابت، زرد خاموش'], ref='RegulateChannel: پارک duty'),
-   N('dia','yellow','ولتاژ زیر ۱۲٫۸ افتاد؟ یعنی باتری دارد خالی می‌شود', loop={'to': 16, 'lab': 'بله: شارژ از نو'}, elab='نه'),
+   N('dia','yellow','ولتاژ زیر ۱۲٫۸ افتاد؟ یعنی باتری دارد خالی می‌شود', loop={'to': 17, 'lab': 'بله: شارژ از نو'}, elab='نه'),
    N('pill','navy','باتری آمادهٔ کار'),
+   N('sec','navy','زیرجریان‌ها — جمع‌اند؛ برای دیدن جزئیات رویشان کلیک کن'),
+   {'k': 'sub', 'c': 'blue', 't': 'تنظیم PID و فرمان خروجی', 'ref': 'func__Charger_PidStep / ApplyDuty', 'flow': [
+       N('box','blue','PID دوحلقه‌ای تنها تنظیم‌کنندهٔ duty است', ['هر ۱۰۰ میلی‌ثانیه یک گام؛ سقف شیب برای هر فاز جدا']),
+       N('box','blue','سقف پشتیبان ۱۴٫۸ ولت همیشه فعال است', ['بالای ۱۴٫۶ ولت کم‌کردن پله‌ای duty تا برگشت ولتاژ']),
+       N('box','blue','duty نهایی با گیرهٔ سقف مجاز به PWM کانال می‌رود', ['کمینهٔ سقف کامپایل و سقف زمان اجرا']),
+       N('box','gray','در نگه‌داری PID کنار می‌رود', ['duty پله‌پله تا صفر و پارک می‌ماند']),
+   ]},
+   {'k': 'sub', 'c': 'gray', 't': 'تریپ JIT و احیا', 'ref': 'HandleJitTrip / ServiceRetry', 'flow': [
+       N('box','red','کمپراتور سخت‌افزاری تریپ داد → توقف فوری همان کانال', ['کانال دیگر به کارش ادامه می‌دهد']),
+       N('box','blue','شمارش تریپ همان کانال یکی بالا می‌رود', []),
+       N('dia','yellow','سومین تریپ همان کانال است؟', ['بله: خطای نهایی و قطع رله تا پایان همین روشن‌بودن']),
+       N('box','blue','احیا: بعد از ۳ ثانیه، یکی‌یکی و به ترتیب تریپ', ['شروع دوباره با نصف duty قبل از تریپ؛ کانال دوم در صف می‌ماند']),
+   ]},
+   {'k': 'sub', 'c': 'gray', 't': 'استراحت حرارتی', 'ref': 'Evaluate: دفتر استراحت حرارتی', 'flow': [
+       N('box','blue','فقط در شارژ سریع و نزدیک سقف جریان، زمان استراحت جمع می‌شود', ['دور از سقف جریان، شمارش از صفر شروع می‌شود']),
+       N('dia','yellow','۱ ساعت پیوسته پر شد؟', ['بله: توقف کانال و شروع استراحت']),
+       N('box','gray','۱۰ دقیقه استراحت (چراغ زرد چشمک‌زن)', ['بعد از آن کانال از خاموشی دوباره شروع می‌کند']),
+   ]},
+   {'k': 'sub', 'c': 'red', 't': 'شمارش باتری خراب (سناریوی ۶)', 'ref': 'func__Charger_DeadBatteryTick', 'flow': [
+       N('box','blue','فقط وقتی کانال واقعاً پمپ می‌کند زمان جمع می‌شود', ['شارژ سریع و جذب حساب‌اند؛ بقیه نه']),
+       N('box','blue','کامل‌شدن شارژ ساعت را صفر می‌کند', ['یعنی این باتری شارژ می‌پذیرد']),
+       N('box','blue','مکث کوتاه ساعت را نگه می‌دارد', ['مکث بلندتر از ۱ دقیقه (شناسهٔ ۱۲۶) ساعت را صفر می‌کند']),
+       N('dia','yellow','به سقف رسید؟ (پیش‌فرض ۲۴ ساعت، شناسهٔ ۱۲۵)', ['بله: قفل «باتری خراب»؛ شارژ آن کانال برای همیشه بسته']),
+       N('box','green','نبودن باتری برای ۳ ثانیه یعنی تعویض واقعی', ['قفل و ساعت پاک می‌شوند و باتری تازه فرصت کامل دارد']),
+   ]},
    N('sec','navy','فرمان‌ها و خروجی‌ها'),
    N('box','blue','فرمان شارژ: duty حساب‌شده با گیرهٔ سقف', ['به PWM هر کانال می‌رود؛ در همهٔ توقف‌ها صفر']),
    N('box','navy','رلهٔ قطع نهایی در خطای نهایی باز می‌شود', ['با قطع ورودی، کویل رها می‌شود تا باتری خالی نشود']),

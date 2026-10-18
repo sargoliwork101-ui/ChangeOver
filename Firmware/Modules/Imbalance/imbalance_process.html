@@ -21,6 +21,8 @@
   .small { font-size: 13.5px; color:#444; }
   svg text { font-family: Vazirmatn, Tahoma, sans-serif; }
   .tnode { cursor: pointer; }
+  .subhead { cursor: pointer; }
+  .subhead:hover rect { stroke-width: 3; }
   .tnode:hover rect { stroke-width: 3; }
 </style>
 </head>
@@ -59,6 +61,7 @@ function tw(t, bold, sz){ cv.font = (bold ? '700 ' : '') + sz + 'px Vazirmatn, T
 function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
 function linesOf(n){ var a = []; if (n.t) a.push({s:n.t, b:true}); (n.l || []).forEach(function(x){ a.push({s:x, b:false}); }); return a; }
 function nodeSize(n){
+  if (n.k === 'sub') return { w: Math.min(Math.max(tw(n.t || '', true, 15) + 96, 280), 470), h: 46 };
   var ls = linesOf(n), mx = 0;
   ls.forEach(function(x){ mx = Math.max(mx, tw(x.s, x.b, 15)); });
   if (n.k === 'dia') return { w: Math.min(Math.max(mx + 96, 210), 360), h: Math.max(78, ls.length * 25 + 40) };
@@ -67,6 +70,25 @@ function nodeSize(n){
 function sideSize(s){
   var mx = 0; s.l.forEach(function(x){ mx = Math.max(mx, tw(x, false, 13.5)); });
   return { w: Math.min(Math.max(mx + 30, 170), 280), h: s.l.length * 23 + 24 };
+}
+function drawSub(n, cx, y, idx){
+  var sz = nodeSize(n), x = cx - sz.w / 2, out = '';
+  out += '<g class="subhead" data-i="' + idx + '"><rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="46" rx="10" fill="#EDEDED" stroke="#808080" stroke-width="2"/>' +
+    '<text x="' + cx + '" y="' + (y + 29) + '" text-anchor="middle" font-size="15" font-weight="700" fill="#1F3864">' + esc(n.t) + (n._open ? '  ‹ بستن' : '  › بازکردن جزئیات') + '</text></g>';
+  if (n.ref) out += '<text x="' + cx + '" y="' + (y + 63) + '" text-anchor="middle" font-size="11" fill="#808080" font-family="Consolas, monospace">' + esc(n.ref) + '</text>';
+  if (!n._open) return out;
+  var kids = n.flow || [], ky = y + 78, maxW = 200, sizes = [];
+  kids.forEach(function(kd){ var ks = nodeSize(kd); sizes.push(ks); maxW = Math.max(maxW, ks.w); });
+  var frameW = Math.min(maxW + 44, 560), frameY1 = ky;
+  sizes.forEach(function(ks){ frameY1 += ks.h + 30; });
+  frameY1 -= 18;
+  out += '<rect x="' + (cx - frameW / 2) + '" y="' + (y + 56) + '" width="' + frameW + '" height="' + (frameY1 - y - 56) + '" rx="12" fill="#F8FBFF" stroke="#9DB8D9" stroke-width="1.8" stroke-dasharray="7 5"/>';
+  kids.forEach(function(kd, ki){
+    if (ki > 0) out += '<path d="M' + cx + ' ' + (ky - 30) + ' V' + (ky - 4) + '" stroke="#1F4E79" stroke-width="2" fill="none" marker-end="url(#arw)"/>';
+    out += drawNode(kd, cx, ky);
+    ky += sizes[ki].h + 30;
+  });
+  return out;
 }
 function drawNode(n, cx, y){
   var sz = nodeSize(n), c = COLORS[n.c || 'blue'], x = cx - sz.w / 2, out = '';
@@ -114,7 +136,12 @@ function renderFlow(){
       y += 34; pos.push(null); return;
     }
     var sz = nodeSize(n);
-    pos.push({ y: y, h: sz.h, w: sz.w, cy: y + sz.h / 2 });
+    if (n.k === 'sub' && n._open){
+      var kh = 78 - 46;
+      (n.flow || []).forEach(function(kd){ kh += nodeSize(kd).h + 30; });
+      sz = { w: sz.w, h: kh + 14 };
+    }
+    pos.push({ y: y, h: sz.h, w: sz.w, cy: y + (n.k === 'sub' ? 23 : sz.h / 2) });
     y += sz.h + GAP;
     if (n.loop) loops.push({ from: i, to: n.loop.to, lab: n.loop.lab, col: n.loop.col });
   });
@@ -128,6 +155,7 @@ function renderFlow(){
       var pn = DATA.flow[i - 1];
       if (pn.elab) out += vlabel(cx, (prevBottom + p.y) / 2, pn.elab, '#1F3864');
     }
+    if (n.k === 'sub'){ out += drawSub(n, cx, p.y, i); return; }
     out += drawNode(n, cx, p.y);
     if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r');
     if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l');
@@ -140,6 +168,12 @@ function renderFlow(){
     if (L.lab) out += vlabel(lane, (a.cy + b.cy) / 2, L.lab, col);
   });
   document.getElementById('flow').innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%">' + out + '</svg>';
+  document.querySelectorAll('.subhead').forEach(function(g){
+    g.addEventListener('click', function(){
+      var n = DATA.flow[+g.getAttribute('data-i')];
+      n._open = !n._open; renderFlow();
+    });
+  });
   document.getElementById('legend').innerHTML = 'معنای رنگ‌ها: ' + LEGEND.map(function(x){
     return '<span style="display:inline-block;width:13px;height:13px;background:' + COLORS[x[0]].f + ';border:2px solid ' + COLORS[x[0]].o + ';vertical-align:-2px;margin:0 4px 0 2px"></span>' + x[1];
   }).join(' &nbsp; ');
