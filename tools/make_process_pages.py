@@ -35,6 +35,14 @@ TEMPLATE = r"""<!DOCTYPE html>
   .small { font-size: 13.5px; color:#9AA7BC; }
   svg text { font-family: Vazirmatn, Tahoma, sans-serif; }
   .tnode { cursor: pointer; }
+  .edge { cursor: pointer; }
+  .edge .hit { stroke: rgba(0,0,0,0); stroke-width: 16; fill: none; }
+  .fnode { cursor: pointer; }
+  svg.sel .edge, svg.sel .fnode { opacity: .12; }
+  svg.sel .edge.hl, svg.sel .fnode.hl { opacity: 1; }
+  .edge.hl .vis { stroke-width: 4.5; }
+  .fnode.hl rect, .fnode.hl polygon { stroke-width: 4; }
+  #einfo { background:#16283F; border:1px solid #35507A; border-radius:8px; padding:6px 12px; margin:4px 4px 8px; font-size:14.5px; }
   .subhead { cursor: pointer; }
   .subhead:hover rect { stroke-width: 3; }
   .tnode:hover rect { stroke-width: 3; }
@@ -127,8 +135,8 @@ function drawSub(n, cx, y, idx){
   });
   return out;
 }
-function drawNode(n, cx, y){
-  var sz = nodeSize(n), c = COLORS[n.c || 'blue'], x = cx - sz.w / 2, out = '';
+function drawNode(n, cx, y, idx){
+  var sz = nodeSize(n), c = COLORS[n.c || 'blue'], x = cx - sz.w / 2, out = '<g class="fnode" data-i="' + idx + '" data-t="' + esc(n.t || '') + '">';
   if (n.k === 'pill'){
     out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="' + (sz.h/2) + '" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="2"/>';
   } else if (n.k === 'dia'){
@@ -147,15 +155,17 @@ function drawNode(n, cx, y){
   });
   var aw = (n.k === 'dia') ? sz.w * 0.60 : sz.w - 14;
   out += '<g class="fx" data-w="' + aw + '" data-cx="' + cx + '" data-cy="' + (y + sz.h / 2) + '">' + tt + '</g>';
-  return out;
+  return out + '</g>';
 }
-function drawSide(s, nodeCx, nodeW, cy, dir){
+function drawSide(s, nodeCx, nodeW, cy, dir, oIdx, oTitle){
   var sz = sideSize(s), c = COLORS[s.c || 'gray'];
   var x = (dir === 'r') ? 1390 - sz.w : 10;
   var y = cy - sz.h / 2, out = '';
   var x1 = (dir === 'r') ? nodeCx + nodeW / 2 : nodeCx - nodeW / 2;
   var x2 = (dir === 'r') ? x : x + sz.w;
-  out += '<path d="M' + x1 + ' ' + cy + ' H' + x2 + '" stroke="' + (LINES[s.c || 'gray']) + '" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arw)"/>';
+  out += '<g class="edge" data-fi="' + oIdx + '" data-ti="" data-f="' + esc(oTitle || '') + '" data-t="' + esc(s.l[0] || '') + '" data-l="' + esc(s.lab || (s.d === 'l' ? 'موازی' : '')) + '">';
+  out += '<path class="hit" d="M' + x1 + ' ' + cy + ' H' + x2 + '"/>';
+  out += '<path class="vis" d="M' + x1 + ' ' + cy + ' H' + x2 + '" stroke="' + (LINES[s.c || 'gray']) + '" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arw)"/>';
   var slab = s.lab || (s.d === 'l' ? 'موازی' : null);
   if (slab){
     var mxp = (x1 + x2) / 2, lw = tw(slab, true, 13.5);
@@ -168,7 +178,7 @@ function drawSide(s, nodeCx, nodeW, cy, dir){
     st += '<text x="' + (x + sz.w / 2) + '" y="' + (y + sz.h / 2 - (sl.length - 1) * 11.5 + i * 23 + 5) + '" text-anchor="middle" font-size="13.5" fill="' + c.t + '">' + esc(ln) + '</text>';
   });
   out += '<g class="fx" data-w="' + (sz.w - 12) + '" data-cx="' + (x + sz.w / 2) + '" data-cy="' + (y + sz.h / 2) + '">' + st + '</g>';
-  return out;
+  return out + '</g>';
 }
 function vlabel(x, y, s, col){
   var w = tw(s, true, 13.5) + 16;
@@ -199,26 +209,34 @@ function renderFlow(){
   DATA.flow.forEach(function(n, i){
     if (!pos[i]) return;
     var p = pos[i];
-    if (i > 0 && pos[i - 1]){
-      var prevBottom = pos[i - 1].y + pos[i - 1].h;
-      out += '<path d="M' + cx + ' ' + prevBottom + ' V' + (p.y - 4) + '" stroke="#6FA8DC" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
-      var pn = DATA.flow[i - 1];
+    var pj = i - 1; while (pj > 0 && !pos[pj]) pj--;
+    if (i > 0 && pos[pj]){
+      var prevBottom = pos[pj].y + pos[pj].h;
+      var pn = DATA.flow[pj];
+      out += '<g class="edge" data-fi="' + pj + '" data-ti="' + i + '" data-f="' + esc(pn.t || '') + '" data-t="' + esc(n.t || '') + '" data-l="' + esc(pn.elab || '') + '">';
+      out += '<path class="hit" d="M' + cx + ' ' + prevBottom + ' V' + p.y + '"/>';
+      out += '<path class="vis" d="M' + cx + ' ' + prevBottom + ' V' + (p.y - 4) + '" stroke="#6FA8DC" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
       if (pn.elab) out += vlabel(cx, (prevBottom + p.y) / 2, pn.elab, '#D7E3F5');
+      out += '</g>';
     }
     if (n.k === 'sub'){ out += drawSub(n, cx, p.y, i); return; }
-    out += drawNode(n, cx, p.y);
-    if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r');
-    if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l');
+    out += drawNode(n, cx, p.y, i);
+    if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r', i, n.t);
+    if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l', i, n.t);
   });
   var maxHalf = 0; pos.forEach(function(p){ if (p) maxHalf = Math.max(maxHalf, p.w / 2); });
   loops.forEach(function(L, li){
     var a = pos[L.from], b = pos[L.to], lane = cx - maxHalf - 24 - li * 30;
     var LOOPCOLS = ['#6FA8DC', '#7BC47F', '#B18CFF', '#E3B341', '#FF9E64'];
     var col = L.col === 'red' ? '#FF8080' : LOOPCOLS[li % LOOPCOLS.length];
-    out += '<path d="M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + b.cy + ' H' + (cx - b.w / 2 - 4) + '" stroke="' + col + '" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
+    var dstr = 'M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + b.cy + ' H' + (cx - b.w / 2 - 4);
+    out += '<g class="edge" data-fi="' + L.from + '" data-ti="' + L.to + '" data-f="' + esc(DATA.flow[L.from].t || '') + '" data-t="' + esc(DATA.flow[L.to].t || '') + '" data-l="' + esc(L.lab || '') + '">';
+    out += '<path class="hit" d="' + dstr + '"/>';
+    out += '<path class="vis" d="' + dstr + '" stroke="' + col + '" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
     if (L.lab) out += vlabel(lane, (a.cy + b.cy) / 2, L.lab, col);
+    out += '</g>';
   });
-  document.getElementById('flow').innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%">' + out + '</svg>';
+  document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی آن کلیک کن؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. برای برگشت، روی جای خالی شکل کلیک کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="100%">' + out + '</svg>';
   document.querySelectorAll('.subhead').forEach(function(g){
     g.addEventListener('click', function(){
       var n = DATA.flow[+g.getAttribute('data-i')];
@@ -284,6 +302,37 @@ function renderTree(){
     });
   });
 }
+function wireFlow(){
+  var fc = document.getElementById('flow');
+  if (!fc || !fc.addEventListener || fc._ew) return;
+  fc._ew = true;
+  fc.addEventListener('click', function(ev){
+    var svg = fc.querySelector('svg'); if (!svg) return;
+    var info = document.getElementById('einfo');
+    function clear(){
+      svg.classList.remove('sel');
+      var hs = svg.querySelectorAll('.hl');
+      for (var q = 0; q < hs.length; q++) hs[q].classList.remove('hl');
+    }
+    var eg = ev.target.closest ? ev.target.closest('.edge') : null;
+    var ng = ev.target.closest ? ev.target.closest('.fnode') : null;
+    clear();
+    if (eg){
+      svg.classList.add('sel'); eg.classList.add('hl');
+      var fi = eg.getAttribute('data-fi'), ti = eg.getAttribute('data-ti');
+      var ns = svg.querySelectorAll('.fnode');
+      for (var q = 0; q < ns.length; q++){ if (ns[q].getAttribute('data-i') === fi || ns[q].getAttribute('data-i') === ti) ns[q].classList.add('hl'); }
+      if (info) info.textContent = 'ارتباط: از «' + eg.getAttribute('data-f') + '» به «' + eg.getAttribute('data-t') + '»' + (eg.getAttribute('data-l') ? ' — ' + eg.getAttribute('data-l') : '');
+    } else if (ng){
+      svg.classList.add('sel'); ng.classList.add('hl');
+      var i2 = ng.getAttribute('data-i'), cnt = 0, es = svg.querySelectorAll('.edge');
+      for (var q2 = 0; q2 < es.length; q2++){ if (es[q2].getAttribute('data-fi') === i2 || es[q2].getAttribute('data-ti') === i2){ es[q2].classList.add('hl'); cnt++; } }
+      if (info) info.textContent = 'باکس «' + (ng.getAttribute('data-t') || '') + '» — ' + cnt + ' خطِ وصل به آن روشن شد. برای برگشت، روی جای خالی شکل کلیک کن.';
+    } else {
+      if (info) info.textContent = 'برای دیدن ارتباط هر خط، روی آن کلیک کن؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. برای برگشت، روی جای خالی شکل کلیک کن.';
+    }
+  });
+}
 function fill(id, rows){ var el = document.getElementById(id); rows.forEach(function(r){ var li = document.createElement('li'); li.innerHTML = r; el.appendChild(li); }); }
 function fillTable(id, rows){
   var tb = document.getElementById(id);
@@ -301,7 +350,7 @@ function render(){
   if (DATA.example){ fill('example', DATA.example); } else { document.getElementById('exwrap').style.display = 'none'; }
   fillTable('conds', DATA.conds || []);
   fillTable('outs', DATA.outs || []);
-  renderFlow(); renderTree(); fitText();
+  renderFlow(); renderTree(); fitText(); wireFlow();
 }
 if (document.fonts && document.fonts.ready){ document.fonts.ready.then(function(){ render(); }); } else { render(); }
 </script>
