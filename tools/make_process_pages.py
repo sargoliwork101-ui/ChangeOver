@@ -1345,7 +1345,11 @@ def main():
                 n['rurl'] = resolve_ref(n['ref'], idx, fallback)
             for kind in ('side', 'note'):
                 if n.get(kind):
-                    aft = AFTER.get((key, n.get('t') or '', kind))
+                    aft = None
+                    for (k2, t2, kind2), v2 in AFTER.items():
+                        if k2 == key and kind2 == kind and (n.get('t') or '').startswith(t2):
+                            aft = v2
+                            break
                     if aft:
                         n[kind]['after'] = aft
             for sub, tgt in GO.get(key, {}).items():
