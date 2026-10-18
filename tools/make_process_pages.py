@@ -41,6 +41,7 @@ TEMPLATE = r"""<!DOCTYPE html>
 <div class="wrap">
 <h1 id="ttl"></h1>
 <p class="small" id="sub"></p>
+<p class="small" id="nav"></p>
 <h2>توضیح ساده</h2>
 <div class="card"><ol id="steps"></ol></div>
 <div id="exwrap"><h2>یک مثال عددی</h2><div class="card ok"><ol id="example"></ol></div></div>
@@ -73,12 +74,12 @@ function linesOf(n){ var a = []; if (n.t) a.push({s:n.t, b:true}); (n.l || []).f
 function nodeSize(n){
   var ls = linesOf(n), mx = 0;
   ls.forEach(function(x){ mx = Math.max(mx, tw(x.s, x.b, 15)); });
-  if (n.k === 'dia') return { w: Math.min(Math.max(mx + 96, 200), 430), h: Math.max(78, ls.length * 25 + 40) };
-  return { w: Math.min(Math.max(mx + 38, 150), 390), h: ls.length * 25 + 28 };
+  if (n.k === 'dia') return { w: Math.min(Math.max(mx + 96, 210), 360), h: Math.max(78, ls.length * 25 + 40) };
+  return { w: Math.min(Math.max(mx + 38, 150), 340), h: ls.length * 25 + 28 };
 }
 function sideSize(s){
   var mx = 0; s.l.forEach(function(x){ mx = Math.max(mx, tw(x, false, 13.5)); });
-  return { w: Math.min(Math.max(mx + 30, 170), 300), h: s.l.length * 23 + 24 };
+  return { w: Math.min(Math.max(mx + 30, 170), 280), h: s.l.length * 23 + 24 };
 }
 function drawNode(n, cx, y){
   var sz = nodeSize(n), c = COLORS[n.c || 'blue'], x = cx - sz.w / 2, out = '';
@@ -94,11 +95,12 @@ function drawNode(n, cx, y){
   ls.forEach(function(ln, i){
     out += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + esc(ln.s) + '</text>';
   });
+  if (n.ref) out += '<text x="' + cx + '" y="' + (y + sz.h + 17) + '" text-anchor="middle" font-size="11" fill="#808080" font-family="Consolas, monospace">' + esc(n.ref) + '</text>';
   return out;
 }
 function drawSide(s, nodeCx, nodeW, cy, dir){
   var sz = sideSize(s), c = COLORS[s.c || 'gray'];
-  var x = (dir === 'r') ? 990 - sz.w : 10;
+  var x = (dir === 'r') ? 1190 - sz.w : 10;
   var y = cy - sz.h / 2, out = '';
   var x1 = (dir === 'r') ? nodeCx + nodeW / 2 : nodeCx - nodeW / 2;
   var x2 = (dir === 'r') ? x : x + sz.w;
@@ -114,14 +116,14 @@ function vlabel(x, y, s, col){
   return '<g transform="translate(' + x + ',' + y + ') rotate(-90)"><rect x="' + (-w/2) + '" y="-11" width="' + w + '" height="22" fill="#FFFFFF"/><text x="0" y="4.5" text-anchor="middle" font-size="13.5" font-weight="700" fill="' + (col || '#1F3864') + '">' + esc(s) + '</text></g>';
 }
 function renderFlow(){
-  var W = 1000, cx = 500, GAP = 56, y = 26, pos = [], out = '';
+  var W = 1200, cx = 545, GAP = 68, y = 26, pos = [], out = '';
   out += '<defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1F4E79"/></marker></defs>';
   var loops = [];
   DATA.flow.forEach(function(n, i){
     if (n.k === 'sec'){
       y += 18;
-      out += '<text x="985" y="' + (y + 6) + '" text-anchor="end" font-size="16" font-weight="700" fill="#1F3864">' + esc(n.t) + '</text>';
-      out += '<line x1="15" y1="' + (y + 16) + '" x2="985" y2="' + (y + 16) + '" stroke="#B9CDE4" stroke-width="2"/>';
+      out += '<text x="' + (W - 15) + '" y="' + (y + 6) + '" text-anchor="end" font-size="16" font-weight="700" fill="#1F3864">' + esc(n.t) + '</text>';
+      out += '<line x1="15" y1="' + (y + 16) + '" x2="' + (W - 15) + '" y2="' + (y + 16) + '" stroke="#B9CDE4" stroke-width="2"/>';
       y += 34; pos.push(null); return;
     }
     var sz = nodeSize(n);
@@ -143,8 +145,9 @@ function renderFlow(){
     if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r');
     if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l');
   });
+  var maxHalf = 0; pos.forEach(function(p){ if (p) maxHalf = Math.max(maxHalf, p.w / 2); });
   loops.forEach(function(L, li){
-    var a = pos[L.from], b = pos[L.to], lane = 292 - li * 20;
+    var a = pos[L.from], b = pos[L.to], lane = cx - maxHalf - 16 - li * 16;
     var col = L.col === 'red' ? '#C00000' : '#1F4E79';
     out += '<path d="M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + b.cy + ' H' + (cx - b.w / 2 - 4) + '" stroke="' + col + '" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
     if (L.lab) out += vlabel(lane, (a.cy + b.cy) / 2, L.lab, col);
@@ -210,6 +213,7 @@ function fillTable(id, rows){
 function render(){
   document.getElementById('ttl').textContent = DATA.title;
   document.getElementById('sub').textContent = DATA.sub || '';
+  if (DATA.nav){ document.getElementById('nav').innerHTML = 'صفحه‌های دیگر: ' + DATA.nav.map(function(x){ return '<a href="' + x.href + '">' + x.t + '</a>'; }).join(' | '); }
   fill('steps', DATA.steps || []);
   if (DATA.example){ fill('example', DATA.example); } else { document.getElementById('exwrap').style.display = 'none'; }
   fillTable('conds', DATA.conds || []);
@@ -260,31 +264,31 @@ MODULES['charging'] = {
  ],
  'flow': [
    N('sec','navy','بخش ۱: بررسی‌های کلی — در هر پاس، قبل از شارژ'),
-   N('pill','navy','شروع پاس شارژر'),
+   N('pill','navy','شروع پاس شارژر', ref='func__Charger_Evaluate'),
    N('dia','yellow','ذخیرهٔ حافظه (NVM) در حال انجام است؟', side=SIDE('gray',['هر دو خروجی صفر و پایان این پاس','شارژ از پاس بعد ادامه دارد']), elab='نه'),
-   N('dia','yellow','قفل خطای فنی (خطای ۷) از قبل ست شده؟', side=SIDE('red',['قطع نهایی: رله باز و هر دو خروجی صفر','تا خاموش و روشن‌شدن برد می‌ماند']), elab='نه'),
-   N('dia','yellow','مود تست دستی پنل فعال است؟', side=SIDE('gray',['duty را پنل می‌فرستد؛ گیت‌های باتری کنار می‌روند','۳ ثانیه سکوت لینک = خروج خودکار از مود'])),
-   N('dia','yellow','سیم باتری قطع است؟ (خطای ۶)', side=SIDE('red',['کانال متوقف و خروجی صفر می‌شود','با برگشت باتری و پاک‌شدن خطا آزاد می‌شود']), elab='نه'),
+   N('dia','yellow','قفل خطای فنی (خطای ۷) از قبل ست شده؟', ref='FinalDisconnect', side=SIDE('red',['قطع نهایی: رله باز و هر دو خروجی صفر','تا خاموش و روشن‌شدن برد می‌ماند']), elab='نه'),
+   N('dia','yellow','مود تست دستی پنل فعال است؟', ref='EnterManualTestMode', side=SIDE('gray',['duty را پنل می‌فرستد؛ گیت‌های باتری کنار می‌روند','۳ ثانیه سکوت لینک = خروج خودکار از مود'])),
+   N('dia','yellow','سیم باتری قطع است؟ (خطای ۶)', ref='آینهٔ بیت Fault در Evaluate', side=SIDE('red',['کانال متوقف و خروجی صفر می‌شود','با برگشت باتری و پاک‌شدن خطا آزاد می‌شود']), elab='نه'),
    N('dia','yellow','اندازه‌گیری سالم و حالت کلی عادی است؟', side=SIDE('gray',['نه: توقف امن؛ همهٔ خروجی‌ها صفر','قفل‌های خطا پاک نمی‌شوند']), elab='بله'),
-   N('dia','yellow','ولتاژ ورودی بین ۲۲ و ۲۸ ولت است؟', side=SIDE('gray',['نه: صبر برای ورودی (INPUT_WAIT)','با درست‌شدن ورودی، شارژ ادامه دارد']),
+   N('dia','yellow','ولتاژ ورودی بین ۲۲ و ۲۸ ولت است؟', ref='SafeIdle + INPUT_WAIT', side=SIDE('gray',['نه: صبر برای ورودی (INPUT_WAIT)','با درست‌شدن ورودی، شارژ ادامه دارد']),
      note=SIDE('red',['بررسی جدا و موازی: خطای فنی (۷)','duty بالای ۲۰٪ ولی جریان صفر؟ یا رله باز همراه تریپ؟','همان لحظه قفل فنی + ثبت در دیاگ'],'l'), elab='بله'),
    N('sec','navy','بخش ۲: بررسی هر کانال (۱ و ۲ جدا)'),
    N('pill','navy','برای هر کانال'),
-   N('dia','yellow','کانال از پنل خاموش شده؟', side=SIDE('gray',['کانال خاموش و خروجی صفر','با وصل از پنل: شروع نرم از ۱٪']), elab='نه'),
-   N('dia','yellow','قفل باتری خراب یا بودجهٔ عدم‌توازن تمام شده؟', side=SIDE('red',['شارژ این کانال بسته و خروجی صفر','باتری خراب: تا تعویض باتری']), elab='نه'),
-   N('dia','yellow','ولتاژ باتری بین ۲ و ۱۵ ولت است؟', side=SIDE('gray',['نه: کانال خاموش و منتظر می‌ماند','جلوی شارژ باتری قطع یا خراب را می‌گیرد']), elab='بله'),
-   N('dia','yellow','جریان از ۹۵۰ میلی‌آمپر بالاتر رفته؟', side=SIDE('red',['بله: ریست کانال به خاموشی','حفاظت سریع با JIT سخت‌افزاری است']), elab='نه'),
+   N('dia','yellow','کانال از پنل خاموش شده؟', ref='RegulateChannel: گیت ESP', side=SIDE('gray',['کانال خاموش و خروجی صفر','با وصل از پنل: شروع نرم از ۱٪']), elab='نه'),
+   N('dia','yellow','قفل باتری خراب یا بودجهٔ عدم‌توازن تمام شده؟', ref='DeadMask / Imbalance خروجی', side=SIDE('red',['شارژ این کانال بسته و خروجی صفر','باتری خراب: تا تعویض باتری']), elab='نه'),
+   N('dia','yellow','ولتاژ باتری بین ۲ و ۱۵ ولت است؟', ref='BatteryVoltageIsValid', side=SIDE('gray',['نه: کانال خاموش و منتظر می‌ماند','جلوی شارژ باتری قطع یا خراب را می‌گیرد']), elab='بله'),
+   N('dia','yellow','جریان از ۹۵۰ میلی‌آمپر بالاتر رفته؟', ref='ResetChannelToOff', side=SIDE('red',['بله: ریست کانال به خاموشی','حفاظت سریع با JIT سخت‌افزاری است']), elab='نه'),
    N('sec','navy','بخش ۳: فازهای شارژ'),
-   N('dia','yellow','اتصال باتری ۱۵ ثانیه پایدار بوده؟', side=SIDE('gray',['نه: کانال خاموش می‌ماند','شمارش از لحظهٔ دیده‌شدن ولتاژ باتری']), elab='بله'),
-   N('box','blue','شارژ سریع (BULK)', ['شروع نرم از duty یک‌درصد','PID جریان را تا سقف ۶۵۰ میلی‌آمپر نگه می‌دارد'],
+   N('dia','yellow','اتصال باتری ۱۵ ثانیه پایدار بوده؟', ref='BulkStartSettled', side=SIDE('gray',['نه: کانال خاموش می‌ماند','شمارش از لحظهٔ دیده‌شدن ولتاژ باتری']), elab='بله'),
+   N('box','blue','شارژ سریع (BULK)', ['شروع نرم از duty یک‌درصد','PID جریان را تا سقف ۶۵۰ میلی‌آمپر نگه می‌دارد'], ref='RegulateChannel → PidStep → ApplyDuty',
      side=SIDE('gray',['داغ‌شدن: ۱ ساعت نزدیک سقف جریان','۱۰ دقیقه استراحت (زرد چشمک‌زن)، بعد ادامه']),
      note=SIDE('gray',['تریپ JIT: توقف فوری کانال','احیا پس از ۳ ثانیه، یکی‌یکی، با duty کمتر','تریپ سوم همان کانال = خطای نهایی و قطع رله'],'l')),
    N('dia','yellow','ولتاژ به ۱۴٫۳ رسید؟', loop={'to': 16, 'lab': 'نه'}, elab='بله'),
-   N('box','blue','جذب (ABSORB)', ['نگه‌داری ۱۴٫۴ ولت با PID','بالای ۱۴٫۶ کم‌کردن پله‌ای؛ سقف پشتیبان ۱۴٫۸ ولت'],
+   N('box','blue','جذب (ABSORB)', ['نگه‌داری ۱۴٫۴ ولت با PID','بالای ۱۴٫۶ کم‌کردن پله‌ای؛ سقف پشتیبان ۱۴٫۸ ولت'], ref='RegulateChannel: پنجرهٔ جذب',
      note=SIDE('red',['شمارش موازی باتری خراب (سناریوی ۶)','فقط هنگام شارژ واقعی می‌شمارد','کامل‌شدن یا مکث بلندتر از ۱ دقیقه: صفر','۲۴ ساعت بی‌نتیجه → قفل باتری خراب'],'l'),
      loop={'to': 16, 'lab': 'زیر ۱۴٫۳؟ برگرد به شارژ سریع', 'col': 'red'}),
    N('dia','yellow','کامل شد؟ ۱۰ دقیقه جذب + زیر ۵۰ میلی‌آمپرِ ۶۰ ثانیه — یا سقف ۱ ساعت', loop={'to': 18, 'lab': 'نه'}, elab='بله'),
-   N('box','green','نگه‌داری (FLOAT) — شارژ کامل', ['duty صفر و پمپ پارک؛ باتری روی ۱۳٫۵ ولت','سبز ثابت، زرد خاموش']),
+   N('box','green','نگه‌داری (FLOAT) — شارژ کامل', ['duty صفر و پمپ پارک؛ باتری روی ۱۳٫۵ ولت','سبز ثابت، زرد خاموش'], ref='RegulateChannel: پارک duty'),
    N('dia','yellow','ولتاژ زیر ۱۲٫۸ افتاد؟ یعنی باتری دارد خالی می‌شود', loop={'to': 16, 'lab': 'بله: شارژ از نو'}, elab='نه'),
    N('pill','navy','باتری آمادهٔ کار'),
    N('sec','navy','فرمان‌ها و خروجی‌ها'),
@@ -359,7 +363,7 @@ MODULES['measurement'] = {
    'پس شارژر و بقیه عدد آرام و درست را می‌بینند و بی‌جهت واکنش نشان نمی‌دهند.',
  ],
  'flow': [
-   N('pill','navy','شروع پاس اندازه‌گیری (هر ۱ میلی‌ثانیه)'),
+   N('pill','navy','شروع پاس اندازه‌گیری (هر ۱ میلی‌ثانیه)', ref='func__Measurement_Run'),
    N('dia','yellow','فریم کامل و پایدار از مبدل رسید؟', side=SIDE('red',['نه: خروجی «نامعتبر» می‌شود','گرم‌شدن از اول شروع می‌شود تا داده قابل اعتماد شود']), elab='بله'),
    N('box','blue','شمارش فریم‌های پایدار', ['۳ فریم اول = گرم‌شدن؛ خروجی هنوز نامعتبر است']),
    N('dia','yellow','تنظیم فیلتر از پنل عوض شده؟', side=SIDE('gray',['بله: فیلترها ریست می‌شوند تا نمونهٔ کهنه با تنظیم تازه قاطی نشود']), elab='نه'),
@@ -409,8 +413,8 @@ MODULES['fault'] = {
    'سیم را برمی‌گردانی؛ هر دو نیم بالای ۷ ولت می‌ایستند و بعد از ۱ ثانیه خطا پاک و شارژ با آرام‌سازی ادامه پیدا می‌کند.',
  ],
  'flow': [
-   N('pill','navy','شروع ارزیابی خطاها (هر پاس)'),
-   N('dia','yellow','مود تست دستی پنل فعال است؟', side=SIDE('gray',['بله: همهٔ شمارش‌ها فریز می‌شوند','نه خطای تازه ست می‌شود نه خطا پاک']), elab='نه'),
+   N('pill','navy','شروع ارزیابی خطاها (هر پاس)', ref='func__Fault_Evaluate'),
+   N('dia','yellow','مود تست دستی پنل فعال است؟', ref='EnterManualTestMode', side=SIDE('gray',['بله: همهٔ شمارش‌ها فریز می‌شوند','نه خطای تازه ست می‌شود نه خطا پاک']), elab='نه'),
    N('dia','yellow','عکس اندازه‌گیری معتبر است؟', side=SIDE('gray',['نه: فریز؛ شمارش‌ها از صفر شروع می‌شوند']), elab='بله'),
    N('box','blue','مشخص‌کردن نیم‌های نصب‌شده', ['نیمِ کانالِ نصب‌نشده قضاوت نمی‌شود']),
    N('dia','yellow','قانون ۱: نیمی که شارژرش پمپ می‌کند بالای ۱۴٫۸ ولت رفت و ۱۵۰ میلی‌ثانیه ماند؟', side=SIDE('red',['بله: ست‌کردن خطای ۶ (قطع باتری)']), elab='نه'),
@@ -456,7 +460,7 @@ MODULES['imbalance'] = {
    'اگر این سیکل تا کامل‌شدن شارژ رفته باشد، یک رویداد ثبت می‌شود؛ با رسیدن رویدادها به ۱۰، قفل عدم‌توازن می‌خورد.',
  ],
  'flow': [
-   N('pill','navy','شروع ارزیابی عدم‌توازن (هر پاس)'),
+   N('pill','navy','شروع ارزیابی عدم‌توازن (هر پاس)', ref='func__Imbalance_Evaluate'),
    N('dia','yellow','ورودی‌ها معتبرند؟', side=SIDE('gray',['نه: همهٔ تایمرها فریز می‌شوند','قضاوت تازه‌ای نمی‌شود']), elab='بله'),
    N('box','blue','اختلاف قدرمطلق دو نیم باتری', []),
    N('dia','yellow','هر دو نیم هم‌حالت‌اند؟', side=SIDE('gray',['نه: قابل مقایسه نیستند','اختلافِ ساختهٔ خود شارژر خطا حساب نمی‌شود']), elab='بله'),
@@ -510,7 +514,7 @@ MODULES['changeover'] = {
    'برق ورودی می‌آید و باتری شارژ می‌شود؛ بعد از پایداری ۳۰ ثانیه‌ای ورودی و رسیدن به ۲۱٫۲ ولت و ۳ ثانیه تأیید، خروجی دوباره وصل می‌شود.',
  ],
  'flow': [
-   N('pill','navy','شروع ارزیابی تعویض خروجی (هر پاس)'),
+   N('pill','navy','شروع ارزیابی تعویض خروجی (هر پاس)', ref='func__Changeover_Evaluate'),
    N('dia','yellow','عکس اندازه‌گیری معتبر است؟', side=SIDE('gray',['نه: حالت فعلی و خط محافظ دست نمی‌خورد','زمان نامعتبر حساب نمی‌شود']), elab='بله'),
    N('dia','yellow','بیت خطایی ست است؟', side=SIDE('red',['بله: حالت کلی «خطا»','هیچ پینی تکان نمی‌خورد']), elab='نه'),
    N('dia','yellow','وتوی خروجی فعال است؟ (عدم‌توازن قفل + تیک، یا باتری خراب قفل)', side=SIDE('red',['بله: خط محافظ فعال و حالت «امن»','باتری محکوم هرگز روی خروجی نمی‌رود']), elab='نه'),
@@ -560,7 +564,7 @@ MODULES['ui'] = {
    'وسط شارژ سیم باتری کشیده می‌شود: چهره فوری عوض می‌شود؛ قرمز چشمک‌زن و ۳ بوق (خطای ۶).',
  ],
  'flow': [
-   N('pill','navy','شروع پاس نمایش (هر پاس)'),
+   N('pill','navy','شروع پاس نمایش (هر پاس)', ref='func__Ui_Tick'),
    N('dia','yellow','عکس اندازه‌گیری معتبر است؟', side=SIDE('gray',['نه: فازهای چشمک ریست می‌شوند','درصد پایدار قبلی نگه داشته می‌شود']), elab='بله'),
    N('box','blue','خواندن وضعیت ورودی با هیسترزیس', ['حضور ورودی و اضافه‌ولتاژ ورودی (بالای ۲۸ ولت)']),
    N('dia','yellow','خطای فنی (۷) ست است؟', side=SIDE('red',['بله: هر سه چراغ هم‌فاز چشمک می‌زنند + بوق','بالاترین اولویت؛ فقط با ریست پاک می‌شود']), elab='نه'),
@@ -615,7 +619,7 @@ MODULES['protection'] = {
    'ماژول با پیش‌فرض خاموش کامپایل می‌شود (فقط با روشن‌کردن آگاهانه در پیکربندی فعال می‌شود).',
  ],
  'flow': [
-   N('pill','navy','شروع پاس ناظر'),
+   N('pill','navy','شروع پاس ناظر', ref='func__Protection_Run'),
    N('dia','yellow','عکس اندازه‌گیری معتبر است؟', side=SIDE('green',['بله: پاک‌کردن بیت خطای مبدل (بیت ۰)']), elab='نه'),
    N('box','red','ست‌کردن بیت خطای مبدل', ['لحظه‌ای است و قفل نمی‌شود','با اولین عکس معتبر خودش پاک می‌شود']),
  ],
@@ -693,7 +697,7 @@ MODULES['esplink'] = {
    'از آن لحظه شارژر با سقف تازه کار می‌کند و مقدار تازه در حافظهٔ ماندگار هم می‌نشیند.',
  ],
  'flow': [
-   N('pill','navy','رسیدن بایت‌ها از UART'),
+   N('pill','navy','رسیدن بایت‌ها از UART', ref='EspLink_Run'),
    N('dia','yellow','قاب فریم کامل و CRC درست است؟', side=SIDE('red',['نه: فریم دور ریخته می‌شود','نویز خط هیچ اثری روی برنامه ندارد']), elab='بله'),
    N('dia','yellow','نسخه و نوع فریم شناخته‌شده است؟', side=SIDE('red',['نه: نادیده گرفته می‌شود']), elab='بله'),
    N('dia','yellow','درخواست خواندن است یا نوشتن؟', elab='خواندن'),
@@ -742,7 +746,7 @@ MODULES['mcupowerpath'] = {
    'برق می‌رود؛ همان لحظه با لبهٔ سیگنال، میکرو دوباره از باتری تغذیه می‌شود و دستگاه بی‌وقفه ادامه می‌دهد.',
  ],
  'flow': [
-   N('pill','navy','شروع: میکرو از باتری تغذیه می‌شود'),
+   N('pill','navy','شروع: میکرو از باتری تغذیه می‌شود', ref='func__McuPowerPath_Run'),
    N('dia','yellow','لبهٔ افتادن حضور ورودی آمد؟ (وقفه)', side=SIDE('red',['بله: برگشت فوری به باتری، همان لحظه در وقفه','منتظر پاس بعدی نمی‌ماند']), elab='نه'),
    N('dia','yellow','عکس اندازه‌گیری معتبر است؟', side=SIDE('gray',['نه: مسیر فعلی حفظ و تایمر لغو می‌شود']), elab='بله'),
    N('dia','yellow','ولتاژ ورودی دست‌کم ۲۲ ولت است؟', elab='بله'),
@@ -784,7 +788,7 @@ MODULES['jitter'] = {
    'بعد از ۳ ثانیه نوبت احیای کانال ۱ می‌رسد؛ شارژر پرچم را پاک و با duty کمتر شروع می‌کند.',
  ],
  'flow': [
-   N('pill','navy','کمپراتور سخت‌افزاری هر کانال آماده است'),
+   N('pill','navy','کمپراتور سخت‌افزاری هر کانال آماده است', ref='func__Jitter_Run + وقفهٔ BSP'),
    N('dia','yellow','وقفهٔ تریپ کانالی آمد؟', elab='بله'),
    N('box','red','قفل پرچم تریپ همان کانال', ['پرچم تا پاک‌شدن توسط شارژر می‌ماند','کانال دیگر دست نمی‌خورد']),
    N('box','blue','شارژر پرچم را می‌خواند', ['توقف فوری کانال، شمارش تریپ، احیای یکی‌یکی']),
@@ -821,7 +825,7 @@ MODULES['diag'] = {
    'از پنل سابقه خوانده می‌شود و معلوم است خطا کی و در چه ولتاژی آمده است.',
  ],
  'flow': [
-   N('pill','navy','دفتر ثبت آماده است (خواندن رکورد سالم از فلش)'),
+   N('pill','navy','دفتر ثبت آماده است (خواندن رکورد سالم از فلش)', ref='func__Diag_Tick'),
    N('dia','yellow','خطایی ست شد؟', side=SIDE('red',['بله: ثبت خطا با زمان و عکس همان لحظه','دفتر ۱۰ خطای آخر؛ قدیمی‌ترین حذف می‌شود']), elab='نه'),
    N('dia','yellow','خاموش یا روشن‌شدن بود؟', side=SIDE('blue',['بله: ثبت رویداد برق','۲۰ رویداد آخر نگه داشته می‌شود']), elab='نه'),
    N('box','blue','جمع‌کردن زمان شارژ و کامل‌شدن هر کانال', []),
@@ -862,7 +866,7 @@ MODULES['rtos'] = {
    '<b>قانون کلی:</b> هر تسک اول عکس اندازه‌گیری را صفر و تازه می‌خواند تا هیچ‌وقت با دادهٔ کهنه یا نیمه‌کاره کار نکند؛ هیچ تسکی خواب مستقیم یا حافظهٔ پویا ندارد.',
  ],
  'flow': [
-   N('pill','navy','روشن‌شدن: ساخت ایستای پنج تسک'),
+   N('pill','navy','روشن‌شدن: ساخت ایستای پنج تسک', ref='task_measurement / task_control / ...'),
    N('box','blue','تسک اندازه‌گیری — هر ۱ میلی‌ثانیه', ['خواندن مبدل، فیلتر و انتشار عکس','اعلام زنده‌بودن به واچ‌داگ']),
    N('box','blue','تسک کنترل — ترتیب ثابت تصمیم', ['خطاها → خطای فنی → تغذیهٔ میکرو → عدم‌توازن','→ تعویض خروجی → شارژر → واچ‌داگ']),
    N('box','blue','تسک ارتباط — لینک پنل ESP', []),
@@ -910,7 +914,7 @@ MODULES['system'] = {
    'یک باتری کامل می‌شود و دیگری نه: عدم‌توازن زیر نظر است؛ اگر اختلاف ماندگار از حد رد شود رویداد می‌خورد و دستگاه با چراغ و خروجی واکنش نشان می‌دهد.',
  ],
  'flow': [
-   N('pill','navy','روشن‌شدن دستگاه'),
+   N('pill','navy','روشن‌شدن دستگاه', ref='main → تسک‌ها'),
    N('box','blue','راه‌اندازی سخت‌افزار از راه BSP', ['مبدل و DMA، PWM، پایه‌ها، وقفهٔ جیتر','خواندن تنظیمات ماندگار از حافظه']),
    N('box','blue','خودآزمایی چراغ‌ها و ساخت تسک‌ها', ['پنج تسک ایستا؛ بدون حافظهٔ پویا']),
    N('sec','navy','چرخهٔ همیشگی (هر پاس کنترل)'),
@@ -951,12 +955,34 @@ MODULES['system'] = {
  ],
 }
 
+DIRS = {'charging': 'Charger', 'measurement': 'Measurement', 'fault': 'Fault',
+        'imbalance': 'Imbalance', 'changeover': 'Changeover', 'ui': 'Ui',
+        'protection': 'Protection', 'callut': 'CalLut', 'esplink': 'EspLink',
+        'mcupowerpath': 'McuPowerPath', 'jitter': 'Jitter', 'diag': 'Diag',
+        'rtos': 'Rtos'}
+NAVLABELS = [('system', 'کل سیستم'), ('charging', 'شارژر'), ('measurement', 'اندازه‌گیری'),
+             ('fault', 'خطاها'), ('imbalance', 'عدم‌توازن'), ('changeover', 'تعویض خروجی'),
+             ('ui', 'چراغ و بوق'), ('protection', 'ناظر حفاظت'), ('callut', 'کالیبراسیون'),
+             ('esplink', 'لینک پنل'), ('mcupowerpath', 'تغذیهٔ میکرو'), ('jitter', 'جیتر'),
+             ('diag', 'ثبت سابقه'), ('rtos', 'تسک‌ها')]
+ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
+def target_path(key):
+    if key == 'system':
+        return os.path.join(ROOT, 'Documentation', 'system_process.html')
+    return os.path.join(ROOT, 'Firmware', 'Modules', DIRS[key], MODULES[key]['file'])
+
 def main():
-    outdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Documentation')
     for key, m in MODULES.items():
+        path = target_path(key)
+        nav = []
+        for k2, label in NAVLABELS:
+            if k2 != key:
+                nav.append({'t': label,
+                            'href': os.path.relpath(target_path(k2), os.path.dirname(path)).replace(os.sep, '/')})
+        mm = dict(m); mm['nav'] = nav
         html = TEMPLATE.replace('__TITLE__', m['title'])
-        html = html.replace('/*__DATA__*/', json.dumps(m, ensure_ascii=False))
-        path = os.path.join(outdir, m['file'])
+        html = html.replace('/*__DATA__*/', json.dumps(mm, ensure_ascii=False))
         with open(path, 'w', encoding='utf-8') as f:
             f.write(html)
         print('wrote', path)

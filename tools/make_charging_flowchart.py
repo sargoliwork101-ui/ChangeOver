@@ -230,6 +230,6 @@ for fillc, outc, lab in items:
 d.text((CX, Y(4090)), fa('عددها و ترتیب بررسی‌ها از کد فعلی برد (charger.c) — هر ایرادی دیدی بگو اول چک کنیم، بعد اصلاح کنم.'), font=F(22), fill='#808080', anchor='ma')
 
 out = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..',
-                   'Documentation', 'charging_flowchart.png')
+                   'Firmware', 'Modules', 'Charger', 'charging_flowchart.png')
 img.save(out)
 print('saved', out)
