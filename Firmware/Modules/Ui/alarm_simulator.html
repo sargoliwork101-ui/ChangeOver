@@ -67,8 +67,8 @@ input[type=range]{width:100%}
 </div>
 </div>
 <script>
-var SCEN = [{"id": "selftest", "title": "خودآزمایی روشن‌شدن", "grp": "عادی", "when": "هر بار که دستگاه روشن می‌شود، نیم ثانیه.", "led": "هر سه چراغ (سبز، زرد، قرمز) ۵۰۰ میلی‌ثانیه روشن و بعد خاموش می‌شوند.", "beep": "بدون بوق.", "fix": "خودکار تمام می‌شود.", "func": "func__Ui_Init", "kind": "selftest", "p": {}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L2130"}, {"id": "tech7", "title": "خطای فنی شارژر (خطای ۷)", "grp": "خطاها", "when": "شارژر خرابی فنی را قفل کرده است (مثل duty بدون جریان، یا رلهٔ باز با تریپ JIT).", "led": "چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن.", "beep": "هر ۳ ثانیه، ۳ بوق کوتاه (۲۰۰ میلی‌ثانیه، فاصلهٔ ۱۰۰).", "fix": "فقط با خاموش و روشن‌کردن برد و رفع عیب سخت‌افزاری پاک می‌شود.", "func": "func__Ui_ScenarioTechnicalFault_Tick", "kind": "blink", "p": {"r": [1000, 50], "beep": [3000, [[0, 200], [300, 200], [600, 200]]]}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1386"}, {"id": "ov", "title": "اضافه‌ولتاژ ورودی", "grp": "خطاها", "when": "ولتاژ ورودی از ۲۸ ولت بالاتر رفته است.", "led": "چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن.", "beep": "هر ۱۰ ثانیه، یک بوق ۱ ثانیه‌ای.", "fix": "با پایین‌آمدن ورودی زیر ۲۷ ولت خودش پاک می‌شود.", "func": "func__Ui_ScenarioInputOverVoltage_Tick", "kind": "blink", "p": {"r": [1000, 50], "beep": [10000, [[0, 1000]]]}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1278"}, {"id": "fault6", "title": "خطای ۶: قطع باتری", "grp": "خطاها", "when": "سیم یک نیم باتری قطع شده یا باتری برداشته شده است.", "led": "چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن.", "beep": "هر ۳ ثانیه، ۳ بوق کوتاه.", "fix": "با وصل‌کردن باتری و پایداری ولتاژ، خودش پاک می‌شود.", "func": "func__Ui_ScenarioBatLost_Tick", "kind": "blink", "p": {"r": [1000, 50], "beep": [3000, [[0, 230], [330, 230], [660, 230]]]}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1334"}, {"id": "dead", "title": "باتری خراب (قفل)", "grp": "خطاها", "when": "باتری ۲۴ ساعت شارژ نشده و خراب حساب شده است (سناریوی ۶ شارژر).", "led": "چراغ قرمز ثابت روشن می‌ماند.", "beep": "یک بوق هنگام قفل‌شدن؛ بوق دوره‌ای از پنل قابل تنظیم است.", "fix": "فقط با تعویض باتری (نبود باتری ۳ ثانیه) پاک می‌شود.", "func": "func__Ui_ScenarioDeadBattery_Tick", "kind": "blink", "p": {"r": "on", "beep": [10000, [[0, 300]]]}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1526"}, {"id": "imbal", "title": "عدم‌توازن قفل‌شده", "grp": "خطاها", "when": "اختلاف دو نیم باتری در ۱۰ سیکل از حد گذشت و قفل شد.", "led": "چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن. سبز و زرد خاموش.", "beep": "پیش‌فرض: هر ۱ ساعت یک بوق ۲۰۰ میلی‌ثانیه (در شبیه‌ساز سریع‌تر پخش می‌شود).", "fix": "طبق قانون عدم‌توازن پاک می‌شود (نبود باتری یا پایان بودجه/چرخهٔ پاک).", "func": "func__Ui_ScenarioImbalance_Tick", "kind": "blink", "p": {"r": [1000, 50], "beep": [10000, [[0, 200]]]}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1447"}, {"id": "full", "title": "شارژ کامل", "grp": "عادی", "when": "همهٔ کانال‌های فعال به نگه‌داری (FLOAT) رسیده‌اند.", "led": "چراغ سبز ثابت، زرد خاموش.", "beep": "بدون بوق.", "fix": "—", "func": "func__Ui_ScenarioInputOk", "kind": "blink", "p": {"g": "on"}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1590"}, {"id": "charging", "title": "در حال شارژ", "grp": "عادی", "when": "ورودی حاضر است و شارژ ادامه دارد. درصد را با لغزنده عوض کن.", "led": "چراغ زرد چشمک می‌زند: هرچه شارژ کمتر، زرد بیشتر روشن می‌ماند (زمان روشن = درصد باقی‌مانده از دورهٔ ۱ ثانیه).", "beep": "بدون بوق.", "fix": "—", "func": "func__Ui_ScenarioCharging_Tick", "kind": "charge", "p": {}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1623"}, {"id": "thermal", "title": "استراحت حرارتی شارژر", "grp": "عادی", "when": "شارژر بعد از ۱ ساعت شارژ سنگین، ۱۰ دقیقه استراحت می‌کند.", "led": "چراغ زرد چشمک ۱ ثانیه ۵۰٪ + چراغ سبز ثابت.", "beep": "بدون بوق.", "fix": "بعد از ۱۰ دقیقه خودش به شارژ برمی‌گردد.", "func": "func__Ui_ScenarioThermalRest_Tick", "kind": "blink", "p": {"g": "on", "y": [1000, 50]}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1701"}, {"id": "batrun", "title": "کار روی باتری (بدون ورودی)", "grp": "عادی", "when": "ورودی نیست و دستگاه از باتری کار می‌کند. درصد باتری را با لغزنده عوض کن.", "led": "چراغ سبز چشمک می‌زند: زمان روشن = درصد باتری از دورهٔ ۱ ثانیه.", "beep": "زیر ۴۰٪ بوق هشدار شروع می‌شود: ۴۰٪ تک‌بوق، ۲۰٪ دوبوق، ۱۰٪ سه‌بوق، ۱٪ بحرانی (در شبیه‌ساز سریع‌تر پخش می‌شود).", "fix": "با برگشت ورودی تمام می‌شود.", "func": "func__Ui_ScenarioBatteryRun_Tick", "kind": "batrun", "p": {}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1739"}];
-var cur = null, t0 = 0, actx = null, lastT = 0;
+var SCEN = [{"id": "selftest", "title": "خودآزمایی روشن‌شدن", "grp": "عادی", "when": "هر بار که دستگاه روشن می‌شود، نیم ثانیه.", "led": "هر سه چراغ (سبز، زرد، قرمز) ۵۰۰ میلی‌ثانیه روشن و بعد خاموش می‌شوند (در شبیه‌ساز هر ۶ ثانیه تکرار می‌شود تا دیده شود).", "beep": "بدون بوق.", "fix": "خودکار تمام می‌شود.", "func": "func__Ui_Init", "kind": "selftest", "p": {}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L2130"}, {"id": "tech7", "title": "خطای فنی شارژر (خطای ۷)", "grp": "خطاها", "when": "شارژر خرابی فنی را قفل کرده است (مثل duty بدون جریان، یا رلهٔ باز با تریپ JIT).", "led": "چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن.", "beep": "هر ۳ ثانیه، ۳ بوق کوتاه (۲۰۰ میلی‌ثانیه، فاصلهٔ ۱۰۰).", "fix": "فقط با خاموش و روشن‌کردن برد و رفع عیب سخت‌افزاری پاک می‌شود.", "func": "func__Ui_ScenarioTechnicalFault_Tick", "kind": "blink", "p": {"r": [1000, 50], "beep": [3000, [[0, 200], [300, 200], [600, 200]]]}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1386"}, {"id": "ov", "title": "اضافه‌ولتاژ ورودی", "grp": "خطاها", "when": "ولتاژ ورودی از ۲۸ ولت بالاتر رفته است.", "led": "چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن.", "beep": "هر ۱۰ ثانیه، یک بوق ۱ ثانیه‌ای.", "fix": "با پایین‌آمدن ورودی زیر ۲۷ ولت خودش پاک می‌شود.", "func": "func__Ui_ScenarioInputOverVoltage_Tick", "kind": "blink", "p": {"r": [1000, 50], "beep": [10000, [[0, 1000]]]}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1278"}, {"id": "fault6", "title": "خطای ۶: قطع باتری", "grp": "خطاها", "when": "سیم یک نیم باتری قطع شده یا باتری برداشته شده است.", "led": "چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن.", "beep": "هر ۳ ثانیه، ۳ بوق کوتاه.", "fix": "با وصل‌کردن باتری و پایداری ولتاژ، خودش پاک می‌شود.", "func": "func__Ui_ScenarioBatLost_Tick", "kind": "blink", "p": {"r": [1000, 50], "beep": [3000, [[0, 230], [330, 230], [660, 230]]]}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1334"}, {"id": "dead", "title": "باتری خراب (قفل)", "grp": "خطاها", "when": "باتری ۲۴ ساعت شارژ نشده و خراب حساب شده است (سناریوی ۶ شارژر).", "led": "چراغ قرمز ثابت روشن می‌ماند.", "beep": "یک بوق هنگام قفل‌شدن؛ بوق دوره‌ای از پنل قابل تنظیم است.", "fix": "فقط با تعویض باتری (نبود باتری ۳ ثانیه) پاک می‌شود.", "func": "func__Ui_ScenarioDeadBattery_Tick", "kind": "blink", "p": {"r": "on", "beep": null}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1526"}, {"id": "imbal", "title": "عدم‌توازن قفل‌شده", "grp": "خطاها", "when": "اختلاف دو نیم باتری در ۱۰ سیکل از حد گذشت و قفل شد.", "led": "چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن. سبز و زرد خاموش.", "beep": "پیش‌فرض: هر ۱ ساعت یک بوق ۲۰۰ میلی‌ثانیه (در شبیه‌ساز سریع‌تر پخش می‌شود).", "fix": "طبق قانون عدم‌توازن پاک می‌شود (نبود باتری یا پایان بودجه/چرخهٔ پاک).", "func": "func__Ui_ScenarioImbalance_Tick", "kind": "blink", "p": {"r": [1000, 50], "beep": [10000, [[0, 200]]]}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1447"}, {"id": "full", "title": "شارژ کامل", "grp": "عادی", "when": "همهٔ کانال‌های فعال به نگه‌داری (FLOAT) رسیده‌اند.", "led": "چراغ سبز ثابت، زرد خاموش.", "beep": "بدون بوق.", "fix": "—", "func": "func__Ui_ScenarioInputOk", "kind": "blink", "p": {"g": "on"}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1590"}, {"id": "charging", "title": "در حال شارژ", "grp": "عادی", "when": "ورودی حاضر است و شارژ ادامه دارد. درصد را با لغزنده عوض کن.", "led": "چراغ زرد چشمک می‌زند: هرچه شارژ کمتر، زرد بیشتر روشن می‌ماند (زمان روشن = درصد باقی‌مانده از دورهٔ ۱ ثانیه).", "beep": "بدون بوق.", "fix": "—", "func": "func__Ui_ScenarioCharging_Tick", "kind": "charge", "p": {}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1623"}, {"id": "thermal", "title": "استراحت حرارتی شارژر", "grp": "عادی", "when": "شارژر بعد از ۱ ساعت شارژ سنگین، ۱۰ دقیقه استراحت می‌کند.", "led": "چراغ زرد چشمک ۱ ثانیه ۵۰٪ + چراغ سبز ثابت.", "beep": "بدون بوق.", "fix": "بعد از ۱۰ دقیقه خودش به شارژ برمی‌گردد.", "func": "func__Ui_ScenarioThermalRest_Tick", "kind": "blink", "p": {"g": "on", "y": [1000, 50]}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1701"}, {"id": "batrun", "title": "کار روی باتری (بدون ورودی)", "grp": "عادی", "when": "ورودی نیست و دستگاه از باتری کار می‌کند. درصد باتری را با لغزنده عوض کن.", "led": "چراغ سبز چشمک می‌زند: زمان روشن = درصد باتری از دورهٔ ۱ ثانیه.", "beep": "زیر ۴۰٪ بوق هشدار شروع می‌شود: ۴۰٪ تک‌بوق، ۲۰٪ دوبوق، ۱۰٪ سه‌بوق، ۱٪ بحرانی (در شبیه‌ساز سریع‌تر پخش می‌شود).", "fix": "با برگشت ورودی تمام می‌شود.", "func": "func__Ui_ScenarioBatteryRun_Tick", "kind": "batrun", "p": {}, "url": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c#L1739"}];
+var cur = null, actx = null, prevNow = 0;
 var ledG = document.getElementById('ledG'), ledY = document.getElementById('ledY'),
     ledR = document.getElementById('ledR'), buzz = document.getElementById('buzz');
 function audio(){
@@ -87,49 +87,48 @@ function beep(dur){
   o.connect(g); g.connect(actx.destination);
   o.start(); o.stop(actx.currentTime + dur / 1000 + 0.05);
 }
-function ledState(spec, t){
+function ledState(spec, now){
   if (!spec) return false;
   if (spec === 'on') return true;
-  var ph = t % spec[0];
+  var ph = now % spec[0];
   return ph < spec[0] * spec[1] / 100;
 }
 function frame(){
   requestAnimationFrame(frame);
   if (!cur) return;
-  var t = performance.now() - t0, pct = +document.getElementById('pct').value;
+  var now = Date.now(), pct = +document.getElementById('pct').value;
   var g = false, y = false, r = false, beeps = null;
   if (cur.kind === 'selftest'){
-    g = y = r = (t < 500);
+    g = y = r = (now % 6000) < 500;
   } else if (cur.kind === 'charge'){
     var rem = Math.max(100 - pct, 2);
-    y = (t % 1000) < rem * 10;
+    y = (now % 1000) < rem * 10;
     if (pct >= 100){ y = false; g = true; }
-    beeps = null;
   } else if (cur.kind === 'batrun'){
-    g = (t % 1000) < Math.max(pct * 10, 0) && pct > 0;
+    g = pct > 0 && (now % 1000) < pct * 10;
     if (pct > 40) beeps = null;
     else if (pct > 20) beeps = [10000, [[0, 1000]]];
     else if (pct > 10) beeps = [10000, [[0, 300], [500, 300]]];
     else if (pct > 1) beeps = [8000, [[0, 250], [450, 250], [900, 250]]];
     else beeps = [10000, [[0, 1000]]];
   } else {
-    g = ledState(cur.p.g, t); y = ledState(cur.p.y, t); r = ledState(cur.p.r, t);
+    g = ledState(cur.p.g, now); y = ledState(cur.p.y, now); r = ledState(cur.p.r, now);
     beeps = cur.p.beep || null;
   }
   ledG.classList.toggle('on', !!g); ledY.classList.toggle('on', !!y); ledR.classList.toggle('on', !!r);
-  if (beeps){
-    var per = beeps[0], cyc = Math.floor(t / per);
+  if (beeps && prevNow){
+    var per = beeps[0], cyc = Math.floor(now / per);
     beeps[1].forEach(function(pu){
       var at = cyc * per + pu[0];
-      if (lastT < at && t >= at) beep(pu[1]);
+      if (prevNow < at && now >= at) beep(pu[1]);
     });
   }
-  lastT = t;
+  prevNow = now;
 }
 function pick(id){
   audio();
   cur = SCEN.filter(function(x){ return x.id === id; })[0];
-  t0 = performance.now(); lastT = 0;
+  prevNow = 0;
   document.querySelectorAll('button.alarm').forEach(function(b){ b.classList.toggle('on', b.dataset.id === id); });
   document.getElementById('dTitle').textContent = cur.title;
   document.getElementById('dWhen').textContent = cur.when;
@@ -143,7 +142,6 @@ function pick(id){
   else if (cur.kind === 'batrun'){ sr.style.display = 'block'; document.getElementById('sliderLab').textContent = 'درصد باقی‌ماندهٔ باتری:'; }
   else sr.style.display = 'none';
   if (cur.kind === 'dead') setTimeout(function(){ beep(300); }, 60);
-  if (cur.kind === 'selftest') setTimeout(function(){ t0 = performance.now(); }, 4000);
 }
 var list = document.getElementById('list'), lastGrp = '';
 SCEN.forEach(function(x){

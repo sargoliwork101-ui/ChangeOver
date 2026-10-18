@@ -22,7 +22,7 @@ def line_of(token):
 SCEN = [
     # id, title, group, when, led text, beep text, fix, func token, kind, params
     ('selftest', 'خودآزمایی روشن‌شدن', 'عادی', 'هر بار که دستگاه روشن می‌شود، نیم ثانیه.',
-     'هر سه چراغ (سبز، زرد، قرمز) ۵۰۰ میلی‌ثانیه روشن و بعد خاموش می‌شوند.',
+     'هر سه چراغ (سبز، زرد، قرمز) ۵۰۰ میلی‌ثانیه روشن و بعد خاموش می‌شوند (در شبیه‌ساز هر ۶ ثانیه تکرار می‌شود تا دیده شود).',
      'بدون بوق.', 'خودکار تمام می‌شود.', 'func__Ui_Init', 'selftest', {}),
     ('tech7', 'خطای فنی شارژر (خطای ۷)', 'خطاها', 'شارژر خرابی فنی را قفل کرده است (مثل duty بدون جریان، یا رلهٔ باز با تریپ JIT).',
      'چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن.',
@@ -43,7 +43,7 @@ SCEN = [
      'چراغ قرمز ثابت روشن می‌ماند.',
      'یک بوق هنگام قفل‌شدن؛ بوق دوره‌ای از پنل قابل تنظیم است.',
      'فقط با تعویض باتری (نبود باتری ۳ ثانیه) پاک می‌شود.',
-     'func__Ui_ScenarioDeadBattery_Tick', 'blink', {'r': 'on', 'beep': [10000, [[0, 300]]]}),
+     'func__Ui_ScenarioDeadBattery_Tick', 'blink', {'r': 'on', 'beep': None}),
     ('imbal', 'عدم‌توازن قفل‌شده', 'خطاها', 'اختلاف دو نیم باتری در ۱۰ سیکل از حد گذشت و قفل شد.',
      'چراغ قرمز چشمک می‌زند: دورهٔ ۱ ثانیه، ۵۰٪ روشن. سبز و زرد خاموش.',
      'پیش‌فرض: هر ۱ ساعت یک بوق ۲۰۰ میلی‌ثانیه (در شبیه‌ساز سریع‌تر پخش می‌شود).',
@@ -137,7 +137,7 @@ input[type=range]{width:100%}
 </div>
 <script>
 var SCEN = __SCEN__;
-var cur = null, t0 = 0, actx = null, lastT = 0;
+var cur = null, actx = null, prevNow = 0;
 var ledG = document.getElementById('ledG'), ledY = document.getElementById('ledY'),
     ledR = document.getElementById('ledR'), buzz = document.getElementById('buzz');
 function audio(){
@@ -156,49 +156,48 @@ function beep(dur){
   o.connect(g); g.connect(actx.destination);
   o.start(); o.stop(actx.currentTime + dur / 1000 + 0.05);
 }
-function ledState(spec, t){
+function ledState(spec, now){
   if (!spec) return false;
   if (spec === 'on') return true;
-  var ph = t % spec[0];
+  var ph = now % spec[0];
   return ph < spec[0] * spec[1] / 100;
 }
 function frame(){
   requestAnimationFrame(frame);
   if (!cur) return;
-  var t = performance.now() - t0, pct = +document.getElementById('pct').value;
+  var now = Date.now(), pct = +document.getElementById('pct').value;
   var g = false, y = false, r = false, beeps = null;
   if (cur.kind === 'selftest'){
-    g = y = r = (t < 500);
+    g = y = r = (now % 6000) < 500;
   } else if (cur.kind === 'charge'){
     var rem = Math.max(100 - pct, 2);
-    y = (t % 1000) < rem * 10;
+    y = (now % 1000) < rem * 10;
     if (pct >= 100){ y = false; g = true; }
-    beeps = null;
   } else if (cur.kind === 'batrun'){
-    g = (t % 1000) < Math.max(pct * 10, 0) && pct > 0;
+    g = pct > 0 && (now % 1000) < pct * 10;
     if (pct > 40) beeps = null;
     else if (pct > 20) beeps = [10000, [[0, 1000]]];
     else if (pct > 10) beeps = [10000, [[0, 300], [500, 300]]];
     else if (pct > 1) beeps = [8000, [[0, 250], [450, 250], [900, 250]]];
     else beeps = [10000, [[0, 1000]]];
   } else {
-    g = ledState(cur.p.g, t); y = ledState(cur.p.y, t); r = ledState(cur.p.r, t);
+    g = ledState(cur.p.g, now); y = ledState(cur.p.y, now); r = ledState(cur.p.r, now);
     beeps = cur.p.beep || null;
   }
   ledG.classList.toggle('on', !!g); ledY.classList.toggle('on', !!y); ledR.classList.toggle('on', !!r);
-  if (beeps){
-    var per = beeps[0], cyc = Math.floor(t / per);
+  if (beeps && prevNow){
+    var per = beeps[0], cyc = Math.floor(now / per);
     beeps[1].forEach(function(pu){
       var at = cyc * per + pu[0];
-      if (lastT < at && t >= at) beep(pu[1]);
+      if (prevNow < at && now >= at) beep(pu[1]);
     });
   }
-  lastT = t;
+  prevNow = now;
 }
 function pick(id){
   audio();
   cur = SCEN.filter(function(x){ return x.id === id; })[0];
-  t0 = performance.now(); lastT = 0;
+  prevNow = 0;
   document.querySelectorAll('button.alarm').forEach(function(b){ b.classList.toggle('on', b.dataset.id === id); });
   document.getElementById('dTitle').textContent = cur.title;
   document.getElementById('dWhen').textContent = cur.when;
@@ -212,7 +211,6 @@ function pick(id){
   else if (cur.kind === 'batrun'){ sr.style.display = 'block'; document.getElementById('sliderLab').textContent = 'درصد باقی‌ماندهٔ باتری:'; }
   else sr.style.display = 'none';
   if (cur.kind === 'dead') setTimeout(function(){ beep(300); }, 60);
-  if (cur.kind === 'selftest') setTimeout(function(){ t0 = performance.now(); }, 4000);
 }
 var list = document.getElementById('list'), lastGrp = '';
 SCEN.forEach(function(x){
