@@ -9,7 +9,7 @@ collapses on click. Edit the DATA below (read from the real code), then:
     python3 tools/make_process_pages.py
 Never edit the generated HTML by hand.
 """
-import json, os
+import json, os, re
 
 TEMPLATE = r"""<!DOCTYPE html>
 <html lang="fa" dir="rtl">
@@ -42,6 +42,8 @@ TEMPLATE = r"""<!DOCTYPE html>
   svg.sel .edge.hl, svg.sel .fnode.hl { opacity: 1; }
   .edge.hl .vis { stroke-width: 4.5; }
   .fnode.hl rect, .fnode.hl polygon { stroke-width: 4; }
+  .fnode a text { text-decoration: underline; }
+  .fnode a:hover text { fill: #B45309; }
   #einfo { background:#16283F; border:1px solid #35507A; border-radius:8px; padding:6px 12px; margin:4px 4px 8px; font-size:14.5px; }
   .subhead { cursor: pointer; }
   .subhead:hover rect { stroke-width: 3; }
@@ -148,7 +150,8 @@ function drawNode(n, cx, y, idx){
   var ls = wrappedLines(n), ty = y + sz.h / 2 - (ls.length - 1) * 12.5, tt = '';
   ls.forEach(function(ln, i){
     if (ln.r){
-      tt += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="12" font-family="Consolas, monospace" fill="' + (c.t === '#FFFFFF' ? '#B9CDE4' : '#33506F') + '">' + esc(ln.s) + '</text>';
+      var rt = '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="12" font-family="Consolas, monospace" fill="' + (c.t === '#FFFFFF' ? '#B9CDE4' : '#33506F') + '">' + esc(ln.s) + '</text>';
+      tt += n.rurl ? '<a href="' + n.rurl + '" target="_blank">' + rt + '</a>' : rt;
     } else {
       tt += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + esc(ln.s) + '</text>';
     }
@@ -1134,7 +1137,47 @@ def target_path(key):
         return os.path.join(ROOT, 'Documentation', 'system_process.html')
     return os.path.join(ROOT, 'Firmware', 'Modules', DIRS[key], MODULES[key]['file'])
 
+GH_BLOB = 'https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/'
+GH_TREE = 'https://github.com/sargoliwork101-ui/ChangeOver/tree/arena/859ce091-changeover/'
+TOKEN_RE = re.compile(r'[A-Za-z][A-Za-z0-9_]{3,}')
+
+def build_index(base):
+    idx_def, idx_any = {}, {}
+    for dp, dn, fn in os.walk(base):
+        for f in sorted(fn):
+            if not (f.endswith('.c') or f.endswith('.h')):
+                continue
+            path = os.path.join(dp, f)
+            rel = os.path.relpath(path, ROOT).replace(os.sep, '/')
+            try:
+                lines = open(path, encoding='utf-8', errors='ignore').read().split('\n')
+            except OSError:
+                continue
+            for ln, line in enumerate(lines, 1):
+                for tok in set(TOKEN_RE.findall(line)):
+                    if tok not in idx_any:
+                        idx_any[tok] = (rel, ln)
+                    st = line.strip()
+                    if tok not in idx_def and '(' in line and not st.startswith(('*', '//')):
+                        idx_def[tok] = (rel, ln)
+    return idx_def, idx_any
+
+def resolve_ref(ref, idx, fallback):
+    idx_def, idx_any = idx
+    toks = TOKEN_RE.findall(ref or '')
+    toks.sort(key=lambda t: (0 if t.startswith('func__') else 1, -len(t)))
+    for t in toks:
+        if t in idx_def:
+            rel, ln = idx_def[t]
+            return GH_BLOB + rel + '#L' + str(ln)
+    for t in toks:
+        if t in idx_any:
+            rel, ln = idx_any[t]
+            return GH_BLOB + rel + '#L' + str(ln)
+    return fallback
+
 def main():
+    sys_idx = None
     for key, m in MODULES.items():
         path = target_path(key)
         nav = []
@@ -1142,6 +1185,19 @@ def main():
             if k2 != key:
                 nav.append({'t': label,
                             'href': os.path.relpath(target_path(k2), os.path.dirname(path)).replace(os.sep, '/')})
+        if key == 'ui':
+            nav.append({'t': 'شبیه‌ساز آلارم‌ها', 'href': 'alarm_simulator.html'})
+        if key == 'system':
+            if sys_idx is None:
+                sys_idx = build_index(os.path.join(ROOT, 'Firmware'))
+            idx = sys_idx
+            fallback = GH_TREE + 'Firmware'
+        else:
+            idx = build_index(os.path.join(ROOT, 'Firmware', 'Modules', DIRS[key]))
+            fallback = GH_TREE + 'Firmware/Modules/' + DIRS[key]
+        for n in m['flow']:
+            if n.get('ref'):
+                n['rurl'] = resolve_ref(n['ref'], idx, fallback)
         mm = dict(m); mm['nav'] = nav
         html = TEMPLATE.replace('__TITLE__', m['title'])
         html = html.replace('/*__DATA__*/', json.dumps(mm, ensure_ascii=False))
