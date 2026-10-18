@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>فرآیند ثبت سابقه (دیاگ) — توضیح ساده</title>
+<title>فرآیند تسک‌ها (RTOS) — توضیح ساده</title>
 <style>
   body { font-family: Vazirmatn, Tahoma, sans-serif; background:#F2F6FC; color:#1F3864; margin:0; padding:24px 14px 48px; line-height:1.9; }
   .wrap { max-width: 1020px; margin: 0 auto; }
@@ -28,6 +28,7 @@
 <div class="wrap">
 <h1 id="ttl"></h1>
 <p class="small" id="sub"></p>
+<p class="small" id="nav"></p>
 <h2>توضیح ساده</h2>
 <div class="card"><ol id="steps"></ol></div>
 <div id="exwrap"><h2>یک مثال عددی</h2><div class="card ok"><ol id="example"></ol></div></div>
@@ -42,7 +43,7 @@
 <table id="outs"><tr><th style="width:26%">به کجا</th><th style="width:37%">چه فرمانی / چه خروجی‌ای</th><th>کی و با چه شرطی</th></tr></table>
 <div class="card" style="background:#FFE699;border-color:#BF8F00"><b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ اول از روی کد چک می‌کنیم، بعد اصلاح می‌کنیم.</div>
 </div>
-<script>const DATA = {"file": "diag_process.html", "title": "فرآیند ثبت سابقه (دیاگ) — توضیح ساده", "sub": "این ماژول دفتر ثبت دستگاه است: خطاها، خاموش و روشن‌شدن‌ها، زمان شارژ هر کانال و کمینه/بیشینه‌ها را در حافظهٔ ماندگار فلش نگه می‌دارد.", "steps": ["<b>ثبت خطا:</b> هر خطایی که ست می‌شود با زمان و عکس اندازه‌گیری همان لحظه ثبت می‌شود؛ دفتر خطا ۱۰ جای آخر را نگه می‌دارد و قدیمی‌ترین می‌رود.", "<b>رویدادهای برق:</b> خاموش و روشن‌شدن‌ها جدا ثبت می‌شوند (۲۰ رویداد آخر).", "<b>زمان شارژ:</b> ثانیه‌های شارژ هر کانال جمع می‌شود و کامل‌شدن شارژ هر کانال هم شمرده می‌شود.", "<b>کمینه/بیشینه:</b> کمترین و بیشترین ولتاژها و جریان‌های دیده‌شده نگه داشته می‌شود.", "<b>ذخیرهٔ امن:</b> رکورد در دو صفحهٔ فلش با شماره و نسخه نوشته می‌شود تا اگر وسط نوشتن برق رفت، نسخهٔ قبلی سالم بماند؛ ساعت برد هم با زمان پنل میزان می‌شود."], "example": ["خطای ۶ وسط شارژ می‌آید؛ همان لحظه با زمان و ولتاژهای آن لحظه در دفتر ثبت می‌شود.", "دستگاه خاموش و روشن می‌شود؛ رویداد برق هم ثبت می‌شود و دفتر بعد از روشن‌شدن سر جایش هست.", "از پنل سابقه خوانده می‌شود و معلوم است خطا کی و در چه ولتاژی آمده است."], "flow": [{"k": "pill", "c": "navy", "t": "دفتر ثبت آماده است (خواندن رکورد سالم از فلش)"}, {"k": "dia", "c": "yellow", "t": "خطایی ست شد؟", "side": {"c": "red", "l": ["بله: ثبت خطا با زمان و عکس همان لحظه", "دفتر ۱۰ خطای آخر؛ قدیمی‌ترین حذف می‌شود"], "d": "r"}, "elab": "نه"}, {"k": "dia", "c": "yellow", "t": "خاموش یا روشن‌شدن بود؟", "side": {"c": "blue", "l": ["بله: ثبت رویداد برق", "۲۰ رویداد آخر نگه داشته می‌شود"], "d": "r"}, "elab": "نه"}, {"k": "box", "c": "blue", "t": "جمع‌کردن زمان شارژ و کامل‌شدن هر کانال"}, {"k": "box", "c": "blue", "t": "به‌روزرسانی کمینه و بیشینه‌ها", "l": ["ولتاژها و جریان‌های دیده‌شده"]}, {"k": "dia", "c": "yellow", "t": "زمان ذخیره رسید یا فرمان ذخیره آمد؟", "side": {"c": "green", "l": ["بله: نوشتن رکورد در صفحهٔ دیگر فلش با شماره و نسخه", "وسط نوشتن برق برود، نسخهٔ قبلی سالم می‌ماند"], "d": "r"}, "elab": "نه"}, {"k": "box", "c": "green", "t": "رکورد آمادهٔ خواندن از پنل است", "l": ["ساعت برد با زمان پنل میزان می‌شود"]}], "tree": {"t": "ثبت سابقه (دیاگ)", "c": [{"t": "رویدادها", "c": [{"t": "خطا → ثبت با زمان و عکس (۱۰ آخر)"}, {"t": "برق → خاموش/روشن (۲۰ آخر)"}, {"t": "کامل‌شدن شارژ هر کانال"}]}, {"t": "جمع زمان شارژ کانال‌ها"}, {"t": "کمینه/بیشینهٔ ولتاژ و جریان"}, {"t": "ذخیرهٔ دوصفحه‌ای فلش با نسخه"}, {"t": "ساعت برد از پنل"}]}, "conds": [["دفتر خطا پر شد", "قدیمی‌ترین خطا می‌رود و ۱۰ خطای آخر همیشه هست.", "۱۰ خطا / ۲۰ رویداد برق"], ["وسط ذخیره برق رفت", "رکورد قبلی سالم می‌ماند چون نوشتن روی صفحهٔ دیگر است و شماره/نسخه کنترل می‌شود.", "دو صفحهٔ فلش + شمارهٔ ترتیبی"], ["رکورد فلش خراب بود", "رکورد پذیرفته نمی‌شود و از نسخهٔ سالم یا پیش‌فرض شروع می‌شود.", "عدد شناسایی + نسخه"]], "outs": [["رکورد سابقه به پنل", "خطاها، رویدادها، زمان‌های شارژ و کمینه/بیشینه‌ها", "پنل می‌خواند"], ["ذخیره در فلش", "رکورد ماندگار دستگاه", "با فرمان ذخیره و در رویدادهای مهم"]]};</script>
+<script>const DATA = {"file": "rtos_process.html", "title": "فرآیند تسک‌ها (RTOS) — توضیح ساده", "sub": "این بخش اسکلت زمانی برنامه است: پنج تسک با تخصیص ایستا (بدون حافظهٔ پویا) و یک ترتیب ثابت اجرا؛ واچ‌داگ هم زنده‌بودن تسک‌ها را چک می‌کند.", "steps": ["<b>تسک اندازه‌گیری:</b> هر ۱ میلی‌ثانیه یک پاس اندازه‌گیری و اعلام زنده‌بودن به واچ‌داگ.", "<b>تسک کنترل:</b> مغز تصمیم دستگاه با ترتیب ثابت: اول خطاها، بعد خطای فنی شارژر، مسیر تغذیه، عدم‌توازن، تعویض خروجی و در پایان خود شارژر؛ بعد هم اعلام به واچ‌داگ.", "<b>تسک ارتباط:</b> لینک پنل ESP را می‌چرخاند.", "<b>تسک نمایش:</b> چراغ‌ها و بوق را تازه می‌کند.", "<b>تسک حفاظت:</b> ناظر سبک (بیت مبدل) را اجرا می‌کند؛ در ساخت اصلی خاموش است.", "<b>قانون کلی:</b> هر تسک اول عکس اندازه‌گیری را صفر و تازه می‌خواند تا هیچ‌وقت با دادهٔ کهنه یا نیمه‌کاره کار نکند؛ هیچ تسکی خواب مستقیم یا حافظهٔ پویا ندارد."], "flow": [{"k": "pill", "c": "navy", "t": "روشن‌شدن: ساخت ایستای پنج تسک", "ref": "task_measurement / task_control / ..."}, {"k": "box", "c": "blue", "t": "تسک اندازه‌گیری — هر ۱ میلی‌ثانیه", "l": ["خواندن مبدل، فیلتر و انتشار عکس", "اعلام زنده‌بودن به واچ‌داگ"]}, {"k": "box", "c": "blue", "t": "تسک کنترل — ترتیب ثابت تصمیم", "l": ["خطاها → خطای فنی → تغذیهٔ میکرو → عدم‌توازن", "→ تعویض خروجی → شارژر → واچ‌داگ"]}, {"k": "box", "c": "blue", "t": "تسک ارتباط — لینک پنل ESP"}, {"k": "box", "c": "blue", "t": "تسک نمایش — چراغ‌ها و بوق"}, {"k": "box", "c": "gray", "t": "تسک حفاظت — ناظر بیت مبدل", "l": ["در ساخت اصلی خاموش است"]}, {"k": "dia", "c": "yellow", "t": "تسکی سر وقت اعلام زنده‌بودن نکرد؟", "side": {"c": "red", "l": ["بله: واچ‌داگ سخت‌افزاری دستگاه را ریست می‌کند", "یعنی برنامه جایی گیر کرده است"], "d": "r"}, "elab": "نه"}, {"k": "box", "c": "green", "t": "چرخه ادامه دارد", "l": ["همه‌چیز ایستا؛ بدون حافظهٔ پویا و بدون خواب مستقیم"]}], "tree": {"t": "تسک‌ها (RTOS)", "c": [{"t": "اندازه‌گیری: هر ۱ms + واچ‌داگ"}, {"t": "کنترل: ترتیب ثابت ماژول‌ها", "c": [{"t": "خطاها و خطای فنی"}, {"t": "تغذیهٔ میکرو و عدم‌توازن"}, {"t": "تعویض خروجی و شارژر"}]}, {"t": "ارتباط: لینک ESP"}, {"t": "نمایش: چراغ و بوق"}, {"t": "حفاظت: ناظر (خاموش در ساخت اصلی)"}, {"t": "واچ‌داگ: گیرکردن = ریست"}]}, "conds": [["تسکی گیر کرد و اعلام زنده‌بودن نکرد", "واچ‌داگ دستگاه را ریست می‌کند تا از حالت گیرکرده بیرون بیاید.", "پنجرهٔ واچ‌داگ"], ["عکس اندازه‌گیری کهنه بود", "هر تسک قبل از کار عکس را صفر و تازه می‌خواند؛ با دادهٔ نامعتبر تصمیم نمی‌گیرد.", "—"]], "outs": [["ترتیب و زمان‌بندی اجرا", "هر ماژول در تسک و نوبت خودش اجرا می‌شود", "مغز دستگاه (کنترل) همیشه با تازه‌ترین خطاها و اندازه‌گیری کار می‌کند"], ["واچ‌داگ", "ریست خودکار هنگام گیرکردن", "اعلام زنده‌بودن هر تسک در هر چرخه"]], "nav": [{"t": "کل سیستم", "href": "../../../Documentation/system_process.html"}, {"t": "شارژر", "href": "../Charger/charging_process.html"}, {"t": "اندازه‌گیری", "href": "../Measurement/measurement_process.html"}, {"t": "خطاها", "href": "../Fault/fault_process.html"}, {"t": "عدم‌توازن", "href": "../Imbalance/imbalance_process.html"}, {"t": "تعویض خروجی", "href": "../Changeover/changeover_process.html"}, {"t": "چراغ و بوق", "href": "../Ui/ui_process.html"}, {"t": "ناظر حفاظت", "href": "../Protection/protection_process.html"}, {"t": "کالیبراسیون", "href": "../CalLut/callut_process.html"}, {"t": "لینک پنل", "href": "../EspLink/esplink_process.html"}, {"t": "تغذیهٔ میکرو", "href": "../McuPowerPath/mcupowerpath_process.html"}, {"t": "جیتر", "href": "../Jitter/jitter_process.html"}, {"t": "ثبت سابقه", "href": "../Diag/diag_process.html"}]};</script>
 <script>
 var COLORS = {
   blue:  {f:'#DDEBF7', o:'#1F4E79', t:'#1F3864'},
@@ -60,12 +61,12 @@ function linesOf(n){ var a = []; if (n.t) a.push({s:n.t, b:true}); (n.l || []).f
 function nodeSize(n){
   var ls = linesOf(n), mx = 0;
   ls.forEach(function(x){ mx = Math.max(mx, tw(x.s, x.b, 15)); });
-  if (n.k === 'dia') return { w: Math.min(Math.max(mx + 96, 200), 430), h: Math.max(78, ls.length * 25 + 40) };
-  return { w: Math.min(Math.max(mx + 38, 150), 390), h: ls.length * 25 + 28 };
+  if (n.k === 'dia') return { w: Math.min(Math.max(mx + 96, 210), 360), h: Math.max(78, ls.length * 25 + 40) };
+  return { w: Math.min(Math.max(mx + 38, 150), 340), h: ls.length * 25 + 28 };
 }
 function sideSize(s){
   var mx = 0; s.l.forEach(function(x){ mx = Math.max(mx, tw(x, false, 13.5)); });
-  return { w: Math.min(Math.max(mx + 30, 170), 300), h: s.l.length * 23 + 24 };
+  return { w: Math.min(Math.max(mx + 30, 170), 280), h: s.l.length * 23 + 24 };
 }
 function drawNode(n, cx, y){
   var sz = nodeSize(n), c = COLORS[n.c || 'blue'], x = cx - sz.w / 2, out = '';
@@ -81,11 +82,12 @@ function drawNode(n, cx, y){
   ls.forEach(function(ln, i){
     out += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + esc(ln.s) + '</text>';
   });
+  if (n.ref) out += '<text x="' + cx + '" y="' + (y + sz.h + 17) + '" text-anchor="middle" font-size="11" fill="#808080" font-family="Consolas, monospace">' + esc(n.ref) + '</text>';
   return out;
 }
 function drawSide(s, nodeCx, nodeW, cy, dir){
   var sz = sideSize(s), c = COLORS[s.c || 'gray'];
-  var x = (dir === 'r') ? 990 - sz.w : 10;
+  var x = (dir === 'r') ? 1190 - sz.w : 10;
   var y = cy - sz.h / 2, out = '';
   var x1 = (dir === 'r') ? nodeCx + nodeW / 2 : nodeCx - nodeW / 2;
   var x2 = (dir === 'r') ? x : x + sz.w;
@@ -101,14 +103,14 @@ function vlabel(x, y, s, col){
   return '<g transform="translate(' + x + ',' + y + ') rotate(-90)"><rect x="' + (-w/2) + '" y="-11" width="' + w + '" height="22" fill="#FFFFFF"/><text x="0" y="4.5" text-anchor="middle" font-size="13.5" font-weight="700" fill="' + (col || '#1F3864') + '">' + esc(s) + '</text></g>';
 }
 function renderFlow(){
-  var W = 1000, cx = 500, GAP = 56, y = 26, pos = [], out = '';
+  var W = 1200, cx = 545, GAP = 68, y = 26, pos = [], out = '';
   out += '<defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1F4E79"/></marker></defs>';
   var loops = [];
   DATA.flow.forEach(function(n, i){
     if (n.k === 'sec'){
       y += 18;
-      out += '<text x="985" y="' + (y + 6) + '" text-anchor="end" font-size="16" font-weight="700" fill="#1F3864">' + esc(n.t) + '</text>';
-      out += '<line x1="15" y1="' + (y + 16) + '" x2="985" y2="' + (y + 16) + '" stroke="#B9CDE4" stroke-width="2"/>';
+      out += '<text x="' + (W - 15) + '" y="' + (y + 6) + '" text-anchor="end" font-size="16" font-weight="700" fill="#1F3864">' + esc(n.t) + '</text>';
+      out += '<line x1="15" y1="' + (y + 16) + '" x2="' + (W - 15) + '" y2="' + (y + 16) + '" stroke="#B9CDE4" stroke-width="2"/>';
       y += 34; pos.push(null); return;
     }
     var sz = nodeSize(n);
@@ -130,8 +132,9 @@ function renderFlow(){
     if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r');
     if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l');
   });
+  var maxHalf = 0; pos.forEach(function(p){ if (p) maxHalf = Math.max(maxHalf, p.w / 2); });
   loops.forEach(function(L, li){
-    var a = pos[L.from], b = pos[L.to], lane = 292 - li * 20;
+    var a = pos[L.from], b = pos[L.to], lane = cx - maxHalf - 16 - li * 16;
     var col = L.col === 'red' ? '#C00000' : '#1F4E79';
     out += '<path d="M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + b.cy + ' H' + (cx - b.w / 2 - 4) + '" stroke="' + col + '" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
     if (L.lab) out += vlabel(lane, (a.cy + b.cy) / 2, L.lab, col);
@@ -197,6 +200,7 @@ function fillTable(id, rows){
 function render(){
   document.getElementById('ttl').textContent = DATA.title;
   document.getElementById('sub').textContent = DATA.sub || '';
+  if (DATA.nav){ document.getElementById('nav').innerHTML = 'صفحه‌های دیگر: ' + DATA.nav.map(function(x){ return '<a href="' + x.href + '">' + x.t + '</a>'; }).join(' | '); }
   fill('steps', DATA.steps || []);
   if (DATA.example){ fill('example', DATA.example); } else { document.getElementById('exwrap').style.display = 'none'; }
   fillTable('conds', DATA.conds || []);

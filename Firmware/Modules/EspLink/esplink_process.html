@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>فرآیند مسیر تغذیهٔ میکرو — توضیح ساده</title>
+<title>فرآیند لینک پنل (ESP) — توضیح ساده</title>
 <style>
   body { font-family: Vazirmatn, Tahoma, sans-serif; background:#F2F6FC; color:#1F3864; margin:0; padding:24px 14px 48px; line-height:1.9; }
   .wrap { max-width: 1020px; margin: 0 auto; }
@@ -28,6 +28,7 @@
 <div class="wrap">
 <h1 id="ttl"></h1>
 <p class="small" id="sub"></p>
+<p class="small" id="nav"></p>
 <h2>توضیح ساده</h2>
 <div class="card"><ol id="steps"></ol></div>
 <div id="exwrap"><h2>یک مثال عددی</h2><div class="card ok"><ol id="example"></ol></div></div>
@@ -42,7 +43,7 @@
 <table id="outs"><tr><th style="width:26%">به کجا</th><th style="width:37%">چه فرمانی / چه خروجی‌ای</th><th>کی و با چه شرطی</th></tr></table>
 <div class="card" style="background:#FFE699;border-color:#BF8F00"><b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ اول از روی کد چک می‌کنیم، بعد اصلاح می‌کنیم.</div>
 </div>
-<script>const DATA = {"file": "mcupowerpath_process.html", "title": "فرآیند مسیر تغذیهٔ میکرو — توضیح ساده", "sub": "این ماژول تصمیم می‌گیرد خودِ میکرو از باتری تغذیه شود یا از برق ورودی؛ تا وقتی برق هست باتری بی‌جهت برای مغز دستگاه خالی نشود.", "steps": ["<b>شروع:</b> میکرو از باتری راه می‌افتد؛ باتری وصل است و مدار آماده است.", "<b>رفتن روی ورودی:</b> اگر ولتاژ ورودی دست‌کم <b class=\"num\">۲۲ ولت</b> شد و <b class=\"num\">۵ ثانیه</b> پیوسته ماند، مسیر باتری میکرو قطع و میکرو از ورودی تغذیه می‌شود.", "<b>نوار مرده:</b> بین <b class=\"num\">۲۱٫۵ تا ۲۲ ولت</b> هیچ تغییری نمی‌شود و تایمر هم لغو می‌شود تا مسیر چپ و راست نپرد.", "<b>برگشت به باتری:</b> اگر ورودی زیر <b class=\"num\">۲۱٫۵ ولت</b> افتاد، برگشت به باتری فوری است.", "<b>قطع ناگهانی ورودی:</b> لبهٔ افتادن سیگنال حضور ورودی همان لحظه در وقفه مسیر باتری را برمی‌گرداند؛ منتظر پاس بعدی نمی‌ماند.", "اگر اندازه‌گیری نامعتبر باشد، مسیر فعلی حفظ و تایمر لغو می‌شود."], "example": ["دستگاه روی باتری روشن است؛ برق ورودی وصل می‌شود و روی ۲۴ ولت می‌ایستد.", "۵ ثانیه می‌گذرد و ورودی پایدار می‌ماند؛ مسیر باتری میکرو قطع می‌شود و میکرو از ورودی کار می‌کند.", "برق می‌رود؛ همان لحظه با لبهٔ سیگنال، میکرو دوباره از باتری تغذیه می‌شود و دستگاه بی‌وقفه ادامه می‌دهد."], "flow": [{"k": "pill", "c": "navy", "t": "شروع: میکرو از باتری تغذیه می‌شود"}, {"k": "dia", "c": "yellow", "t": "لبهٔ افتادن حضور ورودی آمد؟ (وقفه)", "side": {"c": "red", "l": ["بله: برگشت فوری به باتری، همان لحظه در وقفه", "منتظر پاس بعدی نمی‌ماند"], "d": "r"}, "elab": "نه"}, {"k": "dia", "c": "yellow", "t": "عکس اندازه‌گیری معتبر است؟", "side": {"c": "gray", "l": ["نه: مسیر فعلی حفظ و تایمر لغو می‌شود"], "d": "r"}, "elab": "بله"}, {"k": "dia", "c": "yellow", "t": "ولتاژ ورودی دست‌کم ۲۲ ولت است؟", "elab": "بله"}, {"k": "dia", "c": "yellow", "t": "۵ ثانیه پیوسته بالای ۲۲ ماند؟", "side": {"c": "gray", "l": ["نه: هنوز روی باتری می‌مانیم", "افتادن زیر ۲۲ تایمر را از اول می‌کند"], "d": "r"}, "elab": "بله"}, {"k": "box", "c": "blue", "t": "قطع مسیر باتری میکرو", "l": ["میکرو از برق ورودی تغذیه می‌شود", "باتری برای مغز دستگاه خالی نمی‌شود"]}, {"k": "dia", "c": "yellow", "t": "ورودی زیر ۲۱٫۵ ولت افتاد؟", "side": {"c": "green", "l": ["بله: برگشت فوری به باتری"], "d": "r"}, "elab": "نه"}, {"k": "box", "c": "green", "t": "ماندن روی ورودی", "l": ["نوار ۲۱٫۵ تا ۲۲ ولت: هیچ تغییری نمی‌شود"]}], "tree": {"t": "مسیر تغذیهٔ میکرو — هر پاس", "c": [{"t": "وقفه: لبهٔ افتادن ورودی → باتری فوری"}, {"t": "عکس نامعتبر؟ → حفظ مسیر، لغو تایمر"}, {"t": "بالای ۲۲ ولت × ۵ ثانیه → روی ورودی"}, {"t": "نوار مرده ۲۱٫۵ تا ۲۲ → بدون تغییر"}, {"t": "زیر ۲۱٫۵ ولت → برگشت به باتری"}]}, "conds": [["ورودی ۲۲ ولت شد ولی قبل از ۵ ثانیه افتاد", "تایمر لغو می‌شود و میکرو روی باتری می‌ماند.", "۵ ثانیه پایداری"], ["ورودی بین ۲۱٫۵ و ۲۲ ولت ماند", "هیچ سوئیچی نمی‌شود؛ وضعیت قبلی می‌ماند تا مسیر نپرد.", "نوار مرده ۵۰۰ میلی‌ولت"], ["برق ورودی ناگهان قطع شد", "برگشت به باتری در همان وقفه انجام می‌شود.", "بدون انتظار پاس بعدی"]], "outs": [["پین مسیر تغذیه (BSP)", "قطع مسیر باتری وقتی روی ورودی هستیم؛ وصل باتری در برگشت", "تنها فرمان سخت‌افزاری این ماژول"], ["وضعیت مسیر فعلی", "روی ورودی هستیم یا روی باتری", "برای پنل و دیاگ خوانده می‌شود"]]};</script>
+<script>const DATA = {"file": "esplink_process.html", "title": "فرآیند لینک پنل (ESP) — توضیح ساده", "sub": "این ماژول زبان صحبت میکرو با پنل ESP است: فریم‌های نسخه‌دار با کنترل خطای قوی، و ۱۴۳ شناسهٔ پارامتر که پنل می‌خواند و می‌نویسد.", "steps": ["<b>قاب فریم:</b> هر پیام با دو بایت شروع، نسخه، نوع، طول و در پایان CRC-16 می‌آید؛ فریم خراب یا بی‌نسخه دور ریخته می‌شود.", "<b>خواندن:</b> پنل مقدار شناسه‌ها را می‌خواهد؛ چون همه در یک فریم جا نمی‌شوند، پاسخ در چند تکه فرستاده می‌شود و پنل خودش مقایسه می‌کند.", "<b>نوشتن:</b> هر نوشتن اول به ماژول صاحب آن شناسه می‌رود؛ همان ماژول بازه را بررسی می‌کند و اگر بیرون از بازه باشد قبول نمی‌کند (پنل نمی‌تواند عدد خطرناک بنویسد).", "<b>سد دوم:</b> برای شارژ سبز (شناسه‌های درصد شارژ) یک سد سخت جدا هم هست تا ترکیب خطرناک ذخیره نشود.", "<b>فرمان‌ها:</b> مود تست دستی شارژر، خاموش/روشن هر کانال شارژ و فرمان‌های ذخیره از همین راه می‌آیند؛ شارژر در تسک خودش آن‌ها را اجرا می‌کند، نه وسط لینک.", "<b>ذخیره:</b> تنظیمات ماندگار در رکورد نسخه‌دار NVM می‌نشینند و با خاموش و روشن‌شدن می‌مانند."], "example": ["از پنل سقف شارژ کامل را از ۱۴٫۴ به ۱۴٫۲ ولت تغییر می‌دهی.", "فریم با CRC درست می‌رسد؛ شناسه به ماژول شارژر می‌رود؛ شارژر بازه را چک می‌کند (بین ۱۱ تا ۱۴٫۶) و قبول می‌کند.", "از آن لحظه شارژر با سقف تازه کار می‌کند و مقدار تازه در حافظهٔ ماندگار هم می‌نشیند."], "flow": [{"k": "pill", "c": "navy", "t": "رسیدن بایت‌ها از UART", "ref": "EspLink_Run"}, {"k": "dia", "c": "yellow", "t": "قاب فریم کامل و CRC درست است؟", "side": {"c": "red", "l": ["نه: فریم دور ریخته می‌شود", "نویز خط هیچ اثری روی برنامه ندارد"], "d": "r"}, "elab": "بله"}, {"k": "dia", "c": "yellow", "t": "نسخه و نوع فریم شناخته‌شده است؟", "side": {"c": "red", "l": ["نه: نادیده گرفته می‌شود"], "d": "r"}, "elab": "بله"}, {"k": "dia", "c": "yellow", "t": "درخواست خواندن است یا نوشتن؟", "elab": "خواندن"}, {"k": "box", "c": "blue", "t": "خواندن: جمع‌کردن مقدار شناسه‌ها", "l": ["پاسخ در چند فریم تکه‌تکه می‌رود", "پنل مقدارها را خودش مقایسه می‌کند"]}, {"k": "box", "c": "blue", "t": "نوشتن: فرستادن به ماژول صاحب شناسه", "l": ["هر ماژول بازهٔ خودش را گیره می‌کند"]}, {"k": "dia", "c": "yellow", "t": "مقدار داخل بازهٔ مجاز بود؟", "side": {"c": "red", "l": ["نه: قبول نمی‌شود و مقدار قبلی می‌ماند"], "d": "r"}, "elab": "بله"}, {"k": "box", "c": "green", "t": "اعمال مقدار + ذخیرهٔ ماندگار (اگر لازم است)", "l": ["فرمان‌هایی مثل مود دستی به شارژر سپرده می‌شوند تا در تسک خودش اجرا کند"]}], "tree": {"t": "لینک پنل — هر پاس ارتباط", "c": [{"t": "مونتاژ فریم و بررسی CRC-16"}, {"t": "نسخه/نوع ناشناخته → رد"}, {"t": "خواندن: پاسخ تکه‌ای ۱۴۳ شناسه"}, {"t": "نوشتن: اعتبارسنجی در ماژول صاحب", "c": [{"t": "بازه بد → رد نوشتن"}, {"t": "سد سخت شارژ سبز"}]}, {"t": "فرمان‌ها: مود دستی، کانال‌ها، ذخیره"}, {"t": "ذخیرهٔ NVM نسخه‌دار"}]}, "conds": [["فریم خراب یا CRC نادرست رسید", "فریم کامل دور ریخته می‌شود؛ هیچ مقداری عوض نمی‌شود.", "CRC-16"], ["پنل عدد بیرون از بازه نوشت", "ماژول صاحب شناسه قبول نمی‌کند و مقدار قبلی می‌ماند.", "بازهٔ هر شناسه در ماژول خودش"], ["ترکیب درصد شارژ سبز خطرناک شد", "سد سخت در لحظهٔ ذخیره جلوی ذخیره‌شدن ترکیب بد را می‌گیرد.", "سد سخت جدا از بازهٔ تکی"], ["لینک وسط مود دستی قطع شد", "شارژر بعد از ۳ ثانیه سکوت خودش از مود دستی بیرون می‌آید.", "۳ ثانیه ددمن"]], "outs": [["مقادیر زنده به پنل", "وضعیت‌ها، اندازه‌گیری‌ها، وضعیت شارژ و خطاها", "در پاسخ به خواندن پنل"], ["مقادیر و فرمان‌ها به ماژول‌ها", "تنظیم پارامتر، مود دستی، خاموش/روشن کانال‌ها", "بعد از قبول‌شدن بازه در ماژول صاحب"], ["رکورد NVM", "ذخیرهٔ ماندگار تنظیمات با نسخه و CRC", "با فرمان ذخیره یا تغییر ماندگار"]], "nav": [{"t": "کل سیستم", "href": "../../../Documentation/system_process.html"}, {"t": "شارژر", "href": "../Charger/charging_process.html"}, {"t": "اندازه‌گیری", "href": "../Measurement/measurement_process.html"}, {"t": "خطاها", "href": "../Fault/fault_process.html"}, {"t": "عدم‌توازن", "href": "../Imbalance/imbalance_process.html"}, {"t": "تعویض خروجی", "href": "../Changeover/changeover_process.html"}, {"t": "چراغ و بوق", "href": "../Ui/ui_process.html"}, {"t": "ناظر حفاظت", "href": "../Protection/protection_process.html"}, {"t": "کالیبراسیون", "href": "../CalLut/callut_process.html"}, {"t": "تغذیهٔ میکرو", "href": "../McuPowerPath/mcupowerpath_process.html"}, {"t": "جیتر", "href": "../Jitter/jitter_process.html"}, {"t": "ثبت سابقه", "href": "../Diag/diag_process.html"}, {"t": "تسک‌ها", "href": "../Rtos/rtos_process.html"}]};</script>
 <script>
 var COLORS = {
   blue:  {f:'#DDEBF7', o:'#1F4E79', t:'#1F3864'},
@@ -60,12 +61,12 @@ function linesOf(n){ var a = []; if (n.t) a.push({s:n.t, b:true}); (n.l || []).f
 function nodeSize(n){
   var ls = linesOf(n), mx = 0;
   ls.forEach(function(x){ mx = Math.max(mx, tw(x.s, x.b, 15)); });
-  if (n.k === 'dia') return { w: Math.min(Math.max(mx + 96, 200), 430), h: Math.max(78, ls.length * 25 + 40) };
-  return { w: Math.min(Math.max(mx + 38, 150), 390), h: ls.length * 25 + 28 };
+  if (n.k === 'dia') return { w: Math.min(Math.max(mx + 96, 210), 360), h: Math.max(78, ls.length * 25 + 40) };
+  return { w: Math.min(Math.max(mx + 38, 150), 340), h: ls.length * 25 + 28 };
 }
 function sideSize(s){
   var mx = 0; s.l.forEach(function(x){ mx = Math.max(mx, tw(x, false, 13.5)); });
-  return { w: Math.min(Math.max(mx + 30, 170), 300), h: s.l.length * 23 + 24 };
+  return { w: Math.min(Math.max(mx + 30, 170), 280), h: s.l.length * 23 + 24 };
 }
 function drawNode(n, cx, y){
   var sz = nodeSize(n), c = COLORS[n.c || 'blue'], x = cx - sz.w / 2, out = '';
@@ -81,11 +82,12 @@ function drawNode(n, cx, y){
   ls.forEach(function(ln, i){
     out += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + esc(ln.s) + '</text>';
   });
+  if (n.ref) out += '<text x="' + cx + '" y="' + (y + sz.h + 17) + '" text-anchor="middle" font-size="11" fill="#808080" font-family="Consolas, monospace">' + esc(n.ref) + '</text>';
   return out;
 }
 function drawSide(s, nodeCx, nodeW, cy, dir){
   var sz = sideSize(s), c = COLORS[s.c || 'gray'];
-  var x = (dir === 'r') ? 990 - sz.w : 10;
+  var x = (dir === 'r') ? 1190 - sz.w : 10;
   var y = cy - sz.h / 2, out = '';
   var x1 = (dir === 'r') ? nodeCx + nodeW / 2 : nodeCx - nodeW / 2;
   var x2 = (dir === 'r') ? x : x + sz.w;
@@ -101,14 +103,14 @@ function vlabel(x, y, s, col){
   return '<g transform="translate(' + x + ',' + y + ') rotate(-90)"><rect x="' + (-w/2) + '" y="-11" width="' + w + '" height="22" fill="#FFFFFF"/><text x="0" y="4.5" text-anchor="middle" font-size="13.5" font-weight="700" fill="' + (col || '#1F3864') + '">' + esc(s) + '</text></g>';
 }
 function renderFlow(){
-  var W = 1000, cx = 500, GAP = 56, y = 26, pos = [], out = '';
+  var W = 1200, cx = 545, GAP = 68, y = 26, pos = [], out = '';
   out += '<defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1F4E79"/></marker></defs>';
   var loops = [];
   DATA.flow.forEach(function(n, i){
     if (n.k === 'sec'){
       y += 18;
-      out += '<text x="985" y="' + (y + 6) + '" text-anchor="end" font-size="16" font-weight="700" fill="#1F3864">' + esc(n.t) + '</text>';
-      out += '<line x1="15" y1="' + (y + 16) + '" x2="985" y2="' + (y + 16) + '" stroke="#B9CDE4" stroke-width="2"/>';
+      out += '<text x="' + (W - 15) + '" y="' + (y + 6) + '" text-anchor="end" font-size="16" font-weight="700" fill="#1F3864">' + esc(n.t) + '</text>';
+      out += '<line x1="15" y1="' + (y + 16) + '" x2="' + (W - 15) + '" y2="' + (y + 16) + '" stroke="#B9CDE4" stroke-width="2"/>';
       y += 34; pos.push(null); return;
     }
     var sz = nodeSize(n);
@@ -130,8 +132,9 @@ function renderFlow(){
     if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r');
     if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l');
   });
+  var maxHalf = 0; pos.forEach(function(p){ if (p) maxHalf = Math.max(maxHalf, p.w / 2); });
   loops.forEach(function(L, li){
-    var a = pos[L.from], b = pos[L.to], lane = 292 - li * 20;
+    var a = pos[L.from], b = pos[L.to], lane = cx - maxHalf - 16 - li * 16;
     var col = L.col === 'red' ? '#C00000' : '#1F4E79';
     out += '<path d="M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + b.cy + ' H' + (cx - b.w / 2 - 4) + '" stroke="' + col + '" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
     if (L.lab) out += vlabel(lane, (a.cy + b.cy) / 2, L.lab, col);
@@ -197,6 +200,7 @@ function fillTable(id, rows){
 function render(){
   document.getElementById('ttl').textContent = DATA.title;
   document.getElementById('sub').textContent = DATA.sub || '';
+  if (DATA.nav){ document.getElementById('nav').innerHTML = 'صفحه‌های دیگر: ' + DATA.nav.map(function(x){ return '<a href="' + x.href + '">' + x.t + '</a>'; }).join(' | '); }
   fill('steps', DATA.steps || []);
   if (DATA.example){ fill('example', DATA.example); } else { document.getElementById('exwrap').style.display = 'none'; }
   fillTable('conds', DATA.conds || []);
