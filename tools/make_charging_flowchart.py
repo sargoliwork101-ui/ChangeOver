@@ -33,22 +33,26 @@ GRY_F, GRY_O = '#EDEDED', '#808080'      # صبر و مکث
 NAVY = '#1F3864'                          # شروع و پایان
 HEAD = '#1F4E79'; INK = '#1F3864'
 
-W, H = 1600, 1700
+SY = 1.38  # vertical stretch: keep rows far apart so nothing overlaps
+def Y(v): return int(round(v * SY))
+
+W, H = 1600, int(1700 * SY) + 10
 img = Image.new('RGB', (W, H), '#FFFFFF')
 d = ImageDraw.Draw(img)
 
 def box(x, y, w, h, fill, outline, r=18, lw=3):
-    d.rounded_rectangle([x, y, x+w, y+h], radius=r, fill=fill, outline=outline, width=lw)
+    d.rounded_rectangle([x, Y(y), x+w, Y(y)+h], radius=r, fill=fill, outline=outline, width=lw)
 def pill(cx, y, w, text):
     box(cx-w//2, y, w, 64, NAVY, NAVY, r=32)
-    d.text((cx, y+32), fa(text), font=F(30, True), fill='#FFFFFF', anchor='mm')
+    d.text((cx, Y(y)+32), fa(text), font=F(30, True), fill='#FFFFFF', anchor='mm')
 def txt(cx, y, lines, sz=25, bold_first=False, color=INK, gap=36):
     for i, ln in enumerate(lines):
-        d.text((cx, y + i*gap), fa(ln), font=F(sz, bold_first and i == 0), fill=color, anchor='mm')
+        d.text((cx, Y(y) + i*gap), fa(ln), font=F(sz, bold_first and i == 0), fill=color, anchor='mm')
 def arrow(x1, y1, x2, y2, color=HEAD, lw=4):
-    d.line([x1, y1, x2, y2], fill=color, width=lw)
-    d.polygon([(x2, y2), (x2-9, y2-16), (x2+9, y2-16)], fill=color)
+    d.line([x1, Y(y1), x2, Y(y2)], fill=color, width=lw)
+    d.polygon([(x2, Y(y2)), (x2-9, Y(y2)-16), (x2+9, Y(y2)-16)], fill=color)
 def elbow(points, color=HEAD, lw=4, dash=False, head=True):
+    points = [(x, Y(y)) for (x, y) in points]
     for i in range(len(points)-1):
         x1, y1 = points[i]; x2, y2 = points[i+1]
         if dash:
@@ -63,14 +67,15 @@ def elbow(points, color=HEAD, lw=4, dash=False, head=True):
         x2, y2 = points[-1]
         d.polygon([(x2, y2), (x2-16, y2-9), (x2-16, y2+9)], fill=color)
 def diamond(cx, cy, w, h, lines):
+    cy = Y(cy)
     d.polygon([(cx, cy-h//2), (cx+w//2, cy), (cx, cy+h//2), (cx-w//2, cy)], fill=YEL_F, outline=YEL_O, width=3)
     n = len(lines)
     for i, ln in enumerate(lines):
         d.text((cx, cy + (i-(n-1)/2)*34), fa(ln), font=F(24), fill=INK, anchor='mm')
 def label_h(x, y, s, color=INK, sz=23):
     t = fa(s); w = d.textlength(t, font=F(sz, True))
-    d.rectangle([x-w/2-10, y-20, x+w/2+10, y+20], fill='#FFFFFF')
-    d.text((x, y), t, font=F(sz, True), fill=color, anchor='mm')
+    d.rectangle([x-w/2-10, Y(y)-20, x+w/2+10, Y(y)+20], fill='#FFFFFF')
+    d.text((x, Y(y)), t, font=F(sz, True), fill=color, anchor='mm')
 def label_v(x, y, s, color=INK, sz=23):
     t = fa(s)
     tmp = ImageDraw.Draw(Image.new('RGB', (10, 10)))
@@ -79,10 +84,10 @@ def label_v(x, y, s, color=INK, sz=23):
     td = ImageDraw.Draw(tile)
     td.text((w//2, 22), t, font=F(sz, True), fill=color, anchor='mm')
     tile = tile.rotate(90, expand=True)
-    img.paste(tile, (int(x - tile.width/2), int(y - tile.height/2)))
+    img.paste(tile, (int(x - tile.width/2), int(Y(y) - tile.height/2)))
 
 CX = 800
-d.text((CX, 8), fa('فلوچارت شارژ — هر کانال جدا (باتری ۱۲ ولت)'), font=F(34, True), fill=NAVY, anchor='ma')
+d.text((CX, Y(8)), fa('فلوچارت شارژ — هر کانال جدا (باتری ۱۲ ولت)'), font=F(34, True), fill=NAVY, anchor='ma')
 pill(CX, 60, 300, 'شروع (برد روشن)')
 arrow(CX, 124, CX, 154)
 diamond(CX, 224, 400, 140, ['ورودی بین ۲۲ و ۲۸ ولت', 'و باتری وصل است؟'])
@@ -100,7 +105,7 @@ box(585, 460, 430, 104, BLUE_F, BLUE_O)
 txt(CX, 488, ['شارژ سریع (BULK)', 'جریان کامل، حداکثر ۶۵۰ میلی‌آمپر'], 25, True, gap=36)
 arrow(CX, 564, CX, 584)
 diamond(CX, 654, 380, 140, ['ولتاژ به ۱۴٫۳ رسید؟'])
-elbow([(610, 654), (548, 654), (548, 512), (581, 512)], HEAD)
+elbow([(610, 654), (548, 654), (548, 486), (581, 486)], HEAD)
 label_v(548, 583, 'نه')
 arrow(CX, 724, CX, 774)
 label_v(CX, 749, 'بله')
@@ -114,15 +119,15 @@ elbow([(590, 1011), (548, 1011), (548, 842), (581, 842)], HEAD)
 label_v(548, 926, 'نه')
 arrow(CX, 1096, CX, 1146)
 label_v(CX, 1121, 'بله')
-box(585, 1150, 430, 104, GREEN_F, GREEN_O)
-txt(CX, 1178, ['نگه‌داری (FLOAT) — شارژ کامل', 'باتری روی ۱۳٫۵ ولت؛ سبز ثابت، زرد خاموش'], 24, True, gap=36)
-arrow(CX, 1254, CX, 1274)
-diamond(CX, 1344, 380, 140, ['ولتاژ زیر ۱۲٫۸ افتاد؟', 'یعنی باتری دارد خالی می‌شود'])
-elbow([(610, 1344), (462, 1344), (462, 512), (581, 512)], HEAD)
+box(585, 1150, 430, 128, GREEN_F, GREEN_O)
+txt(CX, 1178, ['نگه‌داری (FLOAT) — شارژ کامل', 'باتری روی ۱۳٫۵ ولت نگه داشته می‌شود', 'سبز ثابت، زرد خاموش'], 24, True, gap=34)
+arrow(CX, 1278, CX, 1298)
+diamond(CX, 1368, 380, 140, ['ولتاژ زیر ۱۲٫۸ افتاد؟', 'یعنی باتری دارد خالی می‌شود'])
+elbow([(610, 1368), (462, 1368), (462, 538), (581, 538)], HEAD)
 label_v(462, 928, 'بله: شارژ از نو')
-arrow(CX, 1414, CX, 1464)
-label_v(CX, 1439, 'نه')
-pill(CX, 1468, 300, 'باتری آمادهٔ کار')
+arrow(CX, 1438, CX, 1488)
+label_v(CX, 1463, 'نه')
+pill(CX, 1492, 300, 'باتری آمادهٔ کار')
 
 box(1090, 460, 440, 128, RED_F, RED_O)
 txt(1310, 490, ['خطای ۶: سیم باتری کشیده شد', 'شارژ همان لحظه صفر می‌شود', 'با وصل دوباره و ۱۵ ثانیه آرام‌سازی برمی‌گردد'], 23, True, gap=33)
@@ -140,17 +145,17 @@ box(40, 1150, 400, 150, RED_F, RED_O)
 txt(240, 1178, ['باتری خراب (سناریوی ۶)', '۲۴ ساعت شارژ فعالِ بی‌نتیجه؟', 'قفل و قرمز ثابت؛ شارژ دیگر نمی‌کند', 'پاک‌شدن: نبودِ باتری برای ۳ ثانیه'], 23, True, gap=33)
 elbow([(585, 1225), (444, 1225)], RED_O, dash=True)
 
-d.text((1568, 1562), fa('معنای رنگ‌ها:'), font=F(24, True), fill=INK, anchor='ra')
+d.text((1568, Y(1562)), fa('معنای رنگ‌ها:'), font=F(24, True), fill=INK, anchor='ra')
 items = [(BLUE_F, BLUE_O, 'در حال شارژ'), (GREEN_F, GREEN_O, 'شارژ کامل'),
          (YEL_F, YEL_O, 'سؤال و تصمیم'), (RED_F, RED_O, 'خطا و توقف'),
          (GRY_F, GRY_O, 'صبر و مکث'), (NAVY, NAVY, 'شروع و پایان')]
 cur = 1330
 for fillc, outc, lab in items:
     t = fa(lab); w = d.textlength(t, font=F(23, True))
-    d.rectangle([cur+14, 1552, cur+44, 1582], fill=fillc, outline=outc, width=2)
-    d.text((cur, 1567), t, font=F(23, True), fill=INK, anchor='rm')
+    d.rectangle([cur+14, Y(1552), cur+44, Y(1552)+30], fill=fillc, outline=outc, width=2)
+    d.text((cur, Y(1567)), t, font=F(23, True), fill=INK, anchor='rm')
     cur -= (w + 78)
-d.text((CX, 1628), fa('عددها از کد فعلی برد (charger.h) — هر ایرادی دیدی بگو اول چک کنیم، بعد اصلاح کنم.'), font=F(22), fill='#808080', anchor='ma')
+d.text((CX, Y(1628)), fa('عددها از کد فعلی برد (charger.h) — هر ایرادی دیدی بگو اول چک کنیم، بعد اصلاح کنم.'), font=F(22), fill='#808080', anchor='ma')
 
 out = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..',
                    'Documentation', 'charging_flowchart.png')
