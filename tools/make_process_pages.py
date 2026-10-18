@@ -312,7 +312,7 @@ function renderFlow(){
     if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r', i, n.t, 'side');
     if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l', i, n.t, 'note');
   });
-  document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی آن کلیک کن؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. باکس‌های با علامت ↗ لینک صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل کلیک کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="66%" style="display:block;margin:0 auto">' + out + '</svg>';
+  document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی آن کلیک کن تا خودش و دو باکسِ دو سرش روشن شوند؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. باکس‌های با علامت ↗ لینک صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل کلیک کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="66%" style="display:block;margin:0 auto">' + out + '</svg>';
   document.querySelectorAll('.subhead').forEach(function(g){
     g.addEventListener('click', function(){
       var n = DATA.flow[+g.getAttribute('data-i')];
@@ -396,6 +396,8 @@ function wireFlow(){
     clear();
     if (eg){
       svg.classList.add('sel'); eg.classList.add('hl');
+      var fi3 = eg.getAttribute('data-fi'), ti3 = eg.getAttribute('data-ti'), ns3 = svg.querySelectorAll('.fnode');
+      for (var q4 = 0; q4 < ns3.length; q4++){ var di3 = ns3[q4].getAttribute('data-i'); if (di3 === fi3 || (ti3 && di3 === ti3)) ns3[q4].classList.add('hl'); }
       if (info) info.textContent = 'ارتباط: از «' + eg.getAttribute('data-f') + '» به «' + eg.getAttribute('data-t') + '»' + (eg.getAttribute('data-l') ? ' — ' + eg.getAttribute('data-l') : '');
     } else if (ng){
       var go = ng.getAttribute('data-go');
@@ -405,7 +407,7 @@ function wireFlow(){
       for (var q2 = 0; q2 < es.length; q2++){ if (es[q2].getAttribute('data-fi') === i2 || es[q2].getAttribute('data-ti') === i2){ es[q2].classList.add('hl'); cnt++; } }
       if (info) info.textContent = 'باکس «' + (ng.getAttribute('data-t') || '') + '» — ' + cnt + ' خطِ وصل به آن روشن شد. برای برگشت، روی جای خالی شکل کلیک کن.';
     } else {
-      if (info) info.textContent = 'برای دیدن ارتباط هر خط، روی آن کلیک کن؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. باکس‌های با علامت ↗ لینک صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل کلیک کن.';
+      if (info) info.textContent = 'برای دیدن ارتباط هر خط، روی آن کلیک کن تا خودش و دو باکسِ دو سرش روشن شوند؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. باکس‌های با علامت ↗ لینک صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل کلیک کن.';
     }
   });
 }
