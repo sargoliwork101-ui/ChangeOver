@@ -49,11 +49,11 @@
 <script>const DATA = {"file": "measurement_process.html", "title": "فرآیند اندازه‌گیری — توضیح ساده", "sub": "این ماژول هر ۱ میلی‌ثانیه ولتاژها و جریان‌ها را از مبدل آنالوگ می‌خواند، تمیزشان می‌کند و یک «عکس» معتبر به همهٔ ماژول‌ها می‌دهد.", "steps": ["<b>خواندن:</b> شمارش‌های خام از مبدل آنالوگ با DMA می‌آیند؛ هر پاس فقط یک فریم کامل و پایدار قبول است.", "<b>گرم‌شدن:</b> ۳ فریم اول فقط برای جاافتادن است و خروجی هنوز «نامعتبر» حساب می‌شود.", "<b>تمیزکردن جریان:</b> اول مدین (پرش‌های تک‌نمونه‌ای را می‌کشد)، بعد میانگین متحرک با پنجرهٔ پیش‌فرض ۱۰ نمونه؛ هر دو از پنل قابل تنظیم‌اند.", "<b>تمیزکردن ولتاژ:</b> مدین ۵ روی شمارش خام باتری‌ها؛ ولتاژ ورودی بدون فیلتر می‌ماند تا سریع دیده شود.", "<b>تبدیل:</b> شمارش با جدول کالیبراسیون به میلی‌ولت و میلی‌آمپر تبدیل می‌شود؛ آفست تنظیم از پنل حداکثر ±۵ ولت است.", "<b>نیم‌های باتری:</b> نیم پایین همان باتری ۱۲ ولت است و نیم بالا = کل ۲۴ ولت منهای ۱۲ ولت.", "<b>انتشار:</b> عکس کامل زیر قفل هسته منتشر می‌شود و بیت «معتبر» آخر از همه ست می‌شود تا هیچ ماژولی دادهٔ نیمه‌کاره نبیند."], "example": ["شارژر دارد با جریان پله‌ای کار می‌کند و یک نمونهٔ جریان ناگهان ۳ آمپر پرش می‌کند.", "مدین آن پرش تک‌نمونه‌ای را حذف می‌کند؛ میانگین ۱۰تایی هم موج جریان را صاف می‌کند.", "پس شارژر و بقیه عدد آرام و درست را می‌بینند و بی‌جهت واکنش نشان نمی‌دهند."], "flow": [{"k": "pill", "c": "navy", "t": "شروع پاس اندازه‌گیری (هر ۱ میلی‌ثانیه)", "ref": "func__Measurement_Run"}, {"k": "dia", "c": "yellow", "t": "فریم کامل و پایدار از مبدل رسید؟", "ref": "BspAdc_GetRaw", "side": {"c": "red", "l": ["نه: خروجی «نامعتبر» می‌شود", "گرم‌شدن از اول شروع می‌شود تا داده قابل اعتماد شود"], "d": "r"}, "elab": "بله"}, {"k": "box", "c": "blue", "t": "شمارش فریم‌های پایدار", "l": ["۳ فریم اول = گرم‌شدن؛ خروجی هنوز نامعتبر است"]}, {"k": "dia", "c": "yellow", "t": "تنظیم فیلتر از پنل عوض شده؟", "side": {"c": "gray", "l": ["بله: فیلترها ریست می‌شوند تا نمونهٔ کهنه با تنظیم تازه قاطی نشود"], "d": "r"}, "elab": "نه"}, {"k": "box", "c": "blue", "t": "تمیزکردن جریان‌ها روی count خام", "l": ["مدین ضد پرش تک‌نمونه‌ای", "میانگین متحرک (پنجرهٔ پیش‌فرض ۱۰ نمونه)"], "ref": "ApplyCurrentFilters"}, {"k": "box", "c": "blue", "t": "تمیزکردن ولتاژ باتری‌ها", "l": ["مدین ۵ روی شمارش خام", "ولتاژ ورودی بدون فیلتر می‌ماند"]}, {"k": "box", "c": "blue", "t": "تبدیل با جدول کالیبراسیون", "l": ["شمارش → میلی‌ولت و میلی‌آمپر", "آفست تنظیم از پنل، حداکثر ±۵ ولت"]}, {"k": "box", "c": "blue", "t": "ساختن نیم‌های باتری", "l": ["نیم پایین = باتری ۱۲ ولت", "نیم بالا = کل ۲۴ ولت منهای نیم پایین (کمتر از صفر نمی‌شود)"]}, {"k": "box", "c": "blue", "t": "خواندن حضور ورودی از پایهٔ منطقی برد"}, {"k": "box", "c": "green", "t": "انتشار Snapshot زیر قفل", "l": ["بیت «معتبر» آخر از همه ست می‌شود", "همهٔ ماژول‌ها همین عکس را می‌خوانند"], "ref": "Measurement_GetSnapshot"}], "tree": {"t": "اندازه‌گیری — هر ۱ میلی‌ثانیه", "c": [{"t": "گرفتن فریم کامل DMA", "c": [{"t": "فریم نیست؟ → نامعتبر + گرم‌شدن از نو"}]}, {"t": "گرم‌شدن: ۳ فریم پایدار"}, {"t": "تغییر تنظیم فیلتر؟ → ریست فیلترها"}, {"t": "زنجیرهٔ جریان: مدین + میانگین متحرک"}, {"t": "زنجیرهٔ ولتاژ: مدین ۵"}, {"t": "تبدیل با جدول کالیبراسیون + آفست"}, {"t": "نیم پایین و نیم بالا"}, {"t": "انتشار عکس زیر قفل؛ معتبر آخر"}]}, "conds": [["فریم مبدل نرسید یا ناپایدار بود", "خروجی «نامعتبر» می‌شود و بقیهٔ ماژول‌ها روی دادهٔ قبلی تصمیم تازه نمی‌گیرند.", "۳ فریم گرم‌شدن"], ["یک نمونهٔ جریان پرش بزرگ داشت", "مدین آن را حذف می‌کند؛ میانگین متحرک هم موج را صاف می‌کند.", "پنجرهٔ میانگین پیش‌فرض ۱۰ (تا ۳۰۰ از پنل)"], ["تنظیم فیلتر وسط کار از پنل عوض شد", "فیلترها همان‌جا ریست می‌شوند؛ نمونهٔ کهنه وارد محاسبهٔ تازه نمی‌شود.", "بدون قفل بین تسک‌ها"], ["آفست کالیبراسیون از پنل داده شد", "بعد از تبدیل اعمال می‌شود و هیچ‌وقت از سقف رد نمی‌شود.", "حداکثر ±۵۰۰۰ میلی‌ولت"]], "outs": [["عکس اندازه‌گیری (Snapshot)", "ولتاژ ورودی، دو نیم باتری، جریان هر کانال و بیت معتبر", "شارژر، فالت، عدم‌توازن، تعویض خروجی، چراغ‌ها و پنل همه از همین عکس می‌خوانند"], ["تنظیمات فیلتر از پنل", "اندازهٔ مدین و پنجرهٔ میانگین و آفست‌های ولتاژ", "از پنل می‌آید و در پاس بعدی اندازه‌گیری اعمال می‌شود"]], "nav": [{"t": "کل سیستم", "href": "../../../Documentation/system_process.html"}, {"t": "شارژر", "href": "../Charger/charging_process.html"}, {"t": "خطاها", "href": "../Fault/fault_process.html"}, {"t": "عدم‌توازن", "href": "../Imbalance/imbalance_process.html"}, {"t": "تعویض خروجی", "href": "../Changeover/changeover_process.html"}, {"t": "چراغ و بوق", "href": "../Ui/ui_process.html"}, {"t": "ناظر حفاظت", "href": "../Protection/protection_process.html"}, {"t": "کالیبراسیون", "href": "../CalLut/callut_process.html"}, {"t": "لینک پنل", "href": "../EspLink/esplink_process.html"}, {"t": "تغذیهٔ میکرو", "href": "../McuPowerPath/mcupowerpath_process.html"}, {"t": "جیتر", "href": "../Jitter/jitter_process.html"}, {"t": "ثبت سابقه", "href": "../Diag/diag_process.html"}, {"t": "تسک‌ها", "href": "../Rtos/rtos_process.html"}]};</script>
 <script>
 var COLORS = {
-  blue:  {f:'#DDEBF7', o:'#1F4E79', t:'#1F3864'},
-  green: {f:'#C6EFCE', o:'#548235', t:'#1F3864'},
+  blue:  {f:'#DDEBF7', o:'#1F4E79', t:'#12263F'},
+  green: {f:'#C6EFCE', o:'#548235', t:'#12263F'},
   yellow:{f:'#FFE699', o:'#BF8F00', t:'#1F3864'},
-  red:   {f:'#FFC7CE', o:'#C00000', t:'#1F3864'},
-  gray:  {f:'#EDEDED', o:'#808080', t:'#1F3864'},
+  red:   {f:'#FFC7CE', o:'#C00000', t:'#6E0000'},
+  gray:  {f:'#EDEDED', o:'#808080', t:'#2B2B2B'},
   navy:  {f:'#1F3864', o:'#1F3864', t:'#FFFFFF'}
 };
 var LINES = { blue:'#6FA8DC', green:'#7BC47F', yellow:'#E3B341', red:'#FF8080', gray:'#9AA7BC', navy:'#6FA8DC' };
@@ -75,12 +75,12 @@ function wrapLine(t, bold, sz, maxW){
 function wrappedLines(n){
   if (n._wl) return n._wl;
   var out = [];
-  linesOf(n).forEach(function(x){ wrapLine(x.s, x.b, 15, 330).forEach(function(part){ out.push({s: part, b: x.b}); }); });
+  linesOf(n).forEach(function(x){ wrapLine(x.s, x.b, 15, (n.k === 'dia' ? 215 : 330)).forEach(function(part){ out.push({s: part, b: x.b, r: x.r}); }); });
   n._wl = out; return out;
 }
 function sideLines(sd){
   if (sd._wl) return sd._wl;
-  var maxW = (sd.d === 'l') ? 218 : 258, out = [];
+  var maxW = (sd.d === 'l') ? 200 : 240, out = [];
   sd.l.forEach(function(x){ wrapLine(x, false, 13.5, maxW).forEach(function(part){ out.push(part); }); });
   sd._wl = out; return out;
 }
@@ -88,12 +88,12 @@ function nodeSize(n){
   if (n.k === 'sub') return { w: Math.min(Math.max(tw(n.t || '', true, 15) + 96, 280), 470), h: 46 };
   var ls = wrappedLines(n), mx = 0;
   ls.forEach(function(x){ mx = Math.max(mx, tw(x.s, x.b, 15)); });
-  if (n.k === 'dia') return { w: Math.min(Math.max(mx / 0.70 + 30, 215), 470), h: Math.max(84, ls.length * 26 + 44) };
-  return { w: Math.min(Math.max(mx + 38, 150), 380), h: ls.length * 25 + 28 };
+  if (n.k === 'dia') return { w: Math.min(Math.max(mx / 0.60 + 44, 235), 540), h: Math.max(88, ls.length * 27 + 54) };
+  return { w: Math.min(Math.max(mx + 48, 150), 400), h: ls.length * 25 + 30 };
 }
 function sideSize(s){
   var ls = sideLines(s), mx = 0; ls.forEach(function(x){ mx = Math.max(mx, tw(x, false, 13.5)); });
-  return { w: mx + 32, h: ls.length * 23 + 24 };
+  return { w: mx + 38, h: ls.length * 23 + 26 };
 }
 function drawSub(n, cx, y, idx){
   var sz = nodeSize(n), x = cx - sz.w / 2, out = '';
@@ -124,14 +124,16 @@ function drawNode(n, cx, y){
   } else {
     out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="10" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="2"/>';
   }
-  var ls = wrappedLines(n), ty = y + sz.h / 2 - (ls.length - 1) * 12.5;
+  var ls = wrappedLines(n), ty = y + sz.h / 2 - (ls.length - 1) * 12.5, tt = '';
   ls.forEach(function(ln, i){
     if (ln.r){
-      out += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="11.5" font-family="Consolas, monospace" fill="' + (c.t === '#FFFFFF' ? '#B9CDE4' : '#54677F') + '">' + esc(ln.s) + '</text>';
+      tt += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="12" font-family="Consolas, monospace" fill="' + (c.t === '#FFFFFF' ? '#B9CDE4' : '#33506F') + '">' + esc(ln.s) + '</text>';
     } else {
-      out += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + esc(ln.s) + '</text>';
+      tt += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + esc(ln.s) + '</text>';
     }
   });
+  var aw = (n.k === 'dia') ? sz.w * 0.60 : sz.w - 14;
+  out += '<g class="fx" data-w="' + aw + '" data-cx="' + cx + '" data-cy="' + (y + sz.h / 2) + '">' + tt + '</g>';
   return out;
 }
 function drawSide(s, nodeCx, nodeW, cy, dir){
@@ -227,7 +229,18 @@ function treeDraw(n, levelX, out){
   });
   var has = (n.c || []).length > 0;
   out.push('<g class="tnode" data-tid="' + n._id + '"><rect x="' + x + '" y="' + y + '" width="' + n._w + '" height="30" rx="8" fill="' + (n._d === 0 ? '#1F3864' : '#DDEBF7') + '" stroke="#6FA8DC" stroke-width="1.6"/>' +
-    '<text x="' + (x + n._w / 2) + '" y="' + (y + 20) + '" text-anchor="middle" font-size="13.5" fill="' + (n._d === 0 ? '#FFFFFF' : '#1F3864') + '">' + esc(n.t) + (has ? (n._open ? ' ‹' : ' ›') : '') + '</text></g>');
+    '<g class="fx" data-w="' + (n._w - 12) + '" data-cx="' + (x + n._w / 2) + '" data-cy="' + (y + 15) + '"><text x="' + (x + n._w / 2) + '" y="' + (y + 20) + '" text-anchor="middle" font-size="13.5" fill="' + (n._d === 0 ? '#FFFFFF' : '#12263F') + '">' + esc(n.t) + (has ? (n._open ? ' ‹' : ' ›') : '') + '</text></g></g>');
+}
+function fitText(){
+  var gs = document.querySelectorAll('.fx');
+  for (var i = 0; i < gs.length; i++){
+    var g = gs[i]; if (!g.getBBox) continue;
+    var bb = g.getBBox(), aw = parseFloat(g.getAttribute('data-w'));
+    if (bb.width > aw && bb.width > 0){
+      var sc = (aw / bb.width).toFixed(3), gx = g.getAttribute('data-cx'), gy = g.getAttribute('data-cy');
+      g.setAttribute('transform', 'translate(' + gx + ' ' + gy + ') scale(' + sc + ') translate(' + (-gx) + ' ' + (-gy) + ')');
+    }
+  }
 }
 function renderTree(){
   var idc = { v: 0 };
@@ -241,7 +254,7 @@ function renderTree(){
   treeLayout(DATA.tree, cursor);
   var out = [];
   treeDraw(DATA.tree, levelX, out);
-  document.getElementById('tree').innerHTML = '<svg viewBox="0 0 1000 ' + (cursor.v + 16) + '" width="100%">' + out.join('') + '</svg>';
+  document.getElementById('tree').innerHTML = '<svg viewBox="0 0 1000 ' + (cursor.v + 16) + '" width="100%">' + out.join('') + '</svg>'; fitText();
   var nodes = document.querySelectorAll('.tnode');
   nodes.forEach(function(g){
     g.addEventListener('click', function(){
@@ -268,7 +281,7 @@ function render(){
   if (DATA.example){ fill('example', DATA.example); } else { document.getElementById('exwrap').style.display = 'none'; }
   fillTable('conds', DATA.conds || []);
   fillTable('outs', DATA.outs || []);
-  renderFlow(); renderTree();
+  renderFlow(); renderTree(); fitText();
 }
 if (document.fonts && document.fonts.ready){ document.fonts.ready.then(function(){ render(); }); } else { render(); }
 </script>

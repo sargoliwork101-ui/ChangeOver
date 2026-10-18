@@ -49,11 +49,11 @@
 <script>const DATA = {"file": "diag_process.html", "title": "فرآیند ثبت سابقه (دیاگ) — توضیح ساده", "sub": "این ماژول دفتر ثبت دستگاه است: خطاها، خاموش و روشن‌شدن‌ها، زمان شارژ هر کانال و کمینه/بیشینه‌ها را در حافظهٔ ماندگار فلش نگه می‌دارد.", "steps": ["<b>ثبت خطا:</b> هر خطایی که ست می‌شود با زمان و عکس اندازه‌گیری همان لحظه ثبت می‌شود؛ دفتر خطا ۱۰ جای آخر را نگه می‌دارد و قدیمی‌ترین می‌رود.", "<b>رویدادهای برق:</b> خاموش و روشن‌شدن‌ها جدا ثبت می‌شوند (۲۰ رویداد آخر).", "<b>زمان شارژ:</b> ثانیه‌های شارژ هر کانال جمع می‌شود و کامل‌شدن شارژ هر کانال هم شمرده می‌شود.", "<b>کمینه/بیشینه:</b> کمترین و بیشترین ولتاژها و جریان‌های دیده‌شده نگه داشته می‌شود.", "<b>ذخیرهٔ امن:</b> رکورد در دو صفحهٔ فلش با شماره و نسخه نوشته می‌شود تا اگر وسط نوشتن برق رفت، نسخهٔ قبلی سالم بماند؛ ساعت برد هم با زمان پنل میزان می‌شود."], "example": ["خطای ۶ وسط شارژ می‌آید؛ همان لحظه با زمان و ولتاژهای آن لحظه در دفتر ثبت می‌شود.", "دستگاه خاموش و روشن می‌شود؛ رویداد برق هم ثبت می‌شود و دفتر بعد از روشن‌شدن سر جایش هست.", "از پنل سابقه خوانده می‌شود و معلوم است خطا کی و در چه ولتاژی آمده است."], "flow": [{"k": "pill", "c": "navy", "t": "دفتر ثبت آماده است (خواندن رکورد سالم از فلش)", "ref": "func__Diag_Tick"}, {"k": "dia", "c": "yellow", "t": "خطایی ست شد؟", "ref": "Diag_RecordFault", "side": {"c": "red", "l": ["بله: ثبت خطا با زمان و عکس همان لحظه", "دفتر ۱۰ خطای آخر؛ قدیمی‌ترین حذف می‌شود"], "d": "r"}, "elab": "نه"}, {"k": "dia", "c": "yellow", "t": "خاموش یا روشن‌شدن بود؟", "side": {"c": "blue", "l": ["بله: ثبت رویداد برق", "۲۰ رویداد آخر نگه داشته می‌شود"], "d": "r"}, "elab": "نه"}, {"k": "box", "c": "blue", "t": "جمع‌کردن زمان شارژ و کامل‌شدن هر کانال"}, {"k": "box", "c": "blue", "t": "به‌روزرسانی کمینه و بیشینه‌ها", "l": ["ولتاژها و جریان‌های دیده‌شده"]}, {"k": "dia", "c": "yellow", "t": "زمان ذخیره رسید؟ یا فرمان ذخیره آمد؟", "ref": "Diag_SaveNow", "side": {"c": "green", "l": ["بله: نوشتن رکورد در صفحهٔ دیگر فلش با شماره و نسخه", "وسط نوشتن برق برود، نسخهٔ قبلی سالم می‌ماند"], "d": "r"}, "elab": "نه"}, {"k": "box", "c": "green", "t": "رکورد آمادهٔ خواندن از پنل است", "l": ["ساعت برد با زمان پنل میزان می‌شود"]}], "tree": {"t": "ثبت سابقه (دیاگ)", "c": [{"t": "رویدادها", "c": [{"t": "خطا → ثبت با زمان و عکس (۱۰ آخر)"}, {"t": "برق → خاموش/روشن (۲۰ آخر)"}, {"t": "کامل‌شدن شارژ هر کانال"}]}, {"t": "جمع زمان شارژ کانال‌ها"}, {"t": "کمینه/بیشینهٔ ولتاژ و جریان"}, {"t": "ذخیرهٔ دوصفحه‌ای فلش با نسخه"}, {"t": "ساعت برد از پنل"}]}, "conds": [["دفتر خطا پر شد", "قدیمی‌ترین خطا می‌رود و ۱۰ خطای آخر همیشه هست.", "۱۰ خطا / ۲۰ رویداد برق"], ["وسط ذخیره برق رفت", "رکورد قبلی سالم می‌ماند چون نوشتن روی صفحهٔ دیگر است و شماره/نسخه کنترل می‌شود.", "دو صفحهٔ فلش + شمارهٔ ترتیبی"], ["رکورد فلش خراب بود", "رکورد پذیرفته نمی‌شود و از نسخهٔ سالم یا پیش‌فرض شروع می‌شود.", "عدد شناسایی + نسخه"]], "outs": [["رکورد سابقه به پنل", "خطاها، رویدادها، زمان‌های شارژ و کمینه/بیشینه‌ها", "پنل می‌خواند"], ["ذخیره در فلش", "رکورد ماندگار دستگاه", "با فرمان ذخیره و در رویدادهای مهم"]], "nav": [{"t": "کل سیستم", "href": "../../../Documentation/system_process.html"}, {"t": "شارژر", "href": "../Charger/charging_process.html"}, {"t": "اندازه‌گیری", "href": "../Measurement/measurement_process.html"}, {"t": "خطاها", "href": "../Fault/fault_process.html"}, {"t": "عدم‌توازن", "href": "../Imbalance/imbalance_process.html"}, {"t": "تعویض خروجی", "href": "../Changeover/changeover_process.html"}, {"t": "چراغ و بوق", "href": "../Ui/ui_process.html"}, {"t": "ناظر حفاظت", "href": "../Protection/protection_process.html"}, {"t": "کالیبراسیون", "href": "../CalLut/callut_process.html"}, {"t": "لینک پنل", "href": "../EspLink/esplink_process.html"}, {"t": "تغذیهٔ میکرو", "href": "../McuPowerPath/mcupowerpath_process.html"}, {"t": "جیتر", "href": "../Jitter/jitter_process.html"}, {"t": "تسک‌ها", "href": "../Rtos/rtos_process.html"}]};</script>
 <script>
 var COLORS = {
-  blue:  {f:'#DDEBF7', o:'#1F4E79', t:'#1F3864'},
-  green: {f:'#C6EFCE', o:'#548235', t:'#1F3864'},
+  blue:  {f:'#DDEBF7', o:'#1F4E79', t:'#12263F'},
+  green: {f:'#C6EFCE', o:'#548235', t:'#12263F'},
   yellow:{f:'#FFE699', o:'#BF8F00', t:'#1F3864'},
-  red:   {f:'#FFC7CE', o:'#C00000', t:'#1F3864'},
-  gray:  {f:'#EDEDED', o:'#808080', t:'#1F3864'},
+  red:   {f:'#FFC7CE', o:'#C00000', t:'#6E0000'},
+  gray:  {f:'#EDEDED', o:'#808080', t:'#2B2B2B'},
   navy:  {f:'#1F3864', o:'#1F3864', t:'#FFFFFF'}
 };
 var LINES = { blue:'#6FA8DC', green:'#7BC47F', yellow:'#E3B341', red:'#FF8080', gray:'#9AA7BC', navy:'#6FA8DC' };
@@ -75,12 +75,12 @@ function wrapLine(t, bold, sz, maxW){
 function wrappedLines(n){
   if (n._wl) return n._wl;
   var out = [];
-  linesOf(n).forEach(function(x){ wrapLine(x.s, x.b, 15, 330).forEach(function(part){ out.push({s: part, b: x.b}); }); });
+  linesOf(n).forEach(function(x){ wrapLine(x.s, x.b, 15, (n.k === 'dia' ? 215 : 330)).forEach(function(part){ out.push({s: part, b: x.b, r: x.r}); }); });
   n._wl = out; return out;
 }
 function sideLines(sd){
   if (sd._wl) return sd._wl;
-  var maxW = (sd.d === 'l') ? 218 : 258, out = [];
+  var maxW = (sd.d === 'l') ? 200 : 240, out = [];
   sd.l.forEach(function(x){ wrapLine(x, false, 13.5, maxW).forEach(function(part){ out.push(part); }); });
   sd._wl = out; return out;
 }
@@ -88,12 +88,12 @@ function nodeSize(n){
   if (n.k === 'sub') return { w: Math.min(Math.max(tw(n.t || '', true, 15) + 96, 280), 470), h: 46 };
   var ls = wrappedLines(n), mx = 0;
   ls.forEach(function(x){ mx = Math.max(mx, tw(x.s, x.b, 15)); });
-  if (n.k === 'dia') return { w: Math.min(Math.max(mx / 0.70 + 30, 215), 470), h: Math.max(84, ls.length * 26 + 44) };
-  return { w: Math.min(Math.max(mx + 38, 150), 380), h: ls.length * 25 + 28 };
+  if (n.k === 'dia') return { w: Math.min(Math.max(mx / 0.60 + 44, 235), 540), h: Math.max(88, ls.length * 27 + 54) };
+  return { w: Math.min(Math.max(mx + 48, 150), 400), h: ls.length * 25 + 30 };
 }
 function sideSize(s){
   var ls = sideLines(s), mx = 0; ls.forEach(function(x){ mx = Math.max(mx, tw(x, false, 13.5)); });
-  return { w: mx + 32, h: ls.length * 23 + 24 };
+  return { w: mx + 38, h: ls.length * 23 + 26 };
 }
 function drawSub(n, cx, y, idx){
   var sz = nodeSize(n), x = cx - sz.w / 2, out = '';
@@ -124,14 +124,16 @@ function drawNode(n, cx, y){
   } else {
     out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="10" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="2"/>';
   }
-  var ls = wrappedLines(n), ty = y + sz.h / 2 - (ls.length - 1) * 12.5;
+  var ls = wrappedLines(n), ty = y + sz.h / 2 - (ls.length - 1) * 12.5, tt = '';
   ls.forEach(function(ln, i){
     if (ln.r){
-      out += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="11.5" font-family="Consolas, monospace" fill="' + (c.t === '#FFFFFF' ? '#B9CDE4' : '#54677F') + '">' + esc(ln.s) + '</text>';
+      tt += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="12" font-family="Consolas, monospace" fill="' + (c.t === '#FFFFFF' ? '#B9CDE4' : '#33506F') + '">' + esc(ln.s) + '</text>';
     } else {
-      out += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + esc(ln.s) + '</text>';
+      tt += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + esc(ln.s) + '</text>';
     }
   });
+  var aw = (n.k === 'dia') ? sz.w * 0.60 : sz.w - 14;
+  out += '<g class="fx" data-w="' + aw + '" data-cx="' + cx + '" data-cy="' + (y + sz.h / 2) + '">' + tt + '</g>';
   return out;
 }
 function drawSide(s, nodeCx, nodeW, cy, dir){
@@ -227,7 +229,18 @@ function treeDraw(n, levelX, out){
   });
   var has = (n.c || []).length > 0;
   out.push('<g class="tnode" data-tid="' + n._id + '"><rect x="' + x + '" y="' + y + '" width="' + n._w + '" height="30" rx="8" fill="' + (n._d === 0 ? '#1F3864' : '#DDEBF7') + '" stroke="#6FA8DC" stroke-width="1.6"/>' +
-    '<text x="' + (x + n._w / 2) + '" y="' + (y + 20) + '" text-anchor="middle" font-size="13.5" fill="' + (n._d === 0 ? '#FFFFFF' : '#1F3864') + '">' + esc(n.t) + (has ? (n._open ? ' ‹' : ' ›') : '') + '</text></g>');
+    '<g class="fx" data-w="' + (n._w - 12) + '" data-cx="' + (x + n._w / 2) + '" data-cy="' + (y + 15) + '"><text x="' + (x + n._w / 2) + '" y="' + (y + 20) + '" text-anchor="middle" font-size="13.5" fill="' + (n._d === 0 ? '#FFFFFF' : '#12263F') + '">' + esc(n.t) + (has ? (n._open ? ' ‹' : ' ›') : '') + '</text></g></g>');
+}
+function fitText(){
+  var gs = document.querySelectorAll('.fx');
+  for (var i = 0; i < gs.length; i++){
+    var g = gs[i]; if (!g.getBBox) continue;
+    var bb = g.getBBox(), aw = parseFloat(g.getAttribute('data-w'));
+    if (bb.width > aw && bb.width > 0){
+      var sc = (aw / bb.width).toFixed(3), gx = g.getAttribute('data-cx'), gy = g.getAttribute('data-cy');
+      g.setAttribute('transform', 'translate(' + gx + ' ' + gy + ') scale(' + sc + ') translate(' + (-gx) + ' ' + (-gy) + ')');
+    }
+  }
 }
 function renderTree(){
   var idc = { v: 0 };
@@ -241,7 +254,7 @@ function renderTree(){
   treeLayout(DATA.tree, cursor);
   var out = [];
   treeDraw(DATA.tree, levelX, out);
-  document.getElementById('tree').innerHTML = '<svg viewBox="0 0 1000 ' + (cursor.v + 16) + '" width="100%">' + out.join('') + '</svg>';
+  document.getElementById('tree').innerHTML = '<svg viewBox="0 0 1000 ' + (cursor.v + 16) + '" width="100%">' + out.join('') + '</svg>'; fitText();
   var nodes = document.querySelectorAll('.tnode');
   nodes.forEach(function(g){
     g.addEventListener('click', function(){
@@ -268,7 +281,7 @@ function render(){
   if (DATA.example){ fill('example', DATA.example); } else { document.getElementById('exwrap').style.display = 'none'; }
   fillTable('conds', DATA.conds || []);
   fillTable('outs', DATA.outs || []);
-  renderFlow(); renderTree();
+  renderFlow(); renderTree(); fitText();
 }
 if (document.fonts && document.fonts.ready){ document.fonts.ready.then(function(){ render(); }); } else { render(); }
 </script>
