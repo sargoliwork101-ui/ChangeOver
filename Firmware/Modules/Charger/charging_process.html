@@ -236,24 +236,30 @@ function renderFlow(){
     if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l', i, n.t, 'note');
   });
   if (termPos) out += drawNode({ k: 'pill', c: 'navy', t: '↺ برگشت به اول — پاس بعد' }, cx, termPos.y, DATA.flow.length);
-  var retK = 0;
+  var laneBase = 1e9;
+  DATA.flow.forEach(function(n, i){ var g0 = SIDEGEO[i + ':side']; if (n.side && n.side.ret && g0) laneBase = Math.min(laneBase, g0.x); });
+  var retK = 0, endK = 0;
   DATA.flow.forEach(function(n, i){
     if (!n.side || !n.side.ret) return;
     var g = SIDEGEO[i + ':side']; if (!g || g.dir !== 'r') return;
-    var tgt = null;
-    if (n.side.ret === 'END'){ tgt = termPos; }
-    else { var j = i + 1; while (j < pos.length && !pos[j]) j++; tgt = pos[j]; }
+    var tgt = null, tTitle = '', tIdx = -1;
+    if (n.side.ret === 'END'){ tgt = termPos; tTitle = 'برگشت به اول (پاس بعد)'; tIdx = DATA.flow.length; }
+    else { var j = i + 1; while (j < pos.length && !pos[j]) j++; tgt = pos[j]; tTitle = (DATA.flow[j] && DATA.flow[j].t) || ''; tIdx = j; }
     if (!tgt) return;
-    var lane = g.x - 18 - (retK++ % 5) * 12;
-    var dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + (g.y + g.h + 10) + ' H' + lane + ' V' + tgt.cy + ' H' + (cx + tgt.w / 2 + 4);
-    out += '<path d="' + dd + '" stroke="' + (LINES[n.side.c || 'gray']) + '" stroke-width="1.8" fill="none" marker-end="url(#arw)"/>';
+    var lane = laneBase - 22 - (retK++) * 16;
+    var ty = (n.side.ret === 'END') ? tgt.cy + (endK++ - 1) * 8 : tgt.cy - Math.min(18, tgt.h / 4);
+    var dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + (g.y + g.h + 10) + ' H' + lane + ' V' + ty + ' H' + (cx + tgt.w / 2 + 4);
+    out += '<g class="edge" data-fi="' + i + '" data-ti="' + tIdx + '" data-f="' + esc(n.t || '') + '" data-t="' + esc(tTitle) + '" data-l="برگشت">';
+    out += '<path class="hit" d="' + dd + '"/>';
+    out += '<path class="vis" d="' + dd + '" stroke="' + (LINES[n.side.c || 'gray']) + '" stroke-width="1.8" fill="none" marker-end="url(#arw)"/>';
+    out += '</g>';
   });
   var maxHalf = 0; pos.forEach(function(p){ if (p) maxHalf = Math.max(maxHalf, p.w / 2); });
   loops.forEach(function(L, li){
     var a = pos[L.from], b = pos[L.to], lane = cx - maxHalf - 24 - li * 30;
     var LOOPCOLS = ['#6FA8DC', '#7BC47F', '#B18CFF', '#E3B341', '#FF9E64'];
     var col = L.col === 'red' ? '#FF8080' : LOOPCOLS[li % LOOPCOLS.length];
-    var dstr = 'M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + b.cy + ' H' + (cx - b.w / 2 - 4);
+    var dstr = 'M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + (b.cy - Math.min(18, b.h / 4)) + ' H' + (cx - b.w / 2 - 4);
     out += '<g class="edge" data-fi="' + L.from + '" data-ti="' + L.to + '" data-f="' + esc(DATA.flow[L.from].t || '') + '" data-t="' + esc(DATA.flow[L.to].t || '') + '" data-l="' + esc(L.lab || '') + '">';
     out += '<path class="hit" d="' + dstr + '"/>';
     out += '<path class="vis" d="' + dstr + '" stroke="' + col + '" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
