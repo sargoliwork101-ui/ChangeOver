@@ -182,8 +182,7 @@ function renderFlow(){
   DATA.flow.forEach(function(n, i){
     if (n.k === 'sec'){
       y += 18;
-      var swd = tw(n.t, true, 16);
-      out += '<text x="' + (W - 15 - swd) + '" y="' + (y + 6) + '" text-anchor="start" font-size="16" font-weight="700" fill="#E6EAF2">' + esc(n.t) + '</text>';
+      out += '<text x="' + (W - 15) + '" y="' + (y + 6) + '" direction="rtl" text-anchor="start" font-size="16" font-weight="700" fill="#E6EAF2">' + esc(n.t) + '</text>';
       out += '<line x1="15" y1="' + (y + 16) + '" x2="' + (W - 15) + '" y2="' + (y + 16) + '" stroke="#33415C" stroke-width="2"/>';
       y += 34; pos.push(null); return;
     }
@@ -228,7 +227,7 @@ function renderFlow(){
     if (L.lab) out += vlabel(lane, (a.cy + b.cy) / 2, L.lab, col);
     out += '</g>';
   });
-  document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی آن کلیک کن؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. باکس‌های با علامت ↗ لینک صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل کلیک کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="100%">' + out + '</svg>';
+  document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی آن کلیک کن؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. باکس‌های با علامت ↗ لینک صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل کلیک کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="50%" style="display:block">' + out + '</svg>';
   document.querySelectorAll('.subhead').forEach(function(g){
     g.addEventListener('click', function(){
       var n = DATA.flow[+g.getAttribute('data-i')];
