@@ -45,7 +45,7 @@
 <table id="outs"><tr><th style="width:26%">به کجا</th><th style="width:37%">چه فرمانی / چه خروجی‌ای</th><th>کی و با چه شرطی</th></tr></table>
 <div class="card" style="background:#FFE699;border-color:#BF8F00"><b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ اول از روی کد چک می‌کنیم، بعد اصلاح می‌کنیم.</div>
 </div>
-<script>const DATA = {"file": "fault_process.html", "title": "فرآیند خطاها — توضیح ساده", "sub": "این ماژول نگهبان قطع‌شدن باتری است: فقط او تصمیم می‌گیرد «خطای ۶» ست شود یا پاک شود؛ شارژر و چراغ‌ها از تصمیم او پیروی می‌کنند.", "steps": ["<b>قانون ۱ (پمپ):</b> اگر شارژر روی نیمی پمپ می‌کند و همان نیم بالای <b class=\"num\">۱۴٫۸ ولت</b> رفت و <b class=\"num\">۱۵۰ میلی‌ثانیه</b> ماند، یعنی سیم آن نیم قطع است.", "<b>قانون ۲ (نبودن):</b> اگر ورودی سالم است و هر کدام از نیم‌ها زیر <b class=\"num\">۶ ولت</b> افتاد و <b class=\"num\">۱ ثانیه</b> ماند، باتری قطع است.", "<b>بازیابی:</b> وقتی هر دو نیم دست‌کم <b class=\"num\">۷ ولت</b> شدند و ۱ ثانیه پایدار ماندند، خطا پاک می‌شود (۷ به‌جای ۶ یعنی هیسترزیس تا باتری خالیِ وصل خطا نگیرد).", "<b>فقط نیم‌های نصب‌شده</b> قضاوت می‌شوند؛ نیمی که کانالش نصب نیست هیچ‌وقت «قطع» حساب نمی‌شود.", "در مود تست دستی یا وقتی اندازه‌گیری نامعتبر است، همهٔ شمارش‌ها <b>فریز</b> می‌شوند؛ نه خطای تازه ست می‌شود نه خطا پاک."], "example": ["وسط شارژ سیم باتری پایین کشیده می‌شود؛ شارژر روی آن نیم پمپ می‌کند و ولتاژش به ۱۵ ولت می‌پرد.", "بعد از ۱۵۰ میلی‌ثانیه ماندن بالای ۱۴٫۸، خطای ۶ ست می‌شود: شارژر متوقف، چراغ قرمز چشمک و بوق می‌آید.", "سیم را برمی‌گردانی؛ هر دو نیم بالای ۷ ولت می‌ایستند و بعد از ۱ ثانیه خطا پاک و شارژ با آرام‌سازی ادامه پیدا می‌کند."], "flow": [{"k": "pill", "c": "navy", "t": "شروع ارزیابی خطاها (هر پاس)", "ref": "func__Fault_Evaluate"}, {"k": "dia", "c": "yellow", "t": "مود تست دستی پنل فعال است؟", "ref": "EnterManualTestMode", "side": {"c": "gray", "l": ["بله: همهٔ شمارش‌ها فریز می‌شوند", "نه خطای تازه ست می‌شود نه خطا پاک"], "d": "r"}, "elab": "نه"}, {"k": "dia", "c": "yellow", "t": "عکس اندازه‌گیری معتبر است؟", "side": {"c": "gray", "l": ["نه: فریز؛ شمارش‌ها از صفر شروع می‌شوند"], "d": "r"}, "elab": "بله"}, {"k": "box", "c": "blue", "t": "مشخص‌کردن نیم‌های نصب‌شده", "l": ["نیمِ کانالِ نصب‌نشده قضاوت نمی‌شود"]}, {"k": "dia", "c": "yellow", "t": "قانون ۱: نیمی که شارژرش پمپ می‌کند بالای ۱۴٫۸ ولت رفت و ۱۵۰ میلی‌ثانیه ماند؟", "side": {"c": "red", "l": ["بله: ست‌کردن خطای ۶ (قطع باتری)"], "d": "r"}, "elab": "نه"}, {"k": "dia", "c": "yellow", "t": "قانون ۲: ورودی سالم است و نیمی زیر ۶ ولت افتاد و ۱ ثانیه ماند؟", "side": {"c": "red", "l": ["بله: ست‌کردن خطای ۶ (قطع باتری)"], "d": "r"}, "elab": "نه"}, {"k": "dia", "c": "yellow", "t": "بازیابی: هر دو نیم دست‌کم ۷ ولت و بدون پمپ، ۱ ثانیه پایدار ماندند؟", "side": {"c": "green", "l": ["بله: پاک‌کردن خطای ۶", "شارژر کانال را آزاد می‌کند و با ۱۵ ثانیه آرام‌سازی برمی‌گردد"], "d": "r"}, "elab": "نه"}, {"k": "box", "c": "green", "t": "خروجی: بیت خطای ۶", "l": ["شارژر کانال را متوقف می‌کند", "حالت کلی دستگاه خطا می‌شود و چراغ/بوق خطای ۶ می‌آید"]}], "tree": {"t": "ارزیابی خطاها — هر پاس", "c": [{"t": "مود دستی؟ → فریز همه‌چیز"}, {"t": "عکس نامعتبر؟ → فریز و صفر شمارش"}, {"t": "نیم‌های نصب‌شده مشخص می‌شوند"}, {"t": "قانون ۱: پمپ + بالای ۱۴٫۸ (۱۵۰ms) → خطای ۶"}, {"t": "قانون ۲: ورودی سالم + زیر ۶ ولت (۱s) → خطای ۶"}, {"t": "بازیابی: هر دو ≥ ۷ ولت (۱s) → پاک خطای ۶"}, {"t": "خروجی بیت خطای ۶ به شارژر و حالت کلی"}]}, "conds": [["نیمِ در حال پمپ بالای ۱۴٫۸ ولت پرید", "یعنی سیم همان نیم قطع است؛ بعد از ۱۵۰ میلی‌ثانیه خطای ۶ ست می‌شود.", "۱۴٫۸ ولت / ۱۵۰ میلی‌ثانیه (از پنل قابل تنظیم)"], ["نیمی زیر ۶ ولت افتاد و ورودی سالم بود", "باتری قطع حساب می‌شود؛ بعد از ۱ ثانیه خطای ۶ ست می‌شود.", "۶ ولت / ۱ ثانیه"], ["باتری برگشت و هر دو نیم بالای ۷ ولت ایستادند", "بعد از ۱ ثانیه پایداری خطا پاک می‌شود.", "۷ ولت (هیسترزیس ۱ ولت) / ۱ ثانیه"], ["اندازه‌گیری نامعتبر یا مود تست دستی", "هیچ تصمیمی گرفته نمی‌شود؛ شمارش‌ها فریز یا صفر می‌شوند.", "—"]], "outs": [["بیت خطای ۶", "ست یا پاک‌شدن قطع باتری", "شارژر کانال را متوقف/آزاد می‌کند؛ دستگاه به حالت خطا می‌رود؛ چراغ قرمز چشمک و بوق می‌آید"], ["پارامترهای آستانه از پنل", "آستانهٔ قطع، نبودن، برگشت و زمان‌های پایداری (شناسه‌های ۲۷ تا ۳۴)", "از پنل می‌آید؛ بازه‌ها در خود ماژول گیره می‌شوند"]], "nav": [{"t": "کل سیستم", "href": "../../../Documentation/system_process.html"}, {"t": "شارژر", "href": "../Charger/charging_process.html"}, {"t": "اندازه‌گیری", "href": "../Measurement/measurement_process.html"}, {"t": "عدم‌توازن", "href": "../Imbalance/imbalance_process.html"}, {"t": "تعویض خروجی", "href": "../Changeover/changeover_process.html"}, {"t": "چراغ و بوق", "href": "../Ui/ui_process.html"}, {"t": "ناظر حفاظت", "href": "../Protection/protection_process.html"}, {"t": "کالیبراسیون", "href": "../CalLut/callut_process.html"}, {"t": "لینک پنل", "href": "../EspLink/esplink_process.html"}, {"t": "تغذیهٔ میکرو", "href": "../McuPowerPath/mcupowerpath_process.html"}, {"t": "جیتر", "href": "../Jitter/jitter_process.html"}, {"t": "ثبت سابقه", "href": "../Diag/diag_process.html"}, {"t": "تسک‌ها", "href": "../Rtos/rtos_process.html"}]};</script>
+<script>const DATA = {"file": "fault_process.html", "title": "فرآیند خطاها — توضیح ساده", "sub": "این ماژول نگهبان قطع‌شدن باتری است: فقط او تصمیم می‌گیرد «خطای ۶» ست شود یا پاک شود؛ شارژر و چراغ‌ها از تصمیم او پیروی می‌کنند.", "steps": ["<b>قانون ۱ (پمپ):</b> اگر شارژر روی نیمی پمپ می‌کند و همان نیم بالای <b class=\"num\">۱۴٫۸ ولت</b> رفت و <b class=\"num\">۱۵۰ میلی‌ثانیه</b> ماند، یعنی سیم آن نیم قطع است.", "<b>قانون ۲ (نبودن):</b> اگر ورودی سالم است و هر کدام از نیم‌ها زیر <b class=\"num\">۶ ولت</b> افتاد و <b class=\"num\">۱ ثانیه</b> ماند، باتری قطع است.", "<b>بازیابی:</b> وقتی هر دو نیم دست‌کم <b class=\"num\">۷ ولت</b> شدند و ۱ ثانیه پایدار ماندند، خطا پاک می‌شود (۷ به‌جای ۶ یعنی هیسترزیس تا باتری خالیِ وصل خطا نگیرد).", "<b>فقط نیم‌های نصب‌شده</b> قضاوت می‌شوند؛ نیمی که کانالش نصب نیست هیچ‌وقت «قطع» حساب نمی‌شود.", "در مود تست دستی یا وقتی اندازه‌گیری نامعتبر است، همهٔ شمارش‌ها <b>فریز</b> می‌شوند؛ نه خطای تازه ست می‌شود نه خطا پاک."], "example": ["وسط شارژ سیم باتری پایین کشیده می‌شود؛ شارژر روی آن نیم پمپ می‌کند و ولتاژش به ۱۵ ولت می‌پرد.", "بعد از ۱۵۰ میلی‌ثانیه ماندن بالای ۱۴٫۸، خطای ۶ ست می‌شود: شارژر متوقف، چراغ قرمز چشمک و بوق می‌آید.", "سیم را برمی‌گردانی؛ هر دو نیم بالای ۷ ولت می‌ایستند و بعد از ۱ ثانیه خطا پاک و شارژ با آرام‌سازی ادامه پیدا می‌کند."], "flow": [{"k": "pill", "c": "navy", "t": "شروع ارزیابی خطاها (هر پاس)", "ref": "func__Fault_Evaluate"}, {"k": "dia", "c": "yellow", "t": "مود تست دستی پنل فعال است؟", "ref": "EnterManualTestMode", "side": {"c": "gray", "l": ["بله: همهٔ شمارش‌ها فریز می‌شوند", "نه خطای تازه ست می‌شود نه خطا پاک"], "d": "r"}, "elab": "نه"}, {"k": "dia", "c": "yellow", "t": "عکس اندازه‌گیری معتبر است؟", "side": {"c": "gray", "l": ["نه: فریز؛ شمارش‌ها از صفر شروع می‌شوند"], "d": "r"}, "elab": "بله"}, {"k": "box", "c": "blue", "t": "مشخص‌کردن نیم‌های نصب‌شده", "l": ["نیمِ کانالِ نصب‌نشده قضاوت نمی‌شود"]}, {"k": "dia", "c": "yellow", "t": "قانون ۱: نیمی که شارژرش پمپ می‌کند بالای ۱۴٫۸ ولت رفت و ۱۵۰ میلی‌ثانیه ماند؟", "ref": "Fault_Evaluate: قانون ۱", "side": {"c": "red", "l": ["بله: ست‌کردن خطای ۶ (قطع باتری)"], "d": "r"}, "elab": "نه"}, {"k": "dia", "c": "yellow", "t": "قانون ۲: ورودی سالم است و نیمی زیر ۶ ولت افتاد و ۱ ثانیه ماند؟", "ref": "Fault_Evaluate: قانون ۲", "side": {"c": "red", "l": ["بله: ست‌کردن خطای ۶ (قطع باتری)"], "d": "r"}, "elab": "نه"}, {"k": "dia", "c": "yellow", "t": "بازیابی: هر دو نیم دست‌کم ۷ ولت و بدون پمپ، ۱ ثانیه پایدار ماندند؟", "ref": "Fault_Clear", "side": {"c": "green", "l": ["بله: پاک‌کردن خطای ۶", "شارژر کانال را آزاد می‌کند و با ۱۵ ثانیه آرام‌سازی برمی‌گردد"], "d": "r"}, "elab": "نه"}, {"k": "box", "c": "green", "t": "خروجی: بیت خطای ۶", "l": ["شارژر کانال را متوقف می‌کند", "حالت کلی دستگاه خطا می‌شود و چراغ/بوق خطای ۶ می‌آید"]}], "tree": {"t": "ارزیابی خطاها — هر پاس", "c": [{"t": "مود دستی؟ → فریز همه‌چیز"}, {"t": "عکس نامعتبر؟ → فریز و صفر شمارش"}, {"t": "نیم‌های نصب‌شده مشخص می‌شوند"}, {"t": "قانون ۱: پمپ + بالای ۱۴٫۸ (۱۵۰ms) → خطای ۶"}, {"t": "قانون ۲: ورودی سالم + زیر ۶ ولت (۱s) → خطای ۶"}, {"t": "بازیابی: هر دو ≥ ۷ ولت (۱s) → پاک خطای ۶"}, {"t": "خروجی بیت خطای ۶ به شارژر و حالت کلی"}]}, "conds": [["نیمِ در حال پمپ بالای ۱۴٫۸ ولت پرید", "یعنی سیم همان نیم قطع است؛ بعد از ۱۵۰ میلی‌ثانیه خطای ۶ ست می‌شود.", "۱۴٫۸ ولت / ۱۵۰ میلی‌ثانیه (از پنل قابل تنظیم)"], ["نیمی زیر ۶ ولت افتاد و ورودی سالم بود", "باتری قطع حساب می‌شود؛ بعد از ۱ ثانیه خطای ۶ ست می‌شود.", "۶ ولت / ۱ ثانیه"], ["باتری برگشت و هر دو نیم بالای ۷ ولت ایستادند", "بعد از ۱ ثانیه پایداری خطا پاک می‌شود.", "۷ ولت (هیسترزیس ۱ ولت) / ۱ ثانیه"], ["اندازه‌گیری نامعتبر یا مود تست دستی", "هیچ تصمیمی گرفته نمی‌شود؛ شمارش‌ها فریز یا صفر می‌شوند.", "—"]], "outs": [["بیت خطای ۶", "ست یا پاک‌شدن قطع باتری", "شارژر کانال را متوقف/آزاد می‌کند؛ دستگاه به حالت خطا می‌رود؛ چراغ قرمز چشمک و بوق می‌آید"], ["پارامترهای آستانه از پنل", "آستانهٔ قطع، نبودن، برگشت و زمان‌های پایداری (شناسه‌های ۲۷ تا ۳۴)", "از پنل می‌آید؛ بازه‌ها در خود ماژول گیره می‌شوند"]], "nav": [{"t": "کل سیستم", "href": "../../../Documentation/system_process.html"}, {"t": "شارژر", "href": "../Charger/charging_process.html"}, {"t": "اندازه‌گیری", "href": "../Measurement/measurement_process.html"}, {"t": "عدم‌توازن", "href": "../Imbalance/imbalance_process.html"}, {"t": "تعویض خروجی", "href": "../Changeover/changeover_process.html"}, {"t": "چراغ و بوق", "href": "../Ui/ui_process.html"}, {"t": "ناظر حفاظت", "href": "../Protection/protection_process.html"}, {"t": "کالیبراسیون", "href": "../CalLut/callut_process.html"}, {"t": "لینک پنل", "href": "../EspLink/esplink_process.html"}, {"t": "تغذیهٔ میکرو", "href": "../McuPowerPath/mcupowerpath_process.html"}, {"t": "جیتر", "href": "../Jitter/jitter_process.html"}, {"t": "ثبت سابقه", "href": "../Diag/diag_process.html"}, {"t": "تسک‌ها", "href": "../Rtos/rtos_process.html"}]};</script>
 <script>
 var COLORS = {
   blue:  {f:'#DDEBF7', o:'#1F4E79', t:'#1F3864'},
@@ -60,16 +60,38 @@ var cv = document.createElement('canvas').getContext('2d');
 function tw(t, bold, sz){ cv.font = (bold ? '700 ' : '') + sz + 'px Vazirmatn, Tahoma'; return cv.measureText(t).width; }
 function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
 function linesOf(n){ var a = []; if (n.t) a.push({s:n.t, b:true}); (n.l || []).forEach(function(x){ a.push({s:x, b:false}); }); return a; }
+function wrapLine(t, bold, sz, maxW){
+  if (tw(t, bold, sz) <= maxW) return [t];
+  var words = t.split(' '), lines = [], cur = '';
+  words.forEach(function(w){
+    var test = cur ? cur + ' ' + w : w;
+    if (tw(test, bold, sz) <= maxW || !cur){ cur = test; } else { lines.push(cur); cur = w; }
+  });
+  if (cur) lines.push(cur);
+  return lines;
+}
+function wrappedLines(n){
+  if (n._wl) return n._wl;
+  var out = [];
+  linesOf(n).forEach(function(x){ wrapLine(x.s, x.b, 15, 330).forEach(function(part){ out.push({s: part, b: x.b}); }); });
+  n._wl = out; return out;
+}
+function sideLines(sd){
+  if (sd._wl) return sd._wl;
+  var maxW = (sd.d === 'l') ? 218 : 258, out = [];
+  sd.l.forEach(function(x){ wrapLine(x, false, 13.5, maxW).forEach(function(part){ out.push(part); }); });
+  sd._wl = out; return out;
+}
 function nodeSize(n){
   if (n.k === 'sub') return { w: Math.min(Math.max(tw(n.t || '', true, 15) + 96, 280), 470), h: 46 };
-  var ls = linesOf(n), mx = 0;
+  var ls = wrappedLines(n), mx = 0;
   ls.forEach(function(x){ mx = Math.max(mx, tw(x.s, x.b, 15)); });
-  if (n.k === 'dia') return { w: Math.min(Math.max(mx + 96, 210), 360), h: Math.max(78, ls.length * 25 + 40) };
-  return { w: Math.min(Math.max(mx + 38, 150), 340), h: ls.length * 25 + 28 };
+  if (n.k === 'dia') return { w: Math.min(Math.max(mx / 0.70 + 30, 215), 470), h: Math.max(84, ls.length * 26 + 44) };
+  return { w: Math.min(Math.max(mx + 38, 150), 380), h: ls.length * 25 + 28 };
 }
 function sideSize(s){
-  var mx = 0; s.l.forEach(function(x){ mx = Math.max(mx, tw(x, false, 13.5)); });
-  return { w: Math.min(Math.max(mx + 30, 170), 280), h: s.l.length * 23 + 24 };
+  var ls = sideLines(s), mx = 0; ls.forEach(function(x){ mx = Math.max(mx, tw(x, false, 13.5)); });
+  return { w: mx + 32, h: ls.length * 23 + 24 };
 }
 function drawSub(n, cx, y, idx){
   var sz = nodeSize(n), x = cx - sz.w / 2, out = '';
@@ -100,7 +122,7 @@ function drawNode(n, cx, y){
   } else {
     out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="10" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="2"/>';
   }
-  var ls = linesOf(n), ty = y + sz.h / 2 - (ls.length - 1) * 12.5;
+  var ls = wrappedLines(n), ty = y + sz.h / 2 - (ls.length - 1) * 12.5;
   ls.forEach(function(ln, i){
     out += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + esc(ln.s) + '</text>';
   });
@@ -115,8 +137,9 @@ function drawSide(s, nodeCx, nodeW, cy, dir){
   var x2 = (dir === 'r') ? x : x + sz.w;
   out += '<path d="M' + x1 + ' ' + cy + ' H' + x2 + '" stroke="' + c.o + '" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arw)"/>';
   out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="9" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="1.6"/>';
-  s.l.forEach(function(ln, i){
-    out += '<text x="' + (x + sz.w / 2) + '" y="' + (y + sz.h / 2 - (s.l.length - 1) * 11.5 + i * 23 + 5) + '" text-anchor="middle" font-size="13.5" fill="' + c.t + '">' + esc(ln) + '</text>';
+  var sl = sideLines(s);
+  sl.forEach(function(ln, i){
+    out += '<text x="' + (x + sz.w / 2) + '" y="' + (y + sz.h / 2 - (sl.length - 1) * 11.5 + i * 23 + 5) + '" text-anchor="middle" font-size="13.5" fill="' + c.t + '">' + esc(ln) + '</text>';
   });
   return out;
 }
@@ -162,7 +185,7 @@ function renderFlow(){
   });
   var maxHalf = 0; pos.forEach(function(p){ if (p) maxHalf = Math.max(maxHalf, p.w / 2); });
   loops.forEach(function(L, li){
-    var a = pos[L.from], b = pos[L.to], lane = cx - maxHalf - 16 - li * 16;
+    var a = pos[L.from], b = pos[L.to], lane = cx - maxHalf - 16 - li * 12;
     var col = L.col === 'red' ? '#C00000' : '#1F4E79';
     out += '<path d="M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + b.cy + ' H' + (cx - b.w / 2 - 4) + '" stroke="' + col + '" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
     if (L.lab) out += vlabel(lane, (a.cy + b.cy) / 2, L.lab, col);
