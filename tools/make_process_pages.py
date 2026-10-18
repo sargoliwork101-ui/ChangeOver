@@ -396,20 +396,7 @@ function wireFlow(){
     clear();
     if (eg){
       svg.classList.add('sel'); eg.classList.add('hl');
-      var fi = eg.getAttribute('data-fi'), ti = eg.getAttribute('data-ti'), lab = eg.getAttribute('data-l');
-      var es = svg.querySelectorAll('.edge'), paired = null;
-      /* a side result and its return arrow are ONE route: light both, nothing else */
-      for (var q = 0; q < es.length; q++){
-        var e2 = es[q];
-        if (e2 === eg) continue;
-        if ((lab === 'بله' || lab === 'نه') && ti === '' && e2.getAttribute('data-l') === 'برگشت' && e2.getAttribute('data-fi') === fi) paired = e2;
-        if (lab === 'برگشت' && e2.getAttribute('data-ti') === '' && (e2.getAttribute('data-l') === 'بله' || e2.getAttribute('data-l') === 'نه') && e2.getAttribute('data-fi') === fi) paired = e2;
-      }
-      var ids = {}; if (fi !== '') ids[fi] = 1; if (ti !== '') ids[ti] = 1;
-      if (paired){ paired.classList.add('hl'); var pt = paired.getAttribute('data-ti'); if (pt !== '') ids[pt] = 1; }
-      var ns = svg.querySelectorAll('.fnode');
-      for (var q2 = 0; q2 < ns.length; q2++){ if (ids[ns[q2].getAttribute('data-i')]) ns[q2].classList.add('hl'); }
-      if (info) info.textContent = 'ارتباط: از «' + eg.getAttribute('data-f') + '» به «' + eg.getAttribute('data-t') + '»' + (eg.getAttribute('data-l') ? ' — ' + eg.getAttribute('data-l') : '') + (paired ? ' (ادامهٔ همین مسیر هم روشن است)' : '');
+      if (info) info.textContent = 'ارتباط: از «' + eg.getAttribute('data-f') + '» به «' + eg.getAttribute('data-t') + '»' + (eg.getAttribute('data-l') ? ' — ' + eg.getAttribute('data-l') : '');
     } else if (ng){
       var go = ng.getAttribute('data-go');
       if (go){ location.href = go; return; }
@@ -491,7 +478,7 @@ MODULES['charging'] = {
    N('dia','yellow','ذخیرهٔ حافظه (NVM) در حال انجام است؟', side=SIDE('gray',['هر دو خروجی شارژر صفر می‌شود','از پاس بعد، شارژ دوباره از اول شروع می‌شود'], 'r', 'بله'), elab='نه'),
    N('dia','yellow','قفل خطای فنی (خطای ۷) از قبل ست شده؟', ref='FinalDisconnect', side=SIDE('red',['قطع نهایی: رله باز و هر دو خروجی صفر می‌شوند','این قفل تا خاموش و روشن‌شدن برد سر جایش می‌ماند'], 'r', 'بله'), elab='نه'),
    N('dia','yellow','مود تست دستی پنل فعال است؟', ref='func__Charger_IsManualTestModeActive', side=SIDE('gray',['duty را پنل می‌فرستد؛ گیت‌های باتری کنار می‌روند','اگر لینک ۳ ثانیه ساکت بماند، شارژر خودش از مود دستی بیرون می‌آید (dead-man)'], 'r', 'بله'), elab='نه'),
-   N('dia','yellow','سیم باتری قطع است؟ (خطای ۶)', ref='func__Fault_Get: آینهٔ بیت خطا', side=SIDE('red',['آن کانال متوقف می‌شود و خروجی‌اش صفر می‌شود','وقتی باتری برگردد و خطا پاک شود، آن کانال دوباره آزاد می‌شود'], 'r', 'بله'), elab='نه'),
+   N('dia','yellow','سیم باتری قطع است؟ (خطای ۶)', ref='func__Fault_Get: آینهٔ بیت خطا', side=SIDE('red',['آن کانال می‌ایستد و خروجی‌اش صفر می‌شود؛ تا پاک‌شدن خطای ۶ همین‌طور می‌ماند','با پاک‌شدن خطا، کانال به خاموشی می‌رود و شارژ را از نو و آرام (از ۱٪) شروع می‌کند'], 'r', 'بله'), elab='نه'),
    N('dia','yellow','اندازه‌گیری سالم و شارژ مجاز است؟', side=SIDE('gray',['توقف امن: همهٔ خروجی‌ها صفر می‌شوند','قفل‌های خطا (نهایی، قطع باتری و حرارتی) سر جایشان می‌مانند'], 'r', 'نه'), elab='بله'),
    N('dia','yellow','ولتاژ ورودی بین ۲۲ و ۲۸ ولت است؟', ref='func__Charger_SafeIdle', side=SIDE('gray',['شارژر صبر می‌کند (INPUT_WAIT) و شارژ صفر است','با درست‌شدن ورودی، شارژ خودش ادامه پیدا می‌کند'], 'r', 'نه'),
      note=SIDE('red',['بررسی جدا و موازی: خطای فنی (۷)','نشانهٔ ۱: duty بالای ۲۰٪ است ولی جریان همان کانال صفر است','نشانهٔ ۲: رله باز است، duty صفر است و تریپ JIT ثبت شده است','نتیجه: قفل فنی، ست‌شدن خطای ۷ و ثبت در دیاگ'],'l'), elab='بله'),
@@ -648,7 +635,7 @@ MODULES['fault'] = {
    N('dia','yellow','قانون ۱: نیمِ در حال شارژ بالای ۱۴٫۸ ولت رفت و ۱۵۰ms ماند؟', ref='Fault_Evaluate: قانون ۱', side=SIDE('red',['ست‌کردن خطای ۶ (قطع باتری)'], 'r', 'بله'), elab='نه'),
    N('dia','yellow','قانون ۲: ورودی سالم است و یک نیم زیر ۶ ولت افتاد و ۱ ثانیه ماند؟', ref='Fault_Evaluate: قانون ۲', side=SIDE('red',['ست‌کردن خطای ۶ (قطع باتری)'], 'r', 'بله'), elab='نه'),
    N('sec','navy','بخش ۳: بازیابی و خروجی'),
-   N('dia','yellow','بازیابی: هر دو نیم بالای ۷ ولت و بدون شارژ، ۱ ثانیه ماندند؟', ref='Fault_Clear', side=SIDE('green',['پاک‌کردن خطای ۶','شارژر کانال را آزاد می‌کند و با ۱۵ ثانیه آرام‌سازی برمی‌گردد'], 'r', 'بله'), elab='نه'),
+   N('dia','yellow','بازیابی: هر دو نیم بالای ۷ ولت و بدون شارژ، ۱ ثانیه ماندند؟', ref='Fault_Clear', side=SIDE('green',['پاک‌کردن خطای ۶','شارژر کانال را از نو و آرام (از ۱٪) شروع می‌کند'], 'r', 'بله'), elab='نه'),
    N('box','green','خروجی: بیت خطای ۶', ['شارژر کانال را متوقف می‌کند','حالت کلی دستگاه خطا می‌شود و چراغ/بوق خطای ۶ می‌آید'], note=SIDE('gray',['شارژر همین بیت را می‌خواند','و کانال همان نیم را متوقف می‌کند'],'l'), ref='func__Fault_Set: بیت خطای ۶'),
  ],
  'tree': T('ارزیابی خطاها — هر پاس',

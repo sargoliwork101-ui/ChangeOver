@@ -383,20 +383,7 @@ function wireFlow(){
     clear();
     if (eg){
       svg.classList.add('sel'); eg.classList.add('hl');
-      var fi = eg.getAttribute('data-fi'), ti = eg.getAttribute('data-ti'), lab = eg.getAttribute('data-l');
-      var es = svg.querySelectorAll('.edge'), paired = null;
-      /* a side result and its return arrow are ONE route: light both, nothing else */
-      for (var q = 0; q < es.length; q++){
-        var e2 = es[q];
-        if (e2 === eg) continue;
-        if ((lab === 'بله' || lab === 'نه') && ti === '' && e2.getAttribute('data-l') === 'برگشت' && e2.getAttribute('data-fi') === fi) paired = e2;
-        if (lab === 'برگشت' && e2.getAttribute('data-ti') === '' && (e2.getAttribute('data-l') === 'بله' || e2.getAttribute('data-l') === 'نه') && e2.getAttribute('data-fi') === fi) paired = e2;
-      }
-      var ids = {}; if (fi !== '') ids[fi] = 1; if (ti !== '') ids[ti] = 1;
-      if (paired){ paired.classList.add('hl'); var pt = paired.getAttribute('data-ti'); if (pt !== '') ids[pt] = 1; }
-      var ns = svg.querySelectorAll('.fnode');
-      for (var q2 = 0; q2 < ns.length; q2++){ if (ids[ns[q2].getAttribute('data-i')]) ns[q2].classList.add('hl'); }
-      if (info) info.textContent = 'ارتباط: از «' + eg.getAttribute('data-f') + '» به «' + eg.getAttribute('data-t') + '»' + (eg.getAttribute('data-l') ? ' — ' + eg.getAttribute('data-l') : '') + (paired ? ' (ادامهٔ همین مسیر هم روشن است)' : '');
+      if (info) info.textContent = 'ارتباط: از «' + eg.getAttribute('data-f') + '» به «' + eg.getAttribute('data-t') + '»' + (eg.getAttribute('data-l') ? ' — ' + eg.getAttribute('data-l') : '');
     } else if (ng){
       var go = ng.getAttribute('data-go');
       if (go){ location.href = go; return; }
