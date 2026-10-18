@@ -249,6 +249,10 @@ function renderFlow(){
     if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l', i, n.t, 'note');
   });
   if (termPos) out += drawNode({ k: 'pill', c: 'navy', t: '↺ برگشت به اول — پاس بعد' }, cx, termPos.y, DATA.flow.length);
+  function edgeX(n2, p2, dy, side){
+    if (n2 && n2.k === 'dia'){ var f = 1 - Math.min(1, Math.abs(dy) / (p2.h / 2)); return cx + side * (p2.w / 2) * f; }
+    return cx + side * p2.w / 2;
+  }
   var laneBase = 1e9;
   DATA.flow.forEach(function(n, i){ var g0 = SIDEGEO[i + ':side']; if (n.side && n.side.ret && g0) laneBase = Math.min(laneBase, g0.x); });
   var retK = 0, endK = 0;
@@ -261,7 +265,8 @@ function renderFlow(){
     if (!tgt) return;
     var lane = laneBase - 22 - (retK++) * 16;
     var ty = (n.side.ret === 'END') ? tgt.cy + (endK++ - 1) * 8 : tgt.cy - Math.min(18, tgt.h / 4);
-    var dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + (g.y + g.h + 10) + ' H' + lane + ' V' + ty + ' H' + (cx + tgt.w / 2 + 4);
+    var tN = (n.side.ret === 'END') ? { k: 'pill' } : DATA.flow[tIdx];
+    var dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + (g.y + g.h + 10) + ' H' + lane + ' V' + ty + ' H' + (edgeX(tN, tgt, ty - tgt.cy, 1) - 2);
     out += '<g class="edge" data-fi="' + i + '" data-ti="' + tIdx + '" data-f="' + esc(n.t || '') + '" data-t="' + esc(tTitle) + '" data-l="برگشت">';
     out += '<path class="hit" d="' + dd + '"/>';
     out += '<path class="vis" d="' + dd + '" stroke="' + (LINES[n.side.c || 'gray']) + '" stroke-width="1.8" fill="none" marker-end="url(#arw)"/>';
@@ -272,7 +277,8 @@ function renderFlow(){
     var a = pos[L.from], b = pos[L.to], lane = cx - maxHalf - 24 - li * 30;
     var LOOPCOLS = ['#6FA8DC', '#7BC47F', '#B18CFF', '#E3B341', '#FF9E64'];
     var col = L.col === 'red' ? '#FF8080' : LOOPCOLS[li % LOOPCOLS.length];
-    var dstr = 'M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + (b.cy - Math.min(18, b.h / 4)) + ' H' + (cx - b.w / 2 - 4);
+    var ldy = -Math.min(18, b.h / 4);
+    var dstr = 'M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + (b.cy + ldy) + ' H' + (edgeX(DATA.flow[L.to], b, ldy, -1) + 2);
     out += '<g class="edge" data-fi="' + L.from + '" data-ti="' + L.to + '" data-f="' + esc(DATA.flow[L.from].t || '') + '" data-t="' + esc(DATA.flow[L.to].t || '') + '" data-l="' + esc(L.lab || '') + '">';
     out += '<path class="hit" d="' + dstr + '"/>';
     out += '<path class="vis" d="' + dstr + '" stroke="' + col + '" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
@@ -458,7 +464,7 @@ MODULES['charging'] = {
    N('dia','yellow','ذخیرهٔ حافظه (NVM) در حال انجام است؟', side=SIDE('gray',['هر دو خروجی شارژر صفر می‌شود','از پاس بعد، شارژ دوباره از اول شروع می‌شود'], 'r', 'بله'), elab='نه'),
    N('dia','yellow','قفل خطای فنی (خطای ۷) از قبل ست شده؟', ref='FinalDisconnect', side=SIDE('red',['قطع نهایی: رله باز و هر دو خروجی صفر می‌شوند','این قفل تا خاموش و روشن‌شدن برد سر جایش می‌ماند'], 'r', 'بله'), elab='نه'),
    N('dia','yellow','مود تست دستی پنل فعال است؟', ref='EnterManualTestMode', side=SIDE('gray',['duty را پنل می‌فرستد؛ گیت‌های باتری کنار می‌روند','اگر لینک ۳ ثانیه ساکت بماند، شارژر خودش از مود دستی بیرون می‌آید (dead-man)'], 'r', 'بله'), elab='نه'),
-   N('dia','yellow','سیم باتری قطع است؟ (خطای ۶)', ref='func__Fault_Get: آینهٔ بیت خطا', side=SIDE('red',['آن کانال متوقف و خروجی‌اش صفر می‌شود','با برگشت باتری و پاک‌شدن خطا، کانال دوباره آزاد می‌شود'], 'r', 'بله'), elab='نه'),
+   N('dia','yellow','سیم باتری قطع است؟ (خطای ۶)', ref='func__Fault_Get: آینهٔ بیت خطا', side=SIDE('red',['آن کانال متوقف می‌شود و خروجی‌اش صفر می‌شود','وقتی باتری برگردد و خطا پاک شود، آن کانال دوباره آزاد می‌شود'], 'r', 'بله'), elab='نه'),
    N('dia','yellow','اندازه‌گیری سالم و حالت کلی عادی است؟', side=SIDE('gray',['توقف امن: همهٔ خروجی‌ها صفر می‌شوند','قفل‌های خطا (نهایی، قطع باتری و حرارتی) سر جایشان می‌مانند'], 'r', 'نه'), elab='بله'),
    N('dia','yellow','ولتاژ ورودی بین ۲۲ و ۲۸ ولت است؟', ref='SafeIdle + INPUT_WAIT', side=SIDE('gray',['شارژر صبر می‌کند (INPUT_WAIT) و شارژ صفر است','با درست‌شدن ورودی، شارژ خودش ادامه پیدا می‌کند'], 'r', 'نه'),
      note=SIDE('red',['بررسی جدا و موازی: خطای فنی (۷)','نشانهٔ ۱: duty بالای ۲۰٪ است ولی جریان همان کانال صفر است','نشانهٔ ۲: رله باز است، duty صفر است و تریپ JIT ثبت شده است','نتیجه: قفل فنی، ست‌شدن خطای ۷ و ثبت در دیاگ'],'l'), elab='بله'),
