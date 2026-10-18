@@ -37,6 +37,7 @@ TEMPLATE = r"""<!DOCTYPE html>
   .tnode { cursor: pointer; }
   .edge { cursor: pointer; }
   .edge .hit { stroke: rgba(0,0,0,0); stroke-width: 12; fill: none; }
+.edge .rhit { stroke-width: 10; }
   .fnode { cursor: pointer; }
   svg.sel .edge, svg.sel .fnode { opacity: .12; }
   svg.sel .edge.hl, svg.sel .fnode.hl { opacity: 1; }
@@ -171,12 +172,13 @@ function drawNode(n, cx, y, idx){
   return out + '</g>';
 }
 var SIDEGEO = {};
+var SIDECOLX = 0;
 var DRAWN = {};
 function drawSide(s, nodeCx, nodeW, cy, dir, oIdx, oTitle, kind){
-  SIDEGEO[oIdx + ':' + kind] = null;
+  var pre = SIDEGEO[oIdx + ':' + kind];
   var sz = sideSize(s), c = COLORS[s.c || 'gray'];
-  var x = (dir === 'r') ? 1390 - sz.w : 10;
-  var y = cy - sz.h / 2, out = '';
+  var x = pre ? pre.x : ((dir === 'r') ? (SIDECOLX || (1390 - sz.w)) : 10);
+  var y = pre ? pre.y : cy - sz.h / 2, out = '';
   SIDEGEO[oIdx + ':' + kind] = { x: x, y: y, w: sz.w, h: sz.h, cy: cy, dir: dir };
   var x1 = (dir === 'r') ? nodeCx + nodeW / 2 : nodeCx - nodeW / 2;
   var x2 = (dir === 'r') ? x : x + sz.w;
@@ -231,7 +233,67 @@ function renderFlow(){
   var needTerm = !(DATA.flow[lastReal] && DATA.flow[lastReal].k === 'pill');
   var termPos = null;
   if (needTerm){ termPos = { y: y, h: 44, w: 320, cy: y + 22, _term: true }; pos.push(termPos); y += 44 + GAP; }
+  var maxHalf0 = 0; pos.forEach(function(p2){ if (p2) maxHalf0 = Math.max(maxHalf0, p2.w / 2); });
+  var nRet = 0; DATA.flow.forEach(function(n2){ if (n2.side && n2.side.ret) nRet++; });
+  SIDECOLX = Math.round(cx + maxHalf0 + 26 + nRet * 15 + 16);
+  SIDEGEO = {};
+  DATA.flow.forEach(function(n, i){
+    if (!pos[i] || n.k === 'sub') return;
+    [['side', n.side, 'r'], ['note', n.note, 'l']].forEach(function(kv){
+      var fld = kv[1]; if (!fld) return;
+      var dir = fld.d || kv[2];
+      var sz3 = sideSize(fld);
+      SIDEGEO[i + ':' + kv[0]] = { x: (dir === 'r') ? SIDECOLX : 10, y: pos[i].cy - sz3.h / 2, w: sz3.w, h: sz3.h, cy: pos[i].cy, dir: dir };
+    });
+  });
   var H = y - GAP + 30;
+  if (termPos) out += drawNode({ k: 'pill', c: 'navy', t: '↺ برگشت به اول — پاس بعد' }, cx, termPos.y, DATA.flow.length);
+  function edgeX(n2, p2, dy, side){
+    if (n2 && n2.k === 'dia'){ var f = 1 - Math.min(1, Math.abs(dy) / (p2.h / 2)); return cx + side * (p2.w / 2) * f; }
+    return cx + side * p2.w / 2;
+  }
+  var laneBase = 1e9, nEnd = 0;
+  DATA.flow.forEach(function(n, i){ var g0 = SIDEGEO[i + ':side']; if (n.side && n.side.ret && g0) laneBase = Math.min(laneBase, g0.x); if (n.side && n.side.ret === 'END') nEnd++; });
+  var retK = 0, endK = 0;
+  DATA.flow.forEach(function(n, i){
+    if (!n.side || !n.side.ret) return;
+    var g = SIDEGEO[i + ':side']; if (!g || g.dir !== 'r') return;
+    var tgt = null, tTitle = '', tIdx = -1;
+    if (n.side.ret === 'END'){ tgt = termPos; tTitle = 'برگشت به اول (پاس بعد)'; tIdx = DATA.flow.length; }
+    else { var j = i + 1; while (j < pos.length && !pos[j]) j++; tgt = pos[j]; tTitle = (DATA.flow[j] && DATA.flow[j].t) || ''; tIdx = j; }
+    if (!tgt) return;
+    var lane = laneBase - 16 - (retK++) * 15;
+    var dd;
+    if (n.side.ret === 'END'){
+      var dz = DRAWN[tIdx] || { w: 216, h: 44 };
+      var exStep = nEnd > 1 ? Math.min(22, (dz.w - 48) / (nEnd - 1)) : 0;
+      var exX = cx - dz.w / 2 + 24 + endK * exStep;
+      var apY = tgt.y - 16 - endK * 13; endK++;
+      dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + (g.y + g.h + 10) + ' H' + lane + ' V' + apY + ' H' + exX + ' V' + (tgt.y - 2);
+    } else {
+      var ty = tgt.cy - Math.min(18, tgt.h / 4);
+      dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + (g.y + g.h + 10) + ' H' + lane + ' V' + ty + ' H' + (edgeX(DATA.flow[tIdx], tgt, ty - tgt.cy, 1) - 2);
+    }
+    out += '<g class="edge" data-fi="' + i + '" data-ti="' + tIdx + '" data-f="' + esc(n.t || '') + '" data-t="' + esc(tTitle) + '" data-l="برگشت">';
+    out += '<path class="hit rhit" d="' + dd + '"/>';
+    out += '<path class="vis" d="' + dd + '" stroke="' + (LINES[n.side.c || 'gray']) + '" stroke-width="1.8" fill="none" marker-end="url(#arw)"/>';
+    out += '</g>';
+  });
+  var maxHalf = 0; pos.forEach(function(p){ if (p) maxHalf = Math.max(maxHalf, p.w / 2); });
+  var loopEntrySeen = {};
+  loops.forEach(function(L, li){
+    var a = pos[L.from], b = pos[L.to], lane = cx - maxHalf - 24 - li * 30;
+    var LOOPCOLS = ['#6FA8DC', '#7BC47F', '#B18CFF', '#E3B341', '#FF9E64'];
+    var col = L.col === 'red' ? '#FF8080' : LOOPCOLS[li % LOOPCOLS.length];
+    var nth = loopEntrySeen[L.to] || 0; loopEntrySeen[L.to] = nth + 1;
+    var ldy = (nth - 1) * Math.min(18, b.h / 4);
+    var dstr = 'M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + (b.cy + ldy) + ' H' + (edgeX(DATA.flow[L.to], b, ldy, -1) + 2);
+    out += '<g class="edge" data-fi="' + L.from + '" data-ti="' + L.to + '" data-f="' + esc(DATA.flow[L.from].t || '') + '" data-t="' + esc(DATA.flow[L.to].t || '') + '" data-l="' + esc(L.lab || '') + '">';
+    out += '<path class="hit" d="' + dstr + '"/>';
+    out += '<path class="vis" d="' + dstr + '" stroke="' + col + '" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
+    if (L.lab) out += vlabel(lane, (a.cy + b.cy) / 2, L.lab, col);
+    out += '</g>';
+  });
   DATA.flow.forEach(function(n, i){
     if (!pos[i]) return;
     var p = pos[i];
@@ -249,46 +311,6 @@ function renderFlow(){
     out += drawNode(n, cx, p.y, i);
     if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r', i, n.t, 'side');
     if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l', i, n.t, 'note');
-  });
-  if (termPos) out += drawNode({ k: 'pill', c: 'navy', t: '↺ برگشت به اول — پاس بعد' }, cx, termPos.y, DATA.flow.length);
-  function edgeX(n2, p2, dy, side){
-    if (n2 && n2.k === 'dia'){ var f = 1 - Math.min(1, Math.abs(dy) / (p2.h / 2)); return cx + side * (p2.w / 2) * f; }
-    return cx + side * p2.w / 2;
-  }
-  var laneBase = 1e9;
-  DATA.flow.forEach(function(n, i){ var g0 = SIDEGEO[i + ':side']; if (n.side && n.side.ret && g0) laneBase = Math.min(laneBase, g0.x); });
-  var retK = 0, endK = 0;
-  DATA.flow.forEach(function(n, i){
-    if (!n.side || !n.side.ret) return;
-    var g = SIDEGEO[i + ':side']; if (!g || g.dir !== 'r') return;
-    var tgt = null, tTitle = '', tIdx = -1;
-    if (n.side.ret === 'END'){ tgt = termPos; tTitle = 'برگشت به اول (پاس بعد)'; tIdx = DATA.flow.length; }
-    else { var j = i + 1; while (j < pos.length && !pos[j]) j++; tgt = pos[j]; tTitle = (DATA.flow[j] && DATA.flow[j].t) || ''; tIdx = j; }
-    if (!tgt) return;
-    var lane = laneBase - 22 - (retK++) * 16;
-    var dz = (n.side.ret === 'END') ? DRAWN[tIdx] : null;
-    var tP = dz ? { w: dz.w, h: dz.h } : tgt;
-    var cyT = dz ? (tgt.y + dz.h / 2) : tgt.cy;
-    var ty = (n.side.ret === 'END') ? cyT + (endK++ - 1) * 8 : tgt.cy - Math.min(18, tgt.h / 4);
-    var tN = (n.side.ret === 'END') ? { k: 'pill' } : DATA.flow[tIdx];
-    var dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + (g.y + g.h + 10) + ' H' + lane + ' V' + ty + ' H' + (edgeX(tN, tP, ty - cyT, 1) - 2);
-    out += '<g class="edge" data-fi="' + i + '" data-ti="' + tIdx + '" data-f="' + esc(n.t || '') + '" data-t="' + esc(tTitle) + '" data-l="برگشت">';
-    out += '<path class="hit" d="' + dd + '"/>';
-    out += '<path class="vis" d="' + dd + '" stroke="' + (LINES[n.side.c || 'gray']) + '" stroke-width="1.8" fill="none" marker-end="url(#arw)"/>';
-    out += '</g>';
-  });
-  var maxHalf = 0; pos.forEach(function(p){ if (p) maxHalf = Math.max(maxHalf, p.w / 2); });
-  loops.forEach(function(L, li){
-    var a = pos[L.from], b = pos[L.to], lane = cx - maxHalf - 24 - li * 30;
-    var LOOPCOLS = ['#6FA8DC', '#7BC47F', '#B18CFF', '#E3B341', '#FF9E64'];
-    var col = L.col === 'red' ? '#FF8080' : LOOPCOLS[li % LOOPCOLS.length];
-    var ldy = -Math.min(18, b.h / 4);
-    var dstr = 'M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + (b.cy + ldy) + ' H' + (edgeX(DATA.flow[L.to], b, ldy, -1) + 2);
-    out += '<g class="edge" data-fi="' + L.from + '" data-ti="' + L.to + '" data-f="' + esc(DATA.flow[L.from].t || '') + '" data-t="' + esc(DATA.flow[L.to].t || '') + '" data-l="' + esc(L.lab || '') + '">';
-    out += '<path class="hit" d="' + dstr + '"/>';
-    out += '<path class="vis" d="' + dstr + '" stroke="' + col + '" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
-    if (L.lab) out += vlabel(lane, (a.cy + b.cy) / 2, L.lab, col);
-    out += '</g>';
   });
   document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی آن کلیک کن؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. باکس‌های با علامت ↗ لینک صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل کلیک کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="66%" style="display:block;margin:0 auto">' + out + '</svg>';
   document.querySelectorAll('.subhead').forEach(function(g){
