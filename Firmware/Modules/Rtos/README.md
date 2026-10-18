@@ -17,7 +17,7 @@
 | `../../Rtos/Inc/rtos_app.h` / `rtos_config.h` | قرارداد تسک‌ها، اندازه استک، اولویت |
 | `../../Rtos/Src/rtos_app.c` | ساخت threadها با cb_mem و stack_mem استاتیک |
 | `../../Rtos/Src/task_measurement.c` | تسک اندازه‌گیری: Init+Start، Run هر 1ms |
-| `../../Rtos/Src/task_control.c` | تسک کنترل: snapshot zero کامل 9 فیلد قبل از GetSnapshot، ترتیب imbalance(prev)->fault->charger technical fault->mcu_power_path->imbalance evaluate->changeover->charger evaluate->watchdog poll |
+| `../../Rtos/Src/task_control.c` | تسک کنترل: snapshot zero کامل 9 فیلد قبل از GetSnapshot، ترتیب imbalance(prev)->fault->jitter->charger technical fault->mcu_power_path->imbalance evaluate->changeover->charger evaluate->watchdog poll |
 | `../../Rtos/Src/task_comm.c` | تسک ارتباط: snapshot zero + EspLink |
 | `../../Rtos/Src/task_ui.c` | تسک UI: snapshot zero + Ui_Tick |
 | `../../Rtos/Src/task_protection.c` | تسک حفاظت: snapshot zero + Protection_Run |

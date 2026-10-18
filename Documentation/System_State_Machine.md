@@ -15,11 +15,13 @@ stateDiagram-v2
     BOOT --> BOOT: NULL/invalid
     BATTERY --> SAFE: v<20800 OR low-battery latch (set <21000, cleared >=21200), 3000ms
     INPUT --> SAFE: same cut condition, 3000ms
-    SAFE --> INPUT: input_present && v>=21200, 3000ms
+    SAFE --> INPUT: input stable 30000ms && v>=21200, confirm 3000ms
     BATTERY --> BATTERY: valid mapping
     INPUT --> INPUT: valid mapping
     SAFE --> SAFE: invalid/fault preserve
     BATTERY --> SAFE: imbalance latch + param 117 (immediate)
+    INPUT --> SAFE: imbalance latch + param 117 (immediate)
+    BATTERY --> SAFE: dead-battery verdict + param 127 (immediate)
     INPUT --> SAFE: dead-battery verdict + param 127 (immediate)
     BOOT --> FAULT: valid && fault_mask != 0
     BATTERY --> FAULT: valid && fault_mask != 0
