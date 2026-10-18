@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>فرآیند کل دستگاه — توضیح ساده</title>
+<style>
+  body { font-family: Vazirmatn, Tahoma, sans-serif; background:#F2F6FC; color:#1F3864; margin:0; padding:24px 14px 48px; line-height:1.9; }
+  .wrap { max-width: 1020px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 6px 0 2px; }
+  h2 { font-size: 20px; margin: 30px 0 8px; border-bottom: 3px solid #1F4E79; padding-bottom: 4px; }
+  .card { background:#fff; border:1.5px solid #1F4E79; border-radius:12px; padding:14px 20px; margin:12px 0; }
+  .ok { background:#C6EFCE; border-color:#548235; }
+  ol, ul { margin: 6px 0; padding-right: 22px; }
+  li { margin: 4px 0; }
+  b.num { color:#C00000; }
+  table { border-collapse: collapse; width:100%; background:#fff; margin:10px 0; }
+  th { background:#1F4E79; color:#fff; padding:8px 10px; font-size:15px; }
+  td { border:1px solid #B9CDE4; padding:7px 10px; font-size:15px; }
+  tr:nth-child(even) td { background:#F2F6FC; }
+  .small { font-size: 13.5px; color:#444; }
+  svg text { font-family: Vazirmatn, Tahoma, sans-serif; }
+  .tnode { cursor: pointer; }
+  .tnode:hover rect { stroke-width: 3; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1 id="ttl"></h1>
+<p class="small" id="sub"></p>
+<h2>توضیح ساده</h2>
+<div class="card"><ol id="steps"></ol></div>
+<div id="exwrap"><h2>یک مثال عددی</h2><div class="card ok"><ol id="example"></ol></div></div>
+<h2>فلوچارت</h2>
+<div class="card"><div id="flow"></div><p class="small" id="legend"></p></div>
+<h2>درخت کد</h2>
+<p class="small">درخت واقعی کد است؛ روی هر گره کلیک کن تا شاخه‌اش باز یا بسته شود.</p>
+<div class="card"><div id="tree"></div></div>
+<h2>شرط‌ها و حفاظت‌ها</h2>
+<table id="conds"><tr><th style="width:26%">اگر این اتفاق افتاد</th><th style="width:37%">برنامه چه کار می‌کند</th><th>عددش</th></tr></table>
+<h2>فرمان‌ها و خروجی‌ها</h2>
+<table id="outs"><tr><th style="width:26%">به کجا</th><th style="width:37%">چه فرمانی / چه خروجی‌ای</th><th>کی و با چه شرطی</th></tr></table>
+<div class="card" style="background:#FFE699;border-color:#BF8F00"><b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ اول از روی کد چک می‌کنیم، بعد اصلاح می‌کنیم.</div>
+</div>
+<script>const DATA = {"file": "system_process.html", "title": "فرآیند کل دستگاه — توضیح ساده", "sub": "نمای کلی همهٔ برنامه: از روشن‌شدن تا چرخهٔ همیشگی تصمیم؛ هر ماژول صفحهٔ خودش را هم دارد و این‌جا فقط کنار هم دیده می‌شوند.", "steps": ["<b>روشن‌شدن:</b> اول سخت‌افزار (مبدل، PWM، پایه‌ها و وقفه‌ها) و بعد ماژول‌ها راه می‌افتند و تنظیمات ماندگار از حافظه خوانده می‌شود؛ چراغ‌ها خودآزمایی می‌شوند.", "<b>عکس مشترک:</b> تسک اندازه‌گیری هر ۱ میلی‌ثانیه یک عکس تازه و معتبر از ولتاژها و جریان‌ها منتشر می‌کند؛ همه با همان عکس کار می‌کنند.", "<b>ترتیب تصمیم در تسک کنترل ثابت است:</b> خطاها ← خطای فنی شارژر ← مسیر تغذیهٔ میکرو ← عدم‌توازن ← تعویض خروجی ← شارژر. یعنی اول ایمنی، بعد خروجی، بعد شارژ.", "<b>عمل:</b> شارژر duty کانال‌ها و رله را می‌راند، تعویض خروجی خط محافظ باتری را، و مسیر تغذیه تعیین می‌کند میکرو از کجا تغذیه شود.", "<b>نمایش و ارتباط موازی‌اند:</b> چراغ و بوق از روی وضعیت‌ها چهره می‌سازند و لینک ESP همان وضعیت‌ها را به پنل می‌دهد و تنظیمات را برمی‌گرداند.", "<b>نگهبان‌ها:</b> جیتر سخت‌افزاری اضافه‌جریان را در لحظه می‌گیرد و واچ‌داگ اگر تسکی گیر کند دستگاه را ریست می‌کند."], "example": ["برق ورودی وصل می‌شود: اندازه‌گیری آن را می‌بیند؛ مسیر تغذیه بعد از ۵ ثانیه میکرو را روی ورودی می‌برد.", "شارژر هر دو باتری را شارژ می‌کند؛ چراغ زرد چشمک می‌زند و پنل همان وضعیت را نشان می‌دهد.", "یک باتری کامل می‌شود و دیگری نه: عدم‌توازن زیر نظر است؛ اگر اختلاف ماندگار از حد رد شود رویداد می‌خورد و دستگاه با چراغ و خروجی واکنش نشان می‌دهد."], "flow": [{"k": "pill", "c": "navy", "t": "روشن‌شدن دستگاه"}, {"k": "box", "c": "blue", "t": "راه‌اندازی سخت‌افزار از راه BSP", "l": ["مبدل و DMA، PWM، پایه‌ها، وقفهٔ جیتر", "خواندن تنظیمات ماندگار از حافظه"]}, {"k": "box", "c": "blue", "t": "خودآزمایی چراغ‌ها و ساخت تسک‌ها", "l": ["پنج تسک ایستا؛ بدون حافظهٔ پویا"]}, {"k": "sec", "c": "navy", "t": "چرخهٔ همیشگی (هر پاس کنترل)"}, {"k": "box", "c": "blue", "t": "۱) اندازه‌گیری: عکس تازه و معتبر", "l": ["هر ۱ میلی‌ثانیه؛ همه از همین عکس می‌خوانند"]}, {"k": "box", "c": "blue", "t": "۲) خطاها و خطای فنی شارژر", "l": ["قطع باتری (۶) و قفل فنی (۷) اول از همه"]}, {"k": "box", "c": "blue", "t": "۳) مسیر تغذیهٔ میکرو و عدم‌توازن", "l": ["میکرو روی ورودی یا باتری؛ اختلاف دو نیم باتری"]}, {"k": "box", "c": "blue", "t": "۴) تعویض خروجی", "l": ["حالت کلی دستگاه و خط محافظ باتری"]}, {"k": "box", "c": "blue", "t": "۵) شارژر: فازها و فرمان duty", "l": ["PWM کانال‌ها و رلهٔ قطع نهایی"]}, {"k": "box", "c": "green", "t": "هم‌زمان: نمایش چراغ/بوق و لینک پنل", "l": ["چهره‌ها از روی وضعیت‌ها؛ پنل می‌خواند و تنظیم می‌کند"]}, {"k": "dia", "c": "yellow", "t": "نگهبان‌ها سالم‌اند؟ (جیتر و واچ‌داگ)", "side": {"c": "red", "l": ["تریپ جیتر: توقف فوری کانال در شارژر", "گیرکردن تسک: ریست با واچ‌داگ"], "d": "r"}, "elab": "بله"}, {"k": "pill", "c": "navy", "t": "برگشت به اول چرخه"}], "tree": {"t": "کل برنامهٔ دستگاه", "c": [{"t": "راه‌اندازی", "c": [{"t": "BSP: مبدل، PWM، پایه، وقفه"}, {"t": "خواندن تنظیمات ماندگار (NVM)"}, {"t": "خودآزمایی چراغ‌ها"}]}, {"t": "تسک اندازه‌گیری: عکس هر ۱ms"}, {"t": "تسک کنترل (ترتیب ثابت)", "c": [{"t": "خطاها (۶) و خطای فنی (۷)"}, {"t": "مسیر تغذیهٔ میکرو"}, {"t": "عدم‌توازن دو نیم"}, {"t": "تعویض خروجی و حالت کلی"}, {"t": "شارژر: فازها، PID، رله"}]}, {"t": "تسک نمایش: چراغ و بوق"}, {"t": "تسک ارتباط: لینک ESP و پنل"}, {"t": "نگهبان‌ها: جیتر و واچ‌داگ"}]}, "conds": [["برق ورودی آمد", "مسیر تغذیه بعد از ۵ ثانیه میکرو را روی ورودی می‌برد و شارژر با دیدن ورودی سالم شارژ را شروع می‌کند.", "۲۲ ولت / ۵ ثانیه"], ["خطای بزرگی آمد (۶ یا ۷)", "اول از همه در ترتیب کنترل دیده می‌شود: شارژ متوقف، حالت کلی خطا و چهرهٔ خطا روی چراغ‌ها.", "ترتیب ثابت کنترل"], ["باتری ضعیف شد", "تعویض خروجی بعد از ۳ ثانیه پایداری خروجی را از باتری جدا می‌کند تا باتری آسیب نبیند.", "۲۱ ولت / ۳ ثانیه"], ["تسکی گیر کرد", "واچ‌داگ دستگاه را ریست می‌کند و برنامه از راه‌اندازی سالم شروع می‌کند.", "پنجرهٔ واچ‌داگ"]], "outs": [["به سخت‌افزار", "PWM دو کانال شارژ، رلهٔ قطع نهایی، خط محافظ باتری، مسیر تغذیهٔ میکرو، چراغ‌ها و بوق", "فقط از راه BSP؛ منطق ماژول‌ها پایه نمی‌شناسد"], ["به پنل ESP", "همهٔ وضعیت‌ها و اندازه‌گیری‌ها برای نمایش؛ تنظیمات و فرمان‌ها برعکس", "لینک فریم نسخه‌دار با CRC-16"], ["به حافظهٔ ماندگار", "تنظیمات، سابقهٔ خطاها و شمارنده‌ها", "رکوردهای نسخه‌دار؛ با خاموشی نمی‌پرد"]]};</script>
+<script>
+var COLORS = {
+  blue:  {f:'#DDEBF7', o:'#1F4E79', t:'#1F3864'},
+  green: {f:'#C6EFCE', o:'#548235', t:'#1F3864'},
+  yellow:{f:'#FFE699', o:'#BF8F00', t:'#1F3864'},
+  red:   {f:'#FFC7CE', o:'#C00000', t:'#1F3864'},
+  gray:  {f:'#EDEDED', o:'#808080', t:'#1F3864'},
+  navy:  {f:'#1F3864', o:'#1F3864', t:'#FFFFFF'}
+};
+var LEGEND = [['blue','در حال کار'],['green','کامل / سالم'],['yellow','سؤال و تصمیم'],['red','خطا و توقف'],['gray','صبر و مکث'],['navy','شروع و پایان']];
+var cv = document.createElement('canvas').getContext('2d');
+function tw(t, bold, sz){ cv.font = (bold ? '700 ' : '') + sz + 'px Vazirmatn, Tahoma'; return cv.measureText(t).width; }
+function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function linesOf(n){ var a = []; if (n.t) a.push({s:n.t, b:true}); (n.l || []).forEach(function(x){ a.push({s:x, b:false}); }); return a; }
+function nodeSize(n){
+  var ls = linesOf(n), mx = 0;
+  ls.forEach(function(x){ mx = Math.max(mx, tw(x.s, x.b, 15)); });
+  if (n.k === 'dia') return { w: Math.min(Math.max(mx + 96, 200), 430), h: Math.max(78, ls.length * 25 + 40) };
+  return { w: Math.min(Math.max(mx + 38, 150), 390), h: ls.length * 25 + 28 };
+}
+function sideSize(s){
+  var mx = 0; s.l.forEach(function(x){ mx = Math.max(mx, tw(x, false, 13.5)); });
+  return { w: Math.min(Math.max(mx + 30, 170), 300), h: s.l.length * 23 + 24 };
+}
+function drawNode(n, cx, y){
+  var sz = nodeSize(n), c = COLORS[n.c || 'blue'], x = cx - sz.w / 2, out = '';
+  if (n.k === 'pill'){
+    out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="' + (sz.h/2) + '" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="2"/>';
+  } else if (n.k === 'dia'){
+    var cy = y + sz.h / 2;
+    out += '<polygon points="' + cx + ',' + y + ' ' + (x + sz.w) + ',' + cy + ' ' + cx + ',' + (y + sz.h) + ' ' + x + ',' + cy + '" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="2"/>';
+  } else {
+    out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="10" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="2"/>';
+  }
+  var ls = linesOf(n), ty = y + sz.h / 2 - (ls.length - 1) * 12.5;
+  ls.forEach(function(ln, i){
+    out += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + esc(ln.s) + '</text>';
+  });
+  return out;
+}
+function drawSide(s, nodeCx, nodeW, cy, dir){
+  var sz = sideSize(s), c = COLORS[s.c || 'gray'];
+  var x = (dir === 'r') ? 990 - sz.w : 10;
+  var y = cy - sz.h / 2, out = '';
+  var x1 = (dir === 'r') ? nodeCx + nodeW / 2 : nodeCx - nodeW / 2;
+  var x2 = (dir === 'r') ? x : x + sz.w;
+  out += '<path d="M' + x1 + ' ' + cy + ' H' + x2 + '" stroke="' + c.o + '" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arw)"/>';
+  out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="9" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="1.6"/>';
+  s.l.forEach(function(ln, i){
+    out += '<text x="' + (x + sz.w / 2) + '" y="' + (y + sz.h / 2 - (s.l.length - 1) * 11.5 + i * 23 + 5) + '" text-anchor="middle" font-size="13.5" fill="' + c.t + '">' + esc(ln) + '</text>';
+  });
+  return out;
+}
+function vlabel(x, y, s, col){
+  var w = tw(s, true, 13.5) + 16;
+  return '<g transform="translate(' + x + ',' + y + ') rotate(-90)"><rect x="' + (-w/2) + '" y="-11" width="' + w + '" height="22" fill="#FFFFFF"/><text x="0" y="4.5" text-anchor="middle" font-size="13.5" font-weight="700" fill="' + (col || '#1F3864') + '">' + esc(s) + '</text></g>';
+}
+function renderFlow(){
+  var W = 1000, cx = 500, GAP = 56, y = 26, pos = [], out = '';
+  out += '<defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1F4E79"/></marker></defs>';
+  var loops = [];
+  DATA.flow.forEach(function(n, i){
+    if (n.k === 'sec'){
+      y += 18;
+      out += '<text x="985" y="' + (y + 6) + '" text-anchor="end" font-size="16" font-weight="700" fill="#1F3864">' + esc(n.t) + '</text>';
+      out += '<line x1="15" y1="' + (y + 16) + '" x2="985" y2="' + (y + 16) + '" stroke="#B9CDE4" stroke-width="2"/>';
+      y += 34; pos.push(null); return;
+    }
+    var sz = nodeSize(n);
+    pos.push({ y: y, h: sz.h, w: sz.w, cy: y + sz.h / 2 });
+    y += sz.h + GAP;
+    if (n.loop) loops.push({ from: i, to: n.loop.to, lab: n.loop.lab, col: n.loop.col });
+  });
+  var H = y - GAP + 30;
+  DATA.flow.forEach(function(n, i){
+    if (!pos[i]) return;
+    var p = pos[i];
+    if (i > 0 && pos[i - 1]){
+      var prevBottom = pos[i - 1].y + pos[i - 1].h;
+      out += '<path d="M' + cx + ' ' + prevBottom + ' V' + (p.y - 4) + '" stroke="#1F4E79" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
+      var pn = DATA.flow[i - 1];
+      if (pn.elab) out += vlabel(cx, (prevBottom + p.y) / 2, pn.elab, '#1F3864');
+    }
+    out += drawNode(n, cx, p.y);
+    if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r');
+    if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l');
+  });
+  loops.forEach(function(L, li){
+    var a = pos[L.from], b = pos[L.to], lane = 292 - li * 20;
+    var col = L.col === 'red' ? '#C00000' : '#1F4E79';
+    out += '<path d="M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + b.cy + ' H' + (cx - b.w / 2 - 4) + '" stroke="' + col + '" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
+    if (L.lab) out += vlabel(lane, (a.cy + b.cy) / 2, L.lab, col);
+  });
+  document.getElementById('flow').innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%">' + out + '</svg>';
+  document.getElementById('legend').innerHTML = 'معنای رنگ‌ها: ' + LEGEND.map(function(x){
+    return '<span style="display:inline-block;width:13px;height:13px;background:' + COLORS[x[0]].f + ';border:2px solid ' + COLORS[x[0]].o + ';vertical-align:-2px;margin:0 4px 0 2px"></span>' + x[1];
+  }).join(' &nbsp; ');
+}
+/* ---- real tree (root at right, grows left, click to collapse) ---- */
+function treeMeasure(n, d){
+  n._w = Math.min(tw(n.t, false, 13.5) + 26, 600); n._d = d;
+  (n.c || []).forEach(function(ch){ treeMeasure(ch, d + 1); });
+}
+function treeLayout(n, cursor){
+  var kids = (n._open && n.c) ? n.c : [];
+  if (!kids.length){ n._y = cursor.v; cursor.v += 42; return; }
+  kids.forEach(function(ch){ treeLayout(ch, cursor); });
+  n._y = (kids[0]._y + kids[kids.length - 1]._y) / 2;
+}
+function treeDraw(n, levelX, out){
+  var x = levelX[n._d] - n._w, y = n._y;
+  (n._open ? (n.c || []) : []).forEach(function(ch){ treeDraw(ch, levelX, out); });
+  (n._open ? (n.c || []) : []).forEach(function(ch){
+    var cx2 = levelX[ch._d], cy2 = ch._y + 15, px = x, py = y + 15, mx = (px + cx2) / 2;
+    out.push('<path d="M' + px + ' ' + py + ' H' + mx + ' V' + cy2 + ' H' + cx2 + '" stroke="#9DB8D9" stroke-width="2" fill="none"/>');
+  });
+  var has = (n.c || []).length > 0;
+  out.push('<g class="tnode" data-tid="' + n._id + '"><rect x="' + x + '" y="' + y + '" width="' + n._w + '" height="30" rx="8" fill="' + (n._d === 0 ? '#1F3864' : '#DDEBF7') + '" stroke="#1F4E79" stroke-width="1.6"/>' +
+    '<text x="' + (x + n._w / 2) + '" y="' + (y + 20) + '" text-anchor="middle" font-size="13.5" fill="' + (n._d === 0 ? '#FFFFFF' : '#1F3864') + '">' + esc(n.t) + (has ? (n._open ? ' ‹' : ' ›') : '') + '</text></g>');
+}
+function renderTree(){
+  var idc = { v: 0 };
+  (function walk(n, d){ n._id = idc.v++; if (n._open === undefined) n._open = d < 2; (n.c || []).forEach(function(ch){ walk(ch, d + 1); }); })(DATA.tree, 0);
+  treeMeasure(DATA.tree, 0);
+  var maxD = 0, levelW = {};
+  (function scan(n){ maxD = Math.max(maxD, n._d); levelW[n._d] = Math.max(levelW[n._d] || 0, n._w); (n.c || []).forEach(scan); })(DATA.tree);
+  var levelX = {}, xr = 992;
+  for (var d = 0; d <= maxD; d++){ levelX[d] = xr; xr -= (levelW[d] || 120) + 52; }
+  var cursor = { v: 26 };
+  treeLayout(DATA.tree, cursor);
+  var out = [];
+  treeDraw(DATA.tree, levelX, out);
+  document.getElementById('tree').innerHTML = '<svg viewBox="0 0 1000 ' + (cursor.v + 16) + '" width="100%">' + out.join('') + '</svg>';
+  var nodes = document.querySelectorAll('.tnode');
+  nodes.forEach(function(g){
+    g.addEventListener('click', function(){
+      var id = +g.getAttribute('data-tid'), found = null;
+      (function find(n){ if (n._id === id) found = n; (n.c || []).forEach(find); })(DATA.tree);
+      if (found && found.c && found.c.length){ found._open = !found._open; renderTree(); }
+    });
+  });
+}
+function fill(id, rows){ var el = document.getElementById(id); rows.forEach(function(r){ var li = document.createElement('li'); li.innerHTML = r; el.appendChild(li); }); }
+function fillTable(id, rows){
+  var tb = document.getElementById(id);
+  rows.forEach(function(r){
+    var tr = document.createElement('tr');
+    r.forEach(function(c){ var td = document.createElement('td'); td.innerHTML = c; tr.appendChild(td); });
+    tb.appendChild(tr);
+  });
+}
+function render(){
+  document.getElementById('ttl').textContent = DATA.title;
+  document.getElementById('sub').textContent = DATA.sub || '';
+  fill('steps', DATA.steps || []);
+  if (DATA.example){ fill('example', DATA.example); } else { document.getElementById('exwrap').style.display = 'none'; }
+  fillTable('conds', DATA.conds || []);
+  fillTable('outs', DATA.outs || []);
+  renderFlow(); renderTree();
+}
+if (document.fonts && document.fonts.ready){ document.fonts.ready.then(function(){ render(); }); } else { render(); }
+</script>
+</body>
+</html>
