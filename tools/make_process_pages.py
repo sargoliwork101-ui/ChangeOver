@@ -1185,8 +1185,9 @@ def main():
             if k2 != key:
                 nav.append({'t': label,
                             'href': os.path.relpath(target_path(k2), os.path.dirname(path)).replace(os.sep, '/')})
-        if key == 'ui':
-            nav.append({'t': 'شبیه‌ساز آلارم‌ها', 'href': 'alarm_simulator.html'})
+        sim_path = os.path.join(ROOT, 'Firmware', 'Modules', 'Ui', 'alarm_simulator.html')
+        nav.append({'t': 'شبیه‌ساز آلارم‌ها',
+                    'href': os.path.relpath(sim_path, os.path.dirname(path)).replace(os.sep, '/')})
         if key == 'system':
             if sys_idx is None:
                 sys_idx = build_index(os.path.join(ROOT, 'Firmware'))

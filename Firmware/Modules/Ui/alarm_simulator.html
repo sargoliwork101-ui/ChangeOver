@@ -7,11 +7,12 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;700&display=swap');
 body{font-family:Vazirmatn,Tahoma,sans-serif;background:#12151B;color:#E6EAF2;margin:0;padding:24px 14px 48px;line-height:1.9}
-.wrap{max-width:1100px;margin:0 auto}
+.wrap{max-width:none;margin:0}
 h1{font-size:24px;margin:0 0 4px}
-h2{font-size:19px;border-bottom:3px solid #35507A;padding-bottom:4px;margin:26px 0 10px}
+h2{font-size:20px;border-bottom:3px solid #35507A;padding-bottom:4px;margin:30px 0 8px}
 a{color:#7FB0E6}
-.card{background:#1B2029;border:1.5px solid #35507A;border-radius:12px;padding:16px 20px;margin:12px 0}
+.small{font-size:13.5px;color:#9AA7BC}
+.card{background:#1B2029;border:1.5px solid #35507A;border-radius:12px;padding:14px 20px;margin:12px 0}
 .grid{display:grid;grid-template-columns:300px 1fr;gap:14px}
 @media(max-width:760px){.grid{grid-template-columns:1fr}}
 button.alarm{display:block;width:100%;text-align:right;background:#232B3A;color:#E6EAF2;border:1.5px solid #35507A;border-radius:10px;padding:10px 14px;margin:0 0 8px;font-family:inherit;font-size:15.5px;cursor:pointer}
@@ -35,6 +36,7 @@ input[type=range]{width:100%}
 <body>
 <div class="wrap">
 <h1>شبیه‌ساز آلارم‌ها و چراغ‌ها</h1>
+<p class="small">صفحه‌های دیگر: <a href="ui_process.html">فلوچارت چراغ و بوق</a> | <a href="../../../Documentation/system_process.html">فرآیند کل دستگاه</a></p>
 <p>روی هر آلارم یا حالت بزن تا چراغ‌ها و بوق، دقیقاً با همان الگوی واقعی دستگاه (مقادیر پیش‌فرض کد) پخش شوند. برای شنیدن بوق، صدای دستگاهت را باز کن.</p>
 <div class="grid">
 <div class="card" id="list"></div>
