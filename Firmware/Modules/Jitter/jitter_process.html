@@ -182,7 +182,8 @@ function renderFlow(){
   DATA.flow.forEach(function(n, i){
     if (n.k === 'sec'){
       y += 18;
-      out += '<text x="' + (W - 15) + '" y="' + (y + 6) + '" text-anchor="end" font-size="16" font-weight="700" fill="#E6EAF2">' + esc(n.t) + '</text>';
+      var swd = tw(n.t, true, 16);
+      out += '<text x="' + (W - 15 - swd) + '" y="' + (y + 6) + '" text-anchor="start" font-size="16" font-weight="700" fill="#E6EAF2">' + esc(n.t) + '</text>';
       out += '<line x1="15" y1="' + (y + 16) + '" x2="' + (W - 15) + '" y2="' + (y + 16) + '" stroke="#33415C" stroke-width="2"/>';
       y += 34; pos.push(null); return;
     }
