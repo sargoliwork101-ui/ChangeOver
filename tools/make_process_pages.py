@@ -170,10 +170,13 @@ function drawNode(n, cx, y, idx){
   if (n.go) out += '<text x="' + (x + sz.w - 11) + '" y="' + (y + 18) + '" font-size="14" fill="#B45309">↗</text>';
   return out + '</g>';
 }
-function drawSide(s, nodeCx, nodeW, cy, dir, oIdx, oTitle){
+var SIDEGEO = {};
+function drawSide(s, nodeCx, nodeW, cy, dir, oIdx, oTitle, kind){
+  SIDEGEO[oIdx + ':' + kind] = null;
   var sz = sideSize(s), c = COLORS[s.c || 'gray'];
   var x = (dir === 'r') ? 1390 - sz.w : 10;
   var y = cy - sz.h / 2, out = '';
+  SIDEGEO[oIdx + ':' + kind] = { x: x, y: y, w: sz.w, h: sz.h, cy: cy, dir: dir };
   var x1 = (dir === 'r') ? nodeCx + nodeW / 2 : nodeCx - nodeW / 2;
   var x2 = (dir === 'r') ? x : x + sz.w;
   out += '<g class="edge" data-fi="' + oIdx + '" data-ti="" data-f="' + esc(oTitle || '') + '" data-t="' + esc(s.l[0] || '') + '" data-l="' + esc(s.lab || (s.d === 'l' ? 'موازی' : '')) + '">';
@@ -222,6 +225,10 @@ function renderFlow(){
     y += sz.h + GAP;
     if (n.loop) loops.push({ from: i, to: n.loop.to, lab: n.loop.lab, col: n.loop.col });
   });
+  var lastReal = -1; pos.forEach(function(p2, i2){ if (p2) lastReal = i2; });
+  var needTerm = !(DATA.flow[lastReal] && DATA.flow[lastReal].k === 'pill');
+  var termPos = null;
+  if (needTerm){ termPos = { y: y, h: 44, w: 320, cy: y + 22, _term: true }; pos.push(termPos); y += 44 + GAP; }
   var H = y - GAP + 30;
   DATA.flow.forEach(function(n, i){
     if (!pos[i]) return;
@@ -238,8 +245,21 @@ function renderFlow(){
     }
     if (n.k === 'sub'){ out += drawSub(n, cx, p.y, i); return; }
     out += drawNode(n, cx, p.y, i);
-    if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r', i, n.t);
-    if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l', i, n.t);
+    if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r', i, n.t, 'side');
+    if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l', i, n.t, 'note');
+  });
+  if (termPos) out += drawNode({ k: 'pill', c: 'navy', t: '↺ برگشت به اول — پاس بعد' }, cx, termPos.y, DATA.flow.length);
+  var retK = 0;
+  DATA.flow.forEach(function(n, i){
+    if (!n.side || !n.side.ret) return;
+    var g = SIDEGEO[i + ':side']; if (!g || g.dir !== 'r') return;
+    var tgt = null;
+    if (n.side.ret === 'END'){ tgt = termPos; }
+    else { var j = i + 1; while (j < pos.length && !pos[j]) j++; tgt = pos[j]; }
+    if (!tgt) return;
+    var lane = g.x - 18 - (retK++ % 5) * 12;
+    var dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + (g.y + g.h + 10) + ' H' + lane + ' V' + tgt.cy + ' H' + (cx + tgt.w / 2 + 4);
+    out += '<path d="' + dd + '" stroke="' + (LINES[n.side.c || 'gray']) + '" stroke-width="1.8" fill="none" marker-end="url(#arw)"/>';
   });
   var maxHalf = 0; pos.forEach(function(p){ if (p) maxHalf = Math.max(maxHalf, p.w / 2); });
   loops.forEach(function(L, li){
@@ -1343,6 +1363,20 @@ def main():
         for n in m['flow']:
             if n.get('ref'):
                 n['rurl'] = resolve_ref(n['ref'], idx, fallback)
+            RET_END = {
+             ('charging', 'ذخیرهٔ حافظه (NVM) در حال انجام است؟'), ('charging', 'قفل خطای فنی (خطای ۷) از قبل ست شده؟'),
+             ('charging', 'مود تست دستی پنل فعال است؟'), ('charging', 'اندازه‌گیری سالم و حالت کلی عادی است؟'),
+             ('charging', 'ولتاژ ورودی بین ۲۲ و ۲۸ ولت است؟'),
+             ('fault', 'مود تست دستی پنل فعال است؟'), ('fault', 'عکس اندازه‌گیری معتبر است؟'),
+             ('imbalance', 'ورودی‌ها معتبرند؟'), ('imbalance', 'هر دو نیم هم‌حالت‌اند؟'),
+             ('changeover', 'عکس اندازه‌گیری معتبر است؟'),
+             ('esplink', 'فریم کامل و CRC درست است؟'), ('esplink', 'نسخه و نوع فریم شناخته‌شده است؟'),
+             ('esplink', 'مقدار داخل بازهٔ مجاز بود؟'),
+             ('measurement', 'فریم کامل و پایدار از مبدل رسید؟'),
+             ('callut', 'شمارش داخل بازهٔ جدول است؟'), ('callut', 'جدول تازه کامل و درست است؟'),
+             ('mcupowerpath', 'لبهٔ افتادن حضور ورودی آمد؟ (وقفه)'), ('mcupowerpath', 'عکس اندازه‌گیری معتبر است؟'),
+             ('system', 'نگهبان‌ها سالم‌اند؟ (جیتر و watchdog)'),
+            }
             for kind in ('side', 'note'):
                 if n.get(kind):
                     aft = None
@@ -1352,6 +1386,10 @@ def main():
                             break
                     if aft:
                         n[kind]['after'] = aft
+                    if kind == 'side' and n[kind].get('lab') in ('بله', 'نه'):
+                        is_end = any(k2 == key and (n.get('t') or '').startswith(t2) for (k2, t2) in RET_END)
+                        n[kind]['ret'] = 'END' if is_end else 'NEXT'
+                        n[kind].pop('after', None)
             for sub, tgt in GO.get(key, {}).items():
                 if sub in (n.get('t') or ''):
                     if tgt == 'sim':
