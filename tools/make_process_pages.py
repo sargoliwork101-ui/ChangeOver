@@ -156,10 +156,11 @@ function drawSide(s, nodeCx, nodeW, cy, dir){
   var x1 = (dir === 'r') ? nodeCx + nodeW / 2 : nodeCx - nodeW / 2;
   var x2 = (dir === 'r') ? x : x + sz.w;
   out += '<path d="M' + x1 + ' ' + cy + ' H' + x2 + '" stroke="' + (LINES[s.c || 'gray']) + '" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arw)"/>';
-  if (s.lab){
-    var mxp = (x1 + x2) / 2, lw = tw(s.lab, true, 13.5);
-    out += '<rect x="' + (mxp - lw / 2 - 5) + '" y="' + (cy - 22) + '" width="' + (lw + 10) + '" height="19" fill="#1B2029"/>';
-    out += '<text x="' + mxp + '" y="' + (cy - 8) + '" text-anchor="middle" font-size="13.5" font-weight="700" fill="' + (LINES[s.c || 'gray']) + '">' + esc(s.lab) + '</text>';
+  var slab = s.lab || (s.d === 'l' ? 'موازی' : null);
+  if (slab){
+    var mxp = (x1 + x2) / 2, lw = tw(slab, true, 13.5);
+    out += '<rect x="' + (mxp - lw / 2 - 5) + '" y="' + (cy - 9.5) + '" width="' + (lw + 10) + '" height="19" fill="#1B2029"/>';
+    out += '<text x="' + mxp + '" y="' + (cy + 4.5) + '" text-anchor="middle" font-size="13.5" font-weight="700" fill="' + (LINES[s.c || 'gray']) + '">' + esc(slab) + '</text>';
   }
   out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="9" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="1.6"/>';
   var sl = sideLines(s), st = '';
@@ -212,7 +213,8 @@ function renderFlow(){
   var maxHalf = 0; pos.forEach(function(p){ if (p) maxHalf = Math.max(maxHalf, p.w / 2); });
   loops.forEach(function(L, li){
     var a = pos[L.from], b = pos[L.to], lane = cx - maxHalf - 24 - li * 30;
-    var col = L.col === 'red' ? '#FF8080' : '#6FA8DC';
+    var LOOPCOLS = ['#6FA8DC', '#7BC47F', '#B18CFF', '#E3B341', '#FF9E64'];
+    var col = L.col === 'red' ? '#FF8080' : LOOPCOLS[li % LOOPCOLS.length];
     out += '<path d="M' + (cx - a.w / 2) + ' ' + a.cy + ' H' + lane + ' V' + b.cy + ' H' + (cx - b.w / 2 - 4) + '" stroke="' + col + '" stroke-width="2.2" fill="none" marker-end="url(#arw)"/>';
     if (L.lab) out += vlabel(lane, (a.cy + b.cy) / 2, L.lab, col);
   });
@@ -1035,7 +1037,7 @@ MODULES['system'] = {
    N('box','blue','۴) تعویض خروجی', ['حالت کلی دستگاه و خط محافظ باتری'], ref='Changeover در task_control'),
    N('box','blue','۵) Charger: فازها و فرمان duty', ['PWM کانال‌ها و رلهٔ قطع نهایی'], ref='task_control: Charger_Evaluate', note=SIDE('gray',['ترتیب پاس‌ها همیشه همین است','بعد از پاس آخر، از اول شروع می‌شود'],'l')),
    N('box','green','هم‌زمان: نمایش چراغ/بوق و لینک پنل', ['چهره‌ها از روی وضعیت‌ها؛ پنل می‌خواند و تنظیم می‌کند'], ref='Ui_Tick + EspLink'),
-   N('dia','yellow','نگهبان‌ها سالم‌اند؟ (جیتر و watchdog)', side=SIDE('red',['تریپ جیتر: توقف فوری کانال در شارژر','گیرکردن تسک: ریست با watchdog']), elab='بله'),
+   N('dia','yellow','نگهبان‌ها سالم‌اند؟ (جیتر و watchdog)', side=SIDE('red',['تریپ جیتر: توقف فوری کانال در شارژر','گیرکردن تسک: ریست با watchdog'], 'r', 'نه'), elab='بله'),
    N('pill','navy','برگشت به اول چرخه'),
  ],
  'tree': T('کل برنامهٔ دستگاه',
