@@ -134,7 +134,7 @@ function drawSub(n, cx, y, idx){
   return out;
 }
 function drawNode(n, cx, y, idx){
-  var sz = nodeSize(n), c = COLORS[n.c || 'blue'], x = cx - sz.w / 2, out = '<g class="fnode' + (n.go ? ' go' : '') + '" data-i="' + idx + '" data-t="' + esc(n.t || '') + '" data-go="' + esc(n.go || '') + '">';
+  var sz = nodeSize(n); DRAWN[idx] = sz; c = COLORS[n.c || 'blue'], x = cx - sz.w / 2, out = '<g class="fnode' + (n.go ? ' go' : '') + '" data-i="' + idx + '" data-t="' + esc(n.t || '') + '" data-go="' + esc(n.go || '') + '">';
   if (n.k === 'pill'){
     out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="' + (sz.h/2) + '" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="2"/>';
   } else if (n.k === 'dia'){
@@ -158,6 +158,7 @@ function drawNode(n, cx, y, idx){
   return out + '</g>';
 }
 var SIDEGEO = {};
+var DRAWN = {};
 function drawSide(s, nodeCx, nodeW, cy, dir, oIdx, oTitle, kind){
   SIDEGEO[oIdx + ':' + kind] = null;
   var sz = sideSize(s), c = COLORS[s.c || 'gray'];
@@ -192,6 +193,7 @@ function vlabel(x, y, s, col){
   return '<g transform="translate(' + x + ',' + y + ') rotate(-90)"><rect x="' + (-w/2) + '" y="-11" width="' + w + '" height="22" fill="#1B2029"/><text x="0" y="4.5" text-anchor="middle" font-size="13.5" font-weight="700" fill="' + (col || '#D7E3F5') + '">' + esc(s) + '</text></g>';
 }
 function renderFlow(){
+  DRAWN = {};
   var W = 1400, cx = 640, GAP = 62, y = 26, pos = [], out = '';
   out += '<defs><marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6FA8DC"/></marker></defs>';
   var loops = [];
@@ -251,9 +253,12 @@ function renderFlow(){
     else { var j = i + 1; while (j < pos.length && !pos[j]) j++; tgt = pos[j]; tTitle = (DATA.flow[j] && DATA.flow[j].t) || ''; tIdx = j; }
     if (!tgt) return;
     var lane = laneBase - 22 - (retK++) * 16;
-    var ty = (n.side.ret === 'END') ? tgt.cy + (endK++ - 1) * 8 : tgt.cy - Math.min(18, tgt.h / 4);
+    var dz = (n.side.ret === 'END') ? DRAWN[tIdx] : null;
+    var tP = dz ? { w: dz.w, h: dz.h } : tgt;
+    var cyT = dz ? (tgt.y + dz.h / 2) : tgt.cy;
+    var ty = (n.side.ret === 'END') ? cyT + (endK++ - 1) * 8 : tgt.cy - Math.min(18, tgt.h / 4);
     var tN = (n.side.ret === 'END') ? { k: 'pill' } : DATA.flow[tIdx];
-    var dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + (g.y + g.h + 10) + ' H' + lane + ' V' + ty + ' H' + (edgeX(tN, tgt, ty - tgt.cy, 1) - 2);
+    var dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + (g.y + g.h + 10) + ' H' + lane + ' V' + ty + ' H' + (edgeX(tN, tP, ty - cyT, 1) - 2);
     out += '<g class="edge" data-fi="' + i + '" data-ti="' + tIdx + '" data-f="' + esc(n.t || '') + '" data-t="' + esc(tTitle) + '" data-l="برگشت">';
     out += '<path class="hit" d="' + dd + '"/>';
     out += '<path class="vis" d="' + dd + '" stroke="' + (LINES[n.side.c || 'gray']) + '" stroke-width="1.8" fill="none" marker-end="url(#arw)"/>';
