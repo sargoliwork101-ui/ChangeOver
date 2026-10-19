@@ -23,7 +23,7 @@
  *
  *      VDDA HYPOTHESIS - NOT CONFIRMED (audit 2026-10-10). An earlier note
  *      claimed VIN and V12 both over-read by 1.19 %, implying VDDA ~3261 mV.
- *      bench/solo2_dense.csv (removed, see git history) does NOT support that: row 1 has VIN 24386 vs
+ *      Calibration Data/solo2_dense.csv (removed, see git history) does NOT support that: row 1 has VIN 24386 vs
  *      DMM 24100 (+1.2 %) but V12 12074 vs DMM 12080 (-0.05 %). Two channels
  *      disagree, so no shared-VDDA conclusion follows from this file.
  *

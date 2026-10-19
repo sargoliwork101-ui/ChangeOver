@@ -1116,7 +1116,7 @@ uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
 uint32_t func__Charger_GetDutyFixedPermille(uint8_t uint8_t__channelIndex);
 
 /* ==================== Manual test mode / مود تست دستی ==================== */
-/* [EN] Global bench/test switch (user order 2026-09-23, protocol v1.2
+/* [EN] Global Calibration Data/test switch (user order 2026-09-23, protocol v1.2
  *      param ID 19). While active the automatic charger is suspended and
  *      each channel is driven directly at its stored fixed-duty value
  *      (SetDutyFixedPermille) with every battery condition bypassed; the

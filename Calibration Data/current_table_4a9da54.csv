@@ -1,5 +1,5 @@
 # Current table measured on the bench: DMM current (mA) against the ch2 raw count mean.
-# Source: bench/bench_samples_4a9da54.json (BAT2, duty 0-17 %, 22 samples, build 4a9da54).
+# Source: Calibration Data/bench_samples_4a9da54.json (BAT2, duty 0-17 %, 22 samples, build 4a9da54).
 # Axis: raw ADC counts, rounded to the integer the board table needs (the only rounding in the path).
 # Y: the highest DMM reading at that count, rounded UP to 0.1 mA. Never below the measured current.
 # Negative DMM (discharge at 0 %) is clamped to 0 mA, as calbuild does.

@@ -75,8 +75,8 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
 - Push and commit (messages 0x04..0x08): `LUT_BEGIN`, `LUT_CHUNK` (points), `LUT_COMMIT` (ACK),
   `LUT_RESET` only after a successful COMMIT, `LUT_READ` for read-back. The payload layout is
   defined in `Firmware/Modules/EspLink/esp_link.c` (LUT handlers).
-- Measured table: `bench/current_table_4a9da54.csv`, built from the DMM export
-  `bench/bench_samples_4a9da54.json` (BAT2, duty 0-17 %). It is the table in use on the bench
+- Measured table: `Calibration Data/current_table_4a9da54.csv`, built from the DMM export
+  `Calibration Data/bench_samples_4a9da54.json` (BAT2, duty 0-17 %). It is the table in use on the bench
   boards. Y is the highest DMM reading at each count, rounded UP to 0.1 mA. The chain
   formula `counts x 24200/27573` (no gain) was NOT the real relation: above about 11 % duty it read
   below the measured current (about 108 mA low at 17 %). BSP(c) above is the fallback formula only.
@@ -1052,7 +1052,7 @@ to the current panel workflow.
 
 ## 19. Manual test mode (scenario 9) — current contract
 
-`MANUAL_TEST_MODE` (ID 19) is a **global bench/test switch**. While it is 1
+`MANUAL_TEST_MODE` (ID 19) is a **global Calibration Data/test switch**. While it is 1
 the automatic charger is fully suspended and the human at the panel owns the
 PWM. Purpose: calibration and filter tuning - set a duty, watch the raw ->
 shunt -> unfiltered -> filtered current chain, adjust offsets/gains/filter

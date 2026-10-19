@@ -1,5 +1,5 @@
-# Validation of bench/current_table_4a9da54.csv against the DMM export bench/bench_samples_4a9da54.json.
-# Replaces the removed bench/solo2_dense.csv (older build, no DMM current column).
+# Validation of Calibration Data/current_table_4a9da54.csv against the DMM export Calibration Data/bench_samples_4a9da54.json.
+# Replaces the removed Calibration Data/solo2_dense.csv (older build, no DMM current column).
 # Method: each BAT2 sample: count = round(raw ch2 mean counts) (table axis is whole counts),
 #   table value = linear interpolation between anchors (same rule as the firmware, tenths of mA),
 #   margin = table - DMM. A reading below the true current would show a negative margin.
