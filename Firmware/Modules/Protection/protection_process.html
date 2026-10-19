@@ -36,6 +36,9 @@
   .fnode.hl rect, .fnode.hl polygon { stroke-width: 4; }
   .fnode a text { text-decoration: underline; }
   .fnode a:hover text { fill: #B45309; }
+  .errl tspan { fill: #8AB8FF; text-decoration: underline; }
+  .errl:hover tspan { fill: #FFB86B; }
+  a.errl { color: #8AB8FF; text-decoration: underline; }
   #einfo { background:#16283F; border:1px solid #35507A; border-radius:8px; padding:6px 12px; margin:4px 4px 8px; font-size:14.5px; }
   .subhead { cursor: pointer; }
   .subhead:hover rect { stroke-width: 3; }
@@ -61,7 +64,7 @@
 <table id="outs"><tr><th style="width:26%">به کجا</th><th style="width:37%">چه فرمانی / چه خروجی‌ای</th><th>کی و با چه شرطی</th></tr></table>
 <div class="card" style="background:#2E2A18;border-color:#BF8F00"><b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ اول از روی کد check می‌کنیم، بعد اصلاح می‌کنیم.</div>
 </div>
-<script>const DATA = {"file": "protection_process.html", "title": "فرآیند ناظر حفاظت — توضیح ساده", "sub": "ناظر سبک برنامه: تنها کارش این است که تا وقتی اندازه‌گیری معتبر نیست، خطای «مبدل» (bit ۰) را نگه دارد. این ماژول فعلاً در ساخت اصلی خاموش است.", "steps": ["اگر عکس اندازه‌گیری نباشد یا نامعتبر باشد، bit خطای مبدل <b>set</b> می‌شود.", "با اولین عکس معتبر، همان bit <b>پاک</b> می‌شود.", "این خطا عمداً <b>قفل نمی‌شود</b>: لحظه‌ای است؛ چون passهای اول روشن‌شدن همیشه قبل از آماده‌شدن اندازه‌گیری اجرا می‌شوند و خطای قفل‌شده دستگاه را برای همیشه در حالت امن نگه می‌داشت.", "نظارت اضافه‌جریان و باتری ضعیف این‌جا نیست؛ در شارژر و ماژول خطا انجام می‌شود.", "ماژول با پیش‌فرض خاموش compile می‌شود (فقط با روشن‌کردن آگاهانه در پیکربندی فعال می‌شود)."], "flow": [{"k": "sec", "c": "navy", "t": "بخش ۱: بررسی ناظر — فعلاً در build خاموش است"}, {"k": "pill", "c": "navy", "t": "شروع pass ناظر", "ref": "func__Protection_Run", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Protection/protection.c#L52"}, {"k": "dia", "c": "yellow", "t": "Snapshot معتبر است؟", "side": {"c": "green", "l": ["پاک‌کردن bit خطای مبدل (bit ۰)"], "d": "r", "lab": "بله", "ret": "END"}, "elab": "نه"}, {"k": "box", "c": "red", "t": "set کردن FAULT_ADC", "l": ["لحظه‌ای است و قفل نمی‌شود", "با اولین عکس معتبر خودش پاک می‌شود"], "ref": "Fault_Set(FAULT_ADC)", "note": {"c": "gray", "l": ["تنها ماژول خاموش build است", "MODULE_PROTECTION=0"], "d": "l", "after": "خط اصلی؛ این ماژول فعلاً کاری نمی‌کند"}, "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Protection/protection.c#L65", "go": "../Fault/fault_process.html"}], "tree": {"t": "ناظر حفاظت", "c": [{"t": "عکس نامعتبر؟ → set bit مبدل"}, {"t": "عکس معتبر؟ → پاک bit مبدل"}, {"t": "قفل ندارد؛ ماژول پیش‌فرض خاموش است"}]}, "conds": [["اندازه‌گیری نامعتبر شد", "bit خطای مبدل set می‌شود؛ دستگاه از این bit مثل بقیهٔ خطاها به حالت خطا می‌رود.", "bit ۰"], ["اندازه‌گیری معتبر شد", "bit پاک می‌شود و کار عادی ادامه دارد.", "بدون قفل"]], "outs": [["bit خطای مبدل", "set/پاک لحظه‌ای", "به ماژول خطا می‌رود و از آن‌جا حالت کلی و شارژر پیروی می‌کنند"]], "nav": [{"t": "کل سیستم", "href": "../../../Documentation/system_process.html"}, {"t": "شارژر", "href": "../Charger/charging_process.html"}, {"t": "اندازه‌گیری", "href": "../Measurement/measurement_process.html"}, {"t": "خطاها", "href": "../Fault/fault_process.html"}, {"t": "عدم‌توازن", "href": "../Imbalance/imbalance_process.html"}, {"t": "تعویض خروجی", "href": "../Changeover/changeover_process.html"}, {"t": "چراغ و بوق", "href": "../Ui/ui_process.html"}, {"t": "calibration", "href": "../CalLut/callut_process.html"}, {"t": "link پنل", "href": "../EspLink/esplink_process.html"}, {"t": "تغذیهٔ میکرو", "href": "../McuPowerPath/mcupowerpath_process.html"}, {"t": "Jitter", "href": "../Jitter/jitter_process.html"}, {"t": "ثبت سابقه", "href": "../Diag/diag_process.html"}, {"t": "taskها", "href": "../Rtos/rtos_process.html"}, {"t": "شبیه‌ساز alarmها", "href": "../Ui/alarm_simulator.html"}]};</script>
+<script>const DATA = {"file": "protection_process.html", "title": "فرآیند ناظر حفاظت — توضیح ساده", "sub": "ناظر سبک برنامه: تنها کارش این است که تا وقتی اندازه‌گیری معتبر نیست، خطای «مبدل» (bit ۰) را نگه دارد. این ماژول فعلاً در ساخت اصلی خاموش است.", "steps": ["اگر عکس اندازه‌گیری نباشد یا نامعتبر باشد، bit خطای مبدل <b>set</b> می‌شود.", "با اولین عکس معتبر، همان bit <b>پاک</b> می‌شود.", "این خطا عمداً <b>قفل نمی‌شود</b>: لحظه‌ای است؛ چون passهای اول روشن‌شدن همیشه قبل از آماده‌شدن اندازه‌گیری اجرا می‌شوند و خطای قفل‌شده دستگاه را برای همیشه در حالت امن نگه می‌داشت.", "نظارت اضافه‌جریان و باتری ضعیف این‌جا نیست؛ در شارژر و ماژول خطا انجام می‌شود.", "ماژول با پیش‌فرض خاموش compile می‌شود (فقط با روشن‌کردن آگاهانه در پیکربندی فعال می‌شود)."], "flow": [{"k": "sec", "c": "navy", "t": "بخش ۱: بررسی ناظر — فعلاً در build خاموش است"}, {"k": "pill", "c": "navy", "t": "شروع pass ناظر", "ref": "func__Protection_Run", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Protection/protection.c#L52"}, {"k": "dia", "c": "yellow", "t": "Snapshot معتبر است؟", "side": {"c": "green", "l": ["پاک‌کردن bit خطای مبدل (bit ۰)"], "d": "r", "lab": "بله", "ret": "END"}, "elab": "نه"}, {"k": "box", "c": "red", "t": "set کردن FAULT_ADC", "l": ["لحظه‌ای است و قفل نمی‌شود", "با اولین عکس معتبر خودش پاک می‌شود"], "ref": "Fault_Set(FAULT_ADC)", "note": {"c": "gray", "l": ["تنها ماژول خاموش build است", "MODULE_PROTECTION=0"], "d": "l", "after": "خط اصلی؛ این ماژول فعلاً کاری نمی‌کند"}, "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Protection/protection.c#L65", "go": "../Fault/fault_process.html"}], "tree": {"t": "ناظر حفاظت", "c": [{"t": "عکس نامعتبر؟ → set bit مبدل"}, {"t": "عکس معتبر؟ → پاک bit مبدل"}, {"t": "قفل ندارد؛ ماژول پیش‌فرض خاموش است"}]}, "conds": [["اندازه‌گیری نامعتبر شد", "bit خطای مبدل set می‌شود؛ دستگاه از این bit مثل بقیهٔ خطاها به حالت خطا می‌رود.", "bit ۰"], ["اندازه‌گیری معتبر شد", "bit پاک می‌شود و کار عادی ادامه دارد.", "بدون قفل"]], "outs": [["وضعیت خطای مبدل", "آمدن و پاک‌شدن لحظه‌ای خطا", "به ماژول خطا می‌رود و از آن‌جا حالت کلی و شارژر پیروی می‌کنند"]], "nav": [{"t": "کل سیستم", "href": "../../../Documentation/system_process.html"}, {"t": "شارژر", "href": "../Charger/charging_process.html"}, {"t": "اندازه‌گیری", "href": "../Measurement/measurement_process.html"}, {"t": "خطاها", "href": "../Fault/fault_process.html"}, {"t": "عدم‌توازن", "href": "../Imbalance/imbalance_process.html"}, {"t": "تعویض خروجی", "href": "../Changeover/changeover_process.html"}, {"t": "چراغ و بوق", "href": "../Ui/ui_process.html"}, {"t": "calibration", "href": "../CalLut/callut_process.html"}, {"t": "link پنل", "href": "../EspLink/esplink_process.html"}, {"t": "تغذیهٔ میکرو", "href": "../McuPowerPath/mcupowerpath_process.html"}, {"t": "Jitter", "href": "../Jitter/jitter_process.html"}, {"t": "ثبت سابقه", "href": "../Diag/diag_process.html"}, {"t": "taskها", "href": "../Rtos/rtos_process.html"}, {"t": "شبیه‌ساز alarmها", "href": "../Ui/alarm_simulator.html"}], "errmap": {"۶": "../Fault/fault_process.html", "۷": "../Charger/charging_process.html"}};</script>
 <script>
 var COLORS = {
   blue:  {f:'#DDEBF7', o:'#1F4E79', t:'#12263F'},
@@ -76,6 +79,8 @@ var LEGEND = [['blue','در حال کار'],['green','کامل / سالم'],['ye
 var cv = document.createElement('canvas').getContext('2d');
 function tw(t, bold, sz){ cv.font = (bold ? '700 ' : '') + sz + 'px Vazirmatn, Tahoma'; return cv.measureText(t).width; }
 function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function etxt(s){ var e = esc(s), m = (typeof DATA !== 'undefined' && DATA.errmap) || {}; if (!m['۶'] && !m['۷']) return e; return e.replace(/خطای ([۰-۹]+)/g, function(w, dg){ var h = m[dg]; return h ? '</tspan><a class="errl" href="' + h + '"><tspan>' + w + '</tspan></a><tspan>' : w; }); }
+function linkErrs(el){ var m = (typeof DATA !== 'undefined' && DATA.errmap) || {}; if (!el || (!m['۶'] && !m['۷'])) return; var wk = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null), ns = [], cur; while ((cur = wk.nextNode())){ var pv = cur.parentNode; if (pv && !pv.closest('a') && /خطای [۰-۹]/.test(cur.nodeValue)) ns.push(cur); } ns.forEach(function(tn){ var fg = document.createDocumentFragment(); tn.nodeValue.split(/(خطای [۰-۹]+)/).forEach(function(pt){ if (!pt) return; var mm2 = /^خطای ([۰-۹]+)$/.exec(pt); if (mm2 && m[mm2[1]]){ var a = document.createElement('a'); a.className = 'errl'; a.href = m[mm2[1]]; a.textContent = pt; fg.appendChild(a); } else fg.appendChild(document.createTextNode(pt)); }); tn.parentNode.replaceChild(fg, tn); }); }
 function linesOf(n){ var a = []; if (n.t) a.push({s:n.t, b:true}); (n.l || []).forEach(function(x){ a.push({s:x, b:false}); }); if (n.ref) a.push({s:n.ref, b:false, r:true}); return a; }
 function wrapLine(t, bold, sz, maxW){
   if (tw(t, bold, sz) <= maxW) return [t];
@@ -110,7 +115,7 @@ function afterLines(s){
   if (!s.after) return [];
   if (s._al) return s._al;
   var maxW = (s.d === 'l') ? 200 : 240, out = [];
-  wrapLine('بعد: ' + s.after, false, 11.5, maxW).forEach(function(part){ out.push(part); });
+  wrapLine('در ادامه: ' + s.after, false, 11.5, maxW).forEach(function(part){ out.push(part); });
   s._al = out; return out;
 }
 function sideSize(s){
@@ -154,7 +159,7 @@ function drawNode(n, cx, y, idx){
       var rt = '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="12" font-family="Consolas, monospace" fill="' + (c.t === '#FFFFFF' ? '#B9CDE4' : '#33506F') + '">' + esc(ln.s) + '</text>';
       tt += n.rurl ? '<a href="' + n.rurl + '" target="_blank">' + rt + '</a>' : rt;
     } else {
-      tt += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + esc(ln.s) + '</text>';
+      tt += '<text x="' + cx + '" y="' + (ty + i * 25 + 5) + '" text-anchor="middle" font-size="15" ' + (ln.b ? 'font-weight="700"' : '') + ' fill="' + c.t + '">' + '<tspan>' + etxt(ln.s) + '</tspan>' + '</text>';
     }
   });
   var aw = (n.k === 'dia') ? sz.w * 0.60 : sz.w - 14;
@@ -173,10 +178,10 @@ function drawSide(s, nodeCx, nodeW, cy, dir, oIdx, oTitle, kind){
   SIDEGEO[oIdx + ':' + kind] = { x: x, y: y, w: sz.w, h: sz.h, cy: cy, dir: dir };
   var x1 = (dir === 'r') ? nodeCx + nodeW / 2 : nodeCx - nodeW / 2;
   var x2 = (dir === 'r') ? x : x + sz.w;
-  out += '<g class="edge" data-sk="' + kind + '" data-fi="' + oIdx + '" data-ti="" data-f="' + esc(oTitle || '') + '" data-t="' + esc(s.l[0] || '') + '" data-l="' + esc(s.lab || (s.d === 'l' ? 'موازی' : '')) + '">';
+  out += '<g class="edge" data-sk="' + kind + '" data-fi="' + oIdx + '" data-ti="" data-f="' + esc(oTitle || '') + '" data-t="' + esc(s.l[0] || '') + '" data-l="' + esc(s.lab || (s.d === 'l' ? 'بررسی جدا' : '')) + '">';
   out += '<path class="hit" d="M' + x1 + ' ' + cy + ' H' + x2 + '"/>';
   out += '<path class="vis" d="M' + x1 + ' ' + cy + ' H' + x2 + '" stroke="' + (LINES[s.c || 'gray']) + '" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arw)"/>';
-  var slab = s.lab || (s.d === 'l' ? 'موازی' : null);
+  var slab = s.lab || (s.d === 'l' ? 'بررسی جدا' : null);
   if (slab){
     var mxp = (x1 + x2) / 2, lw = tw(slab, true, 13.5);
     out += '<rect x="' + (mxp - lw / 2 - 5) + '" y="' + (cy - 9.5) + '" width="' + (lw + 10) + '" height="19" fill="#1B2029"/>';
@@ -186,11 +191,11 @@ function drawSide(s, nodeCx, nodeW, cy, dir, oIdx, oTitle, kind){
   out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="9" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="1.6"/>';
   var sl = sideLines(s), st = '';
   sl.forEach(function(ln, i){
-    st += '<text x="' + (x + sz.w / 2) + '" y="' + (y + sz.h / 2 - (sl.length - 1) * 11.5 + i * 23 + 5) + '" text-anchor="middle" font-size="13.5" fill="' + c.t + '">' + esc(ln) + '</text>';
+    st += '<text x="' + (x + sz.w / 2) + '" y="' + (y + sz.h / 2 - (sl.length - 1) * 11.5 + i * 23 + 5) + '" text-anchor="middle" font-size="13.5" fill="' + c.t + '">' + '<tspan>' + etxt(ln) + '</tspan>' + '</text>';
   });
   var al = afterLines(s);
   al.forEach(function(ln, i){
-    st += '<text x="' + (x + sz.w / 2) + '" y="' + (y + sz.h - al.length * 17 - 2 + i * 17 + 4) + '" text-anchor="middle" font-size="11.5" fill="#33506F">' + esc(ln) + '</text>';
+    st += '<text x="' + (x + sz.w / 2) + '" y="' + (y + sz.h - al.length * 17 - 2 + i * 17 + 4) + '" text-anchor="middle" font-size="11.5" fill="#33506F">' + '<tspan>' + etxt(ln) + '</tspan>' + '</text>';
   });
   out += '<g class="fx" data-w="' + (sz.w - 12) + '" data-cx="' + (x + sz.w / 2) + '" data-cy="' + (y + sz.h / 2) + '">' + st + '</g>';
   return out + '</g>';
@@ -429,6 +434,7 @@ function render(){
   if (DATA.example){ fill('example', DATA.example); } else { document.getElementById('exwrap').style.display = 'none'; }
   fillTable('conds', DATA.conds || []);
   fillTable('outs', DATA.outs || []);
+  linkErrs(document.getElementById('steps')); linkErrs(document.getElementById('example')); linkErrs(document.getElementById('conds')); linkErrs(document.getElementById('outs'));
   renderFlow(); renderTree(); fitText(); wireFlow();
 }
 if (document.fonts && document.fonts.ready){ document.fonts.ready.then(function(){ render(); }); } else { render(); }
