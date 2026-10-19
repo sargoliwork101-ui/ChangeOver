@@ -42,7 +42,7 @@
 | `../../Rtos/Src/rtos_app.c` | شرط ساخت تسک کنترل شامل `MODULE_MCU_POWER_PATH` |
 | `../../../CubeIDE/STM32CubeIDE/.cproject` | افزودن `Firmware/Modules/McuPowerPath` به include های Debug/Release |
 
-`changeover.c/.h`، آستانه‌های 21000/20800/21200 و تایمر 3000ms، و منطق PB11 به‌هیچ‌وجه تغییر نکرده؛ PB5 در Changeover ممنوع است؛ `DOC/State.xlsx` بدون تغییر.
+`changeover.c/.h`، آستانه‌های 21000/20800/21200 و تایمر 3000ms، و منطق PB11 به‌هیچ‌وجه تغییر نکرده؛ PB5 در Changeover ممنوع است؛ `Documentation/State.xlsx` بدون تغییر.
 
 ## توابع
 

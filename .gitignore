@@ -14,7 +14,7 @@ CubeIDE/STM32CubeIDE/.settings/*
 *.bin
 __pycache__/
 
-# Excel/Office lock+temp files (e.g. DOC/~$State.xlsx)
+# Excel/Office lock+temp files (e.g. Documentation/~$State.xlsx)
 ~$*
 *.tmp
 

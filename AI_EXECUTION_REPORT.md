@@ -414,7 +414,7 @@ IWDG نامی ۱ ثانیه در برابر توقف ~۴۰ms پاک‌کردن �
 - ماژول‌ها: `Firmware/Modules/*/README.md` (Measurement، Charger، Fault، Jitter، McuPowerPath، Changeover، UI، Protection، EspLink).
 - برد و پورت‌ها: `Firmware/Bsp/README.md` و `CubeMX/README.md`.
 - مرجع State/سناریو: `Documentation/System_State_Scenarios.xlsx` و `Documentation/System_State_Machine.md/.drawio` (منطق Changeover از ۲۰۲۶-۰۹-۱۶ دست‌نخورده است و با کد فعلی سازگار است).
-- ورودی‌های اصلی محصول: `DOC/State.xlsx` (جدول ورودی/خروجی و UI — سند مرجع اولیه).
+- ورودی‌های اصلی محصول: `Documentation/State.xlsx` (جدول ورودی/خروجی و UI — سند مرجع اولیه).
 
 ---
 
