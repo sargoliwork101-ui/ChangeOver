@@ -31,8 +31,8 @@
   `52/52`، Imbalance `3805/3805`، Changeover `114/114`، Fault `44/44`،
   Protection `61/61`، Jitter `24/24`، McuPowerPath `49/49`، CalLut
   `125/125`، Measurement `2346/2346`، EspLink parser `15/15` و NVM PASS.
-- `node esp_link_panel/Tester/host_test_panel_click.js`: **129/129 PASS**؛
-  `node esp_link_panel/Tester/host_test_scenario_cards.js`: **288/288 PASS**.
+- `node ESP_Calibration/Tester/host_test_panel_click.js`: **129/129 PASS**؛
+  `node ESP_Calibration/Tester/host_test_scenario_cards.js`: **288/288 PASS**.
   jsdom در این پاس نصب و واقعاً اجرا شد؛ این دو suite SKIP نشده‌اند.
 - `python3 tools/make_state_machine_xlsx.py` و
   `python3 tools/make_module_state_machines.py`: workbook سیستمی، ۱۱ workbook
@@ -51,8 +51,8 @@ python3 tools/audit_consistency.py
 bash tools/check_ai_rules.sh
 python3 tools/fix_rtl_comments.py --check
 bash tools/check_firmware_syntax.sh
-node esp_link_panel/Tester/host_test_panel_click.js
-node esp_link_panel/Tester/host_test_scenario_cards.js
+node ESP_Calibration/Tester/host_test_panel_click.js
+node ESP_Calibration/Tester/host_test_scenario_cards.js
 python3 tools/make_state_machine_xlsx.py
 python3 tools/make_module_state_machines.py
 ```
@@ -76,7 +76,7 @@ LittleFS یا power-cycle روی برد انجام نشده است؛ ARM compile
 - جداسازی آستانهٔ قطع باتری به دستور کاربر ۲۰۲۶-۰۹-۲۲: تشخیص غیبت `FAULT_BAT_ABSENT_MV` = 6V، بازیابی همچنان `FAULT_BATTERY_BACK_MV` = 7V (هیسترزیس ۱V).
 - **پروتکل ESP-Link کامل و سه‌مرحله‌ای (۲۰۲۶-۰۹-۲۲/۲۳):** UART بازنویسی‌شده با ۹۲۱۶۰۰ و DMA دوطرفه؛ فریم‌های SET_PARAM/GET_PARAMS/TLM_LIVE/PARAM_REPORT/PARAMS_BULK با payload تا ۱۱۲ بایت؛ ۲۰ پارامتر زندهٔ فقط-RAM (کالیبراسیون جریان/ولتاژ، فیلترها، بازدهی، قطع کانال، سقف و duty فیکس). قرارداد کامل در `ESP_AGENT_SPEC.md` v1.2.
 - **مود تست دستی سراسری v1.2 سمت برد (۲۰۲۶-۰۹-۲۳، کامیت 03f5b8d):** پارامتر ۱۹ → تعلیق شارژر خودکار و درایو مستقیم هر کانال با ۱۶/۱۸؛ state 9 و فلگ b5؛ ددمن ۳s لینک؛ re-arm با ارسال مجدد duty؛ کف سخت‌افزاری (ورودی، JIT، ۱۵٫۰V، سقف، قطع کانال)؛ فریز `Fault_Evaluate` حین مود؛ تست Host ۲۴/۲۴.
-- **پنل وب ESP ممیزی خط‌به‌خط و اصلاح شد (۲۰۲۶-۰۹-۲۳، کامیت 32098b4):** فایل `esp_link_panel/esp_link_panel.ino` در این شاخه مرجع است (چهار اصلاح: نوسازی دوره‌ای ۳۰s جدول پارامترها، کش فونت نسخه‌دار، no-store صفحهٔ اصلی، پیام خطای ورودی نامعتبر).
+- **پنل وب ESP ممیزی خط‌به‌خط و اصلاح شد (۲۰۲۶-۰۹-۲۳، کامیت 32098b4):** فایل `ESP_Calibration/ESP_Calibration.ino` در این شاخه مرجع است (چهار اصلاح: نوسازی دوره‌ای ۳۰s جدول پارامترها، کش فونت نسخه‌دار، no-store صفحهٔ اصلی، پیام خطای ورودی نامعتبر).
 - **کمپین کالیبراسیون بنچ ۲۰۲۶-۰۹-۲۷ (فرم‌ور v1.13→v1.19):** مرحلهٔ LUT توانی جریان (mA زنجیره → توان mW ÷ ولتاژ زندهٔ باتری)؛ بازفیت ch2 از SOLO2 در دو مرحله (v1.17 چگال، v1.18 با ری‌پلی descent، ۱۴ انکر، کف ±3mA)؛ جدول ۱۷-انکرهٔ ch1 از SOLO1 + بازفیت تاپ مقسم پک 62400→66200 در v1.19 (رفع کوری قطع ۱۵V کانال بالایی)؛ آینهٔ LUT هر دو کانال در پنل (v1.16w/v1.16x)؛ اعتبارسنجی نهایی با ران BOTH (هر دو کانال هم‌زمان).
 - **رژیم فلش ۲۰۲۶-۰۹-۲۷ (کامیت `126b0cd`):** overflow ۱۸۴۰ بایتی با تا‌کردن ریاضی جریان به u32 و هرس کد مرده رفع شد؛ سقف NVM صفحهٔ 62K غیرقابل مذاکره ماند.
 - **پروتکل v1.16 + NVM + پنل v1.16x (۲۰۲۶-۰۹-۲۶/۲۷):** ۷۷ پارامتر (آلارم‌ها ۲۷..۳۷، آینهٔ LED/بازر ۳۸..۷۶)، فریم با طول u16 (سقف ۵۱۲)، ماندگاری فلش با CRC و پینگ‌پنگ (به‌جز مودهای تست ۱۵..۱۹)، `MODULE_ESP=1` پیش‌فرض؛ تست هاست شارژر ۳۴/۳۴ + همهٔ گیت‌ها سبز.
@@ -100,7 +100,7 @@ LittleFS یا power-cycle روی برد انجام نشده است؛ ARM compile
 - **Changeover**: فعال؛ cut در v<20800 (یا <21000 با فلگ UI) بعد از ۳s → PB11، reconnect با ورودی + ≥21200 بعد از ۳s.
 - **UI**: فعال؛ سناریوها از snapshot واقعی (اولویت: اضافه‌ولتاژ ورودی، قطع باتری، فول، شارژ فعال، InputOk، BatteryRun).
 - **Protection**: خاموش (`MODULE_PROTECTION=0`)؛ `FAULT_ADC` وضعیت لحظه‌ای است (Set در نامعتبر، Clear در معتبر).
-- **EspLink/Comm**: پروتکل کامل v1.17b پیاده و ممیزی‌شده (فریم‌ها، ۸۳ پارامتر، مود دستی، ددمن، ماندگاری فلش NVM v5)؛ در build روشن (`MODULE_ESP=1`، پیش‌فرض از ممیزی ۲۰۲۶-۰۹-۲۷). پنل وب سمت ESP در `esp_link_panel/`؛ جزئیات در بخش «اتصال و برنامهٔ ESP».
+- **EspLink/Comm**: پروتکل کامل v1.17b پیاده و ممیزی‌شده (فریم‌ها، ۸۳ پارامتر، مود دستی، ددمن، ماندگاری فلش NVM v5)؛ در build روشن (`MODULE_ESP=1`، پیش‌فرض از ممیزی ۲۰۲۶-۰۹-۲۷). پنل وب سمت ESP در `ESP_Calibration/`؛ جزئیات در بخش «اتصال و برنامهٔ ESP».
 
 ## قرارداد BSP
 
@@ -116,7 +116,7 @@ LittleFS یا power-cycle روی برد انجام نشده است؛ ARM compile
 
 - **لینک:** USART1 روی PA9/PA10 با ۹۲۱۶۰۰ 8N1 و DMA دوطرفه (بازنویسی `bsp_uart`، بدون بار CPU؛ audit round 2 رفع TX-stall و RX-abort؛ حلقهٔ TX ۱۰۲۴ بایتی برای بالک ۸۳ پارامتری). CH_PD از PA8 توسط برد کنترل می‌شود؛ برنامهٔ ESP هرگز آن را لمس نمی‌کند.
 - **پروتکل v1.17b:** فریم `AA 55 type len16 LE payload XOR` با payload تا ۵۱۲ بایت؛ SET_PARAM (id+u32 LE) / GET_PARAMS / TLM_LIVE (هر ~100ms) / PARAM_REPORT / PARAMS_BULK (۸۳ پارامتر = ۴۱۶B). پارامترها با کلمپ در مرز تسک + **ماندگاری فلش** (NVM نسخه ۵ با CRC و پینگ‌پنگ، ~۱٫۵s بعد از تغییر؛ مودهای تست ۱۵..۱۹ و میوت ۷۶ گذرا). مود تست دستی: پارامتر ۱۹ + ددمن ۳s + re-arm با ارسال مجدد duty + قطع ۱۵V. فول واقعی از اتمام شارژر (`IsChargeComplete`: هر کانال نصب+فعال در FLOAT) + ساعت ۱ساعته ضدشکار. قرارداد کامل: `ESP_AGENT_SPEC.md` v1.21 و بخش «محدودیت‌ها و الزامات سمت ESP» در `Firmware/Modules/EspLink/README.md`.
-- **پنل وب ESP v1.17b:** `esp_link_panel/` (ESP8266/ESP32، AP «ChangeOver-ESP») — تب‌های وضعیت/کالیبراسیون/تست دستی/تنظیمات (با زیرتب آلارم‌ها + آینهٔ LED/بازر + نمودار مراحل شارژ)، شش پارامتر سناریوی عدد شارژ ۷۷..۸۲ با گارد ورود≥خروج+۱، کپشن «فول» آینه از اتمام شارژر، فرم ورود بنچ بالای جدول (بدون اسکرول افقی)، دستیارهای کالیبراسیون، آینهٔ LUT هر دو کانال برای راستی‌آزمایی، keepalive مستقل از مرورگر + محافظ پنل بسته (۱۰s → ID19=0). ممیزی خط‌به‌خط + سینتکس C++ هر دو مسیر (gcc -Wall -Wextra) + JS (node --check) پاس. عامل ESP باید همین نسخه را مبنا قرار دهد (دستور جاری در README ماژول EspLink).
+- **پنل وب ESP v1.17b:** `ESP_Calibration/` (ESP8266/ESP32، AP «ChangeOver-ESP») — تب‌های وضعیت/کالیبراسیون/تست دستی/تنظیمات (با زیرتب آلارم‌ها + آینهٔ LED/بازر + نمودار مراحل شارژ)، شش پارامتر سناریوی عدد شارژ ۷۷..۸۲ با گارد ورود≥خروج+۱، کپشن «فول» آینه از اتمام شارژر، فرم ورود بنچ بالای جدول (بدون اسکرول افقی)، دستیارهای کالیبراسیون، آینهٔ LUT هر دو کانال برای راستی‌آزمایی، keepalive مستقل از مرورگر + محافظ پنل بسته (۱۰s → ID19=0). ممیزی خط‌به‌خط + سینتکس C++ هر دو مسیر (gcc -Wall -Wextra) + JS (node --check) پاس. عامل ESP باید همین نسخه را مبنا قرار دهد (دستور جاری در README ماژول EspLink).
 - **فعال‌سازی روی برد:** پیش‌فرض `MODULE_ESP=1` — بیلدِ پوش‌شده بدون هیچ تغییری با پنل کار می‌کند.
 
 ## دستور واگذاری به Agentهای فرعی
@@ -382,7 +382,7 @@ IWDG نامی ۱ ثانیه در برابر توقف ~۴۰ms پاک‌کردن �
 توقف فلش مسیر تنظیم‌کننده را از زمان‌بندی نمی‌اندازد · هیچ ریشهٔ تسکی بازگشتی
 نیست و تنها فراخوانی غیرمستقیم بررسی‌نشده `HAL_DMA_Abort_IT` است.
 
-**تست‌های تازه:** دو بلوک در `esp_link_panel/Tester/host_test_esp_link.cpp`
+**تست‌های تازه:** دو بلوک در `ESP_Calibration/Tester/host_test_esp_link.cpp`
 (۹۳ چک، همه سبز) که گام‌به‌گام بودن ارسال و توقف با خطای «بی‌پاسخ» را قفل
 می‌کنند؛ دروازه: `check_ai_rules`، `check_firmware_syntax` (شامل ۹۳ تست ESP)،
 `audit_consistency` (۲۱۴ نامتغیر)، `measure_flash`، `measure_ram` — همه سبز.
@@ -410,7 +410,7 @@ IWDG نامی ۱ ثانیه در برابر توقف ~۴۰ms پاک‌کردن �
 
 ## مستندات مرجع
 
-- قرارداد ESP: `ESP_AGENT_SPEC.md` (v1.16) و برنامهٔ پنل `esp_link_panel/` (v1.16x) + دستورالعمل بنچ `ESP_BENCH_MANUAL.md`
+- قرارداد ESP: `ESP_AGENT_SPEC.md` (v1.16) و برنامهٔ پنل `ESP_Calibration/` (v1.16x) + دستورالعمل بنچ `ESP_BENCH_MANUAL.md`
 - ماژول‌ها: `Firmware/Modules/*/README.md` (Measurement، Charger، Fault، Jitter، McuPowerPath، Changeover، UI، Protection، EspLink).
 - برد و پورت‌ها: `Firmware/Bsp/README.md` و `CubeMX/README.md`.
 - مرجع State/سناریو: `Documentation/System_State_Scenarios.xlsx` و `Documentation/System_State_Machine.md/.drawio` (منطق Changeover از ۲۰۲۶-۰۹-۱۶ دست‌نخورده است و با کد فعلی سازگار است).
@@ -632,13 +632,13 @@ readback failure است؛ summary و modal هر دو ناحیهٔ scrollable د�
 
 مدرک اجرای همین checkout:
 
-- `node esp_link_panel/Tester/host_test_scenario_cards.js`: **331/331 PASS**؛ شامل
+- `node ESP_Calibration/Tester/host_test_scenario_cards.js`: **331/331 PASS**؛ شامل
   summary نام‌محور، checkbox انتخاب همهٔ نمونه‌ها، انتخاب انحصاری SWEEP/فهرست دستی
   با گام قابل‌تنظیم، کلیدهای factory-reset یکدست در همهٔ تنظیمات، حذف جدول/کنترل‌های
   ردیفی، modal یک‌تأییدی، اعمال همهٔ مقادیر معتبر و بسته‌شدن modal.
-- `node esp_link_panel/Tester/host_test_panel_click.js`: **129/129 PASS**.
+- `node ESP_Calibration/Tester/host_test_panel_click.js`: **129/129 PASS**.
 - `./Firmware/Modules/CalLut/Tester/run_host_test_cal_lut.sh`: **159/159 PASS**.
-- `./esp_link_panel/Tester/run_esp_tests.sh`: **112/112 PASS**.
+- `./ESP_Calibration/Tester/run_esp_tests.sh`: **112/112 PASS**.
 - `python3 Firmware/Modules/Charger/Tester/host_test_charger.py`: **53/53 PASS**.
 - `python3 tools/audit_consistency.py`: **444 invariant / 0 finding**؛ قوانین AI،
   syntax firmware، RTL comments و JavaScript syntax نیز PASS.

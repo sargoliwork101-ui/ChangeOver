@@ -101,7 +101,7 @@ ChangeOver
 │   ├── make_state_machine_xlsx.py     ← کتاب ماشین حالت کل برنامه (Documentation/System_State_Machine.xlsx)
 │   ├── make_program_map.py            ← نقشهٔ کل برنامه: فایل‌ها، توابع، ۱۴۳ شناسهٔ ESP، پایه‌ها، فلش، دروازه‌ها (Documentation/Program_Map.xlsx)
 │   ├── fix_rtl_comments.py            ← چک/اصلاح علامت‌های راست‌به‌چپ داخل کامنت‌های فارسی
-│   ├── make_panel_preview.py          ← ساخت کپی آفلاین پنل (esp_link_panel/panel_preview.html)
+│   ├── make_panel_preview.py          ← ساخت کپی آفلاین پنل (ESP_Calibration/panel_preview.html)
 │   ├── panel_preview_server.js        ← سرور محلی همان کپی آفلاین (پورت ۳۰۰۰)
 │   ├── stamp_panel.py                 ← مهر نسخه/تاریخ ساخت روی هدر پنل
 │   ├── measure_flash.py               ← اندازهٔ فلش ایمیج (مقایسهٔ دلتا، نه عدد مطلق)

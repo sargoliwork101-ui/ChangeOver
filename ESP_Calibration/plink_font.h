@@ -1,5 +1,5 @@
 /* plink_font.h - Vazirmatn subset font in PROGMEM.
-   Included by esp_link_panel.ino (single translation unit, order matters).
+   Included by ESP_Calibration.ino (single translation unit, order matters).
    No include guard on purpose: including twice would redefine everything. */
 /* ==================== Vazirmatn Font (PROGMEM) ==================== */
 /* [EN] Vazirmatn v33.0.3 (SIL OFL 1.1, github.com/rastikerdar/vazirmatn), variable wght 400..700,

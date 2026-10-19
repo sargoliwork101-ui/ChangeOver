@@ -30,7 +30,7 @@
 ### اجرا
 
 ```sh
-bash esp_simple_panel/Tester/run_simple_tests.sh
+bash ESP_USER/Tester/run_simple_tests.sh
 ```
 
 خروجی صفر یعنی قبول. برای دیدن جزئیات هر بررسی، همان اسکریپت را دستی اجرا کنید؛
@@ -45,4 +45,4 @@ bash esp_simple_panel/Tester/run_simple_tests.sh
 - این تست «لینک واقعی» ندارد: فریم‌ها با همان مسیر گیرندهٔ برنامه تزریق می‌شوند،
   ولی تایمینگ UART و رفتار برد واقعی اینجا آزمایش نمی‌شود.
 - برای دیدن کل زنجیره (پنل → `/latch/reset` → صف → فریم → پژواک شبیه‌برد)
-  شبیه‌ساز زنده بالا بیاورید: `bash esp_simple_panel/Simulator/run_sim.sh`.
+  شبیه‌ساز زنده بالا بیاورید: `bash ESP_USER/Simulator/run_sim.sh`.

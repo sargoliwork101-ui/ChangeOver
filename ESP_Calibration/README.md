@@ -267,7 +267,7 @@ LED چسبان با پس‌زمینهٔ مات؛ نمودارها با بورد�
 
 ### ممیزی این کارت‌ها
 
-`esp_link_panel/Tester/host_test_scenario_cards.js` صفحهٔ واقعیِ تولیدشده را در
+`ESP_Calibration/Tester/host_test_scenario_cards.js` صفحهٔ واقعیِ تولیدشده را در
 DOM بار می‌کند، در ورودی‌های واقعی تایپ می‌کند و روی خط‌های محاسبه‌شده assert
 می‌زند (۷۶ تست؛ شامل بلوک‌های باند و همگامی ورودی‌های آینه‌ای). مقدار انتظارشده دستی از فرمور درآمده، نه کپی از پنل؛ پس اگر
 فرمول پنل از برد جدا بیفتد تست رد می‌شود. مثل تست کلیک، نبودن jsdom یعنی SKIP.
@@ -378,7 +378,7 @@ node tools/panel_preview_server.js   # http://localhost:3000
 
 | فایل | چه دارد |
 |---|---|
-| `esp_link_panel.ino` | سرفصل + includeها + `setup`/`loop` |
+| `ESP_Calibration.ino` | سرفصل + includeها + `setup`/`loop` |
 | `plink_config.h` | ثابت‌های لینک/پیام/پارامتر، سرفصل CSV بنچ، وضعیت‌های پارسر |
 | `plink_params.h` | پاکت‌های گیره سمت ESP + ترتیب ارسال |
 | `plink_state.h` | بافرها، داده زنده، صف ارسال، آبجکت سرور |

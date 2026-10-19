@@ -3,7 +3,7 @@
  * @brief  [EN] First host tests for the ESP program.
  *
  *         The sketch itself is compiled here, unmodified: this file includes
- *         esp_link_panel.ino, so setup() and loop() and every plink_*.h the
+ *         ESP_Calibration.ino, so setup() and loop() and every plink_*.h the
  *         board flashes go through a real compiler before anybody opens the
  *         case. Until now nothing did that. tools/check_firmware_syntax.sh
  *         looks only at Firmware/, and audit_consistency.py reads the panel
@@ -24,7 +24,7 @@
  * @brief  [FA] نخستین تست‌های هاست برای برنامهٔ ESP.
  *
  *         خود اسکچ اینجا دست‌نخورده کامپایل می‌شود: این فایل
- *         esp_link_panel.ino را include می‌کند، پس setup() و loop() و همهٔ
+ *         ESP_Calibration.ino را include می‌کند، پس setup() و loop() و همهٔ
  *         هدرهایی که روی برد می‌روند پیش از باز کردن جعبه از یک کامپایلر
  *         واقعی رد می‌شوند. تا امروز هیچ‌چیز این کار را نمی‌کرد. همان اجرای
  *         اول نشان داد _Static_assert (کلیدواژهٔ C) در اسکچ ++C به کار رفته
@@ -45,7 +45,7 @@ StubFS LittleFS;
         شاخهٔ ESP8266، بدون هیچ ویرایشی.
    -------------------------------------------------------------------------- */
 #define ESP8266 1
-#include "../esp_link_panel.ino"
+#include "../ESP_Calibration.ino"
 
 #include <iostream>
 #include <string>

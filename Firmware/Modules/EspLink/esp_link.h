@@ -160,7 +160,7 @@
 #define ESPLINK_MSG_PARAM_REPORT      0x11u
 #define ESPLINK_MSG_PARAMS_BULK       0x12u
 /* [EN] Simple panel diag/time messages (0x30..0x32) - compatible with
- *      esp_simple_panel (user panel). The full technical panel does not
+ *      ESP_USER (user panel). The full technical panel does not
  *      use them, but the STM32 must answer them when the simple panel
  *      is connected: TIME_SYNC (ESP->STM 4-byte LE unix sec), DIAG_REQ
  *      (ESP->STM empty, requests full diag), DIAG_DATA (STM->ESP chunked

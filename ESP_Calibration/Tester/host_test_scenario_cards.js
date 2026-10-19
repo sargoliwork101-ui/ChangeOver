@@ -21,7 +21,7 @@
  *      need node, so a missing jsdom SKIPS (exit 0). Run it with:
  *
  *          npm install --no-save jsdom
- *          node esp_link_panel/Tester/host_test_scenario_cards.js
+ *          node ESP_Calibration/Tester/host_test_scenario_cards.js
  *
  * [FA] تست رفتاری هفت کارت سناریوی پنل ESP.
  *
@@ -56,7 +56,7 @@ try {
     } catch (e2) {
         console.log('SKIP: jsdom not installed.');
         console.log('      npm install --no-save jsdom');
-        console.log('      node esp_link_panel/Tester/host_test_scenario_cards.js');
+        console.log('      node ESP_Calibration/Tester/host_test_scenario_cards.js');
         process.exit(0);
     }
 }

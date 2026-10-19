@@ -1,5 +1,5 @@
 /* plink_state.h - RX buffers, live TLM data, TX queue, bench window, HTTP server object.
-   Included by esp_link_panel.ino (single translation unit, order matters).
+   Included by ESP_Calibration.ino (single translation unit, order matters).
    No include guard on purpose: including twice would redefine everything. */
 /* ==================== RX State ==================== */
 static esp_rx_state_t ESP_RX_STATE_T__G__RxState = ESP_RX_WAIT_SOF0;

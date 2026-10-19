@@ -1190,7 +1190,7 @@ static void func__EspLink_SendTelemetry(const measurement_snapshot_t *measuremen
  *              with extended per-channel counts), chunks 1-2 are errors
  *              (5 each, 32 bytes per error), chunks 3-4 are power events
  *              (10 each, 12 bytes per event). Compatible with
- *              esp_simple_panel simple_link.h parser.
+ *              ESP_USER simple_link.h parser.
  *         [FA] ارسال یک چانک DIAG_DATA - سازگار با پارسر پنل ساده.
  */
 static void func__EspLink_SendDiagChunk0(void)

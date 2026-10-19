@@ -3,7 +3,7 @@
 
    چه چیزی جعلی است: Serial (صف بایت دوطرفه)، LittleFS (پوشه‌ای روی دیسک)،
    WiFi، ESP.restart، millis و String.
-   چه چیزی واقعی است: تمام `esp_simple_panel.ino` و `simple_config.h` و
+   چه چیزی واقعی است: تمام `ESP_USER.ino` و `simple_config.h` و
    `simple_state.h` و `simple_panel.h` و `simple_link.h` و `simple_auth.h` و
    `simple_diag.h` و `simple_http.h` و `simple_theme.h` - همان‌طور که برد
    کامپایل می‌کند.

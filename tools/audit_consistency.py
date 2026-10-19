@@ -144,10 +144,10 @@ CHG_H = read("Firmware/Modules/Charger/charger.h")
 CAL_H = read("Firmware/Modules/Measurement/calibration.h")
 BSP_M = read("Firmware/Bsp/Src/bsp_measurement.c")
 BSP_A = read("Firmware/Bsp/Inc/bsp_adc.h")
-P_CFG = read("esp_link_panel/plink_config.h")
-P_PAR = read("esp_link_panel/plink_params.h")
-P_STA = read("esp_link_panel/plink_state.h")
-P_PAN = read("esp_link_panel/plink_panel.h")
+P_CFG = read("ESP_Calibration/plink_config.h")
+P_PAR = read("ESP_Calibration/plink_params.h")
+P_STA = read("ESP_Calibration/plink_state.h")
+P_PAN = read("ESP_Calibration/plink_panel.h")
 PREV = read("tools/panel_preview_server.js")
 IOC_MX = read("CubeMX/CubeIDE.ioc")
 IOC_IDE = read("CubeIDE/CubeIDE.ioc")
@@ -189,7 +189,7 @@ def sec_ids():
     #      NVM slot. This invariant is what stops them creeping back.
     # [FA] شناسه‌های بازنشسته باید در همه‌جا بی‌مالک بمانند.
     retired = sorted(RETIRED_IDS)
-    panel = read("esp_link_panel/plink_panel.h")
+    panel = read("ESP_Calibration/plink_panel.h")
     ok(all(f'id="q{i}"' not in panel and f'id="a{i}"' not in panel
            for i in retired),
        "a retired parameter still has a field in the panel",
@@ -695,7 +695,7 @@ def sec_defaults(ids):
         #      giant send that loses the tail on a slow client.
         # [FA] پنل با تکه‌های chunked از PROGMEM فرستاده می‌شود؛ هم زیر سقف
         #      بماند و هم مسیر ESP دوباره به یک ارسال غول‌پیکر برنگردد.
-        _http = read("esp_link_panel/plink_http.h")
+        _http = read("ESP_Calibration/plink_http.h")
         ok("setContentLength(CONTENT_LENGTH_UNKNOWN)" in _http and
            "sendContent_P(ESP_PANEL_HTML +" in _http,
            "the panel HTTP route must stream PROGMEM chunks",
@@ -896,7 +896,7 @@ def sec_panel(ids):
         words = 5
         ok(hi < words * 32, "pending-mask has no word for the top id",
            f"id {hi} needs word {hi // 32 + 1} of {words}")
-        p_http = read("esp_link_panel/plink_http.h")
+        p_http = read("ESP_Calibration/plink_http.h")
         for w in range(2, words + 1):
             lo_b = (w - 1) * 32
             ok(f"index < {lo_b}u" in p_http or w == words,
@@ -919,8 +919,8 @@ def sec_panel(ids):
         #      را از ساخته‌شدن بازمی‌دارد. دقیقاً به همین شکل بی‌سروصدا وارد شد.
         for esp_file in ("plink_config.h", "plink_params.h", "plink_state.h",
                          "plink_panel.h", "plink_font.h", "plink_link.h",
-                         "plink_http.h", "esp_link_panel.ino"):
-            body = read(f"esp_link_panel/{esp_file}")
+                         "plink_http.h", "ESP_Calibration.ino"):
+            body = read(f"ESP_Calibration/{esp_file}")
             ok("_Static_assert(" not in body,
                "the C++ sketch uses _Static_assert, which no C++ dialect accepts",
                f"{esp_file}: write static_assert; the board cannot build this")
@@ -1338,7 +1338,7 @@ def sec_link():
     #      شد: XOR-8 صددرصد آن دسته را از دست می‌داد و CRC-16 صفر درصد.
     ok(fwd("ESPLINK_FRAME_CHECKSUM_SIZE") == 2,
        "the frame check is not 16-bit", "XOR-8 was blind to same-position bit pairs")
-    ok("func__EspLink_Crc16" in ESP_C and "func__Esp_Crc16" in read("esp_link_panel/plink_link.h"),
+    ok("func__EspLink_Crc16" in ESP_C and "func__Esp_Crc16" in read("ESP_Calibration/plink_link.h"),
        "one side is missing its CRC implementation")
     # [EN] Word-boundary, not substring: a plain `in` test also matches a renamed
     #      symbol like RxCrcErrorX, so it would pass while the counter is gone.
@@ -1347,12 +1347,12 @@ def sec_link():
     #      UINT32_T__G__RxCrcError - a negative lookahead is what is needed.
     # [FA] با مرز کلمه، نه زیررشته: تست ساده با نام تغییریافته هم می‌خواند و پاس
     #      می‌شود در حالی که شمارنده رفته. با موتیشن‌تستِ خودِ همین چک پیدا شد.
-    for nm, txt in (("firmware", ESP_C), ("ESP", read("esp_link_panel/plink_link.h"))):
+    for nm, txt in (("firmware", ESP_C), ("ESP", read("ESP_Calibration/plink_link.h"))):
         ok(re.search(r"RxCrcError(?![0-9A-Za-z_])", txt) and
            re.search(r"RxVersionMismatch(?![0-9A-Za-z_])", txt),
            f"{nm} does not count CRC errors and version mismatches",
            "an unreadable link must be diagnosable, not just silent")
-    ok('\\"vm\\":%lu' in read("esp_link_panel/plink_http.h"),
+    ok('\\"vm\\":%lu' in read("ESP_Calibration/plink_http.h"),
        "the link health counters are not reported to the page",
        "a version-mismatched flash would look exactly like an unplugged cable again")
     ok(re.search(r"function lnkhealth\s*\(", P_PAN) and "lnkhealth(d);" in P_PAN
@@ -1551,7 +1551,7 @@ def sec_preview():
     # [FA] پیش‌نمایش خودکفا یک کپی «تولیدشده» از مارک‌آپ پنل است. کپی کامیت‌شده
     #      دقیقاً همان تلهٔ تکراری است که این ممیز برای آن وجود دارد، پس به آن
     #      اعتماد نمی‌شود: دوباره در حافظه ساخته و مقایسه می‌شود.
-    prev_html = ROOT / "esp_link_panel" / "panel_preview.html"
+    prev_html = ROOT / "ESP_Calibration" / "panel_preview.html"
     if ok(prev_html.exists(), "the standalone panel preview is missing",
           "run tools/make_panel_preview.py"):
         import subprocess
@@ -1562,7 +1562,7 @@ def sec_preview():
            (r.stdout + r.stderr)[-300:])
         after = prev_html.read_text(encoding="utf-8")
         ok(before == after,
-           "esp_link_panel/panel_preview.html is stale",
+           "ESP_Calibration/panel_preview.html is stale",
            "plink_panel.h changed without re-running tools/make_panel_preview.py, "
            "so the preview shows an older page than the firmware serves")
         ok("OFFLINE SHIM" in after and after.index("OFFLINE SHIM") < after.index("function qgraph"),
@@ -1580,7 +1580,7 @@ def sec_preview():
     #      می‌برد، پس اندیس ۲۰ تا ۲۴ - همان شمارش‌های خامی که کل کالیبراسیون
     #      روی آن‌ها بنا شده - در پیش‌نمایش undefined خوانده می‌شدند و بنر
     #      ناهم‌نسخگی هرگز دیده نمی‌شد چون vm/ce نبودند.
-    cfg = read("esp_link_panel/plink_config.h")
+    cfg = read("ESP_Calibration/plink_config.h")
     m = re.search(r"#define\s+ESP_LINK_TLM_FIELD_COUNT\s+(\d+)u?", cfg)
     n_fields = int(m.group(1)) if m else -1
     ok(n_fields > 0, "ESP_LINK_TLM_FIELD_COUNT not found in plink_config.h")
@@ -1848,7 +1848,7 @@ def sec_panel_markup():
          سربرگِ توپُر رندر می‌شدند؛ شمارش کلی div متوازن بود و هیچ دروازه‌ای
          آن را نمی‌گرفت.
     """
-    panel = read(ROOT / "esp_link_panel" / "plink_panel.h")
+    panel = read(ROOT / "ESP_Calibration" / "plink_panel.h")
 
     for css in ("sec", "sx", "simh"):
         for m in re.finditer(r'<div class="%s[^"]*">' % css, panel):

@@ -19,7 +19,7 @@
  *      with an instruction instead of failing. Run it with:
  *
  *          npm install --no-save jsdom
- *          node esp_link_panel/Tester/host_test_panel_click.js
+ *          node ESP_Calibration/Tester/host_test_panel_click.js
  *
  * [FA] تست رفتاری مقادیر کلیک-و-ویرایش پنل.
  *
@@ -47,7 +47,7 @@ try {
 } catch (e) {
     console.log("SKIP: jsdom not installed.");
     console.log("      npm install --no-save jsdom");
-    console.log("      node esp_link_panel/Tester/host_test_panel_click.js");
+    console.log("      node ESP_Calibration/Tester/host_test_panel_click.js");
     process.exit(0);
 }
 

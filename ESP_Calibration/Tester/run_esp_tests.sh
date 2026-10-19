@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # [EN] Build and run the ESP host tests. The sketch itself is compiled here
-#      (esp_link_panel.ino, unmodified, ESP8266 branch) against the Arduino
+#      (ESP_Calibration.ino, unmodified, ESP8266 branch) against the Arduino
 #      stubs in this directory, so a broken ESP build is caught on the PC
 #      instead of at flashing time. -Werror: the board's compiler is the only
 #      other reader this code ever gets.
 # [FA] ساخت و اجرای تست‌های هاست ESP. خود اسکچ اینجا کامپایل می‌شود
-#      (esp_link_panel.ino، دست‌نخورده، شاخهٔ ESP8266) روی استاب‌های Arduino
+#      (ESP_Calibration.ino، دست‌نخورده، شاخهٔ ESP8266) روی استاب‌های Arduino
 #      همین پوشه، تا خرابی بیلد ESP روی PC پیدا شود نه سر فلش کردن.
 set -euo pipefail
 

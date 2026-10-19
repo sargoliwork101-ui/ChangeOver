@@ -1,7 +1,7 @@
 # سیمولاتور زندهٔ پنل ساده
 
 ## چیست
-همان `esp_simple_panel.ino` و `simple_*.h` (بدون یک خط تغییر) روی PC کامپایل و
+همان `ESP_USER.ino` و `simple_*.h` (بدون یک خط تغییر) روی PC کامپایل و
 اجرا می‌شوند؛ پشت آن‌ها یک وب‌سرور واقعی روی سوکت و یک **STM32 شبیه‌سازی‌شده** که
 قاب‌های `TLM_LIVE` (0x10) و `DIAG_DATA` (0x32) را با همان چیدمان `ESP_AGENT_SPEC.md`
 می‌فرستد و `TIME_SYNC` (0x30) و `DIAG_REQ` (0x31) را می‌خواند.
@@ -13,7 +13,7 @@
 
 ## اجرا
 ```sh
-bash esp_simple_panel/Simulator/run_sim.sh
+bash ESP_USER/Simulator/run_sim.sh
 ```
 سپس در مرورگر `http://localhost:3000` — ورود `admin / admin`
 (برای دیدن نقش فقط‌خواندنی: `viewer / viewer`).
@@ -36,7 +36,7 @@ bash esp_simple_panel/Simulator/run_sim.sh
 | `SIMPLE_SIM_LINK_DOWN` | خالی | اگر `1` باشد برد بدون لینک بالا می‌آید؛ برای آزمودن «بازگردانی از فایل» (ساعت/پارامترها/نمودارها) بدون دخالت خود برد |
 
 ## پیش‌نیاز
-`python3 esp_simple_panel/make_simple_preview.py` باید یک‌بار اجرا شده باشد؛ سرور
+`python3 ESP_USER/make_simple_preview.py` باید یک‌بار اجرا شده باشد؛ سرور
 همان shim تب چهارم را از `simple_preview.html` می‌خواند و به صفحه‌ای که خود برنامه
 می‌سازد تزریق می‌کند. اگر فایل نبود، سرور بالا می‌آید ولی بدون تب سیمولاتور و با
 هشدار — صفحهٔ پنل آن‌وقت با مقادیر پیش‌فرض برد کار می‌کند.
@@ -98,5 +98,5 @@ bash esp_simple_panel/Simulator/run_sim.sh
 - پاسخ `setContentLength(CONTENT_LENGTH_UNKNOWN)` بافر و با `Content-Length`
   فرستاده می‌شود (برد چانک‌دار می‌فرستد) و هر پاسخ `Connection: close` دارد.
 - وای‌فای ساخته نمی‌شود؛ فقط نام اکسس‌پوینت گزارش می‌شود.
-- هیچ‌چیز از این پوشه روی برد فلش نمی‌شود: فقط `esp_simple_panel.ino` و
+- هیچ‌چیز از این پوشه روی برد فلش نمی‌شود: فقط `ESP_USER.ino` و
   `simple_*.h` که دست‌نخورده‌اند.

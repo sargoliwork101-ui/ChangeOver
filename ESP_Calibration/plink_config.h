@@ -1,5 +1,5 @@
 /* plink_config.h - link/message/param constants, bench CSV header, Wi-Fi/HTTP constants, parser states.
-   Included by esp_link_panel.ino (single translation unit, order matters).
+   Included by ESP_Calibration.ino (single translation unit, order matters).
    No include guard on purpose: including twice would redefine everything. */
 /* ==================== Link Constants ==================== */
 #define ESP_LINK_BAUD_RATE          921600u

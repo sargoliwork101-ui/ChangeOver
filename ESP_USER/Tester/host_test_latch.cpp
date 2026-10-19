@@ -15,7 +15,7 @@
    - NAK: شناسه و کد ثبت می‌شوند و خانهٔ صف دست نمی‌خورد.
    - پارامترهای عادی (شناسهٔ ۵) دست‌نخورده از مسیر قبلی می‌روند.
 
-   اجرا: bash esp_simple_panel/Tester/run_simple_tests.sh            */
+   اجرا: bash ESP_USER/Tester/run_simple_tests.sh            */
 
 #include "stub_arduino.h"
 #include "stub_web_server.h"

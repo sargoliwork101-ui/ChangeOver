@@ -1,6 +1,6 @@
 # پنل ساده کاربر - ChangeOver - سه صفحه‌ای
 
-پنل کاملا جدا از پنل فنی `esp_link_panel` برای کاربر ساده، با سه تب اصلی.
+پنل کاملا جدا از پنل فنی `ESP_Calibration` برای کاربر ساده، با سه تب اصلی.
 
 ## هدف
 کاربر ساده فقط می‌خواهد بداند:
@@ -206,7 +206,7 @@
 - **بازتولید پس از هر تغییر پنل اجباری است:**
 
   ```sh
-  python3 esp_simple_panel/make_simple_preview.py
+  python3 ESP_USER/make_simple_preview.py
   ```
 
   سازنده خطا می‌دهد (نه هشدار) اگر ایندکس فیلدی که پنل می‌خواند با جدول §۱۵ سند
@@ -218,9 +218,9 @@
 
 ## سیمولاتور زنده (کد واقعی ESP روی PC)
 ```sh
-bash esp_simple_panel/Simulator/run_sim.sh     # سپس http://localhost:3000
+bash ESP_USER/Simulator/run_sim.sh     # سپس http://localhost:3000
 ```
-- خود `esp_simple_panel.ino` و `simple_*.h` کامپایل و اجرا می‌شوند؛ فقط `Serial`،
+- خود `ESP_USER.ino` و `simple_*.h` کامپایل و اجرا می‌شوند؛ فقط `Serial`،
   `WiFi`، `LittleFS` و وب‌سرور استاب شده‌اند.
 - پشت پنل یک STM32 شبیه‌سازی‌شده قاب‌های `TLM_LIVE` و `DIAG_DATA` را با همان
   چیدمان `ESP_AGENT_SPEC.md` می‌فرستد؛ `TIME_SYNC` و `DIAG_REQ` را هم می‌خواند.
@@ -231,7 +231,7 @@ bash esp_simple_panel/Simulator/run_sim.sh     # سپس http://localhost:3000
   (shim هنگام بالا آمدن خوانده می‌شود).
 
 ## ساختار پوشه
-- `esp_simple_panel.ino` - راه‌اندازی
+- `ESP_USER.ino` - راه‌اندازی
 - `simple_config.h` - ثابت‌ها (MSG ها، WiFi، نمودار، دیاگ، کاربر)
 - `simple_state.h` - داده زنده + تاریخچه + کش دیاگ + کاربران
 - `simple_link.h` - پارسر فریم + CRC16 + هندل TLM و DIAG_DATA
@@ -247,12 +247,12 @@ bash esp_simple_panel/Simulator/run_sim.sh     # سپس http://localhost:3000
 - `index.html` / `simple_panel_clean.html` - کپی‌های صفحهٔ سروشده برای مرور راحت
   (هر سه با یک اجرای `make_simple_preview.py` همگام می‌شوند)
 - `Tester/` - تست‌های هاست: صف ریست قفل‌ها و فریم `SET_PARAM` روی PC
-  (`README.md` خودش را دارد؛ اجرا: `bash esp_simple_panel/Tester/run_simple_tests.sh`)
+  (`README.md` خودش را دارد؛ اجرا: `bash ESP_USER/Tester/run_simple_tests.sh`)
 - `README.md` - همین فایل
 
 ## فلش کردن
 1. در Arduino IDE برد `NodeMCU 1.0 (ESP-12E)` یا `LOLIN WEMOS D1 mini`
-2. فایل `esp_simple_panel.ino` باز شود
+2. فایل `ESP_USER.ino` باز شود
 3. LittleFS فعال باشد (اگر نبود، Tools -> Flash Size -> 4MB FS 2MB)
 4. آپلود
 5. به وای‌فای `changeover_userpannel` وصل شوید
@@ -268,10 +268,10 @@ bash esp_simple_panel/Simulator/run_sim.sh     # سپس http://localhost:3000
 
 ## قوانین
 - کامنت‌ها فقط فارسی - استثنای پنل ESP
-- هیچ تغییری در `Firmware/` و `esp_link_panel` نمی‌دهد (به جز افزودن دیاگ به برد که مجاز شد)
+- هیچ تغییری در `Firmware/` و `ESP_Calibration` نمی‌دهد (به جز افزودن دیاگ به برد که مجاز شد)
 - صفحهٔ پنل فقط در `simple_panel.h` ویرایش می‌شود؛ `simple_preview.html` و کپی‌های HTML
   فایل تولیدشده/بازتاب‌اند و دستی ویرایش نمی‌شوند
-- بعد از هر تغییر پنل، `python3 esp_simple_panel/make_simple_preview.py` اجرا شود
+- بعد از هر تغییر پنل، `python3 ESP_USER/make_simple_preview.py` اجرا شود
   (سیمولاتور جامانده از نظر کاربر از «تغییر انجام‌نشده» قابل تشخیص نیست)
 - نام‌گذاری `func__` و `TYPE__G__` مثل پروژه اصلی
 - تک واحد ترجمه

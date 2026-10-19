@@ -26,13 +26,13 @@ const fs = require("fs");
 const path = require("path");
 
 /* ---------- extract the real panel HTML from the panel module ---------- */
-const panelPath = path.join(__dirname, "..", "esp_link_panel", "plink_panel.h");
+const panelPath = path.join(__dirname, "..", "ESP_Calibration", "plink_panel.h");
 const panelSrc = fs.readFileSync(panelPath, "utf8");
 /* [EN] Serve the real embedded Vazirmatn CSS in the preview too. Returning
  *      system fonts made a laptop preview look different from the ESP.
  *      [FA] پیش‌نمایش هم باید همان CSS وزیرمتن جاسازی‌شده را بدهد؛ فونت سیستم
  *      باعث می‌شد ظاهر لپ‌تاپ با خود ESP فرق کند. */
-const fontPath = path.join(__dirname, "..", "esp_link_panel", "plink_font.h");
+const fontPath = path.join(__dirname, "..", "ESP_Calibration", "plink_font.h");
 const fontSrc = fs.readFileSync(fontPath, "utf8");
 const fontStart = fontSrc.indexOf("static const char ESP_PANEL_FONT_CSS");
 const fontEq = fontSrc.indexOf("=", fontStart) + 1;
@@ -57,7 +57,7 @@ if (!FONT_CSS) {
  *      شبیه‌ساز به‌جای آینه، یک نظر کهنهٔ دوم بود. با اشتقاق، فیلد بعدی که به
  *      قاب اضافه شود بدون ویرایش اینجا دیده می‌شود و نبودِ define یک خطای
  *      بلند هنگام بالا آمدن است نه آرایه‌ای که بی‌صدا کوتاه مانده. */
-const configPath = path.join(__dirname, "..", "esp_link_panel", "plink_config.h");
+const configPath = path.join(__dirname, "..", "ESP_Calibration", "plink_config.h");
 const configSrc = fs.readFileSync(configPath, "utf8");
 const tlmMatch = configSrc.match(/#define\s+ESP_LINK_TLM_FIELD_COUNT\s+(\d+)u?/);
 if (!tlmMatch) {

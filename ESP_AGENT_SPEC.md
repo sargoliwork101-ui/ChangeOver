@@ -91,7 +91,7 @@ BSP(c)  = (c - offset) x 24200 / 27573 x gain / 1000        (gain, offset: param
 
 ## 4. Bench capture file (current)
 
-- The column layout is defined by `ESP_BENCHLOG_HEADER` in `esp_link_panel/plink_config.h`.
+- The column layout is defined by `ESP_BENCHLOG_HEADER` in `ESP_Calibration/plink_config.h`.
   That header is the source of truth; this file does not repeat it.
 - Current-channel columns: `raw1/raw2` (counts), `shunt1_uv/shunt2_uv` (mA ≈ µV ÷ 10 with the
   10 mΩ shunt), `unf/filt/iest` (mA after the chain; `iest` equals the filtered current).

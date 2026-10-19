@@ -1,5 +1,5 @@
 /* plink_panel.h - the web panel HTML in PROGMEM (single R"HTML" raw string).
-   Included by esp_link_panel.ino (single translation unit, order matters).
+   Included by ESP_Calibration.ino (single translation unit, order matters).
    No include guard on purpose: including twice would redefine everything. */
 /* ==================== Web Panel (PROGMEM) ==================== */
 static const char ESP_PANEL_HTML[] PROGMEM = R"HTML(<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8">

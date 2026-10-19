@@ -12,7 +12,7 @@
 - **زبان گفتگو:** با کاربر همیشه فارسی صحبت کن.
 - **پاسخ کوتاه:** جواب‌ها خلاصه و ساده باشند؛ جزئیات فنی فقط وقتی که کاربر بخواهد.
 - **چت ساده و خلاصه (دستور کاربر 2026-10-15):** مکالمه با کاربر همیشه ساده، کوتاه و به فارسی باشد. توضیح اضافه نده؛ اگر کاربر توضیح خواست خودش می‌گوید. گزارش‌ها فقط نتیجه و کارهای لازم بعدی باشند، نه شرح فنی طولانی.
-- **پنل ESP (esp_link_panel):** کامنت‌ها و پیام‌های پنل فقط به فارسی نوشته شوند، نه دو زبانه. این استثنای قانون دو زبانه است و فقط برای این پوشه معتبر است.
+- **پنل ESP (ESP_Calibration):** کامنت‌ها و پیام‌های پنل فقط به فارسی نوشته شوند، نه دو زبانه. این استثنای قانون دو زبانه است و فقط برای این پوشه معتبر است.
 
 ## کامنت فایل
 
@@ -341,7 +341,7 @@ at before anything is flashed. Two things count as "the simulated panel":
 
 | artefact | how to refresh | why |
 |---|---|---|
-| `esp_link_panel/panel_preview.html` | `python3 tools/make_panel_preview.py` | standalone file, opens in a browser with no server |
+| `ESP_Calibration/panel_preview.html` | `python3 tools/make_panel_preview.py` | standalone file, opens in a browser with no server |
 | the preview server | restart `node tools/panel_preview_server.js` | it reads the headers at startup, so an already-running server keeps serving the OLD page |
 
 `tools/check_ai_rules.sh` step `[6a2]` regenerates the standalone file, and the

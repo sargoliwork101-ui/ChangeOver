@@ -145,8 +145,8 @@ echo ""
 #      بازتولید در همین‌جا یعنی پیش‌نمایش کهنه هرگز از یک اجرای بررسی جان سالم
 #      به در نمی‌برد.
 echo "[6a2] Regenerate the simulated ESP panel (must be viewable before flashing)"
-python3 tools/make_panel_preview.py >/dev/null || { echo "FAILED to regenerate esp_link_panel/panel_preview.html"; exit 1; }
-echo "      esp_link_panel/panel_preview.html refreshed"
+python3 tools/make_panel_preview.py >/dev/null || { echo "FAILED to regenerate ESP_Calibration/panel_preview.html"; exit 1; }
+echo "      ESP_Calibration/panel_preview.html refreshed"
 
 echo "[6a3] ESP panel inline <script> must parse as JavaScript (blank-page guard)"
 # [EN] v1.34 shipped a page whose entire inline <script> failed to PARSE
@@ -159,7 +159,7 @@ echo "[6a3] ESP panel inline <script> must parse as JavaScript (blank-page guard
 if command -v node >/dev/null 2>&1; then
   python3 - <<'PYJS'
 import re, pathlib
-src = pathlib.Path("esp_link_panel/plink_panel.h").read_text(encoding="utf-8")
+src = pathlib.Path("ESP_Calibration/plink_panel.h").read_text(encoding="utf-8")
 blocks = re.findall(r'<script>([\s\S]*?)</script>', src)
 if not blocks:
     raise SystemExit("no <script> block found in plink_panel.h")

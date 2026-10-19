@@ -31,7 +31,7 @@ make_panel_preview.py - build a STANDALONE html copy of the ESP panel.
      تزریق می‌شود و /t و /m را از یک شبیه‌سازی کوچک چرخهٔ شارژ جواب می‌دهد.
 
 Run: python3 tools/make_panel_preview.py
-Out: esp_link_panel/panel_preview.html
+Out: ESP_Calibration/panel_preview.html
 """
 
 import json
@@ -40,12 +40,12 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SRC = ROOT / "esp_link_panel" / "plink_panel.h"
-FONT = ROOT / "esp_link_panel" / "plink_font.h"
+SRC = ROOT / "ESP_Calibration" / "plink_panel.h"
+FONT = ROOT / "ESP_Calibration" / "plink_font.h"
 PREV = ROOT / "tools" / "panel_preview_server.js"
-CFG = ROOT / "esp_link_panel" / "plink_config.h"
+CFG = ROOT / "ESP_Calibration" / "plink_config.h"
 BSP = ROOT / "Firmware" / "Bsp" / "Src" / "bsp_measurement.c"
-OUT = ROOT / "esp_link_panel" / "panel_preview.html"
+OUT = ROOT / "ESP_Calibration" / "panel_preview.html"
 
 
 def c_define(path, name):

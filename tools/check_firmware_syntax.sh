@@ -91,7 +91,7 @@ done
 #      تنها کامپایلری که آن را می‌خواند Arduino IDE بود، سر فلش کردن. چون ++C است
 #      نه C، گام جداگانهٔ خودش را دارد.
 echo "--- ESP sketch (C++) / اسکچ ESP ---"
-./esp_link_panel/Tester/run_esp_tests.sh
+./ESP_Calibration/Tester/run_esp_tests.sh
 
 # [EN] Module host testers (tidy-up 2026-10-05): the UI, Charger and
 #      Imbalance testers existed but no gate ever ran them, so a red test

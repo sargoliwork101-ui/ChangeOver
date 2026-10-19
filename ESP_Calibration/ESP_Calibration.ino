@@ -1,5 +1,5 @@
 /**
- * @file    esp_link_panel.ino
+ * @file    ESP_Calibration.ino
  * @brief   [EN] ESP-side ESP-Link bridge: exchanges binary frames with the STM32 over UART
  *               (921600 8N1, ESP_AGENT_SPEC.md) and serves a dark RTL web panel (Vazirmatn).
  *               v1.14 (user order 2026-09-25): the charge tab gains a live SVG STAGE GRAPH

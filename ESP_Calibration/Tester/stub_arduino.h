@@ -4,7 +4,7 @@
  *              to compile and run on a PC.
  *
  *         The ESP program had no compile check and no test of any kind: the
- *         host syntax script never looked at esp_link_panel/, so every edit
+ *         host syntax script never looked at ESP_Calibration/, so every edit
  *         to the link protocol, the HTTP handlers or the parameter table was
  *         carried straight to a board and found there, by hand. These stubs
  *         close that gap. They are deliberately thin - they implement the
@@ -23,7 +23,7 @@
  *              کامپایل و اجرا شود.
  *
  *         برنامهٔ ESP نه چک کامپایل داشت نه هیچ تستی: اسکریپت syntax هاست
- *         اصلاً به esp_link_panel/ نگاه نمی‌کرد، پس هر تغییر در پروتکل لینک،
+ *         اصلاً به ESP_Calibration/ نگاه نمی‌کرد، پس هر تغییر در پروتکل لینک،
  *         هندلرهای HTTP یا جدول پارامترها مستقیم روی برد می‌رفت و همان‌جا
  *         دستی پیدا می‌شد. این استاب‌ها همین شکاف را می‌بندند. عمداً نازک‌اند:
  *         فقط رفتاری را پیاده می‌کنند که فرم‌ور واقعاً به آن تکیه دارد، تا

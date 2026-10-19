@@ -33,8 +33,8 @@ make_simple_preview.py - ساخت فایل مستقل سیمولاتور پنل 
      نشان نمی‌دهد و فقط برای کامل‌بودن قاب ساخته می‌شوند. سرعت و ضریب‌ها با
      کامنت مشخص‌اند.
 
-اجرا:  python3 esp_simple_panel/make_simple_preview.py
-خروجی: esp_simple_panel/simple_preview.html
+اجرا:  python3 ESP_USER/make_simple_preview.py
+خروجی: ESP_USER/simple_preview.html
 """
 
 import json

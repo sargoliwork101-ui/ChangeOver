@@ -1,7 +1,7 @@
 /* main.cpp - اجرای واقعی برنامهٔ پنل ساده روی PC
    فقط فارسی - مثل بقیهٔ این پوشه
 
-   این فایل خودِ `../esp_simple_panel.ino` را include می‌کند: نه کپی، نه
+   این فایل خودِ `../ESP_USER.ino` را include می‌کند: نه کپی، نه
    بازنویسی. پس `setup()` و `loop()` که در مرورگر کار می‌کنند همان‌هایی هستند
    که روی ESP8266 فلش می‌شوند و پشت آن‌ها:
    - `stub_web_server.h` یک وب‌سرور واقعی روی سوکت TCP (پورت پیش‌فرض ۳۰۰۰)،
@@ -14,12 +14,12 @@
      `make_simple_preview.py` ساخته در `</head>` تزریق می‌کند؛ بدنهٔ پنل
      دست‌نخورده است.
 
-   اجرا:  esp_simple_panel/Simulator/run_sim.sh
+   اجرا:  ESP_USER/Simulator/run_sim.sh
 */
 #include "stub_arduino.h"
 #include "stub_web_server.h"
 
-#include "../esp_simple_panel.ino"   /* خود برنامه، دست‌نخورده */
+#include "../ESP_USER.ino"   /* خود برنامه، دست‌نخورده */
 
 #include "sim_board.h"
 
@@ -120,7 +120,7 @@ static void func__Sim_LoadShim(void)
     if (!ifstream__input)
     {
         printf("[sim] هشدار: %s پیدا نشد؛ صفحه بدون تب سیمولاتور سرو می‌شود.\n", string__path.c_str());
-        printf("[sim] برای ساختش: python3 esp_simple_panel/make_simple_preview.py\n");
+        printf("[sim] برای ساختش: python3 ESP_USER/make_simple_preview.py\n");
         return;
     }
 

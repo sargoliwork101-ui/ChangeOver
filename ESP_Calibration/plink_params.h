@@ -1,5 +1,5 @@
 /* plink_params.h - ESP-side parameter envelopes (clamp mirror) + transmit priority order.
-   Included by esp_link_panel.ino (single translation unit, order matters).
+   Included by ESP_Calibration.ino (single translation unit, order matters).
    No include guard on purpose: including twice would redefine everything. */
 /* ==================== Parameter Ranges (STM32 clamps too) ==================== */
 /* [EN] ID: 0..1 offset, 2..3 gain, 4..6 mV offset (signed), 7 median 1..15, 8 avg window 1..300 (v1.4, raised in v1.9), 9..10 reserved (ETA formula removed 2026-10-11; rejected),

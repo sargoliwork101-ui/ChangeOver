@@ -120,8 +120,8 @@ def main():
     check = "--check" in sys.argv
     targets = sorted(
         glob.glob("Firmware/**/*.[ch]", recursive=True)
-        + glob.glob("esp_link_panel/*.h")
-        + glob.glob("esp_link_panel/*.ino")
+        + glob.glob("ESP_Calibration/*.h")
+        + glob.glob("ESP_Calibration/*.ino")
         + glob.glob("tools/*.js"))
     total, files = 0, 0
     for path in targets:

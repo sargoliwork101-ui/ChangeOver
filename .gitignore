@@ -18,14 +18,14 @@ __pycache__/
 ~$*
 *.tmp
 
-# node tooling for the optional panel behaviour test (esp_link_panel/Tester)
+# node tooling for the optional panel behaviour test (ESP_Calibration/Tester)
 node_modules/
 
 # generated diagnostic snapshot, not source
-esp_link_panel/chart_now.svg
+ESP_Calibration/chart_now.svg
 
 # [EN] ESP host-test binaries / [FA] باینری تست هاست ESP
-esp_link_panel/Tester/build/
+ESP_Calibration/Tester/build/
 
 # [EN] host flash-measurement objects / [FA] آبجکت‌های اندازه‌گیری فلش روی هاست
 /tmp/flashmeasure/

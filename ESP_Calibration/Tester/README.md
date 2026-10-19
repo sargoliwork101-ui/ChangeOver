@@ -41,11 +41,11 @@ node, so the test skips with exit code 0 when jsdom is absent:
 
 ```sh
 npm install --no-save jsdom
-node esp_link_panel/Tester/host_test_panel_click.js
-node esp_link_panel/Tester/host_test_scenario_cards.js
+node ESP_Calibration/Tester/host_test_panel_click.js
+node ESP_Calibration/Tester/host_test_scenario_cards.js
 ```
 
-`node_modules/` is git-ignored. The test reads `esp_link_panel/panel_preview.html`,
+`node_modules/` is git-ignored. The test reads `ESP_Calibration/panel_preview.html`,
 so run `python3 tools/make_panel_preview.py` first if you have edited
 `plink_panel.h` (`audit_consistency.py` fails if that file is stale, so a normal
 full run already covers it).
@@ -110,11 +110,11 @@ caught:
 
 ```sh
 npm install --no-save jsdom
-node esp_link_panel/Tester/host_test_panel_click.js
+node ESP_Calibration/Tester/host_test_panel_click.js
 ```
 
 پوشهٔ `node_modules/` در gitignore است. تست فایل
-`esp_link_panel/panel_preview.html` را می‌خواند، پس اگر `plink_panel.h` را ویرایش
+`ESP_Calibration/panel_preview.html` را می‌خواند، پس اگر `plink_panel.h` را ویرایش
 کرده‌اید اول `python3 tools/make_panel_preview.py` را اجرا کنید (ممیزی اگر آن فایل
 کهنه باشد خطا می‌دهد، پس اجرای کامل عادی خودش این را پوشش می‌دهد).
 

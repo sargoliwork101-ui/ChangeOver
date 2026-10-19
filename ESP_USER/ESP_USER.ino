@@ -1,5 +1,5 @@
 /**
- * @file    esp_simple_panel.ino
+ * @file    ESP_USER.ino
  * @brief   پنل ساده کاربر - فقط نمایش وضعیت، بدون تنظیمات فنی
  *          برای همان ESP8266 و همان برد ChangeOver
  *          وای‌فای: changeover_userpannel / 123456789

@@ -195,7 +195,7 @@ def numbers(txt):
 SOURCE_GLOBS = [
     ("Firmware", "Firmware/**/*.[ch]"),
     ("CubeIDE/Core", "CubeIDE/Core/**/*.[ch]"),
-    ("esp_link_panel", "esp_link_panel/*.[hino]*"),
+    ("ESP_Calibration", "ESP_Calibration/*.[hino]*"),
     ("tools", "tools/*.py"),
 ]
 
@@ -411,7 +411,7 @@ def build():
         ["برگه", "چه چیزی داخلش است", "از کجا خوانده می‌شود"],
         [
             ["۱ فایل‌ها", "هر فایل سورس، نقش آن (خلاصهٔ دوزبانهٔ هدر فایل)، تعداد خط، تعداد تابع و ماکرو",
-             "خود فایل‌های Firmware/، CubeIDE/Core/، esp_link_panel/، tools/"],
+             "خود فایل‌های Firmware/، CubeIDE/Core/، ESP_Calibration/، tools/"],
             ["۲ توابع", f"{len(funcs)} تابع با نام، فایل، شمارهٔ خط و خلاصهٔ @brief خود تابع",
              "بلوک مستند بالای هر تابع"],
             ["۳ پارامترهای ESP", f"{len(params)} شناسهٔ سیم با نوع/واحد/پیش‌فرض/بازه و ماندگاری NVM",

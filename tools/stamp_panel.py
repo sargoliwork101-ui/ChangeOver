@@ -33,7 +33,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PANEL = ROOT / "esp_link_panel" / "plink_panel.h"
+PANEL = ROOT / "ESP_Calibration" / "plink_panel.h"
 
 STAMP_RE = re.compile(r'(<span class="bs" id="bs">build )([0-9a-f]{7}|_______)(</span>)')
 BLANK = "_______"

@@ -695,7 +695,7 @@ def test_charge_profile_v112():
     text_h = CHARGER_H.read_text()
     text_esph = ESP_LINK_H.read_text()
     text_espc = ESP_LINK_C.read_text()
-    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
+    ino = "\n".join((ROOT / "ESP_Calibration" / f).read_text(encoding="utf-8") for f in ["ESP_Calibration.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
     cal_h = (ROOT / "Firmware/Modules/Measurement/calibration.h").read_text()
 
     # --- charger.h declares the profile API + ids matching esp_link.h ---
@@ -917,7 +917,7 @@ def test_charger_persistence_v114():
     flash_h = (ROOT / "Firmware/Bsp/Inc/bsp_flash.h").read_text(encoding="utf-8")
     app_c = (ROOT / "Firmware/App/Src/app.c").read_text(encoding="utf-8")
     ld = (ROOT / "CubeIDE/STM32CubeIDE/STM32F103C8TX_FLASH.ld").read_text(encoding="utf-8")
-    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
+    ino = "\n".join((ROOT / "ESP_Calibration" / f).read_text(encoding="utf-8") for f in ["ESP_Calibration.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
 
     check((ROOT / "Firmware/Bsp/Src/bsp_flash.c").exists() and
           (ROOT / "Firmware/Bsp/Inc/bsp_flash.h").exists() and
@@ -1635,7 +1635,7 @@ def test_alarms_tab_v115():
     text_fh = FAULT_H.read_text()
     text_esph = ESP_LINK_H.read_text()
     text_espc = ESP_LINK_C.read_text()
-    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
+    ino = "\n".join((ROOT / "ESP_Calibration" / f).read_text(encoding="utf-8") for f in ["ESP_Calibration.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
 
     # --- id match: fault 27..34 and charger 35..37 identical on both sides ---
     fault_pairs = [("FAULT_ALARM_PARAM_DISCONNECT_MV", "ESPLINK_PARAM_FAULT_ALARM_DISCONNECT_MV", 27),
@@ -1889,7 +1889,7 @@ def test_ui_mirror_v116():
     text_esph = ESP_LINK_H.read_text()
     text_espc = ESP_LINK_C.read_text()
     text_uih = (ROOT / "Firmware/Modules/Ui/ui_led.h").read_text()
-    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
+    ino = "\n".join((ROOT / "ESP_Calibration" / f).read_text(encoding="utf-8") for f in ["ESP_Calibration.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
     prev = (ROOT / "tools/panel_preview_server.js").read_text()
 
     # --- frame v2: u16 LE length, 6-byte header, CRC-16, 512 ceiling, BOTH sides ---
@@ -2145,7 +2145,7 @@ def test_ui_mirror_v117():
     ماندگاری مثل بقیه جز میوت ۷۶؛ گارد و آینه و کارت‌های جدید پنل."""
     text_uih = (ROOT / "Firmware/Modules/Ui/ui_led.h").read_text()
     text_uic = (ROOT / "Firmware/Modules/Ui/ui_led.c").read_text()
-    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
+    ino = "\n".join((ROOT / "ESP_Calibration" / f).read_text(encoding="utf-8") for f in ["ESP_Calibration.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
     prev = (ROOT / "tools/panel_preview_server.js").read_text()
 
     # --- board boot defaults (the UI_* macros stay the single source) ---
@@ -2222,7 +2222,7 @@ def test_ui_mirror_v117b():
     text_ch = CHARGER_H.read_text()
     text_cc = CHARGER_C.read_text()
     text_uic = (ROOT / "Firmware/Modules/Ui/ui_led.c").read_text()
-    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
+    ino = "\n".join((ROOT / "ESP_Calibration" / f).read_text(encoding="utf-8") for f in ["ESP_Calibration.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
     prev = (ROOT / "tools/panel_preview_server.js").read_text()
 
     # --- charger: IsChargeComplete = installed+enabled, all in FLOAT ---
@@ -2411,14 +2411,14 @@ def test_telemetry_frame_pins_v116c():
     # [FA] اندازه از تعداد فیلد مشتق می‌شود نه اینکه روی ۸۴ منجمد بماند. هدف
     #      این چک هم‌خوانی اندازه با تعداد فیلدهاست، نه اینکه هرگز بزرگ نشود.
     tlm_fields = int(re.search(r"#define ESP_LINK_TLM_FIELD_COUNT\s+(\d+)u",
-                               (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1))
+                               (ROOT / "ESP_Calibration" / "plink_config.h").read_text()).group(1))
     tlm_size = int(re.search(r"#define ESPLINK_TLM_PAYLOAD_SIZE\s+(\d+)u", esp_h).group(1))
     check(tlm_size == 4 + (tlm_fields * 4),
           f"TLM payload size must be 2 seq + 2 flags + {tlm_fields}x4 = "
           f"{4 + tlm_fields * 4}, got {tlm_size} - any added field without a matching "
           "size bump truncates silently at SendFrame")
     check(int(re.search(r"#define ESP_LINK_TLM_SIZE\s+(\d+)u",
-              (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1)) == tlm_size,
+              (ROOT / "ESP_Calibration" / "plink_config.h").read_text()).group(1)) == tlm_size,
           "the ESP's expected TLM size must equal the firmware's payload size, or every "
           "frame is rejected as malformed")
     # [EN] Slice INSIDE SendTelemetry only: from right after its opening
@@ -2596,7 +2596,7 @@ def test_two_loop_pid_v124():
     text_c = CHARGER_C.read_text()
     text_esph = ESP_LINK_H.read_text()
     text_espc = ESP_LINK_C.read_text()
-    ino = "\n".join((ROOT / "esp_link_panel" / f).read_text(encoding="utf-8") for f in ["esp_link_panel.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
+    ino = "\n".join((ROOT / "ESP_Calibration" / f).read_text(encoding="utf-8") for f in ["ESP_Calibration.ino", "plink_config.h", "plink_params.h", "plink_state.h", "plink_panel.h", "plink_font.h", "plink_link.h", "plink_http.h"])
 
     # --- 1. the 10 wire ids are dense 83..92 and agree on BOTH sides ---
     names = [f"{loop}_{f}" for loop in ("CURRENT", "VOLTAGE")
@@ -2952,7 +2952,7 @@ def test_min_select_handover_v124():
           "spec section 12 must explain how two loops drive one output")
     check("199511" in spec,
           "the spec's bumpless claim must cite the measured integrator value")
-    panel = (ROOT / "esp_link_panel" / "plink_panel.h").read_text(encoding="utf-8")
+    panel = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text(encoding="utf-8")
     fa_integ = "199511".translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
     check("دو حلقه چطور یک duty را می‌رانند" in panel and fa_integ in panel,
           "the panel card must carry the same concrete explanation, in the Persian "
@@ -2963,7 +2963,7 @@ def test_min_select_handover_v124():
     #        PID row was deleted, which made ap() build u93..u97 = undefined and
     #        put five phantom ids in the settings backup - the same class of bug
     #        as the v1.22 AIDS/ADEF mismatch. ---
-    ino = (ROOT / "esp_link_panel" / "plink_panel.h").read_text(encoding="utf-8")
+    ino = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text(encoding="utf-8")
     m = re.search(r"for\(let _i=27;_i<=(\d+);_i\+\+\)AIDS", ino)
     check(m, "the panel must build AIDS from a bounded loop")
     pdef = re.search(r"const PDEF=\[([^\]]*)\]", ino).group(1).split(",")
@@ -3141,8 +3141,8 @@ def test_battery_card_uses_measurement_current_not_legacy_iest():
     """The prominent card must show filtered Measurement current; iest stays
     in the per-channel diagnostics table so a stale legacy ETA cannot hide the
     raw -> filtered -> LUT mismatch."""
-    panel = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
-    preview = (ROOT / "esp_link_panel" / "panel_preview.html").read_text()
+    panel = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text()
+    preview = (ROOT / "ESP_Calibration" / "panel_preview.html").read_text()
     check("جریان باتری (کالیبره)" in panel and "جریان باتری (کالیبره)" in preview,
           "both live panel sources must label the main card as calibrated battery current")
     check("$('ie'+n).innerHTML=t[b+3]" in panel and
@@ -3245,7 +3245,7 @@ def test_param_ranges_match_panel_v125():
        که ۶۶ و ۶۸ در آن‌ها شناسهٔ پارامترند نه مقدار - قید رابطه‌ای در فیلدی که
        همه‌جای دیگر مقدار ادبی نگه می‌دارد."""
     h = ESP_LINK_H.read_text()
-    params_h = (ROOT / "esp_link_panel" / "plink_params.h").read_text()
+    params_h = (ROOT / "ESP_Calibration" / "plink_params.h").read_text()
 
     def panel_arr(name):
         m = re.search(r"INT32_T__G__" + name + r"\[ESP_PARAM_COUNT\] = \{([^}]*)\}", params_h)
@@ -3291,8 +3291,8 @@ def test_benchlog_row_matches_header_v125():
        بود در حالی که تعداد واقعی ۹۳ است، پس هرچه بعد از بلوک پارامتر می‌آمد
        زیر عنوان اشتباه نوشته می‌شد. از v1.23 غلط بود و کسی نفهمید، چون عنوان
        متن است در یک فایل و ردیف جاوااسکریپت است در فایلی دیگر."""
-    cfg = (ROOT / "esp_link_panel" / "plink_config.h").read_text()
-    pan = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
+    cfg = (ROOT / "ESP_Calibration" / "plink_config.h").read_text()
+    pan = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text()
 
     # --- count the column NAMES declared in the header block ---
     blk = re.search(r"#define ESP_BENCHLOG_HEADER(.*?)(?=\n#define )", cfg, re.S).group(1)
@@ -3395,7 +3395,7 @@ def test_section_parameter_help_v125():
        دستی‌کپی‌شده همان چیزی است که قبلاً در این پروژه پوسیده. تلهٔ اصلی این
        است که بخشی شناسه‌ای را اعلام کند که در جدول نیست: آن‌وقت حباب بی‌صدا
        همان پارامتر را جا می‌اندازد و فهرست کامل به نظر می‌رسد."""
-    ino = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
+    ino = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text()
 
     # [EN] v1.73 (user order: "remove the ! badge on every section so the code
     #      gets lighter; explain above every section what the variables mean").
@@ -3437,7 +3437,7 @@ def test_section_parameter_help_v125():
           "change but the panel never names")
 
     count = int(re.search(r"#define ESP_PARAM_COUNT\s+(\d+)u",
-                          (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1))
+                          (ROOT / "ESP_Calibration" / "plink_config.h").read_text()).group(1))
     stray = sorted(i for i in px if i >= count)
     check(not stray, f"PX describes ids that do not exist: {stray}")
 
@@ -3470,14 +3470,14 @@ def test_theme_contrast_and_param_coverage_v125():
        اندازه‌گیری نشان داد متن هیچ‌وقت مشکل نبود و همه AA را رد می‌کردند؛ ایراد
        این بود که سطح‌ها از هم تشخیص داده نمی‌شدند، پس کل صفحه یک ورق تخت بود.
        این تست کنتراست را حساب می‌کند نه اینکه به ظاهر کدهای رنگ اعتماد کند."""
-    ino = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
+    ino = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text()
 
     # ---------- every parameter is explained, and reachable from a section ----------
     px_blk = re.search(r"const PX=\{(.*?)\n?\};", ino, re.S)
     check(px_blk is not None, "the PX help table must exist")
     px = set(int(m) for m in re.findall(r"(\d+):\['", px_blk.group(1)))
     count = int(re.search(r"#define ESP_PARAM_COUNT\s+(\d+)u",
-                          (ROOT / "esp_link_panel" / "plink_config.h").read_text()).group(1))
+                          (ROOT / "ESP_Calibration" / "plink_config.h").read_text()).group(1))
     missing = sorted(set(range(count)) - px)
     check(not missing,
           f"every parameter must be explained on the page; missing: {missing}")
@@ -3603,7 +3603,7 @@ def test_stage_graph_is_current_vs_voltage_v3():
        عمودی ولتاژ بود و جریان اصلاً روی تصویر نبود. حالا صفحهٔ واقعی
        جریان-ولتاژ است: پای بالک عمودی روی سقف جریان و پای ابزورب افقی روی
        ولتاژ هدف."""
-    ino = (ROOT / "esp_link_panel" / "plink_panel.h").read_text()
+    ino = (ROOT / "ESP_Calibration" / "plink_panel.h").read_text()
     # [EN] qchk() is defined BEFORE qgraph() in the file, so slice forwards
     #      from qgraph to the next top-level function, not to qchk.
     # [FA] qchk پیش از qgraph تعریف شده، پس باید رو به جلو برش زد.
@@ -3690,10 +3690,10 @@ def test_direct_lut_push_v166():
     esp_c = ESP_LINK_C.read_text(encoding="utf-8")
     meas_c = MEASUREMENT_C.read_text(encoding="utf-8")
     app_c = (ROOT / "Firmware/App/Src/app.c").read_text(encoding="utf-8")
-    ino = (ROOT / "esp_link_panel/plink_panel.h").read_text(encoding="utf-8")
-    sketch = (ROOT / "esp_link_panel/esp_link_panel.ino").read_text(encoding="utf-8")
-    plink_http = (ROOT / "esp_link_panel/plink_http.h").read_text(encoding="utf-8")
-    plink_link = (ROOT / "esp_link_panel/plink_link.h").read_text(encoding="utf-8")
+    ino = (ROOT / "ESP_Calibration/plink_panel.h").read_text(encoding="utf-8")
+    sketch = (ROOT / "ESP_Calibration/ESP_Calibration.ino").read_text(encoding="utf-8")
+    plink_http = (ROOT / "ESP_Calibration/plink_http.h").read_text(encoding="utf-8")
+    plink_link = (ROOT / "ESP_Calibration/plink_link.h").read_text(encoding="utf-8")
 
     # ---------- the storage path is SEPARATE, which is the actual order ----------
     check(re.search(r"CAL_LUT_PAGE_A_ADDR\s+0x0800F000u", cal_lut_h) and
@@ -3718,7 +3718,7 @@ def test_direct_lut_push_v166():
           re.search(r"CAL_LUT_POINTS_MIN\s+2u", cal_lut_h),
           "the per-channel point window (2..24) must be declared where both sides can mirror it")
     check(re.search(r"ESP_LUT_POINTS_MAX\s+24u",
-                    (ROOT / "esp_link_panel/plink_config.h").read_text(encoding="utf-8")),
+                    (ROOT / "ESP_Calibration/plink_config.h").read_text(encoding="utf-8")),
           "the ESP must mirror the board's 24-point cap, or it would send a table the board refuses")
 
     # ---------- the table travels as its own messages, never as parameters ----------
@@ -3728,7 +3728,7 @@ def test_direct_lut_push_v166():
         check(re.search(r"ESPLINK_MSG_%s\s+%s" % (name, value), esp_h),
               "message %s must be defined on the STM32 side" % name)
         check(re.search(r"ESP_MSG_%s\s+%s" % (name, value),
-                        (ROOT / "esp_link_panel/plink_config.h").read_text(encoding="utf-8")),
+                        (ROOT / "ESP_Calibration/plink_config.h").read_text(encoding="utf-8")),
               "message %s must be mirrored on the ESP side with the SAME id" % name)
     check("func__EspLink_HandleLutFrame" in esp_c and "func__EspLink_SendLutAck" in esp_c,
           "the STM32 must handle the LUT frames and acknowledge every one of them")
@@ -4053,7 +4053,7 @@ def test_panel_calibration_requires_readback_v127():
     calmodalApply() باید برای هر پارامتر معتبر از setv() سریالی استفاده کند
     و بازخوانی متناظر تله‌متری را ببیند.
     """
-    panel = (ROOT / "esp_link_panel/plink_panel.h").read_text(encoding="utf-8")
+    panel = (ROOT / "ESP_Calibration/plink_panel.h").read_text(encoding="utf-8")
     check("async function calapply()" in panel,
           "the panel must keep the explicit calibration apply function")
     body = panel.split("async function calapply()", 1)[1].split("/* ---------- v1.66", 1)[0]
