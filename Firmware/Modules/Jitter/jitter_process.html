@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>فرآیند جیتر (تریپ سخت‌افزاری) — توضیح ساده</title>
+<title>فرآیند Jitter (trip سخت‌افزاری) — توضیح ساده</title>
 <style>
   body { font-family: Vazirmatn, Tahoma, sans-serif; background:#12151B; color:#E6EAF2; margin:0; padding:24px 14px 48px; line-height:1.9; }
   .wrap { max-width: none; margin: 0; }
@@ -53,15 +53,15 @@
 <h2>فلوچارت</h2>
 <div class="card"><div id="flow"></div><p class="small" id="legend"></p></div>
 <h2>درخت کد</h2>
-<p class="small">درخت واقعی کد است؛ روی هر گره کلیک کن تا شاخه‌اش باز یا بسته شود.</p>
+<p class="small">درخت واقعی کد است؛ روی هر گره click کن تا شاخه‌اش باز یا بسته شود.</p>
 <div class="card"><div id="tree"></div></div>
 <h2>شرط‌ها و حفاظت‌ها</h2>
 <table id="conds"><tr><th style="width:26%">اگر این اتفاق افتاد</th><th style="width:37%">برنامه چه کار می‌کند</th><th>عددش</th></tr></table>
 <h2>فرمان‌ها و خروجی‌ها</h2>
 <table id="outs"><tr><th style="width:26%">به کجا</th><th style="width:37%">چه فرمانی / چه خروجی‌ای</th><th>کی و با چه شرطی</th></tr></table>
-<div class="card" style="background:#2E2A18;border-color:#BF8F00"><b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ اول از روی کد چک می‌کنیم، بعد اصلاح می‌کنیم.</div>
+<div class="card" style="background:#2E2A18;border-color:#BF8F00"><b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ اول از روی کد check می‌کنیم، بعد اصلاح می‌کنیم.</div>
 </div>
-<script>const DATA = {"file": "jitter_process.html", "title": "فرآیند جیتر (تریپ سخت‌افزاری) — توضیح ساده", "sub": "جیتر نگهبان سخت‌افزاری اضافه‌جریان است: کمپراتور روی برد در چند میکروثانیه تریپ می‌دهد و این ماژول آن را برای هر کانال قفل می‌کند تا شارژر ببیند.", "steps": ["کمپراتور سخت‌افزاری هر کانال جدا دیده‌بانی می‌کند؛ وقتی جریان از حد سخت‌افزار رد شود، وقفه می‌آید.", "این ماژول برای همان کانال یک پرچم «تریپ» قفل می‌کند؛ پرچم تا وقتی شارژر آن را پاک نکند می‌ماند.", "شارژر پرچم را می‌خواند: کانال را همان لحظه متوقف می‌کند، بعد از ۳ ثانیه یکی‌یکی احیا می‌کند و در احیا پرچم را پاک می‌کند.", "شمارش تریپ و تریپ سوم و قطع نهایی کار شارژر است، نه این ماژول؛ این‌جا فقط دیدن و قفل‌کردن رویداد است."], "example": ["جریان کانال ۱ ناگهان از حد کمپراتور رد می‌شود؛ وقفه می‌آید و پرچم trip کانال ۱ قفل می‌شود.", "شارژر در پاس بعدی پرچم را می‌بیند، کانال ۱ را متوقف می‌کند و کانال ۲ به کارش ادامه می‌دهد.", "بعد از ۳ ثانیه نوبت احیای کانال ۱ می‌رسد؛ شارژر پرچم را پاک و با duty کمتر شروع می‌کند."], "flow": [{"k": "sec", "c": "navy", "t": "بخش ۱: مسیر trip — از کمپراتور تا شارژر"}, {"k": "pill", "c": "navy", "t": "کمپراتور سخت‌افزاری هر کانال آماده است", "ref": "func__Jitter_Run + وقفهٔ BSP", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Jitter/jitter.c#L40"}, {"k": "dia", "c": "yellow", "t": "وقفهٔ تریپ کانالی آمد؟", "side": {"c": "gray", "l": ["تریپی نیامده: پرچمی نیست و این پاس کاری نیست"], "d": "r", "lab": "نه", "ret": "END"}, "elab": "بله"}, {"k": "box", "c": "red", "t": "قفل پرچم trip همان کانال", "l": ["پرچم تا پاک‌شدن توسط شارژر می‌ماند", "کانال دیگر دست نمی‌خورد"], "ref": "Jitter_Run", "note": {"c": "gray", "l": ["وقفه فقط پرچم می‌گذارد", "کار اصلی در پاس کنترل شارژر است"], "d": "l", "after": "خط اصلی؛ شارژر پرچم را در پاس خودش می‌خواند"}, "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Jitter/jitter.c#L40"}, {"k": "box", "c": "blue", "t": "شارژر پرچم را می‌خواند", "l": ["کانال فوری می‌ایستد، تریپ شمرده می‌شود و احیا یکی‌یکی انجام می‌شود"], "ref": "func__Jitter_Run: خواندن پرچم", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Jitter/jitter.c#L40", "go": "../Charger/charging_process.html"}, {"k": "box", "c": "green", "t": "پاک‌شدن پرچم هنگام احیا", "l": ["شروع دوباره با duty کمتر از قبل تریپ"], "ref": "func__Jitter_Run: پاک‌کردن", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Jitter/jitter.c#L40"}], "tree": {"t": "جیتر — دیده‌بان سخت‌افزاری", "c": [{"t": "وقفهٔ کمپراتور کانال ۱ → پرچم ۱"}, {"t": "وقفهٔ کمپراتور کانال ۲ → پرچم ۲"}, {"t": "خواندن پرچم توسط شارژر"}, {"t": "پاک‌کردن پرچم هنگام احیای شارژر"}]}, "conds": [["جریان از حد کمپراتور رد شد", "پرچم همان کانال قفل می‌شود؛ شارژر کانال را متوقف می‌کند.", "حد سخت‌افزاری روی برد"], ["تریپ وسط احیا دوباره آمد", "پرچم دوباره قفل می‌شود و شمارش تریپ شارژر بالا می‌رود؛ سومی قطع نهایی است.", "قفل ۳ ثانیه و احیای یکی‌یکی در شارژر"]], "outs": [["پرچم trip هر کانال", "قفل‌شده تا پاک‌شدن", "شارژر می‌خواند و پاک می‌کند؛ خطای فنی هم از همین پرچم استفاده می‌کند"]], "nav": [{"t": "کل سیستم", "href": "../../../Documentation/system_process.html"}, {"t": "شارژر", "href": "../Charger/charging_process.html"}, {"t": "اندازه‌گیری", "href": "../Measurement/measurement_process.html"}, {"t": "خطاها", "href": "../Fault/fault_process.html"}, {"t": "عدم‌توازن", "href": "../Imbalance/imbalance_process.html"}, {"t": "تعویض خروجی", "href": "../Changeover/changeover_process.html"}, {"t": "چراغ و بوق", "href": "../Ui/ui_process.html"}, {"t": "ناظر حفاظت", "href": "../Protection/protection_process.html"}, {"t": "کالیبراسیون", "href": "../CalLut/callut_process.html"}, {"t": "لینک پنل", "href": "../EspLink/esplink_process.html"}, {"t": "تغذیهٔ میکرو", "href": "../McuPowerPath/mcupowerpath_process.html"}, {"t": "ثبت سابقه", "href": "../Diag/diag_process.html"}, {"t": "تسک‌ها", "href": "../Rtos/rtos_process.html"}, {"t": "شبیه‌ساز آلارم‌ها", "href": "../Ui/alarm_simulator.html"}]};</script>
+<script>const DATA = {"file": "jitter_process.html", "title": "فرآیند Jitter (trip سخت‌افزاری) — توضیح ساده", "sub": "Jitter نگهبان سخت‌افزاری اضافه‌جریان است: comparator روی برد در چند میکروثانیه trip می‌دهد و این ماژول آن را برای هر channel قفل می‌کند تا شارژر ببیند.", "steps": ["comparator سخت‌افزاری هر channel جدا دیده‌بانی می‌کند؛ وقتی جریان از حد سخت‌افزار رد شود، وقفه می‌آید.", "این ماژول برای همان channel یک پرچم «trip» قفل می‌کند؛ پرچم تا وقتی شارژر آن را پاک نکند می‌ماند.", "شارژر پرچم را می‌خواند: channel را همان لحظه متوقف می‌کند، بعد از ۳ ثانیه یکی‌یکی احیا می‌کند و در احیا پرچم را پاک می‌کند.", "شمارش trip و trip سوم و قطع نهایی کار شارژر است، نه این ماژول؛ این‌جا فقط دیدن و قفل‌کردن رویداد است."], "example": ["جریان channel ۱ ناگهان از حد comparator رد می‌شود؛ وقفه می‌آید و پرچم trip channel ۱ قفل می‌شود.", "شارژر در pass بعدی پرچم را می‌بیند، channel ۱ را متوقف می‌کند و channel ۲ به کارش ادامه می‌دهد.", "بعد از ۳ ثانیه نوبت احیای channel ۱ می‌رسد؛ شارژر پرچم را پاک و با duty کمتر شروع می‌کند."], "flow": [{"k": "sec", "c": "navy", "t": "بخش ۱: مسیر trip — از comparator تا شارژر"}, {"k": "pill", "c": "navy", "t": "comparator سخت‌افزاری هر channel آماده است", "ref": "func__Jitter_Run + وقفهٔ BSP", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Jitter/jitter.c#L40"}, {"k": "dia", "c": "yellow", "t": "وقفهٔ trip channelی آمد؟", "side": {"c": "gray", "l": ["tripی نیامده: پرچمی نیست و این pass کاری نیست"], "d": "r", "lab": "نه", "ret": "END"}, "elab": "بله"}, {"k": "box", "c": "red", "t": "قفل پرچم trip همان channel", "l": ["پرچم تا پاک‌شدن توسط شارژر می‌ماند", "channel دیگر دست نمی‌خورد"], "ref": "Jitter_Run", "note": {"c": "gray", "l": ["وقفه فقط پرچم می‌گذارد", "کار اصلی در pass کنترل شارژر است"], "d": "l", "after": "خط اصلی؛ شارژر پرچم را در pass خودش می‌خواند"}, "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Jitter/jitter.c#L40"}, {"k": "box", "c": "blue", "t": "شارژر پرچم را می‌خواند", "l": ["channel فوری می‌ایستد، trip شمرده می‌شود و احیا یکی‌یکی انجام می‌شود"], "ref": "func__Jitter_Run: خواندن پرچم", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Jitter/jitter.c#L40", "go": "../Charger/charging_process.html"}, {"k": "box", "c": "green", "t": "پاک‌شدن پرچم هنگام احیا", "l": ["شروع دوباره با duty کمتر از قبل trip"], "ref": "func__Jitter_Run: پاک‌کردن", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Jitter/jitter.c#L40"}], "tree": {"t": "Jitter — دیده‌بان سخت‌افزاری", "c": [{"t": "وقفهٔ comparator channel ۱ → پرچم ۱"}, {"t": "وقفهٔ comparator channel ۲ → پرچم ۲"}, {"t": "خواندن پرچم توسط شارژر"}, {"t": "پاک‌کردن پرچم هنگام احیای شارژر"}]}, "conds": [["جریان از حد comparator رد شد", "پرچم همان channel قفل می‌شود؛ شارژر channel را متوقف می‌کند.", "حد سخت‌افزاری روی برد"], ["trip وسط احیا دوباره آمد", "پرچم دوباره قفل می‌شود و شمارش trip شارژر بالا می‌رود؛ سومی قطع نهایی است.", "قفل ۳ ثانیه و احیای یکی‌یکی در شارژر"]], "outs": [["پرچم trip هر channel", "قفل‌شده تا پاک‌شدن", "شارژر می‌خواند و پاک می‌کند؛ خطای فنی هم از همین پرچم استفاده می‌کند"]], "nav": [{"t": "کل سیستم", "href": "../../../Documentation/system_process.html"}, {"t": "شارژر", "href": "../Charger/charging_process.html"}, {"t": "اندازه‌گیری", "href": "../Measurement/measurement_process.html"}, {"t": "خطاها", "href": "../Fault/fault_process.html"}, {"t": "عدم‌توازن", "href": "../Imbalance/imbalance_process.html"}, {"t": "تعویض خروجی", "href": "../Changeover/changeover_process.html"}, {"t": "چراغ و بوق", "href": "../Ui/ui_process.html"}, {"t": "ناظر حفاظت", "href": "../Protection/protection_process.html"}, {"t": "calibration", "href": "../CalLut/callut_process.html"}, {"t": "link پنل", "href": "../EspLink/esplink_process.html"}, {"t": "تغذیهٔ میکرو", "href": "../McuPowerPath/mcupowerpath_process.html"}, {"t": "ثبت سابقه", "href": "../Diag/diag_process.html"}, {"t": "taskها", "href": "../Rtos/rtos_process.html"}, {"t": "شبیه‌ساز alarmها", "href": "../Ui/alarm_simulator.html"}]};</script>
 <script>
 var COLORS = {
   blue:  {f:'#DDEBF7', o:'#1F4E79', t:'#12263F'},
@@ -239,7 +239,7 @@ function renderFlow(){
     });
   });
   var H = y - GAP + 30;
-  if (termPos) out += drawNode({ k: 'pill', c: 'navy', t: '↺ برگشت به اول — پاس بعد' }, cx, termPos.y, DATA.flow.length);
+  if (termPos) out += drawNode({ k: 'pill', c: 'navy', t: '↺ برگشت به اول — pass بعد' }, cx, termPos.y, DATA.flow.length);
   function edgeX(n2, p2, dy, side){
     if (n2 && n2.k === 'dia'){ var f = 1 - Math.min(1, Math.abs(dy) / (p2.h / 2)); return cx + side * (p2.w / 2) * f; }
     return cx + side * p2.w / 2;
@@ -251,7 +251,7 @@ function renderFlow(){
     if (!n.side || !n.side.ret) return;
     var g = SIDEGEO[i + ':side']; if (!g || g.dir !== 'r') return;
     var tgt = null, tTitle = '', tIdx = -1;
-    if (n.side.ret === 'END'){ tgt = termPos; tTitle = 'برگشت به اول (پاس بعد)'; tIdx = DATA.flow.length; }
+    if (n.side.ret === 'END'){ tgt = termPos; tTitle = 'برگشت به اول (pass بعد)'; tIdx = DATA.flow.length; }
     else { var j = i + 1; while (j < pos.length && !pos[j]) j++; tgt = pos[j]; tTitle = (DATA.flow[j] && DATA.flow[j].t) || ''; tIdx = j; }
     if (!tgt) return;
     var lane = laneBase - 16 - (retK++) * 15;
@@ -304,7 +304,7 @@ function renderFlow(){
     if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r', i, n.t, 'side');
     if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l', i, n.t, 'note');
   });
-  document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی آن کلیک کن تا خودش و دو باکسِ دو سرش روشن شوند؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. باکس‌های با علامت ↗ لینک صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل کلیک کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="66%" style="display:block;margin:0 auto">' + out + '</svg>';
+  document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی آن click کن تا خودش و دو box دو سرش روشن شوند؛ روی هر box هم click کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. boxهای با علامت ↗ link صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل click کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="66%" style="display:block;margin:0 auto">' + out + '</svg>';
   document.querySelectorAll('.subhead').forEach(function(g){
     g.addEventListener('click', function(){
       var n = DATA.flow[+g.getAttribute('data-i')];
@@ -391,7 +391,7 @@ function wireFlow(){
       svg.classList.add('sel'); sg.classList.add('hl');
       var si = sg.getAttribute('data-i'), sk = sg.getAttribute('data-k'), ces = svg.querySelectorAll('.edge'), cc = 0;
       for (var q5 = 0; q5 < ces.length; q5++){ var ce = ces[q5]; if (ce.getAttribute('data-fi') === si && ((ce.getAttribute('data-ti') === '' && ce.getAttribute('data-sk') === sk) || ce.getAttribute('data-rf') === sk)){ ce.classList.add('hl'); cc++; } }
-      if (info) info.textContent = '\u0628\u0627\u06a9\u0633 \u06a9\u0646\u0627\u0631\u06cc \u00ab' + ((sg.textContent || '').replace(/\s+/g, ' ').trim()) + '\u00bb \u2014 ' + cc + ' \u062e\u0637\u0650 \u062e\u0648\u062f\u0634 \u0631\u0648\u0634\u0646 \u0634\u062f. \u0628\u0631\u0627\u06cc \u0628\u0631\u06af\u0634\u062a\u060c \u0631\u0648\u06cc \u062c\u0627\u06cc \u062e\u0627\u0644\u06cc \u0634\u06a9\u0644 \u06a9\u0644\u06cc\u06a9 \u06a9\u0646.';
+      if (info) info.textContent = 'box \u06a9\u0646\u0627\u0631\u06cc \u00ab' + ((sg.textContent || '').replace(/\s+/g, ' ').trim()) + '\u00bb \u2014 ' + cc + ' \u062e\u0637\u0650 \u062e\u0648\u062f\u0634 \u0631\u0648\u0634\u0646 \u0634\u062f. \u0628\u0631\u0627\u06cc \u0628\u0631\u06af\u0634\u062a\u060c \u0631\u0648\u06cc \u062c\u0627\u06cc \u062e\u0627\u0644\u06cc \u0634\u06a9\u0644 click \u06a9\u0646.';
     } else if (eg){
       svg.classList.add('sel'); eg.classList.add('hl');
       var fi3 = eg.getAttribute('data-fi'), ti3 = eg.getAttribute('data-ti'), rf3 = eg.getAttribute('data-rf'), ns3 = svg.querySelectorAll('.fnode');
@@ -406,9 +406,9 @@ function wireFlow(){
       var i2 = ng.getAttribute('data-i'), cnt = 0, es = svg.querySelectorAll('.edge');
       for (var q2 = 0; q2 < es.length; q2++){ if (es[q2].getAttribute('data-fi') === i2 || es[q2].getAttribute('data-ti') === i2){ es[q2].classList.add('hl'); cnt++; } }
       var sn4 = svg.querySelectorAll('.snode'); for (var q7 = 0; q7 < sn4.length; q7++){ if (sn4[q7].getAttribute('data-i') === i2) sn4[q7].classList.add('hl'); }
-      if (info) info.textContent = 'باکس «' + (ng.getAttribute('data-t') || '') + '» — ' + cnt + ' خطِ وصل به آن روشن شد. برای برگشت، روی جای خالی شکل کلیک کن.';
+      if (info) info.textContent = 'box «' + (ng.getAttribute('data-t') || '') + '» — ' + cnt + ' خطِ وصل به آن روشن شد. برای برگشت، روی جای خالی شکل click کن.';
     } else {
-      if (info) info.textContent = 'برای دیدن ارتباط هر خط، روی آن کلیک کن تا خودش و دو باکسِ دو سرش روشن شوند؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. باکس‌های با علامت ↗ لینک صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل کلیک کن.';
+      if (info) info.textContent = 'برای دیدن ارتباط هر خط، روی آن click کن تا خودش و دو box دو سرش روشن شوند؛ روی هر box هم click کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. boxهای با علامت ↗ link صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل click کن.';
     }
   });
 }

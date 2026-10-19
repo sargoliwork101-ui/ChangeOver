@@ -53,15 +53,15 @@
 <h2>فلوچارت</h2>
 <div class="card"><div id="flow"></div><p class="small" id="legend"></p></div>
 <h2>درخت کد</h2>
-<p class="small">درخت واقعی کد است؛ روی هر گره کلیک کن تا شاخه‌اش باز یا بسته شود.</p>
+<p class="small">درخت واقعی کد است؛ روی هر گره click کن تا شاخه‌اش باز یا بسته شود.</p>
 <div class="card"><div id="tree"></div></div>
 <h2>شرط‌ها و حفاظت‌ها</h2>
 <table id="conds"><tr><th style="width:26%">اگر این اتفاق افتاد</th><th style="width:37%">برنامه چه کار می‌کند</th><th>عددش</th></tr></table>
 <h2>فرمان‌ها و خروجی‌ها</h2>
 <table id="outs"><tr><th style="width:26%">به کجا</th><th style="width:37%">چه فرمانی / چه خروجی‌ای</th><th>کی و با چه شرطی</th></tr></table>
-<div class="card" style="background:#2E2A18;border-color:#BF8F00"><b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ اول از روی کد چک می‌کنیم، بعد اصلاح می‌کنیم.</div>
+<div class="card" style="background:#2E2A18;border-color:#BF8F00"><b>مرحلهٔ بعدی:</b> این صفحه را با هم مرور می‌کنیم. هر جا عدد یا شرطی ایراد داشت، بگو کدام است؛ اول از روی کد check می‌کنیم، بعد اصلاح می‌کنیم.</div>
 </div>
-<script>const DATA = {"file": "protection_process.html", "title": "فرآیند ناظر حفاظت — توضیح ساده", "sub": "ناظر سبک برنامه: تنها کارش این است که تا وقتی اندازه‌گیری معتبر نیست، خطای «مبدل» (بیت ۰) را نگه دارد. این ماژول فعلاً در ساخت اصلی خاموش است.", "steps": ["اگر عکس اندازه‌گیری نباشد یا نامعتبر باشد، بیت خطای مبدل <b>ست</b> می‌شود.", "با اولین عکس معتبر، همان بیت <b>پاک</b> می‌شود.", "این خطا عمداً <b>قفل نمی‌شود</b>: لحظه‌ای است؛ چون پاس‌های اول روشن‌شدن همیشه قبل از آماده‌شدن اندازه‌گیری اجرا می‌شوند و خطای قفل‌شده دستگاه را برای همیشه در حالت امن نگه می‌داشت.", "نظارت اضافه‌جریان و باتری ضعیف این‌جا نیست؛ در شارژر و ماژول خطا انجام می‌شود.", "ماژول با پیش‌فرض خاموش کامپایل می‌شود (فقط با روشن‌کردن آگاهانه در پیکربندی فعال می‌شود)."], "flow": [{"k": "sec", "c": "navy", "t": "بخش ۱: بررسی ناظر — فعلاً در بیلد خاموش است"}, {"k": "pill", "c": "navy", "t": "شروع پاس ناظر", "ref": "func__Protection_Run", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Protection/protection.c#L52"}, {"k": "dia", "c": "yellow", "t": "Snapshot معتبر است؟", "side": {"c": "green", "l": ["پاک‌کردن بیت خطای مبدل (بیت ۰)"], "d": "r", "lab": "بله", "ret": "END"}, "elab": "نه"}, {"k": "box", "c": "red", "t": "ست‌کردن FAULT_ADC", "l": ["لحظه‌ای است و قفل نمی‌شود", "با اولین عکس معتبر خودش پاک می‌شود"], "ref": "Fault_Set(FAULT_ADC)", "note": {"c": "gray", "l": ["تنها ماژول خاموش بیلد است", "MODULE_PROTECTION=0"], "d": "l", "after": "خط اصلی؛ این ماژول فعلاً کاری نمی‌کند"}, "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Protection/protection.c#L65", "go": "../Fault/fault_process.html"}], "tree": {"t": "ناظر حفاظت", "c": [{"t": "عکس نامعتبر؟ → ست بیت مبدل"}, {"t": "عکس معتبر؟ → پاک بیت مبدل"}, {"t": "قفل ندارد؛ ماژول پیش‌فرض خاموش است"}]}, "conds": [["اندازه‌گیری نامعتبر شد", "بیت خطای مبدل ست می‌شود؛ دستگاه از این بیت مثل بقیهٔ خطاها به حالت خطا می‌رود.", "بیت ۰"], ["اندازه‌گیری معتبر شد", "بیت پاک می‌شود و کار عادی ادامه دارد.", "بدون قفل"]], "outs": [["بیت خطای مبدل", "ست/پاک لحظه‌ای", "به ماژول خطا می‌رود و از آن‌جا حالت کلی و شارژر پیروی می‌کنند"]], "nav": [{"t": "کل سیستم", "href": "../../../Documentation/system_process.html"}, {"t": "شارژر", "href": "../Charger/charging_process.html"}, {"t": "اندازه‌گیری", "href": "../Measurement/measurement_process.html"}, {"t": "خطاها", "href": "../Fault/fault_process.html"}, {"t": "عدم‌توازن", "href": "../Imbalance/imbalance_process.html"}, {"t": "تعویض خروجی", "href": "../Changeover/changeover_process.html"}, {"t": "چراغ و بوق", "href": "../Ui/ui_process.html"}, {"t": "کالیبراسیون", "href": "../CalLut/callut_process.html"}, {"t": "لینک پنل", "href": "../EspLink/esplink_process.html"}, {"t": "تغذیهٔ میکرو", "href": "../McuPowerPath/mcupowerpath_process.html"}, {"t": "جیتر", "href": "../Jitter/jitter_process.html"}, {"t": "ثبت سابقه", "href": "../Diag/diag_process.html"}, {"t": "تسک‌ها", "href": "../Rtos/rtos_process.html"}, {"t": "شبیه‌ساز آلارم‌ها", "href": "../Ui/alarm_simulator.html"}]};</script>
+<script>const DATA = {"file": "protection_process.html", "title": "فرآیند ناظر حفاظت — توضیح ساده", "sub": "ناظر سبک برنامه: تنها کارش این است که تا وقتی اندازه‌گیری معتبر نیست، خطای «مبدل» (bit ۰) را نگه دارد. این ماژول فعلاً در ساخت اصلی خاموش است.", "steps": ["اگر عکس اندازه‌گیری نباشد یا نامعتبر باشد، bit خطای مبدل <b>set</b> می‌شود.", "با اولین عکس معتبر، همان bit <b>پاک</b> می‌شود.", "این خطا عمداً <b>قفل نمی‌شود</b>: لحظه‌ای است؛ چون passهای اول روشن‌شدن همیشه قبل از آماده‌شدن اندازه‌گیری اجرا می‌شوند و خطای قفل‌شده دستگاه را برای همیشه در حالت امن نگه می‌داشت.", "نظارت اضافه‌جریان و باتری ضعیف این‌جا نیست؛ در شارژر و ماژول خطا انجام می‌شود.", "ماژول با پیش‌فرض خاموش compile می‌شود (فقط با روشن‌کردن آگاهانه در پیکربندی فعال می‌شود)."], "flow": [{"k": "sec", "c": "navy", "t": "بخش ۱: بررسی ناظر — فعلاً در build خاموش است"}, {"k": "pill", "c": "navy", "t": "شروع pass ناظر", "ref": "func__Protection_Run", "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Protection/protection.c#L52"}, {"k": "dia", "c": "yellow", "t": "Snapshot معتبر است؟", "side": {"c": "green", "l": ["پاک‌کردن bit خطای مبدل (bit ۰)"], "d": "r", "lab": "بله", "ret": "END"}, "elab": "نه"}, {"k": "box", "c": "red", "t": "set کردن FAULT_ADC", "l": ["لحظه‌ای است و قفل نمی‌شود", "با اولین عکس معتبر خودش پاک می‌شود"], "ref": "Fault_Set(FAULT_ADC)", "note": {"c": "gray", "l": ["تنها ماژول خاموش build است", "MODULE_PROTECTION=0"], "d": "l", "after": "خط اصلی؛ این ماژول فعلاً کاری نمی‌کند"}, "rurl": "https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Protection/protection.c#L65", "go": "../Fault/fault_process.html"}], "tree": {"t": "ناظر حفاظت", "c": [{"t": "عکس نامعتبر؟ → set bit مبدل"}, {"t": "عکس معتبر؟ → پاک bit مبدل"}, {"t": "قفل ندارد؛ ماژول پیش‌فرض خاموش است"}]}, "conds": [["اندازه‌گیری نامعتبر شد", "bit خطای مبدل set می‌شود؛ دستگاه از این bit مثل بقیهٔ خطاها به حالت خطا می‌رود.", "bit ۰"], ["اندازه‌گیری معتبر شد", "bit پاک می‌شود و کار عادی ادامه دارد.", "بدون قفل"]], "outs": [["bit خطای مبدل", "set/پاک لحظه‌ای", "به ماژول خطا می‌رود و از آن‌جا حالت کلی و شارژر پیروی می‌کنند"]], "nav": [{"t": "کل سیستم", "href": "../../../Documentation/system_process.html"}, {"t": "شارژر", "href": "../Charger/charging_process.html"}, {"t": "اندازه‌گیری", "href": "../Measurement/measurement_process.html"}, {"t": "خطاها", "href": "../Fault/fault_process.html"}, {"t": "عدم‌توازن", "href": "../Imbalance/imbalance_process.html"}, {"t": "تعویض خروجی", "href": "../Changeover/changeover_process.html"}, {"t": "چراغ و بوق", "href": "../Ui/ui_process.html"}, {"t": "calibration", "href": "../CalLut/callut_process.html"}, {"t": "link پنل", "href": "../EspLink/esplink_process.html"}, {"t": "تغذیهٔ میکرو", "href": "../McuPowerPath/mcupowerpath_process.html"}, {"t": "Jitter", "href": "../Jitter/jitter_process.html"}, {"t": "ثبت سابقه", "href": "../Diag/diag_process.html"}, {"t": "taskها", "href": "../Rtos/rtos_process.html"}, {"t": "شبیه‌ساز alarmها", "href": "../Ui/alarm_simulator.html"}]};</script>
 <script>
 var COLORS = {
   blue:  {f:'#DDEBF7', o:'#1F4E79', t:'#12263F'},
@@ -239,7 +239,7 @@ function renderFlow(){
     });
   });
   var H = y - GAP + 30;
-  if (termPos) out += drawNode({ k: 'pill', c: 'navy', t: '↺ برگشت به اول — پاس بعد' }, cx, termPos.y, DATA.flow.length);
+  if (termPos) out += drawNode({ k: 'pill', c: 'navy', t: '↺ برگشت به اول — pass بعد' }, cx, termPos.y, DATA.flow.length);
   function edgeX(n2, p2, dy, side){
     if (n2 && n2.k === 'dia'){ var f = 1 - Math.min(1, Math.abs(dy) / (p2.h / 2)); return cx + side * (p2.w / 2) * f; }
     return cx + side * p2.w / 2;
@@ -251,7 +251,7 @@ function renderFlow(){
     if (!n.side || !n.side.ret) return;
     var g = SIDEGEO[i + ':side']; if (!g || g.dir !== 'r') return;
     var tgt = null, tTitle = '', tIdx = -1;
-    if (n.side.ret === 'END'){ tgt = termPos; tTitle = 'برگشت به اول (پاس بعد)'; tIdx = DATA.flow.length; }
+    if (n.side.ret === 'END'){ tgt = termPos; tTitle = 'برگشت به اول (pass بعد)'; tIdx = DATA.flow.length; }
     else { var j = i + 1; while (j < pos.length && !pos[j]) j++; tgt = pos[j]; tTitle = (DATA.flow[j] && DATA.flow[j].t) || ''; tIdx = j; }
     if (!tgt) return;
     var lane = laneBase - 16 - (retK++) * 15;
@@ -304,7 +304,7 @@ function renderFlow(){
     if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r', i, n.t, 'side');
     if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l', i, n.t, 'note');
   });
-  document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی آن کلیک کن تا خودش و دو باکسِ دو سرش روشن شوند؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. باکس‌های با علامت ↗ لینک صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل کلیک کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="66%" style="display:block;margin:0 auto">' + out + '</svg>';
+  document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی آن click کن تا خودش و دو box دو سرش روشن شوند؛ روی هر box هم click کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. boxهای با علامت ↗ link صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل click کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="66%" style="display:block;margin:0 auto">' + out + '</svg>';
   document.querySelectorAll('.subhead').forEach(function(g){
     g.addEventListener('click', function(){
       var n = DATA.flow[+g.getAttribute('data-i')];
@@ -391,7 +391,7 @@ function wireFlow(){
       svg.classList.add('sel'); sg.classList.add('hl');
       var si = sg.getAttribute('data-i'), sk = sg.getAttribute('data-k'), ces = svg.querySelectorAll('.edge'), cc = 0;
       for (var q5 = 0; q5 < ces.length; q5++){ var ce = ces[q5]; if (ce.getAttribute('data-fi') === si && ((ce.getAttribute('data-ti') === '' && ce.getAttribute('data-sk') === sk) || ce.getAttribute('data-rf') === sk)){ ce.classList.add('hl'); cc++; } }
-      if (info) info.textContent = '\u0628\u0627\u06a9\u0633 \u06a9\u0646\u0627\u0631\u06cc \u00ab' + ((sg.textContent || '').replace(/\s+/g, ' ').trim()) + '\u00bb \u2014 ' + cc + ' \u062e\u0637\u0650 \u062e\u0648\u062f\u0634 \u0631\u0648\u0634\u0646 \u0634\u062f. \u0628\u0631\u0627\u06cc \u0628\u0631\u06af\u0634\u062a\u060c \u0631\u0648\u06cc \u062c\u0627\u06cc \u062e\u0627\u0644\u06cc \u0634\u06a9\u0644 \u06a9\u0644\u06cc\u06a9 \u06a9\u0646.';
+      if (info) info.textContent = 'box \u06a9\u0646\u0627\u0631\u06cc \u00ab' + ((sg.textContent || '').replace(/\s+/g, ' ').trim()) + '\u00bb \u2014 ' + cc + ' \u062e\u0637\u0650 \u062e\u0648\u062f\u0634 \u0631\u0648\u0634\u0646 \u0634\u062f. \u0628\u0631\u0627\u06cc \u0628\u0631\u06af\u0634\u062a\u060c \u0631\u0648\u06cc \u062c\u0627\u06cc \u062e\u0627\u0644\u06cc \u0634\u06a9\u0644 click \u06a9\u0646.';
     } else if (eg){
       svg.classList.add('sel'); eg.classList.add('hl');
       var fi3 = eg.getAttribute('data-fi'), ti3 = eg.getAttribute('data-ti'), rf3 = eg.getAttribute('data-rf'), ns3 = svg.querySelectorAll('.fnode');
@@ -406,9 +406,9 @@ function wireFlow(){
       var i2 = ng.getAttribute('data-i'), cnt = 0, es = svg.querySelectorAll('.edge');
       for (var q2 = 0; q2 < es.length; q2++){ if (es[q2].getAttribute('data-fi') === i2 || es[q2].getAttribute('data-ti') === i2){ es[q2].classList.add('hl'); cnt++; } }
       var sn4 = svg.querySelectorAll('.snode'); for (var q7 = 0; q7 < sn4.length; q7++){ if (sn4[q7].getAttribute('data-i') === i2) sn4[q7].classList.add('hl'); }
-      if (info) info.textContent = 'باکس «' + (ng.getAttribute('data-t') || '') + '» — ' + cnt + ' خطِ وصل به آن روشن شد. برای برگشت، روی جای خالی شکل کلیک کن.';
+      if (info) info.textContent = 'box «' + (ng.getAttribute('data-t') || '') + '» — ' + cnt + ' خطِ وصل به آن روشن شد. برای برگشت، روی جای خالی شکل click کن.';
     } else {
-      if (info) info.textContent = 'برای دیدن ارتباط هر خط، روی آن کلیک کن تا خودش و دو باکسِ دو سرش روشن شوند؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. باکس‌های با علامت ↗ لینک صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل کلیک کن.';
+      if (info) info.textContent = 'برای دیدن ارتباط هر خط، روی آن click کن تا خودش و دو box دو سرش روشن شوند؛ روی هر box هم click کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. boxهای با علامت ↗ link صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل click کن.';
     }
   });
 }
