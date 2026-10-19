@@ -208,7 +208,19 @@ void func__McuPowerPath_Run(void)
                  * [FA] وتوی زندهٔ PB4: snapshot می‌تواند کهنه باشد؛ اگر ورودی
                  *      همان پاسِ پایان ۵s مرده باشد، قطع‌کردن MCU را بی‌برق
                  *      می‌کند. PB4 بلادرنگ است: غایب ← مسیر اتصال مجدد. */
-                if (func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT) == false)
+                /* [EN] Presence read + pin write must be one atomic step: the
+                   PB4 EXTI handler reconnects the battery the moment the input
+                   dies, and a plain read-then-write left a window where that
+                   emergency reconnect was overwritten by this stale pass -
+                   the MCU could then run on no supply at all. The BSP owns the
+                   short masked pair; it returns false when it kept the battery
+                   on because the input had already gone.
+                   [FA] خواندن حضور و نوشتن پایه باید یک گام اتمیک باشد: وقفهٔ
+                   PB4 به‌محض مردن ورودی باتری را وصل می‌کند و خواندن-سپس-
+                   نوشتن ساده پنجره‌ای می‌گذاشت که همان وصل اضطراری با این پاس
+                   کهنه بازنویسی شود و MCU بی‌برق بماند. جفت ماسک‌شدهٔ کوتاه در
+                   BSP است و اگر ورودی از قبل رفته باشد false می‌دهد. */
+                if (func__BspGpio_DisconnectBatteryPathIfInputPresent() == false)
                 {
                     BOOL__G__McuPowerTimerActive = false;
                     if (BOOL__G__BatteryConnected == false)
@@ -219,7 +231,6 @@ void func__McuPowerPath_Run(void)
                 }
                 else
                 {
-                    func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, false); /* High = battery off */
                     BOOL__G__BatteryConnected     = false;
                     BOOL__G__McuPowerTimerActive = false;
                 }

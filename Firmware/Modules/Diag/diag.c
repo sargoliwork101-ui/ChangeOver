@@ -129,6 +129,8 @@ static void func__Diag_ReadFlash(uint32_t uint32_t__addr, diag_record_t *diag_re
     (void)memcpy(diag_record_t__rec, (const void *)uint32_t__addr, sizeof(diag_record_t));
 }
 
+/* ==================== Diag_WriteFlash ==================== */
+
 /**
  * @brief  [EN] Write record to flash page (erase + program).
  *         [FA] نوشتن رکورد در صفحه فلش.
@@ -248,6 +250,8 @@ void func__Diag_Init(void)
     (void)memcpy(&DIAG_RECORD_T__G__Stage, &DIAG_RECORD_T__G__Active, sizeof(diag_record_t));
 }
 
+/* ==================== Diag_Tick ==================== */
+
 void func__Diag_Tick(void)
 {
     DIAG_RECORD_T__G__Active.uint32_t__uptimeSec++;
@@ -264,6 +268,8 @@ void func__Diag_Tick(void)
         }
     }
 }
+
+/* ==================== Diag_SetBoardTime ==================== */
 
 void func__Diag_SetBoardTime(uint32_t uint32_t__unixSec)
 {
@@ -282,6 +288,8 @@ void func__Diag_SetBoardTime(uint32_t uint32_t__unixSec)
     UINT32_T__G__SaveDelaySec = 2u;
 }
 
+/* ==================== Diag_GetBoardTime ==================== */
+
 uint32_t func__Diag_GetBoardTime(void)
 {
     if (DIAG_RECORD_T__G__Active.uint32_t__boardTimeBase == 0u)
@@ -290,6 +298,8 @@ uint32_t func__Diag_GetBoardTime(void)
     }
     return DIAG_RECORD_T__G__Active.uint32_t__boardTimeBase + DIAG_RECORD_T__G__Active.uint32_t__uptimeSec;
 }
+
+/* ==================== Diag_AddChargeSec ==================== */
 
 void func__Diag_AddChargeSec(uint8_t uint8_t__channel, uint32_t uint32_t__sec)
 {
@@ -309,6 +319,8 @@ void func__Diag_AddChargeSec(uint8_t uint8_t__channel, uint32_t uint32_t__sec)
     }
 }
 
+/* ==================== Diag_RecordChargeComplete ==================== */
+
 void func__Diag_RecordChargeComplete(uint8_t uint8_t__channel)
 {
     DIAG_RECORD_T__G__Active.uint32_t__chargeCount++;
@@ -323,6 +335,8 @@ void func__Diag_RecordChargeComplete(uint8_t uint8_t__channel)
     BOOL__G__Dirty = true;
     UINT32_T__G__SaveDelaySec = 5u;
 }
+
+/* ==================== Diag_RecordFault ==================== */
 
 void func__Diag_RecordFault(fault_mask_t fault_mask_t__faults, const measurement_snapshot_t *measurement_snapshot_t__snap)
 {
@@ -386,6 +400,8 @@ void func__Diag_RecordFault(fault_mask_t fault_mask_t__faults, const measurement
     UINT32_T__G__SaveDelaySec = 3u;
 }
 
+/* ==================== Diag_RecordPowerOff ==================== */
+
 void func__Diag_RecordPowerOff(void)
 {
     if (BOOL__G__PowerOffActive) return;
@@ -396,6 +412,8 @@ void func__Diag_RecordPowerOff(void)
         UINT32_T__G__PowerOffTime = DIAG_RECORD_T__G__Active.uint32_t__uptimeSec;
     }
 }
+
+/* ==================== Diag_RecordPowerOn ==================== */
 
 void func__Diag_RecordPowerOn(void)
 {
@@ -437,6 +455,8 @@ void func__Diag_RecordPowerOn(void)
     BOOL__G__Dirty = true;
     UINT32_T__G__SaveDelaySec = 3u;
 }
+
+/* ==================== Diag_UpdateMinMax ==================== */
 
 void func__Diag_UpdateMinMax(const measurement_snapshot_t *measurement_snapshot_t__snap)
 {

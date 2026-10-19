@@ -113,6 +113,8 @@ static const osThreadAttr_t OS_THREAD_ATTR_T__G__Comm =
 };
 #endif
 
+/* ==================== Rtos_Fatal ==================== */
+
 /**
  * @brief  [EN] Stop in a deterministic state if the kernel or a required thread cannot start.
  *         [FA] اگر کرنل یا یکی از تسک‌های لازم شروع نشد، در وضعیت مشخص متوقف می‌شود.
@@ -123,6 +125,8 @@ static void func__Rtos_Fatal(void)
     {
     }
 }
+
+/* ==================== Rtos_Start ==================== */
 
 /**
  * @brief  [EN] Create enabled CMSIS-RTOS2 threads with static memory, then start the kernel.

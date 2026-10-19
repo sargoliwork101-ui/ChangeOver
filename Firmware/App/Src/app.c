@@ -13,6 +13,8 @@
 #include "diag.h"
 #endif
 
+/* ==================== App_Init ==================== */
+
 /**
  * @brief  [EN] Application initialization hook; thread-owned module init runs in its thread.
  *         [FA] نقطهٔ مقداردهی اولیهٔ برنامه؛ Init ماژول صاحب تسک داخل همان تسک انجام می‌شود.
@@ -48,6 +50,8 @@ void func__App_Init(void)
     func__Diag_Init();
 #endif
 }
+
+/* ==================== App_Start ==================== */
 
 /**
  * @brief  [EN] Initialize the CMSIS-RTOS2 application and start its threads.

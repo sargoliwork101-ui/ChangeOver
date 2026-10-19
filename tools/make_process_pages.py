@@ -1256,8 +1256,8 @@ def target_path(key):
         return os.path.join(ROOT, 'Documentation', 'system_process.html')
     return os.path.join(ROOT, 'Firmware', 'Modules', DIRS[key], MODULES[key]['file'])
 
-GH_BLOB = 'https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/'
-GH_TREE = 'https://github.com/sargoliwork101-ui/ChangeOver/tree/arena/859ce091-changeover/'
+GH_BLOB = 'https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/'
+GH_TREE = 'https://github.com/sargoliwork101-ui/ChangeOver/tree/arena/bb1aee1b-changeover/'
 TOKEN_RE = re.compile(r'[A-Za-z][A-Za-z0-9_]{3,}')
 
 IDENT_RE = re.compile(r'([A-Za-z_][A-Za-z0-9_]*)\s*\(')

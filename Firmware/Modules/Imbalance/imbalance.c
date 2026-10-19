@@ -95,6 +95,8 @@ static uint32_t func__Imbalance_ParamDefault(uint8_t uint8_t__paramId)
     return uint32_t__ret;
 }
 
+/* ==================== Imbalance_ParamClamp ==================== */
+
 static uint32_t func__Imbalance_ParamClamp(uint8_t uint8_t__paramId, uint32_t uint32_t__value)
 {
     uint32_t uint32_t__ret = uint32_t__value;
@@ -181,6 +183,8 @@ static uint32_t func__Imbalance_ParamClamp(uint8_t uint8_t__paramId, uint32_t ui
  *      را حفظ می‌کند و برای برد نو هیچ تغییری ندارد. */
 static bool BOOL__G__ParamsSeeded;
 
+/* ==================== Imbalance_SeedDefaultsOnce ==================== */
+
 static void func__Imbalance_SeedDefaultsOnce(void)
 {
     uint8_t uint8_t__id;
@@ -201,6 +205,8 @@ static void func__Imbalance_SeedDefaultsOnce(void)
         }
     }
 }
+
+/* ==================== Imbalance_ReadParam ==================== */
 
 static uint32_t func__Imbalance_ReadParam(uint8_t uint8_t__paramId)
 {
@@ -255,6 +261,8 @@ void func__Imbalance_Init(void)
     IMBAL_OUTPUTS_T__G__Last.bool__beepDue          = false;
     IMBAL_OUTPUTS_T__G__Last.bool__halvesMismatch   = false;
 }
+
+/* ==================== Imbalance_GetOutputs ==================== */
 
 void func__Imbalance_GetOutputs(imbalance_outputs_t *imbalance_outputs_t__outputs)
 {

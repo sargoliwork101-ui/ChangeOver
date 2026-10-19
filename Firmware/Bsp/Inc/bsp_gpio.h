@@ -49,6 +49,31 @@ void func__BspGpio_Init(void);
  */
 void func__BspGpio_Write(bsp_gpio_id_t bsp_gpio_id_t__id, bool bool__asserted);
 
+/* ==================== BspGpio_DisconnectBatteryPathIfInputPresent ==================== */
+/**
+ * @brief  [EN] Cut the MCU self-supply battery path ONLY when the DC input is
+ *              still present at the instant of the write. The presence read,
+ *              the decision and the pin write run inside one short PRIMASK
+ *              critical section, so the PB4 EXTI handler (which reconnects the
+ *              battery immediately) cannot slip between them and be undone by
+ *              a stale task decision. A short critical section is used instead
+ *              of a scheduler lock on purpose: EXTI is an interrupt, and only
+ *              masking interrupts excludes it.
+ *              Returns true when the path was actually disconnected; false
+ *              when the input was already gone and the battery side was left
+ *              connected.
+ *         [FA] مسیر باتری خودتغذیهٔ MCU را فقط وقتی قطع می‌کند که ورودی DC در
+ *              همان لحظهٔ نوشتن هنوز حاضر باشد. خواندن حضور، تصمیم و نوشتن
+ *              پایه داخل یک بخش بحرانی کوتاه PRIMASK انجام می‌شود تا وقفهٔ
+ *              EXTI پایهٔ PB4 (که باتری را فوری وصل می‌کند) بین آن‌ها نپرد و
+ *              تصمیم کهنهٔ تسک آن را باطل نکند. بخش بحرانی کوتاه به‌جای قفل
+ *              زمان‌بند انتخاب شد چون EXTI وقفه است و فقط ماسک وقفه حذفش
+ *              می‌کند. اگر مسیر واقعاً قطع شد true، و اگر ورودی از قبل رفته
+ *              بود و باتری وصل ماند false برمی‌گرداند.
+ * @‎return bool [EN] true = battery path is now cut‎ / مسیر باتری قطع شد
+ */
+bool func__BspGpio_DisconnectBatteryPathIfInputPresent(void);
+
 /* ==================== BspGpio_Read ==================== */
 /**
  * @brief  [EN] Read a logical signal. Board-specific active polarity is

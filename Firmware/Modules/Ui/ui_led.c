@@ -160,6 +160,8 @@ static uint32_t func__Ui_ClampWindow(uint32_t uint32_t__value,
     return uint32_t__value;
 }
 
+/* ==================== Ui_ClampPeriod ==================== */
+
 /**
  * @brief  [EN] Clamp one beep period: 0 disables the pattern, otherwise
  *              1000..600000 (below 1000 the buzzer service would go
@@ -175,6 +177,8 @@ static uint32_t func__Ui_ClampPeriod(uint32_t uint32_t__value)
     return func__Ui_ClampWindow(uint32_t__value, 1000u, 600000u);
 }
 
+
+/* ==================== Ui_ClampAlarms ==================== */
 
 /**
  * @brief  [EN] Re-clamp the whole UI set, single pass, dependency order
@@ -432,6 +436,8 @@ _Static_assert(offsetof(ui_alarm_t, uint32_t__chgPctVminMv) ==
    هرگز اختلاف پیدا نکنند. */
 #define UI_ALARM_PARAM_INDEX_INVALID   0xFFu
 
+/* ==================== Ui_AlarmParamIndex ==================== */
+
 static uint8_t func__Ui_AlarmParamIndex(uint8_t uint8_t__paramId)
 {
     uint8_t uint8_t__denseCount;
@@ -623,6 +629,8 @@ static uint8_t func__Ui_VoltageToPercentMap(uint32_t uint32_t__batteryMv,
     return uint8_t__batteryPercent;
 }
 
+/* ==================== Ui_BatteryVoltageToPercent ==================== */
+
 /**
  * @brief  [EN] DISCHARGE voltage to percent, from the runtime 74/75 map.
  *              Since v1.49 this pair belongs to the discharge side only.
@@ -637,6 +645,8 @@ uint8_t func__Ui_BatteryVoltageToPercent(uint32_t uint32_t__batteryMv)
                                         UI_ALARM_T__G__Alarm.uint32_t__pctVminMv,
                                         UI_ALARM_T__G__Alarm.uint32_t__pctVmaxMv);
 }
+
+/* ==================== Ui_ChargeVoltageToPercent ==================== */
 
 /**
  * @brief  [EN] CHARGE voltage to percent, from the runtime 119/120 map
@@ -899,6 +909,8 @@ static void func__Ui_ResetBatteryStablePercent(void)
     BOOL__G__UiBatteryStableInitialized = false;
 }
 
+/* ==================== Ui_UpdateBatteryStablePercent ==================== */
+
 /**
  * @brief  [EN] Update stable battery percent from raw percent with 2% hysteresis and special 0/1 handling.
  *         General: |raw-stable| <2 → keep stable; >=2 → stable = raw. Special: stable 0 stays 0 until raw>=2 then →1; stable 1: raw==0→0, raw>=3→2, else keep 1.
@@ -977,6 +989,8 @@ static uint8_t func__Ui_UpdateBatteryStablePercent(uint8_t uint8_t__rawPercent)
     return uint8_t__stablePercent;
 }
 
+/* ==================== Ui_ResetChargingStablePercent ==================== */
+
 /**
  * @brief  [EN] Reset Charging stable percent (5% hysteresis).
  *         [FA] درصد پایدار شارژ را بازنشانی می‌کند.
@@ -986,6 +1000,8 @@ static void func__Ui_ResetChargingStablePercent(void)
     UINT8_T__G__UiChargingStablePercent = 0u;
     BOOL__G__UiChargingStableInitialized = false;
 }
+
+/* ==================== Ui_UpdateChargingStablePercent ==================== */
 
 /**
  * @brief  [EN] Update Charging stable percent with 5% hysteresis. |raw-stable| <5 keeps stable, >=5 updates.
@@ -1031,6 +1047,8 @@ static uint8_t func__Ui_UpdateChargingStablePercent(uint8_t uint8_t__rawPercent)
     return uint8_t__stablePercent;
 }
 
+/* ==================== Ui_ResetChargingFullHysteresis ==================== */
+
 /**
  * @brief  [EN] Reset Charging full (InputOk) hysteresis state.
  *         [FA] وضعیت هیسترزیس فول شارژ را بازنشانی می‌کند.
@@ -1039,6 +1057,8 @@ static void func__Ui_ResetChargingFullHysteresis(void)
 {
     BOOL__G__UiChargingFullActive = false;
 }
+
+/* ==================== Ui_UpdateChargingFullHysteresis ==================== */
 
 /**
  * @brief  [EN] Update Charging full hysteresis. Enter InputOk only at raw 100, stay until raw<95.
@@ -1092,6 +1112,8 @@ static void func__Ui_ResetChargingYellowBlink(void)
     UINT32_T__G__UiChargingYellowOnMs = 0u;
     UINT32_T__G__UiChargingYellowOffMs = 0u;
 }
+
+/* ==================== Ui_UpdateChargingYellowBlink ==================== */
 
 /**
  * @brief  [EN] Update non-blocking Charging yellow blink. Preserves phase on duration change.
@@ -1375,6 +1397,8 @@ void func__Ui_ScenarioBatLost_Tick(void)
 /* ==================== Scenario 7: technical board fault / سناریوی ۷ ==================== */
 
 #if MODULE_FAULT
+/* ==================== Ui_ScenarioTechnicalFault_Tick ==================== */
+
 /**
  * @brief [EN] Technical board fault face: all three LEDs use one absolute
  *        phase and therefore blink together. The buzzer reads only scenario
@@ -1424,6 +1448,8 @@ static void func__Ui_ScenarioTechnicalFault_Tick(void)
 /* ==================== Scenario Imbalance Latch / سناریوی قفل عدم‌توازن ==================== */
 
 #if MODULE_IMBALANCE
+/* ==================== Ui_ScenarioImbalance_Tick ==================== */
+
 /**
  * @brief  [EN] Imbalance-latched verdict (scenario 5, user order
  *         2026-10-04, cadence changed by user order 2026-10-05): RED
@@ -1511,6 +1537,8 @@ void func__Ui_ScenarioImbalance_Tick(void)
 /* ==================== Scenario DeadBattery / سناریوی باتری خراب ==================== */
 
 #if MODULE_CHARGER
+/* ==================== Ui_ScenarioDeadBattery_Tick ==================== */
+
 /**
  * @brief  [EN] v1.72 scenario 6 face (user order: "if it has not charged
  *              after 24 continuous hours we must raise an error that the

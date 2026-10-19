@@ -7,7 +7,7 @@ charger.h). Clicking an alarm replays its LED/buzzer pattern.
 import os
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-GH = 'https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/859ce091-changeover/Firmware/Modules/Ui/ui_led.c'
+GH = 'https://github.com/sargoliwork101-ui/ChangeOver/blob/arena/bb1aee1b-changeover/Firmware/Modules/Ui/ui_led.c'
 
 
 def line_of(token):

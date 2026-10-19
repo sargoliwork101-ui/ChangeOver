@@ -242,6 +242,41 @@ void func__BspGpio_Write(bsp_gpio_id_t bsp_gpio_id_t__id, bool bool__asserted)
     HAL_GPIO_WritePin(GPIO_TypeDef__port, uint16_t__pin, GPIO_PinState__level);
 }
 
+/* ==================== BspGpio_DisconnectBatteryPathIfInputPresent ==================== */
+/**
+ * @brief  [EN] Atomic "input still present? then cut the battery path".
+ *              See the header contract: the pair runs with interrupts masked so
+ *              the PB4 EXTI reconnect cannot be overwritten by a stale pass.
+ *         [FA] «ورودی هنوز حاضر است؟ پس مسیر باتری را قطع کن» به‌صورت اتمیک.
+ *              قرارداد در هدر آمده است: جفت کار با وقفه‌های ماسک‌شده اجرا
+ *              می‌شود تا وصل‌کردن اضطراری EXTI با پاس کهنه بازنویسی نشود.
+ * @‎return bool [EN] true = path cut, false = input absent, battery kept on‎ / قطع شد؟
+ */
+bool func__BspGpio_DisconnectBatteryPathIfInputPresent(void)
+{
+    uint32_t uint32_t__savedPrimask;
+    bool bool__inputPresent;
+    bool bool__disconnected = false;
+
+    uint32_t__savedPrimask = __get_PRIMASK();
+    __disable_irq();
+
+    bool__inputPresent = func__BspGpio_Read(BSP_GPIO_INPUT_24V_PRESENT);
+    if (bool__inputPresent == false)
+    {
+        func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, true);
+    }
+    else
+    {
+        func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, false);
+        bool__disconnected = true;
+    }
+
+    __set_PRIMASK(uint32_t__savedPrimask);
+
+    return bool__disconnected;
+}
+
 /* ==================== BspGpio_Read ==================== */
 /**
  * @brief  [EN] Read a logical board signal.

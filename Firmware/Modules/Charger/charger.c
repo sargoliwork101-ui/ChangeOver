@@ -376,6 +376,8 @@ static void func__Charger_DipResetAbsorbWindow(
     charger_channel_state_t__channel->uint32_t__absorbLastTick = 0u;
 }
 
+/* ==================== Charger_SafeIdle ==================== */
+
 static void func__Charger_SafeIdle(void)
 {
     uint8_t uint8_t__channelIndex;
@@ -411,6 +413,8 @@ static void func__Charger_SafeIdle(void)
     }
 }
 
+/* ==================== Charger_FinalDisconnect ==================== */
+
 /**
  * @brief  [EN] Final fault disconnect: after the third same-channel JIT, both
  *              PWM outputs are already stopped; then the NC relay opens so
@@ -434,6 +438,8 @@ static void func__Charger_FinalDisconnect(void)
         func__BspPwm_SetDutyPermille(func__Charger_PwmChannel(uint8_t__channelIndex), 0u);
     }
 }
+
+/* ==================== Charger_FinalDisconnectIdle ==================== */
 
 /**
  * @brief  [EN] Final-fault standby while the input is cut: keep the fault
@@ -479,6 +485,8 @@ static bool func__Charger_IsChannelInstalled(uint8_t uint8_t__channelIndex)
     return ((CHG_INSTALLED_CHANNEL_MASK & uint32_t__channelMask) != 0u);
 }
 
+/* ==================== Charger_PwmChannel ==================== */
+
 static bsp_pwm_channel_t func__Charger_PwmChannel(uint8_t uint8_t__channelIndex)
 {
     if (uint8_t__channelIndex == 0u)
@@ -511,6 +519,8 @@ static uint32_t func__Charger_ChannelCurrentMa(const measurement_snapshot_t *mea
     return measurement_snapshot_t__snap->i_ch2_ma;
 }
 
+/* ==================== Charger_MaxDutyPermille ==================== */
+
 static uint16_t func__Charger_MaxDutyPermille(void)
 {
     if ((CHG_TRANSFORMER_KNOWN == 0u) && (CHG_BRINGUP_TEST_ENABLE != 0u))
@@ -520,6 +530,8 @@ static uint16_t func__Charger_MaxDutyPermille(void)
 
     return CHG_DUTY_MAX_PERMILLE;
 }
+
+/* ==================== Charger_ActiveCurrentLimitMa ==================== */
 
 static uint32_t func__Charger_ActiveCurrentLimitMa(void)
 {
@@ -532,6 +544,8 @@ static uint32_t func__Charger_ActiveCurrentLimitMa(void)
        ‎compile-time 675 over the 650 band)‎. / سقف از باند پروفایل: حد = باند + ۲۵mA. */
     return (CHARGER_PROFILE_T__G__Profile.uint32_t__bulkCurrentMaxMa + 25u);
 }
+
+/* ==================== Charger_BatteryVoltageIsValid ==================== */
 
 static bool func__Charger_BatteryVoltageIsValid(uint32_t uint32_t__batteryMv)
 {
@@ -603,6 +617,8 @@ static void func__Charger_ApplyDuty(uint8_t uint8_t__channelIndex,
     }
 }
 
+/* ==================== Charger_StopOneChannel ==================== */
+
 static void func__Charger_StopOneChannel(uint8_t uint8_t__channelIndex)
 {
     if (uint8_t__channelIndex >= CHG_CHANNEL_COUNT)
@@ -660,6 +676,8 @@ static void func__Charger_ResetChannelToOff(uint8_t uint8_t__channelIndex)
        نه از انتگرالی که پیش از ریست داشت (v1.22). */
     func__Charger_PidInvalidate(charger_channel_state_t__channel);
 }
+
+/* ==================== Charger_LatchFinalFault ==================== */
 
 static void func__Charger_LatchFinalFault(uint8_t uint8_t__channelIndex)
 {
@@ -741,6 +759,8 @@ static void func__Charger_HandleJitTrip(uint8_t uint8_t__channelIndex,
 
 #endif
 
+/* ==================== Charger_RetryDuty ==================== */
+
 static uint16_t func__Charger_RetryDuty(uint8_t uint8_t__channelIndex)
 {
     charger_channel_state_t *charger_channel_state_t__channel;
@@ -771,6 +791,8 @@ static uint16_t func__Charger_RetryDuty(uint8_t uint8_t__channelIndex)
 
     return uint16_t__retryDuty;
 }
+
+/* ==================== Charger_ServiceRetry ==================== */
 
 static void func__Charger_ServiceRetry(uint32_t uint32_t__nowTick)
 {
@@ -955,6 +977,8 @@ static bool func__Charger_BulkStartSettled(uint8_t uint8_t__channelIndex,
  *      محدودکنندهٔ شیبِ همان مرحله می‌رسد. همهٔ ریاضی صحیح و بر حسب
  *      میلی‌پرمیل است؛ قرارداد واحدها در بلوک charger.h. */
 
+/* ==================== Charger_PidInvalidate ==================== */
+
 /* [EN] Drop the PID's memory of the operating point: the next update
  *      re-seeds from the duty the hardware actually carries.
  * [FA] پاک‌کردن حافظهٔ نقطهٔ کار: به‌روزرسانی بعدی از دیوتی واقعی
@@ -963,6 +987,8 @@ static void func__Charger_PidInvalidate(charger_channel_state_t *charger_channel
 {
     charger_channel_state_t__channel->bool__pidSeeded = false;
 }
+
+/* ==================== Charger_PidCeilingMilli ==================== */
 
 /* [EN] Live duty ceiling in milli-permille: the smaller of the compile-time
  *      DCM cap and the panel's per-channel ceiling - the same pair
@@ -984,6 +1010,8 @@ static uint32_t func__Charger_PidCeilingMilli(uint8_t uint8_t__channelIndex)
 
     return (uint32_t__ceilingPermille * CHG_PID_DUTY_SCALE);
 }
+
+/* ==================== Charger_PidClampError ==================== */
 
 /* [EN] Saturate one error before any gain touches it. / اشباع خطا پیش از ضریب. */
 static int32_t func__Charger_PidClampError(int32_t int32_t__error)
@@ -2026,6 +2054,8 @@ static void func__Charger_EnterManualTestMode(uint32_t uint32_t__nowTick)
 #endif
 }
 
+/* ==================== Charger_ExitManualTestMode ==================== */
+
 /**
  * @brief  [EN] Leave the manual test mode (panel off-switch or link
  *              dead-man): both duties drop to 0 and every channel
@@ -2143,6 +2173,8 @@ void func__Charger_SetSuspended(bool bool__suspended)
 {
     BOOL__G__ChargerSuspended = bool__suspended;
 }
+
+/* ==================== Charger_IsSuspended ==================== */
 
 /**
  * @brief  [EN] Read the NVM-save suspension flag.
@@ -2337,12 +2369,28 @@ typedef struct
     X(BEEP_GAP_MS,       0u,      5000u, CHG_DEAD_DEF_BEEP_GAP_MS) /* 135 gap */
 
 #define CHG_DEAD_ROW_DEF(name, lo, hi, def)  { (lo), (hi), (def) },
+/* [EN] Row ordinal generated from the SAME list, so the id -> slot helper
+ *      below can be checked against it at compile time. Without this an
+ *      accidental swap of two rows compiles cleanly and silently applies
+ *      one parameter's value to another id.
+ * [FA] ترتیب ردیف از همان فهرست ساخته می‌شود تا نگاشت شناسه به خانه در
+ *      زمان کامپایل بررسی شود؛ وگرنه جابه‌جایی دو ردیف بی‌صدا کامپایل
+ *      می‌شد و مقدار یک پارامتر روی شناسهٔ دیگری می‌نشست. */
+#define CHG_DEAD_ROW_ORD(name, lo, hi, def)  CHG_DEAD_ROW_ORD_##name,
+enum
+{
+    CHG_DEAD_ROWS(CHG_DEAD_ROW_ORD)
+    CHG_DEAD_ROW_ORD_COUNT
+};
 #define CHG_DEAD_ROW_VAL(name, lo, hi, def)  (def),
 #define CHG_DEAD_ROW_CHK(name, lo, hi, def)                                    \
     _Static_assert(CHG_DEAD_PARAM_##name >= CHG_DEAD_PARAM_FIRST_ID,           \
                    "scenario-6 row " #name " sits below the block");           \
     _Static_assert(CHG_DEAD_PARAM_##name <= CHG_DEAD_PARAM_LAST_ID,            \
                    "scenario-6 row " #name " sits above the block");           \
+    _Static_assert(CHG_DEAD_PARAM_INDEX(CHG_DEAD_PARAM_##name) ==              \
+                       (uint8_t)CHG_DEAD_ROW_ORD_##name,                       \
+                   "scenario-6 row " #name " is out of wire-id order");        \
     _Static_assert((lo) <= (hi),                                               \
                    "scenario-6 row " #name " has an empty window");            \
     _Static_assert(((def) >= (lo)) && ((def) <= (hi)),                         \
@@ -2366,6 +2414,8 @@ _Static_assert((sizeof(CHARGER_DEAD_DEF_T__A__DeadDefs) /
 _Static_assert((sizeof(UINT32_T__G__DeadParam) /
                 sizeof(UINT32_T__G__DeadParam[0])) == CHG_DEAD_PARAM_COUNT,
                "scenario-6 live array must have exactly one slot per owned wire id");
+_Static_assert(CHG_DEAD_ROW_ORD_COUNT == CHG_DEAD_PARAM_COUNT,
+               "scenario-6 row list and slot count disagree");
 
 /**
  * @brief  [EN] One scenario-6 pass for one channel: accumulate charge time,
@@ -2504,10 +2554,14 @@ static void func__Charger_DeadBatteryTick(uint8_t uint8_t__channelIndex,
     }
 }
 
+/* ==================== Charger_DeadMask ==================== */
+
 uint8_t func__Charger_DeadMask(void)
 {
     return (uint8_t)(UINT32_T__G__DeadMask & 0x03u);
 }
+
+/* ==================== Charger_DeadElapsedSeconds ==================== */
 
 uint32_t func__Charger_DeadElapsedSeconds(uint8_t uint8_t__channelIndex)
 {
@@ -2520,11 +2574,15 @@ uint32_t func__Charger_DeadElapsedSeconds(uint8_t uint8_t__channelIndex)
     return (UINT32_T__G__DeadChargeMs[uint8_t__channelIndex] / 1000u);
 }
 
+/* ==================== Charger_DeadBlocksOutput ==================== */
+
 bool func__Charger_DeadBlocksOutput(void)
 {
     return ((UINT32_T__G__DeadParam[2] != 0u) &&
             ((UINT32_T__G__DeadMask & 0x03u) != 0u));
 }
+
+/* ==================== Charger_DeadTakePersistFlag ==================== */
 
 bool func__Charger_DeadTakePersistFlag(void)
 {
@@ -3193,6 +3251,8 @@ void func__Charger_Evaluate(const measurement_snapshot_t *measurement_snapshot_t
  *         IsChargeComplete می‌آید) و آشکارساز قطع باتری هم آنجا مسلح نیست.
  * @return bool [EN] true if any installed channel is pumping / اگر کانالی پمپ کند true
  */
+/* ==================== Charger_IsChannelActive ==================== */
+
 /**
  * @brief  [EN] True while ONE given channel (0 = charger 1 / upper
  *              battery, 1 = charger 2 / lower battery) is actually
@@ -3226,6 +3286,8 @@ bool func__Charger_IsChannelActive(uint8_t uint8_t__channelIndex)
               CHG_STATE_ABSORB)));
 }
 
+/* ==================== Charger_GetAppliedDutyPermille ==================== */
+
 uint32_t func__Charger_GetAppliedDutyPermille(uint8_t uint8_t__channelIndex)
 {
     if (uint8_t__channelIndex >= CHG_CHANNEL_COUNT)
@@ -3235,10 +3297,14 @@ uint32_t func__Charger_GetAppliedDutyPermille(uint8_t uint8_t__channelIndex)
     return CHARGER_CHANNEL_T__G__State[uint8_t__channelIndex].uint16_t__dutyPermille;
 }
 
+/* ==================== Charger_IsRelayOpen ==================== */
+
 bool func__Charger_IsRelayOpen(void)
 {
     return BOOL__G__RelayOpen;
 }
+
+/* ==================== Charger_IsTechnicalFaultLocked ==================== */
 
 bool func__Charger_IsTechnicalFaultLocked(void)
 {
@@ -3325,6 +3391,8 @@ void func__Charger_EvaluateTechnicalFault(
     }
 }
 
+/* ==================== Charger_IsAnyChannelActive ==================== */
+
 bool func__Charger_IsAnyChannelActive(void)
 {
     uint8_t uint8_t__channelIndex;
@@ -3339,6 +3407,8 @@ bool func__Charger_IsAnyChannelActive(void)
 
     return false;
 }
+
+/* ==================== Charger_IsAnyChannelInThermalRest ==================== */
 
 bool func__Charger_IsAnyChannelInThermalRest(void)
 {
@@ -3355,6 +3425,8 @@ bool func__Charger_IsAnyChannelInThermalRest(void)
 
     return false;
 }
+
+/* ==================== Charger_IsThermalRestActive ==================== */
 
 bool func__Charger_IsThermalRestActive(uint8_t uint8_t__channelIndex)
 {
@@ -3428,6 +3500,8 @@ void func__Charger_SetChannelEspEnable(uint8_t uint8_t__channelIndex, bool bool_
     }
 }
 
+/* ==================== Charger_GetChannelEspEnable ==================== */
+
 /**
  * @brief  [EN] Read the ESP enable gate of one charger channel.
  *         [FA] گیت فعال‌سازی ESP یک کانال شارژر را می‌خواند.
@@ -3458,6 +3532,8 @@ bool func__Charger_GetChannelEspEnable(uint8_t uint8_t__channelIndex)
  *      فیزیکیِ سازنده بماند. پشتهٔ ایمنی سخت از پنل هرگز بالای سقف کامپایل
  *      نمی‌رود (v1.15: شناسه‌های ۳۵..۳۷ فقط پایین می‌برند) - ابزورب حداکثر
  *      ۱۴٫۶V و باند جریان حداکثر ۹۰۰mA (سقف = باند + ۲۵). */
+
+/* ==================== Charger_ClampAlarms ==================== */
 
 /* [EN] v1.15 alarm clamps: hard >= imax+50 (never above 950),
  *      OV >= over+150 (never above 15000), floor in 0..8000.
@@ -3497,6 +3573,8 @@ static void func__Charger_ClampAlarms(void)
         UINT32_T__G__ChargerValidFloorMv = 8000u;
     }
 }
+
+/* ==================== Charger_ClampPid ==================== */
 
 /* [EN] Re-assert every PID window. Called from the tail of
  *      func__Charger_ClampProfile so one NVM restore, one panel write or
@@ -3549,6 +3627,8 @@ static void func__Charger_ClampPid(void)
         }
     }
 }
+
+/* ==================== Charger_ClampProfile ==================== */
 
 static void func__Charger_ClampProfile(void)
 {
@@ -4049,6 +4129,19 @@ typedef struct
     X(RAMP_DOWN_INT_MS,   50u,     5000u, CHG_DUTY_RAMP_DOWN_INTERVAL_MS)
 
 #define CHG_LIMIT_ROW_DEF(name, lo, hi, def)  { (lo), (hi), (def) },
+/* [EN] Row ordinal from the same list; the check macro below pins every
+ *      wire id to its position. The static asserts used to verify only that
+ *      a row id was >= FIRST_ID, so swapping two rows built cleanly and
+ *      applied the wrong window to both ids.
+ * [FA] ترتیب ردیف از همان فهرست؛ ماکروی بررسی پایین هر شناسه را به جایگاهش
+ *      می‌چسباند. قبلاً بررسی فقط «بزرگ‌تر از شناسهٔ اول» را می‌سنجید، پس
+ *      جابه‌جایی دو ردیف بی‌صدا کامپایل می‌شد و پنجرهٔ اشتباه اعمال می‌شد. */
+#define CHG_LIMIT_ROW_ORD(name, lo, hi, def)  CHG_LIMIT_ROW_ORD_##name,
+enum
+{
+    CHG_LIMIT_ROWS(CHG_LIMIT_ROW_ORD)
+    CHG_LIMIT_ROW_ORD_COUNT
+};
 #define CHG_LIMIT_ROW_VAL(name, lo, hi, def)  (def),
 /* [EN] Row order must stay the wire-id order; this pins it. The window check
        is the one mutation testing asked for: dropping a row's ceiling below
@@ -4061,6 +4154,9 @@ typedef struct
        پیش‌فرض را گیره می‌زد، یعنی عددی که پنل به‌عنوان «کارخانه» نشان می‌داد
        عددی بود که برد هرگز نگه نمی‌داشت. */
 #define CHG_LIMIT_ROW_CHK(name, lo, hi, def)                                   \
+    _Static_assert(CHG_LIMIT_PARAM_##name ==                                   \
+                       (CHG_LIMIT_PARAM_FIRST_ID + CHG_LIMIT_ROW_ORD_##name),  \
+                   "limit row " #name " is out of wire-id order");             \
     _Static_assert(CHG_LIMIT_PARAM_##name >= CHG_LIMIT_PARAM_FIRST_ID,         \
                    "limit row " #name " is outside the wire-id block");        \
     _Static_assert((lo) <= (def),                                              \
@@ -4088,6 +4184,10 @@ _Static_assert((sizeof(CHARGER_LIMIT_DEF_T__A__Defs) /
 _Static_assert((sizeof(UINT32_T__G__ChargerLimit) /
                 sizeof(UINT32_T__G__ChargerLimit[0])) == CHG_LIMIT_COUNT,
                "live limit array must have exactly one slot per wire id");
+_Static_assert(CHG_LIMIT_ROW_ORD_COUNT == CHG_LIMIT_COUNT,
+               "limit row list and wire-id count disagree");
+
+/* ==================== Charger_Limit ==================== */
 
 /**
  * @brief  [EN] Live value of one charger limit, by table index.
@@ -4157,20 +4257,28 @@ bool func__Charger_GetLimitParam(uint8_t uint8_t__paramId,
     return true;
 }
 
+/* ==================== Charger_SetManualTestMode ==================== */
+
 void func__Charger_SetManualTestMode(bool bool__enable)
 {
     BOOL__G__ChargerManualModeRequested = (bool__enable != false);
 }
+
+/* ==================== Charger_GetManualTestMode ==================== */
 
 bool func__Charger_GetManualTestMode(void)
 {
     return BOOL__G__ChargerManualModeRequested;
 }
 
+/* ==================== Charger_IsManualTestModeActive ==================== */
+
 bool func__Charger_IsManualTestModeActive(void)
 {
     return BOOL__G__ChargerManualModeActive;
 }
+
+/* ==================== Charger_NotifyEspLinkActivity ==================== */
 
 void func__Charger_NotifyEspLinkActivity(void)
 {
@@ -4209,6 +4317,8 @@ uint32_t func__Charger_SetDutyCeilingPermille(uint8_t uint8_t__channelIndex,
     return uint32_t__ceilingPermille;
 }
 
+/* ==================== Charger_GetDutyCeilingPermille ==================== */
+
 /**
  * @brief  [EN] Read the live PWM duty ceiling of one channel.
  *         [FA] سقف زندهٔ duty ی PWM یک کانال.
@@ -4224,6 +4334,8 @@ uint32_t func__Charger_GetDutyCeilingPermille(uint8_t uint8_t__channelIndex)
 
     return CHG_DUTY_MAX_PERMILLE;
 }
+
+/* ==================== Charger_SetDutyFixedEnable ==================== */
 
 /**
  * @brief  [EN] Set the runtime fixed-duty mode of one channel. While
@@ -4248,6 +4360,8 @@ void func__Charger_SetDutyFixedEnable(uint8_t uint8_t__channelIndex, bool bool__
         BOOL__G__ChargerDutyFixedEnable[uint8_t__channelIndex] = bool__enable;
     }
 }
+
+/* ==================== Charger_GetDutyFixedEnable ==================== */
 
 /**
  * @brief  [EN] Read the runtime fixed-duty switch of one channel.
@@ -4305,6 +4419,8 @@ uint32_t func__Charger_SetDutyFixedPermille(uint8_t uint8_t__channelIndex,
 
     return uint32_t__dutyPermille;
 }
+
+/* ==================== Charger_GetDutyFixedPermille ==================== */
 
 /**
  * @brief  [EN] Read the stored fixed duty value of one channel.

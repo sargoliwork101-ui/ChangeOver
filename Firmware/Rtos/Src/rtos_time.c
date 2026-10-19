@@ -9,6 +9,8 @@
 
 #include <stdint.h>
 
+/* ==================== Rtos_MillisecondsToTicks ==================== */
+
 /**
  * @brief  [EN] Convert milliseconds to active kernel ticks without assuming a 1 kHz tick.
  *         [FA] میلی‌ثانیه را بدون فرض نرخ یک کیلوهرتز به تیک کرنل تبدیل می‌کند.
@@ -68,6 +70,8 @@ uint32_t func__Rtos_MillisecondsToTicks(uint32_t uint32_t__milliseconds)
     return uint32_t__wholeTicks + uint32_t__fractionalTicks;
 }
 
+/* ==================== Rtos_TicksToMilliseconds ==================== */
+
 /**
  * @brief  [EN] Convert elapsed kernel ticks to milliseconds without assuming a 1 kHz tick.
  *         [FA] تیک‌های سپری‌شده را بدون فرض نرخ یک کیلوهرتز به میلی‌ثانیه تبدیل می‌کند.
@@ -118,6 +122,8 @@ uint32_t func__Rtos_TicksToMilliseconds(uint32_t uint32_t__ticks)
 
     return uint32_t__wholeMilliseconds + uint32_t__remainderMilliseconds;
 }
+
+/* ==================== Rtos_DelayMilliseconds ==================== */
 
 /**
  * @brief  [EN] Delay the current CMSIS-RTOS2 thread for milliseconds.

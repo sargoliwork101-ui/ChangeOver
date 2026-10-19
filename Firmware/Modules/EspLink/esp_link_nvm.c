@@ -126,6 +126,8 @@ uint32_t func__EspLink_NvmCrc32(const uint8_t *uint8_t__A__Data,
     return (uint32_t__crc ^ 0xFFFFFFFFu);
 }
 
+/* ==================== EspLink_NvmParamPersisted ==================== */
+
 /**
  * @brief  [EN] Is this parameter id part of the persisted configuration?
  *         [FA] این شناسه جزو پیکربندی ذخیره‌شونده است؟
@@ -156,6 +158,8 @@ bool func__EspLink_NvmParamPersisted(uint8_t uint8_t__paramId)
             ((uint8_t__paramId >= ESP_LINK_NVM_SLOT_MIN_ID) &&
              (uint8_t__paramId <= ESP_LINK_NVM_SLOT_MAX_ID)));
 }
+
+/* ==================== EspLink_NvmSeqCompare ==================== */
 
 /**
  * @brief  [EN] Signed halfword sequence compare: +1 when a is newer, -1 when
@@ -354,6 +358,8 @@ static const esp_link_nvm_record_t *func__EspLink_NvmPageRecord(
     return (const esp_link_nvm_record_t *)(uintptr_t)uint32_t__pageAddress;
 }
 
+/* ==================== EspLink_NvmInit ==================== */
+
 /**
  * @brief  [EN] Boot-time load (see header contract).
  *         [FA] بارگذاری هنگام بوت (قرارداد هدر).
@@ -426,6 +432,8 @@ void func__EspLink_NvmInit(void)
         (esp_link_nvm_record_t__newest == esp_link_nvm_record_t__pageB);
 }
 
+/* ==================== EspLink_NvmMarkDirty ==================== */
+
 /**
  * @brief  [EN] Mark the persisted configuration dirty (see header contract).
  *         [FA] کثیف‌علامت‌کردن پیکربندی ذخیره‌شونده (قرارداد هدر).
@@ -474,6 +482,8 @@ void func__EspLink_NvmMarkDirty(uint8_t uint8_t__paramId)
 #define ESP_LINK_NVM_SUSPEND_TIMEOUT_POLLS  40u
 #endif
 
+/* ==================== EspLink_NvmSuspendCharger ==================== */
+
 /**
  * @brief  [EN] Quiet the charger down for a flash save (user order
  *              2026-09-27: idle the charger, save, restart it). Sets the
@@ -519,6 +529,8 @@ static bool func__EspLink_NvmSuspendCharger(void)
 #endif
 }
 
+/* ==================== EspLink_NvmResumeCharger ==================== */
+
 /**
  * @brief  [EN] Resume the charger after a flash save (no-op unless the
  *              suspend helper set the flag).
@@ -536,6 +548,8 @@ static void func__EspLink_NvmResumeCharger(bool bool__wasSuspended)
     (void)bool__wasSuspended;
 #endif
 }
+
+/* ==================== EspLink_NvmSaveNow ==================== */
 
 static bool func__EspLink_NvmSaveNow(void)
 {
@@ -647,6 +661,8 @@ static bool func__EspLink_NvmSaveNow(void)
     return true;
 }
 
+/* ==================== EspLink_NvmFlushForReset ==================== */
+
 /**
  * @brief  [EN] Comm-task housekeeping (see header contract).
  *         [FA] نگهداری تسک ارتباط (قرارداد هدر).
@@ -673,6 +689,8 @@ bool func__EspLink_NvmFlushForReset(void)
        دوباره تلاش کند. */
     return false;
 }
+
+/* ==================== EspLink_NvmTick ==================== */
 
 void func__EspLink_NvmTick(void)
 {

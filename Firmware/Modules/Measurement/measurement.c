@@ -142,6 +142,8 @@ static volatile int32_t INT32_T__G__VoltageInOffsetMv = 0;
 static volatile int32_t INT32_T__G__Voltage24OffsetMv = 0;
 static volatile int32_t INT32_T__G__Voltage12OffsetMv = 0;
 
+/* ==================== Measurement_Median5 ==================== */
+
 /* [EN] Median-of-5 for the battery voltage channel prefilter: plain
    insertion sort of a LOCAL copy keeps the live history untouched; the
    middle element is the spike-immune sample. Five-element sorting network
@@ -722,6 +724,8 @@ static uint32_t func__Measurement_BenchTableMa(const uint32_t *UINT32_T__A__Coun
         10u);
 }
 
+/* ==================== Measurement_Current1CountsToMaLocked ==================== */
+
 static uint32_t func__Measurement_Current1CountsToMaLocked(uint16_t uint16_t__counts)
 {
     const uint32_t *UINT32_T__A__Counts;
@@ -750,6 +754,8 @@ static uint32_t func__Measurement_Current1CountsToMaLocked(uint16_t uint16_t__co
                                           uint32_t__aboveTenthMa);
 }
 
+/* ==================== Measurement_Current1CountsToMa ==================== */
+
 /**
  * @brief  [EN] Channel-1 counts to battery mA, read under the kernel lock so a
  *              CalLut commit cannot swap the table mid-lookup (race fix 2026-10-10).
@@ -759,10 +765,24 @@ static uint32_t func__Measurement_Current1CountsToMaLocked(uint16_t uint16_t__co
 uint32_t func__Measurement_Current1CountsToMa(uint16_t uint16_t__counts)
 {
     int32_t int32_t__savedKernelLock = osKernelLock();
-    uint32_t uint32_t__ma = func__Measurement_Current1CountsToMaLocked(uint16_t__counts);
-    (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    uint32_t uint32_t__ma;
+
+    uint32_t__ma = func__Measurement_Current1CountsToMaLocked(uint16_t__counts);
+
+    /* [EN] Restore only after a lock that actually succeeded: a negative
+       return means the kernel was not running (or we are in an ISR) and
+       there is no lock state to put back.
+       [FA] بازگردانی فقط وقتی قفل واقعاً گرفته شده باشد؛ مقدار منفی یعنی
+       کرنل در حال اجرا نبوده و حالتی برای بازگرداندن نیست. */
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
+
     return uint32_t__ma;
 }
+
+/* ==================== Measurement_Current2CountsToMaLocked ==================== */
 
 /**
  * @brief  [EN] Channel-2 counts to battery-2 mA. Table present: bench table on
@@ -800,6 +820,8 @@ static uint32_t func__Measurement_Current2CountsToMaLocked(uint16_t uint16_t__co
                                           uint32_t__aboveTenthMa);
 }
 
+/* ==================== Measurement_Current2CountsToMa ==================== */
+
 /**
  * @brief  [EN] Channel-2 counts to battery mA, read under the kernel lock so a
  *              CalLut commit cannot swap the table mid-lookup (race fix 2026-10-10).
@@ -809,10 +831,24 @@ static uint32_t func__Measurement_Current2CountsToMaLocked(uint16_t uint16_t__co
 uint32_t func__Measurement_Current2CountsToMa(uint16_t uint16_t__counts)
 {
     int32_t int32_t__savedKernelLock = osKernelLock();
-    uint32_t uint32_t__ma = func__Measurement_Current2CountsToMaLocked(uint16_t__counts);
-    (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    uint32_t uint32_t__ma;
+
+    uint32_t__ma = func__Measurement_Current2CountsToMaLocked(uint16_t__counts);
+
+    /* [EN] Restore only after a lock that actually succeeded: a negative
+       return means the kernel was not running (or we are in an ISR) and
+       there is no lock state to put back.
+       [FA] بازگردانی فقط وقتی قفل واقعاً گرفته شده باشد؛ مقدار منفی یعنی
+       کرنل در حال اجرا نبوده و حالتی برای بازگرداندن نیست. */
+    if (int32_t__savedKernelLock >= 0)
+    {
+        (void)osKernelRestoreLock(int32_t__savedKernelLock);
+    }
+
     return uint32_t__ma;
 }
+
+/* ==================== Measurement_CurrentIsBatteryCalibrated ==================== */
 
 bool func__Measurement_CurrentIsBatteryCalibrated(uint8_t uint8_t__channelIndex)
 {
@@ -1243,6 +1279,8 @@ uint8_t func__Measurement_SetFilterMedianSize(uint8_t uint8_t__medianSize)
     return uint8_t__medianSize;
 }
 
+/* ==================== Measurement_SetFilterAverageWindow ==================== */
+
 /**
  * @brief  [EN] Set the runtime moving-average window size, clamped to
  *              1..MEASUREMENT_CURRENT_AVERAGE_WINDOW (the compiled ring
@@ -1284,6 +1322,8 @@ uint16_t func__Measurement_SetFilterAverageWindow(uint32_t uint32_t__windowSampl
     return uint16_t__appliedWindow;
 }
 
+/* ==================== Measurement_GetFilterMedianSize ==================== */
+
 /**
  * @brief  [EN] Read the live median window size of the current filter.
  *         [FA] اندازهٔ زندهٔ پنجرهٔ مدین فیلتر جریان.
@@ -1293,6 +1333,8 @@ uint8_t func__Measurement_GetFilterMedianSize(void)
 {
     return UINT8_T__G__FilterMedianSize;
 }
+
+/* ==================== Measurement_GetFilterAverageWindow ==================== */
 
 /**
  * @brief  [EN] Read the live moving-average window size.
@@ -1349,6 +1391,8 @@ int32_t func__Measurement_SetVoltageOffsetMv(uint8_t uint8_t__channelIndex,
 
     return int32_t__offsetMv;
 }
+
+/* ==================== Measurement_GetVoltageOffsetMv ==================== */
 
 /**
  * @brief  [EN] Read one runtime voltage calibration offset.

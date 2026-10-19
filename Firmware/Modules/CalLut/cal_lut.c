@@ -82,6 +82,8 @@ _Static_assert((sizeof(cal_lut_record_t) % 2u) == 0u,
  * ===== CalLut pure record logic (host-testable, no flash) ===========
  * ==================================================================== */
 
+/* ==================== CalLut_Crc32Byte ==================== */
+
 /**
  * @brief  [EN] Fold one byte into a running reflected CRC32. Exposed as a
  *              separate step so the staged table can be CRC-ed as a STREAM:
@@ -199,6 +201,8 @@ static uint8_t func__CalLut_ChannelCheck(const cal_lut_channel_t
     return (uint8_t)CAL_LUT_ST_OK;
 }
 
+/* ==================== CalLut_RecordValidate ==================== */
+
 /**
  * @brief  [EN] Validate a candidate record (see header contract).
  *         [FA] اعتبارسنجی رکورد نامزد (قرارداد هدر).
@@ -288,6 +292,8 @@ static const cal_lut_record_t *func__CalLut_PageRecord(uint32_t uint32_t__pageAd
     return (const cal_lut_record_t *)(uintptr_t)uint32_t__pageAddress;
 }
 
+/* ==================== CalLut_SeqCompare ==================== */
+
 /**
  * @brief  [EN] Unsigned wrap-safe sequence compare (same rule as the
  *              parameter NVM: a > b when (a - b) is a small positive).
@@ -303,6 +309,8 @@ static int8_t func__CalLut_SeqCompare(uint16_t uint16_t__a, uint16_t uint16_t__b
     }
     return (uint16_t__delta < 0x8000u) ? (int8_t)1 : (int8_t)-1;
 }
+
+/* ==================== CalLut_Init ==================== */
 
 /**
  * @brief  [EN] Boot load (see header contract).
@@ -360,6 +368,8 @@ void func__CalLut_Init(void)
     BOOL__G__NewestIsPageB = (cal_lut_record_t__newest == cal_lut_record_t__pageB);
 }
 
+/* ==================== CalLut_Index ==================== */
+
 /**
  * @brief  [EN] Channel index 1/2 -> array index, 0xFF when out of range.
  *         [FA] تبدیل شمارهٔ کانال به اندیس آرایه.
@@ -377,6 +387,8 @@ static uint8_t func__CalLut_Index(uint8_t uint8_t__channel)
     return 0xFFu;
 }
 
+/* ==================== CalLut_Active ==================== */
+
 bool func__CalLut_Active(uint8_t uint8_t__channel)
 {
     uint8_t uint8_t__index = func__CalLut_Index(uint8_t__channel);
@@ -389,6 +401,8 @@ bool func__CalLut_Active(uint8_t uint8_t__channel)
                 .CAL_LUT_CHANNEL_T__A__Channel[uint8_t__index]
                 .uint32_t__points >= (uint32_t)CAL_LUT_POINTS_MIN);
 }
+
+/* ==================== CalLut_Points ==================== */
 
 uint32_t func__CalLut_Points(uint8_t uint8_t__channel)
 {
@@ -425,6 +439,8 @@ const uint32_t *func__CalLut_BatteryMa(uint8_t uint8_t__channel)
     return CAL_LUT_RECORD_T__G__Active
         .CAL_LUT_CHANNEL_T__A__Channel[uint8_t__index].UINT32_T__A__BatteryMa;
 }
+
+/* ==================== CalLut_ActiveCrc32 ==================== */
 
 uint32_t func__CalLut_ActiveCrc32(void)
 {
@@ -521,6 +537,8 @@ bool func__CalLut_StagePoint(uint8_t uint8_t__channel,
     return true;
 }
 
+/* ==================== CalLut_SuspendCharger ==================== */
+
 /**
  * @brief  [EN] Idle the charger around the flash stall (same rule as the
  *              parameter NVM: no switching inside the ~30..50 ms blind
@@ -556,6 +574,8 @@ static bool func__CalLut_SuspendCharger(void)
     return false;
 #endif
 }
+
+/* ==================== CalLut_ResumeCharger ==================== */
 
 static void func__CalLut_ResumeCharger(bool bool__wasSuspended)
 {
@@ -717,10 +737,14 @@ uint8_t func__CalLut_Commit(uint32_t uint32_t__panelCrc32,
     return (uint8_t)CAL_LUT_ST_OK;
 }
 
+/* ==================== CalLut_RequestReset ==================== */
+
 void func__CalLut_RequestReset(void)
 {
     UINT8_T__G__ResetRuns = (uint8_t)CAL_LUT_RESET_DELAY_RUNS;
 }
+
+/* ==================== CalLut_Tick ==================== */
 
 void func__CalLut_Tick(void)
 {

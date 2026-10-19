@@ -73,6 +73,25 @@ bool func__BspGpio_Read(bsp_gpio_id_t bsp_gpio_id_t__id)
     return BOOL__G__PresencePin;
 }
 
+/* ==================== BspGpio_DisconnectBatteryPathIfInputPresent ==================== */
+/**
+ * [EN] Host stub of the atomic BSP pair: same contract (only cut when the
+ *      presence pin is high), no interrupts to mask off-target.
+ * [FA] بدل هاست برای جفت اتمیک BSP: همان قرارداد (فقط با حضور ورودی قطع
+ *      می‌کند) بدون وقفه‌ای برای ماسک‌کردن.
+ */
+bool func__BspGpio_DisconnectBatteryPathIfInputPresent(void)
+{
+    if (BOOL__G__PresencePin == false)
+    {
+        func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, true);
+        return false;
+    }
+
+    func__BspGpio_Write(BSP_GPIO_BATTERY_SWITCH, false);
+    return true;
+}
+
 bool func__Measurement_GetSnapshot(measurement_snapshot_t *measurement_snapshot_t__out)
 {
     if (measurement_snapshot_t__out == NULL)

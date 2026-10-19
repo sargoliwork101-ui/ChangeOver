@@ -160,7 +160,7 @@ static void func__EspLink_PutU32(uint8_t *uint8_t__buffer,
  * @brief  [EN] Read one little-endian u32 from a payload buffer.
  *         [FA] یک u32 اندیان‌کوچک از بافر payload می‌خواند.
  * @param  uint8_t__payload [EN] Payload buffer / بافر payload
- * @param  uint8_t__offset [EN] Byte offset, 0..ESPLINK_FRAME_MAX_PAYLOAD-4‎ / آفست بایتی
+ * @param  uint16_t__offset [EN] Byte offset, 0..ESPLINK_FRAME_MAX_PAYLOAD-4‎ / آفست بایتی
  * @note   [EN] AUDIT 2026-10-05: the offset was uint8_t while the LUT_CHUNK
  *         loop computes 3 + 8*i against a 512-byte payload ceiling, so a
  *         frame claiming more than 31 points wrapped the offset and read the
@@ -174,12 +174,12 @@ static void func__EspLink_PutU32(uint8_t *uint8_t__buffer,
  * @return uint32_t [EN] Value / مقدار
  */
 static uint32_t func__EspLink_GetU32(const uint8_t *uint8_t__payload,
-                                     uint16_t uint8_t__offset)
+                                     uint16_t uint16_t__offset)
 {
-    return ((uint32_t)uint8_t__payload[uint8_t__offset] |
-            ((uint32_t)uint8_t__payload[uint8_t__offset + 1u] << 8) |
-            ((uint32_t)uint8_t__payload[uint8_t__offset + 2u] << 16) |
-            ((uint32_t)uint8_t__payload[uint8_t__offset + 3u] << 24));
+    return ((uint32_t)uint8_t__payload[uint16_t__offset] |
+            ((uint32_t)uint8_t__payload[uint16_t__offset + 1u] << 8) |
+            ((uint32_t)uint8_t__payload[uint16_t__offset + 2u] << 16) |
+            ((uint32_t)uint8_t__payload[uint16_t__offset + 3u] << 24));
 }
 
 /* ==================== Parameter dispatch / اعمال پارامترها ==================== */
@@ -852,6 +852,8 @@ _Static_assert(ESPLINK_BULK_MAX_ITEMS >= 1u,
 _Static_assert(ESPLINK_BULK_MAX_ITEMS <= 255u,
                "the bulk count byte cannot describe more than 255 items");
 
+/* ==================== EspLink_SendParamsBulk ==================== */
+
 static void func__EspLink_SendParamsBulk(void)
 {
     /* [EN] STATIC by necessity, not style (v1.16 audit E1): on the 1 KiB
@@ -1317,6 +1319,8 @@ static void func__EspLink_SendDiagPower(uint8_t uint8_t__chunkId,
                             UINT8_T__A__Payload, uint16_t__cursor);
 }
 
+/* ==================== EspLink_SendDiagData ==================== */
+
 static void func__EspLink_SendDiagData(void)
 {
     const diag_record_t *diag_record_t__rec = func__Diag_GetRecord();
@@ -1433,6 +1437,8 @@ static void func__EspLink_SendLutData(uint8_t uint8_t__channel)
                             UINT8_T__A__Payload, uint16_t__cursor);
 }
 
+/* ==================== EspLink_HandleLutRead ==================== */
+
 /**
  * @brief  [EN] Answer a zero-payload LUT_READ with both active channels.
  *         [FA] به LUT_READ بدون payload با هر دو کانال فعال پاسخ می‌دهد.
@@ -1451,6 +1457,8 @@ static bool func__EspLink_HandleLutRead(uint16_t uint16_t__payloadLength)
     return true;
 }
 
+/* ==================== EspLink_RecordLutCommitAck ==================== */
+
 /* [EN] Keep the handshake policy as a small stateful predicate so it is
    testable without a UART or flash model. A successful commit is the proof of
    intent, including a valid zero-point commit that deliberately disables both
@@ -1463,6 +1471,8 @@ static void func__EspLink_RecordLutCommitAck(bool bool__success)
 {
     BOOL__G__LutResetAuthorized = bool__success;
 }
+
+/* ==================== EspLink_ConsumeLutResetAuthorization ==================== */
 
 static bool func__EspLink_ConsumeLutResetAuthorization(bool bool__magicValid)
 {
@@ -1740,6 +1750,8 @@ static void func__EspLink_HandleFrame(uint8_t uint8_t__messageType,
     }
 }
 
+/* ==================== EspLink_ResyncFromByte ==================== */
+
 /* [EN] Return to the earliest state that can still recognize the current
    byte as the start of the next frame. Error bytes are data already consumed
    by the failing frame, but AA itself may be the next SOF0; dropping it loses
@@ -1755,6 +1767,8 @@ static void func__EspLink_ResyncFromByte(uint8_t uint8_t__byte)
             ? ESP_LINK_PARSE_WAIT_SOF1
             : ESP_LINK_PARSE_WAIT_SOF0;
 }
+
+/* ==================== EspLink_ParseByte ==================== */
 
 /**
  * @brief  [EN] Feed one received byte into the parser state machine.
@@ -1907,6 +1921,8 @@ static void func__EspLink_ParseByte(uint8_t uint8_t__byte)
 }
 
 #ifdef ESPLINK_HOST_TEST
+/* ==================== EspLink_HostTest_Reset ==================== */
+
 /** [EN] Host-only parser and handshake probes; never part of the firmware API. */
 void func__EspLink_HostTest_Reset(void)
 {
@@ -1919,25 +1935,35 @@ void func__EspLink_HostTest_Reset(void)
     UINT8_T__G__LutStageN2 = 0u;
 }
 
+/* ==================== EspLink_HostTest_FeedByte ==================== */
+
 void func__EspLink_HostTest_FeedByte(uint8_t uint8_t__byte)
 {
     func__EspLink_ParseByte(uint8_t__byte);
 }
+
+/* ==================== EspLink_HostTest_CrcErrors ==================== */
 
 uint32_t func__EspLink_HostTest_CrcErrors(void)
 {
     return UINT32_T__G__RxCrcError;
 }
 
+/* ==================== EspLink_HostTest_VersionErrors ==================== */
+
 uint32_t func__EspLink_HostTest_VersionErrors(void)
 {
     return UINT32_T__G__RxVersionMismatch;
 }
 
+/* ==================== EspLink_HostTest_AcceptedFrames ==================== */
+
 uint32_t func__EspLink_HostTest_AcceptedFrames(void)
 {
     return UINT32_T__G__HostAcceptedFrames;
 }
+
+/* ==================== EspLink_HostTest_RecordCommitAck ==================== */
 
 void func__EspLink_HostTest_RecordCommitAck(bool bool__success)
 {

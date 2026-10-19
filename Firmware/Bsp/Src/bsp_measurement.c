@@ -471,6 +471,8 @@ static uint32_t func__BspMeasurement_ChainNumerator(uint16_t uint16_t__counts,
  *      تجمیع ثابت مراحل مدار و ۱۰۰۰ مقیاس پرمیل است. */
 #define BSP_MEASUREMENT_CHAIN_DENOMINATOR (27573u * BSP_MEASUREMENT_PERMILLE_SCALE)
 
+/* ==================== BspMeasurement_ScaleRoundMa ==================== */
+
 /**
  * @brief  [EN] Ceil(numerator x 24200 / 27573000) in ONE round-up, without a
  *              64-bit divide. Split: N = a x 27573 + b, so
@@ -665,6 +667,8 @@ uint32_t func__BspMeasurement_SetCurrentGainPermille(uint8_t uint8_t__channelInd
     return uint32_t__gainPermille;
 }
 
+/* ==================== BspMeasurement_GetCurrentOffsetCounts ==================== */
+
 /**
  * @brief  [EN] Read the live zero-current offset of one current channel.
  *         [FA] آفست جریان صفرِ زندهٔ یک کانال را می‌خواند.
@@ -680,6 +684,8 @@ uint32_t func__BspMeasurement_GetCurrentOffsetCounts(uint8_t uint8_t__channelInd
 
     return UINT32_T__G__Current2OffsetCounts;
 }
+
+/* ==================== BspMeasurement_GetCurrentGainPermille ==================== */
 
 /**
  * @brief  [EN] Read the live bench gain trim of one current channel.

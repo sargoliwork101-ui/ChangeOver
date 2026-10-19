@@ -56,6 +56,8 @@ static void func__BspFlash_Unlock(void)
     }
 }
 
+/* ==================== BspFlash_ClearFlags ==================== */
+
 /**
  * @brief  [EN] Clear the sticky SR error/EOP flags (write-1-to-clear on F1).
  *         [FA] پرچم‌های چسبان خطا/EOP در SR را پاک می‌کند (نوشتن ۱ برای پاک).
@@ -64,6 +66,8 @@ static void func__BspFlash_ClearFlags(void)
 {
     FLASH->SR = (FLASH_SR_EOP | FLASH_SR_PGERR | FLASH_SR_WRPRTERR);
 }
+
+/* ==================== BspFlash_WaitIdle ==================== */
 
 /**
  * @brief  [EN] Bounded wait for BSY to drop; clears EOP when it fired.
