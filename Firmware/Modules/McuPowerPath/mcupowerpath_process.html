@@ -28,6 +28,10 @@
   .fnode { cursor: pointer; }
   svg.sel .edge, svg.sel .fnode { opacity: .12; }
   svg.sel .edge.hl, svg.sel .fnode.hl { opacity: 1; }
+  .snode { cursor: pointer; }
+  svg.sel .snode { opacity: .12; }
+  svg.sel .snode.hl { opacity: 1; }
+  .snode.hl rect { stroke-width: 4; }
   .edge.hl .vis { stroke-width: 4.5; }
   .fnode.hl rect, .fnode.hl polygon { stroke-width: 4; }
   .fnode a text { text-decoration: underline; }
@@ -169,7 +173,7 @@ function drawSide(s, nodeCx, nodeW, cy, dir, oIdx, oTitle, kind){
   SIDEGEO[oIdx + ':' + kind] = { x: x, y: y, w: sz.w, h: sz.h, cy: cy, dir: dir };
   var x1 = (dir === 'r') ? nodeCx + nodeW / 2 : nodeCx - nodeW / 2;
   var x2 = (dir === 'r') ? x : x + sz.w;
-  out += '<g class="edge" data-fi="' + oIdx + '" data-ti="" data-f="' + esc(oTitle || '') + '" data-t="' + esc(s.l[0] || '') + '" data-l="' + esc(s.lab || (s.d === 'l' ? 'موازی' : '')) + '">';
+  out += '<g class="edge" data-sk="' + kind + '" data-fi="' + oIdx + '" data-ti="" data-f="' + esc(oTitle || '') + '" data-t="' + esc(s.l[0] || '') + '" data-l="' + esc(s.lab || (s.d === 'l' ? 'موازی' : '')) + '">';
   out += '<path class="hit" d="M' + x1 + ' ' + cy + ' H' + x2 + '"/>';
   out += '<path class="vis" d="M' + x1 + ' ' + cy + ' H' + x2 + '" stroke="' + (LINES[s.c || 'gray']) + '" stroke-width="2" stroke-dasharray="6 4" fill="none" marker-end="url(#arw)"/>';
   var slab = s.lab || (s.d === 'l' ? 'موازی' : null);
@@ -178,6 +182,7 @@ function drawSide(s, nodeCx, nodeW, cy, dir, oIdx, oTitle, kind){
     out += '<rect x="' + (mxp - lw / 2 - 5) + '" y="' + (cy - 9.5) + '" width="' + (lw + 10) + '" height="19" fill="#1B2029"/>';
     out += '<text x="' + mxp + '" y="' + (cy + 4.5) + '" text-anchor="middle" font-size="13.5" font-weight="700" fill="' + (LINES[s.c || 'gray']) + '">' + esc(slab) + '</text>';
   }
+  out += '</g><g class="snode" data-i="' + oIdx + '" data-k="' + kind + '">';
   out += '<rect x="' + x + '" y="' + y + '" width="' + sz.w + '" height="' + sz.h + '" rx="9" fill="' + c.f + '" stroke="' + c.o + '" stroke-width="1.6"/>';
   var sl = sideLines(s), st = '';
   sl.forEach(function(ln, i){
@@ -261,7 +266,7 @@ function renderFlow(){
       var ty = tgt.cy - Math.min(18, tgt.h / 4);
       dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + (g.y + g.h + 10) + ' H' + lane + ' V' + ty + ' H' + (edgeX(DATA.flow[tIdx], tgt, ty - tgt.cy, 1) - 2);
     }
-    out += '<g class="edge" data-fi="' + i + '" data-ti="' + tIdx + '" data-f="' + esc(n.t || '') + '" data-t="' + esc(tTitle) + '" data-l="برگشت">';
+    out += '<g class="edge" data-rf="side" data-fi="' + i + '" data-ti="' + tIdx + '" data-f="' + esc((n.side && n.side.l && n.side.l[0]) || n.t || '') + '" data-t="' + esc(tTitle) + '" data-l="برگشت">';
     out += '<path class="hit rhit" d="' + dd + '"/>';
     out += '<path class="vis" d="' + dd + '" stroke="' + (LINES[n.side.c || 'gray']) + '" stroke-width="1.8" fill="none" marker-end="url(#arw)"/>';
     out += '</g>';
@@ -378,13 +383,21 @@ function wireFlow(){
       for (var q = 0; q < hs.length; q++) hs[q].classList.remove('hl');
     }
     if (ev.target.closest && ev.target.closest('a')) return;
+    var sg = ev.target.closest ? ev.target.closest('.snode') : null;
     var eg = ev.target.closest ? ev.target.closest('.edge') : null;
     var ng = ev.target.closest ? ev.target.closest('.fnode') : null;
     clear();
-    if (eg){
+    if (sg){
+      svg.classList.add('sel'); sg.classList.add('hl');
+      var si = sg.getAttribute('data-i'), sk = sg.getAttribute('data-k'), ces = svg.querySelectorAll('.edge'), cc = 0;
+      for (var q5 = 0; q5 < ces.length; q5++){ var ce = ces[q5]; if (ce.getAttribute('data-fi') === si && ((ce.getAttribute('data-ti') === '' && ce.getAttribute('data-sk') === sk) || ce.getAttribute('data-rf') === sk)){ ce.classList.add('hl'); cc++; } }
+      if (info) info.textContent = '\u0628\u0627\u06a9\u0633 \u06a9\u0646\u0627\u0631\u06cc \u00ab' + ((sg.textContent || '').replace(/\s+/g, ' ').trim()) + '\u00bb \u2014 ' + cc + ' \u062e\u0637\u0650 \u062e\u0648\u062f\u0634 \u0631\u0648\u0634\u0646 \u0634\u062f. \u0628\u0631\u0627\u06cc \u0628\u0631\u06af\u0634\u062a\u060c \u0631\u0648\u06cc \u062c\u0627\u06cc \u062e\u0627\u0644\u06cc \u0634\u06a9\u0644 \u06a9\u0644\u06cc\u06a9 \u06a9\u0646.';
+    } else if (eg){
       svg.classList.add('sel'); eg.classList.add('hl');
-      var fi3 = eg.getAttribute('data-fi'), ti3 = eg.getAttribute('data-ti'), ns3 = svg.querySelectorAll('.fnode');
-      for (var q4 = 0; q4 < ns3.length; q4++){ var di3 = ns3[q4].getAttribute('data-i'); if (di3 === fi3 || (ti3 && di3 === ti3)) ns3[q4].classList.add('hl'); }
+      var fi3 = eg.getAttribute('data-fi'), ti3 = eg.getAttribute('data-ti'), rf3 = eg.getAttribute('data-rf'), ns3 = svg.querySelectorAll('.fnode');
+      for (var q4 = 0; q4 < ns3.length; q4++){ var di3 = ns3[q4].getAttribute('data-i'); if ((ti3 && di3 === ti3) || (!rf3 && di3 === fi3)) ns3[q4].classList.add('hl'); }
+      var sk3 = eg.getAttribute('data-sk'), want3 = rf3 || sk3;
+      if (want3){ var sn3 = svg.querySelectorAll('.snode'); for (var q6 = 0; q6 < sn3.length; q6++){ if (sn3[q6].getAttribute('data-i') === fi3 && sn3[q6].getAttribute('data-k') === want3) sn3[q6].classList.add('hl'); } }
       if (info) info.textContent = 'ارتباط: از «' + eg.getAttribute('data-f') + '» به «' + eg.getAttribute('data-t') + '»' + (eg.getAttribute('data-l') ? ' — ' + eg.getAttribute('data-l') : '');
     } else if (ng){
       var go = ng.getAttribute('data-go');
@@ -392,6 +405,7 @@ function wireFlow(){
       svg.classList.add('sel'); ng.classList.add('hl');
       var i2 = ng.getAttribute('data-i'), cnt = 0, es = svg.querySelectorAll('.edge');
       for (var q2 = 0; q2 < es.length; q2++){ if (es[q2].getAttribute('data-fi') === i2 || es[q2].getAttribute('data-ti') === i2){ es[q2].classList.add('hl'); cnt++; } }
+      var sn4 = svg.querySelectorAll('.snode'); for (var q7 = 0; q7 < sn4.length; q7++){ if (sn4[q7].getAttribute('data-i') === i2) sn4[q7].classList.add('hl'); }
       if (info) info.textContent = 'باکس «' + (ng.getAttribute('data-t') || '') + '» — ' + cnt + ' خطِ وصل به آن روشن شد. برای برگشت، روی جای خالی شکل کلیک کن.';
     } else {
       if (info) info.textContent = 'برای دیدن ارتباط هر خط، روی آن کلیک کن تا خودش و دو باکسِ دو سرش روشن شوند؛ روی هر باکس هم کلیک کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. باکس‌های با علامت ↗ لینک صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل کلیک کن.';
