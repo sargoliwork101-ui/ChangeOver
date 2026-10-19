@@ -249,6 +249,13 @@ function renderFlow(){
     if (n2 && n2.k === 'dia'){ var f = 1 - Math.min(1, Math.abs(dy) / (p2.h / 2)); return cx + side * (p2.w / 2) * f; }
     return cx + side * p2.w / 2;
   }
+  function stubY(g, lane){
+    var lim = 1e9;
+    Object.keys(SIDEGEO).forEach(function(k){ var q = SIDEGEO[k];
+      if (q && q.dir === 'r' && q.y > g.y + g.h + 1 && q.x <= g.x + 20 && q.x >= lane - 1) lim = Math.min(lim, q.y); });
+    var dy = Math.min(10, lim - (g.y + g.h) - 2);
+    return g.y + g.h + Math.max(4, dy);
+  }
   var laneBase = 1e9, nEnd = 0;
   DATA.flow.forEach(function(n, i){ var g0 = SIDEGEO[i + ':side']; if (n.side && n.side.ret && g0) laneBase = Math.min(laneBase, g0.x); if (n.side && n.side.ret === 'END') nEnd++; });
   var retK = 0, endK = 0;
@@ -257,6 +264,7 @@ function renderFlow(){
     var g = SIDEGEO[i + ':side']; if (!g || g.dir !== 'r') return;
     var tgt = null, tTitle = '', tIdx = -1;
     if (n.side.ret === 'END'){ tgt = termPos; tTitle = 'برگشت به اول (pass بعد)'; tIdx = DATA.flow.length; }
+    else if (n.side.ret === 'NODE'){ tIdx = n.side.retTo; tgt = pos[tIdx]; tTitle = (DATA.flow[tIdx] && DATA.flow[tIdx].t) || ''; }
     else { var j = i + 1; while (j < pos.length && !pos[j]) j++; tgt = pos[j]; tTitle = (DATA.flow[j] && DATA.flow[j].t) || ''; tIdx = j; }
     if (!tgt) return;
     var lane = laneBase - 16 - (retK++) * 15;
@@ -265,11 +273,15 @@ function renderFlow(){
       var dz = DRAWN[tIdx] || { w: 216, h: 44 };
       var exStep = nEnd > 1 ? Math.min(22, (dz.w - 48) / (nEnd - 1)) : 0;
       var exX = cx - dz.w / 2 + 24 + endK * exStep;
-      var apY = tgt.y - 16 - endK * 13; endK++;
-      dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + (g.y + g.h + 10) + ' H' + lane + ' V' + apY + ' H' + exX + ' V' + (tgt.y - 2);
+      var gapTop = 0;
+      pos.forEach(function(p3){ if (p3 && p3 !== tgt && p3.y + p3.h < tgt.y) gapTop = Math.max(gapTop, p3.y + p3.h); });
+      var apTop = (gapTop ? gapTop + 6 : tgt.y - 16);
+      var apStep = nEnd > 1 ? Math.max(5, Math.min(13, (tgt.y - 12 - apTop) / (nEnd - 1))) : 0;
+      var apY = Math.max(apTop, tgt.y - 12 - endK * apStep); endK++;
+      dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + stubY(g, lane) + ' H' + lane + ' V' + apY + ' H' + exX + ' V' + (tgt.y - 2);
     } else {
       var ty = tgt.cy - Math.min(18, tgt.h / 4);
-      dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + (g.y + g.h + 10) + ' H' + lane + ' V' + ty + ' H' + (edgeX(DATA.flow[tIdx], tgt, ty - tgt.cy, 1) - 2);
+      dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + stubY(g, lane) + ' H' + lane + ' V' + ty + ' H' + (edgeX(DATA.flow[tIdx], tgt, ty - tgt.cy, 1) - 2);
     }
     out += '<g class="edge" data-rf="side" data-fi="' + i + '" data-ti="' + tIdx + '" data-f="' + esc((n.side && n.side.l && n.side.l[0]) || n.t || '') + '" data-t="' + esc(tTitle) + '" data-l="برگشت">';
     out += '<path class="hit rhit" d="' + dd + '"/>';
@@ -295,7 +307,9 @@ function renderFlow(){
     if (!pos[i]) return;
     var p = pos[i];
     var pj = i - 1; while (pj > 0 && !pos[pj]) pj--;
-    if (i > 0 && pos[pj]){
+    var secBreak = false;
+    for (var qb = i - 1; qb > pj; qb--){ if (DATA.flow[qb].k === 'sec' && DATA.flow[qb].brk) secBreak = true; }
+    if (i > 0 && pos[pj] && !secBreak && !DATA.flow[pj].brk){
       var prevBottom = pos[pj].y + pos[pj].h;
       var pn = DATA.flow[pj];
       out += '<g class="edge" data-fi="' + pj + '" data-ti="' + i + '" data-f="' + esc(pn.t || '') + '" data-t="' + esc(n.t || '') + '" data-l="' + esc(pn.elab || '') + '">';
