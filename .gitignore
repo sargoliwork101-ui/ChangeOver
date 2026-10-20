@@ -40,10 +40,11 @@ Firmware/Modules/McuPowerPath/Tester/host_test_mcu_power_path
 Firmware/Modules/CalLut/Tester/host_test_cal_lut
 Firmware/Modules/Measurement/Tester/host_test_measurement
 
-# host test binaries (compiled by the runners in Modules/*/Tester)
+# host test binaries (compiled by the runners in Modules/*/Tester and Bsp/Tester)
 Firmware/Modules/*/Tester/host_test_*
 !Firmware/Modules/*/Tester/host_test_*.c
 !Firmware/Modules/*/Tester/host_test_*.cpp
+Firmware/Bsp/Tester/host_test_bsp_gpio
 
 # programmer working files (data-area backups / evidence read from a board)
 Programmer/backups/

@@ -133,6 +133,17 @@ echo "--- CalLut host test / تست هاست CalLut ---"
 echo "--- Measurement host test / تست هاست Measurement ---"
 ./Firmware/Modules/Measurement/Tester/run_host_test_measurement.sh
 
+# [EN] bsp_gpio.c is the only file that maps a logical signal to a pin and a
+#      physical level, and it was the only firmware file no host test ever
+#      executed: the module testers use a fake BSP. Added 2026-10-20 with the
+#      JITTER1/2 polarity fix so a wrong active level turns the gate red.
+# [FA] ‎bsp_gpio.c‎ تنها فایلی است که سیگنال منطقی را به پایه و سطح فیزیکی
+#      نگاشت می‌کند و تنها فایل فرم‌وری بود که هیچ تست هاستی اجرایش نمی‌کرد
+#      (تسترهای ماژول BSP بدلی دارند). همراه اصلاح قطبیت ‎JITTER1/2‎ در
+#      ۲۰۲۶-۱۰-۲۰ اضافه شد تا سطح فعال غلط دروازه را قرمز کند.
+echo "--- BSP GPIO polarity host test / تست هاست قطبیت GPIO برد ---"
+./Firmware/Bsp/Tester/run_host_test_bsp_gpio.sh
+
 echo "--- FlashLock host test / تست هاست قفل خواندن ---"
 ./Firmware/Modules/FlashLock/Tester/run_host_test_flash_lock.sh
 
