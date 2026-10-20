@@ -228,10 +228,14 @@ function renderFlow(){
   });
   var firstIdx = -1;
   DATA.flow.forEach(function(n, i){ if (firstIdx < 0 && n.k !== 'sec' && pos[i]) firstIdx = i; });
+  var retPillIdx = -1;
+  DATA.flow.forEach(function(n, i){ if (n.k === 'pill' && (n.t || '').indexOf('برگشت') >= 0) retPillIdx = i; });
   var lastReal = -1; pos.forEach(function(p2, i2){ if (p2) lastReal = i2; });
   var needTerm = !(DATA.flow[lastReal] && DATA.flow[lastReal].k === 'pill');
+  var reusePill = (!needTerm && retPillIdx === lastReal);
   var termPos = null;
   if (needTerm){ termPos = { y: y, h: 44, w: 320, cy: y + 22, _term: true }; pos.push(termPos); y += 44 + GAP; }
+  else if (reusePill){ termPos = pos[retPillIdx]; }
   var maxHalf0 = 0; pos.forEach(function(p2){ if (p2) maxHalf0 = Math.max(maxHalf0, p2.w / 2); });
   var nRet = 0; DATA.flow.forEach(function(n2){ if (n2.side && n2.side.ret) nRet++; });
   SIDECOLX = Math.round(cx + maxHalf0 + 26 + nRet * 15 + 16);
@@ -246,7 +250,32 @@ function renderFlow(){
     });
   });
   var H = y - GAP + 30;
-  if (termPos) out += drawNode({ k: 'pill', c: 'navy', t: '↺ برگشت به اول — pass بعد' }, cx, termPos.y, DATA.flow.length);
+  if (termPos){
+    /* [EN] A page whose own "go back" pill IS this terminator: open the
+       clickable wrapper BEFORE the pill is drawn, close it below.
+       [FA] صفحه‌ای که خودش کادر «برگشت» را دارد: پوشش کلیک‌پذیر پیش از
+       کشیدن کادر باز و پایین بسته می‌شود. */
+    var termLabel = '↺ پایان این پاس — دور بعد از شروع';
+    out += '<g class="termwrap" data-t="' + esc(reusePill ? (DATA.flow[retPillIdx].t || termLabel) : termLabel) + '">';
+    if (reusePill){ out += drawNode(DATA.flow[retPillIdx], cx, termPos.y, retPillIdx); }
+    else { out += drawNode({ k: 'pill', c: 'navy', t: termLabel }, cx, termPos.y, DATA.flow.length); }
+    /* [EN] draw the missing half of the loop: a dashed line from this pill back
+       up the left side into the start node, otherwise the return tracks look
+       like they end in nothing (user note 2026-10-20).
+       [FA] نیمهٔ گمشدهٔ حلقه: خط‌چین از این جعبه تا گرهٔ شروع، در غیر این صورت
+       خط‌های برگشت به‌نظر به هیچ‌جا نمی‌رسند. */
+    if (firstIdx >= 0 && pos[firstIdx]){
+      var st0 = pos[firstIdx], ts = DRAWN[DATA.flow.length] || { w: 320, h: 44 };
+      var lx = cx - maxHalf0 - 44;
+      var dLoop = 'M' + (cx - ts.w / 2) + ' ' + (termPos.y + ts.h / 2) + ' H' + lx + ' V' + st0.cy + ' H' + (cx - st0.w / 2 - 2);
+      out += '<g class="edge" data-rf="side" data-ret="1" data-fi="" data-ti="' + firstIdx + '" data-f="پایان پاس" data-t="' + esc(DATA.flow[firstIdx].t || '') + '" data-l="دور بعد">';
+      out += '<path class="hit rhit" d="' + dLoop + '"/>';
+      out += '<path class="vis" d="' + dLoop + '" stroke="#7BC47F" stroke-width="2.4" stroke-dasharray="9 6" fill="none" marker-end="url(#arw)"/>';
+      out += '</g>';
+      out += vlabel(lx, (termPos.y + st0.cy) / 2, 'دور بعد', '#7BC47F');
+    }
+    out += '</g>';
+  }
   function edgeX(n2, p2, dy, side){
     if (n2 && n2.k === 'dia'){ var f = 1 - Math.min(1, Math.abs(dy) / (p2.h / 2)); return cx + side * (p2.w / 2) * f; }
     return cx + side * p2.w / 2;
@@ -291,7 +320,9 @@ function renderFlow(){
       dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + stubY(g, lane) + ' H' + lane + ' V' + ty + ' H' + (edgeX(DATA.flow[tIdx], tgt, ty - tgt.cy, 1) - 2);
     }
     var linkTi = (n.side.ret === 'END' && firstIdx >= 0) ? firstIdx : tIdx;
-    out += '<g class="edge" data-rf="side" data-fi="' + i + '" data-ti="' + linkTi + '" data-f="' + esc((n.side && n.side.l && n.side.l[0]) || n.t || '') + '" data-t="' + esc(tTitle) + '" data-l="برگشت">';
+    out += '<g class="edge" data-rf="side" data-fi="' + i + '" data-ti="' + linkTi + '"' +
+           (n.side.ret === 'END' ? ' data-ret="1"' : '') +
+           ' data-f="' + esc((n.side && n.side.l && n.side.l[0]) || n.t || '') + '" data-t="' + esc(tTitle) + '" data-l="برگشت">';
     out += '<path class="hit rhit" d="' + dd + '"/>';
     out += '<path class="vis" d="' + dd + '" stroke="' + (LINES[n.side.c || 'gray']) + '" stroke-width="1.8" fill="none" marker-end="url(#arw)"/>';
     out += '</g>';
@@ -327,17 +358,11 @@ function renderFlow(){
       out += '</g>';
     }
     if (n.k === 'sub'){ out += drawSub(n, cx, p.y, i); return; }
-    out += drawNode(n, cx, p.y, i);
+    if (!(reusePill && i === retPillIdx)){ out += drawNode(n, cx, p.y, i); }
     if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r', i, n.t, 'side');
     if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l', i, n.t, 'note');
   });
-  if (termPos && firstIdx >= 0){
-    out += '<g class="fnode term" data-i="" data-t="برگشت به اول (pass بعد)">';
-    out += '<rect x="' + (cx - termPos.w / 2) + '" y="' + termPos.y + '" width="' + termPos.w + '" height="' + termPos.h + '" rx="22" fill="#1F3864" stroke="#1F3864" stroke-width="2"/>';
-    out += '<text x="' + cx + '" y="' + (termPos.y + termPos.h / 2 + 6) + '" text-anchor="middle" font-size="15" font-weight="700" fill="#FFFFFF">' + etxt('برگشت به اول (pass بعد)') + '</text>';
-    out += '</g>';
-  }
-  document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی آن click کن تا خودش و دو box دو سرش روشن شوند؛ روی هر box هم click کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. boxهای با علامت ↗ link صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل click کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="66%" style="display:block;margin:0 auto">' + out + '</svg>';
+  document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی آن click کن تا خودش و دو box دو سرش روشن شوند؛ روی هر box هم click کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. boxهای با علامت ↗ link صفحهٔ ماژول خودشان‌اند. خط‌چین سبز «دور بعد» یعنی پایان این پاس و شروع دوبارهٔ همان task از بالا. برای برگشت، روی جای خالی شکل click کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="66%" style="display:block;margin:0 auto">' + out + '</svg>';
   document.querySelectorAll('.subhead').forEach(function(g){
     g.addEventListener('click', function(){
       var n = DATA.flow[+g.getAttribute('data-i')];
@@ -403,6 +428,11 @@ function renderTree(){
     });
   });
 }
+function firstNodeOf(svg){
+  var ns = svg.querySelectorAll('.fnode');
+  for (var i = 0; i < ns.length; i++){ if (ns[i].getAttribute('data-i') === '0' || ns[i].getAttribute('data-i') === '1') return ns[i]; }
+  return ns[0] || null;
+}
 function wireFlow(){
   var fc = document.getElementById('flow');
   if (!fc || !fc.addEventListener || fc._ew) return;
@@ -416,6 +446,24 @@ function wireFlow(){
       for (var q = 0; q < hs.length; q++) hs[q].classList.remove('hl');
     }
     if (ev.target.closest && ev.target.closest('a')) return;
+    var tw = ev.target.closest ? ev.target.closest('.termwrap') : null;
+    if (tw){
+      svg.classList.add('sel'); tw.classList.add('hl');
+      var fn0 = firstNodeOf(svg), fIdx = fn0 ? fn0.getAttribute('data-i') : '';
+      var rs = svg.querySelectorAll('.edge'), rc = 0, dest = '';
+      for (var q8 = 0; q8 < rs.length; q8++){
+        var e8 = rs[q8];
+        var isBack = e8.getAttribute('data-ret') === '1' ||
+                     (e8.getAttribute('data-ti') !== '' && e8.getAttribute('data-ti') === fIdx && e8.getAttribute('data-rf') === 'side');
+        if (isBack){ e8.classList.add('hl'); rc++; }
+      }
+      if (fn0) fn0.classList.add('hl');
+      var twName = (tw.getAttribute('data-t') || 'برگشت به پاس بعد');
+      if (info) info.textContent = rc
+        ? '«' + twName + '»: ' + rc + ' خطِ برگشت روشن شد — کار از نو از («' + (fn0 ? fn0.getAttribute('data-t') : '') + '») شروع می‌شود.'
+        : '«' + twName + '»: در این صفحه برگشت‌ها مستقیم به شروع پاس وصل شده‌اند و خطشان آن بالا روشن می‌شود.';
+      return;
+    }
     var sg = ev.target.closest ? ev.target.closest('.snode') : null;
     var eg = ev.target.closest ? ev.target.closest('.edge') : null;
     var ng = ev.target.closest ? ev.target.closest('.fnode') : null;
@@ -441,7 +489,7 @@ function wireFlow(){
       var sn4 = svg.querySelectorAll('.snode'); for (var q7 = 0; q7 < sn4.length; q7++){ if (sn4[q7].getAttribute('data-i') === i2) sn4[q7].classList.add('hl'); }
       if (info) info.textContent = 'box «' + (ng.getAttribute('data-t') || '') + '» — ' + cnt + ' خطِ وصل به آن روشن شد. برای برگشت، روی جای خالی شکل click کن.';
     } else {
-      if (info) info.textContent = 'برای دیدن ارتباط هر خط، روی آن click کن تا خودش و دو box دو سرش روشن شوند؛ روی هر box هم click کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. boxهای با علامت ↗ link صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل click کن.';
+      if (info) info.textContent = 'برای دیدن ارتباط هر خط، روی آن click کن تا خودش و دو box دو سرش روشن شوند؛ روی هر box هم click کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. boxهای با علامت ↗ link صفحهٔ ماژول خودشان‌اند. خط‌چین سبز «دور بعد» یعنی پایان این پاس و شروع دوبارهٔ همان task از بالا. برای برگشت، روی جای خالی شکل click کن.';
     }
   });
 }
