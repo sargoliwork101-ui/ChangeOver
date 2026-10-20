@@ -253,6 +253,37 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
           با وجود ضعف همچنان بار را تغذیه می‌کرد. حالا شمارش تا وقتی ولتاژ
           واقعاً از ‎CLEAR_MV‎ (۲۱۲۰۰) رد نشود ادامه دارد. قطع بحرانی زیر
           ‎CRITICAL_CUT_MV‎، فیلتر ۳ ثانیه و مسیر وصل مجدد دست‌نخورده‌اند. */
+    /* [EN] Input-stability tracking MUST run before the cut branch (full
+          audit 2026-10-20): the cut branch returns early, so while a cut
+          condition held, this timer used to freeze at its last stamp. After
+          the cut cleared, the reconnect check then measured the frozen stamp
+          - i.e. the 30 s "input stable" delay the user ordered on
+          2026-10-12 could be skipped entirely whenever the input had stayed
+          present across the cut (the common low-battery case). Tracking runs
+          here, every valid pass, so the stamp always means "the input has
+          been continuously present since this tick".
+       [FA] ردیابی پایداری ورودی باید پیش از شاخهٔ قطع اجرا شود (ممیزی
+          ۲۰۲۶-۱۰-۲۰): شاخهٔ قطع زودتر return می‌کرد، پس تا وقتی شرط قطع
+          برقرار بود این تایمر روی مهر قبلی می‌خوابید؛ بعد از پاک‌شدن قطع،
+          بررسی وصل مجدد همان مهر کهنه را می‌سنجید - یعنی تاخیر ۳۰ ثانیه‌ای
+          «پایداری ورودی» (دستور ۲۰۲۶-۱۰-۱۲) هر وقت ورودی در طول قطع حاضر
+          می‌ماند (حالت رایج باتری ضعیف) کاملاً دور زده می‌شد. ردیابی اینجا،
+          در هر پاس معتبر، اجرا می‌شود تا مهر همیشه یعنی «ورودی از این تیک
+          پیوسته حاضر است». */
+    if (measurement_snapshot_t__snap->input_present == true)
+    {
+        if (BOOL__G__InputStableActive == false)
+        {
+            BOOL__G__InputStableActive = true;
+            UINT32_T__G__InputStableSinceTick = uint32_t__nowTick;
+        }
+    }
+    else
+    {
+        BOOL__G__InputStableActive = false;
+        UINT32_T__G__InputStableSinceTick = 0u;
+    }
+
     bool__cutCondition = false;
     if (measurement_snapshot_t__snap->v_bat24_mv < CHANGEOVER_BAT_CRITICAL_CUT_MV)
     {
@@ -359,24 +390,6 @@ app_state_t func__Changeover_Evaluate(const measurement_snapshot_t *measurement_
     else
     {
         BOOL__G__CutTimerActive = false;
-    }
-
-    /* [EN] Track input_present stable time for extra 30s delay before reconnect.
-          If input drops, reset the stable timer.
-       [FA] ردیابی پایداری ورودی برای تاخیر ۳۰ ثانیه اضافه قبل از وصل مجدد.
-          اگر ورودی قطع شود تایمر ریست می‌شود. */
-    if (measurement_snapshot_t__snap->input_present == true)
-    {
-        if (BOOL__G__InputStableActive == false)
-        {
-            BOOL__G__InputStableActive = true;
-            UINT32_T__G__InputStableSinceTick = uint32_t__nowTick;
-        }
-    }
-    else
-    {
-        BOOL__G__InputStableActive = false;
-        UINT32_T__G__InputStableSinceTick = 0u;
     }
 
     /* [EN] Evaluate reconnect: input_present true AND v >=21200 for 3000ms continuous

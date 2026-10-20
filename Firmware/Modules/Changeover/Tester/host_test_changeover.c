@@ -293,6 +293,58 @@ int main(void)
     CHECK(func__Step(CHANGEOVER_DURATION_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
     CHECK(func__Step(1u, FAULT_NONE) == APP_STATE_INPUT);
 
+    /* ---- 6b. the 30 s stable-input clock must keep running DURING a cut ----
+       [EN] Regression for the 2026-10-20 audit: the cut branch returns early,
+            so a stamp that was only written below it froze at its pre-cut
+            value. If the mains dropped and came back while the cut condition
+            was still true, the reconnect check measured that stale stamp and
+            the 30 s order of 2026-10-12 was skipped. Here the input is present
+            for 40 s, then the pack is cut, the input is lost AND restored
+            while the cut still holds, and only then does the pack recover:
+            the reconnect must wait a FULL 30 s counted from the restore.
+       [FA] رگرسیون ممیزی ۲۰۲۶-۱۰-۲۰: شاخهٔ قطع زودتر return می‌کرد، پس مهری
+            که فقط پایین‌تر از آن نوشته می‌شد روی مقدار پیش از قطع می‌خوابید.
+            اگر برق ورودی در طول قطع می‌رفت و برمی‌گشت، بررسی وصل مجدد همان مهر
+            کهنه را می‌سنجید و تاخیر ۳۰ ثانیه دور زده می‌شد. اینجا ورودی ۴۰
+            ثانیه حاضر است، بعد قطع رخ می‌دهد، ورودی در طول قطع می‌رود و
+            برمی‌گردد و بعد باتری بهبود می‌یابد: وصل مجدد باید کامل ۳۰ ثانیه از
+            لحظهٔ برگشت ورودی صبر کند. */
+    func__Reset(700000u);
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_INPUT);
+    CHECK(func__Step(40000u, FAULT_NONE) == APP_STATE_INPUT);   /* [EN] stamp is now 40 s old */
+
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = CHANGEOVER_BAT_LOW_ALARM_CUT_MV - 100u;
+    (void)func__Step(10u, FAULT_NONE);
+    CHECK(func__Step(CHANGEOVER_DURATION_MS, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(BOOL__G__ProtectLine == true);
+
+    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = false;      /* [EN] mains lost mid-cut */
+    (void)func__Step(10u, FAULT_NONE);
+    MEASUREMENT_SNAPSHOT_T__G__Snap.input_present = true;       /* [EN] restored mid-cut */
+    (void)func__Step(10u, FAULT_NONE);
+
+    MEASUREMENT_SNAPSHOT_T__G__Snap.v_bat24_mv = 22000u;        /* [EN] cut clears */
+    CHECK(func__Step(10u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(BOOL__G__ProtectLine == true);
+
+    /* [EN] 12 s after the restore: the old code would already have reconnected
+            (stale stamp 40 s old + the 3 s filter); the 30 s clock must hold.
+       [FA] ۱۲ ثانیه بعد از برگشت ورودی: کد قدیم همان‌جا وصل می‌کرد؛ ساعت ۳۰
+            ثانیه باید نگه دارد. */
+    for (uint32_t__i = 0u; uint32_t__i < 4u; uint32_t__i++)
+    {
+        CHECK(func__Step(3000u, FAULT_NONE) == APP_STATE_SAFE);
+    }
+    CHECK(BOOL__G__ProtectLine == true);
+
+    (void)func__Step(CHANGEOVER_INPUT_STABLE_MS - 12010u - 1u, FAULT_NONE); /* [EN] just short */
+    CHECK(BOOL__G__ProtectLine == true);
+    CHECK(func__Step(1u, FAULT_NONE) == APP_STATE_SAFE);        /* [EN] 30 s done, 3 s starts */
+    CHECK(func__Step(CHANGEOVER_DURATION_MS - 1u, FAULT_NONE) == APP_STATE_SAFE);
+    CHECK(BOOL__G__ProtectLine == true);
+    CHECK(func__Step(1u, FAULT_NONE) == APP_STATE_INPUT);
+    CHECK(BOOL__G__ProtectLine == false);
+
 #if MODULE_IMBALANCE
     /* ---- 7. scenario-5 veto: a latched imbalance never reaches the output ---- */
     func__Reset(400000u);
