@@ -32,6 +32,7 @@ INCLUDE_FLAGS=(
     -I Firmware/Modules/Imbalance
     -I Firmware/Modules/CalLut
     -I Firmware/Modules/Diag
+    -I Firmware/Modules/FlashLock
 )
 
 # [EN] Tester/ holds host harnesses (fake clock, stub BSP). They are built and
@@ -131,6 +132,9 @@ echo "--- CalLut host test / تست هاست CalLut ---"
 
 echo "--- Measurement host test / تست هاست Measurement ---"
 ./Firmware/Modules/Measurement/Tester/run_host_test_measurement.sh
+
+echo "--- FlashLock host test / تست هاست قفل خواندن ---"
+./Firmware/Modules/FlashLock/Tester/run_host_test_flash_lock.sh
 
 echo "--- EspLink NVM host test / تست هاست NVM لینک ESP ---"
 ./Firmware/Modules/EspLink/Tester/run_host_test_nvm.sh

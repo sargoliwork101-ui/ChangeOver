@@ -39,3 +39,8 @@ Firmware/Modules/Jitter/Tester/host_test_jitter
 Firmware/Modules/McuPowerPath/Tester/host_test_mcu_power_path
 Firmware/Modules/CalLut/Tester/host_test_cal_lut
 Firmware/Modules/Measurement/Tester/host_test_measurement
+
+# host test binaries (compiled by the runners in Modules/*/Tester)
+Firmware/Modules/*/Tester/host_test_*
+!Firmware/Modules/*/Tester/host_test_*.c
+!Firmware/Modules/*/Tester/host_test_*.cpp

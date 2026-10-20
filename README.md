@@ -106,7 +106,9 @@ ChangeOver
 │   ├── stamp_panel.py                 ← مهر نسخه/تاریخ ساخت روی هدر پنل
 │   ├── measure_flash.py               ← اندازهٔ فلش ایمیج (مقایسهٔ دلتا، نه عدد مطلق)
 │   ├── measure_ram.py                 ← بودجهٔ RAM + بدترین عمق پشتهٔ هر تسک و وقفه (capstone)
-│   └── (host tests در Modules/*/Tester: Ui, Charger, Imbalance, Changeover, Fault, Protection, Jitter, McuPowerPath, CalLut, Measurement, EspLink — همه داخل check_firmware_syntax.sh اجرا می‌شوند)
+│   └── (host tests در Modules/*/Tester: Ui, Charger, Imbalance, Changeover, Fault, Protection, Jitter, McuPowerPath, CalLut, Measurement, EspLink, FlashLock — همه داخل check_firmware_syntax.sh اجرا می‌شوند)
+├── Programmer/                        ← ابزار لپ‌تاپ (نه کد برد): فلش کردن برد با نگه‌داشتن پارامترها و جدول کالیبراسیون
+│   └── flash_changeover.py            ← پشتیبان ناحیهٔ داده → پاک‌کردن و نوشتن برنامه → برگرداندن → قفل اختیاری
 └── Firmware/
     ├── App/
     │   app.c ──► rtos_app.h
@@ -142,6 +144,7 @@ ChangeOver
         Imbalance       فعال (سناریوی ۵: تشخیص عدم‌توازن نیم‌باتری‌ها)
         CalLut          فعال (بلوک فلش جدا برای جدول بنچ ارسالی از پنل)
         Protection      خاموش (فلگ ۰، backend در Build)
+        FlashLock       خاموش (فلگ ۰، قفل یک‌بارمصرف خواندن حافظه؛ فقط برای بیلد تحویل روشن شود)
 ```
 
 برگهٔ هر ماژول (توابع، پایه‌ها، درخت همان ماژول): `Firmware/Modules/<نام>/README.md`

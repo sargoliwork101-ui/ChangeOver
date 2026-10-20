@@ -98,6 +98,8 @@ Firmware/Bsp/Src/*.c       ← پورت برد فعلی، HAL و main.h خصوص
 
 `bsp_flash.h` مرز واحد حافظهٔ ماندگار را از `0x0800E000` تا پیش از `0x08010000` تعریف می‌کند؛ این مرز عمداً فقط NVM را پوشش می‌دهد و به کد برنامه اجازهٔ دسترسی نمی‌دهد. `func__BspFlash_ErasePage` فقط آدرس هم‌تراز ۱KB داخل همین پنجره را می‌پذیرد، مسدودکننده است و فقط در context تسک/Thread مجاز است. `func__BspFlash_ProgramHalfWords` پاک‌کردن انجام نمی‌دهد: مبدأ باید non-NULL، آدرس نیم‌کلمه‌ای و کل بازه داخل پنجره باشد؛ هر فراخوانی حداکثر ۱۰۲۴ نیم‌کلمه (۲KB) است و ترتیب پاک‌کردن صفحه بر عهدهٔ مالک رکورد است. این قرارداد با ساختار رکورد، CRC و مسیر عادی ذخیره‌سازی EspLink یکی نیست و آن‌ها را تغییر نمی‌دهد.
 
+`bsp_flash_lock.c` مرز تنها دسترسی به option byte تراشه است و سه تابع دارد: خواندن سطح قفل از ثبات `OBR`، نوشتن RDP سطح ۱ با حفظ بایت `USER`، و بارگذاری دوباره و ریست. ترتیب کار از کد مرجع همان HAL گرفته شده چون پاک‌کردن بلوک option byte در F1 اجباری است (رفتن از `0xAA` به `0xA5` بیت‌های یک لازم دارد و برنامه‌ریزی فقط بیت را صفر می‌کند) و در همان پاک‌کردن، بایت `USER` هم باید برگردد وگرنه منبع watchdog و رفتار ریست بی‌صدا عوض می‌شود. این فایل هیچ تست هاستی ندارد (روی کامپیوتر اجرا نمی‌شود)؛ اثباتش روی میز تست است و در کاربرگ `Modules/FlashLock` ثبت می‌شود.
+
 تبدیل‌های `func__Rtos_MillisecondsToTicks` و `func__Rtos_TicksToMilliseconds` نرخ فعال `osKernelGetTickFreq()` را می‌خوانند و برای نرخ صفر یا سرریز به مقدار محدود برمی‌گردند. محاسبات بدون `uint64_t` و بدون فرض ۱kHz انجام می‌شوند؛ نرخ فعال فعلی ۱۰۰۰Hz است و نتیجهٔ مسیر عادی آن با قرارداد قبلی یکسان می‌ماند. `func__Rtos_DelayMilliseconds` تنها wrapper همین تبدیل است.
 
 ## توابع و وضعیت startup
@@ -137,6 +139,7 @@ CubeIDE/Core/Src/main.c
         ├── bsp_measurement.c← board voltage/current calibration
         ├── bsp_pwm.c        ← charger PWM backend
         ├── bsp_uart.c       ← ESP-Link USART1 backend
+        ├── bsp_flash_lock.c ← read-out protection (option byte RDP) boundary
         └── bsp_exti.c       ← logical event latches
 
 Firmware/Rtos/Src/task_measurement.c → bsp_adc + bsp_measurement
@@ -144,6 +147,7 @@ Firmware/Modules/Ui                 → bsp_gpio
 Firmware/Modules/Charger             → bsp_pwm (after module enable)
 Firmware/Modules/EspLink             → bsp_gpio + bsp_uart (after module enable)
 Firmware/Modules/Jitter              → bsp_exti (after module enable)
+Firmware/Modules/FlashLock           → bsp_flash_lock (قفل خواندن؛ کلید پیش‌فرض خاموش)
 ```
 
 ## قواعد Agentهای ماژول

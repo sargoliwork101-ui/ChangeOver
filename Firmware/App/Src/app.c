@@ -9,6 +9,9 @@
 #include "modules_enable.h"
 #include "esp_link_nvm.h"
 #include "cal_lut.h"
+#if MODULE_FLASH_LOCK
+#include "flash_lock.h"
+#endif
 #if MODULE_DIAG
 #include "diag.h"
 #endif
@@ -21,6 +24,19 @@
  */
 void func__App_Init(void)
 {
+#if MODULE_FLASH_LOCK
+    /* [EN] One-time read-out lock (user order 2026-10-20). Runs before the
+       scheduler so the option-byte erase cannot stall a running task; on
+       success the MCU resets inside this call and the boot repeats with the
+       part already locked, which makes the second pass a no-op. Default
+       MODULE_FLASH_LOCK = 0, so this block is not compiled into normal builds.
+       [FA] قفل یک‌بارمصرف خواندن حافظه (دستور کاربر ۲۰۲۶-۱۰-۲۰). پیش از
+       زمان‌بند اجرا می‌شود تا پاک‌کردن option byte تسک در حال اجرا را نگه
+       ندارد؛ در موفقیت میکرو داخل همین فراخوانی ریست می‌شود و بوت با قطعهٔ
+       قفل‌شده تکرار می‌شود، پس گذر دوم هیچ کاری نمی‌کند. پیش‌فرض
+       ‎MODULE_FLASH_LOCK = 0‎ است، یعنی این بلوک در بیلد معمولی کامپایل نمی‌شود. */
+    (void)func__FlashLock_ApplyOnce();
+#endif
 #if MODULE_ESP
     /* [EN] v1.14 (user order 2026-09-25: panel values must survive power
        loss): replay the newest CRC-valid flash record through the clamped

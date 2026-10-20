@@ -28,6 +28,7 @@ MODULES = [
     ("Diag", "لاگ تشخیصی (Diag)", "Diag_Validation.xlsx"),
     ("EspLink", "ارتباط با پنل (EspLink)", "EspLink_Validation.xlsx"),
     ("Fault", "تشخیص خطا (Fault)", "Fault_Validation.xlsx"),
+    ("FlashLock", "قفل خواندن حافظه (FlashLock)", "FlashLock_Validation.xlsx"),
     ("Imbalance", "عدم‌توازن باتری (Imbalance)", "Imbalance_Validation.xlsx"),
     ("Jitter", "مقایسه‌گر جریان (Jitter)", "Jitter_Validation.xlsx"),
     ("McuPowerPath", "تغذیهٔ میکرو (McuPowerPath)", "McuPowerPath_Board_Validation.xlsx"),
