@@ -3,6 +3,9 @@
 این پوشه ابزار **روی لپ‌تاپ** است، نه کد برد. تنها کاری که کد برد نمی‌تواند بکند
 همین‌جاست: نوشتن برنامه روی تراشه.
 
+**توضیح کامل هر اسکریپت و روش اجرا: [`SCRIPTS.md`](SCRIPTS.md)** — این فایل
+فقط نمای کلی و هشدارهای مشترک است.
+
 ## چرا این اسکریپت لازم است
 
 STM32F103 وقتی قفل خواندن (RDP سطح ۱) دارد، با SWD فقط بعد از پاک‌کردن کامل تراشه
@@ -25,23 +28,21 @@ STM32F103 وقتی قفل خواندن (RDP سطح ۱) دارد، با SWD فق�
    متغیر محیطی `STM32_PROGRAMMER_CLI` ست شود.
 3. ST-Link روی کانکتور CON4 (SWDIO / SWCLK / NRST / 3.3V / GND).
 
-## سه دستور اصلی
+## کدام اسکریپت، کِی
+
+| موقعیت | اسکریپت |
+|---|---|
+| برد نو، اولین بار | `first_flash_changeover.py` |
+| هر بار بعد، با حفظ پارامتر و کالیبراسیون | `flash_changeover.py` |
+| فقط برگرداندن پشتیبان | `flash_changeover.py --restore-only` |
 
 ```bash
-# دیدن دستورها بدون هیچ تغییری روی برد
-python3 Programmer/flash_changeover.py --image build/ChangeOver.hex \
-    --backup Programmer/backups/params_v1.90_board7.bin --dry-run
+# اولین بار روی برد نو (اول با --dry-run)
+python3 Programmer/first_flash_changeover.py \
+    --image build/ChangeOver.hex --label board7
 
-# فلش کردن + برگرداندن داده‌ها (قفل دست نمی‌خورد)
+# همهٔ بارهای بعد
 python3 Programmer/flash_changeover.py --image build/ChangeOver.hex \
-    --backup Programmer/backups/params_v1.90_board7.bin
-
-# همان کار + قفل خواندن در پایان (یک‌طرفه)
-python3 Programmer/flash_changeover.py --image build/ChangeOver.hex \
-    --backup Programmer/backups/params_v1.90_board7.bin --lock
-
-# فقط برگرداندن پشتیبان روی برد سالم
-python3 Programmer/flash_changeover.py --restore-only \
     --backup Programmer/backups/params_v1.90_board7.bin
 ```
 
@@ -66,6 +67,9 @@ python3 Programmer/flash_changeover.py --restore-only \
    بعد از هر فلش، مقادیر کالیبراسیون را در پنل یک بار ببینید.
 
 ## آزمایش‌شده تا کجا
+
+- هر دو اسکریپت با ابزار بدلی روی چهار حالت آزمایش شدند (برد نو، برد دارای داده،
+  برد قفل‌شده، فایل ناموجود) و جدول کامل در `SCRIPTS.md` است.
 
 - منطق اسکریپت روی کامپیوتر آزمایش شده است: ترتیب گام‌ها، رد پشتیبان کهنه، و
   `--dry-run`.

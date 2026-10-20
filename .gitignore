@@ -44,3 +44,6 @@ Firmware/Modules/Measurement/Tester/host_test_measurement
 Firmware/Modules/*/Tester/host_test_*
 !Firmware/Modules/*/Tester/host_test_*.c
 !Firmware/Modules/*/Tester/host_test_*.cpp
+
+# programmer working files (data-area backups / evidence read from a board)
+Programmer/backups/

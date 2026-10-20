@@ -108,7 +108,10 @@ ChangeOver
 │   ├── measure_ram.py                 ← بودجهٔ RAM + بدترین عمق پشتهٔ هر تسک و وقفه (capstone)
 │   └── (host tests در Modules/*/Tester: Ui, Charger, Imbalance, Changeover, Fault, Protection, Jitter, McuPowerPath, CalLut, Measurement, EspLink, FlashLock — همه داخل check_firmware_syntax.sh اجرا می‌شوند)
 ├── Programmer/                        ← ابزار لپ‌تاپ (نه کد برد): فلش کردن برد با نگه‌داشتن پارامترها و جدول کالیبراسیون
-│   └── flash_changeover.py            ← پشتیبان ناحیهٔ داده → پاک‌کردن و نوشتن برنامه → برگرداندن → قفل اختیاری
+│   ├── first_flash_changeover.py      ← اولین فلش برد نو: تأیید برد نو، نوشتن، تأیید حالت کارخانه
+│   ├── flash_changeover.py            ← پشتیبان ناحیهٔ داده → پاک‌کردن و نوشتن برنامه → برگرداندن → قفل اختیاری
+│   ├── stm32_cli.py                   ← لایهٔ مشترک هر دو اسکریپت (پیدا کردن و اجرای ابزار)
+│   └── SCRIPTS.md                     ← توضیح کامل هر اسکریپت و روش اجرا
 └── Firmware/
     ├── App/
     │   app.c ──► rtos_app.h
