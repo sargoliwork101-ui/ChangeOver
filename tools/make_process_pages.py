@@ -239,6 +239,8 @@ function renderFlow(){
     y += sz.h + GAP;
     if (n.loop) loops.push({ from: i, to: n.loop.to, lab: n.loop.lab, col: n.loop.col });
   });
+  var firstIdx = -1;
+  DATA.flow.forEach(function(n, i){ if (firstIdx < 0 && n.k !== 'sec' && pos[i]) firstIdx = i; });
   var lastReal = -1; pos.forEach(function(p2, i2){ if (p2) lastReal = i2; });
   var needTerm = !(DATA.flow[lastReal] && DATA.flow[lastReal].k === 'pill');
   var termPos = null;
@@ -276,7 +278,12 @@ function renderFlow(){
     if (!n.side || !n.side.ret) return;
     var g = SIDEGEO[i + ':side']; if (!g || g.dir !== 'r') return;
     var tgt = null, tTitle = '', tIdx = -1;
-    if (n.side.ret === 'END'){ tgt = termPos; tTitle = 'برگشت به اول (pass بعد)'; tIdx = DATA.flow.length; }
+    if (n.side.ret === 'END'){
+      tgt = termPos; tIdx = DATA.flow.length;
+      tTitle = 'برگشت به اول (pass بعد)' +
+        ((firstIdx >= 0) ? ' — ' + (DATA.flow[firstIdx].t || '') : '');
+      if (!tgt && firstIdx >= 0){ tIdx = firstIdx; tgt = pos[firstIdx]; }
+    }
     else if (n.side.ret === 'NODE'){ tIdx = n.side.retTo; tgt = pos[tIdx]; tTitle = (DATA.flow[tIdx] && DATA.flow[tIdx].t) || ''; }
     else { var j = i + 1; while (j < pos.length && !pos[j]) j++; tgt = pos[j]; tTitle = (DATA.flow[j] && DATA.flow[j].t) || ''; tIdx = j; }
     if (!tgt) return;
@@ -296,7 +303,8 @@ function renderFlow(){
       var ty = tgt.cy - Math.min(18, tgt.h / 4);
       dd = 'M' + (g.x + 8) + ' ' + (g.y + g.h) + ' V' + stubY(g, lane) + ' H' + lane + ' V' + ty + ' H' + (edgeX(DATA.flow[tIdx], tgt, ty - tgt.cy, 1) - 2);
     }
-    out += '<g class="edge" data-rf="side" data-fi="' + i + '" data-ti="' + tIdx + '" data-f="' + esc((n.side && n.side.l && n.side.l[0]) || n.t || '') + '" data-t="' + esc(tTitle) + '" data-l="برگشت">';
+    var linkTi = (n.side.ret === 'END' && firstIdx >= 0) ? firstIdx : tIdx;
+    out += '<g class="edge" data-rf="side" data-fi="' + i + '" data-ti="' + linkTi + '" data-f="' + esc((n.side && n.side.l && n.side.l[0]) || n.t || '') + '" data-t="' + esc(tTitle) + '" data-l="برگشت">';
     out += '<path class="hit rhit" d="' + dd + '"/>';
     out += '<path class="vis" d="' + dd + '" stroke="' + (LINES[n.side.c || 'gray']) + '" stroke-width="1.8" fill="none" marker-end="url(#arw)"/>';
     out += '</g>';
@@ -336,6 +344,12 @@ function renderFlow(){
     if (n.side) out += drawSide(n.side, cx, p.w, p.cy, n.side.d || 'r', i, n.t, 'side');
     if (n.note) out += drawSide(n.note, cx, p.w, p.cy, n.note.d || 'l', i, n.t, 'note');
   });
+  if (termPos && firstIdx >= 0){
+    out += '<g class="fnode term" data-i="" data-t="برگشت به اول (pass بعد)">';
+    out += '<rect x="' + (cx - termPos.w / 2) + '" y="' + termPos.y + '" width="' + termPos.w + '" height="' + termPos.h + '" rx="22" fill="#1F3864" stroke="#1F3864" stroke-width="2"/>';
+    out += '<text x="' + cx + '" y="' + (termPos.y + termPos.h / 2 + 6) + '" text-anchor="middle" font-size="15" font-weight="700" fill="#FFFFFF">' + etxt('برگشت به اول (pass بعد)') + '</text>';
+    out += '</g>';
+  }
   document.getElementById('flow').innerHTML = '<div id="einfo">برای دیدن ارتباط هر خط، روی آن click کن تا خودش و دو box دو سرش روشن شوند؛ روی هر box هم click کنی، همهٔ خط‌های وصل به آن روشن می‌شوند. boxهای با علامت ↗ link صفحهٔ ماژول خودشان‌اند. برای برگشت، روی جای خالی شکل click کن.</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="66%" style="display:block;margin:0 auto">' + out + '</svg>';
   document.querySelectorAll('.subhead').forEach(function(g){
     g.addEventListener('click', function(){
@@ -1304,6 +1318,7 @@ MODULES['rtosmap'] = {
    '<b>دادهٔ مشترک:</b> همه از یک عکس اندازه‌گیری می‌خوانند، ماسک خطا را task کنترل می‌سازد و بقیه می‌خوانند، و پارامترهای پنل را task ارتباط می‌نویسد.',
    '<b>watchdog:</b> هر task در هر چرخه اعلام زنده‌بودن می‌کند؛ فقط task کنترل تازه‌سازی می‌زند و آن هم تنها وقتی همهٔ شکاف‌ها تازه باشند.',
    '<b>قاعده:</b> هیچ taskی با حلقهٔ مشغول یا HAL_Delay نمی‌خوابد و هیچ حافظهٔ پویایی گرفته نمی‌شود.',
+   '<b>«pass» یعنی چه؟</b> یک دور کامل اجرای همان task: از اول تابع تا آخرش و برگشت به همان نقطه. task کنترل هر ۱۰ و task اندازه‌گیری هر ۱ میلی‌ثانیه یک pass تازه دارد.',
  ],
  'example': [
    'میکرو روشن می‌شود؛ watchdog با پنجرهٔ حدود ۱ ثانیه شروع می‌شود و اولین تازه‌سازی در همان میلی‌ثانیه‌های اول از پاس کنترل می‌آید.',
@@ -1334,7 +1349,7 @@ MODULES['rtosmap'] = {
    N('box', 'blue', 'پارامترهای پنل: نویسنده task ارتباط', ['اثر روی اندازه‌گیری، شارژر، نمایش، خطا', 'در فلش ماندگار می‌شوند'], ref='func__EspLink_Run'),
    N('box', 'blue', 'سابقهٔ دیاگ: نویسنده task کنترل', ['خواننده: ارتباط برای فرستادن به پنل'], ref='func__Diag_GetRecord'),
    N('sec', 'navy', 'بخش ۵: watchdog (منبع: bsp_iwdg.h)'),
-   N('dia', 'yellow', 'همهٔ شکاف‌های watchdog زیر ۱۵۰۰ میلی‌ثانیه تازه‌اند؟', ref='func__BspIwdg_PollKick', side=SIDE('red', ['یک task مرده یا گیر کرده است', 'هیچ تازه‌سازی‌ای انجام نمی‌شود', 'watchdog سخت‌افزاری برد را reset می‌کند'], 'r', 'نه'), elab='بله'),
+   N('dia', 'yellow', 'همهٔ شکاف‌های watchdog زیر ۱۵۰۰ میلی‌ثانیه تازه‌اند؟', ref='func__BspIwdg_PollKick', side={'c': 'red', 'l': ['یک task مرده یا گیر کرده است', 'هیچ تازه‌سازی‌ای انجام نمی‌شود', 'watchdog سخت‌افزاری برد را reset می‌کند', 'بعد از ریست از «روشن‌شدن برد» شروع می‌شود'], 'd': 'r', 'lab': 'نه', 'retToText': 'روشن‌شدن برد'}, elab='بله'),
    N('pill', 'navy', 'تازه‌سازی انجام شد؛ چرخه ادامه دارد'),
    N('sec', 'navy', 'بخش ۶: وقفه‌ها و DMA که مسیر داده را می‌سازند'),
    N('box', 'blue', 'EXTI: تریپ Jitter و ورود ۲۴ ولت', ['PB2 و PB6 فقط لبهٔ پایین‌رونده', 'PB4 ورودی: وصل فوری باتری همان‌جا'], ref='func__BspExti_OnIrq'),
@@ -1703,6 +1718,22 @@ def main():
                 'جریان از ۹۵۰ میلی‌آمپر بالاتر رفته؟',
                 'اتصال باتری ۱۵ ثانیه پایدار بوده؟',
             }
+            # [EN] An explicit retToText turns a "go to the next pass" box
+            #      into a real link to the pass-start node, resolved by title
+            #      so the index can never drift from the node list.
+            # [FA] retToText صریح، کادر «برو پاس بعد» را به گرهٔ شروع همان پاس
+            #      وصل می‌کند؛ با عنوان پیدا می‌شود تا شماره هیچ‌وقت جابه‌جا نشود.
+            for kind in ('side', 'note'):
+                s2 = n.get(kind)
+                if s2 and s2.get('retToText'):
+                    hits = [i3 for i3, n3 in enumerate(m['flow'])
+                            if (n3.get('t') or '').startswith(s2['retToText'])]
+                    if len(hits) != 1:
+                        raise SystemExit('retToText not unique: %s %r -> %s'
+                                         % (key, s2['retToText'], hits))
+                    s2['retTo'] = hits[0]
+                    s2['ret'] = 'NODE'
+                    s2.pop('retToText', None)
             for kind in ('side', 'note'):
                 if n.get(kind):
                     aft = None
@@ -1712,7 +1743,8 @@ def main():
                             break
                     if aft:
                         n[kind]['after'] = aft
-                    if kind == 'side' and n[kind].get('lab') in ('بله', 'نه'):
+                    if (kind == 'side' and n[kind].get('lab') in ('بله', 'نه')
+                            and not n[kind].get('ret')):
                         if (key == 'charging' and
                                 (n.get('t') or '') in NEXT_CHANNEL and
                                 next_channel_idx is not None):
